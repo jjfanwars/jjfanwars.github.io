@@ -290,3 +290,16 @@ Under 5 hours a week: **bigger batches, Finn reviews weekly.**
 - Weekly update from Claude: a **short summary of what changed.**
 - Docs stay in this single file. **First thing next session: re-read this doc for errors** (it was written across many rounds and has some superseded entries; later rounds win).
 - **First coding task next session: design the accounts schema** (usernames, progress, history, one-session rule, local-save import), then build the relay account store.
+
+## Round 9 details (2026-11-07, morning)
+
+### Accounts schema inputs
+- Store per username: **XP, rank, stats; keybinds and settings; unlocked vehicles and camos; achievements and clan tag.**
+- Save **every minute during play.** If the relay is down: **play with local saves and sync later** (needs a merge rule: take the higher XP, never lower it).
+- **Database: recommendation.** The relay is a **Cloudflare Worker with Durable Objects** (`relay/worker.js`, `relay/wrangler.toml`, about 130 lines). Best fit: **Cloudflare D1** (SQLite) bound to the same Worker. It has a free tier, needs no extra host, and handles name lookups, history rows and the one-session rule well. A Durable Object holding the account directory is the alternative, but D1 is simpler for queries.
+
+### Bot "too easy" details
+- Tank bots first: **stop lining up in a column.**
+- Infantry bots: they stand still, poor aim, don't use grenades, don't call for help.
+- Air bots: predictable turns, never use missiles well, don't dodge.
+- Level 1 to 5 scale on: **aim and reaction time, tactics (flank/cover), numbers and teamwork, use of special weapons.**
