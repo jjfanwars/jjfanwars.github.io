@@ -303,3 +303,11 @@ Under 5 hours a week: **bigger batches, Finn reviews weekly.**
 - Infantry bots: they stand still, poor aim, don't use grenades, don't call for help.
 - Air bots: predictable turns, never use missiles well, don't dodge.
 - Level 1 to 5 scale on: **aim and reaction time, tactics (flank/cover), numbers and teamwork, use of special weapons.**
+
+## How Claude should work (decided 2026-11-07)
+- **Accounts:** build a **minimal version straight away** (sign-in, load, save), then iterate. **Deploy to the live relay if tests pass.** Test with **short scripted checks against a local Worker.**
+- **Check-ins:** ask (with click options) **only for risky or irreversible** choices; otherwise pick the recommended option and note it.
+- **Plane controls:** the **new scheme is the default, the old one stays as an option.** Sensible defaults from other games **plus sliders** so Finn can tune.
+- **Bots:** short headless pokes to check behaviour; Finn playtests to judge.
+- **Records after each session:** an in-game **What's new** line, an update to this doc's status, and a short end-of-chat summary.
+- Note on live deploys: an account bug can lock players out of progress. Keep local saves as the fallback and never let a failed save overwrite a higher stored XP.
