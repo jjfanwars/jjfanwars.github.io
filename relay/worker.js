@@ -13,6 +13,12 @@ export default {
       const r = await env.DIR.get(env.DIR.idFromName('dir')).fetch('https://d' + u.pathname);
       return new Response(r.body, {headers: {...CORS, 'content-type': 'application/json', 'cache-control': 'no-store'}});
     }
+    if (u.pathname.startsWith('/acct/')) { // accounts: plain JSON over HTTPS (text/plain bodies, so no CORS preflight)
+      if (req.method === 'OPTIONS') return new Response(null, {headers: {...CORS, 'access-control-allow-methods': 'POST, OPTIONS', 'access-control-allow-headers': 'content-type'}});
+      if (req.method !== 'POST') return new Response('expected POST', {status: 405, headers: CORS});
+      const r = await env.ACCTS.get(env.ACCTS.idFromName('main')).fetch('https://a' + u.pathname, {method: 'POST', body: await req.text()});
+      return new Response(r.body, {status: r.status, headers: {...CORS, 'content-type': 'application/json', 'cache-control': 'no-store'}});
+    }
     if (!m) return new Response('not found', {status: 404});
     if (req.headers.get('Upgrade') !== 'websocket') return new Response('expected websocket', {status: 426});
     const stub = env.ROOMS.get(env.ROOMS.idFromName(m[1].toUpperCase()));
@@ -104,5 +110,125 @@ export class Dir {
     if (e.GH_TOKEN && e.GH_REPO && e.GH_ISSUE) try {
       await fetch('https://api.github.com/repos/' + e.GH_REPO + '/issues/' + e.GH_ISSUE + '/comments', {method: 'POST', headers: {authorization: 'Bearer ' + e.GH_TOKEN, 'user-agent': 'jjfanwars-relay', accept: 'application/vnd.github+json'}, body: JSON.stringify({body: '`' + line.t + '` room **' + line.code + '** "' + line.name + '" created'})});
     } catch (er) {}
+  }
+}
+
+// ---------------------------------------------------------------------------------------------
+// Accounts: one SQLite Durable Object holds every account. An account is just a username (no password yet).
+// Tables:  acct (k = name key, name as typed, xp, data JSON, created, updated, sid + seen = the one live session)
+//          hist (every change, last 40 per account, so a bad overwrite can be rolled back)
+//          ban  (banned name keys)
+// The name key folds case, spaces, symbols and look-alike digits (F1nn = finn), so nobody can register a near copy of a name.
+// Routes (POST, JSON body):  /acct/login {name, sid, xp, data}  ->  {ok, name, xp, data, fresh}  or  {err}
+//                            /acct/save  {name, sid, xp, data}  ->  {ok, xp, data}  or  {err}     (also the heartbeat, every minute)
+//                            /acct/logout {name, sid}
+//   admin (secret ADMIN_KEY): /acct/ban {key, name, why} · /acct/unban {key, name} · /acct/hist {key, name} · /acct/rollback {key, name, id}
+// Merge rules (clients are trusted, but sanity-checked): XP never goes down, and rises by at most XP_STEP per save
+// (XP_IMPORT on the first sign-in, when local progress is uploaded). Stats keep the higher number per key. Settings: last write wins.
+// Unlocks and achievements: union. Clan tag: last write wins.
+const LEASE = 150e3, XP_STEP = 8000, XP_IMPORT = 60000, DATA_MAX = 16000, HIST_KEEP = 40;
+const LEET = {'0': 'o', '1': 'i', '!': 'i', '|': 'i', '3': 'e', '4': 'a', '@': 'a', '5': 's', '$': 's', '7': 't', '+': 't', '8': 'b', '9': 'g', '6': 'g', '2': 'z'};
+const fold = s => String(s || '').toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/./gu, c => LEET[c] || c).replace(/[^a-z\p{L}]/gu, '').replace(/l/g, 'i');
+const undouble = s => s.replace(/(.)\1+/gu, '$1');
+export const nameKey = s => undouble(fold(s));
+// Allowed: letters (any language), digits, spaces, symbols and emoji. Not allowed: < > & " ` \\ and control or invisible characters.
+const NAME_BAD_CH = /[<>&"`\\\p{C}\u2028\u2029]|[^\P{Z} ]/u;
+const RESERVED = ['admin', 'administrator', 'moderator', 'mod', 'jjfanwars', 'kicwars', 'warsim', 'claude', 'anthropic', 'system', 'server', 'relay', 'official', 'staff', 'developer', 'dev', 'owner', 'support', 'guest', 'host', 'bot', 'tester', 'null', 'undefined', 'everyone', 'nobody'];
+// Substring checks on the folded key (keep the list to words that are rarely inside clean words)
+const BAD = ['fuck', 'fuk', 'shit', 'cunt', 'bitch', 'biatch', 'whore', 'slut', 'nigger', 'nigga', 'niga', 'faggot', 'fagot', 'retard', 'rape', 'rapist', 'penis', 'vagina', 'dick', 'cock', 'pussy', 'porn', 'nazi', 'hitler', 'heil', 'kkk', 'wank', 'twat', 'bastard', 'boob', 'tits', 'anus', 'dildo', 'cum', 'jizz', 'molest', 'pedo', 'paedo', 'sex', 'nude', 'naked', 'horny', 'kys', 'killyourself', 'asshole', 'arse', 'bollock', 'prick', 'spastic', 'chink', 'spic', 'kike', 'wetback', 'tranny'].map(fold);
+// Folded words that contain a BAD entry but are fine
+const OK_WORDS = ['scunthorpe', 'cocktail', 'cockpit', 'peacock', 'hancock', 'dickens', 'sussex', 'essex', 'middlesex', 'sextant', 'cucumber', 'circumstance', 'document', 'accumulate', 'grape', 'drape', 'scrape', 'therapist', 'arsenal', 'parse', 'torpedo', 'trapeze', 'spice', 'spicy', 'uranus', 'janus', 'acumen', 'cumulus', 'cockroach', 'dickson', 'marseille', 'scrapes', 'sexton'].map(fold);
+export function checkName(raw) {
+  const name = String(raw || '').normalize('NFC').replace(/\s+/g, ' ').trim(), n = [...name].length;
+  if (n < 2 || n > 20) return {err: 'Names are 2 to 20 characters.'};
+  if (NAME_BAD_CH.test(name)) return {err: 'That name has a character that is not allowed.'};
+  const k = nameKey(name);
+  if (k.length < 2) return {err: 'Use at least 2 letters in your name.'};
+  if (RESERVED.some(r => k === nameKey(r))) return {err: 'That name is reserved.'};
+  let f = fold(name); for (const w of OK_WORDS) f = f.split(w).join('_');
+  const u = undouble(f); // also catch stretched spellings (fuuuck), but only for words without double letters (so "boob" never blocks "Bob")
+  if (BAD.some(w => f.includes(w) || (w === undouble(w) && u.includes(w)))) return {err: 'Please pick a different name.'};
+  return {name, k};
+}
+const J = (o, status) => new Response(JSON.stringify(o), {status: status || 200});
+const num = v => Number.isFinite(+v) ? Math.max(0, Math.floor(+v)) : 0;
+function mergeData(old, inc) {
+  const o = old || {}, n = inc && typeof inc === 'object' ? inc : {}, out = {...o};
+  const st = {...(o.stats || {})}; for (const k in (n.stats || {})) if (/^[A-Za-z0-9_]{1,24}$/.test(k)) st[k] = Math.max(num(st[k]), num(n.stats[k])); out.stats = st;
+  out.camp = Math.max(num(o.camp), num(n.camp));
+  if (n.set && typeof n.set === 'object') out.set = n.set;
+  const uni = (a, b) => [...new Set([...(Array.isArray(a) ? a : []), ...(Array.isArray(b) ? b : [])].map(x => String(x).slice(0, 32)))].slice(0, 300);
+  out.unl = uni(o.unl, n.unl); out.ach = uni(o.ach, n.ach);
+  if (typeof n.clan === 'string') out.clan = n.clan.replace(/[^A-Za-z0-9]/g, '').slice(0, 5);
+  return out;
+}
+export class Accts {
+  constructor(state, env) {
+    this.state = state; this.env = env; this.sql = state.storage.sql;
+    this.sql.exec(`CREATE TABLE IF NOT EXISTS acct (k TEXT PRIMARY KEY, name TEXT NOT NULL, xp INTEGER NOT NULL DEFAULT 0, data TEXT NOT NULL DEFAULT '{}', created INTEGER, updated INTEGER, sid TEXT, seen INTEGER DEFAULT 0);
+      CREATE TABLE IF NOT EXISTS hist (id INTEGER PRIMARY KEY AUTOINCREMENT, k TEXT NOT NULL, t INTEGER, xp INTEGER, data TEXT, why TEXT);
+      CREATE INDEX IF NOT EXISTS hist_k ON hist (k, id);
+      CREATE TABLE IF NOT EXISTS ban (k TEXT PRIMARY KEY, t INTEGER, why TEXT);`);
+  }
+  row(k) { return this.sql.exec('SELECT * FROM acct WHERE k = ?', k).toArray()[0] || null; }
+  hist(k, xp, data, why) {
+    this.sql.exec('INSERT INTO hist (k, t, xp, data, why) VALUES (?, ?, ?, ?, ?)', k, Date.now(), xp, data, why);
+    this.sql.exec('DELETE FROM hist WHERE k = ? AND id NOT IN (SELECT id FROM hist WHERE k = ? ORDER BY id DESC LIMIT ?)', k, k, HIST_KEEP);
+  }
+  out(r, extra) { return J({ok: true, name: r.name, xp: r.xp, data: JSON.parse(r.data || '{}'), ...extra}); }
+  // Apply an upload: XP only rises (by at most `step`), data merged. Records history when anything changed.
+  apply(r, b, step, why) {
+    const xp = Math.max(r.xp, Math.min(num(b.xp), r.xp + step));
+    let data = JSON.stringify(mergeData(JSON.parse(r.data || '{}'), b.data));
+    if (data.length > DATA_MAX) data = r.data; // too big: keep what we had
+    if (xp !== r.xp || data !== r.data) { this.sql.exec('UPDATE acct SET xp = ?, data = ?, updated = ? WHERE k = ?', xp, data, Date.now(), r.k); this.hist(r.k, xp, data, why); }
+    r.xp = xp; r.data = data; return r;
+  }
+  async fetch(req) {
+    const u = new URL(req.url), now = Date.now(); let b;
+    try { b = JSON.parse(await req.text() || '{}'); } catch (e) { return J({err: 'Bad request.'}, 400); }
+    const route = u.pathname.slice(6), sid = String(b.sid || '').slice(0, 40);
+    if (['ban', 'unban', 'hist', 'rollback'].includes(route)) return this.admin(route, b);
+    const c = checkName(b.name); if (c.err) return J({err: c.err, bad: 1});
+    if (this.sql.exec('SELECT k FROM ban WHERE k = ?', c.k).toArray().length) return J({err: 'That name is banned.', bad: 1});
+    let r = this.row(c.k);
+    if (route === 'login') {
+      if (!sid) return J({err: 'Bad request.'}, 400);
+      if (!r) { // new account: one box, the name is the account. Local progress is uploaded on top.
+        this.sql.exec('INSERT INTO acct (k, name, xp, data, created, updated, sid, seen) VALUES (?, ?, 0, ?, ?, ?, ?, ?)', c.k, c.name, '{}', now, now, sid, now);
+        r = this.apply(this.row(c.k), b, XP_IMPORT, 'import');
+        return this.out(r, {fresh: true});
+      }
+      if (r.sid && r.sid !== sid && now - r.seen < LEASE) return J({err: 'That name is signed in somewhere else right now. Sign out there, or wait 2 minutes.', busy: 1});
+      this.sql.exec('UPDATE acct SET sid = ?, seen = ? WHERE k = ?', sid, now, c.k); r.sid = sid;
+      if (b.xp !== undefined || b.data) r = this.apply(r, b, b.imp ? XP_IMPORT : XP_STEP, b.imp ? 'import' : 'login');
+      return this.out(r, {fresh: false});
+    }
+    if (!r) return J({err: 'No such account.', gone: 1});
+    if (route === 'save') {
+      if (r.sid !== sid) { // our session was taken over, or expired and nobody else has it
+        if (r.sid && now - r.seen < LEASE) return J({err: 'Signed in somewhere else.', busy: 1});
+        r.sid = sid;
+      }
+      this.sql.exec('UPDATE acct SET sid = ?, seen = ? WHERE k = ?', sid, now, c.k);
+      r = this.apply(r, b, XP_STEP, 'save');
+      return this.out(r);
+    }
+    if (route === 'logout') {
+      if (r.sid === sid) { if (b.xp !== undefined || b.data) this.apply(r, b, XP_STEP, 'save'); this.sql.exec('UPDATE acct SET sid = NULL, seen = 0 WHERE k = ?', c.k); }
+      return J({ok: true});
+    }
+    return J({err: 'not found'}, 404);
+  }
+  admin(route, b) {
+    if (!this.env.ADMIN_KEY || b.key !== this.env.ADMIN_KEY) return J({err: 'forbidden'}, 403);
+    const k = nameKey(b.name); if (!k) return J({err: 'name?'}, 400);
+    if (route === 'ban') { this.sql.exec('INSERT OR REPLACE INTO ban (k, t, why) VALUES (?, ?, ?)', k, Date.now(), String(b.why || '')); return J({ok: true, k}); }
+    if (route === 'unban') { this.sql.exec('DELETE FROM ban WHERE k = ?', k); return J({ok: true, k}); }
+    if (route === 'hist') return J({ok: true, k, hist: this.sql.exec('SELECT id, t, xp, why FROM hist WHERE k = ? ORDER BY id DESC', k).toArray()});
+    const h = this.sql.exec('SELECT * FROM hist WHERE k = ? AND id = ?', k, num(b.id)).toArray()[0]; // rollback to a history row
+    if (!h) return J({err: 'no such history row'}, 404);
+    this.sql.exec('UPDATE acct SET xp = ?, data = ?, updated = ? WHERE k = ?', h.xp, h.data, Date.now(), k); this.hist(k, h.xp, h.data, 'rollback ' + h.id);
+    return J({ok: true, k, xp: h.xp});
   }
 }

@@ -10,6 +10,10 @@ class_name = "Room"
 name = "DIR"
 class_name = "Dir"
 
+[[durable_objects.bindings]]
+name = "ACCTS"
+class_name = "Accts"
+
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["Room"]
@@ -17,6 +21,12 @@ new_sqlite_classes = ["Room"]
 [[migrations]]
 tag = "v2"
 new_sqlite_classes = ["Dir"]
+
+[[migrations]]
+tag = "v3"
+new_sqlite_classes = ["Accts"]
+
+# Accounts admin (ban, history, rollback): run `npx wrangler@3 secret put ADMIN_KEY` once
 
 # Optional GitHub log of every room: set vars below and run `npx wrangler@3 secret put GH_TOKEN`
 # [vars]

@@ -16,7 +16,7 @@ Saved design plans. Nothing here is built unless it says so. Status last updated
 ## Constraints that shape every mode
 - The relay allows 1 host + 7 guests per room (8 players). The host's game is authoritative; guests send commands.
 - Interiors (`Interior.get(kind, nation)`, `Direct.aboard`) are **local to each player**: you see your own walk, not others. Any crew mode needs shared interior presence first (see bomber.md, "Shared interiors").
-- Usernames are saved per browser and shown as name tags. No accounts, no passwords, nothing stored online. Ranked play or a persistent career would need the relay to store data (see Open questions).
+- Usernames are shown as name tags. Accounts (a username, no password) store XP, stats and settings on the relay (`Accts` in relay/worker.js); guests play on browser saves. See direction.md section 3.
 - Keep each mode small enough to play in 15 to 20 minutes.
 
 ## Chosen next: convoy escort, submarine, heist
@@ -46,5 +46,4 @@ Seven missions for 2 to 7 players that rotate formats and finish with the bomber
 ## Open questions
 - Tone of the bomber: cartoon-silly or tense?
 - Other cities and routes after New York?
-- Accounts: do you want unique usernames and stored progress (needs the relay to keep data), or stay browser-only?
 - [bomber-pacing.md](bomber-pacing.md): flight length, acts, director and tension plan for Operation Red Star

@@ -306,7 +306,7 @@ textarea,#joinScr input,#relayBox input{width:100%;box-sizing:border-box;backgro
 #fbScr{align-items:center;justify-content:center}#fbScr input,#fbScr textarea{width:100%;box-sizing:border-box;padding:10px 12px;font:14px system-ui;color:#e8eef2;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.16);border-radius:8px;user-select:text;-webkit-user-select:text;resize:vertical}#fbScr .mcard{gap:10px}
 .mgroup em{font-style:normal;color:#ffb45a;letter-spacing:.04em;text-transform:none;font-weight:600}
 .tierRow{width:100%;display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:0 0 6px;font:600 12px system-ui;color:#c9d4da}.tierRow button{padding:4px 10px}.tierRow button[disabled]{opacity:.45}
-#codeBox{position:fixed;right:14px;bottom:12px;display:flex;gap:6px;align-items:center;font:600 12px system-ui;color:#9fb0bb;z-index:5}#codeBox input{width:110px;padding:5px 8px;background:rgba(16,23,30,.85);border:1px solid #ffffff22;color:#fff;border-radius:6px;user-select:text;-webkit-user-select:text}#codeBox button{padding:5px 10px}#xpLine{grid-column:1/-1;text-align:center;font:600 12px system-ui;color:#ffd97a}
+#codeBox{position:fixed;right:14px;bottom:12px;display:flex;gap:6px;align-items:center;font:600 12px system-ui;color:#9fb0bb;z-index:5}#codeBox input{width:110px;padding:5px 8px;background:rgba(16,23,30,.85);border:1px solid #ffffff22;color:#fff;border-radius:6px;user-select:text;-webkit-user-select:text}#codeBox button{padding:5px 10px}#xpLine{grid-column:1/-1;text-align:center;font:600 12px system-ui;color:#ffd97a}#acctBar{grid-column:1/-1;display:flex;gap:8px;align-items:center;justify-content:center;flex-wrap:wrap;font:600 12px system-ui;color:#c9d6de}#acctBar input{width:150px;padding:5px 8px;background:rgba(16,23,30,.85);border:1px solid #ffffff22;color:#fff;border-radius:6px;user-select:text;-webkit-user-select:text}#acctBar button{padding:4px 10px;font-size:12px}#acctBar .am{flex-basis:100%;text-align:center;font-weight:500;color:#9fb0bb}#acctBar .am.bad{color:#ff9a8a}
 .mquick{grid-column:1/-1;display:flex;gap:16px;flex-wrap:wrap;align-items:center;justify-content:center;font:600 12px system-ui;color:#9fb0bb}.mquick label{display:flex;gap:6px;align-items:center}.mquick input{width:110px}.mquick select{padding:3px 6px}
 .mgroup{grid-column:1/-1;font:700 11px system-ui;letter-spacing:.12em;text-transform:uppercase;color:#8fa1ad;margin:6px 0 -2px 2px}
 .mfoot{grid-column:1/-1;display:flex;gap:9px;margin-top:4px}.mfoot .sm{flex:1;padding:9px 12px;font-size:13px;text-align:center}
@@ -364,6 +364,7 @@ body.cbDeut #ov,body.cbDeut #mm,body.cbDeut #cards img,body.cbDeut #selpanel img
       <button class="big sm" id="bFb">🐞 Bug report / idea</button>
     </div>
     <div id="xpLine"></div>
+    <div id="acctBar"></div>
     <div class="mquick"><label>🔊 Sound <input type="range" id="hmVol" min="0" max="100" step="5"></label><label>🖥 Graphics <select id="hmQ"><option value="auto">Auto</option><option value="high">High</option><option value="medium">Medium</option><option value="low">Low (older laptops)</option></select></label><label title="New: richer lighting, grass, swaying trees, smooth rocks, sharper ground. Classic: the old graphics.">🎨 Look <select id="hmLook"><option value="neo">New</option><option value="classic">Classic</option></select></label></div>
     <details class="how"><summary>How to play</summary>
       <ul>
@@ -1304,7 +1305,7 @@ const TIER_ROCKETS = {n: 'Rocket Pods', t: 'proj', dmg: 120, vs: 'rocket', spd: 
 const pwpnOf = e => (PWPN[e.k] || []).concat(e.tier >= 3 && TANK_CLASSES.includes(e.k) ? [TIER_ROCKETS] : []); // tier III tanks: rocket pods as a 3rd weapon
 const XP = {
   get() { try { return +localStorage.getItem('kw-xp') || 0; } catch (e) { return 0; } },
-  add(n) { const r0 = this.rank(), v = this.get() + n; try { localStorage.setItem('kw-xp', v); } catch (e) {} const r1 = this.rank(); if (r1.i > r0.i && this.onRank) this.onRank(r1); return v; },
+  add(n) { const r0 = this.rank(), v = this.get() + n; try { localStorage.setItem('kw-xp', v); } catch (e) {} const r1 = this.rank(); if (r1.i > r0.i && this.onRank) this.onRank(r1); if (typeof Acct !== 'undefined') Acct.soon(); return v; },
   rank(x) { x = x === undefined ? this.get() : x; let i = 0; RANKS.forEach((R, j) => { if (x >= R.xp) i = j; }); return Object.assign({i}, RANKS[i], {next: RANKS[i + 1] || null}); },
   tier() { const x = this.get(); let t = 1; TIERS.forEach((T, i) => { if (x >= T.xp) t = i + 1; }); return t; },
 };
@@ -9589,11 +9590,86 @@ Settings.blobs = true; // the troops are always blob guys
 const BIND_LABELS = {ammo: 'Tanks: switch AP / HE shells', vlock: 'Planes: lock view on target', w4: 'Aircraft: 4th weapon', spot: 'Spot enemy for your team (or middle click)', fire: 'Fire', alt: 'Secondary weapon', ads: 'Aim / scope (toggle)', reload: 'Reload / aircraft: 3rd weapon', jump: 'Jump / climb', sprint: 'Sprint / descend', view: 'First / third person', exit: 'Back to command', free: 'Free cursor', cycle: 'Cycle lock target', special: 'National special ability', walk: "Ships: leave / sit in captain's chair", fwd: 'Forward / throttle up', back: 'Back / throttle down', left: 'Left / roll left', right: 'Right / roll right', chooser: 'Unit chooser', chaff: 'Aircraft: chaff (beats missiles)'};
 
 const _v3 = new THREE.Vector3(), _v3b = new THREE.Vector3();
-// Username: saved in this browser, sent to the host when you join, shown over your head and in the lobby. No password, nothing stored online.
+// Username: saved in this browser, sent to the host when you join, shown over your head and in the lobby.
+// Signed in (see Acct below), your account name is your username and can't be changed per game.
+const cleanName = v => String(v || '').replace(/[<>&"`\\\u0000-\u001f\u007f]/g, '').replace(/\s+/g, ' ').trim().slice(0, 20);
 const Profile = {
-  name() { try { return localStorage.getItem('jjf_name') || ''; } catch (e) { return ''; } },
-  set(v) { v = String(v || '').replace(/[^A-Za-z0-9 _.-]/g, '').trim().slice(0, 16); try { localStorage.setItem('jjf_name', v); } catch (e) {} return v; },
+  name() { if (Acct.name) return Acct.name; try { return localStorage.getItem('jjf_name') || ''; } catch (e) { return ''; } },
+  set(v) { if (Acct.name) return Acct.name; v = String(v || '').replace(/[^A-Za-z0-9 _.-]/g, '').trim().slice(0, 16); try { localStorage.setItem('jjf_name', v); } catch (e) {} return v; },
   ask() { if (this.name()) return this.name(); let a = ''; try { a = window.prompt('Pick a username (friends see it over your head):', ''); } catch (e) {} return this.set(a); },
+};
+// Accounts: a username reserved on the relay (no password yet) that carries XP, rank, stats, campaign progress and settings
+// between devices. Guests just play on local saves (localStorage) as before. Relay side: relay/worker.js, class Accts.
+// Local saves stay the fallback: if the relay is down you play on them and they sync later (the relay keeps the higher XP).
+// 'kw-owner' = which account the local saves belong to ('' = guest saves, uploaded on the first sign-in).
+const Acct = {
+  name: '', state: 'guest', msg: '', t: 0, soonT: 0, busy: false, onChange: null, avail: null, // avail: does the relay have accounts (null = not checked yet)
+  sid: (() => { try { let s = sessionStorage.getItem('jjf_sid'); if (!s) { s = Math.random().toString(36).slice(2) + Date.now().toString(36); sessionStorage.setItem('jjf_sid', s); } return s; } catch (e) { return Math.random().toString(36).slice(2); } })(),
+  ls(k, v) { try { if (v === undefined) return localStorage.getItem(k); if (v === null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) {} return null; },
+  url(r) { return Net.relay().replace(/^ws/, 'http') + '/acct/' + r; },
+  snap() { let set = null; try { set = JSON.parse(this.ls('warsim-settings') || 'null'); } catch (e) {} if (set) { const v = this.ls('warsim-vol'); if (v !== null) set.vol = +v; } return {xp: XP.get(), data: {stats: Stats.get(), camp: +this.ls('warsim-camp') || 0, set, unl: [], ach: []}}; },
+  async post(r, body) {
+    const ac = typeof AbortController !== 'undefined' ? new AbortController() : null, to = setTimeout(() => ac && ac.abort(), 15000);
+    try { const res = await fetch(this.url(r), {method: 'POST', body: JSON.stringify(body), signal: ac && ac.signal}); if (!res.ok && !/json/.test(res.headers.get('content-type') || '')) throw {off: 1}; /* an older relay without accounts */ return await res.json(); }
+    finally { clearTimeout(to); }
+  },
+  set(state, msg) { this.state = state; this.msg = msg || ''; if (this.onChange) try { this.onChange(); } catch (e) {} },
+  mine(n) { const o = this.ls('kw-owner') || ''; return !o || o.toLowerCase() === String(n).toLowerCase(); }, // local saves are guest saves or this account's
+  // Copy the account onto the local saves (local saves were uploaded first when they were ours, so this never loses progress)
+  take(r) {
+    const d = r.data || {}, mine = this.mine(r.name);
+    this.ls('kw-xp', String(mine ? Math.max(XP.get(), r.xp) : r.xp));
+    const st = mine ? Stats.get() : {}; for (const k in (d.stats || {})) st[k] = Math.max(st[k] || 0, d.stats[k]); this.ls('kw-stats', JSON.stringify(st));
+    this.ls('warsim-camp', String(Math.max(mine ? +this.ls('warsim-camp') || 0 : 0, d.camp || 0)));
+    if (d.set && !r.fresh) { const s = Object.assign({}, d.set); if (s.vol !== undefined) { this.ls('warsim-vol', String(s.vol)); Sfx.vol = +s.vol; delete s.vol; } this.ls('warsim-settings', JSON.stringify(s)); Settings.load(); }
+    this.ls('kw-owner', r.name);
+  },
+  async signIn(n) {
+    n = cleanName(n); if (!n) return this.set(this.state, 'Type a name first.');
+    if (this.busy) return; this.busy = true; this.set(this.state, 'Signing in…');
+    const mine = this.mine(n), body = Object.assign({name: n, sid: this.sid, imp: !this.ls('kw-owner')}, mine ? this.snap() : {});
+    try {
+      const r = await this.post('login', body);
+      if (!r.ok) { this.busy = false; return this.set(this.name ? this.state : 'guest', r.err || 'Could not sign in.'); }
+      this.take(r); this.name = r.name; this.ls('jjf_acct', r.name);
+      this.set('on', r.fresh ? 'Account made! Your progress now saves online.' : 'Signed in. Progress loaded.');
+    } catch (e) { // relay down: remember the name and play on local saves (only if they are this account's), sync later
+      if (e && e.off && !this.ls('jjf_acct')) this.set('guest', 'Online accounts aren\'t switched on yet. You can still play as a guest.');
+      else if (mine && this.ls('kw-owner')) { this.name = n; this.ls('jjf_acct', n); this.set('offline', 'Can\'t reach the server. Playing on this browser\'s save; it will sync later.'); }
+      else this.set('guest', 'Can\'t reach the server right now. Try again in a minute.');
+    }
+    this.busy = false; this.t = Date.now();
+  },
+  async signOut() {
+    const n = this.name; if (!n || this.busy) return; this.busy = true;
+    if (this.state === 'on') try { await this.post('logout', Object.assign({name: n, sid: this.sid}, this.snap())); } catch (e) {}
+    this.busy = false; this.name = ''; this.ls('jjf_acct', null); this.set('guest', 'Signed out. You keep playing as a guest on this browser.');
+  },
+  async save() {
+    if (!this.name || this.busy || this.state === 'busy') return; this.t = Date.now();
+    if (this.state === 'offline') { const n = this.name; this.name = ''; return this.signIn(n); } // retry the sign-in, which uploads (higher XP wins)
+    this.busy = true;
+    try {
+      const r = await this.post('save', Object.assign({name: this.name, sid: this.sid}, this.snap()));
+      if (r.ok) { if (r.xp > XP.get()) this.ls('kw-xp', String(r.xp)); if (this.msg) this.set('on'); }
+      else if (r.busy) this.set('busy', 'This name was signed in somewhere else, so this tab stopped saving online. Sign in again to take it back.');
+      else if (r.gone || r.bad) { this.name = ''; this.ls('jjf_acct', null); this.set('guest', r.err || 'Account not found.'); }
+    } catch (e) { this.set('offline', 'Can\'t reach the server. Saving in this browser; it will sync later.'); }
+    this.busy = false;
+  },
+  soon() { if (this.name) { clearTimeout(this.soonT); this.soonT = setTimeout(() => this.save(), 4000); } },
+  async probe() { // an older relay (or none) answers without CORS, so the fetch throws; the accounts relay answers 405
+    try { await fetch(this.url('login'), {method: 'GET'}); this.avail = true; } catch (e) { this.avail = false; }
+    this.set(this.state, this.msg);
+  },
+  init() {
+    const n = this.ls('jjf_acct'); if (n) this.signIn(n);
+    this.probe(); setInterval(() => { if (!this.avail && !this.name) this.probe(); }, 60000);
+    setInterval(() => { if (this.name && Date.now() - this.t > (this.state === 'offline' ? 15000 : 59000)) this.save(); }, 5000); // save every minute (also the "still here" heartbeat); offline, retry sooner
+    addEventListener('pagehide', () => { // let the name go straight away when the tab closes
+      if (this.name && this.state === 'on') try { navigator.sendBeacon(this.url('logout'), JSON.stringify(Object.assign({name: this.name, sid: this.sid}, this.snap()))); } catch (e) {}
+    });
+  },
 };
 const Direct = {
   on: false, id: 0, e: null, mode: '', yaw: 0, pitch: 0, roll: 0, speed: 0, vz: 0, mx: 0, my: 0, keys: {}, sendT: 0, batt: 0,
@@ -12364,6 +12440,22 @@ const UI = {
     this.gfxAuto = $('optQ').value === 'auto';
     const xpLine = () => { const x = XP.get(), t = XP.tier(), R = XP.rank(); $('xpLine').textContent = `${R.b} ${R.n} · ⭐ ${x} XP · Tank tier ${TIERS[t - 1].n} unlocked` + (t < TIERS.length ? ` · tier ${TIERS[t].n} at ${TIERS[t].xp} XP` : ' · all tiers unlocked'); };
     xpLine(); this.xpLine = xpLine;
+    const acctBar = () => { // one box: type a name to sign in (or make the account); signed in, shows the name and Sign out
+      const A = Acct, el = $('acctBar'); el.style.display = A.name || A.avail ? '' : 'none'; // hidden until the relay has accounts
+      const typed = $('acName') ? $('acName').value : '', bad = /n't|not|reserved|banned|different|elsewhere|somewhere|character|characters|letters/.test(A.msg);
+      const msg = A.msg ? `<div class="am${bad ? ' bad' : ''}">${A.msg.replace(/</g, '&lt;')}</div>` : '';
+      if (A.name) {
+        const tag = {on: '✓ saved online', offline: '⚠ offline, saving here', busy: '⚠ signed in elsewhere'}[A.state] || '';
+        el.innerHTML = `<span>👤 <b></b> <span style="color:${A.state === 'on' ? '#7fdc8f' : '#ffb35c'}">${tag}</span></span>` + (A.state === 'busy' ? '<button class="big sm" id="acIn2">Take it back</button>' : '') + '<button class="big sm" id="acOut">Sign out</button>' + msg;
+        el.querySelector('b').textContent = A.name; $('acOut').onclick = () => A.signOut(); if ($('acIn2')) $('acIn2').onclick = () => { const n = A.name; A.name = ''; A.signIn(n); };
+      } else {
+        el.innerHTML = `<span title="Your name is your account: XP, rank, stats and settings follow you to any device">👤 Guest · save online:</span><input id="acName" maxlength="20" placeholder="Username" autocomplete="off"><button class="big sm" id="acGo">Sign in / make account</button>` + msg;
+        const go = () => A.signIn($('acName').value); $('acGo').onclick = go; $('acName').onkeydown = e => { e.stopPropagation(); if (e.key === 'Enter') go(); };
+        $('acName').value = typed || A.ls('jjf_name') || '';
+      }
+      xpLine();
+    };
+    Acct.onChange = acctBar; acctBar(); Acct.init();
     XP.onRank = R => { this.addAlert && this.addAlert('PROMOTED: ' + R.b + ' ' + R.n + '!', 'gold'); Sfx.good(); };
     $('xpLine').style.cursor = 'pointer'; $('xpLine').title = 'Your profile';
     $('xpLine').onclick = () => {
@@ -12371,6 +12463,7 @@ const UI = {
       const R = XP.rank(), x = XP.get(), S = Stats.get(), nx = R.next, pc = nx ? Math.round((x - R.xp) / (nx.xp - R.xp) * 100) : 100, kd = ((S.pkills || 0) / Math.max(1, S.deaths || 0)).toFixed(2);
       const row = (a, b) => `<tr><td style="color:#9fb0bb;padding:3px 14px 3px 0">${a}</td><td style="font-weight:700">${b}</td></tr>`;
       el.innerHTML = `<div style="background:#121a22;border:1px solid #ffffff22;border-radius:12px;padding:20px 24px;min-width:300px;max-width:92vw;color:#e8eef2;font:14px system-ui">
+        <div style="color:#9fb0bb;font-size:12px">${Acct.name ? '👤 ' + Acct.name.replace(/</g, '&lt;') + (Acct.state === 'on' ? ' · saved online' : ' · saving in this browser') : '👤 Guest · progress saved in this browser only'}</div>
         <h2 style="margin:0 0 4px">${R.b} ${R.n}</h2><div style="color:#ffd97a;font-weight:700">${x} XP${nx ? ' · ' + (nx.xp - x) + ' to ' + nx.n : ' · top rank'}</div>
         <div style="height:8px;background:#ffffff18;border-radius:4px;margin:8px 0 14px"><div style="height:100%;width:${pc}%;background:#ffd97a;border-radius:4px"></div></div>
         <table>${row('Games', S.games || 0) + row('Wins / losses', (S.wins || 0) + ' / ' + (S.losses || 0)) + row('Kills (you in control)', S.pkills || 0) + row('Kills (whole army)', S.kills || 0) + row('Deaths', S.deaths || 0) + row('K/D', kd) + row('Planes shot down', S.airKills || 0) + row('Tanks destroyed', S.tankKills || 0) + row('Points captured', S.caps || 0) + row('Tank tier', TIERS[XP.tier() - 1].n)}</table>
@@ -12580,7 +12673,7 @@ const UI = {
     clearTimeout(this.rlT); this.rlT = setTimeout(() => this.refreshRooms(), 3000);
   },
   openJoin() {
-    $('menu').classList.add('hidden'); $('joinScr').classList.remove('hidden'); this.refreshRooms(); this._nameSent = 0; $('myName').value = Profile.name(); $('myName').oninput = e => Profile.set(e.target.value);
+    $('menu').classList.add('hidden'); $('joinScr').classList.remove('hidden'); this.refreshRooms(); this._nameSent = 0; $('myName').value = Profile.name(); $('myName').readOnly = !!Acct.name; $('myName').title = Acct.name ? 'Your account name (sign out on the main menu to play under another name)' : ''; $('myName').oninput = e => Profile.set(e.target.value);
     $('joinReply').classList.add('hidden'); this.joinMsg(''); $('bJoinGo').disabled = false;
     setTimeout(() => $('joinIn').focus(), 30);
   },
@@ -12595,7 +12688,7 @@ const UI = {
     if (i >= 0) { this.lobby.slots.splice(i, 1); this.pushLobby(); }
   },
   onHostMsg(id, m) {
-    if (m.lobbySet && this.lobby) { const s = this.lobby.slots.find(s => s.id === id); if (m.lobbySet.name !== undefined) m.lobbySet.name = String(m.lobbySet.name).replace(/[^A-Za-z0-9 _.-]/g, '').trim().slice(0, 16) || (s && s.name); if (s) { Object.assign(s, m.lobbySet); this.pushLobby(); } }
+    if (m.lobbySet && this.lobby) { const s = this.lobby.slots.find(s => s.id === id); if (m.lobbySet.name !== undefined) m.lobbySet.name = cleanName(m.lobbySet.name) || (s && s.name); if (s) { Object.assign(s, m.lobbySet); this.pushLobby(); } }
     else if (m.cmd && this.g && this.g.sim && this.playersIds) { const i = this.playersIds.indexOf(id); if (i >= 0) this.g.sim.issue(m.cmd, i); }
   },
   pushLobby() {
@@ -12640,7 +12733,7 @@ const UI = {
   },
   join(code, opts) {
     code = (code || '').trim();
-    if (!opts || !opts.named) { // everyone who joins is asked for a username (your saved one is pre-filled)
+    if ((!opts || !opts.named) && !Acct.name) { // everyone who joins is asked for a username (your saved one is pre-filled); signed in, it's your account name
       if ($('joinScr').classList.contains('hidden')) this.openJoin();
       let a = ''; try { a = window.prompt('Username for this game (friends see it over your head):', Profile.name()); } catch (e) {}
       if (a && a.trim()) Profile.set(a);
@@ -14201,6 +14294,7 @@ addEventListener('keydown', () => { if (typeof Direct !== 'undefined' && window.
   // ---- changelog: add a new entry at the TOP of this list whenever something changes
   const CHANGELOG = [
     {d: '7 Nov 2026', items: [
+      'Accounts: type a username on the main menu to save your rank, XP, stats, campaign progress and settings online, then sign in with the same name on any device. Guests still play on this browser\'s save, and your current progress is carried over the first time you sign in.',
       'Operation Red Star: the mission now starts on the Siberian runway with a take-off roll and climb, and the propellers spin.',
       'Operation Red Star: fixed getting stuck after leaving the pilot\'s or tail gunner\'s seat, and the outside world is no longer drawn behind the cabin walls (same picture, less work for your graphics card).',
       'Operation Red Star: parachutes and a bail-out hatch in the tail (the aircraft now goes down slowly when it is lost, so you can jump), a Polar Base on the way where the pilot can land (L) to refuel, repair and restock, lightning that knocks the cabin lights out, and two arming keys that must be turned together before the bomb run.',
