@@ -13,11 +13,13 @@ export default {
       const r = await env.DIR.get(env.DIR.idFromName('dir')).fetch('https://d' + u.pathname);
       return new Response(r.body, {headers: {...CORS, 'content-type': 'application/json', 'cache-control': 'no-store'}});
     }
+    if (u.pathname === '/stats') return Response.redirect('https://jjfanwars.github.io/stats.html', 302);
     if (u.pathname === '/track/hit' || u.pathname === '/track/sum') { // anonymous play counts: hit = POST from the game, sum = JSON for stats.html
       if (u.pathname === '/track/hit' && req.method !== 'POST') return new Response('expected POST', {status: 405, headers: CORS});
       const t = env.TRACK.get(env.TRACK.idFromName('main'));
       if (u.pathname === '/track/hit') { await t.fetch('https://t/hit', {method: 'POST', body: await req.text()}); return new Response('ok', {headers: CORS}); }
-      const sum = await (await t.fetch('https://t/sum')).json();
+      if (/text\/html/.test(req.headers.get('accept') || '') && !u.searchParams.has('json')) return Response.redirect('https://jjfanwars.github.io/stats.html', 302); // opened in a browser: show the page
+      const sum = await (await t.fetch('https://t/sum' + u.search)).json();
       try { sum.accounts = (await (await env.ACCTS.get(env.ACCTS.idFromName('main')).fetch('https://a/acct/count', {method: 'POST', body: '{}'})).json()).n; } catch (e) {}
       try { sum.rooms = (await (await env.DIR.get(env.DIR.idFromName('dir')).fetch('https://d/rooms')).json()).length; } catch (e) {}
       return new Response(JSON.stringify(sum), {headers: {...CORS, 'content-type': 'application/json', 'cache-control': 'no-store'}});
@@ -245,48 +247,79 @@ export class Accts {
 
 // ---------------------------------------------------------------------------------------------
 // Track: anonymous play counts for stats.html. The game makes a random id per browser (localStorage jjf_uid), no names.
-// Events: open (page loaded), beat (every minute while the tab is visible = play time), play (a game started, m = mode label).
-// Days use the time zone in the TZ secret (npx wrangler@3 secret put TZ, e.g. Europe/London), else UTC.
-let TZ_DAY = null;
-const dayFmt = env => TZ_DAY || (TZ_DAY = (() => { try { return new Intl.DateTimeFormat('en-CA', {timeZone: env.TZ || 'UTC', year: 'numeric', month: '2-digit', day: '2-digit'}); } catch (e) { return new Intl.DateTimeFormat('en-CA', {timeZone: 'UTC', year: 'numeric', month: '2-digit', day: '2-digit'}); } })());
+// Events: open (page loaded; dev = computer|phone, br = browser), beat (every minute while the tab is visible = play time),
+// play (a game started, m = mode label), end (a game finished: m, r = win|loss, s = seconds it lasted).
+// Days and hours use the time zone in the TZ secret (npx wrangler@3 secret put TZ, e.g. Europe/London), else UTC.
+const mkFmt = (tz, o) => { try { return new Intl.DateTimeFormat('en-CA', {timeZone: tz, ...o}); } catch (e) { return new Intl.DateTimeFormat('en-CA', {timeZone: 'UTC', ...o}); } };
+const word = (v, n) => String(v || '').replace(/[^\w :+'()/-]/g, '').slice(0, n);
 export class Track {
   constructor(state, env) {
-    this.sql = state.storage.sql; this.fmt = dayFmt(env);
+    this.sql = state.storage.sql;
+    const tz = env.TZ || 'UTC';
+    this.fd = mkFmt(tz, {year: 'numeric', month: '2-digit', day: '2-digit'});
+    this.fh = mkFmt(tz, {hour: '2-digit', hourCycle: 'h23'});
     this.sql.exec(`CREATE TABLE IF NOT EXISTS seen (u TEXT PRIMARY KEY, first INTEGER, last INTEGER, secs INTEGER DEFAULT 0, beat INTEGER DEFAULT 0);
       CREATE TABLE IF NOT EXISTS day (d TEXT, u TEXT, secs INTEGER DEFAULT 0, PRIMARY KEY (d, u));
-      CREATE TABLE IF NOT EXISTS mode (d TEXT, m TEXT, n INTEGER DEFAULT 0, PRIMARY KEY (d, m));`);
+      CREATE TABLE IF NOT EXISTS mode (d TEXT, m TEXT, n INTEGER DEFAULT 0, PRIMARY KEY (d, m));
+      CREATE TABLE IF NOT EXISTS hr (d TEXT, h INTEGER, u TEXT, PRIMARY KEY (d, h, u));
+      CREATE TABLE IF NOT EXISTS peak (d TEXT PRIMARY KEY, n INTEGER);
+      CREATE TABLE IF NOT EXISTS fin (d TEXT, m TEXT, r TEXT, n INTEGER DEFAULT 0, secs INTEGER DEFAULT 0, PRIMARY KEY (d, m, r));
+      CREATE INDEX IF NOT EXISTS seen_last ON seen (last);`);
+    for (const c of ['dev TEXT', 'br TEXT']) try { this.sql.exec('ALTER TABLE seen ADD COLUMN ' + c); } catch (e) {} // added after the first version
   }
+  day(t) { return this.fd.format(t); }
   async fetch(req) {
-    const u = new URL(req.url), now = Date.now(), d = this.fmt.format(now);
+    const u = new URL(req.url), now = Date.now(), d = this.day(now);
     if (u.pathname === '/hit') {
       let b; try { b = JSON.parse(await req.text()); } catch (e) { return new Response('bad'); }
       const id = String(b.u || ''); if (!/^[a-z0-9]{8,40}$/.test(id)) return new Response('bad');
       const row = this.sql.exec('SELECT * FROM seen WHERE u = ?', id).toArray()[0];
       if (!row) this.sql.exec('INSERT INTO seen (u, first, last) VALUES (?, ?, ?)', id, now, now);
       this.sql.exec('INSERT OR IGNORE INTO day (d, u) VALUES (?, ?)', d, id);
+      this.sql.exec('INSERT OR IGNORE INTO hr (d, h, u) VALUES (?, ?, ?)', d, +this.fh.format(now) % 24, id);
+      if (b.e === 'open' && (b.dev || b.br)) this.sql.exec('UPDATE seen SET dev = ?, br = ? WHERE u = ?', word(b.dev, 12) || null, word(b.br, 12) || null, id);
       if (b.e === 'beat' && (!row || now - row.beat > 45e3)) { // at most one minute of play time per 45 s, so spam can't inflate it much
         this.sql.exec('UPDATE seen SET secs = secs + 60, beat = ? WHERE u = ?', now, id);
         this.sql.exec('UPDATE day SET secs = secs + 60 WHERE d = ? AND u = ?', d, id);
       }
-      if (b.e === 'play') {
-        const m = String(b.m || '?').replace(/[^\w :+'-]/g, '').slice(0, 40) || '?';
-        this.sql.exec('INSERT INTO mode (d, m, n) VALUES (?, ?, 1) ON CONFLICT (d, m) DO UPDATE SET n = n + 1', d, m);
-      }
+      const m = word(b.m, 40) || '?';
+      if (b.e === 'play') this.sql.exec('INSERT INTO mode (d, m, n) VALUES (?, ?, 1) ON CONFLICT (d, m) DO UPDATE SET n = n + 1', d, m);
+      if (b.e === 'end') this.sql.exec('INSERT INTO fin (d, m, r, n, secs) VALUES (?, ?, ?, 1, ?) ON CONFLICT (d, m, r) DO UPDATE SET n = n + 1, secs = secs + excluded.secs', d, m, b.r === 'win' ? 'win' : 'loss', Math.max(0, Math.min(7200, Math.round(+b.s || 0))));
       this.sql.exec('UPDATE seen SET last = ? WHERE u = ?', now, id);
+      const on = this.sql.exec('SELECT COUNT(*) AS n FROM seen WHERE last > ?', now - 90e3).toArray()[0].n;
+      this.sql.exec('INSERT INTO peak (d, n) VALUES (?, ?) ON CONFLICT (d) DO UPDATE SET n = MAX(n, excluded.n)', d, on);
       return new Response('ok');
     }
-    const one = (q, ...a) => this.sql.exec(q, ...a).toArray()[0] || {};
-    const since = this.fmt.format(now - 29 * 864e5), week = this.fmt.format(now - 6 * 864e5);
-    const news = {}; for (const r of this.sql.exec('SELECT first FROM seen WHERE first > ?', now - 31 * 864e5).toArray()) { const k = this.fmt.format(r.first); news[k] = (news[k] || 0) + 1; }
-    const days = this.sql.exec('SELECT d, COUNT(*) AS players, SUM(secs) AS secs FROM day WHERE d >= ? GROUP BY d ORDER BY d', since).toArray().map(r => ({d: r.d, players: r.players, new: news[r.d] || 0, mins: Math.round(r.secs / 60)}));
-    const modes = q => this.sql.exec('SELECT m, SUM(n) AS n FROM mode ' + q + ' GROUP BY m ORDER BY n DESC LIMIT 25', ...(q ? [week] : [])).toArray();
-    const all = one('SELECT COUNT(*) AS n, SUM(secs) AS secs FROM seen'), back = one('SELECT COUNT(*) AS n FROM (SELECT u FROM day GROUP BY u HAVING COUNT(*) > 1)');
+    // Summary. ?days=7|30|90 picks the range for the charts (default 30).
+    const span = Math.max(1, Math.min(365, +u.searchParams.get('days') || 30));
+    const all = (q, ...a) => this.sql.exec(q, ...a).toArray(), one = (q, ...a) => all(q, ...a)[0] || {};
+    const from = this.day(now - (span - 1) * 864e5), week = this.day(now - 6 * 864e5);
+    const news = {}; for (const r of all('SELECT first FROM seen WHERE first > ?', now - (span + 1) * 864e5)) { const k = this.day(r.first); news[k] = (news[k] || 0) + 1; }
+    const by = (q, key) => Object.fromEntries(all(q, from).map(r => [r.d, r[key]]));
+    const starts = by('SELECT d, SUM(n) AS n FROM mode WHERE d >= ? GROUP BY d', 'n'), peaks = by('SELECT d, n FROM peak WHERE d >= ?', 'n');
+    const days = all('SELECT d, COUNT(*) AS players, SUM(secs) AS secs FROM day WHERE d >= ? GROUP BY d ORDER BY d', from)
+      .map(r => ({d: r.d, players: r.players, new: news[r.d] || 0, mins: Math.round(r.secs / 60), starts: starts[r.d] || 0, peak: peaks[r.d] || 0}));
+    const hours = Array(24).fill(0); for (const r of all('SELECT h, COUNT(*) AS n FROM hr WHERE d >= ? GROUP BY h', from)) hours[r.h] = r.n;
+    const sess = [['Under 1 min', 0, 59], ['1 to 5 min', 60, 299], ['5 to 15 min', 300, 899], ['15 to 30 min', 900, 1799], ['30 to 60 min', 1800, 3599], ['Over an hour', 3600, 1e12]]
+      .map(([k, a, z]) => ({k, n: one('SELECT COUNT(*) AS n FROM day WHERE d >= ? AND secs BETWEEN ? AND ?', from, a, z).n || 0}));
+    const loyal = [['1 day', 1, 1], ['2 days', 2, 2], ['3 to 5 days', 3, 5], ['6 to 10 days', 6, 10], ['Over 10 days', 11, 1e9]]
+      .map(([k, a, z]) => ({k, n: one('SELECT COUNT(*) AS n FROM (SELECT COUNT(*) AS c FROM day GROUP BY u) WHERE c BETWEEN ? AND ?', a, z).n || 0}));
+    const split = col => all(`SELECT COALESCE(${col}, 'Unknown') AS k, COUNT(*) AS n FROM seen WHERE last >= ? GROUP BY k ORDER BY n DESC`, now - span * 864e5);
+    const modeRows = q => { // starts, finishes, wins and average game length per mode
+      const fin = {}; for (const r of all('SELECT m, r, SUM(n) AS n, SUM(secs) AS secs FROM fin ' + q + ' GROUP BY m, r', ...(q ? [from] : []))) { const f = fin[r.m] || (fin[r.m] = {win: 0, loss: 0, secs: 0}); f[r.r] = r.n; f.secs += r.secs; }
+      return all('SELECT m, SUM(n) AS n FROM mode ' + q + ' GROUP BY m ORDER BY n DESC LIMIT 30', ...(q ? [from] : [])).map(r => { const f = fin[r.m] || {win: 0, loss: 0, secs: 0}, done = f.win + f.loss; return {m: r.m, n: r.n, done, win: f.win, mins: done ? Math.round(f.secs / done / 6) / 10 : null}; });
+    };
+    const tot = one('SELECT COUNT(*) AS n, SUM(secs) AS secs FROM seen'), back = one('SELECT COUNT(*) AS n FROM (SELECT u FROM day GROUP BY u HAVING COUNT(*) > 1)');
+    const pday = one('SELECT COUNT(*) AS n, SUM(secs) AS secs FROM day WHERE d >= ?', from);
     return new Response(JSON.stringify({
-      now, day: d, players: all.n || 0, mins: Math.round((all.secs || 0) / 60), returning: back.n || 0,
+      now, day: d, span, players: tot.n || 0, mins: Math.round((tot.secs || 0) / 60), returning: back.n || 0,
       today: one('SELECT COUNT(*) AS n FROM day WHERE d = ?', d).n || 0,
       week: one('SELECT COUNT(DISTINCT u) AS n FROM day WHERE d >= ?', week).n || 0,
+      range: one('SELECT COUNT(DISTINCT u) AS n FROM day WHERE d >= ?', from).n || 0,
+      avgMins: pday.n ? Math.round(pday.secs / pday.n / 6) / 10 : 0,
       online: one('SELECT COUNT(*) AS n FROM seen WHERE last > ?', now - 90e3).n || 0,
-      days, modesWeek: modes('WHERE d >= ?'), modesAll: modes(''),
+      peakEver: one('SELECT MAX(n) AS n FROM peak').n || 0,
+      days, hours, sess, loyal, dev: split('dev'), br: split('br'), modes: modeRows('WHERE d >= ?'), modesAll: modeRows(''),
     }));
   }
 }

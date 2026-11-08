@@ -9605,9 +9605,10 @@ const Profile = {
 // Anonymous play counts for stats.html (relay /track/hit): a random id per browser, no names. ?notrack turns it off.
 const Track = {
   u: (() => { try { let s = localStorage.getItem('jjf_uid'); if (!s) { s = (Math.random().toString(36).slice(2) + Date.now().toString(36) + Math.random().toString(36).slice(2)).replace(/[^a-z0-9]/g, '').slice(0, 32); localStorage.setItem('jjf_uid', s); } return s; } catch (e) { return ''; } })(),
-  send(e, m) {
+  cur: null, // the game in progress: {m, t}
+  send(e, m, x) {
     if (!this.u || /[?&]notrack/.test(location.search)) return;
-    try { const url = Net.relay().replace(/^ws/, 'http') + '/track/hit', body = JSON.stringify({u: this.u, e, m});
+    try { const url = Net.relay().replace(/^ws/, 'http') + '/track/hit', body = JSON.stringify(Object.assign({u: this.u, e, m}, x || {}));
       if (navigator.sendBeacon && navigator.sendBeacon(url, body)) return; fetch(url, {method: 'POST', body, keepalive: true}).catch(() => {}); } catch (er) {}
   },
   mode(o) {
@@ -9620,7 +9621,11 @@ const Track = {
     if ((o.players || []).some(p => /training bot/.test(p.name || ''))) return 'Training';
     return real > 1 ? 'Local multiplayer' : 'Vs bots';
   },
-  init() { this.send('open'); setInterval(() => { if (document.visibilityState === 'visible') this.send('beat'); }, 60000); },
+  dev() { try { return matchMedia('(pointer: coarse)').matches && !matchMedia('(pointer: fine)').matches ? 'Phone/tablet' : 'Computer'; } catch (e) { return ''; } },
+  br() { const a = navigator.userAgent; return /Edg\//.test(a) ? 'Edge' : /OPR\/|Opera/.test(a) ? 'Opera' : /Firefox\//.test(a) ? 'Firefox' : /CriOS|Chrome\//.test(a) ? 'Chrome' : /Safari\//.test(a) ? 'Safari' : 'Other'; },
+  start(o) { this.cur = {m: this.mode(o), t: Date.now()}; this.send('play', this.cur.m); },
+  end(won) { if (!this.cur) return; this.send('end', this.cur.m, {r: won ? 'win' : 'loss', s: (Date.now() - this.cur.t) / 1000}); this.cur = null; },
+  init() { this.send('open', '', {dev: this.dev(), br: this.br()}); setInterval(() => { if (document.visibilityState === 'visible') this.send('beat'); }, 60000); },
 };
 const Acct = {
   name: '', state: 'guest', msg: '', t: 0, soonT: 0, busy: false, onChange: null, avail: null, // avail: does the relay have accounts (null = not checked yet)
@@ -12943,7 +12948,7 @@ const UI = {
     Sfx.init(); window.TOON = !!(o.scen && o.scen.harbor);
     if (this.g) this.g.stop();
     this.demo = false; Sfx.mute = false;
-    Track.send('play', Track.mode(o));
+    Track.start(o);
     o.R = this.R;
     this.g = new Game(o);
     $('timeCtl').classList.toggle('hidden', o.mode === 'client'); if (o.mode !== 'client') this.setSpeed(1);
@@ -13281,6 +13286,7 @@ const UI = {
   },
 
   showOver(won) {
+    if (!this.overShown && !this.demo) Track.end(won);
     if (this.overShown) return;
     this.overShown = true;
     Stats.inc('games'); Stats.inc(won ? 'wins' : 'losses');
@@ -14315,7 +14321,7 @@ addEventListener('keydown', () => { if (typeof Direct !== 'undefined' && window.
   // ---- changelog: add a new entry at the TOP of this list whenever something changes
   const CHANGELOG = [
     {d: '8 Nov 2026', items: [
-      'The game now counts plays anonymously (a random number per browser, no names) so we can see how many people play and which modes are popular.',
+      'The game now counts plays anonymously (a random number per browser, no names, plus whether it is a computer or phone and which browser) so we can see how many people play and which modes are popular.',
     ]},
     {d: '7 Nov 2026', items: [
       'Accounts: type a username on the main menu to save your rank, XP, stats, campaign progress and settings online, then sign in with the same name on any device. Guests still play on this browser\'s save, and your current progress is carried over the first time you sign in.',
