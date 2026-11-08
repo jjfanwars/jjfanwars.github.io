@@ -4,8 +4,7 @@ Browser war game in one file: `index.html` (Three.js r170, inlined: the ESM buil
 
 ## Rules for every change
 - Copy `index.html` to `warsim.html` before each commit.
-- Commit messages end with:
-  `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>` and `Claude-Session: <session url>`.
+- Commit messages have no Co-Authored-By, Claude-Session or other Claude attribution lines (the user asked for none).
 - Push with `git push -q origin main`. Make sure origin points to `https://github.com/jjfanwars/jjfanwars.github.io`. Leave nothing uncommitted or unpushed.
 - Don't open PRs unless asked.
 - Add a line to the in-game **What's new** list (`CHANGELOG` array near the end of index.html, newest first) for user-visible changes.
