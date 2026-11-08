@@ -9602,6 +9602,26 @@ const Profile = {
 // between devices. Guests just play on local saves (localStorage) as before. Relay side: relay/worker.js, class Accts.
 // Local saves stay the fallback: if the relay is down you play on them and they sync later (the relay keeps the higher XP).
 // 'kw-owner' = which account the local saves belong to ('' = guest saves, uploaded on the first sign-in).
+// Anonymous play counts for stats.html (relay /track/hit): a random id per browser, no names. ?notrack turns it off.
+const Track = {
+  u: (() => { try { let s = localStorage.getItem('jjf_uid'); if (!s) { s = (Math.random().toString(36).slice(2) + Date.now().toString(36) + Math.random().toString(36).slice(2)).replace(/[^a-z0-9]/g, '').slice(0, 32); localStorage.setItem('jjf_uid', s); } return s; } catch (e) { return ''; } })(),
+  send(e, m) {
+    if (!this.u || /[?&]notrack/.test(location.search)) return;
+    try { const url = Net.relay().replace(/^ws/, 'http') + '/track/hit', body = JSON.stringify({u: this.u, e, m});
+      if (navigator.sendBeacon && navigator.sendBeacon(url, body)) return; fetch(url, {method: 'POST', body, keepalive: true}).catch(() => {}); } catch (er) {}
+  },
+  mode(o) {
+    const real = (o.players || []).filter(p => !p.bot).length;
+    if (o.redstar) return 'Operation Red Star';
+    if (o.scen) return (o.scen.arc ? 'Arcade: ' : 'Battle: ') + (o.scen.n || '?');
+    if (o.battle) return 'Campaign';
+    if (o.sandbox) return 'Sandbox';
+    if (o.mode === 'client' || o.link) return 'Online (' + (o.players || []).length + ' players)';
+    if ((o.players || []).some(p => /training bot/.test(p.name || ''))) return 'Training';
+    return real > 1 ? 'Local multiplayer' : 'Vs bots';
+  },
+  init() { this.send('open'); setInterval(() => { if (document.visibilityState === 'visible') this.send('beat'); }, 60000); },
+};
 const Acct = {
   name: '', state: 'guest', msg: '', t: 0, soonT: 0, busy: false, onChange: null, avail: null, // avail: does the relay have accounts (null = not checked yet)
   sid: (() => { try { let s = sessionStorage.getItem('jjf_sid'); if (!s) { s = Math.random().toString(36).slice(2) + Date.now().toString(36); sessionStorage.setItem('jjf_sid', s); } return s; } catch (e) { return Math.random().toString(36).slice(2); } })(),
@@ -12455,7 +12475,7 @@ const UI = {
       }
       xpLine();
     };
-    Acct.onChange = acctBar; acctBar(); Acct.init();
+    Acct.onChange = acctBar; acctBar(); Acct.init(); Track.init();
     XP.onRank = R => { this.addAlert && this.addAlert('PROMOTED: ' + R.b + ' ' + R.n + '!', 'gold'); Sfx.good(); };
     $('xpLine').style.cursor = 'pointer'; $('xpLine').title = 'Your profile';
     $('xpLine').onclick = () => {
@@ -12923,6 +12943,7 @@ const UI = {
     Sfx.init(); window.TOON = !!(o.scen && o.scen.harbor);
     if (this.g) this.g.stop();
     this.demo = false; Sfx.mute = false;
+    Track.send('play', Track.mode(o));
     o.R = this.R;
     this.g = new Game(o);
     $('timeCtl').classList.toggle('hidden', o.mode === 'client'); if (o.mode !== 'client') this.setSpeed(1);
@@ -14293,6 +14314,9 @@ addEventListener('keydown', () => { if (typeof Direct !== 'undefined' && window.
   };
   // ---- changelog: add a new entry at the TOP of this list whenever something changes
   const CHANGELOG = [
+    {d: '8 Nov 2026', items: [
+      'The game now counts plays anonymously (a random number per browser, no names) so we can see how many people play and which modes are popular.',
+    ]},
     {d: '7 Nov 2026', items: [
       'Accounts: type a username on the main menu to save your rank, XP, stats, campaign progress and settings online, then sign in with the same name on any device. Guests still play on this browser\'s save, and your current progress is carried over the first time you sign in.',
       'Operation Red Star: the mission now starts on the Siberian runway with a take-off roll and climb, and the propellers spin.',

@@ -44,6 +44,7 @@ Browser war game in one file: `index.html` (Three.js r170, inlined: the ESM buil
   - Menus are silent (`Sfx.ui` is a no-op), and the demo battle is muted (`Sfx.mute`).
 - **Touch:** `Direct.isTouch` is decided by the last real input (`window.__ptr`); touchscreen laptops get mouse lock.
 - **Accounts:** `Acct` (next to `Profile`) signs in by username only, syncs `kw-xp`, `kw-stats`, `warsim-camp` and settings with the relay's `/acct/login|save|logout` (class `Accts`, SQLite Durable Object in relay/worker.js). `kw-owner` = account that owns the local save. Menu bar `#acctBar`. Test locally with `npx wrangler@3 dev` in relay/ and `?relay=ws://127.0.0.1:8787` (Chromium needs `--no-proxy-server`).
+- **Tracker:** `Track` (next to `Acct`) sends anonymous hits (random `jjf_uid` per browser; open, beat every minute while visible, play with a mode label from `Track.mode(o)` in `UI.launch`) to relay `/track/hit` (class `Track`, SQLite, Melbourne days). `/track/sum` feeds `stats.html` (also shows account and live room counts). `?notrack` turns it off.
 - **Xaviers:** neutral healers, only in Play vs bots when the "optXav" checkbox is on (off by default).
 
 ## Recently done (Nov 2026)

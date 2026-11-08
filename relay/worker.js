@@ -13,6 +13,15 @@ export default {
       const r = await env.DIR.get(env.DIR.idFromName('dir')).fetch('https://d' + u.pathname);
       return new Response(r.body, {headers: {...CORS, 'content-type': 'application/json', 'cache-control': 'no-store'}});
     }
+    if (u.pathname === '/track/hit' || u.pathname === '/track/sum') { // anonymous play counts: hit = POST from the game, sum = JSON for stats.html
+      if (u.pathname === '/track/hit' && req.method !== 'POST') return new Response('expected POST', {status: 405, headers: CORS});
+      const t = env.TRACK.get(env.TRACK.idFromName('main'));
+      if (u.pathname === '/track/hit') { await t.fetch('https://t/hit', {method: 'POST', body: await req.text()}); return new Response('ok', {headers: CORS}); }
+      const sum = await (await t.fetch('https://t/sum')).json();
+      try { sum.accounts = (await (await env.ACCTS.get(env.ACCTS.idFromName('main')).fetch('https://a/acct/count', {method: 'POST', body: '{}'})).json()).n; } catch (e) {}
+      try { sum.rooms = (await (await env.DIR.get(env.DIR.idFromName('dir')).fetch('https://d/rooms')).json()).length; } catch (e) {}
+      return new Response(JSON.stringify(sum), {headers: {...CORS, 'content-type': 'application/json', 'cache-control': 'no-store'}});
+    }
     if (u.pathname.startsWith('/acct/')) { // accounts: plain JSON over HTTPS (text/plain bodies, so no CORS preflight)
       if (req.method === 'OPTIONS') return new Response(null, {headers: {...CORS, 'access-control-allow-methods': 'POST, OPTIONS', 'access-control-allow-headers': 'content-type'}});
       if (req.method !== 'POST') return new Response('expected POST', {status: 405, headers: CORS});
@@ -189,6 +198,7 @@ export class Accts {
     try { b = JSON.parse(await req.text() || '{}'); } catch (e) { return J({err: 'Bad request.'}, 400); }
     const route = u.pathname.slice(6), sid = String(b.sid || '').slice(0, 40);
     if (['ban', 'unban', 'hist', 'rollback'].includes(route)) return this.admin(route, b);
+    if (route === 'count') return J({n: this.sql.exec('SELECT COUNT(*) AS n FROM acct').toArray()[0].n});
     const c = checkName(b.name); if (c.err) return J({err: c.err, bad: 1});
     if (this.sql.exec('SELECT k FROM ban WHERE k = ?', c.k).toArray().length) return J({err: 'That name is banned.', bad: 1});
     let r = this.row(c.k);
@@ -230,5 +240,52 @@ export class Accts {
     if (!h) return J({err: 'no such history row'}, 404);
     this.sql.exec('UPDATE acct SET xp = ?, data = ?, updated = ? WHERE k = ?', h.xp, h.data, Date.now(), k); this.hist(k, h.xp, h.data, 'rollback ' + h.id);
     return J({ok: true, k, xp: h.xp});
+  }
+}
+
+// ---------------------------------------------------------------------------------------------
+// Track: anonymous play counts for stats.html. The game makes a random id per browser (localStorage jjf_uid), no names.
+// Events: open (page loaded), beat (every minute while the tab is visible = play time), play (a game started, m = mode label).
+// Days are Melbourne dates.
+const TZ_DAY = new Intl.DateTimeFormat('en-CA', {timeZone: 'Australia/Melbourne', year: 'numeric', month: '2-digit', day: '2-digit'});
+export class Track {
+  constructor(state, env) {
+    this.sql = state.storage.sql;
+    this.sql.exec(`CREATE TABLE IF NOT EXISTS seen (u TEXT PRIMARY KEY, first INTEGER, last INTEGER, secs INTEGER DEFAULT 0, beat INTEGER DEFAULT 0);
+      CREATE TABLE IF NOT EXISTS day (d TEXT, u TEXT, secs INTEGER DEFAULT 0, PRIMARY KEY (d, u));
+      CREATE TABLE IF NOT EXISTS mode (d TEXT, m TEXT, n INTEGER DEFAULT 0, PRIMARY KEY (d, m));`);
+  }
+  async fetch(req) {
+    const u = new URL(req.url), now = Date.now(), d = TZ_DAY.format(now);
+    if (u.pathname === '/hit') {
+      let b; try { b = JSON.parse(await req.text()); } catch (e) { return new Response('bad'); }
+      const id = String(b.u || ''); if (!/^[a-z0-9]{8,40}$/.test(id)) return new Response('bad');
+      const row = this.sql.exec('SELECT * FROM seen WHERE u = ?', id).toArray()[0];
+      if (!row) this.sql.exec('INSERT INTO seen (u, first, last) VALUES (?, ?, ?)', id, now, now);
+      this.sql.exec('INSERT OR IGNORE INTO day (d, u) VALUES (?, ?)', d, id);
+      if (b.e === 'beat' && (!row || now - row.beat > 45e3)) { // at most one minute of play time per 45 s, so spam can't inflate it much
+        this.sql.exec('UPDATE seen SET secs = secs + 60, beat = ? WHERE u = ?', now, id);
+        this.sql.exec('UPDATE day SET secs = secs + 60 WHERE d = ? AND u = ?', d, id);
+      }
+      if (b.e === 'play') {
+        const m = String(b.m || '?').replace(/[^\w :+'-]/g, '').slice(0, 40) || '?';
+        this.sql.exec('INSERT INTO mode (d, m, n) VALUES (?, ?, 1) ON CONFLICT (d, m) DO UPDATE SET n = n + 1', d, m);
+      }
+      this.sql.exec('UPDATE seen SET last = ? WHERE u = ?', now, id);
+      return new Response('ok');
+    }
+    const one = (q, ...a) => this.sql.exec(q, ...a).toArray()[0] || {};
+    const since = TZ_DAY.format(now - 29 * 864e5), week = TZ_DAY.format(now - 6 * 864e5);
+    const news = {}; for (const r of this.sql.exec('SELECT first FROM seen WHERE first > ?', now - 31 * 864e5).toArray()) { const k = TZ_DAY.format(r.first); news[k] = (news[k] || 0) + 1; }
+    const days = this.sql.exec('SELECT d, COUNT(*) AS players, SUM(secs) AS secs FROM day WHERE d >= ? GROUP BY d ORDER BY d', since).toArray().map(r => ({d: r.d, players: r.players, new: news[r.d] || 0, mins: Math.round(r.secs / 60)}));
+    const modes = q => this.sql.exec('SELECT m, SUM(n) AS n FROM mode ' + q + ' GROUP BY m ORDER BY n DESC LIMIT 25', ...(q ? [week] : [])).toArray();
+    const all = one('SELECT COUNT(*) AS n, SUM(secs) AS secs FROM seen'), back = one('SELECT COUNT(*) AS n FROM (SELECT u FROM day GROUP BY u HAVING COUNT(*) > 1)');
+    return new Response(JSON.stringify({
+      now, day: d, players: all.n || 0, mins: Math.round((all.secs || 0) / 60), returning: back.n || 0,
+      today: one('SELECT COUNT(*) AS n FROM day WHERE d = ?', d).n || 0,
+      week: one('SELECT COUNT(DISTINCT u) AS n FROM day WHERE d >= ?', week).n || 0,
+      online: one('SELECT COUNT(*) AS n FROM seen WHERE last > ?', now - 90e3).n || 0,
+      days, modesWeek: modes('WHERE d >= ?'), modesAll: modes(''),
+    }));
   }
 }

@@ -259,7 +259,7 @@ Some earlier sections described things as missing that already exist. Treat thes
 
 ### Polish
 - Photo mode: pause and orbit camera, save as image. UI scale applies to everything.
-- Analytics: players per day, mode popularity, session length, drop-off points.
+- Analytics: players per day, mode popularity, session length, drop-off points. **Built 2026-11-08** (except drop-off points): `Track` in the game sends anonymous hits to the relay's `Track` Durable Object; view them at jjfanwars.github.io/stats.html.
 - Supply option: **ammo trucks and depots only.**
 
 ## Round 7 details (2026-11-07): final priorities (supersedes earlier ordering)
