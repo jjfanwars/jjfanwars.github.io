@@ -57,7 +57,7 @@ Ideas for making the flight surprising and tense, not a checklist. Written 2026-
 - **Gunners:** loud, fast, simple, and the most dramatic when they miss.
 - **Bombardier:** hours of waiting, then ninety seconds of absolute focus.
 
-## Open questions for Finn
+## Open questions
 - How much of this should be random each run versus scripted? (Scripted gives set pieces; random gives replay.)
 - Is a hidden traitor a fun idea for friends, or too much?
 - Should a mission be allowed to end without bombing (abort/return), and does that count as a failure?

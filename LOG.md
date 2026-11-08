@@ -9,7 +9,6 @@
   3. You paste the reply in step 3 and press **Connect**. Their nation appears in your lobby. Press **Start War**.
   - If it says the direct link failed, your networks block peer-to-peer. Try both on the same Wi-Fi or a phone hotspot, or use **GitHub relay** (slower, each player pastes their own GitHub token with only the *gist* scope; the on-screen text explains how).
   - Two tabs on one computer: host in one tab, then in the other tab Join a Friend and type the 5-letter room code shown in the lobby.
-- Source pull request: https://github.com/finndoolan-m/warsim/pull/1
 - Single-file copy: https://jjfanwars.github.io/warsim.html (save it and open from disk).
 
 ## Log (newest first, Sydney time)
@@ -80,7 +79,6 @@
 ### 2026-11-05 03:34 AEDT — Published and verified; pull request opened
 - The latest build is live. I can't open github.io from here, so I checked it two other ways: the raw copy of index.html on GitHub matches what I pushed byte for byte, and GitHub's "pages build and deployment" run for commit 1884732 finished with **success**.
 - Final test pass on the exact published file: two-player over WebRTC (0 errors), GitHub relay against a fake GitHub API (0 errors), first-five-minutes flow, every jet and the gunship driven by keyboard and mouse, and the fallback when the browser refuses to lock the mouse (moving the cursor off centre steers, and the view stops at centre).
-- Source pull request (not merged): https://github.com/finndoolan-m/warsim/pull/1 (branch `claude/warsim-overnight` into `v2`).
 - **Try first:** Quick Battle → Rifleman → aim with the mouse, Space to fire, G for your nation's special. Then try an F-16 or F-15 (W for throttle, the jet follows the mouse) and the tank (mouse turns the turret, A/D turn the hull). Then host a game, send a friend the invite, and play each other.
 - **Known rough edges:** tank tracks and wheels don't visibly turn; jets have no landing-gear animation; frame rate on a real laptop GPU is untested (Graphics: Auto steps quality down if it's slow); the direct link may not work on strict networks, which is what the GitHub relay is for.
 

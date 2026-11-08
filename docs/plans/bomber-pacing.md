@@ -54,5 +54,5 @@ Built 2026-11-07: events trigger by route distance (step 1 of the director's "po
 6. Cutscene (separate item): replaces the plain white flash.
 
 ## Open questions
-- Is 14 minutes right for school-length sessions, or should there be a "short" 8 minute option?
+- Is 14 minutes right for one session, or should there be a "short" 8 minute option?
 - Should a lost mission offer a checkpoint at the start of the current act?

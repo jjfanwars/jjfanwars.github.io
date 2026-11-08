@@ -1,13 +1,13 @@
 # Operation Red Star: Soviet atomic bomber co-op
 
-Status: playable preview built (flight, complications, lounge, bail-out, arming, Strangelove ending). Roles, flak and the code challenge not built; see [direction.md](direction.md). Written 2026-11-06 with Finn.
+Status: playable preview built (flight, complications, lounge, bail-out, arming, Strangelove ending). Roles, flak and the code challenge not built; see [direction.md](direction.md).
 
 ## Pitch
 2 to 7 players are blob crew inside one Soviet atomic bomber. Everyone has a different job at a different station. Fly from a Siberian airfield over the Arctic and Atlantic to New York, survive the fighters and flak, and drop the bomb. 15 to 20 minutes. Teamwork under pressure, with comedy: shouting radio lines, a commissar, a very loud engine room.
 
 The aircraft is one big shared vehicle. The host runs it. Nobody flies alone: the pilot cannot fix engines, the engineer cannot see the map, and the bombardier cannot do anything until the others have got him there.
 
-## Decisions (2026-11-06, Finn)
+## Decisions (2026-11-06)
 - **Tone: pretty tense.** Real pressure, but with the blob look and some dry humour in the radio lines.
 - **Playable with 2 and 3 players, scaled to fit.** Fewer crew means fewer simultaneous problems and a gentler event rate, not just AI taking the seats. See Scaling below.
 - **Not just tasks.** Each phase needs a moment of drama: tension spikes, near misses, a set-piece. Task stations feed the drama; they are never a checklist.
@@ -16,7 +16,7 @@ The aircraft is one big shared vehicle. The host runs it. Nobody flies alone: th
 - **Pilot gets the map himself** whenever nobody is on the navigator seat (the pilot has the nav table view on a fold-down chart).
 - **Guns have lead indicators** (a predicted aim point so shots at moving fighters are fair).
 - **Everything first person.** No third-person or free camera anywhere in the mode, including turrets.
-- Build order: interior and shared presence first, clarify gameplay with Finn after.
+- Build order: interior and shared presence first, clarify gameplay after.
 
 ## Scaling for 2 and 3 players
 - **2 players:** Pilot (also navigator, reads the chart from his seat) + Engineer (also radio: the radio panel is on the engine bulkhead for this size). AI gunners at 50%, AI bombardier does the sight only on the final 20 seconds with the pilot assisting.
@@ -149,18 +149,18 @@ Estimate: about 8 to 12 focused sessions. Steps 1 and 2 carry most of the risk.
 
 ## Build status
 - **Done (2026-11-06):** step 1 started. A detailed bomber interior (glass nose and cockpit, radio and navigation, engineer's bay, bomb bay with the bomb, tail gunner) with windows to the outside, shown in first person over the real world with wings and engines outside. Shared crew presence over the relay: everyone sees the others walk around, with name tags. Menu tile "Operation Red Star (preview)" starts it. The bomber flies a scripted circle for now.
-- **Next:** station seats and claiming, then the flight model and route, systems, threats, bomb run and cutscene. Gameplay questions for Finn are listed in the chat after this step.
+- **Next:** station seats and claiming, then the flight model and route, systems, threats, bomb run and cutscene.
 
 ## More decisions (2026-11-06)
 - **Mission settings in the lobby** (host picks, remembered in the browser): flying feel (heavy/demanding), failure rule (retry a phase once / one life / unlimited checkpoints), bomb cutscene (bomb's-eye then wide / from the bomber / both), ending (ends on the flash / escape flight home), difficulty (training/standard/brutal). Passed to the game as `rso`. Not yet acted on by gameplay: the options are stored and shown at launch.
 - **Clean mode:** no nation abilities (including the colourblind filter), no battle popups (only mission messages), no health/ammo/radar/crosshair ring, no weapon or view keys, no leaving to the command view. Only walking, looking and the free cursor.
-- **Look:** procedural riveted metal, grime and glowing lamps and dials on a physically lit material, dusty fog and dim warm lights. No external model files yet: they would need to be embedded in the single html file and checked for licence, so only add them with Finn's go-ahead.
+- **Look:** procedural riveted metal, grime and glowing lamps and dials on a physically lit material, dusty fog and dim warm lights. No external model files yet: they would need to be embedded in the single html file and checked for licence, so only add them with the owner's go-ahead.
 
 ## Decisions and status (2026-11-06, later)
 - **Settings cut down:** only Flying, Respawns (one per phase / none / unlimited) and Difficulty. The cutscene is always the full version (bomb's-eye drop, wide shot, then back inside the bomber for the shockwave) and the mission ends on the flash.
 - **Charlies:** the colour-blind filter is off in this mode. **Rule for roles when they are built: a Charlies player can never be the pilot** (the instruments are red/green coded). They can take any other seat.
 - **Map built:** "Red Star Run", 384 x 384, low-detail air map (`redstarMap`): a Siberian airfield and runway, Arctic ice floes, the Atlantic with islands, and New York (Hudson, East River, harbour, a grid of skyscrapers with a spire at the aim point). `M.rsRoute` is the flight plan (7 waypoints, about 340 units) and `M.rsTarget` the aim point. The bomber follows the route at 1.2 units/s then circles the city. Superseded: the map is now 768 with a route of about 1,174 units (about 16 minutes).
-- **3D models:** searched. No free (CC0) bomber or Soviet aircraft interior exists; free packs found are generic sci-fi (Quaternius). Using them would also mean embedding a glTF loader and the model data in the single html file. Decision pending with Finn; default stays procedural.
+- **3D models:** searched. No free (CC0) bomber or Soviet aircraft interior exists; free packs found are generic sci-fi (Quaternius). Using them would also mean embedding a glTF loader and the model data in the single html file. Decision pending; default stays procedural.
 - Nose glass is now low so the bombardier can look down at the ground.
 
 ## Complications built (2026-11-06)

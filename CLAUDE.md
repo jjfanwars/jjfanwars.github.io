@@ -3,6 +3,7 @@
 Browser war game in one file: `index.html` (Three.js r170, inlined: the ESM build converted to a classic script that sets `window.THREE`). Live at https://jjfanwars.github.io. Repo: `jjfanwars/jjfanwars.github.io`. The game was formerly called KICwars, and the repo was formerly KicWars/kicwars.github.io.
 
 ## Rules for every change
+- **Privacy:** the repo is public. Never commit the owner's name, usernames, email, location, secrets (ADMIN_KEY, tokens) or chat details. Refer to them as "the owner". Relay secrets live only in Cloudflare.
 - Copy `index.html` to `warsim.html` before each commit.
 - Commit messages have no Co-Authored-By, Claude-Session or other Claude attribution lines (the user asked for none).
 - Push with `git push -q origin main`. Make sure origin points to `https://github.com/jjfanwars/jjfanwars.github.io`. Leave nothing uncommitted or unpushed.
@@ -44,7 +45,7 @@ Browser war game in one file: `index.html` (Three.js r170, inlined: the ESM buil
   - Menus are silent (`Sfx.ui` is a no-op), and the demo battle is muted (`Sfx.mute`).
 - **Touch:** `Direct.isTouch` is decided by the last real input (`window.__ptr`); touchscreen laptops get mouse lock.
 - **Accounts:** `Acct` (next to `Profile`) signs in by username only, syncs `kw-xp`, `kw-stats`, `warsim-camp` and settings with the relay's `/acct/login|save|logout` (class `Accts`, SQLite Durable Object in relay/worker.js). `kw-owner` = account that owns the local save. Menu bar `#acctBar`. Test locally with `npx wrangler@3 dev` in relay/ and `?relay=ws://127.0.0.1:8787` (Chromium needs `--no-proxy-server`).
-- **Tracker:** `Track` (next to `Acct`) sends anonymous hits (random `jjf_uid` per browser; open, beat every minute while visible, play with a mode label from `Track.mode(o)` in `UI.launch`) to relay `/track/hit` (class `Track`, SQLite, Melbourne days). `/track/sum` feeds `stats.html` (also shows account and live room counts). `?notrack` turns it off.
+- **Tracker:** `Track` (next to `Acct`) sends anonymous hits (random `jjf_uid` per browser; open, beat every minute while visible, play with a mode label from `Track.mode(o)` in `UI.launch`) to relay `/track/hit` (class `Track`, SQLite, days in the TZ secret's zone, else UTC). `/track/sum` feeds `stats.html` (also shows account and live room counts). `?notrack` turns it off.
 - **Xaviers:** neutral healers, only in Play vs bots when the "optXav" checkbox is on (off by default).
 
 ## Recently done (Nov 2026)
@@ -53,7 +54,7 @@ Browser war game in one file: `index.html` (Three.js r170, inlined: the ESM buil
 - Perf: `tileSplit`/`addTiles` split map-wide instanced meshes (trees, rocks, grass) into 16-cell tiles with real bounds; `updateLod` (called before render) swaps far tree/rock tiles to `treeGeoLo`/`rockGeoNeo(1)` (55 m) and hides far grass (70 m); troops > 40 m use the lo blob; `texMark`/`texFlush` upload only the changed ground-texture rect; fog blend skips when settled (`fogMoving`); per-frame DOM writes guarded. Triangles in a busy 4-player scene: 2.68M -> 1.34M.
 - New look (default) vs Classic: `LOOK.neo` (localStorage `jj-look`, `?look=classic`, menu select `hmLook`), `LOOKS` presets, `applyLook`, `terrainMat` (per-pixel + bump), `swayMat`/`swayT`, `buildGrass`/`hideGrass`, `rockGeoNeo`, `body.neo` CSS + `#vig`. Low quality keeps Lambert terrain and no grass.
 - Playtester fixes: unlocked mouse look (`look` 'offset'/'pending' turn by movement + screen-edge push, `ux/uy`), `manDef`/`cmdRepair` (cmds `mandef`, `repair`), tower garrison 2, command-view orbit (`UI.orbit`, `cam.pOff`), placement rotation (`b.rot`, R key), peace mode (`optRaid` → `sim.peaceOpt`, cmd `war`, `declareWar`), `selCat` (was a duplicate `selGroup`). Worker split: `p.builders` (default 2), `e.role` 'b'/'m', `stepWorkers` every 5 s, cmd `builders`.
-- Rename to jjfanwars, school mentions removed. Old `KICWARS-` invite codes are still accepted, new ones are `JJFANWARS-`.
+- Rename to jjfanwars. Old `KICWARS-` invite codes are still accepted, new ones are `JJFANWARS-`.
 - Tank bots spread out; you can climb mountains on foot; low-flight and camera fixes; kill feed; you pick your vehicle at the start of arcade battles; A-10 pick fix.
 - Hit reports for buildings and drones; spy heists and the spy map.
 - Fog fix: a building shows when any part of it is in sight.

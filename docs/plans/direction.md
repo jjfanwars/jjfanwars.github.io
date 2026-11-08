@@ -1,6 +1,6 @@
 # Direction interview (2026-11-07)
 
-Captured from a click-through interview with Finn. No code was written that day. Order below is the agreed priority. Status: decisions, not built.
+Captured from a design interview. No code was written that day. Order below is the agreed priority. Status: decisions, not built.
 
 ## Goal
 Open the game to the public **within a month**, friends first. Ranked ladder is cut for now.
@@ -47,12 +47,12 @@ Next, in order:
 - **Bombardier / bomb run:** bombsight alignment, pilot and bombardier cooperating, two-key arming first, a timing window.
 - **Threats:** flak over the coast, fighter attacks, escalating waves, crew casualties, screen shake and sound.
 - **Shared interiors** must show: other crew walking, seated poses at stations, windows to the outside, lounge activities.
-- **Difficulty selector** (Training / Standard / Brutal). Crews of 2 to 8 must all work, since Finn's group size varies (use the merged-role scaling in bomber.md).
+- **Difficulty selector** (Training / Standard / Brutal). Crews of 2 to 8 must all work, since group size varies (use the merged-role scaling in bomber.md).
 - Tone: silly crew, tense target.
 - **Delayed:** Engineer and Radio roles, and the code-word challenge.
 
 ## 3. Accounts (small database on the relay)
-**Status 2026-11-07: minimal version built** (sign in, load, save). Relay: `Accts` Durable Object with SQLite storage in `relay/worker.js` (chosen over D1: same SQL, no separate database to create, deploys with the usual `wrangler deploy`; migration tag v3). Tables `acct` (name key, name, xp, data JSON, sid + seen for the one-session rule, 150 s lease), `hist` (last 40 changes per account), `ban`. Name key folds case, symbols, accents, look-alike digits and doubled letters, so "F1nn" can't be registered next to "Finn". Reserved names and a profanity list (with a whitelist such as torpedo, cockpit). Merge: XP never drops, rises at most 8000 per save (60000 on the first import); stats keep the higher number; settings last write wins. Admin routes (ban, unban, hist, rollback) need the `ADMIN_KEY` secret. Game: `Acct` object next to `Profile`, a one-box sign-in bar on the main menu (`#acctBar`), saves every minute and 4 s after XP changes, `kw-owner` marks whose local save it is. **Deployed 2026-11-08** (no `ADMIN_KEY` set yet, so admin routes are off). Not built yet: unlocks, achievements and clan tags (fields exist in the data), friends, privacy policy.
+**Status 2026-11-07: minimal version built** (sign in, load, save). Relay: `Accts` Durable Object with SQLite storage in `relay/worker.js` (chosen over D1: same SQL, no separate database to create, deploys with the usual `wrangler deploy`; migration tag v3). Tables `acct` (name key, name, xp, data JSON, sid + seen for the one-session rule, 150 s lease), `hist` (last 40 changes per account), `ban`. Name key folds case, symbols, accents, look-alike digits and doubled letters, so "B0b" can't be registered next to "Bob". Reserved names and a profanity list (with a whitelist such as torpedo, cockpit). Merge: XP never drops, rises at most 8000 per save (60000 on the first import); stats keep the higher number; settings last write wins. Admin routes (ban, unban, hist, rollback) need the `ADMIN_KEY` secret. Game: `Acct` object next to `Profile`, a one-box sign-in bar on the main menu (`#acctBar`), saves every minute and 4 s after XP changes, `kw-owner` marks whose local save it is. **Deployed 2026-11-08** (no `ADMIN_KEY` set yet, so admin routes are off). Not built yet: unlocks, achievements and clan tags (fields exist in the data), friends, privacy policy.
 - Unique usernames reserved on the relay, a simple passcode per name, a profanity filter, recovery on a new device.
 - Saved rank, XP and stats (today in localStorage `kw-xp` / `kw-stats`).
 - Friends: invite code (as now), join a friend directly, party before a match.
@@ -166,7 +166,7 @@ New-player tutorial, opened as a **guided tutorial mission** on first load. The 
 ### Red Star story and tone
 - Opens with a **short comic briefing screen**. One route (New York) only.
 - The **commissar is a Stalin blob AI** (not a player seat).
-- Tone: it's for Finn's ~16 friends, so **fun rather than funny**: no corny Soviet jokes.
+- Tone: **fun rather than funny**: no corny Soviet jokes.
 - More complications: engine fires and leaks, radar and missiles, crew trouble (drunk, panic).
 - **Debrief:** who did what (damage, repairs), time and route accuracy, medals, rank XP gained. **Letter grade S to F.**
 - Roles: **picked in-flight only** (free swapping), with the lobby role card as an explainer.
@@ -221,7 +221,7 @@ Some earlier sections described things as missing that already exist. Treat thes
 ## Round 6 details (2026-11-07): scope, time and more new ideas
 
 ### Scope reality check
-- Time available: **under 5 hours a week.** The list in this doc is far larger than that allows in a month.
+- Time is limited; the list in this doc is far larger than a month allows.
 - **Must make the first month:** trackpad plane controls, accounts and usernames, tank collision and smarter bots.
 - **After launch:** map editor, day/night and weather, replay system.
 - Not picked as must-haves (so they slip unless time remains): Red Star Navigator and Bombardier, the rest of the long list below.
@@ -268,7 +268,7 @@ Some earlier sections described things as missing that already exist. Treat thes
 **Accounts and usernames** come first. Order: **accounts, then trackpad plane controls, then tank collision and smarter bots**. Friends' top complaint is **"too easy / boring"**, so the bot work matters a lot.
 
 ### How we work
-Under 5 hours a week: **bigger batches, Finn reviews weekly.**
+Work in **bigger batches** with regular reviews.
 
 ### Accounts, simplified (supersedes the earlier "short password" decision)
 - **No password to start.** An account is just a **username**, and progress is tied to it. Add a password later if impersonation becomes a problem.
@@ -308,7 +308,7 @@ Under 5 hours a week: **bigger batches, Finn reviews weekly.**
 ## How Claude should work (decided 2026-11-07)
 - **Accounts:** build a **minimal version straight away** (sign-in, load, save), then iterate. **Deploy to the live relay if tests pass.** Test with **short scripted checks against a local Worker.**
 - **Check-ins:** ask (with click options) **only for risky or irreversible** choices; otherwise pick the recommended option and note it.
-- **Plane controls:** the **new scheme is the default, the old one stays as an option.** Sensible defaults from other games **plus sliders** so Finn can tune.
-- **Bots:** short headless pokes to check behaviour; Finn playtests to judge.
+- **Plane controls:** the **new scheme is the default, the old one stays as an option.** Sensible defaults from other games **plus sliders** for tuning.
+- **Bots:** short headless pokes to check behaviour; playtests judge.
 - **Records after each session:** an in-game **What's new** line, an update to this doc's status, and a short end-of-chat summary.
 - Note on live deploys: an account bug can lock players out of progress. Keep local saves as the fallback and never let a failed save overwrite a higher stored XP.

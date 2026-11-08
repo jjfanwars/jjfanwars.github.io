@@ -127,7 +127,7 @@ export class Dir {
 // Tables:  acct (k = name key, name as typed, xp, data JSON, created, updated, sid + seen = the one live session)
 //          hist (every change, last 40 per account, so a bad overwrite can be rolled back)
 //          ban  (banned name keys)
-// The name key folds case, spaces, symbols and look-alike digits (F1nn = finn), so nobody can register a near copy of a name.
+// The name key folds case, spaces, symbols and look-alike digits (B0b = bob), so nobody can register a near copy of a name.
 // Routes (POST, JSON body):  /acct/login {name, sid, xp, data}  ->  {ok, name, xp, data, fresh}  or  {err}
 //                            /acct/save  {name, sid, xp, data}  ->  {ok, xp, data}  or  {err}     (also the heartbeat, every minute)
 //                            /acct/logout {name, sid}
@@ -246,17 +246,18 @@ export class Accts {
 // ---------------------------------------------------------------------------------------------
 // Track: anonymous play counts for stats.html. The game makes a random id per browser (localStorage jjf_uid), no names.
 // Events: open (page loaded), beat (every minute while the tab is visible = play time), play (a game started, m = mode label).
-// Days are Melbourne dates.
-const TZ_DAY = new Intl.DateTimeFormat('en-CA', {timeZone: 'Australia/Melbourne', year: 'numeric', month: '2-digit', day: '2-digit'});
+// Days use the time zone in the TZ secret (npx wrangler@3 secret put TZ, e.g. Europe/London), else UTC.
+let TZ_DAY = null;
+const dayFmt = env => TZ_DAY || (TZ_DAY = (() => { try { return new Intl.DateTimeFormat('en-CA', {timeZone: env.TZ || 'UTC', year: 'numeric', month: '2-digit', day: '2-digit'}); } catch (e) { return new Intl.DateTimeFormat('en-CA', {timeZone: 'UTC', year: 'numeric', month: '2-digit', day: '2-digit'}); } })());
 export class Track {
   constructor(state, env) {
-    this.sql = state.storage.sql;
+    this.sql = state.storage.sql; this.fmt = dayFmt(env);
     this.sql.exec(`CREATE TABLE IF NOT EXISTS seen (u TEXT PRIMARY KEY, first INTEGER, last INTEGER, secs INTEGER DEFAULT 0, beat INTEGER DEFAULT 0);
       CREATE TABLE IF NOT EXISTS day (d TEXT, u TEXT, secs INTEGER DEFAULT 0, PRIMARY KEY (d, u));
       CREATE TABLE IF NOT EXISTS mode (d TEXT, m TEXT, n INTEGER DEFAULT 0, PRIMARY KEY (d, m));`);
   }
   async fetch(req) {
-    const u = new URL(req.url), now = Date.now(), d = TZ_DAY.format(now);
+    const u = new URL(req.url), now = Date.now(), d = this.fmt.format(now);
     if (u.pathname === '/hit') {
       let b; try { b = JSON.parse(await req.text()); } catch (e) { return new Response('bad'); }
       const id = String(b.u || ''); if (!/^[a-z0-9]{8,40}$/.test(id)) return new Response('bad');
@@ -275,8 +276,8 @@ export class Track {
       return new Response('ok');
     }
     const one = (q, ...a) => this.sql.exec(q, ...a).toArray()[0] || {};
-    const since = TZ_DAY.format(now - 29 * 864e5), week = TZ_DAY.format(now - 6 * 864e5);
-    const news = {}; for (const r of this.sql.exec('SELECT first FROM seen WHERE first > ?', now - 31 * 864e5).toArray()) { const k = TZ_DAY.format(r.first); news[k] = (news[k] || 0) + 1; }
+    const since = this.fmt.format(now - 29 * 864e5), week = this.fmt.format(now - 6 * 864e5);
+    const news = {}; for (const r of this.sql.exec('SELECT first FROM seen WHERE first > ?', now - 31 * 864e5).toArray()) { const k = this.fmt.format(r.first); news[k] = (news[k] || 0) + 1; }
     const days = this.sql.exec('SELECT d, COUNT(*) AS players, SUM(secs) AS secs FROM day WHERE d >= ? GROUP BY d ORDER BY d', since).toArray().map(r => ({d: r.d, players: r.players, new: news[r.d] || 0, mins: Math.round(r.secs / 60)}));
     const modes = q => this.sql.exec('SELECT m, SUM(n) AS n FROM mode ' + q + ' GROUP BY m ORDER BY n DESC LIMIT 25', ...(q ? [week] : [])).toArray();
     const all = one('SELECT COUNT(*) AS n, SUM(secs) AS secs FROM seen'), back = one('SELECT COUNT(*) AS n FROM (SELECT u FROM day GROUP BY u HAVING COUNT(*) > 1)');
