@@ -3261,6 +3261,7 @@ Sim.prototype.hurt = function (t, dmg, by) {
   if (t.b && t.hard >= 1) dmg *= .35;                       // hardened: rebuilt underground in reinforced concrete
   if (this.peaceOpt && this.peace && by >= 0 && this.players[by] && !this.players[by].bot && t.o >= 0 && this.players[t.o] && this.players[t.o].bot) this.declareWar(by); // shooting first starts the war
   if ((t.breakT || 0) > this.t) dmg *= .6;                 // Licases Breakaway
+  if (t.pilot && (t.d.cat === 'air' || t.d.cat === 'heli') && !(this.scen && this.scen.arc)) dmg *= .7; // a person flying in the war modes is a little tougher
   if ((t.vendT || 0) > this.t && by !== null && by !== undefined && by >= 0 && this.players[by] && this.friendly(by, t.vendBy)) dmg *= 1.4; // Valentinos Vendetta
   const hp0 = t.hp; t.hp -= dmg; t.hurtT = this.t;
   // damage report for human players (bombs, shells, drones, bullets...): summed and sent a few times a second
@@ -4521,6 +4522,7 @@ Sim.prototype.pilotProj = function (c, pi) {
   const sp = W.t === 'bomb' ? 0 : W.spd, p = {i: ++this.pid || (this.pid = 1), o: a.o, src: a.id, x: ox, y: oy, z: oz, vx: dx * sp + (c.vx || 0), vy: dy * sp + (c.vy || 0), vz: dz * sp + (c.vz || 0),
     g: W.t === 'bomb' ? 9.8 : W.g || 0, W, w: c.w | 0, he: c.am === 1 && W.vs === 'shell' ? 1 : 0, life: W.fuse || (W.t === 'bomb' ? 12 : (W.rng || 40) / (W.spd || 20) * 1.6 + .5), home: c.tgt || 0, t0: this.t};
   if (W.t === 'bomb') { p.vx = c.vx || 0; p.vy = c.vy || 0; p.vz = (c.vz || 0) - 1; }
+  if (W.sea) { const hl = Math.hypot(dx, dy) || 1; p.vx = dx / hl * sp; p.vy = dy / hl * sp; p.vz = 0; p.z = -.15; } // torpedoes run flat just under the surface, wherever the crosshair is
   if (p.home && W.t === 'msl') { const t0 = this.ents.get(p.home); if (t0) { const tx = t0.x - ox, ty = t0.y - oy, tz = (t0.z || 0) + (t0.air ? 0 : .4) - oz, L2 = Math.hypot(tx, ty, tz) || 1; p.vx = tx / L2 * sp; p.vy = ty / L2 * sp; p.vz = tz / L2 * sp; } }
   (this.projs = this.projs || []).push(p);
   if (p.home) { const t = this.ents.get(p.home); if (t && t.air && !t.pilot && this.rnd() < .5) this.popChaff(t); }
@@ -4549,7 +4551,7 @@ Sim.prototype.stepProjs = function () {
       if (nx < 0 || ny < 0 || nx > this.N - 1 || ny > this.N - 1) { p.life = 0; break; }
       p.x = nx; p.y = ny; p.z = nz;
       const g = gAt(M, p.x, p.y);
-      if (p.W.sea) { p.z = -.15; if (g > -.05) boom = true; }
+      if (p.W.sea) { p.z = -.15; if (hAt(M, p.x, p.y) > -.05) boom = true; } // the sea floor height, not the walk surface (that reads 0 at sea)
       else if (p.z <= g || (p.z <= 0 && g < 0)) {
         if (p.W.fuse && !p.W.stick) { p.z = Math.max(g, 0) + .05; p.vz = Math.abs(p.vz) * .3; p.vx *= .5; p.vy *= .5; } // grenades bounce
         else boom = true;
@@ -4557,6 +4559,7 @@ Sim.prototype.stepProjs = function () {
       if (!boom && this.t - p.t0 > .05) this.near(p.x, p.y, 3, t => {
         if (hit || t.id === p.src || this.friendly(t.o, p.o) || t.inside) return;
         if (p.W.sea && !t.sea) return;
+        if (p.W.sea) { if (Math.hypot(t.x - p.x, t.y - p.y) < (t.d.r || 1) + .7) hit = t; return; } // a torpedo meets the hull at the waterline
         if (t.air && !p.W.air && !p.home && t.d.cat !== 'drone' && t.d.cat !== 'heli') return;
         const S = hitShape(Object.assign({nat: this.players[t.o].nation}, t), t.x, t.y, t.z || 0, t.h), pad = p.home ? .5 : .15;
         // swept along this step, so fast shells cannot skip through a target, against the real facing of the hull
@@ -5992,6 +5995,7 @@ function encodeSnap(sim, sendSlow) {
     msg.bs = [];
     for (const e of sim.ents.values()) if (e.b) msg.bs.push({id: e.id, bp: e.bp, q: e.q, prog: e.prog, rally: e.rally, au: e.auto ? 1 : 0, ak: e.autoK || null, cdn: e.nukeCD, g: e.garrison ? e.garrison.length : 0, hd: e.hard || 0, rot: e.rot || 0});
     msg.nodes = sim.M.nodes.map(n => [n.amt | 0, n.taken || 0]);
+    msg.nk = []; for (const e of sim.ents.values()) if (!e.b && e.d.nukeT) msg.nk.push(e.id, Math.ceil(e.nukeCD || 0)); // nuclear subs' ICBM charge, for guests
     msg.smokes = sim.smokes;
     msg.over = sim.over;
   }
@@ -6047,6 +6051,7 @@ Mirror.prototype.apply = function (m) {
   if (m.rs) { this.rs = m.rs; const rb = m.rs.bid && this.ents.get(m.rs.bid); if (rb) rb.rs = 1; }
   if (m.pl) m.pl.forEach((q, i) => { Object.assign(this.players[i], q); this.players[i].builders = q.bld; });
   if (m.bs) for (const b of m.bs) { const e = this.ents.get(b.id); if (e) { e.bp = b.bp; e.q = b.q; e.prog = b.prog; e.rally = b.rally; e.auto = !!b.au; e.autoK = b.ak; e.nukeCD = b.cdn; e.g = b.g; e.garrison = new Array(b.g); e.hard = b.hd; e.rot = b.rot || 0; } }
+  if (m.nk) for (let i = 0; i < m.nk.length; i += 2) { const e = this.ents.get(m.nk[i]); if (e) e.nukeCD = m.nk[i + 1]; }
   if (m.nodes) m.nodes.forEach((n, i) => { this.M.nodes[i].amt = n[0]; this.M.nodes[i].taken = n[1]; });
   if (m.smokes) this.smokes = m.smokes;
   if (m.over) this.over = m.over;
@@ -10197,7 +10202,7 @@ const Direct = {
     const d = e.d;
     this.mode = ui.g.redstar && e.rs ? 'crew' : this.modeOf(d);
     this.yaw = e.h; this.pitch = this.mode === 'plane' ? 0 : -.05; this.roll = 0; this.fq = undefined; this.manualFly = false; this.fpP = 0; this.pRate = 0; this.rollRate = 0; this.pullUp = false; this.warnT = 0; this.killStreak = 0; this.strikeBank = 0; this.confirm = null; this.vz = 0; this.mx = this.my = 0; this.keys = {}; this.mouseDown = false;
-    this.speed = this.mode === 'plane' ? d.spd : this.mode === 'fpv' ? d.spd : 0; this.batt = 1; this.vel = {x: 0, y: 0}; this.hullSpd = 0;
+    this.speed = this.mode === 'plane' ? d.spd * this.planeK() : this.mode === 'fpv' ? d.spd : 0; this.batt = 1; this.vel = {x: 0, y: 0}; this.hullSpd = 0;
     this.aimYaw = this.yaw; this.aimPitch = 0; this.camYaw = this.yaw; this.camPitch = this.mode === 'plane' ? -.05 : 0;
     const arcAir = ui.g && ((ui.g.view && ui.g.view.scen) || (ui.g.sim && ui.g.sim.scen) || {}).arc === 'air';
     this.W = pwpnOf(e).map(w => ({w, ammo: w.mag || 1, rl: 0, cd: 0, msl: arcAir && w.t === 'msl' ? MSL_LOAD : undefined}));
@@ -10937,7 +10942,7 @@ const Direct = {
   movePlane(dt, e, M, N) {
     // rigid-body flight: attitude quaternion + velocity vector; lift follows angle of attack and stalls past aS;
     // thrust, drag (parasitic + induced + post-stall) and gravity trade speed and height. Mouse-aim is an autopilot on top.
-    const k = this.keys, B = Settings.binds, d = e.d, p = this.pose, vc = d.spd, G = 9, aS = .3, LM = 1.7 * (d.turn || 1.6) * vc, FL = FlightScratch;
+    const k = this.keys, B = Settings.binds, d = e.d, p = this.pose, vc = d.spd * this.planeK(), G = 9, aS = .3, LM = 1.7 * (d.turn || 1.6) * vc, FL = FlightScratch;
     this.camYaw += this.lookX; this.camPitch = clamp(this.camPitch - this.lookY, -1.3, 1.3);
     { const g0 = this.ui.g, S0 = g0.sim && g0.sim.scen || g0.view.scen; if (S0 && S0.B && S0.B.harbor) { this.moveArcade(dt, e, M, N); return; } }
     if (this.vLock) { // view locked on a target: the camera (and so the mouse-aim autopilot) tracks it, leading it a little
@@ -11238,7 +11243,7 @@ const Direct = {
     if (!this.ads) this.zoom2 = this.zoom2 || 1;
     const z = (W && W.zoom ? 1 + (W.zoom - 1) * this.adsK : 1) * (1 - (1 - (this.zoom2 || 1)) * this.adsK); // scoped: the wheel (or Z) zooms further
     this.curZoom = z;
-    cam.fov = base * z * (this.sprinting ? 1.06 : 1) + (this.fovPunch || 0) * (this.mode === 'soldier' ? 1 : .3) + (this.mode === 'plane' && !this.bsight ? clamp((this.speed / this.e.d.spd - 1) * 5, -1, 3) + clamp((6 - (this.agl === undefined ? 99 : this.agl)) * .3, 0, 1.5) * clamp(this.speed / this.e.d.spd, 0, 1.2) : 0); // speed rush
+    cam.fov = base * z * (this.sprinting ? 1.06 : 1) + (this.fovPunch || 0) * (this.mode === 'soldier' ? 1 : .3) + (this.mode === 'plane' && !this.bsight ? clamp((this.speed / (this.e.d.spd * this.planeK()) - 1) * 5, -1, 3) + clamp((6 - (this.agl === undefined ? 99 : this.agl)) * .3, 0, 1.5) * clamp(this.speed / this.e.d.spd, 0, 1.2) : 0); // speed rush
     cam.near = this.firstPerson() ? .05 : .1; cam.updateProjectionMatrix(); // a tight near plane: at the default .2 a wall or the ground right in front of you gets cut away and the world looks see-through
     if (this.mode === 'plane' && (this.stalled || (this.gLoad || 1) > 2.6 || this.afterburner)) { const sh = this.stalled ? .5 : this.afterburner ? .06 : clamp(((this.gLoad || 1) - 2.6) * .15, 0, .4); cam.position.x += (Math.random() - .5) * sh; cam.position.y += (Math.random() - .5) * sh; cam.rotateZ((Math.random() - .5) * sh * .04); } // buffet in stalls, hard pulls and afterburner
     if (R.shake > .01) { cam.position.x += (Math.random() - .5) * R.shake * .25; cam.position.y += (Math.random() - .5) * R.shake * .25; }
@@ -11276,6 +11281,8 @@ const Direct = {
     this.vLock = nx ? nx.id : 0; this.leadAim = null; this.lkOff = {y: 0, p: 0}; this.lkSnap = 0;
     this.msg(nx ? 'Target down! Locked: ' + nx.d.n : 'Target down', 1.2); if (nx) Sfx.beep(1200);
   },
+  // the war modes (vs bots and multiplayer) fly slower than the arcade air battles: calmer, easier to aim and to keep off the hills
+  planeK() { const g = this.ui && this.ui.g, sc = g && (g.sim && g.sim.scen || g.view && g.view.scen); return sc && sc.arc ? 1 : .62; },
   toggleViewLock() {
     if (this.vLock) { this.vLock = 0; this.leadAim = null; this.msg('Target lock off', 1); return; }
     const best = this.lockPick(Math.PI);
@@ -14904,6 +14911,8 @@ addEventListener('keydown', () => { if (typeof Direct !== 'undefined' && window.
   // ---- changelog: add a new entry at the TOP of this list whenever something changes
   const CHANGELOG = [
     {d: '9 Nov 2026', items: [
+      'Calmer flying: in Play vs bots and multiplayer wars, planes you fly yourself go about 40% slower (easier to aim and keep off the hills) and take 30% less damage. Arcade air battles are unchanged.',
+      'Submarines fixed: torpedoes fired by hand no longer blow up the moment they leave the tube, and guests now see the nuclear sub\'s ICBM charge time.',
       'First person in tunnels: walk into a bored tunnel and you go underground for real, with earth walls, a timbered roof and a dark lantern-lit view. You can fight whoever is down there with you; shots and shells from outside cannot reach you.',
       'Valentinos nerfed again: regeneration only heals back up to 40% health and is slower, bayonet charges hit softer and only start from 75% health.',
       'New special abilities (G): Dhruvs Orbital Laser (a satellite burns your crosshair), Valentinos Vendetta (mark an enemy: everyone sees it and hits it 40% harder), Jethroes Alpha Howl now also sends nearby enemy infantry running, Toms Danger Close (an F-16 walks six bombs from your crosshair), Charlies Wingmen (three hunter drones). Licases keep Breakaway.',
