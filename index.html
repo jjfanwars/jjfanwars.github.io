@@ -2872,6 +2872,7 @@ Sim.prototype.issue = function (c, pi) {
       break;
     }
     case 'pilot': { const e = mine[0]; if (e && c.on && this.players[pi].nat.key === 'charlies' && (e.d.cat === 'air' || e.d.cat === 'heli') && !(this.scen && this.scen.arc)) break; if (e && !e.b) { if (c.on) { if (!e.pilot) { e.hpm *= PILOT_HP; e.hp *= PILOT_HP; } e.chute = 0; e.pilot = pi + 1; this.clearOrders(e); this.ev({k: 'cry', p: pi, id: e.id}); } else { if (e.pilot) { e.hpm /= PILOT_HP; e.hp = Math.min(e.hp / PILOT_HP, e.hpm); } e.pilot = 0; if (e.air) e.hold = {x: e.x, y: e.y}; } } break; }
+    case 'emote': { const e = this.ents.get(c.id); const q = c.n | 0; if (e && e.o === pi && e.pilot === pi + 1 && e.d.cat === 'inf' && q >= 0 && q <= EMO_ICONS.length) { e.emo = q; e.emoT = this.t + EMO_DUR; } break; }
     case 'pose': { const e = this.ents.get(c.id); if (e && e.o === pi && e.pilot === pi + 1) { if (!e.rail) { e.x = clamp(c.x, 0, this.N - 1); e.y = clamp(c.y, 0, this.N - 1); e.z = c.z; e.h = c.h; } e.p = c.p || 0; e.r = c.r || 0; if (c.tu !== undefined) e.tu = c.tu; if (c.m !== undefined) e.moving = c.m; e.ch = c.ch; e.pilT = this.t; if (c.ug !== undefined) e.ug = c.ug && this.M.bore ? 1 : 0; if (c.ap !== undefined) e.p = clamp(c.ap, -1.4, 1.4); if (c.f) e.fireT = this.t; if (c.a) e.adsT = this.t; if (c.th && !(e.thrT !== undefined && this.t - e.thrT < .7)) e.thrT = this.t; } break; }
     case 'pfire': this.pilotFire(c, pi); break;
     case 'streak': { // killstreak reward: an artillery barrage walks across the marked ground after a short warning
@@ -6049,7 +6050,9 @@ Sim.prototype.railPub = function () {
   return {s: +T.s.toFixed(1), v: +T.v.toFixed(2), L: T.L, st: T.st, rep: +T.rep.toFixed(2), hp: loco ? +(loco.hp / loco.hpm).toFixed(3) : 0, eng: eng ? 1 : 0, gap: T.gap ? 1 : 0, cars: T.cars.filter(id => this.ents.has(id)).length, of: T.cars.length};
 };
 // ---------- snapshot encode (host) ----------
-const SNAP_F = 11;
+const SNAP_F = 12;
+const EMO_ICONS = ['\u{1F44B}', '\u{1F595}', '\u{1F57A}', '\u{1FAE1}', '\u{1F926}', '\u{1F937}', '\u{1F3F3}\u{FE0F}']; // wave, rude, griddy, salute, facepalm, shrug, give up (ids 1 to 7)
+const EMO_DUR = 4;
 function encodeSnap(sim, sendSlow) {
   const out = new Int16Array(sim.ents.size * SNAP_F), meta = [];
   let i = 0;
@@ -6069,6 +6072,7 @@ function encodeSnap(sim, sendSlow) {
     if (e.drop) fl |= 128;
     fl |= (e.vet || 0) << 8;
     if (sim.t - (e.fireT === undefined ? -9 : e.fireT) < .28) fl |= 1024; if (sim.t - (e.adsT === undefined ? -9 : e.adsT) < .3) fl |= 2048; if (sim.t - (e.pilT === undefined ? -9 : e.pilT) < .6) fl |= 4096; if (e.thrT !== undefined && sim.t - e.thrT < .65) fl |= 8192; if (e.ug) fl |= 16384;
+    out[b + 11] = e.emo && e.emoT > sim.t ? e.emo : 0;
     out[b + 8] = fl; out[b + 9] = e.tid || 0; out[b + 10] = ((e.tu || 0) % 6.2832) * 1000;
     i++;
     const sig = e.k + '|' + e.o + '|' + (e.hero || '') + '|' + (e.task ? e.task.type : '') + '|' + (e.sq || 0) + '|' + (e.disg === undefined || e.disg === null ? '' : e.disg) + '|' + (e.att || 0);
@@ -6137,6 +6141,7 @@ Mirror.prototype.apply = function (m) {
     const f = a[i + 8];
     e.moving = !!(f & 1); e.st = f & 2 ? 2 : 0; e.inside = f & 4 ? 1 : 0; if (f & 8) e.hurtT = m.t; e.nukeReady = !!(f & 16); e.revealed = f & 32 ? m.t + 1 : 0; e.goal = f & 64 ? 1 : null; e.drop = f & 128 ? 1 : 0; e.vet = (f >> 8) & 3; if (f & 1024) e.fireT = m.t; if (f & 2048) e.adsT = m.t; if (f & 4096) e.pilT = m.t; if ((f & 8192) && !(e.thrT !== undefined && m.t - e.thrT < .7)) e.thrT = m.t; e.ug = f & 16384 ? 1 : 0;
     e.tid = a[i + 9]; e.tu = a[i + 10] / 1000;
+    { const em = a[i + 11]; if (em !== (e.emo || 0)) { e.emo = em; e.emoS = m.t; } }
   }
   for (const id of this.ents.keys()) if (!seen.has(id)) this.ents.delete(id);
   if (m.crew) this.crew = m.crew;
@@ -9205,6 +9210,25 @@ Renderer.prototype.put = function (key, geoFn, cap, opts, x, y, z, ry, rz, rx, s
   p.dirty = true;
 };
 
+// Emote arms: thin arms (and a finger for the rude one) posed from a local frame. forward is +x, the side is +z, up is +y.
+function emoArmGeo(nat) { const b = new Batch(), P = palette(nat); b.add(GEO.blob, P.main, 0, .09, 0, .042, .1, .042); b.add(GEO.blob, 0xffdcb8, 0, .205, 0, .05, .05, .05); return b; }
+function emoFingerGeo() { const b = new Batch(); b.add(GEO.blob, 0xffdcb8, 0, .04, 0, .018, .05, .018); return b; }
+Renderer.prototype.emoArms = function (emo, nat, x, y, z, h, sc, tint, sh, sw, sy) {
+  const t = this.time, c = Math.cos(h), s = Math.sin(h), hs = sy && sy < 1 ? sy : 1, P = Math.PI;
+  for (const sd of [1, -1]) {
+    let th = P, ph = sd * .25; // default: arm hanging at the side
+    if (emo === 1) { if (sd > 0) { th = 0; ph = .5 + Math.sin(t * 12) * .45; } }
+    else if (emo === 2) { if (sd > 0) { th = -1.35; ph = .1; } }
+    else if (emo === 3) { th = 2.3 + Math.sin(t * 8 + (sd > 0 ? 0 : P)) * .8; ph = sd * 1.0; }
+    else if (emo === 4) { if (sd > 0) { th = -.55; ph = .85; } }
+    else if (emo === 5) { if (sd > 0) { th = -.9; ph = .12; } }
+    else if (emo === 6) { th = 0; ph = sd * (1.15 + Math.sin(t * 4) * .12); }
+    else if (emo === 7) { th = P; ph = sd * .35; }
+    const ay = y + sh * sc * hs, ox = s * sd * sw * sc, oz = c * sd * sw * sc;
+    this.put('earm|' + nat, () => emoArmGeo(nat).geo(), 128, null, x + ox, ay, z + oz, h, th, ph, sc, tint);
+    if (emo === 2 && sd > 0) { const dx = -Math.sin(th) * Math.cos(ph) * .24 * sc, dy = Math.cos(th) * Math.cos(ph) * .24 * sc, dz = Math.sin(ph) * .24 * sc; this.put('efing', () => emoFingerGeo().geo(), 64, null, x + ox + c * dx + s * dz, ay + dy, z + oz - s * dx + c * dz, h, 0, 0, sc, tint); }
+  }
+};
 Renderer.prototype.drawUnit = function (e, dt, tint) {
   const dg = e.disg !== undefined && e.disg !== null && this.view.players[e.disg], nat = dg ? dg.nation : this.view.players[e.o].nation, k = dg ? 'rifle' : e.k, d = e.d, key = k + '|' + nat, h = -e.ry, x = e.rx, y = e.rz, z = e.ryy;
   if (e.id === this.hideId) return;
@@ -9220,6 +9244,8 @@ Renderer.prototype.drawUnit = function (e, dt, tint) {
     const hurt = e.hurtT !== undefined && this.view.t - e.hurtT < .2;
     let sy = mv && !bike ? 1 + Math.cos(ph * 2) * .07 : 1 + idle * .025, hop = mv && !bike ? Math.abs(Math.sin(ph)) * .05 : 0;
     if (hurt) sy *= .86;
+    const emo = e.emo || 0, emoT = emo ? this.time : 0;
+    if (emo && !bike) { const q = emoT; if (emo === 3) hop += Math.abs(Math.sin(q * 8)) * .07; else if (emo === 7) { sy *= .62; hop = 0; } else if (emo === 6) sy *= 1 + Math.sin(q * 4) * .03; }
     const lean = mv ? (bike ? .06 : .1) : 0, wob = mv ? Math.sin(ph) * (bike ? .03 : .09) : idle * .02;
     const cp = this.cam.position, lo = (this.camDist !== undefined && this.camDist > 60) || (x - cp.x) * (x - cp.x) + (y - cp.y) * (y - cp.y) + (z - cp.z) * (z - cp.z) > 1600; // far troops (40 m+) use the light model
     if (e.d.para && e.ch !== 0 && y - Math.max(0, hAt(this.view.M, e.rx, e.ryy)) > .8) { // paratrooper under canopy
@@ -9228,12 +9254,14 @@ Renderer.prototype.drawUnit = function (e, dt, tint) {
     const c = Math.cos(h), s = Math.sin(h);
     const vt = this.view.t, ag = a0 => a0 === undefined ? 99 : vt - a0, aim = ag(e.adsT) < .45, fire = ag(e.fireT) < .35, tg = ag(e.thrT);
     let pit = Math.max(-.8, Math.min(.8, e.rp || 0)) * .55 + (aim ? -.07 : 0) - (fire ? .05 * (1 - ag(e.fireT) / .35) : 0); // look up/down bends the body at the hip
+    if (emo && !bike) { if (emo === 5) pit += .3 + Math.sin(this.time * 3) * .04; else if (emo === 7) pit += .25; }
     if (tg < .65) pit += tg < .22 ? .55 * (tg / .22) : tg < .42 ? .55 - 1 * ((tg - .22) / .2) : -.45 * (1 - (tg - .42) / .23); // grenade throw: wind back, swing through, recover
     if (fire && tg > 1 && !lo && this.time - (e._fx || 0) > .08) { e._fx = this.time; this.muzzleFlash(e.rx + Math.cos(e.ry) * .5, e.ryy + Math.sin(e.ry) * .5, e.rz + .42 * sc, .55); }
     if (!Settings.blobs) { // realistic soldier: steady torso with a small walking bob, legs that stride, a flinch when hit
       const bob = mv && !bike ? Math.abs(Math.cos(ph)) * .018 : 0, lean2 = mv ? (bike ? .08 : .07) : 0, fl = hurt ? .12 : 0;
       const hh = HUM.hip * sc, pdx = hh * Math.sin(pit), pdy = hh * (1 - Math.cos(pit));
       this.put(key + '|h' + (lo ? '|lo' : ''), () => soldierHuman(k, nat, lo).geo(), 64, null, x + c * pdx, y + bob + pdy, z - s * pdx, h, -lean2 - fl + (e.st === 2 ? .03 : 0) + pit, 0, sc, tint);
+      if (emo && !lo) this.emoArms(emo, nat, x + c * pdx, y + bob + pdy, z - s * pdx, h, sc, tint, HUM.sh, .13, 1);
       if (bike) for (const f of [.3, -.3]) this.put('bwheel', () => bikeWheel().geo(), 128, null, x + c * f * sc, y + .16 * sc, z - s * f * sc, h, -this.time * (mv ? 14 : 0), 0, sc, tint);
       else if (!lo || mv) for (const sd of [-1, 1]) {
         const sw = mv ? Math.sin(ph + (sd > 0 ? 0 : Math.PI)) * .55 : 0, hz = .045 * sd * sc, hh = (HUM.hip + bob) * sc;
@@ -9242,6 +9270,7 @@ Renderer.prototype.drawUnit = function (e, dt, tint) {
       return;
     }
     { const bh = .3 * sc, bdx = bh * Math.sin(pit), bdy = bh * (1 - Math.cos(pit)); this.put(key + (lo ? '|lo' : ''), () => soldierBody(k, nat, lo).geo(), 64, null, x + c * bdx, y + hop + bdy, z - s * bdx, h, -lean + (e.st === 2 ? .05 : 0) + pit, wob, sc, tint, sy);
+      if (emo && !lo) this.emoArms(emo, nat, x + c * bdx, y + hop + bdy, z - s * bdx, h, sc, tint, .3, .27, sy);
       if (NATIONS[nat].look === 'yahu' && k !== 'medic') this.put('yface', faceGeo, 64, {mat: faceMat(), noShadow: true}, x + c * bdx, y + hop + bdy, z - s * bdx, h, -lean + (e.st === 2 ? .05 : 0) + pit, wob, sc, tint, sy); }
     if (bike) {
       for (const f of [.3, -.3]) this.put('bwheel', () => bikeWheel().geo(), 128, null, x + c * f * sc, y + .16 * sc, z - s * f * sc, h, -this.time * (mv ? 14 : 0), 0, sc, tint);
@@ -10223,7 +10252,7 @@ Game.prototype.issue = function (c) {
 // Shots: hitscan weapons are resolved on this client against what you see (instant feedback) and the host checks them;
 // projectiles (rockets, shells, bombs, missiles, grenades) are simulated by the host.
 
-const BIND_DEFAULTS = {ammo: 'KeyN', vlock: 'KeyL', w4: 'KeyY', spot: 'KeyK', fire: 'Space', alt: 'KeyE', ads: 'KeyQ', reload: 'KeyR', jump: 'KeyX', sprint: 'KeyC', view: 'KeyV', exit: 'KeyF', free: 'AltLeft', cycle: 'KeyT', special: 'KeyG', walk: 'KeyB', up: 'KeyX', down: 'KeyC', fwd: 'KeyW', back: 'KeyS', left: 'KeyA', right: 'KeyD', chooser: 'KeyP', chaff: 'KeyZ'};
+const BIND_DEFAULTS = {ammo: 'KeyN', vlock: 'KeyL', w4: 'KeyY', spot: 'KeyK', fire: 'Space', alt: 'KeyE', ads: 'KeyQ', reload: 'KeyR', jump: 'KeyX', sprint: 'KeyC', view: 'KeyV', exit: 'KeyF', free: 'AltLeft', cycle: 'KeyT', special: 'KeyG', walk: 'KeyB', up: 'KeyX', down: 'KeyC', fwd: 'KeyW', back: 'KeyS', left: 'KeyA', right: 'KeyD', chooser: 'KeyP', chaff: 'KeyZ', emote: 'KeyO'};
 const Settings = {
   view: 'fp', sens: 1, invert: false, assist: false, autofire: false, flightAssist: true, manualGear: false, gritty: true, blobs: true,
   binds: Object.assign({}, BIND_DEFAULTS),
@@ -10243,7 +10272,7 @@ const Settings = {
 Settings.load();
 Settings.blobs = true; // the troops are always blob guys
 
-const BIND_LABELS = {ammo: 'Tanks: switch AP / HE shells', vlock: 'Planes, helicopters, ships: lock on target', w4: 'Aircraft: 4th weapon', spot: 'Spot enemy for your team (or middle click)', fire: 'Fire', alt: 'Secondary weapon', ads: 'Aim / scope (toggle)', reload: 'Reload / aircraft: 3rd weapon', jump: 'Jump / climb', sprint: 'Sprint / descend', view: 'First / third person', exit: 'Back to command', free: 'Free cursor', cycle: 'Cycle lock target', special: 'National special ability', walk: "Ships: leave / sit in captain's chair", fwd: 'Forward / throttle up', back: 'Back / throttle down', left: 'Left / roll left', right: 'Right / roll right', chooser: 'Unit chooser', chaff: 'Aircraft: chaff (beats missiles)'};
+const BIND_LABELS = {ammo: 'Tanks: switch AP / HE shells', vlock: 'Planes, helicopters, ships: lock on target', w4: 'Aircraft: 4th weapon', spot: 'Spot enemy for your team (or middle click)', fire: 'Fire', alt: 'Secondary weapon', ads: 'Aim / scope (toggle)', reload: 'Reload / aircraft: 3rd weapon', jump: 'Jump / climb', sprint: 'Sprint / descend', view: 'First / third person', exit: 'Back to command', free: 'Free cursor', cycle: 'Cycle lock target', special: 'National special ability', walk: "Ships: leave / sit in captain's chair", fwd: 'Forward / throttle up', back: 'Back / throttle down', left: 'Left / roll left', right: 'Right / roll right', chooser: 'Unit chooser', chaff: 'Aircraft: chaff (beats missiles)', emote: 'Emote wheel (hold, move the mouse, release)'};
 
 const _v3 = new THREE.Vector3(), _v3b = new THREE.Vector3();
 // Username: saved in this browser, sent to the host when you join, shown over your head and in the lobby.
@@ -10540,6 +10569,20 @@ const Direct = {
     else if (e.button === 2) this.toggleAds();
   },
   onMouseUp(e) { if (e.button === 0) this.mouseDown = false; },
+  emoSend() { const W = this.emoW; this.emoW = null; if (!W || W.sel < 0 || this.mode !== 'soldier') return; this.ui.g.issue({c: 'emote', id: this.id, n: W.sel + 1}); this.emoOn = true; },
+  drawEmoteWheel(c, w, h) {
+    const W = this.emoW, cx = w / 2, cy = h / 2, N = EMO_ICONS.length, R = Math.min(w, h) * .2, U = Math.max(1, Math.min(w, h) / 800);
+    c.save(); c.fillStyle = 'rgba(8,10,14,.45)'; c.fillRect(0, 0, w, h);
+    c.textAlign = 'center'; c.textBaseline = 'middle';
+    for (let i = 0; i < N; i++) {
+      const a = i / N * Math.PI * 2, px = cx + Math.sin(a) * R, py = cy - Math.cos(a) * R, on = i === W.sel;
+      c.beginPath(); c.arc(px, py, (on ? 46 : 38) * U, 0, 7); c.fillStyle = on ? 'rgba(255,205,70,.92)' : 'rgba(20,24,30,.8)'; c.fill(); c.lineWidth = 2 * U; c.strokeStyle = on ? '#fff' : 'rgba(255,255,255,.25)'; c.stroke();
+      c.font = Math.round((on ? 40 : 32) * U) + 'px sans-serif'; c.fillStyle = '#fff'; c.fillText(EMO_ICONS[i], px, py + 2 * U);
+    }
+    c.beginPath(); c.arc(cx, cy, 8 * U, 0, 7); c.fillStyle = 'rgba(255,255,255,.5)'; c.fill();
+    c.beginPath(); c.arc(cx + W.x * U * .6, cy + W.y * U * .6, 5 * U, 0, 7); c.fillStyle = '#ffd23a'; c.fill();
+    c.restore();
+  },
   // spot: mark the enemy nearest your crosshair for 15s; everyone on your side sees the marker
   spot() {
     const g = this.ui.g, v = g.view; let best = null, ba = .2;
@@ -10556,6 +10599,9 @@ const Direct = {
     if (c === 'AltLeft' || c === 'AltRight' || c === B.free) { e.preventDefault(); if (down && !e.repeat) this.toggleFree(); return true; }
     if (c === 'Tab' || c === 'Space') e.preventDefault();
     this.keys[c] = down;
+    if (this.emoW) { if (down && c === 'Escape') { this.emoW = null; return true; } if (down && /^Digit[1-7]$/.test(c)) { this.emoW.sel = +c.slice(5) - 1; this.emoW.k = 1; return true; } }
+    if (!down && c === B.emote && this.emoW) { this.emoSend(); return true; }
+    if (down && !e.repeat && c === B.emote && this.mode === 'soldier' && !this.aboard && !this.jump) { e.preventDefault(); this.emoW = {x: 0, y: 0, sel: -1, k: 0}; return true; }
     if (!down) return true;
     if (e.repeat) return true;
     if (this.mode === 'crew') { if (c === 'KeyE') this.crewE = true; if (c === 'KeyL') this.crewL = true; return true; } // Operation Red Star: no abilities, weapons, view toggles or chooser
@@ -10767,6 +10813,8 @@ const Direct = {
     const zoom = this.curZoom ? this.curZoom : 1, S = .0021 * Settings.sens * (.35 + .65 * zoom);
     if (Settings.invert) ly = -ly;
     if (this.look === 'free') lx = ly = 0;
+    if (this.emoW) { const W = this.emoW; if (this.mode !== 'soldier') this.emoW = null; else { if (!W.k) { W.x += lx; W.y += ly; const r = Math.hypot(W.x, W.y); if (r > 150) { W.x *= 150 / r; W.y *= 150 / r; } W.sel = r < 38 ? -1 : Math.floor((((Math.atan2(W.x, -W.y) + 6.2832) % 6.2832) / 6.2832) * EMO_ICONS.length + .5) % EMO_ICONS.length; } lx = ly = 0; } }
+    if (this.emoOn && (k[B.fwd] || k[B.back] || k[B.left] || k[B.right] || k[B.fire] || k[B.jump])) { this.emoOn = false; g.issue({c: 'emote', id: this.id, n: 0}); }
     this.lookX = lx * S; this.lookY = ly * S;
     const fn = {soldier: this.moveSoldier, vehicle: this.moveVehicle, ship: this.moveVehicle, plane: this.movePlane, heli: this.moveHeli, fpv: this.moveFpv}[this.mode];
     if (this.aboard) { this.moveAboard(dt, e, M, g.view.N); this.cameraAboard(dt, g); }
@@ -11975,6 +12023,7 @@ const Direct = {
     // bomb impact predictor
     if (this.mode === 'plane' && this.W.some(s => s.w.t === 'bomb')) this.drawBombPip(c);
     if (this.mode === 'plane' && !this.bsight) this.drawAirMarks(c, w, h);
+    if (this.emoW) this.drawEmoteWheel(c, w, h);
     if (this.vLock && (this.mode === 'ship' || this.mode === 'heli' || (this.mode === 'plane' && !this.bsight))) { const LT = g.view.ents.get(this.vLock); if (LT && (this.mode !== 'plane' || !LT.air)) this.drawLockBox(c, w, h, LT); }
     // ammo, weapon, health bar (bottom right)
     if (S && W) {
@@ -15099,6 +15148,7 @@ addEventListener('keydown', () => { if (typeof Direct !== 'undefined' && window.
   // ---- changelog: add a new entry at the TOP of this list whenever something changes
   const CHANGELOG = [
     {d: '9 Nov 2026', items: [
+      'Emote wheel: on foot, hold O, move the mouse to a symbol and let go. Wave, rude gesture, griddy, salute, facepalm, shrug and give up. Everyone sees it; moving or firing cancels it. Rebind it in Settings.',
       'Trees are solid for things you fly: planes clip the treetops (or crash without flight assist), helicopters can\'t sink into them and FPV drones blow up on them.',
       'New nation: the Shauns, led by Chairman Shaun: flag-red blobs with gold stars. Everything costs 15% less but units have 10% less health. Copycats: destroy any enemy unit and you can build it too, even another nation\'s special units, with no research. Special (G): Knock-off, a cheaper copy of the nearest enemy unit rolls out beside you.',
       'Yahus: playing as them, every enemy capital shows how many days its nuke is away. It is always two weeks, and Big Yahu reminds you each time the clock resets.',
