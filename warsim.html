@@ -3215,6 +3215,7 @@ Sim.prototype.hurt = function (t, dmg, by) {
     r.dmg += Math.min(hp0, dmg); r.hp = Math.max(0, t.hp) / (t.hpm || 1); r.kill = t.hp <= 0 ? 1 : 0; L.set(t.id, r);
   }
   if (t.d.cat === 'veh' && !t.b && t.hp > 0 && dmg >= 25 && this.scen && this.scen.arc === 'ground' && this.rnd() < .35) this.knockModule(t, by);
+  if (!t.b && !t.pilot && by !== null && by !== undefined && by !== t.o && t.o >= 0 && (t.reactT || 0) <= this.t && !t.rail) this.findAttacker(t, by);
   if (t.pilot && dmg > .5) this.ev({k: 'ouch', id: t.id, x: t.srcX === undefined ? t.x : t.srcX, y: t.srcY === undefined ? t.y : t.srcY, dmg: Math.round(dmg)});
   t.srcX = undefined;
   if (by !== null && by !== undefined) {
@@ -3966,6 +3967,7 @@ Sim.prototype.stepGround = function (e, p) {
       if (q > d.rng) tgt = null;
     }
   }
+  if (!tgt && e.hitBy && !e.pilot && !e.task && (!e.goal || e.amove) && !e.force) this.reactToFire(e, p);
   if (!tgt && d.dmg && e.goal && !e.amove && !e.task && this.tick % 6 === e.id % 6) {   // shoot on the move if something is in range
     const t = this.acquire(e);
     if (t && Math.hypot(t.x - e.x, t.y - e.y) - (t.b ? t.d.s / 2 : 0) <= d.rng && e.cd <= 0) { this.fire(e, t); e.cd = d.cd * 1.3; }
@@ -4221,6 +4223,7 @@ Sim.prototype.stepAir = function (e) {
     if (e.tid) tgt = this.ents.get(e.tid);
     if (tgt && e.goal && !e.amove) tgt = null;
   }
+  if (!tgt && e.hitBy && !e.pilot && (!e.goal || e.amove)) { const A = this.ents.get(e.hitBy); e.hitBy = 0; if (A && A.hp > 0 && this.canHit(e, A) && Math.hypot(A.x - e.x, A.y - e.y) < 60) { e.tid = A.id; tgt = A; } } // turn on whoever is shooting at us
   let gx, gy;
   if (tgt) { gx = tgt.x; gy = tgt.y; }
   else if (e.goal) { gx = e.goal.x; gy = e.goal.y; if (Math.hypot(gx - e.x, gy - e.y) < (d.cat === 'heli' ? .8 : 4)) { e.hold = e.goal; e.goal = null; } }
@@ -4622,6 +4625,33 @@ Sim.prototype.joinSquad = function (e) {
   e.sq = best; if (B && kind === 'pl' && e.k !== 'para') B.ownSq = best;
 };
 // A squad fights together: when one member is hit, idle squadmates nearby move up to help.
+// Who shot me? The nearest armed enemy of that player (closest to where the shot came from, when known). Units that are hit then react in stepGround.
+Sim.prototype.findAttacker = function (t, by) {
+  t.reactT = this.t + 1.5;
+  const ox = t.srcX === undefined ? t.x : t.srcX, oy = t.srcY === undefined ? t.y : t.srcY;
+  let best = null, bd = 1e9;
+  this.near(t.x, t.y, 48, a => { if (a.o !== by || a.b || !a.d.dmg || a.hp <= 0) return; const d = Math.hypot(a.x - ox, a.y - oy) - (a.pilot ? 6 : 0); if (d < bd) { bd = d; best = a; } });
+  if (!best) return;
+  t.hitBy = best.id; t.hitT = this.t;
+  // the shout goes round: idle friends close by join in
+  this.near(t.x, t.y, 9, m => { if (m !== t && m.o === t.o && !m.b && !m.pilot && !m.goal && !m.tid && !m.task && (m.hitT || 0) < this.t - 3) { m.hitBy = best.id; m.hitT = this.t; } });
+};
+// A unit under fire with nothing to shoot back at: go for the attacker if it can hurt it, otherwise scatter (troops caught by a plane spread out instead of standing in a clump).
+Sim.prototype.reactToFire = function (e, p) {
+  const A = this.ents.get(e.hitBy); e.hitBy = 0;
+  if (!A || A.hp <= 0 || e.stance === 'hold' || e.inside || e.k === 'worker' || e.d.spy) return;
+  const dd = Math.hypot(A.x - e.x, A.y - e.y);
+  if (this.canHit(e, A) && dd < 45) {
+    if (dd <= e.d.rng) { e.tid = A.id; return; }
+    // close in to firing range, then hold the order loosely (attack-move picks up anything on the way)
+    const k = Math.max(0, (dd - e.d.rng * .8) / dd);
+    this.go(e, e.x + (A.x - e.x) * k, e.y + (A.y - e.y) * k); e.amove = true; e.reactGo = 1;
+  } else {
+    const a = Math.atan2(e.y - A.y, e.x - A.x) + (this.rnd() - .5) * 2.4, r = 4 + this.rnd() * 4;
+    const x = clamp(e.x + Math.cos(a) * r, 2, this.N - 3), y = clamp(e.y + Math.sin(a) * r, 2, this.N - 3);
+    if (e.air || e.sea || this.landOk(x, y)) { this.go(e, x, y); e.amove = true; }
+  }
+};
 Sim.prototype.squadAlert = function (t) {
   if (!t.sq || t.b) return;
   this.sqT = this.sqT || {}; if (this.sqT[t.sq] > this.t) return; this.sqT[t.sq] = this.t + 3;
@@ -14612,6 +14642,7 @@ addEventListener('keydown', () => { if (typeof Direct !== 'undefined' && window.
       'New Licases special, Breakaway: you and every friend within 15 m sprint flat out for 5 seconds, take 40% less damage, and enemy gunners lose track of you.',
       'Smarter bots: they defend outlying buildings, gather before attacking and push together, reinforce a winning push, bring air cover with the wave, and attack much sooner in Quick Battle.',
       'FPS Modes removed from the main menu.',
+      'Units no longer stand still while you pick them off from range: they work out who is shooting, close in and fight back if they can hurt it, or scatter if they cannot (troops under a plane spread out). Nearby idle friends join in.',
       'Operation Red Star: friends now spawn inside the bomber with the host (they were dropped into random planes). The bomber waits on the runway until a pilot takes off: W/S throttle, R/F climb and dive, A/D bank. Too slow and she stalls, too low and the ground wins; the autopilot holds cruise when the cockpit is empty.',
     ]},
     {d: '8 Nov 2026', items: [
