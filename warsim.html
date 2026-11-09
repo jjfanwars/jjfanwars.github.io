@@ -350,7 +350,6 @@ body.cbDeut #ov,body.cbDeut #mm,body.cbDeut #cards img,body.cbDeut #selpanel img
     <button class="big mtile tutbtn" id="bTut" title="A guided first game: every control explained step by step"><b>🎓 Tutorial</b><small>New? Learn to play step by step</small></button>
     <button class="big mtile" id="bPlay" title="Skirmish against bots: choose nations, teams, map and difficulty"><b>⚔ Play vs Bots</b><small>Choose nations, map and difficulty</small></button>
     <button class="big mtile" id="bCamp" title="Spend a budget on troops, place them, and beat a fixed enemy army"><b>🎖 Campaign</b><small>Budget battles, level by level</small></button>
-    <button class="big mtile" id="bBat" title="First-person modes: beach landings and team deathmatch"><b>🎯 FPS Modes</b><small>D-Day, Pacific landing, Deathmatch</small></button>
     <div class="mgroup">Arcade: air &amp; tanks</div>
     <button class="big mtile" id="bArc" style="grid-column:1/-1" title="Arcade air and tank battles: endless respawns, tickets and capture points"><b>✈ Air &amp; Tank Battles</b><small>Dogfights and tank fights · 12 vs 12, tickets, capture points</small></button>
     <div class="mgroup">With friends</div>
@@ -970,8 +969,8 @@ const NATIONS = [
    blurb: 'Vision +30% · Research cost −35% · Damage +5% · Health +5%',
    tr: {vision: 1.3, research: .65, dmg: 1.05, hp: 1.05}, power: 'satellite'},
   {key: 'valentinos', name: 'The Valentinos', leader: 'Valentino Felsovari', color: '#3fbf6f', dark: '#ce2b37', look: 'italian',
-   blurb: 'Units regenerate · Infantry fight hand to hand (+melee damage) · Trattoria: morale and health · Health +5%',
-   tr: {regen: .45, melee: 1, hp: 1.05}, power: 'forza'},
+   blurb: 'Units slowly regenerate · Infantry fight hand to hand · Trattoria: morale and health',
+   tr: {regen: .2, melee: 1}, power: 'forza'},
   {key: 'jethroes', name: 'The Jethroes', leader: 'Alpha Jethro', color: '#e8283c', dark: '#1b2f6b', look: 'usa',
    blurb: 'Damage +10% · Costs −8% · Infantry can turn into alpha wolves',
    tr: {wolf: 1, dmg: 1.1, cost: .92}, power: 'howl'},
@@ -1033,7 +1032,7 @@ const UNITS = {
   a10:      {n: 'A-10 Thunderbolt II', cat: 'air', arm: 'air', hp: 560, dmg: 48, rng: 11, cd: .7, spd: 11, vis: 14, cost: [270, 110], pop: 3, t: 22, from: 'airfield', shot: 'cannon', alt: 9, turn: 1.4, r: 1.1, hk: 'I', desc: 'Flying tank. GAU-8 cannon and Mavericks wreck armour. Tough and slow.'},
   fa18:     {n: 'F/A-18 Super Hornet', cat: 'air', arm: 'air', hp: 320, dmg: 34, rng: 14, cd: .85, spd: 15.5, vis: 17, cost: [260, 120], pop: 3, t: 20, from: 'airfield', shot: 'cannon', aa: 1, alt: 11, turn: 1.85, r: .95, hk: 'O', desc: 'Carrier multirole. Gun, Sidewinders and a stick of bombs.'},
   typhoon:  {n: 'Eurofighter Typhoon', cat: 'air', arm: 'air', hp: 300, dmg: 85, rng: 21, cd: 2, spd: 19.5, vis: 21, cost: [290, 140], pop: 3, t: 22, from: 'airfield', shot: 'missile', aa: 1, noGround: 1, alt: 13, turn: 2.05, r: .95, hk: 'J', desc: 'Agile delta-wing dogfighter. Meteor and IRIS-T missiles.'},
-  gunship:  {n: 'Gunship', cat: 'heli', arm: 'air', hp: 320, dmg: 30, rng: 10, cd: .8, spd: 8, vis: 14, cost: [220, 90], pop: 3, t: 16, from: 'airfield', shot: 'rocket', aa: 1, alt: 6, r: 1, hk: 'U', desc: 'Hovering rocket helicopter. Dominates ground troops.'},
+  gunship:  {n: 'Gunship', cat: 'heli', arm: 'air', hp: 230, dmg: 16, rng: 8, cd: 1.4, spd: 7, vis: 13, cost: [300, 140], pop: 4, t: 24, from: 'airfield', shot: 'rocket', aa: 1, alt: 6, r: 1, hk: 'U', desc: 'Hovering rocket helicopter. Good against troops, fragile against anti-air.'},
   carrier: {n: 'Aircraft Carrier', cat: 'sea', arm: 'sea', hp: 9000, dmg: 28, rng: 16, cd: .5, spd: 1, vis: 22, cost: [900, 400], pop: 8, t: 60, shot: 'cannon', aa: 1, noGround: 1, turret: 1, r: 2.6, desc: 'Floating airbase. Fly low over the deck to repair and rearm.'},
   seaplane: {n: 'Torpedo Seaplane', cat: 'air', arm: 'air', hp: 300, dmg: 20, rng: 12, cd: .9, spd: 12.5, vis: 15, cost: [230, 100], pop: 3, t: 18, from: 'airfield', shot: 'cannon', alt: 8, turn: 1.8, r: 1, desc: 'Lands and rides on the water. Drops torpedoes that sink ships and the carrier.'},
   destroyer: {n: 'Destroyer', cat: 'sea', arm: 'sea', hp: 750, dmg: 55, rng: 17, cd: 2.2, spd: 3.8, vis: 18, cost: [280, 90], pop: 4, t: 22, from: 'yard', shot: 'shell', splash: 1.4, aa: 1, turret: 1, detect: 1, r: 1.5, hk: 'R', desc: 'Warship. Shells the coast and detects submarines.'},
@@ -1064,7 +1063,7 @@ const BUILDINGS = {
   trench:   {n: 'Trench', hp: 700, s: 3, vis: 7, walk: 1, cover: 2.6, cost: [35, 0], t: 7, hk: 'H', page: 2, desc: 'Dug-in trench line. Your infantry in or beside it take 55% less damage. Troops walk through it.'},
   sandbags: {n: 'Sandbag Wall', hp: 380, s: 2, vis: 5, cover: 1.8, cost: [25, 0], t: 4, hk: 'J', page: 2, desc: 'Cheap wall. Infantry right behind it take 55% less damage. Blocks movement.'},
   pillbox:  {n: 'Pillbox', hp: 950, s: 2, vis: 10, dmg: 8, rng: 10, cd: .3, shot: 'bullet', aa: 1, garrison: 3, cover: 1.8, cost: [110, 10], t: 12, hk: 'K', page: 2, desc: 'Small concrete MG nest. Garrison 3 infantry. Cheap, tough and fast to build.'},
-  trattoria: {n: 'Trattoria', hp: 600, s: 4, vis: 8, aura: 7, morale: 1, only: ['valentinos'], cost: [140, 20], t: 14, hk: 'N', page: 2, desc: 'Italian restaurant. Each one (up to 3) gives +5% health and +5% fire rate to your whole army (morale) and heals troops nearby.'},
+  trattoria: {n: 'Trattoria', hp: 600, s: 4, vis: 8, aura: 7, morale: 1, only: ['valentinos'], cost: [140, 20], t: 14, hk: 'N', page: 2, desc: 'Italian restaurant. Each one (up to 2) gives +5% health and +5% fire rate to your whole army (morale) and heals troops nearby.'},
   silo:     {n: 'Missile Silo', hp: 1300, s: 5, vis: 8, nukeT: 150, req: 'lab', cost: [700, 500], t: 45, hk: 'G', page: 2, desc: 'Charges one ICBM every 2.5 minutes. Everyone hears the launch.'},
 };
 
@@ -1192,9 +1191,9 @@ const PWPN = {
   typhoon: [{n: 'BK-27 Cannon', t: 'hit', dmg: 12, vs: 'cannon', rpm: 1500, mag: 300, rl: 4, sp: .8, ads: .8, kick: .1, rng: 45, crit: 1.3, auto: 1, aa: 1, snd: 'cannon'},
             {n: 'Meteor BVRAAM', t: 'msl', dmg: 160, vs: 'missile', spd: 52, spl: 1.3, cd: 3.2, rng: 115, air: 1, snd: 'missile'},
             {n: 'IRIS-T', t: 'msl', dmg: 120, vs: 'missile', spd: 46, spl: 1.2, cd: 1.8, rng: 60, air: 1, snd: 'missile'}],
-  gunship: [{n: 'Chin Gun', t: 'hit', dmg: 9, vs: 'cannon', rpm: 650, mag: 300, rl: 4, sp: 1.1, ads: .6, rng: 40, crit: 1.4, auto: 1, aa: 1, snd: 'cannon'},
-            {n: 'Hydra Rockets', t: 'proj', dmg: 50, vs: 'rocket', spd: 38, g: .6, spl: 1.4, cd: .22, rng: 60, salvo: 1, snd: 'rocket'},
-            {n: 'AIM-92 Stinger', t: 'msl', dmg: 100, vs: 'missile', spd: 36, spl: 1, cd: 3, rng: 55, air: 1, snd: 'missile'}],
+  gunship: [{n: 'Chin Gun', t: 'hit', dmg: 5, vs: 'cannon', rpm: 420, mag: 120, rl: 5, sp: 1.1, ads: .6, rng: 40, crit: 1.4, auto: 1, aa: 1, snd: 'cannon'},
+            {n: 'Hydra Rockets', t: 'proj', dmg: 26, vs: 'rocket', spd: 38, g: .6, spl: 1, cd: 1.1, mag: 6, rl: 8, rng: 50, salvo: 1, snd: 'rocket'},
+            {n: 'AIM-92 Stinger', t: 'msl', dmg: 60, vs: 'missile', spd: 36, spl: 1, cd: 9, rng: 45, air: 1, snd: 'missile'}],
   destroyer: [{n: '5-inch Gun', t: 'proj', dmg: 90, vs: 'shell', spd: 40, g: 5, spl: 1.6, mag: 1, rl: 1.6, sp: .3, ads: .1, kick: 1.5, rng: 80, zoom: .5, snd: 'tank'},
             {n: 'Deck Machine Gun', t: 'hit', dmg: 9, vs: 'bullet', rpm: 700, mag: 400, rl: 3, sp: 1.2, ads: .8, kick: .1, rng: 45, crit: 1.3, auto: 1, aa: 1, snd: 'mg'},
             {n: 'Sea Sparrow', t: 'msl', dmg: 95, vs: 'missile', spd: 32, spl: 1, cd: 1.2, rng: 70, air: 1, snd: 'missile'},
@@ -1352,9 +1351,9 @@ const batClasses = B => B && B.classes || BAT_CLASSES;
 const KNIFE = {n: 'Big Knife', t: 'mel', dmg: 75, vs: 'bite', rpm: 95, rng: 2.8, crit: 1.5, sp: 0, snd: 'bite', kick: 1.2, knife: 1};
 const KNIFE_T = 8;
 const PSPECIAL = {
-  licases: {n: 'Peloton Dash', cd: 20, desc: 'Three seconds of flat-out speed.'},
+  licases: {n: 'Breakaway', cd: 30, desc: 'The peloton breaks away: you and every friend within 15 m sprint flat out for 5 seconds, take 40% less damage, and enemy gunners lose track of you.'},
   dhruvs: {n: 'Smart Scan', cd: 30, desc: 'Reveals every enemy within 25 m for 8 seconds.'},
-  valentinos: {n: 'Rally Flag', cd: 35, desc: 'Heals friends around you, gives them +30% damage for 8 seconds, and you draw a combat knife.'},
+  valentinos: {n: 'Rally Flag', cd: 50, desc: 'Patches up friends around you, gives them +15% damage for 6 seconds, and you draw a combat knife.'},
   jethroes: {n: 'Alpha Howl', cd: 40, desc: 'Turn into an alpha wolf blob for 14 seconds.'},
   toms: {n: 'Big Knife', cd: 25, desc: 'Pull out a huge knife for 8 seconds. Massive melee slashes.'},
 };
@@ -2559,7 +2558,7 @@ Sim.prototype.setupPlayer = function (p) {
   }
 };
 
-Sim.prototype.morale = function (p) { return Math.min(3, p.trat || 0); };
+Sim.prototype.morale = function (p) { return Math.min(2, p.trat || 0); };
 // tech multiplier for one branch: inf, arm, air (or bld for buildings' health)
 Sim.prototype.techMult = function (p, br, hp) {
   let m = 1;
@@ -3179,6 +3178,7 @@ Sim.prototype.hurt = function (t, dmg, by) {
   if (t.hp <= 0) return;
   if (t.b && t.hard >= 1) dmg *= .35;                       // hardened: rebuilt underground in reinforced concrete
   if (this.peaceOpt && this.peace && by >= 0 && this.players[by] && !this.players[by].bot && t.o >= 0 && this.players[t.o] && this.players[t.o].bot) this.declareWar(by); // shooting first starts the war
+  if ((t.breakT || 0) > this.t) dmg *= .6;                 // Licases Breakaway
   const hp0 = t.hp; t.hp -= dmg; t.hurtT = this.t;
   // damage report for human players (bombs, shells, drones, bullets...): summed and sent a few times a second
   if (by !== null && by !== undefined && by !== t.o && this.players[by] && !this.players[by].bot && !t.gt) {
@@ -3419,7 +3419,7 @@ Sim.prototype.fire = function (a, t) {
   if (t.pilot && !t.b && !a.pilot) { const r = this.aimAtPilot(a, t); if (r === 'wait') { a.cd = .15; return; } miss = r === 'miss'; }
   let dm = d.dmg * this.dmgMult(p, d) * tierK(a);
   if (a.vet) dm *= 1 + a.vet * .15;
-  if ((a.rallyT || 0) > this.t) dm *= 1.3;
+  if ((a.rallyT || 0) > this.t) dm *= 1.15;
   const tgh = t.z || 0, hd = (a.z || 0) - tgh;
   if (!a.air && !t.air && hd > 1.4) dm *= 1.25;          // high ground
   if (!t.b && !t.air && this.M.tree[Math.round(t.y) * this.N + Math.round(t.x)]) dm *= ty === 'bullet' || ty === 'sniper' ? .75 : 1;  // forest cover
@@ -3427,10 +3427,10 @@ Sim.prototype.fire = function (a, t) {
   dm *= this.coverMul(t, ty);
   // Valentinos infantry fix bayonets: anything on foot within arm's reach gets stabbed instead of shot
   if (p.nat.tr.melee && d.cat === 'inf' && !t.b && t.d.cat === 'inf' && !a.pilot && a.k !== 'medic' && a.k !== 'wolf' && Math.hypot(t.x - a.x, t.y - a.y) < 2.3) {
-    const md = (22 + d.hp * .12) * this.dmgMult(p, d) * this.coverMul(t, 'bite');
+    const md = (13 + d.hp * .07) * this.dmgMult(p, d) * this.coverMul(t, 'bite');
     this.ev({k: 's', a: a.id, t: t.id, at: t.id, ty: 'bite', d: .05, x: t.x, y: t.y, z: t.z});
     this.hurt(t, md, a.o); if (t.hp <= 0) this.creditKill(a, t);
-    a.st = 2; a.cd = Math.min(a.cd, 0) + .75; return;
+    a.st = 2; a.cd = Math.min(a.cd, 0) + 1; return;
   }
   if (t.d.turret && !t.b && !(this.scen && this.scen.arc === 'ground')) {  // flanking armour (tank battles use the full armour model)
     const from = Math.atan2(a.y - t.y, a.x - t.x);
@@ -3602,7 +3602,7 @@ Sim.prototype.stepMorale = function () {
   for (const p of this.players) {
     let n = 0;
     for (const b of this.ents.values()) if (b.b && b.o === p.i && b.d.morale && b.bp >= 1) n++;
-    n = Math.min(3, n);
+    n = Math.min(2, n);
     const old = p.trat || 0;
     if (n !== old) {
       const r = (1 + .05 * n) / (1 + .05 * old);
@@ -3749,7 +3749,7 @@ Sim.prototype.stepBuilding = function (b) {
   // Oil derricks
   if (d.oil && this.tick % 10 === 0) p.fuel += 2.2 * (p.ecoK || 1);
   // Hospital
-  if (d.aura && this.tick % 10 === 0) this.near(b.x, b.y, d.aura, t => { if (t.o === b.o && t.d.cat === 'inf' && t.hp < t.hpm && dist(t, b) < d.aura) t.hp = Math.min(t.hpm, t.hp + 6); });
+  if (d.aura && this.tick % 10 === 0) this.near(b.x, b.y, d.aura, t => { if (t.o === b.o && t.d.cat === 'inf' && t.hp < t.hpm && dist(t, b) < d.aura) t.hp = Math.min(t.hpm, t.hp + 3); });
   // EW jammer knocks drones down
   if (d.jam && this.tick % 5 === 0) this.near(b.x, b.y, d.jam, t => {
     if (t.d.cat === 'drone' && !this.friendly(t.o, b.o) && dist(t, b) < d.jam) { this.hurt(t, 4, b.o); t.jammed = this.t + 1; }
@@ -3853,7 +3853,7 @@ Sim.prototype.stepUnit = function (e) {
   if (e.drop) { if (this.t > e.drop) { e.drop = 0; this.ev({k: 'land', id: e.id}); } return; }
   e.cd -= DT * (1 + .05 * (p.trat || 0));
   if (e.st > 0) e.st = 0;
-  if (p.nat.tr.regen && e.hp < e.hpm && this.tick % 10 === 0 && this.t - (e.hurtT || 0) > 6) e.hp = Math.min(e.hpm, e.hp + p.nat.tr.regen * 2); // heals between fights
+  if (p.nat.tr.regen && e.hp < e.hpm && this.tick % 10 === 0 && this.t - (e.hurtT || 0) > 10) e.hp = Math.min(e.hpm, e.hp + p.nat.tr.regen * 2); // heals between fights
   if (e.wolf && this.t > e.wolf.until) this.fromWolf(e);
   if (d.nukeT && !e.nukeReady) { e.nukeCD -= DT; if (e.nukeCD <= 0) { e.nukeReady = true; this.notify(p.i, 'Nuclear sub: ICBM ready', 'good', e.x, e.y); } }
   if (d.heal && this.tick % 10 === e.id % 10) this.medic(e);
@@ -3906,7 +3906,7 @@ Sim.prototype.moveSpeed = function (e, p) {
       if (M.tree[c] && e.d.cat === 'veh') s *= .8;
     }
   }
-  if (e.d.cat === 'inf') { s *= p.nat.tr.infSpd || 1; if (p.buffs.sprint > this.t) s *= 1.6; }
+  if (e.d.cat === 'inf') { s *= p.nat.tr.infSpd || 1; if (p.buffs.sprint > this.t || (e.breakT || 0) > this.t) s *= 1.6; }
   return s;
 };
 
@@ -3944,7 +3944,7 @@ Sim.prototype.stepGround = function (e, p) {
   let moving = false;
   if (tgt && tgt.hp > 0) {
     const q = Math.hypot(tgt.x - e.x, tgt.y - e.y) - (tgt.b ? tgt.d.s / 2 : 0);
-    if (p.nat.tr.melee && d.cat === 'inf' && !tgt.b && tgt.d.cat === 'inf' && q > 1.8 && q < 5.5 && e.hp > e.hpm * .45 && e.stance !== 'hold' && e.k !== 'medic' && e.k !== 'sniper') {
+    if (p.nat.tr.melee && d.cat === 'inf' && !tgt.b && tgt.d.cat === 'inf' && q > 1.8 && q < 4.5 && e.hp > e.hpm * .65 && e.stance !== 'hold' && e.k !== 'medic' && e.k !== 'sniper') {
       this.moveAlong(e, tgt.x, tgt.y, dom, p, tgt.x, tgt.y); moving = true;   // Avanti! charge into bayonet range
       if (e.cd <= 0 && q <= d.rng) { this.fire(e, tgt); e.cd = d.cd * 1.4; }
     } else if (q <= d.rng && !(d.minRng && q < d.minRng)) {
@@ -4451,6 +4451,7 @@ Sim.prototype.aimAtPilot = function (a, t) {
   const dd = Math.hypot(t.x - a.x, t.y - a.y), mv = t.moving ? (t.d.cat === 'inf' ? .72 : .85) : 1;
   let p = A.hit * (1.15 - .5 * Math.min(1, dd / Math.max(4, a.d.rng))) * mv;
   if ((a.suppT || 0) > this.t) p *= .55;
+  if ((t.breakT || 0) > this.t) p *= .4; // Breakaway: too fast to track
   if (t.d.cat === 'air' && a.d.shot !== 'missile') p *= .6;
   if (t.d.cat === 'veh' || t.d.cat === 'sea') p = Math.min(.9, p * 1.5); // big targets are hard to miss
   return this.rnd() < p ? 'hit' : 'miss';
@@ -4461,8 +4462,9 @@ Sim.prototype.pilotSpecial = function (c, pi) {
   const S = PSPECIAL[p.nat.key]; if (!S || (p.specT || 0) > this.t) return;
   p.specT = this.t + S.cd;
   const k = p.nat.key;
-  if (k === 'dhruvs') this.near(a.x, a.y, 25, t => { if (!this.friendly(t.o, pi)) t.revealed = this.t + 8; });
-  else if (k === 'valentinos') { this.near(a.x, a.y, 6, t => { if (t.o === pi && !t.b) { t.hp = Math.min(t.hpm, t.hp + 40); t.rallyT = this.t + 8; this.ev({k: 'heal', t: t.id}); } }); if (a.d.cat === 'inf') a.knifeT = this.t + KNIFE_T + .5; }
+  if (k === 'licases') this.near(a.x, a.y, 15, t => { if (t.o === pi && !t.b && (t.d.cat === 'inf' || t === a)) { t.breakT = this.t + 5; t.aimId = 0; this.ev({k: 'heal', t: t.id}); } });
+  else if (k === 'dhruvs') this.near(a.x, a.y, 25, t => { if (!this.friendly(t.o, pi)) t.revealed = this.t + 8; });
+  else if (k === 'valentinos') { this.near(a.x, a.y, 5, t => { if (t.o === pi && !t.b) { t.hp = Math.min(t.hpm, t.hp + 20); t.rallyT = this.t + 6; this.ev({k: 'heal', t: t.id}); } }); if (a.d.cat === 'inf') a.knifeT = this.t + KNIFE_T + .5; }
   else if (k === 'jethroes') { if (a.d.cat === 'inf' && a.k !== 'wolf') { const hp = a.hp / a.hpm; this.toWolf(a, 14); a.hpm *= PILOT_HP; a.hp = a.hpm; a.wolf.frac = hp; } }
   else if (k === 'toms') { if (a.d.cat !== 'inf') { p.specT = this.t + 1; return; } a.knifeT = this.t + KNIFE_T + .5; }
   this.ev({k: 'special', p: pi, id: a.id, n: k});
@@ -5236,13 +5238,14 @@ Sim.prototype.arcSpawn = function (o, k, rwy) {
 
 <script>// Bot commanders. They issue the same commands a human can and get no cheats. easy | normal | hard.
 const BOT_CFG = {
-  easy:   {think: 3, workers: 8, wave: 16, waveGrow: 3, maxBuild: 7, power: 0, nuke: 0, air: .05, maxAir: 1, drones: .05, start: 600},
-  normal: {think: 1.5, workers: 12, wave: 16, waveGrow: 4, maxBuild: 12, power: 0, nuke: 0, air: .1, maxAir: 3, drones: .1, start: 420},
-  hard:   {think: .8, workers: 16, wave: 18, waveGrow: 5, maxBuild: 18, power: 0, nuke: .5, air: .16, maxAir: 5, drones: .15, start: 300},
+  easy:   {think: 2.5, workers: 8, wave: 14, waveGrow: 3, maxBuild: 7, power: 0, nuke: 0, air: .05, maxAir: 1, drones: .05, start: 480},
+  normal: {think: 1.5, workers: 12, wave: 14, waveGrow: 4, maxBuild: 12, power: 0, nuke: 0, air: .1, maxAir: 3, drones: .1, start: 330},
+  hard:   {think: .8, workers: 16, wave: 16, waveGrow: 5, maxBuild: 18, power: 0, nuke: .5, air: .16, maxAir: 5, drones: .15, start: 240},
 };
 
 function Bot(sim, pi, level) {
-  this.s = sim; this.pi = pi; this.cfg = BOT_CFG[level] || BOT_CFG.normal; this.level = level;
+  this.s = sim; this.pi = pi; this.cfg = Object.assign({}, BOT_CFG[level] || BOT_CFG.normal); this.level = level;
+  if (sim.quick) Object.assign(this.cfg, {start: this.cfg.start * .3, wave: 10}); // Quick Battle: bases are ready, so the fight starts early
   this.next = 1 + pi * .3; this.waveN = 0; this.waveSize = this.cfg.wave; this.lastAttack = 0; this.defend = 0;
   this.rnd = mulberry(sim.seed * 101 + pi);
   this.lastRoad = 0;
@@ -5437,14 +5440,25 @@ Bot.prototype.scout = function () {
 
 Bot.prototype.military = function () {
   const s = this.s, p = this.p, army = this.mine.army;
-  // Defend: anything hostile near home pulls everyone idle back.
-  let threat = null, ti = 0;
-  s.near(p.spawn.x, p.spawn.y, 26, t => { if (!s.friendly(t.o, this.pi) && !t.d.stealth) { ti++; threat = threat || t; } });
-  if (threat && ti >= 2) {
-    const ids = army.filter(u => !u.goal || (u.amove && dist(u, p.spawn) < 40)).map(u => u.id);
-    if (ids.length) this.cmd({c: 'move', ids, x: threat.x, y: threat.y, a: 1});
+  const flies = u => u.d.cat === 'air' || u.d.cat === 'heli';
+  const ground = army.filter(u => !flies(u) && u.k !== 'scout' && u.k !== 'medic' && !u.d.noGround && !u.pilot);
+  const flyers = army.filter(u => flies(u) && !u.pilot);
+  const inWave = new Set(this.wave ? this.wave.ids : []);
+  // Defend everything we own, not just the capital: a raid on a derrick gets answered too.
+  let threat = null, tn = 0;
+  const check = (b, r) => { let n = 0, f = null; s.near(b.x, b.y, r, t => { if (t.o >= 0 && !t.b && t.hp > 0 && !t.d.stealth && !s.friendly(t.o, this.pi)) { n += t.d.cat === 'veh' ? 3 : t.k === 'worker' ? 0 : 1; f = f || t; } }); if (n > tn) { tn = n; threat = f; } };
+  check(p.spawn, 30);
+  for (const k in this.mine.b) if (k !== 'hq') for (const b of this.mine.b[k]) if (dist(b, p.spawn) > 20) check(b, 12);
+  if (threat && tn >= 2) {
+    // the closest units, about twice the raid; a big attack also recalls the wave
+    const big = tn >= 10;
+    const pool = ground.filter(u => big || !inWave.has(u.id)).sort((a, b) => dist(a, threat) - dist(b, threat)).slice(0, Math.max(6, tn * 2));
+    if (pool.length) this.cmd({c: 'move', ids: pool.map(u => u.id), x: threat.x, y: threat.y, a: 1});
+    const fl = flyers.filter(u => !u.goal || big).map(u => u.id);
+    if (fl.length) this.cmd({c: 'move', ids: fl, x: threat.x, y: threat.y, a: 1});
+    if (big) this.wave = null;
     this.defend = s.t;
-    return;
+    if (big || !this.wave) return;
   }
   // Allies: help defend a friend's capital
   for (const q of s.players) {
@@ -5452,49 +5466,81 @@ Bot.prototype.military = function () {
     let foe = null, n = 0;
     s.near(q.spawn.x, q.spawn.y, 22, t => { if (!s.friendly(t.o, this.pi) && !t.b) { n++; foe = foe || t; } });
     if (foe && n >= 4) {
-      const ids = army.filter(u => !u.goal && !u.force && u.k !== 'scout').slice(0, 8).map(u => u.id);
+      const ids = ground.filter(u => !u.goal && !u.force && !inWave.has(u.id)).slice(0, 8).map(u => u.id);
       if (ids.length >= 3) { this.cmd({c: 'move', ids, x: foe.x, y: foe.y, a: 1}); return; }
     }
-  }
-  // A broken wave falls back home to regroup instead of trickling in to die
-  if (this.wave && s.t - this.wave.t > 20) {
-    const alive = this.wave.ids.filter(id => s.ents.has(id));
-    if (alive.length < this.wave.n * .35 && alive.length) {
-      this.cmd({c: 'move', ids: alive, x: p.spawn.x, y: p.spawn.y});
-      this.wave = null; this.foeT = 0;
-    } else if (!alive.length) this.wave = null;
   }
   // Scouting
   for (const u of army) if (u.k === 'scout' && !u.goal) {
     const a = this.rnd() * 6.283, r = s.N * .35;
     this.cmd({c: 'move', ids: [u.id], x: clamp(s.N / 2 + Math.cos(a) * r, 3, s.N - 4), y: clamp(s.N / 2 + Math.sin(a) * r, 3, s.N - 4)});
   }
-  // Attack waves
-  const ready = army.filter(u => u.k !== 'scout' && u.k !== 'medic' && !u.d.noGround);
-  const home = ready.filter(u => !u.goal && !u.force);
-  if (home.length >= (s.t > 1200 ? Math.min(this.waveSize, 8) : this.waveSize) && s.t > this.cfg.start) {
-    const hq = this.enemyHQ();
-    if (hq) {
-      // Strike from a different direction on alternating waves: a simple flanking habit.
-      const a = Math.atan2(p.spawn.y - hq.y, p.spawn.x - hq.x) + (this.waveN % 2 ? .7 : -.7);
-      const via = {x: clamp(hq.x + Math.cos(a) * 26, 3, s.N - 4), y: clamp(hq.y + Math.sin(a) * 26, 3, s.N - 4)};
-      const ids = home.map(u => u.id);
-      this.cmd({c: 'move', ids, x: via.x, y: via.y, a: 1});
-      this.cmd({c: 'move', ids, x: hq.x, y: hq.y, a: 1, q: 1});
-      const med = army.filter(u => u.k === 'medic').map(u => u.id);
-      if (med.length) this.cmd({c: 'move', ids: med, x: via.x, y: via.y});
-      this.waveN++;
-      this.wave = {ids, n: ids.length, t: s.t};
-      this.waveSize = Math.min(40, this.waveSize + this.cfg.waveGrow);
-      this.lastAttack = s.t;
+  const medics = army.filter(u => u.k === 'medic').map(u => u.id);
+  // Running wave: gather at a staging point, push together, keep the blob fed and retarget when the target falls.
+  const W = this.wave;
+  if (W) {
+    const alive = W.ids.map(id => s.ents.get(id)).filter(e => e && e.hp > 0);
+    const tgt = W.tgt && s.ents.has(W.tgt.id) && !s.friendly(W.tgt.o, this.pi) ? W.tgt : (W.tgt = this.nearestFoe(alive[0] || p.spawn));
+    if (!alive.length || !tgt) this.wave = null;
+    else if (alive.length < W.n * .35 && s.t - W.t > 20) { // broken: fall back and regroup instead of trickling in to die
+      this.cmd({c: 'move', ids: alive.map(u => u.id), x: p.spawn.x, y: p.spawn.y});
+      this.wave = null; this.foeT = 0;
+    } else {
+      let cx = 0, cy = 0; for (const u of alive) { cx += u.x; cy += u.y; } cx /= alive.length; cy /= alive.length;
+      if (W.st === 'stage') {
+        const there = alive.filter(u => Math.hypot(u.x - W.via.x, u.y - W.via.y) < 10).length;
+        if (there >= alive.length * .75 || s.t - W.t > 45) { W.st = 'push'; W.cmdT = s.t; this.cmd({c: 'move', ids: alive.map(u => u.id), x: tgt.x, y: tgt.y, a: 1}); }
+        else { const lag = alive.filter(u => !u.goal && Math.hypot(u.x - W.via.x, u.y - W.via.y) >= 10).map(u => u.id); if (lag.length) this.cmd({c: 'move', ids: lag, x: W.via.x, y: W.via.y, a: 1}); }
+      } else {
+        // whoever finished a fight (no orders left) carries on to the target
+        const idle = alive.filter(u => !u.goal && !u.tid).map(u => u.id);
+        if (idle.length) this.cmd({c: 'move', ids: idle, x: tgt.x, y: tgt.y, a: 1});
+        // fresh troops at home reinforce a winning push as a group
+        const fresh = ground.filter(u => !inWave.has(u.id) && !u.goal && !u.force && dist(u, p.spawn) < 30);
+        if (fresh.length >= 5 && s.t - this.defend > 20) { const ids = fresh.map(u => u.id); this.cmd({c: 'move', ids, x: cx, y: cy, a: 1}); W.ids.push(...ids); W.n += ids.length; }
+      }
+      if (this.wave) {
+        if (medics.length) this.cmd({c: 'move', ids: medics, x: cx, y: cy});
+        const fl = flyers.filter(u => !u.goal).map(u => u.id); // air cover hangs over the blob instead of flying in alone
+        if (fl.length) this.cmd({c: 'move', ids: fl, x: cx, y: cy, a: 1});
+      }
     }
   }
-  // Late game keep the pressure on: stragglers reinforce the front.
-  const idle = ready.filter(u => !u.goal && !u.force && dist(u, p.spawn) > 45);
-  if (idle.length && this.tick10()) {
-    const hq = this.enemyHQ();
-    if (hq) this.cmd({c: 'move', ids: idle.map(u => u.id), x: hq.x, y: hq.y, a: 1});
+  // New wave
+  if (!this.wave && s.t > this.cfg.start && s.t - this.defend > 15) {
+    const home = ground.filter(u => !u.goal && !u.force);
+    const need = s.t > 1200 ? Math.min(this.waveSize, 10) : this.waveSize;
+    if (home.length >= need || (home.length >= 8 && p.pop + 4 >= p.popCap)) {
+      const hq = this.enemyHQ();
+      if (hq) {
+        // stage on alternating flanks, out of the defenders' range
+        const a = Math.atan2(p.spawn.y - hq.y, p.spawn.x - hq.x) + (this.waveN % 2 ? .6 : -.6);
+        const via = {x: clamp(hq.x + Math.cos(a) * 30, 3, s.N - 4), y: clamp(hq.y + Math.sin(a) * 30, 3, s.N - 4)};
+        const ids = home.map(u => u.id);
+        this.cmd({c: 'move', ids, x: via.x, y: via.y, a: 1});
+        if (medics.length) this.cmd({c: 'move', ids: medics, x: via.x, y: via.y});
+        this.waveN++;
+        this.wave = {ids, n: ids.length, t: s.t, st: 'stage', via, tgt: hq};
+        this.waveSize = Math.min(40, this.waveSize + this.cfg.waveGrow);
+        this.lastAttack = s.t;
+      }
+    }
   }
+  // Air with no wave to cover hunts the juiciest enemy group it can find
+  if (!this.wave) {
+    const fl = flyers.filter(u => !u.goal).map(u => u.id);
+    if (fl.length >= 2 && this.rnd() < .3) { const spot = this.hotspot(); if (spot) this.cmd({c: 'move', ids: fl, x: spot.x, y: spot.y, a: 1}); }
+  }
+  // Stragglers far from home with nothing to do come back instead of wandering in alone.
+  const lost = ground.filter(u => !u.goal && !u.force && !u.tid && !inWave.has(u.id) && dist(u, p.spawn) > 45).map(u => u.id);
+  if (lost.length && this.tick10()) this.cmd({c: 'move', ids: lost, x: p.spawn.x, y: p.spawn.y, a: 1});
+};
+
+// The enemy building closest to a point (the next thing a wave hits once its target falls).
+Bot.prototype.nearestFoe = function (pt) {
+  const s = this.s; let best = null, bd = 1e9;
+  for (const e of s.ents.values()) if (e.b && e.o >= 0 && !s.friendly(e.o, this.pi)) { const d = dist(e, pt) - (e.k === 'hq' ? 15 : 0); if (d < bd) { bd = d; best = e; } }
+  return best;
 };
 
 Bot.prototype.tick10 = function () { return this.rnd() < .3; };
@@ -10037,7 +10083,7 @@ const Direct = {
     if ((p.specT || 0) > g.view.t) { this.msg(S.n + ' ready in ' + Math.ceil(p.specT - g.view.t) + 's', 1); Sfx.bad(); return; }
     g.issue({c: 'pspecial', id: this.id});
     p.specT = g.view.t + S.cd; this.msg(S.n + '!', 1.2); Sfx.good();
-    if (p.nat.key === 'licases') this.dashT = performance.now() + 3000;
+    if (p.nat.key === 'licases') this.dashT = performance.now() + 5000;
     if (p.nat.key === 'jethroes') Sfx.howl();
     if (p.nat.key === 'toms' || (p.nat.key === 'valentinos' && this.mode === 'soldier')) this.drawKnife();
   },
@@ -12523,7 +12569,7 @@ const UI = {
     $('bNext').onclick = () => { const c = this.camp; if (!c || !CAMPAIGN[c.i + 1]) return; this.quit(); this.openCamp(); this.campLaunch(c.i + 1); };
     $('bCamp').onclick = () => { Sfx.init(); Sfx.ui(); this.openCamp(); };
     $('bTut').onclick = () => { Sfx.init(); Sfx.ui(); this.startTutorial(); };
-    $('bBat').onclick = () => { Sfx.init(); Sfx.ui(); this.openBat('fps'); };
+    if ($('bBat')) $('bBat').onclick = () => { Sfx.init(); Sfx.ui(); this.openBat('fps'); };
     $('bArc').onclick = () => { Sfx.init(); Sfx.ui(); this.openBat('arc'); };
     $('batBack').onclick = () => { $('batScr').classList.add('hidden'); $('menu').classList.remove('hidden'); };
     $('campBack').onclick = () => { $('campScr').classList.add('hidden'); $('menu').classList.remove('hidden'); };
@@ -14320,6 +14366,13 @@ addEventListener('keydown', () => { if (typeof Direct !== 'undefined' && window.
   };
   // ---- changelog: add a new entry at the TOP of this list whenever something changes
   const CHANGELOG = [
+    {d: '9 Nov 2026', items: [
+      'Gunship nerfed hard: rockets now fire in 6 salvos then reload (no more holding E to wipe everything), weaker chin gun and Stinger, less health, costs more and trains slower.',
+      'Valentinos toned down: slower regeneration, weaker bayonet charges, Rally Flag +15% for 6 s, at most 2 Trattorias count, no extra health.',
+      'New Licases special, Breakaway: you and every friend within 15 m sprint flat out for 5 seconds, take 40% less damage, and enemy gunners lose track of you.',
+      'Smarter bots: they defend outlying buildings, gather before attacking and push together, reinforce a winning push, bring air cover with the wave, and attack much sooner in Quick Battle.',
+      'FPS Modes removed from the main menu.',
+    ]},
     {d: '8 Nov 2026', items: [
       'The game now counts plays anonymously (a random number per browser, no names, plus whether it is a computer or phone and which browser) so we can see how many people play and which modes are popular.',
     ]},
