@@ -10252,7 +10252,7 @@ Game.prototype.issue = function (c) {
 // Shots: hitscan weapons are resolved on this client against what you see (instant feedback) and the host checks them;
 // projectiles (rockets, shells, bombs, missiles, grenades) are simulated by the host.
 
-const BIND_DEFAULTS = {ammo: 'KeyN', vlock: 'KeyL', w4: 'KeyY', spot: 'KeyK', fire: 'Space', alt: 'KeyE', ads: 'KeyQ', reload: 'KeyR', jump: 'KeyX', sprint: 'KeyC', view: 'KeyV', exit: 'KeyF', free: 'AltLeft', cycle: 'KeyT', special: 'KeyG', walk: 'KeyB', up: 'KeyX', down: 'KeyC', fwd: 'KeyW', back: 'KeyS', left: 'KeyA', right: 'KeyD', chooser: 'KeyP', chaff: 'KeyZ', emote: 'KeyO'};
+const BIND_DEFAULTS = {ammo: 'KeyN', vlock: 'KeyL', w4: 'KeyY', spot: 'KeyK', fire: 'Space', alt: 'KeyE', ads: 'KeyQ', reload: 'KeyR', jump: 'KeyX', sprint: 'KeyC', view: 'KeyV', exit: 'KeyF', free: 'AltLeft', cycle: 'KeyT', special: 'KeyG', walk: 'KeyB', up: 'KeyX', down: 'KeyC', fwd: 'KeyW', back: 'KeyS', left: 'KeyA', right: 'KeyD', chooser: 'KeyP', chaff: 'KeyZ', emote: 'KeyB'};
 const Settings = {
   view: 'fp', sens: 1, invert: false, assist: false, autofire: false, flightAssist: true, manualGear: false, gritty: true, blobs: true,
   binds: Object.assign({}, BIND_DEFAULTS),
@@ -15148,7 +15148,7 @@ addEventListener('keydown', () => { if (typeof Direct !== 'undefined' && window.
   // ---- changelog: add a new entry at the TOP of this list whenever something changes
   const CHANGELOG = [
     {d: '9 Nov 2026', items: [
-      'Emote wheel: on foot, hold O, move the mouse to a symbol and let go. Wave, rude gesture, griddy, salute, facepalm, shrug and give up. Everyone sees it; moving or firing cancels it. Rebind it in Settings.',
+      'Emote wheel: on foot, hold B, move the mouse to a symbol and let go. Wave, rude gesture, griddy, salute, facepalm, shrug and give up. Everyone sees it; moving or firing cancels it. Rebind it in Settings.',
       'Trees are solid for things you fly: planes clip the treetops (or crash without flight assist), helicopters can\'t sink into them and FPV drones blow up on them.',
       'New nation: the Shauns, led by Chairman Shaun: flag-red blobs with gold stars. Everything costs 15% less but units have 10% less health. Copycats: destroy any enemy unit and you can build it too, even another nation\'s special units, with no research. Special (G): Knock-off, a cheaper copy of the nearest enemy unit rolls out beside you.',
       'Yahus: playing as them, every enemy capital shows how many days its nuke is away. It is always two weeks, and Big Yahu reminds you each time the clock resets.',
