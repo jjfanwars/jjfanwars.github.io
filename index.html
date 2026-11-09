@@ -2082,25 +2082,38 @@ function passable(M, dom, i) {
 
 // Flow fields: Dijkstra over the grid from a goal cell, cached per domain+cell and flushed when buildings change.
 function Fields(M) {
-  this.M = M; this.cache = new Map(); this.budget = 0;
-  this.heap = new Int32Array(M.N * M.N * 8);
+  this.M = M; this.cache = new Map(); this.budget = 0; this.ver = 1; this.pc = {};
+  this.heap = new Int32Array(M.N * M.N * 8); this.hk = new Float32Array(M.N * M.N * 2); this.closed = new Uint8Array(M.N * M.N);
 }
-Fields.prototype.flush = function () { this.cache.clear(); };
-Fields.prototype.get = function (dom, gx, gy) {
+Fields.prototype.flush = function () { this.cache.clear(); this.ver++; this.soft = 0; };
+Fields.prototype.softFlush = function () { this.soft = 1; }; // something opened up (a building fell): old fields still work, refresh them soon
+// passability and terrain cost per cell, rebuilt only when the map changes
+Fields.prototype.prep = function (dom) {
+  const P = this.pc[dom]; if (P && P.v === this.ver) return P;
+  const M = this.M, A = M.N * M.N, pass = new Uint8Array(A), cost = new Float32Array(A), D = M.deck;
+  for (let j = 0; j < A; j++) {
+    if (!passable(M, dom, j)) continue; pass[j] = 1; let c = 1;
+    if (dom === 2 && M.water[j] && !(D && D[j])) c = 5;
+    else if (dom !== 1) { if (M.road[j] || (D && D[j])) c = .62; else { if (M.tree[j]) c *= 1.25; if (M.bio[j] === BIO.SWAMP) c *= 1.3; } }
+    cost[j] = c;
+  }
+  return (this.pc[dom] = {v: this.ver, pass, cost});
+};
+Fields.prototype.get = function (dom, gx, gy, lim) {
   const M = this.M, N = M.N;
   gx = Math.max(0, Math.min(N - 1, gx | 0)); gy = Math.max(0, Math.min(N - 1, gy | 0));
-  const key = dom * 1e6 + gy * N + gx;
+  const key = dom * 1e6 + gy * N + gx + (lim ? lim / 1000 : 0);
   let f = this.cache.get(key);
   if (f) { this.cache.delete(key); this.cache.set(key, f); return f; }
   if (this.budget <= 0) return null;
   this.budget--;
-  f = this.compute(dom, gx, gy);
+  f = this.compute(dom, gx, gy, lim);
   this.cache.set(key, f);
-  if (this.cache.size > 60) this.cache.delete(this.cache.keys().next().value);
+  if (this.cache.size > 120) this.cache.delete(this.cache.keys().next().value);
   return f;
 };
-Fields.prototype.compute = function (dom, gx, gy) {
-  const M = this.M, N = M.N, A = N * N, d = new Float32Array(A).fill(1e9), H = [];
+Fields.prototype.compute = function (dom, gx, gy, lim) {
+  const M = this.M, N = M.N, A = N * N, d = new Float32Array(A).fill(1e9), PC = this.prep(dom), pass = PC.pass, cst = PC.cost, MH = M.h, flat = dom === 1 || dom === 2;
   // start from the nearest passable cell, the goal may be inside a building
   let start = gy * N + gx;
   if (!passable(M, dom, start)) {
@@ -2116,7 +2129,7 @@ Fields.prototype.compute = function (dom, gx, gy) {
   }
   d[start] = 0;
   const heap = this.heap; let hn = 0;
-  const hk = new Float32Array(A * 2);
+  const hk = this.hk;
   const push = (i, k) => {
     if (hn >= A * 2 - 2) return;
     let c = hn++; heap[c] = i; hk[c] = k;
@@ -2140,28 +2153,23 @@ Fields.prototype.compute = function (dom, gx, gy) {
   };
   push(start, 0);
   const DX = [1, -1, 0, 0, 1, 1, -1, -1], DY = [0, 0, 1, -1, 1, -1, 1, -1], DC = [1, 1, 1, 1, 1.414, 1.414, 1.414, 1.414];
-  const closed = new Uint8Array(A);
+  const closed = this.closed; closed.fill(0);
+  const cap = lim || 1e9; // chase paths only need the neighbourhood, not the whole map
   while (hn > 0) {
     const i = pop();
     if (closed[i]) continue;
+    if (d[i] > cap) break;
     closed[i] = 1;
     const x = i % N, y = (i / N) | 0;
     for (let k = 0; k < 8; k++) {
       const nx = x + DX[k], ny = y + DY[k];
       if (nx < 0 || ny < 0 || nx >= N || ny >= N) continue;
       const j = ny * N + nx;
-      if (closed[j] || !passable(M, dom, j)) continue;
-      if (k >= 4 && (!passable(M, dom, y * N + nx) || !passable(M, dom, ny * N + x))) continue;
-      let c = DC[k];
-      if (dom === 2 && M.water[j] && !(M.deck && M.deck[j])) c *= 5;
-      else if (dom !== 1) {
-        if (M.road[j] || (M.deck && M.deck[j])) c *= .62;
-        else {
-          if (M.tree[j]) c *= 1.25;
-          if (M.bio[j] === BIO.SWAMP) c *= 1.3;
-          c *= 1 + Math.abs(M.h[j] - M.h[i]) * .6;
-        }
-      }
+      if (closed[j] || !pass[j]) continue;
+      if (k >= 4 && (!pass[y * N + nx] || !pass[ny * N + x])) continue;
+      const cj = cst[j];
+      let c = DC[k] * cj;
+      if (!(dom === 2 && cj === 5) && dom !== 1 && cj > .7) c *= 1 + Math.abs(MH[j] - MH[i]) * .6;
       const nd = d[i] + c;
       if (nd < d[j]) { d[j] = nd; push(j, nd); }
     }
@@ -2669,7 +2677,7 @@ Sim.prototype.addBuilding = function (k, o, x, y, done) {
     this.footprint(d, e.x, e.y, (i, j) => {
       if (i >= 0 && j >= 0 && i < this.N && j < this.N) { const q = j * this.N + i; this.M.occ[q] = e.id; this.M.tree[q] = 0; }
     });
-    this.F.flush();
+    this.F.softFlush();
   }
   this.ents.set(e.id, e);
   if (done) { p.popCap += d.pop || 0; }
@@ -3243,7 +3251,7 @@ Sim.prototype.kill = function (t, by) {
     if (t.bp >= 1) p.popCap -= t.d.pop || 0;
     if (!t.d.mine && !t.d.walk) {
       this.footprint(t.d, t.x, t.y, (i, j) => { if (i >= 0 && j >= 0 && i < this.N && j < this.N && this.M.occ[j * this.N + i] === t.id) this.M.occ[j * this.N + i] = 0; });
-      this.F.flush();
+      this.F.softFlush();
     }
     if (t.node !== undefined) this.M.nodes[t.node].taken = 0;
     if (t.garrison) this.unload(t);
@@ -3575,7 +3583,8 @@ Sim.prototype.step = function () {
   if (this.strikes && this.strikes.length) this.stepStrikes();
   if (this.hitLog && this.tick % 4 === 0) { for (const p in this.hitLog) { const L = this.hitLog[p]; if (L.size) this.ev({k: 'dmgrep', p: +p, list: [...L.values()].map(r => ({k: r.k, b: r.b, base: r.base, dmg: Math.round(r.dmg), hp: Math.round(r.hp * 100), kill: r.kill}))}); } this.hitLog = null; }
   this.t += DT; this.tick++;
-  this.F.budget = this.N > 170 ? 3 : 5;
+  this.F.budget = this.N > 170 ? 2 : 3;
+  if (this.F.soft && this.tick % 20 === 0) this.F.flush(); // new or fallen buildings: refresh paths every 2 s at most, not on every change
   this.rebuildGrid();
   for (const p of this.players) {
     if (!p.alive) continue;
@@ -3625,7 +3634,7 @@ Sim.prototype.digAt = function (x, y, o, amt, dir, RR) {
     }
   }
   this.ev({k: 'dig2', c, o, x: Math.round(x), y: Math.round(y)});
-  this.coverDirty = true; if (this.tick % 20 === 0) this.F.flush();
+  this.coverDirty = true; this.F.softFlush();
   return true;
 };
 
@@ -4070,13 +4079,21 @@ Sim.prototype.seekCover = function (e, dom) {
   }
   if (best) e.coverGo = best;
 };
+Sim.prototype.lineClear = function (dom, x0, y0, x1, y1) {
+  const P = this.F.prep(dom).pass, N = this.N, L = Math.hypot(x1 - x0, y1 - y0), n = Math.ceil(L / .7);
+  for (let i = 1; i <= n; i++) { const t = i / n, c = Math.round(y0 + (y1 - y0) * t) * N + Math.round(x0 + (x1 - x0) * t); if (!P[c]) return false; }
+  return true;
+};
 Sim.prototype.moveAlong = function (e, gx, gy, dom, p, fx, fy) {
   const dd = Math.hypot(gx - e.x, gy - e.y), sp = this.moveSpeed(e, p);
   let dx = (gx - e.x) / (dd || 1), dy = (gy - e.y) / (dd || 1);
-  if (dd > 3) {
-    const f = this.F.get(dom, fx, fy);
+  if (dd > 3 && !(dd < 14 && this.lineClear(dom, e.x, e.y, gx, gy))) { // short and clear: just walk there, no map-wide path needed
+    const chase = !e.fg || fx !== e.fg.x || fy !== e.fg.y;
+    const q = dd > 16 ? 4 : 2; fx = ((fx / q) | 0) * q + q / 2; fy = ((fy / q) | 0) * q + q / 2; // share one path per block of cells: hundreds of units heading to hundreds of spots would each need a map-wide path
+    let f = this.F.get(dom, fx, fy, dd < 40 ? Math.ceil((dd * 1.6 + 16) / 8) * 8 : 0); // short trips only need the neighbourhood searched, not the whole map
+    if (f) { e._f = f; e._fx = fx; e._fy = fy; e._fv = this.F.ver; }
+    else if (e._f && e._fv === this.F.ver && Math.abs(e._fx - fx) + Math.abs(e._fy - fy) < 10) f = e._f; // no path budget left this tick: the last path toward nearly the same spot will do
     if (f) { if (this.F.dir(f, e.x, e.y, _dir)) { dx = _dir.x; dy = _dir.y; } }
-    else if (!e.fg) { /* wait for budget */ }
   }
   this.separate(e, dx, dy, p, sp);
   e.walking = true;
@@ -14666,6 +14683,7 @@ addEventListener('keydown', () => { if (typeof Direct !== 'undefined' && window.
       'New Licases special, Breakaway: you and every friend within 15 m sprint flat out for 5 seconds, take 40% less damage, and enemy gunners lose track of you.',
       'Smarter bots: they defend outlying buildings, gather before attacking and push together, reinforce a winning push, bring air cover with the wave, and attack much sooner in Quick Battle.',
       'FPS Modes removed from the main menu.',
+      'Less lag in big late-game battles: pathfinding is shared between nearby units, short trips only search the neighbourhood, and paths are no longer all thrown away every time a building is built or destroyed (about 40% less simulation work with 800+ units).',
       'Repairs for aircraft and ships: Repair at base (K) sends them to your nearest airfield or naval yard, which fixes up to 3 at a time once they are out of the fight for a few seconds. It costs steel and fuel.',
       'Patrol fixed: the Patrol button (U) now sends units back and forth between two points, attacking on the way (planes and helicopters too). Units you move now hold that spot instead of wandering, and come back to it after chasing an enemy instead of running across the map.',
       'Economy: a market on the resource bar swaps steel and fuel at 65% (Shift-click for 500), so you are never stuck with 4000 of one and 20 of the other. Your capital also trickles a little fuel. Bots use the market too.',
