@@ -974,8 +974,8 @@ const NATIONS = [
    blurb: 'Vision +30% · Research cost −35% · Damage +5% · Health +5%',
    tr: {vision: 1.3, research: .65, dmg: 1.05, hp: 1.05}, power: 'satellite'},
   {key: 'valentinos', name: 'The Valentinos', leader: 'Valentino Felsovari', color: '#3fbf6f', dark: '#ce2b37', look: 'italian',
-   blurb: 'Units slowly regenerate · Infantry fight hand to hand · Trattoria: morale and health',
-   tr: {regen: .2, melee: 1}, power: 'forza'},
+   blurb: 'Units slowly regenerate (up to 40% health) · Infantry fight hand to hand · Trattoria: morale and health',
+   tr: {regen: .15, melee: 1}, power: 'forza'},
   {key: 'jethroes', name: 'The Jethroes', leader: 'Alpha Jethro', color: '#e8283c', dark: '#1b2f6b', look: 'usa',
    blurb: 'Damage +10% · Costs −8% · Infantry can turn into alpha wolves',
    tr: {wolf: 1, dmg: 1.1, cost: .92}, power: 'howl'},
@@ -1362,10 +1362,11 @@ const KNIFE = {n: 'Big Knife', t: 'mel', dmg: 75, vs: 'bite', rpm: 95, rng: 2.8,
 const KNIFE_T = 8;
 const PSPECIAL = {
   licases: {n: 'Breakaway', cd: 30, desc: 'The peloton breaks away: you and every friend within 15 m sprint flat out for 5 seconds, take 40% less damage, and enemy gunners lose track of you.'},
-  dhruvs: {n: 'Smart Scan', cd: 30, desc: 'Reveals every enemy within 25 m for 8 seconds.'},
-  valentinos: {n: 'Rally Flag', cd: 50, desc: 'Patches up friends around you, gives them +15% damage for 6 seconds, and you draw a combat knife.'},
-  jethroes: {n: 'Alpha Howl', cd: 40, desc: 'Turn into an alpha wolf blob for 14 seconds.'},
-  toms: {n: 'Big Knife', cd: 25, desc: 'Pull out a huge knife for 8 seconds. Massive melee slashes.'},
+  dhruvs: {n: 'Orbital Laser', cd: 40, desc: 'Your satellite burns a laser into the ground at your crosshair after a 1.5 s warning, and shows every enemy within 25 m for 8 seconds.'},
+  valentinos: {n: 'Vendetta', cd: 45, desc: 'Mark the enemy in your crosshair: everyone sees it for 12 seconds and your whole side deals it +40% damage.'},
+  jethroes: {n: 'Alpha Howl', cd: 40, desc: 'Turn into an alpha wolf for 14 seconds. The howl terrifies enemy infantry within 12 m: they run and stop shooting for 3 seconds.'},
+  toms: {n: 'Danger Close', cd: 45, desc: 'Call an F-16 bomb run: six bombs walk across the ground from your crosshair along the way you face, after a 2 s warning. Stay clear.'},
+  charlies: {n: 'Wingmen', cd: 45, desc: 'Launch three hunter drones from where you are. They find the nearest enemies and dive on them.'},
 };
 </script>
 
@@ -2226,6 +2227,14 @@ function inTunnel(M, N, e) { if (e.ug) return true; if (!M.dug) return false; co
 // A unit that walks into a covered cell from a tunnel cell is underground (e.ug): hidden, safe from shells and bombs, and only fights at arm's length.
 const BORE_COVER = 1.4, BORE_T = 1.1, BORE_COST = 3, BORE_MAX = 70;
 function boreInit(M, N) { if (!M.bore) { M.bore = new Uint8Array(N * N); M.bz = new Float32Array(N * N); } }
+function boreFloor(M, N, x, y) { // smooth tunnel floor: the bore cells round you, nearest counting most
+  let s = 0, w = 0; const rx = Math.round(x), ry = Math.round(y);
+  for (let j = -1; j <= 1; j++) for (let i = -1; i <= 1; i++) { const q = (ry + j) * N + rx + i; if (!M.bore[q]) continue; const k = Math.max(0, 1.25 - Math.hypot(rx + i - x, ry + j - y)); s += M.bz[q] * k; w += k; }
+  return w ? s / w : gAt(M, x, y);
+}
+const tunCeil = (M, q) => { const N = M.N, h = M.h; return Math.max(M.bz[q] + 1.15, Math.min(M.bz[q] + 1.75, Math.min(h[q], h[q - 1], h[q + 1], h[q - N], h[q + N]) - .2)); }; // roof of a covered bore cell, kept under the hill's skin
+// inside the bore's air space at (x, y, z)? (covered cells only)
+function inBore(M, x, y, z) { if (!M.bore) return false; const q = Math.round(y) * M.N + Math.round(x); return M.bore[q] === 2 && z > M.bz[q] - .1 && z < tunCeil(M, q); }
 function digCells(M, N, x, y, amt, o, RR) { // returns [[i, h], ...] of changed cells
   if (!M.h0) { M.h0 = Float32Array.from(M.h); M.dug = new Float32Array(N * N); M.digO = new Uint8Array(N * N); }
   const out = [], R = RR || 1.15, W = Math.ceil(R);
@@ -2751,7 +2760,9 @@ Sim.prototype.issue = function (c, pi) {
     case 'bore': { // workers bore a real tunnel: straight line, floor sloping evenly from one end to the other, under whatever is on top
       const L = Math.min(BORE_MAX, Math.hypot(c.x2 - c.x1, c.y2 - c.y1)), a = Math.atan2(c.y2 - c.y1, c.x2 - c.x1), n = Math.max(2, Math.ceil(L / .8)), cells = [], seen = new Set();
       const z0 = gAt(this.M, c.x1, c.y1), x2 = c.x1 + Math.cos(a) * L, y2 = c.y1 + Math.sin(a) * L, z1 = Math.max(.3, gAt(this.M, x2, y2));
-      for (let i = 0; i <= n; i++) { const x = c.x1 + (x2 - c.x1) * i / n, y = c.y1 + (y2 - c.y1) * i / n, q = Math.round(y) * this.N + Math.round(x); if (seen.has(q) || x < 2 || y < 2 || x > this.N - 3 || y > this.N - 3) continue; seen.add(q); if (this.M.water[q]) break; cells.push([Math.round(x), Math.round(y), Math.min(z0 + (z1 - z0) * i / n, this.M.h[q])]); }
+      for (let i = 0; i <= n; i++) { const x = c.x1 + (x2 - c.x1) * i / n, y = c.y1 + (y2 - c.y1) * i / n, q = Math.round(y) * this.N + Math.round(x); if (seen.has(q) || x < 2 || y < 2 || x > this.N - 3 || y > this.N - 3) continue; seen.add(q); if (this.M.water[q]) break; const zz = Math.min(z0 + (z1 - z0) * i / n, this.M.h[q]), pv = cells[cells.length - 1];
+        if (pv && pv[0] !== Math.round(x) && pv[1] !== Math.round(y)) { const qm = pv[1] * this.N + Math.round(x); if (!seen.has(qm) && !this.M.water[qm]) { seen.add(qm); cells.push([Math.round(x), pv[1], Math.min((pv[2] + zz) / 2, this.M.h[qm])]); } } // no corner-only steps: you can walk it
+        cells.push([Math.round(x), Math.round(y), zz]); }
       let wk = mine.filter(e => e.k === 'worker'); if (!wk.length) wk = this.autoWorkers(pi, c.x1, c.y1, 3);
       if (!wk.length) { this.notify(pi, 'No workers to dig: train some at your capital', 'bad'); break; }
       if (cells.length < 2) { this.notify(pi, 'Can not tunnel there', 'bad'); break; }
@@ -2827,7 +2838,7 @@ Sim.prototype.issue = function (c, pi) {
       break;
     }
     case 'pilot': { const e = mine[0]; if (e && c.on && this.players[pi].nat.key === 'charlies' && (e.d.cat === 'air' || e.d.cat === 'heli') && !(this.scen && this.scen.arc)) break; if (e && !e.b) { if (c.on) { if (!e.pilot) { e.hpm *= PILOT_HP; e.hp *= PILOT_HP; } e.chute = 0; e.pilot = pi + 1; this.clearOrders(e); this.ev({k: 'cry', p: pi, id: e.id}); } else { if (e.pilot) { e.hpm /= PILOT_HP; e.hp = Math.min(e.hp / PILOT_HP, e.hpm); } e.pilot = 0; if (e.air) e.hold = {x: e.x, y: e.y}; } } break; }
-    case 'pose': { const e = this.ents.get(c.id); if (e && e.o === pi && e.pilot === pi + 1) { if (!e.rail) { e.x = clamp(c.x, 0, this.N - 1); e.y = clamp(c.y, 0, this.N - 1); e.z = c.z; e.h = c.h; } e.p = c.p || 0; e.r = c.r || 0; if (c.tu !== undefined) e.tu = c.tu; if (c.m !== undefined) e.moving = c.m; e.ch = c.ch; e.pilT = this.t; if (c.ap !== undefined) e.p = clamp(c.ap, -1.4, 1.4); if (c.f) e.fireT = this.t; if (c.a) e.adsT = this.t; if (c.th && !(e.thrT !== undefined && this.t - e.thrT < .7)) e.thrT = this.t; } break; }
+    case 'pose': { const e = this.ents.get(c.id); if (e && e.o === pi && e.pilot === pi + 1) { if (!e.rail) { e.x = clamp(c.x, 0, this.N - 1); e.y = clamp(c.y, 0, this.N - 1); e.z = c.z; e.h = c.h; } e.p = c.p || 0; e.r = c.r || 0; if (c.tu !== undefined) e.tu = c.tu; if (c.m !== undefined) e.moving = c.m; e.ch = c.ch; e.pilT = this.t; if (c.ug !== undefined) e.ug = c.ug && this.M.bore ? 1 : 0; if (c.ap !== undefined) e.p = clamp(c.ap, -1.4, 1.4); if (c.f) e.fireT = this.t; if (c.a) e.adsT = this.t; if (c.th && !(e.thrT !== undefined && this.t - e.thrT < .7)) e.thrT = this.t; } break; }
     case 'pfire': this.pilotFire(c, pi); break;
     case 'streak': { // killstreak reward: an artillery barrage walks across the marked ground after a short warning
       const e = this.ents.get(c.id); this.streakAt = this.streakAt || {};
@@ -3250,6 +3261,7 @@ Sim.prototype.hurt = function (t, dmg, by) {
   if (t.b && t.hard >= 1) dmg *= .35;                       // hardened: rebuilt underground in reinforced concrete
   if (this.peaceOpt && this.peace && by >= 0 && this.players[by] && !this.players[by].bot && t.o >= 0 && this.players[t.o] && this.players[t.o].bot) this.declareWar(by); // shooting first starts the war
   if ((t.breakT || 0) > this.t) dmg *= .6;                 // Licases Breakaway
+  if ((t.vendT || 0) > this.t && by !== null && by !== undefined && by >= 0 && this.players[by] && this.friendly(by, t.vendBy)) dmg *= 1.4; // Valentinos Vendetta
   const hp0 = t.hp; t.hp -= dmg; t.hurtT = this.t;
   // damage report for human players (bombs, shells, drones, bullets...): summed and sent a few times a second
   if (by !== null && by !== undefined && by !== t.o && this.players[by] && !this.players[by].bot && !t.gt) {
@@ -3501,7 +3513,7 @@ Sim.prototype.fire = function (a, t) {
   dm *= this.coverMul(t, ty);
   // Valentinos infantry fix bayonets: anything on foot within arm's reach gets stabbed instead of shot
   if (p.nat.tr.melee && d.cat === 'inf' && !t.b && t.d.cat === 'inf' && !a.pilot && a.k !== 'medic' && a.k !== 'wolf' && Math.hypot(t.x - a.x, t.y - a.y) < 2.3) {
-    const md = (13 + d.hp * .07) * this.dmgMult(p, d) * this.coverMul(t, 'bite');
+    const md = (10 + d.hp * .06) * this.dmgMult(p, d) * this.coverMul(t, 'bite');
     this.ev({k: 's', a: a.id, t: t.id, at: t.id, ty: 'bite', d: .05, x: t.x, y: t.y, z: t.z});
     this.hurt(t, md, a.o); if (t.hp <= 0) this.creditKill(a, t);
     a.st = 2; a.cd = Math.min(a.cd, 0) + 1; return;
@@ -3601,10 +3613,12 @@ Sim.prototype.explodeDrone = function (a) {
 Sim.prototype.stepStrikes = function () {
   this.strikes = this.strikes.filter(s => {
     if (this.t < s.at || this.t < s.nx) return true;
-    s.nx = this.t + .22; s.n--;
-    const a = this.rnd() * 6.283, r = Math.sqrt(this.rnd()) * 7, x = s.x + Math.cos(a) * r, y = s.y + Math.sin(a) * r;
-    this.ev({k: 'boom', x, y, z: Math.max(hAt(this.M, x, y), 0), s: 1.5});
-    this.splash(x, y, 3.4, 110, s.o, 'bomb', s.src && this.ents.has(s.src.id) ? s.src : null);
+    s.nx = this.t + (s.gap || .22); s.n--;
+    const a = this.rnd() * 6.283, r = Math.sqrt(this.rnd()) * (s.r === undefined ? 7 : s.r);
+    let x = s.x + Math.cos(a) * r, y = s.y + Math.sin(a) * r;
+    if (s.line) { x += s.line[0] * s.step; y += s.line[1] * s.step; s.step++; x = clamp(x, 1, this.N - 2); y = clamp(y, 1, this.N - 2); }
+    this.ev({k: 'boom', x, y, z: Math.max(hAt(this.M, x, y), 0), s: s.laser ? 1 : 1.5});
+    this.splash(x, y, s.sr || 3.4, s.dmg || 110, s.o, 'bomb', s.src && this.ents.has(s.src.id) ? s.src : null);
     return s.n > 0;
   });
 };
@@ -3958,7 +3972,7 @@ Sim.prototype.stepUnit = function (e) {
   if (e.drop) { if (this.t > e.drop) { e.drop = 0; this.ev({k: 'land', id: e.id}); } return; }
   e.cd -= DT * (1 + .05 * (p.trat || 0));
   if (e.st > 0) e.st = 0;
-  if (p.nat.tr.regen && e.hp < e.hpm && this.tick % 10 === 0 && this.t - (e.hurtT || 0) > 10) e.hp = Math.min(e.hpm, e.hp + p.nat.tr.regen * 2); // heals between fights
+  if (p.nat.tr.regen && e.hp < e.hpm * .4 && this.tick % 10 === 0 && this.t - (e.hurtT || 0) > 12) e.hp = Math.min(e.hpm * .4, e.hp + p.nat.tr.regen * 2); // patches up between fights, but only back to 40%
   if (e.wolf && this.t > e.wolf.until) this.fromWolf(e);
   if (d.nukeT && !e.nukeReady) { e.nukeCD -= DT; if (e.nukeCD <= 0) { e.nukeReady = true; this.notify(p.i, 'Nuclear sub: ICBM ready', 'good', e.x, e.y); } }
   if (d.heal && this.tick % 10 === e.id % 10) this.medic(e);
@@ -4050,7 +4064,7 @@ Sim.prototype.stepGround = function (e, p) {
   let moving = false;
   if (tgt && tgt.hp > 0) {
     const q = Math.hypot(tgt.x - e.x, tgt.y - e.y) - (tgt.b ? tgt.d.s / 2 : 0);
-    if (p.nat.tr.melee && d.cat === 'inf' && !tgt.b && tgt.d.cat === 'inf' && q > 1.8 && q < 4.5 && e.hp > e.hpm * .65 && e.stance !== 'hold' && e.k !== 'medic' && e.k !== 'sniper') {
+    if (p.nat.tr.melee && d.cat === 'inf' && !tgt.b && tgt.d.cat === 'inf' && q > 1.8 && q < 4 && e.hp > e.hpm * .75 && e.stance !== 'hold' && e.k !== 'medic' && e.k !== 'sniper') {
       this.moveAlong(e, tgt.x, tgt.y, dom, p, tgt.x, tgt.y); moving = true;   // Avanti! charge into bayonet range
       if (e.cd <= 0 && q <= d.rng) { this.fire(e, tgt); e.cd = d.cd * 1.4; }
     } else if (q <= d.rng && !(d.minRng && q < d.minRng)) {
@@ -4443,6 +4457,7 @@ function rayGround(M, o, v, max, water) {
     const x = o.x + v.x * t, y = o.y + v.y * t, z = o.z + v.z * t;
     if (x < 0 || y < 0 || x >= M.N - 1 || y >= M.N - 1) return t;
     const g = gAt(M, x, y);
+    if (z < g && M.bore && inBore(M, x, y, z)) continue; // through the air of a bored tunnel
     if (z < g || (water && z < -.05 && g < 0)) {
       let a = t - st, b = t; for (let i = 0; i < 6; i++) { const m = (a + b) / 2, gz = hAt(M, o.x + v.x * m, o.y + v.y * m); if (o.z + v.z * m < gz) b = m; else a = m; }
       return b;
@@ -4596,10 +4611,30 @@ Sim.prototype.pilotSpecial = function (c, pi) {
   p.specT = this.t + S.cd;
   const k = p.nat.key;
   if (k === 'licases') this.near(a.x, a.y, 15, t => { if (t.o === pi && !t.b && (t.d.cat === 'inf' || t === a)) { t.breakT = this.t + 5; t.aimId = 0; this.ev({k: 'heal', t: t.id}); } });
-  else if (k === 'dhruvs') this.near(a.x, a.y, 25, t => { if (!this.friendly(t.o, pi)) t.revealed = this.t + 8; });
-  else if (k === 'valentinos') { this.near(a.x, a.y, 5, t => { if (t.o === pi && !t.b) { t.hp = Math.min(t.hpm, t.hp + 20); t.rallyT = this.t + 6; this.ev({k: 'heal', t: t.id}); } }); if (a.d.cat === 'inf') a.knifeT = this.t + KNIFE_T + .5; }
-  else if (k === 'jethroes') { if (a.d.cat === 'inf' && a.k !== 'wolf') { const hp = a.hp / a.hpm; this.toWolf(a, 14); a.hpm *= PILOT_HP; a.hp = a.hpm; a.wolf.frac = hp; } }
-  else if (k === 'toms') { if (a.d.cat !== 'inf') { p.specT = this.t + 1; return; } a.knifeT = this.t + KNIFE_T + .5; }
+  // aim point from the client (crosshair on the ground), else 12 m ahead
+  const ok = isFinite(c.x) && isFinite(c.y) && Math.hypot(c.x - a.x, c.y - a.y) < 70, ax = clamp(ok ? c.x : a.x + Math.cos(a.h) * 12, 2, this.N - 3), ay = clamp(ok ? c.y : a.y + Math.sin(a.h) * 12, 2, this.N - 3);
+  const S2 = (o) => (this.strikes = this.strikes || []).push(Object.assign({o: pi, src: a, at: this.t + 1.5, nx: 0}, o));
+  if (k === 'dhruvs') {
+    this.near(a.x, a.y, 25, t => { if (!this.friendly(t.o, pi)) t.revealed = this.t + 8; });
+    S2({x: ax, y: ay, n: 6, r: 2.2, dmg: 75, sr: 2.6, gap: .2, laser: 1}); this.ev({k: 'boom', x: ax, y: ay, z: 0, s: .4});
+  } else if (k === 'valentinos') {
+    let T = c.tid ? this.ents.get(c.tid) : null;
+    if (!T || this.friendly(T.o, pi) || T.hp <= 0 || Math.hypot(T.x - a.x, T.y - a.y) > 80) { // nothing under the crosshair: the nearest enemy ahead
+      T = null; let bs = 1e9; this.near(a.x, a.y, 35, t => { if (t.hp <= 0 || t.o < 0 || this.friendly(t.o, pi)) return; const dd = Math.hypot(t.x - a.x, t.y - a.y), ang = Math.abs(angDiff(a.h, Math.atan2(t.y - a.y, t.x - a.x))); const sc = dd + ang * 20; if (sc < bs) { bs = sc; T = t; } }); }
+    if (!T) { p.specT = this.t + 1; this.ev({k: 'msg', p: pi, text: 'Vendetta: no enemy to mark', kind: 'bad'}); return; }
+    T.vendT = this.t + 12; T.vendBy = pi; T.revealed = Math.max(T.revealed || 0, this.t + 12);
+    this.ev({k: 'msg', p: pi, text: 'VENDETTA: ' + (T.b ? T.d.n : T.d.n) + ' is marked. Make it pay!', kind: 'gold'});
+  } else if (k === 'jethroes') {
+    if (a.d.cat === 'inf' && a.k !== 'wolf') { const hp = a.hp / a.hpm; this.toWolf(a, 14); a.hpm *= PILOT_HP; a.hp = a.hpm; a.wolf.frac = hp; }
+    this.near(a.x, a.y, 12, t => { if (t.b || t.d.cat !== 'inf' || t.o < 0 || this.friendly(t.o, pi) || t.pilot) return;
+      t.cd = Math.max(t.cd || 0, 3); const an = Math.atan2(t.y - a.y, t.x - a.x), fx = clamp(t.x + Math.cos(an) * 7, 1, this.N - 2), fy = clamp(t.y + Math.sin(an) * 7, 1, this.N - 2);
+      if (passable(this.M, 0, Math.round(fy) * this.N + Math.round(fx))) { this.clearOrders(t); this.go(t, fx, fy); } });
+  } else if (k === 'toms') {
+    const dx = Math.cos(a.h), dy = Math.sin(a.h); S2({x: ax, y: ay, n: 6, r: .6, dmg: 120, sr: 3.2, gap: .25, at: this.t + 2, line: [dx * 2.6, dy * 2.6], step: 0});
+    this.ev({k: 'msg', p: pi, text: 'F-16 inbound: bombs on your mark!', kind: 'gold'});
+  } else if (k === 'charlies') {
+    for (let i = 0; i < 3; i++) { const an = a.h + (i - 1) * .8, dr = this.addUnit('hunter', pi, clamp(a.x + Math.cos(an) * 1.5, 1, this.N - 2), clamp(a.y + Math.sin(an) * 1.5, 1, this.N - 2)); if (dr) { dr.life = 30; dr.hold = {x: a.x, y: a.y}; } }
+  }
   this.ev({k: 'special', p: pi, id: a.id, n: k});
 };
 
@@ -8580,6 +8615,40 @@ Renderer.prototype.buildRail = function (M, N) {
   this.world.add(G); this.railG = G;
 };
 // A timber-framed tunnel mouth where a bore enters or leaves a hill
+// Inside of the bored tunnels: floor, earth walls and a timbered roof, only seen from the tunnel (the hill hides it from outside)
+Renderer.prototype.buildTunnels = function (M, N) {
+  if (this.tunMesh) { this.world.remove(this.tunMesh); this.tunMesh.geometry.dispose(); this.tunMesh = null; }
+  if (!M.bore) return;
+  const P = [], C = [], B = M.bore;
+  const quad = (a, b, c, d, col) => { for (const v of [a, b, c, a, c, d]) { P.push(v[0], v[1], v[2]); C.push(col[0], col[1], col[2]); } };
+  const shade = (hx, f) => [((hx >> 16) & 255) / 255 * f * .3, ((hx >> 8) & 255) / 255 * f * .3, (hx & 255) / 255 * f * .3]; // dim: lantern-lit earth
+  for (let q = 0; q < N * N; q++) {
+    if (B[q] !== 2) continue;
+    const x = q % N, y = (q / N) | 0, f = M.bz[q], c = tunCeil(M, q), x0 = x - .5, x1 = x + .5, y0 = y - .5, y1 = y + .5, beam = (x + y) % 3 === 0;
+    quad([x0, f, y0], [x1, f, y0], [x1, f, y1], [x0, f, y1], shade(0x4a3b2a, .9 + ((x * 7 + y * 3) % 5) * .03));
+    quad([x0, c, y0], [x0, c, y1], [x1, c, y1], [x1, c, y0], shade(beam ? 0x6b4a2b : 0x3b2f24, 1));
+    for (const [dx, dy, ax, ay, bx, by] of [[1, 0, x1, y0, x1, y1], [-1, 0, x0, y1, x0, y0], [0, 1, x1, y1, x0, y1], [0, -1, x0, y0, x1, y0]]) {
+      const n = q + dy * N + dx, bn = B[n] || 0, wc = shade(beam ? 0x6b4a2b : 0x55432f, .75 + ((x + y) % 4) * .05);
+      if (bn === 0) quad([ax, f, ay], [bx, f, by], [bx, c, by], [ax, c, ay], wc);       // earth wall
+      else if (bn === 2) { const f2 = M.bz[n], c2 = tunCeil(M, n);                    // steps between cells of different height
+        if (f2 < f - .01) quad([ax, f2, ay], [bx, f2, by], [bx, f, by], [ax, f, ay], wc);
+        if (c2 > c + .01) quad([ax, c, ay], [bx, c, by], [bx, c2, by], [ax, c2, ay], wc); }
+      else if (bn === 1) { const top = Math.max(c, hAt(M, x + dx * .5, y + dy * .5)); if (M.h[n] > c) quad([ax, c, ay], [bx, c, by], [bx, top, by], [ax, top, ay], wc); } // lintel over the way out
+    }
+  }
+  if (!P.length) return;
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(C, 3)); g.computeVertexNormals();
+  if (!this.tunMat) this.tunMat = new THREE.MeshLambertMaterial({vertexColors: true, side: THREE.DoubleSide});
+  const m = this.tunMesh = new THREE.Mesh(g, this.tunMat); m.receiveShadow = false; m.castShadow = false; this.world.add(m);
+};
+// in a tunnel in first person: close, dark air (a lantern's reach) instead of the open-sky haze
+Renderer.prototype.tunnelView = function () {
+  const ug = typeof Direct !== 'undefined' && Direct.on && Direct.ug && Direct.mode === 'soldier', F = this.scene.fog;
+  if (!!ug === !!this.ugView || !F) return;
+  this.ugView = !!ug;
+  if (ug) { this.fogSave = {c: F.color.getHex(), n: F.near, f: F.far}; F.color.set(0x050302); F.near = 1; F.far = 13; if (this.tunDirty !== 0 && !this.tunMesh) this.buildTunnels(this.view.M, this.view.N); }
+  else if (this.fogSave) { F.color.set(this.fogSave.c); F.near = this.fogSave.n; F.far = this.fogSave.f; }
+};
 Renderer.prototype.addPortal = function (x, y, a, z, view) {
   const lin = h => new THREE.Color(h).convertSRGBToLinear();
   if (!this.portalMat) this.portalMat = [new THREE.MeshStandardMaterial({color: lin(0x6b4a2b), roughness: .9}), new THREE.MeshBasicMaterial({color: 0x050505})];
@@ -9254,7 +9323,7 @@ Renderer.prototype.handle = function (ev, view) {
     case 'pjx': this.projEnd(ev, view); break;
     case 'road': this.paintRoad(ev.x, ev.y); break;
     case 'dig': this.digTerrain(ev.x, ev.y); break;
-    case 'bore': if (ev.p) this.addPortal(ev.x, ev.y, ev.a, ev.z, view); break;
+    case 'bore': if (ev.p) this.addPortal(ev.x, ev.y, ev.a, ev.z, view); this.tunDirty = performance.now(); break;
     case 'dig2': { (this.digQ = this.digQ || []).push(...ev.c); const r = this.rnd, z = hAt(view.M, ev.x, ev.y);
       if (this.isVisible(ev.x, ev.y)) for (let i = 0; i < 4; i++) this.addP(ev.x + (r() - .5) * .6, z + .1, ev.y + (r() - .5) * .6, (r() - .5) * 1.4, 1 + r() * 1.5, (r() - .5) * 1.4, .07 + r() * .05, .7, .36, .28, .2, false, .95, .1, 9);
       break; }
@@ -9566,7 +9635,7 @@ Renderer.prototype.drawEntities = function (dt, v) {
     if (e.id === this.fpId && this.fpPose) { e.rx = this.fpPose.x; e.ryy = this.fpPose.y; e.rz = this.fpPose.z; e.ry = this.fpPose.h; e.rp = this.fpPose.p; e.rr = this.fpPose.r; if (this.fpPose.tu !== undefined) e.rtu = this.fpPose.tu; e.rtp = this.fpPose.tp || 0; }
     else {
       const kk = e.air ? kFast : k;
-      const zT = e.ug ? Math.max(e.z, gAt(v.M, e.x, e.y)) : e.z; // underground: shown as a shadow on the ground above
+      const zT = e.ug && !this.ugView ? Math.max(e.z, gAt(v.M, e.x, e.y)) : e.z; // underground: shown as a shadow on the ground above (unless you are down there too)
       e.rx += (e.x - e.rx) * kk; e.ryy += (e.y - e.ryy) * kk; e.rz += (zT - e.rz) * kk;
       e.ry += angDiff(e.ry, e.h) * kk; e.rr += ((e.r || 0) - (e.rr || 0)) * kk; e.rp += ((e.p || 0) - (e.rp || 0)) * kk;
       if (e.tu !== undefined) e.rtu += angDiff(e.rtu, e.tu) * kk * .7;
@@ -9605,7 +9674,7 @@ Renderer.prototype.drawEntities = function (dt, v) {
     if (!seen) { if (e.b) { const o = this.bmeshes.get(e.id); if (o) o.group.visible = false; } continue; }
     hlist.push(e);
     const hurtQ = e.hurtT && v.t - e.hurtT < .22 ? 1 : 0;
-    const tint = hurtQ ? _col.setRGB(1.8, .7, .6) : e.ug ? _col.setRGB(.3, .32, .42) : null;
+    const tint = hurtQ ? _col.setRGB(1.8, .7, .6) : e.ug && !this.ugView ? _col.setRGB(.3, .32, .42) : null;
     if (e.b) {
       const o = this.buildingMesh(e);
       o.group.visible = true;
@@ -9662,7 +9731,7 @@ const _origDraw = Renderer.prototype.draw;
 Renderer.prototype.draw = function (dt, view) {
   const t = this.r.render; const self = this;
   // commit instance counts just before rendering, after every put() of this frame
-  this.r.render = function (s, c) { self.updateLod(); if (self.bridgeDirty && performance.now() - self.bridgeDirty > 250) { self.bridgeDirty = 0; self.buildBridges(self.view.M, self.view.N); } self.commit(); self.r.render = t; t.call(self.r, s, c); };
+  this.r.render = function (s, c) { self.updateLod(); self.tunnelView(); if (self.tunDirty && performance.now() - self.tunDirty > 300) { self.tunDirty = 0; self.buildTunnels(self.view.M, self.view.N); } if (self.bridgeDirty && performance.now() - self.bridgeDirty > 250) { self.bridgeDirty = 0; self.buildBridges(self.view.M, self.view.N); } self.commit(); self.r.render = t; t.call(self.r, s, c); };
   const post = this.gradeOn();
   if (post) this.r.setRenderTarget(this.gradeRT);
   _origDraw.call(this, dt, view);
@@ -10132,7 +10201,7 @@ const Direct = {
     this.aimYaw = this.yaw; this.aimPitch = 0; this.camYaw = this.yaw; this.camPitch = this.mode === 'plane' ? -.05 : 0;
     const arcAir = ui.g && ((ui.g.view && ui.g.view.scen) || (ui.g.sim && ui.g.sim.scen) || {}).arc === 'air';
     this.W = pwpnOf(e).map(w => ({w, ammo: w.mag || 1, rl: 0, cd: 0, msl: arcAir && w.t === 'msl' ? MSL_LOAD : undefined}));
-    this.slot = 0; this.ads = false; this.adsK = 0; this.bloom = 0; this.recoilP = 0; this.recoilY = 0; this.breath = 1; this.lockId = 0; this.lockK = 0; this.vLock = 0; this.leadAim = null; this.spec = 1; this.gear = true; this.lkOff = {y: 0, p: 0};
+    this.slot = 0; this.ads = false; this.adsK = 0; this.bloom = 0; this.recoilP = 0; this.recoilY = 0; this.breath = 1; this.lockId = 0; this.lockK = 0; this.vLock = 0; this.leadAim = null; this.spec = 1; this.gear = true; this.lkOff = {y: 0, p: 0}; this.ug = !!e.ug; this.lc = undefined;
     this.hits = []; this.nums = []; this.dmgDir = []; this.kick = 0; this.flyT = 0; this.reloadK = 0; this.bobT = 0; this.flashT = 0; this.stickT = 0; this.salvo = 0; this.dead = false;
     const p = this.pose; p.x = e.x; p.y = e.y; p.z = e.z; p.h = e.h; p.p = 0; p.r = 0; p.tu = e.tu === undefined ? e.h : e.tu;
     this.grounded = false; this.landing = false;
@@ -10453,11 +10522,11 @@ const Direct = {
     const g = this.ui.g, p = g.view.players[g.me], S = PSPECIAL[p.nat.key];
     if (!S) return;
     if ((p.specT || 0) > g.view.t) { this.msg(S.n + ' ready in ' + Math.ceil(p.specT - g.view.t) + 's', 1); Sfx.bad(); return; }
-    g.issue({c: 'pspecial', id: this.id});
+    const P = this.aimPt, hit = this.aimHit && this.aimHit.ent, tid = hit && !g.view.friendly(hit.o, g.me) ? hit.id : this.vLock || this.lockId || 0;
+    g.issue({c: 'pspecial', id: this.id, x: P ? P.x : undefined, y: P ? P.y : undefined, tid});
     p.specT = g.view.t + S.cd; this.msg(S.n + '!', 1.2); Sfx.good();
     if (p.nat.key === 'licases') this.dashT = performance.now() + 5000;
     if (p.nat.key === 'jethroes') Sfx.howl();
-    if (p.nat.key === 'toms' || (p.nat.key === 'valentinos' && this.mode === 'soldier')) this.drawKnife();
   },
   drawKnife() {
     if (this.mode !== 'soldier' || this.knifeEnd) { if (this.mode !== 'soldier') this.msg('Knife only works on foot', 1.2); return; }
@@ -10534,7 +10603,7 @@ const Direct = {
     if (this.sendT <= 0) {
       this.sendT = .066; const p = this.pose;
       const sold = this.mode === 'soldier', ago = performance.now() - (this.shotAt || -1e5), cw = sold && this.W && this.W[this.slot] && this.W[this.slot].w;
-      g.issue(this.mode === 'crew' ? {c: 'icrew', st: this.seatId || '', x: +this.aboard.x.toFixed(2), z: +this.aboard.z.toFixed(2), yaw: +this.aboard.yaw.toFixed(2)} : {c: 'pose', id: this.id, x: p.x, y: p.y, z: p.z, h: p.h, p: p.p, r: p.r, tu: p.tu, m: !!this.mv, ch: this.jump === 'fall' ? 0 : this.jump === 'canopy' ? 1 : undefined, ap: sold ? this.pitch : undefined, f: sold && ago < 280 ? 1 : 0, a: sold && this.ads ? 1 : 0, th: sold && cw && cw.snd === 'throw' && ago < 650 ? 1 : 0});
+      g.issue(this.mode === 'crew' ? {c: 'icrew', st: this.seatId || '', x: +this.aboard.x.toFixed(2), z: +this.aboard.z.toFixed(2), yaw: +this.aboard.yaw.toFixed(2)} : {c: 'pose', id: this.id, x: p.x, y: p.y, z: p.z, h: p.h, p: p.p, r: p.r, tu: p.tu, m: !!this.mv, ch: this.jump === 'fall' ? 0 : this.jump === 'canopy' ? 1 : undefined, ug: sold && this.ug ? 1 : 0, ap: sold ? this.pitch : undefined, f: sold && ago < 280 ? 1 : 0, a: sold && this.ads ? 1 : 0, th: sold && cw && cw.snd === 'throw' && ago < 650 ? 1 : 0});
     }
     if (this.mode !== 'crew') this.weapons(dt, g, e);
     this.msgT = (this.msgT || 0) - dt;
@@ -10761,15 +10830,25 @@ const Direct = {
     if (!M.ruinMask) { const R = M.ruinMask = new Uint8Array(N * N); for (const R2 of M.ruins || []) if (R2.kind !== 'rubble') for (let y = Math.round(R2.y - R2.d / 2 + .5); y < Math.round(R2.y + R2.d / 2); y++) for (let x = Math.round(R2.x - R2.w / 2 + .5); x < Math.round(R2.x + R2.w / 2); x++) if (x >= 0 && y >= 0 && x < N && y < N) R[y * N + x] = 1; }
     const walk = i => !M.occ[i] && !(M.block[i] && M.ruinMask[i]);
     const free = (x, y) => walk(Math.round(y) * N + Math.round(x)) || !walk(Math.round(p.y) * N + Math.round(p.x));
-    { const mv = Math.hypot(nx - p.x, ny - p.y); if (mv > 1e-4 && this.onGround !== false) { const gr = (gAt(M, nx, ny) - gAt(M, p.x, p.y)) / mv; if (gr > .7) { const f = Math.max(.3, 1 - (gr - .7) * .45); nx = p.x + (nx - p.x) * f; ny = p.y + (ny - p.y) * f; } } }
-    if (free(nx, ny)) { p.x = nx; p.y = ny; } else if (free(nx, p.y)) { p.x = nx; this.vel.y *= .3; } else if (free(p.x, ny)) { p.y = ny; this.vel.x *= .3; } else { this.vel.x = this.vel.y = 0; }
+    { const mv = Math.hypot(nx - p.x, ny - p.y); if (mv > 1e-4 && this.onGround !== false && !this.ug) { const gr = (gAt(M, nx, ny) - gAt(M, p.x, p.y)) / mv; if (gr > .7) { const f = Math.max(.3, 1 - (gr - .7) * .45); nx = p.x + (nx - p.x) * f; ny = p.y + (ny - p.y) * f; } } }
+    if (this.ug && M.bore) { // in a bored tunnel: the walls are the edge of the bore
+      const ok = (x, y) => { const rx = Math.round(x), ry = Math.round(y); for (let j = -1; j <= 1; j++) for (let i = -1; i <= 1; i++) { const q = (ry + j) * N + rx + i; if (M.bore[q] && Math.max(Math.abs(rx + i - x), Math.abs(ry + j - y)) < .62) return true; } return false; };
+      if (ok(nx, ny)) { p.x = nx; p.y = ny; } else if (ok(nx, p.y)) { p.x = nx; this.vel.y *= .3; } else if (ok(p.x, ny)) { p.y = ny; this.vel.x *= .3; } else this.vel.x = this.vel.y = 0;
+    } else if (free(nx, ny)) { p.x = nx; p.y = ny; } else if (free(nx, p.y)) { p.x = nx; this.vel.y *= .3; } else if (free(p.x, ny)) { p.y = ny; this.vel.x *= .3; } else { this.vel.x = this.vel.y = 0; }
     { const V = this.ui.g.view; for (const o of V.ents.values()) { if (o.id === this.id || o.b || !o.d || o.d.cat !== 'inf' || o.pilT === undefined || V.t - o.pilT > .8) continue; const ddx = p.x - o.x, ddy = p.y - o.y, dd = Math.hypot(ddx, ddy), RR = .7; if (dd < RR) { const ux = dd > 1e-3 ? ddx / dd : 1, uy = dd > 1e-3 ? ddy / dd : 0, qx = o.x + ux * RR, qy = o.y + uy * RR; if (!M.occ[Math.round(qy) * N + Math.round(qx)]) { p.x = qx; p.y = qy; } } } } // other players are solid
     const spd = Math.hypot(this.vel.x, this.vel.y);
     this.mv = spd > .3; this.sprinting = sprint && this.mv; this.moveK = Math.min(1, spd / Math.max(1, d.spd));
     p.h = this.yaw; p.tu = this.yaw;
-    if (k[B.jump] && this.onGround !== false && !wet) { this.vz = wolf ? 6.5 : 5.2; this.onGround = false; }
+    if (M.bore) { // go underground only by walking in at floor level from the tunnel itself (not by crossing the hill on top)
+      const c2 = Math.round(p.y) * N + Math.round(p.x), b2 = M.bore[c2];
+      if (b2 === 2) { if (!this.ug && this.lc !== undefined && this.lc !== c2 && M.bore[this.lc] && p.z < M.bz[c2] + 1.2) { this.ug = true; this.msg('In the tunnel: hidden and safe from shells and bombs', 1.6); } }
+      else if (this.ug) this.ug = false;
+      this.lc = c2;
+    } else this.ug = false;
+    if (k[B.jump] && this.onGround !== false && !wet && !this.ug) { this.vz = wolf ? 6.5 : 5.2; this.onGround = false; }
     this.vz -= 15 * dt; p.z += this.vz * dt;
-    const gh = wet ? Math.max(hAt(M, p.x, p.y), SWIM_Z + Math.sin(performance.now() / 400) * .04) : gAt(M, p.x, p.y);
+    const gh = this.ug ? boreFloor(M, N, p.x, p.y) : wet ? Math.max(hAt(M, p.x, p.y), SWIM_Z + Math.sin(performance.now() / 400) * .04) : gAt(M, p.x, p.y);
+    if (this.ug && p.z > gh) { p.z = gh; this.vz = 0; this.onGround = true; }
     if (p.z <= gh) { if (this.onGround === false && this.vz < -6) this.land = .25; p.z = gh; this.vz = 0; this.onGround = true; }
     if (this.mv && this.onGround !== false) this.bobT += dt * spd * 2.6;
     p.p = 0; p.r = 0;
@@ -11091,7 +11170,9 @@ const Direct = {
     if (this.mode === 'soldier') {
       const nat = this.ui.g.view.players[e.o].nation, D = blobDims(nat), bike = isBiker(e.k, nat);
       const h = e.k === 'wolf' ? .62 : (Settings.blobs ? BLOB.cy * D.h + BLOB.r * D.h * .3 : HUM.eye - .02) * (1 + (e.vet || 0) * .08) + (bike ? BLOB.bike : 0);
-      return {x: p.x + Math.cos(this.yaw) * .16, y: p.y + Math.sin(this.yaw) * .16, z: p.z + h + (this.land || 0) * -.1};
+      let ez = p.z + h + (this.land || 0) * -.1;
+      if (this.ug) { const M = this.ui.g.view.M, q = Math.round(p.y) * M.N + Math.round(p.x); if (M.bore && M.bore[q] === 2) ez = Math.min(ez, tunCeil(M, q) - .22); }
+      return {x: p.x + Math.cos(this.yaw) * .16, y: p.y + Math.sin(this.yaw) * .16, z: ez};
     }
     if (this.mode === 'vehicle' || this.mode === 'ship') { const up = this.mode === 'ship' ? (d.sub ? .9 : 1.6) : e.k === 'tank' ? 1.05 : .95; return {x: p.x + Math.cos(this.turret) * .2, y: p.y + Math.sin(this.turret) * .2, z: p.z + up}; }
     if (this.mode === 'plane') { const cp = Math.cos(p.p), f = .55; return {x: p.x + Math.cos(p.h) * cp * f, y: p.y + Math.sin(p.h) * cp * f, z: p.z + Math.sin(p.p) * f + .14}; }
@@ -11122,7 +11203,7 @@ const Direct = {
     if (fp) {
       cx = E.x; cy = E.y; cz = E.z;
       if (this.mode === 'soldier' && this.mv && this.onGround !== false) cz += Math.abs(Math.sin(this.bobT)) * .012 * (1 - this.adsK);
-      if (this.mode === 'soldier') cz = Math.max(cz, gAt(M, cx + fw.x * .2, cy + fw.y * .2) + .08); // never let the eye sink into a wall or bank right in front of you
+      if (this.mode === 'soldier' && !this.ug) cz = Math.max(cz, gAt(M, cx + fw.x * .2, cy + fw.y * .2) + .08); // never let the eye sink into a wall or bank right in front of you
     } else {
       const back = {plane: 8, heli: 6.5, ship: 9, vehicle: 5, soldier: 2.1}[this.mode], up = {plane: 1.6, heli: 1.8, ship: 3.2, vehicle: 1.8, soldier: .55}[this.mode];
       const side = this.mode === 'soldier' ? .55 * (1 - this.adsK * .4) : 0, sx = -Math.sin(yaw) * side, sy = Math.cos(yaw) * side;
@@ -11138,9 +11219,10 @@ const Direct = {
         if (this.camP) { const a = Math.min(1, dt * 7); cx = this.camP.x + (cx - this.camP.x) * a; cy = this.camP.y + (cy - this.camP.y) * a; cz = this.camP.z + (cz - this.camP.z) * a; }
         cz = Math.max(cz, Math.max(hAt(M, cx, cy), -.2) + .35);
       } else {
-      for (let i = 1; i <= 10; i++) { const q = i / 10, x = ax + (tx - ax) * q, y = ay + (ty - ay) * q, z = az + (tz - az) * q; if (z < Math.max(hAt(M, x, y), -.2) + .25) { f = Math.max(.15, (i - 1) / 10); break; } }
+      const ugc = this.ug && M.bore; if (ugc) tz = Math.min(tz, az + .1); // in a tunnel: stay under the roof
+      for (let i = 1; i <= 10; i++) { const q = i / 10, x = ax + (tx - ax) * q, y = ay + (ty - ay) * q, z = az + (tz - az) * q; if (ugc ? !inBore(M, x, y, z) : z < Math.max(hAt(M, x, y), -.2) + .25) { f = Math.max(.15, (i - 1) / 10); break; } }
       cx = ax + (tx - ax) * f; cy = ay + (ty - ay) * f; cz = az + (tz - az) * f;
-      cz = Math.max(cz, Math.max(hAt(M, cx, cy), -.2) + .3);
+      if (!ugc) cz = Math.max(cz, Math.max(hAt(M, cx, cy), -.2) + .3);
       }
     }
     this.camP = {x: cx, y: cy, z: cz};
@@ -14822,6 +14904,9 @@ addEventListener('keydown', () => { if (typeof Direct !== 'undefined' && window.
   // ---- changelog: add a new entry at the TOP of this list whenever something changes
   const CHANGELOG = [
     {d: '9 Nov 2026', items: [
+      'First person in tunnels: walk into a bored tunnel and you go underground for real, with earth walls, a timbered roof and a dark lantern-lit view. You can fight whoever is down there with you; shots and shells from outside cannot reach you.',
+      'Valentinos nerfed again: regeneration only heals back up to 40% health and is slower, bayonet charges hit softer and only start from 75% health.',
+      'New special abilities (G): Dhruvs Orbital Laser (a satellite burns your crosshair), Valentinos Vendetta (mark an enemy: everyone sees it and hits it 40% harder), Jethroes Alpha Howl now also sends nearby enemy infantry running, Toms Danger Close (an F-16 walks six bombs from your crosshair), Charlies Wingmen (three hunter drones). Licases keep Breakaway.',
       'Target lock (L, or right click in planes) works like War Thunder arcade: one press instantly locks the enemy nearest your crosshair, any direction, and the camera stays on it. When it dies you hop to the next one. Now in planes, helicopters and ships (the mouse nudges your aim off the target to lead or lob).',
       'Missile lock is separate and only works when the plane\'s nose is pointing at the target.',
       'Planes: E fires your special weapon and 1-3 pick which one. New option: manual landing gear (B raises and lowers it; land with it up and you crash).',
