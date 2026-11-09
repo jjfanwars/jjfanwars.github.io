@@ -46,6 +46,7 @@ Browser war game in one file: `index.html` (Three.js r170, inlined: the ESM buil
 - **Touch:** `Direct.isTouch` is decided by the last real input (`window.__ptr`); touchscreen laptops get mouse lock.
 - **Accounts:** `Acct` (next to `Profile`) signs in by username only, syncs `kw-xp`, `kw-stats`, `warsim-camp` and settings with the relay's `/acct/login|save|logout` (class `Accts`, SQLite Durable Object in relay/worker.js). `kw-owner` = account that owns the local save. Menu bar `#acctBar`. Test locally with `npx wrangler@3 dev` in relay/ and `?relay=ws://127.0.0.1:8787` (Chromium needs `--no-proxy-server`).
 - **Tracker:** `Track` (next to `Acct`) sends anonymous hits (random `jjf_uid` per browser; open with device + browser, beat every minute while visible, play with a mode label from `Track.mode(o)` in `UI.launch`, end with win/loss and length from `showOver`) to relay `/track/hit` (class `Track`, SQLite, days in the TZ secret's zone, else UTC). `/track/sum?days=N` feeds `stats.html` (charts: players per day, play time, games, peak online, hour of day, session length, days played, devices, browsers, modes with finish/win rate; also account and live room counts). Opening `/track/sum` or `/stats` on the relay in a browser redirects to stats.html; `?json` shows the raw data. `?notrack` turns it off.
+- **Iron Express (co-op train):** `railRoute(M, N)` (deterministic S-shaped line across the island, cached on `M._rail`, clears trees), `railAt`, `Sim.setupRail/railStep/railRaid/railPub` (`sim.rl` state, scripted events by track distance: amb/heli/gap/supply/block), units `loco`/`gcar` (`d.rail`, AI fire in `stepUnit`, pose ignores x/y), `Direct.moveRail`, `Renderer.buildRail`, `UI.railHud`, event `rlseat` (reseat after your car dies). Lobby type 'rail'.
 - **Xaviers:** neutral healers, only in Play vs bots when the "optXav" checkbox is on (off by default).
 
 ## Recently done (Nov 2026)
@@ -67,6 +68,7 @@ Browser war game in one file: `index.html` (Three.js r170, inlined: the ESM buil
   - Naval battles mode with aircraft carriers, more boats and subs that dive.
   - Kill cam.
   - Camos as rank unlocks.
+  - B-2 strike on Iran (co-op): you and friends fly a B-2 to drop bunker busters on nuclear sites. Opens with a comedy mission briefing from blob versions of Trump and Netanyahu mocking them ("Iran is two weeks away" running gag and similar).
   - Co-op crew mode: you and friends crew one big bomber (or other large vehicle) together. Each person has a role and a job (pilot, gunners, bombardier, commander). You can walk around inside the aircraft, like the ship interiors, to get between stations and do tasks (man a gun, line up the bombsight, repair damage, reload). The crew has to complete mission objectives together (reach the target, drop the bombs, get home).
 - **Older backlog:**
   - Vehicle guns hit where aimed.

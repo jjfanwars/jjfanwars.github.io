@@ -354,6 +354,7 @@ body.cbDeut #ov,body.cbDeut #mm,body.cbDeut #cards img,body.cbDeut #selpanel img
     <button class="big mtile" id="bArc" style="grid-column:1/-1" title="Arcade air and tank battles: endless respawns, tickets and capture points"><b>✈ Air &amp; Tank Battles</b><small>Dogfights and tank fights · 12 vs 12, tickets, capture points</small></button>
     <div class="mgroup">With friends</div>
     <button class="big mtile" id="bHost"><b>🛰 Host a game</b><small>Open a room with bots, friends click Join</small></button>
+    <button class="big mtile" id="bRail" title="Co-op: man the gun cars of an armoured train and get it across the island"><b>🚂 Iron Express (co-op)</b><small>Defend an armoured train across the island with friends</small></button>
     <button class="big mtile" id="bRed"><b>🛩 Operation Red Star (preview)</b><small>Soviet atomic bomber crew: walk the aircraft together</small></button>
     <button class="big mtile" id="bTest"><b>🧪 Multiplayer test room</b><small>No bots, just you and friends</small></button>
     <button class="big mtile" id="bJoin"><b>🔗 Join a game</b><small>Pick an open room from the list</small></button>
@@ -1033,6 +1034,8 @@ const UNITS = {
   fa18:     {n: 'F/A-18 Super Hornet', cat: 'air', arm: 'air', hp: 320, dmg: 34, rng: 14, cd: .85, spd: 15.5, vis: 17, cost: [260, 120], pop: 3, t: 20, from: 'airfield', shot: 'cannon', aa: 1, alt: 11, turn: 1.85, r: .95, hk: 'O', desc: 'Carrier multirole. Gun, Sidewinders and a stick of bombs.'},
   typhoon:  {n: 'Eurofighter Typhoon', cat: 'air', arm: 'air', hp: 300, dmg: 85, rng: 21, cd: 2, spd: 19.5, vis: 21, cost: [290, 140], pop: 3, t: 22, from: 'airfield', shot: 'missile', aa: 1, noGround: 1, alt: 13, turn: 2.05, r: .95, hk: 'J', desc: 'Agile delta-wing dogfighter. Meteor and IRIS-T missiles.'},
   gunship:  {n: 'Gunship', cat: 'heli', arm: 'air', hp: 230, dmg: 16, rng: 8, cd: 1.4, spd: 7, vis: 13, cost: [300, 140], pop: 4, t: 24, from: 'airfield', shot: 'rocket', aa: 1, alt: 6, r: 1, hk: 'U', desc: 'Hovering rocket helicopter. Good against troops, fragile against anti-air.'},
+  loco:     {n: 'Armoured Locomotive', cat: 'veh', arm: 'heavy', hp: 5000, dmg: 10, rng: 10, cd: .45, spd: 0, vis: 18, cost: [0, 0], pop: 0, t: 1, shot: 'bullet', aa: 1, turret: 1, r: 1.4, vsc: 1.25, rail: 1, desc: 'Pulls the Iron Express. If it dies, the mission is lost.'},
+  gcar:     {n: 'Gun Car', cat: 'veh', arm: 'heavy', hp: 1100, dmg: 22, rng: 13, cd: .5, spd: 0, vis: 18, cost: [0, 0], pop: 0, t: 1, shot: 'cannon', aa: 1, turret: 1, r: 1.3, vsc: 1.25, rail: 1, desc: 'Armoured flatcar with a turret. Twin autocannon and rockets.'},
   carrier: {n: 'Aircraft Carrier', cat: 'sea', arm: 'sea', hp: 9000, dmg: 28, rng: 16, cd: .5, spd: 1, vis: 22, cost: [900, 400], pop: 8, t: 60, shot: 'cannon', aa: 1, noGround: 1, turret: 1, r: 2.6, desc: 'Floating airbase. Fly low over the deck to repair and rearm.'},
   seaplane: {n: 'Torpedo Seaplane', cat: 'air', arm: 'air', hp: 300, dmg: 20, rng: 12, cd: .9, spd: 12.5, vis: 15, cost: [230, 100], pop: 3, t: 18, from: 'airfield', shot: 'cannon', alt: 8, turn: 1.8, r: 1, desc: 'Lands and rides on the water. Drops torpedoes that sink ships and the carrier.'},
   destroyer: {n: 'Destroyer', cat: 'sea', arm: 'sea', hp: 750, dmg: 55, rng: 17, cd: 2.2, spd: 3.8, vis: 18, cost: [280, 90], pop: 4, t: 22, from: 'yard', shot: 'shell', splash: 1.4, aa: 1, turret: 1, detect: 1, r: 1.5, hk: 'R', desc: 'Warship. Shells the coast and detects submarines.'},
@@ -1194,6 +1197,9 @@ const PWPN = {
   gunship: [{n: 'Chin Gun', t: 'hit', dmg: 5, vs: 'cannon', rpm: 420, mag: 120, rl: 5, sp: 1.1, ads: .6, rng: 40, crit: 1.4, auto: 1, aa: 1, snd: 'cannon'},
             {n: 'Hydra Rockets', t: 'proj', dmg: 26, vs: 'rocket', spd: 38, g: .6, spl: 1, cd: 1.1, mag: 6, rl: 8, rng: 50, salvo: 1, snd: 'rocket'},
             {n: 'AIM-92 Stinger', t: 'msl', dmg: 60, vs: 'missile', spd: 36, spl: 1, cd: 9, rng: 45, air: 1, snd: 'missile'}],
+  loco: [{n: 'Cab MG', t: 'hit', dmg: 9, vs: 'bullet', rpm: 600, mag: 100, rl: 3, sp: 1, ads: .5, rng: 45, auto: 1, aa: 1, snd: 'mg'}],
+  gcar: [{n: 'Twin 30mm', t: 'proj', dmg: 24, vs: 'cannon', spd: 65, g: 1, spl: .6, rpm: 300, mag: 60, rl: 3.5, sp: .5, ads: .2, kick: .7, rng: 60, zoom: .55, auto: 1, aa: 1, snd: 'cannon'},
+         {n: 'Rocket Rack', t: 'proj', dmg: 110, vs: 'rocket', spd: 40, g: .8, spl: 1.5, mag: 4, rl: 6, cd: .5, rng: 60, snd: 'rocket'}],
   destroyer: [{n: '5-inch Gun', t: 'proj', dmg: 90, vs: 'shell', spd: 40, g: 5, spl: 1.6, mag: 1, rl: 1.6, sp: .3, ads: .1, kick: 1.5, rng: 80, zoom: .5, snd: 'tank'},
             {n: 'Deck Machine Gun', t: 'hit', dmg: 9, vs: 'bullet', rpm: 700, mag: 400, rl: 3, sp: 1.2, ads: .8, kick: .1, rng: 45, crit: 1.3, auto: 1, aa: 1, snd: 'mg'},
             {n: 'Sea Sparrow', t: 'msl', dmg: 95, vs: 'missile', spd: 32, spl: 1, cd: 1.2, rng: 70, air: 1, snd: 'missile'},
@@ -2259,7 +2265,7 @@ function Sim(opts) {
       ecoK: p.bot ? 1 : ({easy: 1.6, normal: 1, hard: .8}[p.eco] || 1), autoEco: !p.bot && (p.eco === 'easy' || !!p.autoEco)};
   });
   for (const p of this.players) if (p.ecoK > 1) { p.steel += 700; p.fuel += 250; } else if (p.ecoK < 1) { p.steel -= 150; }
-  if (opts.redstar) this.setupRedstar(); else if (opts.sandbox) this.setupSandbox(); else if (opts.battle) this.setupBattle(opts.battle); else if (opts.scen) this.setupScen(opts.scen); else for (const p of this.players) this.setupPlayer(p);
+  if (opts.rail) this.setupRail(); else if (opts.redstar) this.setupRedstar(); else if (opts.sandbox) this.setupSandbox(); else if (opts.battle) this.setupBattle(opts.battle); else if (opts.scen) this.setupScen(opts.scen); else for (const p of this.players) this.setupPlayer(p);
   if (opts.xav && !opts.battle && !opts.scen) this.addXaviers(); // optional, Play vs bots only
   if (opts.peace && !opts.battle && !opts.scen) { this.peace = true; this.peaceOpt = true; } // no random attacks: bots build up until a human declares war
 }
@@ -2789,7 +2795,7 @@ Sim.prototype.issue = function (c, pi) {
       break;
     }
     case 'pilot': { const e = mine[0]; if (e && c.on && this.players[pi].nat.key === 'charlies' && (e.d.cat === 'air' || e.d.cat === 'heli') && !(this.scen && this.scen.arc)) break; if (e && !e.b) { if (c.on) { if (!e.pilot) { e.hpm *= PILOT_HP; e.hp *= PILOT_HP; } e.chute = 0; e.pilot = pi + 1; this.clearOrders(e); this.ev({k: 'cry', p: pi, id: e.id}); } else { if (e.pilot) { e.hpm /= PILOT_HP; e.hp = Math.min(e.hp / PILOT_HP, e.hpm); } e.pilot = 0; if (e.air) e.hold = {x: e.x, y: e.y}; } } break; }
-    case 'pose': { const e = this.ents.get(c.id); if (e && e.o === pi && e.pilot === pi + 1) { e.x = clamp(c.x, 0, this.N - 1); e.y = clamp(c.y, 0, this.N - 1); e.z = c.z; e.h = c.h; e.p = c.p || 0; e.r = c.r || 0; if (c.tu !== undefined) e.tu = c.tu; if (c.m !== undefined) e.moving = c.m; e.ch = c.ch; e.pilT = this.t; if (c.ap !== undefined) e.p = clamp(c.ap, -1.4, 1.4); if (c.f) e.fireT = this.t; if (c.a) e.adsT = this.t; if (c.th && !(e.thrT !== undefined && this.t - e.thrT < .7)) e.thrT = this.t; } break; }
+    case 'pose': { const e = this.ents.get(c.id); if (e && e.o === pi && e.pilot === pi + 1) { if (!e.rail) { e.x = clamp(c.x, 0, this.N - 1); e.y = clamp(c.y, 0, this.N - 1); e.z = c.z; e.h = c.h; } e.p = c.p || 0; e.r = c.r || 0; if (c.tu !== undefined) e.tu = c.tu; if (c.m !== undefined) e.moving = c.m; e.ch = c.ch; e.pilT = this.t; if (c.ap !== undefined) e.p = clamp(c.ap, -1.4, 1.4); if (c.f) e.fireT = this.t; if (c.a) e.adsT = this.t; if (c.th && !(e.thrT !== undefined && this.t - e.thrT < .7)) e.thrT = this.t; } break; }
     case 'pfire': this.pilotFire(c, pi); break;
     case 'streak': { // killstreak reward: an artillery barrage walks across the marked ground after a short warning
       const e = this.ents.get(c.id); this.streakAt = this.streakAt || {};
@@ -3278,7 +3284,7 @@ Sim.prototype.playerOut = function (i, by) {
 
 // The war ends when every survivor is on the same team or allied with all the others.
 Sim.prototype.checkOver = function () {
-  if (this.over || this.sandbox || this.redstar) return;
+  if (this.over || this.sandbox || this.redstar || this.rail) return;
   const al = this.players.filter(q => q.alive);
   for (const a of al) for (const b of al) if (a.i < b.i && a.team !== b.team && a.rel[b.i] !== 'ally') return;
   const w = al[0];
@@ -3572,8 +3578,8 @@ Sim.prototype.step = function () {
     if (this.tick % 10 === 0) this.income(p);
   }
   if (this.tick % 10 === 3) this.stepMorale();
-  if (this.tick % 50 === 21) for (const p of this.players) if (p.alive && !this.battle && !this.scen) { if (!p.bot) this.stepWorkers(p); if (p.autoEco) this.stepAutoEco(p); else if (p.autoHouse && !p.bot) this.stepAutoHouse(p); }
-  if (this.tick % 100 === 47 && !this.battle && !this.scen) { // your deputy runs the base (a bit slower than you would) while you fight on the ground
+  if (this.tick % 50 === 21) for (const p of this.players) if (p.alive && !this.battle && !this.scen && !this.rail) { if (!p.bot) this.stepWorkers(p); if (p.autoEco) this.stepAutoEco(p); else if (p.autoHouse && !p.bot) this.stepAutoHouse(p); }
+  if (this.tick % 100 === 47 && !this.battle && !this.scen && !this.rail) { // your deputy runs the base (a bit slower than you would) while you fight on the ground
     const away = {}; for (const e of this.ents.values()) if (e.pilot) away[e.pilot - 1] = 1;
     for (const p of this.players) if (p.alive && !p.bot && away[p.i]) this.stepDeputy(p);
   }
@@ -3620,7 +3626,7 @@ Sim.prototype.digAt = function (x, y, o, amt, dir, RR) {
 };
 
 // Morale: every finished Trattoria (max 3) is +5% health and +5% fire rate across the whole army.
-{ const stepBase = Sim.prototype.step; Sim.prototype.step = function () { stepBase.call(this); if (this.redstar) { this.redstarStep(); this.rsStep(); } }; }
+{ const stepBase = Sim.prototype.step; Sim.prototype.step = function () { stepBase.call(this); if (this.rail && !this.over) this.railStep(); if (this.redstar) { this.redstarStep(); this.rsStep(); } }; }
 Sim.prototype.stepMorale = function () {
   for (const p of this.players) {
     let n = 0;
@@ -3862,6 +3868,7 @@ Sim.prototype.spawnFrom = function (b, k, p) {
 
 Sim.prototype.stepUnit = function (e) {
   if (e.rs || e.rsS) return; // scripted aircraft (Operation Red Star)
+  if (e.rail) { e.cd -= DT; if (!e.pilot && e.cd <= 0) { const t = this.acquire(e); if (t && Math.hypot(t.x - e.x, t.y - e.y) - (t.b ? t.d.s / 2 : 0) <= e.d.rng) { e.tu = Math.atan2(t.y - e.y, t.x - e.x); this.fire(e, t); e.cd = e.d.cd; } } if (!e.pilot && this.t - (e.hurtT || 0) > 8 && e.k !== 'loco' && e.hp < e.hpm) e.hp = Math.min(e.hpm, e.hp + 3 * DT); return; } // Iron Express cars ride the line
   const d = e.d, p = this.players[e.o];
   if (e.xav) this.stepXav(e);
   if (d.spy && this.tick % 5 === e.id % 5) this.stepSpy(e);
@@ -5630,6 +5637,141 @@ function runMatch(opts) {
 </script>
 
 <script>// Snapshots: the host encodes the sim, the client mirrors it. Transports are in link.js.
+// ====================================================================================
+// Iron Express (co-op): an armoured train crosses the island. Everyone mans a gun car; raiders ambush the line,
+// blow the track (an engineer has to fix it while you hold them off) and block the last stretch with a bunker.
+// ====================================================================================
+// The line: cheapest land route between the two capitals furthest apart (water costs a lot, slopes cost some), smoothed.
+function railRoute(M, N) {
+  if (M._rail) return M._rail;
+  // west end to east end of the island in an S through two inland waypoints, so the ride is long
+  const land = (tx, ty) => { let best = null, bd = 1e9; for (let y = 4; y < N - 4; y += 2) for (let x = 4; x < N - 4; x += 2) { const c = y * N + x; if (M.water[c] || M.h[c] < .3) continue; const d = Math.hypot(x - tx, y - ty); if (d < bd) { bd = d; best = [x, y]; } } return best || [tx | 0, ty | 0]; };
+  const ways = [land(4, N * .5), land(N * .36, N * .28), land(N * .64, N * .72), land(N - 4, N * .5)];
+  const n = N * N, D8 = [[1, 0, 1], [-1, 0, 1], [0, 1, 1], [0, -1, 1], [1, 1, 1.414], [1, -1, 1.414], [-1, 1, 1.414], [-1, -1, 1.414]];
+  const leg = (A, B) => {
+    const dist0 = new Float64Array(n).fill(1e9), from = new Int32Array(n).fill(-1), heap = [];
+    const push = (c, d) => { heap.push([d, c]); let i = heap.length - 1; while (i) { const p = (i - 1) >> 1; if (heap[p][0] <= heap[i][0]) break; [heap[p], heap[i]] = [heap[i], heap[p]]; i = p; } };
+    const pop = () => { const top = heap[0], last = heap.pop(); if (heap.length) { heap[0] = last; let i = 0; for (;;) { const l = i * 2 + 1, r = l + 1; let m = i; if (l < heap.length && heap[l][0] < heap[m][0]) m = l; if (r < heap.length && heap[r][0] < heap[m][0]) m = r; if (m === i) break; [heap[m], heap[i]] = [heap[i], heap[m]]; i = m; } } return top; };
+    const s0 = A[1] * N + A[0], g0 = B[1] * N + B[0]; dist0[s0] = 0; push(s0, 0);
+    while (heap.length) {
+      const [d, c] = pop(); if (d > dist0[c]) continue; if (c === g0) break;
+      const x = c % N, y = (c / N) | 0;
+      for (const [dx, dy, w] of D8) {
+        const X = x + dx, Y = y + dy; if (X < 3 || Y < 3 || X > N - 4 || Y > N - 4) continue;
+        const c2 = Y * N + X, cost = w * (M.water[c2] ? 9 : 1 + Math.abs(M.h[c2] - M.h[c]) * 6 + (M.tree[c2] ? .3 : 0));
+        if (d + cost < dist0[c2]) { dist0[c2] = d + cost; from[c2] = c; push(c2, d + cost); }
+      }
+    }
+    if (from[g0] < 0 && g0 !== s0) return [A, B];
+    const out = []; for (let c = g0, k = 0; c >= 0 && k < n; c = from[c], k++) { out.push([c % N, (c / N) | 0]); if (c === s0) break; }
+    return out.reverse();
+  };
+  let raw = []; for (let i = 0; i < ways.length - 1; i++) raw = raw.concat(leg(ways[i], ways[i + 1]).slice(i ? 1 : 0));
+  for (let it = 0; it < 6; it++) raw = raw.map((p, i) => { if (!i || i === raw.length - 1) return p; let sx = 0, sy = 0, k = 0; for (let j = Math.max(0, i - 3); j <= Math.min(raw.length - 1, i + 3); j++) { sx += raw[j][0]; sy += raw[j][1]; k++; } return [sx / k, sy / k]; });
+  const pts = [], S = []; let acc = 0, carry = 0; pts.push(raw[0]); S.push(0);
+  for (let i = 1; i < raw.length; i++) { const ax = raw[i - 1][0], ay = raw[i - 1][1], L = Math.hypot(raw[i][0] - ax, raw[i][1] - ay); let t = 1 - carry; while (t <= L) { const f = t / L; pts.push([ax + (raw[i][0] - ax) * f, ay + (raw[i][1] - ay) * f]); acc += 1; S.push(acc); t += 1; } carry = L - (t - 1); }
+  const Z = pts.map(p => Math.max(gAt(M, p[0], p[1]), .45));
+  for (let it = 0; it < 3; it++) for (let i = 1; i < Z.length - 1; i++) Z[i] = Math.max(Math.max(gAt(M, pts[i][0], pts[i][1]), .45), (Z[i - 1] + Z[i] * 2 + Z[i + 1]) / 4);
+  for (const p of pts) for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) { const x = Math.round(p[0]) + dx, y = Math.round(p[1]) + dy; if (x >= 0 && y >= 0 && x < N && y < N) M.tree[y * N + x] = 0; } // a clear corridor so the gunners can see
+  return (M._rail = {pts, Z, L: pts.length - 1});
+}
+function railAt(R, s) {
+  const i = clamp(Math.floor(s), 0, R.L - 1), f = clamp(s - i, 0, 1), a = R.pts[i], b = R.pts[i + 1];
+  return {x: a[0] + (b[0] - a[0]) * f, y: a[1] + (b[1] - a[1]) * f, z: R.Z[i] + (R.Z[i + 1] - R.Z[i]) * f, h: Math.atan2(b[1] - a[1], b[0] - a[0])};
+}
+const RAIL_SPD = 1.15, RAIL_GAP = 3.3;
+Sim.prototype.setupRail = function () {
+  const R = railRoute(this.M, this.N), nh = this.players.length - 1, L = R.L;
+  this.rail = 1; this.rlE = nh;
+  const T = this.rl = {s: 12, v: 0, st: 'go', L, ev: [], stopAt: null, gap: null, rep: 0, eng: 0, engT: 0, block: 0, kills: 0, cars: [], loco: 0, hurtT: 0, said: {}, seatT: {}};
+  const E = (f, k, a) => T.ev.push([Math.round(L * f), k, a]);
+  E(.03, 'tip', 'All aboard! Mouse to aim your turret, click to fire, E rockets. Keep the locomotive alive to the far station.');
+  E(.09, 'amb', 1); E(.17, 'amb', 2); E(.24, 'heli', 1); E(.31, 'gap', 1); E(.4, 'amb', 3); E(.47, 'supply'); E(.53, 'amb', 3); E(.6, 'heli', 2);
+  E(.67, 'gap', 2); E(.75, 'amb', 4); E(.81, 'heli', 2); E(.86, 'amb', 5); E(.93, 'block');
+  T.ev.sort((a, b) => a[0] - b[0]);
+  const loco = this.addUnit('loco', 0, R.pts[12][0], R.pts[12][1]); loco.rail = 1; loco.rof = 0; loco.seat = -1; T.loco = loco.id;
+  const cars = Math.max(3, nh);
+  for (let k = 0; k < cars; k++) { const c = this.addUnit('gcar', k < nh ? k : 0, R.pts[12][0], R.pts[12][1]); c.rail = 1; c.rof = RAIL_GAP * (k + 1); c.seat = k < nh ? k : -1; T.cars.push(c.id); }
+  for (const p of this.players) { p.steel = 0; p.fuel = 0; }
+  this.railPlace();
+};
+Sim.prototype.railMsg = function (text, kind) { for (let i = 0; i < this.rlE; i++) this.notify(i, text, kind || 'rs'); };
+Sim.prototype.railPlace = function () {
+  const R = railRoute(this.M, this.N), T = this.rl;
+  for (const id of [T.loco, ...T.cars]) { const e = this.ents.get(id); if (!e) continue; const q = railAt(R, Math.max(0, T.s - e.rof)); e.x = q.x; e.y = q.y; e.z = q.z; e.h = q.h; e.moving = T.v > .05; }
+};
+// a raiding party: off to one side of the line, ahead of the train, told to fight its way onto the track
+Sim.prototype.railRaid = function (s, lvl, air) {
+  const R = railRoute(this.M, this.N), q = railAt(R, Math.min(R.L - 1, s)), o = this.rlE, k = .7 + .3 * this.rlE, out = [];
+  const list = air ? Array(Math.round(lvl * k)).fill('gunship') : [].concat(Array(Math.round((3 + lvl) * k)).fill('rifle'), Array(Math.round((1 + lvl / 2) * k)).fill('rocket'), lvl > 1 ? ['mg'] : [], lvl > 2 ? Array(Math.round((lvl - 2) * k)).fill('ifv') : [], lvl > 3 ? Array(Math.round((lvl - 3) * k)).fill('tank') : [], lvl > 2 ? ['sniper'] : []);
+  for (let i = 0; i < list.length; i++) {
+    const side = i % 2 ? 1 : -1, nx = -Math.sin(q.h) * side, ny = Math.cos(q.h) * side;
+    let x = q.x + nx * (air ? 30 : 13 + this.rnd() * 7) + Math.cos(q.h) * (this.rnd() - .5) * 10, y = q.y + ny * (air ? 30 : 13 + this.rnd() * 7) + Math.sin(q.h) * (this.rnd() - .5) * 10;
+    for (let t = 0; t < 12 && !air && !this.landOk(x, y); t++) { x -= nx * 1.2; y -= ny * 1.2; }
+    x = clamp(x, 2, this.N - 3); y = clamp(y, 2, this.N - 3); if (!air && !this.landOk(x, y)) continue;
+    const e = this.addUnit(list[i], o, x, y); e.raid = 1; out.push(e);
+  }
+  if (out.length) this.cmdMove(out, q.x, q.y, true, false);
+  return out;
+};
+Sim.prototype.railStep = function () {
+  const T = this.rl; if (!T || T.st === 'won' || T.st === 'lost') return;
+  const R = railRoute(this.M, this.N), loco = this.ents.get(T.loco), humans = [...Array(this.rlE).keys()];
+  const end = (won, text) => { T.st = won ? 'won' : 'lost'; this.railMsg(text, won ? 'good' : 'bad'); this.over = won ? {winner: 0, team: 0, wins: humans, t: this.t} : {winner: this.rlE, team: 1, wins: [this.rlE], t: this.t}; this.ev({k: 'over', winner: this.over.winner, team: this.over.team, wins: this.over.wins}); };
+  if (!loco) { end(false, 'The locomotive is destroyed. The Iron Express is lost.'); return; }
+  // scripted events, triggered a little before the train reaches them
+  while (T.ev.length && T.s >= T.ev[0][0] - 34) {
+    const [at, k, a] = T.ev.shift();
+    if (k === 'tip') this.railMsg(a, 'gold');
+    else if (k === 'amb') { this.railRaid(at, a); if (a >= 3) this.railMsg(a >= 5 ? 'Massive ambush ahead! Everything they have!' : 'Raiders waiting up the line!', 'bad'); }
+    else if (k === 'heli') { this.railRaid(at, a, true); this.railMsg('GUNSHIPS inbound! Aim up!', 'bad'); }
+    else if (k === 'supply') { for (const id of [T.loco, ...T.cars]) { const e = this.ents.get(id); if (e) e.hp = Math.min(e.hpm, e.hp + e.hpm * .35); } this.railMsg('Supply depot: the crew patches up the train (+35%).', 'good'); }
+    else if (k === 'gap') { const q = railAt(R, at); T.gap = {s: at, x: q.x, y: q.y}; T.stopAt = at - 7; T.rep = 0; this.railMsg('The track is blown up ahead! We have to stop. Cover the engineer while he fixes it!', 'bad'); this.railRaid(at + 4, 2 + a); }
+    else if (k === 'block') { const q = railAt(R, at); const b = this.addBuilding('bunker', this.rlE, Math.round(q.x), Math.round(q.y), true); if (b) { b.hp = b.hpm = 2200; T.block = b.id; T.stopAt = at - 9; } this.railRaid(at + 3, 4); this.railMsg('A bunker blocks the line before the station! Blow it up!', 'bad'); }
+  }
+  // driving: slow for a stop, otherwise steam on
+  let want = RAIL_SPD; if (T.stopAt !== null) { const d = T.stopAt - T.s; want = Math.min(want, Math.max(0, d * .3)); if (d < .25) want = 0; }
+  if (loco.hp < loco.hpm * .3) want *= .75; // a wrecked engine limps
+  T.v += clamp(want - T.v, -.09, .025); T.s = Math.min(R.L, T.s + T.v * DT);
+  this.railPlace();
+  // the blown track: an engineer walks out and repairs it; raiders keep coming while you sit still
+  if (T.gap && T.v < .05) {
+    T.st = 'repair';
+    let eng = T.eng && this.ents.get(T.eng);
+    if (!eng && this.t >= T.engT) { const q = railAt(R, T.s); eng = this.addUnit('worker', 0, q.x, q.y); eng.hpm = eng.hp = 260; eng.rlEng = 1; T.eng = eng.id; this.cmdMove([eng], T.gap.x, T.gap.y, false, false); }
+    else if (!eng && T.eng) { T.eng = 0; T.engT = this.t + 6; this.railMsg('Engineer down! Another one goes out in 6 seconds. Keep them off him!', 'bad'); }
+    if (eng && Math.hypot(eng.x - T.gap.x, eng.y - T.gap.y) < 2.2) {
+      let hot = 0; this.near(T.gap.x, T.gap.y, 9, t => { if (t.o === this.rlE && !t.b) hot++; });
+      T.rep += DT / (hot ? 24 : 12); eng.st = 2;
+      if (T.rep >= .5 && !T.said[T.gap.s]) { T.said[T.gap.s] = 1; this.railMsg('Track half fixed!', 'gold'); }
+      if (T.rep >= 1) { this.railMsg('Track repaired! Full steam ahead!', 'good'); this.ents.delete(eng.id); T.eng = 0; T.gap = null; T.stopAt = null; T.st = 'go'; for (const id of [T.loco, ...T.cars]) { const e = this.ents.get(id); if (e) e.hp = Math.min(e.hpm, e.hp + e.hpm * .1); } }
+    } else if (eng && !eng.goal) this.cmdMove([eng], T.gap.x, T.gap.y, false, false);
+    if (this.tick % 160 === 0) this.railRaid(T.gap.s + 6 + this.rnd() * 8, 1 + Math.floor(this.t / 300));
+  } else if (T.block) {
+    if (!this.ents.has(T.block)) { T.block = 0; T.stopAt = null; T.st = 'go'; this.railMsg('Bunker destroyed! The way to the station is open!', 'good'); }
+    else if (T.v < .05) { T.st = 'block'; if (this.tick % 140 === 0) this.railRaid(T.s + 12, 2); }
+  } else if (T.st !== 'go') T.st = 'go';
+  // raiders hunt the train; ones left far behind give up
+  if (this.tick % 30 === 5) for (const e of this.ents.values()) {
+    if (e.o !== this.rlE || e.b || !e.raid) continue;
+    const d = Math.hypot(e.x - loco.x, e.y - loco.y);
+    if (d > 90 && !e.air) { this.ents.delete(e.id); continue; }
+    if (!e.tid && (!e.goal || e.air)) { const cid = [T.loco, ...T.cars][(e.id % (T.cars.length + 1))], c = this.ents.get(cid) || loco; this.cmdMove([e], c.x + (this.rnd() - .5) * 6, c.y + (this.rnd() - .5) * 6, true, false); }
+  }
+  // crew whose car was destroyed take over a free one
+  for (const i of humans) {
+    if ([T.loco, ...T.cars].some(id => { const e = this.ents.get(id); return e && e.o === i && e.seat === i; })) continue;
+    if ((T.seatT[i] || 0) > this.t) continue; T.seatT[i] = this.t + 3;
+    const free = [...T.cars, T.loco].map(id => this.ents.get(id)).find(e => e && e.seat === -1 && !e.pilot);
+    if (free) { free.o = i; free.seat = i; this.ev({k: 'rlseat', p: i, id: free.id}); this.notify(i, 'Your car is gone. You take over the ' + free.d.n + '.', 'gold'); }
+  }
+  if (!T.said.hp && loco.hp < loco.hpm * .35) { T.said.hp = 1; this.railMsg('The locomotive is badly damaged! Protect it!', 'bad'); }
+  if (T.s >= R.L - 2) end(true, 'The Iron Express reaches the station! Mission complete.');
+};
+Sim.prototype.railPub = function () {
+  const T = this.rl, loco = this.ents.get(T.loco), eng = T.eng && this.ents.get(T.eng);
+  return {s: +T.s.toFixed(1), v: +T.v.toFixed(2), L: T.L, st: T.st, rep: +T.rep.toFixed(2), hp: loco ? +(loco.hp / loco.hpm).toFixed(3) : 0, eng: eng ? 1 : 0, gap: T.gap ? 1 : 0, cars: T.cars.filter(id => this.ents.has(id)).length, of: T.cars.length};
+};
 // ---------- snapshot encode (host) ----------
 const SNAP_F = 11;
 function encodeSnap(sim, sendSlow) {
@@ -5664,6 +5806,7 @@ function encodeSnap(sim, sendSlow) {
   const msg = {snap: 1, t: sim.t, buf: out.buffer, meta};
   if (sim.crew) msg.crew = sim.crew;
   if (sim.rs) msg.rs = sim.rsPub();
+  if (sim.rl) msg.rl = sim.railPub();
   if (sendSlow) {
     msg.pl = sim.players.map(p => ({bld: p.builders, specT: p.specT || 0, freeT: p.freeT || 0, steel: p.steel | 0, fuel: p.fuel | 0, pop: p.pop, popCap: p.popCap, ups: p.ups, techAll: p.techAll || 0, cds: p.cds, alive: p.alive, trat: p.trat || 0, st: p.st, hist: p.hist, kills: p.kills, losses: p.losses, built: p.built, reveal: p.reveal, buffs: p.buffs, rel: p.rel, relT: p.relT, offers: p.offers, str: p.str || 0, mood: p.mood, intel: p.intel, spyMap: p.spyMap, autoRecon: p.autoRecon, autoEco: p.autoEco, autoHouse: p.autoHouse, ecoK: p.ecoK}));
     msg.bs = [];
@@ -5678,7 +5821,7 @@ function encodeSnap(sim, sendSlow) {
 // ---------- mirror (client) ----------
 function Mirror(o) {
   this.N = o.size; this.seed = o.seed;
-  this.M = o.redstar ? redstarMap(this.N, this.seed, o.players.length) : genMap(this.N, this.seed, o.players.length); if (o.sandbox) sandboxRoom(this.M); this.redstar = !!o.redstar; this.crew = {};
+  this.M = o.redstar ? redstarMap(this.N, this.seed, o.players.length) : genMap(this.N, this.seed, o.players.length); if (o.sandbox) sandboxRoom(this.M); this.redstar = !!o.redstar; this.rail = !!o.rail; if (this.rail) railRoute(this.M, this.N); this.crew = {};
   this.t = 0; this.ents = new Map(); this.smokes = []; this.over = null; this.nukes = [];
   this.players = o.players.map((p, i) => {
     const nat = NATIONS[p.nation];
@@ -5720,6 +5863,7 @@ Mirror.prototype.apply = function (m) {
   }
   for (const id of this.ents.keys()) if (!seen.has(id)) this.ents.delete(id);
   if (m.crew) this.crew = m.crew;
+  if (m.rl) this.rl = m.rl;
   if (m.rs) { this.rs = m.rs; const rb = m.rs.bid && this.ents.get(m.rs.bid); if (rb) rb.rs = 1; }
   if (m.pl) m.pl.forEach((q, i) => { Object.assign(this.players[i], q); this.players[i].builders = q.bld; });
   if (m.bs) for (const b of m.bs) { const e = this.ents.get(b.id); if (e) { e.bp = b.bp; e.q = b.q; e.prog = b.prog; e.rally = b.rally; e.auto = !!b.au; e.autoK = b.ak; e.nukeCD = b.cdn; e.g = b.g; e.garrison = new Array(b.g); e.hard = b.hd; e.rot = b.rot || 0; } }
@@ -6067,6 +6211,27 @@ function tracks(b, l, w, h, x) {
 }
 function wheels(b, xs, w, r) { xs.forEach(x => [-1, 1].forEach(s => b.add(GEO.cyl, 0x17181a, x, r, s * w, r, .16, r, Math.PI / 2, 0, 0))); }
 const VEH = {
+  loco(P) { // armoured steam locomotive: boiler, cab, cowcatcher, a light gun on the cab roof
+    const c = 0x2c3034, h = new Batch(), t = new Batch();
+    wheels(h, [-.9, -.3, .3, .9], .42, .26);
+    h.box(2.6, .22, .9, 0, .42, 0, 0x1d1f22); h.cylX(.36, 1.7, .35, .82, 0, c); h.box(.9, .75, .92, -.85, .92, 0, c); h.box(1, .08, 1, -.85, 1.32, 0, 0x1b1d20);
+    h.cyl(.12, .5, .95, 1.3, 0, 0x16181a); h.cyl(.16, .1, .95, 1.55, 0, 0x16181a); h.cyl(.12, .2, .4, 1.22, 0, 0x8a6a2a);
+    h.add(GEO.wedge, 0x3a3e42, 1.35, .38, 0, .35, .3, .9); h.box(.06, .2, .5, 1.25, .82, 0, 0xffe9a0);
+    h.box(.9, .06, .94, -.85, .7, 0, P.trim); h.box(1.6, .05, .94, .35, .5, 0, P.trim);
+    t.box(.34, .16, .34, 0, 0, 0, 0x3a3e42); t.cylX(.03, .5, .3, .04, 0, 0x151515);
+    return {h, t, ty: 1.4, tx: -.85};
+  },
+  gcar(P) { // armoured flatcar with a turret: twin autocannon and a rocket rack
+    const c = camo(P), h = new Batch(), t = new Batch();
+    wheels(h, [-.85, -.5, .5, .85], .42, .2);
+    h.box(2.9, .2, .95, 0, .4, 0, 0x26282b); h.box(2.7, .38, .95, 0, .69, 0, c); h.box(2.75, .05, 1, 0, .9, 0, P.trim);
+    [-1, 1].forEach(s => { for (let i = -2; i <= 2; i++) h.box(.35, .14, .05, i * .55, .98, s * .47, 0x3a3d40); });
+    h.box(.12, .08, .3, 1.5, .4, 0, 0x151515); h.box(.12, .08, .3, -1.5, .4, 0, 0x151515);
+    t.box(.85, .34, .75, -.05, 0, 0, c); t.box(.4, .2, .6, .3, -.03, 0, c);
+    t.cylX(.05, 1.1, .75, .05, .12, 0x222); t.cylX(.05, 1.1, .75, .05, -.12, 0x222);
+    t.box(.4, .2, .22, -.15, .12, .5, 0x3a4a3a); t.box(.4, .2, .22, -.15, .12, -.5, 0x3a4a3a); t.box(.3, .05, .7, -.35, .19, 0, P.trim);
+    return {h, t, ty: .98};
+  },
   tank(P) {
     const c = camo(P), h = new Batch(), t = new Batch();
     tracks(h, 2.2, .5, .36);
@@ -7927,6 +8092,7 @@ Renderer.prototype.loadWorld = function (view) {
   this.buildRocks(M, N);
   this.buildGrass(M, N);
   this.buildNodes(M);
+  if (view.rail) this.buildRail(M, N);
   this.buildFog(N);
   this.buildSelection();
   this.buildVillagers();
@@ -8247,6 +8413,26 @@ Renderer.prototype.paintRoads = function (g, M, N, x0, y0, x1, y1) {
   g.setLineDash([]);
 };
 // Bridges: a deck that follows each run of bridge cells, with railings and piers down to the ground or riverbed.
+// Iron Express: sleepers, two steel rails and piers wherever the line crosses water or a dip
+Renderer.prototype.buildRail = function (M, N) {
+  const R = railRoute(M, N), P = R.pts, G = new THREE.Group(), m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), sc = new THREE.Vector3(), pos = new THREE.Vector3(), up = new THREE.Vector3(0, 1, 0);
+  const lin = h => new THREE.Color(h).convertSRGBToLinear();
+  const mk = (geo, col, n, rough, metal) => { const m = new THREE.InstancedMesh(geo, new THREE.MeshStandardMaterial({color: lin(col), roughness: rough, metalness: metal || 0}), n); m.frustumCulled = false; m.castShadow = false; m.receiveShadow = true; G.add(m); return m; };
+  const n = P.length - 1, sl = mk(new THREE.BoxGeometry(.22, .07, 1.25), 0x4a3828, n * 2, .95), rl = mk(new THREE.BoxGeometry(1, .07, .07), 0x9aa0a6, n * 2, .35, .7), bal = mk(new THREE.BoxGeometry(1, .08, 1.6), 0x6f6a62, n, 1);
+  const piers = []; let si = 0;
+  for (let i = 0; i < n; i++) {
+    const a = P[i], b = P[i + 1], za = R.Z[i], zb = R.Z[i + 1], h = Math.atan2(b[1] - a[1], b[0] - a[0]), L = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1, nx = -Math.sin(h), ny = Math.cos(h);
+    q.setFromAxisAngle(up, -h);
+    pos.set((a[0] + b[0]) / 2, (za + zb) / 2 - .02, (a[1] + b[1]) / 2); sc.set(L + .05, 1, 1); bal.setMatrixAt(i, m4.compose(pos, q, sc));
+    for (const f of [.25, .75]) { pos.set(a[0] + (b[0] - a[0]) * f, za + (zb - za) * f + .04, a[1] + (b[1] - a[1]) * f); sc.set(1, 1, 1); sl.setMatrixAt(si++, m4.compose(pos, q, sc)); }
+    for (const sd of [-1, 1]) { pos.set((a[0] + b[0]) / 2 + nx * .38 * sd, (za + zb) / 2 + .1, (a[1] + b[1]) / 2 + ny * .38 * sd); sc.set(L + .02, 1, 1); rl.setMatrixAt(i * 2 + (sd > 0 ? 1 : 0), m4.compose(pos, q, sc)); }
+    const gz = M.water[Math.round(a[1]) * N + Math.round(a[0])] ? -1.5 : hAt(M, a[0], a[1]);
+    if (za - gz > .6 && i % 3 === 0) piers.push([a[0], gz, za, a[1]]);
+  }
+  sl.count = si;
+  if (piers.length) { const pm = mk(new THREE.BoxGeometry(.5, 1, 1.2), 0x6b6660, piers.length, .9); piers.forEach(([x, z0, z1, y], i) => { pos.set(x, (z0 + z1) / 2 - .05, y); sc.set(1, z1 - z0, 1); q.identity(); pm.setMatrixAt(i, m4.compose(pos, q, sc)); }); }
+  this.world.add(G); this.railG = G;
+};
 Renderer.prototype.buildBridges = function (M, N) {
   if (this.bridgeG) { this.world.remove(this.bridgeG); this.bridgeG.traverse(o => { if (o.geometry) o.geometry.dispose(); }); this.bridgeG = null; }
   if (!M.bridge) return;
@@ -8689,7 +8875,7 @@ Renderer.prototype.drawUnit = function (e, dt, tint) {
   } else if (d.cat === 'veh' || d.cat === 'sea') {
     const bob = e.sea ? Math.sin(this.time * .8 + e.id) * .05 : 0, pitch = e.sea ? Math.sin(this.time * .6 + e.id) * .02 : 0;
     let tilt = 0, roll = 0;
-    if (!e.sea) { const M = this.view.M, c = Math.cos(e.ry), s = Math.sin(e.ry); tilt = Math.atan2(gAt(M, e.rx + c * .9, e.ryy + s * .9) - gAt(M, e.rx - c * .9, e.ryy - s * .9), 1.8); roll = Math.atan2(gAt(M, e.rx - s * .5, e.ryy + c * .5) - gAt(M, e.rx + s * .5, e.ryy - c * .5), 1); }
+    if (!e.sea && !d.rail) { const M = this.view.M, c = Math.cos(e.ry), s = Math.sin(e.ry); tilt = Math.atan2(gAt(M, e.rx + c * .9, e.ryy + s * .9) - gAt(M, e.rx - c * .9, e.ryy - s * .9), 1.8); roll = Math.atan2(gAt(M, e.rx - s * .5, e.ryy + c * .5) - gAt(M, e.rx + s * .5, e.ryy - c * .5), 1); }
     const rec = e.recoilV || 0;
     const mk = () => VEH[k](palette(nat));
     let parts = this._vp && this._vp[key];
@@ -9570,10 +9756,10 @@ function Game(cfg) {
     this.view = new Mirror(cfg);
     this.bots = [];
   } else {
-    this.view = this.sim = new Sim({size: cfg.size, seed: cfg.seed, players: cfg.players, quick: cfg.quick, battle: cfg.battle, scen: cfg.scen, xav: cfg.xav, peace: cfg.peace, sandbox: cfg.sandbox, redstar: cfg.redstar});
+    this.view = this.sim = new Sim({size: cfg.size, seed: cfg.seed, players: cfg.players, quick: cfg.quick, battle: cfg.battle, scen: cfg.scen, xav: cfg.xav, peace: cfg.peace, sandbox: cfg.sandbox, redstar: cfg.redstar, rail: cfg.rail});
     this.bots = cfg.players.map((p, i) => p.bot ? new Bot(this.sim, i, p.bot) : null).filter(Boolean);
   }
-  this.view.me = this.me; this.redstar = !!cfg.redstar; this.view.rso = this.rso = cfg.rso || null;
+  this.view.me = this.me; this.redstar = !!cfg.redstar; this.rail = !!cfg.rail; this.view.rso = this.rso = cfg.rso || null;
   this.R.reset();
   this.R.loadWorld(this.view);
   this.R.me = this.me;
@@ -9682,6 +9868,7 @@ const Track = {
   },
   mode(o) {
     const real = (o.players || []).filter(p => !p.bot).length;
+    if (o.rail) return 'Iron Express';
     if (o.redstar) return 'Operation Red Star';
     if (o.scen) return (o.scen.arc ? 'Arcade: ' : 'Battle: ') + (o.scen.n || '?');
     if (o.battle) return 'Campaign';
@@ -9971,7 +10158,7 @@ const Direct = {
     if (!down) return true;
     if (e.repeat) return true;
     if (this.mode === 'crew') { if (c === 'KeyE') this.crewE = true; if (c === 'KeyL') this.crewL = true; return true; } // Operation Red Star: no abilities, weapons, view toggles or chooser
-    if (c === B.exit && !this.ui.g.redstar) { this.ui.deployed = false; this.exit(); return true; }
+    if (c === B.exit && !this.ui.g.redstar && !this.ui.g.rail) { this.ui.deployed = false; this.exit(); return true; }
     if (c === B.walk && this.mode === 'ship') { this.toggleAboard(); return true; }
     if (c === 'KeyU' && this.e && this.e.d.carry) { this.ui.g.issue({c: 'unload', b: this.id}); this.msg('Unloading troops', 1.2); return true; }
     if (c === B.view) { if (this.aboard) this.msg('Walking is first person only', 1.2); else this.toggleView(); return true; }
@@ -10471,7 +10658,18 @@ const Direct = {
     this.mv = false; p.h = this.yaw; p.tu = this.yaw; p.p = 0; p.r = 0;
     this.aimYaw = this.yaw; this.aimPitch = this.pitch;
   },
+  moveRail(dt, e) { // Iron Express: the train carries you, you only work the turret
+    const p = this.pose, k = Math.min(1, dt * 10);
+    this.camYaw += this.lookX; this.camPitch = clamp(this.camPitch - this.lookY, -.5, .85);
+    p.x += (e.x - p.x) * k; p.y += (e.y - p.y) * k; p.z = e.z; p.h += angDiff(p.h, e.h) * k;
+    this.mv = !!e.moving; this.hullSpd = 0;
+    this.turret += clamp(angDiff(this.turret, this.camYaw), -3.4 * dt, 3.4 * dt);
+    p.tu = this.turret; p.p = 0; p.r = 0;
+    p.tp = (p.tp || 0) + (clamp(this.camPitch, -.3, .85) - (p.tp || 0)) * Math.min(1, dt * 5);
+    this.aimYaw = this.turret; this.aimPitch = this.camPitch;
+  },
   moveVehicle(dt, e, M, N) {
+    if (e.d.rail) { this.moveRail(dt, e); return; }
     const k = this.keys, B = Settings.binds, d = e.d, p = this.pose, sea = this.mode === 'ship';
     this.camYaw += this.lookX; this.camPitch = clamp(this.camPitch - this.lookY, -.6, .7);
     const thr = ((k[B.fwd] || k.KeyW) ? 1 : 0) - ((k[B.back] || k.KeyS) ? 1 : 0), steer = ((k[B.right] || k.KeyD) ? 1 : 0) - ((k[B.left] || k.KeyA) ? 1 : 0);
@@ -12499,6 +12697,7 @@ const UI = {
     $('bHost').onclick = () => { Sfx.init(); Sfx.ui(); this.openLobby('host'); };
     $('bTest').onclick = () => { Sfx.init(); Sfx.ui(); this.openLobby('test'); };
     $('bRed').onclick = () => { Sfx.init(); Sfx.ui(); this.openLobby('redstar'); };
+    $('bRail').onclick = () => { Sfx.init(); Sfx.ui(); this.openLobby('rail'); };
     $('bJoin').onclick = () => { Sfx.init(); Sfx.ui(); this.openJoin(); };
     $('bJoinGo').onclick = () => { Sfx.init(); this.join($('joinIn').value); };
     $('bJoinBack').onclick = () => { if (this.link) { this.link.close(); this.link = null; } this.net = 'off'; $('joinScr').classList.add('hidden'); $('menu').classList.remove('hidden'); };
@@ -12627,13 +12826,13 @@ const UI = {
     }
     side.querySelector('h3').textContent = tr ? 'Players in this room' : 'Your enemies';
     $('rsOpts').style.display = this.redstar && this.net !== 'client' ? '' : 'none';
-    if (tr) $('lTitle').textContent = 'Test room';
+    if (tr) $('lTitle').textContent = this.rail ? 'Iron Express (co-op)' : 'Test room';
   },
   rsOpts() { return this.redstar ? {fly: $('rsFly').value, fail: $('rsFail').value, cut: 'both', end: 'flash', diff: $('rsDiff').value} : null; },
   openLobby(type) {
     this.renderNations();
     $('menu').classList.add('hidden'); $('lobby').classList.remove('hidden');
-    this.redstar = type === 'redstar'; this.testRoom = type === 'test' || this.redstar; if (this.testRoom) type = 'host';
+    this.redstar = type === 'redstar'; this.rail = type === 'rail'; this.testRoom = type === 'test' || this.redstar || this.rail; if (this.testRoom) type = 'host';
     this.lobby = {slots: [{kind: 'human', name: Profile.name() || 'Host', nation: 3, team: 0, id: 'host'}, {kind: 'bot', level: 'normal', nation: 4, team: 1}]};
     if (this.testRoom) { this.lobby.test = 1; this.lobby.slots.pop(); $('optAll').checked = true; $('optTut').checked = false; } // test room: no bots, every unit free
     if (this.redstar) try { const sv = JSON.parse(localStorage.getItem('jjf_rs') || '{}'); for (const k of ['Fly', 'Fail', 'Diff']) if (sv[k.toLowerCase()]) $('rs' + k).value = sv[k.toLowerCase()]; } catch (e) {}
@@ -12813,7 +13012,7 @@ const UI = {
     $('bStart').classList.toggle('hidden', !host);
     const teams = new Set(L.slots.map(s => s.team));
     const humans = L.slots.filter(s => s.kind !== 'bot').length, canStart = !!this.testRoom || teams.size >= 2 || humans >= 2;
-    $('bStart').disabled = !canStart; $('bStart').textContent = this.redstar ? 'Start Operation Red Star (' + humans + (humans === 1 ? ' player)' : ' players)') : this.testRoom ? 'Start test room (' + humans + (humans === 1 ? ' player)' : ' players)') : 'Start War';
+    $('bStart').disabled = !canStart; $('bStart').textContent = this.rail ? 'Start Iron Express (' + humans + (humans === 1 ? ' player)' : ' players)') : this.redstar ? 'Start Operation Red Star (' + humans + (humans === 1 ? ' player)' : ' players)') : this.testRoom ? 'Start test room (' + humans + (humans === 1 ? ' player)' : ' players)') : 'Start War';
     let st = '';
     if (this.net === 'client') st = 'Waiting for the host to start...';
     else if (!canStart) st = this.testRoom ? 'Waiting for friends: tell them to press Join a game and click your room. Put at least one player on another team to start.' : 'You need at least one opponent on another team.';
@@ -12867,7 +13066,7 @@ const UI = {
       this.lobby = m.lobby; this.mySlot = m.you; this.lobbyView(!!m.lobby.test); this.drawLobby();
       if (!this._nameSent && this.link && this.link.send) { this._nameSent = 1; const un = Profile.ask(); if (un) this.link.send({lobbySet: {name: un}}); }
     } else if (m.start) {
-      this.launch({mode: 'client', size: m.start.size, seed: m.start.seed, players: m.start.players, me: m.start.you, link: this.link, tut: false, sandbox: !!m.start.sandbox, redstar: !!m.start.redstar, rso: m.start.rso});
+      this.launch({mode: 'client', size: m.start.size, seed: m.start.seed, players: m.start.players, me: m.start.you, link: this.link, tut: false, sandbox: !!m.start.sandbox, redstar: !!m.start.redstar, rail: !!m.start.rail, rso: m.start.rso});
     } else if (m.g && this.g && this.g.mode === 'client') this.g.onSnap(m.g);
   },
   startGame() {
@@ -12876,14 +13075,15 @@ const UI = {
     Sfx.init();
     if (Direct.isTouch()) { try { const d = document.documentElement, r = d.requestFullscreen && d.requestFullscreen(); if (r && r.then) r.then(() => screen.orientation && screen.orientation.lock && screen.orientation.lock('landscape')).catch(() => {}); } catch (e) {} }
     const mv = $('optMap').value, mt = mv === 'r' ? MAP_KEYS[(Math.random() * MAP_KEYS.length) | 0] : +mv;
-    const L = this.lobby, sb = !!this.testRoom, seed = sb ? 4242 : ((Math.random() * 1e6) | 0) + mt * 1e7, size = sb ? (this.redstar ? 768 : 128) : Math.max(+$('optSize').value, mt === 9 ? 224 : mt === 8 || mt === 7 ? 160 : mt >= 11 ? 144 : 0);
+    const L = this.lobby, sb = !!this.testRoom, seed = this.rail ? ((Math.random() * 1e6) | 0) : sb ? 4242 : ((Math.random() * 1e6) | 0) + mt * 1e7, size = this.rail ? 208 : sb ? (this.redstar ? 768 : 128) : Math.max(+$('optSize').value, mt === 9 ? 224 : mt === 8 || mt === 7 ? 160 : mt >= 11 ? 144 : 0);
     const players = L.slots.map(s => ({nation: s.nation, team: s.team, name: s.kind === 'bot' ? NATIONS[s.nation].name + ' (bot)' : (s.name || 'Player'), bot: s.kind === 'bot' ? s.level : null, open: s.kind !== 'bot' && $('optAll').checked, eco: s.kind === 'bot' ? null : $('optEco').value}));
     this.playersIds = L.slots.map(s => s.id || null);
     if (sb) for (const p of players) { p.team = 0; p.open = true; }
     if (this.redstar) { for (const p of players) p.nation = players[0].nation; players.push({nation: 4, team: 1, name: 'Air Defence', bot: null, open: false, eco: null}); try { localStorage.setItem('jjf_rs', JSON.stringify(this.rsOpts())); } catch (e) {} } // one crew, one nation; remember the mission settings
+    if (this.rail) { for (const p of players) p.nation = players[0].nation; players.push({nation: (players[0].nation + 3) % 6, team: 1, name: 'Raiders', bot: null, open: false, eco: null}); }
     if (this.link && this.link.setMeta) this.link.setMeta({open: false});
-    if (this.net === 'host') for (const id of this.link.peers.keys()) this.link.send(id, {start: {seed, size, players, you: this.playersIds.indexOf(id), sandbox: sb && !this.redstar ? 1 : 0, redstar: this.redstar ? 1 : 0, rso: this.rsOpts()}});
-    this.launch({mode: 'host', size, seed, players, me: this.mySlot, link: this.net === 'host' ? this.link : null, sandbox: sb && !this.redstar, redstar: !!this.redstar, rso: this.rsOpts(), tut: !sb && $('optTut').checked && this.net !== 'host' && !this.quick, quick: this.quick, xav: $('optXav').checked && this.net !== 'host', peace: !$('optRaid').checked && this.net !== 'host' && !this.quick});
+    if (this.net === 'host') for (const id of this.link.peers.keys()) this.link.send(id, {start: {seed, size, players, you: this.playersIds.indexOf(id), sandbox: sb && !this.redstar && !this.rail ? 1 : 0, redstar: this.redstar ? 1 : 0, rail: this.rail ? 1 : 0, rso: this.rsOpts()}});
+    this.launch({mode: 'host', size, seed, players, me: this.mySlot, link: this.net === 'host' ? this.link : null, sandbox: sb && !this.redstar && !this.rail, redstar: !!this.redstar, rail: !!this.rail, rso: this.rsOpts(), tut: !sb && $('optTut').checked && this.net !== 'host' && !this.quick, quick: this.quick, xav: $('optXav').checked && this.net !== 'host', peace: !$('optRaid').checked && this.net !== 'host' && !this.quick});
   },
   setSpeed(v) { // time control: host-side only, so a friend's game stays in sync with the host's clock
     if (!this.g || this.g.mode === 'client') { this.addAlert('Only the host can change game speed', 'bad'); return; }
@@ -13044,6 +13244,11 @@ const UI = {
     this.refreshHud(true);
     if (this.quick) { this.quick = false; setTimeout(() => { this.deployed = true; this.openDeploy(); }, 300); }
     window.__ws = this;
+    if (o.rail) { // Iron Express: everyone mans a gun car
+      this.addAlert('Iron Express: get the armoured train to the far station. Mouse aims your turret, click fires, E fires rockets. If the locomotive dies, we lose.', 'gold');
+      this.railHud(true);
+      let tries = 0; const go = () => { const g = this.g; if (!g || g !== this.g) return; const u = [...g.view.ents.values()].find(e => e.o === o.me && e.d && e.d.rail && e.seat !== -1) || [...g.view.ents.values()].find(e => e.o === o.me && e.d && e.d.rail); if (u && !Direct.on) { Direct.enter(this, u); return; } if (++tries < 60) setTimeout(go, 250); }; setTimeout(go, 400);
+    } else this.railHud(false);
     if (o.redstar) { // Operation Red Star: everyone starts inside the bomber
       this.addAlert('Operation Red Star: walk the aircraft with WASD and mouse. The rest of the crew is in here with you.', 'rs');
       if (o.rso) { const N = {heavy: 'heavy flying', hard: 'demanding flying', retry: 'one respawn per phase', one: 'no respawns', check: 'unlimited respawns', bomb: "bomb's-eye cutscene", bomber: 'cutscene from the bomber', both: 'full cutscene', flash: 'ends on the flash', escape: 'escape flight home', train: 'Training', std: 'Standard', brutal: 'Brutal'}; this.addAlert('Mission: ' + [o.rso.diff, o.rso.fly, o.rso.fail].map(k => N[k] || k).join(' · '), 'rs'); }
@@ -13155,6 +13360,7 @@ const UI = {
     const g = this.g, me = g.me, v = g.view;
     if (Direct.on) Direct.onEvent(ev, g);
     switch (ev.k) {
+      case 'rlseat': if (ev.p === me) setTimeout(() => { const g = this.g, e = g && g.view.ents.get(ev.id); if (!e) return; if (Direct.on) Direct.exit(); Direct.enter(this, e); }, 2500); break;
       case 'msg': if (ev.p === me) { this.addAlert(ev.text, ev.kind, ev.x, ev.y); if (ev.kind === 'bad') Sfx.bad(); else if (ev.kind === 'good') Sfx.good(); else if (ev.kind === 'rs' && ev.s) Sfx.alarm(); } break;
       case 'rsfl': Direct.rsFlash = 1; break;
       case 'rsjolt': Direct.rsJolt = Math.max(Direct.rsJolt || 0, ev.m || .5); break;
@@ -13354,6 +13560,16 @@ const UI = {
     if (!silent) this.addAlert('Tutorial over: the enemy is coming. Destroy their Capital!', 'gold');
   },
 
+  railHud(on) { // Iron Express: progress to the station, locomotive health and what the train is doing
+    clearInterval(this.railT); let el = $('railHud');
+    if (!on) { if (el) el.style.display = 'none'; return; }
+    if (!el) { el = document.createElement('div'); el.id = 'railHud'; el.style.cssText = 'position:fixed;top:10px;left:50%;transform:translateX(-50%);z-index:60;background:rgba(10,14,20,.72);color:#fff;font:700 13px system-ui;padding:8px 14px;border-radius:10px;min-width:300px;text-align:center;pointer-events:none'; document.body.appendChild(el); }
+    el.style.display = '';
+    const bar = (f, col) => '<div style="height:8px;background:#283038;border-radius:4px;margin:4px 0;overflow:hidden"><div style="height:100%;width:' + Math.round(clamp(f, 0, 1) * 100) + '%;background:' + col + '"></div></div>';
+    this.railT = setInterval(() => { const g = this.g, T = g && (g.sim && g.sim.rl ? g.sim.railPub() : g.view && g.view.rl); if (!g || !g.rail) { clearInterval(this.railT); el.style.display = 'none'; return; } if (!T) return;
+      const st = T.st === 'repair' ? (T.eng ? '🔧 REPAIRING TRACK ' + Math.round(T.rep * 100) + '%' : '⚠ ENGINEER DOWN') : T.st === 'block' ? '⚠ BUNKER ON THE LINE: DESTROY IT' : T.st === 'won' ? 'STATION REACHED' : T.st === 'lost' ? 'TRAIN LOST' : T.v > .1 ? '🚂 FULL STEAM' : 'BRAKING';
+      el.innerHTML = '🚂 IRON EXPRESS · ' + Math.max(0, Math.round((T.L - T.s) * 10)) + ' m to the station' + bar(T.s / T.L, '#ffd23a') + 'Locomotive ' + Math.round(T.hp * 100) + '% · cars ' + T.cars + '/' + T.of + bar(T.hp, T.hp < .35 ? '#ff4a3a' : '#5adc7a') + '<span style="color:' + (T.st === 'go' ? '#9fe6ff' : '#ffb74d') + '">' + st + '</span>' + (T.st === 'repair' ? bar(T.rep, '#9fe6ff') : ''); }, 200);
+  },
   showOver(won) {
     if (!this.overShown && !this.demo) Track.end(won);
     if (this.overShown) return;
@@ -14250,7 +14466,7 @@ const UI = {
       crew: `${K('fwd')}${K('left')}${K('back')}${K('right')} walk the aircraft · mouse looks`,
       fpv: `mouse steers · ${K('fwd')} boost · ${K('back')} brake · ${K('up')}${K('down')} climb/sink · dive into the target · ${K('fire')} detonate`,
     };
-    $('dhelp').innerHTML = D.mode === 'crew' ? help.crew + ' · <b>Alt</b> free cursor' : help[D.mode] + ` · ${K('view')} view · <b>Alt</b> free cursor · ${K('chooser')} chooser · ${K('exit')} command`;
+    $('dhelp').innerHTML = D.e && D.e.d && D.e.d.rail ? `mouse aims the turret · ${K('fire')} or click fire · ${K('alt')} rockets · ${K('ads')} zoom · ${K('view')} view · the train drives itself` : D.mode === 'crew' ? help.crew + ' · <b>Alt</b> free cursor' : help[D.mode] + ` · ${K('view')} view · <b>Alt</b> free cursor · ${K('chooser')} chooser · ${K('exit')} command`;
     $('dinfo').classList.add('hidden');
     $('dhelp').classList.remove('mini'); clearTimeout(this.helpT);
     this.helpT = setTimeout(() => $('dhelp').classList.add('mini'), 14000);
@@ -14390,6 +14606,7 @@ addEventListener('keydown', () => { if (typeof Direct !== 'undefined' && window.
   // ---- changelog: add a new entry at the TOP of this list whenever something changes
   const CHANGELOG = [
     {d: '9 Nov 2026', items: [
+      'NEW co-op mode, Iron Express (With friends): man the gun cars of an armoured train crossing the island. Ambushes, gunship raids, blown track your engineer has to fix under fire, and a bunker blocking the last stretch. Lose the locomotive and it is over.',
       'Gunship nerfed hard: rockets now fire in 6 salvos then reload (no more holding E to wipe everything), weaker chin gun and Stinger, less health, costs more and trains slower.',
       'Valentinos toned down: slower regeneration, weaker bayonet charges, Rally Flag +15% for 6 s, at most 2 Trattorias count, no extra health.',
       'New Licases special, Breakaway: you and every friend within 15 m sprint flat out for 5 seconds, take 40% less damage, and enemy gunners lose track of you.',
