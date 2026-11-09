@@ -2757,6 +2757,7 @@ Sim.prototype.issue = function (c, pi) {
     case 'autotrain': { const b = this.ents.get(c.b); if (b && b.o === pi && b.d.trains) { b.auto = !!c.on; if (c.u && b.d.trains.includes(c.u)) b.autoK = c.u; } break; }
     case 'research': { const b = this.ents.get(c.b); if (b && b.o === pi && b.d.research) this.cmdResearch(b, p, c.u); break; }
     case 'power': break; // commander powers were removed
+    case 'rtb': { let n = 0; for (const e of mine) { if (e.b) continue; const sea = e.d.cat === 'sea', air = e.d.cat === 'air' || e.d.cat === 'heli'; if (!sea && !air) continue; let best = null, bd = 1e9; for (const b of this.ents.values()) if (b.b && b.o === pi && b.bp >= 1 && b.k === (sea ? 'yard' : 'airfield')) { const dd = dist(b, e); if (dd < bd) { bd = dd; best = b; } } if (!best) continue; this.clearOrders(e); e.patrol = null; this.go(e, best.x + (this.rnd() - .5) * 3, best.y + (this.rnd() - .5) * 3); e.zone = {x: e.goal.x, y: e.goal.y, r: 0}; n++; } this.notify(pi, n ? n + ' heading home for repairs (costs steel and fuel)' : 'Needs an airfield (aircraft) or naval yard (ships)', n ? 'good' : 'bad'); break; }
     case 'trade': { const k = c.f === 'fuel' ? 'fuel' : 'steel', o = k === 'steel' ? 'fuel' : 'steel', n = Math.min(clamp(+c.n || 0, 0, 1000), Math.floor(p[k])); if (n >= 10) { p[k] -= n; p[o] += n * .65; this.notify(pi, 'Market: ' + n + ' ' + k + ' → ' + Math.round(n * .65) + ' ' + o, 'good'); } break; }
     case 'diplo': this.cmdDiplo(c, pi); break;
     case 'scenSpawn': this.scenSpawn(pi, c.u, c.t, c.rwy); break;
@@ -3782,6 +3783,19 @@ Sim.prototype.stepBuilding = function (b) {
   // Oil derricks
   if (d.oil && this.tick % 10 === 0) p.fuel += 2.2 * (p.ecoK || 1);
   // Hospital
+  // Airfields patch up aircraft parked over them, naval yards fix ships alongside. It costs steel and fuel, needs a few quiet seconds, and serves 3 at a time.
+  if ((b.k === 'airfield' || b.k === 'yard') && b.bp >= 1 && b.o >= 0 && this.tick % 10 === (b.id % 10)) {
+    const P = this.players[b.o], sea = b.k === 'yard'; let n = 0;
+    this.near(b.x, b.y, d.s / 2 + 5, t => {
+      if (n >= 3 || t.o !== b.o || t.b || t.hp >= t.hpm || t.pilot || this.t - (t.hurtT || -99) < 4) return;
+      if (sea ? t.d.cat !== 'sea' : (t.d.cat !== 'air' && t.d.cat !== 'heli')) return;
+      const hp = Math.min(t.hpm - t.hp, t.hpm * .05), cs = hp * .35, cf = hp * .12;
+      if (P.steel < cs || P.fuel < cf) return;
+      P.steel -= cs; P.fuel -= cf; t.hp += hp; n++; t.repairing = this.t;
+      if (this.rnd() < .25) this.ev({k: 'heal', t: t.id});
+      if (t.hp >= t.hpm) this.notify(b.o, t.d.n + ' repaired', 'good', t.x, t.y);
+    });
+  }
   if (d.aura && this.tick % 10 === 0) this.near(b.x, b.y, d.aura, t => { if (t.o === b.o && t.d.cat === 'inf' && t.hp < t.hpm && dist(t, b) < d.aura) t.hp = Math.min(t.hpm, t.hp + 3); });
   // EW jammer knocks drones down
   if (d.jam && this.tick % 5 === 0) this.near(b.x, b.y, d.jam, t => {
@@ -14081,6 +14095,7 @@ const UI = {
       S.push({hk: 'Y', name: 'Hold ground', gl: '⛨', desc: 'Never chase: only fire at enemies already in range.', act: () => { G.issue({c: 'stance', ids, s: hold ? 'aggr' : 'hold'}); for (const e of units) e.stance = hold ? 'aggr' : 'hold'; this.refreshHud(true); }, active: hold});
       S.push({hk: 'U', name: 'Patrol', gl: '⟲', desc: 'Walk back and forth between here and the point you click, fighting anything on the way. Any other order ends the patrol.', act: () => this.setMode({t: 'target', kind: 'patrol'}, 'Patrol to where? (back and forth)'), active: this.mode && this.mode.kind === 'patrol'});
       if (units.some(e => e.d.cat === 'inf' && e.k !== 'scout')) S.push({hk: 'H', name: 'Man defences', gl: '🛡', desc: 'These infantry fill your nearest bunkers, pillboxes and watchtowers, then line trenches and sandbags. Or right click one of those buildings to garrison it.', act: () => G.issue({c: 'mandef', ids})});
+      if (units.some(e => e.d.cat === 'air' || e.d.cat === 'heli' || e.d.cat === 'sea')) S.push({hk: 'K', name: 'Repair at base', gl: '🔧', desc: 'Aircraft fly back to your nearest airfield, ships to your nearest naval yard. Once out of the fight for a few seconds they are repaired there (costs steel and fuel).', act: () => G.issue({c: 'rtb', ids})});
       S.push({hk: 'G', name: 'Take control', gl: '◉', desc: 'Fight in person (F). FPV drones fly first person, planes get a chase camera.', act: () => this.tryDirect()});
       const arm = units.filter(e => e.o === G.me && (e.d.cat === 'veh' || e.d.cat === 'heli') && !e.d.carry);
       if (arm.length) {
@@ -14651,6 +14666,7 @@ addEventListener('keydown', () => { if (typeof Direct !== 'undefined' && window.
       'New Licases special, Breakaway: you and every friend within 15 m sprint flat out for 5 seconds, take 40% less damage, and enemy gunners lose track of you.',
       'Smarter bots: they defend outlying buildings, gather before attacking and push together, reinforce a winning push, bring air cover with the wave, and attack much sooner in Quick Battle.',
       'FPS Modes removed from the main menu.',
+      'Repairs for aircraft and ships: Repair at base (K) sends them to your nearest airfield or naval yard, which fixes up to 3 at a time once they are out of the fight for a few seconds. It costs steel and fuel.',
       'Patrol fixed: the Patrol button (U) now sends units back and forth between two points, attacking on the way (planes and helicopters too). Units you move now hold that spot instead of wandering, and come back to it after chasing an enemy instead of running across the map.',
       'Economy: a market on the resource bar swaps steel and fuel at 65% (Shift-click for 500), so you are never stuck with 4000 of one and 20 of the other. Your capital also trickles a little fuel. Bots use the market too.',
       'Units no longer stand still while you pick them off from range: they work out who is shooting, close in and fight back if they can hurt it, or scatter if they cannot (troops under a plane spread out). Nearby idle friends join in.',
