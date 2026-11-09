@@ -47,3 +47,5 @@ Seven missions for 2 to 7 players that rotate formats and finish with the bomber
 - Tone of the bomber: cartoon-silly or tense?
 - Other cities and routes after New York?
 - [bomber-pacing.md](bomber-pacing.md): flight length, acts, director and tension plan for Operation Red Star
+
+- [iron-express.md](iron-express.md): Iron Express 2.0 "All Aboard" (walkable train, jobs, boarders, acts with breathers) and the emote wheel. Being built 2026-11-09.
