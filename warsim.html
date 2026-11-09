@@ -985,6 +985,9 @@ const NATIONS = [
   {key: 'charlies', name: 'The Charlies', leader: 'Charlie Prime', color: '#2fa84f', dark: '#c4262e', look: 'charlie',
    blurb: 'Aircraft +20% damage and health, cost −15% · Research −20% · Every jet in the game · Colourblind: no pilot licence, so you cannot fly planes yourself',
    tr: {air: 1.2, airCost: .85, research: .8}, power: 'autosurge'},
+  {key: 'yahus', name: 'The Yahus', leader: 'Big Yahu', color: '#2a62d8', dark: '#e9eef8', look: 'yahu',
+   blurb: 'Vision +15% · Damage +6% · Aircraft +10% · Iron Dome: units and buildings take 30% less damage from explosions',
+   tr: {vision: 1.15, dmg: 1.06, air: 1.1, dome: .7}, power: 'irondome'},
 ];
 // The Xaviers are not a team: a few friendly healers wander every war. Kept off the NATIONS list (index -1) so menus never show them.
 NATIONS[-1] = {key: 'xaviers', name: 'The Xaviers', leader: 'Xavier', color: '#ffe9a8', dark: '#f4f4ee', look: 'xavier', blurb: '', tr: {}, power: null};
@@ -1104,6 +1107,7 @@ const POWERS = {
   autosurge: {n: 'Autopilot Surge', cd: 70, fuel: 40, r: 0, nat: 1, desc: 'All aircraft deal 50% more damage for 15 seconds.', hk: '6'},
   forza:     {n: 'Forza!', cd: 70, fuel: 40, r: 0, nat: 1, desc: 'All units deal 25% more damage for 12 seconds.', hk: '6'},
   howl:      {n: 'Howl of the Pack', cd: 75, fuel: 40, r: 0, nat: 1, desc: 'All infantry become alpha wolves for 18 seconds.', hk: '6'},
+  irondome:  {n: 'Iron Dome', cd: 75, fuel: 45, r: 0, nat: 1, desc: 'For 15 seconds your whole army and every building take half damage from explosions: shells, rockets, bombs and missiles.', hk: '6'},
   salvo:     {n: 'Cruise Missile Salvo', cd: 80, fuel: 80, tgt: 1, r: 6, nat: 1, desc: 'Eight cruise missiles from the fleet, anywhere on the map.', hk: '6'},
 };
 
@@ -1125,7 +1129,7 @@ const VS = {
 };
 
 const HERO_NAMES = ['Iron', 'Ghost', 'Hammer', 'Viper', 'Maverick', 'Saint', 'Reaper', 'Duke', 'Bishop', 'Havoc', 'Sparrow', 'Tex'];
-const WAR_CRIES = {licases: 'Pedal to victory!', dhruvs: 'As calculated.', valentinos: 'Forza! Avanti!', jethroes: 'Awoooooo!', toms: 'Nice shades. Shame about your army.'};
+const WAR_CRIES = {yahus: 'Two weeks away? We are already here.', licases: 'Pedal to victory!', dhruvs: 'As calculated.', valentinos: 'Forza! Avanti!', jethroes: 'Awoooooo!', toms: 'Nice shades. Shame about your army.'};
 
 // ---------- weapons when a player controls a unit directly ----------
 // t: hit (hitscan), pel (pellets), cone (flame), mel (melee), proj (projectile), bomb (falls), msl (homing missile), det (FPV warhead)
@@ -1361,11 +1365,12 @@ const batClasses = B => B && B.classes || BAT_CLASSES;
 const KNIFE = {n: 'Big Knife', t: 'mel', dmg: 75, vs: 'bite', rpm: 95, rng: 2.8, crit: 1.5, sp: 0, snd: 'bite', kick: 1.2, knife: 1};
 const KNIFE_T = 8;
 const PSPECIAL = {
-  licases: {n: 'Breakaway', cd: 30, desc: 'The peloton breaks away: you and every friend within 15 m sprint flat out for 5 seconds, take 40% less damage, and enemy gunners lose track of you.'},
+  licases: {n: 'Breakaway', cd: 28, desc: 'The peloton breaks away: you and every friend within 20 m get 30% health back and sprint flat out for 7 seconds, take half damage, hit 25% harder and enemy gunners lose track of you. Ride through enemy infantry to bowl them over.'},
   dhruvs: {n: 'Orbital Laser', cd: 40, desc: 'Your satellite burns a laser into the ground at your crosshair after a 1.5 s warning, and shows every enemy within 25 m for 8 seconds.'},
   valentinos: {n: 'Vendetta', cd: 45, desc: 'Mark the enemy in your crosshair: everyone sees it for 12 seconds and your whole side deals it +40% damage.'},
   jethroes: {n: 'Alpha Howl', cd: 40, desc: 'Turn into an alpha wolf for 14 seconds. The howl terrifies enemy infantry within 12 m: they run and stop shooting for 3 seconds.'},
   toms: {n: 'Danger Close', cd: 45, desc: 'Call an F-16 bomb run: six bombs walk across the ground from your crosshair along the way you face, after a 2 s warning. Stay clear.'},
+  yahus: {n: '$1 Million from AIPAC', cd: 50, desc: 'A generous donation arrives: the nearest enemy soldier (within 40 m) puts on an Israeli flag and a cap, switches sides and fights for you.'},
   charlies: {n: 'Wingmen', cd: 45, desc: 'Launch three hunter drones from where you are. They find the nearest enemies and dive on them.'},
 };
 </script>
@@ -3106,6 +3111,7 @@ Sim.prototype.usePower = function (p, k, x, y) {
     case 'satellite': p.reveal = this.t + 15; break;
     case 'forza': p.buffs.forza = this.t + 12; break;
     case 'autosurge': p.buffs.autosurge = this.t + 15; break;
+    case 'irondome': p.buffs.dome = this.t + 15; this.notify(p.i, 'Iron Dome up: explosions do half damage for 15 s', 'good'); break;
     case 'howl':
       for (const e of [...this.ents.values()]) if (e.o === p.i && !e.b && e.d.cat === 'inf' && e.k !== 'worker' && !e.inside && e.k !== 'wolf') this.toWolf(e, 18);
       break;
@@ -3260,7 +3266,8 @@ Sim.prototype.hurt = function (t, dmg, by) {
   if (t.hp <= 0) return;
   if (t.b && t.hard >= 1) dmg *= .35;                       // hardened: rebuilt underground in reinforced concrete
   if (this.peaceOpt && this.peace && by >= 0 && this.players[by] && !this.players[by].bot && t.o >= 0 && this.players[t.o] && this.players[t.o].bot) this.declareWar(by); // shooting first starts the war
-  if ((t.breakT || 0) > this.t) dmg *= .6;                 // Licases Breakaway
+  if ((t.breakT || 0) > this.t) dmg *= .5;                 // Licases Breakaway
+  if ((t.domeT || 0) > this.t) dmg *= .5;                  // Yahus Iron Dome
   if (t.pilot && (t.d.cat === 'air' || t.d.cat === 'heli') && !(this.scen && this.scen.arc)) dmg *= .7; // a person flying in the war modes is a little tougher
   if ((t.vendT || 0) > this.t && by !== null && by !== undefined && by >= 0 && this.players[by] && this.friendly(by, t.vendBy)) dmg *= 1.4; // Valentinos Vendetta
   const hp0 = t.hp; t.hp -= dmg; t.hurtT = this.t;
@@ -3485,14 +3492,14 @@ Sim.prototype.splash = function (x, y, r, dmg, o, ty, src) {
     if (t.air && ty !== 'drone') return;
     const d = Math.hypot(t.x - x, t.y - y);
     if (d > r) return;
-    const dm = dmg * (vs[t.d.arm] || 0) * (1 - d / r * .65) * (t.d.sub ? .5 : 1) * this.coverMul(t, ty);
+    const dm = dmg * (vs[t.d.arm] || 0) * (1 - d / r * .65) * (t.d.sub ? .5 : 1) * this.coverMul(t, ty) * (t.o >= 0 && this.players[t.o] ? this.players[t.o].nat.tr.dome || 1 : 1);
     if (dm > 0) { this.hurt(t, dm, o); if (src) this.creditKill(src, t); }
   });
   for (const b of [...this.ents.values()]) {
     if (!b.b || (o !== null && this.friendly(b.o, o))) continue;
     const dd = Math.max(0, Math.hypot(b.x - x, b.y - y) - b.d.s / 2);
     if (dd > r || b.d.mine) continue;
-    this.hurt(b, dmg * vs.bld * (1 - dd / r * .5) * (b.hard >= 1 ? .6 : 1), o);
+    this.hurt(b, dmg * vs.bld * (1 - dd / r * .5) * (b.hard >= 1 ? .6 : 1) * (b.o >= 0 && this.players[b.o] ? this.players[b.o].nat.tr.dome || 1 : 1), o);
     if (src && b.hp <= 0) this.creditKill(src, b);
   }
 };
@@ -3507,6 +3514,7 @@ Sim.prototype.fire = function (a, t) {
   let dm = d.dmg * this.dmgMult(p, d) * tierK(a);
   if (a.vet) dm *= 1 + a.vet * .15;
   if ((a.rallyT || 0) > this.t) dm *= 1.15;
+  if ((a.breakT || 0) > this.t) dm *= 1.25;
   const tgh = t.z || 0, hd = (a.z || 0) - tgh;
   if (!a.air && !t.air && hd > 1.4) dm *= 1.25;          // high ground
   if (!t.b && !t.air && this.M.tree[Math.round(t.y) * this.N + Math.round(t.x)]) dm *= ty === 'bullet' || ty === 'sniper' ? .75 : 1;  // forest cover
@@ -3975,6 +3983,12 @@ Sim.prototype.stepUnit = function (e) {
   if (e.st > 0) e.st = 0;
   if (p.nat.tr.regen && e.hp < e.hpm * .4 && this.tick % 10 === 0 && this.t - (e.hurtT || 0) > 12) e.hp = Math.min(e.hpm * .4, e.hp + p.nat.tr.regen * 2); // patches up between fights, but only back to 40%
   if (e.wolf && this.t > e.wolf.until) this.fromWolf(e);
+  if ((e.breakT || 0) > this.t && this.tick % 2 === e.id % 2) this.near(e.x, e.y, 1.8, t => { // the peloton rides straight through: enemy infantry get bowled over
+    if (t.b || t.d.cat !== 'inf' || t.o < 0 || this.friendly(t.o, e.o) || (t.bowlT || 0) > this.t || !!t.ug !== !!e.ug) return;
+    t.bowlT = this.t + 2; t.cd = Math.max(t.cd || 0, 1.5); t.suppT = this.t + 2; t.srcX = e.x; t.srcY = e.y; this.hurt(t, 35, e.o); this.creditKill(e, t);
+    const an = Math.atan2(t.y - e.y, t.x - e.x), fx = clamp(t.x + Math.cos(an) * 1.2, 1, this.N - 2), fy = clamp(t.y + Math.sin(an) * 1.2, 1, this.N - 2);
+    if (t.hp > 0 && !t.pilot && passable(this.M, 0, Math.round(fy) * this.N + Math.round(fx))) { t.x = fx; t.y = fy; }
+    this.ev({k: 'boom', x: t.x, y: t.y, z: t.z || 0, s: .3}); });
   if (d.nukeT && !e.nukeReady) { e.nukeCD -= DT; if (e.nukeCD <= 0) { e.nukeReady = true; this.notify(p.i, 'Nuclear sub: ICBM ready', 'good', e.x, e.y); } }
   if (d.heal && this.tick % 10 === e.id % 10) this.medic(e);
   if (d.cat === 'drone' && !e.pilot) { e.life -= DT; if (e.life <= 0) { this.explodeDrone(e); return; } }
@@ -4493,6 +4507,7 @@ Sim.prototype.pilotHit = function (c, pi) {
   if (!t.b && W.t !== 'cone' && W.t !== 'mel' && !clearLine(this.M, ex, seen)) return;
   if (t.air && !W.aa && !W.air && t.z - hAt(this.M, t.x, t.y) > 3) return;
   let dm = W.dmg * n * this.dmgMult(this.players[pi], a && a.d) * (VS[W.vs][t.b ? 'bld' : t.d.arm] || 0) * (c.crit ? W.crit || 1 : 1);
+  if ((a.breakT || 0) > this.t) dm *= 1.25;
   if (W.t === 'pel' || W.t === 'hit') dm *= dd > W.rng * .6 ? 1 - (dd - W.rng * .6) / (W.rng * .4) * .5 : 1; // falloff
   if (this.inSmoke(t)) dm *= .7;
   t.srcX = a.x; t.srcY = a.y; t.suppT = this.t + 1.5;
@@ -4529,7 +4544,17 @@ Sim.prototype.pilotProj = function (c, pi) {
   this.ev({k: 'pj', rk: W.rk ? 1 : 0, i: p.i, o: p.o, x: p.x, y: p.y, z: p.z, vx: p.vx, vy: p.vy, vz: p.vz, g: p.g, ty: W.vs, wt: W.t, home: p.home, fuse: W.fuse ? 1 : 0, a: a.id});
   if (a.d.stealth) a.revealed = this.t + 2.5;
 };
+Sim.prototype.stepDomes = function () { // (unused by default; kept for an Iron Dome special) // Yahus Iron Dome: knocks enemy shells and missiles out of the air round the pilot, and shields friends
+  this.domes = this.domes.filter(D => {
+    const a = this.ents.get(D.id); if (!a || this.t > D.until) return false;
+    if (this.tick % 3 === 0) this.near(a.x, a.y, 14, t => { if (this.friendly(t.o, D.o) && t.o >= 0) t.domeT = this.t + .5; });
+    if (this.projs) this.projs = this.projs.filter(p => { if (this.friendly(p.o, D.o) || Math.hypot(p.x - a.x, p.y - a.y) > 14 || p.W.t === 'bomb' && p.z > a.z + 8) return true;
+      if (p.W.t === 'hit' || p.W.fuse) return true; this.ev({k: 'boom', x: p.x, y: p.y, z: p.z, s: .5}); return false; });
+    return true;
+  });
+};
 Sim.prototype.stepProjs = function () {
+  if (this.domes && this.domes.length) this.stepDomes();
   if (!this.projs || !this.projs.length) return;
   const keep = [], M = this.M, SUB = 4, dt = DT / SUB;
   for (const p of this.projs) {
@@ -4613,7 +4638,7 @@ Sim.prototype.pilotSpecial = function (c, pi) {
   const S = PSPECIAL[p.nat.key]; if (!S || (p.specT || 0) > this.t) return;
   p.specT = this.t + S.cd;
   const k = p.nat.key;
-  if (k === 'licases') this.near(a.x, a.y, 15, t => { if (t.o === pi && !t.b && (t.d.cat === 'inf' || t === a)) { t.breakT = this.t + 5; t.aimId = 0; this.ev({k: 'heal', t: t.id}); } });
+  if (k === 'licases') this.near(a.x, a.y, 20, t => { if (t.o === pi && !t.b && (t.d.cat === 'inf' || t === a)) { t.breakT = this.t + 7; t.aimId = 0; t.hp = Math.min(t.hpm, t.hp + t.hpm * .3); this.ev({k: 'heal', t: t.id}); } });
   // aim point from the client (crosshair on the ground), else 12 m ahead
   const ok = isFinite(c.x) && isFinite(c.y) && Math.hypot(c.x - a.x, c.y - a.y) < 70, ax = clamp(ok ? c.x : a.x + Math.cos(a.h) * 12, 2, this.N - 3), ay = clamp(ok ? c.y : a.y + Math.sin(a.h) * 12, 2, this.N - 3);
   const S2 = (o) => (this.strikes = this.strikes || []).push(Object.assign({o: pi, src: a, at: this.t + 1.5, nx: 0}, o));
@@ -4635,6 +4660,15 @@ Sim.prototype.pilotSpecial = function (c, pi) {
   } else if (k === 'toms') {
     const dx = Math.cos(a.h), dy = Math.sin(a.h); S2({x: ax, y: ay, n: 6, r: .6, dmg: 120, sr: 3.2, gap: .25, at: this.t + 2, line: [dx * 2.6, dy * 2.6], step: 0});
     this.ev({k: 'msg', p: pi, text: 'F-16 inbound: bombs on your mark!', kind: 'gold'});
+  } else if (k === 'yahus') {
+    let T = null, bd = 40; // the closest enemy on the ground (not a hero someone is playing, not a building)
+    this.near(a.x, a.y, 40, t => { if (t.b || t.pilot || t.inside || t.o < 0 || this.friendly(t.o, pi) || t.hp <= 0 || t.xav || t.d.cat !== 'inf' || t.k === 'wolf') return; const dd = Math.hypot(t.x - a.x, t.y - a.y); if (dd < bd) { bd = dd; T = t; } });
+    if (!T) { p.specT = this.t + 1; this.ev({k: 'msg', p: pi, text: 'No enemy soldiers within 40 m to buy', kind: 'bad'}); return; }
+    const q = this.players[T.o]; T.sq = 0; T.sqn = 0;
+    q.pop -= T.d.pop; p.pop += T.d.pop; T.o = pi; this.clearOrders(T); T.tid = 0; T.force = 0; T.goal = null; T.zone = null; T.hitBy = 0; T.bought = 1; this.joinSquad(T);
+    this.ev({k: 'convert', id: T.id, o: pi}); this.ev({k: 'boom', x: T.x, y: T.y, z: (T.z || 0) + 1, s: .3});
+    this.ev({k: 'msg', p: pi, text: '$1,000,000 well spent: their ' + T.d.n + ' now fights for you', kind: 'gold'});
+    this.notify(q.i, 'One of our ' + T.d.n + 's was bought by the Yahus!', 'bad', T.x, T.y);
   } else if (k === 'charlies') {
     for (let i = 0; i < 3; i++) { const an = a.h + (i - 1) * .8, dr = this.addUnit('hunter', pi, clamp(a.x + Math.cos(an) * 1.5, 1, this.N - 2), clamp(a.y + Math.sin(an) * 1.5, 1, this.N - 2)); if (dr) { dr.life = 30; dr.hold = {x: a.x, y: a.y}; } }
   }
@@ -4949,6 +4983,8 @@ const SPY_GUARDS = {
     q: [['What do we turn into when it counts?', 'Alpha wolves', ['Grizzly bears', 'Eagles', 'Bats']], ['What do we do at the moon?', 'Howl', ['Salute', 'Sing', 'Wave']]]},
   toms: {who: "Big Tom's bodyguard", hi: "Oi. Take off those shades... no, wait, put 'em back on. Who are you?", ok: 'Nice shades. Carry on.', no: 'Shame about your cover. SPY!',
     q: [['What does every Tom wear, day and night?', 'Sunnies', ['Glasses', 'A top hat', 'A scarf']], ['What is the size of a Tom\'s arms?', 'Huge', ['Average', 'Small', 'Noodly']]]},
+  yahus: {who: 'Agent Bibi-Two', hi: 'Stop right there. Look at the camera. Now, who sent you?', ok: 'Fine. Go. We are watching.', no: 'I knew it. Two weeks ago. SPY!',
+    q: [['What does Big Yahu build over every city?', 'An Iron Dome', ['A big umbrella', 'A tin roof', 'A bouncy castle']], ['How far away is the enemy, always?', 'Two weeks', ['Two days', 'Two years', 'Two metres']]]},
   charlies: {who: 'Engineer Byte', hi: 'Scanning... identity unconfirmed. Answer the challenge.', ok: 'Identity confirmed. Proceed.', no: 'Intruder detected. SPY.',
     q: [['What colour is our flag?', "We can't tell, we're colourblind", ['Red and green', 'Blue', 'Gold']], ['Why do we not fly our own jets?', 'No pilot licence', ['Afraid of heights', 'Too expensive', 'Planes are boring']]]},
 };
@@ -5995,7 +6031,7 @@ function encodeSnap(sim, sendSlow) {
     msg.bs = [];
     for (const e of sim.ents.values()) if (e.b) msg.bs.push({id: e.id, bp: e.bp, q: e.q, prog: e.prog, rally: e.rally, au: e.auto ? 1 : 0, ak: e.autoK || null, cdn: e.nukeCD, g: e.garrison ? e.garrison.length : 0, hd: e.hard || 0, rot: e.rot || 0});
     msg.nodes = sim.M.nodes.map(n => [n.amt | 0, n.taken || 0]);
-    msg.nk = []; for (const e of sim.ents.values()) if (!e.b && e.d.nukeT) msg.nk.push(e.id, Math.ceil(e.nukeCD || 0)); // nuclear subs' ICBM charge, for guests
+    msg.nk = []; msg.bt = []; for (const e of sim.ents.values()) { if (!e.b && e.d.nukeT) msg.nk.push(e.id, Math.ceil(e.nukeCD || 0)); if (e.bought) msg.bt.push(e.id); } // nuclear subs' ICBM charge, for guests
     msg.smokes = sim.smokes;
     msg.over = sim.over;
   }
@@ -6051,6 +6087,7 @@ Mirror.prototype.apply = function (m) {
   if (m.rs) { this.rs = m.rs; const rb = m.rs.bid && this.ents.get(m.rs.bid); if (rb) rb.rs = 1; }
   if (m.pl) m.pl.forEach((q, i) => { Object.assign(this.players[i], q); this.players[i].builders = q.bld; });
   if (m.bs) for (const b of m.bs) { const e = this.ents.get(b.id); if (e) { e.bp = b.bp; e.q = b.q; e.prog = b.prog; e.rally = b.rally; e.auto = !!b.au; e.autoK = b.ak; e.nukeCD = b.cdn; e.g = b.g; e.garrison = new Array(b.g); e.hard = b.hd; e.rot = b.rot || 0; } }
+  if (m.bt) for (const id of m.bt) { const e = this.ents.get(id); if (e) e.bought = 1; }
   if (m.nk) for (let i = 0; i < m.nk.length; i += 2) { const e = this.ents.get(m.nk[i]); if (e) e.nukeCD = m.nk[i + 1]; }
   if (m.nodes) m.nodes.forEach((n, i) => { this.M.nodes[i].amt = n[0]; this.M.nodes[i].taken = n[1]; });
   if (m.smokes) this.smokes = m.smokes;
@@ -6173,6 +6210,7 @@ function palette(nat) {
   else if (c.look === 'xavier') { p.uni = 0xf6f3e8; p.trim = 0xffd86b; p.alt = 0xffffff; }
   else if (c.look === 'toms') { p.uni = 0x8a7350; p.trim = 0x19c8b9; p.alt = 0x5e4a30; } // desert camo, teal trim
   else if (c.look === 'glasses') { p.uni = 0x274a86; p.trim = 0x4a90ff; p.alt = 0xcfe0ff; }
+  else if (c.look === 'yahu') { p.uni = 0x1f2633; p.trim = 0x2a62d8; p.alt = WHITE; } // dark suit, blue tie
   else { p.uni = 0x4a5530; p.trim = 0x6b7a42; p.alt = 0x8a7a55; } // Licases: woodland camo
   return p;
 }
@@ -6191,6 +6229,7 @@ function blobColor(kind, P) {
   if (P.look === 'toms') return 0xc9ad7a; // desert tan
   if (P.look === 'usa') return 0xd8283a;
   if (P.look === 'glasses') return 0x4a86e8;
+  if (P.look === 'yahu') return 0x232a38; // a dark suit
   return 0x5b6a3a; // Licases: camo green
 }
 function soldierBody(kind, nat, lo) {
@@ -6225,6 +6264,9 @@ function soldierBody(kind, nat, lo) {
     b.add(GEO.sph, 0x3a1515, rx * .95, cy + ry * .02, 0, .02, .02, .055);
   }
   if (P.look === 'bike') { b.box(.07, .075, rz * 1.5, ex + .03, ey, 0, 0x0a0b0c); b.box(.02, .012, rz * 1.55, ex + .06, ey + .035, 0, 0x2a2d30); b.box(.012, .03, rz * .6, ex + .065, ey + .005, rz * .35, 0x3a4a5a); } // wraparound sunnies
+  if (P.look === 'yahu') { // Big Yahu: white shirt, blue tie, heavy grey brows and a knowing smirk
+    b.add(GEO.cone4, WHITE, rx * .9, cy - ry * .05, 0, .02, ry * .5, rz * .3, 0, 0, Math.PI); b.box(.025, ry * .55, .055, rx * .97, cy - ry * .2, 0, 0x2a62d8); b.box(.03, .05, .07, rx * .97, cy + ry * .07, 0, 0x2a62d8);
+    [-1, 1].forEach(s => b.box(.035, .03, .12, ex + .05, ey + .1, s * rz * .32, 0xb9bcc2, 0, 0, s * .12)); b.box(.025, .02, .09, rx * .97, cy + ry * .02, -.02, 0x5a2020, 0, 0, .25); }
   if (P.look === 'glasses') { [-1, 1].forEach(s => b.add(GEO.torus, 0x0d0f12, ex + .09, ey, s * rz * .32, .1, .1, .12, 0, Math.PI / 2, 0)); b.box(.015, .015, .07, ex + .1, ey + .01, 0, 0x0d0f12); }
   if (P.look === 'italian') { [-1, 1].forEach(s => b.add(GEO.sph, 0x1a120c, rx * .97, cy + ry * .1, s * .06, .03, .028, .075, s * .5, 0, 0)); [-1, 1].forEach(s => b.box(.03, .022, .11, ex + .04, ey + .11, s * rz * .32, 0x1a120c, 0, 0, s * .15)); }
   if (P.look === 'usa') [-1, 1].forEach(s => b.box(.03, .022, .1, ex + .04, ey + .11, s * rz * .32, 0x2a1a0e, 0, 0, -s * .2));
@@ -6242,6 +6284,7 @@ function soldierBody(kind, nat, lo) {
   else if (P.look === 'italian') { sph(rx * .74, ry * .26, rz * .74, 0, top - ry * .1, 0, 0x2e3a24); b.add(GEO.cone, 0x123d12, -.05, top + ry * .15, 0, .03, .18, .03, 0, 0, .6); } // bersaglieri-style plume
   else if (P.look === 'toms') { b.box(rx * 1.2, .05, rz * 1.1, -.02, top - ry * .1, 0, 0x101415); b.box(rx * .9, .04, rz * .7, -.02, top - ry * .02, 0, 0x101415); } // flat-top haircut
   else if (P.look === 'glasses') { sph(rx * .75, ry * .28, rz * .75, -.01, top - ry * .1, 0, 0x1d3f80); }
+  else if (P.look === 'yahu') { sph(rx * .8, ry * .26, rz * .82, -.05, top - ry * .1, 0, 0xc9cbcf); sph(rx * .45, ry * .2, rz * .55, .04, top - ry * .02, rz * .2, 0xdadcdf); sph(rx * .3, ry * .14, rz * .5, -.12, top - ry * .06, -rz * .25, 0xb4b7bc); } // swept silver-grey hair, parted to one side
   if (kind === 'sniper') for (let i = 0; i < 9; i++) { const a = i * 2.4, yy = cy + ry * (.2 + (i % 3) * .25); b.add(GEO.cone4, 0x4e5a2e, Math.cos(a) * rx * .9 - .05, yy, Math.sin(a) * rz * .9, .05, .14, .05, Math.sin(a) * .6, 0, Math.cos(a) * .6); }
   if (kind === 'scout' && !bike) { b.box(.02, .08, .02, rx * .2, top + .04, rz * .4, 0x222); b.add(GEO.sph, 0x7cf, rx * .2, top + .09, rz * .4, .015, .015, .015); }
   // hands (and bulging Toms biceps) holding the weapon in front
@@ -9705,6 +9748,7 @@ Renderer.prototype.drawEntities = function (dt, v) {
     } else {
       const baseY = e.rz;
       this.drawUnitAt(e, dt, tint);
+      if (e.bought && e.d.cat === 'inf' && !(e.id === this.fpId)) this.drawBought(e);
       if (e.d.cat === 'veh' && e.moving && Math.random() < dt * 8) { const c = Math.cos(e.ry), s = Math.sin(e.ry); this.addP(e.rx - c * .9, baseY + .1, e.ryy - s * .9, 0, .3, 0, .3, .8, .6, .55, .45, false, .35, 1.1); }
       if (e.sea && !e.d.sub && Math.random() < dt * 14) { const c = Math.cos(e.ry), s = Math.sin(e.ry); this.addP(e.rx - c * 1.8 + (Math.random() - .5) * .8, .1, e.ryy - s * 1.8 + (Math.random() - .5) * .8, 0, .1, 0, .3, 1.4, .95, .98, 1, false, .6, .9); }
       if (e.sea && e.d.sub && Math.random() < dt * 5) this.addP(e.rx + (Math.random() - .5) * 2, .05, e.ryy + (Math.random() - .5) * 2, 0, .1, 0, .22, 1, 1, 1, 1, false, .4, .6);
@@ -9724,6 +9768,20 @@ Renderer.prototype.drawEntities = function (dt, v) {
   for (const [id, o] of this.bmeshes) if (!v.ents.has(id)) { this.world.remove(o.group); this.bmeshes.delete(id); }
 };
 Renderer.prototype.drawUnitAt = function (e, dt, tint) { this.drawUnit(e, dt, tint); };
+// Yahus' bought soldiers: a blue-and-white cap and an Israeli flag on a pole on their back
+Renderer.prototype.drawBought = function (e) {
+  if (!this.boughtGeo) {
+    const b = new Batch(), BL = 0x1f4fbf, top = BLOB.cy + BLOB.r;
+    b.add(GEO.sph, WHITE, -.01, top - .05, 0, .26, .1, .26); b.add(GEO.torus, BL, -.01, top - .08, 0, .26, .26, .1, Math.PI / 2, 0, 0); b.box(.16, .025, .22, .24, top - .09, 0, BL); // cap
+    b.cyl(.012, 1.05, -.27, .62, 0, 0x6b5a45); // pole
+    b.box(.012, .26, .38, -.27, 1.02, .2, WHITE); b.box(.016, .035, .38, -.27, 1.11, .2, BL); b.box(.016, .035, .38, -.27, .93, .2, BL); // flag, two blue stripes
+    b.add(GEO.torus, BL, -.27, 1.02, .2, .055, .055, .03, 0, Math.PI / 2, 0); // the emblem
+    this.boughtGeo = b.geo(); this.boughtM = new Map();
+  }
+  let m = this.boughtM.get(e.id); if (!m) { m = new THREE.Mesh(this.boughtGeo, this.matV); m.castShadow = true; this.world.add(m); this.boughtM.set(e.id, m); }
+  m.visible = true; m.userData.t = performance.now(); m.position.set(e.rx, e.rz, e.ryy); m.rotation.set(0, -(e.ry || 0), 0);
+};
+Renderer.prototype.hideBought = function () { if (!this.boughtM) return; const now = performance.now(); for (const [id, m] of this.boughtM) if (now - m.userData.t > 150) { m.visible = false; if (!this.view.ents.has(id)) { this.world.remove(m); this.boughtM.delete(id); } } };
 
 Renderer.prototype.commit = function () {
   for (const p of this.pools.values()) {
@@ -9736,7 +9794,7 @@ const _origDraw = Renderer.prototype.draw;
 Renderer.prototype.draw = function (dt, view) {
   const t = this.r.render; const self = this;
   // commit instance counts just before rendering, after every put() of this frame
-  this.r.render = function (s, c) { self.updateLod(); self.tunnelView(); if (self.tunDirty && performance.now() - self.tunDirty > 300) { self.tunDirty = 0; self.buildTunnels(self.view.M, self.view.N); } if (self.bridgeDirty && performance.now() - self.bridgeDirty > 250) { self.bridgeDirty = 0; self.buildBridges(self.view.M, self.view.N); } self.commit(); self.r.render = t; t.call(self.r, s, c); };
+  this.r.render = function (s, c) { self.updateLod(); self.tunnelView(); self.hideBought(); if (self.tunDirty && performance.now() - self.tunDirty > 300) { self.tunDirty = 0; self.buildTunnels(self.view.M, self.view.N); } if (self.bridgeDirty && performance.now() - self.bridgeDirty > 250) { self.bridgeDirty = 0; self.buildBridges(self.view.M, self.view.N); } self.commit(); self.r.render = t; t.call(self.r, s, c); };
   const post = this.gradeOn();
   if (post) this.r.setRenderTarget(this.gradeRT);
   _origDraw.call(this, dt, view);
@@ -10530,7 +10588,7 @@ const Direct = {
     const P = this.aimPt, hit = this.aimHit && this.aimHit.ent, tid = hit && !g.view.friendly(hit.o, g.me) ? hit.id : this.vLock || this.lockId || 0;
     g.issue({c: 'pspecial', id: this.id, x: P ? P.x : undefined, y: P ? P.y : undefined, tid});
     p.specT = g.view.t + S.cd; this.msg(S.n + '!', 1.2); Sfx.good();
-    if (p.nat.key === 'licases') this.dashT = performance.now() + 5000;
+    if (p.nat.key === 'licases') this.dashT = performance.now() + 7000;
     if (p.nat.key === 'jethroes') Sfx.howl();
   },
   drawKnife() {
@@ -13382,7 +13440,7 @@ const UI = {
     this.playersIds = L.slots.map(s => s.id || null);
     if (sb) for (const p of players) { p.team = 0; p.open = true; }
     if (this.redstar) { for (const p of players) p.nation = players[0].nation; players.push({nation: 4, team: 1, name: 'Air Defence', bot: null, open: false, eco: null}); try { localStorage.setItem('jjf_rs', JSON.stringify(this.rsOpts())); } catch (e) {} } // one crew, one nation; remember the mission settings
-    if (this.rail) { for (const p of players) p.nation = players[0].nation; players.push({nation: (players[0].nation + 3) % 6, team: 1, name: 'Raiders', bot: null, open: false, eco: null}); }
+    if (this.rail) { for (const p of players) p.nation = players[0].nation; players.push({nation: (players[0].nation + 3) % NATIONS.length, team: 1, name: 'Raiders', bot: null, open: false, eco: null}); }
     if (this.link && this.link.setMeta) this.link.setMeta({open: false});
     if (this.net === 'host') for (const id of this.link.peers.keys()) this.link.send(id, {start: {seed, size, players, you: this.playersIds.indexOf(id), sandbox: sb && !this.redstar && !this.rail ? 1 : 0, redstar: this.redstar ? 1 : 0, rail: this.rail ? 1 : 0, rso: this.rsOpts()}});
     this.launch({mode: 'host', size, seed, players, me: this.mySlot, link: this.net === 'host' ? this.link : null, sandbox: sb && !this.redstar && !this.rail, redstar: !!this.redstar, rail: !!this.rail, rso: this.rsOpts(), tut: !sb && $('optTut').checked && this.net !== 'host' && !this.quick, quick: this.quick, xav: $('optXav').checked && this.net !== 'host', peace: !$('optRaid').checked && this.net !== 'host' && !this.quick});
@@ -14911,6 +14969,8 @@ addEventListener('keydown', () => { if (typeof Direct !== 'undefined' && window.
   // ---- changelog: add a new entry at the TOP of this list whenever something changes
   const CHANGELOG = [
     {d: '9 Nov 2026', items: [
+      'New nation: the Yahus, led by Big Yahu (dark suits, blue ties, swept silver hair). Vision +15%, damage +6%, aircraft +10%, and Iron Dome: their units and buildings take 30% less damage from explosions. Special (G): $1 Million from AIPAC buys the nearest enemy soldier, who puts on an Israeli flag and cap and fights for you.',
+      'Licases Breakaway is stronger: 20 m reach, 30% health back, 7 seconds of sprinting with half damage taken and 25% more dealt, and you bowl over enemy infantry you ride through.',
       'Calmer flying: in Play vs bots and multiplayer wars, planes you fly yourself go about 40% slower (easier to aim and keep off the hills) and take 30% less damage. Arcade air battles are unchanged.',
       'Submarines fixed: torpedoes fired by hand no longer blow up the moment they leave the tube, and guests now see the nuclear sub\'s ICBM charge time.',
       'First person in tunnels: walk into a bored tunnel and you go underground for real, with earth walls, a timbered roof and a dark lantern-lit view. You can fight whoever is down there with you; shots and shells from outside cannot reach you.',
