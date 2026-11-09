@@ -2259,6 +2259,7 @@ function inTunnel(M, N, e) { if (e.ug) return true; if (!M.dug) return false; co
 // Bored tunnels: a second, underground layer. The hill above stays whole; M.bore[q] = 1 open cut / entrance, 2 covered bore, M.bz[q] = tunnel floor height.
 // A unit that walks into a covered cell from a tunnel cell is underground (e.ug): hidden, safe from shells and bombs, and only fights at arm's length.
 const BORE_COVER = 1.4, BORE_T = 1.1, BORE_COST = 3, BORE_MAX = 70;
+const treeTop = (M, x, y) => { const q = Math.round(y) * M.N + Math.round(x); return M.tree && M.tree[q] ? Math.max(hAt(M, x, y), 0) + 2.1 : -99; }; // top of the trees on this cell, for things that fly
 function boreInit(M, N) { if (!M.bore) { M.bore = new Uint8Array(N * N); M.bz = new Float32Array(N * N); } }
 function boreFloor(M, N, x, y) { // smooth tunnel floor: the bore cells round you, nearest counting most
   let s = 0, w = 0; const rx = Math.round(x), ry = Math.round(y);
@@ -11141,7 +11142,7 @@ const Direct = {
     // ground proximity warning (time to impact along the path); flight assist then pulls up and levels the wings
     // look ahead along the flight path: the terrain we will be over in .4-2.4 s, and the climb angle needed to clear it
     const ground = Math.max(hAt(M, p.x, p.y), 0); let ahead = ground, reqP = -1.5, hit = false;
-    for (const tt of [.4, .8, 1.3, 1.8, 2.4]) { const ax = p.x + V.x * tt, ay = p.y + V.y * tt, th = Math.max(hAt(M, ax, ay), 0); ahead = Math.max(ahead, th);
+    for (const tt of [.4, .8, 1.3, 1.8, 2.4]) { const ax = p.x + V.x * tt, ay = p.y + V.y * tt, th = Math.max(hAt(M, ax, ay), 0, treeTop(M, ax, ay)); ahead = Math.max(ahead, th);
       reqP = Math.max(reqP, Math.atan2(th + 1.6 - p.z, Math.max(1, Math.hypot(V.x, V.y) * tt))); if (tt <= 1.3 && p.z + V.z * tt < th + .6) hit = true; }
     const fld = this.nearField(p.x, p.y, 30);
     this.landing = !!fld && this.throttle < .4 && p.z - ground < 14 && (!Settings.manualGear || this.gear);
@@ -11208,6 +11209,9 @@ const Direct = {
       if (this.flyT < 4 || Settings.flightAssist && p.p > -.5) { p.z = ground + .4; V.z = Math.max(V.z, 0); V.multiplyScalar(.97); FL.d.setFromEuler(FL.e.set(0, -Math.max(0, .15 - p.p), 0)); q.multiply(FL.d).normalize(); this.msg('Scraped the ground!', .8); }
       else { this.crash(); return; }
     }
+    { const tt = treeTop(M, p.x, p.y); if (p.z < tt - .2 && this.flyT > 2 && !this.landing) { // flew into the treetops
+      if (Settings.flightAssist && p.p > -.5) { p.z = tt + .15; V.z = Math.max(V.z, 1.5); V.multiplyScalar(.85); this.msg('Clipped the trees!', .8); if (this.ui.g.R) this.ui.g.R.shake = Math.min(1, (this.ui.g.R.shake || 0) + .4); }
+      else { this.msg('Flew into the trees!', 2); this.crash(); return; } } }
     if (p.z > 70) { p.z = 70; V.z = Math.min(V.z, 0); }
     if (p.x < 3 || p.y < 3 || p.x > N - 4 || p.y > N - 4) { this.camYaw = Math.atan2(N / 2 - p.y, N / 2 - p.x); this.msg('Leaving the island: turning back', .5); p.x = clamp(p.x, 1, N - 2); p.y = clamp(p.y, 1, N - 2); }
     this.vel = {x: V.x, y: V.y, z: V.z};
@@ -11309,7 +11313,7 @@ const Direct = {
     const climb = (k[B.up] ? 1 : 0) - (k[B.down] ? 1 : 0); this.vz += (climb * 6 - this.vz) * Math.min(1, dt * 3);
     p.x = clamp(p.x + this.vel.x * dt, 1, N - 2); p.y = clamp(p.y + this.vel.y * dt, 1, N - 2); p.z += this.vz * dt;
     const ground = Math.max(hAt(M, p.x, p.y), 0);
-    p.z = clamp(p.z, ground + 1.2, 40);
+    p.z = clamp(p.z, Math.max(ground + 1.2, treeTop(M, p.x, p.y) + .5), 40); // can't sink into the trees
     p.h += clamp(angDiff(p.h, this.camYaw), -1.8 * dt, 1.8 * dt);
     // nose dips into the direction of travel
     const lc = Math.cos(p.h), ls = Math.sin(p.h), fwd = (this.vel.x * lc + this.vel.y * ls) / top, side = (-this.vel.x * ls + this.vel.y * lc) / top;
@@ -11332,6 +11336,7 @@ const Direct = {
     this.batt -= dt / 75;
     const g = Math.max(hAt(M, p.x, p.y), -.1);
     if (p.z < g + .08) p.z = g + .08;
+    if (p.z < treeTop(M, p.x, p.y) - .3 && !this.treeHit) { this.treeHit = 1; this.msg('Hit a tree!', 1); this.ui.g.issue({c: 'pfire', id: this.id, w: 'det', yaw: 0, pitch: 0}); }
     this.mv = true; this.aimYaw = this.yaw; this.aimPitch = this.pitch;
   },
 
@@ -15088,6 +15093,7 @@ addEventListener('keydown', () => { if (typeof Direct !== 'undefined' && window.
   // ---- changelog: add a new entry at the TOP of this list whenever something changes
   const CHANGELOG = [
     {d: '9 Nov 2026', items: [
+      'Trees are solid for things you fly: planes clip the treetops (or crash without flight assist), helicopters can\'t sink into them and FPV drones blow up on them.',
       'New nation: the Shauns, led by Chairman Shaun: flag-red blobs with gold stars. Everything costs 15% less but units have 10% less health. Copycats: destroy any enemy unit and you can build it too, even another nation\'s special units, with no research. Special (G): Knock-off, a cheaper copy of the nearest enemy unit rolls out beside you.',
       'Yahus: playing as them, every enemy capital shows how many days its nuke is away. It is always two weeks, and Big Yahu reminds you each time the clock resets.',
       'Yahus: when they destroy a hospital or housing, everyone gets a press release. The Yahus investigated themselves and found no wrongdoing.',
