@@ -2646,7 +2646,7 @@ Sim.prototype.footprint = function (d, x, y, fn) {
 Sim.prototype.canPlace = function (k, x, y, pi) {
   const d = BUILDINGS[k], M = this.M, N = this.N;
   if (k === 'derrick') {
-    const n = M.nodes.find(n => n.kind === 'oil' && Math.hypot(n.x - x, n.y - y) < 2.5 && !n.taken);
+    const n = M.nodes.find(n => n.kind === 'oil' && Math.hypot(n.x - x, n.y - y) < 2.5 && (!n.taken || (this.ents && !this.ents.has(n.taken))));
     return !!n;
   }
   const ok = this.footprint(d, x, y, (i, j) => {
@@ -2676,7 +2676,7 @@ Sim.prototype.addBuilding = function (k, o, x, y, done) {
   const hpm = d.hp * (k === 'hq' ? 1 : this.hpMult(p, d));
   const e = {id: this.nextId++, k, o, d, b: true, x, y, z: hAt(this.M, x, y), h: 0, hp: done ? hpm : hpm * .1, hpm, bp: done ? 1 : 0, cd: 0, tid: 0, st: 0, q: [], prog: 0, rally: null, garrison: [], kills: 0};
   if (k === 'derrick') {
-    const n = this.M.nodes.find(n => n.kind === 'oil' && Math.hypot(n.x - x, n.y - y) < 2.5 && !n.taken);
+    const n = this.M.nodes.find(n => n.kind === 'oil' && Math.hypot(n.x - x, n.y - y) < 2.5 && (!n.taken || !this.ents.has(n.taken)));
     if (n) { n.taken = e.id; e.node = n.id; e.x = n.x; e.y = n.y; }
   }
   if (d.nukeT) e.nukeCD = d.nukeT;
@@ -2876,12 +2876,22 @@ Sim.prototype.cmdMove = function (es, x, y, atk, queue) {
   });
 };
 
+// Territory: you can only build near what you already own (your capital reaches furthest). Oil derricks go on any well,
+// but a lone derrick only claims a little ground round itself.
+const TERR_R = k => k === 'hq' ? 26 : k === 'derrick' ? 7 : 12 + (BUILDINGS[k].s || 2) / 2;
+Sim.prototype.inTerritory = function (pi, k, x, y) {
+  if (k === 'derrick' || this.battle || this.scen || this.rail || this.rs || pi < 0) return true;
+  for (const b of this.ents.values()) if (b.b && b.o === pi && Math.hypot(b.x - x, b.y - y) < TERR_R(b.k)) return true;
+  return false;
+};
+
 Sim.prototype.cmdBuild = function (ws, p, k, x, y, q, rot) {
   const d = BUILDINGS[k];
   if (!d || k === 'hq' || (d.only && !d.only.includes(p.nat.key))) return;
   if (d.req && !this.has(p.i, d.req)) { this.notify(p.i, 'Requires ' + BUILDINGS[d.req].n, 'bad'); return; }
   if (this.techLock(p, k)) { this.notify(p.i, 'Research ' + UPGRADES[this.techLock(p, k)].n + ' first', 'bad'); return; }
   if (!this.canPlace(k, x, y, p.i)) { this.notify(p.i, 'Cannot build there', 'bad'); return; }
+  if (!this.inTerritory(p.i, k, x, y)) { this.notify(p.i, 'Outside your territory: build next to your own buildings', 'bad'); return; }
   const c = this.costOf(p, d);
   if (p.steel < c[0] || p.fuel < c[1]) { this.notify(p.i, 'Not enough resources', 'bad'); return; }
   let wk = ws.filter(e => e.k === 'worker');
@@ -3273,7 +3283,8 @@ Sim.prototype.kill = function (t, by) {
       this.footprint(t.d, t.x, t.y, (i, j) => { if (i >= 0 && j >= 0 && i < this.N && j < this.N && this.M.occ[j * this.N + i] === t.id) this.M.occ[j * this.N + i] = 0; });
       this.F.softFlush();
     }
-    if (t.node !== undefined) this.M.nodes[t.node].taken = 0;
+    if (t.node !== undefined) { this.M.nodes[t.node].taken = 0;
+      if (t.k === 'derrick' && p && !p.bot && p.alive && !this.scen && !this.battle) { (p.rebuild = p.rebuild || []).push({n: t.node, t: this.t + 12}); this.notify(t.o, 'Oil Derrick destroyed: workers will rebuild it once the area is safe', 'bad', t.x, t.y); } }
     if (t.garrison) this.unload(t);
     for (const it of t.q) { if (it.up) delete p.ups['_' + it.up]; }
     this.ev({k: 'bdead', id: t.id, x: t.x, y: t.y, s: t.d.s, b: t.k});
@@ -3612,7 +3623,7 @@ Sim.prototype.step = function () {
     if (this.tick % 10 === 0) this.income(p);
   }
   if (this.tick % 10 === 3) this.stepMorale();
-  if (this.tick % 50 === 21) for (const p of this.players) if (p.alive && !this.battle && !this.scen && !this.rail) { if (!p.bot) this.stepWorkers(p); if (p.autoEco) this.stepAutoEco(p); else if (p.autoHouse && !p.bot) this.stepAutoHouse(p); }
+  if (this.tick % 50 === 21) for (const p of this.players) if (p.alive && !this.battle && !this.scen && !this.rail) { if (!p.bot) { this.stepWorkers(p); if (p.rebuild && p.rebuild.length) this.stepRebuild(p); } if (p.autoEco) this.stepAutoEco(p); else if (p.autoHouse && !p.bot) this.stepAutoHouse(p); }
   if (this.tick % 100 === 47 && !this.battle && !this.scen && !this.rail) { // your deputy runs the base (a bit slower than you would) while you fight on the ground
     const away = {}; for (const e of this.ents.values()) if (e.pilot) away[e.pilot - 1] = 1;
     for (const p of this.players) if (p.alive && !p.bot && away[p.i]) this.stepDeputy(p);
@@ -4809,6 +4820,20 @@ Sim.prototype.stepAutoHouse = function (p) {
 // Worker split (human players): p.builders workers are builders, the rest are miners. Every 5 s:
 // builders go to any unfinished or damaged building (spread over the sites), and mine when there is nothing to build;
 // idle workers of either kind go back to mining, so nobody stands around.
+// Lost derricks: once nobody hostile is near the well, send workers to put it back up (normal price)
+Sim.prototype.stepRebuild = function (p) {
+  p.rebuild = p.rebuild.filter(r => {
+    const n = this.M.nodes[r.n]; if (!n || (n.taken && this.ents.has(n.taken))) return false; // someone already built there
+    if (this.t < r.t) return true;
+    let foe = false; this.near(n.x, n.y, 12, u => { if (!foe && u.o >= 0 && u.o !== p.i && !this.friendly(u.o, p.i) && u.hp > 0 && (u.d.dmg || u.b)) foe = true; });
+    if (foe) { r.t = this.t + 8; return true; }
+    const c = this.costOf(p, BUILDINGS.derrick); if (p.steel < c[0] || p.fuel < c[1]) { r.t = this.t + 10; return true; }
+    const before = this.ents.size; this.cmdBuild([], p, 'derrick', n.x, n.y);
+    if (this.ents.size > before) { this.notify(p.i, 'Workers are rebuilding an Oil Derrick', 'good', n.x, n.y); return false; }
+    r.t = this.t + 10; return true;
+  });
+};
+
 Sim.prototype.stepWorkers = function (p) {
   if (this.battle || this.scen) return;
   if (p.builders === undefined) p.builders = 2;
@@ -5459,7 +5484,7 @@ Bot.prototype.findSpot = function (k, around, rmin, rmax) {
   const s = this.s, c = around || this.p.spawn;
   for (let t = 0; t < 40; t++) {
     const a = this.rnd() * 6.283, r = rmin + this.rnd() * (rmax - rmin), x = Math.round(c.x + Math.cos(a) * r), y = Math.round(c.y + Math.sin(a) * r);
-    if (s.canPlace(k, x, y, this.pi)) return {x, y};
+    if (s.canPlace(k, x, y, this.pi) && s.inTerritory(this.pi, k, x, y)) return {x, y};
   }
   return null;
 };
@@ -5511,7 +5536,7 @@ Bot.prototype.findCoast = function () {
   const s = this.s, c = this.p.spawn;
   for (let t = 0; t < 180; t++) {
     const a = this.rnd() * 6.283, r = 12 + this.rnd() * 45, x = Math.round(c.x + Math.cos(a) * r), y = Math.round(c.y + Math.sin(a) * r);
-    if (s.canPlace('yard', x, y, this.pi)) return {x, y};
+    if (s.canPlace('yard', x, y, this.pi) && s.inTerritory(this.pi, 'yard', x, y)) return {x, y};
   }
   return null;
 };
@@ -5949,7 +5974,7 @@ function Mirror(o) {
   this.players[-1] = xavPlayer();
 }
 Mirror.prototype.friendly = Sim.prototype.friendly;
-Mirror.prototype.canPlace = Sim.prototype.canPlace;
+Mirror.prototype.canPlace = Sim.prototype.canPlace; Mirror.prototype.inTerritory = Sim.prototype.inTerritory;
 Mirror.prototype.footprint = Sim.prototype.footprint;
 Mirror.prototype.has = Sim.prototype.has;
 Mirror.prototype.trainable = Sim.prototype.trainable;
@@ -14092,8 +14117,8 @@ const UI = {
       let x = Math.round(g.x), y = Math.round(g.y);
       if (m.b === 'derrick') { const n = M.nodes.find(n => n.kind === 'oil' && Math.hypot(n.x - g.x, n.y - g.y) < 3.5); if (n) { x = n.x; y = n.y; } }
       m.x = x; m.y = y;
-      const ok = this.g.view.canPlace(m.b, x, y, this.g.me);
-      m.ok = ok;
+      const terr = this.g.view.inTerritory(this.g.me, m.b, x, y), ok = this.g.view.canPlace(m.b, x, y, this.g.me) && terr;
+      m.ok = ok; if (!terr && !m.terrMsg) { m.terrMsg = 1; this.addAlert('Outside your territory: build next to your own buildings (red area)'); }
       m.mat.color.set(ok ? 0x6dff9a : 0xff4a3a);
       if (R.ghost) R.ghost.position.set(x, Math.max(hAt(M, x, y), 0) + .05, y);
     } else if (m.t === 'target' || m.t === 'road' || m.t === 'dig' || m.t === 'digline') {
@@ -14373,7 +14398,7 @@ const UI = {
       m.maskKey = key; const bad = [];
       for (let y = m.y - R; y <= m.y + R; y++) for (let x = m.x - R; x <= m.x + R; x++) {
         if (x < 0 || y < 0 || x >= N || y >= N || (x - m.x) ** 2 + (y - m.y) ** 2 > R * R) continue;
-        if (!v.canPlace(m.b, x, y, this.g.me)) bad.push(x, y);
+        if (!v.canPlace(m.b, x, y, this.g.me) || !v.inTerritory(this.g.me, m.b, x, y)) bad.push(x, y);
       }
       m.bad = bad;
     }
@@ -14746,6 +14771,8 @@ addEventListener('keydown', () => { if (typeof Direct !== 'undefined' && window.
   // ---- changelog: add a new entry at the TOP of this list whenever something changes
   const CHANGELOG = [
     {d: '9 Nov 2026', items: [
+      'Territory: you can only build next to your own buildings (your capital reaches furthest). Red squares show where you cannot build. Oil derricks still go on any well.',
+      'Lost oil derricks get rebuilt: once the area is safe your workers put a destroyed derrick back up (normal price).',
       'NEW co-op mode, Iron Express (With friends): man the gun cars of an armoured train crossing the island. Ambushes, gunship raids, blown track your engineer has to fix under fire, and a bunker blocking the last stretch. Lose the locomotive and it is over.',
       'Gunship nerfed hard: rockets now fire in 6 salvos then reload (no more holding E to wipe everything), weaker chin gun and Stinger, less health, costs more and trains slower.',
       'Valentinos toned down: slower regeneration, weaker bayonet charges, Rally Flag +15% for 6 s, at most 2 Trattorias count, no extra health.',
