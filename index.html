@@ -2706,7 +2706,7 @@ Sim.prototype.issue = function (c, pi) {
   switch (c.c) {
     case 'move': { const sqs = new Set(mine.filter(u => u.d.cat === 'inf').map(u => u.sq)); for (const e of mine) if (e.att && !sqs.has(e.att)) e.att = 0; this.cmdMove(mine, c.x, c.y, !!c.a, !!c.q); break; }
     case 'attach': { let n = 0; for (const e of mine) if (!e.b && (e.d.cat === 'veh' || e.d.cat === 'heli')) { e.att = c.sq || 0; n++; } if (n && c.sq) this.notify(pi, n + ' vehicles now escort their platoon', 'good'); break; }
-    case 'patrol': for (const e of mine) if (!e.b) { const from = {x: e.x, y: e.y}; this.clearOrders(e); e.patrol = [from, {x: c.x, y: c.y}]; e.pi = 1; this.go(e, c.x, c.y); e.amove = true; } break;
+    case 'patrol': for (const e of mine) if (!e.b && e.k !== 'worker') { const from = {x: e.x, y: e.y}; this.clearOrders(e); e.zone = null; e.patrol = [from, {x: c.x + (this.rnd() - .5) * 2, y: c.y + (this.rnd() - .5) * 2}]; e.pi = 1; this.go(e, c.x, c.y); e.amove = true; } break;
     case 'attack': { const t = this.ents.get(c.t); if (t) for (const e of mine) if (!e.b) { this.clearOrders(e); e.force = t.id; e.tid = t.id; } break; }
     case 'stop': for (const e of mine) if (!e.b) { this.clearOrders(e); if (e.air) e.hold = {x: e.x, y: e.y}; if (e.zone) e.zone = {x: e.x, y: e.y, r: 0}; } break;
     case 'zone': for (const e of mine) if (!e.b && PATROL_CATS[e.d.cat] && e.k !== 'worker') { this.clearOrders(e); e.zone = {x: clamp(c.x + (this.rnd() - .5) * 3, 2, this.N - 3), y: clamp(c.y + (this.rnd() - .5) * 3, 2, this.N - 3), r: clamp(c.r || PATROL_R, 3, 20)}; e.zoneT = 0; } break;
@@ -2839,7 +2839,7 @@ Sim.prototype.cmdMove = function (es, x, y, atk, queue) {
     const row = Math.floor(i / cols), col = i % cols, sp = Math.max(1.1, e.d.r * 2.6);
     const ox = (col - (cols - 1) / 2) * sp, oy = -row * sp;
     const gx = clamp(x + Math.cos(a) * oy - Math.sin(a) * ox, 1, this.N - 2), gy = clamp(y + Math.sin(a) * oy + Math.cos(a) * ox, 1, this.N - 2);
-    if (!this.players[e.o].bot && !this.battle && !this.scen && e.k !== 'worker' && PATROL_CATS[e.d.cat] && e.d.dmg) { e.zone = {x: gx, y: gy, r: PATROL_R}; e.zoneT = this.t + 3; }
+    if (!this.players[e.o].bot && !this.battle && !this.scen && e.k !== 'worker' && PATROL_CATS[e.d.cat] && e.d.dmg) { e.zone = {x: gx, y: gy, r: 0}; e.zoneT = this.t + 3; } // hold this spot: come back here after a chase
     if (queue && (e.goal || e.queue)) { (e.queue = e.queue || []).push({x: gx, y: gy, fx: x, fy: y, a: atk}); return; }
     this.clearOrders(e);
     this.go(e, gx, gy, x, y);
@@ -3852,7 +3852,7 @@ Sim.prototype.spawnFrom = function (b, k, p) {
     for (let t = 0; t < 12; t++) { const px = tx + (this.rnd() - .5) * 5, py = ty + (this.rnd() - .5) * 5, q = Math.round(py) * this.N + Math.round(px); if (q >= 0 && q < this.N * this.N && passable(this.M, 0, q)) { x = px; y = py; break; } }
   }
   const u = this.addUnit(k, p.i, x, y);
-  if (!p.bot && !this.scen && k !== 'worker' && PATROL_CATS[ud.cat] && ud.dmg) { const zx = b.rally ? b.rally.x : x + Math.cos(a) * 6, zy = b.rally ? b.rally.y : y + Math.sin(a) * 6; u.zone = {x: clamp(zx, 2, this.N - 3), y: clamp(zy, 2, this.N - 3), r: PATROL_R}; }
+  if (!p.bot && !this.scen && k !== 'worker' && PATROL_CATS[ud.cat] && ud.dmg) { const zx = b.rally ? b.rally.x : x + Math.cos(a) * 6, zy = b.rally ? b.rally.y : y + Math.sin(a) * 6; u.zone = {x: clamp(zx, 2, this.N - 3), y: clamp(zy, 2, this.N - 3), r: 0}; }
   if (ud.para) { u.chute = 16; u.z += u.chute; this.ev({k: 'para', id: u.id}); p.built++; this.ev({k: 'trained', p: p.i, u: k, id: u.id}); return u; }
   if (ud.cat === 'sea') { // point the bow at the longest stretch of open water
     let bestR = -1;
@@ -4000,6 +4000,8 @@ Sim.prototype.stepGround = function (e, p) {
           if (inf) { e.burst = (e.burst || 0) + 1; if (e.burst >= 3 + (e.id % 3)) { e.burst = 0; e.cd += .9 + this.rnd() * .9; } } // bursts, then a pause: fights breathe
         }
       }
+    } else if (e.zone && !e.force && !e.patrol && !e.goal && !e.reactGo && Math.hypot(e.x - e.zone.x, e.y - e.zone.y) > 16 + e.zone.r) {
+      e.tid = 0; this.go(e, e.zone.x, e.zone.y); e.amove = false; // leash: do not chase across the map, go back to the post
     } else if (e.stance !== 'hold' || e.force) {
       this.moveAlong(e, tgt.x, tgt.y, dom, p, tgt.x, tgt.y);
       moving = true;
@@ -4018,7 +4020,8 @@ Sim.prototype.stepGround = function (e, p) {
     // idle units gently un-stack, and soldiers with a patrol zone walk its beat
     this.separate(e, 0, 0, p);
     const Z = e.zone;
-    if (Z && Z.r > 0 && !e.pilot && !e.chute && e.stance !== 'hold' && (e.zoneT || 0) <= this.t) {
+    if (Z && Z.r === 0 && !e.pilot && !e.chute && (e.zoneT || 0) <= this.t && Math.hypot(e.x - Z.x, e.y - Z.y) > 3) { e.zoneT = this.t + 3; e.reactGo = 0; this.go(e, Z.x, Z.y); e.amove = true; }
+    else if (Z && Z.r > 0 && !e.pilot && !e.chute && e.stance !== 'hold' && (e.zoneT || 0) <= this.t) {
       e.zoneT = this.t + 5 + this.rnd() * 7;
       const N = this.N, dom = d.cat === 'sea' ? 1 : d.cat === 'inf' ? 2 : 0;
       for (let t = 0; t < 8; t++) {
@@ -4229,7 +4232,7 @@ Sim.prototype.stepAir = function (e) {
   if (!tgt && e.hitBy && !e.pilot && (!e.goal || e.amove)) { const A = this.ents.get(e.hitBy); e.hitBy = 0; if (A && A.hp > 0 && this.canHit(e, A) && Math.hypot(A.x - e.x, A.y - e.y) < 60) { e.tid = A.id; tgt = A; } } // turn on whoever is shooting at us
   let gx, gy;
   if (tgt) { gx = tgt.x; gy = tgt.y; }
-  else if (e.goal) { gx = e.goal.x; gy = e.goal.y; if (Math.hypot(gx - e.x, gy - e.y) < (d.cat === 'heli' ? .8 : 4)) { e.hold = e.goal; e.goal = null; } }
+  else if (e.goal) { gx = e.goal.x; gy = e.goal.y; if (Math.hypot(gx - e.x, gy - e.y) < (d.cat === 'heli' ? .8 : 4)) { e.hold = e.goal; e.goal = null; if (e.patrol) { e.pi = 1 - e.pi; const g = e.patrol[e.pi]; this.go(e, g.x, g.y); e.amove = true; } } }
   else { gx = e.hold.x; gy = e.hold.y; }
   const dd = Math.hypot(gx - e.x, gy - e.y);
   // smooth 3D flight: each aircraft drifts through its own band of altitudes, follows the terrain ahead,
@@ -14076,7 +14079,7 @@ const UI = {
       S.push({hk: 'T', name: 'Stop', gl: '■', desc: 'Stop and hold position until something comes close.', act: () => G.issue({c: 'stop', ids})});
       const hold = first.stance === 'hold';
       S.push({hk: 'Y', name: 'Hold ground', gl: '⛨', desc: 'Never chase: only fire at enemies already in range.', act: () => { G.issue({c: 'stance', ids, s: hold ? 'aggr' : 'hold'}); for (const e of units) e.stance = hold ? 'aggr' : 'hold'; this.refreshHud(true); }, active: hold});
-      S.push({hk: 'U', name: 'Patrol area', gl: '⟲', desc: 'Your troops patrol on their own around wherever you last sent them. Pick a new area for them to guard. Stop (T) makes them stand still.', act: () => this.setMode({t: 'target', kind: 'zone'}, 'Patrol around where?')});
+      S.push({hk: 'U', name: 'Patrol', gl: '⟲', desc: 'Walk back and forth between here and the point you click, fighting anything on the way. Any other order ends the patrol.', act: () => this.setMode({t: 'target', kind: 'patrol'}, 'Patrol to where? (back and forth)'), active: this.mode && this.mode.kind === 'patrol'});
       if (units.some(e => e.d.cat === 'inf' && e.k !== 'scout')) S.push({hk: 'H', name: 'Man defences', gl: '🛡', desc: 'These infantry fill your nearest bunkers, pillboxes and watchtowers, then line trenches and sandbags. Or right click one of those buildings to garrison it.', act: () => G.issue({c: 'mandef', ids})});
       S.push({hk: 'G', name: 'Take control', gl: '◉', desc: 'Fight in person (F). FPV drones fly first person, planes get a chase camera.', act: () => this.tryDirect()});
       const arm = units.filter(e => e.o === G.me && (e.d.cat === 'veh' || e.d.cat === 'heli') && !e.d.carry);
@@ -14648,6 +14651,7 @@ addEventListener('keydown', () => { if (typeof Direct !== 'undefined' && window.
       'New Licases special, Breakaway: you and every friend within 15 m sprint flat out for 5 seconds, take 40% less damage, and enemy gunners lose track of you.',
       'Smarter bots: they defend outlying buildings, gather before attacking and push together, reinforce a winning push, bring air cover with the wave, and attack much sooner in Quick Battle.',
       'FPS Modes removed from the main menu.',
+      'Patrol fixed: the Patrol button (U) now sends units back and forth between two points, attacking on the way (planes and helicopters too). Units you move now hold that spot instead of wandering, and come back to it after chasing an enemy instead of running across the map.',
       'Economy: a market on the resource bar swaps steel and fuel at 65% (Shift-click for 500), so you are never stuck with 4000 of one and 20 of the other. Your capital also trickles a little fuel. Bots use the market too.',
       'Units no longer stand still while you pick them off from range: they work out who is shooting, close in and fight back if they can hurt it, or scatter if they cannot (troops under a plane spread out). Nearby idle friends join in.',
       'Operation Red Star: friends now spawn inside the bomber with the host (they were dropped into random planes). The bomber waits on the runway until a pilot takes off: W/S throttle, R/F climb and dive, A/D bank. Too slow and she stalls, too low and the ground wins; the autopilot holds cruise when the cockpit is empty.',
