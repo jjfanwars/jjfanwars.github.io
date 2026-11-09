@@ -1135,6 +1135,11 @@ const VS = {
 };
 
 const HERO_NAMES = ['Iron', 'Ghost', 'Hammer', 'Viper', 'Maverick', 'Saint', 'Reaper', 'Duke', 'Bishop', 'Havoc', 'Sparrow', 'Tex'];
+const YAHU_INQUIRY = ['The Yahus investigated themselves and found no wrongdoing.', 'An internal Yahus inquiry into the destroyed % has cleared the Yahus of all wrongdoing.',
+  'Yahus spokesman: the % was definitely being used by enemy forces. Evidence to follow.', 'Big Yahu: "We are the most moral army in the world." Investigation closed.',
+  'The Yahus have opened an investigation. It will report back in two weeks.', 'Yahus statement: we regret any harm caused to the %, which was its own fault.'];
+const YAHU_TWOWEEKS = ['Big Yahu: "They are two weeks away. This time it is real."', 'Big Yahu: "I said two weeks in 1992. I say it again now. Two weeks."', 'Intel update: the enemy nuke is two weeks away. Same as last time.',
+  'Big Yahu: "Please do not look at the old charts. Two weeks."', 'Big Yahu holds up a cartoon bomb with a red line on it. Two weeks.'];
 const WAR_CRIES = {yahus: 'Two weeks away? We are already here.', licases: 'Pedal to victory!', dhruvs: 'As calculated.', valentinos: 'Forza! Avanti!', jethroes: 'Awoooooo!', toms: 'Nice shades. Shame about your army.'};
 
 // ---------- weapons when a player controls a unit directly ----------
@@ -3328,6 +3333,10 @@ Sim.prototype.kill = function (t, by) {
     this.ev({k: 'bdead', id: t.id, x: t.x, y: t.y, s: t.d.s, b: t.k});
     if (t.d.cover) this.coverDirty = true;
     if (by !== null && by !== undefined && this.players[by]) this.stat(this.players[by], 'bkills', 1);
+    if ((t.k === 'hospital' || t.k === 'housing') && by >= 0 && this.players[by] && this.players[by].nat.key === 'yahus' && this.t - (this.yInq || -99) > 20) { // the Yahus look into it and are satisfied
+      this.yInq = this.t; const L = YAHU_INQUIRY[(this.yInqN = (this.yInqN || 0) + 1) % YAHU_INQUIRY.length].replace('%', t.d.n);
+      for (const q of this.players) if (q && q.alive && !q.neutral) this.notify(q.i, 'PRESS RELEASE: ' + L, 'info', t.x, t.y);
+    }
     if (t.k === 'hq') this.playerOut(t.o, by);
   } else {
     if (t.recon) this.notify(t.o, 'A scout was killed before reporting back', 'bad', t.x, t.y);
@@ -14707,6 +14716,14 @@ const UI = {
     if (this.camp && !this.campLive()) this.drawZones(c);
     if (this.mode && this.mode.t === 'place' && this.mode.x !== undefined) this.drawBuildMask(c);
     const G = this.g, v = G.view, list = this.R.visEnts || [];
+    if (v.players[G.me] && v.players[G.me].nat.key === 'yahus') { // the enemy nuke is always two weeks away
+      const ph = v.t % 140, days = Math.max(1, 14 - Math.floor(ph / 10));
+      if (this.ywPrev !== undefined && ph < this.ywPrev && v.t > 20) { this.ywN = (this.ywN || 0) + 1; this.addAlert(YAHU_TWOWEEKS[this.ywN % YAHU_TWOWEEKS.length], 'gold'); }
+      this.ywPrev = ph;
+      for (const e of list) if (e.k === 'hq' && !v.friendly(e.o, G.me)) { const p = this.project(e.rx, e.rz + 11, e.ryy); if (!p.ok) continue;
+        c.font = '800 13px system-ui'; c.textAlign = 'center'; c.lineWidth = 3; c.strokeStyle = '#000'; const tx = '☢ NUKE: ' + days + (days === 1 ? ' DAY' : ' DAYS') + ' AWAY';
+        c.strokeText(tx, p.x, p.y); c.fillStyle = days <= 3 ? '#ff3b30' : '#ffd23a'; c.fillText(tx, p.x, p.y); }
+    }
     for (const e of list) {
       const sel = this.sel.has(e.id), hurt = e.hp < e.hpm && (!e.d.mine);
       if (!sel && !hurt && !e.hero && !(e.b && e.bp < 1)) continue;
@@ -15043,6 +15060,8 @@ addEventListener('keydown', () => { if (typeof Direct !== 'undefined' && window.
   // ---- changelog: add a new entry at the TOP of this list whenever something changes
   const CHANGELOG = [
     {d: '9 Nov 2026', items: [
+      'Yahus: playing as them, every enemy capital shows how many days its nuke is away. It is always two weeks, and Big Yahu reminds you each time the clock resets.',
+      'Yahus: when they destroy a hospital or housing, everyone gets a press release. The Yahus investigated themselves and found no wrongdoing.',
       'New troops at the Barracks: Jetpack Trooper (flies over rivers and hills; in first person hold Jump to fly), Combat Engineer (repairs vehicles, builds like a worker, plants satchel charges) and Mortar Team (lobs bombs over hills, helpless up close).',
       'New vehicles: Flame Tank and Railgun Tank (charges up, then the slug goes through everything in a line) at the War Factory, and the V-22 Osprey tiltrotor (fast, carries 8, door gun) at the Airfield.',
       'New nation: the Yahus, led by Big Yahu (dark suits, blue ties, swept silver hair). Vision +15%, damage +6%, aircraft +10%, and Iron Dome: their units and buildings take 30% less damage from explosions. Special (G): $1 Million from AIPAC buys the nearest enemy soldier, who puts on an Israeli flag and cap and fights for you.',
