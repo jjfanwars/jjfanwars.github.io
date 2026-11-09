@@ -25,6 +25,8 @@ body.neo .primary{background:linear-gradient(180deg,#d9a441,#a8741f);border-colo
 body.neo .primary:hover{background:linear-gradient(180deg,#e8b552,#b8822a)}
 body.neo .brand h1{background:linear-gradient(180deg,#fff6e4,#d9b77a);-webkit-background-clip:text;background-clip:text}
 body.neo .big{border-radius:10px;background:linear-gradient(180deg,rgba(30,34,40,.82),rgba(12,14,18,.86));border-color:rgba(255,226,170,.14)}
+body.neo .big.primary,body.neo .primary{background:linear-gradient(180deg,#e2ae48,#b07a22);border-color:#f5d27a;color:#1b1206;font-weight:800;text-align:center}body.neo .big.primary:hover,body.neo .primary:hover{background:linear-gradient(180deg,#f0be5a,#c08a2c)}
+.primary:disabled,.big.primary:disabled{opacity:.6;cursor:not-allowed;filter:saturate(.6)}
 body.neo .big:hover{border-color:rgba(255,214,140,.5)}
 #whiteout{position:fixed;inset:0;background:#fff;opacity:0;pointer-events:none;z-index:40}
 .hidden{display:none!important}
@@ -441,7 +443,7 @@ body.cbDeut #ov,body.cbDeut #mm,body.cbDeut #cards img,body.cbDeut #selpanel img
         <label>Map size <select id="optSize"><option value="96">Small</option><option value="128">Medium</option><option value="160" selected>Large</option><option value="192">Huge</option><option value="240">Massive</option></select></label>
         <label>Graphics <select id="optQ"><option value="auto" selected>Auto (adapts to your computer)</option><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option></select></label>
         <label title="Every unit from every nation, free, from the Deploy screen. Applies to human players only.">All units unlocked and free <input type="checkbox" id="optAll"></label>
-        <label title="Easy: +60% steel and fuel, a bigger start and auto economy on. Hard: 20% less. Only affects human players.">Difficulty (your economy) <select id="optEco"><option value="easy">Easy: lots of resources, auto economy</option><option value="normal" selected>Normal</option><option value="hard">Hard: scarce resources</option></select></label>
+        <label title="Easy: +60% steel and fuel, a bigger start and auto economy on. Hard: 20% less. Only affects human players.">Economy <select id="optEco" style="max-width:62%"><option value="easy">Easy (rich, auto)</option><option value="normal" selected>Normal</option><option value="hard">Hard (scarce)</option></select></label>
         <label title="Off: the bots build up like you but never attack until you press Declare war (or shoot at them first)">Random attacks (bots attack whenever they like) <input type="checkbox" id="optRaid" checked></label>
         <label title="Two or three friendly healers wander the map and heal everyone, on every side">The Xaviers (neutral healers) <input type="checkbox" id="optXav"></label>
         <label title="A short checklist of goals in the corner. For the full guided tutorial use Tutorial on the main menu.">Objectives checklist <input type="checkbox" id="optTut"></label>
