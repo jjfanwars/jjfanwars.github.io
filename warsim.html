@@ -2075,6 +2075,7 @@ function hAt(M, x, y) {
 // dom 0 = vehicles, 1 = ships, 2 = infantry (can swim, but drown if they stay in the water too long)
 const SWIM_Z = -.42, SWIM_T = 12, SWIM_T_AI = 22;
 function passable(M, dom, i) {
+  if (dom !== 1 && M.bore && M.bore[i] === 2) return true; // through the hill
   if (M.occ[i]) return false;
   if (dom === 1) return M.h[i] < -.5;
   if (dom === 2) return !M.block[i] || M.water[i];
@@ -2096,7 +2097,7 @@ Fields.prototype.prep = function (dom) {
   for (let j = 0; j < A; j++) {
     if (!passable(M, dom, j)) continue; pass[j] = 1; let c = 1;
     if (dom === 2 && M.water[j] && !(D && D[j])) c = 5;
-    else if (dom !== 1) { if (M.road[j] || (D && D[j])) c = .62; else { if (M.tree[j]) c *= 1.25; if (M.bio[j] === BIO.SWAMP) c *= 1.3; } }
+    else if (dom !== 1) { if (M.road[j] || (D && D[j]) || (M.bore && M.bore[j])) c = .62; else { if (M.tree[j]) c *= 1.25; if (M.bio[j] === BIO.SWAMP) c *= 1.3; } }
     cost[j] = c;
   }
   return (this.pc[dom] = {v: this.ver, pass, cost});
@@ -2219,7 +2220,11 @@ const DIG_R = 2.5, DIG_COST = 25, DIG_T = 3;
 // timber-roofed, and troops inside cannot be seen or shot from more than a few metres away.
 const DIG_MAX = 3, TUNNEL_D = 1.0, // tunnels can now ramp down to 3 deep: dig each cell a little deeper than the last to slope down, shallower to climb out
    TRENCH_D = .45, TUNNEL_SEE = 3.5;
-function inTunnel(M, N, e) { if (!M.dug) return false; const i = Math.round(e.y) * N + Math.round(e.x); return M.dug[i] >= TUNNEL_D; }
+function inTunnel(M, N, e) { if (e.ug) return true; if (!M.dug) return false; const i = Math.round(e.y) * N + Math.round(e.x); return M.dug[i] >= TUNNEL_D; }
+// Bored tunnels: a second, underground layer. The hill above stays whole; M.bore[q] = 1 open cut / entrance, 2 covered bore, M.bz[q] = tunnel floor height.
+// A unit that walks into a covered cell from a tunnel cell is underground (e.ug): hidden, safe from shells and bombs, and only fights at arm's length.
+const BORE_COVER = 1.4, BORE_T = 1.1, BORE_COST = 3, BORE_MAX = 70;
+function boreInit(M, N) { if (!M.bore) { M.bore = new Uint8Array(N * N); M.bz = new Float32Array(N * N); } }
 function digCells(M, N, x, y, amt, o, RR) { // returns [[i, h], ...] of changed cells
   if (!M.h0) { M.h0 = Float32Array.from(M.h); M.dug = new Float32Array(N * N); M.digO = new Uint8Array(N * N); }
   const out = [], R = RR || 1.15, W = Math.ceil(R);
@@ -2742,6 +2747,17 @@ Sim.prototype.issue = function (c, pi) {
     case 'rsfire': { const R = this.rs, sid = R && R.seat[pi], S2 = sid && RS_SEATS[sid], B = this.rsB; if (!S2 || !S2.gun || !B || (R.gcd[pi] || 0) > this.t) break; R.gcd[pi] = this.t + .1; const wy = +c.yaw || 0, wp = clamp(+c.pitch || 0, -1, 1), hd = this.rsHd || 0, sx = S2.x * .2, sz = S2.z * .2, ox = B.x + Math.cos(hd) * sx - Math.sin(hd) * sz, oy = B.y + Math.sin(hd) * sx + Math.cos(hd) * sz, oz = B.z + 1, dx = Math.cos(wy) * Math.cos(wp), dy = Math.sin(wy) * Math.cos(wp), dz = Math.sin(wp), sp = 38, vB = this.rsV || {x: 0, y: 0}; R.bullets.push({x: ox, y: oy, z: oz, vx: dx * sp + vB.x, vy: dy * sp + vB.y, vz: dz * sp, t: 0}); this.ev({k: 'rstr', x0: ox, y0: oy, z0: oz, x1: ox + dx * 16, y1: oy + dy * 16, z1: oz + dz * 16, c: 'g'}); break; }
     case 'icrew': (this.crew = this.crew || {})[pi] = {x: +c.x || 0, z: +c.z || 0, yaw: +c.yaw || 0, t: this.t}; break; // where this player is walking inside the shared aircraft
     case 'pdig': { const a = this.ents.get(c.id); if (!a || a.o !== pi || a.pilot !== pi + 1 || a.d.cat !== 'inf' || (a.digT || 0) > this.t) break; if (Math.hypot(c.x - a.x, c.y - a.y) > 4.2) break; a.digT = this.t + .1; this.digAt(+c.x, +c.y, pi, .45, {x: +c.dx || 0, y: +c.dy || 0}, 2.4); break; } // by hand: wide hole, deep bites, quick strikes
+    case 'bore': { // workers bore a real tunnel: straight line, floor sloping evenly from one end to the other, under whatever is on top
+      const L = Math.min(BORE_MAX, Math.hypot(c.x2 - c.x1, c.y2 - c.y1)), a = Math.atan2(c.y2 - c.y1, c.x2 - c.x1), n = Math.max(2, Math.ceil(L / .8)), cells = [], seen = new Set();
+      const z0 = gAt(this.M, c.x1, c.y1), x2 = c.x1 + Math.cos(a) * L, y2 = c.y1 + Math.sin(a) * L, z1 = Math.max(.3, gAt(this.M, x2, y2));
+      for (let i = 0; i <= n; i++) { const x = c.x1 + (x2 - c.x1) * i / n, y = c.y1 + (y2 - c.y1) * i / n, q = Math.round(y) * this.N + Math.round(x); if (seen.has(q) || x < 2 || y < 2 || x > this.N - 3 || y > this.N - 3) continue; seen.add(q); if (this.M.water[q]) break; cells.push([Math.round(x), Math.round(y), Math.min(z0 + (z1 - z0) * i / n, this.M.h[q])]); }
+      let wk = mine.filter(e => e.k === 'worker'); if (!wk.length) wk = this.autoWorkers(pi, c.x1, c.y1, 3);
+      if (!wk.length) { this.notify(pi, 'No workers to dig: train some at your capital', 'bad'); break; }
+      if (cells.length < 2) { this.notify(pi, 'Can not tunnel there', 'bad'); break; }
+      const job = {cells, i: 0, a};
+      wk.forEach(w => { this.clearOrders(w); w.task = {type: 'bore', job, tt: 0}; });
+      this.notify(pi, 'Boring a ' + Math.round(L * 10) + ' m tunnel (about ' + cells.length * BORE_COST + ' steel). Workers dig from the entrance inward.', 'info');
+      break; }
     case 'digline': { // workers dig a trench or tunnel along a line, a few strikes per cell, in order
       const n = Math.ceil(Math.hypot(c.x2 - c.x1, c.y2 - c.y1)), cells = [];
       for (let i = 0; i <= n; i++) cells.push([c.x1 + (c.x2 - c.x1) * i / Math.max(1, n), c.y1 + (c.y2 - c.y1) * i / Math.max(1, n)]);
@@ -3440,6 +3456,7 @@ Sim.prototype.splash = function (x, y, r, dmg, o, ty, src) {
   const vs = VS[ty];
   this.near(x, y, r + 1, t => {
     if (o !== null && this.friendly(t.o, o)) return;
+    if (t.ug) return; // shells and bombs burst on top of the hill: anyone in a bored tunnel is safe
     if (t.air && ty !== 'drone') return;
     const d = Math.hypot(t.x - x, t.y - y);
     if (d > r) return;
@@ -3622,6 +3639,21 @@ Sim.prototype.step = function () {
   this.stepNukes();
 };
 
+Sim.prototype.boreCell = function (c, J, o) {
+  const M = this.M, N = this.N, q = c[1] * N + c[0], z = c[2]; boreInit(M, N);
+  const st = M.h[q] - z >= BORE_COVER ? 2 : 1;
+  if (M.bore[q] === 2 && st === 1) return; // never open up a covered stretch
+  M.bore[q] = st; M.bz[q] = z; M.tree[q] = 0;
+  const cut = [];
+  if (st === 1 && M.h[q] > z + .05) { if (!M.h0) { M.h0 = Float32Array.from(M.h); M.dug = new Float32Array(N * N); M.digO = new Uint8Array(N * N); } // open cut: dig the ramp down to the floor
+    for (let j = -1; j <= 1; j++) for (let i = -1; i <= 1; i++) { const qq = q + j * N + i; if (M.occ[qq] || M.water[qq] || M.h[qq] - z >= BORE_COVER) continue; /* never eat into the hill the bore goes under */ const nh = Math.max(z, Math.min(M.h[qq], z + (i || j ? .35 : 0))); if (nh < M.h[qq] - .01) { const old = M.h[qq]; M.h[qq] = nh; M.dug[qq] = M.h0[qq] - nh; M.digO[qq] = o + 1; M.tree[qq] = 0; M.block[qq] = 0; cut.push([qq, Math.round(nh * 1000) / 1000, Math.round((old - nh) * 1000) / 1000]); } } }
+  if (cut.length) this.ev({k: 'dig2', c: cut, o, x: c[0], y: c[1]});
+  // a portal where the bore goes into (or comes out of) the hill
+  const k = J.cells.indexOf(c), pv = J.cells[k - 1], qp = pv ? pv[1] * N + pv[0] : -1;
+  const portal = pv && ((st === 2 && M.bore[qp] !== 2) || (st === 1 && M.bore[qp] === 2));
+  this.ev({k: 'bore', q, st, z: Math.round(z * 1000) / 1000, o, p: portal ? 1 : 0, x: c[0], y: c[1], a: +J.a.toFixed(3)});
+  this.F.softFlush(); this.coverDirty = true;
+};
 Sim.prototype.digAt = function (x, y, o, amt, dir, RR) {
   const c = digCells(this.M, this.N, x, y, amt || .22, o, RR);
   if (!c.length) return false;
@@ -4068,6 +4100,11 @@ Sim.prototype.stepGround = function (e, p) {
     if (t) e.tu = Math.atan2(t.y - e.y, t.x - e.x);
   } else if (d.turret) e.tu = e.h;
   e.z = e.sea ? (d.sub ? -.25 : 0) : gAt(this.M, e.x, e.y);
+  if (this.M.bore && !e.sea) { // in or out of a bored tunnel: you only go under if you walked in through the tunnel itself
+    const c = Math.round(e.y) * this.N + Math.round(e.x), b = this.M.bore[c];
+    if (b === 2) { if (!e.ug && e.lc !== undefined && e.lc !== c && this.M.bore[e.lc]) e.ug = 1; } else e.ug = 0;
+    e.lc = c; if (e.ug) e.z = this.M.bz[c];
+  }
   if (dom === 2 && e.z < SWIM_Z) e.z = SWIM_Z;
   if (dom === 3 && e.z < 0) e.z = 0;
 };
@@ -4186,6 +4223,16 @@ Sim.prototype.stepTask = function (e, p) {
         }
       } else { b.hp = Math.min(b.hpm, b.hp + b.hpm * .02 * DT * 5); }
     } else this.moveAlong(e, b.x, b.y, 0, p, b.x, b.y);
+  } else if (T.type === 'bore') {
+    const J = T.job; if (J.i >= J.cells.length) { if (!J.done) { J.done = 1; this.notify(p.i, 'Tunnel finished', 'good', e.x, e.y); } this.afterBuild(e, null, p); return; }
+    const c = J.cells[J.i], prev = J.cells[Math.max(0, J.i - 1)], q = Math.hypot(c[0] - e.x, c[1] - e.y);
+    if (q < 1.7) { e.st = 3; e.h += angDiff(e.h, Math.atan2(c[1] - e.y, c[0] - e.x)) * .3; T.tt += DT;
+      if (T.tt >= BORE_T) { T.tt = 0; if (p.steel < BORE_COST) { this.notify(p.i, 'Not enough steel to keep tunnelling', 'bad'); e.task = null; return; } p.steel -= BORE_COST; this.boreCell(c, J, e.o); J.i++; } }
+    else { // walk to the face through the tunnel already dug
+      const tx = J.i ? prev[0] : c[0], ty = J.i ? prev[1] : c[1], d2 = Math.hypot(tx - e.x, ty - e.y);
+      if (d2 > 3 && !(J.i && this.M.bore && this.M.bore[Math.round(e.y) * this.N + Math.round(e.x)])) this.moveAlong(e, tx, ty, 2, p, tx, ty);
+      else { const sp = this.moveSpeed(e, p) * DT, dx = c[0] - e.x, dy = c[1] - e.y, l = Math.hypot(dx, dy) || 1; e.x += dx / l * Math.min(sp, l); e.y += dy / l * Math.min(sp, l); e.walking = true; }
+    }
   } else if (T.type === 'dig2') {
     if (T.i >= T.cells.length) T.i = 0;
     let tries = 0; // skip cells that are already deep enough
@@ -5864,7 +5911,7 @@ function encodeSnap(sim, sendSlow) {
     if (e.goal || e.task) fl |= 64;
     if (e.drop) fl |= 128;
     fl |= (e.vet || 0) << 8;
-    if (sim.t - (e.fireT === undefined ? -9 : e.fireT) < .28) fl |= 1024; if (sim.t - (e.adsT === undefined ? -9 : e.adsT) < .3) fl |= 2048; if (sim.t - (e.pilT === undefined ? -9 : e.pilT) < .6) fl |= 4096; if (e.thrT !== undefined && sim.t - e.thrT < .65) fl |= 8192;
+    if (sim.t - (e.fireT === undefined ? -9 : e.fireT) < .28) fl |= 1024; if (sim.t - (e.adsT === undefined ? -9 : e.adsT) < .3) fl |= 2048; if (sim.t - (e.pilT === undefined ? -9 : e.pilT) < .6) fl |= 4096; if (e.thrT !== undefined && sim.t - e.thrT < .65) fl |= 8192; if (e.ug) fl |= 16384;
     out[b + 8] = fl; out[b + 9] = e.tid || 0; out[b + 10] = ((e.tu || 0) % 6.2832) * 1000;
     i++;
     const sig = e.k + '|' + e.o + '|' + (e.hero || '') + '|' + (e.task ? e.task.type : '') + '|' + (e.sq || 0) + '|' + (e.disg === undefined || e.disg === null ? '' : e.disg) + '|' + (e.att || 0);
@@ -5930,7 +5977,7 @@ Mirror.prototype.apply = function (m) {
     seen.add(e.id);
     e.x = a[i + 1] / 100; e.y = a[i + 2] / 100; e.z = a[i + 3] / 100; e.h = a[i + 4] / 1000; e.p = a[i + 5] / 1000; e.r = a[i + 6] / 1000; e.hp = a[i + 7];
     const f = a[i + 8];
-    e.moving = !!(f & 1); e.st = f & 2 ? 2 : 0; e.inside = f & 4 ? 1 : 0; if (f & 8) e.hurtT = m.t; e.nukeReady = !!(f & 16); e.revealed = f & 32 ? m.t + 1 : 0; e.goal = f & 64 ? 1 : null; e.drop = f & 128 ? 1 : 0; e.vet = (f >> 8) & 3; if (f & 1024) e.fireT = m.t; if (f & 2048) e.adsT = m.t; if (f & 4096) e.pilT = m.t; if ((f & 8192) && !(e.thrT !== undefined && m.t - e.thrT < .7)) e.thrT = m.t;
+    e.moving = !!(f & 1); e.st = f & 2 ? 2 : 0; e.inside = f & 4 ? 1 : 0; if (f & 8) e.hurtT = m.t; e.nukeReady = !!(f & 16); e.revealed = f & 32 ? m.t + 1 : 0; e.goal = f & 64 ? 1 : null; e.drop = f & 128 ? 1 : 0; e.vet = (f >> 8) & 3; if (f & 1024) e.fireT = m.t; if (f & 2048) e.adsT = m.t; if (f & 4096) e.pilT = m.t; if ((f & 8192) && !(e.thrT !== undefined && m.t - e.thrT < .7)) e.thrT = m.t; e.ug = f & 16384 ? 1 : 0;
     e.tid = a[i + 9]; e.tu = a[i + 10] / 1000;
   }
   for (const id of this.ents.keys()) if (!seen.has(id)) this.ents.delete(id);
@@ -5945,6 +5992,7 @@ Mirror.prototype.apply = function (m) {
 };
 Mirror.prototype.applyEvent = function (e) {
   const M = this.M, N = this.N;
+  if (e.k === 'bore') { boreInit(M, N); M.bore[e.q] = e.st; M.bz[e.q] = e.z; M.tree[e.q] = 0; }
   if (e.k === 'bspawn') {
     const d = BUILDINGS[e.b];
     if (!d.mine && !d.walk) this.footprint(d, e.x, e.y, (i, j) => { if (i >= 0 && j >= 0 && i < N && j < N) { M.occ[j * N + i] = e.id; M.tree[j * N + i] = 0; } });
@@ -8505,6 +8553,17 @@ Renderer.prototype.buildRail = function (M, N) {
   if (piers.length) { const pm = mk(new THREE.BoxGeometry(.5, 1, 1.2), 0x6b6660, piers.length, .9); piers.forEach(([x, z0, z1, y], i) => { pos.set(x, (z0 + z1) / 2 - .05, y); sc.set(1, z1 - z0, 1); q.identity(); pm.setMatrixAt(i, m4.compose(pos, q, sc)); }); }
   this.world.add(G); this.railG = G;
 };
+// A timber-framed tunnel mouth where a bore enters or leaves a hill
+Renderer.prototype.addPortal = function (x, y, a, z, view) {
+  const lin = h => new THREE.Color(h).convertSRGBToLinear();
+  if (!this.portalMat) this.portalMat = [new THREE.MeshStandardMaterial({color: lin(0x6b4a2b), roughness: .9}), new THREE.MeshBasicMaterial({color: 0x050505})];
+  const g = new THREE.Group(), W = .7, H = 1.25, t = .14;
+  const post = new THREE.BoxGeometry(t, H, t), beam = new THREE.BoxGeometry(t, t, W * 2 + t);
+  for (const s of [-1, 1]) { const m = new THREE.Mesh(post, this.portalMat[0]); m.position.set(0, H / 2, s * W); g.add(m); }
+  const lb = new THREE.Mesh(beam, this.portalMat[0]); lb.position.set(0, H, 0); g.add(lb);
+  const hole = new THREE.Mesh(new THREE.PlaneGeometry(W * 2, H), this.portalMat[1]); hole.rotation.y = Math.PI / 2; hole.position.set(.05, H / 2, 0); g.add(hole);
+  g.position.set(x, z, y); g.rotation.y = -a; this.world.add(g);
+};
 Renderer.prototype.buildBridges = function (M, N) {
   if (this.bridgeG) { this.world.remove(this.bridgeG); this.bridgeG.traverse(o => { if (o.geometry) o.geometry.dispose(); }); this.bridgeG = null; }
   if (!M.bridge) return;
@@ -9169,6 +9228,7 @@ Renderer.prototype.handle = function (ev, view) {
     case 'pjx': this.projEnd(ev, view); break;
     case 'road': this.paintRoad(ev.x, ev.y); break;
     case 'dig': this.digTerrain(ev.x, ev.y); break;
+    case 'bore': if (ev.p) this.addPortal(ev.x, ev.y, ev.a, ev.z, view); break;
     case 'dig2': { (this.digQ = this.digQ || []).push(...ev.c); const r = this.rnd, z = hAt(view.M, ev.x, ev.y);
       if (this.isVisible(ev.x, ev.y)) for (let i = 0; i < 4; i++) this.addP(ev.x + (r() - .5) * .6, z + .1, ev.y + (r() - .5) * .6, (r() - .5) * 1.4, 1 + r() * 1.5, (r() - .5) * 1.4, .07 + r() * .05, .7, .36, .28, .2, false, .95, .1, 9);
       break; }
@@ -9480,7 +9540,8 @@ Renderer.prototype.drawEntities = function (dt, v) {
     if (e.id === this.fpId && this.fpPose) { e.rx = this.fpPose.x; e.ryy = this.fpPose.y; e.rz = this.fpPose.z; e.ry = this.fpPose.h; e.rp = this.fpPose.p; e.rr = this.fpPose.r; if (this.fpPose.tu !== undefined) e.rtu = this.fpPose.tu; e.rtp = this.fpPose.tp || 0; }
     else {
       const kk = e.air ? kFast : k;
-      e.rx += (e.x - e.rx) * kk; e.ryy += (e.y - e.ryy) * kk; e.rz += (e.z - e.rz) * kk;
+      const zT = e.ug ? Math.max(e.z, gAt(v.M, e.x, e.y)) : e.z; // underground: shown as a shadow on the ground above
+      e.rx += (e.x - e.rx) * kk; e.ryy += (e.y - e.ryy) * kk; e.rz += (zT - e.rz) * kk;
       e.ry += angDiff(e.ry, e.h) * kk; e.rr += ((e.r || 0) - (e.rr || 0)) * kk; e.rp += ((e.p || 0) - (e.rp || 0)) * kk;
       if (e.tu !== undefined) e.rtu += angDiff(e.rtu, e.tu) * kk * .7;
       if (!e.b && e.hpm && (e.air ? e.hp < e.hpm * .6 : e.d.cat === 'veh' && e.hp < e.hpm * .4) && Math.random() < dt * (e.air ? 28 : 7) && this.isVisible(e.x, e.y)) { // damaged: smoking, then on fire
@@ -9518,7 +9579,7 @@ Renderer.prototype.drawEntities = function (dt, v) {
     if (!seen) { if (e.b) { const o = this.bmeshes.get(e.id); if (o) o.group.visible = false; } continue; }
     hlist.push(e);
     const hurtQ = e.hurtT && v.t - e.hurtT < .22 ? 1 : 0;
-    const tint = hurtQ ? _col.setRGB(1.8, .7, .6) : null;
+    const tint = hurtQ ? _col.setRGB(1.8, .7, .6) : e.ug ? _col.setRGB(.3, .32, .42) : null;
     if (e.b) {
       const o = this.buildingMesh(e);
       o.group.visible = true;
@@ -14065,7 +14126,7 @@ const UI = {
     } else if (m.t === 'digline') {
       const x = Math.round(g.x), y = Math.round(g.y);
       if (m.x1 === undefined) { m.x1 = x; m.y1 = y; $('modeHint').textContent = 'Click where the ' + (m.deep ? 'tunnel' : 'trench') + ' ends  (right click cancels)'; this.R.ping(x, y, 0xc9a26b); }
-      else { this.g.issue({c: 'digline', ids: this.ids(), x1: m.x1, y1: m.y1, x2: x, y2: y, deep: m.deep ? 1 : 0}); this.R.ping(x, y, 0xc9a26b); Sfx.ack(); this.addAlert('Workers are digging: 1 steel per shovelful', 'info'); this.cancelMode(); }
+      else { this.g.issue({c: m.bore ? 'bore' : 'digline', ids: this.ids(), x1: m.x1, y1: m.y1, x2: x, y2: y, deep: m.deep ? 1 : 0}); this.R.ping(x, y, 0xc9a26b); Sfx.ack(); this.addAlert('Workers are digging: 1 steel per shovelful', 'info'); this.cancelMode(); }
     } else if (m.t === 'target') this.fireTarget(g.x, g.y, shift, mx, my);
   },
   fireTarget(x, y, shift, mx, my) {
@@ -14103,7 +14164,7 @@ const UI = {
         S.push({hk: 'Z', name: page === 1 ? 'More...' : 'Back', gl: page === 1 ? '»' : '«', desc: page === 1 ? 'AA guns, jammers, mines, Patriots and missile silos.' : 'Main buildings.', act: () => { this.page = page === 1 ? 2 : 1; this.refreshHud(true); }});
         S.push({hk: 'L', name: 'Excavate', gl: '⛏', cost: [DIG_COST, 0], desc: 'Flatten a patch of ground (rock, slopes, shallows) so you can build on it. ' + DIG_COST + ' steel.', act: () => this.setMode({t: 'dig', r: DIG_R}, 'Click the ground to excavate  (right click cancels)')});
         S.push({hk: 'I', name: 'Dig trench', gl: '⌇', desc: 'Workers dig a trench between two points, shovelful by shovelful. Infantry in it take 55% less damage.', act: () => this.setMode({t: 'digline'}, 'Click where the trench starts')});
-        S.push({hk: 'O', name: 'Dig tunnel', gl: '⛫', desc: 'Workers dig a deep, timber-roofed tunnel. Troops inside are hidden from the enemy unless they come right up close: dig toward the enemy for sneak attacks.', act: () => this.setMode({t: 'digline', deep: 1}, 'Click where the tunnel starts')});
+        S.push({hk: 'O', name: 'Dig tunnel', gl: '⛫', desc: 'Workers bore a real tunnel straight through hills and under the ground (3 steel per cell). Troops and vehicles that go in through the entrance travel underground: hidden, safe from shells and bombs, and they can only be fought up close. Pop out behind the enemy.', act: () => this.setMode({t: 'digline', deep: 1, bore: 1}, 'Click the tunnel entrance (bores straight through hills, up to 70 m)')});
         S.push({hk: 'X', name: 'Road', gl: '⛙', desc: 'Lay a paved road between two points (2 steel per tile). Across a river it becomes a bridge (8 steel per section). Units move 50% faster on roads.', act: () => this.setMode({t: 'road'}, 'Click the start of the road')});
         { const nb = p.builders === undefined ? 2 : p.builders, nw = v.players && [...v.ents.values()].filter(e => e.o === G.me && e.k === 'worker').length, nbx = Math.min(nb, nw);
           const tip = 'Builders build and repair on their own, and mine when there is nothing to do. Everyone else mines. Idle workers always go back to mining. Now: ' + nbx + ' builders, ' + Math.max(0, nw - nbx) + ' miners.';
@@ -14691,6 +14752,7 @@ addEventListener('keydown', () => { if (typeof Direct !== 'undefined' && window.
       'New Licases special, Breakaway: you and every friend within 15 m sprint flat out for 5 seconds, take 40% less damage, and enemy gunners lose track of you.',
       'Smarter bots: they defend outlying buildings, gather before attacking and push together, reinforce a winning push, bring air cover with the wave, and attack much sooner in Quick Battle.',
       'FPS Modes removed from the main menu.',
+      'Real tunnels: Dig tunnel (O) now bores straight through hills and under the ground, leaving the hill on top intact, with timber entrances. Units that go in travel underground (shown dark): hidden from the enemy, safe from artillery and bombs, and only fightable up close.',
       'Easier deployment: ⚑ Rally all sets one rally point for every production building (new troops attack-move straight there), and ⇢ Send idle army sends every idle unit sitting at your bases to the point you click.',
       'Less lag in big late-game battles: pathfinding is shared between nearby units, short trips only search the neighbourhood, and paths are no longer all thrown away every time a building is built or destroyed (about 40% less simulation work with 800+ units).',
       'Repairs for aircraft and ships: Repair at base (K) sends them to your nearest airfield or naval yard, which fixes up to 3 at a time once they are out of the fight for a few seconds. It costs steel and fuel.',
