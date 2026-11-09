@@ -6264,7 +6264,7 @@ function palette(nat) {
   else if (c.look === 'xavier') { p.uni = 0xf6f3e8; p.trim = 0xffd86b; p.alt = 0xffffff; }
   else if (c.look === 'toms') { p.uni = 0x8a7350; p.trim = 0x19c8b9; p.alt = 0x5e4a30; } // desert camo, teal trim
   else if (c.look === 'glasses') { p.uni = 0x274a86; p.trim = 0x4a90ff; p.alt = 0xcfe0ff; }
-  else if (c.look === 'shaun') { p.uni = 0x3a3d42; p.trim = 0xd0242b; p.alt = 0xf2c230; } // buttoned-up grey suit, red and gold
+  else if (c.look === 'shaun') { p.uni = 0xde2910; p.trim = 0xffde00; p.alt = 0xb81d0c; } // flag red with gold stars
   else if (c.look === 'yahu') { p.uni = 0x1f2633; p.trim = 0x2a62d8; p.alt = WHITE; } // dark suit, blue tie
   else { p.uni = 0x4a5530; p.trim = 0x6b7a42; p.alt = 0x8a7a55; } // Licases: woodland camo
   return p;
@@ -6277,6 +6277,9 @@ const BLOB = {r: .3, cy: .36, bike: .2, eyeY: .44};
 function blobDims(nat) { const T = NATIONS[nat].look === 'toms'; return {w: 1, h: T ? .9 : 1, T}; } // Toms: round body, a bit shorter; their big arms make them broad
 function isBiker(kind, nat) { return NATIONS[nat].look === 'bike' && kind !== 'sniper' && kind !== 'rocket'; }
 GEO.blob = new THREE.SphereGeometry(1, 22, 16);
+GEO.star = (() => { // flat five-point star, unit radius, facing +X
+  const sh = new THREE.Shape(); for (let i = 0; i < 10; i++) { const r = i % 2 ? .42 : 1, a = Math.PI / 2 + i * Math.PI / 5; i ? sh.lineTo(Math.cos(a) * r, Math.sin(a) * r) : sh.moveTo(Math.cos(a) * r, Math.sin(a) * r); }
+  const g = new THREE.ExtrudeGeometry(sh, {depth: .15, bevelEnabled: false}); g.translate(0, 0, -.075); g.rotateY(Math.PI / 2); return g.index ? g.toNonIndexed() : g; })();
 GEO.blobLo = new THREE.SphereGeometry(1, 10, 7);
 function blobColor(kind, P) {
   if (kind === 'medic' || kind === 'xavier') return 0xf4f4ee;
@@ -6285,7 +6288,7 @@ function blobColor(kind, P) {
   if (P.look === 'usa') return 0xd8283a;
   if (P.look === 'glasses') return 0x4a86e8;
   if (P.look === 'yahu') return 0x232a38; // a dark suit
-  if (P.look === 'shaun') return 0x41454b; // a buttoned-up grey tunic suit
+  if (P.look === 'shaun') return 0xde2910; // flag red
   return 0x5b6a3a; // Licases: camo green
 }
 function soldierBody(kind, nat, lo) {
@@ -6294,7 +6297,7 @@ function soldierBody(kind, nat, lo) {
   const S = lo ? GEO.blobLo : GEO.blob, body = blobColor(kind, P);
   const sph = (sx, sy, sz, x, y, z, c) => b.add(S, c, x, y, z, sx, sy, sz);
   sph(rx, ry * 1.04, rz, 0, cy, 0, body);                                     // the blob
-  sph(rx * .62, ry * .55, rz * .7, rx * .42, cy - ry * .28, 0, T ? 0xdcc79a : 0xfff3e2); // lighter belly
+  sph(rx * .62, ry * .55, rz * .7, rx * .42, cy - ry * .28, 0, T ? 0xdcc79a : P.look === 'shaun' ? 0xe8442a : 0xfff3e2); // lighter belly
   // nation markings wrapped round the body
   if (P.look === 'italian') { b.add(GEO.torus, 0x009246, 0, cy + ry * .18, 0, rx * 1.0, rz * 1.0, ry * .5, Math.PI / 2, 0, 0); b.add(GEO.torus, 0xce2b37, 0, cy - ry * .12, 0, rx * 1.0, rz * 1.0, ry * .5, Math.PI / 2, 0, 0); }
   if (P.look === 'usa') { b.add(GEO.torus, WHITE, 0, cy - ry * .05, 0, rx * 1.0, rz * 1.0, ry * .45, Math.PI / 2, 0, 0); b.add(GEO.torus, 0x1b2f6b, 0, cy - ry * .4, 0, rx * .93, rz * .93, ry * .45, Math.PI / 2, 0, 0); }
@@ -6320,9 +6323,11 @@ function soldierBody(kind, nat, lo) {
     b.add(GEO.sph, 0x3a1515, rx * .95, cy + ry * .02, 0, .02, .02, .055);
   }
   if (P.look === 'bike') { b.box(.07, .075, rz * 1.5, ex + .03, ey, 0, 0x0a0b0c); b.box(.02, .012, rz * 1.55, ex + .06, ey + .035, 0, 0x2a2d30); b.box(.012, .03, rz * .6, ex + .065, ey + .005, rz * .35, 0x3a4a5a); } // wraparound sunnies
-  if (P.look === 'shaun') { // Chairman Shaun: high closed collar, a row of buttons, a red party pin, a calm little smile
-    b.add(GEO.torus, 0x2e3136, 0, cy + ry * .62, 0, rx * .62, rz * .62, ry * .25, Math.PI / 2, 0, 0); for (let i = 0; i < 4; i++) b.add(GEO.sph, 0xf2c230, rx * .99, cy + ry * (.25 - i * .22), 0, .022, .022, .022);
-    b.add(GEO.sph, 0xd0242b, rx * .9, cy + ry * .2, rz * .45, .035, .035, .02); b.box(.02, .015, .1, rx * .97, cy + ry * .04, 0, 0x5a2020, 0, 0, 0); }
+  if (P.look === 'shaun') { // the flag on the blob: one big gold star and four small ones arcing round it, a calm little smile
+    for (const [yy, zz, sz] of [[-.02, -.66, .14], [.34, -.48, .055], [.2, -.3, .055], [-.04, -.27, .055], [-.25, -.38, .055]]) {
+      const nx = Math.sqrt(Math.max(.05, 1 - yy * yy - zz * zz)), px = nx * rx * 1.005, py = cy + yy * ry, pz = zz * rz;
+      b.add(GEO.star, 0xffde00, px, py, pz, sz * .3, sz, sz, 0, -Math.atan2(zz, nx), Math.asin(yy)); }
+    b.box(.02, .015, .1, rx * .97, cy + ry * .04, 0, 0x5a2020); [-1, 1].forEach(s => b.add(GEO.star, 0xffde00, -rx * .99, cy + ry * .1, s * rz * .3, .02, .07, .07, 0, Math.PI, 0)); }
   if (P.look === 'yahu') { // Big Yahu: white shirt, blue tie, heavy grey brows and a knowing smirk
     b.add(GEO.cone4, WHITE, rx * .9, cy - ry * .05, 0, .02, ry * .5, rz * .3, 0, 0, Math.PI); b.box(.025, ry * .55, .055, rx * .97, cy - ry * .2, 0, 0x2a62d8); b.box(.03, .05, .07, rx * .97, cy + ry * .07, 0, 0x2a62d8);
     [-1, 1].forEach(s => b.box(.035, .03, .12, ex + .05, ey + .1, s * rz * .32, 0xb9bcc2, 0, 0, s * .12)); b.box(.025, .02, .09, rx * .97, cy + ry * .02, -.02, 0x5a2020, 0, 0, .25); }
@@ -15081,7 +15086,7 @@ addEventListener('keydown', () => { if (typeof Direct !== 'undefined' && window.
   // ---- changelog: add a new entry at the TOP of this list whenever something changes
   const CHANGELOG = [
     {d: '9 Nov 2026', items: [
-      'New nation: the Shauns, led by Chairman Shaun. Everything costs 15% less but units have 10% less health. Copycats: destroy any enemy unit and you can build it too, even another nation\'s special units, with no research. Special (G): Knock-off, a cheaper copy of the nearest enemy unit rolls out beside you.',
+      'New nation: the Shauns, led by Chairman Shaun: flag-red blobs with gold stars. Everything costs 15% less but units have 10% less health. Copycats: destroy any enemy unit and you can build it too, even another nation\'s special units, with no research. Special (G): Knock-off, a cheaper copy of the nearest enemy unit rolls out beside you.',
       'Yahus: playing as them, every enemy capital shows how many days its nuke is away. It is always two weeks, and Big Yahu reminds you each time the clock resets.',
       'Yahus: when they destroy a hospital or housing, everyone gets a press release. The Yahus investigated themselves and found no wrongdoing.',
       'New troops at the Barracks: Jetpack Trooper (flies over rivers and hills; in first person hold Jump to fly), Combat Engineer (repairs vehicles, builds like a worker, plants satchel charges) and Mortar Team (lobs bombs over hills, helpless up close).',
