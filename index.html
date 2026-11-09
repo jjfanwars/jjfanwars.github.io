@@ -481,6 +481,8 @@ body.cbDeut #ov,body.cbDeut #mm,body.cbDeut #cards img,body.cbDeut #selpanel img
     <button data-g="sea" title="Select all ships and submarines [F4]">⚓ Naval <b>0</b><kbd>F4</kbd></button>
     <button id="bManDef" title="Send free infantry into every bunker, pillbox and watchtower, then line your trenches and sandbags">🛡 Man defences</button>
     <button id="bRepAll" title="Workers repair every damaged building, then go back to mining">🔧 Repair all</button>
+    <button id="bRallyAll" title="One rally point for every barracks, factory, airfield, drone bay and yard: new troops go straight there (attack-moving)">⚑ Rally all</button>
+    <button id="bSendIdle" title="Every idle fighting unit near your bases attack-moves to the point you click">⇢ Send idle army</button>
     <button id="bWar" class="hidden" title="Peace time: the bots are building up. Start the war when you are ready" style="background:#7a1f1a;color:#fff">⚔ Declare war</button>
     <button id="bDiplo" title="Negotiate ceasefires, alliances and trades [F6]">🤝 Diplomacy<kbd>F6</kbd></button>
     <button id="bTech" title="Research tree: unlock units and upgrade your army [F8]">🔬 Research<kbd>F8</kbd></button>
@@ -2765,6 +2767,8 @@ Sim.prototype.issue = function (c, pi) {
     case 'autotrain': { const b = this.ents.get(c.b); if (b && b.o === pi && b.d.trains) { b.auto = !!c.on; if (c.u && b.d.trains.includes(c.u)) b.autoK = c.u; } break; }
     case 'research': { const b = this.ents.get(c.b); if (b && b.o === pi && b.d.research) this.cmdResearch(b, p, c.u); break; }
     case 'power': break; // commander powers were removed
+    case 'rallyAll': { let n = 0; for (const b of this.ents.values()) if (b.b && b.o === pi && b.d.trains && b.k !== 'hq') { b.rally = {x: clamp(c.x, 1, this.N - 2), y: clamp(c.y, 1, this.N - 2)}; n++; } this.notify(pi, n ? 'Rally point set for ' + n + ' buildings' : 'No production buildings yet', n ? 'good' : 'bad'); break; }
+    case 'sendIdle': { const homes = [...this.ents.values()].filter(b => b.b && b.o === pi); const ids = []; for (const e of this.ents.values()) { if (e.o !== pi || e.b || e.goal || e.task || e.pilot || e.inside || e.patrol || !e.d.dmg || e.k === 'worker' || e.d.spy || e.d.nukeT || e.d.cat === 'drone') continue; if (!homes.some(b => Math.hypot(b.x - e.x, b.y - e.y) < 22)) continue; ids.push(e); } if (ids.length) this.cmdMove(ids, c.x, c.y, true, false); this.notify(pi, ids.length ? ids.length + ' idle units on the move' : 'No idle units at home', ids.length ? 'good' : 'info'); break; }
     case 'rtb': { let n = 0; for (const e of mine) { if (e.b) continue; const sea = e.d.cat === 'sea', air = e.d.cat === 'air' || e.d.cat === 'heli'; if (!sea && !air) continue; let best = null, bd = 1e9; for (const b of this.ents.values()) if (b.b && b.o === pi && b.bp >= 1 && b.k === (sea ? 'yard' : 'airfield')) { const dd = dist(b, e); if (dd < bd) { bd = dd; best = b; } } if (!best) continue; this.clearOrders(e); e.patrol = null; this.go(e, best.x + (this.rnd() - .5) * 3, best.y + (this.rnd() - .5) * 3); e.zone = {x: e.goal.x, y: e.goal.y, r: 0}; n++; } this.notify(pi, n ? n + ' heading home for repairs (costs steel and fuel)' : 'Needs an airfield (aircraft) or naval yard (ships)', n ? 'good' : 'bad'); break; }
     case 'trade': { const k = c.f === 'fuel' ? 'fuel' : 'steel', o = k === 'steel' ? 'fuel' : 'steel', n = Math.min(clamp(+c.n || 0, 0, 1000), Math.floor(p[k])); if (n >= 10) { p[k] -= n; p[o] += n * .65; this.notify(pi, 'Market: ' + n + ' ' + k + ' → ' + Math.round(n * .65) + ' ' + o, 'good'); } break; }
     case 'diplo': this.cmdDiplo(c, pi); break;
@@ -12851,6 +12855,8 @@ const UI = {
     $('bDiplo').onclick = () => this.openDiplo();
     $('bManDef').onclick = () => { this.g.issue({c: 'mandef', all: 1}); Sfx.ack(); };
     $('bRepAll').onclick = () => { this.g.issue({c: 'repair'}); Sfx.ack(); };
+    $('bRallyAll').onclick = () => this.setMode({t: 'target', kind: 'rallyAll'}, 'Rally point for ALL your production buildings?');
+    $('bSendIdle').onclick = () => this.setMode({t: 'target', kind: 'sendIdle'}, 'Send every idle unit at home where?');
     $('bWar').onclick = () => { if (confirm('Declare war? The bots will start attacking.')) this.g.issue({c: 'war'}); };
     $('bStats').onclick = () => this.toggleStats();
     $('bTech').onclick = () => this.toggleTech(); $('techClose').onclick = () => this.toggleTech(false); $('statsClose').onclick = () => this.toggleStats(false);
@@ -14068,6 +14074,8 @@ const UI = {
     else if (m.kind === 'patrol') { this.g.issue({c: 'patrol', ids, x, y}); this.R.ping(x, y, 0x6dd8ff); }
     else if (m.kind === 'recon') { this.g.issue({c: 'recon', n: 1, x, y}); this.R.ping(x, y, 0xffd97a); this.addAlert('Scout sent: it reports back when it returns', 'info'); }
     else if (m.kind === 'unloadAt') { this.g.issue({c: 'unloadAt', ids, x, y}); this.R.ping(x, y, 0x6dd8ff); }
+    else if (m.kind === 'rallyAll') { this.g.issue({c: 'rallyAll', x, y}); this.R.ping(x, y, 0x5aff9a); }
+    else if (m.kind === 'sendIdle') { this.g.issue({c: 'sendIdle', x, y}); this.R.ping(x, y, 0xff6a3a); }
     else if (m.kind === 'zone') { this.g.issue({c: 'zone', ids, x, y}); this.R.ping(x, y, 0x6dd8ff); this.addAlert('Patrolling the new area', 'good'); }
     else if (m.kind === 'power') { this.g.issue({c: 'power', p: m.p, x, y}); this.R.ping(x, y, 0xffd60a); }
     else if (m.kind === 'nuke') { this.g.issue({c: 'nuke', id: m.id, x, y}); this.R.ping(x, y, 0xff2020); }
@@ -14683,6 +14691,7 @@ addEventListener('keydown', () => { if (typeof Direct !== 'undefined' && window.
       'New Licases special, Breakaway: you and every friend within 15 m sprint flat out for 5 seconds, take 40% less damage, and enemy gunners lose track of you.',
       'Smarter bots: they defend outlying buildings, gather before attacking and push together, reinforce a winning push, bring air cover with the wave, and attack much sooner in Quick Battle.',
       'FPS Modes removed from the main menu.',
+      'Easier deployment: ⚑ Rally all sets one rally point for every production building (new troops attack-move straight there), and ⇢ Send idle army sends every idle unit sitting at your bases to the point you click.',
       'Less lag in big late-game battles: pathfinding is shared between nearby units, short trips only search the neighbourhood, and paths are no longer all thrown away every time a building is built or destroyed (about 40% less simulation work with 800+ units).',
       'Repairs for aircraft and ships: Repair at base (K) sends them to your nearest airfield or naval yard, which fixes up to 3 at a time once they are out of the fight for a few seconds. It costs steel and fuel.',
       'Patrol fixed: the Patrol button (U) now sends units back and forth between two points, attacking on the way (planes and helicopters too). Units you move now hold that spot instead of wandering, and come back to it after chasing an enemy instead of running across the map.',
