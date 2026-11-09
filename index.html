@@ -457,7 +457,8 @@ body.cbDeut #ov,body.cbDeut #mm,body.cbDeut #cards img,body.cbDeut #selpanel img
   <div id="top">
     <div id="natBadge"></div>
     <div class="res" title="Steel: workers mine it. Pays for almost everything."><i class="ic steel"></i><b id="rSteel">0</b></div>
-    <div class="res" title="Fuel: from oil derricks. Pays for machines."><i class="ic fuel"></i><b id="rFuel">0</b></div>
+    <div class="res" title="Fuel: from oil derricks (and a trickle from your capital). Pays for machines."><i class="ic fuel"></i><b id="rFuel">0</b></div>
+    <div class="res" title="Market: swap a surplus of one resource for the other at 65%. Shift-click trades 500."><button id="tS2F" style="font:700 11px system-ui;padding:2px 6px;border-radius:6px;border:1px solid #556;background:#223;color:#cde;cursor:pointer">Steel→Fuel</button><button id="tF2S" style="font:700 11px system-ui;padding:2px 6px;border-radius:6px;border:1px solid #556;background:#223;color:#cde;cursor:pointer;margin-left:3px">Fuel→Steel</button></div>
     <div class="res" title="Population used / cap. Build Housing for more."><i class="ic pop"></i><b id="rPop">0</b></div>
     <div class="res"><i class="ic clock"></i><b id="rTime">0:00</b></div>
     <div id="scores"></div>
@@ -2756,6 +2757,7 @@ Sim.prototype.issue = function (c, pi) {
     case 'autotrain': { const b = this.ents.get(c.b); if (b && b.o === pi && b.d.trains) { b.auto = !!c.on; if (c.u && b.d.trains.includes(c.u)) b.autoK = c.u; } break; }
     case 'research': { const b = this.ents.get(c.b); if (b && b.o === pi && b.d.research) this.cmdResearch(b, p, c.u); break; }
     case 'power': break; // commander powers were removed
+    case 'trade': { const k = c.f === 'fuel' ? 'fuel' : 'steel', o = k === 'steel' ? 'fuel' : 'steel', n = Math.min(clamp(+c.n || 0, 0, 1000), Math.floor(p[k])); if (n >= 10) { p[k] -= n; p[o] += n * .65; this.notify(pi, 'Market: ' + n + ' ' + k + ' → ' + Math.round(n * .65) + ' ' + o, 'good'); } break; }
     case 'diplo': this.cmdDiplo(c, pi); break;
     case 'scenSpawn': this.scenSpawn(pi, c.u, c.t, c.rwy); break;
     case 'recon': this.sendRecon(p, Math.min(4, c.n || 1), false, c.x === undefined ? undefined : clamp(+c.x, 4, this.N - 5), c.y === undefined ? undefined : clamp(+c.y, 4, this.N - 5)); break;
@@ -3688,6 +3690,7 @@ Sim.prototype.sampleStats = function () {
 
 Sim.prototype.income = function (p) {
   p.steel += 3 * (p.nat.tr.income || 1) * (p.ups.arm3 ? 1.5 : 1) * (p.ecoK || 1);   // tax from the capital
+  if (!this.scen && !this.rail) p.fuel += .7 * (p.ecoK || 1); // and a trickle of fuel, so nobody is ever stuck on zero
 };
 
 Sim.prototype.stepShots = function () {
@@ -5343,6 +5346,7 @@ Bot.prototype.countB = function (k) { return (this.mine.b[k] || []).length; };
 
 Bot.prototype.economy = function () {
   const s = this.s;
+  const P = this.p; if (P.steel > 1200 && P.fuel < 150) this.cmd({c: 'trade', f: 'steel', n: 300}); else if (P.fuel > 900 && P.steel < 200) this.cmd({c: 'trade', f: 'fuel', n: 300}); // the market evens out a lopsided stockpile
   for (const w of this.mine.workers) {
     if (!w.task && !w.goal) {
       const n = s.nearestNode(w, 'steel');
@@ -12728,6 +12732,8 @@ const UI = {
     $('bTest').onclick = () => { Sfx.init(); Sfx.ui(); this.openLobby('test'); };
     $('bRed').onclick = () => { Sfx.init(); Sfx.ui(); this.openLobby('redstar'); };
     $('bRail').onclick = () => { Sfx.init(); Sfx.ui(); this.openLobby('rail'); };
+    $('tS2F').onclick = ev => { if (this.g) this.g.issue({c: 'trade', f: 'steel', n: ev.shiftKey ? 500 : 100}); };
+    $('tF2S').onclick = ev => { if (this.g) this.g.issue({c: 'trade', f: 'fuel', n: ev.shiftKey ? 500 : 100}); };
     $('bJoin').onclick = () => { Sfx.init(); Sfx.ui(); this.openJoin(); };
     $('bJoinGo').onclick = () => { Sfx.init(); this.join($('joinIn').value); };
     $('bJoinBack').onclick = () => { if (this.link) { this.link.close(); this.link = null; } this.net = 'off'; $('joinScr').classList.add('hidden'); $('menu').classList.remove('hidden'); };
@@ -14642,6 +14648,7 @@ addEventListener('keydown', () => { if (typeof Direct !== 'undefined' && window.
       'New Licases special, Breakaway: you and every friend within 15 m sprint flat out for 5 seconds, take 40% less damage, and enemy gunners lose track of you.',
       'Smarter bots: they defend outlying buildings, gather before attacking and push together, reinforce a winning push, bring air cover with the wave, and attack much sooner in Quick Battle.',
       'FPS Modes removed from the main menu.',
+      'Economy: a market on the resource bar swaps steel and fuel at 65% (Shift-click for 500), so you are never stuck with 4000 of one and 20 of the other. Your capital also trickles a little fuel. Bots use the market too.',
       'Units no longer stand still while you pick them off from range: they work out who is shooting, close in and fight back if they can hurt it, or scatter if they cannot (troops under a plane spread out). Nearby idle friends join in.',
       'Operation Red Star: friends now spawn inside the bomber with the host (they were dropped into random planes). The bomber waits on the runway until a pilot takes off: W/S throttle, R/F climb and dive, A/D bank. Too slow and she stalls, too low and the ground wins; the autopilot holds cruise when the cockpit is empty.',
     ]},
