@@ -51,6 +51,7 @@ Browser war game in one file: `index.html` (Three.js r170, inlined: the ESM buil
 - **Territory:** `Sim.inTerritory` (radius `TERR_R`: capital 26, derrick 7, others 12 + size/2) checked in `cmdBuild`, bot `findSpot`/`findCoast` and the placement mask; not in `canPlace` (setup code uses that). Lost derricks queue on `p.rebuild` and `stepRebuild` re-orders them when safe.
 - **Pilot specials (G):** `PSPECIAL` + `Sim.pilotSpecial` (client sends aim x/y and `tid`). Dhruvs laser and Toms bomb run use `this.strikes` (fields r, dmg, sr, gap, line). Valentinos Vendetta: `t.vendT/vendBy`, +40% in `hurt`.
 - **Yahus** (nation 6, look 'yahu'): `tr.dome` cuts splash damage; pilot special converts the nearest enemy infantry (`T.bought`, synced in slow snapshots as `bt`, drawn by `Renderer.drawBought`). Commander powers (`case 'power'`) are disabled, so nation `power` entries are unused.
+- **Newer units:** jetpack (`d.jet`: hovers in RTS, Jump thrust + `jetF` fuel in `moveSoldier`), engineer (`d.eng` counts as a builder; `repair`), mortar (arty shot, `minRng`), flametank, railgun (`d.pierce` -> `Sim.pierceLine`; PWPN `charge` wind-up in `tryFire`), osprey (heli, carry 8, two wingtip rotors in the renderer).
 - **Xaviers:** neutral healers, only in Play vs bots when the "optXav" checkbox is on (off by default).
 
 ## Recently done (Nov 2026)
