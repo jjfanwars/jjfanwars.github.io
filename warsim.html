@@ -1054,6 +1054,10 @@ const UNITS = {
   gunship:  {n: 'Gunship', cat: 'heli', arm: 'air', hp: 230, dmg: 16, rng: 8, cd: 1.4, spd: 7, vis: 13, cost: [300, 140], pop: 4, t: 24, from: 'airfield', shot: 'rocket', aa: 1, alt: 6, r: 1, hk: 'U', desc: 'Hovering rocket helicopter. Good against troops, fragile against anti-air.'},
   loco:     {n: 'Armoured Locomotive', cat: 'veh', arm: 'heavy', hp: 5000, dmg: 10, rng: 10, cd: .45, spd: 0, vis: 18, cost: [0, 0], pop: 0, t: 1, shot: 'bullet', aa: 1, turret: 1, r: 1.4, vsc: 1.25, rail: 1, desc: 'Pulls the Iron Express. If it dies, the mission is lost.'},
   gcar:     {n: 'Gun Car', cat: 'veh', arm: 'heavy', hp: 1100, dmg: 22, rng: 13, cd: .5, spd: 0, vis: 18, cost: [0, 0], pop: 0, t: 1, shot: 'cannon', aa: 1, turret: 1, r: 1.3, vsc: 1.25, rail: 1, desc: 'Armoured flatcar with a turret. Twin autocannon and rockets.'},
+  tender:   {n: 'Coal Tender', cat: 'veh', arm: 'heavy', hp: 900, dmg: 0, rng: 0, cd: 1, spd: 0, vis: 16, cost: [0, 0], pop: 0, t: 1, r: 1.3, vsc: 1.25, rail: 1, desc: 'Coal for the firebox.'},
+  flakcar:  {n: 'Flak Car', cat: 'veh', arm: 'heavy', hp: 900, dmg: 14, rng: 15, cd: .3, spd: 0, vis: 18, cost: [0, 0], pop: 0, t: 1, shot: 'cannon', aa: 1, turret: 1, r: 1.3, vsc: 1.25, rail: 1, desc: 'Open flatcar with a flak gun. Best against gunships.'},
+  caboose:  {n: 'Caboose', cat: 'veh', arm: 'heavy', hp: 1000, dmg: 0, rng: 0, cd: 1, spd: 0, vis: 17, cost: [0, 0], pop: 0, t: 1, r: 1.3, vsc: 1.25, rail: 1, desc: 'Crew quarters and workshop. The crew respawn here.'},
+  crew:     {n: 'Crew', cat: 'inf', arm: 'light', hp: 120, dmg: 14, rng: 30, cd: .5, spd: 4.5, vis: 17, cost: [0, 0], pop: 0, t: 1, shot: 'bullet', r: .35, crew: 1, desc: 'Your Iron Express crew: walks the train, mans the turrets, respawns in the caboose.'},
   carrier: {n: 'Aircraft Carrier', cat: 'sea', arm: 'sea', hp: 9000, dmg: 28, rng: 16, cd: .5, spd: 1, vis: 22, cost: [900, 400], pop: 8, t: 60, shot: 'cannon', aa: 1, noGround: 1, turret: 1, r: 2.6, desc: 'Floating airbase. Fly low over the deck to repair and rearm.'},
   seaplane: {n: 'Torpedo Seaplane', cat: 'air', arm: 'air', hp: 300, dmg: 20, rng: 12, cd: .9, spd: 12.5, vis: 15, cost: [230, 100], pop: 3, t: 18, from: 'airfield', shot: 'cannon', alt: 8, turn: 1.8, r: 1, desc: 'Lands and rides on the water. Drops torpedoes that sink ships and the carrier.'},
   destroyer: {n: 'Destroyer', cat: 'sea', arm: 'sea', hp: 750, dmg: 55, rng: 17, cd: 2.2, spd: 3.8, vis: 18, cost: [280, 90], pop: 4, t: 22, from: 'yard', shot: 'shell', splash: 1.4, aa: 1, turret: 1, detect: 1, r: 1.5, hk: 'R', desc: 'Warship. Shells the coast and detects submarines.'},
@@ -1234,6 +1238,9 @@ const PWPN = {
   loco: [{n: 'Cab MG', t: 'hit', dmg: 9, vs: 'bullet', rpm: 600, mag: 100, rl: 3, sp: 1, ads: .5, rng: 45, auto: 1, aa: 1, snd: 'mg'}],
   gcar: [{n: 'Twin 30mm', t: 'proj', dmg: 24, vs: 'cannon', spd: 65, g: 1, spl: .6, rpm: 300, mag: 60, rl: 3.5, sp: .5, ads: .2, kick: .7, rng: 60, zoom: .55, auto: 1, aa: 1, snd: 'cannon'},
          {n: 'Rocket Rack', t: 'proj', dmg: 110, vs: 'rocket', spd: 40, g: .8, spl: 1.5, mag: 4, rl: 6, cd: .5, rng: 60, snd: 'rocket'}],
+  flakcar: [{n: 'Flak Cannon', t: 'hit', dmg: 14, vs: 'cannon', rpm: 420, mag: 80, rl: 2.6, sp: .8, ads: .3, kick: .3, rng: 70, zoom: .6, auto: 1, aa: 1, snd: 'cannon'}],
+  crew: [{n: 'Pistol', t: 'hit', dmg: 14, vs: 'bullet', rpm: 260, mag: 12, rl: 1.4, sp: 1.2, ads: .4, kick: .4, rng: 30, crit: 2, zoom: .8, snd: 'bullet'},
+         {n: 'Kick', t: 'mel', dmg: 30, vs: 'bite', rpm: 90, rng: 2.2, crit: 1.2, sp: 0, snd: 'bite', kick: 1}],
   destroyer: [{n: '5-inch Gun', t: 'proj', dmg: 90, vs: 'shell', spd: 40, g: 5, spl: 1.6, mag: 1, rl: 1.6, sp: .3, ads: .1, kick: 1.5, rng: 80, zoom: .5, snd: 'tank'},
             {n: 'Deck Machine Gun', t: 'hit', dmg: 9, vs: 'bullet', rpm: 700, mag: 400, rl: 3, sp: 1.2, ads: .8, kick: .1, rng: 45, crit: 1.3, auto: 1, aa: 1, snd: 'mg'},
             {n: 'Sea Sparrow', t: 'msl', dmg: 95, vs: 'missile', spd: 32, spl: 1, cd: 1.2, rng: 70, air: 1, snd: 'missile'},
@@ -2871,9 +2878,19 @@ Sim.prototype.issue = function (c, pi) {
       this.ev({k: 'deployed', p: pi, id: u.id});
       break;
     }
-    case 'pilot': { const e = mine[0]; if (e && c.on && this.players[pi].nat.key === 'charlies' && (e.d.cat === 'air' || e.d.cat === 'heli') && !(this.scen && this.scen.arc)) break; if (e && !e.b) { if (c.on) { if (!e.pilot) { e.hpm *= PILOT_HP; e.hp *= PILOT_HP; } e.chute = 0; e.pilot = pi + 1; this.clearOrders(e); this.ev({k: 'cry', p: pi, id: e.id}); } else { if (e.pilot) { e.hpm /= PILOT_HP; e.hp = Math.min(e.hp / PILOT_HP, e.hpm); } e.pilot = 0; if (e.air) e.hold = {x: e.x, y: e.y}; } } break; }
+    case 'pilot': { const e = mine[0]; if (e && (e.rail || e.d.crew)) { e.pilot = c.on ? pi + 1 : 0; break; } if (e && c.on && this.players[pi].nat.key === 'charlies' && (e.d.cat === 'air' || e.d.cat === 'heli') && !(this.scen && this.scen.arc)) break; if (e && !e.b) { if (c.on) { if (!e.pilot) { e.hpm *= PILOT_HP; e.hp *= PILOT_HP; } e.chute = 0; e.pilot = pi + 1; this.clearOrders(e); this.ev({k: 'cry', p: pi, id: e.id}); } else { if (e.pilot) { e.hpm /= PILOT_HP; e.hp = Math.min(e.hp / PILOT_HP, e.hpm); } e.pilot = 0; if (e.air) e.hold = {x: e.x, y: e.y}; } } break; }
     case 'emote': { const e = this.ents.get(c.id); const q = c.n | 0; if (e && e.o === pi && e.pilot === pi + 1 && e.d.cat === 'inf' && q >= 0 && q <= EMO_ICONS.length) { e.emo = q; e.emoT = this.t + EMO_DUR; } break; }
-    case 'pose': { const e = this.ents.get(c.id); if (e && e.o === pi && e.pilot === pi + 1) { if (!e.rail) { e.x = clamp(c.x, 0, this.N - 1); e.y = clamp(c.y, 0, this.N - 1); e.z = c.z; e.h = c.h; } e.p = c.p || 0; e.r = c.r || 0; if (c.tu !== undefined) e.tu = c.tu; if (c.m !== undefined) e.moving = c.m; e.ch = c.ch; e.pilT = this.t; if (c.ug !== undefined) e.ug = c.ug && this.M.bore ? 1 : 0; if (c.ap !== undefined) e.p = clamp(c.ap, -1.4, 1.4); if (c.f) e.fireT = this.t; if (c.a) e.adsT = this.t; if (c.th && !(e.thrT !== undefined && this.t - e.thrT < .7)) e.thrT = this.t; } break; }
+    case 'dkseat': { // a crew member sits at a turret seat (on) or stands up (off); the gun car is then driven by that player
+      const e = this.ents.get(c.id), T = this.rl; if (!T || !e || !e.d.crew || e.o !== pi || !e.deck) break;
+      if (c.on) {
+        const car = this.ents.get(c.car), ci = car ? T.all.indexOf(car.id) : -1, K = car && RAIL_CARS[car.k];
+        if (!K || !K.seat || ci < 0 || e.deck.seat || e.deck.c !== ci || e.deck.roof || car.seat > -1) break;
+        if (Math.hypot(e.deck.u - K.seat.u, e.deck.w - K.seat.w) > 1.6) break;
+        car.seat = pi; car.o = pi; car.pilot = pi + 1;
+        e.deck.u = K.seat.u; e.deck.w = K.seat.w; e.deck.seat = car.id; this.railDeckPlace(e);
+      } else if (e.deck.seat) { const car = this.ents.get(e.deck.seat); if (car && car.seat === pi) { car.seat = -1; car.pilot = 0; } e.deck.seat = 0; }
+      break; }
+    case 'pose': { const e = this.ents.get(c.id); if (e && e.o === pi && e.pilot === pi + 1) { if (e.d.crew) this.crewPose(e, c); else if (!e.rail) { e.x = clamp(c.x, 0, this.N - 1); e.y = clamp(c.y, 0, this.N - 1); e.z = c.z; e.h = c.h; } e.p = c.p || 0; e.r = c.r || 0; if (c.tu !== undefined) e.tu = c.tu; if (c.m !== undefined) e.moving = c.m; e.ch = c.ch; e.pilT = this.t; if (c.ug !== undefined) e.ug = c.ug && this.M.bore ? 1 : 0; if (c.ap !== undefined) e.p = clamp(c.ap, -1.4, 1.4); if (c.f) e.fireT = this.t; if (c.a) e.adsT = this.t; if (c.th && !(e.thrT !== undefined && this.t - e.thrT < .7)) e.thrT = this.t; } break; }
     case 'pfire': this.pilotFire(c, pi); break;
     case 'streak': { // killstreak reward: an artillery barrage walks across the marked ground after a short warning
       const e = this.ents.get(c.id); this.streakAt = this.streakAt || {};
@@ -3549,6 +3566,7 @@ Sim.prototype.fire = function (a, t) {
   let miss = false;
   if (t.pilot && !t.b && !a.pilot) { const r = this.aimAtPilot(a, t); if (r === 'wait') { a.cd = .15; return; } miss = r === 'miss'; }
   let dm = d.dmg * this.dmgMult(p, d) * tierK(a);
+  if (a.rail && !a.pilot) dm *= .4; // an empty turret's AI gunner hits less
   if (a.vet) dm *= 1 + a.vet * .15;
   if ((a.rallyT || 0) > this.t) dm *= 1.15;
   if ((a.breakT || 0) > this.t) dm *= 1.25;
@@ -4013,6 +4031,7 @@ Sim.prototype.spawnFrom = function (b, k, p) {
 };
 
 Sim.prototype.stepUnit = function (e) {
+  if (e.d.crew) { if (this.t - (e.hurtT || 0) > 4 && e.hp < e.hpm) e.hp = Math.min(e.hpm, e.hp + 6 * DT); return; } // crew are driven by their player (crewPose), never by AI
   if (e.rs || e.rsS) return; // scripted aircraft (Operation Red Star)
   if (e.rail) { e.cd -= DT; if (!e.pilot && e.cd <= 0) { const t = this.acquire(e); if (t && Math.hypot(t.x - e.x, t.y - e.y) - (t.b ? t.d.s / 2 : 0) <= e.d.rng) { e.tu = Math.atan2(t.y - e.y, t.x - e.x); this.fire(e, t); e.cd = e.d.cd; } } if (!e.pilot && this.t - (e.hurtT || 0) > 8 && e.k !== 'loco' && e.hp < e.hpm) e.hp = Math.min(e.hpm, e.hp + 3 * DT); return; } // Iron Express cars ride the line
   const d = e.d, p = this.players[e.o];
@@ -5957,18 +5976,84 @@ function railAt(R, s) {
   return {x: a[0] + (b[0] - a[0]) * f, y: a[1] + (b[1] - a[1]) * f, z: R.Z[i] + (R.Z[i + 1] - R.Z[i]) * f, h: Math.atan2(b[1] - a[1], b[0] - a[0])};
 }
 const RAIL_SPD = 1.15, RAIL_GAP = 3.3;
+// Iron Express decks. Car-local coords: u along the car (+u forward, toward the locomotive), w across (+w left).
+// walk: the walkable rectangle [u0, u1, w0, w1]. gang: [forward, back] = gangway to the car ahead / behind (1 = you can cross).
+// open: [left, right] = 1 where there is no railing, so stepping past it falls off. seat: turret seat. roof: raised walkable rect (open on every side); ladder: the deck spot of its ladder.
+const RAIL_KINDS = ['loco', 'tender', 'gcar', 'flakcar', 'gcar', 'caboose']; // front to back: the index c of a car in sim.rl.all
+const RAIL_CARS = {
+  loco:    {L: 2.6, W: .96, h: .86, walk: [-1.3, -.3, -.42, .42], gang: [0, 1], open: [0, 0]},
+  tender:  {L: 2.4, W: 1, h: .92, walk: [-1.2, 1.2, -.5, .5], gang: [1, 1], open: [1, 1]},
+  gcar:    {L: 2.9, W: .95, h: .9, walk: [-1.45, 1.45, -.47, .47], gang: [1, 1], open: [1, 1], seat: {u: -.85, w: 0}},
+  flakcar: {L: 2.9, W: .95, h: .9, walk: [-1.45, 1.45, -.47, .47], gang: [1, 1], open: [1, 1], seat: {u: -.85, w: 0}},
+  caboose: {L: 2.8, W: 1, h: .95, walk: [-1.4, 1.4, -.5, .5], gang: [1, 0], open: [0, 0], spawn: {u: -.9, w: .2}, ladder: {u: 1.1, w: -.3}, roof: {h: 2.05, walk: [-1.2, .3, -.42, .42]}}
+};
+// the world point of a deck spot (u, w) on a car; roof and dz (a jump) raise it
+function railDeckPos(car, K, u, w, roof, dz) {
+  const cs = Math.cos(car.h), sn = Math.sin(car.h);
+  return {x: car.x + u * cs - w * sn, y: car.y + u * sn + w * cs, z: car.z + (roof ? K.roof.h : K.h) + (dz || 0)};
+}
+// one step on the decks (client and server use the same rules). kAt(c) gives RAIL_CARS[kind] of car c, or null. Returns {c, u, w, roof} or {fall: 1}.
+function railDeckStep(kAt, D, u, w) {
+  const K = kAt(D.c); if (!K) return {fall: 1};
+  const r = D.roof ? K.roof && K.roof.walk : K.walk; if (!r) return {fall: 1};
+  const inU = u >= r[0] && u <= r[1], inW = w >= r[2] && w <= r[3];
+  if (inU && inW) return {c: D.c, u, w, roof: D.roof};
+  if (D.roof) return {fall: 1};                                                  // roof edges have no railing
+  if (inW && u > K.L / 2 && K.gang[0] && kAt(D.c - 1)) { const N2 = kAt(D.c - 1); return {c: D.c - 1, u: -N2.L / 2 + .25, w: clamp(w, N2.walk[2], N2.walk[3]), roof: 0}; }
+  if (inW && u < -K.L / 2 && K.gang[1] && kAt(D.c + 1)) { const N2 = kAt(D.c + 1); return {c: D.c + 1, u: N2.L / 2 - .25, w: clamp(w, N2.walk[2], N2.walk[3]), roof: 0}; }
+  if (!inW && ((w > r[3] && K.open[0]) || (w < r[2] && K.open[1]))) return {fall: 1};
+  return {c: D.c, u: clamp(u, r[0], r[1]), w: clamp(w, r[2], r[3]), roof: 0};
+}
+// the client's view of the train state (host: live from the sim; guests: the last snapshot)
+function railInfo(g) { return g.sim && g.sim.rl ? g.sim.railPub() : g.view.rl; }
+Sim.prototype.railDeckPlace = function (e) { // a crew member on a deck follows that car: world x/y/z from its deck spot
+  const T = this.rl, d = e.deck, car = this.ents.get(T.all[d.c]), K = car && RAIL_CARS[car.k];
+  if (!K) { e.deck = null; e.fellT = this.t; e.dz = 0; return; } // the car is gone: the crew falls off
+  const q = railDeckPos(car, K, d.u, d.w, d.roof, e.dz); e.x = q.x; e.y = q.y; e.z = q.z;
+};
+Sim.prototype.railSpawnCrew = function (i) { // a fresh crew member in the caboose bunks
+  const T = this.rl, ci = T.all.length - 1, cab = this.ents.get(T.all[ci]), sp = RAIL_CARS.caboose.spawn;
+  const e = this.addUnit('crew', i, cab ? cab.x : 0, cab ? cab.y : 0);
+  e.deck = {c: ci, u: sp.u, w: sp.w, roof: 0, seat: 0}; e.dz = 0;
+  T.crew[i] = e.id; delete T.crewT[i];
+  this.railDeckPlace(e);
+  return e;
+};
+// a crew member's pose: deck coords (c.dk = [car, u, w, roof]) while on the train, plain world x/y on the ground
+Sim.prototype.crewPose = function (e, c) {
+  const dk = Array.isArray(c.dk) ? c.dk : null;
+  if (c.h !== undefined) e.h = c.h;
+  if (e.deck && e.deck.seat) return;                                  // at a turret: the gun car takes the pose
+  if (e.deck && !dk) { e.deck = null; e.fellT = this.t; e.dz = 0; }  // stepped off the train
+  if (e.deck) { if (dk) this.crewDeck(e, c, false); }
+  else if (dk) this.crewDeck(e, c, true);
+  else { e.x = clamp(c.x, 0, this.N - 1); e.y = clamp(c.y, 0, this.N - 1); e.z = c.z; }
+};
+// move a crew member to a deck spot (clamped to that deck). Boarding from the ground needs to be close to the train or after the fall timer.
+Sim.prototype.crewDeck = function (e, c, board) {
+  const T = this.rl, dk = c.dk, ci = dk[0], car = Number.isInteger(ci) && ci >= 0 && ci < T.all.length ? this.ents.get(T.all[ci]) : null, K = car && RAIL_CARS[car.k];
+  if (!K) return;
+  if (board ? !(Math.hypot(e.x - car.x, e.y - car.y) < 14 || this.t - (e.fellT || 0) >= 5.5) : Math.abs(ci - e.deck.c) > 1) return;
+  const roof = dk[3] && K.roof ? 1 : 0, r = roof ? K.roof.walk : K.walk;
+  e.deck = {c: ci, u: clamp(+dk[1] || 0, r[0], r[1]), w: clamp(+dk[2] || 0, r[2], r[3]), roof, seat: 0};
+  e.dz = clamp(+c.dz || 0, 0, 2);
+  if (board) e.fellT = 0;
+  this.railDeckPlace(e);
+};
 Sim.prototype.setupRail = function () {
   const R = railRoute(this.M, this.N), nh = this.players.length - 1, L = R.L;
   this.rail = 1; this.rlE = nh;
-  const T = this.rl = {s: 12, v: 0, st: 'go', L, ev: [], stopAt: null, gap: null, rep: 0, eng: 0, engT: 0, block: 0, kills: 0, cars: [], loco: 0, hurtT: 0, said: {}, seatT: {}};
+  const T = this.rl = {s: 12, v: 0, st: 'go', L, ev: [], stopAt: null, gap: null, rep: 0, eng: 0, engT: 0, block: 0, kills: 0, cars: [], all: [], crew: [], crewT: {}, loco: 0, hurtT: 0, said: {}, seatT: {}};
   const E = (f, k, a) => T.ev.push([Math.round(L * f), k, a]);
   E(.03, 'tip', 'All aboard! Mouse to aim your turret, click to fire, E rockets. Keep the locomotive alive to the far station.');
   E(.09, 'amb', 1); E(.17, 'amb', 2); E(.24, 'heli', 1); E(.31, 'gap', 1); E(.4, 'amb', 3); E(.47, 'supply'); E(.53, 'amb', 3); E(.6, 'heli', 2);
   E(.67, 'gap', 2); E(.75, 'amb', 4); E(.81, 'heli', 2); E(.86, 'amb', 5); E(.93, 'block');
   T.ev.sort((a, b) => a[0] - b[0]);
   const loco = this.addUnit('loco', 0, R.pts[12][0], R.pts[12][1]); loco.rail = 1; loco.rof = 0; loco.seat = -1; T.loco = loco.id;
-  const cars = Math.max(3, nh);
-  for (let k = 0; k < cars; k++) { const c = this.addUnit('gcar', k < nh ? k : 0, R.pts[12][0], R.pts[12][1]); c.rail = 1; c.rof = RAIL_GAP * (k + 1); c.seat = k < nh ? k : -1; T.cars.push(c.id); }
+  for (let k = 1; k < RAIL_KINDS.length; k++) { const c = this.addUnit(RAIL_KINDS[k], 0, R.pts[12][0], R.pts[12][1]); c.rail = 1; c.rof = RAIL_GAP * k; c.seat = -1; T.cars.push(c.id); }
+  T.all = [T.loco, ...T.cars];
+  this.railPlace();
+  for (let i = 0; i < nh; i++) this.railSpawnCrew(i);
   for (const p of this.players) { p.steel = 0; p.fuel = 0; }
   this.railPlace();
 };
@@ -5976,6 +6061,7 @@ Sim.prototype.railMsg = function (text, kind) { for (let i = 0; i < this.rlE; i+
 Sim.prototype.railPlace = function () {
   const R = railRoute(this.M, this.N), T = this.rl;
   for (const id of [T.loco, ...T.cars]) { const e = this.ents.get(id); if (!e) continue; const q = railAt(R, Math.max(0, T.s - e.rof)); e.x = q.x; e.y = q.y; e.z = q.z; e.h = q.h; e.moving = T.v > .05; }
+  for (const id of T.crew) { const e = this.ents.get(id); if (e && e.deck) this.railDeckPlace(e); }
 };
 // a raiding party: off to one side of the line, ahead of the train, told to fight its way onto the track
 Sim.prototype.railRaid = function (s, lvl, air) {
@@ -6035,19 +6121,17 @@ Sim.prototype.railStep = function () {
     if (d > 90 && !e.air) { this.ents.delete(e.id); continue; }
     if (!e.tid && (!e.goal || e.air)) { const cid = [T.loco, ...T.cars][(e.id % (T.cars.length + 1))], c = this.ents.get(cid) || loco; this.cmdMove([e], c.x + (this.rnd() - .5) * 6, c.y + (this.rnd() - .5) * 6, true, false); }
   }
-  // crew whose car was destroyed take over a free one
-  for (const i of humans) {
-    if ([T.loco, ...T.cars].some(id => { const e = this.ents.get(id); return e && e.o === i && e.seat === i; })) continue;
-    if ((T.seatT[i] || 0) > this.t) continue; T.seatT[i] = this.t + 3;
-    const free = [...T.cars, T.loco].map(id => this.ents.get(id)).find(e => e && e.seat === -1 && !e.pilot);
-    if (free) { free.o = i; free.seat = i; this.ev({k: 'rlseat', p: i, id: free.id}); this.notify(i, 'Your car is gone. You take over the ' + free.d.n + '.', 'gold'); }
-  }
+  // a gunner whose crew member or car is gone leaves the turret; crew respawn in the caboose 8 s after they die
+  for (const id of T.all) { const car = this.ents.get(id); if (car && car.seat > -1) { const cr = this.ents.get(T.crew[car.seat]); if (!cr || !cr.deck || cr.deck.seat !== car.id) { car.seat = -1; car.pilot = 0; } } }
+  for (const i of humans) { if (this.ents.get(T.crew[i])) continue; if (!T.crewT[i]) T.crewT[i] = this.t + 8; else if (this.t >= T.crewT[i]) { const e = this.railSpawnCrew(i); this.ev({k: 'rlseat', p: i, id: e.id}); } }
   if (!T.said.hp && loco.hp < loco.hpm * .35) { T.said.hp = 1; this.railMsg('The locomotive is badly damaged! Protect it!', 'bad'); }
   if (T.s >= R.L - 2) end(true, 'The Iron Express reaches the station! Mission complete.');
 };
 Sim.prototype.railPub = function () {
   const T = this.rl, loco = this.ents.get(T.loco), eng = T.eng && this.ents.get(T.eng);
-  return {s: +T.s.toFixed(1), v: +T.v.toFixed(2), L: T.L, st: T.st, rep: +T.rep.toFixed(2), hp: loco ? +(loco.hp / loco.hpm).toFixed(3) : 0, eng: eng ? 1 : 0, gap: T.gap ? 1 : 0, cars: T.cars.filter(id => this.ents.has(id)).length, of: T.cars.length};
+  const dk = [], crew = [], occ = T.all.map(id => { const e = this.ents.get(id); return e && e.seat > -1 ? 1 : 0; });
+  for (let i = 0; i < this.rlE; i++) { const cr = this.ents.get(T.crew[i]); crew.push(cr ? cr.id : 0); dk.push(cr && cr.deck ? [cr.deck.c, +cr.deck.u.toFixed(2), +cr.deck.w.toFixed(2), cr.deck.roof, cr.deck.seat ? 1 : 0] : null); }
+  return {s: +T.s.toFixed(1), v: +T.v.toFixed(2), L: T.L, st: T.st, rep: +T.rep.toFixed(2), hp: loco ? +(loco.hp / loco.hpm).toFixed(3) : 0, eng: eng ? 1 : 0, gap: T.gap ? 1 : 0, cars: T.cars.filter(id => this.ents.has(id)).length, of: T.cars.length, ids: T.all, crew, dk, occ};
 };
 // ---------- snapshot encode (host) ----------
 const SNAP_F = 12;
@@ -6546,6 +6630,30 @@ const VEH = {
     t.cylX(.05, 1.1, .75, .05, .12, 0x222); t.cylX(.05, 1.1, .75, .05, -.12, 0x222);
     t.box(.4, .2, .22, -.15, .12, .5, 0x3a4a3a); t.box(.4, .2, .22, -.15, .12, -.5, 0x3a4a3a); t.box(.3, .05, .7, -.35, .19, 0, P.trim);
     return {h, t, ty: .98};
+  },
+  tender(P) { // coal tender: a flat deck heaped with coal, a water drum at the back
+    const c = camo(P), h = new Batch();
+    wheels(h, [-.85, -.4, .4, .85], .42, .2);
+    h.box(2.4, .2, .95, 0, .45, 0, 0x26282b); h.box(2.4, .25, .95, 0, .72, 0, c); h.box(2.45, .05, 1, 0, .86, 0, P.trim);
+    h.box(2.1, .25, .8, 0, .95, 0, 0x1b1b1b); h.cyl(.36, .45, -.6, 1.0, 0, 0x2a2a2a);
+    return {h};
+  },
+  flakcar(P) { // open flatcar with a flak gun on a pedestal and low sides
+    const c = camo(P), h = new Batch(), t = new Batch();
+    wheels(h, [-.85, -.5, .5, .85], .42, .2);
+    h.box(2.9, .2, .95, 0, .5, 0, 0x26282b); h.box(2.8, .18, .95, 0, .8, 0, c); h.box(2.85, .05, 1, 0, .9, 0, P.trim);
+    [-1, 1].forEach(s => { h.box(2.8, .18, .06, 0, .98, s * .47, c); for (let i = -2; i <= 2; i++) h.box(.05, .18, .06, i * .6, .98, s * .47, 0x3a3d40); });
+    h.box(.5, .3, .6, -1.1, .99, 0, 0x2d3a2d);
+    t.cyl(.3, .18, 0, 0, 0, c); t.box(.5, .2, .5, 0, .18, 0, c); t.cylX(.05, 1.1, .4, .05, .14, 0x222); t.cylX(.05, 1.1, .4, .05, -.14, 0x222);
+    return {h, t, ty: .98};
+  },
+  caboose(P) { // crew quarters: a cabin with a lookout roof on a flat deck
+    const c = camo(P), h = new Batch();
+    wheels(h, [-.9, -.45, .45, .9], .42, .2);
+    h.box(2.8, .2, .95, 0, .5, 0, 0x26282b); h.box(2.8, .2, 1, 0, .8, 0, P.trim);
+    h.box(2.3, 1.1, .9, -.25, 1.45, 0, c); h.box(2.4, .1, 1, -.25, 2.05, 0, 0x222426);
+    for (let i = -2; i <= 0; i++) h.box(.02, .35, .3, -.25 + i * .5, 1.5, .46, 0xffe9a0);
+    return {h};
   },
   flametank(P) { // short fat nozzle, armoured fuel drums on the back deck, scorched trim
     const c = camo(P), h = new Batch(), t = new Batch();
@@ -10396,6 +10504,7 @@ const Direct = {
 
   enter(ui, e) {
     this.ui = ui; this.e = e; this.id = e.id; this.on = true; this.aboard = null; this.noChute = false;
+    this.deckMode = false; this.inTurret = 0; this.fallT = 0; this.dz = 0; this.dvz = 0;
     const d = e.d;
     this.mode = ui.g.redstar && e.rs ? 'crew' : this.modeOf(d);
     this.yaw = e.h; this.pitch = this.mode === 'plane' ? 0 : -.05; this.roll = 0; this.fq = undefined; this.manualFly = false; this.fpP = 0; this.pRate = 0; this.rollRate = 0; this.pullUp = false; this.warnT = 0; this.killStreak = 0; this.strikeBank = 0; this.confirm = null; this.vz = 0; this.mx = this.my = 0; this.keys = {}; this.mouseDown = false;
@@ -10406,6 +10515,7 @@ const Direct = {
     this.slot = 0; this.ads = false; this.adsK = 0; this.bloom = 0; this.recoilP = 0; this.recoilY = 0; this.breath = 1; this.lockId = 0; this.lockK = 0; this.vLock = 0; this.leadAim = null; this.spec = 1; this.gear = true; this.lkOff = {y: 0, p: 0}; this.ug = !!e.ug; this.lc = undefined;
     this.hits = []; this.nums = []; this.dmgDir = []; this.kick = 0; this.flyT = 0; this.reloadK = 0; this.bobT = 0; this.flashT = 0; this.stickT = 0; this.salvo = 0; this.dead = false;
     const p = this.pose; p.x = e.x; p.y = e.y; p.z = e.z; p.h = e.h; p.p = 0; p.r = 0; p.tu = e.tu === undefined ? e.h : e.tu;
+    if (e.d.crew && ui.g.rail) { this.crewId = e.id; const R = railInfo(ui.g), dk = R && R.dk && R.dk[ui.g.me]; if (dk) { this.deckMode = true; this.dk = {c: dk[0], u: dk[1], w: dk[2], roof: dk[3]}; } else this.fallT = performance.now(); }
     this.grounded = false; this.landing = false;
     if (this.mode === 'plane') { const gz = Math.max(hAt(ui.g.view.M, p.x, p.y), 0);
       if (e.rwy || (p.z - gz < 1.2 && !ui.g.view.M.water[Math.round(p.y) * ui.g.view.N + Math.round(p.x)])) { this.grounded = true; this.gSpd = 0; this.throttle = 0; this.speed = 0; p.z = gz + .35; this.msg('ON THE GROUND: W to throttle up, A/D to steer, look up (mouse) to take off', 4); } // parked: take off yourself
@@ -10598,6 +10708,11 @@ const Direct = {
     if (down && !e.repeat && this.jump === 'fall' && c === B.jump && !this.noChute) { this.jump = 'canopy'; this.msg('Canopy open. Steer with WASD', 2); Sfx.ui && Sfx.ui(); return true; }
     if (c === 'AltLeft' || c === 'AltRight' || c === B.free) { e.preventDefault(); if (down && !e.repeat) this.toggleFree(); return true; }
     if (c === 'Tab' || c === 'Space') e.preventDefault();
+    if (this.inTurret && c === B.exit) { if (down && !e.repeat) this.standUp(); return true; } // F steps down from a turret
+    if (this.deckMode && (c === B.alt || c === B.jump)) { // on the train: E uses turret seats and ladders, jump hops
+      if (down && !e.repeat) { if (c === B.alt) this.deckUse(); else if (this.dz <= 0) this.dvz = 4.6; }
+      this.keys[c] = false; return true;
+    }
     this.keys[c] = down;
     if (this.emoW) { if (down && c === 'Escape') { this.emoW = null; return true; } if (down && /^Digit[1-7]$/.test(c)) { this.emoW.sel = +c.slice(5) - 1; this.emoW.k = 1; return true; } }
     if (!down && c === B.emote && this.emoW) { this.emoSend(); return true; }
@@ -10782,6 +10897,11 @@ const Direct = {
   update(dt, g) {
     if (this.mode === 'fpv') this.fpvT = performance.now();
     const e = g.view.ents.get(this.id);
+    if (this.inTurret && (!e || !g.view.ents.get(this.crewId))) { // the gun or your gunner is gone
+      const cr = g.view.ents.get(this.crewId); this.inTurret = 0;
+      if (cr) { this.enter(this.ui, cr); this.msg('Your gun is gone! Run!', 4); } else this.exit('Your gunner was killed');
+      return;
+    }
     if (!e && this.heist) { if (performance.now() - this.heist.at < 4000) return; this.heist = null; this.ui.cutShow(null); } // the spy climbed in: the new ride is on its way
     if (!e && this.cut) { // linger on the scene for a moment before cutting back
       const c = this.cut; if (!c.deadT) { c.deadT = performance.now(); this.ui.cutLine(c.wrong ? 'EXECUTED AS A SPY' : 'KILLED'); }
@@ -10816,7 +10936,11 @@ const Direct = {
     if (this.emoW) { const W = this.emoW; if (this.mode !== 'soldier') this.emoW = null; else { if (!W.k) { W.x += lx; W.y += ly; const r = Math.hypot(W.x, W.y); if (r > 150) { W.x *= 150 / r; W.y *= 150 / r; } W.sel = r < 38 ? -1 : Math.floor((((Math.atan2(W.x, -W.y) + 6.2832) % 6.2832) / 6.2832) * EMO_ICONS.length + .5) % EMO_ICONS.length; } lx = ly = 0; } }
     if (this.emoOn && (k[B.fwd] || k[B.back] || k[B.left] || k[B.right] || k[B.fire] || k[B.jump])) { this.emoOn = false; g.issue({c: 'emote', id: this.id, n: 0}); }
     this.lookX = lx * S; this.lookY = ly * S;
-    const fn = {soldier: this.moveSoldier, vehicle: this.moveVehicle, ship: this.moveVehicle, plane: this.movePlane, heli: this.moveHeli, fpv: this.moveFpv}[this.mode];
+    if (this.fallT && !this.deckMode && e.d.crew && g.rail) { // the fall timer: back on at the caboose once you are close, or after 6 s
+      const R = railInfo(g), cab = R && g.view.ents.get(R.ids[R.ids.length - 1]);
+      if (cab && (Math.hypot(this.pose.x - cab.x, this.pose.y - cab.y) < 2 || performance.now() - this.fallT > 6000)) { const sp = RAIL_CARS.caboose.spawn; this.dk = {c: R.ids.length - 1, u: sp.u, w: sp.w, roof: 0}; this.deckMode = true; this.fallT = 0; this.msg('Back on the train!', 2.5); }
+    }
+    const fn = this.mode === 'soldier' && this.deckMode ? this.moveDeck : {soldier: this.moveSoldier, vehicle: this.moveVehicle, ship: this.moveVehicle, plane: this.movePlane, heli: this.moveHeli, fpv: this.moveFpv}[this.mode];
     if (this.aboard) { this.moveAboard(dt, e, M, g.view.N); this.cameraAboard(dt, g); }
     else { fn.call(this, dt, e, M, g.view.N); this.camera(dt, g, M); }
     // network pose, 15 times a second
@@ -10824,7 +10948,7 @@ const Direct = {
     if (this.sendT <= 0) {
       this.sendT = .066; const p = this.pose;
       const sold = this.mode === 'soldier', ago = performance.now() - (this.shotAt || -1e5), cw = sold && this.W && this.W[this.slot] && this.W[this.slot].w;
-      g.issue(this.mode === 'crew' ? {c: 'icrew', st: this.seatId || '', x: +this.aboard.x.toFixed(2), z: +this.aboard.z.toFixed(2), yaw: +this.aboard.yaw.toFixed(2)} : {c: 'pose', id: this.id, x: p.x, y: p.y, z: p.z, h: p.h, p: p.p, r: p.r, tu: p.tu, m: !!this.mv, ch: this.jump === 'fall' ? 0 : this.jump === 'canopy' ? 1 : undefined, ug: sold && this.ug ? 1 : 0, ap: sold ? this.pitch : undefined, f: sold && ago < 280 ? 1 : 0, a: sold && this.ads ? 1 : 0, th: sold && cw && cw.snd === 'throw' && ago < 650 ? 1 : 0});
+      g.issue(this.mode === 'crew' ? {c: 'icrew', st: this.seatId || '', x: +this.aboard.x.toFixed(2), z: +this.aboard.z.toFixed(2), yaw: +this.aboard.yaw.toFixed(2)} : {c: 'pose', id: this.id, x: p.x, y: p.y, z: p.z, h: p.h, p: p.p, r: p.r, tu: p.tu, m: !!this.mv, ch: this.jump === 'fall' ? 0 : this.jump === 'canopy' ? 1 : undefined, ug: sold && this.ug ? 1 : 0, dk: this.deckMode ? [this.dk.c, +this.dk.u.toFixed(2), +this.dk.w.toFixed(2), this.dk.roof] : undefined, dz: this.deckMode ? +this.dz.toFixed(2) : undefined, ap: sold ? this.pitch : undefined, f: sold && ago < 280 ? 1 : 0, a: sold && this.ads ? 1 : 0, th: sold && cw && cw.snd === 'throw' && ago < 650 ? 1 : 0});
     }
     if (this.mode !== 'crew') this.weapons(dt, g, e);
     this.msgT = (this.msgT || 0) - dt;
@@ -11124,6 +11248,71 @@ const Direct = {
     if (agl <= 0) { p.z = gh; this.vz = 0; this.onGround = true; this.jump = null; this.land = .3; this.vel.x *= .3; this.vel.y *= .3; this.msg('Boots on the ground', 1.5); }
     this.mv = false; p.h = this.yaw; p.tu = this.yaw; p.p = 0; p.r = 0;
     this.aimYaw = this.yaw; this.aimPitch = this.pitch;
+  },
+  // ---------- Iron Express decks: walk the train, man the turrets, fall off ----------
+  moveDeck(dt, e, M, N) { // WASD walks in car-local space, so the train carries you; gangways cross cars; open edges drop you
+    const g = this.ui.g, R = railInfo(g), D = this.dk, k = this.keys, B = Settings.binds;
+    if (!R || !D) { this.deckMode = false; return; }
+    this.yaw += this.lookX; this.pitch = clamp(this.pitch - this.lookY, -1.35, 1.35);
+    const car = g.view.ents.get(R.ids[D.c]);
+    if (!car) { this.deckFall(g, null, M); return; }
+    let fx = 0, fy = 0;
+    if (k[B.fwd] || k.KeyW) fy += 1; if (k[B.back] || k.KeyS) fy -= 1; if (k[B.right] || k.KeyD) fx += 1; if (k[B.left] || k.KeyA) fx -= 1;
+    const moving = !!(fx || fy), L = Math.hypot(fx, fy) || 1, c = Math.cos(this.yaw), s = Math.sin(this.yaw);
+    const top = UNITS.crew.spd * (k[B.sprint] && fy > 0 && !this.ads ? 1.6 : this.ads ? .6 : 1);
+    const vx = moving ? (c * fy - s * fx) / L * top : 0, vy = moving ? (s * fy + c * fx) / L * top : 0;
+    const ch = Math.cos(car.h), sh = Math.sin(car.h);
+    const res = railDeckStep(ci => { const en = g.view.ents.get(R.ids[ci]); return en && RAIL_CARS[en.k] || null; }, D, D.u + (vx * ch + vy * sh) * dt, D.w + (vy * ch - vx * sh) * dt);
+    if (res.fall) { this.deckFall(g, car, M); return; }
+    D.c = res.c; D.u = res.u; D.w = res.w; D.roof = res.roof;
+    if (this.dz > 0 || this.dvz > 0) { this.dz += this.dvz * dt; this.dvz -= 14 * dt; if (this.dz <= 0) { this.dz = 0; this.dvz = 0; } }
+    const cur = g.view.ents.get(R.ids[D.c]) || car, K = RAIL_CARS[cur.k], q = railDeckPos(cur, K, D.u, D.w, D.roof, this.dz), p = this.pose;
+    p.x = q.x; p.y = q.y; p.z = q.z; p.h = this.yaw; p.p = 0; p.r = 0; p.tu = this.yaw;
+    this.onGround = true; this.mv = moving; this.hullSpd = 0; if (moving) this.bobT = (this.bobT || 0) + dt * 9;
+    this.deckPrompt(R, K);
+  },
+  deckFall(g, car, M) { // off the edge: you land beside the track, and the train keeps going
+    const p = this.pose, N = g.view.N;
+    let x = p.x, y = p.y;
+    if (car) { const dx = p.x - car.x, dy = p.y - car.y, d = Math.hypot(dx, dy) || 1; x += dx / d * 1.3; y += dy / d * 1.3; }
+    x = clamp(x, 1, N - 2); y = clamp(y, 1, N - 2);
+    p.x = x; p.y = y; p.z = gAt(M, x, y); p.h = this.yaw;
+    this.deckMode = false; this.fallT = performance.now(); this.dz = 0; this.dvz = 0; this.vel = {x: 0, y: 0}; this.onGround = true;
+    this.msg('You fell off! Run!', 6);
+  },
+  deckPrompt(R, K) { // what E does right here
+    const D = this.dk, A = Settings.keyName(Settings.binds.alt);
+    if (K.seat && !D.roof && Math.hypot(D.u - K.seat.u, D.w - K.seat.w) < 1.2) { if (!(R.occ && R.occ[D.c])) this.msg(A + ': man the turret', .2); }
+    else if (K.ladder && Math.hypot(D.u - K.ladder.u, D.w - K.ladder.w) < (D.roof ? 2.2 : 1.5)) this.msg(A + (D.roof ? ': climb down' : ': climb up to the roof'), .2);
+  },
+  deckUse() { // E on the train: sit at a free turret, or climb a ladder
+    const g = this.ui.g, R = railInfo(g), D = this.dk;
+    if (!R || !D) return;
+    const car = g.view.ents.get(R.ids[D.c]), K = car && RAIL_CARS[car.k];
+    if (!K) return;
+    if (K.seat && !D.roof && Math.hypot(D.u - K.seat.u, D.w - K.seat.w) < 1.4) { if (R.occ && R.occ[D.c]) this.msg('Someone is already on that turret', 1.5); else this.sitTurret(g, car, R); return; }
+    if (K.ladder && Math.hypot(D.u - K.ladder.u, D.w - K.ladder.w) < (D.roof ? 2.2 : 1.5)) {
+      if (D.roof) { D.roof = 0; D.u = K.ladder.u; D.w = K.ladder.w; this.msg('Down from the roof', 1.2); }
+      else { const r = K.roof.walk; D.roof = 1; D.u = clamp(K.ladder.u, r[0], r[1]); D.w = clamp(K.ladder.w, r[2], r[3]); this.msg('On the roof. No railings up here: mind the edge!', 2.5); }
+    }
+  },
+  sitTurret(g, car, R) { // your crew member takes the gun; the car is driven from here
+    const crew = R.crew[g.me];
+    g.issue({c: 'dkseat', id: crew, car: car.id, on: 1});
+    this.enter(this.ui, car);
+    this.inTurret = car.id; this.crewId = crew; this.deckMode = false;
+    this.msg('Manning the turret. Mouse aims, click fires, E rockets, F steps down', 4);
+  },
+  standUp() { // F in a turret: back on your feet, where the seat is
+    const g = this.ui.g, R = railInfo(g), car = this.e, K = car && RAIL_CARS[car.k];
+    if (!R || !K || !K.seat) return;
+    const ci = R.ids.indexOf(car.id), crew = g.view.ents.get(this.crewId);
+    g.issue({c: 'dkseat', id: this.crewId, on: 0});
+    this.inTurret = 0;
+    if (!crew) { this.exit('Your gunner was killed'); return; }
+    this.enter(this.ui, crew);
+    this.deckMode = true; this.dk = {c: ci, u: K.seat.u, w: K.seat.w, roof: 0}; this.dz = 0; this.dvz = 0; this.fallT = 0;
+    this.msg('Back on your feet', 1.5);
   },
   moveRail(dt, e) { // Iron Express: the train carries you, you only work the turret
     const p = this.pose, k = Math.min(1, dt * 10);
@@ -13776,9 +13965,9 @@ const UI = {
     if (this.quick) { this.quick = false; setTimeout(() => { this.deployed = true; this.openDeploy(); }, 300); }
     window.__ws = this;
     if (o.rail) { // Iron Express: everyone mans a gun car
-      this.addAlert('Iron Express: get the armoured train to the far station. Mouse aims your turret, click fires, E fires rockets. If the locomotive dies, we lose.', 'gold');
+      this.addAlert('Iron Express: you are the crew. WASD walks the train, E sits at a turret, F gets up. Jump over the gaps. If the locomotive dies, we lose.', 'gold');
       this.railHud(true);
-      let tries = 0; const go = () => { const g = this.g; if (!g || g !== this.g) return; const u = [...g.view.ents.values()].find(e => e.o === o.me && e.d && e.d.rail && e.seat !== -1) || [...g.view.ents.values()].find(e => e.o === o.me && e.d && e.d.rail); if (u && !Direct.on) { Direct.enter(this, u); return; } if (++tries < 60) setTimeout(go, 250); }; setTimeout(go, 400);
+      let tries = 0; const go = () => { const g = this.g; if (!g || g !== this.g) return; const u = [...g.view.ents.values()].find(e => e.o === o.me && e.d && e.d.crew); if (u && !Direct.on) { Direct.enter(this, u); return; } if (++tries < 60) setTimeout(go, 250); }; setTimeout(go, 400);
     } else this.railHud(false);
     if (o.redstar) { // Operation Red Star: everyone starts inside the bomber
       this.addAlert('Operation Red Star: walk the aircraft with WASD and mouse. The rest of the crew is in here with you.', 'rs');
@@ -15148,6 +15337,7 @@ addEventListener('keydown', () => { if (typeof Direct !== 'undefined' && window.
   // ---- changelog: add a new entry at the TOP of this list whenever something changes
   const CHANGELOG = [
     {d: '9 Nov 2026', items: [
+      'Iron Express: you are now a crew member who walks the whole train (locomotive, coal tender, gun cars, flak car, caboose). WASD walks, jump hops, E sits in a turret or climbs the caboose ladder, F stands up. Step off the side and you fall; run back to the caboose or wait and you hop back on. If you die you respawn in the caboose.',
       'Emote wheel: on foot, hold B, move the mouse to a symbol and let go. Wave, rude gesture, griddy, salute, facepalm, shrug and give up. Everyone sees it; moving or firing cancels it. Rebind it in Settings.',
       'Trees are solid for things you fly: planes clip the treetops (or crash without flight assist), helicopters can\'t sink into them and FPV drones blow up on them.',
       'New nation: the Shauns, led by Chairman Shaun: flag-red blobs with gold stars. Everything costs 15% less but units have 10% less health. Copycats: destroy any enemy unit and you can build it too, even another nation\'s special units, with no research. Special (G): Knock-off, a cheaper copy of the nearest enemy unit rolls out beside you.',
