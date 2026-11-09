@@ -52,6 +52,7 @@ Browser war game in one file: `index.html` (Three.js r170, inlined: the ESM buil
 - **Pilot specials (G):** `PSPECIAL` + `Sim.pilotSpecial` (client sends aim x/y and `tid`). Dhruvs laser and Toms bomb run use `this.strikes` (fields r, dmg, sr, gap, line). Valentinos Vendetta: `t.vendT/vendBy`, +40% in `hurt`.
 - **Yahus** (nation 6, look 'yahu'): `tr.dome` cuts splash damage; pilot special converts the nearest enemy infantry (`T.bought`, synced in slow snapshots as `bt`, drawn by `Renderer.drawBought`). Commander powers (`case 'power'`) are disabled, so nation `power` entries are unused.
 - **Newer units:** jetpack (`d.jet`: hovers in RTS, Jump thrust + `jetF` fuel in `moveSoldier`), engineer (`d.eng` counts as a builder; `repair`), mortar (arty shot, `minRng`), flametank, railgun (`d.pierce` -> `Sim.pierceLine`; PWPN `charge` wind-up in `tryFire`), osprey (heli, carry 8, two wingtip rotors in the renderer).
+- **Shauns** (nation 7, look 'shaun'): `tr.copy` -> `p.copied[k]` set in `creditKill`, bypasses `trainable`/`techLock`, synced in `msg.pl`; pilot special Knock-off spawns a 70% copy.
 - **Xaviers:** neutral healers, only in Play vs bots when the "optXav" checkbox is on (off by default).
 
 ## Recently done (Nov 2026)

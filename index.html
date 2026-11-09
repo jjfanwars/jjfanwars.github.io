@@ -988,6 +988,9 @@ const NATIONS = [
   {key: 'yahus', name: 'The Yahus', leader: 'Big Yahu', color: '#2a62d8', dark: '#e9eef8', look: 'yahu',
    blurb: 'Vision +15% · Damage +6% · Aircraft +10% · Iron Dome: units and buildings take 30% less damage from explosions',
    tr: {vision: 1.15, dmg: 1.06, air: 1.1, dome: .7}, power: 'irondome'},
+  {key: 'shauns', name: 'The Shauns', leader: 'Chairman Shaun', color: '#d0242b', dark: '#f2c230', look: 'shaun',
+   blurb: 'Everything costs 15% less · Units have 10% less health · Copycats: destroy an enemy unit and you can build it too (even their special units, no research needed)',
+   tr: {cost: .85, hp: .9, copy: 1}, power: null},
 ];
 // The Xaviers are not a team: a few friendly healers wander every war. Kept off the NATIONS list (index -1) so menus never show them.
 NATIONS[-1] = {key: 'xaviers', name: 'The Xaviers', leader: 'Xavier', color: '#ffe9a8', dark: '#f4f4ee', look: 'xavier', blurb: '', tr: {}, power: null};
@@ -1140,7 +1143,7 @@ const YAHU_INQUIRY = ['The Yahus investigated themselves and found no wrongdoing
   'The Yahus have opened an investigation. It will report back in two weeks.', 'Yahus statement: we regret any harm caused to the %, which was its own fault.'];
 const YAHU_TWOWEEKS = ['Big Yahu: "They are two weeks away. This time it is real."', 'Big Yahu: "I said two weeks in 1992. I say it again now. Two weeks."', 'Intel update: the enemy nuke is two weeks away. Same as last time.',
   'Big Yahu: "Please do not look at the old charts. Two weeks."', 'Big Yahu holds up a cartoon bomb with a red line on it. Two weeks.'];
-const WAR_CRIES = {yahus: 'Two weeks away? We are already here.', licases: 'Pedal to victory!', dhruvs: 'As calculated.', valentinos: 'Forza! Avanti!', jethroes: 'Awoooooo!', toms: 'Nice shades. Shame about your army.'};
+const WAR_CRIES = {shauns: 'Same as yours. But cheaper.', yahus: 'Two weeks away? We are already here.', licases: 'Pedal to victory!', dhruvs: 'As calculated.', valentinos: 'Forza! Avanti!', jethroes: 'Awoooooo!', toms: 'Nice shades. Shame about your army.'};
 
 // ---------- weapons when a player controls a unit directly ----------
 // t: hit (hitscan), pel (pellets), cone (flame), mel (melee), proj (projectile), bomb (falls), msl (homing missile), det (FPV warhead)
@@ -1393,6 +1396,7 @@ const PSPECIAL = {
   jethroes: {n: 'Alpha Howl', cd: 40, desc: 'Turn into an alpha wolf for 14 seconds. The howl terrifies enemy infantry within 12 m: they run and stop shooting for 3 seconds.'},
   toms: {n: 'Danger Close', cd: 45, desc: 'Call an F-16 bomb run: six bombs walk across the ground from your crosshair along the way you face, after a 2 s warning. Stay clear.'},
   yahus: {n: '$1 Million from AIPAC', cd: 50, desc: 'A generous donation arrives: the nearest enemy soldier (within 40 m) puts on an Israeli flag and a cap, switches sides and fights for you.'},
+  shauns: {n: 'Knock-off', cd: 50, desc: 'Copy the nearest enemy unit within 30 m: a cheaper version of it rolls out beside you and fights for you (70% health).'},
   charlies: {n: 'Wingmen', cd: 45, desc: 'Launch three hunter drones from where you are. They find the nearest enemies and dive on them.'},
 };
 </script>
@@ -2973,12 +2977,13 @@ Sim.prototype.trainable = function (p, u) {
   const d = UNITS[u];
   if (d && p.open) return true;
   if (!d || d.hidden) return false;
+  if (p.copied && p.copied[u] && d.from) return true; // Shauns: reverse-engineered
   if (d.only && !d.only.includes(p.nat.key)) return false;
   if (d.notNation && d.notNation.includes(p.nat.key)) return false;
   if (TECH_OF[u] && !p.ups[TECH_OF[u]] && !p.techAll) return false;
   return true;
 };
-Sim.prototype.techLock = function (p, u) { const t = TECH_OF[u]; return t && !p.ups[t] && !p.open && !p.techAll ? t : null; };
+Sim.prototype.techLock = function (p, u) { const t = TECH_OF[u]; return t && !p.ups[t] && !p.open && !p.techAll && !(p.copied && p.copied[u]) ? t : null; };
 
 Sim.prototype.cmdTrain = function (b, p, u, auto) {
   if (b.bp < 1 || !b.d.trains || !b.d.trains.includes(u) || !this.trainable(p, u) || b.q.length >= 8) return;
@@ -3353,6 +3358,8 @@ Sim.prototype.creditKill = function (a, t) {
   if (t.hp > 0 || !a || a.b || t.credited) return;
   t.credited = 1;
   a.kills++;
+  { const P = this.players[a.o]; if (P && P.nat.tr.copy && !t.b && t.d.from && !(P.copied && P.copied[t.k]) && !this.scen && !this.battle) { // Shauns copy what they kill
+    (P.copied = P.copied || {})[t.k] = 1; this.notify(P.i, 'Reverse-engineered the ' + t.d.n + '! You can now build it at your ' + BUILDINGS[t.d.from].n + '.', 'gold', t.x, t.y); } }
   if (this.scen && !t.b) this.ev({k: 'feed', ak: a.k, ao: a.o, ap: a.pilot ? a.pilot - 1 : -1, tk: t.k, to: t.o, tp: t.pilot ? t.pilot - 1 : -1}); // kill feed for the battle modes
   if (a.pilot) this.ev({k: 'downed', p: a.o, kk: t.k, to: t.o, air: t.air ? 1 : 0, b: t.b ? 1 : 0, x: t.x, y: t.y});
   if (a.kills === 3 || a.kills === 6) {
@@ -4708,6 +4715,12 @@ Sim.prototype.pilotSpecial = function (c, pi) {
     this.ev({k: 'convert', id: T.id, o: pi}); this.ev({k: 'boom', x: T.x, y: T.y, z: (T.z || 0) + 1, s: .3});
     this.ev({k: 'msg', p: pi, text: '$1,000,000 well spent: their ' + T.d.n + ' now fights for you', kind: 'gold'});
     this.notify(q.i, 'One of our ' + T.d.n + 's was bought by the Yahus!', 'bad', T.x, T.y);
+  } else if (k === 'shauns') {
+    let T = null, bd = 30; this.near(a.x, a.y, 30, t => { if (t.b || t.o < 0 || t.inside || this.friendly(t.o, pi) || t.hp <= 0 || !t.d.from || t.xav) return; const dd = Math.hypot(t.x - a.x, t.y - a.y); if (dd < bd) { bd = dd; T = t; } });
+    if (!T) { p.specT = this.t + 1; this.ev({k: 'msg', p: pi, text: 'Nothing within 30 m worth copying', kind: 'bad'}); return; }
+    let sx = a.x + Math.cos(a.h + 2) * 2, sy = a.y + Math.sin(a.h + 2) * 2; if (T.sea) { sx = T.x + 3; sy = T.y; }
+    const cp = this.addUnit(T.k, pi, clamp(sx, 1, this.N - 2), clamp(sy, 1, this.N - 2));
+    if (cp) { cp.hp = cp.hpm * .7; this.ev({k: 'msg', p: pi, text: 'Knock-off ' + T.d.n + ' rolled out. Same as theirs, but cheaper.', kind: 'gold'}); }
   } else if (k === 'charlies') {
     for (let i = 0; i < 3; i++) { const an = a.h + (i - 1) * .8, dr = this.addUnit('hunter', pi, clamp(a.x + Math.cos(an) * 1.5, 1, this.N - 2), clamp(a.y + Math.sin(an) * 1.5, 1, this.N - 2)); if (dr) { dr.life = 30; dr.hold = {x: a.x, y: a.y}; } }
   }
@@ -5024,6 +5037,8 @@ const SPY_GUARDS = {
     q: [['What does every Tom wear, day and night?', 'Sunnies', ['Glasses', 'A top hat', 'A scarf']], ['What is the size of a Tom\'s arms?', 'Huge', ['Average', 'Small', 'Noodly']]]},
   yahus: {who: 'Agent Bibi-Two', hi: 'Stop right there. Look at the camera. Now, who sent you?', ok: 'Fine. Go. We are watching.', no: 'I knew it. Two weeks ago. SPY!',
     q: [['What does Big Yahu build over every city?', 'An Iron Dome', ['A big umbrella', 'A tin roof', 'A bouncy castle']], ['How far away is the enemy, always?', 'Two weeks', ['Two days', 'Two years', 'Two metres']]]},
+  shauns: {who: 'Inspector Copy', hi: 'Papers, please. Also your browsing history.', ok: 'Approved. Your social credit is adequate.', no: 'Social credit: zero. SPY!',
+    q: [['What happened in the big square in 1989?', 'Nothing happened', ['A protest', 'A man stopped a tank', 'I cannot recall']], ["How long is Chairman Shaun's term?", 'Forever', ['Five years', 'Ten years', 'Until the next election']]]},
   charlies: {who: 'Engineer Byte', hi: 'Scanning... identity unconfirmed. Answer the challenge.', ok: 'Identity confirmed. Proceed.', no: 'Intruder detected. SPY.',
     q: [['What colour is our flag?', "We can't tell, we're colourblind", ['Red and green', 'Blue', 'Gold']], ['Why do we not fly our own jets?', 'No pilot licence', ['Afraid of heights', 'Too expensive', 'Planes are boring']]]},
 };
@@ -6066,7 +6081,7 @@ function encodeSnap(sim, sendSlow) {
   if (sim.rs) msg.rs = sim.rsPub();
   if (sim.rl) msg.rl = sim.railPub();
   if (sendSlow) {
-    msg.pl = sim.players.map(p => ({bld: p.builders, specT: p.specT || 0, freeT: p.freeT || 0, steel: p.steel | 0, fuel: p.fuel | 0, pop: p.pop, popCap: p.popCap, ups: p.ups, techAll: p.techAll || 0, cds: p.cds, alive: p.alive, trat: p.trat || 0, st: p.st, hist: p.hist, kills: p.kills, losses: p.losses, built: p.built, reveal: p.reveal, buffs: p.buffs, rel: p.rel, relT: p.relT, offers: p.offers, str: p.str || 0, mood: p.mood, intel: p.intel, spyMap: p.spyMap, autoRecon: p.autoRecon, autoEco: p.autoEco, autoHouse: p.autoHouse, ecoK: p.ecoK}));
+    msg.pl = sim.players.map(p => ({copied: p.copied, bld: p.builders, specT: p.specT || 0, freeT: p.freeT || 0, steel: p.steel | 0, fuel: p.fuel | 0, pop: p.pop, popCap: p.popCap, ups: p.ups, techAll: p.techAll || 0, cds: p.cds, alive: p.alive, trat: p.trat || 0, st: p.st, hist: p.hist, kills: p.kills, losses: p.losses, built: p.built, reveal: p.reveal, buffs: p.buffs, rel: p.rel, relT: p.relT, offers: p.offers, str: p.str || 0, mood: p.mood, intel: p.intel, spyMap: p.spyMap, autoRecon: p.autoRecon, autoEco: p.autoEco, autoHouse: p.autoHouse, ecoK: p.ecoK}));
     msg.bs = [];
     for (const e of sim.ents.values()) if (e.b) msg.bs.push({id: e.id, bp: e.bp, q: e.q, prog: e.prog, rally: e.rally, au: e.auto ? 1 : 0, ak: e.autoK || null, cdn: e.nukeCD, g: e.garrison ? e.garrison.length : 0, hd: e.hard || 0, rot: e.rot || 0});
     msg.nodes = sim.M.nodes.map(n => [n.amt | 0, n.taken || 0]);
@@ -6249,6 +6264,7 @@ function palette(nat) {
   else if (c.look === 'xavier') { p.uni = 0xf6f3e8; p.trim = 0xffd86b; p.alt = 0xffffff; }
   else if (c.look === 'toms') { p.uni = 0x8a7350; p.trim = 0x19c8b9; p.alt = 0x5e4a30; } // desert camo, teal trim
   else if (c.look === 'glasses') { p.uni = 0x274a86; p.trim = 0x4a90ff; p.alt = 0xcfe0ff; }
+  else if (c.look === 'shaun') { p.uni = 0x3a3d42; p.trim = 0xd0242b; p.alt = 0xf2c230; } // buttoned-up grey suit, red and gold
   else if (c.look === 'yahu') { p.uni = 0x1f2633; p.trim = 0x2a62d8; p.alt = WHITE; } // dark suit, blue tie
   else { p.uni = 0x4a5530; p.trim = 0x6b7a42; p.alt = 0x8a7a55; } // Licases: woodland camo
   return p;
@@ -6269,6 +6285,7 @@ function blobColor(kind, P) {
   if (P.look === 'usa') return 0xd8283a;
   if (P.look === 'glasses') return 0x4a86e8;
   if (P.look === 'yahu') return 0x232a38; // a dark suit
+  if (P.look === 'shaun') return 0x41454b; // a buttoned-up grey tunic suit
   return 0x5b6a3a; // Licases: camo green
 }
 function soldierBody(kind, nat, lo) {
@@ -6303,6 +6320,9 @@ function soldierBody(kind, nat, lo) {
     b.add(GEO.sph, 0x3a1515, rx * .95, cy + ry * .02, 0, .02, .02, .055);
   }
   if (P.look === 'bike') { b.box(.07, .075, rz * 1.5, ex + .03, ey, 0, 0x0a0b0c); b.box(.02, .012, rz * 1.55, ex + .06, ey + .035, 0, 0x2a2d30); b.box(.012, .03, rz * .6, ex + .065, ey + .005, rz * .35, 0x3a4a5a); } // wraparound sunnies
+  if (P.look === 'shaun') { // Chairman Shaun: high closed collar, a row of buttons, a red party pin, a calm little smile
+    b.add(GEO.torus, 0x2e3136, 0, cy + ry * .62, 0, rx * .62, rz * .62, ry * .25, Math.PI / 2, 0, 0); for (let i = 0; i < 4; i++) b.add(GEO.sph, 0xf2c230, rx * .99, cy + ry * (.25 - i * .22), 0, .022, .022, .022);
+    b.add(GEO.sph, 0xd0242b, rx * .9, cy + ry * .2, rz * .45, .035, .035, .02); b.box(.02, .015, .1, rx * .97, cy + ry * .04, 0, 0x5a2020, 0, 0, 0); }
   if (P.look === 'yahu') { // Big Yahu: white shirt, blue tie, heavy grey brows and a knowing smirk
     b.add(GEO.cone4, WHITE, rx * .9, cy - ry * .05, 0, .02, ry * .5, rz * .3, 0, 0, Math.PI); b.box(.025, ry * .55, .055, rx * .97, cy - ry * .2, 0, 0x2a62d8); b.box(.03, .05, .07, rx * .97, cy + ry * .07, 0, 0x2a62d8);
     [-1, 1].forEach(s => b.box(.035, .03, .12, ex + .05, ey + .1, s * rz * .32, 0xb9bcc2, 0, 0, s * .12)); b.box(.025, .02, .09, rx * .97, cy + ry * .02, -.02, 0x5a2020, 0, 0, .25); }
@@ -6323,6 +6343,7 @@ function soldierBody(kind, nat, lo) {
   else if (P.look === 'italian') { sph(rx * .74, ry * .26, rz * .74, 0, top - ry * .1, 0, 0x2e3a24); b.add(GEO.cone, 0x123d12, -.05, top + ry * .15, 0, .03, .18, .03, 0, 0, .6); } // bersaglieri-style plume
   else if (P.look === 'toms') { b.box(rx * 1.2, .05, rz * 1.1, -.02, top - ry * .1, 0, 0x101415); b.box(rx * .9, .04, rz * .7, -.02, top - ry * .02, 0, 0x101415); } // flat-top haircut
   else if (P.look === 'glasses') { sph(rx * .75, ry * .28, rz * .75, -.01, top - ry * .1, 0, 0x1d3f80); }
+  else if (P.look === 'shaun') { sph(rx * .84, ry * .3, rz * .86, -.07, top - ry * .12, 0, 0x16171a); sph(rx * .5, ry * .16, rz * .7, .1, top - ry * .05, 0, 0x1d1e22); } // neat swept-back black hair
   else if (P.look === 'yahu') { sph(rx * .8, ry * .26, rz * .82, -.05, top - ry * .1, 0, 0xc9cbcf); sph(rx * .45, ry * .2, rz * .55, .04, top - ry * .02, rz * .2, 0xdadcdf); sph(rx * .3, ry * .14, rz * .5, -.12, top - ry * .06, -rz * .25, 0xb4b7bc); } // swept silver-grey hair, parted to one side
   if (kind === 'sniper') for (let i = 0; i < 9; i++) { const a = i * 2.4, yy = cy + ry * (.2 + (i % 3) * .25); b.add(GEO.cone4, 0x4e5a2e, Math.cos(a) * rx * .9 - .05, yy, Math.sin(a) * rz * .9, .05, .14, .05, Math.sin(a) * .6, 0, Math.cos(a) * .6); }
   if (kind === 'scout' && !bike) { b.box(.02, .08, .02, rx * .2, top + .04, rz * .4, 0x222); b.add(GEO.sph, 0x7cf, rx * .2, top + .09, rz * .4, .015, .015, .015); }
@@ -15060,6 +15081,7 @@ addEventListener('keydown', () => { if (typeof Direct !== 'undefined' && window.
   // ---- changelog: add a new entry at the TOP of this list whenever something changes
   const CHANGELOG = [
     {d: '9 Nov 2026', items: [
+      'New nation: the Shauns, led by Chairman Shaun. Everything costs 15% less but units have 10% less health. Copycats: destroy any enemy unit and you can build it too, even another nation\'s special units, with no research. Special (G): Knock-off, a cheaper copy of the nearest enemy unit rolls out beside you.',
       'Yahus: playing as them, every enemy capital shows how many days its nuke is away. It is always two weeks, and Big Yahu reminds you each time the clock resets.',
       'Yahus: when they destroy a hospital or housing, everyone gets a press release. The Yahus investigated themselves and found no wrongdoing.',
       'New troops at the Barracks: Jetpack Trooper (flies over rivers and hills; in first person hold Jump to fly), Combat Engineer (repairs vehicles, builds like a worker, plants satchel charges) and Mortar Team (lobs bombs over hills, helpless up close).',
