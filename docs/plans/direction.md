@@ -20,6 +20,7 @@ Process: ask before big design choices, keep `docs/plans/` current as work lands
 ## 1. Feel, controls, balance
 
 ### Planes (laptop trackpad is the target device)
+**Status 2026-11-09: built.** Mouse aim (autopilot chases the camera), left click guns, E fires the special picked with 1-3, gear assist automatic with a manual-gear setting (B), WT target lock (`lockPick`/`toggleViewLock`/`trackLock`, also helicopters and ships) and nose-only missile seeker.
 - Aim: **mouse aim with cursor lag** (the plane chases a cursor, War Thunder style). Fix the twitchy/drifting mouse aim.
 - Weapon keys: **left click fires guns, one key for the special weapon**, default **E**, rebindable. Planes with several specials pick with **number keys 1-3**. Replaces E/R/Y.
 - Landing gear and flaps: an **assist toggle** (automatic by default, manual option for experienced pilots).
