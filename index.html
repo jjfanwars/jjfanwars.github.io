@@ -516,6 +516,7 @@ body.cbDeut #ov,body.cbDeut #mm,body.cbDeut #cards img,body.cbDeut #selpanel img
     <label><input type="checkbox" id="sAuto"> Auto-fire when the crosshair is on an enemy</label>
     <label><input type="checkbox" id="sTp"> Start in third person (V switches any time)</label>
     <label><input type="checkbox" id="sFly"> Flight assist (jets pull up near the ground; only a steep dive crashes)</label>
+    <label><input type="checkbox" id="sGear"> Manual landing gear (B raises and lowers it; land with it up and you crash)</label>
     <h3>Look</h3>
     <label><input type="checkbox" id="sGrit"> Gritty war film look (muted colour grade, film grain, vignette, dust)</label>
     <p class="small">No clicking needed: as soon as you spawn into a unit the mouse steers the view. <b>Alt</b> frees the cursor and gives it back. If your browser will not lock the mouse, moving the cursor away from the centre of the screen steers instead.</p>
@@ -9982,7 +9983,7 @@ Game.prototype.issue = function (c) {
 
 const BIND_DEFAULTS = {ammo: 'KeyN', vlock: 'KeyL', w4: 'KeyY', spot: 'KeyK', fire: 'Space', alt: 'KeyE', ads: 'KeyQ', reload: 'KeyR', jump: 'KeyX', sprint: 'KeyC', view: 'KeyV', exit: 'KeyF', free: 'AltLeft', cycle: 'KeyT', special: 'KeyG', walk: 'KeyB', up: 'KeyX', down: 'KeyC', fwd: 'KeyW', back: 'KeyS', left: 'KeyA', right: 'KeyD', chooser: 'KeyP', chaff: 'KeyZ'};
 const Settings = {
-  view: 'fp', sens: 1, invert: false, assist: false, autofire: false, flightAssist: true, gritty: true, blobs: true,
+  view: 'fp', sens: 1, invert: false, assist: false, autofire: false, flightAssist: true, manualGear: false, gritty: true, blobs: true,
   binds: Object.assign({}, BIND_DEFAULTS),
   load() { try { const o = JSON.parse(localStorage.getItem('warsim-settings') || '{}'); for (const k in o) if (k === 'binds') Object.assign(this.binds, o.binds); else this[k] = o[k]; } catch (e) {} const B = this.binds; if (B.exit === B.fire) B.exit = B.fire === 'Space' ? 'KeyF' : 'Space'; },
   // Give an action a new key. A key already used by another action is swapped, so nothing is left without a key or fights over one.
@@ -9994,13 +9995,13 @@ const Settings = {
     this.save(); return swapped;
   },
   resetBinds() { Object.assign(this.binds, BIND_DEFAULTS); this.save(); },
-  save() { try { const o = {}; for (const k of ['view', 'sens', 'invert', 'assist', 'autofire', 'flightAssist', 'gritty', 'binds']) o[k] = this[k]; localStorage.setItem('warsim-settings', JSON.stringify(o)); } catch (e) {} },
+  save() { try { const o = {}; for (const k of ['view', 'sens', 'invert', 'assist', 'autofire', 'flightAssist', 'manualGear', 'gritty', 'binds']) o[k] = this[k]; localStorage.setItem('warsim-settings', JSON.stringify(o)); } catch (e) {} },
   keyName(code) { return !code ? '?' : code.replace(/^Key/, '').replace(/^Digit/, '').replace('Left', '').replace('Right', '').replace('Space', 'Space').replace('Arrow', ''); },
 };
 Settings.load();
 Settings.blobs = true; // the troops are always blob guys
 
-const BIND_LABELS = {ammo: 'Tanks: switch AP / HE shells', vlock: 'Planes: lock view on target', w4: 'Aircraft: 4th weapon', spot: 'Spot enemy for your team (or middle click)', fire: 'Fire', alt: 'Secondary weapon', ads: 'Aim / scope (toggle)', reload: 'Reload / aircraft: 3rd weapon', jump: 'Jump / climb', sprint: 'Sprint / descend', view: 'First / third person', exit: 'Back to command', free: 'Free cursor', cycle: 'Cycle lock target', special: 'National special ability', walk: "Ships: leave / sit in captain's chair", fwd: 'Forward / throttle up', back: 'Back / throttle down', left: 'Left / roll left', right: 'Right / roll right', chooser: 'Unit chooser', chaff: 'Aircraft: chaff (beats missiles)'};
+const BIND_LABELS = {ammo: 'Tanks: switch AP / HE shells', vlock: 'Planes, helicopters, ships: lock on target', w4: 'Aircraft: 4th weapon', spot: 'Spot enemy for your team (or middle click)', fire: 'Fire', alt: 'Secondary weapon', ads: 'Aim / scope (toggle)', reload: 'Reload / aircraft: 3rd weapon', jump: 'Jump / climb', sprint: 'Sprint / descend', view: 'First / third person', exit: 'Back to command', free: 'Free cursor', cycle: 'Cycle lock target', special: 'National special ability', walk: "Ships: leave / sit in captain's chair", fwd: 'Forward / throttle up', back: 'Back / throttle down', left: 'Left / roll left', right: 'Right / roll right', chooser: 'Unit chooser', chaff: 'Aircraft: chaff (beats missiles)'};
 
 const _v3 = new THREE.Vector3(), _v3b = new THREE.Vector3();
 // Username: saved in this browser, sent to the host when you join, shown over your head and in the lobby.
@@ -10131,7 +10132,7 @@ const Direct = {
     this.aimYaw = this.yaw; this.aimPitch = 0; this.camYaw = this.yaw; this.camPitch = this.mode === 'plane' ? -.05 : 0;
     const arcAir = ui.g && ((ui.g.view && ui.g.view.scen) || (ui.g.sim && ui.g.sim.scen) || {}).arc === 'air';
     this.W = pwpnOf(e).map(w => ({w, ammo: w.mag || 1, rl: 0, cd: 0, msl: arcAir && w.t === 'msl' ? MSL_LOAD : undefined}));
-    this.slot = 0; this.ads = false; this.adsK = 0; this.bloom = 0; this.recoilP = 0; this.recoilY = 0; this.breath = 1; this.lockId = 0; this.lockK = 0;
+    this.slot = 0; this.ads = false; this.adsK = 0; this.bloom = 0; this.recoilP = 0; this.recoilY = 0; this.breath = 1; this.lockId = 0; this.lockK = 0; this.vLock = 0; this.leadAim = null; this.spec = 1; this.gear = true; this.lkOff = {y: 0, p: 0};
     this.hits = []; this.nums = []; this.dmgDir = []; this.kick = 0; this.flyT = 0; this.reloadK = 0; this.bobT = 0; this.flashT = 0; this.stickT = 0; this.salvo = 0; this.dead = false;
     const p = this.pose; p.x = e.x; p.y = e.y; p.z = e.z; p.h = e.h; p.p = 0; p.r = 0; p.tu = e.tu === undefined ? e.h : e.tu;
     this.grounded = false; this.landing = false;
@@ -10328,7 +10329,10 @@ const Direct = {
     if (c === B.chaff) { this.chaff(); return true; }
     if (c === 'KeyJ' && this.strikeBank > 0) { const P = this.aimPt; if (!P) { this.msg('Aim at the ground to call artillery', 1.5); return true; } this.strikeBank--; if (this.ui.g.sim && this.ui.g.sim.scen && this.ui.g.sim.scen.arc) this.artT = performance.now() + 60000; this.ui.g.issue({c: 'streak', id: this.id, x: P.x, y: P.y, big: this.bigStrike ? 1 : 0}); this.bigStrike = false; return true; }
     if (c === B.cycle) { this.cycleLock(); return true; }
-    if (c === (B.vlock || 'KeyL') && this.mode === 'plane') { this.toggleViewLock(); return true; }
+    if (c === (B.vlock || 'KeyL') && (this.mode === 'plane' || this.mode === 'heli' || this.mode === 'ship')) { this.toggleViewLock(); return true; }
+    if ((this.mode === 'plane' || this.mode === 'heli') && /^Digit[1-3]$/.test(c)) { // pick which special weapon E fires
+      const s2 = +c.slice(5); if (this.W[s2]) { this.spec = s2; this.msg('Special weapon: ' + this.W[s2].w.n + '  (' + Settings.keyName(B.alt) + ' fires it)', 1.4); Sfx.beep(990); } else this.msg('No weapon on ' + s2, .8); return true; }
+    if (c === B.walk && this.mode === 'plane' && Settings.manualGear) { this.gear = !this.gear; this.msg(this.gear ? 'GEAR DOWN' : 'GEAR UP', 1); Sfx.ack(); return true; }
     if (c === 'KeyZ' && this.ads && (this.mode === 'vehicle' || this.mode === 'soldier' || this.mode === 'ship')) { this.zoom2 = (this.zoom2 || 1) > .7 ? .5 : (this.zoom2 > .4 ? .3 : 1); this.msg('Zoom ×' + (1 / this.zoom2).toFixed(1), .6); return true; }
     if (c === (B.ammo || 'KeyN') && this.mode === 'vehicle' && this.W.some(s => s.w.vs === 'shell')) { this.he = !this.he; this.msg(this.he ? 'HE shells: big blast, for infantry, guns and buildings' : 'AP shells: punch through armour', 1.6); Sfx.ack(); return true; }
     if (c === B.special) { this.special(); return true; }
@@ -10829,7 +10833,7 @@ const Direct = {
   moveVehicle(dt, e, M, N) {
     if (e.d.rail) { this.moveRail(dt, e); return; }
     const k = this.keys, B = Settings.binds, d = e.d, p = this.pose, sea = this.mode === 'ship';
-    this.camYaw += this.lookX; this.camPitch = clamp(this.camPitch - this.lookY, -.6, .7);
+    if (!(sea && this.trackLock(dt, 700, -.6, .7))) { this.camYaw += this.lookX; this.camPitch = clamp(this.camPitch - this.lookY, -.6, .7); }
     const thr = ((k[B.fwd] || k.KeyW) ? 1 : 0) - ((k[B.back] || k.KeyS) ? 1 : 0), steer = ((k[B.right] || k.KeyD) ? 1 : 0) - ((k[B.left] || k.KeyA) ? 1 : 0);
     const tt = this.ui.g.view.t, top = d.spd * 1.3 * (e.tier ? TIERS[e.tier - 1].sp : 1) * (modOut(e, 'trk', tt) ? 0 : modOut(e, 'eng', tt) ? .35 : 1), want = thr > 0 ? top : thr < 0 ? -top * .45 : 0;
     this.hullSpd += (want - this.hullSpd) * (1 - Math.exp(-dt * (thr ? 1.6 : 2.4)));
@@ -10859,12 +10863,12 @@ const Direct = {
     { const g0 = this.ui.g, S0 = g0.sim && g0.sim.scen || g0.view.scen; if (S0 && S0.B && S0.B.harbor) { this.moveArcade(dt, e, M, N); return; } }
     if (this.vLock) { // view locked on a target: the camera (and so the mouse-aim autopilot) tracks it, leading it a little
       const T = this.ui.g.view.ents.get(this.vLock);
-      if (!T || T.hp <= 0) { this.vLock = 0; this.msg('Target lost', 1.2); }
+      if (!T || T.hp <= 0) this.lockNext();
       else {
         const tx = T.rx === undefined ? T.x : T.rx, ty = T.ryy === undefined ? T.y : T.ryy, tz = T.rz === undefined ? T.z : T.rz, D = Math.hypot(tx - p.x, ty - p.y, tz - p.z);
-        if (D > 450) { this.vLock = 0; this.msg('Target out of range', 1.2); }
+        if (D > 1000) { this.vLock = 0; this.msg('Target out of range', 1.2); }
         else { // War Thunder arcade target lock: the camera holds the target in the middle, the plane flies at the lead point for your guns
-          const kk = 1 - Math.exp(-dt * 9), cy2 = Math.atan2(ty - p.y, tx - p.x), cp2 = Math.atan2(tz - p.z, Math.hypot(tx - p.x, ty - p.y));
+          const kk = this.lkSnap > 0 ? 1 : 1 - Math.exp(-dt * 12); this.lkSnap = (this.lkSnap || 0) - 1; cy2 = Math.atan2(ty - p.y, tx - p.x), cp2 = Math.atan2(tz - p.z, Math.hypot(tx - p.x, ty - p.y));
           this.camYaw += angDiff(this.camYaw, cy2) * kk; this.camPitch += (clamp(cp2, -1.3, 1.3) - this.camPitch) * kk;
           const ls = leadShift(T.ry === undefined ? T.h : T.ry, T.rp || T.p || 0, T.sp || T.d.spd || 0, D / GUN_V);
           this.leadAim = {yaw: Math.atan2(ty + ls.y - p.y, tx + ls.x - p.x), pitch: Math.atan2(tz + ls.z - p.z, Math.hypot(tx + ls.x - p.x, ty + ls.y - p.y))}; }
@@ -10889,7 +10893,8 @@ const Direct = {
     for (const tt of [.4, .8, 1.3, 1.8, 2.4]) { const ax = p.x + V.x * tt, ay = p.y + V.y * tt, th = Math.max(hAt(M, ax, ay), 0); ahead = Math.max(ahead, th);
       reqP = Math.max(reqP, Math.atan2(th + 1.6 - p.z, Math.max(1, Math.hypot(V.x, V.y) * tt))); if (tt <= 1.3 && p.z + V.z * tt < th + .6) hit = true; }
     const fld = this.nearField(p.x, p.y, 30);
-    this.landing = !!fld && this.throttle < .4 && p.z - ground < 14;
+    this.landing = !!fld && this.throttle < .4 && p.z - ground < 14 && (!Settings.manualGear || this.gear);
+    if (Settings.manualGear && !this.gear && fld && this.throttle < .4 && p.z - ground < 10 && (!this.gearMsg || this.flyT - this.gearMsg > 5)) { this.gearMsg = this.flyT; this.msg('GEAR IS UP: press ' + Settings.keyName(B.walk) + ' to lower it', 2); }
     if (this.landing) { hit = hit && V.z < -4; reqP = -1.5; if (!this.landMsg || this.flyT - this.landMsg > 8) { this.landMsg = this.flyT; this.msg('GEAR DOWN: landing. Keep the wings level and touch down gently', 2.5); } }
     this.pullUp = hit; this.reqP = reqP;
     const assist = Settings.flightAssist && this.pullUp;
@@ -10941,8 +10946,10 @@ const Direct = {
       this.rollR = Math.atan2(L.x * ux + L.y * uy + L.z * uz, L.x * lx + L.y * ly); }
     this.roll = p.r = -(this.rollR || 0);
     this.flyT = (this.flyT || 0) + dt;
+    if (Settings.manualGear && this.gear) V.multiplyScalar(1 - dt * .07); // gear down: extra drag
     if (p.z < ground + .35) {
       const wet = M.water[Math.round(p.y) * N + Math.round(p.x)];
+      if (!wet && Settings.manualGear && !this.gear && this.flyT > 1.5 && V.z > -7 && Math.abs(this.rollR || 0) < .7) { this.msg('BELLY LANDING: the gear was up!', 2.5); this.crash(); return; }
       if (!wet && this.flyT > 1.5 && ((Math.abs(this.rollR || 0) < .7 && V.z > -7 && p.p > -.45 && this.speed < vc * 1.3) || (this.speed < vc * .4 && V.z > -7))) { // slow and on the ground: it settles onto its wheels // touchdown (anything short of a real crash)
         this.grounded = true; this.gSpd = Math.hypot(V.x, V.y); p.z = ground + .35; this.throttle = Math.min(this.throttle, .2);
         this.msg(this.nearField(p.x, p.y, 14) ? 'TOUCHDOWN! S to brake. Stop on the airfield to repair and rearm' : 'Landed in a field. S to brake', 3); Sfx.ack(); return;
@@ -11029,7 +11036,7 @@ const Direct = {
     if (rot) { // liftoff
       this.grounded = false; this.fqId = e.id; this.fq = new THREE.Quaternion().setFromEuler(FL.e.set(0, -.14, p.h, 'ZYX'));
       this.fV = new THREE.Vector3(1, 0, 0).applyQuaternion(this.fq).multiplyScalar(sp); this.fV.z += 1.2; p.z += .3; this.camPitch = Math.max(this.camPitch, .05);
-      this.msg('WHEELS UP!', 1.5); return true;
+      if (Settings.manualGear) this.msg('Airborne: raise the gear (' + Settings.keyName(Settings.binds.walk) + ')', 2); else this.msg('WHEELS UP!', 1.5); return true;
     }
     if (sp < .3 && !this.idleMsg) { this.idleMsg = 1; }
     return true;
@@ -11042,7 +11049,7 @@ const Direct = {
 
   moveHeli(dt, e, M, N) {
     const k = this.keys, B = Settings.binds, d = e.d, p = this.pose;
-    this.camYaw += this.lookX; this.camPitch = clamp(this.camPitch - this.lookY, -1.2, .8);
+    if (!this.trackLock(dt, 700, -1.2, .8)) { this.camYaw += this.lookX; this.camPitch = clamp(this.camPitch - this.lookY, -1.2, .8); }
     let fx = 0, fy = 0;
     if (k[B.fwd] || k.KeyW) fy += 1; if (k[B.back] || k.KeyS) fy -= 1; if (k[B.right] || k.KeyD) fx += 1; if (k[B.left] || k.KeyA) fx -= 1;
     const top = d.spd * 1.25, c = Math.cos(this.camYaw), s = Math.sin(this.camYaw), L = Math.hypot(fx, fy) || 1;
@@ -11168,17 +11175,44 @@ const Direct = {
   // ---------- weapons ----------
   // War Thunder style target view: L locks the camera onto the enemy plane nearest your crosshair; mouse-aim then chases it
   // ---------- planes: War Thunder style view lock ----------
+  // one press locks the enemy nearest your crosshair (any distance, any direction; enemy planes first) and the camera holds it
+  lockPick(maxAng, skip) {
+    const v = this.ui.g.view, me = this.ui.g.me, P = v.players[me], air = this.mode === 'plane' || this.mode === 'heli', far = this.mode === 'plane' ? 900 : 600;
+    const cp = Math.cos(this.camPitch || 0), dir = {x: Math.cos(this.camYaw) * cp, y: Math.sin(this.camYaw) * cp, z: Math.sin(this.camPitch || 0)};
+    let best = null, ba = 1e9;
+    for (const t of v.ents.values()) {
+      if (t.id === this.id || t.id === skip || t.hp <= 0 || t.inside || t.o < 0 || v.friendly(t.o, me)) continue;
+      if (t.b && !air) continue;
+      if (!(t.seenByMe || this.ui.g.R.isVisible(t.x, t.y) || (t.revealed || 0) > v.t || (P.reveal || 0) > v.t)) continue;
+      const a = this.angTo(t, dir); if (a.dd > far || a.ang > maxAng) continue;
+      const sc = a.ang + a.dd / 1200 + (air && !t.air ? .35 : 0) + (t.b ? .3 : 0); if (sc < ba) { ba = sc; best = t; }
+    }
+    return best;
+  },
+  lockNext() { // target died: hop to the next one near the crosshair, or let go
+    const nx = this.lockPick(.6, this.vLock);
+    this.vLock = nx ? nx.id : 0; this.leadAim = null; this.lkOff = {y: 0, p: 0}; this.lkSnap = 0;
+    this.msg(nx ? 'Target down! Locked: ' + nx.d.n : 'Target down', 1.2); if (nx) Sfx.beep(1200);
+  },
   toggleViewLock() {
     if (this.vLock) { this.vLock = 0; this.leadAim = null; this.msg('Target lock off', 1); return; }
-    const v = this.ui.g.view, me = this.ui.g.me; let best = null, ba = 1e9;
-    for (const t of v.ents.values()) {
-      if (!t.air || t.id === this.id || v.friendly(t.o, me) || t.o < 0) continue;
-      if (!(this.ui.g.R.isVisible(t.x, t.y) || (t.revealed || 0) > v.t || (v.players[me].reveal || 0) > v.t)) continue;
-      const a = this.angTo(t, this.fw); if (a.dd > 450 || a.ang > 1.2) continue;
-      const sc = a.ang + a.dd / 900; if (sc < ba) { ba = sc; best = t; }
-    }
-    if (!best) { this.msg('No enemy aircraft to lock: put one near your crosshair', 1.5); Sfx.bad(); return; }
-    this.vLock = best.id; this.leadAim = null; this.msg('TARGET LOCKED: ' + best.d.n + '  (' + Settings.keyName(Settings.binds.vlock || 'KeyL') + ' or right click to release)', 1.8); Sfx.beep(1200);
+    const best = this.lockPick(Math.PI);
+    if (!best) { this.msg('No enemy in sight to lock', 1.5); Sfx.bad(); return; }
+    this.vLock = best.id; this.leadAim = null; this.lkOff = {y: 0, p: 0}; this.lkSnap = 2;
+    this.msg('TARGET LOCKED: ' + (best.b ? BUILDINGS[best.k].n : best.d.n) + '  (' + Settings.keyName(Settings.binds.vlock || 'KeyL') + (this.mode === 'plane' ? ' or right click' : '') + ' to release)', 1.8); Sfx.beep(1200);
+  },
+  // ships and helicopters: the camera follows the locked target; the mouse nudges the aim off it (to lead or lob)
+  trackLock(dt, maxD, pMin, pMax) {
+    if (!this.vLock) return false;
+    const T = this.ui.g.view.ents.get(this.vLock), E = this.eye();
+    if (!T || T.hp <= 0) { this.lockNext(); return false; }
+    const tx = T.rx === undefined ? T.x : T.rx, ty = T.ryy === undefined ? T.y : T.ryy, tz = (T.rz === undefined ? (T.z || 0) : T.rz) + (T.air ? 0 : .6), D = Math.hypot(tx - E.x, ty - E.y, tz - E.z);
+    if (D > maxD) { this.vLock = 0; this.msg('Target out of range', 1.2); return false; }
+    const o = this.lkOff || (this.lkOff = {y: 0, p: 0}); o.y = clamp(o.y + this.lookX, -.5, .5); o.p = clamp(o.p - this.lookY, -.4, .4);
+    const ty2 = Math.atan2(ty - E.y, tx - E.x) + o.y, tp2 = clamp(Math.atan2(tz - E.z, Math.hypot(tx - E.x, ty - E.y)) + o.p, pMin, pMax), kk = this.lkSnap > 0 ? 1 : 1 - Math.exp(-dt * 12);
+    this.lkSnap = (this.lkSnap || 0) - 1;
+    this.camYaw += angDiff(this.camYaw, ty2) * kk; this.camPitch += (tp2 - this.camPitch) * kk;
+    return true;
   },
   cycleLock() {
     const v = this.g.view, me = this.g.me, list = [];
@@ -11186,7 +11220,7 @@ const Direct = {
     for (const t of v.ents.values()) {
       if (v.friendly(t.o, me) || !(this.g.R.isVisible(t.x, t.y) || (t.revealed || 0) > v.t)) continue;
       if (!this.W.some(s => s.w.t === 'msl' && (s.w.air ? t.air : (!t.air || t.d.cat === 'heli')))) continue;
-      const a = this.angTo(t); if (a.ang < .7 && a.dd < W.w.rng) list.push([a.ang, t.id]);
+      const a = this.angTo(t, this.mode === 'plane' ? this.fw : undefined); if (a.ang < (this.mode === 'plane' ? .45 : .7) && a.dd < W.w.rng) list.push([a.ang, t.id]);
     }
     list.sort((a, b) => a[0] - b[0]);
     if (!list.length) { this.msg('No target in front', 1); return; }
@@ -11217,7 +11251,7 @@ const Direct = {
       const ms = this.W.filter(s => s.w.t === 'msl').map(s => s.w), W = {rng: Math.max(...ms.map(m => m.rng)), air: ms.every(m => m.air)}, t = g.view.ents.get(this.lockId);
       W.ok = u => ms.some(m => m.air ? u.air : (!u.air || u.d.cat === 'heli'));
       // War Thunder style seeker: a circle round where you aim (or the nose); a target inside it starts the growl, hold it there to lock
-      const seek = u => { const a = this.angTo(u), b = this.angTo(u, this.fw); return {ang: Math.min(a.ang, b.ang), dd: a.dd}; };
+      const seek = u => { const a = this.angTo(u), b = this.angTo(u, this.fw); return {ang: this.mode === 'plane' ? b.ang : Math.min(a.ang, b.ang), dd: a.dd}; }; // planes: only what the nose points at
       const ta = t && seek(t);
       if (!t || t.hp <= 0 || g.view.friendly(t.o, g.me) || ta.ang > (this.lockK >= 1 ? .75 : .4) || ta.dd > W.rng * 1.15) {
         this.lockId = 0; this.lockK = 0;
@@ -11257,7 +11291,7 @@ const Direct = {
     if (pri) { if (shipMsl) this.W.forEach((s, i) => { if (s.w.t === 'hit' || s.w.t === 'proj' || s.w.t === 'pel') this.tryFire(i, g); }); else this.tryFire(this.slot, g); }
     const altEdge = this.altWas; this.altWas = sec;
     if (sec && shipMsl) { const lk = this.lockK >= 1 && g.view.ents.get(this.lockId); let pick = -1; this.W.forEach((s, i) => { if (pick < 0 && s.w.t === 'msl' && s.cd <= 0 && (!lk || (s.w.air ? lk.air : (!lk.air || lk.d.cat === 'heli')))) pick = i; }); if (pick < 0) pick = this.W.findIndex(s => s.w.t === 'msl'); this.tryFire(pick, g, true); }
-    else if (sec && this.W.length > 1) { const s = this.slot === 0 ? 1 : 0; const W = this.W[s].w; if (this.mode === 'soldier' && W.mag && (s === 0 || W.mag > 1 && W.t === 'hit')) { if (!altEdge) { this.slot = s; VM.build(e, g.view.players[e.o].nation, s); } } else this.tryFire(s, g, true); }
+    else if (sec && this.W.length > 1) { const s = (this.mode === 'plane' || this.mode === 'heli') && this.W[this.spec] ? this.spec : this.slot === 0 ? 1 : 0; const W = this.W[s].w; if (this.mode === 'soldier' && W.mag && (s === 0 || W.mag > 1 && W.t === 'hit')) { if (!altEdge) { this.slot = s; VM.build(e, g.view.players[e.o].nation, s); } } else this.tryFire(s, g, true); }
     if (this.salvo > 0) { this.salvoT -= dt; if (this.salvoT <= 0) { this.salvo--; const ss = this.salvoS || 1, SW = this.W[ss] && this.W[ss].w; this.salvoT = SW && SW.pods ? .06 : .09; if (SW) this.fireProj(SW, ss, g); } }
   },
   tryFire(s, g, secondary) {
@@ -11673,6 +11707,7 @@ const Direct = {
     // bomb impact predictor
     if (this.mode === 'plane' && this.W.some(s => s.w.t === 'bomb')) this.drawBombPip(c);
     if (this.mode === 'plane' && !this.bsight) this.drawAirMarks(c, w, h);
+    if (this.vLock && (this.mode === 'ship' || this.mode === 'heli' || (this.mode === 'plane' && !this.bsight))) { const LT = g.view.ents.get(this.vLock); if (LT && (this.mode !== 'plane' || !LT.air)) this.drawLockBox(c, w, h, LT); }
     // ammo, weapon, health bar (bottom right)
     if (S && W) {
       c.textAlign = 'right'; c.font = '800 30px system-ui'; c.fillStyle = 'rgba(255,255,255,.95)'; c.shadowColor = 'rgba(0,0,0,.7)'; c.shadowBlur = 4;
@@ -11980,7 +12015,22 @@ const Direct = {
         c.font = '700 10px system-ui'; c.fillText(fmt(q.d), ex - Math.cos(a) * 16, ey - Math.sin(a) * 16 + 3);
       }
     });
-    if (!this.vLock && list.length && list[0].d < 450) { c.font = '600 11px system-ui'; c.fillStyle = 'rgba(255,255,255,.6)'; c.fillText(Settings.keyName(Settings.binds.vlock || 'KeyL') + ' / right click: lock camera on the nearest enemy', w / 2, h - 150); }
+    if (!this.vLock && list.length && list[0].d < 450) { c.font = '600 11px system-ui'; c.fillStyle = 'rgba(255,255,255,.6)'; c.fillText(Settings.keyName(Settings.binds.vlock || 'KeyL') + ' / right click: lock on the enemy nearest your crosshair', w / 2, h - 150); }
+    c.restore();
+  },
+  drawLockBox(c, w, h, T) { // target lock on a ship, ground unit or (from a ship or helicopter) any target
+    const tx = T.rx === undefined ? T.x : T.rx, ty = T.ryy === undefined ? T.y : T.ryy, tz = (T.rz === undefined ? (T.z || 0) : T.rz) + (T.air ? 0 : .6), p = this.pose;
+    const d = Math.hypot(tx - p.x, ty - p.y, tz - p.z), sp = this.toScreen(tx, ty, tz), txt = (T.b ? BUILDINGS[T.k].n : T.d.n) + '  ' + (d >= 100 ? (d / 100).toFixed(1) + ' km' : Math.round(d) * 10 + ' m');
+    c.save(); c.textAlign = 'center'; c.strokeStyle = '#ff3b30'; c.fillStyle = '#ffd0cc'; c.lineWidth = 2.5;
+    if (sp && sp.x > 0 && sp.y > 0 && sp.x < w && sp.y < h) {
+      const s2 = 20, L2 = 7; for (const [sx, sy] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) { c.beginPath(); c.moveTo(sp.x + sx * s2, sp.y + sy * (s2 - L2)); c.lineTo(sp.x + sx * s2, sp.y + sy * s2); c.lineTo(sp.x + sx * (s2 - L2), sp.y + sy * s2); c.stroke(); }
+      c.font = '800 12px system-ui'; c.lineWidth = 3; c.strokeStyle = 'rgba(0,0,0,.7)'; c.strokeText(txt, sp.x, sp.y - 30); c.fillText(txt, sp.x, sp.y - 30);
+    } else { // off screen: arrow on the edge
+      let dx, dy; if (sp) { dx = sp.x - w / 2; dy = sp.y - h / 2; } else { const v3 = new THREE.Vector3(tx, tz, ty).applyMatrix4(this.ui.g.R.cam.matrixWorldInverse); dx = v3.x; dy = -v3.y; if (Math.hypot(dx, dy) < .01) dy = 1; }
+      const a = Math.atan2(dy, dx), r = Math.min(w, h) * .42, ex = w / 2 + Math.cos(a) * r, ey = h / 2 + Math.sin(a) * r;
+      c.fillStyle = '#ff3b30'; c.beginPath(); c.moveTo(ex + Math.cos(a) * 12, ey + Math.sin(a) * 12); c.lineTo(ex + Math.cos(a + 2.4) * 9, ey + Math.sin(a + 2.4) * 9); c.lineTo(ex + Math.cos(a - 2.4) * 9, ey + Math.sin(a - 2.4) * 9); c.closePath(); c.fill();
+      c.font = '700 10px system-ui'; c.fillText(txt, ex - Math.cos(a) * 18, ey - Math.sin(a) * 18 + 3);
+    }
     c.restore();
   },
   bombImpact() { // where a bomb dropped now would land (same fall as the server's bombs)
@@ -13044,6 +13094,7 @@ const UI = {
     $('sAssist').onchange = () => { S.assist = $('sAssist').checked; S.save(); };
     $('sAuto').onchange = () => { S.autofire = $('sAuto').checked; S.save(); };
     $('sFly').checked = S.flightAssist; $('sFly').onchange = () => { S.flightAssist = $('sFly').checked; S.save(); };
+    $('sGear').checked = !!S.manualGear; $('sGear').onchange = () => { S.manualGear = $('sGear').checked; S.save(); };
     $('sGrit').checked = S.gritty; $('sGrit').onchange = () => { S.gritty = $('sGrit').checked; S.save(); };
     $('sTp').onchange = () => { S.view = $('sTp').checked ? 'tp' : 'fp'; S.save(); if (Direct.on) Direct.applyView(); };
     const w = $('sBinds'); w.innerHTML = '';
@@ -14625,9 +14676,9 @@ const UI = {
     const help = {
       soldier: `${K('fwd')}${K('left')}${K('back')}${K('right')} move · mouse aims (no click needed) · ${K('fire')} or click fire · ${w2 ? K('alt') + ' ' + w2 + ' · ' : ''}${K('ads')} aim · ${K('reload')} reload · ${K('jump')} jump · ${K('sprint')} sprint`,
       vehicle: `${K('fwd')}${K('back')} drive · ${K('left')}${K('right')} turn hull · mouse aims turret · ${K('fire')} fire · ${w2 ? K('alt') + ' ' + w2 + ' · ' : ''}${K('ads')} ${D.e.k === 'arty' ? 'direct/indirect fire' : 'zoom (then wheel or <kbd>Z</kbd> zooms more)'}${D.W.some(q => q.w.vs === 'shell') ? ' · ' + K('ammo') + ' AP/HE' : ''}${D.W[2] ? ' · ' + K('reload') + ' ' + D.W[2].w.n + ' (' + D.W[2].ammo + ')' : ''}`,
-      ship: `${K('fwd')}${K('back')} throttle · ${K('left')}${K('right')} steer · mouse aims · ${K('fire')} fire${w2 ? ' · ' + K('alt') + ' ' + w2 : ''} · ${K('walk')} leave the chair and walk`,
-      plane: `mouse or arrows steer · ${K('fwd')}${K('back')} throttle · ${K('left')}${K('right')} roll · ${K('fire')} guns · ${K('alt')} ${w2} · ${D.W[2] ? K('reload') + ' ' + D.W[2].w.n + ' · ' : ''}${D.W[3] ? K('w4') + ' ' + D.W[3].w.n + ' · ' : ''}${K('chaff')} chaff · ${K('cycle')} next target · ${K('vlock')} lock view · ${K('spot')} spot${D.W.some(s => s.w.t === 'bomb') ? ' · ' + K('ads') + ' bombsight' : ''} · on the ground: W throttle, look up to take off`,
-      heli: `${K('fwd')}${K('left')}${K('back')}${K('right')} fly · ${K('up')} up · ${K('down')} down · mouse aims · ${K('fire')} guns · ${K('alt')} ${w2}`,
+      ship: `${K('fwd')}${K('back')} throttle · ${K('left')}${K('right')} steer · mouse aims · ${K('fire')} fire${w2 ? ' · ' + K('alt') + ' ' + w2 : ''} · ${K('vlock')} lock on target · ${K('walk')} leave the chair and walk`,
+      plane: `mouse or arrows steer · ${K('fwd')}${K('back')} throttle · ${K('left')}${K('right')} roll · ${K('fire')} or click guns · ${K('alt')} special: ${D.W[D.spec || 1] ? D.W[D.spec || 1].w.n : w2}${D.W[2] ? ' (1-' + (D.W[3] ? 3 : 2) + ' pick)' : ''} · ${K('chaff')} chaff · ${K('cycle')} next target · ${K('vlock')} lock view · ${K('spot')} spot${D.W.some(s => s.w.t === 'bomb') ? ' · ' + K('ads') + ' bombsight' : ''} · on the ground: W throttle, look up to take off`,
+      heli: `${K('fwd')}${K('left')}${K('back')}${K('right')} fly · ${K('up')} up · ${K('down')} down · mouse aims · ${K('fire')} guns · ${K('alt')} special (1-3 pick) · ${K('vlock')} lock on target`,
       crew: `${K('fwd')}${K('left')}${K('back')}${K('right')} walk the aircraft · mouse looks`,
       fpv: `mouse steers · ${K('fwd')} boost · ${K('back')} brake · ${K('up')}${K('down')} climb/sink · dive into the target · ${K('fire')} detonate`,
     };
@@ -14771,6 +14822,9 @@ addEventListener('keydown', () => { if (typeof Direct !== 'undefined' && window.
   // ---- changelog: add a new entry at the TOP of this list whenever something changes
   const CHANGELOG = [
     {d: '9 Nov 2026', items: [
+      'Target lock (L, or right click in planes) works like War Thunder arcade: one press instantly locks the enemy nearest your crosshair, any direction, and the camera stays on it. When it dies you hop to the next one. Now in planes, helicopters and ships (the mouse nudges your aim off the target to lead or lob).',
+      'Missile lock is separate and only works when the plane\'s nose is pointing at the target.',
+      'Planes: E fires your special weapon and 1-3 pick which one. New option: manual landing gear (B raises and lowers it; land with it up and you crash).',
       'Territory: you can only build next to your own buildings (your capital reaches furthest). Red squares show where you cannot build. Oil derricks still go on any well.',
       'Lost oil derricks get rebuilt: once the area is safe your workers put a destroyed derrick back up (normal price).',
       'NEW co-op mode, Iron Express (With friends): man the gun cars of an armoured train crossing the island. Ambushes, gunship raids, blown track your engineer has to fix under fire, and a bunker blocking the last stretch. Lose the locomotive and it is over.',
