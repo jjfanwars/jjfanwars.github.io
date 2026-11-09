@@ -2376,7 +2376,7 @@ Sim.prototype.rsHurt = function (pi) {
 };
 Sim.prototype.rsPub = function () {
   const R = this.rs;
-  return {t: Math.round(R.t), fuel: Math.round(R.fuel), hull: Math.round(R.hull), off: +R.off.toFixed(1), lit: +R.lit.toFixed(2), lockOn: R.lockOn, lockT: Math.round(R.lockT), jamP: +R.jamP.toFixed(2), sig: +R.sig.toFixed(2), storm: R.storm, door: R.door, doorP: +R.doorP.toFixed(2),
+  return {bid: this.rsB ? this.rsB.id : 0, thr: +(R.thr || 0).toFixed(2), gs: +(R.gs || 0).toFixed(2), up: R.up || 0, agl: Math.round(R.agl || 0), vz: +(R.vz || 0).toFixed(1), t: Math.round(R.t), fuel: Math.round(R.fuel), hull: Math.round(R.hull), off: +R.off.toFixed(1), lit: +R.lit.toFixed(2), lockOn: R.lockOn, lockT: Math.round(R.lockT), jamP: +R.jamP.toFixed(2), sig: +R.sig.toFixed(2), storm: R.storm, door: R.door, doorP: +R.doorP.toFixed(2),
     leaks: R.leaks.map(l => ({id: l.id, x: l.x, z: l.z, k: l.k, n: l.n, p: +l.p.toFixed(2)})), hurt: R.hurt, seat: R.seat, beams: R.beams, grace: R.grace || 0, bf: R.bf ? {st: R.bf.st, p: +R.bf.p.toFixed(2), rider: R.bf.rider} : null, state: R.state, fighters: R.fighters.length, kills: R.kills, vod: Object.fromEntries(Object.entries(R.vod).map(([k, v]) => [k, +v.toFixed(2)])), rub: R.rub, dark: R.dark, darkP: +R.darkP.toFixed(2), arm: R.arm ? {p: +R.arm.p.toFixed(2), k1: R.arm.k1, k2: R.arm.k2} : null, chute: R.chute, stock: R.stock, bail: Object.fromEntries(Object.keys(R.bail).map(k => [k, 1])), land: R.land ? {ph: R.land.ph, t: Math.round(R.land.t)} : null, fallT: Math.ceil(R.fallT || 0), baseD: R.baseS && !R.landUsed && R.state === 'fly' && this.rsS > R.baseS - 120 && this.rsS < R.baseS - 12 ? Math.round(R.baseS - this.rsS) : 0, roul: R.roul && R.t - R.roul.t0 < 5.5 ? {id: R.roul.id, rt: +(R.t - R.roul.t0).toFixed(1), i: R.roul.i, n: R.roul.n, bet: R.roul.bet, p: R.roul.p} : null};
 };
 Sim.prototype.rsStep = function () {
@@ -2402,7 +2402,7 @@ Sim.prototype.rsStep = function () {
     // a grace period at the start: nothing goes wrong while the crew find their stations; a few tips instead
     const G = {train: 180, std: 120, brutal: 75}[rso.diff] || 120, shrink = 1 - G / flyT; R.grace = G;
     R.sched = R.sched.map(s => s[1] === 'bombfault' ? s : [Math.round(G + s[0] * shrink), s[1], s[2]]);
-    R.sched.push([6, 'tip', 'Welcome aboard. The flight to New York takes about 16 minutes. Nothing goes wrong for the first couple of minutes: learn your stations.'], [28, 'tip', 'Seats: walk up and press E. Pilot: A/D shifts the aircraft sideways. Radio: A/D tunes the jammer. Tail and waist gunners: hold the mouse to fire and lead the target.'], [58, 'tip', 'Problems: hold E beside a leak or the bomb bay door to fix it. Hold E beside an injured crewmate to treat them.'], [88, 'tip', 'Coming up: fighters, radar locks, storms and searchlights. Decide who sits where. Parachutes hang in the tail passage, the bail-out hatch is in the floor by the tail.'], [Math.max(10, G - 6), 'tip', 'Here it comes. Stay sharp.']);
+    R.sched.push([6, 'tip', 'Welcome aboard. The flight to New York takes about 16 minutes. Nothing goes wrong for the first couple of minutes: learn your stations.'], [28, 'tip', 'Seats: walk up and press E. Pilot: W/S throttle, R/F climb and dive, A/D bank. Radio: A/D tunes the jammer. Tail and waist gunners: hold the mouse to fire and lead the target.'], [58, 'tip', 'Problems: hold E beside a leak or the bomb bay door to fix it. Hold E beside an injured crewmate to treat them.'], [88, 'tip', 'Coming up: fighters, radar locks, storms and searchlights. Decide who sits where. Parachutes hang in the tail passage, the bail-out hatch is in the floor by the tail.'], [Math.max(10, G - 6), 'tip', 'Here it comes. Stay sharp.']);
     R.sched = R.sched.map(s => [s[0] * 1.2, s[1], s[2]]).sort((a, b) => a[0] - b[0]); R.RL = RL; // route distance at the nominal 1.2 units/s
   }
   while (R.sched.length && R.sched[0][0] <= (this.rsS || 0) && R.state === 'fly') {
@@ -2422,11 +2422,11 @@ Sim.prototype.rsStep = function () {
   // --- pilot, drift and the flight line
   const pilot = Object.keys(R.seat).find(k => R.seat[k] === 'pilot'); if (pilot === undefined) R.inp = clamp(-R.off / 4, -.35, .35);
   R.drift += (rnd() - .5) * dt * (.35 + R.storm * 1.5 + (R.leaks.some(l => l.k === 'hydraulic') ? .6 : 0)); R.drift = clamp(R.drift * .985, -1.4, 1.4);
-  R.off = clamp(R.off + ((R.inp || 0) * 2.6 + R.drift) * dt, -9, 9);
-  if ((this.rsS || 0) < 50) { R.off = 0; R.drift = 0; } // no drifting off the runway during the take-off roll
+  R.lv = (R.lv || 0) + ((R.inp || 0) * 3 - (R.lv || 0)) * .06; R.off = clamp(R.off + (R.lv + R.drift) * dt, -9, 9);
+  if (!R.up || (this.rsS || 0) < 50) { R.off = 0; R.drift = 0; R.lv = 0; } // no drifting off the runway during the take-off roll
   // --- fuel and hull
   const off = Math.abs(R.off) > 4.5 ? .15 : 0;
-  R.fuel -= (.045 + off + R.leaks.reduce((a, l) => a + (l.k === 'fuel' ? .5 : .15), 0)) * dt;
+  R.fuel -= ((R.up ? (.045 + off) * (.6 + .6 * (R.thr || 0)) : 0) + R.leaks.reduce((a, l) => a + (l.k === 'fuel' ? .5 : .15), 0)) * dt; // engines burn fuel once airborne, harder at full throttle
   if (R.fuel <= 0 || R.hull <= 0) { const why = R.fuel <= 0 ? 'Out of fuel' : 'We are hit badly'; R.fuel = Math.max(0, R.fuel); R.hull = Math.max(0, R.hull); R.state = 'falling'; R.fallT = 40; R.land = null; this.rsMsg(why + '! The aircraft is going down. Grab a parachute in the tail passage and bail out through the hatch!', 1); return; }
   if (R.land) { R.off *= .9; R.drift = 0; // Polar Base 7: land, refuel, repair, restock, take off
     if (R.land.ph === 'gnd') { R.land.t += dt; R.fuel = Math.min(100, R.fuel + dt * 3); R.hull = Math.min(100, R.hull + dt * 2);
@@ -2516,17 +2516,40 @@ Sim.prototype.rsStep = function () {
 Sim.prototype.redstarStep = function () { // follows the flight plan at a steady crawl, then circles New York
   const b = [...this.ents.values()].find(e => e.rs), RT = this.M.rsRoute; if (!b || !RT) return;
   const RS = this.rs; if (RS && RS.state === 'lost') return;
-  const L2 = RS && RS.land, bs = RS && RS.baseS; let spd = .12 * (RS && RS.door ? .75 : 1) * (RS && RS.storm ? .92 : 1);
-  const TO = 30; if (this.rsS < TO) spd *= .3 + .7 * this.rsS / TO; // take-off roll: start slow on the Siberian runway
+  const L2 = RS && RS.land, bs = RS && RS.baseS, TO = 30;
+  const pil = RS && Object.keys(RS.seat).some(k => RS.seat[k] === 'pilot');
+  if (RS) { // throttle: the pilot's W/S. Nobody moves until a pilot takes off; once airborne the autopilot holds cruise if the seat is empty
+    if (RS.thr === undefined) { RS.thr = 0; RS.gs = 0; RS.up = 0; RS.vz = 0; RS.z = 0; }
+    if (!pil) { RS.ti = 0; RS.pi = 0; RS.inp = RS.inp || 0; }
+    if (!pil && RS.up) RS.thr += (.7 - RS.thr) * .05; else RS.thr = clamp(RS.thr + (RS.ti || 0) * .05, RS.up ? .2 : 0, 1);
+    RS.gs += ((RS.up ? .45 + .65 * RS.thr : RS.thr * 1.1) - RS.gs) * (RS.up ? .03 : .012);
+    if (!RS.up && !pil && !RS.toldTO && RS.t > 8) { RS.toldTO = 1; this.rsMsg('We are on the runway. Pilot: take the cockpit seat (E), hold W for power and press R to lift off.', 1); }
+    if (!RS.up && this.rsS >= TO && (RS.pi > 0 && RS.gs >= .75 || this.rsS > TO + 12)) { // rotate, or run off the end of the strip
+      RS.up = 1; RS.upT = RS.t; RS.wheelsUp = 1; RS.vz = 2; RS.z = hAt(this.M, b.x, b.y) + .7;
+      if (RS.pi > 0 && RS.gs >= .75) this.rsMsg('Wheels up! Climb to cruise height (about 48) with R.', 1); else { RS.hull -= 15; this.ev({k: 'rsjolt', m: 1}); this.rsMsg('We ran off the end of the runway! Bounced into the air, hull damaged. Climb!', 1); }
+    }
+  }
+  let spd = .12 * (RS ? RS.gs : 1) * (RS && RS.door ? .75 : 1) * (RS && RS.storm ? .92 : 1);
   if (L2) spd *= L2.ph === 'gnd' ? 0 : L2.ph === 'app' ? clamp((bs - this.rsS) / 40, .3, 1) : clamp((this.rsS - bs) / 40, .3, 1);
   this.rsS = (this.rsS || 0) + spd; if (L2 && L2.ph === 'app' && this.rsS >= bs) { this.rsS = bs; L2.ph = 'gnd'; L2.t = 0; } if (L2 && L2.ph === 'up' && this.rsS - bs > 40) RS.land = null;
   let s = this.rsS, x, y, hd;
   for (let i = 0; i < RT.length - 1; i++) { const dx = RT[i + 1][0] - RT[i][0], dy = RT[i + 1][1] - RT[i][1], L = Math.hypot(dx, dy); if (s <= L) { x = RT[i][0] + dx / L * s; y = RT[i][1] + dy / L * s; hd = Math.atan2(dy, dx); break; } s -= L; }
   if (x === undefined) { const T = this.M.rsTarget, a = (s / 16) + 2.2; x = T.x + Math.cos(a) * 16; y = T.y + Math.sin(a) * 16; hd = a + Math.PI / 2; }
   this.rsH = (this.rsH === undefined ? hd : this.rsH) + angDiff(this.rsH === undefined ? hd : this.rsH, hd) * .06; const pxv = -Math.sin(this.rsH), pyv = Math.cos(this.rsH), off = RS ? RS.off : 0, ox = b.x, oy = b.y; b.x = x + pxv * off; b.y = y + pyv * off; this.rsHd = this.rsH; this.rsV = {x: (b.x - ox) / .1, y: (b.y - oy) / .1}; b.h = this.rsH; let z = RS_ALT;
-  { const RT0 = this.M.rsRoute[0], gz0 = hAt(this.M, RT0[0], RT0[1]) + .7, f0 = clamp((this.rsS - TO) / 110, 0, 1); if (f0 < 1) z = gz0 + (RS_ALT - gz0) * f0 * f0 * (3 - 2 * f0); if (RS && this.rsS >= TO && !RS.wheelsUp) { RS.wheelsUp = 1; this.rsMsg('Wheels up! Climbing to cruise height.', 1); } }
+  const gzb = Math.max(hAt(this.M, b.x, b.y), 0);
+  if (!RS || !RS.up) { const RT0 = this.M.rsRoute[0]; z = hAt(this.M, RT0[0], RT0[1]) + .7; }
+  else if (!L2 && RS.state !== 'falling') { // manual altitude: R climbs, F dives; too slow and she sinks; too low and the ground wins
+    let want = pil ? (RS.pi || 0) * 7 : clamp((RS_ALT - RS.z) * .3, -4, 4);
+    if (RS.gs < .5) want -= (.5 - RS.gs) * 40;
+    RS.vz += (want - RS.vz) * .08; RS.z = Math.min(80, RS.z + RS.vz * .1); RS.agl = RS.z - gzb;
+    if (RS.agl < 4 && RS.t - (RS.upT || 0) > 4) { RS.hull -= .9; if (!RS.pullT || RS.t - RS.pullT > 4) { RS.pullT = RS.t; this.ev({k: 'rsjolt', m: .7}); this.rsMsg('TERRAIN! PULL UP!', 1); } }
+    if (RS.agl < .3 && RS.t - (RS.upT || 0) > 4) { RS.hull = 0; RS.z = gzb + .3; }
+    z = RS.z; b.p = clamp(RS.vz * .04, -.3, .3);
+  }
+  if (RS) b.r = -(RS.lv || 0) * .12;
   if (L2 && this.M.rsBase) { const gz = hAt(this.M, this.M.rsBase.x, this.M.rsBase.y) + .7, f = L2.ph === 'gnd' ? 0 : clamp(L2.ph === 'app' ? (bs - this.rsS) / 40 : (this.rsS - bs) / 40, 0, 1); z = gz + (RS_ALT - gz) * f * f * (3 - 2 * f); }
   if (RS && RS.state === 'falling') z = Math.max(hAt(this.M, b.x, b.y) + 1, RS_ALT * Math.max(0, RS.fallT) / 40);
+  if (RS && L2) { RS.z = z; RS.vz = 0; RS.agl = z - gzb; }
   b.z = z; b.moving = true; b.hp = b.hpm;
 };
 Sim.prototype.setupPlayer = function (p) {
@@ -2697,7 +2720,7 @@ Sim.prototype.issue = function (c, pi) {
       this.ev({k: 'rsbail', p: pi, id: u.id, no: no ? 1 : 0}); const nm = this.players[pi].name, n2 = this.players.length - 1; for (let i = 0; i < n2; i++) this.rsMsg(i === pi ? (no ? 'You jumped without a parachute...' : 'You bailed out.') : nm + ' bailed out' + (no ? ' without a parachute!' : '.'), 1, i);
       let all = true; for (let i = 0; i < n2; i++) if (!R.bail[i] && !(R.hurt[i] && R.hurt[i].st === 'out')) all = false; if (all && R.state === 'fly') { R.state = 'lost'; this.rsMsg('Nobody is left aboard. The bomber flies on empty and the mission is lost.', 1); } break; }
     case 'rsland': { const R = this.rs; if (!R || R.seat[pi] !== 'pilot' || R.state !== 'fly' || R.landUsed || !R.baseS || this.rsS < R.baseS - 120 || this.rsS > R.baseS - 12) break; R.land = {ph: 'app', t: 0}; R.landUsed = 1; this.rsMsg('Pilot: landing at Polar Base 7 to refuel and repair. Hold on to something.', 1); break; }
-    case 'rsctl': { const R = this.rs; if (R && R.seat[pi] === 'pilot') R.inp = clamp(+c.v || 0, -1, 1); break; }
+    case 'rsctl': { const R = this.rs; if (R && R.seat[pi] === 'pilot') { R.inp = clamp(+c.v || 0, -1, 1); R.ti = clamp(+c.t || 0, -1, 1); R.pi = clamp(+c.p || 0, -1, 1); } break; }
     case 'rsjam': { const R = this.rs; if (R && R.seat[pi] === 'radio') R.jamF = clamp(+c.f || 0, 0, 1); break; }
     case 'rsfire': { const R = this.rs, sid = R && R.seat[pi], S2 = sid && RS_SEATS[sid], B = this.rsB; if (!S2 || !S2.gun || !B || (R.gcd[pi] || 0) > this.t) break; R.gcd[pi] = this.t + .1; const wy = +c.yaw || 0, wp = clamp(+c.pitch || 0, -1, 1), hd = this.rsHd || 0, sx = S2.x * .2, sz = S2.z * .2, ox = B.x + Math.cos(hd) * sx - Math.sin(hd) * sz, oy = B.y + Math.sin(hd) * sx + Math.cos(hd) * sz, oz = B.z + 1, dx = Math.cos(wy) * Math.cos(wp), dy = Math.sin(wy) * Math.cos(wp), dz = Math.sin(wp), sp = 38, vB = this.rsV || {x: 0, y: 0}; R.bullets.push({x: ox, y: oy, z: oz, vx: dx * sp + vB.x, vy: dy * sp + vB.y, vz: dz * sp, t: 0}); this.ev({k: 'rstr', x0: ox, y0: oy, z0: oz, x1: ox + dx * 16, y1: oy + dy * 16, z1: oz + dz * 16, c: 'g'}); break; }
     case 'icrew': (this.crew = this.crew || {})[pi] = {x: +c.x || 0, z: +c.z || 0, yaw: +c.yaw || 0, t: this.t}; break; // where this player is walking inside the shared aircraft
@@ -5697,7 +5720,7 @@ Mirror.prototype.apply = function (m) {
   }
   for (const id of this.ents.keys()) if (!seen.has(id)) this.ents.delete(id);
   if (m.crew) this.crew = m.crew;
-  if (m.rs) this.rs = m.rs;
+  if (m.rs) { this.rs = m.rs; const rb = m.rs.bid && this.ents.get(m.rs.bid); if (rb) rb.rs = 1; }
   if (m.pl) m.pl.forEach((q, i) => { Object.assign(this.players[i], q); this.players[i].builders = q.bld; });
   if (m.bs) for (const b of m.bs) { const e = this.ents.get(b.id); if (e) { e.bp = b.bp; e.q = b.q; e.prog = b.prog; e.rally = b.rally; e.auto = !!b.au; e.autoK = b.ak; e.nukeCD = b.cdn; e.g = b.g; e.garrison = new Array(b.g); e.hard = b.hd; e.rot = b.rot || 0; } }
   if (m.nodes) m.nodes.forEach((n, i) => { this.M.nodes[i].amt = n[0]; this.M.nodes[i].taken = n[1]; });
@@ -10186,12 +10209,12 @@ const Direct = {
       const S = RS_SEATS[sid]; if (this.seatId !== sid) { this.seatId = sid; A.x = S.x; A.z = S.z; A.yaw = S.yaw; A.pitch = 0; }
       A.yaw = S.yaw + clamp(angDiff(S.yaw, A.yaw), -S.arc, S.arc); A.pitch = clamp(A.pitch, S.gun ? -.6 : -.9, S.gun ? .8 : .6);
       if (edgeE) g.issue({c: 'rsseat', id: null});
-      if (sid === 'pilot') { const v = (k[B.right] ? 1 : 0) - (k[B.left] ? 1 : 0); if (v !== this.rsVin) { this.rsVin = v; g.issue({c: 'rsctl', v}); } if (edgeL && R.baseD) g.issue({c: 'rsland'}); }
+      if (sid === 'pilot') { const v = (k[B.right] ? 1 : 0) - (k[B.left] ? 1 : 0), tv = (k[B.fwd] || k.KeyW ? 1 : 0) - (k[B.back] || k.KeyS ? 1 : 0), pv = (k.KeyR || k.Space ? 1 : 0) - (k.KeyF || k.ControlLeft ? 1 : 0), sig = v + ',' + tv + ',' + pv; if (sig !== this.rsVin) { this.rsVin = sig; g.issue({c: 'rsctl', v, t: tv, p: pv}); } if (edgeL && R.baseD) g.issue({c: 'rsland'}); }
       else if (sid === 'radio') { this.jamF = clamp((this.jamF === undefined ? .5 : this.jamF) + ((k[B.right] ? 1 : 0) - (k[B.left] ? 1 : 0)) * dt * .3, 0, 1); this.jamT = (this.jamT || 0) - dt; if (this.jamT <= 0) { this.jamT = .15; g.issue({c: 'rsjam', f: +this.jamF.toFixed(3)}); } }
       else if (S.gun && this.mouseDown) { this.gunT = (this.gunT || 0) - dt; if (this.gunT <= 0) { this.gunT = .11; g.issue({c: 'rsfire', yaw: this.viewYaw, pitch: this.viewPitch}); Sfx.beep(260); } }
-      this.rsPrompt = {text: 'E: leave the seat' + (S.gun ? ' · hold the mouse button to fire' : sid === 'pilot' ? ' · A / D shift the aircraft sideways' + (R.baseD ? ' · L: land at Polar Base 7 (' + R.baseD + ' ahead)' : '') : ' · A / D tune the dial')}; this.rsHoldId = null; return;
+      this.rsPrompt = {text: 'E: leave the seat' + (S.gun ? ' · hold the mouse button to fire' : sid === 'pilot' ? (R.up ? ' · W / S throttle · R / F climb and dive · A / D bank' : ' · W: throttle up, then R to lift off past the runway markers') + (R.baseD ? ' · L: land at Polar Base 7 (' + R.baseD + ' ahead)' : '') : ' · A / D tune the dial')}; this.rsHoldId = null; return;
     }
-    if (this.seatId) { this.seatId = null; if (this.rsVin) { this.rsVin = 0; g.issue({c: 'rsctl', v: 0}); } }
+    if (this.seatId) { this.seatId = null; if (this.rsVin) { this.rsVin = 0; g.issue({c: 'rsctl', v: 0, t: 0, p: 0}); } }
     if (!I.free(A.x, A.z)) { let best = null, bd = 9; for (let rr = .15; rr <= 1.6 && !best; rr += .15) for (let a = 0; a < 6.28; a += .26) { const x = A.x + Math.cos(a) * rr, z = A.z + Math.sin(a) * rr; if (I.free(x, z)) { const d = Math.hypot(x - A.x, z - A.z); if (d < bd) { bd = d; best = [x, z]; } } } if (best) { A.x = best[0]; A.z = best[1]; } } // standing up from a seat (or a respawn) inside furniture: step clear of it
     const bfs = R.bf, drop = !!(bfs && bfs.st === 'drop'), rides = drop && bfs.rider === me, onB = !!(bfs && bfs.st === 'fault' && k.KeyE && !lockedOut && Math.abs(A.x + 5.5) < 3.2 && Math.abs(A.z) < 1.4);
     if (drop) { if (this.dropS === undefined) this.dropS = performance.now(); this.dropT = (performance.now() - this.dropS) / 1000; if (rides) A.pitch += (-.75 - A.pitch) * Math.min(1, dt * 2); } else { this.dropT = undefined; this.dropS = undefined; }
@@ -11108,7 +11131,7 @@ const Direct = {
       if (R.lockOn) { c.fillText('JAMMER: tune with A / D until the signal peaks', w / 2, by - 16); c.fillStyle = '#233'; c.fillRect(bx, by, bw, 12); c.fillStyle = R.sig > .8 ? '#5aff9a' : '#ffb74d'; c.fillRect(bx, by, bw * R.sig, 12); c.fillStyle = '#fff'; c.fillRect(bx + bw * (this.jamF === undefined ? .5 : this.jamF) - 2, by - 5, 4, 22); c.fillStyle = '#9fe6ff'; c.fillText('lock-break ' + Math.round(R.jamP * 100) + '%', w / 2, by + 40); }
       else c.fillText('Radio quiet. Listening.', w / 2, by + 8);
     } else if (sid === 'pilot') {
-      const bw = 360, bx = w / 2 - bw / 2, by = h - 110, sc = bw / 20; c.fillStyle = 'rgba(0,0,0,.6)'; c.fillRect(bx - 12, by - 34, bw + 24, 74); c.fillStyle = '#9fe6ff'; c.font = '700 13px system-ui'; c.fillText('FLIGHT LINE: A / D shifts the aircraft sideways', w / 2, by - 16);
+      const bw = 360, bx = w / 2 - bw / 2, by = h - 110, sc = bw / 20; c.fillStyle = 'rgba(0,0,0,.6)'; c.fillRect(bx - 12, by - 34, bw + 24, 74); c.fillStyle = '#9fe6ff'; c.font = '700 13px system-ui'; c.fillText(R.up ? 'FLIGHT LINE: A / D bank' : 'TAKE-OFF: hold W for power, R to rotate at ' + Math.round(.75 * 100) + '% speed', w / 2, by - 16); { const gsp = R.gs || 0; c.textAlign = 'left'; c.fillStyle = '#fff'; c.font = '700 14px system-ui'; c.fillText('THR ' + Math.round((R.thr || 0) * 100) + '%   SPD ' + Math.round(gsp * 100) + '%' + (R.up ? '   ALT ' + (R.agl || 0) + '   ' + ((R.vz || 0) > .5 ? '▲' : (R.vz || 0) < -.5 ? '▼' : '—') : ''), bx, by + 32); if (R.up && (R.agl || 0) < 8) { c.fillStyle = '#ff5a4a'; c.font = '900 22px system-ui'; c.textAlign = 'center'; c.fillText('PULL UP! (R)', w / 2, by - 50); } if (R.up && gsp < .5) { c.fillStyle = '#ffb74d'; c.font = '900 18px system-ui'; c.textAlign = 'center'; c.fillText('STALL WARNING: more throttle (W)', w / 2, by - 74); } c.textAlign = 'center'; c.font = '700 13px system-ui'; }
       c.fillStyle = '#233'; c.fillRect(bx, by, bw, 12); c.fillStyle = 'rgba(90,255,154,.35)'; c.fillRect(bx + bw / 2 - 4.5 * sc, by, 9 * sc, 12);
       const b0 = this.e, hd = b0.ry === undefined ? b0.h : b0.ry, px = -Math.sin(hd), py = Math.cos(hd);
       for (const bm of R.beams || []) { const d = (bm.tx - (b0.rx === undefined ? b0.x : b0.rx)) * px + (bm.ty - (b0.ryy === undefined ? b0.y : b0.ryy)) * py, lat = d + R.off; c.fillStyle = 'rgba(255,230,120,.7)'; c.fillRect(bx + bw / 2 + lat * sc - 1.8 * sc, by - 3, 3.6 * sc, 18); }
@@ -13024,7 +13047,7 @@ const UI = {
     if (o.redstar) { // Operation Red Star: everyone starts inside the bomber
       this.addAlert('Operation Red Star: walk the aircraft with WASD and mouse. The rest of the crew is in here with you.', 'rs');
       if (o.rso) { const N = {heavy: 'heavy flying', hard: 'demanding flying', retry: 'one respawn per phase', one: 'no respawns', check: 'unlimited respawns', bomb: "bomb's-eye cutscene", bomber: 'cutscene from the bomber', both: 'full cutscene', flash: 'ends on the flash', escape: 'escape flight home', train: 'Training', std: 'Standard', brutal: 'Brutal'}; this.addAlert('Mission: ' + [o.rso.diff, o.rso.fly, o.rso.fail].map(k => N[k] || k).join(' · '), 'rs'); }
-      let tries = 0; const go = () => { const g = this.g; if (!g || g !== this.g) return; const b = [...g.view.ents.values()].find(e => e.k === 'bomber'); if (b && !Direct.on) { Direct.enter(this, b); return; } if (!b && ++tries < 40) setTimeout(go, 250); }; setTimeout(go, 400);
+      let tries = 0; const go = () => { const g = this.g; if (!g || g !== this.g) return; const b = [...g.view.ents.values()].find(e => e.rs); if (b && !Direct.on) { Direct.enter(this, b); return; } if (Direct.on && Direct.mode !== 'crew' && b) { Direct.exit(); Direct.enter(this, b); return; } if (++tries < 80) setTimeout(go, 250); }; setTimeout(go, 400);
     } else if (o.sandbox) { // test room: drop straight into first person as your soldier
       this.addAlert('Test room: walk around with WASD and mouse. Your friends are in here too.', 'gold');
       let tries = 0; const go = () => { const g = this.g; if (!g || g !== this.g) return; const u = [...g.view.ents.values()].find(e => e.o === o.me && !e.b && e.d.cat === 'inf'); if (u && !Direct.on) { Direct.enter(this, u); return; } if (!u && ++tries < 40) setTimeout(go, 250); }; setTimeout(go, 400);
@@ -14372,6 +14395,7 @@ addEventListener('keydown', () => { if (typeof Direct !== 'undefined' && window.
       'New Licases special, Breakaway: you and every friend within 15 m sprint flat out for 5 seconds, take 40% less damage, and enemy gunners lose track of you.',
       'Smarter bots: they defend outlying buildings, gather before attacking and push together, reinforce a winning push, bring air cover with the wave, and attack much sooner in Quick Battle.',
       'FPS Modes removed from the main menu.',
+      'Operation Red Star: friends now spawn inside the bomber with the host (they were dropped into random planes). The bomber waits on the runway until a pilot takes off: W/S throttle, R/F climb and dive, A/D bank. Too slow and she stalls, too low and the ground wins; the autopilot holds cruise when the cockpit is empty.',
     ]},
     {d: '8 Nov 2026', items: [
       'The game now counts plays anonymously (a random number per browser, no names, plus whether it is a computer or phone and which browser) so we can see how many people play and which modes are popular.',
