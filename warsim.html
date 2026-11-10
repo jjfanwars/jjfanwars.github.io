@@ -160,7 +160,7 @@ body.scen #top .res:nth-of-type(2),body.scen #top .res:nth-of-type(3),body.scen 
 #powers{display:none!important;position:absolute;right:10px;bottom:300px;display:flex;flex-direction:column;gap:4px}
 .selbar{position:absolute;right:10px;bottom:300px;display:flex;flex-direction:column;gap:4px;pointer-events:auto}
 .selbar button{width:150px;display:flex;justify-content:space-between;align-items:center;padding:5px 9px;background:rgba(6,10,14,.8);font-size:12px;text-align:left}
-.selbar button b{color:#ffd97a;font-weight:800}.selbar button kbd{opacity:.55;font-size:10px}
+.selbar.two{display:grid;grid-template-columns:repeat(2,150px)}.selbar button b{color:#ffd97a;font-weight:800}.selbar button kbd{opacity:.55;font-size:10px}
 body.camp #selBar,body.direct-mode #selBar,body.camp #sqBar,body.direct-mode #sqBar{display:none}
 #sqBar{right:168px;max-height:46vh;overflow-y:auto;scrollbar-width:thin}#sqBar:empty{display:none}#sqBar h4{margin:0 0 2px;font:700 10px system-ui;letter-spacing:.08em;color:#9fb0bb;text-transform:uppercase;text-align:right;text-shadow:0 1px 3px #000}#sqBar button{width:168px}#sqBar button.on{border-left-color:#6dff9a}#sqBar button small{color:#9fb0bb;font-weight:600}
 @media (max-width:1000px){.selbar{bottom:225px}.selbar button{width:118px;font-size:11px}#sqBar{right:134px}#sqBar button{width:132px}}
@@ -3844,7 +3844,8 @@ Sim.prototype.sampleStats = function () {
 };
 
 Sim.prototype.income = function (p) {
-  p.steel += 3 * (p.nat.tr.income || 1) * (p.ups.arm3 ? 1.5 : 1) * (p.ecoK || 1);   // tax from the capital
+  const early = this.battle || this.scen ? 1 : 1 + 1.5 * clamp((300 - this.t) / 120, 0, 1); // the opening goes faster: 2.5x tax for 3 minutes, back to normal by 5
+  p.steel += 3 * early * (p.nat.tr.income || 1) * (p.ups.arm3 ? 1.5 : 1) * (p.ecoK || 1);   // tax from the capital
   if (!this.scen && !this.rail) p.fuel += .7 * (p.ecoK || 1); // and a trickle of fuel, so nobody is ever stuck on zero
 };
 
@@ -15114,7 +15115,13 @@ const UI = {
   },
 
   // ---------- HUD refresh ----------
+  fitSelBar() { // the quick-command column sits just above the build cards and folds into two columns when the window is short
+    const sb = $('selBar'), cd = $('cards'); if (!sb || !cd || !cd.offsetHeight) return; const cr = cd.getBoundingClientRect(), b = innerHeight - cr.top + 8;
+    if (sb._b !== b) { sb._b = b; sb.style.bottom = b + 'px'; } const room = cr.top - 70, two = sb.scrollHeight > room && !sb.classList.contains('two') ? true : sb.classList.contains('two') && sb.children.length * 30 / 2 + 40 < room ? null : sb.classList.contains('two');
+    if (two === true) sb.classList.add('two'); else if (two === null && sb.scrollHeight * 2 < room) sb.classList.remove('two');
+  },
   refreshHud(force) {
+    this.fitSelBar();
     const G = this.g;
     if (!G || this.demo) return;
     const v = G.view, p = v.players[G.me];
