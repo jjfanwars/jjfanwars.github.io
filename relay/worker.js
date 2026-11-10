@@ -133,7 +133,7 @@ export class Dir {
 // Routes (POST, JSON body):  /acct/login {name, sid, xp, data}  ->  {ok, name, xp, data, fresh}  or  {err}
 //                            /acct/save  {name, sid, xp, data}  ->  {ok, xp, data}  or  {err}     (also the heartbeat, every minute)
 //                            /acct/logout {name, sid}
-//   admin (secret ADMIN_KEY): /acct/ban {key, name, why} · /acct/unban {key, name} · /acct/hist {key, name} · /acct/rollback {key, name, id}
+//   admin (secret ADMIN_KEY): /acct/ban {key, name, why} · /acct/unban {key, name} · /acct/hist {key, name} · /acct/rollback {key, name, id} · /acct/list {key} (every account name, xp, created, updated)
 // Merge rules (clients are trusted, but sanity-checked): XP never goes down, and rises by at most XP_STEP per save
 // (XP_IMPORT on the first sign-in, when local progress is uploaded). Stats keep the higher number per key. Settings: last write wins.
 // Unlocks and achievements: union. Clan tag: last write wins.
@@ -199,7 +199,7 @@ export class Accts {
     const u = new URL(req.url), now = Date.now(); let b;
     try { b = JSON.parse(await req.text() || '{}'); } catch (e) { return J({err: 'Bad request.'}, 400); }
     const route = u.pathname.slice(6), sid = String(b.sid || '').slice(0, 40);
-    if (['ban', 'unban', 'hist', 'rollback'].includes(route)) return this.admin(route, b);
+    if (['ban', 'unban', 'hist', 'rollback', 'list'].includes(route)) return this.admin(route, b);
     if (route === 'count') return J({n: this.sql.exec('SELECT COUNT(*) AS n FROM acct').toArray()[0].n});
     const c = checkName(b.name); if (c.err) return J({err: c.err, bad: 1});
     if (this.sql.exec('SELECT k FROM ban WHERE k = ?', c.k).toArray().length) return J({err: 'That name is banned.', bad: 1});
@@ -234,6 +234,7 @@ export class Accts {
   }
   admin(route, b) {
     if (!this.env.ADMIN_KEY || b.key !== this.env.ADMIN_KEY) return J({err: 'forbidden'}, 403);
+    if (route === 'list') return J({ok: true, n: this.sql.exec('SELECT COUNT(*) c FROM acct').toArray()[0].c, accounts: this.sql.exec('SELECT name, xp, created, updated FROM acct ORDER BY created').toArray()}); // every account name, oldest first (admin only)
     const k = nameKey(b.name); if (!k) return J({err: 'name?'}, 400);
     if (route === 'ban') { this.sql.exec('INSERT OR REPLACE INTO ban (k, t, why) VALUES (?, ?, ?)', k, Date.now(), String(b.why || '')); return J({ok: true, k}); }
     if (route === 'unban') { this.sql.exec('DELETE FROM ban WHERE k = ?', k); return J({ok: true, k}); }
