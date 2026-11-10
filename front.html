@@ -63,6 +63,24 @@ button.alt{background:#24384f}button.alt:hover{background:#2f4a68}
 #atks button{padding:2px 8px;font-size:11px;background:#7a2f2f}
 #hint{font-size:11px;color:#8fa3b5;text-align:center}
 @media(max-width:560px){#lb{min-width:150px;font-size:11px}#feed{bottom:170px}}
+
+body{background:radial-gradient(ellipse at 30% 20%,#14304f,#07101c 70%)}
+.scr{background:radial-gradient(ellipse at 50% 30%,rgba(20,48,80,.92),rgba(5,10,18,.96));backdrop-filter:blur(6px)}
+.scr h1{font-size:56px;font-weight:800;background:linear-gradient(90deg,#7fd0ff,#58e0a0 50%,#ffd35c);-webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:none;filter:drop-shadow(0 4px 18px rgba(80,200,255,.25))}
+.box{background:rgba(12,22,36,.7);border:1px solid #20364f;border-radius:14px;padding:16px;box-shadow:0 12px 40px rgba(0,0,0,.45)}
+button{transition:transform .08s,background .15s;box-shadow:0 2px 0 rgba(0,0,0,.35)}button:active{transform:translateY(1px)}
+#lb,#panel,#top,#feed div{background:rgba(9,18,30,.72);backdrop-filter:blur(8px);border:1px solid rgba(120,170,220,.16);box-shadow:0 6px 24px rgba(0,0,0,.35)}
+#lb{border-radius:12px}#lb div{padding:2px 0}
+#panel{border-radius:14px}
+#tbar{height:22px;border-radius:11px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.08)}
+#tbar span{line-height:22px;text-shadow:0 1px 2px #000}
+#bld{display:grid;grid-template-columns:repeat(6,1fr)}
+#bld button{padding:5px 2px;font-size:11px;line-height:1.25}
+#bld button.nuke{background:#7a2323}#bld button.nuke.on{background:#e0452b}#bld button:disabled{opacity:.55}
+#mini{position:absolute;right:8px;bottom:8px;border:1px solid rgba(120,170,220,.3);border-radius:8px;background:#07101c;box-shadow:0 6px 24px rgba(0,0,0,.4);cursor:pointer;touch-action:none}
+#alert{position:absolute;top:52px;left:50%;transform:translateX(-50%);background:rgba(160,20,20,.88);border:1px solid #ff8b6b;border-radius:10px;padding:6px 16px;font-weight:700;pointer-events:none!important;animation:pulse .6s infinite alternate}
+@keyframes pulse{to{background:rgba(220,50,30,.95)}}
+@media(max-width:760px){#mini{display:none}}
 </style></head><body>
 <canvas id="cv"></canvas>
 
@@ -92,7 +110,7 @@ button.alt{background:#24384f}button.alt:hover{background:#2f4a68}
 </div>
 
 <div id="hud" class="hidden">
-  <div id="lb"></div><div id="top"></div><button id="menuBtn">Leave</button>
+  <div id="lb"></div><div id="top"></div><div id="alert" class="hidden"></div><canvas id="mini" width="170" height="110"></canvas><button id="menuBtn">Leave</button>
   <div id="feed"></div>
   <div id="panel">
     <div id="tbar"><i></i><span></span></div>
@@ -111,6 +129,7 @@ const SP = 200;                       // spawn phase length in turns (100 ms eac
 const TM = [0, 1, 1.5, 2.2];          // attack cost multiplier per terrain: water, plain, hills, mountain
 const GROW = 0.1;                     // global troop growth scale (tuned for this map size)
 const WIN_SHARE = 0.7;
+const NUKE_COST = 400, NUKE_FLIGHT = 40, NUKE_R = 5; // a nuke takes 4 s to land: everyone sees it coming
 const NATION_NAMES = ['Aldoria','Brevik','Cyrene','Dunmar','Estrel','Falkor','Gorvia','Hesper','Istria','Jorvan','Kelmar','Lysia','Morvane','Norland','Ostrava','Pelion','Quenta','Rhodan','Sarnia','Tyrell','Ulmar','Valdis','Wenmar','Xanth','Yorvik','Zelan','Arvane','Belgrim','Corvath','Dessar'];
 
 function mulberry(seed) { let s = seed | 0; return () => { s = s + 0x6D2B79F5 | 0; let t = Math.imul(s ^ s >>> 15, 1 | s); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
@@ -122,14 +141,14 @@ function vnoise(x, y, s) {
 }
 // 0 water, 1 plains, 2 hills, 3 mountains. Only the biggest landmass is kept, so nobody spawns on an unreachable islet.
 function genMap(W, H, seed) {
-  const n = W * H, t = new Uint8Array(n), s = seed | 0;
+  const n = W * H, t = new Uint8Array(n), hv = new Float32Array(n), s = seed | 0;
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
     let f = 0, a = 0.5, fr = 1 / 40, tot = 0;
     for (let o = 0; o < 5; o++) { f += a * vnoise(x * fr, y * fr, s + o * 101); tot += a; a *= 0.5; fr *= 2; }
     f /= tot;
     const dx = (x + 0.5) / W * 2 - 1, dy = (y + 0.5) / H * 2 - 1, e = dx * dx * 0.9 + dy * dy;
     const v = f + 0.2 - 0.45 * e;
-    t[y * W + x] = v > 0.64 ? 3 : v > 0.55 ? 2 : v > 0.4 ? 1 : 0;
+    hv[y * W + x] = v; t[y * W + x] = v > 0.64 ? 3 : v > 0.55 ? 2 : v > 0.4 ? 1 : 0;
   }
   const comp = new Int32Array(n).fill(-1), q = new Int32Array(n); let best = -1, bestN = 0, cid = 0;
   for (let i = 0; i < n; i++) {
@@ -146,6 +165,7 @@ function genMap(W, H, seed) {
     cid++;
   }
   for (let i = 0; i < n; i++) if (t[i] && comp[i] !== best) t[i] = 0;
+  t.v = hv; // heights, display only
   return t;
 }
 function colorOf(i) { // display only (never feeds the sim)
@@ -161,20 +181,20 @@ class Sim {
     this.terr = genMap(W, H, cfg.seed); this.own = new Uint8Array(n); this.bld = new Uint8Array(n); // bld: 1 city, 2 defense post, 3 port
     this.land = 0; for (let i = 0; i < n; i++) if (this.terr[i]) this.land++;
     this.P = roster.map((r, i) => ({ id: i + 1, name: r.name, human: !!r.human, kind: r.human ? 'human' : r.bot, alive: true, spawn: -1, spawned: false,
-      troops: 0, gold: 0, tiles: 0, sx: 0, sy: 0, cities: 0, ports: 0, posts: [], col: colorOf(i) }));
-    this.tick = 0; this.r = mulberry(cfg.seed ^ 0x5bd1e995); this.atks = []; this.dirty = []; this.log = []; this.over = null; this.ct = null;
+      troops: 0, gold: 0, tiles: 0, sx: 0, sy: 0, cities: 0, ports: 0, posts: [], capital: -1, silos: [], sams: [], nukeAt: 0, col: colorOf(i) }));
+    this.tick = 0; this.r = mulberry(cfg.seed ^ 0x5bd1e995); this.atks = []; this.dirty = []; this.log = []; this.over = null; this.ct = null; this.nukes = []; this.fx = []; this.samCd = new Map();
   }
   cap(p) {
-    let m = 2 * (2000 * Math.sqrt(p.tiles) + 50000) + p.cities * 100000;
+    let m = 2 * (2000 * Math.sqrt(p.tiles) + 50000) + p.cities * 100000 + (p.capital >= 0 ? 50000 : 0);
     if (p.kind === 'tribe') m /= 3; else if (p.kind === 'nation') m *= 0.75;
     return m;
   }
-  buildCost(p, b) { return b === 1 ? Math.round(250 * (1 + 0.5 * p.cities)) : b === 2 ? Math.round(100 * (1 + 0.3 * p.posts.length)) : 150; }
+  buildCost(p, b) { return b === 1 ? Math.round(250 * (1 + 0.5 * p.cities)) : b === 2 ? Math.round(100 * (1 + 0.3 * p.posts.length)) : b === 5 ? 500 : b === 6 ? 300 + 100 * p.sams.length : 150; }
   coastal(i) { const W = this.W, t = this.terr, x = i % W; return (x > 0 && !t[i - 1]) || (x < W - 1 && !t[i + 1]) || (i >= W && !t[i - W]) || (i + W < this.n && !t[i + W]); }
   say(msg) { this.log.push({ t: this.tick, msg }); }
 
-  addB(p, i, b) { if (b === 1) p.cities++; else if (b === 2) p.posts.push(i); else p.ports++; }
-  remB(p, i, b) { if (b === 1) p.cities--; else if (b === 2) { const k = p.posts.indexOf(i); if (k >= 0) p.posts.splice(k, 1); } else p.ports--; }
+  addB(p, i, b) { if (b === 1) p.cities++; else if (b === 2) p.posts.push(i); else if (b === 3) p.ports++; else if (b === 4) { if (p.capital < 0) p.capital = i; } else if (b === 5) p.silos.push(i); else p.sams.push(i); }
+  remB(p, i, b) { const rm = a => { const k = a.indexOf(i); if (k >= 0) a.splice(k, 1); }; if (b === 1) p.cities--; else if (b === 2) rm(p.posts); else if (b === 3) p.ports--; else if (b === 4) { if (p.capital === i) p.capital = -1; } else if (b === 5) rm(p.silos); else rm(p.sams); }
   setOwner(i, id) {
     const o = this.own[i]; if (o === id) return;
     const x = i % this.W, y = (i / this.W) | 0, b = this.bld[i];
@@ -182,6 +202,7 @@ class Sim {
     this.own[i] = id;
     if (id) { const q = this.P[id - 1]; q.tiles++; q.sx += x; q.sy += y; if (b) this.addB(q, i, b); } else this.bld[i] = 0;
     this.dirty.push(i);
+    if (o && b === 4) { const q = this.P[o - 1]; q.troops *= 0.7; if (id) { const w = this.P[id - 1]; w.gold += 150; this.say(w.name + ' captured ' + q.name + "'s capital!"); } else this.say(q.name + "'s capital was destroyed!"); }
     if (o && this.P[o - 1].tiles === 0 && this.P[o - 1].spawned) this.kill(o, id);
   }
   kill(o, by) {
@@ -197,10 +218,16 @@ class Sim {
       case 'spawn': if (T <= SP && p.human && ok && this.terr[i] && this.terr[i] < 3) p.spawn = i; break;
       case 'atk': if (T > SP && p.alive && ok && this.terr[i]) this.launch(p, this.own[i], +it.r || 30); break;
       case 'build': {
-        const b = it.b | 0; if (T <= SP || !p.alive || !ok || b < 1 || b > 3) break;
+        const b = it.b | 0; if (T <= SP || !p.alive || !ok || !(b === 1 || b === 2 || b === 3 || b === 5 || b === 6)) break;
         if (this.own[i] !== p.id || !this.terr[i] || this.bld[i] || (b === 3 && !this.coastal(i))) break;
         const c = this.buildCost(p, b); if (p.gold < c) break;
         p.gold -= c; this.bld[i] = b; this.addB(p, i, b); this.dirty.push(i); break;
+      }
+      case 'nuke': {
+        if (T <= SP || !p.alive || !ok || !this.terr[i] || this.own[i] === p.id || !p.silos.length || T < p.nukeAt || p.gold < NUKE_COST) break;
+        p.gold -= NUKE_COST; p.nukeAt = T + Math.floor(900 / p.silos.length);
+        this.nukes.push({ p: p.id, from: p.silos[T % p.silos.length], i, t0: T, eta: T + NUKE_FLIGHT });
+        const o = this.own[i]; this.say(p.name + ' launched a nuke' + (o ? ' at ' + this.P[o - 1].name : '') + '!'); break;
       }
       case 'ret': for (const a of this.atks) if (a.p === p.id && a.t === (it.t | 0) && !a.done) this.endAtk(a); break;
       case 'afk': if (p.kind === 'human') p.kind = 'nation'; break; // a player who left becomes an AI nation
@@ -241,6 +268,7 @@ class Sim {
       else {
         const per = d.troops / Math.max(1, d.tiles), y = (i / W) | 0; let dm = 1;
         for (const pi of d.posts) { const px = pi % W, py = (pi / W) | 0; if ((px - x) * (px - x) + (py - y) * (py - y) <= 36) { dm = 3; break; } }
+        if (dm < 3 && d.capital >= 0) { const px = d.capital % W, py = (d.capital / W) | 0; if ((px - x) * (px - x) + (py - y) * (py - y) <= 64) dm = 2; }
         cost = per * mul * dm + mul * 5; dl = per * 0.7;
       }
       if (a.troops < cost) { this.endAtk(a); return; }
@@ -279,7 +307,7 @@ class Sim {
     for (const p of this.P) {
       if (!p.alive || !p.spawned || p.kind === 'human') continue;
       const nat = p.kind === 'nation'; if ((T / 10 + p.id) % (nat ? 1 : 3)) continue;
-      if (nat) this.botBuild(p);
+      if (nat) { this.botBuild(p); this.botNuke(p); }
       const mx = this.cap(p), ct = this.ct[p.id - 1];
       if (p.troops < mx * (nat ? 0.45 : 0.3)) continue;
       let t = -1;
@@ -295,7 +323,8 @@ class Sim {
   }
   botBuild(p) {
     const r = this.r, W = this.W, own = this.own, id = p.id;
-    const want = p.gold >= this.buildCost(p, 1) && p.cities < 1 + p.tiles / 90 ? 1 : p.gold >= this.buildCost(p, 2) && p.posts.length < 1 + p.tiles / 160 ? 2 : 0;
+    const g = p.gold, c = b => this.buildCost(p, b);
+    const want = g >= c(1) && p.cities < 1 + p.tiles / 90 ? 1 : this.tick > 2500 && !p.silos.length && p.cities >= 2 && g >= c(5) ? 5 : this.tick > 3000 && p.silos.length && p.sams.length < 1 + p.tiles / 400 && g >= c(6) ? 6 : g >= c(2) && p.posts.length < 1 + p.tiles / 160 ? 2 : 0;
     if (!want) return;
     for (let k = 0; k < 60; k++) {
       const i = (r() * this.n) | 0; if (own[i] !== id || this.bld[i] || !this.terr[i]) continue;
@@ -304,12 +333,46 @@ class Sim {
     }
   }
 
+  stepNukes() {
+    if (!this.nukes.length) return; const keep = [];
+    for (const n of this.nukes) { if (this.tick < n.eta) keep.push(n); else this.nukeHit(n); }
+    this.nukes = keep;
+  }
+  nukeHit(n) {
+    const W = this.W, H = this.H, cx = n.i % W, cy = (n.i / W) | 0;
+    for (const q of this.P) { // a SAM within 12 tiles shoots at it (70%), then reloads for 30 s
+      if (!q.alive || q.id === n.p) continue;
+      for (const si of q.sams) {
+        const dx = (si % W) - cx, dy = ((si / W) | 0) - cy;
+        if (dx * dx + dy * dy <= 144 && this.tick >= (this.samCd.get(si) || 0)) {
+          this.samCd.set(si, this.tick + 300);
+          if (this.r() < 0.7) { this.say(q.name + "'s SAM shot down a nuke!"); this.fx.push({ i: n.i, t: this.tick, k: 0 }); return; }
+        }
+      }
+    }
+    const aff = new Map(), R = NUKE_R;
+    for (let y = cy - R; y <= cy + R; y++) for (let x = cx - R; x <= cx + R; x++) {
+      if (x < 0 || y < 0 || x >= W || y >= H || (x - cx) * (x - cx) + (y - cy) * (y - cy) > R * R) continue;
+      const j = y * W + x; if (!this.terr[j]) continue; const o = this.own[j];
+      if (o) { if (!aff.has(o)) aff.set(o, [this.P[o - 1].tiles, 0]); aff.get(o)[1]++; this.setOwner(j, 0); } else this.bld[j] = 0;
+    }
+    for (const [o, v] of aff) { const q = this.P[o - 1]; if (q.alive) q.troops *= 1 - Math.min(0.6, 0.08 + 1.2 * v[1] / Math.max(1, v[0])); }
+    this.fx.push({ i: n.i, t: this.tick, k: 1 }); if (this.fx.length > 30) this.fx.shift();
+  }
+  botNuke(p) {
+    if (this.tick < 3000 || !p.silos.length || this.tick < p.nukeAt || p.gold < NUKE_COST + 100 || this.r() > 0.25) return;
+    const c = this.P.filter(q => q.alive && q.id !== p.id && q.tiles > p.tiles * 0.7); if (!c.length) return;
+    const q = c[(this.r() * c.length) | 0]; let ti = q.capital >= 0 && this.r() < 0.5 ? q.capital : -1;
+    for (let k = 0; k < 60 && ti < 0; k++) { const j = (this.r() * this.n) | 0; if (this.own[j] === q.id) ti = j; }
+    if (ti >= 0) this.apply(p.id - 1, { k: 'nuke', x: ti % this.W, y: (ti / this.W) | 0 });
+  }
   spawnAt(p, i, rad) {
     const W = this.W, H = this.H, cx = i % W, cy = (i / W) | 0;
     for (let y = cy - rad; y <= cy + rad; y++) for (let x = cx - rad; x <= cx + rad; x++) {
       if (x < 0 || y < 0 || x >= W || y >= H || (x - cx) * (x - cx) + (y - cy) * (y - cy) > rad * rad) continue;
       const j = y * W + x; if (this.terr[j] && !this.own[j]) { p.spawned = true; this.setOwner(j, p.id); }
     }
+    if (this.own[i] === p.id && !this.bld[i]) { this.bld[i] = 4; this.addB(p, i, 4); } // every player starts with a capital
     p.spawned = true; p.troops = p.kind === 'tribe' ? 8000 : 25000; p.gold = 100;
   }
   endSpawn() {
@@ -341,7 +404,7 @@ class Sim {
     if (this.tick > SP) {
       this.econ(); for (const a of this.atks) if (!a.done) this.runAtk(a);
       if (this.atks.length > 40 || this.tick % 10 === 0) this.atks = this.atks.filter(a => !a.done);
-      this.bots(); if (this.tick % 10 === 0) this.checkWin();
+      this.stepNukes(); this.bots(); if (this.tick % 10 === 0) this.checkWin();
     }
   }
   hash() { let h = this.tick | 0; for (const p of this.P) { h = Math.imul(h ^ (p.tiles | 0), 16777619); h = Math.imul(h ^ (p.troops | 0), 16777619); h = Math.imul(h ^ (p.gold | 0), 16777619); } return h >>> 0; }
@@ -496,27 +559,46 @@ refreshRooms();
 // ---------- map rendering ----------
 const cv = $('cv'), ctx = cv.getContext('2d'), mapCv = document.createElement('canvas'), mctx = mapCv.getContext('2d');
 let img, px32, shade, view = { ox: 0, oy: 0, s: 4 };
-const WATER = [20, 46, 84], TERR = [null, [92, 140, 78], [128, 132, 82], [118, 114, 108]];
+let BASE, flash, fl = [];
+const lerp = (a, b, t) => a + (b - a) * t, mix3 = (a, b, t) => [lerp(a[0], b[0], t), lerp(a[1], b[1], t), lerp(a[2], b[2], t)];
 function initMap() {
-  const S = G.sim, W = S.W, H = S.H; mapCv.width = W; mapCv.height = H; img = mctx.createImageData(W, H); px32 = new Uint32Array(img.data.buffer);
-  shade = new Float32Array(S.n); for (let i = 0; i < S.n; i++) shade[i] = 0.9 + 0.1 * hash2(i % W, (i / W) | 0, 7);
-  for (let i = 0; i < S.n; i++) paint(i); mctx.putImageData(img, 0, 0);
+  const S = G.sim, W = S.W, H = S.H, n = S.n, hv = S.terr.v; mapCv.width = W; mapCv.height = H; img = mctx.createImageData(W, H); px32 = new Uint32Array(img.data.buffer);
+  flash = new Uint8Array(n); fl = []; BASE = new Uint8ClampedArray(n * 3);
+  const wd = new Uint8Array(n).fill(255), q = new Int32Array(n); let qh = 0, qt = 0;
+  for (let i = 0; i < n; i++) if (S.terr[i]) { wd[i] = 0; q[qt++] = i; }
+  while (qh < qt) { const c = q[qh++], d = wd[c]; if (d >= 16) continue; const x = c % W; for (const j of [x > 0 ? c - 1 : -1, x < W - 1 ? c + 1 : -1, c >= W ? c - W : -1, c + W < n ? c + W : -1]) if (j >= 0 && wd[j] === 255) { wd[j] = d + 1; q[qt++] = j; } }
+  const hh = (x, y) => hv[Math.max(0, Math.min(H - 1, y)) * W + Math.max(0, Math.min(W - 1, x))];
+  for (let i = 0; i < n; i++) {
+    const x = i % W, y = (i / W) | 0, t = S.terr[i], nz = 0.93 + 0.07 * hash2(x, y, 7); let c;
+    if (!t) { const d = Math.min(1, (wd[i] === 255 ? 16 : wd[i]) / 14); c = mix3([64, 150, 178], [9, 28, 62], Math.sqrt(d)); c = c.map(v => v * (0.97 + 0.03 * hash2(x, y, 3))); }
+    else {
+      const lit = (hh(x - 1, y - 1) - hh(x + 1, y + 1)) * (t === 3 ? 9 : t === 2 ? 6 : 3.5), sh = Math.max(0.68, Math.min(1.32, 1 + lit)) * nz, v = hv[i];
+      if (t === 1) c = S.coastal(i) ? [206, 194, 142] : mix3([88, 156, 78], [64, 122, 66], Math.min(1, (v - 0.4) * 5));
+      else if (t === 2) c = mix3([142, 140, 84], [118, 108, 74], Math.min(1, (v - 0.55) * 8));
+      else c = v > 0.74 ? mix3([210, 214, 222], [246, 248, 252], Math.min(1, (v - 0.74) * 10)) : mix3([132, 126, 120], [158, 152, 148], Math.min(1, (v - 0.64) * 10));
+      c = c.map(u => u * sh);
+    }
+    BASE[i * 3] = c[0]; BASE[i * 3 + 1] = c[1]; BASE[i * 3 + 2] = c[2];
+  }
+  for (let i = 0; i < n; i++) paint(i); mctx.putImageData(img, 0, 0);
 }
 function rgb(r, g, b) { return (255 << 24) | (Math.max(0, Math.min(255, b | 0)) << 16) | (Math.max(0, Math.min(255, g | 0)) << 8) | Math.max(0, Math.min(255, r | 0)); }
 function paint(i) {
-  const S = G.sim, W = S.W, o = S.own[i], t = S.terr[i];
-  if (!t) { px32[i] = rgb(WATER[0], WATER[1], WATER[2]); return; }
-  const b = TERR[t], k = shade[i];
-  if (!o) { px32[i] = rgb(b[0] * k, b[1] * k, b[2] * k); return; }
-  const c = S.P[o - 1].col, x = i % W; let edge = false;
-  if ((x > 0 && S.own[i - 1] !== o) || (x < W - 1 && S.own[i + 1] !== o) || (i >= W && S.own[i - W] !== o) || (i + S.W < S.n && S.own[i + W] !== o)) edge = true;
-  if (edge) px32[i] = rgb(c[0] * 0.55 + 100, c[1] * 0.55 + 100, c[2] * 0.55 + 100);
-  else px32[i] = rgb((c[0] * 0.78 + b[0] * 0.22) * k, (c[1] * 0.78 + b[1] * 0.22) * k, (c[2] * 0.78 + b[2] * 0.22) * k);
+  const S = G.sim, W = S.W, n = S.n, o = S.own[i], t = S.terr[i]; let r = BASE[i * 3], g = BASE[i * 3 + 1], b = BASE[i * 3 + 2];
+  if (t && o) {
+    const c = S.P[o - 1].col, x = i % W; let foe = false, sea = false;
+    for (const j of [x > 0 ? i - 1 : -1, x < W - 1 ? i + 1 : -1, i >= W ? i - W : -1, i + W < n ? i + W : -1]) { if (j < 0) continue; if (!S.terr[j]) sea = true; else if (S.own[j] !== o) foe = true; }
+    if (foe) { r = c[0] * 0.5 + 125; g = c[1] * 0.5 + 125; b = c[2] * 0.5 + 125; }
+    else { const k = r / 110 * 0.4 + 0.65; r = c[0] * 0.68 * k + r * 0.32; g = c[1] * 0.68 * k + g * 0.32; b = c[2] * 0.68 * k + b * 0.32; if (sea) { r *= 0.82; g *= 0.82; b *= 0.82; } }
+  }
+  const f = flash[i]; if (f) { r += f * 12; g += f * 12; b += f * 12; }
+  px32[i] = rgb(r, g, b);
 }
 function flushDirty() {
   const S = G.sim, d = S.dirty; if (!d.length) return; const W = S.W, n = S.n;
   if (d.length > n / 3) { for (let i = 0; i < n; i++) paint(i); }
   else for (const i of d) { const x = i % W; paint(i); if (x > 0) paint(i - 1); if (x < W - 1) paint(i + 1); if (i >= W) paint(i - W); if (i + W < n) paint(i + W); }
+  if (d.length < n / 3) for (const i of d) { if (!flash[i]) fl.push(i); flash[i] = 14; }
   S.dirty = []; mctx.putImageData(img, 0, 0);
 }
 function fitView() { const S = G.sim, w = innerWidth, h = innerHeight; view.s = Math.max(1, Math.min(w / S.W, h / S.H) * 0.94); view.ox = (w - S.W * view.s) / 2; view.oy = (h - S.H * view.s) / 2; }
@@ -526,6 +608,7 @@ addEventListener('resize', () => { resize(); if (G.sim && G.started) fitView(); 
 function frame() {
   if (!G.started || !G.sim) return;
   const S = G.sim, d = cv.width / innerWidth; flushDirty();
+  if (fl.length) { const keep = []; for (const i of fl) { flash[i]--; paint(i); if (flash[i] > 0) keep.push(i); } fl = keep; mctx.putImageData(img, 0, 0); }
   ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = '#0b1624'; ctx.fillRect(0, 0, cv.width, cv.height);
   ctx.setTransform(d * view.s, 0, 0, d * view.s, d * view.ox, d * view.oy); ctx.imageSmoothingEnabled = false; ctx.drawImage(mapCv, 0, 0);
   ctx.setTransform(d, 0, 0, d, 0, 0);
@@ -533,7 +616,8 @@ function frame() {
   if (S.tick <= SP) { // spawn markers
     for (const p of S.P) if (p.spawn >= 0) { const x = view.ox + (p.spawn % W + 0.5) * s, y = view.oy + (((p.spawn / W) | 0) + 0.5) * s, r = (5 + Math.sin(performance.now() / 200)) * s; ctx.strokeStyle = 'rgb(' + p.col + ')'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.stroke(); ctx.fillStyle = '#fff'; ctx.font = '12px system-ui'; ctx.textAlign = 'center'; ctx.fillText(p.name, x, y - r - 4); }
   } else {
-    if (s >= 2.5) for (let i = 0; i < S.n; i++) { const b = S.bld[i]; if (!b) continue; const x = view.ox + ((i % W) + 0.5) * s, y = view.oy + (((i / W) | 0) + 0.5) * s, r = Math.max(3, s * 0.7); ctx.fillStyle = '#fff'; ctx.strokeStyle = '#000'; ctx.lineWidth = 1; ctx.beginPath(); if (b === 1) ctx.rect(x - r, y - r, r * 2, r * 2); else if (b === 2) { ctx.moveTo(x, y - r); ctx.lineTo(x + r, y + r); ctx.lineTo(x - r, y + r); ctx.closePath(); } else ctx.arc(x, y, r, 0, 7); ctx.fill(); ctx.stroke(); }
+    if (s >= 2) for (let i = 0; i < S.n; i++) { const b = S.bld[i]; if (b) icon(b, view.ox + ((i % W) + 0.5) * s, view.oy + (((i / W) | 0) + 0.5) * s, Math.max(3.5, s * 0.8), S.P[S.own[i] - 1]); }
+    drawNukes(S, s);
     ctx.textAlign = 'center'; ctx.lineJoin = 'round';
     for (const p of S.P) {
       if (!p.alive || p.tiles < 25) continue; const fs = Math.max(8, Math.min(30, Math.sqrt(p.tiles) * s * 0.34)); if (fs < 9) continue;
@@ -541,19 +625,56 @@ function frame() {
       ctx.strokeText(p.name, x, y); ctx.fillText(p.name, x, y); if (fs > 11) { ctx.font = fs * 0.8 + 'px system-ui'; ctx.strokeText(fmt(p.troops), x, y + fs); ctx.fillText(fmt(p.troops), x, y + fs); }
     }
   }
+  drawMini();
   const t = performance.now(); if (t - (G.hudT || 0) > 250) { G.hudT = t; updateHud(); }
   requestAnimationFrame(frame);
 }
 
+function icon(b, x, y, r, p) {
+  ctx.lineWidth = 1; ctx.fillStyle = 'rgba(5,10,18,.72)'; ctx.strokeStyle = p ? 'rgb(' + p.col + ')' : '#fff'; ctx.beginPath(); ctx.arc(x, y, r * 1.2, 0, 7); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = '#fff'; ctx.strokeStyle = '#fff'; ctx.beginPath();
+  if (b === 1) { ctx.rect(x - r * .75, y - r * .1, r * .5, r * .8); ctx.rect(x - r * .25, y - r * .7, r * .5, r * 1.4); ctx.rect(x + r * .25, y + r * .1, r * .5, r * .6); ctx.fill(); }
+  else if (b === 2) { ctx.moveTo(x, y - r * .8); ctx.lineTo(x + r * .7, y - r * .4); ctx.lineTo(x + r * .5, y + r * .5); ctx.lineTo(x, y + r * .85); ctx.lineTo(x - r * .5, y + r * .5); ctx.lineTo(x - r * .7, y - r * .4); ctx.closePath(); ctx.fill(); }
+  else if (b === 3) { ctx.lineWidth = Math.max(1, r * .2); ctx.moveTo(x, y - r * .6); ctx.lineTo(x, y + r * .6); ctx.moveTo(x - r * .5, y - r * .15); ctx.lineTo(x + r * .5, y - r * .15); ctx.moveTo(x - r * .65, y + r * .15); ctx.arc(x, y + r * .15, r * .65, Math.PI, 0, true); ctx.stroke(); }
+  else if (b === 4) { ctx.fillStyle = '#ffd35c'; for (let k = 0; k < 10; k++) { const a = -Math.PI / 2 + k * Math.PI / 5, rr = k % 2 ? r * .4 : r * 1.05; ctx[k ? 'lineTo' : 'moveTo'](x + Math.cos(a) * rr, y + Math.sin(a) * rr); } ctx.closePath(); ctx.fill(); }
+  else if (b === 5) { ctx.strokeStyle = '#ff6a4a'; ctx.fillStyle = '#ff6a4a'; ctx.lineWidth = Math.max(1, r * .2); ctx.arc(x, y, r * .7, 0, 7); ctx.stroke(); ctx.beginPath(); ctx.arc(x, y, r * .3, 0, 7); ctx.fill(); }
+  else { ctx.fillStyle = '#6ac4ff'; ctx.moveTo(x, y - r * .85); ctx.lineTo(x + r * .7, y); ctx.lineTo(x, y + r * .85); ctx.lineTo(x - r * .7, y); ctx.closePath(); ctx.fill(); }
+}
+function drawNukes(S, s) {
+  const W = S.W, t = performance.now(), T = S.tick;
+  for (const n of S.nukes) {
+    const fx = view.ox + ((n.from % W) + 0.5) * s, fy = view.oy + (((n.from / W) | 0) + 0.5) * s, tx = view.ox + ((n.i % W) + 0.5) * s, ty = view.oy + (((n.i / W) | 0) + 0.5) * s, pr = Math.min(1, (T - n.t0) / (n.eta - n.t0)), L = Math.hypot(tx - fx, ty - fy);
+    const at = q => [fx + (tx - fx) * q, fy + (ty - fy) * q - Math.sin(Math.PI * q) * L * 0.22];
+    ctx.strokeStyle = 'rgba(255,120,80,.55)'; ctx.lineWidth = 2; ctx.beginPath(); for (let k = 0; k <= 24; k++) { const p = at(pr * k / 24); ctx[k ? 'lineTo' : 'moveTo'](p[0], p[1]); } ctx.stroke();
+    const p = at(pr); ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(p[0], p[1], Math.max(2.5, s * 0.5), 0, 7); ctx.fill(); ctx.fillStyle = '#ff5a3a'; ctx.beginPath(); ctx.arc(p[0], p[1], Math.max(1.5, s * 0.3), 0, 7); ctx.fill();
+    ctx.setLineDash([5, 4]); ctx.strokeStyle = 'rgba(255,70,50,' + (0.6 + 0.4 * Math.sin(t / 120)) + ')'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(tx, ty, NUKE_R * s, 0, 7); ctx.stroke(); ctx.setLineDash([]);
+  }
+  for (const f of S.fx) {
+    const age = T - f.t; if (age > 14) continue; const x = view.ox + ((f.i % W) + 0.5) * s, y = view.oy + (((f.i / W) | 0) + 0.5) * s, q = age / 14;
+    if (f.k) { const g = ctx.createRadialGradient(x, y, 0, x, y, NUKE_R * s * (0.6 + q)); g.addColorStop(0, 'rgba(255,250,200,' + (1 - q) + ')'); g.addColorStop(0.5, 'rgba(255,140,40,' + 0.8 * (1 - q) + ')'); g.addColorStop(1, 'rgba(120,20,0,0)'); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, NUKE_R * s * (0.6 + q), 0, 7); ctx.fill(); }
+    else { ctx.strokeStyle = 'rgba(110,200,255,' + (1 - q) + ')'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(x, y, (1 + q * 8) * s, 0, 7); ctx.stroke(); }
+  }
+}
+const mini = $('mini'), mx = mini.getContext('2d');
+function drawMini() {
+  const S = G.sim; if (!S || getComputedStyle(mini).display === 'none') return; const k = Math.min(mini.width / S.W, mini.height / S.H), w = S.W * k, hh = S.H * k, ox = (mini.width - w) / 2, oy = (mini.height - hh) / 2;
+  mx.clearRect(0, 0, mini.width, mini.height); mx.imageSmoothingEnabled = false; mx.drawImage(mapCv, ox, oy, w, hh);
+  mx.strokeStyle = '#fff'; mx.lineWidth = 1.5; mx.strokeRect(ox + (-view.ox / view.s) * k, oy + (-view.oy / view.s) * k, innerWidth / view.s * k, innerHeight / view.s * k);
+}
+function miniGo(e) { const S = G.sim; if (!S) return; const r = mini.getBoundingClientRect(), k = Math.min(mini.width / S.W, mini.height / S.H), px = (e.clientX - r.left) * mini.width / r.width, py = (e.clientY - r.top) * mini.height / r.height, tx = (px - (mini.width - S.W * k) / 2) / k, ty = (py - (mini.height - S.H * k) / 2) / k; view.ox = innerWidth / 2 - tx * view.s; view.oy = innerHeight / 2 - ty * view.s; }
+mini.addEventListener('pointerdown', e => { mini.setPointerCapture(e.pointerId); mini.dragging = true; miniGo(e); });
+mini.addEventListener('pointermove', e => { if (mini.dragging) miniGo(e); });
+mini.addEventListener('pointerup', () => { mini.dragging = false; });
 // ---------- HUD ----------
+const TOOLS = [{ n: 'City', i: '🏙', b: 1 }, { n: 'Post', i: '🛡', b: 2 }, { n: 'Port', i: '⚓', b: 3 }, { n: 'Silo', i: '🚀', b: 5 }, { n: 'SAM', i: '📡', b: 6 }, { n: 'NUKE', i: '☢', nuke: 1 }];
 function buildBar() {
-  $('bld').innerHTML = ''; const names = ['City', 'Defense post', 'Port'];
-  names.forEach((nm, k) => { const b = document.createElement('button'); b.dataset.k = k + 1; b.onclick = () => { G.tool = G.tool === k + 1 ? 0 : k + 1; updateHud(); }; $('bld').appendChild(b); });
+  $('bld').innerHTML = '';
+  TOOLS.forEach((t, k) => { const b = document.createElement('button'); b.dataset.k = k + 1; if (t.nuke) b.className = 'nuke'; b.onclick = () => { G.tool = G.tool === k + 1 ? 0 : k + 1; updateHud(); }; $('bld').appendChild(b); });
 }
 $('ratio').oninput = () => { $('rv').textContent = $('ratio').value + '%'; };
-addEventListener('keydown', e => { if (e.target.tagName === 'INPUT') return; if (e.key === 'Escape') G.tool = 0; else if (e.key === '1' || e.key === '2' || e.key === '3') G.tool = G.tool === +e.key ? 0 : +e.key; });
+addEventListener('keydown', e => { if (e.target.tagName === 'INPUT') return; if (e.key === 'Escape') G.tool = 0; else if (/^[1-6]$/.test(e.key)) G.tool = G.tool === +e.key ? 0 : +e.key; });
 function updateHud() {
-  const S = G.sim; if (!S) return; const me = S.P[G.me], names = ['City', 'Defense post', 'Port'];
+  const S = G.sim; if (!S) return; const me = S.P[G.me];
   const left = S.tick <= SP ? Math.ceil((SP - S.tick) / 10) : 0;
   $('top').textContent = G.desync === 'host' ? 'Host disconnected' : G.desync ? 'Out of sync with the host' : left ? 'Pick your spawn: click land (' + left + 's)' : me.alive ? 'Land ' + (100 * me.tiles / S.land).toFixed(1) + '% · win at ' + WIN_SHARE * 100 + '%' : 'You were eliminated, spectating';
   const alive = S.P.filter(p => p.alive && p.tiles > 0).sort((a, b) => b.tiles - a.tiles), top = alive.slice(0, 8);
@@ -561,10 +682,17 @@ function updateHud() {
   $('lb').innerHTML = top.map(p => '<div class="' + (p === me ? 'me' : '') + '"><i style="background:rgb(' + p.col + ')"></i><b>' + esc(p.name) + '</b><span>' + (100 * p.tiles / S.land).toFixed(1) + '%</span><span>' + fmt(p.troops) + '</span></div>').join('') || '<div>Waiting for spawns...</div>';
   const mx = S.cap(me); $('tbar').firstChild.style.width = Math.min(100, 100 * me.troops / mx) + '%'; $('tbar').lastChild.textContent = 'Troops ' + fmt(me.troops) + ' / ' + fmt(mx);
   $('gold').textContent = Math.floor(me.gold) + ' gold';
-  for (const b of $('bld').children) { const k = +b.dataset.k, c = S.buildCost(me, k); b.textContent = k + ' ' + names[k - 1] + ' ' + c; b.disabled = me.gold < c || S.tick <= SP || !me.alive; b.classList.toggle('on', G.tool === k); }
+  for (const b of $('bld').children) {
+    const k = +b.dataset.k, t = TOOLS[k - 1]; let c, sub = '';
+    if (t.nuke) { c = NUKE_COST; const cd = Math.max(0, Math.ceil((me.nukeAt - S.tick) / 10)); sub = !me.silos.length ? 'needs silo' : cd ? cd + 's' : c; b.disabled = S.tick <= SP || !me.alive || !me.silos.length || cd > 0 || me.gold < c; }
+    else { c = S.buildCost(me, t.b); sub = c; b.disabled = me.gold < c || S.tick <= SP || !me.alive; }
+    b.innerHTML = t.i + ' ' + t.n + '<br>' + sub; b.classList.toggle('on', G.tool === k);
+  }
   const mine = S.atks.filter(a => a.p === me.id && !a.done);
   $('atks').innerHTML = ''; for (const a of mine) { const b = document.createElement('button'); b.textContent = '✕ ' + (a.t ? S.P[a.t - 1].name : 'Unclaimed') + ' ' + fmt(a.troops); b.onclick = () => sendIntent({ k: 'ret', t: a.t }); $('atks').appendChild(b); }
-  $('hint').textContent = G.tool ? 'Click your own land to build ' + names[G.tool - 1] + (G.tool === 3 ? ' (coast only)' : '') + ' · Esc cancels' : 'Click land to attack with ' + $('ratio').value + '% of your troops · drag to pan · wheel / pinch to zoom';
+  $('hint').textContent = G.tool ? (TOOLS[G.tool - 1].nuke ? 'Click any enemy land to launch a nuke (lands in 4s, SAMs can stop it)' : 'Click your own land to build ' + TOOLS[G.tool - 1].n + (G.tool === 3 ? ' (coast only)' : '')) + ' · Esc cancels' : 'Click land to attack with ' + $('ratio').value + '% of your troops · drag to pan · wheel / pinch to zoom';
+  let inc = null; for (const nk of S.nukes) { const o = S.own[nk.i]; if (nk.p !== me.id && o === me.id) inc = nk; }
+  $('alert').classList.toggle('hidden', !inc); if (inc) $('alert').textContent = '☢ NUKE INCOMING · ' + Math.max(0, Math.ceil((inc.eta - S.tick) / 10)) + 's';
   const feed = $('feed'); while (G.feedAt < S.log.length) { const l = S.log[G.feedAt++]; const d = document.createElement('div'); d.textContent = l.msg; feed.appendChild(d); setTimeout(() => d.remove(), 8000); while (feed.children.length > 6) feed.firstChild.remove(); }
   if (S.over && !G.ended) {
     G.ended = true; const w = S.over.win ? S.P[S.over.win - 1] : null;
@@ -592,7 +720,7 @@ function clickAt(cx, cy) {
   if (x < 0 || y < 0 || x >= S.W || y >= S.H || !S.terr[y * S.W + x]) return;
   if (S.tick <= SP) sendIntent({ k: 'spawn', x, y });
   else if (!S.P[G.me].alive) return;
-  else if (G.tool) sendIntent({ k: 'build', b: G.tool, x, y });
+  else if (G.tool) { const t = TOOLS[G.tool - 1]; sendIntent(t.nuke ? { k: 'nuke', x, y } : { k: 'build', b: t.b, x, y }); }
   else sendIntent({ k: 'atk', x, y, r: +$('ratio').value });
 }
 if (/[?&]test\b/.test(location.search)) window.__G = G; // test hook
