@@ -1,6 +1,6 @@
 # Iron Express 2.0: "All Aboard"
 
-Status 2026-11-09: planned, being built in work packages (WP1 to WP4). WP5 (emote wheel) is separate but ships alongside.
+Status 2026-11-10: built as an ENCLOSED train instead of open decks (you walk inside the cars; see CLAUDE.md "Iron Express 2.0"). Built: cab with firebox, coal, throttle, whistle; gun cars with turret ladders; bunks respawn; fires; boarders; turret jams. Not built from this plan: roofs, falling off, couplings, rail-carrying repairs, cows, tunnel breather. Emote wheel built.
 
 ## Why the current version is weak
 Today every player sits in a gun car and shoots blobs for six minutes. Nobody moves and nothing breaks unless the locomotive's HP drops. There are no jobs, no reason to talk, no calm moments and no panic moments.

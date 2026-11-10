@@ -160,7 +160,7 @@ body.scen #top .res:nth-of-type(2),body.scen #top .res:nth-of-type(3),body.scen 
 #powers{display:none!important;position:absolute;right:10px;bottom:300px;display:flex;flex-direction:column;gap:4px}
 .selbar{position:absolute;right:10px;bottom:300px;display:flex;flex-direction:column;gap:4px;pointer-events:auto}
 .selbar button{width:150px;display:flex;justify-content:space-between;align-items:center;padding:5px 9px;background:rgba(6,10,14,.8);font-size:12px;text-align:left}
-.selbar.two{display:grid;grid-template-columns:repeat(2,150px)}.selbar button b{color:#ffd97a;font-weight:800}.selbar button kbd{opacity:.55;font-size:10px}
+.selbar.two{display:grid;grid-template-columns:repeat(2,auto)}.selbar button b{color:#ffd97a;font-weight:800}.selbar button kbd{opacity:.55;font-size:10px}
 body.camp #selBar,body.direct-mode #selBar,body.camp #sqBar,body.direct-mode #sqBar{display:none}
 #sqBar{right:168px;max-height:46vh;overflow-y:auto;scrollbar-width:thin}#sqBar:empty{display:none}#sqBar h4{margin:0 0 2px;font:700 10px system-ui;letter-spacing:.08em;color:#9fb0bb;text-transform:uppercase;text-align:right;text-shadow:0 1px 3px #000}#sqBar button{width:168px}#sqBar button.on{border-left-color:#6dff9a}#sqBar button small{color:#9fb0bb;font-weight:600}
 @media (max-width:1000px){.selbar{bottom:225px}.selbar button{width:118px;font-size:11px}#sqBar{right:134px}#sqBar button{width:132px}}
@@ -10600,7 +10600,7 @@ const Direct = {
   modeOf(d) { return d.cat === 'drone' ? 'fpv' : d.cat === 'air' ? 'plane' : d.cat === 'heli' ? 'heli' : d.cat === 'sea' ? 'ship' : d.cat === 'veh' ? 'vehicle' : 'soldier'; },
 
   enter(ui, e) {
-    this.ui = ui; this.e = e; this.id = e.id; this.on = true; this.aboard = null; this.noChute = false;
+    this.ui = ui; this.e = e; this.id = e.id; this.on = true; this.aboard = null; this.noChute = false; this.deadView = false;
     const d = e.d;
     this.mode = ui.g.redstar && e.rs ? 'crew' : ui.g.rail && e.k === 'loco' ? 'train' : this.modeOf(d);
     this.yaw = e.h; this.pitch = this.mode === 'plane' ? 0 : -.05; this.roll = 0; this.fq = undefined; this.manualFly = false; this.fpP = 0; this.pRate = 0; this.rollRate = 0; this.pullUp = false; this.warnT = 0; this.killStreak = 0; this.strikeBank = 0; this.confirm = null; this.vz = 0; this.mx = this.my = 0; this.keys = {}; this.mouseDown = false;
@@ -11010,7 +11010,7 @@ const Direct = {
       const c = this.cut; if (!c.deadT) { c.deadT = performance.now(); this.ui.cutLine(c.wrong ? 'EXECUTED AS A SPY' : 'KILLED'); }
       if (performance.now() - c.deadT < 3000) return;
       this.endCut(); this.exit(c.wrong ? 'Executed as a spy' : 'Your spy was killed'); return; }
-    if (!e) { if (this.mode !== 'fpv' && window.Tension && window.Tension.dead(this, dt, g)) return; this.exit(this.mode === 'fpv' ? 'Signal lost' : this.e.d.n + ' destroyed'); return; }
+    if (!e) { if (this.mode !== 'fpv' && window.Tension && window.Tension.dead(this, dt, g)) { if (!this.deadView) { this.deadView = true; document.getElementById('xhair').classList.add('hidden'); } return; } this.exit(this.mode === 'fpv' ? 'Signal lost' : this.e.d.n + ' destroyed'); return; }
     if (window.Tension) window.Tension.tick(this, e, dt);
     if (e.k !== this.e.k) { this.W = pwpnOf(e).map(w => ({w, ammo: w.mag || 1, rl: 0, cd: 0})); this.slot = 0; VM.build(e, g.view.players[e.o].nation, 0); this.msg(e.k === 'wolf' ? 'ALPHA WOLF! ' + Settings.keyName(Settings.binds.fire) + ' bites, ' + Settings.keyName(Settings.binds.alt) + ' pounces' : 'Back to blob form', 2); }
     this.e = e; this.g = g;
@@ -12215,7 +12215,7 @@ const Direct = {
       if (!(this.mode === 'crew' && this.dropT > .8)) { const ac = r.autoClear; r.autoClear = false; if (this.mode === 'crew') { this.syncCrewMeshes(I, C); this.syncRsFx(I); } r.clearDepth(); r.render(I.scene, C); r.autoClear = ac; }
       return;
     }
-    if (!this.on || this.cut || !this.firstPerson() || this.mode !== 'soldier') return;
+    if (!this.on || this.cut || this.deadView || !this.firstPerson() || this.mode !== 'soldier') return;
     const W = this.W[this.slot] && this.W[this.slot].w, scoped = W && W.scope && this.adsK > .8;
     if (scoped) return;
     VM.draw(this.ui.g.R, this, W);
@@ -12299,6 +12299,7 @@ const Direct = {
     }
   },
   drawHud(c, w, h) {
+    if (this.deadView) return; // the death screen has the stage
     if (this.mode === 'crew') { this.drawCrewHud(c, w, h); return; }
     if (this.mode === 'train') { if (this.aboard) this.drawTrainHud(c, w, h); return; }
     const cx = w / 2, cy = h / 2, W = this.W[this.slot] && this.W[this.slot].w, S = this.W[this.slot], g = this.ui.g, dt = 1 / 60;
@@ -15119,6 +15120,7 @@ const UI = {
     const sb = $('selBar'), cd = $('cards'); if (!sb || !cd || !cd.offsetHeight) return; const cr = cd.getBoundingClientRect(), b = innerHeight - cr.top + 8;
     if (sb._b !== b) { sb._b = b; sb.style.bottom = b + 'px'; } const room = cr.top - 70, two = sb.scrollHeight > room && !sb.classList.contains('two') ? true : sb.classList.contains('two') && sb.children.length * 30 / 2 + 40 < room ? null : sb.classList.contains('two');
     if (two === true) sb.classList.add('two'); else if (two === null && sb.scrollHeight * 2 < room) sb.classList.remove('two');
+    const q = $('sqBar'); if (q) { const r = sb.offsetWidth + 18 + 'px'; if (q.style.right !== r) q.style.right = r; if (q.style.bottom !== b + 'px') q.style.bottom = b + 'px'; }
   },
   refreshHud(force) {
     this.fitSelBar();
@@ -15606,6 +15608,9 @@ addEventListener('keydown', () => { if (typeof Direct !== 'undefined' && window.
   const CHANGELOG = [
     {d: '10 Nov 2026', items: [
       'Iron Express rebuilt: you ride inside an enclosed armoured train with your crew. Walk between the cab and the gun cars, shovel coal to keep steam up, set the throttle, pull the whistle, climb the ladders to man the turrets, put out fires, repair knocked-out turrets and shoot or kick raiders who climb aboard.',
+      'Smoother big battles and room for much bigger maps: long-distance pathfinding is spread over several frames instead of freezing the game, and the ground is drawn in chunks that get simpler far away.',
+      'Driving: hills slow tanks down, vehicles bump into each other instead of driving through, the ride is smooth over bumps and you slide along walls instead of sticking. Tanks no longer get stuck on water corners.',
+      'Polish: build buttons show their full names, the quick-command buttons never hide behind the build panel, a faster opening economy, a clean death screen, and no blob filling your screen when you jump into first person in a crowd.',
       'Emotes: the wheel shows an outline of each pose, the camera swings out so you can watch yourself, the moves are bigger and readable from far away, and you can walk around while you griddy. Firing, aiming or jumping ends it.',
     ]},
     {d: '9 Nov 2026', items: [
