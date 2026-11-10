@@ -1,0 +1,600 @@
+<!doctype html>
+<!--
+  jjfront: an OpenFront-style territory war game, played in the browser, online through the jjfanwars relay.
+
+  Rules and numbers (troop cap, troop growth, attack-ratio slider, cities / defense posts, tribes + AI nations)
+  follow OpenFront (https://openfront.io, https://github.com/openfrontio/OpenFrontIO), (c) OpenFront Inc. and
+  contributors, AGPL-3.0 with additional attribution terms. This is an independent remake and NOT the official game.
+  Code here is licensed AGPL-3.0 as well; source: https://github.com/jjfanwars/jjfanwars.github.io
+
+  Netcode: deterministic lockstep. Every player runs the same simulation from the same seed. The host (or the
+  solo player) collects intents, stamps them into a numbered turn every 100 ms and the relay forwards that turn to
+  everyone. The sim therefore only uses + - * / sqrt and a seeded PRNG, never Math.random / Math.pow / time.
+-->
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>jjfront</title>
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:#0b1624;color:#e8eef2;font:14px/1.35 system-ui,Segoe UI,Roboto,sans-serif;overflow:hidden;user-select:none;-webkit-user-select:none}
+canvas#cv{position:fixed;inset:0;width:100%;height:100%;touch-action:none;display:block}
+.hidden{display:none!important}
+.scr{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;background:rgba(8,14,24,.88);padding:16px;overflow:auto;z-index:5}
+.scr h1{margin:0;font-size:44px;letter-spacing:1px}
+.scr .sub{margin:0 0 6px;color:#8fa3b5}
+.box{width:min(440px,100%);display:flex;flex-direction:column;gap:8px}
+.row{display:flex;gap:8px}.row>*{flex:1;min-width:0}
+label{display:flex;flex-direction:column;gap:3px;font-size:12px;color:#8fa3b5}
+input,select{background:#101e30;color:#e8eef2;border:1px solid #2c4058;border-radius:6px;padding:8px;font:inherit;width:100%;user-select:text;-webkit-user-select:text}
+button{background:#2a6fdb;color:#fff;border:0;border-radius:6px;padding:10px 12px;font:600 14px system-ui;cursor:pointer}
+button:hover{background:#3a80ee}button:disabled{background:#2c3a4c;color:#78889a;cursor:default}
+button.alt{background:#24384f}button.alt:hover{background:#2f4a68}
+#rooms{display:flex;flex-direction:column;gap:6px;max-height:150px;overflow:auto}
+#rooms button{display:flex;justify-content:space-between}
+#msg,#lmsg{min-height:18px;color:#ffb35c;font-size:13px}
+.credit{max-width:440px;font-size:11px;color:#6d8094;text-align:center;margin:6px 0 0}
+.credit a{color:#8fb4e8}
+#code{font:700 40px ui-monospace,Menlo,monospace;letter-spacing:6px;text-align:center}
+#lpl{background:#101e30;border-radius:6px;padding:8px;min-height:60px}
+#lpl div{padding:2px 0}
+#hud{position:fixed;inset:0;pointer-events:none;z-index:3}
+#hud>*{pointer-events:auto}
+#lb{position:absolute;top:8px;left:8px;background:rgba(10,18,30,.78);border-radius:8px;padding:6px 8px;min-width:190px;font-size:12px}
+#lb div{display:flex;gap:6px;align-items:center;padding:1px 0;white-space:nowrap}
+#lb i{width:10px;height:10px;border-radius:50%;flex:none}
+#lb b{flex:1;overflow:hidden;text-overflow:ellipsis}
+#lb span{color:#9fb2c4;font-variant-numeric:tabular-nums}
+#lb .me{color:#ffe08a}
+#top{position:absolute;top:8px;left:50%;transform:translateX(-50%);background:rgba(10,18,30,.8);border-radius:8px;padding:6px 14px;font-weight:600;text-align:center;pointer-events:none!important}
+#menuBtn{position:absolute;top:8px;right:8px;padding:6px 10px;background:rgba(36,56,79,.9)}
+#feed{position:absolute;left:8px;bottom:150px;font-size:12px;display:flex;flex-direction:column;gap:2px;pointer-events:none!important}
+#feed div{background:rgba(10,18,30,.7);padding:2px 8px;border-radius:5px;width:fit-content}
+#panel{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:min(560px,calc(100% - 16px));background:rgba(10,18,30,.88);border-radius:10px;padding:8px 10px;display:flex;flex-direction:column;gap:6px}
+#tbar{height:18px;background:#1a2a40;border-radius:9px;overflow:hidden;position:relative}
+#tbar i{display:block;height:100%;background:linear-gradient(90deg,#2f8f5a,#58c786);width:0}
+#tbar span{position:absolute;inset:0;text-align:center;font-size:12px;line-height:18px;font-weight:600}
+#prow{display:flex;gap:10px;align-items:center}
+#prow input[type=range]{padding:0;flex:1}
+#gold{font-weight:700;color:#ffd35c;min-width:84px;text-align:right}
+#bld{display:flex;gap:6px}
+#bld button{flex:1;padding:6px 4px;font-size:12px;background:#24384f}
+#bld button.on{background:#d9822b}
+#atks{display:flex;flex-wrap:wrap;gap:4px}
+#atks button{padding:2px 8px;font-size:11px;background:#7a2f2f}
+#hint{font-size:11px;color:#8fa3b5;text-align:center}
+@media(max-width:560px){#lb{min-width:150px;font-size:11px}#feed{bottom:170px}}
+</style></head><body>
+<canvas id="cv"></canvas>
+
+<div id="menu" class="scr">
+  <h1>jjfront</h1><p class="sub">Spawn, expand, outgrow your neighbours, take the map.</p>
+  <div class="box">
+    <label>Your name<input id="nm" maxlength="14" autocomplete="off"></label>
+    <div class="row">
+      <label>AI nations<input id="nNat" type="number" min="0" max="30" value="8"></label>
+      <label>Tribes<input id="nTri" type="number" min="0" max="80" value="20"></label>
+      <label>Map<select id="msz"><option value="0">Small</option><option value="1" selected>Medium</option><option value="2">Large</option></select></label>
+    </div>
+    <div class="row"><button id="bSolo">Play solo</button><button id="bHost" class="alt">Host online game</button></div>
+    <div class="row"><input id="jc" placeholder="Room code" maxlength="5" autocomplete="off" style="text-transform:uppercase"><button id="bJoin" class="alt">Join</button></div>
+    <div id="rooms"></div><div id="msg"></div>
+  </div>
+  <p class="credit">Rules based on <a href="https://openfront.io" target="_blank" rel="noopener">OpenFront</a> &copy; OpenFront Inc. and contributors (AGPL-3.0). Independent remake, not the official game. <a href="https://github.com/jjfanwars/jjfanwars.github.io" target="_blank" rel="noopener">Source</a>.</p>
+</div>
+
+<div id="lobby" class="scr hidden">
+  <div class="box">
+    <div style="text-align:center;color:#8fa3b5">Room code</div><div id="code">-----</div>
+    <div id="lcfg" style="text-align:center;color:#8fa3b5"></div>
+    <div id="lpl"></div><div id="lmsg"></div>
+    <div class="row"><button id="bStart">Start game</button><button id="bLeave" class="alt">Leave</button></div>
+  </div>
+</div>
+
+<div id="hud" class="hidden">
+  <div id="lb"></div><div id="top"></div><button id="menuBtn">Leave</button>
+  <div id="feed"></div>
+  <div id="panel">
+    <div id="tbar"><i></i><span></span></div>
+    <div id="prow"><span>Attack</span><input id="ratio" type="range" min="5" max="100" value="30"><b id="rv">30%</b><span id="gold"></span></div>
+    <div id="bld"></div><div id="atks"></div>
+    <div id="hint"></div>
+  </div>
+</div>
+
+<div id="over" class="scr hidden"><h1 id="otitle"></h1><div id="obody" style="color:#8fa3b5"></div><button id="bOver">Back to menu</button></div>
+
+<script id="sim">
+'use strict';
+// ===== Simulation (pure, deterministic). No DOM, no Math.random, no Math.pow. =====
+const SP = 200;                       // spawn phase length in turns (100 ms each)
+const TM = [0, 1, 1.5, 2.2];          // attack cost multiplier per terrain: water, plain, hills, mountain
+const GROW = 0.1;                     // global troop growth scale (tuned for this map size)
+const WIN_SHARE = 0.7;
+const NATION_NAMES = ['Aldoria','Brevik','Cyrene','Dunmar','Estrel','Falkor','Gorvia','Hesper','Istria','Jorvan','Kelmar','Lysia','Morvane','Norland','Ostrava','Pelion','Quenta','Rhodan','Sarnia','Tyrell','Ulmar','Valdis','Wenmar','Xanth','Yorvik','Zelan','Arvane','Belgrim','Corvath','Dessar'];
+
+function mulberry(seed) { let s = seed | 0; return () => { s = s + 0x6D2B79F5 | 0; let t = Math.imul(s ^ s >>> 15, 1 | s); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function hash2(x, y, s) { let h = Math.imul(x, 374761393) + Math.imul(y, 668265263) + Math.imul(s, 1274126177) | 0; h = Math.imul(h ^ h >>> 13, 1274126177); return ((h ^ h >>> 16) >>> 0) / 4294967296; }
+function vnoise(x, y, s) {
+  const xi = Math.floor(x), yi = Math.floor(y), xf = x - xi, yf = y - yi, u = xf * xf * (3 - 2 * xf), v = yf * yf * (3 - 2 * yf);
+  const a = hash2(xi, yi, s), b = hash2(xi + 1, yi, s), c = hash2(xi, yi + 1, s), d = hash2(xi + 1, yi + 1, s);
+  return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v;
+}
+// 0 water, 1 plains, 2 hills, 3 mountains. Only the biggest landmass is kept, so nobody spawns on an unreachable islet.
+function genMap(W, H, seed) {
+  const n = W * H, t = new Uint8Array(n), s = seed | 0;
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    let f = 0, a = 0.5, fr = 1 / 40, tot = 0;
+    for (let o = 0; o < 5; o++) { f += a * vnoise(x * fr, y * fr, s + o * 101); tot += a; a *= 0.5; fr *= 2; }
+    f /= tot;
+    const dx = (x + 0.5) / W * 2 - 1, dy = (y + 0.5) / H * 2 - 1, e = dx * dx * 0.9 + dy * dy;
+    const v = f + 0.2 - 0.45 * e;
+    t[y * W + x] = v > 0.64 ? 3 : v > 0.55 ? 2 : v > 0.4 ? 1 : 0;
+  }
+  const comp = new Int32Array(n).fill(-1), q = new Int32Array(n); let best = -1, bestN = 0, cid = 0;
+  for (let i = 0; i < n; i++) {
+    if (!t[i] || comp[i] >= 0) continue;
+    let h = 0, e = 0; q[e++] = i; comp[i] = cid;
+    while (h < e) {
+      const c = q[h++], x = c % W;
+      if (x > 0 && t[c - 1] && comp[c - 1] < 0) { comp[c - 1] = cid; q[e++] = c - 1; }
+      if (x < W - 1 && t[c + 1] && comp[c + 1] < 0) { comp[c + 1] = cid; q[e++] = c + 1; }
+      if (c >= W && t[c - W] && comp[c - W] < 0) { comp[c - W] = cid; q[e++] = c - W; }
+      if (c + W < n && t[c + W] && comp[c + W] < 0) { comp[c + W] = cid; q[e++] = c + W; }
+    }
+    if (e > bestN) { bestN = e; best = cid; }
+    cid++;
+  }
+  for (let i = 0; i < n; i++) if (t[i] && comp[i] !== best) t[i] = 0;
+  return t;
+}
+function colorOf(i) { // display only (never feeds the sim)
+  const h = (i * 137.508) % 360, s = 0.62 + (i % 3) * 0.08, l = 0.5 + (i % 2) * 0.06;
+  const k = n => (n + h / 30) % 12, a = s * Math.min(l, 1 - l), f = n => l - a * Math.max(-1, Math.min(k(n) - 3, 9 - k(n), 1));
+  return [Math.round(f(0) * 255), Math.round(f(8) * 255), Math.round(f(4) * 255)];
+}
+
+class Sim {
+  // roster: [{name, human:bool, bot:'nation'|'tribe'}], player id = index + 1 (0 = nobody's land)
+  constructor(cfg, roster) {
+    this.cfg = cfg; const W = this.W = cfg.w, H = this.H = cfg.h, n = this.n = W * H;
+    this.terr = genMap(W, H, cfg.seed); this.own = new Uint8Array(n); this.bld = new Uint8Array(n); // bld: 1 city, 2 defense post, 3 port
+    this.land = 0; for (let i = 0; i < n; i++) if (this.terr[i]) this.land++;
+    this.P = roster.map((r, i) => ({ id: i + 1, name: r.name, human: !!r.human, kind: r.human ? 'human' : r.bot, alive: true, spawn: -1, spawned: false,
+      troops: 0, gold: 0, tiles: 0, sx: 0, sy: 0, cities: 0, ports: 0, posts: [], col: colorOf(i) }));
+    this.tick = 0; this.r = mulberry(cfg.seed ^ 0x5bd1e995); this.atks = []; this.dirty = []; this.log = []; this.over = null; this.ct = null;
+  }
+  cap(p) {
+    let m = 2 * (2000 * Math.sqrt(p.tiles) + 50000) + p.cities * 100000;
+    if (p.kind === 'tribe') m /= 3; else if (p.kind === 'nation') m *= 0.75;
+    return m;
+  }
+  buildCost(p, b) { return b === 1 ? Math.round(250 * (1 + 0.5 * p.cities)) : b === 2 ? Math.round(100 * (1 + 0.3 * p.posts.length)) : 150; }
+  coastal(i) { const W = this.W, t = this.terr, x = i % W; return (x > 0 && !t[i - 1]) || (x < W - 1 && !t[i + 1]) || (i >= W && !t[i - W]) || (i + W < this.n && !t[i + W]); }
+  say(msg) { this.log.push({ t: this.tick, msg }); }
+
+  addB(p, i, b) { if (b === 1) p.cities++; else if (b === 2) p.posts.push(i); else p.ports++; }
+  remB(p, i, b) { if (b === 1) p.cities--; else if (b === 2) { const k = p.posts.indexOf(i); if (k >= 0) p.posts.splice(k, 1); } else p.ports--; }
+  setOwner(i, id) {
+    const o = this.own[i]; if (o === id) return;
+    const x = i % this.W, y = (i / this.W) | 0, b = this.bld[i];
+    if (o) { const q = this.P[o - 1]; q.tiles--; q.sx -= x; q.sy -= y; if (b) this.remB(q, i, b); }
+    this.own[i] = id;
+    if (id) { const q = this.P[id - 1]; q.tiles++; q.sx += x; q.sy += y; if (b) this.addB(q, i, b); } else this.bld[i] = 0;
+    this.dirty.push(i);
+    if (o && this.P[o - 1].tiles === 0 && this.P[o - 1].spawned) this.kill(o, id);
+  }
+  kill(o, by) {
+    const p = this.P[o - 1]; if (!p.alive) return; p.alive = false; p.troops = 0;
+    for (const a of this.atks) { if (a.p === o) a.done = true; else if (a.t === o) this.endAtk(a); }
+    this.say(p.name + ' was eliminated' + (by ? ' by ' + this.P[by - 1].name : ''));
+  }
+
+  apply(pid, it) {
+    const p = this.P[pid]; if (!p || !it) return; const T = this.tick, W = this.W;
+    const x = it.x | 0, y = it.y | 0, ok = x >= 0 && y >= 0 && x < W && y < this.H, i = y * W + x;
+    switch (it.k) {
+      case 'spawn': if (T <= SP && p.human && ok && this.terr[i] && this.terr[i] < 3) p.spawn = i; break;
+      case 'atk': if (T > SP && p.alive && ok && this.terr[i]) this.launch(p, this.own[i], +it.r || 30); break;
+      case 'build': {
+        const b = it.b | 0; if (T <= SP || !p.alive || !ok || b < 1 || b > 3) break;
+        if (this.own[i] !== p.id || !this.terr[i] || this.bld[i] || (b === 3 && !this.coastal(i))) break;
+        const c = this.buildCost(p, b); if (p.gold < c) break;
+        p.gold -= c; this.bld[i] = b; this.addB(p, i, b); this.dirty.push(i); break;
+      }
+      case 'ret': for (const a of this.atks) if (a.p === p.id && a.t === (it.t | 0) && !a.done) this.endAtk(a); break;
+      case 'afk': if (p.kind === 'human') p.kind = 'nation'; break; // a player who left becomes an AI nation
+    }
+  }
+
+  launch(p, t, pct) {
+    const id = p.id; if (t === id || !p.alive || t < 0 || t > this.P.length) return;
+    if (t && !this.P[t - 1].alive) return;
+    pct = Math.max(1, Math.min(100, pct | 0)); const amt0 = Math.floor(p.troops * pct / 100); if (amt0 < 10) return;
+    const W = this.W, n = this.n, own = this.own, terr = this.terr, q = [];
+    for (let i = 0; i < n; i++) {
+      if (own[i] !== t || !terr[i]) continue; const x = i % W;
+      if ((x > 0 && own[i - 1] === id) || (x < W - 1 && own[i + 1] === id) || (i >= W && own[i - W] === id) || (i + W < n && own[i + W] === id)) q.push(i);
+    }
+    if (!q.length) return;
+    p.troops -= amt0; let amt = amt0;
+    if (t) { // two armies facing each other cancel out first
+      for (const b of this.atks) if (!b.done && b.p === t && b.t === id) { const m = Math.min(amt, b.troops); amt -= m; b.troops -= m; if (b.troops <= 0) b.done = true; if (amt <= 0) return; }
+    }
+    const ex = this.atks.find(a => !a.done && a.p === id && a.t === t);
+    if (ex) { ex.troops += amt; for (const i of q) if (!ex.mark[i]) { ex.mark[i] = 1; ex.q.push(i); } return; }
+    const mark = new Uint8Array(n); for (const i of q) mark[i] = 1;
+    this.atks.push({ p: id, t, troops: amt, q, h: 0, mark, done: false });
+    if (t) this.say(p.name + ' attacks ' + this.P[t - 1].name);
+  }
+  endAtk(a) { a.done = true; const p = this.P[a.p - 1]; if (p.alive) p.troops += a.troops; a.troops = 0; }
+  runAtk(a) {
+    const p = this.P[a.p - 1]; if (!p.alive) { a.done = true; return; }
+    const t = a.t, id = a.p, d = t ? this.P[t - 1] : null, W = this.W, n = this.n, own = this.own, terr = this.terr, q = a.q;
+    if (d && !d.alive) { this.endAtk(a); return; }
+    let budget = 4 + Math.min(70, (q.length - a.h) >> 2);
+    while (budget-- > 0 && a.h < q.length) {
+      const i = q[a.h++]; if (own[i] !== t) continue; const x = i % W;
+      if (!((x > 0 && own[i - 1] === id) || (x < W - 1 && own[i + 1] === id) || (i >= W && own[i - W] === id) || (i + W < n && own[i + W] === id))) continue;
+      const mul = TM[terr[i]]; let cost, dl = 0;
+      if (!t) cost = 16 * mul;
+      else {
+        const per = d.troops / Math.max(1, d.tiles), y = (i / W) | 0; let dm = 1;
+        for (const pi of d.posts) { const px = pi % W, py = (pi / W) | 0; if ((px - x) * (px - x) + (py - y) * (py - y) <= 36) { dm = 3; break; } }
+        cost = per * mul * dm + mul * 5; dl = per * 0.7;
+      }
+      if (a.troops < cost) { this.endAtk(a); return; }
+      a.troops -= cost; if (t) d.troops = Math.max(0, d.troops - dl);
+      this.setOwner(i, id);
+      const nb = [x > 0 ? i - 1 : -1, x < W - 1 ? i + 1 : -1, i >= W ? i - W : -1, i + W < n ? i + W : -1];
+      for (const j of nb) if (j >= 0 && own[j] === t && terr[j] && !a.mark[j]) { a.mark[j] = 1; q.push(j); }
+    }
+    if (a.h > 2048) { a.q = q.slice(a.h); a.h = 0; }
+    if (a.h >= a.q.length) this.endAtk(a);
+  }
+  econ() {
+    for (const p of this.P) {
+      if (!p.alive || !p.spawned) continue;
+      const mx = this.cap(p);
+      if (p.troops < mx) {
+        let add = (10 + Math.sqrt(p.troops) * Math.sqrt(Math.sqrt(p.troops)) / 4) * (1 - p.troops / mx) * GROW;
+        if (p.kind === 'tribe') add *= 0.5; p.troops += add;
+      } else p.troops -= (p.troops - mx) * 0.002;
+      p.gold += (1 + p.tiles * 0.02 + p.ports * 4) / 10;
+    }
+  }
+
+  // who touches whom (once a second): ct[id] = Map(otherId -> border length), 0 = unclaimed land
+  contacts() {
+    const W = this.W, n = this.n, own = this.own, terr = this.terr, ct = this.P.map(() => new Map()), add = (a, b) => { if (a) ct[a - 1].set(b, (ct[a - 1].get(b) || 0) + 1); };
+    for (let i = 0; i < n; i++) {
+      if (!terr[i]) continue; const o = own[i], x = i % W;
+      if (x < W - 1 && terr[i + 1] && own[i + 1] !== o) { add(o, own[i + 1]); add(own[i + 1], o); }
+      if (i + W < n && terr[i + W] && own[i + W] !== o) { add(o, own[i + W]); add(own[i + W], o); }
+    }
+    this.ct = ct;
+  }
+  bots() {
+    const T = this.tick; if (T % 10) return; this.contacts(); const r = this.r;
+    for (const p of this.P) {
+      if (!p.alive || !p.spawned || p.kind === 'human') continue;
+      const nat = p.kind === 'nation'; if ((T / 10 + p.id) % (nat ? 1 : 3)) continue;
+      if (nat) this.botBuild(p);
+      const mx = this.cap(p), ct = this.ct[p.id - 1];
+      if (p.troops < mx * (nat ? 0.45 : 0.3)) continue;
+      let t = -1;
+      if ((ct.get(0) || 0) >= 3 && r() < (nat ? 0.85 : 0.7)) t = 0;
+      else {
+        let bs = 1e18; const opts = [...ct.keys()].filter(k => k > 0 && this.P[k - 1].alive).sort((a, b) => a - b);
+        if (!opts.length) { if (ct.get(0)) t = 0; }
+        else if (nat) { for (const k of opts) { const s = this.P[k - 1].troops; if (s * 1.2 < p.troops * 0.4 && s < bs) { bs = s; t = k; } } if (t < 0 && ct.get(0)) t = 0; }
+        else t = opts[(r() * opts.length) | 0];
+      }
+      if (t >= 0) this.launch(p, t, nat ? 40 : 20);
+    }
+  }
+  botBuild(p) {
+    const r = this.r, W = this.W, own = this.own, id = p.id;
+    const want = p.gold >= this.buildCost(p, 1) && p.cities < 1 + p.tiles / 90 ? 1 : p.gold >= this.buildCost(p, 2) && p.posts.length < 1 + p.tiles / 160 ? 2 : 0;
+    if (!want) return;
+    for (let k = 0; k < 60; k++) {
+      const i = (r() * this.n) | 0; if (own[i] !== id || this.bld[i] || !this.terr[i]) continue;
+      if (want === 2) { const x = i % W; const e = (x > 0 && this.terr[i - 1] && own[i - 1] !== id) || (x < W - 1 && this.terr[i + 1] && own[i + 1] !== id) || (i >= W && this.terr[i - W] && own[i - W] !== id) || (i + W < this.n && this.terr[i + W] && own[i + W] !== id); if (!e) continue; }
+      p.gold -= this.buildCost(p, want); this.bld[i] = want; this.addB(p, i, want); this.dirty.push(i); return;
+    }
+  }
+
+  spawnAt(p, i, rad) {
+    const W = this.W, H = this.H, cx = i % W, cy = (i / W) | 0;
+    for (let y = cy - rad; y <= cy + rad; y++) for (let x = cx - rad; x <= cx + rad; x++) {
+      if (x < 0 || y < 0 || x >= W || y >= H || (x - cx) * (x - cx) + (y - cy) * (y - cy) > rad * rad) continue;
+      const j = y * W + x; if (this.terr[j] && !this.own[j]) { p.spawned = true; this.setOwner(j, p.id); }
+    }
+    p.spawned = true; p.troops = p.kind === 'tribe' ? 8000 : 25000; p.gold = 100;
+  }
+  endSpawn() {
+    const placed = [], r = this.r, W = this.W;
+    for (const p of this.P) if (p.human && p.spawn >= 0) { this.spawnAt(p, p.spawn, 5); placed.push(p.spawn); }
+    for (const p of this.P) {
+      if (p.spawned) continue;
+      for (let k = 0; k < 400 && !p.spawned; k++) {
+        const i = (r() * this.n) | 0; if (!this.terr[i] || this.terr[i] > 2 || this.own[i]) continue;
+        const md = k < 250 ? 14 : 4, x = i % W, y = (i / W) | 0;
+        if (placed.some(j => { const dx = (j % W) - x, dy = ((j / W) | 0) - y; return dx * dx + dy * dy < md * md; })) continue;
+        this.spawnAt(p, i, p.kind === 'tribe' ? 3 : 5); placed.push(i);
+      }
+      if (!p.spawned) p.alive = false;
+    }
+    this.say('The war begins');
+  }
+  checkWin() {
+    let best = null, alive = 0, humans = 0;
+    for (const p of this.P) { if (!p.alive) continue; alive++; if (p.kind === 'human') humans++; if (!best || p.tiles > best.tiles) best = p; }
+    if (!best) { this.over = { win: 0 }; return; }
+    if (best.tiles >= WIN_SHARE * this.land || alive === 1) this.over = { win: best.id };
+    else if (!humans && this.P.some(p => p.human)) this.over = { win: best.id, noHumans: true };
+  }
+  step(ints) {
+    if (this.over) return; this.tick++;
+    for (const [pid, it] of ints) this.apply(pid, it);
+    if (this.tick === SP) this.endSpawn();
+    if (this.tick > SP) {
+      this.econ(); for (const a of this.atks) if (!a.done) this.runAtk(a);
+      if (this.atks.length > 40 || this.tick % 10 === 0) this.atks = this.atks.filter(a => !a.done);
+      this.bots(); if (this.tick % 10 === 0) this.checkWin();
+    }
+  }
+  hash() { let h = this.tick | 0; for (const p of this.P) { h = Math.imul(h ^ (p.tiles | 0), 16777619); h = Math.imul(h ^ (p.troops | 0), 16777619); h = Math.imul(h ^ (p.gold | 0), 16777619); } return h >>> 0; }
+}
+</script>
+
+<script id="app">
+'use strict';
+// ===== Client: menu, lobby, networking (jjfanwars relay), rendering, input =====
+const $ = id => document.getElementById(id);
+const enc = new TextEncoder(), dec = new TextDecoder();
+const SIZES = [[160, 100], [240, 150], [320, 200]];
+const RELAY_URL = 'wss://jjfanwars-relay.businessautomationvic.workers.dev';
+function relay() { // localhost can point at a test relay with ?relay=ws://127.0.0.1:8787
+  if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) { const q = /[?&]relay=([^&]+)/.exec(location.search); if (q) return decodeURIComponent(q[1]).replace(/\/$/, ''); }
+  return RELAY_URL;
+}
+const cleanName = s => String(s || '').replace(/[^A-Za-z0-9 ._-]/g, '').trim().slice(0, 14);
+const fmt = x => { x = Math.floor(x / 10); return x >= 1e6 ? (x / 1e6).toFixed(1) + 'M' : x >= 1e3 ? (x / 1e3).toFixed(1) + 'K' : '' + x; };
+const send = (ws, o) => { try { ws.send(enc.encode(JSON.stringify(o))); } catch (e) {} };
+const parse = d => { try { return JSON.parse(dec.decode(d)); } catch (e) { return null; } };
+const msg = (el, t) => { $(el).textContent = t || ''; };
+
+const G = { role: null, sim: null, me: -1, n: 0, pend: [], ws: null, peers: new Map(), myId: '', code: '', timer: 0, acc: 0, last: 0, cfg: null, tool: 0, desync: false, mine: {}, theirs: {}, feedAt: 0, started: false, ended: false, retry: 0 };
+try { $('nm').value = localStorage.getItem('jjf-front-name') || ''; } catch (e) {}
+const myName = () => { const n = cleanName($('nm').value) || 'Player' + (1 + (Math.random() * 99 | 0)); try { localStorage.setItem('jjf-front-name', n); } catch (e) {} return n; };
+const readCfg = () => { const [w, h] = SIZES[+$('msz').value | 0] || SIZES[1]; return { w, h, nat: Math.max(0, Math.min(30, +$('nNat').value | 0)), tri: Math.max(0, Math.min(80, +$('nTri').value | 0)) }; };
+
+function makeRoster(humans, c) { // humans: [{name,id}]
+  const r = humans.map(h => ({ name: h.name, human: true, id: h.id || null }));
+  for (let i = 0; i < c.nat; i++) r.push({ name: NATION_NAMES[i % NATION_NAMES.length] + (i >= NATION_NAMES.length ? ' II' : ''), bot: 'nation' });
+  for (let i = 0; i < c.tri; i++) r.push({ name: 'Tribe ' + (i + 1), bot: 'tribe' });
+  return r;
+}
+
+// ---------- turns ----------
+function hostTurn() {
+  const ints = G.pend; G.pend = []; const m = { t: 'turn', n: ++G.n, i: ints };
+  if (G.ws) bcast(m);
+  runTurn(ints);
+  if (G.ws && G.n % 100 === 0) bcast({ t: 'h', n: G.n, v: G.sim.hash() });
+}
+function runTurn(ints) {
+  G.sim.step(ints);
+  if (G.n % 100 === 0 && G.role === 'guest') { G.mine[G.n] = G.sim.hash(); checkHash(G.n); }
+}
+function checkHash(n) { if (G.mine[n] !== undefined && G.theirs[n] !== undefined && G.mine[n] !== G.theirs[n]) G.desync = true; }
+function bcast(o) { const b = enc.encode(JSON.stringify(o)), out = new Uint8Array(1 + b.length); out.set(b, 1); try { G.ws.send(out); } catch (e) {} }
+function sendIntent(it) { if (G.role === 'guest') send(G.ws, { t: 'int', it }); else G.pend.push([G.me, it]); }
+
+function beginGame(cfg, roster, me) {
+  G.cfg = cfg; G.sim = new Sim(cfg, roster); G.me = me; G.n = 0; G.pend = []; G.mine = {}; G.theirs = {}; G.desync = false; G.started = true; G.ended = false; G.feedAt = 0; G.tool = 0;
+  ['menu', 'lobby', 'over'].forEach(i => $(i).classList.add('hidden')); $('hud').classList.remove('hidden');
+  buildBar(); fitView(); initMap();
+  if (G.role !== 'guest') {
+    G.acc = 0; G.last = performance.now(); clearInterval(G.timer);
+    G.timer = setInterval(() => { // catch-up loop so a throttled background tab does not slow the game
+      const now = performance.now(); G.acc += now - G.last; G.last = now; let k = 0;
+      while (G.acc >= 100 && k++ < 30) { G.acc -= 100; hostTurn(); }
+      if (G.acc > 3000) G.acc = 0;
+    }, 25);
+  }
+  requestAnimationFrame(frame);
+}
+function leave(toMenu = true) {
+  clearInterval(G.timer); G.started = false; G.sim = null; G.retry = 0;
+  if (G.ws) { G.ws.onclose = null; try { G.ws.close(); } catch (e) {} G.ws = null; }
+  G.role = null; G.peers.clear();
+  ['lobby', 'over', 'hud'].forEach(i => $(i).classList.add('hidden')); $('menu').classList.remove('hidden');
+  if (toMenu) refreshRooms();
+}
+
+// ---------- solo ----------
+$('bSolo').onclick = () => { const c = readCfg(); G.role = 'solo'; beginGame({ seed: (Math.random() * 1e9) | 0, w: c.w, h: c.h }, makeRoster([{ name: myName() }], c), 0); };
+
+// ---------- host ----------
+const newCode = () => { let s = ''; for (let i = 0; i < 5; i++) s += 'ABCDEFGHJKLMNPQRSTUVWXYZ'[(Math.random() * 24) | 0]; return s; };
+function lobbyState() { const c = G.cfg; return { t: 'lobby', names: [G.hostName, ...[...G.peers.values()].map(p => p.name)], cfg: { nat: c.nat, tri: c.tri, w: c.w, h: c.h } }; }
+function pushLobby() { const s = lobbyState(); renderLobby(s); if (G.ws) bcast(s); }
+function renderLobby(s) {
+  $('lpl').innerHTML = s.names.map((n, i) => '<div>' + (i ? '' : '&#9733; ') + esc(n) + '</div>').join('');
+  $('lcfg').textContent = s.cfg.w + 'x' + s.cfg.h + ' map · ' + s.cfg.nat + ' AI nations · ' + s.cfg.tri + ' tribes';
+}
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+$('bHost').onclick = () => {
+  G.role = 'host'; G.cfg = readCfg(); G.hostName = myName(); G.code = newCode(); G.peers.clear(); G.started = false;
+  $('menu').classList.add('hidden'); $('lobby').classList.remove('hidden'); $('code').textContent = G.code; $('bStart').classList.remove('hidden'); msg('lmsg', 'Connecting...');
+  hostConnect(); renderLobby(lobbyState());
+};
+function hostConnect() {
+  const ws = G.ws = new WebSocket(relay() + '/room/' + G.code + '?role=host'); ws.binaryType = 'arraybuffer';
+  ws.onopen = () => { G.retry = 0; msg('lmsg', 'Share the room code. Others can also pick it from the room list.'); ws.send(JSON.stringify({ c: 'meta', name: '[Front] ' + G.hostName + "'s game", open: !G.started })); pushLobby(); };
+  ws.onmessage = e => {
+    if (typeof e.data === 'string') {
+      let m; try { m = JSON.parse(e.data); } catch (x) { return; }
+      if (m.c === 'join') G.peers.set(m.id, { name: 'Player' });
+      else if (m.c === 'leave') { const p = G.peers.get(m.id); G.peers.delete(m.id); if (G.started) { const pid = G.roster.findIndex(r => r.id === m.id); if (pid >= 0) G.pend.push([pid, { k: 'afk' }]); } else pushLobby(); }
+      return;
+    }
+    const b = new Uint8Array(e.data), k = b[0], id = dec.decode(b.subarray(1, 1 + k)), m = parse(b.subarray(1 + k)); if (!m) return;
+    if (m.t === 'hello') {
+      if (G.started) { send1(id, { t: 'busy' }); return; }
+      G.peers.set(id, { name: cleanName(m.name) || 'Player' }); pushLobby();
+    } else if (m.t === 'int' && G.started) { const pid = G.roster.findIndex(r => r.id === id); if (pid >= 0 && m.it && typeof m.it === 'object') G.pend.push([pid, m.it]); }
+  };
+  ws.onclose = () => { if (G.role === 'host' && G.ws === ws) { msg('lmsg', 'Connection lost, retrying...'); setTimeout(() => { if (G.role === 'host' && G.ws === ws) hostConnect(); }, Math.min(8000, 1000 * ++G.retry)); } };
+  clearInterval(G.ping); G.ping = setInterval(() => { try { if (G.ws && G.ws.readyState === 1) G.ws.send('ping'); } catch (e) {} }, 20000);
+}
+function send1(id, o) { const ib = enc.encode(id), b = enc.encode(JSON.stringify(o)), out = new Uint8Array(1 + ib.length + b.length); out[0] = ib.length; out.set(ib, 1); out.set(b, 1 + ib.length); try { G.ws.send(out); } catch (e) {} }
+$('bStart').onclick = () => {
+  if (G.role !== 'host') return;
+  const c = G.cfg, humans = [{ name: G.hostName, id: null }, ...[...G.peers.entries()].map(([id, p]) => ({ name: p.name, id }))];
+  const roster = G.roster = makeRoster(humans, c), cfg = { seed: (Math.random() * 1e9) | 0, w: c.w, h: c.h };
+  bcast({ t: 'start', cfg, roster }); try { G.ws.send(JSON.stringify({ c: 'meta', name: '[Front] ' + G.hostName + "'s game", open: false })); } catch (e) {}
+  G.started = true; beginGame(cfg, roster, 0);
+};
+
+// ---------- guest ----------
+$('bJoin').onclick = () => joinRoom($('jc').value.trim().toUpperCase());
+function joinRoom(code) {
+  if (!/^[A-Z]{5}$/.test(code)) { msg('msg', 'Enter the 5-letter room code.'); return; }
+  G.role = 'guest'; G.code = code; G.myId = Math.random().toString(36).slice(2, 11); G.started = false; G.sim = null;
+  $('menu').classList.add('hidden'); $('lobby').classList.remove('hidden'); $('code').textContent = code; $('bStart').classList.add('hidden'); $('lpl').innerHTML = ''; $('lcfg').textContent = ''; msg('lmsg', 'Connecting...');
+  const name = myName(), ws = G.ws = new WebSocket(relay() + '/room/' + code + '?role=guest&id=' + G.myId); ws.binaryType = 'arraybuffer';
+  ws.onopen = () => send(ws, { t: 'hello', name });
+  ws.onmessage = e => {
+    if (typeof e.data === 'string') { let m; try { m = JSON.parse(e.data); } catch (x) { return; } if (m.c === 'host' && !m.up && G.started) G.desync = 'host'; else if (m.c === 'host' && m.up) { send(ws, { t: 'hello', name }); } return; }
+    const m = parse(new Uint8Array(e.data)); if (!m) return;
+    if (m.t === 'lobby') { renderLobby(m); msg('lmsg', 'Waiting for the host to start...'); }
+    else if (m.t === 'busy') { leave(); msg('msg', 'That game already started.'); }
+    else if (m.t === 'start') { const me = m.roster.findIndex(r => r.id === G.myId); if (me >= 0) { G.started = true; beginGame(m.cfg, m.roster, me); } }
+    else if (m.t === 'turn' && G.sim && m.n === G.n + 1) { G.n = m.n; runTurn(m.i); }
+    else if (m.t === 'h') { G.theirs[m.n] = m.v; checkHash(m.n); }
+  };
+  ws.onclose = ev => { if (G.ws !== ws) return; if (!G.started) { const why = ev.code === 4404 ? 'No such room.' : ev.code === 4429 ? 'Room is full.' : 'Could not connect.'; leave(); msg('msg', why); } else G.desync = 'host'; };
+  clearInterval(G.ping); G.ping = setInterval(() => { try { if (G.ws && G.ws.readyState === 1) G.ws.send('ping'); } catch (e) {} }, 20000);
+}
+$('bLeave').onclick = () => leave();
+$('menuBtn').onclick = () => leave();
+$('bOver').onclick = () => leave();
+
+async function refreshRooms() {
+  if ($('menu').classList.contains('hidden')) return;
+  try {
+    const r = await (await fetch(relay().replace(/^ws/, 'http') + '/rooms')).json(), box = $('rooms'); box.innerHTML = '';
+    for (const x of r.filter(x => x.open && /^\[Front\]/.test(x.name))) { const b = document.createElement('button'); b.innerHTML = '<span>' + esc(x.name.slice(8)) + '</span><span>' + x.n + ' in lobby</span>'; b.onclick = () => joinRoom(x.code); box.appendChild(b); }
+  } catch (e) {}
+  clearTimeout(G.rt); G.rt = setTimeout(refreshRooms, 4000);
+}
+refreshRooms();
+
+// ---------- map rendering ----------
+const cv = $('cv'), ctx = cv.getContext('2d'), mapCv = document.createElement('canvas'), mctx = mapCv.getContext('2d');
+let img, px32, shade, view = { ox: 0, oy: 0, s: 4 };
+const WATER = [20, 46, 84], TERR = [null, [92, 140, 78], [128, 132, 82], [118, 114, 108]];
+function initMap() {
+  const S = G.sim, W = S.W, H = S.H; mapCv.width = W; mapCv.height = H; img = mctx.createImageData(W, H); px32 = new Uint32Array(img.data.buffer);
+  shade = new Float32Array(S.n); for (let i = 0; i < S.n; i++) shade[i] = 0.9 + 0.1 * hash2(i % W, (i / W) | 0, 7);
+  for (let i = 0; i < S.n; i++) paint(i); mctx.putImageData(img, 0, 0);
+}
+function rgb(r, g, b) { return (255 << 24) | (Math.max(0, Math.min(255, b | 0)) << 16) | (Math.max(0, Math.min(255, g | 0)) << 8) | Math.max(0, Math.min(255, r | 0)); }
+function paint(i) {
+  const S = G.sim, W = S.W, o = S.own[i], t = S.terr[i];
+  if (!t) { px32[i] = rgb(WATER[0], WATER[1], WATER[2]); return; }
+  const b = TERR[t], k = shade[i];
+  if (!o) { px32[i] = rgb(b[0] * k, b[1] * k, b[2] * k); return; }
+  const c = S.P[o - 1].col, x = i % W; let edge = false;
+  if ((x > 0 && S.own[i - 1] !== o) || (x < W - 1 && S.own[i + 1] !== o) || (i >= W && S.own[i - W] !== o) || (i + S.W < S.n && S.own[i + W] !== o)) edge = true;
+  if (edge) px32[i] = rgb(c[0] * 0.55 + 100, c[1] * 0.55 + 100, c[2] * 0.55 + 100);
+  else px32[i] = rgb((c[0] * 0.78 + b[0] * 0.22) * k, (c[1] * 0.78 + b[1] * 0.22) * k, (c[2] * 0.78 + b[2] * 0.22) * k);
+}
+function flushDirty() {
+  const S = G.sim, d = S.dirty; if (!d.length) return; const W = S.W, n = S.n;
+  if (d.length > n / 3) { for (let i = 0; i < n; i++) paint(i); }
+  else for (const i of d) { const x = i % W; paint(i); if (x > 0) paint(i - 1); if (x < W - 1) paint(i + 1); if (i >= W) paint(i - W); if (i + W < n) paint(i + W); }
+  S.dirty = []; mctx.putImageData(img, 0, 0);
+}
+function fitView() { const S = G.sim, w = innerWidth, h = innerHeight; view.s = Math.max(1, Math.min(w / S.W, h / S.H) * 0.94); view.ox = (w - S.W * view.s) / 2; view.oy = (h - S.H * view.s) / 2; }
+function resize() { const d = Math.min(2, devicePixelRatio || 1); cv.width = innerWidth * d; cv.height = innerHeight * d; }
+addEventListener('resize', () => { resize(); if (G.sim && G.started) fitView(); }); resize();
+
+function frame() {
+  if (!G.started || !G.sim) return;
+  const S = G.sim, d = cv.width / innerWidth; flushDirty();
+  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = '#0b1624'; ctx.fillRect(0, 0, cv.width, cv.height);
+  ctx.setTransform(d * view.s, 0, 0, d * view.s, d * view.ox, d * view.oy); ctx.imageSmoothingEnabled = false; ctx.drawImage(mapCv, 0, 0);
+  ctx.setTransform(d, 0, 0, d, 0, 0);
+  const s = view.s, W = S.W;
+  if (S.tick <= SP) { // spawn markers
+    for (const p of S.P) if (p.spawn >= 0) { const x = view.ox + (p.spawn % W + 0.5) * s, y = view.oy + (((p.spawn / W) | 0) + 0.5) * s, r = (5 + Math.sin(performance.now() / 200)) * s; ctx.strokeStyle = 'rgb(' + p.col + ')'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.stroke(); ctx.fillStyle = '#fff'; ctx.font = '12px system-ui'; ctx.textAlign = 'center'; ctx.fillText(p.name, x, y - r - 4); }
+  } else {
+    if (s >= 2.5) for (let i = 0; i < S.n; i++) { const b = S.bld[i]; if (!b) continue; const x = view.ox + ((i % W) + 0.5) * s, y = view.oy + (((i / W) | 0) + 0.5) * s, r = Math.max(3, s * 0.7); ctx.fillStyle = '#fff'; ctx.strokeStyle = '#000'; ctx.lineWidth = 1; ctx.beginPath(); if (b === 1) ctx.rect(x - r, y - r, r * 2, r * 2); else if (b === 2) { ctx.moveTo(x, y - r); ctx.lineTo(x + r, y + r); ctx.lineTo(x - r, y + r); ctx.closePath(); } else ctx.arc(x, y, r, 0, 7); ctx.fill(); ctx.stroke(); }
+    ctx.textAlign = 'center'; ctx.lineJoin = 'round';
+    for (const p of S.P) {
+      if (!p.alive || p.tiles < 25) continue; const fs = Math.max(8, Math.min(30, Math.sqrt(p.tiles) * s * 0.34)); if (fs < 9) continue;
+      const x = view.ox + (p.sx / p.tiles + 0.5) * s, y = view.oy + (p.sy / p.tiles + 0.5) * s; ctx.font = '600 ' + fs + 'px system-ui'; ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(0,0,0,.7)'; ctx.fillStyle = '#fff';
+      ctx.strokeText(p.name, x, y); ctx.fillText(p.name, x, y); if (fs > 11) { ctx.font = fs * 0.8 + 'px system-ui'; ctx.strokeText(fmt(p.troops), x, y + fs); ctx.fillText(fmt(p.troops), x, y + fs); }
+    }
+  }
+  const t = performance.now(); if (t - (G.hudT || 0) > 250) { G.hudT = t; updateHud(); }
+  requestAnimationFrame(frame);
+}
+
+// ---------- HUD ----------
+function buildBar() {
+  $('bld').innerHTML = ''; const names = ['City', 'Defense post', 'Port'];
+  names.forEach((nm, k) => { const b = document.createElement('button'); b.dataset.k = k + 1; b.onclick = () => { G.tool = G.tool === k + 1 ? 0 : k + 1; updateHud(); }; $('bld').appendChild(b); });
+}
+$('ratio').oninput = () => { $('rv').textContent = $('ratio').value + '%'; };
+addEventListener('keydown', e => { if (e.target.tagName === 'INPUT') return; if (e.key === 'Escape') G.tool = 0; else if (e.key === '1' || e.key === '2' || e.key === '3') G.tool = G.tool === +e.key ? 0 : +e.key; });
+function updateHud() {
+  const S = G.sim; if (!S) return; const me = S.P[G.me], names = ['City', 'Defense post', 'Port'];
+  const left = S.tick <= SP ? Math.ceil((SP - S.tick) / 10) : 0;
+  $('top').textContent = G.desync === 'host' ? 'Host disconnected' : G.desync ? 'Out of sync with the host' : left ? 'Pick your spawn: click land (' + left + 's)' : me.alive ? 'Land ' + (100 * me.tiles / S.land).toFixed(1) + '% · win at ' + WIN_SHARE * 100 + '%' : 'You were eliminated, spectating';
+  const alive = S.P.filter(p => p.alive && p.tiles > 0).sort((a, b) => b.tiles - a.tiles), top = alive.slice(0, 8);
+  if (!top.includes(me) && me.alive) top.push(me);
+  $('lb').innerHTML = top.map(p => '<div class="' + (p === me ? 'me' : '') + '"><i style="background:rgb(' + p.col + ')"></i><b>' + esc(p.name) + '</b><span>' + (100 * p.tiles / S.land).toFixed(1) + '%</span><span>' + fmt(p.troops) + '</span></div>').join('') || '<div>Waiting for spawns...</div>';
+  const mx = S.cap(me); $('tbar').firstChild.style.width = Math.min(100, 100 * me.troops / mx) + '%'; $('tbar').lastChild.textContent = 'Troops ' + fmt(me.troops) + ' / ' + fmt(mx);
+  $('gold').textContent = Math.floor(me.gold) + ' gold';
+  for (const b of $('bld').children) { const k = +b.dataset.k, c = S.buildCost(me, k); b.textContent = k + ' ' + names[k - 1] + ' ' + c; b.disabled = me.gold < c || S.tick <= SP || !me.alive; b.classList.toggle('on', G.tool === k); }
+  const mine = S.atks.filter(a => a.p === me.id && !a.done);
+  $('atks').innerHTML = ''; for (const a of mine) { const b = document.createElement('button'); b.textContent = '✕ ' + (a.t ? S.P[a.t - 1].name : 'Unclaimed') + ' ' + fmt(a.troops); b.onclick = () => sendIntent({ k: 'ret', t: a.t }); $('atks').appendChild(b); }
+  $('hint').textContent = G.tool ? 'Click your own land to build ' + names[G.tool - 1] + (G.tool === 3 ? ' (coast only)' : '') + ' · Esc cancels' : 'Click land to attack with ' + $('ratio').value + '% of your troops · drag to pan · wheel / pinch to zoom';
+  const feed = $('feed'); while (G.feedAt < S.log.length) { const l = S.log[G.feedAt++]; const d = document.createElement('div'); d.textContent = l.msg; feed.appendChild(d); setTimeout(() => d.remove(), 8000); while (feed.children.length > 6) feed.firstChild.remove(); }
+  if (S.over && !G.ended) {
+    G.ended = true; const w = S.over.win ? S.P[S.over.win - 1] : null;
+    $('otitle').textContent = !w ? 'Game over' : w === me ? 'You win!' : w.name + ' wins'; $('obody').textContent = alive.slice(0, 5).map((p, i) => (i + 1) + '. ' + p.name + ' ' + (100 * p.tiles / S.land).toFixed(1) + '%').join('   ');
+    $('over').classList.remove('hidden');
+  }
+}
+
+// ---------- input ----------
+const pts = new Map(); let pinch = 0;
+cv.addEventListener('contextmenu', e => e.preventDefault());
+cv.addEventListener('pointerdown', e => { cv.setPointerCapture(e.pointerId); pts.set(e.pointerId, { x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, moved: false }); if (pts.size === 2) pinch = pdist(); });
+cv.addEventListener('pointermove', e => {
+  const p = pts.get(e.pointerId); if (!p) return; const dx = e.clientX - p.x, dy = e.clientY - p.y; p.x = e.clientX; p.y = e.clientY;
+  if (pts.size === 1) { if (!p.moved && Math.hypot(e.clientX - p.sx, e.clientY - p.sy) > 6) p.moved = true; if (p.moved) { view.ox += dx; view.oy += dy; } }
+  else if (pts.size === 2) { const [a, b] = [...pts.values()]; a.moved = b.moved = true; const d = pdist(); if (pinch) zoomAt((a.x + b.x) / 2, (a.y + b.y) / 2, d / pinch); pinch = d; }
+});
+const pdist = () => { const [a, b] = [...pts.values()]; return Math.hypot(a.x - b.x, a.y - b.y); };
+function endPtr(e) { const p = pts.get(e.pointerId); if (p && pts.size === 1 && !p.moved && e.type === 'pointerup') clickAt(e.clientX, e.clientY); pts.delete(e.pointerId); pinch = 0; }
+cv.addEventListener('pointerup', endPtr); cv.addEventListener('pointercancel', endPtr);
+cv.addEventListener('wheel', e => { e.preventDefault(); zoomAt(e.clientX, e.clientY, Math.exp(-e.deltaY * 0.0015)); }, { passive: false });
+function zoomAt(cx, cy, f) { const ns = Math.max(0.6, Math.min(40, view.s * f)); f = ns / view.s; view.ox = cx - (cx - view.ox) * f; view.oy = cy - (cy - view.oy) * f; view.s = ns; }
+function clickAt(cx, cy) {
+  const S = G.sim; if (!S || S.over) return; const x = Math.floor((cx - view.ox) / view.s), y = Math.floor((cy - view.oy) / view.s);
+  if (x < 0 || y < 0 || x >= S.W || y >= S.H || !S.terr[y * S.W + x]) return;
+  if (S.tick <= SP) sendIntent({ k: 'spawn', x, y });
+  else if (!S.P[G.me].alive) return;
+  else if (G.tool) sendIntent({ k: 'build', b: G.tool, x, y });
+  else sendIntent({ k: 'atk', x, y, r: +$('ratio').value });
+}
+if (/[?&]test\b/.test(location.search)) window.__G = G; // test hook
+</script>
+</body></html>
