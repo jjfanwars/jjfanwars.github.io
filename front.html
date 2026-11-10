@@ -80,6 +80,15 @@ button{transition:transform .08s,background .15s;box-shadow:0 2px 0 rgba(0,0,0,.
 #mini{position:absolute;right:8px;bottom:8px;border:1px solid rgba(120,170,220,.3);border-radius:8px;background:#07101c;box-shadow:0 6px 24px rgba(0,0,0,.4);cursor:pointer;touch-action:none}
 #alert{position:absolute;top:52px;left:50%;transform:translateX(-50%);background:rgba(160,20,20,.88);border:1px solid #ff8b6b;border-radius:10px;padding:6px 16px;font-weight:700;pointer-events:none!important;animation:pulse .6s infinite alternate}
 @keyframes pulse{to{background:rgba(220,50,30,.95)}}
+#lb{max-height:62vh;overflow:auto}#lb div{gap:4px}
+#lb button{padding:0 4px;font-size:11px;line-height:18px;background:#24384f;box-shadow:none;border-radius:4px}#lb button[data-a=break]{background:#6a2a2a}
+#reqs{position:absolute;top:92px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;gap:4px;align-items:center}
+#reqs div{background:rgba(20,60,50,.92);border:1px solid #58e0a0;border-radius:10px;padding:5px 10px;display:flex;gap:6px;align-items:center}
+#reqs button{padding:3px 8px;font-size:12px}
+#chat{position:absolute;left:8px;bottom:112px;width:min(300px,45vw);background:rgba(9,18,30,.9)}
+#chatBtn{position:absolute;top:8px;right:76px;padding:6px 10px;background:rgba(36,56,79,.9)}
+#boatBtn{padding:2px 8px;font-size:15px}#boatBtn.on{background:#d9822b}
+#feed b{font-weight:700}
 @media(max-width:760px){#mini{display:none}}
 </style></head><body>
 <canvas id="cv"></canvas>
@@ -91,6 +100,7 @@ button{transition:transform .08s,background .15s;box-shadow:0 2px 0 rgba(0,0,0,.
     <div class="row">
       <label>AI nations<input id="nNat" type="number" min="0" max="30" value="8"></label>
       <label>Tribes<input id="nTri" type="number" min="0" max="80" value="20"></label>
+      <label>Terrain<select id="mter"><option value="0">Continent</option><option value="1">Islands</option></select></label>
       <label>Map<select id="msz"><option value="0">Small</option><option value="1" selected>Medium</option><option value="2">Large</option></select></label>
     </div>
     <div class="row"><button id="bSolo">Play solo</button><button id="bHost" class="alt">Host online game</button></div>
@@ -110,11 +120,11 @@ button{transition:transform .08s,background .15s;box-shadow:0 2px 0 rgba(0,0,0,.
 </div>
 
 <div id="hud" class="hidden">
-  <div id="lb"></div><div id="top"></div><div id="alert" class="hidden"></div><canvas id="mini" width="170" height="110"></canvas><button id="menuBtn">Leave</button>
+  <div id="lb"></div><div id="top"></div><div id="alert" class="hidden"></div><div id="reqs"></div><input id="chat" class="hidden" maxlength="80" placeholder="Say something (Enter to send)" autocomplete="off"><button id="chatBtn" title="Chat (Enter)">💬</button><canvas id="mini" width="170" height="110"></canvas><button id="menuBtn">Leave</button>
   <div id="feed"></div>
   <div id="panel">
     <div id="tbar"><i></i><span></span></div>
-    <div id="prow"><span>Attack</span><input id="ratio" type="range" min="5" max="100" value="30"><b id="rv">30%</b><span id="gold"></span></div>
+    <div id="prow"><span>Attack</span><input id="ratio" type="range" min="5" max="100" value="30"><b id="rv">30%</b><button id="boatBtn" class="alt" title="Send troops by boat (B / Shift+click)">⛵</button><span id="gold"></span></div>
     <div id="bld"></div><div id="atks"></div>
     <div id="hint"></div>
   </div>
@@ -140,17 +150,17 @@ function vnoise(x, y, s) {
   return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v;
 }
 // 0 water, 1 plains, 2 hills, 3 mountains. Only the biggest landmass is kept, so nobody spawns on an unreachable islet.
-function genMap(W, H, seed) {
-  const n = W * H, t = new Uint8Array(n), hv = new Float32Array(n), s = seed | 0;
+function genMap(W, H, seed, isl) {
+  const n = W * H, t = new Uint8Array(n), hv = new Float32Array(n), s = seed | 0, th = isl ? 0.46 : 0.4;
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
-    let f = 0, a = 0.5, fr = 1 / 40, tot = 0;
+    let f = 0, a = 0.5, fr = isl ? 1 / 24 : 1 / 40, tot = 0;
     for (let o = 0; o < 5; o++) { f += a * vnoise(x * fr, y * fr, s + o * 101); tot += a; a *= 0.5; fr *= 2; }
     f /= tot;
     const dx = (x + 0.5) / W * 2 - 1, dy = (y + 0.5) / H * 2 - 1, e = dx * dx * 0.9 + dy * dy;
-    const v = f + 0.2 - 0.45 * e;
-    hv[y * W + x] = v; t[y * W + x] = v > 0.64 ? 3 : v > 0.55 ? 2 : v > 0.4 ? 1 : 0;
+    const v = f + (isl ? 0.16 : 0.2) - (isl ? 0.5 : 0.45) * e;
+    hv[y * W + x] = v; t[y * W + x] = v > 0.64 ? 3 : v > 0.55 ? 2 : v > th ? 1 : 0;
   }
-  const comp = new Int32Array(n).fill(-1), q = new Int32Array(n); let best = -1, bestN = 0, cid = 0;
+  const comp = new Int32Array(n).fill(-1), q = new Int32Array(n); let best = -1, bestN = 0, cid = 0; const sizes = [];
   for (let i = 0; i < n; i++) {
     if (!t[i] || comp[i] >= 0) continue;
     let h = 0, e = 0; q[e++] = i; comp[i] = cid;
@@ -161,10 +171,12 @@ function genMap(W, H, seed) {
       if (c >= W && t[c - W] && comp[c - W] < 0) { comp[c - W] = cid; q[e++] = c - W; }
       if (c + W < n && t[c + W] && comp[c + W] < 0) { comp[c + W] = cid; q[e++] = c + W; }
     }
-    if (e > bestN) { bestN = e; best = cid; }
+    sizes[cid] = e; if (e > bestN) { bestN = e; best = cid; }
     cid++;
   }
-  for (let i = 0; i < n; i++) if (t[i] && comp[i] !== best) t[i] = 0;
+  for (let i = 0; i < n; i++) if (t[i] && comp[i] !== best && !(isl && sizes[comp[i]] >= 140)) t[i] = 0;
+  for (let i = 0; i < n; i++) if (!t[i]) comp[i] = -1;
+  t.c = comp; // landmass ids
   t.v = hv; // heights, display only
   return t;
 }
@@ -178,11 +190,11 @@ class Sim {
   // roster: [{name, human:bool, bot:'nation'|'tribe'}], player id = index + 1 (0 = nobody's land)
   constructor(cfg, roster) {
     this.cfg = cfg; const W = this.W = cfg.w, H = this.H = cfg.h, n = this.n = W * H;
-    this.terr = genMap(W, H, cfg.seed); this.own = new Uint8Array(n); this.bld = new Uint8Array(n); // bld: 1 city, 2 defense post, 3 port
+    this.terr = genMap(W, H, cfg.seed, cfg.isl | 0); this.comp = this.terr.c; this.own = new Uint8Array(n); this.bld = new Uint8Array(n); // bld: 1 city, 2 defense post, 3 port
     this.land = 0; for (let i = 0; i < n; i++) if (this.terr[i]) this.land++;
     this.P = roster.map((r, i) => ({ id: i + 1, name: r.name, human: !!r.human, kind: r.human ? 'human' : r.bot, alive: true, spawn: -1, spawned: false,
-      troops: 0, gold: 0, tiles: 0, sx: 0, sy: 0, cities: 0, ports: 0, posts: [], capital: -1, silos: [], sams: [], nukeAt: 0, col: colorOf(i) }));
-    this.tick = 0; this.r = mulberry(cfg.seed ^ 0x5bd1e995); this.atks = []; this.dirty = []; this.log = []; this.over = null; this.ct = null; this.nukes = []; this.fx = []; this.samCd = new Map();
+      troops: 0, gold: 0, tiles: 0, sx: 0, sy: 0, cities: 0, ports: 0, posts: [], capital: -1, silos: [], sams: [], nukeAt: 0, allies: [], reqs: [], traitor: 0, giveAt: 0, chatAt: 0, portTiles: [], comp: -1, col: colorOf(i) }));
+    this.tick = 0; this.r = mulberry(cfg.seed ^ 0x5bd1e995); this.atks = []; this.dirty = []; this.log = []; this.over = null; this.ct = null; this.nukes = []; this.fx = []; this.samCd = new Map(); this.boats = [];
   }
   cap(p) {
     let m = 2 * (2000 * Math.sqrt(p.tiles) + 50000) + p.cities * 100000 + (p.capital >= 0 ? 50000 : 0);
@@ -193,8 +205,8 @@ class Sim {
   coastal(i) { const W = this.W, t = this.terr, x = i % W; return (x > 0 && !t[i - 1]) || (x < W - 1 && !t[i + 1]) || (i >= W && !t[i - W]) || (i + W < this.n && !t[i + W]); }
   say(msg) { this.log.push({ t: this.tick, msg }); }
 
-  addB(p, i, b) { if (b === 1) p.cities++; else if (b === 2) p.posts.push(i); else if (b === 3) p.ports++; else if (b === 4) { if (p.capital < 0) p.capital = i; } else if (b === 5) p.silos.push(i); else p.sams.push(i); }
-  remB(p, i, b) { const rm = a => { const k = a.indexOf(i); if (k >= 0) a.splice(k, 1); }; if (b === 1) p.cities--; else if (b === 2) rm(p.posts); else if (b === 3) p.ports--; else if (b === 4) { if (p.capital === i) p.capital = -1; } else if (b === 5) rm(p.silos); else rm(p.sams); }
+  addB(p, i, b) { if (b === 1) p.cities++; else if (b === 2) p.posts.push(i); else if (b === 3) { p.ports++; p.portTiles.push(i); } else if (b === 4) { if (p.capital < 0) p.capital = i; } else if (b === 5) p.silos.push(i); else p.sams.push(i); }
+  remB(p, i, b) { const rm = a => { const k = a.indexOf(i); if (k >= 0) a.splice(k, 1); }; if (b === 1) p.cities--; else if (b === 2) rm(p.posts); else if (b === 3) { p.ports--; rm(p.portTiles); } else if (b === 4) { if (p.capital === i) p.capital = -1; } else if (b === 5) rm(p.silos); else rm(p.sams); }
   setOwner(i, id) {
     const o = this.own[i]; if (o === id) return;
     const x = i % this.W, y = (i / this.W) | 0, b = this.bld[i];
@@ -208,6 +220,7 @@ class Sim {
   kill(o, by) {
     const p = this.P[o - 1]; if (!p.alive) return; p.alive = false; p.troops = 0;
     for (const a of this.atks) { if (a.p === o) a.done = true; else if (a.t === o) this.endAtk(a); }
+    for (const q of this.P) { q.allies = q.allies.filter(x => x !== o); q.reqs = q.reqs.filter(x => x.id !== o); }
     this.say(p.name + ' was eliminated' + (by ? ' by ' + this.P[by - 1].name : ''));
   }
 
@@ -216,7 +229,28 @@ class Sim {
     const x = it.x | 0, y = it.y | 0, ok = x >= 0 && y >= 0 && x < W && y < this.H, i = y * W + x;
     switch (it.k) {
       case 'spawn': if (T <= SP && p.human && ok && this.terr[i] && this.terr[i] < 3) p.spawn = i; break;
-      case 'atk': if (T > SP && p.alive && ok && this.terr[i]) this.launch(p, this.own[i], +it.r || 30); break;
+      case 'atk': if (T > SP && p.alive && ok && this.terr[i]) { const pct = +it.r || 30; if (it.boat || !this.launch(p, this.own[i], pct)) this.boat(p, i, pct); } break;
+      case 'ally': {
+        const t = it.t | 0, q = this.P[t - 1]; if (T <= SP || !p.alive || !q || !q.alive || t === p.id || p.allies.includes(t) || q.kind === 'tribe' || p.kind === 'tribe') break;
+        if (p.reqs.some(r => r.id === t)) { this.makeAlly(p, q); break; }
+        if (q.reqs.some(r => r.id === p.id)) break;
+        q.reqs.push({ id: p.id, t: T }); this.say(p.name + ' proposes an alliance to ' + q.name); break;
+      }
+      case 'decline': p.reqs = p.reqs.filter(r => r.id !== (it.t | 0)); break;
+      case 'break': {
+        const t = it.t | 0, q = this.P[t - 1]; if (!q || !p.allies.includes(t)) break;
+        p.allies = p.allies.filter(x => x !== t); q.allies = q.allies.filter(x => x !== p.id); p.troops *= 0.75; p.traitor = T + 1200;
+        this.say(p.name + ' betrayed ' + q.name + '!'); break;
+      }
+      case 'give': {
+        const t = it.t | 0, q = this.P[t - 1]; if (!q || !q.alive || !p.alive || !p.allies.includes(t) || T < p.giveAt) break; p.giveAt = T + 30;
+        if (it.w === 'gold') { const g = Math.floor(p.gold * 0.25); p.gold -= g; q.gold += g; } else { const g = Math.floor(p.troops * 0.2); p.troops -= g; q.troops += g; }
+        break;
+      }
+      case 'chat': {
+        if (T - p.chatAt < 10) break; p.chatAt = T; const m = String(it.m || '').replace(/[\u0000-\u001f<>]/g, '').trim().slice(0, 80);
+        if (m) this.log.push({ t: T, chat: p.id, msg: m }); break;
+      }
       case 'build': {
         const b = it.b | 0; if (T <= SP || !p.alive || !ok || !(b === 1 || b === 2 || b === 3 || b === 5 || b === 6)) break;
         if (this.own[i] !== p.id || !this.terr[i] || this.bld[i] || (b === 3 && !this.coastal(i))) break;
@@ -225,7 +259,7 @@ class Sim {
       }
       case 'nuke': {
         if (T <= SP || !p.alive || !ok || !this.terr[i] || this.own[i] === p.id || !p.silos.length || T < p.nukeAt || p.gold < NUKE_COST) break;
-        p.gold -= NUKE_COST; p.nukeAt = T + Math.floor(900 / p.silos.length);
+        p.gold -= NUKE_COST; p.nukeAt = T + Math.floor((p.kind === 'human' ? 900 : 2400) / p.silos.length);
         this.nukes.push({ p: p.id, from: p.silos[T % p.silos.length], i, t0: T, eta: T + NUKE_FLIGHT });
         const o = this.own[i]; this.say(p.name + ' launched a nuke' + (o ? ' at ' + this.P[o - 1].name : '') + '!'); break;
       }
@@ -235,24 +269,25 @@ class Sim {
   }
 
   launch(p, t, pct) {
-    const id = p.id; if (t === id || !p.alive || t < 0 || t > this.P.length) return;
-    if (t && !this.P[t - 1].alive) return;
-    pct = Math.max(1, Math.min(100, pct | 0)); const amt0 = Math.floor(p.troops * pct / 100); if (amt0 < 10) return;
+    const id = p.id; if (t === id || !p.alive || t < 0 || t > this.P.length || p.allies.includes(t)) return false;
+    if (t && !this.P[t - 1].alive) return false;
+    pct = Math.max(1, Math.min(100, pct | 0)); const amt0 = Math.floor(p.troops * pct / 100); if (amt0 < 10) return false;
     const W = this.W, n = this.n, own = this.own, terr = this.terr, q = [];
     for (let i = 0; i < n; i++) {
       if (own[i] !== t || !terr[i]) continue; const x = i % W;
       if ((x > 0 && own[i - 1] === id) || (x < W - 1 && own[i + 1] === id) || (i >= W && own[i - W] === id) || (i + W < n && own[i + W] === id)) q.push(i);
     }
-    if (!q.length) return;
+    if (!q.length) return false;
     p.troops -= amt0; let amt = amt0;
     if (t) { // two armies facing each other cancel out first
-      for (const b of this.atks) if (!b.done && b.p === t && b.t === id) { const m = Math.min(amt, b.troops); amt -= m; b.troops -= m; if (b.troops <= 0) b.done = true; if (amt <= 0) return; }
+      for (const b of this.atks) if (!b.done && b.p === t && b.t === id) { const m = Math.min(amt, b.troops); amt -= m; b.troops -= m; if (b.troops <= 0) b.done = true; if (amt <= 0) return true; }
     }
     const ex = this.atks.find(a => !a.done && a.p === id && a.t === t);
-    if (ex) { ex.troops += amt; for (const i of q) if (!ex.mark[i]) { ex.mark[i] = 1; ex.q.push(i); } return; }
+    if (ex) { ex.troops += amt; for (const i of q) if (!ex.mark[i]) { ex.mark[i] = 1; ex.q.push(i); } return true; }
     const mark = new Uint8Array(n); for (const i of q) mark[i] = 1;
     this.atks.push({ p: id, t, troops: amt, q, h: 0, mark, done: false });
     if (t) this.say(p.name + ' attacks ' + this.P[t - 1].name);
+    return true;
   }
   endAtk(a) { a.done = true; const p = this.P[a.p - 1]; if (p.alive) p.troops += a.troops; a.troops = 0; }
   runAtk(a) {
@@ -262,7 +297,7 @@ class Sim {
     let budget = 4 + Math.min(70, (q.length - a.h) >> 2);
     while (budget-- > 0 && a.h < q.length) {
       const i = q[a.h++]; if (own[i] !== t) continue; const x = i % W;
-      if (!((x > 0 && own[i - 1] === id) || (x < W - 1 && own[i + 1] === id) || (i >= W && own[i - W] === id) || (i + W < n && own[i + W] === id))) continue;
+      if (!a.free && !((x > 0 && own[i - 1] === id) || (x < W - 1 && own[i + 1] === id) || (i >= W && own[i - W] === id) || (i + W < n && own[i + W] === id))) continue;
       const mul = TM[terr[i]]; let cost, dl = 0;
       if (!t) cost = 16 * mul;
       else {
@@ -273,7 +308,7 @@ class Sim {
       }
       if (a.troops < cost) { this.endAtk(a); return; }
       a.troops -= cost; if (t) d.troops = Math.max(0, d.troops - dl);
-      this.setOwner(i, id);
+      this.setOwner(i, id); a.free = 0;
       const nb = [x > 0 ? i - 1 : -1, x < W - 1 ? i + 1 : -1, i >= W ? i - W : -1, i + W < n ? i + W : -1];
       for (const j of nb) if (j >= 0 && own[j] === t && terr[j] && !a.mark[j]) { a.mark[j] = 1; q.push(j); }
     }
@@ -307,32 +342,95 @@ class Sim {
     for (const p of this.P) {
       if (!p.alive || !p.spawned || p.kind === 'human') continue;
       const nat = p.kind === 'nation'; if ((T / 10 + p.id) % (nat ? 1 : 3)) continue;
-      if (nat) { this.botBuild(p); this.botNuke(p); }
+      if (nat) { this.botBuild(p); this.botNuke(p); this.botDiplo(p); this.botBoat(p); }
       const mx = this.cap(p), ct = this.ct[p.id - 1];
-      if (p.troops < mx * (nat ? 0.45 : 0.3)) continue;
+      if (p.troops < mx * (nat ? 0.33 : 0.3)) continue;
       let t = -1;
       if ((ct.get(0) || 0) >= 3 && r() < (nat ? 0.85 : 0.7)) t = 0;
       else {
-        let bs = 1e18; const opts = [...ct.keys()].filter(k => k > 0 && this.P[k - 1].alive).sort((a, b) => a - b);
+        let bs = 1e18; const opts = [...ct.keys()].filter(k => k > 0 && this.P[k - 1].alive && !p.allies.includes(k)).sort((a, b) => a - b);
         if (!opts.length) { if (ct.get(0)) t = 0; }
-        else if (nat) { for (const k of opts) { const s = this.P[k - 1].troops; if (s * 1.2 < p.troops * 0.4 && s < bs) { bs = s; t = k; } } if (t < 0 && ct.get(0)) t = 0; }
+        else if (nat) { for (const k of opts) { const s = this.P[k - 1].troops; if (s < p.troops * 0.7 && s < bs) { bs = s; t = k; } } if (t < 0 && ct.get(0)) t = 0; }
         else t = opts[(r() * opts.length) | 0];
       }
-      if (t >= 0) this.launch(p, t, nat ? 40 : 20);
+      if (t >= 0) this.launch(p, t, nat ? 55 : 20);
     }
   }
   botBuild(p) {
     const r = this.r, W = this.W, own = this.own, id = p.id;
     const g = p.gold, c = b => this.buildCost(p, b);
-    const want = g >= c(1) && p.cities < 1 + p.tiles / 90 ? 1 : this.tick > 2500 && !p.silos.length && p.cities >= 2 && g >= c(5) ? 5 : this.tick > 3000 && p.silos.length && p.sams.length < 1 + p.tiles / 400 && g >= c(6) ? 6 : g >= c(2) && p.posts.length < 1 + p.tiles / 160 ? 2 : 0;
+    const want = g >= c(1) && p.cities < 1 + p.tiles / 90 ? 1 : this.tick > 2500 && !p.silos.length && p.cities >= 2 && g >= c(5) ? 5 : this.tick > 3000 && p.silos.length && p.sams.length < 1 + p.tiles / 400 && g >= c(6) ? 6 : g >= c(2) && p.posts.length < 1 + p.tiles / 160 ? 2 : g >= c(3) && p.ports < 1 + p.tiles / 250 ? 3 : 0;
     if (!want) return;
     for (let k = 0; k < 60; k++) {
       const i = (r() * this.n) | 0; if (own[i] !== id || this.bld[i] || !this.terr[i]) continue;
+      if (want === 3 && !this.coastal(i)) continue;
       if (want === 2) { const x = i % W; const e = (x > 0 && this.terr[i - 1] && own[i - 1] !== id) || (x < W - 1 && this.terr[i + 1] && own[i + 1] !== id) || (i >= W && this.terr[i - W] && own[i - W] !== id) || (i + W < this.n && this.terr[i + W] && own[i + W] !== id); if (!e) continue; }
       p.gold -= this.buildCost(p, want); this.bld[i] = want; this.addB(p, i, want); this.dirty.push(i); return;
     }
   }
 
+  chat(p, m) { this.log.push({ t: this.tick, chat: p.id, msg: m }); }
+  makeAlly(a, b) {
+    a.allies.push(b.id); b.allies.push(a.id); a.reqs = a.reqs.filter(r => r.id !== b.id); b.reqs = b.reqs.filter(r => r.id !== a.id);
+    for (const x of this.atks) if (!x.done && ((x.p === a.id && x.t === b.id) || (x.p === b.id && x.t === a.id))) this.endAtk(x);
+    this.say(a.name + ' and ' + b.name + ' are now allies');
+  }
+  nb4(k) { const W = this.W; return [k % W > 0 ? k - 1 : -1, k % W < W - 1 ? k + 1 : -1, k >= W ? k - W : -1, k + W < this.n ? k + W : -1]; }
+  // sail troops to a coastal tile across the water: shortest water route from any of your shores (max 140 tiles)
+  boat(p, i, pct) {
+    const n = this.n, own = this.own, terr = this.terr, t = own[i];
+    if (!p.alive || t === p.id || (t && p.allies.includes(t)) || !terr[i] || !this.coastal(i)) return false;
+    if (this.boats.filter(b => b.p === p.id).length >= 3) return false;
+    pct = Math.max(1, Math.min(100, pct | 0)); const amt = Math.floor(p.troops * pct / 100); if (amt < 10) return false;
+    const par = new Int32Array(n).fill(-2), q = new Int32Array(n); let h = 0, e = 0;
+    for (let k = 0; k < n; k++) { if (own[k] !== p.id || !terr[k]) continue; for (const j of this.nb4(k)) if (j >= 0 && !terr[j] && par[j] === -2) { par[j] = -1; q[e++] = j; } }
+    const goal = this.nb4(i).filter(j => j >= 0 && !terr[j]); if (!e || !goal.length) return false;
+    let found = -1;
+    while (h < e) { const c = q[h++]; if (goal.includes(c)) { found = c; break; } for (const j of this.nb4(c)) if (j >= 0 && !terr[j] && par[j] === -2) { par[j] = c; q[e++] = j; } }
+    if (found < 0) return false;
+    const path = []; for (let c = found; c >= 0; c = par[c]) path.push(c); path.reverse(); if (path.length > 140) return false;
+    p.troops -= amt; this.boats.push({ p: p.id, path, k: 0, troops: amt, i });
+    if (t) this.say(p.name + ' sends a boat to ' + this.P[t - 1].name + "'s coast"); return true;
+  }
+  stepBoats() {
+    if (!this.boats.length) return; const W = this.W, keep = [];
+    for (const b of this.boats) {
+      const p = this.P[b.p - 1]; let sunk = false;
+      if ((this.tick & 1) === 0 && b.k < b.path.length - 1) b.k++;
+      if (this.tick % 10 === 0) { // enemy ports shoot at passing transports (15% every second within 8 tiles)
+        const c = b.path[b.k], cx = c % W, cy = (c / W) | 0;
+        for (const q of this.P) { if (!q.alive || q.id === b.p || p.allies.includes(q.id)) continue; if (q.portTiles.some(pt => { const dx = (pt % W) - cx, dy = ((pt / W) | 0) - cy; return dx * dx + dy * dy <= 64; }) && this.r() < 0.15) { sunk = true; this.say(q.name + "'s port sank a " + p.name + ' transport!'); this.fx.push({ i: c, t: this.tick, k: 0 }); break; } }
+      }
+      if (sunk || !p.alive) continue;
+      if (b.k >= b.path.length - 1) { this.landBoat(b, p); continue; }
+      keep.push(b);
+    }
+    this.boats = keep;
+  }
+  landBoat(b, p) {
+    const T = this.own[b.i];
+    if (T === p.id || (T && (p.allies.includes(T) || !this.P[T - 1].alive))) { p.troops += b.troops; return; }
+    const mark = new Uint8Array(this.n); mark[b.i] = 1;
+    this.atks.push({ p: p.id, t: T, troops: b.troops, q: [b.i], h: 0, mark, done: false, free: 1 });
+    if (T) this.say(p.name + ' lands troops on ' + this.P[T - 1].name + "'s shore!");
+  }
+  botDiplo(p) {
+    const r = this.r, T = this.tick;
+    for (const rq of p.reqs.slice()) {
+      const q = this.P[rq.id - 1]; p.reqs = p.reqs.filter(x => x !== rq); if (!q || !q.alive) continue;
+      if (q.traitor <= T && p.allies.length < 3 && (q.tiles > p.tiles * 0.6 || r() < 0.4)) { this.makeAlly(p, q); this.chat(p, 'Deal. Eyes on the common enemy.'); }
+      else if (q.human) this.chat(p, 'Not interested.');
+    }
+    if (p.allies.length < 2 && T > SP + 300 && r() < 0.03) {
+      const opts = [...this.ct[p.id - 1].keys()].filter(k => { const q = k > 0 && this.P[k - 1]; return q && q.alive && q.kind !== 'tribe' && !p.allies.includes(k) && q.traitor <= T && !q.reqs.some(x => x.id === p.id) && !p.reqs.some(x => x.id === k); }).sort((a, b) => a - b);
+      if (opts.length) this.apply(p.id - 1, { k: 'ally', t: opts[(r() * opts.length) | 0] });
+    }
+    if (T > 6000 && p.allies.length && r() < 0.01) for (const a of p.allies) { const q = this.P[a - 1]; if (q.tiles < p.tiles * 0.45 && q.troops < p.troops * 0.5) { this.apply(p.id - 1, { k: 'break', t: a }); this.chat(p, 'Nothing personal.'); break; } }
+  }
+  botBoat(p) {
+    if ((this.tick / 10 + p.id) % 5 || p.troops < this.cap(p) * 0.4) return; const r = this.r;
+    for (let k = 0; k < 2; k++) { const j = (r() * this.n) | 0; if (!this.terr[j] || this.own[j] === p.id || p.allies.includes(this.own[j]) || this.comp[j] === p.comp || !this.coastal(j)) continue; this.boat(p, j, 40); return; }
+  }
   stepNukes() {
     if (!this.nukes.length) return; const keep = [];
     for (const n of this.nukes) { if (this.tick < n.eta) keep.push(n); else this.nukeHit(n); }
@@ -360,8 +458,8 @@ class Sim {
     this.fx.push({ i: n.i, t: this.tick, k: 1 }); if (this.fx.length > 30) this.fx.shift();
   }
   botNuke(p) {
-    if (this.tick < 3000 || !p.silos.length || this.tick < p.nukeAt || p.gold < NUKE_COST + 100 || this.r() > 0.25) return;
-    const c = this.P.filter(q => q.alive && q.id !== p.id && q.tiles > p.tiles * 0.7); if (!c.length) return;
+    if (this.tick < 3000 || !p.silos.length || this.tick < p.nukeAt || p.gold < NUKE_COST + 300 || this.r() > 0.08) return;
+    const c = this.P.filter(q => q.alive && q.id !== p.id && !p.allies.includes(q.id) && q.tiles > p.tiles * 0.7); if (!c.length) return;
     const q = c[(this.r() * c.length) | 0]; let ti = q.capital >= 0 && this.r() < 0.5 ? q.capital : -1;
     for (let k = 0; k < 60 && ti < 0; k++) { const j = (this.r() * this.n) | 0; if (this.own[j] === q.id) ti = j; }
     if (ti >= 0) this.apply(p.id - 1, { k: 'nuke', x: ti % this.W, y: (ti / this.W) | 0 });
@@ -373,7 +471,7 @@ class Sim {
       const j = y * W + x; if (this.terr[j] && !this.own[j]) { p.spawned = true; this.setOwner(j, p.id); }
     }
     if (this.own[i] === p.id && !this.bld[i]) { this.bld[i] = 4; this.addB(p, i, 4); } // every player starts with a capital
-    p.spawned = true; p.troops = p.kind === 'tribe' ? 8000 : 25000; p.gold = 100;
+    p.spawned = true; p.comp = this.comp[i]; p.troops = p.kind === 'tribe' ? 8000 : 25000; p.gold = 100;
   }
   endSpawn() {
     const placed = [], r = this.r, W = this.W;
@@ -394,7 +492,8 @@ class Sim {
     let best = null, alive = 0, humans = 0;
     for (const p of this.P) { if (!p.alive) continue; alive++; if (p.kind === 'human') humans++; if (!best || p.tiles > best.tiles) best = p; }
     if (!best) { this.over = { win: 0 }; return; }
-    if (best.tiles >= WIN_SHARE * this.land || alive === 1) this.over = { win: best.id };
+    const grp = [best.id, ...best.allies.filter(a => this.P[a - 1].alive)], share = grp.reduce((s, a) => s + this.P[a - 1].tiles, 0);
+    if (share >= WIN_SHARE * this.land || alive === 1 || alive === grp.length) this.over = { win: best.id, team: grp.length > 1 ? grp : null };
     else if (!humans && this.P.some(p => p.human)) this.over = { win: best.id, noHumans: true };
   }
   step(ints) {
@@ -404,10 +503,11 @@ class Sim {
     if (this.tick > SP) {
       this.econ(); for (const a of this.atks) if (!a.done) this.runAtk(a);
       if (this.atks.length > 40 || this.tick % 10 === 0) this.atks = this.atks.filter(a => !a.done);
-      this.stepNukes(); this.bots(); if (this.tick % 10 === 0) this.checkWin();
+      this.stepBoats(); this.stepNukes(); this.bots();
+      if (this.tick % 10 === 0) { for (const p of this.P) if (p.reqs.length) p.reqs = p.reqs.filter(r => this.tick - r.t < 300); this.checkWin(); }
     }
   }
-  hash() { let h = this.tick | 0; for (const p of this.P) { h = Math.imul(h ^ (p.tiles | 0), 16777619); h = Math.imul(h ^ (p.troops | 0), 16777619); h = Math.imul(h ^ (p.gold | 0), 16777619); } return h >>> 0; }
+  hash() { let h = this.tick | 0; for (const p of this.P) { h = Math.imul(h ^ (p.tiles | 0), 16777619); h = Math.imul(h ^ (p.troops | 0), 16777619); h = Math.imul(h ^ (p.gold | 0), 16777619); h = Math.imul(h ^ p.allies.length, 16777619); } return Math.imul(h ^ this.boats.length, 16777619) >>> 0; }
 }
 </script>
 
@@ -431,7 +531,7 @@ const msg = (el, t) => { $(el).textContent = t || ''; };
 const G = { role: null, sim: null, me: -1, n: 0, pend: [], ws: null, peers: new Map(), myId: '', code: '', timer: 0, acc: 0, last: 0, cfg: null, tool: 0, desync: false, mine: {}, theirs: {}, feedAt: 0, started: false, ended: false, retry: 0 };
 try { $('nm').value = localStorage.getItem('jjf-front-name') || ''; } catch (e) {}
 const myName = () => { const n = cleanName($('nm').value) || 'Player' + (1 + (Math.random() * 99 | 0)); try { localStorage.setItem('jjf-front-name', n); } catch (e) {} return n; };
-const readCfg = () => { const [w, h] = SIZES[+$('msz').value | 0] || SIZES[1]; return { w, h, nat: Math.max(0, Math.min(30, +$('nNat').value | 0)), tri: Math.max(0, Math.min(80, +$('nTri').value | 0)) }; };
+const readCfg = () => { const [w, h] = SIZES[+$('msz').value | 0] || SIZES[1]; return { w, h, isl: +$('mter').value | 0, nat: Math.max(0, Math.min(30, +$('nNat').value | 0)), tri: Math.max(0, Math.min(80, +$('nTri').value | 0)) }; };
 
 function makeRoster(humans, c) { // humans: [{name,id}]
   const r = humans.map(h => ({ name: h.name, human: true, id: h.id || null }));
@@ -478,15 +578,15 @@ function leave(toMenu = true) {
 }
 
 // ---------- solo ----------
-$('bSolo').onclick = () => { const c = readCfg(); G.role = 'solo'; beginGame({ seed: (Math.random() * 1e9) | 0, w: c.w, h: c.h }, makeRoster([{ name: myName() }], c), 0); };
+$('bSolo').onclick = () => { const c = readCfg(); G.role = 'solo'; beginGame({ seed: (Math.random() * 1e9) | 0, w: c.w, h: c.h, isl: c.isl }, makeRoster([{ name: myName() }], c), 0); };
 
 // ---------- host ----------
 const newCode = () => { let s = ''; for (let i = 0; i < 5; i++) s += 'ABCDEFGHJKLMNPQRSTUVWXYZ'[(Math.random() * 24) | 0]; return s; };
-function lobbyState() { const c = G.cfg; return { t: 'lobby', names: [G.hostName, ...[...G.peers.values()].map(p => p.name)], cfg: { nat: c.nat, tri: c.tri, w: c.w, h: c.h } }; }
+function lobbyState() { const c = G.cfg; return { t: 'lobby', names: [G.hostName, ...[...G.peers.values()].map(p => p.name)], cfg: { nat: c.nat, tri: c.tri, w: c.w, h: c.h, isl: c.isl } }; }
 function pushLobby() { const s = lobbyState(); renderLobby(s); if (G.ws) bcast(s); }
 function renderLobby(s) {
   $('lpl').innerHTML = s.names.map((n, i) => '<div>' + (i ? '' : '&#9733; ') + esc(n) + '</div>').join('');
-  $('lcfg').textContent = s.cfg.w + 'x' + s.cfg.h + ' map · ' + s.cfg.nat + ' AI nations · ' + s.cfg.tri + ' tribes';
+  $('lcfg').textContent = (s.cfg.isl ? 'Islands ' : 'Continent ') + s.cfg.w + 'x' + s.cfg.h + ' · ' + s.cfg.nat + ' AI nations · ' + s.cfg.tri + ' tribes';
 }
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 $('bHost').onclick = () => {
@@ -517,7 +617,7 @@ function send1(id, o) { const ib = enc.encode(id), b = enc.encode(JSON.stringify
 $('bStart').onclick = () => {
   if (G.role !== 'host') return;
   const c = G.cfg, humans = [{ name: G.hostName, id: null }, ...[...G.peers.entries()].map(([id, p]) => ({ name: p.name, id }))];
-  const roster = G.roster = makeRoster(humans, c), cfg = { seed: (Math.random() * 1e9) | 0, w: c.w, h: c.h };
+  const roster = G.roster = makeRoster(humans, c), cfg = { seed: (Math.random() * 1e9) | 0, w: c.w, h: c.h, isl: c.isl };
   bcast({ t: 'start', cfg, roster }); try { G.ws.send(JSON.stringify({ c: 'meta', name: '[Front] ' + G.hostName + "'s game", open: false })); } catch (e) {}
   G.started = true; beginGame(cfg, roster, 0);
 };
@@ -617,7 +717,7 @@ function frame() {
     for (const p of S.P) if (p.spawn >= 0) { const x = view.ox + (p.spawn % W + 0.5) * s, y = view.oy + (((p.spawn / W) | 0) + 0.5) * s, r = (5 + Math.sin(performance.now() / 200)) * s; ctx.strokeStyle = 'rgb(' + p.col + ')'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.stroke(); ctx.fillStyle = '#fff'; ctx.font = '12px system-ui'; ctx.textAlign = 'center'; ctx.fillText(p.name, x, y - r - 4); }
   } else {
     if (s >= 2) for (let i = 0; i < S.n; i++) { const b = S.bld[i]; if (b) icon(b, view.ox + ((i % W) + 0.5) * s, view.oy + (((i / W) | 0) + 0.5) * s, Math.max(3.5, s * 0.8), S.P[S.own[i] - 1]); }
-    drawNukes(S, s);
+    drawBoats(S, s); drawNukes(S, s);
     ctx.textAlign = 'center'; ctx.lineJoin = 'round';
     for (const p of S.P) {
       if (!p.alive || p.tiles < 25) continue; const fs = Math.max(8, Math.min(30, Math.sqrt(p.tiles) * s * 0.34)); if (fs < 9) continue;
@@ -639,6 +739,16 @@ function icon(b, x, y, r, p) {
   else if (b === 4) { ctx.fillStyle = '#ffd35c'; for (let k = 0; k < 10; k++) { const a = -Math.PI / 2 + k * Math.PI / 5, rr = k % 2 ? r * .4 : r * 1.05; ctx[k ? 'lineTo' : 'moveTo'](x + Math.cos(a) * rr, y + Math.sin(a) * rr); } ctx.closePath(); ctx.fill(); }
   else if (b === 5) { ctx.strokeStyle = '#ff6a4a'; ctx.fillStyle = '#ff6a4a'; ctx.lineWidth = Math.max(1, r * .2); ctx.arc(x, y, r * .7, 0, 7); ctx.stroke(); ctx.beginPath(); ctx.arc(x, y, r * .3, 0, 7); ctx.fill(); }
   else { ctx.fillStyle = '#6ac4ff'; ctx.moveTo(x, y - r * .85); ctx.lineTo(x + r * .7, y); ctx.lineTo(x, y + r * .85); ctx.lineTo(x - r * .7, y); ctx.closePath(); ctx.fill(); }
+}
+function drawBoats(S, s) {
+  const W = S.W, myid = S.P[G.me].id;
+  for (const b of S.boats) {
+    const c = S.P[b.p - 1].col, pt = j => [view.ox + ((j % W) + 0.5) * s, view.oy + (((j / W) | 0) + 0.5) * s];
+    if (b.p === myid || S.P[b.p - 1].allies.includes(myid)) { ctx.setLineDash([3, 4]); ctx.strokeStyle = 'rgba(255,255,255,.5)'; ctx.lineWidth = 1.5; ctx.beginPath(); for (let k = b.k; k < b.path.length; k += 2) { const q = pt(b.path[k]); ctx[k === b.k ? 'moveTo' : 'lineTo'](q[0], q[1]); } ctx.stroke(); ctx.setLineDash([]); }
+    const [x, y] = pt(b.path[b.k]), r = Math.max(4, s * 0.9);
+    ctx.fillStyle = 'rgb(' + c + ')'; ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(x - r, y); ctx.lineTo(x + r, y); ctx.lineTo(x + r * 0.6, y + r * 0.6); ctx.lineTo(x - r * 0.6, y + r * 0.6); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.moveTo(x, y - r * 1.1); ctx.lineTo(x + r * 0.7, y - r * 0.15); ctx.lineTo(x, y - r * 0.15); ctx.closePath(); ctx.fill();
+  }
 }
 function drawNukes(S, s) {
   const W = S.W, t = performance.now(), T = S.tick;
@@ -672,14 +782,21 @@ function buildBar() {
   TOOLS.forEach((t, k) => { const b = document.createElement('button'); b.dataset.k = k + 1; if (t.nuke) b.className = 'nuke'; b.onclick = () => { G.tool = G.tool === k + 1 ? 0 : k + 1; updateHud(); }; $('bld').appendChild(b); });
 }
 $('ratio').oninput = () => { $('rv').textContent = $('ratio').value + '%'; };
-addEventListener('keydown', e => { if (e.target.tagName === 'INPUT') return; if (e.key === 'Escape') G.tool = 0; else if (/^[1-6]$/.test(e.key)) G.tool = G.tool === +e.key ? 0 : +e.key; });
+addEventListener('keydown', e => { if (e.target.tagName === 'INPUT') return; if (G.started && e.key === 'Enter') { openChat(true); e.preventDefault(); } else if (G.started && (e.key === 'b' || e.key === 'B')) $('boatBtn').click(); else if (e.key === 'Escape') G.tool = 0; else if (/^[1-6]$/.test(e.key)) G.tool = G.tool === +e.key ? 0 : +e.key; });
 function updateHud() {
   const S = G.sim; if (!S) return; const me = S.P[G.me];
   const left = S.tick <= SP ? Math.ceil((SP - S.tick) / 10) : 0;
   $('top').textContent = G.desync === 'host' ? 'Host disconnected' : G.desync ? 'Out of sync with the host' : left ? 'Pick your spawn: click land (' + left + 's)' : me.alive ? 'Land ' + (100 * me.tiles / S.land).toFixed(1) + '% · win at ' + WIN_SHARE * 100 + '%' : 'You were eliminated, spectating';
   const alive = S.P.filter(p => p.alive && p.tiles > 0).sort((a, b) => b.tiles - a.tiles), top = alive.slice(0, 8);
   if (!top.includes(me) && me.alive) top.push(me);
-  $('lb').innerHTML = top.map(p => '<div class="' + (p === me ? 'me' : '') + '"><i style="background:rgb(' + p.col + ')"></i><b>' + esc(p.name) + '</b><span>' + (100 * p.tiles / S.land).toFixed(1) + '%</span><span>' + fmt(p.troops) + '</span></div>').join('') || '<div>Waiting for spawns...</div>';
+  const rows = G.lbAll ? alive : top;
+  $('lb').innerHTML = rows.map(p => {
+    const al = me.allies.includes(p.id), pend = p.reqs.some(r => r.id === me.id), bt = p === me || p.kind === 'tribe' || !me.alive || S.tick <= SP ? '' :
+      al ? '<button data-a="give" data-p="' + p.id + '" title="Give 20% of your troops">🪖</button><button data-a="gold" data-p="' + p.id + '" title="Give 25% of your gold">💰</button><button data-a="break" data-p="' + p.id + '" title="Break the alliance (costs 25% troops)">✂</button>'
+      : '<button data-a="ally" data-p="' + p.id + '" title="Propose an alliance">' + (pend ? '⏳' : '🤝') + '</button>';
+    return '<div class="' + (p === me ? 'me' : '') + '"><i style="background:rgb(' + p.col + ')"></i><b>' + (al ? '🤝 ' : '') + esc(p.name) + '</b><span>' + (100 * p.tiles / S.land).toFixed(1) + '%</span><span>' + fmt(p.troops) + '</span>' + bt + '</div>';
+  }).join('') + (alive.length > 8 ? '<button data-a="all">' + (G.lbAll ? 'Top 8' : 'All ' + alive.length) + '</button>' : '') || '<div>Waiting for spawns...</div>';
+  $('reqs').innerHTML = me.reqs.map(r => '<div><b>' + esc(S.P[r.id - 1].name) + '</b> offers an alliance <button data-a="ally" data-p="' + r.id + '">Accept</button><button class="alt" data-a="no" data-p="' + r.id + '">No</button></div>').join('');
   const mx = S.cap(me); $('tbar').firstChild.style.width = Math.min(100, 100 * me.troops / mx) + '%'; $('tbar').lastChild.textContent = 'Troops ' + fmt(me.troops) + ' / ' + fmt(mx);
   $('gold').textContent = Math.floor(me.gold) + ' gold';
   for (const b of $('bld').children) {
@@ -690,17 +807,28 @@ function updateHud() {
   }
   const mine = S.atks.filter(a => a.p === me.id && !a.done);
   $('atks').innerHTML = ''; for (const a of mine) { const b = document.createElement('button'); b.textContent = '✕ ' + (a.t ? S.P[a.t - 1].name : 'Unclaimed') + ' ' + fmt(a.troops); b.onclick = () => sendIntent({ k: 'ret', t: a.t }); $('atks').appendChild(b); }
-  $('hint').textContent = G.tool ? (TOOLS[G.tool - 1].nuke ? 'Click any enemy land to launch a nuke (lands in 4s, SAMs can stop it)' : 'Click your own land to build ' + TOOLS[G.tool - 1].n + (G.tool === 3 ? ' (coast only)' : '')) + ' · Esc cancels' : 'Click land to attack with ' + $('ratio').value + '% of your troops · drag to pan · wheel / pinch to zoom';
+  $('hint').textContent = G.tool ? (TOOLS[G.tool - 1].nuke ? 'Click any enemy land to launch a nuke (lands in 4s, SAMs can stop it)' : 'Click your own land to build ' + TOOLS[G.tool - 1].n + (G.tool === 3 ? ' (coast only)' : '')) + ' · Esc cancels' : (G.boat ? 'Boat mode: click a coast to sail ' : 'Click land to attack with ') + $('ratio').value + '% of your troops · ⛵ or Shift+click to sail across water · Enter = chat';
   let inc = null; for (const nk of S.nukes) { const o = S.own[nk.i]; if (nk.p !== me.id && o === me.id) inc = nk; }
   $('alert').classList.toggle('hidden', !inc); if (inc) $('alert').textContent = '☢ NUKE INCOMING · ' + Math.max(0, Math.ceil((inc.eta - S.tick) / 10)) + 's';
-  const feed = $('feed'); while (G.feedAt < S.log.length) { const l = S.log[G.feedAt++]; const d = document.createElement('div'); d.textContent = l.msg; feed.appendChild(d); setTimeout(() => d.remove(), 8000); while (feed.children.length > 6) feed.firstChild.remove(); }
+  const feed = $('feed'); while (G.feedAt < S.log.length) { const l = S.log[G.feedAt++]; const d = document.createElement('div'); if (l.chat) { const q = S.P[l.chat - 1]; d.innerHTML = '<b style="color:rgb(' + q.col + ')">' + esc(q.name) + '</b>: ' + esc(l.msg); } else d.textContent = l.msg; feed.appendChild(d); setTimeout(() => d.remove(), l.chat ? 16000 : 8000); while (feed.children.length > 8) feed.firstChild.remove(); }
   if (S.over && !G.ended) {
     G.ended = true; const w = S.over.win ? S.P[S.over.win - 1] : null;
-    $('otitle').textContent = !w ? 'Game over' : w === me ? 'You win!' : w.name + ' wins'; $('obody').textContent = alive.slice(0, 5).map((p, i) => (i + 1) + '. ' + p.name + ' ' + (100 * p.tiles / S.land).toFixed(1) + '%').join('   ');
+    const tm = S.over.team; $('otitle').textContent = !w ? 'Game over' : tm ? (tm.includes(me.id) ? 'Allied victory!' : w.name + "'s alliance wins") : w === me ? 'You win!' : w.name + ' wins'; $('obody').textContent = alive.slice(0, 5).map((p, i) => (i + 1) + '. ' + p.name + ' ' + (100 * p.tiles / S.land).toFixed(1) + '%').join('   ');
     $('over').classList.remove('hidden');
   }
 }
 
+function dip(e) {
+  const b = e.target.closest && e.target.closest('button'); if (!b) return; const a = b.dataset.a, t = +b.dataset.p; e.stopPropagation();
+  if (a === 'all') { G.lbAll = !G.lbAll; updateHud(); } else if (a === 'ally') sendIntent({ k: 'ally', t }); else if (a === 'no') sendIntent({ k: 'decline', t });
+  else if (a === 'break') sendIntent({ k: 'break', t }); else if (a === 'give') sendIntent({ k: 'give', t, w: 'troops' }); else if (a === 'gold') sendIntent({ k: 'give', t, w: 'gold' });
+}
+$('lb').addEventListener('pointerdown', dip); $('reqs').addEventListener('pointerdown', dip); // pointerdown: the lists are rebuilt 4x a second, a click could be lost
+const chat = $('chat');
+function openChat(on) { chat.classList.toggle('hidden', !on); if (on) { chat.value = ''; chat.focus(); } else chat.blur(); }
+chat.addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Enter') { const m = chat.value.trim(); if (m) sendIntent({ k: 'chat', m }); openChat(false); } else if (e.key === 'Escape') openChat(false); });
+$('chatBtn').onclick = () => openChat(chat.classList.contains('hidden'));
+$('boatBtn').onclick = () => { G.boat = !G.boat; $('boatBtn').classList.toggle('on', G.boat); };
 // ---------- input ----------
 const pts = new Map(); let pinch = 0;
 cv.addEventListener('contextmenu', e => e.preventDefault());
@@ -711,7 +839,7 @@ cv.addEventListener('pointermove', e => {
   else if (pts.size === 2) { const [a, b] = [...pts.values()]; a.moved = b.moved = true; const d = pdist(); if (pinch) zoomAt((a.x + b.x) / 2, (a.y + b.y) / 2, d / pinch); pinch = d; }
 });
 const pdist = () => { const [a, b] = [...pts.values()]; return Math.hypot(a.x - b.x, a.y - b.y); };
-function endPtr(e) { const p = pts.get(e.pointerId); if (p && pts.size === 1 && !p.moved && e.type === 'pointerup') clickAt(e.clientX, e.clientY); pts.delete(e.pointerId); pinch = 0; }
+function endPtr(e) { const p = pts.get(e.pointerId); if (p && pts.size === 1 && !p.moved && e.type === 'pointerup') { G.shift = e.shiftKey; clickAt(e.clientX, e.clientY); } pts.delete(e.pointerId); pinch = 0; }
 cv.addEventListener('pointerup', endPtr); cv.addEventListener('pointercancel', endPtr);
 cv.addEventListener('wheel', e => { e.preventDefault(); zoomAt(e.clientX, e.clientY, Math.exp(-e.deltaY * 0.0015)); }, { passive: false });
 function zoomAt(cx, cy, f) { const ns = Math.max(0.6, Math.min(40, view.s * f)); f = ns / view.s; view.ox = cx - (cx - view.ox) * f; view.oy = cy - (cy - view.oy) * f; view.s = ns; }
@@ -721,7 +849,7 @@ function clickAt(cx, cy) {
   if (S.tick <= SP) sendIntent({ k: 'spawn', x, y });
   else if (!S.P[G.me].alive) return;
   else if (G.tool) { const t = TOOLS[G.tool - 1]; sendIntent(t.nuke ? { k: 'nuke', x, y } : { k: 'build', b: t.b, x, y }); }
-  else sendIntent({ k: 'atk', x, y, r: +$('ratio').value });
+  else sendIntent({ k: 'atk', x, y, r: +$('ratio').value, boat: !!(G.boat || G.shift) });
 }
 if (/[?&]test\b/.test(location.search)) window.__G = G; // test hook
 </script>
