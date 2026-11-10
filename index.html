@@ -210,9 +210,9 @@ body.cutscene #direct,body.cutscene #spyCard,body.cutscene #freePanel,body.cutsc
 .qbar{height:5px;flex:0 0 130px;background:#000;border-radius:3px;overflow:hidden}.qbar i{display:block;height:100%;background:#ffc46b}
 #cards{flex:none;display:grid;grid-template-columns:repeat(5,66px);grid-auto-rows:62px;gap:4px;padding:6px;background:var(--bg);border:1px solid var(--bd);border-radius:8px}
 .card{position:relative;padding:0;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;background:rgba(255,255,255,.06)}
-.card img{width:44px;height:44px;object-fit:contain}
-.card .gl{font-size:22px;line-height:44px;height:44px}
-.card label{font-size:9.5px;line-height:1;color:#cdd6db;white-space:nowrap;max-width:66px;overflow:hidden;text-overflow:ellipsis;pointer-events:none}
+.card img{width:36px;height:36px;object-fit:contain;flex-shrink:1;min-height:16px}
+.card .gl{font-size:20px;line-height:36px;height:36px}
+.card label{font-size:9px;line-height:1.08;margin-top:1px;flex-shrink:0;color:#cdd6db;max-width:calc(100% - 4px);overflow:hidden;text-align:center;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow-wrap:break-word;hyphens:auto;pointer-events:none}
 .card kbd{position:absolute;top:2px;left:3px;font:700 10px system-ui;color:#ffd97a;text-shadow:0 0 3px #000}
 .card.off{opacity:.42;filter:grayscale(.7)}
 .card.act{border-color:var(--acc);box-shadow:inset 0 0 10px rgba(109,255,154,.4)}
@@ -9451,6 +9451,7 @@ Renderer.prototype.drawUnit = function (e, dt, tint) {
     let hE = h; if (emo && !bike) { const q = emoT; if (emo === 3) { hop += Math.abs(Math.sin(q * 8)) * .14; hE = h + Math.sin(q * 8) * .45; sy *= 1 + Math.sin(q * 16) * .06; } else if (emo === 7) { sy *= .62; hop = 0; } else if (emo === 6) { sy *= 1 + Math.sin(q * 4) * .08; hop += Math.max(0, Math.sin(q * 4)) * .04; } else if (emo === 1) hE = h + Math.sin(q * 6) * .12; else if (emo === 2) hop += Math.abs(Math.sin(q * 5)) * .03; }
     const lean = mv ? (bike ? .06 : .1) : 0, wob = mv ? Math.sin(ph) * (bike ? .03 : .09) : idle * .02;
     const cp = this.cam.position, lo = (this.camDist !== undefined && this.camDist > 60) || (x - cp.x) * (x - cp.x) + (y - cp.y) * (y - cp.y) + (z - cp.z) * (z - cp.z) > 1600; // far troops (40 m+) use the light model
+    if (this.fpId && (x - cp.x) * (x - cp.x) + (y + .4 - cp.y) * (y + .4 - cp.y) + (z - cp.z) * (z - cp.z) < .6) return; // in first person, a blob right in your face would fill the screen: hide it
     if (e.d.para && e.ch !== 0 && y - Math.max(0, hAt(this.view.M, e.rx, e.ryy)) > .8) { // paratrooper under canopy
       this.put('chute|' + nat, () => { const b = new Batch(), P = palette(nat); b.add(GEO.sph, P.main, 0, 0, 0, 1.1, .45, 1.1); b.add(GEO.sph, 0xf1f1ec, 0, -.06, 0, 1.05, .38, 1.05); for (const [a, c] of [[1, 1], [1, -1], [-1, 1], [-1, -1]]) b.add(GEO.cyl6, 0xdddddd, a * .45, -.75, c * .45, .012, 1.5, .012, c * .55, 0, -a * .55); return b.geo(); }, 32, null, x, y + 2.1, z, h, 0, 0, 1, tint);
     }
@@ -11533,14 +11534,23 @@ const Direct = {
     this.hullSpd += (want - this.hullSpd) * (1 - Math.exp(-dt * (thr ? 1.6 : 2.4)));
     const turn = (sea ? .55 : 1.5) * (sea ? Math.min(1, Math.abs(this.hullSpd) / (top * .3) + .15) : 1);
     p.h += steer * turn * dt * (this.hullSpd < -.1 ? -1 : 1);
-    const vx = Math.cos(p.h) * this.hullSpd * dt, vy = Math.sin(p.h) * this.hullSpd * dt, dom = sea ? 1 : d.amph ? 3 : 0;
-    const nx = clamp(p.x + vx, 1, N - 2), ny = clamp(p.y + vy, 1, N - 2);
+    const dom = sea ? 1 : d.amph ? 3 : 0;
+    if (!sea) { // hills: climbing slows you, a gentle downhill helps a little, a wall of rock stops you
+      const fx = Math.cos(p.h) * Math.sign(this.hullSpd || 1), fy = Math.sin(p.h) * Math.sign(this.hullSpd || 1), sl = gAt(M, p.x + fx * .8, p.y + fy * .8) - gAt(M, p.x, p.y);
+      const k2 = sl > 0 ? Math.max(.25, 1 - sl * .9) : Math.min(1.12, 1 - sl * .15); this.slopeK = (this.slopeK || 1) + (k2 - (this.slopeK || 1)) * Math.min(1, dt * 4);
+      if (sl > 1.15 && Math.abs(this.hullSpd) > .2) this.hullSpd *= Math.exp(-dt * 6);
+    } else this.slopeK = 1;
+    const vx = Math.cos(p.h) * this.hullSpd * this.slopeK * dt, vy = Math.sin(p.h) * this.hullSpd * this.slopeK * dt;
+    let nx = clamp(p.x + vx, 1, N - 2), ny = clamp(p.y + vy, 1, N - 2);
+    { const V = this.ui.g.view, r0 = d.r || 1; // other vehicles are solid: push off them instead of driving through
+      for (const t of V.ents.values()) { if (t.id === e.id || t.b || !!t.sea !== !!sea || t.air || (t.d.cat !== 'veh' && t.d.cat !== 'sea') || t.inside) continue; const tx = t.rx === undefined ? t.x : t.rx, ty = t.ryy === undefined ? t.y : t.ryy, dx = nx - tx, dy = ny - ty, rr = (r0 + (t.d.r || 1)) * .62, dd = dx * dx + dy * dy;
+        if (dd < rr * rr && dd > 1e-6) { const q = Math.sqrt(dd), push = rr - q; nx += dx / q * push; ny += dy / q * push; if (push > .05 && Math.abs(this.hullSpd) > 1) { this.hullSpd *= 1 - Math.min(.5, dt * 3); if (performance.now() - (this.bumpT || 0) > 400) { this.bumpT = performance.now(); Sfx.noise(.15, 300, .25, 'lowpass', 1, 90); } } } } }
     if (passable(M, dom, Math.round(ny) * N + Math.round(nx))) { p.x = nx; p.y = ny; }
-    else if (passable(M, dom, Math.round(p.y) * N + Math.round(nx))) p.x = nx;
-    else if (passable(M, dom, Math.round(ny) * N + Math.round(p.x))) p.y = ny;
-    else this.hullSpd *= -.2;
+    else if (passable(M, dom, Math.round(p.y) * N + Math.round(nx))) { p.x = nx; this.hullSpd *= 1 - dt * 1.2; }
+    else if (passable(M, dom, Math.round(ny) * N + Math.round(p.x))) { p.y = ny; this.hullSpd *= 1 - dt * 1.2; }
+    else { if (Math.abs(this.hullSpd) > 1.5 && performance.now() - (this.bumpT || 0) > 400) { this.bumpT = performance.now(); Sfx.noise(.2, 220, .35, 'lowpass', 1, 70); } this.hullSpd *= -.2; }
     this.mv = Math.abs(this.hullSpd) > .2;
-    p.z = sea ? (d.sub ? -.25 : 0) : d.amph ? Math.max(0, gAt(M, p.x, p.y)) : gAt(M, p.x, p.y);
+    { const gz = sea ? (d.sub ? -.25 : 0) : d.amph ? Math.max(0, gAt(M, p.x, p.y)) : gAt(M, p.x, p.y); p.z = sea || Math.abs(gz - p.z) > 3 ? gz : p.z + (gz - p.z) * Math.min(1, dt * 14); } // ride over bumps instead of snapping
     // turret traverses toward where you look, at a limited speed (feels heavy, still precise)
     const trav = e.k === 'tank' ? 2.2 : e.k === 'htank' ? 1.5 : e.k === 'td' ? 1.1 : e.k === 'ltank' ? 3 : e.k === 'arty' ? 1 : 2.6;
     if (d.turret || sea) this.turret += clamp(angDiff(this.turret, this.camYaw), -trav * dt, trav * dt); else this.turret = p.h;
