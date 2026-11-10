@@ -2789,6 +2789,7 @@ Sim.prototype.issue = function (c, pi) {
     case 'rsctl': { const R = this.rs; if (R && R.seat[pi] === 'pilot') { R.inp = clamp(+c.v || 0, -1, 1); R.ti = clamp(+c.t || 0, -1, 1); R.pi = clamp(+c.p || 0, -1, 1); } break; }
     case 'rsjam': { const R = this.rs; if (R && R.seat[pi] === 'radio') R.jamF = clamp(+c.f || 0, 0, 1); break; }
     case 'rsfire': { const R = this.rs, sid = R && R.seat[pi], S2 = sid && RS_SEATS[sid], B = this.rsB; if (!S2 || !S2.gun || !B || (R.gcd[pi] || 0) > this.t) break; R.gcd[pi] = this.t + .1; const wy = +c.yaw || 0, wp = clamp(+c.pitch || 0, -1, 1), hd = this.rsHd || 0, sx = S2.x * .2, sz = S2.z * .2, ox = B.x + Math.cos(hd) * sx - Math.sin(hd) * sz, oy = B.y + Math.sin(hd) * sx + Math.cos(hd) * sz, oz = B.z + 1, dx = Math.cos(wy) * Math.cos(wp), dy = Math.sin(wy) * Math.cos(wp), dz = Math.sin(wp), sp = 38, vB = this.rsV || {x: 0, y: 0}; R.bullets.push({x: ox, y: oy, z: oz, vx: dx * sp + vB.x, vy: dy * sp + vB.y, vz: dz * sp, t: 0}); this.ev({k: 'rstr', x0: ox, y0: oy, z0: oz, x1: ox + dx * 16, y1: oy + dy * 16, z1: oz + dz * 16, c: 'g'}); break; }
+    case 'rlact': this.trainAct(pi, c); break;
     case 'icrew': (this.crew = this.crew || {})[pi] = {x: +c.x || 0, z: +c.z || 0, yaw: +c.yaw || 0, t: this.t}; break; // where this player is walking inside the shared aircraft
     case 'pdig': { const a = this.ents.get(c.id); if (!a || a.o !== pi || a.pilot !== pi + 1 || a.d.cat !== 'inf' || (a.digT || 0) > this.t) break; if (Math.hypot(c.x - a.x, c.y - a.y) > 4.2) break; a.digT = this.t + .1; this.digAt(+c.x, +c.y, pi, .45, {x: +c.dx || 0, y: +c.dy || 0}, 2.4); break; } // by hand: wide hole, deep bites, quick strikes
     case 'bore': { // workers bore a real tunnel: straight line, floor sloping evenly from one end to the other, under whatever is on top
@@ -3320,6 +3321,7 @@ Sim.prototype.hurt = function (t, dmg, by) {
       if (t.b || t.d.cat !== 'drone') this.ev({k: 'attacked', p: t.o, x: t.x, y: t.y, b: t.b ? 1 : 0});
     }
   }
+  if (t.rail && this.rl) { this.railHit(t, dmg); if (t.k === 'gcar' && t.hp <= 0) t.hp = 1; } // Iron Express: gun cars get knocked out, never destroyed
   if (t.hp <= 0) this.kill(t, by);
 };
 
@@ -4014,7 +4016,7 @@ Sim.prototype.spawnFrom = function (b, k, p) {
 
 Sim.prototype.stepUnit = function (e) {
   if (e.rs || e.rsS) return; // scripted aircraft (Operation Red Star)
-  if (e.rail) { e.cd -= DT; if (!e.pilot && e.cd <= 0) { const t = this.acquire(e); if (t && Math.hypot(t.x - e.x, t.y - e.y) - (t.b ? t.d.s / 2 : 0) <= e.d.rng) { e.tu = Math.atan2(t.y - e.y, t.x - e.x); this.fire(e, t); e.cd = e.d.cd; } } if (!e.pilot && this.t - (e.hurtT || 0) > 8 && e.k !== 'loco' && e.hp < e.hpm) e.hp = Math.min(e.hpm, e.hp + 3 * DT); return; } // Iron Express cars ride the line
+  if (e.rail) { e.cd -= DT; if (!e.pilot && e.cd <= 0 && !e.jammed) { const t = this.acquire(e); if (t && Math.hypot(t.x - e.x, t.y - e.y) - (t.b ? t.d.s / 2 : 0) <= e.d.rng) { e.tu = Math.atan2(t.y - e.y, t.x - e.x); this.fire(e, t); e.cd = e.d.cd * (e.k === 'gcar' ? 1.7 : 1); } } if (!e.pilot && !e.jammed && this.t - (e.hurtT || 0) > 8 && e.k !== 'loco' && e.hp < e.hpm) e.hp = Math.min(e.hpm, e.hp + 3 * DT); return; } // Iron Express cars ride the line
   const d = e.d, p = this.players[e.o];
   if (e.xav) this.stepXav(e);
   if (d.spy && this.tick % 5 === e.id % 5) this.stepSpy(e);
@@ -5960,16 +5962,19 @@ const RAIL_SPD = 1.15, RAIL_GAP = 3.3;
 Sim.prototype.setupRail = function () {
   const R = railRoute(this.M, this.N), nh = this.players.length - 1, L = R.L;
   this.rail = 1; this.rlE = nh;
-  const T = this.rl = {s: 12, v: 0, st: 'go', L, ev: [], stopAt: null, gap: null, rep: 0, eng: 0, engT: 0, block: 0, kills: 0, cars: [], loco: 0, hurtT: 0, said: {}, seatT: {}};
+  const T = this.rl = {s: 12, v: 0, st: 'go', L, ev: [], stopAt: null, gap: null, rep: 0, eng: 0, engT: 0, block: 0, kills: 0, cars: [], loco: 0, hurtT: 0, said: {}, seatT: {}, t0: this.t};
   const E = (f, k, a) => T.ev.push([Math.round(L * f), k, a]);
-  E(.03, 'tip', 'All aboard! Mouse to aim your turret, click to fire, E rockets. Keep the locomotive alive to the far station.');
-  E(.09, 'amb', 1); E(.17, 'amb', 2); E(.24, 'heli', 1); E(.31, 'gap', 1); E(.4, 'amb', 3); E(.47, 'supply'); E(.53, 'amb', 3); E(.6, 'heli', 2);
-  E(.67, 'gap', 2); E(.75, 'amb', 4); E(.81, 'heli', 2); E(.86, 'amb', 5); E(.93, 'block');
+  E(.012, 'tip', 'All aboard! Walk the train with WASD. Keep steam up: grab coal from the bunkers at the back of the cab (E) and throw it in the firebox (E).');
+  E(.035, 'tip', 'Each gun car has a turret ladder in the middle. Walk up to it and press E to man the turret. F climbs back down.');
+  E(.06, 'tip', 'Raiders will try to jump aboard. Click to shoot them, F kicks. Hold E on fires to put them out.');
+  E(.14, 'amb', 1); E(.21, 'amb', 2); E(.28, 'heli', 1); E(.34, 'gap', 1); E(.42, 'amb', 3); E(.48, 'supply'); E(.55, 'amb', 3); E(.62, 'heli', 2);
+  E(.49, 'tip', 'Quiet stretch. Top up the boiler, put out fires and fix broken turrets before the next ambush.'); E(.68, 'gap', 2); E(.76, 'amb', 4); E(.82, 'heli', 2); E(.87, 'amb', 5); E(.93, 'block');
   T.ev.sort((a, b) => a[0] - b[0]);
   const loco = this.addUnit('loco', 0, R.pts[12][0], R.pts[12][1]); loco.rail = 1; loco.rof = 0; loco.seat = -1; T.loco = loco.id;
-  const cars = Math.max(3, nh);
-  for (let k = 0; k < cars; k++) { const c = this.addUnit('gcar', k < nh ? k : 0, R.pts[12][0], R.pts[12][1]); c.rail = 1; c.rof = RAIL_GAP * (k + 1); c.seat = k < nh ? k : -1; T.cars.push(c.id); }
+  const cars = clamp(nh + 1, 2, 4);
+  for (let k = 0; k < cars; k++) { const c = this.addUnit('gcar', 0, R.pts[12][0], R.pts[12][1]); c.rail = 1; c.rof = RAIL_GAP * (k + 1); c.seat = -1; T.cars.push(c.id); }
   for (const p of this.players) { p.steel = 0; p.fuel = 0; }
+  this.trainInit(T, nh);
   this.railPlace();
 };
 Sim.prototype.railMsg = function (text, kind) { for (let i = 0; i < this.rlE; i++) this.notify(i, text, kind || 'rs'); };
@@ -5994,7 +5999,7 @@ Sim.prototype.railRaid = function (s, lvl, air) {
 Sim.prototype.railStep = function () {
   const T = this.rl; if (!T || T.st === 'won' || T.st === 'lost') return;
   const R = railRoute(this.M, this.N), loco = this.ents.get(T.loco), humans = [...Array(this.rlE).keys()];
-  const end = (won, text) => { T.st = won ? 'won' : 'lost'; this.railMsg(text, won ? 'good' : 'bad'); this.over = won ? {winner: 0, team: 0, wins: humans, t: this.t} : {winner: this.rlE, team: 1, wins: [this.rlE], t: this.t}; this.ev({k: 'over', winner: this.over.winner, team: this.over.team, wins: this.over.wins}); };
+  const end = (won, text) => { T.st = won ? 'won' : 'lost'; this.railMsg(text, won ? 'good' : 'bad'); if (T.pk) for (let i = 0; i < this.rlE; i++) { const q = T.pk[i]; if (q) this.notify(i, 'Your trip: ' + q.k + ' boarders thrown off · ' + q.coal + ' shovels of coal · ' + q.fire + ' fires put out', 'gold'); } this.over = won ? {winner: 0, team: 0, wins: humans, t: this.t} : {winner: this.rlE, team: 1, wins: [this.rlE], t: this.t}; this.ev({k: 'over', winner: this.over.winner, team: this.over.team, wins: this.over.wins}); };
   if (!loco) { end(false, 'The locomotive is destroyed. The Iron Express is lost.'); return; }
   // scripted events, triggered a little before the train reaches them
   while (T.ev.length && T.s >= T.ev[0][0] - 34) {
@@ -6007,7 +6012,7 @@ Sim.prototype.railStep = function () {
     else if (k === 'block') { const q = railAt(R, at); const b = this.addBuilding('bunker', this.rlE, Math.round(q.x), Math.round(q.y), true); if (b) { b.hp = b.hpm = 2200; T.block = b.id; T.stopAt = at - 9; } this.railRaid(at + 3, 4); this.railMsg('A bunker blocks the line before the station! Blow it up!', 'bad'); }
   }
   // driving: slow for a stop, otherwise steam on
-  let want = RAIL_SPD; if (T.stopAt !== null) { const d = T.stopAt - T.s; want = Math.min(want, Math.max(0, d * .3)); if (d < .25) want = 0; }
+  let want = RAIL_SPD * (T.lay ? [0, .72, 1, 1.32][T.thr] * (T.psi > .25 ? 1 : Math.max(0, T.psi / .25)) : 1); if (T.stopAt !== null) { const d = T.stopAt - T.s; want = Math.min(want, Math.max(0, d * .3)); if (d < .25) want = 0; }
   if (loco.hp < loco.hpm * .3) want *= .75; // a wrecked engine limps
   T.v += clamp(want - T.v, -.09, .025); T.s = Math.min(R.L, T.s + T.v * DT);
   this.railPlace();
@@ -6035,20 +6040,158 @@ Sim.prototype.railStep = function () {
     if (d > 90 && !e.air) { this.ents.delete(e.id); continue; }
     if (!e.tid && (!e.goal || e.air)) { const cid = [T.loco, ...T.cars][(e.id % (T.cars.length + 1))], c = this.ents.get(cid) || loco; this.cmdMove([e], c.x + (this.rnd() - .5) * 6, c.y + (this.rnd() - .5) * 6, true, false); }
   }
-  // crew whose car was destroyed take over a free one
-  for (const i of humans) {
-    if ([T.loco, ...T.cars].some(id => { const e = this.ents.get(id); return e && e.o === i && e.seat === i; })) continue;
-    if ((T.seatT[i] || 0) > this.t) continue; T.seatT[i] = this.t + 3;
-    const free = [...T.cars, T.loco].map(id => this.ents.get(id)).find(e => e && e.seat === -1 && !e.pilot);
-    if (free) { free.o = i; free.seat = i; this.ev({k: 'rlseat', p: i, id: free.id}); this.notify(i, 'Your car is gone. You take over the ' + free.d.n + '.', 'gold'); }
-  }
+  this.trainTick();
   if (!T.said.hp && loco.hp < loco.hpm * .35) { T.said.hp = 1; this.railMsg('The locomotive is badly damaged! Protect it!', 'bad'); }
   if (T.s >= R.L - 2) end(true, 'The Iron Express reaches the station! Mission complete.');
 };
 Sim.prototype.railPub = function () {
   const T = this.rl, loco = this.ents.get(T.loco), eng = T.eng && this.ents.get(T.eng);
-  return {s: +T.s.toFixed(1), v: +T.v.toFixed(2), L: T.L, st: T.st, rep: +T.rep.toFixed(2), hp: loco ? +(loco.hp / loco.hpm).toFixed(3) : 0, eng: eng ? 1 : 0, gap: T.gap ? 1 : 0, cars: T.cars.filter(id => this.ents.has(id)).length, of: T.cars.length};
+  return {s: +T.s.toFixed(1), v: +T.v.toFixed(2), L: T.L, st: T.st, rep: +T.rep.toFixed(2), hp: loco ? +(loco.hp / loco.hpm).toFixed(3) : 0, eng: eng ? 1 : 0, gap: T.gap ? 1 : 0, cars: T.cars.filter(id => this.ents.has(id)).length, of: T.cars.length,
+    psi: +(T.psi || 0).toFixed(3), thr: T.thr, n: T.n, kills: T.kills, chp: T.chp, dead: Object.fromEntries(Object.keys(T.dead || {}).map(k => [k, Math.max(0, +(T.dead[k] - this.t).toFixed(1))])), coal: T.coal, seat: T.seat, spawn: T.spawn,
+    jam: T.jam, fires: (T.fires || []).map(f => [f.id, +f.x.toFixed(2), +f.z.toFixed(2), +f.p.toFixed(2)]), brd: (T.brd || []).map(b => [b.id, +b.x.toFixed(2), +b.z.toFixed(2), +b.yaw.toFixed(2), b.hurt && this.t - b.hurt < .3 ? 1 : 0]),
+    ids: [T.loco, ...T.cars], hpc: [T.loco, ...T.cars].map(id => { const e = this.ents.get(id); return e ? +(e.hp / e.hpm).toFixed(3) : 0; })};
 };
+// ---------- Iron Express 2.0: the inside of the train, shared by everyone ----------
+// One straight corridor in "train coordinates": x along the train (+x = forward, the loco cab ends at x = -.6), z across.
+// Car i is centred on x = -i * TR_CL; interior x maps onto the track at s = train.s + x * RAIL_GAP / TR_CL, so every car follows its own curve.
+const TR_CL = 10, TR_HL = 4.6, TR_W = 1.3;
+const TR_ST = {fire: [-1.3, 0], thr: [-1.25, -1.05], whistle: [-1.25, 1.05]}; // cab stations
+function trainLayout(n) {
+  const rooms = [], doors = [], blocks = [];
+  rooms.push({n: 'Locomotive cab', c: 0, x0: -TR_HL, x1: -.6, z0: -TR_W, z1: TR_W, win: [['z', -TR_W, -3.4, -1.15, .5, 1.02], ['z', TR_W, -3.4, -1.15, .5, 1.02], ['x', -.6, -1.2, -.5, .72, 1.08], ['x', -.6, .5, 1.2, .72, 1.08]]});
+  blocks.push([-TR_HL, -3.8, -TR_W, -.5], [-TR_HL, -3.8, .5, TR_W], [-.95, -.6, -.42, .42], [-.95, -.6, -TR_W, -1.05], [-.95, -.6, 1.05, TR_W]); // coal bunkers, firebox, driver's stand
+  for (let i = 1; i < n; i++) {
+    const xc = -i * TR_CL, last = i === n - 1;
+    rooms.push({n: 'Gangway', c: i - .5, x0: xc + TR_HL, x1: xc + TR_CL - TR_HL, z0: -.5, z1: .5, open: 1});
+    doors.push(['x', xc + TR_HL, -.5, .5], ['x', xc + TR_CL - TR_HL, -.5, .5]);
+    const win = [];
+    for (const s of [-1, 1]) win.push(['z', s * TR_W, xc + 1.1, xc + 4, .5, 1.0], ['z', s * TR_W, xc - (last ? 2.6 : 4), xc - 1.1, .5, 1.0]);
+    if (last) win.push(['x', xc - TR_HL, -.55, .55, .45, 1.05]);
+    rooms.push({n: last ? 'Gun car ' + i + ' · bunks' : 'Gun car ' + i, c: i, x0: xc - TR_HL, x1: xc + TR_HL, z0: -TR_W, z1: TR_W, win});
+    blocks.push([xc - .3, xc + .3, -.3, .3]); // the turret ladder
+    blocks.push([xc + 2.3, xc + 3.1, TR_W - .38, TR_W], [xc - 3.1, xc - 2.3, -TR_W, -TR_W + .38]); // ammo crates
+    if (last) blocks.push([xc - TR_HL, xc - 3.1, -TR_W, -.55], [xc - TR_HL, xc - 3.1, .55, TR_W]); // bunks
+  }
+  return {rooms, doors, blocks, n, sub: false, chair: [-2.2, 0], worldUp: .5, crew: [], train: 1};
+}
+function trainFree(L) {
+  if (L._free) return L._free;
+  const M = .2, walk = L.rooms.map(r => [r.x0 + M, r.x1 - M, r.z0 + M, r.z1 - M]);
+  for (const d of L.doors) walk.push([d[1] - .4, d[1] + .4, d[2] + M, d[3] - M]);
+  return (L._free = (x, z) => walk.some(w => x >= w[0] && x <= w[1] && z >= w[2] && z <= w[3]) && !L.blocks.some(q => x > q[0] - .15 && x < q[1] + .15 && z > q[2] - .15 && z < q[3] + .15));
+}
+const trainCar = x => Math.max(0, Math.round(-x / TR_CL)); // which car a train x is in (gangways count as the car behind)
+const trainBunk = n => [-(n - 1) * TR_CL - 2.6, 0];
+Sim.prototype.trainInit = function (T, nh) {
+  const n = T.cars.length + 1; T.lay = trainLayout(n); T.n = n;
+  Object.assign(T, {psi: .85, thr: 2, fires: [], brd: [], fid: 1, bid: 1, chp: {}, dead: {}, coal: {}, seat: {}, jam: {}, spawn: {}, hold: {}, hurtC: {}, shotT: {}, st2: {}, brdMsg: 0, pk: {}});
+  const [bx, bz] = trainBunk(n);
+  for (let i = 0; i < nh; i++) { T.chp[i] = 100; T.spawn[i] = 1; T.pk[i] = {k: 0, coal: 0, fire: 0}; (this.crew = this.crew || {})[i] = {x: bx + .5 - (i % 4) * .3, z: i < 4 ? -.3 : .3, yaw: 0, t: this.t}; }
+};
+Sim.prototype.trainEnt = function (ci) { const T = this.rl; return this.ents.get(ci === 0 ? T.loco : T.cars[ci - 1]); };
+Sim.prototype.trainFireAt = function (ci, x, z) { // a fire starts somewhere in car ci (or at x, z)
+  const T = this.rl, L = T.lay, free = trainFree(L); if (T.fires.length >= 8 || T.fires.filter(f => f.c === ci).length >= 3) return;
+  if (x === undefined) { const xc = -ci * TR_CL; for (let k = 0; k < 20; k++) { const xx = ci === 0 ? -3.4 + this.rnd() * 2.6 : xc + (this.rnd() - .5) * 8, zz = (this.rnd() - .5) * 2.2; if (free(xx, zz)) { x = xx; z = zz; break; } } if (x === undefined) return; }
+  T.fires.push({id: T.fid++, c: ci, x, z, p: 0, t: this.t});
+  if (this.t - (T.fireMsg || -99) > 8) { T.fireMsg = this.t; this.railMsg('FIRE in the ' + (ci ? 'gun car ' + ci : 'locomotive cab') + '! Hold E on it to put it out.', 'bad'); }
+};
+Sim.prototype.railHit = function (t, dmg) { // shells and rockets that hit a car can set it alight
+  const T = this.rl; if (!T || !T.lay) return; const ci = t.id === T.loco ? 0 : T.cars.indexOf(t.id) + 1; if (ci < 0 || (ci > 0 && T.cars.indexOf(t.id) < 0)) return;
+  if (dmg >= 18 && this.rnd() < Math.min(.2, dmg / 380)) this.trainFireAt(ci);
+  if (dmg >= 20 && this.t - (T.hitT || -9) > .4) { T.hitT = this.t; this.ev({k: 'rlsfx', s: 'hit', c: ci}); }
+};
+Sim.prototype.trainBoard = function (e) { // a raider gets close enough to jump on: it leaves the world and climbs in through a hatch
+  const T = this.rl, L = T.lay, free = trainFree(L); let best = null, bd = 1.9;
+  for (let ci = 0; ci < T.n; ci++) { const c = this.trainEnt(ci); if (!c) continue; const d = Math.hypot(c.x - e.x, c.y - e.y); if (d < bd) { bd = d; best = {ci, c}; } }
+  if (!best) return false;
+  const side = Math.sin(best.c.h) * (e.x - best.c.x) - Math.cos(best.c.h) * (e.y - best.c.y) > 0 ? -1 : 1, xc = -best.ci * TR_CL;
+  let x = null, z = side * (TR_W - .35);
+  for (let k = 0; k < 14 && x === null; k++) { const xx = best.ci === 0 ? -3.3 + this.rnd() * 2 : xc + (this.rnd() - .5) * 7; if (free(xx, z)) x = xx; }
+  if (x === null) return false;
+  this.ents.delete(e.id);
+  T.brd.push({id: T.bid++, x, z, yaw: -side * Math.PI / 2, hp: e.k === 'mg' ? 90 : 60, cd: 1.5 + this.rnd(), fb: 9 + this.rnd() * 8, k: e.k === 'rocket' ? 1 : 0});
+  this.ev({k: 'rlboard', c: best.ci});
+  if (this.t - T.brdMsg > 6) { T.brdMsg = this.t; this.railMsg('BOARDERS climbing into the ' + (best.ci ? 'gun car ' + best.ci : 'locomotive cab') + '! Get them off the train!', 'bad'); }
+  return true;
+};
+Sim.prototype.trainCrewHurt = function (pi, dmg) {
+  const T = this.rl; if (T.dead[pi] || T.chp[pi] === undefined) return;
+  T.chp[pi] -= dmg; T.hurtC[pi] = this.t; this.ev({k: 'rlouch', p: pi, dmg: Math.round(dmg)});
+  if (T.chp[pi] <= 0) { T.chp[pi] = 0; T.dead[pi] = this.t + 7; this.trainUnseat(pi); T.coal[pi] = 0; this.notify(pi, 'You are knocked out. You wake up in the bunks in 7 seconds.', 'bad'); }
+};
+Sim.prototype.trainUnseat = function (pi) { const T = this.rl, ci = T.seat[pi]; if (ci === undefined) return; delete T.seat[pi]; const c = this.trainEnt(ci); if (c) { c.seat = -1; if (c.pilot) { c.hpm /= PILOT_HP; c.hp = Math.min(c.hp / PILOT_HP, c.hpm); c.pilot = 0; } } };
+Sim.prototype.trainAct = function (pi, c) {
+  const T = this.rl, cw = this.crew && this.crew[pi]; if (!T || !T.lay || !cw || T.dead[pi] || T.st === 'won' || T.st === 'lost') return;
+  const near = (x, z, r) => Math.hypot(cw.x - x, cw.z - z) < r, a = c.a;
+  if (a === 'coal') { if (!T.coal[pi] && cw.x < -3.0 && cw.x > -TR_HL && Math.abs(cw.z) > .3) { T.coal[pi] = 1; this.ev({k: 'rlsfx', s: 'scoop', p: pi}); } }
+  else if (a === 'stoke') { if (T.coal[pi] && near(TR_ST.fire[0], TR_ST.fire[1], 1.1)) { T.coal[pi] = 0; T.psi = Math.min(1, T.psi + .2); T.pk[pi].coal++; this.ev({k: 'rlsfx', s: 'stoke', p: pi}); } }
+  else if (a === 'thr') { if (near(TR_ST.thr[0], TR_ST.thr[1], 1)) { T.thr = T.thr % 3 + 1; this.railMsg(['', 'Driver: half steam. Saves coal.', 'Driver: running steam.', 'Driver: FULL STEAM! Burns coal fast.'][T.thr], 'gold'); this.ev({k: 'rlsfx', s: 'lever'}); } }
+  else if (a === 'whistle') { if (near(TR_ST.whistle[0], TR_ST.whistle[1], 1) && this.t - (T.whT || -9) > 1.5) { T.whT = this.t; this.ev({k: 'rlsfx', s: 'whistle'}); } }
+  else if (a === 'seat') { const ci = c.car | 0, car = this.trainEnt(ci); if (ci < 1 || !car || T.jam[ci] !== undefined || !near(-ci * TR_CL, 0, 1.5) || Object.keys(T.seat).some(k => T.seat[k] === ci)) return; T.seat[pi] = ci; car.o = pi; car.seat = pi; T.coal[pi] = 0; }
+  else if (a === 'unseat') this.trainUnseat(pi);
+  else if (a === 'hold') T.hold[pi] = {id: String(c.id || ''), t: this.t};
+  else if (a === 'shoot' || a === 'kick') {
+    if ((T.shotT[pi] || 0) > this.t) return; T.shotT[pi] = this.t + (a === 'kick' ? .55 : .2);
+    const yaw = +c.yaw || 0, cx = Math.cos(yaw), cz = Math.sin(yaw), ok = Math.abs(+c.pitch || 0) < .55; let hit = null, hd = a === 'kick' ? 1.25 : 16;
+    for (const b of T.brd) { const rx = b.x - cw.x, rz = b.z - cw.z, f = rx * cx + rz * cz, s = Math.abs(rx * cz - rz * cx); if (f > 0 && f < hd && s < (a === 'kick' ? .7 : .36)) { hit = b; hd = f; } }
+    if (a === 'shoot') this.ev({k: 'rlshot', p: pi, x: +cw.x.toFixed(2), z: +cw.z.toFixed(2), yaw: +yaw.toFixed(3), pt: +(+c.pitch || 0).toFixed(3), d: +(hit && ok ? hd : 12).toFixed(2), h: hit && ok ? 1 : 0});
+    else this.ev({k: 'rlsfx', s: 'kick', p: pi});
+    if (hit && (ok || a === 'kick')) {
+      hit.hp -= a === 'kick' ? 45 : 34; hit.hurt = this.t;
+      if (a === 'kick') { const nx = hit.x + cx * .9, nz = hit.z + cz * .9; if (trainFree(T.lay)(nx, nz)) { hit.x = nx; hit.z = nz; } }
+      if (hit.hp <= 0) { T.brd.splice(T.brd.indexOf(hit), 1); T.kills++; T.pk[pi].k++; this.ev({k: 'rlsfx', s: 'bdown', p: pi, x: hit.x, z: hit.z}); }
+    }
+  }
+};
+Sim.prototype.trainTick = function () { // every sim tick: boiler, fires, boarders, crew health, jobs
+  const T = this.rl; if (!T.lay) return; const L = T.lay, free = trainFree(L), humans = this.rlE;
+  // the boiler: pressure drains, faster at full steam; boarders at the firebox rake the fire out
+  T.psi = Math.max(0, T.psi - DT * .0075 * [0, .55, 1, 1.75][T.thr]);
+  if (T.psi < .3 && !T.said['lp' + Math.floor(this.t / 25)]) { T.said['lp' + Math.floor(this.t / 25)] = 1; this.railMsg(T.psi < .08 ? 'NO STEAM! The train is stopping. Shovel coal into the firebox!' : 'Boiler pressure is low. Somebody shovel coal (tender behind the cab, then the firebox).', 'bad'); }
+  // jobs held with E: fires and broken turrets; two people work faster
+  const work = {}; for (const k of Object.keys(T.hold)) { const h = T.hold[k], cw = this.crew[k]; if (!h || this.t - h.t > .45 || T.dead[k] || !cw) { delete T.hold[k]; continue; } (work[h.id] = work[h.id] || []).push(cw); }
+  for (const f of T.fires.slice()) {
+    const w = (work['f:' + f.id] || []).filter(cw => Math.hypot(cw.x - f.x, cw.z - f.z) < 1.3).length;
+    if (w) { f.p += DT / 2.2 * (w > 1 ? 1.8 : 1); if (f.p >= 1) { T.fires.splice(T.fires.indexOf(f), 1); for (const k of Object.keys(T.hold)) if (T.hold[k].id === 'f:' + f.id) T.pk[k].fire++; this.ev({k: 'rlsfx', s: 'out', x: f.x, z: f.z}); continue; } }
+    else f.p = Math.max(0, f.p - DT * .05);
+    const car = this.trainEnt(f.c); if (car) { car.hp -= DT * (f.c === 0 ? 9 : 6); car.hurtT = this.t; if (car.hp <= 0) this.hurt(car, 1, this.rlE); }
+    for (let i = 0; i < humans; i++) { const cw = this.crew[i]; if (cw && !T.dead[i] && Math.hypot(cw.x - f.x, cw.z - f.z) < .55) this.trainCrewHurt(i, DT * 14); }
+    if (this.t - f.t > 22 && this.rnd() < DT / 10) { f.t = this.t; this.trainFireAt(f.c); } // left alone, it spreads
+  }
+  for (const k of Object.keys(T.jam)) { const ci = +k, car = this.trainEnt(ci), w = (work['j:' + ci] || []).filter(cw => Math.hypot(cw.x + ci * TR_CL, cw.z) < 1.6).length;
+    if (w) T.jam[k] += DT / 4.5 * (w > 1 ? 1.8 : 1); if (T.jam[k] >= 1 || !car) { delete T.jam[k]; if (car) { car.hp = Math.max(car.hp, car.hpm * .45); car.jammed = 0; } this.railMsg('Turret ' + ci + ' repaired and back in action!', 'good'); } }
+  for (let ci = 1; ci < T.n; ci++) { const car = this.trainEnt(ci); if (car && T.jam[ci] === undefined && car.hp < car.hpm * .12) { T.jam[ci] = 0; car.jammed = 1; for (const k of Object.keys(T.seat)) if (T.seat[k] === ci) this.trainUnseat(+k); this.railMsg('Turret ' + ci + ' is knocked out! Hold E at its ladder to repair it.', 'bad'); } }
+  // boarders: walk to the nearest crew member and shoot; with nobody about they go for the firebox
+  for (const b of T.brd.slice()) {
+    let tgt = null, td = 1e9;
+    for (let i = 0; i < humans; i++) { const cw = this.crew[i]; if (!cw || T.dead[i]) continue; const d = Math.hypot(cw.x - b.x, cw.z - b.z) + Math.abs(trainCar(cw.x) - trainCar(b.x)) * 4; if (d < td) { td = d; tgt = {x: cw.x, z: cw.z, i}; } }
+    const goal = tgt || {x: TR_ST.fire[0], z: 0}, bc = trainCar(b.x), gc = trainCar(goal.x);
+    let wx = goal.x, wz = goal.z;
+    if (bc !== gc) { const dir = gc < bc ? 1 : -1, door = -bc * TR_CL + dir * (bc === 0 ? 0 : TR_HL + .3); wx = Math.abs(b.z) > .3 && Math.abs(b.x - door) > .8 ? door - dir * .6 : b.x + dir * 2; wz = 0; }
+    const dist = Math.hypot(goal.x - b.x, goal.z - b.z), stop = tgt ? 2.2 : .5, sp = 1.25 * DT;
+    if (dist > stop || bc !== gc) {
+      const a0 = Math.atan2(wz - b.z, wx - b.x);
+      for (const da of [0, .6, -.6, 1.2, -1.2, 1.8, -1.8]) { const aa = a0 + da * (b.id % 2 ? 1 : -1), nx = b.x + Math.cos(aa) * sp, nz = b.z + Math.sin(aa) * sp; if (free(nx, nz)) { b.x = nx; b.z = nz; b.yaw = aa; break; } }
+    }
+    if (tgt) b.yaw = Math.atan2(tgt.z - b.z, tgt.x - b.x);
+    b.cd -= DT; b.fb -= DT;
+    if (tgt && b.cd <= 0 && dist < 7 && Math.abs(trainCar(tgt.x) - bc) <= (Math.abs(b.z) < .5 && Math.abs(tgt.z) < .5 ? 1 : 0)) { b.cd = 1.1 + this.rnd() * .6; const hit = this.rnd() < .55 - dist * .04; this.ev({k: 'rlbshot', id: b.id, x: +b.x.toFixed(2), z: +b.z.toFixed(2), yaw: +b.yaw.toFixed(3), d: +dist.toFixed(2), h: hit ? 1 : 0}); if (hit) this.trainCrewHurt(tgt.i, b.k ? 16 : 9); }
+    if (b.fb <= 0) { b.fb = 14 + this.rnd() * 8; this.trainFireAt(bc, b.x + Math.cos(b.yaw) * .5, b.z + Math.sin(b.yaw) * .3); }
+    if (!tgt && Math.hypot(b.x - TR_ST.fire[0], b.z) < 1) T.psi = Math.max(0, T.psi - DT * .03);
+  }
+  // crew: heal slowly out of the fight, wake up in the bunks
+  for (let i = 0; i < humans; i++) {
+    if (T.dead[i]) { if (this.t >= T.dead[i]) { delete T.dead[i]; T.chp[i] = 100; T.spawn[i] = (T.spawn[i] || 0) + 1; const [bx, bz] = trainBunk(T.n); this.crew[i] = {x: bx, z: bz + (i % 3 - 1) * .3, yaw: 0, t: this.t}; } continue; }
+    if (this.t - (T.hurtC[i] || -99) > 6) T.chp[i] = Math.min(100, T.chp[i] + DT * 4);
+    const ci = T.seat[i]; if (ci !== undefined) { const cw = this.crew[i]; if (cw) { cw.x = -ci * TR_CL + .5; cw.z = 0; cw.t = this.t; } }
+  }
+  // raiders near the train jump on (a few at a time)
+  if (this.tick % 20 === 7 && T.brd.length < 1 + Math.ceil(humans * .75) + (T.v < .2 ? 1 : 0)) for (const e of this.ents.values()) {
+    if (e.o !== this.rlE || e.b || !e.raid || e.d.cat !== 'inf' || e.k === 'sniper') continue;
+    if (this.rnd() < .45 && this.trainBoard(e)) break;
+  }
+};
+
 // ---------- snapshot encode (host) ----------
 const SNAP_F = 12;
 const EMO_ICONS = ['\u{1F44B}', '\u{1F595}', '\u{1F57A}', '\u{1FAE1}', '\u{1F926}', '\u{1F937}', '\u{1F3F3}\u{FE0F}']; // wave, rude, griddy, salute, facepalm, shrug, give up (ids 1 to 7)
@@ -9241,7 +9384,7 @@ Renderer.prototype.emoArms = function (emo, nat, x, y, z, h, sc, tint, sh, sw, s
 };
 Renderer.prototype.drawUnit = function (e, dt, tint) {
   const dg = e.disg !== undefined && e.disg !== null && this.view.players[e.disg], nat = dg ? dg.nation : this.view.players[e.o].nation, k = dg ? 'rifle' : e.k, d = e.d, key = k + '|' + nat, h = -e.ry, x = e.rx, y = e.rz, z = e.ryy;
-  if (e.id === this.hideId) return;
+  if (e.id === this.hideId || (this.hideRail && d.rail)) return;
   if (d.cat === 'inf') {
     if (k === 'wolf') {
       const spd = e.moving ? 1 : 0, bob = spd * Math.abs(Math.sin(this.time * 9 + e.id)) * .16;
@@ -10407,7 +10550,7 @@ const Direct = {
   enter(ui, e) {
     this.ui = ui; this.e = e; this.id = e.id; this.on = true; this.aboard = null; this.noChute = false;
     const d = e.d;
-    this.mode = ui.g.redstar && e.rs ? 'crew' : this.modeOf(d);
+    this.mode = ui.g.redstar && e.rs ? 'crew' : ui.g.rail && e.k === 'loco' ? 'train' : this.modeOf(d);
     this.yaw = e.h; this.pitch = this.mode === 'plane' ? 0 : -.05; this.roll = 0; this.fq = undefined; this.manualFly = false; this.fpP = 0; this.pRate = 0; this.rollRate = 0; this.pullUp = false; this.warnT = 0; this.killStreak = 0; this.strikeBank = 0; this.confirm = null; this.vz = 0; this.mx = this.my = 0; this.keys = {}; this.mouseDown = false;
     this.speed = this.mode === 'plane' ? d.spd * this.planeK() : this.mode === 'fpv' ? d.spd : 0; this.batt = 1; this.vel = {x: 0, y: 0}; this.hullSpd = 0;
     this.aimYaw = this.yaw; this.aimPitch = 0; this.camYaw = this.yaw; this.camPitch = this.mode === 'plane' ? -.05 : 0;
@@ -10425,12 +10568,13 @@ const Direct = {
     R.fpId = e.id; R.fpPose = p;
     this.applyView();
     { const T = e.inside && ui.g.view.ents.get(e.inside); this.jump = T && T.air && this.mode === 'soldier' ? 'plane' : null; if (this.jump) this.msg('Riding to the drop zone. ' + Settings.keyName(Settings.binds.jump) + ' or ' + Settings.keyName(Settings.binds.fire) + ' to JUMP', 4); }
-    if (!(ui.g.redstar && e.rs)) ui.g.issue({c: 'pilot', ids: [e.id], on: 1});
-    this.ux = this.uy = null; this.requestLock('enter');
+    if (!(ui.g.redstar && e.rs) && this.mode !== 'train') ui.g.issue({c: 'pilot', ids: [e.id], on: 1});
+    this.ux = this.uy = null; if (!(this.swapping && this.look === 'locked')) this.requestLock('enter');
     ui.enterDirect(this);
     this.showTouch();
     VM.build(e, ui.g.view.players[e.o].nation);
     R.post = () => this.post();
+    R.hideRail = false; if (this.mode === 'train') this.trainStart(ui);
     if (ui.g.redstar && e.rs) { const i = Math.max(0, ui.g.me); this.aboard = {x: 4.6 + i * .45, z: i % 2 ? .45 : -.45, yaw: 0, pitch: 0}; this.nearChair = false; this.chairD = 99; R.fpId = 0; R.fpPose = null; R.hideId = e.id; this.crewTags = []; } // Operation Red Star: start inside the aircraft
   },
 
@@ -10442,7 +10586,7 @@ const Direct = {
     this.jump = null; this.endCut(); this.endHeist(); this.heistT = null; this.spyNat = undefined; if (this.ui && this.ui.spyCard) this.ui.spyCard(null); this.on = false; this.aboard = null; this.knifeEnd = 0; this.savedW = null; VM.knife = false; this.shovel = false; VM.shovel = false;
     const ui = this.ui, R = ui.g.R, e = ui.g.view.ents.get(this.id);
     if (e) ui.g.issue({c: 'pilot', ids: [this.id], on: 0});
-    R.fpId = 0; R.fpPose = null; R.hideId = 0; R.post = null;
+    R.fpId = 0; R.fpPose = null; R.hideId = 0; R.post = null; R.hideRail = false;
     this.look = 'off'; clearTimeout(this.relockT);
     if (document.pointerLockElement) document.exitPointerLock();
     ui.exitDirect(msg);
@@ -10509,7 +10653,7 @@ const Direct = {
     vis('.m-ship', m === 'ship'); vis('.m-air', W.some(s => s.w.t === 'msl')); vis('.m-gun', m !== 'fpv'); vis('[data-hold="alt"]', W.length > 1);
     document.getElementById('dhelp').style.display = 'none';
   },
-  firstPerson() { return Settings.view === 'fp'; },
+  firstPerson() { return Settings.view === 'fp' && !(this.e && this.e.d && this.e.d.rail); }, // gun cars: chase camera over the turret
   applyView() { const R = this.ui.g.R; R.hideId = this.firstPerson() ? this.id : 0; },
   toggleView() {
     Settings.view = Settings.view === 'fp' ? 'tp' : 'fp'; Settings.save(); this.applyView();
@@ -10614,7 +10758,9 @@ const Direct = {
     if (down && !e.repeat && c === B.emote && this.mode === 'soldier' && !this.aboard && !this.jump) { e.preventDefault(); this.emoW = {x: 0, y: 0, sel: -1, k: 0}; return true; }
     if (!down) return true;
     if (e.repeat) return true;
-    if (this.mode === 'crew') { if (c === 'KeyE') this.crewE = true; if (c === 'KeyL') this.crewL = true; return true; } // Operation Red Star: no abilities, weapons, view toggles or chooser
+    if (this.mode === 'crew') { if (c === 'KeyE') this.crewE = true; if (c === 'KeyL') this.crewL = true; return true; }
+    if (this.mode === 'train') { if (c === 'KeyE') this.trE = true; if (c === B.exit || c === 'KeyF') this.trF = true; if (c === 'KeyH') document.getElementById('dhelp').classList.toggle('mini'); return true; } // Iron Express: walking the train
+    if (c === B.exit && this.ui.g.rail && this.e && this.e.d.rail) { this.leaveTurret(); return true; } // Operation Red Star: no abilities, weapons, view toggles or chooser
     if (c === B.exit && !this.ui.g.redstar && !this.ui.g.rail) { this.ui.deployed = false; this.exit(); return true; }
     if (c === B.walk && this.mode === 'ship') { this.toggleAboard(); return true; }
     if (c === 'KeyU' && this.e && this.e.d.carry) { this.ui.g.issue({c: 'unload', b: this.id}); this.msg('Unloading troops', 1.2); return true; }
@@ -10834,16 +10980,181 @@ const Direct = {
     if (this.sendT <= 0) {
       this.sendT = .066; const p = this.pose;
       const sold = this.mode === 'soldier', ago = performance.now() - (this.shotAt || -1e5), cw = sold && this.W && this.W[this.slot] && this.W[this.slot].w;
-      g.issue(this.mode === 'crew' ? {c: 'icrew', st: this.seatId || '', x: +this.aboard.x.toFixed(2), z: +this.aboard.z.toFixed(2), yaw: +this.aboard.yaw.toFixed(2)} : {c: 'pose', id: this.id, x: p.x, y: p.y, z: p.z, h: p.h, p: p.p, r: p.r, tu: p.tu, m: !!this.mv, ch: this.jump === 'fall' ? 0 : this.jump === 'canopy' ? 1 : undefined, ug: sold && this.ug ? 1 : 0, ap: sold ? this.pitch : undefined, f: sold && ago < 280 ? 1 : 0, a: sold && this.ads ? 1 : 0, th: sold && cw && cw.snd === 'throw' && ago < 650 ? 1 : 0});
+      g.issue(this.mode === 'crew' || this.mode === 'train' ? {c: 'icrew', st: this.seatId || '', x: +this.aboard.x.toFixed(2), z: +this.aboard.z.toFixed(2), yaw: +this.aboard.yaw.toFixed(2)} : {c: 'pose', id: this.id, x: p.x, y: p.y, z: p.z, h: p.h, p: p.p, r: p.r, tu: p.tu, m: !!this.mv, ch: this.jump === 'fall' ? 0 : this.jump === 'canopy' ? 1 : undefined, ug: sold && this.ug ? 1 : 0, ap: sold ? this.pitch : undefined, f: sold && ago < 280 ? 1 : 0, a: sold && this.ads ? 1 : 0, th: sold && cw && cw.snd === 'throw' && ago < 650 ? 1 : 0});
     }
-    if (this.mode !== 'crew') this.weapons(dt, g, e);
+    if (this.mode !== 'crew' && this.mode !== 'train') this.weapons(dt, g, e);
+    if (e.d.rail && this.mode === 'vehicle') this.railTurretTick();
     this.msgT = (this.msgT || 0) - dt;
     if (e.d.nukeT && e.nukeReady && k[B.alt] && !this.aboard) { this.ui.startNuke(e); k[B.alt] = false; }
     this.ui.updateDirect(this, e, dt);
   },
 
+  // ---------- Iron Express: walking the inside of the train with the rest of the crew ----------
+  trainPub() { const g = this.ui.g; return g.sim && g.sim.rl ? g.sim.railPub() : (g.view.rl || {}); },
+  trainStart(ui) {
+    const T = this.trainPub(), me = Math.max(0, ui.g.me), cw = (ui.g.view.crew || {})[me], back = this.trainBack; this.trainBack = null;
+    this.aboard = back ? {x: back.x, z: back.z, yaw: back.yaw || 0, pitch: 0} : cw ? {x: cw.x, z: cw.z, yaw: cw.yaw, pitch: 0} : {x: trainBunk(T.n || 3)[0], z: 0, yaw: 0, pitch: 0};
+    this.trS = T.s || 0; this.trSpawn = (T.spawn || {})[me]; this.trCd = 0; this.trFx = []; this.trJolt = 0; this.trHurtT = 0; this.trE = this.trF = false; this.trBusy = false; this.trClack = 0;
+    const R = ui.g.R; R.fpId = 0; R.fpPose = null; R.hideId = 0; R.hideRail = true; this.crewTags = []; this.slot = 0; this.flashT = 0;
+    VM.knife = false; VM.shovel = false; VM.build({k: 'medic'}, ui.g.view.players[Math.max(0, ui.g.me)].nation, 0);
+  },
+  trainSwap(e, back) { // turret <-> walking without dropping the mouse lock
+    if (this.trBusy) return; this.trBusy = true;
+    setTimeout(() => { const ui = this.ui; this.trBusy = false; if (!this.on || !ui.g || !ui.g.rail) return; const prev = this.id;
+      if (this.mode !== 'train') ui.g.issue({c: 'pilot', ids: [prev], on: 0});
+      this.trainBack = back || null; this.swapping = true; try { this.enter(ui, e); } finally { this.swapping = false; } }, 0);
+  },
+  trainCarEnt(ci) { const T = this.trainPub(), id = (T.ids || [])[ci]; return id && this.ui.g.view.ents.get(id); },
+  leaveTurret(sent) { const g = this.ui.g, T = this.trainPub(), loco = this.trainCarEnt(0); if (!loco) return; if (!sent) g.issue({c: 'rlact', a: 'unseat'}); const ci = (T.ids || []).indexOf(this.id); this.trainBack = null; this.trainSwap(loco, {x: -Math.max(1, ci) * TR_CL + .75, z: 0, yaw: 0}); },
+  railTurretTick() { // in a gun car: the server can pull you out (turret knocked out, or you were shot)
+    const g = this.ui.g; if (!g.rail) return; const T = this.trainPub(), me = Math.max(0, g.me);
+    if (T.seat && T.seat[me] === undefined && !this.trBusy) { this.msg((T.dead || {})[me] !== undefined ? 'You were shot off the turret!' : 'The turret is knocked out!', 2.5); this.leaveTurret(true); return; }
+    this.trS = T.s;
+  },
+  trainMove(dt) {
+    const g = this.ui.g, V = g.view, me = Math.max(0, g.me), T = this.tp = this.trainPub(), A = this.aboard, k = this.keys, B = Settings.binds, I = this.interior(), now = performance.now() / 1000;
+    this.trS += (T.v || 0) * dt; if (Math.abs((T.s || 0) - this.trS) > 4) this.trS = T.s || 0; else this.trS += ((T.s || 0) - this.trS) * Math.min(1, dt * 1.5);
+    const dead = !!(T.dead && T.dead[me] !== undefined); this.trDead = dead;
+    if ((T.spawn || {})[me] !== this.trSpawn) { this.trSpawn = (T.spawn || {})[me]; const b = trainBunk(I.n); A.x = b[0]; A.z = b[1] + (me % 3 - 1) * .3; A.yaw = 0; A.pitch = 0; }
+    const seat = (T.seat || {})[me]; if (seat !== undefined && !dead) { const car = this.trainCarEnt(seat); if (car) { this.trainSwap(car); return; } }
+    A.yaw += this.lookX; A.pitch = clamp(A.pitch - this.lookY, -1.3, 1.3);
+    // the floor moves: a lurch on curves and bumps, more at speed
+    const v = T.v || 0; this.trJolt = Math.max(0, this.trJolt - dt * 2);
+    let f = 0, r = 0; if (!dead) { if (k[B.fwd]) f++; if (k[B.back]) f--; if (k[B.right]) r++; if (k[B.left]) r--; }
+    const L = Math.hypot(f, r) || 1, hurt = (T.chp || {})[me] < 35, sp = 2.1 * (k[B.sprint] && !hurt ? 1.55 : 1) * (hurt ? .75 : 1) * dt / L, c = Math.cos(A.yaw), s = Math.sin(A.yaw);
+    const nx = A.x + (c * f - s * r) * sp, nz = A.z + (s * f + c * r) * sp;
+    if (I.free(nx, nz)) { A.x = nx; A.z = nz; } else if (I.free(nx, A.z)) A.x = nx; else if (I.free(A.x, nz)) A.z = nz;
+    if (!I.free(A.x, A.z)) { let best = null, bd = 9; for (let rr = .15; rr <= 2 && !best; rr += .15) for (let a = 0; a < 6.28; a += .26) { const x = A.x + Math.cos(a) * rr, z = A.z + Math.sin(a) * rr; if (I.free(x, z)) { const d = Math.hypot(x - A.x, z - A.z); if (d < bd) { bd = d; best = [x, z]; } } } if (best) { A.x = best[0]; A.z = best[1]; } }
+    if (f || r) this.bobT += dt * (k[B.sprint] ? 10 : 7);
+    // what is in reach
+    const px = A.x, pz = A.z, carry = (T.coal || {})[me]; let tgt = null;
+    if (!dead) {
+      for (const fr of T.fires || []) if (Math.hypot(fr[1] - px, fr[2] - pz) < 1.2) { tgt = {id: 'f:' + fr[0], hold: 1, text: 'Hold E: put out the fire (' + Math.round(fr[3] * 100) + '%)'}; break; }
+      const ci = trainCar(px);
+      if (!tgt && ci > 0 && Math.hypot(px + ci * TR_CL, pz) < 1.3) { const jp = (T.jam || {})[ci]; if (jp !== undefined) tgt = {id: 'j:' + ci, hold: 1, text: 'Hold E: repair turret ' + ci + ' (' + Math.round(jp * 100) + '%)'}; else tgt = Object.keys(T.seat || {}).some(q => T.seat[q] === ci) ? {id: 'x', text: 'Someone is up in turret ' + ci} : {id: 'seat', car: ci, text: 'E: climb up and man turret ' + ci}; }
+      if (!tgt && Math.hypot(px - TR_ST.fire[0], pz - TR_ST.fire[1]) < .85) tgt = carry ? {id: 'stoke', text: 'E: throw the coal on the fire'} : {id: 'x', text: 'Firebox: fetch coal from the bunkers at the back of the cab'};
+      if (!tgt && Math.hypot(px - TR_ST.thr[0], pz - TR_ST.thr[1]) < .8) tgt = {id: 'thr', text: 'E: throttle (now ' + ['', 'half', 'running', 'FULL'][T.thr || 2] + ' steam)'};
+      if (!tgt && Math.hypot(px - TR_ST.whistle[0], pz - TR_ST.whistle[1]) < .8) tgt = {id: 'whistle', text: 'E: pull the whistle'};
+      if (!tgt && px < -3.0 && px > -TR_HL && Math.abs(pz) > .3) tgt = carry ? {id: 'x', text: 'Shovel full: take it to the firebox'} : {id: 'coal', text: 'E: grab a shovel of coal'};
+    }
+    this.trPrompt = tgt;
+    const eE = this.trE, eF = this.trF; this.trE = this.trF = false;
+    if (tgt && tgt.hold && k.KeyE) { this.holdT = (this.holdT || 0) - dt; if (this.holdT <= 0) { this.holdT = .2; g.issue({c: 'rlact', a: 'hold', id: tgt.id}); } }
+    if (eE && tgt && !tgt.hold && tgt.id !== 'x') { g.issue({c: 'rlact', a: tgt.id, car: tgt.car}); if (tgt.id === 'coal') this.trSfx('scoop'); }
+    this.trCd -= dt; this.flashT = Math.max(0, (this.flashT || 0) - dt); this.adsK = 0;
+    if (!dead && this.mouseDown && this.trCd <= 0 && this.look !== 'free') { this.trCd = .24; g.issue({c: 'rlact', a: 'shoot', yaw: +A.yaw.toFixed(3), pitch: +A.pitch.toFixed(3)}); Sfx.pshot('bullet'); this.trFlash = now; this.flashT = .05; VM.fired(PWPN.medic[0]); A.pitch += .035; this.trTracer(A.x, A.z, A.yaw, A.pitch, 12, false, true); }
+    if (!dead && eF) { g.issue({c: 'rlact', a: 'kick', yaw: +A.yaw.toFixed(3)}); this.trKick = now; }
+    // sound: wheels clacking over the rail joints, the engine working
+    if (Math.floor(this.trS * 1.6) !== this.trClack) { this.trClack = Math.floor(this.trS * 1.6); if (v > .1) { Sfx.noise(.05, 700, .07 + v * .05, 'bandpass', 2); setTimeout(() => Sfx.noise(.05, 600, .06 + v * .04, 'bandpass', 2), 110); } }
+    Sfx.engine(v > .02 ? 'tank' : null, Math.min(1, v / 1.5) * .6);
+    const p = this.pose, q = this.trWorld(g, A.x, A.z); p.x = q.x; p.y = q.y; p.z = q.z; p.h = q.h; p.p = p.r = 0; p.tu = p.h; this.mv = v > .05;
+  },
+  trWorld(g, x, z) { // a spot inside the train, out in the world (follows each car round the curves)
+    const Rt = railRoute(g.view.M, g.view.N), s = clamp(this.trS + x * RAIL_GAP / TR_CL, 0, Rt.L), a = railAt(Rt, s - .45), b = railAt(Rt, s + .45), q = railAt(Rt, s), h = Math.atan2(b.y - a.y, b.x - a.x), SZ = .2;
+    return {x: q.x - Math.sin(h) * z * SZ, y: q.y + Math.cos(h) * z * SZ, z: q.z, h};
+  },
+  trainCam(dt, g) {
+    const A = this.aboard, R = g.R, cam = R.cam, v = (this.tp && this.tp.v) || 0, now = performance.now() / 1000, q = this.trWorld(g, A.x, A.z);
+    this.trRoll = Math.sin(now * 1.3) * .006 * v + Math.sin(now * 3.1) * .003 * v + (Math.random() - .5) * this.trJolt * .05;
+    const bob = Math.abs(Math.sin(this.bobT)) * .012, wy = q.h + A.yaw, cp = Math.cos(A.pitch), fw = {x: Math.cos(wy) * cp, y: Math.sin(wy) * cp, z: Math.sin(A.pitch)};
+    this.viewYaw = wy; this.viewPitch = A.pitch; this.fw = this.shotDir = fw; this.aimPt = null; this.aimHit = null; this.blocked = null; this.curZoom = 1; this.adsK = 0;
+    const cz = q.z + .33 + (this.trDead ? -.12 : 0) + bob * .2 + Math.sin(now * 9) * .002 * v;
+    this.camP = {x: q.x, y: q.y, z: cz};
+    cam.position.set(q.x, cz, q.y); cam.up.set(0, 1, 0); cam.lookAt(q.x + fw.x * 50, cz + fw.z * 50, q.y + fw.y * 50); cam.rotateZ(this.trRoll);
+    cam.fov = 72; cam.near = .05; cam.updateProjectionMatrix();
+    R.camTarget = R.camTarget || new THREE.Vector3(); R.camTarget.set(q.x, q.z, q.y);
+  },
+  trainEye() { return (this.trDead ? .18 : Interior.EYE) + Math.abs(Math.sin(this.bobT)) * .012; },
+  trSfx(k, x, z) {
+    const near = x === undefined || !this.aboard || Math.hypot(this.aboard.x - x, this.aboard.z - z) < 14; if (!near) return;
+    if (k === 'whistle') { Sfx.tone(740, 720, 1.3, .22, 'triangle'); Sfx.tone(930, 905, 1.3, .16, 'triangle'); Sfx.tone(1110, 1090, 1.3, .1, 'sine'); Sfx.noise(1.2, 2400, .08, 'bandpass', 3); }
+    else if (k === 'scoop') Sfx.noise(.25, 900, .25, 'lowpass', 1, 300);
+    else if (k === 'stoke') { Sfx.noise(.5, 500, .35, 'lowpass', 1, 2000); Sfx.tone(90, 50, .4, .15, 'sawtooth'); }
+    else if (k === 'lever') Sfx.tone(300, 120, .12, .2, 'square');
+    else if (k === 'kick') Sfx.noise(.12, 400, .4, 'lowpass', 1, 120);
+    else if (k === 'out') Sfx.noise(.6, 3000, .2, 'highpass', 1, 600);
+    else if (k === 'bdown') { Sfx.tone(260, 90, .35, .18, 'sawtooth'); }
+    else if (k === 'hit') { this.trJolt = Math.min(1, this.trJolt + .5); Sfx.noise(.35, 260, .5, 'lowpass', 1, 60); Sfx.tone(180, 140, .4, .08, 'square'); }
+  },
+  trTracer(x, z, yaw, pitch, d, enemy, mine) {
+    (this.trFx = this.trFx || []).push({x, z, y: Interior.EYE - .08 + (mine ? -.06 : 0), yaw, pitch: pitch || 0, d, t: performance.now(), enemy, mine});
+  },
+  trainEv(ev, g) {
+    const me = Math.max(0, g.me);
+    if (ev.k === 'rlsfx') { if (ev.p === me && ev.s === 'scoop') return; this.trSfx(ev.s, ev.x, ev.z); if (ev.s === 'bdown' && ev.p === me) { this.trKill = performance.now(); Sfx.killDing(); } if (ev.s === 'kick' && ev.p !== me) Sfx.noise(.1, 400, .2, 'lowpass'); }
+    else if (ev.k === 'rlshot') { if (ev.p !== me) { this.trTracer(ev.x, ev.z, ev.yaw, ev.pt, ev.d); Sfx.noise(.08, 2800, .18, 'bandpass', .8, 500); } else if (ev.h) { Sfx.hitTick(); this.trHit = performance.now(); } }
+    else if (ev.k === 'rlbshot') { this.trTracer(ev.x, ev.z, ev.yaw, 0, ev.d, true); Sfx.noise(.09, 2200, .22, 'bandpass', .8, 400); }
+    else if (ev.k === 'rlouch' && ev.p === me) { this.trHurtT = performance.now(); Sfx.ouch(); }
+    else if (ev.k === 'rlboard') { Sfx.noise(.3, 300, .3, 'lowpass', 1, 80); this.trJolt = .6; }
+  },
+  syncTrain(I, C) { // other crew, boarders, fires and tracers, drawn inside the train
+    const g = this.ui.g, V = g.view, T = this.tp || {}, me = Math.max(0, g.me), cr = V.crew || {}, now = performance.now() / 1000;
+    I.others = I.others || {}; I.brdM = I.brdM || {}; I.fireM = I.fireM || {}; this.crewTags = []; this._cv = this._cv || new THREE.Vector3(); C.updateMatrixWorld();
+    if (!I.coalGeo) { I.coalGeo = new THREE.BoxGeometry(.16, .06, .22); I.coalMat = new THREE.MeshLambertMaterial({color: 0x161616}); }
+    for (const k of Object.keys(I.others)) { const c = cr[k]; if (!c || V.t - c.t > 3) { I.scene.remove(I.others[k]); delete I.others[k]; } }
+    for (const k of Object.keys(cr)) {
+      const c = cr[k]; if (+k === me || V.t - c.t > 3) continue;
+      let m = I.others[k]; if (!m) { m = I.others[k] = new THREE.Mesh(I.body, I.mat); const cl = new THREE.Mesh(I.coalGeo, I.coalMat); cl.position.set(.25, .45, 0); m.add(cl); m.userData.coal = cl; m.position.set(c.x, 0, c.z); I.scene.add(m); }
+      const dn = T.dead && T.dead[k] !== undefined, st = T.seat && T.seat[k] !== undefined;
+      m.position.x += (c.x - m.position.x) * .35; m.position.z += (c.z - m.position.z) * .35; m.rotation.order = 'YZX'; m.rotation.set(0, -c.yaw, dn ? -1.45 : 0);
+      m.position.y = dn ? .1 : st ? .62 : 0; m.visible = true; m.userData.coal.visible = !!(T.coal && T.coal[k]);
+      const v = this._cv.set(m.position.x, .85 + m.position.y, m.position.z).project(C); if (v.z < 1 && Math.abs(v.x) < 1.1 && Math.abs(v.y) < 1.1 && Math.hypot(m.position.x - this.aboard.x, m.position.z - this.aboard.z) < 14) this.crewTags.push({x: v.x, y: v.y, n: ((V.players[k] && V.players[k].name) || 'Crew') + (dn ? ' (knocked out)' : st ? ' (turret)' : ''), hp: (T.chp || {})[k]});
+    }
+    // boarders
+    if (!I.brdBody) { const rn = V.players[V.players.length - 1].nation; I.brdBody = soldierFull('rifle', rn).geo(); I.brdMat = new THREE.MeshLambertMaterial({vertexColors: true}); I.brdHurt = new THREE.MeshLambertMaterial({vertexColors: true, emissive: 0xff2010}); }
+    const seen = new Set();
+    for (const b of T.brd || []) { seen.add(b[0]); let m = I.brdM[b[0]]; if (!m) { m = I.brdM[b[0]] = new THREE.Mesh(I.brdBody, I.brdMat); m.position.set(b[1], .5, b[2]); m.userData.t = now; I.scene.add(m); }
+      const up = Math.min(1, (now - m.userData.t) * 2); m.position.x += (b[1] - m.position.x) * .25; m.position.z += (b[2] - m.position.z) * .25; m.position.y = (1 - up) * .5; m.rotation.y = -b[3]; m.material = b[4] ? I.brdHurt : I.brdMat;
+      const v = this._cv.set(m.position.x, .95, m.position.z).project(C); if (v.z < 1 && Math.abs(v.x) < 1.1 && Math.abs(v.y) < 1.1 && Math.hypot(m.position.x - this.aboard.x, m.position.z - this.aboard.z) < 10) this.crewTags.push({x: v.x, y: v.y, n: 'BOARDER', bad: 1}); }
+    for (const id of Object.keys(I.brdM)) if (!seen.has(+id)) { I.scene.remove(I.brdM[id]); delete I.brdM[id]; }
+    // fires: flickering flames, a scorch mark and real light from the nearest few
+    if (!I.flameGeo) { I.flameGeo = new THREE.ConeGeometry(.16, .55, 8); I.flameMat = [0xff5a10, 0xffa020, 0xffe070].map(cc => new THREE.MeshBasicMaterial({color: cc, transparent: true, opacity: .75, blending: THREE.AdditiveBlending, depthWrite: false})); I.scorch = new THREE.MeshBasicMaterial({color: 0x050505, transparent: true, opacity: .6, depthWrite: false}); I.fireL = [0, 1, 2].map(() => { const l = new THREE.PointLight(0xff7a30, 0, 4.5, 1.5); I.scene.add(l); return l; }); }
+    const fs = new Set();
+    for (const fr of T.fires || []) { fs.add(fr[0]); let G = I.fireM[fr[0]]; if (!G) { G = I.fireM[fr[0]] = new THREE.Group(); for (let i = 0; i < 6; i++) G.add(new THREE.Mesh(I.flameGeo, I.flameMat[i % 3])); const sc = new THREE.Mesh(new THREE.CircleGeometry(.45, 16), I.scorch); sc.rotation.x = -Math.PI / 2; sc.position.y = .012; G.add(sc); G.position.set(fr[1], 0, fr[2]); I.scene.add(G); }
+      const k2 = 1 - fr[3] * .8; G.children.forEach((m, i) => { if (i < 6) { const a = i * 1.05 + now * (1.5 + i * .3); m.position.set(Math.cos(a) * .14 * (i % 2 + .5), .25 + Math.sin(now * 9 + i) * .05, Math.sin(a) * .14); const sk = (.6 + .5 * Math.abs(Math.sin(now * (7 + i) + i))) * k2; m.scale.set(sk, sk * (1.1 + (i % 3) * .3), sk); } }); }
+    for (const id of Object.keys(I.fireM)) if (!fs.has(+id)) { I.scene.remove(I.fireM[id]); delete I.fireM[id]; }
+    const near = (T.fires || []).slice().sort((a, b) => Math.hypot(a[1] - this.aboard.x, a[2] - this.aboard.z) - Math.hypot(b[1] - this.aboard.x, b[2] - this.aboard.z));
+    I.fireL.forEach((l, i) => { const fr = near[i]; l.intensity = fr ? (3 + Math.random() * 2.5) * (1 - fr[3] * .7) : 0; if (fr) l.position.set(fr[1], .6, fr[2]); });
+    if (I.fireBox) I.fireBox.intensity = 2.2 + Math.sin(now * 11) * .4 + Math.random() * .5 + (T.psi || 0) * 2;
+    // tracers
+    if (!I.trGeo) { I.trGeo = new THREE.BoxGeometry(1, .014, .014); I.trMat = new THREE.MeshBasicMaterial({color: 0xffe08a, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false}); I.trMatE = new THREE.MeshBasicMaterial({color: 0xff6a4a, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false}); I.trPool = []; }
+    const nowMs = performance.now(); this.trFx = (this.trFx || []).filter(t => nowMs - t.t < 90);
+    I.trPool.forEach(m => m.visible = false);
+    this.trFx.forEach((t, i) => { let m = I.trPool[i]; if (!m) { m = I.trPool[i] = new THREE.Mesh(I.trGeo, I.trMat); I.scene.add(m); } m.material = t.enemy ? I.trMatE : I.trMat; m.visible = true; const d = t.d, cp = Math.cos(t.pitch);
+      m.scale.x = d; m.position.set(t.x + Math.cos(t.yaw) * cp * d / 2, t.y + Math.sin(t.pitch) * d / 2 + (t.enemy ? .2 : 0), t.z + Math.sin(t.yaw) * cp * d / 2); m.rotation.set(0, -t.yaw, t.pitch, 'YZX'); });
+  },
+  drawTrainHud(c, w, h) {
+    const g = this.ui.g, V = g.view, me = Math.max(0, g.me), T = this.tp || {}, A = this.aboard, I = this.interior(), now = performance.now(), cx = w / 2, cy = h / 2;
+    c.save(); c.textAlign = 'center';
+    const hp = (T.chp || {})[me] === undefined ? 100 : T.chp[me], hurt = Math.max(0, 1 - (now - this.trHurtT) / 600), low = 1 - hp / 100;
+    if (hurt > 0 || low > .5) { const gr = c.createRadialGradient(cx, cy, h * .25, cx, cy, h * .75); gr.addColorStop(0, 'rgba(160,0,0,0)'); gr.addColorStop(1, 'rgba(170,0,0,' + Math.min(.7, hurt * .5 + Math.max(0, low - .5) * .8) + ')'); c.fillStyle = gr; c.fillRect(0, 0, w, h); }
+    if (this.trDead) { c.fillStyle = 'rgba(0,0,0,.72)'; c.fillRect(0, 0, w, h); c.fillStyle = '#fff'; c.font = '800 26px system-ui'; c.fillText('KNOCKED OUT', cx, cy - 10); c.font = '600 15px system-ui'; c.fillStyle = '#ccd'; c.fillText('You wake up in the bunks in ' + Math.ceil(T.dead[me] || 0) + ' s', cx, cy + 18); c.restore(); return; }
+    // crosshair, hit marker, muzzle flash
+    c.strokeStyle = 'rgba(255,255,255,.85)'; c.lineWidth = 2; c.beginPath(); for (const [a, b] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { c.moveTo(cx + a * 5, cy + b * 5); c.lineTo(cx + a * 11, cy + b * 11); } c.stroke();
+    if (now - (this.trHit || 0) < 160) { c.strokeStyle = now - (this.trKill || 0) < 400 ? '#ff4a3a' : '#fff'; c.beginPath(); for (const [a, b] of [[1, 1], [-1, 1], [1, -1], [-1, -1]]) { c.moveTo(cx + a * 7, cy + b * 7); c.lineTo(cx + a * 14, cy + b * 14); } c.stroke(); }
+    { const kk = Math.max(0, 1 - (now / 1000 - (this.trKick || 0)) / .3); // a shovel of coal in your other hand; your boot when you kick
+      if (T.coal && T.coal[me]) { const bx = w * .2, by = h * .84 + Math.abs(Math.sin(this.bobT)) * 6; c.save(); c.translate(bx, by); c.rotate(-.35); c.fillStyle = '#5a4026'; c.fillRect(-10, -6, 170, 12); c.fillStyle = '#3a3c3e'; c.beginPath(); c.moveTo(150, -26); c.lineTo(230, -22); c.lineTo(226, 26); c.lineTo(150, 22); c.closePath(); c.fill(); c.fillStyle = '#121212'; for (let i = 0; i < 9; i++) { c.beginPath(); c.arc(165 + (i % 3) * 20, -14 + Math.floor(i / 3) * 12, 9, 0, 6.28); c.fill(); } c.restore(); }
+      if (kk > 0) { c.fillStyle = '#2a2620'; c.beginPath(); c.ellipse(cx, h + 40 - kk * 150, 70, 46, 0, 0, 6.28); c.fill(); c.fillStyle = '#4a3a26'; c.fillRect(cx - 70, h + 40 - kk * 150, 140, 90); } }
+    // name tags
+    for (const tg of this.crewTags || []) { const x = (tg.x * .5 + .5) * w, y = (.5 - tg.y * .5) * h; c.font = '700 13px system-ui'; c.lineWidth = 3; c.strokeStyle = 'rgba(0,0,0,.75)'; c.strokeText(tg.n, x, y); c.fillStyle = tg.bad ? '#ff6a5a' : '#fff'; c.fillText(tg.n, x, y); }
+    // prompt
+    if (this.trPrompt) { c.font = '700 16px system-ui'; c.lineWidth = 4; c.strokeStyle = 'rgba(0,0,0,.7)'; c.strokeText(this.trPrompt.text, cx, h * .66); c.fillStyle = this.trPrompt.id === 'x' ? '#d8dde2' : '#ffe08a'; c.fillText(this.trPrompt.text, cx, h * .66); }
+    if (this.msgT > 0) { c.font = '800 17px system-ui'; c.lineWidth = 4; c.strokeStyle = 'rgba(0,0,0,.7)'; c.strokeText(this.msgText, cx, h * .3); c.fillStyle = 'rgba(255,255,255,' + Math.min(1, this.msgT * 2) + ')'; c.fillText(this.msgText, cx, h * .3); }
+    c.font = '800 14px system-ui'; c.fillStyle = 'rgba(255,255,255,.85)'; c.lineWidth = 3; c.strokeStyle = 'rgba(0,0,0,.6)'; const rn = I.roomAt(A.x, A.z); c.strokeText(rn, cx, h - 24); c.fillText(rn, cx, h - 24);
+    // you: health
+    c.textAlign = 'left'; c.font = '700 12px system-ui'; c.fillStyle = '#fff'; c.fillText('YOU ' + Math.ceil(hp) + ' HP' + (T.coal && T.coal[me] ? ' · carrying coal' : ''), 20, h - 52); c.fillStyle = 'rgba(0,0,0,.5)'; c.fillRect(20, h - 44, 200, 9); c.fillStyle = hp < 35 ? '#ff5a4a' : '#5ad07a'; c.fillRect(20, h - 44, 200 * hp / 100, 9);
+    // the train: each car's health
+    const hpc = T.hpc || [], bw = Math.min(46, (200 - 4 * hpc.length) / Math.max(1, hpc.length)); hpc.forEach((v, i) => { const x = 20 + i * (bw + 4), y = h - 76; c.fillStyle = 'rgba(0,0,0,.5)'; c.fillRect(x, y, bw, 12); c.fillStyle = (T.jam || {})[i] !== undefined ? '#ff9a3a' : v < .3 ? '#ff5a4a' : '#8fb4d8'; c.fillRect(x, y, bw * v, 12); c.fillStyle = '#fff'; c.font = '700 9px system-ui'; c.fillText(i ? 'GUN ' + i : 'LOCO', x + 3, y + 10); if ((T.fires || []).some(f => trainCar(f[1]) === i)) { c.fillStyle = '#ff7a20'; c.fillText('🔥', x + bw - 12, y + 10); } });
+    // the boiler gauge
+    { const gx = w - 86, gy = h - 92, r = 52, psi = T.psi || 0, a0 = Math.PI * .75, a1 = Math.PI * 2.25, ang = a0 + (a1 - a0) * psi;
+      c.fillStyle = 'rgba(20,16,10,.82)'; c.beginPath(); c.arc(gx, gy, r + 6, 0, 6.28); c.fill(); c.strokeStyle = '#c9a35a'; c.lineWidth = 3; c.stroke();
+      c.lineWidth = 6; c.strokeStyle = '#a8322a'; c.beginPath(); c.arc(gx, gy, r - 6, a0, a0 + (a1 - a0) * .25); c.stroke(); c.strokeStyle = '#6a8a4a'; c.beginPath(); c.arc(gx, gy, r - 6, a0 + (a1 - a0) * .25, a1); c.stroke();
+      c.strokeStyle = '#f2ead8'; c.lineWidth = 3; c.beginPath(); c.moveTo(gx, gy); c.lineTo(gx + Math.cos(ang) * (r - 10), gy + Math.sin(ang) * (r - 10)); c.stroke();
+      c.textAlign = 'center'; c.fillStyle = psi < .25 && Math.floor(now / 300) % 2 ? '#ff5a4a' : '#f2ead8'; c.font = '800 12px system-ui'; c.fillText('STEAM ' + Math.round(psi * 100) + '%', gx, gy + 24); c.font = '700 10px system-ui'; c.fillStyle = '#c9a35a'; c.fillText(['', 'HALF', 'RUNNING', 'FULL'][T.thr || 2] + ' · ' + Math.round((T.v || 0) * 60) + ' km/h', gx, gy + 38); }
+    c.restore();
+  },
   // ---------- ships: leave the captain's chair, walk the rooms, sit back down to take control ----------
-  interior() { const e = this.e; return Interior.get(this.mode === 'crew' ? 'redstar' : e.k, this.ui.g.view.players[e.o].nation); },
+  interior() { const e = this.e; if (this.mode === 'train') { const T = this.tp || this.trainPub(); return Interior.get('train' + (T.n || 3), this.ui.g.view.players[Math.max(0, this.ui.g.me)].nation); } return Interior.get(this.mode === 'crew' ? 'redstar' : e.k, this.ui.g.view.players[e.o].nation); },
   rsBailTo(ui, id, no) { let n = 0; const go = () => { const g = ui.g, u = g && g.view.ents.get(id); if (!u) { if (++n < 40) setTimeout(go, 100); return; } this.enter(ui, u); this.noChute = !!no;
       this.autoJump = {at: performance.now() + 300, no: !!no}; }; go(); },
   rsRespawn() { const A = this.aboard, i = Math.max(0, this.ui.g.me); if (A) { A.x = 4.6 + i * .45; A.z = i % 2 ? .45 : -.45; A.yaw = 0; A.pitch = 0; } this.seatId = null; },
@@ -11009,6 +11320,7 @@ const Direct = {
     } else this.msg("Walk back to the captain's chair to take control", 2);
   },
   moveAboard(dt, e, M, N) {
+    if (this.mode === 'train') { this.trainMove(dt); return; }
     if (this.mode === 'crew') { this.crewMove(dt, e); this.syncCrewPose(e); return; }
     const A = this.aboard, I = this.interior(), k = this.keys, B = Settings.binds;
     A.yaw += this.lookX; A.pitch = clamp(A.pitch - this.lookY, -1.3, 1.3);
@@ -11026,6 +11338,7 @@ const Direct = {
     this.keys = held;
   },
   cameraAboard(dt, g) {
+    if (this.mode === 'train') { if (this.aboard) this.trainCam(dt, g); return; }
     const A = this.aboard, p = this.pose, R = g.R, cam = R.cam, I = this.interior(), wy = p.h + A.yaw, cp = Math.cos(A.pitch), S = .2, c = Math.cos(p.h), s = Math.sin(p.h);
     const fw = {x: Math.cos(wy) * cp, y: Math.sin(wy) * cp, z: Math.sin(A.pitch)};
     this.viewYaw = wy; this.viewPitch = A.pitch; this.fw = this.shotDir = fw; this.aimPt = null; this.aimHit = null; this.blocked = null; this.curZoom = 1; this.adsK = 0;
@@ -11771,6 +12084,7 @@ const Direct = {
   },
   onEvent(ev, g) {
     if (!this.on) return;
+    if (g.rail && /^rl/.test(ev.k)) { if (this.mode === 'train') this.trainEv(ev, g); else if (ev.k === 'rlsfx' && ev.s === 'whistle') this.trSfx('whistle'); return; }
     // missile warning: an enemy missile is coming for the aircraft you fly
     if ((ev.k === 's' && ev.ty === 'missile' && ev.at === this.id) || (ev.k === 'pj' && ev.home === this.id && ev.o !== g.me)) { this.warnT = performance.now() + Math.max(1.5, (ev.d || 2.5)) * 1000; Sfx.beep(1800); }
     if (ev.k === 'phit' && ev.p === g.me && ev.kill) this.lastCrit = ev.crit;
@@ -11799,6 +12113,10 @@ const Direct = {
     C.fov = R.cam.fov; C.aspect = R.cam.aspect; C.updateProjectionMatrix(); C.position.set(A.x, y, A.z); C.lookAt(A.x + Math.cos(A.yaw) * cp, y + Math.sin(A.pitch), A.z + Math.sin(A.yaw) * cp); return {I, C}; },
   prePass(Rd) { // depth-only pass of the opaque cabin before the world: every world pixel behind a wall fails the depth test and is skipped. The cabin is still drawn on top afterwards, so the picture is identical.
     if (!(this.on && this.aboard) || (this.mode === 'crew' && this.dropT > .8)) return null;
+    if (this.mode === 'train') { const r = Rd.r, I = this.interior(), C = I.cam, A = this.aboard, y = this.trainEye(), cp = Math.cos(A.pitch); C.fov = Rd.cam.fov; C.aspect = Rd.cam.aspect; C.updateProjectionMatrix(); C.position.set(A.x, y, A.z); C.lookAt(A.x + Math.cos(A.yaw) * cp, y + Math.sin(A.pitch), A.z + Math.sin(A.yaw) * cp); C.rotateZ(this.trRoll || 0);
+      const sc = I.scene, hid = []; sc.traverse(o => { if (o.visible && (o.isPoints || o.isSprite || (o.material && (o.material.transparent || o.material.opacity < 1)))) { o.visible = false; hid.push(o); } });
+      const mat = this._preMat || (this._preMat = new THREE.MeshBasicMaterial({colorWrite: false})), ac = r.autoClear, au = r.shadowMap.autoUpdate, bg = Rd.scene.background;
+      if (bg && bg.isColor) r.setClearColor(bg, 1); r.clear(true, true, true); r.autoClear = false; r.shadowMap.autoUpdate = false; sc.overrideMaterial = mat; r.render(sc, C); sc.overrideMaterial = null; r.shadowMap.autoUpdate = au; for (const o of hid) o.visible = true; return {ac}; }
     const r = Rd.r, {I, C} = this.aimCabinCam(), sc = I.scene, hid = [];
     sc.traverse(o => { if (o.visible && (o.isPoints || o.isSprite || (o.material && (o.material.transparent || o.material.opacity < 1 || o.material.alphaTest > 0)))) { o.visible = false; hid.push(o); } });
     const mat = this._preMat || (this._preMat = new THREE.MeshBasicMaterial({colorWrite: false})), ac = r.autoClear, au = r.shadowMap.autoUpdate, bg = Rd.scene.background;
@@ -11809,6 +12127,10 @@ const Direct = {
   },
   // ---------- after the world is drawn: first-person hands and gun ----------
   post() {
+    if (this.on && this.aboard && this.mode === 'train') { const R = this.ui.g.R, r = R.r, A = this.aboard, I = this.interior(), C = I.cam, y = this.trainEye(), cp = Math.cos(A.pitch);
+      C.fov = R.cam.fov; C.aspect = R.cam.aspect; C.updateProjectionMatrix(); C.position.set(A.x, y, A.z); C.lookAt(A.x + Math.cos(A.yaw) * cp, y + Math.sin(A.pitch), A.z + Math.sin(A.yaw) * cp); C.rotateZ(this.trRoll || 0);
+      const ac = r.autoClear; r.autoClear = false; this.syncTrain(I, C); r.clearDepth(); r.render(I.scene, C); r.autoClear = ac;
+      if (!this.trDead) VM.draw(R, this, PWPN.medic[0]); return; }
     if (this.on && this.aboard) {
       const R = this.ui.g.R, r = R.r, A = this.aboard, I = this.interior(), C = I.cam, cp = Math.cos(A.pitch), y0 = (this.mode === 'crew' && this.crewDown ? .15 : Interior.EYE) + Math.abs(Math.sin(this.bobT)) * .012, y = this.mode === 'crew' ? this.crewEyeY(y0) : y0;
       C.fov = R.cam.fov; C.aspect = R.cam.aspect; C.updateProjectionMatrix();
@@ -11901,6 +12223,7 @@ const Direct = {
   },
   drawHud(c, w, h) {
     if (this.mode === 'crew') { this.drawCrewHud(c, w, h); return; }
+    if (this.mode === 'train') { if (this.aboard) this.drawTrainHud(c, w, h); return; }
     const cx = w / 2, cy = h / 2, W = this.W[this.slot] && this.W[this.slot].w, S = this.W[this.slot], g = this.ui.g, dt = 1 / 60;
     c.save();
     const fp = this.firstPerson();
@@ -12671,6 +12994,7 @@ const WarRoom = {
 const Interior = {
   cache: {}, EYE: .62, H: 1.25,
   layout(k) {
+    if (/^train/.test(k)) return trainLayout(+k.slice(5));
     if (k === 'redstar') { const tb = [], nw = x => .35 + 1.35 * (1 - Math.pow((x - 13.5) / 2.3, 2)); for (let xa = 13.5; xa < 15.79; xa += .46) { const wd = nw(Math.min(15.8, xa + .46)); tb.push([xa, xa + .46, wd, 1.8], [xa, xa + .46, -1.8, -wd]); }
       return {sub: false, chair: [10.5, -.7], worldUp: 1.1, // the Soviet atomic bomber: nose and cockpit, radio/nav, engineer's bay, bomb bay, tail gunner
       rooms: [
@@ -12907,6 +13231,39 @@ const Interior = {
     // the bomb sight in the nose: housing, eyepieces and a gimbal ring
     b.cylX(.06, .28, 14.55, .52, 0, 0x30353a); for (const dz of [-.05, .05]) b.cylX(.02, .16, 14.38, .54, dz, DK); b.cyl(.09, .015, 14.6, .42, 0, MT);
   },
+  furnishTrain(b, P, H, L) { // Iron Express: an armoured train, riveted plate, plank floors, all lived in
+    const DK = 0x1c1f22, ST = 0x3a3f44, CO = 0x121212, BR = 0x8a6a2a, OL = 0x4f5a3a, WD = 0x6a4a2a, RD = 0xa83228;
+    // the cab: boiler backhead, firebox door, gauges, regulator and whistle cord, coal bunkers
+    b.box(.05, H, 2.6, -.63, H / 2, 0, 0x2a2c2c); b.box(.36, .7, .84, -.78, .35, 0, 0x262626); b.box(.04, .3, .44, -.96, .42, 0, 0xff7a20); b.box(.05, .36, .5, -.98, .42, 0, DK); b.box(.03, .05, .5, -1.0, .62, 0, BR);
+    for (const [z, y] of [[-.35, 1.0], [.35, 1.0], [0, 1.18]]) { b.cylX(.12, .04, -.67, y, z, BR); b.cylX(.1, .045, -.67, y, z, 0xf0ead8); b.box(.01, .08, .01, -.69, y + .03, z, DK); }
+    for (const z of [-.9, .9]) b.cylX(.035, 3.8, -2.7, H - .12, z, BR);
+    b.box(.32, .55, .2, -.78, .28, -1.17, ST); b.box(.05, .5, .05, -.85, .75, -1.12, RD); b.sph(.05, .05, .05, -.85, 1.0, -1.12, RD); // regulator
+    b.box(.3, .55, .2, -.78, .28, 1.17, ST); b.cyl(.01, .55, -1.25, H - .3, 1.05, 0x9a8a6a); b.sph(.04, .06, .04, -1.25, H - .6, 1.05, WD); b.cyl(.06, .2, -1.25, H - .02, 1.05, BR); // whistle cord
+    for (const s of [-1, 1]) { const z0 = s * .5, z1 = s * TR_W, zc = (z0 + z1) / 2; b.box(.8, .5, Math.abs(z1 - z0), -4.2, .25, zc, 0x2a2622); b.box(.04, .7, Math.abs(z1 - z0), -3.8, .35, zc, WD);
+      for (let i = 0; i < 9; i++) b.box(.16 + (i % 3) * .05, .1, .14, -4.4 + (i % 3) * .22, .52 + (i % 2) * .05, zc + ((i * 37) % 7 - 3) * .1, CO); }
+    b.box(.06, .7, .05, -3.6, .35, -.42, WD); b.box(.22, .03, .16, -3.6, .03, -.42, ST); // a shovel leaning on the bunker
+    b.box(3.6, .02, 2.4, -2.7, .011, 0, 0x2a2016); // sooty floor
+    // the cars
+    for (let i = 1; i < L.n; i++) { const xc = -i * TR_CL, last = i === L.n - 1;
+      // turret ladder up through the roof hatch, the turret ring above
+      for (const z of [-.18, .18]) b.box(.05, H, .05, xc + .2, H / 2, z, ST); for (let y = .2; y < H; y += .25) b.box(.04, .03, .4, xc + .2, y, 0, 0x6a6e66);
+      b.cyl(.38, .12, xc, H - .02, 0, DK); b.cyl(.3, .02, xc, H - .09, 0, 0x8a8e80); b.box(.5, .5, .5, xc - .05, .25, 0, ST); b.box(.4, .04, .4, xc - .05, .52, 0, P.main);
+      // ammo crates and shell racks
+      for (const [x, z] of [[xc + 2.7, TR_W - .19], [xc - 2.7, -TR_W + .19]]) { b.box(.8, .36, .36, x, .18, z, OL); b.box(.8, .3, .36, x, .52, z, OL); b.box(.3, .08, .37, x, .2, z, 0xd8c040); b.box(.3, .08, .37, x, .54, z, 0xd8c040); }
+      for (const z of [-1, 1]) for (let j = 0; j < 4; j++) b.cyl(.04, .3, xc + 1.3 + j * .12, .15, z * (TR_W - .12), BR);
+      // firing slit shutters, sandbags under the windows, a lamp in a cage, rifle rack, a map
+      for (const s of [-1, 1]) for (const [a, c] of [[1.1, 4], [-(last ? 2.6 : 4), -1.1]]) { b.box(c - a, .06, .1, xc + (a + c) / 2, 1.03, s * (TR_W - .06), DK); for (let j = 0; j < Math.floor((c - a) / .45); j++) b.sph(.2, .1, .14, xc + a + .22 + j * .45, .12 + (j % 2) * .02, s * (TR_W - .2), 0x8a7a5a); }
+      for (const x of [xc + 2.5, xc - 2.5]) { b.cyl(.06, .14, x, H - .1, 0, 0xffe2a0); b.box(.16, .02, .16, x, H - .02, 0, DK); }
+      b.box(.6, .5, .02, xc - 1.6, .8, TR_W - .05, 0xc8b88a); b.box(.5, .4, .021, xc - 1.6, .8, TR_W - .06, 0x6a8a5a);
+      b.box(.7, .04, .12, xc + 1.6, .9, -TR_W + .08, WD); for (let j = 0; j < 3; j++) b.box(.04, .55, .03, xc + 1.35 + j * .25, .62, -TR_W + .1, 0x2a2a2a);
+      b.box(TR_CL - 1.2, .02, .6, xc, .011, 0, 0x5a4630); // worn runner
+      if (last) { // bunks and the workshop at the back
+        for (const s of [-1, 1]) for (const y of [.25, .75]) { b.box(1.4, .08, .72, xc - 3.85, y, s * .92, ST); b.box(1.3, .07, .62, xc - 3.85, y + .07, s * .92, P.main); b.box(.3, .06, .4, xc - 4.35, y + .12, s * .92, 0xe8e2d0); }
+        b.box(.05, H, .05, xc - 3.1, H / 2, -.56, ST); b.box(.05, H, .05, xc - 3.1, H / 2, .56, ST);
+        b.box(.9, .06, .4, xc - 2.0, .7, -TR_W + .2, WD); b.box(.12, .1, .12, xc - 1.8, .78, -TR_W + .2, RD); }
+    }
+    for (let i = 1; i < L.n; i++) { const xg = -i * TR_CL + TR_HL + .4; b.box(.8, .04, 1, xg, -.02, 0, 0x3a3a36); for (const z of [-.5, .5]) b.cylX(.02, .8, xg, .7, z, DK); } // gangway plates and chains
+  },
   furnishDestroyer(b, P, H, screen) {
     const ST = 0x3a3f44, DK = 0x1c1f22, WD = 0x7a5a3a, MT = 0x9aa3a8;
     // bridge: helm and radar consoles across the front, ship's wheel, engine telegraphs, chart table
@@ -12972,8 +13329,8 @@ const Interior = {
     b.box(5.8, .01, .12, -23, .006, 0, 0xf4f4f0); for (let x = -25.5; x < -20.4; x += .85) { b.cyl(.015, .35, x, .17, -3.95, MT); b.cyl(.015, .35, x, .17, 3.95, MT); } b.cylX(.012, 5.4, -23, .34, -3.95, MT); b.cylX(.012, 5.4, -23, .34, 3.95, MT);
   },
   build(k, nat) {
-    const L = this.layout(k), P = palette(nat), H = k === 'redstar' ? 1.45 : this.H, b = new Batch(), T = .08, sub = L.sub;
-    const rs = k === 'redstar', wallC = rs ? 0x66705f : sub ? 0x5d6a66 : 0x8a949c, floorC = rs ? 0x33382f : sub ? 0x2c3331 : 0x4a525a, roofC = rs ? 0x7a826f : sub ? 0x3b4442 : 0xa8b0b6, DK = 0x1c1f22, ST = 0x3a3f44;
+    const L = this.layout(k), P = palette(nat), tr = !!L.train, H = k === 'redstar' ? 1.45 : tr ? 1.4 : this.H, b = new Batch(), T = .08, sub = L.sub;
+    const rs = k === 'redstar', wallC = rs ? 0x66705f : tr ? 0x5b5f4c : sub ? 0x5d6a66 : 0x8a949c, floorC = rs ? 0x33382f : tr ? 0x4a3826 : sub ? 0x2c3331 : 0x4a525a, roofC = rs ? 0x7a826f : tr ? 0x484c3c : sub ? 0x3b4442 : 0xa8b0b6, DK = 0x1c1f22, ST = 0x3a3f44;
     const edge = (room, axis, at, a, c) => {
       const top = room.open ? .45 : H, cuts = [];
       for (const d of L.doors) if (d[0] === axis && Math.abs(d[1] - at) < .01 && d[3] > a && d[2] < c) cuts.push([Math.max(a, d[2]), Math.min(c, d[3]), 'door']);
@@ -12996,11 +13353,13 @@ const Interior = {
     if (rs) for (const r of L.rooms) this.archSkin(b, r, H, roofC);
     // captain's chair: every vessel has one
     const [cx, cz] = L.chair;
+    if (tr) this.furnishTrain(b, P, H, L); else {
     b.cyl(.05, .3, cx, .15, cz, DK); b.box(.42, .07, .42, cx, .34, cz, rs ? 0x4d2c1e : 0x7a2020); b.box(.07, .5, .42, cx - .2, .6, cz, rs ? 0x4d2c1e : 0x7a2020); b.box(.3, .05, .05, cx + .02, .47, cz + .2, DK); b.box(.3, .05, .05, cx + .02, .47, cz - .2, DK);
-    b.box(.4, .03, .4, cx, .004, cz, rs ? 0x2a2c2a : P.main);
+    b.box(.4, .03, .4, cx, .004, cz, rs ? 0x2a2c2a : P.main); }
     const screen = (x, y, z, w, h, col, ry) => b.box(w, h, .02, x, y, z, col, ry);
     if (k === 'destroyer') this.furnishDestroyer(b, P, H, screen); else if (k === 'carrier') this.furnishCarrier(b, P, H, screen);
     else if (rs) this.furnishRedStar(b, P, H, screen);
+    else if (tr) {}
     else if (!sub) {
       b.box(.5, .55, 1.4, 4.35, .28, 0, ST); screen(4.12, .68, 0, 1.1, .22, 0x5ad0ff, Math.PI / 2); b.cyl(.14, .03, 4.05, .62, 0, DK, 0, 0, Math.PI / 2);
       b.add(GEO.wedge, 0x6f7a84, 7.2, -.35, 0, 4.4, .3, 3.2); b.cyl(.28, .22, 6.5, .08, 0, ST); b.cylX(.05, 1, 7.1, .12, 0, DK);  // bow and deck gun, seen from the bridge
@@ -13018,11 +13377,15 @@ const Interior = {
       if (k === 'nukesub') [-10.2, -9, -7.8].forEach(x => [-1, 1].forEach(s => { b.cyl(.2, H, x, H / 2, s * .75, 0xc8ccd0); b.box(.42, .02, .42, x, 1.02, s * .75, 0xc23030); }));
     }
     const geo = b.geo(), scene = new THREE.Scene();
-    { const hull = new THREE.Mesh(geo, rs ? this.metalMat() : new THREE.MeshLambertMaterial({vertexColors: true})); if (rs) { hull.castShadow = hull.receiveShadow = true; } scene.add(hull); }
+    { const hull = new THREE.Mesh(geo, rs || tr ? this.metalMat() : new THREE.MeshLambertMaterial({vertexColors: true})); if (rs) { hull.castShadow = hull.receiveShadow = true; } scene.add(hull); }
+    let fireBox = null; if (tr) { // warm caged lamps in every car, the firebox glowing in the cab
+      scene.fog = new THREE.FogExp2(0x1e1a14, .03);
+      for (let i = 0; i < L.n; i++) { const pl = new THREE.PointLight(i ? 0xffd6a0 : 0xffc890, i ? 3.2 : 1.6, 8, 1.5); pl.position.set(i ? -i * TR_CL + 2.5 : -2.6, H - .2, 0); scene.add(pl); if (i) { const p2 = pl.clone(); p2.position.x = -i * TR_CL - 2.5; scene.add(p2); } }
+      fireBox = new THREE.PointLight(0xff7a2a, 2.5, 5, 1.4); fireBox.position.set(-1.0, .5, 0); scene.add(fireBox); }
     if (rs) scene.fog = new THREE.FogExp2(0x1f231c, .045); // dusty, dim air
-    scene.add(new THREE.HemisphereLight(rs ? 0xffe2c0 : sub ? 0xffd9c8 : 0xffffff, 0x50504a, (rs ? .85 : sub ? .85 : 1) * Math.PI));
+    scene.add(new THREE.HemisphereLight(rs ? 0xffe2c0 : tr ? 0xffe6c8 : sub ? 0xffd9c8 : 0xffffff, 0x50504a, (rs ? .85 : tr ? .7 : sub ? .85 : 1) * Math.PI));
     if (rs) [[11, 1, 0, 0xcfe6ff, 5], [6, 1, 0, 0xffc890, 5], [1, 1, 0, 0xffb070, 6], [-6, 1, 0, 0xff6040, 6], [-14, 1, 0, 0xffc890, 4]].forEach(([x, y, z, c, i]) => { const pl = new THREE.PointLight(c, i, 9, 1.6); pl.position.set(x, y, z); scene.add(pl); }); // dim, warm, tense
-    const li = new THREE.DirectionalLight(sub ? 0xffb090 : 0xffffff, (rs ? .18 : .55) * Math.PI); li.position.set(.4, 1, .3); scene.add(li);
+    const li = new THREE.DirectionalLight(sub ? 0xffb090 : 0xffffff, (rs ? .18 : tr ? .3 : .55) * Math.PI); li.position.set(.4, 1, .3); scene.add(li);
     if (rs) { // low sun coming in through the starboard windows (real shadows), shadowed ceiling lamps, light shafts and floating dust
       [[6, 1.3], [1, 1.3], [-5.5, 1.3]].forEach(([x, y]) => { const sp = new THREE.SpotLight(0xffd29a, 16, 10, 1.15, .7, 1.4); sp.position.set(x, y, 0); sp.target.position.set(x, 0, 0); sp.castShadow = true; sp.shadow.mapSize.set(512, 512); sp.shadow.bias = -.001; scene.add(sp, sp.target); });
       const dir = new THREE.Vector3(-4, -5, -14).normalize(), beam = new THREE.MeshBasicMaterial({color: 0xffe2b0, transparent: true, opacity: .035, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending}), patch = new THREE.MeshBasicMaterial({color: 0xffd09a, transparent: true, opacity: .09, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending});
@@ -13040,7 +13403,7 @@ const Interior = {
     for (const d of L.doors) { if (d[0] === 'x') walk.push([d[1] - .4, d[1] + .4, d[2] + M, d[3] - M]); else walk.push([d[2] + M, d[3] - M, d[1] - .4, d[1] + .4]); }
     const free = (x, z) => walk.some(w => x >= w[0] && x <= w[1] && z >= w[2] && z <= w[3]) && !blocks.some(q => x > q[0] - .15 && x < q[1] + .15 && z > q[2] - .15 && z < q[3] + .15);
     const roomAt = (x, z) => { const r = L.rooms.find(q => x >= q.x0 && x <= q.x1 && z >= q.z0 && z <= q.z1); return r ? r.n : ''; };
-    return {scene, dust: rs ? this._dust : null, free, roomAt, body, mat, chair: L.chair, worldUp: L.worldUp, cam: new THREE.PerspectiveCamera(72, 1, .03, 200)};
+    return {scene, dust: rs ? this._dust : null, free, roomAt, body, mat, chair: L.chair, worldUp: L.worldUp, n: L.n, fireBox, cam: new THREE.PerspectiveCamera(72, 1, .03, 200)};
   },
 };
 
@@ -13787,10 +14150,10 @@ const UI = {
     this.refreshHud(true);
     if (this.quick) { this.quick = false; setTimeout(() => { this.deployed = true; this.openDeploy(); }, 300); }
     window.__ws = this;
-    if (o.rail) { // Iron Express: everyone mans a gun car
-      this.addAlert('Iron Express: get the armoured train to the far station. Mouse aims your turret, click fires, E fires rockets. If the locomotive dies, we lose.', 'gold');
+    if (o.rail) { // Iron Express: everyone starts inside the train, in the bunks at the back
+      this.addAlert('Iron Express: get the armoured train to the far station. Keep steam up, man the turrets, throw boarders off. If the locomotive dies, we lose.', 'gold');
       this.railHud(true);
-      let tries = 0; const go = () => { const g = this.g; if (!g || g !== this.g) return; const u = [...g.view.ents.values()].find(e => e.o === o.me && e.d && e.d.rail && e.seat !== -1) || [...g.view.ents.values()].find(e => e.o === o.me && e.d && e.d.rail); if (u && !Direct.on) { Direct.enter(this, u); return; } if (++tries < 60) setTimeout(go, 250); }; setTimeout(go, 400);
+      let tries = 0; const go = () => { const g = this.g; if (!g || g !== this.g) return; const u = [...g.view.ents.values()].find(e => e.k === 'loco'); if (u && !Direct.on) { Direct.enter(this, u); return; } if (++tries < 60) setTimeout(go, 250); }; setTimeout(go, 400);
     } else this.railHud(false);
     if (o.redstar) { // Operation Red Star: everyone starts inside the bomber
       this.addAlert('Operation Red Star: walk the aircraft with WASD and mouse. The rest of the crew is in here with you.', 'rs');
@@ -13903,7 +14266,6 @@ const UI = {
     const g = this.g, me = g.me, v = g.view;
     if (Direct.on) Direct.onEvent(ev, g);
     switch (ev.k) {
-      case 'rlseat': if (ev.p === me) setTimeout(() => { const g = this.g, e = g && g.view.ents.get(ev.id); if (!e) return; if (Direct.on) Direct.exit(); Direct.enter(this, e); }, 2500); break;
       case 'msg': if (ev.p === me) { this.addAlert(ev.text, ev.kind, ev.x, ev.y); if (ev.kind === 'bad') Sfx.bad(); else if (ev.kind === 'good') Sfx.good(); else if (ev.kind === 'rs' && ev.s) Sfx.alarm(); } break;
       case 'rsfl': Direct.rsFlash = 1; break;
       case 'rsjolt': Direct.rsJolt = Math.max(Direct.rsJolt || 0, ev.m || .5); break;
@@ -15008,8 +15370,8 @@ const UI = {
     document.body.classList.add('direct-mode');
     $('direct').classList.remove('hidden');
     const fpv = D.mode === 'fpv';
-    $('fpvOsd').classList.toggle('hidden', !fpv); $('xhair').classList.toggle('hidden', fpv);
-    $('dinfo').classList.toggle('hidden', fpv);
+    $('fpvOsd').classList.toggle('hidden', !fpv); $('xhair').classList.toggle('hidden', fpv || D.mode === 'train');
+    $('dinfo').classList.toggle('hidden', fpv || D.mode === 'train');
     const K = c => '<b>' + Settings.keyName(Settings.binds[c]) + '</b>', W = D.W, w2 = W[1] ? W[1].w.n : '';
     const help = {
       soldier: `${K('fwd')}${K('left')}${K('back')}${K('right')} move · mouse aims (no click needed) · ${K('fire')} or click fire · ${w2 ? K('alt') + ' ' + w2 + ' · ' : ''}${K('ads')} aim · ${K('reload')} reload · ${K('jump')} jump · ${K('sprint')} sprint`,
@@ -15020,7 +15382,7 @@ const UI = {
       crew: `${K('fwd')}${K('left')}${K('back')}${K('right')} walk the aircraft · mouse looks`,
       fpv: `mouse steers · ${K('fwd')} boost · ${K('back')} brake · ${K('up')}${K('down')} climb/sink · dive into the target · ${K('fire')} detonate`,
     };
-    $('dhelp').innerHTML = D.e && D.e.d && D.e.d.rail ? `mouse aims the turret · ${K('fire')} or click fire · ${K('alt')} rockets · ${K('ads')} zoom · ${K('view')} view · the train drives itself` : D.mode === 'crew' ? help.crew + ' · <b>Alt</b> free cursor' : help[D.mode] + ` · ${K('view')} view · <b>Alt</b> free cursor · ${K('chooser')} chooser · ${K('exit')} command`;
+    $('dhelp').innerHTML = D.mode === 'train' ? `${K('fwd')}${K('left')}${K('back')}${K('right')} walk · ${K('sprint')} run · click shoot boarders · <b>F</b> kick · <b>E</b> use (coal, firebox, throttle, whistle, turret ladder) · hold <b>E</b> on fires and broken turrets · <b>Alt</b> free cursor` : D.e && D.e.d && D.e.d.rail ? `mouse aims the turret · ${K('fire')} or click fire · ${K('alt')} rockets · ${K('ads')} zoom · <b>${Settings.keyName(Settings.binds.exit)}</b> climb back down into the train` : D.mode === 'crew' ? help.crew + ' · <b>Alt</b> free cursor' : help[D.mode] + ` · ${K('view')} view · <b>Alt</b> free cursor · ${K('chooser')} chooser · ${K('exit')} command`;
     $('dinfo').classList.add('hidden');
     $('dhelp').classList.remove('mini'); clearTimeout(this.helpT);
     this.helpT = setTimeout(() => $('dhelp').classList.add('mini'), 14000);
@@ -15042,7 +15404,7 @@ const UI = {
       $('fpvOsd').classList.toggle('jam', jam);
       $('fpvTxt').textContent = `${e.d.n.toUpperCase()}\nALT ${Math.max(0, D.pose.z - Math.max(g, 0)).toFixed(1)}m  SPD ${(D.speed * 6).toFixed(0)}km/h\nBATT ${bat}%  LINK ${jam ? 'JAMMED' : 'OK'}\nWARHEAD ARMED`;
       if (D.batt <= 0) { this.g.issue({c: 'pfire', id: D.id, w: 'det', yaw: 0, pitch: 0}); }
-    } else if (D.mode !== 'crew') {
+    } else if (D.mode !== 'crew' && D.mode !== 'train') {
       $('dinfo').innerHTML = `<b>${e.d.n}${e.hero ? ' "' + e.hero + '"' : ''}</b><div class="hpbar"><i style="width:${e.hp / e.hpm * 100}%"></i></div>Kills ${e.kills || 0}` + (D.mode === 'plane' ? ` · Speed ${(D.speed * 40) | 0}` : '') + (e.d.nukeT ? ` · ICBM ${e.nukeReady ? 'READY (right click)' : Math.ceil(e.nukeCD || 0) + 's'}` : '');
     }
   },
@@ -15159,6 +15521,9 @@ addEventListener('keydown', () => { if (typeof Direct !== 'undefined' && window.
   };
   // ---- changelog: add a new entry at the TOP of this list whenever something changes
   const CHANGELOG = [
+    {d: '10 Nov 2026', items: [
+      'Iron Express rebuilt: you now ride inside the armoured train with your crew. Walk between the cab and the gun cars, shovel coal to keep steam up, set the throttle, pull the whistle, climb the ladders to man the turrets, put out fires, repair knocked-out turrets and shoot or kick raiders who jump aboard.',
+    ]},
     {d: '9 Nov 2026', items: [
       'The Yahus now wear the Israeli flag colours (white and blue) and Big Yahu\'s face is a clearer, bigger photo. You can see it on the nation card in the menu too.',
       'Emote wheel: on foot, hold B, move the mouse to a symbol and let go. Wave, rude gesture, griddy, salute, facepalm, shrug and give up. Everyone sees it; moving or firing cancels it. Rebind it in Settings.',
