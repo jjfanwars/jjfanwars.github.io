@@ -6155,7 +6155,7 @@ Sim.prototype.trainTick = function () { // every sim tick: boiler, fires, boarde
     if (w) { f.p += DT / 2.2 * (w > 1 ? 1.8 : 1); if (f.p >= 1) { T.fires.splice(T.fires.indexOf(f), 1); for (const k of Object.keys(T.hold)) if (T.hold[k].id === 'f:' + f.id) T.pk[k].fire++; this.ev({k: 'rlsfx', s: 'out', x: f.x, z: f.z}); continue; } }
     else f.p = Math.max(0, f.p - DT * .05);
     const car = this.trainEnt(f.c); if (car) { car.hp -= DT * (f.c === 0 ? 9 : 6); car.hurtT = this.t; if (car.hp <= 0) this.hurt(car, 1, this.rlE); }
-    for (let i = 0; i < humans; i++) { const cw = this.crew[i]; if (cw && !T.dead[i] && Math.hypot(cw.x - f.x, cw.z - f.z) < .55) this.trainCrewHurt(i, DT * 14); }
+    for (let i = 0; i < humans; i++) { const cw = this.crew[i]; if (cw && !T.dead[i] && Math.hypot(cw.x - f.x, cw.z - f.z) < .5) this.trainCrewHurt(i, DT * 8); }
     if (this.t - f.t > 22 && this.rnd() < DT / 10) { f.t = this.t; this.trainFireAt(f.c); } // left alone, it spreads
   }
   for (const k of Object.keys(T.jam)) { const ci = +k, car = this.trainEnt(ci), w = (work['j:' + ci] || []).filter(cw => Math.hypot(cw.x + ci * TR_CL, cw.z) < 1.6).length;
@@ -6194,7 +6194,7 @@ Sim.prototype.trainTick = function () { // every sim tick: boiler, fires, boarde
 
 // ---------- snapshot encode (host) ----------
 const SNAP_F = 12;
-const EMO_ICONS = ['\u{1F44B}', '\u{1F595}', '\u{1F57A}', '\u{1FAE1}', '\u{1F926}', '\u{1F937}', '\u{1F3F3}\u{FE0F}']; // wave, rude, griddy, salute, facepalm, shrug, give up (ids 1 to 7)
+const EMO_ICONS = ['Wave', 'Rude', 'Griddy', 'Salute', 'Facepalm', 'Shrug', 'Give up']; // ids 1 to 7; the wheel draws each as an outline of the pose
 const EMO_DUR = 4;
 function encodeSnap(sim, sendSlow) {
   const out = new Int16Array(sim.ents.size * SNAP_F), meta = [];
@@ -9364,8 +9364,8 @@ Renderer.prototype.put = function (key, geoFn, cap, opts, x, y, z, ry, rz, rx, s
 };
 
 // Emote arms: thin arms (and a finger for the rude one) posed from a local frame. forward is +x, the side is +z, up is +y.
-function emoArmGeo(nat) { const b = new Batch(), P = palette(nat); b.add(GEO.blob, P.main, 0, .09, 0, .042, .1, .042); b.add(GEO.blob, 0xffdcb8, 0, .205, 0, .05, .05, .05); return b; }
-function emoFingerGeo() { const b = new Batch(); b.add(GEO.blob, 0xffdcb8, 0, .04, 0, .018, .05, .018); return b; }
+function emoArmGeo(nat) { const b = new Batch(), P = palette(nat); b.add(GEO.blob, P.main, 0, .12, 0, .065, .14, .065); b.add(GEO.blob, 0xffdcb8, 0, .28, 0, .075, .075, .075); return b; }
+function emoFingerGeo() { const b = new Batch(); b.add(GEO.blob, 0xffdcb8, 0, .06, 0, .028, .08, .028); return b; }
 Renderer.prototype.emoArms = function (emo, nat, x, y, z, h, sc, tint, sh, sw, sy) {
   const t = this.time, c = Math.cos(h), s = Math.sin(h), hs = sy && sy < 1 ? sy : 1, P = Math.PI;
   for (const sd of [1, -1]) {
@@ -9379,7 +9379,7 @@ Renderer.prototype.emoArms = function (emo, nat, x, y, z, h, sc, tint, sh, sw, s
     else if (emo === 7) { th = P; ph = sd * .35; }
     const ay = y + sh * sc * hs, ox = s * sd * sw * sc, oz = c * sd * sw * sc;
     this.put('earm|' + nat, () => emoArmGeo(nat).geo(), 128, null, x + ox, ay, z + oz, h, th, ph, sc, tint);
-    if (emo === 2 && sd > 0) { const dx = -Math.sin(th) * Math.cos(ph) * .24 * sc, dy = Math.cos(th) * Math.cos(ph) * .24 * sc, dz = Math.sin(ph) * .24 * sc; this.put('efing', () => emoFingerGeo().geo(), 64, null, x + ox + c * dx + s * dz, ay + dy, z + oz - s * dx + c * dz, h, 0, 0, sc, tint); }
+    if (emo === 2 && sd > 0) { const dx = -Math.sin(th) * Math.cos(ph) * .33 * sc, dy = Math.cos(th) * Math.cos(ph) * .33 * sc, dz = Math.sin(ph) * .33 * sc; this.put('efing', () => emoFingerGeo().geo(), 64, null, x + ox + c * dx + s * dz, ay + dy, z + oz - s * dx + c * dz, h, 0, 0, sc, tint); }
   }
 };
 Renderer.prototype.drawUnit = function (e, dt, tint) {
@@ -9398,7 +9398,7 @@ Renderer.prototype.drawUnit = function (e, dt, tint) {
     let sy = mv && !bike ? 1 + Math.cos(ph * 2) * .07 : 1 + idle * .025, hop = mv && !bike ? Math.abs(Math.sin(ph)) * .05 : 0;
     if (hurt) sy *= .86;
     const emo = e.emo || 0, emoT = emo ? this.time : 0;
-    if (emo && !bike) { const q = emoT; if (emo === 3) hop += Math.abs(Math.sin(q * 8)) * .07; else if (emo === 7) { sy *= .62; hop = 0; } else if (emo === 6) sy *= 1 + Math.sin(q * 4) * .03; }
+    let hE = h; if (emo && !bike) { const q = emoT; if (emo === 3) { hop += Math.abs(Math.sin(q * 8)) * .14; hE = h + Math.sin(q * 8) * .45; sy *= 1 + Math.sin(q * 16) * .06; } else if (emo === 7) { sy *= .62; hop = 0; } else if (emo === 6) { sy *= 1 + Math.sin(q * 4) * .08; hop += Math.max(0, Math.sin(q * 4)) * .04; } else if (emo === 1) hE = h + Math.sin(q * 6) * .12; else if (emo === 2) hop += Math.abs(Math.sin(q * 5)) * .03; }
     const lean = mv ? (bike ? .06 : .1) : 0, wob = mv ? Math.sin(ph) * (bike ? .03 : .09) : idle * .02;
     const cp = this.cam.position, lo = (this.camDist !== undefined && this.camDist > 60) || (x - cp.x) * (x - cp.x) + (y - cp.y) * (y - cp.y) + (z - cp.z) * (z - cp.z) > 1600; // far troops (40 m+) use the light model
     if (e.d.para && e.ch !== 0 && y - Math.max(0, hAt(this.view.M, e.rx, e.ryy)) > .8) { // paratrooper under canopy
@@ -9414,7 +9414,7 @@ Renderer.prototype.drawUnit = function (e, dt, tint) {
       const bob = mv && !bike ? Math.abs(Math.cos(ph)) * .018 : 0, lean2 = mv ? (bike ? .08 : .07) : 0, fl = hurt ? .12 : 0;
       const hh = HUM.hip * sc, pdx = hh * Math.sin(pit), pdy = hh * (1 - Math.cos(pit));
       this.put(key + '|h' + (lo ? '|lo' : ''), () => soldierHuman(k, nat, lo).geo(), 64, null, x + c * pdx, y + bob + pdy, z - s * pdx, h, -lean2 - fl + (e.st === 2 ? .03 : 0) + pit, 0, sc, tint);
-      if (emo && !lo) this.emoArms(emo, nat, x + c * pdx, y + bob + pdy, z - s * pdx, h, sc, tint, HUM.sh, .13, 1);
+      if (emo) this.emoArms(emo, nat, x + c * pdx, y + bob + pdy, z - s * pdx, h, sc, tint, HUM.sh, .13, 1);
       if (bike) for (const f of [.3, -.3]) this.put('bwheel', () => bikeWheel().geo(), 128, null, x + c * f * sc, y + .16 * sc, z - s * f * sc, h, -this.time * (mv ? 14 : 0), 0, sc, tint);
       else if (!lo || mv) for (const sd of [-1, 1]) {
         const sw = mv ? Math.sin(ph + (sd > 0 ? 0 : Math.PI)) * .55 : 0, hz = .045 * sd * sc, hh = (HUM.hip + bob) * sc;
@@ -9422,9 +9422,9 @@ Renderer.prototype.drawUnit = function (e, dt, tint) {
       }
       return;
     }
-    { const bh = .3 * sc, bdx = bh * Math.sin(pit), bdy = bh * (1 - Math.cos(pit)); this.put(key + (lo ? '|lo' : ''), () => soldierBody(k, nat, lo).geo(), 64, null, x + c * bdx, y + hop + bdy, z - s * bdx, h, -lean + (e.st === 2 ? .05 : 0) + pit, wob, sc, tint, sy);
-      if (emo && !lo) this.emoArms(emo, nat, x + c * bdx, y + hop + bdy, z - s * bdx, h, sc, tint, .3, .27, sy);
-      if (NATIONS[nat].look === 'yahu' && k !== 'medic') this.put('yface', faceGeo, 64, {mat: faceMat(), noShadow: true}, x + c * bdx, y + hop + bdy, z - s * bdx, h, -lean + (e.st === 2 ? .05 : 0) + pit, wob, sc, tint, sy); }
+    { const bh = .3 * sc, bdx = bh * Math.sin(pit), bdy = bh * (1 - Math.cos(pit)); this.put(key + (lo ? '|lo' : ''), () => soldierBody(k, nat, lo).geo(), 64, null, x + c * bdx, y + hop + bdy, z - s * bdx, hE, -lean + (e.st === 2 ? .05 : 0) + pit, wob, sc, tint, sy);
+      if (emo) this.emoArms(emo, nat, x + c * bdx, y + hop + bdy, z - s * bdx, hE, sc, tint, .3, .27, sy);
+      if (NATIONS[nat].look === 'yahu' && k !== 'medic') this.put('yface', faceGeo, 64, {mat: faceMat(), noShadow: true}, x + c * bdx, y + hop + bdy, z - s * bdx, hE, -lean + (e.st === 2 ? .05 : 0) + pit, wob, sc, tint, sy); }
     if (bike) {
       for (const f of [.3, -.3]) this.put('bwheel', () => bikeWheel().geo(), 128, null, x + c * f * sc, y + .16 * sc, z - s * f * sc, h, -this.time * (mv ? 14 : 0), 0, sc, tint);
     } else if (!lo) {
@@ -10653,7 +10653,7 @@ const Direct = {
     vis('.m-ship', m === 'ship'); vis('.m-air', W.some(s => s.w.t === 'msl')); vis('.m-gun', m !== 'fpv'); vis('[data-hold="alt"]', W.length > 1);
     document.getElementById('dhelp').style.display = 'none';
   },
-  firstPerson() { return Settings.view === 'fp' && !(this.e && this.e.d && this.e.d.rail); }, // gun cars: chase camera over the turret
+  firstPerson() { return Settings.view === 'fp' && !(this.e && this.e.d && this.e.d.rail) && !(this.emoOn && this.mode === 'soldier'); }, // gun cars: chase camera over the turret
   applyView() { const R = this.ui.g.R; R.hideId = this.firstPerson() ? this.id : 0; },
   toggleView() {
     Settings.view = Settings.view === 'fp' ? 'tp' : 'fp'; Settings.save(); this.applyView();
@@ -10723,7 +10723,21 @@ const Direct = {
     else if (e.button === 2) this.toggleAds();
   },
   onMouseUp(e) { if (e.button === 0) this.mouseDown = false; },
-  emoSend() { const W = this.emoW; this.emoW = null; if (!W || W.sel < 0 || this.mode !== 'soldier') return; this.ui.g.issue({c: 'emote', id: this.id, n: W.sel + 1}); this.emoOn = true; },
+  emoSend() { const W = this.emoW; this.emoW = null; if (!W || W.sel < 0 || this.mode !== 'soldier') { if (W && W.sel < 0 && this.emoOn) this.emoStop(); return; } this.ui.g.issue({c: 'emote', id: this.id, n: W.sel + 1}); this.emoOn = W.sel + 1; this.emoRe = performance.now() + 3000; this.applyView(); }, // emoting swings the camera out so you can see yourself
+  emoStop() { if (!this.emoOn) return; this.emoOn = 0; this.ui.g.issue({c: 'emote', id: this.id, n: 0}); this.applyView(); },
+  emoPose(c, i, x, y, S) { // a white outline of the blob doing the emote
+    const L = (a, b, cc, d) => { c.beginPath(); c.moveTo(x + a * S, y + b * S); c.lineTo(x + cc * S, y + d * S); c.stroke(); }, arm = (sx, sy, ex, ey, hx, hy) => { c.beginPath(); c.moveTo(x + sx * S, y + sy * S); c.quadraticCurveTo(x + ex * S, y + ey * S, x + hx * S, y + hy * S); c.stroke(); c.beginPath(); c.arc(x + hx * S, y + hy * S, .07 * S, 0, 7); c.stroke(); };
+    c.lineCap = 'round'; c.lineJoin = 'round';
+    const body = (bx, by, rx, ry, rot) => { c.beginPath(); c.ellipse(x + bx * S, y + by * S, rx * S, ry * S, rot || 0, 0, 7); c.stroke(); c.beginPath(); c.arc(x + (bx - .1) * S, y + (by - .15) * S, .035 * S, 0, 7); c.arc(x + (bx + .1) * S, y + (by - .15) * S, .035 * S, 0, 7); c.fill(); };
+    const feet = () => { L(-.15, .38, -.15, .52); L(.15, .38, .15, .52); };
+    if (i === 0) { body(0, 0, .32, .4); feet(); arm(-.3, .05, -.45, .2, -.42, .32); arm(.3, -.05, .5, -.2, .45, -.55); L(.6, -.7, .68, -.62); L(.62, -.45, .72, -.42); } // wave
+    else if (i === 1) { body(0, 0, .32, .4); feet(); arm(-.3, .05, -.45, .2, -.42, .32); arm(.3, -.05, .5, -.1, .48, -.4); L(.48, -.47, .48, -.75); } // rude
+    else if (i === 2) { body(.05, -.05, .32, .4, .15); L(-.15, .3, -.3, .5); L(.18, .32, .3, .2); L(.3, .2, .4, .45); arm(-.28, 0, -.6, -.1, -.5, .18); arm(.32, -.1, .6, .0, .55, .25); } // griddy
+    else if (i === 3) { body(0, 0, .32, .4); feet(); arm(-.3, .05, -.42, .25, -.4, .35); arm(.3, -.1, .5, -.5, .14, -.42); L(.1, -.42, .02, -.5); } // salute
+    else if (i === 4) { body(0, .05, .32, .38, .25); feet(); arm(-.28, .1, -.42, .25, -.38, .38); arm(.28, 0, .25, -.35, .02, -.2); } // facepalm
+    else if (i === 5) { body(0, .05, .32, .36); feet(); arm(-.3, 0, -.6, .1, -.65, -.2); arm(.3, 0, .6, .1, .65, -.2); L(-.75, -.25, -.55, -.25); L(.55, -.25, .75, -.25); } // shrug
+    else { body(0, .22, .38, .25); L(-.25, .45, -.45, .5); L(.25, .45, .45, .5); arm(.3, .15, .5, .1, .5, -.05); L(.5, -.05, .5, -.75); c.beginPath(); c.moveTo(x + .5 * S, y - .75 * S); c.lineTo(x + .85 * S, y - .65 * S); c.lineTo(x + .5 * S, y - .52 * S); c.stroke(); } // give up: sits down with a white flag
+  },
   drawEmoteWheel(c, w, h) {
     const W = this.emoW, cx = w / 2, cy = h / 2, N = EMO_ICONS.length, R = Math.min(w, h) * .2, U = Math.max(1, Math.min(w, h) / 800);
     c.save(); c.fillStyle = 'rgba(8,10,14,.45)'; c.fillRect(0, 0, w, h);
@@ -10731,8 +10745,9 @@ const Direct = {
     for (let i = 0; i < N; i++) {
       const a = i / N * Math.PI * 2, px = cx + Math.sin(a) * R, py = cy - Math.cos(a) * R, on = i === W.sel;
       c.beginPath(); c.arc(px, py, (on ? 46 : 38) * U, 0, 7); c.fillStyle = on ? 'rgba(255,205,70,.92)' : 'rgba(20,24,30,.8)'; c.fill(); c.lineWidth = 2 * U; c.strokeStyle = on ? '#fff' : 'rgba(255,255,255,.25)'; c.stroke();
-      c.font = Math.round((on ? 40 : 32) * U) + 'px sans-serif'; c.fillStyle = '#fff'; c.fillText(EMO_ICONS[i], px, py + 2 * U);
+      c.lineWidth = (on ? 3.2 : 2.6) * U; c.strokeStyle = on ? '#1a1406' : '#fff'; c.fillStyle = on ? '#1a1406' : '#fff'; this.emoPose(c, i, px, py + 2 * U, (on ? 36 : 30) * U);
     }
+    if (W.sel >= 0) { c.font = '800 ' + Math.round(15 * U) + 'px system-ui'; c.fillStyle = '#fff'; c.fillText(EMO_ICONS[W.sel].toUpperCase(), cx, cy + 26 * U); }
     c.beginPath(); c.arc(cx, cy, 8 * U, 0, 7); c.fillStyle = 'rgba(255,255,255,.5)'; c.fill();
     c.beginPath(); c.arc(cx + W.x * U * .6, cy + W.y * U * .6, 5 * U, 0, 7); c.fillStyle = '#ffd23a'; c.fill();
     c.restore();
@@ -10970,7 +10985,8 @@ const Direct = {
     if (Settings.invert) ly = -ly;
     if (this.look === 'free') lx = ly = 0;
     if (this.emoW) { const W = this.emoW; if (this.mode !== 'soldier') this.emoW = null; else { if (!W.k) { W.x += lx; W.y += ly; const r = Math.hypot(W.x, W.y); if (r > 150) { W.x *= 150 / r; W.y *= 150 / r; } W.sel = r < 38 ? -1 : Math.floor((((Math.atan2(W.x, -W.y) + 6.2832) % 6.2832) / 6.2832) * EMO_ICONS.length + .5) % EMO_ICONS.length; } lx = ly = 0; } }
-    if (this.emoOn && (k[B.fwd] || k[B.back] || k[B.left] || k[B.right] || k[B.fire] || k[B.jump])) { this.emoOn = false; g.issue({c: 'emote', id: this.id, n: 0}); }
+    if (this.emoOn && (k[B.fire] || this.mouseDown || k[B.jump] || this.mode !== 'soldier' || this.ads)) this.emoStop(); // walking is fine, shooting or jumping ends it
+    else if (this.emoOn && performance.now() > this.emoRe) { this.emoRe = performance.now() + 3000; g.issue({c: 'emote', id: this.id, n: this.emoOn}); } // keeps going until you stop it
     this.lookX = lx * S; this.lookY = ly * S;
     const fn = {soldier: this.moveSoldier, vehicle: this.moveVehicle, ship: this.moveVehicle, plane: this.movePlane, heli: this.moveHeli, fpv: this.moveFpv}[this.mode];
     if (this.aboard) { this.moveAboard(dt, e, M, g.view.N); this.cameraAboard(dt, g); }
@@ -15523,6 +15539,10 @@ addEventListener('keydown', () => { if (typeof Direct !== 'undefined' && window.
   const CHANGELOG = [
     {d: '10 Nov 2026', items: [
       'Iron Express rebuilt: you now ride inside the armoured train with your crew. Walk between the cab and the gun cars, shovel coal to keep steam up, set the throttle, pull the whistle, climb the ladders to man the turrets, put out fires, repair knocked-out turrets and shoot or kick raiders who jump aboard.',
+    ]},
+    {d: '10 Nov 2026', items: [
+      'Iron Express rebuilt: you ride inside an enclosed armoured train with your crew. Walk between the cab and the gun cars, shovel coal to keep steam up, set the throttle, pull the whistle, climb the ladders to man the turrets, put out fires, repair knocked-out turrets and shoot or kick raiders who climb aboard.',
+      'Emotes: the wheel shows an outline of each pose, the camera swings out so you can watch yourself, the moves are bigger and readable from far away, and you can walk around while you griddy. Firing, aiming or jumping ends it.',
     ]},
     {d: '9 Nov 2026', items: [
       'The Yahus now wear the Israeli flag colours (white and blue) and Big Yahu\'s face is a clearer, bigger photo. You can see it on the nation card in the menu too.',
