@@ -2120,7 +2120,7 @@ function passable(M, dom, i) {
 
 // Flow fields: Dijkstra over the grid from a goal cell, cached per domain+cell and flushed when buildings change.
 function Fields(M) {
-  this.M = M; this.cache = new Map(); this.budget = 0; this.ver = 1; this.pc = {};
+  this.M = M; this.cache = new Map(); this.budget = 0; this.ver = 1; this.pc = {}; this.jobs = new Map(); this.job = null;
   this.heap = new Int32Array(M.N * M.N * 8); this.hk = new Float32Array(M.N * M.N * 2); this.closed = new Uint8Array(M.N * M.N);
 }
 Fields.prototype.flush = function () { this.cache.clear(); this.ver++; this.soft = 0; };
@@ -2143,15 +2143,33 @@ Fields.prototype.get = function (dom, gx, gy, lim) {
   const key = dom * 1e6 + gy * N + gx + (lim ? lim / 1000 : 0);
   let f = this.cache.get(key);
   if (f) { this.cache.delete(key); this.cache.set(key, f); return f; }
+  if (!lim && N * N > 200 * 200) { // big maps: a whole-map field is worked out a few milliseconds per tick (see work), never in one go
+    if (!this.jobs.has(key) && this.jobs.size < 32) this.jobs.set(key, [dom, gx, gy]);
+    return null;
+  }
   if (this.budget <= 0) return null;
   this.budget--;
   f = this.compute(dom, gx, gy, lim);
-  this.cache.set(key, f);
-  if (this.cache.size > 120) this.cache.delete(this.cache.keys().next().value);
+  this.keep(key, f);
   return f;
 };
-Fields.prototype.compute = function (dom, gx, gy, lim) {
-  const M = this.M, N = M.N, A = N * N, d = new Float32Array(A).fill(1e9), PC = this.prep(dom), pass = PC.pass, cst = PC.cost, MH = M.h, flat = dom === 1 || dom === 2;
+Fields.prototype.keep = function (key, f) { // at most ~48 MB of fields
+  this.cache.set(key, f); const max = Math.max(24, Math.min(120, Math.floor(12e6 / (this.M.N * this.M.N))));
+  while (this.cache.size > max) this.cache.delete(this.cache.keys().next().value);
+};
+Fields.prototype.work = function (ms) {
+  if (!this.jobs.size && !this.job) return;
+  const t0 = performance.now();
+  while (performance.now() - t0 < ms) {
+    if (!this.job) { const it = this.jobs.entries().next(); if (it.done) return; const [key, j] = it.value; this.jobs.delete(key); if (this.cache.has(key)) continue;
+      if (!this.jb) { const A = this.M.N * this.M.N; this.jb = {heap: new Int32Array(A * 8), hk: new Float32Array(A * 2), closed: new Uint8Array(A)}; }
+      this.job = this.compute(j[0], j[1], j[2], 0, this.jb); this.job.key = key; this.job.v = this.ver; }
+    if (this.job.v !== this.ver) { this.job = null; continue; } // the map changed while it was being worked out
+    if (this.run(this.job, 6000)) { this.keep(this.job.key, this.job.d); this.job = null; }
+  }
+};
+Fields.prototype.compute = function (dom, gx, gy, lim, own) {
+  const M = this.M, N = M.N, A = N * N, d = new Float32Array(A).fill(1e9);
   // start from the nearest passable cell, the goal may be inside a building
   let start = gy * N + gx;
   if (!passable(M, dom, start)) {
@@ -2166,8 +2184,14 @@ Fields.prototype.compute = function (dom, gx, gy, lim) {
     if (best >= 0) start = best;
   }
   d[start] = 0;
-  const heap = this.heap; let hn = 0;
-  const hk = this.hk;
+  const S = {d, dom, lim, hn: 0, heap: own ? own.heap : this.heap, hk: own ? own.hk : this.hk, closed: own ? own.closed : this.closed};
+  S.closed.fill(0); S.heap[0] = start; S.hk[0] = 0; S.hn = 1;
+  if (own) return S;
+  this.run(S, 1e12); return d;
+};
+Fields.prototype.run = function (S, steps) { // Dijkstra from the goal outward; returns true when done
+  const M = this.M, N = M.N, A = N * N, d = S.d, dom = S.dom, lim = S.lim, PC = this.prep(dom), pass = PC.pass, cst = PC.cost, MH = M.h;
+  const heap = S.heap, hk = S.hk; let hn = S.hn;
   const push = (i, k) => {
     if (hn >= A * 2 - 2) return;
     let c = hn++; heap[c] = i; hk[c] = k;
@@ -2189,14 +2213,14 @@ Fields.prototype.compute = function (dom, gx, gy, lim) {
     }
     return r;
   };
-  push(start, 0);
   const DX = [1, -1, 0, 0, 1, 1, -1, -1], DY = [0, 0, 1, -1, 1, -1, 1, -1], DC = [1, 1, 1, 1, 1.414, 1.414, 1.414, 1.414];
-  const closed = this.closed; closed.fill(0);
+  const closed = S.closed;
   const cap = lim || 1e9; // chase paths only need the neighbourhood, not the whole map
   while (hn > 0) {
+    if (--steps < 0) { S.hn = hn; return false; }
     const i = pop();
     if (closed[i]) continue;
-    if (d[i] > cap) break;
+    if (d[i] > cap) { hn = 0; break; }
     closed[i] = 1;
     const x = i % N, y = (i / N) | 0;
     for (let k = 0; k < 8; k++) {
@@ -2212,7 +2236,7 @@ Fields.prototype.compute = function (dom, gx, gy, lim) {
       if (nd < d[j]) { d[j] = nd; push(j, nd); }
     }
   }
-  return d;
+  S.hn = 0; return true;
 };
 // Smooth direction: weighted sum of all downhill neighbours, which removes grid zig-zag.
 Fields.prototype.dir = function (f, x, y, out) {
@@ -3689,7 +3713,7 @@ Sim.prototype.step = function () {
   if (this.strikes && this.strikes.length) this.stepStrikes();
   if (this.hitLog && this.tick % 4 === 0) { for (const p in this.hitLog) { const L = this.hitLog[p]; if (L.size) this.ev({k: 'dmgrep', p: +p, list: [...L.values()].map(r => ({k: r.k, b: r.b, base: r.base, dmg: Math.round(r.dmg), hp: Math.round(r.hp * 100), kill: r.kill}))}); } this.hitLog = null; }
   this.t += DT; this.tick++;
-  this.F.budget = this.N > 170 ? 2 : 3;
+  this.F.budget = this.N > 170 ? 2 : 3; this.F.work(5);
   if (this.F.soft && this.tick % 20 === 0) this.F.flush(); // new or fallen buildings: refresh paths every 2 s at most, not on every change
   this.rebuildGrid();
   for (const p of this.players) {
@@ -4253,7 +4277,10 @@ Sim.prototype.separate = function (e, dx, dy, p, sp) {
     e.h += clamp(da, -tr, tr);
     const fw = big ? Math.max(.15, Math.cos(da)) : 1;
     const vx = big ? Math.cos(e.h) : mx, vy = big ? Math.sin(e.h) : my;
-    this.tryMove(e, e.x + vx * sp * fw * DT, e.y + vy * sp * fw * DT);
+    if (!this.tryMove(e, e.x + vx * sp * fw * DT, e.y + vy * sp * fw * DT)) { // blocked (a corner of water or rock): slide off to one side instead of grinding forever
+      const a0 = Math.atan2(my, mx), st = Math.max(sp * DT, .08), side = (e.id + ((this.t / 3) | 0)) % 2 ? 1 : -1;
+      for (const da of [.7, -.7, 1.3, -1.3, 1.9, -1.9]) { const a1 = a0 + da * side; if (this.tryMove(e, e.x + Math.cos(a1) * st, e.y + Math.sin(a1) * st)) break; }
+    }
   } else if (sx || sy) {
     this.tryMove(e, e.x + sx * .12, e.y + sy * .12);
   }
@@ -8715,9 +8742,12 @@ Renderer.prototype.buildTerrain = function (M, N) {
   const uv = g.attributes.uv;
   for (let i = 0; i < uv.count; i++) { uv.setXY(i, pos.getX(i) / N, pos.getZ(i) / N); }
   tex.flipY = false;
-  const m = this.terrain = new THREE.Mesh(g, this.terrainMat(tex));
-  m.receiveShadow = true; m.castShadow = this.quality === 'high';
-  this.world.add(m);
+  const tmat = this.terrainMat(tex); this.terChunks = null;
+  if (st > 1) { const m = this.terrain = new THREE.Mesh(g, tmat); m.receiveShadow = true; m.castShadow = this.quality === 'high'; this.world.add(m); }
+  else { // 32-cell chunks that share the one vertex buffer (digs write into it), each with three levels of detail: culled off screen, coarser far away
+    this.terrain = {geometry: g};
+    this.terChunks = terrainChunks(g, N, 32).map(ch => { const m = new THREE.Mesh(ch.lods[0], tmat); m.receiveShadow = true; m.castShadow = this.quality === 'high'; ch.m = m; this.world.add(m); return ch; });
+  }
   if (M.rsRoute) { // Operation Red Star: land and sea go on forever. Snow beyond the west edge, farmland beyond the east, a far fog and a long view distance.
     const skirt = (x, col, y) => { const m = new THREE.Mesh(new THREE.PlaneGeometry(3000, 6000), new THREE.MeshLambertMaterial({color: col})); m.rotation.x = -Math.PI / 2; m.position.set(x, y, N / 2); this.world.add(m); };
     skirt(-1500, 0xdde4e8, 1.05); skirt(N + 1500, 0x587a3c, 1.65);
@@ -8766,7 +8796,32 @@ Renderer.prototype.tileSplit = function (im, T, lod) {
   return {meshes, at: i => [meshOf[i], idx[i]]};
 };
 // Distance detail per tile: far tiles swap to the light mesh (trees) or are hidden (grass, a couple of pixels tall out there).
+function terrainChunks(g, N, C) {
+  const pos = g.attributes.position, out = [], V = (x, y) => y * N + x;
+  for (let cy = 0; cy < N - 1; cy += C) for (let cx = 0; cx < N - 1; cx += C) {
+    const x1 = Math.min(N - 1, cx + C), y1 = Math.min(N - 1, cy + C), lods = []; let lo = 1e9, hi = -1e9;
+    for (let y = cy; y <= y1; y++) for (let x = cx; x <= x1; x++) { const h = pos.getY(V(x, y)); if (h < lo) lo = h; if (h > hi) hi = h; }
+    const sph = new THREE.Sphere(new THREE.Vector3((cx + x1) / 2, (lo + hi) / 2, (cy + y1) / 2), Math.hypot(x1 - cx, y1 - cy) / 2 + (hi - lo) / 2 + 4); // room for digging and craters
+    for (const s of [1, 2, 4]) {
+      const idx = [];
+      for (let y = cy; y < y1; y += s) for (let x = cx; x < x1; x += s) {
+        const xe = Math.min(x + s, x1), ye = Math.min(y + s, y1), a = V(x, y), b = V(x, ye), c = V(xe, ye), d = V(xe, y);
+        const bl = x === cx, bb = ye === y1, br = xe === x1, bt = y === cy;
+        if (s === 1 || xe - x < 2 || ye - y < 2 || !(bl || bb || br || bt)) { idx.push(a, b, d, b, c, d); continue; }
+        // a fan from the centre; sides on the chunk border keep every vertex, so neighbours at any detail meet without cracks
+        const m = V(x + ((xe - x) >> 1), y + ((ye - y) >> 1)), per = [];
+        const side = (fx, fy, tx, ty, fine) => { const n = Math.max(Math.abs(tx - fx), Math.abs(ty - fy)), st = fine ? 1 : n; for (let k = 0; k < n; k += st) per.push(V(fx + Math.sign(tx - fx) * k, fy + Math.sign(ty - fy) * k)); };
+        side(x, y, x, ye, bl); side(x, ye, xe, ye, bb); side(xe, ye, xe, y, br); side(xe, y, x, y, bt);
+        for (let k = 0; k < per.length; k++) idx.push(m, per[k], per[(k + 1) % per.length]);
+      }
+      const cg = new THREE.BufferGeometry(); for (const nm of Object.keys(g.attributes)) cg.setAttribute(nm, g.attributes[nm]); cg.setIndex(idx); cg.boundingSphere = sph; lods.push(cg);
+    }
+    out.push({lods, s: sph});
+  }
+  return out;
+}
 Renderer.prototype.updateLod = function () {
+  if (this.terChunks) { const c = this.cam.position, k = this.quality === 'low' ? .6 : 1; for (const ch of this.terChunks) { const d = c.distanceTo(ch.s.center) - ch.s.radius, g = ch.lods[d < 70 * k ? 0 : d < 150 * k ? 1 : 2]; if (ch.m.geometry !== g) ch.m.geometry = g; } }
   const L = this.lodTiles; if (!L) return; const c = this.cam.position;
   for (const t of L) {
     const d = c.distanceTo(t.s.center) - t.s.radius, far = d > t.far;
@@ -9219,11 +9274,6 @@ Renderer.prototype.buildFog = function (N) {
     pos.setY(i, (x >= 0 && z >= 0 && x <= N && z <= N ? Math.max(0, hAt(M, x, z)) : 0) + .35);
     uv.setXY(i, x / N, z / N);
   }
-  const fs = M.lite ? 3 : 1, fine = new THREE.PlaneGeometry(N - 1, N - 1, Math.ceil((N - 1) / fs), Math.ceil((N - 1) / fs));
-  fine.rotateX(-Math.PI / 2); fine.translate((N - 1) / 2, 0, (N - 1) / 2);
-  const fp = fine.attributes.position, fu = fine.attributes.uv;
-  for (let i = 0; i < fp.count; i++) { fp.setY(i, Math.max(0, fs > 1 ? hAt(M, fp.getX(i), fp.getZ(i)) : M.h[i]) + .25); fu.setXY(i, fp.getX(i) / N, fp.getZ(i) / N); }
-  const mat = new THREE.MeshBasicMaterial({color: 0x050a12, transparent: true, depthWrite: false, alphaMap: tex, fog: false});
   // alphaMap reads green; the data below writes all channels
     const edge = new THREE.Mesh(new THREE.RingGeometry(N * .72, N * 8, 48), new THREE.MeshBasicMaterial({color: 0x050a12, transparent: true, opacity: .55, depthWrite: false, fog: false}));
   edge.rotation.x = -Math.PI / 2; edge.position.set(N / 2, .3, N / 2); edge.visible = false; this.world.add(edge);
