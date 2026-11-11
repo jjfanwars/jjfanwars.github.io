@@ -1,6 +1,6 @@
 # jjdrop: urban CQB design notes
 
-Status 2026-11-11. `drop.html` is a first-person, body-cam style urban combat game with two modes, **Siege** and **Assault**, both playable solo against bots or online (host-authoritative over the relay, up to 8 humans).
+Status 2026-11-11. `drop.html` is a first-person close-quarters tactical shooter with two modes, **Siege** and **Assault**, both playable solo against bots or online (host-authoritative over the relay, up to 8 humans). Siege now plays like a round of a modern attack/defend shooter: operator pick, prep phase, destructible soft walls, gadgets, a bomb objective.
 
 ## What other games do, and what we took from it
 
@@ -23,13 +23,29 @@ Sources were fan and review pages, so treat the numbers as impressions, not spec
 - **Rounds:** prep 40 s (attackers are frozen in a drone view, click to mark an enemy for 14 s; defenders get 4 barricades and 2 reinforcements each, defender bots auto-prep), action 180 s, secure = hold the objective room alone for 7 s, or eliminate the other team, or defenders survive the clock.
 - **Assault (co-op):** the original three-building ticket mode, now with humans plus AI squad mates, objectives captured by being inside the building on any floor.
 
+## Siege, second pass: what makes it feel like Siege
+
+The first pass had the round loop. This pass adds the parts players actually remember from that genre:
+
+- **Operators.** Ten operators with names and kits of our own (not the real game's). Each has a weapon, armor/speed, one gadget of their own (G) and a secondary gadget (4). Picked at the start of every round (12 s, unique per team, bots fill the rest late so humans pick first).
+  - Attack: KILN (thermal charge, the only way through reinforced walls), VESPER (EMP grenades, through walls), MALLET (breaching rounds), LYNX (hold-to-scan heartbeat sensor, 18 m), BRICK (breaching hammer, shotgun).
+  - Defend: WARDEN (shock cells: thermal charges fizzle), SNARE (entry lasers on doors and windows), ORACLE (sticky cameras), STATIC (signal jammers: hold charges, kill drones), BASTION (armor bag, LMG).
+  - Secondaries: breach charge, frag, smoke, flash / barbed wire, deployable shield, impact grenade, nitro cell (remote detonation).
+- **Counter-play chain.** Reinforce stops soft breaching; thermal beats reinforcement; shock cells beat thermal; EMP and explosions beat shock cells, cameras, lasers and jammers; jammers stop every charge until shot. Gadgets can be shot (cameras, lasers, jammers, shock cells, nitro, drones).
+- **Destruction.** Soft walls turn into 20 cm cells when hit. Bullets pass through soft walls and barricades with less damage and sometimes knock a cell out, so spraying a wall makes murder holes you can see and shoot through. Shotguns, melee and the hammer open holes big enough to walk through; explosions blow wider ones. Hard walls only break to a thermal charge.
+- **Bomb objective (default).** Two sites on one floor. One attacker carries the defuser (dropped on death, any attacker picks it up). Hold E for 7 s on a site to plant; then a 45 s timer runs and defenders must hold E for 7 s to disable it. Killing every attacker does not end a planted round. Secure area is still a menu option.
+- **Information war.** Attackers drive small wheeled drones (prep and action, two each, Space to hop, click to spot an enemy); defenders get 8 building cameras plus sticky cameras on key 5. Middle click pings a spot or an enemy for the team. Spotting the bomb sites with a drone in prep reveals them early.
+- **HUD in the genre's layout.** Team operator icons and the timer at the top, health and gadgets bottom left, ammo bottom right, kill feed top right, big round banners (preparation, action, defuser planted, round won/lost), hitmarkers, damage direction, Tab scoreboard, footsteps of enemies louder than teammates'.
+
+What is still missing compared with the real thing: down-but-not-out and revives, rappel, hatches and floor destruction, pistols, defender drones, more maps, and a hand-play balance pass.
+
 ## Online
 
 Host runs everything (AI, damage, doors are derived from positions on each client). Guests send pose at 20 Hz and fire/use commands; the host resolves hits and broadcasts a snapshot at 15 Hz plus an event list (shots, hits, barricades, breaches, rounds). Room names start with `[Drop]` so they stay out of the jjfront list. The relay is unchanged. No late join, no host migration (a leaving guest is replaced by a bot; if the host leaves, guests get a defeat screen).
 
 ## Not built yet
 
-- Siege map variety (only the one generated house), operators with different gadgets, shotgun/hatch breaches, floor/ceiling destruction, drones for defenders, plant and defuse mode.
+- Siege map variety (only the one generated house), down-but-not-out and revives, rappel, hatch and floor/ceiling destruction, pistols, drones for defenders.
 - Grenades, vehicles, touch controls, voice or ping system, result feedback into jjfront.
 - Ranked or lobby team picker (teams alternate by join order).
-- A real hand-play balance pass: bot accuracy, round length and the number of barricades are guesses.
+- A real hand-play balance pass: bot accuracy, round length, gadget counts and the number of barricades are guesses. In headless bot-only rounds, attackers planted in about 6 of 8 rounds; some rounds still time out when a carrier gets wedged.

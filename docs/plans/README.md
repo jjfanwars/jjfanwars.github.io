@@ -8,7 +8,7 @@ Saved design plans. Nothing here is built unless it says so. Status last updated
 | **Convoy escort** co-op | Chosen, needs detail | below |
 | **Submarine crew** co-op | Chosen, needs detail | below |
 | **Heist** co-op | Chosen, needs detail | below |
-| **jjdrop**: Siege-style urban CQB, multi-storey houses, online co-op | Built (11 Nov 2026), see [drop.md](drop.md) | `drop.html` |
+| **jjdrop**: Siege-style tactical CQB: operators and gadgets, destructible walls, bomb plant/defuse, multi-storey houses, online | Built (11 Nov 2026), see [drop.md](drop.md) | `drop.html` |
 | Co-op campaign "Operation Chain" | Idea | below |
 | 1v1 PvP modes | Idea | below |
 
