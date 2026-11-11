@@ -1,0 +1,2 @@
+Textures in this folder are CC0 1.0 (public domain), from ambientCG.com:
+PaintedPlaster017 (wall_*), WoodFloor051 (floor_*), Asphalt031 (ground_*), Concrete034 (prop_*). Resized to 512 px.
