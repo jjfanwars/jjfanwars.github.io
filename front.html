@@ -124,6 +124,7 @@ button.alt{background:#242e3d;color:#dfe6ee}button.alt:hover{background:#2f3b4e}
     </div>
     <div class="row"><button id="bSolo">Play solo</button><button id="bHost" class="alt">Host online game</button></div>
     <div class="row"><input id="jc" placeholder="Room code" maxlength="5" autocomplete="off" style="text-transform:uppercase"><button id="bJoin" class="alt">Join</button></div>
+    <button id="bDrop" class="alt" title="A separate 3D game: parachute onto an island with your squad">🪂 jjdrop: 3D paradrop invasion</button>
     <div id="rooms"></div><div id="msg"></div>
   </div>
   <p class="credit">Rules based on <a href="https://openfront.io" target="_blank" rel="noopener">OpenFront</a> &copy; OpenFront Inc. and contributors (AGPL-3.0). Real-world maps are downsampled from OpenFront's map data (CC BY-SA 4.0). Independent remake, not the official game. <a href="https://github.com/jjfanwars/jjfanwars.github.io" target="_blank" rel="noopener">Source</a>.</p>
@@ -140,7 +141,7 @@ button.alt{background:#242e3d;color:#dfe6ee}button.alt:hover{background:#2f3b4e}
 
 <div id="hud" class="hidden">
   <div id="lb"></div>
-  <div id="topR"><div class="ic"><button id="sfxBtn" title="Sound on/off">🔊</button><button id="chatBtn" title="Chat (Enter)">💬</button><button id="menuBtn" title="Leave the game">⏏ Leave</button></div><div id="top"></div><canvas id="mini" width="170" height="110"></canvas></div>
+  <div id="topR"><div class="ic"><button id="sfxBtn" title="Sound on/off">🔊</button><button id="chatBtn" title="Chat (Enter)">💬</button><button id="dropBtn" title="Drop into a 3D battle (jjdrop). Your army size sets your squad.">🪂 3D drop</button><button id="menuBtn" title="Leave the game">⏏ Leave</button></div><div id="top"></div><canvas id="mini" width="170" height="110"></canvas></div>
   <div id="alert" class="hidden"></div><div id="reqs"></div>
   <div id="stat">
     <div class="srow"><span>Troops</span><b id="trp"></b></div>
@@ -851,6 +852,8 @@ function joinRoom(code) {
   clearInterval(G.ping); G.ping = setInterval(() => { try { if (G.ws && G.ws.readyState === 1) G.ws.send('ping'); } catch (e) {} }, 20000);
 }
 $('bLeave').onclick = () => leave();
+$('bDrop').onclick = () => { location.href = 'drop.html'; };
+$('dropBtn').onclick = () => { const S = G.sim; if (!S) return; const me = S.P[G.me], sq = Math.max(4, Math.min(12, 4 + Math.floor(me.troops / 10 / 3000))), foe = S.tick < 3000 ? 1 : S.tick < 6000 ? 2 : 3; window.open('drop.html?squad=' + sq + '&foe=' + foe, '_blank', 'noopener'); }; // the 3D game opens in a new tab, your army size sets the squad and the game stage sets the enemy
 $('menuBtn').onclick = () => leave();
 $('bOver').onclick = () => leave();
 
