@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Legal Studies Revision</title>
+<style>
+:root{--bg:#f6f5f1;--card:#fff;--ink:#1d1d1f;--mut:#6b6b70;--line:#e2e0da;--acc:#2f5bd3;--ok:#1f8a4c;--mid:#b7791f;--bad:#c0392b}
+@media (prefers-color-scheme:dark){:root{--bg:#141416;--card:#1e1e22;--ink:#ececef;--mut:#9a9aa2;--line:#33333a;--acc:#6f95ff;--ok:#4cc57f;--mid:#e0a84a;--bad:#ef6b5c}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,-apple-system,Segoe UI,sans-serif}
+.wrap{max-width:760px;margin:0 auto;padding:16px}
+h1{font-size:22px;margin:8px 0 2px}
+.sub{color:var(--mut);font-size:14px;margin-bottom:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:14px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.stats{display:flex;gap:16px;font-size:14px;color:var(--mut)}
+.stats b{color:var(--ink);font-size:18px;display:block}
+.tag{display:inline-block;font-size:12px;padding:2px 8px;border-radius:99px;background:var(--bg);border:1px solid var(--line);color:var(--mut)}
+.q{font-size:18px;font-weight:600;margin:10px 0}
+textarea{width:100%;min-height:170px;padding:12px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font:inherit;resize:vertical}
+input[type=password],input[type=text],select{padding:9px 10px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font:inherit}
+button{padding:10px 16px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--ink);font:inherit;cursor:pointer}
+button.pri{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:600}
+button:disabled{opacity:.5;cursor:default}
+.score{font-size:28px;font-weight:700}
+.ok{color:var(--ok)}.mid{color:var(--mid)}.bad{color:var(--bad)}
+ul{margin:6px 0;padding-left:20px}
+.model{white-space:pre-wrap;font-size:15px;background:var(--bg);border-radius:8px;padding:12px;border:1px solid var(--line)}
+.small{font-size:13px;color:var(--mut)}
+details summary{cursor:pointer;color:var(--mut);font-size:14px}
+.hide{display:none}
+.list{font-size:14px}.list div{display:flex;justify-content:space-between;gap:8px;padding:5px 0;border-bottom:1px solid var(--line);cursor:pointer}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Legal Studies Revision</h1>
+  <div class="sub">Answer exam questions, get marked and coached by Claude Haiku.</div>
+
+  <div class="card" id="keyCard">
+    <div class="row">
+      <input type="password" id="key" placeholder="Anthropic API key (sk-ant-...)" style="flex:1;min-width:220px">
+      <button id="saveKey">Save</button>
+    </div>
+    <div class="small" style="margin-top:6px">Stored only in this browser. Without a key you can still self-mark against the model answer.</div>
+  </div>
+
+  <div class="card">
+    <div class="stats">
+      <div><b id="sDone">0</b>answered</div>
+      <div><b id="sPct">-</b>average</div>
+      <div><b id="sStreak">0</b>streak</div>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <select id="mode">
+        <option value="order">In order</option>
+        <option value="rand">Random</option>
+        <option value="weak">Weakest first</option>
+      </select>
+      <select id="sec"><option value="">All sections</option><option value="A">Section A</option><option value="B">Section B</option></select>
+      <button id="keyToggle">API key</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="row"><span class="tag" id="qTag"></span><span class="tag" id="qMarks"></span><span class="tag" id="qBest"></span></div>
+    <div class="q" id="qText"></div>
+    <div class="small" id="qCtx"></div>
+    <textarea id="ans" placeholder="Write your answer like you would in the exam..."></textarea>
+    <div class="row" style="margin-top:10px">
+      <button class="pri" id="mark">Mark my answer</button>
+      <button id="show">Show model answer</button>
+      <button id="skip">Next question</button>
+    </div>
+  </div>
+
+  <div class="card hide" id="res"></div>
+  <div class="card hide" id="modelCard"><b>Model answer</b><div class="model" id="modelTxt" style="margin-top:8px"></div></div>
+
+  <div class="card">
+    <details><summary>All questions</summary><div class="list" id="list"></div></details>
+  </div>
+</div>
+
+<script>
+const MODEL = 'claude-haiku-5-5';
+const Q = [
+ {id:'A1',s:'A',m:2,q:'Explain access as a principle of justice.',
+  a:'Access means that all people should be able to engage with the justice system and its processes on an informed basis.',
+  k:['All people should be able to engage with the justice system and its processes.','Engagement should occur on an informed basis.']},
+ {id:'A2',s:'A',m:4,q:'Distinguish between the burden of proof and the standard of proof in a civil dispute.',
+  a:"The burden of proof refers to the party responsible for proving a case. In a civil dispute this usually rests with the plaintiff.\n\nThe standard of proof refers to the degree or level of proof required to establish a claim. In a civil dispute this is on the balance of probabilities, meaning the plaintiff's version of events is more likely than the defendant's.",
+  k:['Explain burden of proof (party responsible for proving, usually the plaintiff).','Explain standard of proof (balance of probabilities).','Show the difference between them.']},
+ {id:'A3',s:'A',m:4,q:'Compare arbitration and mediation as methods of dispute resolution.',
+  a:'Arbitration and mediation are similar because both use an independent and unbiased third party and provide parties with an opportunity to be heard.\n\nIn mediation, the mediator facilitates discussion and helps parties reach their own resolution. The mediator does not impose a decision.\n\nIn arbitration, the arbitrator hears evidence and makes the final decision.\n\nIn arbitration, the decision is legally binding. In mediation, an outcome is only binding if parties agree and sign a Terms of Settlement.',
+  k:['Similarities (independent third party, opportunity to be heard).','Differences (who decides; binding or not).','Uses comparison language (whereas, similarly, however).']},
+ {id:'A4a',s:'A',m:4,ctx:'Casey was injured by train doors closing while exiting a carriage.',q:"Explain breach and causation in relation to Casey's case.",
+  a:"Casey must prove that the train operators owed her a duty of care and breached that duty by allowing the doors to close and the train to move while she was exiting.\n\nCasey must also prove causation, meaning there was a direct link between the operators' conduct and her injuries. She would not have been injured if the operators had ensured she was clear of the train before departure.",
+  k:['Explain breach.','Explain causation.','Link both concepts to the facts of Casey\'s case.']},
+ {id:'A4b',s:'A',m:3,ctx:'Casey was injured by train doors closing while exiting a carriage. The train operators lodged a counterclaim.',q:'Explain the term counterclaim and its relevance.',
+  a:'A counterclaim is a separate claim made by the defendant against the plaintiff in response to the original claim.\n\nIn this case the defendant argues that Casey is partly responsible for her own injuries. The burden of proving the counterclaim rests with the defendant.',
+  k:['Define counterclaim.','Explain burden of proof (rests with the defendant for the counterclaim).','Link to Casey\'s circumstances.']},
+ {id:'A5',s:'A',m:4,q:'Identify two institutions that resolve civil disputes and outline the disputes they can resolve.',
+  a:'Ombudsman:\nProvides a free and impartial dispute resolution service. Can investigate complaints involving government agencies and industries such as energy, telecommunications and public transport.\n\nComplaints Bodies:\nProvide complaint handling and resolution services, and may enforce laws. Examples include Consumer Affairs Victoria and the eSafety Commissioner.',
+  k:['Name a suitable institution (x2).','Explain the types of disputes each handles.','Use examples.']},
+ {id:'A6',s:'A',m:8,q:'Discuss the extent to which the Australian Constitution protects the rights of Australians.',
+  a:'The Constitution protects rights to a limited extent.\n\nStrengths:\n- Five express rights are entrenched.\n- Rights cannot be easily changed because referendums are required.\n- Individuals may challenge legislation in the High Court.\n\nWeaknesses:\n- The number of rights is limited.\n- The scope of rights can be narrow.\n- Rights may be restricted through judicial interpretation.\n\nExamples:\n- Section 92 interstate trade and commerce.\n- Restrictions during COVID-19.\n- Agricultural quarantine restrictions.\n\nOverall judgement:\nThe Constitution provides some protection but is less comprehensive than a constitutional bill of rights.',
+  k:['Strengths (express rights entrenched, referendum needed, High Court challenge).','Weaknesses (few rights, narrow scope, judicial interpretation).','Examples (s92, COVID-19 restrictions, quarantine).','Overall judgement on the extent.']},
+ {id:'A7',s:'A',m:6,q:'Evaluate the use of a jury in a civil trial.',
+  a:'Advantages:\n- Impartial decision makers.\n- Reflect community standards.\n- Represent a cross-section of society.\n\nDisadvantages:\n- Potential bias.\n- Media influence.\n- Jury selection may reduce representativeness.\n- Expensive and rarely used.\n\nConclusion:\nJuries provide benefits but are not essential to the effective operation of civil trials.',
+  k:['Advantages.','Disadvantages.','Conclusion / overall evaluation.']},
+ {id:'A8',s:'A',m:5,q:'Identify an area of civil law studied and describe two defences.',
+  a:'Area: Negligence.\n\nDefence 1: Contributory Negligence.\nThe plaintiff contributed to their own loss. Damages are reduced according to the plaintiff\'s level of responsibility.\n\nDefence 2: Volenti Non Fit Injuria (Voluntary Assumption of Risk).\nThe plaintiff knowingly accepted the risk and voluntarily participated in the activity.',
+  k:['Identify an area of civil law (e.g. negligence).','Describe defence 1 (e.g. contributory negligence).','Describe defence 2 (e.g. volenti non fit injuria).']},
+ {id:'B1a',s:'B',m:2,q:'Define human rights.',
+  a:'Human rights are the basic freedoms and standards that promote and uphold human dignity and are guaranteed by a moral sense of duty and by the law.',
+  k:['Basic freedoms and standards that uphold human dignity.','Guaranteed by moral duty and by law.']},
+ {id:'B1b',s:'B',m:4,q:'Describe the role of the Human Rights Commission as a dispute resolution body.',
+  a:'The Human Rights Commission is a complaints body that provides a free, fair and timely dispute resolution service.\n\nIt deals with disputes involving discrimination, harassment, vilification and victimisation.\n\nThe Commission commonly uses conciliation, where an independent third party assists the parties to reach agreement. Outcomes may include compensation, apologies or agreements to stop certain conduct.',
+  k:['Complaints body providing a free, fair, timely service.','Types of disputes (discrimination, harassment, vilification, victimisation).','Uses conciliation; possible outcomes.']},
+ {id:'B1c',s:'B',m:6,ctx:'AFL racism matter handled by the Human Rights Commission.',q:'Evaluate conciliation as used by the Human Rights Commission in the AFL racism matter.',
+  a:'Advantages:\n- Joint resolution.\n- Allows parties to communicate.\n- Can repair relationships.\n- Greater satisfaction because outcomes are agreed upon.\n\nDisadvantages:\n- Stronger parties may dominate.\n- Dispute may remain unresolved.\n- Outcomes are not automatically legally binding.\n\nConclusion:\nConciliation is effective because it promotes agreement and relationship repair, though success depends on cooperation.',
+  k:['Advantages.','Disadvantages.','Conclusion / judgement.','Link to the AFL matter.']},
+ {id:'B1d',s:'B',m:4,q:'Distinguish conciliation from a Federal Court hearing.',
+  a:'Conciliation:\n- Cooperative process.\n- Joint resolution.\n- Outcome may not be binding.\n- Third party does not decide.\n\nFederal Court hearing:\n- Judge determines outcome.\n- Win/lose result.\n- Legally binding.\n- Formal court process.',
+  k:['Features of conciliation.','Features of a Federal Court hearing.','Clear differences drawn between them.']},
+ {id:'B1e',s:'B',m:4,ctx:'Cyril Rioli, AFL racism matter.',q:'Analyse one difficulty faced by Cyril Rioli in accessing the civil justice system.',
+  a:'First Nations peoples may experience cultural barriers when interacting with legal institutions.\n\nRespect shown towards authority figures may be interpreted as hesitancy or lack of credibility.\n\nThis may affect confidence, willingness to participate and how evidence is perceived.',
+  k:['Identify a difficulty (cultural barriers for First Nations peoples).','Explain how it arises.','Analyse its effect on access (confidence, participation, evidence).']},
+ {id:'B1f',s:'B',m:4,q:'Explain how the Human Rights Commission assists the civil justice system to achieve two principles of justice.',
+  a:'Access:\nThe Commission provides a more affordable and accessible process than litigation.\n\nEquality:\nAll parties receive equal opportunities to present their views and participate in the process.',
+  k:['Principle 1 named and explained with how the Commission achieves it.','Principle 2 named and explained with how the Commission achieves it.']},
+ {id:'B2a',s:'B',m:4,q:'Analyse the role of the Victorian Charter of Human Rights and Responsibilities.',
+  a:'The Charter sets out rights, freedoms and responsibilities in Victoria.\n\nParliament must consider compatibility with Charter rights when making laws.\n\nThe Charter acts as a safeguard ensuring rights remain a priority.\n\nThe Charter also supports education, training and awareness regarding human rights.',
+  k:['Sets out rights, freedoms and responsibilities.','Parliament must consider compatibility.','Safeguard role.','Education and awareness.']},
+ {id:'B2b',s:'B',m:6,q:'Discuss the extent to which the Charter protects rights.',
+  a:'Strengths:\n- Rights are clearly listed.\n- Rights are accessible.\n- Laws must consider Charter rights.\n- Provides a framework for promoting rights.\n\nWeaknesses:\n- Only 20 rights are specifically protected.\n- Future rights may not be covered.\n- Parliament can amend or remove Charter rights because it is ordinary legislation.\n\nOverall judgement:\nThe Charter provides significant protection but is limited by its scope and lack of entrenchment.',
+  k:['Strengths.','Weaknesses (20 rights, not entrenched, ordinary legislation).','Overall judgement on the extent.']},
+ {id:'B3a',s:'B',m:2,ctx:'Case: Matthew Leonard v Faleupolu Atileo (negligence).',q:'Identify the plaintiff and defendant.',
+  a:'Plaintiff: Matthew Leonard.\nDefendant: Faleupolu Atileo.',
+  k:['Plaintiff: Matthew Leonard.','Defendant: Faleupolu Atileo.']},
+ {id:'B3b',s:'B',m:4,q:'Explain two elements required to establish negligence.',
+  a:"Duty of Care:\nThe defendant owed the plaintiff a duty to avoid reasonably foreseeable harm.\n\nCausation:\nThe defendant's actions directly caused the plaintiff's injuries.\n\nOther acceptable elements:\n- Breach of duty.\n- Loss, injury or damage.",
+  k:['Element 1 named and explained.','Element 2 named and explained. (Acceptable: duty of care, breach, causation, loss/injury/damage.)']},
+ {id:'B3c',s:'B',m:6,ctx:'Matthew Leonard was awarded damages for profound and permanent injury.',q:'Discuss the extent to which damages achieved their purpose.',
+  a:'Strengths:\n- Reimbursed expenses.\n- Covered treatment and future care.\n- Provided compensation.\n- Sent a message about unacceptable conduct.\n\nWeaknesses:\n- Money cannot restore permanent health loss.\n- Cannot fully return the plaintiff to their original position.\n\nOverall judgement:\nDamages achieved their purpose only to a limited extent because compensation cannot reverse profound and permanent injury.',
+  k:['Ways damages achieved their purpose.','Ways they did not.','Overall judgement on the extent.']},
+];
+
+const $ = id => document.getElementById(id);
+const ls = (k, v) => { try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch (e) { return null; } };
+let P = {}; try { P = JSON.parse(ls('lsr-prog') || '{}') || {}; } catch (e) {}
+let streak = +(ls('lsr-streak') || 0), cur = 0;
+const save = () => { ls('lsr-prog', JSON.stringify(P)); ls('lsr-streak', String(streak)); };
+const pool = () => Q.filter(q => !$('sec').value || q.s === $('sec').value);
+const best = q => P[q.id] ? P[q.id].best : null;
+
+function stats() {
+  const d = Object.values(P);
+  $('sDone').textContent = d.reduce((a, p) => a + p.n, 0);
+  $('sPct').textContent = d.length ? Math.round(d.reduce((a, p) => a + p.last, 0) / d.length * 100) + '%' : '-';
+  $('sStreak').textContent = streak;
+  $('list').innerHTML = Q.map((q, i) => {
+    const b = best(q);
+    return `<div data-i="${i}"><span>${q.id}. ${q.q}</span><span class="${b == null ? '' : b >= .75 ? 'ok' : b >= .5 ? 'mid' : 'bad'}">${b == null ? '—' : Math.round(b * 100) + '%'}</span></div>`;
+  }).join('');
+}
+function show(i) {
+  cur = i; const q = Q[i];
+  $('qTag').textContent = 'Section ' + q.s + ' · ' + q.id;
+  $('qMarks').textContent = q.m + ' marks';
+  const b = best(q); $('qBest').textContent = b == null ? 'new' : 'best ' + Math.round(b * 100) + '%';
+  $('qText').textContent = q.q;
+  $('qCtx').textContent = q.ctx || '';
+  $('ans').value = ls('lsr-draft-' + q.id) || '';
+  $('res').classList.add('hide'); $('modelCard').classList.add('hide');
+  $('modelTxt').textContent = q.a + '\n\nKey marking points:\n- ' + q.k.join('\n- ');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+function next() {
+  const p = pool(), m = $('mode').value;
+  let q;
+  if (m === 'rand') q = p[Math.floor(Math.random() * p.length)];
+  else if (m === 'weak') q = p.slice().sort((a, b) => (best(a) ?? -1) - (best(b) ?? -1))[0];
+  else { const at = p.indexOf(Q[cur]); q = p[(at + 1) % p.length]; }
+  show(Q.indexOf(q));
+}
+function record(q, frac) {
+  const p = P[q.id] || { n: 0, best: 0, last: 0 };
+  p.n++; p.last = frac; p.best = Math.max(p.best, frac); P[q.id] = p;
+  streak = frac >= .5 ? streak + 1 : 0; save(); stats();
+  $('qBest').textContent = 'best ' + Math.round(p.best * 100) + '%';
+}
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const li = a => (a && a.length) ? '<ul>' + a.map(x => '<li>' + esc(x) + '</li>').join('') + '</ul>' : '<div class="small">None</div>';
+
+async function mark() {
+  const q = Q[cur], ans = $('ans').value.trim(), key = ls('lsr-key');
+  if (!ans) { $('ans').focus(); return; }
+  const res = $('res'); res.classList.remove('hide');
+  if (!key) {
+    $('modelCard').classList.remove('hide');
+    res.innerHTML = `<b>Self-mark</b> (no API key saved). Compare with the model answer below, then give yourself a score:<div class="row" style="margin-top:8px">${[...Array(q.m + 1).keys()].map(n => `<button data-sm="${n}">${n}/${q.m}</button>`).join('')}</div>`;
+    return;
+  }
+  $('mark').disabled = true; res.innerHTML = '<div class="small">Marking...</div>';
+  const sys = 'You are an experienced VCE Legal Studies examiner in Victoria, Australia. Mark the student answer strictly but fairly against the marking guide, like a real VCAA assessor. Award marks for correct legal terminology, accurate explanation, application to the scenario where relevant, and the right task word (explain, distinguish, compare, evaluate, discuss, analyse). Equivalent wording that shows the same understanding earns the mark. Reply with ONLY a JSON object: {"score": integer, "got": [short strings: what earned marks], "missed": [short strings: what was missing or wrong], "tip": "one or two sentences on how to lift the mark", "better": "a short improved version of the student answer in their own style"}.';
+  const user = `Question (${q.m} marks): ${q.q}\n${q.ctx ? 'Context: ' + q.ctx + '\n' : ''}\nModel answer:\n${q.a}\n\nKey marking points:\n- ${q.k.join('\n- ')}\n\nStudent answer:\n${ans}`;
+  try {
+    const r = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+      body: JSON.stringify({ model: MODEL, max_tokens: 900, system: sys, messages: [{ role: 'user', content: user }] })
+    });
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.error ? j.error.message : 'HTTP ' + r.status);
+    const txt = j.content.map(c => c.text || '').join('');
+    const g = JSON.parse(txt.slice(txt.indexOf('{'), txt.lastIndexOf('}') + 1));
+    const sc = Math.max(0, Math.min(q.m, Math.round(+g.score || 0))), f = sc / q.m;
+    record(q, f);
+    res.innerHTML = `<div class="score ${f >= .75 ? 'ok' : f >= .5 ? 'mid' : 'bad'}">${sc} / ${q.m}</div>
+      <b>What earned marks</b>${li(g.got)}<b>What was missing</b>${li(g.missed)}
+      <b>Tip</b><div>${esc(g.tip || '')}</div>
+      ${g.better ? `<details style="margin-top:8px"><summary>Improved version of your answer</summary><div class="model" style="margin-top:6px">${esc(g.better)}</div></details>` : ''}
+      <div class="row" style="margin-top:12px"><button data-act="next" class="pri">Next question</button><button data-act="model">Model answer</button><button data-act="retry">Try again</button></div>`;
+  } catch (e) {
+    res.innerHTML = `<b class="bad">Could not mark:</b> ${esc(e.message)}<div class="small">Check your API key, or use Show model answer to self-mark.</div>`;
+  }
+  $('mark').disabled = false;
+}
+
+$('mark').onclick = mark;
+$('skip').onclick = next;
+$('show').onclick = () => $('modelCard').classList.toggle('hide');
+$('ans').oninput = () => ls('lsr-draft-' + Q[cur].id, $('ans').value);
+$('ans').onkeydown = e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) mark(); };
+$('res').onclick = e => {
+  const t = e.target;
+  if (t.dataset.sm != null) { const q = Q[cur]; record(q, +t.dataset.sm / q.m); $('res').innerHTML = `<div class="score">${t.dataset.sm} / ${q.m}</div><div class="row" style="margin-top:8px"><button data-act="next" class="pri">Next question</button></div>`; }
+  if (t.dataset.act === 'next') { ls('lsr-draft-' + Q[cur].id, ''); next(); }
+  if (t.dataset.act === 'model') $('modelCard').classList.remove('hide');
+  if (t.dataset.act === 'retry') { $('ans').value = ''; $('res').classList.add('hide'); $('ans').focus(); }
+};
+$('list').onclick = e => { const d = e.target.closest('[data-i]'); if (d) show(+d.dataset.i); };
+$('saveKey').onclick = () => { const v = $('key').value.trim(); ls('lsr-key', v); $('key').value = ''; $('keyCard').classList.toggle('hide', !!v); };
+$('keyToggle').onclick = () => $('keyCard').classList.toggle('hide');
+$('sec').onchange = () => { const p = pool(); show(Q.indexOf(p[0])); };
+if (ls('lsr-key')) $('keyCard').classList.add('hide');
+stats(); show(0);
+</script>
+</body>
+</html>
