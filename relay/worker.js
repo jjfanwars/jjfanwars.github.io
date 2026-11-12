@@ -30,6 +30,7 @@ export default {
       const r = await env.ACCTS.get(env.ACCTS.idFromName('main')).fetch('https://a' + u.pathname, {method: 'POST', body: await req.text()});
       return new Response(r.body, {status: r.status, headers: {...CORS, 'content-type': 'application/json', 'cache-control': 'no-store'}});
     }
+    if (u.pathname === '/legal/grade') return legalGrade(req, env, CORS);
     if (!m) return new Response('not found', {status: 404});
     if (req.headers.get('Upgrade') !== 'websocket') return new Response('expected websocket', {status: 426});
     const stub = env.ROOMS.get(env.ROOMS.idFromName(m[1].toUpperCase()));
@@ -323,4 +324,26 @@ export class Track {
       days, hours, sess, loyal, dev: split('dev'), br: split('br'), modes: modeRows('WHERE d >= ?'), modesAll: modeRows(''),
     }));
   }
+}
+
+// Courtroom Duel (legal.html) marking: the page sends {pass, user} as text/plain (no CORS preflight). The relay checks the
+// password and calls Claude Haiku with its own key, so no key ever reaches the browser. Secrets: ANTHROPIC_KEY, LEGAL_PASS.
+const LEGAL_SYS = 'You are an experienced VCE Legal Studies examiner in Victoria, Australia, acting as the judge in a courtroom revision game. Mark the student answer strictly but fairly against the marking guide, like a real VCAA assessor. Award marks for correct legal terminology, accurate explanation, application to the scenario where relevant, and the right task word (explain, distinguish, compare, evaluate, discuss, analyse). Equivalent wording that shows the same understanding earns the mark. Reply with ONLY a JSON object: {"score": integer, "got": [short strings: what earned marks], "missed": [short strings: what was missing or wrong], "tip": "one or two sentences on how to lift the mark", "better": "a short improved version of the student answer in their own style", "jab": "the opposing barrister\'s one-line courtroom objection mocking the biggest gap in the answer, witty and PG, max 20 words; if the answer was perfect, a sulky concession", "ruling": "the judge\'s one-sentence ruling on the argument, max 22 words, in a judge\'s voice"}.';
+async function legalGrade(req, env, CORS) {
+  const H = {...CORS, 'content-type': 'application/json', 'cache-control': 'no-store'};
+  const J = (o, s = 200) => new Response(JSON.stringify(o), {status: s, headers: H});
+  if (req.method === 'OPTIONS') return new Response(null, {headers: {...CORS, 'access-control-allow-methods': 'POST, OPTIONS', 'access-control-allow-headers': 'content-type'}});
+  if (req.method !== 'POST') return J({err: 'expected POST'}, 405);
+  if (!env.ANTHROPIC_KEY || !env.LEGAL_PASS) return J({err: 'marking is not set up on the relay yet'}, 503);
+  let b; try { b = JSON.parse(await req.text()); } catch (e) { return J({err: 'bad request'}, 400); }
+  if (b.pass !== env.LEGAL_PASS) return J({err: 'wrong password'}, 403);
+  if (b.check) return J({ok: true});
+  const user = String(b.user || '').slice(0, 8000);
+  if (!user) return J({err: 'empty answer'}, 400);
+  const r = await fetch('https://api.anthropic.com/v1/messages', {method: 'POST',
+    headers: {'content-type': 'application/json', 'x-api-key': env.ANTHROPIC_KEY, 'anthropic-version': '2023-06-01'},
+    body: JSON.stringify({model: 'claude-haiku-5-5', max_tokens: 1000, system: LEGAL_SYS, messages: [{role: 'user', content: user}]})});
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) return J({err: (j.error && j.error.message) || 'Anthropic HTTP ' + r.status}, 502);
+  return J({text: (j.content || []).map(c => c.text || '').join('')});
 }

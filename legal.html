@@ -109,6 +109,14 @@ body.cine .bars{height:9vh}
 .vg{font-family:Bangers,sans-serif;font-size:90px;line-height:1;margin:6px 0}
 .vs{display:flex;justify-content:center;gap:22px;margin:10px 0;color:var(--mut);font-size:13px}
 .vs b{display:block;color:var(--ink);font-size:22px}
+#qte{position:fixed;inset:0;z-index:17;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;touch-action:manipulation}
+#qte .rg{position:relative;width:150px;height:150px}
+#qte .t,#qte .s{position:absolute;inset:0;border-radius:50%}
+#qte .t{border:10px solid rgba(242,195,91,.9);box-shadow:0 0 30px rgba(242,195,91,.8),inset 0 0 30px rgba(242,195,91,.5)}
+#qte .s{border:5px solid #fff;box-shadow:0 0 20px #fff}
+#qte .q{font-family:Bangers,sans-serif;font-size:34px;letter-spacing:2px;margin-top:22px;-webkit-text-stroke:2px #000;paint-order:stroke fill;text-shadow:0 3px 0 #000}
+#duel{position:fixed;inset:0;z-index:17;display:flex;align-items:center;justify-content:center;cursor:crosshair;touch-action:manipulation}
+#duel .dw{font-family:Bangers,sans-serif;font-size:clamp(30px,6vw,56px);letter-spacing:3px;color:#ffe7a3;-webkit-text-stroke:2px #000;paint-order:stroke fill;text-shadow:0 3px 0 #000;margin-top:34vh;text-align:center}
 #load{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:30;background:#0b0907;font-family:Cinzel,serif;color:var(--gold);letter-spacing:3px;transition:opacity .6s}
 </style>
 </head>
@@ -133,8 +141,8 @@ body.cine .bars{height:9vh}
     <div class="set">
       <div class="row">
         <input id="pname" placeholder="Your name" maxlength="16" style="width:150px">
-        <input type="password" id="key" placeholder="Anthropic API key (sk-ant-…)" style="flex:1;min-width:200px">
-        <button id="saveKey">Save key</button>
+        <input type="password" id="key" placeholder="Court password (for Claude marking)" style="flex:1;min-width:200px">
+        <button id="saveKey">Unlock</button>
       </div>
       <div class="small" style="margin-top:6px" id="keyState"></div>
       <div class="row" style="margin-top:8px">
@@ -172,6 +180,8 @@ body.cine .bars{height:9vh}
 <div id="slam"></div>
 <div id="fx"></div>
 <div id="flash"></div>
+<div id="duel" class="hide"><div class="dw" id="duelT"></div></div>
+<div id="qte" class="hide"><div class="rg"><div class="t"></div><div class="s" id="qteS"></div></div><div class="q">TAP / SPACE TO OVERRULE!</div></div>
 <div id="verdict" class="ov hide"><div class="vc" id="vc"></div></div>
 
 <script src="three-r170.js"></script>
@@ -309,6 +319,9 @@ const SFX = {
   win(){ [523,659,784,1047,1319].forEach((f,i)=>tone('triangle',f,0,.5,.22,i*.1)); },
   lose(){ [392,330,262,196].forEach((f,i)=>tone('sine',f,f*.97,.55,.2,i*.22)); },
   tick(){ tone('sine',1400,0,.03,.05); },
+  bang(){ noise(.25,1.1,'highpass',900,300,.6); noise(.5,.6,'lowpass',1500,120,.7); tone('sine',110,40,.3,.9); },
+  whistle(){ tone('sine',1250,1050,.5,.07); tone('sine',1050,1300,.45,.07,.55); },
+  click(){ tone('square',2200,0,.02,.08); tone('square',1600,0,.02,.06,.05); },
 };
 
 /* ================= 3D ================= */
@@ -521,7 +534,7 @@ function buildEnv() {
 const L = {};
 function buildLights(wins) {
   L.hemi = new T.HemisphereLight(0xffe6c4, 0x2a160a, .5); scene.add(L.hemi);
-  const sun = new T.DirectionalLight(0xfff0d8, 9.5); sun.position.set(-RX - 9, 13, 3.5); sun.target.position.set(1, 0, 0);
+  const sun = new T.DirectionalLight(0xfff0d8, 6.2); sun.position.set(-RX - 9, 13, 3.5); sun.target.position.set(1, 0, 0);
   sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048); const sc = sun.shadow.camera; sc.left = -15; sc.right = 15; sc.top = 15; sc.bottom = -15; sc.near = 1; sc.far = 50;
   sun.shadow.bias = -.0004; sun.shadow.normalBias = .03; scene.add(sun, sun.target); L.sun = sun;
   const warm = (x, y, z, i, d = 18) => { const p = new T.PointLight(0xffc888, i, d, 2); p.position.set(x, y, z); scene.add(p); return p; };
@@ -529,7 +542,7 @@ function buildLights(wins) {
   L.bench = new T.SpotLight(0xffd9a8, 60, 14, .55, .6, 2); L.bench.position.set(0, 6.5, -4); L.bench.target.position.set(0, 2, -8.5); scene.add(L.bench, L.bench.target);
   // light shafts
   const shM = new T.ShaderMaterial({transparent:true, depthWrite:false, blending:T.AdditiveBlending, side:T.DoubleSide,
-    uniforms:{uT:{value:0}, uI:{value:.24}},
+    uniforms:{uT:{value:0}, uI:{value:.13}},
     vertexShader:'varying vec2 vU;void main(){vU=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}',
     fragmentShader:'varying vec2 vU;uniform float uT,uI;void main(){float e=smoothstep(0.,.25,vU.x)*smoothstep(1.,.75,vU.x);float l=smoothstep(0.,.15,vU.y)*pow(vU.y,.6);float n=.8+.2*sin(vU.x*40.+uT*.7)*sin(vU.y*9.-uT*.4);gl_FragColor=vec4(vec3(1.,.93,.78)*e*l*n*uI,1.);}'});
   L.shaft = shM;
@@ -574,12 +587,17 @@ function makePerson(o) {
   const hm = new T.Mesh(new T.SphereGeometry(.16, 28, 20), skin); hm.scale.set(1, 1.08, 1.02); hm.castShadow = true; head.add(hm);
   const nose = new T.Mesh(new T.SphereGeometry(.028, 10, 8), skin); nose.position.set(0, -.01, .16); nose.scale.set(1, 1.2, 1.1); head.add(nose);
   for (const s of [-1, 1]) {
-    const e = new T.Mesh(new T.SphereGeometry(.024, 12, 10), black); e.position.set(s * .058, .025, .138); e.scale.set(1, 1.25, .6); head.add(e);
-    const sp = new T.Mesh(new T.SphereGeometry(.007, 6, 4), white); sp.position.set(s * .058 + .007, .036, .152); head.add(sp);
+    const eg = new T.Group(); eg.position.set(s * .058, .025, .128); head.add(eg); (ud.eyes = ud.eyes || []).push(eg);
+    const sc = new T.Mesh(new T.SphereGeometry(.03, 14, 10), white); sc.scale.set(1, 1.15, .55); eg.add(sc);
+    const ir = new T.Mesh(new T.SphereGeometry(.017, 12, 8), mkMat(o.iris || 0x3b2a1a, .3)); ir.position.z = .013; ir.scale.set(1, 1.1, .5); eg.add(ir);
+    const pu = new T.Mesh(new T.SphereGeometry(.009, 8, 6), black); pu.position.z = .019; pu.scale.z = .4; eg.add(pu);
+    const sp = new T.Mesh(new T.SphereGeometry(.004, 6, 4), white); sp.position.set(.006, .007, .022); eg.add(sp);
+    const lid = new T.Mesh(new T.SphereGeometry(.032, 14, 10), skin); lid.scale.set(1.02, .15, .62); lid.position.y = .03; eg.add(lid); (ud.lids = ud.lids || []).push(lid);
     const br = new T.Mesh(new T.BoxGeometry(.065, .014, .02), mkMat(o.brow || 0x3a2a1a)); br.position.set(s * .06, .072, .143); head.add(br); ud['brow' + (s < 0 ? 'R' : 'L')] = br;
     const ear = new T.Mesh(new T.SphereGeometry(.03, 8, 6), skin); ear.position.set(s * .158, 0, 0); ear.scale.set(.5, 1, .8); head.add(ear);
   }
-  const mouth = new T.Mesh(new T.BoxGeometry(.06, .01, .01), mkMat(0x5a1e1e)); mouth.position.set(0, -.07, .148); head.add(mouth); ud.mouth = mouth;
+  const mouth = new T.Mesh(new T.SphereGeometry(.03, 14, 8), mkMat(0x3a0e10, .5)); mouth.scale.set(1, .18, .35); mouth.position.set(0, -.075, .145); head.add(mouth); ud.mouth = mouth;
+  const lip = new T.Mesh(new T.TorusGeometry(.028, .006, 6, 16), mkMat(0xa0504a, .5)); lip.scale.set(1, .25, 1); lip.position.set(0, -.073, .147); head.add(lip); ud.lip = lip;
   if (o.glasses) {
     for (const s of [-1, 1]) { const r = new T.Mesh(new T.TorusGeometry(.034, .005, 6, 18), M.brass); r.position.set(s * .058, .022, .158); head.add(r); }
     const br = new T.Mesh(new T.BoxGeometry(.04, .005, .005), M.brass); br.position.set(0, .03, .162); head.add(br);
@@ -633,7 +651,7 @@ function makePerson(o) {
   const pts2 = new T.Points(pg, ptM); pts2.frustumCulled = false; pts2.renderOrder = 7; g.add(pts2);
   ud.fx = [auM, ringM, ptM];
   ud.light = new T.PointLight(col, 0, 7, 2); ud.light.position.set(0, 1.3, .6); g.add(ud.light);
-  ud.pose = 'idle'; ud.yaw = 0; ud.yawT = 0; ud.scale = 1; ud.scaleT = 1; ud.lean = 0; ud.hop = 0; ud.snap = 10; ud.judge = !!o.judge;
+  ud.posT = null; ud.talk = 0; ud.blink = 2 + Math.random() * 3; ud.pose = 'idle'; ud.yaw = 0; ud.yawT = 0; ud.scale = 1; ud.scaleT = 1; ud.lean = 0; ud.hop = 0; ud.snap = 10; ud.judge = !!o.judge;
   scene.add(g);
   return g;
 }
@@ -665,8 +683,14 @@ function updPerson(g, dt, t) {
   u.hop *= Math.exp(-dt * 6);
   const bt = BROWS[u.brow || 'idle'];
   u.browR.rotation.z = lerp(u.browR.rotation.z, -bt, ki); u.browL.rotation.z = lerp(u.browL.rotation.z, bt, ki);
-  u.mouth.scale.x = lerp(u.mouth.scale.x, u.brow === 'smug' ? 1.4 : u.brow === 'sad' ? .7 : 1, ki);
-  u.mouth.rotation.z = lerp(u.mouth.rotation.z, u.brow === 'smug' ? .25 : 0, ki);
+  const op = u.talk > 0 ? .25 + Math.abs(Math.sin(t * 17)) * .9 * (.6 + .4 * Math.sin(t * 5.3)) : .18;
+  u.mouth.scale.y = lerp(u.mouth.scale.y, op, 1 - Math.exp(-dt * 25)); u.lip.scale.y = .25 + u.mouth.scale.y * .9;
+  u.mouth.scale.x = lerp(u.mouth.scale.x, u.brow === 'smug' ? 1.3 : u.brow === 'sad' ? .75 : 1, ki);
+  u.mouth.rotation.z = u.lip.rotation.z = lerp(u.mouth.rotation.z, u.brow === 'smug' ? .22 : 0, ki);
+  u.blink -= dt; const bl = u.blink < .12 ? 1 : u.brow === 'angry' ? .45 : u.brow === 'sad' ? .55 : u.brow === 'smug' ? .5 : .15;
+  if (u.blink < 0) u.blink = 2 + Math.random() * 4;
+  for (const l of u.lids) { l.scale.y = lerp(l.scale.y, .08 + bl * 1.1, 1 - Math.exp(-dt * 30)); l.position.y = .032 * (1 - l.scale.y / 1.18); }
+  if (u.posT) g.position.lerp(u.posT, 1 - Math.exp(-dt * 4));
   // yaw
   let d = u.yawT - u.yaw; d = Math.atan2(Math.sin(d), Math.cos(d)); u.yaw += d * (1 - Math.exp(-dt * 7)); g.rotation.y = u.yaw;
   u.scale = lerp(u.scale, u.scaleT, 1 - Math.exp(-dt * 5)); g.scale.setScalar(u.scale);
@@ -708,21 +732,23 @@ const FS = {scene:new T.Scene(), cam:new T.OrthographicCamera(-1, 1, 1, -1, 0, 1
 FS.quad = new T.Mesh(new T.PlaneGeometry(2, 2)); FS.scene.add(FS.quad);
 const VS = 'varying vec2 vUv;void main(){vUv=uv;gl_Position=vec4(position.xy,0.,1.);}';
 const PP = {
-  bright: new T.ShaderMaterial({uniforms:{t:{value:null}, th:{value:1.1}}, vertexShader:VS, fragmentShader:'uniform sampler2D t;uniform float th;varying vec2 vUv;void main(){vec3 c=texture2D(t,vUv).rgb;float l=max(c.r,max(c.g,c.b));gl_FragColor=vec4(c*smoothstep(th,th+1.2,l),1.);}'}),
+  bright: new T.ShaderMaterial({uniforms:{t:{value:null}, th:{value:1.1}}, vertexShader:VS, fragmentShader:'uniform sampler2D t;uniform float th;varying vec2 vUv;void main(){vec3 c=clamp(texture2D(t,vUv).rgb,0.,64.);float l=max(c.r,max(c.g,c.b));gl_FragColor=vec4(c*smoothstep(th,th+1.2,l),1.);}'}),
   blur: new T.ShaderMaterial({uniforms:{t:{value:null}, d:{value:new T.Vector2()}}, vertexShader:VS, fragmentShader:'uniform sampler2D t;uniform vec2 d;varying vec2 vUv;void main(){vec3 c=texture2D(t,vUv).rgb*.227;c+=(texture2D(t,vUv+d*1.385).rgb+texture2D(t,vUv-d*1.385).rgb)*.316;c+=(texture2D(t,vUv+d*3.23).rgb+texture2D(t,vUv-d*3.23).rgb)*.07;gl_FragColor=vec4(c,1.);}'}),
-  comp: new T.ShaderMaterial({uniforms:{tS:{value:null}, b1:{value:null}, b2:{value:null}, uB:{value:.9}, uCA:{value:0}, uF:{value:0}, uSat:{value:1}, uLn:{value:0}, uT:{value:0}, uTint:{value:new T.Color(1, .7, .3)}, uExp:{value:1}, uAsp:{value:1}},
-    vertexShader:VS, fragmentShader:`uniform sampler2D tS,b1,b2;uniform float uB,uCA,uF,uSat,uLn,uT,uExp,uAsp;uniform vec3 uTint;varying vec2 vUv;
+  comp: new T.ShaderMaterial({uniforms:{tS:{value:null}, b1:{value:null}, b2:{value:null}, uB:{value:.9}, uCA:{value:0}, uF:{value:0}, uSat:{value:1}, uLn:{value:0}, uT:{value:0}, uTint:{value:new T.Color(1, .7, .3)}, uExp:{value:1}, uAsp:{value:1}, uAu:{value:new T.Color(0, 0, 0)}, uHurt:{value:0}},
+    vertexShader:VS, fragmentShader:`uniform sampler2D tS,b1,b2;uniform float uB,uCA,uF,uSat,uLn,uT,uExp,uAsp,uHurt;uniform vec3 uTint,uAu;varying vec2 vUv;
     vec3 aces(vec3 x){return clamp((x*(2.51*x+.03))/(x*(2.43*x+.59)+.14),0.,1.);}
     float h(float n){return fract(sin(n)*43758.5453);}
     void main(){vec2 d=vUv-.5;vec3 c;
       if(uCA>0.){c.r=texture2D(tS,vUv+d*uCA).r;c.g=texture2D(tS,vUv).g;c.b=texture2D(tS,vUv-d*uCA).b;}else c=texture2D(tS,vUv).rgb;
-      c+=(texture2D(b1,vUv).rgb*.7+texture2D(b2,vUv).rgb*1.1)*uB;
+      c=clamp(c,0.,64.);
+      c+=clamp(texture2D(b1,vUv).rgb*.7+texture2D(b2,vUv).rgb*1.1,0.,64.)*uB;
+      {vec2 q=vec2(d.x*uAsp,d.y);float r=length(d*vec2(1.,1.25));float a=atan(q.y,q.x);float fl=.5+.5*sin(a*9.+uT*7.+sin(a*23.-uT*11.)*1.5);fl*=.6+.4*sin(r*30.-uT*14.);c+=uAu*smoothstep(.28,.72,r+fl*.12)*1.6;c=mix(c,c*vec3(1.,.25,.25)+vec3(.12,0.,0.),uHurt*smoothstep(.2,.75,r));}
       c=aces(c*uExp);
       c=mix(c,c*vec3(1.04,1.,.92),.6);
       float l=dot(c,vec3(.299,.587,.114));c=mix(vec3(l),c,uSat);
       if(uLn>0.){vec2 q=vec2(d.x*uAsp,d.y);float a=atan(q.y,q.x);float id=floor(a*38.);float n=step(.55,h(id+floor(uT*24.)*7.13));float r=length(q);c=mix(c,uTint*1.3+.35,n*smoothstep(.22+h(id)*.2,.75,r)*uLn*.75);}
       c*=1.-dot(d,d)*.9;
-      c=mix(c,vec3(1.),uF);
+      c=mix(c,vec3(1.),clamp(uF,0.,1.));
       c=pow(c,vec3(1./2.2));
       c+=(h(vUv.x*911.+vUv.y*397.+uT)-.5)*.025;
       gl_FragColor=vec4(c,1.);}`}),
@@ -766,6 +792,12 @@ function updCam(dt, t) {
     C.pos.lerpVectors(C.a.p, C.b.p, k); C.tgt.lerpVectors(C.a.t, C.b.t, k); C.fov = lerp(C.a.f, C.b.f, k);
     if (C.t >= C.dur) { C.b = null; const r = C.res; C.res = null; r && r(); }
   }
+  if (FPV.on && !C.b) {
+    FPV.look.lerp(FPV.lookT, 1 - Math.exp(-dt * 5)); FPV.dip *= Math.exp(-dt * 6);
+    const e = eyeOf(), d = FPV.look.clone().sub(e), len = d.length();
+    d.applyAxisAngle(new V3(0, 1, 0), -FPV.mx * .32); d.y -= FPV.my * .2 * len;
+    C.pos.copy(e).add(new V3(0, Math.sin(t * 1.4) * .006, 0)); C.tgt.copy(e).add(d); C.fov = FPV.fov;
+  }
   if (C.orbit) { const o = C.pos.clone().sub(C.tgt); o.applyAxisAngle(new V3(0, 1, 0), C.orbit * dt); C.pos.copy(C.tgt).add(o); }
   C.shake *= Math.exp(-dt * 5); C.punch *= Math.exp(-dt * 4);
   const s = C.shake, dr = C.drift;
@@ -773,7 +805,110 @@ function updCam(dt, t) {
   cam.lookAt(C.tgt.x + (Math.random() - .5) * s * .08, C.tgt.y + (Math.random() - .5) * s * .08, C.tgt.z);
   let fv = C.fov - C.punch * 8; if (cam.aspect < 1.25) fv = Math.min(88, 2 * Math.atan(Math.tan(fv * Math.PI / 360) * 1.25 / cam.aspect) * 180 / Math.PI); cam.fov = fv; cam.updateProjectionMatrix();
 }
-const FX = {ca:0, flash:0, sat:1, lines:0, satT:1, linesT:0, tint:new T.Color(1, .7, .3)};
+const FX = {ca:0, flash:0, sat:1, lines:0, satT:1, linesT:0, tint:new T.Color(1, .7, .3), au:0, auT:0, auC:new T.Color(.2, .6, 1), hurt:0};
+// ---- first person (you are the barrister on the left)
+const FPV = {on:false, look:new V3(0, 1.9, -6), lookT:new V3(0, 1.9, -6), mx:0, my:0, dip:0, fov:64};
+addEventListener('pointermove', e => { if (e.pointerType === 'mouse') { FPV.mx = clamp(e.clientX / innerWidth * 2 - 1, -1, 1); FPV.my = clamp(e.clientY / innerHeight * 2 - 1, -1, 1) * .6; } });
+const headOf = g => g.position.clone().setY(g.position.y + 1.62 * g.userData.scaleT);
+function eyeOf() { const u = CH.you.userData; return CH.you.position.clone().add(new V3(0, 1.66 * u.scale - FPV.dip, 0)); }
+function fpLook(v, now) { FPV.lookT.copy(v); if (now) FPV.look.copy(v); }
+function fpBody(fp) { const u = CH.you.userData; u.body.visible = !fp; u.fx[0].visible = true; CH.you.children.forEach(c => { if (c.material === u.fx[0]) c.visible = !fp; }); }
+async function toFP(dur = .6) { fpBody(true); FPV.look.copy(FPV.lookT); await shot(eyeOf(), FPV.lookT.clone(), FPV.fov, dur); FPV.on = true; C.drift = .25; C.orbit = 0; }
+function fromFP() { FPV.on = false; fpBody(false); C.drift = 1; }
+// viewmodel arms in camera space
+const VM = new T.Group(); cam.add(VM); scene.add(cam); VM.visible = false;
+const VMA = {};
+function buildVM() {
+  const robe = CH.you.userData.robe, skin = mkMat(0xe6b48f, .55), white = mkMat(0xf6f3ea, .6);
+  for (const s of [1, -1]) {
+    const piv = new T.Group(); piv.position.set(s * .3, -.4, -.05); VM.add(piv);
+    const sl = new T.Mesh(new T.CapsuleGeometry(.075, .42, 4, 12), robe); sl.rotation.x = Math.PI / 2; sl.position.z = -.25; piv.add(sl);
+    const cu = new T.Mesh(new T.CylinderGeometry(.06, .062, .04, 14), white); cu.rotation.x = Math.PI / 2; cu.position.z = -.5; piv.add(cu);
+    const hd = new T.Mesh(new T.SphereGeometry(.05, 14, 10), skin); hd.scale.set(.85, .7, 1.25); hd.position.z = -.57; piv.add(hd);
+    const th = new T.Mesh(new T.CapsuleGeometry(.014, .04, 3, 6), skin); th.position.set(-s * .045, .012, -.57); th.rotation.set(Math.PI / 2, 0, s * .6); piv.add(th);
+    if (s > 0) { const fi = new T.Mesh(new T.CapsuleGeometry(.013, .07, 3, 6), skin); fi.rotation.x = Math.PI / 2; fi.position.set(-.01, .01, -.65); piv.add(fi); VMA.finger = fi; }
+    else { const pp = new T.Mesh(new T.BoxGeometry(.21, .004, .29), M.paper); pp.position.set(.05, .035, -.6); pp.rotation.set(-.35, .2, .15); piv.add(pp);
+      const pp2 = pp.clone(); pp2.position.y += .006; pp2.rotation.y += .08; piv.add(pp2); }
+    VMA[s > 0 ? 'R' : 'L'] = piv;
+  }
+}
+const VMP = { // rotX, rotY, dx, dy, dz  (right arm; left arm mirrors rotY/dx)
+  idle:{R:[-.7, .15, 0, -.08, 0], L:[-.18, -.3, .02, -.02, 0]},
+  point:{R:[.06, .3, -.03, .1, -.06], L:[-.55, -.2, 0, -.05, 0]},
+  power:{R:[.95, .5, .02, .06, 0], L:[.95, -.5, -.02, .06, 0]},
+  slam:{R:[-1.05, .35, 0, -.02, -.08], L:[-1.05, -.35, 0, -.02, -.08]},
+  recoil:{R:[.5, .65, 0, 0, .1], L:[.5, -.65, 0, 0, .1]},
+  sad:{R:[-1.2, 0, 0, -.15, 0], L:[-1.2, 0, 0, -.15, 0]},
+  cross:{R:[-.25, .55, -.02, -.02, 0], L:[-.3, -.55, .02, -.02, 0]},
+};
+function updVM(dt, t) {
+  VM.visible = FPV.on && !C.b;
+  const u = CH.you.userData, P = VMP[u.pose] || VMP.idle, k = 1 - Math.exp(-dt * (u.snap || 10));
+  for (const s of ['R', 'L']) {
+    const a = VMA[s], p = P[s], sg = s === 'R' ? 1 : -1;
+    a.rotation.x = lerp(a.rotation.x, p[0] + Math.sin(t * 1.7) * .015, k); a.rotation.y = lerp(a.rotation.y, p[1], k);
+    a.position.x = lerp(a.position.x, sg * .3 + p[2], k); a.position.y = lerp(a.position.y, -.4 + p[3] + Math.sin(t * 2 + (s === 'R' ? 0 : 1)) * .005, k); a.position.z = lerp(a.position.z, -.05 + p[4], k);
+  }
+}
+function mkGlock() {
+  const g = new T.Group(), pm = new T.MeshStandardMaterial({color:0x1b1c1f, roughness:.45, metalness:.4}), sm = new T.MeshStandardMaterial({color:0x2a2c31, roughness:.3, metalness:.8});
+  const sl = new T.Mesh(new T.BoxGeometry(.028, .032, .19), sm); sl.position.set(0, .03, -.06); g.add(sl);
+  const fr = new T.Mesh(new T.BoxGeometry(.026, .02, .17), pm); fr.position.set(0, .006, -.05); g.add(fr);
+  const gr = new T.Mesh(new T.BoxGeometry(.027, .1, .045), pm); gr.position.set(0, -.04, .01); gr.rotation.x = -.3; g.add(gr);
+  const tg = new T.Mesh(new T.TorusGeometry(.014, .003, 6, 12, Math.PI), pm); tg.rotation.set(0, Math.PI / 2, Math.PI); tg.position.set(0, -.006, -.035); g.add(tg);
+  const fs = new T.Mesh(new T.BoxGeometry(.005, .007, .006), sm); fs.position.set(0, .05, -.15); g.add(fs);
+  const fc = cv(64, 64, (c, w, h) => { const gr = c.createRadialGradient(32, 32, 2, 32, 32, 30); gr.addColorStop(0, 'rgba(255,255,230,1)'); gr.addColorStop(.3, 'rgba(255,200,80,.9)'); gr.addColorStop(1, 'rgba(255,90,0,0)'); c.fillStyle = gr; c.fillRect(0, 0, w, h); });
+  const fl = new T.Sprite(new T.SpriteMaterial({map:tex(fc), blending:T.AdditiveBlending, depthWrite:false, transparent:true, color:new T.Color(4, 3, 2)}));
+  fl.scale.setScalar(.22); fl.position.set(0, .03, -.2); fl.visible = false; g.add(fl);
+  const lt = new T.PointLight(0xffb050, 0, 6, 2); lt.position.copy(fl.position); g.add(lt);
+  g.userData = {fl, lt}; g.visible = false; return g;
+}
+function fire(gun) { const u = gun.userData; u.fl.visible = true; u.fl.material.rotation = Math.random() * 6; u.lt.intensity = 40; SFX.bang(); setTimeout(() => { u.fl.visible = false; u.lt.intensity = 0; }, 70); }
+VMP.aim = {R:[.04, .1, -.08, .12, -.1], L:[.0, -.12, .06, .06, -.06]};
+POSES.aim = {R:[-1.55, -.05, -.05], L:[-1.45, .3, -.25], lean:.05, hp:-.05};
+POSES.holster = {R:[-.25, -.35, -.6], L:[-.2, .3, -.4], lean:.02, hp:0};
+// Quick draw: wait for DRAW!, then tap before they shoot. Early tap = foul.
+function quickDraw() {
+  return new Promise(async res => {
+    const F = CH.foe, fu = F.userData, yu = CH.you.userData, el = $('duel'), tx = $('duelT'), boss = G.case.boss;
+    fu.posT = fu.base.clone(); faceTo(F, CH.you.position.x, CH.you.position.z); fpLook(headOf(F).add(new V3(0, -.25, 0)));
+    slam("IT'S A<br>DRAW…", 'g', '#ffd84a', 1100); SFX.whistle(); FX.satT = .55; await sleep(1300);
+    fu.pose = 'holster'; yu.pose = 'idle'; tx.textContent = 'Pull your Glocks…'; el.classList.remove('hide');
+    await sleep(500); VMA.gun.visible = true; fu.gun.visible = true; SFX.click(); yu.pose = 'aim'; yu.snap = 8; fu.pose = 'aim'; fu.snap = 8; fu.brow = 'angry'; yu.brow = 'angry';
+    await sleep(700); tx.textContent = 'Wait for it…'; FPV.fov = 52;
+    let state = 'wait', t0 = 0, done = false;
+    const end = (win, why, ms) => {
+      if (done) return; done = true; removeEventListener('keydown', kd, true); el.onpointerdown = null; tx.textContent = why;
+      if (win) { fire(VMA.gun); FPV.dip = .03; C.shake = .5; setTimeout(() => { fu.pose = 'recoil'; fu.snap = 22; fu.hop = .08; fu.brow = 'sad'; flash(.35); SFX.impact(.8); floatTxt(F, 'HIT!', '#ffd84a', 60); }, 60); }
+      else { if (why !== 'TOO EARLY! Foul.') fire(fu.gun); else SFX.slam(); setTimeout(() => { flash(.6); FX.hurt = 1; C.shake = 1.4; FPV.dip = .12; yu.pose = 'recoil'; SFX.impact(.9); floatAt('HIT!', '#ff6b6b', 60, .5, .45); }, 60); }
+      if (ms) tx.textContent += ` (${ms} ms)`;
+      setTimeout(() => { el.classList.add('hide'); VMA.gun.visible = false; fu.gun.visible = false; FX.satT = 1; FPV.fov = 64; res(win); }, 1500);
+    };
+    const press = () => { if (state === 'wait') end(false, 'TOO EARLY! Foul.'); else if (state === 'go') { const ms = Math.round(performance.now() - t0); end(true, ms < 250 ? 'LIGHTNING DRAW!' : 'You were faster!', ms); } };
+    const kd = e => { if (e.code === 'Space' || e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); press(); } };
+    addEventListener('keydown', kd, true); el.onpointerdown = e => { e.preventDefault(); press(); };
+    await sleep(1200 + Math.random() * 2200); if (done) return;
+    state = 'go'; t0 = performance.now(); tx.textContent = ''; slam('DRAW!', 'g', '#ff3b3b', 500); SFX.tick();
+    const rt = boss ? 290 : 340 + Math.random() * 140;
+    setTimeout(() => { if (!done) end(false, 'Too slow!', Math.round(rt)); }, rt);
+  });
+}
+function floatAt(text, color, size, x, y) {
+  const d = document.createElement('div'); d.className = 'fl'; d.textContent = text; d.style.color = color; d.style.fontSize = size + 'px';
+  d.style.left = x * innerWidth + 'px'; d.style.top = y * innerHeight + 'px'; $('fx').appendChild(d); setTimeout(() => d.remove(), 1600);
+}
+function qte(dur = 1.15) {
+  return new Promise(res => {
+    const el = $('qte'), sE = $('qteS'); el.classList.remove('hide'); const t0 = performance.now(); let done = false;
+    const sc = () => 2.6 - 2.2 * (performance.now() - t0) / 1000 / dur;
+    const fin = hit => { if (done) return; done = true; el.classList.add('hide'); removeEventListener('keydown', kd, true); el.onpointerdown = null; res(hit); };
+    const step = () => { if (done) return; const k = sc(); sE.style.transform = `scale(${Math.max(0, k)})`; sE.style.borderColor = Math.abs(k - 1) < .26 ? '#ffd84a' : '#fff'; if (k < .3) return fin(false); requestAnimationFrame(step); };
+    const press = () => fin(Math.abs(sc() - 1) < .26);
+    const kd = e => { if (e.code === 'Space' || e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); press(); } };
+    addEventListener('keydown', kd, true); el.onpointerdown = e => { e.preventDefault(); press(); };
+    SFX.tick(); step();
+  });
+}
 function closeShot(g, d = 1.9, side = .4, h = 1.72, fov = 38) { const p = g.position.clone(), f = fwd(g), r = rightV(g); return [p.clone().addScaledVector(f, d).addScaledVector(r, side).setY(h * g.userData.scaleT), p.clone().setY(1.58 * g.userData.scaleT), fov]; }
 function lowShot(g) { const p = g.position.clone(), f = fwd(g), r = rightV(g); return [p.clone().addScaledVector(f, 1.55).addScaledVector(r, .3).setY(.5), p.clone().setY(1.75 * g.userData.scaleT), 58]; }
 function overSh(a, b) { const d = b.position.clone().sub(a.position).setY(0).normalize(), r = new V3(-d.z, 0, d.x); return [a.position.clone().addScaledVector(d, -1.0).addScaledVector(r, -.55).setY(1.95), b.position.clone().setY(1.45), 40]; }
@@ -791,10 +926,11 @@ CH.you.position.set(-2.5, 0, -2.3);
 function makeFoe(cs) {
   if (CH.foe) { scene.remove(CH.foe); }
   CH.foe = makePerson({robe:cs.robe, skin:cs.skin, aura:cs.aura, glasses:cs.glasses, brow:0x1a1008});
-  CH.foe.position.set(2.5, 0, -2.3); if (cs.boss) CH.foe.userData.scaleT = 1.08;
+  CH.foe.userData.gun = mkGlock(); CH.foe.userData.gun.position.set(0, -.3, .02); CH.foe.userData.gun.rotation.x = -Math.PI / 2; CH.foe.userData.R.el.add(CH.foe.userData.gun);
+  CH.foe.position.set(2.5, 0, -2.3); CH.foe.userData.base = CH.foe.position.clone(); if (cs.boss) CH.foe.userData.scaleT = 1.08;
   faceTo(CH.foe, 0, -7); CH.foe.userData.yaw = CH.foe.userData.yawT;
 }
-makeFoe(CASES[0]);
+makeFoe(CASES[0]); buildVM(); VMA.gun = mkGlock(); VMA.gun.position.set(0, .02, -.58); VMA.R.add(VMA.gun);
 faceTo(CH.you, 0, -7); CH.you.userData.yaw = CH.you.userData.yawT;
 resize(); addEventListener('resize', resize);
 
@@ -802,11 +938,12 @@ let last = performance.now();
 function frame(now) {
   const dt = Math.min(.05, (now - last) / 1000); last = now; clockT.t += dt; const t = clockT.t;
   for (const k of ['judge', 'you', 'foe']) updPerson(CH[k], dt, t);
-  updCrowd(t, dt); updCam(dt, t);
+  updCrowd(t, dt); updCam(dt, t); updVM(dt, t);
   L.shaft.uniforms.uT.value = t; L.dust.uniforms.uT.value = t;
   FX.ca *= Math.exp(-dt * 4); FX.flash *= Math.exp(-dt * 6);
   FX.sat = lerp(FX.sat, FX.satT, 1 - Math.exp(-dt * 5)); FX.lines = lerp(FX.lines, FX.linesT, 1 - Math.exp(-dt * 8));
   const cu = PP.comp.uniforms; cu.uCA.value = FX.ca; cu.uF.value = FX.flash; cu.uSat.value = FX.sat; cu.uLn.value = FX.lines; cu.uT.value = t; cu.uTint.value.copy(FX.tint); cu.uB.value = OPT.hi ? .95 : .6;
+  FX.au = lerp(FX.au, FX.auT, 1 - Math.exp(-dt * 4)); FX.hurt *= Math.exp(-dt * 1.6); cu.uAu.value.copy(FX.auC).multiplyScalar(FX.au); cu.uHurt.value = FX.hurt;
   if (G.timer && G.tLeft > 0) { G.tLeft -= dt; $('tmr').textContent = '⏱ ' + Math.ceil(G.tLeft) + 's speed bonus'; if (G.tLeft <= 0) $('tmr').textContent = ''; }
   render();
   requestAnimationFrame(frame);
@@ -833,14 +970,24 @@ function menu() {
       <span class="co">vs ${esc(c.foe)} · ${esc(c.foeT)}</span>
       <span class="cl">${lock ? '🔒 Win the previous case to unlock' : (c.qs ? c.qs.length : 6) + ' arguments' + (gr ? '' : ' · new')}</span></button>`;
   }).join('');
-  $('keyState').textContent = ls('lsr-key') ? '✅ API key saved in this browser. Claude Haiku will judge your answers.' : '⚠️ No API key: you will mark yourself against the model answer. Paste a key to let Claude judge.';
-  C.drift = 1; C.orbit = .05; go([new V3(5.5, 3.4, 8), new V3(0, 1.8, -5), 46], 2.5);
+  $('keyState').textContent = ls('cd-pass') ? '✅ Court unlocked. Claude Haiku will judge your answers.' : '⚠️ Locked: enter the court password so Claude can judge. Without it you mark yourself against the model answer.';
+  fromFP(); FX.auT = 0; C.drift = 1; C.orbit = .05; go([new V3(5.5, 3.4, 8), new V3(0, 1.8, -5), 46], 2.5);
   CH.you.userData.auraT = 0; CH.foe.userData.auraT = 0;
 }
 $('cases').onclick = e => { const b = e.target.closest('[data-c]'); if (b && !b.disabled) { au(); startCase(+b.dataset.c); } };
 $('pname').value = ls('cd-name') || '';
 $('pname').oninput = () => ls('cd-name', $('pname').value.trim());
-$('saveKey').onclick = () => { const v = $('key').value.trim(); if (v) ls('lsr-key', v); $('key').value = ''; menu(); };
+const RELAY = 'https://jjfanwars-relay.businessautomationvic.workers.dev/legal/grade';
+async function relay(body) {
+  const ctl = new AbortController(), to = setTimeout(() => ctl.abort(), 45000);
+  try { const r = await fetch(RELAY, {method:'POST', signal:ctl.signal, headers:{'content-type':'text/plain'}, body:JSON.stringify(body)}); const j = await r.json().catch(() => ({err:'HTTP ' + r.status})); if (!r.ok || j.err) throw new Error(j.err || 'HTTP ' + r.status); return j; }
+  catch (e) { throw new Error(e.name === 'AbortError' ? 'timed out' : e.message === 'Failed to fetch' ? 'relay not reachable' : e.message); } finally { clearTimeout(to); }
+}
+$('saveKey').onclick = async () => {
+  const v = $('key').value.trim(); if (!v) return; $('keyState').textContent = 'Checking password…';
+  try { await relay({pass:v, check:1}); ls('cd-pass', v); $('key').value = ''; menu(); }
+  catch (e) { $('keyState').textContent = '❌ ' + e.message; }
+};
 $('optHi').checked = OPT.hi; $('optSnd').checked = OPT.snd; $('optTimer').checked = OPT.timer;
 $('optHi').onchange = () => { OPT.hi = $('optHi').checked; ls('cd-hi', OPT.hi ? '1' : '0'); resize(); };
 $('optSnd').onchange = () => { OPT.snd = $('optSnd').checked; ls('cd-snd', OPT.snd ? '1' : '0'); if (A.out) A.out.gain.value = OPT.snd ? .55 : 0; $('bMute').textContent = OPT.snd ? '🔊' : '🔇'; };
@@ -853,10 +1000,10 @@ const pname = () => ($('pname').value.trim() || 'You');
 let boxSkip = null, sayId = 0;
 function say(who, text, cls = '', hold = 1) {
   return new Promise(res => {
-    const id = ++sayId, box = $('box'); box.className = cls; $('boxN').textContent = who; const el = $('boxT'); el.textContent = '';
+    const id = ++sayId, box = $('box'); box.className = cls; const ch = who === 'Her Honour' ? CH.judge : G.case && who === G.case.foe ? CH.foe : null; if (ch) ch.userData.talk = 1; $('boxN').textContent = who; const el = $('boxT'); el.textContent = '';
     let i = 0, done = false, ended = false; const full = String(text);
-    const end = () => { if (ended) return; ended = true; if (id === sayId) boxSkip = null; res(); };
-    const fin = () => { if (done) return; done = true; el.textContent = full; clearInterval(iv); if (id === sayId) boxSkip = end; setTimeout(end, 1200 * hold + full.length * 22); };
+    const end = () => { if (ch) ch.userData.talk = 0; if (ended) return; ended = true; if (id === sayId) boxSkip = null; res(); };
+    const fin = () => { if (ch) ch.userData.talk = 0; if (done) return; done = true; el.textContent = full; clearInterval(iv); if (id === sayId) boxSkip = end; setTimeout(end, 1200 * hold + full.length * 22); };
     const iv = setInterval(() => { if (G.abort) { clearInterval(iv); return end(); } i += 2; el.textContent = full.slice(0, i); if (i % 6 === 0) SFX.blip(); if (i >= full.length) fin(); }, 28);
     boxSkip = fin;
   });
@@ -916,7 +1063,9 @@ function nextQ() {
   faceTo(CH.you, 0, -7); faceTo(CH.foe, CH.you.position.x, CH.you.position.z);
   CH.you.userData.pose = 'think'; CH.you.userData.brow = 'idle'; CH.foe.userData.pose = 'cross'; CH.foe.userData.brow = 'smug';
   CH.you.userData.auraT = 0; CH.foe.userData.auraT = 0; CH.you.userData.scaleT = 1; CH.foe.userData.scaleT = G.case.boss ? 1.08 : 1;
-  C.orbit = .02; go(TWO(), 1.2);
+  fpLook(headOf(CH.judge).lerp(headOf(CH.foe), .5).add(new V3(0, -.45, 0)));
+  if (!FPV.on) toFP(1.0);
+  FX.auT = 0;
   const tw = TASKW.find(w => q.q.startsWith(w)) || '';
   $('qTag').textContent = 'Argument ' + (G.i + 1); $('qMarks').textContent = q.m + ' marks'; $('qWord').textContent = tw ? 'Task word: ' + tw : '';
   $('qWord').classList.toggle('hide', !tw);
@@ -924,7 +1073,7 @@ function nextQ() {
   $('qBrief').classList.add('hide'); $('qBrief').innerHTML = '<b>Brief — marking points</b><ul>' + q.k.map(x => '<li>' + esc(x) + '</li>').join('') + '</ul>';
   $('ans').value = ls('cd-draft-' + id) || '';
   $('bPeek').disabled = false;
-  $('selfNote').textContent = ls('lsr-key') ? '' : 'No API key: you will self-mark';
+  $('selfNote').textContent = ls('cd-pass') ? '' : 'Court locked: you will self-mark';
   $('qp').classList.remove('hide'); hideBox(); $('ruling').classList.add('hide');
   G.timer = OPT.timer; G.tLeft = 60 + q.m * 25; if (!G.timer) $('tmr').textContent = '';
   hud();
@@ -942,8 +1091,8 @@ $('bArgue').onclick = async () => {
   const speed = G.timer && G.tLeft > 0; G.timer = false; $('tmr').textContent = '';
   $('qp').classList.add('hide');
   let res;
-  if (ls('lsr-key')) {
-    C.orbit = 0; go(JUDGE(), 1.2); CH.judge.userData.pose = 'think';
+  if (ls('cd-pass')) {
+    fpLook(headOf(CH.judge)); CH.judge.userData.pose = 'think';
     const thinking = say('Her Honour', 'The court will consider that argument…', '', 30);
     try { res = await grade(q, ans); } catch (e) { res = null; G.err = e.message; }
     CH.judge.userData.pose = 'sit'; skipAll(); skipAll();
@@ -959,16 +1108,11 @@ $('bArgue').onclick = async () => {
 };
 
 async function grade(q, ans) {
-  const sys = 'You are an experienced VCE Legal Studies examiner in Victoria, Australia, acting as the judge in a courtroom revision game. Mark the student answer strictly but fairly against the marking guide, like a real VCAA assessor. Award marks for correct legal terminology, accurate explanation, application to the scenario where relevant, and the right task word (explain, distinguish, compare, evaluate, discuss, analyse). Equivalent wording that shows the same understanding earns the mark. Reply with ONLY a JSON object: {"score": integer, "got": [short strings: what earned marks], "missed": [short strings: what was missing or wrong], "tip": "one or two sentences on how to lift the mark", "better": "a short improved version of the student answer in their own style", "jab": "the opposing barrister\'s one-line courtroom objection mocking the biggest gap in the answer, witty and PG, max 20 words; if the answer was perfect, a sulky concession", "ruling": "the judge\'s one-sentence ruling on the argument, max 22 words, in a judge\'s voice"}.';
   const user = `Question (${q.m} marks): ${q.q}\n${q.ctx ? 'Context: ' + q.ctx + '\n' : ''}\nModel answer:\n${q.a}\n\nKey marking points:\n- ${q.k.join('\n- ')}\n\nStudent answer:\n${ans}`;
-  const ctl = new AbortController(); const to = setTimeout(() => ctl.abort(), 40000);
-  const r = await fetch('https://api.anthropic.com/v1/messages', {method:'POST', signal:ctl.signal,
-    headers:{'content-type':'application/json', 'x-api-key':ls('lsr-key'), 'anthropic-version':'2023-06-01', 'anthropic-dangerous-direct-browser-access':'true'},
-    body:JSON.stringify({model:MODEL, max_tokens:1000, system:sys, messages:[{role:'user', content:user}]})});
-  clearTimeout(to);
-  const j = await r.json();
-  if (!r.ok) throw new Error(j.error ? j.error.message : 'HTTP ' + r.status);
-  const txt = j.content.map(c => c.text || '').join('');
+  let j;
+  try { j = await relay({pass:ls('cd-pass'), user}); }
+  catch (e) { if (/password/.test(e.message)) ls('cd-pass', ''); throw e; }
+  const txt = j.text || '';
   const g = JSON.parse(txt.slice(txt.indexOf('{'), txt.lastIndexOf('}') + 1));
   g.score = clamp(Math.round(+g.score || 0), 0, q.m); g.ai = true; return g;
 }
@@ -983,91 +1127,109 @@ function selfMark(q) {
 }
 
 async function turn(q, res, ans) {
-  const f = res.score / q.m, n = G.qs.length, Y = CH.you, F = CH.foe, yu = Y.userData, fu = F.userData;
+  const f = res.score / q.m, n = G.qs.length, Y = CH.you, F = CH.foe, yu = Y.userData, fu = F.userData, boss = G.case.boss;
   const tier = f >= .9 ? 'mog' : f >= .65 ? 'strong' : f >= .35 ? 'mid' : 'weak';
   const prevCombo = G.combo; G.combo = f >= .75 ? G.combo + 1 : 0;
-  const mult = (G.peek ? .75 : 1) * (1 + Math.min(prevCombo, 3) * .15) * (res.speed ? 1.15 : 1) * (G.case.boss ? .85 : 1);
+  const mult = (G.peek ? .75 : 1) * (1 + Math.min(prevCombo, 3) * .15) * (res.speed ? 1.15 : 1) * (boss ? .85 : 1);
   const dmg = Math.round(135 / n * f * mult + (tier === 'mog' ? 6 : 0));
-  const back = f < .85 ? Math.round(125 / n * (1 - f) * (G.case.boss ? 1.15 : 1)) : 0;
+  let back = f < .85 ? Math.round(125 / n * (1 - f) * (boss ? 1.15 : 1)) : 0;
   let gain = Math.round(f * 1000 * (1 + Math.min(prevCombo, 3) * .25)) - (G.peek ? 200 : 0) + (res.speed ? 150 : 0); if (tier === 'weak') gain -= 300;
   G.results.push({id:G.qs[G.i], f, score:res.score, m:q.m});
-  // 1. power up
+  const fBase = boss ? 1.08 : 1, dead = () => G.abort;
   document.body.classList.add('cine'); C.orbit = 0;
+  if (!FPV.on) await toFP(.4);
   faceTo(Y, F.position.x, F.position.z); faceTo(F, Y.position.x, Y.position.z);
-  yu.brow = tier === 'weak' ? 'sad' : 'angry';
-  const auraAmt = {mog:1.25, strong:.8, mid:.4, weak:.08}[tier];
-  FX.tint.copy(yu.col);
+  fpLook(headOf(F).add(new V3(0, -.15, 0)));
+  yu.brow = tier === 'weak' ? 'sad' : 'angry'; fu.pose = 'cross'; fu.brow = 'smug';
+  FX.auC.copy(yu.col); FX.tint.copy(yu.col);
+  // 1. power up (you see your own aura burning at the edges of the screen)
   if (tier === 'mog' || tier === 'strong') {
-    await go(closeShot(Y, 2.3, .45), .35);
-    yu.pose = 'power'; yu.snap = 9; yu.auraT = auraAmt; SFX.aura(tier === 'mog' ? 1.3 : .9, tier === 'mog' ? 1.6 : 1.1);
-    FX.linesT = tier === 'mog' ? 1 : .5; C.shake = .25;
-    if (tier === 'mog') { go(lowShot(Y), 1.4); yu.scaleT = 1.18; FX.satT = .55; crowdReact = 1; SFX.ooh(); await sleep(1300); }
-    else { go(closeShot(Y, 1.6, .35), 1.0); await sleep(950); }
-  } else {
-    await go(closeShot(Y, 1.9, .4), .5); yu.pose = tier === 'mid' ? 'point' : 'think'; yu.auraT = auraAmt; await sleep(500);
-  }
-  if (G.abort) return;
+    yu.pose = 'power'; yu.snap = 9; yu.auraT = tier === 'mog' ? 1.1 : .7; FX.auT = tier === 'mog' ? 1 : .6;
+    SFX.aura(tier === 'mog' ? 1.3 : .9, tier === 'mog' ? 1.6 : 1.1); FX.linesT = tier === 'mog' ? .9 : .45; C.shake = .2; FPV.fov = 58;
+    if (tier === 'mog') { fu.brow = 'sad'; fu.pose = 'recoil'; fu.snap = 6; crowdReact = 1; SFX.ooh(); }
+    await sleep(tier === 'mog' ? 1400 : 950);
+    yu.pose = 'slam'; yu.snap = 24; FPV.dip = .1; SFX.impact(.45); C.shake = .7; await sleep(170);
+  } else { yu.pose = tier === 'mid' ? 'point' : 'cross'; yu.snap = 10; yu.auraT = FX.auT = tier === 'mid' ? .25 : .05; await sleep(650); }
+  if (dead()) return;
   // 2. strike
-  yu.pose = 'point'; yu.snap = 18; FX.linesT = 0; FX.satT = 1;
-  const word = {mog:'TAKE<br>THAT!', strong:'OBJECTION!', mid:'HOLD IT!', weak:'um… objection?'}[tier];
-  slam(word, (tier === 'weak' ? 'sm' : 'g'), '#' + yu.col.getHexString(), tier === 'weak' ? 900 : 1000);
-  SFX.whoosh(); C.punch = 1; FX.ca = tier === 'weak' ? 0 : .012;
-  await sleep(380);
+  yu.pose = 'point'; yu.snap = 18; FX.linesT = 0;
+  slam({mog:'TAKE<br>THAT!', strong:'OBJECTION!', mid:'HOLD IT!', weak:'um… objection?'}[tier], tier === 'weak' ? 'sm' : 'g', '#' + yu.col.getHexString(), tier === 'weak' ? 900 : 1000);
+  SFX.whoosh(); FPV.fov = 64; C.punch = tier === 'weak' ? .3 : 1.6; FX.ca = tier === 'weak' ? 0 : .012;
+  await sleep(330);
   if (dmg > 0) {
-    await go(overSh(Y, F), .22, t => 1 - Math.pow(1 - t, 3));
-    flash(tier === 'weak' ? .2 : .85); SFX.impact(tier === 'mog' ? 1.3 : tier === 'strong' ? 1 : .5); C.shake = tier === 'mog' ? 2.2 : tier === 'strong' ? 1.4 : .6; FX.ca = .02;
-    fu.pose = 'recoil'; fu.snap = 20; fu.brow = 'sad'; fu.hop = .05;
+    flash(tier === 'weak' ? .15 : .8); SFX.impact(tier === 'mog' ? 1.3 : tier === 'strong' ? 1 : .5); C.shake = tier === 'mog' ? 2 : tier === 'strong' ? 1.2 : .4; FX.ca = .02;
+    fu.pose = 'recoil'; fu.snap = 20; fu.brow = 'sad'; fu.hop = .06;
+    fu.posT = fu.base.clone().add(new V3(tier === 'weak' ? .05 : .45, 0, 0));
     G.hpF = Math.max(0, G.hpF - dmg); hud();
-    floatTxt(F, '-' + dmg, '#ff6b6b', tier === 'mog' ? 72 : 52);
+    floatTxt(F, '-' + dmg, '#ff6b6b', tier === 'mog' ? 76 : 54);
     if (tier !== 'weak') { crowdReact = Math.max(crowdReact, .7); if (tier !== 'mog') SFX.gasp(); }
-    await sleep(tier === 'mog' ? 500 : 750);
+    await sleep(tier === 'mog' ? 450 : 750);
   }
   G.auY = Math.max(0, G.auY + gain); hud();
-  floatTxt(Y, (gain >= 0 ? '+' : '') + gain + ' AURA', gain >= 0 ? '#ffd84a' : '#ff6b6b', 40, .2);
+  floatAt((gain >= 0 ? '+' : '') + gain + ' AURA', gain >= 0 ? '#ffd84a' : '#ff6b6b', 44, .5, .78);
   if (tier === 'mog') {
-    // the mog: winner looms, loser shrinks
-    fu.scaleT = .78; fu.pose = 'sad'; yu.scaleT = 1.28; yu.pose = 'cross'; yu.brow = 'smug'; yu.auraT = 1.4;
-    const p = F.position.clone(), d = Y.position.clone().sub(p).setY(0).normalize();
-    await shot(p.clone().addScaledVector(d, -1.6).add(new V3(0, .55, 0)), Y.position.clone().setY(2.1), 62, 0);
-    FX.satT = .35; FX.linesT = .8; FX.tint.copy(yu.col);
-    slam('MOGGED', 'g', '#' + yu.col.getHexString(), 1500); SFX.impact(.7); SFX.ooh(); crowdReact = 1.4; C.shake = .5;
-    go([p.clone().addScaledVector(d, -1.1).add(new V3(.3, .35, 0)), Y.position.clone().setY(2.2), 66], 1.6);
-    await sleep(1700); FX.satT = 1; FX.linesT = 0;
+    // the mog: you grow, they shrink, you look down at them
+    fu.scaleT = .7; fu.pose = 'sad'; yu.scaleT = 1.32; yu.pose = 'cross'; yu.brow = 'smug'; yu.auraT = 1.4; FX.auT = 1.2;
+    fpLook(headOf(F).add(new V3(0, -.3, 0))); FX.satT = .35; FX.linesT = .8;
+    slam('MOGGED', 'g', '#' + yu.col.getHexString(), 1400); SFX.impact(.7); SFX.ooh(); crowdReact = 1.4; C.shake = .5;
+    await sleep(1500);
+    // quick hero cut so you can see your own aura
+    fromFP(); C.pos.copy(cam.position); FX.auT = 0;
+    await go(lowShot(Y), 0); go([Y.position.clone().addScaledVector(fwd(Y), 2.2).add(new V3(0, .7, .4)), Y.position.clone().setY(2.3), 60], 1.4);
+    await sleep(1300); FX.satT = 1; FX.linesT = 0;
+    yu.scaleT = 1; fu.scaleT = fBase; await toFP(.45);
   }
   if (G.combo >= 2) { slam('AURA COMBO x' + G.combo, 'sm g', '#ffb21a', 900); await sleep(700); }
-  if (G.abort) return;
-  // 3. counter-attack
+  if (dead()) return;
+  // 3. counter-attack: they storm over and get in your face. Time the tap to overrule it.
   const koF = G.hpF <= 0;
-  if (back > 0 && !koF) {
-    yu.scaleT = 1; fu.scaleT = G.case.boss ? 1.08 : 1; yu.pose = 'idle'; yu.auraT = .0;
-    await go(closeShot(F, 1.9, -.4), .45);
-    fu.pose = 'point'; fu.snap = 16; fu.brow = 'angry'; fu.auraT = .4 + (1 - f) * .8; FX.tint.copy(fu.col); SFX.aura(.6, .8);
+  if (f >= .4 && f <= .6 && !koF && G.hpY > 0) {
+    yu.scaleT = 1; fu.scaleT = fBase; yu.auraT = 0; FX.auT = 0;
+    const won = await quickDraw(); if (dead()) return;
+    const hit = Math.round(130 / n * .35);
+    if (won) { G.hpF = Math.max(0, G.hpF - hit); back = 0; G.auY += 400; floatAt('+400 AURA', '#ffd84a', 40, .5, .78); }
+    else { back += hit; G.hpY = Math.max(0, G.hpY - back); }
+    hud(); await sleep(400); fu.pose = won ? 'sad' : 'cross'; fu.brow = won ? 'sad' : 'smug'; yu.pose = 'idle'; res.duel = won ? 'won' : 'lost';
+  } else if (back > 0 && !koF) {
+    yu.scaleT = 1; fu.scaleT = fBase; yu.pose = 'idle'; yu.auraT = 0; FX.auT = 0;
+    const toY = Y.position.clone().sub(fu.base).setY(0).normalize();
+    fu.posT = Y.position.clone().addScaledVector(toY, -1.35).setY(0);
+    fu.pose = 'point'; fu.snap = 14; fu.brow = 'angry'; fu.auraT = .4 + (1 - f) * .7; FX.tint.copy(fu.col); SFX.aura(.6, .8);
+    fpLook(fu.posT.clone().setY(1.55 * fBase)); FPV.fov = 60;
     const jab = res.jab || JABS[(Math.random() * JABS.length) | 0];
-    await say(G.case.foe, jab, 'foe', .6);
-    if (G.abort) return;
+    await sleep(500);
+    await say(G.case.foe, jab, 'foe', .5);
+    if (dead()) return;
     hideBox();
-    await go(overSh(F, Y), .22, t => 1 - Math.pow(1 - t, 3));
-    flash(.6); SFX.impact(.5 + (1 - f) * .6); C.shake = .4 + (1 - f) * 1.4; FX.ca = .014;
-    yu.pose = f < .35 ? 'sad' : 'recoil'; yu.snap = 18; yu.brow = 'sad'; yu.hop = .04;
+    fu.pose = 'slam'; fu.snap = 6;
+    const hit = await qte(boss ? .95 : 1.15);
+    if (dead()) return;
+    fu.pose = 'point'; fu.snap = 24;
+    if (hit) {
+      const bl = Math.round(back * .6); back -= bl; G.auY += 150;
+      slam('OVERRULED!', 'g', '#4aa8ff', 900); SFX.gavel(); CH.judge.userData.pose = 'gDn'; setTimeout(() => CH.judge.userData.pose = 'sit', 300);
+      floatAt('BLOCKED ' + bl, '#7cc8ff', 40, .5, .62);
+    } else slam('SUSTAINED', 'sm', '#ff3b3b', 800);
+    await sleep(200);
+    flash(hit ? .25 : .55); SFX.impact(hit ? .4 : .5 + (1 - f) * .6); C.shake = hit ? .4 : .5 + (1 - f) * 1.5; FX.ca = hit ? .006 : .016; FX.hurt = hit ? .35 : .9;
+    yu.pose = hit ? 'cross' : 'recoil'; yu.snap = 18; yu.brow = 'sad'; FPV.dip = hit ? .03 : .1;
     G.hpY = Math.max(0, G.hpY - back); G.auF += Math.round((1 - f) * 600); hud();
-    floatTxt(Y, '-' + back, '#ff6b6b', 50);
-    if (f < .35) { await sleep(400); floatTxt(Y, '-AURA', '#ff6b6b', 36, .35); }
-    await sleep(800); fu.auraT = 0;
-  } else if (!koF && res.score === q.m) {
-    fu.pose = 'sad';
-  }
+    floatAt('-' + back, '#ff6b6b', 58, .5, .45);
+    if (f < .35 && !hit) { await sleep(350); floatAt('-AURA', '#ff6b6b', 36, .55, .7); }
+    await sleep(800); fu.auraT = 0; fu.posT = fu.base.clone(); fu.pose = hit ? 'sad' : 'cross'; fu.brow = hit ? 'sad' : 'smug'; FPV.fov = 64;
+  } else if (!koF) { fu.posT = fu.base.clone(); fu.pose = 'sad'; }
   // 4. ruling
-  yu.scaleT = 1; fu.scaleT = G.case.boss ? 1.08 : 1; yu.auraT = 0; FX.linesT = 0; FX.satT = 1;
-  await go(JUDGE(), .7);
+  yu.scaleT = 1; fu.scaleT = fBase; yu.auraT = 0; FX.auT = 0; FX.linesT = 0; FX.satT = 1; yu.pose = 'idle';
+  fpLook(headOf(CH.judge)); await sleep(500);
   const rl = res.ruling || RULE[tier][(Math.random() * 2) | 0];
   if (tier === 'mog' || tier === 'weak') { CH.judge.userData.pose = 'gUp'; await sleep(220); CH.judge.userData.pose = 'gDn'; SFX.gavel(); C.shake = .5; await sleep(200); CH.judge.userData.pose = 'sit'; }
   await say('Her Honour', rl, '', .7);
   hideBox(); document.body.classList.remove('cine');
-  if (G.abort) return;
-  // feedback card
+  if (dead()) return;
+  fu.posT = fu.base.clone();
   ls('cd-draft-' + G.qs[G.i], '');
   await showRuling(q, res, f, dmg, back, gain);
-  if (G.abort) return;
+  if (dead()) return;
   G.i++;
   if (G.hpF <= 0 || G.hpY <= 0 || G.i >= G.qs.length) return verdict();
   nextQ();
@@ -1077,14 +1239,14 @@ function showRuling(q, res, f, dmg, back, gain) {
     const cls = f >= .75 ? 'ok' : f >= .5 ? 'md' : 'bd', r = $('ruling');
     const li = a => (a && a.length) ? '<ul>' + a.map(x => '<li>' + esc(x) + '</li>').join('') + '</ul>' : '<div class="small">—</div>';
     r.innerHTML = `<div class="row" style="justify-content:space-between"><div><div class="small" style="text-transform:uppercase;letter-spacing:1px">Judge's ruling${res.self ? ' (self-marked)' : ''}</div><div class="sc ${cls}">${res.score} / ${q.m}</div></div>
-      <div class="small" style="text-align:right">Damage dealt <b style="color:#ff8a8a">${dmg}</b> · taken <b style="color:#8ac8ff">${back}</b><br>${gain >= 0 ? '+' : ''}${gain} aura${G.peek ? ' · brief peeked' : ''}${res.speed ? ' · speed bonus' : ''}</div></div>
+      <div class="small" style="text-align:right">Damage dealt <b style="color:#ff8a8a">${dmg}</b> · taken <b style="color:#8ac8ff">${back}</b><br>${gain >= 0 ? '+' : ''}${gain} aura${res.duel ? ' · quick draw ' + res.duel : ''}${G.peek ? ' · brief peeked' : ''}${res.speed ? ' · speed bonus' : ''}</div></div>
       ${res.self ? '' : `<div class="cols"><div><h4>✅ What earned marks</h4>${li(res.got)}</div><div><h4>❌ What was missing</h4>${li(res.missed)}</div></div>
       ${res.tip ? `<div style="margin-top:10px"><b>💡 Tip:</b> ${esc(res.tip)}</div>` : ''}
       ${res.better ? `<details><summary>Improved version of your answer</summary><div class="modelA">${esc(res.better)}</div></details>` : ''}`}
       <details ${res.self ? '' : ''}><summary>Model answer & marking points</summary><div class="modelA">${esc(q.a)}\n\nKey marking points:\n- ${q.k.map(esc).join('\n- ')}</div></details>
       <div class="row" style="margin-top:12px"><button class="pri" id="bCont">${G.hpF <= 0 || G.hpY <= 0 || G.i + 1 >= G.qs.length ? 'Hear the verdict ⚖️' : 'Next argument ⚔️'}</button></div>`;
     r.classList.remove('hide'); r.scrollTop = 0;
-    C.orbit = .03; go(TWO(), 1.4);
+    fpLook(headOf(CH.judge).lerp(headOf(CH.foe), .5).add(new V3(0, -.45, 0)));
     $('bCont').onclick = () => { r.classList.add('hide'); done(); };
   });
 }
@@ -1094,7 +1256,8 @@ async function verdict() {
   const avg = G.results.reduce((a, r) => a + r.f, 0) / Math.max(1, G.results.length);
   const win = G.hpY > 0 && (G.hpF <= 0 || G.hpF / 1 < G.hpY / 1);
   const grade = avg >= .9 ? 'S' : avg >= .75 ? 'A' : avg >= .6 ? 'B' : avg >= .45 ? 'C' : 'D';
-  document.body.classList.add('cine'); C.orbit = 0;
+  document.body.classList.add('cine'); C.orbit = 0; FX.auT = 0;
+  fromFP(); C.pos.copy(cam.position);
   if (G.hpF <= 0) { await go(closeShot(F, 2, -.3), .5); slam('K.O.', 'g', '#ff3b3b', 1300); SFX.impact(1.4); flash(1); C.shake = 2; fu.pose = 'sad'; fu.scaleT = .85; await sleep(1500); }
   else if (G.hpY <= 0) { await go(closeShot(Y, 2, .3), .5); slam('K.O.', '', '#ff3b3b', 1300); SFX.impact(1.4); flash(1); C.shake = 2; yu.pose = 'sad'; await sleep(1500); }
   await go(JUDGE(), .8);
