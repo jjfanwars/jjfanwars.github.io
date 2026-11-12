@@ -632,21 +632,21 @@ function glbMats(look) {
   return GLB.mats[look] = o;
 }
 // ----- leader heads: a head mesh with a front-projected photo face (tex/faces/*.jpg, see tex/faces/LICENSE.txt) plus modelled hair, caps and props; hung on the neck bone -----
-const FACE_SKIN = { stalin: 0xcc997c, putin: 0xb07561, kim: 0xa16a56, xi: 0xb95d3e, castro: 0xcc997c, trump: 0xcc9a88, yahu: 0xe8b09c, boris: 0xca939b, thatcher: 0xf2cdb5, elon: 0xbe7983 };
+const FACE_SKIN = { stalin: 0xcc997c, putin: 0xb07561, kim: 0xa16a56, xi: 0xb95d3e, castro: 0xcc997c, trump: 0xe09a62, yahu: 0xe8b09c, boris: 0xca939b, thatcher: 0xf2cdb5, elon: 0xbe7983 };
 const FACEM = {}, headGeo = {}, capGs = {};
 const faceMat = st => FACEM[st] || (FACEM[st] = (() => { const t = TLd.load('tex/faces/' + st + '.jpg'); t.colorSpace = T.SRGBColorSpace; t.anisotropy = 4; return new T.MeshStandardMaterial({ map: t, vertexColors: true, roughness: 0.68, metalness: 0 }); })());
 const capGeo = th => capGs[th] || (capGs[th] = new T.SphereGeometry(1, 22, 12, 0, Math.PI * 2, 0, th));
 const HSPH = new T.SphereGeometry(1, 20, 14), HCYL = new T.CylinderGeometry(1, 1, 1, 16);
 const FSX = 0.25, FSY = 0.235; // metres covered by the face texture across and down
-const HEADB = { g: null, n: 0 }, BUSTS = { trump: { hl: 0.168, hc: 0xe2bd72 }, boris: { hl: 0.172, hc: 0xf1e3a6 }, xi: { hl: 0.19, hc: 0x121212 }, stalin: { hl: 0.195, hc: 0x4a4540 } }; // head shapes: the Lee Perry-Smith head scan (Infinite-Realities, CC BY 3.0, three.js examples) in head.bin; sculpted busts for some leaders in heads/<hd>.bin (credits in tex/faces/LICENSE.txt). All are baked into head space by a script: eyes at y 0.12, chin 0.01, nose tip z 0.11
+const HEADB = { g: null, n: 0 }, BUSTS = { trump: { hl: 0.168, hc: 0xe2bd72 }, boris: { hl: 0.172, hc: 0xf1e3a6 }, xi: { hl: 0.19, hc: 0x121212 }, stalin: { hl: 0.195, hc: 0x4a4540, mo: 1 } }; // head shapes: the Lee Perry-Smith head scan (Infinite-Realities, CC BY 3.0, three.js examples) in head.bin; sculpted busts for some leaders in heads/<hd>.bin (credits in tex/faces/LICENSE.txt). All are baked into head space by a script: eyes at y 0.12, chin 0.01, nose tip z 0.11
 function loadHead(url, cb) { fetch(url).then(r => { if (!r.ok) throw 0; return r.arrayBuffer(); }).then(buf => { const [nv, ni] = new Uint32Array(buf, 0, 2), Q = new Int16Array(buf, 8, nv * 3), Nn = new Int8Array(buf, 8 + nv * 6, nv * 3), io = 8 + nv * 9 + (nv * 9) % 2, I = new Uint16Array(buf, io, ni);
   const pos = new Float32Array(nv * 3), nor = new Float32Array(nv * 3); for (let i = 0; i < nv * 3; i++) { pos[i] = Q[i] * 1e-5; nor[i] = Nn[i] / 127; }
   const g = new T.BufferGeometry(); g.setAttribute('position', new T.BufferAttribute(pos, 3)); g.setAttribute('normal', new T.BufferAttribute(nor, 3)); g.setIndex(new T.BufferAttribute(new Uint16Array(I), 1)); cb(g); }).catch(() => cb(false)); }
 loadHead('head.bin', g => { HEADB.g = g; suitReady(); });
 for (const k in BUSTS) { HEADB.n++; loadHead('heads/' + k + '.bin', g => { BUSTS[k].g = g; HEADB.n--; suitReady(); }); }
-function photoHead(st) { // a head shape with uv = planar projection of the face photo from the front; hair, sides and back use the white corner with a vertex colour
+function photoHead(st) { // busts are painted, not photo-mapped (hair, brows, moustache in the hair colour, the rest skin); other heads: a head shape with uv = planar projection of the face photo from the front; hair, sides and back use the white corner with a vertex colour
   const B = BUSTS[st] && BUSTS[st].g ? BUSTS[st] : null, src = B ? B.g : HEADB.g, g = src ? src.clone() : new T.SphereGeometry(0.08, 24, 18).translate(0, 0.11, 0), P = g.attributes.position, n = P.count, uv = new Float32Array(n * 2), col = new Float32Array(n * 3), yc = 0.0966, hc = B ? hex(B.hc).map(v => Math.pow(v, 2.2)) : null;
-  for (let i = 0; i < n; i++) { const x = P.getX(i), y = P.getY(i), z = P.getZ(i), hair = B && (y > B.hl || (z < 0.0 && y > 0.112)), front = !hair && z > 0.022 && y > 0.0; uv[i * 2] = front ? 0.5 + x / FSX : 0.02; uv[i * 2 + 1] = front ? 0.5 + (y - yc) / FSY : 0.98; col.set(front ? [1, 1, 1] : hair ? hc : [-1, -1, -1], i * 3); }
+  for (let i = 0; i < n; i++) { const x = P.getX(i), y = P.getY(i), z = P.getZ(i), hair = B && (y > B.hl || (z < 0.0 && y > 0.112) || (z > 0.07 && y > 0.13 && y < 0.139 && Math.abs(x) > 0.012 && Math.abs(x) < 0.048) || (B.mo && z > 0.07 && y > 0.034 && y < 0.062 && Math.abs(x) < 0.042)), front = !B && z > 0.022 && y > 0.0;  uv[i * 2] = front ? 0.5 + x / FSX : 0.02; uv[i * 2 + 1] = front ? 0.5 + (y - yc) / FSY : 0.98; col.set(front ? [1, 1, 1] : hair ? hc : [-1, -1, -1], i * 3); }
   g.setAttribute('uv', new T.BufferAttribute(uv, 2)); if (!src) g.computeVertexNormals(); g.userData.col = col; g.userData.bust = !!B; return g;
 }
 function headParts(st) { // hair, caps and props in head space: origin at the head bone, face toward +z, metres
