@@ -329,8 +329,8 @@ export class Track {
 // Courtroom Duel (legal.html) marking: the page sends {pass, user} as text/plain (no CORS preflight). The relay checks the
 // password and calls Claude Haiku with its own key, so no key ever reaches the browser. Secrets: ANTHROPIC_KEY, LEGAL_PASS.
 const LEGAL_SYS = 'You are an experienced VCE Legal Studies examiner in Victoria, Australia, acting as the judge in a courtroom revision game. Mark the student answer strictly but fairly against the marking guide, like a real VCAA assessor. Award marks for correct legal terminology, accurate explanation, application to the scenario where relevant, and the right task word (explain, distinguish, compare, evaluate, discuss, analyse). Equivalent wording that shows the same understanding earns the mark. Reply with ONLY a JSON object: {"score": integer, "got": [short strings: what earned marks], "missed": [short strings: what was missing or wrong], "tip": "one or two sentences on how to lift the mark", "better": "a short improved version of the student answer in their own style", "jab": "the opposing barrister\'s one-line courtroom objection mocking the biggest gap in the answer, witty and PG, max 20 words; if the answer was perfect, a sulky concession", "ruling": "the judge\'s one-sentence ruling on the argument, max 22 words, in a judge\'s voice"}.';
-// Setup without a computer: legal.html#setup=<LEGAL_SETUP secret> posts {setup, key, pass} once; the key and password are kept in the
-// Legal Durable Object (env secrets ANTHROPIC_KEY / LEGAL_PASS still win if set). The setup token stops working after one use.
+// Setup without a computer: the menu's key box posts {pass, key} to /legal/setup; the key is kept in the Legal Durable Object
+// (env secrets ANTHROPIC_KEY / LEGAL_PASS win if set).
 export class Legal {
   constructor(state) { this.state = state; }
   async fetch(req) {
@@ -348,15 +348,18 @@ async function legalGrade(req, env, CORS, path) {
   let b; try { b = JSON.parse(await req.text()); } catch (e) { return J({err: 'bad request'}, 400); }
   const lg = env.LEGAL.get(env.LEGAL.idFromName('main')), call = o => lg.fetch('https://l/', {method: 'POST', body: JSON.stringify(o)}).then(r => r.json());
   const saved = await call({op: 'get'});
-  if (path === '/legal/setup') {
-    if (!env.LEGAL_SETUP || b.setup !== env.LEGAL_SETUP || saved.used) return J({err: 'setup link is invalid or already used'}, 403);
-    if (!/^sk-ant-/.test(b.key || '') || String(b.pass || '').length < 4) return J({err: 'need an sk-ant- key and a password of 4+ characters'}, 400);
-    await call({op: 'set', key: b.key.trim(), pass: String(b.pass)}); return J({ok: true});
-  }
   const KEY = env.ANTHROPIC_KEY || saved.key, PASS = env.LEGAL_PASS || saved.pass;
-  if (!KEY || !PASS) return J({err: 'marking is not set up on the relay yet'}, 503);
+  if (path === '/legal/setup') { // key box in the menu: needs the court password (or the old one-time setup token)
+    const tokOk = env.LEGAL_SETUP && b.setup === env.LEGAL_SETUP && !saved.used;
+    if (!tokOk && !(PASS && b.pass === PASS)) return J({err: 'wrong password'}, 403);
+    if (!/^sk-ant-/.test((b.key || '').trim())) return J({err: 'that does not look like an Anthropic key (sk-ant-...)'}, 400);
+    await call({op: 'set', key: b.key.trim(), pass: PASS || String(b.pass)}); return J({ok: true});
+  }
+  if (b.status) return J({key: !!KEY, pass: !!PASS});
+  if (!PASS) return J({err: 'marking is not set up on the relay yet'}, 503);
   if (b.pass !== PASS) return J({err: 'wrong password'}, 403);
-  if (b.check) return J({ok: true});
+  if (b.check) return J({ok: true, key: !!KEY});
+  if (!KEY) return J({err: 'no API key saved yet: paste it in the menu (Owner: API key)'}, 503);
   const user = String(b.user || '').slice(0, 8000);
   if (!user) return J({err: 'empty answer'}, 400);
   const r = await fetch('https://api.anthropic.com/v1/messages', {method: 'POST',

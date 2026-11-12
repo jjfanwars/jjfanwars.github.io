@@ -1,0 +1,1312 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>Courtroom Duel</title>
+<!-- Courtroom Duel: Legal Studies revision game. Answers are marked by Claude Haiku with the player's own API key (kept in localStorage only). -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bangers&family=Cinzel:wght@600;800&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root{--gold:#f2c35b;--gold2:#ffe7a3;--ink:#f4efe6;--mut:#b9b0a2;--bg:#0b0907;--pan:rgba(18,14,10,.86);--line:rgba(242,195,91,.28);--you:#4aa8ff;--foe:#ff4d5e;--ok:#5ee08a;--mid:#ffc04a;--bad:#ff5d5d}
+:root[data-theme="light"]{--ink:#f4efe6}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font:15px/1.45 Inter,system-ui,sans-serif;overflow:hidden}
+canvas#c{position:fixed;inset:0;width:100%;height:100%;display:block}
+.hide{display:none!important}
+button{font:inherit;cursor:pointer;border-radius:10px;border:1px solid var(--line);background:rgba(255,255,255,.06);color:var(--ink);padding:10px 16px;transition:transform .12s,background .2s}
+button:hover{background:rgba(255,255,255,.12)}button:active{transform:scale(.96)}
+button.pri{background:linear-gradient(180deg,#ffd77a,#d99a2b);color:#2a1a05;border-color:#ffe2a0;font-weight:800;letter-spacing:.3px;box-shadow:0 4px 18px rgba(242,170,60,.35)}
+button:disabled{opacity:.45;cursor:default}
+input,textarea,select{font:inherit;color:var(--ink);background:rgba(0,0,0,.35);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+textarea{width:100%;resize:vertical;min-height:120px;line-height:1.5}
+textarea:focus,input:focus{outline:2px solid rgba(242,195,91,.55)}
+.ov{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;padding:16px;z-index:20}
+/* menu */
+#menu{background:radial-gradient(ellipse at 50% 20%,rgba(20,14,8,.35),rgba(5,4,3,.82));overflow:auto;align-items:flex-start}
+.mwrap{width:100%;max-width:880px;margin:auto}
+.title{font-family:Cinzel,serif;font-weight:800;font-size:clamp(38px,8vw,76px);letter-spacing:4px;text-align:center;line-height:1;margin:10px 0 4px;background:linear-gradient(180deg,#fff6d8,#f2c35b 55%,#a8701c);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 4px 24px rgba(242,170,60,.45))}
+.tsub{text-align:center;color:var(--mut);letter-spacing:3px;text-transform:uppercase;font-size:12px;margin-bottom:18px}
+.rankc{background:var(--pan);border:1px solid var(--line);border-radius:16px;padding:14px 16px;display:flex;gap:14px;align-items:center;margin-bottom:14px;backdrop-filter:blur(6px)}
+.rankc .rn{font-family:Cinzel,serif;font-size:20px;color:var(--gold2)}
+.bar{height:8px;background:rgba(255,255,255,.08);border-radius:9px;overflow:hidden;margin-top:6px}
+.bar i{display:block;height:100%;background:linear-gradient(90deg,#d99a2b,#ffe7a3);border-radius:9px;transition:width .6s}
+.cases{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}
+.case{position:relative;text-align:left;background:linear-gradient(160deg,rgba(40,28,16,.92),rgba(16,12,9,.92));border:1px solid var(--line);border-radius:16px;padding:14px;min-height:132px;display:flex;flex-direction:column;gap:4px}
+.case:hover:not(:disabled){border-color:var(--gold);transform:translateY(-2px)}
+.case .cn{font-family:Cinzel,serif;font-weight:800;font-size:17px;color:var(--gold2)}
+.case .co{font-size:13px;color:var(--mut)}
+.case .cg{position:absolute;top:10px;right:12px;font-family:Bangers,sans-serif;font-size:30px;letter-spacing:1px}
+.case .cl{margin-top:auto;font-size:12px;color:var(--mut)}
+.set{margin-top:14px;background:var(--pan);border:1px solid var(--line);border-radius:16px;padding:14px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.small{font-size:12.5px;color:var(--mut)}
+/* hud */
+#hud{position:fixed;left:0;right:0;top:0;padding:12px 14px;display:flex;gap:10px;align-items:flex-start;z-index:10;pointer-events:none}
+.side{flex:1;min-width:0}
+.side.r{text-align:right}
+.nm{font-family:Bangers,sans-serif;font-size:22px;letter-spacing:1.5px;text-shadow:0 2px 0 #000,0 0 14px rgba(0,0,0,.8);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hp{height:18px;border-radius:4px;background:rgba(0,0,0,.6);border:2px solid rgba(255,255,255,.75);overflow:hidden;position:relative;transform:skewX(-14deg);box-shadow:0 2px 12px rgba(0,0,0,.6)}
+.side.r .hp{transform:skewX(14deg)}
+.hp i{position:absolute;top:0;bottom:0;transition:width .5s cubic-bezier(.2,.8,.2,1)}
+.hp i.lag{background:#fff;transition:width 1.1s .35s ease}
+.hp i.f{background:linear-gradient(180deg,#9fe0ff,var(--you) 60%,#1c5fae)}
+.side.r .hp i{right:0}.side:not(.r) .hp i{left:0}
+.side.r .hp i.f{background:linear-gradient(180deg,#ffb0b8,var(--foe) 60%,#a01224)}
+.aura{font-family:Bangers,sans-serif;font-size:17px;letter-spacing:1px;margin-top:4px;color:var(--gold2);text-shadow:0 2px 0 #000}
+.mid{text-align:center;min-width:86px}
+.qn{font-family:Bangers,sans-serif;font-size:26px;letter-spacing:1px;text-shadow:0 2px 0 #000}
+.combo{font-family:Bangers,sans-serif;font-size:18px;color:#ffd35a;text-shadow:0 0 12px #ff9b1a,0 2px 0 #000}
+#hudBtns{position:fixed;right:12px;bottom:12px;z-index:11;display:flex;gap:6px}
+#hudBtns button{padding:6px 10px;font-size:13px;background:rgba(0,0,0,.5)}
+/* question panel */
+#qp{position:fixed;left:50%;bottom:14px;transform:translateX(-50%);width:min(820px,calc(100% - 24px));max-height:62vh;overflow:auto;z-index:12;background:linear-gradient(180deg,rgba(28,20,12,.94),rgba(12,9,6,.95));border:1px solid var(--line);border-radius:18px;padding:16px;box-shadow:0 18px 60px rgba(0,0,0,.6);animation:up .45s cubic-bezier(.2,.9,.2,1)}
+@keyframes up{from{transform:translate(-50%,40px);opacity:0}}
+.qt{font-family:Cinzel,serif;font-weight:800;font-size:18px;color:var(--gold2);margin:6px 0}
+.tag{display:inline-block;font-size:11.5px;padding:2px 9px;border-radius:99px;border:1px solid var(--line);color:var(--mut);margin-right:4px;text-transform:uppercase;letter-spacing:.6px}
+.ctx{font-size:13.5px;color:var(--mut);font-style:italic;margin-bottom:8px}
+.brief{font-size:13.5px;background:rgba(242,195,91,.08);border:1px dashed var(--line);border-radius:10px;padding:8px 12px;margin-bottom:8px}
+.brief ul{margin:4px 0;padding-left:18px}
+/* dialogue box */
+#box{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);width:min(860px,calc(100% - 24px));z-index:13;cursor:pointer}
+#box .bn{display:inline-block;font-family:Cinzel,serif;font-weight:800;font-size:15px;padding:5px 16px;border-radius:10px 10px 0 0;background:var(--gold);color:#2a1a05;margin-left:16px}
+#box .bt{background:rgba(10,8,6,.9);border:2px solid rgba(242,195,91,.6);border-radius:14px;padding:14px 18px;min-height:76px;font-size:17px;box-shadow:0 10px 40px rgba(0,0,0,.6)}
+#box.you .bn{background:var(--you);color:#021a33}#box.you .bt{border-color:rgba(74,168,255,.7)}
+#box.foe .bn{background:var(--foe);color:#2b0006}#box.foe .bt{border-color:rgba(255,77,94,.7)}
+#box .nx{float:right;opacity:.6;animation:bl 1s infinite}
+@keyframes bl{50%{opacity:.1}}
+/* ruling */
+#ruling{position:fixed;left:50%;bottom:14px;transform:translateX(-50%);width:min(820px,calc(100% - 24px));max-height:70vh;overflow:auto;z-index:14;background:linear-gradient(180deg,rgba(28,20,12,.96),rgba(12,9,6,.97));border:1px solid var(--line);border-radius:18px;padding:16px;box-shadow:0 18px 60px rgba(0,0,0,.6);animation:up .45s cubic-bezier(.2,.9,.2,1)}
+.sc{font-family:Bangers,sans-serif;font-size:46px;letter-spacing:2px;line-height:1}
+.ok{color:var(--ok)}.md{color:var(--mid)}.bd{color:var(--bad)}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:8px}
+@media(max-width:620px){.cols{grid-template-columns:1fr}}
+.cols h4{margin:0 0 4px;font-size:13px;text-transform:uppercase;letter-spacing:1px;color:var(--mut)}
+.cols ul{margin:0;padding-left:18px}
+.modelA{white-space:pre-wrap;font-size:14px;background:rgba(0,0,0,.3);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-top:6px}
+details summary{cursor:pointer;color:var(--gold2);margin-top:10px}
+/* fx */
+#slam{position:fixed;inset:0;pointer-events:none;z-index:15;display:flex;align-items:center;justify-content:center}
+.sl{font-family:Bangers,sans-serif;font-size:clamp(60px,14vw,170px);letter-spacing:4px;line-height:.9;text-align:center;color:#fff;-webkit-text-stroke:4px #1a0b00;paint-order:stroke fill;text-shadow:0 8px 0 #1a0b00,0 0 40px var(--glow,#ffae2b);animation:slam .5s cubic-bezier(.2,1.6,.4,1) both,shk .35s .45s 2;transform:rotate(-6deg)}
+.sl.g{background:linear-gradient(180deg,#fff7d1,#ffd24a 50%,#ff8a1a);-webkit-background-clip:text;background-clip:text;color:transparent}
+.sl.sm{font-size:clamp(40px,8vw,90px)}
+.sl.out{animation:out .3s ease-in forwards}
+@keyframes slam{from{transform:scale(4) rotate(-14deg);opacity:0}to{transform:scale(1) rotate(-6deg);opacity:1}}
+@keyframes shk{25%{transform:translate(-8px,4px) rotate(-6deg)}75%{transform:translate(8px,-4px) rotate(-6deg)}}
+@keyframes out{to{transform:scale(1.4) rotate(-6deg);opacity:0}}
+#flash{position:fixed;inset:0;background:#fff;opacity:0;pointer-events:none;z-index:16}
+#fx{position:fixed;inset:0;pointer-events:none;z-index:15;overflow:hidden}
+.fl{position:absolute;font-family:Bangers,sans-serif;letter-spacing:1px;-webkit-text-stroke:3px #000;paint-order:stroke fill;white-space:nowrap;transform:translate(-50%,-50%);animation:fl 1.5s cubic-bezier(.2,.9,.3,1) forwards}
+@keyframes fl{0%{transform:translate(-50%,-20%) scale(.4);opacity:0}15%{transform:translate(-50%,-50%) scale(1.25);opacity:1}30%{transform:translate(-50%,-60%) scale(1)}100%{transform:translate(-50%,-160%) scale(1);opacity:0}}
+.bars{position:fixed;left:0;right:0;height:0;background:#000;z-index:9;transition:height .4s;pointer-events:none}
+#barT{top:0}#barB{bottom:0}
+body.cine .bars{height:9vh}
+/* verdict */
+#verdict{background:rgba(0,0,0,.55);backdrop-filter:blur(3px)}
+.vc{width:min(560px,100%);background:linear-gradient(180deg,rgba(30,22,13,.97),rgba(12,9,6,.98));border:1px solid var(--line);border-radius:20px;padding:22px;text-align:center;box-shadow:0 20px 80px rgba(0,0,0,.7);animation:up2 .5s cubic-bezier(.2,1.4,.3,1)}
+@keyframes up2{from{transform:scale(.8);opacity:0}}
+.vt{font-family:Bangers,sans-serif;font-size:64px;letter-spacing:3px;line-height:1}
+.vg{font-family:Bangers,sans-serif;font-size:90px;line-height:1;margin:6px 0}
+.vs{display:flex;justify-content:center;gap:22px;margin:10px 0;color:var(--mut);font-size:13px}
+.vs b{display:block;color:var(--ink);font-size:22px}
+#qte{position:fixed;inset:0;z-index:17;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;touch-action:manipulation}
+#qte .rg{position:relative;width:150px;height:150px}
+#qte .t,#qte .s{position:absolute;inset:0;border-radius:50%}
+#qte .t{border:10px solid rgba(242,195,91,.9);box-shadow:0 0 30px rgba(242,195,91,.8),inset 0 0 30px rgba(242,195,91,.5)}
+#qte .s{border:5px solid #fff;box-shadow:0 0 20px #fff}
+#qte .q{font-family:Bangers,sans-serif;font-size:34px;letter-spacing:2px;margin-top:22px;-webkit-text-stroke:2px #000;paint-order:stroke fill;text-shadow:0 3px 0 #000}
+#duel{position:fixed;inset:0;z-index:17;display:flex;align-items:center;justify-content:center;cursor:crosshair;touch-action:manipulation}
+#duel .dw{font-family:Bangers,sans-serif;font-size:clamp(30px,6vw,56px);letter-spacing:3px;color:#ffe7a3;-webkit-text-stroke:2px #000;paint-order:stroke fill;text-shadow:0 3px 0 #000;margin-top:34vh;text-align:center}
+#load{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:30;background:#0b0907;font-family:Cinzel,serif;color:var(--gold);letter-spacing:3px;transition:opacity .6s}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div class="bars" id="barT"></div><div class="bars" id="barB"></div>
+<div id="load">ENTERING THE COURT…</div>
+
+<div id="menu" class="ov">
+  <div class="mwrap">
+    <div class="title">COURTROOM DUEL</div>
+    <div class="tsub">Legal Studies · Answer to attack · Farm aura · Win the case</div>
+    <div class="rankc">
+      <div style="font-size:34px">⚖️</div>
+      <div style="flex:1">
+        <div class="rn" id="rankName">Law Student</div>
+        <div class="small" id="rankTxt">0 aura</div>
+        <div class="bar"><i id="rankBar" style="width:0"></i></div>
+      </div>
+    </div>
+    <div class="cases" id="cases"></div>
+    <div class="set">
+      <div class="row">
+        <input id="pname" placeholder="Your name" maxlength="16" style="width:150px">
+        <input type="password" id="key" placeholder="Court password (for Claude marking)" style="flex:1;min-width:200px">
+        <button id="saveKey">Unlock</button>
+      </div>
+      <div class="small" style="margin-top:6px" id="keyState"></div>
+      <details style="margin-top:6px"><summary class="small">Owner: save the Anthropic API key</summary>
+        <div class="row" style="margin-top:6px"><input type="password" id="suKey" placeholder="sk-ant-…" style="flex:1;min-width:200px"><button id="suGo">Save key</button></div>
+        <div class="small" id="suMsg" style="margin-top:4px">Uses the court password above. The key goes straight to the relay and is never shown again.</div>
+      </details>
+      <div class="row" style="margin-top:8px">
+        <label class="small"><input type="checkbox" id="optHi"> High graphics</label>
+        <label class="small"><input type="checkbox" id="optSnd"> Sound</label>
+        <label class="small"><input type="checkbox" id="optTimer"> Speed bonus timer</label>
+      </div>
+      <div class="small" style="margin-top:8px">How it works: each question is an argument. A strong answer hits the other barrister's credibility, a weak one lets them hit back. Three strong answers in a row starts an aura combo. Peeking at the brief shows the marking points but cuts your damage.</div>
+    </div>
+  </div>
+</div>
+
+<div id="hud" class="hide">
+  <div class="side"><div class="nm" id="nmY" style="color:#bfe3ff">You</div><div class="hp"><i class="lag" id="lagY" style="width:100%"></i><i class="f" id="hpY" style="width:100%"></i></div><div class="aura" id="auY">0 AURA</div></div>
+  <div class="mid"><div class="qn" id="qn">1/5</div><div class="combo" id="combo"></div><div class="small" id="tmr"></div></div>
+  <div class="side r"><div class="nm" id="nmF" style="color:#ffc2c8">Opponent</div><div class="hp"><i class="lag" id="lagF" style="width:100%"></i><i class="f" id="hpF" style="width:100%"></i></div><div class="aura" id="auF">0 AURA</div></div>
+</div>
+<div id="hudBtns" class="hide"><button id="bMute">🔊</button><button id="bQuit">Leave court</button></div>
+
+<div id="qp" class="hide">
+  <div><span class="tag" id="qTag"></span><span class="tag" id="qMarks"></span><span class="tag" id="qWord"></span></div>
+  <div class="qt" id="qText"></div>
+  <div class="ctx" id="qCtx"></div>
+  <div class="brief hide" id="qBrief"></div>
+  <textarea id="ans" placeholder="Make your argument… (write it like the exam)"></textarea>
+  <div class="row" style="margin-top:10px">
+    <button class="pri" id="bArgue">⚔️ Present argument</button>
+    <button id="bPeek">📜 Peek at brief (−25% dmg)</button>
+    <span class="small" id="selfNote"></span>
+  </div>
+</div>
+
+<div id="box" class="hide"><span class="bn" id="boxN"></span><div class="bt"><span id="boxT"></span><span class="nx">▼</span></div></div>
+<div id="ruling" class="hide"></div>
+<div id="slam"></div>
+<div id="fx"></div>
+<div id="flash"></div>
+<div id="duel" class="hide"><div class="dw" id="duelT"></div></div>
+<div id="qte" class="hide"><div class="rg"><div class="t"></div><div class="s" id="qteS"></div></div><div class="q">TAP / SPACE TO OVERRULE!</div></div>
+<div id="verdict" class="ov hide"><div class="vc" id="vc"></div></div>
+
+<script src="../three-r170.js"></script>
+<script>
+'use strict';
+/* ================= DATA ================= */
+const MODEL = 'claude-haiku-5-5';
+const Q = {
+ A1:{m:2,q:'Explain access as a principle of justice.',
+  a:'Access means that all people should be able to engage with the justice system and its processes on an informed basis.',
+  k:['All people should be able to engage with the justice system and its processes.','Engagement should occur on an informed basis.']},
+ A2:{m:4,q:'Distinguish between the burden of proof and the standard of proof in a civil dispute.',
+  a:"The burden of proof refers to the party responsible for proving a case. In a civil dispute this usually rests with the plaintiff.\n\nThe standard of proof refers to the degree or level of proof required to establish a claim. In a civil dispute this is on the balance of probabilities, meaning the plaintiff's version of events is more likely than the defendant's.",
+  k:['Explain burden of proof (party responsible for proving, usually the plaintiff).','Explain standard of proof (balance of probabilities).','Show the difference between them.']},
+ A3:{m:4,q:'Compare arbitration and mediation as methods of dispute resolution.',
+  a:'Arbitration and mediation are similar because both use an independent and unbiased third party and provide parties with an opportunity to be heard.\n\nIn mediation, the mediator facilitates discussion and helps parties reach their own resolution. The mediator does not impose a decision.\n\nIn arbitration, the arbitrator hears evidence and makes the final decision.\n\nIn arbitration, the decision is legally binding. In mediation, an outcome is only binding if parties agree and sign a Terms of Settlement.',
+  k:['Similarities (independent third party, opportunity to be heard).','Differences (who decides; binding or not).','Uses comparison language (whereas, similarly, however).']},
+ A4a:{m:4,ctx:'Casey was injured by train doors closing while exiting a carriage.',q:"Explain breach and causation in relation to Casey's case.",
+  a:"Casey must prove that the train operators owed her a duty of care and breached that duty by allowing the doors to close and the train to move while she was exiting.\n\nCasey must also prove causation, meaning there was a direct link between the operators' conduct and her injuries. She would not have been injured if the operators had ensured she was clear of the train before departure.",
+  k:['Explain breach.','Explain causation.',"Link both concepts to the facts of Casey's case."]},
+ A4b:{m:3,ctx:'Casey was injured by train doors closing while exiting a carriage. The train operators lodged a counterclaim.',q:'Explain the term counterclaim and its relevance.',
+  a:'A counterclaim is a separate claim made by the defendant against the plaintiff in response to the original claim.\n\nIn this case the defendant argues that Casey is partly responsible for her own injuries. The burden of proving the counterclaim rests with the defendant.',
+  k:['Define counterclaim.','Explain burden of proof (rests with the defendant for the counterclaim).',"Link to Casey's circumstances."]},
+ A5:{m:4,q:'Identify two institutions that resolve civil disputes and outline the disputes they can resolve.',
+  a:'Ombudsman:\nProvides a free and impartial dispute resolution service. Can investigate complaints involving government agencies and industries such as energy, telecommunications and public transport.\n\nComplaints Bodies:\nProvide complaint handling and resolution services, and may enforce laws. Examples include Consumer Affairs Victoria and the eSafety Commissioner.',
+  k:['Name a suitable institution (x2).','Explain the types of disputes each handles.','Use examples.']},
+ A6:{m:8,q:'Discuss the extent to which the Australian Constitution protects the rights of Australians.',
+  a:'The Constitution protects rights to a limited extent.\n\nStrengths:\n- Five express rights are entrenched.\n- Rights cannot be easily changed because referendums are required.\n- Individuals may challenge legislation in the High Court.\n\nWeaknesses:\n- The number of rights is limited.\n- The scope of rights can be narrow.\n- Rights may be restricted through judicial interpretation.\n\nExamples:\n- Section 92 interstate trade and commerce.\n- Restrictions during COVID-19.\n- Agricultural quarantine restrictions.\n\nOverall judgement:\nThe Constitution provides some protection but is less comprehensive than a constitutional bill of rights.',
+  k:['Strengths (express rights entrenched, referendum needed, High Court challenge).','Weaknesses (few rights, narrow scope, judicial interpretation).','Examples (s92, COVID-19 restrictions, quarantine).','Overall judgement on the extent.']},
+ A7:{m:6,q:'Evaluate the use of a jury in a civil trial.',
+  a:'Advantages:\n- Impartial decision makers.\n- Reflect community standards.\n- Represent a cross-section of society.\n\nDisadvantages:\n- Potential bias.\n- Media influence.\n- Jury selection may reduce representativeness.\n- Expensive and rarely used.\n\nConclusion:\nJuries provide benefits but are not essential to the effective operation of civil trials.',
+  k:['Advantages.','Disadvantages.','Conclusion / overall evaluation.']},
+ A8:{m:5,q:'Identify an area of civil law studied and describe two defences.',
+  a:"Area: Negligence.\n\nDefence 1: Contributory Negligence.\nThe plaintiff contributed to their own loss. Damages are reduced according to the plaintiff's level of responsibility.\n\nDefence 2: Volenti Non Fit Injuria (Voluntary Assumption of Risk).\nThe plaintiff knowingly accepted the risk and voluntarily participated in the activity.",
+  k:['Identify an area of civil law (e.g. negligence).','Describe defence 1 (e.g. contributory negligence).','Describe defence 2 (e.g. volenti non fit injuria).']},
+ B1a:{m:2,q:'Define human rights.',
+  a:'Human rights are the basic freedoms and standards that promote and uphold human dignity and are guaranteed by a moral sense of duty and by the law.',
+  k:['Basic freedoms and standards that uphold human dignity.','Guaranteed by moral duty and by law.']},
+ B1b:{m:4,q:'Describe the role of the Human Rights Commission as a dispute resolution body.',
+  a:'The Human Rights Commission is a complaints body that provides a free, fair and timely dispute resolution service.\n\nIt deals with disputes involving discrimination, harassment, vilification and victimisation.\n\nThe Commission commonly uses conciliation, where an independent third party assists the parties to reach agreement. Outcomes may include compensation, apologies or agreements to stop certain conduct.',
+  k:['Complaints body providing a free, fair, timely service.','Types of disputes (discrimination, harassment, vilification, victimisation).','Uses conciliation; possible outcomes.']},
+ B1c:{m:6,ctx:'AFL racism matter handled by the Human Rights Commission.',q:'Evaluate conciliation as used by the Human Rights Commission in the AFL racism matter.',
+  a:'Advantages:\n- Joint resolution.\n- Allows parties to communicate.\n- Can repair relationships.\n- Greater satisfaction because outcomes are agreed upon.\n\nDisadvantages:\n- Stronger parties may dominate.\n- Dispute may remain unresolved.\n- Outcomes are not automatically legally binding.\n\nConclusion:\nConciliation is effective because it promotes agreement and relationship repair, though success depends on cooperation.',
+  k:['Advantages.','Disadvantages.','Conclusion / judgement.','Link to the AFL matter.']},
+ B1d:{m:4,q:'Distinguish conciliation from a Federal Court hearing.',
+  a:'Conciliation:\n- Cooperative process.\n- Joint resolution.\n- Outcome may not be binding.\n- Third party does not decide.\n\nFederal Court hearing:\n- Judge determines outcome.\n- Win/lose result.\n- Legally binding.\n- Formal court process.',
+  k:['Features of conciliation.','Features of a Federal Court hearing.','Clear differences drawn between them.']},
+ B1e:{m:4,ctx:'Cyril Rioli, AFL racism matter.',q:'Analyse one difficulty faced by Cyril Rioli in accessing the civil justice system.',
+  a:'First Nations peoples may experience cultural barriers when interacting with legal institutions.\n\nRespect shown towards authority figures may be interpreted as hesitancy or lack of credibility.\n\nThis may affect confidence, willingness to participate and how evidence is perceived.',
+  k:['Identify a difficulty (cultural barriers for First Nations peoples).','Explain how it arises.','Analyse its effect on access (confidence, participation, evidence).']},
+ B1f:{m:4,q:'Explain how the Human Rights Commission assists the civil justice system to achieve two principles of justice.',
+  a:'Access:\nThe Commission provides a more affordable and accessible process than litigation.\n\nEquality:\nAll parties receive equal opportunities to present their views and participate in the process.',
+  k:['Principle 1 named and explained with how the Commission achieves it.','Principle 2 named and explained with how the Commission achieves it.']},
+ B2a:{m:4,q:'Analyse the role of the Victorian Charter of Human Rights and Responsibilities.',
+  a:'The Charter sets out rights, freedoms and responsibilities in Victoria.\n\nParliament must consider compatibility with Charter rights when making laws.\n\nThe Charter acts as a safeguard ensuring rights remain a priority.\n\nThe Charter also supports education, training and awareness regarding human rights.',
+  k:['Sets out rights, freedoms and responsibilities.','Parliament must consider compatibility.','Safeguard role.','Education and awareness.']},
+ B2b:{m:6,q:'Discuss the extent to which the Charter protects rights.',
+  a:'Strengths:\n- Rights are clearly listed.\n- Rights are accessible.\n- Laws must consider Charter rights.\n- Provides a framework for promoting rights.\n\nWeaknesses:\n- Only 20 rights are specifically protected.\n- Future rights may not be covered.\n- Parliament can amend or remove Charter rights because it is ordinary legislation.\n\nOverall judgement:\nThe Charter provides significant protection but is limited by its scope and lack of entrenchment.',
+  k:['Strengths.','Weaknesses (20 rights, not entrenched, ordinary legislation).','Overall judgement on the extent.']},
+ B3a:{m:2,ctx:'Case: Matthew Leonard v Faleupolu Atileo (negligence).',q:'Identify the plaintiff and defendant.',
+  a:'Plaintiff: Matthew Leonard.\nDefendant: Faleupolu Atileo.',
+  k:['Plaintiff: Matthew Leonard.','Defendant: Faleupolu Atileo.']},
+ B3b:{m:4,q:'Explain two elements required to establish negligence.',
+  a:"Duty of Care:\nThe defendant owed the plaintiff a duty to avoid reasonably foreseeable harm.\n\nCausation:\nThe defendant's actions directly caused the plaintiff's injuries.\n\nOther acceptable elements:\n- Breach of duty.\n- Loss, injury or damage.",
+  k:['Element 1 named and explained.','Element 2 named and explained. (Acceptable: duty of care, breach, causation, loss/injury/damage.)']},
+ B3c:{m:6,ctx:'Matthew Leonard was awarded damages for profound and permanent injury.',q:'Discuss the extent to which damages achieved their purpose.',
+  a:'Strengths:\n- Reimbursed expenses.\n- Covered treatment and future care.\n- Provided compensation.\n- Sent a message about unacceptable conduct.\n\nWeaknesses:\n- Money cannot restore permanent health loss.\n- Cannot fully return the plaintiff to their original position.\n\nOverall judgement:\nDamages achieved their purpose only to a limited extent because compensation cannot reverse profound and permanent injury.',
+  k:['Ways damages achieved their purpose.','Ways they did not.','Overall judgement on the extent.']},
+};
+const CASES = [
+ {id:'c1',name:'The Principles',sub:'Preliminary hearing',foe:'Mr Smugworth',foeT:'Junior Counsel',qs:['A1','B1a','A2','B1f'],robe:0x2a2333,aura:0xff5a3c,glasses:0,skin:0xf0c9a4},
+ {id:'c2',name:'Casey v The Train Co.',sub:'Negligence on the platform',foe:'Ms Vex',foeT:'Counsel for the Operators',qs:['A4a','A4b','A2','A8','B3b'],robe:0x3a1420,aura:0xff2d6a,glasses:1,skin:0xc98e6a},
+ {id:'c3',name:'The Commission Matter',sub:'Conciliation & access',foe:'Mr Grimshaw',foeT:'Senior Associate',qs:['B1b','B1c','B1d','B1e','B1f'],robe:0x1c2a22,aura:0xa94bff,glasses:0,skin:0xe2b48c},
+ {id:'c4',name:'Leonard v Atileo',sub:'Damages & the jury',foe:'Dr Hollowmere',foeT:'Barrister',qs:['B3a','B3b','B3c','A7','A8'],robe:0x181818,aura:0x2dd4ff,glasses:1,skin:0x8d5a3b},
+ {id:'c5',name:'The Rights Trial',sub:'Boss case · High Court',foe:'Dame Ironwig KC',foeT:'King’s Counsel',qs:['A6','B2a','B2b','A5','A3'],robe:0x0e0e14,aura:0xff1a1a,glasses:1,skin:0xf3d2b8,boss:1},
+ {id:'qt',name:'Quick Trial',sub:'6 random questions',foe:'Ms Random',foeT:'Duty Counsel',qs:null,robe:0x2b2b38,aura:0xffd21a,glasses:0,skin:0xd9a37e,free:1},
+];
+const RANKS = [[0,'Law Student'],[2500,'Paralegal'],[6000,'Solicitor'],[11000,'Barrister'],[18000,'Senior Counsel'],[28000,'Magistrate'],[40000,'Judge'],[60000,'High Court Justice']];
+const JABS = ['Objection, Your Honour! My learned friend has skipped half the marking guide.','Is that an answer or a rough draft?','My learned friend appears to have mistaken vibes for legal reasoning.','Not a single piece of legal terminology. Bold strategy.','The examiner called, Your Honour. They want their marks back.','With respect, that answer has less substance than an unsigned Terms of Settlement.','I object! The task word was right there in the question.'];
+const RULE = {mog:['Devastating. The court is genuinely impressed.','Textbook. Counsel has done the reading.'],strong:['A persuasive argument. The court accepts most of it.','Well put, counsel. A few gaps, but convincing.'],mid:['Partly persuasive. The court expected more detail.','Some merit, counsel, but the argument is incomplete.'],weak:['The court is not persuaded. At all.','Counsel, that argument falls well short.']};
+const TASKW = ['Explain','Distinguish','Compare','Evaluate','Discuss','Analyse','Identify','Describe','Define','Outline'];
+
+/* ================= UTIL ================= */
+const $ = id => document.getElementById(id);
+const ls = (k, v) => { try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch (e) { return null; } };
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+const lerp = (a, b, k) => a + (b - a) * k;
+const ease = t => t < .5 ? 4*t*t*t : 1 - Math.pow(-2*t + 2, 3) / 2;
+let SAVE = {aura:0, grades:{}, played:0}; try { Object.assign(SAVE, JSON.parse(ls('cd-save') || '{}')); } catch (e) {}
+const persist = () => ls('cd-save', JSON.stringify(SAVE));
+const OPT = {hi: ls('cd-hi') !== '0', snd: ls('cd-snd') !== '0', timer: ls('cd-timer') === '1'};
+
+/* ================= AUDIO ================= */
+const A = {ctx:null, out:null, nb:null};
+function au() {
+  if (!A.ctx) { try {
+    A.ctx = new (window.AudioContext || window.webkitAudioContext)();
+    A.out = A.ctx.createGain(); A.out.gain.value = OPT.snd ? .55 : 0;
+    const comp = A.ctx.createDynamicsCompressor(); A.out.connect(comp); comp.connect(A.ctx.destination);
+    const n = A.ctx.sampleRate * 2; A.nb = A.ctx.createBuffer(1, n, A.ctx.sampleRate);
+    const d = A.nb.getChannelData(0); for (let i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
+    const src = A.ctx.createBufferSource(); src.buffer = A.nb; src.loop = true;
+    const f = A.ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 260;
+    const g = A.ctx.createGain(); g.gain.value = .035; src.connect(f); f.connect(g); g.connect(A.out); src.start();
+  } catch (e) { A.ctx = null; } }
+  if (A.ctx && A.ctx.state === 'suspended') A.ctx.resume();
+  return A.ctx;
+}
+function env(g, t, a, d, v) { g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(v, t + a); g.gain.exponentialRampToValueAtTime(0.0001, t + a + d); }
+function tone(type, f0, f1, dur, vol, dl = 0, lp) {
+  const c = au(); if (!c) return; const t = c.currentTime + dl;
+  const o = c.createOscillator(), g = c.createGain(); o.type = type; o.frequency.setValueAtTime(f0, t);
+  if (f1) o.frequency.exponentialRampToValueAtTime(f1, t + dur);
+  env(g, t, .005, dur, vol); let n = o;
+  if (lp) { const f = c.createBiquadFilter(); f.type = 'lowpass'; f.frequency.setValueAtTime(lp[0], t); f.frequency.exponentialRampToValueAtTime(lp[1], t + dur); o.connect(f); n = f; }
+  n.connect(g); g.connect(A.out); o.start(t); o.stop(t + dur + .05);
+}
+function noise(dur, vol, type, f0, f1, q = 1, dl = 0, att = .005) {
+  const c = au(); if (!c) return; const t = c.currentTime + dl;
+  const s = c.createBufferSource(); s.buffer = A.nb; const f = c.createBiquadFilter(); f.type = type; f.Q.value = q;
+  f.frequency.setValueAtTime(f0, t); if (f1) f.frequency.exponentialRampToValueAtTime(f1, t + dur);
+  const g = c.createGain(); env(g, t, att, dur, vol); s.connect(f); f.connect(g); g.connect(A.out); s.start(t, Math.random()); s.stop(t + dur + att + .05);
+}
+const SFX = {
+  gavel(){ noise(.09,1,'bandpass',1100,700,3); tone('sine',210,70,.22,1); noise(.5,.18,'lowpass',500,150,1,.03); },
+  whoosh(){ noise(.4,.55,'bandpass',250,3200,1.4,0,.12); },
+  impact(k=1){ tone('sine',150,32,.7,1*k); noise(.6,.7*k,'lowpass',2400,90,.8); tone('square',95,40,.16,.18*k); },
+  aura(k=1,dur=1.2){ [110,138.6,165,220].forEach((f,i)=>tone('sawtooth',f,f*1.6,dur,.07*k,i*.03,[300,3200])); noise(dur,.15*k,'bandpass',300,2500,.8,0,dur*.6); },
+  ooh(){ [430,620,520].forEach((f,i)=>noise(1.3,.11,'bandpass',f,f*.8,6,i*.05,.45)); },
+  gasp(){ noise(.5,.18,'bandpass',1800,900,2,0,.05); },
+  blip(){ tone('square',540+Math.random()*90,0,.025,.035); },
+  slam(){ tone('sawtooth',260,90,.35,.25); noise(.3,.4,'highpass',2000,600,.7); },
+  win(){ [523,659,784,1047,1319].forEach((f,i)=>tone('triangle',f,0,.5,.22,i*.1)); },
+  lose(){ [392,330,262,196].forEach((f,i)=>tone('sine',f,f*.97,.55,.2,i*.22)); },
+  tick(){ tone('sine',1400,0,.03,.05); },
+  bang(){ noise(.25,1.1,'highpass',900,300,.6); noise(.5,.6,'lowpass',1500,120,.7); tone('sine',110,40,.3,.9); },
+  whistle(){ tone('sine',1250,1050,.5,.07); tone('sine',1050,1300,.45,.07,.55); },
+  click(){ tone('square',2200,0,.02,.08); tone('square',1600,0,.02,.06,.05); },
+};
+
+/* ================= 3D ================= */
+const T = THREE, V3 = T.Vector3;
+const canvas = $('c');
+const R = new T.WebGLRenderer({canvas, antialias:false, powerPreference:'high-performance'});
+R.shadowMap.enabled = true; R.shadowMap.type = T.PCFSoftShadowMap;
+const scene = new T.Scene(); scene.background = new T.Color(0x0a0806);
+scene.fog = new T.FogExp2(0x1a120a, .018);
+const cam = new T.PerspectiveCamera(48, 1, .05, 80);
+const clockT = {t:0};
+
+// ---- procedural textures
+function cv(w, h, fn) { const c = document.createElement('canvas'); c.width = w; c.height = h; const g = c.getContext('2d'); fn(g, w, h); return c; }
+function tex(c, rx = 1, ry = 1, srgb = true) { const t = new T.CanvasTexture(c); t.wrapS = t.wrapT = T.RepeatWrapping; t.repeat.set(rx, ry); if (srgb) t.colorSpace = T.SRGBColorSpace; t.anisotropy = 8; return t; }
+let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+function grain(g, x, y, w, h, base, dark, n) {
+  g.fillStyle = base; g.fillRect(x, y, w, h);
+  for (let i = 0; i < n; i++) {
+    const yy = y + rnd() * h, a = .05 + rnd() * .18; g.strokeStyle = `rgba(${dark},${a})`; g.lineWidth = .5 + rnd() * 1.6;
+    g.beginPath(); g.moveTo(x, yy); const ph = rnd() * 6, am = rnd() * 3;
+    for (let xx = 0; xx <= w; xx += 8) g.lineTo(x + xx, yy + Math.sin(xx * .03 + ph) * am); g.stroke();
+  }
+}
+const woodC = cv(512, 512, (g, w, h) => { grain(g, 0, 0, w, h, '#5a2f17', '30,12,4', 260); for (let i = 0; i < 3; i++) { const x = rnd() * w, y = rnd() * h; const gr = g.createRadialGradient(x, y, 1, x, y, 14); gr.addColorStop(0, 'rgba(25,8,2,.6)'); gr.addColorStop(1, 'rgba(25,8,2,0)'); g.fillStyle = gr; g.fillRect(x - 20, y - 20, 40, 40); } });
+const woodLC = cv(512, 512, (g, w, h) => grain(g, 0, 0, w, h, '#8a5328', '50,22,6', 220));
+const floorC = cv(1024, 1024, (g, w, h) => {
+  const pw = 128, ph = 32;
+  for (let r = 0; r < h / ph; r++) for (let c = -1; c < w / pw + 1; c++) {
+    const x = c * pw + (r % 2) * pw / 2, y = r * ph; const v = 70 + rnd() * 40;
+    grain(g, x, y, pw, ph, `rgb(${v + 50},${v},${v * .45})`, '40,18,5', 10);
+    g.fillStyle = 'rgba(15,6,2,.85)'; g.fillRect(x, y, pw, 1.5); g.fillRect(x, y, 1.5, ph);
+  }
+});
+const plasterC = cv(512, 512, (g, w, h) => { g.fillStyle = '#d9cdb4'; g.fillRect(0, 0, w, h); for (let i = 0; i < 9000; i++) { g.fillStyle = `rgba(${rnd() > .5 ? '255,250,235' : '120,100,70'},${rnd() * .07})`; g.fillRect(rnd() * w, rnd() * h, 2, 2); } });
+const carpetC = cv(512, 512, (g, w, h) => {
+  g.fillStyle = '#5c0e14'; g.fillRect(0, 0, w, h);
+  for (let i = 0; i < 6000; i++) { g.fillStyle = `rgba(${rnd() > .5 ? '120,20,30' : '30,0,4'},.25)`; g.fillRect(rnd() * w, rnd() * h, 2, 2); }
+  g.strokeStyle = '#c9963c'; g.lineWidth = 6; g.strokeRect(18, -10, w - 36, h + 20); g.lineWidth = 2; g.strokeRect(34, -10, w - 68, h + 20);
+  g.fillStyle = 'rgba(201,150,60,.35)';
+  for (let y = 32; y < h; y += 64) { g.beginPath(); g.moveTo(w / 2, y - 20); g.lineTo(w / 2 + 20, y); g.lineTo(w / 2, y + 20); g.lineTo(w / 2 - 20, y); g.fill(); }
+});
+const leatherC = cv(256, 256, (g, w, h) => { g.fillStyle = '#1f4a2e'; g.fillRect(0, 0, w, h); for (let i = 0; i < 4000; i++) { g.fillStyle = `rgba(0,0,0,${rnd() * .15})`; g.fillRect(rnd() * w, rnd() * h, 2, 2); } g.strokeStyle = '#c9a24a'; g.lineWidth = 3; g.strokeRect(8, 8, w - 16, h - 16); });
+const crestC = cv(1024, 1024, (g, w, h) => {
+  const cx = w / 2, cy = h / 2; g.clearRect(0, 0, w, h);
+  const gr = g.createRadialGradient(cx, cy, 50, cx, cy, 470); gr.addColorStop(0, '#7a1420'); gr.addColorStop(1, '#3a060c');
+  g.fillStyle = gr; g.beginPath(); g.arc(cx, cy, 470, 0, 7); g.fill();
+  g.strokeStyle = '#e8b64e'; g.lineWidth = 26; g.beginPath(); g.arc(cx, cy, 455, 0, 7); g.stroke();
+  g.lineWidth = 6; g.beginPath(); g.arc(cx, cy, 410, 0, 7); g.stroke();
+  g.fillStyle = '#f0c45c'; g.strokeStyle = '#f0c45c'; g.lineWidth = 18; g.lineCap = 'round';
+  g.beginPath(); g.moveTo(cx, cy - 260); g.lineTo(cx, cy + 230); g.stroke();
+  g.beginPath(); g.moveTo(cx - 260, cy - 170); g.lineTo(cx + 260, cy - 170); g.stroke();
+  g.beginPath(); g.arc(cx, cy - 275, 26, 0, 7); g.fill();
+  g.fillRect(cx - 120, cy + 220, 240, 36);
+  g.lineWidth = 6;
+  for (const s of [-1, 1]) {
+    const px = cx + s * 230; g.beginPath(); g.moveTo(px, cy - 170); g.lineTo(px - 70, cy + 20); g.moveTo(px, cy - 170); g.lineTo(px + 70, cy + 20); g.stroke();
+    g.beginPath(); g.ellipse(px, cy + 22, 92, 26, 0, 0, Math.PI); g.fill();
+  }
+  g.font = '700 64px Cinzel, serif'; g.textAlign = 'center'; g.fillText('LEX · IUSTITIA', cx, cy + 360);
+});
+const woodT = tex(woodC, 1, 1), woodLT = tex(woodLC), floorT = tex(floorC, 5, 7), plasterT = tex(plasterC, 4, 2), carpetT = tex(carpetC, 1, 6), leatherT = tex(leatherC), crestT = tex(crestC);
+const bumpT = tex(woodC, 1, 1, false);
+
+const M = {
+  wood: new T.MeshStandardMaterial({map:woodT, roughness:.42, metalness:0, bumpMap:bumpT, bumpScale:.6, envMapIntensity:.8}),
+  woodL: new T.MeshStandardMaterial({map:woodLT, roughness:.5, envMapIntensity:.7}),
+  floor: new T.MeshStandardMaterial({map:floorT, roughness:.32, envMapIntensity:1}),
+  plaster: new T.MeshStandardMaterial({map:plasterT, roughness:.9, envMapIntensity:.4}),
+  carpet: new T.MeshStandardMaterial({map:carpetT, roughness:1, envMapIntensity:.2}),
+  leather: new T.MeshStandardMaterial({map:leatherT, roughness:.6}),
+  red: new T.MeshStandardMaterial({color:0x6b0f18, roughness:.75}),
+  brass: new T.MeshStandardMaterial({color:0xd9a441, roughness:.25, metalness:1}),
+  paper: new T.MeshStandardMaterial({color:0xf3eee2, roughness:.9}),
+  dark: new T.MeshStandardMaterial({color:0x14100c, roughness:.6}),
+  glass: new T.MeshStandardMaterial({color:0xcfe6ff, emissive:0xbfdcff, emissiveIntensity:3.2, roughness:.1}),
+  bulb: new T.MeshStandardMaterial({color:0xffe2b0, emissive:0xffcf8a, emissiveIntensity:9}),
+  green: new T.MeshStandardMaterial({color:0x0d5a2a, emissive:0x1a8a40, emissiveIntensity:.35, roughness:.2, metalness:.3}),
+  crest: new T.MeshStandardMaterial({map:crestT, transparent:true, roughness:.35, metalness:.3, emissive:0xffffff, emissiveMap:crestT, emissiveIntensity:.12}),
+};
+const SH = 1, NOSH = 0;
+function box(w, h, d, mat, x, y, z, sh = SH, ry = 0, parent = scene) {
+  const m = new T.Mesh(new T.BoxGeometry(w, h, d), mat); m.position.set(x, y, z); m.rotation.y = ry;
+  m.castShadow = !!sh; m.receiveShadow = true; parent.add(m); return m;
+}
+function cyl(rt, rb, h, mat, x, y, z, seg = 16, sh = SH, parent = scene) {
+  const m = new T.Mesh(new T.CylinderGeometry(rt, rb, h, seg), mat); m.position.set(x, y, z); m.castShadow = !!sh; m.receiveShadow = true; parent.add(m); return m;
+}
+const RX = 9, RZ0 = -11, RZ1 = 12, RH = 7.2;
+
+function buildRoom() {
+  // floor + ceiling
+  const fl = new T.Mesh(new T.PlaneGeometry(RX * 2, RZ1 - RZ0), M.floor); fl.rotation.x = -Math.PI / 2; fl.position.z = (RZ0 + RZ1) / 2; fl.receiveShadow = true; scene.add(fl);
+  const run = new T.Mesh(new T.PlaneGeometry(2.2, 10), M.carpet); run.rotation.x = -Math.PI / 2; run.position.set(0, .006, 6.5); run.receiveShadow = true; scene.add(run);
+  const ce = new T.Mesh(new T.PlaneGeometry(RX * 2, RZ1 - RZ0), M.plaster); ce.rotation.x = Math.PI / 2; ce.position.set(0, RH, (RZ0 + RZ1) / 2); scene.add(ce);
+  for (let x = -RX + 3; x < RX; x += 3) box(.3, .35, RZ1 - RZ0, M.wood, x, RH - .17, (RZ0 + RZ1) / 2, NOSH);
+  for (let z = RZ0 + 3; z < RZ1; z += 3) box(RX * 2, .35, .3, M.wood, 0, RH - .17, z, NOSH);
+  // walls: right, back, front (plaster upper, wood wainscot)
+  const wall = (len, x, z, ry) => {
+    const up = new T.Mesh(new T.PlaneGeometry(len, RH), M.plaster); up.position.set(x, RH / 2, z); up.rotation.y = ry; up.receiveShadow = true; scene.add(up);
+    const g = new T.Group(); g.position.set(x, 0, z); g.rotation.y = ry; scene.add(g);
+    box(len, 2.4, .12, M.wood, 0, 1.2, .06, NOSH, 0, g);
+    for (let px = -len / 2 + .9; px < len / 2 - .5; px += 1.5) { box(1.1, 1.5, .04, M.woodL, px, 1.15, .14, NOSH, 0, g); }
+    box(len, .12, .22, M.wood, 0, 2.42, .1, NOSH, 0, g);
+    box(len, .3, .2, M.wood, 0, RH - .15, .1, NOSH, 0, g);
+    for (let px = -len / 2 + 2; px < len / 2; px += 4) { box(.5, RH, .3, M.wood, px, RH / 2, .15, NOSH, 0, g); box(.7, .3, .4, M.wood, px, RH - .5, .2, NOSH, 0, g); }
+    return g;
+  };
+  wall(RX * 2, 0, RZ0, 0);
+  wall(RX * 2, 0, RZ1, Math.PI);
+  wall(RZ1 - RZ0, RX, (RZ0 + RZ1) / 2, -Math.PI / 2);
+  // left wall with windows (casts shadows so sunlight comes through the panes)
+  const lw = new T.Group(); lw.position.set(-RX, 0, 0); lw.rotation.y = Math.PI / 2; scene.add(lw);
+  const wins = [-7, -2.5, 2, 6.5], wy0 = 2.6, wy1 = 6.0, ww = 1.6;
+  const lwBox = (w, h, z, y) => { const m = box(w, h, .4, M.plaster, z, y, -.1, SH, 0, lw); return m; };
+  lwBox(RZ1 - RZ0, wy0, -(RZ0 + RZ1) / 2 * -1 * -1, wy0 / 2).position.x = -(RZ0 + RZ1) / 2;
+  const top = lwBox(RZ1 - RZ0, RH - wy1, 0, (RH + wy1) / 2); top.position.x = -(RZ0 + RZ1) / 2;
+  let edges = [RZ0, ...wins.flatMap(z => [z - ww / 2, z + ww / 2]), RZ1];
+  for (let i = 0; i < edges.length; i += 2) { const a = edges[i], b = edges[i + 1], w = b - a; const p = lwBox(w, wy1 - wy0, 0, (wy0 + wy1) / 2); p.position.x = -(a + b) / 2; }
+  box(RZ1 - RZ0, 2.4, .12, M.wood, -(RZ0 + RZ1) / 2, 1.2, .1, NOSH, 0, lw);
+  box(RZ1 - RZ0, .12, .22, M.wood, -(RZ0 + RZ1) / 2, 2.42, .14, NOSH, 0, lw);
+  for (const z of wins) {
+    const pane = new T.Mesh(new T.PlaneGeometry(ww, wy1 - wy0), M.glass); pane.position.set(-z, (wy0 + wy1) / 2, -.28); lw.add(pane);
+    box(.06, wy1 - wy0, .08, M.wood, -z, (wy0 + wy1) / 2, -.2, SH, 0, lw);
+    for (let y = wy0 + .85; y < wy1 - .1; y += .85) box(ww, .06, .08, M.wood, -z, y, -.2, SH, 0, lw);
+    box(ww + .3, .14, .3, M.wood, -z, wy0, 0, NOSH, 0, lw);
+    // drapes
+    for (const s of [-1, 1]) drape(lw, -z + s * (ww / 2 + .32), wy0 - 1.2, .55, RH - wy0 + 1.0);
+  }
+  return wins;
+}
+function drape(parent, x, y0, w, h) {
+  const g = new T.PlaneGeometry(w, h, 16, 1); const p = g.attributes.position;
+  for (let i = 0; i < p.count; i++) p.setZ(i, Math.sin(p.getX(i) / w * 18) * .06);
+  g.computeVertexNormals();
+  const m = new T.Mesh(g, M.red); m.position.set(x, y0 + h / 2, .12); m.castShadow = true; m.receiveShadow = true; parent.add(m);
+  const mat2 = M.red.clone(); mat2.side = T.DoubleSide; m.material = mat2;
+}
+function buildFurniture() {
+  // judge's dais and bench
+  box(8, .6, 3.4, M.wood, 0, .3, -9.3);
+  box(6.4, 1.45, .2, M.wood, 0, 1.33, -7.7);
+  for (let x = -2.6; x <= 2.6; x += 1.3) box(1.0, 1.0, .06, M.woodL, x, 1.33, -7.58, NOSH);
+  box(6.8, .1, 1.1, M.wood, 0, 2.1, -8.1);
+  box(.2, 1.45, 1.0, M.wood, -3.2, 1.33, -8.2); box(.2, 1.45, 1.0, M.wood, 3.2, 1.33, -8.2);
+  box(.9, .08, .6, M.leather, -.9, 2.16, -8.15, NOSH);
+  // judge chair
+  box(1.1, 2.4, .2, M.red, 0, 1.8, -9.45); box(1.3, .25, .3, M.wood, 0, 3.05, -9.45); box(.9, .2, .8, M.red, 0, 1.05, -9.0);
+  // papers + gavel block on bench
+  box(.35, .015, .45, M.paper, .9, 2.16, -8.1, NOSH, .2); box(.32, .015, .42, M.paper, 1.0, 2.17, -8.05, NOSH, -.1);
+  cyl(.14, .16, .05, M.wood, -.4, 2.18, -8.0);
+  // crest + curtains
+  const cr = new T.Mesh(new T.PlaneGeometry(2.4, 2.4), M.crest); cr.position.set(0, 4.7, RZ0 + .2); scene.add(cr);
+  const bg = new T.Group(); bg.position.set(0, 0, RZ0); scene.add(bg);
+  drape(bg, -2.0, 2.4, 1.2, 4.6); drape(bg, 2.0, 2.4, 1.2, 4.6); drape(bg, 0, 6.2, 5.2, 1.0);
+  box(5.4, .18, .3, M.brass, 0, 6.15, RZ0 + .2, NOSH);
+  // associate's desk
+  box(3.0, 1.0, .9, M.wood, 0, .5, -6.6); box(3.1, .06, 1.0, M.wood, 0, 1.03, -6.6);
+  // witness box
+  box(1.8, .4, 1.8, M.wood, 5.3, .2, -6.8); box(1.8, 1.0, .1, M.wood, 5.3, .9, -5.95); box(.1, 1.0, 1.8, M.wood, 4.45, .9, -6.8); box(1.9, .08, .2, M.wood, 5.3, 1.42, -5.95);
+  // jury box (right side)
+  box(1.6, .3, 5, M.wood, 7.6, .15, -1.5); box(.1, 1.0, 5, M.wood, 6.85, .8, -1.5);
+  for (let z = -3.6; z <= .6; z += 1.4) { box(.9, .5, .6, M.red, 7.9, .55, z); box(.12, .9, .6, M.red, 8.35, 1.0, z); }
+  // counsel tables
+  for (const s of [-1, 1]) {
+    const x = s * 2.5;
+    box(2.8, .06, 1.1, M.wood, x, .8, -3.4); box(2.5, .02, .8, M.leather, x, .835, -3.4, NOSH);
+    box(2.7, .7, .06, M.wood, x, .42, -3.9);
+    for (const lx of [-1.3, 1.3]) box(.08, .78, 1.0, M.wood, x + lx, .4, -3.4);
+    // banker's lamp
+    const lx = x + s * .9; cyl(.08, .1, .04, M.brass, lx, .86, -3.65); cyl(.012, .012, .3, M.brass, lx, 1.0, -3.65, 8);
+    const sh = new T.Mesh(new T.CylinderGeometry(.06, .13, .1, 16, 1, true), M.green); sh.position.set(lx, 1.16, -3.6); sh.rotation.x = .25; scene.add(sh);
+    const bb = new T.Mesh(new T.SphereGeometry(.03, 8, 6), M.bulb); bb.position.set(lx, 1.13, -3.58); scene.add(bb);
+    // files and books
+    box(.3, .02, .4, M.paper, x - s * .4, .845, -3.35, NOSH, .15); box(.28, .05, .38, M.dark, x - s * .1, .86, -3.5, SH, -.2);
+    box(.25, .07, .35, M.red, x - s * .1, .92, -3.5, SH, .1);
+    // chair
+    box(.55, .08, .55, M.red, x + s * .3, .5, -2.5); box(.55, .7, .08, M.red, x + s * .3, .9, -2.2);
+  }
+  // the bar (rail) + gallery pews
+  const balG = new T.CylinderGeometry(.03, .04, .85, 8); const bal = new T.InstancedMesh(balG, M.woodL, 60); let bi = 0; const mt = new T.Matrix4();
+  for (const s of [-1, 1]) {
+    box(RX - 1.4, .08, .14, M.wood, s * (RX + 1.4) / 2, 1.0, 1.2); box(RX - 1.4, .08, .14, M.wood, s * (RX + 1.4) / 2, .1, 1.2);
+    for (let x = 1.6; x < RX - .2; x += .26) { mt.makeTranslation(s * x, .55, 1.2); bal.setMatrixAt(bi++, mt); }
+  }
+  bal.count = bi; bal.castShadow = true; scene.add(bal);
+  for (let z = 3.2; z < 11; z += 1.6) for (const s of [-1, 1]) {
+    const x = s * 4.6; box(6.6, .08, .5, M.wood, x, .48, z); box(6.6, .7, .07, M.wood, x, .85, z + .27); box(.1, .9, .65, M.wood, x - 3.3, .45, z + .05); box(.1, .9, .65, M.wood, x + 3.3, .45, z + .05);
+  }
+  // pendant lamps
+  for (const [x, z] of [[-4, -5], [4, -5], [-4, 4], [4, 4], [0, -.5], [0, 8.5]]) {
+    cyl(.012, .012, 1.4, M.brass, x, RH - .7, z, 6, NOSH);
+    const sh = new T.Mesh(new T.CylinderGeometry(.12, .42, .3, 24, 1, true), M.brass); sh.position.set(x, RH - 1.45, z); scene.add(sh);
+    const b = new T.Mesh(new T.SphereGeometry(.12, 16, 10), M.bulb); b.position.set(x, RH - 1.55, z); scene.add(b);
+  }
+}
+
+// ---- environment map from a simple emissive room (gives polished wood its reflections)
+function buildEnv() {
+  const es = new T.Scene(); const bm = new T.MeshBasicMaterial({color:0x3a2414, side:T.BackSide});
+  es.add(new T.Mesh(new T.BoxGeometry(20, 8, 24), bm));
+  const add = (w, h, c, x, y, z, ry) => { const m = new T.Mesh(new T.PlaneGeometry(w, h), new T.MeshBasicMaterial({color:c, side:T.DoubleSide})); m.position.set(x, y, z); m.rotation.y = ry; es.add(m); };
+  for (const z of [-7, -2.5, 2, 6.5]) add(1.6, 3.4, new T.Color(5, 5.4, 6), -9.8, 4.3, z, Math.PI / 2);
+  for (const [x, z] of [[-4, -5], [4, -5], [-4, 4], [4, 4]]) { const m = new T.Mesh(new T.SphereGeometry(.4), new T.MeshBasicMaterial({color:new T.Color(8, 6, 3.5)})); m.position.set(x, 5.6, z); es.add(m); }
+  add(20, 2.4, 0x2a160a, 0, 1.2, -11.8, 0);
+  const pm = new T.PMREMGenerator(R); const rt = pm.fromScene(es, .03); scene.environment = rt.texture; pm.dispose();
+}
+
+// ---- lights
+const L = {};
+function buildLights(wins) {
+  L.hemi = new T.HemisphereLight(0xffe6c4, 0x2a160a, .5); scene.add(L.hemi);
+  const sun = new T.DirectionalLight(0xfff0d8, 6.2); sun.position.set(-RX - 9, 13, 3.5); sun.target.position.set(1, 0, 0);
+  sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048); const sc = sun.shadow.camera; sc.left = -15; sc.right = 15; sc.top = 15; sc.bottom = -15; sc.near = 1; sc.far = 50;
+  sun.shadow.bias = -.0004; sun.shadow.normalBias = .03; scene.add(sun, sun.target); L.sun = sun;
+  const warm = (x, y, z, i, d = 18) => { const p = new T.PointLight(0xffc888, i, d, 2); p.position.set(x, y, z); scene.add(p); return p; };
+  L.p1 = warm(-4, 5.4, -5, 26); L.p2 = warm(4, 5.4, -5, 26); L.p3 = warm(0, 5.4, 4.5, 30, 20);
+  L.bench = new T.SpotLight(0xffd9a8, 60, 14, .55, .6, 2); L.bench.position.set(0, 6.5, -4); L.bench.target.position.set(0, 2, -8.5); scene.add(L.bench, L.bench.target);
+  // light shafts
+  const shM = new T.ShaderMaterial({transparent:true, depthWrite:false, blending:T.AdditiveBlending, side:T.DoubleSide,
+    uniforms:{uT:{value:0}, uI:{value:.13}},
+    vertexShader:'varying vec2 vU;void main(){vU=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}',
+    fragmentShader:'varying vec2 vU;uniform float uT,uI;void main(){float e=smoothstep(0.,.25,vU.x)*smoothstep(1.,.75,vU.x);float l=smoothstep(0.,.15,vU.y)*pow(vU.y,.6);float n=.8+.2*sin(vU.x*40.+uT*.7)*sin(vU.y*9.-uT*.4);gl_FragColor=vec4(vec3(1.,.93,.78)*e*l*n*uI,1.);}'});
+  L.shaft = shM;
+  const dir = new V3().subVectors(sun.target.position, sun.position).normalize();
+  for (const z of wins) {
+    const len = 9; const g = new T.PlaneGeometry(1.5, len); g.translate(0, -len / 2, 0);
+    for (const yy of [3.4, 5.2]) {
+      const m = new T.Mesh(g, shM); m.position.set(-RX + .1, yy, z);
+      m.quaternion.setFromUnitVectors(new V3(0, -1, 0), dir); m.renderOrder = 5; scene.add(m);
+      const m2 = m.clone(); m2.rotateY(Math.PI / 2); scene.add(m2);
+    }
+  }
+  // dust motes
+  const N = 500, pg = new T.BufferGeometry(), pos = new Float32Array(N * 3), sd = new Float32Array(N);
+  for (let i = 0; i < N; i++) { pos[i * 3] = -RX + rnd() * 12; pos[i * 3 + 1] = rnd() * 6; pos[i * 3 + 2] = RZ0 + rnd() * (RZ1 - RZ0); sd[i] = rnd(); }
+  pg.setAttribute('position', new T.BufferAttribute(pos, 3)); pg.setAttribute('sd', new T.BufferAttribute(sd, 1));
+  L.dust = new T.ShaderMaterial({transparent:true, depthWrite:false, blending:T.AdditiveBlending, uniforms:{uT:{value:0}},
+    vertexShader:'attribute float sd;uniform float uT;varying float vA;void main(){vec3 p=position;p.y=mod(p.y+uT*.05*(.3+sd),6.);p.x+=sin(uT*.3+sd*30.)*.3;p.z+=cos(uT*.2+sd*20.)*.3;vec4 mv=modelViewMatrix*vec4(p,1.);vA=max(0.,.4+.6*sin(uT*1.5+sd*60.))*smoothstep(6.,3.,-p.x*.6+p.y*.2);gl_PointSize=(2.+sd*3.)*(18./-mv.z);gl_Position=projectionMatrix*mv;}',
+    fragmentShader:'varying float vA;void main(){float d=length(gl_PointCoord-.5);gl_FragColor=vec4(vec3(1.,.9,.7)*smoothstep(.5,0.,d)*vA*.9,1.);}'});
+  scene.add(new T.Points(pg, L.dust));
+}
+
+// ---- characters
+const CH = {};
+function mkMat(c, r = .7) { return new T.MeshStandardMaterial({color:c, roughness:r}); }
+const wigC = cv(128, 128, (g, w, h) => { g.fillStyle = '#ece6d6'; g.fillRect(0, 0, w, h); for (let y = 0; y < h; y += 10) for (let x = 0; x < w; x += 10) { g.strokeStyle = 'rgba(120,110,90,.35)'; g.beginPath(); g.arc(x + 5, y + 5, 4, 0, 7); g.stroke(); } });
+const wigT = tex(wigC, 3, 3);
+function makePerson(o) {
+  const g = new T.Group(), ud = {}; g.userData = ud;
+  const robe = new T.MeshStandardMaterial({color:o.robe, roughness:.85, envMapIntensity:.25}), skin = mkMat(o.skin, .55), wig = new T.MeshStandardMaterial({map:wigT, roughness:.95, bumpMap:wigT, bumpScale:2}), white = mkMat(0xf6f3ea, .6), black = mkMat(0x0a0a0a, .3);
+  ud.robe = robe;
+  const body = new T.Group(); g.add(body); ud.body = body;
+  const pts = []; const prof = [[.4, 0], [.37, .3], [.32, .7], [.28, 1.05], [.26, 1.25], [.22, 1.38], [.12, 1.45], [.07, 1.47]];
+  for (const [r, y] of prof) pts.push(new T.Vector2(r, y));
+  const rb = new T.Mesh(new T.LatheGeometry(pts, 28), robe); rb.castShadow = true; body.add(rb);
+  // front opening (dark suit) + bands
+  const front = new T.Mesh(new T.BoxGeometry(.16, .7, .05), mkMat(0x1a1a22, .6)); front.position.set(0, 1.08, .25); front.rotation.x = -.12; body.add(front);
+  const tabs = new T.Mesh(new T.BoxGeometry(.07, .14, .02), white); tabs.position.set(0, 1.36, .2); tabs.rotation.x = -.35; body.add(tabs);
+  const collar = new T.Mesh(new T.TorusGeometry(.085, .025, 8, 20), white); collar.rotation.x = Math.PI / 2; collar.position.y = 1.45; body.add(collar);
+  // head
+  const head = new T.Group(); head.position.y = 1.62; body.add(head); ud.head = head;
+  const hm = new T.Mesh(new T.SphereGeometry(.16, 28, 20), skin); hm.scale.set(1, 1.08, 1.02); hm.castShadow = true; head.add(hm);
+  const nose = new T.Mesh(new T.SphereGeometry(.028, 10, 8), skin); nose.position.set(0, -.01, .16); nose.scale.set(1, 1.2, 1.1); head.add(nose);
+  for (const s of [-1, 1]) {
+    const eg = new T.Group(); eg.position.set(s * .058, .025, .128); head.add(eg); (ud.eyes = ud.eyes || []).push(eg);
+    const sc = new T.Mesh(new T.SphereGeometry(.03, 14, 10), white); sc.scale.set(1, 1.15, .55); eg.add(sc);
+    const ir = new T.Mesh(new T.SphereGeometry(.017, 12, 8), mkMat(o.iris || 0x3b2a1a, .3)); ir.position.z = .013; ir.scale.set(1, 1.1, .5); eg.add(ir);
+    const pu = new T.Mesh(new T.SphereGeometry(.009, 8, 6), black); pu.position.z = .019; pu.scale.z = .4; eg.add(pu);
+    const sp = new T.Mesh(new T.SphereGeometry(.004, 6, 4), white); sp.position.set(.006, .007, .022); eg.add(sp);
+    const lid = new T.Mesh(new T.SphereGeometry(.032, 14, 10), skin); lid.scale.set(1.02, .15, .62); lid.position.y = .03; eg.add(lid); (ud.lids = ud.lids || []).push(lid);
+    const br = new T.Mesh(new T.BoxGeometry(.065, .014, .02), mkMat(o.brow || 0x3a2a1a)); br.position.set(s * .06, .072, .143); head.add(br); ud['brow' + (s < 0 ? 'R' : 'L')] = br;
+    const ear = new T.Mesh(new T.SphereGeometry(.03, 8, 6), skin); ear.position.set(s * .158, 0, 0); ear.scale.set(.5, 1, .8); head.add(ear);
+  }
+  const mouth = new T.Mesh(new T.SphereGeometry(.03, 14, 8), mkMat(0x3a0e10, .5)); mouth.scale.set(1, .18, .35); mouth.position.set(0, -.075, .145); head.add(mouth); ud.mouth = mouth;
+  const lip = new T.Mesh(new T.TorusGeometry(.028, .006, 6, 16), mkMat(0xa0504a, .5)); lip.scale.set(1, .25, 1); lip.position.set(0, -.073, .147); head.add(lip); ud.lip = lip;
+  if (o.glasses) {
+    for (const s of [-1, 1]) { const r = new T.Mesh(new T.TorusGeometry(.034, .005, 6, 18), M.brass); r.position.set(s * .058, .022, .158); head.add(r); }
+    const br = new T.Mesh(new T.BoxGeometry(.04, .005, .005), M.brass); br.position.set(0, .03, .162); head.add(br);
+  }
+  // wig
+  const cap = new T.Mesh(new T.SphereGeometry(.175, 24, 14, 0, Math.PI * 2, 0, Math.PI * .5), wig); cap.position.y = .02; cap.rotation.x = -.18; cap.castShadow = true; head.add(cap);
+  const curl = new T.TorusGeometry(.03, .016, 6, 12);
+  for (let row = 0; row < (o.judge ? 2 : 3); row++) for (let a = -2.1; a <= 2.1; a += .5) {
+    const c = new T.Mesh(curl, wig); const r = .165; const th = a + Math.PI;
+    c.position.set(Math.sin(th) * r, -.03 - row * .05, Math.cos(th) * r); c.rotation.y = th + Math.PI / 2; head.add(c);
+  }
+  if (o.judge) {
+    for (const s of [-1, 1]) { for (let i = 0; i < 6; i++) { const b = new T.Mesh(new T.SphereGeometry(.07, 10, 8), wig); b.position.set(s * (.15 + i * .01), -.06 - i * .07, -.02 - i * .01); b.castShadow = true; head.add(b); } }
+    for (let i = 0; i < 5; i++) { const b = new T.Mesh(new T.SphereGeometry(.09, 10, 8), wig); b.position.set(0, -.08 - i * .06, -.12); head.add(b); }
+  } else {
+    const tail = new T.Mesh(new T.CapsuleGeometry(.025, .1, 4, 8), wig); tail.position.set(0, -.15, -.15); head.add(tail);
+  }
+  // arms
+  for (const s of [-1, 1]) {
+    const sh = new T.Group(); sh.position.set(s * .25, 1.38, 0); body.add(sh);
+    const up = new T.Mesh(new T.CapsuleGeometry(.075, .2, 4, 10), robe); up.position.y = -.15; up.castShadow = true; sh.add(up);
+    const el = new T.Group(); el.position.y = -.3; sh.add(el);
+    const lo = new T.Mesh(new T.CapsuleGeometry(.07, .18, 4, 10), robe); lo.position.y = -.13; lo.castShadow = true; el.add(lo);
+    const cuff = new T.Mesh(new T.CylinderGeometry(.05, .05, .03, 12), white); cuff.position.y = -.25; el.add(cuff);
+    const hand = new T.Mesh(new T.SphereGeometry(.045, 12, 10), skin); hand.position.y = -.3; hand.scale.set(.9, 1.1, .8); el.add(hand);
+    ud[s < 0 ? 'R' : 'L'] = {sh, el, hand};
+  }
+  if (o.judge) {
+    const gv = new T.Group(); gv.position.set(0, -.3, .06); ud.R.el.add(gv);
+    const hdl = new T.Mesh(new T.CylinderGeometry(.012, .015, .26, 8), M.wood); hdl.rotation.x = Math.PI / 2; hdl.position.z = .1; gv.add(hdl);
+    const hd = new T.Mesh(new T.CylinderGeometry(.04, .04, .14, 14), M.wood); hd.rotation.z = Math.PI / 2; hd.position.z = .24; gv.add(hd);
+  }
+  // aura FX
+  const col = new T.Color(o.aura);
+  ud.aura = 0; ud.auraT = 0; ud.col = col;
+  const auM = new T.ShaderMaterial({transparent:true, depthWrite:false, blending:T.AdditiveBlending, side:T.DoubleSide,
+    uniforms:{uT:{value:0}, uA:{value:0}, uC:{value:col}},
+    vertexShader:'varying vec2 vU;varying float vF;void main(){vU=uv;vec3 n=normalize(normalMatrix*normal);vec4 mv=modelViewMatrix*vec4(position,1.);vF=1.-abs(dot(n,normalize(-mv.xyz)));gl_Position=projectionMatrix*mv;}',
+    fragmentShader:'varying vec2 vU;varying float vF;uniform float uT,uA;uniform vec3 uC;void main(){float y=vU.y;float f=sin(vU.x*37.7+uT*2.+sin(y*7.-uT*5.)*2.)*.5+.5;f*=sin(vU.x*69.1-uT*3.3+y*5.)*.5+.5;float s=smoothstep(.15,.9,f+(1.-y)*.35-fract(y*1.6-uT*1.4)*.35);float a=s*pow(1.-y,1.3)*(.25+vF)*uA;gl_FragColor=vec4(uC*a*2.2+vec3(a*.4),1.);}'});
+  const ac = new T.Mesh(new T.CylinderGeometry(.5, .7, 2.8, 40, 1, true), auM); ac.position.y = 1.35; ac.renderOrder = 6; g.add(ac);
+  const ringM = new T.ShaderMaterial({transparent:true, depthWrite:false, blending:T.AdditiveBlending, uniforms:{uT:{value:0}, uA:{value:0}, uC:{value:col}},
+    vertexShader:'varying vec2 vP;void main(){vP=position.xy;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}',
+    fragmentShader:'varying vec2 vP;uniform float uT,uA;uniform vec3 uC;void main(){float d=length(vP);float a=smoothstep(.25,.55,d)*smoothstep(1.3,.6,d)*(.55+.45*sin(d*22.-uT*9.))*uA;gl_FragColor=vec4(uC*a*2.5,1.);}'});
+  const ring = new T.Mesh(new T.CircleGeometry(1.3, 48), ringM); ring.rotation.x = -Math.PI / 2; ring.position.y = .02; ring.renderOrder = 6; g.add(ring);
+  const N = 260, pg = new T.BufferGeometry(), pp = new Float32Array(N * 3), sd = new Float32Array(N * 2);
+  for (let i = 0; i < N; i++) { sd[i * 2] = Math.random(); sd[i * 2 + 1] = Math.random(); }
+  pg.setAttribute('position', new T.BufferAttribute(pp, 3)); pg.setAttribute('sd', new T.BufferAttribute(sd, 2));
+  const ptM = new T.ShaderMaterial({transparent:true, depthWrite:false, blending:T.AdditiveBlending, uniforms:{uT:{value:0}, uA:{value:0}, uC:{value:col}},
+    vertexShader:'attribute vec2 sd;uniform float uT,uA;varying float vA;void main(){float t=fract(uT*.5*(.6+sd.y*.9)+sd.x);float an=sd.x*44.+uT*(1.5+sd.y)*(sd.y>.5?1.:-1.);float r=(.3+.35*sd.y)*(1.-t*.55);vec3 p=vec3(cos(an)*r,t*3.,sin(an)*r);vec4 mv=modelViewMatrix*vec4(p,1.);vA=(1.-t)*smoothstep(0.,.12,t)*uA;gl_PointSize=(4.+sd.y*9.)*(1.-t*.5)*uA*(22./-mv.z);gl_Position=projectionMatrix*mv;}',
+    fragmentShader:'varying float vA;uniform vec3 uC;void main(){float d=length(gl_PointCoord-.5);float a=smoothstep(.5,0.,d)*vA;gl_FragColor=vec4((uC*2.+vec3(.6))*a,1.);}'});
+  const pts2 = new T.Points(pg, ptM); pts2.frustumCulled = false; pts2.renderOrder = 7; g.add(pts2);
+  ud.fx = [auM, ringM, ptM];
+  ud.light = new T.PointLight(col, 0, 7, 2); ud.light.position.set(0, 1.3, .6); g.add(ud.light);
+  ud.posT = null; ud.talk = 0; ud.blink = 2 + Math.random() * 3; ud.pose = 'idle'; ud.yaw = 0; ud.yawT = 0; ud.scale = 1; ud.scaleT = 1; ud.lean = 0; ud.hop = 0; ud.snap = 10; ud.judge = !!o.judge;
+  scene.add(g);
+  return g;
+}
+const POSES = { // [shX, shZ, elX] right, left; lean; head pitch
+  idle:{R:[-.12,-.12,-.35],L:[-.12,.12,-.35],lean:0,hp:0},
+  think:{R:[-.55,.25,-2.35],L:[-.45,-.25,-1.5],lean:.05,hp:.12},
+  point:{R:[-1.6,-.2,-.05],L:[-.15,.2,-.5],lean:.14,hp:-.05},
+  power:{R:[-2.7,-.55,-.25],L:[-2.7,.55,-.25],lean:-.1,hp:-.25},
+  recoil:{R:[-.7,-1.1,-.7],L:[-.7,1.1,-.7],lean:-.32,hp:-.3},
+  cross:{R:[-.55,.55,-1.95],L:[-.55,-.55,-1.95],lean:-.06,hp:-.1},
+  sad:{R:[.05,-.05,-.05],L:[.05,.05,-.05],lean:.18,hp:.45},
+  slam:{R:[-1.0,-.3,-.9],L:[-1.0,.3,-.9],lean:.22,hp:.05},
+  gUp:{R:[-2.4,-.25,-.9],L:[-.4,.3,-1.3],lean:-.05,hp:-.1},
+  gDn:{R:[-1.15,-.25,-.6],L:[-.4,.3,-1.3],lean:.08,hp:.1},
+  sit:{R:[-.6,-.1,-1.1],L:[-.6,.1,-1.1],lean:.05,hp:0},
+};
+const BROWS = {idle:0, angry:.35, sad:-.3, smug:.15};
+function updPerson(g, dt, t) {
+  const u = g.userData, P = POSES[u.pose] || POSES.idle, k = 1 - Math.exp(-dt * u.snap), ki = 1 - Math.exp(-dt * 6);
+  const br = Math.sin(t * 1.6 + g.id) * .03;
+  for (const s of ['R', 'L']) {
+    const a = u[s], p = P[s], sg = s === 'R' ? -1 : 1;
+    a.sh.rotation.x = lerp(a.sh.rotation.x, p[0] + br, k); a.sh.rotation.z = lerp(a.sh.rotation.z, p[1] + sg * .02 * Math.sin(t * 1.1), k); a.el.rotation.x = lerp(a.el.rotation.x, p[2], k);
+  }
+  u.body.rotation.x = lerp(u.body.rotation.x, P.lean, k);
+  u.head.rotation.x = lerp(u.head.rotation.x, P.hp + Math.sin(t * .9 + g.id) * .03, k);
+  u.head.rotation.y = Math.sin(t * .5 + g.id * 3) * .08;
+  u.body.position.y = Math.sin(t * 2 + g.id) * .006 + u.hop;
+  u.hop *= Math.exp(-dt * 6);
+  const bt = BROWS[u.brow || 'idle'];
+  u.browR.rotation.z = lerp(u.browR.rotation.z, -bt, ki); u.browL.rotation.z = lerp(u.browL.rotation.z, bt, ki);
+  const op = u.talk > 0 ? .25 + Math.abs(Math.sin(t * 17)) * .9 * (.6 + .4 * Math.sin(t * 5.3)) : .18;
+  u.mouth.scale.y = lerp(u.mouth.scale.y, op, 1 - Math.exp(-dt * 25)); u.lip.scale.y = .25 + u.mouth.scale.y * .9;
+  u.mouth.scale.x = lerp(u.mouth.scale.x, u.brow === 'smug' ? 1.3 : u.brow === 'sad' ? .75 : 1, ki);
+  u.mouth.rotation.z = u.lip.rotation.z = lerp(u.mouth.rotation.z, u.brow === 'smug' ? .22 : 0, ki);
+  u.blink -= dt; const bl = u.blink < .12 ? 1 : u.brow === 'angry' ? .45 : u.brow === 'sad' ? .55 : u.brow === 'smug' ? .5 : .15;
+  if (u.blink < 0) u.blink = 2 + Math.random() * 4;
+  for (const l of u.lids) { l.scale.y = lerp(l.scale.y, .08 + bl * 1.1, 1 - Math.exp(-dt * 30)); l.position.y = .032 * (1 - l.scale.y / 1.18); }
+  if (u.posT) g.position.lerp(u.posT, 1 - Math.exp(-dt * 4));
+  // yaw
+  let d = u.yawT - u.yaw; d = Math.atan2(Math.sin(d), Math.cos(d)); u.yaw += d * (1 - Math.exp(-dt * 7)); g.rotation.y = u.yaw;
+  u.scale = lerp(u.scale, u.scaleT, 1 - Math.exp(-dt * 5)); g.scale.setScalar(u.scale);
+  u.aura = lerp(u.aura, u.auraT, 1 - Math.exp(-dt * 4));
+  for (const m of u.fx) { m.uniforms.uT.value = t; m.uniforms.uA.value = u.aura; }
+  u.light.intensity = u.aura * 26;
+  u.robe.emissive.copy(u.col).multiplyScalar(u.aura * .35);
+}
+function faceTo(g, x, z) { g.userData.yawT = Math.atan2(x - g.position.x, z - g.position.z); }
+function fwd(g) { const y = g.userData.yawT; return new V3(Math.sin(y), 0, Math.cos(y)); }
+function rightV(g) { const y = g.userData.yawT; return new V3(-Math.cos(y), 0, Math.sin(y)); }
+
+// spectators
+let crowd, crowdHeads, crowdBase = [], crowdReact = 0;
+function buildCrowd() {
+  const n = 22, bG = new T.CapsuleGeometry(.2, .35, 4, 10), hG = new T.SphereGeometry(.13, 14, 10);
+  crowd = new T.InstancedMesh(bG, new T.MeshStandardMaterial({roughness:.8}), n); crowdHeads = new T.InstancedMesh(hG, new T.MeshStandardMaterial({roughness:.6}), n);
+  const cols = [0x2b3a55, 0x553322, 0x334433, 0x5a4a3a, 0x222222, 0x6a2a3a, 0x3a3a5a, 0x7a6a50], sk = [0xf0c9a4, 0xc98e6a, 0x8d5a3b, 0xe2b48c, 0x6b4430];
+  let i = 0;
+  for (let z = 3.2; z < 11 && i < n; z += 1.6) for (const s of [-1, 1]) for (let k = 0; k < 2 && i < n; k++) {
+    if (rnd() < .2) continue;
+    const x = s * (2 + rnd() * 5.2); crowdBase.push([x, z - .02, rnd() * 6]);
+    crowd.setColorAt(i, new T.Color(cols[(rnd() * cols.length) | 0])); crowdHeads.setColorAt(i, new T.Color(sk[(rnd() * sk.length) | 0])); i++;
+  }
+  crowd.count = crowdHeads.count = i; crowd.castShadow = crowdHeads.castShadow = true; scene.add(crowd, crowdHeads);
+}
+function updCrowd(t, dt) {
+  const m = new T.Matrix4(); crowdReact *= Math.exp(-dt * 1.2);
+  crowdBase.forEach(([x, z, p], i) => {
+    const j = Math.max(0, Math.sin(t * 9 + p * 5)) * .12 * crowdReact, lean = Math.sin(t * .6 + p) * .02;
+    m.makeTranslation(x + lean, .82 + j, z); crowd.setMatrixAt(i, m);
+    m.makeTranslation(x + lean, 1.32 + j, z - .02); crowdHeads.setMatrixAt(i, m);
+  });
+  crowd.instanceMatrix.needsUpdate = crowdHeads.instanceMatrix.needsUpdate = true;
+}
+
+// ---- post-processing (HDR target, bloom, grade)
+const FS = {scene:new T.Scene(), cam:new T.OrthographicCamera(-1, 1, 1, -1, 0, 1)};
+FS.quad = new T.Mesh(new T.PlaneGeometry(2, 2)); FS.scene.add(FS.quad);
+const VS = 'varying vec2 vUv;void main(){vUv=uv;gl_Position=vec4(position.xy,0.,1.);}';
+const PP = {
+  bright: new T.ShaderMaterial({uniforms:{t:{value:null}, th:{value:1.1}}, vertexShader:VS, fragmentShader:'uniform sampler2D t;uniform float th;varying vec2 vUv;void main(){vec3 c=clamp(texture2D(t,vUv).rgb,0.,64.);float l=max(c.r,max(c.g,c.b));gl_FragColor=vec4(c*smoothstep(th,th+1.2,l),1.);}'}),
+  blur: new T.ShaderMaterial({uniforms:{t:{value:null}, d:{value:new T.Vector2()}}, vertexShader:VS, fragmentShader:'uniform sampler2D t;uniform vec2 d;varying vec2 vUv;void main(){vec3 c=texture2D(t,vUv).rgb*.227;c+=(texture2D(t,vUv+d*1.385).rgb+texture2D(t,vUv-d*1.385).rgb)*.316;c+=(texture2D(t,vUv+d*3.23).rgb+texture2D(t,vUv-d*3.23).rgb)*.07;gl_FragColor=vec4(c,1.);}'}),
+  comp: new T.ShaderMaterial({uniforms:{tS:{value:null}, b1:{value:null}, b2:{value:null}, uB:{value:.9}, uCA:{value:0}, uF:{value:0}, uSat:{value:1}, uLn:{value:0}, uT:{value:0}, uTint:{value:new T.Color(1, .7, .3)}, uExp:{value:1}, uAsp:{value:1}, uAu:{value:new T.Color(0, 0, 0)}, uHurt:{value:0}},
+    vertexShader:VS, fragmentShader:`uniform sampler2D tS,b1,b2;uniform float uB,uCA,uF,uSat,uLn,uT,uExp,uAsp,uHurt;uniform vec3 uTint,uAu;varying vec2 vUv;
+    vec3 aces(vec3 x){return clamp((x*(2.51*x+.03))/(x*(2.43*x+.59)+.14),0.,1.);}
+    float h(float n){return fract(sin(n)*43758.5453);}
+    void main(){vec2 d=vUv-.5;vec3 c;
+      if(uCA>0.){c.r=texture2D(tS,vUv+d*uCA).r;c.g=texture2D(tS,vUv).g;c.b=texture2D(tS,vUv-d*uCA).b;}else c=texture2D(tS,vUv).rgb;
+      c=clamp(c,0.,64.);
+      c+=clamp(texture2D(b1,vUv).rgb*.7+texture2D(b2,vUv).rgb*1.1,0.,64.)*uB;
+      {vec2 q=vec2(d.x*uAsp,d.y);float r=length(d*vec2(1.,1.25));float a=atan(q.y,q.x);float fl=.5+.5*sin(a*9.+uT*7.+sin(a*23.-uT*11.)*1.5);fl*=.6+.4*sin(r*30.-uT*14.);c+=uAu*smoothstep(.28,.72,r+fl*.12)*1.6;c=mix(c,c*vec3(1.,.25,.25)+vec3(.12,0.,0.),uHurt*smoothstep(.2,.75,r));}
+      c=aces(c*uExp);
+      c=mix(c,c*vec3(1.04,1.,.92),.6);
+      float l=dot(c,vec3(.299,.587,.114));c=mix(vec3(l),c,uSat);
+      if(uLn>0.){vec2 q=vec2(d.x*uAsp,d.y);float a=atan(q.y,q.x);float id=floor(a*38.);float n=step(.55,h(id+floor(uT*24.)*7.13));float r=length(q);c=mix(c,uTint*1.3+.35,n*smoothstep(.22+h(id)*.2,.75,r)*uLn*.75);}
+      c*=1.-dot(d,d)*.9;
+      c=mix(c,vec3(1.),clamp(uF,0.,1.));
+      c=pow(c,vec3(1./2.2));
+      c+=(h(vUv.x*911.+vUv.y*397.+uT)-.5)*.025;
+      gl_FragColor=vec4(c,1.);}`}),
+};
+let RT = {};
+function mkRT(w, h, ms, dep) { return new T.WebGLRenderTarget(w, h, {type:T.HalfFloatType, samples:ms || 0, depthBuffer:!!dep}); }
+function resize() {
+  const pr = Math.min(devicePixelRatio || 1, OPT.hi ? 1.75 : 1), w = innerWidth, h = innerHeight;
+  R.setPixelRatio(pr); R.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix();
+  for (const k in RT) RT[k].dispose();
+  const W = Math.floor(w * pr), H = Math.floor(h * pr);
+  RT = {main:mkRT(W, H, OPT.hi ? 4 : 0, 1), a:mkRT(W >> 2, H >> 2), b:mkRT(W >> 2, H >> 2), c:mkRT(W >> 3, H >> 3), d:mkRT(W >> 3, H >> 3)};
+  PP.comp.uniforms.uAsp.value = w / h;
+  R.shadowMap.enabled = OPT.hi; L.sun && (L.sun.castShadow = OPT.hi);
+}
+function pass(mat, tgt) { FS.quad.material = mat; R.setRenderTarget(tgt); R.render(FS.scene, FS.cam); }
+function render() {
+  R.setRenderTarget(RT.main); R.render(scene, cam);
+  const bl = PP.blur.uniforms;
+  PP.bright.uniforms.t.value = RT.main.texture; pass(PP.bright, RT.a);
+  bl.t.value = RT.a.texture; bl.d.value.set(1 / RT.a.width, 0); pass(PP.blur, RT.b);
+  bl.t.value = RT.b.texture; bl.d.value.set(0, 1 / RT.a.height); pass(PP.blur, RT.a);
+  bl.t.value = RT.a.texture; bl.d.value.set(2 / RT.a.width, 0); pass(PP.blur, RT.d);
+  bl.t.value = RT.d.texture; bl.d.value.set(0, 1 / RT.c.height); pass(PP.blur, RT.c);
+  const cu = PP.comp.uniforms; cu.tS.value = RT.main.texture; cu.b1.value = RT.a.texture; cu.b2.value = RT.c.texture;
+  pass(PP.comp, null);
+}
+
+// ---- camera director
+const C = {pos:new V3(0, 5.5, 12), tgt:new V3(0, 2, -6), fov:50, a:null, b:null, t:0, dur:1, res:null, shake:0, punch:0, drift:1, orbit:0};
+function shot(p, tg, fov = 45, dur = .8, ez = ease) {
+  return new Promise(res => {
+    if (C.res) C.res();
+    if (dur <= 0) { C.pos.copy(p); C.tgt.copy(tg); C.fov = fov; C.b = null; C.res = null; return res(); }
+    C.a = {p:C.pos.clone(), t:C.tgt.clone(), f:C.fov}; C.b = {p:p.clone(), t:tg.clone(), f:fov}; C.t = 0; C.dur = dur; C.ez = ez; C.res = res;
+  });
+}
+function updCam(dt, t) {
+  if (C.b) {
+    C.t += dt; const k = C.ez(clamp(C.t / C.dur, 0, 1));
+    C.pos.lerpVectors(C.a.p, C.b.p, k); C.tgt.lerpVectors(C.a.t, C.b.t, k); C.fov = lerp(C.a.f, C.b.f, k);
+    if (C.t >= C.dur) { C.b = null; const r = C.res; C.res = null; r && r(); }
+  }
+  if (FPV.on && !C.b) {
+    FPV.look.lerp(FPV.lookT, 1 - Math.exp(-dt * 5)); FPV.dip *= Math.exp(-dt * 6);
+    const e = eyeOf(), d = FPV.look.clone().sub(e), len = d.length();
+    d.applyAxisAngle(new V3(0, 1, 0), -FPV.mx * .32); d.y -= FPV.my * .2 * len;
+    C.pos.copy(e).add(new V3(0, Math.sin(t * 1.4) * .006, 0)); C.tgt.copy(e).add(d); C.fov = FPV.fov;
+  }
+  if (C.orbit) { const o = C.pos.clone().sub(C.tgt); o.applyAxisAngle(new V3(0, 1, 0), C.orbit * dt); C.pos.copy(C.tgt).add(o); }
+  C.shake *= Math.exp(-dt * 5); C.punch *= Math.exp(-dt * 4);
+  const s = C.shake, dr = C.drift;
+  cam.position.set(C.pos.x + Math.sin(t * .7) * .04 * dr + (Math.random() - .5) * s * .25, C.pos.y + Math.sin(t * .9) * .03 * dr + (Math.random() - .5) * s * .2, C.pos.z + Math.cos(t * .5) * .04 * dr);
+  cam.lookAt(C.tgt.x + (Math.random() - .5) * s * .08, C.tgt.y + (Math.random() - .5) * s * .08, C.tgt.z);
+  let fv = C.fov - C.punch * 8; if (cam.aspect < 1.25) fv = Math.min(88, 2 * Math.atan(Math.tan(fv * Math.PI / 360) * 1.25 / cam.aspect) * 180 / Math.PI); cam.fov = fv; cam.updateProjectionMatrix();
+}
+const FX = {ca:0, flash:0, sat:1, lines:0, satT:1, linesT:0, tint:new T.Color(1, .7, .3), au:0, auT:0, auC:new T.Color(.2, .6, 1), hurt:0};
+// ---- first person (you are the barrister on the left)
+const FPV = {on:false, look:new V3(0, 1.9, -6), lookT:new V3(0, 1.9, -6), mx:0, my:0, dip:0, fov:64};
+addEventListener('pointermove', e => { if (e.pointerType === 'mouse') { FPV.mx = clamp(e.clientX / innerWidth * 2 - 1, -1, 1); FPV.my = clamp(e.clientY / innerHeight * 2 - 1, -1, 1) * .6; } });
+const headOf = g => g.position.clone().setY(g.position.y + 1.62 * g.userData.scaleT);
+function eyeOf() { const u = CH.you.userData; return CH.you.position.clone().add(new V3(0, 1.66 * u.scale - FPV.dip, 0)); }
+function fpLook(v, now) { FPV.lookT.copy(v); if (now) FPV.look.copy(v); }
+function fpBody(fp) { const u = CH.you.userData; u.body.visible = !fp; u.fx[0].visible = true; CH.you.children.forEach(c => { if (c.material === u.fx[0]) c.visible = !fp; }); }
+async function toFP(dur = .6) { fpBody(true); FPV.look.copy(FPV.lookT); await shot(eyeOf(), FPV.lookT.clone(), FPV.fov, dur); FPV.on = true; C.drift = .25; C.orbit = 0; }
+function fromFP() { FPV.on = false; fpBody(false); C.drift = 1; }
+// viewmodel arms in camera space
+const VM = new T.Group(); cam.add(VM); scene.add(cam); VM.visible = false;
+const VMA = {};
+function buildVM() {
+  const robe = CH.you.userData.robe, skin = mkMat(0xe6b48f, .55), white = mkMat(0xf6f3ea, .6);
+  for (const s of [1, -1]) {
+    const piv = new T.Group(); piv.position.set(s * .3, -.4, -.05); VM.add(piv);
+    const sl = new T.Mesh(new T.CapsuleGeometry(.075, .42, 4, 12), robe); sl.rotation.x = Math.PI / 2; sl.position.z = -.25; piv.add(sl);
+    const cu = new T.Mesh(new T.CylinderGeometry(.06, .062, .04, 14), white); cu.rotation.x = Math.PI / 2; cu.position.z = -.5; piv.add(cu);
+    const hd = new T.Mesh(new T.SphereGeometry(.05, 14, 10), skin); hd.scale.set(.85, .7, 1.25); hd.position.z = -.57; piv.add(hd);
+    const th = new T.Mesh(new T.CapsuleGeometry(.014, .04, 3, 6), skin); th.position.set(-s * .045, .012, -.57); th.rotation.set(Math.PI / 2, 0, s * .6); piv.add(th);
+    if (s > 0) { const fi = new T.Mesh(new T.CapsuleGeometry(.013, .07, 3, 6), skin); fi.rotation.x = Math.PI / 2; fi.position.set(-.01, .01, -.65); piv.add(fi); VMA.finger = fi; }
+    else { const pp = new T.Mesh(new T.BoxGeometry(.21, .004, .29), M.paper); pp.position.set(.05, .035, -.6); pp.rotation.set(-.35, .2, .15); piv.add(pp);
+      const pp2 = pp.clone(); pp2.position.y += .006; pp2.rotation.y += .08; piv.add(pp2); }
+    VMA[s > 0 ? 'R' : 'L'] = piv;
+  }
+}
+const VMP = { // rotX, rotY, dx, dy, dz  (right arm; left arm mirrors rotY/dx)
+  idle:{R:[-.7, .15, 0, -.08, 0], L:[-.18, -.3, .02, -.02, 0]},
+  point:{R:[.06, .3, -.03, .1, -.06], L:[-.55, -.2, 0, -.05, 0]},
+  power:{R:[.95, .5, .02, .06, 0], L:[.95, -.5, -.02, .06, 0]},
+  slam:{R:[-1.05, .35, 0, -.02, -.08], L:[-1.05, -.35, 0, -.02, -.08]},
+  recoil:{R:[.5, .65, 0, 0, .1], L:[.5, -.65, 0, 0, .1]},
+  sad:{R:[-1.2, 0, 0, -.15, 0], L:[-1.2, 0, 0, -.15, 0]},
+  cross:{R:[-.25, .55, -.02, -.02, 0], L:[-.3, -.55, .02, -.02, 0]},
+};
+function updVM(dt, t) {
+  VM.visible = FPV.on && !C.b;
+  const u = CH.you.userData, P = VMP[u.pose] || VMP.idle, k = 1 - Math.exp(-dt * (u.snap || 10));
+  for (const s of ['R', 'L']) {
+    const a = VMA[s], p = P[s], sg = s === 'R' ? 1 : -1;
+    a.rotation.x = lerp(a.rotation.x, p[0] + Math.sin(t * 1.7) * .015, k); a.rotation.y = lerp(a.rotation.y, p[1], k);
+    a.position.x = lerp(a.position.x, sg * .3 + p[2], k); a.position.y = lerp(a.position.y, -.4 + p[3] + Math.sin(t * 2 + (s === 'R' ? 0 : 1)) * .005, k); a.position.z = lerp(a.position.z, -.05 + p[4], k);
+  }
+}
+function mkGlock() {
+  const g = new T.Group(), pm = new T.MeshStandardMaterial({color:0x1b1c1f, roughness:.45, metalness:.4}), sm = new T.MeshStandardMaterial({color:0x2a2c31, roughness:.3, metalness:.8});
+  const sl = new T.Mesh(new T.BoxGeometry(.028, .032, .19), sm); sl.position.set(0, .03, -.06); g.add(sl);
+  const fr = new T.Mesh(new T.BoxGeometry(.026, .02, .17), pm); fr.position.set(0, .006, -.05); g.add(fr);
+  const gr = new T.Mesh(new T.BoxGeometry(.027, .1, .045), pm); gr.position.set(0, -.04, .01); gr.rotation.x = -.3; g.add(gr);
+  const tg = new T.Mesh(new T.TorusGeometry(.014, .003, 6, 12, Math.PI), pm); tg.rotation.set(0, Math.PI / 2, Math.PI); tg.position.set(0, -.006, -.035); g.add(tg);
+  const fs = new T.Mesh(new T.BoxGeometry(.005, .007, .006), sm); fs.position.set(0, .05, -.15); g.add(fs);
+  const fc = cv(64, 64, (c, w, h) => { const gr = c.createRadialGradient(32, 32, 2, 32, 32, 30); gr.addColorStop(0, 'rgba(255,255,230,1)'); gr.addColorStop(.3, 'rgba(255,200,80,.9)'); gr.addColorStop(1, 'rgba(255,90,0,0)'); c.fillStyle = gr; c.fillRect(0, 0, w, h); });
+  const fl = new T.Sprite(new T.SpriteMaterial({map:tex(fc), blending:T.AdditiveBlending, depthWrite:false, transparent:true, color:new T.Color(4, 3, 2)}));
+  fl.scale.setScalar(.22); fl.position.set(0, .03, -.2); fl.visible = false; g.add(fl);
+  const lt = new T.PointLight(0xffb050, 0, 6, 2); lt.position.copy(fl.position); g.add(lt);
+  g.userData = {fl, lt}; g.visible = false; return g;
+}
+function fire(gun) { const u = gun.userData; u.fl.visible = true; u.fl.material.rotation = Math.random() * 6; u.lt.intensity = 40; SFX.bang(); setTimeout(() => { u.fl.visible = false; u.lt.intensity = 0; }, 70); }
+VMP.aim = {R:[.04, .1, -.08, .12, -.1], L:[.0, -.12, .06, .06, -.06]};
+POSES.aim = {R:[-1.55, -.05, -.05], L:[-1.45, .3, -.25], lean:.05, hp:-.05};
+POSES.holster = {R:[-.25, -.35, -.6], L:[-.2, .3, -.4], lean:.02, hp:0};
+// Quick draw: wait for DRAW!, then tap before they shoot. Early tap = foul.
+function quickDraw() {
+  return new Promise(async res => {
+    const F = CH.foe, fu = F.userData, yu = CH.you.userData, el = $('duel'), tx = $('duelT'), boss = G.case.boss;
+    fu.posT = fu.base.clone(); faceTo(F, CH.you.position.x, CH.you.position.z); fpLook(headOf(F).add(new V3(0, -.25, 0)));
+    slam("IT'S A<br>DRAW…", 'g', '#ffd84a', 1100); SFX.whistle(); FX.satT = .55; await sleep(1300);
+    fu.pose = 'holster'; yu.pose = 'idle'; tx.textContent = 'Pull your Glocks…'; el.classList.remove('hide');
+    await sleep(500); VMA.gun.visible = true; fu.gun.visible = true; SFX.click(); yu.pose = 'aim'; yu.snap = 8; fu.pose = 'aim'; fu.snap = 8; fu.brow = 'angry'; yu.brow = 'angry';
+    await sleep(700); tx.textContent = 'Wait for it…'; FPV.fov = 52;
+    let state = 'wait', t0 = 0, done = false;
+    const end = (win, why, ms) => {
+      if (done) return; done = true; removeEventListener('keydown', kd, true); el.onpointerdown = null; tx.textContent = why;
+      if (win) { fire(VMA.gun); FPV.dip = .03; C.shake = .5; setTimeout(() => { fu.pose = 'recoil'; fu.snap = 22; fu.hop = .08; fu.brow = 'sad'; flash(.35); SFX.impact(.8); floatTxt(F, 'HIT!', '#ffd84a', 60); }, 60); }
+      else { if (why !== 'TOO EARLY! Foul.') fire(fu.gun); else SFX.slam(); setTimeout(() => { flash(.6); FX.hurt = 1; C.shake = 1.4; FPV.dip = .12; yu.pose = 'recoil'; SFX.impact(.9); floatAt('HIT!', '#ff6b6b', 60, .5, .45); }, 60); }
+      if (ms) tx.textContent += ` (${ms} ms)`;
+      setTimeout(() => { el.classList.add('hide'); VMA.gun.visible = false; fu.gun.visible = false; FX.satT = 1; FPV.fov = 64; res(win); }, 1500);
+    };
+    const press = () => { if (state === 'wait') end(false, 'TOO EARLY! Foul.'); else if (state === 'go') { const ms = Math.round(performance.now() - t0); end(true, ms < 250 ? 'LIGHTNING DRAW!' : 'You were faster!', ms); } };
+    const kd = e => { if (e.code === 'Space' || e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); press(); } };
+    addEventListener('keydown', kd, true); el.onpointerdown = e => { e.preventDefault(); press(); };
+    await sleep(1200 + Math.random() * 2200); if (done) return;
+    state = 'go'; t0 = performance.now(); tx.textContent = ''; slam('DRAW!', 'g', '#ff3b3b', 500); SFX.tick();
+    const rt = boss ? 290 : 340 + Math.random() * 140;
+    setTimeout(() => { if (!done) end(false, 'Too slow!', Math.round(rt)); }, rt);
+  });
+}
+function floatAt(text, color, size, x, y) {
+  const d = document.createElement('div'); d.className = 'fl'; d.textContent = text; d.style.color = color; d.style.fontSize = size + 'px';
+  d.style.left = x * innerWidth + 'px'; d.style.top = y * innerHeight + 'px'; $('fx').appendChild(d); setTimeout(() => d.remove(), 1600);
+}
+function qte(dur = 1.15) {
+  return new Promise(res => {
+    const el = $('qte'), sE = $('qteS'); el.classList.remove('hide'); const t0 = performance.now(); let done = false;
+    const sc = () => 2.6 - 2.2 * (performance.now() - t0) / 1000 / dur;
+    const fin = hit => { if (done) return; done = true; el.classList.add('hide'); removeEventListener('keydown', kd, true); el.onpointerdown = null; res(hit); };
+    const step = () => { if (done) return; const k = sc(); sE.style.transform = `scale(${Math.max(0, k)})`; sE.style.borderColor = Math.abs(k - 1) < .26 ? '#ffd84a' : '#fff'; if (k < .3) return fin(false); requestAnimationFrame(step); };
+    const press = () => fin(Math.abs(sc() - 1) < .26);
+    const kd = e => { if (e.code === 'Space' || e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); press(); } };
+    addEventListener('keydown', kd, true); el.onpointerdown = e => { e.preventDefault(); press(); };
+    SFX.tick(); step();
+  });
+}
+function closeShot(g, d = 1.9, side = .4, h = 1.72, fov = 38) { const p = g.position.clone(), f = fwd(g), r = rightV(g); return [p.clone().addScaledVector(f, d).addScaledVector(r, side).setY(h * g.userData.scaleT), p.clone().setY(1.58 * g.userData.scaleT), fov]; }
+function lowShot(g) { const p = g.position.clone(), f = fwd(g), r = rightV(g); return [p.clone().addScaledVector(f, 1.55).addScaledVector(r, .3).setY(.5), p.clone().setY(1.75 * g.userData.scaleT), 58]; }
+function overSh(a, b) { const d = b.position.clone().sub(a.position).setY(0).normalize(), r = new V3(-d.z, 0, d.x); return [a.position.clone().addScaledVector(d, -1.0).addScaledVector(r, -.55).setY(1.95), b.position.clone().setY(1.45), 40]; }
+const WIDE = () => [new V3(0, 3.6, 7.5), new V3(0, 1.7, -4.5), 50];
+const TWO = () => [new V3(0, 2.3, 2.6), new V3(0, 1.45, -2.6), 46];
+const JUDGE = () => [new V3(.4, 2.75, -5.4), new V3(0, 2.7, -8.4), 34];
+const go = (s, dur, ez) => shot(s[0], s[1], s[2], dur, ez);
+
+/* ================= BOOT 3D ================= */
+const wins = buildRoom(); buildFurniture(); buildLights(wins); buildEnv(); buildCrowd();
+CH.judge = makePerson({robe:0x101012, skin:0xe9c3a0, aura:0xffd84a, judge:1, glasses:1, brow:0xdedede});
+CH.judge.position.set(0, 1.05, -8.6); CH.judge.userData.pose = 'sit';
+CH.you = makePerson({robe:0x14182a, skin:ls('cd-skin') ? +ls('cd-skin') : 0xe6b48f, aura:0x3aa8ff, brow:0x2a1a10});
+CH.you.position.set(-2.5, 0, -2.3);
+function makeFoe(cs) {
+  if (CH.foe) { scene.remove(CH.foe); }
+  CH.foe = makePerson({robe:cs.robe, skin:cs.skin, aura:cs.aura, glasses:cs.glasses, brow:0x1a1008});
+  CH.foe.userData.gun = mkGlock(); CH.foe.userData.gun.position.set(0, -.3, .02); CH.foe.userData.gun.rotation.x = -Math.PI / 2; CH.foe.userData.R.el.add(CH.foe.userData.gun);
+  CH.foe.position.set(2.5, 0, -2.3); CH.foe.userData.base = CH.foe.position.clone(); if (cs.boss) CH.foe.userData.scaleT = 1.08;
+  faceTo(CH.foe, 0, -7); CH.foe.userData.yaw = CH.foe.userData.yawT;
+}
+makeFoe(CASES[0]); buildVM(); VMA.gun = mkGlock(); VMA.gun.position.set(0, .02, -.58); VMA.R.add(VMA.gun);
+faceTo(CH.you, 0, -7); CH.you.userData.yaw = CH.you.userData.yawT;
+resize(); addEventListener('resize', resize);
+
+let last = performance.now();
+function frame(now) {
+  const dt = Math.min(.05, (now - last) / 1000); last = now; clockT.t += dt; const t = clockT.t;
+  for (const k of ['judge', 'you', 'foe']) updPerson(CH[k], dt, t);
+  updCrowd(t, dt); updCam(dt, t); updVM(dt, t);
+  L.shaft.uniforms.uT.value = t; L.dust.uniforms.uT.value = t;
+  FX.ca *= Math.exp(-dt * 4); FX.flash *= Math.exp(-dt * 6);
+  FX.sat = lerp(FX.sat, FX.satT, 1 - Math.exp(-dt * 5)); FX.lines = lerp(FX.lines, FX.linesT, 1 - Math.exp(-dt * 8));
+  const cu = PP.comp.uniforms; cu.uCA.value = FX.ca; cu.uF.value = FX.flash; cu.uSat.value = FX.sat; cu.uLn.value = FX.lines; cu.uT.value = t; cu.uTint.value.copy(FX.tint); cu.uB.value = OPT.hi ? .95 : .6;
+  FX.au = lerp(FX.au, FX.auT, 1 - Math.exp(-dt * 4)); FX.hurt *= Math.exp(-dt * 1.6); cu.uAu.value.copy(FX.auC).multiplyScalar(FX.au); cu.uHurt.value = FX.hurt;
+  if (G.timer && G.tLeft > 0) { G.tLeft -= dt; $('tmr').textContent = '⏱ ' + Math.ceil(G.tLeft) + 's speed bonus'; if (G.tLeft <= 0) $('tmr').textContent = ''; }
+  render();
+  requestAnimationFrame(frame);
+}
+
+/* ================= UI / GAME ================= */
+const G = {case:null, qs:[], i:0, hpY:100, hpF:100, auY:0, auF:0, combo:0, peek:false, results:[], timer:false, tLeft:0, busy:false};
+function rankOf(a) { let i = 0; while (i + 1 < RANKS.length && a >= RANKS[i + 1][0]) i++; return i; }
+function menu() {
+  document.body.classList.remove('cine');
+  $('menu').classList.remove('hide'); $('hud').classList.add('hide'); $('hudBtns').classList.add('hide');
+  ['qp', 'box', 'ruling', 'verdict'].forEach(id => $(id).classList.add('hide'));
+  const ri = rankOf(SAVE.aura), nx = RANKS[ri + 1];
+  $('rankName').textContent = RANKS[ri][1];
+  $('rankTxt').textContent = SAVE.aura.toLocaleString() + ' aura' + (nx ? ` · ${(nx[0] - SAVE.aura).toLocaleString()} to ${nx[1]}` : ' · max rank');
+  $('rankBar').style.width = (nx ? (SAVE.aura - RANKS[ri][0]) / (nx[0] - RANKS[ri][0]) * 100 : 100) + '%';
+  $('cases').innerHTML = CASES.map((c, i) => {
+    const gr = SAVE.grades[c.id], lock = !c.free && i > 0 && !SAVE.grades[CASES[i - 1].id];
+    const gc = gr ? ({S:'#ffd84a', A:'#5ee08a', B:'#7cc8ff', C:'#ffc04a', D:'#ff7a7a'}[gr]) : '';
+    return `<button class="case" data-c="${i}" ${lock ? 'disabled' : ''}>
+      ${gr ? `<span class="cg" style="color:${gc}">${gr}</span>` : ''}
+      <span class="small" style="text-transform:uppercase;letter-spacing:1px">${c.boss ? '👑 ' : ''}${esc(c.sub)}</span>
+      <span class="cn">${esc(c.name)}</span>
+      <span class="co">vs ${esc(c.foe)} · ${esc(c.foeT)}</span>
+      <span class="cl">${lock ? '🔒 Win the previous case to unlock' : (c.qs ? c.qs.length : 6) + ' arguments' + (gr ? '' : ' · new')}</span></button>`;
+  }).join('');
+  $('keyState').textContent = ls('cd-pass') ? '✅ Court unlocked. Claude Haiku will judge your answers.' : '⚠️ Locked: enter the court password so Claude can judge. Without it you mark yourself against the model answer.';
+  fromFP(); FX.auT = 0; C.drift = 1; C.orbit = .05; go([new V3(5.5, 3.4, 8), new V3(0, 1.8, -5), 46], 2.5);
+  CH.you.userData.auraT = 0; CH.foe.userData.auraT = 0;
+}
+$('cases').onclick = e => { const b = e.target.closest('[data-c]'); if (b && !b.disabled) { au(); startCase(+b.dataset.c); } };
+$('pname').value = ls('cd-name') || '';
+$('pname').oninput = () => ls('cd-name', $('pname').value.trim());
+const RELAY = 'https://jjfanwars-relay.businessautomationvic.workers.dev/legal/grade';
+async function relay(body, path) {
+  const ctl = new AbortController(), to = setTimeout(() => ctl.abort(), 45000);
+  try { const r = await fetch(path ? RELAY.replace('/legal/grade', path) : RELAY, {method:'POST', signal:ctl.signal, headers:{'content-type':'text/plain'}, body:JSON.stringify(body)}); const j = await r.json().catch(() => ({err:'HTTP ' + r.status})); if (!r.ok || j.err) throw new Error(j.err || 'HTTP ' + r.status); return j; }
+  catch (e) { throw new Error(e.name === 'AbortError' ? 'timed out' : e.message === 'Failed to fetch' ? 'relay not reachable' : e.message); } finally { clearTimeout(to); }
+}
+$('suGo').onclick = async () => {
+  const key = $('suKey').value.trim(), pass = $('key').value.trim() || ls('cd-pass') || ''; $('suMsg').textContent = 'Saving…';
+  if (!pass) { $('suMsg').textContent = '❌ Type the court password in the box above first.'; return; }
+  try { await relay({pass, key}, '/legal/setup'); ls('cd-pass', pass); $('suKey').value = ''; $('key').value = ''; menu(); $('suMsg').textContent = '✅ Key saved on the relay. Claude will judge your answers.'; }
+  catch (e) { $('suMsg').textContent = '❌ ' + e.message; }
+};
+$('saveKey').onclick = async () => {
+  const v = $('key').value.trim(); if (!v) return; $('keyState').textContent = 'Checking password…';
+  try { const r = await relay({pass:v, check:1}); ls('cd-pass', v); $('key').value = ''; menu(); if (!r.key) $('keyState').textContent = '✅ Password OK, but no API key is saved yet: open "Owner: save the Anthropic API key" below.'; }
+  catch (e) { $('keyState').textContent = '❌ ' + e.message; }
+};
+$('optHi').checked = OPT.hi; $('optSnd').checked = OPT.snd; $('optTimer').checked = OPT.timer;
+$('optHi').onchange = () => { OPT.hi = $('optHi').checked; ls('cd-hi', OPT.hi ? '1' : '0'); resize(); };
+$('optSnd').onchange = () => { OPT.snd = $('optSnd').checked; ls('cd-snd', OPT.snd ? '1' : '0'); if (A.out) A.out.gain.value = OPT.snd ? .55 : 0; $('bMute').textContent = OPT.snd ? '🔊' : '🔇'; };
+$('optTimer').onchange = () => { OPT.timer = $('optTimer').checked; ls('cd-timer', OPT.timer ? '1' : '0'); };
+$('bMute').onclick = () => { $('optSnd').checked = !OPT.snd; $('optSnd').onchange(); };
+$('bQuit').onclick = () => { if (confirm('Leave court? This case will not be saved.')) { G.abort = true; skipAll(); menu(); } };
+const pname = () => ($('pname').value.trim() || 'You');
+
+// ---- dialogue
+let boxSkip = null, sayId = 0;
+function say(who, text, cls = '', hold = 1) {
+  return new Promise(res => {
+    const id = ++sayId, box = $('box'); box.className = cls; const ch = who === 'Her Honour' ? CH.judge : G.case && who === G.case.foe ? CH.foe : null; if (ch) ch.userData.talk = 1; $('boxN').textContent = who; const el = $('boxT'); el.textContent = '';
+    let i = 0, done = false, ended = false; const full = String(text);
+    const end = () => { if (ch) ch.userData.talk = 0; if (ended) return; ended = true; if (id === sayId) boxSkip = null; res(); };
+    const fin = () => { if (ch) ch.userData.talk = 0; if (done) return; done = true; el.textContent = full; clearInterval(iv); if (id === sayId) boxSkip = end; setTimeout(end, 1200 * hold + full.length * 22); };
+    const iv = setInterval(() => { if (G.abort) { clearInterval(iv); return end(); } i += 2; el.textContent = full.slice(0, i); if (i % 6 === 0) SFX.blip(); if (i >= full.length) fin(); }, 28);
+    boxSkip = fin;
+  });
+}
+$('box').onclick = () => boxSkip && boxSkip();
+function hideBox() { $('box').classList.add('hide'); }
+function skipAll() { if (boxSkip) boxSkip(); }
+function slam(text, cls = '', glow = '#ffae2b', ms = 1100) {
+  const d = document.createElement('div'); d.className = 'sl ' + cls; d.style.setProperty('--glow', glow); d.innerHTML = text; $('slam').appendChild(d);
+  SFX.slam(); setTimeout(() => d.classList.add('out'), ms); setTimeout(() => d.remove(), ms + 400);
+}
+function floatTxt(g, text, color, size = 44, dy = 0) {
+  const p = g.position.clone().setY(2.1 * g.userData.scaleT + dy).project(cam);
+  const d = document.createElement('div'); d.className = 'fl'; d.textContent = text; d.style.color = color; d.style.fontSize = size + 'px';
+  d.style.left = clamp((p.x * .5 + .5) * innerWidth, 60, innerWidth - 60) + 'px'; d.style.top = clamp((-p.y * .5 + .5) * innerHeight, 80, innerHeight - 80) + 'px';
+  $('fx').appendChild(d); setTimeout(() => d.remove(), 1600);
+}
+function flash(v = .8) { FX.flash = Math.max(FX.flash, v); }
+function hud() {
+  $('hpY').style.width = G.hpY + '%'; $('hpF').style.width = G.hpF + '%';
+  setTimeout(() => { $('lagY').style.width = G.hpY + '%'; $('lagF').style.width = G.hpF + '%'; }, 50);
+  $('auY').textContent = G.auY.toLocaleString() + ' AURA'; $('auF').textContent = G.auF.toLocaleString() + ' AURA';
+  $('qn').textContent = Math.min(G.i + 1, G.qs.length) + '/' + G.qs.length;
+  $('combo').textContent = G.combo >= 2 ? `🔥 AURA COMBO x${G.combo}` : '';
+}
+
+async function startCase(ci) {
+  const cs = CASES[ci]; G.abort = false;
+  G.case = cs; G.ci = ci; G.i = 0; G.hpY = 100; G.hpF = 100; G.auY = 0; G.auF = 0; G.combo = 0; G.results = [];
+  G.qs = cs.qs ? cs.qs.slice() : Object.keys(Q).sort(() => Math.random() - .5).slice(0, 6);
+  makeFoe(cs);
+  $('menu').classList.add('hide'); $('hud').classList.remove('hide'); $('hudBtns').classList.remove('hide');
+  $('nmY').textContent = pname(); $('nmF').textContent = cs.foe; $('bMute').textContent = OPT.snd ? '🔊' : '🔇';
+  ['lagY', 'lagF', 'hpY', 'hpF'].forEach(id => { $(id).style.transition = 'none'; $(id).style.width = '100%'; void $(id).offsetWidth; $(id).style.transition = ''; });
+  hud();
+  document.body.classList.add('cine'); C.orbit = 0;
+  faceTo(CH.you, 0, -7); faceTo(CH.foe, 0, -7);
+  await shot(new V3(0, 5.6, 11.5), new V3(0, 2.2, -4), 52, 0);
+  go([new V3(0, 2.6, -1), new V3(0, 2.6, -8.4), 40], 3.2);
+  await say('Court Associate', `All rise. ${cs.name}. ${pname()} versus ${cs.foe}.`);
+  if (G.abort) return;
+  await go(JUDGE(), .9);
+  CH.judge.userData.pose = 'gUp'; CH.judge.userData.snap = 14; await sleep(260);
+  CH.judge.userData.pose = 'gDn'; SFX.gavel(); C.shake = .6; await sleep(200); CH.judge.userData.pose = 'sit';
+  await say('Her Honour', cs.boss ? 'This is the High Court. Make it count, counsel. Dame Ironwig has never lost here.' : 'Court is in session. Counsel, persuade me with the law, not with theatrics.', '', .8);
+  if (G.abort) return;
+  go(closeShot(CH.foe, 1.9, -.4), 1.0); faceTo(CH.foe, CH.you.position.x, CH.you.position.z); CH.foe.userData.brow = 'smug'; CH.foe.userData.pose = 'cross';
+  await say(cs.foe, cs.boss ? 'I have argued before this court for thirty years. You have argued with your group chat.' : ['Let’s see if you did the reading.', 'I hope you brought your notes. You’ll need them.', 'This will be quick.', 'Your Honour, I almost feel sorry for my learned friend.', 'Ready when you are. Not that it will help.'][ci % 5], 'foe');
+  if (G.abort) return;
+  hideBox(); document.body.classList.remove('cine');
+  nextQ();
+}
+
+function nextQ() {
+  if (G.abort) return;
+  const id = G.qs[G.i], q = Q[id]; G.peek = false;
+  faceTo(CH.you, 0, -7); faceTo(CH.foe, CH.you.position.x, CH.you.position.z);
+  CH.you.userData.pose = 'think'; CH.you.userData.brow = 'idle'; CH.foe.userData.pose = 'cross'; CH.foe.userData.brow = 'smug';
+  CH.you.userData.auraT = 0; CH.foe.userData.auraT = 0; CH.you.userData.scaleT = 1; CH.foe.userData.scaleT = G.case.boss ? 1.08 : 1;
+  fpLook(headOf(CH.judge).lerp(headOf(CH.foe), .5).add(new V3(0, -.45, 0)));
+  if (!FPV.on) toFP(1.0);
+  FX.auT = 0;
+  const tw = TASKW.find(w => q.q.startsWith(w)) || '';
+  $('qTag').textContent = 'Argument ' + (G.i + 1); $('qMarks').textContent = q.m + ' marks'; $('qWord').textContent = tw ? 'Task word: ' + tw : '';
+  $('qWord').classList.toggle('hide', !tw);
+  $('qText').textContent = q.q; $('qCtx').textContent = q.ctx || '';
+  $('qBrief').classList.add('hide'); $('qBrief').innerHTML = '<b>Brief — marking points</b><ul>' + q.k.map(x => '<li>' + esc(x) + '</li>').join('') + '</ul>';
+  $('ans').value = ls('cd-draft-' + id) || '';
+  $('bPeek').disabled = false;
+  $('selfNote').textContent = ls('cd-pass') ? '' : 'Court locked: you will self-mark';
+  $('qp').classList.remove('hide'); hideBox(); $('ruling').classList.add('hide');
+  G.timer = OPT.timer; G.tLeft = 60 + q.m * 25; if (!G.timer) $('tmr').textContent = '';
+  hud();
+  setTimeout(() => { if (innerWidth > 700) $('ans').focus(); }, 300);
+}
+$('ans').oninput = () => ls('cd-draft-' + G.qs[G.i], $('ans').value);
+$('ans').onkeydown = e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) $('bArgue').click(); };
+$('bPeek').onclick = () => { G.peek = true; $('qBrief').classList.remove('hide'); $('bPeek').disabled = true; CH.foe.userData.brow = 'smug'; };
+
+$('bArgue').onclick = async () => {
+  au();
+  const id = G.qs[G.i], q = Q[id], ans = $('ans').value.trim();
+  if (!ans) { $('ans').focus(); $('ans').style.outline = '2px solid #ff5d5d'; setTimeout(() => $('ans').style.outline = '', 600); return; }
+  if (G.busy) return; G.busy = true;
+  const speed = G.timer && G.tLeft > 0; G.timer = false; $('tmr').textContent = '';
+  $('qp').classList.add('hide');
+  let res;
+  if (ls('cd-pass')) {
+    fpLook(headOf(CH.judge)); CH.judge.userData.pose = 'think';
+    const thinking = say('Her Honour', 'The court will consider that argument…', '', 30);
+    try { res = await grade(q, ans); } catch (e) { res = null; G.err = e.message; }
+    CH.judge.userData.pose = 'sit'; skipAll(); skipAll();
+    await thinking;
+    if (!res) { await say('Court Associate', 'The marking service could not be reached (' + (G.err || 'error') + '). You will mark this one yourself.'); }
+  }
+  if (!res) res = await selfMark(q);
+  hideBox();
+  if (G.abort) { G.busy = false; return; }
+  res.speed = speed;
+  await turn(q, res, ans);
+  G.busy = false;
+};
+
+async function grade(q, ans) {
+  const user = `Question (${q.m} marks): ${q.q}\n${q.ctx ? 'Context: ' + q.ctx + '\n' : ''}\nModel answer:\n${q.a}\n\nKey marking points:\n- ${q.k.join('\n- ')}\n\nStudent answer:\n${ans}`;
+  let j;
+  try { j = await relay({pass:ls('cd-pass'), user}); }
+  catch (e) { if (/password/.test(e.message)) ls('cd-pass', ''); throw e; }
+  const txt = j.text || '';
+  const g = JSON.parse(txt.slice(txt.indexOf('{'), txt.lastIndexOf('}') + 1));
+  g.score = clamp(Math.round(+g.score || 0), 0, q.m); g.ai = true; return g;
+}
+function selfMark(q) {
+  return new Promise(res => {
+    const r = $('ruling'); r.classList.remove('hide');
+    r.innerHTML = `<div class="qt" style="margin-top:0">Mark yourself</div><div class="small">Compare your argument with the model answer, then award your marks honestly. The court is watching.</div>
+      <div class="modelA">${esc(q.a)}</div><div class="brief" style="margin-top:8px"><b>Marking points</b><ul>${q.k.map(x => '<li>' + esc(x) + '</li>').join('')}</ul></div>
+      <div class="row">${[...Array(q.m + 1).keys()].map(n => `<button data-s="${n}" ${n === q.m ? 'class="pri"' : ''}>${n}/${q.m}</button>`).join('')}</div>`;
+    r.onclick = e => { const b = e.target.closest('[data-s]'); if (!b) return; r.onclick = null; r.classList.add('hide'); res({score:+b.dataset.s, got:[], missed:[], self:true}); };
+  });
+}
+
+async function turn(q, res, ans) {
+  const f = res.score / q.m, n = G.qs.length, Y = CH.you, F = CH.foe, yu = Y.userData, fu = F.userData, boss = G.case.boss;
+  const tier = f >= .9 ? 'mog' : f >= .65 ? 'strong' : f >= .35 ? 'mid' : 'weak';
+  const prevCombo = G.combo; G.combo = f >= .75 ? G.combo + 1 : 0;
+  const mult = (G.peek ? .75 : 1) * (1 + Math.min(prevCombo, 3) * .15) * (res.speed ? 1.15 : 1) * (boss ? .85 : 1);
+  const dmg = Math.round(135 / n * f * mult + (tier === 'mog' ? 6 : 0));
+  let back = f < .85 ? Math.round(125 / n * (1 - f) * (boss ? 1.15 : 1)) : 0;
+  let gain = Math.round(f * 1000 * (1 + Math.min(prevCombo, 3) * .25)) - (G.peek ? 200 : 0) + (res.speed ? 150 : 0); if (tier === 'weak') gain -= 300;
+  G.results.push({id:G.qs[G.i], f, score:res.score, m:q.m});
+  const fBase = boss ? 1.08 : 1, dead = () => G.abort;
+  document.body.classList.add('cine'); C.orbit = 0;
+  if (!FPV.on) await toFP(.4);
+  faceTo(Y, F.position.x, F.position.z); faceTo(F, Y.position.x, Y.position.z);
+  fpLook(headOf(F).add(new V3(0, -.15, 0)));
+  yu.brow = tier === 'weak' ? 'sad' : 'angry'; fu.pose = 'cross'; fu.brow = 'smug';
+  FX.auC.copy(yu.col); FX.tint.copy(yu.col);
+  // 1. power up (you see your own aura burning at the edges of the screen)
+  if (tier === 'mog' || tier === 'strong') {
+    yu.pose = 'power'; yu.snap = 9; yu.auraT = tier === 'mog' ? 1.1 : .7; FX.auT = tier === 'mog' ? 1 : .6;
+    SFX.aura(tier === 'mog' ? 1.3 : .9, tier === 'mog' ? 1.6 : 1.1); FX.linesT = tier === 'mog' ? .9 : .45; C.shake = .2; FPV.fov = 58;
+    if (tier === 'mog') { fu.brow = 'sad'; fu.pose = 'recoil'; fu.snap = 6; crowdReact = 1; SFX.ooh(); }
+    await sleep(tier === 'mog' ? 1400 : 950);
+    yu.pose = 'slam'; yu.snap = 24; FPV.dip = .1; SFX.impact(.45); C.shake = .7; await sleep(170);
+  } else { yu.pose = tier === 'mid' ? 'point' : 'cross'; yu.snap = 10; yu.auraT = FX.auT = tier === 'mid' ? .25 : .05; await sleep(650); }
+  if (dead()) return;
+  // 2. strike
+  yu.pose = 'point'; yu.snap = 18; FX.linesT = 0;
+  slam({mog:'TAKE<br>THAT!', strong:'OBJECTION!', mid:'HOLD IT!', weak:'um… objection?'}[tier], tier === 'weak' ? 'sm' : 'g', '#' + yu.col.getHexString(), tier === 'weak' ? 900 : 1000);
+  SFX.whoosh(); FPV.fov = 64; C.punch = tier === 'weak' ? .3 : 1.6; FX.ca = tier === 'weak' ? 0 : .012;
+  await sleep(330);
+  if (dmg > 0) {
+    flash(tier === 'weak' ? .15 : .8); SFX.impact(tier === 'mog' ? 1.3 : tier === 'strong' ? 1 : .5); C.shake = tier === 'mog' ? 2 : tier === 'strong' ? 1.2 : .4; FX.ca = .02;
+    fu.pose = 'recoil'; fu.snap = 20; fu.brow = 'sad'; fu.hop = .06;
+    fu.posT = fu.base.clone().add(new V3(tier === 'weak' ? .05 : .45, 0, 0));
+    G.hpF = Math.max(0, G.hpF - dmg); hud();
+    floatTxt(F, '-' + dmg, '#ff6b6b', tier === 'mog' ? 76 : 54);
+    if (tier !== 'weak') { crowdReact = Math.max(crowdReact, .7); if (tier !== 'mog') SFX.gasp(); }
+    await sleep(tier === 'mog' ? 450 : 750);
+  }
+  G.auY = Math.max(0, G.auY + gain); hud();
+  floatAt((gain >= 0 ? '+' : '') + gain + ' AURA', gain >= 0 ? '#ffd84a' : '#ff6b6b', 44, .5, .78);
+  if (tier === 'mog') {
+    // the mog: you grow, they shrink, you look down at them
+    fu.scaleT = .7; fu.pose = 'sad'; yu.scaleT = 1.32; yu.pose = 'cross'; yu.brow = 'smug'; yu.auraT = 1.4; FX.auT = 1.2;
+    fpLook(headOf(F).add(new V3(0, -.3, 0))); FX.satT = .35; FX.linesT = .8;
+    slam('MOGGED', 'g', '#' + yu.col.getHexString(), 1400); SFX.impact(.7); SFX.ooh(); crowdReact = 1.4; C.shake = .5;
+    await sleep(1500);
+    // quick hero cut so you can see your own aura
+    fromFP(); C.pos.copy(cam.position); FX.auT = 0;
+    await go(lowShot(Y), 0); go([Y.position.clone().addScaledVector(fwd(Y), 2.2).add(new V3(0, .7, .4)), Y.position.clone().setY(2.3), 60], 1.4);
+    await sleep(1300); FX.satT = 1; FX.linesT = 0;
+    yu.scaleT = 1; fu.scaleT = fBase; await toFP(.45);
+  }
+  if (G.combo >= 2) { slam('AURA COMBO x' + G.combo, 'sm g', '#ffb21a', 900); await sleep(700); }
+  if (dead()) return;
+  // 3. counter-attack: they storm over and get in your face. Time the tap to overrule it.
+  const koF = G.hpF <= 0;
+  if (f >= .4 && f <= .6 && !koF && G.hpY > 0) {
+    yu.scaleT = 1; fu.scaleT = fBase; yu.auraT = 0; FX.auT = 0;
+    const won = await quickDraw(); if (dead()) return;
+    const hit = Math.round(130 / n * .35);
+    if (won) { G.hpF = Math.max(0, G.hpF - hit); back = 0; G.auY += 400; floatAt('+400 AURA', '#ffd84a', 40, .5, .78); }
+    else { back += hit; G.hpY = Math.max(0, G.hpY - back); }
+    hud(); await sleep(400); fu.pose = won ? 'sad' : 'cross'; fu.brow = won ? 'sad' : 'smug'; yu.pose = 'idle'; res.duel = won ? 'won' : 'lost';
+  } else if (back > 0 && !koF) {
+    yu.scaleT = 1; fu.scaleT = fBase; yu.pose = 'idle'; yu.auraT = 0; FX.auT = 0;
+    const toY = Y.position.clone().sub(fu.base).setY(0).normalize();
+    fu.posT = Y.position.clone().addScaledVector(toY, -1.35).setY(0);
+    fu.pose = 'point'; fu.snap = 14; fu.brow = 'angry'; fu.auraT = .4 + (1 - f) * .7; FX.tint.copy(fu.col); SFX.aura(.6, .8);
+    fpLook(fu.posT.clone().setY(1.55 * fBase)); FPV.fov = 60;
+    const jab = res.jab || JABS[(Math.random() * JABS.length) | 0];
+    await sleep(500);
+    await say(G.case.foe, jab, 'foe', .5);
+    if (dead()) return;
+    hideBox();
+    fu.pose = 'slam'; fu.snap = 6;
+    const hit = await qte(boss ? .95 : 1.15);
+    if (dead()) return;
+    fu.pose = 'point'; fu.snap = 24;
+    if (hit) {
+      const bl = Math.round(back * .6); back -= bl; G.auY += 150;
+      slam('OVERRULED!', 'g', '#4aa8ff', 900); SFX.gavel(); CH.judge.userData.pose = 'gDn'; setTimeout(() => CH.judge.userData.pose = 'sit', 300);
+      floatAt('BLOCKED ' + bl, '#7cc8ff', 40, .5, .62);
+    } else slam('SUSTAINED', 'sm', '#ff3b3b', 800);
+    await sleep(200);
+    flash(hit ? .25 : .55); SFX.impact(hit ? .4 : .5 + (1 - f) * .6); C.shake = hit ? .4 : .5 + (1 - f) * 1.5; FX.ca = hit ? .006 : .016; FX.hurt = hit ? .35 : .9;
+    yu.pose = hit ? 'cross' : 'recoil'; yu.snap = 18; yu.brow = 'sad'; FPV.dip = hit ? .03 : .1;
+    G.hpY = Math.max(0, G.hpY - back); G.auF += Math.round((1 - f) * 600); hud();
+    floatAt('-' + back, '#ff6b6b', 58, .5, .45);
+    if (f < .35 && !hit) { await sleep(350); floatAt('-AURA', '#ff6b6b', 36, .55, .7); }
+    await sleep(800); fu.auraT = 0; fu.posT = fu.base.clone(); fu.pose = hit ? 'sad' : 'cross'; fu.brow = hit ? 'sad' : 'smug'; FPV.fov = 64;
+  } else if (!koF) { fu.posT = fu.base.clone(); fu.pose = 'sad'; }
+  // 4. ruling
+  yu.scaleT = 1; fu.scaleT = fBase; yu.auraT = 0; FX.auT = 0; FX.linesT = 0; FX.satT = 1; yu.pose = 'idle';
+  fpLook(headOf(CH.judge)); await sleep(500);
+  const rl = res.ruling || RULE[tier][(Math.random() * 2) | 0];
+  if (tier === 'mog' || tier === 'weak') { CH.judge.userData.pose = 'gUp'; await sleep(220); CH.judge.userData.pose = 'gDn'; SFX.gavel(); C.shake = .5; await sleep(200); CH.judge.userData.pose = 'sit'; }
+  await say('Her Honour', rl, '', .7);
+  hideBox(); document.body.classList.remove('cine');
+  if (dead()) return;
+  fu.posT = fu.base.clone();
+  ls('cd-draft-' + G.qs[G.i], '');
+  await showRuling(q, res, f, dmg, back, gain);
+  if (dead()) return;
+  G.i++;
+  if (G.hpF <= 0 || G.hpY <= 0 || G.i >= G.qs.length) return verdict();
+  nextQ();
+}
+function showRuling(q, res, f, dmg, back, gain) {
+  return new Promise(done => {
+    const cls = f >= .75 ? 'ok' : f >= .5 ? 'md' : 'bd', r = $('ruling');
+    const li = a => (a && a.length) ? '<ul>' + a.map(x => '<li>' + esc(x) + '</li>').join('') + '</ul>' : '<div class="small">—</div>';
+    r.innerHTML = `<div class="row" style="justify-content:space-between"><div><div class="small" style="text-transform:uppercase;letter-spacing:1px">Judge's ruling${res.self ? ' (self-marked)' : ''}</div><div class="sc ${cls}">${res.score} / ${q.m}</div></div>
+      <div class="small" style="text-align:right">Damage dealt <b style="color:#ff8a8a">${dmg}</b> · taken <b style="color:#8ac8ff">${back}</b><br>${gain >= 0 ? '+' : ''}${gain} aura${res.duel ? ' · quick draw ' + res.duel : ''}${G.peek ? ' · brief peeked' : ''}${res.speed ? ' · speed bonus' : ''}</div></div>
+      ${res.self ? '' : `<div class="cols"><div><h4>✅ What earned marks</h4>${li(res.got)}</div><div><h4>❌ What was missing</h4>${li(res.missed)}</div></div>
+      ${res.tip ? `<div style="margin-top:10px"><b>💡 Tip:</b> ${esc(res.tip)}</div>` : ''}
+      ${res.better ? `<details><summary>Improved version of your answer</summary><div class="modelA">${esc(res.better)}</div></details>` : ''}`}
+      <details ${res.self ? '' : ''}><summary>Model answer & marking points</summary><div class="modelA">${esc(q.a)}\n\nKey marking points:\n- ${q.k.map(esc).join('\n- ')}</div></details>
+      <div class="row" style="margin-top:12px"><button class="pri" id="bCont">${G.hpF <= 0 || G.hpY <= 0 || G.i + 1 >= G.qs.length ? 'Hear the verdict ⚖️' : 'Next argument ⚔️'}</button></div>`;
+    r.classList.remove('hide'); r.scrollTop = 0;
+    fpLook(headOf(CH.judge).lerp(headOf(CH.foe), .5).add(new V3(0, -.45, 0)));
+    $('bCont').onclick = () => { r.classList.add('hide'); done(); };
+  });
+}
+
+async function verdict() {
+  const Y = CH.you, F = CH.foe, yu = Y.userData, fu = F.userData;
+  const avg = G.results.reduce((a, r) => a + r.f, 0) / Math.max(1, G.results.length);
+  const win = G.hpY > 0 && (G.hpF <= 0 || G.hpF / 1 < G.hpY / 1);
+  const grade = avg >= .9 ? 'S' : avg >= .75 ? 'A' : avg >= .6 ? 'B' : avg >= .45 ? 'C' : 'D';
+  document.body.classList.add('cine'); C.orbit = 0; FX.auT = 0;
+  fromFP(); C.pos.copy(cam.position);
+  if (G.hpF <= 0) { await go(closeShot(F, 2, -.3), .5); slam('K.O.', 'g', '#ff3b3b', 1300); SFX.impact(1.4); flash(1); C.shake = 2; fu.pose = 'sad'; fu.scaleT = .85; await sleep(1500); }
+  else if (G.hpY <= 0) { await go(closeShot(Y, 2, .3), .5); slam('K.O.', '', '#ff3b3b', 1300); SFX.impact(1.4); flash(1); C.shake = 2; yu.pose = 'sad'; await sleep(1500); }
+  await go(JUDGE(), .8);
+  for (let i = 0; i < 2; i++) { CH.judge.userData.pose = 'gUp'; await sleep(230); CH.judge.userData.pose = 'gDn'; SFX.gavel(); C.shake = .7; await sleep(260); }
+  CH.judge.userData.pose = 'sit';
+  await say('Her Honour', win ? `The court finds in favour of ${pname()}. A fine performance, counsel.` : `The court finds in favour of ${G.case.foe}. Go back to your notes, counsel.`, '', .7);
+  hideBox();
+  const W = win ? Y : F, Lz = win ? F : Y;
+  faceTo(W, 0, 6); W.userData.pose = 'power'; W.userData.auraT = 1.3; W.userData.brow = 'smug'; W.userData.scaleT = 1.15;
+  Lz.userData.pose = 'sad'; Lz.userData.brow = 'sad'; Lz.userData.scaleT = .9; FX.tint.copy(W.userData.col);
+  go(lowShot(W), 1.8); FX.linesT = .6; crowdReact = 1.5; SFX.ooh(); win ? SFX.win() : SFX.lose();
+  // save
+  let bonus = win ? 500 + Math.round(G.hpY * 10) : 0;
+  const before = SAVE.aura; SAVE.aura = Math.max(0, SAVE.aura + G.auY + bonus); SAVE.played++;
+  const order = 'SABCD'; if (win && (!SAVE.grades[G.case.id] || order.indexOf(grade) < order.indexOf(SAVE.grades[G.case.id]))) SAVE.grades[G.case.id] = grade;
+  persist();
+  const r0 = rankOf(before), r1 = rankOf(SAVE.aura);
+  const weak = G.results.slice().sort((a, b) => a.f - b.f)[0];
+  await sleep(1200); FX.linesT = 0;
+  const gc = {S:'#ffd84a', A:'#5ee08a', B:'#7cc8ff', C:'#ffc04a', D:'#ff7a7a'}[grade];
+  $('vc').innerHTML = `<div class="vt" style="color:${win ? '#ffd84a' : '#ff6b6b'}">${win ? 'CASE WON' : 'CASE LOST'}</div>
+    <div class="small">${esc(G.case.name)} · vs ${esc(G.case.foe)}</div>
+    <div class="vg" style="color:${gc}">${grade}</div>
+    <div class="vs"><div><b>${Math.round(avg * 100)}%</b>average</div><div><b>${G.results.reduce((a, r) => a + r.score, 0)}/${G.results.reduce((a, r) => a + r.m, 0)}</b>marks</div><div><b>+${(G.auY + bonus).toLocaleString()}</b>aura</div></div>
+    ${r1 > r0 ? `<div class="slam-up" style="font-family:Bangers;font-size:30px;color:#ffd84a;margin:6px 0">⬆ PROMOTED: ${RANKS[r1][1].toUpperCase()}</div>` : ''}
+    ${weak && weak.f < .75 ? `<div class="small" style="margin:8px 0">Revise next: <b style="color:var(--ink)">${esc(Q[weak.id].q)}</b> (${weak.score}/${weak.m})</div>` : ''}
+    <div class="row" style="justify-content:center;margin-top:12px">
+      ${win && G.ci + 1 < CASES.length - 1 ? `<button class="pri" id="vNext">Next case ⚖️</button>` : ''}
+      <button ${win ? '' : 'class="pri"'} id="vRetry">${win ? 'Replay' : 'Appeal (retry)'}</button><button id="vMenu">Case list</button></div>`;
+  $('verdict').classList.remove('hide');
+  $('vRetry').onclick = () => { $('verdict').classList.add('hide'); startCase(G.ci); };
+  $('vMenu').onclick = () => { $('verdict').classList.add('hide'); menu(); };
+  if ($('vNext')) $('vNext').onclick = () => { $('verdict').classList.add('hide'); startCase(G.ci + 1); };
+}
+
+addEventListener('keydown', e => { if ((e.key === ' ' || e.key === 'Enter') && !$('box').classList.contains('hide') && document.activeElement.tagName !== 'TEXTAREA') { e.preventDefault(); skipAll(); } });
+window.__CD = {G, CH, C, Q, CASES, startCase, turn, verdict, menu, FX};
+menu(); requestAnimationFrame(t => { last = t; frame(t); });
+setTimeout(() => { $('load').style.opacity = 0; setTimeout(() => $('load').remove(), 700); }, 150);
+</script>
+</body>
+</html>
