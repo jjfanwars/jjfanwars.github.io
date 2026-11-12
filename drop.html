@@ -80,7 +80,7 @@ input{background:#141a17;color:#e8eef2;border:1px solid #2b3530;border-radius:4p
 #gads{display:flex;gap:5px;margin-top:6px;font-size:11px;flex-wrap:wrap;max-width:330px}#gads span{background:rgba(10,14,18,.72);padding:2px 6px;border:1px solid rgba(255,255,255,.12);white-space:nowrap}#gads span b{color:#ffd23a;margin-right:4px}#gads span.off{opacity:.35}
 body.sg #ammo{font:700 34px var(--mono);bottom:16px}body.sg #ammo small{font-weight:400;font-size:11px;letter-spacing:1px}
 body.sg #feed{left:auto;right:18px;bottom:auto;top:12px;align-items:flex-end}body.sg #feed div{background:rgba(10,14,18,.66);padding:2px 9px;font-size:12px}
-#feed .a{color:#7fb8ff}#feed .b{color:#ffa35a}#feed .hs{color:#ffd23a;margin:0 4px}
+#feed .a{color:#7fb8ff}#feed .b{color:#ffa35a}#feed .c{color:#ff8a78}#feed .f{color:#8fbaff}#feed .hs{color:#ffd23a;margin:0 4px}
 #banner{position:absolute;left:50%;top:24%;transform:translateX(-50%);text-align:center;opacity:0;transition:opacity .35s;white-space:nowrap}
 #banner.on{opacity:1}#banner b{display:block;font:700 36px var(--mono);letter-spacing:7px}#banner span{font-size:13px;letter-spacing:3px;opacity:.9}
 #prompt{position:absolute;left:50%;top:61%;transform:translateX(-50%);text-align:center;font-size:12px;letter-spacing:2px}#prompt div{width:210px;height:4px;background:rgba(255,255,255,.2);margin:5px auto 0}#prompt i{display:block;height:100%;background:#ffd23a;width:0}
@@ -116,7 +116,7 @@ body.sg #feed{left:auto;right:18px;bottom:auto;top:12px;align-items:flex-end}bod
       <label><span id="sSquadL">Team size</span><select id="sSquad"></select></label>
       <label>Enemy<select id="sFoe"><option value="1">Easy</option><option value="2" selected>Normal</option><option value="3">Hard</option></select></label>
     </div>
-    <div class="row"><label>Objective<select id="sObj"><option value="bomb">Bomb (plant / defuse)</option><option value="secure">Secure area</option></select></label><label>Optic<select id="sOptic"><option value="0">Iron sights</option><option value="1">Red dot</option><option value="2">Holographic</option><option value="3">2.5x scope</option><option value="4">4x ACOG</option></select></label></div>
+    <div class="row"><label>Objective<select id="sObj"><option value="bomb">Bomb (plant / defuse)</option><option value="secure">Secure area</option></select></label><label>Team<select id="sTeam"><option value="0">Commies</option><option value="1">Fascists</option></select></label><label>Optic<select id="sOptic"><option value="0">Iron sights</option><option value="1">Red dot</option><option value="2">Holographic</option><option value="3">2.5x scope</option><option value="4">4x ACOG</option></select></label></div>
     <button id="bStart">Deploy solo</button>
     <div class="row"><button id="bHost" class="alt">Host online</button><button id="bJoin" class="alt">Join code</button><input id="jc" maxlength="5" placeholder="ABCDE" style="text-transform:uppercase;text-align:center"></div>
     <div id="rooms"></div><div id="msg"></div>
@@ -626,9 +626,45 @@ function ik2(u, f, h, tgt, pole) {
   const E = _A.clone().addScaledVector(dir, a).addScaledVector(pp, hh); boneAim(u, f, E); boneAim(f, h, tgt);
 }
 function glbMats(look) {
-  if (GLB.mats[look]) return GLB.mats[look]; const t = SOLDIER_TINT[look] || SOLDIER_TINT.ally, o = {};
+  if (GLB.mats[look]) return GLB.mats[look]; const t = /^op/.test(look) ? FAC[OPS[+look.slice(2)].fac].tint : /^fac/.test(look) ? FAC[+look.slice(3)].tint : SOLDIER_TINT[look] || SOLDIER_TINT.ally, o = {};
   GLB.g.scene.traverse(m => { if (m.isMesh && !o[m.material.name]) { const c = m.material.clone(); if (!/Visor/.test(c.name)) { c.color.setRGB(t[0], t[1], t[2]); c.roughness = 0.8; c.metalness = 0.15; } else { c.roughness = 0.25; c.metalness = 0.6; } o[m.material.name] = c; } });
   return GLB.mats[look] = o;
+}
+// ----- leader heads: smooth shapes in realistic proportions, merged into one vertex-coloured mesh per operator, hung on the neck bone -----
+const HEADM = new T.MeshStandardMaterial({ vertexColors: true, roughness: 0.6, metalness: 0 }), headGeo = {}, capGs = {};
+const capGeo = th => capGs[th] || (capGs[th] = new T.SphereGeometry(1, 22, 12, 0, Math.PI * 2, 0, th));
+const HSPH = new T.SphereGeometry(1, 20, 14), HCYL = new T.CylinderGeometry(1, 1, 1, 16);
+function headParts(st) { // head space: origin at the head bone, face toward +z, metres
+  const P = [], h = 0.1, SK = 0xc8977b, rr = mulberry(st.length * 31 + 7), q = new T.Quaternion(), eu = new T.Euler();
+  const add = (geo, c, x, y, z, sx, sy, sz, rx, ry, rz) => { eu.set(rx || 0, ry || 0, rz || 0); q.setFromEuler(eu); P.push([geo, new T.Matrix4().compose(new T.Vector3(x, y, z), q, new T.Vector3(sx, sy, sz)), c]); };
+  const E = (c, ...a) => add(HSPH, c, ...a), C = (c, ...a) => add(HCYL, c, ...a), cap = (th, c, ...a) => add(capGeo(th), c, ...a);
+  const face = o => { const s = o.skin || SK, w = o.w || 1, j = o.jaw || 1;
+    E(s, 0, h + 0.02, -0.005, 0.079 * w, 0.098, 0.093); E(s, 0, h - 0.04, 0.012, 0.066 * w * j, 0.062, 0.075); E(s, 0, h - 0.083, 0.038, 0.032 * j, 0.026, 0.032);
+    for (const sx of [-1, 1]) { E(s, sx * 0.046 * w, h - 0.018, 0.046, 0.027, 0.032, 0.028); E(s, sx * 0.079 * w, h + 0.002, -0.004, 0.012, 0.03, 0.021);
+      E(0xd6cfc4, sx * 0.03, h + 0.018, 0.083, 0.0105, 0.0062, 0.006); E(o.eye || 0x3b2c22, sx * 0.03, h + 0.0172, 0.0885, 0.0056, 0.0056, 0.0025); E(s, sx * 0.03, h + 0.0236, 0.0838, 0.0128, 0.0046, 0.0068); E(s, sx * 0.03, h + 0.0118, 0.0832, 0.0118, 0.0028, 0.0062);
+      E(o.brow || o.hair, sx * 0.032, h + 0.036, 0.086, 0.021, o.bt || 0.0055, 0.007, 0, 0, sx * -0.12); }
+    E(s, 0, h - 0.002, 0.088, 0.013, 0.032, 0.017, -0.25); E(s, 0, h - 0.026, 0.097, 0.016, 0.014, 0.016); E(o.lip || 0x9a5e54, 0, h - 0.05, 0.085, 0.022, 0.0065, 0.008);
+    C(s, 0, h - 0.13, -0.008, 0.046, 0.09, 0.046); };
+  const suit = (tie, len, rz) => { for (const sx of [-1, 1]) E(0xd9d9d4, sx * 0.024, -0.072, 0.136, 0.022, 0.013, 0.009, 0, 0, sx * 0.55); if (tie) { E(tie, 0, -0.085, 0.148, 0.016, 0.018, 0.012); E(tie, (rz || 0) * -0.12, -0.085 - len / 2, 0.158, 0.026, len / 2, 0.008, 0.12, 0, rz || 0); } };
+  if (st === 'stalin') { const hc = 0x5a5550, mc = 0x231e1b; face({ hair: hc, brow: mc, bt: 0.008, jaw: 1.08 }); cap(1.2, hc, 0, h + 0.025, -0.012, 0.084, 0.102, 0.099, -0.35); E(hc, 0, h + 0.078, 0.025, 0.07, 0.03, 0.065, -0.3); E(mc, 0, h - 0.033, 0.094, 0.043, 0.012, 0.013); for (const sx of [-1, 1]) E(mc, sx * 0.034, h - 0.04, 0.088, 0.016, 0.012, 0.011); }
+  else if (st === 'putin') { const hc = 0xa68e6e; face({ hair: hc, eye: 0x4f6a86, w: 0.98 }); cap(1.15, hc, 0, h + 0.02, -0.02, 0.0815, 0.1, 0.095, -1.0); E(hc, 0, h + 0.093, -0.012, 0.05, 0.01, 0.055); suit(0x2c3358, 0.3); }
+  else if (st === 'kim') { const hc = 0x0d0d0d; face({ hair: hc, w: 1.09, jaw: 1.14 }); cap(1.5, 0x2b2b2b, 0, h + 0.02, -0.004, 0.0865, 0.1, 0.095); E(hc, 0, h + 0.09, -0.005, 0.062, 0.036, 0.085); E(hc, 0, h + 0.088, 0.055, 0.056, 0.03, 0.036, 0.3); for (const sx of [-1, 1]) E(0x1a1a1a, sx * 0.034, -0.07, 0.09, 0.04, 0.028, 0.02, 0, 0, sx * 0.15); }
+  else if (st === 'xi') { const hc = 0x121212; face({ hair: hc, w: 1.05, jaw: 1.1 }); cap(1.3, hc, 0, h + 0.025, 0, 0.0825, 0.1, 0.096, -0.12); E(hc, -0.016, h + 0.084, 0.02, 0.062, 0.022, 0.07, 0, 0, 0.15); suit(0xa8191f, 0.3); }
+  else if (st === 'castro') { const hc = 0x161414, ol = 0x4a5230; face({ hair: hc, jaw: 1.05 }); E(hc, 0, h - 0.056, 0.03, 0.075, 0.066, 0.075); E(hc, 0, h - 0.034, 0.092, 0.036, 0.011, 0.012); for (const sx of [-1, 1]) E(hc, sx * 0.07, h + 0.03, -0.01, 0.02, 0.045, 0.05);
+    C(ol, 0, h + 0.088, -0.008, 0.087, 0.072, 0.093); E(0x3a4026, 0, h + 0.056, 0.088, 0.072, 0.006, 0.046, 0.15); C(0x6b4a2c, 0.03, h - 0.052, 0.13, 0.0075, 0.085, 0.0075, 1.5, 0, -0.35); E(0xff6a20, 0.044, h - 0.055, 0.172, 0.008, 0.008, 0.008); for (const sx of [-1, 1]) E(ol, sx * 0.034, -0.07, 0.09, 0.04, 0.026, 0.02, 0, 0, sx * 0.4); }
+  else if (st === 'trump') { const hc = 0xe2bd72; face({ skin: 0xd98852, hair: hc, brow: 0xd2a860, eye: 0x4a5f78, w: 1.06, jaw: 1.14, lip: 0xc07a60 }); cap(1.35, hc, 0, h + 0.028, 0.004, 0.0855, 0.103, 0.1); E(hc, 0.012, h + 0.084, 0.045, 0.08, 0.035, 0.074, 0.28, 0, -0.08); for (const sx of [-1, 1]) E(hc, sx * 0.065, h + 0.05, -0.006, 0.03, 0.046, 0.076); suit(0xc4161c, 0.5); }
+  else if (st === 'yahu') { const hc = 0xcdccc6; face({ hair: hc, brow: 0x8f8d88, w: 1.02, jaw: 1.06 }); cap(1.28, hc, 0, h + 0.027, -0.004, 0.0835, 0.101, 0.097, -0.18); E(hc, -0.018, h + 0.085, 0.02, 0.064, 0.024, 0.07, 0, 0, 0.18); suit(0x2b4f9a, 0.32); }
+  else if (st === 'boris') { const hc = 0xf1e3a6; face({ hair: hc, brow: 0xcab878, eye: 0x4f6a86, w: 1.06, jaw: 1.1 }); cap(1.55, hc, 0, h + 0.022, -0.004, 0.088, 0.105, 0.1); for (let i = 0; i < 14; i++) { const a = rr() * 6.28, el = 0.35 + rr() * 0.9, r = 0.095; E(hc, Math.cos(a) * Math.sin(el) * r * 0.9, h + 0.025 + Math.cos(el) * r, Math.sin(a) * Math.sin(el) * r - 0.005, 0.026 + rr() * 0.016, 0.02 + rr() * 0.012, 0.026 + rr() * 0.016, rr(), rr(), rr()); } E(hc, 0.01, h + 0.06, 0.078, 0.07, 0.028, 0.025, 0.25, 0, 0.1); suit(0x30405e, 0.28, 0.25); }
+  else if (st === 'thatcher') { const hc = 0xc7ae7c; face({ hair: hc, brow: 0x8a7050, eye: 0x4f6a86, w: 0.96, jaw: 0.92, lip: 0xb0505a }); E(hc, 0, h + 0.072, -0.01, 0.1, 0.07, 0.108); cap(1.75, hc, 0, h + 0.022, -0.012, 0.091, 0.104, 0.103); E(hc, 0.01, h + 0.085, 0.06, 0.076, 0.035, 0.043, 0.45);
+    for (const sx of [-1, 1]) E(0xf2efe6, sx * 0.08, h - 0.022, 0.002, 0.008, 0.008, 0.008); for (let i = 0; i < 15; i++) { const a = -1.3 + i * 2.6 / 14; E(0xf2efe6, Math.sin(a) * 0.055, h - 0.158 + Math.abs(a) * 0.012, Math.cos(a) * 0.05 - 0.004, 0.009, 0.009, 0.009); } }
+  else if (st === 'elon') { const hc = 0x3b2b20; face({ hair: hc, w: 1.04, jaw: 1.12 }); cap(1.3, hc, 0, h + 0.025, 0, 0.083, 0.1, 0.097); cap(1.28, 0x121212, 0, h + 0.032, 0, 0.0885, 0.104, 0.101, -0.1); E(0x121212, 0, h + 0.058, 0.103, 0.072, 0.006, 0.056, 0.12); E(0x121212, 0, -0.085, 0.085, 0.06, 0.03, 0.02); }
+  return P;
+}
+function headGeom(st) {
+  if (headGeo[st]) return headGeo[st]; const gs = headParts(st).map(([geo, m, c]) => { const g = geo.clone(); g.applyMatrix4(m); return [g, c]; }); let nv = 0, ni = 0; for (const [g] of gs) { nv += g.attributes.position.count; ni += g.index.count; }
+  const pos = new Float32Array(nv * 3), nor = new Float32Array(nv * 3), col = new Float32Array(nv * 3), idx = new Uint32Array(ni); let vo = 0, io = 0;
+  for (const [g, c] of gs) { const Pp = g.attributes.position.array, N = g.attributes.normal.array, I = g.index.array, cc = hex(c).map(v => Math.pow(v, 2.2)), n = Pp.length / 3; pos.set(Pp, vo * 3); nor.set(N, vo * 3); for (let i = 0; i < n; i++) col.set(cc, (vo + i) * 3); for (let i = 0; i < I.length; i++) idx[io + i] = I[i] + vo; vo += n; io += I.length; g.dispose(); }
+  const G2 = new T.BufferGeometry(); G2.setAttribute('position', new T.BufferAttribute(pos, 3)); G2.setAttribute('normal', new T.BufferAttribute(nor, 3)); G2.setAttribute('color', new T.BufferAttribute(col, 3)); G2.setIndex(new T.BufferAttribute(idx, 1)); return headGeo[st] = G2;
 }
 function makeSoldierGlb(look) {
   const root = new T.Group(), model = SkeletonUtils.clone(GLB.g.scene), mats = glbMats(look), bones = {};
@@ -636,23 +672,26 @@ function makeSoldierGlb(look) {
   model.traverse(o => { if (o.isMesh) { o.material = mats[o.material.name] || o.material; o.castShadow = true; o.receiveShadow = false; o.frustumCulled = false; } if (o.isBone) { const k = o.name.replace('mixamorig', ''); bones[k] = o; } });
   const mixer = new T.AnimationMixer(model), act = {}; for (const c of GLB.g.animations) if (c.name === 'Idle' || c.name === 'Walk' || c.name === 'Run') { act[c.name] = mixer.clipAction(c); act[c.name].play(); act[c.name].setEffectiveWeight(c.name === 'Idle' ? 1 : 0); }
   const aim = new T.Group(); root.add(aim); const fl = new T.Mesh(BOX, new T.MeshBasicMaterial({ color: 0xffd070 })); fl.scale.set(0.12, 0.12, 0.18); fl.position.set(-0.13, -0.04, 0.95); fl.visible = false; aim.add(fl);
-  root.userData = { rig: { mixer, act, bones, aim, model, gun: null, w: [1, 0, 0] }, flash: fl, look }; scene.add(root); return root;
+  const rig = { mixer, act, bones, aim, model, gun: null, w: [1, 0, 0] }, o = /^op/.test(look) ? OPS[+look.slice(2)] : null;
+  if (o && bones.Neck && bones.Head) { root.updateMatrixWorld(true); const hd = bones.Head, nk = bones.Neck, hp = hd.getWorldPosition(new T.Vector3()), wq = nk.getWorldQuaternion(new T.Quaternion()), ws = nk.getWorldScale(new T.Vector3()), H = new T.Mesh(headGeom(o.hd), HEADM); H.castShadow = true; H.frustumCulled = false; H.position.copy(nk.worldToLocal(hp)); H.quaternion.copy(wq.invert()); H.scale.setScalar(1.12 / ws.x); nk.add(H); hd.scale.setScalar(0.001); rig.hideHead = hd; rig.headM = H; rig.neck = nk; }
+  root.userData = { rig, flash: fl, look }; scene.add(root); return root;
 }
-const _pole = new T.Vector3(), _tg = new T.Vector3(), _q2 = new T.Quaternion(), _ex = new T.Vector3(-1, 0, 0);
+const _pole = new T.Vector3(), _tg = new T.Vector3(), _q2 = new T.Quaternion(), _ex = new T.Vector3(-1, 0, 0), _he = new T.Euler(), _hq = new T.Quaternion();
 function poseSoldier(e, dt) {
   const u = e.mesh.userData, R = u.rig, b = R.bones; if (e.mode === 'dead' || !R) return; const dx = cam.position.x - e.x, dz = cam.position.z - e.z; if (dx * dx + dz * dz > 6400 && !e.isPlayer) return;
   const sp = e.animSpeed || 0, tw = [sp < 0.3 ? 1 : 0, sp >= 0.3 && sp < 5 ? 1 : 0, sp >= 5 ? 1 : 0], k = Math.min(1, dt * 9); for (let i = 0; i < 3; i++) R.w[i] += (tw[i] - R.w[i]) * k;
   R.act.Idle.setEffectiveWeight(R.w[0]); R.act.Walk.setEffectiveWeight(R.w[1]); R.act.Run.setEffectiveWeight(R.w[2]); R.act.Walk.timeScale = Math.max(0.5, sp / 2.6); R.act.Run.timeScale = Math.max(0.6, sp / 5.6);
-  R.mixer.update(dt); const c = e.crT || 0, rootQ = e.mesh.getWorldQuaternion(_q2); R.model.position.y = -0.46 * c; e.mesh.updateMatrixWorld(true);
+  R.mixer.update(dt); if (R.hideHead) R.hideHead.scale.setScalar(0.001); const c = e.crT || 0, rootQ = e.mesh.getWorldQuaternion(_q2); R.model.position.y = -0.46 * c; e.mesh.updateMatrixWorld(true);
   _ax.copy(_ex).applyQuaternion(rootQ); // the soldier's right-hand side axis: positive angle tips the front upwards
   if (c > 0.05) { boneTwist(b.LeftUpLeg, _ax, 1.15 * c); boneTwist(b.RightUpLeg, _ax, 1.15 * c); boneTwist(b.LeftLeg, _ax, -1.95 * c); boneTwist(b.RightLeg, _ax, -1.95 * c); }
   const pit = (e.aimP || 0); boneTwist(b.Spine1, _ax, pit * 0.45 - c * 0.12); boneTwist(b.Spine2, _ax, pit * 0.45 - c * 0.1); b.Spine2.getWorldPosition(_tg); const aim = R.aim; aim.position.copy(e.mesh.worldToLocal(_tg.clone())); aim.rotation.x = -pit * 0.9;
+  if (R.headM) { R.neck.getWorldQuaternion(_wq); _hq.setFromEuler(_he.set(-pit * 0.7, 0, 0)).premultiply(rootQ); R.headM.quaternion.copy(_wq.invert().multiply(_hq)); } // keep the face level with the aim, not slumped with the neck
   const W = wOf(e), sgn = W.mdl === 'shotgun', gk = W.mdl + W.sc, gg = sgn ? SGUN.g : RIFLE.g; if (R.gunK !== gk && gg) { if (R.gun) aim.remove(R.gun); R.gun = new T.Mesh(gg, sgn ? SGUN.mat : RIFLE.mat); R.gun.frustumCulled = false; R.gun.castShadow = true; R.gun.rotation.y = Math.PI; R.gun.position.set(-0.13, -0.09, 0.3); R.gun.scale.setScalar(W.sc); aim.add(R.gun); R.gunK = gk; }
   aim.updateMatrixWorld(true); if (!R.gun) return;
   R.gun.localToWorld(_tg.set(0, -0.11, 0.07)); _pole.set(-0.7, -1, -0.15).applyQuaternion(rootQ); ik2(b.RightArm, b.RightForeArm, b.RightHand, _tg.clone(), _pole.clone());
   R.gun.localToWorld(_tg.set(0, -0.045, sgn ? -0.52 : -0.27)); _pole.set(0.6, -1, 0.1).applyQuaternion(rootQ); ik2(b.LeftArm, b.LeftForeArm, b.LeftHand, _tg.clone(), _pole.clone());
 }
-function makeSoldier(look) { return GLB.ready ? makeSoldierGlb(look) : makeSoldierOld(look); }
+function makeSoldier(look) { if (GLB.ready) return makeSoldierGlb(look); const L = /^op/.test(look) ? 'fac' + OPS[+look.slice(2)].fac : look, m = makeSoldierOld(L === 'fac0' ? 'foe' : L === 'fac1' ? 'att' : L); m.userData.look = look; return m; }
 function animSoldier(e, speed) { e.animSpeed = speed; if (!e.mesh.userData.rig) animSoldierOld(e, speed); }
 function swapMeshes() { for (const e of ents) { const look = e.mesh.userData.look, vis = e.mesh.visible, dead = e.mode === 'dead'; scene.remove(e.mesh); e.mesh = makeSoldier(look); e.mesh.visible = vis; if (dead) e.mesh.rotation.x = -Math.PI / 2; } }
 if (window.GLTFLoader) new GLTFLoader().load('soldier.glb', g => { GLB.g = g; GLB.ready = true; swapMeshes(); }, undefined, () => console.warn('soldier.glb not loaded, using the box soldiers'));
@@ -678,20 +717,25 @@ const GADGET = { // u: p placed, t thrown, f fired, h held, m swung
   charge: { n: 'BREACH CHARGE', u: 'p' }, frag: { n: 'FRAG GRENADE', u: 't' }, smoke: { n: 'SMOKE GRENADE', u: 't' }, flash: { n: 'FLASHBANG', u: 't' },
   wire: { n: 'BARBED WIRE', u: 'p' }, shield: { n: 'DEPLOYABLE SHIELD', u: 'p' }, impact: { n: 'IMPACT GRENADE', u: 't' }, nitro: { n: 'NITRO CELL', u: 't' },
 };
-const OPS = [ // side 0 = attack, 1 = defend
-  { n: 'KILN', ab: 'KI', side: 0, role: 'Hard breacher', w: 'ar', hp: 110, spd: 0.96, uni: 'therm', un: 2, sec: 'smoke', sn: 2, c: '#e0782e', d: 'Thermal charges burn through reinforced walls. Shock cells make them fizzle, so bring an EMP.' },
-  { n: 'VESPER', ab: 'VE', side: 0, role: 'Electronics', w: 'ar', hp: 100, spd: 1, uni: 'emp', un: 3, sec: 'flash', sn: 2, c: '#45b7e0', d: 'EMP grenades fry defender cameras, jammers, lasers and shock cells, even through walls.' },
-  { n: 'MALLET', ab: 'MA', side: 0, role: 'Soft breacher', w: 'smg', hp: 100, spd: 1.05, uni: 'bround', un: 3, sec: 'charge', sn: 1, c: '#c9a23c', d: 'Breaching rounds blow wide holes in soft walls and barricades from range.' },
-  { n: 'LYNX', ab: 'LY', side: 0, role: 'Intel', w: 'dmr', hp: 100, spd: 1, uni: 'scan', un: 0, sec: 'frag', sn: 2, c: '#6fbf5a', d: 'Hold the heartbeat scanner to see defenders within 18 m through walls. You cannot shoot while scanning.' },
-  { n: 'BRICK', ab: 'BR', side: 0, role: 'Breacher', w: 'sg', hp: 125, spd: 0.92, uni: 'hammer', un: 0, sec: 'charge', sn: 2, c: '#b45a3c', d: 'The breaching hammer smashes soft walls and barricades in a couple of swings.' },
-  { n: 'WARDEN', ab: 'WA', side: 1, role: 'Anti-breach', w: 'smg', hp: 110, spd: 0.97, uni: 'shock', un: 3, sec: 'wire', sn: 2, c: '#4f8de0', d: 'Shock cells on walls make thermal charges fizzle. Only an EMP or a blast clears them.' },
-  { n: 'SNARE', ab: 'SN', side: 1, role: 'Trapper', w: 'sg', hp: 100, spd: 1, uni: 'laser', un: 3, sec: 'shield', sn: 1, c: '#d64545', d: 'Entry lasers on doors and windows blow up attackers who walk through. Shoot the box to clear one.' },
-  { n: 'ORACLE', ab: 'OR', side: 1, role: 'Intel', w: 'smg', hp: 100, spd: 1.05, uni: 'scam', un: 3, sec: 'impact', sn: 2, c: '#9a6fe0', d: 'Sticky cameras cling to any surface. Watch them, and every building camera, with 5.' },
-  { n: 'STATIC', ab: 'ST', side: 1, role: 'Jammer', w: 'smg', hp: 100, spd: 1, uni: 'jam', un: 3, sec: 'nitro', sn: 1, c: '#3cb8a0', d: 'Signal jammers kill drones and hold breach and thermal charges within 3.5 m.' },
-  { n: 'BASTION', ab: 'BA', side: 1, role: 'Anchor', w: 'lmg', hp: 125, spd: 0.9, uni: 'armor', un: 1, sec: 'wire', sn: 2, c: '#8a96a8', d: 'Drop an armor bag. Every defender who walks over it takes a plate worth 25.' },
+const FAC = [{ n: 'COMMIES', c: '#a52a20', lt: '#ff9a8a', tint: [0.095, 0.013, 0.011], sl: 0x1c0605 }, { n: 'FASCISTS', c: '#2a55a0', lt: '#9cc4ff', tint: [0.05, 0.085, 0.25], sl: 0x070d1c }];
+const OPS = [ // fac 0 = commies, 1 = fascists; a = attack kit, d = defend kit: [gadget, name, count]; as/ds = secondaries
+  { n: 'STALIN', ab: 'ST', fac: 0, w: 'ar', hp: 110, spd: 0.96, hd: 'stalin', a: ['therm', 'FIVE-YEAR CHARGE', 2], d: ['shock', 'IRON CURTAIN', 3], as: ['smoke', 0, 2], ds: ['wire', 0, 2] },
+  { n: 'PUTIN', ab: 'PU', fac: 0, w: 'ar', hp: 100, spd: 1, hd: 'putin', a: ['emp', 'ELECTION MEDDLER', 3], d: ['jam', 'STATE TV JAMMER', 3], as: ['flash', 0, 2], ds: ['impact', 0, 2] },
+  { n: 'KIM', ab: 'KJ', fac: 0, w: 'smg', hp: 100, spd: 1.05, hd: 'kim', a: ['bround', 'TEST MISSILE', 3], d: ['laser', 'APPROVED HAIRCUT LASER', 3], as: ['charge', 0, 1], ds: ['shield', 0, 1] },
+  { n: 'XI', ab: 'XI', fac: 0, w: 'dmr', hp: 100, spd: 1, hd: 'xi', a: ['scan', 'SOCIAL CREDIT SCANNER', 0], d: ['scam', 'EVERYWHERE CAM', 3], as: ['frag', 0, 2], ds: ['nitro', 0, 1] },
+  { n: 'CASTRO', ab: 'FC', fac: 0, w: 'sg', hp: 125, spd: 0.92, hd: 'castro', a: ['hammer', 'HAMMER & SICKLE', 0], d: ['armor', 'SEVEN-HOUR SPEECH', 1], as: ['frag', 'EXPLODING CIGAR', 2], ds: ['wire', 0, 2] },
+  { n: 'TRUMP', ab: 'DT', fac: 1, w: 'lmg', hp: 125, spd: 0.9, hd: 'trump', a: ['therm', 'TARIFF CHARGE', 2], d: ['armor', 'GOLD PLATING', 1], as: ['charge', 0, 2], ds: ['wire', 'THE WALL', 2] },
+  { n: 'YAHU', ab: 'BB', fac: 1, w: 'smg', hp: 110, spd: 0.97, hd: 'yahu', a: ['scan', 'MOSSAD SCANNER', 0], d: ['shock', 'IRON DOME CELL', 3], as: ['frag', 0, 2], ds: ['impact', 0, 2] },
+  { n: 'BORIS', ab: 'BJ', fac: 1, w: 'sg', hp: 110, spd: 0.95, hd: 'boris', a: ['hammer', 'BREXIT HAMMER', 0], d: ['laser', 'PARTYGATE TRIPWIRE', 3], as: ['smoke', 0, 2], ds: ['shield', '£350M BUS', 1] },
+  { n: 'THATCHER', ab: 'MT', fac: 1, w: 'ar', hp: 100, spd: 1, hd: 'thatcher', a: ['emp', 'UNION BUSTER', 3], d: ['scam', 'POLL TAX CAM', 3], as: ['flash', 0, 2], ds: ['impact', 'HANDBAG', 2] },
+  { n: 'ELON', ab: 'EM', fac: 1, w: 'smg', hp: 100, spd: 1.05, hd: 'elon', a: ['bround', 'RAPID UNSCHEDULED DISASSEMBLY', 3], d: ['jam', 'BLUE CHECK JAMMER', 3], as: ['charge', 0, 1], ds: ['shield', 'CYBERTRUCK WINDOW', 1] },
 ];
 const opOf = e => e && e.op >= 0 ? OPS[e.op] : null, wOf = e => WPN[(e && e.w) || 'ar'];
-function loadout(e) { const o = opOf(e), W = WPN[o ? o.w : 'ar']; e.w = o ? o.w : 'ar'; e.mhp = o ? o.hp : 100; e.hp = e.mhp; e.ammo = W.mag; e.reserve = W.res; e.un = o ? o.un : 0; e.sn = o ? o.sn : 0; e.arm = 0; e.drones = 2; e.auto = W.auto; e.rel = 0; e.nitro = null; }
+function loadout(e) { // weapon + the kit for the side this team plays this round
+  const o = opOf(e), W = WPN[o ? o.w : 'ar'], att = !G || !G.rs || e.team === G.rs.att, k = o ? (att ? o.a : o.d) : null, k2 = o ? (att ? o.as : o.ds) : null;
+  e.w = o ? o.w : 'ar'; e.mhp = o ? o.hp : 100; e.hp = e.mhp; e.ammo = W.mag; e.reserve = W.res; e.arm = 0; e.drones = 2; e.auto = W.auto; e.rel = 0; e.nitro = null;
+  e.uni = k ? k[0] : null; e.gu = k ? k[1] : ''; e.un = k ? k[2] : 0; e.sec = k2 ? k2[0] : null; e.gs = k2 ? k2[1] || GADGET[k2[0]].n : ''; e.sn = k2 ? k2[2] : 0;
+}
 
 function say(t, ms) { const e = $('toast'); e.textContent = t; e.classList.add('on'); clearTimeout(say.t); say.t = setTimeout(() => e.classList.remove('on'), ms || 2200); }
 function feed(t) { const d = document.createElement('div'); d.textContent = t; $('feed').appendChild(d); setTimeout(() => d.remove(), 6000); while ($('feed').children.length > 5) $('feed').firstChild.remove(); }
@@ -730,7 +774,7 @@ function beginMatch(cfg, roster, me, role) {
       for (let i = 0; i < fc.foes; i++) { const home = i < fc.foes * 0.45 ? 2 : i < fc.foes * 0.78 ? 1 : 0, e = newSoldier(1, false, 'Hostile', i % 3 ? 'foe' : 'foe2'); e.home = home; const b = rnd() < 0.8 ? hb(home) : BLD[rnd() * BLD.length | 0], p = b.pts[rnd() * b.pts.length | 0]; ground(e, p[0], p[1], p[2] * b.ch); e.post = p; e.yaw = rnd() * 6.28; e.role = 'def'; }
     } else {
       G.rs = { round: 0, att: 0, score: [0, 0], phase: 'none', t: 0, obj: null, sec: 0, endMsg: '' };
-      for (const t of [0, 1]) { const n = roster.filter(r => r.team === t).length; for (let i = n; i < G.size; i++) { const s = newSoldier(t, false, 'Bot-' + (t ? 'B' : 'A') + (i + 1)); s.slot = i; } }
+      for (const t of [0, 1]) { const n = roster.filter(r => r.team === t).length; for (let i = n; i < G.size; i++) { const s = newSoldier(t, false, (t ? 'Fascist ' : 'Commie ') + (i + 1)); s.slot = i; } }
       siegeRound(0);
     }
   } else { // guest: my own soldier exists from the start, the rest arrives in snapshots
@@ -749,16 +793,16 @@ function siegeRound(n) {
   if (G.obj === 'bomb') { const fl = [...new Set(b.pts.map(p => p[2]))]; for (let t = 0; t < 60 && !rs.sites; t++) { const k = fl[rnd() * fl.length | 0], P = b.pts.filter(p => p[2] === k), A = P[rnd() * P.length | 0], B = P.filter(p => { const d = Math.hypot(p[0] - A[0], p[1] - A[1]); return d > 11 && d < 26; }); if (B.length) { const Bp = B[rnd() * B.length | 0]; rs.sites = [[r1(A[0]), r1(A[1]), k, k * b.ch], [r1(Bp[0]), r1(Bp[1]), k, k * b.ch]]; } } }
   if (!rs.sites) { G.obj = 'secure'; const pr = b.pts.filter(p => p[2] >= 1), rm = pr[rnd() * pr.length | 0] || b.pts[0]; rs.obj = { x: rm[0], z: rm[1], k: rm[2], r: 4.2, h: rm[2] * b.ch }; }
   rs.mode = G.obj; const att = ents.filter(e => e.team === rs.att), def = ents.filter(e => e.team !== rs.att);
-  att.forEach((e, i) => { setLook(e, 'att'); const sx = (i - att.length / 2) * 3 + (rnd() - 0.5), [x, z] = snapSpot(sx, HALF - 7 - (i & 1) * 2, 0); e.op = -1; ground(e, x, z, 0); e.yaw = 0; e.role = 'att'; e.bars = 0; e.reinf = 0; e.delay = 2 + rnd() * 8; e.ping = 0; e.drone = null; e.busy = 0; e.wantE = 0; e.gplan = null; if (e.isPlayer) { yaw = vyaw = 0; pitch = vpitch = 0; } });
+  att.forEach((e, i) => { setLook(e, 'fac' + e.team); const sx = (i - att.length / 2) * 3 + (rnd() - 0.5), [x, z] = snapSpot(sx, HALF - 7 - (i & 1) * 2, 0); e.op = -1; ground(e, x, z, 0); e.yaw = 0; e.role = 'att'; e.bars = 0; e.reinf = 0; e.delay = 2 + rnd() * 8; e.ping = 0; e.drone = null; e.busy = 0; e.wantE = 0; e.gplan = null; if (e.isPlayer) { yaw = vyaw = 0; pitch = vpitch = 0; } });
   const used = [], sites = rs.sites || [[rs.obj.x, rs.obj.z, rs.obj.k]], pref = b.pts.filter(p => sites.some(s => Math.hypot(p[0] - s[0], p[1] - s[1]) < 14 && Math.abs(p[2] - s[2]) <= 1));
-  def.forEach((e, i) => { setLook(e, 'def'); let p = null; const pool = pref.length > 3 && rnd() < 0.8 ? pref : b.pts; for (let t = 0; t < 14 && !p; t++) { const c = pool[rnd() * pool.length | 0]; if (!used.some(u => Math.hypot(u[0] - c[0], u[1] - c[1]) < 4)) p = c; } p = p || b.pts[0]; used.push(p); e.op = -1; ground(e, p[0], p[1], p[2] * b.ch); e.post = p; e.role = 'sdef'; e.bars = 0; e.reinf = 0; e.ping = 0; e.drone = null; e.busy = 0; e.wantE = 0; if (e.isPlayer) { yaw = vyaw = rnd() * 6.28; pitch = vpitch = 0; } });
+  def.forEach((e, i) => { setLook(e, 'fac' + e.team); let p = null; const pool = pref.length > 3 && rnd() < 0.8 ? pref : b.pts; for (let t = 0; t < 14 && !p; t++) { const c = pool[rnd() * pool.length | 0]; if (!used.some(u => Math.hypot(u[0] - c[0], u[1] - c[1]) < 4)) p = c; } p = p || b.pts[0]; used.push(p); e.op = -1; ground(e, p[0], p[1], p[2] * b.ch); e.post = p; e.role = 'sdef'; e.bars = 0; e.reinf = 0; e.ping = 0; e.drone = null; e.busy = 0; e.wantE = 0; if (e.isPlayer) { yaw = vyaw = rnd() * 6.28; pitch = vpitch = 0; } });
   if (!isGuest()) evq.push({ k: 'rnd', n }); bannerAll('ROUND ' + (n + 1), '@side', -1, -1); G.picked = false;
 }
-function freeOp(e) { const side = e.team === G.rs.att ? 0 : 1, taken = new Set(ents.filter(f => f !== e && f.team === e.team && f.op >= 0).map(f => f.op)), c = OPS.map((o, i) => i).filter(i => OPS[i].side === side && !taken.has(i)); return c.length ? c[rnd() * c.length | 0] : OPS.findIndex(o => o.side === side); }
-function hostPick(e, i) { const rs = G.rs; if (!rs || rs.phase !== 'pick' || !OPS[i] || OPS[i].side !== (e.team === rs.att ? 0 : 1) || ents.some(f => f !== e && f.team === e.team && f.op === i)) return; e.op = i; }
+function freeOp(e) { const taken = new Set(ents.filter(f => f !== e && f.team === e.team && f.op >= 0).map(f => f.op)), c = OPS.map((o, i) => i).filter(i => OPS[i].fac === e.team && !taken.has(i)); return c.length ? c[rnd() * c.length | 0] : OPS.findIndex(o => o.fac === e.team); }
+function hostPick(e, i) { const rs = G.rs; if (!rs || rs.phase !== 'pick' || !OPS[i] || OPS[i].fac !== e.team || ents.some(f => f !== e && f.team === e.team && f.op === i)) return; e.op = i; }
 function beginPrep() { // after the pick: loadouts, the defuser, cameras, and defender bots fortify the sites
   const rs = G.rs, b = siegeB(); rs.phase = 'prep'; rs.t = PREP;
-  for (const e of ents) { const side = e.team === rs.att ? 0 : 1; if (!OPS[e.op] || OPS[e.op].side !== side) e.op = freeOp(e); loadout(e); e.armT = 0; e.bars = side ? 3 : 0; e.reinf = side ? 2 : 0; if (!side && e.human) { e.drone = { x: e.x, y: e.y, z: e.z - 0.9, vy: 0 }; e.drones = 1; } }
+  for (const e of ents) { const side = e.team === rs.att ? 0 : 1; if (!OPS[e.op] || OPS[e.op].fac !== e.team) e.op = freeOp(e); loadout(e); setLook(e, 'op' + e.op); if (!e.human) e.name = OPS[e.op].n; e.armT = 0; e.bars = side ? 3 : 0; e.reinf = side ? 2 : 0; if (!side && e.human) { e.drone = { x: e.x, y: e.y, z: e.z - 0.9, vy: 0 }; e.drones = 1; } }
   if (G.obj === 'bomb') { const att = ents.filter(e => e.team === rs.att), c = att[rnd() * att.length | 0]; rs.dz = { st: 'carry', c: c.id, x: c.x, y: c.y, z: c.z, t: DFZT, pp: 0, dp: 0, site: -1 }; tellTo(c, 'YOU CARRY THE DEFUSER'); }
   const tm = 1 - rs.att, P = b.pts, byK = k => P.filter(p => p[2] === k);
   for (let k = 0; k < b.nf; k++) { const pk = shuf(byK(k).slice(), rnd); for (let j = 0, n = 0; j < pk.length && n < 2; j++) if (!n || Math.hypot(pk[j][0] - pk[0][0], pk[j][1] - pk[0][1]) > 12) { addG({ kind: 'cam', team: tm, x: pk[j][0], y: (k + 1) * b.ch - 0.42, z: pk[j][1], a: rnd() * 6.28 }); n++; } }
@@ -774,11 +818,11 @@ function botFortify(bots, b) {
   const walls = shuf(PANEL.filter(p => p.soft && p.alive && near(p.cx, p.cz, p.k, 11)), rnd).slice(0, 2 + bots.length * 2); walls.forEach(p => reinforce(p));
   for (const e of bots) {
     const op = opOf(e); if (!op) continue; const add = o => { o.team = e.team; o.by = e; return addG(o); };
-    if (op.uni === 'shock') for (const p of walls) { if (e.un <= 0) break; if (p.shock) continue; const s = nearest(p.cx, p.cz), ax = p.ax === 'x', th = ax ? (p.z1 - p.z0) / 2 : (p.x1 - p.x0) / 2, n = ax ? [0, 0, Math.sign(s[1] - p.cz) || 1] : [Math.sign(s[0] - p.cx) || 1, 0, 0]; add({ kind: 'shock', ref: p.id, x: ax ? p.cx : p.cx + n[0] * th, y: p.y0 + 1.1, z: ax ? p.cz + n[2] * th : p.cz, a: yawTo(n[0], n[2]) }); e.un--; }
-    if (op.uni === 'laser') for (const o of shuf(OPEN.filter(o => !o.bar && !o.laser && near(o.axis === 'x' ? o.c : o.f, o.axis === 'x' ? o.f : o.c, o.kk, 13)), rnd)) { if (e.un <= 0) break; add({ kind: 'laser', ref: OPEN.indexOf(o) }); e.un--; }
-    if (op.uni === 'jam' || op.uni === 'armor' || op.sec === 'shield') { const want = [[op.uni, op.uni === 'jam' ? Math.min(2, e.un) : op.uni === 'armor' ? 1 : 0, 'un'], ['shield', op.sec === 'shield' ? 1 : 0, 'sn']];
+    if (e.uni === 'shock') for (const p of walls) { if (e.un <= 0) break; if (p.shock) continue; const s = nearest(p.cx, p.cz), ax = p.ax === 'x', th = ax ? (p.z1 - p.z0) / 2 : (p.x1 - p.x0) / 2, n = ax ? [0, 0, Math.sign(s[1] - p.cz) || 1] : [Math.sign(s[0] - p.cx) || 1, 0, 0]; add({ kind: 'shock', ref: p.id, x: ax ? p.cx : p.cx + n[0] * th, y: p.y0 + 1.1, z: ax ? p.cz + n[2] * th : p.cz, a: yawTo(n[0], n[2]) }); e.un--; }
+    if (e.uni === 'laser') for (const o of shuf(OPEN.filter(o => !o.bar && !o.laser && near(o.axis === 'x' ? o.c : o.f, o.axis === 'x' ? o.f : o.c, o.kk, 13)), rnd)) { if (e.un <= 0) break; add({ kind: 'laser', ref: OPEN.indexOf(o) }); e.un--; }
+    if (e.uni === 'jam' || e.uni === 'armor' || e.sec === 'shield') { const want = [[e.uni, e.uni === 'jam' ? Math.min(2, e.un) : e.uni === 'armor' ? 1 : 0, 'un'], ['shield', e.sec === 'shield' ? 1 : 0, 'sn']];
       for (const [kind, cnt, fld] of want) for (let i = 0, t = 0; i < cnt && t < 30; t++) { const s = sites[rnd() * sites.length | 0], a = rnd() * 6.28, r = 1.2 + rnd() * 2, x = s[0] + Math.cos(a) * r, z = s[1] + Math.sin(a) * r, y = floorSpot(x, z, s[2] * b.ch); if (y === null) continue; add({ kind, x, y, z, a: Math.round(a / 1.5708) * 1.5708, n: kind === 'armor' ? 5 : 0 }); e[fld]--; i++; } }
-    if (op.sec === 'wire') for (const o of shuf(OPEN.filter(o => o.k === 'door' && !o.bar && near(o.axis === 'x' ? o.c : o.f, o.axis === 'x' ? o.f : o.c, o.kk, 12)), rnd).slice(0, e.sn)) { const s = nearest(o.axis === 'x' ? o.c : o.f, o.axis === 'x' ? o.f : o.c), ax = o.axis === 'x', sg = ax ? Math.sign(s[1] - o.f) || 1 : Math.sign(s[0] - o.f) || 1, x = ax ? o.c : o.f + sg * 1.1, z = ax ? o.f + sg * 1.1 : o.c, y = floorSpot(x, z, o.yb); if (y === null) continue; add({ kind: 'wire', x, y, z, a: ax ? 0 : Math.PI / 2 }); e.sn--; }
+    if (e.sec === 'wire') for (const o of shuf(OPEN.filter(o => o.k === 'door' && !o.bar && near(o.axis === 'x' ? o.c : o.f, o.axis === 'x' ? o.f : o.c, o.kk, 12)), rnd).slice(0, e.sn)) { const s = nearest(o.axis === 'x' ? o.c : o.f, o.axis === 'x' ? o.f : o.c), ax = o.axis === 'x', sg = ax ? Math.sign(s[1] - o.f) || 1 : Math.sign(s[0] - o.f) || 1, x = ax ? o.c : o.f + sg * 1.1, z = ax ? o.f + sg * 1.1 : o.c, y = floorSpot(x, z, o.yb); if (y === null) continue; add({ kind: 'wire', x, y, z, a: ax ? 0 : Math.PI / 2 }); e.sn--; }
   }
 }
 function siteNear(e) { const rs = G.rs; if (!rs || !rs.sites) return -1; for (let i = 0; i < 2; i++) { const s = rs.sites[i]; if (Math.hypot(e.x - s[0], e.z - s[1]) < 2.6 && Math.abs(e.y - s[3]) < 1.4) return i; } return -1; }
@@ -1093,11 +1137,11 @@ function useAct(e, kind, o, d) { // host side of every gadget key (a guest's key
     return;
   }
   if (kind === 'uni' || kind === 'sec') {
-    const op = opOf(e); if (!op) return; const gk = kind === 'uni' ? op.uni : op.sec, cnt = kind === 'uni' ? 'un' : 'sn';
+    if (!opOf(e)) return; const gk = kind === 'uni' ? e.uni : e.sec, cnt = kind === 'uni' ? 'un' : 'sn', gnm = kind === 'uni' ? e.gu : e.gs; if (!gk) return;
     if (gk === 'hammer') return melee(e, o[0], o[1], o[2], d[0], d[1], d[2], true); if (gk === 'scan') return;
     if (gk === 'nitro' && e.nitro) { const n = e.nitro; e.nitro = null; if (GOBJ.includes(n)) { delG(n); explode('nitro', n.x, n.y, n.z, e); } return; }
-    if (e[cnt] <= 0) return tellTo(e, 'NO ' + GADGET[gk].n + ' LEFT'); if (att && ph === 'prep') return tellTo(e, 'WAIT FOR THE ACTION PHASE');
-    if (useGadget(e, gk, o, d)) { e[cnt]--; tellTo(e, GADGET[gk].n + (e[cnt] ? ' · ' + e[cnt] + ' LEFT' : '') + (gk === 'nitro' ? ' · PRESS 4 TO DETONATE' : '')); }
+    if (e[cnt] <= 0) return tellTo(e, 'NO ' + gnm + ' LEFT'); if (att && ph === 'prep') return tellTo(e, 'WAIT FOR THE ACTION PHASE');
+    if (useGadget(e, gk, o, d)) { e[cnt]--; tellTo(e, gnm + (e[cnt] ? ' · ' + e[cnt] + ' LEFT' : '') + (gk === 'nitro' ? ' · PRESS 4 TO DETONATE' : '')); }
   }
 }
 
@@ -1133,12 +1177,12 @@ function lobDir(o, t) { const dx = t[0] - o[0], dz = t[2] - o[2], h = Math.hypot
 function botGadgets(e, dt, st) { // when a bot uses its gadgets: grenades at visible enemies, smoke for the planter, EMP on defender electronics, breaching plans
   const op = opOf(e), rs = G.rs; if (!op || rs.phase !== 'act') return; e.gcd = (e.gcd || 0) - dt; if (e.nitro && (e.nitroT -= dt) <= 0) { useAct(e, 'sec', [e.x, e.y + 1.4, e.z], [0, 0, 1]); return; } if (e.gcd > 0) return; e.gcd = 0.6 + rnd() * 0.7;
   const eye = [e.x, e.y + 1.4, e.z], t = e.tgt, att = e.team === rs.att;
-  if (t && e.vis > 0.6 && e.sn > 0 && /frag|flash|impact|nitro/.test(op.sec)) { const d = Math.hypot(t.x - e.x, t.z - e.z); if (d > (op.sec === 'impact' ? 3.5 : 5) && d < 18 && rnd() < 0.2 && !ents.some(f => f.team === e.team && f !== e && f.mode === 'ground' && Math.hypot(f.x - t.x, f.z - t.z) < 5.5)) { useAct(e, 'sec', eye, lobDir(eye, [t.x, t.y + 0.3, t.z])); if (op.sec === 'nitro') e.nitroT = 1.4; return; } }
+  if (t && e.vis > 0.6 && e.sn > 0 && /frag|flash|impact|nitro/.test(e.sec)) { const d = Math.hypot(t.x - e.x, t.z - e.z); if (d > (e.sec === 'impact' ? 3.5 : 5) && d < 18 && rnd() < 0.2 && !ents.some(f => f.team === e.team && f !== e && f.mode === 'ground' && Math.hypot(f.x - t.x, f.z - t.z) < 5.5)) { useAct(e, 'sec', eye, lobDir(eye, [t.x, t.y + 0.3, t.z])); if (e.sec === 'nitro') e.nitroT = 1.4; return; } }
   if (!att || !st) return;
-  if (op.sec === 'smoke' && e.sn > 0 && rs.dz && rs.dz.st === 'carry') { const c = ents.find(f => f.id === rs.dz.c); if (c && c !== e && siteNear(c) >= 0 && Math.hypot(c.x - e.x, c.z - e.z) < 12 && los(eye[0], eye[1], eye[2], c.x, c.y + 0.5, c.z)) { useAct(e, 'sec', eye, lobDir(eye, [c.x, c.y + 0.2, c.z])); return; } }
-  if (op.uni === 'emp' && e.un > 0) { const g = GOBJ.find(g => g.team !== e.team && ELEC[g.kind] && Math.hypot(g.x - e.x, g.z - e.z) < 10 && Math.abs(g.y - e.y) < 3); if (g && rnd() < 0.6) { useAct(e, 'uni', eye, lobDir(eye, [g.x, g.y, g.z])); return; } }
-  if (!e.gplan && ((op.uni === 'therm' || op.uni === 'bround') && e.un > 0 || op.sec === 'charge' && e.sn > 0)) {
-    const hard = op.uni === 'therm' && e.un > 0, key = hard || op.uni === 'bround' && e.un > 0 ? 'uni' : 'sec', far = key === 'uni' && op.uni === 'bround' ? 4 : 0.95;
+  if (e.sec === 'smoke' && e.sn > 0 && rs.dz && rs.dz.st === 'carry') { const c = ents.find(f => f.id === rs.dz.c); if (c && c !== e && siteNear(c) >= 0 && Math.hypot(c.x - e.x, c.z - e.z) < 12 && los(eye[0], eye[1], eye[2], c.x, c.y + 0.5, c.z)) { useAct(e, 'sec', eye, lobDir(eye, [c.x, c.y + 0.2, c.z])); return; } }
+  if (e.uni === 'emp' && e.un > 0) { const g = GOBJ.find(g => g.team !== e.team && ELEC[g.kind] && Math.hypot(g.x - e.x, g.z - e.z) < 10 && Math.abs(g.y - e.y) < 3); if (g && rnd() < 0.6) { useAct(e, 'uni', eye, lobDir(eye, [g.x, g.y, g.z])); return; } }
+  if (!e.gplan && ((e.uni === 'therm' || e.uni === 'bround') && e.un > 0 || e.sec === 'charge' && e.sn > 0)) {
+    const hard = e.uni === 'therm' && e.un > 0, key = hard || e.uni === 'bround' && e.un > 0 ? 'uni' : 'sec', far = key === 'uni' && e.uni === 'bround' ? 4 : 0.95;
     const c = PANEL.filter(p => p.alive && p.claim !== rs.round && (hard ? p.reinf : p.soft && !p.reinf) && p.k === st[2] && Math.hypot(p.cx - st[0], p.cz - st[1]) < 9 && Math.hypot(p.cx - st[0], p.cz - st[1]) > 2).sort((a, b) => Math.hypot(a.cx - e.x, a.cz - e.z) - Math.hypot(b.cx - e.x, b.cz - e.z))[0];
     if (c) { c.claim = rs.round; const ax = c.ax === 'x', n = ax ? [0, -Math.sign(st[1] - c.cz) || 1] : [-Math.sign(st[0] - c.cx) || 1, 0]; e.gplan = { p: c, key, x: c.cx + n[0] * far, z: c.cz + n[1] * far, y: c.y0, k: c.k, t: 25 }; }
   }
@@ -1148,7 +1192,7 @@ function attGoal(e, dt) {
   if (G.obj !== 'bomb') { e.delay -= dt; if (e.delay > 0 || e.tgt && !(e.vis < 0.2 && rnd() < 0.02)) return null; return [rs.obj.x + Math.cos(e.id * 2.4) * 1.5, rs.obj.z + Math.sin(e.id * 2.4) * 1.5, rs.obj.k, 4.6]; }
   const dz = rs.dz, S = rs.sites; if (rs.tgtR !== rs.round) { rs.tgt = rnd() < 0.5 ? 0 : 1; rs.tgtR = rs.round; } const st = S[rs.tgt];
   e.delay -= dt; if (e.delay > 0 && dz.c !== e.id) return null; botGadgets(e, dt, st);
-  if (e.gplan) { const gp = e.gplan; gp.t -= dt; if (!gp.p.alive || gp.t < 0) e.gplan = null; else if (Math.hypot(gp.x - e.x, gp.z - e.z) < 1.2 && Math.abs(e.y - gp.y) < 1.2) { const eye = [e.x, e.y + 1.3, e.z], d = lobDir(eye, [gp.p.cx, gp.p.y0 + (gp.key === 'uni' && opOf(e).uni === 'bround' ? 2.4 : 1.2), gp.p.cz]); e.yaw = yawTo(gp.p.cx - e.x, gp.p.cz - e.z); useAct(e, gp.key, eye, gp.key === 'uni' && opOf(e).uni === 'bround' ? (() => { const dx = gp.p.cx - eye[0], dy = gp.p.y0 + 1.2 - eye[1], dz2 = gp.p.cz - eye[2], l = Math.hypot(dx, dy, dz2); return [dx / l, dy / l, dz2 / l]; })() : (() => { const dx = gp.p.cx - eye[0], dy = gp.p.y0 + 1.1 - eye[1], dz2 = gp.p.cz - eye[2], l = Math.hypot(dx, dy, dz2); return [dx / l, dy / l, dz2 / l]; })()); e.gplan = null; e.delay = 1.2; return null; } else if (!e.tgt) return [gp.x, gp.z, gp.k, 4.4]; }
+  if (e.gplan) { const gp = e.gplan; gp.t -= dt; if (!gp.p.alive || gp.t < 0) e.gplan = null; else if (Math.hypot(gp.x - e.x, gp.z - e.z) < 1.2 && Math.abs(e.y - gp.y) < 1.2) { const eye = [e.x, e.y + 1.3, e.z], d = lobDir(eye, [gp.p.cx, gp.p.y0 + (gp.key === 'uni' && e.uni === 'bround' ? 2.4 : 1.2), gp.p.cz]); e.yaw = yawTo(gp.p.cx - e.x, gp.p.cz - e.z); useAct(e, gp.key, eye, gp.key === 'uni' && e.uni === 'bround' ? (() => { const dx = gp.p.cx - eye[0], dy = gp.p.y0 + 1.2 - eye[1], dz2 = gp.p.cz - eye[2], l = Math.hypot(dx, dy, dz2); return [dx / l, dy / l, dz2 / l]; })() : (() => { const dx = gp.p.cx - eye[0], dy = gp.p.y0 + 1.1 - eye[1], dz2 = gp.p.cz - eye[2], l = Math.hypot(dx, dy, dz2); return [dx / l, dy / l, dz2 / l]; })()); e.gplan = null; e.delay = 1.2; return null; } else if (!e.tgt) return [gp.x, gp.z, gp.k, 4.4]; }
   if (dz.st === 'drop') { const ne = ents.filter(f => f.team === e.team && f.mode === 'ground' && !f.human).sort((a, b) => Math.hypot(a.x - dz.x, a.z - dz.z) - Math.hypot(b.x - dz.x, b.z - dz.z))[0]; if (ne === e) return [dz.x, dz.z, layerOf(dz.x, dz.z, dz.y), 4.8]; }
   if (dz.st === 'carry' && dz.c === e.id) { if (siteNear(e) >= 0 && Math.hypot(e.x - st[0], e.z - st[1]) < 1.8) { if (!e.tgt || e.vis < 0.3) e.wantE = 1; return null; } if (e.tgt && e.vis > 0.4) return null; return [st[0], st[1], st[2], 4.2]; }
   if (dz.st === 'plant') { const a = e.id * 2.1; return Math.hypot(e.x - dz.x, e.z - dz.z) < 7 || e.tgt ? null : [dz.x + Math.cos(a) * 4, dz.z + Math.sin(a) * 4, layerOf(dz.x, dz.z, dz.y), 4.2]; }
@@ -1200,7 +1244,7 @@ function aiStep(e, dt) {
   if (e.busy || frozen) { mx = mz = 0; speed = 0; }
   if (e.fl > 0 && (e.fl -= dt) <= 0) e.mesh.userData.flash.visible = false;
   const lx = e.x, lz = e.z; moveEnt(e, mx, mz, speed, dt);
-  if (speed > 0) { e.stuck = Math.hypot(e.x - lx, e.z - lz) < speed * dt * 0.25 ? e.stuck + dt : 0; if (e.stuck > 2.6) { e.path = null; e.pstale = 0; e.stuck = 0; e.x += (rnd() - 0.5) * 0.4; e.z += (rnd() - 0.5) * 0.4; pushOut(e, 0.4); } if (e.stuck > 0.8) { const op = opOf(e); if (op && op.uni === 'hammer') useAct(e, 'uni', [e.x, e.y + 1.3, e.z], [-Math.sin(e.yaw), 0, -Math.cos(e.yaw)]); else melee(e, e.x, e.y + 1.3, e.z, -Math.sin(e.yaw), 0, -Math.cos(e.yaw)); } } else e.stuck = 0;
+  if (speed > 0) { e.stuck = Math.hypot(e.x - lx, e.z - lz) < speed * dt * 0.25 ? e.stuck + dt : 0; if (e.stuck > 2.6) { e.path = null; e.pstale = 0; e.stuck = 0; e.x += (rnd() - 0.5) * 0.4; e.z += (rnd() - 0.5) * 0.4; pushOut(e, 0.4); } if (e.stuck > 0.8) { if (e.uni === 'hammer') useAct(e, 'uni', [e.x, e.y + 1.3, e.z], [-Math.sin(e.yaw), 0, -Math.cos(e.yaw)]); else melee(e, e.x, e.y + 1.3, e.z, -Math.sin(e.yaw), 0, -Math.cos(e.yaw)); } } else e.stuck = 0;
 }
 function spdMul(e) { const o = opOf(e); return (o ? o.spd : 1) * (G && G.rs && e.team === G.rs.att && inWire(e) ? 0.35 : 1); }
 function moveEnt(e, mx, mz, speed, dt) {
@@ -1219,7 +1263,7 @@ function playerStep(e, dt) {
   if (G.droneOn && !e.drone) exitView();
   if (G.droneOn) { e.vx = e.vz = 0; e.hE = 0; return droneStep(e, dt); }
   if (G.camOn || prepDrone) { e.vx = e.vz = 0; e.hE = 0; return; }
-  e.hE = keys.KeyE ? 1 : 0; const busy = bombBusy(e), scan = !!(op && op.uni === 'scan' && keys.KeyG && !busy); e.busy = busy; e.scan = scan;
+  e.hE = keys.KeyE ? 1 : 0; const busy = bombBusy(e), scan = !!(e.uni === 'scan' && keys.KeyG && !busy); e.busy = busy; e.scan = scan;
   const f = (keys.KeyW ? 1 : 0) - (keys.KeyS ? 1 : 0), s = (keys.KeyD ? 1 : 0) - (keys.KeyA ? 1 : 0), l = Math.sqrt(f * f + s * s) || 1, fx = -Math.sin(yaw), fz = -Math.cos(yaw);
   const sprint = (keys.ShiftLeft || keys.ShiftRight) && f > 0 && !G.ads && !e.cr && !e.medT && !scan && !busy; e.sprint = sprint;
   let speed = (e.cr ? 1.9 : sprint ? 6.4 : G.ads ? 2.2 : 3.7) * W.spd; if (e.hp < 30) speed *= 0.78; if (e.medT) speed *= 0.55; if (scan) speed *= 0.6; if (busy || !f && !s) speed = 0;
@@ -1306,7 +1350,7 @@ function stepSiege(dt) {
     if (rs.sec >= SECT) roundEnd(rs.att, 'Objective secured'); else if (!def.length) roundEnd(rs.att, 'Defenders eliminated'); else if (!att.length) roundEnd(1 - rs.att, 'Attackers eliminated'); else if (rs.t <= 0) roundEnd(1 - rs.att, 'Time expired');
   } else if (rs.phase === 'end' && rs.t <= 0) { const s = rs.score; if (s[0] >= 3 || s[1] >= 3 || rs.round >= 4) { const wt = s[0] === s[1] ? -1 : s[0] > s[1] ? 0 : 1; endMatch(wt, s[0] + ' - ' + s[1]); } else siegeRound(rs.round + 1); }
 }
-function roundEnd(wt, why) { const rs = G.rs; rs.score[wt]++; rs.phase = 'end'; rs.t = 7; rs.endMsg = why; rs.wt = wt; for (const e of ents) { e.busy = 0; e.wantE = 0; } bannerAll('', why.toUpperCase() + (wt === rs.att ? ' · ATTACKERS WIN' : ' · DEFENDERS WIN'), wt, -1); }
+function roundEnd(wt, why) { const rs = G.rs; rs.score[wt]++; rs.phase = 'end'; rs.t = 7; rs.endMsg = why; rs.wt = wt; for (const e of ents) { e.busy = 0; e.wantE = 0; } bannerAll('', why.toUpperCase() + ' · ' + FAC[wt].n + ' WIN', wt, -1); }
 function bannerAll(t, s, wt, tm) { showBanner({ t, s, wt, tm }); if (NET.role === 'host') evq.push({ k: 'bn', t, s, wt, tm }); }
 function endMatch(wt, score) { if (G.over) return; evq.push({ k: 'end', wt, win: false, why: 'Final score ' + score + '.' }); showEnd(wt >= 0 ? player.team === wt : false, wt < 0 ? 'Draw. Final score ' + score + '.' : 'Final score ' + score + '.', wt < 0); }
 function end(win, why) { if (G.over) return; evq.push({ k: 'end', wt: -1, win, why }); showEnd(win, why); }
@@ -1455,7 +1499,7 @@ function updateCamera(dt) {
   if (drone) { const d = p.drone; cam.position.set(d.x, d.y + 0.15, d.z); cam.rotation.set(vpitch, vyaw, 0); cam.fov = 82; }
   else if (camv) { const c = G.camSel, ext = c.kind === 'scam'; cam.position.set(c.x - (ext ? Math.sin(c.a) * 0.08 : 0), c.y - (c.kind === 'cam' ? 0.12 : 0), c.z - (ext ? Math.cos(c.a) * 0.08 : 0)); cam.rotation.set(vpitch, vyaw, 0); cam.fov = 78; }
   else if (p.mode === 'ground') {
-    if (curW !== p.w) setViewWeapon(p.w);
+    if (curW !== p.w) setViewWeapon(p.w); { const sc = G.mode === 'siege' ? FAC[p.team].sl : 0x0e110c; if (G.slc !== sc) { G.slc = sc; SLEEVE.color.setHex(sc); } }
     const speed = Math.hypot(p.vx, p.vz), t = G.t, bobA = speed * 0.0065 * (1 - ads * 0.6) * (p.sprint ? 1.5 : 1), ph = p.stride, sh = (G.shakeK || 0);
     const ya = vyaw + p.recY + Math.sin(t * 1.1) * 0.0015 + (rnd() - 0.5) * sh * 0.03, pa = vpitch + p.recP + Math.sin(ph) * bobA * 0.9 + Math.sin(t * 0.9) * 0.0012 + (rnd() - 0.5) * sh * 0.03 - (p.sprint ? 0.05 : 0);
     const rx = Math.cos(ya), rz = -Math.sin(ya), lean = p.lean * 0.45, eye = 1.5 - p.crT * 0.55;
@@ -1526,21 +1570,21 @@ function showBanner(ev) {
 function showHit(kill) { const h = $('hitm'); h.classList.toggle('k', !!kill); h.style.opacity = 1; clearTimeout(showHit.t); showHit.t = setTimeout(() => h.style.opacity = 0, kill ? 260 : 120); }
 function dmgDir(x, z) { if (!player || x === null || x === undefined) return; const a = Math.atan2(x - player.x, z - player.z), rel = -(a - Math.atan2(-Math.sin(vyaw), -Math.cos(vyaw))); const d = document.createElement('div'); d.className = 'dd'; d.style.transform = 'rotate(' + rel + 'rad)'; $('dmgd').appendChild(d); setTimeout(() => d.style.opacity = 0, 600); setTimeout(() => d.remove(), 1800); while ($('dmgd').children.length > 4) $('dmgd').firstChild.remove(); }
 function showKill(ev) {
-  const d = document.createElement('div'), my = player ? player.team : 0, cls = t => t === my ? 'a' : 'b', nm = (n, o) => esc(n) + (OPS[o] ? ' <small style="opacity:.6">' + OPS[o].ab + '</small>' : '');
+  const d = document.createElement('div'), cls = t => t === 0 ? 'c' : 'f', nm = (n, o) => esc(n) + (OPS[o] ? ' <small style="opacity:.6">' + OPS[o].ab + '</small>' : '');
   d.innerHTML = (ev.a ? '<span class="' + cls(ev.at) + '">' + nm(ev.a, ev.ao) + '</span>' : '') + '<span class="hs">' + (ev.b ? '✸' : ev.h ? '◎' : '▸') + '</span><span class="' + cls(ev.vt) + '">' + nm(ev.v, ev.vo) + '</span>';
   $('feed').appendChild(d); setTimeout(() => d.remove(), 7000); while ($('feed').children.length > 6) $('feed').firstChild.remove();
 }
-function opIcon(e, me) { const o = opOf(e), dead = e.mode === 'dead', dz = G.rs && G.rs.dz; return '<div class="oi' + (o ? '' : ' nop') + (dead ? ' dead' : '') + (e === me ? ' me' : '') + (dz && dz.st === 'carry' && dz.c === e.id && me && e.team === me.team ? ' carry' : '') + '" style="--c:' + (o ? o.c : '#555') + '" title="' + esc(e.name) + '">' + (o ? o.ab : '?') + '</div>'; }
+function opIcon(e, me) { const o = opOf(e), dead = e.mode === 'dead', dz = G.rs && G.rs.dz; return '<div class="oi' + (o ? '' : ' nop') + (dead ? ' dead' : '') + (e === me ? ' me' : '') + (dz && dz.st === 'carry' && dz.c === e.id && me && e.team === me.team ? ' carry' : '') + '" style="--c:' + FAC[e.team].c + '" title="' + esc(e.name) + '">' + (o ? o.ab : '?') + '</div>'; }
 function hudSiege() {
   const p = player, rs = G.rs, my = p.team, att = my === rs.att, mine = ents.filter(e => e.team === my).sort((a, b) => a.id - b.id), them = ents.filter(e => e.team !== my).sort((a, b) => a.id - b.id), dz = rs.dz;
   $('tL').innerHTML = mine.map(e => opIcon(e, p)).join(''); $('tR').innerHTML = them.map(e => opIcon(e, p)).join('');
-  $('sA').textContent = rs.score[my]; $('sB').textContent = rs.score[1 - my]; $('sA').style.background = BLU; $('sB').style.background = ORA;
-  const planted = dz && dz.st === 'plant'; $('tR1').textContent = 'ROUND ' + (rs.round + 1) + ' · ' + (att ? 'ATTACK' : 'DEFEND'); $('tT').textContent = planted ? mmss(dz.t) : mmss(rs.t); $('tT').classList.toggle('pl', !!planted);
+  $('sA').textContent = rs.score[my]; $('sB').textContent = rs.score[1 - my]; $('sA').style.background = FAC[my].c; $('sB').style.background = FAC[1 - my].c;
+  const planted = dz && dz.st === 'plant'; $('tR1').textContent = 'ROUND ' + (rs.round + 1) + ' · ' + FAC[my].n + ' ' + (att ? 'ATTACK' : 'DEFEND'); $('tR1').style.color = FAC[my].lt; $('tT').textContent = planted ? mmss(dz.t) : mmss(rs.t); $('tT').classList.toggle('pl', !!planted);
   $('tP').textContent = { pick: 'SELECT', prep: 'PREP', act: planted ? 'DEFUSER' : 'ACTION', end: 'ROUND OVER', none: '' }[rs.phase] || '';
-  const o = opOf(p), W = wOf(p); $('opI').textContent = o ? o.ab : '?'; $('opI').style.setProperty('--c', o ? o.c : '#555'); $('opN').innerHTML = (o ? o.n : 'RECRUIT') + '<small>' + (o ? o.role.toUpperCase() : '') + '</small>';
+  const o = opOf(p), W = wOf(p); $('opI').textContent = o ? o.ab : '?'; $('opI').style.setProperty('--c', FAC[p.team].c); $('opN').innerHTML = (o ? o.n : 'RECRUIT') + '<small>' + FAC[p.team].n + '</small>';
   const hp = Math.max(0, Math.round(p.hp)); $('hpB').firstChild.style.width = Math.min(100, hp / (p.mhp || 100) * 100) + '%'; $('hpB').lastChild.style.left = Math.min(100, hp / (p.mhp || 100) * 100) + '%'; $('hpB').lastChild.style.width = Math.min(30, (p.arm || 0) / (p.mhp || 100) * 100) + '%'; $('hpN').innerHTML = (p.mode === 'dead' ? 0 : hp) + (p.arm > 0.5 ? '<small>+' + Math.round(p.arm) + ' ARMOR</small>' : '');
-  if (o) { const gu = GADGET[o.uni], gs = GADGET[o.sec], un = o.uni === 'scan' || o.uni === 'hammer' ? '∞' : p.un, sn = p.nitro ? 'DETONATE' : p.sn, chip = (k, n, c, off) => '<span' + (off ? ' class="off"' : '') + '><b>' + k + '</b>' + n + (c !== '' ? ' ×' + c : '') + '</span>';
-    $('gads').innerHTML = chip('G', gu.n, un, un === 0) + chip('4', gs.n, sn === 'DETONATE' ? '' : sn, sn === 0) + (att ? chip('5', p.drone ? (G.droneOn ? 'DRONE LIVE' : 'DRONE PARKED') : 'DRONE', p.drone ? '' : p.drones, !p.drone && !p.drones) : chip('5', 'CAMERAS', camList(my).length, !camList(my).length) + chip('E', 'REINFORCE', p.reinf, !p.reinf) + chip('E', 'BARRICADE', p.bars, !p.bars)); }
+  if (o && p.uni) { const un = p.uni === 'scan' || p.uni === 'hammer' ? '∞' : p.un, sn = p.nitro ? 'DETONATE' : p.sn, chip = (k, n, c, off) => '<span' + (off ? ' class="off"' : '') + '><b>' + k + '</b>' + n + (c !== '' ? ' ×' + c : '') + '</span>';
+    $('gads').innerHTML = chip('G', p.gu, un, un === 0) + chip('4', p.gs + (sn === 'DETONATE' ? ' · DETONATE' : ''), sn === 'DETONATE' ? '' : sn, sn === 0) + (att ? chip('5', p.drone ? (G.droneOn ? 'DRONE LIVE' : 'DRONE PARKED') : 'DRONE', p.drone ? '' : p.drones, !p.drone && !p.drones) : chip('5', 'CAMERAS', camList(my).length, !camList(my).length) + chip('E', 'REINFORCE', p.reinf, !p.reinf) + chip('E', 'BARRICADE', p.bars, !p.bars)); }
   else $('gads').innerHTML = '';
   $('ammo').innerHTML = p.mode === 'ground' && !G.droneOn && !G.camOn ? (p.rel ? 'RELOAD' : pad(p.ammo)) + '<small>' + W.name + ' · ' + p.reserve + ' · ' + (p.auto ? 'AUTO' : 'SEMI') + ' · ' + OPT().name + ' · MED ' + p.med + '</small>' : '';
   // interaction prompt: plant / disable / pick up
@@ -1552,14 +1596,14 @@ function hudSiege() {
   $('prompt').classList.toggle('hidden', !pr); if (pr) { $('prompt').firstChild.textContent = pr; $('prompt').lastChild.firstChild.style.width = Math.min(100, pv * 100) + '%'; }
   // operator pick overlay
   const pick = rs.phase === 'pick' && !G.over; $('opsel').classList.toggle('hidden', !pick);
-  if (pick) { const side = att ? 0 : 1, taken = new Set(mine.filter(e => e !== p && e.op >= 0).map(e => e.op)), key = side + ':' + p.op + ':' + [...taken].join(',');
-    $('osT').textContent = att ? 'ATTACKERS' : 'DEFENDERS'; $('osS').textContent = 'ROUND ' + (rs.round + 1) + ' · CHOOSE YOUR OPERATOR · CLICK OR PRESS 1-5'; $('osTm').textContent = mmss(rs.t);
-    if (G.osKey !== key) { G.osKey = key; let i = 0; $('osC').innerHTML = OPS.map((o, k) => { if (o.side !== side) return ''; i++; const W = WPN[o.w], pip = n => '■'.repeat(n) + '□'.repeat(3 - n); return '<div class="oc' + (p.op === k ? ' sel' : '') + (taken.has(k) ? ' taken' : '') + '" data-k="' + k + '" style="--c:' + o.c + '"><div class="em">' + o.ab + '</div><b>' + i + ' · ' + o.n + '</b><small>' + o.role.toUpperCase() + '</small><small>' + W.name + '<br>G ' + GADGET[o.uni].n + '<br>4 ' + GADGET[o.sec].n + '</small><span class="pip">ARMOR ' + pip(o.hp >= 125 ? 3 : o.hp > 100 ? 2 : 1) + ' SPEED ' + pip(o.spd > 1 ? 3 : o.spd >= 0.97 ? 2 : 1) + '</span></div>'; }).join('');
-      for (const c of $('osC').children) c.onclick = () => { pickOp(+c.dataset.k); try { canvas.requestPointerLock(); } catch (x) {} }; $('osI').textContent = p.op >= 0 ? OPS[p.op].n + ': ' + OPS[p.op].d : 'Each operator has one gadget of their own (G) and a secondary gadget (4).'; }
+  if (pick) { const taken = new Set(mine.filter(e => e !== p && e.op >= 0).map(e => e.op)), key = my + ':' + att + ':' + p.op + ':' + [...taken].join(',');
+    $('osT').textContent = FAC[my].n; $('osT').style.color = FAC[my].lt; $('osS').textContent = 'ROUND ' + (rs.round + 1) + ' · ' + (att ? 'ATTACK' : 'DEFEND') + ' · CLICK OR PRESS 1-5'; $('osTm').textContent = mmss(rs.t);
+    if (G.osKey !== key) { G.osKey = key; let i = 0; $('osC').innerHTML = OPS.map((o, k) => { if (o.fac !== my) return ''; i++; const W = WPN[o.w], pip = n => '■'.repeat(n) + '□'.repeat(3 - n), A = att ? o.a : o.d, S2 = att ? o.as : o.ds; return '<div class="oc' + (p.op === k ? ' sel' : '') + (taken.has(k) ? ' taken' : '') + '" data-k="' + k + '" style="--c:' + FAC[my].c + '"><div class="em">' + o.ab + '</div><b>' + i + ' · ' + o.n + '</b><small>' + W.name + '<br>G ' + A[1] + '<br>4 ' + (S2[1] || GADGET[S2[0]].n) + '</small><span class="pip">ARMOR ' + pip(o.hp >= 125 ? 3 : o.hp > 100 ? 2 : 1) + ' SPEED ' + pip(o.spd > 1 ? 3 : o.spd >= 0.97 ? 2 : 1) + '</span></div>'; }).join('');
+      for (const c of $('osC').children) c.onclick = () => { pickOp(+c.dataset.k); try { canvas.requestPointerLock(); } catch (x) {} }; $('osI').textContent = ''; }
   } else G.osKey = '';
   // scoreboard (Tab)
-  const bd = $('board'); bd.classList.toggle('hidden', !keys.Tab); if (keys.Tab) { const row = e => { const o = opOf(e); return '<tr class="' + (e.mode === 'dead' ? 'd' : '') + '"><td style="color:' + (o ? o.c : '#888') + '">' + (o ? o.ab : '?') + '</td><td>' + esc(e.name) + (e === p ? ' (you)' : '') + '</td><td>' + (o ? o.n : '') + '</td><td>' + (e.kills || 0) + '</td><td>' + (e.deaths || 0) + '</td></tr>'; };
-    bd.innerHTML = '<h3 style="color:' + BLU + '">' + (att ? 'ATTACKERS' : 'DEFENDERS') + ' · ' + rs.score[my] + '</h3><table><tr class="h"><td></td><td>NAME</td><td>OPERATOR</td><td>K</td><td>D</td></tr>' + mine.map(row).join('') + '</table><h3 style="color:' + ORA + '">' + (att ? 'DEFENDERS' : 'ATTACKERS') + ' · ' + rs.score[1 - my] + '</h3><table>' + them.map(row).join('') + '</table>'; }
+  const bd = $('board'); bd.classList.toggle('hidden', !keys.Tab); if (keys.Tab) { const row = e => { const o = opOf(e); return '<tr class="' + (e.mode === 'dead' ? 'd' : '') + '"><td style="color:' + FAC[e.team].lt + '">' + (o ? o.ab : '?') + '</td><td>' + esc(e.name) + (e === p ? ' (you)' : '') + '</td><td>' + (o ? o.n : '') + '</td><td>' + (e.kills || 0) + '</td><td>' + (e.deaths || 0) + '</td></tr>'; };
+    bd.innerHTML = '<h3 style="color:' + FAC[my].lt + '">' + FAC[my].n + ' · ' + rs.score[my] + '</h3><table><tr class="h"><td></td><td>NAME</td><td>OPERATOR</td><td>K</td><td>D</td></tr>' + mine.map(row).join('') + '</table><h3 style="color:' + FAC[1 - my].lt + '">' + FAC[1 - my].n + ' · ' + rs.score[1 - my] + '</h3><table>' + them.map(row).join('') + '</table>'; }
 }
 function pickOp(k) { if (!G || !G.rs || G.rs.phase !== 'pick' || !OPS[k]) return; if (isGuest()) { netSend({ t: 'pick', i: k }); player.op = k; } else hostPick(player, k); G.osKey = ''; Au.click(); }
 function hudUpdate() {
@@ -1586,7 +1630,7 @@ function hudUpdate() {
       for (const pg of PINGS) if (pg.team === p.team && pg.t > G.t && mi < 22) mark(mi++, pg.x, pg.y, pg.z, 'PING ' + dist(pg.x, pg.z), '#ffd23a');
       if (p.scan) for (const e of ents) if (e.team !== p.team && e.mode === 'ground' && Math.hypot(e.x - p.x, e.z - p.z) < 18 && Math.abs(e.y - p.y) < 6 && mi < 22) mark(mi++, e.x, e.y + 1.3, e.z, '♥ ' + dist(e.x, e.z), '#ff4a4a', false);
     }
-    for (const e of ents) { if (e === p || e.mode === 'dead' || mi >= 22) continue; if (e.team === p.team) { const dd = Math.hypot(e.x - cx, e.z - cz); if (dd < 70 && (e.human || sg)) mark(mi++, e.x, e.y + 2.1, e.z, (sg && opOf(e) ? opOf(e).ab + ' ' : '') + e.name, '#9ccfff', false); } else if (e.ping > G.t && (e.pingT === p.team || !sg && att)) mark(mi++, e.x, e.y + 2.1, e.z, 'SPOTTED ' + dist(e.x, e.z), '#ff6a55'); }
+    for (const e of ents) { if (e === p || e.mode === 'dead' || mi >= 22) continue; if (e.team === p.team) { const dd = Math.hypot(e.x - cx, e.z - cz); if (dd < 70 && (e.human || sg)) mark(mi++, e.x, e.y + 2.1, e.z, e.name, sg ? FAC[p.team].lt : '#9ccfff', false); } else if (e.ping > G.t && (e.pingT === p.team || !sg && att)) mark(mi++, e.x, e.y + 2.1, e.z, 'SPOTTED ' + dist(e.x, e.z), '#ff6a55'); }
   }
 }
 
@@ -1598,13 +1642,13 @@ addEventListener('keydown', e => {
   if (!G || !$('menu').classList.contains('hidden') || e.repeat || state === 'menu') return; if (document.activeElement && document.activeElement.tagName === 'INPUT') return; keys[e.code] = true;
   if (e.code === 'Space') { e.preventDefault(); G.edge = true; } if (e.code === 'KeyQ') G.ads = true;
   const rs = G.rs, dg = /^Digit([1-5])$/.exec(e.code);
-  if (rs && rs.phase === 'pick' && dg) { const side = player.team === rs.att ? 0 : 1, list = OPS.map((o, i) => i).filter(i => OPS[i].side === side); pickOp(list[+dg[1] - 1]); return; }
+  if (rs && rs.phase === 'pick' && dg) { const list = OPS.map((o, i) => i).filter(i => OPS[i].fac === player.team); pickOp(list[+dg[1] - 1]); return; }
   if (G.mode === 'coop') { const ord = e.code === 'Digit1' ? 'follow' : e.code === 'Digit2' ? 'attack' : e.code === 'Digit3' ? 'hold' : null; if (ord) { G.orders = ord; say({ follow: 'SQUAD: FOLLOW', attack: 'SQUAD: CLEAR NEXT BUILDING', hold: 'SQUAD: HOLD' }[ord], 1000); if (isGuest()) netSend({ t: 'ord', v: ord }); } }
   if (G.camOn && (e.code === 'KeyA' || e.code === 'KeyD')) { setCam(G.camI + (e.code === 'KeyD' ? 1 : -1)); Au.click(); return; }
   if (e.code === 'KeyC' && player.mode === 'ground' && !G.droneOn) player.cr = player.cr ? 0 : 1;
   if (e.code === 'KeyT') setOptic(optic + 1);
   if (e.code === 'KeyV' && wOf(player).auto) { player.auto = !player.auto; Au.click(); } if (e.code === 'KeyM') mini.classList.toggle('hidden');
-  if (rs && !G.droneOn && !G.camOn) { if (e.code === 'KeyE') doAct('use'); if (e.code === 'KeyG' && !(opOf(player) && opOf(player).uni === 'scan')) doAct('uni'); if (e.code === 'Digit4') doAct('sec'); }
+  if (rs && !G.droneOn && !G.camOn) { if (e.code === 'KeyE') doAct('use'); if (e.code === 'KeyG' && player.uni !== 'scan') doAct('uni'); if (e.code === 'Digit4') doAct('sec'); }
   if (rs && e.code === 'Digit5') toggleView();
   if (e.code === 'KeyB' && !G.droneOn && !G.camOn) doAct('mel'); if (e.code === 'KeyH' && isGuest() && player.mode === 'ground') { if (player.med > 0 && player.hp < player.mhp && !player.medT) { player.med--; player.medT = 4; say('BANDAGING', 1500); doAct('med'); } }
 });
@@ -1674,19 +1718,19 @@ $('sMode').onchange = fillSquad; fillSquad();
 if (q.get('squad')) { $('sMode').value = 'coop'; fillSquad(); $('sSquad').value = String([4, 8, 12].reduce((a, b) => Math.abs(b - +q.get('squad')) < Math.abs(a - +q.get('squad')) ? b : a)); }
 if (q.get('foe')) $('sFoe').value = String(Math.max(1, Math.min(3, +q.get('foe') | 0)));
 if (q.get('mode') === 'siege') { $('sMode').value = 'siege'; fillSquad(); }
-const readCfg = () => { const mode = $('sMode').value, n = +$('sSquad').value; return { mode, obj: $('sObj').value, seed: (Math.random() * 9999) | 0, foe: +$('sFoe').value, size: mode === 'siege' ? n : 5, squad: mode === 'coop' ? n : 8 }; };
+const readCfg = () => { const mode = $('sMode').value, n = +$('sSquad').value; return { mode, obj: $('sObj').value, team: mode === 'siege' ? +$('sTeam').value : 0, seed: (Math.random() * 9999) | 0, foe: +$('sFoe').value, size: mode === 'siege' ? n : 5, squad: mode === 'coop' ? n : 8 }; };
 function leaveMatch() {
   if (NET.ws) { NET.ws.onclose = null; try { NET.ws.close(); } catch (e) {} NET.ws = null; } clearInterval(NET.ping); NET.role = 'solo'; NET.peers.clear(); state = 'menu'; G = null; player = null; for (const e of ents) scene.remove(e.mesh); ents = [];
   ['hud', 'end', 'lobby'].forEach(i => $(i).classList.add('hidden')); $('menu').classList.remove('hidden'); try { document.exitPointerLock(); } catch (e) {} refreshRooms();
 }
 $('sOptic').onchange = () => setOptic(+$('sOptic').value, true);
-$('bStart').onclick = () => beginMatch(readCfg(), [{ name: myName(), id: null, team: 0 }], 0, 'solo');
+$('bStart').onclick = () => { const c = readCfg(); beginMatch(c, [{ name: myName(), id: null, team: c.team }], 0, 'solo'); };
 $('bAgain').onclick = leaveMatch; $('bLeave').onclick = leaveMatch;
 
 // ----- host -----
 const newCode = () => { let s = ''; for (let i = 0; i < 5; i++) s += 'ABCDEFGHJKLMNPQRSTUVWXYZ'[(Math.random() * 24) | 0]; return s; };
-function lobbyState() { const c = NET.cfgl, names = [{ n: NET.name, t: 0 }, ...[...NET.peers.values()].map((p, i) => ({ n: p.name, t: c.mode === 'siege' ? (i + 1) % 2 : 0 }))]; return { t: 'lobby', names, cfg: c }; }
-function renderLobby(s) { $('lpl').innerHTML = s.names.map((n, i) => '<div>' + (i ? '' : '&#9733; ') + esc(n.n) + (s.cfg.mode === 'siege' ? ' <span style="color:#7d867f">· team ' + (n.t ? 'B' : 'A') + '</span>' : '') + '</div>').join(''); $('lcfg').textContent = (s.cfg.mode === 'siege' ? 'Siege ' + s.cfg.size + 'v' + s.cfg.size + ' (bots fill empty slots)' : 'Assault co-op, ' + s.cfg.squad + ' AI squad mates') + ' · enemy ' + ['', 'easy', 'normal', 'hard'][s.cfg.foe]; }
+function lobbyState() { const c = NET.cfgl, names = [{ n: NET.name, t: c.team || 0 }, ...[...NET.peers.values()].map((p, i) => ({ n: p.name, t: c.mode === 'siege' ? ((c.team || 0) + i + 1) % 2 : 0 }))]; return { t: 'lobby', names, cfg: c }; }
+function renderLobby(s) { $('lpl').innerHTML = s.names.map((n, i) => '<div>' + (i ? '' : '&#9733; ') + esc(n.n) + (s.cfg.mode === 'siege' ? ' <span style="color:#7d867f">· ' + FAC[n.t].n.toLowerCase() + '</span>' : '') + '</div>').join(''); $('lcfg').textContent = (s.cfg.mode === 'siege' ? 'Siege ' + s.cfg.size + 'v' + s.cfg.size + ', commies vs fascists (bots fill empty slots)' : 'Assault co-op, ' + s.cfg.squad + ' AI squad mates') + ' · enemy ' + ['', 'easy', 'normal', 'hard'][s.cfg.foe]; }
 function pushLobby() { const s = lobbyState(); renderLobby(s); if (NET.ws) bcast(s); }
 $('bHost').onclick = () => {
   NET.role = 'host'; NET.cfgl = readCfg(); NET.name = myName(); NET.code = newCode(); NET.peers.clear(); NET.started = false; $('menu').classList.add('hidden'); $('lobby').classList.remove('hidden'); $('code').textContent = NET.code; $('bGo').classList.remove('hidden'); msg('lmsg', 'Connecting...'); hostConnect(); renderLobby(lobbyState());
@@ -1704,8 +1748,8 @@ function hostConnect() {
   clearInterval(NET.ping); NET.ping = setInterval(() => { try { if (NET.ws && NET.ws.readyState === 1) NET.ws.send('ping'); } catch (e) {} }, 20000);
 }
 $('bGo').onclick = () => {
-  if (NET.role !== 'host') return; const c = NET.cfgl, roster = [{ name: NET.name, id: null, team: 0 }];
-  [...NET.peers.entries()].forEach(([id, p], i) => roster.push({ name: p.name, id, team: c.mode === 'siege' ? (i + 1) % 2 : 0 }));
+  if (NET.role !== 'host') return; const c = NET.cfgl, roster = [{ name: NET.name, id: null, team: c.team || 0 }];
+  [...NET.peers.entries()].forEach(([id, p], i) => roster.push({ name: p.name, id, team: c.mode === 'siege' ? ((c.team || 0) + i + 1) % 2 : 0 }));
   NET.started = true; c.seed = (Math.random() * 9999) | 0; beginMatch(c, roster, 0, 'host'); bcast({ t: 'start', cfg: c, roster }); try { NET.ws.send(JSON.stringify({ c: 'meta', name: '[Drop] ' + NET.name + "'s game", open: false })); } catch (e) {}
 };
 function hostDrop(id) { const e = ents.find(f => f.net === id); if (!e) return; e.human = false; e.net = null; e.role = G.mode === 'siege' ? (e.team === G.rs.att ? 'att' : 'sdef') : 'sq'; e.slot = e.slot || 0; e.delay = 0; if (G.mode === 'siege') { const b = siegeB(); e.post = b.pts[rnd() * b.pts.length | 0]; } e.name = 'Bot-' + e.name.slice(0, 6); feedAll(e.name + ' (left, bot takes over)'); }
@@ -1744,7 +1788,7 @@ function joinRoom(code) {
   ws.onclose = ev => { if (NET.ws !== ws) return; if (!NET.started) { const why = ev.code === 4404 ? 'No such room.' : ev.code === 4429 ? 'Room is full.' : 'Could not connect.'; leaveMatch(); msg('msg', why); } else if (G && !G.over) showEnd(false, 'Connection lost.'); };
   clearInterval(NET.ping); NET.ping = setInterval(() => { try { if (NET.ws && NET.ws.readyState === 1) NET.ws.send('ping'); } catch (e) {} }, 20000);
 }
-const lookFor = e => G.mode === 'siege' ? (e.team === G.rs.att ? 'att' : 'def') : e.team === 0 ? 'ally' : (e.id % 3 ? 'foe' : 'foe2');
+const lookFor = e => G.mode === 'siege' ? (e.op >= 0 ? 'op' + e.op : 'fac' + e.team) : e.team === 0 ? 'ally' : (e.id % 3 ? 'foe' : 'foe2');
 function applySnap(m) {
   G.tA = m.tA; G.tE = m.tE; G.orders = m.ord; OBJ.forEach((o, i) => { o.p = m.o[i]; }); const attChanged = m.rs && G.rs && m.rs.att !== G.rs.att; if (m.rs && G.rs) Object.assign(G.rs, m.rs);
   const seen = new Set(), roster = NET.roster;
@@ -1753,7 +1797,7 @@ function applySnap(m) {
     seen.add(a[0]); let e = a[0] === player.id ? player : ents.find(f => f.id === a[0]);
     if (!e) { e = newSoldier(a[1], !!a[12], 'x', G.mode === 'siege' ? (a[1] === G.rs.att ? 'att' : 'def') : a[1] === 0 ? 'ally' : (a[0] % 3 ? 'foe' : 'foe2')); e.id = a[0]; e.x = e.tx = a[2]; e.y = e.ty = a[3]; e.z = e.tz = a[4]; e.yaw = e.tyaw = a[5]; const r = roster.find(r => r.eid === a[0]); e.name = r ? r.name : (a[12] ? 'Player' : a[1] === 0 ? 'Ally' : 'Hostile'); e.mode = a[6] ? 'dead' : 'ground'; if (a[6]) e.mesh.rotation.x = -Math.PI / 2; }
     e.team = a[1]; if (attChanged || e.mesh.userData.look !== lookFor(e)) setLook(e, lookFor(e));
-    if (a[13] !== undefined) { if (e === player && e.op !== a[13]) { e.op = a[13]; loadout(e); } e.op = a[13]; e.w = OPS[e.op] ? OPS[e.op].w : 'ar'; e.mhp = OPS[e.op] ? OPS[e.op].hp : 100; e.kills = a[14]; e.deaths = a[15]; e.un = a[16]; e.sn = a[17]; e.bars = a[18] / 10 | 0; e.reinf = a[18] % 10; e.arm = a[19]; if (e !== player) e.drone = a[20] ? { x: a[20][0], y: a[20][1], z: a[20][2], yaw: a[20][3] } : null; else if (!a[21]) e.nitro = null; else e.nitro = e.nitro || 1; }
+    if (a[13] !== undefined) { if (e === player && (e.op !== a[13] || e.lr !== G.rs.round)) { e.op = a[13]; e.lr = G.rs.round; loadout(e); } e.op = a[13]; if (!e.human && OPS[e.op]) e.name = OPS[e.op].n; e.w = OPS[e.op] ? OPS[e.op].w : 'ar'; e.mhp = OPS[e.op] ? OPS[e.op].hp : 100; e.kills = a[14]; e.deaths = a[15]; e.un = a[16]; e.sn = a[17]; e.bars = a[18] / 10 | 0; e.reinf = a[18] % 10; e.arm = a[19]; if (e !== player) e.drone = a[20] ? { x: a[20][0], y: a[20][1], z: a[20][2], yaw: a[20][3] } : null; else if (!a[21]) e.nitro = null; else e.nitro = e.nitro || 1; }
     const dead = a[6] === 1;
     if (e === player) {
       e.hp = a[7]; if (dead && e.mode !== 'dead') { e.mode = 'dead'; e.mesh.rotation.x = -Math.PI / 2; G.deaths++; G.deadT = 0; $('vig').style.opacity = 0; e.drone = null; }
@@ -1802,6 +1846,6 @@ async function refreshRooms() {
 if (!/^(localhost|127\.0\.0\.1)$/.test(location.hostname) || /[?&]relay=/.test(location.search)) refreshRooms();
 
 buildWorld(); miniBg(); requestAnimationFrame(frame);
-if (q.has('test')) window.__D = { step, beginMatch, keys, get G() { return G; }, get state() { return state; }, get ents() { return ents; }, get player() { return player; }, get NET() { return NET; }, OBJ, BLD, SOLIDS, PANEL, OPEN, BAR, STAIRS, DLEAF, findPath, blocked, los, setLook(y, p) { yaw = vyaw = y; pitch = vpitch = p; }, hudUpdate, cam, scene, shoot, useAct, layerOf, siegeRound, applySnap, makeSnapNow() { G.snapT = 0; const sv = NET.peers.size; return sv; }, nodeAt, navRect, barAdd, breachPanel, reinforce, melee, placeCharge, get GOBJ() { return GOBJ; }, get PROJ() { return PROJ; }, get SMOKES() { return SMOKES; }, get PINGS() { return PINGS; }, panHit, hudUpdate, updateCamera, render, OPS, WPN, pickOp, toggleView, setOptic, get yaw() { return yaw; }, set yaw(v) { yaw = vyaw = v; }, set pitch(v) { pitch = vpitch = v; } };
+if (q.has('test')) window.__D = { step, beginMatch, keys, get G() { return G; }, get state() { return state; }, get ents() { return ents; }, get player() { return player; }, get NET() { return NET; }, OBJ, BLD, SOLIDS, PANEL, OPEN, BAR, STAIRS, DLEAF, findPath, blocked, los, setLook(y, p) { yaw = vyaw = y; pitch = vpitch = p; }, hudUpdate, cam, scene, shoot, useAct, layerOf, siegeRound, applySnap, makeSnapNow() { G.snapT = 0; const sv = NET.peers.size; return sv; }, nodeAt, navRect, barAdd, breachPanel, reinforce, melee, placeCharge, get GOBJ() { return GOBJ; }, get PROJ() { return PROJ; }, get SMOKES() { return SMOKES; }, get PINGS() { return PINGS; }, panHit, hudUpdate, updateCamera, render, OPS, WPN, newSoldier, setLook, FAC, pickOp, toggleView, setOptic, get yaw() { return yaw; }, set yaw(v) { yaw = vyaw = v; }, set pitch(v) { pitch = vpitch = v; } };
 </script>
 </body></html>
