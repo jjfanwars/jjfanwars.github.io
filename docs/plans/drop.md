@@ -37,6 +37,8 @@ The first pass had the round loop. This pass adds the parts players actually rem
 - **Information war.** Attackers drive small wheeled drones (prep and action, two each, Space to hop, click to spot an enemy); defenders get 8 building cameras plus sticky cameras on key 5. Middle click pings a spot or an enemy for the team. Spotting the bomb sites with a drone in prep reveals them early.
 - **HUD in the genre's layout.** Team operator icons and the timer at the top, health and gadgets bottom left, ammo bottom right, kill feed top right, big round banners (preparation, action, defuser planted, round won/lost), hitmarkers, damage direction, Tab scoreboard, footsteps of enemies louder than teammates'.
 
+**Third pass (12 Nov 2026): Commies vs Fascists.** The owner asked for the teams to be a political joke: left-wing leaders are all "commies", right-wing ones all "fascists". Two fixed teams that swap attack and defend every round; each operator carries one attack gadget and one defend gadget with a joke name (Stalin's Five-Year Charge and Iron Curtain, Trump's Tariff Charge and Gold Plating, Kim's Test Missile and Approved Haircut Laser, Boris's Brexit Hammer and Partygate Tripwire, and so on). Names only, no explanations. Heads are procedural caricatures built from smooth shapes (hair, mustaches, beard, caps, ties, pearls), bodies are the shared soldier tinted dark red or dark blue.
+
 What is still missing compared with the real thing: down-but-not-out and revives, rappel, hatches and floor destruction, pistols, defender drones, more maps, and a hand-play balance pass.
 
 ## Online
