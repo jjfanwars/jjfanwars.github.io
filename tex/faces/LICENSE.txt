@@ -11,3 +11,5 @@ trump.jpg: Daniel Torok, Public domain, https://commons.wikimedia.org/wiki/File:
 yahu.jpg: Avi Ohayon, CC BY-SA 3.0, https://commons.wikimedia.org/wiki/File:Benjamin_Netanyahu,_February_2023_(cropped)(b).jpg
 elon.jpg: Gage Skidmore, CC BY-SA 4.0, https://commons.wikimedia.org/wiki/File:Elon_Musk_-_54820081119_(3x4_cropped,_Rule_of_thirds).jpg
 putin.jpg: Kremlin.ru, CC BY 4.0, https://commons.wikimedia.org/wiki/File:Vladimir_Putin_(2026_02_23)_(cropped).jpg
+
+Head shape (head.bin): Lee Perry-Smith head scan by Infinite-Realities, CC BY 3.0, from the three.js examples (examples/models/gltf/LeePerrySmith), trimmed at the neck and rescaled.
