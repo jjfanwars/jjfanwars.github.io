@@ -13,3 +13,6 @@ elon.jpg: Gage Skidmore, CC BY-SA 4.0, https://commons.wikimedia.org/wiki/File:E
 putin.jpg: Kremlin.ru, CC BY 4.0, https://commons.wikimedia.org/wiki/File:Vladimir_Putin_(2026_02_23)_(cropped).jpg
 
 Head shape (head.bin): Lee Perry-Smith head scan by Infinite-Realities, CC BY 3.0, from the three.js examples (examples/models/gltf/LeePerrySmith), trimmed at the neck and rescaled.
+Sculpted busts (heads/*.bin, trimmed at the neck, decimated, rescaled; the face photos above are projected onto them):
+- heads/stalin.bin: "Stalin bust" by Gendalfin, https://www.thingiverse.com/thing:516756, CC BY-SA.
+- heads/trump.bin, heads/boris.bin, heads/xi.bin: free 3D-print busts supplied by the owner (Trump_min.stl, Boris_Johnson_min.stl, Xi_Jinping_head_min.stl); source pages and licences still to be added here.

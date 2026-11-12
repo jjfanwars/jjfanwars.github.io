@@ -638,14 +638,16 @@ const faceMat = st => FACEM[st] || (FACEM[st] = (() => { const t = TLd.load('tex
 const capGeo = th => capGs[th] || (capGs[th] = new T.SphereGeometry(1, 22, 12, 0, Math.PI * 2, 0, th));
 const HSPH = new T.SphereGeometry(1, 20, 14), HCYL = new T.CylinderGeometry(1, 1, 1, 16);
 const FSX = 0.25, FSY = 0.235; // metres covered by the face texture across and down
-const HEADB = { g: null }; // scanned head shape (Lee Perry-Smith head scan by Infinite-Realities, CC BY 3.0, from the three.js examples), trimmed at the neck and baked into head space by a script: head.bin
-fetch('head.bin').then(r => r.arrayBuffer()).then(buf => { const [nv, ni] = new Uint32Array(buf, 0, 2), Q = new Int16Array(buf, 8, nv * 3), Nn = new Int8Array(buf, 8 + nv * 6, nv * 3), io = 8 + nv * 9 + (nv * 9) % 2, I = new Uint16Array(buf, io, ni);
+const HEADB = { g: null, n: 0 }, BUSTS = { trump: { hl: 0.168, hc: 0xe2bd72 }, boris: { hl: 0.172, hc: 0xf1e3a6 }, xi: { hl: 0.19, hc: 0x121212 }, stalin: { hl: 0.195, hc: 0x4a4540 } }; // head shapes: the Lee Perry-Smith head scan (Infinite-Realities, CC BY 3.0, three.js examples) in head.bin; sculpted busts for some leaders in heads/<hd>.bin (credits in tex/faces/LICENSE.txt). All are baked into head space by a script: eyes at y 0.12, chin 0.01, nose tip z 0.11
+function loadHead(url, cb) { fetch(url).then(r => { if (!r.ok) throw 0; return r.arrayBuffer(); }).then(buf => { const [nv, ni] = new Uint32Array(buf, 0, 2), Q = new Int16Array(buf, 8, nv * 3), Nn = new Int8Array(buf, 8 + nv * 6, nv * 3), io = 8 + nv * 9 + (nv * 9) % 2, I = new Uint16Array(buf, io, ni);
   const pos = new Float32Array(nv * 3), nor = new Float32Array(nv * 3); for (let i = 0; i < nv * 3; i++) { pos[i] = Q[i] * 1e-5; nor[i] = Nn[i] / 127; }
-  const g = new T.BufferGeometry(); g.setAttribute('position', new T.BufferAttribute(pos, 3)); g.setAttribute('normal', new T.BufferAttribute(nor, 3)); g.setIndex(new T.BufferAttribute(new Uint16Array(I), 1)); HEADB.g = g; suitReady(); }).catch(() => { HEADB.g = false; suitReady(); });
-function photoHead() { // the scanned head with uv = planar projection of the face photo from the front; sides and back use the white corner (vertex colour = skin)
-  const g = HEADB.g ? HEADB.g.clone() : new T.SphereGeometry(0.08, 24, 18).translate(0, 0.11, 0), P = g.attributes.position, n = P.count, uv = new Float32Array(n * 2), col = new Float32Array(n * 3), yc = 0.0966;
-  for (let i = 0; i < n; i++) { const x = P.getX(i), y = P.getY(i), z = P.getZ(i), front = z > 0.022 && y > 0.0; uv[i * 2] = front ? 0.5 + x / FSX : 0.02; uv[i * 2 + 1] = front ? 0.5 + (y - yc) / FSY : 0.98; col.set(front ? [1, 1, 1] : [-1, -1, -1], i * 3); }
-  g.setAttribute('uv', new T.BufferAttribute(uv, 2)); if (!HEADB.g) g.computeVertexNormals(); g.userData.col = col; return g;
+  const g = new T.BufferGeometry(); g.setAttribute('position', new T.BufferAttribute(pos, 3)); g.setAttribute('normal', new T.BufferAttribute(nor, 3)); g.setIndex(new T.BufferAttribute(new Uint16Array(I), 1)); cb(g); }).catch(() => cb(false)); }
+loadHead('head.bin', g => { HEADB.g = g; suitReady(); });
+for (const k in BUSTS) { HEADB.n++; loadHead('heads/' + k + '.bin', g => { BUSTS[k].g = g; HEADB.n--; suitReady(); }); }
+function photoHead(st) { // a head shape with uv = planar projection of the face photo from the front; hair, sides and back use the white corner with a vertex colour
+  const B = BUSTS[st] && BUSTS[st].g ? BUSTS[st] : null, src = B ? B.g : HEADB.g, g = src ? src.clone() : new T.SphereGeometry(0.08, 24, 18).translate(0, 0.11, 0), P = g.attributes.position, n = P.count, uv = new Float32Array(n * 2), col = new Float32Array(n * 3), yc = 0.0966, hc = B ? hex(B.hc).map(v => Math.pow(v, 2.2)) : null;
+  for (let i = 0; i < n; i++) { const x = P.getX(i), y = P.getY(i), z = P.getZ(i), hair = B && (y > B.hl || (z < 0.0 && y > 0.112)), front = !hair && z > 0.022 && y > 0.0; uv[i * 2] = front ? 0.5 + x / FSX : 0.02; uv[i * 2 + 1] = front ? 0.5 + (y - yc) / FSY : 0.98; col.set(front ? [1, 1, 1] : hair ? hc : [-1, -1, -1], i * 3); }
+  g.setAttribute('uv', new T.BufferAttribute(uv, 2)); if (!src) g.computeVertexNormals(); g.userData.col = col; g.userData.bust = !!B; return g;
 }
 function headParts(st) { // hair, caps and props in head space: origin at the head bone, face toward +z, metres
   const P = [], h = 0.1, rr = mulberry(st.length * 31 + 7), q = new T.Quaternion(), eu = new T.Euler(), SK = FACE_SKIN[st] || 0xc8977b;
@@ -654,6 +656,7 @@ function headParts(st) { // hair, caps and props in head space: origin at the he
   const suit = () => {}; // shirt and tie are part of the body
   if (st === 'stalin') { const hc = 0x5a5550; cap(1.25, hc, 0, h + 0.02, -0.014, 0.082, 0.1, 0.094, -0.6); // marshal's cap
     C(0x3d1310, 0, h + 0.088, -0.004, 0.092, 0.04, 0.1, -0.12); C(0x6a1813, 0, h + 0.072, -0.002, 0.086, 0.018, 0.094, -0.12); E(0x1a1a1a, 0, h + 0.064, 0.082, 0.07, 0.005, 0.042, 0.3); E(0xc9a23a, 0, h + 0.078, 0.094, 0.009, 0.009, 0.004); }
+  else if (st === 'stalinCap') { const k = 1.14; C(0x3d1310, 0, h + 0.098, -0.004, 0.092 * k, 0.045, 0.1 * k, -0.12); C(0x6a1813, 0, h + 0.08, -0.002, 0.086 * k, 0.02, 0.094 * k, -0.12); E(0x1a1a1a, 0, h + 0.07, 0.092, 0.075, 0.005, 0.045, 0.3); E(0xc9a23a, 0, h + 0.085, 0.108, 0.009, 0.009, 0.004); } // the photo has the cap, so the bust gets one too
   else if (st === 'putin') { const hc = 0xa68e6e; cap(1.0, hc, 0, h + 0.02, -0.025, 0.08, 0.1, 0.093, -1.1); suit(0x2c3358, 0.3); }
   else if (st === 'kim') { const hc = 0x0d0d0d; cap(1.5, 0x2b2b2b, 0, h + 0.018, -0.008, 0.083, 0.1, 0.093); E(hc, 0, h + 0.086, -0.01, 0.062, 0.036, 0.085); E(hc, 0, h + 0.088, 0.045, 0.056, 0.028, 0.036, 0.3); }
   else if (st === 'xi') { const hc = 0x121212; cap(1.2, hc, 0, h + 0.022, -0.008, 0.081, 0.1, 0.094, -0.25); E(hc, -0.016, h + 0.082, 0.01, 0.062, 0.022, 0.07, 0, 0, 0.15); suit(0xa8191f, 0.3); }
@@ -668,8 +671,8 @@ function headParts(st) { // hair, caps and props in head space: origin at the he
   return P;
 }
 function headGeom(st) {
-  if (headGeo[st]) return headGeo[st]; const ph = photoHead(), skin = hex(FACE_SKIN[st] || 0xc8977b).map(v => Math.pow(v, 2.2)), pc = ph.userData.col; for (let i = 0; i < pc.length; i += 3) if (pc[i] < 0) pc.set(skin, i);
-  const gs = [[ph, null, pc]].concat(headParts(st).map(([geo, m, c]) => { const g = geo.clone(); g.applyMatrix4(m); return [g, c]; })); let nv = 0, ni = 0; for (const [g] of gs) { nv += g.attributes.position.count; ni += g.index.count; }
+  if (headGeo[st]) return headGeo[st]; const ph = photoHead(st), skin = hex(FACE_SKIN[st] || 0xc8977b).map(v => Math.pow(v, 2.2)), pc = ph.userData.col; for (let i = 0; i < pc.length; i += 3) if (pc[i] < 0) pc.set(skin, i);
+  const gs = [[ph, null, pc]].concat((ph.userData.bust ? (st === 'stalin' ? headParts('stalinCap') : []) : headParts(st)).map(([geo, m, c]) => { const g = geo.clone(); g.applyMatrix4(m); return [g, c]; })); let nv = 0, ni = 0; for (const [g] of gs) { nv += g.attributes.position.count; ni += g.index.count; }
   const pos = new Float32Array(nv * 3), nor = new Float32Array(nv * 3), col = new Float32Array(nv * 3), uv = new Float32Array(nv * 2), idx = new Uint32Array(ni); let vo = 0, io = 0;
   for (const [g, c, pcol] of gs) { const Pp = g.attributes.position.array, N = g.attributes.normal.array, I = g.index.array, n = Pp.length / 3; pos.set(Pp, vo * 3); nor.set(N, vo * 3);
     if (pcol) { col.set(pcol, vo * 3); uv.set(g.attributes.uv.array, vo * 2); } else { const cc = hex(c).map(v => Math.pow(v, 2.2)); for (let i = 0; i < n; i++) { col.set(cc, (vo + i) * 3); uv[(vo + i) * 2] = 0.02; uv[(vo + i) * 2 + 1] = 0.98; } }
@@ -739,7 +742,7 @@ function makeSoldier(look) { if (GLB.ready) return makeSoldierGlb(look); const L
 function animSoldier(e, speed) { e.animSpeed = speed; if (!e.mesh.userData.rig) animSoldierOld(e, speed); }
 function swapMeshes() { for (const e of ents) { const look = e.mesh.userData.look, vis = e.mesh.visible, dead = e.mode === 'dead'; scene.remove(e.mesh); e.mesh = makeSoldier(look); e.mesh.visible = vis; if (dead) e.mesh.rotation.x = -Math.PI / 2; } }
 if (window.GLTFLoader) new GLTFLoader().load('soldier.glb', g => { GLB.g = g; GLB.ready = true; swapMeshes(); }, undefined, () => console.warn('soldier.glb not loaded, using the box soldiers'));
-function suitReady() { if (SUIT.g && HEADB.g !== null && !SUIT.ready) { SUIT.ready = true; if (GLB.ready) swapMeshes(); } }
+function suitReady() { if (SUIT.g && HEADB.g !== null && HEADB.n === 0 && !SUIT.ready) { SUIT.ready = true; if (GLB.ready) swapMeshes(); } }
 if (window.GLTFLoader) new GLTFLoader().load('suit.glb', g => { SUIT.g = g; suitReady(); }, undefined, () => console.warn('suit.glb not loaded'));
 function setLook(e, look) { if (e.mesh.userData.look === look) return; scene.remove(e.mesh); e.mesh = makeSoldier(look); e.mesh.visible = !e.isPlayer; }
 
