@@ -632,21 +632,73 @@ function glbMats(look) {
   return GLB.mats[look] = o;
 }
 // ----- leader heads: a head mesh with a front-projected photo face (tex/faces/*.jpg, see tex/faces/LICENSE.txt) plus modelled hair, caps and props; hung on the neck bone -----
-const FACE_SKIN = { stalin: 0xcc997c, putin: 0xb07561, kim: 0xa16a56, xi: 0xb95d3e, castro: 0xcc997c, trump: 0xe09a62, yahu: 0xe8b09c, boris: 0xca939b, thatcher: 0xf2cdb5, elon: 0xbe7983 };
+const FACE_SKIN = { stalin: 0xd6a88c, putin: 0xb07561, kim: 0xe0b48e, xi: 0xd9a585, castro: 0xd4a080, trump: 0xdd9156, yahu: 0xe8b09c, boris: 0xe8b0a0, thatcher: 0xf2cdb5, elon: 0xe2b49c };
 const FACEM = {}, headGeo = {}, capGs = {};
-const faceMat = st => FACEM[st] || (FACEM[st] = (() => { const t = TLd.load('tex/faces/' + st + '.jpg'); t.colorSpace = T.SRGBColorSpace; t.anisotropy = 4; return new T.MeshStandardMaterial({ map: t, vertexColors: true, roughness: 0.68, metalness: 0 }); })());
+const faceMat = st => FACEM[st] || (FACEM[st] = (() => { const t = BUSTS[st] && BUSTS[st].g ? bustTex(st) : TLd.load('tex/faces/' + st + '.jpg'); t.colorSpace = T.SRGBColorSpace; t.anisotropy = 4; return new T.MeshStandardMaterial({ map: t, vertexColors: true, roughness: 0.68, metalness: 0 }); })());
 const capGeo = th => capGs[th] || (capGs[th] = new T.SphereGeometry(1, 22, 12, 0, Math.PI * 2, 0, th));
 const HSPH = new T.SphereGeometry(1, 20, 14), HCYL = new T.CylinderGeometry(1, 1, 1, 16);
 const FSX = 0.25, FSY = 0.235; // metres covered by the face texture across and down
-const HEADB = { g: null, n: 0 }, BUSTS = { trump: { hl: 0.168, hc: 0xe2bd72 }, boris: { hl: 0.172, hc: 0xf1e3a6 }, xi: { hl: 0.19, hc: 0x121212 }, stalin: { hl: 0.195, hc: 0x4a4540, mo: 1 } }; // head shapes: the Lee Perry-Smith head scan (Infinite-Realities, CC BY 3.0, three.js examples) in head.bin; sculpted busts for some leaders in heads/<hd>.bin (credits in tex/faces/LICENSE.txt). All are baked into head space by a script: eyes at y 0.12, chin 0.01, nose tip z 0.11
+// sculpted busts (heads/<hd>.bin): the sculpt gives the shape; the face is painted onto a canvas (bustTex) mapped from the front, hair/cap/back by vertex colour.
+// Face coordinates are head-space metres: eyes y 0.12, chin 0.01, nose tip z 0.11. Fields: hl hairline, hb hair height at the back, cap (y above which it's a cap), skin/hair/brow/iris colours,
+// ey eye height, ex eye half-spacing, ew eye width, br brow height, bt brow tilt, bw brow thickness, ny nostrils, my mouth height, mw mouth width, lip colour, beard/stub/mo/glasses extras.
+const BUSTS = {
+  trump: { hl: 0.152, hb: 0.1, skin: '#dd9156', hair: '#e9c56e', brow: '#d0a75a', iris: '#5a7590', ey: 0.121, ex: 0.033, ew: 0.022, eo: 0.55, br: 0.135, bt: -0.004, bw: 0.0055, ny: 0.086, my: 0.05, mw: 0.044, lip: '#b8644e', purse: 1 },
+  boris: { hl: 0.146, hb: 0.098, skin: '#e8b0a0', hair: '#f2e2a2', brow: '#c9b47a', iris: '#5b7da0', ey: 0.118, ex: 0.034, ew: 0.023, eo: 0.6, br: 0.131, bt: 0.003, bw: 0.0045, ny: 0.066, my: 0.045, mw: 0.046, lip: '#b86b6b', mess: 1 },
+  xi: { hl: 0.178, hb: 0.11, skin: '#d9a585', hair: '#141414', brow: '#1a1a1a', iris: '#2a1d16', ey: 0.117, ex: 0.034, ew: 0.022, eo: 0.42, br: 0.13, bt: 0.002, bw: 0.005, ny: 0.09, my: 0.06, mw: 0.05, lip: '#a85e52', smile: 1 },
+  stalin: { hl: 0.188, hb: 0.105, skin: '#d6a88c', hair: '#3d3a37', brow: '#2a2522', iris: '#4a3a2a', ey: 0.124, ex: 0.032, ew: 0.021, eo: 0.5, br: 0.136, bt: 0.004, bw: 0.0065, ny: 0.078, my: 0.046, mw: 0.042, lip: '#9a6052', mo: 1, pock: 1 },
+  elon: { hl: 0.183, hb: 0.1, skin: '#dfac92', hair: '#4a3626', brow: '#3a2a1e', iris: '#5a7a60', ey: 0.12, ex: 0.032, ew: 0.022, eo: 0.55, br: 0.132, bt: 0.003, bw: 0.006, ny: 0.08, my: 0.05, mw: 0.045, lip: '#b07468', stub: 1 },
+  kim: { hl: 0.163, hb: 0.15, skin: '#e0b48e', hair: '#111111', brow: '#141414', iris: '#21170f', ey: 0.113, ex: 0.036, ew: 0.021, eo: 0.4, br: 0.128, bt: 0, bw: 0.0045, ny: 0.075, my: 0.045, mw: 0.04, lip: '#b0705e', glasses: 1, shaved: 1 },
+  castro: { hl: 0.145, hb: 0.11, cap: 0.146, capc: '#3d1310', skin: '#d4a080', hair: '#2a2622', brow: '#2a2420', iris: '#3a2a1c', ey: 0.12, ex: 0.032, ew: 0.021, eo: 0.5, br: 0.133, bt: 0.004, bw: 0.006, ny: 0.083, my: 0.05, mw: 0.04, lip: '#9a5e50', beard: 1, mo: 1 },
+};
+const HEADB = { g: null, n: 0 }; // head shapes: the Lee Perry-Smith head scan (Infinite-Realities, CC BY 3.0, three.js examples) in head.bin, busts in heads/<hd>.bin (credits in tex/faces/LICENSE.txt); all baked into head space by a script
 function loadHead(url, cb) { fetch(url).then(r => { if (!r.ok) throw 0; return r.arrayBuffer(); }).then(buf => { const [nv, ni] = new Uint32Array(buf, 0, 2), Q = new Int16Array(buf, 8, nv * 3), Nn = new Int8Array(buf, 8 + nv * 6, nv * 3), io = 8 + nv * 9 + (nv * 9) % 2, I = new Uint16Array(buf, io, ni);
   const pos = new Float32Array(nv * 3), nor = new Float32Array(nv * 3); for (let i = 0; i < nv * 3; i++) { pos[i] = Q[i] * 1e-5; nor[i] = Nn[i] / 127; }
   const g = new T.BufferGeometry(); g.setAttribute('position', new T.BufferAttribute(pos, 3)); g.setAttribute('normal', new T.BufferAttribute(nor, 3)); g.setIndex(new T.BufferAttribute(new Uint16Array(I), 1)); cb(g); }).catch(() => cb(false)); }
 loadHead('head.bin', g => { HEADB.g = g; suitReady(); });
 for (const k in BUSTS) { HEADB.n++; loadHead('heads/' + k + '.bin', g => { BUSTS[k].g = g; HEADB.n--; suitReady(); }); }
-function photoHead(st) { // busts are painted, not photo-mapped (hair, brows, moustache in the hair colour, the rest skin); other heads: a head shape with uv = planar projection of the face photo from the front; hair, sides and back use the white corner with a vertex colour
-  const B = BUSTS[st] && BUSTS[st].g ? BUSTS[st] : null, src = B ? B.g : HEADB.g, g = src ? src.clone() : new T.SphereGeometry(0.08, 24, 18).translate(0, 0.11, 0), P = g.attributes.position, n = P.count, uv = new Float32Array(n * 2), col = new Float32Array(n * 3), yc = 0.0966, hc = B ? hex(B.hc).map(v => Math.pow(v, 2.2)) : null;
-  for (let i = 0; i < n; i++) { const x = P.getX(i), y = P.getY(i), z = P.getZ(i), hair = B && (y > B.hl || (z < 0.0 && y > 0.112) || (z > 0.07 && y > 0.13 && y < 0.139 && Math.abs(x) > 0.012 && Math.abs(x) < 0.048) || (B.mo && z > 0.07 && y > 0.034 && y < 0.062 && Math.abs(x) < 0.042)), front = !B && z > 0.022 && y > 0.0;  uv[i * 2] = front ? 0.5 + x / FSX : 0.02; uv[i * 2 + 1] = front ? 0.5 + (y - yc) / FSY : 0.98; col.set(front ? [1, 1, 1] : hair ? hc : [-1, -1, -1], i * 3); }
+const BX0 = -0.1, BXW = 0.2, BY0 = -0.03, BYH = 0.3; // canvas covers x -0.1..0.1, y -0.03..0.27
+function bustTex(st) { // paint the face: skin shading, hair line, eyes, brows, nose, mouth, beard / stubble / moustache / glasses
+  const B = BUSTS[st], W = 512, H = 768, c = document.createElement('canvas'); c.width = W; c.height = H; const g = c.getContext('2d'), rr = mulberry(st.length * 977 + 3);
+  const X = x => (x - BX0) / BXW * W, Y = y => (1 - (y - BY0) / BYH) * H, S = m => m / BXW * W; // metres to pixels
+  const ell = (x, y, rx, ry, col, a, rot) => { g.save(); g.globalAlpha = a == null ? 1 : a; g.fillStyle = col; g.beginPath(); g.ellipse(X(x), Y(y), S(rx), S(ry), rot || 0, 0, 6.2832); g.fill(); g.restore(); };
+  const rad = (x, y, r, col, a) => { const gr = g.createRadialGradient(X(x), Y(y), 0, X(x), Y(y), S(r)); gr.addColorStop(0, col); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.save(); g.globalAlpha = a; g.fillStyle = gr; g.fillRect(X(x) - S(r), Y(y) - S(r), S(2 * r), S(2 * r)); g.restore(); };
+  const speck = (x0, x1, y0, y1, n, col, a, sz, keep) => { g.save(); g.fillStyle = col; for (let i = 0; i < n; i++) { const x = x0 + rr() * (x1 - x0), y = y0 + rr() * (y1 - y0); if (keep && !keep(x, y)) continue; g.globalAlpha = a * (0.5 + rr() * 0.5); g.fillRect(X(x), Y(y), S(sz), S(sz) * (1 + rr())); } g.restore(); };
+  g.fillStyle = B.skin; g.fillRect(0, 0, W, H);
+  rad(0, 0.0, 0.07, 'rgba(60,30,20,1)', 0.25); // under the jaw
+  for (const sx of [-1, 1]) { rad(sx * 0.038, 0.085, 0.026, '#d0605a', st === 'boris' || st === 'trump' ? 0.32 : 0.18); rad(sx * B.ex, B.ey - 0.002, 0.02, 'rgba(70,40,40,1)', 0.22); } // cheeks, eye sockets
+  rad(0, B.ny + 0.012, 0.012, '#ffffff', 0.12); // nose highlight
+  // hair above the hairline, with strands
+  g.fillStyle = B.hair; g.fillRect(0, 0, W, Y(B.hl)); g.save(); g.globalAlpha = 0.5; const grd = g.createLinearGradient(0, Y(B.hl + 0.006), 0, Y(B.hl - 0.004)); grd.addColorStop(0, B.hair); grd.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = grd; g.fillRect(0, Y(B.hl + 0.006), W, Y(B.hl - 0.004) - Y(B.hl + 0.006)); g.restore();
+  g.save(); g.strokeStyle = 'rgba(0,0,0,0.18)'; g.lineWidth = 1.2; for (let i = 0; i < 90; i++) { const x = BX0 + rr() * BXW, y = B.hl + rr() * 0.1; g.beginPath(); g.moveTo(X(x), Y(y)); g.lineTo(X(x + (rr() - 0.5) * 0.01 + (B.mess ? (rr() - 0.5) * 0.02 : 0.008)), Y(y + 0.012 + rr() * 0.01)); g.stroke(); } g.restore();
+  if (B.shaved) { g.save(); g.globalAlpha = 0.55; g.fillStyle = '#3a3330'; for (const sx of [-1, 1]) g.fillRect(X(sx < 0 ? -0.1 : 0.062), Y(0.2), S(0.038), Y(0.12) - Y(0.2)); g.restore(); }
+  if (B.cap) { g.fillStyle = B.capc; g.fillRect(0, 0, W, Y(B.cap)); g.fillStyle = 'rgba(0,0,0,0.45)'; g.fillRect(0, Y(B.cap), W, S(0.004)); ell(0, 0.158, 0.012, 0.006, '#b8952e', 0.9); }
+  // eyes: white, iris, pupil, upper lid line, lower lid shadow
+  for (const sx of [-1, 1]) { const ex = sx * B.ex, ey = B.ey, rw = B.ew / 2, rh = rw * B.eo * 0.5;
+    ell(ex, ey, rw, rh, '#e9e3da'); ell(ex + sx * 0.0005, ey, rh * 1.05, rh * 1.05, B.iris); ell(ex + sx * 0.0005, ey, rh * 0.45, rh * 0.45, '#0b0807'); ell(ex - sx * 0.002 + 0.0012, ey + rh * 0.35, rh * 0.22, rh * 0.22, '#ffffff', 0.8);
+    g.save(); g.strokeStyle = '#2a1a14'; g.lineWidth = S(0.0016); g.beginPath(); g.ellipse(X(ex), Y(ey), S(rw), S(rh), 0, Math.PI * 1.05, Math.PI * 1.95); g.stroke(); g.globalAlpha = 0.35; g.lineWidth = S(0.001); g.beginPath(); g.ellipse(X(ex), Y(ey), S(rw * 0.95), S(rh), 0, 0.1, Math.PI - 0.1); g.stroke(); g.restore();
+    rad(ex, ey - rh - 0.003, 0.008, 'rgba(90,50,50,1)', 0.25); // bags
+    // brow: tapered stroke from inner to outer end
+    g.save(); g.fillStyle = B.brow; g.beginPath(); const i0 = sx * 0.011, o0 = sx * (B.ex + B.ew * 0.62), by = B.br; g.moveTo(X(i0), Y(by - B.bw * 0.5)); g.quadraticCurveTo(X((i0 + o0) / 2), Y(by + B.bw * 1.0), X(o0), Y(by + B.bt - B.bw * 0.1)); g.quadraticCurveTo(X((i0 + o0) / 2), Y(by - B.bw * 0.2), X(i0), Y(by + B.bw * 0.55)); g.closePath(); g.fill(); g.restore(); }
+  // nose: nostrils and a soft shadow line
+  for (const sx of [-1, 1]) { ell(sx * 0.0085, B.ny, 0.0042, 0.0022, '#3a2018', 0.75, sx * 0.3); rad(sx * 0.016, B.ny + 0.01, 0.01, 'rgba(80,40,30,1)', 0.18); }
+  // mouth: upper and lower lip, dark line
+  const mw = B.mw / 2, my = B.my; ell(0, my + 0.0035, mw * 0.9, 0.0042, B.lip, 0.9); ell(0, my - 0.0045, mw * 0.8, 0.0055, B.lip, 0.75); ell(0, my - 0.003, mw * 0.4, 0.002, '#ffffff', 0.12);
+  g.save(); g.strokeStyle = '#4a2018'; g.lineWidth = S(0.0016); g.beginPath(); g.moveTo(X(-mw), Y(my + (B.smile ? 0.003 : 0))); g.quadraticCurveTo(X(0), Y(my - (B.smile ? 0.004 : B.purse ? -0.001 : 0.0005)), X(mw), Y(my + (B.smile ? 0.003 : 0))); g.stroke(); g.restore();
+  if (B.stub) speck(-0.07, 0.07, -0.005, 0.07, 2600, '#4a3626', 0.28, 0.0012, (x, y) => (y < my - 0.008 || Math.abs(x) > mw + 0.01) && y < 0.075 - Math.abs(x) * 0.3);
+  if (B.beard) { const keep = (x, y) => y < 0.078 - Math.abs(x) * 0.15 && !(Math.abs(x) < mw && Math.abs(y - my) < 0.005); g.save(); g.globalAlpha = 0.8; g.fillStyle = B.hair; g.beginPath(); g.moveTo(X(-0.075), Y(0.095)); g.lineTo(X(-0.05), Y(0.068)); g.quadraticCurveTo(X(0), Y(0.072), X(0.05), Y(0.068)); g.lineTo(X(0.075), Y(0.095)); g.lineTo(X(0.08), Y(-0.03)); g.lineTo(X(-0.08), Y(-0.03)); g.closePath(); g.fill(); g.restore(); speck(-0.08, 0.08, -0.03, 0.09, 3000, '#6a625a', 0.35, 0.0014, keep); ell(0, my, mw * 0.85, 0.004, B.lip, 0.7); }
+  if (B.mo) { g.save(); g.fillStyle = B.hair; g.beginPath(); g.moveTo(X(-mw * (B.beard ? 1.1 : 1.35)), Y(my + 0.001)); g.quadraticCurveTo(X(-0.012), Y(B.ny - 0.0025), X(0), Y(B.ny - 0.004)); g.quadraticCurveTo(X(0.012), Y(B.ny - 0.0025), X(mw * (B.beard ? 1.1 : 1.35)), Y(my + 0.001)); g.quadraticCurveTo(X(0), Y(my + 0.006), X(-mw * (B.beard ? 1.1 : 1.35)), Y(my + 0.001)); g.fill(); g.restore(); speck(-mw * 1.2, mw * 1.2, my, B.ny - 0.004, 500, '#777068', 0.4, 0.001); }
+  if (B.pock) speck(-0.06, 0.06, 0.03, 0.1, 120, 'rgba(110,60,50,1)', 0.14, 0.001);
+  if (B.glasses) { g.save(); g.strokeStyle = '#141414'; g.lineWidth = S(0.0028); for (const sx of [-1, 1]) { g.beginPath(); g.roundRect(X(sx < 0 ? -0.067 : 0.009), Y(0.127), S(0.058), S(0.026), S(0.007)); g.stroke(); g.globalAlpha = 0.18; g.fillStyle = '#9ab0c0'; g.fill(); g.globalAlpha = 1; } g.beginPath(); g.moveTo(X(-0.009), Y(0.118)); g.lineTo(X(0.009), Y(0.118)); g.stroke(); g.restore(); }
+  g.fillStyle = '#ffffff'; g.fillRect(0, 0, 10, 10); // white corner for vertex-coloured parts
+  const t = new T.CanvasTexture(c); t.colorSpace = T.SRGBColorSpace; t.anisotropy = 4; return t;
+}
+function photoHead(st) { // busts: the sculpt with the painted face (bustTex) on the front, hair / cap / skin by vertex colour elsewhere; other heads: the scanned head with the face photo projected from the front
+  const B = BUSTS[st] && BUSTS[st].g ? BUSTS[st] : null, src = B ? B.g : HEADB.g, g = src ? src.clone() : new T.SphereGeometry(0.08, 24, 18).translate(0, 0.11, 0), P = g.attributes.position, n = P.count, uv = new Float32Array(n * 2), col = new Float32Array(n * 3), yc = 0.0966;
+  const L = c => hex(typeof c === 'string' ? parseInt(c.slice(1), 16) : c).map(v => Math.pow(v, 2.2)), hc = B && L(B.hair), cc = B && B.cap && L(B.capc), sk = B && L(B.skin), sh = B && L(B.shaved ? '#6a5a50' : B.skin);
+  for (let i = 0; i < n; i++) { const x = P.getX(i), y = P.getY(i), z = P.getZ(i);
+    if (B) { const front = z > 0.012 && y < B.hl + 0.04 && y > BY0, cap = B.cap && y > B.cap, hair = y > B.hl + (z > 0 ? 0 : -0.01) || (z < -0.01 && y > B.hb);
+      uv[i * 2] = front ? (x - BX0) / BXW : 0.005; uv[i * 2 + 1] = front ? (y - BY0) / BYH : 0.995; col.set(front ? [1, 1, 1] : cap ? cc : hair ? (B.shaved && y < B.hl + 0.005 && z < 0.02 ? sh : hc) : sk, i * 3); continue; }
+    const front = z > 0.022 && y > 0.0; uv[i * 2] = front ? 0.5 + x / FSX : 0.02; uv[i * 2 + 1] = front ? 0.5 + (y - yc) / FSY : 0.98; col.set(front ? [1, 1, 1] : [-1, -1, -1], i * 3); }
   g.setAttribute('uv', new T.BufferAttribute(uv, 2)); if (!src) g.computeVertexNormals(); g.userData.col = col; g.userData.bust = !!B; return g;
 }
 function headParts(st) { // hair, caps and props in head space: origin at the head bone, face toward +z, metres
@@ -656,6 +708,7 @@ function headParts(st) { // hair, caps and props in head space: origin at the he
   const suit = () => {}; // shirt and tie are part of the body
   if (st === 'stalin') { const hc = 0x5a5550; cap(1.25, hc, 0, h + 0.02, -0.014, 0.082, 0.1, 0.094, -0.6); // marshal's cap
     C(0x3d1310, 0, h + 0.088, -0.004, 0.092, 0.04, 0.1, -0.12); C(0x6a1813, 0, h + 0.072, -0.002, 0.086, 0.018, 0.094, -0.12); E(0x1a1a1a, 0, h + 0.064, 0.082, 0.07, 0.005, 0.042, 0.3); E(0xc9a23a, 0, h + 0.078, 0.094, 0.009, 0.009, 0.004); }
+  else if (st === 'cigar') { C(0x6b4a2c, 0.022, h - 0.052, 0.112, 0.0075, 0.085, 0.0075, 1.5, 0, -0.35); E(0xff6a20, 0.036, h - 0.055, 0.154, 0.008, 0.008, 0.008); }
   else if (st === 'stalinCap') { const k = 1.14; C(0x3d1310, 0, h + 0.098, -0.004, 0.092 * k, 0.045, 0.1 * k, -0.12); C(0x6a1813, 0, h + 0.08, -0.002, 0.086 * k, 0.02, 0.094 * k, -0.12); E(0x1a1a1a, 0, h + 0.07, 0.092, 0.075, 0.005, 0.045, 0.3); E(0xc9a23a, 0, h + 0.085, 0.108, 0.009, 0.009, 0.004); } // the photo has the cap, so the bust gets one too
   else if (st === 'putin') { const hc = 0xa68e6e; cap(1.0, hc, 0, h + 0.02, -0.025, 0.08, 0.1, 0.093, -1.1); suit(0x2c3358, 0.3); }
   else if (st === 'kim') { const hc = 0x0d0d0d; cap(1.5, 0x2b2b2b, 0, h + 0.018, -0.008, 0.083, 0.1, 0.093); E(hc, 0, h + 0.086, -0.01, 0.062, 0.036, 0.085); E(hc, 0, h + 0.088, 0.045, 0.056, 0.028, 0.036, 0.3); }
@@ -672,7 +725,7 @@ function headParts(st) { // hair, caps and props in head space: origin at the he
 }
 function headGeom(st) {
   if (headGeo[st]) return headGeo[st]; const ph = photoHead(st), skin = hex(FACE_SKIN[st] || 0xc8977b).map(v => Math.pow(v, 2.2)), pc = ph.userData.col; for (let i = 0; i < pc.length; i += 3) if (pc[i] < 0) pc.set(skin, i);
-  const gs = [[ph, null, pc]].concat((ph.userData.bust ? (st === 'stalin' ? headParts('stalinCap') : []) : headParts(st)).map(([geo, m, c]) => { const g = geo.clone(); g.applyMatrix4(m); return [g, c]; })); let nv = 0, ni = 0; for (const [g] of gs) { nv += g.attributes.position.count; ni += g.index.count; }
+  const gs = [[ph, null, pc]].concat((ph.userData.bust ? (st === 'castro' ? headParts('cigar') : []) : headParts(st)).map(([geo, m, c]) => { const g = geo.clone(); g.applyMatrix4(m); return [g, c]; })); let nv = 0, ni = 0; for (const [g] of gs) { nv += g.attributes.position.count; ni += g.index.count; }
   const pos = new Float32Array(nv * 3), nor = new Float32Array(nv * 3), col = new Float32Array(nv * 3), uv = new Float32Array(nv * 2), idx = new Uint32Array(ni); let vo = 0, io = 0;
   for (const [g, c, pcol] of gs) { const Pp = g.attributes.position.array, N = g.attributes.normal.array, I = g.index.array, n = Pp.length / 3; pos.set(Pp, vo * 3); nor.set(N, vo * 3);
     if (pcol) { col.set(pcol, vo * 3); uv.set(g.attributes.uv.array, vo * 2); } else { const cc = hex(c).map(v => Math.pow(v, 2.2)); for (let i = 0; i < n; i++) { col.set(cc, (vo + i) * 3); uv[(vo + i) * 2] = 0.02; uv[(vo + i) * 2 + 1] = 0.98; } }
@@ -707,10 +760,10 @@ function dressSuit(root, bones, look) {
   if (k === 2) { const sk = seg('Hips', [0, -0.5, 0], 0.2, 0.15, J, 0.05, 0); if (sk) sk.geometry = new T.CylinderGeometry(1, 1.12, 1, 18, 1); } // skirt
   // shirt front, tie / closed collar
   const nk = bones.Neck, sp = bones.Spine2; if (!nk || !sp) return;
-  if (k === 1 || k === 3 || k === 2) { seg('Spine2', 'Neck', 0.048, 0.01, W, -0.03, 0.0, true, [0, 0, 0.11]); seg('Neck', [0, 0.03, 0], 0.046, 0.046, W, 0.0, 0, false); }
+  if (k === 1 || k === 3 || k === 2) { seg('Spine2', 'Neck', 0.026, 0.008, W, -0.06, 0.0, true, [0, 0, 0.113]); seg('Neck', [0, 0.03, 0], 0.046, 0.046, W, 0.0, 0, false); }
   if (k === 1) { seg('Spine2', 'Neck', 0.011, 0.008, tie, 0.16, -0.02, false, [0, 0, 0.122]); }
   if (k === 0) seg('Neck', [0, 0.05, 0], 0.05, 0.05, J, 0.02, 0, false);
-  if (k === 3) seg('Spine2', 'Neck', 0.028, 0.012, SK, -0.06, 0.03, true, [0, 0, 0.112]);
+  if (k === 3) seg('Spine2', 'Neck', 0.017, 0.008, SK, -0.07, 0.03, true, [0, 0, 0.116]);
 }
 function makeSoldierGlb(look) {
   const suited = SUIT.ready && /^(op|fac)/.test(look), src = suited ? SUIT.g : GLB.g, root = new T.Group(), model = SkeletonUtils.clone(src.scene), mats = suited ? null : glbMats(look), bones = {};
