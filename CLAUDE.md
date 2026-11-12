@@ -113,3 +113,5 @@ Browser war game in one file: `index.html` (Three.js r170, inlined: the ESM buil
 
 ## Plans
 Saved design plans and the build order for future modes (bomber co-op, convoy, submarine, heist, campaign, 1v1) live in `docs/plans/`. Read `docs/plans/README.md` first, and keep it up to date when a plan is built or changes.
+
+- **Courtroom Duel (`legal.html`, 12 Nov 2026):** Legal Studies revision game (not part of jjfanwars). 3D courtroom built procedurally on `three-r170.js` (canvas textures, PMREM env from a mini scene, window shadows from the sun through a split left wall, custom HDR bloom + ACES in `render`/`PP`). Cases in `CASES`, questions in `Q` (model answer `a`, marking points `k`, marks `m`). Each answer is marked by Claude Haiku (`grade`, browser-direct API call with the player's own key in localStorage `lsr-key`, never committed) or self-marked; `turn` plays the attack/counter cinematic (aura, MOGGED, combo), `verdict` saves `cd-save` (aura rank, best grade per case). Test hook `window.__CD`.
