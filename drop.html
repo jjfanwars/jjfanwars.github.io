@@ -1512,13 +1512,19 @@ function showEnd(win, why, draw) {
 }
 
 // ===== main step =====
+const DLG = { f: null, n: -1, cells: new Map(), act: [], sid: 0 }; // doors in a 4 m grid: only doors near someone, or still moving, are processed each step
 function stepDoors(dt) {
-  for (const d of DLEAF) {
-    if (d.dead) continue; let near = false;
-    for (const e of ents) { if (e.mode === 'dead') continue; const dx = e.x - d.x, dz = e.z - d.z; if (dx * dx + dz * dz < 4 && Math.abs(e.y - d.yb) < 1.6) { near = true; break; } }
-    if (near) d.hold = 0.9; else d.hold -= dt; const t = d.hold > 0 ? 1 : 0, was = d.o; d.o += (t - d.o) * Math.min(1, dt * 8); if (!t && d.o < 0.02) d.o = 0;
+  if (DLG.f !== DLEAF[0] || DLG.n !== DLEAF.length) { DLG.f = DLEAF[0]; DLG.n = DLEAF.length; DLG.cells.clear(); DLG.act.length = 0; for (const d of DLEAF) { d.ia = false; const k = (Math.floor(d.x / 4) + 512) * 1024 + Math.floor(d.z / 4) + 512; let c = DLG.cells.get(k); if (!c) DLG.cells.set(k, c = []); c.push(d); } for (const d of DLEAF) if (!d.dead && (d.o > 0 || d.hold > 0)) { d.ia = true; DLG.act.push(d); } }
+  const sid = ++DLG.sid;
+  for (const e of ents) { if (e.mode === 'dead') continue; const cx = Math.floor(e.x / 4) + 512, cz = Math.floor(e.z / 4) + 512;
+    for (let ix = cx - 1; ix <= cx + 1; ix++) for (let iz = cz - 1; iz <= cz + 1; iz++) { const c = DLG.cells.get(ix * 1024 + iz); if (!c) continue;
+      for (const d of c) { if (d.dead) continue; const dx = e.x - d.x, dz = e.z - d.z; if (dx * dx + dz * dz < 4 && Math.abs(e.y - d.yb) < 1.6) { d.ns = sid; if (!d.ia) { d.ia = true; DLG.act.push(d); } } } } }
+  const act = DLG.act; let n = 0;
+  for (let i = 0; i < act.length; i++) { const d = act[i]; if (d.dead) { d.ia = false; continue; }
+    if (d.ns === sid) d.hold = 0.9; else d.hold -= dt; const t = d.hold > 0 ? 1 : 0, was = d.o; d.o += (t - d.o) * Math.min(1, dt * 8); if (!t && d.o < 0.02) d.o = 0;
     if (d.o !== was) d.g.rotation.y = d.base + d.sg * d.o * 1.55; setLeaf(d, d.o > 0.25);
-  }
+    if (d.o === 0 && d.hold <= 0) d.ia = false; else act[n++] = d; }
+  act.length = n;
 }
 function stepFx(dt) {
   { let n = 0; for (const t of tracers) { t.life -= dt; if (t.life > 0) tracers[n++] = t; } tracers.length = n; }
@@ -2096,6 +2102,7 @@ function perfText() { const p = perf(); return p.fps + ' fps  ' + p.ms + ' ms (w
   aiStep = function (e, dt) { const t = performance.now(); a0(e, dt); PFS.aiAcc += performance.now() - t; };
   updateCamera = function (dt) { const t = performance.now(); c0(dt); ema('cam', performance.now() - t); };
   hudUpdate = function () { const t = performance.now(); h0(); ema('hud', performance.now() - t); }; }
+{ const fp0 = findPath; findPath = function (...a) { const t = performance.now(), r = fp0(...a); if (performance.now() - t > 1.2) pathBudget = 0; return r; }; } // one slow path search per step is enough: the others wait for the next step
 // shader and texture warm-up when a match starts, so the first firefight does not hitch
 function gfxWarm() {
   const g = new T.Group(), sp = new T.Sprite(new T.SpriteMaterial({ map: smokeTex, color: 0xaeb2b4, transparent: true, opacity: 0, depthWrite: false })), pf = new T.Mesh(BOX, new T.MeshBasicMaterial({ color: 0xa8a090, transparent: true, opacity: 0.85 }));
