@@ -137,6 +137,12 @@ body.cine .bars{height:9vh}
         <div class="bar"><i id="rankBar" style="width:0"></i></div>
       </div>
     </div>
+    <div class="set hide" id="setupBox" style="margin-bottom:14px;border-color:var(--gold)">
+      <div class="qt" style="margin-top:0">One-time court setup</div>
+      <div class="small">Paste your Anthropic API key and pick a court password. They go straight to your relay and are never shown again. This link works once.</div>
+      <div class="row" style="margin-top:8px"><input type="password" id="suKey" placeholder="sk-ant-…" style="flex:1;min-width:200px"><input id="suPass" placeholder="Court password" style="width:170px"><button class="pri" id="suGo">Save</button></div>
+      <div class="small" id="suMsg" style="margin-top:6px"></div>
+    </div>
     <div class="cases" id="cases"></div>
     <div class="set">
       <div class="row">
@@ -978,11 +984,18 @@ $('cases').onclick = e => { const b = e.target.closest('[data-c]'); if (b && !b.
 $('pname').value = ls('cd-name') || '';
 $('pname').oninput = () => ls('cd-name', $('pname').value.trim());
 const RELAY = 'https://jjfanwars-relay.businessautomationvic.workers.dev/legal/grade';
-async function relay(body) {
+async function relay(body, path) {
   const ctl = new AbortController(), to = setTimeout(() => ctl.abort(), 45000);
-  try { const r = await fetch(RELAY, {method:'POST', signal:ctl.signal, headers:{'content-type':'text/plain'}, body:JSON.stringify(body)}); const j = await r.json().catch(() => ({err:'HTTP ' + r.status})); if (!r.ok || j.err) throw new Error(j.err || 'HTTP ' + r.status); return j; }
+  try { const r = await fetch(path ? RELAY.replace('/legal/grade', path) : RELAY, {method:'POST', signal:ctl.signal, headers:{'content-type':'text/plain'}, body:JSON.stringify(body)}); const j = await r.json().catch(() => ({err:'HTTP ' + r.status})); if (!r.ok || j.err) throw new Error(j.err || 'HTTP ' + r.status); return j; }
   catch (e) { throw new Error(e.name === 'AbortError' ? 'timed out' : e.message === 'Failed to fetch' ? 'relay not reachable' : e.message); } finally { clearTimeout(to); }
 }
+{ const m = /#setup=([\w-]+)/.exec(location.hash);
+  if (m) { $('setupBox').classList.remove('hide');
+    $('suGo').onclick = async () => {
+      const key = $('suKey').value.trim(), pass = $('suPass').value.trim(); $('suMsg').textContent = 'Saving…';
+      try { await relay({setup:m[1], key, pass}, '/legal/setup'); ls('cd-pass', pass); $('suKey').value = ''; history.replaceState(null, '', location.pathname); $('setupBox').classList.add('hide'); menu(); $('keyState').textContent = '✅ Setup done. Court unlocked. Remember your password: ' + pass; }
+      catch (e) { $('suMsg').textContent = '❌ ' + e.message; }
+    }; } }
 $('saveKey').onclick = async () => {
   const v = $('key').value.trim(); if (!v) return; $('keyState').textContent = 'Checking password…';
   try { await relay({pass:v, check:1}); ls('cd-pass', v); $('key').value = ''; menu(); }
