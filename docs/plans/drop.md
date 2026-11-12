@@ -51,3 +51,7 @@ Host runs everything (AI, damage, doors are derived from positions on each clien
 - Grenades, vehicles, touch controls, voice or ping system, result feedback into jjfront.
 - Ranked or lobby team picker (teams alternate by join order).
 - A real hand-play balance pass: bot accuracy, round length, gadget counts and the number of barricades are guesses. In headless bot-only rounds, attackers planted in about 6 of 8 rounds; some rounds still time out when a carrier gets wedged.
+
+### Fourth pass (12 Nov 2026): real faces, suits
+- Operator faces are photo textures (Wikimedia Commons, see `tex/faces/LICENSE.txt`) projected onto a modelled head, with modelled hair and caps on top.
+- Operator bodies are suits on the X Bot skeleton (`suit.glb`), built from rigid pieces per bone. Assault keeps the armoured soldiers.

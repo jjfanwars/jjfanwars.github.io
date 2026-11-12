@@ -1,0 +1,13 @@
+Face textures for the jjdrop operators (drop.html). Each file is a cropped, masked and colour-adjusted detail of a photo from Wikimedia Commons.
+Files from CC BY-SA photos are shared under the same licence. The photos are used for political caricature; no endorsement by the people shown or the photographers is implied.
+
+stalin.jpg: Franklin D. Roosevelt Library Public Domain Photographs, Public domain, https://commons.wikimedia.org/wiki/File:StalinCropped1943.jpg
+kim.jpg: Владимир Смирнов / ТАСС, CC BY 4.0, https://commons.wikimedia.org/wiki/File:Kim_Jong-un_and_Vladimir_Putin_(2023-09-13)_12_(cropped_2).jpg
+boris.jpg: Ben Shread, OGL 3, https://commons.wikimedia.org/wiki/File:Boris_Johnson_official_portrait_(cropped).jpg
+thatcher.jpg: derivative work by Begoon, Copyrighted free use, https://commons.wikimedia.org/wiki/File:Margaret_Thatcher_stock_portrait_(cropped).jpg
+xi.jpg: Simon Dawson / No 10 Downing Street, CC BY 4.0, https://commons.wikimedia.org/wiki/File:Prime_Minister_Keir_Starmer_visits_China_(55066713683)_(cropped%2Bangle).jpg
+castro.jpg: Unknown (Mondadori Publishers), Public domain, https://commons.wikimedia.org/wiki/File:Fidel_Castro_1950s.jpg
+trump.jpg: Daniel Torok, Public domain, https://commons.wikimedia.org/wiki/File:Official_Presidential_Portrait_of_President_Donald_J._Trump_(2025).jpg
+yahu.jpg: Avi Ohayon, CC BY-SA 3.0, https://commons.wikimedia.org/wiki/File:Benjamin_Netanyahu,_February_2023_(cropped)(b).jpg
+elon.jpg: Gage Skidmore, CC BY-SA 4.0, https://commons.wikimedia.org/wiki/File:Elon_Musk_-_54820081119_(3x4_cropped,_Rule_of_thirds).jpg
+putin.jpg: Kremlin.ru, CC BY 4.0, https://commons.wikimedia.org/wiki/File:Vladimir_Putin_(2026_02_23)_(cropped).jpg

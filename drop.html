@@ -6,7 +6,8 @@
   defuser) or secure area. Assault mode: clear three buildings with an AI squad. Solo against bots or online over the relay.
   Companion to jjfront (front.html), reuses the Three.js r170 build already shipped with this site (three-r170.js, MIT).
   Rifle model: M4A1 by BigWhyaaa, CC0 (opengameart.org/content/m4a1-assault-rifle).
-  Shotgun model: semi-auto shotgun by crookedmouth, model CC0 (opengameart.org/content/semi-auto-shotgun-with-magazine), geometry only.
+  Operator skeleton: Mixamo X Bot (suit.glb, from the three.js examples). Operator faces: Wikimedia Commons photos, credits in tex/faces/LICENSE.txt.
+Shotgun model: semi-auto shotgun by crookedmouth, model CC0 (opengameart.org/content/semi-auto-shotgun-with-magazine), geometry only.
   Code: AGPL-3.0, like the rest of the jjfront pages; source https://github.com/jjfanwars/jjfanwars.github.io
 -->
 <html lang="en"><head><meta charset="utf-8">
@@ -630,50 +631,92 @@ function glbMats(look) {
   GLB.g.scene.traverse(m => { if (m.isMesh && !o[m.material.name]) { const c = m.material.clone(); if (!/Visor/.test(c.name)) { c.color.setRGB(t[0], t[1], t[2]); c.roughness = 0.8; c.metalness = 0.15; } else { c.roughness = 0.25; c.metalness = 0.6; } o[m.material.name] = c; } });
   return GLB.mats[look] = o;
 }
-// ----- leader heads: smooth shapes in realistic proportions, merged into one vertex-coloured mesh per operator, hung on the neck bone -----
-const HEADM = new T.MeshStandardMaterial({ vertexColors: true, roughness: 0.6, metalness: 0 }), headGeo = {}, capGs = {};
+// ----- leader heads: a head mesh with a front-projected photo face (tex/faces/*.jpg, see tex/faces/LICENSE.txt) plus modelled hair, caps and props; hung on the neck bone -----
+const FACE_SKIN = { stalin: 0xcc997c, putin: 0xb07561, kim: 0xa16a56, xi: 0xb95d3e, castro: 0xcc997c, trump: 0xcc9a88, yahu: 0xe8b09c, boris: 0xca939b, thatcher: 0xf2cdb5, elon: 0xbe7983 };
+const FACEM = {}, headGeo = {}, capGs = {};
+const faceMat = st => FACEM[st] || (FACEM[st] = (() => { const t = TLd.load('tex/faces/' + st + '.jpg'); t.colorSpace = T.SRGBColorSpace; t.anisotropy = 4; return new T.MeshStandardMaterial({ map: t, vertexColors: true, roughness: 0.68, metalness: 0 }); })());
 const capGeo = th => capGs[th] || (capGs[th] = new T.SphereGeometry(1, 22, 12, 0, Math.PI * 2, 0, th));
 const HSPH = new T.SphereGeometry(1, 20, 14), HCYL = new T.CylinderGeometry(1, 1, 1, 16);
-function headParts(st) { // head space: origin at the head bone, face toward +z, metres
-  const P = [], h = 0.1, SK = 0xc8977b, rr = mulberry(st.length * 31 + 7), q = new T.Quaternion(), eu = new T.Euler();
+const FSX = 0.25, FSY = 0.27; // metres covered by the face texture across and down
+function photoHead(h) { // deformed sphere: jaw taper, flatter face, nose; uv = planar projection from the front, back of the head uses the white corner
+  const g = new T.SphereGeometry(1, 40, 30), P = g.attributes.position, n = P.count, uv = new Float32Array(n * 2), col = new Float32Array(n * 3), yc = h - 0.002;
+  for (let i = 0; i < n; i++) { const ux = P.getX(i), uy = P.getY(i), uz = P.getZ(i), t = Math.min(1, Math.max(0, (-uy - 0.05) / 0.95)); let x = ux * 0.077 * (1 - 0.24 * t * t), y = uy * 0.1 + h + 0.01, z = uz * 0.091;
+    if (uz > 0) { z *= 0.93 - 0.06 * t; const gn = Math.exp(-(x * x) / (0.013 * 0.013) - ((y - (h - 0.014)) ** 2) / (0.028 * 0.028)); z += 0.017 * gn; if (uy < -0.1) z += 0.008 * t; }
+    P.setXYZ(i, x, y, z - 0.003); const front = uz > 0.22; uv[i * 2] = front ? 0.5 + x / FSX : 0.02; uv[i * 2 + 1] = front ? 0.5 + (y - yc) / FSY : 0.98; col.set(front ? [1, 1, 1] : [-1, -1, -1], i * 3); }
+  g.setAttribute('uv', new T.BufferAttribute(uv, 2)); g.computeVertexNormals(); g.userData.col = col; return g;
+}
+function headParts(st) { // hair, caps and props in head space: origin at the head bone, face toward +z, metres
+  const P = [], h = 0.1, rr = mulberry(st.length * 31 + 7), q = new T.Quaternion(), eu = new T.Euler(), SK = FACE_SKIN[st] || 0xc8977b;
   const add = (geo, c, x, y, z, sx, sy, sz, rx, ry, rz) => { eu.set(rx || 0, ry || 0, rz || 0); q.setFromEuler(eu); P.push([geo, new T.Matrix4().compose(new T.Vector3(x, y, z), q, new T.Vector3(sx, sy, sz)), c]); };
   const E = (c, ...a) => add(HSPH, c, ...a), C = (c, ...a) => add(HCYL, c, ...a), cap = (th, c, ...a) => add(capGeo(th), c, ...a);
-  const face = o => { const s = o.skin || SK, w = o.w || 1, j = o.jaw || 1;
-    E(s, 0, h + 0.02, -0.005, 0.079 * w, 0.098, 0.093); E(s, 0, h - 0.04, 0.012, 0.066 * w * j, 0.062, 0.075); E(s, 0, h - 0.083, 0.038, 0.032 * j, 0.026, 0.032);
-    for (const sx of [-1, 1]) { E(s, sx * 0.046 * w, h - 0.018, 0.046, 0.027, 0.032, 0.028); E(s, sx * 0.079 * w, h + 0.002, -0.004, 0.012, 0.03, 0.021);
-      E(0xd6cfc4, sx * 0.03, h + 0.018, 0.083, 0.0105, 0.0062, 0.006); E(o.eye || 0x3b2c22, sx * 0.03, h + 0.0172, 0.0885, 0.0056, 0.0056, 0.0025); E(s, sx * 0.03, h + 0.0236, 0.0838, 0.0128, 0.0046, 0.0068); E(s, sx * 0.03, h + 0.0118, 0.0832, 0.0118, 0.0028, 0.0062);
-      E(o.brow || o.hair, sx * 0.032, h + 0.036, 0.086, 0.021, o.bt || 0.0055, 0.007, 0, 0, sx * -0.12); }
-    E(s, 0, h - 0.002, 0.088, 0.013, 0.032, 0.017, -0.25); E(s, 0, h - 0.026, 0.097, 0.016, 0.014, 0.016); E(o.lip || 0x9a5e54, 0, h - 0.05, 0.085, 0.022, 0.0065, 0.008);
-    C(s, 0, h - 0.13, -0.008, 0.046, 0.09, 0.046); };
-  const suit = (tie, len, rz) => { for (const sx of [-1, 1]) E(0xd9d9d4, sx * 0.024, -0.072, 0.136, 0.022, 0.013, 0.009, 0, 0, sx * 0.55); if (tie) { E(tie, 0, -0.085, 0.148, 0.016, 0.018, 0.012); E(tie, (rz || 0) * -0.12, -0.085 - len / 2, 0.158, 0.026, len / 2, 0.008, 0.12, 0, rz || 0); } };
-  if (st === 'stalin') { const hc = 0x5a5550, mc = 0x231e1b; face({ hair: hc, brow: mc, bt: 0.008, jaw: 1.08 }); cap(1.2, hc, 0, h + 0.025, -0.012, 0.084, 0.102, 0.099, -0.35); E(hc, 0, h + 0.078, 0.025, 0.07, 0.03, 0.065, -0.3); E(mc, 0, h - 0.033, 0.094, 0.043, 0.012, 0.013); for (const sx of [-1, 1]) E(mc, sx * 0.034, h - 0.04, 0.088, 0.016, 0.012, 0.011); }
-  else if (st === 'putin') { const hc = 0xa68e6e; face({ hair: hc, eye: 0x4f6a86, w: 0.98 }); cap(1.15, hc, 0, h + 0.02, -0.02, 0.0815, 0.1, 0.095, -1.0); E(hc, 0, h + 0.093, -0.012, 0.05, 0.01, 0.055); suit(0x2c3358, 0.3); }
-  else if (st === 'kim') { const hc = 0x0d0d0d; face({ hair: hc, w: 1.09, jaw: 1.14 }); cap(1.5, 0x2b2b2b, 0, h + 0.02, -0.004, 0.0865, 0.1, 0.095); E(hc, 0, h + 0.09, -0.005, 0.062, 0.036, 0.085); E(hc, 0, h + 0.088, 0.055, 0.056, 0.03, 0.036, 0.3); for (const sx of [-1, 1]) E(0x1a1a1a, sx * 0.034, -0.07, 0.09, 0.04, 0.028, 0.02, 0, 0, sx * 0.15); }
-  else if (st === 'xi') { const hc = 0x121212; face({ hair: hc, w: 1.05, jaw: 1.1 }); cap(1.3, hc, 0, h + 0.025, 0, 0.0825, 0.1, 0.096, -0.12); E(hc, -0.016, h + 0.084, 0.02, 0.062, 0.022, 0.07, 0, 0, 0.15); suit(0xa8191f, 0.3); }
-  else if (st === 'castro') { const hc = 0x161414, ol = 0x4a5230; face({ hair: hc, jaw: 1.05 }); E(hc, 0, h - 0.056, 0.03, 0.075, 0.066, 0.075); E(hc, 0, h - 0.034, 0.092, 0.036, 0.011, 0.012); for (const sx of [-1, 1]) E(hc, sx * 0.07, h + 0.03, -0.01, 0.02, 0.045, 0.05);
-    C(ol, 0, h + 0.088, -0.008, 0.087, 0.072, 0.093); E(0x3a4026, 0, h + 0.056, 0.088, 0.072, 0.006, 0.046, 0.15); C(0x6b4a2c, 0.03, h - 0.052, 0.13, 0.0075, 0.085, 0.0075, 1.5, 0, -0.35); E(0xff6a20, 0.044, h - 0.055, 0.172, 0.008, 0.008, 0.008); for (const sx of [-1, 1]) E(ol, sx * 0.034, -0.07, 0.09, 0.04, 0.026, 0.02, 0, 0, sx * 0.4); }
-  else if (st === 'trump') { const hc = 0xe2bd72; face({ skin: 0xd98852, hair: hc, brow: 0xd2a860, eye: 0x4a5f78, w: 1.06, jaw: 1.14, lip: 0xc07a60 }); cap(1.35, hc, 0, h + 0.028, 0.004, 0.0855, 0.103, 0.1); E(hc, 0.012, h + 0.084, 0.045, 0.08, 0.035, 0.074, 0.28, 0, -0.08); for (const sx of [-1, 1]) E(hc, sx * 0.065, h + 0.05, -0.006, 0.03, 0.046, 0.076); suit(0xc4161c, 0.5); }
-  else if (st === 'yahu') { const hc = 0xcdccc6; face({ hair: hc, brow: 0x8f8d88, w: 1.02, jaw: 1.06 }); cap(1.28, hc, 0, h + 0.027, -0.004, 0.0835, 0.101, 0.097, -0.18); E(hc, -0.018, h + 0.085, 0.02, 0.064, 0.024, 0.07, 0, 0, 0.18); suit(0x2b4f9a, 0.32); }
-  else if (st === 'boris') { const hc = 0xf1e3a6; face({ hair: hc, brow: 0xcab878, eye: 0x4f6a86, w: 1.06, jaw: 1.1 }); cap(1.55, hc, 0, h + 0.022, -0.004, 0.088, 0.105, 0.1); for (let i = 0; i < 14; i++) { const a = rr() * 6.28, el = 0.35 + rr() * 0.9, r = 0.095; E(hc, Math.cos(a) * Math.sin(el) * r * 0.9, h + 0.025 + Math.cos(el) * r, Math.sin(a) * Math.sin(el) * r - 0.005, 0.026 + rr() * 0.016, 0.02 + rr() * 0.012, 0.026 + rr() * 0.016, rr(), rr(), rr()); } E(hc, 0.01, h + 0.06, 0.078, 0.07, 0.028, 0.025, 0.25, 0, 0.1); suit(0x30405e, 0.28, 0.25); }
-  else if (st === 'thatcher') { const hc = 0xc7ae7c; face({ hair: hc, brow: 0x8a7050, eye: 0x4f6a86, w: 0.96, jaw: 0.92, lip: 0xb0505a }); E(hc, 0, h + 0.072, -0.01, 0.1, 0.07, 0.108); cap(1.75, hc, 0, h + 0.022, -0.012, 0.091, 0.104, 0.103); E(hc, 0.01, h + 0.085, 0.06, 0.076, 0.035, 0.043, 0.45);
-    for (const sx of [-1, 1]) E(0xf2efe6, sx * 0.08, h - 0.022, 0.002, 0.008, 0.008, 0.008); for (let i = 0; i < 15; i++) { const a = -1.3 + i * 2.6 / 14; E(0xf2efe6, Math.sin(a) * 0.055, h - 0.158 + Math.abs(a) * 0.012, Math.cos(a) * 0.05 - 0.004, 0.009, 0.009, 0.009); } }
-  else if (st === 'elon') { const hc = 0x3b2b20; face({ hair: hc, w: 1.04, jaw: 1.12 }); cap(1.3, hc, 0, h + 0.025, 0, 0.083, 0.1, 0.097); cap(1.28, 0x121212, 0, h + 0.032, 0, 0.0885, 0.104, 0.101, -0.1); E(0x121212, 0, h + 0.058, 0.103, 0.072, 0.006, 0.056, 0.12); E(0x121212, 0, -0.085, 0.085, 0.06, 0.03, 0.02); }
+  for (const sx of [-1, 1]) E(SK, sx * 0.078, h + 0.0, -0.006, 0.011, 0.028, 0.02); C(SK, 0, h - 0.13, -0.012, 0.045, 0.09, 0.045); // ears, neck
+  const suit = () => {}; // shirt and tie are part of the body
+  if (st === 'stalin') { const hc = 0x5a5550; cap(1.25, hc, 0, h + 0.02, -0.014, 0.082, 0.1, 0.094, -0.6); // marshal's cap
+    C(0x55573f, 0, h + 0.088, -0.004, 0.092, 0.04, 0.1, -0.12); C(0x9a1d18, 0, h + 0.072, -0.002, 0.086, 0.018, 0.094, -0.12); E(0x1a1a1a, 0, h + 0.064, 0.082, 0.07, 0.005, 0.042, 0.3); E(0xc9a23a, 0, h + 0.078, 0.094, 0.009, 0.009, 0.004); }
+  else if (st === 'putin') { const hc = 0xa68e6e; cap(1.0, hc, 0, h + 0.02, -0.025, 0.08, 0.1, 0.093, -1.1); suit(0x2c3358, 0.3); }
+  else if (st === 'kim') { const hc = 0x0d0d0d; cap(1.5, 0x2b2b2b, 0, h + 0.018, -0.008, 0.083, 0.1, 0.093); E(hc, 0, h + 0.086, -0.01, 0.062, 0.036, 0.085); E(hc, 0, h + 0.088, 0.045, 0.056, 0.028, 0.036, 0.3); }
+  else if (st === 'xi') { const hc = 0x121212; cap(1.2, hc, 0, h + 0.022, -0.008, 0.081, 0.1, 0.094, -0.25); E(hc, -0.016, h + 0.082, 0.01, 0.062, 0.022, 0.07, 0, 0, 0.15); suit(0xa8191f, 0.3); }
+  else if (st === 'castro') { const hc = 0x161414, ol = 0x4a5230; for (const sx of [-1, 1]) E(hc, sx * 0.07, h + 0.03, -0.015, 0.02, 0.045, 0.05); E(hc, 0, h - 0.06, -0.005, 0.07, 0.05, 0.07);
+    C(ol, 0, h + 0.088, -0.012, 0.085, 0.07, 0.091); E(0x3a4026, 0, h + 0.058, 0.08, 0.07, 0.006, 0.044, 0.15); C(0x6b4a2c, 0.03, h - 0.052, 0.12, 0.0075, 0.085, 0.0075, 1.5, 0, -0.35); E(0xff6a20, 0.044, h - 0.055, 0.162, 0.008, 0.008, 0.008); }
+  else if (st === 'trump') { const hc = 0xe2bd72; cap(1.3, hc, 0, h + 0.026, -0.002, 0.083, 0.103, 0.097); E(hc, 0.012, h + 0.082, 0.035, 0.08, 0.034, 0.07, 0.28, 0, -0.08); for (const sx of [-1, 1]) E(hc, sx * 0.064, h + 0.05, -0.01, 0.03, 0.046, 0.072); suit(0xc4161c, 0.5); }
+  else if (st === 'yahu') { const hc = 0xcdccc6; cap(1.2, hc, 0, h + 0.025, -0.008, 0.081, 0.1, 0.094, -0.25); E(hc, -0.018, h + 0.083, 0.01, 0.064, 0.024, 0.07, 0, 0, 0.18); suit(0x2b4f9a, 0.32); }
+  else if (st === 'boris') { const hc = 0xf1e3a6; cap(1.5, hc, 0, h + 0.022, -0.008, 0.086, 0.104, 0.097); for (let i = 0; i < 14; i++) { const a = rr() * 6.28, el = 0.35 + rr() * 0.9, r = 0.095; E(hc, Math.cos(a) * Math.sin(el) * r * 0.9, h + 0.025 + Math.cos(el) * r, Math.sin(a) * Math.sin(el) * r - 0.012, 0.026 + rr() * 0.016, 0.018 + rr() * 0.012, 0.026 + rr() * 0.016, rr(), rr(), rr()); } suit(0x5a7fc0, 0.36, 0.25); }
+  else if (st === 'thatcher') { const hc = 0xc7ae7c; E(hc, 0, h + 0.07, -0.014, 0.1, 0.07, 0.106); cap(1.7, hc, 0, h + 0.02, -0.016, 0.089, 0.104, 0.1); E(hc, 0.01, h + 0.085, 0.05, 0.076, 0.035, 0.043, 0.45);
+    for (let i = 0; i < 15; i++) { const a = -1.3 + i * 2.6 / 14; E(0xf2efe6, Math.sin(a) * 0.055, h - 0.158 + Math.abs(a) * 0.012, Math.cos(a) * 0.05 - 0.004, 0.009, 0.009, 0.009); } }
+  else if (st === 'elon') { const hc = 0x3b2b20; cap(1.25, hc, 0, h + 0.024, -0.006, 0.081, 0.1, 0.095, -0.15); E(hc, 0, h + 0.075, 0.02, 0.07, 0.03, 0.07, 0.3); }
   return P;
 }
 function headGeom(st) {
-  if (headGeo[st]) return headGeo[st]; const gs = headParts(st).map(([geo, m, c]) => { const g = geo.clone(); g.applyMatrix4(m); return [g, c]; }); let nv = 0, ni = 0; for (const [g] of gs) { nv += g.attributes.position.count; ni += g.index.count; }
-  const pos = new Float32Array(nv * 3), nor = new Float32Array(nv * 3), col = new Float32Array(nv * 3), idx = new Uint32Array(ni); let vo = 0, io = 0;
-  for (const [g, c] of gs) { const Pp = g.attributes.position.array, N = g.attributes.normal.array, I = g.index.array, cc = hex(c).map(v => Math.pow(v, 2.2)), n = Pp.length / 3; pos.set(Pp, vo * 3); nor.set(N, vo * 3); for (let i = 0; i < n; i++) col.set(cc, (vo + i) * 3); for (let i = 0; i < I.length; i++) idx[io + i] = I[i] + vo; vo += n; io += I.length; g.dispose(); }
-  const G2 = new T.BufferGeometry(); G2.setAttribute('position', new T.BufferAttribute(pos, 3)); G2.setAttribute('normal', new T.BufferAttribute(nor, 3)); G2.setAttribute('color', new T.BufferAttribute(col, 3)); G2.setIndex(new T.BufferAttribute(idx, 1)); return headGeo[st] = G2;
+  if (headGeo[st]) return headGeo[st]; const ph = photoHead(0.1), skin = hex(FACE_SKIN[st] || 0xc8977b).map(v => Math.pow(v, 2.2)), pc = ph.userData.col; for (let i = 0; i < pc.length; i += 3) if (pc[i] < 0) pc.set(skin, i);
+  const gs = [[ph, null, pc]].concat(headParts(st).map(([geo, m, c]) => { const g = geo.clone(); g.applyMatrix4(m); return [g, c]; })); let nv = 0, ni = 0; for (const [g] of gs) { nv += g.attributes.position.count; ni += g.index.count; }
+  const pos = new Float32Array(nv * 3), nor = new Float32Array(nv * 3), col = new Float32Array(nv * 3), uv = new Float32Array(nv * 2), idx = new Uint32Array(ni); let vo = 0, io = 0;
+  for (const [g, c, pcol] of gs) { const Pp = g.attributes.position.array, N = g.attributes.normal.array, I = g.index.array, n = Pp.length / 3; pos.set(Pp, vo * 3); nor.set(N, vo * 3);
+    if (pcol) { col.set(pcol, vo * 3); uv.set(g.attributes.uv.array, vo * 2); } else { const cc = hex(c).map(v => Math.pow(v, 2.2)); for (let i = 0; i < n; i++) { col.set(cc, (vo + i) * 3); uv[(vo + i) * 2] = 0.02; uv[(vo + i) * 2 + 1] = 0.98; } }
+    for (let i = 0; i < I.length; i++) idx[io + i] = I[i] + vo; vo += n; io += I.length; g.dispose(); }
+  const G2 = new T.BufferGeometry(); G2.setAttribute('position', new T.BufferAttribute(pos, 3)); G2.setAttribute('normal', new T.BufferAttribute(nor, 3)); G2.setAttribute('color', new T.BufferAttribute(col, 3)); G2.setAttribute('uv', new T.BufferAttribute(uv, 2)); G2.setIndex(new T.BufferAttribute(idx, 1)); return headGeo[st] = G2;
+}
+// ----- suited bodies for the operators: the Mixamo "X Bot" skeleton and clips (three.js examples, suit.glb; its own mesh is hidden) dressed in rigid tailored pieces hung on the bones: jacket in the team colour, trousers, shirt and tie or a closed collar, cuffs, hands, shoes -----
+const SUIT = { ready: false, g: null }, SUITMS = {}, SEGG = new T.CylinderGeometry(1, 1, 1, 18, 1), SEGS = new T.SphereGeometry(1, 18, 12);
+const suitMat = c => SUITMS[c] || (SUITMS[c] = new T.MeshStandardMaterial({ color: new T.Color(...hex(c).map(v => Math.pow(v, 2.2))), roughness: c === 0x0c0c0c ? 0.35 : 0.82, metalness: 0 }));
+const SUIT_K = { stalin: 0, kim: 0, castro: 0, putin: 1, xi: 1, trump: 1, yahu: 1, boris: 1, thatcher: 2, elon: 3 }; // collar: 0 closed tunic, 1 shirt + tie, 2 skirt suit, 3 open shirt
+const TIE = { putin: 0x2c3358, xi: 0xa8191f, trump: 0xc4161c, yahu: 0x2b4f9a, boris: 0x5a7fc0 };
+const _sa = new T.Vector3(), _sb = new T.Vector3(), _sx = new T.Vector3(), _sy = new T.Vector3(), _sz = new T.Vector3(), _sm = new T.Matrix4(), _sq = new T.Quaternion(), _bq = new T.Quaternion(), _bs = new T.Vector3();
+function dressSuit(root, bones, look) {
+  const o = /^op/.test(look) ? OPS[+look.slice(2)] : null, fac = o ? o.fac : +look.slice(3) || 0, k = o ? SUIT_K[o.hd] : 1, J = fac ? 0x18223f : 0x3d1310, TR = fac ? 0x131a30 : 0x300f0c, SK = (o && FACE_SKIN[o.hd]) || 0xc8977b, W = 0xe4e4de, SH = 0x0c0c0c, tie = (o && TIE[o.hd]) || 0x151515;
+  root.updateMatrixWorld(true);
+  // a piece from bone a towards bone b (or a world offset), elliptic section rx (body left-right) x rz (front-back), ends extended by ext; round = sphere instead of a cylinder
+  const seg = (bn, to, rx, rz, c, ext0, ext1, round, off) => { const bone = bones[bn]; if (!bone) return; bone.getWorldPosition(_sa); if (typeof to === 'string') { if (!bones[to]) return; bones[to].getWorldPosition(_sb); } else _sb.copy(_sa).add(_sx.set(...to));
+    if (off) { _sa.add(_sx.set(...off)); _sb.add(_sx.set(...off)); }
+    _sy.subVectors(_sb, _sa); const len = _sy.length(); _sy.normalize(); const A = _sa.clone().addScaledVector(_sy, -(ext0 || 0)), L = len + (ext0 || 0) + (ext1 || 0);
+    _sz.set(0, 0, 1); if (Math.abs(_sy.z) > 0.9) _sz.set(0, 1, 0); _sx.crossVectors(_sy, _sz).normalize(); _sz.crossVectors(_sx, _sy).normalize(); if (Math.abs(_sy.x) > 0.7) { _sz.set(0, 0, 1); _sx.crossVectors(_sy, _sz).normalize(); } // arms: keep the flat side facing front
+    _sm.makeBasis(_sx, _sy, _sz); _sq.setFromRotationMatrix(_sm); const m = new T.Mesh(round ? SEGS : SEGG, suitMat(c)); m.castShadow = true; m.frustumCulled = false;
+    bone.getWorldQuaternion(_bq); bone.getWorldScale(_bs); const mid = A.addScaledVector(_sy, L / 2); bone.worldToLocal(mid); m.position.copy(mid); m.quaternion.copy(_bq.invert().multiply(_sq)); m.scale.set(rx / _bs.x, (round ? L / 2 : L) / _bs.x, rz / _bs.x); bone.add(m); return m; };
+  // torso: trousers at the hips, jacket from the waist to the shoulders, jacket hem over the hips
+  seg('Hips', [0, 0.07, 0], 0.165, 0.115, TR, 0.1, 0.0, true);
+  seg('Hips', 'Spine', 0.168, 0.118, J, 0.17, 0.0); seg('Spine', 'Spine1', 0.162, 0.112, J, 0, 0.02); seg('Spine1', 'Spine2', 0.168, 0.115, J, 0, 0.02); seg('Spine2', 'Neck', 0.178, 0.118, J, 0, -0.04);
+  seg('Spine2', 'Neck', 0.17, 0.11, J, -0.1, 0.02, true);
+  for (const S of ['Left', 'Right']) { seg(S + 'Shoulder', S + 'Arm', 0.065, 0.065, J, 0.03, 0.04, true); seg(S + 'Arm', S + 'ForeArm', 0.056, 0.056, J, 0.02, 0.02); seg(S + 'ForeArm', S + 'Hand', 0.048, 0.048, J, 0.02, -0.03); seg(S + 'ForeArm', S + 'Hand', 0.041, 0.041, k === 0 ? J : W, -0.24, 0.0);
+    seg(S + 'Hand', S + 'HandMiddle1', 0.04, 0.03, SK, 0.0, -0.035, true);
+    if (k === 2) { seg(S + 'UpLeg', S + 'Leg', 0.072, 0.072, J, 0, 0); seg(S + 'Leg', S + 'Foot', 0.04, 0.042, SK, 0, 0); }
+    else { seg(S + 'UpLeg', S + 'Leg', 0.082, 0.082, TR, 0.04, 0.03); seg(S + 'Leg', S + 'Foot', 0.063, 0.063, TR, 0.02, -0.02); }
+    seg(S + 'Foot', S + 'ToeBase', 0.048, 0.034, SH, 0.07, 0.07, true, [0, -0.045, 0]); }
+  if (k === 2) { const sk = seg('Hips', [0, -0.5, 0], 0.2, 0.15, J, 0.05, 0); if (sk) sk.geometry = new T.CylinderGeometry(1, 1.12, 1, 18, 1); } // skirt
+  // shirt front, tie / closed collar
+  const nk = bones.Neck, sp = bones.Spine2; if (!nk || !sp) return;
+  if (k === 1 || k === 3 || k === 2) { seg('Spine2', 'Neck', 0.048, 0.01, W, -0.03, 0.0, true, [0, 0, 0.11]); seg('Neck', [0, 0.03, 0], 0.046, 0.046, W, 0.0, 0, false); }
+  if (k === 1) { seg('Spine2', 'Neck', 0.011, 0.008, tie, 0.16, -0.02, false, [0, 0, 0.122]); }
+  if (k === 0) seg('Neck', [0, 0.05, 0], 0.05, 0.05, J, 0.02, 0, false);
+  if (k === 3) seg('Spine2', 'Neck', 0.028, 0.012, SK, -0.06, 0.03, true, [0, 0, 0.112]);
 }
 function makeSoldierGlb(look) {
-  const root = new T.Group(), model = SkeletonUtils.clone(GLB.g.scene), mats = glbMats(look), bones = {};
-  model.rotation.y = Math.PI; root.add(model);
-  model.traverse(o => { if (o.isMesh) { o.material = mats[o.material.name] || o.material; o.castShadow = true; o.receiveShadow = false; o.frustumCulled = false; } if (o.isBone) { const k = o.name.replace('mixamorig', ''); bones[k] = o; } });
-  const mixer = new T.AnimationMixer(model), act = {}; for (const c of GLB.g.animations) if (c.name === 'Idle' || c.name === 'Walk' || c.name === 'Run') { act[c.name] = mixer.clipAction(c); act[c.name].play(); act[c.name].setEffectiveWeight(c.name === 'Idle' ? 1 : 0); }
+  const suited = SUIT.ready && /^(op|fac)/.test(look), src = suited ? SUIT.g : GLB.g, root = new T.Group(), model = SkeletonUtils.clone(src.scene), mats = suited ? null : glbMats(look), bones = {};
+  model.rotation.y = suited ? 0 : Math.PI; root.add(model);
+  model.traverse(o => { if (o.isMesh) { if (suited) o.visible = false; else o.material = mats[o.material.name] || o.material; o.castShadow = true; o.receiveShadow = false; o.frustumCulled = false; } if (o.isBone) { const k = o.name.replace('mixamorig', ''); bones[k] = o; } });
+  const mixer = new T.AnimationMixer(model), act = {}; for (const c of src.animations) { const nm = c.name[0].toUpperCase() + c.name.slice(1); if (nm === 'Idle' || nm === 'Walk' || nm === 'Run') { act[nm] = mixer.clipAction(c); act[nm].play(); act[nm].setEffectiveWeight(nm === 'Idle' ? 1 : 0); } }
   const aim = new T.Group(); root.add(aim); const fl = new T.Mesh(BOX, new T.MeshBasicMaterial({ color: 0xffd070 })); fl.scale.set(0.12, 0.12, 0.18); fl.position.set(-0.13, -0.04, 0.95); fl.visible = false; aim.add(fl);
   const rig = { mixer, act, bones, aim, model, gun: null, w: [1, 0, 0] }, o = /^op/.test(look) ? OPS[+look.slice(2)] : null;
-  if (o && bones.Neck && bones.Head) { root.updateMatrixWorld(true); const hd = bones.Head, nk = bones.Neck, hp = hd.getWorldPosition(new T.Vector3()), wq = nk.getWorldQuaternion(new T.Quaternion()), ws = nk.getWorldScale(new T.Vector3()), H = new T.Mesh(headGeom(o.hd), HEADM); H.castShadow = true; H.frustumCulled = false; H.position.copy(nk.worldToLocal(hp)); H.quaternion.copy(wq.invert()); H.scale.setScalar(1.12 / ws.x); nk.add(H); hd.scale.setScalar(0.001); rig.hideHead = hd; rig.headM = H; rig.neck = nk; }
+  if (suited) dressSuit(root, bones, look);
+  if (o && bones.Neck && bones.Head) { root.updateMatrixWorld(true); const hd = bones.Head, nk = bones.Neck, hp = hd.getWorldPosition(new T.Vector3()), wq = nk.getWorldQuaternion(new T.Quaternion()), ws = nk.getWorldScale(new T.Vector3()), H = new T.Mesh(headGeom(o.hd), faceMat(o.hd)); H.castShadow = true; H.frustumCulled = false; if (suited) hp.y -= 0.072; H.position.copy(nk.worldToLocal(hp)); H.quaternion.copy(wq.invert()); H.scale.setScalar((suited ? 1.18 : 1.12) / ws.x); nk.add(H); hd.scale.setScalar(0.001); rig.hideHead = hd; rig.headM = H; rig.neck = nk; }
   root.userData = { rig, flash: fl, look }; scene.add(root); return root;
 }
 const _pole = new T.Vector3(), _tg = new T.Vector3(), _q2 = new T.Quaternion(), _ex = new T.Vector3(-1, 0, 0), _he = new T.Euler(), _hq = new T.Quaternion();
@@ -695,6 +738,7 @@ function makeSoldier(look) { if (GLB.ready) return makeSoldierGlb(look); const L
 function animSoldier(e, speed) { e.animSpeed = speed; if (!e.mesh.userData.rig) animSoldierOld(e, speed); }
 function swapMeshes() { for (const e of ents) { const look = e.mesh.userData.look, vis = e.mesh.visible, dead = e.mode === 'dead'; scene.remove(e.mesh); e.mesh = makeSoldier(look); e.mesh.visible = vis; if (dead) e.mesh.rotation.x = -Math.PI / 2; } }
 if (window.GLTFLoader) new GLTFLoader().load('soldier.glb', g => { GLB.g = g; GLB.ready = true; swapMeshes(); }, undefined, () => console.warn('soldier.glb not loaded, using the box soldiers'));
+if (window.GLTFLoader) new GLTFLoader().load('suit.glb', g => { SUIT.g = g; SUIT.ready = true; if (GLB.ready) swapMeshes(); }, undefined, () => console.warn('suit.glb not loaded'));
 function setLook(e, look) { if (e.mesh.userData.look === look) return; scene.remove(e.mesh); e.mesh = makeSoldier(look); e.mesh.visible = !e.isPlayer; }
 
 
