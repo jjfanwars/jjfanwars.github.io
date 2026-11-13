@@ -112,10 +112,8 @@ function buildStage(cfg) {
     let y = b, rf = 0, d = 999;
     if (q) {
       d = q.d;
-      const bump = 0.025 * nz(x * 0.45, z * 0.45);
-      if (d < ROAD_HW) y = q.y - 0.07 * (d / ROAD_HW) ** 2 + bump;
-      else if (d < ROAD_HW + 1.6) y = q.y - 0.07 - 0.45 * sstep(ROAD_HW, ROAD_HW + 1.4, d);
-      else { const t = sstep(ROAD_HW + 1.6, ROAD_HW + 20, d); y = lerp(q.y - 0.5 + 0.25 * nz(x * 0.3, z * 0.3), b, t); }
+      if (d < ROAD_HW + 1.5) y = q.y; // flat road and flat verges, no ditches
+      else { const t = sstep(ROAD_HW + 1.5, ROAD_HW + 20, d); y = lerp(q.y, b, t); }
       rf = 1 - sstep(ROAD_HW - 0.5, ROAD_HW + 0.9, d + 0.5 * nz(x * 0.9 + 9, z * 0.9));
       RU[k] = q.lat; RV[k] = q.s;
     }

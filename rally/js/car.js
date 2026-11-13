@@ -5,7 +5,7 @@
 const CAR = {
   m: 1230, I: [2300, 2400, 900],                // pitch(x), yaw(y), roll(z) inertia
   wheels: [[0.8, -0.1, 1.27], [-0.8, -0.1, 1.27], [0.8, -0.1, -1.24], [-0.8, -0.1, -1.24]], // FL FR RL RR
-  rest: 0.36, travel: 0.27, r: 0.32, k: 36000, cB: 3300, cR: 4300, arb: 9000,
+  rest: 0.36, travel: 0.27, r: 0.32, k: 36000, cB: 4200, cR: 7500, arb: 9000,
   gears: [3.25, 2.2, 1.67, 1.32, 1.07, 0.89], rev: 3.1, fin: 5.2, idle: 950, red: 7700,
   split: 0.5,                                  // share of drive torque to the rear axle
   brake: 9800, brakeBias: 0.64,                 // max brake force per car (N) and front share
@@ -26,7 +26,7 @@ class Car {
     const S = this.S, p = S.at(s), rx = -Math.cos(p.h), rz = Math.sin(p.h);
     const x = p.x + rx * (lat || 0), z = p.z + rz * (lat || 0);
     this.pos.set(x, S.heightAt(x, z) + 0.62, z); this.q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), p.h); this.v.set(0, 0, 0); this.w.set(0, 0, 0);
-    for (const w of this.wh) { w.comp = w.pc = 0.12; w.spin = 0; } this.steer = 0; this.gear = 1; this.rpm = CAR.idle; this.prog = s;
+    for (const w of this.wh) { w.comp = w.pc = 0.12; w.cv = 0; w.spin = 0; } this.steer = 0; this.wrecked = false; this.gear = 1; this.rpm = CAR.idle; this.prog = s;
   }
   // world <- body
   toWorld(v, out) { return out.copy(v).applyQuaternion(this.q); }
@@ -94,9 +94,9 @@ class Car {
       const cp = w.cp.copy(A).addScaledVector(down, tt), n = S.normalAt(cp.x, cp.z, t.n).clone();
       // spring + damper (+ bump stop)
       // compression velocity is low-passed (stands in for tyre sidewall compliance, kills chatter on mesh facets)
-      w.cv = lerp(w.cv || 0, (w.comp - w.pc) / dt, Math.min(1, dt * 45)); const cv = w.cv;
-      let fs = CAR.k * w.comp + clamp((cv > 0 ? CAR.cB : CAR.cR) * cv, -9000, 14000);
-      if (w.comp > CAR.travel) { const o = w.comp - CAR.travel; fs += o * 120000 + o * o * 2e6 + Math.max(0, cv) * 6000; }
+      w.cv = lerp(w.cv || 0, (w.comp - w.pc) / dt, Math.min(1, dt * 90)); const cv = w.cv;
+      let fs = CAR.k * w.comp + clamp((cv > 0 ? CAR.cB : CAR.cR) * cv, -14000, 16000);
+      if (w.comp > CAR.travel) { const o = w.comp - CAR.travel; fs += o * 120000 + o * o * 2e6 + Math.max(0, cv) * 12000; }
       fs = Math.max(0, fs); w.load = Math.min(fs, 30000);
       F.addScaledVector(up, fs); T.add(t.b.crossVectors(t.c.subVectors(A, this.pos), t.d.copy(up).multiplyScalar(fs)));
       // tyre frame
@@ -141,6 +141,7 @@ class Car {
       // bleed off sideways sliding so the car goes where it points
       const vLat = this.v.dot(left); F.addScaledVector(left, -vLat * CAR.m * 1.0 * sstep(2, 6, Math.abs(vF)));
     }
+    if (contacts && this.air > 0.25 && this.v.y > 0) this.v.y *= 0.3; // kill the rebound after a jump landing
     this.air = contacts === 0 ? this.air + dt : 0; this.slide = slideSum / 4; this.offroad = offSum / 4;
     // aero drag
     F.addScaledVector(this.v, -0.62 * spd);
@@ -167,7 +168,7 @@ class Car {
       const n = S.normalAt(P.x, P.z, new THREE.Vector3()); this.pos.addScaledVector(n, pen * 0.6);
       const pv = this.pointVel(P, new THREE.Vector3()), vn = pv.dot(n);
       if (vn < 0) {
-        const j = -vn * 1.1 / this.invMass(P, n); this.impulse(P, n.clone().multiplyScalar(j));
+        const j = -vn / this.invMass(P, n); this.impulse(P, n.clone().multiplyScalar(j));
         const vt = pv.clone().addScaledVector(n, -vn), vtl = vt.length(); if (vtl > 0.01) { const jt = Math.min(vtl / this.invMass(P, vt.clone().normalize()), j * 0.6); this.impulse(P, vt.multiplyScalar(-jt / vtl)); }
         if (-vn > 3) { this.dmg = Math.min(1, this.dmg + (-vn - 3) * 0.01); this.events.push({ k: 'thud', v: -vn }); }
       }
@@ -191,6 +192,7 @@ class Car {
       const j = -vn * 1.2 / this.invMass(P, n); this.impulse(P, n.clone().multiplyScalar(j));
       const vt = pv.clone().addScaledVector(n, -vn); vt.y = 0; const vtl = vt.length(); if (vtl > 0.01) { const jt = Math.min(vtl / this.invMass(P, vt.clone().normalize()) * 0.5, j * 0.5); this.impulse(P, vt.multiplyScalar(-jt / vtl)); }
       const sev = -vn; if (sev > 2) { this.dmg = Math.min(1, this.dmg + (sev - 2) * 0.012); this.events.push({ k: 'crash', v: sev }); }
+      if (sev > 9 && !this.wrecked) { this.wrecked = true; this.events.push({ k: 'wreck', v: sev }); }
     };
     for (const tr of S.treesNear(this.pos.x, this.pos.z, this.near)) hit(tr.x, tr.z, tr.y + 0.6, tr.r);
     for (const l of S.logs) {
