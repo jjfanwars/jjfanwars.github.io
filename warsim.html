@@ -1562,24 +1562,24 @@ function redstarMap(N, seed, np) { // Operation Red Star: a big open continent. 
   // places: home airfield (west), towns, the target city (east)
   const flat = (x0, y0, x1, y1, z) => { for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) { if (x < 1 || y < 1 || x >= N - 1 || y >= N - 1) continue; const i = y * N + x; h[i] = z; water[i] = 0; } };
   const ax = Math.round(N * .08), ay = Math.round(N * .58), az = Math.max(1.2, h[ay * N + ax + 20]);
-  flat(ax - 10, ay - 12, ax + 70, ay + 12, az); for (let x = ax; x <= ax + 62; x++) for (let y = ay - 1; y <= ay + 1; y++) road[y * N + x] = 1;
+  flat(ax - 14, ay - 30, ax + 98, ay + 30, az); for (let x = ax - 10; x <= ax + 94; x++) for (let y = ay - 4; y <= ay + 4; y++) road[y * N + x] = 1;
   const tw = (x, y, w, d, hh, z) => ruins.push({x, y, w, d, h: hh, kind: 'sky', z});
-  for (const [ox, oy, w, d, hh] of [[8, 7, 6, 4, 1.8], [16, 7, 6, 4, 1.8], [26, -6.5, 1.4, 1.4, 4], [36, 7, 3, 2, 1], [42, 7, 3, 2, 1]]) tw(ax + ox, ay + oy, w, d, hh); // hangars, tower, fuel
+  for (const [ox, oy, w, d, hh] of [[32, 26, 10, 6, 3.5], [46, 26, 10, 6, 3.5], [58, -26, 2.4, 2.4, 7], [60, 26, 4, 3, 1.4], [66, 26, 4, 3, 1.4]]) tw(ax + ox, ay + oy, w, d, hh); // hangars, tower, fuel
   const cx = Math.round(N * .86), cy = Math.round(N * .55), cz = Math.max(1, h[cy * N + cx]); flat(cx - 34, cy - 34, cx + 34, cy + 34, cz);
   for (let dy = -30; dy <= 30; dy += 2.6) for (let dx = -30; dx <= 30; dx += 2.6) { const r = Math.hypot(dx, dy); if (r > 31 || (Math.abs(dx) < 7 && Math.abs(dy) < 7) || rnd() < .12) continue; const hh = .8 + Math.exp(-r * r / 160) * 7 * (.4 + rnd()) + rnd(); tw(cx + dx + (rnd() - .5) * .5, cy + dy + (rnd() - .5) * .5, 1.5 + rnd() * .8, 1.5 + rnd() * .8, hh); }
   for (const [ox, oy, w, d, hh] of [[0, 0, 6, 4, 2.2], [-3.5, 3.5, 4, 2.5, 1.8], [3.5, -3.5, 4, 3, 2], [-2, -3, .7, .7, 7], [2.5, 3, .7, .7, 7.5]]) tw(cx + ox, cy + oy, w, d, hh); // the target: the weapons works and its chimneys
   const towns = []; for (let k = 0; k < 14; k++) { const tx = Math.round(N * (.2 + rnd() * .6)), ty = Math.round(N * (.42 + rnd() * .38)); if (h[ty * N + tx] < .4 || h[ty * N + tx] > 4) continue; towns.push([tx, ty]);
     for (let n = 0; n < 14 + rnd() * 20; n++) { const a = rnd() * 6.283, r = rnd() * 9, x = tx + Math.cos(a) * r, y = ty + Math.sin(a) * r; if (h[Math.round(y) * N + Math.round(x)] > .3) tw(x, y, 1 + rnd() * .8, 1 + rnd() * .8, .6 + rnd() * 1.1); } }
   const line = (x0, y0, x1, y1) => { const L = Math.hypot(x1 - x0, y1 - y0); for (let t = 0; t <= L; t += .5) { const x = Math.round(x0 + (x1 - x0) * t / L), y = Math.round(y0 + (y1 - y0) * t / L); if (h[y * N + x] > .1) road[y * N + x] = 1; } };
-  const pts = [[ax + 66, ay], ...towns, [cx - 34, cy]].sort((a2, b2) => a2[0] - b2[0]); for (let k = 0; k < pts.length - 1; k++) line(pts[k][0], pts[k][1], pts[k + 1][0], pts[k + 1][1]);
+  const pts = [[ax + 96, ay], ...towns, [cx - 34, cy]].sort((a2, b2) => a2[0] - b2[0]); for (let k = 0; k < pts.length - 1; k++) line(pts[k][0], pts[k][1], pts[k + 1][0], pts[k + 1][1]);
   for (let i = 0; i < A; i++) { const y = (i / N) | 0, x = i - y * N, hh = h[i];
     if (hh < 0) { water[i] = 1; bio[i] = BIO.GRASS; continue; }
     bio[i] = hh > 7.5 ? BIO.SNOW : hh > 4.2 ? BIO.ROCK : BIO.GRASS;
     if (!road[i] && hh > .3 && hh < 6 && fbm(x + 333, y + 999, 30) > .56 && rnd() < .5) tree[i] = 1; }
   for (const R2 of ruins) { const c0 = Math.round(R2.y) * N + Math.round(R2.x); for (const o of [0, 1, -1, N, -N]) if (c0 + o >= 0 && c0 + o < A) tree[c0 + o] = 0; R2.z = h[c0]; }
-  for (let y = ay - 12; y <= ay + 12; y++) for (let x = ax - 10; x <= ax + 70; x++) tree[y * N + x] = 0;
+  for (let y = ay - 33; y <= ay + 33; y++) for (let x = ax - 17; x <= ax + 101; x++) tree[y * N + x] = 0;
   const M = {N, seed, h, bio, tree, water, block, road, occ, spawns: Array.from({length: np}, () => ({x: ax + 4, y: ay})), nodes: [], ruins, lite: true};
-  M.rsRoute = [[ax + 2, ay], [ax + 62, ay]]; M.rsTarget = {x: cx, y: cy}; M.rsOpen = 1;
+  M.rsRoute = [[ax + 12, ay], [ax + 92, ay]]; M.rsTarget = {x: cx, y: cy}; M.rsOpen = 1;
   finishRoads(M);
   return M;
 }
@@ -2432,7 +2432,7 @@ Sim.prototype.setupSandbox = function () {
 // Operation Red Star (work in progress): one Soviet bomber that flies a slow circle while the crew walk around inside it.
 Sim.prototype.setupRedstar = function () {
   this.rs = {t: 0, fuel: 100, hull: 100, off: 0, drift: 0, inp: 0, lit: 0, beams: [], lights: null, lockOn: 0, lockT: 0, jamF: .5, jamT: .5, jamP: 0, sig: 0, storm: 0, stormT: 0, flT: 3, door: 0, doorP: 0, leaks: [], hurt: {}, seat: {}, hold: {}, spent: {}, sched: null, bullets: [], fighters: [], gcd: {}, seq: 1, state: 'fly', kills: 0, bf: null, vod: {}, rub: {}, roul: null, dark: 0, darkP: 0, arm: null, chute: {}, bail: {}, stock: this.players.length, land: null, landUsed: 0, fallT: 0, score: 0, fixes: 0, wave: 0, dirT: 0, streak: 0, streakT: 0, bombs: 3, drops: []};
-  this.rsEnemy = this.players.length - 1; this.redstar = 1; this.rsS = 0; const R0 = this.M.rsRoute[0], b = this.addUnit('bomber', 0, R0[0], R0[1]); b.z = hAt(this.M, R0[0], R0[1]) + .7; b.rs = 1; b.h = 0; this.rsB = b;
+  this.rsEnemy = this.players.length - 1; this.redstar = 1; this.rsS = 0; const R0 = this.M.rsRoute[0], b = this.addUnit('bomber', 0, R0[0], R0[1]); b.z = hAt(this.M, R0[0], R0[1]) + 3.5; b.rs = 1; b.h = 0; this.rsB = b;
   const RT = this.M.rsRoute, BS = this.M.rsBase; if (BS) { let acc = 0, best = 1e9, bs = 0; for (let i = 0; i < RT.length - 1; i++) { const ax = RT[i][0], ay = RT[i][1], dx = RT[i + 1][0] - ax, dy = RT[i + 1][1] - ay, L = Math.hypot(dx, dy), t = clamp(((BS.x - ax) * dx + (BS.y - ay) * dy) / (L * L), 0, 1), d = Math.hypot(ax + dx * t - BS.x, ay + dy * t - BS.y); if (d < best) { best = d; bs = acc + L * t; } acc += L; } this.rs.baseS = bs; } // route distance to Polar Base 7
 };
 // ---------- Operation Red Star: mission director, systems, fighters, crew states ----------
@@ -2604,7 +2604,7 @@ function rsBombPath(M, x, y, z, vx, vy, vz, dt) { // where a bomb released now l
 Sim.prototype.rsGround = function () {
   const R = this.rs, b = this.rsB, n = this.players.length - 1, gz = (x, y) => Math.max(0, hAt(this.M, x, y));
   R.gear = {}; R.on = {}; R.esc = null; R.spares = 2; R.hit = 0; R.eng = [0, 0, 0, 0]; R.batt = 0; R.pump = 0; R.estT = [0, 0, 0, 0]; R.sold = {};
-  R.pads = {locker: {x: b.x + 9, y: b.y + 4.4}, ladder: {x: b.x + .95, y: b.y + .09}, fighter: {x: b.x + 16, y: b.y - 6}};
+  R.pads = {locker: {x: b.x + 20, y: b.y + 21.5}, ladder: {x: b.x + 4.75, y: b.y + .45}, fighter: {x: b.x + 30, y: b.y - 20}};
   for (let i = 0; i < n; i++) { const e = this.addUnit('rifle', i, R.pads.locker.x + 1.2 + (i % 4) * .9, R.pads.locker.y - 1.6 - ((i / 4) | 0) * .9); if (e) { e.h = Math.PI; R.sold[i] = e.id; } }
 };
 { const base = Sim.prototype.setupRedstar; Sim.prototype.setupRedstar = function () { base.call(this); this.rsGround(); }; }
@@ -2616,7 +2616,7 @@ Sim.prototype.rsEngines = function (dt) { // battery and fuel pumps feed the sta
     if (R.eng[i] < 1) { if (this.t - (R.estT[i] || -9) < .45) { R.eng[i] = Math.min(1, R.eng[i] + dt / 3); if (R.eng[i] >= 1) this.rsMsg('Engine ' + (i + 1) + ' running.', 0); } else R.eng[i] = Math.max(0, R.eng[i] - dt * .2); } }
 };
 Sim.prototype.rsReset = function () { // a spare aircraft at the airbase: engines warm, crew aboard, full tanks and racks
-  const RS = this.rs, b = this.rsB, R0 = this.M.rsRoute[0]; b.x = R0[0]; b.y = R0[1]; b.h = 0; b.z = Math.max(0, hAt(this.M, b.x, b.y)) + .7; b.p = 0; b.r = 0;
+  const RS = this.rs, b = this.rsB, R0 = this.M.rsRoute[0]; b.x = R0[0]; b.y = R0[1]; b.h = 0; b.z = Math.max(0, hAt(this.M, b.x, b.y)) + 3.5; b.p = 0; b.r = 0;
   RS.f = {pit: 0, bank: 0, spd: 0, thr: 0, gnd: 1, vz: 0}; RS.up = 0; RS.hull = 100; RS.fuel = 100; RS.bombs = 3; RS.drops = []; RS.svc = 0; RS.flown = 0; this.rsHd = this.rsH = 0; this.rsV = {x: 0, y: 0, z: 0};
 };
 Sim.prototype.rsCrash = function (gz) { // a wreck is not the end while a spare aircraft is left
@@ -2629,7 +2629,7 @@ Sim.prototype.redstarStep = function () { // the pilot really flies: throttle, p
   const b = this.rsB, RS = this.rs, M = this.M; if (!b || !RS || RS.state === 'lost' || RS.state === 'won') return;
   const dt = .1, F = RS.f || (RS.f = {pit: 0, bank: 0, spd: 0, thr: 0, gnd: 1, vz: 0}), pil = Object.keys(RS.seat).some(k => RS.seat[k] === 'pilot');
   this.rsEngines(dt); const run = RS.eng ? RS.eng.filter(q => q >= 1).length / 4 : 1;
-  const ti = pil ? RS.ti || 0 : 0, pi = pil ? RS.pi || 0 : 0, ri = pil ? RS.inp || 0 : 0, gz = Math.max(0, hAt(M, b.x, b.y)) + .7, H0 = M.rsRoute[0];
+  const ti = pil ? RS.ti || 0 : 0, pi = pil ? RS.pi || 0 : 0, ri = pil ? RS.inp || 0 : 0, gz = Math.max(0, hAt(M, b.x, b.y)) + 3.5, H0 = M.rsRoute[0];
   const VS = 1.5, pmax = F.gnd ? .2 : clamp((F.spd - 1.5) * .3, .06, .5); // the nose only goes as high as the speed can hold, so pulling back cannot stall a healthy aircraft
   if (!pil && !F.gnd) { // autopilot when nobody flies: wings level, hold height and power
     F.bank *= .95; F.thr += (.7 - F.thr) * .05; const want = clamp((Math.max(RS.apAlt || 50, gz + 15) - b.z) * .02, -.25, Math.min(.25, pmax)); F.pit += clamp(want - F.pit, -.03, .03);
@@ -2647,7 +2647,7 @@ Sim.prototype.redstarStep = function () { // the pilot really flies: throttle, p
     F.vz = 0; b.z = gz; F.pit = Math.max(0, F.pit);
     if (F.spd > 2.3 && F.pit > .05) { F.gnd = 0; F.vz = .8; RS.up = 1; RS.flown = 1; RS.upT = RS.t; RS.svc = 0; this.rsMsg(RS.hit ? 'Wheels up.' : 'Wheels up! Climb out and head east for the target.', 1); }
     else if (F.pit > .02 && F.spd < 2.3) F.pit *= .8;
-    const home = b.x > H0[0] - 14 && b.x < H0[0] + 70 && Math.abs(b.y - H0[1]) < 13;
+    const home = b.x > H0[0] - 26 && b.x < H0[0] + 84 && Math.abs(b.y - H0[1]) < 28;
     if (F.gnd && home && F.spd < .15 && RS.flown) {
       if (RS.hit) { RS.state = 'won'; RS.score += 1500 + Math.round(RS.fuel) * 5 + Math.round(RS.hull) * 5; RS.medal = RS.acc < 2 ? 'HERO OF THE SOVIET UNION' : RS.acc < 4 ? 'Order of Lenin' : 'Order of the Red Star'; this.rsMsg('Home safe. Mission complete! Score ' + RS.score + '. Award: ' + RS.medal + '.', 1); return; }
       if (RS.bombs < 3 || RS.fuel < 90 || RS.hull < 100) { if (!RS.svc) this.rsMsg('Ground crew are rearming and refuelling: hold still.', 0); RS.svc = (RS.svc || 0) + dt; if (RS.svc >= 6) { RS.bombs = 3; RS.fuel = 100; RS.hull = 100; RS.svc = 0; RS.flown = 0; this.rsMsg('Rearmed and refuelled: 3 bombs aboard. Cleared for take-off.', 1); } }
@@ -2666,7 +2666,7 @@ Sim.prototype.redstarStep = function () { // the pilot really flies: throttle, p
   const ox = b.x, oy = b.y; b.x = clamp(b.x + Math.cos(b.h) * F.spd * hc * dt, 3, this.N - 4); b.y = clamp(b.y + Math.sin(b.h) * F.spd * hc * dt, 3, this.N - 4);
   if ((b.x <= 3 || b.x >= this.N - 4 || b.y <= 3 || b.y >= this.N - 4) && (!RS.edgeT || RS.t - RS.edgeT > 5)) { RS.edgeT = RS.t; this.rsMsg('Edge of the map: turn back.', 1); }
   this.rsHd = b.h; this.rsH = b.h; this.rsV = {x: (b.x - ox) / dt, y: (b.y - oy) / dt, z: F.vz};
-  b.p = F.pit; b.r = -F.bank; b.moving = true; b.hp = b.hpm; RS.thr = F.thr; RS.gs = F.spd / 4.2; RS.agl = b.z - gz + .7;
+  b.p = F.pit; b.r = -F.bank; b.moving = true; b.hp = b.hpm; RS.thr = F.thr; RS.gs = F.spd / 4.2; RS.agl = b.z - gz;
   const T = M.rsTarget; RS.dist = Math.hypot(T.x - b.x, T.y - b.y); if (RS.dist0 === undefined) RS.dist0 = RS.dist; this.rsS = 0;
   // bombs in the air
   for (const bm of RS.drops) if (!bm.done) { for (let k = 0; k < 4; k++) { bm.vz -= RS_G * dt / 4; bm.x += bm.vx * dt / 4; bm.y += bm.vy * dt / 4; bm.z += bm.vz * dt / 4; }
@@ -2855,10 +2855,10 @@ Sim.prototype.issue = function (c, pi) {
       break; }
     case 'rsdrop': { const R = this.rs, B = this.rsB, sid = R && R.seat[pi]; if (!R || !B || R.state !== 'fly' || !(R.bombs > 0) || !R.f || R.f.gnd) break;
       const bomb = Object.keys(R.seat).some(k => R.seat[k] === 'bomb'); if (!(sid === 'bomb' || (sid === 'pilot' && !bomb))) break; if (R.dropT && R.t - R.dropT < 1.2) break; R.dropT = R.t;
-      R.bombs--; const v = this.rsV || {x: 0, y: 0, z: 0}; R.drops.push({x: B.x, y: B.y, z: B.z - .6, vx: v.x, vy: v.y, vz: v.z || 0}); this.ev({k: 'rsbomb', x: +B.x.toFixed(2), y: +B.y.toFixed(2), z: +(B.z - .6).toFixed(2), vx: +v.x.toFixed(3), vy: +v.y.toFixed(3), vz: +(v.z || 0).toFixed(3)}); this.rsMsg('BOMB AWAY! (' + R.bombs + ' left)', 1); break; }
+      R.bombs--; const v = this.rsV || {x: 0, y: 0, z: 0}; R.drops.push({x: B.x, y: B.y, z: B.z - 2, vx: v.x, vy: v.y, vz: v.z || 0}); this.ev({k: 'rsbomb', x: +B.x.toFixed(2), y: +B.y.toFixed(2), z: +(B.z - 2).toFixed(2), vx: +v.x.toFixed(3), vy: +v.y.toFixed(3), vz: +(v.z || 0).toFixed(3)}); this.rsMsg('BOMB AWAY! (' + R.bombs + ' left)', 1); break; }
     case 'rsctl': { const R = this.rs; if (R && R.seat[pi] === 'pilot') { R.inp = clamp(+c.v || 0, -1, 1); R.ti = clamp(+c.t || 0, -1, 1); R.pi = clamp(+c.p || 0, -1, 1); } break; }
     case 'rsjam': { const R = this.rs; if (R && R.seat[pi] === 'radio') R.jamF = clamp(+c.f || 0, 0, 1); break; }
-    case 'rsfire': { const R = this.rs, sid = R && R.seat[pi], S2 = sid && RS_SEATS[sid], B = this.rsB; if (!S2 || !S2.gun || !B || (R.gcd[pi] || 0) > this.t) break; R.gcd[pi] = this.t + .1; const wy = +c.yaw || 0, wp = clamp(+c.pitch || 0, -1, 1), hd = this.rsHd || 0, sx = S2.x * .2, sz = S2.z * .2, ox = B.x + Math.cos(hd) * sx - Math.sin(hd) * sz, oy = B.y + Math.sin(hd) * sx + Math.cos(hd) * sz, oz = B.z + 1, dx = Math.cos(wy) * Math.cos(wp), dy = Math.sin(wy) * Math.cos(wp), dz = Math.sin(wp), sp = 38, vB = this.rsV || {x: 0, y: 0}; R.bullets.push({x: ox, y: oy, z: oz, vx: dx * sp + vB.x, vy: dy * sp + vB.y, vz: dz * sp, t: 0}); this.ev({k: 'rstr', x0: ox, y0: oy, z0: oz, x1: ox + dx * 16, y1: oy + dy * 16, z1: oz + dz * 16, c: 'g', g: sid}); break; }
+    case 'rsfire': { const R = this.rs, sid = R && R.seat[pi], S2 = sid && RS_SEATS[sid], B = this.rsB; if (!S2 || !S2.gun || !B || (R.gcd[pi] || 0) > this.t) break; R.gcd[pi] = this.t + .1; const wy = +c.yaw || 0, wp = clamp(+c.pitch || 0, -1, 1), hd = this.rsHd || 0, sx = S2.x, sz = S2.z, ox = B.x + Math.cos(hd) * sx - Math.sin(hd) * sz, oy = B.y + Math.sin(hd) * sx + Math.cos(hd) * sz, oz = B.z + 1, dx = Math.cos(wy) * Math.cos(wp), dy = Math.sin(wy) * Math.cos(wp), dz = Math.sin(wp), sp = 38, vB = this.rsV || {x: 0, y: 0}; R.bullets.push({x: ox, y: oy, z: oz, vx: dx * sp + vB.x, vy: dy * sp + vB.y, vz: dz * sp, t: 0}); this.ev({k: 'rstr', x0: ox, y0: oy, z0: oz, x1: ox + dx * 16, y1: oy + dy * 16, z1: oz + dz * 16, c: 'g', g: sid}); break; }
     case 'rlact': this.trainAct(pi, c); break;
     case 'icrew': (this.crew = this.crew || {})[pi] = {x: +c.x || 0, z: +c.z || 0, yaw: +c.yaw || 0, p: +c.p || 0, t: this.t}; break; // where this player is walking inside the shared aircraft
     case 'pdig': { const a = this.ents.get(c.id); if (!a || a.o !== pi || a.pilot !== pi + 1 || a.d.cat !== 'inf' || (a.digT || 0) > this.t) break; if (Math.hypot(c.x - a.x, c.y - a.y) > 4.2) break; a.digT = this.t + .1; this.digAt(+c.x, +c.y, pi, .45, {x: +c.dx || 0, y: +c.dy || 0}, 2.4); break; } // by hand: wide hole, deep bites, quick strikes
@@ -9511,7 +9511,7 @@ Renderer.prototype.rsBomber = function (e, dt) { // Operation Red Star: the bomb
     const st = new THREE.CanvasTexture(cv); st.colorSpace = THREE.SRGBColorSpace; const sm = new THREE.MeshBasicMaterial({map: st, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2});
     const star = (sz, x, y, z, rx, ry) => { const m = new THREE.Mesh(new THREE.PlaneGeometry(sz, sz), sm); m.position.set(x, y, z); m.rotation.set(rx, ry, 0); G.add(m); };
     star(.3, -1.5, 0, .392, 0, 0); star(.3, -1.5, 0, -.392, 0, Math.PI); star(.36, -3.15, 1.1, .034, 0, 0); star(.36, -3.15, 1.1, -.034, 0, Math.PI); star(.55, .3, -.036, 3.2, -Math.PI / 2, 0); star(.55, .3, -.036, -3.2, -Math.PI / 2, 0);
-    G.add(GG); this.scene.add(G); B = this._rsBm = {G, gear: GG, props}; }
+    G.add(GG); G.scale.setScalar(5); this.scene.add(G); B = this._rsBm = {G, gear: GG, props}; }
   const D = typeof Direct !== 'undefined' ? Direct : null, aboard = e.id === this.hideId; B.G.visible = !aboard || ((D && D.rsHatch) || 0) > .02;
   let x = e.rx, y = e.rz, z = e.ryy, hd = e.ry; if (aboard && D && D.pose) { x = D.pose.x; y = D.pose.z; z = D.pose.y; hd = D.pose.h; }
   const at0 = rsAtt(this.view.rs || {}) || {};
@@ -11433,7 +11433,7 @@ const Direct = {
   rsImpact() { // where a bomb released this instant would land
     const g = this.ui.g, R = g.view.rs || {}, at = rsAtt(R), b0 = this.e; if (!at || at.g || !b0) return null;
     const bx = b0.rx === undefined ? b0.x : b0.rx, by = b0.ryy === undefined ? b0.y : b0.ryy, bz = b0.rz === undefined ? b0.z : b0.rz, hd = b0.ry === undefined ? b0.h : b0.ry, hc = Math.cos(at.p || 0), sp = at.s || 0;
-    return rsBombPath(g.view.M, bx, by, bz - .6, Math.cos(hd) * sp * hc, Math.sin(hd) * sp * hc, at.vz || 0, .08);
+    return rsBombPath(g.view.M, bx, by, bz - 2, Math.cos(hd) * sp * hc, Math.sin(hd) * sp * hc, at.vz || 0, .08);
   },
   rsWorldFx(dt, g) { // falling bombs, chimney smoke over the works, and the fire after a hit
     const Rd = g.R, V = g.view, R = V.rs || {}, M = V.M, T = M && M.rsTarget; if (!T || !Rd || !Rd.scene) return; if (R.pads) this.rsPads(g, R);
@@ -11495,15 +11495,15 @@ const Direct = {
     for (const s2 of [-.12, .12]) { const r = new THREE.Mesh(new THREE.BoxGeometry(.03, Lh, .03), mm(0xb8bcc0)); r.position.set(0, Lh / 2, s2); lad.add(r); } for (let y = .15; y < Lh; y += .18) { const r = new THREE.Mesh(new THREE.BoxGeometry(.02, .02, .24), mm(0xb8bcc0)); r.position.set(0, y, 0); lad.add(r); }
     lad.position.set(P.ladder.x, gl, P.ladder.y); lad.rotation.x = -.18; // (the ladder now hangs from the bomber's belly hatch)
     const pad = new THREE.Mesh(new THREE.RingGeometry(1.4, 1.6, 32), new THREE.MeshBasicMaterial({color: 0xffd23a, side: THREE.DoubleSide})); pad.rotation.x = -Math.PI / 2; pad.position.set(P.fighter.x, z(P.fighter.x, P.fighter.y) + .03, P.fighter.y); G.add(pad); Rd._rsPadRing = pad;
-    { const H0 = M.rsRoute[0], ax = H0[0] - 2, ay = H0[1], gz0 = z(ax + 20, ay) + .035, wh = new THREE.MeshBasicMaterial({color: 0xe8e8e0}), box = (w2, h2, d2, x, y2, zz, mat) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w2, h2, d2), mat); m.position.set(x, y2, zz); G.add(m); return m; };
-      for (let x = ax + 4; x < ax + 60; x += 3) box(1.3, .02, .1, x, gz0, ay, wh); // runway centreline, threshold bars and edge lights
-      for (const x of [ax + 1.2, ax + 61]) for (let k = -3; k <= 3; k++) if (k) box(1.6, .02, .15, x, gz0, ay + k * .37, wh);
-      const lg = new THREE.SphereGeometry(.07, 6, 5), la = new THREE.MeshBasicMaterial({color: 0xffe9a0}), le = new THREE.MeshBasicMaterial({color: 0x5aff8a}), lr = new THREE.MeshBasicMaterial({color: 0xff4a3a});
-      for (let x = ax; x <= ax + 62; x += 4) for (const s2 of [-1.8, 1.8]) { const m = new THREE.Mesh(lg, x === ax ? le : x >= ax + 60 ? lr : la); m.position.set(x, gz0 + .08, ay + s2); G.add(m); }
-      for (const hx of [ax + 8, ax + 16]) { const zb = z(hx, ay + 7), roof = new THREE.Mesh(new THREE.CylinderGeometry(2.06, 2.06, 6.15, 18, 1, false, 0, Math.PI), new THREE.MeshLambertMaterial({color: 0x59625a, side: THREE.DoubleSide})); roof.rotation.z = Math.PI / 2; roof.scale.x = .45; roof.position.set(hx, zb + 1.8, ay + 7); G.add(roof);
-        box(4.6, 1.45, .08, hx, zb + .73, ay + 4.96, mm(0x2b302c)); box(4.6, .08, .1, hx, zb + 1.5, ay + 4.95, mm(0xd8b23a)); for (let k = -2; k <= 2; k++) box(.05, 1.4, .1, hx + k * .92, zb + .72, ay + 4.94, mm(0x3c423d)); }
-      { const tx0 = ax + 26, ty0 = ay - 6.5, zb = z(tx0, ty0); box(2, .7, 2, tx0, zb + 4.35, ty0, new THREE.MeshLambertMaterial({color: 0x7fc4d8, transparent: true, opacity: .75})); box(2.25, .1, 2.25, tx0, zb + 4.75, ty0, mm(0x3c423d)); box(2.25, .1, 2.25, tx0, zb + 3.98, ty0, mm(0x3c423d)); box(.04, 1.2, .04, tx0 + .6, zb + 5.4, ty0, mm(0xb8bcc0)); const bl = new THREE.Mesh(lg, lr); bl.position.set(tx0 + .6, zb + 6.02, ty0); G.add(bl); }
-      { const wx = ax + 5, wy = ay - 3.2; box(.04, 1.6, .04, wx, gz0 + .8, wy, mm(0xb8bcc0)); const sock = new THREE.Mesh(new THREE.ConeGeometry(.13, .7, 8, 1, true), new THREE.MeshLambertMaterial({color: 0xff7a1a, side: THREE.DoubleSide})); sock.rotation.z = Math.PI / 2; sock.position.set(wx + .36, gz0 + 1.55, wy); G.add(sock); }
+    { const H0 = M.rsRoute[0], ax = H0[0] - 12, ay = H0[1], gz0 = z(ax + 20, ay) + .035, wh = new THREE.MeshBasicMaterial({color: 0xe8e8e0}), box = (w2, h2, d2, x, y2, zz, mat) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w2, h2, d2), mat); m.position.set(x, y2, zz); G.add(m); return m; };
+      for (let x = ax - 6; x < ax + 92; x += 5) box(2.6, .02, .22, x, gz0, ay, wh); // runway centreline, threshold bars and edge lights
+      for (const x of [ax - 8, ax + 92]) for (let k = -3; k <= 3; k++) if (k) box(3, .02, .45, x, gz0, ay + k * 1.1, wh);
+      const lg = new THREE.SphereGeometry(.13, 6, 5), la = new THREE.MeshBasicMaterial({color: 0xffe9a0}), le = new THREE.MeshBasicMaterial({color: 0x5aff8a}), lr = new THREE.MeshBasicMaterial({color: 0xff4a3a});
+      for (let x = ax - 10; x <= ax + 94; x += 6.5) for (const s2 of [-4.9, 4.9]) { const m = new THREE.Mesh(lg, x === ax - 10 ? le : x >= ax + 92 ? lr : la); m.position.set(x, gz0 + .08, ay + s2); G.add(m); }
+      for (const hx of [ax + 32, ax + 46]) { const hy = ay + 26, zb = z(hx, hy), roof = new THREE.Mesh(new THREE.CylinderGeometry(3.06, 3.06, 10.2, 20, 1, false, 0, Math.PI), new THREE.MeshLambertMaterial({color: 0x59625a, side: THREE.DoubleSide})); roof.rotation.z = Math.PI / 2; roof.scale.x = .5; roof.position.set(hx, zb + 3.5, hy); G.add(roof);
+        box(8, 2.9, .1, hx, zb + 1.45, hy - 3.04, mm(0x2b302c)); box(8, .12, .14, hx, zb + 2.95, hy - 3.06, mm(0xd8b23a)); for (let k = -3; k <= 3; k++) box(.07, 2.8, .14, hx + k * 1.15, zb + 1.42, hy - 3.07, mm(0x3c423d)); }
+      { const tx0 = ax + 58, ty0 = ay - 26, zb = z(tx0, ty0); box(3.2, 1.1, 3.2, tx0, zb + 7.55, ty0, new THREE.MeshLambertMaterial({color: 0x7fc4d8, transparent: true, opacity: .75})); box(3.6, .14, 3.6, tx0, zb + 8.17, ty0, mm(0x3c423d)); box(3.6, .14, 3.6, tx0, zb + 6.98, ty0, mm(0x3c423d)); box(.06, 1.8, .06, tx0 + 1, zb + 9.1, ty0, mm(0xb8bcc0)); const bl = new THREE.Mesh(lg, lr); bl.position.set(tx0 + 1, zb + 10.05, ty0); G.add(bl); }
+      { const wx = ax + 22, wy = ay - 9; box(.04, 1.6, .04, wx, gz0 + .8, wy, mm(0xb8bcc0)); const sock = new THREE.Mesh(new THREE.ConeGeometry(.13, .7, 8, 1, true), new THREE.MeshLambertMaterial({color: 0xff7a1a, side: THREE.DoubleSide})); sock.rotation.z = Math.PI / 2; sock.position.set(wx + .36, gz0 + 1.55, wy); G.add(sock); }
       for (let k = 0; k < 5; k++) { const d = new THREE.Mesh(new THREE.CylinderGeometry(.13, .13, .38, 10), mm([0x7a2a1e, 0x3f5a3a, 0x3f5a3a, 0x5a5a5a, 0x7a2a1e][k])); d.position.set(P.locker.x + 1.6 + (k % 3) * .3, z(P.locker.x, P.locker.y) + .19, P.locker.y + .7 + ((k / 3) | 0) * .3); G.add(d); }
       box(.9, .5, .6, P.locker.x - 1.5, z(P.locker.x, P.locker.y) + .25, P.locker.y + .6, mm(0x5a4a2a)); box(.6, .4, .5, P.locker.x - 1.5, z(P.locker.x, P.locker.y) + .7, P.locker.y + .6, mm(0x66552f)); }
     Rd.scene.add(G); Rd._rsPads = G;
@@ -11614,7 +11614,7 @@ const Direct = {
   },
   cameraAboard(dt, g) {
     if (this.mode === 'train') { if (this.aboard) this.trainCam(dt, g); return; }
-    const A = this.aboard, p = this.pose, R = g.R, cam = R.cam, I = this.interior(), wy = p.h + A.yaw, cp = Math.cos(A.pitch), S = .2, c = Math.cos(p.h), s = Math.sin(p.h);
+    const A = this.aboard, p = this.pose, R = g.R, cam = R.cam, I = this.interior(), wy = p.h + A.yaw, cp = Math.cos(A.pitch), S = this.mode === 'crew' ? 1 : .2, c = Math.cos(p.h), s = Math.sin(p.h);
     const fw = {x: Math.cos(wy) * cp, y: Math.sin(wy) * cp, z: Math.sin(A.pitch)};
     this.viewYaw = wy; this.viewPitch = A.pitch; this.fw = this.shotDir = fw; this.aimPt = null; this.aimHit = null; this.blocked = null; this.curZoom = 1; this.adsK = 0;
     const cx = p.x + (c * A.x - s * A.z) * S, cy = p.y + (s * A.x + c * A.z) * S, cz = p.z + I.worldUp - (this.crewDown ? .4 : 0);
@@ -11627,13 +11627,13 @@ const Direct = {
     if (this.mode === 'crew' && g.view.rs && rsAtt(g.view.rs)) { // attitude: the cabin is level in its own frame, the world tilts outside the windows
       const at = rsAtt(g.view.rs), k = Math.min(1, dt * 8); this.attP = (this.attP || 0) + ((at.p || 0) - (this.attP || 0)) * k; this.attB = (this.attB || 0) + ((at.b || 0) - (this.attB || 0)) * k;
       const Q = THREE.Quaternion, E3 = THREE.Euler, qP = new Q().setFromEuler(new E3(this.attB, -p.h, this.attP, 'YZX')), qL = new Q().setFromEuler(new E3(0, -A.yaw, A.pitch, 'YZX'));
-      this.rsHatch = Math.max(0, (this.rsHatch || 0) - dt / 2.4); const hk0 = this.rsHatch, hk = hk0 * hk0 * (3 - 2 * hk0); // climbing in: the eye starts at ladder height under the belly and comes up through the floor
-      const off = new THREE.Vector3(A.x * S, I.worldUp - (this.crewDown ? .4 : 0) - hk * .5 + (hk0 > 0 ? Math.abs(Math.sin(hk0 * 16)) * .012 : 0), A.z * S).applyQuaternion(qP); cam.position.set(p.x + off.x, p.z + off.y, p.y + off.z);
+      this.rsHatch = Math.max(0, (this.rsHatch || 0) - dt / 3.2); const hk0 = this.rsHatch, hk = hk0 * hk0 * (3 - 2 * hk0); // climbing in: the eye starts at ladder height under the belly and comes up through the floor
+      const off = new THREE.Vector3(A.x * S, I.worldUp - (this.crewDown ? .4 : 0) - hk * 3 + (hk0 > 0 ? Math.abs(Math.sin(hk0 * 16)) * .05 : 0), A.z * S).applyQuaternion(qP); cam.position.set(p.x + off.x, p.z + off.y, p.y + off.z);
       const d = new THREE.Vector3(1, 0, 0).applyQuaternion(qL).applyQuaternion(qP), u = new THREE.Vector3(0, 1, 0).applyQuaternion(qP); cam.up.copy(u); cam.lookAt(cam.position.x + d.x * 50, cam.position.y + d.y * 50, cam.position.z + d.z * 50);
       fw.x = d.x; fw.y = d.z; fw.z = d.y; this.viewYaw = Math.atan2(d.z, d.x); this.viewPitch = Math.asin(clamp(d.y, -1, 1)); this.camP = {x: cam.position.x, y: cam.position.z, z: cam.position.y};
       this.rsClouds(g.R, cam);
       this.bsOn = false; if (this.seatId === 'bomb' && this.ads) { const ip = this.rsImpact(); if (ip) { this.bsOn = true; const k2 = Math.min(1, dt * 7), a = this.bsA || (this.bsA = {x: ip.x, y: ip.y, z: ip.z}); if (Math.hypot(ip.x - a.x, ip.y - a.y) > 40) { a.x = ip.x; a.y = ip.y; a.z = ip.z; } a.x += (ip.x - a.x) * k2; a.y += (ip.y - a.y) * k2; a.z += (ip.z - a.z) * k2;
-        cam.position.set(p.x + c * 2.6, p.z - .8, p.y + s * 2.6); cam.up.set(c, 0, s); cam.lookAt(a.x, a.z, a.y); const dd = new THREE.Vector3(); cam.getWorldDirection(dd); fw.x = dd.x; fw.y = dd.z; fw.z = dd.y; this.camP = {x: cam.position.x, y: cam.position.z, z: cam.position.y}; } }
+        cam.position.set(p.x + c * 14, p.z - 2.2, p.y + s * 14); cam.up.set(c, 0, s); cam.lookAt(a.x, a.z, a.y); const dd = new THREE.Vector3(); cam.getWorldDirection(dd); fw.x = dd.x; fw.y = dd.z; fw.z = dd.y; this.camP = {x: cam.position.x, y: cam.position.z, z: cam.position.y}; } }
     }
     if (this.mode === 'crew') this.crewCamFx(dt, cam);
     { const za = this.mode === 'crew' && this.ads && this.seatId ? 1 : 0; this.gunZ = (this.gunZ || 0) + (za - (this.gunZ || 0)) * Math.min(1, dt * 10); }
@@ -12428,7 +12428,7 @@ const Direct = {
       const ac = r.autoClear; r.autoClear = false; this.syncTrain(I, C); r.clearDepth(); r.render(I.scene, C); r.autoClear = ac;
       if (!this.trDead) VM.draw(R, this, PWPN.medic[0]); return; }
     if (this.on && this.aboard) {
-      const R = this.ui.g.R, r = R.r, A = this.aboard, I = this.interior(), C = I.cam, cp = Math.cos(A.pitch), y0 = (this.mode === 'crew' && this.crewDown ? .15 : Interior.EYE) + Math.abs(Math.sin(this.bobT)) * .012, hk0 = this.mode === 'crew' ? this.rsHatch || 0 : 0, y = (this.mode === 'crew' ? this.crewEyeY(y0) : y0) - hk0 * hk0 * (3 - 2 * hk0) * 2.5 + (hk0 > 0 ? Math.abs(Math.sin(hk0 * 16)) * .06 : 0);
+      const R = this.ui.g.R, r = R.r, A = this.aboard, I = this.interior(), C = I.cam, cp = Math.cos(A.pitch), y0 = (this.mode === 'crew' && this.crewDown ? .15 : Interior.EYE) + Math.abs(Math.sin(this.bobT)) * .012, hk0 = this.mode === 'crew' ? this.rsHatch || 0 : 0, y = (this.mode === 'crew' ? this.crewEyeY(y0) : y0) - hk0 * hk0 * (3 - 2 * hk0) * 3 + (hk0 > 0 ? Math.abs(Math.sin(hk0 * 16)) * .05 : 0);
       C.fov = R.cam.fov; C.aspect = R.cam.aspect; C.updateProjectionMatrix();
       C.position.set(A.x, y, A.z); C.lookAt(A.x + Math.cos(A.yaw) * cp, y + Math.sin(A.pitch), A.z + Math.sin(A.yaw) * cp);
       if (!(this.mode === 'crew' && (this.dropT > .8 || (this.gunZ || 0) > .6))) { const ac = r.autoClear; r.autoClear = false; if (this.mode === 'crew') { this.syncCrewMeshes(I, C); this.syncRsFx(I); } r.clearDepth(); r.render(I.scene, C); r.autoClear = ac; }
@@ -12502,7 +12502,7 @@ const Direct = {
   drawFlight(c, w, h, sid) { // target marker for everyone, instruments for the pilot, the bombsight for the bombardier
     const g = this.ui.g, V = g.view, R = V.rs || {}, M = V.M, T = M.rsTarget, at = rsAtt(R) || {}, b0 = this.e; if (!T || !b0) return;
     const bx = b0.rx === undefined ? b0.x : b0.rx, by = b0.ryy === undefined ? b0.y : b0.ryy, bz = b0.rz === undefined ? b0.z : b0.rz, hd = b0.ry === undefined ? b0.h : b0.ry;
-    c.save(); c.textAlign = 'center'; const goHome = !!R.hit || !(R.bombs > 0), H0 = M.rsRoute[0], G0 = goHome ? {x: H0[0] + 28, y: H0[1]} : T, GL = goHome ? 'AIRBASE' : 'TARGET', GC = goHome ? '#5aff8a' : '#ff3b30';
+    c.save(); c.textAlign = 'center'; const goHome = !!R.hit || !(R.bombs > 0), H0 = M.rsRoute[0], G0 = goHome ? {x: H0[0] + 40, y: H0[1]} : T, GL = goHome ? 'AIRBASE' : 'TARGET', GC = goHome ? '#5aff8a' : '#ff3b30';
     const st = this.toScreen(G0.x, G0.y, Math.max(0, hAt(M, G0.x, G0.y)) + 2); if (st) { c.strokeStyle = GC; c.lineWidth = 2; c.beginPath(); c.moveTo(st.x, st.y - 12); c.lineTo(st.x + 10, st.y); c.lineTo(st.x, st.y + 12); c.lineTo(st.x - 10, st.y); c.closePath(); c.stroke(); c.fillStyle = goHome ? '#8dffb0' : '#ff6b5f'; c.font = '800 12px system-ui'; c.fillText(GL + ' ' + (Math.round(Math.hypot(G0.x - bx, G0.y - by) * 5 / 100) / 10) + ' km', st.x, st.y - 18); }
     if (sid === 'pilot' || sid === 'bomb') { const brg = angDiff(hd, Math.atan2(G0.y - by, G0.x - bx)), y0 = 28; c.fillStyle = 'rgba(0,0,0,.45)'; c.fillRect(w / 2 - 160, y0 - 16, 320, 24); c.fillStyle = '#9fe6ff'; c.font = '700 12px system-ui';
       c.fillText((brg > .05 ? GL + ' ▶ ' : brg < -.05 ? '◀ ' + GL + ' ' : GL + ' AHEAD ') + Math.round(Math.abs(brg) * 57.3) + '°' + (goHome ? '  ·  land on the runway, stop, S brakes' : ''), w / 2, y0); }
@@ -13360,7 +13360,7 @@ const Interior = {
   layout(k) {
     if (/^train/.test(k)) return trainLayout(+k.slice(5));
     if (k === 'redstar') { const tb = [], nw = x => .35 + 1.35 * (1 - Math.pow((x - 13.5) / 2.3, 2)); for (let xa = 13.5; xa < 15.79; xa += .46) { const wd = nw(Math.min(15.8, xa + .46)); tb.push([xa, xa + .46, wd, 1.8], [xa, xa + .46, -1.8, -wd]); }
-      return {sub: false, chair: [10.5, -.7], worldUp: .13, // the Soviet atomic bomber: nose and cockpit, radio/nav, engineer's bay, bomb bay, tail gunner
+      return {sub: false, chair: [10.5, -.7], worldUp: .02, // the Soviet atomic bomber: nose and cockpit, radio/nav, engineer's bay, bomb bay, tail gunner
       rooms: [
         {n: 'Cockpit', x0: 8, x1: 13.5, z0: -1.7, z1: 1.7, win: [['z', -1.7, 9, 12.9, .4, 1.15], ['z', 1.7, 9, 12.9, .4, 1.15]]},
         {n: 'Glass nose', x0: 13.5, x1: 15.8, z0: -1.7, z1: 1.7, win: [['x', 15.8, -1.7, 1.7, .06, 1.45], ['z', -1.7, 13.5, 15.8, .06, 1.45], ['z', 1.7, 13.5, 15.8, .06, 1.45]]},
@@ -15894,7 +15894,7 @@ addEventListener('keydown', () => { if (typeof Direct !== 'undefined' && window.
   const CHANGELOG = [
     {d: '13 Nov 2026', items: [
       'Red Star fixes: banking now tilts the right way, and the "while you were away" base report no longer pops up in co-op missions.',
-      'Red Star: the bomber on the ground is now full size (33 m long, 43 m wingspan, four propeller engines, glazed nose, gun blisters, red stars). You walk under it and climb a ladder up through the belly hatch into the cabin. Inside: floor hatch, quilted insulation, plank walkway, placards and a navigator table with the route chart.',
+      'Red Star: the bomber outside is now exactly as big as the cabin you walk around in (it towers over you), with four propeller engines, a glazed nose, gun blisters and red stars, on a bigger airfield with a wide runway. You walk under it and climb a ladder up through the belly hatch. Inside: floor hatch, quilted insulation, plank walkway, placards and a navigator table with the route chart.',
       'Red Star overhaul: a real bombsight (right click in the nose seat looks straight down at where the bomb will land, with steer and release cues), bombs you can watch fall, a working instrument panel, clouds moved up out of the way, a dressed airbase and smoke over the target.',
       'Red Star flying is far more forgiving: pulling up no longer stalls you into the ground, you can steer on the runway, and a wreck costs one of two spare aircraft instead of the mission. Out of bombs? Land at the airbase to rearm. After the hit, fly home and land to finish.',
       'Red Star now starts at the airbase on foot: grab flight gear and a parachute at the hangar locker, climb the ladder into the bomber, and start it up from the pilot seat (1 battery, 2 fuel pumps, hold 3-6 to start each engine). One player can take the escort fighter instead. The cabin is dressed up: ribs, cable runs, oxygen bottles, ammo boxes, a cockpit panel with glowing dials, a yoke, throttles, the bombsight and red night lights.',
