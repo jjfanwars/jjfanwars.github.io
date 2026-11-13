@@ -169,12 +169,12 @@ class CarView {
     const k = 120, c = 16, tgt = new THREE.Vector3(clamp(-al.x * 0.004, -0.07, 0.07), clamp(-al.y * 0.003, -0.06, 0.06), clamp(-al.z * 0.0035, -0.06, 0.06));
     const f = tgt.sub(this.head).multiplyScalar(k).addScaledVector(this.headV, -c); this.headV.addScaledVector(f, Math.min(dt, 0.05)); this.head.addScaledVector(this.headV, Math.min(dt, 0.05));
     this.shake = Math.max(0, this.shake - dt * 2.5);
-    const sh = this.shake * 0.02, rough = (st.offroad || 0) * 0.004 * Math.min(1, st.speed / 10) + Math.min(1, st.speed / 40) * 0.0012;
+    const sh = this.shake * 0.02, rough = (st.offroad || 0) * 0.006 * Math.min(1, st.speed / 10) + (st.speed / 40) ** 2 * 0.004;
     const hp = new THREE.Vector3(seat.x + this.head.x + (Math.random() - 0.5) * (sh + rough), seat.y + this.head.y + (Math.random() - 0.5) * (sh + rough), seat.z + this.head.z);
     cam.position.copy(hp).applyQuaternion(st.q).add(st.pos);
     const lq = new THREE.Quaternion().setFromEuler(new THREE.Euler(look.pitch, look.yaw + Math.PI, -this.head.x * 1.2, 'YXZ'));
     // camera looks down -z; car forward is +z, hence the extra half turn
     cam.quaternion.copy(st.q).multiply(lq);
-    cam.fov = lerp(cam.fov, 70 + Math.min(14, st.speed * 0.28), Math.min(1, dt * 3)); cam.updateProjectionMatrix();
+    cam.fov = lerp(cam.fov, 68 + Math.min(24, (st.speed * 3.6 / 160) ** 1.3 * 24), Math.min(1, dt * 3)); cam.updateProjectionMatrix();
   }
 }

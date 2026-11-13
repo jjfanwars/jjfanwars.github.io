@@ -36,7 +36,7 @@ const Sfx = {
     const ground = st.air ? 0 : 1, sp = Math.min(1, st.speed / 30);
     this.gg.gain.setTargetAtTime(ground * (sp * 0.09 + st.slide * 0.25) * (1 - st.offroad * 0.5), t, 0.05); this.gbp.frequency.setTargetAtTime(900 + st.slide * 900, t, 0.1);
     this.rg.gain.setTargetAtTime(ground * (sp * 0.25 + st.offroad * sp * 0.5), t, 0.05);
-    this.wg.gain.setTargetAtTime(Math.min(0.2, (st.speed / 50) ** 2 * 0.2), t, 0.1); this.wlp.frequency.setTargetAtTime(300 + st.speed * 18, t, 0.1);
+    this.wg.gain.setTargetAtTime(Math.min(0.32, (st.speed / 42) ** 2 * 0.32), t, 0.1); this.wlp.frequency.setTargetAtTime(300 + st.speed * 18, t, 0.1);
     // anti-lag pops when lifting at high revs
     if (this.lastThr > 0.6 && st.thr < 0.2 && st.rpm > 4500) this.pops = 0.5; this.lastThr = st.thr;
     if (this.pops > 0) { this.pops -= dt; if (Math.random() < dt * 22) this.pop(0.25 + Math.random() * 0.4); }

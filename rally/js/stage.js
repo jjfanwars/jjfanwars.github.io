@@ -130,9 +130,9 @@ function buildStage(cfg) {
   const tr = mulberry(cfg.seed * 13 + 1), SP = 3.3;
   for (let z = z0 + 2; z < z0 + (GH - 2) * CELL; z += SP) for (let x = x0 + 2; x < x0 + (GW - 2) * CELL; x += SP) {
     const px = x + (tr() - 0.5) * SP * 0.9, pz = z + (tr() - 0.5) * SP * 0.9, q = near(px, pz, 46); if (!q) { tr(); tr(); tr(); continue; }
-    const edge = ROAD_HW + 3.2 + 2.5 * (0.5 + 0.5 * nz(px * 0.15, pz * 0.15)), r1 = tr(), r2 = tr(), r3 = tr();
+    const edge = ROAD_HW + 1.9 + 2.2 * (0.5 + 0.5 * nz(px * 0.15, pz * 0.15)), r1 = tr(), r2 = tr(), r3 = tr();
     if (q.d < edge || q.d > 44) continue;
-    if (q.d < edge + 6 && r1 < 0.35) continue; // a little thinner at the edge
+    if (q.d < edge + 4 && r1 < 0.2) continue; // a little thinner at the edge
     if (q.s < 30 && q.d < 14) continue; // start area
     const kind = r2 < 0.62 ? 0 : r2 < 0.9 ? 1 : 2, sc = 0.75 + r3 * 0.6;
     const t = { x: px, z: pz, y: heightAt(px, pz), kind, sc, rot: r1 * 6.28, r: (kind === 2 ? 0.16 : 0.24) * sc + 0.1 };

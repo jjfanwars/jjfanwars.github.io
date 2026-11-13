@@ -55,8 +55,7 @@ class Car {
     const beta = Math.abs(vF) > 2 ? Math.atan2(vL, Math.abs(vF)) : 0;
     const maxS = 0.6 / (1 + Math.max(0, spd - 4) / 24), st = inp.steer;
     let target = st * maxS;
-    if (vF > 3) target += (1 - Math.abs(st) * 0.6) * clamp(beta * 0.85, -0.42, 0.42) * sstep(0.04, 0.22, Math.abs(beta));
-    const rate = (Math.abs(target) < Math.abs(this.steer) ? 7 : 5) * (1 + Math.abs(beta));
+    const rate = Math.abs(target) < Math.abs(this.steer) ? 7 : 5;
     this.steer += clamp(target - this.steer, -rate * dt, rate * dt);
     // throttle / brake / reverse logic
     let thr = inp.thr, brk = inp.brk;

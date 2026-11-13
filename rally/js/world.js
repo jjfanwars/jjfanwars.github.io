@@ -180,6 +180,10 @@ const World = {
     const rm = new THREE.InstancedMesh(rg, new THREE.MeshStandardMaterial({ color: 0x8a877e, roughness: 0.9, map: T.floor.map }), rocks.length);
     rocks.forEach((r, i) => { e.set(rng(), r[4], rng()); q.setFromEuler(e); v.set(r[0], r[1], r[2]); sc.set(r[3], r[3], r[3]); m4.compose(v, q, sc); rm.setMatrixAt(i, m4); });
     rm.castShadow = rm.receiveShadow = this.gfx !== 'low'; scene.add(rm);
+    // red/white marker posts every 20 m on both verges: strong speed cue
+    { const pg = new THREE.CylinderGeometry(0.06, 0.07, 1.1, 6); pg.translate(0, 0.55, 0); const pc = new Float32Array(pg.attributes.position.count * 3); for (let i = 0; i < pg.attributes.position.count; i++) { const y = pg.attributes.position.getY(i), red = y > 0.8; pc[i * 3] = red ? 0.85 : 0.95; pc[i * 3 + 1] = red ? 0.1 : 0.95; pc[i * 3 + 2] = red ? 0.08 : 0.92; } pg.setAttribute('color', new THREE.BufferAttribute(pc, 3));
+      const posts = []; for (let s = 50; s < S.L - 40; s += 20) for (const sd of [-1, 1]) { const p = S.at(s), d = ROAD_HW + 1.1, x = p.x - Math.cos(p.h) * sd * d, z = p.z + Math.sin(p.h) * sd * d; if (S.logs.some(l => Math.abs(l.s - s) < 6)) continue; posts.push([x, S.heightAt(x, z), z]); }
+      const pm2 = new THREE.InstancedMesh(pg, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.6 }), posts.length); posts.forEach((p, i) => { m4.makeTranslation(p[0], p[1], p[2]); pm2.setMatrixAt(i, m4); }); pm2.castShadow = this.gfx !== 'low'; pm2.computeBoundingSphere(); scene.add(pm2); }
     // logs across half the road
     const barkM = new THREE.MeshStandardMaterial({ map: T.bark.map, normalMap: T.bark.nrm, roughness: 1 }), endM = new THREE.MeshStandardMaterial({ color: 0xb08a5a, roughness: 0.9 });
     for (const l of S.logs) {
