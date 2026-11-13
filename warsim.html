@@ -2604,7 +2604,7 @@ function rsBombPath(M, x, y, z, vx, vy, vz, dt) { // where a bomb released now l
 Sim.prototype.rsGround = function () {
   const R = this.rs, b = this.rsB, n = this.players.length - 1, gz = (x, y) => Math.max(0, hAt(this.M, x, y));
   R.gear = {}; R.on = {}; R.esc = null; R.spares = 2; R.hit = 0; R.eng = [0, 0, 0, 0]; R.batt = 0; R.pump = 0; R.estT = [0, 0, 0, 0]; R.sold = {};
-  R.pads = {locker: {x: b.x + 9, y: b.y + 4.4}, ladder: {x: b.x - .8, y: b.y + 1.3}, fighter: {x: b.x + 16, y: b.y - 6}};
+  R.pads = {locker: {x: b.x + 9, y: b.y + 4.4}, ladder: {x: b.x + .95, y: b.y + .09}, fighter: {x: b.x + 16, y: b.y - 6}};
   for (let i = 0; i < n; i++) { const e = this.addUnit('rifle', i, R.pads.locker.x + 1.2 + (i % 4) * .9, R.pads.locker.y - 1.6 - ((i / 4) | 0) * .9); if (e) { e.h = Math.PI; R.sold[i] = e.id; } }
 };
 { const base = Sim.prototype.setupRedstar; Sim.prototype.setupRedstar = function () { base.call(this); this.rsGround(); }; }
@@ -9480,7 +9480,47 @@ Renderer.prototype.emoArms = function (emo, nat, x, y, z, h, sc, tint, sh, sw, s
     if (emo === 2 && sd > 0) { const dx = -Math.sin(th) * Math.cos(ph) * .33 * sc, dy = Math.cos(th) * Math.cos(ph) * .33 * sc, dz = Math.sin(ph) * .33 * sc; this.put('efing', () => emoFingerGeo().geo(), 64, null, x + ox + c * dx + s * dz, ay + dy, z + oz - s * dx + c * dz, h, 0, 0, sc, tint); }
   }
 };
+Renderer.prototype.rsBomber = function (e, dt) { // Operation Red Star: the bomber from outside at true size (1 unit = 5 m), a Tu-4 style heavy: 33 m long, 43 m span
+  let B = this._rsBm;
+  if (!B) { const G = new THREE.Group(), GG = new THREE.Group(), al = new THREE.MeshStandardMaterial({color: 0xb4babe, metalness: .5, roughness: .42}), al2 = new THREE.MeshStandardMaterial({color: 0x8a9196, metalness: .45, roughness: .5}), dk = new THREE.MeshLambertMaterial({color: 0x1b1d1f}), rub = new THREE.MeshLambertMaterial({color: 0x101010}),
+      gl = new THREE.MeshStandardMaterial({color: 0x24343e, metalness: .3, roughness: .15, transparent: true, opacity: .82}), props = [];
+    const add = (geo, mat, x, y, z, par) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.castShadow = true; (par || G).add(m); return m; };
+    const cylX = (rb, rf, len, mat, x, y, z, par, seg) => { const m = add(new THREE.CylinderGeometry(rf, rb, len, seg || 20), mat, x, y, z, par); m.rotation.z = -Math.PI / 2; return m; };
+    const plan = (pts, th) => { const sh = new THREE.Shape(); pts.forEach((q, i) => i ? sh.lineTo(q[0], q[1]) : sh.moveTo(q[0], q[1])); const g = new THREE.ExtrudeGeometry(sh, {depth: th, bevelEnabled: true, bevelThickness: th * .3, bevelSize: th * .5, bevelSegments: 2}); g.translate(0, 0, -th / 2); return g; };
+    cylX(.38, .38, 5, al, -.05, 0, 0, null, 24); // fuselage tube
+    const nose = add(new THREE.SphereGeometry(.38, 24, 14, 0, Math.PI * 2, 0, Math.PI / 2), gl, 2.45, 0, 0); nose.rotation.z = -Math.PI / 2; nose.scale.y = 2.1; // glazed nose
+    for (const [x, r] of [[2.45, .384], [2.85, .332], [3.1, .224]]) { const t = add(new THREE.TorusGeometry(r, .008, 5, 28), al2, x, 0, 0); t.rotation.y = Math.PI / 2; }
+    for (const a of [0, Math.PI / 4, Math.PI / 2, Math.PI * .75]) { const g = new THREE.TorusGeometry(.383, .007, 5, 20, Math.PI); g.rotateZ(-Math.PI / 2); const t = add(g, al2, 2.45, 0, 0); t.scale.x = 2.1; t.rotation.x = a; }
+    cylX(.15, .38, 1.1, al, -3.1, .03, 0); add(new THREE.SphereGeometry(.16, 12, 10), gl, -3.68, .05, 0); for (const z of [-.04, .04]) cylX(.012, .012, .32, dk, -3.9, .05, z, null, 6); // tail cone and tail guns
+    for (const x of [-2.4, -1.6, -.8, 0, .8, 1.6]) { const t = add(new THREE.TorusGeometry(.382, .004, 4, 28), al2, x, 0, 0); t.rotation.y = Math.PI / 2; }
+    const wing = add(plan([[.85, 0], [.42, 4.3], [.3, 4.38], [0, 4.3], [-.4, 0], [0, -4.3], [.3, -4.38], [.42, -4.3]], .07), al, .1, -.1, 0); wing.rotation.x = Math.PI / 2;
+    const tp = add(plan([[.5, 0], [.22, 1.7], [0, 1.7], [-.15, 0], [0, -1.7], [.22, -1.7]], .045), al, -3.1, .12, 0); tp.rotation.x = Math.PI / 2;
+    add(plan([[1.7, 0], [.75, .22], [-.2, 1.45], [-.55, 1.45], [-.65, 0]], .05), al, -2.75, .3, 0);
+    [-2.5, -1.25, 1.25, 2.5].forEach((z, i) => { const le = .95 - .1 * Math.abs(z), y = -.12; cylX(.16, .2, 1.2, al, le + .15, y, z); cylX(.206, .206, .12, al2, le + .7, y, z); cylX(.16, .16, .02, dk, le + .765, y, z);
+      const sp = add(new THREE.ConeGeometry(.07, .2, 10), al2, le + .88, y, z); sp.rotation.z = -Math.PI / 2;
+      const pg = new THREE.Group(), bl = new THREE.Group(); pg.position.set(le + .82, y, z); for (const a of [0, Math.PI / 2]) { const b2 = new THREE.Mesh(new THREE.BoxGeometry(.02, .84, .07), dk); b2.rotation.x = a; bl.add(b2); } pg.add(bl);
+      const disc = new THREE.Mesh(new THREE.CircleGeometry(.42, 24), new THREE.MeshBasicMaterial({color: 0x20262a, transparent: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false})); disc.rotation.y = Math.PI / 2; pg.add(disc); pg.userData = {disc, bl, w: 0, dir: i < 2 ? 1 : -1}; G.add(pg); props.push(pg);
+      if (Math.abs(z) < 2) { add(new THREE.CylinderGeometry(.03, .03, .34, 8), al2, le - .1, -.4, z, GG); for (const dz of [-.07, .07]) { const w = add(new THREE.CylinderGeometry(.14, .14, .07, 16), rub, le - .1, -.56, z + dz, GG); w.rotation.x = Math.PI / 2; } } });
+    add(new THREE.CylinderGeometry(.025, .025, .26, 8), al2, 1.7, -.48, 0, GG); for (const dz of [-.045, .045]) { const w = add(new THREE.CylinderGeometry(.1, .1, .05, 14), rub, 1.7, -.6, dz, GG); w.rotation.x = Math.PI / 2; }
+    for (const z of [-.33, .33]) add(new THREE.SphereGeometry(.13, 12, 10), gl, .66, .12, z); // waist blisters
+    for (const x of [1.3, -1.2]) { add(new THREE.SphereGeometry(.1, 12, 8), gl, x, .36, 0); for (const z of [-.03, .03]) cylX(.01, .01, .26, dk, x + .2, .42, z, null, 6); } // top turrets
+    for (const z of [-.12, .12]) add(new THREE.BoxGeometry(1.3, .006, .02), dk, -1.2, -.379, z); // bomb bay doors
+    add(new THREE.BoxGeometry(.26, .012, .22), dk, .92, -.378, .09); add(new THREE.BoxGeometry(.02, .2, .22), al2, .78, -.47, .09, GG); // belly hatch, its door hanging open, the ladder
+    for (const dz of [-.05, .05]) add(new THREE.BoxGeometry(.015, .34, .015), al2, .95, -.54, .09 + dz, GG); for (let y = -.66; y < -.4; y += .07) add(new THREE.BoxGeometry(.012, .012, .1), al2, .95, y, .09, GG);
+    const cv = document.createElement('canvas'); cv.width = cv.height = 128; const c = cv.getContext('2d'); c.translate(64, 64); c.beginPath(); for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, r = i % 2 ? 23 : 58; c[i ? 'lineTo' : 'moveTo'](Math.cos(a) * r, Math.sin(a) * r); } c.closePath(); c.fillStyle = '#c8181c'; c.fill(); c.lineWidth = 5; c.strokeStyle = '#f4efe0'; c.stroke();
+    const st = new THREE.CanvasTexture(cv); st.colorSpace = THREE.SRGBColorSpace; const sm = new THREE.MeshBasicMaterial({map: st, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2});
+    const star = (sz, x, y, z, rx, ry) => { const m = new THREE.Mesh(new THREE.PlaneGeometry(sz, sz), sm); m.position.set(x, y, z); m.rotation.set(rx, ry, 0); G.add(m); };
+    star(.3, -1.5, 0, .392, 0, 0); star(.3, -1.5, 0, -.392, 0, Math.PI); star(.36, -3.15, 1.1, .034, 0, 0); star(.36, -3.15, 1.1, -.034, 0, Math.PI); star(.55, .3, -.036, 3.2, -Math.PI / 2, 0); star(.55, .3, -.036, -3.2, -Math.PI / 2, 0);
+    G.add(GG); this.scene.add(G); B = this._rsBm = {G, gear: GG, props}; }
+  const D = typeof Direct !== 'undefined' ? Direct : null, aboard = e.id === this.hideId; B.G.visible = !aboard || ((D && D.rsHatch) || 0) > .02;
+  let x = e.rx, y = e.rz, z = e.ryy, hd = e.ry; if (aboard && D && D.pose) { x = D.pose.x; y = D.pose.z; z = D.pose.y; hd = D.pose.h; }
+  const at0 = rsAtt(this.view.rs || {}) || {};
+  B.G.position.set(x, y, z); B.G.rotation.set(at0.b || 0, -hd, at0.p || 0, 'YZX');
+  const R = this.view.rs || {}, at = rsAtt(R) || {g: 1}, eng = R.eng || [1, 1, 1, 1]; B.gear.visible = !!at.g; dt = Math.min(.1, dt || .016);
+  for (let i = 0; i < 4; i++) { const pg = B.props[i], U = pg.userData, v = R.state === 'lost' ? 0 : Math.min(1, eng[i] || 0); U.w += (v * 26 - U.w) * Math.min(1, dt * .8); pg.rotation.x += U.w * dt * U.dir; U.disc.material.opacity = .2 * Math.min(1, U.w / 20); U.bl.visible = U.w < 17; }
+};
 Renderer.prototype.drawUnit = function (e, dt, tint) {
+  if (e.rs && this.view.M && this.view.M.rsRoute) { this.rsBomber(e, dt); return; }
   const dg = e.disg !== undefined && e.disg !== null && this.view.players[e.disg], nat = dg ? dg.nation : this.view.players[e.o].nation, k = dg ? 'rifle' : e.k, d = e.d, key = k + '|' + nat, h = -e.ry, x = e.rx, y = e.rz, z = e.ryy;
   if (e.id === this.hideId || (this.hideRail && d.rail)) return;
   if (d.cat === 'inf') {
@@ -11437,11 +11477,11 @@ const Direct = {
   },
   rsGroundTick(g) { // on foot at the airbase: prompts, and hopping into the bomber or the fighter
     const V = g.view, R = V.rs || {}, me = g.me, ui = this.ui;
-    if ((R.on || {})[me]) { const b = [...V.ents.values()].find(e => e.rs); if (b) { this.exit(); this.enter(ui, b); return true; } }
+    if ((R.on || {})[me]) { const b = [...V.ents.values()].find(e => e.rs); if (b) { this.exit(); this.enter(ui, b); this.rsHatch = 1; return true; } }
     if (R.esc && R.esc.p === me) { const f = V.ents.get(R.esc.id); if (f) { this.exit(); this.enter(ui, f); return true; } }
     this.rsPads(g, R); const p = this.pose, P = R.pads; if (!P || !p) return false; let t = null; const d = q => Math.hypot(p.x - q.x, p.y - q.y), gear = (R.gear || {})[me];
     if (d(P.locker) < 2.2) t = gear ? {id: 'x', text: 'Geared up. Head for the ladder on the bomber.'} : {id: 'gear', text: 'E: put on flight suit, helmet and parachute'};
-    else if (d(P.ladder) < 2) t = gear ? {id: 'board', text: 'E: climb the ladder into the bomber'} : {id: 'x', text: 'Get your flight gear from the hangar locker first'};
+    else if (d(P.ladder) < 2) t = gear ? {id: 'board', text: 'E: climb the ladder up through the belly hatch'} : {id: 'x', text: 'Get your flight gear from the hangar locker first'};
     else if (d(P.fighter) < 2.8 && !R.esc) t = gear ? {id: 'esc', text: 'E: climb into the escort fighter'} : {id: 'x', text: 'Get your flight gear from the hangar locker first'};
     this.rsGT = t; if (this.rsGE) { this.rsGE = false; if (t && t.id !== 'x') { g.issue({c: t.id === 'gear' ? 'rsgear' : t.id === 'board' ? 'rsboard' : 'rsesc'}); Sfx.beep(520); } }
     return false;
@@ -11453,7 +11493,7 @@ const Direct = {
     lk.position.set(P.locker.x, z(P.locker.x, P.locker.y), P.locker.y); G.add(lk);
     const b = [...g.view.ents.values()].find(e => e.rs), top = b ? (b.z || 0) + .15 : z(P.ladder.x, P.ladder.y) + 1.4, gl = z(P.ladder.x, P.ladder.y), Lh = Math.max(.6, top - gl), lad = new THREE.Group();
     for (const s2 of [-.12, .12]) { const r = new THREE.Mesh(new THREE.BoxGeometry(.03, Lh, .03), mm(0xb8bcc0)); r.position.set(0, Lh / 2, s2); lad.add(r); } for (let y = .15; y < Lh; y += .18) { const r = new THREE.Mesh(new THREE.BoxGeometry(.02, .02, .24), mm(0xb8bcc0)); r.position.set(0, y, 0); lad.add(r); }
-    lad.position.set(P.ladder.x, gl, P.ladder.y); lad.rotation.x = -.18; G.add(lad);
+    lad.position.set(P.ladder.x, gl, P.ladder.y); lad.rotation.x = -.18; // (the ladder now hangs from the bomber's belly hatch)
     const pad = new THREE.Mesh(new THREE.RingGeometry(1.4, 1.6, 32), new THREE.MeshBasicMaterial({color: 0xffd23a, side: THREE.DoubleSide})); pad.rotation.x = -Math.PI / 2; pad.position.set(P.fighter.x, z(P.fighter.x, P.fighter.y) + .03, P.fighter.y); G.add(pad); Rd._rsPadRing = pad;
     { const H0 = M.rsRoute[0], ax = H0[0] - 2, ay = H0[1], gz0 = z(ax + 20, ay) + .035, wh = new THREE.MeshBasicMaterial({color: 0xe8e8e0}), box = (w2, h2, d2, x, y2, zz, mat) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w2, h2, d2), mat); m.position.set(x, y2, zz); G.add(m); return m; };
       for (let x = ax + 4; x < ax + 60; x += 3) box(1.3, .02, .1, x, gz0, ay, wh); // runway centreline, threshold bars and edge lights
@@ -11472,7 +11512,7 @@ const Direct = {
     const g = this.ui.g, R = g.view.rs || {}, P = R.pads, me = g.me; if (!P) return; c.save(); c.textAlign = 'center';
     if (this.ui.g.R._rsPadRing) this.ui.g.R._rsPadRing.visible = !R.esc;
     const mark = (q, z, txt, col) => { const s0 = this.toScreen(q.x, q.y, Math.max(0, hAt(g.view.M, q.x, q.y)) + z); if (!s0) return; c.fillStyle = col; c.beginPath(); c.arc(s0.x, s0.y, 6, 0, 6.283); c.fill(); c.font = '800 13px system-ui'; c.lineWidth = 3; c.strokeStyle = 'rgba(0,0,0,.7)'; c.strokeText(txt, s0.x, s0.y - 12); c.fillText(txt, s0.x, s0.y - 12); };
-    const gear = (R.gear || {})[me]; if (!gear) mark(P.locker, 1.3, 'FLIGHT GEAR', '#ffd23a'); mark(P.ladder, 1.6, 'BOMBER LADDER', gear ? '#5aff8a' : '#9aa'); if (!R.esc) mark(P.fighter, 1.2, 'ESCORT FIGHTER', '#9fd8ff');
+    const gear = (R.gear || {})[me]; if (!gear) mark(P.locker, 1.3, 'FLIGHT GEAR', '#ffd23a'); mark(P.ladder, .5, 'BELLY HATCH', gear ? '#5aff8a' : '#9aa'); if (!R.esc) mark(P.fighter, 1.2, 'ESCORT FIGHTER', '#9fd8ff');
     c.fillStyle = 'rgba(0,0,0,.5)'; c.fillRect(w / 2 - 230, 14, 460, 30); c.fillStyle = '#fff'; c.font = '700 14px system-ui'; c.fillText(gear ? '2. Climb the ladder into the bomber  ·  or take the escort fighter' : '1. Walk to the hangar locker and grab your flight gear', w / 2, 34);
     if (this.rsGT) { c.font = '800 17px system-ui'; c.lineWidth = 4; c.strokeStyle = 'rgba(0,0,0,.75)'; c.strokeText(this.rsGT.text, w / 2, h * .66); c.fillStyle = '#fff'; c.fillText(this.rsGT.text, w / 2, h * .66); }
     c.restore();
@@ -11586,8 +11626,9 @@ const Direct = {
     cam.position.set(cx, cz, cy); cam.up.set(0, 1, 0); cam.lookAt(cx + fw.x * 50, cz + fw.z * 50, cy + fw.y * 50);
     if (this.mode === 'crew' && g.view.rs && rsAtt(g.view.rs)) { // attitude: the cabin is level in its own frame, the world tilts outside the windows
       const at = rsAtt(g.view.rs), k = Math.min(1, dt * 8); this.attP = (this.attP || 0) + ((at.p || 0) - (this.attP || 0)) * k; this.attB = (this.attB || 0) + ((at.b || 0) - (this.attB || 0)) * k;
-      const Q = THREE.Quaternion, E3 = THREE.Euler, qP = new Q().setFromEuler(new E3(-this.attB, -p.h, this.attP, 'YZX')), qL = new Q().setFromEuler(new E3(0, -A.yaw, A.pitch, 'YZX'));
-      const off = new THREE.Vector3(A.x * S, I.worldUp - (this.crewDown ? .4 : 0), A.z * S).applyQuaternion(qP); cam.position.set(p.x + off.x, p.z + off.y, p.y + off.z);
+      const Q = THREE.Quaternion, E3 = THREE.Euler, qP = new Q().setFromEuler(new E3(this.attB, -p.h, this.attP, 'YZX')), qL = new Q().setFromEuler(new E3(0, -A.yaw, A.pitch, 'YZX'));
+      this.rsHatch = Math.max(0, (this.rsHatch || 0) - dt / 2.4); const hk0 = this.rsHatch, hk = hk0 * hk0 * (3 - 2 * hk0); // climbing in: the eye starts at ladder height under the belly and comes up through the floor
+      const off = new THREE.Vector3(A.x * S, I.worldUp - (this.crewDown ? .4 : 0) - hk * .5 + (hk0 > 0 ? Math.abs(Math.sin(hk0 * 16)) * .012 : 0), A.z * S).applyQuaternion(qP); cam.position.set(p.x + off.x, p.z + off.y, p.y + off.z);
       const d = new THREE.Vector3(1, 0, 0).applyQuaternion(qL).applyQuaternion(qP), u = new THREE.Vector3(0, 1, 0).applyQuaternion(qP); cam.up.copy(u); cam.lookAt(cam.position.x + d.x * 50, cam.position.y + d.y * 50, cam.position.z + d.z * 50);
       fw.x = d.x; fw.y = d.z; fw.z = d.y; this.viewYaw = Math.atan2(d.z, d.x); this.viewPitch = Math.asin(clamp(d.y, -1, 1)); this.camP = {x: cam.position.x, y: cam.position.z, z: cam.position.y};
       this.rsClouds(g.R, cam);
@@ -12387,7 +12428,7 @@ const Direct = {
       const ac = r.autoClear; r.autoClear = false; this.syncTrain(I, C); r.clearDepth(); r.render(I.scene, C); r.autoClear = ac;
       if (!this.trDead) VM.draw(R, this, PWPN.medic[0]); return; }
     if (this.on && this.aboard) {
-      const R = this.ui.g.R, r = R.r, A = this.aboard, I = this.interior(), C = I.cam, cp = Math.cos(A.pitch), y0 = (this.mode === 'crew' && this.crewDown ? .15 : Interior.EYE) + Math.abs(Math.sin(this.bobT)) * .012, y = this.mode === 'crew' ? this.crewEyeY(y0) : y0;
+      const R = this.ui.g.R, r = R.r, A = this.aboard, I = this.interior(), C = I.cam, cp = Math.cos(A.pitch), y0 = (this.mode === 'crew' && this.crewDown ? .15 : Interior.EYE) + Math.abs(Math.sin(this.bobT)) * .012, hk0 = this.mode === 'crew' ? this.rsHatch || 0 : 0, y = (this.mode === 'crew' ? this.crewEyeY(y0) : y0) - hk0 * hk0 * (3 - 2 * hk0) * 2.5 + (hk0 > 0 ? Math.abs(Math.sin(hk0 * 16)) * .06 : 0);
       C.fov = R.cam.fov; C.aspect = R.cam.aspect; C.updateProjectionMatrix();
       C.position.set(A.x, y, A.z); C.lookAt(A.x + Math.cos(A.yaw) * cp, y + Math.sin(A.pitch), A.z + Math.sin(A.yaw) * cp);
       if (!(this.mode === 'crew' && (this.dropT > .8 || (this.gunZ || 0) > .6))) { const ac = r.autoClear; r.autoClear = false; if (this.mode === 'crew') { this.syncCrewMeshes(I, C); this.syncRsFx(I); } r.clearDepth(); r.render(I.scene, C); r.autoClear = ac; }
@@ -13290,6 +13331,20 @@ function rsDecor(I) { // the bomber cabin dressed up: ribs, stringers, cable run
   for (const [x, z] of [[-3, -1.0], [-2.6, -1.0], [1.2, 1.0], [7.6, -1.0], [7.95, -1.0], [-11.2, 1.0]]) { const m = new THREE.Mesh(new THREE.CylinderGeometry(.09, .09, .55, 10), green); m.position.set(x, .45, z); G.add(m); const v = new THREE.Mesh(new THREE.CylinderGeometry(.03, .03, .08, 6), brass); v.position.set(x, .76, z); G.add(v); }
   for (const [x, z] of [[-13.6, -.6], [-13.6, .55], [2.6, -1.0], [2.6, 1.0], [4.0, -1.0], [4.0, 1.0]]) { const m = new THREE.Mesh(new THREE.BoxGeometry(.32, .2, .2), mm(0x4b5130)); m.position.set(x, .1, z); G.add(m); const l = new THREE.Mesh(new THREE.BoxGeometry(.34, .03, .22), dark); l.position.set(x, .21, z); G.add(l); }
   for (const x of [-9.0, 0.5, 9.8]) { const m = new THREE.Mesh(new THREE.CylinderGeometry(.05, .05, .32, 8), red); m.position.set(x, .5, -1.05); G.add(m); }
+  { const hm = new THREE.Mesh(new THREE.BoxGeometry(.9, .012, .75), new THREE.MeshBasicMaterial({color: 0x050607})); hm.position.set(4.75, .012, .45); G.add(hm); // the floor hatch you climb in through
+    for (const [dx, dz, w, d] of [[-.47, 0, .04, .8], [.47, 0, .04, .8], [0, -.39, .98, .04], [0, .39, .98, .04]]) { const r = new THREE.Mesh(new THREE.BoxGeometry(w, .05, d), brass); r.position.set(4.75 + dx, .03, .45 + dz); G.add(r); }
+    for (const dz of [-.2, .2]) { const r = new THREE.Mesh(new THREE.CylinderGeometry(.02, .02, .7, 6), steel); r.position.set(5.18, .35, .45 + dz); G.add(r); } }
+  { const quilt = new THREE.MeshLambertMaterial({color: 0x4a5238}), q2 = new THREE.MeshLambertMaterial({color: 0x424a32}); let n = 0; for (let x = -12.8; x <= 12.6; x += .85) for (const z of [-1.55, 1.55]) { const m = new THREE.Mesh(new THREE.BoxGeometry(.74, .3, .03), n++ % 3 ? quilt : q2); m.position.set(x + .42, .2, z); G.add(m); } } // quilted insulation under the windows
+  { const wd = new THREE.MeshLambertMaterial({color: 0x6b5334}); const m = new THREE.Mesh(new THREE.BoxGeometry(12.6, .012, .5), wd); m.position.set(6.6, .008, -.1); G.add(m); for (let x = .6; x < 12.8; x += .6) { const l = new THREE.Mesh(new THREE.BoxGeometry(.012, .014, .5), dark); l.position.set(x, .009, -.1); G.add(l); } } // plank walkway
+  const plac = (txt, x, y, z, ry, col) => { const cv = document.createElement('canvas'); cv.width = 256; cv.height = 64; const c = cv.getContext('2d'); c.fillStyle = col || '#a81d18'; c.fillRect(0, 0, 256, 64); c.strokeStyle = '#f2e9c8'; c.lineWidth = 4; c.strokeRect(4, 4, 248, 56); c.fillStyle = '#f2e9c8'; c.font = '700 28px system-ui'; c.textAlign = 'center'; c.fillText(txt, 128, 42);
+    const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; const m = new THREE.Mesh(new THREE.PlaneGeometry(.5, .125), new THREE.MeshBasicMaterial({map: t})); m.position.set(x, y, z); m.rotation.y = ry; G.add(m); };
+  plac('\u041d\u0415 \u041a\u0423\u0420\u0418\u0422\u042c', 5.2, 1.25, -1.57, 0); plac('\u041a\u0418\u0421\u041b\u041e\u0420\u041e\u0414', -2.8, .95, -1.57, 0, '#1f4a7a'); plac('\u0411\u041e\u041c\u0411\u041e\u041b\u042e\u041a', -3.6, 1.25, 1.57, Math.PI, '#3a3a3a'); plac('\u041e\u0413\u041d\u0415\u0422\u0423\u0428\u0418\u0422\u0415\u041b\u042c', .5, .95, -1.57, 0); plac('\u041b\u042e\u041a', 4.75, .95, 1.57, Math.PI, '#3a3a3a');
+  { const wd = new THREE.MeshLambertMaterial({color: 0x5c4a30}); const tb = new THREE.Mesh(new THREE.BoxGeometry(.95, .04, .55), wd); tb.position.set(6.3, .62, 1.28); G.add(tb); // navigator's table with the route chart and a lamp
+    const cv = document.createElement('canvas'); cv.width = 256; cv.height = 160; const c = cv.getContext('2d'); c.fillStyle = '#d9cfae'; c.fillRect(0, 0, 256, 160); c.strokeStyle = 'rgba(60,70,60,.35)'; c.lineWidth = 1; for (let i = 16; i < 256; i += 16) { c.beginPath(); c.moveTo(i, 0); c.lineTo(i, 160); c.stroke(); } for (let i = 16; i < 160; i += 16) { c.beginPath(); c.moveTo(0, i); c.lineTo(256, i); c.stroke(); }
+    c.fillStyle = '#9db7c4'; c.fillRect(0, 124, 256, 36); c.strokeStyle = '#b01c18'; c.lineWidth = 3; c.setLineDash([8, 5]); c.beginPath(); c.moveTo(24, 92); c.lineTo(222, 84); c.stroke(); c.setLineDash([]); c.fillStyle = '#1b3a1b'; c.beginPath(); c.arc(24, 92, 5, 0, 7); c.fill(); c.fillStyle = '#b01c18'; c.beginPath(); c.arc(222, 84, 7, 0, 7); c.fill();
+    const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; const mp = new THREE.Mesh(new THREE.PlaneGeometry(.7, .44), new THREE.MeshBasicMaterial({map: t})); mp.rotation.x = -Math.PI / 2; mp.position.set(6.3, .645, 1.28); G.add(mp);
+    const lp = new THREE.Mesh(new THREE.ConeGeometry(.07, .1, 10), brass); lp.position.set(6.7, .95, 1.45); G.add(lp); const arm = new THREE.Mesh(new THREE.CylinderGeometry(.01, .01, .32, 5), dark); arm.position.set(6.7, .8, 1.5); G.add(arm); }
+  for (const z of [-.6]) { const bk = new THREE.Mesh(new THREE.BoxGeometry(.06, .62, .5), dark); bk.position.set(13.12, .55, z); G.add(bk); const hr = new THREE.Mesh(new THREE.BoxGeometry(.07, .16, .26), mm(0x5a3a22)); hr.position.set(13.13, .92, z); G.add(hr); } // armoured seat back
   // cockpit: instrument panel with glowing dials, yoke, throttle quadrant; the bombsight in the nose
   const pan = new THREE.Mesh(new THREE.BoxGeometry(.08, .34, 1.5), dark); pan.position.set(14.45, .28, -.2); G.add(pan);
   { const cv = document.createElement('canvas'); cv.width = 768; cv.height = 160; const tx = new THREE.CanvasTexture(cv); tx.colorSpace = THREE.SRGBColorSpace; const m = new THREE.Mesh(new THREE.PlaneGeometry(1.46, .304), new THREE.MeshBasicMaterial({map: tx, fog: false})); m.rotation.y = -Math.PI / 2; m.position.set(14.405, .28, -.2); G.add(m); I.rsPanel = {cv, tx, t: 0}; }
@@ -13305,7 +13360,7 @@ const Interior = {
   layout(k) {
     if (/^train/.test(k)) return trainLayout(+k.slice(5));
     if (k === 'redstar') { const tb = [], nw = x => .35 + 1.35 * (1 - Math.pow((x - 13.5) / 2.3, 2)); for (let xa = 13.5; xa < 15.79; xa += .46) { const wd = nw(Math.min(15.8, xa + .46)); tb.push([xa, xa + .46, wd, 1.8], [xa, xa + .46, -1.8, -wd]); }
-      return {sub: false, chair: [10.5, -.7], worldUp: 1.1, // the Soviet atomic bomber: nose and cockpit, radio/nav, engineer's bay, bomb bay, tail gunner
+      return {sub: false, chair: [10.5, -.7], worldUp: .13, // the Soviet atomic bomber: nose and cockpit, radio/nav, engineer's bay, bomb bay, tail gunner
       rooms: [
         {n: 'Cockpit', x0: 8, x1: 13.5, z0: -1.7, z1: 1.7, win: [['z', -1.7, 9, 12.9, .4, 1.15], ['z', 1.7, 9, 12.9, .4, 1.15]]},
         {n: 'Glass nose', x0: 13.5, x1: 15.8, z0: -1.7, z1: 1.7, win: [['x', 15.8, -1.7, 1.7, .06, 1.45], ['z', -1.7, 13.5, 15.8, .06, 1.45], ['z', 1.7, 13.5, 15.8, .06, 1.45]]},
@@ -15664,7 +15719,7 @@ const UI = {
     this.away = {t: v.t, ids, ups: Object.keys(P.ups || {}).filter(u => u[0] !== '_'), losses: P.losses || 0, kills: P.kills || 0};
   },
   awaySummary() {
-    const A = this.away; this.away = null; if (!A || !this.g) return;
+    const A = this.away; this.away = null; if (!A || !this.g || this.g.redstar || this.g.rail) return; // co-op missions have no base to report on
     const v = this.g.view, me = this.g.me, P = v.players[me], dt = v.t - A.t; if (!P || dt < 20) return;
     const tr = {}, bl = {}; let nT = 0, nB = 0;
     for (const e of v.ents.values()) if (e.o === me && !A.ids.has(e.id) && !e.pilot) { if (e.b) { bl[e.d.n] = (bl[e.d.n] || 0) + 1; nB++; } else { tr[e.d.n] = (tr[e.d.n] || 0) + 1; nT++; } }
@@ -15838,6 +15893,8 @@ addEventListener('keydown', () => { if (typeof Direct !== 'undefined' && window.
   // ---- changelog: add a new entry at the TOP of this list whenever something changes
   const CHANGELOG = [
     {d: '13 Nov 2026', items: [
+      'Red Star fixes: banking now tilts the right way, and the "while you were away" base report no longer pops up in co-op missions.',
+      'Red Star: the bomber on the ground is now full size (33 m long, 43 m wingspan, four propeller engines, glazed nose, gun blisters, red stars). You walk under it and climb a ladder up through the belly hatch into the cabin. Inside: floor hatch, quilted insulation, plank walkway, placards and a navigator table with the route chart.',
       'Red Star overhaul: a real bombsight (right click in the nose seat looks straight down at where the bomb will land, with steer and release cues), bombs you can watch fall, a working instrument panel, clouds moved up out of the way, a dressed airbase and smoke over the target.',
       'Red Star flying is far more forgiving: pulling up no longer stalls you into the ground, you can steer on the runway, and a wreck costs one of two spare aircraft instead of the mission. Out of bombs? Land at the airbase to rearm. After the hit, fly home and land to finish.',
       'Red Star now starts at the airbase on foot: grab flight gear and a parachute at the hangar locker, climb the ladder into the bomber, and start it up from the pilot seat (1 battery, 2 fuel pumps, hold 3-6 to start each engine). One player can take the escort fighter instead. The cabin is dressed up: ribs, cable runs, oxygen bottles, ammo boxes, a cockpit panel with glowing dials, a yoke, throttles, the bombsight and red night lights.',
