@@ -1993,15 +1993,15 @@ const MK = []; for (let i = 0; i < 24; i++) { const d = document.createElement('
 const pad = (n, l) => String(n).padStart(l || 2, '0'), DIRS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'], mmss = s => Math.floor(Math.max(0, s) / 60) + ':' + pad(Math.floor(Math.max(0, s) % 60));
 function mk(i, x, y, z, cls, html, col) { const m = MK[i]; if (!m) return; m.use = true; m.x = x; m.y = y; m.z = z; if (m.c !== cls) { m.c = cls; m.el.className = 'mk ' + cls; } if (m.h !== html + col) { m.h = html + col; m.el.innerHTML = html; m.el.style.setProperty('--mc', col); } }
 const mkBadge = (inner, col, dist, dm) => '<div class="bd' + (dm ? ' dm' : '') + '"><span>' + inner + '</span></div>' + (dist ? '<div class="ds">' + dist + '</div>' : '');
-const _pv = new T.Vector3();
+const _mkv = new T.Vector3();
 function projectMarks() {
   const w = innerWidth, h = innerHeight;
   for (const m of MK) {
     if (!m.use) { if (m.shown) { m.shown = false; m.el.style.display = 'none'; } continue; }
-    _pv.set(m.x, m.y, m.z).project(cam); const ok = _pv.z < 1 && _pv.z > -1 && Math.abs(_pv.x) < 1.15 && Math.abs(_pv.y) < 1.15;
+    _mkv.set(m.x, m.y, m.z).project(cam); const ok = _mkv.z < 1 && _mkv.z > -1 && Math.abs(_mkv.x) < 1.15 && Math.abs(_mkv.y) < 1.15;
     if (!ok) { if (m.shown) { m.shown = false; m.el.style.display = 'none'; } continue; }
     if (!m.shown) { m.shown = true; m.el.style.display = ''; }
-    const tf = 'translate(' + ((_pv.x * 0.5 + 0.5) * w).toFixed(0) + 'px,' + ((-_pv.y * 0.5 + 0.5) * h).toFixed(0) + 'px) translate(-50%,-100%)'; if (m.tf !== tf) { m.tf = tf; m.el.style.transform = tf; }
+    const tf = 'translate(' + ((_mkv.x * 0.5 + 0.5) * w).toFixed(0) + 'px,' + ((-_mkv.y * 0.5 + 0.5) * h).toFixed(0) + 'px) translate(-50%,-100%)'; if (m.tf !== tf) { m.tf = tf; m.el.style.transform = tf; }
   }
 }
 // ----- compass strip (canvas, redrawn only when the heading changes) -----
