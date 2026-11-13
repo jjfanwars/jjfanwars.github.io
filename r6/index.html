@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>BREACHLINE</title>
+<script type="importmap">{"imports":{"three":"./vendor/three/build/three.module.min.js","three/addons/":"./vendor/three/examples/jsm/"}}</script>
+<style>
+:root{--blue:#4aa8ff;--orange:#ff8a2a;--ui:#e9edf0}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:#0b0d0f;overflow:hidden;font-family:"Segoe UI",Roboto,Helvetica,Arial,sans-serif;color:var(--ui);user-select:none}
+#c{position:fixed;inset:0;width:100%;height:100%;display:block}
+#hud{position:fixed;inset:0;pointer-events:none;display:none;text-shadow:0 1px 3px #000a}
+#top{position:absolute;top:10px;left:50%;transform:translateX(-50%);display:flex;align-items:stretch;gap:2px;font-weight:700}
+.side{display:flex;align-items:center;gap:10px;background:#12161acc;padding:6px 14px;min-width:230px}
+.side.l{border-bottom:3px solid var(--blue);justify-content:flex-end}.side.r{border-bottom:3px solid var(--orange)}
+.side b{font-size:26px}.side span{font-size:12px;letter-spacing:.14em;text-transform:uppercase;opacity:.8}
+.pips{display:flex;gap:4px}.pips i{width:10px;height:18px;background:var(--blue);display:block;transform:skewX(-12deg)}
+.r .pips i{background:var(--orange)}.pips i.dead{background:#0000;outline:1px solid #fff5}
+#mid{background:#0c0f12e6;padding:4px 20px;text-align:center;min-width:120px}
+#timer{font-size:28px;font-variant-numeric:tabular-nums;line-height:1}#timer.warn{color:#ffcf4a}#timer.hot{color:#ff5540}
+#phase{font-size:10px;letter-spacing:.2em;opacity:.75;margin-top:3px}
+#wpn{position:absolute;right:28px;bottom:26px;text-align:right}
+#wName{font-size:13px;letter-spacing:.18em;text-transform:uppercase;opacity:.8}
+#mag{font-size:54px;font-weight:700;line-height:1}#mag.low{color:#ff5540}#res{font-size:22px;opacity:.7;margin-left:6px}
+#gad{font-size:12px;opacity:.8;margin-top:4px;letter-spacing:.04em}
+#vit{position:absolute;left:28px;bottom:28px;width:220px}
+#hp{font-size:34px;font-weight:700;line-height:1}#vit small{letter-spacing:.2em;font-size:10px;opacity:.7;margin-left:6px}
+#hpT{height:5px;background:#fff2;margin-top:6px}#hpBar{height:100%;background:var(--ui);width:100%}
+#cross{position:absolute;left:50%;top:50%;--g:6px}
+#cross i{position:absolute;background:#fff;box-shadow:0 0 2px #000}
+#cross i:nth-child(1){width:2px;height:9px;left:-1px;top:calc(-9px - var(--g))}#cross i:nth-child(2){width:2px;height:9px;left:-1px;top:var(--g)}
+#cross i:nth-child(3){height:2px;width:9px;top:-1px;left:calc(-9px - var(--g))}#cross i:nth-child(4){height:2px;width:9px;top:-1px;left:var(--g)}
+#hit{position:absolute;left:50%;top:50%;width:26px;height:26px;margin:-13px;opacity:0;transition:opacity .12s;
+ background:linear-gradient(45deg,#0000 46%,#fff 46% 54%,#0000 54%),linear-gradient(-45deg,#0000 46%,#fff 46% 54%,#0000 54%);
+ -webkit-mask:radial-gradient(circle,#0000 5px,#000 6px);mask:radial-gradient(circle,#0000 5px,#000 6px)}
+#hit.kill{filter:drop-shadow(0 0 0 red) sepia(1) saturate(30) hue-rotate(-50deg)}
+#hurt{position:absolute;inset:0;opacity:0;background:radial-gradient(ellipse at center,#0000 45%,#a00000b0 100%)}
+#hint{position:absolute;left:0;right:0;top:61%;text-align:center;font-size:15px;letter-spacing:.04em}
+#prog{position:absolute;left:50%;top:66%;width:240px;margin-left:-120px;display:none;text-align:center;font-size:11px;letter-spacing:.18em;text-transform:uppercase}
+#progT{height:6px;background:#0008;margin-top:5px;outline:1px solid #fff4}#progB{height:100%;background:#fff;width:0}
+#banner{position:absolute;left:0;right:0;top:19%;text-align:center;opacity:0;transition:opacity .4s}
+#bTitle{font-size:44px;font-weight:800;letter-spacing:.16em}#banner.bad #bTitle{color:var(--orange)}#banner.good #bTitle{color:#fff}
+#bSub{font-size:15px;letter-spacing:.12em;opacity:.9;margin-top:4px}
+#feed{position:absolute;right:20px;top:70px;text-align:right;font-size:13px}
+#feed div{background:#0e1114cc;padding:3px 9px;margin-bottom:3px;display:inline-block;clear:both;float:right}
+#feed .fr{color:var(--blue)}#feed .en{color:var(--orange)}#feed span{opacity:.7;margin:0 5px}
+.marker{position:absolute;transform:translate(-50%,-50%);text-align:center;display:none}
+.marker i{display:block;font-style:normal;font-weight:800;font-size:15px;width:26px;height:26px;line-height:24px;border:2px solid #fff;border-radius:50%;background:#0006;margin:auto}
+.marker.bomb i{border-color:#ff5540;color:#ff5540}.marker small{font-size:10px;opacity:.8}
+#board{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);background:#0d1013ee;padding:18px 24px;display:none;min-width:420px}
+#board table{width:100%;border-collapse:collapse;margin-bottom:12px;font-size:14px}#board th{text-align:left;font-size:11px;letter-spacing:.14em;text-transform:uppercase;opacity:.7;padding:4px 8px;border-bottom:1px solid #fff3}
+#board td{padding:4px 8px}#board tr.dead td{opacity:.4}#board tr.me td{color:var(--blue)}#board td:nth-child(n+2),#board th:nth-child(n+2){text-align:center;width:44px}
+#droneFx{position:absolute;inset:0;display:none;background:repeating-linear-gradient(0deg,#0000 0 2px,#0002 2px 3px);box-shadow:inset 0 0 160px 40px #000c}
+#droneFx::after{content:"● REC  DRONE CAM";position:absolute;left:28px;top:70px;font-size:12px;letter-spacing:.2em;color:#ff6a50}
+.ov{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column}
+#menu{background:linear-gradient(90deg,#07090bf2 0,#07090bcc 46%,#07090b40 100%);align-items:flex-start;padding-left:7vw}
+#menu h1{font-size:64px;letter-spacing:.2em;margin:0;font-weight:800}#menu h1 span{color:var(--orange)}
+#menu p.tag{margin:6px 0 26px;letter-spacing:.3em;font-size:12px;opacity:.7;text-transform:uppercase}
+.facs{display:flex;gap:14px;margin-bottom:22px}
+.fac{pointer-events:auto;cursor:pointer;background:#141a1fcc;border:2px solid #fff2;color:var(--ui);padding:14px 22px;width:190px;text-align:center;font:inherit;font-weight:700;letter-spacing:.14em;text-transform:uppercase}
+.fac canvas{display:block;margin:0 auto 8px;width:72px;height:72px}.fac.sel{border-color:var(--blue);background:#1b2a38cc}.fac small{display:block;font-weight:400;opacity:.6;letter-spacing:.05em;text-transform:none;margin-top:4px}
+button.big{cursor:pointer;background:var(--ui);color:#0b0d0f;border:0;font:inherit;font-weight:800;letter-spacing:.24em;padding:14px 46px;font-size:17px}
+button.big:hover{background:#fff}
+#keys{margin-top:26px;font-size:12.5px;line-height:1.75;opacity:.85;display:grid;grid-template-columns:auto auto;gap:0 26px}
+#keys b{color:#fff}#keys b:first-child{display:inline-block;min-width:74px}
+.opts{margin-top:16px;font-size:12px;opacity:.85;display:flex;gap:22px;align-items:center}
+#pause{display:none;background:#000a;cursor:pointer;font-size:22px;letter-spacing:.2em}
+#again{position:fixed;left:50%;bottom:16%;transform:translateX(-50%);display:none;pointer-events:auto}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="hud">
+  <div id="hurt"></div><div id="droneFx"></div>
+  <div id="top">
+    <div class="side l"><span id="nmL"></span><div class="pips" id="pipL"></div><b id="scL">0</b></div>
+    <div id="mid"><div id="timer">0:00</div><div id="phase"></div></div>
+    <div class="side r"><b id="scR">0</b><div class="pips" id="pipR"></div><span id="nmR"></span></div>
+  </div>
+  <div id="feed"></div>
+  <div id="cross"><i></i><i></i><i></i><i></i></div><div id="hit"></div>
+  <div id="hint"></div>
+  <div id="prog"><span id="progL"></span><div id="progT"><div id="progB"></div></div></div>
+  <div id="banner"><div id="bTitle"></div><div id="bSub"></div></div>
+  <div id="vit"><span id="hp">100</span><small>HEALTH</small><div id="hpT"><div id="hpBar"></div></div></div>
+  <div id="wpn"><div id="wName"></div><span id="mag">30</span><span id="res">/ 120</span><div id="gad"></div></div>
+  <div id="board"></div>
+</div>
+<div id="menu" class="ov">
+  <h1>BREACH<span>LINE</span></h1>
+  <p class="tag">5 v 5 tactical breach &amp; defend — first to 3 rounds</p>
+  <div class="facs">
+    <button class="fac sel">Fascists<small>Sturm-7 rifle · Wolf 9</small></button>
+    <button class="fac">Communists<small>VK-47 rifle · TK-33</small></button>
+  </div>
+  <button class="big" id="play">DEPLOY</button>
+  <div id="keys">
+    <div><b>WASD</b> move</div><div><b>Mouse</b> aim · <b>LMB</b> fire · <b>RMB</b> sights</div>
+    <div><b>Shift</b> sprint</div><div><b>C / Ctrl</b> crouch</div>
+    <div><b>Q / E</b> lean</div><div><b>Space</b> vault windows &amp; low cover</div>
+    <div><b>R</b> reload</div><div><b>1 / 2</b> rifle / pistol</div>
+    <div><b>F</b> hold: barricade, plant, defuse</div><div><b>G</b> breach charge / reinforce wall</div>
+    <div><b>4 / MMB</b> grenade</div><div><b>V</b> melee (walls, barricades)</div>
+    <div><b>Tab</b> scoreboard</div><div><b>Esc</b> pause</div>
+  </div>
+  <div class="opts"><label>Sensitivity <input id="sens" type="range" min="0.3" max="2.5" step="0.05" value="1"></label><label>Volume <input id="vol" type="range" min="0" max="1" step="0.05" value="0.8"></label></div>
+</div>
+<div id="pause" class="ov">PAUSED — CLICK TO RESUME</div>
+<button id="again" class="big">BACK TO MENU</button>
+<script type="module" src="./js/main.js"></script>
+</body>
+</html>
