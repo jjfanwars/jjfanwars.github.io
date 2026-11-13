@@ -797,6 +797,7 @@ function suitPieces(root, bones, look) { // the rigid pieces of the suit in the 
   if (k === 3) seg('Spine2', 'Neck', 0.017, 0.008, SK, -0.07, 0.03, true, [0, 0, 0.116]);
   return pcs;
 }
+const SKELM = []; // suit meshes alive: their bone textures are released once the soldier leaves the scene (see gfxSweep)
 const SKIRTG = new T.CylinderGeometry(1, 1.12, 1, 18, 1), SUITGEO = {}, SUITM = new T.MeshStandardMaterial({ vertexColors: true, roughness: 0.82, metalness: 0 }), _nm = new T.Matrix3(), _nv = new T.Vector3(), _pv = new T.Vector3();
 function suitGeometry(root, bones, look) { // all pieces merged into one skinned geometry (rigid weights): one draw call per soldier instead of ~40
   const pcs = suitPieces(root, bones, look), list = Object.keys(bones).map(k => bones[k]); let nv = 0, ni = 0; for (const p of pcs) { nv += p.geo.attributes.position.count; ni += p.geo.index.count; }
@@ -808,7 +809,7 @@ function suitGeometry(root, bones, look) { // all pieces merged into one skinned
 }
 function dressSuit(root, bones, look) {
   root.updateMatrixWorld(true); const geo = SUITGEO[look] || (SUITGEO[look] = suitGeometry(root, bones, look)), sk = new T.Skeleton(Object.keys(bones).map(k => bones[k])), m = new T.SkinnedMesh(geo, SUITM);
-  m.bind(sk, new T.Matrix4()); m.boundingSphere = new T.Sphere(new T.Vector3(0, 0.95, 0), 1.5); m.frustumCulled = true; m.castShadow = false; m.receiveShadow = false; root.add(m); return m;
+  m.bind(sk, new T.Matrix4()); m.boundingSphere = new T.Sphere(new T.Vector3(0, 0.95, 0), 1.5); m.frustumCulled = true; m.castShadow = false; m.receiveShadow = false; root.add(m); SKELM.push(m); return m;
 }
 function makeSoldierGlb(look) {
   const suited = SUIT.ready && /^(op|fac)/.test(look), src = suited ? SUIT.g : GLB.g, root = new T.Group(), model = SkeletonUtils.clone(src.scene), mats = suited ? null : glbMats(look), bones = {};
@@ -2025,8 +2026,9 @@ function variantOf(m) {
   ORIGM.set(v, m); return o[k] = v;
 }
 let gfxN = -1, gfxSweepT = 0; const seenM = new Set();
+function gfxFreeSkins() { for (let i = SKELM.length - 1; i >= 0; i--) { let o = SKELM[i]; while (o.parent) o = o.parent; if (o !== scene) { SKELM[i].skeleton.dispose(); SKELM.splice(i, 1); } } }
 function gfxSweep() {
-  const force = QUAL.dirty; QUAL.dirty = false; gfxSweepT = performance.now(); gfxN = scene.children.length; seenM.clear();
+  const force = QUAL.dirty; QUAL.dirty = false; gfxSweepT = performance.now(); gfxN = scene.children.length; seenM.clear(); gfxFreeSkins();
   const A = QUAL.aniso, walk = o => {
     if (o === view) return;
     if (o.isMesh && !Array.isArray(o.material)) { const base = ORIGM.get(o.material) || o.material, want = variantOf(base); if (o.material !== want) o.material = want;
