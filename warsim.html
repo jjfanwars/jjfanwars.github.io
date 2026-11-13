@@ -2452,7 +2452,7 @@ Sim.prototype.rsHurt = function (pi) {
 Sim.prototype.rsPub = function () {
   const R = this.rs;
   return {bid: this.rsB ? this.rsB.id : 0, thr: +(R.thr || 0).toFixed(2), gs: +(R.gs || 0).toFixed(2), up: R.up || 0, agl: Math.round(R.agl || 0), vz: +(R.vz || 0).toFixed(1), t: Math.round(R.t), fuel: Math.round(R.fuel), hull: Math.round(R.hull), off: +R.off.toFixed(1), lit: +R.lit.toFixed(2), lockOn: R.lockOn, lockT: Math.round(R.lockT), jamP: +R.jamP.toFixed(2), sig: +R.sig.toFixed(2), storm: R.storm, door: R.door, doorP: +R.doorP.toFixed(2),
-    leaks: R.leaks.map(l => ({id: l.id, x: l.x, z: l.z, k: l.k, n: l.n, p: +l.p.toFixed(2)})), hurt: R.hurt, seat: R.seat, beams: R.beams, grace: R.grace || 0, bf: R.bf ? {st: R.bf.st, p: +R.bf.p.toFixed(2), rider: R.bf.rider} : null, state: R.state, fighters: R.fighters.length, kills: R.kills, vod: Object.fromEntries(Object.entries(R.vod).map(([k, v]) => [k, +v.toFixed(2)])), rub: R.rub, medal: R.medal || '', dark: R.dark, darkP: +R.darkP.toFixed(2), arm: R.arm ? {p: +R.arm.p.toFixed(2), k1: R.arm.k1, k2: R.arm.k2} : null, chute: R.chute, stock: R.stock, bail: Object.fromEntries(Object.keys(R.bail).map(k => [k, 1])), land: R.land ? {ph: R.land.ph, t: Math.round(R.land.t)} : null, fallT: Math.ceil(R.fallT || 0), score: R.score, fixes: R.fixes, wave: R.wave, streak: R.streak, prog: R.dist0 ? +(1 - R.dist / R.dist0).toFixed(3) : 0, att: R.f ? {p: +R.f.pit.toFixed(3), b: +R.f.bank.toFixed(3), s: +R.f.spd.toFixed(2), vz: +R.f.vz.toFixed(2), g: R.f.gnd} : null, bombs: R.bombs, dist: Math.round(R.dist || 0), on: R.on, gear: R.gear, esc: R.esc, pads: R.pads, batt: R.batt, pump: R.pump, eng: R.eng ? R.eng.map(q => +q.toFixed(2)) : null, baseD: R.baseS && !R.landUsed && R.state === 'fly' && this.rsS > R.baseS - 120 && this.rsS < R.baseS - 12 ? Math.round(R.baseS - this.rsS) : 0, roul: R.roul && R.t - R.roul.t0 < 5.5 ? {id: R.roul.id, rt: +(R.t - R.roul.t0).toFixed(1), i: R.roul.i, n: R.roul.n, bet: R.roul.bet, p: R.roul.p} : null};
+    leaks: R.leaks.map(l => ({id: l.id, x: l.x, z: l.z, k: l.k, n: l.n, p: +l.p.toFixed(2)})), hurt: R.hurt, seat: R.seat, beams: R.beams, grace: R.grace || 0, bf: R.bf ? {st: R.bf.st, p: +R.bf.p.toFixed(2), rider: R.bf.rider} : null, state: R.state, fighters: R.fighters.length, kills: R.kills, vod: Object.fromEntries(Object.entries(R.vod).map(([k, v]) => [k, +v.toFixed(2)])), rub: R.rub, medal: R.medal || '', dark: R.dark, darkP: +R.darkP.toFixed(2), arm: R.arm ? {p: +R.arm.p.toFixed(2), k1: R.arm.k1, k2: R.arm.k2} : null, chute: R.chute, stock: R.stock, bail: Object.fromEntries(Object.keys(R.bail).map(k => [k, 1])), land: R.land ? {ph: R.land.ph, t: Math.round(R.land.t)} : null, fallT: Math.ceil(R.fallT || 0), score: R.score, fixes: R.fixes, wave: R.wave, streak: R.streak, prog: R.dist0 ? +(1 - R.dist / R.dist0).toFixed(3) : 0, att: R.f ? {p: +R.f.pit.toFixed(3), b: +R.f.bank.toFixed(3), s: +R.f.spd.toFixed(2), vz: +R.f.vz.toFixed(2), g: R.f.gnd} : null, bombs: R.bombs, dist: Math.round(R.dist || 0), on: R.on, gear: R.gear, esc: R.esc, pads: R.pads, batt: R.batt, pump: R.pump, eng: R.eng ? R.eng.map(q => +q.toFixed(2)) : null, baseD: R.baseS && !R.landUsed && R.state === 'fly' && this.rsS > R.baseS - 120 && this.rsS < R.baseS - 12 ? Math.round(R.baseS - this.rsS) : 0, roul: R.roul && R.t - R.roul.t0 < 5.5 ? {id: R.roul.id, rt: +(R.t - R.roul.t0).toFixed(1), i: R.roul.i, n: R.roul.n, bet: R.roul.bet, p: R.roul.p} : null, hit: R.hit ? 1 : 0, spares: R.spares || 0, svc: R.svc ? +R.svc.toFixed(1) : 0};
 };
 Sim.prototype.rsStep = function () {
   const R = this.rs, B = this.rsB, dt = .1, n = this.players.length - 1, rso = this.rso || {}, rnd = () => this.rnd();
@@ -2470,7 +2470,7 @@ Sim.prototype.rsStep = function () {
   if (!R.sched) { // tips at the start, then the threat director below takes over
     let RL = 0; const RT = this.M.rsRoute || []; for (let i = 0; i < RT.length - 1; i++) RL += Math.hypot(RT[i + 1][0] - RT[i][0], RT[i + 1][1] - RT[i][1]); R.RL = RL;
     R.grace = {train: 40, std: 28, brutal: 18}[rso.diff] || 28; R.dirT = R.grace;
-    R.sched = [[3, 'tip', 'Welcome aboard. Target: the weapons works in the city to the east (red marker). Pilot: cockpit seat (E), W/S throttle, R/F pitch, A/D bank. Lift off at about 60% speed.'], [14, 'tip', 'Bombardier: the seat in the glass nose. Right click looks down the bombsight; click to release when the cross sits on the target. 3 bombs.']];
+    R.sched = [[3, 'tip', 'Welcome aboard. Target: the weapons works in the city to the east (red marker). Pilot: cockpit seat (E), W/S throttle, R/F pitch, A/D bank. Lift off at about 60% speed. After the hit, fly home and land.'], [14, 'tip', 'Bombardier: the seat in the glass nose. Right click looks down the bombsight; click to release when the cross sits on the target. 3 bombs; land at the airbase to rearm.']];
   }
   if (!R.up) { R.dirT = R.t + R.grace; R.fwT = 0; } // nothing attacks until the bomber is off the runway
   // threat director: fighter waves every ~35 s that grow, plus random hazards; fewer at once on small crews
@@ -2603,7 +2603,7 @@ function rsBombPath(M, x, y, z, vx, vy, vz, dt) { // where a bomb released now l
 // ---------- Red Star on the ground: start at the airbase, flight gear, the ladder, the escort fighter, engine start ----------
 Sim.prototype.rsGround = function () {
   const R = this.rs, b = this.rsB, n = this.players.length - 1, gz = (x, y) => Math.max(0, hAt(this.M, x, y));
-  R.gear = {}; R.on = {}; R.esc = null; R.eng = [0, 0, 0, 0]; R.batt = 0; R.pump = 0; R.estT = [0, 0, 0, 0]; R.sold = {};
+  R.gear = {}; R.on = {}; R.esc = null; R.spares = 2; R.hit = 0; R.eng = [0, 0, 0, 0]; R.batt = 0; R.pump = 0; R.estT = [0, 0, 0, 0]; R.sold = {};
   R.pads = {locker: {x: b.x + 9, y: b.y + 4.4}, ladder: {x: b.x - .8, y: b.y + 1.3}, fighter: {x: b.x + 16, y: b.y - 6}};
   for (let i = 0; i < n; i++) { const e = this.addUnit('rifle', i, R.pads.locker.x + 1.2 + (i % 4) * .9, R.pads.locker.y - 1.6 - ((i / 4) | 0) * .9); if (e) { e.h = Math.PI; R.sold[i] = e.id; } }
 };
@@ -2615,36 +2615,53 @@ Sim.prototype.rsEngines = function (dt) { // battery and fuel pumps feed the sta
   for (let i = 0; i < 4; i++) { if (!live) { if (R.eng[i] > 0) R.eng[i] = Math.max(0, R.eng[i] - dt * .5); continue; }
     if (R.eng[i] < 1) { if (this.t - (R.estT[i] || -9) < .45) { R.eng[i] = Math.min(1, R.eng[i] + dt / 3); if (R.eng[i] >= 1) this.rsMsg('Engine ' + (i + 1) + ' running.', 0); } else R.eng[i] = Math.max(0, R.eng[i] - dt * .2); } }
 };
+Sim.prototype.rsReset = function () { // a spare aircraft at the airbase: engines warm, crew aboard, full tanks and racks
+  const RS = this.rs, b = this.rsB, R0 = this.M.rsRoute[0]; b.x = R0[0]; b.y = R0[1]; b.h = 0; b.z = Math.max(0, hAt(this.M, b.x, b.y)) + .7; b.p = 0; b.r = 0;
+  RS.f = {pit: 0, bank: 0, spd: 0, thr: 0, gnd: 1, vz: 0}; RS.up = 0; RS.hull = 100; RS.fuel = 100; RS.bombs = 3; RS.drops = []; RS.svc = 0; RS.flown = 0; this.rsHd = this.rsH = 0; this.rsV = {x: 0, y: 0, z: 0};
+};
+Sim.prototype.rsCrash = function (gz) { // a wreck is not the end while a spare aircraft is left
+  const RS = this.rs, b = this.rsB; this.ev({k: 'boom', x: b.x, y: b.y, z: gz, s: 4}); this.ev({k: 'rsjolt', m: 1});
+  if (RS.hit) { RS.state = 'won'; RS.medal = 'Order of the Red Star'; RS.score += 500; this.rsMsg('The weapons works is destroyed, but the bomber did not make it home. Mission complete. Score ' + RS.score + '. Award: ' + RS.medal + '.', 1); }
+  else if ((RS.spares || 0) > 0) { RS.spares--; RS.score = Math.max(0, RS.score - 500); this.rsReset(); this.rsMsg('The bomber is wrecked. The crew walk away and a spare aircraft is rolled out at the airbase (' + RS.spares + ' spare' + (RS.spares === 1 ? '' : 's') + ' left). -500', 1); }
+  else { RS.hull = 0; RS.state = 'lost'; this.rsMsg('We hit the ground and there are no spare aircraft left. The mission is lost.', 1); }
+};
 Sim.prototype.redstarStep = function () { // the pilot really flies: throttle, pitch and bank, anywhere on the map
   const b = this.rsB, RS = this.rs, M = this.M; if (!b || !RS || RS.state === 'lost' || RS.state === 'won') return;
   const dt = .1, F = RS.f || (RS.f = {pit: 0, bank: 0, spd: 0, thr: 0, gnd: 1, vz: 0}), pil = Object.keys(RS.seat).some(k => RS.seat[k] === 'pilot');
   this.rsEngines(dt); const run = RS.eng ? RS.eng.filter(q => q >= 1).length / 4 : 1;
-  const ti = pil ? RS.ti || 0 : 0, pi = pil ? RS.pi || 0 : 0, ri = pil ? RS.inp || 0 : 0, gz = Math.max(0, hAt(M, b.x, b.y)) + .7;
+  const ti = pil ? RS.ti || 0 : 0, pi = pil ? RS.pi || 0 : 0, ri = pil ? RS.inp || 0 : 0, gz = Math.max(0, hAt(M, b.x, b.y)) + .7, H0 = M.rsRoute[0];
+  const VS = 1.5, pmax = F.gnd ? .2 : clamp((F.spd - 1.5) * .3, .06, .5); // the nose only goes as high as the speed can hold, so pulling back cannot stall a healthy aircraft
   if (!pil && !F.gnd) { // autopilot when nobody flies: wings level, hold height and power
-    F.bank *= .95; F.thr += (.65 - F.thr) * .05; const want = clamp((Math.max(RS.hold || 50, gz + 15) - b.z) * .02, -.25, .25); F.pit += clamp(want - F.pit, -.03, .03);
+    F.bank *= .95; F.thr += (.7 - F.thr) * .05; const want = clamp((Math.max(RS.apAlt || 50, gz + 15) - b.z) * .02, -.25, Math.min(.25, pmax)); F.pit += clamp(want - F.pit, -.03, .03);
   } else {
     F.thr = clamp(F.thr + ti * .04, 0, 1);
-    if (F.gnd) F.bank = 0; else if (ri) F.bank = clamp(F.bank + ri * .09, -1.05, 1.05); else F.bank *= .96;
-    if (pi) F.pit = clamp(F.pit + pi * .035, F.gnd ? 0 : -.7, .55); else if (!F.gnd) F.pit *= .995;
-    if (!F.gnd) RS.hold = b.z;
+    if (F.gnd) F.bank = 0; else if (ri) F.bank = clamp(F.bank + ri * .05, -.7, .7); else F.bank *= .95;
+    if (pi > 0 && (F.gnd || F.spd > 1.55)) F.pit = Math.min(F.pit + .03, Math.max(pmax, F.pit)); else if (pi < 0) F.pit = Math.max(F.pit - .03, F.gnd ? 0 : -.6); else if (!F.gnd) F.pit *= .97;
+    if (!F.gnd) RS.apAlt = b.z;
   }
-  const VS = 1.9; // stall speed
-  const pw = F.thr * run; F.spd += ((F.gnd ? pw * 4.4 : .8 * run + pw * 4) - F.spd - Math.sin(F.pit) * 6) * (F.gnd ? .025 : .03);
+  if (!F.gnd && F.pit > pmax) F.pit = Math.max(pmax, F.pit - .025);
+  const pw = F.thr * run;
+  if (F.gnd) F.spd += (pw * 4.4 - F.spd) * (pw < .05 ? .04 : .013); else F.spd += (.8 * run + pw * 4 - F.spd - Math.sin(F.pit) * 4.5) * .03;
   F.spd = Math.max(0, F.spd);
   if (F.gnd) {
     F.vz = 0; b.z = gz; F.pit = Math.max(0, F.pit);
-    if (F.spd > 2.3 && F.pit > .05) { F.gnd = 0; F.vz = 1; RS.up = 1; RS.upT = RS.t; this.rsMsg('Wheels up! Climb out and head east for the target.', 1); }
+    if (F.spd > 2.3 && F.pit > .05) { F.gnd = 0; F.vz = .8; RS.up = 1; RS.flown = 1; RS.upT = RS.t; RS.svc = 0; this.rsMsg(RS.hit ? 'Wheels up.' : 'Wheels up! Climb out and head east for the target.', 1); }
     else if (F.pit > .02 && F.spd < 2.3) F.pit *= .8;
+    const home = b.x > H0[0] - 14 && b.x < H0[0] + 70 && Math.abs(b.y - H0[1]) < 13;
+    if (F.gnd && home && F.spd < .15 && RS.flown) {
+      if (RS.hit) { RS.state = 'won'; RS.score += 1500 + Math.round(RS.fuel) * 5 + Math.round(RS.hull) * 5; RS.medal = RS.acc < 2 ? 'HERO OF THE SOVIET UNION' : RS.acc < 4 ? 'Order of Lenin' : 'Order of the Red Star'; this.rsMsg('Home safe. Mission complete! Score ' + RS.score + '. Award: ' + RS.medal + '.', 1); return; }
+      if (RS.bombs < 3 || RS.fuel < 90 || RS.hull < 100) { if (!RS.svc) this.rsMsg('Ground crew are rearming and refuelling: hold still.', 0); RS.svc = (RS.svc || 0) + dt; if (RS.svc >= 6) { RS.bombs = 3; RS.fuel = 100; RS.hull = 100; RS.svc = 0; RS.flown = 0; this.rsMsg('Rearmed and refuelled: 3 bombs aboard. Cleared for take-off.', 1); } }
+    } else RS.svc = 0;
   } else {
-    const lift = clamp((F.spd - VS) / 1.2, 0, 1); let vz = F.spd * Math.sin(F.pit) * lift - (1 - lift) * 4 - Math.abs(Math.sin(F.bank)) * .5 * lift;
-    if (lift < 1) F.pit -= (1 - lift) * .02; // stalling: the nose drops
-    F.vz += (vz - F.vz) * .25; b.z = Math.max(gz, Math.min(240, b.z + F.vz * dt)) + (b.z + F.vz * dt < gz ? -.001 : 0);
-    if (b.z <= gz && F.vz <= 0 && RS.t - (RS.upT || 0) > 1.5) { const soft = F.vz > -1.6 && Math.abs(F.bank) < .3 && F.pit > -.15 && F.spd < 3.6;
-      if (soft) { F.gnd = 1; b.z = gz; F.bank = 0; F.vz = 0; RS.up = 0; this.rsMsg('Touchdown.', 0); }
-      else { b.z = gz; RS.hull = 0; RS.state = 'lost'; this.ev({k: 'boom', x: b.x, y: b.y, z: gz, s: 4}); this.ev({k: 'rsjolt', m: 1}); this.rsMsg('We hit the ground. The bomber is lost.', 1); return; } }
+    const lift = clamp((F.spd - VS) / .6, 0, 1); const vz = F.spd * Math.sin(F.pit) * lift - (1 - lift) * 3.5 - Math.abs(Math.sin(F.bank)) * .4 * lift;
+    if (lift < 1) F.pit = Math.max(-.45, F.pit - (1 - lift) * .05); // stalling: the nose drops and the speed comes back
+    F.vz += (vz - F.vz) * .25; const nz = b.z + F.vz * dt; b.z = clamp(nz, gz, 240);
+    if (nz <= gz && RS.t - (RS.upT || 0) > 1.5) { const soft = F.vz <= 0 && F.vz > -1.8 && Math.abs(F.bank) < .4 && F.spd < 4.4;
+      if (soft) { F.gnd = 1; b.z = gz; F.bank = 0; F.vz = 0; F.pit = Math.max(0, F.pit); RS.up = 0; this.ev({k: 'rsjolt', m: .4}); this.rsMsg('Touchdown. S: brakes.', 0); }
+      else { b.z = gz; this.rsCrash(gz); return; } }
     else if (b.z - gz < 6 && F.vz < -1 && (!RS.pullT || RS.t - RS.pullT > 3)) { RS.pullT = RS.t; this.rsMsg('TERRAIN! PULL UP!', 1); }
   }
-  const tr = F.gnd ? 0 : 2.2 * Math.tan(F.bank) / Math.max(1.5, F.spd);
+  const tr = F.gnd ? ri * .5 * Math.min(1, F.spd / .5) : 1.4 * Math.tan(F.bank) / Math.max(1.5, F.spd); // on the ground A/D steers the nose wheel
   b.h = (b.h || 0) + tr * dt; const hc = Math.cos(F.pit);
   const ox = b.x, oy = b.y; b.x = clamp(b.x + Math.cos(b.h) * F.spd * hc * dt, 3, this.N - 4); b.y = clamp(b.y + Math.sin(b.h) * F.spd * hc * dt, 3, this.N - 4);
   if ((b.x <= 3 || b.x >= this.N - 4 || b.y <= 3 || b.y >= this.N - 4) && (!RS.edgeT || RS.t - RS.edgeT > 5)) { RS.edgeT = RS.t; this.rsMsg('Edge of the map: turn back.', 1); }
@@ -2652,11 +2669,11 @@ Sim.prototype.redstarStep = function () { // the pilot really flies: throttle, p
   b.p = F.pit; b.r = -F.bank; b.moving = true; b.hp = b.hpm; RS.thr = F.thr; RS.gs = F.spd / 4.2; RS.agl = b.z - gz + .7;
   const T = M.rsTarget; RS.dist = Math.hypot(T.x - b.x, T.y - b.y); if (RS.dist0 === undefined) RS.dist0 = RS.dist; this.rsS = 0;
   // bombs in the air
-  for (const bm of RS.drops) if (!bm.done) { const px = bm.x, py = bm.y, pz = bm.z; for (let k = 0; k < 4; k++) { bm.vz -= RS_G * dt / 4; bm.x += bm.vx * dt / 4; bm.y += bm.vy * dt / 4; bm.z += bm.vz * dt / 4; }
-    this.ev({k: 'rstr', x0: px, y0: py, z0: pz, x1: bm.x, y1: bm.y, z1: bm.z, c: 'g'});
+  for (const bm of RS.drops) if (!bm.done) { for (let k = 0; k < 4; k++) { bm.vz -= RS_G * dt / 4; bm.x += bm.vx * dt / 4; bm.y += bm.vy * dt / 4; bm.z += bm.vz * dt / 4; }
     const g = Math.max(0, hAt(M, bm.x, bm.y)); if (bm.z <= g) { bm.done = 1; const d = Math.hypot(bm.x - T.x, bm.y - T.y), m = Math.round(d * 5);
-      if (d < 7) { this.ev({k: 'boom', x: T.x, y: T.y, big: 1}); RS.state = 'won'; RS.score += Math.max(500, 3000 - m * 50) + Math.round(RS.fuel) * 5; RS.medal = d < 2 ? 'HERO OF THE SOVIET UNION' : d < 4 ? 'Order of Lenin' : 'Order of the Red Star'; this.rsMsg('DIRECT HIT on the weapons works (' + m + ' m off)! Mission complete. Score ' + RS.score + '. Award: ' + RS.medal + '.', 1); }
-      else { this.ev({k: 'boom', x: bm.x, y: bm.y, s: 3}); this.rsMsg('Bomb missed by ' + m + ' m.' + (RS.bombs ? ' ' + RS.bombs + ' left: come round again.' : ' No bombs left. Mission failed.'), 1); if (!RS.bombs && !RS.drops.some(q => !q.done)) RS.state = 'lost'; } } }
+      if (d < 7 && !RS.hit) { this.ev({k: 'boom', x: T.x, y: T.y, big: 1}); RS.hit = 1; RS.acc = d; RS.score += Math.max(500, 3000 - m * 50); this.rsMsg('DIRECT HIT on the weapons works (' + m + ' m off)! Now bring her home: land at the airbase to finish the mission.', 1); }
+      else { this.ev({k: 'boom', x: bm.x, y: bm.y, s: 3}); if (!RS.hit) this.rsMsg('Bomb missed by ' + m + ' m.' + (RS.bombs ? ' ' + RS.bombs + ' left: come round again.' : ' No bombs left: fly back to the airbase and land to rearm.'), 1); } } }
+  if (RS.drops.length > 12) RS.drops = RS.drops.filter(q => !q.done);
 };
 Sim.prototype.setupPlayer = function (p) {
   const s = p.spawn;
@@ -2831,13 +2848,14 @@ Sim.prototype.issue = function (c, pi) {
     case 'rsesc': { const R = this.rs, u = R && this.rsSoldier(pi), P = R && R.pads && R.pads.fighter; if (!u || R.esc || Math.hypot(u.x - P.x, u.y - P.y) > 3) break; if (!R.gear[pi]) { this.rsMsg('Get your flight gear from the locker first.', 0, pi); break; }
       this.rsDrop(pi); const e = this.addUnit('fighter', pi, P.x, P.y); if (!e) break; e.h = 0; e.z = Math.max(0, hAt(this.M, P.x, P.y)) + .35; e.sp = 0; e.sq = 0; e.rwy = 1; R.esc = {p: pi, id: e.id}; for (let i = 0; i < this.players.length - 1; i++) this.rsMsg(i === pi ? 'You strap into the escort fighter. Stay close to the bomber.' : this.players[pi].name + ' is flying escort.', 0, i); break; }
     case 'rssw': { const R = this.rs; if (!R || R.seat[pi] !== 'pilot' || !R.eng) break; const k = String(c.k || '');
+      if ((k === 'batt' || k === 'pump') && R.f && !R.f.gnd) { this.rsMsg('Not in the air!', 0, pi); break; }
       if (k === 'batt') { R.batt = R.batt ? 0 : 1; this.rsMsg('Battery ' + (R.batt ? 'ON' : 'off') + '.', 0); }
       else if (k === 'pump') { R.pump = R.pump ? 0 : 1; this.rsMsg('Fuel pumps ' + (R.pump ? 'ON' : 'off') + '.', 0); }
       else if (/^e[1-4]$/.test(k)) { const i = +k[1] - 1; if (!R.batt || !R.pump) { if (!R.nagT || this.t - R.nagT > 2) { R.nagT = this.t; this.rsMsg('Nothing happens: battery and fuel pumps first (1, 2).', 0, pi); } break; } R.estT[i] = this.t; }
       break; }
     case 'rsdrop': { const R = this.rs, B = this.rsB, sid = R && R.seat[pi]; if (!R || !B || R.state !== 'fly' || !(R.bombs > 0) || !R.f || R.f.gnd) break;
       const bomb = Object.keys(R.seat).some(k => R.seat[k] === 'bomb'); if (!(sid === 'bomb' || (sid === 'pilot' && !bomb))) break; if (R.dropT && R.t - R.dropT < 1.2) break; R.dropT = R.t;
-      R.bombs--; const v = this.rsV || {x: 0, y: 0, z: 0}; R.drops.push({x: B.x, y: B.y, z: B.z - .6, vx: v.x, vy: v.y, vz: v.z || 0}); this.rsMsg('BOMB AWAY! (' + R.bombs + ' left)', 1); break; }
+      R.bombs--; const v = this.rsV || {x: 0, y: 0, z: 0}; R.drops.push({x: B.x, y: B.y, z: B.z - .6, vx: v.x, vy: v.y, vz: v.z || 0}); this.ev({k: 'rsbomb', x: +B.x.toFixed(2), y: +B.y.toFixed(2), z: +(B.z - .6).toFixed(2), vx: +v.x.toFixed(3), vy: +v.y.toFixed(3), vz: +(v.z || 0).toFixed(3)}); this.rsMsg('BOMB AWAY! (' + R.bombs + ' left)', 1); break; }
     case 'rsctl': { const R = this.rs; if (R && R.seat[pi] === 'pilot') { R.inp = clamp(+c.v || 0, -1, 1); R.ti = clamp(+c.t || 0, -1, 1); R.pi = clamp(+c.p || 0, -1, 1); } break; }
     case 'rsjam': { const R = this.rs; if (R && R.seat[pi] === 'radio') R.jamF = clamp(+c.f || 0, 0, 1); break; }
     case 'rsfire': { const R = this.rs, sid = R && R.seat[pi], S2 = sid && RS_SEATS[sid], B = this.rsB; if (!S2 || !S2.gun || !B || (R.gcd[pi] || 0) > this.t) break; R.gcd[pi] = this.t + .1; const wy = +c.yaw || 0, wp = clamp(+c.pitch || 0, -1, 1), hd = this.rsHd || 0, sx = S2.x * .2, sz = S2.z * .2, ox = B.x + Math.cos(hd) * sx - Math.sin(hd) * sz, oy = B.y + Math.sin(hd) * sx + Math.cos(hd) * sz, oz = B.z + 1, dx = Math.cos(wy) * Math.cos(wp), dy = Math.sin(wy) * Math.cos(wp), dz = Math.sin(wp), sp = 38, vB = this.rsV || {x: 0, y: 0}; R.bullets.push({x: ox, y: oy, z: oz, vx: dx * sp + vB.x, vy: dy * sp + vB.y, vz: dz * sp, t: 0}); this.ev({k: 'rstr', x0: ox, y0: oy, z0: oz, x1: ox + dx * 16, y1: oy + dy * 16, z1: oz + dz * 16, c: 'g', g: sid}); break; }
@@ -8653,7 +8671,8 @@ Renderer.prototype.loadWorld = function (view) {
 Renderer.prototype.applyLook = function (M, N) {
   let k = 'classic';
   if (window.TOON) k = 'toon'; else if (LOOK.neo) { let sn = 0; for (let i = 0; i < M.bio.length; i += 7) if (M.bio[i] === BIO.SNOW) sn++; k = sn * 7 > M.bio.length * .3 ? 'overcast' : ['day', 'day', 'golden', 'day', 'overcast'][Math.abs(M.seed | 0) % 5]; }
-  const P = this.lookP = LOOKS[k]; this.lookK = k;
+  if (M.rsRoute && k !== 'classic' && k !== 'toon') k = 'day';
+  const P = this.lookP = M.rsRoute && k === 'day' ? Object.assign({}, LOOKS.day, {top: 0x2a5fb4, hor: 0xa9c9ea}) : LOOKS[k]; this.lookK = k;
   SUN.set(P.sun[0], P.sun[1], P.sun[2]).normalize();
   const U = this.sky.material.uniforms; U.top.value.set(P.top); U.hor.value.set(P.hor);
   this.scene.background.set(P.hor); this.scene.fog.color.set(P.hor);
@@ -9731,6 +9750,10 @@ Renderer.prototype.handle = function (ev, view) {
     case 'rstr': if (ev.g) { RS_GFLASH[ev.g] = performance.now(); if (typeof Direct !== 'undefined' && Direct.mode === 'crew' && !(Direct.seatId === ev.g)) { const t0 = RS_GFLASH['_s'] || 0; if (performance.now() - t0 > 90) { RS_GFLASH['_s'] = performance.now(); try { Sfx.beep(200 + Math.random() * 30); } catch (e) {} } } } this.tracer(ev.x0, ev.z0, ev.y0, ev.x1, ev.z1, ev.y1, ev.c === 'g' ? [1, .85, .35] : [1, .35, .25], ev.c === 'g' ? .3 : .4); break;
     case 'rshit': this.muzzleFlash(ev.x, ev.y, ev.z, .8); break;
     case 'tracer': { const a = E.get(ev.a); if (a) { this.tracer(a.rx, a.rz + .5, a.ryy, ev.x, ev.z, ev.y, ev.ty === 'laser' ? [.35, 1, .95] : [1, .9, .5]); Sfx.shot(ev.ty, a.x, a.y, this); } break; }
+    case 'rsbomb': { const G = new THREE.Group(), dk = new THREE.MeshLambertMaterial({color: 0x2c302c}), body = new THREE.Mesh(new THREE.CapsuleGeometry(.12, .5, 4, 10), dk); body.rotation.x = Math.PI / 2; G.add(body);
+      for (const a of [0, Math.PI / 2]) { const f = new THREE.Mesh(new THREE.BoxGeometry(.34, .02, .2), dk); f.rotation.z = a; f.position.z = -.4; G.add(f); }
+      const rg = new THREE.Mesh(new THREE.CylinderGeometry(.125, .125, .07, 10), new THREE.MeshLambertMaterial({color: 0xb02a20})); rg.rotation.x = Math.PI / 2; rg.position.z = .2; G.add(rg); G.scale.setScalar(2.2); G.position.set(ev.x, ev.z, ev.y); this.scene.add(G);
+      (this._rsBombQ = this._rsBombQ || []).push({m: G, x: ev.x, y: ev.y, z: ev.z, vx: ev.vx, vy: ev.vy, vz: ev.vz}); try { Sfx.beep(700); } catch (e) {} break; }
     case 'boom': {
       const y = ev.z === undefined ? Math.max(0, hAt(M, ev.x, ev.y)) : ev.z;
       if (ev.big) { this.mushroom(ev.x, Math.max(0, hAt(M, ev.x, ev.y)), ev.y); this.paintScar(ev.x, ev.y, 18); Sfx.nuke(); break; }
@@ -11033,6 +11056,7 @@ const Direct = {
 
   // ---------- per-frame ----------
   update(dt, g) {
+    if (g.redstar) this.rsWorldFx(dt, g);
     if (g.redstar && this.mode === 'soldier' && this.rsGroundTick(g)) return;
     if (this.mode === 'fpv') this.fpvT = performance.now();
     const e = g.view.ents.get(this.id);
@@ -11366,11 +11390,49 @@ const Direct = {
     if (bf.st === 'drop' && bf.rider === this.ui.g.me) return (this.bombY === undefined ? .66 : this.bombY) + .64;
     return y;
   },
+  rsImpact() { // where a bomb released this instant would land
+    const g = this.ui.g, R = g.view.rs || {}, at = rsAtt(R), b0 = this.e; if (!at || at.g || !b0) return null;
+    const bx = b0.rx === undefined ? b0.x : b0.rx, by = b0.ryy === undefined ? b0.y : b0.ryy, bz = b0.rz === undefined ? b0.z : b0.rz, hd = b0.ry === undefined ? b0.h : b0.ry, hc = Math.cos(at.p || 0), sp = at.s || 0;
+    return rsBombPath(g.view.M, bx, by, bz - .6, Math.cos(hd) * sp * hc, Math.sin(hd) * sp * hc, at.vz || 0, .08);
+  },
+  rsWorldFx(dt, g) { // falling bombs, chimney smoke over the works, and the fire after a hit
+    const Rd = g.R, V = g.view, R = V.rs || {}, M = V.M, T = M && M.rsTarget; if (!T || !Rd || !Rd.scene) return; if (R.pads) this.rsPads(g, R);
+    let X = Rd._rsFx; if (!X) { const cv = document.createElement('canvas'); cv.width = cv.height = 64; const x = cv.getContext('2d'), gr = x.createRadialGradient(32, 32, 2, 32, 32, 30); gr.addColorStop(0, 'rgba(255,255,255,.9)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = gr; x.fillRect(0, 0, 64, 64);
+      const tx = new THREE.CanvasTexture(cv); tx.colorSpace = THREE.SRGBColorSpace; const tz = Math.max(0, hAt(M, T.x, T.y)); X = Rd._rsFx = {sm: [], fire: [], bombs: [], t: 0};
+      const puff = (col, op) => { const sp = new THREE.Sprite(new THREE.SpriteMaterial({map: tx, color: col, transparent: true, depthWrite: false, opacity: op})); Rd.scene.add(sp); return sp; };
+      for (let i = 0; i < 16; i++) X.sm.push({sp: puff(0x77756f, .5), bx: T.x + (i % 2 ? 2.5 : -2), by: T.y + (i % 2 ? 3 : -3), bz: tz + (i % 2 ? 7.5 : 7), ph: i / 16});
+      for (let i = 0; i < 24; i++) { const q = {sp: puff(i % 3 ? 0x1c1a18 : 0xff7a2a, .8), bx: T.x + (Math.random() - .5) * 8, by: T.y + (Math.random() - .5) * 8, bz: tz + .5, ph: i / 24, f: i % 3 ? 0 : 1}; q.sp.visible = false; X.fire.push(q); } }
+    X.t += dt; if (Rd._rsBombQ) { X.bombs.push(...Rd._rsBombQ); Rd._rsBombQ = null; }
+    for (const q of X.sm) { const k = (X.t * .06 + q.ph) % 1; q.sp.visible = !R.hit; q.sp.position.set(q.bx + k * 9, q.bz + k * 9, q.by + k * 2); const sc = 1 + k * 5; q.sp.scale.set(sc, sc, 1); q.sp.material.opacity = .5 * (1 - k); }
+    for (const q of X.fire) { q.sp.visible = !!R.hit; if (!R.hit) continue; const k = (X.t * (q.f ? .5 : .05) + q.ph) % 1;
+      if (q.f) { q.sp.position.set(q.bx, q.bz + 1 + k * 3, q.by); const sc = 4 * (1 - k * .6); q.sp.scale.set(sc, sc * 1.4, 1); q.sp.material.opacity = .9 * (1 - k); }
+      else { q.sp.position.set(q.bx + k * 30, q.bz + 2 + k * 60, q.by + k * 8); const sc = 6 + k * 34; q.sp.scale.set(sc, sc, 1); q.sp.material.opacity = .75 * (1 - k * k); } }
+    for (let i = X.bombs.length - 1; i >= 0; i--) { const b = X.bombs[i], st = Math.max(1, Math.ceil(dt / .025)); for (let k = 0; k < st; k++) { b.vz -= RS_G * dt / st; b.x += b.vx * dt / st; b.y += b.vy * dt / st; b.z += b.vz * dt / st; }
+      b.m.position.set(b.x, b.z, b.y); b.m.lookAt(b.x + b.vx, b.z + b.vz, b.y + b.vy); b.wt = (b.wt || 0) - dt; if (b.wt <= 0) { b.wt = .22; b.wf = (b.wf || 1500) * .93; try { Sfx.beep(Math.round(b.wf)); } catch (e) {} } b.age = (b.age || 0) + dt;
+      if (b.z <= Math.max(0, hAt(M, b.x, b.y)) || b.age > 30) { Rd.scene.remove(b.m); X.bombs.splice(i, 1); } }
+  },
+  rsPanelDraw(I) { // the cockpit panel shows the real instruments
+    const P = I.rsPanel; if (!P) return; const now = performance.now(); if (now - P.t < 120) return; P.t = now;
+    const g = this.ui.g, R = g.view.rs || {}, at = rsAtt(R) || {}, b0 = this.e || {}, c = P.cv.getContext('2d'), W = 768, H = 160, hd = b0.ry === undefined ? b0.h || 0 : b0.ry, bz = b0.rz === undefined ? b0.z || 0 : b0.rz;
+    c.fillStyle = '#15181a'; c.fillRect(0, 0, W, H); c.textAlign = 'center';
+    const dial = (x, lab, v, max, txt, col) => { const y = 72, r = 50, a0 = Math.PI * .75; c.fillStyle = '#05070a'; c.beginPath(); c.arc(x, y, r, 0, 6.2832); c.fill(); c.strokeStyle = '#59615c'; c.lineWidth = 3; c.stroke(); c.strokeStyle = '#cfe8cf'; c.lineWidth = 2;
+      for (let i = 0; i <= 10; i++) { const a = a0 + i * Math.PI * .15, r1 = r - (i % 5 ? 10 : 16); c.beginPath(); c.moveTo(x + Math.cos(a) * (r - 4), y + Math.sin(a) * (r - 4)); c.lineTo(x + Math.cos(a) * r1, y + Math.sin(a) * r1); c.stroke(); }
+      const a = a0 + clamp(v / max, 0, 1) * Math.PI * 1.5; c.strokeStyle = col || '#ffb35a'; c.lineWidth = 4; c.beginPath(); c.moveTo(x, y); c.lineTo(x + Math.cos(a) * (r - 12), y + Math.sin(a) * (r - 12)); c.stroke(); c.fillStyle = '#cfe8cf'; c.beginPath(); c.arc(x, y, 4, 0, 6.2832); c.fill();
+      c.font = '700 14px system-ui'; c.fillText(txt, x, y + 32); c.fillStyle = '#9fb0a8'; c.fillText(lab, x, 150); };
+    dial(60, 'SPEED', (at.s || 0) * 110, 600, Math.round((at.s || 0) * 110), !at.g && (at.s || 0) < 1.8 ? '#ff5a4a' : 0); dial(172, 'ALT', bz * 25, 6000, Math.round(bz * 25));
+    { const x = 290, y = 72, r = 52; c.save(); c.beginPath(); c.arc(x, y, r, 0, 6.2832); c.clip(); c.translate(x, y); c.rotate(-(at.b || 0)); const off = (at.p || 0) * 100; c.fillStyle = '#3d7bd6'; c.fillRect(-r * 2, -r * 3 + off, r * 4, r * 3); c.fillStyle = '#7a5530'; c.fillRect(-r * 2, off, r * 4, r * 3); c.strokeStyle = '#fff'; c.lineWidth = 2; c.beginPath(); c.moveTo(-r, off); c.lineTo(r, off); c.stroke(); c.restore();
+      c.strokeStyle = '#ffd23a'; c.lineWidth = 4; c.beginPath(); c.moveTo(x - 30, y); c.lineTo(x - 10, y); c.moveTo(x + 10, y); c.lineTo(x + 30, y); c.stroke(); c.strokeStyle = '#59615c'; c.lineWidth = 3; c.beginPath(); c.arc(x, y, r, 0, 6.2832); c.stroke(); c.fillStyle = '#9fb0a8'; c.font = '700 14px system-ui'; c.fillText('HORIZON', x, 150); }
+    const deg = ((hd * 57.2958 + 90) % 360 + 360) % 360;
+    dial(408, 'CLIMB', (at.vz || 0) * 25 + 100, 200, Math.round((at.vz || 0) * 25)); dial(520, 'HEADING', deg, 360, Math.round(deg) + '\u00b0', '#9fe6ff'); dial(632, 'THROTTLE', (R.thr || 0) * 100, 100, Math.round((R.thr || 0) * 100) + '%', '#5aff8a');
+    for (let i = 0; i < 4; i++) { const v = Math.max(.06, (R.eng || [1, 1, 1, 1])[i] || 0); c.fillStyle = '#05070a'; c.fillRect(694 + i * 13, 22, 9, 96); c.fillStyle = v >= 1 ? '#5aff8a' : v > .07 ? '#ffd23a' : '#7a2a22'; c.fillRect(694 + i * 13, 22 + 96 * (1 - v), 9, 96 * v); }
+    const fu = clamp((R.fuel === undefined ? 100 : R.fuel) / 100, 0, 1); c.fillStyle = '#05070a'; c.fillRect(750, 22, 9, 96); c.fillStyle = fu < .25 ? '#ff5a4a' : '#9fe6ff'; c.fillRect(750, 22 + 96 * (1 - fu), 9, 96 * fu); c.fillStyle = '#9fb0a8'; c.font = '700 12px system-ui'; c.fillText('ENG', 718, 150); c.fillText('F', 755, 150);
+    P.tx.needsUpdate = true;
+  },
   rsClouds(R, cam) { // soft cloud puffs in a band around 30-60 high, recycled around the camera so they never run out
     let C = R._rsCl; if (!C) { const cv = document.createElement('canvas'); cv.width = cv.height = 128; const x = cv.getContext('2d'); for (let i = 0; i < 9; i++) { const px = 30 + Math.random() * 68, py = 40 + Math.random() * 48, r = 22 + Math.random() * 22, gr = x.createRadialGradient(px, py, 0, px, py, r); gr.addColorStop(0, 'rgba(255,255,255,.55)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = gr; x.fillRect(0, 0, 128, 128); }
       const tx = new THREE.CanvasTexture(cv); tx.colorSpace = THREE.SRGBColorSpace; C = R._rsCl = {list: [], W: 520}; const sh = [0xffffff, 0xeef2f6, 0xdde3ea];
-      for (let i = 0; i < 160; i++) { const m = new THREE.SpriteMaterial({map: tx, color: sh[i % 3], transparent: true, depthWrite: false, opacity: .85, fog: true}), sp = new THREE.Sprite(m), sc = 30 + Math.random() * 60; sp.scale.set(sc, sc * .55, 1);
-        sp.position.set(cam.position.x + (Math.random() - .5) * C.W * 2, 30 + Math.random() * 32, cam.position.z + (Math.random() - .5) * C.W * 2); R.scene.add(sp); C.list.push(sp); } }
+      for (let i = 0; i < 120; i++) { const m = new THREE.SpriteMaterial({map: tx, color: sh[i % 3], transparent: true, depthWrite: false, opacity: .75, fog: true}), sp = new THREE.Sprite(m), sc = 30 + Math.random() * 60; sp.scale.set(sc, sc * .55, 1);
+        sp.position.set(cam.position.x + (Math.random() - .5) * C.W * 2, 92 + Math.random() * 40, cam.position.z + (Math.random() - .5) * C.W * 2); R.scene.add(sp); C.list.push(sp); } }
     const W = C.W; for (const sp of C.list) { const dx = sp.position.x - cam.position.x, dz = sp.position.z - cam.position.z; if (dx > W) sp.position.x -= W * 2; else if (dx < -W) sp.position.x += W * 2; if (dz > W) sp.position.z -= W * 2; else if (dz < -W) sp.position.z += W * 2; }
   },
   rsGroundTick(g) { // on foot at the airbase: prompts, and hopping into the bomber or the fighter
@@ -11393,6 +11455,17 @@ const Direct = {
     for (const s2 of [-.12, .12]) { const r = new THREE.Mesh(new THREE.BoxGeometry(.03, Lh, .03), mm(0xb8bcc0)); r.position.set(0, Lh / 2, s2); lad.add(r); } for (let y = .15; y < Lh; y += .18) { const r = new THREE.Mesh(new THREE.BoxGeometry(.02, .02, .24), mm(0xb8bcc0)); r.position.set(0, y, 0); lad.add(r); }
     lad.position.set(P.ladder.x, gl, P.ladder.y); lad.rotation.x = -.18; G.add(lad);
     const pad = new THREE.Mesh(new THREE.RingGeometry(1.4, 1.6, 32), new THREE.MeshBasicMaterial({color: 0xffd23a, side: THREE.DoubleSide})); pad.rotation.x = -Math.PI / 2; pad.position.set(P.fighter.x, z(P.fighter.x, P.fighter.y) + .03, P.fighter.y); G.add(pad); Rd._rsPadRing = pad;
+    { const H0 = M.rsRoute[0], ax = H0[0] - 2, ay = H0[1], gz0 = z(ax + 20, ay) + .035, wh = new THREE.MeshBasicMaterial({color: 0xe8e8e0}), box = (w2, h2, d2, x, y2, zz, mat) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w2, h2, d2), mat); m.position.set(x, y2, zz); G.add(m); return m; };
+      for (let x = ax + 4; x < ax + 60; x += 3) box(1.3, .02, .1, x, gz0, ay, wh); // runway centreline, threshold bars and edge lights
+      for (const x of [ax + 1.2, ax + 61]) for (let k = -3; k <= 3; k++) if (k) box(1.6, .02, .15, x, gz0, ay + k * .37, wh);
+      const lg = new THREE.SphereGeometry(.07, 6, 5), la = new THREE.MeshBasicMaterial({color: 0xffe9a0}), le = new THREE.MeshBasicMaterial({color: 0x5aff8a}), lr = new THREE.MeshBasicMaterial({color: 0xff4a3a});
+      for (let x = ax; x <= ax + 62; x += 4) for (const s2 of [-1.8, 1.8]) { const m = new THREE.Mesh(lg, x === ax ? le : x >= ax + 60 ? lr : la); m.position.set(x, gz0 + .08, ay + s2); G.add(m); }
+      for (const hx of [ax + 8, ax + 16]) { const zb = z(hx, ay + 7), roof = new THREE.Mesh(new THREE.CylinderGeometry(2.06, 2.06, 6.15, 18, 1, false, 0, Math.PI), new THREE.MeshLambertMaterial({color: 0x59625a, side: THREE.DoubleSide})); roof.rotation.z = Math.PI / 2; roof.scale.x = .45; roof.position.set(hx, zb + 1.8, ay + 7); G.add(roof);
+        box(4.6, 1.45, .08, hx, zb + .73, ay + 4.96, mm(0x2b302c)); box(4.6, .08, .1, hx, zb + 1.5, ay + 4.95, mm(0xd8b23a)); for (let k = -2; k <= 2; k++) box(.05, 1.4, .1, hx + k * .92, zb + .72, ay + 4.94, mm(0x3c423d)); }
+      { const tx0 = ax + 26, ty0 = ay - 6.5, zb = z(tx0, ty0); box(2, .7, 2, tx0, zb + 4.35, ty0, new THREE.MeshLambertMaterial({color: 0x7fc4d8, transparent: true, opacity: .75})); box(2.25, .1, 2.25, tx0, zb + 4.75, ty0, mm(0x3c423d)); box(2.25, .1, 2.25, tx0, zb + 3.98, ty0, mm(0x3c423d)); box(.04, 1.2, .04, tx0 + .6, zb + 5.4, ty0, mm(0xb8bcc0)); const bl = new THREE.Mesh(lg, lr); bl.position.set(tx0 + .6, zb + 6.02, ty0); G.add(bl); }
+      { const wx = ax + 5, wy = ay - 3.2; box(.04, 1.6, .04, wx, gz0 + .8, wy, mm(0xb8bcc0)); const sock = new THREE.Mesh(new THREE.ConeGeometry(.13, .7, 8, 1, true), new THREE.MeshLambertMaterial({color: 0xff7a1a, side: THREE.DoubleSide})); sock.rotation.z = Math.PI / 2; sock.position.set(wx + .36, gz0 + 1.55, wy); G.add(sock); }
+      for (let k = 0; k < 5; k++) { const d = new THREE.Mesh(new THREE.CylinderGeometry(.13, .13, .38, 10), mm([0x7a2a1e, 0x3f5a3a, 0x3f5a3a, 0x5a5a5a, 0x7a2a1e][k])); d.position.set(P.locker.x + 1.6 + (k % 3) * .3, z(P.locker.x, P.locker.y) + .19, P.locker.y + .7 + ((k / 3) | 0) * .3); G.add(d); }
+      box(.9, .5, .6, P.locker.x - 1.5, z(P.locker.x, P.locker.y) + .25, P.locker.y + .6, mm(0x5a4a2a)); box(.6, .4, .5, P.locker.x - 1.5, z(P.locker.x, P.locker.y) + .7, P.locker.y + .6, mm(0x66552f)); }
     Rd.scene.add(G); Rd._rsPads = G;
   },
   drawRsGround(c, w, h) {
@@ -11441,7 +11514,7 @@ const Direct = {
     if (I.dust) { const tt = now; I.dust.position.set(Math.sin(tt * .13) * .2, Math.sin(tt * .21) * .06, Math.sin(tt * .17) * .12); I.dust.rotation.y = Math.sin(tt * .05) * .05; }
   },
   syncCrewPose(e) { const p = this.pose; p.x = e.rx === undefined ? e.x : e.rx; p.y = e.ryy === undefined ? e.y : e.ryy; p.z = e.rz === undefined ? e.z : e.rz; p.h = e.ry === undefined ? e.h : e.ry; p.p = 0; p.r = 0; p.tu = p.h; },
-  syncGuns(I) { // twin machine guns at the tail and waist stations; everyone sees them turn and fire
+  syncGuns(I) { this.rsPanelDraw(I); // twin machine guns at the tail and waist stations; everyone sees them turn and fire
     const V = this.ui.g.view, R = V.rs || {}, cr = V.crew || {}, me = this.ui.g.me, now = performance.now();
     if (!I.guns) { I.guns = {}; const mm = c => new THREE.MeshLambertMaterial({color: c}), dark = mm(0x23272a), steel = mm(0x50575c), fl = new THREE.MeshBasicMaterial({color: 0xffd27a, transparent: true, opacity: .95});
       for (const sid of ['tail', 'wl', 'wr']) { const S = RS_SEATS[sid], G = new THREE.Group(), A = new THREE.Group(); G.add(A); A.rotation.order = 'YZX';
@@ -11518,10 +11591,12 @@ const Direct = {
       const d = new THREE.Vector3(1, 0, 0).applyQuaternion(qL).applyQuaternion(qP), u = new THREE.Vector3(0, 1, 0).applyQuaternion(qP); cam.up.copy(u); cam.lookAt(cam.position.x + d.x * 50, cam.position.y + d.y * 50, cam.position.z + d.z * 50);
       fw.x = d.x; fw.y = d.z; fw.z = d.y; this.viewYaw = Math.atan2(d.z, d.x); this.viewPitch = Math.asin(clamp(d.y, -1, 1)); this.camP = {x: cam.position.x, y: cam.position.z, z: cam.position.y};
       this.rsClouds(g.R, cam);
+      this.bsOn = false; if (this.seatId === 'bomb' && this.ads) { const ip = this.rsImpact(); if (ip) { this.bsOn = true; const k2 = Math.min(1, dt * 7), a = this.bsA || (this.bsA = {x: ip.x, y: ip.y, z: ip.z}); if (Math.hypot(ip.x - a.x, ip.y - a.y) > 40) { a.x = ip.x; a.y = ip.y; a.z = ip.z; } a.x += (ip.x - a.x) * k2; a.y += (ip.y - a.y) * k2; a.z += (ip.z - a.z) * k2;
+        cam.position.set(p.x + c * 2.6, p.z - .8, p.y + s * 2.6); cam.up.set(c, 0, s); cam.lookAt(a.x, a.z, a.y); const dd = new THREE.Vector3(); cam.getWorldDirection(dd); fw.x = dd.x; fw.y = dd.z; fw.z = dd.y; this.camP = {x: cam.position.x, y: cam.position.z, z: cam.position.y}; } }
     }
     if (this.mode === 'crew') this.crewCamFx(dt, cam);
     { const za = this.mode === 'crew' && this.ads && this.seatId ? 1 : 0; this.gunZ = (this.gunZ || 0) + (za - (this.gunZ || 0)) * Math.min(1, dt * 10); }
-    cam.fov = 72 - (this.mode === 'crew' ? this.gunZ * 44 : 0); cam.near = .1; if (this.mode === 'crew') cam.far = Math.max(cam.far, 3000); cam.updateProjectionMatrix();
+    cam.fov = 72 - (this.mode === 'crew' ? this.gunZ * (this.bsOn ? 24 : 44) : 0); cam.near = .1; if (this.mode === 'crew') cam.far = Math.max(cam.far, 3000); cam.updateProjectionMatrix();
     if (this.mode === 'crew') { if (this.dropT !== undefined && this.dropT > .8) this.rsCutscene(dt, cam, g); else if (this.fin) this.rsCutEnd(); }
     R.camTarget = R.camTarget || new THREE.Vector3(); R.camTarget.set(p.x, p.z, p.y);
   },
@@ -12334,7 +12409,7 @@ const Direct = {
     // status strip
     c.textAlign = 'left'; c.font = '700 13px system-ui'; let y = 34; const line = (txt, col) => { c.fillStyle = col || '#cfd8dc'; c.fillText(txt, 22, y); y += 18; };
     if (R.hull !== undefined) {
-      line('SCORE ' + (R.score || 0) + (R.streak > 1 ? '  x' + Math.min(4, R.streak) + ' STREAK' : '') + (R.wave ? '  · WAVE ' + R.wave : ''), '#ffd54f'); line('TO TARGET ' + Math.max(0, Math.round((1 - (R.prog || 0)) * 100)) + '%', '#9fe39f'); line('HULL ' + Math.round(R.hull) + '%', R.hull < 35 ? '#ff6a5a' : ''); line('FUEL ' + Math.round(R.fuel) + '%', R.fuel < 25 ? '#ff6a5a' : '');
+      line('SCORE ' + (R.score || 0) + (R.streak > 1 ? '  x' + Math.min(4, R.streak) + ' STREAK' : '') + (R.wave ? '  · WAVE ' + R.wave : ''), '#ffd54f'); line(R.hit ? 'TARGET DESTROYED · land at the airbase' : !(R.bombs > 0) ? 'NO BOMBS · land at the airbase to rearm' : 'TARGET ' + (Math.round((R.dist || 0) * 5 / 100) / 10) + ' km · BOMBS ' + R.bombs, '#9fe39f'); if (R.spares !== undefined) line('SPARE AIRCRAFT ' + R.spares); if (R.svc) line('REARMING ' + Math.round(R.svc / 6 * 100) + '%', '#ffd23a'); line('HULL ' + Math.round(R.hull) + '%', R.hull < 35 ? '#ff6a5a' : ''); line('FUEL ' + Math.round(R.fuel) + '%', R.fuel < 25 ? '#ff6a5a' : '');
       const nf = Array.isArray(R.fighters) ? R.fighters.length : R.fighters; if (nf) line('BANDITS ' + nf, '#ff8a65'); if (R.lockOn) line('RADAR LOCK ' + Math.max(0, Math.round(35 - R.lockT)) + 's', '#ff5a4a'); if (R.beams && R.beams.length) line('SEARCHLIGHTS', '#ffe27a');
       if (R.storm) line('STORM', '#9fc9ff'); if (RS_COMPLICATIONS && R.grace && R.t < R.grace) line('BANDITS IN ' + Math.ceil(R.grace - R.t) + 's', '#9fe39f'); if (R.door) line('BAY DOOR JAMMED', '#ffb74d'); if (R.bf && R.bf.st === 'fault') line('BOMB ELECTRONICS DEAD ' + Math.round(R.bf.p * 100) + '%', '#ff6b6b'); for (const l of R.leaks || []) line(l.k === 'fire' ? 'FIRE: ' + l.n : l.k.toUpperCase() + ' LEAK: ' + l.n, '#ffb74d');
       for (const k of Object.keys(R.hurt || {})) if (+k !== me) line(((V.players[k] && V.players[k].name) || 'CREW') + (R.hurt[k].st === 'hurt' ? ' HURT' : R.hurt[k].st === 'down' ? ' DOWN' : ' OUT'), '#ff6a5a');
@@ -12358,6 +12433,7 @@ const Direct = {
       c.fillStyle = '#fff'; c.font = '800 20px system-ui'; c.textAlign = 'center'; if (hs.st === 'down') c.fillText('YOU ARE DOWN: wait for a crewmate to treat you (' + Math.max(0, Math.ceil(hs.bleed)) + 's)', w / 2, h * .3); else if (hs.st === 'out') c.fillText('YOU ARE OUT FOR THE MISSION', w / 2, h * .3); }
     c.fillStyle = 'rgba(255,255,255,.8)'; c.fillRect(w / 2 - 1.5, h / 2 - 1.5, 3, 3);
     if (this.look !== 'locked' && this.look !== 'touch') { c.font = '600 13px system-ui'; c.textAlign = 'center'; c.fillStyle = 'rgba(255,255,255,.75)'; c.fillText(this.look === 'free' ? 'Cursor free: press Alt or click to look again' : 'Click to lock the mouse for looking', w / 2, h - 90); }
+    if (R.state === 'won' || R.state === 'lost') { const wn = R.state === 'won', y0 = h * .26; c.save(); c.shadowBlur = 0; c.fillStyle = 'rgba(0,0,0,.74)'; c.fillRect(0, y0, w, 150); c.fillStyle = wn ? '#ffd54f' : '#ff5a4a'; c.fillRect(0, y0, w, 3); c.fillRect(0, y0 + 147, w, 3); c.textAlign = 'center'; c.font = '900 40px system-ui'; c.fillText(wn ? 'MISSION COMPLETE' : 'MISSION LOST', w / 2, y0 + 58); c.fillStyle = '#fff'; c.font = '700 19px system-ui'; c.fillText('Score ' + (R.score || 0) + (wn && R.medal ? '  ·  ' + R.medal : ''), w / 2, y0 + 96); c.font = '600 14px system-ui'; c.fillStyle = '#cfd8dc'; c.fillText('Esc: menu', w / 2, y0 + 126); c.restore(); }
     this.drawLounge(c, w, h, now);
     c.restore();
   },
@@ -12385,24 +12461,30 @@ const Direct = {
   drawFlight(c, w, h, sid) { // target marker for everyone, instruments for the pilot, the bombsight for the bombardier
     const g = this.ui.g, V = g.view, R = V.rs || {}, M = V.M, T = M.rsTarget, at = rsAtt(R) || {}, b0 = this.e; if (!T || !b0) return;
     const bx = b0.rx === undefined ? b0.x : b0.rx, by = b0.ryy === undefined ? b0.y : b0.ryy, bz = b0.rz === undefined ? b0.z : b0.rz, hd = b0.ry === undefined ? b0.h : b0.ry;
-    c.save(); c.textAlign = 'center';
-    const st = this.toScreen(T.x, T.y, Math.max(0, hAt(M, T.x, T.y)) + 2); if (st) { c.strokeStyle = '#ff3b30'; c.lineWidth = 2; c.beginPath(); c.moveTo(st.x, st.y - 12); c.lineTo(st.x + 10, st.y); c.lineTo(st.x, st.y + 12); c.lineTo(st.x - 10, st.y); c.closePath(); c.stroke(); c.fillStyle = '#ff6b5f'; c.font = '800 12px system-ui'; c.fillText('TARGET ' + (Math.round(Math.hypot(T.x - bx, T.y - by) * 5 / 100) / 10) + ' km', st.x, st.y - 18); }
-    if (sid === 'pilot' || sid === 'bomb') { const brg = angDiff(hd, Math.atan2(T.y - by, T.x - bx)), y0 = 28; c.fillStyle = 'rgba(0,0,0,.45)'; c.fillRect(w / 2 - 160, y0 - 16, 320, 24); c.fillStyle = '#9fe6ff'; c.font = '700 12px system-ui';
-      c.fillText((brg > .05 ? 'TARGET ▶ ' : brg < -.05 ? '◀ TARGET ' : 'TARGET AHEAD ') + Math.round(Math.abs(brg) * 57.3) + '°', w / 2, y0); }
+    c.save(); c.textAlign = 'center'; const goHome = !!R.hit || !(R.bombs > 0), H0 = M.rsRoute[0], G0 = goHome ? {x: H0[0] + 28, y: H0[1]} : T, GL = goHome ? 'AIRBASE' : 'TARGET', GC = goHome ? '#5aff8a' : '#ff3b30';
+    const st = this.toScreen(G0.x, G0.y, Math.max(0, hAt(M, G0.x, G0.y)) + 2); if (st) { c.strokeStyle = GC; c.lineWidth = 2; c.beginPath(); c.moveTo(st.x, st.y - 12); c.lineTo(st.x + 10, st.y); c.lineTo(st.x, st.y + 12); c.lineTo(st.x - 10, st.y); c.closePath(); c.stroke(); c.fillStyle = goHome ? '#8dffb0' : '#ff6b5f'; c.font = '800 12px system-ui'; c.fillText(GL + ' ' + (Math.round(Math.hypot(G0.x - bx, G0.y - by) * 5 / 100) / 10) + ' km', st.x, st.y - 18); }
+    if (sid === 'pilot' || sid === 'bomb') { const brg = angDiff(hd, Math.atan2(G0.y - by, G0.x - bx)), y0 = 28; c.fillStyle = 'rgba(0,0,0,.45)'; c.fillRect(w / 2 - 160, y0 - 16, 320, 24); c.fillStyle = '#9fe6ff'; c.font = '700 12px system-ui';
+      c.fillText((brg > .05 ? GL + ' ▶ ' : brg < -.05 ? '◀ ' + GL + ' ' : GL + ' AHEAD ') + Math.round(Math.abs(brg) * 57.3) + '°' + (goHome ? '  ·  land on the runway, stop, S brakes' : ''), w / 2, y0); }
     if (sid === 'pilot') { const L = (t, v, y) => { c.fillText(t, w - 120, y); c.fillText(v, w - 40, y); }; c.textAlign = 'right'; c.fillStyle = 'rgba(0,0,0,.5)'; c.fillRect(w - 200, h / 2 - 70, 180, 132); c.fillStyle = '#d8ffe0'; c.font = '700 14px system-ui';
       L('SPEED', Math.round((at.s || 0) * 110) + ' km/h', h / 2 - 48); L('ALT', Math.round(bz * 25) + ' m', h / 2 - 26); L('CLIMB', ((at.vz || 0) * 25).toFixed(0) + ' m/s', h / 2 - 4); L('THROTTLE', Math.round((R.thr || 0) * 100) + '%', h / 2 + 18); L('GROUND', Math.round((R.agl || 0) * 25) + ' m', h / 2 + 40);
       if (R.eng && R.eng.some(q => q < 1)) { const x0 = 24, y0 = h / 2 - 80; c.textAlign = 'left'; c.fillStyle = 'rgba(0,0,0,.6)'; c.fillRect(x0 - 10, y0 - 22, 270, 150); c.font = '800 14px system-ui'; c.fillStyle = '#ffd23a'; c.fillText('ENGINE START', x0, y0); c.font = '700 13px system-ui';
         const row = (i, t, ok, p) => { c.fillStyle = ok ? '#5aff8a' : p ? '#ffd23a' : '#cfd8dc'; c.fillText((ok ? '✔ ' : p ? '… ' : '• ') + t, x0, y0 + 22 + i * 19); };
         row(0, '1  Battery master', R.batt); row(1, '2  Fuel pumps', R.pump); for (let q = 0; q < 4; q++) row(2 + q, (q + 3) + '  hold: start engine ' + (q + 1) + (R.eng[q] > 0 && R.eng[q] < 1 ? ' ' + Math.round(R.eng[q] * 100) + '%' : ''), R.eng[q] >= 1, R.eng[q] > 0); c.textAlign = 'right'; }
-      if (!at.g && (at.s || 0) < 2.2) { c.textAlign = 'center'; c.fillStyle = '#ff5a4a'; c.font = '900 22px system-ui'; c.fillText('STALL', w / 2, h * .3); }
+      if (!at.g && (at.s || 0) < 1.9) { c.textAlign = 'center'; c.fillStyle = '#ff5a4a'; c.font = '900 22px system-ui'; c.fillText('STALL', w / 2, h * .3); }
+      else if (!at.g && (R.agl || 99) < 14 && (at.vz || 0) < -1.4) { c.textAlign = 'center'; c.fillStyle = '#ffb74d'; c.font = '900 20px system-ui'; c.fillText('SINK RATE · ease the nose up (R)', w / 2, h * .3); }
       // artificial horizon
       const r = 46, hx = 90, hy = h - 120; c.save(); c.beginPath(); c.arc(hx, hy, r, 0, 6.283); c.clip(); c.translate(hx, hy); c.rotate(-(at.b || 0)); const off = (at.p || 0) * 90; c.fillStyle = '#3d7bd6'; c.fillRect(-r * 2, -r * 2 + off, r * 4, r * 2); c.fillStyle = '#7a5530'; c.fillRect(-r * 2, off, r * 4, r * 2); c.strokeStyle = '#fff'; c.beginPath(); c.moveTo(-r, off); c.lineTo(r, off); c.stroke(); c.restore();
       c.strokeStyle = '#ffd23a'; c.lineWidth = 3; c.beginPath(); c.moveTo(hx - 26, hy); c.lineTo(hx - 8, hy); c.moveTo(hx + 8, hy); c.lineTo(hx + 26, hy); c.stroke(); c.lineWidth = 2; c.strokeStyle = '#fff'; c.beginPath(); c.arc(hx, hy, r, 0, 6.283); c.stroke();
-      c.textAlign = 'center'; c.fillStyle = '#fff'; c.font = '700 12px system-ui'; c.fillText(at.g ? 'W: throttle up · R: lift off at 60%+ speed' : 'W/S throttle · R/F pitch · A/D bank' + (Object.values(R.seat || {}).includes('bomb') ? '' : ' · B: drop bomb'), w / 2, h - 70); }
+      c.textAlign = 'center'; c.fillStyle = '#fff'; c.font = '700 12px system-ui'; c.fillText(at.g ? 'W: throttle · A/D: steer · R: lift off at 250 km/h · S: brakes' : 'W/S throttle · R/F pitch · A/D bank' + (Object.values(R.seat || {}).includes('bomb') ? '' : ' · B: drop bomb'), w / 2, h - 70); }
     if (sid === 'bomb' || sid === 'pilot') { // predicted impact
-      const v = this._bv2 || (this._bv2 = {t: 0, x: bx, y: by}), now = performance.now() / 1000; if (now - v.t > .1) { v.vx = (bx - v.x) / Math.max(.05, now - v.t); v.vy = (by - v.y) / Math.max(.05, now - v.t); v.x = bx; v.y = by; v.t = now; }
-      if (!at.g && v.vx !== undefined) { const ip = rsBombPath(M, bx, by, bz - .6, v.vx, v.vy, at.vz || 0, .08), si = this.toScreen(ip.x, ip.y, ip.z + .3), md = Math.round(Math.hypot(ip.x - T.x, ip.y - T.y) * 5);
+      const ip = this.rsImpact(); if (ip) { const si = this.toScreen(ip.x, ip.y, ip.z + .3), md = Math.round(Math.hypot(ip.x - T.x, ip.y - T.y) * 5);
         if (si) { c.strokeStyle = md < 35 ? '#5aff8a' : '#ffd23a'; c.lineWidth = 2; c.beginPath(); c.moveTo(si.x - 18, si.y); c.lineTo(si.x - 5, si.y); c.moveTo(si.x + 5, si.y); c.lineTo(si.x + 18, si.y); c.moveTo(si.x, si.y - 18); c.lineTo(si.x, si.y - 5); c.moveTo(si.x, si.y + 5); c.lineTo(si.x, si.y + 18); c.stroke(); c.beginPath(); c.arc(si.x, si.y, 9, 0, 6.283); c.stroke(); }
+        const fx = Math.cos(hd), fy = Math.sin(hd), alo = (T.x - ip.x) * fx + (T.y - ip.y) * fy, lat = -(T.x - ip.x) * fy + (T.y - ip.y) * fx, tgo = alo / Math.max(.5, at.s || 0), cue = goHome ? '' : md < 35 ? 'RELEASE!' : Math.abs(lat) > 5 ? 'STEER ' + (lat > 0 ? 'RIGHT' : 'LEFT') + ' ' + Math.round(Math.abs(lat) * 5) + ' m' : tgo > 0 ? 'ON LINE · release in ' + tgo.toFixed(1) + ' s' : 'OVERSHOT · come round again';
+        if (this.bsOn) { const cx = w / 2, cy = h / 2, r0 = Math.min(w, h) * .45; c.save(); c.shadowBlur = 0; c.fillStyle = 'rgba(4,6,8,.94)'; c.beginPath(); c.rect(0, 0, w, h); c.arc(cx, cy, r0, 0, 6.2832, true); c.fill('evenodd'); c.strokeStyle = '#0f1214'; c.lineWidth = 8; c.beginPath(); c.arc(cx, cy, r0, 0, 6.2832); c.stroke();
+          c.strokeStyle = 'rgba(255,170,70,.85)'; c.lineWidth = 1.4; c.beginPath(); c.moveTo(cx - r0, cy); c.lineTo(cx - 16, cy); c.moveTo(cx + 16, cy); c.lineTo(cx + r0, cy); c.moveTo(cx, cy - r0); c.lineTo(cx, cy - 16); c.moveTo(cx, cy + 16); c.lineTo(cx, cy + r0);
+          for (let i = 1; i <= 4; i++) { const q = i * r0 / 5; c.moveTo(cx - 6, cy - q); c.lineTo(cx + 6, cy - q); c.moveTo(cx - 6, cy + q); c.lineTo(cx + 6, cy + q); c.moveTo(cx - q, cy - 6); c.lineTo(cx - q, cy + 6); c.moveTo(cx + q, cy - 6); c.lineTo(cx + q, cy + 6); } c.stroke(); c.beginPath(); c.arc(cx, cy, 16, 0, 6.2832); c.stroke();
+          c.textAlign = 'center'; c.font = '900 22px system-ui'; c.fillStyle = md < 35 ? '#5aff8a' : '#ffd23a'; c.fillText(cue + (md < 35 ? '  (click)' : ''), cx, cy - r0 + 46); c.font = '700 13px system-ui'; c.fillStyle = 'rgba(255,200,130,.9)'; c.fillText('BOMBSIGHT · the cross is where the bomb lands · right click to leave', cx, cy + r0 - 22); c.restore(); }
+        else if (cue && Math.hypot(T.x - bx, T.y - by) < 260) { c.fillStyle = md < 35 ? '#5aff8a' : '#ffd23a'; c.font = '800 15px system-ui'; c.fillText('BOMB RUN · ' + cue, w / 2, 62 + 22); }
         if (sid === 'bomb') { c.fillStyle = md < 35 ? '#5aff8a' : '#fff'; c.font = '800 15px system-ui'; c.fillText('IMPACT ' + md + ' m FROM TARGET · fall ' + ip.t.toFixed(1) + ' s · BOMBS ' + (R.bombs || 0), w / 2, h - 90); } } }
     c.restore();
   },
@@ -13210,7 +13292,7 @@ function rsDecor(I) { // the bomber cabin dressed up: ribs, stringers, cable run
   for (const x of [-9.0, 0.5, 9.8]) { const m = new THREE.Mesh(new THREE.CylinderGeometry(.05, .05, .32, 8), red); m.position.set(x, .5, -1.05); G.add(m); }
   // cockpit: instrument panel with glowing dials, yoke, throttle quadrant; the bombsight in the nose
   const pan = new THREE.Mesh(new THREE.BoxGeometry(.08, .34, 1.5), dark); pan.position.set(14.45, .28, -.2); G.add(pan);
-  const dial = new THREE.CircleGeometry(.055, 16); for (let i = 0; i < 12; i++) { const m = new THREE.Mesh(dial, new THREE.MeshBasicMaterial({color: i % 4 === 0 ? 0xffb35a : 0xd8f0d0})); m.rotation.y = -Math.PI / 2; m.position.set(14.405, .2 + (i % 2) * .14, -.85 + ((i / 2) | 0) * .2); G.add(m); }
+  { const cv = document.createElement('canvas'); cv.width = 768; cv.height = 160; const tx = new THREE.CanvasTexture(cv); tx.colorSpace = THREE.SRGBColorSpace; const m = new THREE.Mesh(new THREE.PlaneGeometry(1.46, .304), new THREE.MeshBasicMaterial({map: tx, fog: false})); m.rotation.y = -Math.PI / 2; m.position.set(14.405, .28, -.2); G.add(m); I.rsPanel = {cv, tx, t: 0}; }
   const yk = new THREE.Group(), col = new THREE.Mesh(new THREE.CylinderGeometry(.025, .03, .42, 8), dark); col.position.y = .21; yk.add(col); const wh = new THREE.Mesh(new THREE.TorusGeometry(.12, .015, 6, 18, Math.PI * 1.3), dark); wh.rotation.set(0, Math.PI / 2, -Math.PI * .15); wh.position.y = .44; yk.add(wh); yk.position.set(13.95, 0, -.6); G.add(yk); I.rsYoke = yk;
   for (let i = 0; i < 4; i++) { const m = new THREE.Mesh(new THREE.BoxGeometry(.02, .14, .02), mm(0x8a2a1e)); m.position.set(14.05, .33, -.17 + i * .045); m.rotation.z = -.4; G.add(m); }
   const bs = new THREE.Group(), bc = new THREE.Mesh(new THREE.CylinderGeometry(.06, .08, .34, 10), dark); bc.position.y = .17; bs.add(bc); const lens = new THREE.Mesh(new THREE.CylinderGeometry(.045, .045, .12, 10), brass); lens.rotation.z = Math.PI / 2; lens.position.set(-.06, .36, 0); bs.add(lens); bs.position.set(14.7, 0, .6); G.add(bs);
@@ -15756,6 +15838,8 @@ addEventListener('keydown', () => { if (typeof Direct !== 'undefined' && window.
   // ---- changelog: add a new entry at the TOP of this list whenever something changes
   const CHANGELOG = [
     {d: '13 Nov 2026', items: [
+      'Red Star overhaul: a real bombsight (right click in the nose seat looks straight down at where the bomb will land, with steer and release cues), bombs you can watch fall, a working instrument panel, clouds moved up out of the way, a dressed airbase and smoke over the target.',
+      'Red Star flying is far more forgiving: pulling up no longer stalls you into the ground, you can steer on the runway, and a wreck costs one of two spare aircraft instead of the mission. Out of bombs? Land at the airbase to rearm. After the hit, fly home and land to finish.',
       'Red Star now starts at the airbase on foot: grab flight gear and a parachute at the hangar locker, climb the ladder into the bomber, and start it up from the pilot seat (1 battery, 2 fuel pumps, hold 3-6 to start each engine). One player can take the escort fighter instead. The cabin is dressed up: ribs, cable runs, oxygen bottles, ammo boxes, a cockpit panel with glowing dials, a yoke, throttles, the bombsight and red night lights.',
       'Red Star: you can now take the pilot seat (the bombardier seat next to it kept grabbing the prompt).',
       'Operation Red Star is now a real flying and bombing mission: a huge open map with mountains, rivers, lakes, towns and clouds, and you fly the bomber yourself from the glass nose (W/S throttle, R/F pitch, A/D bank, with speed, height and a horizon on screen). Find the weapons works in the city to the east and hit it from the bombardier seat with the bombsight (3 bombs). Fighters, leaks and the other trouble are switched off for now.',
