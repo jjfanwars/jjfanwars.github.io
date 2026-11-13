@@ -1,0 +1,418 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Surf Coast Family Hub</title>
+<meta name="description" content="Nurturing perinatal, child and family wellbeing in Jan Juc, on the Surf Coast.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&family=Josefin+Sans:wght@600;700&family=Lora:ital,wght@0,500;0,600;1,400&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--paper:#f6f0e4;--ink:#2f2a30;--mut:#6c6158;--teal:#2f7479;--teal2:#4f9a9c;--must:#e2a83e;--blush:#efc3b6}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--paper);color:var(--ink);font:17px/1.65 Nunito,system-ui,sans-serif;overflow-x:hidden}
+#grain{position:fixed;inset:0;pointer-events:none;z-index:60;opacity:.55;mix-blend-mode:multiply;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.75' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .42 0 0 0 0 .36 0 0 0 0 .3 0 0 0 .18 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+
+/* ---------- the drawing ---------- */
+#scene{position:relative;height:620vh}
+#stage{position:sticky;top:0;height:100vh;height:100svh;overflow:hidden;background:var(--paper)}
+.layer{position:absolute;inset:-4%;will-change:transform}
+.layer svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+#clouds svg{animation:drift 90s linear infinite alternate}
+@keyframes drift{from{transform:translateX(-2.5%)}to{transform:translateX(2.5%)}}
+.wave{animation:wave 6s linear infinite}
+.wave.s{animation-duration:9s;animation-direction:reverse}
+@keyframes wave{to{stroke-dashoffset:-200}}
+.wash{animation:wash 5.5s ease-in-out infinite}
+.wash.b{animation-delay:-2.7s}
+@keyframes wash{0%,100%{transform:translateY(0)}50%{transform:translateY(9px)}}
+.spark{animation:spark 2.6s ease-in-out infinite}
+@keyframes spark{0%,100%{opacity:.1}50%{opacity:.95}}
+.tuft{transform-box:fill-box;transform-origin:50% 100%;animation:sway 4.5s ease-in-out infinite alternate}
+@keyframes sway{from{transform:rotate(-3deg)}to{transform:rotate(4deg)}}
+
+#title{position:absolute;left:0;right:0;top:7vh;text-align:center;z-index:20;pointer-events:none;color:#fffaf0;
+  text-shadow:0 2px 18px rgba(80,40,60,.35)}
+#title .s{font:700 clamp(2.4rem,6vw,4.8rem)/1 Caveat,cursive;display:block;opacity:0;transform:translateY(14px);transition:opacity 1.2s,transform 1.4s cubic-bezier(.2,.8,.2,1)}
+#title .f{font:700 clamp(2rem,5.6vw,4.4rem)/1 "Josefin Sans",sans-serif;letter-spacing:.12em;display:block;margin-top:2px;opacity:0;transform:translateY(14px);transition:opacity 1.2s .25s,transform 1.4s .25s cubic-bezier(.2,.8,.2,1)}
+#title .t{font:500 clamp(1.15rem,2.2vw,1.6rem) Caveat,cursive;display:block;margin-top:14px;opacity:0;transition:opacity 1.2s .6s}
+#title.on .s,#title.on .f,#title.on .t{opacity:1;transform:none}
+#hint{position:absolute;left:50%;bottom:5vh;translate:-50% 0;z-index:20;font:600 1.35rem Caveat,cursive;color:var(--ink);text-align:center;transition:opacity .6s;pointer-events:none}
+#hint svg{display:block;margin:4px auto 0;width:26px;height:44px}
+#hint path{stroke-dasharray:60;animation:pen 2.2s ease-in-out infinite}
+@keyframes pen{0%{stroke-dashoffset:60}60%,100%{stroke-dashoffset:0}}
+#book{position:absolute;right:clamp(14px,3vw,36px);top:clamp(12px,2.4vh,24px);z-index:25;font:700 .95rem Nunito;color:#fffaf0;background:rgba(47,116,121,.88);
+  padding:9px 16px;border-radius:999px;text-decoration:none;backdrop-filter:blur(4px)}
+#book:hover{background:var(--teal)}
+#mark{position:absolute;left:clamp(14px,3vw,36px);top:clamp(12px,2.4vh,24px);z-index:25;font:700 1.35rem Caveat,cursive;color:var(--ink);opacity:.85}
+#mark.light{color:#fffaf0}
+
+/* ---------- the rest of the page ---------- */
+main{position:relative;z-index:5;background:var(--paper)}
+section{max-width:1080px;margin:0 auto;padding:clamp(64px,10vw,110px) clamp(18px,5vw,48px)}
+.eyebrow{font:700 1.3rem Caveat,cursive;color:var(--teal)}
+h2{font:600 clamp(1.9rem,4vw,2.8rem)/1.15 Lora,Georgia,serif;margin:4px 0 18px;max-width:22ch}
+.lead{font-size:1.12rem;color:var(--mut);max-width:62ch}
+.lead+.lead{margin-top:12px}
+.squig{display:block;width:120px;height:14px;margin:30px 0 0}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:18px;margin-top:34px}
+.card{background:#fffaf1;border-radius:18px;padding:24px 24px 22px;box-shadow:0 14px 30px -22px rgba(70,45,25,.45);border:1px solid rgba(70,50,30,.06)}
+.card h3{font:600 1.2rem Lora,serif;margin-bottom:10px;display:flex;gap:10px;align-items:center}
+.card h3 i{width:12px;height:12px;border-radius:50%;flex:none}
+.card ul{list-style:none}
+.card li{padding:6px 0;border-bottom:1px dashed rgba(70,50,30,.18);font-size:.98rem}
+.card li:last-child{border:0}
+.note{margin-top:18px;color:var(--mut);font-size:.95rem}
+.visit{display:grid;grid-template-columns:1.1fr .9fr;gap:clamp(24px,5vw,60px);align-items:start}
+.info div{padding:12px 0;border-bottom:1px dashed rgba(70,50,30,.2)}
+.info b{display:block;font:600 1.05rem Lora,serif;color:var(--teal)}
+.btn{display:inline-block;margin-top:24px;background:var(--teal);color:#fff;font-weight:700;text-decoration:none;padding:13px 26px;border-radius:999px;transition:transform .2s,background .2s}
+.btn:hover{background:#25595d;transform:translateY(-2px)}
+.btn.ghost{background:transparent;color:var(--teal);border:2px solid var(--teal);margin-left:8px}
+.quote{background:#fffaf1;border-radius:18px;padding:28px;font:italic 400 1.15rem/1.6 Lora,serif;color:var(--ink);box-shadow:0 14px 30px -22px rgba(70,45,25,.45)}
+.quote span{display:block;margin-top:12px;font:700 1.15rem Caveat,cursive;color:var(--teal);font-style:normal}
+@media(max-width:760px){.visit{grid-template-columns:1fr}.btn.ghost{margin-left:0}#title{top:13vh}}
+footer{text-align:center;padding:50px 20px 60px;color:var(--mut);font-size:.92rem}
+footer p{max-width:62ch;margin:0 auto}
+footer p+p{margin-top:10px;font:700 1.15rem Caveat,cursive}
+@media(prefers-reduced-motion:reduce){*{animation:none!important}}
+</style>
+</head>
+<body>
+<div id="grain"></div>
+
+<div id="scene">
+  <div id="stage" aria-label="A drawing of Jan Juc beach at sunset that draws and paints itself as you scroll">
+    <div id="mark">Surf Coast Family Hub</div>
+    <a id="book" href="#visit">Visit &amp; book</a>
+    <div id="title"><span class="s">Surf Coast</span><span class="f">FAMILY HUB</span><span class="t">nurturing perinatal, child &amp; family wellbeing</span></div>
+    <div id="hint">scroll, and I'll draw you Jan Juc
+      <svg viewBox="0 0 26 44" fill="none" stroke="#2f2a30" stroke-width="2" stroke-linecap="round"><path d="M13 3c-5 10 5 18 0 32M6 29l7 10 7-10"/></svg></div>
+  </div>
+</div>
+
+<main>
+  <section id="about">
+    <div class="eyebrow">welcome</div>
+    <h2>A warm, welcoming space for families on the Surf Coast</h2>
+    <p class="lead">The Hub is a calm, inclusive place in Jan Juc where children, individuals, couples and families can find holistic support and a sense of community, from pregnancy and the early weeks with a newborn through childhood and beyond.</p>
+    <p class="lead">Everyone is welcome, whether or not you are pregnant or a parent.</p>
+    <svg class="squig" viewBox="0 0 120 14" fill="none" stroke="#e2a83e" stroke-width="3" stroke-linecap="round"><path d="M3 8c10-8 18 8 28 0s18-8 28 0 18 8 28 0 18-8 28 0"/></svg>
+  </section>
+
+  <section id="services" style="padding-top:0">
+    <div class="eyebrow">how we can help</div>
+    <h2>Care for every stage</h2>
+    <div class="grid">
+      <div class="card"><h3><i style="background:#efc3b6"></i>Pregnancy &amp; new parents</h3><ul>
+        <li>Midwifery</li><li>Pregnancy, birth &amp; postpartum education</li><li>Postpartum doula support</li><li>Infant massage</li><li>Lulla-Baby music group</li></ul></div>
+      <div class="card"><h3><i style="background:#e2a83e"></i>Children &amp; teens</h3><ul>
+        <li>Play therapy</li><li>Child &amp; adolescent therapy</li><li>Art therapy</li><li>ADHD, autism &amp; cognitive assessments</li></ul></div>
+      <div class="card"><h3><i style="background:#4f9a9c"></i>Individuals &amp; couples</h3><ul>
+        <li>Psychology &amp; counselling</li><li>Couples therapy</li><li>Preparing for parenthood</li></ul></div>
+      <div class="card"><h3><i style="background:#9aa66e"></i>Body &amp; rest</h3><ul>
+        <li>Massage &amp; pregnancy massage</li><li>Acupuncture</li><li>Osteopathy</li></ul></div>
+    </div>
+    <p class="note">NDIS support is available. Gift vouchers can be bought online.</p>
+  </section>
+
+  <section id="visit" style="padding-top:0">
+    <div class="visit">
+      <div>
+        <div class="eyebrow">come and see us</div>
+        <h2>Find us in Jan Juc</h2>
+        <div class="info">
+          <div><b>Where</b>Stuart Avenue, Jan Juc VIC 3228, a short walk up from the beach</div>
+          <div><b>Bookings</b>Appointments are made online through the Hub's booking page</div>
+        </div>
+        <a class="btn" href="https://surfcoastfamilyhub.com.au" rel="noopener">Book an appointment</a>
+      </div>
+      <div class="quote">“A lovely and safe space… calm, kind and deeply relaxing.”<span>from a client's review</span></div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <p>We acknowledge the Wadawurrung people, Traditional Owners of the land and waters where the Hub stands, and pay our respects to Elders past and present.</p>
+  <p>Surf Coast Family Hub · Jan Juc</p>
+</footer>
+
+<script>
+(() => {
+const NS = 'http://www.w3.org/2000/svg';
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const cl = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v));
+const ss = (a, b, x) => { x = cl((x - a) / (b - a)); return x * x * (3 - 2 * x); };
+const lerp = (a, b, k) => a + (b - a) * k;
+let seed = 11; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+const mixHex = (a, b, k) => { const p = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16)); const A = p(a), B = p(b); return '#' + A.map((v, i) => Math.round(lerp(v, B[i], k)).toString(16).padStart(2, '0')).join(''); };
+
+/* ================= the picture: shapes, pencil lines, colour =================
+   Each layer is its own <svg> so the browser can slide it as one piece (parallax) without repainting it.
+   fills: [d, colour, layer, start, end, scribble angle, stroke width]   lines: [d, layer, start, end, width, opacity]
+   Times are scroll progress 0..1. */
+const SUN = { x: 1060 };
+const cloud = (cx, cy, w, h) => { seed = Math.round(cx * 7 + cy); const n = 4; const bump = [0.55, 1, 0.75, 0.45]; let d = `M${cx - w / 2} ${cy}`; for (let i = 0; i < n; i++) { const x0 = cx - w / 2 + (w / n) * i, x1 = x0 + w / n, top = cy - h * bump[i] * (0.8 + 0.4 * rnd()), x0b = x0 + (rnd() - 0.5) * 10; d += ` C${x0b - 6} ${top} ${x1 + 6} ${top} ${x1} ${cy - h * 0.12}`; } return d + ` C${cx + w * 0.62} ${cy + h * 0.16} ${cx + w / 3} ${cy + h * 0.1} ${cx} ${cy + h * 0.12} C${cx - w / 3} ${cy + h * 0.14} ${cx - w * 0.62} ${cy + h * 0.1} ${cx - w / 2} ${cy}Z`; };
+const CLOUDS = [[300, 190, 300, 52], [780, 120, 240, 40], [1320, 230, 360, 56], [560, 320, 220, 32], [1520, 110, 200, 34], [980, 300, 160, 24]];
+const CLIFF = 'M-40 296 C60 286 150 294 230 310 C300 326 362 348 412 376 C452 400 482 438 502 480 C516 518 526 558 534 608 C542 658 552 700 566 742 L-40 772 Z';
+const CLIFF_TOP = 'M-40 296 C60 286 150 294 230 310 C300 326 362 348 412 376';
+const STRATA = ['M-40 372 C120 372 270 388 446 418', 'M-40 452 C150 448 310 462 492 494', 'M-40 532 C160 532 340 542 522 560', 'M-40 612 C170 612 350 622 538 634', 'M-40 690 C200 690 380 696 552 702'];
+const BEACH = 'M-40 772 L566 742 C700 716 860 704 1010 712 C1210 724 1410 746 1640 756 L1640 1040 L-40 1040 Z';
+const SHORE = 'M566 742 C700 716 860 704 1010 712 C1210 724 1410 746 1640 756';
+const WET = 'M566 742 C700 716 860 704 1010 712 C1210 724 1410 746 1640 756 L1640 774 C1410 766 1210 744 1010 732 C860 724 700 736 566 760 Z';
+const DUNE_R = 'M700 1040 C800 962 930 908 1080 884 C1240 860 1420 866 1640 834 L1640 1040 Z';
+const DUNE_L = 'M-40 1040 L-40 906 C110 884 240 896 340 936 C396 960 426 992 436 1040 Z';
+const ROCK = 'M604 734 L610 700 L614 676 L626 660 L630 646 L646 640 L662 642 L670 652 L684 656 L690 674 L694 700 L702 736 Z M712 736 L716 712 L726 702 L738 708 L742 736 Z';
+const HEAD = 'M980 564 C1060 548 1150 532 1250 524 C1340 516 1420 520 1500 512 C1560 508 1600 506 1640 506 L1640 564 Z';
+const HEAD2 = 'M760 564 C820 556 880 552 950 558 L960 564 Z';
+const POSTS = [[960, 905], [1060, 889], [1160, 877], [1260, 869], [1360, 866], [1460, 858], [1570, 846]];
+const FAM0 = 780, FAM1 = 1000, FAMY = 812;   // the family walks along the wet sand as you scroll
+
+const FILLS = [
+  // sky, sun, clouds, far headlands
+  ['M-40 -40 H1640 V600 H-40 Z', 'url(#skyG)', 'sky', 0.14, 0.34, -22, 150],
+  [`M${SUN.x - 62} 0 a62 62 0 1 0 124 0 a62 62 0 1 0 -124 0`, '#ffd08a', 'sun', 0.2, 0.26, 30, 40],
+  ...CLOUDS.map(([x, y, w, h], i) => [cloud(x, y, w, h), i % 2 ? '#f4b9a2' : '#f7c8ac', 'clouds', 0.26 + i * 0.025, 0.34 + i * 0.025, -12, 34]),
+  [HEAD2, '#b49ab2', 'sky', 0.32, 0.36, 0, 30],
+  [HEAD, '#9b88aa', 'sky', 0.33, 0.4, -8, 40],
+  // sea and the sun's path on it
+  ['M-40 556 H1640 V790 H-40 Z', 'url(#seaG)', 'sea', 0.36, 0.52, 14, 90],
+  [`M${SUN.x - 34} 564 L${SUN.x + 34} 564 L${SUN.x + 150} 760 L${SUN.x - 130} 760 Z`, '#ffe0b0', 'sea', 0.5, 0.56, 80, 26, 'glit'],
+  // cliffs, their layers, the grass on top, houses and a pine, Bird Rock
+  [CLIFF, '#d98d55', 'cliff', 0.42, 0.56, 62, 70],
+  ...STRATA.map((d, i) => [d, ['#c46e3c', '#eab070', '#b35d34', '#e39a5c', '#c06a3a'][i], 'cliff', 0.5 + i * 0.02, 0.56 + i * 0.02, 4, 30, 'band']),
+  ['M-40 296 C60 286 150 294 230 310 C300 326 362 348 412 376 L404 392 C350 364 290 344 226 328 C150 312 70 306 -40 312 Z', '#8fa060', 'cliff', 0.56, 0.6, 10, 24],
+  ['M70 246 h70 v52 h-70 Z M180 262 h56 v48 h-56 Z', '#f4e7d2', 'cliff', 0.58, 0.62, 0, 20],
+  ['M60 250 L105 216 L150 250 Z M172 266 L208 238 L244 266 Z', '#a65a46', 'cliff', 0.6, 0.64, 30, 16],
+  ['M292 300 L322 246 L352 300 Z M286 330 L322 270 L358 330 Z M298 270 L322 226 L346 270 Z', '#41604a', 'cliff', 0.58, 0.63, -30, 16],
+  [ROCK, '#cf7c44', 'cliff', 0.52, 0.57, 70, 24],
+  // beach, wet sand, umbrella, the family
+  [BEACH, '#eed5a8', 'beach', 0.58, 0.72, -6, 80],
+  [WET, '#c8b08c', 'beach', 0.68, 0.73, 0, 16],
+  ['M290 806 Q360 752 430 806 Z', '#e7836a', 'beach', 0.7, 0.74, 70, 14],
+  ['M326 788 Q360 752 394 788 L382 806 Q360 778 338 806 Z', '#f6e3c0', 'beach', 0.72, 0.75, 70, 10],
+  ['M300 880 l100 -10 l10 26 l-100 10 Z', '#4f9a9c', 'beach', 0.72, 0.75, 20, 12],
+  // dunes in front
+  [DUNE_R, '#a6ad74', 'fg', 0.74, 0.86, -18, 70],
+  [DUNE_L, '#97a26a', 'fg', 0.75, 0.86, 22, 60],
+];
+const tuftAt = []; // filled below
+const LINES = [
+  ['M-40 562 H1640', 'sky', 0.0, 0.05, 1.6, 0.8],
+  [HEAD.replace(/ L1640 564 Z$/, ''), 'sky', 0.03, 0.08, 1.4, 0.75],
+  [HEAD2.replace(/ L960 564 Z$/, ''), 'sky', 0.05, 0.08, 1.2, 0.6],
+  [`M${SUN.x - 62} 0 a62 62 0 1 0 124 0 a62 62 0 1 0 -124 0`, 'sun', 0.05, 0.09, 1.4, 0.7],
+  [CLIFF.replace(/ L-40 772 Z$/, ''), 'cliff', 0.03, 0.12, 2.0, 0.85],
+  ...STRATA.map((d, i) => [d, 'cliff', 0.09 + i * 0.015, 0.14 + i * 0.015, 1.2, 0.6]),
+  ['M-40 312 C70 306 150 312 226 328 C290 344 350 364 404 392', 'cliff', 0.12, 0.16, 1.2, 0.6],
+  ['M70 298 v-52 h70 v52 M60 250 L105 216 L150 250 M180 310 v-48 h56 v48 M172 266 L208 238 L244 266 M84 262 h14 v12 h-14Z M112 262 h14 v12 h-14Z M196 276 h12 v11 h-12Z M216 276 h12 v11 h-12Z', 'cliff', 0.14, 0.2, 1.3, 0.75],
+  ['M322 342 V226 M292 300 L322 246 L352 300 M286 330 L322 270 L358 330 M298 270 L322 226 L346 270', 'cliff', 0.16, 0.21, 1.3, 0.75],
+  [ROCK, 'cliff', 0.1, 0.14, 1.6, 0.8],
+  ['M628 690 C640 686 660 688 690 694 M622 712 C640 708 670 710 698 716', 'cliff', 0.13, 0.16, 1, 0.55],
+  // cliff shading hatches
+  ...Array.from({ length: 9 }, (_, i) => [`M${380 + i * 16} ${420 + i * 30} l-34 46`, 'cliff', 0.18 + i * 0.006, 0.21 + i * 0.006, 1, 0.45]),
+  [SHORE, 'beach', 0.07, 0.13, 1.6, 0.8],
+  ['M566 760 C700 736 860 724 1010 732 C1210 744 1410 766 1640 774', 'beach', 0.11, 0.15, 1, 0.5],
+  ...CLOUDS.map(([x, y, w, h], i) => [`M${x - w * 0.55} ${y + h * 0.18} q${w * 0.5} ${-h * 0.08} ${w * 1.1} 0 M${x - w * 0.3} ${y + h * 0.32} q${w * 0.35} -4 ${w * 0.7} 2`, 'clouds', 0.14 + i * 0.02, 0.2 + i * 0.02, 1, 0.4]),
+  ['M360 884 V780 M290 806 Q360 752 430 806 Z M326 788 L338 806 M394 788 L382 806 M300 880 l100 -10 l10 26 l-100 10 Z', 'beach', 0.2, 0.25, 1.3, 0.75],
+  [DUNE_R.replace(/ L1640 1040 L700 1040 Z|L1640 1040 Z$/, ''), 'fg', 0.15, 0.22, 2, 0.85],
+  [DUNE_L.replace(/ C396 960 426 992 436 1040 Z$/, ' C396 960 426 992 436 1040'), 'fg', 0.16, 0.22, 2, 0.85],
+  ...POSTS.map(([x, y], i) => [`M${x} ${y + 8} L${x + 2} ${y - 46}`, 'fg', 0.22 + i * 0.008, 0.24 + i * 0.008, 2.4, 0.85]),
+  ['M960 870 ' + POSTS.slice(1).map(([x, y], i) => `Q${(x + POSTS[i][0]) / 2} ${(y + POSTS[i][1]) / 2 - 30} ${x + 2} ${y - 36}`).join(' '), 'fg', 0.25, 0.3, 1.2, 0.7],
+];
+
+/* ---------- build the layers ---------- */
+const stage = document.getElementById('stage');
+const LAYERS = { sky: 0.04, sun: 0.07, clouds: 0.1, sea: 0.18, waves: 0.18, birds: 0.14, cliff: 0.36, beach: 0.52, fam: 0.52, foam: 0.52, fg: 0.85, grass: 0.85 };
+const ORDER = ['sky', 'sun', 'clouds', 'sea', 'waves', 'birds', 'cliff', 'beach', 'fam', 'foam', 'fg', 'grass'];
+const svgs = {}, wraps = {};
+const isMobile = () => innerWidth / innerHeight < 1;
+for (const name of ORDER) {
+  const wrap = document.createElement('div'); wrap.className = 'layer'; wrap.id = name;
+  const svg = document.createElementNS(NS, 'svg'); svg.setAttribute('preserveAspectRatio', 'xMidYMid slice');
+  wrap.appendChild(svg); stage.insertBefore(wrap, document.getElementById('title')); svgs[name] = svg; wraps[name] = wrap;
+}
+const setView = () => { const cx = isMobile() ? 790 : 800; for (const s of Object.values(svgs)) s.setAttribute('viewBox', `${cx - 800} 0 1600 1000`); };
+setView(); addEventListener('resize', setView);
+
+// shared filters: watercolour (soft wobbly edges, darker rims, pigment granulation) and pencil (grainy graphite)
+const DEFS = `
+<filter id="wc" x="-5%" y="-5%" width="110%" height="110%" color-interpolation-filters="sRGB">
+  <feTurbulence type="fractalNoise" baseFrequency=".011" numOctaves="3" seed="3" result="n"/>
+  <feDisplacementMap in="SourceGraphic" in2="n" scale="18" xChannelSelector="R" yChannelSelector="G" result="d"/>
+  <feTurbulence type="fractalNoise" baseFrequency=".045" numOctaves="2" seed="8" result="g"/>
+  <feColorMatrix in="g" type="matrix" values=".24 0 0 0 .81 .24 0 0 0 .81 .24 0 0 0 .81 0 0 0 0 1" result="gm"/>
+  <feBlend in="d" in2="gm" mode="multiply" result="bl"/>
+  <feComposite in="bl" in2="d" operator="in" result="gr"/>
+  <feMorphology in="d" operator="erode" radius="2.5" result="er"/>
+  <feComposite in="d" in2="er" operator="out" result="edge"/>
+  <feColorMatrix in="edge" type="matrix" values=".72 0 0 0 0 0 .7 0 0 0 0 0 .74 0 0 0 0 0 .55 0" result="edge2"/>
+  <feMerge><feMergeNode in="gr"/><feMergeNode in="edge2"/></feMerge>
+</filter>
+<filter id="pencil" x="-5%" y="-5%" width="110%" height="110%">
+  <feTurbulence type="fractalNoise" baseFrequency=".9" numOctaves="2" seed="5" result="t"/>
+  <feColorMatrix in="t" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -2.2 2.0" result="ta"/>
+  <feTurbulence type="fractalNoise" baseFrequency=".03" numOctaves="2" seed="2" result="w"/>
+  <feDisplacementMap in="SourceGraphic" in2="w" scale="3" result="dw"/>
+  <feComposite in="dw" in2="ta" operator="in"/>
+</filter>
+<filter id="rough"><feTurbulence type="fractalNoise" baseFrequency=".04" numOctaves="2" seed="9"/><feDisplacementMap in="SourceGraphic" scale="10"/></filter>
+<filter id="soft"><feGaussianBlur stdDeviation="14"/></filter>
+<linearGradient id="skyG" x1="0" y1="0" x2="0" y2="1">
+  <stop id="sk0" offset="0" stop-color="#8ea2c6"/><stop id="sk1" offset=".45" stop-color="#e9b2a2"/><stop id="sk2" offset=".8" stop-color="#f8cfa2"/><stop id="sk3" offset="1" stop-color="#fde2b6"/></linearGradient>
+<linearGradient id="seaG" x1="0" y1="0" x2="0" y2="1">
+  <stop offset="0" stop-color="#e9b9a4"/><stop offset=".12" stop-color="#8db4bd"/><stop offset=".7" stop-color="#4f8c9e"/><stop offset="1" stop-color="#6aa9a8"/></linearGradient>
+<radialGradient id="glow"><stop offset="0" stop-color="#ffd9a0" stop-opacity=".9"/><stop offset=".45" stop-color="#ffb37a" stop-opacity=".35"/><stop offset="1" stop-color="#ff9a6a" stop-opacity="0"/></radialGradient>`;
+
+// a back-and-forth scribble that covers a box: what the "brush" follows when it colours a shape in
+function scribble(b, angle, w) {
+  const a = angle * Math.PI / 180, ca = Math.cos(a), sa = Math.sin(a), cx = b.x + b.width / 2, cy = b.y + b.height / 2;
+  const R = Math.hypot(b.width, b.height) / 2 + w, step = w * 0.62;
+  let d = '', dir = 1, first = true;
+  for (let k = -R; k <= R; k += step) {
+    const half = Math.sqrt(Math.max(0, R * R - k * k)) + w * 0.3, j = (rnd() - 0.5) * step * 0.4;
+    const p0 = [-half * dir, k + j], p1 = [half * dir, k - j];
+    const T = ([x, y]) => [(cx + x * ca - y * sa).toFixed(1), (cy + x * sa + y * ca).toFixed(1)];
+    const A = T(p0), B = T(p1);
+    d += (first ? `M${A[0]} ${A[1]}` : ` L${A[0]} ${A[1]}`) + ` L${B[0]} ${B[1]}`; first = false; dir = -dir;
+  }
+  return d;
+}
+
+const anim = { fills: [], lines: [] };
+const parts = {};
+for (const name of ORDER) parts[name] = { defs: '', fill: '', line: '', top: '' };
+// measure shapes with a hidden svg so scribbles fit them
+const meas = document.createElementNS(NS, 'svg'); meas.style.cssText = 'position:absolute;width:0;height:0;visibility:hidden'; document.body.appendChild(meas);
+const bbox = (d) => { const p = document.createElementNS(NS, 'path'); p.setAttribute('d', d); meas.appendChild(p); const b = p.getBBox(); p.remove(); return b; };
+FILLS.forEach(([d, col, layer, t0, t1, ang, w, kind], i) => {
+  const shape = kind === 'glit' ? `<path d="${d}" fill="${col}" fill-opacity=".55"/>` : kind === 'band' ? `<path d="${d}" fill="none" stroke="${col}" stroke-width="30" stroke-linecap="round" clip-path="url(#cliffclip)"/>` : `<path d="${d}" fill="${col}"/>`;
+  const b = bbox(d);
+  if (kind === 'band') { b.y -= 20; b.height += 40; }
+  parts[layer].defs += `<mask id="m${i}" maskUnits="userSpaceOnUse" x="-200" y="-200" width="2000" height="1400"><path id="ms${i}" d="${scribble(b, ang, w)}" fill="none" stroke="#fff" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round" pathLength="1" stroke-dasharray="1 1" stroke-dashoffset="1" filter="url(#rough)"/></mask>`;
+  parts[layer].fill += `<g mask="url(#m${i})">${shape}</g>`;
+  anim.fills.push({ id: 'ms' + i, t0, t1 });
+});
+LINES.forEach(([d, layer, t0, t1, w, op], i) => {
+  parts[layer].line += `<path id="l${i}" d="${d}" fill="none" stroke="#3b3036" stroke-width="${w}" stroke-opacity="${op}" stroke-linecap="round" pathLength="1" stroke-dasharray="1 1" stroke-dashoffset="1"/>`;
+  parts[layer].line += `<path id="l${i}b" d="${d}" fill="none" stroke="#3b3036" stroke-width="${w * 0.6}" stroke-opacity="${op * 0.45}" stroke-linecap="round" pathLength="1" stroke-dasharray="1 1" stroke-dashoffset="1" transform="translate(1.4 -1.1)"/>`;
+  anim.lines.push({ id: 'l' + i, t0, t1 }, { id: 'l' + i + 'b', t0: t0 + 0.006, t1: t1 + 0.012 });
+});
+parts.cliff.defs += `<clipPath id="cliffclip"><path d="${CLIFF}"/></clipPath>`;
+
+// moving things that sit on top: sun glow, waves, sparkles, wash, birds, the family, grass tufts, lit windows
+parts.sun.top = `<circle id="sunglow" cx="${SUN.x}" cy="0" r="330" fill="url(#glow)" opacity="0" style="mix-blend-mode:screen"/>`;
+parts.cliff.top = `<g id="lights" opacity="0">${[[84, 262, 14, 12], [112, 262, 14, 12], [196, 276, 12, 11], [216, 276, 12, 11]].map(([x, y, w, h]) => `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="#ffd27a"/><circle cx="${x + w / 2}" cy="${y + h / 2}" r="22" fill="url(#glow)"/>`).join('')}</g>`;
+{
+  seed = 5; let w = '';
+  for (let i = 0; i < 26; i++) { const y = 580 + rnd() * 160, x = rnd() * 1600, len = 30 + (y - 560) * 0.5 * rnd() + 20; w += `<path class="wave${i % 3 ? '' : ' s'}" d="M${x} ${y} q${len / 4} -${3 + (y - 560) / 40} ${len / 2} 0 t${len / 2} 0" fill="none" stroke="#fff6e6" stroke-width="${1.2 + (y - 560) / 120}" stroke-linecap="round" stroke-dasharray="${len * 0.7} ${len * 0.9}" opacity=".75" style="animation-delay:${-rnd() * 6}s"/>`; }
+  for (let i = 0; i < 18; i++) { const y = 570 + rnd() * 170, x = SUN.x - 40 + (rnd() - 0.4) * (y - 540) * 1.1; w += `<path class="spark" d="M${x} ${y} h${8 + rnd() * 18}" stroke="#fff3d0" stroke-width="2.2" stroke-linecap="round" style="animation-delay:${-rnd() * 2.6}s"/>`; }
+  // breaking lines near the shore
+  w += `<path class="wave s" d="M560 700 C700 676 860 664 1010 672 C1210 684 1410 706 1640 716" fill="none" stroke="#fffaf0" stroke-width="3" stroke-dasharray="90 60" opacity=".8"/>`;
+  w += `<path class="wave" d="M560 672 C700 648 860 636 1010 644 C1210 656 1410 678 1640 688" fill="none" stroke="#fffaf0" stroke-width="2" stroke-dasharray="60 90" opacity=".55"/>`;
+  parts.waves.top = `<g id="wavesG" opacity="0">${w}</g>`;
+  parts.foam.top = `<g id="foamG" opacity="0"><path class="wash" d="${SHORE}" fill="none" stroke="#fffaf0" stroke-width="4.5" stroke-linecap="round" stroke-dasharray="90 8 26 14 140 10 40 22" opacity=".9" filter="url(#rough)"/><path class="wash b" d="M566 752 C700 728 860 716 1010 724 C1210 736 1410 758 1640 766" fill="none" stroke="#fffaf0" stroke-width="2.6" stroke-dasharray="60 30 14 40 100 26" opacity=".55" filter="url(#rough)"/></g>`;
+}
+// the family: a parent, a child holding their hand, a dog; drawn in pencil, then coloured
+parts.fam.top = `<g id="famG" opacity="0"><g id="famIn">
+  <g id="footprints" fill="#a8906e" opacity=".6">${Array.from({ length: 10 }, (_, i) => `<ellipse cx="${-30 - i * 22}" cy="${(i % 2) * 6}" rx="4" ry="2"/>`).join('')}</g>
+  <g fill="#c96a4a" stroke="#3b3036" stroke-width="1.6"><path d="M-10 -62 Q0 -68 10 -62 L13 -24 L-13 -24 Z"/></g>
+  <circle cx="0" cy="-74" r="9" fill="#f0c6a2" stroke="#3b3036" stroke-width="1.6"/><path d="M-9 -76 Q0 -90 9 -76 Q4 -80 -9 -76Z" fill="#5a3424"/>
+  <g stroke="#3b3036" stroke-width="2.6" stroke-linecap="round"><path id="pl1" d="M-5 -24 L-7 0"/><path id="pl2" d="M5 -24 L7 0"/><path d="M10 -56 L22 -36"/></g>
+  <g fill="#e2a83e" stroke="#3b3036" stroke-width="1.4"><path d="M18 -40 Q25 -44 32 -40 L34 -16 L16 -16 Z"/></g>
+  <circle cx="25" cy="-48" r="7" fill="#f0c6a2" stroke="#3b3036" stroke-width="1.4"/><path d="M18 -50 Q25 -60 32 -50 Q26 -53 18 -50Z" fill="#c98a4a"/>
+  <g stroke="#3b3036" stroke-width="2.2" stroke-linecap="round"><path id="cl1" d="M22 -16 L21 0"/><path id="cl2" d="M28 -16 L29 0"/></g>
+  <g id="dog"><ellipse cx="64" cy="-14" rx="16" ry="7" fill="#7a5236" stroke="#3b3036" stroke-width="1.4"/><circle cx="80" cy="-22" r="6" fill="#7a5236" stroke="#3b3036" stroke-width="1.4"/>
+    <g stroke="#3b3036" stroke-width="2.2" stroke-linecap="round"><path id="dl1" d="M54 -9 L52 0"/><path id="dl2" d="M74 -9 L76 0"/><path id="dtail" d="M48 -16 Q40 -24 42 -30" fill="none"/></g></g>
+</g></g>`;
+{
+  // grass tufts on the dunes, swaying
+  seed = 21; let g = '';
+  const tuft = (x, y, s) => { let blades = ''; for (let k = 0; k < 6; k++) { const a = (k - 2.5) * 0.28 + (rnd() - 0.5) * 0.2, h = (26 + rnd() * 26) * s; blades += `M${x} ${y} q${Math.sin(a) * h * 0.3} ${-h * 0.6} ${Math.sin(a) * h} ${-h}`; } return `<path class="tuft" d="${blades}" fill="none" stroke="${rnd() < 0.5 ? '#6f8a4a' : '#55703c'}" stroke-width="${2.2 * s}" stroke-linecap="round" style="animation-delay:${-rnd() * 4}s"/>`; };
+  for (let i = 0; i < 26; i++) { const x = 760 + i * 34 + rnd() * 20, y = 1010 - (x - 700) * 0.12 + rnd() * 40; if (y > 1040) continue; g += tuft(x, Math.max(y, 880 + (1640 - x) * 0.05), 0.9 + rnd() * 0.6); }
+  for (let i = 0; i < 12; i++) { const x = -20 + i * 36 + rnd() * 14, y = 930 + rnd() * 70 + Math.max(0, x - 300) * 0.5; g += tuft(x, y, 0.8 + rnd() * 0.6); }
+  parts.grass.top = `<g id="grassG" opacity="0" filter="url(#pencil)">${g}</g>`;
+}
+{
+  // gulls: a loose flock gliding along the coast
+  let b = ''; for (let i = 0; i < 7; i++) b += `<path id="g${i}" d="" fill="none" stroke="#3b3036" stroke-width="2.4" stroke-linecap="round"/>`;
+  parts.birds.top = `<g id="birdsG" opacity="0" filter="url(#pencil)">${b}</g>`;
+}
+for (const name of ORDER) {
+  const P = parts[name];
+  svgs[name].innerHTML = (name === 'sky' ? `<defs>${DEFS}</defs>` : '') + `<defs>${P.defs}</defs>` +
+    (P.fill ? `<g filter="url(#wc)" ${name === 'sun' ? 'id="sunFill"' : ''}>${P.fill}</g>` : '') +
+    (P.line ? `<g filter="url(#pencil)" style="mix-blend-mode:multiply" ${name === 'sun' ? 'id="sunLine"' : ''}>${P.line}</g>` : '') + P.top;
+}
+// the filters live in the sky layer's defs; other layers reference them by id, which works within one document
+
+const $ = (id) => document.getElementById(id);
+const elsF = anim.fills.map((f) => ({ ...f, el: $(f.id) })), elsL = anim.lines.map((f) => ({ ...f, el: $(f.id) }));
+const sunEls = [$('sunFill'), $('sunLine'), $('sunglow')].filter(Boolean);
+const title = $('title'), hint = $('hint'), mark = $('mark');
+
+/* ---------- birds ---------- */
+const birds = Array.from({ length: 7 }, (_, i) => ({ el: $('g' + i), ox: (i % 2 ? 1 : -1) * Math.ceil(i / 2) * 34, oy: Math.ceil(i / 2) * 18 + (i * 7) % 11, ph: i * 0.9, s: 0.8 + ((i * 37) % 10) / 25 }));
+function drawBirds(t, p) {
+  const span = 2200, x0 = ((t * 28) % span) - 300, y0 = 250 + Math.sin(t * 0.25) * 30 - p * 40;
+  birds.forEach((b) => {
+    const f = Math.sin(t * 5 + b.ph), x = x0 + b.ox, y = y0 + b.oy + Math.sin(t * 0.8 + b.ph) * 6, w = 14 * b.s, lift = (4 + 7 * f) * b.s;
+    b.el.setAttribute('d', `M${x - w} ${y - lift} Q${x - w / 2} ${y - lift - 6 * b.s} ${x} ${y} Q${x + w / 2} ${y - lift - 6 * b.s} ${x + w} ${y - lift}`);
+  });
+}
+
+/* ---------- scroll, pointer and time ---------- */
+const scene = $('scene');
+let mx = 0, my = 0, tx = 0, ty = 0, lastP = -1, P = 0, lastT = performance.now();
+addEventListener('pointermove', (e) => { tx = e.clientX / innerWidth - 0.5; ty = e.clientY / innerHeight - 0.5; }, { passive: true });
+const progress = () => cl(-scene.getBoundingClientRect().top / (scene.offsetHeight - innerHeight));
+const SKY0 = ['#8ea2c6', '#e9b2a2', '#f8cfa2', '#fde2b6'], SKY1 = ['#5d5f98', '#d98c8c', '#f4a874', '#fcc98a'];
+
+function paint(p) {
+  for (const f of elsF) f.el.setAttribute('stroke-dashoffset', (1 - ss(f.t0, f.t1, p)).toFixed(4));
+  for (const f of elsL) f.el.setAttribute('stroke-dashoffset', (1 - ss(f.t0, f.t1, p)).toFixed(4));
+  // the sun sinks and the light warms as the picture fills in
+  const sy = lerp(390, 548, ss(0.2, 1, p));
+  sunEls.forEach((el) => el.setAttribute('transform', `translate(0 ${sy.toFixed(1)})`));
+  $('sunglow').setAttribute('opacity', (ss(0.24, 0.4, p) * (0.6 + 0.5 * ss(0.8, 1, p))).toFixed(3));
+  SKY0.forEach((c, i) => $('sk' + i).setAttribute('stop-color', mixHex(c, SKY1[i], ss(0.55, 1, p))));
+  $('wavesG').setAttribute('opacity', ss(0.48, 0.58, p));
+  $('foamG').setAttribute('opacity', ss(0.7, 0.76, p));
+  $('birdsG').setAttribute('opacity', ss(0.26, 0.34, p));
+  $('grassG').setAttribute('opacity', ss(0.22, 0.3, p));
+  $('lights').setAttribute('opacity', ss(0.88, 0.96, p));
+  $('famG').setAttribute('opacity', ss(0.64, 0.72, p));
+  title.classList.toggle('on', p > 0.9);
+  hint.style.opacity = p < 0.02 ? 1 : 0;
+  mark.classList.toggle('light', p > 0.3);
+}
+
+const famIn = $('famIn'), LEGS = ['pl1', 'pl2', 'cl1', 'cl2', 'dl1', 'dl2'].map($), dtail = $('dtail');
+function frame(now) {
+  const t = now / 1000, p = progress(), dt = Math.min(0.25, (now - lastT) / 1000); lastT = now;
+  P = reduce ? p : lerp(P, p, 1 - Math.exp(-dt * 7));
+  if (Math.abs(P - lastP) > 1e-4) { paint(P); lastP = P; }
+  mx = lerp(mx, tx, 0.05); my = lerp(my, ty, 0.05);
+  const zoom = 1 + 0.05 * ss(0, 1, P);
+  for (const name of ORDER) {
+    const s = LAYERS[name];
+    wraps[name].style.transform = `translate3d(${(-mx * s * 46).toFixed(2)}px, ${(-my * s * 18 - P * s * 70).toFixed(2)}px, 0) scale(${(zoom + s * 0.04 * P).toFixed(4)})`;
+  }
+  // the family strolls along the waterline as you scroll, with a little idle step
+  const fx = lerp(FAM0, FAM1, ss(0.2, 1, P)), walking = Math.abs(p - P) > 0.0005 ? 1 : 0.35, step = Math.sin(t * 7) * walking;
+  famIn.setAttribute('transform', `translate(${fx.toFixed(1)} ${FAMY + (fx - FAM0) * 0.04}) scale(1.15)`);
+  const sw = (el, a) => el.setAttribute('transform', `rotate(${a.toFixed(1)} ${el.getAttribute('d').split(' ')[0].slice(1)} ${el.getAttribute('d').split(' ')[1]})`);
+  sw(LEGS[0], step * 14); sw(LEGS[1], -step * 14); sw(LEGS[2], -step * 18); sw(LEGS[3], step * 18); sw(LEGS[4], step * 22); sw(LEGS[5], -step * 22);
+  dtail.setAttribute('transform', `rotate(${(Math.sin(t * 12) * 18).toFixed(1)} 48 -16)`);
+  if (!reduce) drawBirds(t, P); else drawBirds(4, P);
+  requestAnimationFrame(frame);
+}
+paint(0); requestAnimationFrame(frame);
+window.__H4 = { paint, progress };
+})();
+</script>
+</body>
+</html>
