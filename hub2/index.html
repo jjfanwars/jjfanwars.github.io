@@ -1,0 +1,491 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Surf Coast Family Hub</title>
+<meta name="description" content="A family place in Jan Juc. Scroll and we'll draw you the neighbourhood.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Young+Serif&family=Nunito:wght@400;600;700&family=Patrick+Hand&display=swap" rel="stylesheet">
+<style>
+:root{--paper:#f6efe2;--card:#fffaf1;--ink:#2d2a26;--ink2:#6a5f55;--rust:#b4583a;--teal:#3c7f88}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--paper);color:var(--ink);font-family:Nunito,system-ui,sans-serif;font-size:17px;line-height:1.6;overflow-x:hidden}
+#grain{position:fixed;inset:0;pointer-events:none;z-index:50;opacity:.45;mix-blend-mode:multiply;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .4 0 0 0 0 .34 0 0 0 0 .28 0 0 0 .2 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+header{position:fixed;inset:0 0 auto;z-index:40;display:flex;justify-content:space-between;align-items:center;padding:14px clamp(16px,4vw,40px)}
+.logo{font-family:"Young Serif",serif;font-size:1.1rem;text-decoration:none;color:var(--ink);background:var(--paper);padding:4px 12px;border-radius:255px 15px 225px 15px/15px 225px 15px 255px;border:2px solid var(--ink)}
+header nav{display:flex;gap:6px;font-family:"Patrick Hand",cursive;font-size:1.15rem}
+header nav a{text-decoration:none;color:var(--ink);padding:2px 10px;background:var(--paper);border-radius:8px}
+header nav a:hover{color:var(--rust)}
+@media(max-width:720px){header nav a:not(:last-child){display:none}}
+
+.scene{position:relative}
+.pin{position:sticky;top:0;height:100vh;height:100svh;overflow:hidden}
+.pin svg.art{position:absolute;inset:0;width:100%;height:100%}
+svg.art{stroke-linecap:round;stroke-linejoin:round}
+
+.card{position:absolute;bottom:clamp(20px,6vh,60px);width:min(400px,calc(100% - 32px));background:var(--card);padding:26px 28px 24px;
+  border:2.4px solid var(--ink);border-radius:255px 18px 225px 18px/18px 225px 18px 255px;box-shadow:6px 7px 0 rgba(45,42,38,.12);
+  opacity:0;transform:translateY(24px) rotate(-1deg);transition:opacity .6s,transform .7s cubic-bezier(.2,.8,.2,1);pointer-events:none}
+.card.on{opacity:1;transform:rotate(-1deg);pointer-events:auto}
+.card.r{right:clamp(16px,4vw,56px)}.card.l{left:clamp(16px,4vw,56px)}
+.card.l.on{transform:rotate(1deg)}
+.card h2{font-family:"Young Serif",serif;font-weight:400;font-size:clamp(1.6rem,3vw,2.1rem);line-height:1.1;margin-bottom:10px}
+.card .tag{font-family:"Patrick Hand",cursive;color:var(--rust);font-size:1.1rem}
+.card p+p{margin-top:8px}
+.card ul{list-style:none}
+.card li{padding:7px 0;border-bottom:1.5px dashed rgba(45,42,38,.25)}
+.card li:last-child{border:0}
+.card li b{font-family:"Young Serif",serif;font-weight:400;font-size:1.08rem}
+.card li span{display:block;font-family:"Patrick Hand",cursive;color:var(--teal);font-size:1.05rem;line-height:1.2}
+.card table{width:100%;border-collapse:collapse}
+.card td{padding:6px 2px;border-bottom:1.5px dashed rgba(45,42,38,.25);vertical-align:top}
+.card td:first-child{font-family:"Young Serif",serif;width:30%}
+.card td i{font-style:normal;font-family:"Patrick Hand",cursive;color:var(--teal);margin-right:5px}
+.card form{margin-top:10px}
+.card input{width:100%;font:inherit;border:0;border-bottom:2px solid var(--ink);background:transparent;padding:6px 2px;margin-top:6px}
+.card input:focus{outline:none;border-color:var(--rust)}
+.card button{margin-top:14px;font-family:"Patrick Hand",cursive;font-size:1.2rem;background:var(--rust);color:#fff;border:2px solid var(--ink);padding:6px 20px;cursor:pointer;
+  border-radius:255px 15px 225px 15px/15px 225px 15px 255px;box-shadow:3px 4px 0 var(--ink);transition:transform .15s,box-shadow .15s}
+.card button:hover{transform:translate(1px,1px);box-shadow:2px 3px 0 var(--ink)}
+.thanks{display:none;font-family:"Patrick Hand",cursive;color:var(--teal);font-size:1.15rem;margin-top:8px}
+
+.title{position:absolute;left:0;right:0;top:15vh;text-align:center;padding:0 16px;pointer-events:none}
+.title h1{font-family:"Young Serif",serif;font-weight:400;font-size:clamp(2.4rem,6.4vw,5rem);line-height:1;letter-spacing:-.01em}
+.title p{font-family:"Patrick Hand",cursive;font-size:clamp(1.2rem,2.2vw,1.6rem);color:var(--rust);margin-top:10px}
+.title .w{display:inline-block;opacity:0;transform:translateY(16px);transition:opacity .7s,transform .8s cubic-bezier(.2,.8,.2,1)}
+.title.on .w{opacity:1;transform:none}
+.hint{position:absolute;bottom:22px;left:50%;translate:-50% 0;font-family:"Patrick Hand",cursive;font-size:1.15rem;color:var(--ink2);transition:opacity .5s}
+.hint::after{content:"";display:block;width:2px;height:28px;margin:6px auto 0;background:var(--ink2);animation:drop 1.6s ease-in-out infinite;transform-origin:top}
+@keyframes drop{0%{transform:scaleY(0)}60%{transform:scaleY(1)}100%{transform:scaleY(1);opacity:0}}
+.label{font-family:"Patrick Hand",cursive}
+
+footer{padding:60px clamp(16px,5vw,60px) 50px;text-align:center;color:var(--ink2)}
+footer p{max-width:62ch;margin:0 auto}
+footer p+p{margin-top:10px;font-family:"Patrick Hand",cursive;font-size:1.1rem}
+
+@media(max-width:820px){
+  .card{left:16px!important;right:16px!important;width:auto;bottom:14px;padding:18px 20px;font-size:.95rem}
+  .card h2{font-size:1.45rem}
+}
+@media(prefers-reduced-motion:reduce){.hint::after{animation:none}}
+</style>
+</head>
+<body>
+<div id="grain"></div>
+<header>
+  <a class="logo" href="#s1">Surf Coast Family Hub</a>
+  <nav><a href="#s2">About</a><a href="#s3">Programs</a><a href="#s4">This week</a><a href="#s5">Visit</a></nav>
+</header>
+
+<section class="scene" id="s1" style="height:240vh">
+  <div class="pin">
+    <svg class="art" id="a1" preserveAspectRatio="xMidYMax slice"></svg>
+    <div class="title" id="title">
+      <h1><span class="w">Surf</span> <span class="w" style="transition-delay:.12s">Coast</span> <span class="w" style="transition-delay:.24s">Family</span> <span class="w" style="transition-delay:.36s">Hub</span></h1>
+      <p class="w" style="transition-delay:.6s">a little place for families in Jan Juc</p>
+    </div>
+    <div class="hint" id="hint">scroll, and we'll draw you the neighbourhood</div>
+  </div>
+</section>
+
+<section class="scene" id="s2" style="height:320vh">
+  <div class="pin">
+    <svg class="art" id="a2" preserveAspectRatio="xMidYMax slice"></svg>
+    <div class="card r">
+      <div class="tag">down at Jan Juc beach</div>
+      <h2>Hello, neighbour</h2>
+      <p>We're a family hub run by locals, for anyone raising little people on this bit of coast.</p>
+      <p>New to town, new to parenting, or just after some company on a grey Tuesday? Come in. The kettle's usually on.</p>
+    </div>
+  </div>
+</section>
+
+<section class="scene" id="s3" style="height:320vh">
+  <div class="pin">
+    <svg class="art" id="a3" preserveAspectRatio="xMidYMax slice"></svg>
+    <div class="card l">
+      <div class="tag">inside the Hub</div>
+      <h2>What we do</h2>
+      <ul>
+        <li><b>Little Waves playgroup</b><span>sand, paint and songs for 0 to 5s</span></li>
+        <li><b>Parent &amp; bub</b><span>for the foggy first year</span></li>
+        <li><b>Rockpool rangers</b><span>low-tide explorers, school holidays</span></li>
+        <li><b>A cuppa and a chat</b><span>family support, no forms at the door</span></li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section class="scene" id="s4" style="height:320vh">
+  <div class="pin">
+    <svg class="art" id="a4" preserveAspectRatio="xMidYMax slice"></svg>
+    <div class="card r">
+      <div class="tag">past the surf club and the creek</div>
+      <h2>This week</h2>
+      <table>
+        <tr><td>Mon</td><td><i>9:30</i>Little Waves</td></tr>
+        <tr><td>Tue</td><td><i>10:00</i>Parent &amp; bub</td></tr>
+        <tr><td>Wed</td><td><i>9:30</i>Little Waves <i>11:00</i>Music</td></tr>
+        <tr><td>Thu</td><td><i>10:00</i>Dads' clifftop walk</td></tr>
+        <tr><td>Fri</td><td><i>12:00</i>Shared lunch</td></tr>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section class="scene" id="s5" style="height:320vh">
+  <div class="pin">
+    <svg class="art" id="a5" preserveAspectRatio="xMidYMax slice"></svg>
+    <div class="card l">
+      <div class="tag">walking home along the cliffs</div>
+      <h2>Come and visit</h2>
+      <p>[street address], Jan Juc VIC 3228<br>Weekdays in school terms, 9 till 3<br>[phone] · [email]</p>
+      <form id="form">
+        <input placeholder="your name" required autocomplete="name">
+        <input type="email" placeholder="your email" required autocomplete="email">
+        <button type="submit">Say hello</button>
+        <div class="thanks" id="thanks">lovely, we'll write back soon!</div>
+      </form>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <p>We meet on Wadawurrung Country, and pay our respects to the Traditional Owners of these cliffs, beaches and waters, and to their Elders past and present.</p>
+  <p>© <span id="yr"></span> Surf Coast Family Hub</p>
+</footer>
+
+<script>
+(()=>{
+const K='#2d2a26', NS='http://www.w3.org/2000/svg';
+const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+document.getElementById('yr').textContent=new Date().getFullYear();
+const cl=(v,a=0,b=1)=>Math.max(a,Math.min(b,v));
+const ss=(a,b,x)=>{x=cl((x-a)/(b-a));return x*x*(3-2*x)};
+const lerp=(a,b,k)=>a+(b-a)*k;
+const $=id=>document.getElementById(id);
+let seed=7; const rnd=()=>(seed=(seed*16807)%2147483647)/2147483647;
+
+/* ---------- drawing helpers (return svg strings) ---------- */
+const k=(d,fill='none',w=2.4,x='')=>`<path d="${d}" fill="${fill}" stroke="${K}" stroke-width="${w}" ${x}/>`;
+const wash=(d,fill,x='')=>`<path d="${d}" fill="${fill}" ${x}/>`;
+const ln=(x1,y1,x2,y2,c=K,w=2.4,x='')=>`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${c}" stroke-width="${w}" ${x}/>`;
+const circ=(cx,cy,r,fill='none',w=2.4,x='')=>`<circle cx="${cx}" cy="${cy}" r="${r}" fill="${fill}" stroke="${K}" stroke-width="${w}" ${x}/>`;
+const grad=(id,stops,vert=true)=>`<linearGradient id="${id}" x1="0" y1="0" x2="${vert?0:1}" y2="${vert?1:0}">${stops.map(([o,c])=>`<stop offset="${o}" stop-color="${c}"/>`).join('')}</linearGradient>`;
+
+function person(id,o){
+  const {shirt='#d97b55',pants='#4d6a7a',skin='#f2cdb0',hair='#5b3a26',hat=''}=o;
+  return `<g id="${id}">
+    <g id="${id}-l2">${ln(0,-42,0,-3,pants,9)}${ln(0,-3,6,-3,K,5)}</g>
+    <g id="${id}-a2">${ln(0,-78,0,-50,shirt,7)}</g>
+    ${k('M-12 -83 Q0 -89 12 -83 L10 -40 L-10 -40Z',shirt,2)}
+    <g id="${id}-l1">${ln(0,-42,0,-3,pants,9)}${ln(0,-3,6,-3,K,5)}</g>
+    ${circ(0,-99,13,skin,2)}
+    ${k('M-13 -101 C-12 -117 12 -117 13 -101 C6 -108 -4 -109 -13 -101Z',hair,2)}
+    ${hat}
+    <circle cx="5" cy="-100" r="1.6" fill="${K}"/>
+    <g id="${id}-a1">${ln(0,-78,0,-50,shirt,7)}<circle cx="0" cy="-47" r="3.6" fill="${skin}"/></g>
+  </g>`;
+}
+function dog(id,col='#c8935c'){
+  return `<g id="${id}">
+    <g id="${id}-g0">${ln(-17,-22,-17,0,K,4)}</g><g id="${id}-g1">${ln(14,-22,14,0,K,4)}</g>
+    <g id="${id}-t">${k('M-25 -33 q-10 -4 -15 -17',  'none',3.4)}</g>
+    <ellipse cx="0" cy="-31" rx="27" ry="12" fill="${col}" stroke="${K}" stroke-width="2.2"/>
+    <g id="${id}-hd">${circ(27,-43,11,col,2.2)}${k('M21 -51 q-6 9 2 14','#8a5a36',2)}<circle cx="38" cy="-42" r="2.4" fill="${K}"/><circle cx="30" cy="-46" r="1.6" fill="${K}"/></g>
+    <g id="${id}-g2">${ln(-10,-22,-10,0,K,4)}</g><g id="${id}-g3">${ln(20,-22,20,0,K,4)}</g>
+  </g>`;
+}
+const bird=id=>`<g id="${id}"><g class="wing">${k('M-15 0 Q-7 -10 0 0 Q7 -10 15 0','none',2.6)}</g></g>`;
+function gull(id){return `<g id="${id}"><g id="${id}-b">
+  <ellipse cx="0" cy="-16" rx="16" ry="9" fill="#fbfaf6" stroke="${K}" stroke-width="2"/>${k('M-6 -20 q-14 2 -18 8 q10 0 18 -2','#b9c2c8',2)}
+  <g id="${id}-h">${circ(14,-26,6.5,'#fbfaf6',2)}${k('M20 -26 l9 2 -9 2z','#e9a43a',1.6)}<circle cx="16" cy="-28" r="1.3" fill="${K}"/></g></g>
+  ${ln(-3,-8,-3,0,'#e9a43a',2.4)}${ln(4,-8,4,0,'#e9a43a',2.4)}</g>`}
+
+/* ---------- runtime pose helpers ---------- */
+const T=(id,s)=>{const e=$(id); if(e) e.setAttribute('transform',s)};
+function pose(id,l1,l2,a1,a2){T(id+'-l1',`rotate(${l1} 0 -42)`);T(id+'-l2',`rotate(${l2} 0 -42)`);T(id+'-a1',`rotate(${a1} 0 -78)`);T(id+'-a2',`rotate(${a2} 0 -78)`);}
+const walk=(id,ph,amp=22)=>{const s=Math.sin(ph)*amp;pose(id,s,-s,-s*.9,s*.9)};
+const FS=1.3;
+const place=(id,x,y,s=1,flip=false,rot=0)=>{s*=FS;T(id,`translate(${x.toFixed(1)} ${y.toFixed(1)}) rotate(${rot}) scale(${flip?-s:s} ${s})`)};
+function dogRun(id,ph,t,amp=26){const s=Math.sin(ph)*amp;
+  T(id+'-g0',`rotate(${s} -17 -22)`);T(id+'-g1',`rotate(${-s} 14 -22)`);T(id+'-g2',`rotate(${-s} -10 -22)`);T(id+'-g3',`rotate(${s} 20 -22)`);
+  T(id+'-t',`rotate(${Math.sin(t*14)*18} -25 -33)`);}
+const flap=(id,t,sp=9)=>{const e=$(id)?.firstElementChild; if(e) e.setAttribute('transform',`scale(1 ${(.35+.65*Math.abs(Math.sin(t*sp))).toFixed(2)})`)};
+
+/* ================= SCENES ================= */
+const SC=[];
+
+/* --- 1. sunrise over the cliffs --- */
+SC.push({svg:()=>{seed=3; let waves='';
+  for(let i=0;i<26;i++){const x=40+rnd()*1500,y=640+rnd()*240,w=18+rnd()*34*(y-600)/200; if(x>1040&&y<900) continue; waves+=k(`M${x} ${y} q${w/2} ${-w/5} ${w} 0`,'none',2);}
+  let posts=''; for(let x=1170;x<1600;x+=58){const y=topY(x); posts+=ln(x,y-2,x,y-26,K,2.4);}
+  return `<defs>${grad('g1s',[[0,'#f6c9a0'],[.6,'#fbe3c4'],[1,'#fcefdc']])}${grad('g1w',[[0,'#a9d0cb'],[1,'#6fa9ad']])}${grad('g1c',[[0,'#e5a874'],[1,'#c1714a']])}</defs>
+  ${wash('M0 0H1600V600H0Z','url(#g1s)')}
+  <g id="sun">${circ(740,0,74,'#f6b26b',2.4)}</g>
+  ${wash('M0 600H1600V900H0Z','url(#g1w)')}
+  ${k('M0 600H1600','none',2.2)}
+  ${k('M0 566 C120 552 250 552 370 574 C420 584 450 594 474 600','#d9b7a6',2.2)}
+  <g id="glint">${[0,1,2,3,4].map(i=>k(`M${700-i*18} ${618+i*22} h${50+i*30}`,'none',2.6,'stroke="#fff6e4"')).join('')}</g>
+  <g id="waves1">${waves}</g>
+  ${k('M960 900 L968 742 C972 716 1000 708 1016 722 L1032 900Z','url(#g1c)')}
+  ${k('M972 790 C985 786 1000 788 1022 794 M968 840 C985 836 1005 838 1027 844','none',1.8)}
+  ${k('M1600 900 L1600 470 C1500 468 1380 472 1280 480 C1200 487 1150 500 1122 522 L1102 600 C1092 680 1072 760 1044 900Z','url(#g1c)')}
+  ${k('M1110 562 C1250 550 1420 542 1600 542 M1100 642 C1240 632 1420 626 1600 628 M1082 732 C1230 724 1420 720 1600 722 M1062 820 C1220 814 1420 812 1600 814','none',1.8)}
+  ${k('M1122 522 C1150 500 1200 487 1280 480 C1380 472 1500 468 1600 470 L1600 486 C1480 484 1300 492 1190 510Z','#9fb07f',2.2)}
+  ${posts}${k(`M1170 ${topY(1170)-20} ${[...Array(8)].map((_,i)=>{const x=1170+(i+1)*58;return `L${x} ${topY(x)-20}`}).join(' ')}`,'none',1.6)}
+  ${k('M1000 900 q20 -10 40 0 M940 896 q-14 -8 -30 0','none',2.4,'stroke="#fffaf0"')}
+  ${person('w1',{shirt:'#c95f45',pants:'#3f5866'})}${person('w1k',{shirt:'#efc14f',pants:'#6b8c5e',hair:'#c98d4e'})}${dog('d1')}
+  ${bird('b1')}${bird('b2')}${bird('b3')}`},
+ act(a,t,p){
+  const sy=lerp(668,470,ss(0,.8,p)); T('sun',`translate(0 ${sy})`);
+  $('glint').style.opacity=ss(.35,.7,p)*(.6+.4*Math.sin(t*2));
+  T('waves1',`translate(${Math.sin(t*.7)*10} 0)`);
+  const x=lerp(1180,1490,a), ph=a*40;
+  place('w1',x,topY(x)-2,.82,false); walk('w1',ph);
+  const xk=x-46; place('w1k',xk,topY(xk)-2,.56); walk('w1k',ph*1.3+1,26);
+  const xd=x+60+Math.sin(t*2)*6; place('d1',xd,topY(xd)-2,.62); dogRun('d1',ph*1.6,t);
+  [['b1',180,250],['b2',230,215],['b3',140,290]].forEach(([id,o,y],i)=>{const bx=lerp(-80+o,980+o,(t*.035+i*.13)%1); T(id,`translate(${bx} ${y+Math.sin(t*1.3+i)*8}) scale(${1-i*.12})`); flap(id,t+i,7+i);});
+ }});
+function topY(x){return x<1280? lerp(522,480,(x-1122)/158) : lerp(480,470,(x-1280)/320)}
+
+/* --- 2. Jan Juc beach --- */
+SC.push({svg:()=>{seed=11; let w='';
+  for(let i=0;i<22;i++){const x=rnd()*1600,y=400+rnd()*190,s=14+rnd()*30; w+=k(`M${x} ${y} q${s/2} ${-s/5} ${s} 0`,'none',2);}
+  let shells=''; for(let i=0;i<14;i++){const x=rnd()*1600,y=700+rnd()*180; shells+=k(`M${x} ${y} q4 -6 8 0z`,'#f3e1c8',1.6);}
+  return `<defs>${grad('g2s',[[0,'#cfe5e6'],[1,'#f4ecdc']])}${grad('g2w',[[0,'#86bcbf'],[1,'#5f9ea4']])}${grad('g2c',[[0,'#e5a874'],[1,'#c1714a']])}</defs>
+  ${wash('M0 0H1600V390H0Z','url(#g2s)')}
+  ${k('M1600 390 L1600 270 C1500 268 1400 280 1330 300 C1300 320 1290 350 1282 390Z','url(#g2c)')}
+  ${k('M1300 330 C1400 318 1500 312 1600 312','none',1.6)}
+  ${k('M0 352 C80 342 170 344 240 360 C270 368 290 380 300 390','#d7b7a7',2)}
+  ${wash('M0 390H1600V680H0Z','url(#g2w)')}${k('M0 390H1600','none',2)}
+  <g id="waves2">${w}</g>
+  <g id="wave">${k('M470 540 C600 520 720 470 830 466 C890 464 920 486 902 506 C890 516 872 506 878 496','#a8d4d1',2.4)}
+    ${k('M478 548 C620 532 760 500 860 506','none',2,'stroke="#fffaf0"')}</g>
+  ${k('M0 650 C300 618 600 662 900 634 C1200 606 1400 640 1600 622 L1600 900 L0 900Z','#efd8ae',2.4)}
+  <g id="foam2">${k('M0 640 C300 608 600 652 900 624 C1200 596 1400 630 1600 612','none',4,'stroke="#fffaf0"')}</g>
+  ${shells}
+  <g transform="translate(-400 0)">${k('M1290 760 h170 l-12 20 h-146z','#c95f45',2)}${k('M1316 760 v20 M1346 760 v20 M1376 760 v20 M1406 760 v20','none',2,'stroke="#fffaf0"')}
+  ${ln(1350,800,1338,600,K,3)}${k('M1250 640 Q1338 548 1440 616 Q1395 596 1345 602 Q1296 610 1250 640Z','#f2c14e',2.4)}
+  ${k('M1295 612 Q1320 590 1340 600 M1345 602 Q1370 584 1395 596','none',2)}</g>
+  ${person('mum',{shirt:'#4f8a8b',pants:'#e4d2b5',hair:'#2f2622'})}
+  <g id="castle" transform="translate(240 812) scale(1.3)">
+    <g id="c1">${k('M-60 0 h120 v-28 h-120z','#e2c18d',2.2)}</g>
+    <g id="c2">${k('M-50 -28 v-30 h24 v30 M26 -28 v-30 h24 v30','#e2c18d',2.2)}</g>
+    <g id="c3">${k('M-14 -28 v-48 h28 v48','#e2c18d',2.2)}${k('M-6 -44 q6 -8 12 0 v8 h-12z','#6b5440',1.6)}</g>
+    <g id="c4">${ln(0,-76,0,-104,K,2.2)}${k('M0 -104 l20 6 -20 6z','#c95f45',1.8)}</g>
+  </g>
+  <g transform="translate(-150 0)">${k('M520 818 l-10 -34 h34 l-8 34z','#f2c14e',2)}${k('M512 784 q15 -16 30 0','none',2)}</g>
+  ${person('kid',{shirt:'#f2c14e',pants:'#c95f45',hair:'#c98d4e'})}
+  ${gull('gull')}
+  <circle id="ball" r="10" fill="#e8574a" stroke="${K}" stroke-width="2"/>
+  ${dog('d2','#3f3833')}
+  <g id="surf"><g id="lie">${k('M-36 0 q36 -12 72 0 q-36 10 -72 0z','#fff6e2',2)}${k('M-24 -8 q20 -8 34 -2 l0 6 q-18 2 -34 2z','#2f4b5a',2)}${circ(16,-12,7,'#f2cdb0',2)}<g id="pad">${ln(0,-6,0,10,'#2f4b5a',5)}</g></g>
+    <g id="stand">${k('M-40 0 q40 -12 80 0 q-40 10 -80 0z','#fff6e2',2)}<g id="sp" transform="translate(0 -2)">${person('surfer',{shirt:'#2f4b5a',pants:'#2f4b5a',hair:'#d9a55a'})}</g></g></g>`},
+ act(a,t,p){
+  T('waves2',`translate(${Math.sin(t*.6)*12} ${Math.sin(t*.9)*2})`);
+  $('foam2').style.transform=`translateY(${Math.sin(t*1.2)*5}px)`;
+  // surfer: paddle out, pop up, ride
+  const lie=$('lie'),st=$('stand');
+  if(a<.42){const k2=a/.42; lie.style.display='';st.style.display='none';
+    T('surf',`translate(${lerp(240,560,k2)} ${lerp(600,520,k2)+Math.sin(t*3)*2}) scale(.95)`); T('pad',`rotate(${Math.sin(t*6)*70} 0 -6)`);
+    T('wave',`translate(${lerp(-220,0,k2)} 0)`);}
+  else{const k2=ss(.42,1,a); lie.style.display='none';st.style.display='';
+    const x=lerp(560,1080,k2), y=lerp(500,560,k2)+Math.sin(k2*9)*10;
+    T('surf',`translate(${x} ${y}) rotate(${-8+Math.sin(k2*9)*6}) scale(.62)`); T('wave',`translate(${lerp(0,250,k2)} ${lerp(0,30,k2)})`);
+    pose('surfer',-22,24,-80+Math.sin(t*3)*6,70);}
+  // mum throws ball, dog fetches
+  place('mum',830,772,.95,true);
+  const th=ss(.05,.2,a); pose('mum',0,0,lerp(0,-150,th)*(a<.2?1:ss(.35,.2,a)),10);
+  let bx,by; const fl=ss(.2,.42,a);
+  if(a<.2){bx=812;by=620;} else if(a<.62){bx=lerp(812,520,fl);by=lerp(620,822,fl)-Math.sin(fl*Math.PI)*170;}
+  const go=ss(.3,.6,a), back=ss(.62,.95,a);
+  const dx = a<.62 ? lerp(760,560,go) : lerp(560,780,back);
+  const moving=(a>.3&&a<.6)||(a>.62&&a<.95);
+  place('d2',dx,826,.8,a<.62); dogRun('d2',moving?t*14:0,t,moving?28:4);
+  if(a>=.62){bx=dx-50;by=770;} if(a>=.6&&a<.62){bx=520;by=822;}
+  $('ball').setAttribute('cx',bx);$('ball').setAttribute('cy',by);
+  // kid builds the castle
+  place('kid',400,840,.62,true); pose('kid',8,-8,-40+Math.sin(t*5)*40,20);
+  ['c1','c2','c3','c4'].forEach((id,i)=>{const s=ss(.05+i*.2,.2+i*.2,a); T(id,`translate(0 ${(1-s)*20}) scale(1 ${s.toFixed(3)})`); $(id).style.opacity=s>0?1:0;});
+  // gull pecking
+  const gx=lerp(1000,900,ss(.1,.9,a)); T('gull',`translate(${gx} 740) scale(-1.4 1.4)`); T('gull-h',`rotate(${Math.max(0,Math.sin(t*4))*30} 10 -24)`);
+ }});
+
+/* --- 3. inside the Hub --- */
+SC.push({svg:()=>{seed=21; let floor=''; for(let i=0;i<8;i++){const y=730+i*24; floor+=k(`M0 ${y} H1600`,'none',1.4,'opacity=".5"');}
+  let bunting='', flags=['#c95f45','#f2c14e','#4f8a8b','#e9a7a0','#8aa36b'];
+  for(let i=0;i<15;i++){const x=80+i*100,y=86+Math.sin(i/14*Math.PI)*36; bunting+=`<g class="flag" data-x="${x}" data-y="${y}">${k(`M${x-26} ${y} L${x+26} ${y+2} L${x} ${y+46}Z`,flags[i%5],2)}</g>`;}
+  return `<defs>${grad('g3w',[[0,'#f4e3c9'],[1,'#efd7b6']])}${grad('g3s',[[0,'#bfe0de'],[.55,'#f6e2c4'],[.56,'#7fb5b8'],[1,'#5f9ea4']])}</defs>
+  ${wash('M0 0H1600V720H0Z','url(#g3w)')}
+  ${wash('M0 720H1600V900H0Z','#d9b48a')}${k('M0 720H1600','none',2.4)}${floor}
+  ${k('M0 80 Q800 160 1600 80','none',2)}${bunting}
+  ${k('M880 200 h420 v320 h-420z','url(#g3s)',3)}
+  ${k('M1180 376 C1220 340 1260 330 1300 330 V520 H1150 C1160 460 1170 410 1180 376Z','#d99a66',2)}
+  ${k('M1180 400 C1220 390 1260 386 1300 386','none',1.6)}
+  <circle id="sun3" cx="960" cy="300" r="26" fill="#f6c27a" stroke="${K}" stroke-width="2"/>
+  ${k('M1090 200 v320 M880 360 h420','none',3)}
+  ${k('M860 186 h460','none',6,'stroke="#8a6448"')}
+  ${k('M862 190 c30 120 10 240 30 340 l-30 0z','#e9a7a0',2)}${k('M1318 190 c-30 120 -10 240 -30 340 l30 0z','#e9a7a0',2)}
+  ${k('M1350 540 h250 v180 h-250z','#c7a27a',2.4)}${k('M1340 530 h270 v14 h-270z','#a8825d',2.2)}${k('M1475 560 v150 M1440 630 h10 M1500 630 h10','none',2)}
+  <g id="kettle">${k('M1400 530 q-4 -46 36 -48 q40 2 36 48z','#4f8a8b',2.2)}${k('M1472 506 q22 -4 26 -22','none',3.4)}${k('M1418 486 q18 -16 36 0','none',2.6)}</g>
+  <g id="steam">${k('M1500 470 q-12 -20 0 -40 q12 -20 0 -40','none',2.2,'opacity=".6"')}${k('M1516 480 q-10 -16 0 -32 q10 -16 0 -32','none',2,'opacity=".5"')}</g>
+  ${k('M1540 530 q0 -26 20 -26 q20 0 20 26z','#efe6d6',2)}${k('M1548 504 q-6 -30 6 -48 M1560 504 q2 -36 18 -46 M1568 504 q14 -22 30 -24','none',2.2,'stroke="#6b8c5e"')}
+  ${k('M760 330 h70 v100 h-70z','#f3e7d0',2)}${k('M770 410 l18 -30 14 18 10 -10 12 22z','#8aa36b',1.6)}${circ(812,352,8,'#f2c14e',1.6)}
+  <ellipse cx="960" cy="800" rx="330" ry="62" fill="#e7a99c" stroke="${K}" stroke-width="2.4"/>
+  <ellipse cx="960" cy="800" rx="270" ry="44" fill="none" stroke="#fffaf0" stroke-width="3" stroke-dasharray="2 14"/>
+  ${k('M1110 700 h250 q20 0 20 20 v60 h-290 v-60 q0 -20 20 -20z','#8aa36b',2.4)}${k('M1100 650 h270 q16 0 16 16 v40 h-302 v-40 q0 -16 16 -16z','#9fb784',2.4)}
+  ${ln(1110,780,1106,800,K,4)}${ln(1360,780,1364,800,K,4)}
+  <g id="blocks" transform="translate(780 816)">
+    ${['#c95f45','#f2c14e','#4f8a8b','#e9a7a0','#8aa36b','#c95f45'].map((c,i)=>`<g id="bk${i}">${k(`M-22 ${-i*40} h44 v-40 h-44z`,c,2.2)}${k(`M-10 ${-i*40-20} h20`,'none',1.6)}</g>`).join('')}
+  </g>
+  ${person('kid3',{shirt:'#4f8a8b',pants:'#f2c14e',hair:'#2f2622'})}
+  ${person('dad',{shirt:'#c95f45',pants:'#3f5866',hair:'#6b4630'})}
+  <g id="baby">${circ(0,0,15,'#f2cdb0',2)}${k('M-18 4 q18 34 36 0 q-4 22 -18 26 q-14 -4 -18 -26z','#e9e3f5',2)}<circle cx="-4" cy="-2" r="1.3" fill="${K}"/><circle cx="5" cy="-2" r="1.3" fill="${K}"/></g>
+  <g id="cat">${k('M-30 -6 q30 -26 60 0 q-30 8 -60 0z','#e6a35e',2)}${circ(32,-16,11,'#e6a35e',2)}${k('M24 -24 l4 -10 6 8 M34 -26 l6 -8 2 10','#e6a35e',1.8)}
+    <g id="ctail">${k('M-30 -6 q-24 -4 -26 -26','none',3.4)}</g>${ln(-18,-2,-20,8,K,3)}${ln(18,-2,20,8,K,3)}</g>`},
+ act(a,t,p){
+  document.querySelectorAll('#a3 .flag').forEach((f,i)=>{f.setAttribute('transform',`rotate(${Math.sin(t*1.6+i*.7)*4} ${f.dataset.x} ${f.dataset.y})`)});
+  const sm=$('steam'); sm.style.opacity=ss(.3,.5,p)*(.5+.5*Math.sin(t*2)); T('steam',`translate(${Math.sin(t*1.5)*4} ${-((t*14)%20)})`);
+  T('kettle',a>.1&&a<.3?`translate(0 ${Math.sin(t*40)*1})`:'');
+  // blocks stack, then topple
+  for(let i=0;i<6;i++){const s=ss(.04+i*.11,.12+i*.11,a); const e=$('bk'+i); e.style.opacity=s>0?1:0;
+    let tr=`translate(0 ${(-1+s)*60})`;
+    if(a>.8&&i>=3){const f=ss(.8,.92,a); tr=`translate(${f*(60+i*30)} ${f*(i*40-10)}) rotate(${f*(70+i*25)} 0 ${-i*40-20})`;}
+    e.setAttribute('transform',tr);}
+  place('kid3',700,840,.62,false); const reach=a<.78?-120+Math.sin(t*4)*10:lerp(-120,-170,ss(.8,.85,a));
+  pose('kid3',a>.85?-20:0,a>.85?20:0,reach,a>.85?160:-30);
+  // dad sways with the baby
+  const sw=Math.sin(t*1.4)*4; place('dad',1040,830,1.05,true,sw); pose('dad',0,0,-70,-60);
+  const ds=1.05*FS; T('baby',`translate(${1040-Math.sin(sw*Math.PI/180)*80*ds} ${830-80*ds}) rotate(${sw*1.5}) scale(${ds})`);
+  // cat strolls in and curls up
+  const cx=lerp(1700,1240,ss(.1,.6,a)); T('cat',`translate(${cx} 870) scale(${a>.62?-1.05:-1} 1)`);
+  T('ctail',`rotate(${Math.sin(t*3)*10} -30 -6)`);
+ }});
+
+/* --- 4. surf club and the creek --- */
+SC.push({svg:()=>{seed=33; let reeds='';
+  for(let i=0;i<20;i++){const x=rnd()*1100,y=790+rnd()*14; reeds+=k(`M${x} ${y+20} q-6 -24 -14 -36 M${x} ${y+20} q2 -30 0 -52 M${x} ${y+20} q8 -22 16 -32`,'none',2.6,'stroke="#5f7d4f"')+`<ellipse cx="${x}" cy="${y-34}" rx="3.5" ry="9" fill="#8a5a36"/>`;}
+  let win=''; for(let i=0;i<6;i++) win+=k(`M${330+i*70} 420 h52 v62 h-52z`,'#bfe0de',2);
+  return `<defs>${grad('g4s',[[0,'#cfe5e6'],[1,'#f6ecd9']])}${grad('g4c',[[0,'#7fb5c0'],[1,'#5a96a6']])}</defs>
+  ${wash('M0 0H1600V900H0Z','url(#g4s)')}
+  ${k('M0 520 C200 470 420 460 640 480 C900 500 1200 440 1600 450 V900 H0Z','#b7c494',2.2)}
+  ${k('M0 600 C300 560 700 590 1000 576 C1250 566 1450 580 1600 574 V900 H0Z','#a2b47e',2.2)}
+  ${k('M300 600 v-200 h460 v200z','#f3ecdc',2.6)}${k('M280 404 h500 v-20 h-500z','#4f8a8b',2.4)}
+  ${k('M300 500 h460','none',2.2)}${k('M300 520 h460 M320 500 v20 M360 500 v20 M400 500 v20 M440 500 v20 M480 500 v20 M520 500 v20 M560 500 v20 M600 500 v20 M640 500 v20 M680 500 v20 M720 500 v20','none',1.8)}
+  ${win}${k('M330 540 h90 v60 h-90z','#d99a66',2)}${k('M480 540 h220 v60 h-220z','#bfe0de',2)}
+  ${k('M220 600 v-260 h70 v260z','#f3ecdc',2.4)}${k('M210 344 h90 l-45 -40z','#c95f45',2.4)}${k('M232 370 h46 v36 h-46z','#bfe0de',2)}
+  <text x="530" y="401" text-anchor="middle" class="label" font-size="20" letter-spacing="8" fill="#fffaf0">SURF CLUB</text>
+  ${ln(860,600,860,420,K,3)}${ln(940,600,940,440,K,3)}
+  <g id="f1"><path id="f1p" fill="#e8574a" stroke="${K}" stroke-width="2"/><path id="f1q" fill="#f2c14e" stroke="${K}" stroke-width="2"/></g>
+  <g id="f2"><path id="f2p" fill="#e8574a" stroke="${K}" stroke-width="2"/><path id="f2q" fill="#f2c14e" stroke="${K}" stroke-width="2"/></g>
+  ${k('M0 640 C400 630 800 650 1600 636 L1600 690 C800 704 400 684 0 694Z','#e9dcc0',2.2)}
+  ${k('M0 780 C200 750 420 800 640 770 C860 740 1000 790 1600 760 V900 H0Z','url(#g4c)',2.4)}
+  <g id="ripples">${[0,1,2,3,4,5].map(i=>k(`M${80+i*230} ${820+(i%2)*30} q20 -6 40 0`,'none',2,'stroke="#e9f4f2"')).join('')}</g>
+  ${reeds}
+  ${[0,1,2].map(i=>`<g id="duck${i}">${k('M-20 0 q0 -16 20 -16 q8 -14 20 -6 q6 4 2 10 l10 2 -10 4 q-4 10 -22 10 q-20 0 -20 -4z',i?'#c9a36b':'#7d8a5a',2)}<circle cx="14" cy="-16" r="1.6" fill="${K}"/></g>`).join('')}
+  <g id="bike">${['bw1','bw2'].map((id,i)=>`<g id="${id}" transform="translate(${i?56:-56} 0)">${circ(0,0,24,'none',3)}${ln(-24,0,24,0,K,1.4)}${ln(0,-24,0,24,K,1.4)}</g>`).join('')}
+    ${k('M-56 0 L-14 -2 L22 -40 L-30 -40 Z M-14 -2 L-30 -40 M22 -40 L56 0 M-30 -40 l-4 -10 M22 -40 l-6 -12 h12','none',3,'stroke="#c95f45"')}
+    <g transform="translate(-28 -4) scale(.85)">${person('rider',{shirt:'#f2c14e',pants:'#4f8a8b',hair:'#c98d4e',hat:k('M-15 -104 q15 -22 30 0z','#e8574a',2)})}</g></g>
+  ${person('ice',{shirt:'#e9a7a0',pants:'#3f5866',hair:'#2f2622'})}
+  <g id="cone">${k('M-7 0 l7 18 7 -18z','#d9a55a',1.8)}${circ(0,-4,8,'#f6d6e0',1.8)}</g>`},
+ act(a,t,p){
+  // flags flutter
+  [['f1',860,420],['f2',940,440]].forEach(([id,x,y],i)=>{const w=s=>Math.sin(t*5+s+i)*6;
+    $(id+'p').setAttribute('d',`M${x} ${y} Q${x+25} ${y+w(0)} ${x+50} ${y+w(1)} L${x+50} ${y+30+w(1)} L${x} ${y+30}Z`);
+    $(id+'q').setAttribute('d',`M${x} ${y+30} L${x+50} ${y+30+w(1)} L${x+50} ${y+60+w(2)} Q${x+25} ${y+60+w(1)} ${x} ${y+60}Z`);});
+  T('ripples',`translate(${Math.sin(t*.8)*14} 0)`);
+  [0,1,2].forEach(i=>{const x=lerp(-60-i*60,820-i*70,a); T('duck'+i,`translate(${x} ${812+i*16+Math.sin(t*2+i)*2}) scale(${1-i*.12})`);});
+  // bike rides past
+  const bx=lerp(-160,1180,ss(.05,.95,a)); T('bike',`translate(${bx} 668) scale(1.15)`);
+  const r=(bx/24)*57.3; T('bw1',`translate(-56 0) rotate(${r})`); T('bw2',`translate(56 0) rotate(${r})`);
+  const ped=bx/18; pose('rider',-50+Math.sin(ped)*30,-50-Math.sin(ped)*30,-55,-60);
+  // someone strolls with an ice cream
+  const ix=lerp(1080,700,ss(.15,.85,a)); place('ice',ix,668,.85,true); walk('ice',a*40,18);
+  T('ice-a1',`rotate(-70 0 -78)`); const cs=.85*FS; T('cone',`translate(${ix+30*cs} ${668-60*cs}) rotate(${Math.sin(t*2)*4}) scale(${FS})`);
+ }});
+
+/* --- 5. dusk walk home --- */
+SC.push({svg:()=>{seed=51; let stars='';
+  for(let i=0;i<40;i++){const x=rnd()*1600,y=rnd()*360,r=1.4+rnd()*2.4; stars+=`<g class="star" data-i="${i}">${k(`M${x-r*2} ${y} h${r*4} M${x} ${y-r*2} v${r*4}`,'none',1.6,'stroke="#fff6dc"')}</g>`;}
+  let houses=''; [[920,500],[1010,478],[1120,462],[1230,452],[1340,446],[1460,440]].forEach(([x,y],i)=>{houses+=`${k(`M${x} ${y} h70 v-46 l-35 -26 -35 26z`,'#7a6880',2)}<rect class="lw" x="${x+14}" y="${y-36}" width="16" height="16" fill="#3e3550" stroke="${K}" stroke-width="1.6"/><rect class="lw" x="${x+40}" y="${y-36}" width="16" height="16" fill="#3e3550" stroke="${K}" stroke-width="1.6"/>`;});
+  return `<defs>${grad('g5s',[[0,'#4c4f7d'],[.45,'#9e7896'],[.75,'#e99a7a'],[1,'#f6c998']])}${grad('g5w',[[0,'#8a8fb0'],[1,'#4d5878']])}</defs>
+  ${wash('M0 0H1600V600H0Z','url(#g5s)')}
+  <g id="stars">${stars}</g>
+  <g id="sun5">${circ(560,0,80,'#f7b56c',2.4)}</g>
+  ${wash('M0 600H1600V900H0Z','url(#g5w)')}${k('M0 600H1600','none',2)}
+  ${k('M0 552 C110 540 240 544 340 566 C380 576 400 590 410 600','#8d6f86',2)}
+  <g id="glit">${[0,1,2,3,4].map(i=>k(`M${520-i*16} ${626+i*24} h${60+i*28}`,'none',2.6,'stroke="#ffd7a6"')).join('')}</g>
+  ${k('M860 900 L880 640 C890 580 960 520 1100 490 C1250 460 1400 440 1600 430 V900Z','#6e5a72',2.4)}
+  ${k('M890 680 C1050 650 1300 630 1600 626 M900 770 C1080 740 1300 726 1600 724','none',1.8,'opacity=".7"')}
+  ${houses}
+  ${k('M880 600 C1000 560 1200 536 1600 520','none',2.4,'stroke="#d9b48a" stroke-dasharray="2 12"')}
+  ${person('p5',{shirt:'#c95f45',pants:'#3f3a50',hair:'#2f2622'})}
+  <g id="board5">${k('M-60 0 q60 -14 120 0 q-60 12 -120 0z','#fff3dc',2)}</g>
+  ${person('k5',{shirt:'#f2c14e',pants:'#4f8a8b',hair:'#c98d4e'})}${dog('d5','#d0a26a')}
+  <g id="roo">${k('M-30 -10 q-6 -40 26 -52 q22 -6 30 10 q4 20 -12 34 l-10 8z','#b07b52',2.2)}${k('M18 -56 q8 -14 22 -12 q12 4 8 12 q-10 6 -24 4z','#b07b52',2)}${k('M30 -68 l2 -14 6 12','#b07b52',1.8)}${k('M-30 -10 q-40 6 -60 -6','none',4)}${ln(-4,-4,16,0,K,4)}</g>`},
+ act(a,t,p){
+  T('sun5',`translate(0 ${lerp(500,690,ss(0,.9,p))})`);
+  $('glit').style.opacity=1-ss(.6,.9,p);
+  document.querySelectorAll('#a5 .star').forEach(s=>{const i=+s.dataset.i; s.style.opacity=ss(i/40*.6,i/40*.6+.25,a)*(.6+.4*Math.sin(t*2+i));});
+  document.querySelectorAll('#a5 .lw').forEach((w,i)=>w.setAttribute('fill',a>.1+i*.06?'#ffd77a':'#3e3550'));
+  const y=x=>lerp(570,526,(x-900)/700)+6;
+  const x=lerp(1560,1000,a), ph=a*44;
+  place('p5',x,y(x),.95,true); walk('p5',ph,20); T('p5-a1','rotate(-160 0 -78)');
+  T('board5',`translate(${x+4} ${y(x)-112}) rotate(-6)`);
+  const xk=x+52; place('k5',xk,y(xk),.6,true); walk('k5',ph*1.3,24);
+  const xd=x-70+Math.sin(t*1.5)*8; place('d5',xd,y(xd),.7,true); dogRun('d5',ph*1.6,t);
+  const r=ss(.45,1,a), rx=lerp(1680,x+260,r), hop=Math.abs(Math.sin(r*Math.PI*5))*46;
+  T('roo',`translate(${rx} ${y(rx)-hop}) scale(-1 1) rotate(${hop>10?-8:6})`);
+ }});
+
+/* ================= engine ================= */
+const scenes=[...document.querySelectorAll('.scene')].map((sec,i)=>{
+  const svg=sec.querySelector('svg.art'); svg.setAttribute('viewBox','0 0 1600 900');
+  svg.innerHTML=SC[i].svg();
+  const els=[...svg.querySelectorAll('path,line,circle,ellipse,rect')].filter(e=>!e.closest('defs'));
+  const items=els.map(e=>{const st=e.getAttribute('stroke'), sw=+e.getAttribute('stroke-width')||0;
+    let L=0; if(st&&st!=='none'&&sw>0){try{L=e.getTotalLength()}catch(_){}}
+    const f=e.getAttribute('fill'); return {e,L,hasFill:f&&f!=='none'};});
+  const N=items.length; items.forEach((it,j)=>{it.d0=j/N*.72; it.f0=j/N;});
+  items.forEach(it=>{if(it.L){it.e.style.strokeDasharray=it.L+' '+it.L;}});
+  return {sec,svg,items,card:sec.querySelector('.card'),act:SC[i].act,lastP:-1};
+});
+
+function scrollP(s){const r=s.sec.getBoundingClientRect(), span=r.height-innerHeight; return cl(-r.top/span)}
+const intro=performance.now();
+function frame(now){
+  const t=now/1000, it=reduce?1:cl((now-intro)/2600);
+  for(const s of scenes){
+    const r=s.sec.getBoundingClientRect(); if(r.bottom<0||r.top>innerHeight) continue;
+    let p=scrollP(s);
+    // pace: draw 0-.32, wash .22-.42, act .38-.94 (scene 1 draws itself on load)
+    let P = s===scenes[0] ? Math.max(it*.38, .38+p*.62) : p;
+    if(reduce) P=Math.max(P,.42);
+    const D=Math.min(1,P/.32);
+    if(Math.abs(P-s.lastP)>.0005){
+      for(const x of s.items){
+        if(x.L){const q=cl((D-x.d0)/.28); x.e.style.strokeDashoffset=(x.L*(1-q)).toFixed(1);}
+        const f=cl((P-.22-x.f0*.1)/.1); x.e.style.fillOpacity=x.hasFill?f:'';
+        if(!x.L&&x.hasFill) x.e.style.opacity=f;
+      }
+      s.lastP=P;
+    }
+    const a=ss(.38,.94,P);
+    s.act(a,t,P);
+    if(s.card) s.card.classList.toggle('on',P>.4);
+  }
+  $('title').classList.toggle('on',it>.35);
+  $('hint').style.opacity=scrollY>40?0:1;
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+$('form').onsubmit=e=>{e.preventDefault();$('thanks').style.display='block';e.target.reset();};
+window.__HUB2={scenes};
+})();
+</script>
+</body>
+</html>
