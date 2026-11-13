@@ -1557,83 +1557,278 @@ function e_k(e) { e.k = layerOf(e.x, e.z, e.y); e.mcd = Math.max(0, e.mcd - 0.01
 
 
 // ===== camera, view model, rendering =====
-const view = new T.Group(); view.userData.fl = null; const oldG = new T.Group(); view.add(oldG);
-{ const k = 0x26272a, k2 = 0x16171a, mt = 0x3a3d40;
-  part(oldG, 0.065, 0.1, 0.46, 0, 0, 0, k); part(oldG, 0.055, 0.075, 0.3, 0, 0.005, -0.36, mt); part(oldG, 0.022, 0.022, 0.2, 0, 0.012, -0.58, k2); part(oldG, 0.05, 0.13, 0.065, 0, -0.1, -0.02, k2).rotation.x = 0.18;
-  part(oldG, 0.05, 0.1, 0.05, 0, -0.095, 0.17, k2).rotation.x = -0.25; part(oldG, 0.05, 0.1, 0.24, 0, -0.01, 0.34, k); part(oldG, 0.03, 0.016, 0.3, 0, 0.058, -0.02, k2);
-  part(oldG, 0.008, 0.045, 0.008, 0, 0.083, -0.5, k2); part(oldG, 0.05, 0.03, 0.008, -0.0, 0.084, -0.5, k2).visible = false; part(oldG, 0.014, 0.04, 0.03, -0.02, 0.07, 0.13, k2); part(oldG, 0.014, 0.04, 0.03, 0.02, 0.07, 0.13, k2);
-  part(oldG, 0.052, 0.07, 0.1, 0, -0.01, -0.2, 0x4a4036); // hands/glove hint on the handguard
-  const fl = part(view, 0.1, 0.1, 0.06, 0, 0.035, -0.6, 0xffd36b); fl.visible = false; view.userData.fl = fl; cam.add(view); }
-
-// real rifle model: M4A1 by BigWhyaaa (CC0, OpenGameArt), converted to m4a1.bin (welded, quantised) + m4a1.jpg; falls back to boxes if it fails to load
-// first-person arms: tapered sleeves from off-screen to the wrists, gloved hands on the pistol grip and under the handguard (gun space: muzzle toward -z)
-const SLEEVE = new T.MeshStandardMaterial({ color: 0x0e110c, roughness: 0.95 }), GLOVE = new T.MeshStandardMaterial({ color: 0x070707, roughness: 0.75 }), PADM = new T.MeshStandardMaterial({ color: 0x2b2b29, roughness: 0.55 }), V3 = (x, y, z) => new T.Vector3(x, y, z);
-function limbMesh(a, b, r0, r1, mat) { const d = new T.Vector3().subVectors(b, a), len = d.length(), m = new T.Mesh(new T.CylinderGeometry(r1, r0, len, 16), mat); m.position.copy(a).add(b).multiplyScalar(0.5); m.quaternion.setFromUnitVectors(V3(0, 1, 0), d.normalize()); return m; }
+// The first-person view model hangs on the camera: `view` (scaled with the FOV setting so the gun looks the same at any FOV) > `gunG` (animated pivot: sway, kick,
+// reload tilt) > `gm` (the weapon model, scaled per weapon) plus the two hands. Gun space: muzzle toward -z, +y up, origin near the grip.
+// Every view-model material gets a tiny procedural environment map, so the gun and arms read clearly in any room (the world lights alone left them black).
+const V3 = (x, y, z) => new T.Vector3(x, y, z);
+const view = new T.Group(); cam.add(view); view.userData.fl = null;
+const gunG = new T.Group(); view.add(gunG); const gm = new T.Group(); gunG.add(gm);
+const VMENV = (() => { // a small studio: bright ceiling lamp, a window on the left, warm bounce from the floor
+  try {
+    const sc = new T.Scene(), g = new T.SphereGeometry(10, 32, 16), pa = g.attributes.position, col = new Float32Array(pa.count * 3);
+    for (let i = 0; i < pa.count; i++) { const y = pa.getY(i) / 10, c = y > 0 ? [0.55 + 0.35 * y, 0.57 + 0.33 * y, 0.6 + 0.3 * y] : [0.5 + 0.2 * y, 0.45 + 0.15 * y, 0.4 + 0.1 * y]; col.set(c, i * 3); }
+    g.setAttribute('color', new T.BufferAttribute(col, 3)); sc.add(new T.Mesh(g, new T.MeshBasicMaterial({ vertexColors: true, side: T.BackSide })));
+    const lamp = (w, h, x, y, z, c, ry, rx) => { const m = new T.Mesh(new T.PlaneGeometry(w, h), new T.MeshBasicMaterial({ color: new T.Color(c[0], c[1], c[2]), side: T.DoubleSide })); m.position.set(x, y, z); m.rotation.set(rx || 0, ry || 0, 0); sc.add(m); };
+    lamp(5, 3, 0, 8.5, -1, [7, 6.3, 5.2], 0, Math.PI / 2); lamp(3, 5, -9, 3, -2, [4.5, 5, 5.6], Math.PI / 2, 0); lamp(3, 3, 6, 5, 7, [2.4, 2.2, 2], -2.2, 0.3);
+    const pm = new T.PMREMGenerator(R), rt = pm.fromScene(sc, 0.02); pm.dispose(); return rt.texture;
+  } catch (e) { console.warn('view env failed', e); return null; }
+})();
+const VMENVK = 0.4; // overall strength of the view-model environment light
+const vmMk = (o, ei) => { const m = new T.MeshStandardMaterial(o); if (VMENV) { m.envMap = VMENV; m.envMapIntensity = (ei === undefined ? 1 : ei) * VMENVK; } return m; };
+const SLEEVE = vmMk({ color: 0x3a3c36, roughness: 0.92 }, 0.9), CUFF = vmMk({ color: 0x1b1c1e, roughness: 0.8 }, 0.9), GLOVE = vmMk({ color: 0x2e3034, roughness: 0.68 }, 1), PADM = vmMk({ color: 0x4a4b4e, roughness: 0.45, metalness: 0.15 }, 1);
+const OMAT = vmMk({ color: 0x2a2c30, roughness: 0.4, metalness: 0.75 }, 1.3), OMAT2 = vmMk({ color: 0x5b5e63, roughness: 0.35, metalness: 0.85 }, 1.4), OGLASS = vmMk({ color: 0x4a7898, roughness: 0.04, metalness: 0.1, transparent: true, opacity: 0.22 }, 1.6), OLENS = vmMk({ color: 0x8fc0e8, roughness: 0.04, metalness: 0.1, transparent: true, opacity: 0.4 }, 2);
+const POLY = vmMk({ color: 0x2c2e32, roughness: 0.55, metalness: 0.1 }, 1.2), STEEL = vmMk({ color: 0x777c84, roughness: 0.3, metalness: 0.9 }, 1.4), BLACK = vmMk({ color: 0x1d1e21, roughness: 0.4, metalness: 0.8 }, 1.3), BRASS = vmMk({ color: 0xc9a040, roughness: 0.3, metalness: 0.95 }, 1.5);
 function boxAt(g, x, y, z, w, h, d, mat, rx, ry, rz) { const m = new T.Mesh(BOX, mat); m.scale.set(w, h, d); m.position.set(x, y, z); m.rotation.set(rx || 0, ry || 0, rz || 0); g.add(m); return m; }
-const gunG = new T.Group(); view.add(gunG); // the gun (and its optic) scale around the pistol grip, so the right hand never moves
-{ const g = new T.Group(); view.add(g);
-  g.add(limbMesh(V3(0.55, -0.85, 0.95), V3(0.07, -0.1, 0.14), 0.07, 0.044, SLEEVE)); g.add(limbMesh(V3(0.075, -0.115, 0.145), V3(0.05, -0.09, 0.095), 0.047, 0.043, GLOVE)); // right arm and wrist
-  boxAt(g, 0.045, -0.095, 0.07, 0.03, 0.095, 0.07, GLOVE); for (const y of [-0.065, -0.09, -0.115, -0.138]) boxAt(g, 0.012, y, 0.032, 0.085, 0.02, 0.03, GLOVE); boxAt(g, -0.012, -0.05, 0.085, 0.028, 0.022, 0.05, GLOVE, 0, 0.3, 0); boxAt(g, 0.0, -0.055, 0.02, 0.016, 0.016, 0.045, GLOVE); boxAt(g, 0.05, -0.06, 0.1, 0.03, 0.03, 0.03, PADM); }
-let armL = null;
-function buildArms(dy, dz) { // left arm: sleeve from the screen corner to a hand under the handguard, which sits further out on the shotgun
-  if (armL) view.remove(armL); const g = armL = new T.Group(), h = new T.Group(); view.add(g); setTimeout(() => g.traverse(o => { if (o.isMesh) o.receiveShadow = true; }), 0); g.add(limbMesh(V3(-0.62, -0.85, 0.55), V3(-0.035, -0.07 + dy, -0.2 + dz), 0.066, 0.041, SLEEVE)); h.position.set(0, dy, dz); g.add(h);
-  h.add(limbMesh(V3(-0.04, -0.075, -0.17), V3(-0.012, -0.05, -0.235), 0.045, 0.042, GLOVE)); boxAt(h, 0.0, -0.05, -0.265, 0.075, 0.036, 0.1, GLOVE); for (const z of [-0.225, -0.255, -0.285, -0.315]) boxAt(h, 0.044, -0.022, z, 0.022, 0.056, 0.024, GLOVE); boxAt(h, -0.046, -0.02, -0.285, 0.024, 0.04, 0.07, GLOVE, 0, 0.15, 0); boxAt(h, -0.03, -0.062, -0.235, 0.04, 0.02, 0.04, PADM);
+const CAPS = {};
+function capsule(g, a, b, r, mat) { // a rounded finger / limb segment of radius r between two points
+  const d = new T.Vector3().subVectors(b, a), l = d.length(), key = r.toFixed(4) + '/' + l.toFixed(4), geo = CAPS[key] || (CAPS[key] = new T.CapsuleGeometry(r, Math.max(0.001, l - 2 * r), 4, 10)), m = new T.Mesh(geo, mat);
+  m.position.copy(a).add(b).multiplyScalar(0.5); m.quaternion.setFromUnitVectors(V3(0, 1, 0), d.normalize()); g.add(m); return m;
 }
-buildArms(0, 0);
-
-// ===== selectable optics: iron sights, red dot, holographic, 2.5x scope, 4x ACOG (gun space, muzzle toward -z) =====
+function tube(g, r, len, y, z, mat, x) { const m = new T.Mesh(new T.CylinderGeometry(r, r, len, 24), mat || OMAT); m.rotation.x = Math.PI / 2; m.position.set(x || 0, y, z); g.add(m); return m; }
+// ----- sleeves: one tapered limb per arm, stretched every frame from a fixed shoulder (view space) to the wrist (gun space) -----
+const LIMBG = new T.CylinderGeometry(0.043, 0.062, 1, 14, 1, true);
+function limb(mat) { const m = new T.Mesh(LIMBG, mat); m.frustumCulled = false; view.add(m); return m; }
+const limbR = limb(SLEEVE), limbL = limb(SLEEVE), cuffR = new T.Mesh(new T.CylinderGeometry(0.05, 0.05, 0.045, 14), CUFF), cuffL = cuffR.clone(); view.add(cuffR); view.add(cuffL); cuffR.frustumCulled = cuffL.frustumCulled = false;
+const _la = new T.Vector3(), _lb = new T.Vector3(), _ld = new T.Vector3(), UP = V3(0, 1, 0);
+function setLimb(m, c, a, b) { // a: shoulder, b: wrist (view space)
+  _ld.subVectors(b, a); const l = _ld.length(); m.position.copy(a).add(b).multiplyScalar(0.5); m.quaternion.setFromUnitVectors(UP, _ld.normalize()); m.scale.set(1, l, 1);
+  c.position.copy(b).addScaledVector(_ld, -0.01); c.quaternion.copy(m.quaternion);
+}
+// ----- hands (children of gunG, gun space) -----
+const hR = new T.Group(), hL = new T.Group(); gunG.add(hR); gunG.add(hL);
+const HAND = { r: new T.Group(), l: new T.Group() }; // current rigs, rebuilt per weapon class
+function clearG(g) { while (g.children.length) g.remove(g.children[0]); }
+function handRifleR(g) { // trigger hand on the pistol grip: back of the hand and wrist to the right of the grip, thumb on the left side, trigger finger along the receiver
+  boxAt(g, 0.038, -0.088, 0.082, 0.04, 0.078, 0.07, GLOVE, 0.25, 0, 0.1); capsule(g, V3(0.03, -0.045, 0.1), V3(0.04, -0.115, 0.13), 0.026, GLOVE);
+  for (const y of [-0.06, -0.083, -0.106, -0.128]) capsule(g, V3(0.02, y, 0.05), V3(-0.012, y - 0.004, 0.055), 0.011, GLOVE); // fingers around the front of the grip
+  capsule(g, V3(-0.012, -0.058, 0.098), V3(-0.014, -0.038, 0.04), 0.012, GLOVE); // thumb up the left side
+  capsule(g, V3(0.032, -0.058, 0.055), V3(0.03, -0.045, -0.015), 0.0085, GLOVE); boxAt(g, 0.052, -0.055, 0.1, 0.012, 0.03, 0.04, PADM);
+}
+function handRifleL(g, dz) { // support hand cupping the handguard from below; dz moves it along the barrel
+  const z = -0.26 + (dz || 0); boxAt(g, -0.022, -0.052, z + 0.045, 0.034, 0.038, 0.06, GLOVE, 0, 0, 0.1); capsule(g, V3(-0.02, -0.036, z + 0.06), V3(-0.012, -0.048, z + 0.12), 0.022, GLOVE);
+  boxAt(g, 0.0, -0.046, z, 0.07, 0.034, 0.08, GLOVE);
+  for (const dzz of [0.03, 0.005, -0.02, -0.045]) capsule(g, V3(0.026, -0.052, z + dzz), V3(0.036, -0.012, z + dzz), 0.0105, GLOVE); // fingers curl up the right side
+  capsule(g, V3(-0.034, -0.03, z + 0.04), V3(-0.03, -0.006, z - 0.045), 0.0125, GLOVE); // thumb on the left
+}
+function handPistolR(g) { // right hand around the grip of a pistol (origin = grip centre)
+  boxAt(g, 0.036, -0.03, 0.045, 0.034, 0.082, 0.06, GLOVE, 0.12, 0, 0.06); capsule(g, V3(0.04, -0.02, 0.07), V3(0.05, -0.07, 0.12), 0.026, GLOVE);
+  for (const y of [-0.01, -0.032, -0.054, -0.076]) capsule(g, V3(0.02, y, 0.0), V3(-0.01, y - 0.005, 0.002), 0.0105, GLOVE);
+  capsule(g, V3(-0.012, 0.02, 0.04), V3(-0.016, 0.034, -0.02), 0.012, GLOVE); capsule(g, V3(0.026, 0.012, 0.01), V3(0.028, 0.02, -0.04), 0.0085, GLOVE);
+}
+function handPistolL(g) { // support hand wraps the right hand from the left, thumbs forward along the frame
+  boxAt(g, -0.04, -0.03, 0.05, 0.034, 0.075, 0.06, GLOVE, 0.1, 0, -0.08); capsule(g, V3(-0.05, -0.02, 0.07), V3(-0.065, -0.07, 0.13), 0.025, GLOVE);
+  for (const y of [-0.004, -0.026, -0.048, -0.07]) capsule(g, V3(-0.024, y, -0.026), V3(0.012, y - 0.004, -0.024), 0.0105, GLOVE);
+  capsule(g, V3(-0.03, 0.026, 0.03), V3(-0.026, 0.026, -0.05), 0.012, GLOVE);
+}
+// ----- weapon models -----
+let curW = null;
+const SGUN = { g: null, mat: vmMk({ color: 0x4b4e53, roughness: 0.5, metalness: 0.5 }, 1.3), fp: null };
+function splitIdx(g, test) { // two geometries that share the vertex buffers: triangles for which test(y, z) holds, and the rest
+  const idx = g.index.array, p = g.attributes.position.array, a = [], b = [];
+  for (let i = 0; i < idx.length; i += 3) { let cy = 0, cz = 0; for (let k = 0; k < 3; k++) { cy += p[idx[i + k] * 3 + 1]; cz += p[idx[i + k] * 3 + 2]; } (test(cy / 3, cz / 3) ? b : a).push(idx[i], idx[i + 1], idx[i + 2]); }
+  const mk = arr => { const h = new T.BufferGeometry(); for (const n in g.attributes) h.setAttribute(n, g.attributes[n]); h.setIndex(new T.BufferAttribute(new Uint16Array(arr), 1)); h.boundingSphere = g.boundingSphere; return h; };
+  return [mk(a), mk(b)];
+}
+function extr(pts, depth, bev) { // a side profile (x forward, y up) extruded across the gun's width
+  const s = new T.Shape(); pts.forEach((p, i) => i ? s.lineTo(p[0], p[1]) : s.moveTo(p[0], p[1]));
+  const g = new T.ExtrudeGeometry(s, { depth, bevelEnabled: bev > 0, bevelSize: bev, bevelThickness: bev, bevelSegments: 2, curveSegments: 3 }); g.translate(0, 0, -depth / 2); g.rotateY(Math.PI / 2); return g;
+}
+const PIST = {};
+function buildPistol(k) { // p9: compact 9 mm, hp: heavy .45 with a steel slide, mp: machine pistol with a long magazine and a foregrip
+  const o = { p9: { L: 0.13, H: 0.034, top: 0.066, sl: BLACK, gr: 0.09, mg: 0.1 }, hp: { L: 0.17, H: 0.04, top: 0.078, sl: STEEL, gr: 0.095, mg: 0.095 }, mp: { L: 0.15, H: 0.05, top: 0.082, sl: BLACK, gr: 0.095, mg: 0.16 } }[k], g = new T.Group(), slide = new T.Group(), mag = new T.Group(), y0 = o.top - o.H, W = k === 'hp' ? 0.03 : 0.026;
+  const sm = new T.Mesh(extr([[-0.036, y0], [-0.036, o.top], [o.L - 0.015, o.top], [o.L, o.top - 0.01], [o.L, y0]], W, 0.003), o.sl); slide.add(sm);
+  for (let i = 0; i < 5; i++) boxAt(slide, 0, o.top - o.H * 0.5, 0.03 - i * 0.0075 + 0.0, W + 0.003, o.H * 0.7, 0.0035, k === 'hp' ? BLACK : POLY).position.z = 0.025 - i * 0.0065 + 0.0; // rear serrations
+  boxAt(slide, W / 2 + 0.0005, o.top - 0.012, -0.02 - o.L * 0.18, 0.003, 0.012, 0.04, BLACK); // ejection port
+  boxAt(slide, 0, o.top + 0.004, -o.L + 0.012, 0.004, 0.009, 0.006, BLACK); // front sight
+  for (const x of [-0.009, 0.009]) boxAt(slide, x, o.top + 0.004, 0.026, 0.007, 0.009, 0.008, BLACK); // rear sight
+  tube(slide, 0.007, 0.012, o.top - o.H * 0.5, -o.L - 0.004, BLACK); g.add(slide);
+  const f = [[-0.037, y0 + 0.001], [0.02, y0 + 0.001], [o.L - 0.01, y0 + 0.001], [o.L - 0.01, y0 - 0.012], [0.07, y0 - 0.016], [0.03, y0 - 0.016], [0.012, y0 - 0.014], [0.02, y0 - 0.02], [0.006, -0.0], [-0.012, -o.gr], [-0.06, -o.gr], [-0.046, y0 + 0.0]];
+  g.add(new T.Mesh(extr(f, W - 0.004, 0.002), POLY));
+  for (const sx of [-1, 1]) boxAt(g, sx * (W / 2 - 0.001), -o.gr * 0.42 + y0 * 0.4, 0.027, 0.004, o.gr * 0.78, 0.045, BLACK, 0.18, 0, 0); // grip panels
+  const tg = new T.Mesh(extr([[0.074, y0 - 0.0], [0.074, y0 - 0.026], [0.034, y0 - 0.03], [0.027, y0 - 0.02], [0.044, y0 - 0.017], [0.06, y0 - 0.018], [0.06, y0]], 0.006, 0.001), POLY); g.add(tg); boxAt(g, 0, y0 - 0.014, 0.042, 0.005, 0.016, 0.005, BLACK, 0.3, 0, 0); // trigger guard, trigger
+  boxAt(mag, 0, -o.mg / 2, 0, W - 0.006, o.mg, 0.04, BLACK); boxAt(mag, 0, -o.mg - 0.005, 0.002, W + 0.002, 0.01, 0.044, STEEL); mag.position.set(0, -0.004, 0.028); mag.rotation.x = 0.1; mag.userData.y0 = mag.position.y; g.add(mag);
+  if (k === 'mp') { boxAt(g, 0, y0 - 0.045, -0.085, 0.022, 0.07, 0.03, POLY, 0.1, 0, 0); boxAt(g, 0, o.top + 0.012, 0.0, 0.016, 0.01, 0.15, BLACK); for (const z of [-0.09, -0.04, 0.0, 0.03]) boxAt(g, 0, o.top - 0.006, z, 0.03, 0.002, 0.004, POLY); }
+  if (k === 'hp') { boxAt(g, 0, y0 + 0.004, 0.04, 0.012, 0.016, 0.014, STEEL, 0.4, 0, 0); } // hammer
+  return { g, slide, mag, mz: -o.L - 0.006, my: o.top - o.H * 0.5, sy: o.top + 0.0, ez: -0.03, ey: o.top - 0.006, mg: o.mg };
+}
+for (const k of ['p9', 'hp', 'mp']) PIST[k] = buildPistol(k); // one shared model per kind: (re)attached to the view model on swap, third-person guns clone it
+// ===== optics: iron sights, red dot, holographic, reflex, 1.5x, 2.0x, 2.5x. Gun space, muzzle toward -z. h = height of the sight line, zw = window position along the gun,
+//       er = eye relief (camera to the window) while aiming, mag = zoom of the whole view (field of view; the scene is never rendered twice), t = extra time to aim =====
 const OPTICS = [
-  { name: 'IRON SIGHTS', fov: 62, h: 0.083, sens: 0.55, kind: 'iron' }, { name: 'RED DOT', fov: 58, h: 0.087, sens: 0.5, kind: 'dot' }, { name: 'HOLOGRAPHIC', fov: 56, h: 0.09, sens: 0.48, kind: 'holo' },
-  { name: '2.5x SCOPE', fov: 38, h: 0.088, sens: 0.3, kind: 'scope' }, { name: '4x ACOG', fov: 24, h: 0.092, sens: 0.2, kind: 'scope4' }];
-let optic = 0; try { optic = Math.max(0, Math.min(4, +localStorage.getItem('jjd-optic') | 0)); } catch (e) {}
-const OPT = () => OPTICS[optic], opticG = new T.Group(); gunG.add(opticG);
-const OMAT = new T.MeshStandardMaterial({ color: 0x1b1c1e, roughness: 0.45, metalness: 0.7 }), OGLASS = new T.MeshStandardMaterial({ color: 0x3a5a78, roughness: 0.05, metalness: 0.2, transparent: true, opacity: 0.35 }), OLENS = new T.MeshBasicMaterial({ color: 0x9fd0ff, transparent: true, opacity: 0.5 });
-function tube(g, r, len, y, z, mat) { const m = new T.Mesh(new T.CylinderGeometry(r, r, len, 20), mat || OMAT); m.rotation.x = Math.PI / 2; m.position.set(0, y, z); g.add(m); return m; }
+  { name: 'IRON SIGHTS', kind: 'iron', mag: 1.2, h: 0.083, zw: 0.07, er: 0.2, t: 0 },
+  { name: 'RED DOT', kind: 'dot', mag: 1.25, h: 0.083, zw: -0.03, er: 0.2, t: 0 },
+  { name: 'HOLOGRAPHIC', kind: 'holo', mag: 1.25, h: 0.088, zw: -0.03, er: 0.19, t: 0.02 },
+  { name: 'REFLEX', kind: 'reflex', mag: 1.25, h: 0.083, zw: -0.02, er: 0.17, t: 0 },
+  { name: '1.5x SCOPE', kind: 'scope', mag: 1.5, h: 0.086, zw: -0.02, er: 0.22, t: 0.03 },
+  { name: '2.0x SCOPE', kind: 'scope', mag: 2, h: 0.088, zw: -0.02, er: 0.24, t: 0.05 },
+  { name: '2.5x SCOPE', kind: 'scope', mag: 2.5, h: 0.088, zw: -0.02, er: 0.26, t: 0.07 }];
+let optic = 0; try { optic = Math.max(0, Math.min(OPTICS.length - 1, +localStorage.getItem('jjd-optic') | 0)); } catch (e) {}
+const OPT = () => OPTICS[optic], opticG = new T.Group(); gm.add(opticG);
 function buildOptic() {
-  while (opticG.children.length) opticG.remove(opticG.children[0]); const k = OPT().kind, g = opticG;
-  if (k === 'dot') { boxAt(g, 0, 0.056, -0.02, 0.034, 0.014, 0.075, OMAT); for (const x of [-0.018, 0.018]) boxAt(g, x, 0.078, -0.02, 0.006, 0.04, 0.06, OMAT); boxAt(g, 0, 0.101, -0.02, 0.042, 0.008, 0.06, OMAT); boxAt(g, 0, 0.081, -0.021, 0.03, 0.036, 0.004, OGLASS); }
-  else if (k === 'holo') { boxAt(g, 0, 0.056, -0.025, 0.042, 0.014, 0.1, OMAT); for (const x of [-0.022, 0.022]) boxAt(g, x, 0.084, -0.025, 0.006, 0.056, 0.09, OMAT); boxAt(g, 0, 0.114, -0.025, 0.05, 0.01, 0.09, OMAT); boxAt(g, 0, 0.087, -0.03, 0.038, 0.048, 0.004, OGLASS); boxAt(g, 0, 0.088, 0.016, 0.044, 0.07, 0.008, OMAT).scale.y = 0.06; }
-  else if (k === 'scope') { boxAt(g, 0, 0.058, -0.02, 0.03, 0.014, 0.14, OMAT); tube(g, 0.02, 0.2, 0.088, -0.02); tube(g, 0.027, 0.05, 0.088, -0.12); tube(g, 0.022, 0.025, 0.088, 0.085); tube(g, 0.0245, 0.003, 0.088, -0.146, OLENS); tube(g, 0.016, 0.003, 0.088, 0.098, OLENS); boxAt(g, 0, 0.1, -0.03, 0.012, 0.014, 0.02, OMAT); }
-  else if (k === 'scope4') { boxAt(g, 0, 0.056, -0.03, 0.034, 0.014, 0.16, OMAT); const b = boxAt(g, 0, 0.088, -0.02, 0.046, 0.05, 0.17, OMAT); b.position.set(0, 0.086, -0.03); tube(g, 0.026, 0.03, 0.09, -0.13); tube(g, 0.029, 0.004, 0.09, -0.146, OLENS); tube(g, 0.018, 0.004, 0.09, 0.06, OLENS); boxAt(g, 0, 0.116, -0.03, 0.02, 0.012, 0.09, new T.MeshStandardMaterial({ color: 0x7a2418, roughness: 0.5 })); }
-  const sel = $('sOptic'); if (sel) sel.value = String(optic);
+  clearG(opticG); const g = opticG, i = optic;
+  if (i === 1) { // red dot: a short tube sight on a low mount
+    boxAt(g, 0, 0.058, -0.03, 0.03, 0.012, 0.07, OMAT); boxAt(g, 0, 0.068, -0.03, 0.02, 0.012, 0.05, OMAT); tube(g, 0.0175, 0.075, 0.084, -0.03); tube(g, 0.02, 0.012, 0.084, -0.068, OMAT2); tube(g, 0.02, 0.012, 0.084, 0.008, OMAT2);
+    tube(g, 0.0155, 0.003, 0.084, -0.0745, OGLASS); tube(g, 0.0155, 0.003, 0.084, 0.0145, OGLASS); boxAt(g, 0.0195, 0.086, -0.03, 0.006, 0.01, 0.01, OMAT2); boxAt(g, 0, 0.1075, -0.03, 0.008, 0.006, 0.01, OMAT2);
+  } else if (i === 2) { // holographic: boxy hood with a big window
+    boxAt(g, 0, 0.056, -0.025, 0.05, 0.016, 0.11, OMAT); for (const x of [-0.027, 0.027]) boxAt(g, x, 0.09, -0.025, 0.007, 0.066, 0.1, OMAT); boxAt(g, 0, 0.126, -0.025, 0.062, 0.01, 0.1, OMAT); boxAt(g, 0, 0.091, -0.073, 0.047, 0.056, 0.004, OGLASS); boxAt(g, 0, 0.091, 0.02, 0.047, 0.056, 0.004, OGLASS);
+    boxAt(g, 0, 0.073, -0.07, 0.056, 0.006, 0.012, OMAT2); for (const x of [-0.027, 0.027]) boxAt(g, x * 1.08, 0.088, -0.073, 0.004, 0.05, 0.012, OMAT2); boxAt(g, 0, 0.074, 0.024, 0.056, 0.006, 0.012, OMAT2);
+  } else if (i === 3) { // reflex: low open frame with a slanted lens
+    boxAt(g, 0, 0.055, -0.02, 0.036, 0.01, 0.07, OMAT); boxAt(g, 0, 0.063, -0.02, 0.03, 0.01, 0.045, OMAT); for (const x of [-0.019, 0.019]) boxAt(g, x, 0.08, -0.028, 0.005, 0.034, 0.05, OMAT); boxAt(g, 0, 0.099, -0.028, 0.04, 0.006, 0.05, OMAT);
+    boxAt(g, 0, 0.082, -0.035, 0.033, 0.03, 0.003, OGLASS, 0.25, 0, 0); boxAt(g, 0, 0.101, -0.054, 0.04, 0.006, 0.012, OMAT2);
+  } else if (i >= 4) { // magnified scopes: 1.5x short prism, 2.0x, 2.5x long tube with turrets
+    const L = [0.12, 0.17, 0.23][i - 4], r = [0.022, 0.0215, 0.022][i - 4], ro = [0.027, 0.029, 0.034][i - 4];
+    boxAt(g, 0, 0.056, -0.02, 0.034, 0.012, L * 0.9, OMAT); for (const z of [0.05, -0.08]) boxAt(g, 0, 0.066, z, 0.022, 0.018, 0.018, OMAT2);
+    tube(g, r, L, 0.088, -0.02); tube(g, ro, 0.045, 0.088, -0.02 - L / 2 - 0.014); tube(g, ro + 0.002, 0.008, 0.088, -0.02 - L / 2 - 0.04, OMAT2); tube(g, r + 0.004, 0.03, 0.088, -0.02 + L / 2 + 0.01, OMAT2);
+    tube(g, ro - 0.003, 0.003, 0.088, -0.02 - L / 2 - 0.046, OLENS); tube(g, r - 0.004, 0.003, 0.088, -0.02 + L / 2 + 0.026, OLENS);
+    if (i === 6) { tube(g, 0.008, 0.016, 0.118, -0.02, OMAT2).rotation.set(0, 0, 0); boxAt(g, 0.026, 0.09, -0.02, 0.014, 0.014, 0.016, OMAT2); }
+    if (i === 4) boxAt(g, 0, 0.113, -0.04, 0.02, 0.008, 0.06, vmMk({ color: 0x8a2a1e, roughness: 0.5 }, 1));
+  }
+  const sel = $('sOptic'); if (sel) { if (sel.options.length !== OPTICS.length) sel.innerHTML = OPTICS.map((o, j) => '<option value="' + j + '">' + o.name[0] + o.name.slice(1).toLowerCase() + '</option>').join(''); sel.value = String(optic); }
 }
-buildOptic();
 const retC = $('ret'), retX = retC.getContext('2d'); let retDrawn = -1, retW = 0, retH = 0;
-function drawRet() {
-  const w = retC.width = innerWidth, h = retC.height = innerHeight, x = retX, cx = w / 2, cy = h / 2, k = OPT().kind, m = Math.min(w, h); retDrawn = optic; retW = w; retH = h; x.clearRect(0, 0, w, h);
-  const glow = (col, r, b) => { x.shadowColor = col; x.shadowBlur = b; x.fillStyle = col; x.beginPath(); x.arc(cx, cy, r, 0, 7); x.fill(); x.shadowBlur = 0; };
-  if (k === 'dot') glow('#ff2a1f', 3.2, 12);
-  else if (k === 'holo') { x.strokeStyle = '#ff3a2a'; x.lineWidth = 2.2; x.shadowColor = '#ff3a2a'; x.shadowBlur = 8; x.beginPath(); x.arc(cx, cy, m * 0.055, 0, 7); x.stroke(); for (let a = 0; a < 4; a++) { x.beginPath(); x.moveTo(cx + Math.cos(a * 1.571) * m * 0.055, cy + Math.sin(a * 1.571) * m * 0.055); x.lineTo(cx + Math.cos(a * 1.571) * m * 0.075, cy + Math.sin(a * 1.571) * m * 0.075); x.stroke(); } x.shadowBlur = 0; glow('#ff3a2a', 2, 8); }
-  else { // magnified scopes: dark mask with a circular view, crosshair and range marks
-    const r = m * (k === 'scope' ? 0.36 : 0.32); x.fillStyle = '#000'; x.beginPath(); x.rect(0, 0, w, h); x.arc(cx, cy, r, 0, 7, true); x.fill('evenodd'); x.strokeStyle = 'rgba(0,0,0,.9)'; x.lineWidth = 6; x.beginPath(); x.arc(cx, cy, r, 0, 7); x.stroke();
-    const g = x.createRadialGradient(cx, cy, r * 0.8, cx, cy, r); g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,.55)'); x.fillStyle = g; x.beginPath(); x.arc(cx, cy, r, 0, 7); x.fill();
-    if (k === 'scope') { x.strokeStyle = 'rgba(0,0,0,.92)'; x.lineWidth = 1.4; x.beginPath(); x.moveTo(cx - r, cy); x.lineTo(cx - 14, cy); x.moveTo(cx + 14, cy); x.lineTo(cx + r, cy); x.moveTo(cx, cy - r); x.lineTo(cx, cy - 14); x.moveTo(cx, cy + 14); x.lineTo(cx, cy + r); x.stroke(); x.fillStyle = 'rgba(0,0,0,.9)'; for (let i = 1; i <= 4; i++) for (const sg of [-1, 1]) { x.beginPath(); x.arc(cx + sg * i * m * 0.045, cy, 1.8, 0, 7); x.fill(); x.beginPath(); x.arc(cx, cy + sg * i * m * 0.045, 1.8, 0, 7); x.fill(); } glow('#ff2a1f', 1.8, 6); }
-    else { x.strokeStyle = '#ff3322'; x.lineWidth = 2.2; x.shadowColor = '#ff3322'; x.shadowBlur = 7; x.beginPath(); x.moveTo(cx, cy - 4); x.lineTo(cx - 13, cy + 22); x.moveTo(cx, cy - 4); x.lineTo(cx + 13, cy + 22); x.stroke(); x.lineWidth = 1.4; for (const dy of [34, 52, 72]) { x.beginPath(); x.moveTo(cx - 16 - dy * 0.1, cy + dy); x.lineTo(cx + 16 + dy * 0.1, cy + dy); x.stroke(); } x.beginPath(); x.moveTo(cx - r, cy); x.lineTo(cx - 20, cy); x.moveTo(cx + 20, cy); x.lineTo(cx + r, cy); x.stroke(); x.shadowBlur = 0; }
+function drawRet() { // the reticle (and, for scopes, the housing around the lens), drawn at the screen centre; everything scales with the screen height
+  const w = retC.width = innerWidth, h = retC.height = innerHeight, x = retX, cx = w / 2, cy = h / 2, u = h / 720, o = OPT(), k = o.kind; retDrawn = optic; retW = w; retH = h; x.clearRect(0, 0, w, h);
+  const red = '#ff3326', glow = (r, b, col) => { x.shadowColor = col || red; x.shadowBlur = b; x.fillStyle = col || red; x.beginPath(); x.arc(cx, cy, r, 0, 7); x.fill(); x.shadowBlur = 0; };
+  const stroke = (col, lw, b) => { x.strokeStyle = col; x.lineWidth = lw; x.lineCap = 'round'; x.shadowColor = col; x.shadowBlur = b || 0; };
+  if (k === 'dot') glow(3 * u, 12 * u);
+  else if (k === 'holo') { stroke(red, 2.2 * u, 7 * u); const R0 = 30 * u; x.beginPath(); x.arc(cx, cy, R0, 0, 7); x.stroke(); for (let a = 0; a < 4; a++) { x.beginPath(); x.moveTo(cx + Math.cos(a * 1.5708) * R0, cy + Math.sin(a * 1.5708) * R0); x.lineTo(cx + Math.cos(a * 1.5708) * (R0 + 9 * u), cy + Math.sin(a * 1.5708) * (R0 + 9 * u)); x.stroke(); } x.shadowBlur = 0; glow(2 * u, 8 * u); }
+  else if (k === 'reflex') { stroke('#35ff6a', 2.4 * u, 8 * u); x.beginPath(); x.moveTo(cx - 12 * u, cy + 10 * u); x.lineTo(cx, cy - 8 * u); x.lineTo(cx + 12 * u, cy + 10 * u); x.stroke(); x.shadowBlur = 0; glow(1.6 * u, 6 * u, '#35ff6a'); }
+  else if (k === 'scope') {
+    const R = 0.34 * h, Ro = R + 0.06 * h; // clear lens radius, housing outer radius
+    let g = x.createRadialGradient(cx, cy, Ro, cx, cy, Math.hypot(cx, cy)); g.addColorStop(0, 'rgba(6,7,8,.82)'); g.addColorStop(0.35, 'rgba(6,7,8,.5)'); g.addColorStop(1, 'rgba(6,7,8,.18)'); x.fillStyle = g; x.beginPath(); x.rect(0, 0, w, h); x.arc(cx, cy, Ro, 0, 7, true); x.fill('evenodd');
+    g = x.createRadialGradient(cx, cy, R, cx, cy, Ro); g.addColorStop(0, '#0b0c0e'); g.addColorStop(0.55, '#26292d'); g.addColorStop(0.8, '#4a4e54'); g.addColorStop(0.9, '#1a1c1f'); g.addColorStop(1, '#0a0a0b'); x.fillStyle = g; x.beginPath(); x.arc(cx, cy, Ro, 0, 7); x.arc(cx, cy, R, 0, 7, true); x.fill('evenodd');
+    x.strokeStyle = 'rgba(190,200,210,.28)'; x.lineWidth = 2 * u; x.beginPath(); x.arc(cx, cy, R + 0.03 * h, Math.PI * 1.15, Math.PI * 1.75); x.stroke(); x.strokeStyle = 'rgba(0,0,0,.6)'; x.lineWidth = 3 * u; x.beginPath(); x.arc(cx, cy, R, 0, 7); x.stroke();
+    x.save(); x.beginPath(); x.arc(cx, cy, R, 0, 7); x.clip(); g = x.createRadialGradient(cx, cy, R * 0.72, cx, cy, R); g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,.5)'); x.fillStyle = g; x.fillRect(0, 0, w, h);
+    g = x.createLinearGradient(cx - R, cy - R, cx + R, cy + R); g.addColorStop(0, 'rgba(120,170,220,.10)'); g.addColorStop(0.5, 'rgba(120,170,220,0)'); g.addColorStop(1, 'rgba(120,170,220,.06)'); x.fillStyle = g; x.fillRect(0, 0, w, h);
+    if (optic === 4) { stroke(red, 2.2 * u, 7 * u); x.beginPath(); x.moveTo(cx, cy - 3 * u); x.lineTo(cx - 14 * u, cy + 24 * u); x.moveTo(cx, cy - 3 * u); x.lineTo(cx + 14 * u, cy + 24 * u); x.stroke(); x.lineWidth = 1.5 * u; for (const d of [38, 56, 78]) { x.beginPath(); x.moveTo(cx - (14 + d * 0.1) * u, cy + d * u); x.lineTo(cx + (14 + d * 0.1) * u, cy + d * u); x.stroke(); } x.shadowBlur = 0; glow(1.8 * u, 7 * u); }
+    else { stroke('rgba(8,8,8,.93)', 1.3 * u, 0); const gap = (optic === 5 ? 12 : 16) * u; x.beginPath(); x.moveTo(cx - R, cy); x.lineTo(cx - gap, cy); x.moveTo(cx + gap, cy); x.lineTo(cx + R, cy); x.moveTo(cx, cy - R); x.lineTo(cx, cy - gap); x.moveTo(cx, cy + gap); x.lineTo(cx, cy + R); x.stroke();
+      stroke('rgba(8,8,8,.93)', (optic === 5 ? 3 : 5) * u, 0); const th = optic === 5 ? 0.12 : 0.17; x.beginPath(); x.moveTo(cx - R, cy); x.lineTo(cx - R * th * 2.6, cy); x.moveTo(cx + R, cy); x.lineTo(cx + R * th * 2.6, cy); x.moveTo(cx, cy + R); x.lineTo(cx, cy + R * th * 2.6); x.stroke(); x.fillStyle = 'rgba(8,8,8,.92)';
+      for (let n = 1; n <= 5; n++) for (const sg of [-1, 1]) { x.beginPath(); x.arc(cx + sg * n * 0.032 * h, cy, 1.7 * u, 0, 7); x.fill(); x.beginPath(); x.arc(cx, cy + sg * n * 0.032 * h, 1.7 * u, 0, 7); x.fill(); } glow(1.7 * u, 6 * u); }
+    x.restore();
   }
 }
-function setOptic(i, quiet) { optic = (i + 5) % 5; try { localStorage.setItem('jjd-optic', String(optic)); } catch (e) {} buildOptic(); retDrawn = -1; if (!quiet) { say('OPTIC: ' + OPT().name, 1400); try { Au.click(); } catch (e) {} } }
+function setOptic(i, quiet) { optic = (i + OPTICS.length) % OPTICS.length; try { localStorage.setItem('jjd-optic', String(optic)); } catch (e) {} buildOptic(); retDrawn = -1; if (!quiet) { say('OPTIC: ' + OPT().name, 1400); try { Au.click(); } catch (e) {} } }
 addEventListener('resize', () => { retDrawn = -1; });
-
+// ----- loading the rifle and shotgun meshes (CC0), then switching the view model to the held weapon -----
 function loadBin(url, q, cb) { // welded, quantised mesh: header nv, ni; int16 positions (x q), int8 normals, uint16 uvs, uint16 indices
   fetch(url).then(r => r.arrayBuffer()).then(ab => {
     const h = new Uint32Array(ab, 0, 2), nv = h[0], ni = h[1]; let o = 8; const pos = new Int16Array(ab, o, nv * 3); o += nv * 6; const nor = new Int8Array(ab, o, nv * 3); o += nv * 3; o += (4 - (nv * 3) % 4) % 4; const uv = new Uint16Array(ab, o, nv * 2); o += nv * 4; const idx = new Uint16Array(ab, o, ni);
     const p = new Float32Array(nv * 3), n = new Float32Array(nv * 3), u = new Float32Array(nv * 2); for (let i = 0; i < nv * 3; i++) { p[i] = pos[i] * q; n[i] = nor[i] / 127; } for (let i = 0; i < nv * 2; i++) u[i] = uv[i] / 65535;
-    const g = new T.BufferGeometry(); g.setAttribute('position', new T.BufferAttribute(p, 3)); g.setAttribute('normal', new T.BufferAttribute(n, 3)); g.setAttribute('uv', new T.BufferAttribute(u, 2)); g.setIndex(new T.BufferAttribute(idx, 1)); cb(g);
+    const g = new T.BufferGeometry(); g.setAttribute('position', new T.BufferAttribute(p, 3)); g.setAttribute('normal', new T.BufferAttribute(n, 3)); g.setAttribute('uv', new T.BufferAttribute(u, 2)); g.setIndex(new T.BufferAttribute(idx, 1)); g.computeBoundingSphere(); cb(g);
   }).catch(() => console.warn(url + ' not loaded'));
 }
-const SGUN = { g: null, mat: new T.MeshStandardMaterial({ color: 0x222427, roughness: 0.55, metalness: 0.35 }), fp: null }; let curW = null;
-loadBin('m4a1.bin', 0.00002, g => { const tex = new T.TextureLoader().load('m4a1.jpg'); tex.colorSpace = T.SRGBColorSpace; RIFLE.g = g; RIFLE.mat = new T.MeshStandardMaterial({ map: tex, roughness: 0.45, metalness: 0.55 }); const m = RIFLE.fp = new T.Mesh(g, RIFLE.mat); m.frustumCulled = false; gunG.add(m); curW = null; });
-loadBin('shotgun.bin', 0.00003, g => { SGUN.g = g; const m = SGUN.fp = new T.Mesh(g, SGUN.mat); m.frustumCulled = false; gunG.add(m); curW = null; }); // semi-auto shotgun mesh, CC0 (opengameart.org/content/semi-auto-shotgun-with-magazine), own material
-function setViewWeapon(k) {
-  view.traverse(o => { if (o.isMesh) o.receiveShadow = true; });
-  const W = WPN[k] || WPN.ar, sg = W.mdl === 'shotgun'; curW = k; if (RIFLE.fp) RIFLE.fp.visible = !sg; if (SGUN.fp) SGUN.fp.visible = sg; oldG.visible = !(sg ? SGUN.fp : RIFLE.fp);
-  gunG.scale.setScalar(W.sc); gunG.position.set(0, -0.1 * (1 - W.sc), 0.07 * (1 - W.sc)); opticG.position.set(0, sg ? -0.004 : 0, sg ? -0.03 : 0); view.userData.fl.position.z = sg ? -0.76 : 0.07 - 0.67 * W.sc;
-  buildArms(sg ? -0.008 : -0.055 + 0.055 * W.sc, sg ? -0.262 : 0.34 - 0.34 * W.sc);
+loadBin('m4a1.bin', 0.00002, g => { // the magazine is its own mesh so it can be pulled out and replaced
+  const tex = new T.TextureLoader().load('m4a1.jpg'); tex.colorSpace = T.SRGBColorSpace; RIFLE.g = g; RIFLE.mat = vmMk({ map: tex, color: new T.Color(1.6, 1.6, 1.6), roughness: 0.5, metalness: 0.35 }, 1.3);
+  const [rest, mg] = splitIdx(g, (y, z) => y < -0.04 && z > -0.11 && z < 0.004); RIFLE.body = new T.Mesh(rest, RIFLE.mat); RIFLE.mag = new T.Mesh(mg, RIFLE.mat); RIFLE.body.frustumCulled = RIFLE.mag.frustumCulled = false; gm.add(RIFLE.body); gm.add(RIFLE.mag); curW = null;
+});
+loadBin('shotgun.bin', 0.00003, g => { SGUN.g = g; const m = SGUN.fp = new T.Mesh(g, SGUN.mat); m.frustumCulled = false; gm.add(m); curW = null; }); // semi-auto shotgun mesh, CC0 (opengameart.org/content/semi-auto-shotgun-with-magazine)
+// ----- muzzle flash (HDR sprites, so the bloom pass picks them up) and ejected casings -----
+const flashTex = paintTex(128, 128, (x, w, h) => { const c = w / 2; let g = x.createRadialGradient(c, c, 0, c, c, c); g.addColorStop(0, 'rgba(255,255,235,1)'); g.addColorStop(0.18, 'rgba(255,214,120,.9)'); g.addColorStop(0.5, 'rgba(255,140,40,.35)'); g.addColorStop(1, 'rgba(255,90,0,0)'); x.fillStyle = g; x.fillRect(0, 0, w, h);
+  x.fillStyle = 'rgba(255,225,150,.9)'; for (let i = 0; i < 6; i++) { x.save(); x.translate(c, c); x.rotate(i * 1.0472 + 0.2); x.beginPath(); x.moveTo(0, -3); x.lineTo(c * (0.75 + (i % 2) * 0.25), 0); x.lineTo(0, 3); x.fill(); x.restore(); } });
+const flashMat = new T.MeshBasicMaterial({ map: flashTex, color: new T.Color(3.4, 2.5, 1.5), transparent: true, blending: T.AdditiveBlending, depthWrite: false, side: T.DoubleSide, fog: false });
+const flashG = new T.Group(); { const a = new T.Mesh(new T.PlaneGeometry(0.2, 0.2), flashMat); flashG.add(a); const b = new T.Mesh(new T.PlaneGeometry(0.3, 0.08), flashMat); b.rotation.y = Math.PI / 2; b.rotation.x = 0; b.position.z = -0.1; b.rotation.set(0, Math.PI / 2, 0); flashG.add(b); const c = new T.Mesh(new T.PlaneGeometry(0.3, 0.08), flashMat); c.rotation.set(Math.PI / 2, 0, Math.PI / 2); c.position.z = -0.1; flashG.add(c); }
+flashG.visible = false; gm.add(flashG);
+const CAS = []; { const geo = new T.CylinderGeometry(0.0048, 0.0042, 0.02, 8); for (let i = 0; i < 12; i++) { const m = new T.Mesh(geo, BRASS); m.visible = false; scene.add(m); CAS.push({ m, v: V3(0, 0, 0), t: 0, w: V3(0, 0, 0), fl: 0 }); } }
+let casI = 0;
+function vmCasing(W) { // a spent case leaves the ejection port to the right, up and a little back
+  if (W.pel > 1 || !VM.d) return; const c = CAS[casI++ % CAS.length], d = VM.d, e = cam.matrixWorld.elements; c.m.visible = true; c.t = 0; c.fl = player.y;
+  c.m.scale.setScalar(W.mdl === 'pistol' ? 0.8 : W.dmg > 50 ? 1.5 : 1); c.m.position.set(d.ex, d.ey, d.ez); gunG.localToWorld(c.m.position);
+  const r = 1.6 + rnd() * 1.2, u = 1.1 + rnd() * 0.9, b = 0.2 + rnd() * 0.5; c.v.set(e[0] * r + e[4] * u + e[8] * b, e[1] * r + e[5] * u + e[9] * b, e[2] * r + e[6] * u + e[10] * b);
+  c.w.set(rnd() * 20 - 10, rnd() * 20 - 10, rnd() * 20 - 10); c.m.rotation.set(rnd() * 6, rnd() * 6, rnd() * 6);
 }
-function sightH() { const W = wOf(player), k = OPT().kind, sg = W.mdl === 'shotgun', h = k === 'iron' ? (sg ? 0.072 : OPT().h) : OPT().h + (sg ? -0.004 : 0); return -0.10 + (h + 0.10) * W.sc - (k === 'iron' ? 0 : 2 * OPT().h - 0.166); }
+function vmCasings(dt) { for (const c of CAS) { if (!c.m.visible) continue; c.t += dt; if (c.t > 1.6) { c.m.visible = false; continue; } c.v.y -= 9.8 * dt; c.m.position.addScaledVector(c.v, dt); c.m.rotation.x += c.w.x * dt; c.m.rotation.y += c.w.y * dt; c.m.rotation.z += c.w.z * dt;
+  if (c.m.position.y < c.fl + 0.01 && c.v.y < 0) { c.m.position.y = c.fl + 0.01; const hit = Math.abs(c.v.y) > 0.35; c.v.y *= -0.3; c.v.x *= 0.5; c.v.z *= 0.5; c.w.multiplyScalar(0.4); if (hit) Au.thump(2800, 2200, 0.03, 0.025, 0); } } }
+// ----- per weapon class: hip position, wrist anchors, muzzle, ejection port, magazine -----
+const VMD = {
+  rifle: { hip: [0.145, -0.172, -0.4], mz: -0.575, my: 0.027, ex: 0.03, ey: 0.03, ez: -0.02, mag: [0, -0.1, -0.05], rw: [0.04, -0.12, 0.14], lw: [-0.012, -0.05, 0.13] },
+  shotgun: { hip: [0.145, -0.172, -0.4], mz: -0.74, my: 0.02, ex: 0.03, ey: 0.03, ez: -0.05, mag: [0, -0.1, -0.1], rw: [0.04, -0.12, 0.14], lw: [-0.012, -0.05, 0.13] },
+  pistol: { hip: [0.095, -0.12, -0.42], mz: -0.17, my: 0.058, ex: 0.02, ey: 0.06, ez: -0.02, mag: [0, -0.05, 0.03], rw: [0.05, -0.075, 0.125], lw: [-0.065, -0.075, 0.13] },
+};
+const VM = { kz: 0, kzv: 0, kp: 0, kpv: 0, kr: 0, krv: 0, lx: 0, lxv: 0, ly: 0, lyv: 0, low: 0, w: null, d: null, mdl: '', sc: 1, fl: 0, fs: 1, slide: 0, wall: 0, hl: V3(0, 0, 0), base: V3(0, -0.046, -0.26), hL0: V3(0, 0, 0), magOff: V3(0, 0, 0), magVis: true, tilt: 0, charge: 0, pg: null, lyaw: 0, lpit: 0, vyw: 0, vpt: 0, bobK: 0 };
+function vmSet(k) { // swap the model, hands and muzzle to weapon k
+  const W = WPN[k] || WPN.ar, mdl = W.mdl, rifle = mdl === 'rifle', sg = mdl === 'shotgun', pi = mdl === 'pistol'; curW = k; VM.w = k; VM.mdl = mdl; VM.sc = pi ? 1 : W.sc; VM.d = VMD[mdl];
+  if (RIFLE.body) RIFLE.body.visible = RIFLE.mag.visible = rifle; if (SGUN.fp) SGUN.fp.visible = sg;
+  if (VM.pg) { gm.remove(VM.pg.g); VM.pg = null; } if (pi) { VM.pg = PIST[k]; gm.add(VM.pg.g); VM.d = Object.assign({}, VMD.pistol, { mz: VM.pg.mz, my: VM.pg.my, ez: VM.pg.ez, ey: VM.pg.ey, sy0: VM.pg.sy + 0.006 }); }
+  const sc = VM.sc; gm.scale.setScalar(sc); gm.position.set(0, -0.1 * (1 - sc), 0.07 * (1 - sc)); opticG.visible = !pi; opticG.position.set(0, sg ? -0.004 : 0, sg ? -0.03 : 0);
+  clearG(hR); clearG(hL); hR.position.set(0, 0, 0); hL.position.set(0, 0, 0);
+  if (pi) { handPistolR(hR); handPistolL(hL); VM.base.set(-0.04, -0.03, 0.05); VM.hL0.set(0, 0, 0); }
+  else { handRifleR(hR); handRifleL(hL, 0); VM.base.set(0, -0.046, -0.26); VM.hL0.set(0, sg ? -0.008 : -0.055 + 0.055 * sc, sg ? -0.262 : 0.34 - 0.34 * sc); }
+  VM.rest = VM.base.clone().add(VM.hL0); VM.hl.copy(VM.rest); flashG.position.set(0, VM.d.my, VM.d.mz); VM.slide = 0; VM.magOff.set(0, 0, 0); VM.magVis = true;
+  view.traverse(o => { if (o.isMesh) { o.castShadow = false; o.receiveShadow = false; } });
+}
+const gunPt = (p, sc) => V3(p[0] * sc, -0.1 + (p[1] + 0.1) * sc, 0.07 + (p[2] - 0.07) * sc); // a point in rifle-mesh space -> gunG space (the mesh scales about the grip)
+function vmFire(W) { // a shot: kick springs, muzzle flash, slide, casing
+  const ks = Math.sqrt(W.kick / 0.0155), a = W.pel > 1 ? 2 : 1; VM.kzv += 0.85 * ks * a; VM.kpv += (1.1 + rnd() * 0.4) * ks; VM.krv += (rnd() - 0.5) * 1.4 * ks; VM.fl = 0.055; flashG.rotation.z = rnd() * 6.28; VM.fs = 0.75 + rnd() * 0.5; VM.slide = 1; vmCasing(W);
+}
+const ease = x => x * x * (3 - 2 * x), clamp01 = x => Math.max(0, Math.min(1, x)), seg = (u, a, b) => ease(clamp01((u - a) / (b - a))), lerpV = (a, b, k) => a.clone().lerp(b, k);
+function reloadAnim(p, W) { // sets the support hand's absolute spot (VM.hl, gun space), the magazine offset / visibility, gun tilt and the charging-handle / slide-rack amount
+  const mdl = VM.mdl, sc = VM.sc, rest = VM.rest; VM.hl.copy(rest); VM.magOff.set(0, 0, 0); VM.magVis = true; VM.tilt = 0; VM.charge = 0; if (!p.rel) return;
+  const el = p.relT - p.rel, empty = p.relT > W.rt + 0.3, u = clamp01(el / W.rt), ch = empty ? clamp01((el - W.rt) / 0.6) : 0;
+  if (mdl === 'shotgun') { // tilt the gun, feed shells into the port one at a time, pump the forearm
+    const n = Math.min(8, Math.max(2, Math.round(W.mag - p.ammo))), port = V3(0.0, -0.12, -0.08), src = V3(0.02, -0.34, -0.06), cyc = clamp01((u - 0.1) / 0.78), inn = Math.sin(Math.PI * ((cyc * n) % 1));
+    VM.tilt = seg(u, 0, 0.1) - seg(u, 0.9, 1); const a = seg(u, 0, 0.1) * (1 - seg(u, 0.88, 0.96)); VM.hl.copy(rest).lerp(lerpV(src, port, inn), a);
+    const pump = seg(u, 0.9, 0.95) - seg(u, 0.95, 1); VM.hl.z += pump * 0.09; VM.charge = pump; return;
+  }
+  if (mdl === 'pistol') { // drop the magazine, fetch a new one, seat it, rack the slide when empty
+    const under = V3(0.0, -0.115, 0.04), pull = under.clone().add(V3(0, -0.12, 0)), away = V3(-0.15, -0.5, 0.1), a = seg(u, 0, 0.16), b = seg(u, 0.16, 0.34), c = seg(u, 0.34, 0.46), e = seg(u, 0.56, 0.74), f = seg(u, 0.74, 0.86), g = seg(u, 0.86, 1);
+    VM.tilt = seg(u, 0, 0.14) - seg(u, 0.88, 1); const pos = rest.clone();
+    if (u < 0.16) pos.lerp(under, a); else if (u < 0.34) pos.copy(under).lerp(pull, b); else if (u < 0.56) pos.copy(pull).lerp(away, c); else if (u < 0.74) pos.copy(away).lerp(pull, e); else if (u < 0.86) pos.copy(pull).lerp(under, f); else pos.copy(under).lerp(rest, g);
+    VM.hl.copy(pos); VM.magVis = !(u >= 0.46 && u < 0.56); if (u < 0.16) VM.magOff.set(0, 0, 0); else if (u < 0.46) VM.magOff.copy(pos).sub(under); else if (u >= 0.56 && u < 0.86) VM.magOff.copy(pos).sub(under); else VM.magOff.set(0, 0, 0);
+    if (ch > 0) { const q1 = seg(ch, 0, 0.3), q2 = seg(ch, 0.3, 0.55), q3 = seg(ch, 0.55, 0.75), q4 = seg(ch, 0.75, 1), grab = V3(-0.03, 0.08, 0.04); VM.hl.copy(rest).lerp(grab, q1 * (1 - q4)); VM.hl.z += 0.05 * (q2 - q3) * (1 - q4); VM.charge = (q2 - q3) * (1 - q4); }
+    return;
+  }
+  // rifle: tilt, support hand to the magazine, pull it and drop it, fetch a new one from below, seat it, back to the handguard; charging handle when the gun was empty
+  const gp = gunPt(VMD.rifle.mag, sc), grip = V3(gp.x - 0.03, gp.y - 0.03, gp.z), pulled = grip.clone().add(V3(0, -0.17, 0)), away = V3(-0.22, -0.55, 0.12), a = seg(u, 0, 0.14), b = seg(u, 0.14, 0.3), c = seg(u, 0.3, 0.42), e = seg(u, 0.56, 0.74), f = seg(u, 0.74, 0.86), g = seg(u, 0.86, 1);
+  VM.tilt = seg(u, 0, 0.12) - seg(u, 0.88, 1); const pos = rest.clone();
+  if (u < 0.14) pos.lerp(grip, a); else if (u < 0.3) pos.copy(grip).lerp(pulled, b); else if (u < 0.56) pos.copy(pulled).lerp(away, c); else if (u < 0.74) pos.copy(away).lerp(pulled, e); else if (u < 0.86) pos.copy(pulled).lerp(grip, f); else pos.copy(grip).lerp(rest, g);
+  VM.hl.copy(pos); VM.magVis = !(u >= 0.42 && u < 0.56); if ((u >= 0.14 && u < 0.42) || (u >= 0.56 && u < 0.86)) VM.magOff.copy(pos).sub(grip).divideScalar(sc);
+  if (ch > 0) { const q1 = seg(ch, 0, 0.3), q2 = seg(ch, 0.3, 0.55), q3 = seg(ch, 0.55, 0.75), q4 = seg(ch, 0.75, 1), top = gunPt([0.0, 0.07, 0.05], sc); VM.hl.copy(rest).lerp(top, q1 * (1 - q4)); VM.hl.z += 0.07 * (q2 - q3) * (1 - q4); VM.charge = (q2 - q3) * (1 - q4); }
+}
+// the wrist points (gun space) the sleeves end at, per hand
+const _wr = V3(0, 0, 0), _wl = V3(0, 0, 0), SH_R = V3(0.5, -0.75, 0.3), SH_L = V3(-0.58, -0.55, 0.3), _sr = V3(0, 0, 0), _sl = V3(0, 0, 0); // shoulders in camera space
+function vmFrame(dt, p, ae, ph, sp) { // pose the whole view model for this frame; ae = eased aim amount, ph = stride phase, sp = walk-bob strength 0..1.5
+  const W = wOf(p), t = G.t, O = OPT(); if (p.w !== VM.w) { VM.low = Math.min(1, VM.low + dt / 0.14); if (VM.low >= 1 && (WPN[p.w].mdl !== 'rifle' || RIFLE.body) && (WPN[p.w].mdl !== 'shotgun' || SGUN.fp)) vmSet(p.w); } else VM.low = Math.max(0, VM.low - dt / 0.19);
+  if (curW === null && (RIFLE.body || SGUN.fp || WPN[p.w].mdl === 'pistol')) vmSet(p.w);
+  if (!VM.d) { view.visible = false; return; }
+  const D = VM.d, mdl = VM.mdl, sc = VM.sc, pi = mdl === 'pistol', sg = mdl === 'shotgun', kF = Math.tan(FOV * Math.PI / 360) / 0.7002, low = ease(VM.low);
+  // springs: recoil kick (back, pitch, roll) and look-lag
+  VM.kzv += (-320 * VM.kz - 22 * VM.kzv) * dt; VM.kz += VM.kzv * dt; VM.kpv += (-260 * VM.kp - 20 * VM.kpv) * dt; VM.kp += VM.kpv * dt; VM.krv += (-220 * VM.kr - 18 * VM.krv) * dt; VM.kr += VM.krv * dt;
+  const dy = Math.max(-14, Math.min(14, angDiff(VM.lyaw, vyaw) / Math.max(dt, 1e-3))), dpt = Math.max(-14, Math.min(14, (vpitch - VM.lpit) / Math.max(dt, 1e-3))); VM.lyaw = vyaw; VM.lpit = vpitch;
+  VM.lxv += (-140 * VM.lx - 15 * VM.lxv) * dt + dy * 0.0016; VM.lx += VM.lxv * dt; VM.lyv += (-140 * VM.ly - 15 * VM.lyv) * dt + dpt * 0.0014; VM.ly += VM.lyv * dt; VM.lx = Math.max(-0.07, Math.min(0.07, VM.lx)); VM.ly = Math.max(-0.07, Math.min(0.07, VM.ly));
+  // reload / swap / vault / busy
+  reloadAnim(p, W);
+  if (p.rel) { const el = p.relT - p.rel, rt = W.rt, m = (f, v) => () => Au.metal(f, v); let ev; if (VM.mdl === 'shotgun') { const n = Math.min(8, Math.max(2, Math.round(W.mag - p.ammo))); ev = [[rt * 0.93, m(800, 1.2)]]; for (let i = 0; i < n; i++) ev.push([rt * (0.1 + 0.78 * (i + 0.5) / n), m(1500, 0.7)]); } else ev = [[rt * 0.3, m(900, 1)], [rt * 0.8, m(1200, 1.2)], [rt + 0.2, m(700, 0.9)], [rt + 0.45, m(1400, 1)]]; for (const e of ev) if (VM.pel < e[0] && el >= e[0]) e[1](); VM.pel = el; } else VM.pel = -1;
+  const vl = p.vlt ? p.vlt.dip : 0, busy = G.busyV || 0, spr = ease(clamp01(p.spT || 0)), stP = p.prT || 0;
+  // aim target: the sight line centred on the camera axis
+  const sy = pi ? D.sy0 : sg && O.kind === 'iron' ? -0.1 + (0.072 + 0.1) * sc : -0.1 + (O.h + 0.1 + (sg ? -0.004 : 0)) * sc, zw = pi ? 0.026 : 0.07 + ((O.kind === 'iron' ? 0.07 : O.zw - (sg ? 0.03 : 0)) - 0.07) * sc, er = pi ? 0.27 : O.er;
+  const ax = 0, ay = -sy, az = -er - zw;
+  let x = D.hip[0] + (ax - D.hip[0]) * ae, y = D.hip[1] + (ay - D.hip[1]) * ae, z = D.hip[2] + (az - D.hip[2]) * ae, rx = 0.012 * (1 - ae), ry = 0.05 * (1 - ae), rz = -0.045 * (1 - ae);
+  const bob = sp * (1 - 0.65 * ae), breath = Math.sin(t * 1.35) * (1 - 0.5 * ae) * (1 - 0.6 * stP);
+  x += Math.sin(ph) * 0.0055 * bob + Math.sin(t * 0.7) * 0.0007 + VM.lx; y += -Math.abs(Math.sin(ph)) * 0.0075 * bob + breath * 0.0012 - VM.ly * 0.8; rx += breath * 0.0022 + VM.ly * 0.5 + Math.sin(ph * 2) * 0.004 * bob; ry += -Math.sin(ph) * 0.012 * bob - VM.lx * 0.9; rz += Math.sin(ph) * 0.01 * bob;
+  z += VM.kz; rx += VM.kp; rz += VM.kr; x += p.lean * 0.035; rz += -p.lean * 0.05;
+  x += -0.075 * spr; y += -0.085 * spr; z += 0.04 * spr; rx += -0.12 * spr; ry += 0.78 * spr; rz += 0.3 * spr + Math.sin(ph) * 0.02 * spr; // sprint: the gun swings across and drops
+  y += -0.3 * low - 0.3 * busy - 0.2 * vl; rx += -0.7 * low - 0.5 * busy - 0.5 * vl; ry += 0.3 * low; x += 0.05 * low;
+  rz += VM.tilt * (pi ? -0.55 : 0.5); rx += VM.tilt * -0.12; y += VM.tilt * -0.01; x += VM.tilt * (pi ? 0.02 : 0);
+  // keep the muzzle out of walls: probe ahead of the camera and raise / pull back the gun
+  { const eyeP = cam.position, fx = -Math.sin(vyaw), fz = -Math.cos(vyaw), cp = Math.cos(vpitch), dist = [0.3, 0.45, 0.6, 0.78, 0.95]; let hit = 9; for (const d of dist) if (blocked(eyeP.x + fx * cp * d, eyeP.y + Math.sin(vpitch) * d - 0.1, eyeP.z + fz * cp * d)) { hit = d; break; }
+    const want = hit < 9 ? clamp01((1 - (hit - 0.28) / 0.7)) : 0; VM.wall += (want - VM.wall) * Math.min(1, dt * 10); z += 0.14 * VM.wall; rx += 0.5 * VM.wall; y -= 0.02 * VM.wall; x -= 0.02 * VM.wall; }
+  view.position.set(x * kF, y * kF, z * kF); view.scale.setScalar(kF); view.rotation.set(0, 0, 0); gunG.position.set(0, 0, 0); gunG.rotation.set(rx, ry, rz); gunG.updateMatrix();
+  // hands, magazine, slide, flash
+  hL.position.copy(VM.hl).sub(VM.base); if (RIFLE.mag) { RIFLE.mag.position.copy(VM.magOff); RIFLE.mag.visible = mdl === 'rifle' && VM.magVis; }
+  if (VM.pg) { const s = VM.pg.slide; s.position.z = 0.026 * VM.slide + (p.ammo <= 0 && !p.rel ? 0.03 : 0) + 0.045 * VM.charge; VM.pg.mag.position.y = VM.pg.mag.userData.y0 + VM.magOff.y; VM.pg.mag.visible = VM.magVis; VM.pg.mag.position.z = 0.028 + VM.magOff.z; VM.pg.mag.position.x = VM.magOff.x; }
+  VM.slide = Math.max(0, VM.slide - dt * 13);
+  _wr.set(D.rw[0], D.rw[1], D.rw[2]).applyMatrix4(gunG.matrix); _wl.set(D.lw[0], D.lw[1], D.lw[2]).add(hL.position).applyMatrix4(gunG.matrix);
+  _sr.copy(SH_R).sub(view.position).divideScalar(kF); _sl.copy(SH_L).sub(view.position).divideScalar(kF); setLimb(limbR, cuffR, _sr, _wr); setLimb(limbL, cuffL, _sl, _wl);
+  if (VM.fl > 0) { VM.fl -= dt; flashG.visible = VM.fl > 0 && ae < 0.9; const k = clamp01(VM.fl / 0.055); flashG.scale.setScalar(VM.fs * (0.55 + 0.6 * k)); } else flashG.visible = false;
+  vmCasings(dt);
+}
+// ----- crosshair (hip fire only, opens with the spread) -----
+const XH = { el: document.createElement('div'), gap: undefined };
+{ XH.el.id = 'xh'; XH.el.innerHTML = '<i></i><i></i><i></i><i></i>'; $('dot').parentNode.appendChild(XH.el); const st = document.createElement('style');
+  st.textContent = '#xh{position:absolute;left:50%;top:50%;width:0;height:0;pointer-events:none;opacity:0;--g:6px}#xh i{position:absolute;background:rgba(255,255,255,.88);box-shadow:0 0 2px #000}#xh i:nth-child(1){width:2px;height:8px;left:-1px;top:calc(-8px - var(--g))}#xh i:nth-child(2){width:2px;height:8px;left:-1px;top:var(--g)}#xh i:nth-child(3){width:8px;height:2px;top:-1px;left:calc(-8px - var(--g))}#xh i:nth-child(4){width:8px;height:2px;top:-1px;left:var(--g)}'; document.head.appendChild(st); }
+buildOptic();
 const trGeo = new T.BufferGeometry(); trGeo.setAttribute('position', new T.BufferAttribute(new Float32Array(64 * 6), 3)); const trLine = new T.LineSegments(trGeo, new T.LineBasicMaterial({ color: 0xffd9a0, transparent: true, opacity: 0.6 })); trLine.frustumCulled = false; scene.add(trLine);
 const startT = performance.now();
-function vmFire(W) {}
 const specList = () => ents.filter(e => e !== player && e.team === player.team && e.mode === 'ground');
 // ===== graphics extras: lamp lights, bullet-hole decals, dust, sky follow =====
 const decTex = paintTex(64, 64, (x, w, h) => { const g = x.createRadialGradient(32, 32, 1, 32, 32, 30); g.addColorStop(0, 'rgba(8,6,5,.95)'); g.addColorStop(0.28, 'rgba(14,11,9,.85)'); g.addColorStop(0.55, 'rgba(40,34,28,.35)'); g.addColorStop(1, 'rgba(40,34,28,0)'); x.fillStyle = g; x.fillRect(0, 0, 64, 64); const r = mulberry(5); for (let i = 0; i < 14; i++) { const a = r() * 6.28, d = 8 + r() * 14; x.fillStyle = 'rgba(200,190,170,.35)'; x.fillRect(32 + Math.cos(a) * d, 32 + Math.sin(a) * d, 1.5, 1.5); } });
@@ -1664,19 +1859,17 @@ function updateCamera(dt) {
   if (drone) { const d = p.drone; cam.position.set(d.x, d.y + 0.15, d.z); cam.rotation.set(vpitch, vyaw, 0); cam.fov = 82; }
   else if (camv) { const c = G.camSel, ext = c.kind === 'scam'; cam.position.set(c.x - (ext ? Math.sin(c.a) * 0.08 : 0), c.y - (c.kind === 'cam' ? 0.12 : 0), c.z - (ext ? Math.cos(c.a) * 0.08 : 0)); cam.rotation.set(vpitch, vyaw, 0); cam.fov = 78; }
   else if (p.mode === 'ground') {
-    if (curW !== p.w) setViewWeapon(p.w); { const sc = G.mode === 'siege' ? FAC[p.team].sl : 0x0e110c; if (G.slc !== sc) { G.slc = sc; SLEEVE.color.setHex(sc); } }
-    const speed = Math.hypot(p.vx, p.vz), t = G.t, bobA = speed * 0.0065 * (1 - ads * 0.6) * (p.sprint ? 1.5 : 1), ph = p.stride, sh = (G.shakeK || 0);
-    const ya = vyaw + p.recY + Math.sin(t * 1.1) * 0.0015 + (rnd() - 0.5) * sh * 0.03, pa = vpitch + p.recP + Math.sin(ph) * bobA * 0.9 + Math.sin(t * 0.9) * 0.0012 + (rnd() - 0.5) * sh * 0.03 - (p.sprint ? 0.05 : 0);
-    const rx = Math.cos(ya), rz = -Math.sin(ya), lean = p.lean * 0.45, eye = 1.5 - p.crT * 0.55;
-    cam.position.set(p.x + rx * lean, p.y + eye + Math.abs(Math.sin(ph)) * bobA * 0.9, p.z + rz * lean);
-    cam.rotation.set(pa, ya, -p.lean * 0.14 + Math.cos(ph) * bobA * 0.7 + (p.sprint ? Math.sin(ph) * 0.02 : 0));
-    cam.fov = 98 + (OPT().fov - 98) * ads + (p.sprint ? 4 : 0) + Math.min(5, (G.supp) * 5);
-    view.visible = true; view.scale.setScalar(1); view.userData.fl.visible = G.flash > 0; G.flash = Math.max(0, G.flash - dt); G.kick = Math.max(0, (G.kick || 0) - dt * 14);
-    const rl = p.rel > 0 ? Math.sin(Math.PI * (1 - p.rel / p.relT)) : 0, sp = p.sprint ? 1 : 0, busy = p.busy || p.scan ? 1 : 0; G.busyV = (G.busyV || 0) + (busy - (G.busyV || 0)) * Math.min(1, dt * 8);
-    view.position.set(0.14 * (1 - ads) + Math.sin(ph) * bobA * 0.5, -0.17 * (1 - ads) - sightH() * ads - 0.28 * rl - 0.06 * sp - 0.3 * G.busyV + Math.abs(Math.sin(ph)) * -bobA * 0.4, -0.42 + 0.06 * ads + G.kick * (wOf(p).pel > 1 ? 0.06 : 0.035) + (p.recP * 0.6));
-    view.rotation.set(0.02 * (1 - ads) + G.kick * 0.04 + rl * 0.5 + sp * 0.35 + G.busyV * 0.7, -0.03 * (1 - ads) + sp * 0.5 - Math.sin(ph) * bobA * 0.8, rl * -0.5 + sp * 0.1);
-    muzzleLight.position.copy(cam.position);
-    { const k = OPT().kind; if (retDrawn !== optic || retW !== innerWidth || retH !== innerHeight) drawRet(); retC.classList.remove('hidden'); retC.style.opacity = k === 'iron' ? 0 : Math.max(0, Math.min(1, (ads - 0.55) / 0.35)); opticG.visible = !((k === 'scope' || k === 'scope4') && ads > 0.8); if ((k === 'scope' || k === 'scope4') && ads > 0.85) view.visible = false; }
+    { const sc = G.mode === 'siege' ? FAC[p.team].sl : 0x0e110c; if (G.slc !== sc) { G.slc = sc; SLEEVE.color.setHex(sc).multiplyScalar(3.4); } } // sleeves wear the team colour (lifted a little so they read in the dark)
+    const speed = Math.hypot(p.vx, p.vz), t = G.t, ae = ads * ads * (3 - 2 * ads), ph = p.stride, sh = (G.shakeK || 0), spr = p.spT || 0, wk = Math.min(1.5, speed / 3.7) * (p.onGround === false ? 0 : 1) * (1 - 0.7 * (p.prT || 0)), bobA = wk * 0.0065 * (1 - ae * 0.6) * (1 + spr * 0.5);
+    const ya = vyaw + p.recY + Math.sin(t * 1.1) * 0.0015 + (rnd() - 0.5) * sh * 0.03, pa = vpitch + p.recP + Math.sin(ph) * bobA * 0.9 + Math.sin(t * 0.9) * 0.0012 + (rnd() - 0.5) * sh * 0.03 + (p.vlt ? p.vlt.dip * 0.14 : 0);
+    const eye = eyeAt(p, ya); cam.position.set(eye[0], eye[1] + Math.abs(Math.sin(ph)) * bobA * 0.9, eye[2]);
+    cam.rotation.set(pa, ya, -p.lean * LEAN_R + Math.cos(ph) * bobA * 0.7 + (spr ? Math.sin(ph) * 0.012 * spr : 0));
+    const O = OPT(), pist = wOf(p).mdl === 'pistol', mag = pist ? 1.25 : O.mag, fa = 2 * Math.atan(Math.tan(FOV * Math.PI / 360) / mag) * 180 / Math.PI;
+    cam.fov = FOV + (fa - FOV) * ae + spr * 3 + Math.min(5, (G.supp) * 5);
+    view.visible = true; G.kick = Math.max(0, (G.kick || 0) - dt * 14); cam.updateMatrixWorld(); const bsy = G.busyV || 0; G.busyV = bsy + ((p.busy || p.scan ? 1 : 0) - bsy) * Math.min(1, dt * 8);
+    vmFrame(dt, p, ae, ph, wk); muzzleLight.position.copy(cam.position);
+    { const k = O.kind, sco = k === 'scope' && !pist; if (retDrawn !== optic || retW !== innerWidth || retH !== innerHeight) drawRet(); retC.classList.remove('hidden'); retC.style.opacity = pist || k === 'iron' ? 0 : Math.max(0, Math.min(1, (ae - 0.55) / 0.35)); opticG.visible = !pist && !(sco && ae > 0.8); if (sco && ae > 0.9) view.visible = false; }
+    { const W = wOf(p), mv = speed > 0.1 ? 1 : 0, spreadR = (W.sp * (1 + mv * 1.5) * STSPR[p.st | 0] + p.bloom) * 0.5, px = spreadR * (innerHeight / 2) / Math.tan(cam.fov * Math.PI / 360); XH.gap = XH.gap === undefined ? px : XH.gap + (px - XH.gap) * Math.min(1, dt * 14); XH.el.style.setProperty('--g', (3 + XH.gap).toFixed(1) + 'px'); const vis = Math.max(0, 1 - ae * 2.2) * (1 - Math.min(1, spr * 1.4)) * (p.rel ? 0.4 : 1); XH.el.style.opacity = vis.toFixed(2); $('dot').style.opacity = Math.max(0, 1 - ae * 2.5).toFixed(2); }
   } else { // down: the feed tilts and cuts to static, then you watch a teammate
     const k = Math.min(1, G.deadT * 1.6), sl = G.mode === 'siege' || NET.roster.length > 1 ? specList() : []; spec = sl.length && G.deadT > 2.2 ? sl[G.spec % sl.length] : null;
     if (spec) { cam.position.set(spec.x, spec.y + 1.55, spec.z); cam.rotation.set(spec.aimP || 0, spec.yaw, 0); cam.fov = 90; spec.mesh.visible = false; }
@@ -1877,6 +2070,12 @@ Au.pingS = function () { this.thump(1500, 1500, 0.06, 0.12, 0); setTimeout(() =>
 Au.beep = function (v, pan) { this.thump(2200, 2200, 0.05, 0.18 * v, pan); };
 Au.horn = function (good) { this.thump(good ? 330 : 280, good ? 330 : 250, 0.5, 0.3, 0); setTimeout(() => this.thump(good ? 495 : 220, good ? 495 : 200, 0.7, 0.28, 0), 180); };
 Au.thud = function () { this.thump(130, 55, 0.12, 0.5, 0); this.burst(0.08, 'lowpass', 500, 0.3, 0, 0.2); };
+// ----- sounds for the sidearms and the reload steps -----
+{ const shot0 = Au.shot; Au.shot = function (v, pan, dist, k) {
+    if (k !== 'p9' && k !== 'hp') return shot0.call(this, v, pan, dist, k); const c = this.c; if (!c || v < 0.05 || c.currentTime - this.last < 0.025) return; this.last = c.currentTime; const far = Math.min(1, (dist || 0) / 90), hp = k === 'hp';
+    this.burst(hp ? 0.12 : 0.08, 'lowpass', (hp ? 4600 : 5600) - far * 3600, (hp ? 0.68 : 0.5) * v, pan, 0.5 + far * 0.4); this.burst(hp ? 0.35 : 0.22, 'lowpass', hp ? 800 : 1100, 0.26 * v, pan, 0.7); this.thump(hp ? 160 : 230, 60, hp ? 0.14 : 0.09, 0.3 * v, pan);
+  }; }
+Au.metal = function (f, v) { this.burst(0.05, 'bandpass', f, 0.3 * (v || 1), 0, 0.1, f * 0.6); this.thump(f * 0.2, f * 0.1, 0.05, 0.18 * (v || 1), 0); };
 
 // ===== loop =====
 let last = performance.now(), hudT = 0;
