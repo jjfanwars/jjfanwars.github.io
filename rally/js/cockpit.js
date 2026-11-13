@@ -138,7 +138,7 @@ class CarView {
       w.g.rotation.y = i < 2 ? st.steer : 0; w.spin.rotation.x += (st.spinW !== undefined ? st.spinW : st.speedF / CAR.r) * dt;
     });
     // steering wheel: ~14:1 ratio, a full lock is about 1.4 turns lock to lock
-    const swA = st.steer * 9; this.wheelG.rotation.z = swA; this.wheelG.rotation.x = -0.42; this.wheelG.updateMatrixWorld();
+    const swA = -st.steer * 9; this.wheelG.rotation.z = swA; this.wheelG.rotation.x = -0.42; this.wheelG.updateMatrixWorld();
     this.hbL.rotation.x = st.hb ? -0.55 : -0.15;
     // crew: driver's hands on the rim, navigator holds the board
     const I = this.interior, D = this.crew.drv, N = this.crew.nav, rimPt = a => { const p = new THREE.Vector3(Math.sin(a) * 0.17, Math.cos(a) * 0.17, 0.02); p.applyEuler(new THREE.Euler(-0.42, 0, swA, 'XYZ')); return p.add(this.wheelG.position).sub(D.g.position); };

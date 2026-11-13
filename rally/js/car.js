@@ -7,7 +7,7 @@ const CAR = {
   wheels: [[0.8, -0.1, 1.27], [-0.8, -0.1, 1.27], [0.8, -0.1, -1.24], [-0.8, -0.1, -1.24]], // FL FR RL RR
   rest: 0.36, travel: 0.27, r: 0.32, k: 36000, cB: 3300, cR: 4300, arb: 9000,
   gears: [3.25, 2.2, 1.67, 1.32, 1.07, 0.89], rev: 3.1, fin: 5.2, idle: 950, red: 7700,
-  split: 0.62,                                  // share of drive torque to the rear axle
+  split: 0.5,                                  // share of drive torque to the rear axle
   brake: 9800, brakeBias: 0.64,                 // max brake force per car (N) and front share
   hw: 0.9, hl: 2.06,                           // collision footprint half width/length
 };
@@ -56,7 +56,7 @@ class Car {
     const maxS = 0.6 / (1 + Math.max(0, spd - 4) / 24), st = inp.steer;
     let target = st * maxS;
     if (vF > 3) target += (1 - Math.abs(st) * 0.6) * clamp(beta * 0.85, -0.42, 0.42) * sstep(0.04, 0.22, Math.abs(beta));
-    const rate = (Math.abs(target) < Math.abs(this.steer) ? 5 : 3.2) * (1 + Math.abs(beta));
+    const rate = (Math.abs(target) < Math.abs(this.steer) ? 7 : 5) * (1 + Math.abs(beta));
     this.steer += clamp(target - this.steer, -rate * dt, rate * dt);
     // throttle / brake / reverse logic
     let thr = inp.thr, brk = inp.brk;
@@ -107,7 +107,7 @@ class Car {
       // surface from the road map
       const q = S.near(cp.x, cp.z, 12), onRoad = q && q.d < ROAD_HW + 0.3;
       w.surf = onRoad ? 0 : 1; offSum += w.surf;
-      const mu = (onRoad ? 1.02 : 0.68) * (1 - this.dmg * 0.15), Fz = Math.min(w.load, 9000), fmax = mu * Fz * (1 - 0.06 * Fz / 4000); // tyre load sensitivity
+      const mu = (onRoad ? 1.25 : 0.82) * (1 - this.dmg * 0.15), Fz = Math.min(w.load, 9000), fmax = mu * Fz * (1 - 0.06 * Fz / 4000); // tyre load sensitivity
       // longitudinal
       let fx = 0, locked = false;
       const share = w.front ? (1 - CAR.split) / 2 : CAR.split / 2;
@@ -119,11 +119,11 @@ class Car {
       fx -= vx * 6;               // rolling resistance
       // lateral: slip angle curve, softer and wider on gravel
       const slipA = Math.atan2(vy, Math.max(Math.abs(vx), 3.5));
-      const Bc = onRoad ? 6.2 : 5, Cc = 1.35, curve = Math.sin(Cc * Math.atan(Bc * slipA));
+      const Bc = onRoad ? 10 : 7, Cc = 1.15, curve = Math.sin(Cc * Math.atan(Bc * slipA));
       let fy = -fmax * curve * (locked ? 0.45 : 1);
       if (Math.abs(vx) < 3) { const lowS = -vy * CAR.m * 0.25 * 8; fy = lerp(lowS, fy, Math.abs(vx) / 3); fy = clamp(fy, -fmax, fmax); }
       // friction circle (longitudinal first, then whatever grip is left for cornering)
-      const mag = Math.hypot(fx, fy * 0.85); if (mag > fmax) { const kk = fmax / mag; fx *= kk; fy *= Math.min(1, kk * 1.12); }
+      const mag = Math.hypot(fx, fy * 0.85); if (mag > fmax) { const kk = fmax / mag; fx *= kk; fy *= Math.min(1, kk * 1.35); }
       const tf = new THREE.Vector3().addScaledVector(wf, fx).addScaledVector(wl, fy);
       F.add(tf); T.add(t.b.crossVectors(t.c.subVectors(cp, this.pos).addScaledVector(up, 0.32), tf)); // force applied a little above the patch: lower effective roll centre
       // wheel spin (visual, sound, rpm): free-rolling plus wheelspin when drive exceeds grip
@@ -135,6 +135,12 @@ class Car {
     }
     // anti-roll: transfer between left and right on each axle
     for (const [a, b] of [[0, 1], [2, 3]]) { const wa = this.wh[a], wb = this.wh[b]; if (!wa.contact && !wb.contact) continue; const d = (wa.comp - wb.comp) * CAR.arb, Pa = this.toWorld(wa.a, t.a).add(this.pos).clone(), Pb = this.toWorld(wb.a, t.a).add(this.pos).clone(); T.add(t.b.crossVectors(t.c.subVectors(Pa, this.pos), t.d.copy(up).multiplyScalar(d))); T.add(t.b.crossVectors(t.c.subVectors(Pb, this.pos), t.d.copy(up).multiplyScalar(-d))); }
+    if (contacts >= 3 && !hb) {
+      const yaw = this.w.dot(up), want = vF * Math.tan(this.steer) / 2.51, err = yaw - want;
+      T.addScaledVector(up, -err * CAR.I[1] * 6 * sstep(2, 8, Math.abs(vF)));
+      // bleed off sideways sliding so the car goes where it points
+      const vLat = this.v.dot(left); F.addScaledVector(left, -vLat * CAR.m * 1.0 * sstep(2, 6, Math.abs(vF)));
+    }
     this.air = contacts === 0 ? this.air + dt : 0; this.slide = slideSum / 4; this.offroad = offSum / 4;
     // aero drag
     F.addScaledVector(this.v, -0.62 * spd);
