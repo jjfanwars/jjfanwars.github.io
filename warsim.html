@@ -906,7 +906,7 @@ ClientLink.prototype.openWs = function () {
 };
 ClientLink.prototype.joinBc = function (code, fromRelay) {
   const h = this.h; code = code.toUpperCase();
-  {('warsim-' + code.toUpperCase());
+  { this.bc = new BroadcastChannel('warsim-' + code);
     this.bc.onmessage = ev => {
       const m = ev.data;
       if (m.to !== this.id) return;
@@ -15615,6 +15615,7 @@ addEventListener('keydown', () => { if (typeof Direct !== 'undefined' && window.
     {d: '13 Nov 2026', items: [
       'Operation Red Star reworked: the flight to New York takes about 7 minutes instead of 20, bandits arrive about 30 seconds after take-off, and fighter waves keep coming and grow, with tougher aces.',
       'Red Star: new fires that spread if nobody puts them out, a score with kill streaks, points for every fix, and a medal at the end. A missed leak no longer drains all your fuel, and the radar jammer no longer clears itself.',
+      'Fixed joining a game from a second tab on the same computer (and the fallback when the game server cannot be reached): it crashed instead of connecting.',
     ]},
     {d: '10 Nov 2026', items: [
       'Iron Express rebuilt: you ride inside an enclosed armoured train with your crew. Walk between the cab and the gun cars, shovel coal to keep steam up, set the throttle, pull the whistle, climb the ladders to man the turrets, put out fires, repair knocked-out turrets and shoot or kick raiders who climb aboard.',
