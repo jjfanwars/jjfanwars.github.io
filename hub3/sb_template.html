@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Hub Storyboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@700&family=Nunito:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f3ece0;--card:#fffaf2;--ink:#2d2620;--mut:#6d6157;--acc:#2f7479}
+*{box-sizing:border-box;margin:0}
+body{background:var(--bg);color:var(--ink);font:16px/1.55 Nunito,system-ui,sans-serif;padding:28px 16px 60px}
+h1{font:700 2.6rem Caveat,cursive;text-align:center}
+.sub{text-align:center;color:var(--mut);max-width:70ch;margin:4px auto 26px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,520px),1fr));gap:22px;max-width:1240px;margin:0 auto}
+.panel{background:var(--card);border-radius:14px;overflow:hidden;box-shadow:0 10px 30px -18px rgba(60,40,20,.5)}
+.panel .img{aspect-ratio:16/9;background:#d9c9b0 linear-gradient(110deg,#d9c9b0 40%,#e9dcc6 50%,#d9c9b0 60%) 0 0/300% 100%;animation:sh 1.6s linear infinite;display:grid;place-items:center;color:var(--mut);font-size:.9rem}
+.panel img{width:100%;display:block}
+@keyframes sh{to{background-position:-300% 0}}
+.meta{padding:16px 18px 18px}
+.meta h2{font:700 1.15rem Nunito;display:flex;justify-content:space-between;gap:8px}
+.meta h2 span{color:var(--acc);font-weight:700}
+.cap{font:700 1.7rem Caveat,cursive;margin:6px 0 10px;color:#3a2a44}
+.meta dl{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font-size:.93rem}
+.meta dt{color:var(--mut);font-weight:700}
+.notes{max-width:1240px;margin:30px auto 0;background:var(--card);border-radius:14px;padding:18px 22px}
+.notes h3{font:700 1.2rem Nunito;margin-bottom:6px}.notes li{margin:4px 0 4px 18px}
+#c{position:fixed;left:-99999px;top:0;width:1920px;height:1080px}
+#status{text-align:center;color:var(--mut);margin-bottom:14px}
+</style>
+</head>
+<body>
+<h1>Surf Coast Family Hub: storyboard</h1>
+<p class="sub">Painted style, 13 seconds, 1920×1080. One continuous camera move from the Jan Juc clifftop into the Hub's music room. Stills are rendered live in your browser with the real scene code (16 samples), so they take a moment.</p>
+<p id="status">rendering…</p>
+<div class="grid" id="grid"></div>
+<div class="notes">
+  <h3>Facts and assumptions</h3>
+  <ul>
+    <li>The Hub's shopfront is drawn from the photo on surfcoastfamilyhub.com.au: teal walls, two big windows with the tree-and-door logo, a glazed door between them, the fascia line "Nurturing perinatal, child &amp; family wellbeing", and an A-frame sign. Proportions are approximate.</li>
+    <li>Address: Stuart Avenue, Jan Juc (from the Visit Great Ocean Road listing). The walk from the clifftop to Stuart Avenue is compressed into one continuous shot; the real distance is longer.</li>
+    <li>The neighbouring shops, houses and street trees are invented. The interior is invented: no photos of it are public.</li>
+    <li>The music group stands in for the Hub's Lulla-Baby Music Group. Who leads it, the ukulele and the room layout are assumptions.</li>
+    <li>The people are generic, simple figures, not real staff or clients.</li>
+    <li>Ochre sandstone cliffs, coastal heath and pigface flowers are typical of the Jan Juc clifftop; the exact view is not a real survey.</li>
+  </ul>
+</div>
+<canvas id="c" width="1920" height="1080"></canvas>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.187.0/build/three.module.js"}}</script>
+<script type="module">
+import * as THREE from 'three';
+window.THREE = THREE;
+/*STAGE*/
+/*STYLE*/
+const PANELS = [
+  { t: 1.6, from: 0, to: 3.2, cap: 'Morning on the Jan Juc clifftop.',
+    move: 'Opening frame: a parent pushes a sage pram along the sandy clifftop path. Below, sets of surf roll in under the ochre cliffs; gulls cross; heath and pigface lean in the breeze.',
+    cam: 'Walking height beside the pram, looking out along the coast into the low sun; tracks with the pram.',
+    snd: 'Surf and breeze bed, gravel crunch of wheels, footsteps, a gull, brush stroke as the caption paints on.' },
+  { t: 5.5, from: 3.2, to: 6.4, cap: 'Up Stuart Avenue to the Hub.',
+    move: 'The pram turns off the clifftop into the street and rolls along the footpath past the A-frame sign to the teal shopfront; warm light glows through the logo windows.',
+    cam: 'Swings round to look inland up the street, then glides ahead of the pram to the door.',
+    snd: 'Footsteps change to concrete, surf fades behind, caption stroke. Latch click as they reach the door.' },
+  { t: 8.25, from: 6.4, to: 9.9, cap: 'Through the door, the music group begins.',
+    move: 'The glazed door swings in, the pram rolls inside and parks. The facilitator strums a ukulele, the other families rock their babies and shake shakers; the parent lifts the baby out.',
+    cam: 'Pushes through the doorway into the room and turns toward the circle of cushions.',
+    snd: 'Door creak and shop bell, room tone, ukulele strums on the beat, shakers, a soft cloth rustle as the baby is lifted.' },
+  { t: 12.5, from: 9.9, to: 13, cap: 'And the baby drifts off to sleep.',
+    move: 'The parent sits on a cushion and rocks; the baby settles against their chest, head tipped, and sleeps. The parent\'s head bows a little. The strums soften.',
+    cam: 'Settles low in front of the parent, the window light behind them, and holds for the last 1.5 s.',
+    snd: 'Strums drop to half volume, shakers stop, a warm lullaby pad comes in, and a final two-note chime on the sleep.' },
+];
+const grid = document.getElementById('grid');
+PANELS.forEach((p, i) => grid.insertAdjacentHTML('beforeend', `<article class="panel"><div class="img" id="im${i}">rendering beat ${i + 1}…</div><div class="meta">
+  <h2>Beat ${i + 1} <span>${p.from.toFixed(1)}s – ${p.to.toFixed(1)}s</span></h2><div class="cap">“${p.cap}”</div>
+  <dl><dt>Moves</dt><dd>${p.move}</dd><dt>Camera</dt><dd>${p.cam}</dd><dt>Sound</dt><dd>${p.snd}</dd></dl></div></article>`));
+const status = document.getElementById('status');
+const canvas = document.getElementById('c');
+const samples = +(new URLSearchParams(location.search).get('samples') || 16);
+const S = await K.run(canvas, STYLES[STYLES.length - 1], { samples });
+window.seek = (t) => S.seek(t);
+for (let i = 0; i < PANELS.length; i++) {
+  status.textContent = `rendering still ${i + 1} of ${PANELS.length}…`;
+  await new Promise((r) => setTimeout(r, 30));
+  S.seek(PANELS[i].t);
+  const img = new Image(); img.src = canvas.toDataURL('image/jpeg', 0.9); img.alt = 'Beat ' + (i + 1);
+  const box = document.getElementById('im' + i); box.replaceWith(img);
+}
+status.textContent = 'Stills rendered with the scene code. Reply with OK or changes.';
+window.__done = true;
+</script>
+</body>
+</html>
