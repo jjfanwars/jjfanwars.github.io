@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Pace Notes: co-op rally</title>
+<!--
+  Pace Notes: two-player co-op rally. The driver sees the road through fog and forest; only the navigator has the map.
+  Uses the jjfanwars relay unchanged (rooms named "[Rally] ..."). The driver's browser runs the car; the navigator interpolates.
+  Three.js r170 (MIT) from ../three-r170.js. Everything else is procedural.
+-->
+<style>
+:root { --bg:#0e1210; --ink:#efe9dc; --dim:#a39d8f; --acc:#f2b632; --red:#e0483a; --panel:rgba(14,18,16,.86); }
+* { box-sizing:border-box; }
+html,body { margin:0; height:100%; background:var(--bg); color:var(--ink); font:15px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif; overflow:hidden; }
+canvas#gl { position:fixed; inset:0; width:100%; height:100%; display:block; }
+.hidden { display:none !important; }
+.scr { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; padding:16px; background:radial-gradient(ellipse at 50% 30%,rgba(20,26,22,.55),rgba(6,8,7,.92)); z-index:10; }
+.card { width:min(560px,100%); background:var(--panel); border:1px solid rgba(255,255,255,.08); border-radius:14px; padding:26px; box-shadow:0 30px 80px rgba(0,0,0,.5); max-height:100%; overflow:auto; }
+h1 { margin:0 0 2px; font-size:40px; letter-spacing:.04em; font-weight:900; font-style:italic; }
+h1 b { color:var(--acc); }
+.sub { color:var(--dim); margin:0 0 18px; }
+label { display:block; font-size:12px; text-transform:uppercase; letter-spacing:.08em; color:var(--dim); margin:12px 0 4px; }
+input,select { width:100%; padding:10px 12px; border-radius:8px; border:1px solid rgba(255,255,255,.14); background:#151b18; color:var(--ink); font:inherit; }
+.row { display:flex; gap:10px; } .row > * { flex:1; }
+button { padding:11px 16px; border-radius:9px; border:0; background:#2a332e; color:var(--ink); font:600 15px system-ui,sans-serif; cursor:pointer; }
+button:hover { filter:brightness(1.15); }
+button.go { background:var(--acc); color:#1a1408; }
+.btns { display:flex; gap:10px; margin-top:16px; flex-wrap:wrap; } .btns button { flex:1; min-width:120px; }
+#rooms button { display:flex; justify-content:space-between; width:100%; margin-top:6px; background:#1b231f; font-weight:500; }
+.msg { color:var(--acc); min-height:20px; margin-top:10px; font-size:14px; }
+.keys { color:var(--dim); font-size:13px; margin-top:14px; border-top:1px solid rgba(255,255,255,.08); padding-top:12px; }
+.keys b { color:var(--ink); }
+#code { font:900 44px ui-monospace,monospace; letter-spacing:.2em; color:var(--acc); margin:4px 0 6px; }
+.roles { display:flex; gap:10px; margin:14px 0; } .roles div { flex:1; background:#1a221e; border-radius:10px; padding:12px; }
+.roles i { display:block; font-style:normal; font-size:11px; letter-spacing:.1em; color:var(--dim); text-transform:uppercase; }
+.roles b { font-size:18px; }
+/* HUD */
+#hud { position:fixed; inset:0; pointer-events:none; z-index:5; font-variant-numeric:tabular-nums; }
+#tm { position:absolute; top:14px; left:50%; transform:translateX(-50%); font:800 30px ui-monospace,monospace; text-shadow:0 2px 8px rgba(0,0,0,.7); }
+#split { position:absolute; top:52px; left:50%; transform:translateX(-50%); font:600 16px ui-monospace,monospace; color:var(--acc); text-shadow:0 2px 6px #000; }
+#spd { position:absolute; right:22px; bottom:18px; text-align:right; text-shadow:0 2px 8px rgba(0,0,0,.8); }
+#spd b { font:900 54px ui-monospace,monospace; display:block; line-height:1; }
+#spd span { font:600 14px ui-monospace,monospace; color:var(--dim); }
+#rpm { width:180px; height:6px; background:rgba(255,255,255,.15); border-radius:3px; margin-top:6px; overflow:hidden; } #rpm i { display:block; height:100%; background:var(--acc); width:0; }
+#dmg { position:absolute; left:22px; bottom:18px; font:600 13px ui-monospace,monospace; color:var(--dim); text-shadow:0 1px 4px #000; }
+#dmg i { display:block; width:130px; height:6px; background:rgba(255,255,255,.15); border-radius:3px; margin-top:4px; overflow:hidden; } #dmg i u { display:block; height:100%; width:0; background:var(--red); }
+#call { position:absolute; top:22%; left:50%; transform:translateX(-50%); font:900 italic 64px system-ui,sans-serif; color:#fff; text-shadow:0 4px 18px rgba(0,0,0,.85); letter-spacing:.03em; white-space:nowrap; transition:opacity .25s; opacity:0; }
+#big { position:absolute; top:40%; left:50%; transform:translate(-50%,-50%); font:900 96px system-ui,sans-serif; text-shadow:0 6px 24px rgba(0,0,0,.8); }
+#tip { position:absolute; bottom:18px; left:50%; transform:translateX(-50%); color:var(--dim); font-size:13px; text-shadow:0 1px 4px #000; text-align:center; }
+#role { position:absolute; top:16px; left:18px; font:700 12px system-ui; letter-spacing:.14em; color:var(--dim); text-shadow:0 1px 4px #000; }
+#net { position:absolute; top:16px; right:18px; font:600 12px ui-monospace,monospace; color:var(--dim); text-shadow:0 1px 4px #000; }
+#cross { position:absolute; left:50%; top:50%; width:4px; height:4px; margin:-2px; border-radius:50%; background:rgba(255,255,255,.5); }
+#lockmsg { position:fixed; inset:auto 0 40% 0; text-align:center; z-index:6; font:700 18px system-ui; text-shadow:0 2px 8px #000; pointer-events:none; }
+#fin table { width:100%; border-collapse:collapse; margin-top:10px; font-variant-numeric:tabular-nums; } #fin td { padding:6px 4px; border-bottom:1px solid rgba(255,255,255,.07); } #fin td:last-child { text-align:right; }
+#fade { position:fixed; inset:0; background:#000; opacity:0; pointer-events:none; z-index:4; transition:opacity .3s; }
+</style>
+</head>
+<body>
+<canvas id="gl"></canvas>
+<div id="fade"></div>
+
+<div id="menu" class="scr">
+  <div class="card">
+    <h1>PACE <b>NOTES</b></h1>
+    <p class="sub">Co-op rally for two. The driver can't see far. Only the navigator has the map. Talk to each other.</p>
+    <label>Your name</label><input id="nm" maxlength="14" placeholder="Name">
+    <div class="row">
+      <div><label>Stage</label><select id="sStage"></select></div>
+      <div><label>Fog</label><select id="sFog"><option value="0">Light</option><option value="1" selected>Medium</option><option value="2">Heavy</option></select></div>
+    </div>
+    <div class="row">
+      <div><label>You will be</label><select id="sRole"><option value="drv">Driver</option><option value="nav">Navigator</option></select></div>
+      <div><label>Graphics</label><select id="sGfx"><option value="high">High</option><option value="med" selected>Medium</option><option value="low">Low</option></select></div>
+    </div>
+    <div class="btns"><button class="go" id="bHost">Host online game</button><button id="bSolo">Solo practice</button></div>
+    <label>Join with a code</label>
+    <div class="row"><input id="jc" maxlength="5" placeholder="ABCDE" style="text-transform:uppercase"><button id="bJoin" style="flex:0 0 110px">Join</button></div>
+    <div id="rooms"></div>
+    <div class="msg" id="msg"></div>
+    <div class="keys">
+      <b>Driver:</b> W throttle, S brake/reverse, A/D steer, Space handbrake, R recover (+5 s), mouse looks around.<br>
+      <b>Navigator:</b> hold right mouse (or Tab) to raise the map, mouse looks around. Backup callouts: A/D then 1-6 (1 = hairpin, 6 = flat), J jump, C crest, L log, K keep middle, F flat out, B brake.<br>
+      <b>Solo practice</b> gives you an automatic co-driver.
+    </div>
+  </div>
+</div>
+
+<div id="lobby" class="scr hidden">
+  <div class="card">
+    <div class="sub" style="margin:0">Room code</div>
+    <div id="code">-----</div>
+    <div class="sub" id="lcfg"></div>
+    <div class="roles"><div><i>Driver</i><b id="rDrv">-</b></div><div><i>Navigator</i><b id="rNav">-</b></div></div>
+    <div class="msg" id="lmsg"></div>
+    <div class="btns"><button id="bSwap">Swap roles</button><button class="go" id="bGo">Start stage</button><button id="bLeave">Leave</button></div>
+  </div>
+</div>
+
+<div id="fin" class="scr hidden">
+  <div class="card">
+    <h1 id="finT">STAGE <b>COMPLETE</b></h1>
+    <table id="finTab"></table>
+    <div class="btns"><button class="go" id="bAgain">Run it again</button><button id="bMenu">Menu</button></div>
+    <div class="msg" id="finMsg"></div>
+  </div>
+</div>
+
+<div id="hud" class="hidden">
+  <div id="role"></div><div id="net"></div>
+  <div id="tm">0:00.0</div><div id="split"></div>
+  <div id="call"></div><div id="big"></div>
+  <div id="cross"></div>
+  <div id="dmg">DAMAGE<i><u></u></i></div>
+  <div id="spd"><b>0</b><span id="gear">N</span> <span>km/h</span><div id="rpm"><i></i></div></div>
+  <div id="tip"></div>
+</div>
+<div id="lockmsg" class="hidden">Click to look around</div>
+
+<script src="../three-r170.js"></script>
+<script src="js/util.js"></script>
+<script src="js/stage.js"></script>
+<script src="js/tex.js"></script>
+<script src="js/world.js"></script>
+<script src="js/car.js"></script>
+<script src="js/cockpit.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/notes.js"></script>
+<script src="js/net.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
