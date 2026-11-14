@@ -33,7 +33,8 @@ $('bLeave').onclick = () => { Net.close(); show('menu'); refreshRooms(); };
 // host: seat bookkeeping
 function unseat(id) { for (const c of G.seats) for (let r = 0; r < 2; r++) if (c[r] === id) c[r] = null; }
 function seatOf(id, seats) { for (let c = 0; c < 4; c++) for (let r = 0; r < 2; r++) { const x = seats[c][r]; if (x && (x === id || x.id === id)) return [c, r]; } return null; }
-function autoSeat(id) { if (seatOf(id, G.seats)) return; for (let r = 0; r < 2; r++) for (let c = 0; c < 4; c++) if (!G.seats[c][r] && (r === 0 || G.seats[c][0])) { G.seats[c][r] = id; return; } }
+// fill navigator seats in cars that already have a driver first (two players = co-op), then start a new car
+function autoSeat(id) { if (seatOf(id, G.seats)) return; for (let c = 0; c < 4; c++) if (G.seats[c][0] && !G.seats[c][1]) { G.seats[c][1] = id; return; } for (let c = 0; c < 4; c++) if (!G.seats[c][0] && !G.seats[c][1]) { G.seats[c][0] = id; return; } }
 function takeSeat(id, c, r) { if (G.seats[c][r]) return; unseat(id); G.seats[c][r] = id; renderLobby(); }
 function lobbyState() { return { t: 'lobby', cfg: G.cfg, seats: G.seats.map(c => c.map(id => id ? { id, name: nameOf(id) } : null)) }; }
 function renderLobby(s) {
