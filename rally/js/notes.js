@@ -77,6 +77,8 @@ const MapDraw = {
     }
     // start/finish
     for (const [s, t] of [[40, 'START'], [S.L - 60, 'FINISH']]) { const p = S.at(s), [X, Y] = toM(p.x, p.z); if (X < 0 || X > 1024 || Y < 80 || Y > 1060) continue; g.fillStyle = '#111'; g.fillRect(X - 30, Y - 4, 60, 8); g.font = '900 22px system-ui'; g.fillText(t, X, Y - 12); }
+    // rival cars
+    for (const o of opts.others || []) { const [X, Y] = toM(o.x, o.z); if (X < 20 || X > 1004 || Y < 90 || Y > 1050) continue; g.beginPath(); g.arc(X, Y, 13, 0, 7); g.fillStyle = o.col; g.fill(); g.lineWidth = 3; g.strokeStyle = '#fff'; g.stroke(); }
     // the car
     g.save(); g.translate(cx, cy); g.fillStyle = '#c0281c'; g.beginPath(); g.moveTo(0, -22); g.lineTo(13, 14); g.lineTo(0, 7); g.lineTo(-13, 14); g.closePath(); g.fill(); g.restore();
     g.restore();

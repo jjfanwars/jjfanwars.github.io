@@ -35,6 +35,14 @@ button.go { background:var(--acc); color:#1a1408; }
 .roles { display:flex; gap:10px; margin:14px 0; } .roles div { flex:1; background:#1a221e; border-radius:10px; padding:12px; }
 .roles i { display:block; font-style:normal; font-size:11px; letter-spacing:.1em; color:var(--dim); text-transform:uppercase; }
 .roles b { font-size:18px; }
+#seats { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px; margin:14px 0; }
+.car { background:#1a221e; border-radius:10px; padding:10px; border-top:4px solid var(--c); }
+.car h5 { margin:0 0 6px; font-size:12px; letter-spacing:.12em; text-transform:uppercase; color:var(--c); }
+.car button { display:block; width:100%; margin-top:6px; padding:8px 10px; text-align:left; font-weight:500; background:#232c27; }
+.car button i { display:block; font-style:normal; font-size:10px; letter-spacing:.1em; color:var(--dim); text-transform:uppercase; }
+.car button.me { outline:2px solid var(--acc); }
+.car button.free { color:var(--dim); }
+#pos { position:absolute; top:84px; left:50%; transform:translateX(-50%); font:800 20px ui-monospace,monospace; text-shadow:0 2px 6px #000; }
 /* HUD */
 #hud { position:fixed; inset:0; pointer-events:none; z-index:5; font-variant-numeric:tabular-nums; }
 #tm { position:absolute; top:14px; left:50%; transform:translateX(-50%); font:800 30px ui-monospace,monospace; text-shadow:0 2px 8px rgba(0,0,0,.7); }
@@ -71,7 +79,7 @@ button.go { background:var(--acc); color:#1a1408; }
       <div><label>Fog</label><select id="sFog"><option value="0">Light</option><option value="1" selected>Medium</option><option value="2">Heavy</option></select></div>
     </div>
     <div class="row">
-      <div><label>You will be</label><select id="sRole"><option value="drv">Driver</option><option value="nav">Navigator</option></select></div>
+      <div><label>Your seat (online)</label><select id="sRole"><option value="drv">Driver</option><option value="nav">Navigator</option></select></div>
       <div><label>Graphics</label><select id="sGfx"><option value="high">High</option><option value="med" selected>Medium</option><option value="low">Low</option></select></div>
     </div>
     <div class="btns"><button class="go" id="bHost">Host online game</button><button id="bSolo">Solo practice</button></div>
@@ -82,7 +90,7 @@ button.go { background:var(--acc); color:#1a1408; }
     <div class="keys">
       <b>Driver:</b> W throttle, S brake/reverse, A/D steer, Space handbrake, R recover (+5 s), mouse looks around.<br>
       <b>Navigator:</b> hold right mouse (or Tab) to raise the map, mouse looks around. Backup callouts: A/D then 1-6 (1 = hairpin, 6 = flat), J jump, C crest, L log, K keep middle, F flat out, B brake.<br>
-      <b>Solo practice</b> gives you an automatic co-driver. <b>Backspace</b> restarts the stage (solo or host).
+      <b>Online:</b> up to 4 cars (8 players), two per car. <b>Solo practice</b> gives you an automatic co-driver. <b>Backspace</b> restarts the stage (solo or host).
     </div>
   </div>
 </div>
@@ -92,9 +100,10 @@ button.go { background:var(--acc); color:#1a1408; }
     <div class="sub" style="margin:0">Room code</div>
     <div id="code">-----</div>
     <div class="sub" id="lcfg"></div>
-    <div class="roles"><div><i>Driver</i><b id="rDrv">-</b></div><div><i>Navigator</i><b id="rNav">-</b></div></div>
+    <div class="sub" style="margin:8px 0 0">Click a seat to take it. One car = co-op stage. Two or more cars = race. A car with no navigator gets the auto co-driver.</div>
+    <div id="seats"></div>
     <div class="msg" id="lmsg"></div>
-    <div class="btns"><button id="bSwap">Swap roles</button><button class="go" id="bGo">Start stage</button><button id="bLeave">Leave</button></div>
+    <div class="btns"><button class="go" id="bGo">Start</button><button id="bLeave">Leave</button></div>
   </div>
 </div>
 
@@ -109,7 +118,7 @@ button.go { background:var(--acc); color:#1a1408; }
 
 <div id="hud" class="hidden">
   <div id="role"></div><div id="net"></div>
-  <div id="tm">0:00.0</div><div id="trip"></div><div id="split"></div>
+  <div id="tm">0:00.0</div><div id="pos"></div><div id="trip"></div><div id="split"></div>
   <div id="call"></div><div id="big"></div>
   <div id="cross"></div>
   <div id="dmg">DAMAGE<i><u></u></i></div>
@@ -119,15 +128,15 @@ button.go { background:var(--acc); color:#1a1408; }
 <div id="lockmsg" class="hidden">Click to look around</div>
 
 <script src="../three-r170.js"></script>
-<script src="js/util.js?v=7"></script>
-<script src="js/stage.js?v=7"></script>
-<script src="js/tex.js?v=7"></script>
-<script src="js/world.js?v=7"></script>
-<script src="js/car.js?v=7"></script>
-<script src="js/cockpit.js?v=7"></script>
-<script src="js/audio.js?v=7"></script>
-<script src="js/notes.js?v=7"></script>
-<script src="js/net.js?v=7"></script>
-<script src="js/main.js?v=7"></script>
+<script src="js/util.js?v=8"></script>
+<script src="js/stage.js?v=8"></script>
+<script src="js/tex.js?v=8"></script>
+<script src="js/world.js?v=8"></script>
+<script src="js/car.js?v=8"></script>
+<script src="js/cockpit.js?v=8"></script>
+<script src="js/audio.js?v=8"></script>
+<script src="js/notes.js?v=8"></script>
+<script src="js/net.js?v=8"></script>
+<script src="js/main.js?v=8"></script>
 </body>
 </html>

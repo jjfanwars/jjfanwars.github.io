@@ -5,9 +5,9 @@
 const SEAT = { drv: new THREE.Vector3(0.37, 0.43, -0.3), nav: new THREE.Vector3(-0.37, 0.41, -0.32) };
 
 class CarView {
-  constructor(scene, envOK) {
-    const g = this.g = new THREE.Group(); scene.add(g);
-    const paint = new THREE.MeshPhysicalMaterial({ color: 0x1d4fbf, metalness: 0.35, roughness: 0.32, clearcoat: 1, clearcoatRoughness: 0.08 });
+  constructor(scene, opt) {
+    opt = opt || {}; const g = this.g = new THREE.Group(); scene.add(g);
+    const paint = new THREE.MeshPhysicalMaterial({ color: opt.color || 0x1d4fbf, metalness: 0.35, roughness: 0.32, clearcoat: 1, clearcoatRoughness: 0.08 });
     const black = new THREE.MeshStandardMaterial({ color: 0x111214, roughness: 0.7 }), satin = new THREE.MeshStandardMaterial({ color: 0x1b1c1f, roughness: 0.6, metalness: 0.15 });
     const cageM = new THREE.MeshStandardMaterial({ color: 0xc8c9cc, metalness: 0.8, roughness: 0.35 }), trim = new THREE.MeshStandardMaterial({ color: 0x26272b, roughness: 0.9 });
     const white = new THREE.MeshPhysicalMaterial({ color: 0xf2f2f0, metalness: 0.1, roughness: 0.35, clearcoat: 1 }), orange = new THREE.MeshPhysicalMaterial({ color: 0xff7a1a, roughness: 0.35, clearcoat: 1 });
@@ -146,6 +146,8 @@ class CarView {
     // the roof and pillars shade the cabin
     g.traverse(o => { if (o.isMesh && o !== wsh && o.material !== this.dashMat) { o.receiveShadow = true; if (o.parent !== g || o === body) o.castShadow = true; } });
     body.receiveShadow = false;
+    // rival cars: only the shell, wheels and crew are worth drawing
+    this.remote = !!opt.remote; if (this.remote) I.children.forEach(ch => { ch.visible = ch === this.crew.drv.g || ch === this.crew.nav.g; });
   }
   static materials() {
     if (CarView._M) return CarView._M;
@@ -202,6 +204,7 @@ class CarView {
     const bp = this.board.position.clone().sub(N.g.position);
     this.setArm(N.arms[0], new THREE.Vector3(0.2, -0.24, -0.08), bp.clone().add(new THREE.Vector3(0.15, 0, 0.05))); this.setArm(N.arms[1], new THREE.Vector3(-0.2, -0.24, -0.08), bp.clone().add(new THREE.Vector3(-0.15, 0, 0.05)));
     this.crackM.opacity = clamp(((st.dmg || 0) - 0.12) * 1.4, 0, 0.85);
+    if (this.remote) return;
     // rev counter needle (0..8000 over 270 degrees), shift lights, gear display
     const rr = clamp(st.rpm / 8000, 0, 1); this.needleP.rotation.z = (135 - rr * 270) * Math.PI / 180;
     const sl = clamp((st.rpm - 4800) / (CAR.red - 300 - 4800), 0, 1), flash = st.rpm > CAR.red - 300 && (performance.now() / 70 | 0) % 2;

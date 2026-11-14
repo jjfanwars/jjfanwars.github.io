@@ -200,6 +200,22 @@ class Car {
       for (const o of [-1.4, -0.7, 0, 0.7, 1.4]) { const u = clamp(tc + o / len, 0, 1); hit(l.ax + ex * u, l.az + ez * u, l.top - l.rad, l.rad + 0.05, l.top); }
     }
   }
+  // car-to-car contact against other crews' cars (their latest known pose): three circles along each body
+  bump(others) {
+    const me = [-1.35, 0, 1.35].map(z => new THREE.Vector3(0, 0, z).applyQuaternion(this.q).add(this.pos));
+    for (const o of others) {
+      if (Math.abs(o.pos.y - this.pos.y) > 1.6 || o.pos.distanceToSquared(this.pos) > 36) continue;
+      const them = [-1.35, 0, 1.35].map(z => new THREE.Vector3(0, 0, z).applyQuaternion(o.q).add(o.pos));
+      for (const A of me) for (const Bc of them) {
+        const dx = A.x - Bc.x, dz = A.z - Bc.z, d = Math.hypot(dx, dz); if (d >= 1.85 || d < 1e-4) continue;
+        const n = new THREE.Vector3(dx / d, 0, dz / d), pen = 1.85 - d; this.pos.addScaledVector(n, pen * 0.5);
+        const P = A.clone().addScaledVector(n, -0.92), vrel = this.pointVel(P, new THREE.Vector3()).sub(o.vel), vn = vrel.dot(n);
+        if (vn >= 0) continue;
+        const j = -1.25 * vn / (this.invMass(P, n) + 1 / CAR.m); this.impulse(P, n.multiplyScalar(j));
+        if (-vn > 2.5) { this.dmg = Math.min(1, this.dmg + (-vn - 2.5) * 0.008); this.events.push({ k: 'crash', v: -vn }); }
+      }
+    }
+  }
   // compact state for the navigator (sent ~30 Hz)
   pack(stage) {
     const r = (x, k) => Math.round(x * k) / k;
