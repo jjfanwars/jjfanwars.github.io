@@ -4,7 +4,7 @@
 // Text frames are control: relay -> host {c:'join'|'leave', id}; relay -> guest {c:'host', up}.
 const RELAY_URL = 'wss://jjfanwars-relay.businessautomationvic.workers.dev';
 const Net = {
-  role: 'solo', ws: null, peer: null, peers: new Map(), code: '', relayT: { car: 1, look: 1, call: 1 }, id: '', name: '', handlers: {}, retry: 0, ping: 0, started: false, lastRx: 0,
+  role: 'solo', ws: null, peer: null, peers: new Map(), code: '', relayT: { car: 1, look: 1, call: 1, sw: 1 }, id: '', name: '', handlers: {}, retry: 0, ping: 0, started: false, lastRx: 0,
   enc: new TextEncoder(), dec: new TextDecoder(),
   relay() { if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) { const m = /[?&]relay=([^&]+)/.exec(location.search); if (m) return decodeURIComponent(m[1]).replace(/\/$/, ''); } return RELAY_URL; },
   on(t, f) { this.handlers[t] = f; },

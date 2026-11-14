@@ -104,9 +104,9 @@ function startStage(cfg, role, solo, myCar, seats) {
     Object.assign(G, { on: true, S, cfg, role, solo, notes, view, views, tags, seats, cars, myCar, grid, race: n > 1, autoNav: solo || (role === 'drv' && !seats[myCar][1]), bufs: {}, results: {}, finShown: false, final: 0, car: null, phase: 'count', t: -3.5, pen: 0, splits: [], splitS: [S.L / 3, S.L * 2 / 3], nextSplit: 0, auto: {}, buf: [], other: { yaw: 0, pitch: 0, map: false }, callT: 0, finT: 0, crashes: 0, sendT: 0, lookT: 0, lastBeep: 4, startS: World.startS, finishS: World.finishS });
     for (const c of cars) G.bufs[c] = [];
     if (role === 'drv') { G.car = new Car(S); G.car.place(grid.s, grid.lat); }
-    look.yaw = 0; look.pitch = role === 'nav' ? -0.12 : -0.05; look.map = false;
+    look.yaw = 0; look.pitch = role === 'nav' ? -0.14 : -0.1; look.map = false; G.sw = [1, 1, 0, 0, /dusk|evening/i.test(STAGES[cfg.stage].tod) ? 1 : 0, 0];
     $('role').textContent = (solo ? 'SOLO PRACTICE · AUTO CO-DRIVER' : (role === 'drv' ? 'DRIVER' : 'NAVIGATOR') + ' · ' + CAR_NAME[myCar].toUpperCase() + ' CAR' + (G.autoNav ? ' · AUTO CO-DRIVER' : '')) + ' · ' + STAGES[cfg.stage].name.toUpperCase(); msg('pos', '');
-    $('tip').innerHTML = role === 'drv' ? 'W/S throttle · brake, A/D steer, Space handbrake, R recover (+5 s) · mouse looks' : 'Hold <b>right mouse</b> or <b>Tab</b> for the map · callouts: A/D + 1-6, J jump, C crest, L log, K keep middle, F flat, B brake';
+    $('tip').innerHTML = role === 'drv' ? 'W/S throttle · brake, A/D steer, Space handbrake, R recover (+5 s) · aim at a dash switch and click it (wipers, lights, spots) · mouse looks' : 'Hold <b>right mouse</b> or <b>Tab</b> for the map · callouts: A/D + 1-6, J jump, C crest, L log, K keep middle, F flat, B brake';
     $('spd').style.display = role === 'drv' ? '' : 'none'; $('dmg').style.display = role === 'drv' ? '' : 'none';
     msg('big', ''); msg('split', ''); $('fade').style.opacity = 0; $('lockmsg').classList.remove('hidden');
     G.lastFrame = performance.now(); G.acc = 0;
@@ -152,13 +152,18 @@ addEventListener('keydown', e => {
 });
 addEventListener('keyup', e => KEYS.delete(e.code));
 addEventListener('blur', () => KEYS.clear());
-cvs.addEventListener('mousedown', e => { if (!G.on) return; Sfx.start(); if (!document.pointerLockElement) { try { cvs.requestPointerLock(); } catch (x) {} } if (e.button === 2 && G.role === 'nav') look.map = true; });
+cvs.addEventListener('mousedown', e => { if (!G.on) return; Sfx.start(); if (document.pointerLockElement && e.button === 0) { const k = aimedSwitch(); if (k >= 0) flipSwitch(k); } if (!document.pointerLockElement) { try { cvs.requestPointerLock(); } catch (x) {} } if (e.button === 2 && G.role === 'nav') look.map = true; });
 addEventListener('mouseup', e => { if (e.button === 2 && G.role === 'nav' && !KEYS.has('Tab')) look.map = false; });
 addEventListener('contextmenu', e => e.preventDefault());
 document.addEventListener('pointerlockchange', () => { const l = !!document.pointerLockElement; $('lockmsg').classList.toggle('hidden', l || !G.on); $('lockmsg').innerHTML = 'Click to look around' + (G.on ? ' · <b>Q</b> quits to menu' : ''); });
 addEventListener('mousemove', e => { if (!document.pointerLockElement || !G.on) return; look.yaw -= e.movementX * 0.0022; look.pitch -= e.movementY * 0.0022; look.yaw = clamp(look.yaw, -2.5, 2.5); look.pitch = clamp(look.pitch, -1.0, 0.8); look.idle = 0; });
 addEventListener('gamepadconnected', e => { pad = e.gamepad.index; });
 
+// dash switches: aim the centre dot at one and click
+const RC = new THREE.Raycaster(), C0 = new THREE.Vector2(0, 0);
+function aimedSwitch() { if (!G.view || !G.view.hits) return -1; RC.setFromCamera(C0, World.cam); RC.far = 1.4; const h = RC.intersectObjects(G.view.hits, false)[0]; return h ? h.object.userData.sw : -1; }
+function flipSwitch(k) { Sfx.click(); if (G.role === 'drv') G.sw[k] ^= 1; else Net.send({ t: 'sw', c: G.myCar, k }); }
+Net.on('sw', m => { if (G.on && G.role === 'drv' && m.c === G.myCar && m.k >= 0 && m.k < 6) { G.sw[m.k] ^= 1; Sfx.click(); } });
 const inp = { steer: 0, thr: 0, brk: 0, hb: 0 };
 function readInput(dt) {
   const L = KEYS.has('KeyA') || KEYS.has('ArrowLeft'), R = KEYS.has('KeyD') || KEYS.has('ArrowRight');
@@ -218,7 +223,7 @@ function resultsTable(prog) {
 function sendCar(dt) {
   G.sendT -= dt; if (G.sendT > 0 || G.solo) return; G.sendT = 1 / 30; const c = G.car;
   const ev = c.netEv || []; c.netEv = [];
-  Net.send(Object.assign(c.pack({ c: G.myCar, ph: G.phase, tm: Math.round(G.t * 100) / 100, pn: G.pen, fin: G.final || 0 }), { ev, hb: inp.hb, sp: c.wh.map(w => Math.round(w.spin)) }));
+  Net.send(Object.assign(c.pack({ c: G.myCar, sw: G.sw.join(''), ph: G.phase, tm: Math.round(G.t * 100) / 100, pn: G.pen, fin: G.final || 0 }), { ev, hb: inp.hb, sp: c.wh.map(w => Math.round(w.spin)) }));
 }
 Net.on('car', m => { if (!G.on || !G.bufs || !G.bufs[m.c] || (m.c === G.myCar && G.role === 'drv')) return; m.rt = performance.now(); const B = G.bufs[m.c]; B.push(m); if (B.length > 40) B.shift(); if (m.c === G.myCar) for (const e of m.ev || []) carEvent(e); });
 Net.on('look', m => { if (G.on && m.c === G.myCar) { G.other.yaw = clamp(+m.y || 0, -3, 3); G.other.pitch = clamp(+m.p || 0, -1.2, 1); G.other.map = !!m.m; } });
@@ -235,7 +240,7 @@ function interp(B) {
   IP.pos.set(lerp(a.p[0], b.p[0], t) + b.v[0] * ex, lerp(a.p[1], b.p[1], t) + b.v[1] * ex, lerp(a.p[2], b.p[2], t) + b.v[2] * ex);
   IP.a.set(...a.q).normalize(); IP.b.set(...b.q).normalize(); IP.q.slerpQuaternions(IP.a, IP.b, t);
   IP.vel.set(lerp(a.v[0], b.v[0], t), lerp(a.v[1], b.v[1], t), lerp(a.v[2], b.v[2], t));
-  return { pos: IP.pos.clone(), q: IP.q.clone(), vel: IP.vel.clone(), steer: lerp(a.st, b.st, t), comp: b.c, speed: IP.vel.length(), speedF: IP.vel.dot(new THREE.Vector3(0, 0, 1).applyQuaternion(IP.q)), rpm: lerp(a.rpm, b.rpm, t), gear: b.g, thr: b.th, slide: b.sl, offroad: b.of, air: b.air, hb: b.hb, prog: b.pr, dmg: b.dm, ph: b.ph, tm: b.tm, pn: b.pn, fin: b.fin };
+  return { pos: IP.pos.clone(), q: IP.q.clone(), vel: IP.vel.clone(), steer: lerp(a.st, b.st, t), comp: b.c, speed: IP.vel.length(), speedF: IP.vel.dot(new THREE.Vector3(0, 0, 1).applyQuaternion(IP.q)), rpm: lerp(a.rpm, b.rpm, t), gear: b.g, thr: b.th, slide: b.sl, offroad: b.of, air: b.air, hb: b.hb, prog: b.pr, dmg: b.dm, ph: b.ph, tm: b.tm, pn: b.pn, fin: b.fin, sw: String(b.sw || '110000').split('').map(Number), hl: (b.sw || '')[4] === '1', wp: (b.sw || '')[3] === '1', spot: (b.sw || '')[5] === '1', clock: b.ph === 'fin' ? b.fin : b.ph === 'run' ? b.tm + b.pn : 0 };
 }
 
 // ---------- frame ----------
@@ -252,10 +257,10 @@ function frame(now) {
     const c = G.car; for (const e of c.events) { carEvent(e); (c.netEv = c.netEv || []).push(e.v ? { k: e.k, v: Math.round(e.v * 10) / 10 } : { k: e.k }); } c.events.length = 0;
     sendCar(dt); G.dmg = c.dmg;
     fwdV.set(0, 0, 1).applyQuaternion(c.q);
-    st = { pos: c.pos, q: c.q, vel: c.v, steer: c.steer, comp: c.wh.map(w => w.comp), spinW: 0, speed: c.speed, speedF: c.v.dot(fwdV), rpm: c.rpm, gear: c.gear, thr: c.thr, slide: c.slide, offroad: c.offroad, air: c.air > 0, hb: inp.hb, prog: c.prog, dmg: c.dmg };
+    st = { pos: c.pos, q: c.q, vel: c.v, steer: c.steer, comp: c.wh.map(w => w.comp), spinW: 0, speed: c.speed, speedF: c.v.dot(fwdV), rpm: c.rpm, gear: c.gear, thr: c.thr, slide: c.slide, offroad: c.offroad, air: c.air > 0, hb: inp.hb, prog: c.prog, dmg: c.dmg, sw: G.sw, hl: G.sw[4], wp: G.sw[3], spot: G.sw[5], clock: G.phase === 'fin' ? G.final : G.phase === 'run' ? G.t + G.pen : 0 };
     st.spinW = c.wh[2].spin;
     // driver's view drifts back to centre when the mouse is idle
-    look.idle += dt; if (look.idle > 1.2) { look.yaw *= Math.exp(-dt * 2.5); look.pitch += (-0.05 - look.pitch) * (1 - Math.exp(-dt * 2.5)); }
+    look.idle += dt; if (look.idle > 1.2) { look.yaw *= Math.exp(-dt * 2.5); look.pitch += (-0.1 - look.pitch) * (1 - Math.exp(-dt * 2.5)); }
   } else {
     st = navState();
     if (!st) { World.render(); return; }
@@ -314,6 +319,7 @@ function frame(now) {
   World.render({ spd: clamp((st.speed - 14) / 34, 0, 1), hurt: G.hurt });
 }
 function hud(st) {
+  if ((G.hovT = (G.hovT || 0) - 1) <= 0) { G.hovT = 6; const k = document.pointerLockElement ? aimedSwitch() : -1, sw = st.sw || G.sw || []; $('hov').textContent = k >= 0 ? SWITCH_NAMES[k] + (sw[k] ? ' · ON' : ' · OFF') + '  (click)' : ''; }
   $('trip').textContent = 'TRIP ' + (Math.max(0, st.prog - World.startS) / 1000).toFixed(2) + ' km';
   $('tm').textContent = G.phase === 'count' ? fmtT(0) : fmtT((G.phase === 'fin' ? G.final - G.pen : G.t) + G.pen);
   if (G.role === 'drv') {

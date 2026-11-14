@@ -59,6 +59,8 @@ button.go { background:var(--acc); color:#1a1408; }
 #trip { position:absolute; top:34px; left:18px; font:700 15px ui-monospace,monospace; color:var(--ink); text-shadow:0 1px 4px #000; }
 #role { position:absolute; top:16px; left:18px; font:700 12px system-ui; letter-spacing:.14em; color:var(--dim); text-shadow:0 1px 4px #000; }
 #net { position:absolute; top:16px; right:18px; font:600 12px ui-monospace,monospace; color:var(--dim); text-shadow:0 1px 4px #000; }
+#hov { position:absolute; left:50%; top:50%; transform:translate(14px,8px); font:700 13px system-ui; color:#fff; background:rgba(0,0,0,.55); padding:3px 8px; border-radius:6px; white-space:nowrap; }
+#hov:empty { display:none; }
 #cross { position:absolute; left:50%; top:50%; width:4px; height:4px; margin:-2px; border-radius:50%; background:rgba(255,255,255,.5); }
 #lockmsg { position:fixed; inset:auto 0 40% 0; text-align:center; z-index:6; font:700 18px system-ui; text-shadow:0 2px 8px #000; pointer-events:none; }
 #fin table { width:100%; border-collapse:collapse; margin-top:10px; font-variant-numeric:tabular-nums; } #fin td { padding:6px 4px; border-bottom:1px solid rgba(255,255,255,.07); } #fin td:last-child { text-align:right; }
@@ -88,7 +90,7 @@ button.go { background:var(--acc); color:#1a1408; }
     <div id="rooms"></div>
     <div class="msg" id="msg"></div>
     <div class="keys">
-      <b>Driver:</b> W throttle, S brake/reverse, A/D steer, Space handbrake, R recover (+5 s), mouse looks around.<br>
+      <b>Driver:</b> W throttle, S brake/reverse, A/D steer, Space handbrake, R recover (+5 s), click dash switches (aim with the centre dot) for wipers, headlights and spot lights, mouse looks around.<br>
       <b>Navigator:</b> hold right mouse (or Tab) to raise the map, mouse looks around. Backup callouts: A/D then 1-6 (1 = hairpin, 6 = flat), J jump, C crest, L log, K keep middle, F flat out, B brake.<br>
       <b>Online:</b> up to 4 cars (8 players), two per car. <b>Solo practice</b> gives you an automatic co-driver. <b>Backspace</b> restarts the stage (solo or host).
     </div>
@@ -120,7 +122,7 @@ button.go { background:var(--acc); color:#1a1408; }
   <div id="role"></div><div id="net"></div>
   <div id="tm">0:00.0</div><div id="pos"></div><div id="trip"></div><div id="split"></div>
   <div id="call"></div><div id="big"></div>
-  <div id="cross"></div>
+  <div id="cross"></div><div id="hov"></div>
   <div id="dmg">DAMAGE<i><u></u></i></div>
   <div id="spd"><b>0</b><span id="gear">N</span> <span>km/h</span><div id="rpm"><i></i></div></div>
   <div id="tip"></div>
@@ -128,15 +130,15 @@ button.go { background:var(--acc); color:#1a1408; }
 <div id="lockmsg" class="hidden">Click to look around</div>
 
 <script src="../three-r170.js"></script>
-<script src="js/util.js?v=12"></script>
-<script src="js/stage.js?v=12"></script>
-<script src="js/tex.js?v=12"></script>
-<script src="js/world.js?v=12"></script>
-<script src="js/car.js?v=12"></script>
-<script src="js/cockpit.js?v=12"></script>
-<script src="js/audio.js?v=12"></script>
-<script src="js/notes.js?v=12"></script>
-<script src="js/net.js?v=12"></script>
-<script src="js/main.js?v=12"></script>
+<script src="js/util.js?v=15"></script>
+<script src="js/stage.js?v=15"></script>
+<script src="js/tex.js?v=15"></script>
+<script src="js/world.js?v=15"></script>
+<script src="js/car.js?v=15"></script>
+<script src="js/cockpit.js?v=15"></script>
+<script src="js/audio.js?v=15"></script>
+<script src="js/notes.js?v=15"></script>
+<script src="js/net.js?v=15"></script>
+<script src="js/main.js?v=15"></script>
 </body>
 </html>

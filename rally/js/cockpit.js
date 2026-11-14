@@ -2,7 +2,10 @@
 // The car you sit in: exterior shell (shadows, hood view), wheels, roll-caged interior, dash display,
 // driver and co-driver figures, the navigator's clipboard map, and the first-person head camera.
 // Car local frame: +z forward, +y up, +x LEFT. Left-hand drive: driver seat x = +0.37, navigator x = -0.37.
-const SEAT = { drv: new THREE.Vector3(0.37, 0.43, -0.3), nav: new THREE.Vector3(-0.37, 0.41, -0.32) };
+// eye sits forward of the body, close to the windscreen (like a real in-car camera)
+const EYE_OFF = new THREE.Vector3(0, -0.01, 0.27);
+const SWITCH_NAMES = ['IGNITION', 'FUEL PUMP', 'FAN', 'WIPERS', 'HEADLIGHTS', 'SPOT LIGHTS'];
+const SEAT = { drv: new THREE.Vector3(0.37, 0.49, -0.34), nav: new THREE.Vector3(-0.37, 0.47, -0.34) };
 
 class CarView {
   constructor(scene, opt) {
@@ -24,6 +27,9 @@ class CarView {
     for (const sd of [1, -1]) { const s = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.16, 3.0), orange); s.position.set(sd * 0.895, -0.12, 0); g.add(s); }
     // lights, grille, mud flaps, spoiler
     const lampM = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xfff4d0, emissiveIntensity: 0.4, roughness: 0.1 });
+    this.lampM = lampM;
+    // headlights: real spot lights on your own car (switch with H)
+    this.spots = []; if (!opt.remote) for (const sd of [1, -1]) { const sp = new THREE.SpotLight(0xfff0d8, 0, 160, 0.38, 0.55, 1.2); sp.position.set(sd * 0.55, 0.06, 2.15); sp.target.position.set(sd * 0.6, -0.8, 30); g.add(sp, sp.target); this.spots.push(sp); }
     for (const sd of [1, -1]) { const l = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.1, 0.05), lampM); l.position.set(sd * 0.55, 0.06, 2.12); g.add(l); const r = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.1, 0.05), new THREE.MeshStandardMaterial({ color: 0x8a0d0d, emissive: 0x500000, roughness: 0.2 })); r.position.set(sd * 0.6, 0.2, -2.13); g.add(r); }
     const spoiler = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.04, 0.32), black); spoiler.position.set(0, 0.86, -1.82); g.add(spoiler);
     // ---- glass ----
@@ -40,37 +46,64 @@ class CarView {
     const M = this.imats = CarView.materials();
     const tube = (a, b, r, m) => { const d = new THREE.Vector3().subVectors(b, a), c = new THREE.Mesh(new THREE.CylinderGeometry(r, r, d.length(), 10), m || cageM); c.position.copy(a).addScaledVector(d, 0.5); c.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), d.normalize()); I.add(c); return c; };
     const V = (x, y, z) => new THREE.Vector3(x, y, z), add = (geo, mat, x, y, z, rx, ry, rz) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.rotation.set(rx || 0, ry || 0, rz || 0); I.add(m); return m; };
-    // dashboard: one extruded profile across the cabin (soft-touch top, fascia falling to the footwells)
-    { const pr = [[0.99, 0.24], [0.8, 0.255], [0.62, 0.225], [0.52, 0.185], [0.47, 0.11], [0.45, 0.0], [0.46, -0.1], [0.62, -0.14], [0.99, -0.14]], shp = new THREE.Shape(); pr.forEach((q, i) => i ? shp.lineTo(q[0], q[1]) : shp.moveTo(q[0], q[1]));
-      const dg = new THREE.ExtrudeGeometry(shp, { depth: 1.56, bevelEnabled: true, bevelThickness: 0.015, bevelSize: 0.015, bevelSegments: 2, curveSegments: 6 }); dg.translate(0, 0, -0.78); dg.rotateY(-Math.PI / 2); I.add(new THREE.Mesh(dg, M.plastic)); }
-    add(new THREE.BoxGeometry(0.62, 0.006, 0.28), M.carbon, -0.38, 0.23, 0.66, 0.1); // carbon trim on the co-driver side
-    add(new THREE.BoxGeometry(0.7, 0.2, 0.004), M.carbon, -0.4, 0.04, 0.452, -0.15);
-    // instrument hood, analog rev counter, digital gear/speed, shift lights
-    add(new THREE.CylinderGeometry(0.16, 0.16, 0.16, 20, 1, true, -Math.PI / 2, Math.PI), M.plastic, 0.37, 0.205, 0.5, Math.PI / 2, 0, Math.PI / 2).material.side = THREE.DoubleSide;
-    this.tachC = document.createElement('canvas'); this.tachC.width = this.tachC.height = 256; { const c = this.tachC.getContext('2d'); c.fillStyle = '#0b0c0e'; c.beginPath(); c.arc(128, 128, 126, 0, 7); c.fill(); c.strokeStyle = '#3a3d42'; c.lineWidth = 6; c.stroke();
-      for (let i = 0; i <= 80; i++) { const a = (-225 + i / 80 * 270) * Math.PI / 180, big = i % 10 === 0, r0 = big ? 92 : 102; c.strokeStyle = i >= 70 ? '#e33' : '#ddd'; c.lineWidth = big ? 4 : 1.5; c.beginPath(); c.moveTo(128 + Math.cos(a) * r0, 128 + Math.sin(a) * r0); c.lineTo(128 + Math.cos(a) * 114, 128 + Math.sin(a) * 114); c.stroke(); if (big) { c.fillStyle = i >= 70 ? '#e33' : '#eee'; c.font = 'bold 22px system-ui'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(String(i / 10), 128 + Math.cos(a) * 74, 128 + Math.sin(a) * 74); } }
-      c.fillStyle = '#888'; c.font = '12px system-ui'; c.fillText('x1000 rpm', 128, 170); }
-    const tachT = new THREE.CanvasTexture(this.tachC); tachT.colorSpace = THREE.SRGBColorSpace;
-    const tach = add(new THREE.CircleGeometry(0.068, 40), new THREE.MeshBasicMaterial({ map: tachT }), 0.4, 0.205, 0.45, -0.35, Math.PI, 0);
-    this.needle = new THREE.Group(); this.needle.position.copy(tach.position); this.needle.rotation.copy(tach.rotation); I.add(this.needle);
-    { const n = new THREE.Mesh(new THREE.BoxGeometry(0.004, 0.058, 0.002), new THREE.MeshBasicMaterial({ color: 0xff5020 })); n.position.set(0, 0.026, 0.002); const piv = new THREE.Group(); piv.add(n); this.needle.add(piv); this.needleP = piv; const cap = new THREE.Mesh(new THREE.CircleGeometry(0.009, 12), new THREE.MeshBasicMaterial({ color: 0x222222 })); cap.position.z = 0.003; this.needle.add(cap); }
-    this.dashC = document.createElement('canvas'); this.dashC.width = 128; this.dashC.height = 96; this.dashT = new THREE.CanvasTexture(this.dashC); this.dashT.colorSpace = THREE.SRGBColorSpace;
-    add(new THREE.PlaneGeometry(0.075, 0.056), new THREE.MeshBasicMaterial({ map: this.dashT, toneMapped: false }), 0.29, 0.2, 0.452, -0.35, Math.PI, 0);
-    this.leds = []; for (let i = 0; i < 9; i++) { const m = new THREE.MeshBasicMaterial({ color: 0x111111 }); add(new THREE.SphereGeometry(0.006, 8, 6), m, 0.45 - i * 0.02, 0.262, 0.478); this.leds.push(m); }
-    // switch panel with labels, plus the big fire-system pull
-    { const c = document.createElement('canvas'); c.width = 512; c.height = 192; const x = c.getContext('2d'); x.fillStyle = '#121315'; x.fillRect(0, 0, 512, 192); x.strokeStyle = '#2a2c30'; x.lineWidth = 4; x.strokeRect(4, 4, 504, 184);
-      const lab = ['IGN', 'START', 'FUEL', 'FAN', 'WIPE', 'LIGHTS', 'SPOTS', 'ALS']; lab.forEach((t, i) => { const cx = 40 + i * 62; x.fillStyle = '#ddd'; x.font = 'bold 18px system-ui'; x.textAlign = 'center'; x.fillText(t, cx, 40); x.fillStyle = i === 0 ? '#e33' : '#3a3d42'; x.fillRect(cx - 12, 60, 24, 70); x.fillStyle = '#c8cbd0'; x.fillRect(cx - 5, i < 3 ? 64 : 100, 10, 26); x.fillStyle = i < 4 ? '#3f6' : '#333'; x.beginPath(); x.arc(cx, 160, 7, 0, 7); x.fill(); });
-      const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; add(new THREE.PlaneGeometry(0.3, 0.112), new THREE.MeshStandardMaterial({ map: t, roughness: 0.6, emissive: 0xffffff, emissiveMap: t, emissiveIntensity: 0.12 }), 0.0, 0.05, 0.465, -0.15, Math.PI, 0); }
-    add(new THREE.CylinderGeometry(0.018, 0.018, 0.03, 12), new THREE.MeshStandardMaterial({ color: 0xd01818 }), -0.17, 0.0, 0.47, Math.PI / 2);
+    // ---- classic rally dash: grey lower dash and centre stack, black top pad, black binnacle with red piping ----
+    const grey = new THREE.MeshStandardMaterial({ color: 0xa9adb1, roughness: 0.68 }), blk = M.plastic;
+    { const pr = [[0.99, 0.24], [0.8, 0.255], [0.62, 0.225], [0.52, 0.185], [0.47, 0.11], [0.44, 0.0], [0.4, -0.12], [0.37, -0.24], [0.62, -0.26], [0.99, -0.2]], shp = new THREE.Shape(); pr.forEach((q, i) => i ? shp.lineTo(q[0], q[1]) : shp.moveTo(q[0], q[1]));
+      const dg = new THREE.ExtrudeGeometry(shp, { depth: 1.56, bevelEnabled: true, bevelThickness: 0.015, bevelSize: 0.015, bevelSegments: 2, curveSegments: 6 }); dg.translate(0, 0, -0.78); dg.rotateY(-Math.PI / 2); I.add(new THREE.Mesh(dg, grey));
+      const top = [[0.99, 0.243], [0.8, 0.258], [0.62, 0.228], [0.53, 0.19], [0.55, 0.16], [0.99, 0.2]], ts = new THREE.Shape(); top.forEach((q, i) => i ? ts.lineTo(q[0], q[1]) : ts.moveTo(q[0], q[1]));
+      const tg = new THREE.ExtrudeGeometry(ts, { depth: 1.6, bevelEnabled: false }); tg.translate(0, 0.004, -0.8); tg.rotateY(-Math.PI / 2); I.add(new THREE.Mesh(tg, blk)); }
+    // binnacle: a black pod facing the driver with a hood over it
+    add(new THREE.BoxGeometry(0.46, 0.2, 0.1), blk, 0.37, 0.2, 0.5, -0.2);
+    add(new THREE.CylinderGeometry(0.22, 0.22, 0.14, 24, 1, true, -Math.PI / 2, Math.PI), blk, 0.37, 0.235, 0.52, Math.PI / 2 - 0.2, 0, Math.PI / 2).material.side = THREE.DoubleSide;
+    // red dashed piping along the binnacle and the dash edge
+    { const red = new THREE.MeshBasicMaterial({ color: 0xc41e1e }); for (let i = 0; i < 26; i++) { const t = i / 25, x = 0.62 - t * 0.9, y = 0.268 - Math.abs(t - 0.28) * 0.06, z = 0.47 + Math.abs(t - 0.28) * 0.02; if (i % 2) continue; add(new THREE.BoxGeometry(0.03, 0.004, 0.004), red, x, y, z, 0, 0, (t < 0.28 ? -1 : 1) * 0.07); } }
+    // two big analog dials: speedo (0-200 km/h) and rev counter (0-8), white bezels, orange needles
+    const dial = (max, step, sub, unit, red) => { const c = document.createElement('canvas'); c.width = c.height = 256; const x = c.getContext('2d'); x.fillStyle = '#0d0e10'; x.beginPath(); x.arc(128, 128, 127, 0, 7); x.fill();
+      const n = max / sub; for (let i = 0; i <= n; i++) { const a = (-225 + i / n * 270) * Math.PI / 180, v = i * sub, big = v % step === 0, r0 = big ? 94 : 104; x.strokeStyle = red && v >= red ? '#e33' : '#f2f2f2'; x.lineWidth = big ? 5 : 2; x.beginPath(); x.moveTo(128 + Math.cos(a) * r0, 128 + Math.sin(a) * r0); x.lineTo(128 + Math.cos(a) * 116, 128 + Math.sin(a) * 116); x.stroke();
+        if (big) { x.fillStyle = red && v >= red ? '#e33' : '#fff'; x.font = 'bold 30px system-ui'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(String(max > 20 ? v : v), 128 + Math.cos(a) * 70, 128 + Math.sin(a) * 70); } }
+      x.fillStyle = '#ccc'; x.font = '16px system-ui'; x.textAlign = 'center'; x.fillText(unit, 128, 196); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; return t; };
+    const bezel = new THREE.MeshStandardMaterial({ color: 0xf0f0ec, roughness: 0.4 }), dialRot = [-0.2, Math.PI, 0];
+    const mkDial = (x, tex) => { const d = add(new THREE.CircleGeometry(0.074, 40), new THREE.MeshBasicMaterial({ map: tex }), x, 0.205, 0.448, ...dialRot); const bz = add(new THREE.TorusGeometry(0.079, 0.01, 10, 40), bezel, x, 0.205, 0.447, ...dialRot);
+      const ng = new THREE.Group(); ng.position.copy(d.position); ng.rotation.copy(d.rotation); I.add(ng); const piv = new THREE.Group(); ng.add(piv); const n = new THREE.Mesh(new THREE.BoxGeometry(0.005, 0.064, 0.002), new THREE.MeshBasicMaterial({ color: 0xff6a10 })); n.position.set(0, 0.024, 0.003); piv.add(n); const cap = new THREE.Mesh(new THREE.CircleGeometry(0.008, 12), new THREE.MeshBasicMaterial({ color: 0xff6a10 })); cap.position.z = 0.004; ng.add(cap); return piv; };
+    this.speedN = mkDial(0.462, dial(200, 50, 10, 'km/h')); this.needleP = mkDial(0.278, dial(8, 1, 0.5, 'x1000 rpm', 7));
+    // warning lamps between the dials
+    [[0xd01818, 0.232], [0xe0a010, 0.212], [0x1e50d0, 0.192]].forEach(([c, y]) => add(new THREE.BoxGeometry(0.012, 0.012, 0.004), new THREE.MeshBasicMaterial({ color: c }), 0.37, y, 0.452, -0.2));
+    // shift-light pod on top of the binnacle: 3 green, 2 yellow, 2 red
+    add(new THREE.BoxGeometry(0.22, 0.04, 0.035), blk, 0.37, 0.31, 0.47, -0.2);
+    this.leds = []; this.ledCol = [0x20ff40, 0x20ff40, 0x20ff40, 0xffc020, 0xffc020, 0xff2020, 0xff2020];
+    for (let i = 0; i < 7; i++) { const m = new THREE.MeshBasicMaterial({ color: 0x151515 }); add(new THREE.CircleGeometry(0.0115, 16), m, 0.45 - i * 0.027, 0.311, 0.4515, -0.2, Math.PI, 0); add(new THREE.TorusGeometry(0.0125, 0.0025, 6, 16), bezel, 0.45 - i * 0.027, 0.311, 0.451, -0.2, Math.PI, 0); this.leds.push(m); }
+    this.dashC = document.createElement('canvas'); this.dashC.width = 4; this.dashC.height = 4; this.dashT = new THREE.CanvasTexture(this.dashC);
+    // slatted vents: driver's left, both sides of the centre stack, co-driver's right
+    const ventS = (x, y, z, w) => { add(new THREE.BoxGeometry(w, 0.055, 0.02), new THREE.MeshStandardMaterial({ color: 0x0c0c0d, roughness: 0.9 }), x, y, z, -0.15); for (let i = 0; i < 4; i++) add(new THREE.BoxGeometry(w - 0.01, 0.006, 0.018), grey, x, y - 0.019 + i * 0.013, z - 0.006, -0.15); };
+    ventS(0.68, 0.12, 0.47, 0.1); ventS(0.07, 0.13, 0.452, 0.1); ventS(-0.07, 0.13, 0.452, 0.1); ventS(-0.68, 0.12, 0.47, 0.1);
+    // ignition key on the driver's left
+    add(new THREE.CylinderGeometry(0.022, 0.022, 0.012, 16), new THREE.MeshStandardMaterial({ color: 0x0a0a0a }), 0.62, 0.03, 0.46, Math.PI / 2 - 0.15); add(new THREE.BoxGeometry(0.006, 0.026, 0.01), M.alu, 0.62, 0.03, 0.452, -0.15);
+    // centre stack: two small gauges, the labelled switch panel with real toggles, lamps and a start button
+    add(new THREE.BoxGeometry(0.3, 0.3, 0.02), grey, 0, -0.02, 0.462, -0.15);
+    for (const x of [0.045, -0.045]) { add(new THREE.CircleGeometry(0.026, 24), new THREE.MeshBasicMaterial({ map: dial(150, 50, 10, '') }), x, 0.07, 0.448, -0.15, Math.PI, 0); add(new THREE.TorusGeometry(0.028, 0.004, 6, 24), bezel, x, 0.07, 0.447, -0.15, Math.PI, 0); }
+    { const c = document.createElement('canvas'); c.width = 512; c.height = 256; const x = c.getContext('2d'); x.fillStyle = '#16171a'; x.fillRect(0, 0, 512, 256); x.fillStyle = '#ddd'; x.font = 'bold 22px system-ui'; x.textAlign = 'center';
+      ['IGN', 'FUEL', 'FAN', 'WIPE', 'LIGHTS', 'SPOTS'].forEach((t, i) => x.fillText(t, 50 + i * 82, 34)); x.fillText('START', 440, 200); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+      add(new THREE.PlaneGeometry(0.27, 0.135), new THREE.MeshStandardMaterial({ map: t, roughness: 0.6, emissive: 0xffffff, emissiveMap: t, emissiveIntensity: 0.1 }), 0, -0.07, 0.449, -0.15, Math.PI, 0); }
+    this.toggles = []; this.hits = []; for (let i = 0; i < 6; i++) { const tg = new THREE.Group(); tg.position.set(0.11 - i * 0.0435, -0.04, 0.446); tg.rotation.x = -0.15; I.add(tg); const hit = new THREE.Mesh(new THREE.BoxGeometry(0.042, 0.08, 0.05), new THREE.MeshBasicMaterial({ visible: false })); hit.position.y = -0.005; hit.userData.sw = i; tg.add(hit); this.hits.push(hit); const base = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.008, 10), M.alu); base.rotation.x = Math.PI / 2; tg.add(base); const lever = new THREE.Group(); tg.add(lever); const l = new THREE.Mesh(new THREE.CylinderGeometry(0.0035, 0.0045, 0.03, 8), M.alu); l.position.y = 0.015; lever.add(l); const tip = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.005, 0.012, 10), new THREE.MeshStandardMaterial({ color: [0xd01818, 0x222222, 0x222222, 0xe0b020, 0xe0b020, 0x222222][i] })); tip.position.y = 0.032; lever.add(tip); lever.rotation.x = -2.2; this.toggles.push(lever); }
+    [[0xff3030, 0.09], [0xffc020, 0.06], [0x30ff60, 0.03]].forEach(([c, x], i) => { const m = new THREE.MeshBasicMaterial({ color: c }); add(new THREE.SphereGeometry(0.007, 10, 8), m, x, -0.11, 0.447); });
+    add(new THREE.CylinderGeometry(0.013, 0.013, 0.012, 14), new THREE.MeshStandardMaterial({ color: 0xd01818, roughness: 0.4 }), -0.075, -0.115, 0.447, Math.PI / 2 - 0.15);
+    // glovebox on the co-driver side
+    add(new THREE.BoxGeometry(0.34, 0.12, 0.012), new THREE.MeshStandardMaterial({ map: M.plastic.map, color: 0xa4a8ac, roughness: 0.7 }), -0.4, 0.03, 0.452, -0.15); add(new THREE.BoxGeometry(0.06, 0.012, 0.012), M.alu, -0.4, 0.07, 0.445, -0.15);
+    // ---- windscreen wipers (outside the glass), dust layer they clear ----
+    { const wg = this.wsG = new THREE.Group(); wg.position.set(0, 0.515, 0.65); wg.rotation.x = Math.atan2(-0.66, 0.51); g.add(wg); const wm = new THREE.MeshStandardMaterial({ color: 0x101011, roughness: 0.6 }); this.wipers = [];
+      for (const px of [0.55, -0.05]) { const p = new THREE.Group(); p.position.set(px, -0.4, 0.02); wg.add(p); const arm = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.014, 0.01), wm); arm.position.x = -0.25; p.add(arm); const blade = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.012, 0.02), wm); blade.position.set(-0.27, 0.004, -0.006); p.add(blade); p.rotation.z = -0.06; this.wipers.push(p); }
+      const c = document.createElement('canvas'); c.width = c.height = 256; const x = c.getContext('2d'); for (let i = 0; i < 2600; i++) { x.fillStyle = `rgba(255,255,255,${Math.random() * 0.5})`; const r = Math.random() * 2.5; x.beginPath(); x.arc(Math.random() * 256, Math.random() * 256, r, 0, 7); x.fill(); } for (let i = 0; i < 60; i++) { x.strokeStyle = 'rgba(255,255,255,.25)'; x.lineWidth = 3; x.beginPath(); const a = Math.random() * 256; x.moveTo(a, 256); x.quadraticCurveTo(a + 40, 140, a + 10, Math.random() * 120); x.stroke(); }
+      const dt2 = new THREE.CanvasTexture(c); this.dirtM = new THREE.MeshBasicMaterial({ map: dt2, transparent: true, opacity: 0, depthWrite: false, color: 0x8a7458, side: THREE.DoubleSide });
+      const dm = new THREE.Mesh(new THREE.PlaneGeometry(1.46, Math.hypot(0.66, 0.51)), this.dirtM); dm.position.z = 0.004; wg.add(dm); this.dirt = 0; this.wipeT = 0; }
     // transmission tunnel, sequential lever, hydraulic handbrake
     add(new THREE.BoxGeometry(0.26, 0.26, 1.05), M.carbon, 0, -0.27, 0.05);
     this.shiftL = new THREE.Group(); this.shiftL.position.set(0.15, -0.12, 0.3); I.add(this.shiftL);
     { const l = new THREE.Mesh(new THREE.CylinderGeometry(0.011, 0.014, 0.42, 8), M.alu); l.position.y = 0.21; this.shiftL.add(l); const k = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.022, 0.09, 12), M.suede); k.position.y = 0.43; this.shiftL.add(k); this.shiftL.rotation.x = -0.35; this.lastGear = 1; this.shiftA = 0; }
     this.hbL = new THREE.Group(); this.hbL.position.set(0.15, -0.14, 0.1); I.add(this.hbL); { const l = new THREE.Mesh(new THREE.CylinderGeometry(0.011, 0.014, 0.26, 8), M.alu); l.position.y = 0.13; this.hbL.add(l); const k = new THREE.Mesh(new THREE.CylinderGeometry(0.016, 0.016, 0.06, 12), new THREE.MeshStandardMaterial({ color: 0xa01414, roughness: 0.5 })); k.position.y = 0.27; this.hbL.add(k); }
     // co-driver: trip computer with a live display, gooseneck map lamp, footrest
-    this.tripC = document.createElement('canvas'); this.tripC.width = 256; this.tripC.height = 112; this.tripT = new THREE.CanvasTexture(this.tripC); this.tripT.colorSpace = THREE.SRGBColorSpace;
-    add(new THREE.BoxGeometry(0.2, 0.1, 0.06), M.plastic, -0.42, 0.29, 0.52, -0.3);
-    add(new THREE.PlaneGeometry(0.17, 0.075), new THREE.MeshBasicMaterial({ map: this.tripT, toneMapped: false }), -0.42, 0.288, 0.489, -0.3, Math.PI, 0);
+    this.tripC = document.createElement('canvas'); this.tripC.width = 320; this.tripC.height = 84; this.tripT = new THREE.CanvasTexture(this.tripC); this.tripT.colorSpace = THREE.SRGBColorSpace;
+    add(new THREE.BoxGeometry(0.22, 0.07, 0.07), M.plastic, -0.42, 0.29, 0.6, -0.25);
+    add(new THREE.PlaneGeometry(0.19, 0.05), new THREE.MeshBasicMaterial({ map: this.tripT, toneMapped: false }), -0.42, 0.292, 0.564, -0.25, Math.PI, 0);
     tube(V(-0.6, 0.24, 0.55), V(-0.58, 0.36, 0.42), 0.006, M.alu); add(new THREE.ConeGeometry(0.02, 0.04, 10, 1, true), M.plastic, -0.58, 0.36, 0.41, -1.2);
     add(new THREE.BoxGeometry(0.34, 0.02, 0.32), M.checker, -0.37, -0.36, 0.66, 0.55);
     add(new THREE.BoxGeometry(1.56, 0.02, 1.4), M.checker, 0, -0.42, 0.25); // floor plates
@@ -111,14 +144,14 @@ class CarView {
     add(new THREE.CylinderGeometry(0.31, 0.31, 0.2, 18), black, 0, -0.28, -1.45); add(new THREE.CylinderGeometry(0.06, 0.06, 0.4, 10), new THREE.MeshStandardMaterial({ color: 0xd01818, roughness: 0.3 }), 0, -0.3, -0.75, 0, 0, Math.PI / 2);
     add(new THREE.BoxGeometry(0.4, 0.18, 0.25), new THREE.MeshStandardMaterial({ color: 0x1f2b4a, roughness: 0.9 }), -0.45, -0.3, -1.4);
     // steering wheel: flat-bottom suede rim, alloy spokes, quick-release hub with buttons
-    const sw0 = this.wheelG = new THREE.Group(); sw0.position.set(0.37, 0.215, 0.24); sw0.rotation.x = -0.42; I.add(sw0);
+    const sw0 = this.wheelG = new THREE.Group(); sw0.position.set(0.37, 0.115, 0.27); sw0.rotation.x = -0.55; I.add(sw0);
     { const pts = []; for (let i = 0; i < 40; i++) { const a = i / 40 * Math.PI * 2, x = Math.sin(a) * 0.175, y = Math.max(Math.cos(a) * 0.175, -0.142); pts.push(new THREE.Vector3(x, y, 0)); } const path = new THREE.CatmullRomCurve3(pts, true); sw0.add(new THREE.Mesh(new THREE.TubeGeometry(path, 80, 0.018, 10, true), M.suede)); }
     for (const a of [Math.PI / 2, -Math.PI / 2, Math.PI]) { const sp = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.15, 0.008), M.alu); sp.position.set(Math.sin(a) * 0.085, Math.cos(a) * 0.075, -0.005); sp.rotation.z = -a; sw0.add(sp); }
     const mark = new THREE.Mesh(new THREE.BoxGeometry(0.022, 0.03, 0.04), new THREE.MeshStandardMaterial({ color: 0xffd400 })); mark.position.set(0, 0.175, 0); sw0.add(mark);
     const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.048, 0.048, 0.03, 18), M.plastic); hub.rotation.x = Math.PI / 2; sw0.add(hub);
     const qr = new THREE.Mesh(new THREE.TorusGeometry(0.03, 0.006, 8, 18), M.alu); qr.position.z = 0.03; sw0.add(qr);
     for (const [x, c] of [[0.065, 0xd01818], [-0.065, 0x1e6fd0]]) { const bt = new THREE.Mesh(new THREE.CylinderGeometry(0.009, 0.009, 0.01, 10), new THREE.MeshStandardMaterial({ color: c })); bt.rotation.x = Math.PI / 2; bt.position.set(x, 0.02, -0.008); sw0.add(bt); }
-    tube(V(0.37, 0.19, 0.3), V(0.37, 0.1, 0.55), 0.03, M.plastic);
+    tube(V(0.37, 0.09, 0.32), V(0.37, 0.0, 0.56), 0.03, M.plastic);
     // pedals
     for (const [x, h] of [[0.48, 0], [0.37, 0.02], [0.27, 0]]) add(new THREE.BoxGeometry(0.07, 0.11, 0.015), M.alu, x, -0.25 + h, 0.75, 0.4);
     // ---- crew figures (race suits and helmets) ----
@@ -224,10 +257,10 @@ class CarView {
       w.g.rotation.y = i < 2 ? st.steer : 0; w.spin.rotation.x += (st.spinW !== undefined ? st.spinW : st.speedF / CAR.r) * dt;
     });
     // steering wheel: ~14:1 ratio, a full lock is about 1.4 turns lock to lock
-    const swA = -st.steer * 9; this.wheelG.rotation.z = swA; this.wheelG.rotation.x = -0.42; this.wheelG.updateMatrixWorld();
+    const swA = -st.steer * 9; this.wheelG.rotation.z = swA; this.wheelG.rotation.x = -0.55; this.wheelG.updateMatrixWorld();
     this.hbL.rotation.x = st.hb ? -0.55 : -0.15;
     // crew: driver's hands on the rim, navigator holds the board
-    const I = this.interior, D = this.crew.drv, N = this.crew.nav, rimPt = a => { const p = new THREE.Vector3(Math.sin(a) * 0.17, Math.cos(a) * 0.17, 0.02); p.applyEuler(new THREE.Euler(-0.42, 0, swA, 'XYZ')); return p.add(this.wheelG.position).sub(D.g.position); };
+    const I = this.interior, D = this.crew.drv, N = this.crew.nav, rimPt = a => { const p = new THREE.Vector3(Math.sin(a) * 0.17, Math.cos(a) * 0.17, 0.02); p.applyEuler(new THREE.Euler(-0.55, 0, swA, 'XYZ')); return p.add(this.wheelG.position).sub(D.g.position); };
     this.setArm(D.arms[0], new THREE.Vector3(0.2, -0.2, -0.1), rimPt(1.4), 1); this.setArm(D.arms[1], new THREE.Vector3(-0.2, -0.2, -0.1), rimPt(-1.4), -1);
     D.headG.visible = D.straps.visible = me !== 'drv'; N.headG.visible = N.straps.visible = me !== 'nav'; for (const o of D.collar) o.visible = me !== 'drv'; for (const o of N.collar) o.visible = me !== 'nav';
     D.headG.rotation.set(-(me === 'drv' ? 0 : (other ? other.pitch : 0)) * 0.6, me === 'drv' ? 0 : (other ? other.yaw : 0) * 0.8, 0);
@@ -239,17 +272,27 @@ class CarView {
     this.setArm(N.arms[0], new THREE.Vector3(0.2, -0.2, -0.1), bp.clone().add(new THREE.Vector3(0.15, 0, 0.05)), 1); this.setArm(N.arms[1], new THREE.Vector3(-0.2, -0.2, -0.1), bp.clone().add(new THREE.Vector3(-0.15, 0, 0.05)), -1);
     this.crackM.opacity = clamp(((st.dmg || 0) - 0.12) * 1.4, 0, 0.85);
     if (this.remote) return;
-    // rev counter needle (0..8000 over 270 degrees), shift lights, gear display
-    const rr = clamp(st.rpm / 8000, 0, 1); this.needleP.rotation.z = (135 - rr * 270) * Math.PI / 180;
-    const sl = clamp((st.rpm - 4800) / (CAR.red - 300 - 4800), 0, 1), flash = st.rpm > CAR.red - 300 && (performance.now() / 70 | 0) % 2;
-    this.leds.forEach((m, i) => m.color.setHex(flash ? 0x3080ff : i / 9 < sl ? (i < 3 ? 0x20ff40 : i < 6 ? 0xffc020 : 0xff2020) : 0x161616));
+    // dials: rev counter 0..8000 and speedo 0..200 over 270 degrees
+    const ang = f => (135 - clamp(f, 0, 1) * 270) * Math.PI / 180;
+    this.needleP.rotation.z = ang(st.rpm / 8000); this.speedN.rotation.z = ang(st.speed * 3.6 / 200);
+    // shift lights fill up from green to red, all flash at the limiter
+    const sl = clamp((st.rpm - 4600) / (CAR.red - 300 - 4600), 0, 1), flash = st.rpm > CAR.red - 300 && (performance.now() / 70 | 0) % 2;
+    this.leds.forEach((m, i) => m.color.setHex(flash ? 0xff2020 : (i + 0.5) / 7 < sl ? this.ledCol[i] : 0x151515));
     if (st.gear !== this.lastGear) { this.shiftA = st.gear > this.lastGear ? 1 : -1; this.lastGear = st.gear; }
     this.shiftA *= Math.max(0, 1 - dt * 9); this.shiftL.rotation.x = -0.35 + this.shiftA * 0.28;
-    if ((this.dashTk = (this.dashTk || 0) + dt) > 0.08) {
-      this.dashTk = 0; const c = this.dashC.getContext('2d'); c.fillStyle = '#05080a'; c.fillRect(0, 0, 128, 96);
-      c.fillStyle = '#e8f8ff'; c.font = 'bold 56px monospace'; c.textAlign = 'center'; c.fillText(st.gear < 0 ? 'R' : String(st.gear), 64, 58); c.font = 'bold 22px monospace'; c.fillStyle = '#9cf'; c.fillText(Math.round(st.speed * 3.6) + ' km/h', 64, 88);
-      this.dashT.needsUpdate = true;
-      const t = this.tripC.getContext('2d'); t.fillStyle = '#0a1a0c'; t.fillRect(0, 0, 256, 112); t.fillStyle = '#7dff8a'; t.font = 'bold 44px monospace'; t.textAlign = 'right'; t.fillText((Math.max(0, (st.prog || 0) - (World.startS || 40)) / 1000).toFixed(2), 236, 52); t.font = '18px monospace'; t.textAlign = 'left'; t.fillText('TRIP km', 14, 26); t.fillText(Math.round(st.speed * 3.6) + ' km/h', 14, 96);
+    // switches: IGN always on, WIPE and LIGHTS follow their state
+    const on = st.sw || [1, 1, 0, st.wp ? 1 : 0, st.hl ? 1 : 0, 0]; this.toggles.forEach((l, i) => { l.rotation.x += ((on[i] ? -0.95 : -2.2) - l.rotation.x) * Math.min(1, dt * 20); });
+    // headlights
+    this.lampM.emissiveIntensity = st.hl ? (st.spot ? 14 : 8) : 0.4; for (const sp of this.spots) { sp.intensity = st.hl ? (st.spot ? 260 : 90) : 0; sp.distance = st.spot ? 260 : 160; sp.angle = st.spot ? 0.3 : 0.38; }
+    // wipers sweep while switched on and finish their stroke when switched off
+    const TAU = Math.PI * 2; if (st.wp || this.wipeT % TAU > 0.05) { this.wipeT += dt * 2.6; if (!st.wp && this.wipeT % TAU < dt * 2.6 + 0.02) this.wipeT = Math.round(this.wipeT / TAU) * TAU; }
+    const wa = 0.06 + (1 - Math.cos(this.wipeT)) / 2 * 1.72; for (const w of this.wipers) w.rotation.z = -wa;
+    // windscreen dust builds up on loose surfaces at speed, the wipers clear it
+    if (!this.remote) { const k = (World.B && (World.B.dustK || 1)) * (st.offroad > 0.5 ? 1.6 : 1); if (st.speed > 4 && !st.air) this.dirt += dt * 0.0045 * Math.min(1, st.speed / 22) * k; if (st.wp || this.wipeT % TAU > 0.05) this.dirt -= dt * 0.35; this.dirt = clamp(this.dirt, 0, 0.6); this.dirtM.opacity = this.dirt; if (World.B) this.dirtM.color.setRGB(World.B.dust[0] * 0.7, World.B.dust[1] * 0.7, World.B.dust[2] * 0.7); }
+    if ((this.dashTk = (this.dashTk || 0) + dt) > 0.1) {
+      this.dashTk = 0;
+      const t = this.tripC.getContext('2d'); t.fillStyle = '#100a04'; t.fillRect(0, 0, 320, 84); t.fillStyle = '#ff9a2a'; t.shadowColor = '#ff7a10'; t.shadowBlur = 8; t.font = 'bold 40px monospace'; t.textAlign = 'left';
+      const clk = Math.max(0, st.clock || 0), mm = Math.floor(clk / 60), ss = Math.floor(clk % 60); t.fillText((Math.max(0, (st.prog || 0) - (World.startS || 40)) / 1000).toFixed(2), 16, 56); t.textAlign = 'right'; t.fillText(String(mm).padStart(2, '0') + ':' + String(ss).padStart(2, '0'), 304, 56); t.shadowBlur = 0;
       this.tripT.needsUpdate = true;
     }
   }
@@ -260,7 +303,7 @@ class CarView {
   }
   // first-person camera: seat + head lag from body acceleration + mouse look
   camera(cam, st, me, look, dt) {
-    const seat = SEAT[me], acc = new THREE.Vector3();
+    const seat = SEAT[me].clone().add(EYE_OFF), acc = new THREE.Vector3();
     if (this.prevV) acc.subVectors(st.vel, this.prevV).divideScalar(Math.max(dt, 1e-3)); this.prevV = (this.prevV || new THREE.Vector3()).copy(st.vel);
     const iq = st.q.clone().invert(), al = acc.applyQuaternion(iq); al.y += 0; // body-frame acceleration
     // spring-damper head: pushed opposite to the acceleration

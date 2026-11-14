@@ -48,6 +48,7 @@ const Sfx = {
   pop(v) { this.burst(v, 900, 0.07, 'bandpass'); },
   crash(v) { const k = Math.min(1, v / 18); this.burst(0.5 + k * 0.6, 300 + k * 600, 0.25 + k * 0.4); this.burst(0.3 * k, 3000, 0.2, 'highpass'); },
   thud(v) { this.burst(Math.min(0.8, v / 10), 180, 0.25); },
+  click() { this.burst(0.2, 4200, 0.03, 'highpass'); },
   shift() { this.burst(0.15, 2500, 0.05, 'highpass'); },
   // crowd cheer: band-passed noise with a wobble, plus a few whistles
   cheer(k) {
