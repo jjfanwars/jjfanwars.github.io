@@ -42,6 +42,12 @@ button.go { background:var(--acc); color:#1a1408; }
 .car button i { display:block; font-style:normal; font-size:10px; letter-spacing:.1em; color:var(--dim); text-transform:uppercase; }
 .car button.me { outline:2px solid var(--acc); }
 .car button.free { color:var(--dim); }
+#garage { display:flex; gap:8px; align-items:stretch; } #garage > button { flex:0 0 40px; padding:0; font-size:26px; }
+#gInfo { flex:1; background:#151b18; border:1px solid rgba(255,255,255,.14); border-radius:8px; padding:9px 12px; }
+#gInfo h4 { margin:0; font-size:17px; } #gInfo h4 small { color:var(--dim); font-weight:500; font-size:12px; margin-left:6px; }
+#gInfo .st { display:grid; grid-template-columns:76px 1fr; gap:3px 8px; margin-top:6px; font-size:11px; color:var(--dim); align-items:center; }
+#gInfo .st i { display:block; height:6px; border-radius:3px; background:rgba(255,255,255,.1); overflow:hidden; } #gInfo .st i u { display:block; height:100%; background:var(--acc); }
+#gInfo.lock { opacity:.75; } #gInfo .lk { color:var(--red); font-size:12px; margin-top:6px; font-weight:600; }
 #pos { position:absolute; top:84px; left:50%; transform:translateX(-50%); font:800 20px ui-monospace,monospace; text-shadow:0 2px 6px #000; }
 /* HUD */
 #hud { position:fixed; inset:0; pointer-events:none; z-index:5; font-variant-numeric:tabular-nums; }
@@ -76,6 +82,8 @@ button.go { background:var(--acc); color:#1a1408; }
     <h1>PACE <b>NOTES</b></h1>
     <p class="sub">Co-op rally for two. The driver can't see far. Only the navigator has the map. Talk to each other.</p>
     <label>Your name</label><input id="nm" maxlength="14" placeholder="Name">
+    <label>Car <span id="gCount" style="float:right;text-transform:none;letter-spacing:0"></span></label>
+    <div id="garage"><button id="gPrev" aria-label="Previous car">&lsaquo;</button><div id="gInfo"></div><button id="gNext" aria-label="Next car">&rsaquo;</button></div>
     <div class="row">
       <div><label>Stage</label><select id="sStage"></select></div>
       <div><label>Fog</label><select id="sFog"><option value="0">Light</option><option value="1" selected>Medium</option><option value="2">Heavy</option></select></div>
@@ -130,15 +138,15 @@ button.go { background:var(--acc); color:#1a1408; }
 <div id="lockmsg" class="hidden">Click to look around</div>
 
 <script src="../three-r170.js"></script>
-<script src="js/util.js?v=15"></script>
-<script src="js/stage.js?v=15"></script>
-<script src="js/tex.js?v=15"></script>
-<script src="js/world.js?v=15"></script>
-<script src="js/car.js?v=15"></script>
-<script src="js/cockpit.js?v=15"></script>
-<script src="js/audio.js?v=15"></script>
-<script src="js/notes.js?v=15"></script>
-<script src="js/net.js?v=15"></script>
-<script src="js/main.js?v=15"></script>
+<script src="js/util.js?v=16"></script>
+<script src="js/stage.js?v=16"></script>
+<script src="js/tex.js?v=16"></script>
+<script src="js/world.js?v=16"></script>
+<script src="js/car.js?v=16"></script>
+<script src="js/cockpit.js?v=16"></script>
+<script src="js/audio.js?v=16"></script>
+<script src="js/notes.js?v=16"></script>
+<script src="js/net.js?v=16"></script>
+<script src="js/main.js?v=16"></script>
 </body>
 </html>

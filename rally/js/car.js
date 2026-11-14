@@ -11,6 +11,25 @@ const CAR = {
   brake: 9800, brakeBias: 0.64,                 // max brake force per car (N) and front share
   hw: 0.9, hl: 2.06,                           // collision footprint half width/length
 };
+// Garage: unlockable cars. need = stage finishes to unlock. pow/grip/steer/tough multiply the base car; vmax sets the final drive.
+const CARS = [
+  { name: 'Group A Saloon', cls: 'Starter', need: 0, look: 'saloon', pow: 1, grip: 1, steer: 1, tough: 1, m: 1230, vmax: 200, split: 0.5 },
+  { name: 'Kit Car Hatch', cls: 'Light and nimble', need: 2, look: 'hatch', pow: 1.08, grip: 1.07, steer: 1.14, tough: 1, m: 1060, vmax: 196, split: 0.35 },
+  { name: 'Turbo Coupé', cls: 'Wide arches, big turbo', need: 4, look: 'coupe', pow: 1.3, grip: 1.07, steer: 1.06, tough: 1.15, m: 1200, vmax: 214, split: 0.55 },
+  { name: 'Group B Monster', cls: 'Banned for a reason', need: 7, look: 'groupb', pow: 1.6, grip: 1.1, steer: 1.06, tough: 1.2, m: 1100, vmax: 226, split: 0.62 },
+  { name: 'WRC Plus', cls: 'Modern works car', need: 10, look: 'wrc', pow: 1.5, grip: 1.22, steer: 1.18, tough: 1.4, m: 1190, vmax: 220, split: 0.5 },
+  { name: 'Hill Climb Prototype', cls: 'All wing, no mercy', need: 14, look: 'proto', pow: 1.95, grip: 1.32, steer: 1.22, tough: 1.6, m: 1080, vmax: 238, split: 0.55 },
+  { name: 'Volkswagen Beetle', cls: 'Maxed out. Everything.', need: 20, look: 'beetle', pow: 2.3, grip: 1.42, steer: 1.3, tough: 3, m: 1000, vmax: 255, split: 0.5 },
+];
+const CAR_BASE = JSON.parse(JSON.stringify({ m: 1230, I: [2300, 2400, 900], k: 36000, cB: 4200, cR: 7500, arb: 9000, brake: 9800 }));
+// stat bars out of 10 (the Beetle is 10 across the board)
+const carStats = c => { const B = CARS[CARS.length - 1]; return [['Power', c.pow / B.pow], ['Top speed', (c.vmax - 150) / (B.vmax - 150)], ['Grip', (c.grip - 0.6) / (B.grip - 0.6)], ['Handling', (c.steer - 0.6) / (B.steer - 0.6)], ['Toughness', Math.sqrt(c.tough / B.tough)]].map(([n, v]) => [n, Math.round(clamp(v, 0.05, 1) * 10)]); };
+function applyCar(i) {
+  const c = CARS[i] || CARS[0], s = c.m / CAR_BASE.m;
+  CAR.m = c.m; CAR.I = CAR_BASE.I.map(x => x * s); for (const k of ['k', 'cB', 'cR', 'arb']) CAR[k] = CAR_BASE[k] * s;
+  CAR.brake = CAR_BASE.brake * s * (0.85 + 0.15 * c.grip); CAR.pow = c.pow; CAR.grip = c.grip; CAR.steerK = c.steer; CAR.tough = c.tough; CAR.split = c.split;
+  CAR.fin = CAR.red * 2 * Math.PI / 60 * CAR.r / (CAR.gears[5] * c.vmax / 3.6);
+}
 const torqueAt = rpm => { const x = rpm / 1000; return x < 2.5 ? 230 + 60 * x : x < 4.5 ? 380 + 20 * (x - 2.5) : x < 6.5 ? 420 - 8 * (x - 4.5) : 404 - 70 * (x - 6.5); };
 
 class Car {
@@ -53,9 +72,9 @@ class Car {
     const vF = this.v.dot(fwd), vL = this.v.dot(left), spd = this.v.length(); this.speed = spd;
     // ---- inputs: steering with speed sensitivity and self-alignment toward the direction of travel ----
     const beta = Math.abs(vF) > 2 ? Math.atan2(vL, Math.abs(vF)) : 0;
-    const vv = Math.max(4, Math.abs(vF)), maxS = clamp(Math.atan(2.51 * 24 / (vv * vv)) + 0.1, 0.15, 0.62), st = inp.steer;
+    const vv = Math.max(4, Math.abs(vF)), maxS = clamp(Math.atan(2.51 * 24 * (CAR.grip || 1) * (CAR.steerK || 1) / (vv * vv)) + 0.1, 0.15, 0.62), st = inp.steer;
     let target = st * maxS;
-    const rate = Math.abs(target) < Math.abs(this.steer) ? 10 : 8;
+    const rate = (Math.abs(target) < Math.abs(this.steer) ? 10 : 8) * (CAR.steerK || 1);
     this.steer += clamp(target - this.steer, -rate * dt, rate * dt);
     // throttle / brake / reverse logic
     let thr = inp.thr, brk = inp.brk;
@@ -78,7 +97,7 @@ class Car {
       else if (this.gear > 1) { const lower = tgtRpm * CAR.gears[this.gear - 2] / CAR.gears[this.gear - 1]; if (lower < CAR.red - 1500 && (tgtRpm < 3300 || (this.brk > 0.3 && lower < CAR.red - 1900))) { this.gear--; this.shiftT = 0.1; this.events.push({ k: 'shift', up: 0 }); } }
     }
     const limiter = this.rpm > CAR.red - 20 ? 0.15 : 1;
-    const engT = this.shiftT > 0 ? 0 : torqueAt(this.rpm) * this.thr * limiter, driveTotal = engT * Math.abs(ksh) * 0.9 / CAR.r; // N at the contact patches
+    const engT = this.shiftT > 0 ? 0 : torqueAt(this.rpm) * (CAR.pow || 1) * this.thr * limiter, driveTotal = engT * Math.abs(ksh) * 0.9 / CAR.r; // N at the contact patches
     // ---- suspension + tyres ----
     let contacts = 0, slideSum = 0, offSum = 0;
     for (let i = 0; i < 4; i++) {
@@ -106,7 +125,7 @@ class Car {
       // surface from the road map
       const q = S.near(cp.x, cp.z, 12), onRoad = q && q.d < ROAD_HW + 0.3;
       w.surf = onRoad ? 0 : 1; offSum += w.surf;
-      const BB = S.B || BIOMES.forest, mu = (onRoad ? BB.grip : BB.off) * 1.12 * (1 - this.dmg * 0.15), Fz = Math.min(w.load, 9000), fmax = mu * Fz * (1 - 0.06 * Fz / 4000); // tyre load sensitivity
+      const BB = S.B || BIOMES.forest, mu = (onRoad ? BB.grip : BB.off) * 1.12 * (CAR.grip || 1) * (1 - this.dmg * 0.15), Fz = Math.min(w.load, 9000), fmax = mu * Fz * (1 - 0.06 * Fz / 4000); // tyre load sensitivity
       // longitudinal
       let fx = 0, locked = false;
       const share = w.front ? (1 - CAR.split) / 2 : CAR.split / 2;
@@ -135,7 +154,7 @@ class Car {
     // anti-roll: transfer between left and right on each axle
     for (const [a, b] of [[0, 1], [2, 3]]) { const wa = this.wh[a], wb = this.wh[b]; if (!wa.contact && !wb.contact) continue; const d = (wa.comp - wb.comp) * CAR.arb, Pa = this.toWorld(wa.a, t.a).add(this.pos).clone(), Pb = this.toWorld(wb.a, t.a).add(this.pos).clone(); T.add(t.b.crossVectors(t.c.subVectors(Pa, this.pos), t.d.copy(up).multiplyScalar(d))); T.add(t.b.crossVectors(t.c.subVectors(Pb, this.pos), t.d.copy(up).multiplyScalar(-d))); }
     if (contacts >= 3 && !hb) {
-      const lim = 24 / Math.max(3, Math.abs(vF)), yaw = this.w.dot(up), want = clamp(vF * Math.tan(this.steer) / 2.51, -lim, lim), err = yaw - want;
+      const lim = 24 * (CAR.grip || 1) * (CAR.steerK || 1) / Math.max(3, Math.abs(vF)), yaw = this.w.dot(up), want = clamp(vF * Math.tan(this.steer) / 2.51, -lim, lim), err = yaw - want;
       T.addScaledVector(up, -err * CAR.I[1] * 12 * sstep(2, 8, Math.abs(vF)));
       // bleed off sideways sliding so the car goes where it points
       const vLat = this.v.dot(left); F.addScaledVector(left, -vLat * CAR.m * 2.6 * sstep(2, 6, Math.abs(vF)));
@@ -190,8 +209,8 @@ class Car {
       if (vn >= 0) return;
       const j = -vn * (soft ? 1.0 : 1.2) / this.invMass(P, n); this.impulse(P, n.clone().multiplyScalar(j)); if (soft) { this.v.multiplyScalar(0.985); return; } // snowbank: you plough into it, no damage
       const vt = pv.clone().addScaledVector(n, -vn); vt.y = 0; const vtl = vt.length(); if (vtl > 0.01) { const jt = Math.min(vtl / this.invMass(P, vt.clone().normalize()) * 0.5, j * 0.5); this.impulse(P, vt.multiplyScalar(-jt / vtl)); }
-      const sev = -vn; if (sev > 2) { this.dmg = Math.min(1, this.dmg + (sev - 2) * 0.012); this.events.push({ k: 'crash', v: sev }); }
-      if (sev > 9 && !this.wrecked) { this.wrecked = true; this.events.push({ k: 'wreck', v: sev }); }
+      const sev = -vn; if (sev > 2) { this.dmg = Math.min(1, this.dmg + (sev - 2) * 0.012 / (CAR.tough || 1)); this.events.push({ k: 'crash', v: sev }); }
+      if (sev > 9 * (CAR.tough || 1) && !this.wrecked) { this.wrecked = true; this.events.push({ k: 'wreck', v: sev }); }
     };
     for (const tr of S.treesNear(this.pos.x, this.pos.z, this.near)) hit(tr.x, tr.z, tr.y + 0.6, tr.r, undefined, tr.soft);
     for (const l of S.logs) {

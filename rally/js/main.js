@@ -15,15 +15,32 @@ const msg = (id, t) => { $(id).textContent = t || ''; };
 const readCfg = () => ({ stage: +$('sStage').value, fog: +$('sFog').value, hostRole: $('sRole').value });
 
 const CAR_COL = [0x1d4fbf, 0xc62828, 0x2e7d32, 0xf2b632], CAR_NAME = ['Blue', 'Red', 'Green', 'Yellow'], hex = c => '#' + c.toString(16).padStart(6, '0');
+// ---- garage: cars unlock with stage finishes (any seat, any mode) ----
+const Garage = { fin: 0, sel: 0 };
+try { Garage.fin = +localStorage.getItem('pn-fin') || 0; Garage.sel = clamp(+localStorage.getItem('pn-car') || 0, 0, CARS.length - 1); } catch (e) {}
+const carOpen = i => Garage.fin >= CARS[i].need;
+function renderGarage() {
+  const i = Garage.sel, c = CARS[i], open = carOpen(i), el = $('gInfo');
+  el.className = open ? '' : 'lock';
+  el.innerHTML = '<h4>' + (open ? '' : '&#128274; ') + c.name + '<small>' + c.cls + '</small></h4><div class="st">' + carStats(c).map(([n, v]) => '<span>' + n + '</span><i><u style="width:' + v * 10 + '%"></u></i>').join('') + '</div>' +
+    (open ? '' : '<div class="lk">Finish ' + (c.need - Garage.fin) + ' more stage' + (c.need - Garage.fin > 1 ? 's' : '') + ' to unlock</div>');
+  $('gCount').textContent = CARS.filter((_, k) => carOpen(k)).length + ' / ' + CARS.length + ' unlocked · ' + Garage.fin + ' stage' + (Garage.fin === 1 ? '' : 's') + ' finished';
+  Net.car = open ? i : 0;
+  try { if (open) localStorage.setItem('pn-car', i); } catch (e) {}
+}
+$('gPrev').onclick = () => { Garage.sel = (Garage.sel + CARS.length - 1) % CARS.length; renderGarage(); };
+$('gNext').onclick = () => { Garage.sel = (Garage.sel + 1) % CARS.length; renderGarage(); };
+renderGarage();
+const carLocked = () => { if (carOpen(Garage.sel)) return false; msg('msg', CARS[Garage.sel].name + ' is locked. Pick an unlocked car.'); return true; };
 const myId = () => Net.role === 'host' ? 'H' : Net.id;
 const nameOf = id => id === 'H' ? Net.name : (Net.peers.get(id) || {}).name || 'Player';
-$('bSolo').onclick = () => { Sfx.start(); Net.close(); const c = readCfg(); startStage(c, 'drv', true, 0, [[{ id: 'me', name: myName() }, null]]); };
+$('bSolo').onclick = () => { if (carLocked()) return; Sfx.start(); Net.close(); const c = readCfg(); startStage(c, 'drv', true, 0, [[{ id: 'me', name: myName(), car: Net.car | 0 }, null]]); };
 $('bHost').onclick = () => {
-  Sfx.start(); const name = myName(); G.cfg = readCfg(); const code = Net.host(name, s => msg('lmsg', s === 'open' ? 'Share the code (up to 8 players, two per car).' : 'Connection lost, retrying...'));
+  if (carLocked()) return; Sfx.start(); const name = myName(); G.cfg = readCfg(); const code = Net.host(name, s => msg('lmsg', s === 'open' ? 'Share the code (up to 8 players, two per car).' : 'Connection lost, retrying...'));
   G.seats = [[null, null], [null, null], [null, null], [null, null]]; G.seats[0][G.cfg.hostRole === 'nav' ? 1 : 0] = 'H';
   $('code').textContent = code; show('lobby'); $('bGo').classList.remove('hidden'); msg('lmsg', 'Connecting...'); renderLobby();
 };
-$('bJoin').onclick = () => joinRoom($('jc').value.trim().toUpperCase());
+$('bJoin').onclick = () => !carLocked() && joinRoom($('jc').value.trim().toUpperCase());
 function joinRoom(code) {
   if (!/^[A-Z]{5}$/.test(code)) { msg('msg', 'Enter the 5-letter room code.'); return; }
   Sfx.start(); Net.join(code, myName(), why => { if (G.on) { endToMenu(why); } else { show('menu'); msg('msg', why); } });
@@ -36,14 +53,14 @@ function seatOf(id, seats) { for (let c = 0; c < 4; c++) for (let r = 0; r < 2; 
 // fill navigator seats in cars that already have a driver first (two players = co-op), then start a new car
 function autoSeat(id) { if (seatOf(id, G.seats)) return; for (let c = 0; c < 4; c++) if (G.seats[c][0] && !G.seats[c][1]) { G.seats[c][1] = id; return; } for (let c = 0; c < 4; c++) if (!G.seats[c][0] && !G.seats[c][1]) { G.seats[c][0] = id; return; } }
 function takeSeat(id, c, r) { if (G.seats[c][r]) return; unseat(id); G.seats[c][r] = id; renderLobby(); }
-function lobbyState() { return { t: 'lobby', cfg: G.cfg, seats: G.seats.map(c => c.map(id => id ? { id, name: nameOf(id) } : null)) }; }
+function lobbyState() { return { t: 'lobby', cfg: G.cfg, seats: G.seats.map(c => c.map(id => id ? { id, name: nameOf(id), car: id === 'H' ? Net.car | 0 : (Net.peers.get(id) || {}).car | 0 } : null)) }; }
 function renderLobby(s) {
   s = s || lobbyState(); const st = STAGES[s.cfg.stage], me = myId();
   const cars = s.seats.filter(c => c[0] || c[1]).length;
   $('lcfg').textContent = BIOMES[st.biome].name + ' · ' + st.name + ' · ' + (st.len / 1000).toFixed(1) + ' km · ' + ['light', 'medium', 'heavy'][s.cfg.fog] + ' fog · ' + (cars > 1 ? cars + '-car RACE' : 'co-op stage');
   const box = $('seats'); box.innerHTML = '';
   s.seats.forEach((car, c) => {
-    const d = document.createElement('div'); d.className = 'car'; d.style.setProperty('--c', hex(CAR_COL[c])); d.innerHTML = '<h5>' + CAR_NAME[c] + ' car</h5>';
+    const d = document.createElement('div'); d.className = 'car'; d.style.setProperty('--c', hex(CAR_COL[c])); d.innerHTML = '<h5>' + CAR_NAME[c] + ' car</h5>' + (car[0] ? '<div style="font-size:12px;color:var(--dim)">' + CARS[car[0].car | 0].name + '</div>' : '');
     ['Driver', 'Navigator'].forEach((lab, r) => { const x = car[r], b = document.createElement('button'); b.innerHTML = '<i>' + lab + '</i>' + (x ? x.name.replace(/[<>&]/g, '') : 'Take seat'); if (!x) b.className = 'free'; if (x && x.id === me) b.className = 'me'; b.onclick = () => { if (x) return; if (Net.role === 'host') takeSeat('H', c, r); else Net.send({ t: 'seat', c, r }); }; d.appendChild(b); });
     box.appendChild(d);
   });
@@ -92,20 +109,21 @@ function startStage(cfg, role, solo, myCar, seats) {
     const notes = Notes.build(S); MapDraw.init(S, notes);
     myCar = myCar || 0; seats = seats || [[{ id: 'me', name: 'You' }, null]];
     const cars = []; seats.forEach((c, i) => { if (c && c[0]) cars.push(i); });
-    const view = new CarView(World.scene, { color: CAR_COL[myCar] });
+    const mdl = c => clamp((seats[c] && seats[c][0] && seats[c][0].car) | 0, 0, CARS.length - 1);
+    const view = new CarView(World.scene, { color: CAR_COL[myCar], look: CARS[mdl(myCar)].look }); applyCar(mdl(myCar));
     const views = {}, tags = {};
     for (const c of cars) if (c !== myCar) {
-      const v = views[c] = new CarView(World.scene, { color: CAR_COL[c], remote: true }); v.g.visible = false;
+      const v = views[c] = new CarView(World.scene, { color: CAR_COL[c], remote: true, look: CARS[mdl(c)].look }); v.g.visible = false;
       const tc = document.createElement('canvas'); tc.width = 256; tc.height = 64; const x = tc.getContext('2d'); x.fillStyle = 'rgba(0,0,0,.55)'; x.fillRect(0, 0, 256, 64); x.fillStyle = hex(CAR_COL[c]); x.fillRect(0, 0, 10, 64); x.fillStyle = '#fff'; x.font = 'bold 30px system-ui'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(seats[c][0].name + (seats[c][1] ? ' / ' + seats[c][1].name : ''), 133, 33);
       const tt = new THREE.CanvasTexture(tc); tt.colorSpace = THREE.SRGBColorSpace; const sp = tags[c] = new THREE.Sprite(new THREE.SpriteMaterial({ map: tt, depthTest: false, transparent: true })); sp.scale.set(2.6, 0.65, 1); sp.renderOrder = 9; World.scene.add(sp);
     }
     const k = cars.indexOf(myCar), n = cars.length, grid = { s: World.startS - 3 - Math.floor(Math.max(0, k) / 2) * 9, lat: n > 1 ? (k % 2 ? 1.9 : -1.9) : 0 };
     { const p0 = S.at(World.startS); MapDraw.draw(view.mapC.getContext('2d'), { x: p0.x, z: p0.z, h: p0.h, prog: World.startS }, { grades: true, vis: [140, 90, 55][cfg.fog] }); view.mapT.needsUpdate = true; }
-    Object.assign(G, { on: true, S, cfg, role, solo, notes, view, views, tags, seats, cars, myCar, grid, race: n > 1, autoNav: solo || (role === 'drv' && !seats[myCar][1]), bufs: {}, results: {}, finShown: false, final: 0, car: null, phase: 'count', t: -3.5, pen: 0, splits: [], splitS: [S.L / 3, S.L * 2 / 3], nextSplit: 0, auto: {}, buf: [], other: { yaw: 0, pitch: 0, map: false }, callT: 0, finT: 0, crashes: 0, sendT: 0, lookT: 0, lastBeep: 4, startS: World.startS, finishS: World.finishS });
+    Object.assign(G, { on: true, S, cfg, role, solo, notes, view, views, tags, seats, cars, myCar, grid, race: n > 1, autoNav: solo || (role === 'drv' && !seats[myCar][1]), bufs: {}, results: {}, finShown: false, counted: false, unlockMsg: '', final: 0, car: null, phase: 'count', t: -3.5, pen: 0, splits: [], splitS: [S.L / 3, S.L * 2 / 3], nextSplit: 0, auto: {}, buf: [], other: { yaw: 0, pitch: 0, map: false }, callT: 0, finT: 0, crashes: 0, sendT: 0, lookT: 0, lastBeep: 4, startS: World.startS, finishS: World.finishS });
     for (const c of cars) G.bufs[c] = [];
     if (role === 'drv') { G.car = new Car(S); G.car.place(grid.s, grid.lat); }
     look.yaw = 0; look.pitch = role === 'nav' ? -0.14 : -0.1; look.map = false; G.sw = [1, 1, 0, 0, /dusk|evening/i.test(STAGES[cfg.stage].tod) ? 1 : 0, 0];
-    $('role').textContent = (solo ? 'SOLO PRACTICE · AUTO CO-DRIVER' : (role === 'drv' ? 'DRIVER' : 'NAVIGATOR') + ' · ' + CAR_NAME[myCar].toUpperCase() + ' CAR' + (G.autoNav ? ' · AUTO CO-DRIVER' : '')) + ' · ' + STAGES[cfg.stage].name.toUpperCase(); msg('pos', '');
+    $('role').textContent = CARS[mdl(myCar)].name.toUpperCase() + ' · ' + (solo ? 'SOLO PRACTICE · AUTO CO-DRIVER' : (role === 'drv' ? 'DRIVER' : 'NAVIGATOR') + ' · ' + CAR_NAME[myCar].toUpperCase() + ' CAR' + (G.autoNav ? ' · AUTO CO-DRIVER' : '')) + ' · ' + STAGES[cfg.stage].name.toUpperCase(); msg('pos', '');
     $('tip').innerHTML = role === 'drv' ? 'W/S throttle · brake, A/D steer, Space handbrake, R recover (+5 s) · aim at a dash switch and click it (wipers, lights, spots) · mouse looks' : 'Hold <b>right mouse</b> or <b>Tab</b> for the map · callouts: A/D + 1-6, J jump, C crest, L log, K keep middle, F flat, B brake';
     $('spd').style.display = role === 'drv' ? '' : 'none'; $('dmg').style.display = role === 'drv' ? '' : 'none';
     msg('big', ''); msg('split', ''); $('fade').style.opacity = 0; $('lockmsg').classList.remove('hidden');
@@ -169,8 +187,11 @@ function readInput(dt) {
   const L = KEYS.has('KeyA') || KEYS.has('ArrowLeft'), R = KEYS.has('KeyD') || KEYS.has('ArrowRight');
   let target = (L ? 1 : 0) - (R ? 1 : 0);
   // keyboard steering ramps in (faster when reversing direction)
-  const rate = target === 0 ? 9 : Math.sign(target) !== Math.sign(inp.steer) ? 12 : 7;
-  inp.steer += clamp(target - inp.steer, -rate * dt, rate * dt);
+  // a quick tap only nudges the wheel; holding builds to full lock in about 0.4 s
+  inp.held = target && target === inp.dir ? (inp.held || 0) + dt : 0; inp.dir = target;
+  inp.raw = inp.raw || 0; const rate = target === 0 ? 9 : Math.sign(target) !== Math.sign(inp.raw) && Math.abs(inp.raw) > 0.05 ? 12 : Math.min(7, 2 + inp.held * 14);
+  inp.raw += clamp(target - inp.raw, -rate * dt, rate * dt);
+  inp.steer = Math.sign(inp.raw) * Math.abs(inp.raw) ** 1.5;
   inp.thr = KEYS.has('KeyW') || KEYS.has('ArrowUp') ? 1 : 0; inp.brk = KEYS.has('KeyS') || KEYS.has('ArrowDown') ? 1 : 0; inp.hb = KEYS.has('Space') ? 1 : 0;
   const gp = pad !== null && navigator.getGamepads ? navigator.getGamepads()[pad] : null;
   if (gp) { const ax = gp.axes[0] || 0; if (Math.abs(ax) > 0.08) inp.steer = -Math.sign(ax) * ((Math.abs(ax) - 0.08) / 0.92) ** 1.4; const rt = gp.buttons[7] ? gp.buttons[7].value : 0, lt = gp.buttons[6] ? gp.buttons[6].value : 0; if (rt > 0.05) inp.thr = rt; if (lt > 0.05) inp.brk = lt; if (gp.buttons[0] && gp.buttons[0].pressed) inp.hb = 1; if (gp.buttons[3] && gp.buttons[3].pressed && !G.padY && G.phase === 'run') recover(); G.padY = gp.buttons[3] && gp.buttons[3].pressed; }
@@ -206,14 +227,15 @@ function stagePhase(dt) {
 }
 const bestKey = () => 'pn-best-' + G.cfg.stage + '-' + G.cfg.fog;
 function bestOf() { try { return JSON.parse(localStorage.getItem(bestKey()) || 'null'); } catch (e) { return null; } }
-function finishRecord() { const b = bestOf(); G.wasBest = !b || G.final < b.t; if (G.wasBest) try { localStorage.setItem(bestKey(), JSON.stringify({ t: G.final, splits: G.splits })); } catch (e) {} G.prevBest = b; }
+function finishRecord() {
+  if (!G.counted) { G.counted = true; const before = CARS.filter((_, k) => carOpen(k)).length; Garage.fin++; try { localStorage.setItem('pn-fin', Garage.fin); } catch (e) {} const now = CARS.filter((_, k) => carOpen(k)); G.unlockMsg = now.length > before ? 'NEW CAR UNLOCKED: ' + now[now.length - 1].name.toUpperCase() : ''; renderGarage(); } const b = bestOf(); G.wasBest = !b || G.final < b.t; if (G.wasBest) try { localStorage.setItem(bestKey(), JSON.stringify({ t: G.final, splits: G.splits })); } catch (e) {} G.prevBest = b; }
 function showFinish() {
   try { document.exitPointerLock(); } catch (e) {}
   const st = STAGES[G.cfg.stage], rows = [['Stage', st.name + ' (' + (G.S.L / 1000).toFixed(2) + ' km)'], ['Time', fmtT2(G.final)], ['Penalties', '+' + G.pen + ' s'], ['Average', (G.S.L / Math.max(1, G.final) * 3.6).toFixed(1) + ' km/h'], ['Damage', Math.round((G.dmg || 0) * 100) + '%'], ['Best', G.wasBest ? 'NEW BEST' : fmtT2(G.prevBest.t)]];
   $('finTab').innerHTML = rows.map(r => '<tr><td>' + r[0] + '</td><td>' + r[1] + '</td></tr>').join('');
   $('finT').innerHTML = G.wasBest ? 'NEW <b>BEST</b>' : 'STAGE <b>COMPLETE</b>';
   if (G.race) { $('finT').innerHTML = 'RACE <b>RESULTS</b>'; G.resT = 0; }
-  $('bAgain').classList.toggle('hidden', !(G.solo || Net.role === 'host')); msg('finMsg', G.solo || Net.role === 'host' ? '' : 'Waiting for the host to restart...');
+  $('bAgain').classList.toggle('hidden', !(G.solo || Net.role === 'host')); msg('finMsg', (G.unlockMsg ? G.unlockMsg + '. ' : '') + (G.solo || Net.role === 'host' ? '' : 'Waiting for the host to restart...'));
   $('fin').classList.remove('hidden');
 }
 function resultsTable(prog) {

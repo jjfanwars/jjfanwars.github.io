@@ -26,7 +26,7 @@ const Net = {
       if (typeof e.data === 'string') { let m; try { m = JSON.parse(e.data); } catch (x) { return; } if (m.c === 'leave' && this.peers.has(m.id)) { const p = this.peers.get(m.id); this.peers.delete(m.id); this.peer = this.peers.values().next().value || null; this.emit({ t: '_left', id: m.id, name: p.name }); } return; }
       const b = new Uint8Array(e.data), k = b[0], id = this.dec.decode(b.subarray(1, 1 + k)); let m; try { m = JSON.parse(this.dec.decode(b.subarray(1 + k))); } catch (x) { return; }
       this.lastRx = performance.now();
-      if (m.t === 'hello') { if (!this.peers.has(id) && (this.peers.size >= 7 || this.started)) { this.send1(id, { t: 'full' }); return; } const p = { id, name: String(m.name || 'Player').replace(/[^A-Za-z0-9 ._-]/g, '').slice(0, 14) || 'Player' }; this.peers.set(id, p); this.peer = p; this.emit({ t: '_join', id }); this.emit({ t: '_lobby' }); return; }
+      if (m.t === 'hello') { if (!this.peers.has(id) && (this.peers.size >= 7 || this.started)) { this.send1(id, { t: 'full' }); return; } const p = { id, car: clamp(m.car | 0, 0, CARS.length - 1), name: String(m.name || 'Player').replace(/[^A-Za-z0-9 ._-]/g, '').slice(0, 14) || 'Player' }; this.peers.set(id, p); this.peer = p; this.emit({ t: '_join', id }); this.emit({ t: '_lobby' }); return; }
       if (m.t === 'pong') { this.ping = performance.now() - m.at; return; }
       if (!this.peers.has(id)) return;
       m.from = id; this.emit(m, id);
@@ -39,9 +39,9 @@ const Net = {
   join(code, name, onFail) {
     this.close(); this.role = 'guest'; this.code = code; this.name = name; this.id = Math.random().toString(36).slice(2, 11); this.started = false;
     const ws = this.ws = new WebSocket(this.relay() + '/room/' + code + '?role=guest&id=' + this.id); ws.binaryType = 'arraybuffer';
-    ws.onopen = () => this.send({ t: 'hello', name });
+    ws.onopen = () => this.send({ t: 'hello', name, car: this.car | 0 });
     ws.onmessage = e => {
-      if (typeof e.data === 'string') { let m; try { m = JSON.parse(e.data); } catch (x) { return; } if (m.c === 'host' && !m.up) this.emit({ t: '_hostgone' }); else if (m.c === 'host' && m.up) this.send({ t: 'hello', name }); return; }
+      if (typeof e.data === 'string') { let m; try { m = JSON.parse(e.data); } catch (x) { return; } if (m.c === 'host' && !m.up) this.emit({ t: '_hostgone' }); else if (m.c === 'host' && m.up) this.send({ t: 'hello', name, car: this.car | 0 }); return; }
       let m; try { m = JSON.parse(this.dec.decode(new Uint8Array(e.data))); } catch (x) { return; }
       this.lastRx = performance.now();
       if (m.t === 'ping') { this.send({ t: 'pong', at: m.at }); return; }
