@@ -106,7 +106,7 @@ class Car {
       // surface from the road map
       const q = S.near(cp.x, cp.z, 12), onRoad = q && q.d < ROAD_HW + 0.3;
       w.surf = onRoad ? 0 : 1; offSum += w.surf;
-      const mu = (onRoad ? 1.5 : 0.9) * (1 - this.dmg * 0.15), Fz = Math.min(w.load, 9000), fmax = mu * Fz * (1 - 0.06 * Fz / 4000); // tyre load sensitivity
+      const BB = S.B || BIOMES.forest, mu = (onRoad ? BB.grip : BB.off) * (1 - this.dmg * 0.15), Fz = Math.min(w.load, 9000), fmax = mu * Fz * (1 - 0.06 * Fz / 4000); // tyre load sensitivity
       // longitudinal
       let fx = 0, locked = false;
       const share = w.front ? (1 - CAR.split) / 2 : CAR.split / 2;
@@ -114,7 +114,7 @@ class Car {
       const bf = this.brk * CAR.brake * (w.front ? CAR.brakeBias : 1 - CAR.brakeBias) / 2;
       fx -= Math.sign(vx) * Math.min(bf, Math.abs(vx) * CAR.m * 2);
       if (hb && !w.front) { locked = true; fx = -Math.sign(vx) * Math.min(fmax * 0.85, Math.abs(vx) * CAR.m); }
-      if (!onRoad) fx -= vx * 55; // soft ground drag
+      if (!onRoad) fx -= vx * BB.offDrag; // soft ground drag
       fx -= vx * 6;               // rolling resistance
       // lateral: slip angle curve, softer and wider on gravel
       const slipA = Math.atan2(vy, Math.max(Math.abs(vx), 3.5));
@@ -175,7 +175,7 @@ class Car {
   }
   collide() {
     const S = this.S, t = this.tmp, iq = new THREE.Quaternion().copy(this.q).invert();
-    const hit = (cx, cz, cy, r, topY) => {
+    const hit = (cx, cz, cy, r, topY, soft) => {
       const L = new THREE.Vector3(cx - this.pos.x, cy - this.pos.y, cz - this.pos.z).applyQuaternion(iq);
       if (topY !== undefined && this.pos.y - 0.3 > topY) return;
       if (L.y < -1.2 || L.y > 1.6) return;
@@ -188,12 +188,12 @@ class Car {
       const pen = r - d; this.pos.addScaledVector(n, pen);
       const P = new THREE.Vector3(px, 0.1, pz).applyQuaternion(this.q).add(this.pos), pv = this.pointVel(P, new THREE.Vector3()), vn = pv.dot(n);
       if (vn >= 0) return;
-      const j = -vn * 1.2 / this.invMass(P, n); this.impulse(P, n.clone().multiplyScalar(j));
+      const j = -vn * (soft ? 1.0 : 1.2) / this.invMass(P, n); this.impulse(P, n.clone().multiplyScalar(j)); if (soft) { this.v.multiplyScalar(0.985); return; } // snowbank: you plough into it, no damage
       const vt = pv.clone().addScaledVector(n, -vn); vt.y = 0; const vtl = vt.length(); if (vtl > 0.01) { const jt = Math.min(vtl / this.invMass(P, vt.clone().normalize()) * 0.5, j * 0.5); this.impulse(P, vt.multiplyScalar(-jt / vtl)); }
       const sev = -vn; if (sev > 2) { this.dmg = Math.min(1, this.dmg + (sev - 2) * 0.012); this.events.push({ k: 'crash', v: sev }); }
       if (sev > 9 && !this.wrecked) { this.wrecked = true; this.events.push({ k: 'wreck', v: sev }); }
     };
-    for (const tr of S.treesNear(this.pos.x, this.pos.z, this.near)) hit(tr.x, tr.z, tr.y + 0.6, tr.r);
+    for (const tr of S.treesNear(this.pos.x, this.pos.z, this.near)) hit(tr.x, tr.z, tr.y + 0.6, tr.r, undefined, tr.soft);
     for (const l of S.logs) {
       const ex = l.bx - l.ax, ez = l.bz - l.az, ll = ex * ex + ez * ez; if ((this.pos.x - l.ax) ** 2 + (this.pos.z - l.az) ** 2 > 100) continue;
       const tc = clamp(((this.pos.x - l.ax) * ex + (this.pos.z - l.az) * ez) / ll, 0, 1), len = Math.sqrt(ll);

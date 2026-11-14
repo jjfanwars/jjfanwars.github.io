@@ -7,7 +7,7 @@ const look = { yaw: 0, pitch: -0.05, map: false, idle: 0 };
 let pad = null;
 
 // ---------- menu ----------
-STAGES.forEach((s, i) => { const o = document.createElement('option'); o.value = i; o.textContent = s.name + '  (' + (s.len / 1000).toFixed(1) + ' km, ' + s.tod + ')'; $('sStage').appendChild(o); });
+STAGES.forEach((s, i) => { const o = document.createElement('option'); o.value = i; o.textContent = BIOMES[s.biome].name + ' · ' + s.name + '  (' + (s.len / 1000).toFixed(1) + ' km)'; $('sStage').appendChild(o); });
 try { $('nm').value = localStorage.getItem('pn-name') || ''; $('sGfx').value = localStorage.getItem('pn-gfx') || 'med'; } catch (e) {}
 const myName = () => { const n = ($('nm').value || '').replace(/[^A-Za-z0-9 ._-]/g, '').trim().slice(0, 14) || 'Player' + (1 + Math.random() * 99 | 0); try { localStorage.setItem('pn-name', n); localStorage.setItem('pn-gfx', $('sGfx').value); } catch (e) {} return n; };
 const show = id => { for (const s of ['menu', 'lobby', 'fin']) $(s).classList.toggle('hidden', s !== id); };
@@ -55,11 +55,12 @@ function startStage(cfg, role, solo) {
   setTimeout(async () => {
     const gfx = $('sGfx').value;
     if (!World.R) World.init($('gl'), gfx);
-    await World.photos();
+    await World.photos(BIOMES[STAGES[cfg.stage].biome]);
     const key = cfg.stage; const S = stageCache[key] || (stageCache = { [key]: makeStage(STAGES[cfg.stage]) })[key];
     World.build(S, cfg.fog);
     const notes = Notes.build(S); MapDraw.init(S, notes);
     const view = new CarView(World.scene);
+    { const p0 = S.at(World.startS); MapDraw.draw(view.mapC.getContext('2d'), { x: p0.x, z: p0.z, h: p0.h, prog: World.startS }, { grades: true, vis: [140, 90, 55][cfg.fog] }); view.mapT.needsUpdate = true; }
     Object.assign(G, { on: true, S, cfg, role, solo, notes, view, car: null, phase: 'count', t: -3.5, pen: 0, splits: [], splitS: [S.L / 3, S.L * 2 / 3], nextSplit: 0, auto: {}, buf: [], other: { yaw: 0, pitch: 0, map: false }, callT: 0, finT: 0, crashes: 0, sendT: 0, lookT: 0, lastBeep: 4, startS: World.startS, finishS: World.finishS });
     if (role === 'drv') { G.car = new Car(S); G.car.place(World.startS - 3, 0); }
     look.yaw = 0; look.pitch = role === 'nav' ? -0.12 : -0.05; look.map = false;
@@ -88,6 +89,7 @@ function navKey(code) {
   let c = null;
   if (dg) { const n = +dg[1], dir = performance.now() - pendT < 1500 ? pendDir : null, side = dir === 'L' ? 'left' : dir === 'R' ? 'right' : '';
     c = n === 1 ? ['HAIRPIN ' + side.toUpperCase(), 'hairpin ' + side] : [(side.toUpperCase() + ' ' + n).trim(), (side + ' ' + NUM[n]).trim()]; pendDir = null; }
+  else if (code === 'KeyL') { const o = (World.B && World.B.obs) || 'log'; c = [o.toUpperCase() + '!', o]; }
   else if (CALLS[code]) c = CALLS[code];
   if (!c) return;
   Net.send({ t: 'call', txt: c[0], w: c[1] }); say(c[0], '', 1200);
@@ -223,15 +225,16 @@ function frame(now) {
   }
   // dust and gravel spray from the rear wheels
   if (st.speed > 4 && !st.air) {
-    const n = (st.slide * 3 + st.speed / 25) * (st.offroad > 0.5 ? 0.4 : 1) * dt * 30;
+    const n = (st.slide * 3 + st.speed / 25) * (st.offroad > 0.5 ? 0.4 : 1) * dt * 30 * (World.B.dustK || 1);
     for (let k = 0; k < n; k++) if (Math.random() < 0.7) {
       const side = Math.random() < 0.5 ? 0.8 : -0.8, p = new THREE.Vector3(side, -0.6, -1.4).applyQuaternion(st.q).add(st.pos), v = st.vel;
-      const off = st.offroad > 0.5, c = off ? [0.45, 0.4, 0.3] : [0.72, 0.64, 0.52];
+      const off = st.offroad > 0.5, c = off ? [0.45, 0.4, 0.3] : World.B.dust;
       World.puff(p.x, p.y, p.z, v.x * 0.25 + (Math.random() - 0.5) * 2, 0.6 + Math.random(), v.z * 0.25 + (Math.random() - 0.5) * 2, 0.8 + Math.random() * 0.8, 1.6 + Math.random() * 1.6, c[0], c[1], c[2]);
     }
   }
   World.stepDust(dt);
   World.update(World.cam.position, st.pos);
+  if (World.gfx !== 'low' && (G.mirT = (G.mirT || 0) + 1) % 2 === 0) G.view.renderMirror(World.R, World.scene, st);
   Sfx.update({ rpm: st.rpm, thr: st.thr, speed: st.speed, slide: st.slide, offroad: st.offroad, air: st.air, inside: 1 }, dt);
   hud(st);
   // spectators cheer as you pass

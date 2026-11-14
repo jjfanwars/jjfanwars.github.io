@@ -12,7 +12,7 @@ const Notes = {
     }
     for (const j of S.jumps) out.push({ s: j.s - 16, end: j.s, k: 'j', say: j.big ? 'big jump' : 'jump', txt: j.big ? 'BIG JUMP' : 'JUMP' });
     for (const c of S.crests) out.push({ s: c.s - 20, end: c.s, k: 'cr', say: 'over crest', txt: 'OVER CREST' });
-    for (const l of S.logs) out.push({ s: l.s - 4, end: l.s, k: 'l', say: 'log ' + (l.side === 'L' ? 'left, keep right' : 'right, keep left'), txt: 'LOG ' + (l.side === 'L' ? 'LEFT › KEEP RIGHT' : 'RIGHT › KEEP LEFT') });
+    const ob = (S.B && S.B.obs) || 'log'; for (const l of S.logs) out.push({ s: l.s - 4, end: l.s, k: 'l', say: ob + ' ' + (l.side === 'L' ? 'left, keep right' : 'right, keep left'), txt: ob.toUpperCase() + ' ' + (l.side === 'L' ? 'LEFT › KEEP RIGHT' : 'RIGHT › KEEP LEFT') });
     out.sort((a, b) => a.s - b.s);
     // "into": a note that follows the previous one closely gets chained
     for (let i = 1; i < out.length; i++) if (out[i].s - out[i - 1].end < 30) out[i].into = true;
@@ -65,7 +65,7 @@ const MapDraw = {
     for (const n of this.notes) {
       if (n.k === 'c') continue;
       const s = n.end, p = S.at(s), [X, Y] = toM(p.x, p.z); if (X < 0 || X > 1024 || Y < 80 || Y > 1060) continue;
-      if (n.k === 'l') { const l = S.logs.find(q => q.s === s); if (l) { const [ax, ay] = toM(l.ax, l.az), [bx, by] = toM(l.bx, l.bz); g.beginPath(); g.moveTo(ax, ay); g.lineTo(bx, by); g.strokeStyle = '#6b3d16'; g.lineWidth = 11; g.lineCap = 'butt'; g.stroke(); g.lineCap = 'round'; g.fillStyle = '#6b3d16'; g.font = '800 22px system-ui'; const lx = ax + (ax - bx) * 0.25, ly = ay + (ay - by) * 0.25; g.textAlign = Math.abs(ax - bx) > Math.abs(ay - by) ? (ax < bx ? 'right' : 'left') : 'center'; g.fillText('LOG', lx, ly + 8); g.textAlign = 'center'; } }
+      if (n.k === 'l') { const l = S.logs.find(q => q.s === s); if (l) { const [ax, ay] = toM(l.ax, l.az), [bx, by] = toM(l.bx, l.bz); g.beginPath(); g.moveTo(ax, ay); g.lineTo(bx, by); g.strokeStyle = '#6b3d16'; g.lineWidth = 11; g.lineCap = 'butt'; g.stroke(); g.lineCap = 'round'; g.fillStyle = '#6b3d16'; g.font = '800 22px system-ui'; const lx = ax + (ax - bx) * 0.25, ly = ay + (ay - by) * 0.25; g.textAlign = Math.abs(ax - bx) > Math.abs(ay - by) ? (ax < bx ? 'right' : 'left') : 'center'; g.fillText(((S.B && S.B.obs) || 'log').toUpperCase(), lx, ly + 8); g.textAlign = 'center'; } }
       else { g.save(); g.translate(X, Y); g.fillStyle = n.k === 'j' ? '#c0281c' : '#1c4fa0'; g.beginPath(); if (n.k === 'j') { g.moveTo(-16, 10); g.lineTo(16, 10); g.lineTo(16, -14); g.closePath(); } else { g.arc(0, 4, 15, Math.PI, 0); g.closePath(); } g.fill(); g.font = '800 20px system-ui'; g.fillText(n.k === 'j' ? n.txt : 'CREST', 0, 34); g.restore(); }
     }
     // corner grades in circles on the outside of each corner

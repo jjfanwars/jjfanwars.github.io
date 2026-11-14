@@ -3,3 +3,6 @@ gravel_*  = rocky_trail
 floor_*   = forest_ground_04
 bark_*    = pine_bark
 "_nor" files are OpenGL normal maps. Resized/recompressed for the web.
+asphalt_* = asphalt_02, pavers_* = concrete_pavers_02, brick_* = red_brick, plaster_* = plastered_wall
+snowroad_* = snow_01, snow_* = snow_02, sandroad_* = sandy_gravel, dryground_* = dry_ground_01
+leafroad_* = leaf_scattered_gravel, leaves_* = forest_leaves_02

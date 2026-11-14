@@ -18,26 +18,47 @@ const TEX = (() => {
     return lerp(lerp(a, b, u), lerp(c, d, u), v);
   };
   function tex(c, rep, srgb) { const t = new THREE.CanvasTexture(c); if (rep) t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 8; if (srgb) t.colorSpace = THREE.SRGBColorSpace; return t; }
-  // gravel road: u across 10 m (lat -5..5), v along 16 m. Ruts at the wheel lines, loose gravel berms between and at the edges.
-  function road() {
+  // road surface overlay: u across 12 m (lat -6..6), v along 16 m. Ruts, loose berms, verge colour; alpha = 1 - road paint.
+  const VERGE = { gravel: [70, 82, 44], leaf: [120, 72, 30], snow: [236, 240, 248], sand: [205, 172, 128], tarmac: [150, 150, 148] };
+  function road(kind, hw) {
     const w = 256, h = 512, c = cv(w, h), g = c.getContext('2d'), im = g.createImageData(w, h), d = im.data, hg = new Float32Array(w * h);
+    const ruts = kind === 'tarmac' ? 0.25 : kind === 'sand' ? 0.6 : 1, vg = VERGE[kind] || VERGE.gravel, berms = kind === 'tarmac' ? 0 : 1;
     for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-      const lat = (x / w - 0.5) * 10, al = Math.abs(lat);
-      const rut = Math.exp(-((al - 0.85) ** 2) / 0.09) + 0.55 * Math.exp(-((al - 2.25) ** 2) / 0.12);
-      const berm = Math.exp(-((al - 1.6) ** 2) / 0.1) * 0.6 + sstep(2.9, 3.6, al) * 0.9;
+      const lat = (x / w - 0.5) * 12, al = Math.abs(lat);
+      const rut = (Math.exp(-((al - 0.85) ** 2) / 0.09) + 0.55 * Math.exp(-((al - 2.25) ** 2) / 0.12)) * ruts;
+      const berm = (Math.exp(-((al - 1.6) ** 2) / 0.1) * 0.6 + sstep(hw - 0.8, hw - 0.1, al) * 0.9) * berms;
       const n1 = tnoise(x, y, w, h, 0.05), n2 = tnoise(x + 99, y, w, h, 0.18), grain = R();
       let stone = 0; if (grain > 0.93) stone = 1; else if (grain > 0.82) stone = 0.5;
       const loose = clamp(berm + n1 * 0.4, 0, 1);
       let r = 128 + n1 * 26 + n2 * 14, gg = 108 + n1 * 22 + n2 * 12, b = 84 + n1 * 18 + n2 * 10;
       const comp = rut * (1 - loose * 0.6); r -= comp * 30; gg -= comp * 28; b -= comp * 22; // compacted, darker
-      const sv = (grain - 0.5) * 60 * (0.4 + loose); r += sv + stone * 30 * loose; gg += sv + stone * 26 * loose; b += sv + stone * 22 * loose;
-      const grass = sstep(3.2, 4.8, al + n2 * 0.6); r = lerp(r, 70 + n2 * 20, grass); gg = lerp(gg, 82 + n2 * 22, grass); b = lerp(b, 44 + n2 * 10, grass);
-      const k = (y * w + x) * 4; d[k] = r; d[k + 1] = gg; d[k + 2] = b; d[k + 3] = 255;
-      hg[y * w + x] = n2 * 0.6 + (grain - 0.5) * (0.4 + loose * 1.6) + stone * loose * 1.5 - rut * 0.8 + berm * 0.8;
+      const sv = (grain - 0.5) * 60 * (0.4 + loose) * (berms ? 1 : 0.3); r += sv + stone * 30 * loose; gg += sv + stone * 26 * loose; b += sv + stone * 22 * loose;
+      const vgT = sstep(hw - 0.5, hw + 1.1, al + n2 * (berms ? 0.6 : 0)); r = lerp(r, vg[0] + n2 * 20, vgT); gg = lerp(gg, vg[1] + n2 * 22, vgT); b = lerp(b, vg[2] + n2 * 10, vgT);
+      let paint = 0;
+      if (kind === 'tarmac') { const vv = (y / h) * 16; if (al < 0.07 && (vv % 8) < 3.5) paint = 1; if (Math.abs(al - (hw - 0.35)) < 0.07) paint = 1; paint *= 0.85 + 0.15 * R(); }
+      const k = (y * w + x) * 4; d[k] = r; d[k + 1] = gg; d[k + 2] = b; d[k + 3] = 255 - paint * 170;
+      hg[y * w + x] = n2 * 0.6 + (grain - 0.5) * (0.4 + loose * 1.6) * (berms ? 1 : 0.3) + stone * loose * 1.5 - rut * 0.8 + berm * 0.8;
     }
     g.putImageData(im, 0, 0);
     const map = tex(c, true, true), nrm = tex(normalFrom(hg, w, h, 1.6), true, false);
-    map.wrapS = nrm.wrapS = THREE.ClampToEdgeWrapping; return { map, nrm };
+    map.wrapS = nrm.wrapS = THREE.ClampToEdgeWrapping; map.premultiplyAlpha = false; return { map, nrm };
+  }
+  // birch bark: white with dark horizontal lenticels
+  function birch() {
+    const w = 128, h = 256, c = cv(w, h), g = c.getContext('2d'); g.fillStyle = '#e8e4da'; g.fillRect(0, 0, w, h);
+    for (let i = 0; i < 260; i++) { g.fillStyle = `rgba(${20 + R() * 30 | 0},${20 + R() * 25 | 0},${18 + R() * 20 | 0},${0.5 + R() * 0.5})`; g.fillRect(R() * w, R() * h, 4 + R() * 26, 1 + R() * 3); }
+    for (let i = 0; i < 900; i++) { g.fillStyle = `rgba(150,140,125,${R() * 0.25})`; g.fillRect(R() * w, R() * h, 2, 2); }
+    return tex(c, true, true);
+  }
+  // autumn leaf clusters (alpha) for deciduous crowns
+  function leaves() {
+    const w = 256, h = 256, c = cv(w, h), g = c.getContext('2d');
+    const cols = [[214, 150, 30], [230, 110, 25], [190, 60, 25], [240, 190, 60], [150, 140, 40], [200, 90, 30]];
+    for (let i = 0; i < 700; i++) {
+      const a = R() * 6.28, rr = Math.sqrt(R()) * 118, x = 128 + Math.cos(a) * rr, y = 128 + Math.sin(a) * rr, cc = cols[R() * cols.length | 0], s = 0.7 + R() * 0.45;
+      g.save(); g.translate(x, y); g.rotate(R() * 6.28); g.fillStyle = `rgb(${cc[0] * s | 0},${cc[1] * s | 0},${cc[2] * s | 0})`; g.beginPath(); g.ellipse(0, 0, 7 + R() * 4, 3.5 + R() * 2, 0, 0, 7); g.fill(); g.restore();
+    }
+    return tex(c, false, true);
   }
   // forest floor: needles, moss, dirt, twigs (world space, 6 m tile)
   function floor() {
@@ -113,5 +134,6 @@ const TEX = (() => {
   }
   function dust() { const c = cv(64, 64), g = c.getContext('2d'), gr = g.createRadialGradient(32, 32, 0, 32, 32, 32); gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.5, 'rgba(255,255,255,.45)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.fillRect(0, 0, 64, 64); return tex(c, false, false); }
   let cache = null;
-  return () => cache || (cache = { road: road(), floor: floor(), bark: bark(), needles: needles(), branch: branch(), plants: plants(), dust: dust() });
+  const roads = {};
+  return (kind, hw) => { if (!cache) cache = { floor: floor(), bark: bark(), needles: needles(), branch: branch(), plants: plants(), dust: dust(), birch: birch(), leaves: leaves() }; const k = (kind || 'gravel') + (hw || 3.7); cache.road = roads[k] || (roads[k] = road(kind || 'gravel', hw || 3.7)); return cache; };
 })();
