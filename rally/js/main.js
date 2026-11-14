@@ -308,8 +308,8 @@ function frame(now) {
   // stuck or upside down: tell the driver how to recover
   if (G.role === 'drv' && G.phase === 'run') { const up = fwdV.set(0, 1, 0).applyQuaternion(st.q).y; G.stuckT = (up < 0.35 || (st.speed < 1.2 && G.car.roadD > ROAD_HW + 1)) ? (G.stuckT || 0) + dt : 0; if (G.stuckT > 1.5 && !G.stuckSaid) { G.stuckSaid = true; say('PRESS R TO RECOVER', '', 2500); } if (G.stuckT === 0) G.stuckSaid = false; }
   G.hurt = Math.max(0, (G.hurt || 0) - dt * 1.2);
-  World.render({ spd: clamp((st.speed - 14) / 34, 0, 1), hurt: G.hurt });
   perf(dt);
+  World.render({ spd: clamp((st.speed - 14) / 34, 0, 1), hurt: G.hurt });
 }
 function hud(st) {
   $('trip').textContent = 'TRIP ' + (Math.max(0, st.prog - World.startS) / 1000).toFixed(2) + ' km';
@@ -322,12 +322,14 @@ function hud(st) {
   $('net').textContent = G.solo ? '' : (Net.role === 'host' ? 'ping ' + Math.round(Net.ping) + ' ms' : (performance.now() - Net.lastRx > 2500 ? 'NO SIGNAL' : 'online'));
 }
 // resolution governor: keep the frame rate up on slow machines
-const PF = { t: 0, n: 0, scale: 1 };
+// (runs before the frame is drawn: resizing the canvas clears it, which used to flash black; slow to raise again so it can't oscillate)
+const PF = { t: 0, n: 0, calm: 0 };
 function perf(dt) {
-  PF.t += dt; PF.n++; if (PF.t < 2) return; const ms = PF.t / PF.n * 1000; PF.t = 0; PF.n = 0;
-  const R = World.R, pr = R.getPixelRatio();
-  if (ms > 24 && pr > 0.6) { R.setPixelRatio(Math.max(0.6, pr - 0.15)); World.resize(); }
-  else if (ms < 13 && pr < Math.min(devicePixelRatio || 1, 2) - 0.1) { R.setPixelRatio(pr + 0.1); World.resize(); }
+  PF.t += dt; PF.n++; if (PF.t < 3) return; const ms = PF.t / PF.n * 1000; PF.t = 0; PF.n = 0;
+  const R = World.R, pr = R.getPixelRatio(), cap = Math.min(devicePixelRatio || 1, World.gfx === 'high' ? 2 : World.gfx === 'med' ? 1.5 : 1);
+  if (ms > 26 && pr > 0.6) { R.setPixelRatio(Math.max(0.6, pr - 0.15)); World.resize(); PF.calm = 0; }
+  else if (ms < 12 && pr < cap - 0.05) { if (++PF.calm >= 4) { R.setPixelRatio(Math.min(cap, pr + 0.1)); World.resize(); PF.calm = 0; } }
+  else PF.calm = 0;
 }
 requestAnimationFrame(frame);
 // test hooks

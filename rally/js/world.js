@@ -32,7 +32,7 @@ const World = {
     const rt = (w, h, ms) => new THREE.WebGLRenderTarget(w, h, { type: HF, samples: ms || 0, depthBuffer: !!ms });
     const quad = mat => { const m = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), mat); m.frustumCulled = false; const sc = new THREE.Scene(); sc.add(m); return sc; };
     const vs = 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0., 1.); }';
-    const bright = new THREE.ShaderMaterial({ uniforms: { t: { value: null } }, vertexShader: vs, fragmentShader: 'uniform sampler2D t; varying vec2 vUv; void main(){ vec3 c = texture2D(t, vUv).rgb; float l = dot(c, vec3(.2126,.7152,.0722)); gl_FragColor = vec4(c * smoothstep(1.1, 2.6, l), 1.); }', depthTest: false, depthWrite: false });
+    const bright = new THREE.ShaderMaterial({ uniforms: { t: { value: null } }, vertexShader: vs, fragmentShader: 'uniform sampler2D t; varying vec2 vUv; void main(){ vec3 c = texture2D(t, vUv).rgb; if (any(isnan(c)) || any(isinf(c))) c = vec3(0.); c = min(c, vec3(40.)); float l = dot(c, vec3(.2126,.7152,.0722)); gl_FragColor = vec4(c * smoothstep(1.1, 2.6, l), 1.); }', depthTest: false, depthWrite: false });
     const blur = new THREE.ShaderMaterial({ uniforms: { t: { value: null }, d: { value: new THREE.Vector2() } }, vertexShader: vs, fragmentShader: 'uniform sampler2D t; uniform vec2 d; varying vec2 vUv; void main(){ vec3 c = texture2D(t, vUv).rgb * .227; c += (texture2D(t, vUv + d * 1.38).rgb + texture2D(t, vUv - d * 1.38).rgb) * .316; c += (texture2D(t, vUv + d * 3.23).rgb + texture2D(t, vUv - d * 3.23).rgb) * .07; gl_FragColor = vec4(c, 1.); }', depthTest: false, depthWrite: false });
     const comp = new THREE.ShaderMaterial({
       uniforms: { t: { value: null }, b: { value: null }, exp: { value: 1 }, spd: { value: 0 }, time: { value: 0 }, hurt: { value: 0 }, asp: { value: 1 } },
@@ -46,7 +46,8 @@ const World = {
           // speed blur: smear toward the centre, only at the edges, grows with speed
           float k = spd * smoothstep(.15, .75, r) * .035; vec3 c = vec3(0.);
           for (int i = 0; i < 6; i++) c += texture2D(t, vUv - d * k * float(i) / 5.).rgb; c /= 6.;
-          c += texture2D(b, vUv).rgb * .55;
+          if (any(isnan(c)) || any(isinf(c))) c = vec3(.5); c = min(c, vec3(60.));
+          vec3 bl = texture2D(b, vUv).rgb; if (any(isnan(bl))) bl = vec3(0.); c += bl * .55;
           c = aces(c);
           // grade: a little warmth in the highlights, cool shadows, slight saturation
           float l = dot(c, vec3(.2126,.7152,.0722)); c = mix(vec3(l), c, 1.08); c *= mix(vec3(.96,.99,1.04), vec3(1.03,1.,.95), smoothstep(.1,.8,l));
@@ -354,7 +355,20 @@ const World = {
     // spectators behind tape at jumps, crests and hairpins
     this.crowds = [];
     { const spots = S.jumps.map(j => j.s).concat(S.corners.filter(c => c.g === 1).map(c => (c.s0 + c.s1) / 2), S.crests.slice(0, 2).map(c => c.s));
-      const bodyG = new THREE.CapsuleGeometry(0.24, 0.9, 3, 8); bodyG.translate(0, 0.75, 0); const headG = new THREE.SphereGeometry(0.13, 10, 8); headG.translate(0, 1.55, 0);
+      const tint = (geo, c) => { const col = new THREE.Color(c), a = new Float32Array(geo.attributes.position.count * 3); for (let i = 0; i < a.length; i += 3) { a[i] = col.r; a[i + 1] = col.g; a[i + 2] = col.b; } geo.setAttribute('color', new THREE.BufferAttribute(a, 3)); return geo; };
+      const cyl = (r0, r1, a, b) => { const d = new THREE.Vector3().subVectors(b, a), g = new THREE.CylinderGeometry(r1, r0, d.length(), 8); g.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), d.clone().normalize())); g.translate((a.x + b.x) / 2, (a.y + b.y) / 2, (a.z + b.z) / 2); return g; }, V3 = (x, y, z) => new THREE.Vector3(x, y, z);
+      // the untinted part: trousers, shoes, neck, head, hair
+      const rest = (hair) => this.merge([
+        tint(cyl(0.085, 0.075, V3(-0.1, 0.06, 0), V3(-0.1, 0.9, 0)), 0x2a3140), tint(cyl(0.085, 0.075, V3(0.1, 0.06, 0), V3(0.1, 0.9, 0)), 0x2a3140),
+        tint(new THREE.BoxGeometry(0.11, 0.08, 0.24).translate(-0.1, 0.04, 0.04), 0x1a1a1a), tint(new THREE.BoxGeometry(0.11, 0.08, 0.24).translate(0.1, 0.04, 0.04), 0x1a1a1a),
+        tint(cyl(0.05, 0.05, V3(0, 1.44, 0), V3(0, 1.54, 0)), 0xd8a584), tint(new THREE.SphereGeometry(0.115, 12, 10).scale(1, 1.12, 1.05).translate(0, 1.64, 0.01), 0xd8a584),
+        tint(new THREE.SphereGeometry(0.122, 12, 8, 0, Math.PI * 2, 0, 1.3).scale(1, 1.1, 1.08).translate(0, 1.66, -0.01), hair),
+      ]);
+      // the tinted part: jacket torso and sleeves (arms down or up)
+      const jacket = up => { const prof = [[0.0, 0.86], [0.17, 0.88], [0.18, 1.1], [0.2, 1.3], [0.22, 1.42], [0.12, 1.47], [0.0, 1.48]].map(p => new THREE.Vector2(p[0], p[1])); const t = new THREE.LatheGeometry(prof, 12); t.scale(1, 1, 0.62);
+        const arms = [-1, 1].map(sd => up ? cyl(0.06, 0.05, V3(sd * 0.23, 1.4, 0), V3(sd * 0.34, 1.98, 0.05)) : cyl(0.06, 0.05, V3(sd * 0.23, 1.4, 0), V3(sd * 0.27, 0.92, 0.04)));
+        const hands = [-1, 1].map(sd => tint(new THREE.SphereGeometry(0.045, 8, 6).translate(sd * (up ? 0.35 : 0.27), up ? 2.02 : 0.88, up ? 0.05 : 0.04), 0xd8a584));
+        return { jk: this.merge([t, ...arms]), hands: this.merge(hands) }; };
       const people = [], jackets = [0xd22d2d, 0x2a6cd6, 0xf2b632, 0x2f8a3a, 0xeeeeee, 0x222222, 0xff7a1a, 0x7a3fb0];
       for (const s0 of spots) {
         const p = S.at(s0), corner = S.corners.find(c => s0 > c.s0 && s0 < c.s1), side = corner ? (corner.dir === 'L' ? -1 : 1) : (rng() < 0.5 ? -1 : 1); // outside of the corner is the classic spot... so stand on the inside, safely
@@ -372,9 +386,17 @@ const World = {
         this.crowds.push(cr);
       }
       if (people.length) {
-        const bm = new THREE.InstancedMesh(bodyG, new THREE.MeshStandardMaterial({ roughness: 0.8 }), people.length), hm = new THREE.InstancedMesh(headG, new THREE.MeshStandardMaterial({ color: 0xd9a888, roughness: 0.7 }), people.length), col = new THREE.Color();
-        people.forEach((o, i) => { m4.makeRotationY(o.rot); m4.setPosition(o.x, o.y, o.z); bm.setMatrixAt(i, m4); hm.setMatrixAt(i, m4); bm.setColorAt(i, col.setHex(o.c)); });
-        bm.castShadow = hm.castShadow = this.gfx !== 'low'; bm.computeBoundingSphere(); hm.computeBoundingSphere(); scene.add(bm, hm); this.ppl = { bm, hm };
+        // four instanced meshes: tinted jacket and untinted rest, each with arms down / arms up
+        const J = [jacket(false), jacket(true)], restG = [rest(0x3a2a1c), rest(0x1a1410)], col = new THREE.Color(), skinM = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.75 });
+        people.forEach(o => { o.up = Math.random() < 0.35 ? 1 : 0; });
+        this.ppl = { meshes: [] };
+        for (const up of [0, 1]) {
+          const L = people.filter(o => o.up === up); if (!L.length) continue;
+          const jm = new THREE.InstancedMesh(J[up].jk, new THREE.MeshStandardMaterial({ roughness: 0.8 }), L.length), hm2 = new THREE.InstancedMesh(J[up].hands, skinM, L.length), rm2 = new THREE.InstancedMesh(restG[up], skinM, L.length);
+          L.forEach((o, i) => { o.j = i; o.set = this.ppl.meshes.length; m4.makeRotationY(o.rot); m4.setPosition(o.x, o.y, o.z); jm.setMatrixAt(i, m4); hm2.setMatrixAt(i, m4); rm2.setMatrixAt(i, m4); jm.setColorAt(i, col.setHex(o.c)); });
+          for (const m of [jm, hm2, rm2]) { m.castShadow = this.gfx !== 'low'; m.computeBoundingSphere(); scene.add(m); }
+          this.ppl.meshes.push([jm, hm2, rm2]);
+        }
       }
     }
     // start and finish gantries
@@ -410,8 +432,7 @@ const World = {
   // spectators bounce and jump when the car is near
   wave(cr, t) {
     if (!this.ppl) return; const m = new THREE.Matrix4();
-    for (const o of cr.ppl) { const hop = Math.max(0, Math.sin(t * 9 + o.ph)) * 0.18; m.makeRotationY(o.rot); m.setPosition(o.x, o.y + hop, o.z); this.ppl.bm.setMatrixAt(o.i, m); this.ppl.hm.setMatrixAt(o.i, m); }
-    this.ppl.bm.instanceMatrix.needsUpdate = this.ppl.hm.instanceMatrix.needsUpdate = true;
+    for (const o of cr.ppl) { const hop = Math.max(0, Math.sin(t * 9 + o.ph)) * 0.18, set = this.ppl.meshes[o.set]; if (!set) continue; m.makeRotationY(o.rot); m.setPosition(o.x, o.y + hop, o.z); for (const mm of set) { mm.setMatrixAt(o.j, m); mm.instanceMatrix.needsUpdate = true; } }
   },
   puff(x, y, z, vx, vy, vz, size, life, r, g, b) {
     const d = this.dp, i = d.i; d.i = (i + 1) % d.n;
