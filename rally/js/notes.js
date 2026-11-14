@@ -10,7 +10,7 @@ const Notes = {
       if (c.g >= 3 && c.ang > 1.7) { say += ' long'; txt += ' LONG'; }
       out.push({ s: c.s0, end: c.s1, k: 'c', c, say, txt });
     }
-    for (const j of S.jumps) out.push({ s: j.s - 16, end: j.s, k: 'j', say: j.big ? 'big jump' : 'jump', txt: j.big ? 'BIG JUMP' : 'JUMP' });
+    for (const j of S.jumps) { const ty = j.type === 'table' ? ['tabletop', 'TABLETOP'] : j.type === 'double' ? ['double jump', 'DOUBLE JUMP'] : j.type === 'step' ? ['jump, step down', 'STEP DOWN'] : j.big ? ['big jump', 'BIG JUMP'] : ['jump', 'JUMP']; out.push({ s: j.s - 16, end: j.s, k: 'j', say: ty[0], txt: ty[1] }); }
     for (const c of S.crests) out.push({ s: c.s - 20, end: c.s, k: 'cr', say: 'over crest', txt: 'OVER CREST' });
     const ob = (S.B && S.B.obs) || 'log'; for (const l of S.logs) out.push({ s: l.s - 4, end: l.s, k: 'l', say: ob + ' ' + (l.side === 'L' ? 'left, keep right' : 'right, keep left'), txt: ob.toUpperCase() + ' ' + (l.side === 'L' ? 'LEFT › KEEP RIGHT' : 'RIGHT › KEEP LEFT') });
     out.sort((a, b) => a.s - b.s);

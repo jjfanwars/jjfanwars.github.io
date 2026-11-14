@@ -66,7 +66,7 @@ class CarView {
     add(new THREE.BoxGeometry(0.26, 0.26, 1.05), M.carbon, 0, -0.27, 0.05);
     this.shiftL = new THREE.Group(); this.shiftL.position.set(0.15, -0.12, 0.3); I.add(this.shiftL);
     { const l = new THREE.Mesh(new THREE.CylinderGeometry(0.011, 0.014, 0.42, 8), M.alu); l.position.y = 0.21; this.shiftL.add(l); const k = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.022, 0.09, 12), M.suede); k.position.y = 0.43; this.shiftL.add(k); this.shiftL.rotation.x = -0.35; this.lastGear = 1; this.shiftA = 0; }
-    this.hbL = new THREE.Group(); this.hbL.position.set(0.15, -0.14, 0.1); I.add(this.hbL); { const l = new THREE.Mesh(new THREE.CylinderGeometry(0.013, 0.016, 0.36, 8), M.alu); l.position.y = 0.18; this.hbL.add(l); const k = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.1, 12), new THREE.MeshStandardMaterial({ color: 0xd01818, roughness: 0.5 })); k.position.y = 0.37; this.hbL.add(k); }
+    this.hbL = new THREE.Group(); this.hbL.position.set(0.15, -0.14, 0.1); I.add(this.hbL); { const l = new THREE.Mesh(new THREE.CylinderGeometry(0.011, 0.014, 0.26, 8), M.alu); l.position.y = 0.13; this.hbL.add(l); const k = new THREE.Mesh(new THREE.CylinderGeometry(0.016, 0.016, 0.06, 12), new THREE.MeshStandardMaterial({ color: 0xa01414, roughness: 0.5 })); k.position.y = 0.27; this.hbL.add(k); }
     // co-driver: trip computer with a live display, gooseneck map lamp, footrest
     this.tripC = document.createElement('canvas'); this.tripC.width = 256; this.tripC.height = 112; this.tripT = new THREE.CanvasTexture(this.tripC); this.tripT.colorSpace = THREE.SRGBColorSpace;
     add(new THREE.BoxGeometry(0.2, 0.1, 0.06), M.plastic, -0.42, 0.29, 0.52, -0.3);
@@ -83,10 +83,9 @@ class CarView {
       add(new THREE.BoxGeometry(0.08, 0.6, 0.14), M.plastic, sd * 0.8, 0.48, -0.95);
       const mr = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.1, 0.16), black); mr.position.set(sd * 0.98, 0.3, 0.75); g.add(mr);
     }
-    { const net = add(new THREE.PlaneGeometry(0.75, 0.38), M.net, 0.835, 0.43, -0.12, 0, Math.PI / 2); net.material.side = THREE.DoubleSide; }
     add(new THREE.BoxGeometry(1.5, 0.02, 2.1), M.liner, 0, 0.775, -0.6); add(new THREE.BoxGeometry(0.42, 0.03, 0.32), M.plastic, 0, 0.76, -0.2);
     // windscreen black band (frit) so the glass has an edge
-    { const c = document.createElement('canvas'); c.width = 256; c.height = 128; const x = c.getContext('2d'); x.fillStyle = '#000'; x.fillRect(0, 0, 256, 10); x.fillRect(0, 118, 256, 10); x.fillRect(0, 0, 8, 128); x.fillRect(248, 0, 8, 128); for (let i = 0; i < 256; i += 4) for (let j = 0; j < 6; j++) { x.beginPath(); x.arc(i + 2, 12 + j * 3, 1.4 - j * 0.22, 0, 7); x.fill(); x.beginPath(); x.arc(i + 2, 116 - j * 3, 1.4 - j * 0.22, 0, 7); x.fill(); }
+    { const c = document.createElement('canvas'); c.width = 256; c.height = 128; const x = c.getContext('2d'); x.fillStyle = '#000'; x.fillRect(0, 0, 256, 7); x.fillRect(0, 121, 256, 7); x.fillRect(0, 0, 5, 128); x.fillRect(251, 0, 5, 128); for (let i = 0; i < 256; i += 3) for (let j = 0; j < 0; j++) { x.beginPath(); x.arc(i + 2, 12 + j * 3, 1.4 - j * 0.22, 0, 7); x.fill(); x.beginPath(); x.arc(i + 2, 116 - j * 3, 1.4 - j * 0.22, 0, 7); x.fill(); }
       const t = new THREE.CanvasTexture(c); const fr = new THREE.Mesh(new THREE.PlaneGeometry(1.5, Math.hypot(0.66, 0.51) + 0.02), new THREE.MeshBasicMaterial({ map: t, transparent: true, depthWrite: false, side: THREE.DoubleSide, color: 0x000000 })); fr.position.set(0, 0.512, 0.645); fr.rotation.x = Math.atan2(-0.66, 0.51); g.add(fr); }
     // rear-view mirror shows a live render from behind the car
     this.mirrorRT = new THREE.WebGLRenderTarget(320, 96, { type: THREE.HalfFloatType });
@@ -123,7 +122,7 @@ class CarView {
     // pedals
     for (const [x, h] of [[0.48, 0], [0.37, 0.02], [0.27, 0]]) add(new THREE.BoxGeometry(0.07, 0.11, 0.015), M.alu, x, -0.25 + h, 0.75, 0.4);
     // ---- crew figures (race suits and helmets) ----
-    this.crew = { drv: this.person(0x1f2a44, 0xf2b632), nav: this.person(0x3b2d22, 0xe0e0e0) };
+    this.crew = { drv: this.person(0x2b303b, 0xf2b632), nav: this.person(0x3b2d22, 0xe0e0e0) };
     this.crew.drv.g.position.copy(SEAT.drv); this.crew.nav.g.position.copy(SEAT.nav); I.add(this.crew.drv.g, this.crew.nav.g);
     // navigator's clipboard map
     this.mapC = document.createElement('canvas'); this.mapC.width = 1024; this.mapC.height = 1280; this.mapT = new THREE.CanvasTexture(this.mapC); this.mapT.colorSpace = THREE.SRGBColorSpace; this.mapT.anisotropy = 8;
@@ -159,8 +158,8 @@ class CarView {
     const net = cv(128, 128, (g, w, h) => { g.strokeStyle = '#111'; g.lineWidth = 5; for (let i = -128; i < 256; i += 22) { g.beginPath(); g.moveTo(i, 0); g.lineTo(i + 128, 128); g.stroke(); g.beginPath(); g.moveTo(i + 128, 0); g.lineTo(i, 128); g.stroke(); } g.strokeStyle = '#c81e1e'; g.lineWidth = 10; g.strokeRect(0, 0, w, h); });
     return CarView._M = {
       carbon: new THREE.MeshPhysicalMaterial({ map: tx(carbon, 4), roughness: 0.4, metalness: 0.2, clearcoat: 1, clearcoatRoughness: 0.15 }),
-      plastic: new THREE.MeshStandardMaterial({ map: tx(noise('#17181b', 0.18), 3), roughness: 0.85 }),
-      suede: new THREE.MeshStandardMaterial({ map: tx(noise('#1b1b1d', 0.25), 6), roughness: 1 }),
+      plastic: new THREE.MeshStandardMaterial({ map: tx(noise('#1a1b1e', 0.05), 3), roughness: 0.62, metalness: 0.05 }),
+      suede: new THREE.MeshStandardMaterial({ map: tx(noise('#1b1b1d', 0.08), 6), roughness: 1 }),
       liner: new THREE.MeshStandardMaterial({ map: tx(noise('#2c2e33', 0.2), 4), roughness: 1, side: THREE.DoubleSide }),
       seat: new THREE.MeshStandardMaterial({ map: tx(seat), roughness: 0.95 }), seatSide: new THREE.MeshStandardMaterial({ map: tx(noise('#141519', 0.15), 3), roughness: 0.9 }),
       alu: new THREE.MeshStandardMaterial({ color: 0xb8bcc2, metalness: 0.9, roughness: 0.32 }), checker: new THREE.MeshStandardMaterial({ map: tx(checker, 6), metalness: 0.7, roughness: 0.45 }),
@@ -177,10 +176,18 @@ class CarView {
     const helmet = new THREE.Mesh(new THREE.SphereGeometry(0.15, 20, 14), hm); headG.add(helmet);
     const visor = new THREE.Mesh(new THREE.SphereGeometry(0.152, 20, 10, -0.9, 1.8, 1.1, 0.75), vis); visor.rotation.y = Math.PI; visor.rotation.y = 0; headG.add(visor);
     const armM = sm, glove = new THREE.MeshStandardMaterial({ color: 0x151515, roughness: 0.8 });
-    const mkArm = () => { const a = new THREE.Mesh(new THREE.CylinderGeometry(0.038, 0.045, 1, 8), armM); const h = new THREE.Mesh(new THREE.SphereGeometry(0.045, 10, 8), glove); g.add(a, h); return { a, h }; };
+    const mkArm = () => { const u = new THREE.Mesh(new THREE.CylinderGeometry(0.036, 0.042, 1, 10), armM), f = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.035, 1, 10), armM), cuff = new THREE.Mesh(new THREE.CylinderGeometry(0.036, 0.036, 0.05, 10), glove), h = new THREE.Group(); const palm = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.03, 0.09), glove); palm.position.z = 0.03; const thumb = new THREE.Mesh(new THREE.CapsuleGeometry(0.011, 0.035, 3, 6), glove); thumb.position.set(0.035, 0, 0.02); thumb.rotation.z = 0.8; h.add(palm, thumb, cuff); cuff.rotation.x = Math.PI / 2; cuff.position.z = -0.025; g.add(u, f, h); return { u, f, h }; };
     return { g, headG, torso, straps, arms: [mkArm(), mkArm()] };
   }
-  setArm(arm, from, to) { const d = new THREE.Vector3().subVectors(to, from), L = d.length(); arm.a.scale.set(1, L, 1); arm.a.position.copy(from).addScaledVector(d, 0.5); arm.a.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), d.normalize()); arm.h.position.copy(to); }
+  // two-bone arm: shoulder -> elbow (bent down and out) -> hand
+  setArm(arm, from, to, out) {
+    const L1 = 0.31, L2 = 0.3, d = new THREE.Vector3().subVectors(to, from), D = Math.min(d.length(), L1 + L2 - 0.005), dir = d.clone().normalize();
+    const a = (L1 * L1 - L2 * L2 + D * D) / (2 * D), hgt = Math.sqrt(Math.max(0, L1 * L1 - a * a));
+    const pole = new THREE.Vector3(out || 0, -1, -0.3).normalize(); pole.addScaledVector(dir, -pole.dot(dir)).normalize();
+    const elbow = from.clone().addScaledVector(dir, a).addScaledVector(pole, hgt), hand = from.clone().addScaledVector(dir, D);
+    const seg = (m, p, q) => { const v = new THREE.Vector3().subVectors(q, p); m.scale.set(1, v.length(), 1); m.position.copy(p).addScaledVector(v, 0.5); m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), v.normalize()); };
+    seg(arm.u, from, elbow); seg(arm.f, elbow, hand); arm.h.position.copy(hand); arm.h.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), new THREE.Vector3().subVectors(hand, elbow).normalize());
+  }
   // st: {pos, q, steer, comp[4], spin, speed, hb, rpm, gear}; me: 'drv'|'nav'; look: {yaw,pitch}; navLook: other player's head yaw
   update(st, dt, me, look, other) {
     const g = this.g; g.position.copy(st.pos); g.quaternion.copy(st.q); g.updateMatrixWorld();
@@ -194,7 +201,7 @@ class CarView {
     this.hbL.rotation.x = st.hb ? -0.55 : -0.15;
     // crew: driver's hands on the rim, navigator holds the board
     const I = this.interior, D = this.crew.drv, N = this.crew.nav, rimPt = a => { const p = new THREE.Vector3(Math.sin(a) * 0.17, Math.cos(a) * 0.17, 0.02); p.applyEuler(new THREE.Euler(-0.42, 0, swA, 'XYZ')); return p.add(this.wheelG.position).sub(D.g.position); };
-    this.setArm(D.arms[0], new THREE.Vector3(0.2, -0.24, -0.08), rimPt(1.45)); this.setArm(D.arms[1], new THREE.Vector3(-0.2, -0.24, -0.08), rimPt(-1.45));
+    this.setArm(D.arms[0], new THREE.Vector3(0.2, -0.2, -0.1), rimPt(1.4), 1); this.setArm(D.arms[1], new THREE.Vector3(-0.2, -0.2, -0.1), rimPt(-1.4), -1);
     D.headG.visible = D.straps.visible = me !== 'drv'; N.headG.visible = N.straps.visible = me !== 'nav';
     D.headG.rotation.set(-(me === 'drv' ? 0 : (other ? other.pitch : 0)) * 0.6, me === 'drv' ? 0 : (other ? other.yaw : 0) * 0.8, 0);
     N.headG.rotation.set(-(me === 'nav' ? 0 : (other ? other.pitch : 0)) * 0.6, me === 'nav' ? 0 : (other ? other.yaw : 0) * 0.8, 0);
@@ -202,7 +209,7 @@ class CarView {
     const tgt = me === 'nav' && look.map ? 1 : (me !== 'nav' && other && other.map ? 1 : 0); this.mapUp += (tgt - this.mapUp) * Math.min(1, dt * 9); const u = sstep(0, 1, this.mapUp);
     this.board.position.set(-0.37, lerp(0.0, 0.35, u), lerp(-0.02, 0.0, u)); this.board.rotation.set(lerp(-0.35, -1.38, u), 0, 0);
     const bp = this.board.position.clone().sub(N.g.position);
-    this.setArm(N.arms[0], new THREE.Vector3(0.2, -0.24, -0.08), bp.clone().add(new THREE.Vector3(0.15, 0, 0.05))); this.setArm(N.arms[1], new THREE.Vector3(-0.2, -0.24, -0.08), bp.clone().add(new THREE.Vector3(-0.15, 0, 0.05)));
+    this.setArm(N.arms[0], new THREE.Vector3(0.2, -0.2, -0.1), bp.clone().add(new THREE.Vector3(0.15, 0, 0.05)), 1); this.setArm(N.arms[1], new THREE.Vector3(-0.2, -0.2, -0.1), bp.clone().add(new THREE.Vector3(-0.15, 0, 0.05)), -1);
     this.crackM.opacity = clamp(((st.dmg || 0) - 0.12) * 1.4, 0, 0.85);
     if (this.remote) return;
     // rev counter needle (0..8000 over 270 degrees), shift lights, gear display

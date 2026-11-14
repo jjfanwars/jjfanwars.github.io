@@ -7,6 +7,7 @@ const BIOMES = {
   autumn: { name: 'Autumn', hw: 3.7, grip: 1.45, off: 0.85, offDrag: 55, hills: 30, canyon: 0, jumps: 1, crests: 1.2, obs: 'log', flora: 'autumn', road: 'leafroad', ground: 'leaves', dust: [0.62, 0.52, 0.4], fogK: 0.9 },
   snow: { name: 'Snow', hw: 3.9, grip: 1.08, off: 0.7, offDrag: 120, hills: 30, canyon: 0, jumps: 0.8, crests: 1, obs: 'log', flora: 'snow', road: 'snowroad', ground: 'snow', banks: true, dust: [0.95, 0.97, 1], fogK: 1.1 },
   desert: { name: 'Desert', hw: 4.3, grip: 1.3, off: 0.95, offDrag: 30, hills: 18, canyon: 16, jumps: 1.8, crests: 1.4, obs: 'rock', flora: 'desert', road: 'sandroad', ground: 'dryground', dust: [0.86, 0.73, 0.56], fogK: 0.5 },
+  park: { name: 'Park', hw: 4.2, grip: 1.55, off: 1.0, offDrag: 35, hills: 20, canyon: 0, jumps: 2.6, crests: 1, obs: 'log', flora: 'park', road: 'dirtroad', ground: 'grass', dust: [0.62, 0.5, 0.38], fogK: 0.6 },
   city: { name: 'City', hw: 4.6, grip: 1.8, off: 1.4, offDrag: 0, hills: 7, canyon: 0, jumps: 0, crests: 0.6, obs: 'barrier', flora: 'city', road: 'asphalt', ground: 'pavers', dust: [0.55, 0.55, 0.55], dustK: 0.15, fogK: 0.75, city: true },
 };
 const STAGES = [
@@ -22,6 +23,9 @@ const STAGES = [
   { name: 'Old Town Streets', seed: 1999, len: 2600, tod: 'cityDay', biome: 'city' },
   { name: 'Harbour Lights', seed: 7777, len: 2800, tod: 'cityDusk', biome: 'city' },
   { name: 'Kettle Creek Sprint', seed: 7310, len: 2400, tod: 'noon', biome: 'forest' },
+  { name: 'Berm Valley', seed: 5309, len: 2800, tod: 'noon', biome: 'park', berms: 1, jumpK: 1.3 },
+  { name: 'Kicker Ridge', seed: 8128, len: 3200, tod: 'morning', biome: 'forest', berms: 1, jumpK: 2.4 },
+  { name: 'Sandpit Berms', seed: 6464, len: 3000, tod: 'desertNoon', biome: 'desert', berms: 1, jumpK: 1.2 },
 ];
 let ROAD_HW = 3.7; const STEP = 2, CELL = 2;
 const GRADE_R = [0, 10, 19, 31, 50, 82, 140];
@@ -95,8 +99,14 @@ function buildStage(cfg) {
   const jumps = [], crests = [], logs = [];
   const busy = (s, r) => jumps.some(j => Math.abs(j.s - s) < r) || crests.some(c => Math.abs(c.s - s) < r) || logs.some(l => Math.abs(l.s - s) < r);
   const longS = straights.filter(q => q.b - q.a > 85).sort(() => rnd() - 0.5);
-  const nJ = Math.round(L / 750 * B.jumps), nC = Math.round(L / 650 * B.crests);
-  for (const q of longS) { if (jumps.length >= nJ) break; const s = q.a + 45 + rnd() * Math.max(1, q.b - q.a - 80); if (!busy(s, 60)) jumps.push({ s, k: 'jump', big: rnd() < 0.4 }); }
+  const nJ = Math.round(L / 750 * B.jumps * (cfg.jumpK || 1)), nC = Math.round(L / 650 * B.crests);
+  const jtype = () => { const r = rnd(); return !cfg.berms ? 'kick' : r < 0.35 ? 'kick' : r < 0.6 ? 'table' : r < 0.8 ? 'double' : 'step'; };
+  // each jump (ramp + flight + landing) must fit inside its straight with a run-out before the next corner
+  const JEXT = { kick: 40, table: 50, double: 76, step: 40 };
+  for (let pass = 0; pass < 4 && jumps.length < nJ; pass++) for (const q of straights.slice().sort(() => rnd() - 0.5)) {
+    if (jumps.length >= nJ) break; const type = jtype(), room = q.b - q.a - 20 - JEXT[type] - 25; if (room < 0) continue;
+    const s = q.a + 20 + 18 + rnd() * room; if (!jumps.some(j => s < j.s + JEXT[j.type] + 30 && j.s < s + JEXT[type] + 30) && s < L - 140) jumps.push({ s, k: 'jump', big: rnd() < 0.4, type });
+  }
   for (const q of straights.filter(q => q.b - q.a > 70).sort(() => rnd() - 0.5)) { if (crests.length >= nC) break; const s = q.a + 30 + rnd() * Math.max(1, q.b - q.a - 60); if (!busy(s, 70)) crests.push({ s, k: 'crest' }); }
   const nL = Math.max(3, Math.round(L / 330));
   for (let t = 0; t < 200 && logs.length < nL; t++) {
@@ -106,7 +116,15 @@ function buildStage(cfg) {
   }
   const profJ = (u, big) => { const hgt = big ? 1.35 : 0.9, dn = big ? 1.6 : 1.1; if (u < -18 || u > 64) return 0; if (u < 0) return hgt * ((u + 18) / 18) ** 2; if (u < 26) return lerp(hgt, -dn, sstep(0, 26, u)); return -dn * (1 - sstep(26, 64, u)); };
   const ch = B.city ? 0.9 : 1.7, profC = u => u < -38 || u > 38 ? 0 : ch * (0.5 + 0.5 * Math.cos(u / 38 * Math.PI)) ** 1.3;
-  for (let i = 0; i < N; i++) { const s = i * STEP; for (const j of jumps) Y[i] += profJ(s - j.s, j.big); for (const c of crests) Y[i] += profC(s - c.s); }
+  // tabletop: ramp, flat deck, ramp down; double: two kickers; step: launch over a drop to lower ground
+  const profT = u => u < -16 || u > 46 ? 0 : u < 0 ? 1.8 * ((u + 16) / 16) ** 1.6 : u < 18 ? 1.8 : 1.8 * (1 - sstep(18, 46, u));
+  const profS = u => u < -16 ? 0 : u < 0 ? 1.0 * ((u + 16) / 16) ** 2 : u < 30 ? lerp(1.0, -2.4, sstep(0, 30, u)) : -2.4;
+  const jumpH = (j, u) => j.type === 'table' ? profT(u) : j.type === 'double' ? profJ(u, false) + profJ(u - 34, j.big) : j.type === 'step' ? profS(u) : profJ(u, j.big);
+  for (let i = 0; i < N; i++) { const s = i * STEP; for (const j of jumps) Y[i] += jumpH(j, s - j.s); for (const c of crests) Y[i] += profC(s - c.s); }
+  // berms: bank every corner (outside edge raised) on berm stages
+  const BK = new Float32Array(N);
+  if (cfg.berms) for (const c of corners) { const mag = [0, 0.3, 0.27, 0.22, 0.15, 0.08, 0.04][c.g], sg = c.dir === 'L' ? 1 : -1; for (let i = 0; i < N; i++) { const s = i * STEP, w = sstep(c.s0 - 16, c.s0 + 4, s) * (1 - sstep(c.s1 - 4, c.s1 + 16, s)); if (w > 0) BK[i] += sg * mag * w; } }
+  const bankAt = s => { const f = clamp(s / STEP, 0, N - 1.001), i = Math.floor(f); return BK[i] + (BK[i + 1] - BK[i]) * (f - i); };
   jumps.sort((a, b) => a.s - b.s); crests.sort((a, b) => a.s - b.s); logs.sort((a, b) => a.s - b.s);
   // nearest road query
   const near = (x, z, maxD) => {
@@ -131,8 +149,10 @@ function buildStage(cfg) {
     let y = b, rf = 0, d = 999;
     if (q) {
       d = q.d;
-      if (d < ROAD_HW + 1.5) y = q.y; // flat road and flat verges, no ditches
-      else { const t = sstep(ROAD_HW + 1.5, ROAD_HW + 20, d); y = lerp(q.y, b, t) + B.canyon * sstep(ROAD_HW + 9, ROAD_HW + 42, d) * (0.7 + 0.5 * nz(x * 0.02, z * 0.02)); }
+      const bk = bankAt(q.s), lc = clamp(q.lat, -ROAD_HW - 1.5, ROAD_HW + 1.5), outside = bk * q.lat > 0;
+      const lip = outside ? Math.abs(bk) / 0.3 * 0.9 * Math.exp(-(((d - ROAD_HW - 1.6) / 1.1) ** 2)) : 0, yr = q.y + bk * lc + lip;
+      if (d < ROAD_HW + 1.5) y = yr; // flat (or banked) road and verges, no ditches
+      else { const t = sstep(ROAD_HW + 1.5, ROAD_HW + 20, d); y = lerp(yr, b, t) + B.canyon * sstep(ROAD_HW + 9, ROAD_HW + 42, d) * (0.7 + 0.5 * nz(x * 0.02, z * 0.02)); }
       rf = 1 - sstep(ROAD_HW - 0.5, ROAD_HW + 0.9, d + 0.5 * nz(x * 0.9 + 9, z * 0.9));
       RU[k] = q.lat; RV[k] = q.s;
     }
@@ -160,7 +180,8 @@ function buildStage(cfg) {
         const cx = p.x + rx * sd * (front + dep / 2), cz = p.z + rz * sd * (front + dep / 2);
         // footprint corners must stay clear of the road everywhere
         let ok = true;
-        for (const [u, v] of [[-0.5, -0.5], [0.5, -0.5], [-0.5, 0.5], [0.5, 0.5], [0, -0.5], [0, 0.5], [-0.5, 0], [0.5, 0]]) { const x = cx + fx * u * w + rx * sd * v * dep, z = cz + fz * u * w + rz * sd * v * dep, q = near(x, z, 40); if (q && q.d < ROAD_HW + 2.5) { ok = false; break; } }
+        // the whole footprint (every ~2 m, plus a margin) must stay clear of the road and its pavement
+        for (let u = -0.5; u <= 0.501 && ok; u += 2 / w) for (let v = -0.5; v <= 0.501; v += 2 / dep) { const x = cx + fx * u * (w + 2) + rx * sd * v * (dep + 2), z = cz + fz * u * (w + 2) + rz * sd * v * (dep + 2), q = near(x, z, 40); if (q && q.d < ROAD_HW + 2) { ok = false; break; } }
         if (ok && (s > 30 || true)) {
           const bld = { x: cx, z: cz, y: Math.min(heightAt(cx, cz), p.y) - 0.5, h: p.h, w, d: dep, ht, style: (tr() * 4) | 0 };
           buildings.push(bld);
@@ -169,6 +190,8 @@ function buildStage(cfg) {
         }
         s += w + gap;
       }
+      // concrete barriers line the outside of every junction
+      for (const c of corners) { const sg = c.dir === 'L' ? 1 : -1; if (sd !== sg) continue; for (let s2 = c.s0 - 6; s2 < c.s1 + 6; s2 += 2) { const p = at(s2), d = ROAD_HW + 1.0, x = p.x - Math.cos(p.h) * sg * d, z = p.z + Math.sin(p.h) * sg * d, q = near(x, z, 20); if (q && q.d > ROAD_HW + 0.7) addT({ x, z, y: heightAt(x, z), kind: 11, sc: 1, rot: p.h, r: 0.5 }); } }
       for (let s2 = 30; s2 < L - 20; s2 += 32) { const p = at(s2), d = ROAD_HW + 1.2, x = p.x - Math.cos(p.h) * sd * d, z = p.z + Math.sin(p.h) * sd * d, q = near(x, z, 20); if (q && q.d > ROAD_HW + 0.6) addT({ x, z, y: heightAt(x, z), kind: 7, sc: 1, rot: p.h + (sd > 0 ? Math.PI / 2 : -Math.PI / 2), r: 0.22 }); }
     }
   } else {
@@ -181,11 +204,14 @@ function buildStage(cfg) {
       if (q.s < 30 && q.d < 14) continue; // start area
       if (q.d < ROAD_HW + 11 && clearings.some(c => Math.abs(q.s - c) < 20)) continue; // spectator areas
       let kind, sc = 0.75 + r3 * 0.6, r;
-      if (B.flora === 'desert') { if (r1 > 0.16) continue; kind = r2 < 0.4 ? 4 : r2 < 0.75 ? 5 : 6; sc = kind === 5 ? 0.6 + r3 * 1.6 : 0.7 + r3 * 0.6; r = kind === 4 ? 0.35 * sc : kind === 5 ? 0.95 * sc : 0.3; }
+      if (B.flora === 'park') { if (r1 > 0.12 + 0.25 * Math.max(0, nz(px * 0.02, pz * 0.02))) continue; kind = r2 < 0.5 ? 0 : 3; r = (kind === 3 ? 0.17 : 0.24) * sc + 0.1; }
+      else if (B.flora === 'desert') { if (r1 > 0.16) continue; kind = r2 < 0.4 ? 4 : r2 < 0.75 ? 5 : 6; sc = kind === 5 ? 0.6 + r3 * 1.6 : 0.7 + r3 * 0.6; r = kind === 4 ? 0.35 * sc : kind === 5 ? 0.95 * sc : 0.3; }
       else if (B.flora === 'autumn') { kind = r2 < 0.6 ? 3 : r2 < 0.85 ? 0 : 2; r = (kind === 3 ? 0.17 : kind === 2 ? 0.16 : 0.24) * sc + 0.1; }
       else { kind = B.flora === 'snow' ? (r2 < 0.75 ? 0 : 2) : r2 < 0.62 ? 0 : r2 < 0.9 ? 1 : 2; r = (kind === 2 ? 0.16 : 0.24) * sc + 0.1; }
       addT({ x: px, z: pz, y: heightAt(px, pz), kind, sc, rot: r1 * 6.28 + r3, r });
     }
+    // hay bales on the outside of berms (soft: you bounce off them)
+    if (cfg.berms) for (const c of corners) if (c.g <= 4) { const sg = c.dir === 'L' ? 1 : -1; for (let s2 = c.s0 + 2; s2 < c.s1 - 2; s2 += 2.6) { const p = at(s2), d = ROAD_HW + 3.4, x = p.x - Math.cos(p.h) * sg * d, z = p.z + Math.sin(p.h) * sg * d, q = near(x, z, 20); if (q && q.d > ROAD_HW + 2.6) addT({ x, z, y: heightAt(x, z), kind: 10, sc: 1, rot: p.h + Math.PI / 2, r: 0.75, soft: true }); } }
     // snowbanks: soft walls along both edges
     if (B.banks) for (let s2 = 6; s2 < L; s2 += 2.4) for (const sd of [-1, 1]) { const p = at(s2), d = ROAD_HW + 2.1, x = p.x - Math.cos(p.h) * sd * d, z = p.z + Math.sin(p.h) * sd * d, q = near(x, z, 20); if (q && q.d > ROAD_HW + 1.4 && !logs.some(l => Math.abs(l.s - s2) < 5)) addT({ x, z, y: heightAt(x, z), kind: 9, r: 0.75, soft: true }); }
   }
@@ -199,7 +225,7 @@ function buildStage(cfg) {
     l.rad = B.obs === 'rock' ? 0.85 + tr() * 0.2 : B.obs === 'barrier' ? 0.42 : 0.3 + tr() * 0.06; l.y = p.y;
     const mx = (l.ax + l.bx) / 2, mz = (l.az + l.bz) / 2; l.cy = Math.max(heightAt(l.ax, l.az), heightAt(l.bx, l.bz), heightAt(mx, mz)) + l.rad * 0.8; l.top = l.cy + l.rad;
   }
-  return { cfg, B, buildings, P, Y, N, L, corners, jumps, crests, logs, near, at, heightAt, normalAt, trees, treesNear, grid: { x0, z0, GW, GH, H, RF, RU, RV, RD }, baseH, noise: nz };
+  return { cfg, B, buildings, bankAt, P, Y, N, L, corners, jumps, crests, logs, near, at, heightAt, normalAt, trees, treesNear, grid: { x0, z0, GW, GH, H, RF, RU, RV, RD }, baseH, noise: nz };
 }
 // some seeds box themselves in; nudge the seed until the stage is long enough
 function makeStage(cfg) { let best = null; for (let k = 0; k < 8; k++) { const S = buildStage(Object.assign({}, cfg, { seed: cfg.seed + k * 101 })); if (!best || S.L > best.L) best = S; if (S.L >= cfg.len * 0.88) return S; } return best; }

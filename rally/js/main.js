@@ -7,7 +7,7 @@ const look = { yaw: 0, pitch: -0.05, map: false, idle: 0 };
 let pad = null;
 
 // ---------- menu ----------
-STAGES.forEach((s, i) => { const o = document.createElement('option'); o.value = i; o.textContent = BIOMES[s.biome].name + ' · ' + s.name + '  (' + (s.len / 1000).toFixed(1) + ' km)'; $('sStage').appendChild(o); });
+STAGES.forEach((s, i) => { const o = document.createElement('option'); o.value = i; o.textContent = BIOMES[s.biome].name + ' · ' + s.name + (s.berms ? ' · berms & jumps' : '') + '  (' + (s.len / 1000).toFixed(1) + ' km)'; $('sStage').appendChild(o); });
 try { $('nm').value = localStorage.getItem('pn-name') || ''; $('sGfx').value = localStorage.getItem('pn-gfx') || 'med'; } catch (e) {}
 const myName = () => { const n = ($('nm').value || '').replace(/[^A-Za-z0-9 ._-]/g, '').trim().slice(0, 14) || 'Player' + (1 + Math.random() * 99 | 0); try { localStorage.setItem('pn-name', n); localStorage.setItem('pn-gfx', $('sGfx').value); } catch (e) {} return n; };
 const show = id => { for (const s of ['menu', 'lobby', 'fin']) $(s).classList.toggle('hidden', s !== id); };

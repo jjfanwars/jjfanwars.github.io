@@ -6,3 +6,4 @@ bark_*    = pine_bark
 asphalt_* = asphalt_02, pavers_* = concrete_pavers_02, brick_* = red_brick, plaster_* = plastered_wall
 snowroad_* = snow_01, snow_* = snow_02, sandroad_* = sandy_gravel, dryground_* = dry_ground_01
 leafroad_* = leaf_scattered_gravel, leaves_* = forest_leaves_02
+grass_* = leafy_grass, dirtroad_* = dirt

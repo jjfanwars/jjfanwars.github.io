@@ -73,7 +73,7 @@ const World = {
     return Promise.all(need.map(([f, as]) => Promise.all([ld(f + '_diff', 1, as === 'floor' ? 2 : 0), ld(f + '_nor', 0, as === 'floor' ? 2 : 0)]).then(([d, n]) => { this.PH[as] = d; this.PH[as + 'N'] = n; })));
   },
   build(S, fogLevel) {
-    const B = this.B = S.B || BIOMES.forest, RK = { gravel: 'gravel', leafroad: 'leaf', snowroad: 'snow', sandroad: 'sand', asphalt: 'tarmac' };
+    const B = this.B = S.B || BIOMES.forest, RK = { gravel: 'gravel', leafroad: 'leaf', snowroad: 'snow', sandroad: 'sand', asphalt: 'tarmac', dirtroad: 'gravel' };
     this.dispose(); const T = TEX(RK[B.road] || 'gravel', B.hw), tod = TOD[S.cfg.tod] || TOD.morning, scene = this.scene = new THREE.Scene(), gfx = this.gfx;
     this.S = S; this.tod = tod;
     const den = (FOG_D[fogLevel] || FOG_D[1]) * B.fogK;
@@ -129,7 +129,7 @@ const World = {
         // tint: grassier at the sunny road edge, darker deep in the forest
         const d = G.RD[k], edge = 1 - sstep(ROAD_HW + 1, ROAD_HW + 7, d), deep = sstep(ROAD_HW + 6, 30, d), n = nz(x * 0.05 + 17, z * 0.05);
         let r = 1 - deep * 0.35 + n * 0.08, g = 1 - deep * 0.3 + n * 0.08, b = 1 - deep * 0.3;
-        if (B.flora === 'fir') { r = lerp(r, 0.85, edge); g = lerp(g, 1.25, edge); b = lerp(b, 0.7, edge); }
+        if (B.flora === 'fir' || B.flora === 'park') { r = lerp(r, 0.85, edge); g = lerp(g, 1.25, edge); b = lerp(b, 0.7, edge); }
         else if (B.flora === 'snow' || B.city) { r = g = b = 1 - deep * 0.12 + n * 0.05; }
         else if (B.flora === 'desert') { const hgt = clamp((y - G.H[k] + 0) * 0, 0, 1); r = 1.05 + n * 0.1 - deep * 0.15; g = 0.98 + n * 0.08 - deep * 0.15; b = 0.9 - deep * 0.15; }
         const rf = G.RF[k]; col[v * 3] = lerp(r, 1, rf); col[v * 3 + 1] = lerp(g, 1, rf); col[v * 3 + 2] = lerp(b, 1, rf);
@@ -221,12 +221,17 @@ const World = {
     const bush = () => { const parts = []; for (let i = 0; i < 3; i++) { const q = new THREE.PlaneGeometry(1.6, 1); q.translate(0, 0.5, 0); const uv = q.attributes.uv; for (let k = 0; k < uv.count; k++) uv.setX(k, lerp(0.55, 0.95, uv.getX(k))); q.rotateY(i * 1.05); parts.push(q); } return this.merge(parts); };
     const lamp = () => { const pole = new THREE.CylinderGeometry(0.07, 0.1, 7, 8); pole.translate(0, 3.5, 0); const arm = new THREE.BoxGeometry(0.08, 0.08, 1.6); arm.translate(0, 6.9, 0.75); return this.merge([pole, arm]); };
     const lampH = new THREE.BoxGeometry(0.35, 0.12, 0.6); lampH.translate(0, 6.82, 1.5);
+    // round hay bale lying on its side, straw texture
+    const hayC = document.createElement('canvas'); hayC.width = hayC.height = 128; { const x = hayC.getContext('2d'); x.fillStyle = '#c9a54e'; x.fillRect(0, 0, 128, 128); for (let i = 0; i < 900; i++) { x.strokeStyle = `rgba(${150 + Math.random() * 80 | 0},${120 + Math.random() * 60 | 0},${50 + Math.random() * 30 | 0},.8)`; x.beginPath(); const a = Math.random() * 128, b2 = Math.random() * 128; x.moveTo(a, b2); x.lineTo(a + (Math.random() - 0.5) * 18, b2 + (Math.random() - 0.5) * 4); x.stroke(); } }
+    const hayT = new THREE.CanvasTexture(hayC); hayT.colorSpace = THREE.SRGBColorSpace; hayT.wrapS = hayT.wrapT = THREE.RepeatWrapping; const hayM = new THREE.MeshStandardMaterial({ map: hayT, roughness: 1 });
+    const hay = () => { const g = new THREE.CylinderGeometry(0.75, 0.75, 1.3, 16); g.rotateZ(Math.PI / 2); g.translate(0, 0.72, 0); return g; };
     const kinds = {
       0: [[trunk(14, 0.24), barkM], [this.foliageCards(rng, 12, 1.4, 15.5, 3.0, 0.45, 10), folM, 'hi'], [this.foliage(rng, 4, 1.8, 15, 2.8, 0.4, 0.6), folLo, 'lo']],
       1: [[trunk(16, 0.26), barkM], [this.foliageCards(rng, 6, 10.2, 17, 2.5, 0.5, 7), folM, 'hi'], [this.foliage(rng, 3, 10.8, 16.5, 2.4, 0.5, 0.4), folLo, 'lo']],
       2: [[trunk(6, 0.15), barkM], [this.foliageCards(rng, 8, 0.6, 7.5, 1.8, 0.3, 6), folM, 'hi'], [this.foliage(rng, 3, 1, 7.2, 1.7, 0.3, 0.4), folLo, 'lo']],
       3: [[trunk(12, 0.17, 9), birchM], [this.crownCards(rng, 8.5, 2.6, 3.4, 46), leafM, 'hi'], [this.crownCards(rng, 8.5, 2.6, 3.4, 12), leafM, 'lo']],
-      4: [[cactus(), cactM]], 5: [[boulder(), rockM]], 6: [[bush(), bushM]], 7: [[lamp(), lampM], [lampH, lampHead]],
+      11: [[(() => { const pr = new THREE.Shape(); pr.moveTo(-0.32, 0); pr.lineTo(0.32, 0); pr.lineTo(0.3, 0.12); pr.lineTo(0.12, 0.32); pr.lineTo(0.1, 0.82); pr.lineTo(-0.1, 0.82); pr.lineTo(-0.12, 0.32); pr.lineTo(-0.3, 0.12); pr.closePath(); const g = new THREE.ExtrudeGeometry(pr, { depth: 1.95, bevelEnabled: false }); g.translate(0, 0, -0.975); const uv = g.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * 0.5, uv.getY(i)); return g; })(), (() => { const c = document.createElement('canvas'); c.width = 256; c.height = 64; const x = c.getContext('2d'); x.fillStyle = '#d8d6cf'; x.fillRect(0, 0, 256, 64); x.fillStyle = '#c62020'; for (let i = -1; i < 9; i++) { x.beginPath(); x.moveTo(i * 32, 64); x.lineTo(i * 32 + 16, 64); x.lineTo(i * 32 + 40, 22); x.lineTo(i * 32 + 24, 22); x.fill(); } const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; return new THREE.MeshStandardMaterial({ map: t, roughness: 0.85 }); })()]],
+      10: [[hay(), hayM]], 4: [[cactus(), cactM]], 5: [[boulder(), rockM]], 6: [[bush(), bushM]], 7: [[lamp(), lampM], [lampH, lampHead]],
     };
     const tint = { 0: [0.85, 1.05], 1: [0.9, 1.2], 2: [0.95, 1.25], 3: [0.8, 1.15] };
     const byTile = new Map(), tileOf = (x, z) => { let best = null, bd = 1e9; for (const t of this.tiles) { const d = Math.abs(t.cx - x) + Math.abs(t.cz - z); if (d < bd) { bd = d; best = t; } } return best; };
@@ -250,7 +255,7 @@ const World = {
     }
   },
   buildProps(S, T) {
-    const rng = mulberry(S.cfg.seed + 9), scene = this.scene, B = this.B, green = B.flora === 'fir' || B.flora === 'autumn';
+    const rng = mulberry(S.cfg.seed + 9), scene = this.scene, B = this.B, green = B.flora === 'fir' || B.flora === 'autumn' || B.flora === 'park';
     // undergrowth: crossed quads (fern / grass) along the verges and scattered in the forest
     const quad = (u0, u1) => { const g = new THREE.PlaneGeometry(1, 1); g.translate(0, 0.5, 0); const uv = g.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setX(i, lerp(u0, u1, uv.getX(i))); return g; };
     const cross = (u0, u1) => { const a = quad(u0, u1), b = quad(u0, u1); b.rotateY(Math.PI / 2); const g = this.merge([a, b]); const n = g.attributes.normal; for (let i = 0; i < n.count; i++) n.setXYZ(i, 0, 1, 0); return g; };
@@ -316,6 +321,14 @@ const World = {
         const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); g.setIndex(idx); g.computeVertexNormals();
         const m = new THREE.Mesh(g, snowM); m.receiveShadow = true; m.frustumCulled = false; scene.add(m);
       }
+    }
+    // kerbs along both edges of city streets
+    if (B.city) for (const sd of [-1, 1]) {
+      const prof = [[ROAD_HW - 0.05, 0], [ROAD_HW, 0.13], [ROAD_HW + 0.3, 0.13], [ROAD_HW + 0.35, 0.02]], pos = [], uv = [], idx = []; let row = 0;
+      for (let s = 0; s <= S.L; s += 2, row++) { const p = S.at(s), rx = -Math.cos(p.h) * sd, rz = Math.sin(p.h) * sd; for (const [d, hh] of prof) { const x = p.x + rx * d, z = p.z + rz * d; pos.push(x, S.heightAt(x, z) + hh, z); uv.push(d, s / 2); } }
+      const np = prof.length; for (let r = 0; r < row - 1; r++) for (let k = 0; k < np - 1; k++) { const a = r * np + k, b = a + 1, c2 = a + np, d2 = c2 + 1; if (sd > 0) idx.push(a, c2, b, b, c2, d2); else idx.push(a, b, c2, b, d2, c2); }
+      const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); g.setIndex(idx); g.computeVertexNormals();
+      const m = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ color: 0x9a9a96, roughness: 0.9 })); m.receiveShadow = true; m.frustumCulled = false; scene.add(m);
     }
     // city blocks: one merged mesh per facade style, windows painted over the photo brick / plaster
     if (B.city && S.buildings.length) {

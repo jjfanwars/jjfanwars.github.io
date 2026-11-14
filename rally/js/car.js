@@ -118,7 +118,7 @@ class Car {
       fx -= vx * 6;               // rolling resistance
       // lateral: slip angle curve, softer and wider on gravel
       const slipA = Math.atan2(vy, Math.max(Math.abs(vx), 3.5));
-      const Bc = onRoad ? 10 : 7, Cc = 1.15, curve = Math.sin(Cc * Math.atan(Bc * slipA));
+      const Bc = onRoad ? 14 : 9, Cc = 1.1, curve = Math.sin(Cc * Math.atan(Bc * slipA));
       let fy = -fmax * curve * (locked ? 0.45 : 1);
       if (Math.abs(vx) < 3) { const lowS = -vy * CAR.m * 0.25 * 8; fy = lerp(lowS, fy, Math.abs(vx) / 3); fy = clamp(fy, -fmax, fmax); }
       // friction circle (longitudinal first, then whatever grip is left for cornering)
@@ -136,9 +136,9 @@ class Car {
     for (const [a, b] of [[0, 1], [2, 3]]) { const wa = this.wh[a], wb = this.wh[b]; if (!wa.contact && !wb.contact) continue; const d = (wa.comp - wb.comp) * CAR.arb, Pa = this.toWorld(wa.a, t.a).add(this.pos).clone(), Pb = this.toWorld(wb.a, t.a).add(this.pos).clone(); T.add(t.b.crossVectors(t.c.subVectors(Pa, this.pos), t.d.copy(up).multiplyScalar(d))); T.add(t.b.crossVectors(t.c.subVectors(Pb, this.pos), t.d.copy(up).multiplyScalar(-d))); }
     if (contacts >= 3 && !hb) {
       const lim = 19 / Math.max(3, Math.abs(vF)), yaw = this.w.dot(up), want = clamp(vF * Math.tan(this.steer) / 2.51, -lim, lim), err = yaw - want;
-      T.addScaledVector(up, -err * CAR.I[1] * 6 * sstep(2, 8, Math.abs(vF)));
+      T.addScaledVector(up, -err * CAR.I[1] * 9 * sstep(2, 8, Math.abs(vF)));
       // bleed off sideways sliding so the car goes where it points
-      const vLat = this.v.dot(left); F.addScaledVector(left, -vLat * CAR.m * 1.0 * sstep(2, 6, Math.abs(vF)));
+      const vLat = this.v.dot(left); F.addScaledVector(left, -vLat * CAR.m * 2.6 * sstep(2, 6, Math.abs(vF)));
     }
     if (contacts && this.air > 0.25 && this.v.y > 0) this.v.y *= 0.3; // kill the rebound after a jump landing
     this.air = contacts === 0 ? this.air + dt : 0; this.slide = slideSum / 4; this.offroad = offSum / 4;
