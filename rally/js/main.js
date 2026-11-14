@@ -164,7 +164,7 @@ function readInput(dt) {
   const L = KEYS.has('KeyA') || KEYS.has('ArrowLeft'), R = KEYS.has('KeyD') || KEYS.has('ArrowRight');
   let target = (L ? 1 : 0) - (R ? 1 : 0);
   // keyboard steering ramps in (faster when reversing direction)
-  const rate = target === 0 ? 7 : Math.sign(target) !== Math.sign(inp.steer) ? 9 : 4.5;
+  const rate = target === 0 ? 9 : Math.sign(target) !== Math.sign(inp.steer) ? 12 : 7;
   inp.steer += clamp(target - inp.steer, -rate * dt, rate * dt);
   inp.thr = KEYS.has('KeyW') || KEYS.has('ArrowUp') ? 1 : 0; inp.brk = KEYS.has('KeyS') || KEYS.has('ArrowDown') ? 1 : 0; inp.hb = KEYS.has('Space') ? 1 : 0;
   const gp = pad !== null && navigator.getGamepads ? navigator.getGamepads()[pad] : null;
@@ -172,7 +172,9 @@ function readInput(dt) {
   return inp;
 }
 function recover() {
-  const c = G.car; if (c.speed > 8 && c.roadD < ROAD_HW + 1) return; // only when stuck or off the road
+  const c = G.car, up = new THREE.Vector3(0, 1, 0).applyQuaternion(c.q).y;
+  if (up > 0.5 && c.speed > 8 && c.roadD < ROAD_HW + 1) return; // upright and driving on the road: nothing to recover from (upside down always works)
+  G.stuckT = 0; G.stuckSaid = false;
   $('fade').style.opacity = 0.8; setTimeout(() => $('fade').style.opacity = 0, 250);
   c.place(Math.max(World.startS, c.prog - 5), 0); G.pen += 5; say('RECOVERED +5 s', '', 1500);
 }
@@ -306,7 +308,7 @@ function frame(now) {
   // spectators cheer as you pass
   for (const cr of World.crowds || []) { const d = Math.hypot(cr.x - st.pos.x, cr.z - st.pos.z); if (d < 40 && !cr.cheered) { cr.cheered = true; Sfx.cheer(Math.min(1, st.speed / 25)); } if (d < 60) World.wave(cr, now / 1000); }
   // stuck or upside down: tell the driver how to recover
-  if (G.role === 'drv' && G.phase === 'run') { const up = fwdV.set(0, 1, 0).applyQuaternion(st.q).y; G.stuckT = (up < 0.35 || (st.speed < 1.2 && G.car.roadD > ROAD_HW + 1)) ? (G.stuckT || 0) + dt : 0; if (G.stuckT > 1.5 && !G.stuckSaid) { G.stuckSaid = true; say('PRESS R TO RECOVER', '', 2500); } if (G.stuckT === 0) G.stuckSaid = false; }
+  if (G.role === 'drv' && G.phase === 'run') { const up = fwdV.set(0, 1, 0).applyQuaternion(st.q).y; G.stuckT = (up < 0.35 || (st.speed < 1.2 && G.car.roadD > ROAD_HW + 1)) ? (G.stuckT || 0) + dt : 0; if (G.stuckT > 1.5 && !G.stuckSaid) { G.stuckSaid = true; say('PRESS R TO RECOVER', '', 2500); } if (G.stuckT > 4) { G.stuckT = 0; recover(); } if (G.stuckT === 0) G.stuckSaid = false; }
   G.hurt = Math.max(0, (G.hurt || 0) - dt * 1.2);
   perf(dt);
   World.render({ spd: clamp((st.speed - 14) / 34, 0, 1), hurt: G.hurt });

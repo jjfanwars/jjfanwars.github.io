@@ -53,9 +53,9 @@ class Car {
     const vF = this.v.dot(fwd), vL = this.v.dot(left), spd = this.v.length(); this.speed = spd;
     // ---- inputs: steering with speed sensitivity and self-alignment toward the direction of travel ----
     const beta = Math.abs(vF) > 2 ? Math.atan2(vL, Math.abs(vF)) : 0;
-    const vv = Math.max(4, Math.abs(vF)), maxS = clamp(Math.atan(2.51 * 19 / (vv * vv)) + 0.09, 0.13, 0.6), st = inp.steer;
+    const vv = Math.max(4, Math.abs(vF)), maxS = clamp(Math.atan(2.51 * 24 / (vv * vv)) + 0.1, 0.15, 0.62), st = inp.steer;
     let target = st * maxS;
-    const rate = Math.abs(target) < Math.abs(this.steer) ? 7 : 5;
+    const rate = Math.abs(target) < Math.abs(this.steer) ? 10 : 8;
     this.steer += clamp(target - this.steer, -rate * dt, rate * dt);
     // throttle / brake / reverse logic
     let thr = inp.thr, brk = inp.brk;
@@ -106,7 +106,7 @@ class Car {
       // surface from the road map
       const q = S.near(cp.x, cp.z, 12), onRoad = q && q.d < ROAD_HW + 0.3;
       w.surf = onRoad ? 0 : 1; offSum += w.surf;
-      const BB = S.B || BIOMES.forest, mu = (onRoad ? BB.grip : BB.off) * (1 - this.dmg * 0.15), Fz = Math.min(w.load, 9000), fmax = mu * Fz * (1 - 0.06 * Fz / 4000); // tyre load sensitivity
+      const BB = S.B || BIOMES.forest, mu = (onRoad ? BB.grip : BB.off) * 1.12 * (1 - this.dmg * 0.15), Fz = Math.min(w.load, 9000), fmax = mu * Fz * (1 - 0.06 * Fz / 4000); // tyre load sensitivity
       // longitudinal
       let fx = 0, locked = false;
       const share = w.front ? (1 - CAR.split) / 2 : CAR.split / 2;
@@ -135,8 +135,8 @@ class Car {
     // anti-roll: transfer between left and right on each axle
     for (const [a, b] of [[0, 1], [2, 3]]) { const wa = this.wh[a], wb = this.wh[b]; if (!wa.contact && !wb.contact) continue; const d = (wa.comp - wb.comp) * CAR.arb, Pa = this.toWorld(wa.a, t.a).add(this.pos).clone(), Pb = this.toWorld(wb.a, t.a).add(this.pos).clone(); T.add(t.b.crossVectors(t.c.subVectors(Pa, this.pos), t.d.copy(up).multiplyScalar(d))); T.add(t.b.crossVectors(t.c.subVectors(Pb, this.pos), t.d.copy(up).multiplyScalar(-d))); }
     if (contacts >= 3 && !hb) {
-      const lim = 19 / Math.max(3, Math.abs(vF)), yaw = this.w.dot(up), want = clamp(vF * Math.tan(this.steer) / 2.51, -lim, lim), err = yaw - want;
-      T.addScaledVector(up, -err * CAR.I[1] * 9 * sstep(2, 8, Math.abs(vF)));
+      const lim = 24 / Math.max(3, Math.abs(vF)), yaw = this.w.dot(up), want = clamp(vF * Math.tan(this.steer) / 2.51, -lim, lim), err = yaw - want;
+      T.addScaledVector(up, -err * CAR.I[1] * 12 * sstep(2, 8, Math.abs(vF)));
       // bleed off sideways sliding so the car goes where it points
       const vLat = this.v.dot(left); F.addScaledVector(left, -vLat * CAR.m * 2.6 * sstep(2, 6, Math.abs(vF)));
     }
