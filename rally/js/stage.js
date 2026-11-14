@@ -126,6 +126,7 @@ function buildStage(cfg) {
   };
   const normalAt = (x, z, out) => { const e = 0.6, hx = heightAt(x + e, z) - heightAt(x - e, z), hz = heightAt(x, z + e) - heightAt(x, z - e); out.set(-hx, 2 * e, -hz).normalize(); return out; };
   // trees (jittered grid in the forest band), spatial hash for collisions
+  const clearings = jumps.map(j => j.s).concat(corners.filter(c => c.g === 1).map(c => (c.s0 + c.s1) / 2), crests.slice(0, 2).map(c => c.s));
   const trees = [], TC = 8, thash = new Map();
   const tr = mulberry(cfg.seed * 13 + 1), SP = 3.3;
   for (let z = z0 + 2; z < z0 + (GH - 2) * CELL; z += SP) for (let x = x0 + 2; x < x0 + (GW - 2) * CELL; x += SP) {
@@ -134,6 +135,7 @@ function buildStage(cfg) {
     if (q.d < edge || q.d > 44) continue;
     if (q.d < edge + 4 && r1 < 0.2) continue; // a little thinner at the edge
     if (q.s < 30 && q.d < 14) continue; // start area
+    if (q.d < ROAD_HW + 11 && clearings.some(c => Math.abs(q.s - c) < 20)) continue; // spectator areas
     const kind = r2 < 0.62 ? 0 : r2 < 0.9 ? 1 : 2, sc = 0.75 + r3 * 0.6;
     const t = { x: px, z: pz, y: heightAt(px, pz), kind, sc, rot: r1 * 6.28, r: (kind === 2 ? 0.16 : 0.24) * sc + 0.1 };
     trees.push(t); const k = hk(Math.floor(px / TC), Math.floor(pz / TC)); let a = thash.get(k); if (!a) thash.set(k, a = []); a.push(t);

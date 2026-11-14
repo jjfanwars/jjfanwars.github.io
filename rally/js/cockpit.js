@@ -30,6 +30,11 @@ class CarView {
     const glass = new THREE.MeshPhysicalMaterial({ color: 0x9fb2c0, metalness: 0, roughness: 0.04, transparent: true, opacity: 0.1, envMapIntensity: 1.4, side: THREE.DoubleSide, depthWrite: false });
     const wsh = new THREE.Mesh(new THREE.PlaneGeometry(1.48, Math.hypot(0.66, 0.51)), glass); wsh.position.set(0, 0.515, 0.65); wsh.rotation.x = Math.atan2(-0.66, 0.51); g.add(wsh);
     this.glass = wsh;
+    // windscreen cracks that grow with damage
+    { const c = document.createElement('canvas'); c.width = c.height = 512; const g = c.getContext('2d'), r = mulberry(11); g.strokeStyle = 'rgba(235,240,245,.9)'; g.lineCap = 'round';
+      for (const [cx, cy] of [[150, 330], [380, 260], [260, 120]]) { for (let k = 0; k < 14; k++) { let x = cx, y = cy, a = r() * 6.28; g.lineWidth = 1.6; g.beginPath(); g.moveTo(x, y); const L = 40 + r() * 170; for (let d = 0; d < L; d += 8) { a += (r() - 0.5) * 0.5; x += Math.cos(a) * 8; y += Math.sin(a) * 8; g.lineTo(x, y); } g.stroke(); } for (let ring = 1; ring < 4; ring++) { g.lineWidth = 0.9; g.beginPath(); for (let k = 0; k <= 20; k++) { const a = k / 20 * 6.28, rr = ring * 16 + r() * 8; k ? g.lineTo(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr) : g.moveTo(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr); } g.stroke(); } }
+      const t = new THREE.CanvasTexture(c); this.crackM = new THREE.MeshBasicMaterial({ map: t, transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide });
+      const cm = new THREE.Mesh(new THREE.PlaneGeometry(1.46, Math.hypot(0.66, 0.51)), this.crackM); cm.position.set(0, 0.51, 0.64); cm.rotation.x = Math.atan2(-0.66, 0.51); this.g.add(cm); }
     // ---- interior ----
     const I = this.interior = new THREE.Group(); g.add(I);
     const tube = (a, b, r, m) => { const d = new THREE.Vector3().subVectors(b, a), c = new THREE.Mesh(new THREE.CylinderGeometry(r, r, d.length(), 10), m || cageM); c.position.copy(a).addScaledVector(d, 0.5); c.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), d.normalize()); c.castShadow = true; I.add(c); return c; };
@@ -53,7 +58,7 @@ class CarView {
       const sill = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.05, 1.45), satin); sill.position.set(sd * 0.83, 0.19, -0.25); I.add(sill);
       const bp = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.6, 0.14), trim); bp.position.set(sd * 0.8, 0.48, -0.95); I.add(bp);
       // mirror
-      const mr = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.1, 0.16), paint); mr.position.set(sd * 0.98, 0.3, 0.75); g.add(mr);
+      const mr = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.1, 0.16), black); mr.position.set(sd * 0.98, 0.3, 0.75); g.add(mr);
     }
     const liner = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.03, 2.1), new THREE.MeshStandardMaterial({ color: 0x3b3d42, roughness: 0.95, side: THREE.DoubleSide })); liner.position.set(0, 0.77, -0.6); I.add(liner);
     const floor = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.03, 3.0), black); floor.position.set(0, -0.4, -0.3); I.add(floor);
@@ -151,6 +156,7 @@ class CarView {
     this.board.position.set(-0.37, lerp(0.0, 0.35, u), lerp(-0.02, 0.0, u)); this.board.rotation.set(lerp(-0.35, -1.38, u), 0, 0);
     const bp = this.board.position.clone().sub(N.g.position);
     this.setArm(N.arms[0], new THREE.Vector3(0.2, -0.24, -0.08), bp.clone().add(new THREE.Vector3(0.15, 0, 0.05))); this.setArm(N.arms[1], new THREE.Vector3(-0.2, -0.24, -0.08), bp.clone().add(new THREE.Vector3(-0.15, 0, 0.05)));
+    this.crackM.opacity = clamp(((st.dmg || 0) - 0.12) * 1.4, 0, 0.85);
     // dash display (driver side)
     if ((this.dashTk = (this.dashTk || 0) + dt) > 0.07) {
       this.dashTk = 0; const c = this.dashC.getContext('2d'); c.fillStyle = '#05080a'; c.fillRect(0, 0, 256, 96);

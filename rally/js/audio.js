@@ -49,6 +49,14 @@ const Sfx = {
   crash(v) { const k = Math.min(1, v / 18); this.burst(0.5 + k * 0.6, 300 + k * 600, 0.25 + k * 0.4); this.burst(0.3 * k, 3000, 0.2, 'highpass'); },
   thud(v) { this.burst(Math.min(0.8, v / 10), 180, 0.25); },
   shift() { this.burst(0.15, 2500, 0.05, 'highpass'); },
+  // crowd cheer: band-passed noise with a wobble, plus a few whistles
+  cheer(k) {
+    if (!this.on) return; const C = this.ctx, t = C.currentTime, s = C.createBufferSource(); s.buffer = this.noiseBuf; const f = C.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 1100; f.Q.value = 0.8; const g = C.createGain();
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.25 * (0.4 + k), t + 0.4); g.gain.setValueAtTime(0.25 * (0.4 + k), t + 1.6); g.gain.exponentialRampToValueAtTime(0.001, t + 3.2);
+    const lfo = C.createOscillator(), lg = C.createGain(); lfo.frequency.value = 7; lg.gain.value = 300; lfo.connect(lg); lg.connect(f.frequency); lfo.start(t); lfo.stop(t + 3.3);
+    s.connect(f); f.connect(g); g.connect(this.out); s.start(t, Math.random()); s.stop(t + 3.3);
+    for (let i = 0; i < 3; i++) { const o = C.createOscillator(), og = C.createGain(), t0 = t + 0.2 + Math.random() * 1.5; o.frequency.setValueAtTime(2200 + Math.random() * 600, t0); o.frequency.linearRampToValueAtTime(2900 + Math.random() * 500, t0 + 0.3); og.gain.setValueAtTime(0.04, t0); og.gain.exponentialRampToValueAtTime(0.001, t0 + 0.4); o.connect(og); og.connect(this.out); o.start(t0); o.stop(t0 + 0.45); }
+  },
   beep(hi) { if (!this.on) return; const C = this.ctx, t = C.currentTime, o = C.createOscillator(), g = C.createGain(); o.frequency.value = hi ? 1320 : 660; g.gain.setValueAtTime(0.25, t); g.gain.exponentialRampToValueAtTime(0.001, t + (hi ? 0.6 : 0.25)); o.connect(g); g.connect(this.out); o.start(t); o.stop(t + 0.7); },
   say(words) {
     try {

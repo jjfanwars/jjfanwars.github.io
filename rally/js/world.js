@@ -18,7 +18,51 @@ const World = {
     this.cam = new THREE.PerspectiveCamera(72, 1, 0.05, 600);
     addEventListener('resize', () => this.resize()); this.resize();
   },
-  resize() { const w = innerWidth, h = innerHeight; this.R.setSize(w, h, false); this.cam.aspect = w / h; this.cam.updateProjectionMatrix(); },
+  resize() { const w = innerWidth, h = innerHeight; this.R.setSize(w, h, false); this.cam.aspect = w / h; this.cam.updateProjectionMatrix(); if (this.pp) this.ppSize(); },
+  // ---- post: HDR scene target -> bright pass -> blurred bloom -> composite (ACES, grade, vignette, speed blur, grain) ----
+  ppInit() {
+    const R = this.R, HF = THREE.HalfFloatType;
+    const rt = (w, h, ms) => new THREE.WebGLRenderTarget(w, h, { type: HF, samples: ms || 0, depthBuffer: !!ms });
+    const quad = mat => { const m = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), mat); m.frustumCulled = false; const sc = new THREE.Scene(); sc.add(m); return sc; };
+    const vs = 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0., 1.); }';
+    const bright = new THREE.ShaderMaterial({ uniforms: { t: { value: null } }, vertexShader: vs, fragmentShader: 'uniform sampler2D t; varying vec2 vUv; void main(){ vec3 c = texture2D(t, vUv).rgb; float l = dot(c, vec3(.2126,.7152,.0722)); gl_FragColor = vec4(c * smoothstep(1.1, 2.6, l), 1.); }', depthTest: false, depthWrite: false });
+    const blur = new THREE.ShaderMaterial({ uniforms: { t: { value: null }, d: { value: new THREE.Vector2() } }, vertexShader: vs, fragmentShader: 'uniform sampler2D t; uniform vec2 d; varying vec2 vUv; void main(){ vec3 c = texture2D(t, vUv).rgb * .227; c += (texture2D(t, vUv + d * 1.38).rgb + texture2D(t, vUv - d * 1.38).rgb) * .316; c += (texture2D(t, vUv + d * 3.23).rgb + texture2D(t, vUv - d * 3.23).rgb) * .07; gl_FragColor = vec4(c, 1.); }', depthTest: false, depthWrite: false });
+    const comp = new THREE.ShaderMaterial({
+      uniforms: { t: { value: null }, b: { value: null }, exp: { value: 1 }, spd: { value: 0 }, time: { value: 0 }, hurt: { value: 0 }, asp: { value: 1 } },
+      vertexShader: vs,
+      fragmentShader: `uniform sampler2D t, b; uniform float exp, spd, time, hurt, asp; varying vec2 vUv;
+        vec3 aces(vec3 c){ c *= exp / .6; mat3 i = mat3(.59719,.07600,.02840,.35458,.90834,.13383,.04823,.01566,.83777); mat3 o = mat3(1.60475,-.10208,-.00327,-.53108,1.10813,-.07276,-.07367,-.00605,1.07602); c = i * c; vec3 a = c * (c + .0245786) - .000090537; vec3 bb = c * (.983729 * c + .4329510) + .238081; return clamp(o * (a / bb), 0., 1.); }
+        vec3 srgb(vec3 c){ return mix(c * 12.92, 1.055 * pow(c, vec3(1./2.4)) - .055, step(.0031308, c)); }
+        float h(vec2 p){ return fract(sin(dot(p, vec2(12.9898, 78.233)) + time) * 43758.5453); }
+        void main(){
+          vec2 d = vUv - .5; float r = length(d * vec2(asp, 1.));
+          // speed blur: smear toward the centre, only at the edges, grows with speed
+          float k = spd * smoothstep(.15, .75, r) * .035; vec3 c = vec3(0.);
+          for (int i = 0; i < 6; i++) c += texture2D(t, vUv - d * k * float(i) / 5.).rgb; c /= 6.;
+          c += texture2D(b, vUv).rgb * .55;
+          c = aces(c);
+          // grade: a little warmth in the highlights, cool shadows, slight saturation
+          float l = dot(c, vec3(.2126,.7152,.0722)); c = mix(vec3(l), c, 1.08); c *= mix(vec3(.96,.99,1.04), vec3(1.03,1.,.95), smoothstep(.1,.8,l));
+          c *= 1. - smoothstep(.45, 1.25, r) * (.38 + hurt * .4); c = mix(c, c * vec3(1.,.55,.5), hurt * smoothstep(.3, 1., r));
+          c = srgb(c); c += (h(vUv * 917.) - .5) * .018;
+          gl_FragColor = vec4(c, 1.); }`,
+      depthTest: false, depthWrite: false });
+    this.pp = { rt, A: null, B1: null, B2: null, sBright: quad(bright), sBlur: quad(blur), sComp: quad(comp), bright, blur, comp, oc: new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1) };
+    this.ppSize();
+  },
+  ppSize() {
+    const P = this.pp, R = this.R, v = R.getDrawingBufferSize(new THREE.Vector2()), w = Math.max(2, v.x), h = Math.max(2, v.y);
+    for (const k of ['A', 'B1', 'B2']) if (P[k]) P[k].dispose();
+    P.A = P.rt(w, h, this.gfx === 'high' ? 4 : 2); P.B1 = P.rt(w >> 2, h >> 2); P.B2 = P.rt(w >> 2, h >> 2);
+    P.comp.uniforms.asp.value = w / h;
+  },
+  photos() {
+    if (this._ph) return this._ph;
+    const L = new THREE.TextureLoader(), A = this.R.capabilities.getMaxAnisotropy();
+    const ld = (f, srgb, rep) => new Promise(res => L.load('tex/' + f + '.jpg?v=1', t => { t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = Math.min(8, A); if (srgb) t.colorSpace = THREE.SRGBColorSpace; if (rep) t.repeat.set(rep, rep); res(t); }, undefined, () => res(null)));
+    return this._ph = Promise.all([ld('gravel_diff', 1), ld('gravel_nor', 0), ld('floor_diff', 1, 2), ld('floor_nor', 0, 2), ld('bark_diff', 1), ld('bark_nor', 0)])
+      .then(a => (this.PH = { gravel: a[0], gravelN: a[1], floor: a[2], floorN: a[3], bark: a[4], barkN: a[5] }));
+  },
   build(S, fogLevel) {
     this.dispose(); const T = TEX(), tod = TOD[S.cfg.tod] || TOD.morning, scene = this.scene = new THREE.Scene(), gfx = this.gfx;
     this.S = S; this.tod = tod;
@@ -49,13 +93,13 @@ const World = {
     this.buildTerrain(S, T); this.buildForest(S, T); this.buildProps(S, T); this.buildDust(T);
   },
   buildTerrain(S, T) {
-    const G = S.grid, TS = 32, mat = new THREE.MeshStandardMaterial({ map: T.floor.map, normalMap: T.floor.nrm, normalScale: new THREE.Vector2(0.9, 0.9), vertexColors: true, roughness: 0.96, metalness: 0 });
+    const PH = this.PH || {}, G = S.grid, TS = 32, mat = new THREE.MeshStandardMaterial({ map: PH.floor || T.floor.map, normalMap: PH.floorN || T.floor.nrm, normalScale: new THREE.Vector2(1, 1), vertexColors: true, roughness: 0.96, metalness: 0 });
     mat.onBeforeCompile = sh => {
-      sh.uniforms.roadMap = { value: T.road.map }; sh.uniforms.roadNrm = { value: T.road.nrm };
+      sh.uniforms.roadMap = { value: T.road.map }; sh.uniforms.roadNrm = { value: T.road.nrm }; sh.uniforms.grav = { value: PH.gravel || T.road.map }; sh.uniforms.gravN = { value: PH.gravelN || T.road.nrm }; sh.uniforms.hasG = { value: PH.gravel ? 1 : 0 };
       sh.vertexShader = 'attribute float aRoad; attribute vec2 aRuv; varying float vRoad; varying vec2 vRuv;\n' + sh.vertexShader.replace('#include <uv_vertex>', '#include <uv_vertex>\n vRoad = aRoad; vRuv = vec2(aRuv.x/10.+.5, aRuv.y/16.);');
-      sh.fragmentShader = 'uniform sampler2D roadMap, roadNrm; varying float vRoad; varying vec2 vRuv;\n' + sh.fragmentShader
-        .replace('#include <map_fragment>', '#include <map_fragment>\n diffuseColor.rgb = mix(diffuseColor.rgb, texture2D(roadMap, vRuv).rgb, vRoad);')
-        .replace('#include <normal_fragment_maps>', THREE.ShaderChunk.normal_fragment_maps.replace('vec3 mapN = texture2D( normalMap, vNormalMapUv ).xyz * 2.0 - 1.0;', 'vec3 mapN = mix(texture2D( normalMap, vNormalMapUv ).xyz, texture2D( roadNrm, vRuv ).xyz, vRoad) * 2.0 - 1.0;'))
+      sh.fragmentShader = 'uniform sampler2D roadMap, roadNrm, grav, gravN; uniform float hasG; varying float vRoad; varying vec2 vRuv;\n' + sh.fragmentShader
+        .replace('#include <map_fragment>', '#include <map_fragment>\n vec3 rc = texture2D(roadMap, vRuv).rgb; vec3 gc = texture2D(grav, vMapUv * 0.75).rgb * clamp(rc / vec3(.2,.15,.095), 0., 1.7); diffuseColor.rgb = mix(diffuseColor.rgb, mix(rc, gc, hasG), vRoad);')
+        .replace('#include <normal_fragment_maps>', THREE.ShaderChunk.normal_fragment_maps.replace('vec3 mapN = texture2D( normalMap, vNormalMapUv ).xyz * 2.0 - 1.0;', 'vec3 mapN = mix(texture2D( normalMap, vNormalMapUv ).xyz, mix(texture2D( roadNrm, vRuv ).xyz, texture2D( gravN, vNormalMapUv * 0.75 ).xyz, hasG * .7), vRoad) * 2.0 - 1.0;'))
         .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\n roughnessFactor = mix(roughnessFactor, .86, vRoad);');
     };
     this.tiles = []; const nz = S.noise;
@@ -116,16 +160,36 @@ const World = {
     }
     return this.merge(parts);
   },
+  // fir made of drooping branch cards around a dark core: reads as a real conifer at any distance
+  foliageCards(rng, layers, y0, y1, r0, r1, cards) {
+    const parts = [];
+    for (let i = 0; i < layers; i++) {
+      const t = i / Math.max(1, layers - 1), y = lerp(y0, y1, t), r = lerp(r0, r1, t) * (0.85 + rng() * 0.3), n = Math.max(4, Math.round(cards * (1 - t * 0.4)));
+      for (let j = 0; j < n; j++) {
+        const g = new THREE.PlaneGeometry(1, 1); g.translate(0.5, 0, 0); g.rotateX(-Math.PI / 2); g.scale(r, 1, r * 0.8);
+        g.rotateX((rng() - 0.5) * 0.9); g.rotateZ(-(0.25 + rng() * 0.35 + t * 0.1)); g.rotateY((j + rng() * 0.6) / n * Math.PI * 2 + i * 0.7); g.translate(0, y + (rng() - 0.5) * 0.3, 0);
+        const p = g.attributes.position, c = new Float32Array(p.count * 3), nn = g.attributes.normal;
+        for (let k = 0; k < p.count; k++) { const x = p.getX(k), z = p.getZ(k), d = Math.hypot(x, z), sh = (0.45 + 0.55 * Math.min(1, d / Math.max(r, 0.01))) * (0.75 + 0.25 * t); c[k * 3] = sh; c[k * 3 + 1] = sh; c[k * 3 + 2] = sh; const l = d || 1; nn.setXYZ(k, x / l * 0.65, 0.76, z / l * 0.65); }
+        g.setAttribute('color', new THREE.BufferAttribute(c, 3)); parts.push(g);
+      }
+    }
+    // dark core so you can't see straight through the middle
+    const core = new THREE.ConeGeometry(Math.max(r0, r1) * 0.2, y1 - y0 + 1.2, 6, 1, true); core.translate(0, (y0 + y1) / 2 + 0.4, 0);
+    const cc = new Float32Array(core.attributes.position.count * 3).fill(0.22); core.setAttribute('color', new THREE.BufferAttribute(cc, 3));
+    const cu = core.attributes.uv; for (let k = 0; k < cu.count; k++) cu.setXY(k, 0.45, 0.5); // a needle-dense texel of the branch texture
+    parts.push(core);
+    return this.merge(parts);
+  },
   buildForest(S, T) {
     const rng = mulberry(42);
     const trunk = (h, r) => { const g = new THREE.CylinderGeometry(r * 0.55, r, h, 7, 1, true); g.translate(0, h / 2 - 0.3, 0); const uv = g.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * 2, uv.getY(i) * h / 2); return g; };
     const kinds = [
-      { trunk: trunk(5, 0.24), fol: this.foliage(rng, 8, 1.6, 15.5, 2.9, 0.35, 0.9), lo: this.foliage(rng, 4, 1.8, 15, 2.8, 0.4, 0.6), tint: [0.85, 1.05] },
-      { trunk: trunk(15, 0.26), fol: this.foliage(rng, 5, 10.5, 17, 2.4, 0.4, 0.5), lo: this.foliage(rng, 3, 10.8, 16.5, 2.4, 0.5, 0.4), tint: [0.9, 1.2] },
-      { trunk: trunk(3, 0.15), fol: this.foliage(rng, 6, 0.8, 7.5, 1.7, 0.25, 0.6), lo: this.foliage(rng, 3, 1, 7.2, 1.7, 0.3, 0.4), tint: [0.95, 1.25] },
+      { trunk: trunk(14, 0.24), fol: this.foliageCards(rng, 12, 1.4, 15.5, 3.0, 0.45, 10), lo: this.foliage(rng, 4, 1.8, 15, 2.8, 0.4, 0.6), tint: [0.85, 1.05] },
+      { trunk: trunk(16, 0.26), fol: this.foliageCards(rng, 6, 10.2, 17, 2.5, 0.5, 7), lo: this.foliage(rng, 3, 10.8, 16.5, 2.4, 0.5, 0.4), tint: [0.9, 1.2] },
+      { trunk: trunk(6, 0.15), fol: this.foliageCards(rng, 8, 0.6, 7.5, 1.8, 0.3, 6), lo: this.foliage(rng, 3, 1, 7.2, 1.7, 0.3, 0.4), tint: [0.95, 1.25] },
     ];
-    const barkM = new THREE.MeshStandardMaterial({ map: T.bark.map, normalMap: T.bark.nrm, roughness: 1 });
-    const folM = new THREE.MeshStandardMaterial({ map: T.needles, vertexColors: true, roughness: 0.95, alphaTest: 0.5, side: THREE.DoubleSide });
+    const PH = this.PH || {}, barkM = new THREE.MeshStandardMaterial({ map: PH.bark || T.bark.map, normalMap: PH.barkN || T.bark.nrm, roughness: 1 });
+    const folM = new THREE.MeshStandardMaterial({ map: T.branch, vertexColors: true, roughness: 0.95, alphaTest: 0.42, side: THREE.DoubleSide }), folLo = new THREE.MeshStandardMaterial({ map: T.needles, vertexColors: true, roughness: 0.95, alphaTest: 0.5, side: THREE.DoubleSide });
     // bucket trees by terrain tile
     const byTile = new Map(), tileOf = (x, z) => { let best = null, bd = 1e9; for (const t of this.tiles) { const d = Math.abs(t.cx - x) + Math.abs(t.cz - z); if (d < bd) { bd = d; best = t; } } return best; };
     const TSZ = 64, key = (x, z) => Math.floor((x - S.grid.x0) / TSZ) + ',' + Math.floor((z - S.grid.z0) / TSZ), tmap = new Map();
@@ -144,7 +208,7 @@ const World = {
       mt.castShadow = mf.castShadow = shadows; mt.receiveShadow = mf.receiveShadow = shadows;
       mt.computeBoundingSphere(); mf.computeBoundingSphere();
       // low-detail foliage for distant tiles (same instances)
-      const ml = new THREE.InstancedMesh(kinds[k].lo, folM, L.length); ml.instanceMatrix.copy(mf.instanceMatrix); if (mf.instanceColor) ml.instanceColor = mf.instanceColor; ml.computeBoundingSphere(); ml.castShadow = false;
+      const ml = new THREE.InstancedMesh(kinds[k].lo, folLo, L.length); ml.instanceMatrix.copy(mf.instanceMatrix); if (mf.instanceColor) ml.instanceColor = mf.instanceColor; ml.computeBoundingSphere(); ml.castShadow = false;
       this.scene.add(mt, mf, ml); tl.objs.push(mt); (tl.hi = tl.hi || []).push(mf); (tl.lo = tl.lo || []).push(ml);
     }
   },
@@ -185,7 +249,7 @@ const World = {
       const posts = []; for (let s = 50; s < S.L - 40; s += 20) for (const sd of [-1, 1]) { const p = S.at(s), d = ROAD_HW + 1.1, x = p.x - Math.cos(p.h) * sd * d, z = p.z + Math.sin(p.h) * sd * d; if (S.logs.some(l => Math.abs(l.s - s) < 6)) continue; posts.push([x, S.heightAt(x, z), z]); }
       const pm2 = new THREE.InstancedMesh(pg, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.6 }), posts.length); posts.forEach((p, i) => { m4.makeTranslation(p[0], p[1], p[2]); pm2.setMatrixAt(i, m4); }); pm2.castShadow = this.gfx !== 'low'; pm2.computeBoundingSphere(); scene.add(pm2); }
     // logs across half the road
-    const barkM = new THREE.MeshStandardMaterial({ map: T.bark.map, normalMap: T.bark.nrm, roughness: 1 }), endM = new THREE.MeshStandardMaterial({ color: 0xb08a5a, roughness: 0.9 });
+    const PH = this.PH || {}, barkM = new THREE.MeshStandardMaterial({ map: PH.bark || T.bark.map, normalMap: PH.barkN || T.bark.nrm, roughness: 1 }), endM = new THREE.MeshStandardMaterial({ color: 0xb08a5a, roughness: 0.9 });
     for (const l of S.logs) {
       const len = Math.hypot(l.bx - l.ax, l.bz - l.az), g = new THREE.CylinderGeometry(l.rad, l.rad * 1.08, len, 12, 1, false);
       const m = new THREE.Mesh(g, [barkM, endM, endM]); const mx = (l.ax + l.bx) / 2, mz = (l.az + l.bz) / 2;
@@ -193,6 +257,32 @@ const World = {
       m.quaternion.setFromUnitVectors(up, new THREE.Vector3(l.bx - l.ax, 0, l.bz - l.az).normalize()); m.castShadow = m.receiveShadow = true; scene.add(m);
       // a broken branch stub for realism
       const br = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.08, 1.1, 5), barkM); br.position.set(0, len * 0.2, l.rad); br.rotation.x = 1.0; m.add(br);
+    }
+    // spectators behind tape at jumps, crests and hairpins
+    this.crowds = [];
+    { const spots = S.jumps.map(j => j.s).concat(S.corners.filter(c => c.g === 1).map(c => (c.s0 + c.s1) / 2), S.crests.slice(0, 2).map(c => c.s));
+      const bodyG = new THREE.CapsuleGeometry(0.24, 0.9, 3, 8); bodyG.translate(0, 0.75, 0); const headG = new THREE.SphereGeometry(0.13, 10, 8); headG.translate(0, 1.55, 0);
+      const people = [], jackets = [0xd22d2d, 0x2a6cd6, 0xf2b632, 0x2f8a3a, 0xeeeeee, 0x222222, 0xff7a1a, 0x7a3fb0];
+      for (const s0 of spots) {
+        const p = S.at(s0), corner = S.corners.find(c => s0 > c.s0 && s0 < c.s1), side = corner ? (corner.dir === 'L' ? -1 : 1) : (rng() < 0.5 ? -1 : 1); // outside of the corner is the classic spot... so stand on the inside, safely
+        const sd = -side, n = 8 + (rng() * 8 | 0), cr = { x: p.x, z: p.z, ppl: [], cheered: false };
+        for (let i = 0; i < n; i++) {
+          const ss = s0 + (rng() - 0.5) * 26, q = S.at(ss), d = ROAD_HW + 3 + rng() * 5, x = q.x - Math.cos(q.h) * sd * d, z = q.z + Math.sin(q.h) * sd * d;
+          if (S.trees.some(t => Math.hypot(t.x - x, t.z - z) < 0.8)) continue;
+          const o = { x, y: S.heightAt(x, z), z, rot: q.h + (sd > 0 ? -1 : 1) * Math.PI / 2 + (rng() - 0.5) * 0.8, c: jackets[rng() * jackets.length | 0], ph: rng() * 6.28, i: people.length };
+          people.push(o); cr.ppl.push(o);
+        }
+        // tape line
+        const tq = S.at(s0 - 14), tq2 = S.at(s0 + 14), tm = new THREE.MeshBasicMaterial({ color: 0xe03030 });
+        const a = new THREE.Vector3(tq.x - Math.cos(tq.h) * sd * (ROAD_HW + 3.2), 0, tq.z + Math.sin(tq.h) * sd * (ROAD_HW + 3.2)), b = new THREE.Vector3(tq2.x - Math.cos(tq2.h) * sd * (ROAD_HW + 3.2), 0, tq2.z + Math.sin(tq2.h) * sd * (ROAD_HW + 3.2));
+        a.y = S.heightAt(a.x, a.z) + 0.9; b.y = S.heightAt(b.x, b.z) + 0.9; const tl = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.06, a.distanceTo(b)), tm); tl.position.copy(a).add(b).multiplyScalar(0.5); tl.lookAt(b); scene.add(tl);
+        this.crowds.push(cr);
+      }
+      if (people.length) {
+        const bm = new THREE.InstancedMesh(bodyG, new THREE.MeshStandardMaterial({ roughness: 0.8 }), people.length), hm = new THREE.InstancedMesh(headG, new THREE.MeshStandardMaterial({ color: 0xd9a888, roughness: 0.7 }), people.length), col = new THREE.Color();
+        people.forEach((o, i) => { m4.makeRotationY(o.rot); m4.setPosition(o.x, o.y, o.z); bm.setMatrixAt(i, m4); hm.setMatrixAt(i, m4); bm.setColorAt(i, col.setHex(o.c)); });
+        bm.castShadow = hm.castShadow = this.gfx !== 'low'; bm.computeBoundingSphere(); hm.computeBoundingSphere(); scene.add(bm, hm); this.ppl = { bm, hm };
+      }
     }
     // start and finish gantries
     const banner = (txt, col) => { const c = document.createElement('canvas'); c.width = 1024; c.height = 160; const g = c.getContext('2d'); g.fillStyle = col; g.fillRect(0, 0, 1024, 160); g.fillStyle = '#fff'; g.font = '900 italic 104px system-ui,sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(txt, 512, 84); g.fillStyle = 'rgba(255,255,255,.25)'; for (let i = 0; i < 16; i++) g.fillRect(i * 64, 0, 32, 12); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t; };
@@ -224,6 +314,12 @@ const World = {
     });
     this.dust = new THREE.Points(geo, mat); this.dust.frustumCulled = false; this.scene.add(this.dust);
   },
+  // spectators bounce and jump when the car is near
+  wave(cr, t) {
+    if (!this.ppl) return; const m = new THREE.Matrix4();
+    for (const o of cr.ppl) { const hop = Math.max(0, Math.sin(t * 9 + o.ph)) * 0.18; m.makeRotationY(o.rot); m.setPosition(o.x, o.y + hop, o.z); this.ppl.bm.setMatrixAt(o.i, m); this.ppl.hm.setMatrixAt(o.i, m); }
+    this.ppl.bm.instanceMatrix.needsUpdate = this.ppl.hm.instanceMatrix.needsUpdate = true;
+  },
   puff(x, y, z, vx, vy, vz, size, life, r, g, b) {
     const d = this.dp, i = d.i; d.i = (i + 1) % d.n;
     d.pos[i * 3] = x; d.pos[i * 3 + 1] = y; d.pos[i * 3 + 2] = z; d.vel[i * 3] = vx; d.vel[i * 3 + 1] = vy; d.vel[i * 3 + 2] = vz; d.life[i] = d.max[i] = life; d.size[i] = size; d.col[i * 3] = r; d.col[i * 3 + 1] = g; d.col[i * 3 + 2] = b;
@@ -249,6 +345,17 @@ const World = {
     // snap the shadow camera to texels to stop shimmering
     if (s.castShadow) { s.target.updateMatrixWorld(); }
   },
-  render() { this.R.render(this.scene, this.cam); },
+  render(fx) {
+    const R = this.R;
+    if (this.gfx === 'low') { R.render(this.scene, this.cam); return; }
+    if (!this.pp) this.ppInit();
+    const P = this.pp, tm = R.toneMapping; R.toneMapping = THREE.NoToneMapping;
+    R.setRenderTarget(P.A); R.render(this.scene, this.cam);
+    P.bright.uniforms.t.value = P.A.texture; R.setRenderTarget(P.B1); R.render(P.sBright, P.oc);
+    const bw = 1 / P.B1.width, bh = 1 / P.B1.height;
+    for (let i = 0; i < 2; i++) { P.blur.uniforms.t.value = P.B1.texture; P.blur.uniforms.d.value.set(bw, 0); R.setRenderTarget(P.B2); R.render(P.sBlur, P.oc); P.blur.uniforms.t.value = P.B2.texture; P.blur.uniforms.d.value.set(0, bh); R.setRenderTarget(P.B1); R.render(P.sBlur, P.oc); }
+    const u = P.comp.uniforms; u.t.value = P.A.texture; u.b.value = P.B1.texture; u.exp.value = R.toneMappingExposure; u.spd.value = fx ? fx.spd : 0; u.hurt.value = fx ? fx.hurt : 0; u.time.value = (performance.now() / 1000) % 100;
+    R.setRenderTarget(null); R.render(P.sComp, P.oc); R.toneMapping = tm;
+  },
   dispose() { if (!this.scene) return; this.scene.traverse(o => { if (o.geometry) o.geometry.dispose(); }); this.scene = null; },
 };

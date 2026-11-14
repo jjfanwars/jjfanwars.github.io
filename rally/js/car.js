@@ -53,7 +53,7 @@ class Car {
     const vF = this.v.dot(fwd), vL = this.v.dot(left), spd = this.v.length(); this.speed = spd;
     // ---- inputs: steering with speed sensitivity and self-alignment toward the direction of travel ----
     const beta = Math.abs(vF) > 2 ? Math.atan2(vL, Math.abs(vF)) : 0;
-    const maxS = 0.6 / (1 + Math.max(0, spd - 4) / 24), st = inp.steer;
+    const vv = Math.max(4, Math.abs(vF)), maxS = clamp(Math.atan(2.51 * 13 / (vv * vv)) + 0.075, 0.11, 0.6), st = inp.steer;
     let target = st * maxS;
     const rate = Math.abs(target) < Math.abs(this.steer) ? 7 : 5;
     this.steer += clamp(target - this.steer, -rate * dt, rate * dt);
@@ -114,7 +114,7 @@ class Car {
       const bf = this.brk * CAR.brake * (w.front ? CAR.brakeBias : 1 - CAR.brakeBias) / 2;
       fx -= Math.sign(vx) * Math.min(bf, Math.abs(vx) * CAR.m * 2);
       if (hb && !w.front) { locked = true; fx = -Math.sign(vx) * Math.min(fmax * 0.85, Math.abs(vx) * CAR.m); }
-      if (!onRoad) fx -= vx * 140; // soft ground drag
+      if (!onRoad) fx -= vx * 55; // soft ground drag
       fx -= vx * 6;               // rolling resistance
       // lateral: slip angle curve, softer and wider on gravel
       const slipA = Math.atan2(vy, Math.max(Math.abs(vx), 3.5));
@@ -135,7 +135,7 @@ class Car {
     // anti-roll: transfer between left and right on each axle
     for (const [a, b] of [[0, 1], [2, 3]]) { const wa = this.wh[a], wb = this.wh[b]; if (!wa.contact && !wb.contact) continue; const d = (wa.comp - wb.comp) * CAR.arb, Pa = this.toWorld(wa.a, t.a).add(this.pos).clone(), Pb = this.toWorld(wb.a, t.a).add(this.pos).clone(); T.add(t.b.crossVectors(t.c.subVectors(Pa, this.pos), t.d.copy(up).multiplyScalar(d))); T.add(t.b.crossVectors(t.c.subVectors(Pb, this.pos), t.d.copy(up).multiplyScalar(-d))); }
     if (contacts >= 3 && !hb) {
-      const yaw = this.w.dot(up), want = vF * Math.tan(this.steer) / 2.51, err = yaw - want;
+      const lim = 13 / Math.max(3, Math.abs(vF)), yaw = this.w.dot(up), want = clamp(vF * Math.tan(this.steer) / 2.51, -lim, lim), err = yaw - want;
       T.addScaledVector(up, -err * CAR.I[1] * 6 * sstep(2, 8, Math.abs(vF)));
       // bleed off sideways sliding so the car goes where it points
       const vLat = this.v.dot(left); F.addScaledVector(left, -vLat * CAR.m * 1.0 * sstep(2, 6, Math.abs(vF)));

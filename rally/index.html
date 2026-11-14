@@ -48,6 +48,7 @@ button.go { background:var(--acc); color:#1a1408; }
 #call { position:absolute; top:22%; left:50%; transform:translateX(-50%); font:900 italic 64px system-ui,sans-serif; color:#fff; text-shadow:0 4px 18px rgba(0,0,0,.85); letter-spacing:.03em; white-space:nowrap; transition:opacity .25s; opacity:0; }
 #big { position:absolute; top:40%; left:50%; transform:translate(-50%,-50%); font:900 96px system-ui,sans-serif; text-shadow:0 6px 24px rgba(0,0,0,.8); }
 #tip { position:absolute; bottom:18px; left:50%; transform:translateX(-50%); color:var(--dim); font-size:13px; text-shadow:0 1px 4px #000; text-align:center; }
+#trip { position:absolute; top:34px; left:18px; font:700 15px ui-monospace,monospace; color:var(--ink); text-shadow:0 1px 4px #000; }
 #role { position:absolute; top:16px; left:18px; font:700 12px system-ui; letter-spacing:.14em; color:var(--dim); text-shadow:0 1px 4px #000; }
 #net { position:absolute; top:16px; right:18px; font:600 12px ui-monospace,monospace; color:var(--dim); text-shadow:0 1px 4px #000; }
 #cross { position:absolute; left:50%; top:50%; width:4px; height:4px; margin:-2px; border-radius:50%; background:rgba(255,255,255,.5); }
@@ -81,7 +82,7 @@ button.go { background:var(--acc); color:#1a1408; }
     <div class="keys">
       <b>Driver:</b> W throttle, S brake/reverse, A/D steer, Space handbrake, R recover (+5 s), mouse looks around.<br>
       <b>Navigator:</b> hold right mouse (or Tab) to raise the map, mouse looks around. Backup callouts: A/D then 1-6 (1 = hairpin, 6 = flat), J jump, C crest, L log, K keep middle, F flat out, B brake.<br>
-      <b>Solo practice</b> gives you an automatic co-driver.
+      <b>Solo practice</b> gives you an automatic co-driver. <b>Backspace</b> restarts the stage (solo or host).
     </div>
   </div>
 </div>
@@ -108,7 +109,7 @@ button.go { background:var(--acc); color:#1a1408; }
 
 <div id="hud" class="hidden">
   <div id="role"></div><div id="net"></div>
-  <div id="tm">0:00.0</div><div id="split"></div>
+  <div id="tm">0:00.0</div><div id="trip"></div><div id="split"></div>
   <div id="call"></div><div id="big"></div>
   <div id="cross"></div>
   <div id="dmg">DAMAGE<i><u></u></i></div>
@@ -118,15 +119,15 @@ button.go { background:var(--acc); color:#1a1408; }
 <div id="lockmsg" class="hidden">Click to look around</div>
 
 <script src="../three-r170.js"></script>
-<script src="js/util.js?v=4"></script>
-<script src="js/stage.js?v=4"></script>
-<script src="js/tex.js?v=4"></script>
-<script src="js/world.js?v=4"></script>
-<script src="js/car.js?v=4"></script>
-<script src="js/cockpit.js?v=4"></script>
-<script src="js/audio.js?v=4"></script>
-<script src="js/notes.js?v=4"></script>
-<script src="js/net.js?v=4"></script>
-<script src="js/main.js?v=4"></script>
+<script src="js/util.js?v=5"></script>
+<script src="js/stage.js?v=5"></script>
+<script src="js/tex.js?v=5"></script>
+<script src="js/world.js?v=5"></script>
+<script src="js/car.js?v=5"></script>
+<script src="js/cockpit.js?v=5"></script>
+<script src="js/audio.js?v=5"></script>
+<script src="js/notes.js?v=5"></script>
+<script src="js/net.js?v=5"></script>
+<script src="js/main.js?v=5"></script>
 </body>
 </html>

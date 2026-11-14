@@ -97,7 +97,21 @@ const TEX = (() => {
     }
     return tex(c, false, true);
   }
+  // a fir branch spray (alpha): stem left to right, side twigs angled to the tip, dense needles
+  function branch() {
+    const w = 256, h = 128, c = cv(w, h), g = c.getContext('2d'); g.lineCap = 'round';
+    const needle = (x, y, a, l, t) => { const s = 0.55 + t * 0.6 + R() * 0.25; g.strokeStyle = `rgb(${(28 + R() * 18) * s | 0},${(58 + R() * 34) * s | 0},${(30 + R() * 16) * s | 0})`; g.lineWidth = 1.4; g.beginPath(); g.moveTo(x, y); g.lineTo(x + Math.cos(a) * l, y + Math.sin(a) * l); g.stroke(); };
+    const stemY = x => 64 + Math.sin(x / w * 2.4) * 6;
+    g.strokeStyle = '#3a2a1c'; g.lineWidth = 3; g.beginPath(); for (let x = 0; x <= 246; x += 6) x ? g.lineTo(x, stemY(x)) : g.moveTo(x, stemY(x)); g.stroke();
+    for (let x = 6; x < 236; x += 7) for (const sd of [-1, 1]) {
+      const t = x / w, len = (1 - t * 0.75) * (34 + R() * 14), a = sd * (0.75 + R() * 0.3), x0 = x, y0 = stemY(x);
+      g.strokeStyle = '#3d2e1f'; g.lineWidth = 1.2; g.beginPath(); g.moveTo(x0, y0); g.lineTo(x0 + Math.cos(a) * len, y0 + Math.sin(a) * len); g.stroke();
+      for (let k = 0; k < len; k += 2.2) { const px = x0 + Math.cos(a) * k, py = y0 + Math.sin(a) * k, tt = Math.min(1, t + k / 80); needle(px, py, a - 0.9 + R() * 0.3, 6 + R() * 4, tt); needle(px, py, a + 0.9 - R() * 0.3, 6 + R() * 4, tt); }
+    }
+    for (let x = 0; x < 246; x += 2) { needle(x, stemY(x), -1.2 + R() * 0.4, 7, x / w); needle(x, stemY(x), 1.2 - R() * 0.4, 7, x / w); }
+    return tex(c, false, true);
+  }
   function dust() { const c = cv(64, 64), g = c.getContext('2d'), gr = g.createRadialGradient(32, 32, 0, 32, 32, 32); gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.5, 'rgba(255,255,255,.45)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.fillRect(0, 0, 64, 64); return tex(c, false, false); }
   let cache = null;
-  return () => cache || (cache = { road: road(), floor: floor(), bark: bark(), needles: needles(), plants: plants(), dust: dust() });
+  return () => cache || (cache = { road: road(), floor: floor(), bark: bark(), needles: needles(), branch: branch(), plants: plants(), dust: dust() });
 })();

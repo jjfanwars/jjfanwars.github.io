@@ -1,0 +1,5 @@
+Textures from Poly Haven (https://polyhaven.com), CC0 (public domain).
+gravel_*  = rocky_trail
+floor_*   = forest_ground_04
+bark_*    = pine_bark
+"_nor" files are OpenGL normal maps. Resized/recompressed for the web.
