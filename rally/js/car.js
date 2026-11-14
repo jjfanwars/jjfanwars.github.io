@@ -53,7 +53,7 @@ class Car {
     const vF = this.v.dot(fwd), vL = this.v.dot(left), spd = this.v.length(); this.speed = spd;
     // ---- inputs: steering with speed sensitivity and self-alignment toward the direction of travel ----
     const beta = Math.abs(vF) > 2 ? Math.atan2(vL, Math.abs(vF)) : 0;
-    const vv = Math.max(4, Math.abs(vF)), maxS = clamp(Math.atan(2.51 * 13 / (vv * vv)) + 0.075, 0.11, 0.6), st = inp.steer;
+    const vv = Math.max(4, Math.abs(vF)), maxS = clamp(Math.atan(2.51 * 19 / (vv * vv)) + 0.09, 0.13, 0.6), st = inp.steer;
     let target = st * maxS;
     const rate = Math.abs(target) < Math.abs(this.steer) ? 7 : 5;
     this.steer += clamp(target - this.steer, -rate * dt, rate * dt);
@@ -61,7 +61,7 @@ class Car {
     let thr = inp.thr, brk = inp.brk;
     if (this.gear > 0 && brk > 0.1 && vF < 0.8 && thr < 0.1) { this.gear = -1; }
     else if (this.gear < 0 && thr > 0.1 && vF > -0.8) { this.gear = 1; }
-    if (this.gear < 0) { const x = thr; thr = brk; brk = x; }
+    if (this.gear < 0) { const x = thr; thr = brk; brk = x; if (vF < -8) thr *= clamp((vF + 9) / 1, 0, 1); } // reverse tops out near 30 km/h
     this.thr += clamp(thr - this.thr, -8 * dt, 6 * dt); this.brk += clamp(brk - this.brk, -10 * dt, 8 * dt);
     const hb = inp.hb ? 1 : 0;
     // ---- engine and gearbox ----
@@ -78,7 +78,7 @@ class Car {
       else if (this.gear > 1) { const lower = tgtRpm * CAR.gears[this.gear - 2] / CAR.gears[this.gear - 1]; if (lower < CAR.red - 1500 && (tgtRpm < 3300 || (this.brk > 0.3 && lower < CAR.red - 1900))) { this.gear--; this.shiftT = 0.1; this.events.push({ k: 'shift', up: 0 }); } }
     }
     const limiter = this.rpm > CAR.red - 20 ? 0.15 : 1;
-    const engT = this.shiftT > 0 ? 0 : torqueAt(this.rpm) * this.thr * limiter, driveTotal = engT * ksh * 0.9 / CAR.r; // N at the contact patches
+    const engT = this.shiftT > 0 ? 0 : torqueAt(this.rpm) * this.thr * limiter, driveTotal = engT * Math.abs(ksh) * 0.9 / CAR.r; // N at the contact patches
     // ---- suspension + tyres ----
     let contacts = 0, slideSum = 0, offSum = 0;
     for (let i = 0; i < 4; i++) {
@@ -106,7 +106,7 @@ class Car {
       // surface from the road map
       const q = S.near(cp.x, cp.z, 12), onRoad = q && q.d < ROAD_HW + 0.3;
       w.surf = onRoad ? 0 : 1; offSum += w.surf;
-      const mu = (onRoad ? 1.25 : 0.82) * (1 - this.dmg * 0.15), Fz = Math.min(w.load, 9000), fmax = mu * Fz * (1 - 0.06 * Fz / 4000); // tyre load sensitivity
+      const mu = (onRoad ? 1.5 : 0.9) * (1 - this.dmg * 0.15), Fz = Math.min(w.load, 9000), fmax = mu * Fz * (1 - 0.06 * Fz / 4000); // tyre load sensitivity
       // longitudinal
       let fx = 0, locked = false;
       const share = w.front ? (1 - CAR.split) / 2 : CAR.split / 2;
@@ -135,7 +135,7 @@ class Car {
     // anti-roll: transfer between left and right on each axle
     for (const [a, b] of [[0, 1], [2, 3]]) { const wa = this.wh[a], wb = this.wh[b]; if (!wa.contact && !wb.contact) continue; const d = (wa.comp - wb.comp) * CAR.arb, Pa = this.toWorld(wa.a, t.a).add(this.pos).clone(), Pb = this.toWorld(wb.a, t.a).add(this.pos).clone(); T.add(t.b.crossVectors(t.c.subVectors(Pa, this.pos), t.d.copy(up).multiplyScalar(d))); T.add(t.b.crossVectors(t.c.subVectors(Pb, this.pos), t.d.copy(up).multiplyScalar(-d))); }
     if (contacts >= 3 && !hb) {
-      const lim = 13 / Math.max(3, Math.abs(vF)), yaw = this.w.dot(up), want = clamp(vF * Math.tan(this.steer) / 2.51, -lim, lim), err = yaw - want;
+      const lim = 19 / Math.max(3, Math.abs(vF)), yaw = this.w.dot(up), want = clamp(vF * Math.tan(this.steer) / 2.51, -lim, lim), err = yaw - want;
       T.addScaledVector(up, -err * CAR.I[1] * 6 * sstep(2, 8, Math.abs(vF)));
       // bleed off sideways sliding so the car goes where it points
       const vLat = this.v.dot(left); F.addScaledVector(left, -vLat * CAR.m * 1.0 * sstep(2, 6, Math.abs(vF)));
