@@ -354,6 +354,8 @@ body.cbDeut #ov,body.cbDeut #mm,body.cbDeut #cards img,body.cbDeut #selpanel img
     <button class="big mtile" id="bCamp" title="Spend a budget on troops, place them, and beat a fixed enemy army"><b>🎖 Campaign</b><small>Budget battles, level by level</small></button>
     <div class="mgroup">Arcade: air &amp; tanks</div>
     <button class="big mtile" id="bArc" style="grid-column:1/-1" title="Arcade air and tank battles: endless respawns, tickets and capture points"><b>✈ Air &amp; Tank Battles</b><small>Dogfights and tank fights · 12 vs 12, tickets, capture points</small></button>
+    <div class="mgroup">More games</div>
+    <button class="big mtile" id="bRally" style="grid-column:1/-1" title="Rally: drive stages solo with an auto co-driver, or online as driver and navigator" onclick="location.href='rally/'"><b>🏁 Rally</b><small>Rally stages solo or with a friend reading the pace notes · online races up to 4 cars</small></button>
     <div class="mgroup">With friends</div>
     <button class="big mtile" id="bHost"><b>🛰 Host a game</b><small>Open a room with bots, friends click Join</small></button>
     <button class="big mtile" id="bRail" title="Co-op: man the gun cars of an armoured train and get it across the island"><b>🚂 Iron Express (co-op)</b><small>Defend an armoured train across the island with friends</small></button>
@@ -15892,6 +15894,9 @@ addEventListener('keydown', () => { if (typeof Direct !== 'undefined' && window.
   };
   // ---- changelog: add a new entry at the TOP of this list whenever something changes
   const CHANGELOG = [
+    {d: '15 Nov 2026', items: [
+      'New: Rally is linked from the main menu (More games). Drive rally stages solo with an auto co-driver, or online with a friend reading the pace notes.',
+    ]},
     {d: '13 Nov 2026', items: [
       'Red Star fixes: banking now tilts the right way, and the "while you were away" base report no longer pops up in co-op missions.',
       'Red Star: the bomber outside is now exactly as big as the cabin you walk around in (it towers over you), with four propeller engines, a glazed nose, gun blisters and red stars, on a bigger airfield with a wide runway. You walk under it and climb a ladder up through the belly hatch. Inside: floor hatch, quilted insulation, plank walkway, placards and a navigator table with the route chart.',
