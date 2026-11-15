@@ -140,6 +140,12 @@ button.big.go { border-color:transparent; box-shadow:0 10px 30px rgba(242,182,50
 .unlock { margin:14px auto 0; display:inline-block; background:rgba(242,182,50,.14); border:1px solid rgba(242,182,50,.5); color:var(--acc2); border-radius:999px; padding:6px 16px; font-weight:700; font-size:14px; animation:pop2 .6s ease-out; }
 @keyframes pop2 { from { transform:scale(1.25); opacity:0; } }
 #fin table { width:100%; border-collapse:collapse; margin-top:14px; font-variant-numeric:tabular-nums; text-align:left; } #fin td { padding:7px 4px; border-bottom:1px solid var(--line); } #fin td:first-child { color:var(--dim); } #fin td:last-child { text-align:right; font-weight:600; }
+#style { position:absolute; right:22px; top:42%; display:flex; flex-direction:column; align-items:flex-end; gap:6px; }
+#style div { display:flex; gap:10px; align-items:baseline; background:rgba(8,10,9,.62); border-right:3px solid var(--acc); border-radius:8px; padding:5px 12px; animation:sIn .3s ease-out; transition:opacity .4s,transform .4s; }
+#style div.out { opacity:0; transform:translateX(20px); }
+#style b { font:900 italic 18px system-ui; letter-spacing:.03em; } #style span { font:800 15px ui-monospace,monospace; color:var(--acc); }
+@keyframes sIn { from { transform:translateX(40px) scale(1.2); opacity:0; } }
+i.md { display:inline-block; width:10px; height:10px; border-radius:50%; background:var(--m); box-shadow:0 0 0 2px rgba(0,0,0,.4),0 0 8px var(--m); margin-right:6px; vertical-align:-1px; }
 #fade { position:fixed; inset:0; background:#000; opacity:0; pointer-events:none; z-index:4; transition:opacity .3s; }
 @media (max-width:700px) { #spd { width:130px; height:130px; } #spd .in b { font-size:34px; } #call { font-size:34px; } #callA { font-size:38px; } #tip { display:none; } }
 </style>
@@ -164,7 +170,7 @@ button.big.go { border-color:transparent; box-shadow:0 10px 30px rgba(242,182,50
       <div id="rooms"></div>
       <div class="msg" id="msg" role="status"></div>
       <details class="keys"><summary>Controls</summary>
-        <p><b>Driver</b> W throttle · S brake / reverse · A D steer · Space handbrake · R recover (+5 s) · Esc pause · mouse looks · aim the centre dot at a dash switch and click it (wipers, headlights, spot lights)</p>
+        <p><b>Driver</b> W throttle · S brake / reverse · A D steer · Space handbrake · R recover (+5 s) · V chase cam · G ghost · Esc pause · mouse looks · aim the centre dot at a dash switch and click it (wipers, headlights, spot lights)</p>
         <p><b>Navigator</b> hold right mouse or Tab for the map · backup callouts: A / D then 1-6 (1 = hairpin, 6 = flat), J jump, C crest, L log, K keep middle, F flat out, B brake</p>
         <p><b>Gamepad</b> left stick steers · RT throttle · LT brake · A handbrake · Y recover</p>
         <p><b>Backspace</b> restarts the stage (solo or host)</p>
@@ -222,6 +228,7 @@ button.big.go { border-color:transparent; box-shadow:0 10px 30px rgba(242,182,50
   <div id="top"><div id="pos"></div><div id="tbox"><div id="tm">0:00.0</div><div id="dl"></div></div><div id="trip"></div></div>
   <div id="prog"><i id="progF"></i><b class="sp" style="left:33.3%"></b><b class="sp" style="left:66.6%"></b><div id="progDots"></div><span class="pl">START</span><span class="pr">FINISH</span></div>
   <div id="split"></div>
+  <div id="style"></div>
   <div id="call"><span id="callA"></span><span id="callT"></span></div><div id="big"></div>
   <div id="cross"></div><div id="hov"></div>
   <div id="dmg"><span>DAMAGE</span><b id="dmgP">0%</b><i><u></u></i></div>
@@ -236,16 +243,16 @@ button.big.go { border-color:transparent; box-shadow:0 10px 30px rgba(242,182,50
 </div></div>
 
 <script src="../three-r170.js"></script>
-<script src="js/util.js?v=17"></script>
-<script src="js/stage.js?v=17"></script>
-<script src="js/tex.js?v=17"></script>
-<script src="js/world.js?v=17"></script>
-<script src="js/car.js?v=17"></script>
-<script src="js/cockpit.js?v=17"></script>
-<script src="js/audio.js?v=17"></script>
-<script src="js/notes.js?v=17"></script>
-<script src="js/net.js?v=17"></script>
-<script src="js/garage3d.js?v=17"></script>
-<script src="js/main.js?v=17"></script>
+<script src="js/util.js?v=18"></script>
+<script src="js/stage.js?v=18"></script>
+<script src="js/tex.js?v=18"></script>
+<script src="js/world.js?v=18"></script>
+<script src="js/car.js?v=18"></script>
+<script src="js/cockpit.js?v=18"></script>
+<script src="js/audio.js?v=18"></script>
+<script src="js/notes.js?v=18"></script>
+<script src="js/net.js?v=18"></script>
+<script src="js/garage3d.js?v=18"></script>
+<script src="js/main.js?v=18"></script>
 </body>
 </html>
