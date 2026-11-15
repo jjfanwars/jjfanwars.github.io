@@ -74,7 +74,7 @@ button.big.go { border-color:transparent; box-shadow:0 10px 30px rgba(242,182,50
 .stc em { position:absolute; top:9px; right:9px; font-style:normal; font-size:10px; font-weight:700; letter-spacing:.08em; color:#1a1408; background:var(--acc); border-radius:4px; padding:1px 5px; }
 .stc .bt { color:var(--acc2); font-variant-numeric:tabular-nums; }
 .stc.sel { border-color:var(--acc); box-shadow:inset 0 0 0 1px var(--acc); }
-.opts { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
+.opts { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; }
 .opts label { margin-top:0; }
 .seg { display:flex; background:var(--field); border:1px solid rgba(255,255,255,.12); border-radius:9px; padding:3px; gap:3px; }
 .seg button { flex:1; padding:7px 4px; font-size:13px; font-weight:600; background:transparent; color:var(--dim); border-radius:6px; }
@@ -168,7 +168,7 @@ i.md { display:inline-block; width:10px; height:10px; border-radius:50%; backgro
       <a class="back" href="../">&lsaquo; jjfanwars</a>
       <label for="nm">Your name</label><input id="nm" maxlength="14" placeholder="Name" autocomplete="off">
       <div class="play">
-        <button class="go big" id="bSolo"><span>Solo practice</span><small>Auto co-driver reads the notes</small></button>
+        <button class="go big" id="bSolo"><span>Solo practice</span><small>Race AI rivals or drive alone · auto co-driver</small></button>
         <button class="big" id="bChamp"><span>Championship</span><small>Multi-stage events against eight rivals</small></button>
         <button class="big" id="bHost"><span>Host online</span><small>Up to 4 cars, 8 players</small></button>
       </div>
@@ -200,6 +200,7 @@ i.md { display:inline-block; width:10px; height:10px; border-radius:50%; backgro
       <div class="opts">
         <div><label>Fog</label><div class="seg" data-for="sFog"></div><select id="sFog" class="hidden"><option value="0">Light</option><option value="1" selected>Medium</option><option value="2">Heavy</option></select></div>
         <div><label>Online seat</label><div class="seg" data-for="sRole"></div><select id="sRole" class="hidden"><option value="drv">Driver</option><option value="nav">Navigator</option></select></div>
+        <div><label>Solo rivals</label><div class="seg" data-for="sBots"></div><select id="sBots" class="hidden"><option value="0">Off</option><option value="3" selected>3</option><option value="5">5</option></select></div>
         <div><label>Graphics</label><div class="seg" data-for="sGfx"></div><select id="sGfx" class="hidden"><option value="high">High</option><option value="med" selected>Med</option><option value="low">Low</option></select></div>
       </div>
     </section>
@@ -259,16 +260,17 @@ i.md { display:inline-block; width:10px; height:10px; border-radius:50%; backgro
 </div></div>
 
 <script src="../three-r170.js"></script>
-<script src="js/util.js?v=19"></script>
-<script src="js/stage.js?v=19"></script>
-<script src="js/tex.js?v=19"></script>
-<script src="js/world.js?v=19"></script>
-<script src="js/car.js?v=19"></script>
-<script src="js/cockpit.js?v=19"></script>
-<script src="js/audio.js?v=19"></script>
-<script src="js/notes.js?v=19"></script>
-<script src="js/net.js?v=19"></script>
-<script src="js/garage3d.js?v=19"></script>
-<script src="js/main.js?v=19"></script>
+<script src="js/util.js?v=20"></script>
+<script src="js/stage.js?v=20"></script>
+<script src="js/tex.js?v=20"></script>
+<script src="js/world.js?v=20"></script>
+<script src="js/car.js?v=20"></script>
+<script src="js/cockpit.js?v=20"></script>
+<script src="js/audio.js?v=20"></script>
+<script src="js/notes.js?v=20"></script>
+<script src="js/net.js?v=20"></script>
+<script src="js/garage3d.js?v=20"></script>
+<script src="js/bots.js?v=20"></script>
+<script src="js/main.js?v=20"></script>
 </body>
 </html>

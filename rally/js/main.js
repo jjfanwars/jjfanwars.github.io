@@ -14,7 +14,7 @@ const medalOf = (i, t) => { for (let k = 0; k < 3; k++) if (t <= medalT(i, k)) r
 const medalDot = k => k < 0 ? '' : '<i class="md" style="--m:' + MEDALS[k][2] + '" title="' + MEDALS[k][0] + '"></i>';
 // ---------- menu ----------
 STAGES.forEach((s, i) => { const o = document.createElement('option'); o.value = i; o.textContent = BIOMES[s.biome].name + ' · ' + s.name + (s.berms ? ' · berms & jumps' : '') + '  (' + (s.len / 1000).toFixed(1) + ' km)'; $('sStage').appendChild(o); });
-try { $('nm').value = localStorage.getItem('pn-name') || ''; $('sGfx').value = localStorage.getItem('pn-gfx') || 'med'; for (const k of ['sStage', 'sFog', 'sRole']) { const v = localStorage.getItem('pn-' + k); if (v !== null && [...$(k).options].some(o => o.value === v)) $(k).value = v; } } catch (e) {}
+try { $('nm').value = localStorage.getItem('pn-name') || ''; $('sGfx').value = localStorage.getItem('pn-gfx') || 'med'; for (const k of ['sStage', 'sFog', 'sRole', 'sBots']) { const v = localStorage.getItem('pn-' + k); if (v !== null && [...$(k).options].some(o => o.value === v)) $(k).value = v; } } catch (e) {}
 const myName = () => { const n = ($('nm').value || '').replace(/[^A-Za-z0-9 ._-]/g, '').trim().slice(0, 14) || 'Player' + (1 + Math.random() * 99 | 0); try { localStorage.setItem('pn-name', n); localStorage.setItem('pn-gfx', $('sGfx').value); } catch (e) {} return n; };
 const show = id => { for (const s of ['menu', 'lobby', 'fin', 'pause', 'champ']) $(s).classList.toggle('hidden', s !== id); Garage3D.on = id === 'menu'; };
 // ---- stage cards (drive the hidden select) ----
@@ -72,7 +72,7 @@ addEventListener('keydown', e => { if ($('menu').classList.contains('hidden') ||
 const carLocked = () => { if (carOpen(Garage.sel)) return false; msg('msg', CARS[Garage.sel].name + ' is locked. Pick an unlocked car.'); return true; };
 const myId = () => Net.role === 'host' ? 'H' : Net.id;
 const nameOf = id => id === 'H' ? Net.name : (Net.peers.get(id) || {}).name || 'Player';
-$('bSolo').onclick = () => { if (carLocked()) return; Champ.run = null; Sfx.start(); Net.close(); const c = readCfg(); startStage(c, 'drv', true, 0, [[{ id: 'me', name: myName(), car: Net.car | 0 }, null]]); };
+$('bSolo').onclick = () => { if (carLocked()) return; Champ.run = null; Sfx.start(); Net.close(); const c = readCfg(); c.bots = +$('sBots').value; startStage(c, 'drv', true, 0, [[{ id: 'me', name: myName(), car: Net.car | 0 }, null]]); };
 $('bHost').onclick = () => {
   if (carLocked()) return; Sfx.start(); const name = myName(); G.cfg = readCfg(); const code = Net.host(name, s => msg('lmsg', s === 'open' ? 'Share the code (up to 8 players, two per car).' : 'Connection lost, retrying...'));
   G.seats = [[null, null], [null, null], [null, null], [null, null]]; G.seats[0][G.cfg.hostRole === 'nav' ? 1 : 0] = 'H';
@@ -159,7 +159,15 @@ function startStage(cfg, role, solo, myCar, seats) {
     { const p0 = S.at(World.startS); MapDraw.draw(view.mapC.getContext('2d'), { x: p0.x, z: p0.z, h: p0.h, prog: World.startS }, { grades: true, vis: [140, 90, 55][cfg.fog] }); view.mapT.needsUpdate = true; }
     Object.assign(G, { on: true, S, cfg, role, solo, notes, view, views, tags, seats, cars, myCar, grid, race: n > 1, autoNav: solo || (role === 'drv' && !seats[myCar][1]), bufs: {}, results: {}, finShown: false, counted: false, unlockMsg: '', final: 0, car: null, phase: 'count', t: -3.5, pen: 0, splits: [], splitS: [S.L / 3, S.L * 2 / 3], nextSplit: 0, auto: {}, buf: [], other: { yaw: 0, pitch: 0, map: false }, callT: 0, finT: 0, crashes: 0, trace: [], style: { dT: 0, dA: 0, aT: 0, pts: 0, drift: 0, air: 0 }, paused: false, wasLocked: !!document.pointerLockElement, sendT: 0, lookT: 0, lastBeep: 4, startS: World.startS, finishS: World.finishS });
     for (const c of cars) G.bufs[c] = [];
-    if (role === 'drv') { G.car = new Car(S); G.car.place(grid.s, grid.lat); }
+    // AI rivals on the road (solo only): you start at the back of the grid
+    G.bots = []; G.rivals = null;
+    if (solo && role === 'drv') {
+      let names = [];
+      if (Champ.run) { const pool = Champ.run.riv.slice().sort(() => Math.random() - 0.5); names = pool.slice(0, 3); }
+      else if (cfg.bots) names = RIVALS.map(([n, s]) => ({ n, s })).sort(() => Math.random() - 0.5).slice(0, cfg.bots);
+      if (names.length) { G.bots = Bots.spawn(S, names, World.startS, names.length); const k2 = names.length; G.grid = { s: World.startS - 3 - Math.floor(k2 / 2) * 9, lat: k2 % 2 ? 1.9 : -1.9 }; G.rivals = G.bots.map(b => b.adapt); }
+    }
+    if (role === 'drv') { G.car = new Car(S); G.car.place(G.grid.s, G.grid.lat); G.meAdapt = { pos: G.car.pos, q: G.car.q, vel: G.car.v }; }
     look.yaw = 0; look.pitch = role === 'nav' ? -0.14 : -0.1; look.map = false; G.sw = [1, 1, 0, 0, /dusk|evening/i.test(STAGES[cfg.stage].tod) ? 1 : 0, 0];
     $('role').textContent = CARS[mdl(myCar)].name.toUpperCase() + ' · ' + (solo ? 'SOLO PRACTICE · AUTO CO-DRIVER' : (role === 'drv' ? 'DRIVER' : 'NAVIGATOR') + ' · ' + CAR_NAME[myCar].toUpperCase() + ' CAR' + (G.autoNav ? ' · AUTO CO-DRIVER' : '')) + ' · ' + STAGES[cfg.stage].name.toUpperCase(); msg('pos', '');
     if (Champ.run) $('role').textContent = Champ.run.c.name.toUpperCase() + ' · STAGE ' + (Champ.run.i + 1) + ' / ' + Champ.run.c.st.length + ' · ' + STAGES[cfg.stage].name.toUpperCase();
@@ -264,7 +272,9 @@ function recover() {
 }
 
 // ---------- driver: physics, timing, sending ----------
+const botClock = () => G.phase === 'fin' ? G.final - G.pen + G.finT : G.t;
 function driverStep(dt) {
+  if (G.bots && G.bots.length) Bots.step(dt, G.phase, botClock(), G.meAdapt);
   const c = G.car, i = G.phase === 'count' ? { steer: inp.steer, thr: 0, brk: 1, hb: 1 } : readInput(dt);
   if (G.phase === 'count') readInput(dt);
   if (G.phase !== 'count') { c.step(dt, i); if (G.rivals && G.rivals.length) c.bump(G.rivals); } else { c.step(dt, { steer: 0, thr: KEYS.has('KeyW') ? 1 : 0, brk: 0, hb: 1 }); c.v.multiplyScalar(0); c.place(G.grid.s, G.grid.lat); c.rpm = KEYS.has('KeyW') ? 6500 : CAR.idle; }
@@ -388,6 +398,7 @@ function frame(now) {
   G.view.update(st, dt, G.chase ? 'x' : G.role, look, G.solo ? null : G.other);
   if (G.chase) chaseCam(World.cam, st, dt); else G.view.camera(World.cam, st, G.role, look, dt);
   if (G.role === 'drv') ghostStep(dt);
+  if (G.bots && G.bots.length) { Bots.render(dt, look, World.cam.position); botStandings(st); }
   if (G.role === 'nav' || G.view.mapUp > 0.02 || G.solo) {
     G.mapTk = (G.mapTk || 0) - dt;
     if (G.mapTk <= 0 && (G.role === 'nav' || G.view.mapUp > 0.02)) { G.mapTk = 0.1; fwdV.set(0, 0, 1).applyQuaternion(st.q); MapDraw.draw(G.view.mapC.getContext('2d'), { x: st.pos.x, z: st.pos.z, h: Math.atan2(fwdV.x, fwdV.z), prog: st.prog }, { grades: !G.noGrades, vis: [140, 90, 55][G.cfg.fog], others: G.race ? G.cars.filter(c => c !== G.myCar).map(c => { const L = (G.bufs[c] || []).slice(-1)[0]; return L ? { x: L.p[0], z: L.p[2], col: hex(CAR_COL[c]) } : null; }).filter(Boolean) : [] }); G.view.mapT.needsUpdate = true; }
@@ -427,7 +438,7 @@ function hud(st) {
     if (G.phase === 'run' && ref !== undefined && ref !== null && k > 0) { const d = G.trace[k] - ref; dl.textContent = (d >= 0 ? '+' : '\u2212') + Math.abs(d).toFixed(1); dl.className = d >= 0 ? 'up' : 'dn'; }
     else { dl.textContent = G.bestRec ? 'BEST ' + fmtT(G.bestRec.t) : ''; dl.className = ''; } }
   // car dots on the progress bar (rivals in a race)
-  if (G.progDots) for (const [c, el] of G.progDots) { const p = c === G.myCar ? st.prog : ((G.bufs[c] || []).slice(-1)[0] || { pr: G.startS }).pr; el.style.left = clamp((p - G.startS) / len, 0, 1) * 100 + '%'; }
+  if (G.progDots) for (const [c, el] of G.progDots) { const p = typeof c === 'string' ? G.bots[+c.slice(1)].car.prog : c === G.myCar ? st.prog : ((G.bufs[c] || []).slice(-1)[0] || { pr: G.startS }).pr; el.style.left = clamp((p - G.startS) / len, 0, 1) * 100 + '%'; }
   if (G.role === 'drv') {
     $('spd').querySelector('b').textContent = Math.round(st.speed * 3.6); $('gear').textContent = st.gear < 0 ? 'R' : st.gear || 'N';
     drawRev(st.rpm);
@@ -437,8 +448,8 @@ function hud(st) {
 }
 function buildProg() {
   const box = $('progDots'); box.innerHTML = ''; G.progDots = [];
-  const cs = G.race ? G.cars.filter(c => c !== G.myCar).concat([G.myCar]) : [G.myCar];
-  for (const c of cs) { const i = document.createElement('i'); i.style.setProperty('--c', hex(CAR_COL[c])); if (c === G.myCar) i.className = 'me'; box.appendChild(i); G.progDots.push([c, i]); }
+  const cs = (G.race ? G.cars.filter(c => c !== G.myCar) : []).concat((G.bots || []).map((b, k) => 'b' + k), [G.myCar]);
+  for (const c of cs) { const i = document.createElement('i'); i.style.setProperty('--c', typeof c === 'string' ? hex(G.bots[+c.slice(1)].col) : hex(CAR_COL[c])); if (c === G.myCar) i.className = 'me'; box.appendChild(i); G.progDots.push([c, i]); }
 }
 // rev counter ring around the speed readout
 let revLast = -1;
@@ -484,7 +495,7 @@ function rivalTime(r, stage) { // silver pace times skill, with a bad-luck spin 
 }
 function champFinish() {
   const R = Champ.run, stage = R.c.st[R.i]; if (R.mine.length > R.i) return; R.mine.push(G.final);
-  for (const r of R.riv) r.t.push(rivalTime(r, stage));
+  for (const r of R.riv) { const b = (G.bots || []).find(x => x.ref === r); r.t.push(b ? Math.round(Bots.eta(b, botClock()) * 100) / 100 : rivalTime(r, stage)); }
   const sum = a => a.reduce((x, y) => x + y, 0), me = { n: myName() + ' (you)', tot: sum(R.mine), st: G.final, me: 1 };
   const all = R.riv.map(r => ({ n: r.n, tot: sum(r.t), st: r.t[R.i] })).concat([me]).sort((a, b) => a.tot - b.tot);
   const stPos = all.slice().sort((a, b) => a.st - b.st).indexOf(me) + 1, pos = all.indexOf(me) + 1, last = R.i === R.c.st.length - 1, lead = all[0].tot;
@@ -501,6 +512,20 @@ function champFinish() {
   }
 }
 const ordinal = n => n + (n % 10 === 1 && n % 100 !== 11 ? 'st' : n % 10 === 2 && n % 100 !== 12 ? 'nd' : n % 10 === 3 && n % 100 !== 13 ? 'rd' : 'th');
+// ---------- race against the AI cars: live position and results ----------
+function botOrder(st) {
+  const clk = botClock(), me = { me: 1, name: myName() + ' (you)', fin: G.final ? G.final : 0, prog: st ? st.prog : G.car.prog, col: CAR_COL[0] };
+  const all = G.bots.map(b => ({ name: b.name, fin: b.fin, prog: b.car.prog, eta: Bots.eta(b, clk), col: b.col })).concat([me]);
+  return all.sort((a, b) => (a.fin || 1e9) - (b.fin || 1e9) || b.prog - a.prog);
+}
+function botStandings(st) {
+  if ((G.bsT = (G.bsT || 0) - 1) > 0) return; G.bsT = 10;
+  const o = botOrder(st); $('pos').textContent = 'P' + (o.findIndex(x => x.me) + 1) + ' / ' + o.length;
+  if (G.finShown && !Champ.run) {
+    $('finTab').innerHTML = o.map((x, i) => '<tr class="' + (x.me ? 'me' : '') + '"><td><b style="color:' + hex(x.col) + '">P' + (i + 1) + '</b> ' + x.name.replace(/[<>&]/g, '') + '</td><td>' + (x.fin ? fmtT2(x.fin) : 'running ' + (Math.max(0, x.prog - G.startS) / 1000).toFixed(2) + ' km') + '</td></tr>').join('');
+    const p = o.findIndex(x => x.me) + 1; $('finK').textContent = 'RACE RESULTS · ' + ordinal(p).toUpperCase() + ' PLACE';
+  }
+}
 // ---------- chase camera (V) ----------
 const CH = { pos: new THREE.Vector3(), tgt: new THREE.Vector3(), f: new THREE.Vector3(), want: new THREE.Vector3(), init: false };
 function chaseCam(cam, st, dt) {
@@ -560,5 +585,5 @@ function perf(dt) {
 }
 requestAnimationFrame(frame);
 // test hooks
-window.__PN = { G, World, startStage, Net, look, KEYS, say, showFinish, pauseOpen, pop, ghostSetup, Champ, champStart, CHAMPS };
+window.__PN = { G, World, startStage, Net, look, KEYS, say, showFinish, pauseOpen, pop, ghostSetup, Champ, champStart, CHAMPS, Bots };
 if (Q.has('solo')) setTimeout(() => $('bSolo').click(), 100);
