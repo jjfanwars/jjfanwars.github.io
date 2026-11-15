@@ -10,31 +10,77 @@
   Three.js r170 (MIT) from ../three-r170.js. Everything else is procedural.
 -->
 <style>
-:root { --bg:#0e1210; --ink:#efe9dc; --dim:#a39d8f; --acc:#f2b632; --red:#e0483a; --panel:rgba(14,18,16,.86); }
+:root { --bg:#0b0e0c; --ink:#efe9dc; --dim:#9f998b; --acc:#f2b632; --acc2:#ffcf5c; --red:#e0483a; --green:#4cc38a; --panel:rgba(16,20,18,.82); --line:rgba(255,255,255,.08); --field:#141a17; --chip:#1c2420; }
 * { box-sizing:border-box; }
 html,body { margin:0; height:100%; background:var(--bg); color:var(--ink); font:15px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif; overflow:hidden; }
 canvas#gl { position:fixed; inset:0; width:100%; height:100%; display:block; }
 .hidden { display:none !important; }
 .scr { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; padding:16px; background:radial-gradient(ellipse at 50% 30%,rgba(20,26,22,.55),rgba(6,8,7,.92)); z-index:10; }
-.card { width:min(560px,100%); background:var(--panel); border:1px solid rgba(255,255,255,.08); border-radius:14px; padding:26px; box-shadow:0 30px 80px rgba(0,0,0,.5); max-height:100%; overflow:auto; }
-h1 { margin:0 0 2px; font-size:40px; letter-spacing:.04em; font-weight:900; font-style:italic; }
+#menu { background:radial-gradient(1200px 600px at 75% 20%,rgba(242,182,50,.10),transparent 60%),radial-gradient(900px 700px at 0% 100%,rgba(60,110,80,.16),transparent 60%),linear-gradient(160deg,#121815,#070908); overflow:auto; align-items:flex-start; }
+#menu::before { content:""; position:fixed; inset:0; pointer-events:none; opacity:.05; background:repeating-linear-gradient(115deg,#fff 0 2px,transparent 2px 22px); }
+.card { width:min(560px,100%); background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:26px; box-shadow:0 30px 80px rgba(0,0,0,.5); max-height:100%; overflow:auto; backdrop-filter:blur(8px); }
+h1 { margin:0 0 2px; font-size:44px; letter-spacing:.04em; font-weight:900; font-style:italic; line-height:1.05; }
 h1 b { color:var(--acc); }
-.sub { color:var(--dim); margin:0 0 18px; }
-label { display:block; font-size:12px; text-transform:uppercase; letter-spacing:.08em; color:var(--dim); margin:12px 0 4px; }
-input,select { width:100%; padding:10px 12px; border-radius:8px; border:1px solid rgba(255,255,255,.14); background:#151b18; color:var(--ink); font:inherit; }
-.row { display:flex; gap:10px; } .row > * { flex:1; }
-button { padding:11px 16px; border-radius:9px; border:0; background:#2a332e; color:var(--ink); font:600 15px system-ui,sans-serif; cursor:pointer; }
-button:hover { filter:brightness(1.15); }
+h2 { margin:0; font-size:12px; letter-spacing:.16em; text-transform:uppercase; color:var(--dim); font-weight:700; }
+.sub { color:var(--dim); margin:6px 0 18px; }
+label { display:block; font-size:11px; text-transform:uppercase; letter-spacing:.1em; color:var(--dim); margin:14px 0 6px; font-weight:600; }
+input,select { width:100%; padding:10px 12px; border-radius:8px; border:1px solid rgba(255,255,255,.12); background:var(--field); color:var(--ink); font:inherit; }
+input:focus,select:focus,button:focus-visible { outline:2px solid var(--acc); outline-offset:1px; }
+.row { display:flex; gap:8px; } .row > * { flex:1; }
+button { padding:11px 16px; border-radius:9px; border:0; background:#28312c; color:var(--ink); font:600 15px system-ui,sans-serif; cursor:pointer; transition:filter .15s,transform .1s,background .15s; }
+button:hover { filter:brightness(1.18); } button:active { transform:translateY(1px); }
 button.go { background:var(--acc); color:#1a1408; }
-.btns { display:flex; gap:10px; margin-top:16px; flex-wrap:wrap; } .btns button { flex:1; min-width:120px; }
-#rooms button { display:flex; justify-content:space-between; width:100%; margin-top:6px; background:#1b231f; font-weight:500; }
+.btns { display:flex; gap:10px; margin-top:18px; flex-wrap:wrap; } .btns button { flex:1; min-width:120px; } .btns.col { flex-direction:column; }
+#rooms { display:flex; flex-direction:column; gap:6px; margin-top:8px; }
+#rooms:empty { display:none; }
+#rooms button { display:flex; justify-content:space-between; width:100%; background:var(--chip); font-weight:500; padding:9px 12px; border:1px solid var(--line); }
+#rooms button span:last-child { color:var(--acc); font-variant-numeric:tabular-nums; }
 .msg { color:var(--acc); min-height:20px; margin-top:10px; font-size:14px; }
-.keys { color:var(--dim); font-size:13px; margin-top:14px; border-top:1px solid rgba(255,255,255,.08); padding-top:12px; }
-.keys b { color:var(--ink); }
+/* menu layout */
+.mwrap { position:relative; width:min(1180px,100%); margin:auto; display:grid; grid-template-columns:minmax(300px,380px) 1fr; gap:22px; padding:12px 0; }
+.mleft { padding:20px 6px 0 4px; }
+.mleft h1 { font-size:58px; }
+.play { display:flex; flex-direction:column; gap:10px; margin-top:20px; }
+button.big { display:flex; flex-direction:column; align-items:flex-start; padding:14px 18px; text-align:left; border:1px solid var(--line); }
+button.big span { font-size:18px; font-weight:800; } button.big small { font-weight:500; font-size:12.5px; opacity:.75; }
+button.big.go { border-color:transparent; box-shadow:0 10px 30px rgba(242,182,50,.18); }
+.keys { color:var(--dim); font-size:13px; margin-top:16px; border-top:1px solid var(--line); padding-top:10px; }
+.keys summary { cursor:pointer; color:var(--ink); font-weight:600; font-size:13px; letter-spacing:.06em; text-transform:uppercase; }
+.keys p { margin:8px 0 0; } .keys b { color:var(--ink); }
+.code { display:flex; gap:6px; margin-top:14px; width:170px; opacity:.6; } .code:focus-within { opacity:1; }
+.code input { padding:6px 9px; font-size:13px; } .code button { padding:6px 10px; font-size:13px; }
+.mright { display:flex; flex-direction:column; gap:14px; min-width:0; }
+.panel { background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:16px; box-shadow:0 20px 60px rgba(0,0,0,.35); }
+.phead { display:flex; justify-content:space-between; align-items:baseline; gap:10px; margin-bottom:10px; }
+.phead span { color:var(--dim); font-size:12px; text-align:right; }
+.gview { position:relative; height:230px; border-radius:10px; background:radial-gradient(ellipse at 50% 70%,rgba(255,255,255,.07),transparent 70%); }
+#gCar { width:100%; height:100%; display:block; cursor:grab; touch-action:none; } #gCar:active { cursor:grabbing; }
+.arrow { position:absolute; top:50%; transform:translateY(-50%); width:42px; height:42px; padding:0; border-radius:50%; font-size:26px; line-height:1; background:rgba(0,0,0,.45); border:1px solid var(--line); }
+.arrow.l { left:6px; } .arrow.r { right:6px; } .arrow:active { transform:translateY(-50%) scale(.96); }
+#gDots { position:absolute; left:0; right:0; bottom:6px; display:flex; justify-content:center; gap:6px; }
+#gDots i { width:8px; height:8px; border-radius:50%; background:rgba(255,255,255,.18); cursor:pointer; } #gDots i.o { background:rgba(255,255,255,.45); } #gDots i.s { background:var(--acc); transform:scale(1.25); }
+#gInfo { display:grid; grid-template-columns:1fr 1.25fr; gap:6px 22px; align-items:start; margin-top:8px; }
+#gInfo h4 { margin:0; font-size:22px; font-weight:900; font-style:italic; letter-spacing:.01em; } #gInfo h4 + p { margin:2px 0 0; color:var(--dim); font-size:13px; }
+#gInfo .st { display:grid; grid-template-columns:78px 1fr; gap:5px 10px; font-size:11.5px; color:var(--dim); align-items:center; }
+#gInfo .st i { display:block; height:6px; border-radius:3px; background:rgba(255,255,255,.08); overflow:hidden; } #gInfo .st i u { display:block; height:100%; background:linear-gradient(90deg,var(--acc),var(--acc2)); transition:width .35s ease; }
+#gInfo .lk { display:inline-flex; gap:6px; align-items:center; margin-top:8px; color:#ffb3a8; background:rgba(224,72,58,.14); border:1px solid rgba(224,72,58,.35); border-radius:999px; padding:3px 10px; font-size:12px; font-weight:600; }
+#gInfo .ok { display:inline-block; margin-top:8px; color:var(--green); font-size:12px; font-weight:600; }
+#gInfo.lock .st u { background:#5a5a54; }
+#stages { display:grid; grid-template-columns:repeat(auto-fill,minmax(168px,1fr)); gap:8px; max-height:260px; overflow:auto; padding:2px; }
+.stc { position:relative; text-align:left; padding:10px 11px 9px; border-radius:10px; background:linear-gradient(135deg,color-mix(in srgb,var(--b) 30%,#18201c),#161c19 70%); border:1px solid var(--line); font-weight:500; overflow:hidden; }
+.stc::before { content:""; position:absolute; left:0; top:0; bottom:0; width:4px; background:var(--b); }
+.stc b { display:block; font-size:14px; font-weight:800; } .stc small { display:block; color:var(--dim); font-size:11.5px; margin-top:2px; }
+.stc em { position:absolute; top:9px; right:9px; font-style:normal; font-size:10px; font-weight:700; letter-spacing:.08em; color:#1a1408; background:var(--acc); border-radius:4px; padding:1px 5px; }
+.stc .bt { color:var(--acc2); font-variant-numeric:tabular-nums; }
+.stc.sel { border-color:var(--acc); box-shadow:inset 0 0 0 1px var(--acc); }
+.opts { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
+.opts label { margin-top:0; }
+.seg { display:flex; background:var(--field); border:1px solid rgba(255,255,255,.12); border-radius:9px; padding:3px; gap:3px; }
+.seg button { flex:1; padding:7px 4px; font-size:13px; font-weight:600; background:transparent; color:var(--dim); border-radius:6px; }
+.seg button.on { background:#2c3630; color:var(--ink); box-shadow:inset 0 -2px 0 var(--acc); }
+@media (max-width:860px) { .mwrap { grid-template-columns:1fr; } .mleft h1 { font-size:44px; } .opts { grid-template-columns:1fr; } #gInfo { grid-template-columns:1fr; } .gview { height:190px; } }
+/* lobby */
 #code { font:900 44px ui-monospace,monospace; letter-spacing:.2em; color:var(--acc); margin:4px 0 6px; }
-.roles { display:flex; gap:10px; margin:14px 0; } .roles div { flex:1; background:#1a221e; border-radius:10px; padding:12px; }
-.roles i { display:block; font-style:normal; font-size:11px; letter-spacing:.1em; color:var(--dim); text-transform:uppercase; }
-.roles b { font-size:18px; }
 #seats { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px; margin:14px 0; }
 .car { background:#1a221e; border-radius:10px; padding:10px; border-top:4px solid var(--c); }
 .car h5 { margin:0 0 6px; font-size:12px; letter-spacing:.12em; text-transform:uppercase; color:var(--c); }
@@ -42,35 +88,59 @@ button.go { background:var(--acc); color:#1a1408; }
 .car button i { display:block; font-style:normal; font-size:10px; letter-spacing:.1em; color:var(--dim); text-transform:uppercase; }
 .car button.me { outline:2px solid var(--acc); }
 .car button.free { color:var(--dim); }
-#garage { display:flex; gap:8px; align-items:stretch; } #garage > button { flex:0 0 40px; padding:0; font-size:26px; }
-#gInfo { flex:1; background:#151b18; border:1px solid rgba(255,255,255,.14); border-radius:8px; padding:9px 12px; }
-#gInfo h4 { margin:0; font-size:17px; } #gInfo h4 small { color:var(--dim); font-weight:500; font-size:12px; margin-left:6px; }
-#gInfo .st { display:grid; grid-template-columns:76px 1fr; gap:3px 8px; margin-top:6px; font-size:11px; color:var(--dim); align-items:center; }
-#gInfo .st i { display:block; height:6px; border-radius:3px; background:rgba(255,255,255,.1); overflow:hidden; } #gInfo .st i u { display:block; height:100%; background:var(--acc); }
-#gInfo.lock { opacity:.75; } #gInfo .lk { color:var(--red); font-size:12px; margin-top:6px; font-weight:600; }
-#pos { position:absolute; top:84px; left:50%; transform:translateX(-50%); font:800 20px ui-monospace,monospace; text-shadow:0 2px 6px #000; }
 /* HUD */
 #hud { position:fixed; inset:0; pointer-events:none; z-index:5; font-variant-numeric:tabular-nums; }
-#tm { position:absolute; top:14px; left:50%; transform:translateX(-50%); font:800 30px ui-monospace,monospace; text-shadow:0 2px 8px rgba(0,0,0,.7); }
-#split { position:absolute; top:52px; left:50%; transform:translateX(-50%); font:600 16px ui-monospace,monospace; color:var(--acc); text-shadow:0 2px 6px #000; }
-#spd { position:absolute; right:22px; bottom:18px; text-align:right; text-shadow:0 2px 8px rgba(0,0,0,.8); }
-#spd b { font:900 54px ui-monospace,monospace; display:block; line-height:1; }
-#spd span { font:600 14px ui-monospace,monospace; color:var(--dim); }
-#rpm { width:180px; height:6px; background:rgba(255,255,255,.15); border-radius:3px; margin-top:6px; overflow:hidden; } #rpm i { display:block; height:100%; background:var(--acc); width:0; }
-#dmg { position:absolute; left:22px; bottom:18px; font:600 13px ui-monospace,monospace; color:var(--dim); text-shadow:0 1px 4px #000; }
-#dmg i { display:block; width:130px; height:6px; background:rgba(255,255,255,.15); border-radius:3px; margin-top:4px; overflow:hidden; } #dmg i u { display:block; height:100%; width:0; background:var(--red); }
-#call { position:absolute; top:22%; left:50%; transform:translateX(-50%); font:900 italic 64px system-ui,sans-serif; color:#fff; text-shadow:0 4px 18px rgba(0,0,0,.85); letter-spacing:.03em; white-space:nowrap; transition:opacity .25s; opacity:0; }
+#top { position:absolute; top:12px; left:50%; transform:translateX(-50%); display:flex; align-items:stretch; gap:6px; }
+#top > div { background:rgba(8,10,9,.62); border:1px solid var(--line); border-radius:9px; backdrop-filter:blur(6px); }
+#tbox { padding:4px 16px 5px; text-align:center; min-width:150px; }
+#tm { font:800 28px ui-monospace,monospace; line-height:1.1; }
+#dl { font:700 13px ui-monospace,monospace; color:var(--dim); min-height:16px; } #dl.up { color:#ff8a7a; } #dl.dn { color:var(--green); }
+#pos, #trip { display:flex; align-items:center; padding:0 12px; font:800 16px ui-monospace,monospace; }
+#pos:empty { display:none; } #pos { color:var(--acc); font-size:22px; }
+#trip { font-size:13px; font-weight:700; color:var(--dim); }
+#prog { position:absolute; top:76px; left:50%; transform:translateX(-50%); width:min(460px,70vw); height:6px; border-radius:3px; background:rgba(255,255,255,.14); box-shadow:0 1px 6px rgba(0,0,0,.5); }
+#progF { position:absolute; left:0; top:0; bottom:0; border-radius:3px; background:linear-gradient(90deg,var(--acc),var(--acc2)); width:0; }
+#prog .sp { position:absolute; top:-3px; width:2px; height:12px; background:rgba(255,255,255,.55); }
+#prog span { position:absolute; top:9px; font:700 9px system-ui; letter-spacing:.14em; color:var(--dim); text-shadow:0 1px 3px #000; } #prog .pl { left:0; } #prog .pr { right:0; }
+#progDots i { position:absolute; top:-4px; width:14px; height:14px; margin-left:-7px; border-radius:50%; border:2px solid #000; background:var(--c); box-shadow:0 1px 4px rgba(0,0,0,.6); }
+#progDots i.me { width:16px; height:16px; margin-left:-8px; top:-5px; border-color:#fff; }
+#split { position:absolute; top:100px; left:50%; transform:translateX(-50%); font:700 15px ui-monospace,monospace; color:var(--ink); background:rgba(8,10,9,.62); border-radius:7px; padding:3px 10px; }
+#split:empty { display:none; } #split .up { color:#ff8a7a; } #split .dn { color:var(--green); }
+#spd { position:absolute; right:18px; bottom:14px; width:176px; height:176px; }
+#rev { width:100%; height:100%; }
+#spd .in { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; text-shadow:0 2px 8px rgba(0,0,0,.8); }
+#spd .in b { font:900 46px ui-monospace,monospace; line-height:1; margin-top:6px; } #spd .in span { font:600 11px system-ui; letter-spacing:.14em; color:var(--dim); text-transform:uppercase; }
+#spd .in em { font:900 normal 22px ui-monospace,monospace; color:var(--acc); margin-top:4px; width:34px; height:30px; display:flex; align-items:center; justify-content:center; border:2px solid rgba(242,182,50,.5); border-radius:6px; background:rgba(0,0,0,.4); }
+#dmg { position:absolute; left:18px; bottom:18px; width:170px; background:rgba(8,10,9,.62); border:1px solid var(--line); border-radius:9px; padding:8px 12px; font:700 11px system-ui; letter-spacing:.12em; color:var(--dim); display:grid; grid-template-columns:1fr auto; }
+#dmg b { color:var(--ink); font:800 13px ui-monospace,monospace; letter-spacing:0; }
+#dmg i { grid-column:1/3; display:block; height:6px; background:rgba(255,255,255,.12); border-radius:3px; margin-top:6px; overflow:hidden; } #dmg i u { display:block; height:100%; width:0; background:linear-gradient(90deg,#f2b632,#e0483a); transition:width .3s; }
+#dmg.hi { border-color:rgba(224,72,58,.6); } #dmg.hi b { color:#ff8a7a; }
+#call { position:absolute; top:21%; left:50%; transform:translateX(-50%) scale(.92); display:flex; align-items:center; gap:14px; padding:8px 26px 10px 18px; border-radius:14px; background:rgba(8,10,9,.55); border-bottom:4px solid var(--acc); font:900 italic 54px system-ui,sans-serif; color:#fff; text-shadow:0 4px 18px rgba(0,0,0,.85); letter-spacing:.03em; white-space:nowrap; transition:opacity .2s,transform .2s; opacity:0; }
+#call.on { opacity:1; transform:translateX(-50%) scale(1); }
+#call.warn { border-color:var(--red); } #callA { font-style:normal; color:var(--acc); font-size:60px; line-height:1; } #callA:empty { display:none; }
+#call.warn #callA { color:var(--red); }
 #big { position:absolute; top:40%; left:50%; transform:translate(-50%,-50%); font:900 96px system-ui,sans-serif; text-shadow:0 6px 24px rgba(0,0,0,.8); }
-#tip { position:absolute; bottom:18px; left:50%; transform:translateX(-50%); color:var(--dim); font-size:13px; text-shadow:0 1px 4px #000; text-align:center; }
-#trip { position:absolute; top:34px; left:18px; font:700 15px ui-monospace,monospace; color:var(--ink); text-shadow:0 1px 4px #000; }
-#role { position:absolute; top:16px; left:18px; font:700 12px system-ui; letter-spacing:.14em; color:var(--dim); text-shadow:0 1px 4px #000; }
+#big.pop { animation:pop .45s ease-out; } @keyframes pop { from { transform:translate(-50%,-50%) scale(1.5); opacity:.2; } }
+#tip { position:absolute; bottom:18px; left:50%; transform:translateX(-50%); color:#cfc9bb; font-size:12.5px; background:rgba(8,10,9,.62); border:1px solid var(--line); border-radius:9px; padding:6px 12px; text-shadow:0 1px 4px #000; text-align:center; max-width:calc(100vw - 440px); transition:opacity 1s; }
+#role { position:absolute; top:16px; left:18px; font:700 11px system-ui; letter-spacing:.14em; color:var(--dim); text-shadow:0 1px 4px #000; max-width:30vw; }
 #net { position:absolute; top:16px; right:18px; font:600 12px ui-monospace,monospace; color:var(--dim); text-shadow:0 1px 4px #000; }
 #hov { position:absolute; left:50%; top:50%; transform:translate(14px,8px); font:700 13px system-ui; color:#fff; background:rgba(0,0,0,.55); padding:3px 8px; border-radius:6px; white-space:nowrap; }
 #hov:empty { display:none; }
 #cross { position:absolute; left:50%; top:50%; width:4px; height:4px; margin:-2px; border-radius:50%; background:rgba(255,255,255,.5); }
-#lockmsg { position:fixed; inset:auto 0 40% 0; text-align:center; z-index:6; font:700 18px system-ui; text-shadow:0 2px 8px #000; pointer-events:none; }
-#fin table { width:100%; border-collapse:collapse; margin-top:10px; font-variant-numeric:tabular-nums; } #fin td { padding:6px 4px; border-bottom:1px solid rgba(255,255,255,.07); } #fin td:last-child { text-align:right; }
+#lockmsg { position:fixed; inset:auto 0 30% 0; text-align:center; z-index:6; font:700 16px system-ui; text-shadow:0 2px 8px #000; pointer-events:none; }
+#lockmsg span { background:rgba(8,10,9,.6); border:1px solid var(--line); border-radius:999px; padding:7px 16px; }
+#pause { background:rgba(4,6,5,.6); backdrop-filter:blur(4px); }
+.pcard { width:min(340px,100%); text-align:center; }
+/* finish */
+.fcard { width:min(520px,100%); text-align:center; }
+.fk { font:800 13px system-ui; letter-spacing:.22em; color:var(--acc); }
+.ftime { font:900 64px ui-monospace,monospace; line-height:1.1; margin-top:6px; }
+.fdelta { font:700 16px ui-monospace,monospace; color:var(--dim); min-height:20px; } .fdelta.dn { color:var(--green); } .fdelta.up { color:#ff8a7a; }
+.unlock { margin:14px auto 0; display:inline-block; background:rgba(242,182,50,.14); border:1px solid rgba(242,182,50,.5); color:var(--acc2); border-radius:999px; padding:6px 16px; font-weight:700; font-size:14px; animation:pop2 .6s ease-out; }
+@keyframes pop2 { from { transform:scale(1.25); opacity:0; } }
+#fin table { width:100%; border-collapse:collapse; margin-top:14px; font-variant-numeric:tabular-nums; text-align:left; } #fin td { padding:7px 4px; border-bottom:1px solid var(--line); } #fin td:first-child { color:var(--dim); } #fin td:last-child { text-align:right; font-weight:600; }
 #fade { position:fixed; inset:0; background:#000; opacity:0; pointer-events:none; z-index:4; transition:opacity .3s; }
+@media (max-width:700px) { #spd { width:130px; height:130px; } #spd .in b { font-size:34px; } #call { font-size:34px; } #callA { font-size:38px; } #tip { display:none; } }
 </style>
 </head>
 <body>
@@ -78,30 +148,46 @@ button.go { background:var(--acc); color:#1a1408; }
 <div id="fade"></div>
 
 <div id="menu" class="scr">
-  <div class="card">
-    <h1>PACE <b>NOTES</b></h1>
-    <p class="sub">Co-op rally for two. The driver can't see far. Only the navigator has the map. Talk to each other.</p>
-    <label>Your name</label><input id="nm" maxlength="14" placeholder="Name">
-    <label>Car <span id="gCount" style="float:right;text-transform:none;letter-spacing:0"></span></label>
-    <div id="garage"><button id="gPrev" aria-label="Previous car">&lsaquo;</button><div id="gInfo"></div><button id="gNext" aria-label="Next car">&rsaquo;</button></div>
-    <div class="row">
-      <div><label>Stage</label><select id="sStage"></select></div>
-      <div><label>Fog</label><select id="sFog"><option value="0">Light</option><option value="1" selected>Medium</option><option value="2">Heavy</option></select></div>
-    </div>
-    <div class="row">
-      <div><label>Your seat (online)</label><select id="sRole"><option value="drv">Driver</option><option value="nav">Navigator</option></select></div>
-      <div><label>Graphics</label><select id="sGfx"><option value="high">High</option><option value="med" selected>Medium</option><option value="low">Low</option></select></div>
-    </div>
-    <div class="btns"><button class="go" id="bHost">Host online game</button><button id="bSolo">Solo practice</button></div>
-    <label>Join with a code</label>
-    <div class="row"><input id="jc" maxlength="5" placeholder="ABCDE" style="text-transform:uppercase"><button id="bJoin" style="flex:0 0 110px">Join</button></div>
-    <div id="rooms"></div>
-    <div class="msg" id="msg"></div>
-    <div class="keys">
-      <b>Driver:</b> W throttle, S brake/reverse, A/D steer, Space handbrake, R recover (+5 s), click dash switches (aim with the centre dot) for wipers, headlights and spot lights, mouse looks around.<br>
-      <b>Navigator:</b> hold right mouse (or Tab) to raise the map, mouse looks around. Backup callouts: A/D then 1-6 (1 = hairpin, 6 = flat), J jump, C crest, L log, K keep middle, F flat out, B brake.<br>
-      <b>Online:</b> up to 4 cars (8 players), two per car. <b>Solo practice</b> gives you an automatic co-driver. <b>Backspace</b> restarts the stage (solo or host).
-    </div>
+  <div class="mwrap">
+    <section class="mleft">
+      <h1>PACE <b>NOTES</b></h1>
+      <p class="sub">Co-op rally. The driver can't see far. Only the navigator has the map. Talk to each other.</p>
+      <label for="nm">Your name</label><input id="nm" maxlength="14" placeholder="Name" autocomplete="off">
+      <div class="play">
+        <button class="go big" id="bSolo"><span>Solo practice</span><small>Auto co-driver reads the notes</small></button>
+        <button class="big" id="bHost"><span>Host online</span><small>Up to 4 cars, 8 players</small></button>
+      </div>
+      <label for="jc">Join with a room code</label>
+      <div class="row"><input id="jc" maxlength="5" placeholder="ABCDE" style="text-transform:uppercase" autocomplete="off"><button id="bJoin" style="flex:0 0 96px">Join</button></div>
+      <div id="rooms"></div>
+      <div class="msg" id="msg" role="status"></div>
+      <details class="keys"><summary>Controls</summary>
+        <p><b>Driver</b> W throttle · S brake / reverse · A D steer · Space handbrake · R recover (+5 s) · Esc pause · mouse looks · aim the centre dot at a dash switch and click it (wipers, headlights, spot lights)</p>
+        <p><b>Navigator</b> hold right mouse or Tab for the map · backup callouts: A / D then 1-6 (1 = hairpin, 6 = flat), J jump, C crest, L log, K keep middle, F flat out, B brake</p>
+        <p><b>Gamepad</b> left stick steers · RT throttle · LT brake · A handbrake · Y recover</p>
+        <p><b>Backspace</b> restarts the stage (solo or host)</p>
+      </details>
+      <div class="code"><input id="cheat" maxlength="16" placeholder="Code" autocomplete="off" aria-label="Code"><button id="bCheat">OK</button></div>
+    </section>
+    <section class="mright">
+      <div class="panel garage">
+        <div class="phead"><h2>Garage</h2><span id="gCount"></span></div>
+        <div class="gview"><canvas id="gCar" aria-label="Car preview, drag to turn"></canvas>
+          <button id="gPrev" class="arrow l" aria-label="Previous car">&lsaquo;</button><button id="gNext" class="arrow r" aria-label="Next car">&rsaquo;</button>
+          <div id="gDots"></div></div>
+        <div id="gInfo"></div>
+      </div>
+      <div class="panel">
+        <div class="phead"><h2>Stage</h2><span id="stInfo"></span></div>
+        <div id="stages" role="listbox" aria-label="Stage"></div>
+        <select id="sStage" class="hidden"></select>
+      </div>
+      <div class="opts">
+        <div><label>Fog</label><div class="seg" data-for="sFog"></div><select id="sFog" class="hidden"><option value="0">Light</option><option value="1" selected>Medium</option><option value="2">Heavy</option></select></div>
+        <div><label>Online seat</label><div class="seg" data-for="sRole"></div><select id="sRole" class="hidden"><option value="drv">Driver</option><option value="nav">Navigator</option></select></div>
+        <div><label>Graphics</label><div class="seg" data-for="sGfx"></div><select id="sGfx" class="hidden"><option value="high">High</option><option value="med" selected>Med</option><option value="low">Low</option></select></div>
+      </div>
+    </section>
   </div>
 </div>
 
@@ -118,35 +204,46 @@ button.go { background:var(--acc); color:#1a1408; }
 </div>
 
 <div id="fin" class="scr hidden">
-  <div class="card">
-    <h1 id="finT">STAGE <b>COMPLETE</b></h1>
+  <div class="card fcard">
+    <div class="fk" id="finK">STAGE COMPLETE</div>
+    <div class="ftime" id="finTime">0:00.00</div>
+    <div class="fdelta" id="finDelta"></div>
+    <div class="unlock hidden" id="finUnlock"></div>
     <table id="finTab"></table>
-    <div class="btns"><button class="go" id="bAgain">Run it again</button><button id="bMenu">Menu</button></div>
+    <div class="btns"><button class="go" id="bAgain">Run it again</button><button id="bNext">Next stage</button><button id="bMenu">Menu</button></div>
     <div class="msg" id="finMsg"></div>
   </div>
 </div>
 
 <div id="hud" class="hidden">
   <div id="role"></div><div id="net"></div>
-  <div id="tm">0:00.0</div><div id="pos"></div><div id="trip"></div><div id="split"></div>
-  <div id="call"></div><div id="big"></div>
+  <div id="top"><div id="pos"></div><div id="tbox"><div id="tm">0:00.0</div><div id="dl"></div></div><div id="trip"></div></div>
+  <div id="prog"><i id="progF"></i><b class="sp" style="left:33.3%"></b><b class="sp" style="left:66.6%"></b><div id="progDots"></div><span class="pl">START</span><span class="pr">FINISH</span></div>
+  <div id="split"></div>
+  <div id="call"><span id="callA"></span><span id="callT"></span></div><div id="big"></div>
   <div id="cross"></div><div id="hov"></div>
-  <div id="dmg">DAMAGE<i><u></u></i></div>
-  <div id="spd"><b>0</b><span id="gear">N</span> <span>km/h</span><div id="rpm"><i></i></div></div>
+  <div id="dmg"><span>DAMAGE</span><b id="dmgP">0%</b><i><u></u></i></div>
+  <div id="spd"><canvas id="rev" width="200" height="200"></canvas><div class="in"><b>0</b><span>km/h</span><em id="gear">N</em></div></div>
   <div id="tip"></div>
 </div>
-<div id="lockmsg" class="hidden">Click to look around</div>
+<div id="lockmsg" class="hidden"><span>Click to look around</span></div>
+<div id="pause" class="scr hidden"><div class="card pcard">
+  <h1>PAUSED</h1><p class="sub" id="pSub"></p>
+  <div class="btns col"><button class="go" id="bResume">Resume</button><button id="bRestart">Restart stage</button><button id="bQuit">Quit to menu</button></div>
+  <p class="sub" style="margin:14px 0 0;font-size:13px">Click Resume or anywhere in the game to look around again.</p>
+</div></div>
 
 <script src="../three-r170.js"></script>
-<script src="js/util.js?v=16"></script>
-<script src="js/stage.js?v=16"></script>
-<script src="js/tex.js?v=16"></script>
-<script src="js/world.js?v=16"></script>
-<script src="js/car.js?v=16"></script>
-<script src="js/cockpit.js?v=16"></script>
-<script src="js/audio.js?v=16"></script>
-<script src="js/notes.js?v=16"></script>
-<script src="js/net.js?v=16"></script>
-<script src="js/main.js?v=16"></script>
+<script src="js/util.js?v=17"></script>
+<script src="js/stage.js?v=17"></script>
+<script src="js/tex.js?v=17"></script>
+<script src="js/world.js?v=17"></script>
+<script src="js/car.js?v=17"></script>
+<script src="js/cockpit.js?v=17"></script>
+<script src="js/audio.js?v=17"></script>
+<script src="js/notes.js?v=17"></script>
+<script src="js/net.js?v=17"></script>
+<script src="js/garage3d.js?v=17"></script>
+<script src="js/main.js?v=17"></script>
 </body>
 </html>

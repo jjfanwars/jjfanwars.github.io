@@ -8,9 +8,31 @@ let pad = null;
 
 // ---------- menu ----------
 STAGES.forEach((s, i) => { const o = document.createElement('option'); o.value = i; o.textContent = BIOMES[s.biome].name + ' · ' + s.name + (s.berms ? ' · berms & jumps' : '') + '  (' + (s.len / 1000).toFixed(1) + ' km)'; $('sStage').appendChild(o); });
-try { $('nm').value = localStorage.getItem('pn-name') || ''; $('sGfx').value = localStorage.getItem('pn-gfx') || 'med'; } catch (e) {}
+try { $('nm').value = localStorage.getItem('pn-name') || ''; $('sGfx').value = localStorage.getItem('pn-gfx') || 'med'; for (const k of ['sStage', 'sFog', 'sRole']) { const v = localStorage.getItem('pn-' + k); if (v !== null && [...$(k).options].some(o => o.value === v)) $(k).value = v; } } catch (e) {}
 const myName = () => { const n = ($('nm').value || '').replace(/[^A-Za-z0-9 ._-]/g, '').trim().slice(0, 14) || 'Player' + (1 + Math.random() * 99 | 0); try { localStorage.setItem('pn-name', n); localStorage.setItem('pn-gfx', $('sGfx').value); } catch (e) {} return n; };
-const show = id => { for (const s of ['menu', 'lobby', 'fin']) $(s).classList.toggle('hidden', s !== id); };
+const show = id => { for (const s of ['menu', 'lobby', 'fin', 'pause']) $(s).classList.toggle('hidden', s !== id); Garage3D.on = id === 'menu'; };
+// ---- stage cards (drive the hidden select) ----
+const BIO_COL = { forest: '#3f8a52', autumn: '#d0742a', snow: '#9cc8e4', desert: '#d8914c', park: '#74b85a', city: '#8a93a6' };
+const todName = t => /dusk|evening/i.test(t) ? 'Dusk' : /noon/i.test(t) ? 'Midday' : /morning/i.test(t) ? 'Morning' : /overcast/i.test(t) ? 'Overcast' : 'Day';
+function renderStages() {
+  const box = $('stages'), cur = +$('sStage').value, fog = +$('sFog').value; box.innerHTML = '';
+  STAGES.forEach((s, i) => {
+    let best = null; try { best = JSON.parse(localStorage.getItem('pn-best-' + i + '-' + fog) || 'null'); } catch (e) {}
+    const b = document.createElement('button'); b.className = 'stc' + (i === cur ? ' sel' : ''); b.setAttribute('role', 'option'); b.setAttribute('aria-selected', i === cur);
+    b.style.setProperty('--b', BIO_COL[s.biome] || '#777');
+    b.innerHTML = (s.berms ? '<em>JUMPS</em>' : '') + '<b>' + s.name + '</b><small>' + BIOMES[s.biome].name + ' · ' + todName(s.tod) + ' · ' + (s.len / 1000).toFixed(1) + ' km</small><small class="bt">' + (best ? 'Best ' + fmtT2(best.t) : '&nbsp;') + '</small>';
+    b.onclick = () => { $('sStage').value = i; $('sStage').onchange(); renderStages(); };
+    box.appendChild(b);
+  });
+  const st = STAGES[cur]; $('stInfo').textContent = BIOMES[st.biome].name + ' · ' + st.name;
+}
+// ---- segmented controls (drive the hidden selects) ----
+function renderSegs() {
+  for (const seg of document.querySelectorAll('.seg')) {
+    const sel = $(seg.dataset.for); seg.innerHTML = '';
+    for (const o of sel.options) { const b = document.createElement('button'); b.textContent = o.textContent; b.className = o.value === sel.value ? 'on' : ''; b.onclick = () => { sel.value = o.value; if (sel.onchange) sel.onchange(); renderSegs(); if (sel.id === 'sFog') renderStages(); try { localStorage.setItem('pn-' + sel.id, sel.value); } catch (e) {} }; seg.appendChild(b); }
+  }
+}
 const msg = (id, t) => { $(id).textContent = t || ''; };
 const readCfg = () => ({ stage: +$('sStage').value, fog: +$('sFog').value, hostRole: $('sRole').value });
 
@@ -18,19 +40,29 @@ const CAR_COL = [0x1d4fbf, 0xc62828, 0x2e7d32, 0xf2b632], CAR_NAME = ['Blue', 'R
 // ---- garage: cars unlock with stage finishes (any seat, any mode) ----
 const Garage = { fin: 0, sel: 0 };
 try { Garage.fin = +localStorage.getItem('pn-fin') || 0; Garage.sel = clamp(+localStorage.getItem('pn-car') || 0, 0, CARS.length - 1); } catch (e) {}
-const carOpen = i => Garage.fin >= CARS[i].need;
+try { Garage.all = localStorage.getItem('pn-all') === '1'; } catch (e) {}
+const carOpen = i => Garage.all || Garage.fin >= CARS[i].need;
 function renderGarage() {
   const i = Garage.sel, c = CARS[i], open = carOpen(i), el = $('gInfo');
   el.className = open ? '' : 'lock';
-  el.innerHTML = '<h4>' + (open ? '' : '&#128274; ') + c.name + '<small>' + c.cls + '</small></h4><div class="st">' + carStats(c).map(([n, v]) => '<span>' + n + '</span><i><u style="width:' + v * 10 + '%"></u></i>').join('') + '</div>' +
-    (open ? '' : '<div class="lk">Finish ' + (c.need - Garage.fin) + ' more stage' + (c.need - Garage.fin > 1 ? 's' : '') + ' to unlock</div>');
+  const left = c.need - Garage.fin;
+  el.innerHTML = '<div><h4>' + c.name + '</h4><p>' + c.cls + ' · ' + c.vmax + ' km/h · ' + c.m + ' kg</p>' + (open ? '<span class="ok">' + (i === 0 ? 'Ready' : 'Unlocked') + '</span>' : '<span class="lk">&#128274; Finish ' + left + ' more stage' + (left > 1 ? 's' : '') + '</span>') + '</div><div class="st">' + carStats(c).map(([n, v]) => '<span>' + n + '</span><i><u style="width:' + v * 10 + '%"></u></i>').join('') + '</div>';
   $('gCount').textContent = CARS.filter((_, k) => carOpen(k)).length + ' / ' + CARS.length + ' unlocked · ' + Garage.fin + ' stage' + (Garage.fin === 1 ? '' : 's') + ' finished';
+  $('gDots').innerHTML = CARS.map((_, k) => '<i class="' + (k === i ? 's' : carOpen(k) ? 'o' : '') + '" data-k="' + k + '"></i>').join('');
+  if (Garage.shown !== i) { Garage.shown = i; Garage3D.show(c.look, open ? CAR_COL[0] : 0x3a3d40); }
   Net.car = open ? i : 0;
   try { if (open) localStorage.setItem('pn-car', i); } catch (e) {}
 }
 $('gPrev').onclick = () => { Garage.sel = (Garage.sel + CARS.length - 1) % CARS.length; renderGarage(); };
 $('gNext').onclick = () => { Garage.sel = (Garage.sel + 1) % CARS.length; renderGarage(); };
-renderGarage();
+$('gDots').onclick = e => { const k = e.target.dataset && e.target.dataset.k; if (k !== undefined) { Garage.sel = +k; renderGarage(); } };
+Garage3D.init($('gCar'));
+renderGarage(); renderStages(); renderSegs();
+// code box (bottom of the menu)
+$('bCheat').onclick = () => { const v = $('cheat').value.trim().toLowerCase(); $('cheat').value = '';
+  if (v === 'rally67') { Garage.all = true; try { localStorage.setItem('pn-all', '1'); } catch (e) {} Garage.shown = -1; renderGarage(); msg('msg', 'All cars unlocked.'); } else msg('msg', v ? 'Unknown code.' : ''); };
+$('cheat').onkeydown = e => { if (e.key === 'Enter') $('bCheat').click(); };
+addEventListener('keydown', e => { if ($('menu').classList.contains('hidden') || /INPUT|SELECT/.test(document.activeElement.tagName)) return; if (e.code === 'ArrowLeft') $('gPrev').click(); if (e.code === 'ArrowRight') $('gNext').click(); });
 const carLocked = () => { if (carOpen(Garage.sel)) return false; msg('msg', CARS[Garage.sel].name + ' is locked. Pick an unlocked car.'); return true; };
 const myId = () => Net.role === 'host' ? 'H' : Net.id;
 const nameOf = id => id === 'H' ? Net.name : (Net.peers.get(id) || {}).name || 'Player';
@@ -67,7 +99,7 @@ function renderLobby(s) {
   G.lobby = s;
   if (Net.role === 'host') Net.send(s);
 }
-$('sStage').onchange = $('sFog').onchange = () => { if (Net.role === 'host' && G.seats && !G.on) { G.cfg = Object.assign(G.cfg, { stage: +$('sStage').value, fog: +$('sFog').value }); renderLobby(); } };
+$('sStage').onchange = $('sFog').onchange = () => { try { localStorage.setItem('pn-sStage', $('sStage').value); } catch (e) {} if (Net.role === 'host' && G.seats && !G.on) { G.cfg = Object.assign(G.cfg, { stage: +$('sStage').value, fog: +$('sFog').value }); renderLobby(); } };
 $('bGo').onclick = () => {
   const ss = G.seats, cars = ss.filter(c => c[0]).length;
   if (!cars) { msg('lmsg', 'Someone has to drive.'); return; }
@@ -119,27 +151,42 @@ function startStage(cfg, role, solo, myCar, seats) {
     }
     const k = cars.indexOf(myCar), n = cars.length, grid = { s: World.startS - 3 - Math.floor(Math.max(0, k) / 2) * 9, lat: n > 1 ? (k % 2 ? 1.9 : -1.9) : 0 };
     { const p0 = S.at(World.startS); MapDraw.draw(view.mapC.getContext('2d'), { x: p0.x, z: p0.z, h: p0.h, prog: World.startS }, { grades: true, vis: [140, 90, 55][cfg.fog] }); view.mapT.needsUpdate = true; }
-    Object.assign(G, { on: true, S, cfg, role, solo, notes, view, views, tags, seats, cars, myCar, grid, race: n > 1, autoNav: solo || (role === 'drv' && !seats[myCar][1]), bufs: {}, results: {}, finShown: false, counted: false, unlockMsg: '', final: 0, car: null, phase: 'count', t: -3.5, pen: 0, splits: [], splitS: [S.L / 3, S.L * 2 / 3], nextSplit: 0, auto: {}, buf: [], other: { yaw: 0, pitch: 0, map: false }, callT: 0, finT: 0, crashes: 0, sendT: 0, lookT: 0, lastBeep: 4, startS: World.startS, finishS: World.finishS });
+    Object.assign(G, { on: true, S, cfg, role, solo, notes, view, views, tags, seats, cars, myCar, grid, race: n > 1, autoNav: solo || (role === 'drv' && !seats[myCar][1]), bufs: {}, results: {}, finShown: false, counted: false, unlockMsg: '', final: 0, car: null, phase: 'count', t: -3.5, pen: 0, splits: [], splitS: [S.L / 3, S.L * 2 / 3], nextSplit: 0, auto: {}, buf: [], other: { yaw: 0, pitch: 0, map: false }, callT: 0, finT: 0, crashes: 0, trace: [], paused: false, wasLocked: !!document.pointerLockElement, sendT: 0, lookT: 0, lastBeep: 4, startS: World.startS, finishS: World.finishS });
     for (const c of cars) G.bufs[c] = [];
     if (role === 'drv') { G.car = new Car(S); G.car.place(grid.s, grid.lat); }
     look.yaw = 0; look.pitch = role === 'nav' ? -0.14 : -0.1; look.map = false; G.sw = [1, 1, 0, 0, /dusk|evening/i.test(STAGES[cfg.stage].tod) ? 1 : 0, 0];
     $('role').textContent = CARS[mdl(myCar)].name.toUpperCase() + ' · ' + (solo ? 'SOLO PRACTICE · AUTO CO-DRIVER' : (role === 'drv' ? 'DRIVER' : 'NAVIGATOR') + ' · ' + CAR_NAME[myCar].toUpperCase() + ' CAR' + (G.autoNav ? ' · AUTO CO-DRIVER' : '')) + ' · ' + STAGES[cfg.stage].name.toUpperCase(); msg('pos', '');
     $('tip').innerHTML = role === 'drv' ? 'W/S throttle · brake, A/D steer, Space handbrake, R recover (+5 s) · aim at a dash switch and click it (wipers, lights, spots) · mouse looks' : 'Hold <b>right mouse</b> or <b>Tab</b> for the map · callouts: A/D + 1-6, J jump, C crest, L log, K keep middle, F flat, B brake';
-    $('spd').style.display = role === 'drv' ? '' : 'none'; $('dmg').style.display = role === 'drv' ? '' : 'none';
-    msg('big', ''); msg('split', ''); $('fade').style.opacity = 0; $('lockmsg').classList.remove('hidden');
+    $('spd').style.display = role === 'drv' ? '' : 'none'; $('dmg').style.display = role === 'drv' ? '' : 'none'; $('call').classList.remove('on');
+    bigMsg(''); msg('split', ''); $('fade').style.opacity = 0; $('lockmsg').classList.toggle('hidden', !!document.pointerLockElement); $('tip').style.opacity = 1;
+    G.bestRec = bestOf(); buildProg();
     G.lastFrame = performance.now(); G.acc = 0;
     setTimeout(() => $('tip').style.opacity = 0.5, 9000);
   }, 30);
 }
 function endToMenu(why) {
-  G.on = false; Net.close(); $('hud').classList.add('hidden'); $('lockmsg').classList.add('hidden'); show('menu'); msg('msg', why || ''); try { document.exitPointerLock(); } catch (e) {} if (window.speechSynthesis) speechSynthesis.cancel(); Sfx.mute(true); setTimeout(() => Sfx.mute(false), 50); refreshRooms();
+  G.on = false; G.paused = false; renderStages(); Net.close(); $('hud').classList.add('hidden'); $('lockmsg').classList.add('hidden'); show('menu'); msg('msg', why || ''); try { document.exitPointerLock(); } catch (e) {} if (window.speechSynthesis) speechSynthesis.cancel(); Sfx.mute(true); setTimeout(() => Sfx.mute(false), 50); refreshRooms();
 }
 $('bMenu').onclick = () => endToMenu('');
-function restart() { $('fin').classList.add('hidden'); if (G.solo) startStage(G.cfg, 'drv', true, 0, G.seats); else if (Net.role === 'host') { Net.started = true; Net.send({ t: 'start', cfg: G.cfg, seats: G.seats }); begin(G.cfg, G.seats); } }
+function restart() { $('fin').classList.add('hidden'); $('pause').classList.add('hidden'); G.paused = false; if (G.solo) startStage(G.cfg, 'drv', true, 0, G.seats); else if (Net.role === 'host') { Net.started = true; Net.send({ t: 'start', cfg: G.cfg, seats: G.seats }); begin(G.cfg, G.seats); } }
 $('bAgain').onclick = restart;
+$('bNext').onclick = () => { G.cfg = Object.assign({}, G.cfg, { stage: (G.cfg.stage + 1) % STAGES.length }); $('sStage').value = G.cfg.stage; renderStages(); restart(); };
+// ---- pause (Esc releases the mouse; solo practice actually stops the clock) ----
+function pauseOpen() { if (!G.on || G.phase === 'fin' || !$('fin').classList.contains('hidden')) return; G.paused = G.solo; $('pSub').textContent = G.solo ? 'The clock is stopped.' : 'Online: the stage keeps running.'; $('pause').classList.remove('hidden'); $('bRestart').classList.toggle('hidden', !(G.solo || Net.role === 'host')); }
+function pauseClose() { $('pause').classList.add('hidden'); G.paused = false; G.lastFrame = performance.now(); G.acc = 0; try { cvs.requestPointerLock(); } catch (x) {} }
+$('bResume').onclick = pauseClose; $('pause').onclick = e => { if (e.target.id === 'pause') pauseClose(); };
+$('bRestart').onclick = () => { $('pause').classList.add('hidden'); G.paused = false; restart(); };
+$('bQuit').onclick = () => { $('pause').classList.add('hidden'); G.paused = false; endToMenu(''); };
 
 // ---------- callouts ----------
-function say(txt, words, ms) { const el = $('call'); el.textContent = txt; el.style.opacity = 1; clearTimeout(G.callHide); G.callHide = setTimeout(() => el.style.opacity = 0, ms || 2200); if (words) Sfx.say(words); }
+function say(txt, words, ms) {
+  const el = $('call'), T = String(txt), h = T.split('\u203A')[0], obs = /^(LOG|ROCK|BARRIER)/.test(h) || /!/.test(h), L = !obs && /\bLEFT\b/.test(h), R = !obs && /\bRIGHT\b/.test(h), hp = /HAIRPIN/.test(h);
+  $('callA').textContent = obs ? '!' : R ? (hp ? '\u21B7' : '\u2794') : L ? (hp ? '\u21B6' : '\u2794') : /JUMP|CREST|TABLETOP|STEP DOWN/.test(h) ? '\u25B2' : '';
+  $('callA').style.transform = L && !hp ? 'scaleX(-1)' : '';
+  $('callT').textContent = T; el.classList.toggle('warn', obs || /BRAKE|WRECK|PRESS R/.test(T)); el.classList.add('on');
+  clearTimeout(G.callHide); G.callHide = setTimeout(() => el.classList.remove('on'), ms || 2200); if (words) Sfx.say(words);
+}
+function bigMsg(t) { const b = $('big'); b.textContent = t || ''; b.classList.remove('pop'); if (t) { void b.offsetWidth; b.classList.add('pop'); } }
 const CALLS = { KeyJ: ['JUMP', 'jump'], KeyC: ['OVER CREST', 'over crest'], KeyL: ['LOG!', 'log'], KeyK: ['KEEP MIDDLE', 'keep middle'], KeyF: ['FLAT OUT', 'flat out'], KeyB: ['BRAKE!', 'brake brake'] };
 let pendDir = null, pendT = 0;
 function navKey(code) {
@@ -165,6 +212,7 @@ addEventListener('keydown', e => {
   if (G.role === 'nav') { if (e.code === 'Tab') look.map = !look.map; else navKey(e.code); }
   if (G.role === 'drv' && e.code === 'KeyR' && G.car && G.phase === 'run') recover();
   if (e.code === 'KeyQ' && !document.pointerLockElement) endToMenu('');
+  if (e.code === 'Escape' && !$('pause').classList.contains('hidden')) { pauseClose(); return; }
   if (e.code === 'Backspace' && (G.solo || Net.role === 'host')) { e.preventDefault(); restart(); }
   if (e.code === 'KeyN') G.noGrades = !G.noGrades;
 });
@@ -173,7 +221,7 @@ addEventListener('blur', () => KEYS.clear());
 cvs.addEventListener('mousedown', e => { if (!G.on) return; Sfx.start(); if (document.pointerLockElement && e.button === 0) { const k = aimedSwitch(); if (k >= 0) flipSwitch(k); } if (!document.pointerLockElement) { try { cvs.requestPointerLock(); } catch (x) {} } if (e.button === 2 && G.role === 'nav') look.map = true; });
 addEventListener('mouseup', e => { if (e.button === 2 && G.role === 'nav' && !KEYS.has('Tab')) look.map = false; });
 addEventListener('contextmenu', e => e.preventDefault());
-document.addEventListener('pointerlockchange', () => { const l = !!document.pointerLockElement; $('lockmsg').classList.toggle('hidden', l || !G.on); $('lockmsg').innerHTML = 'Click to look around' + (G.on ? ' · <b>Q</b> quits to menu' : ''); });
+document.addEventListener('pointerlockchange', () => { const l = !!document.pointerLockElement; if (l) G.wasLocked = true; $('lockmsg').classList.toggle('hidden', l || !G.on || !!G.wasLocked); if (!l && G.on && G.wasLocked) pauseOpen(); });
 addEventListener('mousemove', e => { if (!document.pointerLockElement || !G.on) return; look.yaw -= e.movementX * 0.0022; look.pitch -= e.movementY * 0.0022; look.yaw = clamp(look.yaw, -2.5, 2.5); look.pitch = clamp(look.pitch, -1.0, 0.8); look.idle = 0; });
 addEventListener('gamepadconnected', e => { pad = e.gamepad.index; });
 
@@ -214,11 +262,11 @@ function driverStep(dt) {
 function stagePhase(dt) {
   if (G.phase === 'count') {
     G.t += dt; const n = Math.ceil(-G.t);
-    if (n !== G.lastBeep && n >= 1 && n <= 3) { G.lastBeep = n; Sfx.beep(false); msg('big', String(n)); }
-    if (G.t >= 0) { G.phase = 'run'; G.t = 0; Sfx.beep(true); msg('big', 'GO'); setTimeout(() => G.phase === 'run' && msg('big', ''), 900); if (G.autoNav) Notes.auto(G.auto, G.notes, G.car.prog, 0, (t, w) => say(t, w)); }
+    if (n !== G.lastBeep && n >= 1 && n <= 3) { G.lastBeep = n; Sfx.beep(false); bigMsg(String(n)); }
+    if (G.t >= 0) { G.phase = 'run'; G.t = 0; Sfx.beep(true); bigMsg('GO'); setTimeout(() => G.phase === 'run' && msg('big', ''), 900); if (G.autoNav) Notes.auto(G.auto, G.notes, G.car.prog, 0, (t, w) => say(t, w)); }
   } else if (G.phase === 'run') {
     G.t += dt; const c = G.car;
-    if (G.nextSplit < 2 && c.prog >= G.splitS[G.nextSplit]) { G.splits.push(G.t + G.pen); const best = bestOf(); const ref = best && best.splits ? best.splits[G.nextSplit] : null; msg('split', 'SPLIT ' + (G.nextSplit + 1) + '  ' + fmtT(G.t + G.pen) + (ref ? '  (' + (G.t + G.pen - ref >= 0 ? '+' : '') + (G.t + G.pen - ref).toFixed(1) + ')' : '')); setTimeout(() => msg('split', ''), 4000); G.nextSplit++; }
+    if (G.nextSplit < 2 && c.prog >= G.splitS[G.nextSplit]) { G.splits.push(G.t + G.pen); const best = bestOf(); const ref = best && best.splits ? best.splits[G.nextSplit] : null; { const d = ref ? G.t + G.pen - ref : null; $('split').innerHTML = 'SPLIT ' + (G.nextSplit + 1) + ' &nbsp;' + fmtT(G.t + G.pen) + (d !== null ? ' &nbsp;<span class="' + (d >= 0 ? 'up' : 'dn') + '">' + (d >= 0 ? '+' : '\u2212') + Math.abs(d).toFixed(1) + '</span>' : ''); } setTimeout(() => msg('split', ''), 4000); G.nextSplit++; }
     if (c.prog >= G.finishS) { G.phase = 'fin'; G.finT = 0; G.final = G.t + G.pen; msg('big', fmtT2(G.final)); Sfx.beep(true); finishRecord(); }
     if (G.autoNav) Notes.auto(G.auto, G.notes, c.prog, c.speed, (t, w) => say(t, w));
   } else if (G.phase === 'fin') {
@@ -228,14 +276,21 @@ function stagePhase(dt) {
 const bestKey = () => 'pn-best-' + G.cfg.stage + '-' + G.cfg.fog;
 function bestOf() { try { return JSON.parse(localStorage.getItem(bestKey()) || 'null'); } catch (e) { return null; } }
 function finishRecord() {
-  if (!G.counted) { G.counted = true; const before = CARS.filter((_, k) => carOpen(k)).length; Garage.fin++; try { localStorage.setItem('pn-fin', Garage.fin); } catch (e) {} const now = CARS.filter((_, k) => carOpen(k)); G.unlockMsg = now.length > before ? 'NEW CAR UNLOCKED: ' + now[now.length - 1].name.toUpperCase() : ''; renderGarage(); } const b = bestOf(); G.wasBest = !b || G.final < b.t; if (G.wasBest) try { localStorage.setItem(bestKey(), JSON.stringify({ t: G.final, splits: G.splits })); } catch (e) {} G.prevBest = b; }
-function showFinish() {
+  if (!G.counted) { G.counted = true; const before = CARS.filter((_, k) => carOpen(k)).length; Garage.fin++; try { localStorage.setItem('pn-fin', Garage.fin); } catch (e) {} const now = CARS.filter((_, k) => carOpen(k)); G.unlockMsg = now.length > before ? 'NEW CAR UNLOCKED: ' + now[now.length - 1].name.toUpperCase() : ''; renderGarage(); } const b = bestOf(); G.wasBest = !b || G.final < b.t; if (G.wasBest) try { localStorage.setItem(bestKey(), JSON.stringify({ t: G.final, splits: G.splits, tr: G.trace })); } catch (e) {} G.prevBest = b; }
+function showFinish() { $('call').classList.remove('on'); clearTimeout(G.callHide);
   try { document.exitPointerLock(); } catch (e) {}
   const st = STAGES[G.cfg.stage], rows = [['Stage', st.name + ' (' + (G.S.L / 1000).toFixed(2) + ' km)'], ['Time', fmtT2(G.final)], ['Penalties', '+' + G.pen + ' s'], ['Average', (G.S.L / Math.max(1, G.final) * 3.6).toFixed(1) + ' km/h'], ['Damage', Math.round((G.dmg || 0) * 100) + '%'], ['Best', G.wasBest ? 'NEW BEST' : fmtT2(G.prevBest.t)]];
+  rows.splice(1, 1); rows.splice(4, 1);
   $('finTab').innerHTML = rows.map(r => '<tr><td>' + r[0] + '</td><td>' + r[1] + '</td></tr>').join('');
-  $('finT').innerHTML = G.wasBest ? 'NEW <b>BEST</b>' : 'STAGE <b>COMPLETE</b>';
-  if (G.race) { $('finT').innerHTML = 'RACE <b>RESULTS</b>'; G.resT = 0; }
-  $('bAgain').classList.toggle('hidden', !(G.solo || Net.role === 'host')); msg('finMsg', (G.unlockMsg ? G.unlockMsg + '. ' : '') + (G.solo || Net.role === 'host' ? '' : 'Waiting for the host to restart...'));
+  $('finTime').textContent = fmtT2(G.final);
+  const d = G.prevBest ? G.final - G.prevBest.t : null, fd = $('finDelta');
+  fd.className = 'fdelta' + (d === null ? '' : d < 0 ? ' dn' : ' up');
+  fd.textContent = d === null ? 'First run on this stage' : (d < 0 ? 'NEW BEST  \u2212' : '+') + Math.abs(d).toFixed(2) + (d < 0 ? '' : '  vs best ' + fmtT2(G.prevBest.t));
+  $('finK').textContent = G.race ? 'RACE RESULTS' : G.wasBest ? 'NEW BEST TIME' : 'STAGE COMPLETE';
+  if (G.race) G.resT = 0;
+  $('finUnlock').classList.toggle('hidden', !G.unlockMsg); $('finUnlock').textContent = G.unlockMsg ? '\u2605 ' + G.unlockMsg : '';
+  const ctl = G.solo || Net.role === 'host'; $('bAgain').classList.toggle('hidden', !ctl); $('bNext').classList.toggle('hidden', !ctl);
+  msg('finMsg', ctl ? '' : 'Waiting for the host to restart...');
   $('fin').classList.remove('hidden');
 }
 function resultsTable(prog) {
@@ -272,6 +327,7 @@ function frame(now) {
   requestAnimationFrame(frame);
   if (!G.on) return;
   let dt = Math.min(0.1, (now - G.lastFrame) / 1000); G.lastFrame = now;
+  if (G.paused) return;
   let st;
   if (G.role === 'drv') {
     G.acc += dt; let n = 0;
@@ -287,8 +343,8 @@ function frame(now) {
     st = navState();
     if (!st) { World.render(); return; }
     G.phase = st.ph === 'count' ? 'count' : st.ph; G.t = st.tm; G.pen = st.pn; G.dmg = st.dmg;
-    if (G.phase === 'count') { const n = Math.ceil(-st.tm); if (n !== G.lastBeep && n >= 1 && n <= 3) { G.lastBeep = n; Sfx.beep(false); msg('big', String(n)); } }
-    if (G.phase === 'run' && G.lastBeep !== 0) { G.lastBeep = 0; Sfx.beep(true); msg('big', 'GO'); setTimeout(() => msg('big', ''), 900); }
+    if (G.phase === 'count') { const n = Math.ceil(-st.tm); if (n !== G.lastBeep && n >= 1 && n <= 3) { G.lastBeep = n; Sfx.beep(false); bigMsg(String(n)); } }
+    if (G.phase === 'run' && G.lastBeep !== 0) { G.lastBeep = 0; Sfx.beep(true); bigMsg('GO'); setTimeout(() => msg('big', ''), 900); }
     if (G.phase === 'fin' && !G.finShown) { if (!G.finT) { G.final = st.fin; msg('big', fmtT2(st.fin)); finishRecord(); } G.finT += dt; if (G.finT > 3.2) { G.finShown = true; showFinish(); } }
     G.lookT -= dt; if (G.lookT <= 0) { G.lookT = 0.1; Net.send({ t: 'look', c: G.myCar, y: Math.round(look.yaw * 100) / 100, p: Math.round(look.pitch * 100) / 100, m: look.map ? 1 : 0 }); }
   }
@@ -342,14 +398,44 @@ function frame(now) {
 }
 function hud(st) {
   if ((G.hovT = (G.hovT || 0) - 1) <= 0) { G.hovT = 6; const k = document.pointerLockElement ? aimedSwitch() : -1, sw = st.sw || G.sw || []; $('hov').textContent = k >= 0 ? SWITCH_NAMES[k] + (sw[k] ? ' · ON' : ' · OFF') + '  (click)' : ''; }
-  $('trip').textContent = 'TRIP ' + (Math.max(0, st.prog - World.startS) / 1000).toFixed(2) + ' km';
-  $('tm').textContent = G.phase === 'count' ? fmtT(0) : fmtT((G.phase === 'fin' ? G.final - G.pen : G.t) + G.pen);
+  const done = Math.max(0, st.prog - World.startS), len = Math.max(1, G.finishS - G.startS), clk = G.phase === 'count' ? 0 : (G.phase === 'fin' ? G.final - G.pen : G.t) + G.pen;
+  $('trip').textContent = (done / 1000).toFixed(2) + ' / ' + (len / 1000).toFixed(2) + ' km';
+  $('tm').textContent = fmtT(clk);
+  $('progF').style.width = clamp(done / len, 0, 1) * 100 + '%';
+  // live delta against the best run, sampled every 50 m
+  const k = Math.floor(done / 50);
+  if (G.phase === 'run' && G.trace[k] === undefined) G.trace[k] = Math.round(clk * 100) / 100;
+  if ((G.dlT = (G.dlT || 0) - 1) <= 0) { G.dlT = 8; const ref = G.bestRec && G.bestRec.tr && G.bestRec.tr[k], dl = $('dl');
+    if (G.phase === 'run' && ref !== undefined && ref !== null && k > 0) { const d = G.trace[k] - ref; dl.textContent = (d >= 0 ? '+' : '\u2212') + Math.abs(d).toFixed(1); dl.className = d >= 0 ? 'up' : 'dn'; }
+    else { dl.textContent = G.bestRec ? 'BEST ' + fmtT(G.bestRec.t) : ''; dl.className = ''; } }
+  // car dots on the progress bar (rivals in a race)
+  if (G.progDots) for (const [c, el] of G.progDots) { const p = c === G.myCar ? st.prog : ((G.bufs[c] || []).slice(-1)[0] || { pr: G.startS }).pr; el.style.left = clamp((p - G.startS) / len, 0, 1) * 100 + '%'; }
   if (G.role === 'drv') {
-    $('spd').querySelector('b').textContent = Math.round(st.speed * 3.6); $('gear').textContent = st.gear < 0 ? 'R' : st.gear;
-    $('rpm').firstElementChild.style.width = (clamp((st.rpm - 900) / (CAR.red - 900), 0, 1) * 100) + '%'; $('rpm').firstElementChild.style.background = st.rpm > CAR.red - 500 ? '#e0483a' : '';
-    $('dmg').querySelector('u').style.width = Math.round((G.dmg || 0) * 100) + '%';
+    $('spd').querySelector('b').textContent = Math.round(st.speed * 3.6); $('gear').textContent = st.gear < 0 ? 'R' : st.gear || 'N';
+    drawRev(st.rpm);
+    const dm = Math.round((G.dmg || 0) * 100); $('dmg').querySelector('u').style.width = dm + '%'; $('dmgP').textContent = dm + '%'; $('dmg').classList.toggle('hi', dm >= 50);
   }
   $('net').textContent = G.solo ? '' : (Net.role === 'host' ? 'ping ' + Math.round(Net.ping) + ' ms' : (performance.now() - Net.lastRx > 2500 ? 'NO SIGNAL' : 'online'));
+}
+function buildProg() {
+  const box = $('progDots'); box.innerHTML = ''; G.progDots = [];
+  const cs = G.race ? G.cars.filter(c => c !== G.myCar).concat([G.myCar]) : [G.myCar];
+  for (const c of cs) { const i = document.createElement('i'); i.style.setProperty('--c', hex(CAR_COL[c])); if (c === G.myCar) i.className = 'me'; box.appendChild(i); G.progDots.push([c, i]); }
+}
+// rev counter ring around the speed readout
+let revLast = -1;
+function drawRev(rpm) {
+  const r = Math.round(rpm / 50); if (r === revLast) return; revLast = r;
+  const c = $('rev'), x = c.getContext('2d'), W = 200, cx = 100, cy = 100, R0 = 88, a0 = Math.PI * 0.75, span = Math.PI * 1.5, max = 8000, red = CAR.red, f = clamp(rpm / max, 0, 1);
+  x.clearRect(0, 0, W, W);
+  x.beginPath(); x.arc(cx, cy, R0 + 8, 0, Math.PI * 2); x.fillStyle = 'rgba(8,10,9,.55)'; x.fill();
+  x.lineCap = 'butt'; x.lineWidth = 9;
+  x.beginPath(); x.arc(cx, cy, R0 - 2, a0, a0 + span); x.strokeStyle = 'rgba(255,255,255,.12)'; x.stroke();
+  x.beginPath(); x.arc(cx, cy, R0 - 2, a0 + span * red / max, a0 + span); x.strokeStyle = 'rgba(224,72,58,.45)'; x.stroke();
+  const hot = rpm > red - 400, g = x.createLinearGradient(0, 200, 200, 0); g.addColorStop(0, '#f2b632'); g.addColorStop(1, hot ? '#ff4a3a' : '#ffd36a');
+  x.beginPath(); x.arc(cx, cy, R0 - 2, a0, a0 + span * f); x.strokeStyle = g; x.stroke();
+  x.lineWidth = 2; x.strokeStyle = 'rgba(255,255,255,.5)';
+  for (let i = 0; i <= 8; i++) { const a = a0 + span * i / 8; x.beginPath(); x.moveTo(cx + Math.cos(a) * (R0 - 9), cy + Math.sin(a) * (R0 - 9)); x.lineTo(cx + Math.cos(a) * (R0 - 15), cy + Math.sin(a) * (R0 - 15)); x.stroke(); }
 }
 // resolution governor: keep the frame rate up on slow machines
 // (runs before the frame is drawn: resizing the canvas clears it, which used to flash black; slow to raise again so it can't oscillate)
@@ -363,5 +449,5 @@ function perf(dt) {
 }
 requestAnimationFrame(frame);
 // test hooks
-window.__PN = { G, World, startStage, Net, look, KEYS };
+window.__PN = { G, World, startStage, Net, look, KEYS, say, showFinish, pauseOpen };
 if (Q.has('solo')) setTimeout(() => $('bSolo').click(), 100);
