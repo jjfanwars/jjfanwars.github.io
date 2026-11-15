@@ -16,7 +16,7 @@ const medalDot = k => k < 0 ? '' : '<i class="md" style="--m:' + MEDALS[k][2] + 
 STAGES.forEach((s, i) => { const o = document.createElement('option'); o.value = i; o.textContent = BIOMES[s.biome].name + ' · ' + s.name + (s.berms ? ' · berms & jumps' : '') + '  (' + (s.len / 1000).toFixed(1) + ' km)'; $('sStage').appendChild(o); });
 try { $('nm').value = localStorage.getItem('pn-name') || ''; $('sGfx').value = localStorage.getItem('pn-gfx') || 'med'; for (const k of ['sStage', 'sFog', 'sRole']) { const v = localStorage.getItem('pn-' + k); if (v !== null && [...$(k).options].some(o => o.value === v)) $(k).value = v; } } catch (e) {}
 const myName = () => { const n = ($('nm').value || '').replace(/[^A-Za-z0-9 ._-]/g, '').trim().slice(0, 14) || 'Player' + (1 + Math.random() * 99 | 0); try { localStorage.setItem('pn-name', n); localStorage.setItem('pn-gfx', $('sGfx').value); } catch (e) {} return n; };
-const show = id => { for (const s of ['menu', 'lobby', 'fin', 'pause']) $(s).classList.toggle('hidden', s !== id); Garage3D.on = id === 'menu'; };
+const show = id => { for (const s of ['menu', 'lobby', 'fin', 'pause', 'champ']) $(s).classList.toggle('hidden', s !== id); Garage3D.on = id === 'menu'; };
 // ---- stage cards (drive the hidden select) ----
 const BIO_COL = { forest: '#3f8a52', autumn: '#d0742a', snow: '#9cc8e4', desert: '#d8914c', park: '#74b85a', city: '#8a93a6' };
 const todName = t => /dusk|evening/i.test(t) ? 'Dusk' : /noon/i.test(t) ? 'Midday' : /morning/i.test(t) ? 'Morning' : /overcast/i.test(t) ? 'Overcast' : 'Day';
@@ -72,7 +72,7 @@ addEventListener('keydown', e => { if ($('menu').classList.contains('hidden') ||
 const carLocked = () => { if (carOpen(Garage.sel)) return false; msg('msg', CARS[Garage.sel].name + ' is locked. Pick an unlocked car.'); return true; };
 const myId = () => Net.role === 'host' ? 'H' : Net.id;
 const nameOf = id => id === 'H' ? Net.name : (Net.peers.get(id) || {}).name || 'Player';
-$('bSolo').onclick = () => { if (carLocked()) return; Sfx.start(); Net.close(); const c = readCfg(); startStage(c, 'drv', true, 0, [[{ id: 'me', name: myName(), car: Net.car | 0 }, null]]); };
+$('bSolo').onclick = () => { if (carLocked()) return; Champ.run = null; Sfx.start(); Net.close(); const c = readCfg(); startStage(c, 'drv', true, 0, [[{ id: 'me', name: myName(), car: Net.car | 0 }, null]]); };
 $('bHost').onclick = () => {
   if (carLocked()) return; Sfx.start(); const name = myName(); G.cfg = readCfg(); const code = Net.host(name, s => msg('lmsg', s === 'open' ? 'Share the code (up to 8 players, two per car).' : 'Connection lost, retrying...'));
   G.seats = [[null, null], [null, null], [null, null], [null, null]]; G.seats[0][G.cfg.hostRole === 'nav' ? 1 : 0] = 'H';
@@ -162,6 +162,7 @@ function startStage(cfg, role, solo, myCar, seats) {
     if (role === 'drv') { G.car = new Car(S); G.car.place(grid.s, grid.lat); }
     look.yaw = 0; look.pitch = role === 'nav' ? -0.14 : -0.1; look.map = false; G.sw = [1, 1, 0, 0, /dusk|evening/i.test(STAGES[cfg.stage].tod) ? 1 : 0, 0];
     $('role').textContent = CARS[mdl(myCar)].name.toUpperCase() + ' · ' + (solo ? 'SOLO PRACTICE · AUTO CO-DRIVER' : (role === 'drv' ? 'DRIVER' : 'NAVIGATOR') + ' · ' + CAR_NAME[myCar].toUpperCase() + ' CAR' + (G.autoNav ? ' · AUTO CO-DRIVER' : '')) + ' · ' + STAGES[cfg.stage].name.toUpperCase(); msg('pos', '');
+    if (Champ.run) $('role').textContent = Champ.run.c.name.toUpperCase() + ' · STAGE ' + (Champ.run.i + 1) + ' / ' + Champ.run.c.st.length + ' · ' + STAGES[cfg.stage].name.toUpperCase();
     $('tip').innerHTML = role === 'drv' ? 'W/S throttle · brake, A/D steer, Space handbrake, R recover (+5 s), V chase cam, G ghost, Esc pause · click dash switches · mouse looks' : 'Hold <b>right mouse</b> or <b>Tab</b> for the map · callouts: A/D + 1-6, J jump, C crest, L log, K keep middle, F flat, B brake';
     $('spd').style.display = role === 'drv' ? '' : 'none'; $('dmg').style.display = role === 'drv' ? '' : 'none'; $('call').classList.remove('on');
     bigMsg(''); msg('split', ''); $('fade').style.opacity = 0; $('lockmsg').classList.toggle('hidden', !!document.pointerLockElement); $('tip').style.opacity = 1;
@@ -173,16 +174,17 @@ function startStage(cfg, role, solo, myCar, seats) {
 function endToMenu(why) {
   G.on = false; G.paused = false; renderStages(); Net.close(); $('hud').classList.add('hidden'); $('lockmsg').classList.add('hidden'); show('menu'); msg('msg', why || ''); try { document.exitPointerLock(); } catch (e) {} if (window.speechSynthesis) speechSynthesis.cancel(); Sfx.mute(true); setTimeout(() => Sfx.mute(false), 50); refreshRooms();
 }
-$('bMenu').onclick = () => endToMenu('');
+$('bMenu').onclick = () => { Champ.run = null; endToMenu(''); };
 function restart() { $('fin').classList.add('hidden'); $('pause').classList.add('hidden'); G.paused = false; if (G.solo) startStage(G.cfg, 'drv', true, 0, G.seats); else if (Net.role === 'host') { Net.started = true; Net.send({ t: 'start', cfg: G.cfg, seats: G.seats }); begin(G.cfg, G.seats); } }
 $('bAgain').onclick = restart;
-$('bNext').onclick = () => { G.cfg = Object.assign({}, G.cfg, { stage: (G.cfg.stage + 1) % STAGES.length }); $('sStage').value = G.cfg.stage; renderStages(); restart(); };
+$('bNext').onclick = () => { if (Champ.run) { $('fin').classList.add('hidden'); if (Champ.run.done) { Champ.run = null; endToMenu(''); renderChamps(); show('champ'); } else { Champ.run.i++; champStage(); } return; }
+  G.cfg = Object.assign({}, G.cfg, { stage: (G.cfg.stage + 1) % STAGES.length }); $('sStage').value = G.cfg.stage; renderStages(); restart(); };
 // ---- pause (Esc releases the mouse; solo practice actually stops the clock) ----
-function pauseOpen() { if (!G.on || G.phase === 'fin' || !$('fin').classList.contains('hidden')) return; G.paused = G.solo; $('pSub').textContent = G.solo ? 'The clock is stopped.' : 'Online: the stage keeps running.'; $('pause').classList.remove('hidden'); $('bRestart').classList.toggle('hidden', !(G.solo || Net.role === 'host')); }
+function pauseOpen() { if (!G.on || G.phase === 'fin' || !$('fin').classList.contains('hidden')) return; G.paused = G.solo; $('pSub').textContent = G.solo ? 'The clock is stopped.' : 'Online: the stage keeps running.'; $('pause').classList.remove('hidden'); $('bRestart').classList.toggle('hidden', !!Champ.run || !(G.solo || Net.role === 'host')); }
 function pauseClose() { $('pause').classList.add('hidden'); G.paused = false; G.lastFrame = performance.now(); G.acc = 0; try { cvs.requestPointerLock(); } catch (x) {} }
 $('bResume').onclick = pauseClose; $('pause').onclick = e => { if (e.target.id === 'pause') pauseClose(); };
 $('bRestart').onclick = () => { $('pause').classList.add('hidden'); G.paused = false; restart(); };
-$('bQuit').onclick = () => { $('pause').classList.add('hidden'); G.paused = false; endToMenu(''); };
+$('bQuit').onclick = () => { Champ.run = null; $('pause').classList.add('hidden'); G.paused = false; endToMenu(''); };
 
 // ---------- callouts ----------
 function say(txt, words, ms) {
@@ -219,7 +221,7 @@ addEventListener('keydown', e => {
   if (G.role === 'drv' && e.code === 'KeyR' && G.car && G.phase === 'run') recover();
   if (e.code === 'KeyQ' && !document.pointerLockElement) endToMenu('');
   if (e.code === 'Escape' && !$('pause').classList.contains('hidden')) { pauseClose(); return; }
-  if (e.code === 'Backspace' && (G.solo || Net.role === 'host')) { e.preventDefault(); restart(); }
+  if (e.code === 'Backspace' && !Champ.run && (G.solo || Net.role === 'host')) { e.preventDefault(); restart(); }
   if (e.code === 'KeyN') G.noGrades = !G.noGrades;
   if (e.code === 'KeyV' && G.role === 'drv') { G.chase = !G.chase; CH.init = false; $('cross').style.display = G.chase ? 'none' : ''; try { localStorage.setItem('pn-cam', G.chase ? 'chase' : 'in'); } catch (x) {} say(G.chase ? 'CHASE CAM' : 'COCKPIT CAM', '', 900); }
   if (e.code === 'KeyG' && G.role === 'drv') { G.showGhost = G.showGhost === false; say(G.ghost ? (G.showGhost ? 'GHOST ON' : 'GHOST OFF') : 'NO GHOST YET: SET A BEST TIME', '', 1200); }
@@ -288,7 +290,7 @@ function finishRecord() {
   if (G.role === 'drv' && G.rec && G.rec.length > 10 && (!G.ghost || G.final < G.ghost.t)) try { localStorage.setItem(ghostKey(), JSON.stringify({ t: G.final, car: Garage.sel, p: G.rec })); } catch (e) {}; } catch (e) {} G.prevBest = b; }
 function showFinish() { $('call').classList.remove('on'); clearTimeout(G.callHide);
   try { document.exitPointerLock(); } catch (e) {}
-  const st = STAGES[G.cfg.stage], rows = [['Stage', st.name + ' (' + (G.S.L / 1000).toFixed(2) + ' km)'], ['Time', fmtT2(G.final)], ['Penalties', '+' + G.pen + ' s'], ['Average', (G.S.L / Math.max(1, G.final) * 3.6).toFixed(1) + ' km/h'], ['Damage', Math.round((G.dmg || 0) * 100) + '%'], ['Best', G.wasBest ? 'NEW BEST' : fmtT2(G.prevBest.t)]];
+  const st = STAGES[G.cfg.stage], rows = [['Stage', st.name + ' (' + (G.S.L / 1000).toFixed(2) + ' km)'], ['Time', fmtT2(G.final)], ['Penalties', '+' + G.pen + ' s'], ['Average', (G.S.L / Math.max(1, G.final) * 3.6).toFixed(1) + ' km/h'], ['Damage', Math.round((G.dmg || 0) * 100) + '%'], ['Best', G.wasBest || !G.prevBest ? 'NEW BEST' : fmtT2(G.prevBest.t)]];
   rows.splice(1, 1); rows.splice(4, 1);
   const st2 = G.style || {}; if (G.role === 'drv') { rows.push(['Style', (st2.pts || 0) + ' pts']); if (st2.drift) rows.push(['Longest drift', st2.drift.toFixed(1) + ' s']); if (st2.air) rows.push(['Biggest air', st2.air.toFixed(1) + ' s']); }
   const mk = medalOf(G.cfg.stage, G.final), nx = mk === 0 ? null : mk < 0 ? 2 : mk - 1;
@@ -303,6 +305,8 @@ function showFinish() { $('call').classList.remove('on'); clearTimeout(G.callHid
   $('finUnlock').classList.toggle('hidden', !G.unlockMsg); $('finUnlock').textContent = G.unlockMsg ? '\u2605 ' + G.unlockMsg : '';
   const ctl = G.solo || Net.role === 'host'; $('bAgain').classList.toggle('hidden', !ctl); $('bNext').classList.toggle('hidden', !ctl);
   msg('finMsg', ctl ? '' : 'Waiting for the host to restart...');
+  $('bNext').textContent = 'Next stage'; $('bMenu').textContent = 'Menu';
+  if (Champ.run && G.solo) champFinish();
   $('fin').classList.remove('hidden');
 }
 function resultsTable(prog) {
@@ -451,6 +455,52 @@ function drawRev(rpm) {
   x.lineWidth = 2; x.strokeStyle = 'rgba(255,255,255,.5)';
   for (let i = 0; i <= 8; i++) { const a = a0 + span * i / 8; x.beginPath(); x.moveTo(cx + Math.cos(a) * (R0 - 9), cy + Math.sin(a) * (R0 - 9)); x.lineTo(cx + Math.cos(a) * (R0 - 15), cy + Math.sin(a) * (R0 - 15)); x.stroke(); }
 }
+// ---------- championships: a run of stages against AI rivals, total time decides ----------
+const CHAMPS = [
+  { id: 'forest', name: 'Forest Cup', d: 'Three gravel sprints under the pines', st: [11, 0, 1] },
+  { id: 'jumps', name: 'Jump Masters', d: 'Berms, kickers and big air', st: [12, 14, 13] },
+  { id: 'seasons', name: 'Four Seasons', d: 'Autumn, snow, desert and city', st: [3, 5, 7, 9] },
+  { id: 'grand', name: 'Grand Tour', d: 'Six stages, every surface, night finish', st: [2, 4, 6, 8, 13, 10] }
+];
+// fictional drivers; skill scales the silver-medal time (lower is faster)
+const RIVALS = [['Lasse Moos', 0.86], ['Petra Kova', 0.89], ['Jules Ferrand', 0.92], ['Dai Hughes', 0.95], ['Marco Ventisei', 0.98], ['Ines Duarte', 1.02], ['Sven Aalto', 1.06], ['Bodge Mulligan', 1.13]];
+const Champ = { run: null };
+const champBest = id => { try { return +localStorage.getItem('pn-champ-' + id) || 0; } catch (e) { return 0; } };
+function renderChamps() {
+  $('chList').innerHTML = CHAMPS.map((c, k) => { const b = champBest(c.id), km = c.st.reduce((a, i) => a + STAGES[i].len, 0) / 1000;
+    return '<button class="chc" data-k="' + k + '"><b>' + c.name + '</b><small>' + c.d + '</small><small>' + c.st.length + ' stages · ' + km.toFixed(1) + ' km · ' + c.st.map(i => BIOMES[STAGES[i].biome].name).filter((v, j, a) => a.indexOf(v) === j).join(', ') + '</small>' + (b ? '<em class="' + (b === 1 ? 'win' : '') + '">' + (b === 1 ? '★ CHAMPION' : 'Best P' + b) + '</em>' : '') + '</button>'; }).join('');
+}
+$('bChamp').onclick = () => { if (carLocked()) return; renderChamps(); show('champ'); };
+$('chBack').onclick = () => show('menu');
+$('chList').onclick = e => { const b = e.target.closest('.chc'); if (!b) return; champStart(CHAMPS[+b.dataset.k]); };
+function champStart(c) {
+  Sfx.start(); Net.close();
+  Champ.run = { c, i: 0, mine: [], riv: RIVALS.map(([n, s]) => ({ n, s: s * (0.97 + Math.random() * 0.06), t: [] })) };
+  champStage();
+}
+function champStage() { const R = Champ.run, cfg = { stage: R.c.st[R.i], fog: +$('sFog').value, hostRole: 'drv' }; startStage(cfg, 'drv', true, 0, [[{ id: 'me', name: myName(), car: Net.car | 0 }, null]]); }
+function rivalTime(r, stage) { // silver pace times skill, with a bad-luck spin now and then
+  let t = medalT(stage, 1) * r.s * (0.97 + Math.random() * 0.06); if (Math.random() < 0.08) t += 8 + Math.random() * 20; return Math.round(t * 100) / 100;
+}
+function champFinish() {
+  const R = Champ.run, stage = R.c.st[R.i]; if (R.mine.length > R.i) return; R.mine.push(G.final);
+  for (const r of R.riv) r.t.push(rivalTime(r, stage));
+  const sum = a => a.reduce((x, y) => x + y, 0), me = { n: myName() + ' (you)', tot: sum(R.mine), st: G.final, me: 1 };
+  const all = R.riv.map(r => ({ n: r.n, tot: sum(r.t), st: r.t[R.i] })).concat([me]).sort((a, b) => a.tot - b.tot);
+  const stPos = all.slice().sort((a, b) => a.st - b.st).indexOf(me) + 1, pos = all.indexOf(me) + 1, last = R.i === R.c.st.length - 1, lead = all[0].tot;
+  $('finK').textContent = R.c.name.toUpperCase() + ' · STAGE ' + (R.i + 1) + ' / ' + R.c.st.length;
+  $('finDelta').className = 'fdelta' + (stPos === 1 ? ' dn' : ''); $('finDelta').textContent = 'Stage ' + ordinal(stPos) + ' · ' + (last ? 'Final' : 'Overall') + ' ' + ordinal(pos);
+  $('finTab').innerHTML = '<tr><td colspan=2 style="color:var(--dim);font-size:12px;letter-spacing:.12em">' + (last ? 'FINAL STANDINGS' : 'STANDINGS') + '</td></tr>' + all.map((x, k) => '<tr class="' + (x.me ? 'me' : '') + '"><td>' + (k + 1) + '. ' + x.n.replace(/[<>&]/g, '') + '</td><td>' + (k ? '+' + fmtT2(x.tot - lead) : fmtT2(x.tot)) + '</td></tr>').join('');
+  $('bAgain').classList.add('hidden'); $('bNext').classList.remove('hidden'); $('bNext').textContent = last ? 'Finish' : 'Next stage (' + (R.i + 2) + '/' + R.c.st.length + ')';
+  $('bMenu').textContent = last ? 'Menu' : 'Retire';
+  if (last) {
+    const b = champBest(R.c.id); if (!b || pos < b) try { localStorage.setItem('pn-champ-' + R.c.id, pos); } catch (e) {}
+    $('finK').textContent = R.c.name.toUpperCase() + ' · FINAL';
+    $('finUnlock').classList.remove('hidden'); $('finUnlock').textContent = pos === 1 ? '★ CHAMPION! You won the ' + R.c.name : pos <= 3 ? 'Podium: ' + ordinal(pos) + ' overall' : ordinal(pos) + ' overall. Go again?';
+    R.done = true;
+  }
+}
+const ordinal = n => n + (n % 10 === 1 && n % 100 !== 11 ? 'st' : n % 10 === 2 && n % 100 !== 12 ? 'nd' : n % 10 === 3 && n % 100 !== 13 ? 'rd' : 'th');
 // ---------- chase camera (V) ----------
 const CH = { pos: new THREE.Vector3(), tgt: new THREE.Vector3(), f: new THREE.Vector3(), want: new THREE.Vector3(), init: false };
 function chaseCam(cam, st, dt) {
@@ -510,5 +560,5 @@ function perf(dt) {
 }
 requestAnimationFrame(frame);
 // test hooks
-window.__PN = { G, World, startStage, Net, look, KEYS, say, showFinish, pauseOpen, pop, ghostSetup };
+window.__PN = { G, World, startStage, Net, look, KEYS, say, showFinish, pauseOpen, pop, ghostSetup, Champ, champStart, CHAMPS };
 if (Q.has('solo')) setTimeout(() => $('bSolo').click(), 100);
