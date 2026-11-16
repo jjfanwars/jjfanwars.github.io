@@ -4,7 +4,7 @@
 // Text frames are control: relay -> host {c:'join'|'leave', id}; relay -> guest {c:'host', up}.
 const RELAY_URL = 'wss://jjfanwars-relay.businessautomationvic.workers.dev';
 const Net = {
-  role: 'solo', ws: null, peer: null, peers: new Map(), code: '', relayT: { car: 1, look: 1, call: 1, sw: 1 }, id: '', name: '', handlers: {}, retry: 0, ping: 0, started: false, lastRx: 0,
+  tag: '[Rally]', role: 'solo', ws: null, peer: null, peers: new Map(), code: '', relayT: { car: 1, look: 1, call: 1, sw: 1 }, id: '', name: '', handlers: {}, retry: 0, ping: 0, started: false, lastRx: 0,
   enc: new TextEncoder(), dec: new TextDecoder(),
   relay() { if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) { const m = /[?&]relay=([^&]+)/.exec(location.search); if (m) return decodeURIComponent(m[1]).replace(/\/$/, ''); } return RELAY_URL; },
   on(t, f) { this.handlers[t] = f; },
@@ -14,7 +14,7 @@ const Net = {
     if (this.role === 'host') { const out = new Uint8Array(1 + b.length); out.set(b, 1); try { this.ws.send(out); } catch (e) {} }
     else if (this.role === 'guest') { try { this.ws.send(b); } catch (e) {} }
   },
-  meta(open) { try { this.ws.send(JSON.stringify({ c: 'meta', name: '[Rally] ' + this.name + "'s stage", open })); } catch (e) {} },
+  meta(open) { try { this.ws.send(JSON.stringify({ c: 'meta', name: this.tag + ' ' + this.name + (this.tag === '[Rally]' ? "'s stage" : "'s trip"), open })); } catch (e) {} },
   newCode() { let s = ''; for (let i = 0; i < 5; i++) s += 'ABCDEFGHJKLMNPQRSTUVWXYZ'[(Math.random() * 24) | 0]; return s; },
   host(name, onStatus) {
     this.close(); this.role = 'host'; this.name = name; this.code = this.newCode(); this.peer = null; this.peers = new Map(); this.started = false; this.onStatus = onStatus; this.hostConnect(); return this.code;
@@ -26,7 +26,7 @@ const Net = {
       if (typeof e.data === 'string') { let m; try { m = JSON.parse(e.data); } catch (x) { return; } if (m.c === 'leave' && this.peers.has(m.id)) { const p = this.peers.get(m.id); this.peers.delete(m.id); this.peer = this.peers.values().next().value || null; this.emit({ t: '_left', id: m.id, name: p.name }); } return; }
       const b = new Uint8Array(e.data), k = b[0], id = this.dec.decode(b.subarray(1, 1 + k)); let m; try { m = JSON.parse(this.dec.decode(b.subarray(1 + k))); } catch (x) { return; }
       this.lastRx = performance.now();
-      if (m.t === 'hello') { if (!this.peers.has(id) && (this.peers.size >= 7 || this.started)) { this.send1(id, { t: 'full' }); return; } const p = { id, car: clamp(m.car | 0, 0, CARS.length - 1), name: String(m.name || 'Player').replace(/[^A-Za-z0-9 ._-]/g, '').slice(0, 14) || 'Player' }; this.peers.set(id, p); this.peer = p; this.emit({ t: '_join', id }); this.emit({ t: '_lobby' }); return; }
+      if (m.t === 'hello') { if (!this.peers.has(id) && (this.peers.size >= 7 || (this.started && !this.late))) { this.send1(id, { t: 'full' }); return; } const p = { id, car: clamp(m.car | 0, 0, CARS.length - 1), name: String(m.name || 'Player').replace(/[^A-Za-z0-9 ._-]/g, '').slice(0, 14) || 'Player' }; this.peers.set(id, p); this.peer = p; this.emit({ t: '_join', id }); this.emit({ t: '_lobby' }); return; }
       if (m.t === 'pong') { this.ping = performance.now() - m.at; return; }
       if (!this.peers.has(id)) return;
       m.from = id; this.emit(m, id);
@@ -53,5 +53,5 @@ const Net = {
     clearInterval(this.pingT); this.pingT = setInterval(() => { try { if (this.ws && this.ws.readyState === 1) this.ws.send('ping'); } catch (e) {} }, 20000);
   },
   close() { clearInterval(this.pingT); if (this.ws) { const w = this.ws; this.ws = null; w.onclose = null; try { w.close(); } catch (e) {} } this.role = 'solo'; this.peer = null; this.peers = new Map(); },
-  async rooms() { try { const r = await (await fetch(this.relay().replace(/^ws/, 'http') + '/rooms')).json(); return r.filter(x => x.open && /^\[Rally\]/.test(x.name)); } catch (e) { return []; } },
+  async rooms() { try { const r = await (await fetch(this.relay().replace(/^ws/, 'http') + '/rooms')).json(); return r.filter(x => x.open && x.name.indexOf(this.tag + ' ') === 0); } catch (e) { return []; } },
 };

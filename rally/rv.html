@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Camper Crew</title>
+<!--
+  Camper Crew: co-op road trip in a camper you can walk around in. First person for everyone: drive it, ride in it, get out,
+  winch it, push it, fuel it, fix it, blow rocks out of its way. One handmade map (js/rvmap.js) on the rally engine.
+  Online over the jjfanwars relay (rooms named "[Camper] ..."): the host runs the camper and the world, every player runs their own body.
+-->
+<style>
+:root { --bg:#0e0c0a; --ink:#f3ecdd; --dim:#a79e8c; --acc:#f0a63a; --acc2:#ffd27a; --panel:rgba(22,18,14,.84); --line:rgba(255,255,255,.09); --field:#1c1712; }
+* { box-sizing:border-box; }
+html,body { margin:0; height:100%; background:var(--bg); color:var(--ink); font:15px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif; overflow:hidden; }
+canvas#gl { position:fixed; inset:0; width:100%; height:100%; display:block; }
+.hidden { display:none !important; }
+.scr { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; padding:16px; z-index:10; background:radial-gradient(ellipse at 50% 30%,rgba(30,24,18,.6),rgba(8,6,5,.93)); overflow:auto; }
+#menu { background:radial-gradient(900px 600px at 80% 10%,rgba(240,166,58,.18),transparent 60%),radial-gradient(900px 700px at 0% 100%,rgba(70,120,90,.2),transparent 60%),linear-gradient(160deg,#1a1510,#080706); }
+.card { width:min(560px,100%); background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:26px; box-shadow:0 30px 80px rgba(0,0,0,.5); max-height:100%; overflow:auto; }
+h1 { margin:0; font-size:54px; font-weight:900; font-style:italic; letter-spacing:.02em; line-height:1; }
+h1 b { color:var(--acc); }
+.sub { color:var(--dim); margin:8px 0 18px; }
+label { display:block; font-size:11px; text-transform:uppercase; letter-spacing:.1em; color:var(--dim); margin:14px 0 6px; font-weight:600; }
+input,select { width:100%; padding:10px 12px; border-radius:8px; border:1px solid rgba(255,255,255,.12); background:var(--field); color:var(--ink); font:inherit; }
+button { padding:11px 16px; border-radius:9px; border:0; background:#3a3128; color:var(--ink); font:600 15px system-ui,sans-serif; cursor:pointer; }
+button:hover { filter:brightness(1.15); }
+button.go { background:var(--acc); color:#1f1406; }
+.row { display:flex; gap:8px; } .row > * { flex:1; }
+.big { display:flex; flex-direction:column; align-items:flex-start; width:100%; margin-top:10px; padding:14px 18px; text-align:left; }
+.big span { font-size:18px; font-weight:800; } .big small { opacity:.75; font-weight:500; font-size:12.5px; }
+.msg { color:var(--acc); min-height:20px; margin-top:10px; font-size:14px; }
+#rooms { display:flex; flex-direction:column; gap:6px; margin-top:8px; } #rooms:empty { display:none; }
+#rooms button { display:flex; justify-content:space-between; width:100%; background:#2a231c; font-weight:500; padding:9px 12px; }
+.keys { color:var(--dim); font-size:13px; margin-top:14px; border-top:1px solid var(--line); padding-top:10px; } .keys b { color:var(--ink); }
+.back { color:var(--dim); font-size:13px; text-decoration:none; } .back:hover { color:var(--acc); }
+#crewL div, #crew div { display:flex; align-items:center; gap:8px; padding:3px 0; } #crewL i, #crew i { width:12px; height:12px; border-radius:50%; display:inline-block; } #crewL small, #crew small { color:var(--dim); }
+.code { font:900 40px ui-monospace,monospace; letter-spacing:.2em; color:var(--acc2); }
+/* HUD */
+#hud { position:fixed; inset:0; pointer-events:none; z-index:5; }
+#obj { position:absolute; left:18px; top:16px; max-width:min(520px,60vw); background:rgba(0,0,0,.45); border-left:4px solid var(--acc); padding:9px 13px; border-radius:0 8px 8px 0; font-weight:600; text-shadow:0 1px 2px #000; }
+#crew { position:absolute; right:18px; top:16px; background:rgba(0,0,0,.42); padding:8px 12px; border-radius:8px; font-size:13px; min-width:170px; }
+#top { position:absolute; left:50%; top:14px; transform:translateX(-50%); text-align:center; }
+#tm { font:800 20px ui-monospace,monospace; text-shadow:0 1px 3px #000; }
+#prog { width:260px; height:6px; border-radius:3px; background:rgba(255,255,255,.18); margin:6px auto 0; overflow:hidden; } #progF { height:100%; width:0; background:linear-gradient(90deg,var(--acc),var(--acc2)); }
+#cross { position:absolute; left:50%; top:50%; width:6px; height:6px; margin:-3px 0 0 -3px; border-radius:50%; background:rgba(255,255,255,.75); box-shadow:0 0 3px #000; }
+#prompt { position:absolute; left:50%; top:calc(50% + 26px); transform:translateX(-50%); font-weight:700; text-shadow:0 1px 3px #000; white-space:nowrap; }
+#prompt u { display:inline-block; vertical-align:middle; width:90px; height:8px; border-radius:4px; background:rgba(255,255,255,.2); overflow:hidden; margin-left:8px; } #prompt u i { display:block; height:100%; background:var(--acc); }
+kbd { display:inline-block; min-width:22px; padding:1px 6px; border-radius:5px; background:rgba(255,255,255,.92); color:#111; font:800 12px system-ui; text-align:center; margin-right:4px; box-shadow:0 2px 0 rgba(0,0,0,.4); }
+#held { position:absolute; left:50%; bottom:24px; transform:translateX(-50%); background:rgba(0,0,0,.45); padding:7px 14px; border-radius:8px; font-size:14px; white-space:nowrap; } #held:empty { display:none; } #held b { color:var(--acc2); text-transform:uppercase; margin-right:8px; }
+#gauges { position:absolute; right:20px; bottom:20px; text-align:right; }
+#spd { font:900 44px ui-monospace,monospace; text-shadow:0 2px 4px #000; } #spd small { font-size:14px; color:var(--dim); }
+#fuel, #winch { width:190px; margin-top:6px; background:rgba(0,0,0,.5); border-radius:7px; padding:5px 8px; font:700 11px system-ui; letter-spacing:.1em; text-align:left; }
+#fuel u, #winch u { display:block; height:7px; border-radius:4px; background:rgba(255,255,255,.15); overflow:hidden; margin-top:4px; } #fuelB { display:block; height:100%; background:#5cc36a; } #fuel.low #fuelB { background:#e0483a; } #fuel.low { animation:bl .6s infinite alternate; } @keyframes bl { to { box-shadow:0 0 14px #e0483a; } }
+#winchT { display:block; height:100%; background:linear-gradient(90deg,#e0c040,#e04020); }
+#toast { position:absolute; left:50%; top:22%; transform:translate(-50%,-10px); opacity:0; transition:opacity .3s,transform .3s; text-align:center; text-shadow:0 2px 6px #000; }
+#toast.on { opacity:1; transform:translate(-50%,0); } #toast b { display:block; font:900 italic 34px system-ui; letter-spacing:.03em; color:var(--acc2); } #toast span { display:block; font-size:16px; font-weight:600; margin-top:2px; }
+#fade, #flash { position:fixed; inset:0; pointer-events:none; opacity:0; transition:opacity .4s; z-index:6; } #fade { background:#000; } #flash { background:#fff6d8; transition:none; }
+#lockmsg { position:fixed; left:50%; top:60%; transform:translateX(-50%); background:rgba(0,0,0,.6); padding:10px 18px; border-radius:10px; z-index:7; pointer-events:none; font-weight:700; }
+#load { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; background:#0e0c0a; z-index:8; font:800 italic 26px system-ui; color:var(--acc2); }
+#mapBox { position:absolute; right:18px; top:50%; transform:translateY(-50%); display:none; border-radius:12px; overflow:hidden; box-shadow:0 10px 40px rgba(0,0,0,.6); } #mapBox.on { display:block; }
+#help { position:absolute; left:18px; bottom:18px; font-size:12px; color:rgba(255,255,255,.7); text-shadow:0 1px 2px #000; max-width:420px; }
+.stats div { display:flex; justify-content:space-between; padding:4px 0; border-bottom:1px solid var(--line); } .stats b { color:var(--acc2); }
+@media (max-width:700px) { h1 { font-size:40px; } #crew { display:none; } }
+</style>
+</head>
+<body>
+<canvas id="gl"></canvas>
+<div id="menu" class="scr">
+  <div class="card">
+    <a class="back" href="./">&lsaquo; Rally</a>
+    <h1>CAMPER <b>CREW</b></h1>
+    <p class="sub">Grandma lent you her camper. Get it, and everyone in it, to Lakeside Camp. Fallen trees, mud, dead pumps, a raised bridge, a rockslide and a hand-cranked ferry stand in the way.</p>
+    <label for="nm">Your name</label><input id="nm" maxlength="14" placeholder="Camper" autocomplete="off">
+    <button class="go big" id="bSolo"><span>Solo trip</span><small>Do it all yourself (it's harder)</small></button>
+    <button class="big" id="bHost"><span>Host a trip</span><small>Up to 8 campers online · friends can join late</small></button>
+    <label for="jc">Join with a code</label>
+    <div class="row"><input id="jc" maxlength="5" placeholder="ABCDE" style="text-transform:uppercase" autocomplete="off"><button id="bJoin" style="flex:0 0 96px">Join</button></div>
+    <div id="rooms"></div>
+    <div class="msg" id="msg"></div>
+    <div class="row"><div><label for="sGfx">Graphics</label><select id="sGfx"><option value="low">Low</option><option value="med" selected>Medium</option><option value="high">High</option></select></div><div><label for="sSens">Mouse</label><select id="sSens"><option value="0.6">Slow</option><option value="1" selected>Normal</option><option value="1.5">Fast</option></select></div></div>
+    <div class="keys"><b>WASD</b> walk · <b>mouse</b> look · <b>Space</b> jump · <b>Shift</b> run · <b>C</b> crouch · <b>E</b> use / hold · <b>Q</b> drop · <b>LMB</b> use what you hold (throw, light, reel) · <b>R</b> hold: back to the camper or tow truck · <b>M</b> map<br>Driving: <b>W/S</b> gas and brake · <b>A/D</b> steer · <b>Space</b> handbrake · <b>H</b> horn · <b>E</b> get up</div>
+  </div>
+</div>
+<div id="lobby" class="scr hidden">
+  <div class="card">
+    <h2 style="margin:0;color:var(--dim);font-size:12px;letter-spacing:.16em">ROOM CODE</h2>
+    <div class="code" id="code">-----</div>
+    <div id="crewL" style="margin-top:12px"></div>
+    <div class="msg" id="lmsg"></div>
+    <div class="row" style="margin-top:14px"><button class="go" id="bGo">Start the trip</button><button id="bLeave">Leave</button></div>
+  </div>
+</div>
+<div id="fin" class="scr hidden">
+  <div class="card">
+    <h1 style="font-size:40px">WE MADE <b>IT</b></h1>
+    <p class="sub">Lakeside Camp. Marshmallows are on Grandma.</p>
+    <div class="stats" id="finT"></div>
+    <div class="msg" id="finB"></div>
+    <div class="row" style="margin-top:14px"><button class="go" id="bAgain">Do the trip again</button><button id="bMenu">Menu</button></div>
+  </div>
+</div>
+<div id="pause" class="scr hidden">
+  <div class="card" style="width:min(380px,100%)">
+    <h1 style="font-size:36px">PAUSED</h1><p class="sub">The trip carries on for everyone else.</p>
+    <div class="row"><button class="go" id="bResume">Resume</button><button id="bQuit">Quit to menu</button></div>
+  </div>
+</div>
+<div id="hud" class="hidden">
+  <div id="obj"></div>
+  <div id="top"><div id="tm">0:00.0</div><div id="prog"><div id="progF"></div></div></div>
+  <div id="crew"></div>
+  <div id="cross"></div>
+  <div id="prompt"></div>
+  <div id="held"></div>
+  <div id="toast"></div>
+  <div id="gauges"><div id="spd"><b>0</b><small> km/h</small></div><div id="winch" style="display:none">WINCH <span id="winchL"></span><u><i id="winchT"></i></u></div><div id="fuel">FUEL<u><i id="fuelB"></i></u></div></div>
+  <div id="mapBox"><canvas id="mapC" width="420" height="560"></canvas></div>
+  <div id="help">M map · R hold: back to the camper / tow truck · Esc pause</div>
+</div>
+<div id="lockmsg" class="hidden">Click to look around</div>
+<div id="load" class="hidden">Packing the camper...</div>
+<div id="fade"></div><div id="flash"></div>
+<script src="../three-r170.js"></script>
+<script src="js/util.js?v=26"></script>
+<script src="js/stage.js?v=26"></script>
+<script src="js/tex.js?v=26"></script>
+<script src="js/world.js?v=26"></script>
+<script src="js/car.js?v=26"></script>
+<script src="js/audio.js?v=26"></script>
+<script src="js/net.js?v=26"></script>
+<script src="js/rvmap.js?v=26"></script>
+<script src="js/rvbuild.js?v=26"></script>
+<script src="js/rv.js?v=26"></script>
+</body>
+</html>

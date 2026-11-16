@@ -37,8 +37,9 @@ const carStats = c => { const B = CARS.find(x => x.look === 'beetle'); return [[
 // wheel positions for a car spec (track = half width between wheel centres, base = front/rear axle distance from the middle)
 const wheelsOf = c => { const tw = c.track || 0.8, wb = c.base || [1.27, 1.24]; return [[tw, -0.1, wb[0]], [-tw, -0.1, wb[0]], [tw, -0.1, -wb[1]], [-tw, -0.1, -wb[1]]]; };
 function applyCar(i) {
-  const c = CARS[i] || CARS[0], s = c.m / CAR_BASE.m; CAR.idx = CARS.indexOf(c);
-  CAR.m = c.m; CAR.I = CAR_BASE.I.map(x => x * s); for (const k of ['k', 'cB', 'cR', 'arb']) CAR[k] = CAR_BASE[k] * s;
+  const c = i && typeof i === 'object' ? i : CARS[i] || CARS[0], s = c.m / CAR_BASE.m; CAR.idx = CARS.indexOf(c);
+  CAR.m = c.m; CAR.I = c.I ? c.I.slice() : CAR_BASE.I.map(x => x * s);
+  CAR.bx = c.bx || 0.88; CAR.by0 = c.by0 !== undefined ? c.by0 : -0.12; CAR.by1 = c.by1 || 1.05; CAR.bz = c.bz || 2.0; CAR.bh = c.bh || 1.6; // body box for ground contact and collisions for (const k of ['k', 'cB', 'cR', 'arb']) CAR[k] = CAR_BASE[k] * s;
   CAR.brake = CAR_BASE.brake * s * (0.85 + 0.15 * c.grip); CAR.pow = c.pow; CAR.grip = c.grip; CAR.steerK = c.steer; CAR.tough = c.tough; CAR.split = c.split;
   // body and running gear (defaults are the rally saloon)
   CAR.r = c.r || 0.32; CAR.rest = c.rest || 0.36; CAR.travel = c.travel || 0.27; CAR.hw = c.hw || 0.9; CAR.hl = c.hl || 2.06; CAR.roll = c.roll || 0;
@@ -135,7 +136,7 @@ class Car {
     for (let i = 0; i < 4; i++) {
       const w = this.wh[i], A = this.toWorld(w.a, t.a).add(this.pos).clone(), down = up.clone().negate();
       let tt = 0; for (let it = 0; it < 3; it++) { const px = A.x + down.x * tt, pz = A.z + down.z * tt; tt = (A.y - S.heightAt(px, pz)) / Math.max(0.3, up.y); }
-      const len = CAR.rest + CAR.r;
+      const len = CAR.rest + CAR.r - (w.flat ? 0.17 : 0); // a flat tyre sits lower
       w.pc = w.comp;
       if (tt < len && up.y > 0.2) {
         w.comp = Math.min(len - tt, CAR.travel + 0.1); w.contact = true; contacts++;
@@ -157,7 +158,7 @@ class Car {
       // surface from the road map
       const q = S.near(cp.x, cp.z, 12), onRoad = q && q.d < ROAD_HW + 0.3;
       w.surf = onRoad ? 0 : 1; offSum += w.surf;
-      const BB = S.B || BIOMES.forest, mu = (real ? realMu(BB, onRoad) : sport ? realMu(BB, onRoad) * 1.4 : (onRoad ? BB.grip : BB.off) * 1.12) * gk * (onRoad ? wetK : zk ? zk.mu : 1) * (1 - this.dmg * 0.15), Fz = Math.min(w.load, 9000), fmax = mu * Fz * (1 - 0.06 * Fz / 4000); // tyre load sensitivity
+      const BB = S.B || BIOMES.forest, mu = (real ? realMu(BB, onRoad) : sport ? realMu(BB, onRoad) * 1.4 : (onRoad ? BB.grip : BB.off) * 1.12) * gk * (onRoad ? wetK : zk ? zk.mu : 1) * (1 - this.dmg * 0.15) * (w.flat ? 0.45 : 1), Fz = Math.min(w.load, 9000), fmax = mu * Fz * (1 - 0.06 * Fz / 4000); // tyre load sensitivity
       // longitudinal
       let fx = 0, locked = false;
       const split = sport ? Math.min(0.85, CAR.split + 0.15) : CAR.split, share = w.front ? (1 - split) / 2 : split / 2; // sport: more drive to the rear so the throttle steers the tail
@@ -167,7 +168,7 @@ class Car {
       if (hb && !w.front) { locked = true; fx = -Math.sign(vx) * Math.min(fmax * 0.85, Math.abs(vx) * CAR.m); }
       if (!onRoad) fx -= vx * BB.offDrag; // soft ground drag
       if (zk && zk.drag) fx -= vx * zk.drag; // water: wading drag
-      fx -= vx * 6;               // rolling resistance
+      fx -= vx * (6 + (w.flat ? 900 : 0)); // rolling resistance (a flat drags hard)
       // lateral: slip angle curve, softer and wider on gravel
       const slipA = Math.atan2(vy, Math.max(Math.abs(vx), 3.5));
       // real: sharper peak and a real drop-off past it (sliding grip ~80% of peak), so a slide has to be caught
@@ -242,7 +243,7 @@ class Car {
   // box corners against the ground (stops the body sinking when it lands hard or rolls)
   bodyContacts(dt) {
     const S = this.S, t = this.tmp;
-    for (const cx of [-0.88, 0.88]) for (const cy of [-0.12, 1.05]) for (const cz of [-2.0, 2.0]) {
+    for (const cx of [-CAR.bx, CAR.bx]) for (const cy of [CAR.by0, CAR.by1]) for (const cz of [-CAR.bz, CAR.bz]) {
       const P = this.toWorld(t.a.set(cx, cy, cz), new THREE.Vector3()).add(this.pos), gy = S.heightAt(P.x, P.z), pen = gy - P.y;
       if (pen <= 0) continue;
       const n = S.normalAt(P.x, P.z, new THREE.Vector3()); this.pos.addScaledVector(n, pen * 0.6);
@@ -259,7 +260,7 @@ class Car {
     const hit = (cx, cz, cy, r, topY, soft, ovx, ovz, fnx, fnz) => {
       const L = new THREE.Vector3(cx - this.pos.x, cy - this.pos.y, cz - this.pos.z).applyQuaternion(iq);
       if (topY !== undefined && this.pos.y - 0.3 > topY) return;
-      if (L.y < -1.2 || L.y > 1.6) return;
+      if (L.y < -1.2 || L.y > CAR.bh) return;
       const px = clamp(L.x, -CAR.hw, CAR.hw), pz = clamp(L.z, -CAR.hl, CAR.hl); let dx = px - L.x, dz = pz - L.z, d = Math.hypot(dx, dz);
       if (d >= r) return;
       let nl;
@@ -282,9 +283,9 @@ class Car {
     for (const tr of S.treesNear(this.pos.x, this.pos.z, this.near)) hit(tr.x, tr.z, tr.y + 0.6, tr.r, undefined, tr.soft, undefined, undefined, tr.nx, tr.nz);
     if (S.dynNear) for (const d of S.dynNear(this.pos.x, this.pos.z, S.clock || 0, this.dynL || (this.dynL = []))) hit(d.x, d.z, d.y + 1.2, d.r, undefined, false, d.vx, d.vz);
     for (const l of S.logs) {
-      const ex = l.bx - l.ax, ez = l.bz - l.az, ll = ex * ex + ez * ez; if ((this.pos.x - l.ax) ** 2 + (this.pos.z - l.az) ** 2 > 100) continue;
+      const ex = l.bx - l.ax, ez = l.bz - l.az, ll = ex * ex + ez * ez, rr = Math.sqrt(ll) / 2 + 7; if ((this.pos.x - (l.ax + l.bx) / 2) ** 2 + (this.pos.z - (l.az + l.bz) / 2) ** 2 > rr * rr) continue;
       const tc = clamp(((this.pos.x - l.ax) * ex + (this.pos.z - l.az) * ez) / ll, 0, 1), len = Math.sqrt(ll);
-      for (const o of [-1.4, -0.7, 0, 0.7, 1.4]) { const u = clamp(tc + o / len, 0, 1); hit(l.ax + ex * u, l.az + ez * u, l.top - l.rad, l.rad + 0.05, l.top); }
+      for (let o = -Math.max(1.4, CAR.hl); o <= Math.max(1.4, CAR.hl) + 0.01; o += 0.7) { const u = clamp(tc + o / len, 0, 1); hit(l.ax + ex * u, l.az + ez * u, l.top - l.rad, l.rad + 0.05, l.top); }
     }
   }
   // car-to-car contact against other crews' cars (their latest known pose): three circles along each body
