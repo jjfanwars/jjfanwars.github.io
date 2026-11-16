@@ -305,7 +305,7 @@ function stagePhase(dt) {
 const bestKey = () => 'pn-best-' + G.cfg.stage + '-' + G.cfg.fog;
 function bestOf() { try { return JSON.parse(localStorage.getItem(bestKey()) || 'null'); } catch (e) { return null; } }
 function finishRecord() {
-  if (!G.counted) { G.counted = true; const before = CARS.filter((_, k) => carOpen(k)).length; Garage.fin++; try { localStorage.setItem('pn-fin', Garage.fin); } catch (e) {} const now = CARS.filter((_, k) => carOpen(k)); G.unlockMsg = now.length > before ? 'NEW CAR UNLOCKED: ' + now[now.length - 1].name.toUpperCase() : ''; renderGarage(); } const b = bestOf(); G.wasBest = !b || G.final < b.t; if (G.wasBest) try { localStorage.setItem(bestKey(), JSON.stringify({ t: G.final, splits: G.splits, tr: G.trace }));
+  if (!G.counted) { G.counted = true; const before = CARS.map((_, k) => carOpen(k)); Garage.fin++; try { localStorage.setItem('pn-fin', Garage.fin); } catch (e) {} const fresh = CARS.filter((_, k) => carOpen(k) && !before[k]); G.unlockMsg = fresh.length ? 'NEW CAR UNLOCKED: ' + fresh.map(c => c.name.toUpperCase()).join(', ') : ''; renderGarage(); } const b = bestOf(); G.wasBest = !b || G.final < b.t; if (G.wasBest) try { localStorage.setItem(bestKey(), JSON.stringify({ t: G.final, splits: G.splits, tr: G.trace }));
   if (G.role === 'drv' && G.rec && G.rec.length > 10 && (!G.ghost || G.final < G.ghost.t)) try { localStorage.setItem(ghostKey(), JSON.stringify({ t: G.final, car: Garage.sel, p: G.rec })); } catch (e) {}; } catch (e) {} G.prevBest = b; }
 function showFinish() { $('call').classList.remove('on'); clearTimeout(G.callHide);
   try { document.exitPointerLock(); } catch (e) {}
@@ -361,7 +361,7 @@ const fwdV = new THREE.Vector3();
 function frame(now) {
   requestAnimationFrame(frame);
   if (!G.on) return;
-  let dt = Math.min(0.1, (now - G.lastFrame) / 1000); G.lastFrame = now;
+  let dt = clamp((now - G.lastFrame) / 1000, 0, 0.1); G.lastFrame = now; // rAF time can predate a stage start: never step backwards
   if (G.paused) return;
   let st;
   if (G.role === 'drv') {
@@ -507,7 +507,8 @@ const CHAMPS = [
   { id: 'jumps', name: 'Jump Masters', d: 'Berms, kickers and big air', st: [12, 14, 13] },
   { id: 'seasons', name: 'Four Seasons', d: 'Autumn, snow, desert and city', st: [3, 5, 7, 9] },
   { id: 'pass', name: 'Mountain Passes', d: 'Cliff roads, guardrails and tunnels', st: [15, 19, 18, 16, 17] },
-  { id: 'grand', name: 'Grand Tour', d: 'Six stages, every surface, night finish', st: [2, 4, 6, 8, 13, 10] }
+  { id: 'grand', name: 'Grand Tour', d: 'Six stages, every surface, night finish', st: [2, 4, 6, 8, 13, 10] },
+  { id: 'mixed', name: 'Mixed Bag', d: 'Rain at night, whiteout, mountain trains and a desert raid', st: [35, 36, 37, 38] }
 ];
 // fictional drivers; skill scales the silver-medal time (lower is faster)
 const RIVALS = [['Lasse Moos', 0.86], ['Petra Kova', 0.89], ['Jules Ferrand', 0.92], ['Dai Hughes', 0.95], ['Marco Ventisei', 0.98], ['Ines Duarte', 1.02], ['Sven Aalto', 1.06], ['Bodge Mulligan', 1.13]];
@@ -567,7 +568,7 @@ const CH = { pos: new THREE.Vector3(), tgt: new THREE.Vector3(), f: new THREE.Ve
 function chaseCam(cam, st, dt) {
   const f = CH.f.set(0, 0, 1).applyQuaternion(st.q); f.y = 0; if (f.lengthSq() < 1e-4) f.set(0, 0, 1); f.normalize();
   const a = look.yaw, cs = Math.cos(a), sn = Math.sin(a), bx = f.x * cs + f.z * sn, bz = -f.x * sn + f.z * cs;
-  const want = CH.want.set(st.pos.x - bx * 6.4, st.pos.y + 2.3 - look.pitch * 3, st.pos.z - bz * 6.4);
+  const cd = 6.4 + Math.max(0, CAR.hl - 2.2) * 1.3, want = CH.want.set(st.pos.x - bx * cd, st.pos.y + 2.3 - look.pitch * 3, st.pos.z - bz * cd);
   // keep the camera out of buildings and tunnel walls: slide it toward the car until it is over the street
   { const S = G.S, q0 = S.near(st.pos.x, st.pos.z, 30), tun = q0 && S.inTube && S.inTube(q0.s, 3), lim = tun ? ROAD_HW + 0.4 : S.B && S.B.city ? ROAD_HW + 2.6 : 0;
     if (lim) for (let k = 0; k < 6; k++) { const q = S.near(want.x, want.z, 20); if (q && q.d < lim) break; want.x = lerp(want.x, st.pos.x, 0.3); want.z = lerp(want.z, st.pos.z, 0.3); } }

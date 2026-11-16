@@ -50,6 +50,11 @@ const STAGES = [
   { name: 'Leap of Faith', seed: 2424, len: 3800, tod: 'desertDusk', biome: 'desert', gaps: 3, jumpK: 1.6, gim: 'Gap jumps over canyons: flat out or fall', maxG: 0.1 },
   { name: 'Zig Zag Wall', seed: 6868, len: 4200, tod: 'snowDay', biome: 'snow', gw: [0.42, 0.62, 0.74, 0.86, 0.95, 1], cliffs: 1, rails: 1, maxG: 0.12, gim: 'A wall of hairpins up a cliff face' },
   { name: 'Rail Crossings', seed: 5757, len: 5000, tod: 'autumnDay', biome: 'park', railx: 5, gim: 'Level crossings: beat the train or wait' },
+  // mixed gimmicks (append only)
+  { name: 'Night Monsoon', seed: 3434, len: 5600, tod: 'night', biome: 'forest', wet: 1, gim: 'Rain in the dark: lights and wipers on', over: { fogK: 1.2 } },
+  { name: 'Whiteout', seed: 9393, len: 5200, tod: 'snowDusk', biome: 'snow', fogBank: 1, ice: 2, gim: 'Snow fog banks and frozen lakes' },
+  { name: 'Mountain Railway', seed: 4747, len: 6000, tod: 'morning', biome: 'alpine', railx: 3, tunnels: 2, bridges: 2, gim: 'Trains, tunnels and gorge bridges', maxG: 0.1 },
+  { name: 'Desert Raid', seed: 2121, len: 8400, tod: 'desertNoon', biome: 'desert', berms: 1, jumpK: 1.8, gaps: 2, gim: 'Marathon stage: berms, big jumps and two gaps', maxG: 0.1 },
 ];
 let ROAD_HW = 3.7; const STEP = 2, CELL = 2;
 const GRADE_R = [0, 10, 19, 31, 50, 82, 140];

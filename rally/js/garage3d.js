@@ -42,7 +42,7 @@ const Garage3D = {
     if (c.width !== Math.round(w * this.R.getPixelRatio()) || c.height !== Math.round(h * this.R.getPixelRatio())) { this.R.setSize(w, h, false); this.cam.aspect = w / h; this.cam.updateProjectionMatrix(); }
     this.idle += dt; if (this.drag === null && this.idle > 1.5) this.rot += dt * this.spin;
     this.pop = Math.min(1, (this.pop || 0) + dt * 3); const p = 1 - (1 - this.pop) ** 3;
-    this.view.g.rotation.y = this.rot; this.view.g.position.y = (1 - p) * 0.25 + (this.lift || 0); this.view.g.scale.setScalar(0.92 + p * 0.08);
+    this.view.g.rotation.y = this.rot; this.view.g.position.y = (1 - p) * 0.25 + (this.lift || 0); this.view.g.scale.setScalar((0.92 + p * 0.08) * Math.min(1, 2.45 / Math.max(2.06, CAR.hl)));
     const d = 7.4; this.cam.position.set(0, 1.35, d); this.cam.lookAt(0, 0.1, 0);
     this.R.render(this.scene, this.cam);
   }
