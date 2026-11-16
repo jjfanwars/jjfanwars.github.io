@@ -248,16 +248,25 @@ addEventListener('keydown', e => {
 });
 addEventListener('keyup', e => KEYS.delete(e.code));
 addEventListener('blur', () => KEYS.clear());
-cvs.addEventListener('mousedown', e => { if (!G.on) return; Sfx.start(); if (document.pointerLockElement && e.button === 0) { const k = aimedSwitch(); if (k >= 0) flipSwitch(k); } if (!document.pointerLockElement) { try { cvs.requestPointerLock(); } catch (x) {} } if (e.button === 2 && G.role === 'nav') look.map = true; });
+cvs.addEventListener('mousedown', e => { if (!G.on) return; Sfx.start(); if (document.pointerLockElement && e.button === 0) { const k = aimedSwitch(); if (k >= 0) flipSwitch(k); } if (!document.pointerLockElement) { if (e.button === 0 && freeSw >= 0) { flipSwitch(freeSw); return; } try { cvs.requestPointerLock(); } catch (x) {} } if (e.button === 2 && G.role === 'nav') look.map = true; });
 addEventListener('mouseup', e => { if (e.button === 2 && G.role === 'nav' && !KEYS.has('Tab')) look.map = false; });
 addEventListener('contextmenu', e => e.preventDefault());
 document.addEventListener('pointerlockchange', () => { const l = !!document.pointerLockElement; if (l) G.wasLocked = true; $('lockmsg').classList.toggle('hidden', l || !G.on || !!G.wasLocked); if (!l && G.on && G.wasLocked) pauseOpen(); });
-addEventListener('mousemove', e => { if (!document.pointerLockElement || !G.on) return; look.yaw -= e.movementX * 0.0022; look.pitch -= e.movementY * 0.0022; look.yaw = clamp(look.yaw, -2.5, 2.5); look.pitch = clamp(look.pitch, -1.0, 0.8); look.idle = 0; });
+addEventListener('mousemove', e => { if (G.on && !document.pointerLockElement && G.view && G.view.hits) { MS.set(e.clientX / innerWidth * 2 - 1, -e.clientY / innerHeight * 2 + 1); RC.setFromCamera(MS, World.cam); RC.far = 1.6; const h = RC.intersectObjects(G.view.hits, false)[0]; freeSw = h ? h.object.userData.sw : -1; cvs.style.cursor = freeSw >= 0 ? 'pointer' : ''; } if (!document.pointerLockElement || !G.on) return; look.yaw -= e.movementX * 0.0022; look.pitch -= e.movementY * 0.0022; look.yaw = clamp(look.yaw, -2.5, 2.5); look.pitch = clamp(look.pitch, -1.0, 0.8); look.idle = 0; });
 addEventListener('gamepadconnected', e => { pad = e.gamepad.index; });
 
 // dash switches: aim the centre dot at one and click
 const RC = new THREE.Raycaster(), C0 = new THREE.Vector2(0, 0);
-function aimedSwitch() { if (!G.view || !G.view.hits) return -1; RC.setFromCamera(C0, World.cam); RC.far = 1.4; const h = RC.intersectObjects(G.view.hits, false)[0]; return h ? h.object.userData.sw : -1; }
+// the switch under the crosshair (or under the mouse when it is free); misses snap to the nearest switch within ~6 degrees
+const SWP = new THREE.Vector3(), SWD = new THREE.Vector3();
+function aimedSwitch(ndc) {
+  if (!G.view || !G.view.hits) return -1; const P = ndc || C0; RC.setFromCamera(P, World.cam); RC.far = 1.6;
+  const h = RC.intersectObjects(G.view.hits, false)[0]; if (h) return h.object.userData.sw;
+  let best = -1, bd = 0.105; const o = RC.ray.origin, d = RC.ray.direction;
+  for (const hb of G.view.hits) { hb.getWorldPosition(SWP); SWD.subVectors(SWP, o); const L = SWD.length(); if (L > 1.6) continue; const a = Math.acos(clamp(SWD.dot(d) / L, -1, 1)); if (a < bd) { bd = a; best = hb.userData.sw; } }
+  return best;
+}
+const MS = new THREE.Vector2(); let freeSw = -1;
 function flipSwitch(k) { Sfx.click(); if (G.role === 'drv') G.sw[k] ^= 1; else Net.send({ t: 'sw', c: G.myCar, k }); }
 Net.on('sw', m => { if (G.on && G.role === 'drv' && m.c === G.myCar && m.k >= 0 && m.k < 6) { G.sw[m.k] ^= 1; Sfx.click(); } });
 const inp = { steer: 0, thr: 0, brk: 0, hb: 0 };
@@ -468,7 +477,7 @@ function skids(c) {
   }
 }
 function hud(st) {
-  if ((G.hovT = (G.hovT || 0) - 1) <= 0) { G.hovT = 6; const k = document.pointerLockElement ? aimedSwitch() : -1, sw = st.sw || G.sw || []; G.view.hoverSw = k; $('hov').textContent = k >= 0 ? SWITCH_NAMES[k] + (sw[k] ? ' · ON' : ' · OFF') + '  (click)' : ''; }
+  if ((G.hovT = (G.hovT || 0) - 1) <= 0) { G.hovT = 6; const k = document.pointerLockElement ? aimedSwitch() : freeSw, sw = st.sw || G.sw || []; G.view.hoverSw = k; $('hov').textContent = k >= 0 ? SWITCH_NAMES[k] + (sw[k] ? ' · ON' : ' · OFF') + '  (click)' : ''; }
   const done = Math.max(0, st.prog - World.startS), len = Math.max(1, G.finishS - G.startS), clk = G.phase === 'count' ? 0 : (G.phase === 'fin' ? G.final - G.pen : G.t) + G.pen;
   $('trip').textContent = (done / 1000).toFixed(2) + ' / ' + (len / 1000).toFixed(2) + ' km';
   $('tm').textContent = fmtT(clk);

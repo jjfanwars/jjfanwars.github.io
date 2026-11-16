@@ -77,8 +77,11 @@ class CarView {
     const lampM = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xfff4d0, emissiveIntensity: 0.4, roughness: 0.1 });
     this.lampM = lampM;
     // headlights: real spot lights on your own car (switch with H)
-    this.spots = []; if (!opt.remote) for (const sd of [1, -1]) { const sp = new THREE.SpotLight(0xfff0d8, 0, 160, 0.38, 0.55, 1.2); sp.position.set(sd * 0.55, 0.06, 2.15); sp.target.position.set(sd * 0.6, -0.8, 30); g.add(sp, sp.target); this.spots.push(sp); }
-    for (const sd of [1, -1]) { if (!isB) { const l = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.1, 0.05), lampM); l.position.set(sd * 0.55, 0.06, zAt(0.06, 1)); g.add(l); } const r = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.1, 0.05), new THREE.MeshStandardMaterial({ color: 0x8a0d0d, emissive: 0x500000, roughness: 0.2 })); r.position.set(sd * 0.6, isB ? 0.0 : 0.2, zAt(isB ? 0.0 : 0.2, -1)); g.add(r); }
+    const noseZ = zAt(0.06, 1); this.spots = []; if (!opt.remote) for (const sd of [1, -1]) { const sp = new THREE.SpotLight(0xfff0d8, 0, 120, 0.42, 0.7, 1.3); sp.position.set(sd * 0.55, 0.06, noseZ + 0.12); sp.target.position.set(sd * 0.9, -1.6, noseZ + 22); sp.userData.sd = sd; g.add(sp, sp.target); this.spots.push(sp); }
+    const lampHs = new THREE.MeshStandardMaterial({ color: 0x0c0d0f, roughness: 0.4 }), lampCh = new THREE.MeshStandardMaterial({ color: 0xd8dade, metalness: 1, roughness: 0.22 });
+    // headlamps: a black housing on the nose with two round lenses in chrome reflectors per side
+    for (const sd of [1, -1]) { if (!isB) { const hs = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.15, 0.05), lampHs); hs.position.set(sd * 0.55, 0.06, noseZ - 0.02); g.add(hs);
+        for (const k of [0, 1]) { const x = sd * (0.46 + k * 0.18), rf = new THREE.Mesh(new THREE.CylinderGeometry(0.064, 0.05, 0.035, 18).rotateX(Math.PI / 2), lampCh); rf.position.set(x, 0.06, noseZ + 0.012); g.add(rf); const ln = new THREE.Mesh(new THREE.CircleGeometry(0.054, 18), lampM); ln.position.set(x, 0.06, noseZ + 0.031); g.add(ln); } } const r = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.1, 0.05), new THREE.MeshStandardMaterial({ color: 0x8a0d0d, emissive: 0x500000, roughness: 0.2 })); r.position.set(sd * 0.6, isB ? 0.0 : 0.2, zAt(isB ? 0.0 : 0.2, -1)); g.add(r); }
     if (look === 'saloon' || look === 'hatch') { const spoiler = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.04, 0.32), black); spoiler.position.set(0, look === 'hatch' ? 0.83 : 0.86, look === 'hatch' ? -1.72 : -1.82); g.add(spoiler); }
     this.bodyKit(look, { paint, black, white, satin, lampM });
     { const tint = new THREE.MeshPhysicalMaterial({ color: 0x0b0f13, metalness: 0.3, roughness: 0.06, clearcoat: 1, envMapIntensity: 1.3 }), bv = isB ? 0.09 : 0.07, hwX = (isB ? 0.73 : 0.81) + (isB ? 0.16 : 0.08) + 0.006;
@@ -492,7 +495,10 @@ class CarView {
     const on = st.sw || [1, 1, 0, st.wp ? 1 : 0, st.hl ? 1 : 0, 0];
     for (const b of this.toggles) { const k = b.i, hov = this.hoverSw === k; b.cap.position.z += ((on[k] ? -0.003 : -0.008) - b.cap.position.z) * Math.min(1, dt * 25); b.led.material.color.setHex(on[k] ? this.btnCol[k] : 0x1a1a1a); b.face.emissiveIntensity = hov ? 0.55 : 0.18; b.cap.scale.setScalar(hov ? 1.06 : 1); }
     // headlights
-    this.lampM.emissiveIntensity = st.hl ? (st.spot ? 14 : 8) : 0.4; for (const sp of this.spots) { sp.intensity = st.hl ? (st.spot ? 260 : 90) : 0; sp.distance = st.spot ? 260 : 160; sp.angle = st.spot ? 0.3 : 0.38; }
+    // lamps glow, they don't blow out into white slabs; low beam dips onto the road ahead, the spot lights add a long high beam
+    this.lampM.emissiveIntensity = st.hl ? (st.spot ? 4.5 : 2.6) : 0.25;
+    if (this.spotMode !== (st.hl ? (st.spot ? 2 : 1) : 0)) { this.spotMode = st.hl ? (st.spot ? 2 : 1) : 0; const hi = this.spotMode === 2;
+      for (const sp of this.spots) { sp.intensity = this.spotMode ? (hi ? 210 : 75) : 0; sp.distance = hi ? 260 : 120; sp.angle = hi ? 0.32 : 0.42; sp.penumbra = hi ? 0.5 : 0.7; sp.target.position.set(sp.userData.sd * (hi ? 0.35 : 0.9), hi ? -0.7 : -1.6, sp.position.z + (hi ? 45 : 22)); sp.target.updateMatrixWorld(); } }
     // wipers sweep while switched on and finish their stroke when switched off
     const TAU = Math.PI * 2; if (st.wp || this.wipeT % TAU > 0.05) { this.wipeT += dt * 2.6; if (!st.wp && this.wipeT % TAU < dt * 2.6 + 0.02) this.wipeT = Math.round(this.wipeT / TAU) * TAU; }
     const wa = 0.06 + (1 - Math.cos(this.wipeT)) / 2 * 1.72; for (const w of this.wipers) w.rotation.z = -wa;

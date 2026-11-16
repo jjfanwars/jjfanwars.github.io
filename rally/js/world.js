@@ -382,7 +382,11 @@ const World = {
   buildBackdrop(S) {
     const G = S.grid, ST = 12, ext = 420, x0 = G.x0 - ext, z0 = G.z0 - ext, nx = Math.ceil((G.GW * CELL + 2 * ext) / ST) + 1, nzc = Math.ceil((G.GH * CELL + 2 * ext) / ST) + 1;
     const pos = new Float32Array(nx * nzc * 3), uv = new Float32Array(nx * nzc * 2), col = new Float32Array(nx * nzc * 3), zero = new Float32Array(nx * nzc), ruv = new Float32Array(nx * nzc * 2), stp = new Float32Array(nx * nzc), B = this.B, nz = S.noise;
-    for (let j = 0; j < nzc; j++) for (let i = 0; i < nx; i++) { const v = j * nx + i, x = x0 + i * ST, z = z0 + j * ST, y = S.groundAt(x, z) - 1.2; pos[v * 3] = x; pos[v * 3 + 1] = y; pos[v * 3 + 2] = z; uv[v * 2] = x / 6; uv[v * 2 + 1] = z / 6;
+    // where the backdrop overlaps the detailed ground, each vertex drops to the lowest detailed height within one backdrop cell,
+    // so its big triangles can never poke up through the road (land you could see but drive through, at cliffs, cuttings and gorges)
+    const HH = G.HV || G.H, R = Math.ceil(ST / CELL), under = (x, z) => { const ci = Math.round((x - G.x0) / CELL), cj = Math.round((z - G.z0) / CELL); let mn = Infinity;
+      for (let jj = Math.max(0, cj - R); jj <= Math.min(G.GH - 1, cj + R); jj++) for (let ii = Math.max(0, ci - R); ii <= Math.min(G.GW - 1, ci + R); ii++) { const k = jj * G.GW + ii; if (G.RD[k] < 998 && HH[k] < mn) mn = HH[k]; } return mn; };
+    for (let j = 0; j < nzc; j++) for (let i = 0; i < nx; i++) { const v = j * nx + i, x = x0 + i * ST, z = z0 + j * ST, y = Math.min(S.groundAt(x, z), under(x, z) - 0.4) - 1.2; pos[v * 3] = x; pos[v * 3 + 1] = y; pos[v * 3 + 2] = z; uv[v * 2] = x / 6; uv[v * 2 + 1] = z / 6;
       const n = nz(x * 0.05 + 17, z * 0.05), k = B.flora === 'snow' || B.city ? 0.9 + n * 0.05 : 0.68 + n * 0.08; col[v * 3] = k; col[v * 3 + 1] = k * (B.flora === 'fir' || B.flora === 'park' || B.flora === 'alpine' ? 1.04 : 1); col[v * 3 + 2] = k * 0.95; }
     const idx = []; for (let j = 0; j < nzc - 1; j++) for (let i = 0; i < nx - 1; i++) { const a = j * nx + i; idx.push(a, a + nx, a + 1, a + 1, a + nx, a + nx + 1); }
     const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('uv', new THREE.BufferAttribute(uv, 2)); g.setAttribute('color', new THREE.BufferAttribute(col, 3)); g.setAttribute('aRoad', new THREE.BufferAttribute(zero, 1)); g.setAttribute('aRuv', new THREE.BufferAttribute(ruv, 2)); g.setIndex(idx); g.computeVertexNormals();
