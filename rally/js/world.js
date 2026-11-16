@@ -11,6 +11,8 @@ const TOD = {
   desertNoon: { sun: [0.3, 0.85, 0.35], sunC: 0xfff0d8, sunI: 3.8, zen: 0x3f78c8, hor: 0xe8d4b0, fog: 0xdcc6a0, hemiS: 0xc8d8f0, hemiG: 0x8a6a48, hemiI: 0.9, exp: 0.88 },
   desertDusk: { sun: [-0.75, 0.18, 0.5], sunC: 0xff8a50, sunI: 3.0, zen: 0x34508a, hor: 0xf0a070, fog: 0xc09878, hemiS: 0xa0a8c8, hemiG: 0x6a4a38, hemiI: 0.9, exp: 1.05 },
   cityDay: { sun: [0.4, 0.6, 0.5], sunC: 0xf0f0f0, sunI: 2.0, zen: 0x8ea0b4, hor: 0xc8ccd0, fog: 0xb4b8bc, hemiS: 0xd0d8e0, hemiG: 0x505050, hemiI: 1.4, exp: 1.0 },
+  night: { sun: [0.35, 0.6, -0.45], sunC: 0x9fb4e0, sunI: 0.45, zen: 0x03050b, hor: 0x111827, fog: 0x080b12, hemiS: 0x2a3550, hemiG: 0x08080a, hemiI: 0.3, exp: 1.3, lamps: true, night: true },
+  storm: { sun: [0.3, 0.8, 0.3], sunC: 0xc8d0d8, sunI: 0.7, zen: 0x4a535c, hor: 0x8a9096, fog: 0x7c838a, hemiS: 0xa4adb6, hemiG: 0x34342e, hemiI: 1.6, exp: 1.0 },
   cityDusk: { sun: [-0.6, 0.18, 0.6], sunC: 0xffa070, sunI: 2.2, zen: 0x26355a, hor: 0xe09878, fog: 0x8a7e86, hemiS: 0x8090b0, hemiG: 0x403838, hemiI: 1.0, exp: 1.1, lamps: true },
 };
 const FOG_D = [0.0068, 0.0115, 0.0185];
@@ -101,7 +103,39 @@ const World = {
       Object.assign(sun.shadow.camera, { left: -ext, right: ext, top: ext, bottom: -ext, near: 1, far: 400 }); sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.04; sun.shadow.camera.updateProjectionMatrix();
     }
     scene.add(this.hemi = new THREE.HemisphereLight(tod.hemiS, tod.hemiG, tod.hemiI));
-    this.buildTerrain(S, T); this.buildForest(S, T); this.buildProps(S, T); this.buildDust(T); this.buildSkids();
+    this.buildTerrain(S, T); this.buildForest(S, T); this.buildProps(S, T); this.buildDust(T); this.buildSkids(); this.buildZones(S); this.buildRain(S);
+    if (tod.night) { // stars on the inside of the sky dome
+      const n = 1200, pos = new Float32Array(n * 3), r = mulberry(7); for (let i = 0; i < n; i++) { const u = r() * 2 - 1, a = r() * Math.PI * 2, y = Math.abs(u) * 0.95 + 0.05, k = Math.sqrt(1 - y * y); pos[i * 3] = Math.cos(a) * k * 380; pos[i * 3 + 1] = y * 380; pos[i * 3 + 2] = Math.sin(a) * k * 380; }
+      const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); const st = new THREE.Points(g, new THREE.PointsMaterial({ color: 0xdfe8ff, size: 1.6, sizeAttenuation: false, fog: false, transparent: true, opacity: 0.85, depthWrite: false })); st.frustumCulled = false; st.renderOrder = -1; this.sky.add(st);
+    }
+  },
+  // frozen lakes (a sheet of cracked ice) and river fords (a water ribbon across the road)
+  buildZones(S) {
+    if (!S.zones || !S.zones.length) return; const scene = this.scene;
+    const ic = document.createElement('canvas'); ic.width = ic.height = 512; { const g = ic.getContext('2d'), r = mulberry(5); const gr = g.createRadialGradient(256, 256, 40, 256, 256, 256); gr.addColorStop(0, '#7fa9c2'); gr.addColorStop(1, '#5d8aa6'); g.fillStyle = gr; g.fillRect(0, 0, 512, 512);
+      for (let i = 0; i < 60; i++) { g.strokeStyle = `rgba(255,255,255,${0.25 + r() * 0.4})`; g.lineWidth = 0.6 + r() * 1.6; g.beginPath(); let x = r() * 512, y = r() * 512; g.moveTo(x, y); for (let k = 0; k < 6; k++) { x += (r() - 0.5) * 90; y += (r() - 0.5) * 90; g.lineTo(x, y); } g.stroke(); }
+      for (let i = 0; i < 400; i++) { g.fillStyle = `rgba(255,255,255,${r() * 0.25})`; g.fillRect(r() * 512, r() * 512, 2 + r() * 8, 1); } }
+    const it = new THREE.CanvasTexture(ic); it.colorSpace = THREE.SRGBColorSpace; it.wrapS = it.wrapT = THREE.RepeatWrapping;
+    const iceM = new THREE.MeshStandardMaterial({ map: it, roughness: 0.05, metalness: 0.25, transparent: true, opacity: 0.9, envMapIntensity: 1.6 });
+    const watM = new THREE.MeshStandardMaterial({ color: 0x2a5868, roughness: 0.05, metalness: 0.35, transparent: true, opacity: 0.86, envMapIntensity: 1.2 });
+    for (const z of S.zones) {
+      const p = S.at(z.c);
+      if (z.k === 'ice') { const R = (z.s1 - z.s0) / 2 + 26, g = new THREE.CircleGeometry(R, 72); g.rotateX(-Math.PI / 2); const uv = g.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * R / 30, uv.getY(i) * R / 30); const m = new THREE.Mesh(g, iceM); m.position.set(p.x, z.y + 0.03, p.z); m.receiveShadow = true; scene.add(m); }
+      if (z.k === 'ford') { const g = new THREE.PlaneGeometry(140, 22, 1, 1); g.rotateX(-Math.PI / 2); const m = new THREE.Mesh(g, watM); m.position.set(p.x, z.y + 0.2, p.z); m.rotation.y = p.h; m.receiveShadow = true; scene.add(m); }
+    }
+  },
+  // rain: streaks in a box that follows the camera
+  buildRain(S) {
+    this.rain = null; if (!S.cfg.wet) return;
+    const n = 1600, pos = new Float32Array(n * 6), r = Math.random; this.rainP = []; for (let i = 0; i < n; i++) this.rainP.push([(r() - 0.5) * 60, r() * 34 - 8, (r() - 0.5) * 60]);
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    this.rain = new THREE.LineSegments(g, new THREE.LineBasicMaterial({ color: 0xb8c4d0, transparent: true, opacity: 0.38, depthWrite: false })); this.rain.frustumCulled = false; this.scene.add(this.rain);
+  },
+  stepRain(dt, cam) {
+    if (!this.rain) return; const a = this.rain.geometry.attributes.position.array, P = this.rainP;
+    for (let i = 0; i < P.length; i++) { const q = P[i]; q[1] -= 17 * dt; q[0] += 1.5 * dt; if (q[1] < -8) { q[1] += 34; q[0] = (Math.random() - 0.5) * 60; q[2] = (Math.random() - 0.5) * 60; } if (q[0] > 30) q[0] -= 60;
+      const x = cam.x + q[0], y = cam.y + q[1], z = cam.z + q[2]; a[i * 6] = x; a[i * 6 + 1] = y; a[i * 6 + 2] = z; a[i * 6 + 3] = x - 0.06; a[i * 6 + 4] = y + 0.7; a[i * 6 + 5] = z; }
+    this.rain.geometry.attributes.position.needsUpdate = true;
   },
   // city detail: shopfronts on the ground floor, awnings, rooftop parapets and plant, parked cars, traffic lights
   buildStreet(S) {
@@ -212,13 +246,14 @@ const World = {
     const PH = this.PH || {}, B = this.B, G = S.grid, TS = 32, mat = new THREE.MeshStandardMaterial({ map: PH.floor || T.floor.map, normalMap: PH.floorN || T.floor.nrm, normalScale: new THREE.Vector2(1, 1), vertexColors: true, roughness: 0.96, metalness: 0 });
     mat.onBeforeCompile = sh => {
       sh.uniforms.roadMap = { value: T.road.map }; sh.uniforms.roadNrm = { value: T.road.nrm }; sh.uniforms.grav = { value: PH.gravel || T.road.map }; sh.uniforms.gravN = { value: PH.gravelN || T.road.nrm }; sh.uniforms.hasG = { value: PH.gravel ? 1 : 0 };
+      sh.uniforms.wet = { value: S.cfg && S.cfg.wet ? 1 : 0 };
       sh.uniforms.rockT = { value: new THREE.Color(...(B.flora === 'desert' ? [1.05, 0.82, 0.62] : B.flora === 'snow' ? [0.85, 0.88, 0.92] : [0.78, 0.76, 0.72])) };
       sh.vertexShader = 'attribute float aRoad, aSteep; attribute vec2 aRuv; varying float vRoad, vSteep; varying vec2 vRuv; varying vec3 vWp;\n' + sh.vertexShader.replace('#include <uv_vertex>', '#include <uv_vertex>\n vRoad = aRoad; vSteep = aSteep; vWp = position; vRuv = vec2(aRuv.x/12.+.5, aRuv.y/16.);');
-      sh.fragmentShader = 'uniform sampler2D roadMap, roadNrm, grav, gravN; uniform float hasG; uniform vec3 rockT; varying float vRoad, vSteep; varying vec2 vRuv; varying vec3 vWp;\n' + sh.fragmentShader
+      sh.fragmentShader = 'uniform sampler2D roadMap, roadNrm, grav, gravN; uniform float hasG, wet; uniform vec3 rockT; varying float vRoad, vSteep; varying vec2 vRuv; varying vec3 vWp;\n' + sh.fragmentShader
         .replace('#include <map_fragment>', '#include <map_fragment>\n if (vSteep > 0.01) { vec3 rk = texture2D(map, vec2((vWp.x + vWp.z) / 9., vWp.y / 6.)).rgb; rk = mix(vec3(dot(rk, vec3(.3,.4,.3))), rk, .3) * rockT * 1.25; rk *= .85 + .3 * texture2D(map, vec2((vWp.x - vWp.z) / 23., vWp.y / 15.)).g; diffuseColor.rgb = mix(diffuseColor.rgb, rk, vSteep * (1. - vRoad)); }')
         .replace('#include <map_fragment>', '#include <map_fragment>\n vec4 rc4 = texture2D(roadMap, vRuv); vec3 rc = rc4.rgb; vec3 gc = texture2D(grav, vMapUv * 0.75).rgb * clamp(rc / vec3(.2,.15,.095), 0., 1.7); vec3 road = mix(rc, gc, hasG); road = mix(road, vec3(.78,.78,.74), (1. - rc4.a) * 1.4); diffuseColor.rgb = mix(diffuseColor.rgb, road, vRoad);')
         .replace('#include <normal_fragment_maps>', THREE.ShaderChunk.normal_fragment_maps.replace('vec3 mapN = texture2D( normalMap, vNormalMapUv ).xyz * 2.0 - 1.0;', 'vec3 mapN = mix(texture2D( normalMap, vNormalMapUv ).xyz, mix(texture2D( roadNrm, vRuv ).xyz, texture2D( gravN, vNormalMapUv * 0.75 ).xyz, hasG * .7), vRoad) * 2.0 - 1.0;'))
-        .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\n roughnessFactor = mix(roughnessFactor, .86, vRoad);');
+        .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\n roughnessFactor = mix(roughnessFactor, .86 - wet * .62, vRoad) - wet * .25 * (1. - vRoad); diffuseColor.rgb *= 1. - wet * (.32 * vRoad + .15);');
     };
     this.tiles = []; const nz = S.noise;
     for (let tj = 0; tj < G.GH - 1; tj += TS) for (let ti = 0; ti < G.GW - 1; ti += TS) {
@@ -442,7 +477,7 @@ const World = {
       const snowM = new THREE.MeshStandardMaterial({ map: PH.snowbank || null, color: PH.snowbank ? 0xffffff : 0xf0f3f8, roughness: 0.85 });
       for (const sd of [-1, 1]) {
         const prof = [[ROAD_HW + 0.8, -0.1], [ROAD_HW + 1.3, 0.45], [ROAD_HW + 2.0, 0.75], [ROAD_HW + 2.8, 0.6], [ROAD_HW + 3.6, 0.0]], pos = [], uv = [], idx = []; let row = 0;
-        for (let s = 0; s <= S.L; s += 2, row++) { const p = S.at(s), rx = -Math.cos(p.h) * sd, rz = Math.sin(p.h) * sd, wob = 0.85 + 0.3 * S.noise(s * 0.08, sd * 9); for (const [d, hh] of prof) { const x = p.x + rx * d, z = p.z + rz * d; pos.push(x, S.heightAt(x, z) + hh * wob, z); uv.push(d / 3, s / 3); } }
+        for (let s = 0; s <= S.L; s += 2, row++) { const p = S.at(s), rx = -Math.cos(p.h) * sd, rz = Math.sin(p.h) * sd, wob = (0.85 + 0.3 * S.noise(s * 0.08, sd * 9)) * (S.zones || []).reduce((m, z) => z.k === 'ice' ? Math.min(m, 1 - sstep(z.s0 - 34, z.s0 - 26, s) * (1 - sstep(z.s1 + 26, z.s1 + 34, s)) * 1.3) : m, 1); for (const [d, hh] of prof) { const x = p.x + rx * d, z = p.z + rz * d; pos.push(x, S.heightAt(x, z) + hh * wob, z); uv.push(d / 3, s / 3); } }
         const np = prof.length; for (let r = 0; r < row - 1; r++) for (let k = 0; k < np - 1; k++) { const a = r * np + k, b = a + 1, c2 = a + np, d2 = c2 + 1; if (sd > 0) idx.push(a, c2, b, b, c2, d2); else idx.push(a, b, c2, b, d2, c2); }
         const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); g.setIndex(idx); g.computeVertexNormals();
         const m = new THREE.Mesh(g, snowM); m.receiveShadow = true; m.frustumCulled = false; scene.add(m);
@@ -481,7 +516,7 @@ const World = {
     if (B.city) this.buildStreet(S);
     // spectators behind tape at jumps, crests and hairpins
     this.crowds = [];
-    { const spots = S.jumps.map(j => j.s).concat(S.corners.filter(c => c.g === 1).map(c => (c.s0 + c.s1) / 2), S.crests.slice(0, 2).map(c => c.s));
+    { const spots = S.jumps.map(j => j.s).concat(S.corners.filter(c => c.g === 1 || (S.cfg.race && c.g <= 3)).map(c => (c.s0 + c.s1) / 2), S.crests.slice(0, 2).map(c => c.s), (S.zones || []).filter(z => z.k === 'ford').map(z => z.c + 6));
       const tint = (geo, c) => { const col = new THREE.Color(c), a = new Float32Array(geo.attributes.position.count * 3); for (let i = 0; i < a.length; i += 3) { a[i] = col.r; a[i + 1] = col.g; a[i + 2] = col.b; } geo.setAttribute('color', new THREE.BufferAttribute(a, 3)); return geo; };
       const cyl = (r0, r1, a, b) => { const d = new THREE.Vector3().subVectors(b, a), g = new THREE.CylinderGeometry(r1, r0, d.length(), 8); g.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), d.clone().normalize())); g.translate((a.x + b.x) / 2, (a.y + b.y) / 2, (a.z + b.z) / 2); return g; }, V3 = (x, y, z) => new THREE.Vector3(x, y, z);
       // the untinted part: trousers, shoes, neck, head, hair

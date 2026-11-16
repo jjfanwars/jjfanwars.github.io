@@ -32,12 +32,22 @@ const STAGES = [
   { name: 'Tunnel Run', seed: 4580, len: 3600, tod: 'noon', biome: 'alpine', tunnels: 4 },
   { name: 'Canyon Tunnels', seed: 2626, len: 3400, tod: 'desertDusk', biome: 'desert', cliffs: 1, tunnels: 2, maxG: 0.1 },
   { name: 'Ledge Road', seed: 7171, len: 3100, tod: 'overcast', biome: 'forest', cliffs: 1, rails: 1, maxG: 0.1 },
+  // long stages, one gimmick each
+  { name: 'Midnight Marathon', seed: 6161, len: 7200, tod: 'night', biome: 'forest', gim: 'Night: headlights only' },
+  { name: 'Monsoon Pass', seed: 8383, len: 6800, tod: 'storm', biome: 'alpine', wet: 1, gim: 'Rain: wet tarmac, use the wipers (4)', over: { fogK: 1.25 } },
+  { name: 'Frozen Lakes', seed: 1717, len: 7000, tod: 'snowDay', biome: 'snow', ice: 4, gim: 'Frozen lake crossings: sheer ice' },
+  { name: 'River Run', seed: 2929, len: 6600, tod: 'morning', biome: 'park', fords: 7, gim: 'River fords: big splashes, water drags you' },
+  { name: 'Knife Edge', seed: 3737, len: 7000, tod: 'evening', biome: 'alpine', ridges: 3, tunnels: 1, gim: 'Ridge road with drops on both sides' },
+  // built for racing other cars: wide roads, no obstacles, banked corners, slipstream on the straights
+  { name: 'Twin Pines Raceway', seed: 5050, len: 4200, tod: 'noon', biome: 'forest', race: 1, berms: 1, jumpK: 0.8, gim: 'Race: wide road, banked corners', over: { hw: 6.4 } },
+  { name: 'Harbour Grand Prix', seed: 6262, len: 4000, tod: 'cityDusk', biome: 'city', race: 1, gim: 'Race: wide boulevards, no barriers', over: { hw: 6.8 } },
+  { name: 'Dust Bowl Derby', seed: 7474, len: 4400, tod: 'desertNoon', biome: 'desert', race: 1, berms: 1, jumpK: 1.4, gim: 'Race: big jumps, banked turns', over: { hw: 6.6 } },
 ];
 let ROAD_HW = 3.7; const STEP = 2, CELL = 2;
 const GRADE_R = [0, 10, 19, 31, 50, 82, 140];
 
 function buildStage(cfg) {
-  const B = BIOMES[cfg.biome] || BIOMES.forest; ROAD_HW = B.hw;
+  const B = cfg.over ? Object.assign({}, BIOMES[cfg.biome] || BIOMES.forest, cfg.over) : BIOMES[cfg.biome] || BIOMES.forest; ROAD_HW = B.hw;
   const rnd = mulberry(cfg.seed), nz = makeNoise(cfg.seed * 7 + 3);
   const baseH = (x, z) => B.hills * nz.fbm(x / 430, z / 430, 4) + B.hills * 0.15 * nz(x / 85 + 50, z / 85 - 20);
   const P = [{ x: 0, z: 0, h: 0 }];
@@ -62,7 +72,7 @@ function buildStage(cfg) {
   const corners = [];
   let goal = 0, forceSw = 0, lastDir = 0;
   commit(sim(new Array(40).fill(0))); // start straight (80 m)
-  const GW8 = B.city ? [0.07, 0.4, 0.75, 0.92, 1, 1] : cfg.biome === 'desert' ? [0.06, 0.16, 0.32, 0.55, 0.8, 1] : [0.11, 0.27, 0.47, 0.67, 0.85, 1];
+  const GW8 = cfg.race ? [0, 0.12, 0.45, 0.75, 0.92, 1] : B.city ? [0.07, 0.4, 0.75, 0.92, 1, 1] : cfg.biome === 'desert' ? [0.06, 0.16, 0.32, 0.55, 0.8, 1] : [0.11, 0.27, 0.47, 0.67, 0.85, 1];
   const pickGrade = () => { const r = rnd(); let g = 1; while (g < 6 && r > GW8[g - 1]) g++; return g; };
   let fails = 0;
   while (P.length * STEP < cfg.len && fails < 60) {
@@ -118,7 +128,19 @@ function buildStage(cfg) {
     tunnels.push({ s0, s1, cap: 8 + xr() * 4 });
   }
   tunnels.sort((a, b) => a.s0 - b.s0);
-  const inTun = (s, m) => tunnels.some(q => s > q.s0 - m && s < q.s1 + m);
+  // zones: ice (frozen lake crossing), ford (river across the road), ridge (drops on both sides)
+  const zones = [], gentle = (a, b, g) => !corners.some(c => c.g <= g && c.s1 > a && c.s0 < b), free = (a, b) => !tunnels.some(q => q.s0 < b + 60 && a < q.s1 + 60) && !zones.some(z => z.s0 < b + 150 && a < z.s1 + 150);
+  const want = [['ice', cfg.ice || 0, 160, 120], ['ford', cfg.fords || 0, 16, 0], ['ridge', cfg.ridges || 0, 260, 200]];
+  for (const [k, n, len0, lenR] of want) for (let t = 0, got = 0; t < 600 && got < n; t++) {
+    const len = len0 + xr() * lenR, s0 = 260 + xr() * (L - 520 - len), s1 = s0 + len;
+    if (!free(s0, s1) || !gentle(s0 - 30, s1 + 20, k === 'ridge' ? 2 : k === 'ice' ? 3 : 4)) continue;
+    zones.push({ k, s0, s1, c: (s0 + s1) / 2, dep: 16 + xr() * 10 }); got++;
+  }
+  zones.sort((a, b) => a.s0 - b.s0);
+  const zoneOf = s => { for (const z of zones) if (s > z.s0 - 2 && s < z.s1 + 2) return z; return null; };
+  const ZK = { ice: { k: 'ice', mu: 0.3, noDrag: 1 }, ford: { k: 'ford', mu: 0.8, drag: 90 } };
+  const zoneAt = s => { const z = zoneOf(s); return z && ZK[z.k] || null; };
+  const inTun = (s, m) => tunnels.some(q => s > q.s0 - m && s < q.s1 + m) || zones.some(z => s > z.s0 - m && s < z.s1 + m);
   const busy = (s, r) => jumps.some(j => Math.abs(j.s - s) < r) || crests.some(c => Math.abs(c.s - s) < r) || logs.some(l => Math.abs(l.s - s) < r) || inTun(s, r);
   const longS = straights.filter(q => q.b - q.a > 85).sort(() => rnd() - 0.5);
   const nJ = Math.round(L / 750 * B.jumps * (cfg.jumpK || 1)), nC = Math.round(L / 650 * B.crests);
@@ -131,7 +153,7 @@ function buildStage(cfg) {
   }
   for (const q of straights.filter(q => q.b - q.a > 70).sort(() => rnd() - 0.5)) { if (crests.length >= nC) break; const s = q.a + 30 + rnd() * Math.max(1, q.b - q.a - 60); if (!busy(s, 70)) crests.push({ s, k: 'crest' }); }
   // a few obstacles, each on a straight bit you can see from a way back (not just past a tight corner or crest)
-  const nL = Math.max(2, Math.round(L / 750));
+  const nL = cfg.race ? 0 : Math.max(2, Math.round(L / 750));
   for (let t = 0; t < 300 && logs.length < nL; t++) {
     const s = 150 + rnd() * (L - 280); if (busy(s, 60) || logs.some(l => Math.abs(l.s - s) < 400)) continue;
     const inC = corners.find(c => s > c.s0 - 30 && s < c.s1 + 6); if (inC && inC.g <= 4) continue;
@@ -145,6 +167,10 @@ function buildStage(cfg) {
   const profS = u => u < -16 ? 0 : u < 0 ? 1.0 * ((u + 16) / 16) ** 2 : u < 30 ? lerp(1.0, -2.4, sstep(0, 30, u)) : -2.4;
   const jumpH = (j, u) => j.type === 'table' ? profT(u) : j.type === 'double' ? profJ(u, false) + profJ(u - 34, j.big) : j.type === 'step' ? profS(u) : profJ(u, j.big);
   for (let i = 0; i < N; i++) { const s = i * STEP; for (const j of jumps) Y[i] += jumpH(j, s - j.s); for (const c of crests) Y[i] += profC(s - c.s); }
+  for (const z of zones) {
+    if (z.k === 'ice') { const i0 = Math.round(z.s0 / STEP), i1 = Math.round(z.s1 / STEP); let lv = 0; for (let i = i0; i <= i1; i++) lv += Y[i]; lv /= (i1 - i0 + 1); z.y = lv; for (let i = 0; i < N; i++) { const s = i * STEP, w = sstep(z.s0 - 40, z.s0, s) * (1 - sstep(z.s1, z.s1 + 40, s)); if (w > 0) Y[i] = lerp(Y[i], lv, w); } }
+    if (z.k === 'ford') { for (let i = 0; i < N; i++) { const u = i * STEP - z.c; if (Math.abs(u) < 22) Y[i] -= 0.6 * (0.5 + 0.5 * Math.cos(u / 22 * Math.PI)); } z.y = Y[Math.round(z.c / STEP)]; }
+  }
   // berms: bank every corner (outside edge raised) on berm stages
   const BK = new Float32Array(N);
   if (cfg.berms) for (const c of corners) { const mag = [0, 0.3, 0.27, 0.22, 0.15, 0.08, 0.04][c.g], sg = c.dir === 'L' ? 1 : -1; for (let i = 0; i < N; i++) { const s = i * STEP, w = sstep(c.s0 - 16, c.s0 + 4, s) * (1 - sstep(c.s1 - 4, c.s1 + 16, s)); if (w > 0) BK[i] += sg * mag * w; } }
@@ -159,8 +185,11 @@ function buildStage(cfg) {
   const bankAt = s => { const f = clamp(s / STEP, 0, N - 1.001), i = Math.floor(f); return BK[i] + (BK[i + 1] - BK[i]) * (f - i); };
   jumps.sort((a, b) => a.s - b.s); crests.sort((a, b) => a.s - b.s); logs.sort((a, b) => a.s - b.s);
   // nearest road query
+  // coarse mask of hash cells within 3 cells (60 m) of the road: lets far-away queries bail out at once
+  const dil = new Set(), far = new Set(); for (const k of hash.keys()) { const cx = Math.floor(k / 8192) - 4096, cz = k % 8192 - 4096; for (let dx = -8; dx <= 8; dx++) for (let dz = -8; dz <= 8; dz++) { const kk = hk(cx + dx, cz + dz); far.add(kk); if (Math.abs(dx) <= 3 && Math.abs(dz) <= 3) dil.add(kk); } }
   const near = (x, z, maxD) => {
     const cx = Math.floor(x / HC), cz = Math.floor(z / HC), rr = Math.ceil(maxD / HC); let best = -1, bd = maxD * maxD;
+    if (rr <= 3 && !dil.has(hk(cx, cz))) return null;
     for (let dx = -rr; dx <= rr; dx++) for (let dz = -rr; dz <= rr; dz++) { const a = hash.get(hk(cx + dx, cz + dz)); if (!a) continue; for (const i of a) { const ex = P[i].x - x, ez = P[i].z - z, d = ex * ex + ez * ez; if (d < bd) { bd = d; best = i; } } }
     if (best < 0) return null;
     // refine on the segment toward the closer neighbour
@@ -177,25 +206,33 @@ function buildStage(cfg) {
   const M = 110, x0 = Math.floor((mnx - M) / CELL) * CELL, z0 = Math.floor((mnz - M) / CELL) * CELL, GW = Math.ceil((mxx + M - x0) / CELL) + 1, GH = Math.ceil((mxz + M - z0) / CELL) + 1;
   const H = new Float32Array(GW * GH), RF = new Float32Array(GW * GH), RU = new Float32Array(GW * GH), RV = new Float32Array(GW * GH), RD = new Float32Array(GW * GH);
   for (let j = 0; j < GH; j++) for (let i = 0; i < GW; i++) {
-    const x = x0 + i * CELL, z = z0 + j * CELL, k = j * GW + i, b = baseH(x, z), q = near(x, z, 46);
+    const x = x0 + i * CELL, z = z0 + j * CELL, k = j * GW + i;
+    if (!far.has(hk(Math.floor(x / HC), Math.floor(z / HC)))) { H[k] = 0; RD[k] = 999; continue; } // over 160 m from any road: never drawn or driven on
+    const b = baseH(x, z), q = near(x, z, 46);
     let y = b, rf = 0, d = 999;
     if (q) {
       d = q.d;
       const bk = bankAt(q.s), lc = clamp(q.lat, -ROAD_HW - 1.5, ROAD_HW + 1.5), outside = bk * q.lat > 0;
       const lip = outside ? Math.abs(bk) / 0.3 * 0.9 * Math.exp(-(((d - ROAD_HW - 1.6) / 1.1) ** 2)) : 0, yr = q.y + bk * lc + lip;
       if (d < ROAD_HW + 1.5) y = yr; // flat (or banked) road and verges, no ditches
-      else { const t = sstep(ROAD_HW + 1.5, ROAD_HW + 20, d); y = lerp(yr, b, t) + B.canyon * sstep(ROAD_HW + 9, ROAD_HW + 42, d) * (0.7 + 0.5 * nz(x * 0.02, z * 0.02));
+      else { const t = sstep(ROAD_HW + 1.5, ROAD_HW + 20, d); y = lerp(yr, b, t) + (B.canyon ? B.canyon * sstep(ROAD_HW + 9, ROAD_HW + 42, d) * (0.7 + 0.5 * nz(x * 0.02, z * 0.02)) : 0);
         const cs = cliffAt(q.s);
         if (cs !== 0) {
           const w = Math.abs(cs), up = q.lat * cs > 0, ii = Math.min(N - 1, Math.round(q.s / STEP)), jag = 1.6 * nz(x * 0.35, z * 0.35) + 0.8 * nz(x * 1.1 + 3, z * 1.1);
           if (up) y = Math.max(y, yr + w * (CH[ii] * sstep(ROAD_HW + 1.6, ROAD_HW + 4.6, d) + (d - ROAD_HW) * 0.35 + jag * sstep(ROAD_HW + 2, ROAD_HW + 5, d)));
           else y = Math.min(y, yr - w * ((CH[ii] * 0.9) * sstep(ROAD_HW + 2.6, ROAD_HW + 11, d) + Math.max(0, d - ROAD_HW - 11) * 0.25) + jag * 0.4 * sstep(ROAD_HW + 3, ROAD_HW + 8, d));
         }
+        const zq = zoneOf(q.s);
+        if (zq && zq.k === 'ridge') { const w = sstep(zq.s0 - 2, zq.s0 + 30, q.s) * (1 - sstep(zq.s1 - 30, zq.s1 + 2, q.s)); y = Math.min(y, yr - w * (zq.dep * sstep(ROAD_HW + 2.2, ROAD_HW + 9, d) + Math.max(0, d - ROAD_HW - 9) * 0.5) + 1.2 * nz(x * 0.3, z * 0.3) * sstep(ROAD_HW + 3, ROAD_HW + 8, d)); }
         const tn = tunAt(q.s);
         if (tn && tn.f > 0) y = Math.max(y, yr + tn.f * (tn.q.cap + 1.5 * nz(x * 0.2, z * 0.2)) * sstep(ROAD_HW + (tn.f > 0.97 ? 3.6 : 1.4), ROAD_HW + (tn.f > 0.97 ? 5.6 : 3.4), d) * (1 - sstep(ROAD_HW + 22, ROAD_HW + 44, d)));
       }
       rf = 1 - sstep(ROAD_HW - 0.5, ROAD_HW + 0.9, d + 0.5 * nz(x * 0.9 + 9, z * 0.9));
       RU[k] = q.lat; RV[k] = q.s;
+    }
+    for (const zz of zones) {
+      if (zz.k === 'ice') { const p0 = (zz.p || (zz.p = at(zz.c))), R0 = (zz.s1 - zz.s0) / 2 + 26, dd = Math.hypot(x - p0.x, z - p0.z); if (dd < R0 + 24) { const w = 1 - sstep(R0, R0 + 24, dd); y = lerp(y, zz.y - 0.05, w); if (d < ROAD_HW + 1.5 && dd < R0) y = zz.y; } }
+      if (zz.k === 'ford') { const p0 = (zz.p || (zz.p = at(zz.c))), fx = Math.sin(p0.h), fz = Math.cos(p0.h), along = (x - p0.x) * fx + (z - p0.z) * fz, across = Math.abs(-(x - p0.x) * fz + (z - p0.z) * fx); if (Math.abs(along) < 14 && across < 70) { const bed = zz.y - 0.15 - 1.1 * (1 - sstep(4, 12, Math.abs(along))) * sstep(ROAD_HW + 1, ROAD_HW + 5, across); y = Math.min(y, lerp(y, bed, 1 - sstep(9, 14, Math.abs(along)))); } }
     }
     H[k] = y; RF[k] = rf; RD[k] = d;
   }
@@ -251,7 +288,10 @@ function buildStage(cfg) {
       if (q.d < edge + 4 && r1 < 0.2) continue; // a little thinner at the edge
       if (q.s < 30 && q.d < 14) continue; // start area
       if (q.d < ROAD_HW + 11 && clearings.some(c => Math.abs(q.s - c) < 20)) continue; // spectator areas
-      if (inTun(q.s, 30) && q.d < ROAD_HW + 26) continue; // tunnel hills stay bare above the tube
+      if (tunnels.some(t2 => q.s > t2.s0 - 30 && q.s < t2.s1 + 30) && q.d < ROAD_HW + 26) continue; // tunnel hills stay bare above the tube
+      if (zones.some(zz => zz.k === 'ice' && Math.hypot(px - (zz.p || (zz.p = at(zz.c))).x, pz - (zz.p || (zz.p = at(zz.c))).z) < (zz.s1 - zz.s0) / 2 + 34)) continue;
+      if (zones.some(zz => zz.k === 'ford' && Math.abs(q.s - zz.c) < 16)) continue;
+      if (zones.some(zz => zz.k === 'ridge' && q.s > zz.s0 && q.s < zz.s1) && q.d < ROAD_HW + 14) continue;
       { const cs = cliffAt(q.s); if (cs * q.lat > 0 && Math.abs(cs) > 0.2 && q.d < ROAD_HW + 9) continue; if (cs * q.lat < 0 && Math.abs(cs) > 0.2 && q.d < ROAD_HW + 4) continue; }
       let kind, sc = 0.75 + r3 * 0.6, r;
       if (B.flora === 'park') { if (r1 > 0.12 + 0.25 * Math.max(0, nz(px * 0.02, pz * 0.02))) continue; kind = r2 < 0.5 ? 0 : 3; r = (kind === 3 ? 0.17 : 0.24) * sc + 0.1; }
@@ -264,7 +304,7 @@ function buildStage(cfg) {
     // hay bales on the outside of berms (soft: you bounce off them)
     if (cfg.berms) for (const c of corners) if (c.g <= 4) { const sg = c.dir === 'L' ? 1 : -1; for (let s2 = c.s0 + 2; s2 < c.s1 - 2; s2 += 2.6) { const p = at(s2), d = ROAD_HW + 3.4, x = p.x - Math.cos(p.h) * sg * d, z = p.z + Math.sin(p.h) * sg * d, q = near(x, z, 20); if (q && q.d > ROAD_HW + 2.6) addT({ x, z, y: heightAt(x, z), kind: 10, sc: 1, rot: p.h + Math.PI / 2, r: 0.75, soft: true }); } }
     // snowbanks: soft walls along both edges
-    if (B.banks) for (let s2 = 6; s2 < L; s2 += 2.4) for (const sd of [-1, 1]) { const p = at(s2), d = ROAD_HW + 2.1, x = p.x - Math.cos(p.h) * sd * d, z = p.z + Math.sin(p.h) * sd * d, q = near(x, z, 20); if (q && q.d > ROAD_HW + 1.4 && !logs.some(l => Math.abs(l.s - s2) < 5)) addT({ x, z, y: heightAt(x, z), kind: 9, r: 0.75, soft: true }); }
+    if (B.banks) for (let s2 = 6; s2 < L; s2 += 2.4) for (const sd of [-1, 1]) { const p = at(s2), d = ROAD_HW + 2.1, x = p.x - Math.cos(p.h) * sd * d, z = p.z + Math.sin(p.h) * sd * d, q = near(x, z, 20); if (q && q.d > ROAD_HW + 1.4 && !logs.some(l => Math.abs(l.s - s2) < 5) && !zones.some(zz => zz.k === 'ice' && s2 > zz.s0 - 30 && s2 < zz.s1 + 30)) addT({ x, z, y: heightAt(x, z), kind: 9, r: 0.75, soft: true }); }
   }
   // cliff wall and tunnel wall colliders, armco guardrail on the drop side (with the odd gap on straights)
   const rails = [];
@@ -282,6 +322,11 @@ function buildStage(cfg) {
       for (const r of rails) for (let s2 = r.s0; s2 <= r.s1; s2 += 1.3) { const o = sideP(s2, r.sd, ROAD_HW + 1.35), qq = near(o.x, o.z, 20); if (qq && qq.d > ROAD_HW + 1.0) addT({ x: o.x, z: o.z, y: at(s2).y, kind: 12, r: 0.22 }); }
     }
   }
+  for (const zz of zones) if (zz.k === 'ridge') for (const sd of [-1, 1]) {
+    let cur = null;
+    for (let s2 = zz.s0 + 20; s2 < zz.s1 - 20; s2 += 2) { const gap = mulberry(cfg.seed + Math.floor(s2 / 70) * 13 + sd)() < 0.25; if (!gap) { if (!cur) { cur = { s0: s2, s1: s2, sd }; rails.push(cur); } cur.s1 = s2; } else cur = null; }
+  }
+  for (const r of rails) if (r.ridge === undefined && zones.some(zz => zz.k === 'ridge' && r.s0 >= zz.s0 && r.s1 <= zz.s1)) { r.ridge = 1; for (let s2 = r.s0; s2 <= r.s1; s2 += 1.3) { const o = sideP(s2, r.sd, ROAD_HW + 1.35); addT({ x: o.x, z: o.z, y: at(s2).y, kind: 12, r: 0.22 }); } }
   const treesNear = (x, z, out) => { out.length = 0; const cx = Math.floor(x / TC), cz = Math.floor(z / TC); for (let dx = -1; dx <= 1; dx++) for (let dz = -1; dz <= 1; dz++) { const a = thash.get(hk(cx + dx, cz + dz)); if (a) for (const t of a) out.push(t); } return out; };
   // log objects: a log lying across one half of the road
   for (const l of logs) {
@@ -292,7 +337,7 @@ function buildStage(cfg) {
     l.rad = B.obs === 'rock' ? 0.85 + tr() * 0.2 : B.obs === 'barrier' ? 0.42 : 0.3 + tr() * 0.06; l.y = p.y;
     const mx = (l.ax + l.bx) / 2, mz = (l.az + l.bz) / 2; l.cy = Math.max(heightAt(l.ax, l.az), heightAt(l.bx, l.bz), heightAt(mx, mz)) + l.rad * 0.8; l.top = l.cy + l.rad;
   }
-  return { cfg, B, buildings, parked, lights, bankAt, cliffAt, tunnels, rails, inTun, P, Y, N, L, corners, jumps, crests, logs, near, at, heightAt, normalAt, trees, treesNear, grid: { x0, z0, GW, GH, H, RF, RU, RV, RD }, baseH, noise: nz };
+  return { cfg, B, buildings, parked, lights, bankAt, cliffAt, tunnels, rails, inTun, zones, zoneAt, inTube: (s, m) => tunnels.some(q => s > q.s0 - m && s < q.s1 + m), P, Y, N, L, corners, jumps, crests, logs, near, at, heightAt, normalAt, trees, treesNear, grid: { x0, z0, GW, GH, H, RF, RU, RV, RD }, baseH, noise: nz };
 }
 // some seeds box themselves in; nudge the seed until the stage is long enough
 function makeStage(cfg) { let best = null; for (let k = 0; k < 8; k++) { const S = buildStage(Object.assign({}, cfg, { seed: cfg.seed + k * 101 })); if (!best || S.L > best.L) best = S; if (S.L >= cfg.len * 0.88) return S; } return best; }

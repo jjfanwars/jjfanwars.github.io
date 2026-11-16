@@ -8,7 +8,7 @@ const Bots = {
     this.clear(); const n = names.length;
     names.forEach((r, i) => {
       const k = i < myIdx ? i : i + 1, gs = startS - 3 - Math.floor(k / 2) * 9, lat = k % 2 ? 1.9 : -1.9;
-      const car = new Car(S); car.place(gs, lat);
+      const car = new Car(S); car.real = false; car.place(gs, lat); // rivals always drive the arcade model; in realistic mode they are slowed to match
       const look = CARS[(i * 3 + 1) % CARS.length].look, col = BOT_COL[i % BOT_COL.length];
       const view = new CarView(World.scene, { color: col, remote: true, look });
       const tag = this.tag(r.n, col);
@@ -48,11 +48,14 @@ const Bots = {
     let vt = 40 * b.pace;
     for (let d = 4; d < 150; d += 8) {
       const h0 = S.at(s0 + d).h, h1 = S.at(s0 + d + 10).h, k = Math.abs(wrapA(h1 - h0)) / 10 + 1e-4;
-      const vc = Math.sqrt(mu * 9.81 / k), va = Math.sqrt(vc * vc + 2 * dec * Math.max(0, d - 6)); if (va < vt) vt = va;
+      const zz = S.zoneAt ? S.zoneAt(s0 + d) : null, zm = zz ? zz.mu : 1; // ice and water: corner and brake for the grip that's there
+      const vc = Math.sqrt(mu * zm * 9.81 / k), va = Math.sqrt(vc * vc + 2 * dec * Math.max(0.35, Math.min(1, zm + 0.2)) * Math.max(0, d - 6)); if (va < vt) vt = va;
+      if (zz && zz.k === 'ford' && d < 60) vt = Math.min(vt, 15 + d * 0.3);
     }
     if (obsD < 60) vt = Math.min(vt, 16 + obsD * 0.35);
     if (s0 >= finishS) vt = 0; // finished: roll to a stop
     if (Math.abs(ang) > 0.5) vt = Math.min(vt, 10);
+    if (PHYS.real) vt *= 0.8;
     const thr = (spd < vt - 0.5 ? 1 : spd < vt + 0.5 ? 0.35 : 0) * (0.5 + 0.5 * b.pace), brk = spd > vt + 1.5 ? clamp((spd - vt) / 6, 0.25, 1) : 0;
     c.step(dt, { steer, thr, brk, hb: 0 });
     c.events.length = 0;

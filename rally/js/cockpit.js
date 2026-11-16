@@ -123,6 +123,12 @@ class CarView {
     // ---- windscreen wipers (outside the glass) ----
     { const wg = this.wsG = new THREE.Group(); wg.position.set(0, 0.515, 0.65); wg.rotation.x = Math.atan2(-0.66, 0.51); g.add(wg); const wm = new THREE.MeshStandardMaterial({ color: 0x101011, roughness: 0.6 }); this.wipers = [];
       for (const px of [0.55, -0.05]) { const p = new THREE.Group(); p.position.set(px, -0.4, 0.02); wg.add(p); const arm = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.014, 0.01), wm); arm.position.x = -0.25; p.add(arm); const blade = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.012, 0.02), wm); blade.position.set(-0.27, 0.004, -0.006); p.add(blade); p.rotation.z = -0.06; this.wipers.push(p); }
+      // raindrops and splash water on the glass (rain stages, river fords); the wipers clear them
+      const c = document.createElement('canvas'); c.width = c.height = 256; const x = c.getContext('2d');
+      for (let i = 0; i < 420; i++) { const px = Math.random() * 256, py = Math.random() * 256, r = 0.8 + Math.random() * Math.random() * 4.5; x.fillStyle = 'rgba(200,215,230,.35)'; x.beginPath(); x.arc(px, py, r, 0, 7); x.fill(); x.fillStyle = 'rgba(255,255,255,.7)'; x.beginPath(); x.arc(px - r * 0.3, py - r * 0.3, r * 0.35, 0, 7); x.fill(); }
+      for (let i = 0; i < 40; i++) { x.strokeStyle = 'rgba(210,225,240,.3)'; x.lineWidth = 1.5; x.beginPath(); const a = Math.random() * 256, b = Math.random() * 200; x.moveTo(a, b); x.lineTo(a + (Math.random() - 0.5) * 6, b + 20 + Math.random() * 40); x.stroke(); }
+      const dt2 = new THREE.CanvasTexture(c); this.dropM = new THREE.MeshBasicMaterial({ map: dt2, transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide });
+      const dm = new THREE.Mesh(new THREE.PlaneGeometry(1.46, Math.hypot(0.66, 0.51)), this.dropM); dm.position.z = 0.004; wg.add(dm); this.wet = 0;
       this.wipeT = 0; }
     // transmission tunnel, sequential lever, hydraulic handbrake
     add(new THREE.BoxGeometry(0.26, 0.26, 1.05), M.carbon, 0, -0.27, 0.05);
@@ -350,6 +356,7 @@ class CarView {
     // wipers sweep while switched on and finish their stroke when switched off
     const TAU = Math.PI * 2; if (st.wp || this.wipeT % TAU > 0.05) { this.wipeT += dt * 2.6; if (!st.wp && this.wipeT % TAU < dt * 2.6 + 0.02) this.wipeT = Math.round(this.wipeT / TAU) * TAU; }
     const wa = 0.06 + (1 - Math.cos(this.wipeT)) / 2 * 1.72; for (const w of this.wipers) w.rotation.z = -wa;
+    if (!this.remote) { if (World.S && World.S.cfg && World.S.cfg.wet) this.wet += dt * 0.1 * (1 + (st.speed || 0) / 25); if (st.wp || this.wipeT % TAU > 0.05) this.wet -= dt * 0.8; this.wet = clamp(this.wet, 0, 1); this.dropM.opacity = this.wet * 0.8; }
     if ((this.dashTk = (this.dashTk || 0) + dt) > 0.1) {
       this.dashTk = 0;
       const t = this.tripC.getContext('2d'); t.fillStyle = '#100a04'; t.fillRect(0, 0, 320, 84); t.fillStyle = '#ff9a2a'; t.shadowColor = '#ff7a10'; t.shadowBlur = 8; t.font = 'bold 40px monospace'; t.textAlign = 'left';

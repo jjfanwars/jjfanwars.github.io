@@ -74,7 +74,7 @@ button.big.go { border-color:transparent; box-shadow:0 10px 30px rgba(242,182,50
 .stc em { position:absolute; top:9px; right:9px; font-style:normal; font-size:10px; font-weight:700; letter-spacing:.08em; color:#1a1408; background:var(--acc); border-radius:4px; padding:1px 5px; }
 .stc .bt { color:var(--acc2); font-variant-numeric:tabular-nums; }
 .stc.sel { border-color:var(--acc); box-shadow:inset 0 0 0 1px var(--acc); }
-.opts { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; }
+.opts { display:grid; grid-template-columns:repeat(5,1fr); gap:10px; }
 .opts label { margin-top:0; }
 .seg { display:flex; background:var(--field); border:1px solid rgba(255,255,255,.12); border-radius:9px; padding:3px; gap:3px; }
 .seg button { flex:1; padding:7px 4px; font-size:13px; font-weight:600; background:transparent; color:var(--dim); border-radius:6px; }
@@ -127,6 +127,8 @@ button.big.go { border-color:transparent; box-shadow:0 10px 30px rgba(242,182,50
 #net { position:absolute; top:16px; right:18px; font:600 12px ui-monospace,monospace; color:var(--dim); text-shadow:0 1px 4px #000; }
 #hov { position:absolute; left:50%; top:50%; transform:translate(14px,8px); font:700 13px system-ui; color:#fff; background:rgba(0,0,0,.55); padding:3px 8px; border-radius:6px; white-space:nowrap; }
 #hov:empty { display:none; }
+#draft { position:absolute; left:50%; top:118px; transform:translateX(-50%); font:800 13px system-ui; letter-spacing:.2em; color:#7fe0ff; text-shadow:0 0 10px #29a8ff; opacity:0; transition:opacity .2s; pointer-events:none; }
+#draft.on { opacity:1; }
 #navMap { position:absolute; right:2vh; top:4vh; height:92vh; aspect-ratio:1024/1280; max-width:60vw; opacity:0; transform:translateY(30px) rotate(1deg); transition:opacity .15s, transform .15s; pointer-events:none; z-index:6; }
 #navMap.on { opacity:1; transform:none; }
 #navMap canvas { width:100%; height:100%; object-fit:contain; border-radius:6px; box-shadow:0 12px 40px rgba(0,0,0,.6); }
@@ -204,6 +206,7 @@ i.md { display:inline-block; width:10px; height:10px; border-radius:50%; backgro
         <div><label>Fog</label><div class="seg" data-for="sFog"></div><select id="sFog" class="hidden"><option value="0">Light</option><option value="1" selected>Medium</option><option value="2">Heavy</option></select></div>
         <div><label>Online seat</label><div class="seg" data-for="sRole"></div><select id="sRole" class="hidden"><option value="drv">Driver</option><option value="nav">Navigator</option></select></div>
         <div><label>Solo rivals</label><div class="seg" data-for="sBots"></div><select id="sBots" class="hidden"><option value="0">Off</option><option value="3" selected>3</option><option value="5">5</option></select></div>
+        <div><label>Driving</label><div class="seg" data-for="sPhys"></div><select id="sPhys" class="hidden"><option value="arcade" selected>Arcade</option><option value="real">Realistic</option></select></div>
         <div><label>Graphics</label><div class="seg" data-for="sGfx"></div><select id="sGfx" class="hidden"><option value="high">High</option><option value="med" selected>Med</option><option value="low">Low</option></select></div>
       </div>
     </section>
@@ -250,7 +253,7 @@ i.md { display:inline-block; width:10px; height:10px; border-radius:50%; backgro
   <div id="split"></div>
   <div id="style"></div>
   <div id="call"><span id="callA"></span><span id="callT"></span></div><div id="big"></div>
-  <div id="cross"></div><div id="hov"></div><div id="navMap"></div>
+  <div id="cross"></div><div id="hov"></div><div id="navMap"></div><div id="draft">SLIPSTREAM</div>
   <div id="dmg"><span>DAMAGE</span><b id="dmgP">0%</b><i><u></u></i></div>
   <div id="spd"><canvas id="rev" width="200" height="200"></canvas><div class="in"><b>0</b><span>km/h</span><em id="gear">N</em></div></div>
   <div id="tip"></div>
@@ -263,17 +266,17 @@ i.md { display:inline-block; width:10px; height:10px; border-radius:50%; backgro
 </div></div>
 
 <script src="../three-r170.js"></script>
-<script src="js/util.js?v=23"></script>
-<script src="js/stage.js?v=23"></script>
-<script src="js/tex.js?v=23"></script>
-<script src="js/world.js?v=23"></script>
-<script src="js/car.js?v=23"></script>
-<script src="js/cockpit.js?v=23"></script>
-<script src="js/audio.js?v=23"></script>
-<script src="js/notes.js?v=23"></script>
-<script src="js/net.js?v=23"></script>
-<script src="js/garage3d.js?v=23"></script>
-<script src="js/bots.js?v=23"></script>
-<script src="js/main.js?v=23"></script>
+<script src="js/util.js?v=24"></script>
+<script src="js/stage.js?v=24"></script>
+<script src="js/tex.js?v=24"></script>
+<script src="js/world.js?v=24"></script>
+<script src="js/car.js?v=24"></script>
+<script src="js/cockpit.js?v=24"></script>
+<script src="js/audio.js?v=24"></script>
+<script src="js/notes.js?v=24"></script>
+<script src="js/net.js?v=24"></script>
+<script src="js/garage3d.js?v=24"></script>
+<script src="js/bots.js?v=24"></script>
+<script src="js/main.js?v=24"></script>
 </body>
 </html>

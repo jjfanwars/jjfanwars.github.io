@@ -13,6 +13,7 @@ const Notes = {
     for (const j of S.jumps) { const ty = j.type === 'table' ? ['tabletop', 'TABLETOP'] : j.type === 'double' ? ['double jump', 'DOUBLE JUMP'] : j.type === 'step' ? ['jump, step down', 'STEP DOWN'] : j.big ? ['big jump', 'BIG JUMP'] : ['jump', 'JUMP']; out.push({ s: j.s - 16, end: j.s, k: 'j', say: ty[0], txt: ty[1] }); }
     for (const c of S.crests) out.push({ s: c.s - 20, end: c.s, k: 'cr', say: 'over crest', txt: 'OVER CREST' });
     const ob = (S.B && S.B.obs) || 'log'; for (const l of S.logs) out.push({ s: l.s - 4, end: l.s, k: 'l', say: ob + ' ' + (l.side === 'L' ? 'left, keep right' : 'right, keep left'), txt: ob.toUpperCase() + ' ' + (l.side === 'L' ? 'LEFT › KEEP RIGHT' : 'RIGHT › KEEP LEFT') });
+    for (const z of S.zones || []) out.push(z.k === 'ice' ? { s: z.s0 - 24, end: z.s0, k: 'z', say: 'ice, careful', txt: 'ICE', zk: 'ice' } : z.k === 'ford' ? { s: z.c - 30, end: z.c, k: 'z', say: 'water splash', txt: 'WATER SPLASH', zk: 'ford' } : { s: z.s0 - 20, end: z.s0, k: 'z', say: 'narrow ridge, keep middle', txt: 'RIDGE › KEEP MIDDLE', zk: 'ridge' });
     for (const q of S.tunnels || []) out.push({ s: q.s0 - 12, end: q.s0, k: 't', say: 'into tunnel', txt: 'TUNNEL' });
     out.sort((a, b) => a.s - b.s);
     // "into": a note that follows the previous one closely gets chained
@@ -60,6 +61,13 @@ const MapDraw = {
     path(); g.strokeStyle = '#d9b77c'; g.lineWidth = 2 * ROAD_HW * sc; g.stroke();
     // tunnels: the road goes dark and dashed under the hill
     for (const q of S.tunnels || []) { g.beginPath(); for (let s = q.s0; s <= q.s1; s += 4) { const p = S.at(s), [X, Y] = toM(p.x, p.z); s === q.s0 ? g.moveTo(X, Y) : g.lineTo(X, Y); } g.strokeStyle = '#3b2f22'; g.lineWidth = 2 * ROAD_HW * sc + 7; g.stroke(); g.setLineDash([12, 10]); g.strokeStyle = '#d9b77c'; g.lineWidth = 4; g.stroke(); g.setLineDash([]); }
+    // zones: frozen lakes, rivers across the road, ridges with drops both sides
+    for (const z of S.zones || []) {
+      const p = S.at(z.c), [X, Y] = toM(p.x, p.z); if (X < -300 || X > 1324 || Y < -300 || Y > 1360) continue;
+      if (z.k === 'ice') { g.beginPath(); g.arc(X, Y, ((z.s1 - z.s0) / 2 + 26) * sc, 0, 7); g.fillStyle = 'rgba(150,200,230,.55)'; g.fill(); g.strokeStyle = 'rgba(60,110,150,.7)'; g.lineWidth = 2; g.stroke(); }
+      if (z.k === 'ford') { const rx = -Math.cos(p.h), rz = Math.sin(p.h), [A1, A2] = toM(p.x - rx * 60, p.z - rz * 60), [B1, B2] = toM(p.x + rx * 60, p.z + rz * 60); g.beginPath(); g.moveTo(A1, A2); g.lineTo(B1, B2); g.strokeStyle = 'rgba(40,110,170,.75)'; g.lineWidth = 14 * sc; g.stroke(); }
+      if (z.k === 'ridge') { g.strokeStyle = 'rgba(60,45,30,.6)'; g.lineWidth = 2; for (let s = z.s0; s < z.s1; s += 6) for (const sd of [-1, 1]) { const q = S.at(s), rx = -Math.cos(q.h) * sd, rz = Math.sin(q.h) * sd, [X1, Y1] = toM(q.x + rx * (ROAD_HW + 3), q.z + rz * (ROAD_HW + 3)), [X2, Y2] = toM(q.x + rx * (ROAD_HW + 9), q.z + rz * (ROAD_HW + 9)); g.beginPath(); g.moveTo(X1, Y1); g.lineTo(X2, Y2); g.stroke(); } }
+    }
     // cliff faces: short hatch marks on the rock side
     if (S.cliffAt) { g.strokeStyle = 'rgba(60,45,30,.55)'; g.lineWidth = 2; for (let s = 0; s < S.L; s += 6) { const cs = S.cliffAt(s); if (Math.abs(cs) < 0.5) continue; const p = S.at(s), sd = Math.sign(cs), rx = -Math.cos(p.h) * sd, rz = Math.sin(p.h) * sd, [X1, Y1] = toM(p.x + rx * (ROAD_HW + 3), p.z + rz * (ROAD_HW + 3)), [X2, Y2] = toM(p.x + rx * (ROAD_HW + 9), p.z + rz * (ROAD_HW + 9)); if (X1 < 0 || X1 > 1024 || Y1 < 80 || Y1 > 1060) continue; g.beginPath(); g.moveTo(X1, Y1); g.lineTo(X2, Y2); g.stroke(); } }
     // driven part a little darker
@@ -74,6 +82,7 @@ const MapDraw = {
       if (n.k === 'l') { const l = S.logs.find(q => q.s === s); if (l) { const [ax, ay] = toM(l.ax, l.az), [bx, by] = toM(l.bx, l.bz); g.beginPath(); g.moveTo(ax, ay); g.lineTo(bx, by); g.strokeStyle = '#5a2e0c'; g.lineWidth = 12; g.lineCap = 'butt'; g.stroke(); g.lineCap = 'round';
         const ox = bx + (bx - ax) * 0.35, oy = by + (by - ay) * 0.35, txt = ((S.B && S.B.obs) || 'log').toUpperCase(); g.font = '900 22px system-ui'; const tw = g.measureText(txt).width + 18;
         g.fillStyle = '#c0281c'; g.beginPath(); g.roundRect(ox - tw / 2, oy - 16, tw, 30, 8); g.fill(); g.fillStyle = '#fff'; g.textAlign = 'center'; g.fillText(txt, ox, oy + 7); } }
+      else if (n.k === 'z') { g.fillStyle = n.zk === 'ice' ? '#1d5f8a' : n.zk === 'ford' ? '#1c4fa0' : '#7a2a10'; g.font = '900 20px system-ui'; g.textAlign = 'center'; g.fillText(n.txt.split(' ›')[0], X, Y - 18); }
       else if (n.k === 't') { g.fillStyle = '#2a2118'; g.font = '900 20px system-ui'; g.textAlign = 'center'; g.fillText('TUNNEL', X, Y - 18); }
       else { g.save(); g.translate(X, Y); g.fillStyle = n.k === 'j' ? '#c0281c' : '#1c4fa0'; g.beginPath(); if (n.k === 'j') { g.moveTo(-16, 10); g.lineTo(16, 10); g.lineTo(16, -14); g.closePath(); } else { g.arc(0, 4, 15, Math.PI, 0); g.closePath(); } g.fill(); g.font = '800 20px system-ui'; g.fillText(n.k === 'j' ? n.txt : 'CREST', 0, 34); g.restore(); }
     }

@@ -21,6 +21,10 @@ const CARS = [
   { name: 'Hill Climb Prototype', cls: 'All wing, no mercy', need: 14, look: 'proto', pow: 1.95, grip: 1.32, steer: 1.22, tough: 1.6, m: 1080, vmax: 238, split: 0.55 },
   { name: 'Volkswagen Beetle', cls: 'Maxed out. Everything.', need: 20, look: 'beetle', pow: 2.3, grip: 1.42, steer: 1.3, tough: 3, m: 1000, vmax: 255, split: 0.5 },
 ];
+// driving model: 'arcade' (assists, generous grip) or 'real' (real-world grip, no assists, lock-ups, spin-ups, damage hurts the car)
+const PHYS = { real: false };
+// real-world peak friction per surface (tyre on gravel, snow, sand, tarmac, verge)
+const realMu = (B, onRoad) => onRoad ? (B.rGrip || B.grip * 0.58) : (B.rOff || B.off * 0.66);
 const CAR_BASE = JSON.parse(JSON.stringify({ m: 1230, I: [2300, 2400, 900], k: 36000, cB: 4200, cR: 7500, arb: 9000, brake: 9800 }));
 // stat bars out of 10 (the Beetle is 10 across the board)
 const carStats = c => { const B = CARS[CARS.length - 1]; return [['Power', c.pow / B.pow], ['Top speed', (c.vmax - 150) / (B.vmax - 150)], ['Grip', (c.grip - 0.6) / (B.grip - 0.6)], ['Handling', (c.steer - 0.6) / (B.steer - 0.6)], ['Toughness', Math.sqrt(c.tough / B.tough)]].map(([n, v]) => [n, Math.round(clamp(v, 0.05, 1) * 10)]); };
@@ -38,8 +42,10 @@ class Car {
     this.wh = CAR.wheels.map((a, i) => ({ a: new THREE.Vector3(...a), comp: 0, pc: 0, contact: false, spin: 0, steer: 0, slip: 0, load: 0, front: i < 2, surf: 0, cp: new THREE.Vector3() }));
     this.steer = 0; this.thr = 0; this.brk = 0; this.gear = 1; this.rpm = CAR.idle; this.shiftT = 0; this.dmg = 0; this.air = 0; this.events = [];
     this.tmp = { a: new THREE.Vector3(), b: new THREE.Vector3(), c: new THREE.Vector3(), d: new THREE.Vector3(), n: new THREE.Vector3(), f: new THREE.Vector3(), s: new THREE.Vector3(), up: new THREE.Vector3(), q: new THREE.Quaternion(), F: new THREE.Vector3(), T: new THREE.Vector3() };
-    this.near = []; this.speed = 0; this.prog = 0; this.lat = 0; this.offroad = 0; this.slide = 0;
+    this.near = []; this.speed = 0; this.prog = 0; this.lat = 0; this.offroad = 0; this.slide = 0; this.pull = Math.random() < 0.5 ? -1 : 1;
   }
+  get real() { return this._real !== undefined ? this._real : PHYS.real; }
+  set real(v) { this._real = v; }
   place(s, lat) {
     for (const l of this.S.logs) if (l.s - s < 18 && l.s - s > -6) s = l.s - 20;
     const S = this.S, p = S.at(s), rx = -Math.cos(p.h), rz = Math.sin(p.h);
@@ -73,12 +79,14 @@ class Car {
     // ---- inputs: steering with speed sensitivity and self-alignment toward the direction of travel ----
     const beta = Math.abs(vF) > 2 ? Math.atan2(vL, Math.abs(vF)) : 0;
     // lateral grip the surface really has (road or verge): caps steering lock and the yaw assist, so snow feels like snow
-    const BS = S.B || BIOMES.forest, mu0 = lerp(BS.grip, BS.off, this.offroad) * 1.12 * (CAR.grip || 1) * (1 - this.dmg * 0.15), aMax = mu0 * 9.81 * 1.12;
-    const vv = Math.max(4, Math.abs(vF)), maxS = clamp(Math.atan(2.51 * aMax * (CAR.steerK || 1) / (vv * vv)) + 0.09, 0.14, 0.62), st = inp.steer;
-    let target = st * maxS;
+    const BS = S.B || BIOMES.forest, real = this.real, gk = real ? 1 + ((CAR.grip || 1) - 1) * 0.5 : (CAR.grip || 1), zk = S.zoneAt ? S.zoneAt(this.prog) : null, wetK = (S.cfg && S.cfg.wet ? 0.8 : 1) * (zk ? zk.mu : 1);
+    const mu0 = (real ? lerp(realMu(BS, true), realMu(BS, false), this.offroad) : lerp(BS.grip, BS.off, this.offroad) * 1.12) * gk * wetK * (1 - this.dmg * 0.15), aMax = mu0 * 9.81 * 1.12;
+    // real: the lock still narrows with speed (as a driver would), but allows 1.6x what the tyres can hold, so you can over-drive it
+    const vv = Math.max(4, Math.abs(vF)), maxS = real ? clamp(Math.atan(2.51 * aMax * 1.6 / (vv * vv)) + 0.12, 0.2, 0.6) : clamp(Math.atan(2.51 * aMax * (CAR.steerK || 1) / (vv * vv)) + 0.09, 0.14, 0.62), st = inp.steer;
+    let target = st * maxS + (real ? this.dmg * 0.035 * this.pull : 0); // real: a bent car pulls to one side
     // countersteer help: the front wheels lean toward the direction of travel when the tail steps out
-    if (vF > 5 && Math.abs(beta) > 0.06) target = clamp(target + clamp(beta * 0.45, -0.22, 0.22) * sstep(5, 12, vF), -0.65, 0.65);
-    const rate = (Math.abs(target) < Math.abs(this.steer) ? 10 : 8) * (CAR.steerK || 1);
+    if (!real && vF > 5 && Math.abs(beta) > 0.06) target = clamp(target + clamp(beta * 0.45, -0.22, 0.22) * sstep(5, 12, vF), -0.65, 0.65);
+    const rate = (Math.abs(target) < Math.abs(this.steer) ? 10 : 8) * (real ? 0.6 : (CAR.steerK || 1));
     this.steer += clamp(target - this.steer, -rate * dt, rate * dt);
     // throttle / brake / reverse logic
     let thr = inp.thr, brk = inp.brk;
@@ -97,11 +105,11 @@ class Car {
     this.rpm += (rpm - this.rpm) * Math.min(1, dt * 20);
     if (this.shiftT > 0) this.shiftT -= dt;
     else if (this.gear > 0) {
-      if (this.rpm > CAR.red - 350 && this.gear < 6 && this.air <= 0.05) { this.gear++; this.shiftT = 0.13; this.events.push({ k: 'shift', up: 1 }); }
+      if (this.rpm > CAR.red - 350 && this.gear < 6 && this.air <= 0.05) { this.gear++; this.shiftT = real ? 0.22 : 0.13; this.events.push({ k: 'shift', up: 1 }); }
       else if (this.gear > 1) { const lower = tgtRpm * CAR.gears[this.gear - 2] / CAR.gears[this.gear - 1]; if (lower < CAR.red - 1500 && (tgtRpm < 3300 || (this.brk > 0.3 && lower < CAR.red - 1900))) { this.gear--; this.shiftT = 0.1; this.events.push({ k: 'shift', up: 0 }); } }
     }
     const limiter = this.rpm > CAR.red - 20 ? 0.15 : 1;
-    const engT = this.shiftT > 0 ? 0 : torqueAt(this.rpm) * (CAR.pow || 1) * this.thr * limiter, driveTotal = engT * Math.abs(ksh) * 0.9 / CAR.r; // N at the contact patches
+    const engT = this.shiftT > 0 ? 0 : torqueAt(this.rpm) * (CAR.pow || 1) * this.thr * limiter * (real ? 1 - this.dmg * 0.4 : 1), driveTotal = engT * Math.abs(ksh) * 0.9 / CAR.r; // N at the contact patches
     // ---- suspension + tyres ----
     let contacts = 0, slideSum = 0, offSum = 0;
     for (let i = 0; i < 4; i++) {
@@ -129,7 +137,7 @@ class Car {
       // surface from the road map
       const q = S.near(cp.x, cp.z, 12), onRoad = q && q.d < ROAD_HW + 0.3;
       w.surf = onRoad ? 0 : 1; offSum += w.surf;
-      const BB = S.B || BIOMES.forest, mu = (onRoad ? BB.grip : BB.off) * 1.12 * (CAR.grip || 1) * (1 - this.dmg * 0.15), Fz = Math.min(w.load, 9000), fmax = mu * Fz * (1 - 0.06 * Fz / 4000); // tyre load sensitivity
+      const BB = S.B || BIOMES.forest, mu = (real ? realMu(BB, onRoad) : (onRoad ? BB.grip : BB.off) * 1.12) * gk * (onRoad ? wetK : zk ? zk.mu : 1) * (1 - this.dmg * 0.15), Fz = Math.min(w.load, 9000), fmax = mu * Fz * (1 - 0.06 * Fz / 4000); // tyre load sensitivity
       // longitudinal
       let fx = 0, locked = false;
       const share = w.front ? (1 - CAR.split) / 2 : CAR.split / 2;
@@ -138,22 +146,30 @@ class Car {
       fx -= Math.sign(vx) * Math.min(bf, Math.abs(vx) * CAR.m * 2);
       if (hb && !w.front) { locked = true; fx = -Math.sign(vx) * Math.min(fmax * 0.85, Math.abs(vx) * CAR.m); }
       if (!onRoad) fx -= vx * BB.offDrag; // soft ground drag
+      if (zk && zk.drag) fx -= vx * zk.drag; // water: wading drag
       fx -= vx * 6;               // rolling resistance
       // lateral: slip angle curve, softer and wider on gravel
       const slipA = Math.atan2(vy, Math.max(Math.abs(vx), 3.5));
-      const Bc = onRoad ? 14 : 9, Cc = 1.1, curve = Math.sin(Cc * Math.atan(Bc * slipA));
+      // real: sharper peak and a real drop-off past it (sliding grip ~80% of peak), so a slide has to be caught
+      const Bc = real ? (onRoad ? 10 : 7) : onRoad ? 14 : 9, Cc = real ? 1.45 : 1.1, curve = Math.sin(Cc * Math.atan(Bc * slipA));
       let fy = -fmax * curve * (locked ? 0.45 : 1);
       // a little wheelspin: when the drive at this tyre nears its grip (low gears, snow, big power) it spins up,
       // pushes slightly less and gives up some side grip (a hint of power oversteer)
-      const drv0 = this.gear !== 0 ? Math.abs(driveTotal * share) : 0, spinR = locked || Math.abs(vx) > 30 ? 0 : clamp((drv0 / Math.max(1, fmax) - 0.45) / 0.5, 0, 1);
+      const drv0 = this.gear !== 0 ? Math.abs(driveTotal * share) : 0, spinR = real ? 0 : locked || Math.abs(vx) > 30 ? 0 : clamp((drv0 / Math.max(1, fmax) - 0.45) / 0.5, 0, 1);
       if (spinR > 0) { fx *= 1 - 0.07 * spinR; fy *= 1 - (w.front ? 0.04 : 0.09) * spinR * (1 - sstep(0.15, 0.4, Math.abs(slipA))); }
       if (Math.abs(vx) < 3) { const lowS = -vy * CAR.m * 0.25 * 8; fy = lerp(lowS, fy, Math.abs(vx) / 3); fy = clamp(fy, -fmax, fmax); }
       // friction circle (longitudinal first, then whatever grip is left for cornering)
-      const mag = Math.hypot(fx, fy * 0.85); if (mag > fmax) { const kk = fmax / mag; fx *= kk; fy *= Math.min(1, kk * 1.35); }
+      let realSpin = 0;
+      if (real) {
+        // no ABS, no traction control: asking for more than the tyre has locks it (brakes) or spins it up (throttle); either way side grip collapses
+        if (!locked && bf > fmax * 1.02 && Math.abs(vx) > 1) { locked = true; fx = -Math.sign(vx) * fmax * 0.8; fy *= 0.3; }
+        else if (drv0 > fmax * 1.02) { realSpin = clamp((drv0 - fmax) / fmax, 0, 1); fx = Math.sign(fx) * fmax * (0.9 - 0.1 * realSpin); fy *= 0.45 - 0.2 * realSpin; }
+        const mag = Math.hypot(fx, fy); if (mag > fmax) { const kk = fmax / mag; fx *= kk; fy *= kk; }
+      } else { const mag = Math.hypot(fx, fy * 0.85); if (mag > fmax) { const kk = fmax / mag; fx *= kk; fy *= Math.min(1, kk * 1.35); } }
       const tf = new THREE.Vector3().addScaledVector(wf, fx).addScaledVector(wl, fy);
-      F.add(tf); T.add(t.b.crossVectors(t.c.subVectors(cp, this.pos).addScaledVector(up, 0.32), tf)); // force applied a little above the patch: lower effective roll centre
+      F.add(tf); T.add(t.b.crossVectors(t.c.subVectors(cp, this.pos).addScaledVector(up, real ? 0.12 : 0.32), tf)); // force applied a little above the patch: lower effective roll centre
       // wheel spin (visual, sound, rpm): free-rolling plus wheelspin when drive exceeds grip
-      const roll = vx / CAR.r, drv = this.gear !== 0 ? driveTotal * share * Math.sign(ratio) : 0, excess = Math.max(Math.abs(drv) > fmax ? (Math.abs(drv) - fmax) / CAR.m * 0.9 : 0, spinR * 0.55);
+      const roll = vx / CAR.r, drv = this.gear !== 0 ? driveTotal * share * Math.sign(ratio) : 0, excess = Math.max(Math.abs(drv) > fmax ? (Math.abs(drv) - fmax) / CAR.m * 0.9 : 0, spinR * 0.55, realSpin * 2);
       const tgtSpin = locked ? 0 : roll + Math.sign(drv) * excess * 4 / CAR.r;
       w.spin += (tgtSpin - w.spin) * Math.min(1, dt * 25);
       w.slip = Math.min(1, Math.abs(slipA) * 2.2 + (locked ? Math.min(1, Math.abs(vx) / 6) : 0) + excess * 0.4);
@@ -161,7 +177,7 @@ class Car {
     }
     // anti-roll: transfer between left and right on each axle
     for (const [a, b] of [[0, 1], [2, 3]]) { const wa = this.wh[a], wb = this.wh[b]; if (!wa.contact && !wb.contact) continue; const d = (wa.comp - wb.comp) * CAR.arb, Pa = this.toWorld(wa.a, t.a).add(this.pos).clone(), Pb = this.toWorld(wb.a, t.a).add(this.pos).clone(); T.add(t.b.crossVectors(t.c.subVectors(Pa, this.pos), t.d.copy(up).multiplyScalar(d))); T.add(t.b.crossVectors(t.c.subVectors(Pb, this.pos), t.d.copy(up).multiplyScalar(-d))); }
-    if (contacts >= 3 && !hb) {
+    if (contacts >= 3 && !hb && !real) {
       // yaw assist toward the bicycle-model yaw rate, capped by what the surface can hold (plus a little arcade bonus)
       const lim = aMax * 1.08 * (CAR.steerK || 1) / Math.max(3, Math.abs(vF)), yaw = this.w.dot(up), want = clamp(vF * Math.tan(this.steer) / 2.51, -lim, lim), err = yaw - want;
       // on the throttle with the tail out the assist relaxes a bit so you can hold a drift
@@ -170,18 +186,18 @@ class Car {
       // bleed off sideways sliding so the car goes where it points (less of it on low-grip surfaces)
       const vLat = this.v.dot(left); F.addScaledVector(left, -vLat * CAR.m * 2.1 * clamp(mu0 / 1.68, 0.7, 1.1) * (1 - 0.3 * drift) * sstep(2, 6, Math.abs(vF)));
     }
-    if (contacts && this.air > 0.25) { // jump landing: kill the rebound and most of the pitch/roll bounce
-      if (this.v.y > 0) this.v.y *= 0.3;
-      const wl = this.w.clone().applyQuaternion(t.q.copy(this.q).invert()); wl.x *= 0.45; wl.z *= 0.45; this.w.copy(wl.applyQuaternion(this.q));
+    if (contacts && this.air > 0.25) { // jump landing: kill the rebound and most of the pitch/roll bounce (real: only the springs and dampers)
+      if (this.v.y > 0 && !real) this.v.y *= 0.3;
+      if (!real) { const wl = this.w.clone().applyQuaternion(t.q.copy(this.q).invert()); wl.x *= 0.45; wl.z *= 0.45; this.w.copy(wl.applyQuaternion(this.q)); }
       this.events.push({ k: 'land', v: Math.min(1, this.air) });
     }
     this.air = contacts === 0 ? this.air + dt : 0; this.slide = slideSum / 4; this.offroad = offSum / 4;
     // aero drag
-    F.addScaledVector(this.v, -0.62 * spd);
+    F.addScaledVector(this.v, -0.62 * spd * (1 - 0.45 * (this.draft || 0)));
     // integrate
     this.v.addScaledVector(F, dt / CAR.m); this.angAccel(T, dt);
-    this.w.multiplyScalar(1 - dt * (contacts ? 0.3 : 0.9));
-    if (contacts === 0) { // a touch of stability in the air so jumps are fun, not random
+    this.w.multiplyScalar(1 - dt * (real ? 0.08 : contacts ? 0.3 : 0.9));
+    if (contacts === 0 && !real) { // a touch of stability in the air so jumps are fun, not random
       const iq = t.q.copy(this.q).invert(), wl = this.w.clone().applyQuaternion(iq); wl.x *= 1 - dt * 1.4; wl.z *= 1 - dt * 1.8;
       // the nose slowly follows the flight path, so a car that leaves a kicker flat lands on its wheels
       const vl = this.v.clone().applyQuaternion(iq); if (spd > 8) wl.x -= clamp(Math.atan2(vl.y, Math.max(1, vl.z)), -0.6, 0.6) * 2.2 * dt;
@@ -225,10 +241,15 @@ class Car {
       const pen = r - d; this.pos.addScaledVector(n, pen);
       const P = new THREE.Vector3(px, 0.1, pz).applyQuaternion(this.q).add(this.pos), pv = this.pointVel(P, new THREE.Vector3()), vn = pv.dot(n);
       if (vn >= 0) return;
-      const j = -vn * (soft ? 1.0 : 1.2) / this.invMass(P, n); this.impulse(P, n.clone().multiplyScalar(j)); if (soft) { this.v.multiplyScalar(0.985); return; } // snowbank: you plough into it, no damage
-      const vt = pv.clone().addScaledVector(n, -vn); vt.y = 0; const vtl = vt.length(); if (vtl > 0.01) { const jt = Math.min(vtl / this.invMass(P, vt.clone().normalize()) * 0.5, j * 0.5); this.impulse(P, vt.multiplyScalar(-jt / vtl)); }
-      const sev = -vn; if (sev > 2) { this.dmg = Math.min(1, this.dmg + (sev - 2) * 0.012 / (CAR.tough || 1)); this.events.push({ k: 'crash', v: sev }); }
-      if (sev > 9 * (CAR.tough || 1) && !this.wrecked) { this.wrecked = true; this.events.push({ k: 'wreck', v: sev }); }
+      // how square the hit is: 1 = straight in, 0 = a scrape along it
+      const sev = -vn, head = clamp(sev / Math.max(0.1, pv.length()), 0, 1), scrape = head < 0.55;
+      const j = -vn * (soft ? 1.0 : scrape ? 1.04 : 1.15) / this.invMass(P, n); this.impulse(P, n.clone().multiplyScalar(j)); if (soft) { this.v.multiplyScalar(0.985); return; } // snowbank: you plough into it, no damage
+      // friction along the surface: a sideswipe slides you along the barrier instead of spinning you round
+      const vt = pv.clone().addScaledVector(n, -vn); vt.y = 0; const vtl = vt.length(); if (vtl > 0.01) { const jt = Math.min(vtl / this.invMass(P, vt.clone().normalize()) * 0.5, j * (scrape ? 0.1 : 0.4)); this.impulse(P, vt.multiplyScalar(-jt / vtl)); }
+      if (scrape) { const yaw = this.w.dot(this.tmp.up.set(0, 1, 0).applyQuaternion(this.q)); this.w.addScaledVector(this.tmp.up, -yaw * 0.25); } // a scrape doesn't flick the car round
+      if (sev > 3) { this.dmg = Math.min(1, this.dmg + (sev - 3) * 0.007 * (0.3 + 0.7 * head) / (CAR.tough || 1)); this.events.push({ k: 'crash', v: sev * (0.4 + 0.6 * head) }); }
+      // only a hard, square hit wrecks the car (about 55 km/h straight into a tree or wall)
+      if (sev > 15 * Math.sqrt(CAR.tough || 1) && head > 0.6 && !this.wrecked) { this.wrecked = true; this.events.push({ k: 'wreck', v: sev }); }
     };
     for (const tr of S.treesNear(this.pos.x, this.pos.z, this.near)) hit(tr.x, tr.z, tr.y + 0.6, tr.r, undefined, tr.soft);
     for (const l of S.logs) {
@@ -239,6 +260,8 @@ class Car {
   }
   // car-to-car contact against other crews' cars (their latest known pose): three circles along each body
   bump(others) {
+    // slipstream: tucked in 3-22 m behind a car doing over 36 km/h cuts your drag by up to 45%
+    { let dr = 0; const fw = this.tmp.f.set(0, 0, 1).applyQuaternion(this.q); for (const o of others) { const dx = o.pos.x - this.pos.x, dz = o.pos.z - this.pos.z, al = dx * fw.x + dz * fw.z, lat = Math.abs(dx * fw.z - dz * fw.x); if (al > 3 && al < 22 && lat < 1.9 && o.vel.lengthSq() > 100) dr = Math.max(dr, 1 - (al - 3) / 19); } this.draft = lerp(this.draft || 0, dr, 0.05); }
     const me = [-1.35, 0, 1.35].map(z => new THREE.Vector3(0, 0, z).applyQuaternion(this.q).add(this.pos));
     for (const o of others) {
       if (Math.abs(o.pos.y - this.pos.y) > 1.6 || o.pos.distanceToSquared(this.pos) > 36) continue;

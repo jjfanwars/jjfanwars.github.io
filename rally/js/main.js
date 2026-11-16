@@ -14,23 +14,25 @@ const medalOf = (i, t) => { for (let k = 0; k < 3; k++) if (t <= medalT(i, k)) r
 const medalDot = k => k < 0 ? '' : '<i class="md" style="--m:' + MEDALS[k][2] + '" title="' + MEDALS[k][0] + '"></i>';
 // ---------- menu ----------
 STAGES.forEach((s, i) => { const o = document.createElement('option'); o.value = i; o.textContent = BIOMES[s.biome].name + ' · ' + s.name + (s.berms ? ' · berms & jumps' : '') + '  (' + (s.len / 1000).toFixed(1) + ' km)'; $('sStage').appendChild(o); });
-try { $('nm').value = localStorage.getItem('pn-name') || ''; $('sGfx').value = localStorage.getItem('pn-gfx') || 'med'; for (const k of ['sStage', 'sFog', 'sRole', 'sBots']) { const v = localStorage.getItem('pn-' + k); if (v !== null && [...$(k).options].some(o => o.value === v)) $(k).value = v; } } catch (e) {}
+$('sStage').value = 15;
+try { $('nm').value = localStorage.getItem('pn-name') || ''; $('sGfx').value = localStorage.getItem('pn-gfx') || 'med'; for (const k of ['sStage', 'sFog', 'sRole', 'sBots', 'sPhys']) { const v = localStorage.getItem('pn-' + k); if (v !== null && [...$(k).options].some(o => o.value === v)) $(k).value = v; } } catch (e) {}
 const myName = () => { const n = ($('nm').value || '').replace(/[^A-Za-z0-9 ._-]/g, '').trim().slice(0, 14) || 'Player' + (1 + Math.random() * 99 | 0); try { localStorage.setItem('pn-name', n); localStorage.setItem('pn-gfx', $('sGfx').value); } catch (e) {} return n; };
 const show = id => { for (const s of ['menu', 'lobby', 'fin', 'pause', 'champ']) $(s).classList.toggle('hidden', s !== id); Garage3D.on = id === 'menu'; };
 // ---- stage cards (drive the hidden select) ----
 const BIO_COL = { forest: '#3f8a52', autumn: '#d0742a', snow: '#9cc8e4', desert: '#d8914c', park: '#74b85a', alpine: '#8f8a80', city: '#8a93a6' };
-const todName = t => /dusk|evening/i.test(t) ? 'Dusk' : /noon/i.test(t) ? 'Midday' : /morning/i.test(t) ? 'Morning' : /overcast/i.test(t) ? 'Overcast' : 'Day';
+const todName = t => t === 'night' ? 'Night' : t === 'storm' ? 'Rain' : /dusk|evening/i.test(t) ? 'Dusk' : /noon/i.test(t) ? 'Midday' : /morning/i.test(t) ? 'Morning' : /overcast/i.test(t) ? 'Overcast' : 'Day';
 function renderStages() {
   const box = $('stages'), cur = +$('sStage').value, fog = +$('sFog').value; box.innerHTML = '';
-  STAGES.forEach((s, i) => {
+  const ORDER = STAGES.map((s, i) => i).sort((a, b) => (a < 15) - (b < 15) || a - b); // newer stages (15+) first
+  ORDER.forEach(i => { const s = STAGES[i];
     let best = null; try { best = JSON.parse(localStorage.getItem('pn-best-' + i + '-' + fog) || 'null'); } catch (e) {}
     const b = document.createElement('button'); b.className = 'stc' + (i === cur ? ' sel' : ''); b.setAttribute('role', 'option'); b.setAttribute('aria-selected', i === cur);
     b.style.setProperty('--b', BIO_COL[s.biome] || '#777');
-    const B0 = BIOMES[s.biome], tag = (s.tunnels || B0.tunnels) ? ' · tunnels' : (s.cliffs || B0.cliffs) ? ' · cliffs' : ''; b.innerHTML = (s.berms ? '<em>JUMPS</em>' : '') + '<b>' + s.name + '</b><small>' + BIOMES[s.biome].name + ' · ' + todName(s.tod) + ' · ' + (s.len / 1000).toFixed(1) + ' km' + tag + '</small>' + '<small class="bt">' + (best ? medalDot(medalOf(i, best.t)) + 'Best ' + fmtT2(best.t) : 'Gold ' + fmtT(medalT(i, 0))) + '</small>';
+    const B0 = BIOMES[s.biome], tag = s.race ? ' · race' : s.ice ? ' · ice' : s.fords ? ' · fords' : s.ridges ? ' · ridge' : (s.tunnels || B0.tunnels) ? ' · tunnels' : (s.cliffs || B0.cliffs) ? ' · cliffs' : ''; b.innerHTML = (s.berms && !s.race ? '<em>JUMPS</em>' : '') + '<b>' + s.name + '</b><small>' + BIOMES[s.biome].name + ' · ' + todName(s.tod) + ' · ' + (s.len / 1000).toFixed(1) + ' km' + tag + '</small>' + '<small class="bt">' + (best ? medalDot(medalOf(i, best.t)) + 'Best ' + fmtT2(best.t) : 'Gold ' + fmtT(medalT(i, 0))) + '</small>';
     b.onclick = () => { $('sStage').value = i; $('sStage').onchange(); renderStages(); };
     box.appendChild(b);
   });
-  const st = STAGES[cur]; $('stInfo').textContent = BIOMES[st.biome].name + ' · ' + st.name;
+  const st = STAGES[cur]; $('stInfo').textContent = BIOMES[st.biome].name + ' · ' + st.name + (st.gim ? ' · ' + st.gim : '');
 }
 // ---- segmented controls (drive the hidden selects) ----
 function renderSegs() {
@@ -40,6 +42,8 @@ function renderSegs() {
   }
 }
 const msg = (id, t) => { $(id).textContent = t || ''; };
+$('sPhys').onchange = () => { PHYS.real = $('sPhys').value === 'real'; };
+PHYS.real = $('sPhys').value === 'real';
 const readCfg = () => ({ stage: +$('sStage').value, fog: +$('sFog').value, hostRole: $('sRole').value });
 
 const CAR_COL = [0x1d4fbf, 0xc62828, 0x2e7d32, 0xf2b632], CAR_NAME = ['Blue', 'Red', 'Green', 'Yellow'], hex = c => '#' + c.toString(16).padStart(6, '0');
@@ -168,7 +172,7 @@ function startStage(cfg, role, solo, myCar, seats) {
       if (names.length) { G.bots = Bots.spawn(S, names, World.startS, names.length); const k2 = names.length; G.grid = { s: World.startS - 3 - Math.floor(k2 / 2) * 9, lat: k2 % 2 ? 1.9 : -1.9 }; G.rivals = G.bots.map(b => b.adapt); }
     }
     if (role === 'drv') { G.car = new Car(S); G.car.place(G.grid.s, G.grid.lat); G.meAdapt = { pos: G.car.pos, q: G.car.q, vel: G.car.v }; }
-    look.yaw = 0; look.pitch = role === 'nav' ? -0.14 : -0.1; look.map = false; G.sw = [1, 1, 0, 0, /dusk|evening/i.test(STAGES[cfg.stage].tod) ? 1 : 0, 0];
+    look.yaw = 0; look.pitch = role === 'nav' ? -0.14 : -0.1; look.map = false; G.sw = [1, 1, 0, 0, /dusk|evening|night|storm/i.test(STAGES[cfg.stage].tod) ? 1 : 0, STAGES[cfg.stage].tod === 'night' ? 1 : 0];
     $('role').textContent = CARS[mdl(myCar)].name.toUpperCase() + ' · ' + (solo ? 'SOLO PRACTICE · AUTO CO-DRIVER' : (role === 'drv' ? 'DRIVER' : 'NAVIGATOR') + ' · ' + CAR_NAME[myCar].toUpperCase() + ' CAR' + (G.autoNav ? ' · AUTO CO-DRIVER' : '')) + ' · ' + STAGES[cfg.stage].name.toUpperCase(); msg('pos', '');
     if (Champ.run) $('role').textContent = Champ.run.c.name.toUpperCase() + ' · STAGE ' + (Champ.run.i + 1) + ' / ' + Champ.run.c.st.length + ' · ' + STAGES[cfg.stage].name.toUpperCase();
     $('tip').innerHTML = role === 'drv' ? 'W/S throttle · brake, A/D steer, Space handbrake, R recover (+5 s), V chase cam, G ghost, Esc pause · 1-6 or click dash switches · mouse looks' : 'Hold <b>right mouse</b> or <b>Tab</b> for the map · callouts: A/D + 1-6, J jump, C crest, L log, K keep middle, F flat, B brake';
@@ -256,7 +260,7 @@ function readInput(dt) {
   // keyboard steering ramps in (faster when reversing direction)
   // a quick tap only nudges the wheel; holding builds to full lock in about 0.4 s
   inp.held = target && target === inp.dir ? (inp.held || 0) + dt : 0; inp.dir = target;
-  inp.raw = inp.raw || 0; const rate = target === 0 ? 9 : Math.sign(target) !== Math.sign(inp.raw) && Math.abs(inp.raw) > 0.05 ? 12 : Math.min(7, 2 + inp.held * 14);
+  inp.raw = inp.raw || 0; const rate = target === 0 ? 9 : Math.sign(target) !== Math.sign(inp.raw) && Math.abs(inp.raw) > 0.05 ? 12 : (PHYS.real ? Math.min(4.5, 1.5 + inp.held * 8) : Math.min(7, 2 + inp.held * 14));
   inp.raw += clamp(target - inp.raw, -rate * dt, rate * dt);
   inp.steer = Math.sign(inp.raw) * Math.abs(inp.raw) ** 1.5;
   inp.thr = KEYS.has('KeyW') || KEYS.has('ArrowUp') ? 1 : 0; inp.brk = KEYS.has('KeyS') || KEYS.has('ArrowDown') ? 1 : 0; inp.hb = KEYS.has('Space') ? 1 : 0;
@@ -416,7 +420,11 @@ function frame(now) {
     }
   }
   if (G.role === 'drv' && G.car) skids(G.car);
-  World.stepDust(dt);
+  // river fords: a wall of spray from anything crossing at speed
+  if (G.S.zones && G.S.zones.length) { const cars = [{ prog: st.prog, pos: st.pos, v: st.vel, sp: st.speed, me: 1 }].concat((G.bots || []).map(b => ({ prog: b.car.prog, pos: b.car.pos, v: b.car.v, sp: b.car.speed })));
+    for (const c of cars) { const z = G.S.zones.find(z => z.k === 'ford' && Math.abs(c.prog - z.c) < 9); if (!z || c.sp < 3) continue; const n = Math.min(14, c.sp * dt * 12); for (let k = 0; k < n; k++) World.puff(c.pos.x + (Math.random() - 0.5) * 2, z.y + 0.3, c.pos.z + (Math.random() - 0.5) * 2, c.v.x * 0.3 + (Math.random() - 0.5) * 4, 2 + Math.random() * c.sp * 0.25, c.v.z * 0.3 + (Math.random() - 0.5) * 4, 1 + Math.random(), 0.9 + Math.random() * 0.6, 0.86, 0.9, 0.95); if (c.me) G.view.wet = Math.min(1, (G.view.wet || 0) + dt * 2.5); } }
+  World.stepDust(dt); World.stepRain(dt, World.cam.position);
+  { const d = G.role === 'drv' && G.car && (G.car.draft || 0) > 0.25; if (d !== G.draftOn) { G.draftOn = d; $('draft').classList.toggle('on', d); } }
   World.update(World.cam.position, st.pos);
   if (World.gfx !== 'low' && (G.mirT = (G.mirT || 0) + 1) % 2 === 0) G.view.renderMirror(World.R, World.scene, st);
   Sfx.update({ rpm: st.rpm, thr: st.thr, speed: st.speed, slide: st.slide, offroad: st.offroad, air: st.air, inside: 1 }, dt);
@@ -484,6 +492,8 @@ function drawRev(rpm) {
 }
 // ---------- championships: a run of stages against AI rivals, total time decides ----------
 const CHAMPS = [
+  { id: 'race', name: 'Race Series', d: 'Wide-road wheel-to-wheel racing, slipstream the leaders', st: [25, 27, 26] },
+  { id: 'endure', name: 'Endurance', d: 'Five long stages: night, rain, ice, rivers and a ridge', st: [20, 23, 22, 21, 24] },
   { id: 'forest', name: 'Forest Cup', d: 'Three gravel sprints under the pines', st: [11, 0, 1] },
   { id: 'jumps', name: 'Jump Masters', d: 'Berms, kickers and big air', st: [12, 14, 13] },
   { id: 'seasons', name: 'Four Seasons', d: 'Autumn, snow, desert and city', st: [3, 5, 7, 9] },
@@ -550,7 +560,7 @@ function chaseCam(cam, st, dt) {
   const a = look.yaw, cs = Math.cos(a), sn = Math.sin(a), bx = f.x * cs + f.z * sn, bz = -f.x * sn + f.z * cs;
   const want = CH.want.set(st.pos.x - bx * 6.4, st.pos.y + 2.3 - look.pitch * 3, st.pos.z - bz * 6.4);
   // keep the camera out of buildings and tunnel walls: slide it toward the car until it is over the street
-  { const S = G.S, q0 = S.near(st.pos.x, st.pos.z, 30), tun = q0 && S.inTun && S.inTun(q0.s, 3), lim = tun ? ROAD_HW + 0.4 : S.B && S.B.city ? ROAD_HW + 2.6 : 0;
+  { const S = G.S, q0 = S.near(st.pos.x, st.pos.z, 30), tun = q0 && S.inTube && S.inTube(q0.s, 3), lim = tun ? ROAD_HW + 0.4 : S.B && S.B.city ? ROAD_HW + 2.6 : 0;
     if (lim) for (let k = 0; k < 6; k++) { const q = S.near(want.x, want.z, 20); if (q && q.d < lim) break; want.x = lerp(want.x, st.pos.x, 0.3); want.z = lerp(want.z, st.pos.z, 0.3); } }
   const gy = G.S.heightAt(want.x, want.z) + 0.8; if (want.y < gy) want.y = gy;
   if (!CH.init) { CH.pos.copy(want); CH.init = true; } CH.pos.lerp(want, 1 - Math.exp(-dt * 7));
