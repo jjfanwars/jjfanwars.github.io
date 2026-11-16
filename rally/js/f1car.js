@@ -2,7 +2,7 @@
 // James Racing: F1 car physics (planar two-axle model with Pacejka-style tyres, load transfer, downforce, drag, DRS, ERS,
 // 8-speed gearbox, brake lock-up, wheelspin, tyre temperature and wear, barrier impacts) and the AI driver.
 const F1 = (() => {
-  const A = F1T.AERO, M = A.mass, G = A.g, L = 3.6, CA = 1.98, CB = 1.62, HCG = 0.26, IZ = 1150, RW = 0.36;
+  const A = F1T.AERO, M = A.mass, G = A.g, L = 3.6, CA = 1.98, CB = 1.62, HCG = 0.26, IZ = 1150, RW = 0.36, LOCK = 0.38, TF = 1.6, TR = 1.55, RSF = 0.56, LSD = 0.55;
   const GEARS = [16.3, 13.66, 11.45, 9.6, 8.04, 6.74, 5.65, 4.73], REV = 12500, IDLE = 4000;
   const COMP = { S: { mu: 1.035, wear: 1.7, col: '#e8312b', name: 'Soft' }, M: { mu: 1, wear: 1, col: '#f5d000', name: 'Medium' }, H: { mu: 0.97, wear: 0.55, col: '#eeeeee', name: 'Hard' } };
   const SURF = [{ mu: 1, drag: 0 }, { mu: 0.93, drag: 0 }, { mu: 0.5, drag: 700 }, { mu: 0.4, drag: 2600 }, { mu: 0.96, drag: 0 }];
@@ -25,14 +25,14 @@ const F1 = (() => {
     gearUp() { if (this.gear < 8 && this.shiftT <= 0) { this.gear = this.gear < 1 ? 1 : this.gear + 1; this.shiftT = 0.12; this.ev.push('up'); } }
     gearDown() { if (this.gear > 1 && this.shiftT <= 0) { const nr = this.wheelRpm(this.gear - 1); if (nr < REV + 300) { this.gear--; this.shiftT = 0.12; this.ev.push('down'); } else this.ev.push('deny'); } }
     wheelRpm(g) { return Math.abs(this.vx) / RW * (g < 1 ? 15 : GEARS[g - 1]) * 60 / (2 * Math.PI); }
-    // inp: thr, brk 0..1, steer -1..1 (wheel angle = steer * 0.34 rad), drs bool, rev bool (S held at a stop)
+    // inp: thr, brk 0..1, steer -1..1 (wheel angle = steer * LOCK), drs bool, rev bool (S held at a stop)
     step(dt, inp) {
       const T = this.T, q = this.q, n = Math.max(1, Math.round(dt * 240)), h = dt / n;
       this.thr = inp.thr; this.brk = inp.brk;
       // reverse: hold the brake at a standstill
       if (this.gear >= 1 && this.v < 0.6 && inp.brk > 0.5 && inp.thr < 0.1) { this.revT += dt; if (this.revT > 0.6) { this.gear = -1; this.ev.push('down'); } } else this.revT = 0;
       if (this.gear === -1 && inp.thr > 0.1 && this.vx > -0.5) this.gear = 1;
-      const wantD = clamp(inp.steer, -1, 1) * 0.34; this.delta += clamp(wantD - this.delta, -3.2 * dt, 3.2 * dt);
+      const wantD = clamp(inp.steer, -1, 1) * LOCK; this.delta += clamp(wantD - this.delta, -3.6 * dt, 3.6 * dt);
       // auto gearbox
       if (this.shiftT > 0) this.shiftT -= dt;
       if (this.auto && this.gear >= 1 && this.shiftT <= 0) {
@@ -47,7 +47,7 @@ const F1 = (() => {
       // tyres: heat from sliding work, cooled by airflow
       const C = COMP[this.comp];
       for (const ax of ['tf', 'tr']) { const P = ax === 'tf' ? this.slipPF : this.slipPR; this[ax] += (P * 1e-5 + this.v * 0.02 - (this[ax] - 30) * (0.004 + this.v * 0.00025)) * dt * 1.5; this[ax] = clamp(this[ax], 30, 160); }
-      this.wear = Math.min(1, this.wear + (this.slipPF + this.slipPR) * 1.6e-10 * C.wear * dt * 60);
+      this.wear = Math.min(1, this.wear + ((this.slipPF + this.slipPR) * 8.8e-10 + this.v * 5e-8) * C.wear * dt * 60 * (this.wearK || 1));
       // track position and progress
       const prevS = q.s; T.query(this.x, this.z, this.idx, q); this.idx = q.i;
       let dS = q.s - prevS; if (dS > T.len / 2) dS -= T.len; if (dS < -T.len / 2) dS += T.len; this.dist += dS;
@@ -72,8 +72,16 @@ const F1 = (() => {
       Fzf = Math.max(Fzf, 300); Fzr = Math.max(Fzr, 300);
       const tg = t => clamp(1 - ((t - 100) / 75) ** 2 * 0.55, 0.7, 1);
       const ls = (fz, st) => clamp(1 - 0.06 * (fz / st - 1), 0.82, 1.05);
-      const mf = A.mu * C.mu * tg(this.tf) * (1 - 0.22 * this.wear) * muF * ls(Fzf, M * G * CB / L), mr = A.mu * C.mu * tg(this.tr) * (1 - 0.22 * this.wear) * muR * ls(Fzr, M * G * CA / L);
-      const capF = mf * Fzf, capR = mr * Fzr * 1.1; // wider rears: stable at the limit
+            // worn tyres lose a little grip, then fall off a cliff past ~70%
+      const wr = this.wear, wk = 1 - 0.08 * wr - 0.3 * Math.pow(Math.max(0, wr - 0.7) / 0.3, 2);
+      const base = A.mu * C.mu * wk, sMu = s => SURF[s].mu;
+      // four contact patches: longitudinal and lateral load transfer (front roll stiffness share RSF), per-wheel load sensitivity
+      const dLat = M * this.ay * HCG, dFf = dLat * RSF / TF, dFr = dLat * (1 - RSF) / TR;
+      const Z = [Math.max(60, Fzf / 2 + dFf), Math.max(60, Fzf / 2 - dFf), Math.max(60, Fzr / 2 + dFr), Math.max(60, Fzr / 2 - dFr)]; // FL FR RL RR (ay>0: load moves left)
+      const lsw = (fz, ref) => clamp(1 - 0.12 * (fz / ref - 1), 0.7, 1.15);
+      const cap = [base * tg(this.tf) * sMu(f1) * ls(Fzf, M * G * CB / L) * lsw(Z[0], Fzf / 2) * Z[0], base * tg(this.tf) * sMu(f2) * ls(Fzf, M * G * CB / L) * lsw(Z[1], Fzf / 2) * Z[1],
+        base * tg(this.tr) * sMu(r1) * ls(Fzr, M * G * CA / L) * lsw(Z[2], Fzr / 2) * Z[2] * 1.1, base * tg(this.tr) * sMu(r2) * ls(Fzr, M * G * CA / L) * lsw(Z[3], Fzr / 2) * Z[3] * 1.1]; // wider rears
+      const capF = cap[0] + cap[1], capR = cap[2] + cap[3]; this.Z = Z;
       // powertrain
       let drive = 0, eb = 0;
       if (this.gear === -1) { this.rpm = Math.max(IDLE, this.wheelRpm(-1)); drive = -inp.thr * 3500 * (this.vx > -6 ? 1 : 0); }
@@ -107,24 +115,31 @@ const F1 = (() => {
       FxF = lerp(FxF, -vsgn * capF * 0.82, this.lockF);
       if (this.lockR > 0.01) FxR = lerp(FxR, -vsgn * capR * 0.82, this.lockR); else FxR = lerp(FxR, Math.sign(demR) * capR * 0.85, this.spinR);
       if (Math.abs(this.vx) < 0.4 && inp.brk > 0.05 && Math.abs(demR) < bR + 50) { FxF = 0; FxR = -this.vx * M / dt * 0.5; }
-      // lateral
-      const vxe = Math.max(Math.abs(this.vx), 5) * (this.vx < -0.5 ? -1 : 1), d = this.delta;
-      const aF = Math.atan2(this.vy + CA * this.r, Math.abs(vxe)) - d * Math.sign(vxe), aR = Math.atan2(this.vy - CB * this.r, Math.abs(vxe));
-      const latF = Math.sqrt(Math.max(0.02, 1 - (FxF / capF) ** 2)) * lerp(1, 0.3, this.lockF), latR = Math.sqrt(Math.max(0.02, 1 - (FxR / capR) ** 2)) * lerp(1, 0.35, Math.max(this.lockR, this.spinR));
-      const FyF = -capF * latF * pac(aF), FyR = -capR * latR * pac(aR);
-      this.slipPF = Math.abs(FyF * Math.sin(aF) * v) + (this.lockF * capF + 0) * Math.abs(this.vx) * 0.5;
-      this.slipPR = Math.abs(FyR * Math.sin(aR) * v) + (this.spinR + this.lockR) * capR * 2;
-      const cd = Math.cos(d), sd = Math.sin(d);
-      const Fx = FxR + FxF * cd - FyF * sd - drag * (this.vx >= 0 ? 1 : -1) * Math.abs(this.vx) / Math.max(v, 0.01);
-      const Fy = FyR + FxF * sd + FyF * cd - drag * this.vy / Math.max(v, 0.01) * 0;
-      const Mz = CA * (FyF * cd + FxF * sd) - CB * FyR - this.r * v * 90; // floor/diffuser yaw damping
+      // lateral: four wheels with their own slip angles (Ackermann on the fronts), friction circle per wheel, LSD torque bias on the rear
+      const d = this.delta, ack = 0.1 * Math.sign(d), dl = [d * (1 - ack), d * (1 + ack), 0, 0];
+      const WX = [CA, CA, -CB, -CB], WZ = [-TF / 2, TF / 2, -TR / 2, TR / 2];
+      const rb = clamp((Z[2] - Z[3]) / (Z[2] + Z[3]), -1, 1) * LSD;
+      const pf = cap[0] / Math.max(capF, 1), pr = clamp(cap[2] / Math.max(capR, 1) + rb * 0.15, 0, 1);
+      const FX = [FxF * pf, FxF * (1 - pf), FxR * pr, FxR * (1 - pr)];
+      let Fx = 0, Fy = 0, Mz = 0, sF = 0, sR = 0, FyF = 0, FyR = 0, aF = 0, aR = 0;
+      for (let k = 0; k < 4; k++) {
+        const vxp = this.vx - this.r * WZ[k], vyp = this.vy + this.r * WX[k], vxe = Math.max(Math.abs(vxp), 5);
+        const al = Math.atan2(vyp, vxe) - dl[k] * (vxp < -0.5 ? -1 : 1), front = k < 2, c = Math.max(cap[k], 1);
+        const lk = front ? lerp(1, 0.3, this.lockF) : lerp(1, 0.35, Math.max(this.lockR, this.spinR));
+        const fy = -c * Math.sqrt(Math.max(0.02, 1 - (FX[k] / c) ** 2)) * lk * pac(al), cd = Math.cos(dl[k]), sd = Math.sin(dl[k]);
+        const bx = FX[k] * cd - fy * sd, by = FX[k] * sd + fy * cd;
+        Fx += bx; Fy += by; Mz += WX[k] * by - WZ[k] * bx;
+        if (front) { FyF += fy; aF += al / 2; sF += Math.abs(fy * Math.sin(al) * v); } else { FyR += fy; aR += al / 2; sR += Math.abs(fy * Math.sin(al) * v); }
+      }
+      this.slipPF = sF + this.lockF * capF * Math.abs(this.vx) * 0.5; this.slipPR = sR + (this.spinR + this.lockR) * capR * 2;
+      const sgv = Math.max(v, 0.01); Fx -= drag * this.vx / sgv; Fy -= drag * this.vy / sgv * 0.3; Mz -= this.r * v * 90; // floor/diffuser yaw damping
       const axl = Fx / M, ayl = Fy / M;
       this.vx += (axl + this.r * this.vy) * dt; this.vy += (ayl - this.r * this.vx) * dt; this.r += Mz / IZ * dt;
       if (v < 5) { const k = 1 - v / 5; this.vy *= 1 - k * dt * 8; this.r = lerp(this.r, this.vx * Math.tan(d) / L, k * Math.min(1, dt * 10)); }
       this.ax += (axl - this.ax) * Math.min(1, dt * 12); this.ay += (ayl - this.ay) * Math.min(1, dt * 12);
       this.h += this.r * dt;
       this.x += (this.vx * ch - this.vy * sh) * dt; this.z += (this.vx * sh + this.vy * ch) * dt;
-      this.FyF = FyF; this.FyR = FyR; this.capF = capF; this.capR = capR; this.aF = aF; this.aR = aR;
+      this.FyF = FyF; this.FyR = FyR; this.capF = capF; this.FX = FX; this.capR = capR; this.aF = aF; this.aR = aR;
     }
     // walls: push back, bounce the normal part, scrub some speed, damage on square hits
     barrier(dt) {
@@ -154,7 +169,7 @@ const F1 = (() => {
     // avoid cars ahead: pick a side, or follow
     let cap = 99, want = null; const myD = c.q.d, lim = T.hw - 1.3;
     for (const o of cars) {
-      if (o === c) continue; const gap = o.dist - c.dist; if (gap < -6 || gap > 30) continue;
+      if (o === c || o.pit) continue; const gap = o.dist - c.dist; if (gap < -6 || gap > 30) continue;
       const dl = o.q.d - myD;
       if (gap > 5 && Math.abs(dl) < 2.6 && v > o.v - 1) { // catching a car: go round it if there is room, else follow
         const left = o.q.d - 3, right = o.q.d + 3, canL = left > -lim, canR = right < lim;
@@ -171,7 +186,7 @@ const F1 = (() => {
     const offK = 1 - Math.min(0.25, Math.abs(c.ofs) * 0.035 * (T.KS[i] * 300));
     const tx = T.X[j] + T.nx[j] * tl, tz = T.Z[j] + T.nz[j] * tl, dx = tx - c.x, dz = tz - c.z, ch = Math.cos(c.h), sh = Math.sin(c.h);
     const lx = dx * ch + dz * sh, ly = -dx * sh + dz * ch, kap = 2 * ly / (lx * lx + ly * ly);
-    let st = Math.atan(kap * L) / 0.34 + (kap * v - c.r) * 0.35 - c.vy * 0.01;
+    let st = Math.atan(kap * L) / LOCK + (kap * v - c.r) * 0.35 - c.vy * 0.01;
     // speed target a little ahead, with braking room
     const la = T.wi(i + Math.round((4 + v * 0.18) / T.ds)); let vt = Math.min(c.V[la] * offK * (1 - 0.07 * (c.tow || 0) * Math.min(1, T.KS[la] * 400)), c.V[i] + 4, cap);
     if (c.off) vt = Math.min(vt, 40);
@@ -191,7 +206,7 @@ const F1 = (() => {
   // car to car: three discs along each car, impulse along the contact normal
   function collide(cars) {
     for (let a = 0; a < cars.length; a++) for (let b = a + 1; b < cars.length; b++) {
-      const A1 = cars[a], B1 = cars[b]; if ((A1.x - B1.x) ** 2 + (A1.z - B1.z) ** 2 > 49) continue;
+      const A1 = cars[a], B1 = cars[b]; if (A1.pit || B1.pit) continue; if ((A1.x - B1.x) ** 2 + (A1.z - B1.z) ** 2 > 49) continue;
       for (const oa of [-1.8, 0, 1.8]) for (const ob of [-1.8, 0, 1.8]) {
         const ax = A1.x + Math.cos(A1.h) * oa, az = A1.z + Math.sin(A1.h) * oa, bx = B1.x + Math.cos(B1.h) * ob, bz = B1.z + Math.sin(B1.h) * ob;
         const dx = bx - ax, dz = bz - az, d2 = dx * dx + dz * dz; if (d2 > 1.9 * 1.9 || d2 < 1e-6) continue;
@@ -211,12 +226,12 @@ const F1 = (() => {
   }
   // slipstream / dirty air: how much each car is in the wake of another
   function wakes(cars) {
-    for (const c of cars) { let w = 0; for (const o of cars) { if (o === c) continue; const gap = o.dist - c.dist; if (gap > 1 && gap < 40 && Math.abs(o.q.d - c.q.d) < 2.2) w = Math.max(w, 1 - gap / 40); } c.tow = w; }
+    for (const c of cars) { let w = 0; for (const o of cars) { if (o === c || o.pit) continue; const gap = o.dist - c.dist; if (gap > 1 && gap < 40 && Math.abs(o.q.d - c.q.d) < 2.2) w = Math.max(w, 1 - gap / 40); } c.tow = w; }
   }
   // put a car back on the track, stopped, at its progress point
   function reset(c) {
     const T = c.T, s = c.q.s, p = T.at(s), l = clamp(c.q.d, -T.hw + 1.5, T.hw - 1.5) * 0.5 + T.L[p.i] * 0.5;
     c.x = p.x - Math.sin(p.h) * l; c.z = p.z + Math.cos(p.h) * l; c.h = p.h; c.vx = c.vy = c.r = 0; c.gear = 1; c.lockF = c.lockR = c.spinR = 0; T.query(c.x, c.z, c.idx, c.q);
   }
-  return { Car, aiDrive, collide, reset, wakes, GEARS, COMP, REV, RW, L, CA, CB };
+  return { Car, aiDrive, collide, reset, wakes, LOCK, TF, TR, M, GEARS, COMP, REV, RW, L, CA, CB };
 })();

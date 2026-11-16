@@ -75,9 +75,11 @@ const F1T = (() => {
     }
     // pit wall on the left of the main straight (index 0 is the start line)
     const pitA = wi(-Math.round(220 / ds)), pitB = Math.round(260 / ds);
-    const pit = new Uint8Array(N); for (let i = pitA; i !== pitB; i = wi(i + 1)) { barL[i] = hw + 4; gravel[i] = 0; pit[i] = 1; }
+    // pit lane on the left from pitA to pitB; the pit wall stands between the entry and exit gaps (60 m each)
+    const pit = new Uint8Array(N), lane = new Uint8Array(N), gap = Math.round(60 / ds);
+    for (let i = pitA, k = 0; i !== pitB; i = wi(i + 1), k++) { lane[i] = 1; gravel[i] = 0; const inWall = k >= gap && wi(pitB - i) > gap; if (inWall) { barL[i] = hw + 4; pit[i] = 1; } else barL[i] = Math.max(barL[i], hw + 19); }
 
-    const T = { C, name: C.name, hw, N, len, ds, X, Z, H, K, KS, kerb, gravel, barL, barR, wi, pit, pitA, pitB };
+    const T = { C, name: C.name, hw, N, len, ds, X, Z, H, K, KS, kerb, gravel, barL, barR, wi, pit, lane, pitA, pitB, pitS0: -((N - pitA) % N) * ds, pitS1: pitB * ds };
     T.at = s => { const f = ((s / ds) % N + N) % N, i = Math.floor(f), t = f - i, j = wi(i + 1); return { x: X[i] + (X[j] - X[i]) * t, z: Z[i] + (Z[j] - Z[i]) * t, h: H[i] + wrapA(H[j] - H[i]) * t, i }; };
     // nearest sample around a hint (hint < 0: full search)
     T.query = (x, z, hint, out) => {
@@ -115,7 +117,7 @@ const F1T = (() => {
     Object.assign(T, { L, LX, LZ, LS, LK, nx, nz });
     // speed profile for a grip factor (AI skill scales it)
     T.profile = (gripK, pw) => {
-      const { rho, ClA, CdA, mass, g, mu } = AERO, m = mu * gripK, k = 0.5 * rho * ClA / mass, kd = 0.5 * rho * CdA / mass, V = new Float32Array(N);
+      const { rho, ClA, CdA, mass, g, mu } = AERO, m = mu * gripK * 0.95, k = 0.5 * rho * ClA / mass, kd = 0.5 * rho * CdA / mass, V = new Float32Array(N);
       for (let i = 0; i < N; i++) { let c = 0; for (let j = -6; j <= 6; j++) c = Math.max(c, Math.abs(LK[wi(i + j)]) * (1 - Math.abs(j) * 0.03)); V[i] = c > m * k + 1e-5 ? Math.min(96, Math.sqrt(m * g / (c - m * k))) : 96; }
       for (let pass = 0; pass < 2; pass++) {
         for (let i = 0; i < N; i++) { const j = wi(i + 1), v = Math.max(V[i], 5), acc = Math.min((pw || 640000) / (mass * v), m * (g + k * v * v) * 0.55) - kd * v * v; V[j] = Math.min(V[j], Math.sqrt(v * v + 2 * Math.max(acc, 0) * LS[i])); }

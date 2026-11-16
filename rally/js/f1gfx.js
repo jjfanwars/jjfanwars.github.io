@@ -248,11 +248,11 @@ const JRG = (() => {
     const wheels = [];
     for (const [x, z, w, fr] of [[F.CA, -0.8, 0.3, 1], [F.CA, 0.8, 0.3, 1], [-F.CB, -0.78, 0.4, 0], [-F.CB, 0.78, 0.4, 0]]) {
       const piv = new THREE.Group(); piv.position.set(x, 0.362, z); g.add(piv); const spin = new THREE.Group(); piv.add(spin);
-      add(tyreGeo(w), Mt.tyre, spin); const barrel = add(new THREE.CylinderGeometry(0.232, 0.232, w * 0.86, 24, 1, true).rotateX(Math.PI / 2), Mt.rim, spin);
+      const tyre = add(tyreGeo(w), Mt.tyre, spin); const barrel = add(new THREE.CylinderGeometry(0.232, 0.232, w * 0.86, 24, 1, true).rotateX(Math.PI / 2), Mt.rim, spin);
       const covers = [];
       for (const sd of [-1, 1]) { const c = new THREE.Mesh(new THREE.CircleGeometry(0.232, 32), Mt.coverS); c.position.z = sd * w * 0.43; if (sd < 0) c.rotation.y = Math.PI; spin.add(c); covers.push(c); }
       if (fr) { const wl = add(new THREE.TorusGeometry(0.39, 0.012, 4, 16, 1.4).rotateZ(0.85), Mt.carbon, piv); wl.scale.set(1, 1, 4); }
-      wheels.push({ piv, spin, fr, covers });
+      wheels.push({ piv, spin, fr, covers, tyre });
     }
     // soft contact shadow
     const ao = new THREE.Mesh(new THREE.PlaneGeometry(2.3, 5.9).rotateX(-Math.PI / 2).rotateY(Math.PI / 2), new THREE.MeshBasicMaterial({ map: TX.ao, color: 0x000000, transparent: true, opacity: 0.75, depthWrite: false }));
@@ -277,12 +277,18 @@ const JRG = (() => {
     for (const s of [-1, 1]) {
       const grip = new THREE.Mesh(new THREE.CapsuleGeometry(0.024, 0.1, 6, 12), rub); grip.position.set(0.004, -0.005, s * 0.124); grip.rotation.x = s * 0.12; grp.add(grip);
       const join = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.03, 0.03), cf); join.position.set(0, 0.045, s * 0.112); grp.add(join);
-      const pad = new THREE.Mesh(new THREE.BoxGeometry(0.004, 0.05, 0.06), cf); pad.position.set(0.03, 0.0, s * 0.07); pad.rotation.y = s * 0.15; grp.add(pad); // shift paddles
+      const pp = new THREE.Group(); pp.position.set(0.026, 0.0, s * 0.045); grp.add(pp); const pad = new THREE.Mesh(new THREE.BoxGeometry(0.004, 0.055, 0.065).translate(0, 0, s * 0.032), cf); pad.rotation.y = s * 0.15; pp.add(pad); (grp.userData.paddles = grp.userData.paddles || {})[s > 0 ? 'up' : 'down'] = pp; // shift paddles (right = up)
       // rotaries and buttons
       for (let k = 0; k < 3; k++) { const r = new THREE.Mesh(new THREE.CylinderGeometry(0.009, 0.009, 0.012, 14).rotateZ(Math.PI / 2), alu); r.position.set(-0.024, -0.03 + k * 0.0 - 0.0, s * (0.03 + k * 0.022)); r.position.y = -0.035; grp.add(r); }
       const cols = s < 0 ? [0xd02020, 0xe0e0e0, 0x2060e0] : [0x20b040, 0xf0c020, 0xe0e0e0];
       for (let k = 0; k < 3; k++) { const b = new THREE.Mesh(new THREE.CylinderGeometry(0.0065, 0.0065, 0.008, 12).rotateZ(Math.PI / 2), new THREE.MeshStandardMaterial({ color: cols[k], roughness: 0.4 })); b.position.set(-0.022, 0.035 - k * 0.022, s * 0.085); grp.add(b); }
     }
+    // physical rev LEDs along the top edge, plus the flag lights at each end
+    grp.userData.leds = [];
+    for (let i = 0; i < 15; i++) { const l = new THREE.Mesh(new THREE.BoxGeometry(0.004, 0.006, 0.0075), new THREE.MeshBasicMaterial({ color: 0x111111, toneMapped: false })); l.position.set(-0.022, 0.062, -0.077 + i * 0.011); grp.add(l); grp.userData.leds.push(l); }
+    grp.userData.flags = [-1, 1].map(s => { const l = new THREE.Mesh(new THREE.BoxGeometry(0.004, 0.012, 0.012), new THREE.MeshBasicMaterial({ color: 0x111111, toneMapped: false })); l.position.set(-0.022, 0.045, s * 0.093); grp.add(l); return l; });
+    // labelled rotaries' rings
+    for (const [z, y] of [[-0.045, -0.035], [0.045, -0.035], [0, -0.05]]) { const r = new THREE.Mesh(new THREE.TorusGeometry(0.012, 0.0018, 6, 18).rotateY(Math.PI / 2), MAT.metal); r.position.set(-0.023, y, z); grp.add(r); }
     return grp;
   }
   // a gloved hand wrapped round a grip. Grip axis is local y; side s: +1 right hand
@@ -306,11 +312,11 @@ const JRG = (() => {
     const wrist = new THREE.Object3D(); wrist.position.set(-0.045, -0.05, s * 0.034); h.add(wrist);
     h.userData.wrist = wrist; return h;
   }
-  function buildCockpit(g, team) {
+  function buildCockpit(g, team, name) {
     textures(); materials(team, 'M');
     const hex = c => '#' + c.toString(16).padStart(6, '0');
     const sw = new THREE.Group(); sw.position.set(0.37, 0.645, 0); sw.rotation.order = 'ZXY'; sw.rotation.z = -0.3; g.add(sw);
-    const inner = new THREE.Group(); sw.add(inner); inner.add(steeringWheel(team));
+    const inner = new THREE.Group(); sw.add(inner); const wheelG = steeringWheel(team); inner.add(wheelG);
     const col = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.2, 10).rotateZ(Math.PI / 2), MAT.carbon); col.position.set(0.1, 0, 0); sw.add(col);
     const dc = document.createElement('canvas'); dc.width = 256; dc.height = 140; const dt = new THREE.CanvasTexture(dc); dt.colorSpace = THREE.SRGBColorSpace;
     const disp = new THREE.Mesh(new THREE.PlaneGeometry(0.12, 0.066), new THREE.MeshBasicMaterial({ map: dt, toneMapped: false })); disp.rotation.y = -Math.PI / 2; disp.position.set(-0.0215, 0.012, 0); inner.add(disp);
@@ -322,6 +328,13 @@ const JRG = (() => {
     const suit = new THREE.MeshStandardMaterial({ map: suitT, roughness: 0.92 });
     const seg = (r0, r1) => { const m = new THREE.Mesh(new THREE.CylinderGeometry(r1, r0, 1, 14, 1, true), suit); m.castShadow = true; g.add(m); const cap = new THREE.Mesh(new THREE.SphereGeometry(r0, 12, 8), suit); g.add(cap); return { m, cap }; };
     const arms = [-1, 1].map(s => { const cf = new THREE.Mesh(new THREE.CylinderGeometry(0.031, 0.036, 1, 14), glove); g.add(cf); const band = new THREE.Mesh(new THREE.CylinderGeometry(0.037, 0.037, 1, 14, 1, true), accent); g.add(band); return { s, up: seg(0.05, 0.045), lo: seg(0.045, 0.038), cf, band, sh: V3(-0.2, 0.6, s * 0.2) }; });
+    // cockpit interior: padded surround inside the opening, small wind deflector, driver name and flag on the chassis top
+    const padM = new THREE.MeshStandardMaterial({ color: 0x0d0d0f, roughness: 0.95 });
+    for (const s of [-1, 1]) { const p = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.12, 0.04), padM); p.position.set(0.12, 0.57, s * 0.255); g.add(p); }
+    const kneeT = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.5, 20, 1, false, 0, Math.PI).rotateX(Math.PI / 2).rotateZ(Math.PI / 2), padM); kneeT.position.set(0.48, 0.5, 0); g.add(kneeT);
+    const defl = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.055, 24, 1, true, -0.7, 1.4).rotateZ(0).rotateY(Math.PI / 2), new THREE.MeshPhysicalMaterial({ color: 0x223344, transparent: true, opacity: 0.35, roughness: 0.05, metalness: 0.3, side: THREE.DoubleSide })); defl.position.set(0.24, 0.655, 0); g.add(defl);
+    { const t = canvasTex(512, 96, (x) => { x.clearRect(0, 0, 512, 96); x.fillStyle = '#fff'; x.font = 'italic 900 58px system-ui'; x.textAlign = 'center'; x.fillText((name || 'JAMES').toUpperCase(), 256, 70); x.fillStyle = '#c40b0b'; x.fillRect(20, 30, 40, 30); x.fillStyle = '#fff'; x.fillRect(20, 40, 40, 10); }, true, false);
+      const dm = new THREE.Mesh(new THREE.PlaneGeometry(0.34, 0.064).rotateX(-Math.PI / 2).rotateY(-Math.PI / 2), new THREE.MeshStandardMaterial({ map: t, transparent: true, roughness: 0.4 })); dm.position.set(0.95, 0.628, 0); dm.rotation.z = -0.07; g.add(dm); }
     // mirrors: rear camera into a render target; each mirror shows its half
     const rt = new THREE.WebGLRenderTarget(512, 160, { type: THREE.HalfFloatType });
     const mcam = new THREE.PerspectiveCamera(22, 512 / 160, 0.3, 1500); mcam.position.set(-0.25, 1.16, 0); mcam.rotation.order = 'YXZ'; mcam.rotation.y = Math.PI / 2; mcam.rotation.x = -0.05; g.add(mcam);
@@ -346,7 +359,7 @@ const JRG = (() => {
         A.band.position.copy(c0).addScaledVector(dir, 0.004); A.band.quaternion.copy(A.cf.quaternion); A.band.scale.set(1, 0.012, 1);
       }
     }
-    return { sw, inner, dc, dx: dc.getContext('2d'), dt, rt, mcam, t: 0, update, arms };
+    return { sw, inner, dc, dx: dc.getContext('2d'), dt, rt, mcam, t: 0, update, arms, leds: wheelG.userData.leds, flags: wheelG.userData.flags, paddles: wheelG.userData.paddles };
   }
 
   // ---------- sky with clouds ----------
@@ -435,5 +448,26 @@ const JRG = (() => {
       },
     };
   }
-  return { textures, TX, makeCar, updateCar, buildCockpit, skyMaterial, envMap, Post, FX, canvasTex, merge };
+  // pit crew member in a fire suit, facing +x. kneel: wheel gunner pose with a wheel gun
+  const PERS = {};
+  function person(kneel) {
+    const k = kneel ? 1 : 0; if (PERS[k]) return PERS[k];
+    const cap = (r, len, a, b) => { const d = b.clone().sub(a), g = new THREE.CapsuleGeometry(r, Math.max(0.01, d.length() - 2 * r), 4, 10); g.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(V3(0, 1, 0), d.normalize())); const m = a.clone().add(b).multiplyScalar(0.5); g.translate(m.x, m.y, m.z); return g; };
+    const suit = [], head = [], dark = [];
+    const hip = kneel ? 0.55 : 0.95, sh = hip + 0.55;
+    suit.push(cap(0.17, 0, V3(kneel ? 0.12 : 0, hip, 0), V3(kneel ? 0.2 : 0.02, sh, 0)));
+    for (const z of [-0.11, 0.11]) {
+      if (kneel) { if (z < 0) { suit.push(cap(0.085, 0, V3(0.1, hip, z), V3(0.5, hip - 0.05, z))); suit.push(cap(0.08, 0, V3(0.5, hip - 0.05, z), V3(0.52, 0.06, z))); } else { suit.push(cap(0.085, 0, V3(0.1, hip, z), V3(0.08, 0.1, z))); suit.push(cap(0.08, 0, V3(0.08, 0.1, z), V3(-0.4, 0.08, z))); } }
+      else { suit.push(cap(0.085, 0, V3(0, hip, z), V3(0.02, 0.48, z))); suit.push(cap(0.08, 0, V3(0.02, 0.48, z), V3(0, 0.06, z))); }
+      dark.push(new THREE.BoxGeometry(0.26, 0.08, 0.11).translate(kneel ? (z < 0 ? 0.6 : -0.45) : 0.06, 0.04, z)); // boots
+      const shp = V3(kneel ? 0.2 : 0.03, sh - 0.05, z * 2.1), el = V3(kneel ? 0.42 : 0.25, sh - 0.3, z * 2.2), hd = V3(kneel ? 0.62 : 0.42, sh - 0.32, z * 1.2);
+      suit.push(cap(0.065, 0, shp, el)); suit.push(cap(0.058, 0, el, hd)); dark.push(new THREE.SphereGeometry(0.055, 8, 6).translate(hd.x, hd.y, hd.z));
+    }
+    head.push(new THREE.SphereGeometry(0.155, 16, 12).scale(1.05, 1, 0.95).translate(kneel ? 0.24 : 0.05, sh + 0.24, 0));
+    dark.push(new THREE.SphereGeometry(0.157, 16, 8, -0.9, 1.8, 1.25, 0.45).rotateY(Math.PI / 2).translate(kneel ? 0.24 : 0.05, sh + 0.24, 0));
+    if (kneel) { dark.push(new THREE.CylinderGeometry(0.045, 0.045, 0.32, 10).rotateZ(Math.PI / 2).translate(0.75, sh - 0.3, 0)); dark.push(new THREE.BoxGeometry(0.1, 0.2, 0.08).translate(0.62, sh - 0.42, 0)); }
+    PERS[k] = { suit: merge(suit), head: merge(head), dark: merge(dark) }; return PERS[k];
+  }
+  function tyreMat(comp) { const tk = 'ty' + comp; if (!MAT[tk]) MAT[tk] = new THREE.MeshStandardMaterial({ map: tyreTex(F1.COMP[comp].col), roughness: 0.88 }); return MAT[tk]; }
+  return { person, tyreMat, textures, TX, makeCar, updateCar, buildCockpit, skyMaterial, envMap, Post, FX, canvasTex, merge };
 })();
