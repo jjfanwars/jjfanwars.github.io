@@ -15,7 +15,7 @@ const medalDot = k => k < 0 ? '' : '<i class="md" style="--m:' + MEDALS[k][2] + 
 // ---------- menu ----------
 STAGES.forEach((s, i) => { const o = document.createElement('option'); o.value = i; o.textContent = BIOMES[s.biome].name + ' · ' + s.name + (s.berms ? ' · berms & jumps' : '') + '  (' + (s.len / 1000).toFixed(1) + ' km)'; $('sStage').appendChild(o); });
 $('sStage').value = 15;
-try { $('nm').value = localStorage.getItem('pn-name') || ''; $('sGfx').value = localStorage.getItem('pn-gfx') || 'med'; for (const k of ['sStage', 'sFog', 'sRole', 'sBots', 'sPhys']) { const v = localStorage.getItem('pn-' + k); if (v !== null && [...$(k).options].some(o => o.value === v)) $(k).value = v; } } catch (e) {}
+try { $('nm').value = localStorage.getItem('pn-name') || ''; $('sGfx').value = localStorage.getItem('pn-gfx') || 'med'; for (const k of ['sStage', 'sFog', 'sRole', 'sBots', 'sPhys', 'sGear']) { const v = localStorage.getItem('pn-' + k); if (v !== null && [...$(k).options].some(o => o.value === v)) $(k).value = v; } } catch (e) {}
 const myName = () => { const n = ($('nm').value || '').replace(/[^A-Za-z0-9 ._-]/g, '').trim().slice(0, 14) || 'Player' + (1 + Math.random() * 99 | 0); try { localStorage.setItem('pn-name', n); localStorage.setItem('pn-gfx', $('sGfx').value); } catch (e) {} return n; };
 const show = id => { for (const s of ['menu', 'lobby', 'fin', 'pause', 'champ']) $(s).classList.toggle('hidden', s !== id); Garage3D.on = id === 'menu'; };
 // ---- stage cards (drive the hidden select) ----
@@ -43,8 +43,10 @@ function renderSegs() {
 }
 const msg = (id, t) => { $(id).textContent = t || ''; };
 try { if (!localStorage.getItem('pn-sport1')) { localStorage.setItem('pn-sport1', '1'); localStorage.setItem('pn-sPhys', 'sport'); $('sPhys').value = 'sport'; } } catch (e) {} // Sport became the default: switch everyone over once
-$('sPhys').onchange = () => { PHYS.real = $('sPhys').value === 'real'; PHYS.sport = $('sPhys').value === 'sport'; };
+$('sPhys').onchange = () => { PHYS.real = $('sPhys').value === 'real'; PHYS.sport = $('sPhys').value === 'sport'; PHYS.easy = $('sPhys').value === 'easy'; };
 $('sPhys').onchange();
+$('sGear').onchange = () => { PHYS.manual = $('sGear').value === 'manual'; };
+$('sGear').onchange();
 const readCfg = () => ({ stage: +$('sStage').value, fog: +$('sFog').value, hostRole: $('sRole').value });
 
 const CAR_COL = [0x1d4fbf, 0xc62828, 0x2e7d32, 0xf2b632], CAR_NAME = ['Blue', 'Red', 'Green', 'Yellow'], hex = c => '#' + c.toString(16).padStart(6, '0');
@@ -178,7 +180,7 @@ function startStage(cfg, role, solo, myCar, seats) {
     look.yaw = 0; look.pitch = role === 'nav' ? -0.14 : -0.1; look.map = false; G.sw = [1, 1, 0, 0, /dusk|evening|night|storm/i.test(STAGES[cfg.stage].tod) ? 1 : 0, STAGES[cfg.stage].tod === 'night' ? 1 : 0];
     $('role').textContent = CARS[mdl(myCar)].name.toUpperCase() + ' · ' + (solo ? 'SOLO PRACTICE · AUTO CO-DRIVER' : (role === 'drv' ? 'DRIVER' : 'NAVIGATOR') + ' · ' + CAR_NAME[myCar].toUpperCase() + ' CAR' + (G.autoNav ? ' · AUTO CO-DRIVER' : '')) + ' · ' + STAGES[cfg.stage].name.toUpperCase(); msg('pos', '');
     if (Champ.run) $('role').textContent = Champ.run.c.name.toUpperCase() + ' · STAGE ' + (Champ.run.i + 1) + ' / ' + Champ.run.c.st.length + ' · ' + STAGES[cfg.stage].name.toUpperCase();
-    $('tip').innerHTML = role === 'drv' ? 'W/S throttle · brake, A/D steer, Space handbrake, R recover (+5 s), V chase cam, G ghost, Esc pause · 1-6 or click dash switches · T horn · Shift nitro (muscle car) · mouse looks' : 'Hold <b>right mouse</b> or <b>Tab</b> for the map · callouts: A/D + 1-6, J jump, C crest, L log, K keep middle, F flat, B brake';
+    $('tip').innerHTML = role === 'drv' ? 'W/S throttle · brake, A/D steer, Space handbrake, R recover (+' + (PHYS.easy ? 3 : 5) + ' s)' + (PHYS.manual ? ', E/Q shift up/down' : '') + ', V chase cam, G ghost, Esc pause · 1-6 or click dash switches · T horn · Shift nitro (muscle car) · mouse looks' : 'Hold <b>right mouse</b> or <b>Tab</b> for the map · callouts: A/D + 1-6, J jump, C crest, L log, K keep middle, F flat, B brake';
     $('spd').style.display = role === 'drv' ? '' : 'none'; $('dmg').style.display = role === 'drv' ? '' : 'none'; $('call').classList.remove('on');
     bigMsg(''); msg('split', ''); $('fade').style.opacity = 0; $('lockmsg').classList.toggle('hidden', !!document.pointerLockElement); $('tip').style.opacity = 1;
     G.bestRec = bestOf(); buildProg(); ghostSetup(); CH.init = false; $('style').innerHTML = ''; $('cross').style.display = G.chase && G.role === 'drv' ? 'none' : '';
@@ -235,7 +237,8 @@ addEventListener('keydown', e => {
   if (G.role === 'nav') { if (e.code === 'Tab') look.map = !look.map; else navKey(e.code); }
   if (G.role === 'drv' && e.code === 'KeyR' && G.car && G.phase === 'run') recover();
   if (G.role === 'drv' && /^Digit[1-6]$/.test(e.code)) { const k = +e.code[5] - 1; flipSwitch(k); say(SWITCH_NAMES[k] + (G.sw[k] ? ' ON' : ' OFF'), '', 900); }
-  if (e.code === 'KeyQ' && !document.pointerLockElement) { Champ.run = null; endToMenu(''); }
+  // with the manual box Q shifts down (quit from the pause menu instead)
+  if (e.code === 'KeyQ' && !document.pointerLockElement && !(PHYS.manual && G.role === 'drv' && G.phase !== 'fin')) { Champ.run = null; endToMenu(''); }
   if (e.code === 'Escape' && !$('pause').classList.contains('hidden')) { pauseClose(); return; }
   if (e.code === 'Backspace' && !Champ.run && (G.solo || Net.role === 'host')) { e.preventDefault(); restart(); }
   if (e.code === 'KeyN') G.noGrades = !G.noGrades;
@@ -269,8 +272,9 @@ function readInput(dt) {
   inp.steer = Math.sign(inp.raw) * Math.abs(inp.raw) ** 1.5;
   inp.nitro = KEYS.has('ShiftLeft') || KEYS.has('ShiftRight') ? 1 : 0;
   inp.thr = KEYS.has('KeyW') || KEYS.has('ArrowUp') ? 1 : 0; inp.brk = KEYS.has('KeyS') || KEYS.has('ArrowDown') ? 1 : 0; inp.hb = KEYS.has('Space') ? 1 : 0;
+  inp.up = KEYS.has('KeyE') ? 1 : 0; inp.dn = KEYS.has('KeyQ') ? 1 : 0;
   const gp = pad !== null && navigator.getGamepads ? navigator.getGamepads()[pad] : null;
-  if (gp) { const ax = gp.axes[0] || 0; if (Math.abs(ax) > 0.08) inp.steer = -Math.sign(ax) * ((Math.abs(ax) - 0.08) / 0.92) ** 1.4; const rt = gp.buttons[7] ? gp.buttons[7].value : 0, lt = gp.buttons[6] ? gp.buttons[6].value : 0; if (rt > 0.05) inp.thr = rt; if (lt > 0.05) inp.brk = lt; if (gp.buttons[0] && gp.buttons[0].pressed) inp.hb = 1; if (gp.buttons[3] && gp.buttons[3].pressed && !G.padY && G.phase === 'run') recover(); G.padY = gp.buttons[3] && gp.buttons[3].pressed; }
+  if (gp) { const ax = gp.axes[0] || 0; if (Math.abs(ax) > 0.08) inp.steer = -Math.sign(ax) * ((Math.abs(ax) - 0.08) / 0.92) ** 1.4; const rt = gp.buttons[7] ? gp.buttons[7].value : 0, lt = gp.buttons[6] ? gp.buttons[6].value : 0; if (rt > 0.05) inp.thr = rt; if (lt > 0.05) inp.brk = lt; if (gp.buttons[0] && gp.buttons[0].pressed) inp.hb = 1; if (gp.buttons[5] && gp.buttons[5].pressed) inp.up = 1; if (gp.buttons[4] && gp.buttons[4].pressed) inp.dn = 1; if (gp.buttons[3] && gp.buttons[3].pressed && !G.padY && G.phase === 'run') recover(); G.padY = gp.buttons[3] && gp.buttons[3].pressed; }
   return inp;
 }
 function recover() {
@@ -278,7 +282,7 @@ function recover() {
   if (up > 0.5 && c.speed > 8 && c.roadD < ROAD_HW + 1) return; // upright and driving on the road: nothing to recover from (upside down always works)
   G.stuckT = 0; G.stuckSaid = false;
   $('fade').style.opacity = 0.8; setTimeout(() => $('fade').style.opacity = 0, 250);
-  c.place(G.S.safeS ? G.S.safeS(Math.max(World.startS, c.prog - 5)) : Math.max(World.startS, c.prog - 5), 0); G.pen += 5; say('RECOVERED +5 s', '', 1500);
+  c.place(G.S.safeS ? G.S.safeS(Math.max(World.startS, c.prog - 5)) : Math.max(World.startS, c.prog - 5), 0); const pen = PHYS.easy ? 3 : 5; G.pen += pen; say('RECOVERED +' + pen + ' s', '', 1200);
 }
 
 // ---------- driver: physics, timing, sending ----------
@@ -341,7 +345,7 @@ function sendCar(dt) {
 }
 Net.on('car', m => { if (!G.on || !G.bufs || !G.bufs[m.c] || (m.c === G.myCar && G.role === 'drv')) return; m.rt = performance.now(); if (m.c === G.myCar) G.drvSeen = m.rt; const B = G.bufs[m.c]; B.push(m); if (B.length > 40) B.shift(); if (m.c === G.myCar) for (const e of m.ev || []) carEvent(e); });
 Net.on('look', m => { if (G.on && m.c === G.myCar) { G.other.yaw = clamp(+m.y || 0, -3, 3); G.other.pitch = clamp(+m.p || 0, -1.2, 1); G.other.map = !!m.m; } });
-function carEvent(e) { if (e.k === 'crash' || e.k === 'wreck') G.hurt = Math.min(1, (G.hurt || 0) + e.v / 14); if (e.k === 'wreck') { Sfx.crash(20); G.view.shake = 1; say('WRECKED  +10 s', '', 2200); $('fade').style.opacity = 0.9; if (G.role === 'drv') setTimeout(() => { if (G.car && G.car.wrecked && G.phase === 'run') { G.car.place(G.S.safeS ? G.S.safeS(Math.max(World.startS, G.car.prog - 5)) : Math.max(World.startS, G.car.prog - 5), 0); G.pen += 10; } $('fade').style.opacity = 0; }, 1300); else setTimeout(() => $('fade').style.opacity = 0, 1300); } else if (e.k === 'crash') { Sfx.crash(e.v); G.view.shake = Math.min(1, e.v / 12); } else if (e.k === 'thud') { Sfx.thud(e.v); G.view.shake = Math.min(0.6, e.v / 15); } else if (e.k === 'shift') Sfx.shift(); else if (e.k === 'land') { Sfx.thud(2 + e.v * 6); G.view.shake = Math.max(G.view.shake || 0, 0.15 + e.v * 0.35); } }
+function carEvent(e) { if (e.k === 'crash' || e.k === 'wreck') G.hurt = Math.min(1, (G.hurt || 0) + e.v / 14); if (e.k === 'wreck') { Sfx.crash(20); G.view.shake = 1; say('WRECKED  +' + (PHYS.easy ? 5 : 10) + ' s', '', 1600); $('fade').style.opacity = 0.9; if (G.role === 'drv') setTimeout(() => { if (G.car && G.car.wrecked && G.phase === 'run') { G.car.place(G.S.safeS ? G.S.safeS(Math.max(World.startS, G.car.prog - 5)) : Math.max(World.startS, G.car.prog - 5), 0); G.pen += PHYS.easy ? 5 : 10; } $('fade').style.opacity = 0; }, PHYS.easy ? 800 : 1300); else setTimeout(() => $('fade').style.opacity = 0, PHYS.easy ? 800 : 1300); } else if (e.k === 'crash') { Sfx.crash(e.v); G.view.shake = Math.min(1, e.v / 12); } else if (e.k === 'thud') { Sfx.thud(e.v); G.view.shake = Math.min(0.6, e.v / 15); } else if (e.k === 'shift') Sfx.shift(); else if (e.k === 'pop') { Sfx.bang(); G.flameT = 0.07; } else if (e.k === 'lift') Sfx.bov(e.v || 0.6); else if (e.k === 'deny') { Sfx.click(); say('OVER-REV', 'too fast for that gear', 700); } else if (e.k === 'flat') { Sfx.thud(7); G.view.shake = Math.max(G.view.shake || 0, 0.3); say('PUNCTURE', ['front left', 'front right', 'rear left', 'rear right'][(e.v || 1) - 1] + ': nurse it home', 2400); } else if (e.k === 'land') { Sfx.thud(2 + e.v * 6); G.view.shake = Math.max(G.view.shake || 0, 0.15 + e.v * 0.35); } }
 
 // ---------- navigator: interpolate the driver's car ----------
 const IP = { pos: new THREE.Vector3(), q: new THREE.Quaternion(), vel: new THREE.Vector3(), a: new THREE.Quaternion(), b: new THREE.Quaternion() };
@@ -354,7 +358,7 @@ function interp(B) {
   IP.pos.set(lerp(a.p[0], b.p[0], t) + b.v[0] * ex, lerp(a.p[1], b.p[1], t) + b.v[1] * ex, lerp(a.p[2], b.p[2], t) + b.v[2] * ex);
   IP.a.set(...a.q).normalize(); IP.b.set(...b.q).normalize(); IP.q.slerpQuaternions(IP.a, IP.b, t);
   IP.vel.set(lerp(a.v[0], b.v[0], t), lerp(a.v[1], b.v[1], t), lerp(a.v[2], b.v[2], t));
-  return { pos: IP.pos.clone(), q: IP.q.clone(), vel: IP.vel.clone(), steer: lerp(a.st, b.st, t), comp: b.c, speed: IP.vel.length(), speedF: IP.vel.dot(new THREE.Vector3(0, 0, 1).applyQuaternion(IP.q)), rpm: lerp(a.rpm, b.rpm, t), gear: b.g, thr: b.th, slide: b.sl, offroad: b.of, air: b.air, hb: b.hb, prog: b.pr, dmg: b.dm, ph: b.ph, tm: b.tm, pn: b.pn, fin: b.fin, sw: String(b.sw || '110000').split('').map(Number), hl: (b.sw || '')[4] === '1', wp: (b.sw || '')[3] === '1', spot: (b.sw || '')[5] === '1', clock: b.ph === 'fin' ? b.fin : b.ph === 'run' ? b.tm + b.pn : 0 };
+  return { pos: IP.pos.clone(), q: IP.q.clone(), vel: IP.vel.clone(), steer: lerp(a.st, b.st, t), comp: b.c, speed: IP.vel.length(), speedF: IP.vel.dot(new THREE.Vector3(0, 0, 1).applyQuaternion(IP.q)), rpm: lerp(a.rpm, b.rpm, t), gear: b.g, thr: b.th, slide: b.sl, offroad: b.of, air: b.air, hb: b.hb, prog: b.pr, dmg: b.dm, boost: b.bo || 0, flat: !!b.fl, ph: b.ph, tm: b.tm, pn: b.pn, fin: b.fin, sw: String(b.sw || '110000').split('').map(Number), hl: (b.sw || '')[4] === '1', wp: (b.sw || '')[3] === '1', spot: (b.sw || '')[5] === '1', clock: b.ph === 'fin' ? b.fin : b.ph === 'run' ? b.tm + b.pn : 0 };
 }
 
 // ---------- frame ----------
@@ -372,7 +376,7 @@ function frame(now) {
     const c = G.car; for (const e of c.events) { carEvent(e); (c.netEv = c.netEv || []).push(e.v ? { k: e.k, v: Math.round(e.v * 10) / 10 } : { k: e.k }); } c.events.length = 0;
     sendCar(dt); G.dmg = c.dmg;
     fwdV.set(0, 0, 1).applyQuaternion(c.q);
-    st = { pos: c.pos, q: c.q, vel: c.v, steer: c.steer, comp: c.wh.map(w => w.comp), spinW: 0, speed: c.speed, speedF: c.v.dot(fwdV), rpm: c.rpm, gear: c.gear, thr: c.thr, slide: c.slide, offroad: c.offroad, air: c.air > 0, hb: inp.hb, prog: c.prog, dmg: c.dmg, sw: G.sw, hl: G.sw[4], wp: G.sw[3], spot: G.sw[5], clock: G.phase === 'fin' ? G.final : G.phase === 'run' ? G.t + G.pen : 0 };
+    st = { pos: c.pos, q: c.q, vel: c.v, steer: c.steer, comp: c.wh.map(w => w.comp), spinW: 0, speed: c.speed, speedF: c.v.dot(fwdV), rpm: c.rpm, gear: c.gear, thr: c.thr, slide: c.slide, offroad: c.offroad, air: c.air > 0, hb: inp.hb, prog: c.prog, dmg: c.dmg, boost: c.boostP || 0, flat: c.wh.some(w => w.flat), sw: G.sw, hl: G.sw[4], wp: G.sw[3], spot: G.sw[5], clock: G.phase === 'fin' ? G.final : G.phase === 'run' ? G.t + G.pen : 0 };
     st.spinW = c.wh[2].spin;
     ghostRecord(dt); styleStep(st, dt);
     // driver's view drifts back to centre when the mouse is idle
@@ -439,12 +443,14 @@ function frame(now) {
   { const d = G.role === 'drv' && G.car && (G.car.draft || 0) > 0.25; if (d !== G.draftOn) { G.draftOn = d; $('draft').classList.toggle('on', d); } }
   World.update(World.cam.position, st.pos);
   if ((G.mirT = (G.mirT || 0) + 1) % (World.gfx === 'low' ? 6 : 2) === 0) G.view.renderMirror(World.R, World.scene, st);
-  Sfx.update({ rpm: st.rpm, thr: st.thr, speed: st.speed, slide: st.slide, offroad: st.offroad, air: st.air, inside: 1 }, dt);
+  Sfx.update({ rpm: st.rpm, thr: st.thr, speed: st.speed, slide: st.slide, offroad: st.offroad, air: st.air, inside: 1, boost: CAR.turbo ? st.boost : 0, turbo: CAR.turbo, flat: st.flat }, dt);
+  // anti-lag flames out of the exhaust
+  if (G.flameT > 0) { G.flameT -= dt; for (let k = 0; k < 4; k++) { const p = new THREE.Vector3((Math.random() - 0.5) * 0.15 - 0.45, -0.34, -CAR.hl - 0.05 - Math.random() * 0.3).applyQuaternion(st.q).add(st.pos), b = new THREE.Vector3(0, 0, -6 - Math.random() * 4).applyQuaternion(st.q); World.puff(p.x, p.y, p.z, st.vel.x + b.x, 0.3, st.vel.z + b.z, 0.22, 0.12, 1.8, 0.75 + Math.random() * 0.25, 0.25); } }
   hud(st);
   // spectators cheer as you pass
   for (const cr of World.crowds || []) { const d = Math.hypot(cr.x - st.pos.x, cr.z - st.pos.z); if (d < 40 && !cr.cheered) { cr.cheered = true; Sfx.cheer(Math.min(1, st.speed / 25)); } if (d < 60) World.wave(cr, now / 1000); }
   // stuck or upside down: tell the driver how to recover
-  if (G.role === 'drv' && G.phase === 'run') { const up = fwdV.set(0, 1, 0).applyQuaternion(st.q).y; G.stuckT = (up < 0.35 || G.car.below || (st.speed < 1.2 && G.car.roadD > ROAD_HW + 1)) ? (G.stuckT || 0) + dt : 0; if (G.stuckT > 1.5 && !G.stuckSaid) { G.stuckSaid = true; say('PRESS R TO RECOVER', '', 2500); } if (G.stuckT > 4) { G.stuckT = 0; recover(); } if (G.stuckT === 0) G.stuckSaid = false; }
+  if (G.role === 'drv' && G.phase === 'run') { const up = fwdV.set(0, 1, 0).applyQuaternion(st.q).y; G.stuckT = (up < 0.35 || G.car.below || (st.speed < 1.2 && G.car.roadD > ROAD_HW + 1)) ? (G.stuckT || 0) + dt : 0; if (G.stuckT > (PHYS.easy ? 1 : 1.5) && !G.stuckSaid) { G.stuckSaid = true; say('PRESS R TO RECOVER', '', 2500); } if (G.stuckT > (PHYS.easy ? 2.5 : 4)) { G.stuckT = 0; recover(); } if (G.stuckT === 0) G.stuckSaid = false; }
   G.hurt = Math.max(0, (G.hurt || 0) - dt * 1.2);
   perf(dt);
   World.render({ spd: clamp((st.speed - 14) / 34, 0, 1), hurt: G.hurt });
@@ -478,7 +484,7 @@ function hud(st) {
   if (G.role === 'drv') {
     $('spd').querySelector('b').textContent = Math.round(st.speed * 3.6); $('gear').textContent = st.gear < 0 ? 'R' : st.gear || 'N';
     drawRev(st.rpm);
-    const dm = Math.round((G.dmg || 0) * 100); $('dmg').querySelector('u').style.width = dm + '%'; $('dmgP').textContent = dm + '%'; $('dmg').classList.toggle('hi', dm >= 50);
+    const dm = Math.round((G.dmg || 0) * 100); $('dmg').querySelector('u').style.width = dm + '%'; $('dmgP').textContent = dm + '%' + (st.flat ? ' · FLAT' : ''); $('dmg').classList.toggle('hi', dm >= 50);
   }
   $('net').textContent = G.solo ? '' : (Net.role === 'host' ? 'ping ' + Math.round(Net.ping) + ' ms' : (performance.now() - Net.lastRx > 2500 ? 'NO SIGNAL' : 'online'));
 }
@@ -611,11 +617,13 @@ function styleStep(st, dt) {
   const S = G.style; if (!S || G.phase !== 'run') return;
   fwdV.set(0, 0, 1).applyQuaternion(st.q); const vF = st.vel.x * fwdV.x + st.vel.z * fwdV.z, sp = Math.hypot(st.vel.x, st.vel.z), fl = Math.hypot(fwdV.x, fwdV.z) || 1, ang = sp > 1 ? Math.acos(clamp(vF / sp / fl, -1, 1)) : 0;
   if (G.car.air < 0.2 && sp > 11 && ang > 0.2 && ang < 1.6) { S.dT += dt; S.dA = Math.max(S.dA, ang); } else if (S.dT > 0 && (G.car.air >= 0.2 || ang < 0.12 || sp < 8)) {
-    if (S.dT >= 1) { const pts = Math.round(S.dT * S.dA * 57 * 6); S.pts += pts; S.drift = Math.max(S.drift, S.dT); pop((S.dT > 3 ? 'MEGA DRIFT ' : 'DRIFT ') + S.dT.toFixed(1) + ' s', '+' + pts); }
+    if (S.dT >= 1) { const pts = Math.round(S.dT * S.dA * 57 * 6); S.pts += pts; S.drift = Math.max(S.drift, S.dT); pop((S.dT > 3 ? 'MEGA DRIFT ' : 'DRIFT ') + S.dT.toFixed(1) + ' s', '+' + pts); styleBoost(Math.min(2.5, 0.8 + S.dT * 0.5)); }
     S.dT = 0; S.dA = 0;
   }
-  if (G.car.air > 0) S.aT = G.car.air; else if (S.aT > 0) { if (S.aT >= 0.55) { const pts = Math.round(S.aT * 300); S.pts += pts; S.air = Math.max(S.air, S.aT); pop((S.aT > 1.2 ? 'HUGE AIR ' : 'BIG AIR ') + S.aT.toFixed(1) + ' s', '+' + pts); } S.aT = 0; }
+  if (G.car.air > 0) S.aT = G.car.air; else if (S.aT > 0) { if (S.aT >= 0.55) { const pts = Math.round(S.aT * 300); S.pts += pts; S.air = Math.max(S.air, S.aT); pop((S.aT > 1.2 ? 'HUGE AIR ' : 'BIG AIR ') + S.aT.toFixed(1) + ' s', '+' + pts); styleBoost(Math.min(2.5, 0.8 + S.aT)); } S.aT = 0; }
 }
+// Easy mode reward: a drift or a jump fires a short power boost
+function styleBoost(t) { if (!G.car || !G.car.easy) return; G.car.styleT = Math.max(G.car.styleT || 0, t); G.flameT = Math.max(G.flameT || 0, t); Sfx.bang(); say('STYLE BOOST', '', 900); }
 function pop(t, p) { const el = $('style'); const d = document.createElement('div'); d.innerHTML = '<b>' + t + '</b><span>' + p + '</span>'; el.prepend(d); while (el.children.length > 3) el.lastChild.remove(); setTimeout(() => d.classList.add('out'), 1800); setTimeout(() => d.remove(), 2300); Sfx.click(); }
 // resolution governor: keep the frame rate up on slow machines
 // (runs before the frame is drawn: resizing the canvas clears it, which used to flash black; slow to raise again so it can't oscillate)

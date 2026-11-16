@@ -63,7 +63,7 @@ function startGame() {
     Object.assign(W, { seats: ['', ''], hook: { st: 'stow', by: '', p: [0, 0, 0], at: null, L: 0.5 }, fuel: 0.4, flat: [0, 0, 0, 0], logGone: 0, br: { c: 0, a: 1 }, bo: 0, db: 0, fe: { p: 0, dir: 1 }, hp: {}, ph: 'run', tm: 0, pen: 0, tows: 0, radio: 0, prog: S.sAll.start, dyn: 4, reel: 0, ten: 0, stats: { boom: 0, cans: 0, flats: 0, fell: 0, snap: 0 }, wet: 0 });
     for (const b of S.boulders) b.on = true; S.log.ax = S.log0 ? S.log0[0] : S.log.ax; if (!S.log0) S.log0 = [S.log.ax, S.log.az, S.log.bx, S.log.bz]; [S.log.ax, S.log.az, S.log.bx, S.log.bz] = S.log0; S.logs = [S.log];
     if (isHost()) {
-      car = new Car(S); car._real = false; car._sport = false; car.place(S.sAll.start + 6, 0); W.log = S.log0.slice();
+      car = new Car(S); car._real = false; car._sport = false; car._manual = false; car.punct = false; car._easy = false; car.place(S.sAll.start + 6, 0); W.log = S.log0.slice();
       const it = (k, f, p) => { const o = { id: 'i' + G.items.size, k, h: '', f, p: p.slice(), v: null, lit: 0 }; G.items.set(o.id, o); return o; };
       it('remote', 'r', [0.25, FL + 1.06, 3.92]); it('duck', 'r', [-0.5, FL + 1.06, 3.98]); it('tyre', 'r', RVL.spare);
       for (const p of G.set.shopSpots.slice(0, 3)) it('can', 'w', [p[0], p[1] + 0.21, p[2]]); { const p = G.set.shopSpots[3]; it('tyre', 'w', [p[0], p[1] + 0.47, p[2]]); }

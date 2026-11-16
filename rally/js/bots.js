@@ -9,7 +9,7 @@ const Bots = {
     this.clear(); const n = names.length, keep = CAR.idx;
     names.forEach((r, i) => {
       const k = i < myIdx ? i : i + 1, gs = startS - 3 - Math.floor(k / 2) * 9, lat = k % 2 ? 1.9 : -1.9;
-      const ci = (i * 3 + 1) % 7; applyCar(ci); const car = new Car(S); car.real = false; car.sport = false; car.place(gs, lat); // rivals always drive the arcade model; in realistic mode they are slowed to match
+      const ci = (i * 3 + 1) % 7; applyCar(ci); const car = new Car(S); car.real = false; car.sport = false; car.manual = false; car.punct = false; car.easy = false; car.place(gs, lat); // rivals always drive the arcade model; in realistic mode they are slowed to match
       const look = CARS[ci].look, col = BOT_COL[i % BOT_COL.length];
       const view = new CarView(World.scene, { color: col, remote: true, look });
       const tag = this.tag(r.n, col);
@@ -56,7 +56,7 @@ const Bots = {
     if (obsD < 60) vt = Math.min(vt, 16 + obsD * 0.35);
     if (s0 >= finishS) vt = 0; // finished: roll to a stop
     if (Math.abs(ang) > 0.5) vt = Math.min(vt, 10);
-    if (PHYS.real) vt *= 0.8; else if (PHYS.sport) vt *= 0.92;
+    if (PHYS.real) vt *= 0.8; else if (PHYS.sport) vt *= 0.92; else if (PHYS.easy) vt *= 0.9; // easy: rivals ease off a little too
     for (const z of S.zones || []) {
       const d = z.s0 - s0;
       if (z.k === 'gap' && d > -4 && d < 190) vt = Math.max(vt, 29); // gap ahead: commit, flat out

@@ -35,12 +35,16 @@ const Sfx = {
     this.o1.frequency.setTargetAtTime(f, t, 0.02); this.o2.frequency.setTargetAtTime(f * 1.007, t, 0.02); this.o3.frequency.setTargetAtTime(f * 0.5, t, 0.02);
     this.elp.frequency.setTargetAtTime(400 + st.rpm * 0.25 + st.thr * 2200, t, 0.03);
     this.eg.gain.setTargetAtTime((0.1 + st.thr * 0.22) * (st.inside ? 1 : 0.6) * (snd === 'ev' ? 0.05 : snd === 'v8' ? 1.25 : 1), t, 0.03);
-    this.tbp.frequency.setTargetAtTime(1800 + st.rpm * 0.6, t, 0.05); this.tg.gain.setTargetAtTime(st.thr * Math.max(0, st.rpm - 3000) / 4700 * 0.05, t, 0.08);
+    const bo = st.boost !== undefined ? st.boost : st.thr * Math.max(0, st.rpm - 3000) / 4700; // turbo whistle follows the boost, so you hear it spool
+    this.tbp.frequency.setTargetAtTime(1800 + st.rpm * 0.45 + bo * 2200, t, 0.05); this.tg.gain.setTargetAtTime(bo * 0.06, t, 0.08);
     const ground = st.air ? 0 : 1, sp = Math.min(1, st.speed / 30);
     this.gg.gain.setTargetAtTime(ground * (sp * 0.09 + st.slide * 0.25) * (1 - st.offroad * 0.5), t, 0.05); this.gbp.frequency.setTargetAtTime(900 + st.slide * 900, t, 0.1);
     this.rg.gain.setTargetAtTime(ground * (sp * 0.25 + st.offroad * sp * 0.5), t, 0.05);
     this.wg.gain.setTargetAtTime(Math.min(0.32, (st.speed / 42) ** 2 * 0.32), t, 0.1); this.wlp.frequency.setTargetAtTime(300 + st.speed * 18, t, 0.1);
-    // anti-lag pops when lifting at high revs
+    // a flat tyre slaps the road once a turn
+    if (st.flat && !st.air && st.speed > 1.5) { this.flapT = (this.flapT || 0) - dt; if (this.flapT <= 0) { this.flapT = 2 * Math.PI * ((typeof CAR !== 'undefined' && CAR.r) || 0.32) / st.speed; this.burst(0.1 + Math.min(0.15, st.speed / 200), 260, 0.05); } }
+    // overrun pops for cars without a turbo (turbo cars get real anti-lag bangs from the car)
+    if (st.turbo) { this.lastThr = st.thr; return; }
     if (this.lastThr > 0.6 && st.thr < 0.2 && st.rpm > 4500) this.pops = 0.5; this.lastThr = st.thr;
     if (this.pops > 0) { this.pops -= dt; if (Math.random() < dt * 22) this.pop(0.25 + Math.random() * 0.4); }
   },
@@ -49,6 +53,15 @@ const Sfx = {
     g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.001, t + dur); s.connect(f); f.connect(g); g.connect(this.out); s.start(t, Math.random()); s.stop(t + dur + 0.05);
   },
   pop(v) { this.burst(v, 900, 0.07, 'bandpass'); },
+  // anti-lag bang: a sharp crack over a low thump
+  bang() { if (!this.on) return; const k = 0.5 + Math.random() * 0.5; this.burst(0.45 * k, 700 + Math.random() * 500, 0.06, 'bandpass'); this.burst(0.5 * k, 140, 0.12); },
+  // blow-off valve: a hiss that falls away, plus a little flutter
+  bov(v) {
+    if (!this.on) return; const C = this.ctx, t = C.currentTime, s = C.createBufferSource(); s.buffer = this.noiseBuf; const f = C.createBiquadFilter(); f.type = 'bandpass'; f.Q.value = 1.6; f.frequency.setValueAtTime(5200, t); f.frequency.exponentialRampToValueAtTime(1500, t + 0.45);
+    const g = C.createGain(), a = 0.2 * Math.min(1, v + 0.2); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(a, t + 0.02); g.gain.exponentialRampToValueAtTime(0.001, t + 0.5);
+    const lfo = C.createOscillator(), lg = C.createGain(); lfo.frequency.value = 26; lg.gain.value = a * 0.5; lfo.connect(lg); lg.connect(g.gain); lfo.start(t); lfo.stop(t + 0.5);
+    s.connect(f); f.connect(g); g.connect(this.out); s.start(t, Math.random()); s.stop(t + 0.55);
+  },
   tone(freq, t0, dur, type, vol) { const C = this.ctx, o = C.createOscillator(), g = C.createGain(); o.type = type || 'square'; o.frequency.value = freq; g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(vol || 0.12, t0 + 0.02); g.gain.setValueAtTime(vol || 0.12, t0 + dur - 0.04); g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur); o.connect(g); g.connect(this.out); o.start(t0); o.stop(t0 + dur + 0.02); },
   horn() { if (!this.on) return; const t = this.ctx.currentTime; this.tone(415, t, 0.45, 'square', 0.08); this.tone(523, t, 0.45, 'square', 0.07); },
   jingle() { if (!this.on) return; const t = this.ctx.currentTime, N = [784, 988, 1175, 988, 784, 880, 988, 784, 659, 784]; N.forEach((f, i) => this.tone(f, t + i * 0.17, 0.16, 'triangle', 0.16)); },

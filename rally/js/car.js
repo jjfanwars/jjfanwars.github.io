@@ -33,7 +33,7 @@ const CARS = [
   { name: 'Stretch Limo', cls: 'Very long. Corners are a group effort', need: 15, look: 'limo', pow: 1.9, grip: 0.95, steer: 0.8, tough: 3.2, m: 2800, I: [9000, 9500, 2000], vmax: 195, split: 1, base: [2.34, 2.23], hl: 3.3, bz: 3.1, roll: 0.06, snd: 'v8' },
 ];
 // driving model: 'arcade' (assists, generous grip) or 'real' (real-world grip, no assists, lock-ups, spin-ups, damage hurts the car)
-const PHYS = { real: false, sport: false }; // sport: in between, real tyre physics with no scripted turning, power oversteer, ABS-style brakes and an anti-spin net
+const PHYS = { real: false, sport: false, manual: false, easy: false }; // easy: arcade with extra grip and power, style boosts, soft penalties // sport: in between, real tyre physics with no scripted turning, power oversteer, ABS-style brakes and an anti-spin net
 // real-world peak friction per surface (tyre on gravel, snow, sand, tarmac, verge)
 const realMu = (B, onRoad) => onRoad ? (B.rGrip || B.grip * 0.58) : (B.rOff || B.off * 0.66);
 const CAR_BASE = JSON.parse(JSON.stringify({ m: 1230, I: [2300, 2400, 900], k: 36000, cB: 4200, cR: 7500, arb: 9000, brake: 9800 }));
@@ -52,7 +52,7 @@ function applyCar(i) {
   CAR.r = c.r || 0.32; CAR.rest = c.rest || 0.36; CAR.travel = c.travel || 0.27; CAR.hw = c.hw || 0.9; CAR.hl = c.hl || 2.06; CAR.roll = c.roll || 0;
   if (c.soft) { CAR.k *= c.soft; CAR.cB *= Math.sqrt(c.soft); CAR.cR *= Math.sqrt(c.soft); CAR.arb *= c.soft; }
   CAR.wheels = wheelsOf(c);
-  CAR.ev = !!c.ev; CAR.nitro = !!c.nitro; CAR.snd = c.snd || ''; CAR.horn = c.horn || 'horn'; CAR.gears = c.ev ? [1] : [3.25, 2.2, 1.67, 1.32, 1.07, 0.89];
+  CAR.ev = !!c.ev; CAR.turbo = c.turbo !== undefined ? !!c.turbo : !c.ev && !c.snd; CAR.nitro = !!c.nitro; CAR.snd = c.snd || ''; CAR.horn = c.horn || 'horn'; CAR.gears = c.ev ? [1] : [3.25, 2.2, 1.67, 1.32, 1.07, 0.89];
   CAR.fin = CAR.red * 2 * Math.PI / 60 * CAR.r / (CAR.gears[CAR.gears.length - 1] * c.vmax / 3.6);
 }
 const torqueAt = rpm => { const x = rpm / 1000; return x < 2.5 ? 230 + 60 * x : x < 4.5 ? 380 + 20 * (x - 2.5) : x < 6.5 ? 420 - 8 * (x - 4.5) : 404 - 70 * (x - 6.5); };
@@ -69,12 +69,18 @@ class Car {
   get sport() { return this._sport !== undefined ? this._sport : PHYS.sport && !this.real; }
   set sport(v) { this._sport = v; }
   set real(v) { this._real = v; }
+  get easy() { return this._easy !== undefined ? this._easy : PHYS.easy && !this.real && !this.sport; }
+  set easy(v) { this._easy = v; }
+  get manual() { return this._manual !== undefined ? this._manual : PHYS.manual; }
+  set manual(v) { this._manual = v; }
+  // a tyre goes flat: it sits lower, grips about half as well and drags
+  puncture(i) { const w = this.wh[i]; if (w.flat || this.punct === false || !this.real) return; w.flat = true; this.events.push({ k: 'flat', v: i + 1 }); }
   place(s, lat) {
     for (const l of this.S.logs) if (l.s - s < 18 && l.s - s > -6) s = l.s - 20;
     const S = this.S, p = S.at(s), rx = -Math.cos(p.h), rz = Math.sin(p.h);
     const x = p.x + rx * (lat || 0), z = p.z + rz * (lat || 0);
     this.pos.set(x, S.heightAt(x, z) + 0.62 + (CAR.rest + CAR.r - 0.68), z); this.q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), p.h); this.v.set(0, 0, 0); this.w.set(0, 0, 0);
-    for (const w of this.wh) { w.comp = w.pc = 0.12; w.cv = 0; w.spin = 0; } this.steer = 0; this.wrecked = false; this.gear = 1; this.rpm = CAR.idle; this.prog = s; this.air = 0; this.shiftT = 0;
+    for (const w of this.wh) { w.comp = w.pc = 0.12; w.cv = 0; w.spin = 0; } this.steer = 0; this.wrecked = false; this.gear = 1; this.rpm = CAR.idle; this.prog = s; this.air = 0; this.shiftT = 0; this.boostP = 0; this.als = 0; this.pend = 0;
   }
   // world <- body
   toWorld(v, out) { return out.copy(v).applyQuaternion(this.q); }
@@ -103,7 +109,7 @@ class Car {
     const beta = Math.abs(vF) > 2 ? Math.atan2(vL, Math.abs(vF)) : 0;
     // lateral grip the surface really has (road or verge): caps steering lock and the yaw assist, so snow feels like snow
     const BS = S.B || BIOMES.forest, real = this.real, sport = !real && this.sport, gk = real ? 1 + ((CAR.grip || 1) - 1) * 0.5 : sport ? 1 + ((CAR.grip || 1) - 1) * 0.75 : (CAR.grip || 1), zk = S.zoneAt ? S.zoneAt(this.prog) : null, wetK = (S.cfg && S.cfg.wet ? 0.8 : 1) * (zk ? zk.mu : 1);
-    const mu0 = (real ? lerp(realMu(BS, true), realMu(BS, false), this.offroad) : sport ? lerp(realMu(BS, true), realMu(BS, false), this.offroad) * 1.4 : lerp(BS.grip, BS.off, this.offroad) * 1.12) * gk * wetK * (1 - this.dmg * 0.15), aMax = mu0 * 9.81 * 1.12;
+    const mu0 = (real ? lerp(realMu(BS, true), realMu(BS, false), this.offroad) : sport ? lerp(realMu(BS, true), realMu(BS, false), this.offroad) * 1.4 : lerp(BS.grip, BS.off, this.offroad) * (this.easy ? 1.22 : 1.12)) * gk * wetK * (1 - this.dmg * 0.15), aMax = mu0 * 9.81 * 1.12;
     // real: the lock still narrows with speed (as a driver would), but allows 1.6x what the tyres can hold, so you can over-drive it
     const vv = Math.max(4, Math.abs(vF)), maxS = real ? clamp(Math.atan(2.51 * aMax * 1.6 / (vv * vv)) + 0.12, 0.2, 0.6) : sport ? clamp(Math.atan(2.51 * aMax * 1.9 * (CAR.steerK || 1) / (vv * vv)) + 0.12, 0.2, 0.62) : clamp(Math.atan(2.51 * aMax * (CAR.steerK || 1) / (vv * vv)) + 0.09, 0.14, 0.62), st = inp.steer;
     let target = st * maxS + (real ? this.dmg * 0.035 * this.pull : 0); // real: a bent car pulls to one side
@@ -129,15 +135,41 @@ class Car {
     let rpm = Math.max(CAR.idle, clutch ? Math.max(tgtRpm, lerp(CAR.idle, 4800, this.thr)) : tgtRpm);
     if (rpm > CAR.red) rpm = CAR.red + (rpm - CAR.red) * 0.2;
     this.rpm += (rpm - this.rpm) * Math.min(1, dt * 20);
+    // manual: shift requests are edge-triggered and wait out a shift in progress
+    if (this.manual) { if (inp.up && !this._up) this.pend = 1; if (inp.dn && !this._dn) this.pend = -1; } else this.pend = 0;
+    this._up = inp.up; this._dn = inp.dn;
     if (this.shiftT > 0) this.shiftT -= dt;
+    else if (this.gear > 0 && this.manual) {
+      if (this.pend > 0 && this.gear < CAR.gears.length) { this.gear++; this.shiftT = real ? 0.16 : 0.09; this.events.push({ k: 'shift', up: 1 }); }
+      else if (this.pend < 0 && this.gear > 1) { // rev-matched downshift, refused if it would over-rev the engine
+        const lower = tgtRpm * CAR.gears[this.gear - 2] / CAR.gears[this.gear - 1];
+        if (lower < CAR.red + 250) { this.gear--; this.shiftT = 0.08; this.events.push({ k: 'shift', up: 0, v: 1 }); } else this.events.push({ k: 'deny' });
+      } else if (this.gear > 1 && Math.abs(vF) < 2.5 && this.thr < 0.1) this.gear = 1; // anti-stall: rolling to a stop drops it into first
+      this.pend = 0;
+    }
     else if (this.gear > 0) {
       if (this.rpm > CAR.red - 350 && this.gear < CAR.gears.length && this.air <= 0.05) { this.gear++; this.shiftT = real ? 0.22 : 0.13; this.events.push({ k: 'shift', up: 1 }); }
       else if (this.gear > 1) { const lower = tgtRpm * CAR.gears[this.gear - 2] / CAR.gears[this.gear - 1]; if (lower < CAR.red - 1500 && (tgtRpm < 3300 || (this.brk > 0.3 && lower < CAR.red - 1900))) { this.gear--; this.shiftT = 0.1; this.events.push({ k: 'shift', up: 0 }); } }
     }
     const limiter = this.rpm > CAR.red - 20 ? 0.15 : 1;
     this.nos = this.nos === undefined ? 1 : this.nos; this.boost = CAR.nitro && inp.nitro && this.nos > 0 && this.thr > 0.3; if (this.boost) this.nos = Math.max(0, this.nos - dt / 4); else this.nos = Math.min(1, this.nos + dt / 14);
-    const tq = CAR.ev ? (this.rpm < 4200 ? 480 : 480 * 4200 / this.rpm) : torqueAt(this.rpm);
-    const engT = this.shiftT > 0 ? 0 : tq * (CAR.pow || 1) * (this.boost ? 1.75 : 1) * this.thr * limiter * (real ? 1 - this.dmg * 0.4 : 1), driveTotal = engT * Math.abs(ksh) * 0.9 / CAR.r; // N at the contact patches
+    // turbo: boost builds with revs and throttle (lag below ~3500 rpm); lifting at high revs fires the anti-lag, which bangs and
+    // keeps the turbo spinning for a moment, so the power is there again the instant you get back on it
+    if (this.styleT > 0) this.styleT -= dt; // style boost: a drift or big air earns a burst of extra power
+    this.boostP = this.boostP || 0; this.als = Math.max(0, (this.als || 0) - dt);
+    if (CAR.turbo) {
+      const hi = this.thr > 0.7 ? 1 : this.thr < 0.25 ? 0 : this.hiThr;
+      if (this.hiThr && !hi && this.rpm > 4300 && this.boostP > 0.45) { this.als = 0.75; this.events.push({ k: 'lift', v: Math.round(this.boostP * 10) / 10 }); }
+      this.hiThr = hi;
+      const want = Math.max(this.thr * sstep(2200, 4600, this.rpm), this.als > 0 ? 0.6 : 0);
+      this.boostP += (want - this.boostP) * Math.min(1, dt * (want > this.boostP ? 2.4 : 5));
+      if (this.als > 0 && this.thr < 0.3 && Math.random() < dt * 13) this.events.push({ k: 'pop' });
+    } else this.boostP = 0;
+    const tq = CAR.ev ? (this.rpm < 4200 ? 480 : 480 * 4200 / this.rpm) : torqueAt(this.rpm) * (CAR.turbo ? 0.74 + 0.34 * this.boostP : 1);
+    // engine braking (regen on the EV): off the throttle the engine holds the driven wheels back, more in low gears and at high revs,
+    // so a lift mid-corner moves weight forward and the tail goes light (lift-off oversteer, the Scandinavian flick)
+    const eb = this.gear > 0 && !clutch && this.shiftT <= 0 && this.thr < 0.15 && vF > 3 ? -(30 + this.rpm * 0.012) * (1 - this.thr / 0.15) * (real ? 1 : sport ? 0.85 : this.easy ? 0.35 : 0.55) * (CAR.ev ? 1.6 : 1) : 0;
+    const engT = (this.shiftT > 0 ? 0 : tq * (CAR.pow || 1) * (this.boost ? 1.75 : 1) * this.thr * limiter * (real ? 1 - this.dmg * 0.4 : this.easy ? 1.15 : 1) * (this.styleT > 0 ? 1.4 : 1)) + eb, driveTotal = engT * Math.abs(ksh) * 0.9 / CAR.r; // N at the contact patches
     // ---- suspension + tyres ----
     let contacts = 0, slideSum = 0, offSum = 0;
     for (let i = 0; i < 4; i++) {
@@ -154,7 +186,9 @@ class Car {
       // compression velocity is low-passed (stands in for tyre sidewall compliance, kills chatter on mesh facets)
       w.cv = lerp(w.cv || 0, (w.comp - w.pc) / dt, Math.min(1, dt * 90)); const cv = w.cv;
       let fs = CAR.k * w.comp + clamp((cv > 0 ? CAR.cB : CAR.cR) * cv, -14000, 16000);
-      if (w.comp > CAR.travel) { const o = w.comp - CAR.travel; fs += o * 120000 + o * o * 2e6 + Math.max(0, cv) * 12000; }
+      if (w.comp > CAR.travel) { const o = w.comp - CAR.travel; fs += o * 120000 + o * o * 2e6 + Math.max(0, cv) * 12000;
+        // bottoming out hard (a big landing, a rock, a kerb at speed) can pinch the tyre
+        if (cv > 5 && Math.random() < (cv - 5) * 0.01 * (real ? 1.5 : sport ? 1 : 0.3) / (CAR.tough || 1)) this.puncture(i); }
       fs = Math.max(0, fs); w.load = Math.min(fs, 30000);
       F.addScaledVector(up, fs); T.add(t.b.crossVectors(t.c.subVectors(A, this.pos), t.d.copy(up).multiplyScalar(fs)));
       // tyre frame
@@ -165,7 +199,7 @@ class Car {
       // surface from the road map
       const q = S.near(cp.x, cp.z, 12), onRoad = q && q.d < ROAD_HW + 0.3;
       w.surf = onRoad ? 0 : 1; offSum += w.surf;
-      const BB = S.B || BIOMES.forest, mu = (real ? realMu(BB, onRoad) : sport ? realMu(BB, onRoad) * 1.4 : (onRoad ? BB.grip : BB.off) * 1.12) * gk * (onRoad ? wetK : zk ? zk.mu : 1) * (1 - this.dmg * 0.15) * (w.flat ? 0.45 : 1), Fz = Math.min(w.load, 9000), fmax = mu * Fz * (1 - 0.06 * Fz / 4000); // tyre load sensitivity
+      const BB = S.B || BIOMES.forest, mu = (real ? realMu(BB, onRoad) : sport ? realMu(BB, onRoad) * 1.4 : (onRoad ? BB.grip : BB.off) * (this.easy ? 1.22 : 1.12)) * gk * (onRoad ? wetK : zk ? zk.mu : 1) * (1 - this.dmg * 0.15) * (w.flat ? 0.55 : 1), Fz = Math.min(w.load, 9000), fmax = mu * Fz * (1 - 0.06 * Fz / 4000); // tyre load sensitivity
       // longitudinal
       let fx = 0, locked = false;
       const split = sport ? Math.min(0.85, CAR.split + 0.15) : CAR.split, share = w.front ? (1 - split) / 2 : split / 2; // sport: more drive to the rear so the throttle steers the tail
@@ -175,7 +209,7 @@ class Car {
       if (hb && !w.front) { locked = true; fx = -Math.sign(vx) * Math.min(fmax * 0.85, Math.abs(vx) * CAR.m); }
       if (!onRoad && !(zk && zk.noDrag)) fx -= vx * BB.offDrag; // soft ground drag (not on a frozen lake)
       if (zk && zk.drag) fx -= vx * zk.drag; // water: wading drag
-      fx -= vx * (6 + (w.flat ? 900 : 0)); // rolling resistance (a flat drags hard)
+      fx -= vx * (6 + (w.flat ? 110 : 0)); // rolling resistance (a flat drags: you can limp on, but it costs time)
       // lateral: slip angle curve, softer and wider on gravel
       const slipA = Math.atan2(vy, Math.max(Math.abs(vx), 3.5));
       // real: sharper peak and a real drop-off past it (sliding grip ~80% of peak), so a slide has to be caught
@@ -283,9 +317,10 @@ class Car {
       // friction along the surface: a sideswipe slides you along the barrier instead of spinning you round
       const vt = pv.clone().addScaledVector(n, -vn); vt.y = 0; const vtl = vt.length(); if (vtl > 0.01) { const jt = Math.min(vtl / this.invMass(P, vt.clone().normalize()) * 0.5, j * (scrape ? 0.1 : 0.4)); this.impulse(P, vt.multiplyScalar(-jt / vtl)); }
       if (scrape) { const yaw = this.w.dot(this.tmp.up.set(0, 1, 0).applyQuaternion(this.q)); this.w.addScaledVector(this.tmp.up, -yaw * 0.25); } // a scrape doesn't flick the car round
+      if (sev > 8 && head > 0.4 && Math.random() < (this.real ? 0.2 : this.sport ? 0.12 : 0.04) / (CAR.tough || 1)) { let bi = 0, bd = 1e9; for (let k = 0; k < 4; k++) { const dd = (CAR.wheels[k][0] - px) ** 2 + (CAR.wheels[k][2] - pz) ** 2; if (dd < bd) { bd = dd; bi = k; } } this.puncture(bi); } // a hit near a wheel can cut the tyre
       if (sev > 3) { this.dmg = Math.min(1, this.dmg + (sev - 3) * 0.007 * (0.3 + 0.7 * head) / (CAR.tough || 1)); this.events.push({ k: 'crash', v: sev * (0.4 + 0.6 * head) }); }
       // only a hard, square hit wrecks the car (about 55 km/h straight into a tree or wall)
-      if (sev > 15 * Math.sqrt(CAR.tough || 1) && head > 0.6 && !this.wrecked) { this.wrecked = true; this.events.push({ k: 'wreck', v: sev }); }
+      if (sev > (this.easy ? 20 : 15) * Math.sqrt(CAR.tough || 1) && head > 0.6 && !this.wrecked) { this.wrecked = true; this.events.push({ k: 'wreck', v: sev }); }
     };
     for (const tr of S.treesNear(this.pos.x, this.pos.z, this.near)) hit(tr.x, tr.z, tr.y + 0.6, tr.r, undefined, tr.soft, undefined, undefined, tr.nx, tr.nz);
     if (S.dynNear) for (const d of S.dynNear(this.pos.x, this.pos.z, S.clock || 0, this.dynL || (this.dynL = []))) hit(d.x, d.z, d.y + 1.2, d.r, undefined, false, d.vx, d.vz);
@@ -317,6 +352,6 @@ class Car {
   pack(stage) {
     const r = (x, k) => Math.round(x * k) / k;
     return { t: 'car', p: [r(this.pos.x, 100), r(this.pos.y, 100), r(this.pos.z, 100)], q: [r(this.q.x, 1e4), r(this.q.y, 1e4), r(this.q.z, 1e4), r(this.q.w, 1e4)], v: [r(this.v.x, 10), r(this.v.y, 10), r(this.v.z, 10)],
-      rpm: this.rpm | 0, g: this.gear, st: r(this.steer, 100), th: r(this.thr, 100), sl: r(this.slide, 100), of: r(this.offroad, 10), c: this.wh.map(w => r(w.comp, 100)), dm: r(this.dmg, 100), pr: r(this.prog, 10), air: this.air > 0 ? 1 : 0, ...stage };
+      rpm: this.rpm | 0, g: this.gear, st: r(this.steer, 100), th: r(this.thr, 100), sl: r(this.slide, 100), of: r(this.offroad, 10), c: this.wh.map(w => r(w.comp, 100)), dm: r(this.dmg, 100), bo: r(this.boostP || 0, 10), fl: this.wh.reduce((a, w, k) => a | (w.flat ? 1 << k : 0), 0), pr: r(this.prog, 10), air: this.air > 0 ? 1 : 0, ...stage };
   }
 }
