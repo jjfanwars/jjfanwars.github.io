@@ -345,7 +345,7 @@ class CarView {
     const TAU = Math.PI * 2; if (st.wp || this.wipeT % TAU > 0.05) { this.wipeT += dt * 2.6; if (!st.wp && this.wipeT % TAU < dt * 2.6 + 0.02) this.wipeT = Math.round(this.wipeT / TAU) * TAU; }
     const wa = 0.06 + (1 - Math.cos(this.wipeT)) / 2 * 1.72; for (const w of this.wipers) w.rotation.z = -wa;
     // windscreen dust builds up on loose surfaces at speed, the wipers clear it
-    if (!this.remote) { const k = (World.B && (World.B.dustK || 1)) * (st.offroad > 0.5 ? 1.6 : 1); if (st.speed > 4 && !st.air) this.dirt += dt * 0.0045 * Math.min(1, st.speed / 22) * k; if (st.wp || this.wipeT % TAU > 0.05) this.dirt -= dt * 0.35; this.dirt = clamp(this.dirt, 0, 0.6); this.dirtM.opacity = this.dirt; if (World.B) this.dirtM.color.setRGB(World.B.dust[0] * 0.7, World.B.dust[1] * 0.7, World.B.dust[2] * 0.7); }
+    if (!this.remote) { const k = (World.B && (World.B.dustK || 1)) * (st.offroad > 0.5 ? 1.6 : 1); if (st.speed > 4 && !st.air) this.dirt += dt * 0.0025 * Math.min(1, st.speed / 22) * k; if (st.wp || this.wipeT % TAU > 0.05) this.dirt -= dt * 0.35; this.dirt = clamp(this.dirt, 0, 0.6); this.dirtM.opacity = this.dirt; if (World.B) this.dirtM.color.setRGB(World.B.dust[0] * 0.7, World.B.dust[1] * 0.7, World.B.dust[2] * 0.7); }
     if ((this.dashTk = (this.dashTk || 0) + dt) > 0.1) {
       this.dashTk = 0;
       const t = this.tripC.getContext('2d'); t.fillStyle = '#100a04'; t.fillRect(0, 0, 320, 84); t.fillStyle = '#ff9a2a'; t.shadowColor = '#ff7a10'; t.shadowBlur = 8; t.font = 'bold 40px monospace'; t.textAlign = 'left';

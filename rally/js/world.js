@@ -101,7 +101,17 @@ const World = {
       Object.assign(sun.shadow.camera, { left: -ext, right: ext, top: ext, bottom: -ext, near: 1, far: 400 }); sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.04; sun.shadow.camera.updateProjectionMatrix();
     }
     scene.add(this.hemi = new THREE.HemisphereLight(tod.hemiS, tod.hemiG, tod.hemiI));
-    this.buildTerrain(S, T); this.buildForest(S, T); this.buildProps(S, T); this.buildDust(T);
+    this.buildTerrain(S, T); this.buildForest(S, T); this.buildProps(S, T); this.buildDust(T); this.buildSkids();
+  },
+  // tyre marks: a ring buffer of flat dark strips laid where a wheel slides
+  buildSkids() {
+    const n = 1800, g = new THREE.PlaneGeometry(1, 1); g.rotateX(-Math.PI / 2); const c = this.B.dust;
+    const m = new THREE.MeshBasicMaterial({ color: new THREE.Color(c[0] * 0.42, c[1] * 0.4, c[2] * 0.38), transparent: true, opacity: 0.38, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
+    this.skid = new THREE.InstancedMesh(g, m, n); this.skid.count = 0; this.skid.frustumCulled = false; this.skidI = 0; this.skidM = new THREE.Matrix4(); this.scene.add(this.skid);
+  },
+  skidMark(x, y, z, yaw, len, w) {
+    const k = this.skid, i = this.skidI; this.skidI = (i + 1) % k.instanceMatrix.count; k.count = Math.max(k.count, i + 1);
+    const m = this.skidM.makeRotationY(yaw); m.scale(new THREE.Vector3(w, 1, len + 0.05)); m.setPosition(x, y + 0.03, z); k.setMatrixAt(i, m); k.instanceMatrix.needsUpdate = true;
   },
   buildTerrain(S, T) {
     const PH = this.PH || {}, B = this.B, G = S.grid, TS = 32, mat = new THREE.MeshStandardMaterial({ map: PH.floor || T.floor.map, normalMap: PH.floorN || T.floor.nrm, normalScale: new THREE.Vector2(1, 1), vertexColors: true, roughness: 0.96, metalness: 0 });
@@ -289,13 +299,22 @@ const World = {
     rm.castShadow = rm.receiveShadow = this.gfx !== 'low'; scene.add(rm);
     // red/white marker posts every 20 m on both verges: strong speed cue
     { const pg = new THREE.CylinderGeometry(0.06, 0.07, 1.1, 6); pg.translate(0, 0.55, 0); const pc = new Float32Array(pg.attributes.position.count * 3); for (let i = 0; i < pg.attributes.position.count; i++) { const y = pg.attributes.position.getY(i), red = y > 0.8; pc[i * 3] = red ? 0.85 : 0.95; pc[i * 3 + 1] = red ? 0.1 : 0.95; pc[i * 3 + 2] = red ? 0.08 : 0.92; } pg.setAttribute('color', new THREE.BufferAttribute(pc, 3));
-      const posts = []; if (!B.city) for (let s = 50; s < S.L - 40; s += 20) for (const sd of [-1, 1]) { const p = S.at(s), d = ROAD_HW + 1.1, x = p.x - Math.cos(p.h) * sd * d, z = p.z + Math.sin(p.h) * sd * d; if (S.logs.some(l => Math.abs(l.s - s) < 6)) continue; posts.push([x, S.heightAt(x, z), z]); }
+      const posts = []; if (!B.city) for (let s = 50; s < S.L - 40; s += 20) for (const sd of [-1, 1]) { const p = S.at(s), d = ROAD_HW + 1.1, x = p.x - Math.cos(p.h) * sd * d, z = p.z + Math.sin(p.h) * sd * d; if (S.logs.some(l => Math.abs(l.s - s) < 6 || Math.abs(l.s - 50 - s) < 4)) continue; posts.push([x, S.heightAt(x, z), z]); }
       const pm2 = new THREE.InstancedMesh(pg, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.6 }), posts.length); posts.forEach((p, i) => { m4.makeTranslation(p[0], p[1], p[2]); pm2.setMatrixAt(i, m4); }); pm2.castShadow = this.gfx !== 'low'; pm2.computeBoundingSphere(); scene.add(pm2); }
     // obstacles across half the road: logs (forests, snow), boulders (desert), concrete barriers (city)
     const PH = this.PH || {}, barkM = new THREE.MeshStandardMaterial({ map: PH.bark || T.bark.map, normalMap: PH.barkN || T.bark.nrm, roughness: 1 }), endM = new THREE.MeshStandardMaterial({ color: 0xb08a5a, roughness: 0.9 });
     const rockM = new THREE.MeshStandardMaterial({ map: PH.floor || T.floor.map, color: 0xc0a080, roughness: 0.95 });
     const barC = document.createElement('canvas'); barC.width = 256; barC.height = 64; { const g = barC.getContext('2d'); g.fillStyle = '#d8d6cf'; g.fillRect(0, 0, 256, 64); g.fillStyle = '#c62020'; for (let i = -1; i < 9; i++) { g.beginPath(); g.moveTo(i * 32, 64); g.lineTo(i * 32 + 16, 64); g.lineTo(i * 32 + 40, 22); g.lineTo(i * 32 + 24, 22); g.fill(); } g.fillStyle = 'rgba(0,0,0,.08)'; for (let i = 0; i < 300; i++) g.fillRect(Math.random() * 256, Math.random() * 64, 2, 2); }
     const barT = new THREE.CanvasTexture(barC); barT.colorSpace = THREE.SRGBColorSpace; barT.wrapS = THREE.RepeatWrapping; const barM = new THREE.MeshStandardMaterial({ map: barT, roughness: 0.85 });
+    // logs read better against the gravel: lighter bark, fresh pale cut ends
+    barkM.color.setRGB(1.45, 1.32, 1.18); endM.color.setHex(0xe2c696);
+    const hazR = new THREE.MeshStandardMaterial({ color: 0xe01b1b, emissive: 0x3a0606, roughness: 0.7 }), hazW = new THREE.MeshStandardMaterial({ color: 0xf4f4f0, emissive: 0x262626, roughness: 0.7 });
+    const poleG = new THREE.CylinderGeometry(0.025, 0.03, 1.7, 5); poleG.translate(0, 0.85, 0); const poleM = new THREE.MeshStandardMaterial({ color: 0xdedede, roughness: 0.6 });
+    const flagS = new THREE.Shape(); flagS.moveTo(0, 0.24); flagS.lineTo(0.75, 0); flagS.lineTo(0, -0.24); flagS.closePath();
+    const flagG = new THREE.ShapeGeometry(flagS), flagM = new THREE.MeshStandardMaterial({ color: 0xff6a00, emissive: 0x5a2000, roughness: 0.8, side: THREE.DoubleSide });
+    const sgC = document.createElement('canvas'); sgC.width = sgC.height = 128; { const g = sgC.getContext('2d'); g.lineJoin = 'round'; g.beginPath(); g.moveTo(64, 10); g.lineTo(120, 112); g.lineTo(8, 112); g.closePath(); g.fillStyle = '#fff'; g.fill(); g.lineWidth = 14; g.strokeStyle = '#d01818'; g.stroke(); g.fillStyle = '#111'; g.fillRect(58, 42, 12, 40); g.fillRect(58, 90, 12, 12); }
+    const sgT = new THREE.CanvasTexture(sgC); sgT.colorSpace = THREE.SRGBColorSpace;
+    const signG = new THREE.PlaneGeometry(1.1, 1.1), signM = new THREE.MeshStandardMaterial({ map: sgT, emissive: 0xffffff, emissiveMap: sgT, emissiveIntensity: 0.25, transparent: true, alphaTest: 0.5, side: THREE.DoubleSide, roughness: 0.6 });
     for (const l of S.logs) {
       const len = Math.hypot(l.bx - l.ax, l.bz - l.az), mx = (l.ax + l.bx) / 2, mz = (l.az + l.bz) / 2, dir = new THREE.Vector3(l.bx - l.ax, 0, l.bz - l.az).normalize();
       if (B.obs === 'rock') {
@@ -310,7 +329,16 @@ const World = {
         const m = new THREE.Mesh(g, [barkM, endM, endM]); m.position.set(mx, l.cy, mz);
         m.quaternion.setFromUnitVectors(up, dir); m.castShadow = m.receiveShadow = true; scene.add(m);
         const br = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.08, 1.1, 5), barkM); br.position.set(0, len * 0.2, l.rad); br.rotation.x = 1.0; m.add(br);
+        // marshals painted red/white bands on the end that sticks into the road (end a is always the inner one)
+        for (let k = 0; k < 4; k++) { const bd = new THREE.Mesh(new THREE.CylinderGeometry(l.rad * 1.03, l.rad * 1.03, 0.36, 12, 1, true), k % 2 ? hazW : hazR); bd.position.y = -len / 2 + 0.2 + k * 0.38; m.add(bd); }
       }
+      // every obstacle: a hi-vis flag on its inner end and a warning triangle on the verge 50 m before it
+      { const fx = l.ax + dir.x * 0.35, fz = l.az + dir.z * 0.35, fy = B.obs === 'rock' ? S.heightAt(fx, fz) + l.rad * 1.2 : B.obs === 'barrier' ? S.heightAt(fx, fz) + 0.82 : l.top;
+        const pole = new THREE.Mesh(poleG, poleM); pole.position.set(fx, fy, fz); scene.add(pole);
+        const fl = new THREE.Mesh(flagG, flagM); fl.position.set(fx, fy + 1.45, fz); fl.rotation.y = Math.atan2(dir.x, dir.z) - Math.PI / 2; scene.add(fl); // faces the driver, flies outward
+        const p = S.at(l.s - 50), sd = l.side === 'R' ? 1 : -1, d = ROAD_HW + 1.3, x = p.x - Math.cos(p.h) * sd * d, z = p.z + Math.sin(p.h) * sd * d, y = S.heightAt(x, z);
+        const post = new THREE.Mesh(poleG, poleM); post.position.set(x, y, z); post.scale.set(1.4, 1.1, 1.4); scene.add(post);
+        const sg = new THREE.Mesh(signG, signM); sg.position.set(x, y + 1.75, z); sg.rotation.y = p.h + Math.PI; scene.add(sg); }
     }
     // snowbanks: a white mound strip along each edge
     if (B.banks) {
@@ -445,7 +473,7 @@ const World = {
       d.life[i] -= dt; const t = 1 - d.life[i] / d.max[i];
       d.vel[i * 3] *= 1 - dt * 1.5; d.vel[i * 3 + 1] = d.vel[i * 3 + 1] * (1 - dt * 1.5) + dt * 0.25; d.vel[i * 3 + 2] *= 1 - dt * 1.5;
       d.pos[i * 3] += d.vel[i * 3] * dt; d.pos[i * 3 + 1] += d.vel[i * 3 + 1] * dt; d.pos[i * 3 + 2] += d.vel[i * 3 + 2] * dt;
-      d.size[i] += dt * 2.2; d.a[i] = Math.sin(Math.min(1, t * 4) * Math.PI / 2) * (1 - t) * 0.45;
+      d.size[i] += dt * 1.5; d.a[i] = Math.sin(Math.min(1, t * 4) * Math.PI / 2) * (1 - t) * 0.3;
     }
     const g = this.dust.geometry; g.attributes.position.needsUpdate = g.attributes.sz.needsUpdate = g.attributes.al.needsUpdate = g.attributes.cl.needsUpdate = true;
     this.dust.material.uniforms.sc.value = innerHeight;

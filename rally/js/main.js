@@ -330,7 +330,7 @@ function sendCar(dt) {
 }
 Net.on('car', m => { if (!G.on || !G.bufs || !G.bufs[m.c] || (m.c === G.myCar && G.role === 'drv')) return; m.rt = performance.now(); const B = G.bufs[m.c]; B.push(m); if (B.length > 40) B.shift(); if (m.c === G.myCar) for (const e of m.ev || []) carEvent(e); });
 Net.on('look', m => { if (G.on && m.c === G.myCar) { G.other.yaw = clamp(+m.y || 0, -3, 3); G.other.pitch = clamp(+m.p || 0, -1.2, 1); G.other.map = !!m.m; } });
-function carEvent(e) { if (e.k === 'crash' || e.k === 'wreck') G.hurt = Math.min(1, (G.hurt || 0) + e.v / 14); if (e.k === 'wreck') { Sfx.crash(20); G.view.shake = 1; say('WRECKED  +10 s', '', 2200); $('fade').style.opacity = 0.9; if (G.role === 'drv') setTimeout(() => { if (G.car && G.car.wrecked && G.phase === 'run') { G.car.place(Math.max(World.startS, G.car.prog - 5), 0); G.pen += 10; } $('fade').style.opacity = 0; }, 1300); else setTimeout(() => $('fade').style.opacity = 0, 1300); } else if (e.k === 'crash') { Sfx.crash(e.v); G.view.shake = Math.min(1, e.v / 12); } else if (e.k === 'thud') { Sfx.thud(e.v); G.view.shake = Math.min(0.6, e.v / 15); } else if (e.k === 'shift') Sfx.shift(); }
+function carEvent(e) { if (e.k === 'crash' || e.k === 'wreck') G.hurt = Math.min(1, (G.hurt || 0) + e.v / 14); if (e.k === 'wreck') { Sfx.crash(20); G.view.shake = 1; say('WRECKED  +10 s', '', 2200); $('fade').style.opacity = 0.9; if (G.role === 'drv') setTimeout(() => { if (G.car && G.car.wrecked && G.phase === 'run') { G.car.place(Math.max(World.startS, G.car.prog - 5), 0); G.pen += 10; } $('fade').style.opacity = 0; }, 1300); else setTimeout(() => $('fade').style.opacity = 0, 1300); } else if (e.k === 'crash') { Sfx.crash(e.v); G.view.shake = Math.min(1, e.v / 12); } else if (e.k === 'thud') { Sfx.thud(e.v); G.view.shake = Math.min(0.6, e.v / 15); } else if (e.k === 'shift') Sfx.shift(); else if (e.k === 'land') { Sfx.thud(2 + e.v * 6); G.view.shake = Math.max(G.view.shake || 0, 0.15 + e.v * 0.35); } }
 
 // ---------- navigator: interpolate the driver's car ----------
 const IP = { pos: new THREE.Vector3(), q: new THREE.Quaternion(), vel: new THREE.Vector3(), a: new THREE.Quaternion(), b: new THREE.Quaternion() };
@@ -405,13 +405,14 @@ function frame(now) {
   }
   // dust and gravel spray from the rear wheels
   if (st.speed > 4 && !st.air) {
-    const n = (st.slide * 3 + st.speed / 25) * (st.offroad > 0.5 ? 0.4 : 1) * dt * 30 * (World.B.dustK || 1);
-    for (let k = 0; k < n; k++) if (Math.random() < 0.7) {
+    const n = (st.slide * 1.6 + st.speed / 50) * (st.offroad > 0.5 ? 0.4 : 1) * dt * 30 * (World.B.dustK || 1);
+    for (let k = 0; k < n; k++) if (Math.random() < 0.6) {
       const side = Math.random() < 0.5 ? 0.8 : -0.8, p = new THREE.Vector3(side, -0.6, -1.4).applyQuaternion(st.q).add(st.pos), v = st.vel;
       const off = st.offroad > 0.5, c = off ? [0.45, 0.4, 0.3] : World.B.dust;
-      World.puff(p.x, p.y, p.z, v.x * 0.25 + (Math.random() - 0.5) * 2, 0.6 + Math.random(), v.z * 0.25 + (Math.random() - 0.5) * 2, 0.8 + Math.random() * 0.8, 1.6 + Math.random() * 1.6, c[0], c[1], c[2]);
+      World.puff(p.x, p.y, p.z, v.x * 0.25 + (Math.random() - 0.5) * 2, 0.4 + Math.random() * 0.6, v.z * 0.25 + (Math.random() - 0.5) * 2, 0.6 + Math.random() * 0.6, 1.0 + Math.random() * 1.0, c[0], c[1], c[2]);
     }
   }
+  if (G.role === 'drv' && G.car) skids(G.car);
   World.stepDust(dt);
   World.update(World.cam.position, st.pos);
   if (World.gfx !== 'low' && (G.mirT = (G.mirT || 0) + 1) % 2 === 0) G.view.renderMirror(World.R, World.scene, st);
@@ -424,6 +425,18 @@ function frame(now) {
   G.hurt = Math.max(0, (G.hurt || 0) - dt * 1.2);
   perf(dt);
   World.render({ spd: clamp((st.speed - 14) / 34, 0, 1), hurt: G.hurt });
+}
+// tyre marks from every sliding wheel in contact, one strip per ~0.6 m
+function skids(c) {
+  const P = G.skP || (G.skP = [null, null, null, null]);
+  for (let i = 0; i < 4; i++) {
+    const w = c.wh[i], p = w.cp, L = P[i];
+    if (!w.contact || w.slip < 0.42 || c.speed < 3) { P[i] = null; continue; }
+    if (!L) { P[i] = p.clone(); continue; }
+    const dx = p.x - L.x, dz = p.z - L.z, d = Math.hypot(dx, dz); if (d < 0.6) continue;
+    if (d < 3) World.skidMark((p.x + L.x) / 2, (p.y + L.y) / 2, (p.z + L.z) / 2, Math.atan2(dx, dz), d, 0.21);
+    L.copy(p);
+  }
 }
 function hud(st) {
   if ((G.hovT = (G.hovT || 0) - 1) <= 0) { G.hovT = 6; const k = document.pointerLockElement ? aimedSwitch() : -1, sw = st.sw || G.sw || []; $('hov').textContent = k >= 0 ? SWITCH_NAMES[k] + (sw[k] ? ' · ON' : ' · OFF') + '  (click)' : ''; }

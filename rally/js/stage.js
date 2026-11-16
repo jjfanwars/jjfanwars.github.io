@@ -108,10 +108,12 @@ function buildStage(cfg) {
     const s = q.a + 20 + 18 + rnd() * room; if (!jumps.some(j => s < j.s + JEXT[j.type] + 30 && j.s < s + JEXT[type] + 30) && s < L - 140) jumps.push({ s, k: 'jump', big: rnd() < 0.4, type });
   }
   for (const q of straights.filter(q => q.b - q.a > 70).sort(() => rnd() - 0.5)) { if (crests.length >= nC) break; const s = q.a + 30 + rnd() * Math.max(1, q.b - q.a - 60); if (!busy(s, 70)) crests.push({ s, k: 'crest' }); }
-  const nL = Math.max(3, Math.round(L / 330));
-  for (let t = 0; t < 200 && logs.length < nL; t++) {
-    const s = 120 + rnd() * (L - 220); if (busy(s, 45)) continue;
-    const inC = corners.find(c => s > c.s0 - 8 && s < c.s1 + 4); if (inC && inC.g <= 2) continue;
+  // a few obstacles, each on a straight bit you can see from a way back (not just past a tight corner or crest)
+  const nL = Math.max(2, Math.round(L / 750));
+  for (let t = 0; t < 300 && logs.length < nL; t++) {
+    const s = 150 + rnd() * (L - 280); if (busy(s, 60) || logs.some(l => Math.abs(l.s - s) < 400)) continue;
+    const inC = corners.find(c => s > c.s0 - 30 && s < c.s1 + 6); if (inC && inC.g <= 4) continue;
+    if (corners.some(c => c.g <= 3 && s > c.s1 && s - c.s1 < 40)) continue;
     logs.push({ s, k: 'log', side: rnd() < 0.5 ? 'L' : 'R' });
   }
   const profJ = (u, big) => { const hgt = big ? 1.35 : 0.9, dn = big ? 1.6 : 1.1; if (u < -18 || u > 64) return 0; if (u < 0) return hgt * ((u + 18) / 18) ** 2; if (u < 26) return lerp(hgt, -dn, sstep(0, 26, u)); return -dn * (1 - sstep(26, 64, u)); };

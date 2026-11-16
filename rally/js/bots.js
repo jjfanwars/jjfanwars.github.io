@@ -85,9 +85,9 @@ const Bots = {
       b.view.update(st, dt, 'x', look, null);
       const d = c.pos.distanceTo(camPos); b.tag.visible = d < 140 && d > 4; b.tag.position.copy(c.pos).y += 1.9;
       // dust behind them
-      if (c.speed > 6 && c.air <= 0 && d < 120 && Math.random() < 0.6) {
+      if (c.speed > 6 && c.air <= 0 && d < 100 && Math.random() < 0.25 * (World.B.dustK || 1)) {
         const side = Math.random() < 0.5 ? 0.8 : -0.8, P = new THREE.Vector3(side, -0.6, -1.4).applyQuaternion(c.q).add(c.pos), col = World.B.dust;
-        World.puff(P.x, P.y, P.z, c.v.x * 0.25 + (Math.random() - 0.5) * 2, 0.6 + Math.random(), c.v.z * 0.25 + (Math.random() - 0.5) * 2, 0.8 + Math.random() * 0.8, 1.6 + Math.random() * 1.6, col[0], col[1], col[2]);
+        World.puff(P.x, P.y, P.z, c.v.x * 0.25 + (Math.random() - 0.5) * 2, 0.4 + Math.random() * 0.6, c.v.z * 0.25 + (Math.random() - 0.5) * 2, 0.6 + Math.random() * 0.6, 1.0 + Math.random() * 1.0, col[0], col[1], col[2]);
       }
     }
   }
