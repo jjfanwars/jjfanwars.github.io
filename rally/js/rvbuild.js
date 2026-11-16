@@ -9,7 +9,7 @@ const RVL = {
   furn: [[0.68, 1.25, 0.25, 2.25, FL + 0.92], [0.62, 1.25, -0.8, 0.25, FL + 1.85], [-1.25, -0.5, 1.15, 1.95, FL + 0.74], [-1.25, -0.5, 0.62, 1.08, FL + 0.46], [-1.25, -0.5, 2.02, 2.48, FL + 0.46],
     [-1.25, -0.3, -4.45, -3.12, FL + 2.0], [0.0, 1.25, -4.45, -2.45, FL + 0.55], [0.28, 0.95, 2.98, 3.55, FL + 0.5], [-0.95, -0.28, 2.98, 3.55, FL + 0.5], [-1.25, 1.25, 3.82, 4.3, FL + 1.0]],
 };
-const RVSPEC = { name: 'Camper', m: 4600, I: [36000, 38000, 8200], pow: 1.5, grip: 1.0, steer: 0.72, tough: 5, vmax: 100, split: 1, r: 0.46, rest: 0.42, travel: 0.3, soft: 1.25, track: 1.06, base: [3.3, 2.3], hw: 1.3, hl: 4.9, bx: 1.25, by0: -0.4, by1: 2.4, bz: 4.6, bh: 2.7, roll: 0.1, snd: 'van' };
+const RVSPEC = { name: 'Camper', kS: 1, m: 4600, I: [36000, 38000, 8200], pow: 1.5, grip: 1.0, steer: 0.72, tough: 5, vmax: 100, split: 1, r: 0.46, rest: 0.42, travel: 0.3, soft: 1.25, track: 1.06, base: [3.3, 2.3], hw: 1.3, hl: 4.9, bx: 1.25, by0: -0.4, by1: 2.4, bz: 4.6, bh: 2.7, roll: 0.1, snd: 'van' };
 const MAT = {};
 const mat = (c, o) => { const k = c + JSON.stringify(o || {}); return MAT[k] || (MAT[k] = new THREE.MeshStandardMaterial(Object.assign({ color: c, roughness: 0.75 }, o || {}))); };
 const cvTex = (w, h, draw) => { const c = document.createElement('canvas'); c.width = w; c.height = h; draw(c.getContext('2d'), w, h); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; return t; };

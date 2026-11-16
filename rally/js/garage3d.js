@@ -28,7 +28,7 @@ const Garage3D = {
   },
   show(look, color) {
     if (!this.R) return;
-    if (this.view) { this.scene.remove(this.view.g); this.view.g.traverse(o => { if (o.geometry) o.geometry.dispose(); }); }
+    if (this.view) { this.scene.remove(this.view.g); this.view.g.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material && o.material.map && o.material.map.isCanvasTexture) o.material.map.dispose(); }); if (this.view.mirrorRT) this.view.mirrorRT.dispose(); }
     try { const ci = CARS.findIndex(c => c.look === look); if (ci >= 0) applyCar(ci); this.view = new CarView(this.scene, { color, remote: true, look }); } catch (e) { this.view = null; return; }
     for (const k of ['drv', 'nav']) if (this.view.crew && this.view.crew[k]) this.view.crew[k].g.visible = false;
     // wheels at ride height, and the car lowered or raised so its tyres sit on the turntable
@@ -42,7 +42,7 @@ const Garage3D = {
     if (c.width !== Math.round(w * this.R.getPixelRatio()) || c.height !== Math.round(h * this.R.getPixelRatio())) { this.R.setSize(w, h, false); this.cam.aspect = w / h; this.cam.updateProjectionMatrix(); }
     this.idle += dt; if (this.drag === null && this.idle > 1.5) this.rot += dt * this.spin;
     this.pop = Math.min(1, (this.pop || 0) + dt * 3); const p = 1 - (1 - this.pop) ** 3;
-    this.view.g.rotation.y = this.rot; this.view.g.position.y = (1 - p) * 0.25 + (this.lift || 0); this.view.g.scale.setScalar(0.92 + p * 0.08);
+    this.view.g.rotation.y = this.rot; this.view.g.position.y = (1 - p) * 0.25 + (this.lift || 0); this.view.g.scale.setScalar((0.92 + p * 0.08) * Math.min(1, 2.45 / Math.max(2.06, CAR.hl)));
     const d = 7.4; this.cam.position.set(0, 1.35, d); this.cam.lookAt(0, 0.1, 0);
     this.R.render(this.scene, this.cam);
   }

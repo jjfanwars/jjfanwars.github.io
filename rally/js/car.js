@@ -26,6 +26,11 @@ const CARS = [
   { name: 'Trophy Truck', cls: 'Long-travel desert racer, eats jumps', need: 6, look: 'trophy', pow: 2.1, grip: 1.05, steer: 1.0, tough: 2.6, m: 1900, vmax: 215, split: 1, r: 0.45, rest: 0.52, travel: 0.48, soft: 0.6, track: 0.95, base: [1.5, 1.45], hw: 1.05, hl: 2.35, snd: 'v8' },
   { name: 'Monster Truck', cls: 'Rolls over logs. Basically unbreakable', need: 8, look: 'monster', pow: 2.2, grip: 0.88, steer: 0.85, tough: 7, m: 2600, vmax: 165, split: 0.5, r: 0.66, rest: 0.6, travel: 0.55, soft: 0.5, track: 1.18, base: [1.45, 1.4], hw: 1.2, hl: 2.35, roll: 0.12, snd: 'v8' },
   { name: 'Electric Hypercar', cls: 'Instant torque, one gear, no noise', need: 12, look: 'ev', pow: 2.4, grip: 1.36, steer: 1.15, tough: 1.5, m: 1750, vmax: 255, split: 0.5, ev: 1, snd: 'ev' },
+  // second batch (append only: saves use the index)
+  { name: 'Pocket Rocket', cls: 'Tiny, light, front-drive. Darts into hairpins', need: 5, look: 'mini', pow: 1.05, grip: 1.12, steer: 1.32, tough: 0.9, m: 780, vmax: 188, split: 0, r: 0.29, rest: 0.33, base: [1.08, 1.05], hl: 1.72, bz: 1.6 },
+  { name: 'Rally Estate', cls: 'Long roof, roof box, a very good boy in the back', need: 9, look: 'estate', pow: 1.3, grip: 1.08, steer: 1.0, tough: 1.7, m: 1380, vmax: 208, split: 0.5, hl: 2.18 },
+  { name: 'Drift Coupé', cls: 'Rear-drive, pop-up lights, loves to slide', need: 11, look: 'drift', pow: 1.6, grip: 0.96, steer: 1.24, tough: 1.1, m: 1150, vmax: 228, split: 1 },
+  { name: 'Stretch Limo', cls: 'Very long. Corners are a group effort', need: 15, look: 'limo', pow: 1.9, grip: 0.95, steer: 0.8, tough: 3.2, m: 2800, I: [9000, 9500, 2000], vmax: 195, split: 1, base: [2.34, 2.23], hl: 3.3, bz: 3.1, roll: 0.06, snd: 'v8' },
 ];
 // driving model: 'arcade' (assists, generous grip) or 'real' (real-world grip, no assists, lock-ups, spin-ups, damage hurts the car)
 const PHYS = { real: false, sport: false }; // sport: in between, real tyre physics with no scripted turning, power oversteer, ABS-style brakes and an anti-spin net
@@ -39,7 +44,9 @@ const wheelsOf = c => { const tw = c.track || 0.8, wb = c.base || [1.27, 1.24]; 
 function applyCar(i) {
   const c = i && typeof i === 'object' ? i : CARS[i] || CARS[0], s = c.m / CAR_BASE.m; CAR.idx = CARS.indexOf(c);
   CAR.m = c.m; CAR.I = c.I ? c.I.slice() : CAR_BASE.I.map(x => x * s);
-  CAR.bx = c.bx || 0.88; CAR.by0 = c.by0 !== undefined ? c.by0 : -0.12; CAR.by1 = c.by1 || 1.05; CAR.bz = c.bz || 2.0; CAR.bh = c.bh || 1.6; // body box for ground contact and collisions for (const k of ['k', 'cB', 'cR', 'arb']) CAR[k] = CAR_BASE[k] * s;
+  CAR.bx = c.bx || 0.88; CAR.by0 = c.by0 !== undefined ? c.by0 : -0.12; CAR.by1 = c.by1 || 1.05; CAR.bz = c.bz || 2.0; CAR.bh = c.bh || 1.6; // body box for ground contact and collisions
+  // springs, dampers and anti-roll bars scale with mass (kS overrides), always from the base so swapping cars never compounds
+  const ks = c.kS !== undefined ? c.kS : s; for (const k of ['k', 'cB', 'cR', 'arb']) CAR[k] = CAR_BASE[k] * ks;
   CAR.brake = CAR_BASE.brake * s * (0.85 + 0.15 * c.grip); CAR.pow = c.pow; CAR.grip = c.grip; CAR.steerK = c.steer; CAR.tough = c.tough; CAR.split = c.split;
   // body and running gear (defaults are the rally saloon)
   CAR.r = c.r || 0.32; CAR.rest = c.rest || 0.36; CAR.travel = c.travel || 0.27; CAR.hw = c.hw || 0.9; CAR.hl = c.hl || 2.06; CAR.roll = c.roll || 0;
@@ -67,7 +74,7 @@ class Car {
     const S = this.S, p = S.at(s), rx = -Math.cos(p.h), rz = Math.sin(p.h);
     const x = p.x + rx * (lat || 0), z = p.z + rz * (lat || 0);
     this.pos.set(x, S.heightAt(x, z) + 0.62 + (CAR.rest + CAR.r - 0.68), z); this.q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), p.h); this.v.set(0, 0, 0); this.w.set(0, 0, 0);
-    for (const w of this.wh) { w.comp = w.pc = 0.12; w.cv = 0; w.spin = 0; } this.steer = 0; this.wrecked = false; this.gear = 1; this.rpm = CAR.idle; this.prog = s;
+    for (const w of this.wh) { w.comp = w.pc = 0.12; w.cv = 0; w.spin = 0; } this.steer = 0; this.wrecked = false; this.gear = 1; this.rpm = CAR.idle; this.prog = s; this.air = 0; this.shiftT = 0;
   }
   // world <- body
   toWorld(v, out) { return out.copy(v).applyQuaternion(this.q); }
@@ -166,7 +173,7 @@ class Car {
       const bf = this.brk * CAR.brake * (w.front ? CAR.brakeBias : 1 - CAR.brakeBias) / 2 * this.fadeK;
       fx -= Math.sign(vx) * Math.min(bf, Math.abs(vx) * CAR.m * 2);
       if (hb && !w.front) { locked = true; fx = -Math.sign(vx) * Math.min(fmax * 0.85, Math.abs(vx) * CAR.m); }
-      if (!onRoad) fx -= vx * BB.offDrag; // soft ground drag
+      if (!onRoad && !(zk && zk.noDrag)) fx -= vx * BB.offDrag; // soft ground drag (not on a frozen lake)
       if (zk && zk.drag) fx -= vx * zk.drag; // water: wading drag
       fx -= vx * (6 + (w.flat ? 900 : 0)); // rolling resistance (a flat drags hard)
       // lateral: slip angle curve, softer and wider on gravel
@@ -251,7 +258,7 @@ class Car {
       if (vn < 0) {
         const j = -vn / this.invMass(P, n); this.impulse(P, n.clone().multiplyScalar(j));
         const vt = pv.clone().addScaledVector(n, -vn), vtl = vt.length(); if (vtl > 0.01) { const jt = Math.min(vtl / this.invMass(P, vt.clone().normalize()), j * 0.6); this.impulse(P, vt.multiplyScalar(-jt / vtl)); }
-        if (-vn > 3) { this.dmg = Math.min(1, this.dmg + (-vn - 3) * 0.01); this.events.push({ k: 'thud', v: -vn }); }
+        if (-vn > 3) { this.dmg = Math.min(1, this.dmg + (-vn - 3) * 0.01 / (CAR.tough || 1)); this.events.push({ k: 'thud', v: -vn }); }
       }
     }
   }
@@ -302,7 +309,7 @@ class Car {
         const P = A.clone().addScaledVector(n, -0.92), vrel = this.pointVel(P, new THREE.Vector3()).sub(o.vel), vn = vrel.dot(n);
         if (vn >= 0) continue;
         const j = -1.25 * vn / (this.invMass(P, n) + 1 / CAR.m); this.impulse(P, n.multiplyScalar(j));
-        if (-vn > 2.5) { this.dmg = Math.min(1, this.dmg + (-vn - 2.5) * 0.008); this.events.push({ k: 'crash', v: -vn }); }
+        if (-vn > 2.5) { this.dmg = Math.min(1, this.dmg + (-vn - 2.5) * 0.008 / (CAR.tough || 1)); this.events.push({ k: 'crash', v: -vn }); }
       }
     }
   }

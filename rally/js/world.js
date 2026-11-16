@@ -78,7 +78,7 @@ const World = {
   },
   build(S, fogLevel) {
     const B = this.B = S.B || BIOMES.forest, RK = { gravel: 'gravel', leafroad: 'leaf', snowroad: 'snow', sandroad: 'sand', asphalt: 'tarmac', dirtroad: 'gravel' };
-    this.dispose(); const T = TEX(RK[B.road] || 'gravel', B.hw), tod = TOD[S.cfg.tod] || TOD.morning, scene = this.scene = new THREE.Scene(), gfx = this.gfx;
+    this.dispose(); this.railZ = []; const T = TEX(RK[B.road] || 'gravel', B.hw), tod = TOD[S.cfg.tod] || TOD.morning, scene = this.scene = new THREE.Scene(), gfx = this.gfx;
     this.S = S; this.tod = tod; this.T = T;
     const den = (FOG_D[fogLevel] || FOG_D[1]) * B.fogK;
     scene.fog = new THREE.FogExp2(tod.fog, den); scene.background = new THREE.Color(tod.fog); this.den0 = den;
@@ -96,7 +96,7 @@ const World = {
     // environment map from the sky for paint and glass reflections
     const pm = new THREE.PMREMGenerator(this.R), es = new THREE.Scene(); es.add(new THREE.Mesh(new THREE.SphereGeometry(10, 32, 16), skyMat.clone()));
     const gnd = new THREE.Mesh(new THREE.CircleGeometry(9, 24), new THREE.MeshBasicMaterial({ color: 0x2c3326 })); gnd.rotation.x = -Math.PI / 2; gnd.position.y = -0.5; es.add(gnd);
-    scene.environment = pm.fromScene(es, 0.02).texture; scene.environmentIntensity = 0.55;
+    this.envRT = pm.fromScene(es, 0.02); scene.environment = this.envRT.texture; scene.environmentIntensity = 0.55; pm.dispose(); es.traverse(o => { if (o.geometry) o.geometry.dispose(); });
     // lights
     const sun = this.sun = new THREE.DirectionalLight(tod.sunC, tod.sunI); scene.add(sun, sun.target);
     if (gfx !== 'low') {
@@ -189,7 +189,7 @@ const World = {
     body(16, 3.4, 0xd8a020, 0); { const cab = new THREE.Mesh(new THREE.BoxGeometry(2.8, 1.0, 3), new THREE.MeshStandardMaterial({ color: 0x22262c })); cab.position.set(0, 4.0, -2.2); tg.add(cab); const hl = new THREE.Mesh(new THREE.CircleGeometry(0.3, 12), new THREE.MeshBasicMaterial({ color: 0xfff4c0 })); hl.position.set(0, 3.2, 0.01); tg.add(hl); }
     for (let k = 0, z0 = -16; z0 > -z.len; k++, z0 -= 14) body(14, 3.0, cols[k % cols.length], z0);
     tg.rotation.y = th; tg.visible = false; scene.add(tg); z.train = tg;
-    (this.railZ = this.railZ || []).push(z);
+    this.railZ.push(z);
   },
   stepTrains(t, carPos) {
     const S = this.S; if (!this.railZ || !S.trainU) return;
@@ -665,7 +665,7 @@ const World = {
       }
     }
     // start and finish gantries
-    const banner = (txt, col) => { const c = document.createElement('canvas'); c.width = 1024; c.height = 160; const g = c.getContext('2d'); g.fillStyle = col; g.fillRect(0, 0, 1024, 160); g.fillStyle = '#fff'; g.font = '900 italic 104px system-ui,sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(txt, 512, 84); g.fillStyle = 'rgba(255,255,255,.25)'; for (let i = 0; i < 16; i++) g.fillRect(i * 64, 0, 32, 12); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t; };
+    const banner = (txt, col) => { const c = document.createElement('canvas'); c.width = 1024; c.height = 160; const g = c.getContext('2d'); g.fillStyle = col; g.fillRect(0, 0, 1024, 160); g.fillStyle = '#fff'; let fs = 104; do { g.font = '900 italic ' + fs + 'px system-ui,sans-serif'; fs -= 4; } while (fs > 40 && g.measureText(txt).width > 960); g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(txt, 512, 84); g.fillStyle = 'rgba(255,255,255,.25)'; for (let i = 0; i < 16; i++) g.fillRect(i * 64, 0, 32, 12); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t; };
     const gantry = (s, txt, col) => {
       const p = S.at(s), grp = new THREE.Group(), postM = new THREE.MeshStandardMaterial({ color: 0x2b2f33, metalness: 0.6, roughness: 0.4 });
       for (const sd of [-1, 1]) { const post = new THREE.Mesh(new THREE.BoxGeometry(0.35, 6, 0.35), postM); post.position.set(sd * (ROAD_HW + 1.4), 3, 0); post.castShadow = true; grp.add(post); }
@@ -736,5 +736,13 @@ const World = {
     const u = P.comp.uniforms; u.t.value = P.A.texture; u.b.value = P.B1.texture; u.exp.value = R.toneMappingExposure; u.spd.value = fx ? fx.spd : 0; u.hurt.value = fx ? fx.hurt : 0; u.time.value = (performance.now() / 1000) % 100;
     R.setRenderTarget(null); R.render(P.sComp, P.oc); R.toneMapping = tm;
   },
-  dispose() { if (!this.scene) return; this.scene.traverse(o => { if (o.geometry) o.geometry.dispose(); }); this.scene = null; },
+  // free the old stage on the GPU: geometry, materials, their textures (cached ones simply upload again), shadow maps, the environment map
+  dispose() {
+    if (!this.scene) return; const seen = new Set();
+    this.scene.traverse(o => {
+      if (o.geometry) o.geometry.dispose(); if (o.isLight && o.shadow && o.shadow.map) o.shadow.dispose();
+      for (const m of Array.isArray(o.material) ? o.material : o.material ? [o.material] : []) { if (seen.has(m)) continue; seen.add(m); for (const k in m) { const v = m[k]; if (v && v.isTexture && !v.isRenderTargetTexture) v.dispose(); } m.dispose(); }
+    });
+    if (this.envRT) { this.envRT.dispose(); this.envRT = null; } this.scene = null;
+  },
 };

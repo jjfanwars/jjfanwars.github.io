@@ -123,7 +123,7 @@ button.big.go { border-color:transparent; box-shadow:0 10px 30px rgba(242,182,50
 #big { position:absolute; top:40%; left:50%; transform:translate(-50%,-50%); font:900 96px system-ui,sans-serif; text-shadow:0 6px 24px rgba(0,0,0,.8); }
 #big.pop { animation:pop .45s ease-out; } @keyframes pop { from { transform:translate(-50%,-50%) scale(1.5); opacity:.2; } }
 #tip { position:absolute; bottom:18px; left:50%; transform:translateX(-50%); color:#cfc9bb; font-size:12.5px; background:rgba(8,10,9,.62); border:1px solid var(--line); border-radius:9px; padding:6px 12px; text-shadow:0 1px 4px #000; text-align:center; max-width:calc(100vw - 440px); transition:opacity 1s; }
-#role { position:absolute; top:16px; left:18px; font:700 11px system-ui; letter-spacing:.14em; color:var(--dim); text-shadow:0 1px 4px #000; max-width:30vw; }
+#role { position:absolute; top:16px; left:18px; font:700 11px system-ui; letter-spacing:.14em; color:var(--dim); text-shadow:0 1px 4px #000; max-width:min(30vw, calc(50vw - 190px)); }
 #net { position:absolute; top:16px; right:18px; font:600 12px ui-monospace,monospace; color:var(--dim); text-shadow:0 1px 4px #000; }
 #hov { position:absolute; left:50%; top:50%; transform:translate(14px,8px); font:700 13px system-ui; color:#fff; background:rgba(0,0,0,.55); padding:3px 8px; border-radius:6px; white-space:nowrap; }
 #hov:empty { display:none; }
@@ -276,17 +276,17 @@ i.md { display:inline-block; width:10px; height:10px; border-radius:50%; backgro
 </div></div>
 
 <script src="../three-r170.js"></script>
-<script src="js/util.js?v=26"></script>
-<script src="js/stage.js?v=26"></script>
-<script src="js/tex.js?v=26"></script>
-<script src="js/world.js?v=26"></script>
-<script src="js/car.js?v=26"></script>
-<script src="js/cockpit.js?v=26"></script>
-<script src="js/audio.js?v=26"></script>
-<script src="js/notes.js?v=26"></script>
-<script src="js/net.js?v=26"></script>
-<script src="js/garage3d.js?v=26"></script>
-<script src="js/bots.js?v=26"></script>
-<script src="js/main.js?v=26"></script>
+<script src="js/util.js?v=28"></script>
+<script src="js/stage.js?v=28"></script>
+<script src="js/tex.js?v=28"></script>
+<script src="js/world.js?v=28"></script>
+<script src="js/car.js?v=28"></script>
+<script src="js/cockpit.js?v=28"></script>
+<script src="js/audio.js?v=28"></script>
+<script src="js/notes.js?v=28"></script>
+<script src="js/net.js?v=28"></script>
+<script src="js/garage3d.js?v=28"></script>
+<script src="js/bots.js?v=28"></script>
+<script src="js/main.js?v=28"></script>
 </body>
 </html>

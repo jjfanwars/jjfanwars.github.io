@@ -73,5 +73,7 @@ const Sfx = {
       speechSynthesis.speak(u);
     } catch (e) {}
   },
+  // silence the looping engine, turbo, gravel, rumble, wind and EV voices (the frame loop stops updating them in the menu)
+  idle() { if (!this.on) return; const t = this.ctx.currentTime; for (const k of ['eg', 'tg', 'gg', 'rg', 'wg', 'ewg']) if (this[k]) this[k].gain.setTargetAtTime(0, t, 0.05); if (this.pops) this.pops.length = 0; },
   mute(m) { if (this.master) this.master.gain.value = m ? 0 : 0.7; },
 };
