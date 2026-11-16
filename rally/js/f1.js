@@ -318,18 +318,23 @@
       if (edge(12)) { me.ersMode = (me.ersMode + 1) % 3; toast(['HARVEST', 'BALANCED', 'OVERTAKE'][me.ersMode], 'ERS mode', 1.2); }
       padPrev = {}; gp.buttons.forEach((b, i) => padPrev[i] = b.pressed);
     }
+    // Steering help: at speed the full input only asks for the lock the tyres can use (keyboard, mouse and pad alike)
+    let lim = 1; if (SET.sa === '1' && v > 8) { const A = F1T.AERO, k = 0.5 * A.rho * A.ClA / A.mass, amax = A.mu * (A.g + k * v * v); lim = clamp((Math.atan(F1.L * amax / (v * v)) + 0.07) / F1.LOCK, 0.08, 1); }
+    const smooth = (tgt, k) => { ctl.st += (tgt - ctl.st) * (1 - Math.exp(-dt * k)); };
     if (!analog && SET.input === 'mouse' && MS.seen) {
       const m = (MS.x - 0.5) / 0.34, dz = Math.sign(m) * Math.max(0, Math.abs(m) - 0.015) / 0.985; st = clamp(Math.sign(dz) * Math.pow(Math.abs(dz), 1.35), -1, 1);
-      ctl.st += clamp(st - ctl.st, -dt * 10, dt * 10);
+      ctl.raw = (ctl.raw || 0) + clamp(st * lim - (ctl.raw || 0), -dt * 6, dt * 6); smooth(ctl.raw, 12);
       thr = Math.max(thr, MS.l ? 1 : 0); brk = Math.max(brk, MS.r ? 1 : 0);
       ctl.thr += clamp(thr - ctl.thr, -dt * 9, dt * 6); ctl.brk += clamp(brk - ctl.brk, -dt * 10, dt * 9);
-    } else if (analog) { ctl.st = st; ctl.thr = thr; ctl.brk = brk; }
+    } else if (analog) { ctl.raw = st * lim; smooth(ctl.raw, 14); ctl.thr = thr; ctl.brk = brk; }
     else {
       // keyboard: ramped pedals, rate-limited steering, and (optionally) a speed-aware lock limit so a tap doesn't spin the car
       ctl.thr += clamp(thr - ctl.thr, -dt * 9, dt * 6); ctl.brk += clamp(brk - ctl.brk, -dt * 10, dt * 9);
-      let lim = 1; if (SET.sa === '1' && v > 8) { const A = F1T.AERO, k = 0.5 * A.rho * A.ClA / A.mass, amax = A.mu * (A.g + k * v * v); lim = clamp((Math.atan(F1.L * amax / (v * v)) + 0.07) / F1.LOCK, 0.08, 1); }
-      const tgt = st * lim, rate = (st === 0 || Math.sign(st) !== Math.sign(ctl.st) ? 5 : 2.6) * Math.max(lim, 0.25);
-      ctl.st += clamp(tgt - ctl.st, -dt * rate, dt * rate);
+      // gradual: a tap is a gentle nudge, holding builds to full lock in about half a second, release eases back to centre,
+      // then a light filter takes the corners off every change so the car never jerks
+      ctl.held = st && st === ctl.dir ? (ctl.held || 0) + dt : 0; ctl.dir = st; ctl.raw = ctl.raw || 0;
+      const rate = (st === 0 ? 2.8 : Math.sign(st) !== Math.sign(ctl.raw) && Math.abs(ctl.raw) > 0.04 ? 3.6 : Math.min(2.3, 0.7 + ctl.held * 3.2)) * Math.max(lim, 0.3);
+      ctl.raw += clamp(st * lim - ctl.raw, -dt * rate, dt * rate); smooth(ctl.raw, 10);
     }
     ctl.drs = drs; return ctl;
   }
@@ -341,7 +346,7 @@
     setTimeout(() => {
       const ci = +SET.circuit; if (!T || T.C !== F1T.CIRCUITS[ci]) buildWorld(ci);
       for (const c of G.cars) scene.remove(c.mesh); if (CK) { CK.rt.dispose(); CK = null; }
-      G.mode = 'run'; G.mode2 = SET.mode; for (const k in CREW) { world.remove(CREW[k].g); delete CREW[k]; } G.cars = []; G.t = 0; G.jump = G.jumpTold = false; G.lightsN = 0; G.chaseInit = false; G.resultsOn = false; G.trace = null; G.traceT = 0; G.paused = false; G.fin = null; G.over = false; G.pen = 0; G.warn = 0; G.limT = 0; G.results = null;
+      G.mode = 'run'; G.mode2 = SET.mode; ctl.st = ctl.raw = ctl.held = 0; for (const k in CREW) { world.remove(CREW[k].g); delete CREW[k]; } G.cars = []; G.t = 0; G.jump = G.jumpTold = false; G.lightsN = 0; G.chaseInit = false; G.resultsOn = false; G.trace = null; G.traceT = 0; G.paused = false; G.fin = null; G.over = false; G.pen = 0; G.warn = 0; G.limT = 0; G.results = null;
       const name = (SET.name || '').trim() || 'James';
       const roster = []; TEAMS.forEach((tm, ti) => tm.drivers.forEach((dn, k) => roster.push({ team: tm, name: dn || name, me: ti === 0 && k === 0, num: [7, 22, 16, 55, 3, 11, 31, 4, 28, 63][roster.length] })));
       if (G.mode2 === 'tt') {
