@@ -44,6 +44,7 @@ const MapDraw = {
     g.strokeStyle = 'rgba(80,110,140,.13)'; g.lineWidth = 1; for (let x = 0; x < 1024; x += 32) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x, 1280); g.stroke(); } for (let y = 0; y < 1280; y += 32) { g.beginPath(); g.moveTo(0, y); g.lineTo(1024, y); g.stroke(); }
     g.fillStyle = 'rgba(120,70,30,.12)'; g.beginPath(); g.arc(860, 1130, 90, 0, 7); g.lineWidth = 10; g.strokeStyle = 'rgba(120,70,30,.10)'; g.stroke(); // coffee ring
   },
+  next(prog) { const out = []; for (const n of this.notes) if (n.end > prog - 2) { out.push(n); if (out.length >= 5) break; } return out; },
   draw(ctx, car, opts) {
     const S = this.S, g = ctx; g.drawImage(this.paper, 0, 0);
     const h = car.h, sh = Math.sin(h), ch = Math.cos(h), cx = 512, cy = 860, sc = 1.75; // px per metre, heading up
@@ -65,7 +66,9 @@ const MapDraw = {
     for (const n of this.notes) {
       if (n.k === 'c') continue;
       const s = n.end, p = S.at(s), [X, Y] = toM(p.x, p.z); if (X < 0 || X > 1024 || Y < 80 || Y > 1060) continue;
-      if (n.k === 'l') { const l = S.logs.find(q => q.s === s); if (l) { const [ax, ay] = toM(l.ax, l.az), [bx, by] = toM(l.bx, l.bz); g.beginPath(); g.moveTo(ax, ay); g.lineTo(bx, by); g.strokeStyle = '#6b3d16'; g.lineWidth = 11; g.lineCap = 'butt'; g.stroke(); g.lineCap = 'round'; g.fillStyle = '#6b3d16'; g.font = '800 22px system-ui'; const lx = ax + (ax - bx) * 0.25, ly = ay + (ay - by) * 0.25; g.textAlign = Math.abs(ax - bx) > Math.abs(ay - by) ? (ax < bx ? 'right' : 'left') : 'center'; g.fillText(((S.B && S.B.obs) || 'log').toUpperCase(), lx, ly + 8); g.textAlign = 'center'; } }
+      if (n.k === 'l') { const l = S.logs.find(q => q.s === s); if (l) { const [ax, ay] = toM(l.ax, l.az), [bx, by] = toM(l.bx, l.bz); g.beginPath(); g.moveTo(ax, ay); g.lineTo(bx, by); g.strokeStyle = '#5a2e0c'; g.lineWidth = 12; g.lineCap = 'butt'; g.stroke(); g.lineCap = 'round';
+        const ox = bx + (bx - ax) * 0.35, oy = by + (by - ay) * 0.35, txt = ((S.B && S.B.obs) || 'log').toUpperCase(); g.font = '900 22px system-ui'; const tw = g.measureText(txt).width + 18;
+        g.fillStyle = '#c0281c'; g.beginPath(); g.roundRect(ox - tw / 2, oy - 16, tw, 30, 8); g.fill(); g.fillStyle = '#fff'; g.textAlign = 'center'; g.fillText(txt, ox, oy + 7); } }
       else { g.save(); g.translate(X, Y); g.fillStyle = n.k === 'j' ? '#c0281c' : '#1c4fa0'; g.beginPath(); if (n.k === 'j') { g.moveTo(-16, 10); g.lineTo(16, 10); g.lineTo(16, -14); g.closePath(); } else { g.arc(0, 4, 15, Math.PI, 0); g.closePath(); } g.fill(); g.font = '800 20px system-ui'; g.fillText(n.k === 'j' ? n.txt : 'CREST', 0, 34); g.restore(); }
     }
     // corner grades in circles on the outside of each corner
@@ -74,11 +77,16 @@ const MapDraw = {
       const [X, Y] = toM(p.x - Math.cos(p.h) * out * off, p.z + Math.sin(p.h) * out * off); if (X < 20 || X > 1004 || Y < 90 || Y > 1050) continue;
       g.beginPath(); g.arc(X, Y, 21, 0, 7); g.fillStyle = c.g <= 2 ? '#c0281c' : c.g <= 4 ? '#d08a10' : '#2f7d32'; g.fill(); g.lineWidth = 2; g.strokeStyle = '#fff6'; g.stroke();
       g.fillStyle = '#fff'; g.font = '900 26px system-ui'; g.textAlign = 'center'; g.fillText(c.g === 1 ? 'H' : String(c.g), X, Y + 9);
+      g.fillStyle = '#2a2118'; g.font = '900 20px system-ui'; g.fillText(c.dir === 'L' ? '\u25C0 L' : 'R \u25B6', X, Y + 42);
     }
     // start/finish
     for (const [s, t] of [[40, 'START'], [S.L - 60, 'FINISH']]) { const p = S.at(s), [X, Y] = toM(p.x, p.z); if (X < 0 || X > 1024 || Y < 80 || Y > 1060) continue; g.fillStyle = '#111'; g.fillRect(X - 30, Y - 4, 60, 8); g.font = '900 22px system-ui'; g.fillText(t, X, Y - 12); }
     // rival cars
     for (const o of opts.others || []) { const [X, Y] = toM(o.x, o.z); if (X < 20 || X > 1004 || Y < 90 || Y > 1050) continue; g.beginPath(); g.arc(X, Y, 13, 0, 7); g.fillStyle = o.col; g.fill(); g.lineWidth = 3; g.strokeStyle = '#fff'; g.stroke(); }
+    // how far the driver can see
+    g.setLineDash([10, 10]); g.beginPath(); g.arc(cx, cy, (opts.vis || 100) * sc, 0, 7); g.strokeStyle = 'rgba(30,60,120,.45)'; g.lineWidth = 3; g.stroke(); g.setLineDash([]);
+    // next note highlighted on the road
+    { const nx = this.next(car.prog)[0]; if (nx) { const p = S.at(nx.s), [X, Y] = toM(p.x, p.z); g.beginPath(); g.arc(X, Y, 24 + 5 * Math.sin(performance.now() / 160), 0, 7); g.strokeStyle = '#1c4fa0'; g.lineWidth = 5; g.stroke(); } }
     // the car
     g.save(); g.translate(cx, cy); g.fillStyle = '#c0281c'; g.beginPath(); g.moveTo(0, -22); g.lineTo(13, 14); g.lineTo(0, 7); g.lineTo(-13, 14); g.closePath(); g.fill(); g.restore();
     g.restore();
@@ -93,9 +101,12 @@ const MapDraw = {
     const toO = (x, z) => [ox + (x - bb.mnx) * k + (ow - (bb.mxx - bb.mnx) * k) / 2, oy + oh - (z - bb.mnz) * k];
     g.beginPath(); for (let i = 0; i < P.length; i += 4) { const [X, Y] = toO(P[i].x, P[i].z); i ? g.lineTo(X, Y) : g.moveTo(X, Y); } g.strokeStyle = '#3b2f22'; g.lineWidth = 4; g.stroke();
     { const [X, Y] = toO(car.x, car.z); g.beginPath(); g.arc(X, Y, 9, 0, 7); g.fillStyle = '#c0281c'; g.fill(); }
-    // key
-    g.fillStyle = '#2a2118'; g.font = '600 22px system-ui'; const kx = 620; let ky = 1092;
-    for (const [c, t] of [['#c0281c', '1-2  hairpin / very slow'], ['#d08a10', '3-4  medium'], ['#2f7d32', '5-6  fast / nearly flat']]) { g.fillStyle = c; g.beginPath(); g.arc(kx + 10, ky - 7, 10, 0, 7); g.fill(); g.fillStyle = '#2a2118'; g.fillText(t, kx + 28, ky); ky += 34; }
-    g.fillText('Call it early. The driver sees ~' + (opts.vis || 100) + ' m.', kx, ky + 8);
+    // next calls, nearest first: distance and the note, coloured by grade
+    const kx = 610; let ky = 1088; g.textAlign = 'left'; g.fillStyle = '#2a2118'; g.font = '800 20px system-ui'; g.fillText('NEXT CALLS  \u00b7  driver sees ~' + (opts.vis || 100) + ' m', kx, ky); ky += 12;
+    this.next(car.prog).slice(0, 4).forEach((n, i) => {
+      const d = Math.max(0, Math.round((n.s - car.prog) / 10) * 10), col = n.k === 'c' ? (n.c.g <= 2 ? '#c0281c' : n.c.g <= 4 ? '#d08a10' : '#2f7d32') : n.k === 'l' ? '#c0281c' : n.k === 'j' ? '#7a1f8a' : '#1c4fa0', big = i === 0, hh = big ? 50 : 38;
+      g.fillStyle = col; g.fillRect(kx, ky, 8, hh - 6); g.fillStyle = '#2a2118'; g.font = '700 ' + (big ? 26 : 20) + 'px ui-monospace,monospace'; g.fillText(String(d).padStart(4, ' ') + ' m', kx + 16, ky + (big ? 34 : 26));
+      g.font = '900 ' + (big ? 28 : 21) + 'px system-ui'; let t = (n.into ? '\u203a ' : '') + n.txt; while (g.measureText(t).width > 260 && t.length > 4) t = t.slice(0, -2) + '\u2026'; g.fillText(t, kx + (big ? 126 : 110), ky + (big ? 34 : 26)); ky += hh;
+    });
   },
 };

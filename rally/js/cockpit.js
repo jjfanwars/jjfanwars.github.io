@@ -99,30 +99,35 @@ class CarView {
     this.dashC = document.createElement('canvas'); this.dashC.width = 4; this.dashC.height = 4; this.dashT = new THREE.CanvasTexture(this.dashC);
     // slatted vents: driver's left, both sides of the centre stack, co-driver's right
     const ventS = (x, y, z, w) => { add(new THREE.BoxGeometry(w, 0.055, 0.02), new THREE.MeshStandardMaterial({ color: 0x0c0c0d, roughness: 0.9 }), x, y, z, -0.15); for (let i = 0; i < 4; i++) add(new THREE.BoxGeometry(w - 0.01, 0.006, 0.018), grey, x, y - 0.019 + i * 0.013, z - 0.006, -0.15); };
-    ventS(0.68, 0.12, 0.47, 0.1); ventS(0.07, 0.13, 0.452, 0.1); ventS(-0.07, 0.13, 0.452, 0.1); ventS(-0.68, 0.12, 0.47, 0.1);
+    ventS(0.68, 0.12, 0.47, 0.1); ventS(-0.68, 0.12, 0.47, 0.1); ventS(0, -0.13, 0.457, 0.16);
     // ignition key on the driver's left
     add(new THREE.CylinderGeometry(0.022, 0.022, 0.012, 16), new THREE.MeshStandardMaterial({ color: 0x0a0a0a }), 0.62, 0.03, 0.46, Math.PI / 2 - 0.15); add(new THREE.BoxGeometry(0.006, 0.026, 0.01), M.alu, 0.62, 0.03, 0.452, -0.15);
-    // centre stack: two small gauges, the labelled switch panel with real toggles, lamps and a start button
+    // centre stack: two small gauges and the switch panel
     add(new THREE.BoxGeometry(0.3, 0.3, 0.02), grey, 0, -0.02, 0.462, -0.15);
-    for (const x of [0.045, -0.045]) { add(new THREE.CircleGeometry(0.026, 24), new THREE.MeshBasicMaterial({ map: dial(150, 50, 10, '') }), x, 0.07, 0.448, -0.15, Math.PI, 0); add(new THREE.TorusGeometry(0.028, 0.004, 6, 24), bezel, x, 0.07, 0.447, -0.15, Math.PI, 0); }
-    { const c = document.createElement('canvas'); c.width = 512; c.height = 256; const x = c.getContext('2d'); x.fillStyle = '#16171a'; x.fillRect(0, 0, 512, 256); x.fillStyle = '#ddd'; x.font = 'bold 22px system-ui'; x.textAlign = 'center';
-      ['IGN', 'FUEL', 'FAN', 'WIPE', 'LIGHTS', 'SPOTS'].forEach((t, i) => x.fillText(t, 50 + i * 82, 34)); x.fillText('START', 440, 200); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
-      add(new THREE.PlaneGeometry(0.27, 0.135), new THREE.MeshStandardMaterial({ map: t, roughness: 0.6, emissive: 0xffffff, emissiveMap: t, emissiveIntensity: 0.1 }), 0, -0.07, 0.449, -0.15, Math.PI, 0); }
-    this.toggles = []; this.hits = []; for (let i = 0; i < 6; i++) { const tg = new THREE.Group(); tg.position.set(0.11 - i * 0.0435, -0.04, 0.446); tg.rotation.x = -0.15; I.add(tg); const hit = new THREE.Mesh(new THREE.BoxGeometry(0.042, 0.08, 0.05), new THREE.MeshBasicMaterial({ visible: false })); hit.position.y = -0.005; hit.userData.sw = i; tg.add(hit); this.hits.push(hit); const base = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.008, 10), M.alu); base.rotation.x = Math.PI / 2; tg.add(base); const lever = new THREE.Group(); tg.add(lever); const l = new THREE.Mesh(new THREE.CylinderGeometry(0.0035, 0.0045, 0.03, 8), M.alu); l.position.y = 0.015; lever.add(l); const tip = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.005, 0.012, 10), new THREE.MeshStandardMaterial({ color: [0xd01818, 0x222222, 0x222222, 0xe0b020, 0xe0b020, 0x222222][i] })); tip.position.y = 0.032; lever.add(tip); lever.rotation.x = -2.2; this.toggles.push(lever); }
-    [[0xff3030, 0.09], [0xffc020, 0.06], [0x30ff60, 0.03]].forEach(([c, x], i) => { const m = new THREE.MeshBasicMaterial({ color: c }); add(new THREE.SphereGeometry(0.007, 10, 8), m, x, -0.11, 0.447); });
-    add(new THREE.CylinderGeometry(0.013, 0.013, 0.012, 14), new THREE.MeshStandardMaterial({ color: 0xd01818, roughness: 0.4 }), -0.075, -0.115, 0.447, Math.PI / 2 - 0.15);
+    // switch panel: six big push buttons, 2 rows x 3, each with its own label and a status light that glows when on
+    add(new THREE.BoxGeometry(0.27, 0.15, 0.006), new THREE.MeshStandardMaterial({ color: 0x0b0b0c, roughness: 0.8 }), -0.035, 0.118, 0.452, -0.15);
+    this.toggles = []; this.hits = []; this.btnCol = [0xff3030, 0xffa020, 0x40a8ff, 0x30e0d0, 0x50ff60, 0xfff0a0];
+    ['IGN', 'FUEL', 'FAN', 'WIPE', 'LIGHTS', 'SPOTS'].forEach((lab, i) => {
+      const col = i % 3, row = i / 3 | 0, tg = new THREE.Group(); tg.position.set(0.05 - col * 0.085, 0.15 - row * 0.064, 0.448); tg.rotation.x = -0.15; I.add(tg);
+      const bz = new THREE.Mesh(new THREE.BoxGeometry(0.076, 0.056, 0.01), new THREE.MeshStandardMaterial({ color: 0x050505, roughness: 0.5 })); tg.add(bz);
+      const c = document.createElement('canvas'); c.width = 128; c.height = 96; const x = c.getContext('2d'); x.fillStyle = '#2a2c30'; x.fillRect(0, 0, 128, 96); x.fillStyle = '#3a3d42'; x.fillRect(0, 0, 128, 6);
+      x.fillStyle = '#f2f2f2'; x.font = 'bold ' + (lab.length > 4 ? 26 : 32) + 'px system-ui'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(lab, 64, 62); x.fillStyle = '#9aa0a8'; x.font = 'bold 18px system-ui'; x.textAlign = 'left'; x.fillText(String(i + 1), 8, 24);
+      const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; const side = new THREE.MeshStandardMaterial({ color: 0x24262a, roughness: 0.6 });
+      const face = new THREE.MeshStandardMaterial({ map: t, roughness: 0.55, emissive: 0xffffff, emissiveMap: t, emissiveIntensity: 0.18 });
+      const cap = new THREE.Mesh(new THREE.BoxGeometry(0.066, 0.046, 0.016), [side, side, side, side, side, face]); cap.position.z = -0.008; tg.add(cap);
+      const led = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.007, 0.002), new THREE.MeshBasicMaterial({ color: 0x1a1a1a })); led.position.set(0, 0.012, -0.0085); cap.add(led); const hb = new THREE.Mesh(new THREE.BoxGeometry(0.084, 0.062, 0.03), new THREE.MeshBasicMaterial({ visible: false })); hb.userData.sw = i; tg.add(hb); this.hits.push(hb);
+      this.toggles.push({ cap, led, face, i });
+    });
     // glovebox on the co-driver side
     add(new THREE.BoxGeometry(0.34, 0.12, 0.012), new THREE.MeshStandardMaterial({ map: M.plastic.map, color: 0xa4a8ac, roughness: 0.7 }), -0.4, 0.03, 0.452, -0.15); add(new THREE.BoxGeometry(0.06, 0.012, 0.012), M.alu, -0.4, 0.07, 0.445, -0.15);
-    // ---- windscreen wipers (outside the glass), dust layer they clear ----
+    // ---- windscreen wipers (outside the glass) ----
     { const wg = this.wsG = new THREE.Group(); wg.position.set(0, 0.515, 0.65); wg.rotation.x = Math.atan2(-0.66, 0.51); g.add(wg); const wm = new THREE.MeshStandardMaterial({ color: 0x101011, roughness: 0.6 }); this.wipers = [];
       for (const px of [0.55, -0.05]) { const p = new THREE.Group(); p.position.set(px, -0.4, 0.02); wg.add(p); const arm = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.014, 0.01), wm); arm.position.x = -0.25; p.add(arm); const blade = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.012, 0.02), wm); blade.position.set(-0.27, 0.004, -0.006); p.add(blade); p.rotation.z = -0.06; this.wipers.push(p); }
-      const c = document.createElement('canvas'); c.width = c.height = 256; const x = c.getContext('2d'); for (let i = 0; i < 2600; i++) { x.fillStyle = `rgba(255,255,255,${Math.random() * 0.5})`; const r = Math.random() * 2.5; x.beginPath(); x.arc(Math.random() * 256, Math.random() * 256, r, 0, 7); x.fill(); } for (let i = 0; i < 60; i++) { x.strokeStyle = 'rgba(255,255,255,.25)'; x.lineWidth = 3; x.beginPath(); const a = Math.random() * 256; x.moveTo(a, 256); x.quadraticCurveTo(a + 40, 140, a + 10, Math.random() * 120); x.stroke(); }
-      const dt2 = new THREE.CanvasTexture(c); this.dirtM = new THREE.MeshBasicMaterial({ map: dt2, transparent: true, opacity: 0, depthWrite: false, color: 0x8a7458, side: THREE.DoubleSide });
-      const dm = new THREE.Mesh(new THREE.PlaneGeometry(1.46, Math.hypot(0.66, 0.51)), this.dirtM); dm.position.z = 0.004; wg.add(dm); this.dirt = 0; this.wipeT = 0; }
+      this.wipeT = 0; }
     // transmission tunnel, sequential lever, hydraulic handbrake
     add(new THREE.BoxGeometry(0.26, 0.26, 1.05), M.carbon, 0, -0.27, 0.05);
     this.shiftL = new THREE.Group(); this.shiftL.position.set(0.15, -0.12, 0.3); I.add(this.shiftL);
-    { const l = new THREE.Mesh(new THREE.CylinderGeometry(0.011, 0.014, 0.42, 8), M.alu); l.position.y = 0.21; this.shiftL.add(l); const k = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.022, 0.09, 12), M.suede); k.position.y = 0.43; this.shiftL.add(k); this.shiftL.rotation.x = -0.35; this.lastGear = 1; this.shiftA = 0; }
+    { const l = new THREE.Mesh(new THREE.CylinderGeometry(0.011, 0.014, 0.34, 8), M.alu); l.position.y = 0.17; this.shiftL.add(l); const k = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.022, 0.08, 12), M.suede); k.position.y = 0.35; this.shiftL.add(k); this.shiftL.rotation.x = -0.35; this.lastGear = 1; this.shiftA = 0; }
     this.hbL = new THREE.Group(); this.hbL.position.set(0.15, -0.14, 0.1); I.add(this.hbL); { const l = new THREE.Mesh(new THREE.CylinderGeometry(0.011, 0.014, 0.26, 8), M.alu); l.position.y = 0.13; this.hbL.add(l); const k = new THREE.Mesh(new THREE.CylinderGeometry(0.016, 0.016, 0.06, 12), new THREE.MeshStandardMaterial({ color: 0xa01414, roughness: 0.5 })); k.position.y = 0.27; this.hbL.add(k); }
     // co-driver: trip computer with a live display, gooseneck map lamp, footrest
     this.tripC = document.createElement('canvas'); this.tripC.width = 320; this.tripC.height = 84; this.tripT = new THREE.CanvasTexture(this.tripC); this.tripT.colorSpace = THREE.SRGBColorSpace;
@@ -323,7 +328,7 @@ class CarView {
     D.headG.rotation.set(-(me === 'drv' ? 0 : (other ? other.pitch : 0)) * 0.6, me === 'drv' ? 0 : (other ? other.yaw : 0) * 0.8, 0);
     N.headG.rotation.set(-(me === 'nav' ? 0 : (other ? other.pitch : 0)) * 0.6, me === 'nav' ? 0 : (other ? other.yaw : 0) * 0.8, 0);
     // map board: on the lap, raised in front of the face when held up
-    const tgt = me === 'nav' && look.map ? 1 : (me !== 'nav' && other && other.map ? 1 : 0); this.mapUp += (tgt - this.mapUp) * Math.min(1, dt * 9); const u = sstep(0, 1, this.mapUp);
+    const tgt = me === 'nav' && look.map ? 0.35 : (me !== 'nav' && other && other.map ? 1 : 0); this.mapUp += (tgt - this.mapUp) * Math.min(1, dt * 9); const u = sstep(0, 1, this.mapUp);
     this.board.position.set(-0.37, lerp(0.0, 0.35, u), lerp(-0.02, 0.0, u)); this.board.rotation.set(lerp(-0.35, -1.38, u), 0, 0);
     const bp = this.board.position.clone().sub(N.g.position);
     this.setArm(N.arms[0], new THREE.Vector3(0.2, -0.2, -0.1), bp.clone().add(new THREE.Vector3(0.15, 0, 0.05)), 1); this.setArm(N.arms[1], new THREE.Vector3(-0.2, -0.2, -0.1), bp.clone().add(new THREE.Vector3(-0.15, 0, 0.05)), -1);
@@ -338,14 +343,13 @@ class CarView {
     if (st.gear !== this.lastGear) { this.shiftA = st.gear > this.lastGear ? 1 : -1; this.lastGear = st.gear; }
     this.shiftA *= Math.max(0, 1 - dt * 9); this.shiftL.rotation.x = -0.35 + this.shiftA * 0.28;
     // switches: IGN always on, WIPE and LIGHTS follow their state
-    const on = st.sw || [1, 1, 0, st.wp ? 1 : 0, st.hl ? 1 : 0, 0]; this.toggles.forEach((l, i) => { l.rotation.x += ((on[i] ? -0.95 : -2.2) - l.rotation.x) * Math.min(1, dt * 20); });
+    const on = st.sw || [1, 1, 0, st.wp ? 1 : 0, st.hl ? 1 : 0, 0];
+    for (const b of this.toggles) { const k = b.i, hov = this.hoverSw === k; b.cap.position.z += ((on[k] ? -0.003 : -0.008) - b.cap.position.z) * Math.min(1, dt * 25); b.led.material.color.setHex(on[k] ? this.btnCol[k] : 0x1a1a1a); b.face.emissiveIntensity = hov ? 0.55 : 0.18; b.cap.scale.setScalar(hov ? 1.06 : 1); }
     // headlights
     this.lampM.emissiveIntensity = st.hl ? (st.spot ? 14 : 8) : 0.4; for (const sp of this.spots) { sp.intensity = st.hl ? (st.spot ? 260 : 90) : 0; sp.distance = st.spot ? 260 : 160; sp.angle = st.spot ? 0.3 : 0.38; }
     // wipers sweep while switched on and finish their stroke when switched off
     const TAU = Math.PI * 2; if (st.wp || this.wipeT % TAU > 0.05) { this.wipeT += dt * 2.6; if (!st.wp && this.wipeT % TAU < dt * 2.6 + 0.02) this.wipeT = Math.round(this.wipeT / TAU) * TAU; }
     const wa = 0.06 + (1 - Math.cos(this.wipeT)) / 2 * 1.72; for (const w of this.wipers) w.rotation.z = -wa;
-    // windscreen dust builds up on loose surfaces at speed, the wipers clear it
-    if (!this.remote) { const k = (World.B && (World.B.dustK || 1)) * (st.offroad > 0.5 ? 1.6 : 1); if (st.speed > 4 && !st.air) this.dirt += dt * 0.0025 * Math.min(1, st.speed / 22) * k; if (st.wp || this.wipeT % TAU > 0.05) this.dirt -= dt * 0.35; this.dirt = clamp(this.dirt, 0, 0.6); this.dirtM.opacity = this.dirt; if (World.B) this.dirtM.color.setRGB(World.B.dust[0] * 0.7, World.B.dust[1] * 0.7, World.B.dust[2] * 0.7); }
     if ((this.dashTk = (this.dashTk || 0) + dt) > 0.1) {
       this.dashTk = 0;
       const t = this.tripC.getContext('2d'); t.fillStyle = '#100a04'; t.fillRect(0, 0, 320, 84); t.fillStyle = '#ff9a2a'; t.shadowColor = '#ff7a10'; t.shadowBlur = 8; t.font = 'bold 40px monospace'; t.textAlign = 'left';

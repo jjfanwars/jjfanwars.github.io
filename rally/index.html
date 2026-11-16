@@ -127,6 +127,9 @@ button.big.go { border-color:transparent; box-shadow:0 10px 30px rgba(242,182,50
 #net { position:absolute; top:16px; right:18px; font:600 12px ui-monospace,monospace; color:var(--dim); text-shadow:0 1px 4px #000; }
 #hov { position:absolute; left:50%; top:50%; transform:translate(14px,8px); font:700 13px system-ui; color:#fff; background:rgba(0,0,0,.55); padding:3px 8px; border-radius:6px; white-space:nowrap; }
 #hov:empty { display:none; }
+#navMap { position:absolute; right:2vh; top:4vh; height:92vh; aspect-ratio:1024/1280; max-width:60vw; opacity:0; transform:translateY(30px) rotate(1deg); transition:opacity .15s, transform .15s; pointer-events:none; z-index:6; }
+#navMap.on { opacity:1; transform:none; }
+#navMap canvas { width:100%; height:100%; object-fit:contain; border-radius:6px; box-shadow:0 12px 40px rgba(0,0,0,.6); }
 #cross { position:absolute; left:50%; top:50%; width:4px; height:4px; margin:-2px; border-radius:50%; background:rgba(255,255,255,.5); }
 #lockmsg { position:fixed; inset:auto 0 30% 0; text-align:center; z-index:6; font:700 16px system-ui; text-shadow:0 2px 8px #000; pointer-events:none; }
 #lockmsg span { background:rgba(8,10,9,.6); border:1px solid var(--line); border-radius:999px; padding:7px 16px; }
@@ -247,7 +250,7 @@ i.md { display:inline-block; width:10px; height:10px; border-radius:50%; backgro
   <div id="split"></div>
   <div id="style"></div>
   <div id="call"><span id="callA"></span><span id="callT"></span></div><div id="big"></div>
-  <div id="cross"></div><div id="hov"></div>
+  <div id="cross"></div><div id="hov"></div><div id="navMap"></div>
   <div id="dmg"><span>DAMAGE</span><b id="dmgP">0%</b><i><u></u></i></div>
   <div id="spd"><canvas id="rev" width="200" height="200"></canvas><div class="in"><b>0</b><span>km/h</span><em id="gear">N</em></div></div>
   <div id="tip"></div>
@@ -260,17 +263,17 @@ i.md { display:inline-block; width:10px; height:10px; border-radius:50%; backgro
 </div></div>
 
 <script src="../three-r170.js"></script>
-<script src="js/util.js?v=21"></script>
-<script src="js/stage.js?v=21"></script>
-<script src="js/tex.js?v=21"></script>
-<script src="js/world.js?v=21"></script>
-<script src="js/car.js?v=21"></script>
-<script src="js/cockpit.js?v=21"></script>
-<script src="js/audio.js?v=21"></script>
-<script src="js/notes.js?v=21"></script>
-<script src="js/net.js?v=21"></script>
-<script src="js/garage3d.js?v=21"></script>
-<script src="js/bots.js?v=21"></script>
-<script src="js/main.js?v=21"></script>
+<script src="js/util.js?v=22"></script>
+<script src="js/stage.js?v=22"></script>
+<script src="js/tex.js?v=22"></script>
+<script src="js/world.js?v=22"></script>
+<script src="js/car.js?v=22"></script>
+<script src="js/cockpit.js?v=22"></script>
+<script src="js/audio.js?v=22"></script>
+<script src="js/notes.js?v=22"></script>
+<script src="js/net.js?v=22"></script>
+<script src="js/garage3d.js?v=22"></script>
+<script src="js/bots.js?v=22"></script>
+<script src="js/main.js?v=22"></script>
 </body>
 </html>
