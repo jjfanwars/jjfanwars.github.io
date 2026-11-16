@@ -24,14 +24,17 @@ const Sfx = {
     // rumble (low noise for rough ground) and wind
     const rn = noise(), rlp = C.createBiquadFilter(); rlp.type = 'lowpass'; rlp.frequency.value = 160; const rg = this.rg = C.createGain(); rg.gain.value = 0; rn.connect(rlp); rlp.connect(rg); rg.connect(comp);
     const wn = noise(), wlp = this.wlp = C.createBiquadFilter(); wlp.type = 'lowpass'; wlp.frequency.value = 500; const wg = this.wg = C.createGain(); wg.gain.value = 0; wn.connect(wlp); wlp.connect(wg); wg.connect(comp);
+    // electric whine (electric car only)
+    this.ew = C.createOscillator(); this.ew.type = 'sine'; const ewg = this.ewg = C.createGain(); ewg.gain.value = 0; this.ew.connect(ewg); ewg.connect(comp); this.ew.start();
     this.on = true; this.lastThr = 0;
   },
   // st: rpm, thr, speed, slide, offroad, air
   update(st, dt) {
-    if (!this.on) return; const C = this.ctx, t = C.currentTime, f = st.rpm / 60 * 2; // 4-cylinder firing frequency
+    if (!this.on) return; const C = this.ctx, t = C.currentTime, snd = (typeof CAR !== 'undefined' && CAR.snd) || '', f = st.rpm / 60 * (snd === 'v8' ? 4 : 2) * (snd === 'v8' ? 0.5 : 1); // firing frequency (V8: lower and lumpier)
+    this.ewg.gain.setTargetAtTime(snd === 'ev' ? 0.03 + st.thr * 0.07 : 0, t, 0.05); this.ew.frequency.setTargetAtTime(180 + st.speed * 26, t, 0.05);
     this.o1.frequency.setTargetAtTime(f, t, 0.02); this.o2.frequency.setTargetAtTime(f * 1.007, t, 0.02); this.o3.frequency.setTargetAtTime(f * 0.5, t, 0.02);
     this.elp.frequency.setTargetAtTime(400 + st.rpm * 0.25 + st.thr * 2200, t, 0.03);
-    this.eg.gain.setTargetAtTime((0.1 + st.thr * 0.22) * (st.inside ? 1 : 0.6), t, 0.03);
+    this.eg.gain.setTargetAtTime((0.1 + st.thr * 0.22) * (st.inside ? 1 : 0.6) * (snd === 'ev' ? 0.05 : snd === 'v8' ? 1.25 : 1), t, 0.03);
     this.tbp.frequency.setTargetAtTime(1800 + st.rpm * 0.6, t, 0.05); this.tg.gain.setTargetAtTime(st.thr * Math.max(0, st.rpm - 3000) / 4700 * 0.05, t, 0.08);
     const ground = st.air ? 0 : 1, sp = Math.min(1, st.speed / 30);
     this.gg.gain.setTargetAtTime(ground * (sp * 0.09 + st.slide * 0.25) * (1 - st.offroad * 0.5), t, 0.05); this.gbp.frequency.setTargetAtTime(900 + st.slide * 900, t, 0.1);
@@ -46,6 +49,9 @@ const Sfx = {
     g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.001, t + dur); s.connect(f); f.connect(g); g.connect(this.out); s.start(t, Math.random()); s.stop(t + dur + 0.05);
   },
   pop(v) { this.burst(v, 900, 0.07, 'bandpass'); },
+  tone(freq, t0, dur, type, vol) { const C = this.ctx, o = C.createOscillator(), g = C.createGain(); o.type = type || 'square'; o.frequency.value = freq; g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(vol || 0.12, t0 + 0.02); g.gain.setValueAtTime(vol || 0.12, t0 + dur - 0.04); g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur); o.connect(g); g.connect(this.out); o.start(t0); o.stop(t0 + dur + 0.02); },
+  horn() { if (!this.on) return; const t = this.ctx.currentTime; this.tone(415, t, 0.45, 'square', 0.08); this.tone(523, t, 0.45, 'square', 0.07); },
+  jingle() { if (!this.on) return; const t = this.ctx.currentTime, N = [784, 988, 1175, 988, 784, 880, 988, 784, 659, 784]; N.forEach((f, i) => this.tone(f, t + i * 0.17, 0.16, 'triangle', 0.16)); },
   crash(v) { const k = Math.min(1, v / 18); this.burst(0.5 + k * 0.6, 300 + k * 600, 0.25 + k * 0.4); this.burst(0.3 * k, 3000, 0.2, 'highpass'); },
   thud(v) { this.burst(Math.min(0.8, v / 10), 180, 0.25); },
   click() { this.burst(0.2, 4200, 0.03, 'highpass'); },

@@ -129,6 +129,14 @@ button.big.go { border-color:transparent; box-shadow:0 10px 30px rgba(242,182,50
 #hov:empty { display:none; }
 #draft { position:absolute; left:50%; top:118px; transform:translateX(-50%); font:800 13px system-ui; letter-spacing:.2em; color:#7fe0ff; text-shadow:0 0 10px #29a8ff; opacity:0; transition:opacity .2s; pointer-events:none; }
 #draft.on { opacity:1; }
+#btemp { position:absolute; right:22px; bottom:200px; width:150px; height:16px; border-radius:8px; background:rgba(0,0,0,.55); overflow:hidden; pointer-events:none; }
+#btemp i { position:absolute; left:0; top:0; bottom:0; width:0; background:linear-gradient(90deg,#3a8c3a,#e8b020 55%,#e03010); }
+#btemp b { position:absolute; inset:0; font:800 10px/16px system-ui; letter-spacing:.18em; text-align:center; color:#fff; text-shadow:0 1px 2px #000; }
+#nos { position:absolute; right:22px; bottom:222px; width:150px; height:16px; border-radius:8px; background:rgba(0,0,0,.55); overflow:hidden; pointer-events:none; }
+#nos i { position:absolute; left:0; top:0; bottom:0; width:100%; background:linear-gradient(90deg,#1a6cff,#7fe0ff); }
+#nos b { position:absolute; inset:0; font:800 10px/16px system-ui; letter-spacing:.18em; text-align:center; color:#fff; text-shadow:0 1px 2px #000; }
+#nos.on { box-shadow:0 0 14px #29a8ff; }
+#btemp.hot { animation:bt .5s infinite alternate; } @keyframes bt { to { box-shadow:0 0 14px #ff4010; } }
 #navMap { position:absolute; right:2vh; top:4vh; height:92vh; aspect-ratio:1024/1280; max-width:60vw; opacity:0; transform:translateY(30px) rotate(1deg); transition:opacity .15s, transform .15s; pointer-events:none; z-index:6; }
 #navMap.on { opacity:1; transform:none; }
 #navMap canvas { width:100%; height:100%; object-fit:contain; border-radius:6px; box-shadow:0 12px 40px rgba(0,0,0,.6); }
@@ -206,7 +214,7 @@ i.md { display:inline-block; width:10px; height:10px; border-radius:50%; backgro
         <div><label>Fog</label><div class="seg" data-for="sFog"></div><select id="sFog" class="hidden"><option value="0">Light</option><option value="1" selected>Medium</option><option value="2">Heavy</option></select></div>
         <div><label>Online seat</label><div class="seg" data-for="sRole"></div><select id="sRole" class="hidden"><option value="drv">Driver</option><option value="nav">Navigator</option></select></div>
         <div><label>Solo rivals</label><div class="seg" data-for="sBots"></div><select id="sBots" class="hidden"><option value="0">Off</option><option value="3" selected>3</option><option value="5">5</option></select></div>
-        <div><label>Driving</label><div class="seg" data-for="sPhys"></div><select id="sPhys" class="hidden"><option value="arcade" selected>Arcade</option><option value="real">Realistic</option></select></div>
+        <div><label>Driving</label><div class="seg" data-for="sPhys"></div><select id="sPhys" class="hidden"><option value="arcade">Arcade</option><option value="sport" selected>Sport</option><option value="real">Realistic</option></select></div>
         <div><label>Graphics</label><div class="seg" data-for="sGfx"></div><select id="sGfx" class="hidden"><option value="high">High</option><option value="med" selected>Med</option><option value="low">Low</option></select></div>
       </div>
     </section>
@@ -253,7 +261,7 @@ i.md { display:inline-block; width:10px; height:10px; border-radius:50%; backgro
   <div id="split"></div>
   <div id="style"></div>
   <div id="call"><span id="callA"></span><span id="callT"></span></div><div id="big"></div>
-  <div id="cross"></div><div id="hov"></div><div id="navMap"></div><div id="draft">SLIPSTREAM</div>
+  <div id="cross"></div><div id="hov"></div><div id="navMap"></div><div id="draft">SLIPSTREAM</div><div id="nos" style="display:none"><i></i><b>NITRO</b></div><div id="btemp" style="display:none"><i></i><b>BRAKES</b></div>
   <div id="dmg"><span>DAMAGE</span><b id="dmgP">0%</b><i><u></u></i></div>
   <div id="spd"><canvas id="rev" width="200" height="200"></canvas><div class="in"><b>0</b><span>km/h</span><em id="gear">N</em></div></div>
   <div id="tip"></div>
@@ -266,17 +274,17 @@ i.md { display:inline-block; width:10px; height:10px; border-radius:50%; backgro
 </div></div>
 
 <script src="../three-r170.js"></script>
-<script src="js/util.js?v=24"></script>
-<script src="js/stage.js?v=24"></script>
-<script src="js/tex.js?v=24"></script>
-<script src="js/world.js?v=24"></script>
-<script src="js/car.js?v=24"></script>
-<script src="js/cockpit.js?v=24"></script>
-<script src="js/audio.js?v=24"></script>
-<script src="js/notes.js?v=24"></script>
-<script src="js/net.js?v=24"></script>
-<script src="js/garage3d.js?v=24"></script>
-<script src="js/bots.js?v=24"></script>
-<script src="js/main.js?v=24"></script>
+<script src="js/util.js?v=25"></script>
+<script src="js/stage.js?v=25"></script>
+<script src="js/tex.js?v=25"></script>
+<script src="js/world.js?v=25"></script>
+<script src="js/car.js?v=25"></script>
+<script src="js/cockpit.js?v=25"></script>
+<script src="js/audio.js?v=25"></script>
+<script src="js/notes.js?v=25"></script>
+<script src="js/net.js?v=25"></script>
+<script src="js/garage3d.js?v=25"></script>
+<script src="js/bots.js?v=25"></script>
+<script src="js/main.js?v=25"></script>
 </body>
 </html>

@@ -7,6 +7,8 @@ const EYE_OFF = new THREE.Vector3(0, -0.01, 0.27);
 const SWITCH_NAMES = ['IGNITION', 'FUEL PUMP', 'FAN', 'WIPERS', 'HEADLIGHTS', 'SPOT LIGHTS'];
 const SEAT = { drv: new THREE.Vector3(0.37, 0.49, -0.34), nav: new THREE.Vector3(-0.37, 0.47, -0.34) };
 
+// wheel size per body (the physics uses the selected car's own radius)
+const LOOKW = { monster: { r: 0.66, w: 0.55 }, trophy: { r: 0.45, w: 0.36 }, van: { r: 0.34, w: 0.22 }, muscle: { r: 0.34, w: 0.28 }, ev: { r: 0.35, w: 0.27 } };
 class CarView {
   constructor(scene, opt) {
     opt = opt || {}; const g = this.g = new THREE.Group(); scene.add(g);
@@ -16,7 +18,8 @@ class CarView {
     const white = new THREE.MeshPhysicalMaterial({ color: 0xf2f2f0, metalness: 0.1, roughness: 0.35, clearcoat: 1 }), orange = new THREE.MeshPhysicalMaterial({ color: 0xff7a1a, roughness: 0.35, clearcoat: 1 });
     this.mats = { paint, black, satin, cageM, trim };
     // ---- exterior shell: side profile extruded across the width ----
-    const look = this.look = opt.look || 'saloon', isB = look === 'beetle';
+    const look = this.look = opt.look || 'saloon', isB = look === 'beetle', spec = CARS.find(c => c.look === look) || CARS[0];
+    this.WH = wheelsOf(spec); this.cr = spec.r || 0.32; this.crest = spec.rest || 0.36; // this body's own wheels, whatever car is being driven
     // side profiles; the cabin (windscreen 0.32..0.98, roof 0.79) stays the same so the interior fits every car
     const arc = (cx, cy, rx, ry, a0, a1, n) => { const o = []; for (let i = 0; i <= n; i++) { const a = a0 + (a1 - a0) * i / n; o.push([cx + Math.cos(a) * rx, cy + Math.sin(a) * ry]); } return o; };
     const PROF = {
@@ -26,6 +29,11 @@ class CarView {
       groupb: [[-2.0, -0.42], [-2.06, -0.02], [-2.0, 0.26], [-1.7, 0.42], [-1.15, 0.7], [-0.6, 0.79], [0.32, 0.77], [0.98, 0.25], [1.6, 0.17], [2.02, 0.06], [2.14, -0.14], [2.1, -0.42]],
       wrc: [[-2.06, -0.42], [-2.1, -0.04], [-2.04, 0.24], [-1.9, 0.56], [-1.55, 0.76], [-0.6, 0.8], [0.32, 0.77], [0.98, 0.25], [1.62, 0.16], [2.02, 0.05], [2.18, -0.16], [2.16, -0.42]],
       proto: [[-2.12, -0.44], [-2.16, -0.1], [-2.08, 0.16], [-1.6, 0.34], [-1.1, 0.62], [-0.6, 0.78], [0.32, 0.77], [0.98, 0.22], [1.6, 0.1], [2.05, -0.02], [2.24, -0.22], [2.2, -0.44]],
+      van: [[-2.3, -0.42], [-2.33, 0.2], [-2.3, 1.3], [-2.18, 1.4], [0.18, 1.4], [0.3, 1.2], [0.32, 0.77], [0.98, 0.26], [1.55, 0.2], [1.95, 0.1], [2.02, -0.1], [2.0, -0.42]],
+      muscle: [[-2.22, -0.4], [-2.26, -0.02], [-2.18, 0.24], [-1.95, 0.32], [-1.25, 0.6], [-0.6, 0.78], [0.32, 0.77], [0.98, 0.27], [1.9, 0.22], [2.3, 0.14], [2.38, -0.12], [2.34, -0.4]],
+      trophy: [[-2.28, -0.36], [-2.34, 0.26], [-0.85, 0.3], [-0.74, 0.8], [0.32, 0.78], [0.98, 0.26], [1.85, 0.18], [2.32, 0.02], [2.36, -0.18], [2.28, -0.36]],
+      monster: [[-2.15, -0.42], [-2.2, 0.32], [-0.8, 0.34], [-0.72, 0.82], [0.32, 0.79], [0.98, 0.28], [1.7, 0.22], [2.12, 0.12], [2.2, -0.12], [2.15, -0.42]],
+      ev: [[-2.1, -0.44], [-2.15, -0.02], [-2.02, 0.28], [-1.45, 0.56], [-0.6, 0.78], [0.32, 0.77], [0.98, 0.24], [1.7, 0.08], [2.2, -0.06], [2.27, -0.26], [2.2, -0.44]],
       beetle: [...arc(-0.35, -0.4, 1.65, 1.2, Math.PI, 1.723, 10), [-0.15, 0.81], [0.32, 0.77], ...arc(0.9, -0.4, 1.06, 0.67, 1.495, 0, 9)],
     };
     const prof = PROF[look] || PROF.saloon;
@@ -201,13 +209,14 @@ class CarView {
     I.add(board); this.mapUp = 0;
     // ---- wheels ----
     const tyreM = new THREE.MeshStandardMaterial({ color: 0x18181a, roughness: 0.92 }), rimG = new THREE.MeshStandardMaterial({ color: 0xd8b25a, metalness: 0.85, roughness: 0.3 });
-    this.wheels = CAR.wheels.map((a, i) => {
+    this.wheels = this.WH.map((a, i) => {
       const w = new THREE.Group(), spin = new THREE.Group(); w.add(spin);
-      const tyre = new THREE.Mesh(new THREE.CylinderGeometry(CAR.r, CAR.r, 0.22, 22, 1), tyreM); tyre.rotation.z = Math.PI / 2; tyre.castShadow = true; spin.add(tyre);
-      const rimm = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.225, 6), rimG); rimm.rotation.z = Math.PI / 2; spin.add(rimm);
-      for (let k = 0; k < 6; k++) { const s = new THREE.Mesh(new THREE.BoxGeometry(0.23, 0.045, 0.03), rimG); s.rotation.x = k * Math.PI / 3; spin.add(s); }
+      const LW = LOOKW[look] || {}, tr = LW.r || 0.32, tw = LW.w || 0.22;
+      const tyre = new THREE.Mesh(new THREE.CylinderGeometry(tr, tr, tw, 22, 1), tyreM); tyre.scale.set(1, 1, 1); tyre.rotation.z = Math.PI / 2; tyre.castShadow = true; spin.add(tyre);
+      const rimm = new THREE.Mesh(new THREE.CylinderGeometry(tr * 0.62, tr * 0.62, tw + 0.005, look === 'ev' ? 24 : 6), look === 'ev' ? new THREE.MeshStandardMaterial({ color: 0x2a2d31, metalness: 0.8, roughness: 0.3 }) : rimG); rimm.rotation.z = Math.PI / 2; spin.add(rimm);
+      if (look !== 'ev') for (let k = 0; k < 6; k++) { const s = new THREE.Mesh(new THREE.BoxGeometry(tw + 0.01, 0.045, tr * 0.1), rimG); s.rotation.x = k * Math.PI / 3; spin.add(s); }
       const flap = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.26, 0.012), new THREE.MeshStandardMaterial({ color: i < 2 ? 0x111111 : 0xf2f2f2 })); flap.position.set(a[0] > 0 ? 0 : 0, -0.12, -0.36); if (i >= 2) w.add(flap);
-      g.add(w); return { g: w, spin, a: new THREE.Vector3(...a) };
+      g.add(w); return { g: w, spin, a: new THREE.Vector3(...a), rv: tr };
     });
     this.head = new THREE.Vector3(); this.headV = new THREE.Vector3(); this.prevV = null; this.shake = 0;
     // the roof and pillars shade the cabin
@@ -220,7 +229,7 @@ class CarView {
   bodyKit(look, m) {
     const g = this.g, zAt = this.zAt, chrome = new THREE.MeshStandardMaterial({ color: 0xe8eaec, metalness: 1, roughness: 0.18 });
     const box = (w, h, d, mat, x, y, z, rx, ry, rz) => { const o = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat); o.position.set(x, y, z); o.rotation.set(rx || 0, ry || 0, rz || 0); o.castShadow = true; g.add(o); return o; };
-    const fm = m.paint.clone(); fm.side = THREE.DoubleSide; const flares = (wd, r) => { for (const a of CAR.wheels) { const f = new THREE.Mesh(new THREE.CylinderGeometry(r, r, wd, 18, 1, true, 0, Math.PI), fm); f.rotation.set(0, 0, Math.PI / 2); f.rotation.order = 'ZYX'; f.position.set(Math.sign(a[0]) * (0.84 + wd / 2 - 0.06), -0.34, a[2]); g.add(f); const lip = new THREE.Mesh(new THREE.TorusGeometry(r, 0.025, 6, 18, Math.PI), m.black); lip.rotation.y = Math.PI / 2; lip.position.set(Math.sign(a[0]) * (0.84 + wd - 0.06), -0.34, a[2]); g.add(lip); } };
+    const fm = m.paint.clone(); fm.side = THREE.DoubleSide; const flares = (wd, r) => { for (const a of this.WH) { const f = new THREE.Mesh(new THREE.CylinderGeometry(r, r, wd, 18, 1, true, 0, Math.PI), fm); f.rotation.set(0, 0, Math.PI / 2); f.rotation.order = 'ZYX'; f.position.set(Math.sign(a[0]) * (0.84 + wd / 2 - 0.06), -0.34, a[2]); g.add(f); const lip = new THREE.Mesh(new THREE.TorusGeometry(r, 0.025, 6, 18, Math.PI), m.black); lip.rotation.y = Math.PI / 2; lip.position.set(Math.sign(a[0]) * (0.84 + wd - 0.06), -0.34, a[2]); g.add(lip); } };
     const wing = (y, wd, ch, zOff, plates) => { const z = zAt(0.5, -1) + (zOff || 0); box(wd, 0.035, ch, m.black, 0, y, z, -0.12); if (plates) for (const sd of [1, -1]) box(0.02, 0.2, ch + 0.08, m.black, sd * wd / 2, y - 0.04, z); for (const sd of [1, -1]) box(0.03, y - 0.55, 0.12, m.black, sd * 0.42, (y + 0.55) / 2, z + 0.04); };
     const splitter = (wd, d) => box(wd, 0.03, d, m.black, 0, -0.41, zAt(-0.38, 1) - d / 2 + 0.06);
     const scoop = () => { box(0.36, 0.1, 0.5, m.paint, 0, 0.9, -0.1); box(0.28, 0.06, 0.02, m.black, 0, 0.9, 0.16); };
@@ -231,11 +240,30 @@ class CarView {
     else if (look === 'groupb') { flares(0.16, 0.45); wing(0.8, 1.7, 0.36, 0.2, true); scoop(); louvres(1.4, 7); pod(4, 0.26); splitter(1.7, 0.22); }
     else if (look === 'wrc') { flares(0.14, 0.45); wing(0.92, 1.6, 0.3, 0.32, true); box(1.4, 0.02, 0.24, m.black, 0, 0.86, -1.55); scoop(); splitter(1.8, 0.3); for (const sd of [1, -1]) box(0.03, 0.12, 0.3, m.black, sd * 0.95, -0.25, zAt(-0.25, 1) - 0.25); }
     else if (look === 'proto') { flares(0.2, 0.46); wing(1.15, 2.0, 0.5, 0.45, true); wing(0.95, 1.9, 0.3, 0.55, false); scoop(); louvres(1.45, 9); splitter(2.1, 0.45); for (const sd of [1, -1]) { box(0.3, 0.02, 0.2, m.black, sd * 0.8, -0.18, zAt(-0.2, 1) - 0.12, 0, 0, sd * 0.25); box(0.02, 0.1, 3.2, m.black, sd * 1.02, -0.36, -0.05); } }
+    else if (look === 'van') {
+      // ice cream van: pastel band, serving hatch, a giant cone on the roof
+      const pink = new THREE.MeshStandardMaterial({ color: 0xf6a6c8, roughness: 0.5 }), cream = new THREE.MeshStandardMaterial({ color: 0xfff1d6, roughness: 0.6 });
+      for (const sd of [1, -1]) { box(0.02, 0.18, 2.4, pink, sd * 0.9, 0.95, -1.08); box(0.02, 0.06, 2.4, cream, sd * 0.9, 1.08, -1.08); }
+      box(0.03, 0.55, 1.3, m.black, -0.9, 0.85, -0.9); box(0.08, 0.04, 1.4, cream, -0.95, 0.56, -0.9);
+      const cone = new THREE.Mesh(new THREE.ConeGeometry(0.28, 0.75, 16), new THREE.MeshStandardMaterial({ color: 0xd9a35a, roughness: 0.8 })); cone.rotation.x = Math.PI; cone.position.set(0, 1.85, -0.9); g.add(cone);
+      for (const [y, c] of [[2.28, 0xf6a6c8], [2.5, 0xfff1d6], [2.68, 0x8a5a3a]]) { const sc = new THREE.Mesh(new THREE.SphereGeometry(0.27, 16, 12), new THREE.MeshStandardMaterial({ color: c, roughness: 0.7 })); sc.position.set(0, y, -0.9); g.add(sc); }
+    }
+    else if (look === 'muscle') { box(0.42, 0.1, 0.8, m.paint, 0, 0.32, 1.35); box(0.36, 0.06, 0.02, m.black, 0, 0.34, 1.76); box(1.5, 0.05, 0.25, m.black, 0, 0.36, zAt(0.3, -1) + 0.08, -0.15); for (const sd of [1, -1]) { const ex = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 1.2, 10), chrome); ex.rotation.x = Math.PI / 2; ex.position.set(sd * 0.95, -0.32, 0.1); g.add(ex); } splitter(1.6, 0.15); }
+    else if (look === 'trophy' || look === 'monster') {
+      // pickup bed with a roll cage, roof light bar; the trophy truck carries a spare
+      const z0 = -0.8, z1 = zAt(0.0, -1) + 0.15, bar = (a, b) => { const d = new THREE.Vector3().subVectors(b, a), c = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, d.length(), 8), chrome); c.position.copy(a).add(b).multiplyScalar(0.5); c.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), d.normalize()); g.add(c); };
+      for (const sd of [1, -1]) { bar(new THREE.Vector3(sd * 0.75, 0.32, z0 - 0.1), new THREE.Vector3(sd * 0.6, 1.1, z0 - 0.1)); bar(new THREE.Vector3(sd * 0.6, 1.1, z0 - 0.1), new THREE.Vector3(sd * 0.7, 0.32, z1 + 0.3)); }
+      bar(new THREE.Vector3(0.6, 1.1, z0 - 0.1), new THREE.Vector3(-0.6, 1.1, z0 - 0.1));
+      box(1.3, 0.1, 0.18, m.black, 0, 0.92, 0.0); for (let i = 0; i < 4; i++) box(0.22, 0.08, 0.04, m.lampM, (i - 1.5) * 0.3, 0.92, 0.1);
+      if (look === 'trophy') { const sp = new THREE.Mesh(new THREE.TorusGeometry(0.32, 0.13, 10, 20), new THREE.MeshStandardMaterial({ color: 0x18181a, roughness: 0.9 })); sp.rotation.x = Math.PI / 2; sp.position.set(0, 0.45, -1.5); g.add(sp); splitter(1.9, 0.3); }
+      else { box(1.9, 0.18, 4.0, m.black, 0, -0.5, 0); for (const sd of [1, -1]) box(0.08, 0.5, 0.08, m.black, sd * 0.7, -0.8, 0); }
+    }
+    else if (look === 'ev') { box(1.7, 0.035, 0.03, m.lampM, 0, 0.12, zAt(0.12, 1) + 0.01); box(1.7, 0.035, 0.03, new THREE.MeshStandardMaterial({ color: 0xff2020, emissive: 0xc00000 }), 0, 0.3, zAt(0.3, -1) - 0.01); box(1.3, 0.012, 1.4, m.black, 0, 0.885, -0.3); splitter(1.8, 0.2); }
     else if (look === 'beetle') {
       // bulbous fenders over every wheel
-      for (const a of CAR.wheels) { const f = new THREE.Mesh(new THREE.SphereGeometry(1, 24, 12, 0, Math.PI * 2, 0, Math.PI * 0.56), fm); const front = a[2] > 0; f.scale.set(0.3, 0.5, front ? 0.56 : 0.62); f.position.set(Math.sign(a[0]) * 0.78, -0.36, a[2] + (front ? 0.04 : -0.04)); f.castShadow = true; g.add(f); }
+      for (const a of this.WH) { const f = new THREE.Mesh(new THREE.SphereGeometry(1, 24, 12, 0, Math.PI * 2, 0, Math.PI * 0.56), fm); const front = a[2] > 0; f.scale.set(0.3, 0.5, front ? 0.56 : 0.62); f.position.set(Math.sign(a[0]) * 0.78, -0.36, a[2] + (front ? 0.04 : -0.04)); f.castShadow = true; g.add(f); }
       // round headlights sitting on the front fenders, chrome rings
-      for (const sd of [1, -1]) { const zf = CAR.wheels[0][2] + 0.62; const ring = new THREE.Mesh(new THREE.CylinderGeometry(0.105, 0.115, 0.08, 22), chrome); ring.rotation.x = Math.PI / 2 - 0.25; ring.position.set(sd * 0.78, -0.07, zf - 0.13); g.add(ring); const l = new THREE.Mesh(new THREE.CircleGeometry(0.095, 22), m.lampM); l.rotation.x = -0.25; l.position.set(sd * 0.78, -0.06, zf - 0.088); g.add(l); }
+      for (const sd of [1, -1]) { const zf = this.WH[0][2] + 0.62; const ring = new THREE.Mesh(new THREE.CylinderGeometry(0.105, 0.115, 0.08, 22), chrome); ring.rotation.x = Math.PI / 2 - 0.25; ring.position.set(sd * 0.78, -0.07, zf - 0.13); g.add(ring); const l = new THREE.Mesh(new THREE.CircleGeometry(0.095, 22), m.lampM); l.rotation.x = -0.25; l.position.set(sd * 0.78, -0.06, zf - 0.088); g.add(l); }
       // chrome bumpers, running boards, engine-lid louvres, a maxed-out whale tail and a lamp pod
       for (const z of [zAt(-0.3, 1) + 0.02, zAt(-0.3, -1) - 0.02]) { const b = new THREE.Mesh(new THREE.CapsuleGeometry(0.035, 1.5, 4, 10), chrome); b.rotation.z = Math.PI / 2; b.position.set(0, -0.3, z); g.add(b); for (const sd of [1, -1]) box(0.04, 0.12, 0.08, chrome, sd * 0.45, -0.28, z + Math.sign(z) * -0.04); }
       for (const sd of [1, -1]) box(0.16, 0.03, 1.4, m.black, sd * 0.84, -0.4, 0);
@@ -321,8 +349,8 @@ class CarView {
     const g = this.g; g.position.copy(st.pos); g.quaternion.copy(st.q); g.updateMatrixWorld();
     // wheels
     this.wheels.forEach((w, i) => {
-      const comp = st.comp ? st.comp[i] : 0.1; w.g.position.set(w.a.x + (w.a.x > 0 ? 0.0 : 0), w.a.y - (CAR.rest - comp), w.a.z);
-      w.g.rotation.y = i < 2 ? st.steer : 0; w.spin.rotation.x += (st.spinW !== undefined ? st.spinW : st.speedF / CAR.r) * dt;
+      const comp = st.comp ? st.comp[i] : 0.1; w.g.position.set(w.a.x, w.a.y - (this.crest - comp) - (this.cr - w.rv), w.a.z);
+      w.g.rotation.y = i < 2 ? st.steer : 0; w.spin.rotation.x += (st.spinW !== undefined ? st.spinW * CAR.r / this.cr : st.speedF / this.cr) * dt;
     });
     // steering wheel: ~14:1 ratio, a full lock is about 1.4 turns lock to lock
     const swA = -st.steer * 9; this.wheelG.rotation.z = swA; this.wheelG.rotation.x = -0.55; this.wheelG.updateMatrixWorld();

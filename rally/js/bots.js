@@ -1,22 +1,23 @@
 'use strict';
 // AI rival cars for solo races and championships: real Car physics, a road-following driver, contact with you and each other.
 const BOT_COL = [0xc62828, 0x2e7d32, 0xf2b632, 0x7b3fbf, 0xe86a1a, 0x1aa6b8];
+const S0 = (S, s) => S.safeS ? S.safeS(s, true) : s; // bots are put past a gap rather than dropped back into it
 const Bots = {
   list: [],
   // names: [{ n, s }] where s is a skill factor (lower = faster, ~0.86..1.13)
   spawn(S, names, startS, myIdx) {
-    this.clear(); const n = names.length;
+    this.clear(); const n = names.length, keep = CAR.idx;
     names.forEach((r, i) => {
       const k = i < myIdx ? i : i + 1, gs = startS - 3 - Math.floor(k / 2) * 9, lat = k % 2 ? 1.9 : -1.9;
-      const car = new Car(S); car.real = false; car.place(gs, lat); // rivals always drive the arcade model; in realistic mode they are slowed to match
-      const look = CARS[(i * 3 + 1) % CARS.length].look, col = BOT_COL[i % BOT_COL.length];
+      const ci = (i * 3 + 1) % 7; applyCar(ci); const car = new Car(S); car.real = false; car.sport = false; car.place(gs, lat); // rivals always drive the arcade model; in realistic mode they are slowed to match
+      const look = CARS[ci].look, col = BOT_COL[i % BOT_COL.length];
       const view = new CarView(World.scene, { color: col, remote: true, look });
       const tag = this.tag(r.n, col);
       // skill -> pace: grip used for corner speed, straight-line cap, braking
       const pace = clamp(1 - (r.s - 0.86) * 1.5, 0.58, 1);
-      this.list.push({ name: r.n, ref: r, car, view, tag, col, gs, lat, lane: lat * 0.5, pace, stuck: 0, recT: 0, fin: 0, adapt: { pos: car.pos, q: car.q, vel: car.v }, st: { comp: [0.1, 0.1, 0.1, 0.1], sw: [1, 1, 0, 0, 0, 0] } });
+      this.list.push({ ci, name: r.n, ref: r, car, view, tag, col, gs, lat, lane: lat * 0.5, pace, stuck: 0, recT: 0, fin: 0, adapt: { pos: car.pos, q: car.q, vel: car.v }, st: { comp: [0.1, 0.1, 0.1, 0.1], sw: [1, 1, 0, 0, 0, 0] } });
     });
-    return this.list;
+    applyCar(keep); return this.list;
   },
   tag(text, col) {
     const tc = document.createElement('canvas'); tc.width = 256; tc.height = 64; const x = tc.getContext('2d');
@@ -55,7 +56,13 @@ const Bots = {
     if (obsD < 60) vt = Math.min(vt, 16 + obsD * 0.35);
     if (s0 >= finishS) vt = 0; // finished: roll to a stop
     if (Math.abs(ang) > 0.5) vt = Math.min(vt, 10);
-    if (PHYS.real) vt *= 0.8;
+    if (PHYS.real) vt *= 0.8; else if (PHYS.sport) vt *= 0.92;
+    for (const z of S.zones || []) {
+      const d = z.s0 - s0;
+      if (z.k === 'gap' && d > -4 && d < 190) vt = Math.max(vt, 29); // gap ahead: commit, flat out
+      if (z.k === 'bridge' && d > -4 && d < 120) vt = Math.min(vt, 27);
+      if (z.k === 'rail' && z.c - s0 > 2 && z.c - s0 < 100 && S.trainU) { const u = S.trainU(z, S.clock || 0), dd = z.c - s0, T = dd / Math.max(spd, 6) + 2.5; if (u !== null && u + z.V * T > -8 && u - z.len < 8) vt = Math.min(vt, Math.max(0, (dd - 16) * 0.7)); }
+    }
     const thr = (spd < vt - 0.5 ? 1 : spd < vt + 0.5 ? 0.35 : 0) * (0.5 + 0.5 * b.pace), brk = spd > vt + 1.5 ? clamp((spd - vt) / 6, 0.25, 1) : 0;
     c.step(dt, { steer, thr, brk, hb: 0 });
     c.events.length = 0;
@@ -63,20 +70,21 @@ const Bots = {
   // stuck, flipped, wrecked or lost in the woods: put it back on the road
   watch(b, dt, phase) {
     if (phase !== 'run' && phase !== 'fin') return; const c = b.car, up = new THREE.Vector3(0, 1, 0).applyQuaternion(c.q).y;
-    const bad = c.wrecked || up < 0.3 || (c.speed < 1.5 && c.prog < (G.finishS || 1e9)) || c.roadD > ROAD_HW + 4;
+    const bad = c.wrecked || c.below || up < 0.3 || (c.speed < 1.5 && c.prog < (G.finishS || 1e9)) || c.roadD > ROAD_HW + 4;
     b.stuck = bad ? b.stuck + dt : 0;
-    if (b.stuck > (c.wrecked ? 1.5 : 2.5)) { b.stuck = 0; b.recN = (b.recN || 0) + 1; c.place(Math.max(World.startS, c.prog - 6), b.lane); c.dmg = Math.min(1, c.dmg); }
+    if (b.stuck > (c.wrecked ? 1.5 : 2.5)) { b.stuck = 0; b.recN = (b.recN || 0) + 1; c.place(S0(c.S, Math.max(World.startS, c.prog - 6)), b.lane); c.dmg = Math.min(1, c.dmg); }
   },
   step(dt, phase, t, player) {
-    const all = this.list;
+    const all = this.list, keep = CAR.idx; // each rival drives its own car's physics; the player's car is put back afterwards
     for (const b of all) {
       // drift across the road now and then; move over when someone is right ahead
       b.laneT = b.laneT === undefined ? b.lane : b.laneT; if (Math.random() < dt * 0.15) b.laneT = (Math.random() - 0.5) * 2.4;
-      this.drive(b, dt, phase, G.finishS);
+      applyCar(b.ci); this.drive(b, dt, phase, G.finishS);
       if (phase !== 'count') { const others = all.filter(o => o !== b).map(o => o.adapt); if (player) others.push(player); b.car.bump(others); }
       this.watch(b, dt, phase);
       if (!b.fin && phase !== 'count' && b.car.prog >= G.finishS) b.fin = Math.round(t * 100) / 100;
     }
+    if (all.length) applyCar(keep);
   },
   // estimated finish for a car still running (for standings when you finish first)
   eta(b, t) { if (b.fin) return b.fin; const left = Math.max(0, G.finishS - b.car.prog), done = Math.max(1, b.car.prog - G.startS), avg = Math.max(8, done / Math.max(1, t)); return t + left / avg; },
