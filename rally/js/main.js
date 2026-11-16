@@ -18,7 +18,7 @@ try { $('nm').value = localStorage.getItem('pn-name') || ''; $('sGfx').value = l
 const myName = () => { const n = ($('nm').value || '').replace(/[^A-Za-z0-9 ._-]/g, '').trim().slice(0, 14) || 'Player' + (1 + Math.random() * 99 | 0); try { localStorage.setItem('pn-name', n); localStorage.setItem('pn-gfx', $('sGfx').value); } catch (e) {} return n; };
 const show = id => { for (const s of ['menu', 'lobby', 'fin', 'pause', 'champ']) $(s).classList.toggle('hidden', s !== id); Garage3D.on = id === 'menu'; };
 // ---- stage cards (drive the hidden select) ----
-const BIO_COL = { forest: '#3f8a52', autumn: '#d0742a', snow: '#9cc8e4', desert: '#d8914c', park: '#74b85a', city: '#8a93a6' };
+const BIO_COL = { forest: '#3f8a52', autumn: '#d0742a', snow: '#9cc8e4', desert: '#d8914c', park: '#74b85a', alpine: '#8f8a80', city: '#8a93a6' };
 const todName = t => /dusk|evening/i.test(t) ? 'Dusk' : /noon/i.test(t) ? 'Midday' : /morning/i.test(t) ? 'Morning' : /overcast/i.test(t) ? 'Overcast' : 'Day';
 function renderStages() {
   const box = $('stages'), cur = +$('sStage').value, fog = +$('sFog').value; box.innerHTML = '';
@@ -26,7 +26,7 @@ function renderStages() {
     let best = null; try { best = JSON.parse(localStorage.getItem('pn-best-' + i + '-' + fog) || 'null'); } catch (e) {}
     const b = document.createElement('button'); b.className = 'stc' + (i === cur ? ' sel' : ''); b.setAttribute('role', 'option'); b.setAttribute('aria-selected', i === cur);
     b.style.setProperty('--b', BIO_COL[s.biome] || '#777');
-    b.innerHTML = (s.berms ? '<em>JUMPS</em>' : '') + '<b>' + s.name + '</b><small>' + BIOMES[s.biome].name + ' · ' + todName(s.tod) + ' · ' + (s.len / 1000).toFixed(1) + ' km</small>' + '<small class="bt">' + (best ? medalDot(medalOf(i, best.t)) + 'Best ' + fmtT2(best.t) : 'Gold ' + fmtT(medalT(i, 0))) + '</small>';
+    const B0 = BIOMES[s.biome], tag = (s.tunnels || B0.tunnels) ? ' · tunnels' : (s.cliffs || B0.cliffs) ? ' · cliffs' : ''; b.innerHTML = (s.berms ? '<em>JUMPS</em>' : '') + '<b>' + s.name + '</b><small>' + BIOMES[s.biome].name + ' · ' + todName(s.tod) + ' · ' + (s.len / 1000).toFixed(1) + ' km' + tag + '</small>' + '<small class="bt">' + (best ? medalDot(medalOf(i, best.t)) + 'Best ' + fmtT2(best.t) : 'Gold ' + fmtT(medalT(i, 0))) + '</small>';
     b.onclick = () => { $('sStage').value = i; $('sStage').onchange(); renderStages(); };
     box.appendChild(b);
   });
@@ -487,6 +487,7 @@ const CHAMPS = [
   { id: 'forest', name: 'Forest Cup', d: 'Three gravel sprints under the pines', st: [11, 0, 1] },
   { id: 'jumps', name: 'Jump Masters', d: 'Berms, kickers and big air', st: [12, 14, 13] },
   { id: 'seasons', name: 'Four Seasons', d: 'Autumn, snow, desert and city', st: [3, 5, 7, 9] },
+  { id: 'pass', name: 'Mountain Passes', d: 'Cliff roads, guardrails and tunnels', st: [15, 19, 18, 16, 17] },
   { id: 'grand', name: 'Grand Tour', d: 'Six stages, every surface, night finish', st: [2, 4, 6, 8, 13, 10] }
 ];
 // fictional drivers; skill scales the silver-medal time (lower is faster)
@@ -548,6 +549,9 @@ function chaseCam(cam, st, dt) {
   const f = CH.f.set(0, 0, 1).applyQuaternion(st.q); f.y = 0; if (f.lengthSq() < 1e-4) f.set(0, 0, 1); f.normalize();
   const a = look.yaw, cs = Math.cos(a), sn = Math.sin(a), bx = f.x * cs + f.z * sn, bz = -f.x * sn + f.z * cs;
   const want = CH.want.set(st.pos.x - bx * 6.4, st.pos.y + 2.3 - look.pitch * 3, st.pos.z - bz * 6.4);
+  // keep the camera out of buildings and tunnel walls: slide it toward the car until it is over the street
+  { const S = G.S, q0 = S.near(st.pos.x, st.pos.z, 30), tun = q0 && S.inTun && S.inTun(q0.s, 3), lim = tun ? ROAD_HW + 0.4 : S.B && S.B.city ? ROAD_HW + 2.6 : 0;
+    if (lim) for (let k = 0; k < 6; k++) { const q = S.near(want.x, want.z, 20); if (q && q.d < lim) break; want.x = lerp(want.x, st.pos.x, 0.3); want.z = lerp(want.z, st.pos.z, 0.3); } }
   const gy = G.S.heightAt(want.x, want.z) + 0.8; if (want.y < gy) want.y = gy;
   if (!CH.init) { CH.pos.copy(want); CH.init = true; } CH.pos.lerp(want, 1 - Math.exp(-dt * 7));
   CH.tgt.set(st.pos.x + f.x * 3, st.pos.y + 0.9, st.pos.z + f.z * 3);
