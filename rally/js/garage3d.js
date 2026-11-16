@@ -28,7 +28,7 @@ const Garage3D = {
   },
   show(look, color) {
     if (!this.R) return;
-    if (this.view) { this.scene.remove(this.view.g); this.view.g.traverse(o => { if (o.geometry) o.geometry.dispose(); }); }
+    if (this.view) { this.scene.remove(this.view.g); this.view.g.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material && o.material.map && o.material.map.isCanvasTexture) o.material.map.dispose(); }); if (this.view.mirrorRT) this.view.mirrorRT.dispose(); }
     try { const ci = CARS.findIndex(c => c.look === look); if (ci >= 0) applyCar(ci); this.view = new CarView(this.scene, { color, remote: true, look }); } catch (e) { this.view = null; return; }
     for (const k of ['drv', 'nav']) if (this.view.crew && this.view.crew[k]) this.view.crew[k].g.visible = false;
     // wheels at ride height, and the car lowered or raised so its tyres sit on the turntable

@@ -61,7 +61,7 @@ const Bots = {
       const d = z.s0 - s0;
       if (z.k === 'gap' && d > -4 && d < 190) vt = Math.max(vt, 29); // gap ahead: commit, flat out
       if (z.k === 'bridge' && d > -4 && d < 120) vt = Math.min(vt, 27);
-      if (z.k === 'rail' && z.c - s0 > 2 && z.c - s0 < 100 && S.trainU) { const u = S.trainU(z, S.clock || 0), dd = z.c - s0, T = dd / Math.max(spd, 6) + 2.5; if (u !== null && u + z.V * T > -8 && u - z.len < 8) vt = Math.min(vt, Math.max(0, (dd - 16) * 0.7)); }
+      if (z.k === 'rail' && z.c - s0 > 2 && z.c - s0 < 100 && S.trainU) { const u = S.trainU(z, S.clock || 0), dd = z.c - s0, T = dd / Math.max(spd, 6) + 2.5; if (u !== null && u + z.V * T > -8 && u - z.len < 8) { vt = Math.min(vt, Math.max(0, (dd - 16) * 0.7)); b.hold = 1.5; } }
     }
     const thr = (spd < vt - 0.5 ? 1 : spd < vt + 0.5 ? 0.35 : 0) * (0.5 + 0.5 * b.pace), brk = spd > vt + 1.5 ? clamp((spd - vt) / 6, 0.25, 1) : 0;
     c.step(dt, { steer, thr, brk, hb: 0 });
@@ -70,7 +70,8 @@ const Bots = {
   // stuck, flipped, wrecked or lost in the woods: put it back on the road
   watch(b, dt, phase) {
     if (phase !== 'run' && phase !== 'fin') return; const c = b.car, up = new THREE.Vector3(0, 1, 0).applyQuaternion(c.q).y;
-    const bad = c.wrecked || c.below || up < 0.3 || (c.speed < 1.5 && c.prog < (G.finishS || 1e9)) || c.roadD > ROAD_HW + 4;
+    b.hold = Math.max(0, (b.hold || 0) - dt); // waiting for a train on purpose is not being stuck
+    const bad = c.wrecked || c.below || up < 0.3 || (c.speed < 1.5 && !b.hold && c.prog < (G.finishS || 1e9)) || c.roadD > ROAD_HW + 4;
     b.stuck = bad ? b.stuck + dt : 0;
     if (b.stuck > (c.wrecked ? 1.5 : 2.5)) { b.stuck = 0; b.recN = (b.recN || 0) + 1; c.place(S0(c.S, Math.max(World.startS, c.prog - 6)), b.lane); c.dmg = Math.min(1, c.dmg); }
   },
@@ -92,7 +93,7 @@ const Bots = {
     const fv = new THREE.Vector3();
     for (const b of this.list) {
       const c = b.car, st = b.st; fv.set(0, 0, 1).applyQuaternion(c.q);
-      st.pos = c.pos; st.q = c.q; st.vel = c.v; st.steer = c.steer; for (let i = 0; i < 4; i++) st.comp[i] = c.wh[i].comp; st.speedF = c.v.dot(fv); st.spinW = c.wh[2].spin; st.hb = 0; st.dmg = c.dmg; st.speed = c.speed;
+      st.pos = c.pos; st.q = c.q; st.vel = c.v; st.steer = c.steer; for (let i = 0; i < 4; i++) st.comp[i] = c.wh[i].comp; st.speedF = c.v.dot(fv); st.spinW = c.wh[2].spin; st.wr = CARS[b.ci].r || 0.32; st.hb = 0; st.dmg = c.dmg; st.speed = c.speed;
       b.view.update(st, dt, 'x', look, null);
       const d = c.pos.distanceTo(camPos); b.tag.visible = d < 140 && d > 4; b.tag.position.copy(c.pos).y += 1.9;
       // dust behind them

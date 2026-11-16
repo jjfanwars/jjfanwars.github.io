@@ -74,7 +74,7 @@ class Car {
     const S = this.S, p = S.at(s), rx = -Math.cos(p.h), rz = Math.sin(p.h);
     const x = p.x + rx * (lat || 0), z = p.z + rz * (lat || 0);
     this.pos.set(x, S.heightAt(x, z) + 0.62 + (CAR.rest + CAR.r - 0.68), z); this.q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), p.h); this.v.set(0, 0, 0); this.w.set(0, 0, 0);
-    for (const w of this.wh) { w.comp = w.pc = 0.12; w.cv = 0; w.spin = 0; } this.steer = 0; this.wrecked = false; this.gear = 1; this.rpm = CAR.idle; this.prog = s;
+    for (const w of this.wh) { w.comp = w.pc = 0.12; w.cv = 0; w.spin = 0; } this.steer = 0; this.wrecked = false; this.gear = 1; this.rpm = CAR.idle; this.prog = s; this.air = 0; this.shiftT = 0;
   }
   // world <- body
   toWorld(v, out) { return out.copy(v).applyQuaternion(this.q); }
@@ -173,7 +173,7 @@ class Car {
       const bf = this.brk * CAR.brake * (w.front ? CAR.brakeBias : 1 - CAR.brakeBias) / 2 * this.fadeK;
       fx -= Math.sign(vx) * Math.min(bf, Math.abs(vx) * CAR.m * 2);
       if (hb && !w.front) { locked = true; fx = -Math.sign(vx) * Math.min(fmax * 0.85, Math.abs(vx) * CAR.m); }
-      if (!onRoad) fx -= vx * BB.offDrag; // soft ground drag
+      if (!onRoad && !(zk && zk.noDrag)) fx -= vx * BB.offDrag; // soft ground drag (not on a frozen lake)
       if (zk && zk.drag) fx -= vx * zk.drag; // water: wading drag
       fx -= vx * (6 + (w.flat ? 900 : 0)); // rolling resistance (a flat drags hard)
       // lateral: slip angle curve, softer and wider on gravel
@@ -258,7 +258,7 @@ class Car {
       if (vn < 0) {
         const j = -vn / this.invMass(P, n); this.impulse(P, n.clone().multiplyScalar(j));
         const vt = pv.clone().addScaledVector(n, -vn), vtl = vt.length(); if (vtl > 0.01) { const jt = Math.min(vtl / this.invMass(P, vt.clone().normalize()), j * 0.6); this.impulse(P, vt.multiplyScalar(-jt / vtl)); }
-        if (-vn > 3) { this.dmg = Math.min(1, this.dmg + (-vn - 3) * 0.01); this.events.push({ k: 'thud', v: -vn }); }
+        if (-vn > 3) { this.dmg = Math.min(1, this.dmg + (-vn - 3) * 0.01 / (CAR.tough || 1)); this.events.push({ k: 'thud', v: -vn }); }
       }
     }
   }
@@ -309,7 +309,7 @@ class Car {
         const P = A.clone().addScaledVector(n, -0.92), vrel = this.pointVel(P, new THREE.Vector3()).sub(o.vel), vn = vrel.dot(n);
         if (vn >= 0) continue;
         const j = -1.25 * vn / (this.invMass(P, n) + 1 / CAR.m); this.impulse(P, n.multiplyScalar(j));
-        if (-vn > 2.5) { this.dmg = Math.min(1, this.dmg + (-vn - 2.5) * 0.008); this.events.push({ k: 'crash', v: -vn }); }
+        if (-vn > 2.5) { this.dmg = Math.min(1, this.dmg + (-vn - 2.5) * 0.008 / (CAR.tough || 1)); this.events.push({ k: 'crash', v: -vn }); }
       }
     }
   }

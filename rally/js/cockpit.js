@@ -186,7 +186,7 @@ class CarView {
       add(new THREE.BoxGeometry(0.1, 0.05, 1.45), M.plastic, sd * 0.83, 0.19, -0.25);
       add(new THREE.BoxGeometry(0.02, 0.025, 0.3), new THREE.MeshStandardMaterial({ color: 0xc81e1e, roughness: 0.7 }), sd * 0.835, 0.08, 0.05, 0, 0, sd * 0.4);
       add(new THREE.BoxGeometry(0.08, 0.6, 0.14), M.plastic, sd * 0.8, 0.48, -0.95);
-      const mr = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.1, 0.16), black); mr.position.set(sd * 0.98, 0.3, 0.75); g.add(mr);
+      const mr = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.1, 0.07), paint); mr.position.set(sd * 1.02, 0.31, 0.72); g.add(mr); const arm = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.025, 0.04), black); arm.position.set(sd * 0.93, 0.28, 0.74); g.add(arm); const mg = new THREE.Mesh(new THREE.PlaneGeometry(0.14, 0.08), CarView.mirrorGlass || (CarView.mirrorGlass = new THREE.MeshStandardMaterial({ color: 0x9aa6b2, metalness: 1, roughness: 0.04 }))); mg.position.set(sd * 1.02, 0.31, 0.684); mg.rotation.y = Math.PI; g.add(mg);
     }
     add(new THREE.BoxGeometry(1.5, 0.02, 2.1), M.liner, 0, 0.775, -0.6); add(new THREE.BoxGeometry(0.42, 0.03, 0.32), M.plastic, 0, 0.76, -0.2);
     // windscreen black band (frit) so the glass has an edge
@@ -460,7 +460,7 @@ class CarView {
     // wheels
     this.wheels.forEach((w, i) => {
       const comp = st.comp ? st.comp[i] : 0.1; w.g.position.set(w.a.x, w.a.y - (this.crest - comp) - (this.cr - w.rv), w.a.z);
-      w.g.rotation.y = i < 2 ? st.steer : 0; w.spin.rotation.x += (st.spinW !== undefined ? st.spinW * CAR.r / this.cr : st.speedF / this.cr) * dt;
+      w.g.rotation.y = i < 2 ? st.steer : 0; w.spin.rotation.x += (st.spinW !== undefined ? st.spinW * (st.wr || CAR.r) / this.cr : st.speedF / this.cr) * dt;
     });
     // steering wheel: ~14:1 ratio, a full lock is about 1.4 turns lock to lock
     const swA = -st.steer * 9; this.wheelG.rotation.z = swA; this.wheelG.rotation.x = -0.55; this.wheelG.updateMatrixWorld();
