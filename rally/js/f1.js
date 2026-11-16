@@ -320,13 +320,16 @@
     }
     // Steering help: at speed the full input only asks for the lock the tyres can use (keyboard, mouse and pad alike)
     let lim = 1; if (SET.sa === '1' && v > 8) { const A = F1T.AERO, k = 0.5 * A.rho * A.ClA / A.mass, amax = A.mu * (A.g + k * v * v); lim = clamp((Math.atan(F1.L * amax / (v * v)) + 0.07) / F1.LOCK, 0.08, 1); }
-    const smooth = (tgt, k) => { ctl.st += (tgt - ctl.st) * (1 - Math.exp(-dt * k)); };
+    const smooth = (tgt, k) => { ctl.st += (clamp(tgt, -1, 1) - ctl.st) * (1 - Math.exp(-dt * k)); };
+    // Steering help also catches slides: like a real wheel kicking back through caster, it leans toward countersteer
+    // (front wheels toward the rear axle's direction of travel) once the rear tyres slide past ~3.5 degrees; grip cornering never triggers it
+    const catchSlide = () => { if (SET.sa !== '1' || v < 8 || !isFinite(me.aR)) return 0; const a = me.aR || 0, ex = Math.sign(a) * Math.max(0, Math.abs(a) - 0.06); return clamp(ex / F1.LOCK * 0.6, -0.45, 0.45); };
     if (!analog && SET.input === 'mouse' && MS.seen) {
       const m = (MS.x - 0.5) / 0.34, dz = Math.sign(m) * Math.max(0, Math.abs(m) - 0.015) / 0.985; st = clamp(Math.sign(dz) * Math.pow(Math.abs(dz), 1.35), -1, 1);
-      ctl.raw = (ctl.raw || 0) + clamp(st * lim - (ctl.raw || 0), -dt * 6, dt * 6); smooth(ctl.raw, 12);
+      ctl.raw = (ctl.raw || 0) + clamp(st * lim - (ctl.raw || 0), -dt * 6, dt * 6); smooth(ctl.raw + catchSlide(), 12);
       thr = Math.max(thr, MS.l ? 1 : 0); brk = Math.max(brk, MS.r ? 1 : 0);
       ctl.thr += clamp(thr - ctl.thr, -dt * 9, dt * 6); ctl.brk += clamp(brk - ctl.brk, -dt * 10, dt * 9);
-    } else if (analog) { ctl.raw = st * lim; smooth(ctl.raw, 14); ctl.thr = thr; ctl.brk = brk; }
+    } else if (analog) { ctl.raw = st * lim; smooth(ctl.raw + catchSlide(), 14); ctl.thr = thr; ctl.brk = brk; }
     else {
       // keyboard: ramped pedals, rate-limited steering, and (optionally) a speed-aware lock limit so a tap doesn't spin the car
       ctl.thr += clamp(thr - ctl.thr, -dt * 9, dt * 6); ctl.brk += clamp(brk - ctl.brk, -dt * 10, dt * 9);
@@ -334,7 +337,7 @@
       // then a light filter takes the corners off every change so the car never jerks
       ctl.held = st && st === ctl.dir ? (ctl.held || 0) + dt : 0; ctl.dir = st; ctl.raw = ctl.raw || 0;
       const rate = (st === 0 ? 2.8 : Math.sign(st) !== Math.sign(ctl.raw) && Math.abs(ctl.raw) > 0.04 ? 3.6 : Math.min(2.3, 0.7 + ctl.held * 3.2)) * Math.max(lim, 0.3);
-      ctl.raw += clamp(st * lim - ctl.raw, -dt * rate, dt * rate); smooth(ctl.raw, 10);
+      ctl.raw += clamp(st * lim - ctl.raw, -dt * rate, dt * rate); smooth(ctl.raw + catchSlide(), 10);
     }
     ctl.drs = drs; return ctl;
   }

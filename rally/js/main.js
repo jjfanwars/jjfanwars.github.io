@@ -15,7 +15,7 @@ const medalDot = k => k < 0 ? '' : '<i class="md" style="--m:' + MEDALS[k][2] + 
 // ---------- menu ----------
 STAGES.forEach((s, i) => { const o = document.createElement('option'); o.value = i; o.textContent = BIOMES[s.biome].name + ' · ' + s.name + (s.berms ? ' · berms & jumps' : '') + '  (' + (s.len / 1000).toFixed(1) + ' km)'; $('sStage').appendChild(o); });
 $('sStage').value = 15;
-try { $('nm').value = localStorage.getItem('pn-name') || ''; $('sGfx').value = localStorage.getItem('pn-gfx') || 'med'; for (const k of ['sStage', 'sFog', 'sRole', 'sBots', 'sPhys', 'sGear']) { const v = localStorage.getItem('pn-' + k); if (v !== null && [...$(k).options].some(o => o.value === v)) $(k).value = v; } } catch (e) {}
+try { $('nm').value = localStorage.getItem('pn-name') || ''; $('sGfx').value = localStorage.getItem('pn-gfx') || 'med'; for (const k of ['sStage', 'sFog', 'sRole', 'sBots', 'sPhys', 'sGear', 'sSteer']) { const v = localStorage.getItem('pn-' + k); if (v !== null && [...$(k).options].some(o => o.value === v)) $(k).value = v; } } catch (e) {}
 const myName = () => { const n = ($('nm').value || '').replace(/[^A-Za-z0-9 ._-]/g, '').trim().slice(0, 14) || 'Player' + (1 + Math.random() * 99 | 0); try { localStorage.setItem('pn-name', n); localStorage.setItem('pn-gfx', $('sGfx').value); } catch (e) {} return n; };
 const show = id => { for (const s of ['menu', 'lobby', 'fin', 'pause', 'champ']) $(s).classList.toggle('hidden', s !== id); Garage3D.on = id === 'menu'; };
 // ---- stage cards (drive the hidden select) ----
@@ -47,6 +47,8 @@ $('sPhys').onchange = () => { PHYS.real = $('sPhys').value === 'real'; PHYS.spor
 $('sPhys').onchange();
 $('sGear').onchange = () => { PHYS.manual = $('sGear').value === 'manual'; };
 $('sGear').onchange();
+$('sSteer').onchange = () => { PHYS.mouseSteer = $('sSteer').value === 'mouse'; };
+$('sSteer').onchange();
 const readCfg = () => ({ stage: +$('sStage').value, fog: +$('sFog').value, hostRole: $('sRole').value });
 
 const CAR_COL = [0x1d4fbf, 0xc62828, 0x2e7d32, 0xf2b632], CAR_NAME = ['Blue', 'Red', 'Green', 'Yellow'], hex = c => '#' + c.toString(16).padStart(6, '0');
@@ -180,7 +182,7 @@ function startStage(cfg, role, solo, myCar, seats) {
     look.yaw = 0; look.pitch = role === 'nav' ? -0.14 : -0.1; look.map = false; G.sw = [1, 1, 0, 0, /dusk|evening|night|storm/i.test(STAGES[cfg.stage].tod) ? 1 : 0, STAGES[cfg.stage].tod === 'night' ? 1 : 0];
     $('role').textContent = CARS[mdl(myCar)].name.toUpperCase() + ' · ' + (solo ? 'SOLO PRACTICE · AUTO CO-DRIVER' : (role === 'drv' ? 'DRIVER' : 'NAVIGATOR') + ' · ' + CAR_NAME[myCar].toUpperCase() + ' CAR' + (G.autoNav ? ' · AUTO CO-DRIVER' : '')) + ' · ' + STAGES[cfg.stage].name.toUpperCase(); msg('pos', '');
     if (Champ.run) $('role').textContent = Champ.run.c.name.toUpperCase() + ' · STAGE ' + (Champ.run.i + 1) + ' / ' + Champ.run.c.st.length + ' · ' + STAGES[cfg.stage].name.toUpperCase();
-    $('tip').innerHTML = role === 'drv' ? 'W/S throttle · brake, A/D steer, Space handbrake, R recover (+' + (PHYS.easy ? 3 : 5) + ' s)' + (PHYS.manual ? ', E/Q shift up/down' : '') + ', V chase cam, G ghost, Esc pause · 1-6 or click dash switches · T horn · Shift nitro (muscle car) · mouse looks' : 'Hold <b>right mouse</b> or <b>Tab</b> for the map · callouts: A/D + 1-6, J jump, C crest, L log, K keep middle, F flat, B brake';
+    $('tip').innerHTML = role === 'drv' ? 'W/S throttle · brake, A/D steer, Space handbrake, R recover (+' + (PHYS.easy ? 3 : 5) + ' s)' + (PHYS.mouseSteer ? ', MOUSE turns the wheel, hold right mouse to look around' : '') + (PHYS.manual ? ', E/Q shift up/down' : '') + ', V chase cam, G ghost, Esc pause · 1-6 or click dash switches · T horn · Shift nitro (muscle car) · mouse looks' : 'Hold <b>right mouse</b> or <b>Tab</b> for the map · callouts: A/D + 1-6, J jump, C crest, L log, K keep middle, F flat, B brake';
     $('spd').style.display = role === 'drv' ? '' : 'none'; $('dmg').style.display = role === 'drv' ? '' : 'none'; $('call').classList.remove('on');
     bigMsg(''); msg('split', ''); $('fade').style.opacity = 0; $('lockmsg').classList.toggle('hidden', !!document.pointerLockElement); $('tip').style.opacity = 1;
     G.bestRec = bestOf(); buildProg(); ghostSetup(); CH.init = false; $('style').innerHTML = ''; $('cross').style.display = G.chase && G.role === 'drv' ? 'none' : '';
@@ -248,11 +250,12 @@ addEventListener('keydown', e => {
 });
 addEventListener('keyup', e => KEYS.delete(e.code));
 addEventListener('blur', () => KEYS.clear());
-cvs.addEventListener('mousedown', e => { if (!G.on) return; Sfx.start(); if (document.pointerLockElement && e.button === 0) { const k = aimedSwitch(); if (k >= 0) flipSwitch(k); } if (!document.pointerLockElement) { if (e.button === 0 && freeSw >= 0) { flipSwitch(freeSw); return; } try { cvs.requestPointerLock(); } catch (x) {} } if (e.button === 2 && G.role === 'nav') look.map = true; });
-addEventListener('mouseup', e => { if (e.button === 2 && G.role === 'nav' && !KEYS.has('Tab')) look.map = false; });
+cvs.addEventListener('mousedown', e => { if (!G.on) return; Sfx.start(); if (document.pointerLockElement && e.button === 0) { const k = aimedSwitch(); if (k >= 0) flipSwitch(k); } if (!document.pointerLockElement) { if (e.button === 0 && freeSw >= 0) { flipSwitch(freeSw); return; } try { cvs.requestPointerLock(); } catch (x) {} } if (e.button === 2 && G.role === 'nav') look.map = true; if (e.button === 2 && G.role === 'drv') G.lookHeld = true; });
+addEventListener('mouseup', e => { if (e.button === 2 && G.role === 'nav' && !KEYS.has('Tab')) look.map = false; if (e.button === 2) G.lookHeld = false; });
 addEventListener('contextmenu', e => e.preventDefault());
 document.addEventListener('pointerlockchange', () => { const l = !!document.pointerLockElement; if (l) G.wasLocked = true; $('lockmsg').classList.toggle('hidden', l || !G.on || !!G.wasLocked); if (!l && G.on && G.wasLocked) pauseOpen(); });
-addEventListener('mousemove', e => { if (G.on && !document.pointerLockElement && G.view && G.view.hits) { MS.set(e.clientX / innerWidth * 2 - 1, -e.clientY / innerHeight * 2 + 1); RC.setFromCamera(MS, World.cam); RC.far = 1.6; const h = RC.intersectObjects(G.view.hits, false)[0]; freeSw = h ? h.object.userData.sw : -1; cvs.style.cursor = freeSw >= 0 ? 'pointer' : ''; } if (!document.pointerLockElement || !G.on) return; look.yaw -= e.movementX * 0.0022; look.pitch -= e.movementY * 0.0022; look.yaw = clamp(look.yaw, -2.5, 2.5); look.pitch = clamp(look.pitch, -1.0, 0.8); look.idle = 0; });
+addEventListener('mousemove', e => {
+  if (document.pointerLockElement && G.on && G.role === 'drv' && PHYS.mouseSteer && !G.lookHeld) { inp.wheel = clamp((inp.wheel || 0) - e.movementX / 330, -1, 1); return; } if (G.on && !document.pointerLockElement && G.view && G.view.hits) { MS.set(e.clientX / innerWidth * 2 - 1, -e.clientY / innerHeight * 2 + 1); RC.setFromCamera(MS, World.cam); RC.far = 1.6; const h = RC.intersectObjects(G.view.hits, false)[0]; freeSw = h ? h.object.userData.sw : -1; cvs.style.cursor = freeSw >= 0 ? 'pointer' : ''; } if (!document.pointerLockElement || !G.on) return; look.yaw -= e.movementX * 0.0022; look.pitch -= e.movementY * 0.0022; look.yaw = clamp(look.yaw, -2.5, 2.5); look.pitch = clamp(look.pitch, -1.0, 0.8); look.idle = 0; });
 addEventListener('gamepadconnected', e => { pad = e.gamepad.index; });
 
 // dash switches: aim the centre dot at one and click
@@ -279,6 +282,15 @@ function readInput(dt) {
   inp.raw = inp.raw || 0; const rate = target === 0 ? 9 : Math.sign(target) !== Math.sign(inp.raw) && Math.abs(inp.raw) > 0.05 ? 12 : (PHYS.real ? Math.min(4.5, 1.5 + inp.held * 8) : PHYS.sport ? Math.min(6, 1.8 + inp.held * 11) : Math.min(7, 2 + inp.held * 14));
   inp.raw += clamp(target - inp.raw, -rate * dt, rate * dt);
   inp.steer = Math.sign(inp.raw) * Math.abs(inp.raw) ** 1.5;
+  if (PHYS.mouseSteer) {
+    // mouse wheel steering: the mouse turns the wheel and it stays where you leave it (A/D nudge it too). Like a real wheel it
+    // self-aligns: a gentle pull back to centre at speed, and when the tail slides it pulls toward countersteer (caster)
+    let w = inp.wheel || 0; if (target) w += target * dt * 1.8; const c = G.car;
+    if (G.phase === 'count') w = 0;
+    else if (c && c.speed > 4) { const f = SWD.set(0, 0, 1).applyQuaternion(c.q), l = SWP.set(1, 0, 0).applyQuaternion(c.q), vF = c.v.dot(f), beta = Math.abs(vF) > 3 ? Math.atan2(c.v.dot(l), Math.abs(vF)) : 0, slide = Math.abs(beta) > 0.08;
+      const at = slide ? clamp(beta * 1.6, -1, 1) : 0; w += (at - w) * (1 - Math.exp(-dt * (slide ? (PHYS.real ? 1.2 : 1.8) : 0.25 * sstep(4, 30, c.speed)))); }
+    inp.wheel = clamp(w, -1, 1); inp.steer = Math.sign(inp.wheel) * Math.abs(inp.wheel) ** 1.25;
+  }
   inp.nitro = KEYS.has('ShiftLeft') || KEYS.has('ShiftRight') ? 1 : 0;
   inp.thr = KEYS.has('KeyW') || KEYS.has('ArrowUp') ? 1 : 0; inp.brk = KEYS.has('KeyS') || KEYS.has('ArrowDown') ? 1 : 0; inp.hb = KEYS.has('Space') ? 1 : 0;
   inp.up = KEYS.has('KeyE') ? 1 : 0; inp.dn = KEYS.has('KeyQ') ? 1 : 0;
@@ -289,7 +301,7 @@ function readInput(dt) {
 function recover() {
   const c = G.car, up = new THREE.Vector3(0, 1, 0).applyQuaternion(c.q).y;
   if (up > 0.5 && c.speed > 8 && c.roadD < ROAD_HW + 1) return; // upright and driving on the road: nothing to recover from (upside down always works)
-  G.stuckT = 0; G.stuckSaid = false;
+  G.stuckT = 0; G.stuckSaid = false; inp.wheel = 0;
   $('fade').style.opacity = 0.8; setTimeout(() => $('fade').style.opacity = 0, 250);
   c.place(G.S.safeS ? G.S.safeS(Math.max(World.startS, c.prog - 5)) : Math.max(World.startS, c.prog - 5), 0); const pen = PHYS.easy ? 3 : 5; G.pen += pen; say('RECOVERED +' + pen + ' s', '', 1200);
 }
@@ -493,6 +505,7 @@ function hud(st) {
   if (G.role === 'drv') {
     $('spd').querySelector('b').textContent = Math.round(st.speed * 3.6); $('gear').textContent = st.gear < 0 ? 'R' : st.gear || 'N';
     drawRev(st.rpm);
+    { const on = PHYS.mouseSteer && G.phase !== 'fin'; if (on !== G.wheelOn) { G.wheelOn = on; $('wheelI').classList.toggle('hidden', !on); } if (on) $('wheelI').firstChild.style.left = (50 - (inp.wheel || 0) * 50).toFixed(1) + '%'; }
     const dm = Math.round((G.dmg || 0) * 100); $('dmg').querySelector('u').style.width = dm + '%'; $('dmgP').textContent = dm + '%' + (st.flat ? ' · FLAT' : ''); $('dmg').classList.toggle('hi', dm >= 50);
   }
   $('net').textContent = G.solo ? '' : (Net.role === 'host' ? 'ping ' + Math.round(Net.ping) + ' ms' : (performance.now() - Net.lastRx > 2500 ? 'NO SIGNAL' : 'online'));
