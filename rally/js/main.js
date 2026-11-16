@@ -279,9 +279,9 @@ function readInput(dt) {
   // keyboard steering ramps in (faster when reversing direction)
   // a quick tap only nudges the wheel; holding builds to full lock in about 0.4 s
   inp.held = target && target === inp.dir ? (inp.held || 0) + dt : 0; inp.dir = target;
-  inp.raw = inp.raw || 0; const rate = target === 0 ? 9 : Math.sign(target) !== Math.sign(inp.raw) && Math.abs(inp.raw) > 0.05 ? 12 : (PHYS.real ? Math.min(4.5, 1.5 + inp.held * 8) : PHYS.sport ? Math.min(6, 1.8 + inp.held * 11) : Math.min(7, 2 + inp.held * 14));
+  inp.raw = inp.raw || 0; const rate = target === 0 ? 9 : Math.sign(target) !== Math.sign(inp.raw) && Math.abs(inp.raw) > 0.05 ? 12 : (PHYS.real ? Math.min(6, 2.2 + inp.held * 11) : PHYS.sport ? Math.min(8, 2.8 + inp.held * 15) : Math.min(9, 3.2 + inp.held * 18));
   inp.raw += clamp(target - inp.raw, -rate * dt, rate * dt);
-  inp.steer = Math.sign(inp.raw) * Math.abs(inp.raw) ** 1.5;
+  inp.steer = Math.sign(inp.raw) * Math.abs(inp.raw) ** 1.3;
   if (PHYS.mouseSteer) {
     // mouse wheel steering: the mouse turns the wheel and it stays where you leave it (A/D nudge it too). Like a real wheel it
     // self-aligns: a gentle pull back to centre at speed, and when the tail slides it pulls toward countersteer (caster)

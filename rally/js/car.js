@@ -111,11 +111,11 @@ class Car {
     const BS = S.B || BIOMES.forest, real = this.real, sport = !real && this.sport, gk = real ? 1 + ((CAR.grip || 1) - 1) * 0.5 : sport ? 1 + ((CAR.grip || 1) - 1) * 0.75 : (CAR.grip || 1), zk = S.zoneAt ? S.zoneAt(this.prog) : null, wetK = (S.cfg && S.cfg.wet ? 0.8 : 1) * (zk ? zk.mu : 1);
     const mu0 = (real ? lerp(realMu(BS, true), realMu(BS, false), this.offroad) : sport ? lerp(realMu(BS, true), realMu(BS, false), this.offroad) * 1.4 : lerp(BS.grip, BS.off, this.offroad) * (this.easy ? 1.22 : 1.12)) * gk * wetK * (1 - this.dmg * 0.15), aMax = mu0 * 9.81 * 1.12;
     // real: the lock still narrows with speed (as a driver would), but allows 1.6x what the tyres can hold, so you can over-drive it
-    const vv = Math.max(4, Math.abs(vF)), maxS = real ? clamp(Math.atan(2.51 * aMax * 1.6 / (vv * vv)) + 0.12, 0.2, 0.6) : sport ? clamp(Math.atan(2.51 * aMax * 1.9 * (CAR.steerK || 1) / (vv * vv)) + 0.12, 0.2, 0.62) : clamp(Math.atan(2.51 * aMax * (CAR.steerK || 1) / (vv * vv)) + 0.09, 0.14, 0.62), st = inp.steer;
+    const vv = Math.max(4, Math.abs(vF)), maxS = real ? clamp(Math.atan(2.51 * aMax * 1.9 / (vv * vv)) + 0.14, 0.22, 0.62) : sport ? clamp(Math.atan(2.51 * aMax * 2.3 * (CAR.steerK || 1) / (vv * vv)) + 0.14, 0.22, 0.64) : clamp(Math.atan(2.51 * aMax * 1.35 * (CAR.steerK || 1) / (vv * vv)) + 0.11, 0.18, 0.64), st = inp.steer;
     let target = st * maxS + (real ? this.dmg * 0.035 * this.pull : 0); // real: a bent car pulls to one side
     // countersteer help: the front wheels lean toward the direction of travel when the tail steps out
     if (!real && vF > 5 && Math.abs(beta) > 0.06) target = clamp(target + clamp(beta * (sport ? 0.3 : 0.45), sport ? -0.15 : -0.22, sport ? 0.15 : 0.22) * sstep(5, 12, vF), -0.65, 0.65);
-    const rate = (Math.abs(target) < Math.abs(this.steer) ? 10 : 8) * (real ? 0.6 : sport ? 0.85 * (CAR.steerK || 1) : (CAR.steerK || 1));
+    const rate = (Math.abs(target) < Math.abs(this.steer) ? 12 : 11) * (real ? 0.75 : sport ? (CAR.steerK || 1) : 1.1 * (CAR.steerK || 1)); // quick, sharp turn-in
     this.steer += clamp(target - this.steer, -rate * dt, rate * dt);
     // throttle / brake / reverse logic
     let thr = inp.thr, brk = inp.brk;
@@ -249,7 +249,7 @@ class Car {
     }
     if (contacts >= 3 && !hb && !real && !sport) {
       // yaw assist toward the bicycle-model yaw rate, capped by what the surface can hold (plus a little arcade bonus)
-      const lim = aMax * 1.08 * (CAR.steerK || 1) / Math.max(3, Math.abs(vF)), yaw = this.w.dot(up), want = clamp(vF * Math.tan(this.steer) / 2.51, -lim, lim), err = yaw - want;
+      const lim = aMax * 1.22 * (CAR.steerK || 1) / Math.max(3, Math.abs(vF)), yaw = this.w.dot(up), want = clamp(vF * Math.tan(this.steer) / 2.51, -lim, lim), err = yaw - want;
       // on the throttle with the tail out the assist relaxes a bit so you can hold a drift
       const drift = clamp((Math.abs(beta) - 0.08) * 4, 0, 1) * this.thr;
       T.addScaledVector(up, -err * CAR.I[1] * 10 * (1 - 0.4 * drift) * sstep(2, 8, Math.abs(vF)));

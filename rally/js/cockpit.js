@@ -469,8 +469,13 @@ class CarView {
     const swA = -st.steer * 9; this.wheelG.rotation.z = swA; this.wheelG.rotation.x = -0.55; this.wheelG.updateMatrixWorld();
     this.hbL.rotation.x = st.hb ? -0.55 : -0.15;
     // crew: driver's hands on the rim, navigator holds the board
-    const I = this.interior, D = this.crew.drv, N = this.crew.nav, rimPt = a => { const p = new THREE.Vector3(Math.sin(a) * 0.17, Math.cos(a) * 0.17, 0.02); p.applyEuler(new THREE.Euler(-0.55, 0, swA, 'XYZ')); return p.add(this.wheelG.position).sub(D.g.position); };
-    this.setArm(D.arms[0], new THREE.Vector3(0.2, -0.2, -0.1), rimPt(1.4), 1); this.setArm(D.arms[1], new THREE.Vector3(-0.2, -0.2, -0.1), rimPt(-1.4), -1);
+    const I = this.interior, D = this.crew.drv, N = this.crew.nav, rimPt = a => { const p = new THREE.Vector3(Math.sin(a) * 0.17, Math.cos(a) * 0.17, 0.02); p.applyEuler(new THREE.Euler(-0.55, 0, 0, 'XYZ')); return p.add(this.wheelG.position).sub(D.g.position); };
+    // shuffle steering: each hand holds the rim and turns with it, but past ~75 degrees from its home it lets go and re-grips
+    // further round (hand over hand), so the arms never wind up; the hand slides smoothly to its new grip
+    const hand = (k, home) => { const gk = 'grip' + k, dk = 'hd' + k; if (this[gk] === undefined) { this[gk] = home; this[dk] = home; }
+      let a = this[gk] - swA; if (a - home > 1.3) this[gk] -= 1.9; else if (a - home < -1.3) this[gk] += 1.9; a = this[gk] - swA; // the rim turns by swA, which moves a rim point's angle by -swA
+      this[dk] += (a - this[dk]) * Math.min(1, dt * 16); return this[dk]; };
+    this.setArm(D.arms[0], new THREE.Vector3(0.2, -0.2, -0.1), rimPt(hand(0, 1.4)), 1); this.setArm(D.arms[1], new THREE.Vector3(-0.2, -0.2, -0.1), rimPt(hand(1, -1.4)), -1);
     D.headG.visible = D.straps.visible = me !== 'drv'; N.headG.visible = N.straps.visible = me !== 'nav'; for (const o of D.collar) o.visible = me !== 'drv'; for (const o of N.collar) o.visible = me !== 'nav';
     D.headG.rotation.set(-(me === 'drv' ? 0 : (other ? other.pitch : 0)) * 0.6, me === 'drv' ? 0 : (other ? other.yaw : 0) * 0.8, 0);
     N.headG.rotation.set(-(me === 'nav' ? 0 : (other ? other.pitch : 0)) * 0.6, me === 'nav' ? 0 : (other ? other.yaw : 0) * 0.8, 0);
