@@ -138,7 +138,7 @@ button.go { background:#124a5a; color:#f3e9d8; font-size:17px; letter-spacing:.2
 <div id="fishHelp" class="scr hidden"><div class="card" style="width:min(560px,100%)">
   <h2 style="font-weight:normal;letter-spacing:.2em;margin:0 0 10px">HOW TO FISH</h2>
   <ol style="line-height:1.7;padding-left:20px;margin:0">
-    <li>Buy a <b>fishing rod</b> at the harbour shed, then press <b>2</b> to take it out.</li>
+    <li>Buy a <b>fishing rod</b> at the harbour shed, then press <b>3</b> to take it out.</li>
     <li>Face <b>open water</b>: off the boat's deck, the jetty, a dock or a beach. <b>Hold left mouse</b> to wind up and <b>let go to cast</b>. The longer you hold, the further it flies.</li>
     <li>Wait for a bite. When the bobber goes under and you see <b>!</b>, <b>click quickly</b> to set the hook.</li>
     <li>Reel it in: <b>hold left mouse to reel</b>, let go to ease off. Keep the needle in the <b style="color:#7ad08a">green</b>. Too much tension snaps the line; too little and the fish slips off. Big fish surge, so ease off when the needle jumps.</li>
@@ -165,6 +165,7 @@ button.go { background:#124a5a; color:#f3e9d8; font-size:17px; letter-spacing:.2
         <label>Difficulty (host decides)</label><div class="seg" data-k="diff"><button data-v="easy">Easy</button><button data-v="normal">Normal</button><button data-v="nightmare">Nightmare</button></div>
         <label>Mouse sensitivity</label><input type="range" id="sens" min="0.3" max="2.5" step="0.05">
         <label>Brightness</label><input type="range" id="bright" min="0.7" max="1.6" step="0.05">
+        <label>Volume</label><input type="range" id="vol" min="0" max="1.5" step="0.05">
         <label>Graphics</label><div class="seg" data-k="gfx"><button data-v="low">Low</button><button data-v="high">High (shadows)</button></div>
       </div>
       <div class="keys">
@@ -212,6 +213,7 @@ button.go { background:#124a5a; color:#f3e9d8; font-size:17px; letter-spacing:.2
 <div id="pause" class="scr hidden"><div class="card" style="width:min(420px,100%);text-align:center">
   <h2 style="font-weight:normal;letter-spacing:.3em;margin:0 0 6px">PAUSED</h2>
   <p style="color:var(--dim);font-size:13px;margin:0 0 12px" id="pauseN">Online games keep running.</p>
+  <div style="text-align:left;margin-bottom:10px"><label>Volume</label><input type="range" id="pVol" min="0" max="1.5" step="0.05"><label>Mouse sensitivity</label><input type="range" id="pSens" min="0.3" max="2.5" step="0.05"><label>Brightness</label><input type="range" id="pBright" min="0.7" max="1.6" step="0.05"></div>
   <button class="go" id="resume" style="margin-top:0">Resume</button>
   <button id="quit" style="width:100%;margin-top:8px">Leave to menu</button>
 </div></div>
@@ -224,6 +226,6 @@ button.go { background:#124a5a; color:#f3e9d8; font-size:17px; letter-spacing:.2
 
 <div id="load">Loading…</div>
 <script src="../three-r170.js"></script>
-<script src="game.js?v=10"></script>
+<script src="game.js?v=11"></script>
 </body>
 </html>
