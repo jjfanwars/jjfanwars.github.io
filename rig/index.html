@@ -19,6 +19,7 @@ canvas#gl { position:fixed; inset:0; width:100%; height:100%; display:block; }
 #fearV { position:fixed; inset:0; pointer-events:none; z-index:2; opacity:0; background:radial-gradient(ellipse at center,transparent 35%,rgba(90,0,0,.75) 100%); }
 #downV { position:fixed; inset:0; pointer-events:none; z-index:2; opacity:0; background:radial-gradient(ellipse at center,rgba(60,0,0,.15) 20%,rgba(40,0,0,.92) 90%); }
 #slats { position:fixed; inset:0; pointer-events:none; z-index:3; background:repeating-linear-gradient(180deg,rgba(0,0,0,.97) 0 34px,rgba(0,0,0,.2) 34px 46px),radial-gradient(ellipse at center,transparent 30%,#000 85%); }
+#lbox:before,#lbox:after { content:''; position:fixed; left:0; right:0; height:0; background:#000; z-index:3; pointer-events:none; transition:height .45s ease; } #lbox:before { top:0; } #lbox:after { bottom:0; } #lbox.on:before,#lbox.on:after { height:9vh; }
 #flash { position:fixed; inset:0; pointer-events:none; z-index:6; background:#600; opacity:0; }
 #hud { position:fixed; inset:0; pointer-events:none; z-index:4; }
 #obj { position:absolute; left:22px; top:64px; max-width:440px; font-style:italic; text-shadow:0 1px 4px #000; transition:opacity 1s; }
@@ -92,7 +93,7 @@ button.go { background:#124a5a; color:#f3e9d8; font-size:17px; letter-spacing:.2
 <body>
 <canvas id="gl"></canvas>
 <canvas id="grain" width="200" height="120"></canvas>
-<div id="vig"></div><div id="fearV"></div><div id="downV"></div><div id="slats" class="hidden"></div><div id="flash"></div>
+<div id="vig"></div><div id="fearV"></div><div id="downV"></div><div id="slats" class="hidden"></div><div id="flash"></div><div id="lbox"></div>
 <div id="hud" class="hidden">
   <div id="tags"></div>
   <div id="obj"></div>
@@ -153,7 +154,7 @@ button.go { background:#124a5a; color:#f3e9d8; font-size:17px; letter-spacing:.2
       </div>
       <div class="keys">
         <label>Controls</label>
-        <b>WASD</b> move · <b>Shift</b> run · <b>C</b> crouch<br>
+        <b>WASD</b> move · <b>Shift</b> run · <b>C</b> crouch (hold to dive while swimming)<br>
         <b>F</b> flashlight · <b>E</b> use, pick up, haul cargo, climb ladders (hold for valves, digging, reviving)<br>
         <b>E</b> at the wheel to steer the boat: <b>W/S</b> throttle, <b>A/D</b> rudder, <b>E</b> to let go<br>
         <b>G</b> throw a flare · <b>Q</b> whistle to the crew (it hears that too) · <b>Tab</b> map<br>
@@ -199,6 +200,6 @@ button.go { background:#124a5a; color:#f3e9d8; font-size:17px; letter-spacing:.2
 
 <div id="load">Loading…</div>
 <script src="../three-r170.js"></script>
-<script src="game.js?v=4"></script>
+<script src="game.js?v=5"></script>
 </body>
 </html>
