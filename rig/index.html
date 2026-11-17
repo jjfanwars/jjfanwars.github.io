@@ -76,6 +76,15 @@ button.go { background:#124a5a; color:#f3e9d8; font-size:17px; letter-spacing:.2
 #carry { position:absolute; left:50%; bottom:60px; transform:translateX(-50%); font:13px ui-monospace,monospace; color:#e8d8a8; text-shadow:0 1px 3px #000; }
 #toast { position:absolute; left:50%; top:22%; transform:translateX(-50%); text-align:center; font-size:28px; letter-spacing:.2em; text-transform:uppercase; text-shadow:0 2px 10px #000; opacity:0; transition:opacity .6s; } #toast small { display:block; font-size:13px; letter-spacing:.1em; color:var(--dim); text-transform:none; }
 .up { display:flex; align-items:center; gap:10px; padding:8px 0; border-top:1px solid var(--line); } .up div { flex:1; } .up small { color:var(--dim); display:block; } .up button { min-width:110px; }
+#tool { position:absolute; left:50%; bottom:14px; transform:translateX(-50%); font:12px ui-monospace,monospace; color:var(--dim); text-shadow:0 1px 3px #000; white-space:nowrap; }
+#tool b { color:var(--ink); font-weight:normal; border:1px solid #555; padding:1px 6px; border-radius:3px; margin:0 2px; } #tool b.on { border-color:var(--acc); color:#fff; background:rgba(74,168,200,.25); }
+#fishUI { position:absolute; left:50%; top:62%; transform:translateX(-50%); width:300px; text-align:center; font:13px ui-monospace,monospace; text-shadow:0 1px 3px #000; }
+#fishT { margin-bottom:6px; } #fishT.bite { font:bold 34px Georgia,serif; color:#ffd060; }
+#tenBar { position:relative; height:12px; background:rgba(200,60,40,.35); border:1px solid rgba(255,255,255,.3); }
+#tenZone { position:absolute; top:0; bottom:0; left:30%; width:45%; background:rgba(90,200,110,.55); } #tenNeedle { position:absolute; top:-4px; bottom:-4px; width:3px; background:#fff; left:50%; }
+#progBar { height:5px; background:rgba(255,255,255,.12); margin-top:6px; } #progFill { display:block; height:100%; width:0; background:#4aa8c8; }
+#xhair { position:absolute; left:50%; top:50%; width:18px; height:18px; margin:-9px 0 0 -9px; border:1px solid rgba(255,255,255,.55); border-radius:50%; }
+.shopH { font:11px ui-monospace,monospace; letter-spacing:.15em; color:var(--acc); margin:14px 0 2px; }
 #intro { position:fixed; inset:0; z-index:9; background:#000; display:flex; align-items:center; justify-content:center; text-align:center; padding:20px; font-size:20px; font-style:italic; color:#cfc8b6; transition:opacity 2s; pointer-events:none; }
 #load { position:fixed; inset:0; z-index:20; background:#000; display:flex; align-items:center; justify-content:center; color:var(--dim); font-style:italic; }
 </style>
@@ -95,6 +104,9 @@ button.go { background:#124a5a; color:#f3e9d8; font-size:17px; letter-spacing:.2
   <canvas id="compass" width="720" height="46"></canvas>
   <div id="boatHud"><div>FUEL <u><i id="fuelB"></i></u></div><div>HULL <u><i id="hullB"></i></u></div><div id="holdT">HOLD 0</div></div>
   <div id="carry"></div>
+  <div id="tool"></div>
+  <div id="fishUI" class="hidden"><div id="fishT"></div><div id="tenBar"><span id="tenZone"></span><i id="tenNeedle"></i></div><div id="progBar"><i id="progFill"></i></div></div>
+  <div id="xhair" class="hidden"></div>
   <div id="toast"></div>
   <div id="stam"><i></i></div>
   <div id="breath" class="hidden">HOLD BREATH · RIGHT MOUSE / SPACE<div><i></i></div></div>
@@ -108,6 +120,18 @@ button.go { background:#124a5a; color:#f3e9d8; font-size:17px; letter-spacing:.2
 <canvas id="map" class="hidden" width="760" height="760"></canvas>
 <div id="note" class="scr hidden"><div class="paper"><span id="noteT"></span><small>E or click to put it down</small></div></div>
 <div id="intro" class="hidden"></div>
+<div id="fishHelp" class="scr hidden"><div class="card" style="width:min(560px,100%)">
+  <h2 style="font-weight:normal;letter-spacing:.2em;margin:0 0 10px">HOW TO FISH</h2>
+  <ol style="line-height:1.7;padding-left:20px;margin:0">
+    <li>Buy a <b>fishing rod</b> at the harbour shed, then press <b>2</b> to take it out.</li>
+    <li>Face <b>open water</b>: off the boat's deck, the jetty, a dock or a beach. <b>Hold left mouse</b> to wind up and <b>let go to cast</b>. The longer you hold, the further it flies.</li>
+    <li>Wait for a bite. When the bobber goes under and you see <b>!</b>, <b>click quickly</b> to set the hook.</li>
+    <li>Reel it in: <b>hold left mouse to reel</b>, let go to ease off. Keep the needle in the <b style="color:#7ad08a">green</b>. Too much tension snaps the line; too little and the fish slips off. Big fish surge, so ease off when the needle jumps.</li>
+    <li>Fish go in your <b>cooler</b>. Sell them at the harbour shed.</li>
+  </ol>
+  <p style="color:var(--dim);font-size:13px;margin:12px 0 0">Where to fish: near islands for sea bass, deep water far from land for cod and tuna, around wrecks and the rig for eels. Storms bring up stranger things. Better rods mean quicker bites, easier fights and rarer catches. Press <b>H</b> any time for this card.</p>
+  <button class="go" id="fishHelpX">Got it</button>
+</div></div>
 
 <div id="menu" class="scr">
   <div class="card">
@@ -133,6 +157,7 @@ button.go { background:#124a5a; color:#f3e9d8; font-size:17px; letter-spacing:.2
         <b>F</b> flashlight · <b>E</b> use, pick up, haul cargo, climb ladders (hold for valves, digging, reviving)<br>
         <b>E</b> at the wheel to steer the boat: <b>W/S</b> throttle, <b>A/D</b> rudder, <b>E</b> to let go<br>
         <b>G</b> throw a flare · <b>Q</b> whistle to the crew (it hears that too) · <b>Tab</b> map<br>
+        <b>1</b> hands · <b>2</b> fishing rod · <b>3</b> Glock · <b>4</b> shotgun · <b>Left mouse</b> shoot / cast / reel · <b>Right mouse</b> aim · <b>R</b> reload · <b>H</b> how to fish<br>
         <b>Right mouse</b> / <b>Space</b> hold your breath while hiding · <b>Esc</b> pause<br><br>
         <label>How to survive</label>
         Carry salvage to the hold on your boat's deck, sell it at the lighthouse shed and buy upgrades. Watch your fuel and your hull. The compass shows home, your boat and every place you have found.
@@ -174,6 +199,6 @@ button.go { background:#124a5a; color:#f3e9d8; font-size:17px; letter-spacing:.2
 
 <div id="load">Loading…</div>
 <script src="../three-r170.js"></script>
-<script src="game.js?v=2"></script>
+<script src="game.js?v=3"></script>
 </body>
 </html>
