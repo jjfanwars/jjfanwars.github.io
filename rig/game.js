@@ -348,6 +348,7 @@ function buildWrecks() {
     const x = W.x, z = W.z, dy = 2.2;
     const sh = new THREE.Shape(); sh.moveTo(-3.6, 13); sh.lineTo(3.6, 13); sh.lineTo(3.8, -6); sh.quadraticCurveTo(2.5, -13, 0, -16); sh.quadraticCurveTo(-2.5, -13, -3.8, -6); sh.closePath();
     const hg = new THREE.ExtrudeGeometry(sh, {depth: 5.5, bevelEnabled: false}); hg.rotateX(PI / 2); hg.translate(0, dy, 0); put(W.ghost ? 'ghostH' : 'rustH', hg, x, -.3, z, 0, .02, .06);
+    OBST.push({x0: W.x - 4, x1: W.x + 4, z0: W.z - 16.5, z1: W.z + 13.5});
     slab(x - 3.4, x + 3.4, z - 10, z + 12, dy, 'planks');
     for (let i = 0; i < 6; i++) if (i !== 2 && i !== 4) rail(x - 3.5, x - 3.4, z - 10 + i * 3.7, z - 10 + i * 3.7 + 3.5, dy, 'rustR');
     for (let i = 0; i < 6; i++) if (i !== 3) rail(x + 3.4, x + 3.5, z - 10 + i * 3.7, z - 10 + i * 3.7 + 3.5, dy, 'rustR');
@@ -607,11 +608,11 @@ const HULLS = [
   {n: 'Salvage launch', d: 'The boat everyone starts with', cost: 0, L: 12.2, W: 4.4, fb: 1.3, spd: 1, turn: 1, hold: 8, hp: 1, fuel: 1, col: 0x1e3a4a, wh: [.18, .42]},
   {n: 'Fishing trawler', d: 'Long work deck, stern gantry, twice the hold', cost: 900, L: 17, W: 5.6, fb: 1.45, spd: .95, turn: .85, hold: 16, hp: 1.6, fuel: 1.4, col: 0x7a1e16, wh: [.12, .34]},
   {n: 'Patrol cutter', d: 'Fast and tough, radar mast, big searchlight', cost: 1900, L: 22, W: 6, fb: 1.6, spd: 1.45, turn: .9, hold: 20, hp: 2.2, fuel: 1.8, col: 0x2e333a, wh: [.2, .4]},
-  {n: 'Cargo freighter', d: 'A massive ship: container deck, huge hold, very tough, slow to turn', cost: 3800, L: 38, W: 10, fb: 1.9, spd: .9, turn: .42, hold: 60, hp: 4, fuel: 3, col: 0x1c2c3e, wh: [.66, .84]},
-  {n: 'Research submarine', d: 'Glass dome cabin, dives under the waves (at the wheel: C down, Space up), reaches sunken treasure on the sea bed', cost: 5200, L: 24, W: 5.4, fb: 1.4, spd: 1.15, turn: .8, hold: 28, hp: 3, fuel: 2, col: 0xd8a020, sub: 1},
-  {n: 'Dive support vessel', d: 'A 48 m work ship: helipad, deck crane, a huge hold. Divers go over the side from her stern platform', cost: 7500, L: 48, W: 12, fb: 1.9, spd: 1.05, turn: .4, hold: 90, hp: 5, fuel: 4, col: 0x24486a, wh: [.12, .24], eye: 5.5, big: 1},
-  {n: 'Icebreaker', d: 'A 64 m red giant with an armoured bow and two funnels. Rams barely scratch her', cost: 12500, L: 64, W: 14, fb: 2, spd: 1.12, turn: .34, hold: 120, hp: 9, fuel: 5, col: 0x9a1a12, wh: [.16, .28], eye: 9, big: 1},
-  {n: 'MS Serenade', d: 'The 120 m cruise liner from the far north. Start her engines on the derelict to claim her. Something still lives aboard', cost: 0, L: 120, W: 26, fb: 2.2, spd: 1.25, turn: .24, hold: 260, hp: 15, fuel: 9, col: 0xd8d4c8, wh: [.1, .2], eye: 24, big: 1, cruise: 1},
+  {n: 'Cargo freighter', d: 'A massive ship: container deck, huge hold, very tough, slow to turn', cost: 3800, L: 38, W: 10, fb: 1.9, spd: .9, turn: .17, hold: 60, hp: 4, fuel: 3, col: 0x1c2c3e, wh: [.66, .84]},
+  {n: 'Research submarine', d: 'Glass dome cabin, dives to 80 m (at the wheel: C down, Space up), claws sunken treasure off the sea bed', cost: 5200, L: 24, W: 5.4, fb: 1.4, spd: 1.15, turn: .8, hold: 28, hp: 3, fuel: 2, col: 0xd8a020, sub: 1, maxDep: 80},
+  {n: 'Dive support vessel', d: 'A 48 m work ship: helipad, deck crane, a huge hold. Divers go over the side from her stern platform', cost: 7500, L: 48, W: 12, fb: 1.9, spd: 1.05, turn: .155, hold: 90, hp: 5, fuel: 4, col: 0x24486a, wh: [.12, .24], eye: 5.5, big: 1},
+  {n: 'Icebreaker', d: 'A 64 m red giant with an armoured bow and two funnels. Rams barely scratch her', cost: 12500, L: 64, W: 14, fb: 2, spd: 1.12, turn: .125, hold: 120, hp: 9, fuel: 5, col: 0x9a1a12, wh: [.16, .28], eye: 9, big: 1},
+  {n: 'MS Serenade', d: 'The 120 m cruise liner from the far north. Start her engines on the derelict to claim her. Something still lives aboard', cost: 0, L: 120, W: 26, fb: 2.2, spd: 1.25, turn: .075, hold: 260, hp: 15, fuel: 9, col: 0xd8d4c8, wh: [.1, .2], eye: 24, big: 1, cruise: 1},
 ];
 const HC = () => HULLS[B.up.cls || 0];
 const tankMax = () => Math.round([100, 160, 240][B.up.tank] * HC().fuel), hullMax = () => Math.round([100, 150, 220][B.up.hull] * HC().hp), holdMax = () => Math.round(HC().hold * [1, 1.5, 2][B.up.hold || 0]);
@@ -804,12 +805,13 @@ function boatStep(dt) {
   const drv = B.driver && PL.get(B.driver); let thr = 0, st = 0;
   if (drv && drv.seat && !drv.down && !drv.dead) { if (drv !== P && drv.poseT != null && performance.now() - drv.poseT > 800) { drv.in = [0, 0, 0]; B.thr = 0; } thr = drv.in ? drv.in[0] : 0; st = drv.in ? drv.in[1] : 0; } else if (B.driver) B.driver = null;
   const lv = B.up.engine, empty = B.fuel <= 0, H = HC();
-  B.thr = mix(B.thr, thr * (empty ? .18 : 1), Math.min(1, dt * 1.2)); B.st = mix(B.st, st, Math.min(1, dt * 2.5));
+  const m = Math.pow(H.L / 12.2, .6); B.thr = mix(B.thr, thr * (empty ? .18 : 1), Math.min(1, dt * 1.2 / Math.sqrt(m))); B.st = mix(B.st, st, Math.min(1, dt * 2.5));
   B.fuel = tankMax();
   const acc = (B.thr > 0 ? B.thr * (2.4 + lv * .7) : B.thr * 1.2) * H.spd, drag = .028 / (1 + lv * .25) / H.spd;
-  B.v += (acc - drag * B.v * Math.abs(B.v) - (Math.abs(B.thr) < .05 ? .25 * B.v : 0)) * dt;
-  B.yaw += -B.st * clamp(B.v / 3.5, -1, 1) * .5 * H.turn * dt;
-  if (H.sub) { const dv = drv && drv.seat && drv.in ? drv.in[2] || 0 : 0, mx = Math.max(0, Math.min(26, -seaBed(B.x, B.z) - 4)); B.dtar = clamp((B.dtar || 0) + dv * dt * 2.2, 0, mx); B.dep = (B.dep || 0) + clamp(B.dtar - (B.dep || 0), -dt * 1.6, dt * 1.6); } else B.dep = B.dtar = 0;
+  B.v += (acc - drag * B.v * Math.abs(B.v) - (Math.abs(B.thr) < .05 ? .25 * B.v : 0)) / m * dt;
+  const yrT = -B.st * clamp(B.v / 3.5, -1, 1) * .5 * H.turn + (H.L > 30 ? -B.st * .035 * (1 - clamp(Math.abs(B.v) / 3, 0, 1)) : 0);
+  B.yr = mix(B.yr || 0, yrT, Math.min(1, dt * 2.2 / m)); B.yaw += B.yr * dt;
+  if (H.sub) { const dv = drv && drv.seat && drv.in ? drv.in[2] || 0 : 0, mx = Math.max(0, Math.min(H.maxDep || 26, -seaBed(B.x, B.z) - 4)); B.dtar = clamp((B.dtar || 0) + dv * dt * 2.2, 0, mx); B.dep = (B.dep || 0) + clamp(B.dtar - (B.dep || 0), -dt * 1.6, dt * 1.6); } else B.dep = B.dtar = 0;
   B.x += -Math.sin(B.yaw) * B.v * dt; B.z += -Math.cos(B.yaw) * B.v * dt;
   let hit = 0;
   const r = BG.hw * .95, n = Math.max(3, Math.ceil((BG.zs - BG.zb - r * 2) / 3));
@@ -818,7 +820,7 @@ function boatStep(dt) {
     for (const o of OBST) {
       let d, nx, nz;
       if (o.c) { if (Math.abs(cx - o.x) > o.r + r || Math.abs(cz - o.z) > o.r + r) continue; const px = cx - o.x, pz = cz - o.z, e = Math.hypot(px, pz); if (e >= o.r + r) continue; nx = px / e; nz = pz / e; d = o.r + r - e; }
-      else { const qx = clamp(cx, o.x0, o.x1), qz = clamp(cz, o.z0, o.z1), px = cx - qx, pz = cz - qz, e = Math.hypot(px, pz); if (e >= r) continue; if (e < 1e-4) { nx = 0; nz = -1; d = r; } else { nx = px / e; nz = pz / e; d = r - e; } }
+      else { const qx = clamp(cx, o.x0, o.x1), qz = clamp(cz, o.z0, o.z1), px = cx - qx, pz = cz - qz, e = Math.hypot(px, pz); if (e >= r) continue; if (e < 1e-4) { const l = cx - o.x0, rt = o.x1 - cx, t = cz - o.z0, b = o.z1 - cz, mn = Math.min(l, rt, t, b); nx = mn === l ? -1 : mn === rt ? 1 : 0; nz = nx ? 0 : mn === t ? -1 : 1; d = mn + r; } else { nx = px / e; nz = pz / e; d = r - e; } }
       B.x += nx * d; B.z += nz * d; hit = Math.max(hit, Math.abs(B.v));
     }
   }
@@ -826,12 +828,99 @@ function boatStep(dt) {
   if (hit) { if (hit > 2.5) { emit({k: 'bump', s: Math.min(1, hit / 7)}); if (hit > 3.5) damageBoat((hit - 3) * 4); } B.v *= .4; }
   if (Math.hypot(B.x - JETTY.x, B.z - JETTY.z) < 30 + BG.L * .5 && Math.abs(B.v) < 2) { B.fuel = Math.min(tankMax(), B.fuel + dt * 10); B.hull = Math.min(hullMax(), B.hull + dt * 6); }
 }
-function damageBoat(n) { if (B.sink > 0) return; B.hull = Math.max(0, B.hull - n); if (B.hull <= 0) { B.sink = 4.5; B.driver = null; emit({k: 'sink'}); } }
+function damageBoat(n) { if (B.sink > 0) return; B.hull = Math.max(0, B.hull - n); if (n >= .5) emit({k: 'hdmg', n: Math.round(n)}); if (B.hull <= 0) { B.sink = 4.5; B.driver = null; B.yr = 0; emit({k: 'sink'}); } }
 function resetBoat(sunk) {
   const wasX = B.x, wasZ = B.z;
   Object.assign(B, {x: JETTY.x - 2.1 - BG.hw, z: JETTY.z + 3 + Math.max(0, BG.L - 12) * .5, yaw: PI, v: 0, thr: 0, st: 0, driver: null, sink: 0, dep: 0, dtar: 0}); B.hull = Math.max(B.hull, hullMax() * .6); B.fuel = Math.max(B.fuel, tankMax() * .4);
   if (sunk) { B.hold = []; emit({k: 'boatback', x: wasX, z: wasZ}); }
 }
+// ---------------- boat feel and sound: one engine voice per hull, sea legs, water on the hull, a small score
+const ENGV = [
+  {f: [70, 150], lp: [700, 1600], am: .15, fr: 1, nz: .04, g: .10},
+  {f: [22, 40], lp: [240, 520], am: .7, g: .14},
+  {f: [50, 100], lp: [400, 1200], am: .3, whine: [1400, 2700], g: .12},
+  {f: [14, 26], lp: [150, 320], am: .8, fr: .35, g: .2},
+  {elec: 1, f: [110, 140], lp: [2400, 3200], am: 0, nz: 0, whine: [900, 1300], g: .08},
+  {f: [13, 24], lp: [150, 320], am: .8, fr: .35, g: .2},
+  {f: [12, 22], lp: [150, 320], am: .8, fr: .35, g: .2},
+  {f: [9, 16], lp: [120, 240], am: .5, g: .2, hiss: 1},
+];
+// the body sways with the boat: a spring in boat-local metres pushed by turns, throttle and hits (G.shake jumps)
+function seaLegs(dt) {
+  dt = Math.max(dt, 1e-3); if (!G.sl) { G.sl = {x: 0, z: 0, vx: 0, vz: 0, a: 0, l: 0, s: G.shake || 0}; G.pv = B.v; } const S = G.sl;
+  const ax = (B.v - G.pv) / dt; G.pv = B.v; S.a = mix(S.a, clamp(ax, -60, 60), Math.min(1, dt * 8)); S.l = mix(S.l, (B.yr || 0) * B.v, Math.min(1, dt * 6));
+  const j = (G.shake || 0) - S.s; S.s = G.shake || 0; if (j > .2) { S.vz -= j * 1.6; S.vx += (Math.random() - .5) * j * 2.4; }
+  S.vx += ((clamp(S.l * .015, -.15, .15) - S.x) * 30 - S.vx * 9) * dt; S.vz += ((clamp(S.a * .012, -.15, .15) - S.z) * 30 - S.vz * 9) * dt;
+  S.x = clamp(S.x + S.vx * dt, -.3, .3); S.z = clamp(S.z + S.vz * dt, -.3, .3);
+  const h = P.seat ? .5 : 1, lx = S.x * h, lz = S.z * h, c = Math.cos(B.yaw), s = Math.sin(B.yaw), rel = P.yaw - B.yaw;
+  return [lx * c + lz * s, -lx * s + lz * c, (lx * Math.cos(rel) - lz * Math.sin(rel)) * .3];
+}
+// camera distance to the nearest shore (island, lighthouse), cached for half a second
+function shoreDist() { const n = performance.now(); if (G.sdV != null && n - G.sdT < 500) return G.sdV; const p = cam.position; let d = Math.hypot(p.x - HOME.x, p.z - HOME.z) - HOME.r; for (const o of OBST) if (o.c && o.r > 5) d = Math.min(d, Math.hypot(p.x - o.x, p.z - o.z) - o.r); G.sdT = n; return (G.sdV = Math.max(0, d)); }
+// engine, water, bilge alarm, dock repairs and the sub's tanks; gains fade out on their own if frames stop
+function boatAudio(dt, t) {
+  const c = A.ctx, E = A.E; if (!E) return;
+  if ((E.rs = (E.rs || 0) - dt) <= 0) { E.rs = 1; if (c.state === 'interrupted' || (c.state === 'suspended' && !G.paused)) { const r = c.resume(); if (r && r.catch) r.catch(() => {}); } }
+  const sT = (prm, v, tc = .15) => { prm.cancelScheduledValues(t); prm.setTargetAtTime(v, t, tc); prm.setTargetAtTime(0, t + .6, .25); }, cls = B.up.cls || 0;
+  if (E.cls !== cls) { E.cls = cls; const V = E.V = Object.assign({f: [40, 70], lp: [300, 800], am: .3, fr: .5, nz: .025, g: .12}, ENGV[cls] || ENGV[0]);
+    E.o1.type = V.elec ? 'sine' : 'sawtooth'; E.o2.type = V.elec ? 'sine' : 'square'; E.g1.gain.value = V.elec ? .45 : .42; E.g2.gain.value = V.elec ? .3 : .2; E.g3.gain.value = V.elec ? 0 : .5; E.pre.gain.value = V.elec ? .6 : 1.4; E.am.gain.value = 1 - V.am / 2; E.dep.gain.value = V.am / 2; }
+  const V = E.V, on = !!B.driver && B.sink <= 0;
+  if (on && !E.drv) { E.st = .36; if (V.elec) tone(240, .04, .9, 'sine', A.bPan, 1100); else for (let i = 0; i < 3; i++) setTimeout(() => burst(180, 1, .25, .1, 'lowpass', A.bPan), i * 120); }
+  E.drv = on; E.st = Math.max(0, E.st - dt); E.k = on ? (E.st > 0 ? E.k : Math.min(1, E.k + dt / .8)) : Math.max(0, E.k - dt / 2);
+  const a = Math.abs(B.thr), k = B.sink > 0 ? 0 : E.k, cab = inCabin() && (HC().big || cls === 3), f = mix(V.f[0], V.f[1], a) * (1 + B.up.engine * .05) * (1 + Math.sin(G.wt * 2.3) * .012 + Math.sin(G.wt * 5.1) * .006) * (.55 + .45 * k);
+  E.o1.frequency.setTargetAtTime(f, t, .12); E.o2.frequency.setTargetAtTime(f * (V.elec ? 2 : 2.01), t, .12); E.o3.frequency.setTargetAtTime(f / 2, t, .12); E.lfo.frequency.setTargetAtTime(Math.max(.5, f * V.fr), t, .12);
+  A.engF.frequency.setTargetAtTime(mix(V.lp[0], V.lp[1], a) * (cab ? 1.6 : 1), t, .15); sT(A.engG.gain, V.g * k * (.38 + .62 * a) * (cab ? 1.41 : 1));
+  E.ex.f.frequency.setTargetAtTime(mix(180, 400, a), t, .15); sT(E.ex.g.gain, V.nz * k * (.4 + .6 * a)); sT(E.hs.g.gain, V.hiss ? .018 * k * (.5 + .5 * a) : 0);
+  if (V.whine) E.wo.frequency.setTargetAtTime(mix(V.whine[0], V.whine[1], a), t, .2); sT(E.wg.gain, V.whine ? (V.elec ? .016 * (.35 + .65 * a) : .011 * a * a) * k : 0);
+  // water against the hull, lapping when still
+  const sp = Math.abs(B.v), dp = B.dep || 0, [wx, wz] = bL2W(0, BG.zb + BG.L * .15); setPan(A.wPan, wx, .5, wz);
+  const wv = Math.pow(clamp(sp / 9, 0, 1), 1.5) * .14 * (inCabin() ? .35 : 1) * (dp > .6 ? 0 : 1);
+  sT(A.wash.g.gain, wv, .2); A.wash.f.frequency.setTargetAtTime(380 + sp * 45, t, .2); sT(A.hiss.g.gain, wv * .45, .2);
+  if (P && !P.sw && (P.ob || Math.hypot(cam.position.x - B.x, cam.position.z - B.z) < BG.L * .5 + 6) && sp < 1.2 && dp < .6 && B.sink <= 0 && (E.lap = (E.lap ?? 1) - dt) <= 0) { E.lap = .6 + Math.random(); burst(620 + Math.random() * 200, 2, .03 * (.7 + Math.random() * .5), .2); }
+  // bilge alarm below a quarter hull, two soft tones at the helm
+  const low = P && P.ob && B.sink <= 0 && B.hull < hullMax() * .25; if (low) { A.bilge.o.frequency.value = Math.floor(G.wt / .45) % 2 ? 880 : 660; const [hx, hz] = bL2W(BHELM[0], BHELM[1]); setPan(A.bilge.p, hx, BDECK.y + 1 + B.heave, hz); } sT(A.bilge.g.gain, low && G.wt % .45 < .36 ? .015 : 0, .02);
+  // the dock crew hammers while the hull fills back up, then a chime
+  const dh = B.hull - (E.hp ?? B.hull); E.hp = B.hull; if (dh > 0 && dh < 5 && Math.hypot(B.x - JETTY.x, B.z - JETTY.z) < 35 + BG.L * .5) E.rep = .9;
+  if (E.rep > 0) { E.rep -= dt; if (B.hull >= hullMax() - .05) { E.rep = 0; const p = at(B.x, 1.5, B.z, 8); tone(1175, .05, .5, 'triangle', p); setTimeout(() => tone(1568, .05, .8, 'triangle', p), 130); } else if ((E.hmT = (E.hmT || 0) - dt) <= 0) { E.hmT = .35; burst(1500, 4, .06, .04, 'bandpass', at(B.x + (Math.random() - .5) * BG.W, 1.2, B.z + (Math.random() - .5) * BG.L * .5, 5)); } }
+  // the sub: vents flood the tanks, air blows them, the pressure hull groans
+  if (BG.sub) { const dtr = B.dtar || 0; if (dtr < .1) E.va = 1; else if (dtr > .5 && E.va) { E.va = 0; if (Snd.vent) Snd.vent(A.bPan); }
+    if (dp > 1.5) E.bl = 1; else if (dp < .5 && E.bl) { E.bl = 0; burst(1600, .7, .25, 1.5, 'highpass', A.bPan); }
+    if (dp > 3 && (E.gr = (E.gr ?? 12) - dt) <= 0) { E.gr = 10 + Math.random() * 15; if (Snd.groan) Snd.groan(A.bPan, dp / 20); } }
+}
+// a small score on its own bus: plucked pentatonic phrases by day, slow chords at golden hour and sunset, low notes over the night pad, tremolo in storms
+const Mus = {ph: null, ci: -1, cn: 0, nx: 0, bn: 0, q: [], son: false, sp: null, spT: 0, thT: 0, gold: false,
+  CH: [[73.42, 146.83, 220, 277.18, 369.99], [61.74, 123.47, 185, 220, 277.18], [49, 146.83, 246.94, 293.66, 369.99], [55, 164.81, 220, 293.66, 329.63]],
+  PEN: [146.83, 164.81, 185, 220, 246.94, 293.66, 329.63, 369.99, 440, 493.88, 587.33],
+  // pluck: a 15 ms noise burst into a delay line of 1/f with averaged feedback (Karplus-Strong), rendered once per note into a buffer so the pitch is exact
+  kb: {},
+  ks(f) { const k = f.toFixed(2); if (Mus.kb[k]) return Mus.kb[k]; const sr = 22050, n = sr * 2, b = A.ctx.createBuffer(1, n, sr), d = b.getChannelData(0), D = sr / f - .5, ne = sr * .015 | 0; let pk = 0, r = 0;
+    for (let i = 0; i < n; i++) { const t = i - D, j = Math.floor(t), u = t - j; let y = 0; if (j >= 1) y = .5 * ((d[j] + d[j - 1]) * (1 - u) + (d[j + 1] + d[j]) * u) * .985; if (i < ne) { r = r * .5 + (Math.random() * 2 - 1) * .5; y += r * (1 - i / ne); } d[i] = y; pk = Math.max(pk, Math.abs(y)); }
+    for (let i = 0; i < n; i++) d[i] /= pk || 1; return (Mus.kb[k] = b); },
+  pluck(f, T, v) { const c = A.ctx, s = c.createBufferSource(), g = c.createGain(); s.buffer = Mus.ks(f); g.gain.value = v * .45; s.connect(g); g.connect(A.mus); s.start(T); },
+  note(f, T, dur, pk, type = 'sine') { const c = A.ctx, o = c.createOscillator(), g = c.createGain(); o.type = type; o.frequency.value = f; g.gain.setValueAtTime(0, T); g.gain.linearRampToValueAtTime(pk, T + Math.min(.4, dur * .3)); g.gain.linearRampToValueAtTime(0, T + dur); o.connect(g); g.connect(A.mus); o.start(T); o.stop(T + dur + .05); },
+  step(dt) {
+    const M = Mus, U = A.MU; if (!U) return; const c = A.ctx, t = c.currentTime, cp = cam.position, td = G.tod;
+    const quiet = (P && P.fear > .45) || !!G.spines || inCruise(cp.x, cp.z, cp.y) || (G.uw || 0) > .3, far = Math.hypot(cp.x - HOME.x, cp.z - HOME.z) > 900 ? 1.8 : 1;
+    const ph = td < .14 ? 0 : td < .24 ? 1 : td < .34 ? 2 : td < .8 ? 3 : td < .9 ? 4 : 0, mood = G.storm > .45 ? 'storm' : td < .25 ? 'gold' : td < .82 ? 'night' : 'day';
+    A.mus.gain.cancelScheduledValues(t); A.mus.gain.setTargetAtTime(quiet ? 0 : .8, t, quiet ? .5 : 2.5); A.mus.gain.setTargetAtTime(0, t + .8, .4);
+    // stingers: a warm swell at sunset, a relief phrase at dawn, distant thunder when a storm starts
+    if (M.ph == null) M.ph = ph; else if (ph !== M.ph) { M.ph = ph;
+      if (!quiet && ph === 1) { M.ci = 0; M.CH[0].forEach((f, i) => U.ch[i].frequency.setTargetAtTime(f, t, .6)); U.cg.gain.cancelScheduledValues(t); U.cg.gain.setTargetAtTime(.075, t, 1.2); U.cg.gain.setTargetAtTime(.02, t + 4.5, 2); M.cn = t + 10; M.gold = true; M.note(587.33, t + .6, 3.6, .012); M.note(880, t + 1.4, 3, .008); }
+      if (!quiet && ph === 4) [[293.66, 0, 1.4], [440, 1, 1.4], [369.99, 2, 1.4], [440, 3, 1.9]].forEach(([f, o, d]) => { M.note(f, t + .2 + o, d, .03, 'triangle'); M.note(f * 2, t + .2 + o, d * .8, .006); }); }
+    if ((M.spT -= dt) <= 0) { M.spT = 1; const rise = M.sp != null && G.storm > M.sp + 2e-4 && G.storm < .5; if (rise && !M.son && t > M.thT) { M.thT = t + 60; burst(70, .5, .5, 4, 'lowpass', null, .4); setTimeout(() => burst(140, .5, .22, 2.6, 'lowpass', null, .5), 450); setTimeout(() => burst(55, .5, .3, 3.2, 'lowpass', null, .35), 1300); } M.son = rise; M.sp = G.storm; }
+    // golden hour and sunset: Dmaj7, Bm9, Gmaj7, Asus4, ten seconds each
+    if (mood === 'gold') { if (t >= M.cn) { M.ci = (M.ci + 1) % 4; M.CH[M.ci].forEach((f, i) => U.ch[i].frequency.setTargetAtTime(f, t, .9)); U.cg.gain.cancelScheduledValues(t); U.cg.gain.setTargetAtTime(.034, t + .6, 1.8); U.cg.gain.setTargetAtTime(.011, t + 7.5, 1.4); M.cn = t + 10.5; M.gold = true; } }
+    else if (M.gold) { M.gold = false; U.cg.gain.cancelScheduledValues(t); U.cg.gain.setTargetAtTime(0, t, 2.5); M.cn = 0; }
+    // day: 4-8 plucked notes at 68 bpm, then 15-40 s of nothing (longer far from home)
+    if (mood === 'day' && !quiet) { if (!M.q.length && t >= M.nx) { const n = 4 + (Math.random() * 5 | 0), b = 60 / 68; let T = t + .3, i = 4 + (Math.random() * 4 | 0); for (let k = 0; k < n; k++) { i = k === n - 1 ? [3, 5, 8][Math.random() * 3 | 0] : clamp(i + [-2, -1, -1, 1, 1, 2, 0][Math.random() * 7 | 0], 0, M.PEN.length - 1); M.q.push([T, M.PEN[i], .22 + Math.random() * .12]); T += b * [.5, 1, 1, 1.5, 2][Math.random() * 5 | 0]; } M.nx = T + (15 + Math.random() * 25) * far; } }
+    else M.q.length = 0;
+    while (M.q.length && M.q[0][0] < t + .25) { const [T, f, v] = M.q.shift(); M.pluck(f, Math.max(T, t + .01), v); }
+    // night: one low note every 8-12 s over the pad
+    if (mood === 'night' && !quiet && t >= M.bn) { M.bn = t + (8 + Math.random() * 4) * far; U.bo.frequency.setValueAtTime([73.42, 55, 61.74, 82.41, 92.5][Math.random() * 5 | 0], t + .1); const g = U.bg.gain; g.cancelScheduledValues(t); g.setValueAtTime(0, t + .1); g.linearRampToValueAtTime(.07, t + 1.4); g.linearRampToValueAtTime(0, t + 6.5); }
+    // storm: tremolo low saws
+    U.sg.gain.setTargetAtTime(mood === 'storm' && !quiet ? .035 * clamp((G.storm - .45) * 3, 0, 1) : 0, t, 1.5);
+  },
+};
 
 // ---------------- rig creature navigation
 const NG = {x0: -24, z0: -24, n: 48, cells: null};
@@ -1147,7 +1236,7 @@ function floatMesh(i) { const f = G.floats[i]; const kind = f ? KINDS[f[2]] : nu
 const A = {ctx: null, on: false};
 function aInit() {
   if (A.ctx) return; const C = window.AudioContext || window.webkitAudioContext; if (!C) return;
-  const c = A.ctx = new C(); A.out = c.createGain(); A.out.gain.value = .9 * SET.vol; const comp = c.createDynamicsCompressor(); A.lp = c.createBiquadFilter(); A.lp.type = 'lowpass'; A.lp.frequency.value = 20000; A.out.connect(A.lp); A.lp.connect(comp); comp.connect(c.destination);
+  const c = A.ctx = new C(); A.out = c.createGain(); A.out.gain.value = 1.15 * SET.vol; const comp = A.comp = c.createDynamicsCompressor(); comp.threshold.value = -14; comp.knee.value = 10; comp.ratio.value = 3.5; comp.attack.value = .004; comp.release.value = .25; A.lp = c.createBiquadFilter(); A.lp.type = 'lowpass'; A.lp.frequency.value = 20000; A.out.connect(A.lp); A.lp.connect(comp); comp.connect(c.destination);
   const nb = c.createBuffer(1, c.sampleRate * 2, c.sampleRate), d = nb.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; A.noise = nb;
   const loop = (f, q, g0, type = 'bandpass') => { const s = c.createBufferSource(); s.buffer = nb; s.loop = true; const fl = c.createBiquadFilter(); fl.type = type; fl.frequency.value = f; fl.Q.value = q; const g = c.createGain(); g.gain.value = g0; s.connect(fl); fl.connect(g); s.start(); return {s, f: fl, g}; };
   const pan = (ref, roll) => { const p = c.createPanner(); Object.assign(p, {panningModel: 'HRTF', distanceModel: 'inverse', refDistance: ref, rolloffFactor: roll, maxDistance: 400}); p.connect(A.out); return p; };
@@ -1160,10 +1249,47 @@ function aInit() {
   { const pg = c.createGain(); pg.gain.value = 0; pg.connect(A.out); A.pad = pg; const pf = c.createBiquadFilter(); pf.type = 'lowpass'; pf.frequency.value = 380; pf.connect(pg); A.padF = pf;
     for (const [f, ty] of [[36.7, 'sawtooth'], [55, 'triangle'], [77.8, 'sine'], [110.2, 'triangle'], [116.5, 'sine']]) { const x = c.createOscillator(); x.type = ty; x.frequency.value = f; x.detune.value = (Math.random() - .5) * 14; x.connect(pf); x.start(); } }
   for (const f of [55, 58.3, 82.4, 110.6]) { const x = c.createOscillator(); x.type = 'sawtooth'; x.frequency.value = f; x.connect(df); x.start(); }
-  A.bPan = pan(5, 1); const eng = c.createOscillator(); eng.type = 'sawtooth'; eng.frequency.value = 40; const ef = c.createBiquadFilter(); ef.type = 'lowpass'; ef.frequency.value = 300; const eg = c.createGain(); eg.gain.value = .12; eng.connect(ef); ef.connect(eg); eg.connect(A.bPan); eng.start(); A.eng = eng; A.engG = eg; A.engF = ef;
+  // boat engine: saw + square + sub sine -> tanh drive -> lowpass -> firing-rate AM -> A.engG; plus exhaust noise, turbine hiss and a whine (boatAudio sets them per hull)
+  A.mute = []; A.bPan = pan(5, 1);
+  { const o1 = c.createOscillator(), o2 = c.createOscillator(), o3 = c.createOscillator(), g1 = c.createGain(), g2 = c.createGain(), g3 = c.createGain(), pre = c.createGain(), ws = c.createWaveShaper(), ef = c.createBiquadFilter(), am = c.createGain(), lfo = c.createOscillator(), dep = c.createGain(), eg = c.createGain();
+    const cv = new Float32Array(1024); for (let i = 0; i < 1024; i++) cv[i] = Math.tanh(3 * (i / 511.5 - 1)); ws.curve = cv; ws.oversample = '2x';
+    o1.type = 'sawtooth'; o2.type = 'square'; o3.type = 'sine'; ef.type = 'lowpass'; ef.frequency.value = 300; ef.Q.value = .7; eg.gain.value = 0; dep.gain.value = 0; lfo.frequency.value = 10;
+    for (const [o, g] of [[o1, g1], [o2, g2], [o3, g3]]) { o.frequency.value = 40; o.connect(g); g.connect(pre); o.start(); }
+    pre.connect(ws); ws.connect(ef); ef.connect(am); lfo.connect(dep); dep.connect(am.gain); lfo.start(); am.connect(eg); eg.connect(A.bPan);
+    const ex = loop(250, 1.4, 0); ex.g.connect(A.bPan); const hs = loop(3200, .4, 0, 'highpass'); hs.g.connect(A.bPan);
+    const wo = c.createOscillator(), wg = c.createGain(); wo.frequency.value = 1400; wg.gain.value = 0; wo.connect(wg); wg.connect(A.bPan); wo.start();
+    A.E = {cls: -1, k: 0, st: 0, drv: false, o1, o2, o3, g1, g2, g3, pre, am, lfo, dep, ex, hs, wo, wg}; A.eng = o1; A.engG = eg; A.engF = ef; A.mute.push(eg, ex.g, hs.g, wg); }
   A.gPan = pan(4, 1.2); const gen = c.createOscillator(); gen.type = 'sawtooth'; gen.frequency.value = 50; const gf = c.createBiquadFilter(); gf.type = 'lowpass'; gf.frequency.value = 180; const gg = c.createGain(); gg.gain.value = 0; gen.connect(gf); gf.connect(gg); gg.connect(A.gPan); gen.start(); A.genG = gg;
   A.aPan = pan(10, .8); const al = c.createOscillator(); al.type = 'square'; al.frequency.value = 600; const ag = c.createGain(); ag.gain.value = 0; al.connect(ag); ag.connect(A.aPan); al.start(); A.alarm = al; A.alarmG = ag;
   A.deepG = c.createGain(); A.deepG.gain.value = 0; A.deepG.connect(A.out); const dO = c.createOscillator(); dO.type = 'sine'; dO.frequency.value = 31; dO.connect(A.deepG); dO.start();
+  // water against the hull (panner at the bow) and the bilge alarm at the helm
+  A.wPan = pan(6, 1); A.wash = loop(500, .6, 0); A.wash.g.connect(A.wPan); A.hiss = loop(2600, .5, 0, 'highpass'); A.hiss.g.connect(A.wPan);
+  { const p = pan(3, 1), o = c.createOscillator(), g = c.createGain(); o.type = 'square'; o.frequency.value = 660; g.gain.value = 0; o.connect(g); g.connect(p); o.start(); A.bilge = {p, o, g}; }
+  // the score: its own bus, a five-voice chord bank, one low bass voice and a storm tremolo
+  { const mu = A.mus = c.createGain(); mu.gain.value = 0; mu.connect(A.out); const cf = c.createBiquadFilter(); cf.type = 'lowpass'; cf.frequency.value = 900; cf.Q.value = .3; const cg = c.createGain(); cg.gain.value = 0; cf.connect(cg); cg.connect(mu);
+    const ch = [73.42, 146.83, 220, 277.18, 369.99].map((f, i) => { const o = c.createOscillator(); o.type = i ? 'triangle' : 'sine'; o.frequency.value = f; o.detune.value = (Math.random() - .5) * 8; o.connect(cf); o.start(); return o; });
+    const bo = c.createOscillator(), bg = c.createGain(); bo.type = 'sine'; bo.frequency.value = 73.42; bg.gain.value = 0; bo.connect(bg); bg.connect(mu); bo.start();
+    const sf = c.createBiquadFilter(); sf.type = 'lowpass'; sf.frequency.value = 420; const tr = c.createGain(); tr.gain.value = .55; const tl = c.createOscillator(), td = c.createGain(); tl.frequency.value = 6; td.gain.value = .45; tl.connect(td); td.connect(tr.gain); tl.start(); const sg = c.createGain(); sg.gain.value = 0; sf.connect(tr); tr.connect(sg); sg.connect(mu);
+    for (const f of [73.42, 110, 110.4]) { const o = c.createOscillator(); o.type = 'sawtooth'; o.frequency.value = f; o.connect(sf); o.start(); }
+    A.MU = {cg, ch, bo, bg, sg}; A.mute.push(mu, cg, bg, sg); }
+  A.mute.push(A.wash.g, A.hiss.g, A.bilge.g);
+  // boat sounds (Snd extensions live here because the Snd literal is outside this package)
+  Object.assign(Snd, {
+    shipHorn(cls, p) { if (!A.on) return; const t = c.currentTime + .02, d = p || A.out;
+      const voice = (fs, type, dur, att, pk, ft, ff, q, bend = .94) => { const f = c.createBiquadFilter(); f.type = ft; f.frequency.value = ff; f.Q.value = q; const g = c.createGain(); g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(pk, t + att); g.gain.setValueAtTime(pk, t + Math.max(att, dur - .3)); g.gain.linearRampToValueAtTime(0, t + dur); f.connect(g); g.connect(d);
+        for (const fr of fs) { const o = c.createOscillator(); o.type = type; o.frequency.setValueAtTime(fr * bend, t); o.frequency.exponentialRampToValueAtTime(fr, t + att + .12); o.connect(f); o.start(t); o.stop(t + dur + .05); } return g; };
+      cls = cls || 0;
+      if (cls === 0) voice([330, 415], 'square', .8, .03, .06, 'bandpass', 900, 1.1, .97);
+      else if (cls === 1) voice([196, 196.7], 'sawtooth', 1.5, .06, .1, 'lowpass', 1500, .8);
+      else if (cls === 2) { const f = c.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 1100; f.Q.value = .6; const g = c.createGain(), o = c.createOscillator(); o.type = 'sawtooth'; o.frequency.setValueAtTime(400, t); o.frequency.exponentialRampToValueAtTime(900, t + .8); o.frequency.setValueAtTime(900, t + 1); o.frequency.exponentialRampToValueAtTime(420, t + 1.9); g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(.16, t + .08); g.gain.setValueAtTime(.16, t + 1.6); g.gain.linearRampToValueAtTime(0, t + 2); o.connect(f); f.connect(g); g.connect(d); o.start(t); o.stop(t + 2.05); }
+      else if (cls === 4) { const f = c.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 700; f.Q.value = .8; const g = c.createGain(), o = c.createOscillator(); o.type = 'square'; g.gain.setValueAtTime(0, t); for (let i = 0; i < 2; i++) { const u = t + i * .7; o.frequency.setValueAtTime(170, u); o.frequency.exponentialRampToValueAtTime(430, u + .45); g.gain.setValueAtTime(0, u); g.gain.linearRampToValueAtTime(.09, u + .04); g.gain.setValueAtTime(.09, u + .5); g.gain.linearRampToValueAtTime(0, u + .62); } o.connect(f); f.connect(g); g.connect(d); o.start(t); o.stop(t + 1.45); }
+      else if (cls === 3 || cls === 5) voice([82, 82.5, 98, 98.6], 'sawtooth', 3, .12, .085, 'lowpass', 760, .7);
+      else if (cls === 6) voice([65, 65.4, 77, 77.5], 'sawtooth', 3.4, .15, .095, 'lowpass', 640, .7);
+      else { const g = voice([55, 55.25, 69, 69.3, 110], 'sawtooth', 4.7, .25, .07, 'lowpass', 560, .7, .97), dl = c.createDelay(2), fb = c.createGain(), lp = c.createBiquadFilter(), eo = c.createGain(); dl.delayTime.value = 1.2; fb.gain.value = .3; lp.type = 'lowpass'; lp.frequency.value = 700; eo.gain.value = .45; g.connect(dl); dl.connect(lp); lp.connect(fb); fb.connect(dl); lp.connect(eo); eo.connect(A.out); setTimeout(() => { try { eo.disconnect(); fb.disconnect(); } catch (e) {} }, 12000); } },
+    crack(p, n = 6) { const k = clamp(.55 + n / 25, .55, 1.2); burst(2200, 2, .25 * k, .15, 'bandpass', p); burst(700, .6, .3 * k, .4, 'bandpass', p); setTimeout(() => burst(3400, 3, .1 * k, .05, 'bandpass', p), 70); },
+    groan(p, n = 6) { if (!A.on) return; const k = clamp(.55 + n / 25, .55, 1.2), t = c.currentTime, o = c.createOscillator(), f = c.createBiquadFilter(), g = c.createGain(); o.type = 'sawtooth'; o.frequency.setValueAtTime(75, t); o.frequency.exponentialRampToValueAtTime(48, t + 1.2); f.type = 'lowpass'; f.frequency.value = 520; f.Q.value = 4; env(g, t, .06, .22 * k, 1.2); o.connect(f); f.connect(g); g.connect(p || A.out); o.start(t); o.stop(t + 1.4); burst(380, 9, .2 * k, .6, 'bandpass', p); },
+    vent(p) { burst(500, .4, .2, 2.2, 'bandpass', p); Snd.bubbles(); burst(160, 1, .35, .14, 'lowpass', p); burst(1100, 7, .08, .09, 'bandpass', p); },
+  });
   A.on = true;
 }
 function env(g, t, a, peak, dec) { g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(peak, t + a); g.gain.exponentialRampToValueAtTime(.0001, t + a + dec); }
@@ -1426,6 +1552,8 @@ function applyEv(e) {
       if (P && P.ob && !P.seat && !inCabin() && Math.random() < .12) { const [lx, lz] = P.bl; const s = lx >= 0 ? 1 : -1; P.ob = 0; const [wx, wz] = bL2W(lx + s * 3, lz); P.x = wx; P.z = wz; P.vy = 3; showMsg('You are thrown overboard!', '', 3); } break;
     case 'sink': G.shake = 2; Snd.ram(); Snd.deep(); showMsg('The boat is going down! Abandon ship!', '', 5); if (P && P.ob) { P.ob = 0; P.seat = 0; P.y = .1; } break;
     case 'boatback': showMsg('A tug drags your boat back to the lighthouse. The cargo is lost.', '', 5); if (P && !P.dead && (P.sw || P.y < 1) && Math.hypot(P.x - e.x, P.z - e.z) < 80) { P.sw = 0; P.ob = 1; P.bl = [0, BSPOT.hold[1] + (BG.sub ? -1.6 : 1.6)]; P.y = BDECK.y; } break;
+    case 'horn': if (Snd.shipHorn) Snd.shipHorn(e.c, at(B.x, 6, B.z, 25 + (HULLS[e.c] || HULLS[0]).L)); break;
+    case 'hdmg': { if (A.on && Snd.crack) { const p = at(B.x, 1, B.z, 10); if ((B.up.cls || 0) <= 1) Snd.crack(p, e.n); else Snd.groan(p, e.n); } if (P && P.ob) G.shake = Math.max(G.shake || 0, e.n / 20); const h = $('hullB'); if (h && h.animate) h.animate([{filter: 'brightness(2.6)', transform: 'scaleY(2.4)'}, {filter: 'none', transform: 'none'}], {duration: 500, easing: 'ease-out'}); break; }
     case 'storm': if (e.on) showMsg('The wind picks up. A storm is rolling in.', '', 4); else showMsg('The storm passes. The moon comes out.', '', 4); break;
     case 'fl': if (e.id !== me) spawnFlare(e); break;
     case 'tug': if (!isHost()) B.got = 0; showMsg('The harbour tug towed your boat to the jetty.', '', 4); break;
@@ -1614,6 +1742,7 @@ function hostAct(id, m) {
   else if (m.a === 'wh') { emit({k: 'wh', id}); noise(p.x, p.y, p.z, 45); p.heat += .1; }
   else if (m.a === 'helm') { if (!B.driver || B.driver === id || !PL.get(B.driver)) emit({k: 'helm', id, on: 1}); }
   else if (m.a === 'unhelm') { if (B.driver === id) emit({k: 'helm', id, on: 0}); }
+  else if (m.a === 'horn') { const n = performance.now(); if (B.driver === id && n - (G.hornH || 0) > 2500) { G.hornH = n; emit({k: 'horn', c: B.up.cls || 0}); noise(B.x, 1, B.z, 90); } }
   else if (m.a === 'gasp') noise(p.x, p.y, p.z, 9);
   else if (m.a === 'buyg') { const now = performance.now() / 1000; if ((p.buyT || 0) > now) return; p.buyT = now + .4; const g = GEAR[m.k]; if (!g || (m.own && g.need && !g.need(m.own))) return; if (G.cash < g.cost) emit({k: 'nope', id, why: 'Not enough crew cash.'}); else { G.cash -= g.cost; emit({k: 'gear', id, g: m.k}); save(); } }
   else if (m.a === 'fish') { const f = FISH[m.f]; if (!f) return; if (m.f === 'bottle') { const d = DIGS.reduce((b, q, j) => q.rev || q.dug || (b >= 0 && Math.hypot(DIGS[b].x - p.x, DIGS[b].z - p.z) <= Math.hypot(q.x - p.x, q.z - p.z)) ? b : j, -1); if (d >= 0) { DIGS[d].rev = true; emit({k: 'bottle', i: d}); } else { G.bn = ((G.bn ?? -1) + 1) % BOTTLE_NOTES.length; emit({k: 'bottle', i: -1, n: G.bn}); } return; } const v = fishVal(m.f, p.x, p.z), cap = [0, 8, 12, 18][m.rod || 1] || 8; if (p.cooler.length >= cap) { emit({k: 'coolfull', id}); return; }
@@ -1631,7 +1760,7 @@ addEventListener('pagehide', () => { if (G.on) save(); });
 function packSnap() {
   const ps = {}; for (const p of PL.values()) ps[p.id] = [p.down ? 1 : 0, Math.ceil(p.bleed), p.dead ? 1 : 0, p.seat ? 1 : 0, (p.sack || []).map(k => KINDS.indexOf(k))];
   const s = {t: 'snap', m: [+M.x.toFixed(2), +M.y.toFixed(2), +M.z.toFixed(2), +M.yaw.toFixed(2), M.state, +M.spd.toFixed(2), +(M.look || 0).toFixed(2)],
-    b: [+B.x.toFixed(2), +B.z.toFixed(3), +B.yaw.toFixed(4), +B.v.toFixed(2), +B.thr.toFixed(2), B.driver || '', +B.fuel.toFixed(1), +B.hull.toFixed(1), B.sink > 0 ? 1 : 0, +(B.dep || 0).toFixed(2), +(B.dtar || 0).toFixed(2)], rd: G.radioOn ? 1 : 0, up: B.up, sk: SUNK.map(q => q.got ? 1 : 0).join(''), hold: B.hold.map(k => KINDS.indexOf(k)),
+    b: [+B.x.toFixed(2), +B.z.toFixed(3), +B.yaw.toFixed(4), +B.v.toFixed(2), +B.thr.toFixed(2), B.driver || '', +B.fuel.toFixed(1), +B.hull.toFixed(1), B.sink > 0 ? 1 : 0, +(B.dep || 0).toFixed(2), +(B.dtar || 0).toFixed(2), +(B.yr || 0).toFixed(3)], rd: G.radioOn ? 1 : 0, up: B.up, sk: SUNK.map(q => q.got ? 1 : 0).join(''), hold: B.hold.map(k => KINDS.indexOf(k)),
     ps, it: ITEMS.map(i => i.taken ? 1 : 0).join(''), fl: G.floats.map(f => f ? [+f[0].toFixed(1), +f[1].toFixed(1), f[2]] : 0), va: VALVES.map(v => v.open ? 1 : 0), pw: G.power ? 1 : 0, bo: G.bbOut ? 1 : 0,
     dg: DIGS.map(d => (d.rev ? 1 : 0) + (d.dug ? 2 : 0)), cash: G.cash, earned: G.earned, disc: G.disc, goals: G.goals, st: +G.storm.toFixed(3), td: +G.tod.toFixed(4), hp: G.holdP, gt: +G.t.toFixed(1), sw: [+STS.x.toFixed(2), +STS.y.toFixed(2), +STS.z.toFixed(2), +STS.yaw.toFixed(2), STS.state, +STS.spd.toFixed(2)], gu: GUL.map(g => g.on ? [+g.x.toFixed(1), +g.y.toFixed(1), +g.z.toFixed(1), +g.yaw.toFixed(2), +g.pitch.toFixed(2), g.st] : 0), cz: G.cruise ? 1 : 0, ev: G.evq};
   s.al = ALL ? 1 : 0;
@@ -1643,6 +1772,7 @@ function applySnap(s) {
   B.tx = s.b[0]; B.tz = s.b[1]; B.tyaw = s.b[2]; B.v = s.b[3]; B.thr = s.b[4]; B.driver = s.b[5] || null; B.fuel = s.b[6]; B.hull = s.b[7]; B.sink = s.b[8] ? 1 : 0; B.dep = s.b[9] || 0; B.dtar = s.b[10] ?? B.dep; G.radioOn = !!s.rd; if (s.sk) SUNK.forEach((q, i) => q.got = s.sk[i] === '1'); if (!B.got) { B.got = 1; B.x = B.tx; B.z = B.tz; B.yaw = B.tyaw; }
   if (Math.hypot(B.tx - B.x, B.tz - B.z) > 40) { B.x = B.tx; B.z = B.tz; B.yaw = B.tyaw; } if (M.x != null && Math.hypot(M.tx - M.x, M.tz - M.z) + Math.abs(M.ty - M.y) > 15) { M.x = M.tx; M.y = M.ty; M.z = M.tz; M.yaw = M.tyaw; } G.hostAll = !!s.al;
   B.up = s.up; B.hold = s.hold.map(i => KINDS[i]);
+  if (s.b[11] != null) B.yr = s.b[11];
   for (const id in s.ps) { const p = PL.get(id); if (!p) continue; const [d, bl, de, , ca] = s.ps[id]; p.down = !!d; p.bleed = bl; p.dead = !!de; if (Array.isArray(ca)) { p.sack = ca.map(i => KINDS[i]); p.carry = p.sack[p.sack.length - 1] || null; if (p === P) P.sack = p.sack; } }
   for (let i = 0; i < ITEMS.length; i++) ITEMS[i].taken = s.it[i] === '1';
   G.floats = s.fl.map(f => f || null);
@@ -1997,7 +2127,7 @@ function boatPose(dt) {
   if (BOAT.userData.sig !== (B.up.cls || 0) + ':' + (B.up.paint || 0)) { const same = BOAT.userData.cls === (B.up.cls || 0); buildBoat(); if (same) { /* repaint only */ } else if (P && P.ob) { P.bl = [0, Math.min(BG.zs - .8, BSPOT.hold[1] + 1.8)]; } }
   const hl2 = BG.L * .32, hw2 = BG.hw * .9, hf = waveH(B.x + fx * hl2, B.z + fz * hl2, t), hb = waveH(B.x - fx * hl2, B.z - fz * hl2, t), hl = waveH(B.x - sx * hw2, B.z - sz * hw2, t), hr = waveH(B.x + sx * hw2, B.z + sz * hw2, t);
   B.sinkY = B.sink > 0 ? Math.max(-6, (B.sinkY || 0) - dt * 1.2) : 0;
-  const dk = clamp(1 - (B.dep || 0), 0, 1); B.heave = (hf + hb + hl + hr) / 4 * dk + B.sinkY - (B.dep || 0); B.pitch = (Math.atan2(hf - hb, hl2 * 2) * .8 * dk + (B.sink > 0 ? .25 : 0)) + clamp((B.dtar - B.dep) * .06, -.12, .12); B.roll = Math.atan2(hl - hr, hw2 * 2) * .8 * dk + (G.shake || 0) * Math.sin(G.t * 23) * .05 - B.st * clamp(B.v / 12, -1, 1) * .05;
+  const dk = clamp(1 - (B.dep || 0), 0, 1), m = Math.pow(HC().L / 12.2, .6), dvdt = (B.v - (G.bv0 ?? B.v)) / Math.max(dt, 1e-3); G.bv0 = B.v; G.bdv = mix(G.bdv || 0, dvdt, Math.min(1, dt * 4)); B.trim = mix(B.trim || 0, (m < 1.6 ? clamp(B.v / 8, 0, 1) * .06 : 0) + clamp(G.bdv, -2, 2) * .01 / m, Math.min(1, dt * 2)); B.heave = (hf + hb + hl + hr) / 4 * dk + B.sinkY - (B.dep || 0); B.pitch = (Math.atan2(hf - hb, hl2 * 2) * .8 * dk + (B.sink > 0 ? .25 : 0)) + clamp((B.dtar - B.dep) * .06, -.12, .12) + B.trim * dk; B.roll = Math.atan2(hl - hr, hw2 * 2) * .8 * dk + (G.shake || 0) * Math.sin(G.t * 23) * .05 + clamp((B.yr || 0) * B.v * (m < 1.6 ? .03 : -.01), -.12, .12);
   { const gl = GLOWS[B.up.glow || 0], gm = BOAT.userData.glow; if (gl && gl.c) { if (gl.c < 0) gm.material.color.setHSL((G.wt * .1) % 1, 1, .55); else gm.material.color.setHex(gl.c); gm.material.opacity = (.55 - .35 * TOD.day) * (B.dep > .5 ? 0 : 1); } else gm.material.opacity = 0; }
   if (BOAT.userData.port) BOAT.userData.port.emissiveIntensity = TOD.night * .7;
   if (BOAT.userData.fire) BOAT.userData.fire.emissiveIntensity = .8 + Math.random() * .5; if (BOAT.userData.fairy) BOAT.userData.fairy.emissiveIntensity = .7 + Math.sin(G.wt * 2) * .15 + TOD.night * .5;
@@ -2030,6 +2160,7 @@ function updateCamera(dt) {
   if (own) { ex = P.x; ey = P.y + P.eye; ez = P.z; yaw = P.yaw; pitch = P.pitch; if (P.ob) { ey += B.heave; roll = B.roll * .7; pitch += B.pitch * .5; } if (P.sw) ey = waveH(P.x, P.z, G.wt) + .25 - (P.dv || 0) * 1.0; else if (P.y < 0) ey = Math.max(ey, waveH(P.x, P.z, G.wt) + .25); }
   else if (G.drownCam) { const dc = G.drownCam; dc.t += dt; ex = dc.x; ez = dc.z; ey = waveH(ex, ez, G.wt) + .2 - Math.min(5.5, dc.t * 2.2); yaw = dc.yaw; pitch = mix(.1, -1.35, clamp(dc.t / 1.2, 0, 1)); roll = Math.sin(dc.t * 3) * .15; if (dc.t > 4) G.drownCam = null; }
   else { const s = specTarget(); if (s) { ex = s.rx; ey = s.ry + (s.down ? .5 : 1.6) + (s.ob ? B.heave : 0); ez = s.rz; yaw = s.ryaw; pitch = s.rpitch; } else { ex = HOME.x; ey = 30; ez = HOME.z + 40; yaw = PI; pitch = -.3; } }
+  if (own && P.ob) { const o = seaLegs(dt); ex += o[0]; ez += o[1]; roll += o[2]; } else G.sl = null; G.fovAdd = mix(G.fovAdd || 0, own && P.ob ? clamp(Math.abs(B.v) / 12, 0, 1) * 4 : 0, Math.min(1, dt * 1.5));
   if (own && P.seat && HC().eye && BOAT && BOAT.userData.wz) { [ex, ez] = bL2W(0, BOAT.userData.wz[0] - .7); }
   const sp = own ? Math.hypot(P.vx, P.vz) : 0, bobA = own && P.hd < 0 && !P.seat ? clamp(sp / 6, 0, 1) * .05 : 0, shk = own && P.fear > .5 ? (P.fear - .5) * .006 : 0, tr = Math.min(1, G.shake || 0) ** 2, nz = i => Math.sin(G.t * 13.1 + i * 7) * .5 + Math.sin(G.t * 27.7 + i * 3) * .3 + Math.sin(G.t * 51.3 + i) * .2;
   G.shake = Math.max(0, (G.shake || 0) - dt * 1.6);
@@ -2161,12 +2292,13 @@ function stepWake(dt) {
     if (!p) { ca.fill(0); break; }
     if (WAKE.pts[i]) { p.a += dt; p.w += dt * 1.6; }
     const al = WAKE.pts[i] ? Math.max(0, 1 - p.a / 8) * p.k * (.6 + .4 * TOD.day) : 0;
-    for (const s of [0, 1]) { const sg = s ? 1 : -1, x = p.x + p.dx * p.w * sg, z = p.z + p.dz * p.w * sg, o = (i * 2 + s); pa[o * 3] = x; pa[o * 3 + 1] = waveH(x, z, t) + .06; pa[o * 3 + 2] = z; ca.set([1, 1, 1, al * (s ? .9 : .9)], o * 4); ua[o * 2] = s; ua[o * 2 + 1] = i * .25; }
+    for (let s = 0; s < 2; s++) { const sg = s ? 1 : -1, x = p.x + p.dx * p.w * sg, z = p.z + p.dz * p.w * sg, o = (i * 2 + s); pa[o * 3] = x; pa[o * 3 + 1] = waveH(x, z, t) + .06; pa[o * 3 + 2] = z; ca[o * 4] = ca[o * 4 + 1] = ca[o * 4 + 2] = 1; ca[o * 4 + 3] = al * .9; ua[o * 2] = s; ua[o * 2 + 1] = i * .25; }
   }
   WAKE.mesh.material.color.setRGB(mix(1, .3, TOD.night), mix(1, 1.8, TOD.night), mix(1, 1.6, TOD.night)); WAKE.mesh.material.blending = TOD.night > .5 ? THREE.AdditiveBlending : THREE.NormalBlending; SPRAY.pts.material.color.setRGB(mix(.87, .4, TOD.night), mix(.92, 1.4, TOD.night), mix(.94, 1.3, TOD.night));
   WAKE.mesh.geometry.attributes.position.needsUpdate = WAKE.mesh.geometry.attributes.color.needsUpdate = WAKE.mesh.geometry.attributes.uv.needsUpdate = true;
   // bow spray grows with speed and slamming into waves
   B.slam = (B.slam || 0) * Math.exp(-dt * 3); const dp = (B.pitch - (B.lp ?? B.pitch)) / Math.max(dt, 1e-3); B.lp = B.pitch;
+  G.slT = (G.slT || 0) - dt; if (dp < -.35 && v > 5 && G.slT <= 0 && B.sink <= 0 && (B.dep || 0) < .6) { G.slT = .35; const k = B.slam = clamp(-dp * .7, 0, 1) * clamp(v / 10, 0, 1); if (A.wPan) { burst(150, .8, .45 * k, .5, 'lowpass', A.wPan); burst(1100, .6, .2 * k, .7, 'bandpass', A.wPan); } if (P && P.ob && !inCabin()) G.shake = Math.max(G.shake || 0, .25 * k * Math.min(1, 14 / BG.L)); }
   if (v > 5 && B.sink <= 0 && Math.random() < dt * (v / 3 + Math.max(0, -dp) * 4 + G.storm * 4)) { for (const s of [-1, 1]) { const [x, z] = bL2W(s * BG.hw * .55, BG.zb + BG.L * .08); spray(x, waveH(x, z, t) + .3, z, 3 + (v > 9 ? 3 : 0), v * .35); } }
   const sa = SPRAY.pts.geometry.attributes.position.array;
   for (let i = 0; i < SPRAY.n; i++) { const p = SPRAY.p[i]; if (p.y < -900) { sa[i * 3 + 1] = -999; continue; } if (p.b) { p.vy = Math.min(p.vy + dt, 2.2); p.x += p.vx * dt + Math.sin(t * 9 + i) * dt * .2; p.y += p.vy * dt; p.z += p.vz * dt; if (p.y > waveH(p.x, p.z, t)) p.y = -999; } else { p.vy -= 9.8 * dt; p.x += p.vx * dt; p.y += p.vy * dt; p.z += p.vz * dt; if (p.y < waveH(p.x, p.z, t) - .3) p.y = -999; } sa[i * 3] = p.x; sa[i * 3 + 1] = p.y; sa[i * 3 + 2] = p.z; }
@@ -2250,7 +2382,7 @@ function buildCruise() {
   for (let y = -1.2; y < D1; y += .35) wbox('yellow', X, y, Z + 60.4, .6, .05, .05);
   INTER.push({kind: 'ladder', x: X, y: 0, z: Z + 61, r: 3.5, top: [X, D1, Z + 58.2], label: () => 'Climb the boarding ladder', on: () => P.sw});
   POIS.push({n: 'MS Serenade', x: X, z: Z, r: 90, cruise: 1});
-  OBST.push({c: 1, x: X, z: Z - 40, r: 20}, {c: 1, x: X, z: Z - 5, r: 15}, {c: 1, x: X, z: Z + 25, r: 15}, {c: 1, x: X, z: Z + 50, r: 13});
+  OBST.push({x0: X - 14.4, x1: X + 14.4, z0: Z - 30, z1: Z + 60.4}, {x0: X - 13.6, x1: X + 13.6, z0: Z - 40, z1: Z - 30}, {c: 1, x: X, z: Z - 48, r: 11.5}, {c: 1, x: X, z: Z - 58, r: 8}, {c: 1, x: X, z: Z - 64, r: 4});
   for (let i = 0; i < 9; i++) CRZ.reds = (CRZ.reds || []).concat([[X + (i % 3 - 1) * 6, (i < 6 ? D1 : D2) + 3, Z - 40 + i * 10]]);
   for (let i = w0; i < WALLS.length; i++) CWL.push(WALLS[i]);
   // nav nodes for the Steward: a 2.5 m grid on both decks and the stairs, joined where nothing is in the way
@@ -2662,8 +2794,9 @@ function stepFear(dt) {
     if (L.positionX) { L.positionX.value = cp.x; L.positionY.value = cp.y; L.positionZ.value = cp.z; L.forwardX.value = _fw.x; L.forwardY.value = _fw.y; L.forwardZ.value = _fw.z; L.upX.value = 0; L.upY.value = 1; L.upZ.value = 0; } else { L.setPosition(cp.x, cp.y, cp.z); L.setOrientation(_fw.x, _fw.y, _fw.z, 0, 1, 0); }
     const inside = zoneOf(cp.x, cp.z, cp.y - 1.6) >= 0 || (P.hd >= 0) || inCabin(), st = G.storm;
     A.pad.gain.setTargetAtTime(.028 * Math.max(TOD.night * .9 + (1 - TOD.day) * .3, G.storm * .7), t, 2); A.padF.frequency.setTargetAtTime(260 + 300 * TOD.night + Math.sin(G.wt * .11) * 90, t, 2);
-    A.rain.g.gain.value = (inside ? .015 : .05) * st; A.wind.g.gain.value = ((inside ? .02 : .06) + Math.sin(G.t * .13) * .02) * (.3 + st * .7); A.wind.f.frequency.value = 380 + Math.sin(G.t * .21) * 140; A.surf.g.gain.value = clamp(.14 - cp.y * .006, .02, .14) * (.5 + st * .5);
-    setPan(A.bPan, B.x, 1.5, B.z); A.eng.frequency.value = 38 + Math.abs(B.thr) * 30 + B.up.engine * 6; A.engF.frequency.value = 250 + Math.abs(B.thr) * 300; A.engG.gain.value = B.sink > 0 ? 0 : .08 + Math.abs(B.thr) * .12;
+    A.rain.g.gain.value = (inside ? .015 : .05) * st; A.wind.g.gain.value = ((inside ? .02 : .06) + Math.sin(G.t * .13) * .02) * (.3 + st * .7) + (P.ob && !inCabin() ? clamp(Math.abs(B.v) / 11, 0, 1) * .07 : 0); A.wind.f.frequency.value = 380 + Math.sin(G.t * .21) * 140 + (P.ob ? Math.abs(B.v) * 35 : 0); A.surf.g.gain.value = clamp(.14 - cp.y * .006, .02, .14) * (.5 + st * .5) * clamp(1.2 - shoreDist() / 140, .15, 1);
+    setPan(A.bPan, B.x, 1.5, B.z); boatAudio(dt, t);
+    if (A.mus) Mus.step(dt);
     const gb = BLD.find(q => q.kind === 'gen'); if (gb) setPan(A.gPan, gb.x, gb.fy + 1, gb.z); A.genG.gain.value = G.power ? .35 : 0;
     if (G.alarmT > 0) { G.alarmT -= dt; A.alarm.frequency.value = Math.sin(G.wt * 4) > 0 ? 620 : 470; A.alarmG.gain.value = .05; setPan(A.aPan, 0, LV[1] + 4, 0); } else A.alarmG.gain.value = 0;
     A.deepG.gain.setTargetAtTime(G.spines && G.spines.circle ? .3 : 0, t, .8);
@@ -3210,7 +3343,7 @@ function menuInit() {
   document.querySelectorAll('.seg').forEach(s => { const k = s.dataset.k, upd = () => s.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.v === SET[k])); s.querySelectorAll('button').forEach(b => b.onclick = () => { SET[k] = b.dataset.v; saveSet(); upd(); }); upd(); });
   $('sens').value = SET.sens; $('sens').oninput = e => { SET.sens = +e.target.value; saveSet(); };
   $('bright').value = SET.bright; $('bright').oninput = e => { SET.bright = +e.target.value; saveSet(); };
-  const setVol = v => { SET.vol = v; saveSet(); if (A.out) A.out.gain.value = .9 * v; };
+  const setVol = v => { SET.vol = v; saveSet(); if (A.out) A.out.gain.value = 1.15 * v; };
   $('vol').value = SET.vol; $('vol').oninput = e => setVol(+e.target.value);
   $('pVol').oninput = e => setVol(+e.target.value); $('pSens').oninput = e => { SET.sens = +e.target.value; saveSet(); }; $('pBright').oninput = e => { SET.bright = +e.target.value; saveSet(); canvas.style.filter = SET.bright !== 1 ? `brightness(${SET.bright})` : ''; };
   $('name').value = SET.name; $('name').oninput = e => { SET.name = e.target.value; saveSet(); };
