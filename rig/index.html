@@ -98,7 +98,7 @@ button.go { background:#124a5a; color:#f3e9d8; font-size:17px; letter-spacing:.2
 #logbook div { display:flex; justify-content:space-between; gap:10px; border-top:1px dashed rgba(42,36,26,.25); padding:3px 0; } #logbook div i { font-style:normal; color:#6b604c; } #logbook div b { font-weight:normal; color:#7a5a10; white-space:nowrap; } #logbook small { margin-top:6px; font-size:11px; }
 #logbook.side { top:50%; transform:translateY(-50%) rotate(-1deg); } #logbook.strip { top:58px; left:50%; width:min(720px,94vw); transform:translateX(-50%); display:flex; flex-wrap:wrap; gap:0 16px; padding:6px 12px; font-size:12px; align-items:baseline; } #logbook.strip h3 { margin:0; font-size:12px; } #logbook.strip div { border:0; padding:0; gap:6px; } #logbook.strip small { margin:0; }
 #endL div { display:flex; justify-content:space-between; gap:12px; padding:4px 0; border-top:1px solid var(--line); } #endL b { font-weight:normal; color:var(--ink); }
-#hud.fly #compass, #hud.fly #tool, #hud.fly #br, #hud.fly #boatHud, #hud.fly #carry, #hud.fly #obj, #hud.fly #team, #hud.fly #tags, #hud.fly #prompt, #hud.fly #dot, #hud.fly #stam { visibility:hidden; }
+#hud.fly #compass, #hud.fly #xhair, #hud.fly #fishUI, #hud.fly #tool, #hud.fly #br, #hud.fly #boatHud, #hud.fly #carry, #hud.fly #obj, #hud.fly #team, #hud.fly #tags, #hud.fly #prompt, #hud.fly #dot, #hud.fly #stam { visibility:hidden; }
 #msg { bottom:max(16%,124px); }
 @media (max-width:1000px) { #tool b span { display:none } #br { gap:10px } #team { top:64px } #obj { max-width:38vw } #toolN { display:block } #tool b { padding:3px 4px; margin:0 1px } #stam { bottom:66px } #carry { bottom:82px } }
 #fishUI { position:absolute; left:50%; top:62%; transform:translateX(-50%); width:300px; text-align:center; font:13px ui-monospace,monospace; text-shadow:0 1px 3px #000; }
@@ -259,6 +259,6 @@ button.go { background:#124a5a; color:#f3e9d8; font-size:17px; letter-spacing:.2
 
 <div id="load">Loading…</div>
 <script src="../three-r170.js"></script>
-<script src="game.js?v=18"></script>
+<script src="game.js?v=19"></script>
 </body>
 </html>

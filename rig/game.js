@@ -29,7 +29,7 @@ const hexS = c => '#' + c.toString(16).padStart(6, '0');
 
 // ---------------- net (jjfanwars relay)
 const RELAY_URL = 'wss://jjfanwars-relay.businessautomationvic.workers.dev';
-const GAME_V = 12;
+const GAME_V = 19;
 const Net = {
   tag: '[Rig]', role: 'solo', ws: null, peers: new Map(), code: '', relayT: {pose: 1}, id: '', name: '', handlers: {}, retry: 0, started: false,
   enc: new TextEncoder(), dec: new TextDecoder(),
@@ -76,7 +76,7 @@ const Net = {
     clearInterval(this.pingT); this.pingT = setInterval(() => { try { if (this.ws && this.ws.readyState === 1) this.ws.send('ping'); } catch (e) {} }, 15000);
   },
   close() { clearInterval(this.pingT); clearTimeout(this.seenT); clearTimeout(this.rejT); this._seen = null; clearTimeout(G.lostT); G.lostT = 0; if (this.ws) { const w = this.ws; this.ws = null; w.onclose = null; try { w.close(); } catch (e) {} } this.role = 'solo'; this.peers = new Map(); },
-  async rooms() { try { const r = await (await fetch(this.relay().replace(/^ws/, 'http') + '/rooms')).json(), bare = this.tag.replace(/[\[\]]/g, ''); return r.filter(x => x.open && (x.name.startsWith(this.tag + ' ') || x.name.startsWith(bare + ' '))); } catch (e) { return []; } },
+  async rooms() { try { const r = await (await fetch(this.relay().replace(/^ws/, 'http') + '/rooms')).json(), bare = this.tag.replace(/[\[\]]/g, ''); return r.filter(x => (x.open || x.n >= 6) && (x.name.startsWith(this.tag + ' ') || x.name.startsWith(bare + ' '))); } catch (e) { return []; } },
 };
 const isHost = () => Net.role !== 'guest';
 const myId = () => Net.role === 'guest' ? Net.id : 'H';
@@ -709,8 +709,10 @@ function buildBoat() {
       const l = Math.hypot(xz - xa, zz - za, tz - ta), cap = add(new THREE.BoxGeometry(.12, .06, l + .02), whiteM, (xa + xz) / 2, (ta + tz) / 2 + .03, (za + zz) / 2); cap.rotation.set(-Math.atan2(tz - ta, zz - za), Math.atan2(xz - xa, zz - za), 0, 'YXZ');
       if (i % 2 === 0 && i > NZ * .2) { cyl(whiteM, .025, .025, .75, xa, ta + .4, za, 0, 0, 6); } }
     for (const sd of [-1, 1]) { const zz = zb + L * .3; const r = add(new THREE.CylinderGeometry(.025, .025, zs - zz, 6), whiteM, sd * (hw - .06), fb + 1.08, (zz + zs) / 2); r.rotation.x = PI / 2; }
-    BDECK.x0 = -hw + .3; BDECK.x1 = hw - .3; BDECK.z0 = zb + (zs - zb) * .32; BDECK.z1 = zs - .25; BDECK.y = fb;
-    for (const sd of [-1, 1]) BW.push({x0: sd < 0 ? -hw - .5 : hw - .28, x1: sd < 0 ? -hw + .28 : hw + .5, z0: BDECK.z0 - 1, z1: zs + .3, y0: 0, y1: 1.1});
+    const dz0 = zb + (zs - zb) * .32, fz0 = H.big ? Math.min(dz0, mix(zb, zs, H.wh[0]) + .12) : dz0;
+    BDECK.x0 = -hw + .3; BDECK.x1 = hw - .3; BDECK.z0 = fz0; BDECK.z1 = zs - .25; BDECK.y = fb;
+    for (const sd of [-1, 1]) BW.push({x0: sd < 0 ? -hw - .5 : hw - .28, x1: sd < 0 ? -hw + .28 : hw + .5, z0: dz0 - 1, z1: zs + .3, y0: 0, y1: 1.1});
+    if (fz0 < dz0) for (let i = 0; i < 12; i++) { const za = mix(fz0 - 1, dz0, i / 12), zz = mix(fz0 - 1, dz0, (i + 1) / 12), x = Math.min(hullHW(za), hullHW(zz)) - .3; BW.push({x0: -hw - .5, x1: -x, z0: za, z1: zz, y0: 0, y1: 1.1}, {x0: x, x1: hw + .5, z0: za, z1: zz, y0: 0, y1: 1.1}); }
     BW.push({x0: -hw, x1: hw, z0: BDECK.z0 - 2, z1: BDECK.z0 + .05, y0: 0, y1: 2});
     BW.push({x0: -hw, x1: -.6, z0: zs - .12, z1: zs + .4, y0: 0, y1: 1}); BW.push({x0: .6, x1: hw, z0: zs - .12, z1: zs + .4, y0: 0, y1: 1});
     // wheelhouse with real walls and windows
@@ -776,7 +778,7 @@ function buildBoat() {
     g.userData.lightZ = wz0 - .2; g.userData.lightY = y0 + hh + .3; g.userData.wz = [wz0, wz1]; g.userData.ww = ww; g.userData.lamp = [0, y0 + hh - .6, (wz0 + wz1) / 2];
     const aft = (wz1 + zs) / 2;
     BSPOT.hold[0] = 0; BSPOT.hold[1] = Math.min(zs - 2.2, wz1 + 1.8 + (cls === 3 ? 0 : 0)); BSPOT.fuel[0] = hw - .9; BSPOT.fuel[1] = zs - .8; BSPOT.patch[0] = -hw + .9; BSPOT.patch[1] = zs - .8;
-    if (cls === 3) { BSPOT.hold[1] = zb + L * .42; }
+    if (cls === 3) { BSPOT.hold[1] = zb + L * .42; } if (cls === 7) BSPOT.hold[1] = zs - 9;
     const hz2 = BSPOT.hold[1]; box(S({map: TX.wood, color: 0x6a5a44}), -.9, .9, fb, fb + .22, hz2 - .7, hz2 + .7); box(steel, -.95, .95, fb, fb + .08, hz2 - .75, hz2 + .75); BW.push({x0: -.9, x1: .9, z0: hz2 - .7, z1: hz2 + .7, y0: 0, y1: .2});
     cyl(redM, .13, .13, .32, BSPOT.fuel[0], fb + .16, BSPOT.fuel[1]); box(yel, BSPOT.patch[0] - .3, BSPOT.patch[0] + .3, fb, fb + .4, BSPOT.patch[1] - .2, BSPOT.patch[1] + .2);
     // stern ladder down the transom
@@ -809,7 +811,7 @@ function buildBoat() {
       const lv = cls === 7 ? 7 : cls === 6 ? 3 : 2, sz0 = wz0, sz1 = cls === 7 ? zs - 14 : wz1 + L * .12;
       for (let i = 0; i < lv; i++) { const k = 1 - i * (cls === 7 ? .05 : .08), w = ww * k, y = fb + hh + .12 + i * 2.8, z0 = sz0 + i * (cls === 7 ? 1.6 : .8), z1 = sz1 - i * (cls === 7 ? 3.5 : 1);
         box(ss, -w, w, y, y + 2.8, z0, z1); for (const sd of [-1, 1]) add(new THREE.BoxGeometry(.04, .8, z1 - z0 - 1), wm, sd * (w + .02), y + 1.5, (z0 + z1) / 2); add(new THREE.BoxGeometry(w * 2 - 1, .8, .04), wm, 0, y + 1.5, z0 - .02); }
-      if (cls === 7) { BW.push({x0: -ww, x1: ww, z0: wz1, z1: sz1, y0: 0, y1: 3}); box(ss, -ww, ww, fb, fb + hh, wz1, sz1); for (const sd of [-1, 1]) for (let i = 0; i < 8; i++) { const z = wz1 + 4 + i * (sz1 - wz1 - 8) / 7; cyl(S({color: 0xe06018}), .9, .9, 5, sd * (ww + .9), fb + hh + 4, z, PI / 2); }
+      if (cls === 7) { BW.push({x0: -ww, x1: ww, z0: wz1 + 1.6, z1: sz1, y0: 0, y1: 3}); box(ss, -ww, ww, fb, fb + hh, wz1 + 1.6, sz1); for (const sd of [-1, 1]) for (let i = 0; i < 8; i++) { const z = wz1 + 4 + i * (sz1 - wz1 - 8) / 7; cyl(S({color: 0xe06018}), .9, .9, 5, sd * (ww + .9), fb + hh + 4, z, PI / 2); }
         const fz = sz1 - (lv - 1) * 3.5 - 5; cyl(S({color: 0xc8c4b8}), 3, 3.6, 9, 0, fb + hh + lv * 2.8 + 4, fz); cyl(S({color: 0x1a3a6a}), 3.02, 3.02, 2, 0, fb + hh + lv * 2.8 + 7.5, fz);
         const pool = add(new THREE.BoxGeometry(ww, .1, 10), S({color: 0x2a8ab0, roughness: .05}), 0, fb + hh + lv * 2.8 + .2, (sz0 + sz1) / 2); }
       if (cls === 6) { for (const z of [sz1 - 5, sz1 - 1]) { cyl(S({color: 0x9a1a12}), 1.3, 1.5, 7, 0, fb + hh + lv * 2.8 + 3.5, z); cyl(darkM, 1.32, 1.32, 1, 0, fb + hh + lv * 2.8 + 6.5, z); } cyl(steel, .12, .15, 6, 0, fb + hh + lv * 2.8 + 3, sz0 + 2); const rad = add(new THREE.BoxGeometry(2.4, .15, .35), darkM, 0, fb + hh + lv * 2.8 + 6, sz0 + 2); g.userData.radar = rad; }
@@ -849,7 +851,7 @@ function buildBoat() {
   { const gc = cv(128, 256, (q, w, h) => { const gr = q.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, h / 2); gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(.55, 'rgba(255,255,255,.5)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); q.fillStyle = gr; q.fillRect(0, 0, w, h); });
     const gm = new THREE.Mesh(new THREE.PlaneGeometry(W + 5, L + 6), new THREE.MeshBasicMaterial({map: new THREE.CanvasTexture(gc), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0})); gm.rotation.x = -PI / 2; gm.position.set(0, .12, (zb + zs) / 2); gm.renderOrder = 3; g.add(gm); g.userData.glow = gm; }
   INTER.push({kind: 'helm', boat: 1, lx: BHELM[0], lz: BHELM[1] - .4, ly: 1, r: 2, label: () => P.seat ? 'Let go of the wheel' : 'Take the wheel', on: () => !P.sw && (P.seat || !B.driver)});
-  INTER.push({kind: 'hold', boat: 1, lx: BSPOT.hold[0], lz: BSPOT.hold[1], ly: .2, r: 2.4, label: () => { const u = `${sackUsed(B.hold)}/${holdCap()} slots, $${holdValue()}`; return P.sack.length ? `Stow everything from your sack · hold ${u}` : B.hold.length ? `Take the ${NAMES[B.hold[B.hold.length - 1]]} out · hold ${u}` : `Cargo hold (empty, ${holdCap()} slots)`; }, on: () => !P.sw});
+  INTER.push({kind: 'hold', boat: 1, lx: BSPOT.hold[0], lz: BSPOT.hold[1], ly: .2, r: 2.4, label: () => { const u = `${sackUsed(B.hold)}/${holdCap()} slots, $${holdValue()}`; return P.sack.some(k => k !== 'key') ? `Stow everything from your sack · hold ${u}` : B.hold.length ? `Take the ${NAMES[B.hold.includes('key') ? 'key' : B.hold[B.hold.length - 1]]} out · hold ${u}` : `Cargo hold (empty, ${holdCap()} slots)`; }, on: () => !P.sw});
   if (0) INTER.push({kind: 'fuelcap', boat: 1, lx: BSPOT.fuel[0], lz: BSPOT.fuel[1], ly: .2, r: 1.8, label: () => (P.sack || []).includes('fuel') ? 'Pour a fuel drum into the tank' : `Fuel tank: ${Math.round(B.fuel)}/${tankMax()}`, on: () => !P.sw});
   INTER.push({kind: 'patchbox', boat: 1, lx: BSPOT.patch[0], lz: BSPOT.patch[1], ly: .2, r: 1.8, label: () => (P.sack || []).includes('patch') || B.hold.includes('patch') ? 'Patch the hull' : `Hull: ${Math.round(B.hull)}/${hullMax()} (bring a patch kit)`, on: () => !P.sw});
   // bake everything static into one mesh per material (the wheel, prop, radar, cat, gun, glow and cargo stay live; the painted hull keeps its own)
@@ -890,7 +892,7 @@ function boatStep(dt) {
 function damageBoat(n) { if (B.sink > 0) return; B.hull = Math.max(0, B.hull - n); if (n >= .5) emit({k: 'hdmg', n: Math.round(n)}); if (B.hull <= 0) { B.sink = 4.5; B.driver = null; B.yr = 0; emit({k: 'sink'}); } }
 function resetBoat(sunk) {
   const wasX = B.x, wasZ = B.z;
-  Object.assign(B, {x: JETTY.x - 2.1 - BG.hw, z: JETTY.z + 3 + Math.max(0, BG.L - 12) * .5, yaw: PI, v: 0, thr: 0, st: 0, driver: null, sink: 0, dep: 0, dtar: 0}); B.hull = Math.max(B.hull, hullMax() * .6); B.fuel = Math.max(B.fuel, tankMax() * .4);
+  Object.assign(B, {x: JETTY.x - 2.1 - BG.hw, z: JETTY.z + 3 + Math.max(0, BG.L - 12) * .5, yaw: PI, v: 0, yr: 0, trim: 0, thr: 0, st: 0, driver: null, sink: 0, dep: 0, dtar: 0}); B.hull = Math.max(B.hull, hullMax() * .6); B.fuel = Math.max(B.fuel, tankMax() * .4);
   if (sunk) { B.hold = []; emit({k: 'boatback', x: wasX, z: wasZ}); }
 }
 // ---------------- boat feel and sound: one engine voice per hull, sea legs, water on the hull, a small score
@@ -1415,7 +1417,7 @@ const titleOf = e => { let i = 0; while (i + 1 < TITLES.length && (e || 0) >= TI
 // the next thing to do: {t: text, mk: {x, y, z, scr: 1} screen marker and/or {x, z, lab} compass marker}
 function nextStep() {
   if (!P) return {t: ''};
-  if (P.seat || G.earned > 0) G.helmDone = true;
+  if (P.seat || G.earned > 0 || (B.driver && B.driver !== myId())) G.helmDone = true;
   const dP = (x, z) => Math.hypot(x - P.x, z - P.z), hv = B.heave || 0, sv = sackVal(P.sack), hold = holdValue(), sh = G.shed && G.shed.shop;
   const shed = t => !sh ? {t} : {t, mk: Object.assign({x: sh[0], z: sh[2], lab: 'SHED'}, dP(sh[0], sh[2]) < 40 ? {y: sh[1] + .9, scr: 1} : {})};
   if (!G.helmDone) {
@@ -1597,10 +1599,10 @@ function applyEv(e) {
       break; }
     case 'mstep': { const d = Math.hypot(cam.position.x - M.x, cam.position.z - M.z) + Math.abs(cam.position.y - M.y); if (d < 40) Snd.mStep(clamp(1.2 - d / 40, .1, 1) * (M.state === 'chase' ? 1.5 : 1)); break; }
     case 'down': { const p = PL.get(e.id); if (p) { p.down = true; p.hd = -1; p.seat = 0; }
-      if (e.id === me) { if (P.hd >= 0 && HIDES[P.hd]) { const h = HIDES[P.hd]; P.x = h.ex; P.z = h.ez; } const jsc = e.how === 'caught' || e.how === 'pulled'; if (jsc) { G.js = {t: 1.4, L: 1.4, mon: e.st ? STW : MON, J: e.st ? SJ : MJ}; G.shake = 1.5; } Snd.scream(); $('flash').style.opacity = jsc ? .3 : .7; setTimeout(() => $('flash').style.opacity = 0, 300); P.hd = -1; P.seat = 0; $('slats').classList.add('hidden'); $('breath').classList.add('hidden'); showMsg(PL.size === 1 ? 'It got you.' : 'It got you. Crawl toward your crew, they can pick you up.', '', 5); }
+      if (e.id === me) { if (P.hd >= 0 && HIDES[P.hd]) { const h = HIDES[P.hd]; P.x = h.ex; P.z = h.ez; } const jsc = e.how === 'caught' || e.how === 'pulled'; if (jsc) { G.js = {t: 1.4, L: 1.4, mon: e.st ? STW : MON, J: e.st ? SJ : MJ}; G.shake = 1.5; } Snd.scream(); $('flash').style.opacity = jsc ? .3 : .7; setTimeout(() => $('flash').style.opacity = 0, 300); P.hd = -1; P.seat = 0; $('slats').classList.add('hidden'); $('breath').classList.add('hidden'); if (PL.size > 1) showMsg('It got you. Crawl toward your crew, they can pick you up.', '', 5); }
       else if (p) { Snd.hurt(at(p.x, p.y + 1, p.z, 6)); showMsg(`${p.name} is down! Hold E on them to pick them up.`, '', 5); } break; }
     case 'rev': { const p = PL.get(e.id); if (p) p.down = false; Snd.revive(); showMsg(e.id === me ? 'You are back on your feet.' : `${p ? p.name : ''} is back up.`); break; }
-    case 'dead': { const p = PL.get(e.id); if (p) { p.dead = true; p.down = false; p.drowned = !!e.drown; p.sw = 0; } if (e.drown) Snd.deep(); if (e.id === me) { const t = e.drown === 3 ? 'Needle teeth close on your hose. Then nothing.' : e.drown === 2 ? 'Your air runs out. The dark closes in.' : e.drown ? 'Something huge wraps around your legs and pulls you under.' : 'You bled out.'; if (e.drown === 1) { if (!G.maw) G.maw = {t: 3, x: P.x, z: P.z}; G.maw.bite = G.maw.t + .9; G.drownCam = {t: 0, x: P.x, z: P.z, yaw: P.yaw}; } P.dead = true; P.sw = 0; P.seat = 0; P.drowned = !!e.drown; showMsg(t, '', 5); }
+    case 'dead': { const p = PL.get(e.id); if (p) { p.dead = true; p.down = false; p.drowned = e.drown || 0; p.sw = 0; } if (e.drown) Snd.deep(); if (e.id === me) { const t = e.drown === 3 ? 'Needle teeth close on your hose. Then nothing.' : e.drown === 2 ? 'Your air runs out. The dark closes in.' : e.drown ? 'Something huge wraps around your legs and pulls you under.' : 'You bled out.'; if (e.drown === 1) { if (!G.maw) G.maw = {t: 3, x: P.x, z: P.z}; G.maw.bite = G.maw.t + .9; G.drownCam = {t: 0, x: P.x, z: P.z, yaw: P.yaw}; } P.dead = true; P.sw = 0; P.seat = 0; P.drowned = e.drown || 0; showMsg(t, '', 5); }
       else showMsg(`${p ? p.name : 'Someone'} ${e.drown === 2 ? 'ran out of air' : e.drown === 3 ? 'was taken in the deep' : e.drown ? 'was pulled under' : 'bled out'}. They will wash up at the lighthouse.`, '', 5); break; }
     case 'resp': { const p = PL.get(e.id); if (p) { p.dead = false; p.down = false; p.drowned = false; } if (e.id === me) { Object.assign(P, {dead: false, down: false, sw: 0, ob: 0, seat: 0, x: e.x, y: 2, z: e.z, vy: 0, hd: -1, bat: Math.max(P.bat, .6), drowned: false}); showMsg('You wash up at the lighthouse, coughing seawater.', '', 4); } break; }
     case 'deepw': if (e.id === me) { G.maw = {t: 0, x: P.x, z: P.z}; Snd.bubbles(); showMsg('Something is circling beneath you. GET OUT OF THE WATER.', '', 3); } break;
@@ -1641,7 +1643,7 @@ function applyEv(e) {
     case 'hdmg': { if (A.on && Snd.crack) { const p = at(B.x, 1, B.z, 10); if ((B.up.cls || 0) <= 1) Snd.crack(p, e.n); else Snd.groan(p, e.n); } if (P && P.ob) G.shake = Math.max(G.shake || 0, e.n / 20); const h = $('hullB'); if (h && h.animate) h.animate([{filter: 'brightness(2.6)', transform: 'scaleY(2.4)'}, {filter: 'none', transform: 'none'}], {duration: 500, easing: 'ease-out'}); break; }
     case 'storm': if (e.on) showMsg('The wind picks up. A storm is rolling in.', '', 4); else showMsg('The storm passes. The moon comes out.', '', 4); break;
     case 'fl': if (e.id !== me) spawnFlare(e); break;
-    case 'tug': if (!isHost()) B.got = 0; showMsg('The harbour tug towed your boat to the jetty.', '', 4); break;
+    case 'tug': if (!isHost()) B.got = 0; showMsg(e.id === me ? 'You wash up at the lighthouse. The harbour tug towed your boat in.' : 'The harbour tug towed your boat to the jetty.', '', 4); break;
     case 'nope': if (e.id === myId()) { showMsg(e.why, 'HARBOUR SHED', 2.5); tone(180, .05, .25, 'triangle', null, 120); } break;
     case 'coolfull': if (e.id === myId()) showMsg('Cooler full. Sell at the shed.', '', 3); break;
     case 'gear': if (e.id === me) gotGear(e.g); else Snd.coin(); break;
@@ -1667,7 +1669,7 @@ function applyEv(e) {
     case 'sdown': Snd.scream(at(STS.x, STS.y + 2, STS.z, 10)); if (e.by === me) { hTone(70, .35, .2); hTone(52, .3, .3, 'sine', null, .13); } showMsg('The Steward folds over and crawls away below decks. It will be back.', '', 5); break;
     case 'dhit': Snd.splash(at(e.x, 0, e.z, 20)); burst(80, 1, .4, 1, 'lowpass'); hitFx(e.x, (e.y || 0) + 1, e.z, e.h, e.by); if (e.h) Snd.roar(at(e.x, e.y || 0, e.z, 25), .5); break;
     case 'wh': { const p = PL.get(e.id); if (p) { p.pingT = 6; Snd.whistle(at(p.x, p.y + 1.6, p.z, 8)); } break; }
-    case 'bounty': toast('BOUNTY', `${e.n} · +${cashStr(e.c)}`); Snd.coin(); break;
+    case 'bounty': (G.banQ = G.banQ || []).push({h: 'BOUNTY', t: e.n, c: e.c, s: 'bounty'}); break;
   }
 }
 
@@ -1683,15 +1685,17 @@ function dropOne(p, k, i) {
 // survival rules: bleed-out, suits, the harbour tug, the key card, fish prices
 function bleedFor(p) { return alive().some(q => q !== p) ? D.bleed : PL.size > 1 ? 6 : 3.5; }
 const suitOf = p => p === P ? ((P.own && P.own.suit) || 0) : (p.su || 0);
-const money = n => '$' + Math.round(n).toLocaleString('en-US');
+const money = cashStr;
 const freeAll = () => isHost() ? ALL : !!G.hostAll;
 const coolerVal = a => a.reduce((s, c) => s + (Array.isArray(c) ? c[1] : (FISH[c] ? FISH[c].v : 0)), 0);
 function fishVal(k, x, z) { const dh = Math.hypot(x - HOME.x, z - HOME.z); return Math.max(1, Math.round(FISH[k].v * clamp(.45 + dh / 1600, .45, 1.2))); }
-function canTug() { return !B.driver && B.sink <= 0 && Math.hypot(B.x - JETTY.x, B.z - JETTY.z) > 120 + BG.L * .5 && ![...PL.values()].some(q => q.ready && !q.dead && (q.ob || q.seat)); }
+function tugWhy() { const pl = [...PL.values()].filter(q => q.ready && !q.dead);
+  return B.sink > 0 ? 'The boat is going down.' : Math.hypot(B.x - JETTY.x, B.z - JETTY.z) <= 120 + BG.L * .5 ? 'The boat is already by the jetty.' : B.driver || pl.some(q => q.ob || q.seat) ? 'Someone is aboard or at the wheel.' : pl.some(q => Math.hypot(q.x - B.x, q.z - B.z) < 60) ? 'Someone is still out by the boat.' : ''; }
+function canTug() { return !tugWhy(); }
 function towIfStranded(p) {
   if (B.sink > 0 || B.driver || Math.hypot(B.x - JETTY.x, B.z - JETTY.z) <= 60 + BG.L * .5) return;
   if ([...PL.values()].some(q => q !== p && q.ready && !q.down && !q.dead && (q.ob || q.seat || Math.hypot(q.x - B.x, q.z - B.z) < 60 || Math.hypot(q.x - HOME.x, q.z - HOME.z) > 150))) return;
-  resetBoat(false); emit({k: 'tug'});
+  resetBoat(false); emit({k: 'tug', id: p.id});
 }
 const BOTTLE_NOTES = [
   "STATION NINE, LAST SHIFT\nHead office calls the scratching in the pipes 'operational noise'. Overtime approved.",
@@ -1761,7 +1765,7 @@ function hostStep(dt) {
   G.tod = (G.tod + dt / TOD_LEN) % 1; const ph = G.tod < .14 ? 0 : G.tod < .24 ? 1 : G.tod < .34 ? 2 : G.tod < .8 ? 3 : G.tod < .9 ? 4 : 0;
   if (ph !== G.todPh) { if (G.todPh >= 0 && ph) emit({k: 'tod', p: ph}); G.todPh = ph; }
   // the thing in the deep
-  const homeD = Math.hypot(B.x - HOME.x, B.z - HOME.z), nearLand = OBST.some(o => o.c && o.r > 5 && Math.hypot(B.x - o.x, B.z - o.z) < o.r + 70) || Math.hypot(B.x, B.z) < 80;
+  const homeD = Math.hypot(B.x - HOME.x, B.z - HOME.z), nearLand = OBST.some(o => o.c && o.r > 5 && Math.hypot(B.x - o.x, B.z - o.z) < o.r + 70) || Math.hypot(B.x, B.z) < 80 || Math.hypot(B.x - CRZ.x, B.z - CRZ.z) < 140;
   G.deepT = (G.deepT ?? 40) - dt;
   // it only comes for a crew that is up on (or right beside) the boat: divers down below are the gulpers' business
   const crewUp = alive().some(p => p.ob || (Math.hypot(p.x - B.x, p.z - B.z) < 40 && !(p.sw && (p.dv || 0) > 3)));
@@ -1811,7 +1815,7 @@ function hostAct(id, m) {
   else if (m.a === 'fuel') { const i = p.sack.indexOf('fuel'); if (i >= 0 && nearBoat(BSPOT.fuel, 3)) { B.fuel = Math.min(tankMax(), B.fuel + 45 * HC().fuel); p.sack.splice(i, 1); sackSet(p); emit({k: 'boatuse', what: 'fuel'}); } }
   else if (m.a === 'patch') { const i = p.sack.indexOf('patch'), j = B.hold.indexOf('patch'); if ((i >= 0 || j >= 0) && nearBoat(BSPOT.patch, 3)) { B.hull = Math.min(hullMax(), B.hull + 35 * HC().hp); if (i >= 0) { p.sack.splice(i, 1); sackSet(p); } else B.hold.splice(j, 1); emit({k: 'boatuse', what: 'patch'}); } }
   else if (m.a === 'drop') dropCarry(p, false);
-  else if (m.a === 'tug') { if (canTug() && G.shed && Math.hypot(p.x - G.shed.shop[0], p.z - G.shed.shop[2]) < 25) { resetBoat(false); emit({k: 'tug'}); } else emit({k: 'nope', id, why: 'Someone is aboard or at the wheel.'}); }
+  else if (m.a === 'tug') { const why = !G.shed || Math.hypot(p.x - G.shed.shop[0], p.z - G.shed.shop[2]) >= 25 ? 'Call the tug from the harbour shed.' : tugWhy(); if (!why) { resetBoat(false); emit({k: 'tug'}); } else emit({k: 'nope', id, why}); }
   else if (m.a === 'chips') { const now = performance.now() / 1000; if ((p.buyT || 0) > now) return; p.buyT = now + .4; const v = Math.round(+m.v || 0); if (v > 0 && G.cash >= v) { G.cash -= v; p.credIn = (p.credIn || 0) + v; emit({k: 'chips', id, v}); } else if (v > 0) emit({k: 'chips', id, v: 0}); else if (v < 0) { const out = p === P ? -v : Math.min(-v, p.credIn || 0); if (p !== P) p.credIn -= out; G.cash += out; emit({k: 'chips', id, out}); } save(); }
   else if (m.a === 'radio') emit({k: 'radio', on: m.on});
   else if (m.a === 'fw') emit({k: 'fw', x: m.x, y: m.y, z: m.z, vx: m.vx, vy: m.vy, vz: m.vz, c: m.c});
@@ -1843,7 +1847,7 @@ function hostAct(id, m) {
 function act(m) { if (isHost()) hostAct(myId(), m); else Net.send(Object.assign({t: 'act', px: +P.x.toFixed(2), pz: +P.z.toFixed(2), ob: P.ob}, m)); }
 
 // ---------------- save (host)
-function save() { if (!isHost() || (TEST && !G.saveTest) || G.guestGame) return; try { localStorage.setItem('s9-save2', JSON.stringify({cash: G.cash, earned: G.earned, up: B.up, disc: G.disc, goals: G.goals, cruise: G.cruise || 0, hold: B.sink > 0 ? [] : B.hold.slice(), dg: DIGS.map(d => d.rev && !d.dug ? 1 : 0), sk: P ? P.sack.slice() : [], co: P && P.cooler ? P.cooler.slice() : [], fl: P ? P.flares : 2, stat: G.stat || null, bn: G.bn ?? -1})); } catch (e) {} }
+function save() { if (!isHost() || (TEST && !G.saveTest) || G.guestGame) return; try { localStorage.setItem('s9-save2', JSON.stringify({cash: G.cash, earned: G.earned, up: B.up, disc: G.disc, goals: G.goals, cruise: G.cruise || 0, hold: B.sink > 0 ? [] : B.hold.slice(), dg: DIGS.map(d => (d.rev ? 1 : 0) + (d.dug ? 2 : 0)), bb: G.bbOut ? 1 : 0, sk: P ? P.sack.slice() : [], co: P && P.cooler ? P.cooler.slice() : [], fl: P ? P.flares : 2, stat: G.stat || null, bn: G.bn ?? -1})); } catch (e) {} }
 function loadSave() { try { return JSON.parse(localStorage.getItem('s9-save2')) || null; } catch (e) { return null; } }
 addEventListener('pagehide', () => { if (G.on) save(); });
 
@@ -1903,7 +1907,7 @@ function throwFlare() {
 }
 function stepFlares(dt) {
   // a held flare burns for 30 s, then the next one is struck
-  if (alivePlay() && P.eq === 5 && P.flares > 0 && P.hd < 0) { if (!(P.burn > 0)) P.burn = 30; P.burn -= dt; if (P.burn <= 0) { P.flares--; P.burn = 0; Snd.flare(null); if (P.flares <= 0) { P.eq = 0; showMsg('The flare sputters out.', '', 2); } } }
+  if (alivePlay() && P.eq === 5 && P.flares > 0 && P.hd < 0 && !P.seat) { if (!(P.burn > 0)) P.burn = 30; P.burn -= dt; if (P.burn <= 0) { P.flares--; P.burn = 0; Snd.flare(null); if (P.flares <= 0) { P.eq = 0; showMsg('The flare sputters out.', '', 2); } } }
   for (let i = 0; i < G.flares.length; i++) {
     const f = G.flares[i];
     if (!f.rest) { f.vy -= 9.8 * dt; f.x += f.vx * dt; f.z += f.vz * dt; f.y += f.vy * dt; const fl = floorAt(f.x, f.z, f.y + .3); const gy = fl && fl.y > -.1 ? fl.y + .03 : -.1;
@@ -2020,7 +2024,7 @@ function stepInteract(dt) {
     if (d < bs) { bs = d; best = it; }
   }
   if (!best) { off(); return; }
-  const doable = best.hold || (best.go && !best.info) || best.hide || best.kind === 'helm' || best.kind === 'ladder' || (best.kind === 'hold' && (P.sack.length || B.hold.length)) || (best.kind === 'fuelcap' && P.sack.includes('fuel')) || (best.kind === 'patchbox' && (P.sack.includes('patch') || B.hold.includes('patch')));
+  const st = P.sack.some(k => k !== 'key'), doable = best.hold || (best.go && !best.info) || best.hide || best.kind === 'helm' || best.kind === 'ladder' || (best.kind === 'hold' && (st || B.hold.length)) || (best.kind === 'fuelcap' && P.sack.includes('fuel')) || (best.kind === 'patchbox' && (P.sack.includes('patch') || B.hold.includes('patch')));
   let html, op = 1; const lab = best.label;
   if (P.seat && best.kind === 'helm') {
     if (G.helmSeen == null) { try { G.helmSeen = localStorage.getItem('s9-helm') ? 1 : 0; } catch (e) { G.helmSeen = 0; } }
@@ -2034,7 +2038,7 @@ function stepInteract(dt) {
     if (best.hide) toggleHide(best.hide);
     else if (best.kind === 'helm') act({a: P.seat ? 'unhelm' : 'helm'});
     else if (best.kind === 'ladder') startClimb(best.src);
-    else if (best.kind === 'hold') { if (P.sack.length) act({a: 'stow'}); else if (B.hold.length) act({a: 'unstow'}); }
+    else if (best.kind === 'hold') { if (st) act({a: 'stow'}); else if (B.hold.length) act({a: 'unstow'}); }
     else if (best.kind === 'fuelcap') act({a: 'fuel'});
     else if (best.kind === 'patchbox') act({a: 'patch'});
     else if (best.go) best.go();
@@ -2070,15 +2074,15 @@ function drawShop() {
   const rows = [];
   if (tab === 'supplies') {
     if (canTug()) rows.push(row('Call the tug', 'Tows your boat back to the jetty', bt('data-tug="1"', 'Free', 0)));
-    rows.push(row('Three flares', `Red light keeps things away · carrying ${P.flares}`, bt('data-k="flares"', money(30), 30, P.flares >= 6 ? 'Full' : '')));
+    rows.push(row(P.flares >= 6 ? 'Flares' : `Flares +${Math.min(3, 6 - P.flares)}`, `Red light keeps things away · carrying ${P.flares}`, bt('data-k="flares"', money(30), 30, P.flares >= 6 ? 'Full' : '')));
     rows.push(row('Batteries', 'Recharge your flashlight', bt('data-k="battery"', money(20), 20)));
   } else if (tab === 'boats') {
     const next2 = HULLS.map((H, i) => i).filter(i => !own.includes(i) && !HULLS[i].cruise).sort((a, b) => HULLS[a].cost - HULLS[b].cost).slice(0, 2);
     const block = H => sackUsed(B.hold) > Math.round(H.hold * hm) * 2 ? 'Unload the hold first' : B.driver ? 'Someone is at the wheel' : !docked ? 'Dock at the jetty' : ''; let hid = 0;
-    HULLS.forEach((H, i) => { const sz = `${H.L} m · hold ${H.hold}`, c = hullCost(H), mine = own.includes(i) || (H.cruise && G.cruise);
-      if (i === cls) rows.push(row(H.n, `${H.d} · ${sz}`, '<span class="bt"><button disabled>Aboard</button></span>', ' cur'));
+    HULLS.forEach((H, i) => { const sz = `${H.L} m · hold ${H.hold}`, sd = H.d.includes(`${H.L} m`) ? `hold ${H.hold}` : sz, c = hullCost(H), mine = own.includes(i) || (H.cruise && G.cruise);
+      if (i === cls) rows.push(row(H.n, `${H.d} · ${sd}`, '<span class="bt"><button disabled>Aboard</button></span>', ' cur'));
       else if (H.cruise ? !G.cruise : !mine && !next2.includes(i) && !G.shopAll && G.cash < c * .5) { if (!H.cruise) hid++; rows.push(row('???', sz, bt('', H.cruise ? '???' : money(c), c, H.cruise ? 'Unclaimed' : ''), ' q')); }
-      else rows.push(row(H.n, `${H.d} · ${sz}`, bt(`data-h="${i}"`, mine ? 'Switch' : c ? money(c) : 'Free', mine ? 0 : c, block(H)))); });
+      else rows.push(row(H.n, `${H.d} · ${sd}`, bt(`data-h="${i}"`, mine ? 'Switch' : c ? money(c) : 'Free', mine ? 0 : c, block(H)))); });
     if (hid || G.shopAll) rows.push(`<div class="rowb" style="justify-content:flex-end"><button data-all="1">${G.shopAll ? 'Hide unknown ships' : 'Show all ships'}</button></div>`);
   } else if (tab === 'upgrades') {
     for (const [k, U] of Object.entries(UPG)) { const lv = B.up[k] || 0, q = U.cost[lv]; rows.push(row(`${U.n} <span class="pip">${'●'.repeat(lv)}${'○'.repeat(U.cost.length - lv)}</span>`, U.d, q == null ? bt('', '✓', 0, 'Maxed') : bt(`data-k="${k}"`, money(q), q))); }
@@ -2260,7 +2264,7 @@ function updateCamera(dt) {
   else { const s = specTarget(); if (s) { ex = s.rx; ey = s.ry + (s.down ? .5 : 1.6) + (s.ob ? B.heave : 0); ez = s.rz; yaw = s.ryaw; pitch = s.rpitch; } else { ex = HOME.x; ey = 30; ez = HOME.z + 40; yaw = PI; pitch = -.3; } }
   if (own && P.ob) { const o = seaLegs(dt); ex += o[0]; ez += o[1]; roll += o[2]; } else G.sl = null; G.fovAdd = mix(G.fovAdd || 0, own && P.ob ? clamp(Math.abs(B.v) / 12, 0, 1) * 4 : 0, Math.min(1, dt * 1.5));
   if (own && P.seat && HC().eye && BOAT && BOAT.userData.wz) { [ex, ez] = bL2W(0, BOAT.userData.wz[0] - .7); }
-  const sp = own ? Math.hypot(P.vx, P.vz) : 0, bobA = own && P.hd < 0 && !P.seat ? clamp(sp / 6, 0, 1) * .05 : 0, shk = own && P.fear > .5 ? (P.fear - .5) * .006 : 0, tr = Math.min(1, G.shake || 0) ** 2, nz = i => Math.sin(G.t * 13.1 + i * 7) * .5 + Math.sin(G.t * 27.7 + i * 3) * .3 + Math.sin(G.t * 51.3 + i) * .2;
+  const sp = own ? Math.hypot(P.vx, P.vz) : 0, bobA = own && P.hd < 0 && !P.seat ? clamp(sp / 6, 0, 1) * .05 : 0, shk = own && P.fear > .5 ? (P.fear - .5) * .006 : 0, tr = Math.min(1, G.shake || 0), nz = i => Math.sin(G.t * 13.1 + i * 7) * .5 + Math.sin(G.t * 27.7 + i * 3) * .3 + Math.sin(G.t * 51.3 + i) * .2;
   G.shake = Math.max(0, (G.shake || 0) - dt * 1.6);
   for (let i = 0, h = Math.min(dt, .05) / 2; i < 2; i++) { G.lspV = (G.lspV || 0) + (-60 * (G.lspX || 0) - 14 * G.lspV) * h; G.lspX = (G.lspX || 0) + G.lspV * h; }
   const ld = own ? clamp(G.lspX || 0, -.15, .4) : 0, bb = (Math.abs(Math.sin(P.bob || 0)) - 1) * bobA * .8, bs = Math.sin((P.bob || 0) * .5) * bobA;
@@ -2667,7 +2671,7 @@ function stepGulpers(dt) {
 }
 // ---------------- horror helpers: who is lit, how far out the deep circles, positional dread
 // a burning flare makes you visible, though things back off from it up close
-const litP = p => p === P ? (lightOn() || P.eq === 5) : (!!p.l || p.eq === 5);
+const litP = p => p === P ? (lightOn() || (P.eq === 5 && !P.seat)) : (!!p.l || (p.eq === 5 && !p.seat));
 // how far out the deep swims at a bearing: the hull outline (centre to far end) grown by m metres, at least lo
 function levRad(ang, m = 7, lo = 19) {
   const H = HC(), phi = ang - B.yaw, c = Math.abs(Math.cos(phi)), s = Math.abs(Math.sin(phi)), a = H.L * .56, b = H.W / 2;
@@ -3055,7 +3059,7 @@ function hud() {
     G.reshow = 0; if (G.objT > 0 && !G.paused) { G.objT -= dt; if (G.objT <= 0) setS(ob, 'opacity', 0); } }
   G.teamT = (G.teamT || 0) - dt; if (G.teamT <= 0) { G.teamT = .33; const h = PL.size > 1 ? [...PL.values()].map(p => `<div class="${p.dead ? 'dead' : p.down || p.sw ? 'down' : ''}">${p.name}${p.down ? ' · DOWN ' + Math.max(0, p.bleed | 0) + 's' : p.dead ? '' : p.sw ? ' · IN THE WATER' : p.seat ? ' · at the wheel' : p.ob ? ' · aboard' : ''}<i style="background:${hexS(CREW_COL[p.c % 6])}"></i></div>`).join('') : ''; if (h !== G.teamH) { G.teamH = h; $('team').innerHTML = h; } }
   { const solo = PL.size === 1; let st = '';
-    if (P.dead) st = (P.drowned ? 'Pulled under' : 'You are dead') + '<br><small>You will wash up at the lighthouse.</small>';
+    if (P.dead) st = (P.drowned === 1 ? 'Pulled under' : 'You are dead') + '<br><small>You will wash up at the lighthouse.</small>';
     else if (P.down) st = solo ? 'It got you<br><small>You will wash up at the lighthouse.</small>' : `You are down<br><small>Bleeding out · ${Math.max(0, P.bleed | 0)} s. Crawl to your crew.</small>`;
     else if (!P.seat && P.sw && P.deep && !(P.own && P.own.suit)) st = '<small style="color:#ff9a7a">Deep water</small>';
     if (P.seat) { if (!G.paused) G.seatT = (G.seatT ?? 0) + dt; } else G.seatT = 0;
@@ -3063,10 +3067,11 @@ function hud() {
   { const nb = P.ob || P.seat || Math.hypot(B.x - P.x, B.z - P.z) < 30; if (nb !== G.bhOn) { G.bhOn = nb; $('boatHud').style.opacity = nb ? 1 : 0; $('nSpd').parentElement.style.display = nb ? '' : 'none'; } }
   { const k = .5 + .8 * (TOD.night || 0); for (let i = 0; i < FLM.length; i++) { const o = FLM[i]; if (o && o.glow) o.glow.material.opacity = (.35 + .25 * Math.sin(G.wt * 2 + i)) * k; } }
   if (isHost() && G.stat) { if (!(G.paused && Net.role === 'solo')) G.stat.play += dt; for (const p of PL.values()) { const v = (p.sw && p.dv) || 0; if (v > G.stat.maxDv) G.stat.maxDv = v; } }
+  else if (G.stat && P && P.sw) G.stat.maxDv = Math.max(G.stat.maxDv, P.dv || 0);
   // logbook banner: one at a time, 4 s each, held back while a panel is open; a goal also sends up three rockets
   { const bn = $('banner'); if (G.banA && now - G.banA > 4000) { G.banA = 0; G.banE = now; bn.classList.remove('on'); }
     if (!G.banA && G.banQ && G.banQ.length && now - (G.banE || 0) > 700 && !(G.shopOpen || G.casOpen || G.helpOpen || G.noteOpen || G.endOpen)) { const q = G.banQ.shift(); bn.innerHTML = `<small>${q.h}</small>${q.t}${q.c ? `<b>+${cashStr(q.c)}</b>` : ''}`; bn.className = q.s === 'rank' ? 'rank' : ''; void bn.offsetWidth; bn.classList.add('on'); G.banA = now;
-      if (q.s === 'rank') Snd.horn(null); else { (Snd.goal || Snd.discover)(); setTimeout(() => Snd.coin(), 600); if (!(G.uw > .5)) for (let k = 0; k < 3; k++) setTimeout(() => G.on && spawnRocket({x: cam.position.x + (Math.random() - .5) * 24, y: cam.position.y + 3, z: cam.position.z + (Math.random() - .5) * 24, vx: Math.random() < .5 ? -2 : 2, vy: 26, vz: Math.random() < .5 ? -2 : 2, c: Math.floor(Math.random() * 5)}), 200 + k * 380); } } }
+      if (q.s === 'rank') Snd.horn(null); else if (q.s === 'bounty') Snd.coin(); else { (Snd.goal || Snd.discover)(); setTimeout(() => Snd.coin(), 600); if (!(G.uw > .5)) for (let k = 0; k < 3; k++) setTimeout(() => G.on && spawnRocket({x: cam.position.x + (Math.random() - .5) * 24, y: cam.position.y + 3, z: cam.position.z + (Math.random() - .5) * 24, vx: Math.random() < .5 ? -2 : 2, vy: 26, vz: Math.random() < .5 ? -2 : 2, c: Math.floor(Math.random() * 5)}), 200 + k * 380); } } }
   // the step marker: a gold diamond on the thing to do next; a tick for a second once it is done
   { let m = G.mkEl; if (!m || !m.isConnected) { m = G.mkEl = document.createElement('div'); m.id = 'stepMk'; m.innerHTML = '<b>◆</b><small></small>'; $('tags').appendChild(m); }
     const ns = G.nstep || {}, cur = ns.mk && ns.mk.scr ? ns.mk : null;
@@ -3088,7 +3093,7 @@ function hud() {
 // the ending: a slow orbit of the Serenade under fireworks, then the voyage card
 function camFly(dt) {
   const f = G.camFly; if (!f) return; f.t += dt; if (f.t >= f.T) { G.camFly = null; showEnd(f.st); return; }
-  const a = f.a + f.t * .12; cam.position.set(CRZ.x + Math.sin(a) * 85, 28, CRZ.z + Math.cos(a) * 85); cam.lookAt(CRZ.x, 18, CRZ.z); cam.updateMatrixWorld();
+  const a = f.a + f.t * .12; cam.position.set(CRZ.x + Math.sin(a) * 85, 28, CRZ.z + Math.cos(a) * 85); cam.lookAt(CRZ.x, 18, CRZ.z); cam.updateMatrixWorld(); VM.visible = VMF.visible = VMG.visible = VMS.visible = VMR.visible = false;
 }
 function showEnd(st) {
   st = st || {}; const pl = Math.round(st.play || 0), e = st.earned ?? G.earned, esc = s => String(s).replace(/[<>&]/g, '');
@@ -3162,7 +3167,7 @@ const FISH = {
   bottle: {n: 'message in a bottle', v: 0, s: .4, kg: [.5, .6]},
 };
 function pickFish(x, z, rod) {
-  const land = OBST.filter(o => o.c && o.r > 5).reduce((m, o) => Math.min(m, Math.hypot(x - o.x, z - o.z) - o.r), 1e9), deep = land > 150;
+  const land = OBST.filter(o => o.c && o.r > 5).reduce((m, o) => Math.min(m, Math.hypot(x - o.x, z - o.z) - o.r), Math.hypot(x - CRZ.x, z - CRZ.z) - 60), deep = land > 150;
   const wreck = POIS.some(q => (q.wreck || q.rig) && Math.hypot(x - q.x, z - q.z) < 70), storm = G.storm > .5;
   const w = {boot: [0, 8, 4, 2][rod], sard: 30, mack: 22, bass: land < 60 ? 22 : 4, cod: deep ? 18 : 5, eel: wreck ? 20 : 1, tuna: deep && rod >= 2 ? 9 + rod * 2 : 0, angler: (storm || deep) && rod >= 2 ? 3 + rod : 0, squid: deep && rod >= 3 ? 3 : 0, bottle: DIGS.some(d => !d.rev) ? 2 : 0};
   let sum = 0; for (const k in w) sum += w[k]; let r = Math.random() * sum; for (const k in w) { r -= w[k]; if (r <= 0) return k; } return 'sard';
@@ -3308,7 +3313,7 @@ function stepGear(dt) {
       if (G.lmb && Math.random() < dt * 8) Snd.tick();
       if (F.ten >= 100) { F.st = 'idle'; Snd.snap(); showMsg('SNAP! The line broke. Ease off when the needle jumps.', '', 3); }
       else if (F.ten <= 0) { F.ten = 0; F.slack += dt; if (F.slack > 1.6) { F.st = 'idle'; showMsg('Too much slack. It slipped the hook.', '', 2.5); } } else F.slack = 0;
-      if (F.prog >= 100) { F.st = 'idle'; const kg = +(f.kg[0] + Math.random() * (f.kg[1] - f.kg[0])).toFixed(1); act({a: 'fish', f: F.k, kg, rod: P.own.rod}); Snd.discover(); if (F.k !== 'bottle') toast(`${f.n}`, (P.coolerN || 0) >= ([0, 8, 12, 18][P.own.rod] || 8) ? `${kg} kg · cooler full` : `${kg} kg · +${money(fishVal(F.k, P.x, P.z))}`); }
+      if (F.prog >= 100) { F.st = 'idle'; const kg = +(f.kg[0] + Math.random() * (f.kg[1] - f.kg[0])).toFixed(1), full = (P.coolerN || 0) >= ([0, 8, 12, 18][P.own.rod] || 8); act({a: 'fish', f: F.k, kg, rod: P.own.rod}); Snd.discover(); if (F.k !== 'bottle') toast(`${f.n}`, full ? `${kg} kg · cooler full` : `${kg} kg · +${money(fishVal(F.k, P.x, P.z))}`); }
       const k = Math.min(1, F.prog / 100); F.bob.x = mix(F.sx, P.x, k * .9); F.bob.z = mix(F.sz, P.z, k * .9);
       break;
     }
@@ -3410,12 +3415,12 @@ function startGame(seed, crew, sv) {
   B.up = {engine: 0, tank: 0, hull: 0, light: 0, sonar: 0, hold: 0, crane: 0, cls: 0}; B.hold = []; B.dep = B.dtar = 0;
   G.cruise = 0; if (sv) { G.cruise = sv.cruise || 0; G.cash = sv.cash || 0; G.earned = sv.earned || 0; Object.assign(B.up, sv.up || {}); G.disc = (sv.disc || []).slice(); G.goals = (sv.goals || []).slice(); }
   if (!BOAT || BOAT.userData.cls !== (B.up.cls || 0)) buildBoat();
-  if (!Array.isArray(B.up.own)) B.up.own = [...new Set([0, B.up.cls || 0])]; for (const k of ['paints', 'glows']) if (!Array.isArray(B.up[k])) B.up[k] = [...new Set([0, B.up[k.slice(0, -1)] || 0])]; G.bn = -1; if (isHost() && sv) { for (const k of sv.hold || []) if (KINDS.includes(k) && holdFits(k)) B.hold.push(k); (sv.dg || []).forEach((v, i) => { if (v && DIGS[i]) DIGS[i].rev = true; }); G.bn = sv.bn ?? -1; }
-  Object.assign(B, {x: JETTY.x - 2.1 - BG.hw, z: JETTY.z + 3 + Math.max(0, BG.L - 12) * .5, yaw: PI, v: 0, thr: 0, st: 0, driver: null, got: 0, sink: 0, sinkY: 0, dep: 0, dtar: 0}); B.fuel = tankMax(); B.hull = hullMax();
+  if (!Array.isArray(B.up.own)) B.up.own = [...new Set([0, B.up.cls || 0])]; for (const k of ['paints', 'glows']) if (!Array.isArray(B.up[k])) B.up[k] = [...new Set([0, B.up[k.slice(0, -1)] || 0])]; G.bn = -1; if (isHost() && sv) { for (const k of sv.hold || []) if (KINDS.includes(k) && holdFits(k)) B.hold.push(k); (sv.dg || []).forEach((v, i) => { const d = DIGS[i]; if (!d || !v) return; d.rev = true; if (v & 2) d.dug = true; }); G.bbOut = !!sv.bb; G.bn = sv.bn ?? -1; }
+  Object.assign(B, {x: JETTY.x - 2.1 - BG.hw, z: JETTY.z + 3 + Math.max(0, BG.L - 12) * .5, yaw: PI, v: 0, yr: 0, trim: 0, thr: 0, st: 0, driver: null, got: 0, sink: 0, sinkY: 0, dep: 0, dtar: 0}); B.fuel = tankMax(); B.hull = hullMax();
   for (const p of PL.values()) { if (p.av) scene.remove(p.av); if (p.tag) p.tag.remove(); } PL.clear();
   syncCrew(crew);
   [...PL.values()].forEach((p, i) => { p.ob = 1; p.bl = [(i % 2 ? .9 : -.9), BSPOT.hold[1] + (BG.sub ? -1.6 : 1.8) + Math.floor(i / 2) * (BG.sub ? -1 : 1)]; const [x, z] = bL2W(p.bl[0], p.bl[1]); p.x = x; p.z = z; p.y = BDECK.y; p.rx = x; p.ry = p.y; p.rz = z; p.lx = x; p.lz = z; p.yaw = B.yaw; });
-  loadGear(); Object.assign(P, {eq: 1, sack: [], heldF: 0, reload: 0, coolerN: 0, coolerV: 0, ready: true, vx: 0, vz: 0, vy: 0, stam: 1, bat: 1, flares: 2, breath: 1, gasp: 0, bob: 0, stepD: 0, fear: 0, eye: 1.62, l: 1, cr: 0, hd: -1, sw: 0, seat: 0, lastBY: B.yaw, drowned: false, carry: null});
+  loadGear(); Object.assign(P, {eq: 1, sack: [], heldF: 0, reload: 0, coolerN: 0, coolerV: 0, ready: true, vx: 0, vz: 0, vy: 0, stam: 1, bat: 1, flares: 2, breath: 1, gasp: 0, bob: 0, stepD: 0, fear: 0, eye: 1.62, l: 0, cr: 0, hd: -1, sw: 0, seat: 0, lastBY: B.yaw, drowned: false, carry: null});
   if (isHost() && sv) { for (const k of sv.sk || []) if (CARRY.has(k) && sackFits(P, k)) P.sack.push(k); if (P.sack.length) sackSet(P); P.cooler = (sv.co || []).map(e => Array.isArray(e) ? e : FISH[e] ? [e, FISH[e].v] : null).filter(Boolean); P.coolerN = P.cooler.length; P.coolerV = coolerVal(P.cooler); if (sv.fl != null) P.flares = Math.min(6, sv.fl); }
   F.st = 'idle'; placeItems(); G.seedItems = ITEMS.length; applyAll();
   for (let i = 0; i < FLM.length; i++) if (FLM[i]) { scene.remove(FLM[i].m); FLM[i] = null; }
@@ -3529,7 +3534,7 @@ Net.on('_drop', () => showMsg('Connection dropped. Reconnecting…', '', 6));
 Net.on('_back', () => showMsg('Reconnected.', '', 3));
 Net.on('bye', () => { if (Net.role === 'guest') toMenu('The captain ended the voyage.'); });
 Net.on('lobby', m => { $('crew').innerHTML = (m.crew || []).map(p => `<div><i style="background:${hexS(CREW_COL[p.c % 6])}"></i>${String(p.name).replace(/[<>&]/g, '')}</div>`).join(''); $('lmsg').textContent = 'Waiting for the captain to cast off…'; });
-Net.on('start', m => { if (Net.role !== 'guest') return; if (m.v !== GAME_V) { toMenu('The captain runs another version. Both reload the page.'); return; } G.hostAll = !!m.al;
+Net.on('start', m => { if (Net.role !== 'guest') return; if (m.v !== GAME_V) { toMenu('You and the captain have different versions. Reload the page.'); return; } G.hostAll = !!m.al;
   if (G.on && m.late && m.seed === G.seed) { if (m.crew.some(c => c.id === Net.id)) { syncCrew(m.crew); if (P) P.seat = 0; } return; } // back after a reconnect: keep playing
   G.diff = m.diff; startGame(m.seed, m.crew, m.sv); if (m.ex) for (const [kind, x, y, z, text] of m.ex) addItem(kind, {x, y, z}, text ? {text} : {}); G.lastSnapT = performance.now(); G.snapGap = 0; G.pwQuiet = m.late ? 1 : 0; if (m.late) showMsg('You came aboard late.'); });
 Net.on('crew', m => { if (!G.on || Net.role !== 'guest') return; if (!(m.crew || []).some(c => c.id === Net.id)) { if (performance.now() - (Net.helloT || 0) > 2000) { Net.helloT = performance.now(); Net.send({t: 'hello', name: Net.name}); } return; } syncCrew(m.crew); });
@@ -3551,7 +3556,7 @@ Net.on('_idle', () => { if (Net.role !== 'guest' || !G.on || !P) return; const p
 addEventListener('blur', () => Net.emit({t: '_idle'}));
 document.addEventListener('visibilitychange', () => { hiddenStep(document.hidden); if (document.hidden) Net.emit({t: '_idle'}); });
 addEventListener('pagehide', () => { if (Net.role === 'host' && Net.peers.size) Net.send({t: 'bye'}); });
-function saveInfo() { const s = loadSave(); $('saveInfo').textContent = s && (s.disc || []).length > 1 ? `Saved voyage: $${s.cash} cash, ${(s.disc || []).length} places charted, ${(s.goals || []).length}/${GOALS.length} goals.` : ''; }
+function saveInfo() { const s = loadSave(); $('saveInfo').textContent = s && (s.disc || []).length > 1 ? `Saved voyage: ${cashStr(s.cash || 0)} cash, ${(s.disc || []).length} places charted, ${(s.goals || []).length}/${GOALS.length} goals.` : ''; }
 async function refreshRooms() { const L = await Net.rooms(), el = $('rooms'); el.innerHTML = L.length ? '' : '<small style="color:var(--dim)">No open crews right now. Host one and share the code.</small>'; for (const r of L) { const d = document.createElement('div'), full = r.n >= 6; d.textContent = r.name.replace(/^\[?Rig\]? /, '') + (full ? ' · full' : r.n ? ` · ${r.n}/6` : ''); if (full) d.style.cssText = 'opacity:.4;pointer-events:none'; else d.onclick = () => joinRoom(r.code); el.appendChild(d); } }
 function joinRoom(code) {
   code = String(code || '').toUpperCase(); if (!/^[A-Z]{5}$/.test(code)) { $('err').textContent = 'Enter the 5-letter code.'; return; }
