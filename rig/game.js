@@ -1135,7 +1135,13 @@ const FLM = [];
 function spawnFloat(i) {
   for (let k = 0; k < 30; k++) { const a = CR() * TAU, r = 120 + Math.pow(CR(), 1.8) * 2300, x = Math.sin(a) * r, z = -60 + Math.cos(a) * r; if (OBST.some(o => o.c && Math.hypot(x - o.x, z - o.z) < o.r + 12) || nearRig(x, z) || inCruise(x, z)) continue; const roll = CR(); G.floats[i] = [x, z, KINDS.indexOf(roll < .5 ? 'crate' : roll < .72 ? 'scrap' : roll < .87 ? 'fuel' : roll < .91 ? 'patch' : 'bottle')]; return; }
 }
-function floatMesh(i) { const f = G.floats[i]; const kind = f ? KINDS[f[2]] : null; if (FLM[i] && FLM[i].kind === kind) return FLM[i]; if (FLM[i]) scene.remove(FLM[i].m); if (!kind) { FLM[i] = null; return null; } FLM[i] = {kind, m: itemMesh(kind)}; return FLM[i]; }
+function floatMesh(i) { const f = G.floats[i]; const kind = f ? KINDS[f[2]] : null; if (FLM[i] && FLM[i].kind === kind) return FLM[i]; if (FLM[i]) scene.remove(FLM[i].m); if (!kind) { FLM[i] = null; return null; }
+  // a marker pole with an orange pennant and a soft glow, so floating cargo can be found by eye
+  const m = itemMesh(kind), Q = floatMesh.Q || (floatMesh.Q = (() => { const fg = new THREE.BufferGeometry(); fg.setAttribute('position', new THREE.Float32BufferAttribute([0, 1.84, 0, 0, 1.54, 0, .44, 1.69, 0], 3)); fg.computeVertexNormals();
+    return {pole: new THREE.Mesh(new THREE.CylinderGeometry(.018, .024, 1.6, 5), new THREE.MeshStandardMaterial({color: 0xd8d0c0, roughness: .6})), flag: new THREE.Mesh(fg, new THREE.MeshStandardMaterial({color: 0xff6a1a, emissive: 0x501800, roughness: .7, side: THREE.DoubleSide}))}; })());
+  if (kind !== 'bottle') { const pl = Q.pole.clone(); pl.position.y = 1.05; m.add(pl); m.add(Q.flag.clone()); }
+  const gl = new THREE.Sprite(new THREE.SpriteMaterial({map: TX.glow, color: 0xffb060, transparent: true, opacity: .4, depthWrite: false, blending: THREE.AdditiveBlending, fog: false})); gl.scale.setScalar(1.6); gl.position.y = kind === 'bottle' ? .35 : 1.72; m.add(gl);
+  FLM[i] = {kind, m, glow: gl}; return FLM[i]; }
 
 // ---------------- audio
 const A = {ctx: null, on: false};
@@ -1211,14 +1217,62 @@ const Snd = {
 };
 function showMsg(txt, who, dur = 4) { $('msg').innerHTML = (who ? `<b>${who}</b>` : '') + txt; $('msg').style.opacity = 1; G.msgT = dur; }
 function toast(t, sub) { const e = $('toast'); e.innerHTML = t + (sub ? `<small>${sub}</small>` : ''); e.style.opacity = 1; clearTimeout(G.toastT); G.toastT = setTimeout(() => e.style.opacity = 0, 3500); }
-const GOALS = ['Find every place on the sea', "Recover Station Nine's black box", 'Dig up a buried treasure chest', 'Earn $1500 from salvage', 'Fully upgrade the engine', 'Land a giant squid', 'Put down the thing on the rig', 'Start the engines of the MS Serenade', 'Dive deeper than 100 m'];
-function hint() {
-  if (!P) return '';
-  if (G.disc.length <= 1) return 'Take the wheel (E at the front of the wheelhouse) and explore. Haul floating cargo aboard and stow it in the hold.';
-  if (B.hull < 30) return 'The hull is badly damaged. Patch it with a kit or limp home to the lighthouse.';
-  if (holdValue() >= 150) return `The hold is worth $${holdValue()}. Sell it at the harbour shed by the lighthouse.`;
-  const nxt = GOALS.findIndex((g, i) => !G.goals.includes(i)); return nxt >= 0 ? 'Goal: ' + GOALS[nxt] + '. Tab for the chart.' : 'Every goal done. The sea is yours.';
+const GOALS = ['Find every place on the sea', "Recover Station Nine's black box", 'Dig up a buried treasure chest', 'Earn $1500 from salvage', 'Fully upgrade the engine', 'Land a giant squid', 'Put down the thing on the rig', 'Start the engines of the MS Serenade', 'Dive deeper than 100 m', 'Sell your first haul', 'Buy something at the shed', 'Chart three places'];
+function hint() { G.nstep = nextStep(); G.navMark = G.nstep.mk || null; return G.nstep.t; }
+// ---------------- guide: one short step at a time, goals that pay, ranks, money you can feel
+const cashStr = n => '$' + Math.round(n).toLocaleString('en-US');
+const GOAL_ORDER = [9, 10, 11, 3, 2, 1, 4, 6, 5, 8, 7, 0];
+const GOAL_CASH = [2500, 500, 300, 250, 300, 600, 600, 3000, 800, 100, 100, 150];
+const GOAL_HINT = [() => `Chart every place (${G.disc.length}/${POIS.length})`, "Recover the rig's black box", 'Find a bottle map, dig the X', () => `Earn $1,500 (${cashStr(G.earned)} so far)`, 'Max out the engine', 'Land a giant squid on the deep rod', 'Put down the thing on the rig', "Find the Serenade's key card", 'Dive below 100 m', GOALS[9], GOALS[10], GOALS[11]];
+const TITLES = [[0, 'Deckhand'], [1000, 'Bosun'], [3500, 'First Mate'], [9000, 'Skipper'], [20000, 'Captain'], [45000, 'Commodore']];
+const titleOf = e => { let i = 0; while (i + 1 < TITLES.length && (e || 0) >= TITLES[i + 1][0]) i++; return i; };
+// the next thing to do: {t: text, mk: {x, y, z, scr: 1} screen marker and/or {x, z, lab} compass marker}
+function nextStep() {
+  if (!P) return {t: ''};
+  if (P.seat || G.earned > 0) G.helmDone = true;
+  const dP = (x, z) => Math.hypot(x - P.x, z - P.z), hv = B.heave || 0, sv = sackVal(P.sack), hold = holdValue(), sh = G.shed && G.shed.shop;
+  const shed = t => !sh ? {t} : {t, mk: Object.assign({x: sh[0], z: sh[2], lab: 'SHED'}, dP(sh[0], sh[2]) < 40 ? {y: sh[1] + .9, scr: 1} : {})};
+  if (!G.helmDone) {
+    if (P.ob) { const h = INTER.find(i => i.kind === 'helm'); if (h) { const w = interWorld(h); return {t: 'Take the wheel', mk: {x: w.x, y: w.y + 1 + hv, z: w.z, scr: 1}}; } }
+    else if (dP(B.x, B.z) > 30) return {t: 'Get back to your boat', mk: {x: B.x, z: B.z, lab: 'BOAT'}};
+  }
+  if (B.hull < 30) return {t: 'Patch the hull or head home'};
+  if (G.earned === 0 && !(P.sack || []).length && !B.hold.length) {
+    let f = null, bd = 600; for (const q of G.floats) if (q && KINDS[q[2]] !== 'bottle') { const d = dP(q[0], q[1]); if (d < bd) { bd = d; f = q; } }
+    return {t: 'Haul floating cargo aboard', mk: f ? Object.assign({x: f[0], z: f[1], lab: 'CARGO'}, bd < 60 ? {y: waveH(f[0], f[1], G.wt) + 1.1, scr: 1} : {}) : null};
+  }
+  if (sv > 0 && P.ob) { const h = INTER.find(i => i.kind === 'hold'), w = h && interWorld(h); return {t: 'Stow it in the hold', mk: w ? {x: w.x, y: w.y + .7 + hv, z: w.z, scr: 1} : null}; }
+  if ((hold > 0 && G.earned === 0) || hold >= 150 || (sv > 0 && !P.ob && Math.hypot(P.x - HOME.x, P.z - HOME.z) < 200)) return shed('Sell at the harbour shed');
+  if (G.earned > 0 && !G.goals.includes(10) && G.cash >= 30) return shed('Spend it at the shed');
+  const gi = GOAL_ORDER.find(i => !G.goals.includes(i)); if (gi == null) return {t: 'The sea is yours.'};
+  const h = GOAL_HINT[gi]; let mk = null;
+  if (gi === 1 || gi === 6) { const q = POIS.find(q => q.rig); if (q) mk = {x: q.x, z: q.z, lab: 'RIG'}; }
+  else if (gi === 2) { let bd = 1e9; for (const d of DIGS) if (d.rev && !d.dug && dP(d.x, d.z) < bd) { bd = dP(d.x, d.z); mk = {x: d.x, z: d.z, lab: 'X'}; } }
+  else if (gi === 7) { const i = POIS.findIndex(q => q.cruise); if (i >= 0 && G.disc.includes(i)) mk = {x: POIS[i].x, z: POIS[i].z, lab: 'SERENADE'}; }
+  return {t: typeof h === 'function' ? h() : h, mk};
 }
+// coins: a drawer thunk, two bells and a run of ticks; a crate thump; a fanfare for the logbook
+Snd.sale = v => { burst(300, 1, .3, .15, 'lowpass'); setTimeout(() => { tone(1568, .05, .9); tone(2349, .035, 1.2); }, 50); const n = clamp(Math.round((v || 0) / 40), 3, 16); for (let i = 0; i < n; i++) setTimeout(() => { tone(2900 + Math.random() * 700, .022, .06, 'triangle'); burst(5200, 5, .02, .025); }, 160 + i * 40); };
+Snd.stow = () => { burst(160, 1, .4, .22, 'lowpass'); setTimeout(() => burst(800, 3, .14, .06), 25); };
+Snd.goal = () => { if (!A.on) return; [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => setTimeout(() => tone(f, .07, .5, 'triangle'), i * 110));
+  setTimeout(() => { if (!A.on) return; const c = A.ctx, t = c.currentTime, g = c.createGain(); g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(.022, t + .18); g.gain.setValueAtTime(.022, t + 1.1); g.gain.linearRampToValueAtTime(0, t + 1.6); g.connect(A.out);
+    for (const f of [261.63, 392, 523.25, 659.25]) { const o = c.createOscillator(); o.type = f < 300 ? 'triangle' : 'sine'; o.frequency.value = f; o.detune.value = (Math.random() - .5) * 8; o.connect(g); o.start(t); o.stop(t + 1.7); }
+    burst(7000, .6, .05, 1.3, 'highpass', null, 1.6); }, 400); };
+// DOM writes only when something changed (values cached on the element)
+function setT(id, v) { const e = typeof id === 'string' ? setT.c[id] || (setT.c[id] = $(id)) : id; if (e && e._t !== v) { e._t = v; e.textContent = v; } }
+setT.c = {};
+function setS(id, p, v) { const e = typeof id === 'string' ? setT.c[id] || (setT.c[id] = $(id)) : id, k = '_s' + p; if (e && e[k] !== v) { e[k] = v; e.style[p] = v; } }
+// monoline icons for the hotbar, sack and cooler
+const ICON = (() => { const s = d => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`; return {
+  hand: s('<path d="M8 13V6.5a1.5 1.5 0 0 1 3 0V12M11 11.5V4.8a1.5 1.5 0 0 1 3 0V12M14 12V6.2a1.5 1.5 0 0 1 3 0V13M17 13V9a1.5 1.5 0 0 1 3 0v5.5c0 3.6-2.8 6.5-6.5 6.5h-1.3c-2.2 0-3.6-.9-4.9-2.6L4 14.6a1.6 1.6 0 0 1 2.4-2.1L8 14"/>'),
+  light: s('<path d="M3 10h8v4H3zM6 10V8.8M11 10l4-2.5v9L11 14M18 8.5l2.5-1.5M18.5 12H22M18 15.5l2.5 1.5"/>'),
+  rod: s('<path d="M3 21L18 4c1.6 3 2 6.2 2 10v2.5a1.5 1.5 0 0 1-3 0"/><circle cx="7" cy="16.5" r="1.8"/>'),
+  pistol: s('<path d="M3 7h17v4.5H9.5L8.5 13l-1 7H4l1.2-6.5L3 12zM9.5 11.5c0 2 1 2.5 3 2.5"/>'),
+  shotgun: s('<path d="M2 9.5h16.5l3.5-1v3H11l-1.5 2H7l-2.5 5H2l2-5.5H2zM11.5 11.5v2.5h5v-2.5"/>'),
+  flare: s('<path d="M8 21l5.5-9.5M10.6 10.4l4.3 2.5M14.8 8.8c-.9-1.6.4-3 .1-5 1.9 1 3.4 3 2.5 5.2a2.4 2.4 0 0 1-2.6 1.2zM20 4.5l1-1M20.5 8.3h1.3"/>'),
+  rocket: s('<path d="M12 2.5v3.5M12 14.5V18M4.5 10.2H8M16 10.2h3.5M6.6 4.8l2.4 2.4M15 13.2l2.4 2.4M6.6 15.6L9 13.2M15 7.2l2.4-2.4M12 18c-.6 1.2-.2 2.4.6 3.5"/><circle cx="12" cy="10.2" r="1.4"/>'),
+  sack: s('<path d="M9 6.5L7.5 3.5h9L15 6.5M8.5 6.5h7M9 6.5C5.5 9 4 12.5 4 15.5 4 19 7.5 21 12 21s8-2 8-5.5c0-3-1.5-6.5-5-9"/>'),
+  fish: s('<path d="M2.5 12c3-4.8 9.2-6 14-1.8L21 7v10l-4.5-3.2C11.7 18 5.5 16.8 2.5 12z"/><circle cx="7.5" cy="11" r=".9"/>')}; })();
 
 // ---------------- rig creature senses + brain (host)
 function eyeDir(p) { return [-Math.sin(p.yaw) * Math.cos(p.pitch), Math.sin(p.pitch), -Math.cos(p.yaw) * Math.cos(p.pitch)]; }
@@ -1333,7 +1387,7 @@ function finish(dt) {
 }
 
 // ---------------- events
-function emit(e) { applyEv(e); if (Net.role === 'host') G.evq.push(e); }
+function emit(e) { if (isHost()) goalHook(e, 0); applyEv(e); if (Net.role === 'host') G.evq.push(e); if (isHost()) goalHook(e, 1); }
 function applyEv(e) {
   const me = myId();
   switch (e.k) {
@@ -1352,17 +1406,18 @@ function applyEv(e) {
     case 'sack': { const p = PL.get(e.id), q = e.s.map(i => KINDS[i]); if (p) { const more = q.length > (p.sack || []).length; p.sack = q; p.carry = q[q.length - 1] || null;
       if (e.id === me) { P.sack = q; P.carry = p.carry; if (more) { const k = q[q.length - 1]; Snd.pickup(); showMsg(`+ ${NAMES[k]}${VALUE[k] ? ' · $' + VALUE[k] : ''}`, '', 1.6); } } } break; }
     case 'item': if (!isHost() && !ITEMS[e.i]) { while (ITEMS.length < e.i) { const d = addItem('note', {x: 0, y: -99, z: 0}); d.taken = true; d.mesh.visible = false; } addItem(e.kind, {x: e.x, y: e.y, z: e.z}); } break;
-    case 'stow': Snd.coin(); if (e.id === me) showMsg(`Stowed. The hold is worth $${e.v}.`); break;
-    case 'sold': Snd.coin(); showMsg(`Sold salvage for $${e.v}.`, 'HARBOUR SHED', 3); break;
-    case 'bought': Snd.coin(); showMsg(`${e.n} upgraded.`, 'HARBOUR SHED', 3); break;
+    case 'stow': (Snd.stow || Snd.coin)(); if (e.id === me) showMsg(`Stowed · hold ${cashStr(e.v || 0)}`, '', 2); break;
+    case 'sold': { (Snd.sale || Snd.coin)(e.v); const N = {fuel: 'drum', blackbox: 'black box', gold: 'gold bar', key: 'key card'}, r = e.c ? Object.entries(e.c).filter(q => q[1] > 0).map(([k, n]) => { const w = N[k] || (k === 'fish' ? 'fish' : NAMES[k] || k).replace(/^(cargo|ghostly|treasure|creature|black) /, ''); return n + ' ' + (n > 1 && !/fish|scrap/.test(w) ? w + (/x$/.test(w) ? 'es' : 's') : w); }).join(' · ') : ''; showMsg(r || 'Sold at the harbour shed', '+' + cashStr(e.v || 0), 3.5); break; }
+    case 'bought': Snd.coin(); if (e.hull != null) { toast('NEW SHIP', e.n); G.cine = 3; Snd.shipHorn && Snd.shipHorn(e.hull, null); } else showMsg(`${e.n} ✓`, '', 2); break;
     case 'boatuse': Snd.pickup(); showMsg(e.what === 'fuel' ? 'Fuel poured into the tank.' : 'Hull patched.'); break;
     case 'bottle': { Snd.pickup(); const d = DIGS[e.i]; if (d) { d.rev = true; showMsg(`A map in a bottle! An X is marked on ${d.isle}. It is on your compass now.`, '', 6); } else if (BOTTLE_NOTES[e.n]) showMsg(BOTTLE_NOTES[e.n].replace('\n', '<br>'), 'A NOTE IN A BOTTLE', 7); else showMsg('A bottle with a note inside: "Whoever reads this: the shallows are safe."'); break; }
     case 'dug': { const d = DIGS[e.i]; d.dug = true; Snd.dig(); showMsg(e.g > 1 ? 'Treasure! A chest, gold bars and a black pearl.' : e.g ? 'Treasure! A chest and a gold bar.' : 'Treasure! A chest was buried here.', '', 4); break; }
     case 'valve': { const v = VALVES[e.i]; v.open = true; Snd.valve(at(v.x, v.y + 1, v.z, 8)); showMsg(`The ${v.name} is open (${VALVES.filter(q => q.open).length} of 2).`); break; }
     case 'power': G.power = true; MAT.bulb.emissiveIntensity = 2.5; MAT.screen.emissiveIntensity = 1; if (!e.quiet) { Snd.power(); showMsg('The generator coughs and catches. Floodlights flare across the rig. An alarm starts wailing.', '', 6); G.alarmT = 22; } break;
     case 'bb': showMsg('The flight recorder ejects with a clunk. A black box, worth a fortune to the right people.', '', 5); break;
-    case 'disc': if (!G.disc.includes(e.i)) G.disc.push(e.i); Snd.discover(); toast(POIS[e.i].n, 'Discovered'); break;
-    case 'goal': if (!G.goals.includes(e.i)) G.goals.push(e.i); Snd.discover(); toast('Goal complete', GOALS[e.i]); break;
+    case 'disc': if (!G.disc.includes(e.i)) G.disc.push(e.i); Snd.discover(); toast(POIS[e.i].n, e.c ? `Charted · +${cashStr(e.c)}` : 'Discovered'); break;
+    case 'goal': if (!G.goals.includes(e.i)) G.goals.push(e.i); (G.banQ = G.banQ || []).push({h: 'LOGBOOK', t: GOALS[e.i], c: e.c, s: 'goal'}); break;
+    case 'rank': G.rankI = Math.max(G.rankI || 0, e.i); (G.banQ = G.banQ || []).push({h: 'NEW RANK', t: (TITLES[e.i] || TITLES[0])[1], s: 'rank'}); break;
     case 'helm': { const p = PL.get(e.id); for (const q of PL.values()) q.seat = 0; if (p) p.seat = e.on ? 1 : 0; if (e.id === me) P.seat = e.on ? 1 : 0; B.driver = e.on ? e.id : null; break; }
     case 'bump': G.shake = Math.max(G.shake || 0, e.s); burst(120, 1, .6 * e.s, .6, 'lowpass'); break;
     case 'circle': Snd.deep(); showMsg('Something huge is circling the boat. Shoot it when it rears up, or throw a flare into the water!', '', 5); if (LEV.on && !G.maw) LEV.hide(); G.spines = {t: 0, a: e.a, L: e.L || 9, circle: 1}; break;
@@ -1390,7 +1445,10 @@ function applyEv(e) {
     case 'radio': G.radioOn = !!e.on; break;
     case 'sunkp': { const q = SUNK[e.i]; if (q) q.got = true; break; }
     case 'bite': { const p = PL.get(e.id); if (e.id === me) { P.air = Math.max(0, (P.air ?? 1) - .45); G.shake = 1.6; $('flash').style.opacity = .6; setTimeout(() => $('flash').style.opacity = 0, 250); Snd.scream(); Snd.bubbles(); showMsg('Something tore at you in the dark. Your air hose is leaking. Get up, or burn a flare (6).', '', 4); } else if (p) Snd.hurt(at(p.rx, p.ry, p.rz, 8)); break; }
-    case 'claim': Snd.horn(at(CRZ.x, 20, CRZ.z, 200)); Snd.power(); showMsg('Deep in the hull the engines cough and turn over. The MS Serenade is yours: switch to her at the harbour shed. The Steward is still aboard.', 'SERENADE', 8); G.cruise = 1; break;
+    case 'claim': Snd.horn(at(CRZ.x, 20, CRZ.z, 200)); Snd.power(); showMsg('She is yours. Switch to her at the shed.', 'SERENADE', 7); G.cruise = 1;
+      G.cine = 14; G.camFly = {t: 0, T: 12, a: Math.random() * 6.28, st: e.st || {}}; setTimeout(() => G.on && Snd.horn(at(CRZ.x, 20, CRZ.z, 200)), 2500);
+      if (isHost() && STS.state !== 'dead' && STS.state !== 'gone') { STS.state = 'flee'; STS.flee = 20; const n = CN.ok && CN.ok.length ? CN[CN.ok[Math.floor(Math.random() * CN.ok.length)]] : null; if (n) stwGo(n.x, n.y, n.z); }
+      for (let k = 0; k < 12; k++) setTimeout(() => G.on && spawnRocket({x: CRZ.x + (Math.random() - .5) * 8, y: 40, z: CRZ.z + (Math.random() - .5) * 16, vx: (Math.random() - .5) * 7, vy: 20 + Math.random() * 8, vz: (Math.random() - .5) * 7, c: Math.floor(Math.random() * 6)}), 300 + k * 500 + Math.random() * 250); break;
     case 'sstep': { const d = Math.hypot(cam.position.x - STS.x, cam.position.z - STS.z) + Math.abs(cam.position.y - STS.y); if (d < 45) Snd.sStep(at(STS.x, STS.y, STS.z, 4), clamp(1.3 - d / 45, .1, 1)); break; }
     case 'shit': hitFx(e.x, e.y, e.z, e.head); if (Math.random() < .5) Snd.shriek(at(STS.x, STS.y + 2.5, STS.z, 6)); break;
     case 'sdown': Snd.scream(at(STS.x, STS.y + 2, STS.z, 10)); showMsg('The Steward folds over, then crawls away into the dark below decks. It will be back.', '', 5); break;
@@ -1472,7 +1530,7 @@ function hostStep(dt) {
       delete G.holdP[k]; const q = hold[k][0];
       if (k[0] === 'v') emit({k: 'valve', i: +k[1]});
       else if (k === 'g') { emit({k: 'power'}); const b = BLD.find(z => z.kind === 'gen'); noise(b.x, b.fy, b.z, 70); }
-      else if (k === 'cz') { G.cruise = 1; q.sack.splice(q.sack.indexOf('key'), 1); sackSet(q); emit({k: 'claim'}); goal(7); save(); }
+      else if (k === 'cz') { G.cruise = 1; q.sack.splice(q.sack.indexOf('key'), 1); sackSet(q); emit({k: 'claim', st: Object.assign({}, G.stat, {earned: G.earned, disc: G.disc.length, goals: G.goals.length + 1, crew: [...PL.values()].map(p => p.name)})}); goal(7); save(); }
       else if (k === 'c') { G.bbOut = true; emit({k: 'bb'}); giveCarry(q, 'blackbox'); goal(1); const b = BLD.find(z => z.kind === 'ctrl'); noise(b.x, b.fy, b.z, 50); }
       else if (k[0] === 'd') { const d = DIGS[+k[1]], far = Math.hypot(d.x - HOME.x, d.z - HOME.z), ex = far > 1600 ? ['gold', 'gold', 'pearl'] : far > 800 ? ['gold'] : []; emit({k: 'dug', i: +k[1], g: ex.length}); giveCarry(q, 'chest'); ex.forEach((kind, j) => { const x = d.x + Math.cos(j * 2.1 + .5) * 1.3, z = d.z + Math.sin(j * 2.1 + .5) * 1.3, y = Math.max(d.y - .4, landH(x, z)) + .03, it = addItem(kind, {x, y, z}); emit({k: 'item', i: it.i, kind, x, y, z}); }); goal(2); }
       else { const t = PL.get(k.slice(1)); if (t) { t.down = false; emit({k: 'rev', id: t.id}); } }
@@ -1501,7 +1559,22 @@ function hostStep(dt) {
   stepSunk(dt); stepCreature(dt); stepSteward(dt); stepGulpers(dt);
   for (const p of PL.values()) if (p.sw && (p.dv || 0) > 100 && !G.goals.includes(8)) goal(8);
 }
-function goal(i) { if (G.goals.includes(i)) return; emit({k: 'goal', i}); save(); }
+function goal(i) { if (G.goals.includes(i)) return; const c = Math.round(GOAL_CASH[i] * (D.pay || 1)); G.cash += c; emit({k: 'goal', i, c}); save(); }
+// host: charting fees before an event lands (ph 0), goals, ranks and voyage stats after it (ph 1)
+function goalHook(e, ph) {
+  if (ph === 0) { if (e.k === 'disc' && !e.c && !G.disc.includes(e.i)) { const q = POIS[e.i]; if (q && !q.home) { const c = Math.round((50 + Math.hypot(q.x - HOME.x, q.z - HOME.z) / 20) * (D.pay || 1)); G.cash += c; e.c = c; } } return; }
+  const S = G.stat;
+  switch (e.k) {
+    case 'sold': if (e.v > 0) { goal(9); const r = titleOf(G.earned); if (r > (G.rankI || 0)) { G.rankI = r; emit({k: 'rank', i: r}); } } break;
+    case 'bought': case 'gear': goal(10); break;
+    case 'give': if (e.buy) goal(10); break;
+    case 'disc': if (G.disc.length >= 4) goal(11); break;
+    case 'catch': if (S) { S.fish++; S.maxKg = Math.max(S.maxKg || 0, +e.kg || 0); } break;
+    case 'mdown': case 'sdown': if (S) S.kills++; break;
+    case 'deepgone': if (S && e.dead) S.kills++; break;
+    case 'dead': if (S) S.deaths++; break;
+  }
+}
 function giveCarry(p, kind) { if (!sackFits(p, kind)) { const f = floorAt(p.x, p.z, p.y + .5); const it = addItem(kind, {x: p.x + .6, y: f ? f.y : p.y, z: p.z}); emit({k: 'item', i: it.i, kind, x: p.x + .6, y: f ? f.y : p.y, z: p.z}); return; } p.sack.push(kind); sackSet(p); }
 function hostAct(id, m) {
   const p = PL.get(id); if (!p || !G.on) return;
@@ -2605,58 +2678,134 @@ function stepFear(dt) {
 }
 function bearing(x, z) { return Math.atan2(-(x - cam.position.x), -(z - cam.position.z)); }
 function drawCompass() {
-  const c = $('compass'), g = c.getContext('2d'), W = c.width, H = c.height; g.clearRect(0, 0, W, H);
-  _v.set(0, 0, -1).applyQuaternion(cam.quaternion); const yaw = Math.atan2(-_v.x, -_v.z), span = PI * .9, X = a => W / 2 + angD(yaw, a) / span * W;
+  const c = $('compass'), g = c.getContext('2d'), dpr = devicePixelRatio || 1, cw = c.clientWidth || 720;
+  if (c._cw !== cw || c._d !== dpr) { c._cw = cw; c._d = dpr; c.width = Math.round(cw * dpr); c.height = Math.round(46 * dpr); }
+  g.setTransform(dpr, 0, 0, dpr, 0, 0); const W = cw, H = 46, cp = cam.position; g.clearRect(0, 0, W, H);
+  _v.set(0, 0, -1).applyQuaternion(cam.quaternion); const yaw = Math.atan2(-_v.x, -_v.z), span = PI * .9, X = a => W / 2 + angD(yaw, a) / span * W, dist = d => d < 1000 ? Math.round(d) + ' m' : (d / 1000).toFixed(1) + ' km';
   g.fillStyle = 'rgba(0,0,0,.35)'; g.fillRect(0, 12, W, 22); g.fillStyle = '#c8c0b0'; g.font = '11px ui-monospace,monospace'; g.textAlign = 'center';
   for (let i = 0; i < 24; i++) { const a = -i / 24 * TAU + PI, x = X(a); if (x < 0 || x > W) continue; const big = i % 6 === 0; g.fillRect(x, 12, 1, big ? 8 : 4); if (big) g.fillText(['N', 'E', 'S', 'W'][i / 6], x, 30); }
-  const mark = (x, z, label, col, sym = '▼') => { const a = bearing(x, z); if (Math.abs(angD(yaw, a)) > span / 2) return; const px = X(a), d = Math.hypot(x - cam.position.x, z - cam.position.z); g.fillStyle = col; g.fillText(sym, px, 10); const da = Math.abs(angD(yaw, a)); if ((da < .12 || sym === '!') && (!lab || da < lab.da)) lab = {da, px, col, t: `${label} ${d < 1000 ? Math.round(d) + 'm' : (d / 1000).toFixed(1) + 'km'}`}; }; let lab = null;
+  const sm = G.nstep && G.nstep.mk && G.nstep.mk.lab ? G.nstep.mk : null; let lab = null;
+  const mark = (x, z, label, col, sym = '▼') => { if (sm && Math.hypot(x - sm.x, z - sm.z) < 15) return; const a = bearing(x, z); if (Math.abs(angD(yaw, a)) > span / 2) return; const px = X(a), d = Math.hypot(x - cp.x, z - cp.z); g.fillStyle = col; g.fillText(sym, px, 10); const da = Math.abs(angD(yaw, a)); if ((da < .12 || sym === '!') && (!lab || da < lab.da)) lab = {da, px, col, t: `${label} ${dist(d)}`}; };
   mark(HOME.x, HOME.z, 'HOME', '#ffd880');
   if (P && !P.ob && !P.dead) mark(B.x, B.z, 'BOAT', '#7ad0ff');
-  POIS.forEach((q, i) => { if (q.home) return; if (G.disc.includes(i)) { if (Math.hypot(q.x - cam.position.x, q.z - cam.position.z) > 60) mark(q.x, q.z, q.n, 'rgba(220,210,190,.75)', '·'); } else if (B.up.sonar) mark(q.x, q.z, '?', '#9affd0', '◆'); });
+  POIS.forEach((q, i) => { if (q.home) return; if (G.disc.includes(i)) { if (Math.hypot(q.x - cp.x, q.z - cp.z) > 60) mark(q.x, q.z, q.n, 'rgba(220,210,190,.75)', '·'); } else if (B.up.sonar) mark(q.x, q.z, 'Unknown', '#9affd0', '◆'); });
   DIGS.forEach(d => { if (d.rev && !d.dug) mark(d.x, d.z, 'X', '#ff7050', '✕'); });
   if (B.up.sonar && HC().sub) SUNK.forEach(q => { if (!q.got) mark(q.x, q.z, 'WRECKAGE', '#7affd0', '◆'); });
-  if (B.up.sonar) G.floats.forEach(f => { if (f && Math.hypot(f[0] - cam.position.x, f[1] - cam.position.z) < 400) { const a = bearing(f[0], f[1]); if (Math.abs(angD(yaw, a)) < span / 2) { g.fillStyle = '#9affd0'; g.fillRect(X(a) - 1.5, 21, 3, 3); } } });
+  // floating cargo: sonar shows it out to 400 m; without sonar the nearest (150 m) still show as small ticks
+  { const R = B.up.sonar ? 400 : 150; for (const f of G.floats) { if (!f || Math.hypot(f[0] - cp.x, f[1] - cp.z) > R) continue; const a = bearing(f[0], f[1]); if (Math.abs(angD(yaw, a)) >= span / 2) continue; if (B.up.sonar) { g.fillStyle = '#9affd0'; g.fillRect(X(a) - 1.5, 21, 3, 3); } else { g.fillStyle = 'rgba(255,196,120,.8)'; g.fillRect(X(a) - .75, 18, 1.5, 7); } } }
   for (const p of PL.values()) if (p !== P && p.ready && !p.dead && (p.sw || p.down)) mark(p.rx, p.rz, p.name, '#ff7050', '!');
+  // the current step: always labelled; pinned to an edge with an arrow when it is off the strip
+  if (sm) { const a = bearing(sm.x, sm.z), da = angD(yaw, a), t = `${sm.lab} ${dist(Math.hypot(sm.x - cp.x, sm.z - cp.z))}`, tw = g.measureText(t).width; g.fillStyle = '#ffcf60';
+    if (Math.abs(da) > span / 2) { const r = da > 0; g.textAlign = r ? 'right' : 'left'; g.font = '13px ui-monospace,monospace'; g.fillText(r ? '▶' : '◀', r ? W - 3 : 3, 28); g.font = '11px ui-monospace,monospace'; g.fillText(t, r ? W - 3 : 3, 45); g.textAlign = 'center'; if (lab && (r ? lab.px > W - tw - 50 : lab.px < tw + 50)) lab = null; }
+    else { const px = X(a), lx = clamp(px, tw / 2 + 2, W - tw / 2 - 2); g.fillText('◆', px, 10); g.fillText(t, lx, 45); if (lab && Math.abs(lab.px - lx) < tw / 2 + 50) lab = null; } }
   if (lab) { g.fillStyle = lab.col; g.fillText(lab.t, lab.px, 45); }
 }
 function hud() {
- const lb = G.cine > 0 || (G.js && G.js.t > 0) || !!G.drownCam; if (lb !== G.lbOn) { G.lbOn = lb; $('lbox').classList.toggle('on', lb); }
-  const b = $('bat'); for (let i = 0; i < 4; i++) b.children[i].className = P.bat > i * .25 + .02 ? '' : 'off'; b.classList.toggle('low', P.bat < .25);
-  $('nFlare').textContent = P.flares; $('nSpd').textContent = Math.abs(B.v * 1.94).toFixed(0); $('nCash').textContent = '$' + G.cash;
-  { const dv = P.sw ? P.dv || 0 : 0, show = dv > .3; if (show !== G.diveShow) { G.diveShow = show; $('dive').style.opacity = show ? 1 : 0; } if (show) { const su = (P.own && P.own.suit) || 0; $('diveD').textContent = `${dv.toFixed(dv < 10 ? 1 : 0)} m`; $('diveA').style.width = (P.air ?? 1) * 100 + '%'; $('diveA').style.background = P.air < .25 ? '#e04030' : '#7ad0ff'; $('diveS').textContent = SUIT[su].n + ' · max ' + SUIT[su].max + ' m'; } }
-  $('hullB').style.width = clamp(B.hull / hullMax(), 0, 1) * 100 + '%'; $('hullB').style.background = B.hull < 30 ? '#e06040' : '#8ac080';
-  $('holdT').textContent = `HOLD ${sackUsed(B.hold)}/${holdCap()} · $${holdValue()}`;
-  { const q = P.sack || [], key = q.join(); if (key !== G.sackKey) { G.sackKey = key; $('carry').innerHTML = q.length ? `🎒 ${sackUsed(q)}/${sackCap(P)}${sackVal(q) ? ' · $' + sackVal(q) : ''}<small>${q.map(k => NAMES[k]).join(', ')}</small>` : ''; G.sackShowT = 3.5; } G.sackShowT = (G.sackShowT || 0) - 1 / 30; const sm = $('carry').querySelector('small'); if (sm) sm.style.opacity = G.sackShowT > 0 ? 1 : 0; }
-  const ot = hint(); if (ot !== G.objLast) { G.objLast = ot; $('obj').innerHTML = ot; $('obj').style.opacity = 1; G.objT = 7; }
-  if (G.objT > 0) { G.objT -= 1 / 30; if (G.objT <= 0) $('obj').style.opacity = 0; }
-  G.teamT = (G.teamT || 0) - 1; if (PL.size > 1 && G.teamT <= 0) { G.teamT = 10; $('team').innerHTML = [...PL.values()].map(p => `<div class="${p.dead ? 'dead' : p.down || p.sw ? 'down' : ''}">${p.name}${p.down ? ' · DOWN ' + Math.max(0, p.bleed | 0) + 's' : p.dead ? '' : p.sw ? ' · IN THE WATER' : p.seat ? ' · at the wheel' : p.ob ? ' · aboard' : ''}<i style="background:${hexS(CREW_COL[p.c % 6])}"></i></div>`).join(''); }
-  const st = {}; Object.defineProperty(st, 'innerHTML', {set: v => { if (v !== G.stTxt) { G.stTxt = v; $('state').innerHTML = v; } }});
-  if (P.dead) st.innerHTML = (P.drowned ? 'Pulled under' : 'You are dead') + '<small>You will wash up at the lighthouse in a few seconds.</small>';
-  else if (P.down) st.innerHTML = `You are down<small>Bleeding out in ${Math.max(0, P.bleed | 0)} s. Crawl to your crew or wait for help.</small>`;
-  else if (P.seat) { G.seatT = (G.seatT ?? 0) + 1 / 30; st.innerHTML = G.seatT < 6 ? `<small style="font-size:12px">W/S throttle · A/D rudder${HC().sub ? ' · C/Space dive' : ''} · E let go</small>` : ''; }
-  else if (P.sw && P.deep && !(P.own && P.own.suit)) st.innerHTML = '<small style="font-size:13px;color:#ff9a7a">Deep water</small>';
-  else st.innerHTML = '';
-  if (!P.seat) G.seatT = 0;
+  const now = performance.now(), dt = Math.min(.1, (now - (G.hudT || now)) / 1000); G.hudT = now;
+  const lb = G.cine > 0 || (G.js && G.js.t > 0) || !!G.drownCam; if (lb !== G.lbOn) { G.lbOn = lb; $('lbox').classList.toggle('on', lb); }
+  { let n = 0; for (let i = 0; i < 4; i++) if (P.bat > i * .25 + .02) n++; const k = n + (P.bat < .25 ? 'l' : ''); if (k !== G.batK) { G.batK = k; const b = $('bat'); for (let i = 0; i < 4; i++) b.children[i].className = i < n ? '' : 'off'; b.classList.toggle('low', P.bat < .25); } }
+  setT('nFlare', P.flares); setT('nSpd', Math.abs(B.v * 1.94).toFixed(0));
+  // cash counts up, and every change pops above the counter
+  { const dc = G.cash - (G.cashLast ?? G.cash); G.cashLast = G.cash;
+    if (Math.abs(dc) >= 1) { const cp = $('cashPop'), r = $('nCash').getBoundingClientRect(); G.popV = (now - (G.popAt || 0) < 400 ? G.popV || 0 : 0) + dc; G.popAt = now; cp.textContent = (G.popV >= 0 ? '+' : '-') + cashStr(Math.abs(G.popV)); cp.className = ''; void cp.offsetWidth; cp.className = 'go ' + (G.popV >= 0 ? 'up' : 'dn'); cp.style.left = (r.left + r.width / 2).toFixed(1) + 'px'; cp.style.top = (r.top - 2).toFixed(1) + 'px'; }
+    if (G.cashShown == null) G.cashShown = G.cash; G.cashShown += (G.cash - G.cashShown) * Math.min(1, dt * 6); if (Math.abs(G.cash - G.cashShown) < 1) G.cashShown = G.cash; setT('nCash', cashStr(G.cashShown)); }
+  { const dv = P.sw ? P.dv || 0 : 0, show = dv > .3; if (show !== G.diveShow) { G.diveShow = show; $('dive').style.opacity = show ? 1 : 0; } if (show) { const su = (P.own && P.own.suit) || 0; setT('diveD', `${dv.toFixed(dv < 10 ? 1 : 0)} m`); setS('diveA', 'width', Math.round((P.air ?? 1) * 100) + '%'); setS('diveA', 'background', P.air < .25 ? '#e04030' : '#7ad0ff'); setT('diveS', SUIT[su].n + ' · max ' + SUIT[su].max + ' m'); } }
+  setS('hullB', 'width', Math.round(clamp(B.hull / hullMax(), 0, 1) * 100) + '%'); setS('hullB', 'background', B.hull < 30 ? '#e06040' : '#8ac080');
+  setT('holdT', `HOLD ${sackUsed(B.hold)}/${holdCap()} · ${cashStr(holdValue())}`);
+  { const q = P.sack || [], key = q.join(); if (key !== G.sackKey) { G.sackKey = key; $('carry').innerHTML = q.length ? `${ICON.sack} ${sackUsed(q)}/${sackCap(P)}${sackVal(q) ? ' · ' + cashStr(sackVal(q)) : ''}<small>${q.map(k => NAMES[k]).join(', ')}</small>` : ''; G.sackSm = $('carry').querySelector('small'); G.sackShowT = 3.5; } if (!G.paused) G.sackShowT = (G.sackShowT || 0) - dt; if (G.sackSm) setS(G.sackSm, 'opacity', G.sackShowT > 0 ? 1 : 0); }
+  // one short step at a time: after the intro, again when the chart opens and after a minute with no progress
+  { const ot = hint(), ob = $('obj'), pk = `${G.earned}|${G.disc.length}|${sackUsed(P.sack)}|${B.hold.length}`;
+    if (pk !== G.progK) { G.progK = pk; G.progT = 0; } else if (!G.paused) G.progT = (G.progT || 0) + dt;
+    if (G.map && !G.mapWas) G.reshow = 1;
+    if (G.introT > 0) { G.introT -= dt; setS(ob, 'opacity', 0); }
+    else if (ot !== G.objLast) { const first = !G.objLast; G.objLast = ot; ob.innerHTML = ot; setS(ob, 'opacity', ot ? 1 : 0); G.objT = first ? 9 : 7; }
+    else if (ot && (G.reshow || G.progT > 60)) { G.progT = 0; setS(ob, 'opacity', 1); G.objT = Math.max(G.objT || 0, 7); }
+    G.reshow = 0; if (G.objT > 0 && !G.paused) { G.objT -= dt; if (G.objT <= 0) setS(ob, 'opacity', 0); } }
+  G.teamT = (G.teamT || 0) - dt; if (G.teamT <= 0) { G.teamT = .33; const h = PL.size > 1 ? [...PL.values()].map(p => `<div class="${p.dead ? 'dead' : p.down || p.sw ? 'down' : ''}">${p.name}${p.down ? ' · DOWN ' + Math.max(0, p.bleed | 0) + 's' : p.dead ? '' : p.sw ? ' · IN THE WATER' : p.seat ? ' · at the wheel' : p.ob ? ' · aboard' : ''}<i style="background:${hexS(CREW_COL[p.c % 6])}"></i></div>`).join('') : ''; if (h !== G.teamH) { G.teamH = h; $('team').innerHTML = h; } }
+  { const solo = PL.size === 1; let st = '';
+    if (P.dead) st = (P.drowned ? 'Pulled under' : 'You are dead') + '<br><small>You will wash up at the lighthouse.</small>';
+    else if (P.down) st = solo ? 'It got you<br><small>You will wash up at the lighthouse.</small>' : `You are down<br><small>Bleeding out · ${Math.max(0, P.bleed | 0)} s. Crawl to your crew.</small>`;
+    else if (!P.seat && P.sw && P.deep && !(P.own && P.own.suit)) st = '<small style="color:#ff9a7a">Deep water</small>';
+    if (P.seat) { if (!G.paused) G.seatT = (G.seatT ?? 0) + dt; } else G.seatT = 0;
+    if (st !== G.stTxt) { G.stTxt = st; $('state').innerHTML = st; } }
   { const nb = P.ob || P.seat || Math.hypot(B.x - P.x, B.z - P.z) < 30; if (nb !== G.bhOn) { G.bhOn = nb; $('boatHud').style.opacity = nb ? 1 : 0; $('nSpd').parentElement.style.display = nb ? '' : 'none'; } }
+  { const k = .5 + .8 * (TOD.night || 0); for (let i = 0; i < FLM.length; i++) { const o = FLM[i]; if (o && o.glow) o.glow.material.opacity = (.35 + .25 * Math.sin(G.wt * 2 + i)) * k; } }
+  if (isHost() && G.stat) { if (!(G.paused && Net.role === 'solo')) G.stat.play += dt; for (const p of PL.values()) { const v = (p.sw && p.dv) || 0; if (v > G.stat.maxDv) G.stat.maxDv = v; } }
+  // logbook banner: one at a time, 4 s each, held back while a panel is open; a goal also sends up three rockets
+  { const bn = $('banner'); if (G.banA && now - G.banA > 4000) { G.banA = 0; G.banE = now; bn.classList.remove('on'); }
+    if (!G.banA && G.banQ && G.banQ.length && now - (G.banE || 0) > 700 && !(G.shopOpen || G.casOpen || G.helpOpen || G.noteOpen || G.endOpen)) { const q = G.banQ.shift(); bn.innerHTML = `<small>${q.h}</small>${q.t}${q.c ? `<b>+${cashStr(q.c)}</b>` : ''}`; bn.className = q.s === 'rank' ? 'rank' : ''; void bn.offsetWidth; bn.classList.add('on'); G.banA = now;
+      if (q.s === 'rank') Snd.horn(null); else { (Snd.goal || Snd.discover)(); setTimeout(() => Snd.coin(), 600); if (!(G.uw > .5)) for (let k = 0; k < 3; k++) setTimeout(() => G.on && spawnRocket({x: cam.position.x + (Math.random() - .5) * 24, y: cam.position.y + 3, z: cam.position.z + (Math.random() - .5) * 24, vx: Math.random() < .5 ? -2 : 2, vy: 26, vz: Math.random() < .5 ? -2 : 2, c: Math.floor(Math.random() * 5)}), 200 + k * 380); } } }
+  // the step marker: a gold diamond on the thing to do next; a tick for a second once it is done
+  { let m = G.mkEl; if (!m || !m.isConnected) { m = G.mkEl = document.createElement('div'); m.id = 'stepMk'; m.innerHTML = '<b>◆</b><small></small>'; $('tags').appendChild(m); }
+    const ns = G.nstep || {}, cur = ns.mk && ns.mk.scr ? ns.mk : null;
+    if (ns.t !== G.mkKey) { if (G.mkKey != null && G.mkCur) G.mkDone = {mk: G.mkCur, t: 1}; G.mkKey = ns.t; }
+    G.mkCur = cur; let s = cur, done = false; if (G.mkDone) { G.mkDone.t -= dt; if (G.mkDone.t > 0) { s = G.mkDone.mk; done = true; } else G.mkDone = null; }
+    const block = G.map || G.shopOpen || G.casOpen || G.helpOpen || G.noteOpen || G.endOpen || G.cine > 0 || (G.js && G.js.t > 0) || G.camFly || !alivePlay(); let vis = false;
+    if (s && !block) { const d = Math.hypot(s.x - cam.position.x, s.y - cam.position.y, s.z - cam.position.z); if (d >= 2) { _v.set(s.x, s.y, s.z).project(cam); if (_v.z < 1 && Math.abs(_v.x) < 1 && Math.abs(_v.y) < 1) { vis = true; setS(m, 'left', ((_v.x + 1) / 2 * innerWidth).toFixed(1) + 'px'); setS(m, 'top', ((1 - _v.y) / 2 * innerHeight).toFixed(1) + 'px'); setT(m.lastChild, done ? '' : d < 1000 ? Math.round(d) + ' m' : (d / 1000).toFixed(1) + ' km'); } } }
+    setS(m, 'display', vis ? 'block' : 'none'); if (vis) { setT(m.firstChild, done ? '✓' : '◆'); const cl = done ? 'done' : ''; if (m.className !== cl) m.className = cl; } }
+  // the chart's logbook: beside the chart on wide screens, a strip under the compass otherwise
+  if (G.map !== G.mapWas) { G.mapWas = G.map; $('logbook').classList.toggle('hidden', !G.map); $('map').style.cssText = ''; G.logH = ''; if (G.map) G.logSide = innerWidth > Math.min(innerWidth * .86, innerHeight * .86, 760) + 600; }
+  if (G.map) { const nm = String(P.name || '').replace(/[<>&]/g, ''), pay = D.pay || 1, pr = i => i === 0 ? `${G.disc.length}/${POIS.length}` : i === 3 ? cashStr(G.earned) : i === 11 ? `${clamp(G.disc.length - 1, 0, 3)}/3` : i === 4 ? `${B.up.engine || 0}/3` : i === 8 ? `${Math.round((G.stat && G.stat.maxDv) || 0)} m` : '';
+    const h = `<h3>${TITLES[titleOf(G.earned)][1]} ${nm}</h3>` + GOAL_ORDER.filter(i => !G.goals.includes(i)).slice(0, 5).map(i => `<div><span>${GOALS[i]}${pr(i) ? ` <i>(${pr(i)})</i>` : ''}</span><b>${cashStr(GOAL_CASH[i] * pay)}</b></div>`).join('') + `<small>${G.goals.length}/${GOALS.length} done</small>`;
+    if (h !== G.logH) { G.logH = h; const lg = $('logbook'), mp = $('map'), s = Math.min(innerWidth * .86, innerHeight * .86, 760); lg.innerHTML = h; lg.className = 'paper ' + (G.logSide ? 'side' : 'strip');
+      if (G.logSide) { lg.style.left = ((innerWidth + s) / 2 + 24).toFixed(0) + 'px'; mp.style.cssText = ''; } else { lg.style.left = ''; const bt = lg.getBoundingClientRect().bottom, ms = Math.max(200, Math.min(s, innerHeight - bt - 14)); mp.style.width = mp.style.height = ms + 'px'; mp.style.top = (bt + 8 + ms / 2).toFixed(0) + 'px'; } } }
   drawCompass(); if (G.shopOpen) { const sg = [G.cash, JSON.stringify(B.up), JSON.stringify(P.own), holdValue(), sackVal(P.sack), P.coolerV || 0, Math.hypot(B.x - JETTY.x, B.z - JETTY.z) < 60 + BG.L * .5, G.cruise].join('|'); if (sg !== G.shopSig) { G.shopSig = sg; drawShop(); } }
+  if (!!G.camFly !== !!G.flyOn) { G.flyOn = !!G.camFly; $('hud').classList.toggle('fly', G.flyOn); }
+  if (G.camFly) camFly(Math.max(dt, G.cfC != null && G.cine > 0 ? G.cfC - G.cine : 0)); G.cfC = G.cine;
+}
+// the ending: a slow orbit of the Serenade under fireworks, then the voyage card
+function camFly(dt) {
+  const f = G.camFly; if (!f) return; f.t += dt; if (f.t >= f.T) { G.camFly = null; showEnd(f.st); return; }
+  const a = f.a + f.t * .12; cam.position.set(CRZ.x + Math.sin(a) * 85, 28, CRZ.z + Math.cos(a) * 85); cam.lookAt(CRZ.x, 18, CRZ.z); cam.updateMatrixWorld();
+}
+function showEnd(st) {
+  st = st || {}; const pl = Math.round(st.play || 0), e = st.earned ?? G.earned, esc = s => String(s).replace(/[<>&]/g, '');
+  $('endT').textContent = 'The Serenade sails again';
+  $('endS').textContent = `${(st.crew && st.crew.length ? st.crew : [P ? P.name : '']).map(esc).join(', ')} · ${pl >= 3600 ? Math.floor(pl / 3600) + ' h ' : ''}${Math.floor(pl / 60) % 60} min at sea`;
+  const rows = [['Places charted', `${st.disc ?? G.disc.length}/${POIS.length}`], ['Money earned', cashStr(e)], ['Fish landed', `${st.fish || 0}${st.maxKg ? ` · best ${st.maxKg} kg` : ''}`], ['Deepest dive', `${Math.round(st.maxDv || 0)} m`], ['Monsters put down', st.kills || 0], ['Goals', `${Math.min(GOALS.length, st.goals ?? G.goals.length)}/${GOALS.length}`], ['Rank', TITLES[titleOf(e)][1]]];
+  $('endL').innerHTML = rows.map(([a, b]) => `<div><span>${a}</span><b>${b}</b></div>`).join('');
+  $('end').classList.remove('hidden', 'dead'); G.endOpen = true; try { document.exitPointerLock(); } catch (x) {}
+  $('again').textContent = 'Keep sailing'; $('again').onclick = () => { $('end').classList.add('hidden'); G.endOpen = false; if (G.paused) pause(false); else lockMouse(); };
 }
 let grainT = 0; const gctx = $('grain').getContext('2d'), gimg = gctx.createImageData(200, 120);
-function grain() { const d = gimg.data; for (let i = 0; i < d.length; i += 4) { const v = Math.random() * 255; d[i] = d[i + 1] = d[i + 2] = v; d[i + 3] = 255; } gctx.putImageData(gimg, 0, 0); $('grain').style.opacity = .018 + .5 * (P ? P.fear || 0 : 0) * .12; }
+function grain() { const f = P ? P.fear || 0 : 0; if (f < .05 && !(G.js && G.js.t > 0)) { if (G.grainQ) return; G.grainQ = true; } else G.grainQ = false; const d = gimg.data; for (let i = 0; i < d.length; i += 4) { const v = Math.random() * 255; d[i] = d[i + 1] = d[i + 2] = v; d[i + 3] = 255; } gctx.putImageData(gimg, 0, 0); setS('grain', 'opacity', G.grainQ ? .018 : .018 + .5 * f * .12); }
+let MAPBG = null;
 function drawMap() {
-  const c = $('map'), g = c.getContext('2d'), W = c.width, S = W / 5400, X = x => W / 2 + x * S, Z = z => W / 2 - (z + 60) * S;
-  g.fillStyle = '#8a9a9c'; g.fillRect(0, 0, W, W); for (let i = 0; i < 3000; i++) { g.fillStyle = `rgba(30,50,60,${Math.random() * .08})`; g.fillRect(Math.random() * W, Math.random() * W, 2, 2); }
-  g.textAlign = 'center'; g.font = '13px Georgia';
+  const c = $('map'), g = c.getContext('2d'), W = c.width, S = W / 5400, X = x => W / 2 + x * S, Z = z => W / 2 - (z + 60) * S, now = performance.now();
+  // at most 10 redraws a second, but always on the first call after the chart opens
+  const fresh = (G.fr || 0) - (G.mapFr ?? -9) > 1; G.mapFr = G.fr || 0; if (!fresh && now - (G.mapT || 0) < 100) return; G.mapT = now;
+  if (!MAPBG) { MAPBG = document.createElement('canvas'); MAPBG.width = MAPBG.height = W; const b = MAPBG.getContext('2d'), r = mulberry(77);
+    const gr = b.createRadialGradient(W / 2, W / 2, W * .15, W / 2, W / 2, W * .74); gr.addColorStop(0, '#93a3a5'); gr.addColorStop(1, '#7b8b8e'); b.fillStyle = gr; b.fillRect(0, 0, W, W);
+    for (let i = 0; i < 3000; i++) { b.fillStyle = `rgba(30,50,60,${r() * .08})`; b.fillRect(r() * W, r() * W, 2, 2); }
+    b.strokeStyle = 'rgba(20,40,52,.13)'; b.lineWidth = 1; b.beginPath(); for (let k = -6; k <= 6; k++) { const x = Math.round(X(k * 500)) + .5, z = Math.round(Z(k * 500)) + .5; b.moveTo(x, 0); b.lineTo(x, W); b.moveTo(0, z); b.lineTo(W, z); } b.stroke();
+    const rx = W - 44, ry = 52; b.fillStyle = b.strokeStyle = 'rgba(32,32,30,.6)'; b.lineWidth = 1;
+    for (let k = 0; k < 4; k++) { const a = k * PI / 2, L = k % 2 ? 15 : 22; b.beginPath(); b.moveTo(rx + Math.sin(a) * L, ry - Math.cos(a) * L); b.lineTo(rx + Math.sin(a + PI / 4) * 4, ry - Math.cos(a + PI / 4) * 4); b.lineTo(rx, ry); b.lineTo(rx + Math.sin(a - PI / 4) * 4, ry - Math.cos(a - PI / 4) * 4); b.closePath(); if (k) b.stroke(); else b.fill(); }
+    b.beginPath(); b.arc(rx, ry, 11, 0, TAU); b.stroke(); b.font = 'bold 12px Georgia'; b.textAlign = 'center'; b.fillText('N', rx, ry - 26);
+    const sx = 20, sy = W - 50, L5 = 500 * S; b.fillRect(sx, sy, L5, 2); b.fillRect(sx, sy - 4, 1.5, 8); b.fillRect(sx + L5 - 1.5, sy - 4, 1.5, 8); b.font = '11px Georgia'; b.textAlign = 'left'; b.fillText('500 m', sx, sy - 7); }
+  g.drawImage(MAPBG, 0, 0); g.textAlign = 'center'; g.font = '13px Georgia';
+  const arrow = (x, y, yaw, s, col, line) => { g.save(); g.translate(x, y); g.rotate(-yaw + PI); g.beginPath(); g.moveTo(0, -s); g.lineTo(s * .55, s * .75); g.lineTo(-s * .55, s * .75); g.closePath(); if (line) { g.lineWidth = 2.5; g.strokeStyle = 'rgba(16,18,20,.85)'; g.stroke(); } g.fillStyle = col; g.fill(); g.restore(); };
   for (const b of BUOYS) { g.fillStyle = hexS(b.c); g.beginPath(); g.arc(X(b.x), Z(b.z), 2.5, 0, TAU); g.fill(); }
-  POIS.forEach((q, i) => { const known = G.disc.includes(i); if (!known) { if (B.up.sonar) { g.fillStyle = 'rgba(30,60,50,.6)'; g.fillText('?', X(q.x), Z(q.z) + 4); } return; }
+  POIS.forEach((q, i) => { const known = G.disc.includes(i);
+    if (!known) {
+      if (q.rig) { g.strokeStyle = 'rgba(28,28,28,.38)'; g.lineWidth = 1; g.strokeRect(X(q.x) - 5.5, Z(q.z) - 5.5, 11, 11); g.fillStyle = 'rgba(26,26,26,.42)'; g.font = 'italic 12px Georgia'; g.fillText('Station Nine?', X(q.x), Z(q.z) - 12); g.font = '13px Georgia'; }
+      else if (q.isle && Math.hypot(q.x - HOME.x, q.z - HOME.z) < 700) { g.setLineDash([3, 3]); g.strokeStyle = 'rgba(40,46,36,.38)'; g.lineWidth = 1; g.beginPath(); g.arc(X(q.x), Z(q.z), Math.max(4, q.isle.shore * S), 0, TAU); g.stroke(); g.setLineDash([]); }
+      if (B.up.sonar) { g.fillStyle = 'rgba(30,60,50,.6)'; g.fillText('?', X(q.x), Z(q.z) + 4); } return; }
     g.fillStyle = q.isle ? '#6a6a52' : q.home ? '#5a5248' : '#3a3a3a'; if (q.isle || q.home) { g.beginPath(); g.arc(X(q.x), Z(q.z), Math.max(4, (q.isle ? q.isle.shore : HOME.r) * S), 0, TAU); g.fill(); } else g.fillRect(X(q.x) - 5, Z(q.z) - 5, 10, 10);
     g.fillStyle = '#1a1a1a'; g.fillText(q.n, X(q.x), Z(q.z) - 12); });
   DIGS.forEach(d => { if (d.rev) { g.fillStyle = d.dug ? '#666' : '#a01a10'; g.font = 'bold 16px Georgia'; g.fillText('✕', X(d.x), Z(d.z) + 5); g.font = '13px Georgia'; } });
-  G.floats.forEach(f => { if (f && B.up.sonar) { g.fillStyle = '#2a6a5a'; g.fillRect(X(f[0]) - 1.5, Z(f[1]) - 1.5, 3, 3); } });
-  g.save(); g.translate(X(B.x), Z(B.z)); g.rotate(-B.yaw + PI); g.fillStyle = '#fff'; g.beginPath(); g.moveTo(0, -8); g.lineTo(4, 6); g.lineTo(-4, 6); g.closePath(); g.fill(); g.restore();
-  for (const p of PL.values()) { if (!p.ready || p.dead) continue; const yaw = p === P ? P.yaw : p.ryaw, x = p === P ? P.x : p.rx, z = p === P ? P.z : p.rz; g.save(); g.translate(X(x), Z(z)); g.rotate(-yaw + PI); g.fillStyle = hexS(CREW_COL[p.c % 6]); g.beginPath(); g.moveTo(0, -6); g.lineTo(4, 5); g.lineTo(-4, 5); g.closePath(); g.fill(); g.restore(); }
-  g.fillStyle = 'rgba(20,20,20,.75)'; g.fillRect(12, 12, 360, 70 + GOALS.length * 20); g.fillStyle = '#e8e0cc'; g.textAlign = 'left'; g.font = 'italic 18px Georgia'; g.fillText('Logbook', 24, 36); g.font = '13px Georgia';
-  GOALS.forEach((t, i) => { g.fillStyle = G.goals.includes(i) ? '#8fc08f' : '#e8e0cc'; g.fillText((G.goals.includes(i) ? '✔ ' : '○ ') + t + (i === 0 ? ` (${G.disc.length}/${POIS.length})` : i === 3 ? ` ($${G.earned})` : ''), 24, 60 + i * 20); });
-  g.fillStyle = '#1a1a1a'; g.textAlign = 'center'; g.font = '12px Georgia'; g.fillText('Tab: close', W / 2, W - 12);
+  if (B.up.sonar) G.floats.forEach(f => { if (f) { g.fillStyle = '#2a6a5a'; g.fillRect(X(f[0]) - 1.5, Z(f[1]) - 1.5, 3, 3); } });
+  arrow(X(B.x), Z(B.z), B.yaw, 8, '#fff');
+  for (const p of PL.values()) { if (!p.ready || p.dead || p === P) continue; arrow(X(p.rx), Z(p.rz), p.ryaw, 6, hexS(CREW_COL[p.c % 6])); }
+  if (P && !P.dead) arrow(X(P.x), Z(P.z), P.yaw, 9, hexS(CREW_COL[P.c % 6]), 1);
+  // legend
+  { let x = 20; const y = W - 26, it = (draw, t) => { draw(x + 5); g.fillStyle = '#1a1a1a'; g.textAlign = 'left'; g.font = '11px Georgia'; g.fillText(t, x + 14, y + 4); x += 22 + g.measureText(t).width; };
+    it(cx => { g.fillStyle = '#5a5248'; g.beginPath(); g.arc(cx, y, 4, 0, TAU); g.fill(); }, 'home');
+    it(cx => arrow(cx, y, PI, 6, '#fff'), 'boat');
+    it(cx => arrow(cx, y, PI, 7, hexS(CREW_COL[(P ? P.c : 0) % 6]), 1), 'you');
+    it(cx => arrow(cx, y, PI, 5, hexS(CREW_COL[((P ? P.c : 0) + 1) % 6])), 'crew');
+    it(cx => { g.fillStyle = '#a01a10'; g.font = 'bold 13px Georgia'; g.textAlign = 'center'; g.fillText('✕', cx, y + 5); }, 'treasure');
+    it(cx => { g.fillStyle = 'rgba(30,60,50,.8)'; g.font = '13px Georgia'; g.textAlign = 'center'; g.fillText('?', cx, y + 5); }, 'unknown'); }
+  g.fillStyle = '#1a1a1a'; g.textAlign = 'center'; g.font = '12px Georgia'; g.fillText('Release Tab to close', W / 2, W - 8);
 }
 
 // ---------------- gear: guns and fishing
@@ -2879,9 +3028,9 @@ function updateTools(dt) {
   }
   // hud tool line
   const A = P.ammo || {}, own2 = P.own || {};
-  const S7 = [['✋', 'Hands', 1, ''], ['🔦', 'Flashlight', 1, P.l ? '' : 'off'], ['🎣', ['', 'Rod', 'Carbon rod', 'Deep-sea rod'][own2.rod || 0], own2.rod, ''], ['🔫', 'Glock', own2.glock, `${A.gm}/${A.g}`], ['💥', 'Shotgun', own2.sg, `${A.sm}/${A.s}`], ['🔥', 'Flare', P.flares > 0, P.flares], ['🎆', 'Fireworks', own2.fw > 0, own2.fw]];
-  const hk = P.eq + '|' + S7.map(q => q[2] ? 1 : 0).join('') + '|' + S7[P.eq][3] + '|' + (P.reload > 0) + '|' + (P.coolerN || 0);
-  if (hk !== G.toolK) { G.toolK = hk; $('tool').innerHTML = S7.map((q, i) => q[2] ? `<b class="${P.eq === i ? 'on' : ''}"><em>${i + 1}</em>${q[0]}${P.eq === i ? ` <span>${q[1]}${q[3] !== '' ? ' ' + q[3] : ''}</span>` : ''}</b>` : '').join('') + (P.reload > 0 ? '<span class="rl">reloading</span>' : '') + (P.coolerN ? `<span class="rl">🐟 ${P.coolerN}</span>` : ''); }
+  const S7 = [[ICON.hand, 'Hands', 1, ''], [ICON.light, 'Flashlight', 1, P.l ? '' : 'off'], [ICON.rod, ['', 'Rod', 'Carbon rod', 'Deep-sea rod'][own2.rod || 0], own2.rod, ''], [ICON.pistol, 'Glock', own2.glock, `${A.gm}/${A.g}`], [ICON.shotgun, 'Shotgun', own2.sg, `${A.sm}/${A.s}`], [ICON.flare, 'Flare', P.flares > 0, P.flares], [ICON.rocket, 'Fireworks', own2.fw > 0, own2.fw]];
+  const cur = S7[P.eq] || [], hk = P.eq + '|' + S7.map(q => q[2] ? 1 : 0).join('') + '|' + cur[3] + '|' + (P.reload > 0) + '|' + (P.coolerN || 0);
+  if (hk !== G.toolK) { G.toolK = hk; $('tool').innerHTML = `<div id="toolN">${cur[2] ? cur[1] + (cur[3] !== '' ? ' ' + cur[3] : '') : ''}</div>` + S7.map((q, i) => q[2] ? `<b class="${P.eq === i ? 'on' : ''}"><em>${i + 1}</em>${q[0]}${P.eq === i ? ` <span>${q[1]}${q[3] !== '' ? ' ' + q[3] : ''}</span>` : ''}</b>` : '').join('') + (P.reload > 0 ? '<span class="rl">reloading</span>' : '') + (P.coolerN ? `<span class="rl">${ICON.fish} ${P.coolerN}</span>` : ''); }
 }
 
 // ---------------- game flow
@@ -2923,13 +3072,15 @@ function startGame(seed, crew, sv) {
   F.st = 'idle'; placeItems(); G.seedItems = ITEMS.length; applyAll();
   for (let i = 0; i < FLM.length; i++) if (FLM[i]) { scene.remove(FLM[i].m); FLM[i] = null; }
   G.floats = []; for (let i = 0; i < 16; i++) spawnFloat(i);
+  if (isHost() && (!sv || !sv.earned)) { const jd = q => Math.hypot(q.x - JETTY.x, q.z - JETTY.z), I = ISLES.filter(q => !q.bar && !nearRig(q.x, q.z) && jd(q) < 900).sort((a, b) => jd(a) - jd(b))[0]; if (I) { const ux = (I.x - JETTY.x) / jd(I), uz = (I.z - JETTY.z) / jd(I); [70, 120, 180].forEach((r, i) => { let x = 0, z = 0; for (let k = 0; k < 12; k++) { const s = (k + 1 >> 1) * (k % 2 ? 6 : -6); x = JETTY.x + ux * r + uz * s; z = JETTY.z + uz * r - ux * s; if (!OBST.some(o => o.c && Math.hypot(x - o.x, z - o.z) < o.r + 12)) break; } G.floats[i] = [x, z, KINDS.indexOf('crate')]; }); } }
   Object.assign(M, {hp: D.mhp, x: -4, z: 6, y: LV[2], state: 'roam', path: [], idle: 2, aware: 0, lostT: 0, flee: 0, sawHide: -1, stuck: 0, screamT: 0, spd: 0, look: 0, tgt: null, preyT: 0, avoidT: 0, vy: 0, wet: 0});
   M.tx = M.x; M.ty = M.y; M.tz = M.z; M.tyaw = 0;
   ['slats', 'breath', 'map', 'note', 'end', 'pause', 'menu', 'lobby', 'shop'].forEach(id => $(id).classList.add('hidden'));
   $('hud').classList.remove('hidden'); lockMouse();
   const hi = POIS.findIndex(q => q.home); if (!G.disc.includes(hi)) G.disc.push(hi);
-  const it = $('intro'); it.innerHTML = sv && sv.disc && sv.disc.length > 1 ? `Back at the lighthouse.<br>$${G.cash} in the tin, ${G.disc.length} places on the chart.<br><br>The sea is waiting.` : 'A boat, a lighthouse, and a long night of open sea.<br>Find salvage. Sell it. Fix up the boat.<br><br>And stay out of deep water.';
-  it.classList.remove('hidden'); it.style.opacity = 1; setTimeout(() => it.style.opacity = 0, TEST ? 0 : 4000); setTimeout(() => it.classList.add('hidden'), TEST ? 0 : 6000);
+  G.stat = Object.assign({fish: 0, maxKg: 0, kills: 0, deaths: 0, maxDv: 0, play: 0}, (sv && sv.stat) || {}); G.stat.k = G.stat.k || {}; G.rankI = titleOf(G.earned); G.helmDone = G.earned > 0; G.camFly = null; G.endOpen = false; if (G.earned > 0) for (const i of [9, 10]) if (!G.goals.includes(i)) G.goals.push(i); if (G.disc.length >= 4 && !G.goals.includes(11)) G.goals.push(11); Object.assign(G, {cashShown: G.cash, cashLast: G.cash, banQ: [], banA: 0, banE: 0, mkDone: null, mkKey: null, mkCur: null, progT: 0, progK: '', mapWas: false, objT: 0}); $('banner').className = '';
+  const it = $('intro'); it.innerHTML = sv && sv.disc && sv.disc.length > 1 ? `${TITLES[titleOf(G.earned)][1]} ${String(P.name).replace(/[<>&]/g, '')}. Back at the lighthouse.<br>${cashStr(G.cash)} in the tin, ${G.disc.length} places on the chart.<br><br>The sea is waiting.` : 'A boat, a lighthouse, and a long night of open sea.<br>Find salvage. Sell it. Fix up the boat.<br><br>And stay out of deep water.';
+  it.classList.remove('hidden'); it.style.opacity = 1; setTimeout(() => it.style.opacity = 0, TEST ? 0 : 4000); setTimeout(() => it.classList.add('hidden'), TEST ? 0 : 6000); G.introT = TEST ? 0 : 5.5;
 }
 function step(dt) {
   if (isHost()) hostStep(dt);
