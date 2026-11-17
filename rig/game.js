@@ -16,7 +16,7 @@ function vn(x, z) { const xi = Math.floor(x), zi = Math.floor(z), xf = x - xi, z
 function fbm(x, z) { let s = 0, a = .5, f = 1; for (let i = 0; i < 4; i++) { s += a * vn(x * f, z * f); f *= 2.03; a *= .5; } return s / .9375; }
 
 // ---------------- settings
-const SET = Object.assign({diff: 'normal', sens: 1, bright: 1, gfx: 'high', name: '', vol: 1}, (() => { try { return JSON.parse(localStorage.getItem('s9-set')) || {}; } catch (e) { return {}; } })());
+const SET = Object.assign({diff: 'normal', sens: 1, bright: 1, gfx: 'high', name: '', vol: 1, fov: 70, inv: 0}, (() => { try { return JSON.parse(localStorage.getItem('s9-set')) || {}; } catch (e) { return {}; } })());
 const saveSet = () => { try { localStorage.setItem('s9-set', JSON.stringify(SET)); } catch (e) {} };
 const DIFF = {
   easy:      {chase: 4.4, sight: 20, hear: .7,  checkP: .3,  breathHear: .1, lost: 2.5, roam: 30, react: .7,  bleed: 60, down: 14, drown: 20, ramDmg: 14, deep: .2, mhp: 100, pay: .85},
@@ -1266,7 +1266,7 @@ function downPlayer(p, how) {
 }
 function stepSunk(dt) {
   if (!HC().sub || (B.dep || 0) < 3) return;
-  for (let i = 0; i < SUNK.length; i++) { const q = SUNK[i]; if (q.got || Math.hypot(q.x - B.x, q.z - B.z) > 9 || Math.abs(q.y + B.dep) > 10 || !holdFits(q.kind)) continue; q.got = true; B.hold.push(q.kind); emit({k: 'sunk', i, kind: q.kind}); }
+  for (let i = 0; i < SUNK.length; i++) { const q = SUNK[i]; if (q.got || Math.hypot(q.x - B.x, q.z - B.z) > 9 || Math.abs(q.y + B.dep) > 10) continue; if (!holdFits(q.kind)) { const n = performance.now(); if (B.driver && n - (G.clawFullT || 0) > 8000) { G.clawFullT = n; emit({k: 'holdfull', id: B.driver}); } continue; } q.got = true; B.hold.push(q.kind); emit({k: 'sunk', i, kind: q.kind}); }
 }
 function stepCreature(dt) {
   if (M.state === 'dead') { M.spd = 0; M.deadT -= dt; if (M.deadT <= 0) { M.state = 'gone'; M.goneT = 120; M.x = 0; M.z = 900; M.y = -50; } return; }
@@ -1631,11 +1631,12 @@ function stepPlayer(dt) {
   if (!alivePlay()) return;
   const bdy = B.yaw - (P.lastBY ?? B.yaw); P.lastBY = B.yaw;
   if (P.ob) { P.yaw += bdy; const [wx, wz] = bL2W(P.bl[0], P.bl[1]); P.x = wx; P.z = wz; }
+  if (P.climb) { climbStep(dt); return; }
   if (P.seat) {
     P.bl = [BHELM[0], BHELM[1]]; const [wx, wz] = bL2W(BHELM[0], BHELM[1]); P.x = wx; P.z = wz; P.y = BDECK.y; P.ob = 1;
     const d = angD(B.yaw, P.yaw); P.yaw = B.yaw + clamp(d, -1.3, 1.3);
     P.in = [(K.KeyW ? 1 : 0) - (K.KeyS ? 1 : 0), (K.KeyD ? 1 : 0) - (K.KeyA ? 1 : 0)];
-    P.in.push((K.KeyC || K.ControlLeft ? 1 : 0) - (K.Space ? 1 : 0)); P.vx = P.vz = 0; P.eye = mix(P.eye, HC().eye || ((B.up.cls || 0) === 3 ? 8.9 : 1.62), dt * 4); return;
+    P.in.push((K.KeyC ? 1 : 0) - (K.Space ? 1 : 0)); P.vx = P.vz = 0; P.eye = mix(P.eye, HC().eye || ((B.up.cls || 0) === 3 ? 8.9 : 1.62), dt * 4); return;
   }
   P.in = [0, 0];
   if (P.hd >= 0) {
@@ -1657,8 +1658,12 @@ function stepPlayer(dt) {
   const f = floorAt(P.x, P.z, P.sw ? 0 : P.y);
   const stand = f && f.y > -1.3;
   if (P.sw) { if (stand) { P.sw = 0; P.y = f.y; P.dv = 0; } else { P.y = 0; P.deep = !f || f.y < -3 ? 1 : 0; } }
+  if (P.sw && P.cr) P.cr = 0;
+  const surf = () => P.sw || wade ? 'wet' : !f ? 'wood' : f.s.k === 'boat' ? ((B.up.cls || 0) >= 2 ? 'steel' : 'wood') : f.s.k === 'disc' ? 'stone' : inCruise(P.x, P.z, P.y) ? ((BLD[zoneOf(P.x, P.z, P.y)] || {}).kind === 'state' ? 'carpet' : 'steel') : (f.s.k === 'slab' || f.s.k === 'ramp') && nearRig(P.x, P.z) ? 'metal' : f.s.k === 'land' ? 'sand' : 'wood';
+  const landed = iv => { G.land = Math.min(1, (iv - 3.5) / 9); Snd.land(G.land, surf()); G.lspV = (G.lspV || 0) + 8.8 * G.land;
+    if (iv > 13) { tone(180, .1, .3, 'sawtooth', null, 110); burst(520, .8, .1, .3, 'bandpass', null, .7); $('flash').style.opacity = .25; setTimeout(() => $('flash').style.opacity = 0, 200); P.stam = Math.max(0, P.stam - .4); } };
   const su = (P.own && P.own.suit) || 0, SU = SUIT[su]; let vy = 0;
-  if (P.sw && !P.down) { if (K.KeyC || K.ControlLeft) vy += 1; if (K.Space) vy -= 1; if (!su && (P.air ?? 1) <= 0) vy = -1; if (su && fw) vy += -Math.sin(P.pitch) * fw; }
+  if (P.sw && !P.down) { if (K.KeyC) vy += 1; if (K.Space) vy -= 1; if (!su && (P.air ?? 1) <= 0) vy = -1; if (su && fw) vy += -Math.sin(P.pitch) * fw; }
   const lim = Math.max(0, Math.min(SU.max, -seaBed(P.x, P.z) - 1.2)); P.dv = P.sw ? clamp((P.dv || 0) + (vy ? vy * (su ? 2.4 : 1.4) : su ? 0 : -2.2) * dt, 0, lim) : 0;
   if (P.sw && P.dv >= SU.max - .5 && vy > 0 && !G.pressT) { G.pressT = 1; showMsg(su ? `Too deep for the ${SU.n}. The pressure crushes in on your chest.` : 'You need diving gear to go deeper. The harbour shed sells it.', '', 3); } if (P.dv < SU.max - 3) G.pressT = 0;
   P.air = clamp((P.air ?? 1) + (P.dv > .4 ? -dt / SU.air : dt / 4), 0, 1);
@@ -1666,62 +1671,71 @@ function stepPlayer(dt) {
   if (P.dv > .4 && Math.random() < dt * .6) Snd.bubbles();
   if (!P.sw) {
     P.deep = 0;
-    if (stand && P.y - f.y < .6) { P.y = mix(P.y, f.y, Math.min(1, dt * 14)); P.vy = 0; }
-    else { P.vy = (P.vy || 0) - 20 * dt; P.y += P.vy * dt; if (stand && P.y < f.y) { P.y = f.y; P.vy = 0; } if (!stand && P.y < .1) { P.sw = 1; P.y = 0; P.vy = 0; P.ob = 0; Snd.splash(); showMsg('You are in the water! Swim to land or a ladder (E). Do not stay out in deep water.', '', 3); } }
+    if (stand && P.y - f.y < .6) { const iv = -(P.vy || 0); P.y = mix(P.y, f.y, Math.min(1, dt * 14)); P.vy = 0; if (iv > 3.5) landed(iv); }
+    else { P.vy = (P.vy || 0) - 20 * dt; P.y += P.vy * dt; if (stand && P.y < f.y) { const iv = -P.vy; P.y = f.y; P.vy = 0; if (iv > 3.5) landed(iv); } if (!stand && P.y < .1) { P.sw = 1; P.cr = 0; P.y = 0; P.vy = 0; P.ob = 0; Snd.splash(); showMsg('You are in the water! Swim to land or a ladder (E). Do not stay out in deep water.', '', 3); } }
   }
   if (!P.sw && f && f.s.k === 'boat' && Math.abs(P.y - BDECK.y) < .3) { P.ob = 1; P.bl = bW2L(P.x, P.z); } else P.ob = 0;
   gangway(dt);
   const moved = Math.hypot(P.x - ox, P.z - oz), v = moved / Math.max(dt, 1e-4); P.run = run && v > 1 ? 1 : 0;
   if (P.run) { P.stam -= dt / 7; if (P.stam <= 0) { P.stam = 0; P.tired = true; } } else P.stam = Math.min(1, P.stam + dt / (v > .5 ? 11 : 7));
   P.eye = mix(P.eye, P.sw ? .25 : P.down ? .45 : P.cr ? 1.0 : 1.62, Math.min(1, dt * 8));
-  P.stepD += moved; P.bob += moved * (run ? 1.25 : 1.6);
-  if (P.stepD > (run ? 1 : P.cr ? .55 : .75)) { P.stepD = 0; const k = run ? 1.4 : P.cr ? .35 : .8, kind = P.sw || wade ? 'wet' : f && f.s.k === 'land' ? 'sand' : f && (f.s.k === 'slab' || f.s.k === 'ramp') && nearRig(P.x, P.z) ? 'metal' : 'wood'; Snd.step(kind, k); if (isHost() && !P.ob) { noise(P.x, P.y, P.z, run ? 22 : P.cr ? 2 : 8); if (run) P.heat += .02; } }
+  P.bob += moved / (run ? 1 : P.cr ? .55 : .75) * PI; const bn = Math.floor(P.bob / PI);
+  if (bn > (P.bobN ?? bn) && (P.sw || (stand && P.y - f.y < .3))) { const k = run ? 1.4 : P.cr ? .35 : .8; Snd.step(surf(), k); if (isHost() && !P.ob) { noise(P.x, P.y, P.z, run ? 22 : P.cr ? 2 : 8); if (run) P.heat += .02; } } P.bobN = bn;
   if (P.l) { P.bat -= dt / 360; if (P.bat <= 0) { P.bat = 0; P.l = 0; showMsg('Your flashlight died. Buy batteries at the harbour shed.', '', 3); } }
-  $('stam').style.opacity = P.stam < .99 ? 1 : 0; $('stam').firstChild.style.width = P.stam * 100 + '%';
+  const so = P.stam < .35, sw = Math.round(P.stam * 100) + '%'; if (so !== G.stamOn) { G.stamOn = so; $('stam').style.opacity = so ? 1 : 0; } if (sw !== G.stamW) { G.stamW = sw; $('stam').firstChild.style.width = sw; }
 }
 function interWorld(it) { if (!it.boat) return it; const [x, z] = bL2W(it.lx, it.lz); return {x, y: BDECK.y + it.ly, z}; }
 function targets() {
-  const L = [];
-  for (const it of ITEMS) if (!it.taken) L.push({x: it.x, y: it.y + .2, z: it.z, r: 2.4, label: it.kind === 'note' ? 'Read the note' : CARRY.has(it.kind) && !sackFits(P, it.kind) ? `Sack full (${sackUsed(P.sack)}/${sackCap(P)}, X drops the last thing)` : `Pick up the ${NAMES[it.kind]}` + (VALUE[it.kind] ? ` ($${VALUE[it.kind]})` : ''), go: () => it.kind === 'note' ? openNote(it.text) : act({a: 'pick', i: it.i})});
-  G.floats.forEach((f, i) => { if (!f) return; const kind = KINDS[f[2]]; L.push({x: f[0], y: (P.ob ? BDECK.y : 0) + .2, z: f[1], r: (B.up.crane && P.ob ? 12 : 5.5) + (P.ob ? BG.hw * .6 : 0), flat: 1, label: kind !== 'bottle' && !sackFits(P, kind) ? 'Sack full' : (P.ob ? 'Haul the ' : 'Grab the ') + NAMES[kind] + (P.ob ? ' aboard' : '') + (VALUE[kind] ? ` ($${VALUE[kind]})` : ''), go: () => act({a: 'float', i})}); });
+  const L = [], far = (x, z, r = 30) => (x - P.x) * (x - P.x) + (z - P.z) * (z - P.z) > r * r, full = `Sack full (${sackUsed(P.sack)}/${sackCap(P)})`;
+  for (const it of ITEMS) { if (it.taken || far(it.x, it.z)) continue; const nf = CARRY.has(it.kind) && !sackFits(P, it.kind); L.push({x: it.x, y: it.y + .2, z: it.z, r: 2.4, info: nf ? 1 : 0, label: it.kind === 'note' ? 'Read the note' : nf ? `Sack full (${sackUsed(P.sack)}/${sackCap(P)}, X drops the last thing)` : `Pick up the ${NAMES[it.kind]}` + (VALUE[it.kind] ? ` ($${VALUE[it.kind]})` : ''), go: () => it.kind === 'note' ? openNote(it.text) : act({a: 'pick', i: it.i})}); }
+  G.floats.forEach((f, i) => { if (!f) return; const r = (B.up.crane && P.ob ? 12 : 5.5) + (P.ob ? BG.hw * .6 : 0); if (far(f[0], f[1], r + 2)) return; const kind = KINDS[f[2]], nf = kind !== 'bottle' && !sackFits(P, kind); L.push({x: f[0], y: (P.ob ? BDECK.y : 0) + .2, z: f[1], r, flat: 1, info: nf ? 1 : 0, label: nf ? full : (P.ob ? 'Haul the ' : 'Grab the ') + NAMES[kind] + (P.ob ? ' aboard' : '') + (VALUE[kind] ? ` ($${VALUE[kind]})` : ''), go: () => act({a: 'float', i})}); });
   VALVES.forEach((v, i) => { if (!v.open) L.push({x: v.x, y: v.y + 1.1, z: v.z, r: 2.6, hold: 'v' + i, label: 'Hold E to open the ' + v.name}); });
-  const gb = BLD.find(q => q.kind === 'gen'), cb = BLD.find(q => q.kind === 'ctrl');
-  if (gb) L.push({x: gb.genP[0], y: gb.genP[1], z: gb.genP[2], r: 3, hold: !G.power && VALVES.every(v => v.open) ? 'g' : '', label: G.power ? 'The generator is running' : VALVES.every(v => v.open) ? 'Hold E to start the generator' : 'Generator. No fuel: two valves are shut.'});
-  if (CRZ.bridge && CRZ.bridge.console) { const c = CRZ.bridge.console; L.push({x: c[0], y: c[1], z: c[2], r: 2.8, hold: !G.cruise && P.sack.includes('key') ? 'cz' : '', label: G.cruise ? 'The Serenade is yours. Switch to her at the harbour shed.' : P.sack.includes('key') ? 'Hold E to start the engines (it will hear)' : "Engine start. Needs the captain's key card."}); }
-  for (let i = 0; i < SUNK.length; i++) { const q = SUNK[i]; if (q.got || !P.sw || (P.dv || 0) < 1) continue; if (Math.hypot(q.x - P.x, q.z - P.z) > 4) continue; L.push({x: q.x, y: q.y + .4, z: q.z, r: 4.5, dive: 1, label: `Grab the sunken ${NAMES[q.kind]} ($${VALUE[q.kind] || 0})`, go: () => act({a: 'dpick', i})}); }
-  if (cb) L.push({x: cb.console[0], y: cb.console[1], z: cb.console[2], r: 2.8, hold: G.power && !G.bbOut ? 'c' : '', label: !G.power ? 'Control console. No power.' : G.bbOut ? 'Static on every channel' : 'Hold E to eject the flight recorder'});
-  DIGS.forEach((d, i) => { if (!d.dug) L.push({x: d.x, y: d.y + .3, z: d.z, r: 2.6, hold: 'd' + i, label: d.rev ? 'Hold E to dig where the X is' : 'A cairn of stones. Hold E to dig.'}); });
+  const gb = BLD.find(q => q.kind === 'gen'), cb = BLD.find(q => q.kind === 'ctrl'), vo = VALVES.every(v => v.open);
+  if (gb) L.push({x: gb.genP[0], y: gb.genP[1], z: gb.genP[2], r: 3, hold: !G.power && vo ? 'g' : '', info: G.power || !vo ? 1 : 0, label: G.power ? 'The generator is running' : vo ? 'Hold E to start the generator' : 'Generator. No fuel: two valves are shut.'});
+  if (CRZ.bridge && CRZ.bridge.console) { const c = CRZ.bridge.console, key = P.sack.includes('key'); L.push({x: c[0], y: c[1], z: c[2], r: 2.8, hold: !G.cruise && key ? 'cz' : '', info: G.cruise || !key ? 1 : 0, label: G.cruise ? 'The Serenade is yours. Switch to her at the harbour shed.' : key ? 'Hold E to start the engines (it will hear)' : "Engine start. Needs the captain's key card."}); }
+  if (P.sw && (P.dv || 0) >= 1) for (let i = 0; i < SUNK.length; i++) { const q = SUNK[i]; if (q.got || far(q.x, q.z, 4)) continue; const nf = !sackFits(P, q.kind); L.push({x: q.x, y: q.y + .4, z: q.z, r: 4.5, dive: 1, info: nf ? 1 : 0, label: nf ? full : `Grab the sunken ${NAMES[q.kind]} ($${VALUE[q.kind] || 0})`, go: nf ? null : () => act({a: 'dpick', i})}); }
+  if (cb) L.push({x: cb.console[0], y: cb.console[1], z: cb.console[2], r: 2.8, hold: G.power && !G.bbOut ? 'c' : '', info: !G.power || G.bbOut ? 1 : 0, label: !G.power ? 'Control console. No power.' : G.bbOut ? 'Static on every channel' : 'Hold E to eject the flight recorder'});
+  DIGS.forEach((d, i) => { if (!d.dug && !far(d.x, d.z)) L.push({x: d.x, y: d.y + .3, z: d.z, r: 2.6, hold: 'd' + i, label: d.rev ? 'Hold E to dig where the X is' : 'Hold E to dig under the cairn'}); });
   if (G.casP) L.push({x: G.casP[0], y: G.casP[1], z: G.casP[2], r: 3, label: 'The Lucky Lantern: blackjack, roulette, slots', go: openCasino});
   if (CRZ.box) L.push({x: CRZ.x - 6, y: CRZ.D1 + 1.2, z: CRZ.z + 44, r: 2.6, label: 'Slot machines (they still work)', go: openCasino});
   if (G.shed) L.push({x: G.shed.shop[0], y: G.shed.shop[1], z: G.shed.shop[2], r: 3, label: 'Harbour shed: sell salvage, buy upgrades', go: openShop});
   for (const p of PL.values()) if (p !== P && p.down && !p.dead && p.ready) L.push({x: p.x, y: p.y + .3, z: p.z, r: 2.4, hold: 'r' + p.id, label: `Hold E to pick up ${p.name}`});
-  for (const it of INTER) { if (it.on && !it.on()) continue; const w = interWorld(it); L.push(Object.assign({}, it, {x: w.x, y: it.boat ? w.y : it.y, z: w.z, label: it.label(), hide: it.h, src: it})); }
+  for (const it of INTER) { if ((!it.boat && far(it.x, it.z)) || (it.on && !it.on())) continue; const w = interWorld(it); L.push(Object.assign({}, it, {x: w.x, y: it.boat ? w.y : it.y, z: w.z, label: it.label(), hide: it.h, src: it})); }
   return L;
 }
 function stepInteract(dt) {
   const pr = $('prompt'); P.h = '';
   if (TEST && G.forceH) { P.h = G.forceH; return; }
-  if (!alivePlay() || P.down || G.shopOpen || G.helpOpen) { pr.style.opacity = 0; ePress = false; return; }
+  const off = () => { if (G.prOp !== 0) { G.prOp = 0; pr.style.opacity = 0; } ePress = false; };
+  if (!alivePlay() || P.down || P.climb || anyPanel()) { off(); return; }
   const ey = P.y + P.eye; cam.getWorldDirection(_fw); let best = null, bs = 1e9;
   for (const it of targets()) {
     if (P.hd >= 0) { if (it.hide && it.hide.i === P.hd) { best = it; break; } continue; }
     if (P.seat) { if (it.kind === 'helm') { best = it; break; } continue; }
     if (P.sw && it.kind !== 'ladder' && !it.flat && !it.dive) continue;
+    if (it.kind === 'ladder' && (P.dv || 0) > .35) continue;
     const dx = it.x - P.x, dy = (it.kind === 'ladder' || it.flat ? 0 : it.dive ? it.y - cam.position.y : it.y - ey), dz = it.z - P.z, d = Math.hypot(dx, dy, dz); if (d > it.r) continue;
     if (it.kind !== 'ladder') { const hd = Math.hypot(dx, dz) || 1, dot = it.flat ? (dx * _fw.x + dz * _fw.z) / hd / Math.max(.2, Math.hypot(_fw.x, _fw.z)) : (dx * _fw.x + dy * _fw.y + dz * _fw.z) / d, lim = d < 1.2 ? .4 : it.flat ? .6 : .84; if (dot < lim) continue; }
     if (d < bs) { bs = d; best = it; }
   }
-  if (!best) { pr.style.opacity = 0; ePress = false; return; }
-  $('pTxt').innerHTML = `<kbd>E</kbd>${best.label}`; pr.style.opacity = 1;
-  const hp = best.hold ? (G.holdP[best.hold] || 0) : 0; $('pBar').style.display = best.hold ? 'block' : 'none'; $('pBar').firstChild.style.width = hp * 100 + '%';
+  if (!best) { off(); return; }
+  const doable = best.hold || (best.go && !best.info) || best.hide || best.kind === 'helm' || best.kind === 'ladder' || (best.kind === 'hold' && (P.sack.length || B.hold.length)) || (best.kind === 'fuelcap' && P.sack.includes('fuel')) || (best.kind === 'patchbox' && (P.sack.includes('patch') || B.hold.includes('patch')));
+  let html, op = 1; const lab = best.label;
+  if (P.seat && best.kind === 'helm') {
+    if (G.helmSeen == null) { try { G.helmSeen = localStorage.getItem('s9-helm') ? 1 : 0; } catch (e) { G.helmSeen = 0; } }
+    const t = G.seatT || 0; if (t > 20 && !G.helmSeen) { G.helmSeen = 1; try { localStorage.setItem('s9-helm', '1'); } catch (e) {} }
+    html = '<kbd>W</kbd><kbd>S</kbd> throttle · <kbd>A</kbd><kbd>D</kbd> steer · <kbd>Q</kbd> horn · <kbd>E</kbd> let go' + (HC().sub ? ' · <kbd>C</kbd><kbd>Space</kbd> dive' : ''); op = t < (G.helmSeen ? 2 : 6) ? 1 : 0;
+  } else html = best.hold ? 'Hold <kbd>E</kbd> ' + (lab.startsWith('Hold E to ') ? lab[10].toUpperCase() + lab.slice(11) : lab) : doable ? `<kbd>E</kbd> ${lab}` : `<span class="info">${lab}</span>`;
+  if (html !== G.pTxtK) { G.pTxtK = html; $('pTxt').innerHTML = html; } if (op !== G.prOp) { G.prOp = op; pr.style.opacity = op; }
+  const bd = best.hold ? 'block' : 'none'; if (bd !== G.pBarD) { G.pBarD = bd; $('pBar').style.display = bd; } if (best.hold) $('pBar').firstChild.style.width = (G.holdP[best.hold] || 0) * 100 + '%';
   if (best.hold && eDown) { P.h = best.hold; if (best.hold[0] === 'v' && Math.random() < dt * 2) Snd.valve(); if (best.hold[0] === 'd' && Math.random() < dt * 3) Snd.dig(); }
-  else if (ePress) {
+  else if (ePress && doable) {
     if (best.hide) toggleHide(best.hide);
     else if (best.kind === 'helm') act({a: P.seat ? 'unhelm' : 'helm'});
-    else if (best.kind === 'ladder') { const s = best.src; P.sw = 0; P.vy = 0; if (s.top === 'boat') { P.ob = 1; const lz = BG.sub ? BDECK.z1 - .6 : BG.zs - 1, [wx, wz] = bL2W(0, lz); P.bl = [0, lz]; P.x = wx; P.z = wz; P.y = BDECK.y; } else { P.x = s.top[0]; P.y = s.top[1]; P.z = s.top[2]; } Snd.splash(); }
+    else if (best.kind === 'ladder') startClimb(best.src);
     else if (best.kind === 'hold') { if (P.sack.length) act({a: 'stow'}); else if (B.hold.length) act({a: 'unstow'}); }
-    else if (best.kind === 'fuelcap') { if (P.sack.includes('fuel')) act({a: 'fuel'}); }
-    else if (best.kind === 'patchbox') { if (P.sack.includes('patch') || B.hold.includes('patch')) act({a: 'patch'}); }
+    else if (best.kind === 'fuelcap') act({a: 'fuel'});
+    else if (best.kind === 'patchbox') act({a: 'patch'});
     else if (best.go) best.go();
   }
   ePress = false;
@@ -1730,9 +1744,9 @@ function toggleHide(h) {
   if (P.hd >= 0) { P.hd = -1; P.x = h.ex; P.z = h.ez; P.l = P.lightWas && P.bat > 0 ? 1 : 0; $('slats').classList.add('hidden'); $('breath').classList.add('hidden'); Snd.creak(); }
   else { P.hd = h.i; P.lightWas = P.l; P.l = 0; P.yaw = h.yaw; P.pitch = 0; P.cr = 0; $('slats').classList.remove('hidden'); $('breath').classList.remove('hidden'); Snd.creak(); if (isHost() && M.state === 'chase' && M.tgt === P.id && G.t - M.seenAt < 1.2) M.sawHide = h.i; }
 }
-function openNote(t) { G.noteOpen = true; $('noteT').textContent = t; $('note').classList.remove('hidden'); }
-function closeNote() { G.noteOpen = false; $('note').classList.add('hidden'); }
-function openShop() { G.shopOpen = true; G.shopSig = ''; $('shop').classList.remove('hidden'); try { document.exitPointerLock(); } catch (e) {} drawShop(); }
+function openNote(t) { G.noteOpen = true; clearKeys(); $('noteT').textContent = t; $('note').classList.remove('hidden'); }
+function closeNote() { G.noteOpen = false; $('note').classList.add('hidden'); if (G.on) lockMouse(); }
+function openShop() { G.shopOpen = true; G.shopSig = ''; clearKeys(); $('shop').classList.remove('hidden'); try { document.exitPointerLock(); } catch (e) {} drawShop(); }
 function closeShop() { G.shopOpen = false; $('shop').classList.add('hidden'); lockMouse(); }
 function drawShop() {
   if (!G.shopOpen) return;
@@ -1787,38 +1801,107 @@ function myPose() { return {t: 'pose', x: +P.x.toFixed(2), z: +P.z.toFixed(2), y
 
 // ---------------- input
 addEventListener('keydown', e => {
-  if (e.code === 'Tab' || e.code === 'Space') e.preventDefault();
-  if (!G.on) return; K[e.code] = true;
+  const typing = e.target && (e.target.tagName === 'TEXTAREA' || (e.target.tagName === 'INPUT' && /^(text|number|search|password)$/.test(e.target.type)));
+  if ((e.code === 'Tab' || e.code === 'Space') && G.on && !G.paused && !typing) e.preventDefault();
+  if (!G.on) return; if (G.paused) return;
+  if (typing) { if (G.casOpen && e.code === 'Escape' && !e.repeat) closeCasino(); return; }
+  if (!anyPanel()) K[e.code] = true;
   if (G.noteOpen) { if (e.code === 'KeyE' || e.code === 'Escape') closeNote(); return; }
   if (G.shopOpen) { if ((e.code === 'KeyE' || e.code === 'Escape') && !e.repeat) closeShop(); return; }
   if (G.casOpen) { if (e.code === 'Escape' && !e.repeat) closeCasino(); return; }
   if (G.helpOpen) { if (['KeyE', 'Escape', 'KeyH', 'Enter'].includes(e.code) && !e.repeat) showFishHelp(false); return; }
+  if (G.endOpen) return;
   if (e.repeat) return;
   if (e.code === 'KeyE') { eDown = true; ePress = true; }
   if (!alivePlay()) return;
-  if (e.code === 'KeyF' && P.hd < 0 && P.bat > 0) { P.l = P.l ? 0 : 1; Snd.click(); }
-  if (e.code === 'KeyC' && !P.down && !P.seat) P.cr = P.cr ? 0 : 1;
-  if (e.code === 'KeyG') throwFlare();
-  if (e.code === 'KeyX' && P.sack.length) act({a: 'drop'});
-  if (/^Digit[1-7]$/.test(e.code)) equip(+e.code[5] - 1);
+  if (e.code === 'KeyF' && P.hd < 0 && P.bat > 0) { if (![1, 3, 4].includes(P.eq)) { equip(1); P.l = 1; } else { P.l ^= 1; Snd.click(); } }
+  if (e.code === 'KeyC' && !P.down && !P.seat && !P.sw) P.cr = P.cr ? 0 : 1;
+  if (e.code === 'KeyG' && !P.climb) throwFlare();
+  if (e.code === 'KeyX' && P.sack.length && !P.climb) act({a: 'drop'});
+  const dg = /^(Digit|Numpad)([1-7])$/.exec(e.code); if (dg && !P.climb) equip(+dg[2] - 1);
   if (e.code === 'KeyR') reload();
   if (e.code === 'KeyH') showFishHelp(true);
-  if (e.code === 'KeyQ' && !P.down && (G.whT || 0) <= 0) { G.whT = 3; act({a: 'wh'}); }
+  if (e.code === 'KeyQ' && !P.down) { if (P.seat) { const n = performance.now(); if (n - (G.hornC || 0) > 2500) { G.hornC = n; act({a: 'horn'}); } } else if ((G.whT || 0) <= 0) { G.whT = 3; act({a: 'wh'}); } }
   if (e.code === 'Tab') { G.map = true; $('map').classList.remove('hidden'); drawMap(); }
 });
 addEventListener('keyup', e => { K[e.code] = false; if (e.code === 'KeyE') eDown = false; if (e.code === 'Tab') { G.map = false; $('map').classList.add('hidden'); } });
 addEventListener('mousemove', e => {
   if (!G.on || G.paused || document.pointerLockElement !== canvas || !P) return;
-  const s = .0022 * SET.sens; P.yaw -= e.movementX * s; P.pitch = clamp(P.pitch - e.movementY * s, -1.45, 1.45);
+  const s = .0022 * SET.sens; P.yaw -= e.movementX * s; P.pitch = clamp(P.pitch - e.movementY * s * (SET.inv ? -1 : 1), -1.45, 1.45);
   if (P.hd >= 0) { const h = HIDES[P.hd], d = angD(h.yaw, P.yaw); P.yaw = h.yaw + clamp(d, -.7, .7); P.pitch = clamp(P.pitch, -.5, .4); }
 });
-canvas.addEventListener('mousedown', e => { if (!G.on || G.shopOpen) return; if (document.pointerLockElement !== canvas) { lockMouse(); return; } if (G.noteOpen) { closeNote(); return; } if (e.button === 2) mouseR = true; if (e.button === 0 && !alivePlay()) G.spec++; if (e.button === 0 && alivePlay()) { G.lmb = true; toolDown(); } });
+canvas.addEventListener('mousedown', e => { if (!G.on || G.paused) return; if (G.noteOpen) { closeNote(); return; } if (anyPanel()) return; if (document.pointerLockElement !== canvas) { lockMouse(); return; } if (e.button === 2) mouseR = true; if (e.button === 0 && !alivePlay()) G.spec++; if (e.button === 0 && alivePlay() && !P.climb) { G.lmb = true; toolDown(); } });
 addEventListener('mouseup', e => { if (e.button === 2) mouseR = false; if (e.button === 0) { G.lmb = false; toolUp(); } });
 addEventListener('contextmenu', e => e.preventDefault());
-document.addEventListener('pointerlockchange', () => { if (document.pointerLockElement !== canvas && G.on && !TEST && !G.shopOpen && !G.helpOpen && !G.casOpen && !G.noteOpen) pause(true); });
-addEventListener('blur', () => { for (const k in K) K[k] = false; eDown = false; mouseR = false; G.lmb = false; });
+document.addEventListener('pointerlockchange', () => { const lk = document.pointerLockElement === canvas; if (lk && G.on && G.paused && G.wantResume) { G.wantResume = false; pause(false); return; } if (!lk && G.on && !TEST && !G.paused && !anyPanel()) pause(true); });
+addEventListener('blur', () => clearKeys());
+addEventListener('wheel', e => { if (!G.on || G.paused || anyPanel() || (document.pointerLockElement !== canvas && !TEST) || !alivePlay() || P.seat || P.climb) return;
+  const d = e.deltaY * (e.deltaMode === 1 ? 33 : e.deltaMode === 2 ? 400 : 1), n = performance.now(); if (!d) return; if (Math.sign(d) !== Math.sign(G.whA || 0)) G.whA = 0; G.whA += d;
+  if (Math.abs(G.whA) < 40 || n - (G.whN || 0) < 70) return; cycleSlot(Math.sign(G.whA)); G.whA = 0; G.whN = n; }, {passive: true});
+addEventListener('beforeunload', e => { if (G.on && !TEST) { try { save(); } catch (x) {} e.preventDefault(); e.returnValue = ''; } });
+document.addEventListener('pointerlockerror', () => { if (G.paused) $('pauseN').textContent = 'Click Resume again if the mouse does not lock.'; });
 function lockMouse() { if (!TEST && canvas.requestPointerLock) try { const r = canvas.requestPointerLock(); if (r && r.catch) r.catch(() => {}); } catch (e) {} }
-function pause(p) { G.paused = p; $('pause').classList.toggle('hidden', !p); if (p) { $('pVol').value = SET.vol; $('pSens').value = SET.sens; $('pBright').value = SET.bright; } $('pauseN').textContent = Net.role === 'solo' ? 'The sea waits for you. Progress is saved.' : 'Online games keep running.'; if (Net.role === 'solo' && A.ctx) p ? A.ctx.suspend() : A.ctx.resume(); if (!p) lockMouse(); }
+function pause(p) { G.paused = p; G.wantResume = false; $('pause').classList.toggle('hidden', !p); if (p) { clearKeys(); G.map = false; $('map').classList.add('hidden'); $('pVol').value = SET.vol; $('pSens').value = SET.sens; $('pBright').value = SET.bright; $('pFov').value = SET.fov || 70; $('pInv').checked = !!SET.inv; } $('pauseN').textContent = Net.role === 'solo' ? 'The sea waits for you. Progress is saved.' : 'Online games keep running.'; if (Net.role === 'solo' && A.ctx) p ? A.ctx.suspend() : A.ctx.resume(); }
+function resumeReq() { if (TEST || document.pointerLockElement === canvas || !canvas.requestPointerLock) { pause(false); return; } G.wantResume = true; lockMouse(); $('pauseN').textContent = 'Click Resume again if the mouse does not lock.'; }
+function clearKeys() { for (const k in K) K[k] = false; eDown = false; ePress = false; mouseR = false; G.lmb = false; }
+const anyPanel = () => !!(G.noteOpen || G.shopOpen || G.casOpen || G.helpOpen || G.endOpen);
+function closePanels(relock) { G.noteOpen = G.shopOpen = G.casOpen = G.helpOpen = false; ['shop', 'casino', 'fishHelp', 'note'].forEach(id => $(id).classList.add('hidden')); if (relock && G.on) lockMouse(); }
+// once per rendered frame, after the camera: panels that should close, the crouch dot, the click-to-look hint
+function ctlFrame(dt) {
+  if (!G.on || !P) return;
+  const four = G.noteOpen || G.shopOpen || G.casOpen || G.helpOpen;
+  if (four && (!alivePlay() || P.down || (B.sink > 0 && P.ob))) closePanels(false);
+  else if (four && Net.role !== 'solo') { const sh = G.shopOpen && G.shed && Math.hypot(P.x - G.shed.shop[0], P.z - G.shed.shop[2]) > 6, c = G.casAt, cs = G.casOpen && c && (c[2] ? !P.ob : Math.hypot(P.x - c[0], P.z - c[1]) > 6); if (sh || cs) closePanels(false); }
+  const ap = anyPanel(); if (ap && !G.panWas) clearKeys(); G.panWas = ap;
+  if (P.climb && (!alivePlay() || P.down)) P.climb = null;
+  const cr = !!(alivePlay() && P.cr && !P.sw && P.hd < 0); if (cr !== G.dotCr) { G.dotCr = cr; $('dot').classList.toggle('cr', cr); }
+  const hint = !G.paused && !ap && !G.map && alivePlay() && document.pointerLockElement !== canvas && !TEST; if (hint !== G.hintOn) { G.hintOn = hint; $('clickHint').classList.toggle('on', hint); }
+}
+const slotOk = i => !![1, 1, P.own.rod, P.own.glock, P.own.sg, P.flares > 0, P.own.fw > 0][i];
+function cycleSlot(d) { for (let k = 1; k <= 7; k++) { const i = ((P.eq + d * k) % 7 + 7) % 7; if (slotOk(i)) { if (i !== P.eq) equip(i); return; } } }
+// ladders: climb over about a second instead of teleporting to the top
+function startClimb(s) {
+  const boat = s.top === 'boat', y0 = waveH(P.x, P.z, G.wt) - (P.dv || 0);
+  if (boat) { const lz = BG.sub ? BDECK.z1 - .6 : BG.zs - 1, [ax, az] = bW2L(P.x, P.z); P.climb = {t: 0, T: .9 + (BDECK.y - y0) * .12, a: [ax, y0, az], b: 'boat', f: [s.lx, s.lz], e: [0, BDECK.y, lz]}; }
+  else { const t = s.top; P.climb = {t: 0, T: .9 + (t[1] - y0) * .12, a: [P.x, y0, P.z], b: t, f: [s.x, s.z], e: [t[0], t[1], t[2]]}; }
+  Object.assign(P.climb, {p0: P.pitch, po: 0, yo: 0, y0: P.yaw, eye: P.eye, rT: 0, wet: 1});
+  P.sw = 0; P.ob = 0; P.dv = 0; P.deep = 0; P.vx = P.vz = P.vy = 0; P.cr = 0; P.run = 0;
+}
+function climbStep(dt) {
+  const c = P.climb, boat = c.b === 'boat';
+  if (P.down || P.seat || P.ob || (boat && (B.sink > 0 || (B.dep || 0) > .6))) { P.climb = null; return; }
+  c.t += dt; const u = Math.min(1, c.t / c.T), k1 = smooth(u / .45), k3 = smooth((u - .62) / .38), ky = smooth((u - .1) / .65);
+  const hx = mix(mix(c.a[0], c.f[0], k1), c.e[0], k3), hz = mix(mix(c.a[2], c.f[1], k1), c.e[2], k3), lift = boat ? B.heave * ky : 0;
+  const rung = ky > .02 && ky < .98, st = rung ? Math.sin(c.t / .28 * TAU) * .03 * Math.sin(PI * ky) : 0;
+  P.y = mix(c.a[1], c.e[1], ky) + lift + st; P.eye = mix(c.eye, 1.62, smooth((u - .1) / .75));
+  if (boat) { [P.x, P.z] = bL2W(hx, hz); } else { P.x = hx; P.z = hz; }
+  const [fx, fz] = boat ? bL2W(c.f[0], c.f[1]) : c.f, [tx, tz] = boat ? bL2W(c.e[0], c.e[2]) : [c.e[0], c.e[2]], ty = Math.atan2(-(tx - fx), -(tz - fz));
+  const yo = angD(c.y0, ty) * smooth(u / .45); P.yaw += yo - c.yo; c.yo = yo;
+  const po = (-.15 - c.p0) * Math.sin(PI * u); P.pitch += po - c.po; c.po = po;
+  if (rung && (c.rT -= dt) <= 0) { c.rT = .28; Snd.rung(); }
+  if (c.wet && P.y > c.a[1] + .25) { c.wet = 0; Snd.splash(); for (let i = 0; i < 6; i++) setTimeout(() => tone(1100 + Math.random() * 900, .012, .05, 'sine', null, 1800 + Math.random() * 900), 250 + i * 300 + Math.random() * 140); }
+  if (u < 1) return;
+  P.climb = null; P.sw = 0; P.vy = 0; P.eye = 1.62;
+  if (boat) { P.ob = 1; P.bl = [0, c.e[2]]; [P.x, P.z] = bL2W(0, c.e[2]); P.y = BDECK.y; P.lastBY = B.yaw; } else { P.x = c.b[0]; P.y = c.b[1]; P.z = c.b[2]; }
+}
+Snd.rung = () => { burst(1600 * (.92 + Math.random() * .16), 3, .05, .05); tone(150, .03, .08); };
+Snd.land = (k, kind) => { burst(110, 1, .4 * k, .25, 'lowpass'); Snd.step(kind || 'wood', 1.6); };
+// footsteps by surface: a heel strike, then the toe 45 ms later at half gain
+Snd.step = (kind, k) => { const r = .88 + Math.random() * .24, hit = g => {
+    if (kind === 'wet') { burst(700 * r, .5, .1 * k * g, .25, 'bandpass', null, .7); burst(1600 * r, 1, .03 * k * g, .15); }
+    else if (kind === 'metal') burst(2200 * r, 4, .05 * k * g, .08);
+    else if (kind === 'steel') burst(1600 * r, 3, .05 * k * g, .08);
+    else if (kind === 'stone') burst(900 * r, .8, .06 * k * g, .05);
+    else if (kind === 'carpet') burst(350 * r, .7, .08 * k * g, .1, 'lowpass');
+    else if (kind === 'sand') { burst(450 * r, .6, .07 * k * g, .12, 'lowpass'); burst(3000 * r, .5, .012 * k * g, .06, 'highpass'); }
+    else burst(600 * r, 1.2, .06 * k * g, .09); };
+  hit(1); setTimeout(() => hit(.5), 45);
+  if (kind === 'metal') tone((320 + Math.random() * 60) * r, .02 * k, .08, 'triangle');
+  else if (kind === 'steel') { tone(150 * r, .03 * k, .1); tone(2200 * r, .008 * k, .04); }
+  else if (kind === 'wood') tone(180 * r, .015 * k, .08, 'triangle'); };
+const KEYMAP = [['W A S D', 'move'], ['Shift', 'run'], ['C', 'crouch · dive'], ['Space', 'rise · hold breath'], ['E', 'use · hold for jobs'], ['F', 'flashlight'], ['G', 'throw a flare'], ['Q', 'whistle · horn at the wheel'], ['1-7 · wheel', 'hotbar'],
+  ['LMB / RMB', 'use · aim'], ['R', 'reload'], ['X', 'drop the last thing'], ['H', 'fishing help'], ['Tab (hold)', 'chart'], ['Esc', 'pause']];
+const keyTable = list => `<div class="keys ktab">${list.map(([k, a]) => `<span><b>${k}</b></span><span>${a}</span>`).join('')}</div>`;
 
 // ---------------- rendering
 const _fw = new THREE.Vector3(), swayV = new THREE.Vector3();
@@ -1875,14 +1958,16 @@ function updateCamera(dt) {
   else if (G.drownCam) { const dc = G.drownCam; dc.t += dt; ex = dc.x; ez = dc.z; ey = waveH(ex, ez, G.wt) + .2 - Math.min(5.5, dc.t * 2.2); yaw = dc.yaw; pitch = mix(.1, -1.35, clamp(dc.t / 1.2, 0, 1)); roll = Math.sin(dc.t * 3) * .15; if (dc.t > 4) G.drownCam = null; }
   else { const s = specTarget(); if (s) { ex = s.rx; ey = s.ry + (s.down ? .5 : 1.6) + (s.ob ? B.heave : 0); ez = s.rz; yaw = s.ryaw; pitch = s.rpitch; } else { ex = HOME.x; ey = 30; ez = HOME.z + 40; yaw = PI; pitch = -.3; } }
   if (own && P.seat && HC().eye && BOAT && BOAT.userData.wz) { [ex, ez] = bL2W(0, BOAT.userData.wz[0] - .7); }
-  const sp = own ? Math.hypot(P.vx, P.vz) : 0, bobA = own && P.hd < 0 && !P.seat ? clamp(sp / 6, 0, 1) * .05 : 0, shk = (own && P.fear > .5 ? (P.fear - .5) * .006 : 0) + (G.shake || 0) * .02;
-  G.shake = Math.max(0, (G.shake || 0) - dt * 1.2);
+  const sp = own ? Math.hypot(P.vx, P.vz) : 0, bobA = own && P.hd < 0 && !P.seat ? clamp(sp / 6, 0, 1) * .05 : 0, shk = own && P.fear > .5 ? (P.fear - .5) * .006 : 0, tr = Math.min(1, G.shake || 0) ** 2, nz = i => Math.sin(G.t * 13.1 + i * 7) * .5 + Math.sin(G.t * 27.7 + i * 3) * .3 + Math.sin(G.t * 51.3 + i) * .2;
+  G.shake = Math.max(0, (G.shake || 0) - dt * 1.6);
+  for (let i = 0, h = Math.min(dt, .05) / 2; i < 2; i++) { G.lspV = (G.lspV || 0) + (-60 * (G.lspX || 0) - 14 * G.lspV) * h; G.lspX = (G.lspX || 0) + G.lspV * h; }
+  const ld = own ? clamp(G.lspX || 0, -.15, .4) : 0, bb = (Math.abs(Math.sin(P.bob || 0)) - 1) * bobA * .8, bs = Math.sin((P.bob || 0) * .5) * bobA;
   if (own) { const sv = P.vx * Math.cos(P.yaw) - P.vz * Math.sin(P.yaw); G.rollS = mix(G.rollS || 0, -sv * .006, Math.min(1, dt * 6)); roll += G.rollS; }
   if (G.js && G.js.t > 0) { G.js.t -= dt; (G.js.J || MJ).head.getWorldPosition(_mh); const dx = _mh.x - ex, dy = _mh.y + .05 - ey, dz = _mh.z - ez, k = clamp((G.js.L - G.js.t) * 9, 0, 1);
     yaw += angD(yaw, Math.atan2(-dx, -dz)) * k; pitch = mix(pitch, Math.atan2(dy, Math.hypot(dx, dz)), k); }
-  cam.position.set(ex + Math.sin(G.t * 37) * shk, ey + Math.sin((P.bob || 0) * 2) * bobA * .6, ez);
-  cam.rotation.set(pitch + Math.sin(G.t * 31) * shk, yaw + Math.sin(P.bob || 0) * bobA * .05, roll + (own && P.down ? .35 : Math.sin(P.bob || 0) * bobA * .08), 'YXZ'); cam.updateMatrixWorld();
-  VM.visible = own && P.hd < 0 && !P.down && !P.sw && !P.seat && P.eq === 1; VMF.visible = own && P.hd < 0 && !P.down && !P.sw && !P.seat && P.eq === 5 && P.flares > 0;
+  cam.position.set(ex + Math.sin(G.t * 37) * shk + nz(0) * .04 * tr, ey + bb + nz(1) * .04 * tr - ld, ez);
+  cam.rotation.set(pitch + Math.sin(G.t * 31) * shk + nz(2) * .025 * tr - ld / .35 * .06, yaw + bs * .05 + nz(3) * .025 * tr, roll + (own && P.down ? .35 : bs * .08) + nz(4) * .05 * tr, 'YXZ'); cam.updateMatrixWorld();
+  VM.visible = own && P.hd < 0 && !P.down && !P.sw && !P.seat && P.eq === 1; VMF.visible = own && P.hd < 0 && !P.down && !P.seat && P.eq === 5 && P.flares > 0;
   VM.position.set(.22 + Math.sin(P.bob || 0) * bobA * .3, -.21 - Math.abs(Math.cos(P.bob || 0)) * bobA * .3, -.42);
   if (false) { VMC.clear(); VMC.userData.k = P.carry; if (P.carry) { const m = itemMesh(P.carry); scene.remove(m); m.traverse(o => { if (o.isMesh) o.castShadow = false; }); VMC.add(m); } }
   VMC.visible = false;
@@ -1898,6 +1983,7 @@ function updateCamera(dt) {
     u.uCol.value.copy(TOD.fog).multiplyScalar(1.8).addScalar(.12 + fl2()); G.rain2.visible = ri > 0 && !cov; const su = G.splM.uniforms; su.uT.value = G.wt; su.uC.value.set(ex, ey, ez); su.uI.value = ri; su.uA.value = G.sea; su.uCol.value.copy(u.uCol.value); G.spl.visible = ri > 0 && (G.uw || 0) < .3;
     G.dropsI = cov || P && P.sw ? 0 : ri; RAIN.visible = false; }
   if (false) { const ra = RAIN.geometry.attributes.position.array, fall = dt * 24; for (let i = 0; i < ra.length; i += 6) { ra[i + 1] -= fall; ra[i + 4] -= fall; ra[i] -= fall * .1; ra[i + 3] -= fall * .1; if (ra[i + 1] < 0) { const x = (Math.random() - .5) * 50, y = 30, z = (Math.random() - .5) * 50; ra[i] = x; ra[i + 1] = y; ra[i + 2] = z; ra[i + 3] = x + .15; ra[i + 4] = y + .7; ra[i + 5] = z + .05; } } RAIN.geometry.attributes.position.needsUpdate = true; }
+  ctlFrame(dt);
 }
 // ---------------- the deep: a 45 m serpent. Its body follows the path its head took.
 const LEV = {NS: 46, NR: 14, LEN: 45, trail: [], g: null, body: null, spk: null, dots: null, head: null, jaw: null, U: new THREE.Vector3(0, 1, 0), on: false, hp: new THREE.Vector3(), ht: new THREE.Vector3(0, 0, 1)};
@@ -2281,7 +2367,7 @@ function buildFw() { const g = new THREE.BufferGeometry(); g.setAttribute('posit
   FWK.fl = new THREE.Sprite(new THREE.SpriteMaterial({map: TX.glow, color: 0xffffff, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false, opacity: 0})); FWK.fl.scale.setScalar(40); scene.add(FWK.fl); }
 function spawnRocket(e) { FWK.rk.push({x: e.x, y: e.y, z: e.z, vx: e.vx, vy: e.vy, vz: e.vz, t: 0, c: e.c}); Snd.fwUp(at(e.x, e.y, e.z, 6)); }
 function launchFw() {
-  if (!P.own.fw || P.hd >= 0 || P.down || !alivePlay()) { if (!P.own.fw) showMsg('Out of fireworks', '', 1.5); return; } P.own.fw--; saveGear();
+  if (!P.own.fw || P.hd >= 0 || P.down || !alivePlay()) { if (!P.own.fw) showMsg('Out of fireworks', '', 1.5); return; } P.own.fw--; if (!P.own.fw && P.eq === 6) P.eq = 1; saveGear();
   const f = eyeDir(P), up = Math.max(.55, f[1] + .6), e = {a: 'fw', x: +cam.position.x.toFixed(1), y: +(cam.position.y - .3).toFixed(1), z: +cam.position.z.toFixed(1), vx: +(f[0] * 7).toFixed(2), vy: +(up * 26).toFixed(2), vz: +(f[2] * 7).toFixed(2), c: Math.floor(Math.random() * 6)};
   if (isHost()) emit(Object.assign({}, e, {k: 'fw'})); else Net.send(Object.assign({t: 'act'}, e));
 }
@@ -2316,7 +2402,7 @@ function stepFireflies(dt) {
 const CAS = {tab: 'bj', bet: 50, bj: null, rl: {bets: [], spin: 0, ang: 0, res: null}, sl: {r: ['⚓', '⚓', '⚓'], spin: 0}};
 const loadCred = () => { try { return +localStorage.getItem('s9-cred') || 0; } catch (e) { return 0; } };
 const saveCred = () => { try { localStorage.setItem('s9-cred', String(P.cred)); } catch (e) {} };
-function openCasino() { G.casOpen = true; $('casino').classList.remove('hidden'); try { document.exitPointerLock(); } catch (e) {} if (P.cred == null) P.cred = loadCred(); drawCasino(); }
+function openCasino() { G.casOpen = true; clearKeys(); G.casAt = [P.x, P.z, P.ob ? 1 : 0]; $('casino').classList.remove('hidden'); try { document.exitPointerLock(); } catch (e) {} if (P.cred == null) P.cred = loadCred(); drawCasino(); }
 function closeCasino() { G.casOpen = false; $('casino').classList.add('hidden'); lockMouse(); }
 function cred(d) { P.cred = Math.max(0, (P.cred || 0) + d); saveCred(); }
 function casMsg(t, win) { $('casMsg').innerHTML = t; $('casMsg').className = win > 0 ? 'win' : win < 0 ? 'lose' : ''; if (win > 0) Snd.coin(); else if (win < 0) tone(150, .06, .4, 'triangle', null, 90); }
@@ -2613,14 +2699,14 @@ function gotGear(k) {
   saveGear(); showMsg(`Bought: ${GEAR[k].n}.` + (k === 'rod1' ? ' Press 3 to take it out.' : k === 'glock' ? ' Press 4 to draw it.' : k === 'sg' ? ' Press 5 to take it out.' : ''), 'HARBOUR SHED', 3);
   setTimeout(drawShop, 50);
 }
-function showFishHelp(on) { G.helpOpen = on; $('fishHelp').classList.toggle('hidden', !on); if (on) { try { document.exitPointerLock(); } catch (e) {} try { localStorage.setItem('s9-fishhelp', '1'); } catch (e) {} } else if (G.on && !G.shopOpen) lockMouse(); }
+function showFishHelp(on) { G.helpOpen = on; $('fishHelp').classList.toggle('hidden', !on); if (on) { clearKeys(); try { document.exitPointerLock(); } catch (e) {} try { localStorage.setItem('s9-fishhelp', '1'); } catch (e) {} } else if (G.on && !G.shopOpen) lockMouse(); }
 function equip(i) {
   if (i === 6 && !P.own.fw) { showMsg('No fireworks. The harbour shed sells them.', '', 2); return; }
   if (i === 5 && P.flares <= 0) { showMsg('No flares left. The harbour shed sells them.', '', 2.5); return; }
   if (i === 2 && !P.own.rod) { showMsg('You need a fishing rod. Buy one at the harbour shed.', '', 2.5); return; }
   if (i === 3 && !P.own.glock) { showMsg('You do not own a Glock. The harbour shed sells them.', '', 2.5); return; }
   if (i === 4 && !P.own.sg) { showMsg('You do not own a shotgun. The harbour shed sells them.', '', 2.5); return; }
-  const eq = i; if (eq === P.eq) return; P.eq = eq; P.reload = 0; F.st = 'idle'; Snd.click();
+  const eq = i; if (eq === P.eq) return; P.eq = eq; P.reload = 0; F.st = 'idle'; (Snd.equip || Snd.click)();
   if (eq === 2) { try { if (!localStorage.getItem('s9-fishhelp')) showFishHelp(true); } catch (e) {} }
 }
 // key slots: 1 hands, 2 rod (eq 2), 3 glock (eq 3), 4 shotgun (eq 4)
@@ -2764,7 +2850,7 @@ function updateTools(dt) {
   VMS.position.set(.17, -.19 - rl * .08, -.38 + rc * .1); VMS.rotation.x = rc * .25;
   const aim = mouseR && own && P.eq >= 3; G.aimK = mix(G.aimK || 0, aim ? 1 : 0, Math.min(1, dt * 10));
   if (G.aimK > .01) { VMG.position.x = mix(.16, 0, G.aimK); VMG.position.y += G.aimK * .05; VMS.position.x = mix(.17, 0, G.aimK); VMS.position.y += G.aimK * .07; }
-  G.runK = mix(G.runK || 0, P && P.run ? 1 : 0, Math.min(1, dt * 4)); const fov = mix(70 + G.runK * 6 - (G.js && G.js.t > 0 ? 12 : 0), 52, G.aimK); if (Math.abs(cam.fov - fov) > .05) { cam.fov = fov; cam.updateProjectionMatrix(); }
+  G.runK = mix(G.runK || 0, P && P.run ? 1 : 0, Math.min(1, dt * 4)); const fov = mix((SET.fov || 70) + G.runK * 6 + (G.fovAdd || 0) - (G.js && G.js.t > 0 ? 12 : 0), 52, G.aimK); if (Math.abs(cam.fov - fov) > .05) { cam.fov = fov; cam.updateProjectionMatrix(); }
   $('xhair').classList.toggle('hidden', !(own && P.eq >= 3));
   G.gunFlash = (G.gunFlash || 0) - dt; gunL.intensity = G.gunFlash > 0 ? gunL.intensity : 0;
   if (VMF.visible && G.gunFlash <= 0) { VMF.userData.tip.getWorldPosition(gunL.position); gunL.color.setHex(0xff3018); gunL.intensity = 14 * (.8 + Math.random() * .4); gunL.distance = 22; VMF.userData.tip.scale.setScalar(.8 + Math.random() * .5); if (Math.random() < dt * 3) Snd.flare && Math.random() < .3 && Snd.flare(null); }
@@ -2862,7 +2948,7 @@ function frame(t) {
   requestAnimationFrame(frame);
   const dt = Math.min(.05, Math.max(0, (t - last) / 1000)); last = t;
   if (!BUILT) return;
-  if (G.on && !(G.paused && Net.role === 'solo') && !((G.noteOpen || G.shopOpen || G.casOpen) && Net.role === 'solo')) step(dt);
+  if (G.on && !((G.paused || anyPanel()) && Net.role === 'solo')) step(dt);
   render(dt);
 }
 // ---------------- post (High): HDR scene -> bloom -> grade -> ACES
@@ -2980,7 +3066,11 @@ function menuInit() {
   $('bSolo').onclick = () => { Net.close(); G.diff = SET.diff; startGame((Math.random() * 1e9) | 0, [{id: 'H', name: myName(), c: 0}], loadSave()); };
   $('bHost').onclick = () => { aInit(); buildWorld(); const code = Net.host(myName(), s => { if (G.on) { if (s === 'open') showMsg('Reconnected.', '', 3); else showMsg('Relay connection dropped. Reconnecting…', '', 6); return; } $('lmsg').textContent = s === 'open' ? 'Share the code. Up to 6 crew. Friends can join mid-voyage.' : 'Connection lost, retrying…'; }); $('code').textContent = code; show('lobby'); $('bGo').classList.remove('hidden'); $('lmsg').textContent = 'Connecting…'; lobby(); };
   $('bJoin').onclick = () => joinRoom($('joinC').value); $('joinC').onkeydown = e => { if (e.key === 'Enter') joinRoom($('joinC').value); };
-  $('bGo').onclick = hostStart; $('bLeave').onclick = () => toMenu(); $('resume').onclick = () => pause(false); $('quit').onclick = () => toMenu(); $('endMenu').onclick = () => toMenu();
+  $('bGo').onclick = hostStart; $('bLeave').onclick = () => toMenu(); $('resume').onclick = resumeReq; $('quit').onclick = () => { if (Net.role === 'host' && Net.peers.size && !confirm('Leaving ends the voyage for your crew. Leave?')) return; toMenu(); }; $('endMenu').onclick = () => toMenu();
+  $('pFov').oninput = e => { SET.fov = +e.target.value; saveSet(); }; $('pInv').onchange = e => { SET.inv = e.target.checked ? 1 : 0; saveSet(); };
+  $('pKeys').innerHTML = keyTable(KEYMAP); $('mKeys').innerHTML = keyTable(KEYMAP.slice(0, 9));
+  if (matchMedia('(pointer: coarse)').matches && !matchMedia('(any-pointer: fine)').matches) { const w = document.createElement('div'), bs = ['bSolo', 'bHost', 'bJoin'].map($); w.className = 'err'; w.innerHTML = 'Station Nine needs a keyboard and mouse. Open it on a computer. <a href="#" class="back">Try anyway</a>'; $('menu').querySelector('h1').after(w); bs.forEach(b => b.disabled = true);
+    w.querySelector('a').onclick = e => { e.preventDefault(); bs.forEach(b => b.disabled = false); e.target.remove(); }; }
   $('again').onclick = () => toMenu();
   $('bSell').onclick = () => { act({a: 'sell'}); setTimeout(drawShop, 150); }; $('shopX').onclick = closeShop;
   $('resetSave').onclick = e => { e.preventDefault(); if (confirm('Wipe your saved voyage (cash, upgrades, chart)?')) { try { localStorage.removeItem('s9-save2'); localStorage.removeItem('s9-cred'); } catch (x) {} if (P) P.cred = 0; saveInfo(); } };
