@@ -41,7 +41,7 @@ Net.on('_hostgone', () => { if (G.on) endToMenu('The host left.'); else { show('
 Net.on('lobby', m => { $('crewL').innerHTML = (m.crew || []).map(p => '<div><i style="background:#' + CREW_COL[p.c % 8].toString(16).padStart(6, '0') + '"></i>' + String(p.name).replace(/[<>&]/g, '') + '</div>').join(''); msg('lmsg', 'Waiting for the host to start the trip...'); });
 Net.on('start', m => { G.crew = m.crew || []; if (!G.on) startGame(); });
 Net.on('crew', m => { G.crew = m.crew || G.crew; });
-async function rooms() { if ($('menu').classList.contains('hidden')) return; const r = await Net.rooms(), b = $('rooms'); b.innerHTML = ''; for (const x of r) { const e = document.createElement('button'); e.innerHTML = '<span>' + x.name.slice(9).replace(/[<>&]/g, '') + '</span><span>' + x.n + '/8</span>'; e.onclick = () => joinRoom(x.code); b.appendChild(e); } clearTimeout(G.rt); G.rt = setTimeout(rooms, 4000); }
+async function rooms() { if ($('menu').classList.contains('hidden')) return; const r = await Net.rooms(), b = $('rooms'); b.innerHTML = ''; for (const x of r) { const e = document.createElement('button'); e.innerHTML = '<span>' + x.name.replace(/^\[?Camper\]? /, '').replace(/[<>&]/g, '') + '</span><span>' + x.n + '/8</span>'; e.onclick = () => joinRoom(x.code); b.appendChild(e); } clearTimeout(G.rt); G.rt = setTimeout(rooms, 4000); }
 if (!/^(localhost|127\.0\.0\.1)$/.test(location.hostname) || Q.has('relay')) rooms();
 function endToMenu(why) { G.on = false; Net.close(); $('hud').classList.add('hidden'); show('menu'); msg('msg', why || ''); try { document.exitPointerLock(); } catch (e) {} Radio.stop(); Sfx.mute(true); setTimeout(() => Sfx.mute(false), 50); rooms(); }
 // ---------- start ----------

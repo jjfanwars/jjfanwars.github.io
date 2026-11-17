@@ -53,5 +53,5 @@ const Net = {
     clearInterval(this.pingT); this.pingT = setInterval(() => { try { if (this.ws && this.ws.readyState === 1) this.ws.send('ping'); } catch (e) {} }, 20000);
   },
   close() { clearInterval(this.pingT); if (this.ws) { const w = this.ws; this.ws = null; w.onclose = null; try { w.close(); } catch (e) {} } this.role = 'solo'; this.peer = null; this.peers = new Map(); },
-  async rooms() { try { const r = await (await fetch(this.relay().replace(/^ws/, 'http') + '/rooms')).json(); return r.filter(x => x.open && x.name.indexOf(this.tag + ' ') === 0); } catch (e) { return []; } },
+  async rooms() { try { const r = await (await fetch(this.relay().replace(/^ws/, 'http') + '/rooms')).json(); const bare = this.tag.replace(/[\[\]]/g, ''); return r.filter(x => x.open && (x.name.startsWith(this.tag + ' ') || x.name.startsWith(bare + ' '))); } catch (e) { return []; } },
 };
