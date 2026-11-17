@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Station Nine</title>
+<!--
+  Station Nine: online co-op boat and oil rig survival horror in a storm (1-6 players). Original setting and creatures.
+  Everything is in game.js; Three.js r170 classic build from ../three-r170.js; online play over the jjfanwars relay.
+-->
+<style>
+:root { --ink:#dcd6c8; --dim:#8b8577; --acc:#4aa8c8; --panel:rgba(10,10,12,.9); --line:rgba(255,255,255,.08); }
+* { box-sizing:border-box; }
+html,body { margin:0; height:100%; background:#000; color:var(--ink); font:15px/1.45 Georgia,"Times New Roman",serif; overflow:hidden; user-select:none; }
+canvas#gl { position:fixed; inset:0; width:100%; height:100%; display:block; }
+.hidden { display:none !important; }
+#grain { position:fixed; inset:0; width:100%; height:100%; pointer-events:none; opacity:.07; mix-blend-mode:screen; image-rendering:pixelated; z-index:2; }
+#vig { position:fixed; inset:0; pointer-events:none; z-index:2; background:radial-gradient(ellipse at center,transparent 42%,rgba(0,0,0,.8) 100%); }
+#fearV { position:fixed; inset:0; pointer-events:none; z-index:2; opacity:0; background:radial-gradient(ellipse at center,transparent 35%,rgba(90,0,0,.75) 100%); }
+#downV { position:fixed; inset:0; pointer-events:none; z-index:2; opacity:0; background:radial-gradient(ellipse at center,rgba(60,0,0,.15) 20%,rgba(40,0,0,.92) 90%); }
+#slats { position:fixed; inset:0; pointer-events:none; z-index:3; background:repeating-linear-gradient(180deg,rgba(0,0,0,.97) 0 34px,rgba(0,0,0,.2) 34px 46px),radial-gradient(ellipse at center,transparent 30%,#000 85%); }
+#flash { position:fixed; inset:0; pointer-events:none; z-index:6; background:#600; opacity:0; }
+#hud { position:fixed; inset:0; pointer-events:none; z-index:4; }
+#obj { position:absolute; left:22px; top:18px; max-width:440px; font-style:italic; text-shadow:0 1px 4px #000; transition:opacity 1s; }
+#obj small { display:block; font-style:normal; font-size:11px; letter-spacing:.2em; color:var(--acc); text-transform:uppercase; }
+#team { position:absolute; right:20px; top:18px; text-align:right; font:13px ui-monospace,monospace; text-shadow:0 1px 3px #000; }
+#team div { margin-bottom:3px; } #team i { display:inline-block; width:9px; height:9px; border-radius:50%; margin-left:6px; vertical-align:middle; }
+#team .down { color:#e06040; } #team .dead { color:#666; text-decoration:line-through; } #team .esc { color:#8fc08f; }
+#msg { position:absolute; left:50%; bottom:16%; transform:translateX(-50%); width:min(720px,90%); text-align:center; font-size:18px; text-shadow:0 1px 6px #000,0 0 2px #000; opacity:0; transition:opacity .4s; }
+#msg b { color:var(--acc); font-weight:normal; font-size:12px; letter-spacing:.2em; display:block; }
+#prompt { position:absolute; left:50%; top:56%; transform:translateX(-50%); text-align:center; font-size:15px; text-shadow:0 1px 4px #000; opacity:0; }
+#prompt kbd { display:inline-block; border:1px solid var(--dim); border-radius:4px; padding:0 6px; margin-right:6px; font:12px ui-monospace,monospace; }
+#pBar { width:160px; height:3px; background:rgba(255,255,255,.15); margin:6px auto 0; } #pBar i { display:block; height:100%; width:0; background:var(--acc); }
+#dot { position:absolute; left:50%; top:50%; width:3px; height:3px; margin:-1px 0 0 -1px; border-radius:50%; background:rgba(255,255,255,.45); }
+#br { position:absolute; right:22px; bottom:20px; display:flex; gap:18px; align-items:flex-end; font:12px ui-monospace,monospace; color:var(--dim); text-shadow:0 1px 3px #000; }
+#br div { text-align:center; } #br b { display:block; font:16px Georgia,serif; color:var(--ink); }
+#bat { display:flex; gap:2px; border:1px solid var(--dim); padding:2px; border-radius:2px; margin:0 auto 3px; width:44px; height:14px; }
+#bat i { flex:1; background:var(--ink); opacity:.85; } #bat i.off { opacity:.08; } #bat.low i { background:#c33; }
+#stam { position:absolute; left:50%; bottom:28px; transform:translateX(-50%); width:180px; height:2px; background:rgba(255,255,255,.08); opacity:0; transition:opacity .5s; } #stam i { display:block; height:100%; background:rgba(220,214,200,.6); }
+#breath { position:absolute; left:50%; top:66%; transform:translateX(-50%); text-align:center; font:12px ui-monospace,monospace; color:var(--dim); letter-spacing:.15em; }
+#breath div { width:200px; height:3px; background:rgba(255,255,255,.1); margin:6px auto 0; } #breath i { display:block; height:100%; background:#8fb0d8; }
+#state { position:absolute; left:50%; top:40%; transform:translateX(-50%); text-align:center; font-size:20px; text-shadow:0 2px 8px #000; }
+#state small { display:block; font-size:13px; color:var(--dim); }
+#tags { position:absolute; inset:0; overflow:hidden; }
+.tag { position:absolute; transform:translate(-50%,-100%); font:12px ui-monospace,monospace; color:#e8e0cc; text-shadow:0 1px 3px #000; white-space:nowrap; text-align:center; }
+.tag.down { color:#ff7050; font-weight:bold; } .tag.ping { color:#ffd080; }
+#map { position:fixed; left:50%; top:50%; transform:translate(-50%,-50%); width:min(86vmin,760px); height:min(86vmin,760px); z-index:8; box-shadow:0 20px 80px #000; }
+.scr { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; padding:16px; z-index:10; overflow:auto; background:rgba(0,0,0,.82); }
+#menu, #lobby { background:radial-gradient(900px 500px at 50% 110%,rgba(20,70,110,.25),transparent 70%),linear-gradient(180deg,#05070b,#000); }
+.card { width:min(820px,100%); background:var(--panel); border:1px solid var(--line); padding:26px 28px; max-height:100%; overflow:auto; }
+h1 { margin:0; font-size:56px; font-weight:normal; letter-spacing:.3em; line-height:1; text-transform:uppercase; color:#e8e1cf; text-shadow:0 0 30px rgba(40,140,200,.3); }
+.sub { color:var(--dim); font-style:italic; margin:10px 0 18px; }
+.cols { display:grid; grid-template-columns:1fr 1fr; gap:22px; } @media (max-width:720px) { .cols { grid-template-columns:1fr; } h1 { font-size:34px; } }
+label { display:block; font:11px ui-monospace,monospace; text-transform:uppercase; letter-spacing:.14em; color:var(--dim); margin:10px 0 5px; }
+input[type=range] { width:100%; accent-color:var(--acc); }
+input[type=text] { width:100%; padding:9px 11px; border:1px solid #333; background:#141416; color:var(--ink); font:15px Georgia,serif; }
+.seg { display:flex; gap:4px; } .seg button { flex:1; padding:7px 6px; font-size:13px; background:#18181b; border:1px solid transparent; }
+.seg button.on { border-color:var(--acc); color:#fff; background:#10242a; }
+button { padding:11px 16px; border:0; background:#1d1d21; color:var(--ink); font:15px Georgia,serif; cursor:pointer; }
+button:hover { filter:brightness(1.25); }
+button.go { background:#124a5a; color:#f3e9d8; font-size:17px; letter-spacing:.2em; text-transform:uppercase; width:100%; padding:12px; margin-top:10px; }
+.row { display:flex; gap:8px; margin-top:8px; } .row > * { flex:1; }
+.keys { color:var(--dim); font-size:13px; line-height:1.7; } .keys b { color:var(--ink); font:12px ui-monospace,monospace; border:1px solid #444; padding:0 5px; border-radius:3px; }
+.err { color:#e07050; min-height:18px; font-size:13px; margin-top:6px; }
+.back { color:var(--dim); font-size:13px; text-decoration:none; } .back:hover { color:var(--acc); }
+#rooms div { padding:6px 8px; background:#141416; margin-top:4px; cursor:pointer; font-size:13px; } #rooms div:hover { background:#10242a; }
+#code { font:34px ui-monospace,monospace; letter-spacing:.3em; color:var(--acc); }
+#crew div { padding:5px 0; } #crew i { display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:8px; }
+.paper { width:min(520px,92%); background:#d8cfb8; color:#2a241a; padding:28px 30px; font:17px/1.6 "Courier New",monospace; box-shadow:0 20px 60px #000; transform:rotate(-1deg); white-space:pre-wrap; }
+.paper small { display:block; margin-top:16px; color:#6b604c; font-size:12px; }
+#end h2 { font-weight:normal; font-size:42px; letter-spacing:.2em; text-transform:uppercase; margin:0 0 6px; }
+#end.dead h2 { color:#b8281c; } #end p { color:var(--dim); } #endL { text-align:left; margin:12px auto; max-width:320px; font:14px ui-monospace,monospace; }
+#intro { position:fixed; inset:0; z-index:9; background:#000; display:flex; align-items:center; justify-content:center; text-align:center; padding:20px; font-size:20px; font-style:italic; color:#cfc8b6; transition:opacity 2s; pointer-events:none; }
+#load { position:fixed; inset:0; z-index:20; background:#000; display:flex; align-items:center; justify-content:center; color:var(--dim); font-style:italic; }
+</style>
+</head>
+<body>
+<canvas id="gl"></canvas>
+<canvas id="grain" width="200" height="120"></canvas>
+<div id="vig"></div><div id="fearV"></div><div id="downV"></div><div id="slats" class="hidden"></div><div id="flash"></div>
+<div id="hud" class="hidden">
+  <div id="tags"></div>
+  <div id="obj"></div>
+  <div id="team"></div>
+  <div id="msg"></div>
+  <div id="state"></div>
+  <div id="prompt"><span id="pTxt"></span><div id="pBar"><i></i></div></div>
+  <div id="dot"></div>
+  <div id="stam"><i></i></div>
+  <div id="breath" class="hidden">HOLD BREATH · RIGHT MOUSE / SPACE<div><i></i></div></div>
+  <div id="br">
+    <div><span id="bat"><i></i><i></i><i></i><i></i></span>LIGHT</div>
+    <div><b id="nFlare">0</b>FLARES</div>
+    <div><b id="nSpd">-</b>KNOTS</div>
+  </div>
+</div>
+<canvas id="map" class="hidden" width="760" height="760"></canvas>
+<div id="note" class="scr hidden"><div class="paper"><span id="noteT"></span><small>E or click to put it down</small></div></div>
+<div id="intro" class="hidden"></div>
+
+<div id="menu" class="scr">
+  <div class="card">
+    <a class="back" href="../">‹ jjfanwars</a>
+    <h1 style="margin-top:14px">Station Nine</h1>
+    <div class="sub">The offshore rig Station Nine sent one distress call and went dark. Your salvage crew takes the boat out from the lighthouse into the storm. Get the rig's power back, radio for help, and get everyone back to the boat. Do not go in the water.</div>
+    <div class="cols">
+      <div>
+        <label>Your name</label><input type="text" id="name" maxlength="14" placeholder="Deckhand">
+        <button class="go" id="bSolo">Play solo</button>
+        <div class="row"><button id="bHost">Host online</button><input type="text" id="joinC" maxlength="5" placeholder="CODE" style="text-transform:uppercase;text-align:center"><button id="bJoin">Join</button></div>
+        <div class="err" id="err"></div>
+        <label>Open groups</label><div id="rooms"><small style="color:var(--dim)">Looking…</small></div>
+        <label>Difficulty (host decides)</label><div class="seg" data-k="diff"><button data-v="easy">Easy</button><button data-v="normal">Normal</button><button data-v="nightmare">Nightmare</button></div>
+        <label>Mouse sensitivity</label><input type="range" id="sens" min="0.3" max="2.5" step="0.05">
+        <label>Brightness</label><input type="range" id="bright" min="0.7" max="1.6" step="0.05">
+        <label>Graphics</label><div class="seg" data-k="gfx"><button data-v="low">Low</button><button data-v="high">High (shadows)</button></div>
+      </div>
+      <div class="keys">
+        <label>Controls</label>
+        <b>WASD</b> move · <b>Shift</b> run · <b>C</b> crouch<br>
+        <b>F</b> flashlight · <b>E</b> use, pick up, hide, climb ladders (hold to open valves or revive)<br>
+        <b>E</b> at the wheel to steer the boat: <b>W/S</b> throttle, <b>A/D</b> rudder, <b>E</b> to let go<br>
+        <b>G</b> throw a flare · <b>Q</b> whistle to the crew (it hears that too) · <b>Tab</b> map<br>
+        <b>Right mouse</b> / <b>Space</b> hold your breath while hiding · <b>Esc</b> pause<br><br>
+        <label>How to survive</label>
+        Sail to the rig and tie up at the dock. Open both fuel valves, start the generator, and radio from the control room on the top deck. Then everyone back aboard and run for the lighthouse.
+        Something lives on the rig. It hunts by sound and sight, and goes for whoever is alone. If it catches you, you go down: a teammate can pick you up before you bleed out.
+        Fall in the sea and you have seconds to reach a ladder. Red flares keep it back. Hide in lockers and hold your breath.
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="lobby" class="scr hidden"><div class="card" style="width:min(460px,100%);text-align:center">
+  <label>Room code</label><div id="code">-----</div>
+  <div class="err" id="lmsg" style="color:var(--dim)"></div>
+  <div id="crew" style="text-align:left;margin:14px 0"></div>
+  <button class="go hidden" id="bGo">Cast off</button>
+  <button id="bLeave" style="width:100%;margin-top:8px">Leave</button>
+</div></div>
+
+<div id="pause" class="scr hidden"><div class="card" style="width:min(420px,100%);text-align:center">
+  <h2 style="font-weight:normal;letter-spacing:.3em;margin:0 0 6px">PAUSED</h2>
+  <p style="color:var(--dim);font-size:13px;margin:0 0 12px" id="pauseN">Online games keep running.</p>
+  <button class="go" id="resume" style="margin-top:0">Resume</button>
+  <button id="quit" style="width:100%;margin-top:8px">Leave to menu</button>
+</div></div>
+
+<div id="end" class="scr hidden"><div class="card" style="width:min(520px,100%);text-align:center">
+  <h2 id="endT"></h2><p id="endS"></p><div id="endL"></div>
+  <button class="go" id="again">Go again</button>
+  <button id="endMenu" style="width:100%;margin-top:8px">Menu</button>
+</div></div>
+
+<div id="load">Loading…</div>
+<script src="../three-r170.js"></script>
+<script src="game.js?v=1"></script>
+</body>
+</html>
