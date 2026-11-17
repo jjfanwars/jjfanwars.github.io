@@ -1094,13 +1094,14 @@ function animBody(MON, MJ, M, dt, st, spd) {
   MJ.fing.forEach(fs => fs.forEach(([a, b, d], i) => { a.rotation.x = curl * .6; b.rotation.x = curl; d.rotation.x = curl * .8 + Math.sin(t * 3 + i) * .05; }));
   if (M.frz <= 0 || chase || js) { MJ.hips.position.y = mix(1.14 + Math.abs(c) * .07 * k, .88 + Math.max(0, Math.sin(ph + 1.2)) * .14, q); MJ.hips.rotation.set(0, 0, s * .07 * k * (1 - q) + M.lean * .4);
     MJ.torso.rotation.set(mix(.36 + k * .14, 1.18 + Math.sin(ph + 2.4) * .16, q), -s * .14 * k * (1 - q), -s * .05 * k * (1 - q) + M.lean * .6, 'YXZ'); }
+  if (M.wind > 0 && !js) { MJ.hips.position.y -= .25; MJ.torso.rotation.x += .3; MJ.neck.rotation.x -= .15; }
   const br = 1 + Math.sin(t * (chase ? 7 : 1.8)) * (chase ? .05 : .03); MJ.chest.scale.set(br, 1, br);
   // head: snaps and twitches; within 30 m and not chasing, it turns (too far) to stare at you
-  M.jit -= dt; if (M.jit < 0) { M.jit = .12 + Math.random() * 1.1; M.jr = (Math.random() - .5) * (chase ? 1.2 : .9); }
+  M.jit = (M.jit || 0) - dt; M.ntC = (M.ntC || 0) - dt; if (M.jit < 0) { M.jit = .12 + Math.random() * 1.1; M.jr = (Math.random() - .5) * (chase ? 1.2 : .9); }
   let hy = 0, hx = 0;
-  if (P && !P.dead && !chase) { const dx = cam.position.x - M.x, dz = cam.position.z - M.z, d = Math.hypot(dx, dz); if (d < 30) { const want = angD(M.yaw, Math.atan2(-dx, -dz)); hy = clamp(want, -2.3, 2.3); hx = clamp(-Math.atan2(cam.position.y - (M.y + 2.1), d), -.6, .6); } }
-  M.sq = (M.sq || 0) - dt; if (M.sq <= 0 || chase) { M.sq = chase ? 0 : .18 + Math.random() * .3; M.hyQ = hy; M.hxQ = hx; }
-  MJ.head.rotation.set(mix(0, M.hxQ || 0, 1 - q), (M.hyQ || 0) * (1 - q), mix(MJ.head.rotation.z, mix(M.jr, 1.85 + Math.sin(t * 6) * .12, q), Math.min(1, dt * 22)), 'YXZ');
+  if (P && !P.dead && (!chase || M.ntC > 0)) { const dx = cam.position.x - M.x, dz = cam.position.z - M.z, d = Math.hypot(dx, dz); if (d < (M.ntC > 0 ? 60 : 30)) { const want = angD(M.yaw, Math.atan2(-dx, -dz)); hy = clamp(want, -2.3, 2.3); hx = clamp(-Math.atan2(cam.position.y - (M.y + 2.1), d), -.6, .6); } }
+  M.sq = (M.sq || 0) - dt; if (M.sq <= 0 || chase || M.ntC > 0) { M.sq = chase ? 0 : .18 + Math.random() * .3; M.hyQ = hy; M.hxQ = hx; }
+  MJ.head.rotation.set(mix(0, M.hxQ || 0, 1 - q), (M.hyQ || 0) * (1 - q), mix(MJ.head.rotation.z || 0, mix(M.jr || 0, 1.85 + Math.sin(t * 6) * .12, q), Math.min(1, dt * 22)), 'YXZ');
   MJ.neck.rotation.x = mix(-.42 - k * .1 + (M.look || 0) - Math.abs(c) * .05 * k, -1.1 - Math.sin(ph + 2.4) * .14, q);
   MJ.jaw.rotation.x = chase ? .75 + Math.sin(t * 30) * .08 + Math.random() * .05 : .12 + Math.max(0, Math.sin(t * .7)) * .25;
   MON.position.set(M.x, M.y, M.z);
@@ -1406,9 +1407,9 @@ function beamHits(p, x, y, z) { const ey = p.y + 1.55, dx = x - p.x, dy = y - ey
 function seesP(p) {
   if (p.hd >= 0 || !p.ready || p.down || p.dead || p.sw || !nearRig(p.x, p.z)) return 0;
   const dx = p.x - M.x, dz = p.z - M.z, d = Math.hypot(dx, dz);
-  let range = D.sight * (p.l ? 1 : .42) * (p.cr ? .65 : 1) * (p.spd < .3 ? .75 : 1);
+  const lit = litP(p); let range = D.sight * (lit ? 1 : .42) * (p.cr ? .65 : 1) * (p.spd < .3 ? .75 : 1);
   if (G.power) range = Math.max(range, D.sight * .85);
-  const beam = p.l && d < 40 && beamHits(p, M.x, M.y + 2, M.z); if (beam) range = Math.max(range, 40);
+  const beam = lit && d < 40 && beamHits(p, M.x, M.y + 2, M.z); if (beam) range = Math.max(range, 40);
   if (d > range) return 0;
   const fa = Math.atan2(-dx, -dz); if (d > 3.5 && !beam && Math.abs(angD(M.yaw, fa)) > 1.25) return 0;
   if (!seeLine(M.x, M.y, M.z, p.x, p.y, p.z)) return 0;
@@ -1418,12 +1419,13 @@ function pSeesMon(p) {
   const ey = p.y + 1.55, dx = M.x - p.x, dz = M.z - p.z, d = Math.hypot(dx, dz), f = eyeDir(p), dy = M.y + 1.8 - ey;
   const dot = (dx * f[0] + dy * f[1] + dz * f[2]) / Math.hypot(dx, dy, dz);
   if (dot < .8 || !seeLine(p.x, p.y, p.z, M.x, M.y, M.z)) return 0;
-  return (p.l && d < 36 && dot > Math.cos(.42)) || d < 10 || (G.power && d < 25) ? 1 : d < 18 ? .5 : 0;
+  return (litP(p) && d < 36 && dot > Math.cos(.42)) || d < 10 || (G.power && d < 25) ? 1 : d < 18 ? .5 : 0;
 }
 function noise(x, y, z, r) {
-  if (isHost() && inCruise(x, z, y)) stwHear(x, y, z, r);
-  if (!isHost() || !nearRig(x, z)) return;
-  r *= D.hear; const d = Math.hypot(x - M.x, z - M.z) + Math.abs(y - M.y) * 1.5;
+  if (!isHost()) return; r *= D.hear;
+  if (inCruise(x, z, y)) stwHear(x, y, z, r);
+  if (!nearRig(x, z)) return;
+  const d = Math.hypot(x - M.x, z - M.z) + Math.abs(y - M.y) * 1.5;
   if (d > r || M.state === 'chase' || M.state === 'flee' || M.state === 'dead' || M.state === 'gone') return;
   M.state = 'inv'; M.idle = 0; goTo(x + (CR() - .5) * d * .1, y, z + (CR() - .5) * d * .1); M.invZone = zoneOf(x, z, y);
 }
@@ -1456,22 +1458,26 @@ function stepCreature(dt) {
   if (M.y < -.5 || !nearRig(M.x, M.z)) { M.wet += dt; M.spd = 0; if (M.wet > 3) { M.wet = 0; const n = randNode(null); if (n) { M.x = n[0]; M.y = n[1]; M.z = n[2]; M.vy = 0; M.path = []; M.state = 'roam'; } } return; }
   M.avoidT = (M.avoidT || 0) - dt;
   const ps = alive().filter(p => nearRig(p.x, p.z) && !p.sw);
-  if (!ps.length) { if (M.state === 'chase' || M.state === 'search') M.state = 'roam'; if (!M.path.length && (M.idle -= dt) <= 0) { const q = randNode(null); if (q) goTo(q[0], q[1], q[2]); M.idle = 3 + CR() * 6; } moveAlong(dt, 1.4); return; }
+  if (!ps.length) { if (M.state === 'chase' || M.state === 'search') M.state = 'roam'; M.notT = M.wind = M.lunge = 0; if (!M.path.length && !(M.avoidT > 0) && (M.idle -= dt) <= 0) { const q = randNode(null); if (q) goTo(q[0], q[1], q[2]); M.idle = 3 + CR() * 6; } moveAlong(dt, M.avoidT > 0 ? 3 : 1.4); return; }
   let tgt = M.tgt && PL.get(M.tgt); if (tgt && (tgt.down || tgt.dead || tgt.sw || !nearRig(tgt.x, tgt.z))) { tgt = null; M.tgt = null; }
   const dOf = p => Math.hypot(p.x - M.x, p.z - M.z) + Math.abs(p.y - M.y);
   M.preyT -= dt; if (M.preyT <= 0) { M.preyT = 20; let best = null, bv = -1; for (const p of ps) { let m = 1e9; for (const q of ps) if (q !== p) m = Math.min(m, Math.hypot(p.x - q.x, p.z - q.z) + Math.abs(p.y - q.y)); if (ps.length === 1) m = 0; const v = m + p.heat * 20 + CR() * 8; if (v > bv) { bv = v; best = p; } } M.prey = best ? best.id : null; }
   for (const p of PL.values()) p.heat = Math.max(0, p.heat - dt * .05);
-  for (const hp of PL.values()) if (hp.eq === 5 && !hp.down && !hp.dead && Math.hypot(hp.x - M.x, hp.z - M.z) < 6.5 && Math.abs(hp.y - M.y) < 3 && M.state !== 'flee') { M.state = 'flee'; M.flee = 4; M.tgt = null; const q = randNode(null); if (q) goTo(q[0], q[1], q[2]); emit({k: 'snd', s: 'lunge'}); break; }
-  for (const fl of G.flares) if (fl.t > 0 && Math.hypot(fl.x - M.x, fl.z - M.z) < 9.5 && Math.abs(fl.y - M.y) < 4 && M.state !== 'flee') { M.state = 'flee'; M.flee = 6; M.tgt = null; const q = randNode(null); if (q) goTo(q[0], q[1], q[2]); emit({k: 'snd', s: 'creak'}); break; }
+  for (const hp of PL.values()) if (hp.eq === 5 && hp.hd < 0 && !hp.down && !hp.dead && Math.hypot(hp.x - M.x, hp.z - M.z) < 5.5 && Math.abs(hp.y - M.y) < 3 && M.state !== 'flee') { M.state = 'flee'; M.flee = 4; M.tgt = null; M.notT = M.wind = M.lunge = 0; const q = randNode(null); if (q) goTo(q[0], q[1], q[2]); emit({k: 'snd', s: 'lunge'}); break; }
+  for (const fl of G.flares) if (fl.t > 0 && Math.hypot(fl.x - M.x, fl.z - M.z) < 9.5 && Math.abs(fl.y - M.y) < 4 && M.state !== 'flee') { M.state = 'flee'; M.flee = 6; M.tgt = null; M.notT = M.wind = M.lunge = 0; const q = randNode(null); if (q) goTo(q[0], q[1], q[2]); emit({k: 'snd', s: 'creak', x: +M.x.toFixed(1), y: +(M.y + 1.5).toFixed(1), z: +M.z.toFixed(1)}); break; }
   M.senseT = (M.senseT || 0) - dt;
   if (M.senseT <= 0) { M.senseT = .12; let bs = 0, bp = null; for (const p of ps) { const s = seesP(p) * (p.id === M.prey ? 1.25 : 1); if (s > bs) { bs = s; bp = p; } } M.see = bs; M.seeP = bp ? bp.id : null; }
   const see = M.state === 'flee' ? 0 : M.see, seeP = PL.get(M.seeP);
   if (see > 0) M.aware = Math.min(1.5, M.aware + dt * see / D.react); else M.aware = Math.max(0, M.aware - dt * .25);
+  // the notice beat: it freezes, snaps round to face you and clicks, a moment before it comes
+  if (see > 0 && seeP && (M.state === 'roam' || M.state === 'inv') && M.aware >= .4 && (M.awP || 0) < .4) { M.notT = .6; M.notP = seeP.id; emit({k: 'snd', s: 'notice', x: +M.x.toFixed(1), y: +(M.y + 2.2).toFixed(1), z: +M.z.toFixed(1)}); }
+  M.awP = M.aware;
   if (see > 0 && seeP && (M.aware >= 1 || dOf(seeP) < 5)) {
     if (M.state !== 'chase') { M.state = 'chase'; if (G.t - M.screamT > 9) { M.screamT = G.t; emit({k: 'snd', s: 'stinger'}); } }
     if (!tgt || tgt.id === seeP.id || dOf(seeP) < dOf(tgt) - 6) tgt = seeP;
     M.tgt = tgt.id; M.lx = tgt.x; M.ly = tgt.y; M.lz = tgt.z; M.lostT = 0; M.seenAt = G.t; M.sawHide = -1;
   }
+  if (M.notT > 0 && M.state !== 'flee') { M.notT -= dt; const np = PL.get(M.notP); if (np) M.yaw += angD(M.yaw, Math.atan2(-(np.x - M.x), -(np.z - M.z))) * Math.min(1, dt * 14); M.spd = mix(M.spd, 0, Math.min(1, dt * 12)); return finish(dt); }
   let speed = 1.7; const prog = G.power ? .08 : 0;
   switch (M.state) {
     case 'roam': { if (!M.path.length) { M.idle -= dt; M.look = Math.sin(G.t * 1.3) * .3; if (M.idle <= 0) { pickRoam(); M.idle = 1.5 + CR() * 4; } } speed = (M.avoidT > 0 ? 2.6 : 1.7) + prog * 4; break; }
@@ -1479,10 +1485,10 @@ function stepCreature(dt) {
     case 'chase': {
       speed = D.chase * (1 + prog) * (1 + .08 * TOD.night);
       if (!tgt) { M.state = 'inv'; M.idle = 0; M.invZone = -1; goTo(M.lx, M.ly, M.lz); break; }
-      if (tgt.hd >= 0 && M.sawHide === tgt.hd) { const h = HIDES[tgt.hd]; M.rep -= dt; if (M.rep <= 0 || !M.path.length) { M.rep = .4; goTo(h.ex, h.y, h.ez); } if (Math.hypot(M.x - h.ex, M.z - h.ez) < 1.1 && Math.abs(M.y - h.y) < 1.5) { emit({k: 'snd', s: 'creak'}); downPlayer(tgt, 'pulled'); return finish(dt); } }
+      if (tgt.hd >= 0 && M.sawHide === tgt.hd) { const h = HIDES[tgt.hd]; M.rep -= dt; if (M.rep <= 0 || !M.path.length) { M.rep = .4; goTo(h.ex, h.y, h.ez); } if (Math.hypot(M.x - h.ex, M.z - h.ez) < 1.1 && Math.abs(M.y - h.y) < 1.5) { emit({k: 'snd', s: 'creak', x: +h.x.toFixed(1), y: +(h.y + 1).toFixed(1), z: +h.z.toFixed(1)}); downPlayer(tgt, 'pulled'); return finish(dt); } }
       else if (tgt.hd >= 0 && G.t - M.seenAt < 1.2) M.sawHide = tgt.hd;
       else {
-        if (see > 0 && M.seeP === tgt.id) { M.rep -= dt; if (M.rep <= 0 || !M.path.length) { M.rep = .3; if (Math.abs(tgt.y - M.y) < 1 && clearLine(M.x, M.z, tgt.x, tgt.z, M.y + 1)) M.path = [[tgt.x, tgt.z]]; else goTo(tgt.x, tgt.y, tgt.z); } }
+        if (see > 0 && M.seeP === tgt.id) { M.rep -= dt; if (!(M.wind > 0 || M.lunge > 0) && (M.rep <= 0 || !M.path.length)) { M.rep = .3; if (Math.abs(tgt.y - M.y) < 1 && clearLine(M.x, M.z, tgt.x, tgt.z, M.y + 1)) M.path = [[tgt.x, tgt.z]]; else goTo(tgt.x, tgt.y, tgt.z); } }
         else { M.lostT += dt; if (!M.path.length) goTo(M.lx, M.ly, M.lz); if (M.lostT > D.lost) { M.tgt = null; const z = zoneOf(M.lx, M.lz, M.ly); if (z >= 0 && BLD[z].hides.length) startSearch(z, true); else { M.state = 'inv'; M.idle = 0; M.invZone = -1; goTo(M.lx, M.ly, M.lz); } } }
         if (Math.hypot(tgt.x - M.x, tgt.z - M.z) < 1.3 && Math.abs(tgt.y - M.y) < 1.4) { downPlayer(tgt, 'caught'); return finish(dt); }
       }
@@ -1491,7 +1497,7 @@ function stepCreature(dt) {
     case 'search': {
       speed = 2.4 + prog * 4;
       if (M.chkT > 0) { M.chkT -= dt; M.spd = 0; const h = M.chkH; M.yaw += angD(M.yaw, Math.atan2(-(h.x - M.x), -(h.z - M.z))) * Math.min(1, dt * 6);
-        if (M.chkT <= .9 && !M.chkDone) { M.chkDone = true; emit({k: 'snd', s: 'creak'}); for (const p of PL.values()) if (p.hd === h.i && !p.hb && !p.down) { downPlayer(p, 'pulled'); return finish(dt); } }
+        if (M.chkT <= .9 && !M.chkDone) { M.chkDone = true; emit({k: 'snd', s: 'creak', x: +h.x.toFixed(1), y: +(h.y + 1).toFixed(1), z: +h.z.toFixed(1)}); for (const p of PL.values()) if (p.hd === h.i && !p.hb && !p.down) { downPlayer(p, 'pulled'); return finish(dt); } }
         if (M.chkT <= 0) nextCheck(); return finish(dt); }
       if (moveAlong(dt, speed)) { if (M.chkH) { M.chkT = 1.8; M.chkDone = false; } else nextCheck(); }
       for (const p of PL.values()) if (p.hd >= 0 && !p.hb && Math.hypot(p.x - M.x, p.z - M.z) < 3.2 && Math.abs(p.y - M.y) < 2 && CR() < dt * D.breathHear * 2 && M.chkH !== HIDES[p.hd]) { M.chk.unshift(HIDES[p.hd]); nextCheck(); break; }
@@ -1500,8 +1506,10 @@ function stepCreature(dt) {
     case 'flee': { speed = 5.2; M.flee -= dt; if (M.flee <= 0 || !M.path.length) { M.state = 'roam'; M.idle = 3; M.avoidT = 8; } break; }
   }
   if (M.state === 'chase' && tgt) { M.lcd = (M.lcd || 0) - dt; const dd = Math.hypot(tgt.x - M.x, tgt.z - M.z);
+    // the lunge: a .3 s crouch aimed at where you stand (the tell), then a dash at double speed. Sidestep it.
+    if (M.wind > 0) { M.wind -= dt; M.spd = 0; const [wx, wz] = M.path[0] || [tgt.x, tgt.z]; M.yaw += angD(M.yaw, Math.atan2(-(wx - M.x), -(wz - M.z))) * Math.min(1, dt * 12); if (M.wind <= 0) M.lunge = .55; return finish(dt); }
     if (M.lunge > 0) { M.lunge -= dt; speed *= 2; M.spd = Math.max(M.spd, speed); }
-    else if (M.lcd <= 0 && dd < 6 && dd > 1.8 && Math.abs(tgt.y - M.y) < 1 && clearLine(M.x, M.z, tgt.x, tgt.z, M.y + 1)) { M.lunge = .6; M.lcd = 5; M.path = [[tgt.x, tgt.z]]; emit({k: 'snd', s: 'lunge'}); } }
+    else if (M.lcd <= 0 && dd < 6 && dd > 1.8 && Math.abs(tgt.y - M.y) < 1 && clearLine(M.x, M.z, tgt.x, tgt.z, M.y + 1)) { M.wind = .3; M.lcd = 5; M.path = [[tgt.x, tgt.z]]; emit({k: 'snd', s: 'lunge'}); } }
   moveAlong(dt, speed); return finish(dt);
 }
 function startSearch(z, fast) { const b = BLD[z]; M.state = 'search'; M.chk = b.hides.filter(() => CR() < D.checkP * (fast ? 1.3 : 1)); M.chk.sort(() => CR() - .5); M.chkH = null; M.chkT = 0; M.searchZ = z; goTo(b.din[0], b.fy, b.din[1]); if (M.chk.length) nextCheck(); }
@@ -1518,7 +1526,16 @@ function applyEv(e) {
   const me = myId();
   switch (e.k) {
     case 'tod': { const L = {1: ['The sun is going down. Make the most of the light.', 'SUNSET'], 2: ['Night is coming. Something stirs under the water.', 'DUSK'], 3: ['Full dark. Stay close to land and keep a flare handy.', 'NIGHT'], 4: ['First light. Whatever was out there is sinking back down.', 'DAWN']}[e.p]; if (L) { showMsg(L[0], L[1], 6); if (e.p >= 2 && e.p < 4) Snd.deep(); } break; }
-    case 'snd': if (e.s === 'stinger') Snd.stinger(); else if (e.s === 'creak') Snd.creak(); else if (e.s === 'lunge') Snd.shriek(A.mPan); else if (e.s === 'stwSee') { if (inCruise(cam.position.x, cam.position.z, cam.position.y)) { Snd.stinger(); Snd.shriek(at(STS.x, STS.y + 2.6, STS.z, 6)); } } else if (e.s === 'shriekS') Snd.shriek(at(STS.x, STS.y + 2.6, STS.z, 6)); else if (e.s[0] === 'g' && e.s[1] === 'u') { if (G.uw > .3 && Math.hypot(e.x - cam.position.x, e.z - cam.position.z) < 80) { if (e.s === 'gulL') Snd.roar(at(e.x, e.y, e.z, 8), .35); else Snd.whale(at(e.x, e.y, e.z, 10)); } } break;
+    case 'snd': { const ps = e.x != null && A.on ? at(e.x, e.y, e.z, 3) : null;
+      if (e.s === 'stinger') Snd.stinger(); else if (e.s === 'creak') Snd.creak(ps || A.mPan); else if (e.s === 'lunge') Snd.shriek(A.mPan);
+      else if (e.s === 'notice') { M.ntC = .6; if (ps) { burst(3300, 9, .3, .014, 'bandpass', ps); setTimeout(() => burst(2900, 9, .26, .014, 'bandpass', ps), 85); burst(2100, .9, .14, .75, 'bandpass', ps, 1.25); } }
+      else if (e.s === 'stwHm') { if (ps) { hTone(98, .16, .5, 'triangle', ps); hTone(110, .14, .7, 'triangle', ps, .45, 140); Snd.bell(ps); } }
+      else if (e.s === 'stwSee') { if (inCruise(cam.position.x, cam.position.z, cam.position.y)) { Snd.stinger(); Snd.shriek(at(STS.x, STS.y + 2.6, STS.z, 6)); } } else if (e.s === 'shriekS') Snd.shriek(at(STS.x, STS.y + 2.6, STS.z, 6));
+      else if (e.s[0] === 'g' && e.s[1] === 'u') { if (ps && G.uw > .3 && Math.hypot(e.x - cam.position.x, e.z - cam.position.z) < 80) {
+        if (e.s === 'gulL') Snd.roar(ps, .35);
+        else if (e.s === 'gulS') { const lp = A.ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 400; lp.connect(ps); tone(90, .3, 1.8, 'sawtooth', lp, 140); for (let i = 0; i < 4; i++) setTimeout(() => burst(4200, 9, .06, .01, 'bandpass', ps), 450 + i * 170); }
+        else if (e.s === 'gulF') burst(1200, 1, .3, 1.6, 'bandpass', ps, 1.3); } }
+      break; }
     case 'mstep': { const d = Math.hypot(cam.position.x - M.x, cam.position.z - M.z) + Math.abs(cam.position.y - M.y); if (d < 40) Snd.mStep(clamp(1.2 - d / 40, .1, 1) * (M.state === 'chase' ? 1.5 : 1)); break; }
     case 'down': { const p = PL.get(e.id); if (p) { p.down = true; p.hd = -1; p.seat = 0; }
       if (e.id === me) { if (P.hd >= 0 && HIDES[P.hd]) { const h = HIDES[P.hd]; P.x = h.ex; P.z = h.ez; } const jsc = e.how === 'caught' || e.how === 'pulled'; if (jsc) { G.js = {t: 1.4, L: 1.4, mon: e.st ? STW : MON, J: e.st ? SJ : MJ}; G.shake = 1.5; } Snd.scream(); $('flash').style.opacity = jsc ? .3 : .7; setTimeout(() => $('flash').style.opacity = 0, 300); P.hd = -1; P.seat = 0; $('slats').classList.add('hidden'); $('breath').classList.add('hidden'); showMsg(PL.size === 1 ? 'It got you.' : 'It got you. Crawl toward your crew, they can pick you up.', '', 5); }
@@ -1545,12 +1562,21 @@ function applyEv(e) {
     case 'goal': if (!G.goals.includes(e.i)) G.goals.push(e.i); (G.banQ = G.banQ || []).push({h: 'LOGBOOK', t: GOALS[e.i], c: e.c, s: 'goal'}); break;
     case 'rank': G.rankI = Math.max(G.rankI || 0, e.i); (G.banQ = G.banQ || []).push({h: 'NEW RANK', t: (TITLES[e.i] || TITLES[0])[1], s: 'rank'}); break;
     case 'helm': { const p = PL.get(e.id); for (const q of PL.values()) q.seat = 0; if (p) p.seat = e.on ? 1 : 0; if (e.id === me) P.seat = e.on ? 1 : 0; B.driver = e.on ? e.id : null; break; }
-    case 'bump': G.shake = Math.max(G.shake || 0, e.s); burst(120, 1, .6 * e.s, .6, 'lowpass'); break;
-    case 'circle': Snd.deep(); showMsg('Something huge is circling the boat. Shoot it when it rears up, or throw a flare into the water!', '', 5); if (LEV.on && !G.maw) LEV.hide(); G.spines = {t: 0, a: e.a, L: e.L || 9, circle: 1}; break;
-    case 'deepgone': showMsg(e.dead ? 'It shrieks and sinks, trailing black blood. Something glints where it went down.' : 'The shape sinks away from the red light.', '', 4); if (e.dead) { Snd.roar(at(LEV.hp.x, 0, LEV.hp.z, 25)); spray(LEV.hp.x, .2, LEV.hp.z, 40, 6); } if (G.spines) { G.spines.leave = G.spines.t; G.spines.circle = 0; } break;
-    case 'ram': G.shake = 1.4; Snd.ram(); showMsg(['It slams into the hull!', 'The boat lurches. It is under us.', 'Wood splinters below the waterline!'][Math.floor(Math.random() * 3)], '', 2.5);
-      if (P && P.ob && !P.seat && !inCabin() && Math.random() < .12) { const [lx, lz] = P.bl; const s = lx >= 0 ? 1 : -1; P.ob = 0; const [wx, wz] = bL2W(lx + s * 3, lz); P.x = wx; P.z = wz; P.vy = 3; showMsg('You are thrown overboard!', '', 3); } break;
-    case 'sink': G.shake = 2; Snd.ram(); Snd.deep(); showMsg('The boat is going down! Abandon ship!', '', 5); if (P && P.ob) { P.ob = 0; P.seat = 0; P.y = .1; } break;
+    case 'bump': { const nr = !!P && (P.ob || Math.hypot(cam.position.x - B.x, cam.position.z - B.z) < BG.L * .5 + 30); if (nr) { G.shake = Math.max(G.shake || 0, e.s); burst(120, 1, .6 * e.s, .6, 'lowpass', P.ob ? null : at(B.x, .5, B.z, 12)); } break; }
+    case 'circle': { const nr = !!P && (P.ob || Math.hypot(cam.position.x - B.x, cam.position.z - B.z) < BG.L * .5 + 30); if (LEV.on && !G.maw) LEV.hide(); G.spines = {t: 0, a: e.a, L: e.L || 9, circle: 1};
+      if (nr) { Snd.deep(); let seen = G.tipDeep; try { seen = seen || localStorage.getItem('s9-tip-deep'); localStorage.setItem('s9-tip-deep', '1'); } catch (x) {} G.tipDeep = 1;
+        if (!seen) showMsg('Something huge is circling the boat. <kbd>G</kbd> throw a flare into the sea' + (P.own && (P.own.glock || P.own.sg) ? ', or shoot it when it rears up' : '') + (P.flares > 0 ? '.' : '. Or run for land.'), '', 7); else showMsg('It is circling.', '', 2); }
+      else if (P && G.wt - ((G.farT = G.farT || {}).a ?? -99) > 20) { G.farT.a = G.wt; showMsg('Your boat is under attack!', '', 3); } break; }
+    case 'deepgone': { const nr = !!P && (P.ob || Math.hypot(cam.position.x - B.x, cam.position.z - B.z) < BG.L * .5 + 30); if (nr || e.by === me) showMsg(e.dead ? 'It sinks in a cloud of black blood. Something glints.' : e.fl ? 'It sinks away from the red light.' : 'It sinks out of sight.', '', 3);
+      if (e.dead) { Snd.roar(at(LEV.hp.x, 0, LEV.hp.z, 25)); spray(LEV.hp.x, .2, LEV.hp.z, 40, 6); if (e.by === me) { hTone(70, .35, .2); hTone(52, .3, .3, 'sine', null, .13); } }
+      if (G.spines) { G.spines.leave = G.spines.t; G.spines.circle = 0; if (e.lx != null) { G.spines.gx = e.lx; G.spines.gz = e.lz; } } break; }
+    case 'ram': { const nr = !!P && (P.ob || Math.hypot(cam.position.x - B.x, cam.position.z - B.z) < BG.L * .5 + 30), big = HC().big;
+      if (nr) { G.shake = big ? .6 : 1.4; Snd.ram(P.ob ? null : at(B.x, .5, B.z, 12)); showMsg(big ? 'Something huge scrapes along the keel.' : ['It slams into the hull!', 'The boat lurches. It is under us.', 'Wood splinters below the waterline!'][Math.floor(Math.random() * 3)], '', 2.5);
+        if (P.ob && !P.seat && !inCabin() && !big && Math.random() < .12) { const [lx, lz] = P.bl; const s = lx >= 0 ? 1 : -1; P.ob = 0; const [wx, wz] = bL2W(lx + s * 3, lz); P.x = wx; P.z = wz; P.vy = 3; showMsg('You are thrown overboard!', '', 3); } }
+      else if (P && G.wt - ((G.farT = G.farT || {}).a ?? -99) > 20) { G.farT.a = G.wt; showMsg('Your boat is under attack!', '', 3); } break; }
+    case 'sink': { const nr = !!P && (P.ob || Math.hypot(cam.position.x - B.x, cam.position.z - B.z) < BG.L * .5 + 30);
+      if (nr) { G.shake = 2; Snd.ram(P.ob ? null : at(B.x, .5, B.z, 12)); Snd.deep(); showMsg('The boat is going down! Abandon ship!', '', 5); } else if (P && G.wt - ((G.farT = G.farT || {}).s ?? -99) > 20) { G.farT.s = G.wt; showMsg('Your boat is sinking!', '', 3); }
+      if (P && P.ob) { P.ob = 0; P.seat = 0; P.y = .1; } break; }
     case 'boatback': showMsg('A tug drags your boat back to the lighthouse. The cargo is lost.', '', 5); if (P && !P.dead && (P.sw || P.y < 1) && Math.hypot(P.x - e.x, P.z - e.z) < 80) { P.sw = 0; P.ob = 1; P.bl = [0, BSPOT.hold[1] + (BG.sub ? -1.6 : 1.6)]; P.y = BDECK.y; } break;
     case 'horn': if (Snd.shipHorn) Snd.shipHorn(e.c, at(B.x, 6, B.z, 25 + (HULLS[e.c] || HULLS[0]).L)); break;
     case 'hdmg': { if (A.on && Snd.crack) { const p = at(B.x, 1, B.z, 10); if ((B.up.cls || 0) <= 1) Snd.crack(p, e.n); else Snd.groan(p, e.n); } if (P && P.ob) G.shake = Math.max(G.shake || 0, e.n / 20); const h = $('hullB'); if (h && h.animate) h.animate([{filter: 'brightness(2.6)', transform: 'scaleY(2.4)'}, {filter: 'none', transform: 'none'}], {duration: 500, easing: 'ease-out'}); break; }
@@ -1563,8 +1589,8 @@ function applyEv(e) {
     case 'cooler': if (e.id === me) { P.coolerN = e.n; P.coolerV = e.v; } break;
     case 'catch': { const p = PL.get(e.id); if (e.id !== me && p) showMsg(`${p.name} landed a ${FISH[e.f].n} (${e.kg} kg)!`, '', 3); break; }
     case 'shot': if (e.id !== me) gunFx([e.x, e.y, e.z], e.w, false); break;
-    case 'mhit': hitFx(e.x, e.y, e.z, e.head); break;
-    case 'mdown': Snd.scream(A.mPan); showMsg('The thing shrieks and collapses on the deck. Then it drags itself over the edge into the sea.', '', 5); break;
+    case 'mhit': hitFx(e.x, e.y, e.z, e.head, e.by); break;
+    case 'mdown': Snd.scream(A.mPan); if (e.by === me) { hTone(70, .35, .2); hTone(52, .3, .3, 'sine', null, .13); } showMsg('It shrieks, collapses, and drags itself over the edge into the sea.', '', 5); break;
     case 'sunk': { const q = SUNK[e.i]; if (q) q.got = true; Snd.pickup(); Snd.discover(); showMsg(`The claw grabs a sunken ${NAMES[e.kind]} off the sea bed! It goes in the hold ($${VALUE[e.kind]}).`, '', 4); break; }
     case 'holdbig': if (e.id === myId()) showMsg('That hull has a smaller hold. Sell or unload your cargo first.', '', 3); break;
     case 'holdfull': if (e.id === myId()) showMsg(`Hold full (${holdCap()} slots). Sell at the shed or buy hold racks or a bigger hull.`, '', 3); break;
@@ -1578,10 +1604,11 @@ function applyEv(e) {
       if (isHost() && STS.state !== 'dead' && STS.state !== 'gone') { STS.state = 'flee'; STS.flee = 20; const n = CN.ok && CN.ok.length ? CN[CN.ok[Math.floor(Math.random() * CN.ok.length)]] : null; if (n) stwGo(n.x, n.y, n.z); }
       for (let k = 0; k < 12; k++) setTimeout(() => G.on && spawnRocket({x: CRZ.x + (Math.random() - .5) * 8, y: 40, z: CRZ.z + (Math.random() - .5) * 16, vx: (Math.random() - .5) * 7, vy: 20 + Math.random() * 8, vz: (Math.random() - .5) * 7, c: Math.floor(Math.random() * 6)}), 300 + k * 500 + Math.random() * 250); break;
     case 'sstep': { const d = Math.hypot(cam.position.x - STS.x, cam.position.z - STS.z) + Math.abs(cam.position.y - STS.y); if (d < 45) Snd.sStep(at(STS.x, STS.y, STS.z, 4), clamp(1.3 - d / 45, .1, 1)); break; }
-    case 'shit': hitFx(e.x, e.y, e.z, e.head); if (Math.random() < .5) Snd.shriek(at(STS.x, STS.y + 2.5, STS.z, 6)); break;
-    case 'sdown': Snd.scream(at(STS.x, STS.y + 2, STS.z, 10)); showMsg('The Steward folds over, then crawls away into the dark below decks. It will be back.', '', 5); break;
-    case 'dhit': Snd.splash(at(e.x, 0, e.z, 20)); burst(80, 1, .4, 1, 'lowpass'); hitFx(e.x, (e.y || 0) + 1, e.z, e.h); if (e.h) Snd.roar(at(e.x, e.y || 0, e.z, 25), .5); break;
+    case 'shit': hitFx(e.x, e.y, e.z, e.head, e.by); if (Math.random() < .5) Snd.shriek(at(STS.x, STS.y + 2.5, STS.z, 6)); break;
+    case 'sdown': Snd.scream(at(STS.x, STS.y + 2, STS.z, 10)); if (e.by === me) { hTone(70, .35, .2); hTone(52, .3, .3, 'sine', null, .13); } showMsg('The Steward folds over and crawls away below decks. It will be back.', '', 5); break;
+    case 'dhit': Snd.splash(at(e.x, 0, e.z, 20)); burst(80, 1, .4, 1, 'lowpass'); hitFx(e.x, (e.y || 0) + 1, e.z, e.h, e.by); if (e.h) Snd.roar(at(e.x, e.y || 0, e.z, 25), .5); break;
     case 'wh': { const p = PL.get(e.id); if (p) { p.pingT = 6; Snd.whistle(at(p.x, p.y + 1.6, p.z, 8)); } break; }
+    case 'bounty': toast('BOUNTY', `${e.n} · +${cashStr(e.c)}`); Snd.coin(); break;
   }
 }
 
@@ -1677,11 +1704,16 @@ function hostStep(dt) {
   // the thing in the deep
   const homeD = Math.hypot(B.x - HOME.x, B.z - HOME.z), nearLand = OBST.some(o => o.c && o.r > 5 && Math.hypot(B.x - o.x, B.z - o.z) < o.r + 70) || Math.hypot(B.x, B.z) < 80;
   G.deepT = (G.deepT ?? 40) - dt;
-  if (!G.enc && B.sink <= 0 && homeD > 280 && !nearLand && G.deepT <= 0) { G.deepT = 20 + CR() * 25; if (CR() < (D.deep + .3 * G.storm + .25 * TOD.night) * .75) { const a = CR() * TAU; G.enc = {t: 9, L: 9, a, el: 0, hp: 90}; emit({k: 'circle', a, L: 9}); } }
+  // it only comes for a crew that is up on (or right beside) the boat: divers down below are the gulpers' business
+  const crewUp = alive().some(p => p.ob || (Math.hypot(p.x - B.x, p.z - B.z) < 40 && !(p.sw && (p.dv || 0) > 3)));
+  if (!G.enc && B.sink <= 0 && homeD > 280 && !nearLand && G.deepT <= 0) { G.deepT = 20 + CR() * 25; if (crewUp && CR() < (D.deep + .3 * G.storm + .25 * TOD.night) * .75) { const a = CR() * TAU; G.enc = {t: 9, L: 9, a, el: 0, hp: 90, t0: G.t}; emit({k: 'circle', a, L: 9}); } }
   if (G.enc) {
     G.enc.t -= dt; G.enc.el = (G.enc.el || 0) + dt;
-    if (G.flares.some(f => f.t > 0 && f.sea && Math.hypot(f.x - B.x, f.z - B.z) < 32)) { G.enc = null; G.deepT = 60; emit({k: 'deepgone'}); }
-    else if (G.enc.t <= 0 || nearLand) { if (!nearLand) { damageBoat(D.ramDmg / [1, 1.5, 2.2][B.up.hull]); B.v *= .35; B.yaw += (CR() - .5) * .5; emit({k: 'ram'}); if (CR() < .35) { const a = CR() * TAU; G.enc = {t: 8, L: 8, a, el: 0, hp: 70}; emit({k: 'circle', a, L: 8}); } else G.enc = null; } else { G.enc = null; emit({k: 'deepgone'}); } }
+    // a fresh flare in the sea (or burning on deck) close to the hull drives it off, away from the light
+    const E = G.enc, rest = () => 150 + CR() * 90, rf = G.flares.find(f => f.t > 0 && (f.born ?? -1e9) >= E.t0 - 1 && (f.sea || f.surf) && Math.hypot(f.x - B.x, f.z - B.z) < levRad(Math.atan2(f.x - B.x, f.z - B.z)) + 13);
+    if (!crewUp) { G.enc = null; G.deepT = 30; emit({k: 'deepgone'}); }
+    else if (rf) { const lp = levPose(E.a, E.el, E.L || 9, _lo2), ax = lp.x - rf.x, az = lp.z - rf.z, al = Math.hypot(ax, az) || 1; G.enc = null; G.deepT = rest(); emit({k: 'deepgone', fl: 1, lx: +(lp.x + ax / al * 60).toFixed(1), lz: +(lp.z + az / al * 60).toFixed(1)}); }
+    else if (E.t <= 0 || nearLand) { if (!nearLand) { const big = HC().big; damageBoat(D.ramDmg / [1, 1.5, 2.2][B.up.hull] * (big ? .3 : 1)); B.v *= big ? .85 : .35; B.yaw += (CR() - .5) * (big ? .08 : .5); emit({k: 'ram'}); if (CR() < .2) { const a = CR() * TAU; G.enc = {t: 8, L: 8, a, el: 0, hp: 70, t0: G.t}; emit({k: 'circle', a, L: 8}); } else { G.enc = null; G.deepT = rest(); } } else { G.enc = null; G.deepT = rest(); emit({k: 'deepgone'}); } }
   }
   if (G.earned >= 1500) goal(3); if (B.up.engine >= 3) goal(4);
   stepSunk(dt); stepCreature(dt); stepSteward(dt); stepGulpers(dt);
@@ -1796,16 +1828,23 @@ Net.on('act', (m, from) => { if (isHost() && G.on) hostAct(from, m); });
 function spawnFlare(e) {
   const m = new THREE.Group(); m.add(itemMesh('flare'));
   const glow = new THREE.Sprite(new THREE.SpriteMaterial({map: TX.glow, color: 0xff3018, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending})); glow.scale.set(1.4, 1.4, 1); m.add(glow);
-  scene.add(m); const f = {m, glow, x: e.x, y: e.y, z: e.z, vx: e.vx, vy: e.vy, vz: e.vz, t: 32, rest: false, sea: false}; G.flares.push(f);
+  scene.add(m); const f = {m, glow, x: e.x, y: e.y, z: e.z, vx: e.vx, vy: e.vy, vz: e.vz, t: 32, rest: false, sea: false, born: G.t}; G.flares.push(f);
   Snd.flare(at(e.x, e.y, e.z, 4)); if (G.flares.length > 3) { const o = G.flares.shift(); scene.remove(o.m); }
 }
 function lightOn() { return !!(P && P.l && (P.eq === 1 || P.eq === 3 || P.eq === 4 || (P.sw && P.own && P.own.suit && P.dv > .5))); }
 function throwFlare() {
-  if (P.flares <= 0 || P.hd >= 0 || P.down || P.seat || !alivePlay()) return; P.flares--; if (P.flares <= 0 && P.eq === 5) P.eq = 0;
-  const f = eyeDir(P), e = {a: 'fl', x: P.x + f[0] * .4, y: P.y + P.eye - .2, z: P.z + f[2] * .4, vx: f[0] * 10 + P.vx, vy: f[1] * 10 + 3, vz: f[2] * 10 + P.vz};
+  if (P.flares <= 0 || P.hd >= 0 || P.down || !alivePlay()) return; if (P.seat && HC().sub && (B.dep || 0) > .3) return;
+  if (P.eq === 5) P.burn = 0; P.flares--; if (P.flares <= 0 && P.eq === 5) P.eq = 0;
+  const f = eyeDir(P); let e;
+  // from the wheel: over the rail on the side you are looking at, so it lands in the sea beside the hull
+  if (P.seat) { const sd = bW2L(B.x + f[0], B.z + f[2])[0] >= 0 ? 1 : -1, [ox, oz] = bL2W(sd * (BG.hw + .8), P.bl[1]), ux = sd * Math.cos(B.yaw), uz = -sd * Math.sin(B.yaw);
+    e = {a: 'fl', x: ox, y: BDECK.y + B.heave + 1, z: oz, vx: ux * 7 - Math.sin(B.yaw) * B.v, vy: 3, vz: uz * 7 - Math.cos(B.yaw) * B.v}; }
+  else e = {a: 'fl', x: P.x + f[0] * .4, y: P.y + P.eye - .2, z: P.z + f[2] * .4, vx: f[0] * 10 + P.vx, vy: f[1] * 10 + 3, vz: f[2] * 10 + P.vz};
   spawnFlare(e); if (isHost()) { if (Net.role === 'host') G.evq.push(Object.assign({}, e, {k: 'fl', id: myId()})); } else Net.send(Object.assign({t: 'act'}, e));
 }
 function stepFlares(dt) {
+  // a held flare burns for 30 s, then the next one is struck
+  if (alivePlay() && P.eq === 5 && P.flares > 0 && P.hd < 0) { if (!(P.burn > 0)) P.burn = 30; P.burn -= dt; if (P.burn <= 0) { P.flares--; P.burn = 0; Snd.flare(null); if (P.flares <= 0) { P.eq = 0; showMsg('The flare sputters out.', '', 2); } } }
   for (let i = 0; i < G.flares.length; i++) {
     const f = G.flares[i];
     if (!f.rest) { f.vy -= 9.8 * dt; f.x += f.vx * dt; f.z += f.vz * dt; f.y += f.vy * dt; const fl = floorAt(f.x, f.z, f.y + .3); const gy = fl && fl.y > -.1 ? fl.y + .03 : -.1;
@@ -1945,7 +1984,7 @@ function stepInteract(dt) {
 }
 function toggleHide(h) {
   if (P.hd >= 0) { P.hd = -1; P.x = h.ex; P.z = h.ez; P.l = P.lightWas && P.bat > 0 ? 1 : 0; $('slats').classList.add('hidden'); $('breath').classList.add('hidden'); Snd.creak(); }
-  else { P.hd = h.i; P.lightWas = P.l; P.l = 0; P.yaw = h.yaw; P.pitch = 0; P.cr = 0; $('slats').classList.remove('hidden'); $('breath').classList.remove('hidden'); Snd.creak(); if (isHost() && M.state === 'chase' && M.tgt === P.id && G.t - M.seenAt < 1.2) M.sawHide = h.i; }
+  else { P.hd = h.i; P.lightWas = P.l; P.l = 0; P.yaw = h.yaw; P.pitch = 0; P.cr = 0; $('slats').classList.remove('hidden'); $('breath').classList.remove('hidden'); Snd.creak(); if (isHost() && M.state === 'chase' && M.tgt === P.id && G.t - M.seenAt < 1.2) M.sawHide = h.i; if (isHost() && STS.state === 'chase' && STS.tgt === P.id && G.t - (STS.seenAt ?? -9) < 1.2) STS.sawHide = h.i; }
 }
 function openNote(t) { G.noteOpen = true; clearKeys(); $('noteT').textContent = t; $('note').classList.remove('hidden'); }
 function closeNote() { G.noteOpen = false; $('note').classList.add('hidden'); if (G.on) lockMouse(); }
@@ -2195,11 +2234,13 @@ function levR(u) { return u < .05 ? 1.25 + u / .05 * .75 : 2.0 * Math.pow(1 - (u
 // choreography shared by host (hit tests) and clients (drawing): circle, rear up out of the sea, strike, pass under
 function levPose(a, el, L, o) {
   const tB = L - 3.4, tS = L - 1.2, ab = a + tB * .45;
-  if (el < tB) { const ang = a + el * .45; o.x = B.x + Math.sin(ang) * 19; o.z = B.z + Math.cos(ang) * 19; o.y = mix(-14, -1.25, clamp(el / 1.8, 0, 1)) + Math.sin(el * 1.3) * .35; o.jaw = .08; o.ph = 0; o.u = 0; }
-  else if (el < tS) { const u = (el - tB) / (tS - tB), e = Math.sin(Math.min(1, u * 1.5) * PI / 2), r = 19 + e * 5; o.x = B.x + Math.sin(ab) * r; o.z = B.z + Math.cos(ab) * r; o.y = mix(-1.25, 8, e) - Math.max(0, u - .82) * 10; o.jaw = clamp((u - .1) * 3, 0, 1); o.ph = 1; o.u = u; }
-  else if (el < L) { const u = (el - tS) / (L - tS); o.x = B.x + Math.sin(ab) * 24 * (1 - u); o.z = B.z + Math.cos(ab) * 24 * (1 - u); o.y = mix(6.2, -3.5, Math.min(1, u * 1.3)); o.jaw = 1 - u * .6; o.ph = 2; o.u = u; }
-  else { const u = el - L; o.x = B.x - Math.sin(ab) * u * 9; o.z = B.z - Math.cos(ab) * u * 9; o.y = -3.5 - u * 6; o.jaw = .2; o.ph = 3; o.u = u; }
-  return o;
+  if (el < tB) { const ang = a + el * .45, R = levRad(ang); o.x = B.x + Math.sin(ang) * R; o.z = B.z + Math.cos(ang) * R; o.y = mix(-14, -1.25, clamp(el / 1.8, 0, 1)) + Math.sin(el * 1.3) * .35; o.jaw = .08; o.ph = 0; o.u = 0; return o; }
+  // rear up outside the circle, strike in to a metre off the hull, then dive under it (under the keel of a big ship)
+  const H = HC(), R = levRad(ab), rE = levRad(ab, 1.5, 0); let r;
+  if (el < tS) { const u = (el - tB) / (tS - tB), e = Math.sin(Math.min(1, u * 1.5) * PI / 2); r = R + e * 5; o.y = mix(-1.25, 8, e) - Math.max(0, u - .82) * 10; o.jaw = clamp((u - .1) * 3, 0, 1); o.ph = 1; o.u = u; }
+  else if (el < L) { const u = (el - tS) / (L - tS); r = mix(R + 5, rE, u); o.y = mix(6.2, H.big ? -6 : -3.5, Math.min(1, u * 1.3)); o.jaw = 1 - u * .6; o.ph = 2; o.u = u; }
+  else { const u = el - L; if (H.big) { const kd = -(.6 + H.fb * .7 + H.L * .045) - 3.5; r = rE - Math.max(0, u - .7) * 9; o.y = mix(-6, kd, clamp(u / .7, 0, 1)) - Math.max(0, u - .7) * 1.5; } else { r = rE - u * 9; o.y = -3.5 - u * 6; } o.jaw = .2; o.ph = 3; o.u = u; }
+  o.x = B.x + Math.sin(ab) * r; o.z = B.z + Math.cos(ab) * r; return o;
 }
 function buildLev() {
   const {NS, NR} = LEV, n = NS * NR, g = new THREE.BufferGeometry(), col = new Float32Array(n * 3), idx = [];
@@ -2308,7 +2349,8 @@ function stepWake(dt) {
 const _lo = {}, _lk = new THREE.Vector4();
 function stepLev(dt) {
   if (!LEV.body) return; const t = G.wt;
-  const mw = G.maw, s = G.spines;
+  const mw = G.maw, s = G.spines, lg = A.levG, near = !!P && (P.ob || Math.hypot(cam.position.x - B.x, cam.position.z - B.z) < BG.L * .5 + 30);
+  if (lg && (mw || !s || s.leave != null)) lg.gain.setTargetAtTime(0, A.ctx.currentTime, .6);
   if (mw) {
     mw.t += dt; const u = clamp(mw.t / 4.2, 0, 1), y = mix(-48, -4, u * u);
     _lp.set(mw.x, y, mw.z + Math.sin(t) * .5); _lk.set(0, 1, 0, 1); levDraw(_lp, clamp(u * 1.4 - .3, 0, 1) * (mw.bite ? Math.max(0, 1 - (mw.t - mw.bite) * 4) : 1), _lk, t);
@@ -2316,10 +2358,18 @@ function stepLev(dt) {
   }
   if (!s) { if (LEV.on) LEV.hide(); return; }
   s.t += dt;
-  if (s.leave != null) { const u = s.t - s.leave; s.lx = s.lx ?? LEV.hp.x; s.lz = s.lz ?? LEV.hp.z; s.ly = (s.ly ?? Math.min(LEV.hp.y, -1)) - dt * (4 + u * 6); _lp.set(s.lx += LEV.ht.x * dt * 8, s.ly, s.lz += LEV.ht.z * dt * 8); levDraw(_lp, .1, null, t); if (u > 4) { G.spines = null; LEV.hide(); } return; }
+  if (s.leave != null) { const u = s.t - s.leave;
+    if (s.qx == null) { s.qx = LEV.hp.x; s.qz = LEV.hp.z; s.qy = Math.min(LEV.hp.y, -1); const l = Math.hypot(LEV.ht.x, LEV.ht.z) || 1; s.hx = LEV.ht.x / l; s.hz = LEV.ht.z / l; }
+    // it turns toward where it is going (away from the flare) and sinks
+    if (s.gx != null) { const wx = s.gx - s.qx, wz = s.gz - s.qz, wl = Math.hypot(wx, wz) || 1, k = Math.min(1, dt * 2.2); s.hx = mix(s.hx, wx / wl, k); s.hz = mix(s.hz, wz / wl, k); const hl = Math.hypot(s.hx, s.hz) || 1; s.hx /= hl; s.hz /= hl; }
+    s.qy -= dt * (4 + u * 6); s.qx += s.hx * dt * 9; s.qz += s.hz * dt * 9; _lp.set(s.qx, s.qy, s.qz); levDraw(_lp, .1, null, t); if (u > 4) { G.spines = null; LEV.hide(); } return; }
   const o = levPose(s.a, s.t, s.L || 9, _lo); _lp.set(o.x, o.y, o.z);
   let look = null; if (o.ph === 1) { _lk.set(B.x - o.x, B.heave + 1 - o.y * 1.6 - 4, B.z - o.z, clamp(o.u * 2.2, 0, 1)); const l = Math.hypot(_lk.x, _lk.y, _lk.z); _lk.x /= l; _lk.y /= l; _lk.z /= l; look = _lk; }
   levDraw(_lp, o.jaw, look, t);
+  // its wash and throat move with its middle; a riser before it rears; the hull groans when it brushes past
+  if (lg && A.levPan) { const mp = _lpts[23] || _lp; setPan(A.levPan, mp.x, Math.max(mp.y, -2), mp.z); lg.gain.setTargetAtTime(o.ph <= 2 && near ? .35 : 0, A.ctx.currentTime, o.ph <= 2 ? 1.2 : .6); }
+  if (!s.rs && s.t > (s.L || 9) - 4.9) { s.rs = 1; if (near) Snd.riser(); }
+  if (A.hcF && near && t - (s.ck ?? -9) > 2) for (let i = 2; i < LEV.NS; i += 5) { const q = _lpts[i]; if (!q || q.y < -10) continue; const [lx, lz] = bW2L(q.x, q.z), ex = Math.max(0, Math.abs(lx) - BG.hw), ez = Math.max(0, lz - BG.zs, BG.zb - lz); if (Math.hypot(ex, ez) < 6) { s.ck = t; tone(95, .1, 1.2, 'sawtooth', A.hcF, 70); G.shake = Math.max(G.shake || 0, .25); break; } }
   if (o.ph !== s.ph) { s.ph = o.ph;
     if (o.ph === 1) { Snd.roar(at(o.x, 2, o.z, 30)); G.shake = Math.max(G.shake || 0, .8); spray(o.x, .2, o.z, 40, 7); G.cine = 2.4; }
     if (o.ph === 2) { Snd.splash(at(o.x, 0, o.z, 20)); } }
@@ -2407,38 +2457,62 @@ function cPath(a, b) {
 }
 // the Steward: host brain
 const STW = new THREE.Group(), SJ = {fing: []};
-const STS = {x: CRZ.x, y: CRZ.D1, z: CRZ.z + 30, yaw: 0, state: 'roam', spd: 0, path: [], hp: 300, idle: 2, rep: 0, aware: 0, ph: 0};
+const STS = {x: CRZ.x, y: CRZ.D1, z: CRZ.z + 30, yaw: 0, state: 'roam', spd: 0, path: [], hp: 300, idle: 2, rep: 0, aware: 0, ph: 0, jit: 0, jr: 0};
 function stwGo(x, y, z) { const p = cPath(cNear(STS.x, STS.y, STS.z), cNear(x, y, z)); STS.path = p ? p.slice(1) : []; STS.goal = [x, y, z]; }
-function stwDown(p) { if (p.down || p.dead) return; p.down = true; p.bleed = D.bleed; p.hd = -1; p.seat = 0; if (B.driver === p.id) B.driver = null; dropCarry(p); STS.yaw = Math.atan2(-(p.x - STS.x), -(p.z - STS.z)); emit({k: 'down', id: p.id, how: 'caught', st: 1}); STS.state = 'flee'; STS.flee = 7; const n = CN[CN.ok[Math.floor(CR() * CN.ok.length)]]; if (n) stwGo(n.x, n.y, n.z); }
+function stwDown(p) { if (p.down || p.dead) return; p.down = true; p.bleed = typeof bleedFor === 'function' ? bleedFor(p) : D.bleed; p.hd = -1; p.seat = 0; if (B.driver === p.id) B.driver = null; dropCarry(p); STS.yaw = Math.atan2(-(p.x - STS.x), -(p.z - STS.z)); emit({k: 'down', id: p.id, how: 'caught', st: 1}); STS.state = 'flee'; STS.flee = 7; const n = CN[CN.ok[Math.floor(CR() * CN.ok.length)]]; if (n) stwGo(n.x, n.y, n.z); }
 function stwHear(x, y, z, r) { if (!inCruise(x, z, y) || ['chase', 'flee', 'dead', 'gone'].includes(STS.state)) return; if (Math.hypot(x - STS.x, z - STS.z) + Math.abs(y - STS.y) * 2 > r * 1.4) return; STS.state = 'inv'; STS.idle = 0; stwGo(x, y, z); }
 function stepSteward(dt) {
   const S = STS; if (!CN.length) return;
   const near = alive().some(p => Math.hypot(p.x - CRZ.x, p.z - CRZ.z) < 260); if (!near && S.state !== 'gone') { S.spd = 0; return; }
   if (S.state === 'dead') { S.spd = 0; S.deadT -= dt; if (S.deadT <= 0) { S.state = 'gone'; S.goneT = 150; } return; }
-  if (S.state === 'gone') { S.goneT -= dt; if (S.goneT <= 0) { const n = CN[CN.ok[Math.floor(CR() * CN.ok.length)]]; Object.assign(S, {x: n.x, y: n.y, z: n.z, state: 'roam', hp: 300, path: []}); } return; }
-  const ps = alive().filter(p => inCruise(p.x, p.z, p.y) && !p.sw);
-  for (const p of PL.values()) if (p.eq === 5 && !p.down && !p.dead && Math.hypot(p.x - S.x, p.z - S.z) < 6.5 && Math.abs(p.y - S.y) < 3 && S.state !== 'flee') { S.state = 'flee'; S.flee = 5; const n = CN[CN.ok[Math.floor(CR() * CN.ok.length)]]; stwGo(n.x, n.y, n.z); emit({k: 'snd', s: 'shriekS'}); }
-  for (const fl of G.flares) if (fl.t > 0 && Math.hypot(fl.x - S.x, fl.z - S.z) < 9 && Math.abs(fl.y - S.y) < 4 && S.state !== 'flee') { S.state = 'flee'; S.flee = 6; const n = CN[CN.ok[Math.floor(CR() * CN.ok.length)]]; stwGo(n.x, n.y, n.z); }
-  // senses
-  S.senseT = (S.senseT || 0) - dt; if (S.senseT <= 0) { S.senseT = .15; S.see = null; let bd = 1e9;
-    for (const p of ps) { if (p.hd >= 0) continue; const d = Math.hypot(p.x - S.x, p.z - S.z) + Math.abs(p.y - S.y); const rng = p.l ? 30 : p.cr ? 8 : p.run ? 22 : 14; if (d > rng || d > bd) continue;
-      const fa = Math.atan2(-(p.x - S.x), -(p.z - S.z)); if (d > 4 && Math.abs(angD(S.yaw, fa)) > 1.4 && !p.l) continue; if (!seeLine(S.x, S.y + 1.2, S.z, p.x, p.y, p.z)) continue; bd = d; S.see = p; } }
-  let speed = 1.5 + TOD.night * .3;
-  if (S.see && S.state !== 'flee') { if (S.state !== 'chase') { S.state = 'chase'; emit({k: 'snd', s: 'stwSee'}); } S.tgt = S.see.id; S.lx = S.see.x; S.ly = S.see.y; S.lz = S.see.z; S.lost = 0; S.sawHide = -1; }
+  if (S.state === 'gone') { S.goneT -= dt; if (S.goneT <= 0) { const n = CN[CN.ok[Math.floor(CR() * CN.ok.length)]]; Object.assign(S, {x: n.x, y: n.y, z: n.z, state: 'roam', hp: 300, path: [], aware: 0, hm: 0}); } return; }
+  const ps = alive().filter(p => inCruise(p.x, p.z, p.y) && !p.sw), rn = () => CN[CN.ok[Math.floor(CR() * CN.ok.length)]];
+  const flee = (t, s) => { S.state = 'flee'; S.flee = t; S.aware = 0; S.chkT = 0; S.chkH = null; const n = rn(); if (n) stwGo(n.x, n.y, n.z); if (s) emit({k: 'snd', s}); };
+  for (const p of PL.values()) if (p.eq === 5 && p.hd < 0 && !p.down && !p.dead && Math.hypot(p.x - S.x, p.z - S.z) < 5.5 && Math.abs(p.y - S.y) < 3 && S.state !== 'flee') flee(5, 'shriekS');
+  for (const fl of G.flares) if (fl.t > 0 && Math.hypot(fl.x - S.x, fl.z - S.z) < 9 && Math.abs(fl.y - S.y) < 4 && S.state !== 'flee') flee(6);
+  // senses: a light it can see (or that shines on it) carries 30 m; otherwise it has to be looking your way
+  S.senseT = (S.senseT || 0) - dt; if (S.senseT <= 0) { S.senseT = .15; S.see = null; S.seeK = 0; let bd = 1e9;
+    for (const p of ps) { if (p.hd >= 0) continue; const dx = p.x - S.x, dz = p.z - S.z, d = Math.hypot(dx, dz) + Math.abs(p.y - S.y), inF = Math.abs(angD(S.yaw, Math.atan2(-dx, -dz))) < 1.4;
+      const lit = litP(p) && (inF || beamHits(p, S.x, S.y + 2.4, S.z)), rng = (lit ? 30 : p.cr ? 8 : p.run ? 22 : 14) * D.sight / 26;
+      if (d > rng || d > bd || (d > 3 && !inF)) continue; if (!seeLine(S.x, S.y + 1.2, S.z, p.x, p.y, p.z)) continue; bd = d; S.see = p; S.seeK = clamp(1.4 - d / rng, .1, 1.4); } }
+  const sp = S.state === 'flee' ? null : S.see && PL.get(S.see.id) === S.see && !S.see.down && S.see.hd < 0 ? S.see : null;
+  if (sp) { S.aware = Math.min(1.5, (S.aware || 0) + dt * S.seeK / .55); S.seenAt = G.t; S.seenId = sp.id; S.lx = sp.x; S.ly = sp.y; S.lz = sp.z; } else S.aware = Math.max(0, (S.aware || 0) - dt * .3);
+  if (sp && (S.aware >= 1 || Math.hypot(sp.x - S.x, sp.z - S.z) + Math.abs(sp.y - S.y) < 4)) { if (S.state !== 'chase') { S.state = 'chase'; S.chkT = 0; S.chkH = null; emit({k: 'snd', s: 'stwSee'}); } S.tgt = sp.id; S.lost = 0; S.sawHide = -1; }
+  // half-noticed: it stops, turns and hums at you; if you slip away it comes to look
+  let notice = false;
+  if (S.state !== 'chase' && S.state !== 'flee' && S.aware > .35) { notice = true; S.ntc = 1; if (sp) S.yaw += angD(S.yaw, Math.atan2(-(sp.x - S.x), -(sp.z - S.z))) * Math.min(1, dt * 6);
+    if (!S.hm) { S.hm = 1; emit({k: 'snd', s: 'stwHm', x: +S.x.toFixed(1), y: +(S.y + 2.6).toFixed(1), z: +S.z.toFixed(1)}); } }
+  else if (S.ntc) { S.ntc = 0; if (S.state !== 'chase' && S.state !== 'flee') { S.state = 'inv'; S.idle = 3; stwGo(S.lx, S.ly, S.lz); } }
+  if (S.aware <= 0 || S.state === 'chase') S.hm = S.state === 'chase' ? 1 : 0;
   const tgt = S.tgt && PL.get(S.tgt);
+  // lost them: search the stateroom they vanished in, hiding place by hiding place
+  const lost = () => { const z = zoneOf(S.lx, S.lz, S.ly); S.tgt = null; S.sawHide = -1; S.aware = Math.min(S.aware, .3); S.ntc = 0; if (z >= 0 && BLD[z].cruise && BLD[z].hides.length) stwSearch(BLD[z]); else { S.state = 'search'; S.idle = 8; S.chk = []; S.chkH = null; S.chkT = 0; stwGo(S.lx, S.ly, S.lz); } };
+  let speed = 1.5 + TOD.night * .3;
   if (S.state === 'chase') {
-    speed = 4.6 + TOD.night * .6;
-    if (!tgt || tgt.down || tgt.dead || !inCruise(tgt.x, tgt.z, tgt.y) || tgt.sw) { S.state = 'search'; S.idle = 6; stwGo(S.lx, S.ly, S.lz); }
-    else if (tgt.hd >= 0) { if (S.sawHide === tgt.hd || (S.see === tgt)) { const h = HIDES[tgt.hd]; S.sawHide = tgt.hd; if (Math.hypot(S.x - h.ex, S.z - h.ez) < 1.3) { emit({k: 'snd', s: 'creak'}); stwDown(tgt); } else { S.rep -= dt; if (S.rep <= 0) { S.rep = .5; stwGo(h.ex, h.y, h.ez); } } } else { S.state = 'search'; S.idle = 8; stwGo(S.lx, S.ly, S.lz); } }
-    else { if (!S.see) { S.lost += dt; if (S.lost > 4) { S.state = 'search'; S.idle = 8; } }
-      S.rep -= dt; if (S.rep <= 0) { S.rep = .45; if (S.see && Math.abs(tgt.y - S.y) < 1 && Math.hypot(tgt.x - S.x, tgt.z - S.z) < 9) S.path = [[tgt.x, tgt.y, tgt.z]]; else stwGo(S.lx, S.ly, S.lz); }
-      if (Math.hypot(tgt.x - S.x, tgt.z - S.z) < 1.4 && Math.abs(tgt.y - S.y) < 1.5) stwDown(tgt); }
+    speed = (4.6 + TOD.night * .6) * D.chase / 5.1;
+    if (!tgt || tgt.down || tgt.dead || !inCruise(tgt.x, tgt.z, tgt.y) || tgt.sw) lost();
+    else if (tgt.hd >= 0) { if (S.sawHide === tgt.hd || (S.seenId === tgt.id && G.t - S.seenAt < 1.2)) { const h = HIDES[tgt.hd]; S.sawHide = tgt.hd; if (Math.hypot(S.x - h.ex, S.z - h.ez) < 1.3 && Math.abs(S.y - h.y) < 2) { emit({k: 'snd', s: 'creak', x: +h.x.toFixed(1), y: +(h.y + 1).toFixed(1), z: +h.z.toFixed(1)}); stwDown(tgt); } else { S.rep -= dt; if (S.rep <= 0 || !S.path.length) { S.rep = .5; stwGo(h.ex, h.y, h.ez); S.path.push([h.ex, h.y, h.ez]); } } } else lost(); }
+    else { if (!sp) { S.lost += dt; if (S.lost > 4) lost(); }
+      S.rep -= dt; if (S.state === 'chase' && S.rep <= 0) { S.rep = .45; if (sp && Math.abs(tgt.y - S.y) < 1 && Math.hypot(tgt.x - S.x, tgt.z - S.z) < 9) S.path = [[tgt.x, tgt.y, tgt.z]]; else stwGo(S.lx, S.ly, S.lz); }
+      if (S.state === 'chase' && Math.hypot(tgt.x - S.x, tgt.z - S.z) < 1.4 && Math.abs(tgt.y - S.y) < 1.5) stwDown(tgt); }
   } else if (S.state === 'flee') { speed = 5; S.flee -= dt; if (S.flee <= 0) { S.state = 'roam'; S.idle = 3; } }
-  else if (S.state === 'search' || S.state === 'inv') { speed = 2.6; if (!S.path.length) { S.idle -= dt; if (S.idle <= 0) S.state = 'roam'; } }
-  else { if (!S.path.length) { S.idle -= dt; if (S.idle <= 0) { S.idle = 2 + CR() * 5; const pr = ps[Math.floor(CR() * ps.length)]; const n = pr && CR() < .55 ? CN[cNear(pr.x + (CR() - .5) * 16, pr.y, pr.z + (CR() - .5) * 16)] : CN[CN.ok[Math.floor(CR() * CN.ok.length)]]; if (n) stwGo(n.x, n.y, n.z); } } }
-  // move along the path
+  else if (S.state === 'search') { speed = 2.4;
+    const h = S.chkH;
+    if (S.chkT > 0) { S.chkT -= dt; speed = 0; S.path = []; S.yaw += angD(S.yaw, Math.atan2(-(h.x - S.x), -(h.z - S.z))) * Math.min(1, dt * 6);
+      if (S.chkT <= .9 && !S.chkDone) { S.chkDone = 1; emit({k: 'snd', s: 'creak', x: +h.x.toFixed(1), y: +(h.y + 1).toFixed(1), z: +h.z.toFixed(1)}); for (const p of PL.values()) if (p.hd === h.i && !p.hb && !p.down && !p.dead) { stwDown(p); break; } }
+      if (S.chkT <= 0 && S.state === 'search') S.chkH = null; }
+    else if (h) { if (!S.path.length) { if (Math.hypot(S.x - h.ex, S.z - h.ez) < 1.4) { S.chkT = 1.8; S.chkDone = 0; } else S.chkH = null; } }
+    else if (S.chk && S.chk.length) { const n = S.chk.shift(); S.chkH = n; stwGo(n.ex, n.y, n.ez); S.path.push([n.ex, n.y, n.ez]); }
+    else if (!S.path.length) { S.idle -= dt; if (S.idle <= 0) S.state = 'roam'; }
+    // held breath or not, breathing close by gives a hiding place away
+    if (S.state === 'search' && !(S.chkT > 0)) for (const p of PL.values()) if (p.hd >= 0 && !p.hb && !p.down && Math.hypot(p.x - S.x, p.z - S.z) < 3.2 && Math.abs(p.y - S.y) < 2 && CR() < dt * D.breathHear * 2 && S.chkH !== HIDES[p.hd]) { S.chk = [HIDES[p.hd]].concat((S.chk || []).filter(q => q !== HIDES[p.hd])); S.chkH = null; break; }
+  }
+  else if (S.state === 'inv') { speed = 2.6; if (!S.path.length) { S.idle -= dt; if (S.idle <= 0) S.state = 'roam'; } }
+  else { if (!S.path.length) { S.idle -= dt; if (S.idle <= 0) { S.idle = 2 + CR() * 5; const pr = ps[Math.floor(CR() * ps.length)]; const n = pr && CR() < .55 ? CN[cNear(pr.x + (CR() - .5) * 16, pr.y, pr.z + (CR() - .5) * 16)] : rn(); if (n) stwGo(n.x, n.y, n.z); } } }
+  // move along the path (it stands still while it wonders)
   while (S.path.length && Math.hypot(S.path[0][0] - S.x, S.path[0][2] - S.z) < .45) S.path.shift();
-  if (!S.path.length) S.spd = mix(S.spd, 0, dt * 6);
+  if (notice) S.spd = mix(S.spd, 0, Math.min(1, dt * 10));
+  else if (!S.path.length) S.spd = mix(S.spd, 0, dt * 6);
   else { const [wx, wy, wz] = S.path[0], dx = wx - S.x, dz = wz - S.z, d = Math.hypot(dx, dz) || 1, want = Math.atan2(-dx, -dz); S.yaw += clamp(angD(S.yaw, want), -dt * 6, dt * 6); S.spd = mix(S.spd, speed * (1 - Math.min(.6, Math.abs(angD(S.yaw, want)) / PI)), dt * 3);
     const st = Math.min(d, S.spd * dt); S.x += dx / d * st; S.z += dz / d * st; const f = floorAt(S.x, S.z, S.y + .9, true); if (f) S.y = mix(S.y, f.y, Math.min(1, dt * 10)); }
   S.stepAcc = (S.stepAcc || 0) + S.spd * dt; if (S.stepAcc > 1.6) { S.stepAcc = 0; emit({k: 'sstep'}); }
@@ -2504,19 +2578,24 @@ function gulDraw(o, x, y, z, yaw, pitch, jaw, t) {
 // host brain
 function stepGulpers(dt) {
   const divers = alive().filter(p => p.sw && (p.dv || 0) > 5);
+  // they only rise for divers who go deep, go down at night, or swim into a dive site; and never in the first 25 s
+  for (const p of PL.values()) { const dv = p.sw ? p.dv || 0 : 0, ok = p.ready && !p.dead && dv > 5 && (dv > 25 || (dv > 12 && TOD.night > .5) || DSITES.some(s => Math.hypot(p.x - s.x, p.z - s.z) < s.r)); if (!ok) p.gulOkT = null; else if (p.gulOkT == null) p.gulOkT = G.t + 25; }
   G.gulT = (G.gulT ?? 4) - dt;
-  if (G.gulT <= 0) { G.gulT = 5; const on = GUL.filter(g => g.on).length; const p = divers[Math.floor(CR() * divers.length)];
-    if (p && on < Math.min(GN, 1 + Math.floor(p.dv / 25))) { const a = CR() * TAU, r = 38 + CR() * 14, x = p.x + Math.sin(a) * r, z = p.z + Math.cos(a) * r, bed = seaBed(x, z);
+  if (G.gulT <= 0) { G.gulT = 5; const on = GUL.filter(g => g.on).length, el = divers.filter(p => p.gulOkT != null && G.t >= p.gulOkT), p = el[Math.floor(CR() * el.length)];
+    if (p && on < Math.min(GN, Math.max(1, 1 + Math.floor((p.dv - 25) / 35)))) { const a = CR() * TAU, r = 38 + CR() * 14, x = p.x + Math.sin(a) * r, z = p.z + Math.cos(a) * r, bed = seaBed(x, z);
       if (bed < -12) { let g = GUL.find(q => !q.on); if (!g) { g = {}; GUL.push(g); } Object.assign(g, {on: 1, x, z, y: clamp(-p.dv + (CR() - .5) * 8, bed + 2, -4), yaw: CR() * TAU, pitch: 0, st: 0, t: 0, tgt: null, vx: 0, vy: 0, vz: 0}); } } }
   for (const g of GUL) { if (!g.on) continue; g.t += dt;
     let best = null, bd = 1e9; for (const p of divers) { const d = Math.hypot(p.x - g.x, -p.dv - g.y, p.z - g.z); if (d < bd) { bd = d; best = p; } }
     if (!best || bd > 130) { g.on = 0; continue; }
-    const scared = [...PL.values()].some(p => p.eq === 5 && p.sw && Math.hypot(p.x - g.x, -p.dv - g.y, p.z - g.z) < 11) || G.flares.some(f => f.t > 0 && f.sea && Math.hypot(f.x - g.x, f.z - g.z) < 14 && g.y > -20);
+    const scared = [...PL.values()].some(p => p.eq === 5 && p.sw && p.hd < 0 && Math.hypot(p.x - g.x, -p.dv - g.y, p.z - g.z) < 8) || G.flares.some(f => f.t > 0 && f.sea && Math.hypot(f.x - g.x, f.z - g.z) < 14 && g.y > -20);
     if (scared && g.st !== 3) { g.st = 3; g.t = 0; emit({k: 'snd', s: 'gulF', x: +g.x.toFixed(1), y: +g.y.toFixed(1), z: +g.z.toFixed(1)}); }
     const px = best.x, py = -best.dv - .3, pz = best.z; let tx, ty, tz, spd;
-    if (g.st === 0) { const sense = best.l ? 42 : 26, ra = g.t * .12 + g.yaw; tx = px + Math.sin(ra) * 22; ty = py + Math.sin(g.t * .5) * 3; tz = pz + Math.cos(ra) * 22; spd = 3; if (bd < sense) { g.st = 1; g.t = 0; g.lt = 4 + CR() * 5; g.ang = Math.atan2(g.x - px, g.z - pz); emit({k: 'snd', s: 'gulS', x: +g.x.toFixed(1), y: +g.y.toFixed(1), z: +g.z.toFixed(1)}); } }
-    else if (g.st === 1) { g.ang += dt * .55; const r = mix(14, 8, clamp(g.t / g.lt, 0, 1)); tx = px + Math.sin(g.ang) * r; tz = pz + Math.cos(g.ang) * r; ty = py + Math.sin(g.t) * 2; spd = 4.2; if (g.t > g.lt) { g.st = 2; g.t = 0; g.lx = px; g.ly = py; g.lz = pz; emit({k: 'snd', s: 'gulL', x: +g.x.toFixed(1), y: +g.y.toFixed(1), z: +g.z.toFixed(1)}); } }
-    else if (g.st === 2) { tx = mix(g.lx, px, .6); ty = mix(g.ly, py, .6); tz = mix(g.lz, pz, .6); spd = 13; if (bd < 1.9) { g.st = 3; g.t = 0; const p = best; if (p.biteT && G.t - p.biteT < 15) { p.dead = true; p.deadT = 0; dropCarry(p); emit({k: 'dead', id: p.id, drown: 2}); } else { p.biteT = G.t; emit({k: 'bite', id: p.id}); } } else if (g.t > 1.8) { g.st = 1; g.t = 0; g.lt = 3 + CR() * 3; } }
+    if (g.st === 0) { const sense = litP(best) ? 42 : 26, ra = g.t * .12 + g.yaw; tx = px + Math.sin(ra) * 22; ty = py + Math.sin(g.t * .5) * 3; tz = pz + Math.cos(ra) * 22; spd = 3; if (bd < sense) { g.st = 1; g.t = 0; g.lt = 4 + CR() * 5; g.ang = Math.atan2(g.x - px, g.z - pz); emit({k: 'snd', s: 'gulS', x: +g.x.toFixed(1), y: +g.y.toFixed(1), z: +g.z.toFixed(1)}); } }
+    else if (g.st === 1) { g.ang += dt * .55; const r = mix(14, 8, clamp(g.t / g.lt, 0, 1)); tx = px + Math.sin(g.ang) * r; tz = pz + Math.cos(g.ang) * r; ty = py + Math.sin(g.t) * 2; spd = 4.2; if (g.t > g.lt && bd < 11) { g.st = 4; g.t = 0; g.lx = px; g.ly = py; g.lz = pz; } }
+    // the cock: it hangs there facing you, lure dark, aimed at where you were. Move now.
+    else if (g.st === 4) { tx = px; ty = py; tz = pz; spd = 1; if (g.t > .9) { g.st = 2; g.t = 0; g.pass = 0; const ax = g.lx - g.x, ay = g.ly - g.y, az = g.lz - g.z, al = Math.hypot(ax, ay, az) || 1; g.vx = ax / al * 8; g.vy = ay / al * 8; g.vz = az / al * 8; emit({k: 'snd', s: 'gulL', x: +g.x.toFixed(1), y: +g.y.toFixed(1), z: +g.z.toFixed(1)}); } }
+    else if (g.st === 2) { tx = mix(g.lx, px, .2); ty = mix(g.ly, py, .2); tz = mix(g.lz, pz, .2); spd = 11; if (!g.pass && Math.hypot(tx - g.x, ty - g.y, tz - g.z) < 1.5) g.pass = 1; if (g.pass) { tx = g.x + g.vx; ty = g.y + g.vy; tz = g.z + g.vz; }
+      if (bd < 1.9) { g.st = 3; g.t = 0; const p = best; if (p.biteT && G.t - p.biteT < 15) { p.dead = true; p.deadT = 0; dropCarry(p); emit({k: 'dead', id: p.id, drown: 3}); } else { p.biteT = G.t; emit({k: 'bite', id: p.id}); } } else if (g.t > 1.4) { g.st = 1; g.t = 0; g.lt = 3 + CR() * 3; } }
     else { tx = g.x + (g.x - px) * 2; ty = g.y - 3; tz = g.z + (g.z - pz) * 2; spd = 7; if (g.t > 6) { g.st = 0; g.t = 0; } }
     const dx = tx - g.x, dy = ty - g.y, dz = tz - g.z, d = Math.hypot(dx, dy, dz) || 1, k = Math.min(1, dt * (g.st === 2 ? 4 : 1.6));
     g.vx = mix(g.vx, dx / d * spd, k); g.vy = mix(g.vy, dy / d * spd, k); g.vz = mix(g.vz, dz / d * spd, k);
@@ -2524,15 +2603,54 @@ function stepGulpers(dt) {
     const hs = Math.hypot(g.vx, g.vz); if (hs > .2) g.yaw = Math.atan2(-g.vx, -g.vz); g.pitch = Math.atan2(g.vy, Math.max(hs, .1)) * .8;
   }
 }
+// ---------------- horror helpers: who is lit, how far out the deep circles, positional dread
+// a burning flare makes you visible, though things back off from it up close
+const litP = p => p === P ? (lightOn() || P.eq === 5) : (!!p.l || p.eq === 5);
+// how far out the deep swims at a bearing: the hull outline (centre to far end) grown by m metres, at least lo
+function levRad(ang, m = 7, lo = 19) {
+  const H = HC(), phi = ang - B.yaw, c = Math.abs(Math.cos(phi)), s = Math.abs(Math.sin(phi)), a = H.L * .56, b = H.W / 2;
+  let R = c > 1e-3 ? (a + m) / c : 1e9;
+  if (R * s > b) { R = s > 1e-3 ? (b + m) / s : 1e9; if (R * c > a) { const k = a * c + b * s; R = k + Math.sqrt(Math.max(0, k * k - (a * a + b * b - m * m))); } }
+  return Math.max(lo, R);
+}
+// a tone that starts `when` seconds from now on the audio clock
+function hTone(f, peak, dec, type = 'sine', dest, when = 0, f2) { if (!A.on) return; const c = A.ctx, t = c.currentTime + when, o = c.createOscillator(); o.type = type; o.frequency.setValueAtTime(f, t); if (f2) o.frequency.exponentialRampToValueAtTime(f2, t + dec); const g = c.createGain(); env(g, t, .01, peak, dec); o.connect(g); g.connect(dest || A.out); o.start(t); o.stop(t + dec + .1); }
+// the Steward checks the hiding places of a stateroom, one by one (each with chance D.checkP)
+function stwSearch(b) { const S = STS; S.state = 'search'; S.idle = 5; S.chkT = 0; S.chkH = null; S.chk = b.hides.filter(() => CR() < D.checkP); S.chk.sort(() => CR() - .5); stwGo(b.din ? b.din[0] : b.x, b.fy, b.din ? b.din[1] : b.z); }
+// persistent voices: the deep's wash and throat on a panner that follows its body, and a growl under the deep drone
+function hzInit() {
+  const c = A.ctx; if (!c || A.hz) return; A.hz = 1; const mu = A.mute = A.mute || [];
+  const p = c.createPanner(); Object.assign(p, {panningModel: 'HRTF', distanceModel: 'inverse', refDistance: 8, rolloffFactor: 1, maxDistance: 600}); setPan(p, B.x, 0, B.z); p.connect(A.out); A.levPan = p;
+  const lg = c.createGain(); lg.gain.value = 0; lg.connect(p); A.levG = lg; mu.push(lg);
+  const ns = c.createBufferSource(); ns.buffer = A.noise; ns.loop = true; const nf = c.createBiquadFilter(); nf.type = 'bandpass'; nf.frequency.value = 450; nf.Q.value = .7; ns.connect(nf); nf.connect(lg); ns.start();
+  const so = c.createOscillator(); so.type = 'sawtooth'; so.frequency.value = 58; const pk = c.createBiquadFilter(); pk.type = 'peaking'; pk.frequency.value = 180; pk.Q.value = 1; pk.gain.value = 9; const sg = c.createGain(); sg.gain.value = .12; so.connect(pk); pk.connect(sg); sg.connect(lg); so.start();
+  const lfo = c.createOscillator(); lfo.frequency.value = .21; const lfg = c.createGain(); lfg.gain.value = 6; lfo.connect(lfg); lfg.connect(so.frequency); lfo.start();
+  const dl = c.createBiquadFilter(); dl.type = 'lowpass'; dl.frequency.value = 220; const ws = c.createWaveShaper(), cv = new Float32Array(256); for (let i = 0; i < 256; i++) cv[i] = Math.tanh((i / 127.5 - 1) * 2.4); ws.curve = cv; const wg = c.createGain(); wg.gain.value = .5; dl.connect(ws); ws.connect(wg); wg.connect(A.deepG);
+  for (const [f, ty, g0] of [[62, 'sawtooth', .5], [93, 'triangle', .35]]) { const o = c.createOscillator(); o.type = ty; o.frequency.value = f; o.detune.value = (Math.random() - .5) * 10; const og = c.createGain(); og.gain.value = g0; o.connect(og); og.connect(dl); o.start(); }
+  const hc = c.createBiquadFilter(); hc.type = 'bandpass'; hc.frequency.value = 450; hc.Q.value = 2.5; hc.connect(A.bPan || A.out); A.hcF = hc;
+}
+Snd.creak = p => { tone(90, .06, .7, 'sawtooth', p || null, 60); burst(700, 6, .1, .6, 'bandpass', p || null, .4); };
+Snd.ram = p => { burst(70, 1, 1, 1.5, 'lowpass', p || null, .4); tone(45, .6, 1.2, 'sine', p || null); burst(1500, .5, .25, 1, 'bandpass', p || null, .6); };
+// a heartbeat laptop speakers can play: a bandpassed thump plus its 2nd and 3rd harmonics, lub then dub
+Snd.heart = k => { if (!A.on) return; const c = A.ctx;
+  for (const [w, m] of [[0, 1], [.17, .8]]) { const t = c.currentTime + w, s = c.createBufferSource(); s.buffer = A.noise; const fl = c.createBiquadFilter(); fl.type = 'bandpass'; fl.frequency.value = 180; fl.Q.value = 1.2; const g = c.createGain(); env(g, t, .005, .3 * k * m, .09); s.connect(fl); fl.connect(g); g.connect(A.out); s.start(t, Math.random()); s.stop(t + .2);
+    hTone(116, .1 * k * m, .1, 'sine', null, w); hTone(174, .05 * k * m, .08, 'triangle', null, w); } };
+Snd.hitTick = head => { burst(3400, 6, .1, .025); tone(head ? 2400 : 1700, .05, .06, 'square'); };
+Snd.bell = p => { tone(2350, .04, 1.4, 'triangle', p); tone(3520, .04, 1.4, 'triangle', p); };
+Snd.riser = () => { if (!A.on) return; const c = A.ctx, t = c.currentTime, s = c.createBufferSource(); s.buffer = A.noise; s.loop = true; const fl = c.createBiquadFilter(); fl.type = 'bandpass'; fl.Q.value = 3; fl.frequency.setValueAtTime(400, t); fl.frequency.exponentialRampToValueAtTime(2500, t + 1.5); const g = c.createGain(); g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(.22, t + 1.4); g.gain.exponentialRampToValueAtTime(.0001, t + 1.6); s.connect(fl); fl.connect(g); g.connect(A.out); s.start(t); s.stop(t + 1.7); };
 // clients: draw from snapshot state
 const GULM = [];
 function drawGulpers(dt) {
   const t = G.wt;
   for (let i = 0; i < GN; i++) { const g = GUL[i], o = GULM[i]; const on = g && g.on && (G.uw > .3 || Math.hypot(g.x - cam.position.x, g.z - cam.position.z) < 60);
-    if (!on) { if (o) { o.body.visible = o.h.visible = false; o.trail.length = 0; } continue; }
+    if (!on) { if (o) { o.body.visible = o.h.visible = false; o.trail.length = 0; } if (g) g.pst = 0; continue; }
     const m = o || (GULM[i] = gulMesh()); m.body.visible = m.h.visible = true;
     if (!isHost() && g.tx != null) { const k = Math.min(1, dt * 8); g.x = mix(g.x, g.tx, k); g.y = mix(g.y, g.ty, k); g.z = mix(g.z, g.tz, k); g.yaw += angD(g.yaw, g.tyaw) * k; g.pitch = mix(g.pitch, g.tpitch, k); }
-    gulDraw(m, g.x, g.y, g.z, g.yaw, g.pitch, g.st === 2 ? .9 : g.st === 1 ? .35 + Math.sin(t * 2) * .1 : .15, t);
+    // the cock before a lunge: the lure goes dark and it clicks
+    if (g.st === 4 && g.pst !== 4 && G.uw > .3 && Math.hypot(g.x - cam.position.x, g.z - cam.position.z) < 80) Snd.clicks(at(g.x, g.y, g.z, 4)); g.pst = g.st;
+    m.lf = mix(m.lf ?? 1, g.st === 4 ? 0 : 1, Math.min(1, dt * (g.st === 4 ? 9 : 2)));
+    gulDraw(m, g.x, g.y, g.z, g.yaw, g.pitch, g.st === 2 ? .9 : g.st === 4 ? .5 + Math.sin(t * 24) * .06 : g.st === 1 ? .35 + Math.sin(t * 2) * .1 : .15, t);
+    m.gl.material.opacity *= m.lf; m.bulb.scale.setScalar(mix(.3, m.bulb.scale.x, m.lf));
   }
 }
 // ---------------- style: auras, boat paint and underglow, fireworks, fireflies
@@ -2780,16 +2898,23 @@ function updateRemotes(dt) {
 let heartT = 0;
 function stepFear(dt) {
   const cp = cam.position, d = Math.hypot(cp.x - M.x, cp.z - M.z) + Math.abs(cp.y - M.y - 1.5), me = alivePlay() ? P : null, s = me ? pSeesMon(me) : 0;
-  let f = clamp(1 - d / 30, 0, 1) * .6 + (M.state === 'chase' ? (M.tgt === myId() ? .5 : .25) : 0) + s * clamp(1 - d / 45, 0, 1) * .4 + (me && me.sw && me.deep ? .5 : 0) + (G.spines && G.spines.circle ? .5 : 0);
-  if (inCabin() && !(G.spines && G.spines.circle)) f *= .35;
+  // dread: the worst of the rig thing, the Steward and the gulpers, then the deep (only near the boat) and the dark below on top
+  const near = !!P && (P.ob || Math.hypot(cp.x - B.x, cp.z - B.z) < BG.L * .5 + 30), sp = !!(G.spines && G.spines.circle && near);
+  const fM = clamp(1 - d / 30, 0, 1) * .6 + (M.state === 'chase' ? (M.tgt === myId() ? .5 : .25) : 0) + s * clamp(1 - d / 45, 0, 1) * .4;
+  const sd = Math.hypot(cp.x - STS.x, cp.y - STS.y, cp.z - STS.z), sOn = STS.state !== 'dead' && STS.state !== 'gone', sCh = sOn && STS.state === 'chase' && sd < 50, fS = sOn && inCruise(cp.x, cp.z, cp.y) ? clamp(1 - sd / 28, 0, 1) * .6 + (sCh ? (sd < 14 ? .55 : .3) : 0) : 0;
+  let gd = 1e9, gs = 0, gCh = false; for (const g of GUL) { if (!g || !g.on) continue; const q = Math.hypot(g.x - cp.x, g.y - cp.y, g.z - cp.z); if ((g.st === 2 || g.st === 4) && q < 30) gCh = true; if (q < gd) { gd = q; gs = g.st; } }
+  const fG = P.sw && gd < 45 && gs !== 3 ? clamp(1 - gd / 45, 0, 1) * .5 + (gs === 2 || gs === 4 ? .4 : gs === 1 ? .15 : 0) : 0;
+  let f = Math.max(fM, fS, fG) + (me && me.sw && me.deep && !(me.own && me.own.suit) ? .45 : 0) + (me && me.sw ? .15 * clamp((me.dv || 0) / 120, 0, 1) : 0) + (sp ? .5 : 0);
+  if (inCabin() && !sp) f *= .35;
   P.fear = mix(P.fear || 0, clamp(f, 0, 1), Math.min(1, dt * (f > (P.fear || 0) ? 3 : .6)));
   heartT -= dt; if (P.fear > .2 && heartT <= 0) { heartT = 60 / (60 + P.fear * 110); Snd.heart(P.fear); }
   $('fearV').style.opacity = G.js && G.js.t > 0 ? .2 : clamp((P.fear - .25) * 1.2, 0, .9); $('downV').style.opacity = P.down ? (G.js && G.js.t > 0 ? .1 : .55 + .35 * (1 - P.bleed / D.bleed)) : 0;
   if (A.on) {
-    const c = A.ctx, t = c.currentTime, ch = M.state === 'chase', rigNear = nearRig(cp.x, cp.z);
-    A.drone.gain.setTargetAtTime(ch && d < 60 ? .05 : 0, t, ch ? .3 : 1.5); A.droneF.frequency.setTargetAtTime(ch ? 900 : 300, t, 1);
+    const c = A.ctx, t = c.currentTime, ch = M.state === 'chase', rigNear = nearRig(cp.x, cp.z), chase = (ch && d < 60) || sCh || gCh;
+    A.drone.gain.setTargetAtTime(chase ? .05 : 0, t, chase ? .3 : 1.5); A.droneF.frequency.setTargetAtTime(chase ? 900 : 300, t, 1);
     A.mBreath.g.gain.setTargetAtTime(rigNear ? .25 * (ch ? 1.6 : 1) * (.5 + .5 * Math.sin(G.t * (ch ? 9 : 2.5))) : 0, t, .05); A.mGrowl.gain.setTargetAtTime(!rigNear ? 0 : ch ? .5 : M.state === 'search' ? .25 : .08 * clamp(1 - d / 25, 0, 1), t, .2); A.mSaw.frequency.setTargetAtTime(ch ? 62 : 44, t, .3);
     setPan(A.mPan, M.x, M.y + 2, M.z);
+    if (!A.hz) hzInit();
     const L = c.listener; cam.getWorldDirection(_fw);
     if (L.positionX) { L.positionX.value = cp.x; L.positionY.value = cp.y; L.positionZ.value = cp.z; L.forwardX.value = _fw.x; L.forwardY.value = _fw.y; L.forwardZ.value = _fw.z; L.upX.value = 0; L.upY.value = 1; L.upZ.value = 0; } else { L.setPosition(cp.x, cp.y, cp.z); L.setOrientation(_fw.x, _fw.y, _fw.z, 0, 1, 0); }
     const inside = zoneOf(cp.x, cp.z, cp.y - 1.6) >= 0 || (P.hd >= 0) || inCabin(), st = G.storm;
@@ -2799,7 +2924,9 @@ function stepFear(dt) {
     if (A.mus) Mus.step(dt);
     const gb = BLD.find(q => q.kind === 'gen'); if (gb) setPan(A.gPan, gb.x, gb.fy + 1, gb.z); A.genG.gain.value = G.power ? .35 : 0;
     if (G.alarmT > 0) { G.alarmT -= dt; A.alarm.frequency.value = Math.sin(G.wt * 4) > 0 ? 620 : 470; A.alarmG.gain.value = .05; setPan(A.aPan, 0, LV[1] + 4, 0); } else A.alarmG.gain.value = 0;
-    A.deepG.gain.setTargetAtTime(G.spines && G.spines.circle ? .3 : 0, t, .8);
+    A.deepG.gain.setTargetAtTime(sp ? .2 : 0, t, .8);
+    // the Steward walking the halls: a small bell, or three slow knocks somewhere close
+    G.belT = (G.belT ?? 8) - dt; if (G.belT <= 0) { G.belT = 7 + Math.random() * 7; if (sOn && sd < 40 && (STS.state === 'roam' || STS.state === 'search')) { const bp = at(STS.x, STS.y + 2.4, STS.z, 4); if (Math.random() < .5) Snd.bell(bp); else for (let i = 0; i < 3; i++) setTimeout(() => burst(180, 1, .32, .16, 'lowpass', bp, .7), i * 290); } }
     A.lp.frequency.setTargetAtTime(G.uw > .5 ? 520 : 20000, t, .08);
     if (P.sw && (P.dv || 0) > .6) { G.brT = (G.brT ?? 0) - dt; if (G.brT <= 0) { G.brT = 3.6 - P.fear * 1.6; Snd.inhale(1); setTimeout(() => { Snd.exhale(1); bubbles(cam.position.x, cam.position.y - .2, cam.position.z, 8); }, 1300); } }
     G.mbT = (G.mbT ?? 0) - dt; if (G.mbT <= 0 && CRZ.box && Math.hypot(cp.x - CRZ.box[0], cp.z - CRZ.box[2]) < 45) { const N = [659, 587, 523, 494, 523, 587, 440, 0, 659, 698, 659, 587, 523, 0, 494, 523]; G.mbI = ((G.mbI || 0) + 1) % N.length; G.mbT = .42; if (N[G.mbI]) tone(N[G.mbI] * 2, .05, .9, 'sine', at(CRZ.box[0], CRZ.box[1], CRZ.box[2], 3)); }
@@ -3021,16 +3148,20 @@ function gunFx(o, w, own) {
   Snd.gun(w, own ? null : at(o[0], o[1], o[2], 8));
 }
 const HITS = [];
-function hitFx(x, y, z, head) {
+function hitFx(x, y, z, head, by) {
   const s = new THREE.Sprite(new THREE.SpriteMaterial({map: TX.glow, color: 0x6aff9a, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending})); s.position.set(x, y, z); s.scale.setScalar(head ? .9 : .6); scene.add(s); HITS.push({s, t: .25});
-  Snd.hurt(A.mPan);
+  Snd.hurt(at(x, y, z, 6));
+  // your own hits: the crosshair kicks (red on a headshot) and a dry tick
+  if (by && by === myId()) { const xh = $('xhair'); if (xh) { xh.classList.remove('h', 'hh'); xh.classList.add(head ? 'hh' : 'h'); clearTimeout(G.xhT); G.xhT = setTimeout(() => xh.classList.remove('h', 'hh'), 140); } Snd.hitTick(head); }
 }
 const _lo2 = {};
 function hostShoot(p, m) {
   const o = m.o, d = m.d; if (!o || !d || p.down || p.dead) return;
   emit({k: 'shot', id: p.id, x: o[0], y: o[1], z: o[2], w: m.w}); noise(o[0], o[1] - 1.5, o[2], m.w === 'g' ? 60 : 80);
   const pel = m.w === 'g' ? [[0, 0, 0]] : Array.from({length: 8}, () => [(CR() - .5) * .1, (CR() - .5) * .1, (CR() - .5) * .1]);
-  let dm = 0, hp = null, head = false, dd = 0;
+  let dm = 0, hp = null, head = false, dd = 0; const HL = HC().L;
+  // the first kill of each monster pays a bounty to the crew
+  const bounty = (key, n) => { const St = G.stat || (G.stat = {}), Kf = St.k || (St.k = {}); if (Kf[key]) return; Kf[key] = 1; const c = Math.round(500 * (D.pay || 1)); G.cash += c; emit({k: 'bounty', n, c}); save(); };
   for (const j of pel) {
     let ux = d[0] + j[0], uy = d[1] + j[1], uz = d[2] + j[2]; const l = Math.hypot(ux, uy, uz); ux /= l; uy /= l; uz /= l;
     if (M.state !== 'dead' && M.state !== 'gone' && nearRig(M.x, M.z)) {
@@ -3044,23 +3175,31 @@ function hostShoot(p, m) {
       }
     }
     if (G.enc) { const lp = levPose(G.enc.a, G.enc.el, G.enc.L || 9, _lo2), far = Math.hypot(lp.x - o[0], lp.z - o[2]) > 15;
-      const hitS = (cx, cy, cz, r) => { const tt = (cx - o[0]) * ux + (cy - o[1]) * uy + (cz - o[2]) * uz; return tt > 0 && tt < 90 && Math.hypot(o[0] + ux * tt - cx, o[1] + uy * tt - cy, o[2] + uz * tt - cz) < r; };
+      const hitS = (cx, cy, cz, r) => { const tt = (cx - o[0]) * ux + (cy - o[1]) * uy + (cz - o[2]) * uz; return tt > 0 && tt < 90 + HL && Math.hypot(o[0] + ux * tt - cx, o[1] + uy * tt - cy, o[2] + uz * tt - cz) < r; };
       const pd = m.w === 'g' ? 10 : far ? 3 : 6;
       if (lp.y > -1.2 && hitS(lp.x, lp.y + .5, lp.z, 3.2)) { dd += pd * (lp.ph === 1 ? 2.5 : 1); G.enc.hh = 1; }
-      else if (lp.ph === 0) { for (let k = 1; k < 7; k++) { const an = G.enc.a + G.enc.el * .45 - k * .32; if (hitS(B.x + Math.sin(an) * 19, -.3, B.z + Math.cos(an) * 19, 2.6)) { dd += pd * .6; break; } } } }
+      else if (lp.ph === 0) { let an = G.enc.a + G.enc.el * .45; for (let k = 1; k < 7; k++) { an -= 6.1 / levRad(an); const R = levRad(an); if (hitS(B.x + Math.sin(an) * R, -.3, B.z + Math.cos(an) * R, 2.6)) { dd += pd * .6; break; } } } }
   }
   if (STS.state !== 'dead' && STS.state !== 'gone' && Math.hypot(STS.x - o[0], STS.z - o[2]) < 70) {
     let sd = 0, sh = false, shp = null; for (const j of pel) { let ux = d[0] + j[0], uy = d[1] + j[1], uz = d[2] + j[2]; const l = Math.hypot(ux, uy, uz); ux /= l; uy /= l; uz /= l; const hh = ux * ux + uz * uz, t = hh > 1e-6 ? ((STS.x - o[0]) * ux + (STS.z - o[2]) * uz) / hh : 0;
       if (t <= 0 || t > 70) continue; const px = o[0] + ux * t, py = o[1] + uy * t, pz = o[2] + uz * t, hi = STS.y + 3.4; if (Math.hypot(px - STS.x, pz - STS.z) < .55 && py > STS.y && py < hi + .1 && seeLine(o[0], o[1] - 1.5, o[2], px, py - 1, pz)) { const head = py > hi - .45; sd += (m.w === 'g' ? 10 : 7 * (t > 20 ? .4 : 1)) * (head ? 2 : 1); sh = sh || head; shp = [px, py, pz]; } }
-    if (sd) { STS.hp -= sd; emit({k: 'shit', x: +shp[0].toFixed(2), y: +shp[1].toFixed(2), z: +shp[2].toFixed(2), head: sh}); if (STS.hp <= 0) { STS.state = 'dead'; STS.deadT = 4; emit({k: 'sdown'}); const it = addItem('relic', {x: STS.x + .5, y: STS.y, z: STS.z}); emit({k: 'item', i: it.i, kind: 'relic', x: STS.x + .5, y: STS.y, z: STS.z}); } else if (STS.state !== 'chase') { STS.state = 'chase'; STS.tgt = p.id; STS.lx = p.x; STS.ly = p.y; STS.lz = p.z; STS.lost = 0; } }
+    if (sd) { const out = !inCruise(p.x, p.z, p.y); if (out) sd *= .35; STS.hp -= sd; emit({k: 'shit', x: +shp[0].toFixed(2), y: +shp[1].toFixed(2), z: +shp[2].toFixed(2), head: sh, by: p.id});
+      if (STS.hp <= 0) { STS.state = 'dead'; STS.deadT = 4; emit({k: 'sdown', by: p.id}); const kd = KINDS.includes('mask') ? 'mask' : 'relic', it = addItem(kd, {x: STS.x + .5, y: STS.y, z: STS.z}); emit({k: 'item', i: it.i, kind: kd, x: STS.x + .5, y: STS.y, z: STS.z}); bounty('stw', 'The Steward'); }
+      else if (out) { if (STS.state !== 'flee') { STS.state = 'flee'; STS.flee = 6; STS.aware = 0; const n = CN[CN.ok[Math.floor(CR() * CN.ok.length)]]; if (n) stwGo(n.x, n.y, n.z); emit({k: 'snd', s: 'shriekS'}); } }
+      else if (STS.state !== 'chase') { STS.state = 'chase'; STS.tgt = p.id; STS.lx = p.x; STS.ly = p.y; STS.lz = p.z; STS.lost = 0; STS.aware = 1.5; STS.seenAt = G.t; STS.seenId = p.id; } }
   }
   if (dm) {
-    M.hp -= dm; emit({k: 'mhit', x: +hp[0].toFixed(2), y: +hp[1].toFixed(2), z: +hp[2].toFixed(2), head});
-    if (M.hp <= 0) { M.state = 'dead'; M.deadT = 3.5; M.tgt = null; emit({k: 'mdown'}); const it = addItem('fang', {x: M.x + .5, y: M.y, z: M.z}); emit({k: 'item', i: it.i, kind: 'fang', x: M.x + .5, y: M.y, z: M.z}); goal(6); }
-    else if (nearRig(p.x, p.z) && M.state !== 'chase') { M.state = 'chase'; M.tgt = p.id; M.aware = 1.5; M.lx = p.x; M.ly = p.y; M.lz = p.z; M.lostT = 0; M.seenAt = G.t; emit({k: 'snd', s: 'stinger'}); }
+    // shooting from a boat or the dock does little, and it goes to ground behind a wall
+    const far = !nearRig(p.x, p.z); if (far) dm *= .35;
+    M.hp -= dm; emit({k: 'mhit', x: +hp[0].toFixed(2), y: +hp[1].toFixed(2), z: +hp[2].toFixed(2), head, by: p.id});
+    if (M.hp <= 0) { M.state = 'dead'; M.deadT = 3.5; M.tgt = null; emit({k: 'mdown', by: p.id}); const it = addItem('fang', {x: M.x + .5, y: M.y, z: M.z}); emit({k: 'item', i: it.i, kind: 'fang', x: M.x + .5, y: M.y, z: M.z}); goal(6); bounty('rig', 'The thing on the rig'); }
+    else if (far) { if (!(M.avoidT > 13)) { let cv = null; for (let k = 0; k < 12 && !cv; k++) { const q = randNode(null); if (!q) continue; const hy = q[1] + 1.5; if (WALLS.some(w => w.see && w.y0 <= hy && w.y1 >= hy && segRect(q[0], q[2], p.x, p.z, w))) cv = q; }
+      const q = cv || randNode(null); if (q) goTo(q[0], q[1], q[2]); Object.assign(M, {state: 'roam', avoidT: 15, tgt: null, aware: 0, idle: 4, notT: 0, wind: 0, lunge: 0}); emit({k: 'snd', s: 'lunge'}); } }
+    else if (M.state !== 'chase') { M.state = 'chase'; M.tgt = p.id; M.aware = 1.5; M.lx = p.x; M.ly = p.y; M.lz = p.z; M.lostT = 0; M.seenAt = G.t; emit({k: 'snd', s: 'stinger'}); }
   }
-  if (dd && G.enc) { G.enc.hp -= dd; const lp = levPose(G.enc.a, G.enc.el, G.enc.L || 9, _lo2); emit({k: 'dhit', x: +lp.x.toFixed(1), y: +Math.max(0, lp.y).toFixed(1), z: +lp.z.toFixed(1), h: G.enc.hh ? 1 : 0}); G.enc.hh = 0;
-    if (G.enc.hp <= 0) { G.enc = null; G.deepT = 90; emit({k: 'deepgone', dead: 1}); let i = G.floats.findIndex((q, j) => !q && j < 16); if (i < 0) { let bd = -1; for (let j = 0; j < 16; j++) { const q = G.floats[j], d = q ? Math.hypot(q[0] - B.x, q[1] - B.z) : 1e9; if (d > bd) { bd = d; i = j; } } } if (i >= 0) G.floats[i] = [lp.x, lp.z, KINDS.indexOf('relic')]; } }
+  if (dd && G.enc) { G.enc.hp -= dd; const lp = levPose(G.enc.a, G.enc.el, G.enc.L || 9, _lo2); emit({k: 'dhit', x: +lp.x.toFixed(1), y: +Math.max(0, lp.y).toFixed(1), z: +lp.z.toFixed(1), h: G.enc.hh ? 1 : 0, by: p.id}); G.enc.hh = 0;
+    if (G.enc.hp <= 0) { G.enc = null; G.deepT = 150 + CR() * 90; emit({k: 'deepgone', dead: 1, by: p.id}); let i = G.floats.findIndex((q, j) => !q && j < 16); if (i < 0) { let bd = -1; for (let j = 0; j < 16; j++) { const q = G.floats[j], d = q ? Math.hypot(q[0] - B.x, q[1] - B.z) : 1e9; if (d > bd) { bd = d; i = j; } } }
+      const sk = KINDS.indexOf('spine'); if (i >= 0) G.floats[i] = [lp.x, lp.z, sk >= 0 ? sk : KINDS.indexOf('relic')]; bounty('lev', 'The deep'); } }
 }
 // fishing (each player fishes on their own screen; the host only records the catch)
 const F = {st: 'idle', pow: 0, t: 0, ten: 0, prog: 0, k: null, slack: 0, bob: null, surge: 0, surgeT: 0};
