@@ -103,7 +103,7 @@ button.go { background:#124a5a; color:#f3e9d8; font-size:17px; letter-spacing:.2
   <div id="prompt"><span id="pTxt"></span><div id="pBar"><i></i></div></div>
   <div id="dot"></div>
   <canvas id="compass" width="720" height="46"></canvas>
-  <div id="boatHud"><div>FUEL <u><i id="fuelB"></i></u></div><div>HULL <u><i id="hullB"></i></u></div><div id="holdT">HOLD 0</div></div>
+  <div id="dive" style="position:absolute;left:50%;top:58px;transform:translateX(-50%);text-align:center;font:12px ui-monospace,monospace;color:#bfe8ff;text-shadow:0 1px 3px #000;opacity:0;transition:opacity .4s">DEPTH <b id="diveD" style="font-size:20px">0 m</b><div style="width:200px;height:4px;background:rgba(255,255,255,.12);margin:5px auto"><i id="diveA" style="display:block;height:100%;width:100%"></i></div><span id="diveS"></span> · AIR</div><div id="boatHud"><div style="display:none">FUEL <u><i id="fuelB"></i></u></div><div>HULL <u><i id="hullB"></i></u></div><div id="holdT">HOLD 0</div></div>
   <div id="carry"></div>
   <div id="tool"></div>
   <div id="fishUI" class="hidden"><div id="fishT"></div><div id="tenBar"><span id="tenZone"></span><i id="tenNeedle"></i></div><div id="progBar"><i id="progFill"></i></div></div>
@@ -158,7 +158,7 @@ button.go { background:#124a5a; color:#f3e9d8; font-size:17px; letter-spacing:.2
         <b>F</b> flashlight · <b>E</b> use, pick up, haul cargo, climb ladders (hold for valves, digging, reviving)<br>
         <b>E</b> at the wheel to steer the boat: <b>W/S</b> throttle, <b>A/D</b> rudder, <b>E</b> to let go<br>
         <b>G</b> throw a flare · <b>Q</b> whistle to the crew (it hears that too) · <b>Tab</b> map<br>
-        Hotbar: <b>1</b> empty hands · <b>2</b> flashlight · <b>3</b> fishing rod · <b>4</b> Glock · <b>5</b> shotgun · <b>6</b> lit flare (click to throw) · <b>X</b> drop the last thing from your sack · sub at the wheel: <b>C</b> dive, <b>Space</b> surface · <b>Left mouse</b> shoot / cast / reel · <b>Right mouse</b> aim · <b>R</b> reload · <b>H</b> how to fish<br>
+        Hotbar: <b>1</b> empty hands · <b>2</b> flashlight · <b>3</b> fishing rod · <b>4</b> Glock · <b>5</b> shotgun · <b>6</b> lit flare (click to throw) · <b>X</b> drop the last thing from your sack · diving (with scuba gear or a saturation suit): <b>C</b> down, <b>Space</b> up, swim where you look · sub at the wheel: <b>C</b> dive, <b>Space</b> surface · <b>Left mouse</b> shoot / cast / reel · <b>Right mouse</b> aim · <b>R</b> reload · <b>H</b> how to fish<br>
         <b>Right mouse</b> / <b>Space</b> hold your breath while hiding · <b>Esc</b> pause<br><br>
         <label>How to survive</label>
         Carry salvage to the hold on your boat's deck, sell it at the lighthouse shed and buy upgrades. Watch your fuel and your hull. The compass shows home, your boat and every place you have found.
@@ -200,6 +200,6 @@ button.go { background:#124a5a; color:#f3e9d8; font-size:17px; letter-spacing:.2
 
 <div id="load">Loading…</div>
 <script src="../three-r170.js"></script>
-<script src="game.js?v=6"></script>
+<script src="game.js?v=7"></script>
 </body>
 </html>
