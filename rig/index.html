@@ -3,9 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Station Nine</title>
+<title>Station Nine: Open Sea</title>
 <!--
-  Station Nine: online co-op boat and oil rig survival horror in a storm (1-6 players). Original setting and creatures.
+  Station Nine: online co-op open-sea exploration with horror (1-6 players): islands, wrecks, salvage, upgrades, an abandoned oil rig and something in the deep. Original setting and creatures.
   Everything is in game.js; Three.js r170 classic build from ../three-r170.js; online play over the jjfanwars relay.
 -->
 <style>
@@ -21,7 +21,7 @@ canvas#gl { position:fixed; inset:0; width:100%; height:100%; display:block; }
 #slats { position:fixed; inset:0; pointer-events:none; z-index:3; background:repeating-linear-gradient(180deg,rgba(0,0,0,.97) 0 34px,rgba(0,0,0,.2) 34px 46px),radial-gradient(ellipse at center,transparent 30%,#000 85%); }
 #flash { position:fixed; inset:0; pointer-events:none; z-index:6; background:#600; opacity:0; }
 #hud { position:fixed; inset:0; pointer-events:none; z-index:4; }
-#obj { position:absolute; left:22px; top:18px; max-width:440px; font-style:italic; text-shadow:0 1px 4px #000; transition:opacity 1s; }
+#obj { position:absolute; left:22px; top:64px; max-width:440px; font-style:italic; text-shadow:0 1px 4px #000; transition:opacity 1s; }
 #obj small { display:block; font-style:normal; font-size:11px; letter-spacing:.2em; color:var(--acc); text-transform:uppercase; }
 #team { position:absolute; right:20px; top:18px; text-align:right; font:13px ui-monospace,monospace; text-shadow:0 1px 3px #000; }
 #team div { margin-bottom:3px; } #team i { display:inline-block; width:9px; height:9px; border-radius:50%; margin-left:6px; vertical-align:middle; }
@@ -57,7 +57,7 @@ input[type=text] { width:100%; padding:9px 11px; border:1px solid #333; backgrou
 .seg { display:flex; gap:4px; } .seg button { flex:1; padding:7px 6px; font-size:13px; background:#18181b; border:1px solid transparent; }
 .seg button.on { border-color:var(--acc); color:#fff; background:#10242a; }
 button { padding:11px 16px; border:0; background:#1d1d21; color:var(--ink); font:15px Georgia,serif; cursor:pointer; }
-button:hover { filter:brightness(1.25); }
+button:hover { filter:brightness(1.25); } button:disabled { opacity:.4; cursor:default; filter:none; }
 button.go { background:#124a5a; color:#f3e9d8; font-size:17px; letter-spacing:.2em; text-transform:uppercase; width:100%; padding:12px; margin-top:10px; }
 .row { display:flex; gap:8px; margin-top:8px; } .row > * { flex:1; }
 .keys { color:var(--dim); font-size:13px; line-height:1.7; } .keys b { color:var(--ink); font:12px ui-monospace,monospace; border:1px solid #444; padding:0 5px; border-radius:3px; }
@@ -70,6 +70,12 @@ button.go { background:#124a5a; color:#f3e9d8; font-size:17px; letter-spacing:.2
 .paper small { display:block; margin-top:16px; color:#6b604c; font-size:12px; }
 #end h2 { font-weight:normal; font-size:42px; letter-spacing:.2em; text-transform:uppercase; margin:0 0 6px; }
 #end.dead h2 { color:#b8281c; } #end p { color:var(--dim); } #endL { text-align:left; margin:12px auto; max-width:320px; font:14px ui-monospace,monospace; }
+#compass { position:absolute; left:50%; top:10px; transform:translateX(-50%); width:min(720px,80vw); height:46px; }
+#boatHud { position:absolute; left:22px; bottom:20px; font:11px ui-monospace,monospace; color:var(--dim); letter-spacing:.1em; text-shadow:0 1px 3px #000; }
+#boatHud u { display:inline-block; width:120px; height:5px; background:rgba(255,255,255,.12); margin-left:8px; vertical-align:middle; } #boatHud u i { display:block; height:100%; background:#4aa8c8; } #boatHud div { margin-top:5px; }
+#carry { position:absolute; left:50%; bottom:60px; transform:translateX(-50%); font:13px ui-monospace,monospace; color:#e8d8a8; text-shadow:0 1px 3px #000; }
+#toast { position:absolute; left:50%; top:22%; transform:translateX(-50%); text-align:center; font-size:28px; letter-spacing:.2em; text-transform:uppercase; text-shadow:0 2px 10px #000; opacity:0; transition:opacity .6s; } #toast small { display:block; font-size:13px; letter-spacing:.1em; color:var(--dim); text-transform:none; }
+.up { display:flex; align-items:center; gap:10px; padding:8px 0; border-top:1px solid var(--line); } .up div { flex:1; } .up small { color:var(--dim); display:block; } .up button { min-width:110px; }
 #intro { position:fixed; inset:0; z-index:9; background:#000; display:flex; align-items:center; justify-content:center; text-align:center; padding:20px; font-size:20px; font-style:italic; color:#cfc8b6; transition:opacity 2s; pointer-events:none; }
 #load { position:fixed; inset:0; z-index:20; background:#000; display:flex; align-items:center; justify-content:center; color:var(--dim); font-style:italic; }
 </style>
@@ -86,12 +92,17 @@ button.go { background:#124a5a; color:#f3e9d8; font-size:17px; letter-spacing:.2
   <div id="state"></div>
   <div id="prompt"><span id="pTxt"></span><div id="pBar"><i></i></div></div>
   <div id="dot"></div>
+  <canvas id="compass" width="720" height="46"></canvas>
+  <div id="boatHud"><div>FUEL <u><i id="fuelB"></i></u></div><div>HULL <u><i id="hullB"></i></u></div><div id="holdT">HOLD 0</div></div>
+  <div id="carry"></div>
+  <div id="toast"></div>
   <div id="stam"><i></i></div>
   <div id="breath" class="hidden">HOLD BREATH · RIGHT MOUSE / SPACE<div><i></i></div></div>
   <div id="br">
     <div><span id="bat"><i></i><i></i><i></i><i></i></span>LIGHT</div>
     <div><b id="nFlare">0</b>FLARES</div>
     <div><b id="nSpd">-</b>KNOTS</div>
+    <div><b id="nCash">$0</b>CASH</div>
   </div>
 </div>
 <canvas id="map" class="hidden" width="760" height="760"></canvas>
@@ -100,16 +111,17 @@ button.go { background:#124a5a; color:#f3e9d8; font-size:17px; letter-spacing:.2
 
 <div id="menu" class="scr">
   <div class="card">
-    <a class="back" href="../">‹ jjfanwars</a>
+    <a class="back" href="../">‹ jjfanwars</a> <a class="back" href="#" id="resetSave" style="float:right">Start a new voyage (wipe save)</a>
     <h1 style="margin-top:14px">Station Nine</h1>
-    <div class="sub">The offshore rig Station Nine sent one distress call and went dark. Your salvage crew takes the boat out from the lighthouse into the storm. Get the rig's power back, radio for help, and get everyone back to the boat. Do not go in the water.</div>
+    <div class="sub">A salvage crew, a leaky boat and a whole night of open sea. Explore islands and shipwrecks, haul cargo, sell it at the lighthouse and upgrade your boat. Somewhere out there is Station Nine, the oil rig that went dark. And something big lives under all of it.</div>
+    <div class="err" id="saveInfo" style="color:var(--acc)"></div>
     <div class="cols">
       <div>
         <label>Your name</label><input type="text" id="name" maxlength="14" placeholder="Deckhand">
         <button class="go" id="bSolo">Play solo</button>
         <div class="row"><button id="bHost">Host online</button><input type="text" id="joinC" maxlength="5" placeholder="CODE" style="text-transform:uppercase;text-align:center"><button id="bJoin">Join</button></div>
         <div class="err" id="err"></div>
-        <label>Open groups</label><div id="rooms"><small style="color:var(--dim)">Looking…</small></div>
+        <label>Open crews</label><div id="rooms"><small style="color:var(--dim)">Looking…</small></div>
         <label>Difficulty (host decides)</label><div class="seg" data-k="diff"><button data-v="easy">Easy</button><button data-v="normal">Normal</button><button data-v="nightmare">Nightmare</button></div>
         <label>Mouse sensitivity</label><input type="range" id="sens" min="0.3" max="2.5" step="0.05">
         <label>Brightness</label><input type="range" id="bright" min="0.7" max="1.6" step="0.05">
@@ -118,18 +130,26 @@ button.go { background:#124a5a; color:#f3e9d8; font-size:17px; letter-spacing:.2
       <div class="keys">
         <label>Controls</label>
         <b>WASD</b> move · <b>Shift</b> run · <b>C</b> crouch<br>
-        <b>F</b> flashlight · <b>E</b> use, pick up, hide, climb ladders (hold to open valves or revive)<br>
+        <b>F</b> flashlight · <b>E</b> use, pick up, haul cargo, climb ladders (hold for valves, digging, reviving)<br>
         <b>E</b> at the wheel to steer the boat: <b>W/S</b> throttle, <b>A/D</b> rudder, <b>E</b> to let go<br>
         <b>G</b> throw a flare · <b>Q</b> whistle to the crew (it hears that too) · <b>Tab</b> map<br>
         <b>Right mouse</b> / <b>Space</b> hold your breath while hiding · <b>Esc</b> pause<br><br>
         <label>How to survive</label>
-        Sail to the rig and tie up at the dock. Open both fuel valves, start the generator, and radio from the control room on the top deck. Then everyone back aboard and run for the lighthouse.
-        Something lives on the rig. It hunts by sound and sight, and goes for whoever is alone. If it catches you, you go down: a teammate can pick you up before you bleed out.
-        Fall in the sea and you have seconds to reach a ladder. Red flares keep it back. Hide in lockers and hold your breath.
+        Carry salvage to the hold on your boat's deck, sell it at the lighthouse shed and buy upgrades. Watch your fuel and your hull. The compass shows home, your boat and every place you have found.
+        Bottles wash up with treasure maps. Wrecks and islands hide loot. The oil rig hides more, and something that lives on it.
+        Far from land, something huge circles boats. Throw a flare into the water before it rams you. Do not stay in deep water long. Your progress saves.
       </div>
     </div>
   </div>
 </div>
+
+<div id="shop" class="scr hidden"><div class="card" style="width:min(560px,100%)">
+  <h2 style="font-weight:normal;letter-spacing:.2em;margin:0">HARBOUR SHED</h2>
+  <p style="color:var(--dim);margin:4px 0 12px" id="shopCash"></p>
+  <button class="go" id="bSell" style="margin:0 0 12px"></button>
+  <div id="shopL"></div>
+  <button id="shopX" style="width:100%;margin-top:12px">Close (E)</button>
+</div></div>
 
 <div id="lobby" class="scr hidden"><div class="card" style="width:min(460px,100%);text-align:center">
   <label>Room code</label><div id="code">-----</div>
@@ -154,6 +174,6 @@ button.go { background:#124a5a; color:#f3e9d8; font-size:17px; letter-spacing:.2
 
 <div id="load">Loading…</div>
 <script src="../three-r170.js"></script>
-<script src="game.js?v=1"></script>
+<script src="game.js?v=2"></script>
 </body>
 </html>
