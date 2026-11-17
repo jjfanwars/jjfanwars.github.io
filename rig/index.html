@@ -31,6 +31,11 @@ canvas#gl { position:fixed; inset:0; width:100%; height:100%; display:block; }
 #msg b { color:var(--acc); font-weight:normal; font-size:12px; letter-spacing:.2em; display:block; }
 #prompt { position:absolute; left:50%; top:56%; transform:translateX(-50%); text-align:center; font-size:15px; text-shadow:0 1px 4px #000; opacity:0; }
 #prompt kbd { display:inline-block; border:1px solid var(--dim); border-radius:4px; padding:0 6px; margin-right:6px; font:12px ui-monospace,monospace; }
+#pTxt { display:inline-block; background:rgba(6,10,14,.5); padding:4px 12px; border-radius:14px; backdrop-filter:blur(4px) } #pTxt .info { opacity:.75 } #pTxt kbd { margin:0 2px; }
+#dot.cr { width:10px; height:2px; margin:-1px 0 0 -5px; border-radius:1px; }
+#clickHint { position:absolute; left:50%; top:63%; transform:translateX(-50%); font:12px ui-monospace,monospace; letter-spacing:.06em; color:var(--ink); background:rgba(6,10,14,.55); border:1px solid rgba(255,255,255,.12); padding:4px 12px; border-radius:14px; opacity:0; transition:opacity .4s; } #clickHint.on { opacity:.9; }
+.ktab { display:grid; grid-template-columns:max-content 1fr; gap:1px 12px; line-height:1.55; align-items:baseline; text-align:left; } .ktab b { justify-self:start; white-space:nowrap; }
+#pMore summary { cursor:pointer; font:11px ui-monospace,monospace; letter-spacing:.14em; text-transform:uppercase; color:var(--dim); } #pMore[open] summary { margin-bottom:8px; } #pMore label input[type=checkbox] { vertical-align:middle; margin:0 6px 0 0; accent-color:var(--acc); }
 #pBar { width:160px; height:3px; background:rgba(255,255,255,.15); margin:6px auto 0; } #pBar i { display:block; height:100%; width:0; background:var(--acc); }
 #dot { position:absolute; left:50%; top:50%; width:3px; height:3px; margin:-1px 0 0 -1px; border-radius:50%; background:rgba(255,255,255,.45); }
 #br { position:absolute; right:22px; bottom:20px; display:flex; gap:18px; align-items:flex-end; font:12px ui-monospace,monospace; color:var(--dim); text-shadow:0 1px 3px #000; }
@@ -128,6 +133,7 @@ button.go { background:#124a5a; color:#f3e9d8; font-size:17px; letter-spacing:.2
   <div id="state"></div>
   <div id="prompt"><span id="pTxt"></span><div id="pBar"><i></i></div></div>
   <div id="dot"></div>
+  <div id="clickHint">Click to look around</div>
   <canvas id="compass" width="720" height="46"></canvas>
   <div id="dive" style="position:absolute;left:50%;top:58px;transform:translateX(-50%);text-align:center;font:12px ui-monospace,monospace;color:#bfe8ff;text-shadow:0 1px 3px #000;opacity:0;transition:opacity .4s">DEPTH <b id="diveD" style="font-size:20px">0 m</b><div style="width:200px;height:4px;background:rgba(255,255,255,.12);margin:5px auto"><i id="diveA" style="display:block;height:100%;width:100%"></i></div><span id="diveS"></span> · AIR</div><div id="boatHud"><div style="display:none">FUEL <u><i id="fuelB"></i></u></div><div>HULL <u><i id="hullB"></i></u></div><div id="holdT">HOLD 0</div></div>
   <div id="carry"></div>
@@ -172,26 +178,20 @@ button.go { background:#124a5a; color:#f3e9d8; font-size:17px; letter-spacing:.2
         <button class="go" id="bSolo">Play solo</button>
         <div class="row"><button id="bHost">Host online</button><input type="text" id="joinC" maxlength="5" placeholder="CODE" style="text-transform:uppercase;text-align:center"><button id="bJoin">Join</button></div>
         <div class="err" id="err"></div>
-        <div class="row" style="margin-top:8px"><input type="text" id="cheat" maxlength="16" placeholder="Code" style="text-align:center"><button id="bCheat">Enter</button></div><div class="err" id="cheatM" style="color:var(--acc)"></div>
         <label>Open crews</label><div id="rooms"><small style="color:var(--dim)">Looking…</small></div>
         <label>Difficulty (host decides)</label><div class="seg" data-k="diff"><button data-v="easy">Easy</button><button data-v="normal">Normal</button><button data-v="nightmare">Nightmare</button></div>
         <label>Mouse sensitivity</label><input type="range" id="sens" min="0.3" max="2.5" step="0.05">
         <label>Brightness</label><input type="range" id="bright" min="0.7" max="1.6" step="0.05">
         <label>Volume</label><input type="range" id="vol" min="0" max="1.5" step="0.05">
         <label>Graphics</label><div class="seg" data-k="gfx"><button data-v="low">Low</button><button data-v="high">High (shadows)</button></div>
+        <div class="row" style="margin-top:14px;width:50%"><input type="text" id="cheat" maxlength="16" placeholder="Secret code" style="text-align:center;padding:6px 8px;font-size:13px"><button id="bCheat" style="flex:0 0 auto;padding:6px 10px;font-size:13px">Enter</button></div><div class="err" id="cheatM" style="color:var(--acc)"></div>
       </div>
       <div class="keys">
         <label>Controls</label>
-        <b>WASD</b> move · <b>Shift</b> run · <b>C</b> crouch (hold to dive while swimming)<br>
-        <b>F</b> flashlight · <b>E</b> use, pick up, haul cargo, climb ladders (hold for valves, digging, reviving)<br>
-        <b>E</b> at the wheel to steer the boat: <b>W/S</b> throttle, <b>A/D</b> rudder, <b>E</b> to let go<br>
-        <b>G</b> throw a flare · <b>Q</b> whistle to the crew (it hears that too) · <b>Tab</b> map<br>
-        Hotbar: <b>1</b> empty hands · <b>2</b> flashlight · <b>3</b> fishing rod · <b>4</b> Glock · <b>5</b> shotgun · <b>6</b> lit flare (click to throw) · <b>7</b> fireworks · <b>X</b> drop the last thing from your sack · diving (with scuba gear or a saturation suit): <b>C</b> down, <b>Space</b> up, swim where you look · sub at the wheel: <b>C</b> dive, <b>Space</b> surface · <b>Left mouse</b> shoot / cast / reel · <b>Right mouse</b> aim · <b>R</b> reload · <b>H</b> how to fish<br>
-        <b>Right mouse</b> / <b>Space</b> hold your breath while hiding · <b>Esc</b> pause<br><br>
+        <div id="mKeys"></div>
+        <div style="margin-top:6px">More in the pause menu (Esc).</div>
         <label>How to survive</label>
-        Carry salvage to the hold on your boat's deck, sell it at the lighthouse shed and buy upgrades. Watch your fuel and your hull. The compass shows home, your boat and every place you have found.
-        Bottles wash up with treasure maps. Wrecks and islands hide loot. The oil rig hides more, and something that lives on it.
-        Far from land, something huge circles boats. Throw a flare into the water before it rams you. Do not stay in deep water long. Your progress saves.
+        Haul salvage into your hold, sell it at the harbour shed and upgrade the boat. Watch your hull, and stay out of deep water. Far out, something circles boats: throw a flare into the sea.
       </div>
     </div>
   </div>
@@ -230,6 +230,7 @@ button.go { background:#124a5a; color:#f3e9d8; font-size:17px; letter-spacing:.2
   <div style="text-align:left;margin-bottom:10px"><label>Volume</label><input type="range" id="pVol" min="0" max="1.5" step="0.05"><label>Mouse sensitivity</label><input type="range" id="pSens" min="0.3" max="2.5" step="0.05"><label>Brightness</label><input type="range" id="pBright" min="0.7" max="1.6" step="0.05"></div>
   <button class="go" id="resume" style="margin-top:0">Resume</button>
   <button id="quit" style="width:100%;margin-top:8px">Leave to menu</button>
+  <details id="pMore" style="text-align:left;margin-top:10px"><summary>Controls and view</summary><div id="pKeys"></div><label>Field of view</label><input type="range" id="pFov" min="60" max="95" step="1"><label><input type="checkbox" id="pInv"> Invert mouse</label></details>
 </div></div>
 
 <div id="end" class="scr hidden"><div class="card" style="width:min(520px,100%);text-align:center">
@@ -240,6 +241,6 @@ button.go { background:#124a5a; color:#f3e9d8; font-size:17px; letter-spacing:.2
 
 <div id="load">Loading…</div>
 <script src="../three-r170.js"></script>
-<script src="game.js?v=13"></script>
+<script src="game.js?v=14"></script>
 </body>
 </html>
