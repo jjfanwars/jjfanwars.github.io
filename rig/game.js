@@ -2886,7 +2886,7 @@ function mkCetacean(len, top, belly, o = {}) {
 }
 function beamMat(col, k) { return new THREE.ShaderMaterial({transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, uniforms: {c: {value: new THREE.Color(col)}, k: {value: k}},
   vertexShader: 'varying vec2 vU; varying vec3 vN, vV; void main(){ vU = uv; vec4 mv = modelViewMatrix * vec4(position, 1.); vV = -mv.xyz; vN = normalize(normalMatrix * normal); gl_Position = projectionMatrix * mv; }',
-  fragmentShader: 'uniform vec3 c; uniform float k; varying vec2 vU; varying vec3 vN, vV; void main(){ float e = abs(dot(normalize(vN), normalize(vV))); float d = length(vV); float a = k * e * e * e * pow(vU.y, 2.2) * (1. - exp(-d * .25)) * exp(-d * .003); gl_FragColor = vec4(c * a, 1.); }'}); }
+  fragmentShader: 'uniform vec3 c; uniform float k; varying vec2 vU; varying vec3 vN, vV; void main(){ float d = max(length(vV), 1e-4); vec3 n = vN / max(length(vN), 1e-4); float e = abs(dot(n, vV / d)), y = clamp(vU.y, 1e-4, 1.); float a = k * e * e * e * exp2(2.2 * log2(y)) * (1. - exp(-d * .25)) * exp(-d * .003); a = min(max(a, 0.), 4.); if (isnan(a)) a = 0.; gl_FragColor = vec4(c * a, 1.); }'}); }
 const FX = {dol: null, whale: null};
 function buildFauna() {
   FX.dol = [0, 1, 2].map(() => mkCetacean(2.4, 0x3c4854, 0xc8ccd0));
@@ -3463,7 +3463,7 @@ function postInit() {
     POST.rt = new THREE.WebGLRenderTarget(1, 1, {type: THREE.HalfFloatType, samples: 2}); POST.a = new THREE.WebGLRenderTarget(1, 1, {type: THREE.HalfFloatType}); POST.b = POST.a.clone();
     const V = 'varying vec2 vU; void main(){ vU = uv; gl_Position = vec4(position.xy, 0., 1.); }';
     const mk = (u, f) => new THREE.ShaderMaterial({uniforms: u, vertexShader: V, fragmentShader: f, depthTest: false, depthWrite: false, toneMapped: false});
-    POST.bright = mk({t: {value: null}}, 'varying vec2 vU; uniform sampler2D t; void main(){ vec3 c = texture2D(t, vU).rgb; float l = dot(c, vec3(.3,.59,.11)); gl_FragColor = vec4(c * smoothstep(.85, 2.2, l) / max(l, 1e-3) * min(l, 6.), 1.); }');
+    POST.bright = mk({t: {value: null}}, 'varying vec2 vU; uniform sampler2D t; void main(){ vec3 c = min(max(texture2D(t, vU).rgb, vec3(0.)), vec3(64.)); if (any(isnan(c))) c = vec3(0.); float l = dot(c, vec3(.3,.59,.11)); gl_FragColor = vec4(c * smoothstep(.85, 2.2, l) / max(l, 1e-3) * min(l, 6.), 1.); }');
     POST.blur = mk({t: {value: null}, d: {value: new THREE.Vector2()}}, 'varying vec2 vU; uniform sampler2D t; uniform vec2 d; void main(){ vec3 c = texture2D(t, vU).rgb * .227; c += (texture2D(t, vU + d * 1.385).rgb + texture2D(t, vU - d * 1.385).rgb) * .316; c += (texture2D(t, vU + d * 3.23).rgb + texture2D(t, vU - d * 3.23).rgb) * .07; gl_FragColor = vec4(c, 1.); }');
     POST.rays = mk({t: {value: null}, sp: {value: new THREE.Vector2(.5, .5)}}, 'varying vec2 vU; uniform sampler2D t; uniform vec2 sp; void main(){ vec2 d = (sp - vU) / 36.; vec2 p = vU; vec3 s = vec3(0.); float w = 1.; for (int i = 0; i < 36; i++) { s += texture2D(t, p).rgb * w * (1. - smoothstep(.06, .32, distance(p, sp))); w *= .93; p += d; } gl_FragColor = vec4(s / 9., 1.); }');
     POST.c = POST.a.clone();
@@ -3472,7 +3472,7 @@ function postInit() {
       vec3 aces(vec3 v){ v *= .6; return clamp((v * (2.51 * v + .03)) / (v * (2.43 * v + .59) + .14), 0., 1.); }
       void main(){ vec2 uv = vU; if (uw > 0.) uv += vec2(sin(vU.y * 23. + ti * 2.1), cos(vU.x * 19. + ti * 1.7)) * .004 * uw;
         vec2 dc = uv - .5; float cb = ca * dot(dc, dc);
-        vec3 c = vec3(texture2D(t, uv - dc * cb).r, texture2D(t, uv).g, texture2D(t, uv + dc * cb).b) + texture2D(bl, uv).rgb * .55;
+        vec3 c = min(max(vec3(texture2D(t, uv - dc * cb).r, texture2D(t, uv).g, texture2D(t, uv + dc * cb).b), vec3(0.)), vec3(64.)) + texture2D(bl, uv).rgb * .55; if (any(isnan(c))) c = vec3(0.);
         c += texture2D(rays, uv).rgb * sunV * vec3(1., .85, .65);
         if (sunV > 0.) { vec2 g1 = dc * -.7 + .5, g2 = dc * -1.4 + .5, g3 = dc * .45 + .5; // ghosts only of the sun itself
           c += texture2D(bl, g1).rgb * vec3(.09, .06, .03) * sunV * (1. - smoothstep(0., .2, distance(g1, sp))); c += texture2D(bl, g2).rgb * vec3(.03, .06, .09) * sunV * (1. - smoothstep(0., .2, distance(g2, sp))); c += texture2D(bl, g3).rgb * vec3(.06, .05, .02) * sunV * (1. - smoothstep(0., .2, distance(g3, sp))); }
