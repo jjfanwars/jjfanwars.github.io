@@ -102,6 +102,18 @@ button.go { background:#124a5a; color:#f3e9d8; font-size:17px; letter-spacing:.2
 .rlB .rr { background:#8a1414; } .rlB .rk { background:#111; } b.r { color:#ff5a5a; } b.k { color:#ddd; } b.g { color:#5aff8a; }
 .slR { font-size:58px; letter-spacing:12px; margin:8px 0; } .slR span { display:inline-block; width:84px; background:#f6f2e8; border-radius:8px; margin:0 4px; box-shadow:inset 0 0 14px rgba(0,0,0,.4); }
 #casMsg { text-align:center; min-height:24px; margin-top:10px; font-size:18px; } #casMsg.win { color:#ffd860; text-shadow:0 0 12px rgba(255,200,60,.6); } #casMsg.lose { color:#c88; }
+#shopH { position:sticky; top:-26px; z-index:2; margin:-26px -28px 4px; padding:18px 28px 12px; background:#0b0b0e; border-bottom:1px solid var(--line); }
+#shopH h2 { font-weight:normal; letter-spacing:.2em; margin:0; font-size:22px; } #shopX { position:absolute; right:12px; top:10px; padding:2px 11px; font-size:24px; line-height:1.2; background:none; color:var(--dim); } #shopX:hover { color:var(--ink); }
+#shopCash { color:var(--dim); margin:3px 0 0; font-size:13px; } #shopCash .nx { display:block; margin-top:5px; font:11px ui-monospace,monospace; letter-spacing:.06em; color:var(--ink); } #shopCash .nx i { display:block; height:3px; margin-top:4px; background:rgba(255,255,255,.1); } #shopCash .nx b { display:block; height:100%; background:var(--acc); }
+#shopTabs { margin:10px 0 8px; gap:4px; } #shopTabs button { flex:1; padding:7px 4px; font-size:13px; background:#16161a; } #shopTabs button.on { outline:0; box-shadow:inset 0 -2px 0 var(--acc); background:#10242a; color:#fff; }
+#bSell { margin:0; font-size:14px; letter-spacing:.08em; text-transform:none; padding:10px; }
+.up .bt { display:flex; flex-direction:column; align-items:center; min-width:110px; } .up button.can { box-shadow:inset 0 0 0 1px var(--acc); } .up .pip { font-size:11px; letter-spacing:.1em; color:var(--acc); }
+.why { font:10px ui-monospace,monospace; color:#c89a7a; margin-top:3px; text-align:center; } .why.sp { display:block; text-align:right; margin:-4px 0 6px; color:var(--dim); }
+.up.q { opacity:.42; } .up.q > div { letter-spacing:.3em; } .up.q small { letter-spacing:normal; } .up.cur > div { color:#fff; } #shopL > .up:first-child { border-top:0; }
+.sws { display:flex; flex-wrap:wrap; gap:7px; justify-content:flex-end; max-width:300px; }
+.up button.swc { position:relative; width:26px; height:26px; min-width:0; padding:0; border-radius:50%; border:1px solid rgba(255,255,255,.25); }
+.swc.none { background:repeating-linear-gradient(45deg,#4a4a50 0 3px,#1c1c20 3px 6px); } .swc.on { outline:2px solid var(--acc); outline-offset:2px; }
+.swc.own:after { content:''; position:absolute; right:-3px; bottom:-3px; width:7px; height:7px; border-radius:50%; background:#e8f4ff; box-shadow:0 0 0 1px #000; }
 </style>
 </head>
 <body>
@@ -194,12 +206,14 @@ button.go { background:#124a5a; color:#f3e9d8; font-size:17px; letter-spacing:.2
   <div id="casGame"></div>
   <div id="casMsg"></div>
 </div></div>
-<div id="shop" class="scr hidden"><div class="card" style="width:min(560px,100%)">
-  <h2 style="font-weight:normal;letter-spacing:.2em;margin:0">HARBOUR SHED</h2>
-  <p style="color:var(--dim);margin:4px 0 12px" id="shopCash"></p>
-  <button class="go" id="bSell" style="margin:0 0 12px"></button>
+<div id="shop" class="scr hidden"><div class="card" style="width:min(600px,100%)">
+  <div id="shopH">
+    <h2>HARBOUR SHED</h2><button id="shopX" title="Close (E)">×</button>
+    <p id="shopCash"></p>
+    <div id="shopTabs" class="rowb"><button data-tab="supplies">Supplies</button><button data-tab="boats">Boats</button><button data-tab="upgrades">Upgrades</button><button data-tab="gear">Gear</button><button data-tab="style">Style</button></div>
+    <button class="go" id="bSell"></button>
+  </div>
   <div id="shopL"></div>
-  <button id="shopX" style="width:100%;margin-top:12px">Close (E)</button>
 </div></div>
 
 <div id="lobby" class="scr hidden"><div class="card" style="width:min(460px,100%);text-align:center">
@@ -226,6 +240,6 @@ button.go { background:#124a5a; color:#f3e9d8; font-size:17px; letter-spacing:.2
 
 <div id="load">Loading…</div>
 <script src="../three-r170.js"></script>
-<script src="game.js?v=11"></script>
+<script src="game.js?v=12"></script>
 </body>
 </html>
