@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Whisperpine</title>
+<!--
+  Whisperpine: first-person survival horror at an abandoned summer camp. Original setting, story and creature.
+  Everything (world, creature AI, audio) is in game.js; Three.js r170 classic build from ../three-r170.js.
+-->
+<style>
+:root { --ink:#dcd6c8; --dim:#8b8577; --acc:#c9a35b; --red:#a3251c; --panel:rgba(10,10,12,.88); --line:rgba(255,255,255,.08); }
+* { box-sizing:border-box; }
+html,body { margin:0; height:100%; background:#000; color:var(--ink); font:15px/1.45 Georgia,"Times New Roman",serif; overflow:hidden; user-select:none; }
+canvas#gl { position:fixed; inset:0; width:100%; height:100%; display:block; }
+.hidden { display:none !important; }
+#grain { position:fixed; inset:0; width:100%; height:100%; pointer-events:none; opacity:.07; mix-blend-mode:screen; image-rendering:pixelated; z-index:2; }
+#vig { position:fixed; inset:0; pointer-events:none; z-index:2; background:radial-gradient(ellipse at center,transparent 42%,rgba(0,0,0,.8) 100%); }
+#fearV { position:fixed; inset:0; pointer-events:none; z-index:2; opacity:0; background:radial-gradient(ellipse at center,transparent 35%,rgba(90,0,0,.75) 100%); }
+#slats { position:fixed; inset:0; pointer-events:none; z-index:3; background:repeating-linear-gradient(180deg,rgba(0,0,0,.97) 0 34px,rgba(0,0,0,.2) 34px 46px),radial-gradient(ellipse at center,transparent 30%,#000 85%); }
+#flash { position:fixed; inset:0; pointer-events:none; z-index:6; background:#600; opacity:0; }
+#black { position:fixed; inset:0; pointer-events:none; z-index:7; background:#000; opacity:0; transition:opacity 1.2s; }
+#hud { position:fixed; inset:0; pointer-events:none; z-index:4; }
+#obj { position:absolute; left:22px; top:18px; max-width:420px; font-style:italic; color:var(--ink); text-shadow:0 1px 4px #000; transition:opacity 1s; }
+#obj small { display:block; font-style:normal; font-size:11px; letter-spacing:.2em; color:var(--acc); text-transform:uppercase; }
+#msg { position:absolute; left:50%; bottom:16%; transform:translateX(-50%); width:min(720px,90%); text-align:center; font-size:18px; text-shadow:0 1px 6px #000,0 0 2px #000; opacity:0; transition:opacity .4s; }
+#msg b { color:var(--acc); font-weight:normal; font-size:12px; letter-spacing:.2em; display:block; }
+#prompt { position:absolute; left:50%; top:56%; transform:translateX(-50%); text-align:center; font-size:15px; text-shadow:0 1px 4px #000; opacity:0; }
+#prompt kbd { display:inline-block; border:1px solid var(--dim); border-radius:4px; padding:0 6px; margin-right:6px; font:12px ui-monospace,monospace; }
+#pBar { width:160px; height:3px; background:rgba(255,255,255,.15); margin:6px auto 0; } #pBar i { display:block; height:100%; width:0; background:var(--acc); }
+#dot { position:absolute; left:50%; top:50%; width:3px; height:3px; margin:-1px 0 0 -1px; border-radius:50%; background:rgba(255,255,255,.45); }
+#br { position:absolute; right:22px; bottom:20px; display:flex; gap:18px; align-items:flex-end; font:12px ui-monospace,monospace; color:var(--dim); text-shadow:0 1px 3px #000; }
+#br div { text-align:center; } #br b { display:block; font:16px Georgia,serif; color:var(--ink); }
+#bat { display:flex; gap:2px; border:1px solid var(--dim); padding:2px; border-radius:2px; margin:0 auto 3px; width:44px; height:14px; }
+#bat i { flex:1; background:var(--ink); opacity:.85; } #bat i.off { opacity:.08; } #bat.low i { background:#c33; }
+#stam { position:absolute; left:50%; bottom:28px; transform:translateX(-50%); width:180px; height:2px; background:rgba(255,255,255,.08); opacity:0; transition:opacity .5s; } #stam i { display:block; height:100%; background:rgba(220,214,200,.6); }
+#breath { position:absolute; left:50%; top:66%; transform:translateX(-50%); text-align:center; font:12px ui-monospace,monospace; color:var(--dim); letter-spacing:.15em; }
+#breath div { width:200px; height:3px; background:rgba(255,255,255,.1); margin:6px auto 0; } #breath i { display:block; height:100%; background:#8fb0d8; }
+#map { position:fixed; left:50%; top:50%; transform:translate(-50%,-50%); width:min(86vmin,760px); height:min(86vmin,760px); z-index:8; box-shadow:0 20px 80px #000; }
+.scr { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; padding:16px; z-index:10; overflow:auto; background:rgba(0,0,0,.82); }
+#menu { background:radial-gradient(900px 500px at 50% 110%,rgba(120,20,10,.25),transparent 70%),linear-gradient(180deg,#05070b,#000); }
+.card { width:min(780px,100%); background:var(--panel); border:1px solid var(--line); padding:26px 28px; max-height:100%; overflow:auto; }
+h1 { margin:0; font-size:58px; font-weight:normal; letter-spacing:.32em; line-height:1; text-transform:uppercase; color:#e8e1cf; text-shadow:0 0 30px rgba(200,40,20,.35); }
+.sub { color:var(--dim); font-style:italic; margin:10px 0 18px; }
+.cols { display:grid; grid-template-columns:1fr 1fr; gap:22px; } @media (max-width:720px) { .cols { grid-template-columns:1fr; } h1 { font-size:36px; } }
+label { display:block; font:11px ui-monospace,monospace; text-transform:uppercase; letter-spacing:.14em; color:var(--dim); margin:10px 0 5px; }
+input[type=range] { width:100%; accent-color:var(--acc); }
+.seg { display:flex; gap:4px; } .seg button { flex:1; padding:7px 6px; font-size:13px; background:#18181b; border:1px solid transparent; }
+.seg button.on { border-color:var(--acc); color:#fff; background:#221d14; }
+button { padding:11px 16px; border:0; background:#1d1d21; color:var(--ink); font:15px Georgia,serif; cursor:pointer; }
+button:hover { filter:brightness(1.25); }
+button.go { background:#5a1810; color:#f3e9d8; font-size:19px; letter-spacing:.25em; text-transform:uppercase; width:100%; padding:13px; margin-top:14px; }
+.keys { color:var(--dim); font-size:13px; line-height:1.7; } .keys b { color:var(--ink); font:12px ui-monospace,monospace; border:1px solid #444; padding:0 5px; border-radius:3px; }
+.best { font:12px ui-monospace,monospace; color:var(--acc); margin-top:10px; min-height:16px; }
+.back { color:var(--dim); font-size:13px; text-decoration:none; } .back:hover { color:var(--acc); }
+.paper { width:min(520px,92%); background:#d8cfb8; color:#2a241a; padding:28px 30px; font:17px/1.6 "Courier New",monospace; box-shadow:0 20px 60px #000; transform:rotate(-1deg); white-space:pre-wrap; }
+.paper small { display:block; margin-top:16px; color:#6b604c; font-size:12px; }
+#end h2 { font-weight:normal; font-size:44px; letter-spacing:.2em; text-transform:uppercase; margin:0 0 6px; }
+#end.dead h2 { color:#b8281c; }
+#end p { color:var(--dim); }
+#intro { position:fixed; inset:0; z-index:9; background:#000; display:flex; align-items:center; justify-content:center; text-align:center; padding:20px; font-size:20px; font-style:italic; color:#cfc8b6; transition:opacity 2s; pointer-events:none; }
+#load { position:fixed; inset:0; z-index:20; background:#000; display:flex; align-items:center; justify-content:center; color:var(--dim); font-style:italic; }
+</style>
+</head>
+<body>
+<canvas id="gl"></canvas>
+<canvas id="grain" width="200" height="120"></canvas>
+<div id="vig"></div><div id="fearV"></div><div id="slats" class="hidden"></div><div id="flash"></div><div id="black"></div>
+<div id="hud" class="hidden">
+  <div id="obj"></div>
+  <div id="msg"></div>
+  <div id="prompt"><span id="pTxt"></span><div id="pBar"><i></i></div></div>
+  <div id="dot"></div>
+  <div id="stam"><i></i></div>
+  <div id="breath" class="hidden">HOLD BREATH · RIGHT MOUSE / SPACE<div><i></i></div></div>
+  <div id="br">
+    <div><span id="bat"><i></i><i></i><i></i><i></i></span>LIGHT</div>
+    <div><b id="nFlare">0</b>FLARES</div>
+    <div><b id="nFuse">0</b>FUSES</div>
+  </div>
+</div>
+<canvas id="map" class="hidden" width="760" height="760"></canvas>
+<div id="note" class="scr hidden"><div class="paper"><span id="noteT"></span><small>E or click to put it down</small></div></div>
+<div id="intro" class="hidden"></div>
+
+<div id="menu" class="scr">
+  <div class="card">
+    <a class="back" href="../">‹ jjfanwars</a>
+    <h1 style="margin-top:14px">Whisperpine</h1>
+    <div class="sub">Camp Whisperpine closed in 1989. Your car just died outside its gate. Something out there is still awake.</div>
+    <div class="cols">
+      <div>
+        <label>Difficulty</label><div class="seg" data-k="diff"><button data-v="easy">Easy</button><button data-v="normal">Normal</button><button data-v="nightmare">Nightmare</button></div>
+        <label>Mouse sensitivity</label><input type="range" id="sens" min="0.3" max="2.5" step="0.05">
+        <label>Brightness</label><input type="range" id="bright" min="0.7" max="1.6" step="0.05">
+        <label>Graphics</label><div class="seg" data-k="gfx"><button data-v="low">Low</button><button data-v="high">High (shadows)</button></div>
+        <label>Radio voices</label><div class="seg" data-k="voice"><button data-v="1">On</button><button data-v="0">Off</button></div>
+        <button class="go" id="play">Enter the camp</button>
+        <div class="best" id="best"></div>
+      </div>
+      <div class="keys">
+        <label>Controls</label>
+        <b>WASD</b> move · <b>Shift</b> run · <b>C</b> crouch<br>
+        <b>F</b> flashlight · <b>E</b> use / pick up / hide (hold for some)<br>
+        <b>G</b> throw a flare · <b>Tab</b> camp map<br>
+        <b>Right mouse</b> / <b>Space</b> hold your breath while hiding<br>
+        <b>Esc</b> pause<br><br>
+        <label>Survival</label>
+        It hunts by sound and by sight. Running is loud. Your flashlight can be seen from far away; crouch in the dark and it may walk right past.
+        Hide in wardrobes and lockers, and hold your breath when it comes close.
+        Red flare light keeps it back. Headphones recommended.
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="pause" class="scr hidden"><div class="card" style="width:min(420px,100%);text-align:center">
+  <h2 style="font-weight:normal;letter-spacing:.3em;margin:0 0 14px">PAUSED</h2>
+  <button class="go" id="resume" style="margin-top:0">Resume</button>
+  <button id="quit" style="width:100%;margin-top:8px">Quit to menu</button>
+</div></div>
+
+<div id="end" class="scr hidden"><div class="card" style="width:min(520px,100%);text-align:center">
+  <h2 id="endT"></h2><p id="endS"></p>
+  <button class="go" id="again">Try again</button>
+  <button id="endMenu" style="width:100%;margin-top:8px">Menu</button>
+</div></div>
+
+<div id="load">Loading…</div>
+<script src="../three-r170.js"></script>
+<script src="game.js?v=1"></script>
+</body>
+</html>
