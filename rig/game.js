@@ -29,6 +29,7 @@ const hexS = c => '#' + c.toString(16).padStart(6, '0');
 
 // ---------------- net (jjfanwars relay)
 const RELAY_URL = 'wss://jjfanwars-relay.businessautomationvic.workers.dev';
+const GAME_V = 12;
 const Net = {
   tag: '[Rig]', role: 'solo', ws: null, peers: new Map(), code: '', relayT: {pose: 1}, id: '', name: '', handlers: {}, retry: 0, started: false,
   enc: new TextEncoder(), dec: new TextDecoder(),
@@ -43,32 +44,39 @@ const Net = {
   host(name, onStatus) { this.close(); this.role = 'host'; this.name = name; this.code = this.newCode(); this.peers = new Map(); this.started = false; this.onStatus = onStatus; this.hostConnect(); return this.code; },
   hostConnect() {
     const ws = this.ws = new WebSocket(this.relay() + '/room/' + this.code + '?role=host'); ws.binaryType = 'arraybuffer';
-    ws.onopen = () => { this.retry = 0; this.meta(true); this.onStatus && this.onStatus('open'); this.emit({t: '_lobby'}); };
+    ws.onopen = () => { const was = this.retry > 0; this.retry = 0; this.meta(this.peers.size < 5); this.onStatus && this.onStatus('open'); this.emit({t: '_lobby'});
+      clearTimeout(this.seenT); this._seen = null; if (!was || !G.on || !this.peers.size) return;
+      // back after a relay blip: whoever doesn't turn up again within 6 s left while we were away
+      this._seen = new Set(); this.seenT = setTimeout(() => { const s = this._seen; this._seen = null; if (!s || this.ws !== ws || this.role !== 'host') return;
+        for (const [id, p] of [...this.peers]) if (!s.has(id)) { this.peers.delete(id); this.emit({t: '_left', id, name: p.name}); } this.meta(this.peers.size < 5); }, 6000); };
     ws.onmessage = e => {
-      if (typeof e.data === 'string') { let m; try { m = JSON.parse(e.data); } catch (x) { return; } if (m.c === 'leave' && this.peers.has(m.id)) { const p = this.peers.get(m.id); this.peers.delete(m.id); this.emit({t: '_left', id: m.id, name: p.name}); } return; }
-      const b = new Uint8Array(e.data), k = b[0], id = this.dec.decode(b.subarray(1, 1 + k)); let m; try { m = JSON.parse(this.dec.decode(b.subarray(1 + k))); } catch (x) { return; }
-      if (m.t === 'hello') { if (!this.peers.has(id) && this.peers.size >= 5) { this.send1(id, {t: 'full'}); return; } const used = new Set([0, ...[...this.peers.values()].map(p => p.c)]); let c = 1; while (used.has(c)) c++; if (!this.peers.has(id)) this.peers.set(id, {id, c, name: String(m.name || 'Deckhand').replace(/[^A-Za-z0-9 ._-]/g, '').slice(0, 14) || 'Deckhand'}); this.emit({t: '_join', id}); this.emit({t: '_lobby'}); return; }
-      if (!this.peers.has(id)) return;
+      if (typeof e.data === 'string') { let m; try { m = JSON.parse(e.data); } catch (x) { return; } if (m.c === 'join' && this._seen) this._seen.add(m.id); if (m.c === 'leave' && this.peers.has(m.id)) { const p = this.peers.get(m.id); this.peers.delete(m.id); this.emit({t: '_left', id: m.id, name: p.name}); this.meta(this.peers.size < 5); } return; }
+      const b = new Uint8Array(e.data), k = b[0], id = this.dec.decode(b.subarray(1, 1 + k)); let m; try { m = JSON.parse(this.dec.decode(b.subarray(1 + k))); } catch (x) { return; } if (this._seen) this._seen.add(id);
+      if (m.t === 'hello') { if (!this.peers.has(id) && this.peers.size >= 5) { this.send1(id, {t: 'full'}); return; } const used = new Set([0, ...[...this.peers.values()].map(p => p.c)]); let c = 1; while (used.has(c)) c++; if (!this.peers.has(id)) { this.peers.set(id, {id, c, name: String(m.name || 'Deckhand').replace(/[^A-Za-z0-9 ._-]/g, '').slice(0, 14) || 'Deckhand'}); this.meta(this.peers.size < 5); } this.emit({t: '_join', id}); this.emit({t: '_lobby'}); return; }
+      if (!this.peers.has(id) || /^(_|(snap|start|crew|lobby|bye|full)$)/.test(m.t)) return;
       m.from = id; this.emit(m, id); if (this.relayT[m.t]) this.send(m);
     };
     ws.onclose = () => { if (this.role === 'host' && this.ws === ws) { this.onStatus && this.onStatus('retry'); setTimeout(() => { if (this.role === 'host' && this.ws === ws) this.hostConnect(); }, Math.min(8000, 1000 * ++this.retry)); } };
     clearInterval(this.pingT); this.pingT = setInterval(() => { try { if (this.ws && this.ws.readyState === 1) this.ws.send('ping'); } catch (e) {} }, 15000);
   },
-  join(code, name, onFail) {
-    this.close(); this.role = 'guest'; this.code = code; this.name = name; this.id = Math.random().toString(36).slice(2, 11);
-    const ws = this.ws = new WebSocket(this.relay() + '/room/' + code + '?role=guest&id=' + this.id); ws.binaryType = 'arraybuffer';
-    ws.onopen = () => this.send({t: 'hello', name});
+  join(code, name, onFail) { this.close(); this.role = 'guest'; this.code = code; this.name = name; this.onFail = onFail; this.id = Math.random().toString(36).slice(2, 11); this.guestConnect(false); },
+  guestConnect(again) {
+    const name = this.name, onFail = this.onFail, ws = this.ws = new WebSocket(this.relay() + '/room/' + this.code + '?role=guest&id=' + this.id); ws.binaryType = 'arraybuffer'; let openT = 0;
+    ws.onopen = () => { openT = performance.now(); this.send({t: 'hello', name}); if (again) this.emit({t: '_back'}); };
     ws.onmessage = e => {
-      if (typeof e.data === 'string') { let m; try { m = JSON.parse(e.data); } catch (x) { return; } if (m.c === 'host' && !m.up) this.emit({t: '_hostgone'}); else if (m.c === 'host' && m.up) this.send({t: 'hello', name}); return; }
+      if (typeof e.data === 'string') { let m; try { m = JSON.parse(e.data); } catch (x) { return; } if (m.c === 'host' && !m.up) this.emit({t: '_hostlost'}); else if (m.c === 'host' && m.up) { this.send({t: 'hello', name}); this.emit({t: '_hostback'}); } return; }
       let m; try { m = JSON.parse(this.dec.decode(new Uint8Array(e.data))); } catch (x) { return; }
       if (m.t === 'full') { this.close(); onFail('That crew is full.'); return; }
       if (m.from && m.from === this.id) return; this.emit(m);
     };
-    ws.onclose = ev => { if (this.ws !== ws) return; const why = ev.code === 4404 ? 'No such room.' : ev.code === 4429 ? 'Room is full.' : 'Connection lost.'; this.ws = null; this.role = 'solo'; onFail(why); };
+    ws.onclose = ev => { if (this.ws !== ws) return; const why = ev.code === 4404 ? 'No such room.' : ev.code === 4429 ? 'Room is full.' : 'Connection lost.'; this.ws = null;
+      // dropped mid-voyage: one more try with the same id (again later only if that try held for a while)
+      if (G.on && ev.code !== 4404 && ev.code !== 4429 && (!again || (openT && performance.now() - openT > 10000))) { this.emit({t: '_drop'}); clearTimeout(this.rejT); this.rejT = setTimeout(() => { if (this.role === 'guest' && !this.ws && G.on) this.guestConnect(true); }, 2000); return; }
+      this.role = 'solo'; onFail(why); };
     clearInterval(this.pingT); this.pingT = setInterval(() => { try { if (this.ws && this.ws.readyState === 1) this.ws.send('ping'); } catch (e) {} }, 15000);
   },
-  close() { clearInterval(this.pingT); if (this.ws) { const w = this.ws; this.ws = null; w.onclose = null; try { w.close(); } catch (e) {} } this.role = 'solo'; this.peers = new Map(); },
-  async rooms() { try { const r = await (await fetch(this.relay().replace(/^ws/, 'http') + '/rooms')).json(); return r.filter(x => x.open && x.name.indexOf(this.tag + ' ') === 0); } catch (e) { return []; } },
+  close() { clearInterval(this.pingT); clearTimeout(this.seenT); clearTimeout(this.rejT); this._seen = null; clearTimeout(G.lostT); G.lostT = 0; if (this.ws) { const w = this.ws; this.ws = null; w.onclose = null; try { w.close(); } catch (e) {} } this.role = 'solo'; this.peers = new Map(); },
+  async rooms() { try { const r = await (await fetch(this.relay().replace(/^ws/, 'http') + '/rooms')).json(), bare = this.tag.replace(/[\[\]]/g, ''); return r.filter(x => x.open && (x.name.startsWith(this.tag + ' ') || x.name.startsWith(bare + ' '))); } catch (e) { return []; } },
 };
 const isHost = () => Net.role !== 'guest';
 const myId = () => Net.role === 'guest' ? Net.id : 'H';
@@ -794,7 +802,7 @@ function buildBoat() {
 function boatStep(dt) {
   if (B.sink > 0) { B.sink -= dt; B.v *= .95; if (B.sink <= 0) resetBoat(true); return; }
   const drv = B.driver && PL.get(B.driver); let thr = 0, st = 0;
-  if (drv && drv.seat && !drv.down && !drv.dead) { thr = drv.in ? drv.in[0] : 0; st = drv.in ? drv.in[1] : 0; } else if (B.driver) B.driver = null;
+  if (drv && drv.seat && !drv.down && !drv.dead) { if (drv !== P && drv.poseT != null && performance.now() - drv.poseT > 800) { drv.in = [0, 0, 0]; B.thr = 0; } thr = drv.in ? drv.in[0] : 0; st = drv.in ? drv.in[1] : 0; } else if (B.driver) B.driver = null;
   const lv = B.up.engine, empty = B.fuel <= 0, H = HC();
   B.thr = mix(B.thr, thr * (empty ? .18 : 1), Math.min(1, dt * 1.2)); B.st = mix(B.st, st, Math.min(1, dt * 2.5));
   B.fuel = tankMax();
@@ -1109,7 +1117,7 @@ const NOTES = [
 ];
 function placeItems() {
   for (const it of ITEMS) scene.remove(it.mesh); ITEMS.length = 0;
-  const by = t => SPOTS.filter(s => s.tag === t).sort(() => WR() - .5);
+  const shuf = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(WR() * (i + 1)), t = a[i]; a[i] = a[j]; a[j] = t; } return a; }; const by = t => shuf(SPOTS.filter(s => s.tag === t));
   const rig = by('rig'), isle = by('isle'), wreck = by('wreck'), hut = by('hut');
   const N = (s, i) => s && addItem('note', s, {text: NOTES[i]});
   N(rig.pop(), 0); N(rig.pop(), 1); N(rig.pop(), 2); N(hut.pop(), 3);
@@ -1351,7 +1359,7 @@ function applyEv(e) {
     case 'bottle': { Snd.pickup(); const d = DIGS[e.i]; if (d) { d.rev = true; showMsg(`A map in a bottle! An X is marked on ${d.isle}. It is on your compass now.`, '', 6); } else if (BOTTLE_NOTES[e.n]) showMsg(BOTTLE_NOTES[e.n].replace('\n', '<br>'), 'A NOTE IN A BOTTLE', 7); else showMsg('A bottle with a note inside: "Whoever reads this: the shallows are safe."'); break; }
     case 'dug': { const d = DIGS[e.i]; d.dug = true; Snd.dig(); showMsg(e.g > 1 ? 'Treasure! A chest, gold bars and a black pearl.' : e.g ? 'Treasure! A chest and a gold bar.' : 'Treasure! A chest was buried here.', '', 4); break; }
     case 'valve': { const v = VALVES[e.i]; v.open = true; Snd.valve(at(v.x, v.y + 1, v.z, 8)); showMsg(`The ${v.name} is open (${VALVES.filter(q => q.open).length} of 2).`); break; }
-    case 'power': G.power = true; Snd.power(); MAT.bulb.emissiveIntensity = 2.5; MAT.screen.emissiveIntensity = 1; showMsg('The generator coughs and catches. Floodlights flare across the rig. An alarm starts wailing.', '', 6); G.alarmT = 22; break;
+    case 'power': G.power = true; MAT.bulb.emissiveIntensity = 2.5; MAT.screen.emissiveIntensity = 1; if (!e.quiet) { Snd.power(); showMsg('The generator coughs and catches. Floodlights flare across the rig. An alarm starts wailing.', '', 6); G.alarmT = 22; } break;
     case 'bb': showMsg('The flight recorder ejects with a clunk. A black box, worth a fortune to the right people.', '', 5); break;
     case 'disc': if (!G.disc.includes(e.i)) G.disc.push(e.i); Snd.discover(); toast(POIS[e.i].n, 'Discovered'); break;
     case 'goal': if (!G.goals.includes(e.i)) G.goals.push(e.i); Snd.discover(); toast('Goal complete', GOALS[e.i]); break;
@@ -1553,27 +1561,29 @@ function packSnap() {
     b: [+B.x.toFixed(2), +B.z.toFixed(3), +B.yaw.toFixed(4), +B.v.toFixed(2), +B.thr.toFixed(2), B.driver || '', +B.fuel.toFixed(1), +B.hull.toFixed(1), B.sink > 0 ? 1 : 0, +(B.dep || 0).toFixed(2), +(B.dtar || 0).toFixed(2)], rd: G.radioOn ? 1 : 0, up: B.up, sk: SUNK.map(q => q.got ? 1 : 0).join(''), hold: B.hold.map(k => KINDS.indexOf(k)),
     ps, it: ITEMS.map(i => i.taken ? 1 : 0).join(''), fl: G.floats.map(f => f ? [+f[0].toFixed(1), +f[1].toFixed(1), f[2]] : 0), va: VALVES.map(v => v.open ? 1 : 0), pw: G.power ? 1 : 0, bo: G.bbOut ? 1 : 0,
     dg: DIGS.map(d => (d.rev ? 1 : 0) + (d.dug ? 2 : 0)), cash: G.cash, earned: G.earned, disc: G.disc, goals: G.goals, st: +G.storm.toFixed(3), td: +G.tod.toFixed(4), hp: G.holdP, gt: +G.t.toFixed(1), sw: [+STS.x.toFixed(2), +STS.y.toFixed(2), +STS.z.toFixed(2), +STS.yaw.toFixed(2), STS.state, +STS.spd.toFixed(2)], gu: GUL.map(g => g.on ? [+g.x.toFixed(1), +g.y.toFixed(1), +g.z.toFixed(1), +g.yaw.toFixed(2), +g.pitch.toFixed(2), g.st] : 0), cz: G.cruise ? 1 : 0, ev: G.evq};
+  s.al = ALL ? 1 : 0;
   G.evq = []; return s;
 }
 function applySnap(s) {
   for (const e of s.ev || []) applyEv(e);
   const [x, y, z, yaw, st, spd, look] = s.m; M.tx = x; M.ty = y; M.tz = z; M.tyaw = yaw; M.state = st; M.spd = spd; M.look = look;
   B.tx = s.b[0]; B.tz = s.b[1]; B.tyaw = s.b[2]; B.v = s.b[3]; B.thr = s.b[4]; B.driver = s.b[5] || null; B.fuel = s.b[6]; B.hull = s.b[7]; B.sink = s.b[8] ? 1 : 0; B.dep = s.b[9] || 0; B.dtar = s.b[10] ?? B.dep; G.radioOn = !!s.rd; if (s.sk) SUNK.forEach((q, i) => q.got = s.sk[i] === '1'); if (!B.got) { B.got = 1; B.x = B.tx; B.z = B.tz; B.yaw = B.tyaw; }
+  if (Math.hypot(B.tx - B.x, B.tz - B.z) > 40) { B.x = B.tx; B.z = B.tz; B.yaw = B.tyaw; } if (M.x != null && Math.hypot(M.tx - M.x, M.tz - M.z) + Math.abs(M.ty - M.y) > 15) { M.x = M.tx; M.y = M.ty; M.z = M.tz; M.yaw = M.tyaw; } G.hostAll = !!s.al;
   B.up = s.up; B.hold = s.hold.map(i => KINDS[i]);
   for (const id in s.ps) { const p = PL.get(id); if (!p) continue; const [d, bl, de, , ca] = s.ps[id]; p.down = !!d; p.bleed = bl; p.dead = !!de; if (Array.isArray(ca)) { p.sack = ca.map(i => KINDS[i]); p.carry = p.sack[p.sack.length - 1] || null; if (p === P) P.sack = p.sack; } }
   for (let i = 0; i < ITEMS.length; i++) ITEMS[i].taken = s.it[i] === '1';
   G.floats = s.fl.map(f => f || null);
-  s.va.forEach((v, i) => VALVES[i].open = !!v); if (s.pw && !G.power) applyEv({k: 'power'}); G.bbOut = !!s.bo;
+  s.va.forEach((v, i) => VALVES[i].open = !!v); if (s.pw && !G.power) applyEv({k: 'power', quiet: G.pwQuiet}); G.pwQuiet = 0; G.bbOut = !!s.bo;
   s.dg.forEach((v, i) => { DIGS[i].rev = !!(v & 1); DIGS[i].dug = !!(v & 2); });
   G.cash = s.cash; G.earned = s.earned; G.disc = s.disc; G.goals = s.goals; G.storm = s.st; if (s.td != null && (G.tod == null || Math.abs(s.td - G.tod) > .002)) G.tod = s.td;
   G.holdP = s.hp || {}; G.t = s.gt; G.cruise = s.cz || 0;
   if (s.sw) { const [x, y, z, yaw, st, spd] = s.sw; Object.assign(STS, {tx: x, ty: y, tz: z, tyaw: yaw, state: st, spd}); if (STS.x == null || Math.hypot(STS.x - x, STS.z - z) > 20) Object.assign(STS, {x, y, z, yaw}); }
   if (s.gu) s.gu.forEach((q, i) => { const g = GUL[i] || (GUL[i] = {}); if (!q) { g.on = 0; return; } const was = g.on; Object.assign(g, {on: 1, tx: q[0], ty: q[1], tz: q[2], tyaw: q[3], tpitch: q[4], st: q[5]}); if (!was) Object.assign(g, {x: q[0], y: q[1], z: q[2], yaw: q[3], pitch: q[4]}); }); for (let i = (s.gu || []).length; i < GUL.length; i++) GUL[i].on = 0;
 }
-Net.on('snap', m => { if (G.on && !isHost()) applySnap(m); });
+Net.on('snap', m => { if (G.on && !isHost()) { G.lastSnapT = performance.now(); applySnap(m); } });
 Net.on('pose', (m, from) => {
   if (!G.on) return; const id = isHost() ? from : m.from; if (!id || id === myId()) return; const p = PL.get(id); if (!p) return;
-  p.x = m.x; p.z = m.z; p.y = m.y; p.yaw = m.yw; p.pitch = m.pt; p.cr = m.cr; p.l = m.l; p.run = m.rn; p.h = m.h || ''; p.hd = m.hd; p.hb = m.hb; p.ob = m.ob; p.bl = m.bl || p.bl; p.sw = m.sw; p.deep = m.dp; p.in = m.in || [0, 0]; p.eq = m.eq || 0; p.sc = m.sc || 0; p.dv = m.dv || 0; p.su = m.su || 0; p.au = m.au || 0;
+  p.x = m.x; p.z = m.z; p.y = m.y; p.yaw = m.yw; p.pitch = m.pt; p.cr = m.cr; p.l = m.l; p.run = m.rn; p.h = m.h || ''; p.hd = m.hd; p.hb = m.hb; p.ob = m.ob; p.bl = m.bl || p.bl; p.sw = m.sw; p.deep = m.dp; p.in = m.in || [0, 0]; p.eq = m.eq || 0; p.sc = m.sc || 0; p.dv = m.dv || 0; p.su = m.su || 0; p.au = m.au || 0; p.poseT = performance.now();
   if (!p.ready) { p.ready = true; p.rx = p.x; p.ry = p.y; p.rz = p.z; p.lx = p.x; p.lz = p.z; }
   p.stepD = (p.stepD || 0) + Math.hypot(m.x - (p.px ?? m.x), m.z - (p.pz ?? m.z)); p.px = m.x; p.pz = m.z;
 });
@@ -2461,7 +2471,7 @@ function updateRemotes(dt) {
   for (const p of PL.values()) {
     if (p === P) { if (p.av) p.av.visible = false; if (p.tag) p.tag.style.display = 'none'; continue; }
     if (!p.ready) continue;
-    let tx = p.x, tz = p.z, ty = p.y - (p.sw ? p.dv || 0 : 0); if (p.ob && p.bl) { [tx, tz] = bL2W(p.bl[0], p.bl[1]); ty = BDECK.y + B.heave; }
+    let tx = p.x, tz = p.z, ty = p.sw ? waveH(p.x, p.z, G.wt) - (p.dv || 0) : p.y; if (p.ob && p.bl) { [tx, tz] = bL2W(p.bl[0], p.bl[1]); ty = BDECK.y + B.heave; }
     const k = Math.min(1, dt * 12), ox = p.rx, oz = p.rz; p.rx = p.ob ? tx : mix(p.rx, tx, k); p.ry = mix(p.ry, ty, k); p.rz = p.ob ? tz : mix(p.rz, tz, k); p.ryaw += angD(p.ryaw, p.yaw) * k; p.rpitch = mix(p.rpitch, p.pitch, k);
     p.rspd = mix(p.rspd, Math.hypot(p.rx - ox, p.rz - oz) / Math.max(dt, 1e-3) - (p.ob ? Math.abs(B.v) : 0), Math.min(1, dt * 6));
     animCrew(p, dt);
@@ -2842,7 +2852,8 @@ function step(dt) {
   G.whT -= dt;
   if (Net.role !== 'solo') {
     if ((G.poseT -= dt) <= 0) { G.poseT = .05; const p = myPose(); if (isHost()) p.from = 'H'; Net.send(p); }
-    if (Net.role === 'host' && (G.sendT -= dt) <= 0) { G.sendT = 1 / 15; Net.send(packSnap()); }
+    if (Net.role === 'host') { stalePoses(); if ((G.sendT -= dt) <= 0) { G.sendT = 1 / 15; if (Net.ws && Net.ws.readyState === 1) Net.send(packSnap()); else { G.evq = G.evq.filter(e => !/^(mstep|sstep|snd|shot)$/.test(e.k)); if (G.evq.length > 500) G.evq.splice(0, G.evq.length - 500); } } }
+    else if (Net.ws && Net.ws.readyState === 1 && !G.lostT && performance.now() - (G.lastSnapT || 0) > 2500) { if (!G.snapGap) showMsg('Waiting for the captain…', '', 4); G.snapGap = 1; } else G.snapGap = 0;
   } else G.evq.length = 0;
   if (G.msgT > 0) { G.msgT -= dt; if (G.msgT <= 0) $('msg').style.opacity = 0; }
 }
@@ -2919,21 +2930,40 @@ const myName = () => (SET.name || 'Deckhand').replace(/[^A-Za-z0-9 ._-]/g, '').s
 function crewList() { return [{id: 'H', name: myName(), c: 0}, ...[...Net.peers.values()].map(p => ({id: p.id, name: p.name, c: p.c}))]; }
 function show(id) { ['menu', 'lobby', 'end', 'pause', 'shop', 'casino', 'fishHelp'].forEach(k => $(k).classList.toggle('hidden', k !== id)); G.casOpen = G.helpOpen = G.shopOpen = false; }
 function lobby() { const L = crewList(); $('crew').innerHTML = L.map(p => `<div><i style="background:${hexS(CREW_COL[p.c % 6])}"></i>${p.name.replace(/[<>&]/g, '')}${p.id === 'H' ? ' <small style="color:var(--dim)">host</small>' : ''}</div>`).join(''); if (Net.role === 'host') Net.send({t: 'lobby', crew: L}); }
-function hostStart() { G.diff = SET.diff; const seed = (Math.random() * 1e9) | 0, crew = crewList(), sv = loadSave(); Net.started = true; Net.meta(true); Net.send({t: 'start', seed, crew, diff: G.diff, sv}); startGame(seed, crew, sv); }
+function hostStart() { G.diff = SET.diff; const seed = (Math.random() * 1e9) | 0, crew = crewList(), sv = loadSave(); Net.started = true; Net.meta(Net.peers.size < 5); Net.send({t: 'start', seed, crew, diff: G.diff, sv, v: GAME_V, al: ALL ? 1 : 0}); startGame(seed, crew, sv); }
 Net.on('_lobby', () => { if (!G.on) lobby(); });
-Net.on('_join', m => { if (G.on && Net.role === 'host') { const crew = crewList(); syncCrew(crew); const np = PL.get(m.id); if (np) { np.ob = 1; np.bl = [0, 3.8]; } if (!np || !np.startT || performance.now() - np.startT > 4000) { if (np) np.startT = performance.now(); Net.send1(m.id, {t: 'start', seed: G.seed, crew, diff: G.diff, late: 1, ex: ITEMS.slice(G.seedItems || ITEMS.length).map(i => [i.kind, +i.x.toFixed(2), +i.y.toFixed(2), +i.z.toFixed(2), i.text || '']), sv: {cash: G.cash, earned: G.earned, up: B.up, disc: G.disc, goals: G.goals, cruise: G.cruise || 0}}); } Net.send({t: 'crew', crew}); showMsg(`${np ? np.name : 'Someone'} joined the crew.`); } });
+Net.on('_join', m => { if (G.on && Net.role === 'host') { const crew = crewList(), op = PL.get(m.id); if (op && op.ready) { Net.send({t: 'crew', crew}); return; } syncCrew(crew); const np = PL.get(m.id); if (np) { np.ob = 1; np.bl = [0, 3.8]; } if (!np || !np.startT || performance.now() - np.startT > 4000) { if (np) np.startT = performance.now(); Net.send1(m.id, {t: 'start', seed: G.seed, crew, diff: G.diff, late: 1, v: GAME_V, al: ALL ? 1 : 0, ex: ITEMS.slice(G.seedItems || ITEMS.length).map(i => [i.kind, +i.x.toFixed(2), +i.y.toFixed(2), +i.z.toFixed(2), i.text || '']), sv: {cash: G.cash, earned: G.earned, up: B.up, disc: G.disc, goals: G.goals, cruise: G.cruise || 0}}); } Net.send({t: 'crew', crew}); showMsg(`${np ? np.name : 'Someone'} joined the crew.`); } });
 Net.on('_left', m => { if (!G.on) { lobby(); return; } const crew = crewList(); syncCrew(crew); Net.send({t: 'crew', crew}); showMsg(`${m.name || 'Someone'} left.`); });
-Net.on('_hostgone', () => toMenu('The host left.'));
+Net.on('_hostlost', () => { if (!G.on) { toMenu('The host left.'); return; } showMsg('Lost contact with the captain… holding position.', '', 20); clearTimeout(G.lostT); G.lostT = setTimeout(() => toMenu('The host left.'), 20000); });
+Net.on('_hostback', () => { if (!G.lostT) return; clearTimeout(G.lostT); G.lostT = 0; if (G.on) showMsg('Back in contact.', '', 3); });
+Net.on('_drop', () => showMsg('Connection dropped. Reconnecting…', '', 6));
+Net.on('_back', () => showMsg('Reconnected.', '', 3));
+Net.on('bye', () => { if (Net.role === 'guest') toMenu('The captain ended the voyage.'); });
 Net.on('lobby', m => { $('crew').innerHTML = (m.crew || []).map(p => `<div><i style="background:${hexS(CREW_COL[p.c % 6])}"></i>${String(p.name).replace(/[<>&]/g, '')}</div>`).join(''); $('lmsg').textContent = 'Waiting for the captain to cast off…'; });
-Net.on('start', m => { G.diff = m.diff; startGame(m.seed, m.crew, m.sv); if (m.ex) for (const [kind, x, y, z, text] of m.ex) addItem(kind, {x, y, z}, text ? {text} : {}); if (m.late) showMsg('You came aboard late.'); });
-Net.on('crew', m => { if (G.on) syncCrew(m.crew); });
+Net.on('start', m => { if (Net.role !== 'guest') return; if (m.v !== GAME_V) { toMenu('The captain runs another version. Both reload the page.'); return; } G.hostAll = !!m.al;
+  if (G.on && m.late && m.seed === G.seed) { if (m.crew.some(c => c.id === Net.id)) { syncCrew(m.crew); if (P) P.seat = 0; } return; } // back after a reconnect: keep playing
+  G.diff = m.diff; startGame(m.seed, m.crew, m.sv); if (m.ex) for (const [kind, x, y, z, text] of m.ex) addItem(kind, {x, y, z}, text ? {text} : {}); G.lastSnapT = performance.now(); G.snapGap = 0; G.pwQuiet = m.late ? 1 : 0; if (m.late) showMsg('You came aboard late.'); });
+Net.on('crew', m => { if (!G.on || Net.role !== 'guest') return; if (!(m.crew || []).some(c => c.id === Net.id)) { if (performance.now() - (Net.helloT || 0) > 2000) { Net.helloT = performance.now(); Net.send({t: 'hello', name: Net.name}); } return; } syncCrew(m.crew); });
 function toMenu(why) {
-  if (G.on) save(); Net.close(); G.on = false; show('menu'); $('hud').classList.add('hidden'); $('fearV').style.opacity = 0; $('downV').style.opacity = 0; $('slats').classList.add('hidden');
-  if (A.ctx) { A.ctx.resume(); for (const g of [A.pad, A.drone, A.mGrowl, A.mBreath.g, A.genG, A.alarmG, A.deepG, A.engG]) g.gain.value = 0; }
+  if (G.on) save(); if (Net.role === 'host' && Net.peers.size) Net.send({t: 'bye'}); Net.close(); hiddenStep(false); G.on = false; show('menu'); $('hud').classList.add('hidden'); $('fearV').style.opacity = 0; $('downV').style.opacity = 0; $('slats').classList.add('hidden');
+  if (A.ctx) { A.ctx.resume(); for (const g of [A.pad, A.drone, A.mGrowl, A.mBreath.g, A.genG, A.alarmG, A.deepG, A.engG]) g.gain.value = 0; for (const g of A.mute || []) g.gain.value = 0; }
   try { document.exitPointerLock(); } catch (e) {} $('err').textContent = why || ''; refreshRooms(); saveInfo();
 }
+// host: guests who stop sending poses (tab hidden, lag, gone) stop holding keys and, after 15 s, leave the helm
+function stalePoses() { const t = performance.now(); for (const p of PL.values()) { if (p === P || p.poseT == null) continue; const a = t - p.poseT; if (a > 1000) p.h = ''; if (a > 15000 && p.seat && B.driver === p.id) emit({k: 'helm', id: p.id, on: 0}); } }
+// host in a background tab: rAF stops, so a worker clock keeps the sea running (true starts it, false stops it, no argument = one tick)
+function hiddenStep(on) {
+  const H = hiddenStep;
+  if (on === true) { if (H.w || Net.role !== 'host' || !G.on) return; try { H.u = H.u || URL.createObjectURL(new Blob(['setInterval(() => postMessage(0), 50)'], {type: 'text/javascript'})); H.w = new Worker(H.u); H.t = performance.now(); H.w.onmessage = () => hiddenStep(); } catch (e) { H.w = null; } return; }
+  if (on === false || !document.hidden || Net.role !== 'host' || !G.on) { if (H.w) { H.w.terminate(); H.w = null; last = performance.now(); } return; }
+  const t = performance.now(), dt = Math.min(.1, (t - H.t) / 1000); H.t = t; if (dt > 0) step(dt);
+}
+Net.on('_idle', () => { if (Net.role !== 'guest' || !G.on || !P) return; const p = myPose(); p.in = [0, 0, 0]; p.h = ''; Net.send(p); if (P.seat) act({a: 'unhelm'}); });
+addEventListener('blur', () => Net.emit({t: '_idle'}));
+document.addEventListener('visibilitychange', () => { hiddenStep(document.hidden); if (document.hidden) Net.emit({t: '_idle'}); });
+addEventListener('pagehide', () => { if (Net.role === 'host' && Net.peers.size) Net.send({t: 'bye'}); });
 function saveInfo() { const s = loadSave(); $('saveInfo').textContent = s && (s.disc || []).length > 1 ? `Saved voyage: $${s.cash} cash, ${(s.disc || []).length} places charted, ${(s.goals || []).length}/${GOALS.length} goals.` : ''; }
-async function refreshRooms() { const L = await Net.rooms(), el = $('rooms'); el.innerHTML = L.length ? '' : '<small style="color:var(--dim)">No open crews right now. Host one and share the code.</small>'; for (const r of L) { const d = document.createElement('div'); d.textContent = r.name.replace(Net.tag + ' ', '') + (r.n ? ` · ${r.n}/6` : ''); d.onclick = () => joinRoom(r.code); el.appendChild(d); } }
+async function refreshRooms() { const L = await Net.rooms(), el = $('rooms'); el.innerHTML = L.length ? '' : '<small style="color:var(--dim)">No open crews right now. Host one and share the code.</small>'; for (const r of L) { const d = document.createElement('div'), full = r.n >= 6; d.textContent = r.name.replace(/^\[?Rig\]? /, '') + (full ? ' · full' : r.n ? ` · ${r.n}/6` : ''); if (full) d.style.cssText = 'opacity:.4;pointer-events:none'; else d.onclick = () => joinRoom(r.code); el.appendChild(d); } }
 function joinRoom(code) {
   code = String(code || '').toUpperCase(); if (!/^[A-Z]{5}$/.test(code)) { $('err').textContent = 'Enter the 5-letter code.'; return; }
   aInit(); buildWorld(); Net.join(code, myName(), why => { if (G.on) toMenu(why); else { show('menu'); $('err').textContent = why; } });
@@ -2948,7 +2978,7 @@ function menuInit() {
   $('pVol').oninput = e => setVol(+e.target.value); $('pSens').oninput = e => { SET.sens = +e.target.value; saveSet(); }; $('pBright').oninput = e => { SET.bright = +e.target.value; saveSet(); canvas.style.filter = SET.bright !== 1 ? `brightness(${SET.bright})` : ''; };
   $('name').value = SET.name; $('name').oninput = e => { SET.name = e.target.value; saveSet(); };
   $('bSolo').onclick = () => { Net.close(); G.diff = SET.diff; startGame((Math.random() * 1e9) | 0, [{id: 'H', name: myName(), c: 0}], loadSave()); };
-  $('bHost').onclick = () => { aInit(); buildWorld(); const code = Net.host(myName(), s => { $('lmsg').textContent = s === 'open' ? 'Share the code. Up to 6 crew. Friends can join mid-voyage.' : 'Connection lost, retrying…'; }); $('code').textContent = code; show('lobby'); $('bGo').classList.remove('hidden'); $('lmsg').textContent = 'Connecting…'; lobby(); };
+  $('bHost').onclick = () => { aInit(); buildWorld(); const code = Net.host(myName(), s => { if (G.on) { if (s === 'open') showMsg('Reconnected.', '', 3); else showMsg('Relay connection dropped. Reconnecting…', '', 6); return; } $('lmsg').textContent = s === 'open' ? 'Share the code. Up to 6 crew. Friends can join mid-voyage.' : 'Connection lost, retrying…'; }); $('code').textContent = code; show('lobby'); $('bGo').classList.remove('hidden'); $('lmsg').textContent = 'Connecting…'; lobby(); };
   $('bJoin').onclick = () => joinRoom($('joinC').value); $('joinC').onkeydown = e => { if (e.key === 'Enter') joinRoom($('joinC').value); };
   $('bGo').onclick = hostStart; $('bLeave').onclick = () => toMenu(); $('resume').onclick = () => pause(false); $('quit').onclick = () => toMenu(); $('endMenu').onclick = () => toMenu();
   $('again').onclick = () => toMenu();

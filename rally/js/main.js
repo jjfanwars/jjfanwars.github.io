@@ -137,7 +137,7 @@ Net.on('start', m => { Net.started = true; $('fin').classList.add('hidden'); beg
 async function refreshRooms() {
   if ($('menu').classList.contains('hidden')) return;
   const r = await Net.rooms(), box = $('rooms'); box.innerHTML = '';
-  for (const x of r) { const b = document.createElement('button'); b.innerHTML = '<span>' + x.name.slice(8).replace(/[<>&]/g, '') + '</span><span>' + x.n + '/8</span>'; b.onclick = () => joinRoom(x.code); box.appendChild(b); }
+  for (const x of r) { const b = document.createElement('button'); b.innerHTML = '<span>' + x.name.replace(/^\[?Rally\]? /, '').replace(/[<>&]/g, '') + '</span><span>' + x.n + '/8</span>'; b.onclick = () => joinRoom(x.code); box.appendChild(b); }
   clearTimeout(G.rt); G.rt = setTimeout(refreshRooms, 4000);
 }
 if (!/^(localhost|127\.0\.0\.1)$/.test(location.hostname) || Q.has('relay')) refreshRooms();

@@ -74,7 +74,7 @@ const Net = {
     clearInterval(this.pingT); this.pingT = setInterval(() => { try { if (this.ws && this.ws.readyState === 1) this.ws.send('ping'); } catch (e) {} }, 15000);
   },
   close() { clearInterval(this.pingT); if (this.ws) { const w = this.ws; this.ws = null; w.onclose = null; try { w.close(); } catch (e) {} } this.role = 'solo'; this.peers = new Map(); },
-  async rooms() { try { const r = await (await fetch(this.relay().replace(/^ws/, 'http') + '/rooms')).json(); return r.filter(x => x.open && x.name.indexOf(this.tag + ' ') === 0); } catch (e) { return []; } },
+  async rooms() { try { const r = await (await fetch(this.relay().replace(/^ws/, 'http') + '/rooms')).json(); const bare = this.tag.replace(/[\[\]]/g, ''); return r.filter(x => x.open && (x.name.startsWith(this.tag + ' ') || x.name.startsWith(bare + ' '))); } catch (e) { return []; } },
 };
 const isHost = () => Net.role !== 'guest';
 const myId = () => Net.role === 'guest' ? Net.id : 'H';
@@ -1378,7 +1378,7 @@ function toMenu(why) {
 async function refreshRooms() {
   const L = await Net.rooms(); const el = $('rooms');
   el.innerHTML = L.length ? '' : '<small style="color:var(--dim)">No open groups right now. Host one and share the code.</small>';
-  for (const r of L) { const d = document.createElement('div'); d.textContent = r.name.replace(Net.tag + ' ', '') + (r.n ? ` · ${r.n}/6` : ''); d.onclick = () => joinRoom(r.code); el.appendChild(d); }
+  for (const r of L) { const d = document.createElement('div'); d.textContent = r.name.replace(Net.tag + ' ', '').replace(new RegExp('^' + Net.tag.replace(/[\[\]]/g, '') + ' '), '') + (r.n ? ` · ${r.n}/6` : ''); d.onclick = () => joinRoom(r.code); el.appendChild(d); }
 }
 function joinRoom(code) {
   code = String(code || '').toUpperCase(); if (!/^[A-Z]{5}$/.test(code)) { $('err').textContent = 'Enter the 5-letter code.'; return; }
