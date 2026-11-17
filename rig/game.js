@@ -1847,8 +1847,8 @@ function hostAct(id, m) {
 function act(m) { if (isHost()) hostAct(myId(), m); else Net.send(Object.assign({t: 'act', px: +P.x.toFixed(2), pz: +P.z.toFixed(2), ob: P.ob}, m)); }
 
 // ---------------- save (host)
-function save() { if (!isHost() || (TEST && !G.saveTest) || G.guestGame) return; try { localStorage.setItem('s9-save2', JSON.stringify({cash: G.cash, earned: G.earned, up: B.up, disc: G.disc, goals: G.goals, cruise: G.cruise || 0, hold: B.sink > 0 ? [] : B.hold.slice(), dg: DIGS.map(d => (d.rev ? 1 : 0) + (d.dug ? 2 : 0)), bb: G.bbOut ? 1 : 0, sk: P ? P.sack.slice() : [], co: P && P.cooler ? P.cooler.slice() : [], fl: P ? P.flares : 2, stat: G.stat || null, bn: G.bn ?? -1})); } catch (e) {} }
-function loadSave() { try { return JSON.parse(localStorage.getItem('s9-save2')) || null; } catch (e) { return null; } }
+function save() { if (!isHost() || (TEST && !G.saveTest) || G.guestGame) return; try { localStorage.setItem(SK('s9-save2'), JSON.stringify({cash: G.cash, earned: G.earned, up: B.up, disc: G.disc, goals: G.goals, cruise: G.cruise || 0, hold: B.sink > 0 ? [] : B.hold.slice(), dg: DIGS.map(d => (d.rev ? 1 : 0) + (d.dug ? 2 : 0)), bb: G.bbOut ? 1 : 0, sk: P ? P.sack.slice() : [], co: P && P.cooler ? P.cooler.slice() : [], fl: P ? P.flares : 2, stat: G.stat || null, bn: G.bn ?? -1})); } catch (e) {} }
+function loadSave() { try { return JSON.parse(localStorage.getItem(SK('s9-save2'))) || null; } catch (e) { return null; } }
 addEventListener('pagehide', () => { if (G.on) save(); });
 
 // ---------------- snapshots
@@ -2720,7 +2720,7 @@ function drawGulpers(dt) {
   }
 }
 // ---------------- style: auras, boat paint and underglow, fireworks, fireflies
-let ALL = (() => { try { return localStorage.getItem('s9-all') === '1'; } catch (e) { return false; } })();
+let ALL = (() => { try { return localStorage.getItem('s9-all') === '1'; } catch (e) { return false; } })(); const SK = k => k + (ALL ? '-all' : ''); const SLOTS = ['s9-save2', 's9-gear', 's9-cred']; (() => { try { if (!ALL || localStorage.getItem('s9-save2-all') != null) return; const s = localStorage.getItem('s9-save2'); if (s == null) return; const j = JSON.parse(s) || {}, dirty = (j.cash || 0) >= 250000 || ((j.up || {}).own || []).length >= HULLS.length; for (const k of SLOTS) { const v = localStorage.getItem(k); if (v != null) { localStorage.setItem(k + '-all', v); if (dirty) localStorage.removeItem(k); } } } catch (e) {} })();
 const AURAS = [{n: 'No aura', c: 0, cost: 0}, {n: 'Sea glass', c: 0x60ffe0, cost: 300}, {n: 'Gold rush', c: 0xffc040, cost: 600}, {n: 'Void', c: 0xa050ff, cost: 900}, {n: 'Blood moon', c: 0xff3a2a, cost: 1200}, {n: 'Prism', c: -1, cost: 2500}];
 const PAINTS = [{n: 'Factory', c: 0}, {n: 'Midnight', c: 0x0c1016}, {n: 'Racing red', c: 0xb01818}, {n: 'Gold', c: 0xd8a828}, {n: 'Pearl', c: 0xe4e4e0}, {n: 'Emerald', c: 0x16604a}, {n: 'Ultraviolet', c: 0x3a1a6a}];
 const GLOWS = [{n: 'No underglow', c: 0}, {n: 'Cyan', c: 0x30f0ff}, {n: 'Magenta', c: 0xff30d0}, {n: 'Toxic', c: 0x70ff30}, {n: 'Sunset', c: 0xff8a20}, {n: 'Prism', c: -1}];
@@ -2789,8 +2789,8 @@ function stepFireflies(dt) {
 }
 // ---------------- the Lucky Lantern: a little credit casino (blackjack, roulette, slots)
 const CAS = {tab: 'bj', bet: 50, bj: null, rl: {bets: [], spin: 0, ang: 0, res: null}, sl: {r: ['⚓', '⚓', '⚓'], spin: 0}};
-const loadCred = () => { try { return +localStorage.getItem('s9-cred') || 0; } catch (e) { return 0; } };
-const saveCred = () => { try { localStorage.setItem('s9-cred', String(P.cred)); } catch (e) {} };
+const loadCred = () => { try { return +localStorage.getItem(SK('s9-cred')) || 0; } catch (e) { return 0; } };
+const saveCred = () => { try { localStorage.setItem(SK('s9-cred'), String(P.cred)); } catch (e) {} };
 function openCasino() { G.casOpen = true; clearKeys(); G.casAt = [P.x, P.z, P.ob ? 1 : 0]; $('casino').classList.remove('hidden'); try { document.exitPointerLock(); } catch (e) {} if (P.cred == null) P.cred = loadCred(); drawCasino(); }
 function closeCasino() { G.casOpen = false; $('casino').classList.add('hidden'); lockMouse(); }
 function cred(d) { P.cred = Math.max(0, (P.cred || 0) + d); saveCred(); }
@@ -3172,8 +3172,8 @@ function pickFish(x, z, rod) {
   const w = {boot: [0, 8, 4, 2][rod], sard: 30, mack: 22, bass: land < 60 ? 22 : 4, cod: deep ? 18 : 5, eel: wreck ? 20 : 1, tuna: deep && rod >= 2 ? 9 + rod * 2 : 0, angler: (storm || deep) && rod >= 2 ? 3 + rod : 0, squid: deep && rod >= 3 ? 3 : 0, bottle: DIGS.some(d => !d.rev) ? 2 : 0};
   let sum = 0; for (const k in w) sum += w[k]; let r = Math.random() * sum; for (const k in w) { r -= w[k]; if (r <= 0) return k; } return 'sard';
 }
-function loadGear() { let g = null; try { g = JSON.parse(localStorage.getItem('s9-gear')); } catch (e) {} g = g || {}; P.own = Object.assign({rod: 0, glock: 0, sg: 0}, g.own || {}); P.ammo = Object.assign({g: 0, gm: 0, s: 0, sm: 0}, g.ammo || {}); }
-function saveGear() { if (TEST) return; try { localStorage.setItem('s9-gear', JSON.stringify({own: P.own, ammo: P.ammo})); } catch (e) {} }
+function loadGear() { let g = null; try { g = JSON.parse(localStorage.getItem(SK('s9-gear'))); } catch (e) {} g = g || {}; P.own = Object.assign({rod: 0, glock: 0, sg: 0}, g.own || {}); P.ammo = Object.assign({g: 0, gm: 0, s: 0, sm: 0}, g.ammo || {}); }
+function saveGear() { if (TEST) return; try { localStorage.setItem(SK('s9-gear'), JSON.stringify({own: P.own, ammo: P.ammo})); } catch (e) {} }
 function gotGear(k) {
   const o = P.own, a = P.ammo; Snd.coin();
   if (k === 'fw') o.fw = (o.fw || 0) + 5; if (k.startsWith('aura')) { const i = +k.slice(4); o.auras = (o.auras || [0]).concat([i]); o.aura = i; }
@@ -3582,8 +3582,8 @@ function menuInit() {
     w.querySelector('a').onclick = e => { e.preventDefault(); bs.forEach(b => b.disabled = false); e.target.remove(); }; }
   $('again').onclick = () => toMenu();
   $('bSell').onclick = () => { act({a: 'sell'}); setTimeout(drawShop, 150); }; $('shopX').onclick = closeShop;
-  $('resetSave').onclick = e => { e.preventDefault(); if (confirm('Wipe your saved voyage (cash, upgrades, chart)?')) { try { localStorage.removeItem('s9-save2'); localStorage.removeItem('s9-cred'); } catch (x) {} if (P) P.cred = 0; saveInfo(); } };
-  $('bCheat').onclick = () => { const v = $('cheat').value.trim().toLowerCase(); if (v === 'rig67') { ALL = true; try { localStorage.setItem('s9-all', '1'); } catch (e) {} $('cheatM').textContent = 'Everything unlocked. Every hull, upgrade, suit, gun, aura and style is yours.'; if (G.on) applyAll(); Snd.coin && A.on && Snd.coin(); } else $('cheatM').textContent = v ? 'Nothing happens.' : ''; $('cheat').value = ''; };
+  $('resetSave').onclick = e => { e.preventDefault(); if (confirm('Wipe your saved voyage (cash, upgrades, chart)?')) { try { localStorage.removeItem(SK('s9-save2')); localStorage.removeItem(SK('s9-cred')); } catch (x) {} if (P) P.cred = 0; saveInfo(); } };
+  const allUI = msg => { $('cheatM').innerHTML = (msg ? msg + ' ' : '') + (ALL ? 'Unlock-all is on (it has its own save). <a href="#" id="allOff" style="color:inherit">Turn off</a>' : ''); const o = $('allOff'); if (o) o.onclick = e => { e.preventDefault(); setAll(false); }; }; const setAll = on => { if (G.on) { allUI('Finish your voyage first.'); return; } ALL = on; try { localStorage.setItem('s9-all', on ? '1' : '0'); } catch (e) {} if (P) P.cred = loadCred(); saveInfo(); allUI(on ? 'Everything unlocked.' : 'Back to your normal save.'); }; allUI(); $('bCheat').onclick = () => { const v = $('cheat').value.trim().toLowerCase(); if (v === 'rig67') { setAll(!ALL); Snd.coin && A.on && Snd.coin(); } else $('cheatM').textContent = v ? 'Nothing happens.' : ''; $('cheat').value = ''; };
   $('cheat').onkeydown = e => { if (e.key === 'Enter') $('bCheat').click(); };
   casInit();
   $('note').onclick = closeNote; $('fishHelpX').onclick = () => showFishHelp(false);
