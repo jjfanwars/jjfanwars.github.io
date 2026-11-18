@@ -29,7 +29,7 @@ const hexS = c => '#' + c.toString(16).padStart(6, '0');
 
 // ---------------- net (jjfanwars relay)
 const RELAY_URL = 'wss://jjfanwars-relay.businessautomationvic.workers.dev';
-const GAME_V = 48;
+const GAME_V = 49;
 const Net = {
   tag: '[Rig]', role: 'solo', ws: null, peers: new Map(), code: '', relayT: {pose: 1}, id: '', name: '', handlers: {}, retry: 0, started: false,
   enc: new TextEncoder(), dec: new TextDecoder(),
@@ -1293,6 +1293,7 @@ function boatStep(dt) {
   if (B.sink > 0) { B.sink -= dt; B.v *= .95; if (B.sink <= 0) resetBoat(true); return; }
   const drv = B.driver && PL.get(B.driver); let thr = 0, st = 0;
   if (drv && drv.seat && !drv.down && !drv.dead) { if (drv !== P && drv.poseT != null && performance.now() - drv.poseT > 800) { drv.in = [0, 0, 0]; B.thr = 0; } thr = drv.in ? drv.in[0] : 0; st = drv.in ? drv.in[1] : 0; } else if (B.driver) B.driver = null;
+  if (B.ap && B.ap.thr != null) { thr = B.ap.thr; st = B.ap.st; }
   const lv = B.up.engine, empty = B.fuel <= 0, H = HC();
   const m = Math.pow(H.L / 12.2, .6); B.thr = mix(B.thr, thr * (empty ? .18 : 1), Math.min(1, dt * 1.2 / Math.sqrt(m))); B.st = mix(B.st, st, Math.min(1, dt * 2.5));
   B.fuel = tankMax();
@@ -3110,11 +3111,11 @@ function inCabin() { if (!P || !P.ob || !BOAT || !BOAT.userData.wz) return false
 function updateCamera(dt) {
   let ex, ey, ez, yaw, pitch, own = alivePlay(), roll = 0;
   if (own && P.ob) { [P.x, P.z] = bL2W(P.bl[0], P.bl[1]); }
-  if (own) { ex = P.x; ey = P.y + P.eye; ez = P.z; yaw = P.yaw; pitch = P.pitch; if (P.ob) { ey += B.heave; roll = B.roll * .7; pitch += B.pitch * .5; if (BG.sub && BOAT) { _sb.set(P.bl[0], P.y + P.eye, P.bl[1]).applyMatrix4(BOAT.matrixWorld); ex = _sb.x; ey = _sb.y; ez = _sb.z; } } if (P.sw) ey = waveH(P.x, P.z, G.wt) + .25 - (P.dv || 0) * 1.0; else if (P.y < 0 && !P.ob) ey = Math.max(ey, waveH(P.x, P.z, G.wt) + .25); }
+  if (own) { ex = P.x; ey = P.y + P.eye; ez = P.z; yaw = P.yaw; pitch = P.pitch; if (P.ob) { ey += B.heave; roll = B.roll * .7; pitch += B.pitch * .5; if (BOAT) { BOAT.updateMatrixWorld(); _sb.set(P.bl[0], P.y + P.eye, P.bl[1]).applyMatrix4(BOAT.matrixWorld); ex = _sb.x; ey = _sb.y; ez = _sb.z; } } if (P.sw) ey = waveH(P.x, P.z, G.wt) + .25 - (P.dv || 0) * 1.0; else if (P.y < 0 && !P.ob) ey = Math.max(ey, waveH(P.x, P.z, G.wt) + .25); }
   else if (G.drownCam) { const dc = G.drownCam; dc.t += dt; ex = dc.x; ez = dc.z; ey = waveH(ex, ez, G.wt) + .2 - Math.min(5.5, dc.t * 2.2); yaw = dc.yaw; pitch = mix(.1, -1.35, clamp(dc.t / 1.2, 0, 1)); roll = Math.sin(dc.t * 3) * .15; if (dc.t > 4) G.drownCam = null; }
   else { const s = specTarget(); if (s) { ex = s.rx; ey = s.ry + (s.down ? .5 : 1.6); ez = s.rz; yaw = s.ryaw; pitch = s.rpitch; } else { ex = HOME.x; ey = 30; ez = HOME.z + 40; yaw = PI; pitch = -.3; } }
   if (own && P.ob) { const o = seaLegs(dt); ex += o[0]; ez += o[1]; roll += o[2]; } else G.sl = null; G.fovAdd = mix(G.fovAdd || 0, own && P.ob ? clamp(Math.abs(B.v) / 12, 0, 1) * 4 : 0, Math.min(1, dt * 1.5));
-  if (own && P.seat && HC().eye && BOAT && BOAT.userData.wz) { [ex, ez] = bL2W(0, BOAT.userData.wz[0] - .7); }
+  if (own && P.seat && HC().eye && BOAT && BOAT.userData.wz) { _sb.set(0, P.y + P.eye, BOAT.userData.wz[0] - .7).applyMatrix4(BOAT.matrixWorld); ex = _sb.x; ey = _sb.y; ez = _sb.z; }
   if (P && P.scope && !(own && BOAT && BG.sub)) subScope(0); else if (P && P.scope) { _sb.set(0, 4.97 + ((G.mastU ?? 1) - 1) * 1.9, SUB.SCOPE[1] - .12).applyMatrix4(BOAT.matrixWorld); ex = _sb.x; ey = _sb.y; ez = _sb.z; G.fovAdd = 28 - (SET.fov || 70); }
   const sp = own ? Math.hypot(P.vx, P.vz) : 0, bobA = own && P.hd < 0 && !P.seat ? clamp(sp / 6, 0, 1) * .05 : 0, shk = own && P.fear > .5 ? (P.fear - .5) * .006 : 0, tr = Math.min(1, G.shake || 0), nz = i => Math.sin(G.t * 13.1 + i * 7) * .5 + Math.sin(G.t * 27.7 + i * 3) * .3 + Math.sin(G.t * 51.3 + i) * .2;
   G.shake = Math.max(0, (G.shake || 0) - dt * 1.6);
@@ -6052,7 +6053,7 @@ function voyCursorWorld() {
 Snd.voyChime = up => { tone(up ? 660 : 990, .05, .3, 'sine'); setTimeout(() => tone(up ? 990 : 660, .05, .45, 'sine'), 120); };
 // autopilot: steers the driver's own input (sent in the pose), so it works the same for host and guests
 function voyApTarget() { if (G.voyWp) return G.voyWp.slice(); const m = G.nstep && G.nstep.mk; if (m && m.x != null && !m.scr) return [m.x, m.z]; return [JETTY.x, JETTY.z + 14]; }
-function voyApSet(on, why) {
+function voyApSet(on, why, dock) { act({a: 'ap', on: on ? 1 : 0, tg: on ? voyApTarget() : null, dock: dock ?? null}); if (!on) VOY.ap = 0; return;
   if (!!on === !!VOY.ap) return; VOY.ap = on ? 1 : 0; VOY.tg = on ? voyApTarget() : null; VOY.wp0 = G.voyWp; VOY.bias = 0; VOY.slow = 1; VOY.arrive = 0; VOY.pT = 0;
   if (A.on) Snd.voyChime(!!on); if (why) showMsg(why, '', 2.5); VOY.pillT = 0;
 }
@@ -6062,7 +6063,7 @@ function voyProbe(h, tx, tz, d) {
   [-.44, 0, .44].forEach((da, j) => { for (let k = 1; k <= 3; k++) { const s = k * L; if (s > d + L * .5) break; const a = h + da, o = hit(B.x - Math.sin(a) * s, B.z - Math.cos(a) * s); if (!o) continue; if (o === tin) { if (j === 1 && s <= Math.max(60, L)) VOY.arrive = 1; break; } sc[j] += 4 - k; if (j === 1 && s <= Math.max(60, L)) blk = true; } });
   VOY.slow = blk ? .4 : 1; if (!sc[1]) VOY.bias *= .5; else VOY.bias = sc[0] <= sc[2] ? -.6 : .6;
 }
-function voyAp(dt) {
+function voyAp(dt) { return;
   if (!P || !P.seat || P.dead || !G.on) { voyApSet(false); return; }
   if (G.voyWp && G.voyWp !== VOY.wp0) { VOY.tg = G.voyWp.slice(); VOY.wp0 = G.voyWp; } else if (!G.voyWp && VOY.wp0) { VOY.wp0 = null; VOY.tg = voyApTarget(); }
   if ((B.dep || 0) > .5) return;
@@ -6119,8 +6120,9 @@ function voyHud() {
 { const f0 = hud; hud = function (...a) { const r = f0.apply(this, a); voyHud(); return r; }; }
 // input: T toggles the autopilot at the wheel; W/A/S/D take back control; with the chart open the mouse moves the cursor (or pans), the wheel zooms, LMB sets the course and RMB clears it
 addEventListener('keydown', e => { if (!G.on || G.paused || !P) return; const t = e.target; if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA')) return;
-  if (e.code === 'KeyT' && !e.repeat && P.seat && !anyPanel()) { voyApSet(!VOY.ap); return; }
-  if (VOY.ap && !e.repeat && /^Key[WASD]$/.test(e.code)) voyApSet(false); }, {capture: true});
+  if (e.code === 'KeyT' && !e.repeat && (P.seat || (VOY.ap && P.ob)) && !anyPanel()) { voyApSet(!VOY.ap); return; }
+  if (e.code === 'KeyK' && !e.repeat && P.seat && !anyPanel() && !VOY.ap) { const d = dockNear(B.x, B.z, 220); if (d) voyApSet(true, null, d.i); else showMsg('No jetty or landing stage close enough to dock at.', '', 2); return; }
+  if (VOY.ap && P.seat && !e.repeat && /^Key[WASD]$/.test(e.code)) voyApSet(false); }, {capture: true});
 addEventListener('wheel', e => { if (!G.map || !G.on || G.paused) return; e.stopImmediatePropagation(); voyZoom(e.deltaY < 0 ? 1 : -1); }, {capture: true});
 addEventListener('mousemove', e => { if (!G.map || !G.on || G.paused) return; e.stopImmediatePropagation(); const c = $('map'), W = c.width, k = W / (c.clientWidth || W);
   if (VOY.z) { const S = W / (voyR() * 2.077) * VOY_ZL[VOY.z]; VOY.cx += e.movementX * k / S; VOY.cz -= e.movementY * k / S; voyClampC(); } else VOY.cur = [clamp(VOY.cur[0] + e.movementX * k, 4, W - 4), clamp(VOY.cur[1] + e.movementY * k, 4, W - 4)];
@@ -7960,6 +7962,42 @@ function jetCargo() { CGO.list = []; if (!BOAT || BG.sub) return; const ud = BOA
   const c = Math.cos(B.yaw), s = Math.sin(B.yaw), fx = -Math.sin(P.yaw), fz = -Math.cos(P.yaw), lfx = fx * c - fz * s, lfz = fx * s + fz * c, ax = P.bl[0] + lfx * .6, az = P.bl[1] + lfz * .6;
   const q = CGO.list.find(q => ax > q.x0 && ax < q.x1 && az > q.z0 && az < q.z1 && q.top - P.y > .6 && q.top - P.y < 3.4); if (!q) { CGO.t = 0; return r; }
   CGO.t += dt; if (CGO.t > .22) { CGO.t = 0; P.bl = [clamp(P.bl[0] + lfx * .9, q.x0 + .3, q.x1 - .3), clamp(P.bl[1] + lfz * .9, q.z0 + .3, q.z1 - .3)]; const [wx, wz] = bL2W(P.bl[0], P.bl[1]); P.x = wx; P.z = wz; P.y = q.top; P.vy = 0; G.lspV = (G.lspV || 0) + 3; if (A.on) burst(300, .6, .08, .15, 'lowpass'); } return r; }; }
+
+// ---------------- autopilot on the host (it keeps sailing when the helmsman walks away) and auto-docking at every jetty: the home jetty, Northwatch, every island landing stage.
+// K at the wheel near one docks you; an autopilot course that ends at one docks too. B.ap = {tg, thr, st, dock, ph, s0}; event 'ap' keeps every client's VOY in step.
+function dockList() { const L = [], hw = BG.hw, Lh = BG.L; L.push({n: 'the home jetty', x: JETTY.x - 2.1 - hw, z: JETTY.z + 3 + Math.max(0, Lh - 12) * .5, yaw: 0});
+  for (const q of (typeof VOY_PORTS !== 'undefined' ? VOY_PORTS : [])) L.push({n: q.n, x: q.x, z: q.z - 12.5 - hw, yaw: PI / 2});
+  for (const q of (typeof PIERS !== 'undefined' ? PIERS : [])) { if (!q.root || !q.head) continue; let ux = q.head[0] - q.root[0], uz = q.head[1] - q.root[1]; const l = Math.hypot(ux, uz) || 1; ux /= l; uz /= l; L.push({n: q.n + ' landing', x: q.head[0] + ux * (2.6 + hw), z: q.head[1] + uz * (2.6 + hw), yaw: Math.atan2(-uz, ux)}); }
+  L.forEach((d, i) => d.i = i); return L; }
+function dockNear(x, z, r) { let b = null, bd = r; for (const d of dockList()) { const e = Math.hypot(d.x - x, d.z - z); if (e < bd) { bd = e; b = d; } } return b; }
+{ const f0 = hostAct; hostAct = function (id, m) { if (!m || m.a !== 'ap') return f0.apply(this, arguments); const p = PL.get(id); if (!p || !p.ob) return;
+  if (!m.on) { if (B.ap) { B.ap = null; emit({k: 'ap', on: 0}); } return; } if (HC().sub && (B.dep || 0) > 1) { emit({k: 'nope', id, why: 'Surface first.'}); return; } if (HC().plane && -(B.dep || 0) > .5) { emit({k: 'nope', id, why: 'Land on the water first.'}); return; }
+  const D2 = m.dock != null ? dockList()[m.dock] : null; B.ap = {tg: D2 ? [D2.x, D2.z] : (m.tg || [JETTY.x, JETTY.z]), thr: 0, st: 0, dock: D2 ? D2 : null, ph: 0, pT: 0}; emit({k: 'ap', on: 1, tg: B.ap.tg, dk: D2 ? D2.n : ''}); }; }
+function hostAp(dt) { const a = B.ap; if (!a) return; if (B.sink > 0 || (HC().plane && -(B.dep || 0) > .5) || (HC().sub && (B.dep || 0) > 1)) { B.ap = null; emit({k: 'ap', on: 0}); return; }
+  if (a.ph === 2) return; // settling: boatStep wrapper glides her in
+  const D2 = a.dock, fx = D2 ? -Math.sin(D2.yaw) : 0, fz = D2 ? -Math.cos(D2.yaw) : 0, app = D2 ? [D2.x - fx * (BG.L * .7 + 18), D2.z - fz * (BG.L * .7 + 18)] : null;
+  const [tx, tz] = D2 && a.ph === 0 ? app : a.tg, d = Math.hypot(tx - B.x, tz - B.z); let h = Math.atan2(-(tx - B.x), -(tz - B.z));
+  if ((a.pT -= dt) <= 0) { a.pT = .2; voyProbe(h, tx, tz, d); }
+  if (D2) { const db = Math.hypot(D2.x - B.x, D2.z - B.z); if (a.ph === 0 && d < 12 + BG.L * .2) a.ph = 1;
+    a.stk = Math.abs(B.v) < .6 ? (a.stk || 0) + dt : 0;
+    if (db < 34 + BG.L * .5 || (a.stk > 5 && db < 160)) { a.ph = 2; a.s0 = {x: B.x, z: B.z, yaw: B.yaw, v: B.v, t: 0, T: clamp(db / 3.2, 4, 16)}; a.thr = 0; a.st = 0; emit({k: 'ap', on: 1, tg: a.tg, dk: D2.n, set: 1}); return; }
+    if (a.stk > 8) { B.ap = null; emit({k: 'ap', on: 0, why: 'Could not find a way in. Get closer to the jetty.'}); return; }
+    if (db < 140) { VOY.bias = 0; VOY.slow = 1; } if (a.ph === 1) h = Math.atan2(-(D2.x - B.x), -(D2.z - B.z)); }
+  else if (d < 25 + BG.L / 2 || VOY.arrive) { const D3 = dockNear(tx, tz, 200); if (D3) { a.dock = D3; a.tg = [D3.x, D3.z]; a.ph = 0; emit({k: 'ap', on: 1, tg: a.tg, dk: D3.n}); } else { B.ap = null; emit({k: 'ap', on: 0, why: 'Arrived.'}); } return; }
+  h += VOY.bias; const e = angD(B.yaw, h); a.st = clamp(-e * 2.2, -1, 1); const near = D2 ? Math.hypot(D2.x - B.x, D2.z - B.z) : d; a.thr = Math.min(near > 250 ? 1 : near > 90 ? .75 : D2 ? .5 : .35, VOY.slow) * (Math.abs(e) > 1.2 ? .45 : 1); }
+{ const f0 = hostStep; hostStep = function (dt) { try { hostAp(dt); } catch (e) { if (!VOY.apErr) { VOY.apErr = 1; console.warn(e); } } return f0.apply(this, arguments); }; }
+// the last few metres: a gentle, exact glide alongside, then fenders touch and she stops
+{ const f0 = boatStep; boatStep = function (dt) { const a = B.ap; if (!a || a.ph !== 2 || !a.dock) return f0.apply(this, arguments); const S = a.s0, D2 = a.dock; S.t += dt; const u = smooth(S.t / S.T), px = B.x, pz = B.z;
+  B.x = mix(S.x, D2.x, u); B.z = mix(S.z, D2.z, u); B.yaw = S.yaw + angD(S.yaw, D2.yaw) * u; B.v = Math.hypot(B.x - px, B.z - pz) / Math.max(dt, 1e-3) * Math.sign(S.v || 1); B.thr = 0; B.st = 0; B.yr = 0;
+  if (S.t >= S.T) { B.v = 0; B.ap = null; emit({k: 'ap', on: 0, why: `Docked at ${D2.n}.`, dk: D2.n, done: 1}); } }; }
+{ const f0 = applyEv; applyEv = function (e) { const r = f0.apply(this, arguments); if (e.k === 'ap') { VOY.ap = e.on ? 1 : 0; VOY.tg = e.on ? e.tg : null; VOY.dock = e.on ? e.dk || '' : ''; VOY.set = !!e.set; if (A.on && Snd.voyChime && !e.set) Snd.voyChime(!!e.on); if (e.why) showMsg(e.why, '', 2.5); if (e.done && A.on) { tone(120, .2, .3, 'square'); burst(300, .5, .1, .3, 'lowpass'); } if (e.on && e.dk && !e.set) showMsg(`Docking at ${e.dk}. You can leave the wheel.`, '', 2.5); } return r; }; }
+{ const f0 = packSnap; packSnap = function () { const s = f0.apply(this, arguments); s.ap = B.ap ? [B.ap.tg[0], B.ap.tg[1], B.ap.dock ? B.ap.dock.n : '', B.ap.ph] : 0; return s; }; }
+{ const f0 = applySnap; applySnap = function (s) { const r = f0.apply(this, arguments); if (s.ap !== undefined) { VOY.ap = s.ap ? 1 : 0; VOY.tg = s.ap ? [s.ap[0], s.ap[1]] : null; VOY.dock = s.ap ? s.ap[2] : ''; VOY.set = s.ap && s.ap[3] === 2; } return r; }; }
+// HUD: a dock prompt at the wheel near a jetty; the autopilot line says when it is docking
+{ const f0 = hud; hud = function () { const r = f0.apply(this, arguments); if (!P) return r; let t = ''; if (P.seat && !VOY.ap && !(HC().plane && -(B.dep || 0) > .5) && Math.abs(B.v) < 9) { const d = dockNear(B.x, B.z, 220); if (d) t = `<kbd>K</kbd> Dock at ${d.n} (${Math.round(Math.hypot(d.x - B.x, d.z - B.z))} m)`; }
+  else if (VOY.ap && VOY.dock) t = VOY.set ? `Coming alongside ${VOY.dock}…` : `AUTOPILOT · docking at ${VOY.dock} · T to stop`; else if (VOY.ap && !P.seat && P.ob) t = 'Autopilot is sailing · T to stop';
+  let el = VOY.dkEl; if (!el) { el = VOY.dkEl = document.createElement('div'); el.style.cssText = 'position:absolute;left:50%;bottom:22%;transform:translateX(-50%);font:13px ui-monospace,monospace;color:#9fe6ff;text-shadow:0 1px 3px #000;pointer-events:none;text-align:center'; $('hud').appendChild(el); } if (t !== VOY.dkT) { VOY.dkT = t; el.innerHTML = t; } return r; }; }
+{ const f0 = startGame; startGame = function () { B.ap = null; VOY.ap = 0; VOY.dock = ''; return f0.apply(this, arguments); }; }
 
 menuInit();
 setTimeout(() => { buildWorld(); requestAnimationFrame(frame); }, 30);
