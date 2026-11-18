@@ -29,7 +29,7 @@ const hexS = c => '#' + c.toString(16).padStart(6, '0');
 
 // ---------------- net (jjfanwars relay)
 const RELAY_URL = 'wss://jjfanwars-relay.businessautomationvic.workers.dev';
-const GAME_V = 53;
+const GAME_V = 54;
 const Net = {
   tag: '[Rig]', role: 'solo', ws: null, peers: new Map(), code: '', relayT: {pose: 1}, id: '', name: '', handlers: {}, retry: 0, started: false,
   enc: new TextEncoder(), dec: new TextDecoder(),
@@ -2437,7 +2437,7 @@ function applyEv(e) {
       if (e.id === me) { if (P.hd >= 0 && HIDES[P.hd]) { const h = HIDES[P.hd]; P.x = h.ex; P.z = h.ez; } const jsc = e.how === 'caught' || e.how === 'pulled'; if (jsc) { G.js = {t: 1.4, L: 1.4, mon: e.st ? STW : MON, J: e.st ? SJ : MJ}; G.shake = 1.5; } Snd.scream(); $('flash').style.opacity = jsc ? .3 : .7; setTimeout(() => $('flash').style.opacity = 0, 300); P.hd = -1; P.seat = 0; $('slats').classList.add('hidden'); $('breath').classList.add('hidden'); if (PL.size > 1) showMsg('It got you. Crawl toward your crew, they can pick you up.', '', 5); }
       else if (p) { Snd.hurt(at(p.x, p.y + 1, p.z, 6)); showMsg(`${p.name} is down! Hold E on them to pick them up.`, '', 5); } break; }
     case 'rev': { const p = PL.get(e.id); if (p) p.down = false; Snd.revive(); showMsg(e.id === me ? 'You are back on your feet.' : `${p ? p.name : ''} is back up.`); break; }
-    case 'dead': { const p = PL.get(e.id); if (p) { p.dead = true; p.down = false; p.drowned = e.drown || 0; p.sw = 0; } if (e.drown) Snd.deep(); if (e.id === me) { const t = e.drown === 4 ? 'Your arms give out. The sea closes over you.' : e.drown === 3 ? 'Needle teeth close on your hose. Then nothing.' : e.drown === 2 ? 'Your air runs out. The dark closes in.' : e.drown ? 'Something huge wraps around your legs and pulls you under.' : 'You bled out.'; if (e.drown === 1) { if (!G.maw) G.maw = {t: 3, x: P.x, z: P.z}; G.maw.bite = G.maw.t + .9; G.drownCam = {t: 0, x: P.x, z: P.z, yaw: P.yaw}; } P.dead = true; P.sw = 0; P.seat = 0; P.drowned = e.drown || 0; showMsg(t, '', 5); }
+    case 'dead': { const p = PL.get(e.id); if (p) { p.dead = true; p.down = false; p.drowned = e.drown || 0; p.sw = 0; } if (e.drown) Snd.deep(); if (e.id === me) { const t = e.drown === 6 ? 'You let go. The sea takes you.' : e.drown === 5 ? 'You hit the water like concrete.' : e.drown === 4 ? 'Your arms give out. The sea closes over you.' : e.drown === 3 ? 'Needle teeth close on your hose. Then nothing.' : e.drown === 2 ? 'Your air runs out. The dark closes in.' : e.drown ? 'Something huge wraps around your legs and pulls you under.' : 'You bled out.'; if (e.drown === 1) { if (!G.maw) G.maw = {t: 3, x: P.x, z: P.z}; G.maw.bite = G.maw.t + .9; G.drownCam = {t: 0, x: P.x, z: P.z, yaw: P.yaw}; } P.dead = true; P.sw = 0; P.seat = 0; P.drowned = e.drown || 0; showMsg(t, '', 5); }
       else showMsg(`${p ? p.name : 'Someone'} ${e.drown === 4 ? 'drowned' : e.drown === 2 ? 'ran out of air' : e.drown === 3 ? 'was taken in the deep' : e.drown ? 'was pulled under' : 'bled out'}. They will wash up at the lighthouse.`, '', 5); break; }
     case 'resp': { const p = PL.get(e.id); if (p) { p.dead = false; p.down = false; p.drowned = false; } if (e.id === me) { Object.assign(P, {dead: false, down: false, sw: 0, ob: 0, seat: 0, x: e.x, y: 2, z: e.z, vy: 0, hd: -1, bat: Math.max(P.bat, .6), drowned: false}); showMsg('You wash up at the lighthouse, coughing seawater.', '', 4); } break; }
     case 'deepw': if (e.id === me) { Snd.gasp(); showMsg('Your arms are getting heavy. Get out of the water.', '', 4); } break;
@@ -8008,6 +8008,32 @@ function hostAp(dt) { const a = B.ap; if (!a) return; if (B.sink > 0 || (HC().pl
 
 // sightlines from the wheel: the trawler and the tug had bows so high you could not see the sea ahead
 for (const i of [1, 10]) if (HULLS[i].form) HULLS[i].form.sheer = 1.0;
+
+// ===== safer flying, quicker death =====
+// In the air you can't stumble out of a plane: walking off an edge or losing the deck snaps you back aboard.
+// Space at the side door jumps out on purpose. A long fall kills you on impact, and holding Z gives up (respawn).
+const flyAir = () => !!HC().plane && -(B.dep || 0) > .5;
+function flyFloor(x, z, y) { const f = floorAt(x, z, y + 2, false); return f && f.s.k === 'boat' ? f.y : null; }
+{ const f0 = stepPlayer; stepPlayer = function (dt) {
+  if (!P || P.dead) return f0.apply(this, arguments);
+  G.bailT = Math.max(0, (G.bailT || 0) - dt); G.flyMsgT = Math.max(0, (G.flyMsgT || 0) - dt);
+  const guard = P.ob && !P.seat && flyAir() && !G.bailT, bl = P.ob ? P.bl.slice() : null, y0 = P.y, vy0 = P.vy || 0, sw0 = P.sw;
+  const r = f0.apply(this, arguments);
+  if (guard && !P.ob && !P.dead && !G.bailT) { P.ob = 1; P.sw = 0; P.vx = P.vz = 0; P.vy = 0; P.climb = null; const [wx, wz] = bL2W(bl[0], bl[1]); const fy = flyFloor(wx, wz, y0); P.bl = bl; P.x = wx; P.z = wz; P.y = fy != null ? fy : BDECK.y;
+    if (!G.flyMsgT) { G.flyMsgT = 6; showMsg('You grab a handhold.', 'Space at the side door to jump out', 2); } }
+  if (!P.dead && !G.fallSent) { const hitW = P.sw && !sw0 && vy0 < -26, hitG = !P.sw && P.vy === 0 && vy0 < -24 && P.y < y0 + .5;
+    if (hitW || hitG) { G.fallSent = 1; Snd.splash(); $('flash').style.background = '#000'; $('flash').style.opacity = 1; setTimeout(() => { $('flash').style.opacity = 0; setTimeout(() => $('flash').style.background = '', 600); }, 1200); act({a: 'fall'}); } }
+  if (!P.dead && P.vy > -5) G.fallSent = 0;
+  return r; }; }
+addEventListener('keydown', e => { if (!G.on || !P || P.dead || e.repeat || e.code !== 'Space' || P.seat || !P.ob || !flyAir() || anyPanel()) return;
+  const [lx, lz] = P.bl, hw = BG.hw || 1.5; if (Math.abs(lx) < hw - 1.3) { if (!G.flyMsgT) { G.flyMsgT = 4; showMsg("Move to the side door to jump out", "", 2); } return; }
+  const sd = lx >= 0 ? 1 : -1, [wx, wz] = bL2W(sd * (hw + 1.6), lz); G.bailT = 3; P.ob = 0; P.climb = null; P.x = wx; P.z = wz; P.y += -(B.dep || 0); P.vy = 2; P.vx = P.vz = 0; showMsg('You jump out!', `${Math.round(-(B.dep || 0))} m to the water`, 2); });
+{ const f0 = hostAct; hostAct = function (id, m) { if (m && m.a === 'fall') { const p = PL.get(id); if (p && !p.dead) { p.dead = true; p.down = false; p.deadT = 0; p.sw = 0; dropCarry(p); emit({k: 'dead', id: p.id, drown: m.g ? 6 : 5}); } return; } return f0.apply(this, arguments); }; }
+// hold Z to give up
+{ const f0 = hud; hud = function () { const r = f0.apply(this, arguments); if (!P) return r; let el = G.guEl; if (!el) { el = G.guEl = document.createElement('div'); el.style.cssText = 'position:absolute;left:50%;bottom:22%;transform:translateX(-50%);font:bold 14px ui-monospace,monospace;color:#ffd0c8;text-shadow:0 1px 3px #000;text-align:center;pointer-events:none'; $('hud').appendChild(el); }
+  let t = ''; if (!P.dead && !P.seat) { if (G.guT > 0) t = `Giving up… ${'█'.repeat(Math.ceil(G.guT / .15))}${'░'.repeat(Math.max(0, 10 - Math.ceil(G.guT / .15)))}`; else if ((P.sw && P.deep) || (!P.ob && P.vy < -12)) t = '<kbd>Z</kbd> hold to give up'; }
+  if (el._t !== t) { el._t = t; el.innerHTML = t; } return r; }; }
+{ const f0 = stepPlayer; stepPlayer = function (dt) { const r = f0.apply(this, arguments); if (P && !P.dead && !P.seat && K.KeyZ && !anyPanel()) { G.guT = (G.guT || 0) + dt; if (G.guT > 1.5 && !G.guSent) { G.guSent = 1; act({a: 'fall', g: 1}); } } else { G.guT = 0; if (P && !P.dead) G.guSent = 0; } return r; }; }
 
 menuInit();
 setTimeout(() => { buildWorld(); requestAnimationFrame(frame); }, 30);
