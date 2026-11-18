@@ -78,5 +78,28 @@ Read `CLAUDE.md` first (shared rules). Split out of it on 17 Nov 2026; keep this
    - Equippable relics with effects (limited slots).
    - Appraisal of unknown items.
    - Daily-reset spots plus one-time hand-placed treasures and first-clear rewards, all saved.
+13. **Monster designs picked (horror rules: sound before sight, rare glimpses, hiding mechanics, being caught has consequences, darkness and a torch with a limited battery):**
+   - **The Concierge (resort):**
+     - At the start, the desk bell rings and a key with your name is waiting.
+     - Lights come on ahead of you, the lift opens on every floor, and a warped wedding song plays.
+     - It is stooped and too tall, with a lit stitched smile, and moves only when unseen; shoes on tile, then breathing at your hiding door.
+     - If it catches you, you wake tucked in a hotel bed until a crewmate rescues you.
+   - **The Stowaway (container ship):**
+     - Containers make sounds: scratching, breathing, a crying child.
+     - It is pale and boneless and crawls on the ceiling. The torch hurts it, but its warmth draws it.
+     - Your air ticks down and the opened doors are behind you.
+     - The torch flickers within 10 m and dies when it is right behind you.
+   - **Magma eels (volcano):**
+     - They are seen only as vent-glow flickers.
+     - Warnings come as boiling water and a hull rumble.
+     - A giant eel wraps the sub and cooks the hull; blow the ballast or drop a decoy.
+     - Minerals sit at the vent mouths.
+14. **Small-island events (each island rolls one, plus a chance of random jumpscares):**
+   - **Gulls:** the flock steals loot from your sack; chase them or shoot them to get it back.
+   - **The Sand Mouth:** a round hole with a ladder deeper than the island; something climbs up.
+   - **The Feast:** a beach table set for dinner with rotting food; sit down or loot it and things come out from under the cloth.
+   - **The Lighthouse Hanger:** the light on a rock is a lantern held by a hanged body, which lifts its head when you reach the top.
+   - **The Tent:** a zipped tent, breathing and a warm lantern. It is empty inside, and the thing stands where the tent's shadow was; then a chase to the boat.
+   - **The Mourners:** a ring of figures facing away round a fresh grave, one fewer each time you look. The grave has your name on the lid, and the missing ones are behind you.
 
 Still deferred from round 2 (see the round-2 plan): selling and shopping aboard the claimed Serenade, a shipyard and job boards at Northwatch and on piers, casino prize counter and extra games, a live menu background, a music score and audio buses with Music/Effects sliders, more sound effects and ambience, underwater light shafts and an island rock/sand shader, more GPU performance work, host migration and touch controls. Round 2 shipped with minimal testing at the owner's request: online play of the new features (casino tables, tender, ghost ship and maydays, job board) has not been tried with two players.
