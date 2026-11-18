@@ -29,7 +29,7 @@ const hexS = c => '#' + c.toString(16).padStart(6, '0');
 
 // ---------------- net (jjfanwars relay)
 const RELAY_URL = 'wss://jjfanwars-relay.businessautomationvic.workers.dev';
-const GAME_V = 41;
+const GAME_V = 42;
 const Net = {
   tag: '[Rig]', role: 'solo', ws: null, peers: new Map(), code: '', relayT: {pose: 1}, id: '', name: '', handlers: {}, retry: 0, started: false,
   enc: new TextEncoder(), dec: new TextDecoder(),
@@ -2603,7 +2603,7 @@ function hostStep(dt) {
   G.deepT = (G.deepT ?? 40) - dt;
   // it only comes for a crew that is up on (or right beside) the boat: divers down below are the gulpers' business
   const crewUp = alive().some(p => (p.ob && !(HC().sub && (B.dep || 0) > 6)) || (!p.ob && Math.hypot(p.x - B.x, p.z - B.z) < 40 && !(p.sw && (p.dv || 0) > 3)));
-  if (!G.enc && B.sink <= 0 && homeD > 280 && !nearLand && G.deepT <= 0) { G.deepT = 20 + CR() * 25; if (crewUp && CR() < (D.deep + .3 * G.storm + .25 * TOD.night) * .75 * dK) { const a = CR() * TAU; G.enc = {t: 9, L: 9, a, el: 0, hp: 90, t0: G.t}; emit({k: 'circle', a, L: 9}); } }
+  if (!G.enc && B.sink <= 0 && homeD > 280 && !nearLand && G.deepT <= 0) { G.deepT = 20 + CR() * 25; if (crewUp && !G.stk && CR() < (D.deep + .3 * G.storm + .25 * TOD.night) * .75 * dK * levHeat()) { const a = CR() * TAU; levStalkStart(a); } }
   if (G.enc) {
     G.enc.t -= dt; G.enc.el = (G.enc.el || 0) + dt;
     // a fresh flare in the sea (or burning on deck) close to the hull drives it off, away from the light
@@ -7398,6 +7398,61 @@ addEventListener('keydown', e => { if (!G.rov || !G.on) return; if (e.code === '
   el.textContent = `ROV\nDEPTH ${(-R.y).toFixed(0)} m\nTETHER ${Math.hypot(R.x - bx, R.z - bz).toFixed(0)}/140 m\n${near ? (nd < 4.5 ? 'E: GRAB ' + (NAMES[near.kind] || near.kind).toUpperCase() : 'CONTACT ' + nd.toFixed(0) + ' m') : 'NO CONTACT'}\nF: back on deck`; return r; }; }
 { const f0 = hud; hud = function () { const r = f0.apply(this, arguments); if (NB.rovEl) NB.rovEl.style.display = G.rov ? 'block' : 'none'; return r; }; }
 { const f0 = startGame; startGame = function () { if (G.rov) rovStop(); NB.vy = 0; return f0.apply(this, arguments); }; }
+
+// ---------------- the deep, scarier: it stalks first (a ridge of spines circling closer, a heartbeat, the fish stop biting, the lights flicker), it can snatch a crew member
+// off the deck and drag them under, it remembers (scars from your guns, a blinded eye after you beat it, angrier each time) and it learns your routes (it hunts where you sail most).
+const LVX = {ridge: null, eyes: null, lure: null, base: null, scarK: -1, hb: 0};
+function levMem() { const S = isHost() ? (G.stat || {}) : {}; return isHost() ? (S.lev || (S.lev = {n: 0, h: 0, f: 0, k: 0})) : (G.lvS || {n: 0, h: 0, f: 0, k: 0}); }
+function levHeat() { const S = G.stat; if (!S) return 1; const H = S.lvh || {}, k = Math.floor(B.x / 400) + ',' + Math.floor(B.z / 400); return 1 + Math.min(1.2, (H[k] || 0) / 300) + (G.redTide ? 1 : 0); }
+function levStalkStart(a) { const T = 20 + CR() * 14; G.stk = {a, t: 0, T}; levMem().n++; const S = G.stat, H = S && S.lvh, k = Math.floor(B.x / 400) + ',' + Math.floor(B.z / 400); emit({k: 'stalk', a: +a.toFixed(3), T: +T.toFixed(1), hot: H && (H[k] || 0) > 220 ? 1 : 0}); }
+{ const f0 = hostStep; hostStep = function (dt) { const r = f0.apply(this, arguments); if (!G.on) return r; const S = G.stat;
+  if (S && Math.abs(B.v) > 1.5 && Math.hypot(B.x - HOME.x, B.z - HOME.z) > 280) { const H = S.lvh || (S.lvh = {}), k = Math.floor(B.x / 400) + ',' + Math.floor(B.z / 400); H[k] = Math.min(600, (H[k] || 0) + dt); }
+  const K = G.stk; if (K) { K.t += dt; const ang = K.a + K.t * .1, R = mix(160, 38, smooth(clamp(K.t / K.T, 0, 1))), x = B.x + Math.sin(ang) * R, z = B.z + Math.cos(ang) * R;
+    const nearLand = OBST.some(o => o.c && o.r > 5 && Math.hypot(B.x - o.x, B.z - o.z) < o.r + 70), up = alive().some(p => p.ob || Math.hypot(p.x - B.x, p.z - B.z) < 40), fl = G.flares.find(f => f.t > 0 && (f.sea || f.surf) && Math.hypot(f.x - x, f.z - z) < 45);
+    if (fl || nearLand || !up || B.sink > 0 || HC().nodeep) { G.stk = null; G.deepT = fl ? 150 + CR() * 90 : 40; if (fl) levMem().f++; emit({k: 'stalkgone', fl: fl ? 1 : 0}); }
+    else if (K.t >= K.T) { G.stk = null; const M2 = levMem(), hp = Math.round(90 * Math.min(2, 1 + .25 * M2.k)); G.enc = {t: 9, L: 9, a: ang, el: 0, hp, t0: G.t}; emit({k: 'circle', a: ang, L: 9}); } }
+  return r; }; }
+// damage it takes is remembered as scars; a kill blinds an eye and makes it tougher next time
+{ const f0 = emit; emit = function (e) { const r = f0.apply(this, arguments); if (!isHost() || !e) return r; const M2 = G.stat ? levMem() : null;
+  if (e.k === 'dhit' && M2) M2.h++; if (e.k === 'deepgone' && e.dead && M2) M2.k++;
+  if (e.k === 'ram' && G.on) { const cand = alive().filter(p => p.ob && !p.seat && !p.down && !(HC().big) && !(HC().sub)); if (cand.length && CR() < .3) { const p = cand[Math.floor(CR() * cand.length)]; f0({k: 'snatch', id: p.id}); } }
+  return r; }; }
+{ const f0 = packSnap; packSnap = function () { const s = f0.apply(this, arguments), n = performance.now(); if (G.stat && n - (LVX.sentT || 0) > 3000) { LVX.sentT = n; const M2 = levMem(); s.lv = [M2.n, M2.h, M2.f, M2.k]; } return s; }; }
+{ const f0 = applySnap; applySnap = function (s) { const r = f0.apply(this, arguments); if (s.lv) G.lvS = {n: s.lv[0], h: s.lv[1], f: s.lv[2], k: s.lv[3]}; return r; }; }
+// client events
+{ const f0 = applyEv; applyEv = function (e) { const r = f0.apply(this, arguments), me = myId(), near = () => !!P && (P.ob || Math.hypot(cam.position.x - B.x, cam.position.z - B.z) < BG.L * .5 + 60);
+  if (e.k === 'stalk') { G.stkC = {a: e.a, T: e.T, t: 0, m: 0}; if (near()) { showMsg(e.hot ? 'The water goes still. It knows this route.' : 'The water goes very still.', '', 3.5); tone(41, .14, 3, 'sine'); } }
+  else if (e.k === 'stalkgone') { if (G.stkC && near()) showMsg(e.fl ? 'The ridge sinks away from the red light.' : 'The ridge slides under and is gone. For now.', '', 3); G.stkC = null; }
+  else if (e.k === 'circle') { G.stkC = null; const M2 = levMem(); if (near() && M2.k > 0 && !LVX.backT) { LVX.backT = 1; setTimeout(() => showMsg(M2.k > 1 ? 'It is back again. Bigger. Angrier. It has not forgotten you.' : 'It is back. One eye milky and blind. It remembers you.', '', 4), 1800); } }
+  else if (e.k === 'deepgone') LVX.backT = 0;
+  else if (e.k === 'snatch') { const p = PL.get(e.id); if (e.id === me && P && !P.dead) { const [lx] = P.bl, sd = lx >= 0 ? 1 : -1, [wx, wz] = bL2W((BG.hw + 4) * sd, P.bl[1]); P.ob = 0; P.seat = 0; P.x = wx; P.z = wz; P.y = 0; P.sw = 1; P.dv = 2; P.vy = 0; P.climb = null;
+      LVX.drag = 2.6; G.shake = 2; $('flash').style.background = '#600'; $('flash').style.opacity = .85; setTimeout(() => { $('flash').style.opacity = 0; setTimeout(() => $('flash').style.background = '', 400); }, 300); Snd.scream(); Snd.bubbles(); showMsg('IT HAS YOU. Mash <kbd>Space</kbd> to tear free and swim up!', '', 3.5); }
+    else if (p && near()) { showMsg(`It snatched ${p.name} off the deck!`, '', 3.5); Snd.hurt(at(p.rx, p.ry, p.rz, 10)); } }
+  return r; }; }
+// being dragged under: you sink fast unless you fight it (Space)
+{ const f0 = stepPlayer; stepPlayer = function (dt) { const r = f0.apply(this, arguments); if (LVX.drag > 0 && P) { LVX.drag -= dt; if (K.Space) LVX.drag -= dt * 1.6; P.sw = 1; P.dv = Math.min(18, (P.dv || 0) + dt * 6); P.air = Math.max(0, (P.air ?? 1) - dt * .12); G.shake = Math.max(G.shake || 0, .5); if (LVX.drag <= 0) showMsg('You tear free. Swim for the boat!', '', 2.5); } return r; }; }
+// the fish stop biting while it stalks
+{ const f0 = stepGear; stepGear = function (dt) { if (G.stkC && F.st === 'wait') F.t = Math.max(F.t, 1.5); return f0.apply(this, arguments); }; }
+// visuals: the circling ridge (spines in and out of the surface with a wake), eyes under the water at night, the lure on its head, scars on its skin
+function levStalkFrame(dt) { const s = G.stkC; if (!LVX.ridge) { const bone = new THREE.MeshStandardMaterial({color: 0x15181a, roughness: .45}); LVX.ridge = new THREE.Group(); for (let i = 0; i < 7; i++) { const c = new THREE.Mesh(new THREE.ConeGeometry(.3 - i * .025, 1.9 - i * .18, 5), bone); c.position.z = i * 2.2; c.rotation.x = -.5; LVX.ridge.add(c); } scene.add(LVX.ridge);
+    LVX.eyes = new THREE.Group(); for (const sx of [-1.1, 1.1]) { const e = new THREE.Sprite(new THREE.SpriteMaterial({map: TX.glow, color: 0xffa020, transparent: true, opacity: 0, depthTest: false, depthWrite: false, blending: THREE.AdditiveBlending})); e.position.x = sx; e.scale.setScalar(1.6); LVX.eyes.add(e); } scene.add(LVX.eyes);
+    LVX.wk = []; for (let i = 0; i < 4; i++) { const m = new THREE.Mesh(new THREE.RingGeometry(.7, 1, 24), new THREE.MeshBasicMaterial({color: 0xffffff, transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide})); m.rotation.x = -PI / 2; scene.add(m); LVX.wk.push(m); } }
+  const on = !!s && !!P; LVX.ridge.visible = on; LVX.eyes.visible = on; for (const m of LVX.wk) m.visible = on; if (!on) return; s.t += dt;
+  const ang = s.a + s.t * .1, R = mix(160, 38, smooth(clamp(s.t / s.T, 0, 1))), x = B.x + Math.sin(ang) * R, z = B.z + Math.cos(ang) * R, surf = Math.sin(s.t * .55) * .5 + .5, ry = waveH(x, z, G.wt) - 2.2 + surf * 2.4;
+  LVX.ridge.position.set(x, ry, z); LVX.ridge.rotation.y = ang + PI; LVX.wk.forEach((m, i) => { const u = (G.wt * .6 + i / 4) % 1; m.position.set(x - Math.cos(ang) * i * 2, waveH(x, z, G.wt) + .05, z + Math.sin(ang) * i * 2); m.scale.setScalar(1 + u * 5); m.material.opacity = (1 - u) * .35 * surf; });
+  const ex = x + Math.cos(ang) * 4, ez = z - Math.sin(ang) * 4; LVX.eyes.position.set(ex, -.8, ez); LVX.eyes.rotation.y = ang; for (const e of LVX.eyes.children) e.material.opacity = (TOD.night * .9 + .1) * (.5 + .5 * Math.sin(G.wt * 1.3)) * (R < 90 ? 1 : .3);
+  // heartbeat speeds up as it closes in; the odd groan through the hull; the boat's lights stutter when it is close
+  const near = P.ob || Math.hypot(P.x - B.x, P.z - B.z) < 60; LVX.hb -= dt; if (near && LVX.hb <= 0) { LVX.hb = mix(1.8, .55, clamp(1 - R / 160, 0, 1)); tone(46, .16, .25, 'sine'); setTimeout(() => tone(40, .12, .3, 'sine'), 180); }
+  if (near && Math.random() < dt * .12) tone(110 + Math.random() * 30, .05, 2.2, 'sawtooth', null, 55);
+  if (near && !s.m && s.t > s.T * .45) { s.m = 1; showMsg('Something big on the sounder. Getting closer.', '', 3); } if (near && R < 70 && boatL) boatL.intensity *= Math.random() < .25 ? .1 : 1; }
+function levScars() { if (!LEV.body) return; const M2 = levMem(), k = Math.min(10, Math.floor((M2.h || 0) / 6)) + (M2.k || 0) * 2; if (k === LVX.scarK) return; LVX.scarK = k; const col = LEV.body.geometry.attributes.color, a = col.array;
+  if (!LVX.base) LVX.base = a.slice(); a.set(LVX.base); const rng = mulberry(9173), {NS, NR} = LEV;
+  for (let q = 0; q < k; q++) { const i0 = 3 + Math.floor(rng() * (NS - 10)), j0 = Math.floor(rng() * NR), len = 3 + Math.floor(rng() * 5); for (let i = i0; i < i0 + len && i < NS; i++) { const j = (j0 + (i - i0)) % NR, c = (i * NR + j) * 3; a[c] = .32; a[c + 1] = .27; a[c + 2] = .26; } }
+  col.needsUpdate = true; if (M2.k > 0 && LEV.head) { let n = 0; LEV.head.traverse(o => { if (o.isMesh && o.material.isMeshBasicMaterial && o.position.x < 0 && n < 3) { o.material = new THREE.MeshBasicMaterial({color: 0x9aa0a0}); n++; } }); }
+  if (!LVX.lure && LEV.head) { const st = new THREE.Mesh(new THREE.CylinderGeometry(.04, .07, 2.6, 6), new THREE.MeshStandardMaterial({color: 0x101416, roughness: .5})); st.position.set(0, 1.8, .9); st.rotation.x = .6; LEV.head.add(st);
+    LVX.lure = new THREE.Mesh(new THREE.SphereGeometry(.28, 12, 10), new THREE.MeshBasicMaterial({color: new THREE.Color().setRGB(2.5, 4, 3)})); LVX.lure.position.set(0, 2.9, 1.8); LEV.head.add(LVX.lure); } }
+{ const f0 = hud; hud = function () { const r = f0.apply(this, arguments); try { const now = performance.now(), dt = Math.min(.1, (now - (LVX.ft || now)) / 1000); LVX.ft = now; levStalkFrame(dt); if ((LVX.sc = (LVX.sc || 0) - dt) <= 0) { LVX.sc = 2; levScars(); } if (LVX.lure) LVX.lure.scale.setScalar(.8 + Math.sin(G.wt * 3) * .25); } catch (e) { if (!LVX.err) { LVX.err = 1; console.warn(e); } } return r; }; }
+{ const f0 = startGame; startGame = function () { G.stk = null; G.stkC = null; LVX.drag = 0; LVX.scarK = -1; return f0.apply(this, arguments); }; }
 
 menuInit();
 setTimeout(() => { buildWorld(); requestAnimationFrame(frame); }, 30);
