@@ -182,7 +182,7 @@ function startStage(cfg, role, solo, myCar, seats) {
     look.yaw = 0; look.pitch = role === 'nav' ? -0.14 : -0.1; look.map = false; G.sw = [1, 1, 0, 0, /dusk|evening|night|storm/i.test(STAGES[cfg.stage].tod) ? 1 : 0, STAGES[cfg.stage].tod === 'night' ? 1 : 0];
     $('role').textContent = CARS[mdl(myCar)].name.toUpperCase() + ' · ' + (solo ? 'SOLO PRACTICE · AUTO CO-DRIVER' : (role === 'drv' ? 'DRIVER' : 'NAVIGATOR') + ' · ' + CAR_NAME[myCar].toUpperCase() + ' CAR' + (G.autoNav ? ' · AUTO CO-DRIVER' : '')) + ' · ' + STAGES[cfg.stage].name.toUpperCase(); msg('pos', '');
     if (Champ.run) $('role').textContent = Champ.run.c.name.toUpperCase() + ' · STAGE ' + (Champ.run.i + 1) + ' / ' + Champ.run.c.st.length + ' · ' + STAGES[cfg.stage].name.toUpperCase();
-    $('tip').innerHTML = role === 'drv' ? 'W/S throttle · brake, A/D steer, Space handbrake, R recover (+' + (PHYS.easy ? 3 : 5) + ' s)' + (PHYS.mouseSteer ? ', MOUSE turns the wheel, hold right mouse to look around' : '') + (PHYS.manual ? ', E/Q shift up/down' : '') + ', V chase cam, G ghost, Esc pause · 1-6 or click dash switches · T horn · Shift nitro (muscle car) · mouse looks' : 'Hold <b>right mouse</b> or <b>Tab</b> for the map · callouts: A/D + 1-6, J jump, C crest, L log, K keep middle, F flat, B brake';
+    $('tip').innerHTML = role === 'drv' ? 'W/S throttle · brake, A/D steer, Space handbrake, R recover (+' + (PHYS.easy ? 3 : 5) + ' s)' + (PHYS.mouseSteer ? ', MOUSE turns the wheel, hold right mouse to look around' : '') + (PHYS.manual ? ', E/Q shift up/down' : '') + ', V chase cam, G ghost, Esc pause · 1-6 or click dash switches · T horn' + (CARS[mdl(myCar)].nitro ? ' · Shift nitro' : '') + (PHYS.mouseSteer ? '' : ' · mouse looks') : 'Hold <b>right mouse</b> or <b>Tab</b> for the map · callouts: A/D + 1-6, J jump, C crest, L log, K keep middle, F flat, B brake';
     $('spd').style.display = role === 'drv' ? '' : 'none'; $('dmg').style.display = role === 'drv' ? '' : 'none'; $('call').classList.remove('on');
     bigMsg(''); msg('split', ''); $('fade').style.opacity = 0; $('lockmsg').classList.toggle('hidden', !!document.pointerLockElement); $('tip').style.opacity = 1;
     G.bestRec = bestOf(); buildProg(); ghostSetup(); CH.init = false; $('style').innerHTML = ''; $('cross').style.display = G.chase && G.role === 'drv' ? 'none' : '';
@@ -245,10 +245,26 @@ addEventListener('keydown', e => {
   if (e.code === 'Backspace' && !Champ.run && (G.solo || Net.role === 'host')) { e.preventDefault(); restart(); }
   if (e.code === 'KeyN') G.noGrades = !G.noGrades;
   if (e.code === 'KeyT' && G.role === 'drv') { if (CAR.horn === 'jingle') Sfx.jingle(); else Sfx.horn(); }
-  if (e.code === 'KeyV' && G.role === 'drv') { G.chase = !G.chase; CH.init = false; $('cross').style.display = G.chase ? 'none' : ''; try { localStorage.setItem('pn-cam', G.chase ? 'chase' : 'in'); } catch (x) {} say(G.chase ? 'CHASE CAM' : 'COCKPIT CAM', '', 900); }
+  if (e.code === 'KeyV' && G.role === 'drv') toggleChase();
+  if (!$('fin').classList.contains('hidden')) { if (e.code === 'Enter' || e.code === 'NumpadEnter') { e.preventDefault(); finAct('go'); } else if (e.code === 'KeyN') finAct('next'); else if (e.code === 'KeyM') finAct('menu'); }
   if (e.code === 'KeyG' && G.role === 'drv') { G.showGhost = G.showGhost === false; say(G.ghost ? (G.showGhost ? 'GHOST ON' : 'GHOST OFF') : 'NO GHOST YET: SET A BEST TIME', '', 1200); }
 });
 addEventListener('keyup', e => KEYS.delete(e.code));
+function toggleChase() { G.chase = !G.chase; CH.init = false; $('cross').style.display = G.chase ? 'none' : ''; try { localStorage.setItem('pn-cam', G.chase ? 'chase' : 'in'); } catch (x) {} say(G.chase ? 'CHASE CAM' : 'COCKPIT CAM', '', 900); }
+// finish card shortcuts: Enter / pad A = the main button (again, or next in a championship), N next, M menu
+const shown = id => !$(id).classList.contains('hidden');
+function finAct(k) { if (!shown('fin')) return; const b = k === 'next' ? 'bNext' : k === 'menu' ? 'bMenu' : shown('bAgain') ? 'bAgain' : 'bNext'; if (shown(b)) $(b).click(); }
+// gamepad Start pauses / resumes, Back swaps the camera, A presses the finish card's main button
+function padPoll() {
+  const gp = pad !== null && navigator.getGamepads ? navigator.getGamepads()[pad] : null; if (!gp) return;
+  const was = G.padB || (G.padB = {}), b = k => !!(gp.buttons[k] && gp.buttons[k].pressed), edge = k => b(k) && !was[k];
+  if (edge(9)) { if (shown('pause')) pauseClose(); else if (!shown('fin')) { try { document.exitPointerLock(); } catch (x) {} pauseOpen(); } }
+  if (edge(8) && G.role === 'drv' && !shown('pause')) toggleChase();
+  if (edge(0)) { if (shown('pause')) pauseClose(); else finAct('go'); }
+  for (const k of [0, 8, 9]) was[k] = b(k);
+}
+// tabbing away from a solo run stops the clock
+document.addEventListener('visibilitychange', () => { if (document.hidden && G.on && G.solo) pauseOpen(); });
 addEventListener('blur', () => KEYS.clear());
 cvs.addEventListener('mousedown', e => { if (!G.on) return; Sfx.start(); if (document.pointerLockElement && e.button === 0) { const k = aimedSwitch(); if (k >= 0) flipSwitch(k); } if (!document.pointerLockElement) { if (e.button === 0 && freeSw >= 0) { flipSwitch(freeSw); return; } try { cvs.requestPointerLock(); } catch (x) {} } if (e.button === 2 && G.role === 'nav') look.map = true; if (e.button === 2 && G.role === 'drv') G.lookHeld = true; });
 addEventListener('mouseup', e => { if (e.button === 2 && G.role === 'nav' && !KEYS.has('Tab')) look.map = false; if (e.button === 2) G.lookHeld = false; });
@@ -311,7 +327,7 @@ const botClock = () => G.phase === 'fin' ? G.final - G.pen + G.finT : G.t;
 function driverStep(dt) {
   G.S.clock = G.t;
   if (G.bots && G.bots.length) Bots.step(dt, G.phase, botClock(), G.meAdapt);
-  const c = G.car, i = G.phase === 'count' ? { steer: inp.steer, thr: 0, brk: 1, hb: 1 } : readInput(dt);
+  const c = G.car, i0 = G.phase === 'count' ? { steer: inp.steer, thr: 0, brk: 1, hb: 1 } : readInput(dt), i = G.phase === 'fin' ? { steer: i0.steer, thr: 0, brk: c.speed > 0.8 ? 0.55 : 0, hb: c.speed < 3 ? 1 : 0 } : i0; // after the finish line the car brakes to a stop by itself
   if (G.phase === 'count') readInput(dt);
   if (G.phase !== 'count') { c.step(dt, i); if (G.rivals && G.rivals.length) c.bump(G.rivals); } else { c.step(dt, { steer: 0, thr: KEYS.has('KeyW') ? 1 : 0, brk: 0, hb: 1 }); c.v.multiplyScalar(0); c.place(G.grid.s, G.grid.lat); c.rpm = KEYS.has('KeyW') ? 6500 : CAR.idle; }
 }
@@ -319,7 +335,7 @@ function stagePhase(dt) {
   if (G.phase === 'count') {
     G.t += dt; const n = Math.ceil(-G.t);
     if (n !== G.lastBeep && n >= 1 && n <= 3) { G.lastBeep = n; Sfx.beep(false); bigMsg(String(n)); }
-    if (G.t >= 0) { G.phase = 'run'; G.t = 0; Sfx.beep(true); bigMsg('GO'); setTimeout(() => G.phase === 'run' && msg('big', ''), 900); if (G.autoNav) Notes.auto(G.auto, G.notes, G.car.prog, 0, (t, w) => say(t, w)); }
+    if (G.t >= 0) { G.phase = 'run'; G.t = 0; Sfx.beep(true); bigMsg('GO'); setTimeout(() => G.phase === 'run' && msg('big', ''), 900); setTimeout(() => { if (G.on && G.role === 'drv') $('tip').style.opacity = 0; }, 7000); if (G.autoNav) Notes.auto(G.auto, G.notes, G.car.prog, 0, (t, w) => say(t, w)); }
   } else if (G.phase === 'run') {
     G.t += dt; const c = G.car;
     if (G.nextSplit < 2 && c.prog >= G.splitS[G.nextSplit]) { G.splits.push(G.t + G.pen); const best = bestOf(); const ref = best && best.splits ? best.splits[G.nextSplit] : null; { const d = ref ? G.t + G.pen - ref : null; $('split').innerHTML = 'SPLIT ' + (G.nextSplit + 1) + ' &nbsp;' + fmtT(G.t + G.pen) + (d !== null ? ' &nbsp;<span class="' + (d >= 0 ? 'up' : 'dn') + '">' + (d >= 0 ? '+' : '\u2212') + Math.abs(d).toFixed(1) + '</span>' : ''); } setTimeout(() => msg('split', ''), 4000); G.nextSplit++; }
@@ -353,6 +369,7 @@ function showFinish() { $('call').classList.remove('on'); clearTimeout(G.callHid
   msg('finMsg', ctl ? '' : 'Waiting for the host to restart...');
   $('bNext').textContent = 'Next stage'; $('bMenu').textContent = 'Menu';
   if (Champ.run && G.solo) champFinish();
+  { const k = [], kb = (a, t) => k.push('<b>' + a + '</b> ' + t.toLowerCase()); if (shown('bAgain') || shown('bNext')) kb('Enter', (shown('bAgain') ? $('bAgain') : $('bNext')).textContent); if (shown('bAgain') && shown('bNext')) kb('N', 'next stage'); kb('M', $('bMenu').textContent); $('finKeys').innerHTML = k.join(' &nbsp;·&nbsp; '); }
   $('fin').classList.remove('hidden');
 }
 function resultsTable(prog) {
@@ -388,6 +405,7 @@ const fwdV = new THREE.Vector3();
 function frame(now) {
   requestAnimationFrame(frame);
   if (!G.on) return;
+  padPoll();
   let dt = clamp((now - G.lastFrame) / 1000, 0, 0.1); G.lastFrame = now; // rAF time can predate a stage start: never step backwards
   if (G.paused) return;
   let st;
@@ -418,7 +436,7 @@ function frame(now) {
     for (const c of G.cars) {
       if (c === G.myCar) continue; const B = G.bufs[c], v = G.views[c], tg = G.tags[c], s2 = interp(B);
       if (!s2) { v.g.visible = false; tg.visible = false; continue; }
-      v.g.visible = true; v.update(s2, dt, 'x', look, null); tg.visible = s2.pos.distanceTo(st.pos) < 140; tg.position.copy(s2.pos).y += 1.9;
+      v.g.visible = true; v.update(s2, dt, 'x', look, null); tagFade(tg, s2.pos.distanceTo(World.cam.position)); tg.position.copy(s2.pos).y += 1.9;
       const L = B[B.length - 1], age = Math.min(0.3, (now2 - L.rt) / 1000); riv.push({ pos: new THREE.Vector3(L.p[0] + L.v[0] * age, L.p[1] + L.v[1] * age, L.p[2] + L.v[2] * age), q: new THREE.Quaternion(...L.q).normalize(), vel: new THREE.Vector3(...L.v) });
       if (L.fin) G.results[c] = L.fin;
     }
@@ -470,6 +488,8 @@ function frame(now) {
   hud(st);
   // spectators cheer as you pass
   for (const cr of World.crowds || []) { const d = Math.hypot(cr.x - st.pos.x, cr.z - st.pos.z); if (d < 40 && !cr.cheered) { cr.cheered = true; Sfx.cheer(Math.min(1, st.speed / 25)); } if (d < 60) World.wave(cr, now / 1000); }
+  // facing back down the stage while driving forward: warn (again every 3 s until turned round)
+  if (G.role === 'drv' && G.phase === 'run') { const rp = G.S.at(G.car.prog), f = fwdV.set(0, 0, 1).applyQuaternion(st.q), dot = f.x * Math.sin(rp.h) + f.z * Math.cos(rp.h); G.wrongT = st.speedF > 4 && dot < -0.5 ? (G.wrongT || 0) + dt : dot > 0 ? 0 : G.wrongT || 0; if (G.wrongT > 1.2) { G.wrongT = -1.8; say('WRONG WAY!', 'wrong way', 1500); } }
   // stuck or upside down: tell the driver how to recover
   if (G.role === 'drv' && G.phase === 'run') { const up = fwdV.set(0, 1, 0).applyQuaternion(st.q).y; G.stuckT = (up < 0.35 || G.car.below || (st.speed < 1.2 && G.car.roadD > ROAD_HW + 1)) ? (G.stuckT || 0) + dt : 0; if (G.stuckT > (PHYS.easy ? 1 : 1.5) && !G.stuckSaid) { G.stuckSaid = true; say('PRESS R TO RECOVER', '', 2500); } if (G.stuckT > (PHYS.easy ? 2.5 : 4)) { G.stuckT = 0; recover(); } if (G.stuckT === 0) G.stuckSaid = false; }
   G.hurt = Math.max(0, (G.hurt || 0) - dt * 1.2);
@@ -619,7 +639,7 @@ function ghostSetup() {
   if (!d || !d.p || d.p.length < 10) return;
   const v = new CarView(World.scene, { color: 0xbfd6ff, remote: true, look: CARS[clamp(d.car | 0, 0, CARS.length - 1)].look });
   for (const k of ['drv', 'nav']) if (v.crew && v.crew[k]) v.crew[k].g.visible = false;
-  v.g.traverse(o => { if (o.isMesh) { o.material = o.material.clone(); o.material.transparent = true; o.material.opacity = 0.3; o.material.depthWrite = false; o.castShadow = false; } if (o.isLight) o.intensity = 0; });
+  v.g.traverse(o => { if (o.isMesh) { const gm = m => { m = m.clone(); m.transparent = true; m.opacity = 0.3; m.depthWrite = false; return m; }; o.material = Array.isArray(o.material) ? o.material.map(gm) : gm(o.material); o.castShadow = false; } if (o.isLight) o.intensity = 0; });
   v.g.visible = false; G.ghost = { v, d: d.p, t: d.t };
 }
 const GQ = [new THREE.Quaternion(), new THREE.Quaternion()], GS = { pos: new THREE.Vector3(), q: new THREE.Quaternion(), steer: 0, comp: [0.1, 0.1, 0.1, 0.1], speedF: 0, hb: 0, dmg: 0, sw: [0, 0, 0, 0, 0, 0] };

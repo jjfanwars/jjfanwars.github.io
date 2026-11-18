@@ -95,7 +95,7 @@ const Bots = {
       const c = b.car, st = b.st; fv.set(0, 0, 1).applyQuaternion(c.q);
       st.pos = c.pos; st.q = c.q; st.vel = c.v; st.steer = c.steer; for (let i = 0; i < 4; i++) st.comp[i] = c.wh[i].comp; st.speedF = c.v.dot(fv); st.spinW = c.wh[2].spin; st.wr = CARS[b.ci].r || 0.32; st.hb = 0; st.dmg = c.dmg; st.speed = c.speed;
       b.view.update(st, dt, 'x', look, null);
-      const d = c.pos.distanceTo(camPos); b.tag.visible = d < 140 && d > 4; b.tag.position.copy(c.pos).y += 1.9;
+      const d = c.pos.distanceTo(camPos); tagFade(b.tag, d); b.tag.position.copy(c.pos).y += 1.9;
       // dust behind them
       if (c.speed > 6 && c.air <= 0 && d < 100 && Math.random() < 0.25 * (World.B.dustK || 1)) {
         const side = Math.random() < 0.5 ? 0.8 : -0.8, P = new THREE.Vector3(side, -0.6, -1.4).applyQuaternion(c.q).add(c.pos), col = World.B.dust;

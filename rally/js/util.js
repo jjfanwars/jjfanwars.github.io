@@ -23,3 +23,5 @@ function makeNoise(seed) {
 }
 const fmtT = t => { if (t < 0) t = 0; const m = Math.floor(t / 60), s = t - m * 60; return m + ':' + (s < 10 ? '0' : '') + s.toFixed(1); };
 const fmtT2 = t => { if (t < 0) t = 0; const m = Math.floor(t / 60), s = t - m * 60; return m + ':' + (s < 10 ? '0' : '') + s.toFixed(2); };
+// name tags over other cars: fade out when close (you can see the car) and far away
+const tagFade = (sp, d) => { const a = clamp((d - 6) / 8, 0, 1) * clamp((140 - d) / 30, 0, 1); sp.visible = a > 0.02; sp.material.opacity = a; };
