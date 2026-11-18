@@ -29,7 +29,7 @@ const hexS = c => '#' + c.toString(16).padStart(6, '0');
 
 // ---------------- net (jjfanwars relay)
 const RELAY_URL = 'wss://jjfanwars-relay.businessautomationvic.workers.dev';
-const GAME_V = 23;
+const GAME_V = 24;
 const Net = {
   tag: '[Rig]', role: 'solo', ws: null, peers: new Map(), code: '', relayT: {pose: 1}, id: '', name: '', handlers: {}, retry: 0, started: false,
   enc: new TextEncoder(), dec: new TextDecoder(),
@@ -2438,8 +2438,8 @@ function openShop() { G.shopOpen = true; G.shopSig = ''; clearKeys(); $('shop').
 function closeShop() { G.shopOpen = false; $('shop').classList.add('hidden'); lockMouse(); }
 function drawShop() {
   if (!G.shopOpen) return;
-  const docked = Math.hypot(B.x - JETTY.x, B.z - JETTY.z) < 60 + BG.L * .5, pay = D.pay || 1, free = freeAll(), cls = B.up.cls || 0, own = Array.isArray(B.up.own) ? B.up.own : [0, cls], hm = [1, 1.5, 2][B.up.hold || 0];
-  if (!G.shopTab) { try { G.shopTab = localStorage.getItem('s9-shoptab'); } catch (e) {} if (!['supplies', 'boats', 'upgrades', 'gear', 'style'].includes(G.shopTab)) G.shopTab = 'supplies'; }
+  const docked = Math.hypot(B.x - JETTY.x, B.z - JETTY.z) < 60 + BG.L * .5 || (typeof voyPortNear === 'function' && !!voyPortNear(B.x, B.z, 60 + BG.L * .5)), pay = D.pay || 1, free = freeAll(), cls = B.up.cls || 0, own = Array.isArray(B.up.own) ? B.up.own : [0, cls], hm = [1, 1.5, 2][B.up.hold || 0];
+  if (!G.shopTab) { try { G.shopTab = localStorage.getItem('s9-shoptab'); } catch (e) {} if (!['jobs', 'supplies', 'boats', 'upgrades', 'gear', 'style'].includes(G.shopTab)) G.shopTab = 'supplies'; }
   const tab = G.shopTab, why = (w, c) => w || (c > 0 && G.cash < c ? `${money(c - G.cash)} short` : '');
   const bt = (at, label, c, w0) => { const w = why(w0, c); return `<span class="bt"><button ${at}${w ? ' disabled' : ' class="can"'}>${label}</button>${w ? `<small class="why">${w}</small>` : ''}</span>`; };
   const row = (n, d, b, k = '') => `<div class="up${k}"><div>${n}<small>${d}</small></div>${b}</div>`;
@@ -2459,6 +2459,7 @@ function drawShop() {
     if (canTug()) rows.push(row('Call the tug', 'Tows your boat back to the jetty', bt('data-tug="1"', 'Free', 0)));
     rows.push(row(P.flares >= 6 ? 'Flares' : `Flares +${Math.min(3, 6 - P.flares)}`, `Red light keeps things away · carrying ${P.flares}`, bt('data-k="flares"', money(30), 30, P.flares >= 6 ? 'Full' : '')));
     rows.push(row('Batteries', 'Recharge your flashlight', bt('data-k="battery"', money(20), 20)));
+  } else if (tab === 'jobs') { rows.push(jobRows(row, bt));
   } else if (tab === 'boats') {
     const next2 = HULLS.map((H, i) => i).filter(i => !own.includes(i) && !HULLS[i].cruise).sort((a, b) => HULLS[a].cost - HULLS[b].cost).slice(0, 2);
     const block = H => sackUsed(B.hold) > Math.round(H.hold * hm) * 2 ? 'Unload the hold first' : B.driver ? 'Someone is at the wheel' : !docked ? 'Dock at the jetty' : ''; let hid = 0;
@@ -2481,6 +2482,8 @@ function drawShop() {
   $('shopL').innerHTML = rows.join('');
   $('shopL').querySelectorAll('button').forEach(b => b.onclick = () => { if (b.disabled) return;
     if (b.dataset.help) { G.shopOpen = false; $('shop').classList.add('hidden'); showFishHelp(true); return; }
+    if (b.dataset.job != null || b.dataset.jobx != null) { const x = b.dataset.jobx != null; b.disabled = true; act({a: x ? 'jobx' : 'job', i: +(x ? b.dataset.jobx : b.dataset.job)}); setTimeout(drawShop, isHost() ? 0 : 400); return; }
+    if (b.dataset.jrn) { jrnOpen(); return; }
     if (b.dataset.all) { G.shopAll = !G.shopAll; drawShop(); return; }
     const m = b.dataset.c ? {a: 'buyc', k: b.dataset.c, v: +b.dataset.v} : b.dataset.h ? {a: 'buyh', k: +b.dataset.h} : b.dataset.g ? {a: 'buyg', k: b.dataset.g, own: P.own} : b.dataset.tug ? {a: 'tug'} : {a: 'buy', k: b.dataset.k, fl: P.flares};
     document.querySelectorAll('#shopL button, #bSell').forEach(q => q.disabled = true); act(m); setTimeout(drawShop, 1000); });
@@ -2498,6 +2501,7 @@ addEventListener('keydown', e => {
   if (G.shopOpen) { if ((e.code === 'KeyE' || e.code === 'Escape') && !e.repeat) closeShop(); return; }
   if (G.casOpen) { if (e.code === 'Escape' && !e.repeat) closeCasino(); return; }
   if (G.helpOpen) { if (['KeyE', 'Escape', 'KeyH', 'Enter'].includes(e.code) && !e.repeat) showFishHelp(false); return; }
+  if (G.jrnOpen) { if (['KeyJ', 'KeyE', 'Escape'].includes(e.code) && !e.repeat) jrnClose(); return; }
   if (G.endOpen) return;
   if (e.repeat) return;
   if (e.code === 'KeyE') { eDown = true; ePress = true; }
@@ -2509,6 +2513,7 @@ addEventListener('keydown', e => {
   const dg = /^(Digit|Numpad)([1-7])$/.exec(e.code); if (dg && !P.climb) equip(+dg[2] - 1);
   if (e.code === 'KeyR') reload();
   if (e.code === 'KeyH') showFishHelp(true);
+  if (e.code === 'KeyJ') jrnOpen();
   if (e.code === 'KeyQ' && !P.down) { if (P.seat) { const n = performance.now(); if (n - (G.hornC || 0) > 2500) { G.hornC = n; act({a: 'horn'}); } } else if ((G.whT || 0) <= 0) { G.whT = 3; act({a: 'wh'}); } }
   if (e.code === 'Tab') { G.map = true; $('map').classList.remove('hidden'); drawMap(); }
 });
@@ -2532,8 +2537,8 @@ function lockMouse() { if (!TEST && canvas.requestPointerLock) try { const r = c
 function pause(p) { G.paused = p; G.wantResume = false; $('pause').classList.toggle('hidden', !p); if (p) { clearKeys(); G.map = false; $('map').classList.add('hidden'); $('pVol').value = SET.vol; $('pSens').value = SET.sens; $('pBright').value = SET.bright; $('pFov').value = SET.fov || 70; $('pInv').checked = !!SET.inv; } $('pauseN').textContent = Net.role === 'solo' ? 'The sea waits for you. Progress is saved.' : 'Online games keep running.'; if (Net.role === 'solo' && A.ctx) p ? A.ctx.suspend() : A.ctx.resume(); }
 function resumeReq() { if (TEST || document.pointerLockElement === canvas || !canvas.requestPointerLock) { pause(false); return; } G.wantResume = true; lockMouse(); $('pauseN').textContent = 'Click Resume again if the mouse does not lock.'; }
 function clearKeys() { for (const k in K) K[k] = false; eDown = false; ePress = false; mouseR = false; G.lmb = false; }
-const anyPanel = () => !!(G.noteOpen || G.shopOpen || G.casOpen || G.helpOpen || G.endOpen);
-function closePanels(relock) { G.noteOpen = G.shopOpen = G.casOpen = G.helpOpen = false; ['shop', 'casino', 'fishHelp', 'note'].forEach(id => $(id).classList.add('hidden')); if (relock && G.on) lockMouse(); }
+const anyPanel = () => !!(G.noteOpen || G.shopOpen || G.casOpen || G.helpOpen || G.endOpen || G.jrnOpen);
+function closePanels(relock) { G.noteOpen = G.shopOpen = G.casOpen = G.helpOpen = G.jrnOpen = false; ['shop', 'casino', 'fishHelp', 'note'].forEach(id => $(id).classList.add('hidden')); if ($('jrn')) $('jrn').classList.add('hidden'); if (relock && G.on) lockMouse(); }
 // once per rendered frame, after the camera: panels that should close, the crouch dot, the click-to-look hint
 function ctlFrame(dt) {
   if (!G.on || !P) return;
@@ -3911,6 +3916,375 @@ function updateTools(dt) {
   const cur = S7[P.eq] || [], hk = P.eq + '|' + S7.map(q => q[2] ? 1 : 0).join('') + '|' + cur[3] + '|' + (P.reload > 0) + '|' + (P.coolerN || 0);
   if (hk !== G.toolK) { G.toolK = hk; $('tool').innerHTML = `<div id="toolN">${cur[2] ? cur[1] + (cur[3] !== '' ? ' ' + cur[3] : '') : ''}</div>` + S7.map((q, i) => q[2] ? `<b class="${P.eq === i ? 'on' : ''}"><em>${i + 1}</em>${q[0]}${P.eq === i ? ` <span>${q[1]}${q[3] !== '' ? ' ' + q[3] : ''}</span>` : ''}</b>` : '').join('') + (P.reload > 0 ? '<span class="rl">reloading</span>' : '') + (P.coolerN ? `<span class="rl">${ICON.fish} ${P.coolerN}</span>` : ''); }
 }
+
+// ---------------- loop: contracts on the job board, a receipt that counts up, streaks, night shifts and the journal
+const JOB_SKIP = ['fuel', 'netfish'];
+const JOB_LEG = [{f: 'tuna', kg: 110, n: 'The Old Blue', pay: 2500}, {f: 'squid', kg: 185, n: 'Grandfather Squid', pay: 4000}, {f: 'angler', kg: 8.4, n: 'The Lantern Queen', pay: 3000}, {f: 'eel', kg: 5.6, n: 'Old Moray', pay: 1500}, {f: 'cod', kg: 7.6, n: 'King Cod', pay: 1200}];
+const JOB_SETS = [{n: 'Every catch', v: 1500}, {n: 'Every treasure', v: 2000}, {n: 'Every creature beaten', v: 2500}, {n: 'Six hulls', v: 1500}];
+const jobOwn = () => Array.isArray(B.up.own) ? B.up.own : [0], jobSuit = n => [...PL.values()].some(p => suitOf(p) >= n);
+const jobCzOk = () => POIS.some((q, i) => q.cruise && G.disc.includes(i));
+// templates per tier: r 0 safe, 1 risky, 2 deadly; pay before multipliers (+ d / pd for places and parcels, d = metres from home)
+const JOB_T = [
+  {r: 0, t: 'haul', k: 'crate', n: 3, pay: 120}, {r: 0, t: 'haul', k: 'scrap', n: 4, pay: 90}, {r: 0, t: 'fish', k: 'mack', n: 3, pay: 90}, {r: 0, t: 'fish', k: 'bass', n: 2, pay: 120},
+  {r: 0, t: 'chart', d0: 0, d1: 900, pay: 70, pd: 12}, {r: 0, t: 'cour', d0: 150, d1: 900, pay: 100, pd: 10},
+  {r: 1, t: 'haul', k: 'relic', n: 1, pay: 220}, {r: 1, t: 'haul', k: 'pearl', n: 2, pay: 240}, {r: 1, t: 'haul', k: 'gold', n: 1, pay: 260}, {r: 1, t: 'haul', k: 'chest', n: 1, pay: 280},
+  {r: 1, t: 'fish', k: 'cod', n: 2, pay: 170}, {r: 1, t: 'fish', k: 'eel', n: 1, pay: 190}, {r: 1, t: 'fish', k: 'tuna', n: 1, pay: 380, ok: () => G.stat.fish >= 3},
+  {r: 1, t: 'chart', d0: 900, d1: 1800, pay: 140, pd: 12}, {r: 1, t: 'cour', d0: 900, d1: 1800, pay: 180, pd: 9},
+  {r: 1, t: 'dive', n: 25, pay: 200, ok: () => jobSuit(1) || G.stat.maxDv >= 8}, {r: 1, t: 'sunk', n: 1, pay: 300, ok: () => HULLS.some((H, i) => H.sub && jobOwn().includes(i)) || G.stat.maxDv >= 8},
+  {r: 2, t: 'deepfl', n: 1, pay: 320}, {r: 2, t: 'deepk', n: 1, pay: 850}, {r: 2, t: 'rig', n: 1, pay: 650}, {r: 2, t: 'stw', n: 1, pay: 1000, ok: jobCzOk},
+  {r: 2, t: 'fish', k: 'angler', n: 1, pay: 520, ok: () => G.stat.fish >= 6}, {r: 2, t: 'fish', k: 'squid', n: 1, pay: 950, ok: () => G.stat.fish >= 6},
+  {r: 2, t: 'chart', d0: 1800, d1: 1e9, pay: 240, pd: 12, far: 1}, {r: 2, t: 'cour', d0: 1500, d1: 1e9, pay: 350, pd: 8, nt: 1},
+  {r: 2, t: 'haul', k: 'blackbox', n: 1, pay: 500, ok: () => !G.bbOut || B.hold.includes('blackbox') || [...PL.values()].some(p => (p.sack || []).includes('blackbox'))},
+  {r: 2, t: 'haul', k: 'mask', n: 1, pay: 700, ok: jobCzOk}, {r: 2, t: 'haul', k: 'spine', n: 1, pay: 600},
+  {r: 2, t: 'dive', n: 100, pay: 900, ok: () => jobSuit(2)},
+];
+// the parcel you carry for courier jobs
+KINDS.push('parcel'); NAMES.parcel = 'parcel'; SZ.parcel = 2; CARRY.add('parcel');
+const jobB = () => isHost() ? (G.stat && G.stat.job) : G.jobsS;
+const jobCap = s => s ? s[0].toUpperCase() + s.slice(1) : '';
+const jobPl = (k, n) => { const w = (NAMES[k] || k).replace(/^Steward's /, ''); return n > 1 && !/fish|scrap|mackerel|cod|bass|tuna|squid/.test(w) ? w + (/x$/.test(w) ? 'es' : 's') : w; };
+const jobNight = () => { const t = ((G.tod % 1) + 1) % 1; let i = 0; while (i < TODK.length - 2 && TODK[i + 1][0] < t) i++; const a = TODK[i], b = TODK[i + 1], u = clamp((t - a[0]) / ((b[0] - a[0]) || 1), 0, 1), k = u * u * (3 - 2 * u); return 1 - clamp((a[1] + (b[1] - a[1]) * k + 22) / 18, 0, 1); };
+const jobMul = s => { const J = jobB(); return (1 + .1 * Math.min((J && J.st) || 0, 5)) * (s && s.daily ? 1.5 : 1); };
+const jobDay = () => Math.floor((Date.now() - new Date().getTimezoneOffset() * 60000) / 86400000);
+function jobLeg(wk) { const L = JOB_LEG.filter(q => FISH[q.f]); for (const k in FISH) if (FISH[k].kg[1] >= 100 && !L.some(q => q.f === k)) L.push({f: k, kg: +(FISH[k].kg[1] * .92).toFixed(1), n: 'The great ' + FISH[k].n, pay: 5000}); return L[Math.floor(mulberry(wk * 7919)() * L.length)] || null; }
+function jobTitle(s) {
+  if (!s || s.e) return ''; const F = FISH[s.k];
+  switch (s.t) {
+    case 'haul': return `Haul ${s.n} ${jobPl(s.k, s.n)}`; case 'fish': return `Land ${s.n > 1 ? s.n + ' ' : 'a '}${F ? F.n : s.k}`; case 'chart': return `Chart ${s.k}`; case 'cour': return `Parcel to ${s.k}`;
+    case 'dive': return `Dive to ${s.n} m`; case 'sunk': return 'Raise sunken treasure'; case 'deepfl': return 'Drive off the deep'; case 'deepk': return 'Kill the deep'; case 'rig': return 'Put down the thing on the rig'; case 'stw': return 'Put down the Steward'; case 'leg': return s.nm || 'Legend';
+  } return '';
+}
+function jobDesc(s) {
+  const fh = {mack: 'Open water near home', bass: 'Close to island shores', cod: 'Deep water far from land', eel: 'Around wrecks and the rig', tuna: 'Deep water, carbon rod or better', angler: 'Far out at night or in a storm', squid: 'Far out, deep-sea rod'};
+  switch (s.t) {
+    case 'haul': return 'Sell them at any shed'; case 'fish': return fh[s.k] || 'Find where they bite'; case 'chart': return 'Sail close enough to chart it'; case 'cour': return s.nt ? 'x1.6 if delivered at night' : 'Carry it there, then E';
+    case 'dive': return s.n >= 100 ? 'Saturation suit only' : 'Scuba gear goes to 45 m'; case 'sunk': return 'Dive for it or use the claw'; case 'deepfl': return 'A flare in the sea, far out'; case 'deepk': return 'Shoot it when it rears up';
+    case 'rig': return 'Station Nine. Bring a gun'; case 'stw': return 'MS Serenade, below decks';
+  } return '';
+}
+function jobGen(r) {
+  const J = G.stat.job, rnd = mulberry((G.seed ^ 0x10b5) + 7919 * J.n++), id = J.n, cur = J.b.filter(q => q && !q.e), dH = (x, z) => Math.hypot(x - HOME.x, z - HOME.z);
+  const L = JOB_T.filter(T => T.r === r && (!T.ok || T.ok()) && (T.t !== 'haul' || VALUE[T.k]) && (T.t !== 'fish' || FISH[T.k]));
+  while (L.length) {
+    const T = L.splice(Math.floor(rnd() * L.length), 1)[0], s = {id, r, t: T.t, k: T.k || null, n: T.n || 1, got: 0, pay: T.pay, x: null, y: null, z: null, d: '', act: 0, daily: 0, born: G.t, refT: 0};
+    if (T.t === 'chart') { const C = POIS.filter((q, i) => !q.home && !G.disc.includes(i) && !cur.some(o => o.t === 'chart' && o.k === q.n) && (T.far ? dH(q.x, q.z) > 1800 || q.dive || q.cruise : dH(q.x, q.z) >= T.d0 && dH(q.x, q.z) < T.d1)); if (!C.length) continue;
+      const q = C[Math.floor(rnd() * C.length)]; Object.assign(s, {k: q.n, x: q.x, z: q.z, pay: Math.round(T.pay + dH(q.x, q.z) / T.pd)}); }
+    else if (T.t === 'cour') { const C = (jobDests.L || []).filter(q => dH(q.x, q.z) >= T.d0 && dH(q.x, q.z) < T.d1 && !cur.some(o => o.t === 'cour' && o.k === q.n)); if (!C.length) continue;
+      const q = C[Math.floor(rnd() * C.length)]; Object.assign(s, {k: q.n, x: q.x, y: q.y, z: q.z, pay: Math.round(T.pay + dH(q.x, q.z) / T.pd), nt: T.nt || 0}); }
+    else if (cur.some(o => o.t === s.t && o.k === s.k)) continue;
+    else if (T.t === 'rig') { const q = POIS.find(q => q.rig); if (q) { s.x = q.x; s.z = q.z; } }
+    else if (T.t === 'stw') { s.x = CRZ.x; s.z = CRZ.z; }
+    s.d = jobDesc(s).slice(0, 40); return s;
+  }
+  return {id, r, t: 'haul', k: 'crate', n: 3, got: 0, pay: 120 + 60 * r, x: null, y: null, z: null, d: jobDesc({t: 'haul'}), act: 0, daily: 0, born: G.t, refT: 0};
+}
+// where parcels go: huts, the rig dock, wreck decks, the Serenade, piers and trading posts (if those exist)
+function jobDests() {
+  const L = [], add = (n, x, y, z) => { if ([x, y, z].every(Number.isFinite) && !L.some(q => q.n === n)) L.push({n: String(n).slice(0, 22), x: +(+x).toFixed(2), y: +(+y).toFixed(2), z: +(+z).toFixed(2)}); };
+  for (const b of BLD) if (b.kind === 'hut' && b.din) { let I = null, bd = 1e9; for (const q of ISLES) { const d = Math.hypot(q.x - b.x, q.z - b.z); if (d < bd) { bd = d; I = q; } } add((I ? I.n : 'Island') + ' hut', b.din[0], b.fy, b.din[1]); }
+  add('Station Nine dock', 0, LV[0], -19.5);
+  for (const q of POIS) if (q.wreck) add(q.n, q.x, 2.2, q.z + 4);
+  add('MS Serenade', CRZ.x, CRZ.D1, CRZ.z + 50);
+  if (typeof PIERS !== 'undefined' && Array.isArray(PIERS)) for (const q of PIERS) if (q) add((q.n || 'Island') + ' pier', q.x, q.y ?? 1.8, q.z);
+  if (typeof VOY_PORTS !== 'undefined' && Array.isArray(VOY_PORTS)) for (const q of VOY_PORTS) { if (!q) continue; const s = Array.isArray(q.shop) ? q.shop : [q.x, q.y ?? 2, q.z]; add(q.n || 'Trading post', s[0], s[1], s[2]); }
+  jobDests.L = L; return L;
+}
+function jobRank() { const r = titleOf(G.earned); if (r > (G.rankI || 0)) { G.rankI = r; emit({k: 'rank', i: r}); } }
+const jobEmpty = i => ({e: 1, r: i, refT: G.t + 40, daily: 0});
+function jobPay(i, x) {
+  const J = G.stat.job, s = i === 3 ? x : J.b[i]; if (!s || s.e) return;
+  const nt = s.nt && jobNight() > .5 ? 1.6 : 1, v = Math.round(s.pay * (D.pay || 1) * (1 + .1 * Math.min(J.st, 5)) * (s.daily ? 1.5 : 1) * nt);
+  G.cash += v; G.earned += v; J.st++;
+  if (i < 3) J.b[i] = jobEmpty(i);
+  emit({k: 'jobok', i, v, st: J.st, t: jobTitle(s), lg: i === 3 ? 1 : 0, nt: nt > 1 ? 1 : 0}); jobRank(); J.v++; save();
+}
+function jobFail(i, why) { const J = G.stat.job, s = J.b[i]; if (!s || s.e) return; J.st = 0; J.b[i] = jobEmpty(i); emit({k: 'jobf', i, why, t: jobTitle(s)}); J.v++; save(); }
+function jobParcels() { let n = 0; for (const p of PL.values()) for (const k of p.sack || []) if (k === 'parcel') n++; for (const k of B.hold) if (k === 'parcel') n++; for (const it of ITEMS) if (it.kind === 'parcel' && !it.taken) n++; const pi = KINDS.indexOf('parcel'); for (const f of G.floats) if (f && f[2] === pi) n++; return n; }
+// host, 2 Hz: dives, lost parcels, refills, the daily board and the weekly legend
+function jobStep(dt) {
+  const J = G.stat && G.stat.job; if (!J || !isHost()) return;
+  if (G.t < (G.jobT || 0)) return; G.jobT = G.t + .5; J.gt = G.t; let ch = 0;
+  if (M.state === 'chase') jrnAdd('c', 'rig', 1); if (STS.state === 'chase') jrnAdd('c', 'stw', 1);
+  for (let i = 0; i < 3; i++) { const s = J.b[i]; if (!s || s.e || !s.act || s.t !== 'dive') continue; let dv = 0; for (const p of PL.values()) if (p.ready && !p.dead && p.sw) dv = Math.max(dv, p.dv || 0); if (dv >= s.n) jobPay(i); else if (Math.floor(dv) > s.got) { s.got = Math.floor(dv); J.v++; } }
+  const cs = []; for (let i = 0; i < 3; i++) { const s = J.b[i]; if (s && !s.e && s.act && s.t === 'cour') cs.push(i); }
+  if (cs.length) { const n = jobParcels(); if (n < cs.length) { cs.sort((a, b) => (J.b[b].tk || 0) - (J.b[a].tk || 0)); for (let k = 0; k < cs.length - n; k++) jobFail(cs[k], 'The parcel was lost.'); } }
+  for (let i = 0; i < 3; i++) { const s = J.b[i], gone = s && !s.e && !s.act && ((s.t === 'chart' && POIS.some((q, j) => q.n === s.k && G.disc.includes(j))) || G.t - (s.born || 0) > 2 * TOD_LEN);
+    if (!s || s.r !== i || (s.e && G.t >= s.refT) || gone) { const d = (gone && s.daily) || (i === 1 && J.dp && (!s || s.e)); J.b[i] = jobGen(i); if (d) { J.b[i].daily = 1; if (i === 1) J.dp = 0; } ch = 1; } }
+  if (G.t >= (G.jobDayT || 0)) { G.jobDayT = G.t + 60; const day = jobDay(), wk = Math.floor((day + 3) / 7);
+    if (J.day !== day) { const first = J.day == null; J.day = day; for (let i = 0; i < 3; i++) { const s = J.b[i]; if (s && !s.e && !s.act) J.b[i] = jobGen(i); } J.dp = 0; if (J.b[1] && !J.b[1].e && !J.b[1].act) J.b[1].daily = 1; else J.dp = 1; ch = 1; if (!first) emit({k: 'jobst', day: 1}); }
+    if (J.wk !== wk || !J.lg) { J.wk = wk; J.lg = jobLeg(wk); ch = 1; } }
+  jrnSets(); if (ch) { J.v++; save(); }
+}
+// host, after an event lands: progress, payouts, the night shift and journal entries
+function jobHook(e) {
+  const J = G.stat.job, R = G.stat.jr; if (!J) return;
+  const each = (t, f) => { for (let i = 0; i < 3; i++) { const s = J.b[i]; if (s && !s.e && s.act && s.t === t) f(s, i); } };
+  const prog = (s, i, add, lab) => { s.got = Math.min(s.n, s.got + add); if (s.got >= s.n) jobPay(i); else { emit({k: 'jobp', i, n: s.got, of: s.n, l: lab}); J.v++; save(); } };
+  switch (e.k) {
+    case 'sold': if (e.v > 0 && jobNight() > .5) { const b = Math.round(e.v * .25); G.cash += b; G.earned += b; emit({k: 'jobnb', v: b}); jobRank(); }
+      each('haul', (s, i) => { const n = (e.c && e.c[s.k]) || 0; if (n > 0) prog(s, i, n, jobCap(jobPl(s.k, 2))); }); for (const k in e.c || {}) if (k !== 'fish') jrnAdd('t', k); break;
+    case 'catch': { each('fish', (s, i) => { if (s.k === e.f) prog(s, i, 1, jobCap(FISH[s.k] ? FISH[s.k].n : s.k)); }); jrnAdd('f', e.f, +e.kg || 0);
+      const L = J.lg; if (L && titleOf(G.earned) >= 2 && J.leg !== J.wk && e.f === L.f && +e.kg >= L.kg) { J.leg = J.wk; jobPay(3, {t: 'leg', nm: L.n, pay: L.pay}); } break; }
+    case 'disc': { const q = POIS[e.i]; if (q) each('chart', (s, i) => { if (s.k === q.n) jobPay(i); }); break; }
+    case 'sunk': case 'sunkp': { const k = e.kind || (SUNK[e.i] && SUNK[e.i].kind); each('sunk', (s, i) => prog(s, i, 1, 'Sunken treasure')); if (k) jrnAdd('t', k); break; }
+    case 'deepgone': if (e.fl) each('deepfl', (s, i) => jobPay(i)); if (e.dead) { each('deepk', (s, i) => jobPay(i)); jrnAdd('c', 'deep', 2); } break;
+    case 'circle': jrnAdd('c', 'deep', 1); break;
+    case 'mdown': each('rig', (s, i) => jobPay(i)); jrnAdd('c', 'rig', 2); break;
+    case 'sdown': each('stw', (s, i) => jobPay(i)); jrnAdd('c', 'stw', 2); break;
+    case 'bite': jrnAdd('c', 'gul', 1); break;
+    case 'snd': if (e.s === 'gulS' || e.s === 'gulL') jrnAdd('c', 'gul', 1); else if (e.s === 'gulF') jrnAdd('c', 'gul', 2); break;
+    case 'sink': if (J.st > 0) { J.st = 0; emit({k: 'jobst', st: 0}); J.v++; } break;
+    case 'sack': for (const i of e.s || []) jrnAdd('t', KINDS[i]); break;
+    case 'stow': for (const k of B.hold) jrnAdd('t', k); break;
+    case 'wsave': if (R) { R.rs = (R.rs || 0) + 1; save(); } break;
+    case 'bought': jrnSets(); break;
+  }
+}
+function jobAct(id, m) {
+  const p = PL.get(id), J = G.stat && G.stat.job; if (!p || !J) return; const i = m.i | 0, s = i >= 0 && i < 3 ? J.b[i] : null, no = why => emit({k: 'nope', id, why});
+  if (m.a === 'job') {
+    if (!s || s.e || s.act) return; if (i === 2 && titleOf(G.earned) < 1) return no('Opens at Bosun.');
+    if (J.b.filter(q => q && !q.e && q.act).length >= 2) return no('Two contracts at a time.');
+    const bp = jobBoard.p, sh = G.shed && G.shed.shop, nr = (bp && Math.hypot(p.x - bp[0], p.z - bp[2]) < 30) || (sh && Math.hypot(p.x - sh[0], p.z - sh[2]) < 30) || (typeof voyPortNear === 'function' && !!voyPortNear(p.x, p.z, 40));
+    if (!nr) return no('Take contracts at the job board.');
+    s.act = 1; s.tk = G.t; if (s.t === 'cour') giveCarry(p, 'parcel'); emit({k: 'jobs', i, id, t: jobTitle(s)}); J.v++; save();
+  } else if (m.a === 'jobx') { if (!s || s.e || !s.act) return;
+    if (s.t === 'cour') { const q = [p, ...PL.values()].find(q => (q.sack || []).includes('parcel')); if (q) { q.sack.splice(q.sack.indexOf('parcel'), 1); sackSet(q); } else if (B.hold.includes('parcel')) B.hold.splice(B.hold.indexOf('parcel'), 1); }
+    jobFail(i, 'Contract abandoned.');
+  } else if (m.a === 'jobd') { if (!s || s.e || !s.act || s.t !== 'cour') return; const j = p.sack.indexOf('parcel');
+    if (j < 0 || Math.hypot(p.x - s.x, p.z - s.z) > 4.5 || Math.abs(p.y - s.y) > 3) return no('Bring the parcel to the drop-off.'); p.sack.splice(j, 1); sackSet(p); jobPay(i); }
+}
+// the journal (host): best catches, treasures, creatures; set rewards once each
+function jrnAdd(g, k, v) {
+  const R = G.stat && G.stat.jr; if (!R || !isHost() || !k) return;
+  if (g === 'f') { if (!FISH[k] || k === 'boot' || k === 'bottle') return; const was = R.f[k]; if (was == null || v > was) { R.f[k] = +(+v || 0).toFixed(1); if (was == null) { emit({k: 'jrnew', g, n: k, v: R.f[k]}); jrnSets(); } } }
+  else if (g === 't') { if (!(VALUE[k] > 0) || JOB_SKIP.includes(k) || R.t[k]) return; R.t[k] = 1; emit({k: 'jrnew', g, n: k}); jrnSets(); }
+  else if (g === 'c') { if ((R.c[k] || 0) >= v) return; R.c[k] = v; emit({k: 'jrnew', g, n: k, d: v === 2 ? 1 : 0}); jrnSets(); }
+}
+function jrnSets() {
+  const R = G.stat && G.stat.jr; if (!R || !isHost()) return;
+  const ok = [Object.keys(FISH).filter(k => k !== 'boot' && k !== 'bottle').every(k => R.f[k] != null), Object.keys(VALUE).filter(k => VALUE[k] > 0 && !JOB_SKIP.includes(k)).every(k => R.t[k]), ['rig', 'stw', 'deep', 'gul'].every(k => R.c[k] === 2), jobOwn().length >= 6];
+  ok.forEach((o, s) => { if (!o || R.s[s]) return; R.s[s] = 1; const v = Math.round(JOB_SETS[s].v * (D.pay || 1)); G.cash += v; G.earned += v; emit({k: 'jrset', s, v}); jobRank(); save(); });
+}
+
+// ---- the board beside the harbour shed door
+const jobBoard = {p: null, m: null, c: null, g: null, tex: null, k: '', bg: null};
+function jobBoardDraw() {
+  const o = jobBoard, g = o.g; if (!g) return; const J = jobB(), W = 512, H = 320, rk = titleOf(G.earned), pay = D.pay || 1;
+  g.drawImage(o.bg, 0, 0); g.textAlign = 'center'; g.fillStyle = '#f2e6cc'; g.font = 'bold 21px Georgia'; g.fillText('CONTRACTS', W / 2, 31);
+  const leg = J && J.lg && rk >= 2, n = leg ? 4 : 3, cw = leg ? 110 : 142, gap = (W - 28 - n * cw) / (n + 1);
+  const wrap = (t, x, y, w, lh, max) => { const ws = String(t).split(' '); let l = '', k = 0; for (let i = 0; i < ws.length; i++) { const tt = l ? l + ' ' + ws[i] : ws[i]; if (g.measureText(tt).width > w && l) { g.fillText(l, x, y + k * lh); k++; l = ws[i]; if (k >= max) return; } else l = tt; } if (l && k < max) g.fillText(l, x, y + k * lh); };
+  const stamp = (t, c, x, y, a) => { g.save(); g.translate(x, y); g.rotate(a); g.strokeStyle = c; g.fillStyle = c; g.lineWidth = 3; g.font = 'bold 17px Georgia'; const w = g.measureText(t).width + 14; g.globalAlpha = .85; g.strokeRect(-w / 2, -13, w, 24); g.fillText(t, 0, 5); g.restore(); };
+  for (let i = 0; i < n; i++) {
+    const x = 14 + gap + i * (cw + gap), y = 46, h = 250, s = i < 3 ? J && J.b[i] : null, lock = i === 2 && rk < 1, L = i === 3 ? J.lg : null;
+    g.save(); g.translate(x + cw / 2, y + h / 2); g.rotate(((i * 37) % 7 - 3) * .013); g.translate(-cw / 2, -h / 2);
+    g.fillStyle = 'rgba(0,0,0,.4)'; g.fillRect(4, 6, cw, h);
+    g.fillStyle = i === 3 ? '#e9cf72' : s && s.e ? '#cfc6ae' : '#ebe3cc'; g.fillRect(0, 0, cw, h);
+    g.fillStyle = ['#4a9a5a', '#d09a2a', '#b8362a', '#9a7410'][i]; g.fillRect(0, 0, cw, 16);
+    g.fillStyle = '#c03020'; g.beginPath(); g.arc(cw / 2, 8, 6, 0, TAU); g.fill(); g.fillStyle = 'rgba(255,255,255,.5)'; g.beginPath(); g.arc(cw / 2 - 2, 6, 2, 0, TAU); g.fill();
+    g.fillStyle = '#5a4e38'; g.font = '11px monospace'; g.fillText(['SAFE', 'RISKY', 'DEADLY', 'LEGEND'][i], cw / 2, 34);
+    g.fillStyle = '#2a241a'; g.font = 'bold 17px Georgia';
+    if (lock) { wrap('Opens at Bosun', cw / 2, 92, cw - 16, 21, 3); g.font = '40px Georgia'; g.fillText('?', cw / 2, 180); }
+    else if (L) { wrap(L.n, cw / 2, 66, cw - 14, 20, 3); g.font = '13px Georgia'; g.fillStyle = '#4a3a10'; wrap(`${jobCap(FISH[L.f] ? FISH[L.f].n : L.f)} over ${L.kg} kg`, cw / 2, 136, cw - 14, 16, 3); g.font = 'bold 24px Georgia'; g.fillStyle = '#2a1e08'; g.fillText(money(L.pay * pay), cw / 2, h - 22); if (J.leg === J.wk) stamp('CLAIMED', '#2a6a2a', cw / 2, 196, -.18); }
+    else if (!s || s.e) { g.fillStyle = '#8a8068'; g.font = 'italic 15px Georgia'; wrap('More work soon', cw / 2, 110, cw - 16, 20, 2); }
+    else { wrap(jobTitle(s), cw / 2, 66, cw - 14, 20, 4); g.font = '12px Georgia'; g.fillStyle = '#5a4e38'; wrap(s.d, cw / 2, 158, cw - 14, 15, 3);
+      g.font = 'bold 24px Georgia'; g.fillStyle = '#2a241a'; g.fillText(money(s.pay * pay * (s.daily ? 1.5 : 1)), cw / 2, h - 22);
+      if (s.act) stamp('TAKEN', '#22508a', cw / 2, 206, -.2); else if (s.daily) stamp('TODAY', '#b02818', cw / 2, 206, .16); }
+    g.restore();
+  }
+  o.tex.needsUpdate = true;
+}
+{ const f0 = buildFw; buildFw = function () { const r = f0.apply(this, arguments);
+  if (G.shed) { const b = G.shed, [x, z] = L2W(b, 2.35, -2.64), y = b.fy + 1.55, th = b.th + PI; jobBoard.p = [x, y, z];
+    for (const s of [-1, 1]) { const [px, pz] = L2W(b, 2.35 + s * .86, -2.66); put('log', new THREE.CylinderGeometry(.06, .07, 2.5, 7), px, b.fy + 1.25, pz); }
+    const [fx, fz] = L2W(b, 2.35, -2.61); wbox('wood', fx, y, fz, 1.72, 1.12, .05, th, .8);
+    const [rx, rz] = L2W(b, 2.35, -2.72); wbox('wood', rx, y + .64, rz, 1.86, .06, .26, th, .8);
+    const bg = jobBoard.bg = cv(512, 320, (g, w, h) => { g.fillStyle = '#7a5634'; g.fillRect(0, 0, w, h); for (let i = 0; i < 2600; i++) { g.fillStyle = Math.random() < .5 ? 'rgba(40,24,10,.25)' : 'rgba(200,150,100,.16)'; g.fillRect(Math.random() * w, Math.random() * h, 1 + Math.random() * 2, 1 + Math.random() * 2); } g.strokeStyle = '#3a2614'; g.lineWidth = 10; g.strokeRect(5, 5, w - 10, h - 10); });
+    const c = jobBoard.c = cv(512, 320, g => g.drawImage(bg, 0, 0)); jobBoard.g = c.getContext('2d');
+    const t = jobBoard.tex = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
+    const m = jobBoard.m = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 1), new THREE.MeshStandardMaterial({map: t, roughness: .92, metalness: 0, emissive: 0xffffff, emissiveMap: t, emissiveIntensity: 0}));
+    const [mx, mz] = L2W(b, 2.35, -2.645); m.position.set(mx, y, mz); m.rotation.y = th; m.receiveShadow = true; scene.add(m); }
+  return r; }; }
+// ---- parcels
+{ const f0 = itemMesh; let PM = null; itemMesh = function (kind) { if (kind !== 'parcel') return f0.apply(this, arguments);
+  PM = PM || {box: new THREE.MeshStandardMaterial({color: 0xb08a5a, roughness: .95}), str: new THREE.MeshStandardMaterial({color: 0xeadfc4, roughness: .9}), seal: new THREE.MeshStandardMaterial({color: 0xa01818, roughness: .4})};
+  const g = new THREE.Group(), b = new THREE.Mesh(new THREE.BoxGeometry(.44, .28, .32), PM.box); b.position.y = .14; g.add(b);
+  for (const [sx, sz] of [[.452, .025], [.025, .332]]) { const s = new THREE.Mesh(new THREE.BoxGeometry(sx, .29, sz), PM.str); s.position.y = .14; g.add(s); }
+  const w = new THREE.Mesh(new THREE.CylinderGeometry(.035, .035, .012, 10), PM.seal); w.position.set(.1, .285, .07); g.add(w);
+  g.traverse(o => { if (o.isMesh) o.castShadow = true; }); scene.add(g); return g; }; }
+
+// ---- cards right of the compass: the counting-up receipt, contracts, journal reveals
+const jobRc = {q: [], on: [], el: null, last: null,
+  push(c) { c.t = 0; c.born = performance.now(); this.q.push(c); return c; },
+  reset() { this.q.length = 0; for (const c of this.on) if (c.el) c.el.remove(); this.on.length = 0; this.last = null; },
+  start(c) {
+    const el = c.el = document.createElement('div'), J = jobB(); el.className = 'rc ' + (c.cls || '');
+    if (c.k === 'sold') { const st = (J && J.st) || 0; c.cuD = c.rows.length * .11; c.life = 3.5 + c.cuD;
+      el.innerHTML = `<h4>SOLD</h4>${c.rows.map((r, i) => `<div class="rw${r[2] ? ' nb' : ''}" style="animation-delay:${i * 110}ms"><span>${r[0]}</span><span>${money(r[1])}</span></div>`).join('')}<div class="tt"><span>Total</span><b>$0</b></div>${st > 0 ? `<span class="jobPill">Streak ×${(1 + .1 * Math.min(st, 5)).toFixed(1)}</span>` : ''}`;
+      c.cu = el.querySelector('.tt b'); for (let i = 0; i < c.rows.length; i++) setTimeout(() => { if (A.on) { tone(2400 + i * 90, .02, .05, 'triangle'); burst(4800, 6, .015, .02); } }, i * 110); }
+    else el.innerHTML = c.h;
+    if (c.cuV != null && !c.cu) c.cu = el.querySelector('[data-cu]');
+    if (c.go) c.go(); this.el.appendChild(el); this.on.push(c);
+  },
+  addRow(lab, v) { const c = this.last; if (!c || c.k !== 'sold' || performance.now() - c.born > 1500) return false; c.rows.push([lab, v, 1]); c.tot += v;
+    if (c.el) { const d = document.createElement('div'); d.className = 'rw nb'; d.innerHTML = `<span>${lab}</span><span>${money(v)}</span>`; c.el.insertBefore(d, c.el.querySelector('.tt')); c.life += .6; } return true; },
+  step(dt) {
+    const el = this.el; if (!el) return; const hold = anyPanel() || G.map || G.cine > 0 || !!G.camFly;
+    if (hold !== this.held) { this.held = hold; el.style.opacity = hold ? 0 : 1; } if (hold) return;
+    while (this.q.length && this.on.length < 3) this.start(this.q.shift());
+    for (let i = this.on.length - 1; i >= 0; i--) { const c = this.on[i]; c.t += dt;
+      if (c.cu) { const u = clamp((c.t - (c.cuD || 0)) / .9, 0, 1), v = c.k === 'sold' ? c.tot : c.cuV; setT(c.cu, money(v * (1 - Math.pow(1 - u, 3)))); }
+      if (c.t > c.life && !c.out) { c.out = 1; c.el.classList.add('out'); }
+      if (c.t > c.life + .6) { c.el.remove(); this.on.splice(i, 1); } }
+  }};
+{ const st = document.createElement('style'); st.id = 'st-job'; st.textContent = `
+#jobRc { position:absolute; left:calc(50% + 118px); top:62px; width:228px; display:flex; flex-direction:column; gap:7px; pointer-events:none; font:12px ui-monospace,monospace; transition:opacity .3s; }
+#jobRc .rc { background:linear-gradient(180deg,rgba(18,20,22,.86),rgba(10,12,14,.8)); border:1px solid rgba(255,255,255,.1); border-radius:6px; padding:8px 11px 9px; box-shadow:0 8px 24px rgba(0,0,0,.5); color:#e8e0cc; animation:jobIn .4s cubic-bezier(.2,1.3,.4,1) both; transition:opacity .5s, transform .5s; }
+#jobRc .rc.out { opacity:0; transform:translateX(14px); }
+#jobRc h4 { margin:0 0 5px; font:10px ui-monospace,monospace; letter-spacing:.32em; color:var(--acc); }
+#logbook .jobLn span { color:#22508a; } #logbook .jobLn i { color:#6b604c; }
+#jobRc .rw { display:flex; justify-content:space-between; gap:8px; padding:1px 0; animation:jobRow .22s ease-out both; } #jobRc .rw.nb { color:#b8a0ff; }
+#jobRc .tt { display:flex; justify-content:space-between; align-items:baseline; border-top:1px dashed rgba(255,255,255,.22); margin-top:5px; padding-top:4px; } #jobRc .tt b { font:16px ui-monospace,monospace; color:#ffcf60; text-shadow:0 0 10px rgba(255,190,60,.45); }
+#jobRc .gold { background:linear-gradient(160deg,rgba(74,54,14,.94),rgba(26,19,8,.9)); border-color:rgba(255,207,96,.55); } #jobRc .gold h4 { color:#ffcf60; } #jobRc .gold big { display:block; font:15px Georgia,serif; color:#fff2cc; margin-bottom:3px; } #jobRc .gold [data-cu] { font:20px ui-monospace,monospace; color:#ffd870; }
+#jobRc .red { border-color:rgba(220,80,60,.55); color:#f0a090; } #jobRc .red h4 { color:#ff7a60; }
+#jobRc .jn { border-color:rgba(160,220,255,.45); background:linear-gradient(110deg,rgba(14,22,30,.9) 30%,rgba(90,140,180,.5) 50%,rgba(14,22,30,.9) 70%) 0 0/300% 100%; animation:jobIn .4s ease-out both, jobSh 1.6s linear .3s 2; } #jobRc .jn h4 { color:#9ad8ff; }
+.jobPill { display:inline-block; margin-top:6px; padding:1px 8px; border-radius:9px; background:#3a2a10; color:#ffcf60; font-size:10px; letter-spacing:.1em; }
+@keyframes jobIn { from { opacity:0; transform:translateY(-8px) scale(.94); } to { opacity:1; transform:none; } }
+@keyframes jobRow { from { opacity:0; transform:translateX(-6px); } to { opacity:1; transform:none; } }
+@keyframes jobSh { from { background-position:100% 0; } to { background-position:0 0; } }
+@media (max-width:760px) { #jobRc { left:auto; right:8px; width:200px; top:96px; } }
+.jobC { display:inline-block; font:10px ui-monospace,monospace; letter-spacing:.12em; padding:1px 6px; border-radius:3px; margin-right:7px; vertical-align:2px; color:#111; }
+.jobC.r0 { background:#5ab06a; } .jobC.r1 { background:#e0a830; } .jobC.r2 { background:#d0483a; color:#fff; } .jobC.r3 { background:#ffd060; }
+.jobT { display:inline-block; font:9px ui-monospace,monospace; color:#ff7a60; border:1px solid #ff7a60; padding:0 4px; margin-left:6px; transform:rotate(-4deg); letter-spacing:.15em; vertical-align:2px; }
+.jobBar { display:block; height:3px; background:rgba(255,255,255,.1); margin-top:5px; } .jobBar b { display:block; height:100%; background:var(--acc); }
+#jobHd { display:flex; justify-content:space-between; align-items:center; gap:10px; color:var(--dim); font-size:13px; margin:2px 0 4px; } #jobHd button { padding:5px 12px; font-size:13px; }
+.up.jobA { background:linear-gradient(90deg,rgba(74,168,200,.1),transparent); } .up.jobL { opacity:.55; }
+#jrn .paper { width:min(780px,94vw); max-height:88vh; overflow:auto; white-space:normal; font:13px/1.45 "Courier New",monospace; padding:20px 26px 16px; position:relative; }
+#jrn h2 { margin:0; font:bold 20px "Courier New",monospace; letter-spacing:.2em; } #jrnX { position:absolute; right:10px; top:8px; background:none; color:#6b604c; font-size:22px; padding:2px 10px; }
+#jrn h3 { display:flex; justify-content:space-between; align-items:baseline; margin:14px 0 6px; font:bold 12px "Courier New",monospace; letter-spacing:.14em; text-transform:uppercase; border-bottom:1px dashed rgba(42,36,26,.35); padding-bottom:2px; } #jrn h3 i { font-style:normal; color:#6b604c; }
+#jrn .jrS { font-style:normal; color:#7a5a10; } #jrn .jrS.ok { color:#2a7a3a; }
+#jrn .jrG { display:grid; grid-template-columns:repeat(auto-fill,minmax(108px,1fr)); gap:6px; }
+#jrn .jrT { border:1px solid rgba(42,36,26,.3); border-radius:3px; padding:5px 7px; min-height:40px; background:rgba(255,255,255,.22); font-size:11px; color:#4a4030; }
+#jrn .jrT b { display:block; font-size:12px; color:#2a241a; } #jrn .jrT.q { background:transparent; border-style:dashed; color:#9a8e74; } #jrn .jrT.q b { color:#9a8e74; } #jrn .jrT.w { border-color:#a07a10; background:rgba(224,190,90,.25); }
+#jrn .jrT svg { width:15px; height:15px; float:right; opacity:.55; }
+`; document.head.appendChild(st);
+  const rc = document.createElement('div'); rc.id = 'jobRc'; $('hud').appendChild(rc); jobRc.el = rc;
+  const jr = document.createElement('div'); jr.id = 'jrn'; jr.className = 'scr hidden'; jr.innerHTML = '<div class="paper"><button id="jrnX" title="Close (J)">×</button><div id="jrnB"></div><small>J or Esc to close</small></div>'; document.body.appendChild(jr);
+  jr.onclick = e => { if (e.target === jr) jrnClose(); }; $('jrnX').onclick = () => jrnClose();
+  const tb = $('shopTabs'); if (tb && !tb.querySelector('[data-tab="jobs"]')) { const b = document.createElement('button'); b.dataset.tab = 'jobs'; b.textContent = 'Jobs'; tb.insertBefore(b, tb.firstChild); } }
+Snd.jobPin = () => { if (!A.on) return; burst(2600, 1.5, .07, .06); setTimeout(() => { burst(700, 1.4, .16, .08, 'lowpass'); tone(820, .035, .05, 'triangle'); }, 70); };
+Snd.jobDone = () => { if (!A.on) return; [1318.5, 1975.5, 2637].forEach((f, i) => setTimeout(() => { tone(f, .055, 1.5); tone(f * 2.76, .012, .6); }, i * 150));
+  burst(260, 1, .25, .14, 'lowpass'); for (let i = 0; i < 10; i++) setTimeout(() => { tone(2900 + Math.random() * 800, .022, .06, 'triangle'); burst(5200, 5, .02, .025); }, 420 + i * 42); };
+
+// ---- the Jobs tab in the shed (drawShop calls this with its row and button helpers)
+function jobRows(row, bt) {
+  const J = jobB(); if (!J || !J.b) return '<div class="up"><div>The board is being pinned up…</div></div>';
+  const rk = titleOf(G.earned), pay = D.pay || 1, nAct = J.b.filter(s => s && !s.e && s.act).length, mul = 1 + .1 * Math.min(J.st || 0, 5);
+  const dist = s => { if (s.x == null || !P) return ''; const d = Math.hypot(s.x - P.x, s.z - P.z); return d < 1000 ? Math.round(d) + ' m' : (d / 1000).toFixed(1) + ' km'; };
+  const chip = i => `<span class="jobC r${i}">${['SAFE', 'RISKY', 'DEADLY', 'LEGEND'][i]}</span>`;
+  const out = [`<div id="jobHd"><span>${J.st > 0 ? `Streak ×${mul.toFixed(1)} · ` : ''}${nAct} of 2 active</span><button data-jrn="1">Journal</button></div>`];
+  J.b.forEach((s, i) => {
+    if (i === 2 && rk < 1) { out.push(row(`${chip(2)}???`, `Opens at Bosun (${money(TITLES[1][0])} earned)`, bt('', 'Locked', 0, `${money(Math.max(0, TITLES[1][0] - G.earned))} to go`), ' jobL')); return; }
+    if (!s || s.e) { out.push(row(`${chip(i)}<i style="color:var(--dim)">More work soon</i>`, 'A new notice goes up in a moment', '', ' jobL')); return; }
+    const m = jobMul(s) * (s.nt && jobNight() > .5 ? 1.6 : 1), pr = s.act && s.n > 1 ? `<i class="jobBar"><b style="width:${(s.got / s.n * 100).toFixed(0)}%"></b></i>` : '';
+    const d = [s.d, dist(s), `${money(s.pay * pay)}${m > 1.001 ? ` ×${m.toFixed(1)}` : ''}`, s.act && s.n > 1 ? `${s.got}/${s.n}` : ''].filter(Boolean).join(' · ');
+    const b = s.act ? `<span class="bt"><button data-jobx="${i}">Abandon</button></span>` : bt(`data-job="${i}"`, 'Take', 0, nAct >= 2 ? 'Two at a time' : '');
+    out.push(row(`${chip(i)}${jobTitle(s)}${s.daily ? '<span class="jobT">TODAY</span>' : ''}`, d + pr, b, s.act ? ' jobA' : ''));
+  });
+  const L = J.lg; if (L && rk >= 2) out.push(row(`${chip(3)}${L.n}`, `Land a ${FISH[L.f] ? FISH[L.f].n : L.f} of ${L.kg} kg or more · this week · ${money(L.pay * pay)}`, `<span class="bt"><button disabled>${J.leg === J.wk ? 'Claimed ✓' : 'Always on'}</button></span>`, J.leg === J.wk ? ' jobL' : ' jobA'));
+  else if (L && rk >= 1) out.push(row(`${chip(3)}???`, `A legendary catch each week · opens at First Mate (${money(TITLES[2][0])})`, '', ' jobL'));
+  return out.join('');
+}
+
+// ---- the journal panel
+function jrnOpen() {
+  if (G.jrnOpen || G.noteOpen || G.casOpen || G.helpOpen || G.endOpen || !G.on) return;
+  if (G.shopOpen) { G.shopOpen = false; $('shop').classList.add('hidden'); }
+  G.jrnOpen = true; clearKeys(); $('jrn').classList.remove('hidden'); try { document.exitPointerLock(); } catch (e) {} jrnDraw(); Snd.jobPin();
+}
+function jrnClose(relock = true) { if (!G.jrnOpen && $('jrn').classList.contains('hidden')) return; G.jrnOpen = false; $('jrn').classList.add('hidden'); if (relock && G.on) lockMouse(); }
+function jrnDraw() {
+  const el = $('jrnB'); if (!el) return; const R0 = isHost() ? G.stat && G.stat.jr : G.jrnS, R = Object.assign({f: {}, t: {}, c: {}, s: {}}, R0 || {}), pay = D.pay || 1;
+  const tile = (ok, ic, n, sub, w) => `<div class="jrT${ok ? (w ? ' w' : '') : ' q'}">${ok && ic ? ic : ''}<b>${ok ? n : '???'}</b>${ok && sub ? sub : ''}</div>`;
+  const sec = (h, n, m, si, body) => `<h3><span>${h} <i>${n}/${m}</i></span>${si != null ? `<em class="jrS${R.s[si] ? ' ok' : ''}">${R.s[si] ? '✓ ' : ''}${JOB_SETS[si].n} · ${money(JOB_SETS[si].v * pay)}</em>` : ''}</h3><div class="jrG">${body}</div>`;
+  const FK = Object.keys(FISH).filter(k => k !== 'boot' && k !== 'bottle'), TK = Object.keys(VALUE).filter(k => VALUE[k] > 0 && !JOB_SKIP.includes(k)), own = jobOwn();
+  const CK = [['rig', 'The thing on the rig'], ['stw', 'The Steward'], ['deep', 'The deep'], ['gul', 'Gulpers']];
+  const J = jobB(), nm = String((P && P.name) || '').replace(/[<>&]/g, '');
+  el.innerHTML = `<h2>JOURNAL</h2><small style="margin:2px 0 0">${TITLES[titleOf(G.earned)][1]} ${nm} · earned ${money(G.earned)}${J && J.st ? ` · streak ${J.st}` : ''}${R.rs ? ` · ${R.rs} rescued` : ''}</small>`
+    + sec('Catches', FK.filter(k => R.f[k] != null).length, FK.length, 0, FK.map(k => tile(R.f[k] != null, ICON.fish, jobCap(FISH[k].n), `best ${R.f[k]} kg`, J && J.lg && J.lg.f === k && R.f[k] >= J.lg.kg)).join(''))
+    + sec('Treasures', TK.filter(k => R.t[k]).length, TK.length, 1, TK.map(k => tile(R.t[k], ICON.sack, jobCap(NAMES[k] || k), money(VALUE[k] * pay))).join(''))
+    + sec('Creatures', CK.filter(([k]) => R.c[k] === 2).length, CK.length, 2, CK.map(([k, n]) => tile(R.c[k] >= 1, '', n, R.c[k] === 2 ? 'beaten' : 'seen', R.c[k] === 2)).join(''))
+    + sec('Places', POIS.filter((q, i) => G.disc.includes(i)).length, POIS.length, null, POIS.map((q, i) => tile(G.disc.includes(i), '', q.n, '')).join(''))
+    + sec('Fleet', HULLS.filter((H, i) => own.includes(i)).length, HULLS.length, 3, HULLS.map((H, i) => tile(own.includes(i), '', H.n, H.L ? H.L + ' m' : '')).join(''));
+}
+
+// ---- wrappers
+{ const f0 = goalHook; goalHook = function (e, ph) { const r = f0.apply(this, arguments); if (ph === 1 && G.stat && G.stat.job && G.stat.jr) jobHook(e); return r; }; }
+{ const f0 = hostStep; hostStep = function (dt) { const r = f0.apply(this, arguments); if (G.on) jobStep(dt); return r; }; }
+{ const f0 = hostAct; hostAct = function (id, m) {
+  const p = PL.get(id);
+  // a stowed parcel rides in the hold (and sinks with it); unstowing hands it back first
+  if (m && p && G.on && m.a === 'unstow' && B.hold.includes('parcel') && !B.hold.includes('key') && sackFits(p, 'parcel')) { const [x, z] = bL2W(BSPOT.hold[0], BSPOT.hold[1]); if (Math.hypot(p.x - x, p.z - z) < 3.4) { B.hold.splice(B.hold.lastIndexOf('parcel'), 1); p.sack.push('parcel'); sackSet(p); save(); return; } }
+  const r = f0.apply(this, arguments); if (m && G.on && (m.a === 'job' || m.a === 'jobx' || m.a === 'jobd')) jobAct(id, m); return r; }; }
+{ const f0 = applyEv; applyEv = function (e) {
+  const me = myId();
+  if (e.k === 'sold') { (Snd.sale || Snd.coin)(e.v); const pay = D.pay || 1, rows = []; let sum = 0;
+    for (const k in e.c || {}) { const n = e.c[k]; if (!(n > 0) || k === 'fish') continue; const v = Math.round((VALUE[k] || 0) * n * pay); sum += v; rows.push([`${n} ${jobPl(k, n)}`, v]); }
+    if (e.c && e.c.fish > 0) rows.push([`${e.c.fish} fish`, Math.max(0, (e.v || 0) - sum)]); if (!rows.length) rows.push(['Salvage', e.v || 0]);
+    jobRc.last = jobRc.push({k: 'sold', rows, tot: e.v || 0}); return; }
+  const r = f0.apply(this, arguments);
+  switch (e.k) {
+    case 'jobs': { Snd.jobPin(); const p = PL.get(e.id); showMsg(e.id === me ? `Contract taken · ${e.t}` : `${p ? p.name : 'Crew'} took a contract · ${e.t}`, '', 2.6); break; }
+    case 'jobok': { Snd.jobDone(); const st = (1 + .1 * Math.min(e.st || 0, 5)).toFixed(1);
+      jobRc.push({k: 'ok', cls: 'gold', cuV: e.v, life: 4.4, h: `<h4>${e.lg ? 'LEGEND LANDED' : 'CONTRACT DONE'}</h4><big>${e.t}</big><b data-cu>$0</b>${e.nt ? ' <small style="color:#b8a0ff">night ×1.6</small>' : ''}<br><span class="jobPill">Streak ${e.st} · ×${st}</span>`,
+        go: () => { if (!(G.uw > .5)) for (let k = 0; k < 3; k++) setTimeout(() => G.on && spawnRocket({x: cam.position.x + (Math.random() - .5) * 24, y: cam.position.y + 3, z: cam.position.z + (Math.random() - .5) * 24, vx: Math.random() < .5 ? -2 : 2, vy: 26, vz: Math.random() < .5 ? -2 : 2, c: k + 1}), 150 + k * 340); }});
+      if (e.lg) (G.banQ = G.banQ || []).push({h: 'LEGEND', t: e.t, c: e.v, s: 'goal'}); break; }
+    case 'jobf': tone(150, .07, .55, 'triangle', null, 92); jobRc.push({k: 'f', cls: 'red', life: 3, h: `<h4>CONTRACT LOST</h4>${e.why || ''}${e.t ? `<br><small style="color:var(--dim)">${e.t}</small>` : ''}`}); break;
+    case 'jobp': showMsg(`${e.l || 'Contract'} ${e.n}/${e.of}`, '', 1.6); break;
+    case 'jobnb': if (!jobRc.addRow('Night shift +25%', e.v)) jobRc.push({k: 'nb', life: 2.6, cuV: e.v, h: '<h4>NIGHT SHIFT</h4><span>+25% after dark </span><b data-cu style="color:#b8a0ff">$0</b>'}); break;
+    case 'jobst': if (e.day) showMsg('A new day. Fresh contracts on the board.', 'JOB BOARD', 4); else if (e.st === 0) showMsg('Streak lost.', '', 2); break;
+    case 'jrnew': { Snd.discover(); const F = FISH[e.n], CN2 = {rig: 'The thing on the rig', stw: 'The Steward', deep: 'The deep', gul: 'Gulpers'};
+      const t = e.g === 'f' ? `${jobCap(F ? F.n : e.n)} · ${e.v} kg` : e.g === 't' ? `${jobCap(NAMES[e.n] || e.n)} · ${money((VALUE[e.n] || 0) * (D.pay || 1))}` : `${CN2[e.n] || e.n} · ${e.d ? 'beaten' : 'seen'}`;
+      jobRc.push({k: 'jn', cls: 'jn', life: 3.2, h: `<h4>NEW IN THE JOURNAL</h4>${t}`}); if (G.jrnOpen) jrnDraw(); break; }
+    case 'jrset': (G.banQ = G.banQ || []).push({h: 'JOURNAL', t: (JOB_SETS[e.s] || {}).n || 'Set complete', c: e.v, s: 'goal'}); if (G.jrnOpen) jrnDraw(); break;
+  }
+  return r; }; }
+{ const f0 = packSnap; packSnap = function () { const s = f0.apply(this, arguments), J = G.stat && G.stat.job, n = performance.now();
+  if (J && ((J.v !== G.jobSentV && n - (G.jobSentT || 0) > 500) || n - (G.jobSentT || 0) > 2000)) { G.jobSentV = J.v; G.jobSentT = n;
+    s.jb = {v: J.v, st: J.st, wk: J.wk, leg: J.leg, lg: J.lg, b: J.b.map(q => !q || q.e ? {e: 1, r: q ? q.r : 0} : {id: q.id, r: q.r, t: q.t, k: q.k, n: q.n, got: q.got, pay: q.pay, x: q.x, y: q.y, z: q.z, d: q.d, act: q.act, daily: q.daily, nt: q.nt || 0})}; }
+  if (G.stat && G.stat.jr && n - (G.jrnSentT || 0) > 3000) { G.jrnSentT = n; s.jr = G.stat.jr; } return s; }; }
+{ const f0 = applySnap; applySnap = function (s) { const r = f0.apply(this, arguments); if (s.jb) G.jobsS = s.jb; if (s.jr) { G.jrnS = s.jr; if (G.jrnOpen) jrnDraw(); } return r; }; }
+{ const f0 = startGame; startGame = function () { const r = f0.apply(this, arguments);
+  G.jobsS = null; G.jrnS = null; G.jobV = null; G.jobT = 0; G.jobDayT = 0; G.jobSentT = 0; G.jrnSentT = 0; jrnClose(false); jobRc.reset(); jobBoard.k = '';
+  if (isHost() && G.stat) { const S = G.stat; S.jr = Object.assign({f: {}, t: {}, c: {}, s: {}, rs: 0}, S.jr || {}); for (const k of ['f', 't', 'c', 's']) S.jr[k] = S.jr[k] || {};
+    jobDests(); const J = S.job = Object.assign({b: [], st: 0, day: null, wk: null, leg: null, lg: null, n: 0, v: 0, gt: 0, dp: 0}, S.job || {});
+    // game time restarts every voyage: shift the stored times so ages and refills carry on
+    const sh = -(J.gt || 0); for (const s of J.b) if (s) { if (s.born != null) s.born += sh; if (s.refT) s.refT = Math.max(1, s.refT + sh); if (s.tk != null) s.tk += sh; } J.gt = 0;
+    for (let i = 0; i < 3; i++) if (!J.b[i] || J.b[i].r !== i) J.b[i] = jobGen(i); J.b.length = 3; jobStep(.5); J.v++; }
+  return r; }; }
+{ const f0 = targets; targets = function () { const L = f0.apply(this, arguments); if (!P) return L;
+  const bp = jobBoard.p; if (bp && (bp[0] - P.x) * (bp[0] - P.x) + (bp[2] - P.z) * (bp[2] - P.z) < 900) L.push({x: bp[0], y: bp[1], z: bp[2], r: 2.4, label: 'Job board', go: () => { G.shopTab = 'jobs'; openShop(); G.voyShopPos = bp; }});
+  const J = jobB(); if (J && J.b && (P.sack || []).includes('parcel')) J.b.forEach((s, i) => { if (s && !s.e && s.act && s.t === 'cour' && s.x != null && Math.hypot(s.x - P.x, s.z - P.z) < 30) L.push({x: s.x, y: s.y + 1.1, z: s.z, r: 3.6, label: `Deliver the parcel (${s.k})`, go: () => act({a: 'jobd', i})}); });
+  return L; }; }
+{ const f0 = nextStep; nextStep = function () { const r = f0.apply(this, arguments); if (!P || !G.goals.includes(10) || !G.helmDone) return r;
+  const sv = sackVal(P.sack), hold = holdValue(); if (B.hull < 30 || (sv > 0 && P.ob) || (hold > 0 && G.earned === 0) || hold >= 150 || (sv > 0 && !P.ob && Math.hypot(P.x - HOME.x, P.z - HOME.z) < 200)) return r;
+  const J = jobB(); if (!J || !J.b) return r; let best = null, bd = 1e9;
+  for (const s of J.b) { if (!s || s.e || !s.act || s.x == null) continue; const d = Math.hypot(s.x - P.x, s.z - P.z); if (d < bd) { bd = d; best = s; } }
+  if (!best) return r; const mk = {x: best.x, z: best.z, lab: 'JOB'}; if (bd < 40 && best.y != null) Object.assign(mk, {y: best.y + 1.2, scr: 1});
+  return {t: jobTitle(best), mk}; }; }
+{ const f0 = ctlFrame; ctlFrame = function () { const r = f0.apply(this, arguments); if (G.jrnOpen && P && (!alivePlay() || P.down || (B.sink > 0 && P.ob))) jrnClose(false); return r; }; }
+{ const f0 = hud; hud = function () { const r = f0.apply(this, arguments), now = performance.now(), dt = Math.min(.1, (now - (G.jobHudT || now)) / 1000); G.jobHudT = now; const J = jobB();
+  jobRc.step(dt);
+  // the board: redraw on a new version, glow a little at night, hide when far
+  const o = jobBoard; if (o.m) { const d = Math.hypot(cam.position.x - o.p[0], cam.position.z - o.p[2]), vis = d < 300; if (o.m.visible !== vis) o.m.visible = vis;
+    if (vis) { const k = `${J ? J.v : -1}|${titleOf(G.earned)}|${D.pay}`; if (k !== o.k && d < 140) { o.k = k; jobBoardDraw(); } const ei = +(.2 * TOD.night).toFixed(2); if (o.m.material.emissiveIntensity !== ei) o.m.material.emissiveIntensity = ei; } }
+  // the shed's Jobs tab follows the board
+  if (G.shopOpen && G.shopTab === 'jobs') { const k = `${J ? J.v : -1}|${titleOf(G.earned)}|${G.cash}`; if (k !== G.jobV) { G.jobV = k; drawShop(); } } else G.jobV = null;
+  // the chart's logbook lists up to two active contracts
+  if (G.map && J && J.b) { const lg = $('logbook'), A2 = J.b.filter(s => s && !s.e && s.act).slice(0, 2), k = A2.map(s => s.id + ':' + s.got).join(',');
+    if (lg && (lg._jobK !== k || (A2.length && !lg.querySelector('.jobLn')))) { lg._jobK = k; lg.querySelectorAll('.jobLn').forEach(q => q.remove());
+      for (const s of A2) { const d = document.createElement('div'); d.className = 'jobLn'; d.innerHTML = `<span>◆ ${jobTitle(s)}${s.n > 1 ? ` <i>(${s.got}/${s.n})</i>` : ''}</span><b>${money(s.pay * (D.pay || 1) * jobMul(s))}</b>`; lg.appendChild(d); } } }
+  return r; }; }
 
 // ---------------- game flow
 let BUILT = false;
