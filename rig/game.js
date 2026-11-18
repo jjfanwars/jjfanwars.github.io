@@ -29,7 +29,7 @@ const hexS = c => '#' + c.toString(16).padStart(6, '0');
 
 // ---------------- net (jjfanwars relay)
 const RELAY_URL = 'wss://jjfanwars-relay.businessautomationvic.workers.dev';
-const GAME_V = 49;
+const GAME_V = 50;
 const Net = {
   tag: '[Rig]', role: 'solo', ws: null, peers: new Map(), code: '', relayT: {pose: 1}, id: '', name: '', handlers: {}, retry: 0, started: false,
   enc: new TextEncoder(), dec: new TextDecoder(),
@@ -7952,7 +7952,7 @@ function jetLook(X) { const {g, L, hw, fb, zs, zb, wz0, wz1, ww, hh, S, add, box
 // windows: the shared boat glass tints dark from outside (it showed the white cabin lining and read as frosted), clear while you are inside or at the wheel
 { const f0 = buildBoat; buildBoat = function () { const r = f0.apply(this, arguments); WIN.m = null; if (BOAT) BOAT.traverse(o => { if (!WIN.m && o.isMesh && o.material && o.material.transparent && Math.abs(o.material.opacity - .16) < .001) WIN.m = o.material; }); WIN.k = -1; jetCargo(); return r; }; }
 const WIN = {m: null, k: -1};
-{ const f0 = hud; hud = function () { const r = f0.apply(this, arguments), m = WIN.m; if (m && P) { const ins = P.seat || inCabin() || !!G.subIn, k = ins ? 1 : 0; if (k !== WIN.k) { WIN.k = k; m.color.setHex(ins ? 0x9ac0d0 : 0x0e1820); m.opacity = ins ? .16 : .72; m.roughness = ins ? .03 : .04; m.metalness = ins ? .1 : .6; m.needsUpdate = true; } } return r; }; }
+{ const f0 = hud; hud = function () { const r = f0.apply(this, arguments), m = WIN.m; if (m && P) { const ins = P.seat || inCabin() || !!G.subIn, k = ins ? 1 : 0; if (k !== WIN.k) { WIN.k = k; m.visible = !ins; m.color.setHex(0x0e1820); m.opacity = .72; m.roughness = .04; m.metalness = .6; m.needsUpdate = true; if (BOAT) BOAT.traverse(o => { if (o.isMesh && o.material && o.material !== m && o.material.transparent && o.material.opacity >= .3 && o.material.opacity <= .6 && o.material.depthWrite === false && o.material.color && o.material.color.getHex() < 0x202020) o.material.visible = !ins; }); } } return r; }; }
 // cargo: hatch covers, container stacks and crates on deck get a floor on top; walk into one holding W and you climb up (and you can walk along the top and drop off)
 const CGO = {list: [], t: 0};
 function jetCargo() { CGO.list = []; if (!BOAT || BG.sub) return; const ud = BOAT.userData, wz = ud.wz || [0, 0], ww = (ud.ww || 0) + .4;
