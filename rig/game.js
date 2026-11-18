@@ -29,7 +29,7 @@ const hexS = c => '#' + c.toString(16).padStart(6, '0');
 
 // ---------------- net (jjfanwars relay)
 const RELAY_URL = 'wss://jjfanwars-relay.businessautomationvic.workers.dev';
-const GAME_V = 36;
+const GAME_V = 37;
 const Net = {
   tag: '[Rig]', role: 'solo', ws: null, peers: new Map(), code: '', relayT: {pose: 1}, id: '', name: '', handlers: {}, retry: 0, started: false,
   enc: new TextEncoder(), dec: new TextDecoder(),
@@ -3731,6 +3731,15 @@ SY_SUP[7] = X => {
   const {g, L, hw, fb, zs, zb, wz0, wz1, ww, hh, S, add, box, cyl, glass, wm, steel, darkM} = X, ud = g.userData;
   const cr = S({color: 0xf2efe6, roughness: .45}), crD = S({color: 0xf2efe6, roughness: .45, side: THREE.DoubleSide}), nv = S({color: 0x1a2a4a, roughness: .5}), dk = S({color: 0x1e2226, roughness: .6, side: THREE.DoubleSide}), tint = S({color: 0x12181e, roughness: .08, metalness: .5}), rl = S({color: 0xe8e6e0, roughness: .5}), tk = S({map: TX.wood, color: 0xb08a5a, roughness: .7});
   const y0 = fb + 2.7, zf = wz0 - 1.6, za = zs - 9.5;
+  // forecastle: the bow plating rises well above the mooring deck (a recessed, green-painted deck level with the promenade roof) with windlasses, cables to the hawse pipes,
+  // bitts, a V breakwater and a foremast; the deck ahead of BDECK.z0 is not walkable, so this is visual only
+  { const fz = zb + 1.2, fy = fb + 3.4, FR = syHullRing(fz, zf + .4, .07, 2.5), gr = S({color: 0x4a5e48, roughness: .85}), wn = S({color: 0x2a3a2c, roughness: .5, metalness: .4});
+    add(syPrism(FR, fb, FR, fy - .02, true, 0, 0), cr, 0, 0, 0); add(syPrism(FR, fy - .02, FR, fy, true, 1, 0), gr, 0, 0, 0);
+    for (const sd of [-1, 1]) { const wz = zb + 7.5, wx = sd * 1.9; box(wn, wx - .7, wx + .7, fy, fy + .5, wz - .8, wz + .8); const dr = add(new THREE.CylinderGeometry(.55, .55, 1.1, 14), wn, wx, fy + 1, wz); dr.rotation.z = PI / 2;
+      cyl(darkM, .3, .3, .2, wx + sd * .75, fy + 1, wz, 0, 0, 12); const hz = zb + 3.2, hx = sd * Math.max(.6, hullHW(hz) - .5); sySeg(X, darkM, wx, fy + .9, wz - .4, hx, fy + .05, hz, .07, 5);
+      for (const bz of [zb + 11, zf - 2.5]) { const bx = sd * (hullHW(bz) - 1); cyl(darkM, .22, .22, .7, bx, fy + .35, bz - .35, 0, 0, 10); cyl(darkM, .22, .22, .7, bx, fy + .35, bz + .35, 0, 0, 10); }
+      const bw = add(new THREE.BoxGeometry(.12, 1.1, 5.2), cr, sd * 2.2, fy + .55, zb + 12.6); bw.rotation.y = -sd * .62; }
+    const my = syMast(X, cr, 0, zb + 13.5, fy, 7.5, 1.4); ud.shpNl.push(syGlow(g, 0xfff2dc, 1.4, 0, my + .2, zb + 13.5, 0)); }
   // promenade pillars (walls) and the hull-painted deck above the promenade: flush with the hull side, two rows of windows
   for (let z = wz1 + 4; z < za - 2; z += 9) for (const sd of [-1, 1]) { const x = sd * (hullHW(z) - .55); cyl(cr, .16, .16, y0 - fb, x, (fb + y0) / 2, z, 0, 0, 8); BW.push({x0: x - .2, x1: x + .2, z0: z - .2, z1: z + .2, y0: 0, y1: 2.6}); }
   const R1 = syHullRing(zf, za, .05, 2.5); add(syPrism(R1, y0, R1, y0 + 5.6, true, 1, 1), cr, 0, 0, 0);
@@ -3794,7 +3803,7 @@ Object.assign(HULLS[10], {form: {entry: .38, fine: .6, flare: .2, sheer: 1.8, sh
 Object.assign(HULLS[3], {form: {entry: .3, fine: .9, rake: .08, ff: .3, bulb: .9, flare: .2, knuckle: 1, kY: .55, sheer: 1.8, sheerP: 3, sternW: .9, sternP: 2, bw: 1.1, rail: 0, sheerC: {c: 0xf0f0ea, h: .3}, anti: 0x8a1a12, boot: 0xe8e8e0, tex: 'steel'}, kit: {port: 0, stack: 0, ant: 0}});
 Object.assign(HULLS[5], {eye: 9.52, form: {entry: .35, fine: .85, rake: .06, ff: .3, bulb: 1.1, flare: .25, knuckle: 1, kY: .55, sheer: 3, sheerP: 2.5, sternW: .95, sternP: 3, bw: 1.5, anti: 0x8a1a12, boot: 0xf0f0ea, tex: 'steel'}, kit: {port: 0, stack: 0, ant: 0}});
 Object.assign(HULLS[6], {eye: 11.92, form: {entry: .4, fine: .8, rake: .14, ff: .15, flare: .3, knuckle: 1, kY: .6, sheer: 2.6, sternW: .8, sternP: 2, bw: 1.3, belt: {c: 0x2a2a2c, y0: .3, y1: 1.6}, boot: 0xf0f0ea, anti: 0x5a1a14, tex: 'rust'}, kit: {port: 0, stack: 0, ant: 0}});
-Object.assign(HULLS[7], {wh: [.15, .25], eye: 18.65, form: {entry: .42, fine: .95, rake: .12, ff: .35, flare: .2, sheer: 2.5, sheerP: 2.5, sternW: .72, sternP: 2.5, bw: 1.2, tex: 'clean', boot: 0x1a2a4a, bootY: [.04, .5], anti: 0x8a1a14, run: .6}, kit: {port: 0, stack: 0, ant: 0}});
+Object.assign(HULLS[7], {wh: [.15, .25], eye: 18.65, form: {entry: .32, fine: .8, rake: .055, ff: .35, flare: .3, sheer: 6, sheerP: 3, sternW: .72, sternP: 2.5, bw: 1.2, tex: 'clean', boot: 0x1a2a4a, bootY: [.04, .5], anti: 0x8a1a14, run: .6}, kit: {port: 0, stack: 0, ant: 0}});
 Object.assign(HULLS[11], {form: {entry: .45, fine: .95, rake: .04, ff: .25, flare: .3, sheer: 2.0, vee: .45, sternW: .9, sternP: 2, transomRake: -.3, bw: 1.0, bwAft: .35, rail: 'aft', railC: 0xd8dce0, railH: 1.05, tex: 'clean', capC: 0xf8f8f8, belt: {c: 0x8a9096, y0: 1.22, y1: 1.3}, boot: 0x2a2c30, bootY: [.04, .19], anti: 0x2a2c30}, kit: {port: 0, stack: 0, ant: 0}});
 Object.assign(HULLS[12], {eye: 18.62, form: {entry: .2, fine: .5, rake: .03, ff: .2, bulb: 3, flare: .12, sheer: 3, sheerP: 3, sternW: .82, sternP: 3, bw: 1.3, side: 0x3a1c18, paintSide: 1, anti: 0x7a1812, boot: 0xe8e8e0, bootY: [.04, .4], tex: 'rust', run: .55}, kit: {port: 0, stack: 0, ant: 0, anchor: 0}});
 // chimney and funnel smoke: six recycled sprites in the boat group (boat-local, drift aft and up)
