@@ -72,6 +72,8 @@ Read `CLAUDE.md` first (shared rules). Split out of it on 17 Nov 2026; keep this
 
 **Swim camera (v55).** updateCamera wrapper while P.sw: pitch/roll from the waveH slope under you (camera-relative, x1.8, more in storms), springy heave that lags the surface (kept above -.1 so it doesn't flicker underwater), small chop; when diving it sways side to side instead.
 
+**Jump and chart (v56).** Space jumps (vy 5.6, ~.7 m) when on a floor (G.onFl), not seated/swimming/hiding/flying; the stand snap in stepPlayer skips while vy > 0, and a wrapper carries you with the boat while airborne off a deck (G.jb boat-local). Chart: tapping Tab (< 260 ms) keeps it open until Tab again (G.mapStick); holding still works as before. Space/Enter on the chart plots at the cursor (capture listener, so it doesn't jump).
+
 ## Next up (the owner's list, 18 Nov 2026; items 7-14 and the loot rework were built the same day, see the paragraphs above)
 1. **Sub visuals underwater and half underwater:** proper looks from inside and outside the research sub when it is dived and when it sits at the waterline (the waterline across the bow viewport, the sea surface seen from below, underwater fog and tint through the windows, the hull half in and half out of the water, bubbles and wake when diving).
 2. **Persisting loot and fast travel:** loot that stays where it was (taken items stay taken, a persistent world seed with slow restocks) and fast travel between ports (home, Northwatch, piers).

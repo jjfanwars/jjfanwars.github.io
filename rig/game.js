@@ -29,7 +29,7 @@ const hexS = c => '#' + c.toString(16).padStart(6, '0');
 
 // ---------------- net (jjfanwars relay)
 const RELAY_URL = 'wss://jjfanwars-relay.businessautomationvic.workers.dev';
-const GAME_V = 55;
+const GAME_V = 56;
 const Net = {
   tag: '[Rig]', role: 'solo', ws: null, peers: new Map(), code: '', relayT: {pose: 1}, id: '', name: '', handlers: {}, retry: 0, started: false,
   enc: new TextEncoder(), dec: new TextDecoder(),
@@ -2815,7 +2815,7 @@ function stepPlayer(dt) {
   if (P.dv > .4 && Math.random() < dt * .6) Snd.bubbles();
   if (!P.sw) {
     P.deep = 0;
-    if (stand && P.y - f.y < .6) { const iv = -(P.vy || 0); P.y = mix(P.y, f.y, Math.min(1, dt * 14)); P.vy = 0; if (iv > 3.5) landed(iv); }
+    if (stand && P.y - f.y < .6 && !(P.vy > 0)) { const iv = -(P.vy || 0); P.y = mix(P.y, f.y, Math.min(1, dt * 14)); P.vy = 0; if (iv > 3.5) landed(iv); }
     else { P.vy = (P.vy || 0) - 20 * dt; P.y += P.vy * dt; if (stand && P.y < f.y) { const iv = -P.vy; P.y = f.y; P.vy = 0; if (iv > 3.5) landed(iv); } if (!stand && P.y < .1) { P.sw = 1; P.cr = 0; P.y = 0; P.vy = 0; P.ob = 0; Snd.splash(); showMsg('You are in the water! Swim to land or a ladder (E). Do not stay out in deep water.', '', 3); } }
   }
   if (!P.sw && f && f.s.k === 'boat' && Math.abs(P.y - f.y) < .3) { P.ob = 1; P.bl = bW2L(P.x, P.z); } else P.ob = 0;
@@ -2969,9 +2969,9 @@ addEventListener('keydown', e => {
   if (e.code === 'KeyH') showFishHelp(true);
   if (e.code === 'KeyJ') jrnOpen();
   if (e.code === 'KeyQ' && !P.down) { if (P.seat) { const n = performance.now(); if (n - (G.hornC || 0) > 2500) { G.hornC = n; act({a: 'horn'}); } } else if ((G.whT || 0) <= 0) { G.whT = 3; act({a: 'wh'}); } }
-  if (e.code === 'Tab') { G.map = true; $('map').classList.remove('hidden'); drawMap(); }
+  if (e.code === 'Tab') { if (!e.repeat) { if (G.mapStick) { G.mapStick = 0; G.tabClose = 1; G.map = false; $('map').classList.add('hidden'); } else { G.tabT = performance.now(); G.map = true; $('map').classList.remove('hidden'); } } if (G.map) drawMap(); }
 });
-addEventListener('keyup', e => { K[e.code] = false; if (e.code === 'KeyE') eDown = false; if (e.code === 'Tab') { G.map = false; $('map').classList.add('hidden'); } });
+addEventListener('keyup', e => { K[e.code] = false; if (e.code === 'KeyE') eDown = false; if (e.code === 'Tab') { if (G.tabClose) G.tabClose = 0; else if (G.map && performance.now() - (G.tabT || 0) < 260) { G.mapStick = 1; showMsg('Chart open. Tab again to close.', '', 1.5); } else { G.mapStick = 0; G.map = false; $('map').classList.add('hidden'); } } });
 addEventListener('mousemove', e => {
   if (!G.on || G.paused || document.pointerLockElement !== canvas || !P) return;
   const s = .0022 * SET.sens; P.yaw -= e.movementX * s; P.pitch = clamp(P.pitch - e.movementY * s * (SET.inv ? -1 : 1), -1.45, 1.45);
@@ -2988,7 +2988,7 @@ addEventListener('wheel', e => { if (!G.on || G.paused || anyPanel() || (documen
 addEventListener('beforeunload', e => { if (G.on && !TEST) { try { save(); } catch (x) {} e.preventDefault(); e.returnValue = ''; } });
 document.addEventListener('pointerlockerror', () => { if (G.paused) $('pauseN').textContent = 'Click Resume again if the mouse does not lock.'; });
 function lockMouse() { if (!TEST && canvas.requestPointerLock) try { const r = canvas.requestPointerLock(); if (r && r.catch) r.catch(() => {}); } catch (e) {} }
-function pause(p) { G.paused = p; G.wantResume = false; $('pause').classList.toggle('hidden', !p); if (p) { clearKeys(); G.map = false; $('map').classList.add('hidden'); $('pVol').value = SET.vol; $('pSens').value = SET.sens; $('pBright').value = SET.bright; $('pFov').value = SET.fov || 70; $('pInv').checked = !!SET.inv; } $('pauseN').textContent = Net.role === 'solo' ? 'The sea waits for you. Progress is saved.' : 'Online games keep running.'; if (Net.role === 'solo' && A.ctx) p ? A.ctx.suspend() : A.ctx.resume(); }
+function pause(p) { G.paused = p; G.wantResume = false; $('pause').classList.toggle('hidden', !p); if (p) { clearKeys(); G.map = false; G.mapStick = 0; $('map').classList.add('hidden'); $('pVol').value = SET.vol; $('pSens').value = SET.sens; $('pBright').value = SET.bright; $('pFov').value = SET.fov || 70; $('pInv').checked = !!SET.inv; } $('pauseN').textContent = Net.role === 'solo' ? 'The sea waits for you. Progress is saved.' : 'Online games keep running.'; if (Net.role === 'solo' && A.ctx) p ? A.ctx.suspend() : A.ctx.resume(); }
 function resumeReq() { if (TEST || document.pointerLockElement === canvas || !canvas.requestPointerLock) { pause(false); return; } G.wantResume = true; lockMouse(); $('pauseN').textContent = 'Click Resume again if the mouse does not lock.'; }
 function clearKeys() { for (const k in K) K[k] = false; eDown = false; ePress = false; mouseR = false; G.lmb = false; }
 const anyPanel = () => !!(G.noteOpen || G.shopOpen || G.casOpen || G.helpOpen || G.endOpen || G.jrnOpen);
@@ -3055,7 +3055,7 @@ Snd.step = (kind, k) => { const r = .88 + Math.random() * .24, hit = g => {
   if (kind === 'metal') tone((320 + Math.random() * 60) * r, .02 * k, .08, 'triangle');
   else if (kind === 'steel') { tone(150 * r, .03 * k, .1); tone(2200 * r, .008 * k, .04); }
   else if (kind === 'wood') tone(180 * r, .015 * k, .08, 'triangle'); };
-const KEYMAP = [['W A S D', 'move'], ['Shift', 'run'], ['C', 'crouch · dive'], ['Space', 'rise · hold breath'], ['E', 'use · hold for jobs'], ['F', 'flashlight'], ['G', 'throw a flare'], ['Q', 'whistle · horn at the wheel'], ['1-7 · wheel', 'hotbar'],
+const KEYMAP = [['W A S D', 'move'], ['Shift', 'run'], ['C', 'crouch · dive'], ['Space', 'jump · rise · hold breath'], ['Tab (tap)', 'keep the chart open'], ['E', 'use · hold for jobs'], ['F', 'flashlight'], ['G', 'throw a flare'], ['Q', 'whistle · horn at the wheel'], ['1-7 · wheel', 'hotbar'],
   ['LMB / RMB', 'use · aim'], ['R', 'reload'], ['X', 'drop the last thing'], ['H', 'fishing help'], ['Tab (hold)', 'chart'], ['Esc', 'pause']];
 const keyTable = list => `<div class="keys ktab">${list.map(([k, a]) => `<span><b>${k}</b></span><span>${a}</span>`).join('')}</div>`;
 
@@ -6017,7 +6017,7 @@ function drawMap() {
     it(cx => arrow(cx, y, PI, 5, hexS(CREW_COL[((P ? P.c : 0) + 1) % 6])), 'crew');
     it(cx => { g.fillStyle = '#a01a10'; g.font = 'bold 13px Georgia'; g.textAlign = 'center'; g.fillText('✕', cx, y + 5); }, 'treasure');
     it(cx => { g.fillStyle = '#1aa0d0'; g.beginPath(); g.moveTo(cx, y - 6); g.lineTo(cx + 4, y); g.lineTo(cx, y + 6); g.lineTo(cx - 4, y); g.closePath(); g.fill(); }, 'course'); }
-  g.fillStyle = '#1a1a1a'; g.textAlign = 'center'; g.font = '12px Georgia'; g.fillText('click: new course · right-click or X: clear · wheel: zoom', W / 2, W - 8);
+  g.fillStyle = '#1a1a1a'; g.textAlign = 'center'; g.font = '12px Georgia'; g.fillText('click or Space: plot · right-click or X: clear · wheel: zoom · tap Tab: keep open', W / 2, W - 8);
 }
 
 // ---------------- voyage: zoomable chart with a course, autopilot, the Northwatch trading post
@@ -8049,6 +8049,18 @@ addEventListener('keydown', e => { if (!G.on || !P || P.dead || e.repeat || e.co
   const sway = deep * (Math.sin(G.t * .7) * .05 + Math.sin(G.t * 1.3 + 1) * .03), chop = (1 - deep) * Math.sin(G.t * 2.3) * .015 * (1 + G.storm * 2);
   cam.position.y = c.y + chop; cam.position.x += rx * sway * 2; cam.position.z += rz * sway * 2;
   cam.rotation.set(cam.rotation.x + c.p, cam.rotation.y, cam.rotation.z + c.r + sway, 'YXZ'); cam.updateMatrixWorld(); return r; }; }
+
+// ===== Space to jump; Space on the chart plots =====
+addEventListener('keydown', e => { if (!G.map || !G.on || G.paused || (e.code !== 'Space' && e.code !== 'Enter')) return; e.stopImmediatePropagation(); e.preventDefault(); if (!e.repeat) voyPlot(voyCursorWorld()); }, {capture: true});
+addEventListener('keydown', e => { if (e.code !== 'Space' || e.repeat || !G.on || G.paused || G.map || anyPanel() || !P || P.dead || P.down || P.seat || P.sw || P.climb || P.hd >= 0 || P.cas || G.rov || P.scope) return;
+  if (P.ob && flyAir()) return; if (!G.onFl) return; P.vy = 5.6; P.y += .02; G.onFl = 0; Snd.step && Snd.step('wood', .6); });
+// while you're in the air after jumping off a deck, you keep moving with the boat
+{ const f0 = stepPlayer; stepPlayer = function (dt) {
+  if (P && G.jb && !P.ob && !P.sw && !P.dead) { const [wx, wz] = bL2W(G.jb[0], G.jb[1]); P.x = wx; P.z = wz; P.yaw += angD(G.jb[2], B.yaw); }
+  const wasOb = P && P.ob, r = f0.apply(this, arguments); if (!P) return r;
+  G.onFl = !P.sw && !P.seat && !P.climb && Math.abs(P.vy || 0) < .01;
+  if ((G.jb || (wasOb && P.vy > 0)) && !P.ob && !P.sw && !P.dead && P.y > BDECK.y - 1.5) { const l = bW2L(P.x, P.z); G.jb = [l[0], l[1], B.yaw]; } else G.jb = null;
+  return r; }; }
 
 menuInit();
 setTimeout(() => { buildWorld(); requestAnimationFrame(frame); }, 30);
