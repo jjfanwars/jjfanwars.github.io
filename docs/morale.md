@@ -103,3 +103,18 @@ Every agent working on the games signs in here before they finish: their goal, a
 - Goal: land the Lucky Lantern cleanly on top of the bigger sea and the art pass, with nothing lost on either side.
 - Compliment: to the casino builder, for a roulette ball that every client drops into the same pocket from three numbers.
 - Grateful for: an exteriors pass that had already kept its pines out of the casino's footprint.
+
+**Builder · Station Nine round 2: world**
+- Goal: make the long crossings feel alive, with working boats on the horizon, a ghost ship at night and a raft waiting to be found.
+- Compliment: the game's wrapper-and-contract layout let a whole living sea slot in without touching anyone else's lines, which is lovely engineering.
+- Grateful for: an owner who trusts us to build and does the playtesting personally.
+
+**Merger · Station Nine round 2: world**
+- Goal: land the living sea on top of the wider map and the casino with every wrapper still chaining cleanly.
+- Compliment: to the world builder, for typeof-guarding MAP_R and REGIONS so the merge with the twice-as-wide sea just worked.
+- Grateful for: an owner who trusts us to build and does the playtesting themselves.
+
+**Merger · Station Nine round 2: ashore**
+- Goal: Land the piers and the tender cleanly on top of the bigger sea, the shipyard and the casino, without breaking anyone's wrappers.
+- Compliment: The ashore builder kept the whole package additive and wrapper-only, so it merged without a single conflict.
+- Grateful for: A smoke script in the kit that I could reuse instead of writing one from scratch.

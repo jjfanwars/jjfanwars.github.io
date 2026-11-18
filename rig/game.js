@@ -29,7 +29,7 @@ const hexS = c => '#' + c.toString(16).padStart(6, '0');
 
 // ---------------- net (jjfanwars relay)
 const RELAY_URL = 'wss://jjfanwars-relay.businessautomationvic.workers.dev';
-const GAME_V = 29;
+const GAME_V = 30;
 const Net = {
   tag: '[Rig]', role: 'solo', ws: null, peers: new Map(), code: '', relayT: {pose: 1}, id: '', name: '', handlers: {}, retry: 0, started: false,
   enc: new TextEncoder(), dec: new TextDecoder(),
@@ -3423,6 +3423,265 @@ function stepSteward(dt) {
     const st = Math.min(d, S.spd * dt); S.x += dx / d * st; S.z += dz / d * st; const f = floorAt(S.x, S.z, S.y + .9, true); if (f) S.y = mix(S.y, f.y, Math.min(1, dt * 10)); }
   S.stepAcc = (S.stepAcc || 0) + S.spd * dt; if (S.stepAcc > 1.6) { S.stepAcc = 0; emit({k: 'sstep'}); }
 }
+// ---------------- ashore: a landing stage on every island, and a ship's tender (a grey RIB) carried by the big hulls
+// PIERS (read by other packages): {n: island, x, z: T-head centre, y: 1.8, ax: 'x'|'z', root: [x, z] (the beach end), head: [x, z]}
+const PIERS = [], PIER_LAMPS = [];
+const pierAt = (Q, a, b) => [Q.c[0] + Q.u[0] * a - Q.u[1] * b, Q.c[1] + Q.u[1] * a + Q.u[0] * b];
+const pierR = (Q, a0, a1, b0, b1) => { const p = pierAt(Q, a0, b0), q = pierAt(Q, a1, b1); return {x0: Math.min(p[0], q[0]), x1: Math.max(p[0], q[0]), z0: Math.min(p[1], q[1]), z1: Math.max(p[1], q[1])}; };
+// for each island try the four axis directions: root where the beach drops to 1.5 m, head where the sea is 6.5 m deep; shortest clear stem wins
+function pierPlan() {
+  const DIR = [[1, 0], [-1, 0], [0, 1], [0, -1]], MR = typeof MAP_R === 'number' ? MAP_R : 2600;
+  const segD = (px, pz, ax, az, bx, bz) => { const dx = bx - ax, dz = bz - az, t = clamp(((px - ax) * dx + (pz - az) * dz) / (dx * dx + dz * dz || 1), 0, 1); return Math.hypot(px - ax - dx * t, pz - az - dz * t); };
+  ISLES.forEach((I, ii) => {
+    if (I.bar || PIERS.some(q => q.ii === ii)) return;
+    const rn = mulberry(0x91e5 + ii), ord = DIR.slice(); for (let i = 3; i > 0; i--) { const j = Math.floor(rn() * (i + 1)), t = ord[i]; ord[i] = ord[j]; ord[j] = t; }
+    const ft = []; for (const p of IPADS) if (p.I === I) ft.push([p.x, p.z, p.r]); if (I.ruin) ft.push([I.x - 4, I.z + 3, 3.3]);
+    if (I.skull) { ft.push([I.x, I.z, 1.4]); for (let i = 0; i < 9; i++) ft.push([I.x + Math.cos(i / 9 * TAU) * 9, I.z + Math.sin(i / 9 * TAU) * 9, 1]); } for (const d of DIGS) if (d.isle === I.n) ft.push([d.x, d.z, .6]);
+    const bad = (x, z) => Math.hypot(x, z) < 80 || Math.hypot(x - HOME.x, z - HOME.z) < HOME.r + 50 || Math.hypot(x - CRZ.x, z - CRZ.z) < 140 || Math.hypot(x, z + 60) > MR - 40 || ISLES.some(J => J !== I && !J.bar && Math.hypot(x - J.x, z - J.z) < J.r * 1.15 + 10) || WRECKS.some(W => Math.hypot(x - W.x - 6, z - W.z) < 40);
+    let best = null;
+    for (const u of ord) {
+      let seen = 0, ra = -1, ha = -1;
+      for (let a = 0; a < I.r * 1.6 + 90; a += .5) { const x = I.x + u[0] * a, z = I.z + u[1] * a;
+        if (ra < 0) { if (landH(x, z) > 1.5) seen = 1; else if (seen || a > I.r * 1.25) ra = a; continue; }
+        if (seaBed(x, z) <= -6.5) { ha = a; break; } }
+      if (ra < 0) continue; if (ha < 0 || ha - ra > 70) ha = ra + 70; if (ha - ra < 14) ha = ra + 14;
+      const Q = {c: [I.x, I.z], u}, [rx, rz] = pierAt(Q, ra, 0), [hx, hz] = pierAt(Q, ha, 0); let sc = ha - ra;
+      if (ft.some(f => segD(f[0], f[1], rx, rz, hx, hz) < 8 + f[2])) sc += 40;
+      if (landH(rx - u[0] * 2, rz - u[1] * 2) - landH(rx, rz) > 1) sc += 20;
+      if ([[ha, 0], [ha + 2, 7], [ha + 2, -7], [(ra + ha) / 2, 0]].some(([a, b]) => bad(...pierAt(Q, a, b)))) sc += 1000;
+      if (!best || sc < best.sc) best = {sc, u, ra, ha};
+    }
+    if (!best) return;
+    const Q = {c: [I.x, I.z], u: best.u}, [rx, rz] = pierAt(Q, best.ra, 0), [hx, hz] = pierAt(Q, best.ha, 0);
+    IPADS.push({I, x: rx, z: rz, r: 3, f: 4, h: 1.5});
+    PIERS.push({n: I.n, x: +hx.toFixed(2), z: +hz.toFixed(2), y: 1.8, ax: best.u[0] ? 'x' : 'z', root: [+rx.toFixed(2), +rz.toFixed(2)], head: [+hx.toFixed(2), +hz.toFixed(2)], ii, c: Q.c, u: best.u, ra: best.ra, ha: best.ha});
+  });
+}
+// planked stem with a little ramp off the beach, a 12 x 4 m T-head (open outer faces so ships moor and the gangway works), piles, fenders, bollards, a lamp, a ladder
+function pierBuild() {
+  const Y = 1.8, RL = 2;
+  for (const Q of PIERS) {
+    if (Q.built) continue; Q.built = 1;
+    const {ra, ha} = Q, a0 = ra + RL, a1 = ha - 2, ry = Math.atan2(-Q.u[1], Q.u[0]), at = (a, b) => pierAt(Q, a, b), up = Q.u[0] + Q.u[1] > 0;
+    SURF.push(Object.assign({k: 'ramp', y0: up ? 1.5 : Y, y1: up ? Y : 1.5, ax: Q.u[0] ? 'x+' : 'z+'}, pierR(Q, ra, a0, -1.5, 1.5)));
+    SURF.push(Object.assign({k: 'slab', y: Y}, pierR(Q, a0 - .05, a1 + .05, -1.5, 1.5)), Object.assign({k: 'slab', y: Y}, pierR(Q, ha - 2, ha + 2, -6, 6)));
+    OBST.push(Object.assign({pier: 1}, pierR(Q, ra, ha - 2, -2, 2)), Object.assign({pier: 1}, pierR(Q, ha - 2.5, ha + 2.5, -6.5, 6.5)));
+    { const m = at((a0 + a1) / 2, 0); wbox('planks', m[0], Y - .12, m[1], a1 - a0 + .1, .24, 3, ry, 1.2); }
+    { const m = at(ha, 0); wbox('planks', m[0], Y - .12, m[1], 4, .24, 12, ry, 1.2); }
+    { const g = boxUV(new THREE.BoxGeometry(Math.hypot(RL, Y - 1.5) + .05, .2, 3), RL, .2, 3, 1.2); g.rotateZ(Math.atan2(Y - 1.5, RL)); const m = at(ra + RL / 2, 0); put('planks', g, m[0], (Y + 1.5) / 2 - .1, m[1], ry); }
+    for (const b of [-1.3, 1.3]) { const m = at((a0 + a1) / 2, b); wbox('log', m[0], Y - .42, m[1], a1 - a0, .22, .22, ry); }
+    for (const a of [ha - 1.7, ha + 1.7]) { const m = at(a, 0); wbox('log', m[0], Y - .42, m[1], .22, .22, 12, ry); }
+    const pile = (a, b) => { const [x, z] = at(a, b), lo = seaBed(x, z) - .5, hi = Y - .3; if (hi - lo < .4) return; put('log', new THREE.CylinderGeometry(.15, .18, hi - lo, 7, 1, true), x, (lo + hi) / 2, z); };
+    for (let a = a0; a <= a1 + .01; a += 4) for (const b of [-1.3, 1.3]) pile(a, b);
+    for (const a of [ha - 1.7, ha + 1.7]) for (const b of [-5.6, -1.9, 1.9, 5.6]) pile(a, b);
+    for (const b of [-1.45, 1.45]) { const r = pierR(Q, a0, a1, b - .04, b + .04); rail(r.x0, r.x1, r.z0, r.z1, Y, 'wood'); }
+    for (let b = -5.5; b <= 5.51; b += 2.2) { const m = at(ha + 2.07, b); wbox('log', m[0], Y - .85, m[1], .14, 1.5, .26, ry); }
+    for (const b of [-4.6, 4.6]) { const [x, z] = at(ha + 1.45, b); put('dark', new THREE.CylinderGeometry(.15, .18, .46, 9), x, Y + .23, z); put('dark', new THREE.CylinderGeometry(.21, .21, .07, 9), x, Y + .47, z); PCIRC.push({x, z, r: .22}); }
+    { const [x, z] = at(ha - 1.55, 5.55); put('log', new THREE.CylinderGeometry(.07, .1, 3.3, 6), x, Y + 1.65, z); put('dark', new THREE.ConeGeometry(.3, .22, 8), x, Y + 3.42, z); put('glassL', new THREE.SphereGeometry(.13, 8, 6), x, Y + 3.22, z); PCIRC.push({x, z, r: .18}); PIER_LAMPS.push([x, Y + 3.22, z]); }
+    { for (let y = -.9; y < Y - .1; y += .32) { const m = at(ha + 2.1, 0); wbox('steel', m[0], y, m[1], .05, .05, .62, ry); } for (const b of [-.32, .32]) { const m = at(ha + 2.1, b); wbox('steel', m[0], (Y - .9) / 2, m[1], .06, Y + .9, .06, ry); }
+      const f = at(ha + 2.6, 0), t = at(ha + 1.2, 0); INTER.push({kind: 'ladder', x: f[0], y: 0, z: f[1], r: 3.5, top: [t[0], Y, t[1]], label: () => 'Climb the ladder', on: () => P.sw}); }
+  }
+  if (PIER_LAMPS.length && !PIER_LAMPS.m) { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(PIER_LAMPS.flat(), 3)); g.computeBoundingSphere();
+    const m = new THREE.Points(g, new THREE.PointsMaterial({map: TX.glow, color: 0xffc878, size: 4.2, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false, opacity: 0})); scene.add(m); PIER_LAMPS.m = m; }
+}
+{ const f0 = buildIsles; buildIsles = function (...a) { pierPlan(); const r = f0.apply(this, a); pierBuild(); return r; }; }
+
+// the tender: lives on davits on the starboard quarter of every hull of 30 m or more; the host drives it like the boat, four seats
+const TN = {st: 'stow', x: 0, z: 0, yaw: 0, v: 0, yr: 0, thr: 0, steer: 0, drv: null, seats: [null, null, null, null], beach: 0, heave: 0, drop: 0,
+  seat: [[0, .95], [-.42, -.85], [.42, -.85], [-.64, 1.55]], m: null, dv: null, mat: null, au: null, snK: 0, bumpT: 0, lv: null, lvT: 0, hudT: 0, hud: null, hudK: null, tx: null};
+const tnOk = () => { const H = HC(); return !!H && !H.sub && H.L >= 30 && H.tender !== 0; };
+function tnDavit() { return [BG.hw - .3, BG.zs - Math.max(6, BG.L * .1)]; }
+const tnL2W = (lx, lz) => { const c = Math.cos(TN.yaw), s = Math.sin(TN.yaw); return [TN.x + lx * c + lz * s, TN.z - lx * s + lz * c]; };
+function tnSeatPos(i) { return tnL2W(TN.seat[i][0], TN.seat[i][1]); }
+const tnDist = (x, z) => { const c = Math.cos(TN.yaw), s = Math.sin(TN.yaw), dx = x - TN.x, dz = z - TN.z, lx = dx * c - dz * s, lz = dx * s + dz * c; return Math.hypot(lx - clamp(lx, -1.05, 1.05), lz - clamp(lz, -2.15, 2.3)); };
+const tnHoistOk = () => { if (!tnOk() || B.sink > 0 || Math.abs(TN.v) >= 1.5) return false; const [x, z] = bL2W(BG.hw + 1, tnDavit()[1]); return Math.hypot(TN.x - x, TN.z - z) < 7; };
+function tnMats() { return TN.mat || (TN.mat = {grey: new THREE.MeshStandardMaterial({color: 0x585d62, roughness: .72, metalness: 0}), dark: new THREE.MeshStandardMaterial({color: 0x1d2024, roughness: .55, metalness: .2}),
+  steel: new THREE.MeshStandardMaterial({color: 0xb4b8bc, roughness: .4, metalness: .6}), rope: new THREE.MeshStandardMaterial({color: 0xc8b890, roughness: 1, metalness: 0})}); }
+const tnBake = (list, geo, mat, x, y, z, rx = 0, ry = 0, rz = 0) => { _e.set(rx, ry, rz, 'YXZ'); geo.applyMatrix4(_m4.compose(_v.set(x, y, z), _q.setFromEuler(_e), _s.set(1, 1, 1))); list.push([geo, mat, true]); };
+// grey tubes with a round bow, floor, console, outboard with a live prop, a white masthead light: four draw calls
+function tnMesh() {
+  const M = tnMats(), g = new THREE.Group(), L = [], b = (geo, mat, ...p) => tnBake(L, geo, mat, ...p);
+  for (const sd of [-1, 1]) b(new THREE.CapsuleGeometry(.28, 3.3, 4, 12), M.grey, sd * .74, .32, .25, PI / 2);
+  b(new THREE.TorusGeometry(.74, .28, 8, 14, PI), M.grey, 0, .32, -1.4, -PI / 2);
+  b(new THREE.BoxGeometry(1.32, .1, 3.7), M.dark, 0, .14, .15); b(new THREE.BoxGeometry(.7, .16, 3.4), M.dark, 0, .04, .1); b(new THREE.BoxGeometry(1.5, .5, .08), M.dark, 0, .36, 2.02);
+  b(new THREE.BoxGeometry(.56, .72, .46), M.dark, 0, .55, .3); b(new THREE.BoxGeometry(.58, .2, .04), M.grey, 0, .97, .1, -.5); b(new THREE.BoxGeometry(.62, .34, .5), M.dark, 0, .32, 1.05);
+  b(new THREE.BoxGeometry(.34, .5, .42), M.grey, 0, .8, 2.24); b(new THREE.BoxGeometry(.12, .72, .16), M.dark, 0, .22, 2.28); b(new THREE.CylinderGeometry(.02, .025, 1.25, 5), M.dark, .56, .95, 1.9);
+  for (const sd of [-1, 1]) b(new THREE.CylinderGeometry(.035, .035, .1, 6), M.dark, sd * .74, .62, -1.6);
+  for (const m of mergeByMat(L)) g.add(m);
+  const pb = []; for (let i = 0; i < 3; i++) { const q = new THREE.BoxGeometry(.05, .26, .08); q.translate(0, .13, 0); q.rotateZ(i / 3 * TAU); pb.push(q); }
+  const prop = new THREE.Mesh(mergeGeos(pb), M.dark); pb.forEach(q => q.dispose()); prop.position.set(0, -.14, 2.36); prop.castShadow = true; g.add(prop); g.userData.prop = prop;
+  const lt = new THREE.Sprite(new THREE.SpriteMaterial({map: TX.glow, color: 0xffffff, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: .5, fog: false})); lt.scale.setScalar(.7); lt.position.set(.56, 1.62, 1.9); g.add(lt); g.userData.lt = lt;
+  return g;
+}
+// davits, the stowed tender and its launch prompt go back on after every rebuild (live children, never merged)
+{ const f0 = buildBoat; buildBoat = function (...a) {
+  if (TN.m && TN.m.parent) TN.m.parent.remove(TN.m);
+  if (TN.dv) { if (TN.dv.parent) TN.dv.parent.remove(TN.dv); TN.dv.traverse(o => { if (o.geometry) o.geometry.dispose(); }); TN.dv = null; }
+  const r = f0.apply(this, a);
+  if (tnOk() && BOAT) { const M = tnMats(), [dx, dz] = tnDavit(), fb = BDECK.y, ox = BG.hw + 1, L = [], b = (geo, mat, ...p) => tnBake(L, geo, mat, ...p), bl = Math.hypot(ox - .3 - dx, .6);
+    for (const s of [-1.45, 1.45]) { b(new THREE.CylinderGeometry(.08, .11, 2.7, 8), M.steel, dx, fb + 1.35, dz + s); b(new THREE.BoxGeometry(ox - dx + .2, .13, .13), M.steel, (dx + ox) / 2, fb + 2.66, dz + s);
+      b(new THREE.BoxGeometry(bl, .07, .07), M.steel, (dx + ox - .3) / 2, fb + 2.3, dz + s, 0, 0, Math.atan2(.6, ox - .3 - dx)); b(new THREE.BoxGeometry(.36, .05, .36), M.steel, dx, fb + .03, dz + s);
+      b(new THREE.CylinderGeometry(.05, .05, .16, 8), M.dark, ox, fb + 2.56, dz + s); b(new THREE.CylinderGeometry(.012, .012, .6, 4), M.rope, ox, fb + 2.2, dz + s); }
+    b(new THREE.CylinderGeometry(.13, .13, .34, 10), M.dark, dx - .34, fb + .9, dz - 1.45, 0, 0, PI / 2);
+    const dv = new THREE.Group(); for (const m of mergeByMat(L)) dv.add(m); BOAT.add(dv); TN.dv = dv;
+    INTER.push({kind: 'tnl', boat: 1, lx: dx - .75, lz: dz, ly: 1.1, r: 2.6, label: () => 'Launch the tender', on: () => !P.sw && !P.seat && TN.st === 'stow' && tnOk(), go: () => act({a: 'tnl'})}); }
+  return r;
+}; }
+function tnPub(s, put) { emit({k: 'tn', s, st: TN.st, x: +TN.x.toFixed(2), z: +TN.z.toFixed(2), yaw: +TN.yaw.toFixed(3), seats: TN.seats.map(q => q || 0), put}); }
+// where a rider gets off: up the beach past the bow, onto a pier/jetty/deck beside, or over the ship's rail
+function tnLeave(p) {
+  const fx = -Math.sin(TN.yaw), fz = -Math.cos(TN.yaw), sx = Math.cos(TN.yaw), sz = -Math.sin(TN.yaw), bx = TN.x + fx * 2.1, bz = TN.z + fz * 2.1;
+  for (const o of OBST) { if (!o.isle) continue; const e = Math.hypot(bx - o.x, bz - o.z); if (e >= o.r + 1) continue;
+    const ux = (o.x - bx) / (e || 1), uz = (o.z - bz) / (e || 1); let x = bx + ux * 1.5, z = bz + uz * 1.5; for (let k = 0; k < 40 && landH(x, z) < .1; k++) { x += ux * .5; z += uz * .5; }
+    const lh = landH(x, z), f = floorAt(x, z, lh + .4, true); return {x, z, y: f ? f.y : lh, ob: 0}; }
+  let best = null, bd = 1e9;
+  for (const [ox, oz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) for (const d of [1.7, 2.5, 3.3, 4.1]) { const k = oz ? d + 1.2 : d, x = TN.x + (sx * ox + fx * oz) * k, z = TN.z + (sz * ox + fz * oz) * k, f = floorAt(x, z, 3.5, true);
+    if (f && f.y >= 1 && f.y <= 3.2 && d < bd) { bd = d; best = {x, z, y: f.y, ob: 0}; } }
+  if (best) return best;
+  if (BOAT && B.sink <= 0 && (B.dep || 0) < .3 && !BG.sub) { const [lx, lz] = bW2L(TN.x, TN.z); if (Math.abs(lx) - BG.hw < 5.1 && lz > BDECK.z0 - 1 && lz < BDECK.z1 + 1) {
+    const bl = [Math.sign(lx || 1) * (BDECK.x1 - .45), clamp(lz, BDECK.z0 + .5, BDECK.z1 - .5)], [x, z] = bL2W(bl[0], bl[1]); return {x, z, y: BDECK.y, ob: 1, bl}; } }
+  return null;
+}
+// everyone in the tender goes aboard by the davit and it is hoisted (also when the ship sinks, is towed or changes hull)
+function tnStow() {
+  const dz = tnDavit()[1], puts = [];
+  TN.seats.forEach((id, i) => { const p = id && PL.get(id); if (!p) return; const bl = [BG.sub ? 0 : BDECK.x1 - .5, clamp(dz + (i - 1.5) * .9, BDECK.z0 + .5, BDECK.z1 - .5)], [x, z] = bL2W(bl[0], bl[1]);
+    Object.assign(p, {ob: 1, bl, x, z, y: BDECK.y, sw: 0}); puts.push({id, ob: 1, bl, x: +x.toFixed(2), z: +z.toFixed(2), y: BDECK.y}); });
+  Object.assign(TN, {st: 'stow', seats: [null, null, null, null], v: 0, thr: 0, yr: 0, steer: 0, drv: null, beach: 0}); tnPub('hoist', puts);
+}
+function tnAct(p, id, m) {
+  const no = t => emit({k: 'tnsay', id, t}), si = TN.seats.indexOf(id);
+  if (p.dead || p.down) return;
+  if (m.a === 'tnl') { if (TN.st !== 'stow' || !tnOk() || !BOAT || B.sink > 0 || p.seat) return; const [dx, dz] = tnDavit(), [wx, wz] = bL2W(dx, dz);
+    if (!p.ob || Math.hypot(p.x - wx, p.z - wz) > 5) return no('Go to the davit first.'); if (Math.abs(B.v) > 3) return no('Slow the ship down first.');
+    const [x, z] = bL2W(BG.hw + 4, dz); Object.assign(TN, {st: 'water', x, z, yaw: B.yaw, v: 0, yr: 0, thr: 0, steer: 0, beach: 0, seats: [id, null, null, null], drv: id}); p.ob = 0; p.sw = 0; tnPub('launch'); }
+  else if (m.a === 'tnb') { if (TN.st !== 'water' || p.seat) return; if (tnDist(p.x, p.z) > 4.5) return no('Get closer to the tender.');
+    const s = Number.isInteger(m.s) && m.s >= 0 && m.s < 4 && !TN.seats[m.s] ? m.s : si >= 0 ? -1 : [1, 2, 3, 0].find(i => !TN.seats[i]); if (s == null) return no('The tender is full.'); if (s < 0) return;
+    if (si >= 0) TN.seats[si] = null; TN.seats[s] = id; TN.drv = TN.seats[0]; p.ob = 0; p.sw = 0; tnPub('board'); }
+  else if (m.a === 'tnx') { if (si < 0) return; const d = tnLeave(p); if (!d) return no('Steer to land, a pier or the ship first.');
+    TN.seats[si] = null; TN.drv = TN.seats[0]; Object.assign(p, {x: d.x, z: d.z, y: d.y, ob: d.ob, sw: 0}); if (d.ob) p.bl = d.bl.slice(); tnPub('leave', Object.assign({}, d, {id, x: +d.x.toFixed(2), z: +d.z.toFixed(2), y: +d.y.toFixed(2)})); }
+  else if (m.a === 'tnh') { if (TN.st !== 'water') return; if (si !== 0) return no('Only the one at the tiller can hoist her.'); if (!tnOk() || B.sink > 0) return;
+    const [x, z] = bL2W(BG.hw + 1, tnDavit()[1]); if (Math.hypot(TN.x - x, TN.z - z) > 7) return no('Bring her in under the davit.'); if (Math.abs(TN.v) >= 1.5) return no('Slow down first.'); tnStow(); }
+}
+// host physics: 11 m/s flat out, 3 m/s2, coasts to a stop in about 4 s; beaches on island shores, bumps off everything else
+function tnStep(dt) {
+  if (TN.st !== 'water') return;
+  for (let i = 0; i < 4; i++) { const id = TN.seats[i]; if (id && (!PL.get(id) || PL.get(id).dead)) TN.seats[i] = null; } TN.drv = TN.seats[0];
+  const d = TN.drv && PL.get(TN.drv); let thr = 0, st = 0;
+  if (d && !d.down) { const tin = d === P ? P.tin : d.tin, stale = d !== P && d.poseT != null && performance.now() - d.poseT > 800; if (Array.isArray(tin) && !stale) { thr = clamp(+tin[0] || 0, -1, 1); st = clamp(+tin[1] || 0, -1, 1); } }
+  TN.thr = mix(TN.thr, thr, Math.min(1, dt * 3)); TN.steer = mix(TN.steer, st, Math.min(1, dt * 5));
+  const v = TN.v, a = TN.thr * (TN.thr > 0 ? 3 : 1.5) - .0248 * v * Math.abs(v) - (Math.abs(TN.thr) < .05 ? Math.sign(v) * Math.min(Math.abs(v) / dt, 1.8) : 0);
+  TN.v = v + a * dt; TN.yr = mix(TN.yr, -TN.steer * .9 * clamp(TN.v / 3, -1, 1), Math.min(1, dt * 4)); TN.yaw += TN.yr * dt;
+  const fx = -Math.sin(TN.yaw), fz = -Math.cos(TN.yaw); TN.x += fx * TN.v * dt; TN.z += fz * TN.v * dt;
+  let bump = 0, beach = 0;
+  for (const o of OBST) {
+    if (o.c) { const R = o.isle ? o.r + .5 : o.r + 1.1, dx = TN.x - o.x, dz = TN.z - o.z; if (Math.abs(dx) > R || Math.abs(dz) > R) continue; const e = Math.hypot(dx, dz); if (e >= R || e < 1e-4) continue;
+      TN.x = o.x + dx / e * R; TN.z = o.z + dz / e * R; const c = -(fx * dx + fz * dz) / e * Math.sign(TN.v); if (o.isle) { beach = 1; if (c > .45) TN.v = 0; else if (c > 0) TN.v *= 1 - c * dt * 8; } else if (c > 0) { bump = Math.max(bump, Math.abs(TN.v) * c); TN.v *= 1 - .7 * c; } continue; }
+    for (const [px, pz, r] of [[TN.x, TN.z, 1.1], [TN.x + fx * 1.5, TN.z + fz * 1.5, .8]]) { const qx = clamp(px, o.x0, o.x1), qz = clamp(pz, o.z0, o.z1), ex = px - qx, ez = pz - qz, e = Math.hypot(ex, ez); if (e >= r) continue;
+      let nx, nz, k; if (e < 1e-4) { const l = px - o.x0, rt = o.x1 - px, t = pz - o.z0, bt = o.z1 - pz, mn = Math.min(l, rt, t, bt); nx = mn === l ? -1 : mn === rt ? 1 : 0; nz = nx ? 0 : mn === t ? -1 : 1; k = mn + r; } else { nx = ex / e; nz = ez / e; k = r - e; }
+      TN.x += nx * k; TN.z += nz * k; const c = -(fx * nx + fz * nz) * Math.sign(TN.v); if (c > 0) { bump = Math.max(bump, Math.abs(TN.v) * c); TN.v *= 1 - .7 * c; } }
+  }
+  if (BOAT && B.sink <= 0 && Math.hypot(TN.x - B.x, TN.z - B.z) < BG.L * .6 + 6) { const n = Math.max(3, Math.ceil((BG.zs - BG.zb - BG.hw * 2) / 3)), R = BG.hw + 1.1;
+    for (let ci = 0; ci <= n; ci++) { const [cx, cz] = bL2W(0, mix(BG.zb + BG.hw * .9, BG.zs - BG.hw * .6, ci / n)), dx = TN.x - cx, dz = TN.z - cz, e = Math.hypot(dx, dz); if (e >= R || e < 1e-4) continue;
+      TN.x = cx + dx / e * R; TN.z = cz + dz / e * R; const c = -(fx * dx + fz * dz) / e * Math.sign(TN.v); if (c > 0) { bump = Math.max(bump, Math.abs(TN.v) * c); TN.v *= 1 - .7 * c; } } }
+  const MR = typeof MAP_R === 'number' ? MAP_R : 2600, rr = Math.hypot(TN.x, TN.z + 60); if (rr > MR) { TN.x *= MR / rr; TN.z = (TN.z + 60) * MR / rr - 60; TN.v *= .5; }
+  TN.beach = beach; TN.bumpT -= dt; if (bump > 1.5 && TN.bumpT <= 0) { TN.bumpT = .5; emit({k: 'tn', s: 'bump', n: +Math.min(1, bump / 8).toFixed(2), x: +TN.x.toFixed(1), z: +TN.z.toFixed(1)}); }
+  for (let i = 0; i < 4; i++) { const p = TN.seats[i] && PL.get(TN.seats[i]); if (!p || p === P) continue; [p.x, p.z] = tnSeatPos(i); p.ob = 0; p.sw = 0; }
+}
+function tnPlace() { const [x, z] = tnSeatPos(P.tn); P.x = x; P.z = z; P.y = waveH(TN.x, TN.z, G.wt) + .45; }
+function tnPut(q) { if (!P || !q || q.id !== myId()) return;
+  Object.assign(P, {tn: null, tnY: null, cr: 0, sw: 0, dv: 0, deep: 0, vx: 0, vz: 0, vy: 0, climb: null, gwT: .8, lastBY: B.yaw, tin: [0, 0]});
+  if (q.ob) { P.ob = 1; P.bl = q.bl.slice(); [P.x, P.z] = bL2W(P.bl[0], P.bl[1]); P.y = BDECK.y; } else { P.ob = 0; P.x = q.x; P.z = q.z; P.y = q.y; } }
+Snd.tnWinch = p => { tone(160, .035, 1.1, 'sawtooth', p, 260); burst(700, 4, .05, 1, 'bandpass', p, .8); setTimeout(() => burst(2400, 6, .04, .08, 'bandpass', p), 1050); };
+Snd.tnThud = (p, k = .6) => { burst(180, 1, .3 * k, .22, 'lowpass', p); burst(700, 1.5, .08 * k, .12, 'bandpass', p); };
+function tnEv(e) {
+  if (e.seats && !isHost()) { const was = TN.st; TN.st = e.st; TN.seats = e.seats.map(q => q || null); TN.drv = TN.seats[0];
+    if (e.st === 'water') { TN.tx = e.x; TN.tz = e.z; TN.tyaw = e.yaw; if (was !== 'water') { TN.x = e.x; TN.z = e.z; TN.yaw = e.yaw; TN.v = 0; } } else TN.v = 0; }
+  const ps = A.on ? at(e.x ?? TN.x, 1, e.z ?? TN.z, 4) : null;
+  if (e.s === 'launch') { TN.drop = 1; if (ps) { Snd.tnWinch(ps); setTimeout(() => Snd.splash(ps), 650); } }
+  else if (e.s === 'hoist') { if (ps) Snd.tnWinch(ps); } else if (e.s === 'bump') { if (ps) Snd.tnThud(ps, e.n * 1.6); } else if (ps) Snd.tnThud(ps, .5);
+  for (const q of [].concat(e.put || [])) tnPut(q);
+}
+function tnTargets(L) {
+  if (!P || TN.st !== 'water' || !alivePlay()) return;
+  if (P.tn != null) { const now = performance.now(); if (now - TN.lvT > 200) { TN.lvT = now; TN.lv = tnLeave(P); }
+    let lab = 'Leave the tender', go = () => act({a: 'tnx'}), d = 5.2; if (P.tn === 0 && tnHoistOk()) { lab = 'Hoist the tender'; go = () => act({a: 'tnh'}); d = .6; } else if (TN.lv) { lab = TN.lv.ob ? 'Climb aboard' : 'Step ashore'; d = .6; }
+    // nobody at the tiller and nowhere to step off: a passenger slides across to it
+    if (P.tn > 0 && !TN.seats[0] && !TN.lv) { lab = 'Take the tiller'; go = () => act({a: 'tnb', s: 0}); d = .6; }
+    if (d > 1 && P.tn === 0 && Math.abs(TN.v) > 1.5) return; // nothing to do while under way: keep the view clear
+    const cp = Math.cos(P.pitch); L.push({x: P.x - Math.sin(P.yaw) * cp * d, y: P.y + P.eye + Math.sin(P.pitch) * d, z: P.z - Math.cos(P.yaw) * cp * d, r: d + .3, label: lab, go}); return; }
+  if (P.down || P.seat || P.climb || tnDist(P.x, P.z) > 4.5) return;
+  const hy = waveH(TN.x, TN.z, G.wt);
+  if (!TN.seats[0]) { const [x, z] = tnL2W(0, .7); L.push({x, y: hy + 1, z, r: 5, flat: 1, label: 'Take the tiller', go: () => act({a: 'tnb', s: 0})}); }
+  const s = [1, 2, 3].find(i => !TN.seats[i]); if (s) { const [x, z] = tnL2W(0, -1.4); L.push({x, y: hy + .6, z, r: 5, flat: 1, label: 'Board the tender', go: () => act({a: 'tnb', s})}); }
+}
+// outboard voice: a buzzy saw and square through a lowpass, pitched by the throttle, panned at the stern; fades out if not refreshed
+function tnSnd() {
+  if (!A.on || !A.ctx) return; const c = A.ctx, t = c.currentTime;
+  if (!TN.au) { const o = c.createOscillator(), o2 = c.createOscillator(), lp = c.createBiquadFilter(), g = c.createGain(), g2 = c.createGain(), p = c.createPanner(); o.type = 'sawtooth'; o2.type = 'square'; lp.type = 'lowpass'; lp.Q.value = 3; g.gain.value = 0; g2.gain.value = .35;
+    Object.assign(p, {panningModel: 'equalpower', distanceModel: 'inverse', refDistance: 4, rolloffFactor: 1.3, maxDistance: 400}); o.connect(lp); o2.connect(g2); g2.connect(lp); lp.connect(g); g.connect(p); p.connect(A.out); o.start(); o2.start(); (A.mute = A.mute || []).push(g); TN.au = {o, o2, lp, g, p}; }
+  const u = TN.au, on = TN.st === 'water' && !!TN.seats[0] && Math.hypot(cam.position.x - TN.x, cam.position.z - TN.z) < 250, a = Math.abs(TN.thr), f = 52 + a * 64 + Math.min(11, Math.abs(TN.v)) * 3 + Math.sin(G.wt * 9) * 1.5;
+  u.o.frequency.setTargetAtTime(f, t, .08); u.o2.frequency.setTargetAtTime(f * 1.5, t, .08); u.lp.frequency.setTargetAtTime(300 + a * 1500, t, .1);
+  u.g.gain.cancelScheduledValues(t); u.g.gain.setTargetAtTime(on ? .035 + a * .06 : 0, t, .15); u.g.gain.setTargetAtTime(0, t + .6, .25);
+  setPan(u.p, TN.x + Math.sin(TN.yaw) * 2.3, TN.heave + .6, TN.z + Math.cos(TN.yaw) * 2.3);
+}
+function tnHud(dt) {
+  const on = P && P.tn === 0 && TN.st === 'water'; let el = TN.hud; if (!el && !on) return;
+  if (!el) { const st = document.createElement('style'); st.id = 'st-tn'; st.textContent = '#tnHud{position:absolute;left:50%;top:63%;transform:translateX(-50%);font-size:13px;text-shadow:0 1px 4px #000;background:rgba(6,10,14,.5);padding:3px 11px;border-radius:12px;pointer-events:none;white-space:nowrap;transition:opacity .4s}#tnHud kbd{display:inline-block;border:1px solid var(--dim);border-radius:4px;padding:0 5px;margin:0 2px;font:11px ui-monospace,monospace}';
+    document.head.appendChild(st); el = TN.hud = document.createElement('div'); el.id = 'tnHud'; $('hud').appendChild(el); }
+  TN.hudT = Math.max(0, TN.hudT - dt); const txt = !on ? '' : TN.hudT > 0 ? '<kbd>W</kbd><kbd>S</kbd> throttle · <kbd>A</kbd><kbd>D</kbd> steer' : Math.round(Math.abs(TN.v) * 1.944) + ' kn';
+  if (txt !== TN.hudK) { TN.hudK = txt; if (txt) el.innerHTML = txt; el.style.opacity = txt ? 1 : 0; }
+}
+// every client: follow the host's tender, bob it on the waves (or hang it on the davits), spray, light, sound, pier lamps
+function tnDraw(dt) {
+  if (!TN.m) TN.m = tnMesh(); const m = TN.m, w = TN.st === 'water';
+  if (w && !isHost() && TN.tx != null) { const k = Math.min(1, dt * 6), px = TN.tx - Math.sin(TN.tyaw) * TN.v * .05, pz = TN.tz - Math.cos(TN.tyaw) * TN.v * .05; TN.x = mix(TN.x, px, k); TN.z = mix(TN.z, pz, k); TN.yaw += angD(TN.yaw, TN.tyaw) * k; TN.x += -Math.sin(TN.yaw) * TN.v * dt * (1 - k); TN.z += -Math.cos(TN.yaw) * TN.v * dt * (1 - k); }
+  if (w) { if (m.parent !== scene) { if (m.parent) m.parent.remove(m); scene.add(m); }
+    const t = G.wt, fx = -Math.sin(TN.yaw), fz = -Math.cos(TN.yaw), sx = Math.cos(TN.yaw), sz = -Math.sin(TN.yaw), hf = waveH(TN.x + fx * 1.6, TN.z + fz * 1.6, t), hb = waveH(TN.x - fx * 1.6, TN.z - fz * 1.6, t), hl = waveH(TN.x - sx * .8, TN.z - sz * .8, t), hr = waveH(TN.x + sx * .8, TN.z + sz * .8, t), av = Math.abs(TN.v);
+    TN.heave = (hf + hb + hl + hr) / 4; TN.drop = Math.max(0, TN.drop - dt * 1.8);
+    m.position.set(TN.x, TN.heave - .05 + TN.drop * TN.drop * 1.6, TN.z); m.rotation.set(Math.atan2(hf - hb, 3.2) * .9 + clamp(TN.v / 11, 0, 1) * .09, TN.yaw, Math.atan2(hl - hr, 1.6) * .7 + clamp((TN.yr || 0) * TN.v * .03, -.15, .15), 'YXZ');
+    const dc = Math.hypot(cam.position.x - TN.x, cam.position.z - TN.z); m.visible = dc < (G.viewFar || 1600);
+    m.userData.prop.rotation.z += ((TN.seats[0] ? 14 : 0) + TN.thr * 30) * dt; m.userData.lt.material.opacity = .25 + TOD.night * .75; m.userData.lt.scale.setScalar(.7 + ((TN.seats[0] || TN.seats[1] || TN.seats[2] || TN.seats[3]) ? 0 : clamp((dc - 25) / 45, 0, 4) * (.3 + TOD.night * .7))); // left at anchor: the riding light shows you where
+    if (av > 2 && dc < 300 && Math.random() < dt * av * .9) spray(TN.x - fx * 2.3, TN.heave + .15, TN.z - fz * 2.3, 2, av * .3);
+    if (P && P.tn != null && alivePlay()) tnPlace(); }
+  else { const ok = tnOk() && !!BOAT; if (ok) { if (m.parent !== BOAT) { if (m.parent) m.parent.remove(m); BOAT.add(m); } m.position.set(BG.hw + 1, BDECK.y + 1.35, tnDavit()[1]); m.rotation.set(0, 0, 0); m.userData.lt.material.opacity = .1 + TOD.night * .3; } m.visible = ok; }
+  if (PIER_LAMPS.m) PIER_LAMPS.m.material.opacity = clamp(TOD.night * 1.1 + (1 - TOD.day) * .25, 0, 1) * .85;
+  tnSnd(); tnHud(dt);
+}
+{ const f0 = resetBoat; resetBoat = function (...a) { const r = f0.apply(this, a); if (isHost() && TN.st === 'water') tnStow(); return r; }; }
+{ const f0 = startGame; startGame = function (...a) { Object.assign(TN, {st: 'stow', v: 0, yr: 0, thr: 0, steer: 0, drv: null, seats: [null, null, null, null], beach: 0, drop: 0, tx: null, snK: 0, hudT: 0, lv: null}); const r = f0.apply(this, a); if (P) Object.assign(P, {tn: null, tnY: null, tin: [0, 0]}); return r; }; }
+{ const f0 = hostStep; hostStep = function (...a) { const r = f0.apply(this, a); tnStep(a[0]); return r; }; }
+{ const f0 = hostAct; hostAct = function (id, m) { if (m && /^tn[lbxh]$/.test(m.a)) { const p = PL.get(id); if (!p || !G.on) return; if (m.px != null && p !== P && !m.ob && Math.hypot(m.px - p.x, m.pz - p.z) < 25) { p.x = m.px; p.z = m.pz; } tnAct(p, id, m); return; } return f0.apply(this, arguments); }; }
+{ const f0 = applyEv; applyEv = function (e) { if (e && e.k === 'tn') { tnEv(e); return; } if (e && e.k === 'tnsay') { if (e.id === myId()) showMsg(e.t, '', 2.5); return; } return f0.apply(this, arguments); }; }
+{ const f0 = packSnap; packSnap = function (...a) { const s = f0.apply(this, a);
+  if (TN.st === 'water') { s.tn = ['water', +TN.x.toFixed(2), +TN.z.toFixed(2), +TN.yaw.toFixed(3), +TN.v.toFixed(2), TN.seats[0] || '', TN.seats.map(q => q || 0), +TN.thr.toFixed(2), +(TN.yr || 0).toFixed(3)]; TN.snK = 0; } else if (TN.snK++ % 30 === 0) s.tn = ['stow']; return s; }; }
+{ const f0 = applySnap; applySnap = function (s) { const r = f0.apply(this, arguments), q = s && s.tn; if (!q) return r;
+  if (q[0] === 'water') { const was = TN.st; Object.assign(TN, {st: 'water', tx: q[1], tz: q[2], tyaw: q[3], v: q[4], drv: q[5] || null, thr: q[7] || 0, yr: q[8] || 0}); TN.seats = [0, 1, 2, 3].map(i => (q[6] || [])[i] || null);
+    if (was !== 'water' || Math.hypot(TN.tx - TN.x, TN.tz - TN.z) > 30) { TN.x = TN.tx; TN.z = TN.tz; TN.yaw = TN.tyaw; } }
+  else Object.assign(TN, {st: 'stow', seats: [null, null, null, null], v: 0, thr: 0, drv: null});
+  return r; }; }
+// seated: ride the seat, look around within 110 degrees of the bow, the driver's WASD goes to the host as tin
+{ const f0 = stepPlayer; stepPlayer = function (dt) {
+  const s = P && TN.st === 'water' && alivePlay() ? TN.seats.indexOf(myId()) : -1;
+  if (s < 0) { if (P && P.tn != null) Object.assign(P, {tn: null, tnY: null, cr: 0, tin: [0, 0]}); return f0.apply(this, arguments); }
+  if (s === 0 && P.tn !== 0) TN.hudT = 6;
+  P.tn = s; P.yaw += angD(P.tnY ?? TN.yaw, TN.yaw); P.tnY = TN.yaw; P.yaw = TN.yaw + clamp(angD(TN.yaw, P.yaw), -1.92, 1.92);
+  Object.assign(P, {ob: 0, sw: 0, dv: 0, deep: 0, cr: 1, run: 0, vx: 0, vz: 0, vy: 0, climb: null, lastBY: B.yaw}); P.eye = mix(P.eye, 1.1, Math.min(1, dt * 6)); P.stam = Math.min(1, P.stam + dt / 7); P.air = Math.min(1, (P.air ?? 1) + dt / 4);
+  if (P.l) { P.bat -= dt / 360; if (P.bat <= 0) { P.bat = 0; P.l = 0; } }
+  P.tin = s === 0 ? [(K.KeyW ? 1 : 0) - (K.KeyS ? 1 : 0), (K.KeyD ? 1 : 0) - (K.KeyA ? 1 : 0)] : [0, 0]; tnPlace();
+}; }
+{ const f0 = targets; targets = function (...a) { const L = f0.apply(this, a); tnTargets(L); return L; }; }
+{ const f0 = myPose; myPose = function (...a) { const r = f0.apply(this, a); if (P && P.tn != null) { r.tn = P.tn; r.tin = P.tn === 0 ? P.tin : 0; } return r; }; }
+{ const h0 = Net.handlers.pose; Net.on('pose', (m, f) => { if (h0) h0(m, f); if (!G.on) return; const id = isHost() ? f : m.from, p = id && PL.get(id); if (!p || p === P) return; p.tn = m.tn != null ? m.tn : null; p.tin = Array.isArray(m.tin) ? m.tin : [0, 0]; }); }
+// remote riders sit still on their seats
+{ const f0 = updateRemotes; updateRemotes = function (...a) {
+  tnDraw(a[0]); const w = TN.st === 'water';
+  if (w) for (let i = 0; i < 4; i++) { const p = TN.seats[i] && PL.get(TN.seats[i]); if (!p || p === P || !p.ready) continue; const [x, z] = tnSeatPos(i); p.x = p.rx = x; p.z = p.rz = z; p.y = p.ry = TN.heave + .45; p.sw = 0; p.ob = 0; p.tnS = 1; }
+  const r = f0.apply(this, a);
+  for (const p of PL.values()) { if (!p.tnS || p === P) continue; if (!w || !TN.seats.includes(p.id)) { p.tnS = 0; continue; } const j = p.av && p.av.userData; if (!j || !p.av.visible) continue;
+    p.av.position.y -= .8; j.l1.rotation.x = j['l-1'].rotation.x = 1.4; j['a-1'].rotation.x = -.35; j.body.rotation.x = 0; j.body.position.y = .95; }
+  return r;
+}; }
 // ---------------- deep dive sites, and the gulpers that hunt divers in the dark
 const DSITES = [
   {n: 'The Abyssal Trench', x: -1500, z: -950, r: 170, d: 125},
