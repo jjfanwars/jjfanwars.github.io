@@ -29,7 +29,7 @@ const hexS = c => '#' + c.toString(16).padStart(6, '0');
 
 // ---------------- net (jjfanwars relay)
 const RELAY_URL = 'wss://jjfanwars-relay.businessautomationvic.workers.dev';
-const GAME_V = 52;
+const GAME_V = 53;
 const Net = {
   tag: '[Rig]', role: 'solo', ws: null, peers: new Map(), code: '', relayT: {pose: 1}, id: '', name: '', handlers: {}, retry: 0, started: false,
   enc: new TextEncoder(), dec: new TextDecoder(),
@@ -1160,9 +1160,9 @@ function buildBoat() {
     // wheelhouse with real walls and windows
     const sft = cls === 3 || H.big ? 0 : L * .12, wz0 = mix(zb, zs, H.wh[0]) + sft, wz1 = mix(zb, zs, H.wh[1]) + sft, ww = Math.min(hullHW(wz0), hullHW(wz1)) * .82, hh = 2.25, y0 = fb;
     const CB = H.cab || {}, cabM = v => typeof v === 'number' ? S({color: v, roughness: .45}) : S(v), wallM = CB.wall != null ? cabM(CB.wall) : cls === 2 ? S({color: 0x8a9098}) : cls === 9 ? S({map: TX.wood, color: 0xe8dcb8, roughness: .85}) : cls === 10 ? S({color: 0xe0dcd0, roughness: .6}) : cls === 11 ? S({color: 0xf4f4f6, roughness: .25}) : whiteM;
-    box(wallM, -ww, ww, y0, y0 + 1.05, wz0, wz0 + .12, 1); box(wallM, -ww, ww, y0 + 1.9, y0 + hh, wz0, wz0 + .12); add(new THREE.BoxGeometry(ww * 2, .85, .04), glass, 0, y0 + 1.48, wz0 + .06);
-    for (const sd of [-1, 1]) { const x0 = sd < 0 ? -ww : ww - .12, x1 = x0 + .12; box(wallM, x0, x1, y0, y0 + 1.05, wz0, wz1, 1); box(wallM, x0, x1, y0 + 1.9, y0 + hh, wz0, wz1); box(wallM, x0, x1, y0, y0 + hh, wz1 - .5, wz1); add(new THREE.BoxGeometry(.04, .85, wz1 - wz0 - .6), glass, sd * (ww - .06), y0 + 1.48, (wz0 + wz1) / 2 - .25);
-      for (let z = wz0 + .1; z < wz1 - .5; z += (wz1 - wz0) / 3) box(wallM, x0, x1, y0 + 1.05, y0 + 1.9, z, z + .08); }
+    box(wallM, -ww, ww, y0, y0 + .92, wz0, wz0 + .12, 1); box(wallM, -ww, ww, y0 + 2.05, y0 + hh, wz0, wz0 + .12); add(new THREE.BoxGeometry(ww * 2, 1.13, .04), glass, 0, y0 + 1.485, wz0 + .06);
+    for (const sd of [-1, 1]) { const x0 = sd < 0 ? -ww : ww - .12, x1 = x0 + .12; box(wallM, x0, x1, y0, y0 + .92, wz0, wz1, 1); box(wallM, x0, x1, y0 + 2.05, y0 + hh, wz0, wz1); box(wallM, x0, x1, y0, y0 + hh, wz1 - .5, wz1); add(new THREE.BoxGeometry(.04, 1.13, wz1 - wz0 - .6), glass, sd * (ww - .06), y0 + 1.485, (wz0 + wz1) / 2 - .25);
+      for (let z = wz0 + .1; z < wz1 - .5; z += (wz1 - wz0) / 3) box(wallM, x0, x1, y0 + .92, y0 + 2.05, z, z + .08); }
     box(wallM, -ww, -.55, y0, y0 + hh, wz1 - .12, wz1, 1); box(wallM, .55, ww, y0, y0 + hh, wz1 - .12, wz1, 1); box(wallM, -.55, .55, y0 + 2, y0 + hh, wz1 - .12, wz1);
     box(CB.roof != null ? cabM(CB.roof) : wallM, -ww - .15, ww + .15, y0 + hh, y0 + hh + .12, wz0 - .3, wz1 + .2);
     // helm console against the windscreen, wheel on its back face
@@ -2780,7 +2780,7 @@ function stepPlayer(dt) {
     P.bl = [BHELM[0], BHELM[1]]; const [wx, wz] = bL2W(BHELM[0], BHELM[1]); P.x = wx; P.z = wz; P.y = BHELM[2] ?? BDECK.y; P.ob = 1;
     const d = angD(B.yaw, P.yaw); P.yaw = B.yaw + clamp(d, -1.3, 1.3);
     P.in = [(K.KeyW ? 1 : 0) - (K.KeyS ? 1 : 0), (K.KeyD ? 1 : 0) - (K.KeyA ? 1 : 0)];
-    P.in.push((K.KeyC ? 1 : 0) - (K.Space ? 1 : 0)); P.vx = P.vz = 0; P.eye = mix(P.eye, HC().eye || ((B.up.cls || 0) === 3 ? 8.9 : BG.sub ? 1.15 : 1.62), dt * 4); return;
+    P.in.push((K.KeyC ? 1 : 0) - (K.Space ? 1 : 0)); P.vx = P.vz = 0; P.eye = mix(P.eye, HC().eye ? HC().eye + .55 : (B.up.cls || 0) === 3 ? 9.45 : BG.sub ? 1.15 : (B.up.cls || 0) === 9 ? 1.45 : 1.86, dt * 4); return;
   }
   P.in = [0, 0];
   if (P.hd >= 0) {
@@ -3976,7 +3976,7 @@ function smlLook(cls, X) {
   // skin round the shared shell: lower wall, sill, the window band (see-through, framed, mullioned), soffit, upper band, roof with a crown
   const inner = hp(ww - .005, wz0 + .005, wz1 - .005, 0, 1), cpl = (m, O, y0, y1) => plate(m, 'y', O.concat(inner.slice().reverse()), y0, y1);
   const house = c => {
-    const y1 = fb + 1.03, y2 = fb + 1.92, y3 = fb + hh + .03, P0 = hp(...c.p0), P2 = hp(...c.p2), P3 = hp(...c.p3), wm = c.wall, fm = c.frame || blk, zw = wz1 - .55;
+    const y1 = fb + .90, y2 = fb + 2.04, y3 = fb + hh + .03, P0 = hp(...c.p0), P2 = hp(...c.p2), P3 = hp(...c.p3), wm = c.wall, fm = c.frame || blk, zw = wz1 - .55;
     strip(wm, P0, fb + .01, P0, y1, c.flat); strip(c.band || wm, P2, y2, P3, y3, c.flat); cpl(wm, P0, y1 - .02, y1 + .015); cpl(c.band || wm, P2, y2 - .015, y2 + .02);
     const [a0, zf0, , r0, ch0, b0] = c.p0, [a2, zf2, zk2, r2, ch2, b2] = c.p2, zk0 = c.p0[2];
     const Wb = hp(a0, zf0, zw, r0, ch0, b0).slice(1, -1), Wt = hp(a2, zf2, zw, r2, ch2, b2).slice(1, -1);
@@ -4011,7 +4011,7 @@ function smlLook(cls, X) {
     const wm = S({color: 0xeeece6, roughness: .55, side: DS}), nv = S({color: 0x1a2a44, roughness: .5, side: DS}), rf = wm;
     const hs = house({p0: [ww + .04, wz0 - .06, wz1 + .04, .12, 0], p2: [ww + .08, wz0 - .27, wz1 + .04, .14, 0], p3: [ww + .2, wz0 - .38, wz1 + .24, .15, 0], p4: [ww + .26, wz0 - .62, wz1 + .75, .3, 0], wall: wm, band: nv, roof: rf, drip: nv});
     // whaleback: lofted rounded shelter from near the stem back to the wheelhouse front, crown above the bulwark line
-    { const z0 = zb + L * .07, z1 = wz0 + .02, NZ = 12, NA = 8, rings = []; for (let i = 0; i <= NZ; i++) { const u = i / NZ, z = mix(z0, z1, Math.pow(u, .8)), w = Math.max(.15, Math.min(hullHW(z), hx(z, fb)) - .32) * (i === 0 ? .7 : 1), yc = Math.max(deckTop(z) + .4, fb + 1.45), ys = yc - Math.min(.45, w * .25), r = [[-w, fb + .01]];
+    { const z0 = zb + L * .07, z1 = wz0 + .02, NZ = 12, NA = 8, rings = []; for (let i = 0; i <= NZ; i++) { const u = i / NZ, z = mix(z0, z1, Math.pow(u, .8)), w = Math.max(.15, Math.min(hullHW(z), hx(z, fb)) - .32) * (i === 0 ? .7 : 1), yc = Math.max(deckTop(z) - .25, fb + 1.2), ys = yc - Math.min(.45, w * .25), r = [[-w, fb + .01]];
         for (let k = 0; k <= NA; k++) { const a = PI - k / NA * PI; r.push([Math.cos(a) * w, ys + Math.sin(a) * (yc - ys)]); } r.push([w, fb + .01]); rings.push(r.map(([x, y]) => [x, y, z])); }
       const pos = [], idx = [], n = rings[0].length; for (const r of rings) for (const p of r) pos.push(...p); for (let i = 0; i < NZ; i++) for (let k = 0; k < n - 1; k++) { const a = i * n + k; idx.push(a, a + n, a + 1, a + 1, a + n, a + n + 1); }
       const c0 = pos.length / 3; for (const p of rings[0]) pos.push(...p); for (let k = 1; k < n - 1; k++) idx.push(c0, c0 + k + 1, c0 + k); const c1 = pos.length / 3; for (const p of rings[NZ]) pos.push(...p); for (let k = 1; k < n - 1; k++) idx.push(c1, c1 + k, c1 + k + 1);
@@ -4064,15 +4064,15 @@ function smlLook(cls, X) {
     const wh = S({color: 0xf4f4f0, roughness: .35, side: DS}), bk = S({color: 0x141518, roughness: .3, side: DS}), cu = S({color: 0xd8ccb0, roughness: .95}), om = S({color: 0x111214, roughness: .25, metalness: .3});
     for (const o of g.children.slice()) if (o.isMesh && o.geometry.type === 'CylinderGeometry' && o.geometry.parameters.height === 1.4 && o.geometry.parameters.radiusTop === .04 && Math.abs(o.position.z - zm) < .01 && Math.abs(o.position.y - (fb + hh + .8)) < .01) { g.remove(o); o.geometry.dispose(); }
     const W0 = [wz0 - 1.35, fb + .3], W1 = [wz0 - .3, fb + hh + .02], zW = y => W0[0] + (y - W0[1]) / (W1[1] - W0[1]) * (W1[0] - W0[0]), xs = ww + .06;
-    const Pa = [zW(fb + 1.06) + .12, fb + 1.06], Pb = [wz1 - .56, fb + 1.3], Pc = [wz1 - .56, fb + 1.88], Pd = [zW(fb + 1.72) + .12, fb + 1.72], kb = (Pb[1] - Pa[1]) / (Pb[0] - Pa[0]), yb = z => Pa[1] + (z - Pa[0]) * kb, zA = wz1 + .06;
-    const A4 = [zW(fb + 1.06), fb + 1.06], A3 = [zA, yb(zA)];
+    const Pa = [zW(fb + .93) + .12, fb + .93], Pb = [wz1 - .56, fb + 1.3], Pc = [wz1 - .56, fb + 1.88], Pd = [zW(fb + 1.72) + .12, fb + 1.72], kb = (Pb[1] - Pa[1]) / (Pb[0] - Pa[0]), yb = z => Pa[1] + (z - Pa[0]) * kb, zA = wz1 + .06;
+    const A4 = [zW(fb + .93), fb + .93], A3 = [zA, yb(zA)];
     for (const sd of [-1, 1]) { const c0 = sd > 0 ? ww + .02 : -xs, c1 = c0 + .04; plate(wh, 'x', [[W0[0], fb + .01], [zA, fb + .01], A3, A4, W0], c0, c1); plate(bk, 'x', [A4, A3, [zA, fb + hh + .02], W1], c0, c1, [[Pa, Pb, Pc, Pd]]); tints.push(pgeo('x', [Pa, Pb, Pc, Pd], c0 + .015, c0 + .025)); }
     plate(wh, 'z', R(-xs, fb + .01, xs, W0[1]), W0[0] - .04, W0[0]); // front of the cabin moulding under the screen
     { const q = new THREE.BufferGeometry(); q.setAttribute('position', new THREE.Float32BufferAttribute([-xs, W0[1], W0[0], xs, W0[1], W0[0], xs, W1[1], W1[0], -xs, W0[1], W0[0], xs, W1[1], W1[0], -xs, W1[1], W1[0]], 3)); q.computeVertexNormals(); tints.push(q); }
     for (const sx of [-xs, xs]) seg(bk, sx, W0[1], W0[0], sx, W1[1], W1[0], .05, 6); seg(bk, -xs, W0[1] + .02, W0[0] + .01, xs, W0[1] + .02, W0[0] + .01, .04, 6);
     BW.push({x0: -hw, x1: hw, z0: BDECK.z0 - .1, z1: wz0, y0: 0, y1: 2.2});
     plate(wh, 'z', [[-xs, fb + .01], [-.58, fb + .01], [-.58, fb + 2.02], [.58, fb + 2.02], [.58, fb + .01], [xs, fb + .01], [xs, fb + hh + .02], [-xs, fb + hh + .02]], wz1 + .02, wz1 + .06); // back with the door
-    for (const sd of [-1, 1]) box(gdk, sd * .75 - .01, sd * (ww - .1), fb + 1.15, fb + 1.85, wz1 + .06, wz1 + .075); box(bk, -xs, xs, fb + 1.95, fb + hh + .02, wz1 + .061, wz1 + .07);
+    for (const sd of [-1, 1]) box(gdk, sd * .75 - .01, sd * (ww - .1), fb + 1.15, fb + 1.85, wz1 + .06, wz1 + .075); box(bk, -xs, xs, fb + 2.07, fb + hh + .02, wz1 + .061, wz1 + .07);
     // hardtop, LED strip, radome, lights
     const ht = hp(ww + .2, wz0 - .45, wz1 + .95, .35, 0, .12, 0).slice(0, -1); plate(bk, 'y', ht, fb + hh + .02, fb + hh + .14); plate(bk, 'y', hp(ww - .1, wz0 - .1, wz1 + .6, .2, 0, .08, 0).slice(0, -1), fb + hh + .14, fb + hh + .19);
     const led = S({color: 0xe8f4ff, emissive: 0xc8e8ff, emissiveIntensity: .7}); box(led, -ww - .12, ww + .12, fb + hh - .005, fb + hh + .02, wz1 + .86, wz1 + .9); for (const sd of [-1, 1]) box(led, sd * (ww + .14) - .02, sd * (ww + .14) + .02, fb + hh - .005, fb + hh + .02, wz0, wz1 + .85);
@@ -4091,16 +4091,16 @@ function smlLook(cls, X) {
   if (cls === 9) { // DRIFTWOOD: a floating cottage. Clapboard walls, white four-pane windows with shutters and flower boxes, steep tiled roof with eaves and a skylight, brick chimney, gutters, door canopy, porch with balusters, planters, bicycle; bunks, stove, table and shelves inside
     const sid = S({map: smlTex('clap'), color: 0xd8b860, roughness: .8}), tr = S({color: 0xf4f2ea, roughness: .6}), sh = S({color: 0x2a5a5a, roughness: .8}), rfm = S({map: smlTex('tile'), color: 0xd0a090, roughness: .85}), wd = S({map: TX.wood, color: 0x9a7a54, roughness: .75});
     const xo = ww + .06, z0 = wz0 - .08, z1 = wz1 + .06, yt = fb + hh + .02, D = wz1 - wz0, win = [wz0 + 1.25, wz0 + 3.55, wz0 + 5.7].filter(z => z + .45 < wz1 - .55);
-    for (const sd of [-1, 1]) { const c0 = sd > 0 ? ww + .02 : -xo; plate(sid, 'x', R(z0, fb + .01, z1, yt), c0, c0 + .04, win.map(z => R(z - .45, fb + 1.08, z + .45, fb + 1.87)));
-      for (const z of win) { const xf = sd * (ww + .07); box(tr, xf - .025, xf + .025, fb + 1.03, fb + 1.08, z - .52, z + .52); box(tr, xf - .025, xf + .025, fb + 1.87, fb + 1.93, z - .52, z + .52); for (const dz of [-.47, .47]) box(tr, xf - .025, xf + .025, fb + 1.08, fb + 1.87, z + dz - .04, z + dz + .04); box(tr, xf - .02, xf + .02, fb + 1.08, fb + 1.87, z - .02, z + .02); box(tr, xf - .02, xf + .02, fb + 1.455, fb + 1.495, z - .45, z + .45);
-        for (const dz of [-.78, .78]) box(sh, xf - .02, xf + .02, fb + 1.05, fb + 1.9, z + dz - .26, z + dz + .26); const fx0 = sd > 0 ? ww + .06 : -(ww + .3); box(wd, fx0, fx0 + .24, fb + .82, fb + 1.0, z - .5, z + .5);
-        for (let i = 0; i < 7; i++) sph(S({color: [0xd83a5a, 0xf0d040, 0x3a7a3a][i % 3], roughness: .8}), .075, sd * (ww + .18), fb + 1.02 + (i % 2) * .03, z - .42 + i * .14, 1, 1, 1, 6).castShadow = false; } }
+    for (const sd of [-1, 1]) { const c0 = sd > 0 ? ww + .02 : -xo; plate(sid, 'x', R(z0, fb + .01, z1, yt), c0, c0 + .04, win.map(z => R(z - .45, fb + .95, z + .45, fb + 1.87)));
+      for (const z of win) { const xf = sd * (ww + .07); box(tr, xf - .025, xf + .025, fb + .90, fb + .95, z - .52, z + .52); box(tr, xf - .025, xf + .025, fb + 1.87, fb + 2.05, z - .52, z + .52); for (const dz of [-.47, .47]) box(tr, xf - .025, xf + .025, fb + .95, fb + 1.87, z + dz - .04, z + dz + .04); box(tr, xf - .02, xf + .02, fb + .95, fb + 1.87, z - .02, z + .02); box(tr, xf - .02, xf + .02, fb + 1.455, fb + 1.495, z - .45, z + .45);
+        for (const dz of [-.78, .78]) box(sh, xf - .02, xf + .02, fb + .92, fb + 2.02, z + dz - .26, z + dz + .26); const fx0 = sd > 0 ? ww + .06 : -(ww + .3); box(wd, fx0, fx0 + .24, fb + .82, fb + 1.0, z - .5, z + .5);
+        for (let i = 0; i < 7; i++) sph(S({color: [0xd83a5a, 0xf0d040, 0x3a7a3a][i % 3], roughness: .8}), .075, sd * (ww + .18), fb + .89 + (i % 2) * .03, z - .42 + i * .14, 1, 1, 1, 6).castShadow = false; } }
     // front: two windows; back: the door, a small window each side, canopy
-    plate(sid, 'z', R(-xo, fb + .01, xo, yt), z0, z0 + .04, [R(-1.35, fb + 1.08, -.45, fb + 1.87), R(.45, fb + 1.08, 1.35, fb + 1.87)]);
-    for (const cx of [-.9, .9]) { const zf = z0 - .01; box(tr, cx - .52, cx + .52, fb + 1.03, fb + 1.08, zf - .02, zf + .02); box(tr, cx - .52, cx + .52, fb + 1.87, fb + 1.93, zf - .02, zf + .02); for (const dx of [-.47, .47]) box(tr, cx + dx - .04, cx + dx + .04, fb + 1.08, fb + 1.87, zf - .02, zf + .02); box(tr, cx - .02, cx + .02, fb + 1.08, fb + 1.87, zf - .02, zf + .02); box(tr, cx - .45, cx + .45, fb + 1.455, fb + 1.495, zf - .02, zf + .02); }
+    plate(sid, 'z', R(-xo, fb + .01, xo, yt), z0, z0 + .04, [R(-1.35, fb + .95, -.45, fb + 1.87), R(.45, fb + .95, 1.35, fb + 1.87)]);
+    for (const cx of [-.9, .9]) { const zf = z0 - .01; box(tr, cx - .52, cx + .52, fb + .90, fb + .95, zf - .02, zf + .02); box(tr, cx - .52, cx + .52, fb + 1.87, fb + 2.05, zf - .02, zf + .02); for (const dx of [-.47, .47]) box(tr, cx + dx - .04, cx + dx + .04, fb + .95, fb + 1.87, zf - .02, zf + .02); box(tr, cx - .02, cx + .02, fb + .95, fb + 1.87, zf - .02, zf + .02); box(tr, cx - .45, cx + .45, fb + 1.455, fb + 1.495, zf - .02, zf + .02); }
     plate(sid, 'z', [[-xo, fb + .01], [-.58, fb + .01], [-.58, fb + 2.02], [.58, fb + 2.02], [.58, fb + .01], [xo, fb + .01], [xo, yt], [-xo, yt]], wz1 + .02, z1);
     for (const sd of [-1, 1]) { box(tr, sd * .58 - .05, sd * .58 + .05, fb, fb + 2.08, z1 - .01, z1 + .03); box(gdk, sd * 1.15 - .3, sd * 1.15 + .3, fb + 1.2, fb + 1.8, z1, z1 + .015); box(tr, sd * 1.15 - .36, sd * 1.15 + .36, fb + 1.14, fb + 1.2, z1 - .01, z1 + .05); box(tr, sd * 1.15 - .36, sd * 1.15 + .36, fb + 1.8, fb + 1.86, z1 - .01, z1 + .03); }
-    box(tr, -.63, .63, fb + 2.02, fb + 2.1, z1 - .01, z1 + .03); for (const sd of [-1, 1]) { const r2 = add(new THREE.BoxGeometry(.7, .05, .75), rfm, sd * .3, fb + 2.3, z1 + .38); r2.rotation.z = -sd * .5; seg(tr, sd * .62, fb + 1.95, z1 + .04, sd * .62, fb + 2.12, z1 + .62, .025); }
+    box(tr, -.63, .63, fb + 2.02, fb + 2.1, z1 - .01, z1 + .03); for (const sd of [-1, 1]) { const r2 = add(new THREE.BoxGeometry(.7, .05, .75), rfm, sd * .3, fb + 2.3, z1 + .38); r2.rotation.z = -sd * .5; seg(tr, sd * .62, fb + 2.07, z1 + .04, sd * .62, fb + 2.12, z1 + .62, .025); }
     // roof: chevron section with .35 eaves, gable trim, skylight
     const E = xo + .35, rh = 1.55, yb = yt + .12 - .35 * rh / E - .02, yr = yb + rh, rz0 = z0 - .35, rz1 = z1 + .35, th = .12;
     plate(rfm, 'z', [[-E, yb], [0, yr], [E, yb], [E, yb - th], [0, yr - th / Math.cos(Math.atan2(rh, E))], [-E, yb - th]], rz0, rz1);
@@ -4128,7 +4128,7 @@ function smlLook(cls, X) {
     // inside: bunks with quilts and pillows (the sleep spot), the stove with a kettle, a table for two, shelves with jars, a rug
     const bx0 = -ww + .14, bx1 = -ww + 1, bz0 = wz0 + .75, bz1 = bz0 + 2, q1 = S({color: 0xb0402a, roughness: 1}), q2 = S({color: 0x3a5a8a, roughness: 1}), pil = S({color: 0xf0ead8, roughness: 1});
     for (const [y, q] of [[fb + .38, q1], [fb + 1.28, q2]]) { box(wd, bx0, bx1, y - .1, y, bz0, bz1, y < fb + 1); box(q, bx0 + .03, bx1 - .03, y, y + .12, bz0 + .45, bz1 - .03); box(pil, bx0 + .12, bx1 - .12, y, y + .14, bz0 + .05, bz0 + .42); }
-    for (const z of [bz0, bz1 - .06]) box(wd, bx1 - .06, bx1, fb, fb + 1.95, z, z + .06); box(wd, bx0, bx1, fb + 1.42, fb + 1.48, bz1 - .06, bz1);
+    for (const z of [bz0, bz1 - .06]) box(wd, bx1 - .06, bx1, fb, fb + 2.07, z, z + .06); box(wd, bx0, bx1, fb + 1.42, fb + 1.48, bz1 - .06, bz1);
     INTER.push({kind: 'shpbunk', boat: 1, lx: bx1 - .2, lz: (bz0 + bz1) / 2, ly: .7, r: 1.8, label: () => 'Sleep until dawn', go: () => act({a: 'shpsleep'}), on: () => !P.sw});
     const sx0 = ww - .78, sz0 = wz0 + .8, sv = S({color: 0x1a1a1a, roughness: .6, metalness: .4}); box(sv, sx0, ww - .18, fb, fb + .75, sz0, sz0 + .6, 1); const fw = add(new THREE.BoxGeometry(.02, .24, .34), S({color: 0x200800, emissive: 0xff6a20, emissiveIntensity: 1.1, nc: 1}), sx0 - .01, fb + .4, sz0 + .3); ud.shpStove = fw.material; ud.stove = [sx0 - .12, fb + .7, sz0 + .3];
     cyl(sv, .07, .07, hh - .75, ww - .45, fb + .75 + (hh - .75) / 2, sz0 + .3); cyl(lgrey, .09, .11, .16, sx0 + .2, fb + .83, sz0 + .18, 0, 0, 10); cyl(darkM, .012, .012, .12, sx0 + .32, fb + .9, sz0 + .18, 0, PI / 3);
@@ -4168,7 +4168,7 @@ function smlLook(cls, X) {
     const am = bf, az = zs - 2.05, ax = hw - .62, at = fb + 2.7; for (const sd of [-1, 1]) { box(am, sd * ax - .12, sd * ax + .12, fb, at, az - .12, az + .12); BW.push({x0: sd * ax - .14, x1: sd * ax + .14, z0: az - .14, z1: az + .14, y0: 0, y1: at - fb}); }
     box(am, -ax - .12, ax + .12, at - .05, at + .2, az - .14, az + .14); cyl(steel, .12, .12, .3, 0, at - .1, az, 0, PI / 2, 10); seg(steel, 0, at - .2, az, 0, at - .6, az + .1, .03);
     const bt = S({color: 0x2a2a2a, metalness: .5, roughness: .5}); for (const sx of [-1.6, 1.6]) { cyl(bt, .16, .18, .55, sx, fb + .27, zs - 2.6, 0, 0, 10); cyl(bt, .24, .24, .05, sx, fb + .55, zs - 2.6, 0, 0, 10); box(bt, sx - .2, sx + .2, fb, fb + .55, zs - 2.8, zs - 2.4, 1); }
-    { const dz = zs - 1.35, dr = add(new THREE.CylinderGeometry(.42, .42, 1.6, 16), S({color: 0x6a1a14, metalness: .3}), 0, fb + .55, dz); dr.rotation.z = PI / 2; cyl(S({color: 0x9a8058, roughness: 1}), .5, .5, 1.3, 0, fb + .55, dz, 0, PI / 2, 14); for (const sx of [-.85, .85]) { box(steel, sx - .06, sx + .06, fb, fb + 1.05, dz - .5, dz + .5); cyl(steel, .62, .62, .05, sx * .94, fb + .55, dz, 0, PI / 2, 16); } BW.push({x0: -.9, x1: .9, z0: dz - .5, z1: dz + .5, y0: 0, y1: 1.05}); }
+    { const dz = zs - 1.35, dr = add(new THREE.CylinderGeometry(.42, .42, 1.6, 16), S({color: 0x6a1a14, metalness: .3}), 0, fb + .55, dz); dr.rotation.z = PI / 2; cyl(S({color: 0x9a8058, roughness: 1}), .5, .5, 1.3, 0, fb + .55, dz, 0, PI / 2, 14); for (const sx of [-.85, .85]) { box(steel, sx - .06, sx + .06, fb, fb + .92, dz - .5, dz + .5); cyl(steel, .62, .62, .05, sx * .94, fb + .55, dz, 0, PI / 2, 16); } BW.push({x0: -.9, x1: .9, z0: dz - .5, z1: dz + .5, y0: 0, y1: 1.05}); }
     // magnet boom: post, slewing base, ram, the swinging group (shpMag) and its hook head (shpMagH)
     { const bx = hw - .7, bz = zs - 3.2; cyl(yel, .16, .22, 2.6, bx, fb + 1.3, bz, 0, 0, 12); cyl(blk, .26, .26, .14, bx, fb + 2.55, bz, 0, 0, 12); BW.push({x0: bx - .25, x1: bx + .25, z0: bz - .25, z1: bz + .25, y0: 0, y1: 2.6});
       const mg = new THREE.Group(); mg.position.set(bx, fb + 2.5, bz); g.add(mg); ud.shpMag = mg; const boom = new THREE.Mesh(new THREE.BoxGeometry(.2, .2, 3.2), yel); boom.position.set(1.1, .55, 0); boom.rotation.set(0, PI / 2, .35, 'YXZ'); mg.add(boom);
@@ -7955,7 +7955,7 @@ function jetLook(X) { const {g, L, hw, fb, zs, zb, wz0, wz1, ww, hh, S, add, box
   for (const s of [-1, 1]) { const f = add(new THREE.BoxGeometry(.1, 2, 1.6), gr, s * .7, X.topAt(1) + 1, zs - .9); f.rotation.z = s * .55; f.rotation.x = -.35; } }
 { const f0 = boatPose; boatPose = function (dt) { const r = f0.apply(this, arguments), ud = BOAT && BOAT.userData; if (ud && ud.jets) { const k = Math.max(Math.abs(B.thr), -(B.dep || 0) > .5 ? .5 : 0); for (const gl of ud.jets.children) { gl.material.opacity = k * (.7 + Math.random() * .2); gl.scale.setScalar(.6 + k * 1.6); } } return r; }; }
 // windows: the shared boat glass tints dark from outside (it showed the white cabin lining and read as frosted), clear while you are inside or at the wheel
-{ const f0 = buildBoat; buildBoat = function () { const r = f0.apply(this, arguments); WIN.m = null; if (BOAT) BOAT.traverse(o => { if (!WIN.m && o.isMesh && o.material && o.material.transparent && Math.abs(o.material.opacity - .16) < .001) WIN.m = o.material; }); WIN.k = -1; jetCargo(); return r; }; }
+{ const f0 = buildBoat; buildBoat = function () { const r = f0.apply(this, arguments); WIN.m = null; if (BOAT) BOAT.traverse(o => { if (!WIN.m && o.isMesh && o.material && o.material.transparent && Math.abs(o.material.opacity - .16) < .001) WIN.m = o.material; }); WIN.k = -1; jetCargo(); if ((B.up.cls || 0) === 9) BHELM[0] = -.6; return r; }; }
 const WIN = {m: null, k: -1};
 { const f0 = hud; hud = function () { const r = f0.apply(this, arguments), m = WIN.m; if (m && P) { const ins = P.seat || inCabin() || !!G.subIn, k = ins ? 1 : 0; if (k !== WIN.k) { WIN.k = k; m.visible = !ins; m.color.setHex(0x0e1820); m.opacity = .72; m.roughness = .04; m.metalness = .6; m.needsUpdate = true; if (BOAT) BOAT.traverse(o => { if (o.isMesh && o.material && o.material !== m && o.material.transparent && o.material.opacity >= .3 && o.material.opacity <= .6 && o.material.depthWrite === false && o.material.color && o.material.color.getHex() < 0x202020) o.material.visible = !ins; }); } } return r; }; }
 // cargo: hatch covers, container stacks and crates on deck get a floor on top; walk into one holding W and you climb up (and you can walk along the top and drop off)
@@ -8005,6 +8005,9 @@ function hostAp(dt) { const a = B.ap; if (!a) return; if (B.sink > 0 || (HC().pl
   else if (VOY.ap && VOY.dock) t = VOY.set ? `Coming alongside ${VOY.dock}…` : `AUTOPILOT · docking at ${VOY.dock} · T to stop`; else if (VOY.ap && !P.seat && P.ob) t = 'Autopilot is sailing · T to stop';
   let el = VOY.dkEl; if (!el) { el = VOY.dkEl = document.createElement('div'); el.style.cssText = 'position:absolute;left:50%;bottom:22%;transform:translateX(-50%);font:13px ui-monospace,monospace;color:#9fe6ff;text-shadow:0 1px 3px #000;pointer-events:none;text-align:center'; $('hud').appendChild(el); } if (t !== VOY.dkT) { VOY.dkT = t; el.innerHTML = t; } return r; }; }
 { const f0 = startGame; startGame = function () { B.ap = null; VOY.ap = 0; VOY.dock = ''; return f0.apply(this, arguments); }; }
+
+// sightlines from the wheel: the trawler and the tug had bows so high you could not see the sea ahead
+for (const i of [1, 10]) if (HULLS[i].form) HULLS[i].form.sheer = 1.0;
 
 menuInit();
 setTimeout(() => { buildWorld(); requestAnimationFrame(frame); }, 30);
