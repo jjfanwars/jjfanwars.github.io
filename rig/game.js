@@ -29,7 +29,7 @@ const hexS = c => '#' + c.toString(16).padStart(6, '0');
 
 // ---------------- net (jjfanwars relay)
 const RELAY_URL = 'wss://jjfanwars-relay.businessautomationvic.workers.dev';
-const GAME_V = 57;
+const GAME_V = 58;
 const Net = {
   tag: '[Rig]', role: 'solo', ws: null, peers: new Map(), code: '', relayT: {pose: 1}, id: '', name: '', handlers: {}, retry: 0, started: false,
   enc: new TextEncoder(), dec: new TextDecoder(),
@@ -1256,7 +1256,7 @@ function buildBoat() {
       if (KT.ant ?? 1) for (const sx of [-.4, .4]) cyl(darkM, .012, .02, 1.6 + L * .02, sx * ww, fb + hh + .9 + L * .01, wz1 - .4);
       if (KT.stack ?? 1) cyl(darkM, .14, .16, .9, -ww + .5, fb + hh + .55, wz1 - .5); if (KT.stack ?? 1) cyl(S({color: 0x111111}), .145, .145, .12, -ww + .5, fb + hh + .95, wz1 - .5);
       if (KT.anchor ?? 1) { const an = add(new THREE.BoxGeometry(.06, .6, .06), darkM, 0, fb + .3, BDECK.z0 - .9); an.rotation.x = .3; const ac = add(new THREE.TorusGeometry(.2, .03, 6, 12, PI), darkM, 0, fb + .08, BDECK.z0 - .82); ac.rotation.x = PI / 2 + .3; }
-      const nc = cv(512, 96, (q, w, h2) => { q.fillStyle = 'rgba(0,0,0,0)'; q.clearRect(0, 0, w, h2); q.fillStyle = cls === 7 ? '#c8a040' : '#f0ece0'; q.font = 'bold 54px Georgia'; q.textAlign = 'center'; q.fillText(['NINE LIVES', 'SALT WIFE', 'VIGILANT', 'IRON MULE', 'NAUTILUS II', 'DEEP RIGHT', 'POLAR BEAR', 'SERENADE', 'DART', 'DRIFTWOOD', 'BULLDOG', 'AURORA', 'GOLIATH'][cls] || 'NINE LIVES', w / 2, 66); });
+      const nc = cv(512, 96, (q, w, h2) => { q.fillStyle = 'rgba(0,0,0,0)'; q.clearRect(0, 0, w, h2); q.fillStyle = cls === 7 ? '#c8a040' : '#f0ece0'; q.font = 'bold 54px Georgia'; q.textAlign = 'center'; q.fillText(['NINE LIVES', 'SALT WIFE', 'VIGILANT', 'IRON MULE', 'NAUTILUS II', 'DEEP RIGHT', 'POLAR BEAR', 'SERENADE', 'DART', 'DRIFTWOOD', 'BULLDOG', 'AURORA', 'GOLIATH'][cls] || H.board || 'NINE LIVES', w / 2, 66); });
       const nb = add(new THREE.PlaneGeometry(Math.min(W * .8, 6), Math.min(W * .8, 6) * .19), new THREE.MeshBasicMaterial({map: new THREE.CanvasTexture(nc), transparent: true}), 0, fb * .6, LF.tz(fb * .6) + .03); nb.castShadow = false; nb.rotation.x = LF.tilt;
       if (KT.port ?? L > 16) { const pm = S({color: 0x0a0e12, roughness: .1, emissive: 0xffd090, emissiveIntensity: 0, nc: 1}); g.userData.port = pm; for (const sd of [-1, 1]) for (let z = BDECK.z0 + 2; z < zs - 2; z += Math.max(2.2, L / 24)) { const ph = add(new THREE.CircleGeometry(.16 + L * .002, 14), pm, sd * (LF.hx(z, fb * .62) + .025), fb * .62, z); ph.rotation.y = sd * PI / 2; ph.castShadow = false; } } }
     if (H.big) { const ss = S({color: 0xe8e6de, roughness: .5}), wm = new THREE.MeshStandardMaterial({color: 0x101418, emissive: 0xffc070, emissiveIntensity: .1, roughness: .2}); g.userData.winM = wm;
@@ -1275,7 +1275,7 @@ function buildBoat() {
     }
     INTER.push({kind: 'ladder', boat: 1, lx: 0, lz: zs + 1, ly: -fb, r: 3.5, top: 'boat', label: () => 'Climb aboard', on: () => P.sw});
   } else buildSub(g, {S, glass, darkM, steel, yel, H});
-  const cargo = new THREE.Group(); g.add(cargo); g.userData.cargo = cargo; g.userData.cls = cls; g.userData.sig = cls + ':' + (B.up.paint || 0);
+  const cargo = new THREE.Group(); g.add(cargo); g.userData.cargo = cargo; g.userData.cls = cls; g.userData.sig = boatSig();
   { const gc = cv(128, 256, (q, w, h) => { const gr = q.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, h / 2); gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(.55, 'rgba(255,255,255,.5)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); q.fillStyle = gr; q.fillRect(0, 0, w, h); });
     const gm = new THREE.Mesh(new THREE.PlaneGeometry(W + 5, L + 6), new THREE.MeshBasicMaterial({map: new THREE.CanvasTexture(gc), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0})); gm.rotation.x = -PI / 2; gm.position.set(0, .12, (zb + zs) / 2); gm.renderOrder = 3; g.add(gm); g.userData.glow = gm; }
   INTER.push({kind: 'helm', boat: 1, lx: BHELM[0], lz: BHELM[1] - .4, ly: 1, r: 2, label: () => P.seat ? 'Let go of the wheel' : 'Take the wheel', on: () => !P.sw && (P.seat || !B.driver)});
@@ -2915,9 +2915,9 @@ function drawShop() {
     rows.push(row('Batteries', 'Recharge your flashlight', bt('data-k="battery"', money(20), 20)));
   } else if (tab === 'jobs') { rows.push(jobRows(row, bt));
   } else if (tab === 'boats') {
-    const next2 = HULLS.map((H, i) => i).filter(i => !own.includes(i) && !HULLS[i].cruise).sort((a, b) => HULLS[a].cost - HULLS[b].cost).slice(0, 2);
+    const next2 = HULLS.map((H, i) => i).filter(i => !own.includes(i) && !HULLS[i].cruise && !HULLS[i].cust).sort((a, b) => HULLS[a].cost - HULLS[b].cost).slice(0, 2);
     const block = H => sackUsed(B.hold) > Math.round(H.hold * hm) * 2 ? 'Unload the hold first' : B.driver ? 'Someone is at the wheel' : !docked ? 'Dock at a harbour' : ''; let hid = 0;
-    HULLS.forEach((H, i) => { const sz = `${H.L} m · hold ${H.hold}`, sd = H.d.includes(`${H.L} m`) ? `hold ${H.hold}` : sz, c = hullCost(H), mine = own.includes(i) || (H.cruise && G.cruise);
+    HULLS.forEach((H, i) => { if (H.cust) return; const sz = `${H.L} m · hold ${H.hold}`, sd = H.d.includes(`${H.L} m`) ? `hold ${H.hold}` : sz, c = hullCost(H), mine = own.includes(i) || (H.cruise && G.cruise);
       if (i === cls) rows.push(row(H.n, `${H.d} · ${sd}`, '<span class="bt"><button disabled>Aboard</button></span>', ' cur'));
       else if (H.cruise ? !G.cruise : !mine && !next2.includes(i) && !G.shopAll && G.cash < c * .5) { if (!H.cruise) hid++; rows.push(row('???', sz, bt('', H.cruise ? '???' : money(c), c, H.cruise ? 'Unclaimed' : ''), ' q')); }
       else rows.push(row(H.n, `${H.d} · ${sd}`, bt(`data-h="${i}"`, mine ? 'Switch' : c ? money(c) : 'Free', mine ? 0 : c, block(H)))); });
@@ -3077,7 +3077,7 @@ const VMC = new THREE.Group(); cam.add(VMC); VMC.position.set(-.05, -.42, -.75);
 function boatPose(dt) {
   if (!isHost() && B.tx != null) { const k = Math.min(1, dt * 6); const px = B.tx - Math.sin(B.tyaw) * B.v * .05, pz = B.tz - Math.cos(B.tyaw) * B.v * .05; B.x = mix(B.x, px, k); B.z = mix(B.z, pz, k); B.yaw += angD(B.yaw, B.tyaw) * k; B.x += -Math.sin(B.yaw) * B.v * dt * (1 - k); B.z += -Math.cos(B.yaw) * B.v * dt * (1 - k); }
   const t = G.wt, fx = -Math.sin(B.yaw), fz = -Math.cos(B.yaw), sx = Math.cos(B.yaw), sz = -Math.sin(B.yaw);
-  if (BOAT.userData.sig !== (B.up.cls || 0) + ':' + (B.up.paint || 0)) { const same = BOAT.userData.cls === (B.up.cls || 0); buildBoat(); if (same) { /* repaint only */ } else if (P && P.ob) { const sp = boatSpawn(0); P.bl = sp.bl; P.y = sp.y; P.climb = null; P.rest = 0; } }
+  if (BOAT.userData.sig !== boatSig()) { const same = BOAT.userData.cls === (B.up.cls || 0); buildBoat(); if (same) { /* repaint only */ } else if (P && P.ob) { const sp = boatSpawn(0); P.bl = sp.bl; P.y = sp.y; P.climb = null; P.rest = 0; } }
   const hl2 = BG.L * .32, hw2 = BG.hw * .9, hf = waveH(B.x + fx * hl2, B.z + fz * hl2, t), hb = waveH(B.x - fx * hl2, B.z - fz * hl2, t), hl = waveH(B.x - sx * hw2, B.z - sz * hw2, t), hr = waveH(B.x + sx * hw2, B.z + sz * hw2, t);
   B.sinkY = B.sink > 0 ? Math.max(-6, (B.sinkY || 0) - dt * 1.2) : 0;
   const dk = clamp(1 - (B.dep || 0), 0, 1), m = Math.pow(HC().L / 12.2, .6), dvdt = (B.v - (G.bv0 ?? B.v)) / Math.max(dt, 1e-3); G.bv0 = B.v; G.bdv = mix(G.bdv || 0, dvdt, Math.min(1, dt * 4)); B.trim = mix(B.trim || 0, (m < 1.6 ? clamp(B.v / 8, 0, 1) * .06 : 0) + clamp(G.bdv, -2, 2) * .01 / m, Math.min(1, dt * 2)); B.heave = (hf + hb + hl + hr) / 4 * dk + B.sinkY - (B.dep || 0); B.pitch = (Math.atan2(hf - hb, hl2 * 2) * .8 * dk + (B.sink > 0 ? .25 : 0)) - clamp((B.dtar - B.dep) * .06, -.12, .12) + B.trim * dk; B.roll = Math.atan2(hl - hr, hw2 * 2) * .8 * dk + (G.shake || 0) * Math.sin(G.t * 23) * .05 + clamp((B.yr || 0) * B.v * (m < 1.6 ? .03 : -.01), -.12, .12);
@@ -8076,6 +8076,74 @@ addEventListener('keydown', e => { if (e.code !== 'Space' || e.repeat || !G.on |
   a.thr = vT > 90 ? 1 : clamp(.25 + (vT - B.v) * .08, 0, 1);
   const lift = clamp((B.v - JT.st + 1) / 10, 0, 1), vd = clamp((altT - alt) * .35, alt < 5 ? -1.3 : -3.5, JT.cl);
   a.up = vd >= 0 ? clamp(vd / (JT.cl * Math.max(lift, .3)), 0, 1) : clamp(vd / (JT.cl * lift + 4), -1, 0); }; }
+
+// ===== shipwright: design your own boat =====
+// One custom hull slot (HULLS[CUST_I]). The design lives in B.up.cust (saved and synced with the rest of B.up); custApply()
+// turns it into the hull's lines, wheelhouse, colours, stats and perk right before buildBoat, so every client builds the same boat.
+const CUST_I = HULLS.length;
+HULLS.push({n: 'Your design', d: 'Built to your own plans at the shipwright', cost: 0, L: 12, W: 4.4, fb: 1.3, spd: 1, turn: 1, hold: 8, hp: 1, fuel: 1, col: 0x1e3a4a, wh: [.3, .55], cust: 1});
+const CW = {
+  bow: [{n: 'Classic', f: {}}, {n: 'Raked yacht', f: {rake: .06, entry: .34, flare: .26, sheer: 1.1}}, {n: 'Bluff workboat', f: {entry: .62, sheer: .55, bw: .5, vee: .2}}, {n: 'Deep-V racer', f: {vee: .85, entry: .4, rake: .035, sheer: .5, chine: .06}}],
+  cab: [{n: 'Forward', wh: [.1, .34]}, {n: 'Midships', wh: [.3, .55]}, {n: 'Aft', wh: [.55, .8]}, {n: 'Long saloon', wh: [.14, .62]}],
+  eng: [{n: 'Economy diesel', s: .85, f: .75, c: 0}, {n: 'Twin diesels', s: 1, f: 1, c: 900}, {n: 'Racing turbines', s: 1.28, f: 1.5, c: 2600}],
+  perk: [{n: 'None', c: 0}, {n: 'Boost (Shift)', k: 'boost', c: 900}, {n: 'Drag net', k: 'net', c: 700}, {n: 'Cargo magnet', k: 'magnet', c: 1100}, {n: 'Stabilisers', k: 'stab', v: .45, c: 800}, {n: 'Cool box (fish +25%)', k: 'fishK', v: 1.25, c: 1000}],
+  hc: [0x1e3a4a, 0x7a1e16, 0x23272d, 0xe8e8ee, 0x16604a, 0xd8a020, 0x22508a, 0x3a1a6a],
+  cc: [0xf2f0ea, 0x8a9098, 0x1a1c20, 0xe8dcb8, 0x9a2a20, 0x2a4a6a]};
+const custDef = () => ({L: 12, W: 4.4, bow: 0, cab: 1, eng: 1, perk: 0, hc: 0, cc: 0, name: 'MY BOAT'});
+function custNorm(d) { const o = Object.assign(custDef(), d || {}); o.L = clamp(Math.round(+o.L || 12), 8, 22); o.W = clamp(Math.round((+o.W || 4.4) * 2) / 2, 3, Math.min(7, o.L * .45));
+  for (const [k, a] of [['bow', CW.bow], ['cab', CW.cab], ['eng', CW.eng], ['perk', CW.perk], ['hc', CW.hc], ['cc', CW.cc]]) o[k] = clamp(Math.round(+o[k] || 0), 0, a.length - 1);
+  o.name = String(o.name || '').toUpperCase().replace(/[^A-Z0-9 '\-]/g, '').slice(0, 14) || 'MY BOAT'; return o; }
+function custStats(d) { const E = CW.eng[d.eng], fine = d.W / d.L, area = d.L * d.W;
+  return {spd: +((1.3 - (d.L - 12) * .012 - (fine - .36) * 1.4 + (d.bow === 3 ? .12 : d.bow === 2 ? -.1 : d.bow === 1 ? .05 : 0)) * E.s).toFixed(2), turn: +clamp(1.35 - (d.L - 8) * .035, .5, 1.4).toFixed(2),
+    hold: Math.round(area * .14 * (d.cab === 3 ? .8 : 1) * (d.bow === 2 ? 1.15 : 1)), hp: +(area / 48 * (d.bow === 2 ? 1.2 : 1)).toFixed(2), fuel: +(d.L / 12 * E.f).toFixed(2),
+    cost: Math.round((400 + area * 32 + E.c + CW.perk[d.perk].c + (d.bow ? 300 : 0)) / 50) * 50}; }
+function custApply() { const d = custNorm(B.up.cust), H = HULLS[CUST_I], st = custStats(d);
+  for (const k of ['boost', 'net', 'magnet', 'stab', 'fishK', 'perk']) delete H[k];
+  Object.assign(H, {n: d.name.charAt(0) + d.name.slice(1).toLowerCase(), board: d.name, L: d.L, W: d.W, fb: +(.95 + d.L * .03).toFixed(2), spd: st.spd, turn: st.turn, hold: st.hold, hp: st.hp, fuel: st.fuel, col: CW.hc[d.hc], wh: CW.cab[d.cab].wh.slice(),
+    form: Object.assign({}, CW.bow[d.bow].f), cab: {wall: CW.cc[d.cc], roof: CW.cc[d.cc] === 0x1a1c20 ? 0xe8e8e4 : 0x2a2e34}, boost: undefined});
+  const pk = CW.perk[d.perk]; if (pk.k) { H[pk.k] = pk.v || 1; H.perk = pk.n; } return H; }
+function boatSig() { const c = B.up.cls || 0; return c + ':' + (B.up.paint || 0) + (c === CUST_I ? ':' + JSON.stringify(custNorm(B.up.cust)) : ''); }
+{ const f0 = buildBoat; buildBoat = function () { if ((B.up.cls || 0) === CUST_I) custApply(); return f0.apply(this, arguments); }; }
+// host: build or refit to a design
+{ const f0 = hostAct; hostAct = function (id, m) { if (!m || m.a !== 'cust') return f0.apply(this, arguments); const p = PL.get(id); if (!p) return; const now = performance.now() / 1000; if ((p.buyT || 0) > now) return; p.buyT = now + .6;
+  const d = custNorm(m.d), st = custStats(d), own = Array.isArray(B.up.own) ? B.up.own : (B.up.own = [0, B.up.cls || 0]), had = own.includes(CUST_I), same = had && JSON.stringify(custNorm(B.up.cust)) === JSON.stringify(d);
+  const price = freeAll() ? 0 : same ? 0 : had ? Math.round(st.cost * .3 / 50) * 50 : st.cost, port = voyPortNear(B.x, B.z, 60 + BG.L * .5);
+  if (same && (B.up.cls || 0) === CUST_I) return; const H2 = Object.assign({}, HULLS[CUST_I], {hold: st.hold});
+  if (sackUsed(B.hold) > Math.round(H2.hold * [1, 1.5, 2][B.up.hold || 0]) * 2) { emit({k: 'holdbig', id}); return; } if (B.driver) { emit({k: 'nope', id, why: 'Someone is at the wheel.'}); return; }
+  if (!port) { emit({k: 'nope', id, why: 'Bring the boat into a harbour first.'}); return; } if (G.cash < price) { emit({k: 'nope', id, why: 'Not enough crew cash.'}); return; }
+  G.cash -= price; if (!had) own.push(CUST_I); B.up.cust = d; B.up.cls = CUST_I; buildBoat(); resetBoat(false); if (port !== JETTY) { B.x = port.x; B.z = port.z - 12.5 - BG.hw; B.yaw = PI / 2; } B.fuel = tankMax(); B.hull = hullMax();
+  { let n = 0; for (const q of PL.values()) if (q.ob) { const sp = boatSpawn(n++); q.bl = sp.bl; q.y = sp.y; q.climb = null; q.seat = 0; q.rest = 0; } } emit({k: 'bought', n: HULLS[CUST_I].n, hull: CUST_I}); save(); }; }
+// the shop: a design panel at the top of the Boats tab, with a side-on sketch and live stats
+function custSketch(c, d) { const g = c.getContext('2d'), W = c.width, H = c.height, k = (W - 40) / 22, L = d.L * k, x0 = (W - L) / 2, wl = H * .62, fb = (.95 + d.L * .03) * k * 1.4, hex = v => '#' + v.toString(16).padStart(6, '0');
+  g.clearRect(0, 0, W, H); g.fillStyle = '#9cc4d8'; g.fillRect(0, wl, W, H - wl); const bowX = x0, rk = [0, .1, .02, .06][d.bow] * L, sh = [.9, 1.1, .55, .5][d.bow] * k * .9;
+  g.fillStyle = hex(CW.hc[d.hc]); g.beginPath(); g.moveTo(bowX - rk, wl - fb - sh); g.quadraticCurveTo(bowX + L * .35, wl - fb, x0 + L, wl - fb); g.lineTo(x0 + L, wl + k * .9); g.lineTo(bowX + L * [.18, .3, .06, .22][d.bow], wl + k * 1.1); g.quadraticCurveTo(bowX + 2, wl + k * .5, bowX - rk, wl - fb - sh); g.fill();
+  const [a, b] = CW.cab[d.cab].wh, cx0 = x0 + L * a, cx1 = x0 + L * b, ch = k * 2.1; g.fillStyle = hex(CW.cc[d.cc]); g.fillRect(cx0, wl - fb - ch, cx1 - cx0, ch); g.fillStyle = '#18242c'; g.fillRect(cx0 + 4, wl - fb - ch + 5, cx1 - cx0 - 8, ch * .4);
+  { const c = CW.hc[d.hc], lu = ((c >> 16) * .3 + ((c >> 8) & 255) * .59 + (c & 255) * .11); g.fillStyle = lu > 150 ? '#1a1a1a' : '#f0ece0'; } g.font = 'bold 11px Georgia'; g.textAlign = 'center'; g.fillText(d.name, x0 + L * .72, wl - fb * .35); g.fillStyle = '#1a1a1a'; g.font = '11px Georgia'; g.fillText(`${d.L} m × ${d.W} m`, W / 2, H - 6); }
+{ const f0 = drawShop; drawShop = function () { const r = f0.apply(this, arguments); if (!G.shopOpen || G.shopTab !== 'boats') return r;
+  const own = Array.isArray(B.up.own) ? B.up.own : [0], had = own.includes(CUST_I), aboard = (B.up.cls || 0) === CUST_I; if (!G.cd) G.cd = custNorm(B.up.cust);
+  const d = G.cd = custNorm(G.cd), st = custStats(d), same = had && JSON.stringify(custNorm(B.up.cust)) === JSON.stringify(d), price = freeAll() ? 0 : same ? 0 : had ? Math.round(st.cost * .3 / 50) * 50 : st.cost;
+  const docked = !!voyPortNear(B.x, B.z, 60 + BG.L * .5), why = !docked ? 'Dock at a harbour' : B.driver ? 'Someone is at the wheel' : G.cash < price ? `${money(price - G.cash)} short` : '';
+  const sel = (k, a) => `<select data-cw="${k}">${a.map((o, i) => `<option value="${i}"${d[k] === i ? ' selected' : ''}>${o.n}</option>`).join('')}</select>`;
+  const sw = (k, a) => a.map((c, i) => `<i data-cs="${k}" data-v="${i}" style="display:inline-block;cursor:pointer;width:20px;height:20px;margin:1px;box-sizing:border-box;border:2px solid ${d[k] === i ? '#fff' : '#0006'};background:#${c.toString(16).padStart(6, '0')}"></i>`).join('');
+  const lab = 'style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin:3px 0"', bar = (v, mx) => `<i style="display:inline-block;width:70px;height:6px;background:#0003;vertical-align:middle"><b style="display:block;height:100%;width:${Math.min(100, v / mx * 100)}%;background:#4aa0c8"></b></i>`;
+  const btn = aboard && same ? '<button disabled>Aboard</button>' : same ? `<button data-cb="1" class="can"${why && why !== `${money(price - G.cash)} short` ? ' disabled' : ''}>Board her</button>` : `<button data-cb="1"${why ? ' disabled' : ' class="can"'}>${had ? 'Refit' : 'Build'} ${price ? money(price) : 'free'}</button>`;
+  const html = `<div class="up cur" style="display:block"><div><b>Shipwright: design your own boat</b><small>Pick the hull, cabin, engine and a perk. Refitting a design you own costs 30%.</small></div>
+    <canvas id="cwSk" width="360" height="110" style="width:100%;max-width:360px;display:block;margin:6px auto;background:#dfe9ee;border-radius:4px"></canvas>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:2px 14px">
+      <label ${lab}>Length ${d.L} m<input type="range" data-cr="L" min="8" max="22" step="1" value="${d.L}"></label><label ${lab}>Beam ${d.W} m<input type="range" data-cr="W" min="3" max="7" step=".5" value="${d.W}"></label>
+      <label ${lab}>Bow ${sel('bow', CW.bow)}</label><label ${lab}>Cabin ${sel('cab', CW.cab)}</label><label ${lab}>Engine ${sel('eng', CW.eng)}</label><label ${lab}>Perk ${sel('perk', CW.perk)}</label>
+      <div ${lab}>Hull <span>${sw('hc', CW.hc)}</span></div><div ${lab}>Cabin <span>${sw('cc', CW.cc)}</span></div>
+      <label ${lab}>Name<input type="text" data-cn="1" maxlength="14" value="${d.name}" style="width:120px"></label></div>
+    <div style="margin:6px 0;font-size:12px">Speed ${bar(st.spd, 2)} ${st.spd} · Turning ${bar(st.turn, 1.4)} · Tough ${bar(st.hp, 3)} · Hold ${st.hold} · Fuel ×${st.fuel}</div>
+    <div class="rowb" style="justify-content:flex-end"><span class="bt">${btn}${why ? `<small class="why">${why}</small>` : ''}</span></div></div>`;
+  const L0 = $('shopL'); L0.insertAdjacentHTML('afterbegin', html); custSketch($('cwSk'), d);
+  const upd = () => { const sy = L0.scrollTop; drawShop(); L0.scrollTop = sy; };
+  L0.querySelectorAll("[data-cr]").forEach(e => e.onchange = () => { G.cd[e.dataset.cr] = +e.value; upd(); });
+  L0.querySelectorAll('[data-cw]').forEach(e => e.onchange = () => { G.cd[e.dataset.cw] = +e.value; upd(); });
+  L0.querySelectorAll('[data-cs]').forEach(e => e.onclick = () => { G.cd[e.dataset.cs] = +e.dataset.v; upd(); });
+  L0.querySelectorAll('[data-cn]').forEach(e => { e.onchange = () => { G.cd.name = e.value; upd(); }; e.onkeydown = ev => ev.stopPropagation(); });
+  L0.querySelectorAll('[data-cb]').forEach(e => e.onclick = () => { if (e.disabled) return; e.disabled = true; act({a: 'cust', d: G.cd}); setTimeout(drawShop, 1000); });
+  return r; }; }
 
 menuInit();
 setTimeout(() => { buildWorld(); requestAnimationFrame(frame); }, 30);
