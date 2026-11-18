@@ -29,7 +29,7 @@ const hexS = c => '#' + c.toString(16).padStart(6, '0');
 
 // ---------------- net (jjfanwars relay)
 const RELAY_URL = 'wss://jjfanwars-relay.businessautomationvic.workers.dev';
-const GAME_V = 60;
+const GAME_V = 61;
 const Net = {
   tag: '[Rig]', role: 'solo', ws: null, peers: new Map(), code: '', relayT: {pose: 1}, id: '', name: '', handlers: {}, retry: 0, started: false,
   enc: new TextEncoder(), dec: new TextDecoder(),
@@ -3055,7 +3055,7 @@ Snd.step = (kind, k) => { const r = .88 + Math.random() * .24, hit = g => {
   if (kind === 'metal') tone((320 + Math.random() * 60) * r, .02 * k, .08, 'triangle');
   else if (kind === 'steel') { tone(150 * r, .03 * k, .1); tone(2200 * r, .008 * k, .04); }
   else if (kind === 'wood') tone(180 * r, .015 * k, .08, 'triangle'); };
-const KEYMAP = [['W A S D', 'move'], ['Shift', 'run'], ['C', 'crouch · dive'], ['Space', 'jump · rise · hold breath'], ['Tab (tap)', 'keep the chart open'], ['E', 'use · hold for jobs'], ['F', 'flashlight'], ['G', 'throw a flare'], ['Q', 'whistle · horn at the wheel'], ['1-7 · wheel', 'hotbar'],
+const KEYMAP = [['W A S D', 'move'], ['Shift', 'run'], ['C', 'crouch · dive'], ['Space', 'jump · rise · hold breath'], ['Tab (tap)', 'keep the chart open'], ['V', 'binoculars'], ['N · Y · U', 'repair kit · fuel can · chum'], ['F at the wheel', 'deck gun on armed ships'], ['Z (hold)', 'give up'], ['E', 'use · hold for jobs'], ['F', 'flashlight'], ['G', 'throw a flare'], ['Q', 'whistle · horn at the wheel'], ['1-7 · wheel', 'hotbar'],
   ['LMB / RMB', 'use · aim'], ['R', 'reload'], ['X', 'drop the last thing'], ['H', 'fishing help'], ['Tab (hold)', 'chart'], ['Esc', 'pause']];
 const keyTable = list => `<div class="keys ktab">${list.map(([k, a]) => `<span><b>${k}</b></span><span>${a}</span>`).join('')}</div>`;
 
@@ -6150,6 +6150,14 @@ const GEAR = {
   fw: {n: 'Firework rockets x5', d: 'Slot 7. Light up the night sky', cost: 60, need: o => true},
   sack1: {n: 'Big sack', d: 'Carry 7 slots of salvage instead of 4', cost: 90, need: o => !o.sack},
   sack2: {n: "Hauler's pack", d: 'Carry 10 slots of salvage', cost: 220, need: o => o.sack === 1},
+  mag: {n: 'Magnum revolver', d: 'Replaces the Glock: six rounds, slow, hits about as hard as three Glock shots (key 4)', cost: 650, need: o => o.glock === 1},
+  rifle: {n: 'Hunting rifle', d: 'Replaces the shotgun: five rounds, one heavy accurate shot, a scope when you aim (key 5)', cost: 900, need: o => o.sg === 1},
+  crate: {n: 'Ammo crate', d: '68 pistol rounds and 24 shells or rifle rounds, cheaper than loose', cost: 70, need: o => o.glock || o.sg},
+  bino: {n: 'Binoculars', d: 'Hold V to look far out to sea', cost: 120, need: o => !o.bino},
+  kit: {n: 'Hull repair kit', d: 'Press N aboard to patch 30% of the hull anywhere at sea (carry 3)', cost: 160, need: o => (o.kits || 0) < 3},
+  jerry: {n: 'Jerrycan of fuel', d: 'Press Y aboard to top the tank up by a third (carry 2)', cost: 90, need: o => (o.jerry || 0) < 2},
+  chum: {n: 'Chum bucket', d: 'Press U while fishing: bites come twice as fast for 3 minutes (carry 5)', cost: 35, need: o => (o.chum || 0) < 5},
+  scoot: {n: 'Dive scooter', d: 'Hold Shift underwater to be towed along twice as fast', cost: 480, need: o => o.suit && !o.scoot},
 };
 const FISH = {
   boot: {n: 'old boot', v: 1, s: .4, kg: [.6, 1.2]}, sard: {n: 'sardine', v: 8, s: .55, kg: [.1, .3]}, mack: {n: 'mackerel', v: 15, s: .75, kg: [.4, 1.2]},
@@ -6202,19 +6210,19 @@ function toolDown() { if (!P) return;
 }
 function toolUp() { if (!P) return; if (P.eq === 2 && F.st === 'charge') castLine(); }
 function fire() {
-  const w = P.eq === 3 ? 'g' : 's', A = P.ammo;
+  const w = P.eq === 3 ? 'g' : 's', A = P.ammo, mg = P.own.glock === 2, rf = P.own.sg === 2;
   if ((G.fireT || 0) > 0 || P.reload > 0 || P.sw) return;
   if (w === 'g' ? A.gm <= 0 : A.sm <= 0) { Snd.click(); if ((w === 'g' ? A.g : A.s) > 0) reload(); else showMsg('Out of ammo. The harbour shed sells more.', '', 2); return; }
-  if (w === 'g') { A.gm--; G.fireT = .13; } else { A.sm--; G.fireT = .85; }
+  if (w === 'g') { A.gm--; G.fireT = mg ? .5 : .13; } else { A.sm--; G.fireT = rf ? 1.1 : .85; }
   saveGear();
   cam.getWorldDirection(_fw); const o = [cam.position.x, cam.position.y, cam.position.z];
-  gunFx(o, w, true); P.pitch = clamp(P.pitch + (w === 'g' ? .02 : .06), -1.45, 1.45); G.recoil = 1;
-  act({a: 'shoot', w, o: o.map(v => +v.toFixed(2)), d: [+_fw.x.toFixed(3), +_fw.y.toFixed(3), +_fw.z.toFixed(3)]});
+  gunFx(o, w, true); P.pitch = clamp(P.pitch + (w === 'g' ? (mg ? .07 : .02) : rf ? .09 : .06), -1.45, 1.45); G.recoil = 1;
+  act({a: 'shoot', w: rf && w === 's' ? 'g' : w, mul: w === 'g' ? (mg ? 2.6 : 1) : rf ? 4.5 : 1, o: o.map(v => +v.toFixed(2)), d: [+_fw.x.toFixed(3), +_fw.y.toFixed(3), +_fw.z.toFixed(3)]});
 }
 function reload() {
   const A = P.ammo; if (P.reload > 0) return;
-  if (P.eq === 3 && A.g > 0 && A.gm < 17) { P.reload = 1.4; P.rk = 'g'; Snd.reload(); }
-  else if (P.eq === 4 && A.s > 0 && A.sm < 6) { P.reload = .55; P.rk = 's'; Snd.reload(); }
+  if (P.eq === 3 && A.g > 0 && A.gm < gMax()) { P.reload = 1.4; P.rk = 'g'; Snd.reload(); }
+  else if (P.eq === 4 && A.s > 0 && A.sm < sMax()) { P.reload = .55; P.rk = 's'; Snd.reload(); }
 }
 const gunL = new THREE.PointLight(0xffd090, 0, 18, 1.6); scene.add(gunL);
 function gunFx(o, w, own) {
@@ -6285,7 +6293,7 @@ function hook() { F.k = pickFish(F.bob.x, F.bob.z, P.own.rod); F.st = 'reel'; F.
 function stepGear(dt) {
   if (!P || !P.own) return;
   G.fireT = (G.fireT || 0) - dt;
-  if (P.reload > 0) { P.reload -= dt; if (P.reload <= 0) { const A = P.ammo; if (P.rk === 'g') { const n = Math.min(17 - A.gm, A.g); A.gm += n; A.g -= n; } else if (A.s > 0) { A.sm++; A.s--; if (A.sm < 6 && A.s > 0 && P.eq === 4) { P.reload = .55; Snd.reload(); } } saveGear(); } }
+  if (P.reload > 0) { P.reload -= dt; if (P.reload <= 0) { const A = P.ammo; if (P.rk === 'g') { const n = Math.min(gMax() - A.gm, A.g); A.gm += n; A.g -= n; } else if (A.s > 0) { A.sm++; A.s--; if (A.sm < sMax() && A.s > 0 && P.eq === 4) { P.reload = .55; Snd.reload(); } } saveGear(); } }
   if (P.eq !== 2 || P.seat || P.down || P.dead) { if (F.st !== 'idle') F.st = 'idle'; return; }
   const rod = P.own.rod;
   switch (F.st) {
@@ -6345,7 +6353,7 @@ function updateTools(dt) {
   VMS.position.set(.17, -.19 - rl * .08, -.38 + rc * .1); VMS.rotation.x = rc * .25;
   const aim = mouseR && own && P.eq >= 3; G.aimK = mix(G.aimK || 0, aim ? 1 : 0, Math.min(1, dt * 10));
   if (G.aimK > .01) { VMG.position.x = mix(.16, 0, G.aimK); VMG.position.y += G.aimK * .05; VMS.position.x = mix(.17, 0, G.aimK); VMS.position.y += G.aimK * .07; }
-  G.runK = mix(G.runK || 0, P && P.run ? 1 : 0, Math.min(1, dt * 4)); const fov = mix((SET.fov || 70) + G.runK * 6 + (G.fovAdd || 0) - (G.js && G.js.t > 0 ? 12 : 0), 52, G.aimK); if (Math.abs(cam.fov - fov) > .05) { cam.fov = fov; cam.updateProjectionMatrix(); }
+  G.runK = mix(G.runK || 0, P && P.run ? 1 : 0, Math.min(1, dt * 4)); const fov = mix((SET.fov || 70) + G.runK * 6 + (G.fovAdd || 0) - (G.js && G.js.t > 0 ? 12 : 0) - (binoOn() ? (SET.fov || 70) - 15 : 0), P && P.own && P.own.sg === 2 && P.eq === 4 ? 24 : 52, G.aimK); if (Math.abs(cam.fov - fov) > .05) { cam.fov = fov; cam.updateProjectionMatrix(); }
   $('xhair').classList.toggle('hidden', !(own && P.eq >= 3));
   G.gunFlash = (G.gunFlash || 0) - dt; gunL.intensity = G.gunFlash > 0 ? gunL.intensity : 0;
   if (VMF.visible && G.gunFlash <= 0) { VMF.userData.tip.getWorldPosition(gunL.position); gunL.color.setHex(0xff3018); gunL.intensity = 14 * (.8 + Math.random() * .4); gunL.distance = 22; VMF.userData.tip.scale.setScalar(.8 + Math.random() * .5); if (Math.random() < dt * 3) Snd.flare && Math.random() < .3 && Snd.flare(null); }
@@ -6374,7 +6382,7 @@ function updateTools(dt) {
   }
   // hud tool line
   const A = P.ammo || {}, own2 = P.own || {};
-  const S7 = [[ICON.hand, 'Hands', 1, ''], [ICON.light, 'Flashlight', 1, P.l ? '' : 'off'], [ICON.rod, ['', 'Rod', 'Carbon rod', 'Deep-sea rod'][own2.rod || 0], own2.rod, ''], [ICON.pistol, 'Glock', own2.glock, `${A.gm}/${A.g}`], [ICON.shotgun, 'Shotgun', own2.sg, `${A.sm}/${A.s}`], [ICON.flare, 'Flare', P.flares > 0, P.flares], [ICON.rocket, 'Fireworks', own2.fw > 0, own2.fw]];
+  const S7 = [[ICON.hand, 'Hands', 1, ''], [ICON.light, 'Flashlight', 1, P.l ? '' : 'off'], [ICON.rod, ['', 'Rod', 'Carbon rod', 'Deep-sea rod'][own2.rod || 0], own2.rod, ''], [ICON.pistol, own2.glock === 2 ? 'Magnum' : 'Glock', own2.glock, `${A.gm}/${A.g}`], [ICON.shotgun, own2.sg === 2 ? 'Rifle' : 'Shotgun', own2.sg, `${A.sm}/${A.s}`], [ICON.flare, 'Flare', P.flares > 0, P.flares], [ICON.rocket, 'Fireworks', own2.fw > 0, own2.fw]];
   const cur = S7[P.eq] || [], hk = P.eq + '|' + S7.map(q => q[2] ? 1 : 0).join('') + '|' + cur[3] + '|' + (P.reload > 0) + '|' + (P.coolerN || 0);
   if (hk !== G.toolK) { G.toolK = hk; $('tool').innerHTML = `<div id="toolN">${cur[2] ? cur[1] + (cur[3] !== '' ? ' ' + cur[3] : '') : ''}</div>` + S7.map((q, i) => q[2] ? `<b class="${P.eq === i ? 'on' : ''}"><em>${i + 1}</em>${q[0]}${P.eq === i ? ` <span>${q[1]}${q[3] !== '' ? ' ' + q[3] : ''}</span>` : ''}</b>` : '').join('') + (P.reload > 0 ? '<span class="rl">reloading</span>' : '') + (P.coolerN ? `<span class="rl">${ICON.fish} ${P.coolerN}</span>` : ''); }
 }
@@ -8304,6 +8312,31 @@ function nb2Look(k, X) { const {g, L, hw, fb, zs, zb, wz0, wz1, ww, hh, S, add, 
     if (ud && ud.muz) for (const q of ud.muz) { _v.set(q[0], q[1], q[2]).applyMatrix4(BOAT.matrixWorld); const sp = new THREE.Sprite(new THREE.SpriteMaterial({map: TX.glow, color: 0xffc070, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending})); sp.position.copy(_v); sp.scale.setScalar(4); scene.add(sp); HITS.push({s: sp, t: .3}); }
     if (near && A.on) { for (let i = 0; i < (ud && ud.muz ? Math.min(4, ud.muz.length) : 1); i++) setTimeout(() => { burst(90, .7, 1, 1.4, 'lowpass'); tone(48, .5, .8, 'sine', null, 30); }, i * 110); } if (P && P.ob) G.shake = Math.max(G.shake || 0, .5); } return r; }; }
 addEventListener('keydown', e => { if (e.code !== 'KeyF' || e.repeat || !G.on || !P || !P.seat || anyPanel() || !HC().fire) return; e.stopImmediatePropagation(); act({a: 'bfire'}); }, {capture: true});
+
+// ===== more gear: Magnum, hunting rifle, ammo crate, binoculars, repair kits, jerrycans, chum, dive scooter =====
+function gMax() { return P && P.own && P.own.glock === 2 ? 6 : 17; } function sMax() { return P && P.own && P.own.sg === 2 ? 5 : 6; }
+function binoOn() { return !!(K.KeyV && P && P.own && P.own.bino && !P.dead && !anyPanel() && !G.map); }
+{ const f0 = gotGear; gotGear = function (k) { const o = P.own, a = P.ammo;
+  if (k === 'mag') { o.glock = 2; a.g += a.gm; a.gm = 6; a.g += 12; } else if (k === 'rifle') { o.sg = 2; a.s += a.sm; a.sm = 5; a.s += 10; } else if (k === 'crate') { if (o.glock) a.g += 68; if (o.sg) a.s += 24; }
+  else if (k === 'bino') o.bino = 1; else if (k === 'kit') o.kits = (o.kits || 0) + 1; else if (k === 'jerry') o.jerry = (o.jerry || 0) + 1; else if (k === 'chum') o.chum = (o.chum || 0) + 1; else if (k === 'scoot') o.scoot = 1;
+  return f0.apply(this, arguments); }; }
+addEventListener('keydown', e => { if (e.repeat || !G.on || !P || P.dead || P.down || anyPanel() || G.map) return; const o = P.own || {};
+  if (e.code === 'KeyN' && o.kits) { if (!P.ob) { showMsg('Get aboard first.', '', 1.5); return; } if (B.hull >= hullMax() - 1) { showMsg('The hull is sound.', '', 1.5); return; } o.kits--; saveGear(); act({a: 'gkit', w: 'kit'}); Snd.reload(); }
+  if (e.code === 'KeyY' && o.jerry) { if (!P.ob) { showMsg('Get aboard first.', '', 1.5); return; } if (B.fuel >= tankMax() - 1) { showMsg('The tank is full.', '', 1.5); return; } o.jerry--; saveGear(); act({a: 'gkit', w: 'fuel'}); burst(800, .5, .2, .8); }
+  if (e.code === 'KeyU' && o.chum) { if (P.eq !== 2) { showMsg('Take out your rod first (3).', '', 1.5); return; } o.chum--; saveGear(); G.chumT = 180; showMsg('You tip the chum over the side. The water stirs.', '', 2.5); Snd.splash(); } });
+{ const f0 = hostAct; hostAct = function (id, m) { if (!m || m.a !== 'gkit') return f0.apply(this, arguments); const p = PL.get(id); if (!p || !p.ob || B.sink > 0) return;
+  if (m.w === 'kit') { B.hull = Math.min(hullMax(), B.hull + hullMax() * .3); emit({k: 'gkit', w: 'kit', n: p.name}); } else if (m.w === 'fuel') { B.fuel = Math.min(tankMax(), B.fuel + tankMax() / 3); emit({k: 'gkit', w: 'fuel', n: p.name}); } }; }
+{ const f0 = applyEv; applyEv = function (e) { const r = f0.apply(this, arguments); if (e.k === 'gkit') showMsg(e.w === 'kit' ? `${e.n} patches the hull.` : `${e.n} pours in a can of fuel.`, '', 2); return r; }; }
+// chum: quicker bites
+{ const f0 = stepGear; stepGear = function (dt) { const prev = F.st, r = f0.apply(this, arguments); if (G.chumT > 0) { G.chumT -= dt; if (prev !== 'wait' && F.st === 'wait') F.t *= .5; } return r; }; }
+// the dive scooter: hold Shift underwater
+{ const f0 = stepPlayer; stepPlayer = function (dt) { const r = f0.apply(this, arguments); if (P && P.own && P.own.scoot && P.sw && (P.dv || 0) > .4 && (K.ShiftLeft || K.ShiftRight) && !P.dead && !P.down) { const cp = Math.cos(P.pitch), sp = 4.2; P.x += -Math.sin(P.yaw) * cp * sp * dt; P.z += -Math.cos(P.yaw) * cp * sp * dt; const lim = Math.max(0, -seaBed(P.x, P.z) - 1.2); P.dv = clamp((P.dv || 0) - Math.sin(P.pitch) * sp * dt, .45, Math.min(lim, SUIT[P.own.suit].max)); if (Math.random() < dt * 3) Snd.bubbles(); } return r; }; }
+// binoculars overlay and a small consumables line
+{ const f0 = hud; hud = function () { const r = f0.apply(this, arguments); if (!P) return r; let el = G.binoEl; if (!el) { el = G.binoEl = document.createElement('div'); el.style.cssText = 'position:absolute;inset:0;pointer-events:none;display:none;background:radial-gradient(circle at 36% 50%,transparent 0 22%,#000 23%),radial-gradient(circle at 64% 50%,transparent 0 22%,#000 23%);background-blend-mode:darken'; $('hud').appendChild(el);
+    const c = G.cnsEl = document.createElement('div'); c.style.cssText = 'position:absolute;left:22px;bottom:84px;font:12px ui-monospace,monospace;color:#cfe4ee;text-shadow:0 1px 2px #000;pointer-events:none'; $('hud').appendChild(c); }
+  const on = binoOn(); if (el._on !== on) { el._on = on; el.style.display = on ? 'block' : 'none'; }
+  const o = P.own || {}, t = [o.kits ? `<kbd>N</kbd> repair ×${o.kits}` : '', o.jerry ? `<kbd>Y</kbd> fuel ×${o.jerry}` : '', o.chum ? `<kbd>U</kbd> chum ×${o.chum}` : '', G.chumT > 0 ? `chum ${Math.ceil(G.chumT)}s` : ''].filter(Boolean).join(' · ');
+  if (G.cnsEl._t !== t) { G.cnsEl._t = t; G.cnsEl.innerHTML = t; } return r; }; }
 
 menuInit();
 setTimeout(() => { buildWorld(); requestAnimationFrame(frame); }, 30);
