@@ -45,5 +45,38 @@ Read `CLAUDE.md` first (shared rules). Split out of it on 17 Nov 2026; keep this
 4. **A better loot system:** richer and more varied loot (rarity, better rewards for risk and depth, more things worth finding).
 5. **Boat interiors, visually:** go over the inside of every boat (wheelhouses, cabins, the big ships' decks below, the new round-2 hulls, the sub) and fix what looks wrong: clipping, floating or overlapping props, see-through or missing walls, z-fighting, bad lighting, empty or bland rooms.
 6. **Casino, more fun and realistic:** the owner can barely see the cards (bigger, brighter cards and a better camera or zoom at the table), the roulette ball does not look natural when it drops (real rim spin, slowing, bouncing off the frets and settling), and it is unclear whether you won or lost (clear win/lose moments: payout chips sliding to you, a big readable result, sounds, your balance change). Plus general feel: dealer reactions, table atmosphere, the people around the table.
+7. **New boats:** seaplane (short-range flights, scouting, fast travel between ports), hovercraft (rides over sandbanks onto beaches), a lifeboat/RIB, a catamaran (wide, stable, trampoline foredeck, fishing platform), and an ROV research vessel (moon pool, launch the ROV from inside).
+8. **Fishing, better and harder:** a tension and reel fight where the line can snap, varied fishing spots (diving birds, bait balls, reefs, deep drop-offs, region spots), bait types, night fish that fight harder, legendary fish per region, a trophy wall.
+9. **A scarier sea monster:** better model and animation, stalking, telegraphed attacks, learning your routes, scars from past fights, a nest in the Maw.
+10. **Horror events:**
+   - The Passenger: the headcount is one more than the crew, and a fake crew member copies a name tag.
+   - Fog bank: the compass spins, the chart goes blank, ghost ships drift past.
+   - Lantern fish: a giant lure that looks like a harbour lamp in fog.
+   - Cabin knock: a knock on the wheelhouse door when the whole crew is accounted for, then wet footprints into the sea.
+   - Red tide: a blood-red night, dead many-eyed fish, hungrier monsters.
+   - The lighthouse keeper: the beam stops and stares at your boat.
+   - Tidewalkers: tall figures wade out at low tide toward moored boats, and their footprints stay by day.
+11. **New places (POIs and dungeons):**
+   - Smuggler's sea cave: reachable at low tide only, with a hidden dock, stash and tide timing.
+   - WW2 submarine pen: a cliff bunker with flooded pens, an old U-boat and torpedoes.
+   - The Maw as a dungeon: caves down to the monster's lair, nest and eggs.
+   - Ice station: in the frost region, with a radio tower and something under the ice.
+   - Floating night market: lantern boats, faceless traders, rare trades (no cursed trades).
+   - Abandoned resort island: an overgrown hotel, pool, rooms and a jukebox.
+   - Bird colony: egg collecting and a cliff climb to a nest.
+   - Volcano vent field: in the ash region, with rare minerals timed between eruptions.
+   - Capsized container ship: upside-down corridors, and every container is a loot roll.
+   - Coral temple: a stepped ruin with a statue puzzle and a vault.
+   - Pirate radio fort: towers on stilts joined by rope bridges, and a transmitter to fix.
+   - Crashed cargo plane: half-sunk on a reef, with the cargo bay, the cockpit and the black box.
+   - Each place gets its own monster; the small scattered islands get island monsters (see the ideas in chat, 18 Nov 2026).
+12. **Loot rework** (replaces item 4):
+   - Rarity tiers (common to legendary) with a colour, glow, sound and a light beam for legendaries.
+   - Loot tables per place type, danger scaling (deeper, darker, further and night means better).
+   - Collections with set bonuses and perks.
+   - A physical trophy room in the shed.
+   - Equippable relics with effects (limited slots).
+   - Appraisal of unknown items.
+   - Daily-reset spots plus one-time hand-placed treasures and first-clear rewards, all saved.
 
 Still deferred from round 2 (see the round-2 plan): selling and shopping aboard the claimed Serenade, a shipyard and job boards at Northwatch and on piers, casino prize counter and extra games, a live menu background, a music score and audio buses with Music/Effects sliders, more sound effects and ambience, underwater light shafts and an island rock/sand shader, more GPU performance work, host migration and touch controls. Round 2 shipped with minimal testing at the owner's request: online play of the new features (casino tables, tender, ghost ship and maydays, job board) has not been tried with two players.
