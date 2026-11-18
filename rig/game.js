@@ -29,7 +29,7 @@ const hexS = c => '#' + c.toString(16).padStart(6, '0');
 
 // ---------------- net (jjfanwars relay)
 const RELAY_URL = 'wss://jjfanwars-relay.businessautomationvic.workers.dev';
-const GAME_V = 47;
+const GAME_V = 48;
 const Net = {
   tag: '[Rig]', role: 'solo', ws: null, peers: new Map(), code: '', relayT: {pose: 1}, id: '', name: '', handlers: {}, retry: 0, started: false,
   enc: new TextEncoder(), dec: new TextDecoder(),
@@ -7360,15 +7360,16 @@ function nbRovMesh() { const g = new THREE.Group(), y = new THREE.MeshStandardMa
     const gh = Math.max(0, landH(B.x, B.z)); B.dep = mix(B.dep || 0, -(gh + (gh > 0 ? .5 : 0)), Math.min(1, dt * 4)); return r; }
   // the flying boat: on the water she is a boat; at speed, Space lifts her off and she flies until she touches down
   const drv = B.driver && PL.get(B.driver), inp = drv && drv.seat && !drv.down && !drv.dead && drv.in ? drv.in : [0, 0, 0], up = -(inp[2] || 0); let alt = -(B.dep || 0);
-  if (alt < .05 && !(up > 0 && B.v > 13)) { NB.vy = 0; const r = f0.apply(this, arguments); B.dep = 0; return r; }
+  const JT = H.jet ? {to: 17, acc: 18, dr: .0021, cl: 15, st: 15, land: 45} : {to: 13, acc: 9, dr: .0032, cl: 8, st: 12, land: 32};
+  if (alt < .05 && !(up > 0 && B.v > JT.to)) { NB.vy = 0; const r = f0.apply(this, arguments); B.dep = 0; return r; }
   B.thr = mix(B.thr, inp[0], Math.min(1, dt * 1.2)); B.st = mix(B.st, inp[1], Math.min(1, dt * 2.5)); B.fuel = tankMax();
-  const lv = B.up.engine || 0; B.v += ((B.thr > 0 ? B.thr * (9 + lv * 1.5) : B.thr * 4) - .0032 * B.v * Math.abs(B.v) - NB.vy * .4) * dt; B.v = Math.max(0, B.v);
-  const lift = clamp((B.v - 11) / 10, 0, 1); NB.vy = mix(NB.vy, up * 8 * lift + (up < 0 ? up * 4 : 0), Math.min(1, dt * 1.6)); if (B.v < 12) NB.vy -= (12 - B.v) * 1.2 * dt;
+  const lv = B.up.engine || 0; B.v += ((B.thr > 0 ? B.thr * (JT.acc + lv * 1.5) : B.thr * 4) - JT.dr * B.v * Math.abs(B.v) - NB.vy * .4) * dt; B.v = Math.max(0, B.v);
+  const lift = clamp((B.v - JT.st + 1) / 10, 0, 1); NB.vy = mix(NB.vy, up * JT.cl * lift + (up < 0 ? up * 4 : 0), Math.min(1, dt * 1.6)); if (B.v < JT.st) NB.vy -= (JT.st - B.v) * 1.2 * dt;
   B.yr = mix(B.yr || 0, -B.st * .5, Math.min(1, dt * 2)); B.yaw += B.yr * dt; alt = Math.min(320, alt + NB.vy * dt); B.x += -Math.sin(B.yaw) * B.v * dt; B.z += -Math.cos(B.yaw) * B.v * dt;
   const rr = Math.hypot(B.x - MAP_C.x, B.z - MAP_C.z); if (rr > MAP_R) { B.x = MAP_C.x + (B.x - MAP_C.x) * MAP_R / rr; B.z = MAP_C.z + (B.z - MAP_C.z) * MAP_R / rr; B.yaw += PI * dt; }
   const gnd = Math.max(0, landH(B.x, B.z)), hard = (nearRig(B.x, B.z) && alt < 75) || (inCruise(B.x, B.z) && alt < 32);
   if ((gnd > .3 && alt < gnd + 1.2) || hard) { emit({k: 'bump', s: 1}); damageBoat(hullMax() * 1.1); B.dep = 0; NB.vy = 0; B.v = 0; return; }
-  if (alt <= 0) { const sink = -NB.vy; if (sink > 5 || B.v > 32) { emit({k: 'bump', s: Math.min(1, sink / 10)}); damageBoat((sink - 5) * 8 + Math.max(0, B.v - 32) * 3); } else if (B.v > 8) emit({k: 'bump', s: .3}); alt = 0; NB.vy = 0; B.v *= .55; }
+  if (alt <= 0) { const sink = -NB.vy; if (sink > 5 || B.v > JT.land) { emit({k: 'bump', s: Math.min(1, sink / 10)}); damageBoat((sink - 5) * 8 + Math.max(0, B.v - JT.land) * 3); } else if (B.v > 8) emit({k: 'bump', s: .3}); alt = 0; NB.vy = 0; B.v *= .55; }
   B.dep = -alt; }; }
 // pose (every client): wing attitude in flight, hover on land ignores waves, cat barely rolls, props spin
 { const f0 = boatPose; boatPose = function (dt) { const r = f0.apply(this, arguments), H = HC(), ud = BOAT && BOAT.userData; if (!ud) return r;
@@ -7380,7 +7381,7 @@ function nbRovMesh() { const g = new THREE.Group(), y = new THREE.MeshStandardMa
 { const f0 = stepGear; stepGear = function (dt) { const prev = F.st, r = f0.apply(this, arguments); if (prev !== 'wait' && F.st === 'wait' && P && P.ob && HC().cat) F.t *= .7; return r; }; }
 // flight HUD: altitude, airspeed, climb, a stall warning
 { const f0 = hud; hud = function () { const r = f0.apply(this, arguments); const on = P && P.seat && HC().plane; let el = NB.hudEl; if (!el && on) { el = NB.hudEl = document.createElement('div'); el.style.cssText = 'position:absolute;left:50%;top:14%;transform:translateX(-50%);font:bold 14px ui-monospace,monospace;color:#e8f4ff;text-shadow:0 1px 3px #000;text-align:center;pointer-events:none'; $('hud').appendChild(el); }
-  if (el) { el.style.display = on ? 'block' : 'none'; if (on) { const alt = -(B.dep || 0), kt = Math.round(B.v * 1.94), st = alt > .5 && B.v < 13, t = alt > .3 ? `ALT ${alt.toFixed(0)} m · ${kt} kt · ${NB.pvy >= 0 ? '▲' : '▼'} ${Math.abs(NB.pvy).toFixed(1)}${st ? '<br><span style="color:#ff5040">STALL · nose down (C), more throttle</span>' : ''}` : `${kt} kt${B.v > 13 ? ' · <span style="color:#9fe6ff">hold Space to lift off</span>' : B.v > 3 ? ' · take-off at 26 kt' : ''}`; if (t !== NB.hudT) { NB.hudT = t; el.innerHTML = t; } } } return r; }; }
+  if (el) { el.style.display = on ? 'block' : 'none'; if (on) { const alt = -(B.dep || 0), kt = Math.round(B.v * 1.94), jt = HC().jet, st = alt > .5 && B.v < (jt ? 15 : 13), t = alt > .3 ? `ALT ${alt.toFixed(0)} m · ${kt} kt · ${NB.pvy >= 0 ? '▲' : '▼'} ${Math.abs(NB.pvy).toFixed(1)}${st ? '<br><span style="color:#ff5040">STALL · nose down (C), more throttle</span>' : ''}` : `${kt} kt${B.v > (jt ? 17 : 13) ? ' · <span style="color:#9fe6ff">hold Space to lift off</span>' : B.v > 3 ? ` · take-off at ${jt ? 33 : 26} kt` : ''}`; if (t !== NB.hudT) { NB.hudT = t; el.innerHTML = t; } } } return r; }; }
 // the ROV: pilot it from the console (your mouse aims it, WASD drives, Space/C up and down, E grabs from the sea bed, F or the console to come back)
 function rovStart() { if (G.rov) { rovStop(); return; } const ud = BOAT && BOAT.userData; if (!ud || !HC().rovx) return; const [x, z] = bL2W(0, ud.rovZ); G.rov = {x, y: -1.5, z, yaw: P.yaw, t: 0}; if (ud.rovP) ud.rovP.visible = false;
   if (!NB.rov) { NB.rov = nbRovMesh(); NB.rov.scale.setScalar(1); scene.add(NB.rov); NB.rl = new THREE.SpotLight(0xfff0d8, 40 * PI, 45, .55, .5, 0); NB.rl.castShadow = false; scene.add(NB.rl, NB.rl.target); NB.teth = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()]), new THREE.LineBasicMaterial({color: 0xffc040})); NB.teth.frustumCulled = false; scene.add(NB.teth); }
@@ -7928,6 +7929,37 @@ function uwxFrame(dt) { if (!G.on || !P) return; uwxInit(); const cp = cam.posit
   UWX.bigT -= dt; if (UWX.big.visible) { const B2 = UWX.big.userData; B2.t += dt; const u = B2.t / B2.T; UWX.big.position.set(B2.x + B2.dx * (u - .5) * 160, B2.y, B2.z + B2.dz * (u - .5) * 160); UWX.bigM.opacity = Math.sin(u * PI) * .55; if (u >= 1) UWX.big.visible = false; }
   else if (UWX.bigT <= 0) { UWX.bigT = 50 + Math.random() * 80; if (see && dp > 25 && Math.random() < .5) { const a = Math.random() * TAU, d = 1 / Math.max(.02, scene.fog.density) * .9, x = cp.x + Math.sin(a) * d, z = cp.z + Math.cos(a) * d; UWX.big.userData = {t: 0, T: 18, x, z, y: cp.y - 6 - Math.random() * 10, dx: Math.cos(a), dz: -Math.sin(a)}; UWX.big.rotation.y = Math.atan2(Math.cos(a), -Math.sin(a)); UWX.big.visible = true; if (A.on) tone(38, .12, 6, 'sine', null, 30); } } }
 { const f0 = hud; hud = function () { const r = f0.apply(this, arguments); try { const now = performance.now(), dt = Math.min(.1, (now - (UWX.ft || now)) / 1000); UWX.ft = now; uwxFrame(dt); } catch (e) { if (!UWX.err) { UWX.err = 1; console.warn(e); } } return r; }; }
+
+// ---------------- the Kestrel jet seaplane (class 18), windows that read as glass, and cargo you can climb onto and walk over
+HULLS.push({n: 'Kestrel jet seaplane', d: 'A carbon-fibre jet seaplane: twin turbofans, swept wings, a bubble canopy. Twice the speed of the Albatross and climbs like a rocket. Space to lift off past 33 kt', cost: 18000, L: 13, W: 3, fb: 1.05, spd: 2.6, turn: 1.3, hold: 4, hp: 1.3, fuel: 1, col: 0x23272d, wh: [.2, .38], plane: 1, jet: 1, perk: 'Jet flight',
+  form: {entry: .5, fine: 1.2, rake: .16, ff: .8, vee: .9, chine: .12, sheer: .3, sheerP: 2, transomRake: .2, sternW: .5, sternP: 2.6, bw: .12, rail: 0, tex: 'clean', side: 0x23272d, band: {y0: .5, y1: .62}, boot: 0x3ad8e8, bootY: [.02, .12], anti: 0x15181c, run: .6}, kit: {fend: 0, port: 0, stack: 0, ring: 0, ant: 0, anchor: 0}, cab: {wall: 0x1a1e24, roof: 0x23272d}});
+ENGV.push({f: [140, 300], lp: [1800, 5200], am: .04, nz: .14, whine: [2600, 6200], g: .1});
+{ const f0 = shpExtras; shpExtras = function (cls, X, ph) { const r = f0.apply(this, arguments); if (!ph && cls === 18) try { jetLook(X); } catch (e) { console.warn('jetLook', e); } return r; }; }
+function jetLook(X) { const {g, L, hw, fb, zs, zb, wz0, wz1, ww, hh, S, add, box, steel} = X, ud = g.userData, top = fb + hh + .12, gr = S({color: 0x23272d, roughness: .35, metalness: .5}), cy = S({color: 0x103038, emissive: 0x3ad8e8, emissiveIntensity: .8}), dk = S({color: 0x0c0e10, roughness: .4});
+  // canopy: a tinted bubble over the cockpit shell
+  const cn = add(new THREE.SphereGeometry(1, 24, 14, 0, TAU, 0, PI / 2), S({color: 0x0a1820, roughness: .04, metalness: .75}), 0, fb + .1, (wz0 + wz1) / 2); cn.scale.set(ww + .3, hh + .45, (wz1 - wz0) / 2 + 1.1); const ns = add(new THREE.ConeGeometry(ww + .3, 2.2, 20, 1, false, 0, PI), gr, 0, fb + .1, wz0 - 1.6); ns.rotation.set(-PI / 2, 0, 0); ns.scale.set(1, 1, .9);
+  // swept wings and a cyan stripe, wingtip floats
+  const wsh = new THREE.Shape([new THREE.Vector2(0, 0), new THREE.Vector2(7.2, 2.6), new THREE.Vector2(7.2, 3.6), new THREE.Vector2(0, 3.4)]); for (const s of [-1, 1]) { const wg = new THREE.ExtrudeGeometry(wsh, {depth: .18, bevelEnabled: true, bevelSize: .05, bevelThickness: .05, bevelSegments: 1}); wg.rotateX(PI / 2); if (s < 0) wg.scale(-1, 1, 1); add(wg, S({color: 0x23272d, roughness: .35, metalness: .5, side: THREE.DoubleSide}), s * (ww * .6), fb + .5, wz0 + .6);
+    box(cy, s < 0 ? -(ww * .6 + 7.1) : ww * .6 + 6.9, s < 0 ? -(ww * .6 + 6.9) : ww * .6 + 7.1, fb + .48, fb + .72, wz0 + 3.2, wz0 + 4.2); const fl = add(new THREE.CapsuleGeometry(.14, .9, 4, 8), gr, s * (ww * .6 + 6.6), fb - .2, wz0 + 3.4); fl.rotation.x = PI / 2; X.cyl(steel, .03, .03, .7, s * (ww * .6 + 6.6), fb + .15, wz0 + 3.4); }
+  // twin turbofans on pylons above the rear deck, with live exhaust glows
+  const jets = new THREE.Group(); g.add(jets); ud.jets = jets; for (const s of [-1, 1]) { const x = s * 1.15, y = fb + 1.1, z = wz1 + 1.4; const n = add(new THREE.CylinderGeometry(.42, .36, 2.6, 16), gr, x, y, z); n.rotation.x = PI / 2; add(new THREE.TorusGeometry(.42, .05, 6, 18), steel, x, y, z - 1.3); add(new THREE.CircleGeometry(.36, 16), dk, x, y, z - 1.32).rotation.y = PI; box(gr, x - s * .5 - .06, x - s * .5 + .06, fb, y, z - .6, z + .6);
+    const gl = new THREE.Sprite(new THREE.SpriteMaterial({map: TX.glow, color: 0x6ad8ff, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending})); gl.position.set(x, y, z + 1.45); gl.scale.setScalar(.9); jets.add(gl); }
+  // V-tail
+  for (const s of [-1, 1]) { const f = add(new THREE.BoxGeometry(.1, 2, 1.6), gr, s * .7, X.topAt(1) + 1, zs - .9); f.rotation.z = s * .55; f.rotation.x = -.35; } }
+{ const f0 = boatPose; boatPose = function (dt) { const r = f0.apply(this, arguments), ud = BOAT && BOAT.userData; if (ud && ud.jets) { const k = Math.max(Math.abs(B.thr), -(B.dep || 0) > .5 ? .5 : 0); for (const gl of ud.jets.children) { gl.material.opacity = k * (.7 + Math.random() * .2); gl.scale.setScalar(.6 + k * 1.6); } } return r; }; }
+// windows: the shared boat glass tints dark from outside (it showed the white cabin lining and read as frosted), clear while you are inside or at the wheel
+{ const f0 = buildBoat; buildBoat = function () { const r = f0.apply(this, arguments); WIN.m = null; if (BOAT) BOAT.traverse(o => { if (!WIN.m && o.isMesh && o.material && o.material.transparent && Math.abs(o.material.opacity - .16) < .001) WIN.m = o.material; }); WIN.k = -1; jetCargo(); return r; }; }
+const WIN = {m: null, k: -1};
+{ const f0 = hud; hud = function () { const r = f0.apply(this, arguments), m = WIN.m; if (m && P) { const ins = P.seat || inCabin() || !!G.subIn, k = ins ? 1 : 0; if (k !== WIN.k) { WIN.k = k; m.color.setHex(ins ? 0x9ac0d0 : 0x0e1820); m.opacity = ins ? .16 : .72; m.roughness = ins ? .03 : .04; m.metalness = ins ? .1 : .6; m.needsUpdate = true; } } return r; }; }
+// cargo: hatch covers, container stacks and crates on deck get a floor on top; walk into one holding W and you climb up (and you can walk along the top and drop off)
+const CGO = {list: [], t: 0};
+function jetCargo() { CGO.list = []; if (!BOAT || BG.sub) return; const ud = BOAT.userData, wz = ud.wz || [0, 0], ww = (ud.ww || 0) + .4;
+  for (const w of BW) { const wx = w.x1 - w.x0, wd = w.z1 - w.z0; if (wx < 1 || wd < 1 || w.y1 < .45 || w.y1 > 3.3 || w.y0 > .7) continue; if (w.z1 > wz[0] - .3 && w.z0 < wz[1] + .3 && Math.max(Math.abs(w.x0), Math.abs(w.x1)) < ww) continue; if (w.x0 < BDECK.x0 - .5 || w.x1 > BDECK.x1 + .5 || w.z0 < BDECK.z0 - .1 || w.z1 > BDECK.z1 + .1) continue;
+    const top = BDECK.y + w.y1; CGO.list.push({x0: w.x0, x1: w.x1, z0: w.z0, z1: w.z1, top}); BFL.push({x0: w.x0, x1: w.x1, z0: w.z0, z1: w.z1, y: top}); } }
+{ const f0 = stepPlayer; stepPlayer = function (dt) { const r = f0.apply(this, arguments); if (!P || !P.ob || P.seat || P.sw || P.climb || !CGO.list.length || !K.KeyW) { CGO.t = 0; return r; }
+  const c = Math.cos(B.yaw), s = Math.sin(B.yaw), fx = -Math.sin(P.yaw), fz = -Math.cos(P.yaw), lfx = fx * c - fz * s, lfz = fx * s + fz * c, ax = P.bl[0] + lfx * .6, az = P.bl[1] + lfz * .6;
+  const q = CGO.list.find(q => ax > q.x0 && ax < q.x1 && az > q.z0 && az < q.z1 && q.top - P.y > .6 && q.top - P.y < 3.4); if (!q) { CGO.t = 0; return r; }
+  CGO.t += dt; if (CGO.t > .22) { CGO.t = 0; P.bl = [clamp(P.bl[0] + lfx * .9, q.x0 + .3, q.x1 - .3), clamp(P.bl[1] + lfz * .9, q.z0 + .3, q.z1 - .3)]; const [wx, wz] = bL2W(P.bl[0], P.bl[1]); P.x = wx; P.z = wz; P.y = q.top; P.vy = 0; G.lspV = (G.lspV || 0) + 3; if (A.on) burst(300, .6, .08, .15, 'lowpass'); } return r; }; }
 
 menuInit();
 setTimeout(() => { buildWorld(); requestAnimationFrame(frame); }, 30);
