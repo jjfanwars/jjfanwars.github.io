@@ -5189,7 +5189,7 @@ function voyBuildPort() {
 { const f0 = openShop; openShop = function (...a) {
   let best = G.shed && G.shed.shop, port = null, bd = best && P ? Math.hypot(P.x - best[0], P.z - best[2]) : 1e9;
   if (P) for (const q of VOY_PORTS) if (q.shop) { const d = Math.hypot(P.x - q.shop[0], P.z - q.shop[2]); if (d < bd) { bd = d; best = q.shop; port = q; } }
-  G.voyShopPos = best; G.voyPort = port; const r = f0.apply(this, a); const h = document.querySelector('#shopH h2'); if (h) h.textContent = port ? port.n.toUpperCase() : 'HARBOUR SHED'; return r; }; }
+  G.voyShopPos = P ? [P.x, P.y, P.z] : best; G.voyPort = port; const r = f0.apply(this, a); const h = document.querySelector('#shopH h2'); if (h) h.textContent = port ? port.n.toUpperCase() : 'HARBOUR SHED'; return r; }; }
 // the sell step points at Northwatch when it is the nearer counter
 { const f0 = nextStep; nextStep = function (...a) { const r = f0.apply(this, a); const q = VOY_PORTS[0], sh = G.shed && G.shed.shop;
   if (r && r.mk && r.mk.lab === 'SHED' && P && q.shop && sh) { const dq = Math.hypot(q.shop[0] - P.x, q.shop[2] - P.z); if (dq < Math.hypot(sh[0] - P.x, sh[2] - P.z)) { r.t = r.t.replace('the harbour shed', q.n).replace('the shed', q.n); r.mk = Object.assign({x: q.shop[0], z: q.shop[2], lab: q.n.toUpperCase()}, dq < 40 ? {y: q.shop[1] + .9, scr: 1} : {}); } }
