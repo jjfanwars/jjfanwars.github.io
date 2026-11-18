@@ -29,7 +29,7 @@ const hexS = c => '#' + c.toString(16).padStart(6, '0');
 
 // ---------------- net (jjfanwars relay)
 const RELAY_URL = 'wss://jjfanwars-relay.businessautomationvic.workers.dev';
-const GAME_V = 58;
+const GAME_V = 59;
 const Net = {
   tag: '[Rig]', role: 'solo', ws: null, peers: new Map(), code: '', relayT: {pose: 1}, id: '', name: '', handlers: {}, retry: 0, started: false,
   enc: new TextEncoder(), dec: new TextDecoder(),
@@ -8144,6 +8144,99 @@ function custSketch(c, d) { const g = c.getContext('2d'), W = c.width, H = c.hei
   L0.querySelectorAll('[data-cn]').forEach(e => { e.onchange = () => { G.cd.name = e.value; upd(); }; e.onkeydown = ev => ev.stopPropagation(); });
   L0.querySelectorAll('[data-cb]').forEach(e => e.onclick = () => { if (e.disabled) return; e.disabled = true; act({a: 'cust', d: G.cd}); setTimeout(drawShop, 1000); });
   return r; }; }
+
+// ===== places C and monsters C: the Maelstrom (whirlpool), the Lighthouse Graveyard, the Tall Man of the Shallows, the leviathan calf =====
+const NGC = {wp: null, lg: null, tm: null, cf: null};
+function ngBuild() {
+  // the Maelstrom: a 120 m whirlpool that drags boats round and in; its eye pulls swimmers down to a ring of rocks on the bed with the best loot in the sea
+  { const [x, z] = plFind(2700, 1900, 24, 34, 140), R = 120, bed = seaBed(x, z); NGC.wp = {x, z, R, bed};
+    const c = cv(512, 512, (g, w) => { g.clearRect(0, 0, w, w); const tg = g.createRadialGradient(256, 256, 0, 256, 256, 256); tg.addColorStop(0, 'rgba(0,18,28,.75)'); tg.addColorStop(.6, 'rgba(0,30,44,.35)'); tg.addColorStop(1, 'rgba(0,30,44,0)'); g.fillStyle = tg; g.fillRect(0, 0, w, w); g.filter = 'blur(5px)'; for (let i = 0; i < 14; i++) { g.strokeStyle = `rgba(225,242,248,${.12 + .05 * (i % 3)})`; g.lineWidth = 6 + (i % 3) * 4; g.beginPath(); for (let t = .03; t < 1; t += .008) { const a = i / 14 * TAU + t * 8, r = t * 252; g.lineTo(256 + Math.cos(a) * r, 256 + Math.sin(a) * r); } g.stroke(); }
+      const gr = g.createRadialGradient(256, 256, 0, 256, 256, 90); gr.addColorStop(0, 'rgba(2,10,16,1)'); gr.addColorStop(1, 'rgba(2,10,16,0)'); g.fillStyle = gr; g.fillRect(0, 0, w, w); });
+    const tx = new THREE.CanvasTexture(c); tx.colorSpace = THREE.SRGBColorSpace; const geo = new THREE.RingGeometry(.5, R, 72, 16); geo.rotateX(-PI / 2); const p = geo.attributes.position;
+    
+    const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({map: tx, transparent: true, depthWrite: false, opacity: .9})); m.position.set(x, .45, z); m.renderOrder = 2; scene.add(m); NGC.wp.m = m;
+    const core = new THREE.Mesh(new THREE.CircleGeometry(9, 32), new THREE.MeshBasicMaterial({color: 0x020a10})); core.rotation.x = -PI / 2; core.position.set(x, .5, z); core.material.transparent = true; core.material.opacity = .85; core.material.depthWrite = false; scene.add(core);
+    for (let i = 0; i < 9; i++) { const a = i / 9 * TAU; plRock('dark', x + Math.sin(a) * 11, bed + 2, z + Math.cos(a) * 11, 4.5, 1.2, i + 200); } plRock('dark', x, bed + 9, z + 2, 9, .35, 220);
+    for (let i = 0; i < 6; i++) { const a = i / 6 * TAU + .3; plSpot(x + Math.sin(a) * 6, bed + .25, z + Math.cos(a) * 6, .97, 'wp'); } plPoi('The Maelstrom', x, z, R); }
+  // the Lighthouse Graveyard: five dead lights on one reef. One still turns. Something stands at its top.
+  { const [x, z] = plFind(-1300, 2500, 3, 8, 90); NGC.lg = {x, z, T: []}; plRock('rock', x, -2.2, z, 28, .11, 300); SURF.push({k: 'disc', x, z, r: 25, y: .75, x0: x - 26, x1: x + 26, z0: z - 26, z1: z + 26}); OBST.push({c: 1, x, z, r: 25});
+    for (let i = 0; i < 7; i++) { const a = i / 7 * TAU; plRock('dark', x + Math.sin(a) * 25, -.5, z + Math.cos(a) * 25, 4 + (i % 3), .5, 310 + i); }
+    for (let i = 0; i < 5; i++) { const a = i / 5 * TAU + .4, tx = x + Math.sin(a) * 14, tz = z + Math.cos(a) * 14, h = 12 + (i * 7 % 5) * 1.5, lit = i === 0, tilt = lit ? 0 : (i % 2 ? .12 : -.09);
+      plG('white', new THREE.CylinderGeometry(1.15, 1.7, h, 16), tx, .75 + h / 2, tz, 0, 0, tilt); for (let b = 0; b < 3; b++) plG(lit ? 'red' : 'rust', new THREE.CylinderGeometry(1.2 - b * .1 - (b + .5) / 3 * .15, 1.25 - b * .1 - (b + .5) / 3 * .15, 1.2, 16), tx + Math.sin(tilt) * -(2 + b * 3.6), .75 + 2 + b * 3.6, tz, 0, 0, tilt);
+      const ty = .75 + h, dx = -Math.sin(tilt) * h; plG('grey', new THREE.CylinderGeometry(1.9, 1.9, .15, 16), tx + dx, ty, tz, 0, 0, tilt); plG(lit ? 'black' : 'dark', new THREE.CylinderGeometry(.8, .8, 1.4, 10), tx + dx, ty + .8, tz, 0, 0, tilt); plG(lit ? 'red' : 'rust', new THREE.ConeGeometry(1, .8, 10), tx + dx, ty + 1.9, tz, 0, 0, tilt);
+      OBST.push({x0: tx - 1.7, x1: tx + 1.7, z0: tz - 1.7, z1: tz + 1.7}); WALLS.push({x0: tx - 1.5, x1: tx + 1.5, z0: tz - 1.5, z1: tz + 1.5, y0: 0, y1: ty, see: false}); plSpot(tx + Math.sin(a) * 2.6, .78, tz + Math.cos(a) * 2.6, .55, 'lg');
+      if (lit) { const T = {x: tx, z: tz, top: ty + .08, a}; NGC.lg.T.push(T); SURF.push({k: 'disc', x: tx, z: tz, r: 1.85, y: T.top, x0: tx - 2, x1: tx + 2, z0: tz - 2, z1: tz + 2}); plSpot(tx + .9, T.top, tz - .9, .95, 'lgtop');
+        const bm = new THREE.Mesh(new THREE.CylinderGeometry(.3, 4, 60, 12, 1, true), new THREE.MeshBasicMaterial({color: 0xfff0c0, transparent: true, opacity: .12, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide})); bm.geometry.translate(0, 30, 0); bm.rotation.z = PI / 2;
+        const piv = new THREE.Group(); piv.position.set(tx, ty + .8, tz); piv.add(bm); scene.add(piv); T.beam = piv; T.gl = plGlow(tx, ty + .8, tz, 0xfff0c0, 6); const fig = hzFig({h: 2.3, col: 0x0a0a0a, skin: 0xe8e4dc, thin: .6, noface: 1}); fig.position.set(tx, T.top, tz + 1.4); scene.add(fig); T.fig = fig;
+        const ex = tx + Math.sin(a) * 2.1, ez = tz + Math.cos(a) * 2.1;
+        INTER.push({kind: 'ngup', x: ex, y: 1.5, z: ez, r: 2.2, label: () => 'Climb the lighthouse', go: () => ngClimb(T, 1), on: () => !P.sw && P.y < T.top - 2}, {kind: 'ngdn', x: tx + 1.2, y: T.top + 1, z: tz, r: 1.6, label: () => 'Climb down', go: () => ngClimb(T, 0), on: () => P.y > T.top - 1}); } }
+    plPoi('Lighthouse Graveyard', x, z, 60); }
+}
+function ngClimb(T, up) { const f = $('flash'); f.style.background = '#000'; f.style.opacity = .9; setTimeout(() => { if (up) { P.x = T.x + 1.2; P.z = T.z; P.y = T.top; } else { P.x = T.x + Math.sin(T.a) * 2.6; P.z = T.z + Math.cos(T.a) * 2.6; P.y = .8; } P.vx = P.vz = P.vy = 0; f.style.opacity = 0; setTimeout(() => f.style.background = '', 400); }, 450); NGC.topT = 0; }
+{ const f0 = plBuildB; plBuildB = function () { const r = f0.apply(this, arguments); try { ngBuild(); for (const m of mergeByMat(PLC.geo)) PLC.g.add(m); PLC.geo = []; } catch (e) { console.warn('ngBuild', e); } return r; }; }
+// the Maelstrom's pull: boats (host) and swimmers (each client) swirl round and in; its eye drags you under
+function wpPull(x, z, k, dt) { const W = NGC.wp; if (!W) return null; const dx = x - W.x, dz = z - W.z, d = Math.hypot(dx, dz); if (d > W.R || d < .01) return null; const u = 1 - d / W.R, vt = (2 + 10 * u) * k, vr = (.9 + 5 * u * u) * k;
+  return [(-dz / d * vt - dx / d * vr) * dt, (dx / d * vt - dz / d * vr) * dt, d]; }
+{ const f0 = boatStep; boatStep = function (dt) { const r = f0.apply(this, arguments); if (!NGC.wp || B.sink > 0 || (HC().plane && -(B.dep || 0) > .5) || (HC().sub && (B.dep || 0) > 2)) return r; const big = HC().big, q = wpPull(B.x, B.z, big ? .3 : 1, dt); if (!q) return r;
+  B.x += q[0]; B.z += q[1]; B.yaw += (q[0] * Math.cos(B.yaw) - q[1] * Math.sin(B.yaw)) * .02; if (q[2] < 14) { damageBoat(hullMax() * .05 * dt * (big ? .3 : 1)); if ((NGC.wpT = (NGC.wpT || 0) - dt) <= 0) { NGC.wpT = 1.2; emit({k: 'bump', s: .5}); } } return r; }; }
+{ const f0 = stepPlayer; stepPlayer = function (dt) { const r = f0.apply(this, arguments); if (!P || P.dead || !P.sw || !NGC.wp) return r; const q = wpPull(P.x, P.z, .45, dt); if (!q) return r; P.x += q[0]; P.z += q[1];
+  if (q[2] < 10) { P.dv = Math.min(-NGC.wp.bed - .8, (P.dv || 0) + dt * 5); if (!NGC.wpMsg) { NGC.wpMsg = 1; showMsg('The Maelstrom drags you under!', '', 3); Snd.bubbles(); } } else NGC.wpMsg = 0; return r; }; }
+// the leviathan calf (host): a young one surfaces beside the boat out in the deep. Leave it be and it sings and goes; hurt it and its mother comes
+{ const f0 = hostStep; hostStep = function (dt) { const r = f0.apply(this, arguments); try { cfStep(dt); } catch (e) { if (!NGC.cfErr) { NGC.cfErr = 1; console.warn(e); } } return r; }; }
+function cfStep(dt) { if (!G.on) return; let C = NGC.cf;
+  if (!C) { NGC.cfT = (NGC.cfT ?? 120 + CR() * 120) - dt; if (NGC.cfT > 0) return; NGC.cfT = 200 + CR() * 200; if (B.sink > 0 || !hzSea() || seaBed(B.x, B.z) > -45 || G.enc || G.stk || HC().nodeep || CR() > .35 || (HC().plane && -(B.dep || 0) > .5)) return;
+    const s = CR() < .5 ? -1 : 1, a = B.yaw + s * PI / 2; C = NGC.cf = {x: B.x - Math.sin(a) * 60, z: B.z - Math.cos(a) * 60, y: -6, yaw: B.yaw, t: 0, hp: 40, st: 0, s}; emit({k: 'calf', st: 0}); return; }
+  C.t += dt; const fx = -Math.sin(B.yaw), fz = -Math.cos(B.yaw); let tx, tz, sp;
+  if (C.st === 0) { const o = 16 + BG.hw + Math.sin(C.t * .2) * 5; tx = B.x + -fz * o * C.s + fx * Math.sin(C.t * .13) * 12; tz = B.z + fx * o * C.s + fz * Math.sin(C.t * .13) * 12; sp = Math.max(4, Math.abs(B.v) + 3); C.y = -1.6 + Math.sin(C.t * .55) * 1.9;
+    if (C.t > 95) { C.st = 2; C.t = 0; const c = Math.round(250 * (D.pay || 1)); G.cash += c; emit({k: 'calf', st: 2, c}); save(); } }
+  else { const a = Math.atan2(C.x - B.x, C.z - B.z); tx = C.x + Math.sin(a) * 50; tz = C.z + Math.cos(a) * 50; sp = C.st === 1 ? 11 : 6; C.y -= dt * (C.st === 1 ? 2.5 : 1.2); if (C.t > 14) { NGC.cf = null; return; } }
+  const dx = tx - C.x, dz = tz - C.z, d = Math.hypot(dx, dz); if (d > .5) { const w = Math.atan2(-dx, -dz); C.yaw += angD(C.yaw, w) * Math.min(1, dt * 1.5); const v = Math.min(sp, d * 1.5); C.x += -Math.sin(C.yaw) * v * dt; C.z += -Math.cos(C.yaw) * v * dt; } }
+{ const f0 = hostShoot; hostShoot = function (p, m) { const C = NGC.cf; if (C && C.st === 0 && m && m.o && m.d) { const o = m.o, d = m.d, fx = -Math.sin(C.yaw), fz = -Math.cos(C.yaw); let hit = 0;
+    for (const k of [-2.4, 0, 2.4]) { const cx = C.x + fx * k - o[0], cy = C.y - o[1], cz = C.z + fz * k - o[2], t = cx * d[0] + cy * d[1] + cz * d[2]; if (t < 0 || t > 90) continue; if (Math.hypot(cx - d[0] * t, cy - d[1] * t, cz - d[2] * t) < 1.5) hit = 1; }
+    if (hit) { C.hp -= 10; emit({k: 'calf', st: 1}); C.st = 1; C.t = 0; if (!G.stk && !G.enc) levStalkStart(Math.atan2(-(C.x - B.x), -(C.z - B.z))); } } return f0.apply(this, arguments); }; }
+{ const f0 = packSnap; packSnap = function () { const s = f0.apply(this, arguments), C = NGC.cf; if (C) s.cf = [Math.round(C.x * 10) / 10, Math.round(C.z * 10) / 10, Math.round(C.y * 10) / 10, Math.round(C.yaw * 100) / 100, C.st]; return s; }; }
+{ const f0 = applySnap; applySnap = function (s) { const r = f0.apply(this, arguments); NGC.cfC = s.cf || null; return r; }; }
+// a down from the new horrors (host)
+{ const f0 = hostAct; hostAct = function (id, m) { if (!m || m.a !== 'ngdown') return f0.apply(this, arguments); const p = PL.get(id); if (!p || p.down || p.dead) return; p.down = true; p.bleed = bleedFor(p); p.hd = -1; p.seat = 0; if (B.driver === p.id) B.driver = null; dropCarry(p); emit({k: 'down', id: p.id, how: m.how || 'tm'}); }; }
+{ const f0 = applyEv; applyEv = function (e) { const r = f0.apply(this, arguments);
+  if (e.k === 'calf') { if (e.st === 0) { showMsg('Something young surfaces beside the boat. It is watching you.', '', 4); for (const [f, d] of [[90, 0], [140, 900], [70, 1900]]) setTimeout(() => tone(f, .25, 2.2, 'sine', null, f * 1.6), d); }
+    else if (e.st === 1) { showMsg('It shrieks and dives. Far below, something much bigger answers.', '', 5); tone(400, .3, 1.4, 'sawtooth', null, 120); setTimeout(() => { tone(38, .5, 4, 'sawtooth', null, 30); G.shake = 1; }, 1800); }
+    else if (e.st === 2) { showMsg(`The calf sings once and dives. You feel lucky. +${money(e.c || 0)}`, '', 4); tone(120, .25, 2.5, 'sine', null, 260); Snd.coin(); } }
+  return r; }; }
+// client: the whirlpool turns, the light turns, the figure on the gallery, the Tall Man, the calf
+function ngFrame(dt) { if (!G.on || !P) return; const night = TOD.night > .5;
+  if (NGC.wp && NGC.wp.m) { const d = Math.hypot(cam.position.x - NGC.wp.x, cam.position.z - NGC.wp.z); NGC.wp.m.visible = d < 1500; NGC.wp.m.rotation.y -= dt * .35; if (d < NGC.wp.R + 40 && (NGC.wpS = (NGC.wpS || 0) - dt) <= 0) { NGC.wpS = 1.4; burst(300, .4, .25 * (1 - d / (NGC.wp.R + 40)), 1.6, 'lowpass'); } }
+  if (NGC.lg) for (const T of NGC.lg.T) { T.beam.rotation.y += dt * .9; T.beam.visible = night || G.fogEv; T.gl.material.opacity = night ? .9 : .2; const d = Math.hypot(P.x - T.x, P.z - T.z), onTop = P.y > T.top - 1 && d < 3;
+    T.fig.visible = night && d > 60 && !onTop; T.fig.rotation.y = Math.atan2(P.x - T.x, P.z - T.z);
+    // at its top at night: stay too long and something is behind you
+    if (onTop && night && !P.dead && !P.down) { NGC.topT = (NGC.topT || 0) + dt; if (NGC.topT > 5 && !NGC.behind) { NGC.behind = 1; const a = P.yaw; T.fig.visible = true; T.fig.position.set(P.x + Math.sin(a) * 1.1, T.top, P.z + Math.cos(a) * 1.1); T.fig.rotation.y = a + PI; tone(70, .2, 2, 'sine'); }
+      if (NGC.behind) { _v.set(T.fig.position.x - cam.position.x, 0, T.fig.position.z - cam.position.z).normalize(); cam.getWorldDirection(_fw); if (_fw.x * _v.x + _fw.z * _v.z > .6 || NGC.topT > 14) { NGC.behind = 0; NGC.topT = -30; Snd.scream(); G.shake = 1.5; const f = $('flash'); f.style.background = '#fff'; f.style.opacity = 1; setTimeout(() => { f.style.opacity = 0; setTimeout(() => f.style.background = '', 400); }, 120); T.fig.visible = false; T.fig.position.set(T.x, T.top, T.z + 1.4); act({a: 'ngdown', how: 'lh'}); } } }
+    else if (!onTop) { if (NGC.behind) { NGC.behind = 0; T.fig.position.set(T.x, T.top, T.z + 1.4); } NGC.topT = Math.min(0, NGC.topT || 0) + dt; } }
+  tmFrame(dt, night); cfFrame(dt); }
+{ const f0 = hud; hud = function () { const r = f0.apply(this, arguments); try { const now = performance.now(), dt = Math.min(.1, (now - (NGC.ft || now)) / 1000); NGC.ft = now; ngFrame(dt); } catch (e) { if (!NGC.fErr) { NGC.fErr = 1; console.warn(e); } } return r; }; }
+// the Tall Man of the Shallows (each client sees their own): far off, knee-deep in the shallows; every time you look away he is closer
+function tmFrame(dt, night) { let T = NGC.tm; const ok = (night || G.fogEv) && !P.dead && !P.down && !inCabin() && !(P.sw && P.dv > 1) && Math.hypot(P.x - HOME.x, P.z - HOME.z) > 300;
+  if (!T) { if (!ok) return; NGC.tmT = (NGC.tmT ?? 60 + Math.random() * 60) - dt; if (NGC.tmT > 0) return; NGC.tmT = 110 + Math.random() * 120; if (Math.random() > .45) return;
+    let sp = null; for (let i = 0; i < 60 && !sp; i++) { const a = P.yaw + PI + (Math.random() - .5) * 1.6, r = 90 + Math.random() * 130, x = P.x - Math.sin(a) * r, z = P.z - Math.cos(a) * r, b = seaBed(x, z); if (b > -1.6 && b < .1) sp = [x, z]; }
+    if (!sp) return; if (!NGC.tmG) { NGC.tmG = hzFig({h: 3.6, col: 0x08080a, skin: 0xcac6bc, thin: .55, arm: 1.7, noface: 1}); scene.add(NGC.tmG); } T = NGC.tm = {x: sp[0], z: sp[1], away: 0, stare: 0, n: 0}; }
+  const g = NGC.tmG, wy = waveH(T.x, T.z, G.wt); g.visible = true; g.position.set(T.x, Math.min(wy, seaBed(T.x, T.z) > -2 ? seaBed(T.x, T.z) : wy) - .9, T.z); g.rotation.y = Math.atan2(P.x - T.x, P.z - T.z);
+  const d = Math.hypot(P.x - T.x, P.z - T.z); _v.set(T.x, g.position.y + 2.6, T.z).project(cam); const seen = _v.z < 1 && Math.abs(_v.x) < .9 && Math.abs(_v.y) < .9 && d < 320;
+  const gone = () => { g.visible = false; NGC.tm = null; };
+  if (!ok && !P.down) { gone(); return; }
+  if (seen) { T.stare += dt; if (T.away > 1.3 && T.n > 0 && Math.random() < .5) tone(55, .12, 1.2, 'sine'); T.away = 0; if (T.stare > 9) { gone(); showMsg('He is gone. For now.', '', 2.5); return; }
+    if (d < 7) { gone(); Snd.scream(); G.shake = 2; const f = $('flash'); f.style.background = '#000'; f.style.opacity = 1; setTimeout(() => { f.style.opacity = 0; setTimeout(() => f.style.background = '', 500); }, 700); act({a: 'ngdown', how: 'tm'}); return; } }
+  else { T.away += dt; if (T.away > 1.2 && !T.moved) { T.moved = 1; T.stare = 0; T.n++; const k = d > 40 ? .38 : .6; T.x = mix(T.x, P.x, k); T.z = mix(T.z, P.z, k); if (T.n === 1) showMsg('Someone is standing in the shallows.', '', 3); } }
+  if (seen) T.moved = 0; }
+// the calf, drawn from the snapshot (host draws its own state)
+function cfFrame(dt) { const s = isHost() ? (NGC.cf ? [NGC.cf.x, NGC.cf.z, NGC.cf.y, NGC.cf.yaw, NGC.cf.st] : null) : NGC.cfC;
+  if (!s) { if (NGC.cfG) NGC.cfG.visible = false; return; }
+  if (!NGC.cfG) { const g = new THREE.Group(), sk = new THREE.MeshStandardMaterial({color: 0x0e1316, roughness: .35, metalness: .2}), bl = new THREE.MeshStandardMaterial({color: 0x9aa8a0, roughness: .6}), add = (geo, m, x, y, z) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); g.add(o); return o; };
+    const b = add(new THREE.CapsuleGeometry(1, 4.6, 6, 14), sk, 0, 0, 0); b.rotation.x = PI / 2; b.scale.set(1, 1, .8); const bel = add(new THREE.CapsuleGeometry(.75, 3.8, 4, 10), bl, 0, -.4, .2); bel.rotation.x = PI / 2;
+    for (const s2 of [-1, 1]) { const f = add(new THREE.ConeGeometry(.5, 2.2, 4), sk, s2 * 1.3, -.2, -.6); f.rotation.z = s2 * 1.9; f.scale.z = .3; add(new THREE.SphereGeometry(.13, 8, 6), new THREE.MeshBasicMaterial({color: 0x9af0ff}), s2 * .55, .35, -3); }
+    const t = new THREE.Group(); t.position.set(0, 0, 3); g.add(t); const tf = new THREE.Mesh(new THREE.ConeGeometry(1.4, 1.6, 4), sk); tf.rotation.x = -PI / 2; tf.scale.y = .25; tf.position.z = 1; t.add(tf); g.userData.tail = t;
+    for (let i = 0; i < 5; i++) add(new THREE.ConeGeometry(.12, .7, 5), sk, 0, .95, -1.8 + i * .9); add(new THREE.SphereGeometry(1.15, 14, 10), sk, 0, .1, -2.6).scale.set(1, .8, 1.1); g.scale.setScalar(1.5); scene.add(g); NGC.cfG = g; }
+  const g = NGC.cfG; g.visible = true; g.position.x = mix(g.position.x || s[0], s[0], Math.min(1, dt * 4)); g.position.z = mix(g.position.z || s[1], s[1], Math.min(1, dt * 4)); g.position.y = mix(g.position.y, s[2], Math.min(1, dt * 3)); g.rotation.y = s[3]; g.userData.tail.rotation.y = Math.sin(G.t * 3) * .4;
+  if (s[2] > -1.2 && Math.random() < dt * 2) { /* spout */ } }
 
 menuInit();
 setTimeout(() => { buildWorld(); requestAnimationFrame(frame); }, 30);
