@@ -29,7 +29,7 @@ const hexS = c => '#' + c.toString(16).padStart(6, '0');
 
 // ---------------- net (jjfanwars relay)
 const RELAY_URL = 'wss://jjfanwars-relay.businessautomationvic.workers.dev';
-const GAME_V = 34;
+const GAME_V = 35;
 const Net = {
   tag: '[Rig]', role: 'solo', ws: null, peers: new Map(), code: '', relayT: {pose: 1}, id: '', name: '', handlers: {}, retry: 0, started: false,
   enc: new TextEncoder(), dec: new TextDecoder(),
@@ -3496,6 +3496,281 @@ function shpLook(dt) { // client: stabilisers, night lights, boost spray and HUD
   const nm = new THREE.MeshStandardMaterial({color: 0x3a5a3a, roughness: .95}), fm = new THREE.MeshStandardMaterial({color: 0xb8c4cc, roughness: .25, metalness: .5}), b = new THREE.Mesh(new THREE.SphereGeometry(.3, 10, 8), nm); b.scale.set(1.3, .75, 1); b.position.y = .22; g.add(b);
   for (let i = 0; i < 4; i++) { const f = new THREE.Mesh(new THREE.ConeGeometry(.05, .22, 5), fm); f.position.set(Math.cos(i * 1.7) * .3, .3 + (i % 2) * .08, Math.sin(i * 1.7) * .22); f.rotation.set(i, i * 2, PI / 2 + i * .4); g.add(f); }
   const tie = new THREE.Mesh(new THREE.TorusGeometry(.1, .025, 5, 10), new THREE.MeshStandardMaterial({color: 0xc8a050, roughness: .9})); tie.position.y = .42; tie.rotation.x = PI / 2; g.add(tie); g.traverse(o => { if (o.isMesh) o.castShadow = true; }); return g; }; }
+// ---------------- shipyard round 3, small hulls (launch, trawler, cutter, Dart, Driftwood, Bulldog): hull-form lines and kit for the loft, and real superstructures built as skins round the shared wheelhouse shell
+Object.assign(HULLS[0], {form: {entry: .5, fine: 1, rake: .08, flare: .12, sheer: .9, sheerAft: .1, vee: .5, transomRake: .15, sternW: .9, bw: .45, rub: {c: 0x141414, r: .07}, boot: 0xf0f0ea, anti: 0x6a1e14, rail: 'full', tex: () => smlTex('lt')},
+  kit: {fend: 0, port: 0, stack: 0, ring: 1, ant: 0, anchor: 0}, cab: {wall: 0xe8e6e0, roof: 0xc4c8cc}});
+Object.assign(HULLS[1], {form: {entry: .5, rake: .07, flare: .2, sheer: 1.6, sheerP: 1.8, sheerAft: .3, bw: .9, vee: .35, sternW: .85, transomRake: .3, rub: {c: 0x1a1a1a, r: .08}, boot: 0xe8e8e0, anti: 0x5a1610, rail: 'full'},
+  kit: {fend: 0, port: 0, stack: 0, ring: 1, ant: 0, anchor: 0}, cab: {wall: 0xe8e6e0, roof: 0xe0e0dc}});
+Object.assign(HULLS[2], {form: {entry: .6, fine: 1.1, rake: .12, flare: .25, sheer: 1.2, vee: .7, transomRake: .25, sternW: .88, bw: .55, rub: {c: 0x3a3e44, r: .07}, boot: 0x111111, anti: 0x5a1a14, rail: 'full', tex: () => smlTex('lt')},
+  kit: {fend: 0, port: 0, stack: 0, ring: 1, ant: 0, anchor: 0}, cab: {wall: 0x9aa0a6, roof: 0x8a9096}});
+Object.assign(HULLS[8], {form: {entry: .6, fine: 1.3, rake: .22, vee: 1, chine: .15, sheer: .35, transomRake: .2, sternW: .92, bw: .2, rub: {c: 0x1e1e20, r: .04}, boot: 0xf4f4f0, anti: 0x2a2c30, rail: 'bow', clean: true, tex: () => smlTex('grp')},
+  kit: {fend: 0, port: 0, stack: 0, ring: 0, ant: 0, anchor: 0}, cab: {wall: 0x2a2e33, roof: 0x16181a}});
+Object.assign(HULLS[9], {form: {entry: .25, fine: .5, bowW: .7, rake: .12, transomRake: .4, vee: 0, dead: .5, sheer: .2, bw: .15, rub: {c: 0x2a2a28, r: .06}, boot: 0x2a8a88, anti: 0x1a1a1a, rail: 0, tex: () => smlTex('tar')},
+  kit: {fend: 0, port: 0, stack: 0, ring: 1, ant: 0, anchor: 0}, cab: {wall: 0xe8dcc0, roof: 0x5a3a2a}});
+Object.assign(HULLS[10], {form: {entry: .35, fine: .55, rake: 0, flare: .2, sheer: 1.8, sheerP: 1.6, sheerAft: .1, sternW: .95, vee: .3, bw: .8, rub: {c: 0x111111, r: .2}, boot: 0xf0f0ea, anti: 0x8a1a14, rail: 0, tex: () => smlTex('mid')},
+  kit: {fend: 0, port: 0, stack: 0, ring: 1, ant: 0, anchor: 0}, cab: {wall: 0xe8e0c8, roof: 0x2a2a2a}});
+// canvases for the small hulls: hull skins without the plate grid, clapboard, roof tiles, brick, trawl net, rusty steel, decals (registration, cutter stripes)
+function smlTex(k) {
+  const key = 'sml' + k; if (TX[key]) return TX[key]; let c, rep = 1;
+  if (k === 'lt' || k === 'mid' || k === 'tar' || k === 'grp') c = cv(512, 256, (q, w, h) => {
+    const wear = {grp: 0, lt: .5, mid: 1, tar: .7}[k]; q.fillStyle = k === 'grp' ? '#f8f8f6' : k === 'tar' ? '#8a8a86' : '#e4e4de'; q.fillRect(0, 0, w, h);
+    if (k !== 'grp') { q.strokeStyle = 'rgba(30,26,22,.1)'; q.lineWidth = 2; q.beginPath(); for (let y = 64; y < h; y += 64) { q.moveTo(0, y); q.lineTo(w, y); } q.stroke(); }
+    for (let i = 0; i < 70 * wear; i++) { q.fillStyle = `rgba(${40 + Math.random() * 30},${34 + Math.random() * 20},28,${Math.random() * .06})`; q.beginPath(); q.ellipse(Math.random() * w, Math.random() * h, 10 + Math.random() * 70, 4 + Math.random() * 20, 0, 0, TAU); q.fill(); }
+    for (let i = 0; i < 8 * wear; i++) { const x = Math.random() * w, l = 16 + Math.random() * 60 * wear, gr = q.createLinearGradient(0, 0, 0, l); gr.addColorStop(0, `rgba(105,52,20,${.2 + .2 * wear})`); gr.addColorStop(1, 'rgba(105,52,20,0)'); q.fillStyle = gr; q.fillRect(x, 0, 1.5 + Math.random() * 2, l); }
+    if (k === 'grp') { const gr = q.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, 'rgba(255,255,255,.1)'); gr.addColorStop(1, 'rgba(0,0,0,.06)'); q.fillStyle = gr; q.fillRect(0, 0, w, h); }
+    noiseFill(q, w, h, k === 'grp' ? 3 : 8 + 6 * wear); });
+  else if (k === 'clap') c = cv(256, 256, (q, w, h) => { q.fillStyle = '#f4f2ec'; q.fillRect(0, 0, w, h); const n = 8; for (let i = 0; i < n; i++) { const y = i * h / n, gr = q.createLinearGradient(0, y, 0, y + h / n); gr.addColorStop(0, 'rgba(0,0,0,.3)'); gr.addColorStop(.14, 'rgba(255,255,255,.12)'); gr.addColorStop(1, 'rgba(0,0,0,.08)'); q.fillStyle = gr; q.fillRect(0, y, w, h / n); }
+    for (let i = 0; i < 50; i++) { q.fillStyle = `rgba(90,70,50,${Math.random() * .07})`; q.fillRect(Math.random() * w, Math.random() * h, 20 + Math.random() * 70, 1.5); } noiseFill(q, w, h, 9); });
+  else if (k === 'tile') c = cv(256, 256, (q, w, h) => { q.fillStyle = '#8a3c28'; q.fillRect(0, 0, w, h); const n = 6, m = 5; for (let i = 0; i < n; i++) for (let j = -1; j < m + 1; j++) { const x = i * w / n, y = (j + (i % 2) * .5) * h / m, gr = q.createLinearGradient(x, 0, x + w / n, 0);
+      gr.addColorStop(0, 'rgba(0,0,0,.4)'); gr.addColorStop(.3, `rgba(255,${170 + Math.random() * 40},140,${.1 + Math.random() * .1})`); gr.addColorStop(1, 'rgba(0,0,0,.12)'); q.fillStyle = gr; q.fillRect(x + 1, y + 1, w / n - 2, h / m - 2); q.fillStyle = 'rgba(30,10,5,.35)'; q.fillRect(x, y, w / n, 2); }
+    for (let i = 0; i < 30; i++) { q.fillStyle = `rgba(60,70,40,${Math.random() * .12})`; q.beginPath(); q.arc(Math.random() * w, Math.random() * h, 3 + Math.random() * 10, 0, TAU); q.fill(); } noiseFill(q, w, h, 16); });
+  else if (k === 'brick') c = cv(128, 128, (q, w, h) => { q.fillStyle = '#b8b0a0'; q.fillRect(0, 0, w, h); for (let r = 0; r < 8; r++) for (let i = -1; i < 4; i++) { q.fillStyle = `rgb(${120 + Math.random() * 40},${50 + Math.random() * 20},${36 + Math.random() * 14})`; q.fillRect(i * 32 + (r % 2) * 16 + 1, r * 16 + 1, 30, 14); } noiseFill(q, w, h, 18); });
+  else if (k === 'net') { c = cv(128, 128, (q, w, h) => { q.fillStyle = '#1e3a22'; q.fillRect(0, 0, w, h); q.strokeStyle = 'rgba(150,200,120,.85)'; q.lineWidth = 2.5; q.beginPath(); for (let i = -w; i < 2 * w; i += 16) { q.moveTo(i, 0); q.lineTo(i + h, h); q.moveTo(i, h); q.lineTo(i + h, 0); } q.stroke(); q.fillStyle = 'rgba(230,120,30,.8)'; for (let i = 0; i < 6; i++) q.fillRect(Math.random() * w, Math.random() * h, 6, 6); noiseFill(q, w, h, 20); }); rep = 5; }
+  else if (k === 'rust') c = cv(128, 128, (q, w, h) => { q.fillStyle = '#6a5a4a'; q.fillRect(0, 0, w, h); rust(q, w, h, 90); noiseFill(q, w, h, 24); });
+  else if (k === 'dsw' || k === 'dp09') c = cv(512, 128, (q, w, h) => { q.clearRect(0, 0, w, h);
+    if (k === 'dp09') { q.fillStyle = '#e8601c'; q.beginPath(); q.moveTo(150, h); q.lineTo(250, h); q.lineTo(300, 0); q.lineTo(200, 0); q.fill(); q.fillStyle = '#f2f2ee'; q.beginPath(); q.moveTo(268, h); q.lineTo(292, h); q.lineTo(342, 0); q.lineTo(318, 0); q.fill(); q.fillStyle = '#f2f2ee'; q.font = 'bold 64px Arial'; q.textAlign = 'center'; q.fillText('P-09', 430, 92); }
+    else { q.fillStyle = '#f4f2ea'; q.font = 'bold 76px Arial'; q.textAlign = 'center'; q.fillText('SW 117', w / 2, 96); } });
+  return (TX[key] = tex(c, rep));
+}
+const _smlA = new THREE.Vector3(), _smlB = new THREE.Vector3(), _smlRC = new THREE.Raycaster();
+function smlLook(cls, X) {
+  const {g, H, L, hw, fb, zs, zb, wz0, wz1, ww, hh, S, add, box, cyl, whiteM, darkM, steel, yel, glass} = X, ud = g.userData, zm = (wz0 + wz1) / 2, DS = THREE.DoubleSide;
+  const topAt = X.topAt || (t => fb + .32 + .9 * Math.min(1.6, L / 14) * Math.pow(1 - t, 2.2)), deckTop = z => topAt(clamp((z - zb) / (zs - zb), 0, 1));
+  const gdk = S({color: 0x0b1116, roughness: .06, metalness: .55}), blk = S({color: 0x16181b, roughness: .5}), tint = S({color: 0x08141a, roughness: .04, metalness: .4, transparent: true, opacity: .55, depthWrite: false, side: DS}), tints = [];
+  const redL = S({color: 0x400000, emissive: 0xff2010, emissiveIntensity: .9}), grnL = S({color: 0x003000, emissive: 0x10ff40, emissiveIntensity: .9}), whL = S({color: 0xfff8e8, emissive: 0xfff0d0, emissiveIntensity: .7});
+  // geometry helpers: extruded plates ('x': shape (z,y) across x; 'z': (x,y) along z; 'y': (x,z) up y), strips between plan polylines, segments
+  const V2 = p => new THREE.Vector2(p[0], p[1]);
+  const shp = (pts, holes) => { let a = 0; for (let i = 0; i < pts.length; i++) { const p = pts[i], q = pts[(i + 1) % pts.length]; a += p[0] * q[1] - q[0] * p[1]; } const s = new THREE.Shape((a < 0 ? pts.slice().reverse() : pts).map(V2)); for (const h of holes || []) s.holes.push(new THREE.Path(h.map(V2))); return s; };
+  const pgeo = (ax, pts, c0, c1, holes) => { const q = new THREE.ExtrudeGeometry(shp(pts, holes), {depth: c1 - c0, bevelEnabled: false, curveSegments: 6}); if (ax === 'x') { q.rotateY(-PI / 2); q.translate(c1, 0, 0); } else if (ax === 'y') { q.rotateX(PI / 2); q.translate(0, c1, 0); } else q.translate(0, 0, c0); return q; };
+  const plate = (m, ax, pts, c0, c1, holes) => add(pgeo(ax, pts, c0, c1, holes), m, 0, 0, 0);
+  const R = (a0, b0, a1, b1) => [[a0, b0], [a1, b0], [a1, b1], [a0, b1]];
+  const seg = (m, x0, y0, z0, x1, y1, z1, r, n = 6) => { const l = Math.hypot(x1 - x0, y1 - y0, z1 - z0), o = add(new THREE.CylinderGeometry(r, r, l, n), m, (x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2); o.quaternion.setFromUnitVectors(_smlA.set(0, 1, 0), _smlB.set(x1 - x0, y1 - y0, z1 - z0).normalize()); return o; };
+  const strip = (m, A, ya, Bp, yb, flat, geoOnly) => { const n = A.length, pos = [], uv = [], idx = []; let d = 0; for (let k = 0; k < n; k++) { if (k) d += Math.hypot(A[k][0] - A[k - 1][0], A[k][1] - A[k - 1][1]); pos.push(A[k][0], ya, A[k][1]); uv.push(d, ya); } d = 0; for (let k = 0; k < n; k++) { if (k) d += Math.hypot(Bp[k][0] - Bp[k - 1][0], Bp[k][1] - Bp[k - 1][1]); pos.push(Bp[k][0], yb, Bp[k][1]); uv.push(d, yb); }
+    for (let k = 0; k < n - 1; k++) idx.push(k, k + 1, n + k + 1, k, n + k + 1, n + k); let q = new THREE.BufferGeometry(); q.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); q.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); q.setIndex(idx); if (flat) q = q.toNonIndexed(); q.computeVertexNormals(); return geoOnly ? q : add(q, m, 0, 0, 0); };
+  const sph = (m, r, x, y, z, sx = 1, sy = 1, sz = 1, ws = 12) => { const o = add(new THREE.SphereGeometry(r, ws, Math.max(6, ws * .7 | 0)), m, x, y, z); o.scale.set(sx, sy, sz); return o; };
+  // plan polyline round a house: back-right, round the front (corner radius r or a chamfer, the front bulging by bul), back-left; gx leaves a door gap at the back (0 = closed loop)
+  const hp = (a, zf, zk, r, ch, bul = 0, gx = .58) => { const rc = []; for (let i = 0; i <= 4; i++) { const t = -i / 4 * PI / 2; rc.push(ch ? [a - r * i / 4, zf + r - r * i / 4] : [a - r + r * Math.cos(t), zf + r + r * Math.sin(t)]); }
+    const p = [[gx, zk], [a, zk], ...rc]; for (let j = 1; j < 4; j++) { const x = (a - r) * (1 - j / 2); p.push([x, zf - bul * (1 - Math.pow(x / Math.max(.01, a - r), 2))]); } p.push(...rc.slice().reverse().map(([x, z]) => [-x, z]), [-a, zk], [-gx, zk]); return p; };
+  // hull surface by raycast (works for any loft), conformal decals on it
+  g.updateMatrixWorld(true); const hullM = g.children.filter(o => { if (!o.isMesh) return false; const q = o.geometry; if (!q.boundingBox) q.computeBoundingBox(); return q.boundingBox.min.y < -.3 && q.boundingBox.max.z - q.boundingBox.min.z > L * .6; });
+  const hx = (z, y, sd = 1) => { _smlRC.set(_smlA.set(sd * (hw + 4), y, z), _smlB.set(-sd, 0, 0)); const h = hullM.length ? _smlRC.intersectObjects(hullM, false)[0] : null; return h ? Math.abs(h.point.x) : hullHW(z); };
+  const decal = (m, sd, za, z1, ya, yb, nz = 10) => { const pos = [], uv = [], idx = []; for (let i = 0; i <= nz; i++) { const z = mix(za, z1, i / nz); for (let j = 0; j <= 2; j++) { const y = mix(ya, yb, j / 2); pos.push(sd * (hx(z, y, sd) + .025), y, z); uv.push(sd > 0 ? 1 - i / nz : i / nz, j / 2); } }
+    for (let i = 0; i < nz; i++) for (let j = 0; j < 2; j++) { const a = i * 3 + j, b = a + 3; idx.push(a, b, b + 1, a, b + 1, a + 1); } const q = new THREE.BufferGeometry(); q.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); q.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); q.setIndex(idx); q.computeVertexNormals(); add(q, m, 0, 0, 0).castShadow = false; };
+  // the shared side lights (sprites at the shell roof) move with the new house; a searchlight sets lightZ/lightY
+  const navS = g.children.filter(o => o.isSprite && o !== ud.shpMh && Math.abs(o.position.y - (fb + hh + .1)) < .01 && Math.abs(o.position.z - wz0) < .01);
+  const nav = (x, y, z) => { for (const o of navS) o.position.set(Math.sign(o.position.x) * (x + .08), y, z); for (const sd of [-1, 1]) { box(blk, sd * x - .07, sd * x + .07, y - .1, y + .1, z - .16, z + .16); box(sd < 0 ? redL : grnL, sd * (x + .07) - .015, sd * (x + .07) + .015, y - .06, y + .06, z - .12, z + .04); } };
+  const lgrey = S({color: 0xb8bcc0, roughness: .4, metalness: .4});
+  const slight = (x, y, z) => { cyl(blk, .05, .08, .26, x, y + .13, z, 0, 0, 8); box(blk, x - .2, x + .2, y + .26, y + .3, z - .08, z + .08); const h = cyl(lgrey, .17, .14, .36, x, y + .5, z, PI / 2, 0, 14); const l = add(new THREE.CircleGeometry(.15, 14), whL, x, y + .5, z - .185); l.rotation.y = PI; ud.lightZ = z - .3; ud.lightY = y + .5; return h; };
+  const whip = (x, y, z, h) => { cyl(blk, .035, .045, .16, x, y + .08, z, 0, 0, 6); cyl(S({color: 0xe8e8e4}), .01, .022, h, x, y + .16 + h / 2, z, 0, 0, 5); };
+  const radome = (m, x, y, z, r) => { cyl(m, r, r, r * .45, x, y + r * .22, z, 0, 0, 20); sph(m, r, x, y + r * .44, z, 1, .32, 1, 18); };
+  const openArr = (o, len, m = blk) => { const q = new THREE.BoxGeometry(len, .14, .18); const q2 = new THREE.BoxGeometry(len * .9, .04, .1); q2.translate(0, -.09, .02); const q3 = new THREE.CylinderGeometry(.08, .1, .18, 10); q3.translate(0, -.18, 0); o.geometry.dispose(); o.geometry = mergeGeos([q, q2, q3]); o.material = m; };
+  const rope = (x, y, z, r = .26) => { const rm = S({color: 0x9a8058, roughness: 1}); for (let i = 0; i < 3; i++) { const t = add(new THREE.TorusGeometry(r - i * .05, .03, 5, 18), rm, x, y + .03 + i * .05, z); t.rotation.x = PI / 2; } };
+  // skin round the shared shell: lower wall, sill, the window band (see-through, framed, mullioned), soffit, upper band, roof with a crown
+  const inner = hp(ww - .005, wz0 + .005, wz1 - .005, 0, 1), cpl = (m, O, y0, y1) => plate(m, 'y', O.concat(inner.slice().reverse()), y0, y1);
+  const house = c => {
+    const y1 = fb + 1.03, y2 = fb + 1.92, y3 = fb + hh + .03, P0 = hp(...c.p0), P2 = hp(...c.p2), P3 = hp(...c.p3), wm = c.wall, fm = c.frame || blk, zw = wz1 - .55;
+    strip(wm, P0, fb + .01, P0, y1, c.flat); strip(c.band || wm, P2, y2, P3, y3, c.flat); cpl(wm, P0, y1 - .02, y1 + .015); cpl(c.band || wm, P2, y2 - .015, y2 + .02);
+    const [a0, zf0, , r0, ch0, b0] = c.p0, [a2, zf2, zk2, r2, ch2, b2] = c.p2, zk0 = c.p0[2];
+    const Wb = hp(a0, zf0, zw, r0, ch0, b0).slice(1, -1), Wt = hp(a2, zf2, zw, r2, ch2, b2).slice(1, -1);
+    if (c.tint) tints.push(strip(null, Wb, y1, Wt, y2, 0, 1)); else strip(glass, Wb, y1, Wt, y2);
+    for (const sd of [-1, 1]) { const m = ([x, z]) => [sd * x, z]; strip(wm, [[.58, zk0], [a0, zk0], [a0, zw]].map(m), y1, [[.58, zk2], [a2, zk2], [a2, zw]].map(m), y2, 1);
+      strip(wm, [[sd * .58, wz1 - .005], [sd * .58, zk0]], fb + .01, [[sd * .58, wz1 - .005], [sd * .58, zk0]], y2, 1); strip(c.band || wm, [[sd * .58, wz1 - .005], [sd * .58, zk2]], y2, [[sd * .58, wz1 - .005], [sd * .58, c.p3[2]]], y3, 1); }
+    const Fb = hp(a0 + .015, zf0 - .015, zw, r0, ch0, b0).slice(1, -1), Ft = hp(a2 + .015, zf2 - .015, zw, r2, ch2, b2).slice(1, -1); strip(fm, Fb, y1, Fb, y1 + .06); strip(fm, Ft, y2 - .06, Ft, y2);
+    for (const k of [0, 1, 5, 6, 8, 9, 13, 14]) seg(fm, Wb[k][0], y1, Wb[k][1], Wt[k][0], y2, Wt[k][1], .04, 5);
+    for (let k = 1; k < 3; k++) { const z = wz0 + .14 + k * (wz1 - wz0) / 3; if (z < zw - .1 && z > zf0 + r0) for (const sd of [-1, 1]) seg(fm, sd * a0, y1, z, sd * a2, y2, z, .045, 5); }
+    const [a4, zf4, zk4, r4, ch4, b4 = 0] = c.p4, P4 = hp(a4, zf4, zk4, r4, ch4, b4, 0).slice(0, -1); plate(c.roof, 'y', P4, y3 - .01, y3 + .13); plate(c.roof, 'y', hp(a4 - .3, zf4 + .3, zk4 - .25, Math.max(0, r4 - .2), ch4, b4, 0).slice(0, -1), y3 + .13, y3 + .2);
+    if (c.drip) strip(c.drip, hp(a4 + .01, zf4 - .01, zk4 + .01, r4, ch4, b4, 0), y3 - .02, hp(a4 + .01, zf4 - .01, zk4 + .01, r4, ch4, b4, 0), y3 + .05);
+    return {y1, y2, y3, top: y3 + .2, P0, P2, P3}; };
+
+  if (cls === 0) { // NINE LIVES: 12 m steel workboat. Reverse-raked framed wheelhouse with a visor, light-grey cambered roof, pole mast with radome, searchlight, liferaft; samson post, anchor on a bow roller, towing post, fish boxes
+    const wm = S({color: 0xeceae4, roughness: .5, side: DS}), rf = S({color: 0xc4c8cc, roughness: .6});
+    const hs = house({p0: [ww + .04, wz0 - .06, wz1 + .04, .12, 0], p2: [ww + .08, wz0 - .27, wz1 + .04, .14, 0], p3: [ww + .2, wz0 - .38, wz1 + .24, .15, 0], p4: [ww + .27, wz0 - .64, wz1 + .34, .3, 0], wall: wm, roof: rf, drip: blk});
+    const ry = hs.top; cyl(wm, .07, .09, 2.1, 0, ry + 1.05, zm, 0, 0, 10); box(wm, -.35, .35, ry + 1.2, ry + 1.25, zm - .2, zm + .2); radome(wm, 0, ry + 1.25, zm, .32); cyl(blk, .03, .03, .5, 0, ry + 2.35, zm, 0, 0, 6); sph(whL, .05, 0, ry + 2.62, zm); ud.shpMh.position.set(0, ry + 2.62, zm);
+    cyl(lgrey, .03, .09, .32, .16, ry + 1.7, zm - .1, PI / 2, 0, 8); seg(steel, .09, ry + 2.4, zm, -.4, ry + 1.9, zm, .012);
+    for (const sx of [-1, 1]) whip(sx * (ww - .05), ry - .05, wz1 + .05, 2.6);
+    slight(0, ry - .02, wz0 - .35); nav(ww + .2, hs.y3 - .12, wz0 - .3);
+    const lr = S({color: 0xf0f0ec, roughness: .5}); cyl(lr, .26, .26, .95, -ww + .55, ry + .3, wz1 - .25, 0, PI / 2, 14); for (const dx of [-.3, .3]) box(steel, -ww + .55 + dx - .03, -ww + .55 + dx + .03, ry - .02, ry + .2, wz1 - .55, wz1 + .05); box(S({color: 0xe06018}), -ww + .55 - .26, -ww + .55 + .26, ry + .26, ry + .34, wz1 - .26, wz1 - .24);
+    // foredeck: samson post, a fairlead pair, anchor on a bow roller at the stem
+    const sz = wz0 - 1.5, sm = S({color: 0x3a3e44, metalness: .5, roughness: .5}); box(sm, -.12, .12, fb, fb + .6, sz - .12, sz + .12); seg(sm, -.3, fb + .48, sz, .3, fb + .48, sz, .035);
+    const rt = deckTop(zb + .4); box(sm, -.12, .12, rt - .12, rt, zb - .3, zb + .9); cyl(blk, .07, .07, .2, 0, rt + .02, zb - .22, 0, PI / 2, 10); const an = S({color: 0x2a2a2a, metalness: .6, roughness: .5});
+    seg(an, 0, rt - .05, zb - .25, 0, rt - .75, zb - .32, .035); for (const sd of [-1, 1]) seg(an, 0, rt - .75, zb - .32, sd * .28, rt - .55, zb - .38, .04);
+    // aft: towing post, coiled lines, fish boxes
+    const tz = zs - 1.75; cyl(sm, .12, .14, .75, 0, fb + .37, tz, 0, 0, 12); seg(sm, -.28, fb + .55, tz, .28, fb + .55, tz, .035); BW.push({x0: -.18, x1: .18, z0: tz - .18, z1: tz + .18, y0: 0, y1: .75}); rope(.6, fb, tz);
+    const fbx = [S({color: 0x2a6ab0, roughness: .7}), S({color: 0xe07018, roughness: .7})]; for (let i = 0; i < 3; i++) box(fbx[i % 2], -hw + .55, -hw + 1.25, fb + i * .26, fb + i * .26 + .25, zs - 2.6 + (i === 2 ? .05 : 0), zs - 2.1); BW.push({x0: -hw + .5, x1: -hw + 1.3, z0: zs - 2.65, z1: zs - 2.05, y0: 0, y1: .8});
+  }
+
+  if (cls === 1) { // SALT WIFE: inshore stern trawler. Whaleback over the foredeck, reverse-raked wheelhouse with a navy top band, tripod mast with radar, rigged gantry with otter boards, net on the drum, trawl winches, fish boxes, floats
+    const wm = S({color: 0xeeece6, roughness: .55, side: DS}), nv = S({color: 0x1a2a44, roughness: .5, side: DS}), rf = wm;
+    const hs = house({p0: [ww + .04, wz0 - .06, wz1 + .04, .12, 0], p2: [ww + .08, wz0 - .27, wz1 + .04, .14, 0], p3: [ww + .2, wz0 - .38, wz1 + .24, .15, 0], p4: [ww + .26, wz0 - .62, wz1 + .75, .3, 0], wall: wm, band: nv, roof: rf, drip: nv});
+    // whaleback: lofted rounded shelter from near the stem back to the wheelhouse front, crown above the bulwark line
+    { const z0 = zb + L * .07, z1 = wz0 + .02, NZ = 12, NA = 8, rings = []; for (let i = 0; i <= NZ; i++) { const u = i / NZ, z = mix(z0, z1, Math.pow(u, .8)), w = Math.max(.15, Math.min(hullHW(z), hx(z, fb)) - .32) * (i === 0 ? .7 : 1), yc = Math.max(deckTop(z) + .4, fb + 1.45), ys = yc - Math.min(.45, w * .25), r = [[-w, fb + .01]];
+        for (let k = 0; k <= NA; k++) { const a = PI - k / NA * PI; r.push([Math.cos(a) * w, ys + Math.sin(a) * (yc - ys)]); } r.push([w, fb + .01]); rings.push(r.map(([x, y]) => [x, y, z])); }
+      const pos = [], idx = [], n = rings[0].length; for (const r of rings) for (const p of r) pos.push(...p); for (let i = 0; i < NZ; i++) for (let k = 0; k < n - 1; k++) { const a = i * n + k; idx.push(a, a + n, a + 1, a + 1, a + n, a + n + 1); }
+      const c0 = pos.length / 3; for (const p of rings[0]) pos.push(...p); for (let k = 1; k < n - 1; k++) idx.push(c0, c0 + k + 1, c0 + k); const c1 = pos.length / 3; for (const p of rings[NZ]) pos.push(...p); for (let k = 1; k < n - 1; k++) idx.push(c1, c1 + k, c1 + k + 1);
+      const q = new THREE.BufferGeometry(); q.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); q.setIndex(idx); q.computeVertexNormals(); add(q, wm, 0, 0, 0);
+      const wl = rings[NZ - 3][NA / 2 + 1]; cyl(steel, .05, .07, 2.4, 0, wl[1] + 1.2, wl[2], 0, 0, 8); sph(whL, .06, 0, wl[1] + 2.45, wl[2]); seg(steel, 0, wl[1] + 1.9, wl[2], 0, hs.top + 2, zm, .01); }
+    // tripod mast on the roof: radar dome and an open array, masthead light, floods, whips
+    const ry = hs.top, mz = zm + .3, mt = ry + 2.3; for (const [x, z] of [[-.7, mz + .6], [.7, mz + .6], [0, mz - .7]]) seg(wm, x, ry, z, 0, mt, mz, .05, 8); cyl(wm, .06, .06, .9, 0, mt + .45, mz, 0, 0, 8);
+    box(nv, -.5, .5, mt - .05, mt + .02, mz - .3, mz + .3); const ra = add(new THREE.BoxGeometry(1, 1, 1), blk, 0, mt + .26, mz); openArr(ra, 1.5); cyl(wm, .08, .1, 1.3, 0, ry + .65, zm, 0, 0, 10); radome(wm, 0, ry + 1.3, zm, .3);
+    ud.shpMh.position.set(0, mt + .95, mz); sph(whL, .05, 0, mt + .95, mz); for (const sx of [-1, 1]) { box(lgrey, sx * .4 - .14, sx * .4 + .14, ry, ry + .2, wz1 + .5, wz1 + .64); whip(sx * (ww - .1), ry - .06, wz1 + .5, 2.8); }
+    slight(-.7, ry - .02, wz0 - .3); nav(ww + .2, hs.y3 - .12, wz0 - .3);
+    // gantry rigging: blocks, chains and rusty otter boards on both legs, warps from the twin winches behind the house
+    const gz = zs - .8, gt = fb + 3.4, ob = S({map: smlTex('rust'), color: 0x9a6a4a, roughness: .9, metalness: .3}), chm = blk;
+    for (const sx of [-1.25, 0, 1.25]) { cyl(chm, .14, .14, .1, sx, gt - .35, gz + .05, 0, PI / 2, 12); seg(chm, sx, gt - .2, gz + .05, sx, gt - .28, gz + .05, .03); }
+    for (const sd of [-1, 1]) { const x = sd * (hw - .25); box(ob, x - .05, x + .05, fb + 1.55, fb + 2.35, gz - .65, gz + .75); box(chm, x - .07, x + .07, fb + 1.55, fb + 1.62, gz - .65, gz + .75); seg(chm, x, fb + 2.35, gz + .4, sd * (hw - .55), gt - .1, gz + .05, .02); seg(chm, x, fb + 2.35, gz - .3, sd * (hw - .55), gt - .1, gz - .05, .02);
+      const wx = sd * (ww - .45), wz = wz1 + .55; for (const dx of [-.42, .42]) box(steel, wx + dx - .05, wx + dx + .05, fb, fb + .85, wz - .32, wz + .32); const wd = cyl(S({color: 0x2a6ab0, roughness: .7}), .3, .3, .8, wx, fb + .5, wz, 0, PI / 2, 14); cyl(blk, .22, .22, .82, wx, fb + .5, wz, 0, PI / 2, 10);
+      BW.push({x0: wx - .5, x1: wx + .5, z0: wz - .35, z1: wz + .35, y0: 0, y1: .9}); seg(S({color: 0x2a2a28, roughness: .8}), wx, fb + .78, wz, sd * 1.25, gt - .45, gz + .05, .018); }
+    // the net on the drum, flanges and stands
+    { const dz = X.aft - 1, nm = S({map: smlTex('net'), color: 0xc8d8c0, roughness: 1}); cyl(nm, .6, .6, 2.32, 0, fb + .6, dz, 0, PI / 2, 18); for (const sx of [-1.21, 1.21]) { cyl(S({color: 0x3a6a3a}), .78, .78, .05, sx, fb + .6, dz, 0, PI / 2, 18); box(steel, sx - .04 + Math.sign(sx) * .06, sx + .04 + Math.sign(sx) * .06, fb, fb + .65, dz - .4, dz + .4); } }
+    // deck: stacked fish boxes, orange floats, coiled warp
+    const fbx = [S({color: 0x2a6ab0, roughness: .7}), S({color: 0xd8c020, roughness: .7})]; for (let i = 0; i < 4; i++) box(fbx[i % 2], hw - 1.35 + (i % 2) * .02, hw - .65, fb + i * .25, fb + i * .25 + .24, zs - 2.9, zs - 2.3); BW.push({x0: hw - 1.4, x1: hw - .6, z0: zs - 2.95, z1: zs - 2.25, y0: 0, y1: 1});
+    const fl = S({color: 0xf06818, roughness: .55}); for (let i = 0; i < 6; i++) sph(fl, .16, -hw + .75 + (i % 3) * .3, fb + .16 + (i > 2 ? .26 : 0), zs - 2.5 + (i % 2) * .1, 1, 1, 1, 10); rope(-hw + 1.1, fb, zs - 1.7);
+    // registration on the bows
+    const dm = S({map: smlTex('dsw'), alphaTest: .5, roughness: .5, side: DS}); for (const sd of [-1, 1]) decal(dm, sd, zb + L * .06, zb + L * .2, fb - .78, fb - .18);
+  }
+
+  if (cls === 2) { // VIGILANT: 22 m coastal patrol boat. Faceted bridge with a forward-raked tinted band, lattice mast round the old radar pole with an open array, radome, 25 mm mount, RHIB on a cradle, hull stripes and P-09
+    const wm = S({color: 0x9aa0a6, roughness: .5, side: DS}), rf = S({color: 0x8a9096, roughness: .6}), dg = S({color: 0x50565c, roughness: .5, metalness: .3});
+    const hs = house({p0: [ww + .04, wz0 - .06, wz1 + .04, .08, 1], p2: [ww + .22, wz0 - .55, wz1 + .04, .6, 1, .1], p3: [ww + .3, wz0 - .66, wz1 + .24, .45, 1, .1], p4: [ww + .34, wz0 - .82, wz1 + .32, .7, 1, .12], wall: wm, roof: rf, tint: 1, flat: 1, drip: dg});
+    const ry = hs.top, mz = zm + .4; // lattice mast enclosing the old pole, platform, open array on the live radar, radome, lights, whips
+    for (const [x, z] of [[-.6, mz + .45], [.6, mz + .45], [-.6, mz - .45], [.6, mz - .45]]) seg(wm, x, ry, z, x * .35, ry + 2.7, mz + (z - mz) * .35, .045, 6);
+    for (const h of [.9, 1.8]) { const k = 1 - h / 2.7 * .65; box(wm, -.62 * k, .62 * k, ry + h - .03, ry + h + .03, mz - .48 * k, mz + .48 * k); }
+    box(dg, -.55, .55, ry + 2.66, ry + 2.74, mz - .4, mz + .4); box(dg, -.75, .75, ry + 1.76, ry + 1.82, mz - .1, mz + .65); radome(whiteM, .4, ry + 1.82, mz + .3, .26); cyl(wm, .08, .1, 1.3, 0, ry + .65, zm, 0, 0, 10); radome(whiteM, 0, ry + 1.3, zm, .3);
+    if (ud.radar) { openArr(ud.radar, 2); ud.radar.position.set(0, ry + 3.02, mz); } cyl(dg, .1, .12, .3, 0, ry + 2.88, mz, 0, 0, 10);
+    ud.shpMh.position.set(0, ry + 3.9, mz); cyl(wm, .03, .03, .8, 0, ry + 3.4, mz - .3, 0, 0, 6); seg(wm, 0, ry + 2.74, mz - .3, 0, ry + 3.8, mz - .3, .03); sph(whL, .05, 0, ry + 3.85, mz - .3);
+    for (const sx of [-1, 1]) whip(sx * (ww - .1), ry - .05, wz1 + .1, 3.2); slight(0, ry - .02, wz0 - .45); nav(ww + .32, hs.y3 - .12, wz0 - .45);
+    // gun: receiver, barrel, shield on the old pedestal (same live object)
+    if (ud.gun) { const gp = []; const rv = new THREE.BoxGeometry(.36, .3, .7); rv.translate(0, .02, .7); gp.push(rv); const bl = new THREE.CylinderGeometry(.035, .045, 1.9, 8); bl.rotateX(PI / 2); bl.translate(0, .05, -.55); gp.push(bl); const mz2 = new THREE.CylinderGeometry(.06, .06, .2, 8); mz2.rotateX(PI / 2); mz2.translate(0, .05, -1.45); gp.push(mz2);
+      const sh = new THREE.BoxGeometry(.9, .55, .04); sh.translate(0, .12, .3); gp.push(sh); for (const sd of [-1, 1]) { const w2 = new THREE.BoxGeometry(.04, .55, .3); w2.translate(sd * .45, .12, .44); gp.push(w2); } const cr = new THREE.BoxGeometry(.18, .3, .35); cr.translate(.27, -.05, .75); gp.push(cr);
+      const q = mergeGeos(gp); q.rotateX(-PI / 2); ud.gun.geometry.dispose(); ud.gun.geometry = q; ud.gun.material = dg; }
+    // RHIB on a cradle on the port quarter
+    { const rx = -1.6, z0 = zs - 6.6, z1 = zs - 2.6, ry2 = fb + .45, tb = S({color: 0x2a2c30, roughness: .8}), hl = S({color: 0xd8d8d4, roughness: .5});
+      for (const sd of [-1, 1]) { const tb2 = add(new THREE.CylinderGeometry(.22, .22, z1 - z0 - .6, 12), tb, rx + sd * .62, ry2, (z0 + .6 + z1) / 2); tb2.rotation.x = PI / 2; } add(new THREE.TorusGeometry(.62, .22, 8, 14, PI), tb, rx, ry2, z0 + .6).rotation.set(PI / 2, 0, PI);
+      box(hl, rx - .6, rx + .6, ry2 - .3, ry2 + .02, z0 + .3, z1); box(dg, rx - .25, rx + .25, ry2, ry2 + .55, z1 - 2, z1 - 1.5); box(blk, rx - .3, rx + .3, ry2 - .2, ry2 + .35, z1 - .05, z1 + .3);
+      for (const z of [z0 + .8, z1 - .7]) box(steel, rx - .7, rx + .7, fb, ry2 - .25, z - .08, z + .08); BW.push({x0: rx - .9, x1: rx + .9, z0: z0, z1: z1 + .3, y0: 0, y1: 1.1}); }
+    // bow stripes and P-09
+    const dm = S({map: smlTex('dp09'), alphaTest: .5, roughness: .5, side: DS}); for (const sd of [-1, 1]) decal(dm, sd, zb + L * .1, zb + L * .34, fb - 1.1, fb - .05, 12);
+  }
+
+  if (cls === 8) { // DART: 9 m sport hardtop. Steep one-piece tinted windscreen to the foredeck, black hardtop with an LED strip, swept side glass, bow sunpad, twin black outboards, side bench
+    const wh = S({color: 0xf4f4f0, roughness: .35, side: DS}), bk = S({color: 0x141518, roughness: .3, side: DS}), cu = S({color: 0xd8ccb0, roughness: .95}), om = S({color: 0x111214, roughness: .25, metalness: .3});
+    for (const o of g.children.slice()) if (o.isMesh && o.geometry.type === 'CylinderGeometry' && o.geometry.parameters.height === 1.4 && o.geometry.parameters.radiusTop === .04 && Math.abs(o.position.z - zm) < .01 && Math.abs(o.position.y - (fb + hh + .8)) < .01) { g.remove(o); o.geometry.dispose(); }
+    const W0 = [wz0 - 1.35, fb + .3], W1 = [wz0 - .3, fb + hh + .02], zW = y => W0[0] + (y - W0[1]) / (W1[1] - W0[1]) * (W1[0] - W0[0]), xs = ww + .06;
+    const Pa = [zW(fb + 1.06) + .12, fb + 1.06], Pb = [wz1 - .56, fb + 1.3], Pc = [wz1 - .56, fb + 1.88], Pd = [zW(fb + 1.72) + .12, fb + 1.72], kb = (Pb[1] - Pa[1]) / (Pb[0] - Pa[0]), yb = z => Pa[1] + (z - Pa[0]) * kb, zA = wz1 + .06;
+    const A4 = [zW(fb + 1.06), fb + 1.06], A3 = [zA, yb(zA)];
+    for (const sd of [-1, 1]) { const c0 = sd > 0 ? ww + .02 : -xs, c1 = c0 + .04; plate(wh, 'x', [[W0[0], fb + .01], [zA, fb + .01], A3, A4, W0], c0, c1); plate(bk, 'x', [A4, A3, [zA, fb + hh + .02], W1], c0, c1, [[Pa, Pb, Pc, Pd]]); tints.push(pgeo('x', [Pa, Pb, Pc, Pd], c0 + .015, c0 + .025)); }
+    plate(wh, 'z', R(-xs, fb + .01, xs, W0[1]), W0[0] - .04, W0[0]); // front of the cabin moulding under the screen
+    { const q = new THREE.BufferGeometry(); q.setAttribute('position', new THREE.Float32BufferAttribute([-xs, W0[1], W0[0], xs, W0[1], W0[0], xs, W1[1], W1[0], -xs, W0[1], W0[0], xs, W1[1], W1[0], -xs, W1[1], W1[0]], 3)); q.computeVertexNormals(); tints.push(q); }
+    for (const sx of [-xs, xs]) seg(bk, sx, W0[1], W0[0], sx, W1[1], W1[0], .05, 6); seg(bk, -xs, W0[1] + .02, W0[0] + .01, xs, W0[1] + .02, W0[0] + .01, .04, 6);
+    BW.push({x0: -hw, x1: hw, z0: BDECK.z0 - .1, z1: wz0, y0: 0, y1: 2.2});
+    plate(wh, 'z', [[-xs, fb + .01], [-.58, fb + .01], [-.58, fb + 2.02], [.58, fb + 2.02], [.58, fb + .01], [xs, fb + .01], [xs, fb + hh + .02], [-xs, fb + hh + .02]], wz1 + .02, wz1 + .06); // back with the door
+    for (const sd of [-1, 1]) box(gdk, sd * .75 - .01, sd * (ww - .1), fb + 1.15, fb + 1.85, wz1 + .06, wz1 + .075); box(bk, -xs, xs, fb + 1.95, fb + hh + .02, wz1 + .061, wz1 + .07);
+    // hardtop, LED strip, radome, lights
+    const ht = hp(ww + .2, wz0 - .45, wz1 + .95, .35, 0, .12, 0).slice(0, -1); plate(bk, 'y', ht, fb + hh + .02, fb + hh + .14); plate(bk, 'y', hp(ww - .1, wz0 - .1, wz1 + .6, .2, 0, .08, 0).slice(0, -1), fb + hh + .14, fb + hh + .19);
+    const led = S({color: 0xe8f4ff, emissive: 0xc8e8ff, emissiveIntensity: .7}); box(led, -ww - .12, ww + .12, fb + hh - .005, fb + hh + .02, wz1 + .86, wz1 + .9); for (const sd of [-1, 1]) box(led, sd * (ww + .14) - .02, sd * (ww + .14) + .02, fb + hh - .005, fb + hh + .02, wz0, wz1 + .85);
+    radome(wh, 0, fb + hh + .19, zm + .3, .24); whip(.6, fb + hh + .16, wz1 + .5, 1.6); ud.shpMh.position.set(0, fb + hh + .6, zm + .3); cyl(steel, .02, .02, .4, 0, fb + hh + .39, zm + .55, 0, 0, 5); sph(whL, .04, 0, fb + hh + .6, zm + .55);
+    nav(ww + .24, fb + hh - .05, wz0 - .2); ud.lightZ = W1[0] - .2; ud.lightY = fb + hh + .3; cyl(bk, .1, .12, .14, 0, fb + hh + .2, wz0 - .1, PI / 2, 0, 10);
+    // bow sunpad on a raised moulding, bow light
+    { const zz = [W0[0] - .05, W0[0] - .5, W0[0] - 1.0, W0[0] - 1.4], wv = zz.map(z => Math.max(.2, Math.min(hullHW(z), hx(z, fb - .05)) - .42)), O = zz.map((z, i) => [wv[i], z]).concat(zz.slice().reverse().map((z, i) => [-wv[3 - i], z]));
+      plate(wh, 'y', O, fb + .01, fb + .26); plate(cu, 'y', O.map(([x, z]) => [x * .9, z + (z < W0[0] - 1 ? .05 : 0)]), fb + .26, fb + .38); const bz = zb + .35, by = deckTop(bz); box(wh, -.08, .08, by - .02, by + .1, bz - .1, bz + .1); box(redL, -.085, -.01, by + .02, by + .08, bz - .08, bz + .02); box(grnL, .01, .085, by + .02, by + .08, bz - .08, bz + .02); }
+    // twin outboards on the transom
+    const ws = S({color: 0xe8e8e4, roughness: .4}); for (const sx of [-.66, .66]) { const z = zs + .45; box(om, sx - .12, sx + .12, fb - .5, fb - .1, zs - .02, zs + .25); sph(om, .3, sx, fb + .3, z, .78, 1.15, 1.25, 16); sph(om, .3, sx, fb + .58, z + .02, .72, .55, 1.1, 14); box(ws, sx - .235, sx + .235, fb + .27, fb + .33, z - .3, z + .3);
+      box(om, sx - .1, sx + .1, -.62, fb - .1, z - .12, z + .16); box(om, sx - .2, sx + .2, -.05, -.02, z - .2, z + .32); sph(om, .09, sx, -.62, z, 1, 1, 2.4, 10); for (let b = 0; b < 3; b++) { const pb = add(new THREE.BoxGeometry(.04, .32, .1), S({color: 0x3a3c40, metalness: .7, roughness: .3}), sx, -.62, z + .26); pb.rotation.z = b / 3 * TAU; } }
+    // starboard bench with cushions
+    { const x0 = .5, x1 = hw - .32, z0 = wz1 + .3, z1 = wz1 + 1.55; box(wh, x0, x1, fb, fb + .4, z0, z1); box(cu, x0 + .02, x1 - .02, fb + .4, fb + .5, z0 + .02, z1 - .02); box(cu, x1 - .1, x1 - .02, fb + .5, fb + .92, z0 + .04, z1 - .04); BW.push({x0, x1, z0, z1, y0: 0, y1: .5}); }
+  }
+
+  if (cls === 9) { // DRIFTWOOD: a floating cottage. Clapboard walls, white four-pane windows with shutters and flower boxes, steep tiled roof with eaves and a skylight, brick chimney, gutters, door canopy, porch with balusters, planters, bicycle; bunks, stove, table and shelves inside
+    const sid = S({map: smlTex('clap'), color: 0xd8b860, roughness: .8}), tr = S({color: 0xf4f2ea, roughness: .6}), sh = S({color: 0x2a5a5a, roughness: .8}), rfm = S({map: smlTex('tile'), color: 0xd0a090, roughness: .85}), wd = S({map: TX.wood, color: 0x9a7a54, roughness: .75});
+    const xo = ww + .06, z0 = wz0 - .08, z1 = wz1 + .06, yt = fb + hh + .02, D = wz1 - wz0, win = [wz0 + 1.25, wz0 + 3.55, wz0 + 5.7].filter(z => z + .45 < wz1 - .55);
+    for (const sd of [-1, 1]) { const c0 = sd > 0 ? ww + .02 : -xo; plate(sid, 'x', R(z0, fb + .01, z1, yt), c0, c0 + .04, win.map(z => R(z - .45, fb + 1.08, z + .45, fb + 1.87)));
+      for (const z of win) { const xf = sd * (ww + .07); box(tr, xf - .025, xf + .025, fb + 1.03, fb + 1.08, z - .52, z + .52); box(tr, xf - .025, xf + .025, fb + 1.87, fb + 1.93, z - .52, z + .52); for (const dz of [-.47, .47]) box(tr, xf - .025, xf + .025, fb + 1.08, fb + 1.87, z + dz - .04, z + dz + .04); box(tr, xf - .02, xf + .02, fb + 1.08, fb + 1.87, z - .02, z + .02); box(tr, xf - .02, xf + .02, fb + 1.455, fb + 1.495, z - .45, z + .45);
+        for (const dz of [-.78, .78]) box(sh, xf - .02, xf + .02, fb + 1.05, fb + 1.9, z + dz - .26, z + dz + .26); const fx0 = sd > 0 ? ww + .06 : -(ww + .3); box(wd, fx0, fx0 + .24, fb + .82, fb + 1.0, z - .5, z + .5);
+        for (let i = 0; i < 7; i++) sph(S({color: [0xd83a5a, 0xf0d040, 0x3a7a3a][i % 3], roughness: .8}), .075, sd * (ww + .18), fb + 1.02 + (i % 2) * .03, z - .42 + i * .14, 1, 1, 1, 6).castShadow = false; } }
+    // front: two windows; back: the door, a small window each side, canopy
+    plate(sid, 'z', R(-xo, fb + .01, xo, yt), z0, z0 + .04, [R(-1.35, fb + 1.08, -.45, fb + 1.87), R(.45, fb + 1.08, 1.35, fb + 1.87)]);
+    for (const cx of [-.9, .9]) { const zf = z0 - .01; box(tr, cx - .52, cx + .52, fb + 1.03, fb + 1.08, zf - .02, zf + .02); box(tr, cx - .52, cx + .52, fb + 1.87, fb + 1.93, zf - .02, zf + .02); for (const dx of [-.47, .47]) box(tr, cx + dx - .04, cx + dx + .04, fb + 1.08, fb + 1.87, zf - .02, zf + .02); box(tr, cx - .02, cx + .02, fb + 1.08, fb + 1.87, zf - .02, zf + .02); box(tr, cx - .45, cx + .45, fb + 1.455, fb + 1.495, zf - .02, zf + .02); }
+    plate(sid, 'z', [[-xo, fb + .01], [-.58, fb + .01], [-.58, fb + 2.02], [.58, fb + 2.02], [.58, fb + .01], [xo, fb + .01], [xo, yt], [-xo, yt]], wz1 + .02, z1);
+    for (const sd of [-1, 1]) { box(tr, sd * .58 - .05, sd * .58 + .05, fb, fb + 2.08, z1 - .01, z1 + .03); box(gdk, sd * 1.15 - .3, sd * 1.15 + .3, fb + 1.2, fb + 1.8, z1, z1 + .015); box(tr, sd * 1.15 - .36, sd * 1.15 + .36, fb + 1.14, fb + 1.2, z1 - .01, z1 + .05); box(tr, sd * 1.15 - .36, sd * 1.15 + .36, fb + 1.8, fb + 1.86, z1 - .01, z1 + .03); }
+    box(tr, -.63, .63, fb + 2.02, fb + 2.1, z1 - .01, z1 + .03); for (const sd of [-1, 1]) { const r2 = add(new THREE.BoxGeometry(.7, .05, .75), rfm, sd * .3, fb + 2.3, z1 + .38); r2.rotation.z = -sd * .5; seg(tr, sd * .62, fb + 1.95, z1 + .04, sd * .62, fb + 2.12, z1 + .62, .025); }
+    // roof: chevron section with .35 eaves, gable trim, skylight
+    const E = xo + .35, rh = 1.55, yb = yt + .12 - .35 * rh / E - .02, yr = yb + rh, rz0 = z0 - .35, rz1 = z1 + .35, th = .12;
+    plate(rfm, 'z', [[-E, yb], [0, yr], [E, yb], [E, yb - th], [0, yr - th / Math.cos(Math.atan2(rh, E))], [-E, yb - th]], rz0, rz1);
+    for (const [za, zb2] of [[z0, z0 + .04], [z1 - .04, z1]]) plate(sid, 'z', [[-xo, yt - .01], [xo, yt - .01], [0, yr - .2]], za, zb2);
+    for (const zz of [rz0 - .02, rz1 + .02]) for (const sd of [-1, 1]) { const l = Math.hypot(E, rh), b2 = add(new THREE.BoxGeometry(l + .05, .14, .05), tr, sd * E / 2, (yb + yr) / 2 - .02, zz); b2.rotation.z = -sd * Math.atan2(rh, E); }
+    box(tr, -.06, .06, yr - .03, yr + .06, rz0, rz1);
+    { const a = Math.atan2(rh, E), sk = add(new THREE.BoxGeometry(.75, .08, 1.1), tr, -E * .45, mix(yb, yr, .55) + .03, zm - .6); sk.rotation.z = a; const sg = add(new THREE.BoxGeometry(.6, .04, .95), gdk, -E * .45 - .03 * Math.sin(a), mix(yb, yr, .55) + .075, zm - .6); sg.rotation.z = a; }
+    // gutters and a downpipe
+    for (const sd of [-1, 1]) cyl(tr, .06, .06, rz1 - rz0, sd * (E - .02), yb - .1, (rz0 + rz1) / 2, PI / 2, 0, 8); seg(tr, E - .02, yb - .1, rz1 - .1, E - .02, fb, rz1 - .1, .04);
+    // brick chimney over the stove, pot and cap; smoke
+    { const cz = wz0 + 1.1, cx = ww - .45, ct = yr + .55; plate(S({map: smlTex('brick'), color: 0xffffff, roughness: .9}), 'y', R(cx - .24, cz - .24, cx + .24, cz + .24), yt - .1, ct); box(lgrey, cx - .3, cx + .3, ct, ct + .08, cz - .3, cz + .3); cyl(S({color: 0xa8582a, roughness: .9}), .1, .12, .3, cx, ct + .23, cz, 0, 0, 10); ud.shpSmoke = [cx, ct + .45, cz]; }
+    // porch: balusters along the stern quarters, chairs and a table, plants, lantern, string lights
+    const pr = tr, pz0 = wz1 + .35, pz1 = zs - .2; for (const sd of [-1, 1]) { const x = sd * (hw - .32); box(pr, x - .04, x + .04, fb + .92, fb + .98, pz0, pz1); for (let z = pz0; z <= pz1 + .01; z += .3) box(pr, x - .025, x + .025, fb, fb + .92, z - .025, z + .025);
+      box(pr, sd < 0 ? -(hw - .32) : .62, sd < 0 ? -.62 : hw - .32, fb + .92, fb + .98, pz1 - .04, pz1 + .04); for (let x2 = .7; x2 < hw - .3; x2 += .3) box(pr, sd * x2 - .025, sd * x2 + .025, fb, fb + .92, pz1 - .025, pz1 + .025); }
+    const tx = 1.6, tz = wz1 + 1.4, ch = sh; cyl(wd, .38, .38, .04, tx, fb + .72, tz, 0, 0, 16); cyl(wd, .04, .05, .7, tx, fb + .35, tz, 0, 0, 8); cyl(wd, .2, .22, .03, tx, fb + .015, tz, 0, 0, 12); BW.push({x0: tx - .38, x1: tx + .38, z0: tz - .38, z1: tz + .38, y0: 0, y1: .76});
+    for (const dz of [-.75, .75]) { const cz2 = tz + dz; box(ch, tx - .22, tx + .22, fb + .42, fb + .47, cz2 - .2, cz2 + .2); for (const lx of [-.18, .18]) for (const lz of [-.17, .17]) box(wd, tx + lx - .02, tx + lx + .02, fb, fb + .42, cz2 + lz - .02, cz2 + lz + .02); const bk = add(new THREE.BoxGeometry(.44, .45, .04), ch, tx, fb + .7, cz2 + Math.sign(dz) * .2); bk.rotation.x = -Math.sign(dz) * .2; BW.push({x0: tx - .22, x1: tx + .22, z0: cz2 - .2, z1: cz2 + .2, y0: 0, y1: .45}); }
+    cyl(S({color: 0xe8e0d0}), .045, .04, .1, tx + .1, fb + .79, tz - .05); cyl(S({color: 0xd8a040, emissive: 0x402000}), .06, .07, .18, tx - .12, fb + .83, tz + .08, 0, 0, 8);
+    const pot = S({color: 0xa8582a, roughness: .9}), fl2 = [S({color: 0xd83a5a, roughness: .8}), S({color: 0xf0d040, roughness: .8})], lf = S({color: 0x3a7a3a, roughness: .9}); for (const [px, pz] of [[hw - .55, pz1 - .4], [.85, z1 + .3], [-.85, z1 + .3]]) { cyl(pot, .17, .12, .3, px, fb + .15, pz, 0, 0, 10); sph(lf, .26, px, fb + .45, pz, 1, .9, 1, 8); }
+    const sl = S({color: 0x302010, emissive: 0xffc070, emissiveIntensity: .4, nc: 1}); ud.shpStr = sl; for (let i = 0; i <= 12; i++) { const t = i / 12, z = mix(z1 + .1, pz1, t), x = hw - .36, y = yt - .1 - Math.sin(t * PI) * .35; add(new THREE.SphereGeometry(.035, 6, 4), sl, x, y, z).castShadow = false; add(new THREE.SphereGeometry(.035, 6, 4), sl, -x, y, z).castShadow = false; }
+    for (const sd of [-1, 1]) seg(steel, sd * (hw - .36), fb + .92, pz1, sd * (hw - .36), yt - .1, pz1, .015);
+    // bow: planters, a water tank and a bicycle against the front wall
+    const pl = wd; for (const sd of [-1, 1]) { const pz = z0 - .6, px = sd * Math.max(.5, Math.min(hullHW(pz), hx(pz, fb)) - .75); box(pl, px - .35, px + .35, fb, fb + .35, pz - .25, pz + .25); for (let i = 0; i < 4; i++) sph(i % 2 ? lf : fl2[i >> 1], .14, px - .25 + i * .17, fb + .42, pz, 1, .8, 1, 8); }
+    cyl(sh, .32, .32, .8, 0, fb + .4, z0 - 1.2, 0, 0, 14);
+    { const bx = -ww + .5, bz = z0 - .2, bm = sh; for (const dx of [-.42, .42]) { const wl = add(new THREE.TorusGeometry(.3, .025, 6, 18), blk, bx + dx, fb + .31, bz); wl.rotation.y = 0; } seg(bm, bx - .42, fb + .31, bz, bx, fb + .7, bz, .02); seg(bm, bx, fb + .7, bz, bx + .42, fb + .31, bz, .02); seg(bm, bx - .1, fb + .31, bz, bx + .1, fb + .75, bz, .02); seg(bm, bx, fb + .7, bz, bx + .35, fb + .8, bz, .02); seg(steel, bx + .35, fb + .8, bz, bx + .42, fb + .31, bz, .018); box(blk, bx - .14, bx + .02, fb + .74, fb + .78, bz - .05, bz + .05); }
+    // inside: bunks with quilts and pillows (the sleep spot), the stove with a kettle, a table for two, shelves with jars, a rug
+    const bx0 = -ww + .14, bx1 = -ww + 1, bz0 = wz0 + .75, bz1 = bz0 + 2, q1 = S({color: 0xb0402a, roughness: 1}), q2 = S({color: 0x3a5a8a, roughness: 1}), pil = S({color: 0xf0ead8, roughness: 1});
+    for (const [y, q] of [[fb + .38, q1], [fb + 1.28, q2]]) { box(wd, bx0, bx1, y - .1, y, bz0, bz1, y < fb + 1); box(q, bx0 + .03, bx1 - .03, y, y + .12, bz0 + .45, bz1 - .03); box(pil, bx0 + .12, bx1 - .12, y, y + .14, bz0 + .05, bz0 + .42); }
+    for (const z of [bz0, bz1 - .06]) box(wd, bx1 - .06, bx1, fb, fb + 1.95, z, z + .06); box(wd, bx0, bx1, fb + 1.42, fb + 1.48, bz1 - .06, bz1);
+    INTER.push({kind: 'shpbunk', boat: 1, lx: bx1 - .2, lz: (bz0 + bz1) / 2, ly: .7, r: 1.8, label: () => 'Sleep until dawn', go: () => act({a: 'shpsleep'}), on: () => !P.sw});
+    const sx0 = ww - .78, sz0 = wz0 + .8, sv = S({color: 0x1a1a1a, roughness: .6, metalness: .4}); box(sv, sx0, ww - .18, fb, fb + .75, sz0, sz0 + .6, 1); const fw = add(new THREE.BoxGeometry(.02, .24, .34), S({color: 0x200800, emissive: 0xff6a20, emissiveIntensity: 1.1, nc: 1}), sx0 - .01, fb + .4, sz0 + .3); ud.shpStove = fw.material; ud.stove = [sx0 - .12, fb + .7, sz0 + .3];
+    cyl(sv, .07, .07, hh - .75, ww - .45, fb + .75 + (hh - .75) / 2, sz0 + .3); cyl(lgrey, .09, .11, .16, sx0 + .2, fb + .83, sz0 + .18, 0, 0, 10); cyl(darkM, .012, .012, .12, sx0 + .32, fb + .9, sz0 + .18, 0, PI / 3);
+    const tz2 = Math.min(wz1 - 1.4, zm + 1.6); box(wd, .95, 1.65, fb + .72, fb + .76, tz2 - .4, tz2 + .4, 1); box(wd, 1.27, 1.33, fb, fb + .72, tz2 - .03, tz2 + .03); for (const dz of [-.62, .62]) { box(wd, 1.1, 1.5, fb + .42, fb + .46, tz2 + dz - .18, tz2 + dz + .18); box(wd, 1.1, 1.5, fb + .46, fb + .95, tz2 + dz + Math.sign(dz) * .15, tz2 + dz + Math.sign(dz) * .19); for (const lx of [1.13, 1.47]) box(wd, lx - .02, lx + .02, fb, fb + .42, tz2 + dz - .02, tz2 + dz + .02); }
+    cyl(S({color: 0xe8e0d0}), .045, .04, .1, 1.2, fb + .81, tz2 - .1); cyl(S({color: 0xd8a040, emissive: 0x402000}), .04, .05, .12, 1.45, fb + .82, tz2 + .15);
+    const shz0 = Math.max(bz1 + .3, zm + .4), shz1 = Math.min(wz1 - .5, shz0 + 1.4); for (const y of [fb + 1.15, fb + 1.55]) { box(wd, -ww + .14, -ww + .42, y, y + .04, shz0, shz1); for (let z = shz0 + .12; z < shz1 - .1; z += .22) cyl([fl2[0], fl2[1], lf][Math.round(z * 7 + 9) % 3], .05, .05, .16, -ww + .28, y + .12, z, 0, 0, 8); }
+    box(S({color: 0x8a4a2a, roughness: 1}), -.7, .7, fb, fb + .012, zm - 1, zm + 1);
+    nav(ww + .45, yb - .25, wz0 + .1); ud.lightZ = z0 - .1; ud.lightY = yt + .2; ud.shpMh.position.set(0, yr + .3, wz1 - .6); cyl(steel, .025, .025, .4, 0, yr + .1, wz1 - .6, 0, 0, 6); sph(whL, .045, 0, yr + .32, wz1 - .6);
+    shpPuffs(g, .45);
+  }
+
+  if (cls === 10) { // BULLDOG: harbour tug. Buff deck house with a bulged front, raised pilot house with outward-raked glass all round, mast with towing lights, fat funnel with a red band, bow pudding fender, tyre fenders, H-bitts, towing arch, winch drum, magnet boom
+    const bf = S({color: 0xe8e0c8, roughness: .55, side: DS}), rf = S({color: 0x2a2a2a, roughness: .7, side: DS}), rub = S({color: 0x161616, roughness: .95, side: DS}), rd = S({color: 0xb0201a, roughness: .5, side: DS});
+    const hs = house({p0: [ww + .04, wz0 - .06, wz1 + .04, .12, 0, .3], p2: [ww + .08, wz0 - .12, wz1 + .04, .14, 0, .35], p3: [ww + .2, wz0 - .4, wz1 + .24, .15, 0, .35], p4: [ww + .24, wz0 - .5, wz1 + .3, .25, 0, .35], wall: bf, roof: rf, drip: blk});
+    BW.push({x0: -ww - .1, x1: ww + .1, z0: wz0 - .45, z1: wz0, y0: 0, y1: 2.3});
+    // pilot house: lower wall, outward-raked dark glass all round, black frames, visor roof
+    const y0 = hs.top - .06, pa = ww - .55, pz0 = wz0 + .25, pz1 = wz1 - 1.55, Q0 = hp(pa, pz0, pz1, .3, 0, .2, 0), Q2 = hp(pa + .2, pz0 - .2, pz1 + .2, .35, 0, .25, 0), yg = y0 + .55, yh = yg + 1.15;
+    strip(bf, Q0, y0, Q0, yg); strip(S({color: 0x0b1116, roughness: .06, metalness: .55, side: DS}), Q0, yg, Q2, yh); strip(bf, Q2, yh, Q2, yh + .22); for (let k = 0; k < Q0.length - 1; k++) if (k % 2 === 1 || k === 0) seg(blk, Q0[k][0], yg, Q0[k][1], Q2[k][0], yh, Q2[k][1], .045, 5);
+    const Q4 = hp(pa + .38, pz0 - .55, pz1 + .35, .45, 0, .3, 0).slice(0, -1); plate(rf, 'y', Q4, yh + .22, yh + .34); plate(blk, 'y', hp(pa + .2, pz0 - .3, pz1 + .2, .35, 0, .25, 0).slice(0, -1), yh + .34, yh + .38);
+    const pt = yh + .38, mz = (pz0 + pz1) / 2 + .2; // mast with towing lights, radar, horn, searchlight, fire monitor
+    cyl(bf, .08, .1, 3, 0, pt + 1.5, mz, 0, 0, 10); box(bf, -.5, .5, pt + 1.2, pt + 1.26, mz - .15, mz + .15); for (let i = 0; i < 3; i++) { box(blk, -.07, .07, pt + 1.7 + i * .38, pt + 1.86 + i * .38, mz - .18, mz - .04); sph(whL, .05, 0, pt + 1.78 + i * .38, mz - .2); }
+    const ra = add(new THREE.BoxGeometry(1, 1, 1), blk, 0, pt + 3.2, mz); openArr(ra, 1.4); ud.shpMh.position.set(0, pt + 3.5, mz); sph(whL, .05, 0, pt + 3.45, mz); cyl(lgrey, .03, .1, .35, .35, pt + 1.38, mz, PI / 2, 0, 8);
+    slight(-.6, pt - .04, pz0 - .1); nav(pa + .5, yh + .1, pz0 + .3); for (const sx of [-1, 1]) whip(sx * (pa + .1), pt - .04, pz1 + .1, 2.4);
+    cyl(rd, .1, .12, .3, .6, pt + .15, pz0 + .1, 0, 0, 10); seg(rd, .6, pt + .3, pz0 + .1, .6, pt + .4, pz0 - .35, .05);
+    // fat funnel aft of the pilot house: raked oval loft with a red band and a white stripe
+    { const fz = wz1 - .55, fy = hs.top - .06, rings = [], NA = 16, fh = 2.4, H6 = [0, .3, .55, .78, .86, 1], S6 = [1.06, 1, 1, 1, 1, .98];
+      for (let i = 0; i < 6; i++) { const h = H6[i] * fh, r = []; for (let k = 0; k < NA; k++) { const a = k / NA * TAU; r.push([Math.cos(a) * .62 * S6[i], fy + h, fz + Math.sin(a) * .8 * S6[i] + h * .14]); } rings.push(r); }
+      const fm = rub; for (const [a, b, m] of [[0, 2, rf], [2, 3, rd], [3, 4, bf], [4, 5, fm]]) {
+        const pos = [], idx = []; for (const r of [rings[a], rings[b]]) for (const p of r) pos.push(...p); for (let k = 0; k < NA; k++) idx.push(k, (k + 1) % NA, NA + (k + 1) % NA, k, NA + (k + 1) % NA, NA + k); const q = new THREE.BufferGeometry(); q.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); q.setIndex(idx); q.computeVertexNormals(); add(q, m, 0, 0, 0); }
+      const fc = fz + fh * .14; plate(fm, 'y', rings[5].map(p => [p[0] * .96, fc + (p[2] - fc) * .96]), fy + fh - .25, fy + fh - .2); for (const dx of [-.22, .22]) cyl(rub, .12, .12, .4, dx, fy + fh + .05, fc, 0, 0, 10); ud.shpSmoke = [0, fy + fh + .3, fc]; }
+    // bow: pudding fender wrapped round the stem, H-bitts on the foredeck
+    { const pts = [], yf = fb - .25; for (let i = 0; i <= 12; i++) { const u = i / 12 * 2 - 1, z = zb + 2.4 * Math.abs(u) + .02, x = Math.sign(u) * (hx(z, yf, u < 0 ? -1 : 1) + .2); pts.push(new THREE.Vector3(Math.abs(u) < .01 ? 0 : x, yf, Math.abs(u) < .01 ? z - .18 : z)); } add(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 24, .32, 8), rub, 0, 0, 0); }
+    { const hz = BDECK.z0 + .45, bm = S({color: 0x2a2a2a, metalness: .5, roughness: .5}); for (const sx of [-.55, .55]) { cyl(bm, .14, .16, .75, sx, fb + .37, hz, 0, 0, 10); BW.push({x0: sx - .18, x1: sx + .18, z0: hz - .18, z1: hz + .18, y0: 0, y1: .75}); } seg(bm, -.75, fb + .55, hz, .75, fb + .55, hz, .07); }
+    // tyre fenders hung along both sides
+    for (const sd of [-1, 1]) for (let i = 0; i < 7; i++) { const z = mix(BDECK.z0 + .4, zs - 1.2, i / 6), x = sd * (hx(z, fb - .55, sd) + .16), t = add(new THREE.TorusGeometry(.3, .13, 6, 12), rub, x, fb - .55, z); t.rotation.y = PI / 2; seg(steel, x, fb - .27, z, sd * (hx(z, fb - .1, sd) - .05), deckTop(z) - .05, z, .012, 4); }
+    // aft: towing arch over the stern, winch drum, bitts
+    const am = bf, az = zs - 2.05, ax = hw - .62, at = fb + 2.7; for (const sd of [-1, 1]) { box(am, sd * ax - .12, sd * ax + .12, fb, at, az - .12, az + .12); BW.push({x0: sd * ax - .14, x1: sd * ax + .14, z0: az - .14, z1: az + .14, y0: 0, y1: at - fb}); }
+    box(am, -ax - .12, ax + .12, at - .05, at + .2, az - .14, az + .14); cyl(steel, .12, .12, .3, 0, at - .1, az, 0, PI / 2, 10); seg(steel, 0, at - .2, az, 0, at - .6, az + .1, .03);
+    const bt = S({color: 0x2a2a2a, metalness: .5, roughness: .5}); for (const sx of [-1.6, 1.6]) { cyl(bt, .16, .18, .55, sx, fb + .27, zs - 2.6, 0, 0, 10); cyl(bt, .24, .24, .05, sx, fb + .55, zs - 2.6, 0, 0, 10); box(bt, sx - .2, sx + .2, fb, fb + .55, zs - 2.8, zs - 2.4, 1); }
+    { const dz = zs - 1.35, dr = add(new THREE.CylinderGeometry(.42, .42, 1.6, 16), S({color: 0x6a1a14, metalness: .3}), 0, fb + .55, dz); dr.rotation.z = PI / 2; cyl(S({color: 0x9a8058, roughness: 1}), .5, .5, 1.3, 0, fb + .55, dz, 0, PI / 2, 14); for (const sx of [-.85, .85]) { box(steel, sx - .06, sx + .06, fb, fb + 1.05, dz - .5, dz + .5); cyl(steel, .62, .62, .05, sx * .94, fb + .55, dz, 0, PI / 2, 16); } BW.push({x0: -.9, x1: .9, z0: dz - .5, z1: dz + .5, y0: 0, y1: 1.05}); }
+    // magnet boom: post, slewing base, ram, the swinging group (shpMag) and its hook head (shpMagH)
+    { const bx = hw - .7, bz = zs - 3.2; cyl(yel, .16, .22, 2.6, bx, fb + 1.3, bz, 0, 0, 12); cyl(blk, .26, .26, .14, bx, fb + 2.55, bz, 0, 0, 12); BW.push({x0: bx - .25, x1: bx + .25, z0: bz - .25, z1: bz + .25, y0: 0, y1: 2.6});
+      const mg = new THREE.Group(); mg.position.set(bx, fb + 2.5, bz); g.add(mg); ud.shpMag = mg; const boom = new THREE.Mesh(new THREE.BoxGeometry(.2, .2, 3.2), yel); boom.position.set(1.1, .55, 0); boom.rotation.set(0, PI / 2, .35, 'YXZ'); mg.add(boom);
+      const ram = new THREE.Mesh(new THREE.CylinderGeometry(.05, .05, 1.2, 8), steel); ram.position.set(.35, .05, 0); ram.rotation.z = -1.05; mg.add(ram);
+      const hd = new THREE.Group(); hd.position.set(2.5, 1.05, 0); mg.add(hd); ud.shpMagH = hd; const cbl = new THREE.Mesh(new THREE.CylinderGeometry(.012, .012, 1.4, 4), steel); cbl.position.y = -.7; hd.add(cbl); const ms = new THREE.Mesh(new THREE.CylinderGeometry(.48, .48, .22, 16), S({color: 0xe8701a, roughness: .5, metalness: .3})); ms.position.y = -1.5; hd.add(ms); const mr = new THREE.Mesh(new THREE.CylinderGeometry(.5, .5, .05, 16), darkM); mr.position.y = -1.62; hd.add(mr); }
+    shpPuffs(g, 1);
+  }
+  if (tints.length) { const tm = new THREE.Mesh(mergeGeos(tints), tint); tm.renderOrder = 2; g.add(tm); tints.forEach(q => q.dispose()); }
+}
+{ const f0 = shpExtras; shpExtras = function (cls, X, ph) { if (ph || ![0, 1, 2, 8, 9, 10].includes(cls)) return f0.apply(this, arguments); if (cls >= 8) f0.call(this, -1, X, 0); else f0.apply(this, arguments); smlLook(cls, X); }; }
 // ---------------- the derelict MS Serenade, far to the north. Two decks you can explore, and the Steward.
 const CRZ = {x: -250, z: 2350, D1: 9, D2: 13}, CN = [], CWL = [];
 const inCruise = (x, z, y = 99) => Math.abs(x - CRZ.x) < 15 && z > CRZ.z - 68 && z < CRZ.z + 62 && y > 6;
