@@ -29,7 +29,7 @@ const hexS = c => '#' + c.toString(16).padStart(6, '0');
 
 // ---------------- net (jjfanwars relay)
 const RELAY_URL = 'wss://jjfanwars-relay.businessautomationvic.workers.dev';
-const GAME_V = 22;
+const GAME_V = 23;
 const Net = {
   tag: '[Rig]', role: 'solo', ws: null, peers: new Map(), code: '', relayT: {pose: 1}, id: '', name: '', handlers: {}, retry: 0, started: false,
   enc: new TextEncoder(), dec: new TextDecoder(),
@@ -483,7 +483,7 @@ function materials() {
       .replace('#include <bumpmap_pars_fragment>', bump)
       .replace('#include <clipping_planes_fragment>', `#include <clipping_planes_fragment>
         float hf = 0., dc = length(vWP.xz - cameraPosition.xz);
-        if (uBd.w > .5) { vec2 bd = vWP.xz - uBt.xy; float lx = bd.x * uBt.z - bd.y * uBt.w, lz = bd.x * uBt.w + bd.y * uBt.z, tt = clamp((lz - uBd.y) / (uBd.z - uBd.y), 0., 1.), ww = uBd.x * (tt < .45 ? pow(sin(tt / .45 * 1.5708), .75) : 1.) - .12; if (lz > uBd.y + .4 && lz < uBd.z - .08 && abs(lx) < ww) discard;
+        if (uBd.w > .5) { vec2 bd = vWP.xz - uBt.xy; float lx = bd.x * uBt.z - bd.y * uBt.w, lz = bd.x * uBt.w + bd.y * uBt.z, tt = clamp((lz - uBd.y) / (uBd.z - uBd.y), 0., 1.), ww = uBd.x * (tt < .45 ? pow(sin(tt / .45 * 1.5708), .75) : 1.) - .12; if (uBd.w > 1.5) { float zc = clamp(lz, uBd.y + uBd.x, uBd.z - uBd.x), ez = lz - zc; ww = sqrt(max(uBd.x * uBd.x - ez * ez, 0.)) - .05; if (abs(lx) < ww) discard; } else if (lz > uBd.y + .4 && lz < uBd.z - .08 && abs(lx) < ww) discard;
           float ax = abs(lx) - max(ww, 0.); hf = (1. - smoothstep(0., .5 + uSpd * .7, ax)) * step(uBd.y - 1., lz) * (1. - smoothstep(uBd.z - 1.5, uBd.z + 1., lz)) * (.2 + .6 * uSpd) + uSpd * (1. - smoothstep(0., 1.2 + uSpd * 1.4, ax)) * (1. - smoothstep(0., 2.5 + uBd.x * .8, abs(lz - uBd.y - 1.5))); }`)
       .replace('#include <color_fragment>', `#include <color_fragment>
         float cr = clamp(vWH / max(uA, .3), -1., 1.5); diffuseColor.rgb *= 1. + smoothstep(.1, .9, cr) * vec3(.6, 1.1, 1.0);
@@ -662,7 +662,7 @@ const HULLS = [
   {n: 'Fishing trawler', d: 'Long work deck, stern gantry, twice the hold', cost: 900, L: 17, W: 5.6, fb: 1.45, spd: .95, turn: .85, hold: 16, hp: 1.6, fuel: 1.4, col: 0x7a1e16, wh: [.12, .34]},
   {n: 'Patrol cutter', d: 'Fast and tough, radar mast, big searchlight', cost: 1900, L: 22, W: 6, fb: 1.6, spd: 1.45, turn: .9, hold: 20, hp: 2.2, fuel: 1.8, col: 0x2e333a, wh: [.2, .4]},
   {n: 'Cargo freighter', d: 'A massive ship: container deck, huge hold, very tough, slow to turn', cost: 3800, L: 38, W: 10, fb: 1.9, spd: .9, turn: .17, hold: 60, hp: 4, fuel: 3, col: 0x1c2c3e, wh: [.66, .84]},
-  {n: 'Research submarine', d: 'Glass dome cabin, dives to 80 m (at the wheel: C down, Space up), claws sunken treasure off the sea bed', cost: 5200, L: 24, W: 5.4, fb: 1.4, spd: 1.15, turn: .8, hold: 28, hp: 3, fuel: 2, col: 0xd8a020, sub: 1, maxDep: 80},
+  {n: 'Research submarine', d: 'Walk-in sub: hatch, control room, bunks, galley and a diver airlock. Dives to 80 m (C down, Space up at the helm), claws sunken treasure', cost: 5200, L: 24, W: 5.8, fb: 1.6, spd: 1.15, turn: .8, hold: 28, hp: 3, fuel: 2, col: 0xd8a020, sub: 1, maxDep: 80},
   {n: 'Dive support vessel', d: 'A 48 m work ship: helipad, deck crane, a huge hold. Divers go over the side from her stern platform', cost: 7500, L: 48, W: 12, fb: 1.9, spd: 1.05, turn: .155, hold: 90, hp: 5, fuel: 4, col: 0x24486a, wh: [.12, .24], eye: 5.5, big: 1},
   {n: 'Icebreaker', d: 'A 64 m red giant with an armoured bow and two funnels. Rams barely scratch her', cost: 12500, L: 64, W: 14, fb: 2, spd: 1.12, turn: .125, hold: 120, hp: 9, fuel: 5, col: 0x9a1a12, wh: [.16, .28], eye: 9, big: 1},
   {n: 'MS Serenade', d: 'The 120 m cruise liner from the far north. Start her engines on the derelict to claim her. Something still lives aboard', cost: 0, L: 120, W: 26, fb: 2.2, spd: 1.25, turn: .075, hold: 260, hp: 15, fuel: 9, col: 0xd8d4c8, wh: [.1, .2], eye: 24, big: 1, cruise: 1},
@@ -672,6 +672,12 @@ const tankMax = () => Math.round([100, 160, 240][B.up.tank] * HC().fuel), hullMa
 const BDECK = {x0: -2, x1: 2, z0: -5, z1: 5.2, y: 1.3}, BW = [], BHELM = [0, -2.6];
 const BSPOT = {hold: [0, 3], fuel: [1.5, 4.6], patch: [-1.5, 4.6]};
 const BG = {zs: 5.4, zb: -6.8, W: 4.4, L: 12.2, hw: 2.2};
+// the research sub (HULLS[4]) in boat-local metres (y 0 = waterline, bow at -z): pressure hull, casing walkway (= BDECK), the inner deck at FI, trunk TR, airlock chamber LKR, outer door LD
+const SUB = {R: 2.5, Ri: 2.3, cy: -1, zB: -10.8, zA: 7.6, tail: 10.2, dR: 2, FI: -2.4, OH: -.05, fx: 1.8, zF: -11.9, zE: 7, BH: [-2.6, 4.2], dw: .5, CAS: 1.6, cx: 1.35, cz0: -9.4, cz1: 8.2,
+  SAIL: {x: .55, z0: -7.4, z1: -4.4, top: 4.2}, TR: {x: 0, z: -3.6, r: .45}, LKR: {x0: .25, x1: 1.78, z0: 2, z1: 3.8, dz0: 2.4, dz1: 3.4}, LD: {x: 2.45, y: -1.6, z: 2.9}, HELM: [0, -10.45], SCOPE: [0, -5.9],
+  lamps: [[0, -.25, -10.1], [0, -.25, -7.3], [0, -.25, -4.7], [0, -.25, -1], [-.4, -.25, 2.9], [1, -.3, 2.9], [0, -.25, 5.5]]};
+// boat floors (the deck, plus the sub's inner deck), the airlock state (0 dry, 1 seal, 2 flood, 3 open, 4 shut, 5 drain, 6 unseal), sub canvases and uniforms
+const BFL = [], LK = {st: 0, t: 0, w: 0, ent: -1}, SUBC = {}, _sb = new THREE.Vector3(), _sc = new THREE.Vector3(); B.hat = 1;
 function bL2W(lx, lz) { const c = Math.cos(B.yaw), s = Math.sin(B.yaw); return [B.x + lx * c + lz * s, B.z - lx * s + lz * c]; }
 function bW2L(x, z) { const c = Math.cos(B.yaw), s = Math.sin(B.yaw), dx = x - B.x, dz = z - B.z; return [dx * c - dz * s, dx * s + dz * c]; }
 let BOAT = null;
@@ -681,7 +687,7 @@ function buildBoat() {
   if (BOAT) { scene.remove(BOAT); const keep = new Set(Object.values(MATC).concat(Object.values(MAT))), txs = new Set(Object.values(TX));
     BOAT.traverse(o => { if (o.geometry && !o.isSprite) o.geometry.dispose(); const m = o.material; if (m && !keep.has(m)) { if (m.map && !txs.has(m.map)) m.map.dispose(); m.dispose(); } }); }
   for (let i = INTER.length - 1; i >= 0; i--) if (INTER[i].boat) INTER.splice(i, 1);
-  BW.length = 0;
+  BW.length = 0; BFL.length = 0; BFL.push(BDECK); BHELM.length = 2;
   const L = H.L, W = H.W, hw = W / 2, fb = H.fb, zs = L * .44, zb = -L * .56;
   Object.assign(BG, {zs, zb, W, L, hw, sub: !!H.sub});
   const g = new THREE.Group(), S = o => { if (o.nc) { delete o.nc; return new THREE.MeshStandardMaterial(Object.assign({roughness: .55, metalness: .15}, o)); } const k = Object.keys(o).map(q => q + ':' + (o[q] && o[q].isTexture ? o[q].uuid : o[q])).join(); return MATC[k] || (MATC[k] = new THREE.MeshStandardMaterial(Object.assign({roughness: .55, metalness: .15}, o))); };
@@ -820,33 +826,7 @@ function buildBoat() {
         for (const sd of [-1, 1]) box(yel, sd * (hw - 1.5) - .2, sd * (hw - 1.5) + .2, fb, fb + 5, zs - 1.2, zs - .8, 1); box(yel, -hw + 1.3, hw - 1.3, fb + 4.8, fb + 5.2, zs - 1.2, zs - .8); }
     }
     INTER.push({kind: 'ladder', boat: 1, lx: 0, lz: zs + 1, ly: -fb, r: 3.5, top: 'boat', label: () => 'Climb aboard', on: () => P.sw});
-  } else {
-    // research sub: a long yellow pressure hull, a glass dome over a flat cabin floor, dive planes, rudder, shrouded prop
-    const R = hw, cy = fb - R * .52, sm = S({color: (PAINTS[B.up.paint || 0] || PAINTS[0]).c || H.col, roughness: .35, metalness: .3}), dl = zs - 2.6, df = zb + 4;
-    const body = add(new THREE.CapsuleGeometry(R, L - R * 2, 10, 24), sm, 0, cy, (zb + zs) / 2); body.rotation.x = PI / 2;
-    for (const z of [zb + 3, zs - 3]) { const b = add(new THREE.TorusGeometry(R * 1.005, .07, 6, 32), darkM, 0, cy, z); }
-    const fl = R * .86; add(new THREE.BoxGeometry(fl * 2, .14, dl - df), S({map: TX.grate || TX.wood, color: 0x8a8a8a}), 0, fb - .07, (df + dl) / 2);
-    const dome = add(new THREE.CylinderGeometry(fl, fl, dl - df, 28, 1, true, -PI / 2, PI), glass, 0, fb, (df + dl) / 2); dome.rotation.x = PI / 2; dome.rotation.z = 0; dome.rotation.y = 0; dome.rotation.order = 'XYZ'; dome.rotation.set(PI / 2, 0, PI / 2 * 0);
-    dome.geometry.rotateY(PI / 2); const cap = add(new THREE.SphereGeometry(fl, 24, 12, 0, PI, 0, PI / 2), glass, 0, fb, df); cap.rotation.set(-PI / 2, 0, 0); cap.geometry.rotateX(0);
-    for (let z = df; z <= dl; z += (dl - df) / 5) { const rib = add(new THREE.TorusGeometry(fl, .04, 6, 24, PI), steel, 0, fb, z); }
-    box(sm, -fl, fl, fb - .1, fb + 2.4, dl, dl + .25); box(darkM, -.5, .5, fb, fb + 2, dl + .2, dl + .3);
-    BW.push({x0: -fl - 1, x1: -fl + .25, z0: df - 2, z1: dl + .3, y0: 0, y1: 3}, {x0: fl - .25, x1: fl + 1, z0: df - 2, z1: dl + .3, y0: 0, y1: 3}, {x0: -fl, x1: fl, z0: df - 2, z1: df + .3, y0: 0, y1: 3}, {x0: -fl, x1: -.55, z0: dl, z1: dl + .3, y0: 0, y1: 3}, {x0: .55, x1: fl, z0: dl, z1: dl + .3, y0: 0, y1: 3});
-    BW.push({x0: -.55, x1: .55, z0: dl, z1: dl + .3, y0: 0, y1: 3, hatch: 1});
-    BDECK.x0 = -fl + .3; BDECK.x1 = fl - .3; BDECK.z0 = df + .3; BDECK.z1 = dl + 1.6; BDECK.y = fb;
-    add(new THREE.BoxGeometry(1.2, .1, 1.4), steel, 0, fb - .05, dl + .9);
-    for (const sd of [-1, 1]) { const pl = add(new THREE.BoxGeometry(2.6, .1, 1.2), darkM, sd * (R + 1.1), cy, zb + 5); g.userData['pl' + sd] = pl; const fn = add(new THREE.BoxGeometry(.1, 2.2, 1.6), darkM, 0, cy + sd * 1.6, zs - .4); fn.rotation.z = sd < 0 ? 0 : 0; add(new THREE.BoxGeometry(2.2, .1, 1.6), darkM, sd * 1.4, cy, zs - .4); }
-    const shroud = add(new THREE.TorusGeometry(1.1, .12, 8, 24), darkM, 0, cy, zs + .5); const prop = new THREE.Group(); prop.position.set(0, cy, zs + .5); g.add(prop); for (let i = 0; i < 4; i++) { const b = new THREE.Mesh(new THREE.BoxGeometry(.18, 1, .05), steel); b.rotation.z = i * PI / 2; b.position.set(Math.sin(i * PI / 2) * .45, Math.cos(i * PI / 2) * .45, 0); prop.add(b); } g.userData.prop = prop;
-    for (const sd of [-1, 1]) add(new THREE.SphereGeometry(.25, 10, 8), S({color: 0xfff4d0, emissive: 0xfff0c0, emissiveIntensity: 2}), sd * 1.2, cy - .4, zb + .9);
-    const hz = df + 1.5; box(darkM, -.6, .6, fb, fb + 1, hz - .5, hz, 1);
-    const wg = new THREE.Group(); wg.position.set(0, fb + 1.05, hz + .08); wg.rotation.x = -.45; g.add(wg); const ym = S({color: 0x222222}); wg.add(new THREE.Mesh(new THREE.TorusGeometry(.22, .03, 8, 20, PI), ym)); const yb = new THREE.Mesh(new THREE.BoxGeometry(.46, .05, .05), ym); wg.add(yb); g.userData.wheel = wg;
-    const scr = add(new THREE.BoxGeometry(.9, .45, .04), S({color: 0x102030, emissive: 0x2a70a0, emissiveIntensity: .25}), 0, fb + 1.35, hz - .3); scr.rotation.x = -.5;
-    BHELM[0] = 0; BHELM[1] = hz + .6; g.userData.lightZ = zb + .9; g.userData.lightY = cy - .4; g.userData.wz = [df, dl];
-    BSPOT.hold[0] = 0; BSPOT.hold[1] = dl - 2.4; BSPOT.fuel[0] = fl - .6; BSPOT.fuel[1] = dl - .8; BSPOT.patch[0] = -fl + .6; BSPOT.patch[1] = dl - .8;
-    box(S({map: TX.wood, color: 0x6a5a44}), -.9, .9, fb, fb + .22, BSPOT.hold[1] - .7, BSPOT.hold[1] + .7); BW.push({x0: -.9, x1: .9, z0: BSPOT.hold[1] - .7, z1: BSPOT.hold[1] + .7, y0: 0, y1: .2});
-    cyl(redM, .13, .13, .32, BSPOT.fuel[0], fb + .16, BSPOT.fuel[1]); box(yel, BSPOT.patch[0] - .3, BSPOT.patch[0] + .3, fb, fb + .4, BSPOT.patch[1] - .2, BSPOT.patch[1] + .2);
-    for (let y = -.8; y < fb; y += .3) box(steel, -.32, .32, y, y + .04, dl + 1.65, dl + 1.7);
-    INTER.push({kind: 'ladder', boat: 1, lx: 0, lz: dl + 2.2, ly: -fb, r: 3.5, top: 'boat', label: () => 'Climb aboard', on: () => P.sw && (B.dep || 0) < .6});
-  }
+  } else buildSub(g, {S, glass, darkM, steel, yel, H});
   const cargo = new THREE.Group(); g.add(cargo); g.userData.cargo = cargo; g.userData.cls = cls; g.userData.sig = cls + ':' + (B.up.paint || 0);
   { const gc = cv(128, 256, (q, w, h) => { const gr = q.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, h / 2); gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(.55, 'rgba(255,255,255,.5)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); q.fillStyle = gr; q.fillRect(0, 0, w, h); });
     const gm = new THREE.Mesh(new THREE.PlaneGeometry(W + 5, L + 6), new THREE.MeshBasicMaterial({map: new THREE.CanvasTexture(gc), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0})); gm.rotation.x = -PI / 2; gm.position.set(0, .12, (zb + zs) / 2); gm.renderOrder = 3; g.add(gm); g.userData.glow = gm; }
@@ -858,7 +838,7 @@ function buildBoat() {
   { g.updateMatrixWorld(true); const live = new Set(), inv = new THREE.Matrix4().copy(g.matrixWorld).invert(), list = [], gone = [];
     for (const k in g.userData) { const o = g.userData[k]; if (o && o.isObject3D) o.traverse(q => live.add(q)); }
     g.traverse(o => { if (!o.isMesh || live.has(o) || o.material.vertexColors || (o.material.transparent && o.material !== glass)) return; const q = o.geometry.index ? o.geometry.toNonIndexed() : o.geometry.clone(); q.applyMatrix4(_m4.multiplyMatrices(inv, o.matrixWorld)); list.push([q, o.material, o.castShadow]); gone.push(o); });
-    for (const o of gone) { o.parent.remove(o); o.geometry.dispose(); } for (const m of mergeByMat(list)) g.add(m); }
+    for (const o of gone) { o.parent.remove(o); o.geometry.dispose(); } for (const m of mergeByMat(list)) (BG.sub && m.material.userData.inner ? SUBC.inner : g).add(m); if (BG.sub) subDone(g); }
   scene.add(g); BOAT = g;
 }
 function boatStep(dt) {
@@ -872,8 +852,9 @@ function boatStep(dt) {
   B.v += (acc - drag * B.v * Math.abs(B.v) - (Math.abs(B.thr) < .05 ? .25 * B.v : 0)) / m * dt;
   const yrT = -B.st * clamp(B.v / 3.5, -1, 1) * .5 * H.turn + (H.L > 30 ? -B.st * .035 * (1 - clamp(Math.abs(B.v) / 3, 0, 1)) : 0);
   B.yr = mix(B.yr || 0, yrT, Math.min(1, dt * 2.2 / m)); B.yaw += B.yr * dt;
-  if (H.sub) { const dv = drv && drv.seat && drv.in ? drv.in[2] || 0 : 0, mx = Math.max(0, Math.min(H.maxDep || 26, -seaBed(B.x, B.z) - 4)); B.dtar = clamp((B.dtar || 0) + dv * dt * 2.2, 0, mx); B.dep = (B.dep || 0) + clamp(B.dtar - (B.dep || 0), -dt * 1.6, dt * 1.6); } else B.dep = B.dtar = 0;
+  if (H.sub) subDive(drv, dt); else B.dep = B.dtar = 0;
   B.x += -Math.sin(B.yaw) * B.v * dt; B.z += -Math.cos(B.yaw) * B.v * dt;
+  if (H.sub) subGround();
   let hit = 0;
   const r = BG.hw * .95, n = Math.max(3, Math.ceil((BG.zs - BG.zb - r * 2) / 3));
   for (let ci = 0; ci <= n; ci++) { const lz = mix(BG.zb + r * .9, BG.zs - r * .6, ci / n);
@@ -893,6 +874,7 @@ function damageBoat(n) { if (B.sink > 0) return; B.hull = Math.max(0, B.hull - n
 function resetBoat(sunk) {
   const wasX = B.x, wasZ = B.z;
   Object.assign(B, {x: JETTY.x - 2.1 - BG.hw, z: JETTY.z + 3 + Math.max(0, BG.L - 12) * .5, yaw: PI, v: 0, yr: 0, trim: 0, thr: 0, st: 0, driver: null, sink: 0, dep: 0, dtar: 0}); B.hull = Math.max(B.hull, hullMax() * .6); B.fuel = Math.max(B.fuel, tankMax() * .4);
+  Object.assign(LK, {st: 0, t: 0, w: 0, ent: -1, tw: 0, wv: 0}); B.hat = 1; SUBC.dq = 0;
   if (sunk) { B.hold = []; emit({k: 'boatback', x: wasX, z: wasZ}); }
 }
 // ---------------- boat feel and sound: one engine voice per hull, sea legs, water on the hull, a small score
@@ -939,14 +921,15 @@ function boatAudio(dt, t) {
   sT(A.wash.g.gain, wv, .2); A.wash.f.frequency.setTargetAtTime(380 + sp * 45, t, .2); sT(A.hiss.g.gain, wv * .45, .2);
   if (P && !P.sw && (P.ob || Math.hypot(cam.position.x - B.x, cam.position.z - B.z) < BG.L * .5 + 6) && sp < 1.2 && dp < .6 && B.sink <= 0 && (E.lap = (E.lap ?? 1) - dt) <= 0) { E.lap = .6 + Math.random(); burst(620 + Math.random() * 200, 2, .03 * (.7 + Math.random() * .5), .2); }
   // bilge alarm below a quarter hull, two soft tones at the helm
-  const low = P && P.ob && B.sink <= 0 && B.hull < hullMax() * .25; if (low) { A.bilge.o.frequency.value = Math.floor(G.wt / .45) % 2 ? 880 : 660; const [hx, hz] = bL2W(BHELM[0], BHELM[1]); setPan(A.bilge.p, hx, BDECK.y + 1 + B.heave, hz); } sT(A.bilge.g.gain, low && G.wt % .45 < .36 ? .015 : 0, .02);
+  const low = P && P.ob && B.sink <= 0 && B.hull < hullMax() * .25; if (low) { A.bilge.o.frequency.value = Math.floor(G.wt / .45) % 2 ? 880 : 660; const [hx, hz] = bL2W(BHELM[0], BHELM[1]); setPan(A.bilge.p, hx, (BHELM[2] ?? BDECK.y) + 1 + B.heave, hz); } sT(A.bilge.g.gain, low && G.wt % .45 < .36 ? .015 : 0, .02);
   // the dock crew hammers while the hull fills back up, then a chime
   const dh = B.hull - (E.hp ?? B.hull); E.hp = B.hull; if (dh > 0 && dh < 5 && Math.hypot(B.x - JETTY.x, B.z - JETTY.z) < 35 + BG.L * .5) E.rep = .9;
   if (E.rep > 0) { E.rep -= dt; if (B.hull >= hullMax() - .05) { E.rep = 0; const p = at(B.x, 1.5, B.z, 8); tone(1175, .05, .5, 'triangle', p); setTimeout(() => tone(1568, .05, .8, 'triangle', p), 130); } else if ((E.hmT = (E.hmT || 0) - dt) <= 0) { E.hmT = .35; burst(1500, 4, .06, .04, 'bandpass', at(B.x + (Math.random() - .5) * BG.W, 1.2, B.z + (Math.random() - .5) * BG.L * .5, 5)); } }
   // the sub: vents flood the tanks, air blows them, the pressure hull groans
   if (BG.sub) { const dtr = B.dtar || 0; if (dtr < .1) E.va = 1; else if (dtr > .5 && E.va) { E.va = 0; if (Snd.vent) Snd.vent(A.bPan); }
     if (dp > 1.5) E.bl = 1; else if (dp < .5 && E.bl) { E.bl = 0; burst(1600, .7, .25, 1.5, 'highpass', A.bPan); }
-    if (dp > 3 && (E.gr = (E.gr ?? 12) - dt) <= 0) { E.gr = 10 + Math.random() * 15; if (Snd.groan) Snd.groan(A.bPan, dp / 20); } }
+    if (dp > 3 && (E.gr = (E.gr ?? 12) - dt) <= 0) { E.gr = 10 + Math.random() * 15; if (Snd.groan) Snd.groan(A.bPan, dp / 20); }
+    subAudio(dt, t, sT); }
 }
 // a small score on its own bus: plucked pentatonic phrases by day, slow chords at golden hour and sunset, low notes over the night pad, tremolo in storms
 const Mus = {ph: null, ci: -1, cn: 0, nx: 0, bn: 0, q: [], son: false, sp: null, spT: 0, thT: 0, gold: false,
@@ -982,6 +965,396 @@ const Mus = {ph: null, ci: -1, cn: 0, nx: 0, bn: 0, q: [], son: false, sp: null,
     U.sg.gain.setTargetAtTime(mood === 'storm' && !quiet ? .035 * clamp((G.storm - .45) * 3, 0, 1) : 0, t, 1.5);
   },
 };
+
+// ---------------- the research sub: a walk-in pressure hull under a casing and sail. The trunk hatch, the bow viewport and pilot seat, the control room, bunks and galley,
+// the cargo racks, a diver lock-out chamber and the motor room. Interior materials skip the sun and fog while you are inside (subHook), lit by two pooled lamps
+function uvBox(q, s) { const p = q.attributes.position, n = q.attributes.normal, uv = q.attributes.uv; for (let i = 0; i < p.count; i++) { const ax = Math.abs(n.getX(i)), ay = Math.abs(n.getY(i)), az = Math.abs(n.getZ(i)), x = p.getX(i), y = p.getY(i), z = p.getZ(i); if (ay >= ax && ay >= az) uv.setXY(i, x * s, z * s); else if (ax >= az) uv.setXY(i, z * s, y * s); else uv.setXY(i, x * s, y * s); } uv.needsUpdate = true; return q; }
+function uvS(q, su, sv) { const uv = q.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * su, uv.getY(i) * sv); return q; }
+function uvRow(q, r, n = 8) { const uv = q.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setY(i, 1 - (r + 1) / n + uv.getY(i) / n); return q; }
+// a box stretched between two end rectangles a, b = [z, x0, x1, y0, y1] (fairings, fins)
+function loft(a, b) { const q = new THREE.BoxGeometry(1, 1, 1), p = q.attributes.position; for (let i = 0; i < p.count; i++) { const e = p.getZ(i) < 0 ? a : b; p.setXYZ(i, p.getX(i) < 0 ? e[1] : e[2], p.getY(i) < 0 ? e[3] : e[4], e[0]); } q.computeVertexNormals(); return q; }
+function subHook(sh) { Object.assign(sh.uniforms, SUBC.U); const C = THREE.ShaderChunk;
+  sh.fragmentShader = 'uniform float uFogK, uKey, uHemi; uniform vec3 uFill;\n' + sh.fragmentShader
+    .replace('#include <lights_fragment_begin>', C.lights_fragment_begin.replace('getDirectionalLightInfo( directionalLight, directLight );', 'getDirectionalLightInfo( directionalLight, directLight ); directLight.color *= uKey;').replace('getHemisphereLightIrradiance( hemisphereLights[ i ], geometryNormal )', 'getHemisphereLightIrradiance( hemisphereLights[ i ], geometryNormal ) * uHemi'))
+    .replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\n\ttotalEmissiveRadiance += uFill * diffuseColor.rgb;')
+    .replace('#include <fog_fragment>', C.fog_fragment.replace('fogFactor );', 'fogFactor * uFogK );')); }
+function subMat(m) { if (!m.userData.inner) { m.userData.inner = 1; m.onBeforeCompile = subHook; } return m; }
+function subTex() {
+  if (TX.subLn) return;
+  TX.subLn = tex(cv(256, 256, (q, w, h) => { q.fillStyle = '#cdcbb2'; q.fillRect(0, 0, w, h); for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) { q.fillStyle = `rgba(${Math.random() < .5 ? '255,255,240' : '90,90,70'},${.03 + Math.random() * .05})`; q.fillRect(i * 64 + 2, j * 64 + 2, 60, 60); }
+    q.fillStyle = '#8a8a72'; for (let i = 0; i <= w; i += 64) { q.fillRect(i - 1, 0, 2, h); q.fillRect(0, i - 1, w, 2); } q.fillStyle = '#76766a'; for (let i = 0; i < w; i += 64) for (let j = 6; j < h; j += 12) { q.fillRect(i + 4, j, 2, 2); q.fillRect(j, i + 4, 2, 2); } noiseFill(q, w, h, 10); }));
+  TX.dia = tex(cv(128, 128, (q, w, h) => { q.fillStyle = '#3c4042'; q.fillRect(0, 0, w, h); for (let y = 0; y < h; y += 8) for (let x = (y / 8 % 2) * 8; x < w; x += 16) { q.save(); q.translate(x + 4, y + 4); q.rotate(y / 8 % 2 ? .6 : -.6); q.fillStyle = '#6c7274'; q.fillRect(-4, -1, 8, 2.2); q.fillStyle = '#25282a'; q.fillRect(-4, 1.2, 8, 1); q.restore(); } noiseFill(q, w, h, 16); }));
+  TX.subPan = tex(cv(128, 128, (q, w, h) => { q.fillStyle = '#5d6c64'; q.fillRect(0, 0, w, h); q.strokeStyle = 'rgba(20,30,25,.6)'; q.lineWidth = 2; q.strokeRect(2, 2, w - 4, h - 4); q.strokeStyle = 'rgba(200,220,210,.18)'; q.strokeRect(5, 5, w - 10, h - 10); q.fillStyle = '#2a302c'; for (const [x, y] of [[9, 9], [w - 11, 9], [9, h - 11], [w - 11, h - 11]]) { q.beginPath(); q.arc(x + 1, y + 1, 2.5, 0, TAU); q.fill(); } noiseFill(q, w, h, 12); }));
+  TX.gface = tex(cv(128, 128, (q) => { q.fillStyle = '#222'; q.fillRect(0, 0, 128, 128); q.fillStyle = '#efe9da'; q.beginPath(); q.arc(64, 64, 60, 0, TAU); q.fill(); q.strokeStyle = '#222'; for (let i = 0; i <= 10; i++) { const t = (-135 + 27 * i) * PI / 180 - PI / 2; q.lineWidth = i % 5 ? 2 : 4; q.beginPath(); q.moveTo(64 + Math.cos(t) * 44, 64 + Math.sin(t) * 44); q.lineTo(64 + Math.cos(t) * 54, 64 + Math.sin(t) * 54); q.stroke(); } q.strokeStyle = '#c02010'; q.lineWidth = 4; q.beginPath(); q.moveTo(64, 64); q.lineTo(64 + Math.cos(-.6) * 44, 64 + Math.sin(-.6) * 44); q.stroke(); q.fillStyle = '#222'; q.beginPath(); q.arc(64, 64, 6, 0, TAU); q.fill(); }));
+  TX.haz = tex(cv(64, 16, (q, w, h) => { q.fillStyle = '#d8a820'; q.fillRect(0, 0, w, h); q.fillStyle = '#151515'; for (let i = -16; i < w + 16; i += 16) { q.beginPath(); q.moveTo(i, h); q.lineTo(i + 8, h); q.lineTo(i + 16, 0); q.lineTo(i + 8, 0); q.fill(); } }));
+  TX.nslip = tex(cv(128, 128, (q, w, h) => { q.fillStyle = '#34383a'; q.fillRect(0, 0, w, h); for (let i = 0; i < 1400; i++) { const v = 30 + Math.random() * 70 | 0; q.fillStyle = `rgb(${v},${v + 3},${v + 4})`; q.fillRect(Math.random() * w, Math.random() * h, 1.5, 1.5); } }));
+  TX.subSign = tex(cv(256, 256, (q, w) => { [['NAUTILUS II', '#16191b', '#e8e4d6'], ['AIRLOCK', '#d8b020', '#141414'], ['MAIN BALLAST', '#2a2f2c', '#e0d8b8'], ['SONAR', '#2a2f2c', '#9affc0'], ['BATTERY ROOM', '#d8b020', '#141414'], ['EMERGENCY BLOW', '#a01a12', '#f4ece0'], ['KEEP SHUT AT SEA', '#2a2f2c', '#e0d8b8'], ['MIND YOUR HEAD', '#d8b020', '#141414']].forEach(([t, b, f], i) => { q.fillStyle = b; q.fillRect(0, i * 32, w, 32); q.fillStyle = f; q.font = `bold ${i ? 19 : 22}px ${i ? 'Arial, sans-serif' : 'Georgia, serif'}`; q.textAlign = 'center'; q.textBaseline = 'middle'; q.fillText(t, w / 2, i * 32 + 17); }); }));
+  const ct = (k, w, h) => { SUBC[k] = cv(w, h, q => { q.fillStyle = '#000c05'; q.fillRect(0, 0, w, h); }); const t = SUBC[k + 'T'] = new THREE.CanvasTexture(SUBC[k]); t.colorSpace = THREE.SRGBColorSpace; };
+  ct('son', 256, 256); ct('dep', 128, 128); ct('ind', 128, 64);
+  SUBC.U = {uFogK: {value: 1}, uKey: {value: 0}, uHemi: {value: .2}, uFill: {value: new THREE.Color()}};
+}
+function buildSub(g, o) {
+  subTex(); const {S, glass, darkM, steel, yel, H} = o, U = SUB, {R, Ri, cy, zB, zE, FI, OH, CAS, TR, LKR, LD, cx, cz0, cz1} = U, TRZ = TR.z, sx = U.SAIL.x;
+  const inner = SUBC.inner = new THREE.Group(); g.add(inner);
+  const sm = S({color: (PAINTS[B.up.paint || 0] || PAINTS[0]).c || H.col, roughness: .35, metalness: .3});
+  const SI = q => subMat(S(Object.assign({name: 'si', envMapIntensity: .15}, q))), NC = q => subMat(S(Object.assign({nc: 1, envMapIntensity: .15}, q)));
+  const put = (par, cs) => (geo, m, uv) => { if (uv) uvBox(geo, uv); const q = new THREE.Mesh(geo, m); q.castShadow = cs && m !== glass; q.receiveShadow = true; par.add(q); return q; }, ia = put(inner, false), ea = put(g, true);
+  const bx = (x0, x1, y0, y1, z0, z1) => new THREE.BoxGeometry(Math.abs(x1 - x0), Math.abs(y1 - y0), Math.abs(z1 - z0)).translate((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2);
+  const ib = (m, x0, x1, y0, y1, z0, z1, uv) => ia(bx(x0, x1, y0, y1, z0, z1), m, uv), eb = (m, x0, x1, y0, y1, z0, z1, uv) => ea(bx(x0, x1, y0, y1, z0, z1), m, uv);
+  const cY = (r0, r1, y0, y1, x, z, n = 12, open) => new THREE.CylinderGeometry(r1, r0, y1 - y0, n, 1, !!open).translate(x, (y0 + y1) / 2, z);
+  const cZ = (r0, r1, z0, z1, x, y, n = 12, open) => new THREE.CylinderGeometry(r1, r0, z1 - z0, n, 1, !!open).rotateX(PI / 2).translate(x, y, (z0 + z1) / 2);
+  const cX = (r, x0, x1, y, z, n = 8) => new THREE.CylinderGeometry(r, r, x1 - x0, n).rotateZ(PI / 2).translate((x0 + x1) / 2, y, z);
+  const sph = (r, x, y, z, n = 10) => new THREE.SphereGeometry(r, n, Math.max(4, n * .7 | 0)).translate(x, y, z);
+  const tor = (r, t, x, y, z, ax = 'z', n = 20) => { const q = new THREE.TorusGeometry(r, t, 6, n); if (ax === 'x') q.rotateY(PI / 2); else if (ax === 'y') q.rotateX(PI / 2); return q.translate(x, y, z); };
+  const pl = (w, h, x, y, z, ry = 0, rx = 0) => { const q = new THREE.PlaneGeometry(w, h); if (rx) q.rotateX(rx); if (ry) q.rotateY(ry); return q.translate(x, y, z); };
+  const piv = (par, x, y, z, m, geos, cs) => { const gp = new THREE.Group(); gp.position.set(x, y, z); par.add(gp); const q = new THREE.Mesh(mergeGeos(geos), m); q.castShadow = !!cs; q.receiveShadow = true; gp.add(q); return gp; };
+  const spr = (c, s, x, y, z, par = g) => { const q = new THREE.Sprite(new THREE.SpriteMaterial({map: TX.glow, color: c, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending})); q.scale.setScalar(s); q.position.set(x, y, z); par.add(q); return q; };
+  // walls: absolute boat-frame heights; interior ones only stop crew aboard, ext ones only stop swimmers and divers
+  const Wl = (x0, x1, z0, z1, y0 = FI, y1 = OH, f = {int: 1}) => BW.push(Object.assign({x0, x1, z0, z1, y0: y0 - CAS, y1: y1 - CAS}, f));
+  // ---- outside: the pressure hull (open on top under the casing), the acrylic bow dome in its bolted ring, floodlights, skids, the chin sonar
+  const zinc = S({color: 0x9aa4a8, metalness: .5, roughness: .55}), recM = S({color: 0x05080a, roughness: .9}), nsM = S({map: TX.nslip, color: 0x8a8e90, roughness: .95, metalness: .1}), sgM = S({map: TX.subSign, roughness: .6}), stD = S({color: 0x5a6068, metalness: .6, roughness: .4, side: THREE.DoubleSide});
+  const lensM = S({nc: 1, color: 0xfff6e0, emissive: 0xfff0c8, emissiveIntensity: .2}), lkLampM = S({nc: 1, color: 0x101010, emissive: 0x30ff50, emissiveIntensity: 1.5});
+  const lathe = (pts, a0, aL, n = 40) => new THREE.LatheGeometry(pts.map(([r, z]) => new THREE.Vector2(r, z)), n, a0, aL).rotateX(PI / 2).translate(0, cy, 0);
+  ea(lathe([[1.96, zB], [2.4, zB + .01], [R, zB + .1], [R, cz0]], 0, TAU), sm); ea(lathe([[R, cz0], [R, U.zA]], PI + .5, TAU - 1, 36), sm);
+  { const tp = [[R, U.zA]]; for (let i = 1; i <= 12; i++) { const u = i / 12; tp.push([.55 + 1.95 * (1 - Math.pow(u, 1.6)), U.zA + u * 2.6]); } tp.push([.4, 10.3], [.22, 10.38], [0, 10.4]); ea(lathe(tp, 0, TAU), sm); }
+  for (const z of [-6.2, .4, 6.4]) ea(tor(R + .004, .03, 0, cy, z, 'z', 48), darkM);
+  ea(tor(2.18, .2, 0, cy, zB, 'z', 44), steel); for (let i = 0; i < 24; i++) { const a = i / 24 * TAU; ea(cZ(.04, .04, zB - .25, zB - .17, Math.sin(a) * 2.18, cy + Math.cos(a) * 2.18, 6), darkM); }
+  ea(new THREE.SphereGeometry(U.dR, 32, 16, 0, TAU, 0, PI / 2).rotateX(-PI / 2).translate(0, cy, zB), glass);
+  ea(new THREE.SphereGeometry(.5, 14, 8, 0, TAU, 0, PI / 2).scale(1, .6, 1.4).rotateX(PI).translate(0, -3.32, -9.7), darkM);
+  for (const s of [-1, 1]) { eb(darkM, s * 1.25 - .08, s * 1.25 + .08, -3.58, -3.05, -8.6, 6.2); for (const z of [-8, -2, 4]) eb(darkM, s * 1.25 - .05, s * 1.25 + .05, -3.3, -2.9, z - .1, z + .1); }
+  for (const a of [PI / 4, 3 * PI / 4, 5 * PI / 4, 7 * PI / 4]) { const x = Math.sin(a) * 2.38, y = cy + Math.cos(a) * 2.38; ea(cZ(.15, .13, zB - .4, zB - .05, x, y, 12), darkM); ea(new THREE.CircleGeometry(.11, 14).rotateY(PI).translate(x, y, zB - .405), lensM); }
+  { const geos = []; for (const s of [-1, 1]) geos.push(new THREE.ConeGeometry(1.9, 12, 16, 1, true).translate(0, -6, 0).rotateX(PI / 2 - .22).rotateY(s * -.12).translate(s * 1.68, cy - 1.68, zB - .42)); const bm = new THREE.Mesh(mergeGeos(geos), beamMat(0xd8ecff, .3)); bm.visible = false; bm.renderOrder = 4; g.add(bm); g.userData.beams = bm; }
+  { const n = 160, pos = new Float32Array(n * 3); for (let i = 0; i < n; i++) pos.set([(Math.random() - .5) * 9, cy - 3.5 + Math.random() * 5.5, -12.8 - Math.random() * 12], i * 3); // drifting motes in the floodlights
+    const gq = new THREE.BufferGeometry(); gq.setAttribute('position', new THREE.BufferAttribute(pos, 3)); const mo = new THREE.Points(gq, new THREE.PointsMaterial({map: TX.glow, color: 0xb8d8e0, size: .08, transparent: true, opacity: .7, depthWrite: false, blending: THREE.AdditiveBlending})); mo.frustumCulled = false; mo.visible = false; g.add(mo); g.userData.motes = mo; }
+  for (let i = 0; i < 4; i++) { const a = i * PI / 2 + PI / 4; ea(new THREE.BoxGeometry(.12, .07, .3).translate(0, 2.36, 0).rotateZ(a).translate(0, cy, 8.15), zinc); ea(new THREE.BoxGeometry(.14, .07, .34).translate(0, R + .03, 0).rotateZ(a + PI / 4).translate(0, cy, -10.1), zinc); }
+  // casing with a non-slip walkway, limber holes and lifelines (a gap at the boarding ladder); tapered fairings fore and aft
+  const ch = .45; eb(sm, -cx, cx, 1.1, CAS, cz0, TRZ - ch); eb(sm, -cx, cx, 1.1, CAS, TRZ + ch, cz1); eb(sm, -cx, -ch, 1.1, CAS, TRZ - ch, TRZ + ch); eb(sm, ch, cx, 1.1, CAS, TRZ - ch, TRZ + ch);
+  ea(loft([cz0 - 1.35, -.75, .75, 1.0, 1.4], [cz0, -cx, cx, 1.1, CAS]), sm); ea(loft([cz1, -cx, cx, 1.1, CAS], [9.75, -.3, .3, -.15, .18]), sm);
+  for (const [z0, z1] of [[cz0 + .15, TRZ - .62], [TRZ + .62, cz1 - .15]]) { eb(nsM, -.95, .95, CAS, CAS + .012, z0, z1, 1); for (const s of [-1, 1]) eb(yel, s * .97 - .04, s * .97 + .04, CAS, CAS + .014, z0, z1); }
+  for (const s of [-1, 1]) eb(nsM, s < 0 ? -.95 : .62, s < 0 ? -.62 : .95, CAS, CAS + .012, TRZ - .62, TRZ + .62, 1);
+  for (const s of [-1, 1]) for (let i = 0; i < 18; i++) { const z = mix(cz0 + .6, cz1 - .6, i / 17); eb(recM, s * cx - .012, s * cx + .012, 1.31, 1.4, z - .12, z + .12); }
+  { const st = []; for (let z = cz0 + .3; z <= cz1 - .2; z += 1.6) for (const s of [-1, 1]) { if (s > 0 && z > 5.4 && z < 6.8) continue; st.push(cY(.022, .02, CAS, CAS + .95, s * 1.28, z, 6)); }
+    for (const s of [-1, 1]) for (const y of [CAS + .5, CAS + .93]) for (const [a, b] of s > 0 ? [[cz0 + .3, 5.3], [6.9, cz1 - .3]] : [[cz0 + .3, cz1 - .3]]) st.push(cZ(.012, .012, a, b, s * 1.28, y, 5));
+    ea(mergeGeos(st), steel); }
+  Wl(-1.62, -1.3, cz0, cz1, CAS, CAS + 1, {}); Wl(1.3, 1.62, cz0, 5.7, CAS, CAS + 1, {}); Wl(1.3, 1.62, 6.7, cz1, CAS, CAS + 1, {}); Wl(-cx, cx, cz0 - .4, cz0, CAS, CAS + 1, {}); Wl(-cx, cx, cz1, cz1 + .4, CAS, CAS + 1, {});
+  // the sail: round nose, tapered tail, a little bridge, name boards, nav lights; masts and periscope rise from it when she is up
+  { const sh = new THREE.Shape(); sh.moveTo(sx, 6.85); sh.lineTo(sx, 5.2); sh.lineTo(.17, 4.4); sh.lineTo(-.17, 4.4); sh.lineTo(-sx, 5.2); sh.lineTo(-sx, 6.85); sh.absarc(0, 6.85, sx, PI, 0, true);
+    ea(new THREE.ExtrudeGeometry(sh, {depth: 2.56, bevelEnabled: true, bevelThickness: .04, bevelSize: .03, bevelSegments: 2, curveSegments: 10}).rotateX(-PI / 2).translate(0, CAS, 0), sm); }
+  eb(darkM, -.32, .32, 4.15, 4.23, -7.05, -6.35); ea(pl(.62, .2, 0, 4.34, -7.0, PI, -.4), glass); ea(cY(.2, .2, 4.2, 4.27, 0, -4.95, 14), steel); eb(darkM, -.4, .4, 4.18, 4.24, -6.35, -5.4);
+  for (const s of [-1, 1]) ea(uvRow(pl(1.5, .19, s * (sx + .012), 3.35, -5.95, s * PI / 2), 0), sgM);
+  for (const s of [-1, 1]) for (const z of [-6.62, -6.22]) ea(pl(.3, .13, s * (sx + .008), 3.86, z, s * PI / 2), recM);
+  for (const t of [Math.acos(-1 / R), TAU - Math.acos(-1 / R)]) ea(new THREE.CylinderGeometry(R + .005, R + .005, U.zA - zB - .3, 1, 1, true, t - .035, .07).rotateX(PI / 2).translate(0, cy, (zB + U.zA) / 2 + .1), darkM); // boot-top line
+  spr(0xff2020, .55, -sx - .04, 3.95, -6.55); spr(0x20ff40, .55, sx + .04, 3.95, -6.55);
+  { const mg = new THREE.Group(); g.add(mg); const zs = U.SCOPE[1], q = new THREE.Mesh(mergeGeos([cY(.09, .09, 2.9, 5.0, 0, zs, 10), bx(-.11, .11, 4.85, 5.1, zs - .17, zs + .1), cY(.06, .04, 2.9, 4.75, .15, -5.25, 8), cY(.05, .05, 2.9, 4.5, -.12, -6.3, 8), sph(.13, -.12, 4.56, -6.3, 10)]), darkM); q.castShadow = true; mg.add(q); spr(0xffffff, .5, .15, 4.82, -5.25, mg); g.userData.masts = mg; }
+  g.userData.sailPl = piv(g, 0, 3.3, -6.6, sm, [bx(sx, sx + 1.25, -.035, .035, -.35, .45), bx(-sx - 1.25, -sx, -.035, .035, -.35, .45)], 1);
+  g.userData.bowPl = piv(g, 0, cy + .3, -8.0, sm, [bx(R - .1, R + 1.3, -.04, .04, -.35, .55), bx(-R - 1.3, -R + .1, -.04, .04, -.35, .55)], 1);
+  Wl(-sx, sx, -7.4, -5.2, CAS, 4.2, {}); Wl(-.35, .35, -5.2, -4.4, CAS, 4.2, {});
+  // cruciform tail: fixed fins, rudders and stern planes behind them, the ducted five-blade prop
+  ea(loft([8.55, -.045, .045, cy + 1.75, cy + 2.6], [9.75, -.03, .03, cy + .95, cy + 2.6]), sm); ea(loft([8.55, -.045, .045, cy - 2.6, cy - 1.75], [9.75, -.03, .03, cy - 2.6, cy - .95]), sm);
+  ea(loft([8.55, -2.6, -1.75, cy - .045, cy + .045], [9.75, -2.6, -.95, cy - .03, cy + .03]), sm); ea(loft([8.55, 1.75, 2.6, cy - .045, cy + .045], [9.75, .95, 2.6, cy - .03, cy + .03]), sm);
+  g.userData.rud = piv(g, 0, cy, 9.75, sm, [bx(-.03, .03, 1.3, 2.6, 0, .45), bx(-.03, .03, -2.6, -1.3, 0, .45)], 1);
+  g.userData.sternPl = piv(g, 0, cy, 9.75, sm, [bx(1.3, 2.6, -.03, .03, 0, .45), bx(-2.6, -1.3, -.03, .03, 0, .45)], 1);
+  ea(new THREE.TorusGeometry(1.05, .13, 10, 32).scale(1, 1, 2.6).translate(0, cy, 10.45), darkM); for (const a of [PI / 4, 3 * PI / 4, 5 * PI / 4, 7 * PI / 4]) ea(bx(-.03, .03, .32, 1.0, -.05, .05).rotateZ(a).translate(0, cy, 10.3), darkM);
+  { const bl = [sph(.16, 0, 0, 0, 12).scale(1, 1, 1.5)]; for (let i = 0; i < 5; i++) bl.push(bx(-.09, .09, .12, .9, -.012, .012).rotateY(.45).rotateZ(i / 5 * TAU)); g.userData.prop = piv(g, 0, cy, 10.45, steel, bl, 1); }
+  // the main hatch: an open coaming and collar over the trunk, the leaf hinged forward so it opens against the sail
+  ea(cY(.5, .5, CAS, CAS + .3, TR.x, TRZ, 22, true), stD); ea(tor(.5, .035, TR.x, CAS + .3, TRZ, 'y', 24), steel); ea(new THREE.RingGeometry(.44, .72, 24).rotateX(-PI / 2).translate(TR.x, CAS - .004, TRZ), steel);
+  g.userData.hatch = piv(g, TR.x, CAS + .32, TRZ - .5, sm, [cY(.52, .52, 0, .08, 0, .5, 24), tor(.17, .022, 0, .15, .5, 'y', 16), cY(.02, .02, .08, .15, 0, .5, 6), bx(-.26, -.12, -.03, .07, -.07, .05), bx(.12, .26, -.03, .07, -.07, .05)], 1);
+  ea(uvRow(pl(.9, .11, TR.x, CAS + .013, TRZ + .85, 0, -PI / 2), 6), sgM);
+  Wl(-.5, .5, TRZ - .5, TRZ + .5, CAS, CAS + .35, {});
+  // the lock-out door low on the starboard side, tilted to the hull: frame, recess, the sliding leaf, a ring of status lamps
+  { const door = q => q.rotateZ(-.24).translate(LD.x, LD.y, LD.z);
+    ea(door(new THREE.TorusGeometry(.43, .055, 8, 28).scale(1, 1.45, 1).rotateY(PI / 2)), steel); ea(door(new THREE.CircleGeometry(.42, 24).scale(1, 1.45, 1).rotateY(PI / 2).translate(.006, 0, 0)), recM);
+    ea(door(uvRow(pl(.62, .08, .03, .8, 0, PI / 2), 1)), sgM); for (let i = 0; i < 6; i++) { const a = i / 6 * TAU + .3; ea(door(sph(.03, .03, Math.cos(a) * .74, Math.sin(a) * .54, 6)), lkLampM); }
+    const lo = new THREE.Group(); g.add(lo); const lq = new THREE.Mesh(mergeGeos([door(new THREE.CylinderGeometry(.42, .42, .06, 24).rotateZ(PI / 2).scale(1, 1.45, 1).translate(.05, 0, 0)), door(tor(.15, .02, .1, 0, 0, 'x', 14)), door(cX(.02, .05, .11, 0, 0, 6))]), steel); lq.castShadow = true; lo.add(lq); g.userData.lkO = lo; }
+  // boarding ladder on the starboard quarter, rungs hugging the hull up to the casing, with grab handles
+  { const st = [], seg = (xa, ya, xb, yb, z) => { const L = Math.hypot(xb - xa, yb - ya); return bx(-.015, .015, 0, L, -.015, .015).rotateZ(-Math.atan2(xb - xa, yb - ya)).translate(xa, ya, z); }; let pv = null;
+    for (let y = -.8; y < 1.05; y += .3) { const x = Math.sqrt(R * R - (y - cy) ** 2) + .1; st.push(cZ(.022, .022, 5.98, 6.42, x, y, 6)); if (pv) for (const z of [6.0, 6.4]) st.push(seg(pv[0], pv[1], x, y, z)); pv = [x, y]; }
+    for (const z of [6.0, 6.4]) { st.push(seg(pv[0], pv[1], 1.32, CAS, z), cY(.02, .02, CAS, CAS + .6, 1.32, z, 6)); } st.push(cZ(.02, .02, 6.0, 6.4, 1.32, CAS + .6, 6)); ea(mergeGeos(st), steel); }
+  Wl(-2.45, 2.45, zB, U.zA, -3.45, 1.5, {ext: 1}); Wl(-2.05, 2.05, -12.9, zB, -3.0, 1.0, {ext: 1}); Wl(-1.6, 1.6, U.zA, 9.8, -2.6, .6, {ext: 1}); Wl(-cx, cx, cz0, cz1, 1.1, CAS, {ext: 1});
+  // ---- inside. Materials: lining, frames, deck, pipes, panels, fabrics, brass, lamps (lampM turns red when she dives)
+  const lnM = SI({map: TX.subLn, side: THREE.BackSide, roughness: .75, metalness: .1}), lnF = SI({map: TX.subLn, color: 0xe6e4d4, roughness: .85, metalness: 0}), ribM = SI({color: 0xa9a892, roughness: .6, metalness: .35}), bhM = SI({map: TX.subPan, side: THREE.DoubleSide, roughness: .55, metalness: .4});
+  const dkM = SI({map: TX.dia, color: 0xa0a6a8, roughness: .45, metalness: .65}), rubM = SI({color: 0x1c1e1e, roughness: .95, metalness: 0}), pR = SI({color: 0xa02818, roughness: .5, metalness: .3}), pG = SI({color: 0x2e6a48, roughness: .5, metalness: .3}), pY = SI({color: 0xc89a20, roughness: .5, metalness: .3});
+  const iDk = SI({color: 0x23272a, roughness: .55, metalness: .5}), iSt = SI({color: 0x8c949a, roughness: .35, metalness: .75}), iBr = SI({color: 0xb8902a, roughness: .3, metalness: .85}), iPan = SI({map: TX.subPan, roughness: .6, metalness: .4}), iGf = SI({map: TX.gface, roughness: .4, metalness: 0});
+  const iHz = SI({map: TX.haz, roughness: .6}), iWd = SI({map: TX.wood, color: 0x9a7650, roughness: .7, metalness: 0}), fNv = SI({color: 0x2a3a5c, roughness: 1, metalness: 0}), fRd = SI({color: 0x8a3428, roughness: 1, metalness: 0}), fCr = SI({color: 0xe8e0cc, roughness: .9, metalness: 0});
+  const fGn = SI({color: 0x2e4c3a, roughness: 1, metalness: 0, side: THREE.DoubleSide}), iLk = SI({color: 0x56686a, roughness: .45, metalness: .55}), iPp = SI({map: TX.paper, roughness: 1, metalness: 0}), iYe = SI({color: 0xd8b020, roughness: .55, metalness: .2}), iRe = SI({color: 0xa01a12, roughness: .5, metalness: .2});
+  const iGl = SI({color: 0x0a2830, roughness: .05, metalness: .6}), iPl = SI({color: 0x3a7a32, roughness: .9, metalness: 0}), iSg = SI({map: TX.subSign, roughness: .6, metalness: .1}), catM = SI({color: 0xc8783a, roughness: 1, metalness: 0});
+  const sonM = SI({map: SUBC.sonT, emissive: 0xffffff, emissiveMap: SUBC.sonT, emissiveIntensity: .85, roughness: .3}), depM = SI({map: SUBC.depT, emissive: 0xffffff, emissiveMap: SUBC.depT, emissiveIntensity: .35, roughness: .4}), indM = SI({map: SUBC.indT, emissive: 0xffffff, emissiveMap: SUBC.indT, emissiveIntensity: .9, roughness: .4});
+  const scrM = NC({color: 0x0c1c18, emissive: 0x30c070, emissiveIntensity: .5, roughness: .2}), navM = SI({map: TX.screen, emissive: 0x6affa0, emissiveMap: TX.screen, emissiveIntensity: .8, roughness: .2}), lampM = NC({color: 0xfff4e0, emissive: 0xffd8a0, emissiveIntensity: 1.2}), fairy = NC({color: 0x302010, emissive: 0xffc070, emissiveIntensity: 1}), lkLampI = NC({color: 0x101010, emissive: 0x30ff50, emissiveIntensity: 1.5});
+  // hull lining (open on top above the ceiling), ribs, the bow ring's inner face, the after end plate
+  { const len = zE - zB, q = new THREE.CylinderGeometry(Ri, Ri, len, 36, 1, true, PI + .3, TAU - .6); uvS(q, (TAU - .6) * Ri * .5, len * .5); ia(q.rotateX(PI / 2).translate(0, cy, (zB + zE) / 2), lnM); }
+  ia(new THREE.RingGeometry(1.96, Ri + .03, 40).translate(0, cy, zB + .01), ribM); ia(new THREE.CircleGeometry(Ri + .02, 36).rotateY(PI).translate(0, cy, zE), bhM, .8);
+  for (let z = zB + .55; z < zE - .2; z += 1.15) { if (U.BH.some(b => Math.abs(z - b) < .35) || Math.abs(z + 8.6) < .35 || Math.abs(z - TRZ) < .6) continue; ia(tor(Ri - .03, .05, 0, cy, z, 'z', 36), ribM); }
+  // two watertight bulkheads with oval doors, each door swung back flat and dogged; an open frame between the viewport room and the control room
+  const dShape = (sh, w, y0, y1, r) => { sh.moveTo(-w + r, y0); sh.lineTo(w - r, y0); sh.quadraticCurveTo(w, y0, w, y0 + r); sh.lineTo(w, y1 - r); sh.quadraticCurveTo(w, y1, w - r, y1); sh.lineTo(-w + r, y1); sh.quadraticCurveTo(-w, y1, -w, y1 - r); sh.lineTo(-w, y0 + r); sh.quadraticCurveTo(-w, y0, -w + r, y0); return sh; };
+  for (const z of U.BH) { const w = U.dw + .04, sh = new THREE.Shape(); sh.absarc(0, cy, Ri + .02, 0, TAU, false); sh.holes.push(dShape(new THREE.Path(), w, FI + .12, FI + 1.92, .28)); ia(new THREE.ShapeGeometry(sh, 24).translate(0, 0, z), bhM, .8);
+    for (const s of [-1, 1]) ib(iSt, s < 0 ? -w - .1 : w, s < 0 ? -w : w + .1, FI + .12, FI + 1.92, z - .07, z + .07); ib(iSt, -w - .1, w + .1, FI + 1.92, FI + 2.02, z - .07, z + .07); ib(iHz, -w - .1, w + .1, FI, FI + .12, z - .08, z + .08, 3);
+    const lf = new THREE.ExtrudeGeometry(dShape(new THREE.Shape(), .58, FI + .06, FI + 1.98, .3), {depth: .06, bevelEnabled: false}).translate(w + .72, 0, z + .08); ia(lf, iPan, .8);
+    ia(tor(.16, .018, w + .72, FI + 1.05, z + .16, 'z', 16), iSt); for (const y of [FI + .4, FI + 1.05, FI + 1.7]) ib(iSt, w + .1, w + .2, y - .03, y + .03, z + .08, z + .17); ia(uvRow(pl(.56, .07, -w - .52, FI + 1.75, z + .075), 6), iSg); }
+  ia(tor(Ri - .04, .07, 0, cy, -8.6, 'z', 36), ribM); for (const s of [-1, 1]) ib(bhM, s < 0 ? -2.25 : 1.25, s < 0 ? -1.25 : 2.25, FI - .05, OH + .1, -8.66, -8.54, .8); ib(bhM, -1.25, 1.25, FI + 2.08, OH + .1, -8.66, -8.54, .8);
+  // diamond-plate deck (into the dome), a rubber runner, lift-out panel seams; the false ceiling with its hole for the trunk; pipes, cable trays, a grab rail
+  { const sh = new THREE.Shape(), f = U.fx, ys = -zB, a = Math.asin((zB - U.zF) / 1.43), xF = 1.43 * Math.cos(a); sh.moveTo(-f, -zE); sh.lineTo(f, -zE); sh.lineTo(f, ys); sh.lineTo(1.43, ys); sh.absarc(0, ys, 1.43, 0, a, false); sh.lineTo(-xF, -U.zF); sh.absarc(0, ys, 1.43, PI - a, PI, false); sh.lineTo(-f, ys);
+    ia(new THREE.ShapeGeometry(sh, 12).rotateX(-PI / 2).translate(0, FI, 0), dkM, 1); }
+  ib(rubM, -.36, .36, FI, FI + .01, -11.0, zE - .1, 1); for (let z = -10; z < zE - .3; z += 1.2) ib(iDk, -U.fx + .02, U.fx - .02, FI, FI + .004, z, z + .02);
+  { const X = 2.12, y0 = OH, y1 = OH + .04; ib(lnF, -X, X, y0, y1, zB, TRZ - .5, .5); ib(lnF, -X, X, y0, y1, TRZ + .5, zE, .5); ib(lnF, -X, -.5, y0, y1, TRZ - .5, TRZ + .5, .5); ib(lnF, .5, X, y0, y1, TRZ - .5, TRZ + .5, .5); }
+  for (const s of [-1, 1]) { ia(cZ(.05, .05, zB + .15, zE - .05, s * .58, OH - .08, 10), s < 0 ? pR : pG); ia(cZ(.035, .035, zB + .15, zE - .05, s * 1.08, OH - .07, 8), s < 0 ? pY : lnF); ib(iDk, s * .82 - .12, s * .82 + .12, OH - .035, OH - .012, zB + .2, zE - .1);
+    ia(cZ(.02, .02, -8.4, zE - .3, s * .3, FI + 2.15, 6), iSt); for (let z = zB + .6; z < zE; z += 1.25) { ib(iDk, s * .48, s * .68, OH - .14, OH, z, z + .04); ia(cY(.008, .008, FI + 2.15, OH, s * .3, z + .3, 4), iSt); } }
+  ia(uvRow(pl(.56, .07, 0, FI + 2.22, -8.535), 7), iSg);
+  // the trunk: a lined tube up through the casing, rings top and bottom, the ladder on its after wall
+  ia(uvS(new THREE.CylinderGeometry(TR.r, TR.r, CAS - OH, 20, 1, true), 1.4, 1).translate(TR.x, (OH + CAS) / 2, TRZ), lnM); ia(new THREE.RingGeometry(TR.r - .01, .76, 24).rotateX(PI / 2).translate(TR.x, OH - .004, TRZ), iSt);
+  { const L = []; for (const s of [-1, 1]) L.push(cY(.022, .022, FI, CAS + .35, TR.x + s * .2, TRZ + .32, 6)); for (let y = FI + .3; y < CAS + .2; y += .3) L.push(cX(.017, TR.x - .2, TR.x + .2, y, TRZ + .32, 6)); ia(mergeGeos(L), iSt); }
+  // ceiling lamps (POOL lights sit just under them)
+  for (const [x, , z] of U.lamps) { ib(iDk, x - .17, x + .17, OH - .05, OH, z - .09, z + .09); ib(lampM, x - .14, x + .14, OH - .065, OH - .045, z - .06, z + .06); }
+  // ---- the viewport room: pilot console under the dome (screens, depth dial, compass), the yoke, the pilot seat, two observer benches
+  ib(iDk, -.65, .65, FI, FI + .6, -11.75, -11.2); ia(bx(-.66, .66, -.02, .02, -.3, .3).rotateX(.55).translate(0, FI + .66, -11.47), iPan, 1);
+  for (const s of [-1, 1]) ia(new THREE.PlaneGeometry(.4, .26).rotateX(-PI / 2 + .55).translate(s * .33, FI + .684, -11.457), s < 0 ? sonM : navM);
+  ia(new THREE.CircleGeometry(.075, 20).rotateX(-PI / 2 + .55).translate(0, FI + .69, -11.43), depM); ia(sph(.055, 0, FI + .72, -11.24, 10), iBr);
+  ia(cZ(.035, .045, -11.2, -10.95, 0, FI + .9, 8), iSt);
+  { const yg = piv(inner, 0, FI + .95, -10.95, iDk, [bx(-.24, .24, -.025, .025, -.025, .025), cY(.026, .026, -.12, .12, -.24, 0, 8), cY(.026, .026, -.12, .12, .24, 0, 8), cZ(.03, .03, -.3, 0, 0, 0, 8)]); yg.rotation.x = -.45; g.userData.wheel = yg; }
+  ib(fNv, -.27, .27, FI + .38, FI + .5, -10.7, -10.2); ib(fNv, -.27, .27, FI + .5, FI + 1.15, -10.2, -10.1); ia(cY(.04, .04, FI, FI + .38, 0, -10.45, 8), iSt); ib(iDk, -.25, .25, FI + .3, FI + .38, -10.7, -10.2);
+  for (const s of [-1, 1]) { ib(iDk, s < 0 ? -1.8 : 1.15, s < 0 ? -1.15 : 1.8, FI, FI + .38, -10.3, -9.0); ib(fRd, s < 0 ? -1.78 : 1.17, s < 0 ? -1.17 : 1.78, FI + .38, FI + .47, -10.25, -9.05); }
+  ia(cY(.05, .05, FI + .47, FI + .73, -1.42, -9.25, 10), iRe); ib(iDk, 1.3, 1.6, FI + .47, FI + .55, -9.6, -9.35);
+  // ---- control room: ballast panel (handwheels, levers, gauges, indicator board), sonar desk, periscope, the big depth gauge, chart table
+  { const x = -1.45; ib(iPan, -1.85, x, FI, FI + 2.02, -8.3, -6.4, .8); ia(uvRow(pl(.7, .09, x + .006, FI + 1.92, -7.35, PI / 2), 2), iSg);
+    for (let i = 0; i < 6; i++) { const z = -8.0 + (i % 3) * .55, y = FI + (i < 3 ? 1.05 : .62); ia(tor(.1, .016, x + .07, y, z, 'x', 18), iBr); ib(iBr, x + .062, x + .078, y - .1, y + .1, z - .008, z + .008); ib(iBr, x + .062, x + .078, y - .008, y + .008, z - .1, z + .1); ia(cX(.014, x, x + .07, y, z, 6), iBr); }
+    for (let i = 0; i < 4; i++) { const z = -8.1 + i * .3, y = FI + 1.42; ib(iDk, x, x + .05, y - .04, y + .04, z - .03, z + .03); ia(bx(-.012, .012, 0, .22, -.012, .012).rotateZ(-.5).translate(x + .04, y, z), iSt); ia(sph(.03, x + .04 + .22 * Math.sin(.5), y + .22 * Math.cos(.5), z, 8), iRe); }
+    for (let i = 0; i < 8; i++) { const y = FI + 1.78 - (i >> 2) * .17, z = -8.15 + (i % 4) * .2; ia(new THREE.CircleGeometry(.06, 16).rotateY(PI / 2).translate(x + .008, y, z), iGf); ia(tor(.062, .01, x + .01, y, z, 'x', 14), iBr); }
+    ia(new THREE.PlaneGeometry(.4, .2).rotateY(PI / 2).translate(x + .007, FI + 1.42, -6.78), indM); }
+  ib(iPan, 1.25, 1.85, FI, FI + .85, -8.3, -6.7, .8); ib(iWd, 1.2, 1.85, FI + .85, FI + .89, -8.32, -6.68, 1); ib(iDk, 1.48, 1.85, FI + .89, FI + 1.52, -7.82, -7.18); ia(new THREE.PlaneGeometry(.5, .42).rotateY(-PI / 2).translate(1.47, FI + 1.2, -7.5), sonM);
+  ia(uvRow(pl(.4, .05, 1.47, FI + 1.47, -7.5, -PI / 2), 3), iSg); ia(cY(.04, .04, FI, FI + .5, .85, -7.5, 8), iSt); ia(cY(.18, .18, FI + .5, FI + .56, .85, -7.5, 14), fRd); ia(tor(.08, .015, 1.36, FI + .92, -6.95, 'z', 12), iDk);
+  ia(cY(.14, .14, FI + 1.72, OH + .02, 0, U.SCOPE[1], 14), iSt); ia(tor(.15, .02, 0, FI + 1.8, U.SCOPE[1], 'y', 16), iBr);
+  { const z = U.SCOPE[1]; g.userData.scope = piv(inner, 0, 0, 0, iDk, [bx(-.15, .15, FI + 1.35, FI + 1.68, z - .14, z + .14), bx(-.06, .06, FI + 1.45, FI + 1.55, z + .14, z + .24), cX(.025, -.32, .32, FI + 1.45, z, 8), cY(.11, .11, FI + 1.68, FI + 2.3, 0, z, 12)]); }
+  ia(new THREE.CircleGeometry(.26, 28).translate(-1.6, FI + 1.45, -8.535), depM); ia(tor(.26, .025, -1.6, FI + 1.45, -8.53, 'z', 28), iBr);
+  ib(iWd, 1.15, 1.85, FI, FI + .9, -5.0, -3.9, 1); ia(new THREE.PlaneGeometry(.6, .9).rotateX(-PI / 2).translate(1.48, FI + .905, -4.45), iPp); ia(cY(.012, .012, FI + .9, FI + 1.3, 1.72, -4.0, 6), iBr); ia(new THREE.ConeGeometry(.09, .1, 12, 1, true).translate(1.64, FI + 1.27, -4.05), iBr); ia(cY(.04, .036, FI + .9, FI + 1.0, 1.3, -4.75, 10), fCr);
+  ia(cY(.07, .07, FI, FI + .45, -1.65, -6.15, 10), iRe); ia(cY(.025, .025, FI + .45, FI + .55, -1.65, -6.15, 6), iDk); ib(fCr, 1.55, 1.75, FI + 1.4, FI + 1.62, -8.53, -8.45);
+  // ---- crew space: two bunks with curtains (and the ship's cat), lockers, a dinette, the galley counter, books, a radio, fairy lights
+  { const x0 = -1.8, x1 = -.95, z0 = -2.45, z1 = -.35;
+    for (const [px, pz] of [[x0 + .04, z0 + .04], [x1 - .04, z0 + .04], [x0 + .04, z1 - .04], [x1 - .04, z1 - .04]]) ia(cY(.025, .025, FI, FI + 1.95, px, pz, 6), iSt);
+    for (const y of [FI + .3, FI + 1.2]) { ib(iSt, x0, x1, y, y + .05, z0, z1); ib(fNv, x0 + .03, x1 - .03, y + .05, y + .2, z0 + .03, z1 - .03); ib(fRd, x0 + .02, x1 - .02, y + .2, y + .23, z0 + .55, z1 - .02); ib(fCr, x0 + .1, x1 - .1, y + .2, y + .3, z0 + .06, z0 + .42); ia(sph(.04, x0 + .1, y + .62, z0 + .3, 8), lampM); }
+    ib(iSt, x0, x1, FI + 1.95, FI + 2.0, z0, z1); ia(pl(.9, .78, x1 + .012, FI + .82, z0 + .5, PI / 2), fGn); ia(pl(.5, .8, x1 + .012, FI + 1.72, z1 - .28, PI / 2), fGn);
+    ia(cZ(.01, .01, z0, z1, x1 + .02, FI + 1.22, 5), iBr); ia(cZ(.01, .01, z0, z1, x1 + .02, FI + 2.12, 5), iBr); ib(iDk, x0 + .02, x0 + .04, FI + .66, FI + .84, -1.3, -1.06); ib(fCr, x0 + .045, x0 + .05, FI + .69, FI + .81, -1.27, -1.09); }
+  { const cg = piv(inner, -1.38, FI + .62, -1.5, catM, [new THREE.SphereGeometry(.16, 12, 8).scale(1.5, .75, 1), new THREE.SphereGeometry(.09, 10, 8).translate(.2, .02, .06), new THREE.ConeGeometry(.03, .06, 4).translate(.22, .1, .015), new THREE.ConeGeometry(.03, .06, 4).translate(.22, .1, .105), new THREE.TorusGeometry(.17, .025, 6, 12, PI * 1.2).rotateX(PI / 2).translate(0, -.03, 0)].map(q => q.rotateY(PI / 2)));
+    g.userData.cat = cg; g.userData.catP = [-1.38, FI + .62, -1.5]; }
+  ib(iLk, -1.8, -1.3, FI, FI + 1.9, -.25, 1.5); for (let z = -.25 + .58; z < 1.45; z += .58) ib(iDk, -1.305, -1.295, FI + .05, FI + 1.85, z - .01, z + .01); for (let z = -.25 + .29; z < 1.5; z += .58) { ib(iSt, -1.3, -1.28, FI + 1.0, FI + 1.12, z + .18, z + .2); for (let k = 0; k < 4; k++) ib(iDk, -1.3, -1.295, FI + 1.5 + k * .05, FI + 1.52 + k * .05, z - .12, z + .12); }
+  ia(cY(.16, .12, FI + 1.9, FI + 2.02, -1.55, .9, 12), iYe);
+  ib(iWd, .7, 1.8, FI + .72, FI + .77, -2.0, -1.2, 1); ia(cY(.04, .04, FI, FI + .72, 1.2, -1.6, 8), iSt);
+  for (const [z0, z1] of [[-2.45, -2.05], [-1.15, -.75]]) { const fw = z0 < -2; ib(iWd, .7, 1.8, FI, FI + .4, z0, z1, 1); ib(fRd, .72, 1.78, FI + .4, FI + .5, z0 + .02, z1 - .02); ib(fRd, .72, 1.78, FI + .5, FI + 1.0, fw ? z0 + .02 : z1 - .12, fw ? z0 + .12 : z1 - .02); }
+  for (const [x, z] of [[1.0, -1.75], [1.35, -1.45]]) ia(cY(.04, .036, FI + .77, FI + .87, x, z, 10), fCr); ib(fNv, .9, 1.15, FI + .77, FI + .79, -1.5, -1.3); ia(cY(.05, .03, FI + .77, FI + .95, 1.62, -1.85, 8), iBr); ia(sph(.06, 1.62, FI + 1.0, -1.85, 8), fairy);
+  ib(iPan, 1.25, 1.85, FI, FI + .86, -.6, 1.5, .8); ib(iWd, 1.2, 1.85, FI + .86, FI + .9, -.62, 1.52, 1); ib(iDk, 1.35, 1.75, FI + .9, FI + .93, -.52, -.02); for (const z of [-.39, -.15]) ia(tor(.08, .012, 1.55, FI + .935, z, 'y', 14), iSt);
+  ia(cY(.09, .07, FI + .93, FI + 1.13, 1.55, -.27, 12), iRe); ia(sph(.03, 1.55, FI + 1.15, -.27, 8), iDk); ia(cZ(.012, .02, -.42, -.34, 1.55, FI + 1.04, 6), iRe);
+  for (const [x, z, m] of [[1.4, .22, fCr], [1.44, .38, pY]]) ia(cY(.04, .036, FI + .9, FI + 1.0, x, z, 10), m); ia(cY(.08, .08, FI + .9, FI + 1.02, 1.62, .58, 14), fNv);
+  ia(cY(.09, .07, FI + .9, FI + 1.08, 1.6, .95, 10), fRd); for (let i = 0; i < 6; i++) ia(new THREE.ConeGeometry(.04, .38, 4).rotateX(Math.sin(i * 2) * .5).rotateZ(Math.cos(i * 2) * .5).translate(1.6 + Math.cos(i) * .04, FI + 1.25, .95 + Math.sin(i) * .04), iPl);
+  ib(iDk, 1.4, 1.8, FI + .9, FI + 1.12, 1.0, 1.34); ia(pl(.22, .07, 1.395, FI + 1.04, 1.17, -PI / 2), fairy); ia(cY(.006, .006, FI + 1.12, FI + 1.5, 1.7, 1.3, 4), iSt);
+  ib(iWd, 1.62, 1.95, FI + 1.55, FI + 1.58, -.5, 1.4, 1); { const bk = [fNv, fRd, fGn, pY, fCr]; let k = 0; for (let z = -.45; z < .6; z += .075) ib(bk[k++ % 5], 1.66, 1.9, FI + 1.58, FI + 1.58 + .18 + (k * 7 % 5) * .015, z, z + .058); }
+  for (let z = -2.35; z < 1.5; z += .3) for (const s of [-1, 1]) ia(sph(.022, s * .95, OH - .1 - Math.abs(Math.sin(z * 2.1)) * .07, z, 6), fairy);
+  ia(new THREE.CircleGeometry(.12, 20).translate(-.8, FI + 1.75, -2.525), iGf);
+  // ---- cargo racks (the hold) and the lock-out chamber: walls, a pocket door with a porthole, the outer hatch in the hull, a bench, dive gear, the water
+  { for (const [px, pz] of [[-1.77, 2.03], [-.98, 2.03], [-1.77, 3.97], [-.98, 3.97], [-.98, 3.0], [-1.77, 3.0]]) ia(cY(.025, .025, FI, FI + 2.0, px, pz, 6), iSt);
+    for (const y of [FI + .25, FI + .95, FI + 1.65]) { ib(iSt, -1.8, -.95, y, y + .04, 2.0, 4.0); ib(iYe, -.99, -.97, y + .1, y + .14, 2.0, 4.0); } }
+  { const {x0, z0, z1, dz0, dz1} = LKR, X = 2.15; ib(iPan, .32, X, FI, OH, z0 - .06, z0, .8); ib(iPan, .18, .32, FI, OH, 1.45, dz0, .8); ib(iPan, .2, .3, FI, OH, dz1, z1, .8); ib(iPan, .2, X, FI, OH, z1, z1 + .06, .8); ib(iPan, .2, .3, FI + 1.9, OH, dz0, dz1, .8); ib(iHz, .18, .32, FI, FI + .03, dz0, dz1, 3);
+    ia(uvRow(pl(.4, .05, .175, FI + 1.78, 1.92, -PI / 2), 1), iSg); ib(iDk, .14, .18, FI + 1.15, FI + 1.45, 2.0, 2.32); ib(iDk, 1.35, 1.65, FI + 1.15, FI + 1.45, z0, z0 + .04); for (const [px, pz] of [[.15, 2.08], [.15, 2.2], [1.45, z0 + .045], [1.55, z0 + .045]]) ia(sph(.018, px, FI + 1.38, pz, 6), lkLampI);
+    ia(sph(.04, .16, FI + 2.02, (dz0 + dz1) / 2, 8), lkLampI); ia(sph(.04, .34, FI + 2.02, (dz0 + dz1) / 2, 8), lkLampI);
+    const lg = piv(inner, 0, 0, 0, iYe, [bx(.215, .285, FI + .03, FI + 1.88, dz0 + .02, dz1 - .02), bx(.17, .215, FI + .95, FI + 1.05, dz1 - .2, dz1 - .1), bx(.285, .33, FI + .95, FI + 1.05, dz1 - .2, dz1 - .1)]);
+    lg.add(new THREE.Mesh(cX(.13, .205, .295, FI + 1.45, (dz0 + dz1) / 2, 16), iGl)); g.userData.lkI = lg;
+    ib(iWd, 1.3, 1.78, FI, FI + .42, 3.25, 3.75, 1); ia(cY(.09, .09, FI + .5, FI + 1.2, 1.62, 2.25, 12), iYe); ib(iDk, 1.52, 1.72, FI + 1.25, FI + 1.38, 2.1, 2.2); ia(cZ(.012, .012, 2.05, 3.0, 1.75, FI + 1.55, 4), iSt);
+    ia(new THREE.CircleGeometry(.16, 16).rotateX(-PI / 2).translate(1.0, FI + .006, 2.9), iDk); for (let k = -2; k <= 2; k++) ib(iSt, .86, 1.14, FI + .007, FI + .011, 2.9 + k * .05 - .008, 2.9 + k * .05 + .008);
+    const tl = -.263, hz = q => q.rotateZ(tl).translate(2.17, LD.y, LD.z); ia(hz(new THREE.TorusGeometry(.42, .05, 8, 28).scale(1, 1.42, 1).rotateY(PI / 2)), iSt); ia(hz(new THREE.CircleGeometry(.41, 24).scale(1, 1.42, 1).rotateY(-PI / 2).translate(.035, 0, 0)), iGl);
+    g.userData.lkOi = piv(inner, 0, 0, 0, iSt, [hz(new THREE.CylinderGeometry(.4, .4, .05, 24).rotateZ(PI / 2).scale(1, 1.42, 1).translate(-.03, 0, 0)), hz(tor(.13, .018, -.07, 0, 0, 'x', 14)), hz(cX(.02, -.07, -.02, 0, 0, 6))]);
+    const wm = subMat(new THREE.MeshStandardMaterial({color: 0x0a4652, transparent: true, opacity: .55, depthWrite: false, side: THREE.DoubleSide, roughness: .1, metalness: .1})), wq = new THREE.Mesh(bx(x0 + .02, 2.25, 0, 1, z0 + .02, z1 - .02), wm); wq.position.y = FI; wq.scale.y = .001; wq.visible = false; wq.renderOrder = 2; inner.add(wq); g.userData.lkW = wq; }
+  // ---- motor room: battery racks with hazard bands and cell caps, the motor, pipes, gauges, fuse panel, the red emergency-blow wheel, the patch locker and trim tank
+  for (const s of [-1, 1]) { const a = s < 0 ? -1.8 : 1.0, b = s < 0 ? -1.0 : 1.8; ib(iDk, a, b, FI, FI + .75, 4.5, 6.0); ia(uvS(pl(1.5, .08, s < 0 ? b + .003 : a - .003, FI + .66, 5.25, s < 0 ? PI / 2 : -PI / 2), 4.7, 1), iHz); ia(uvRow(pl(.5, .065, s < 0 ? b + .004 : a - .004, FI + .45, 5.25, s < 0 ? PI / 2 : -PI / 2), 4), iSg);
+    for (let i = 0; i < 6; i++) for (let j = 0; j < 3; j++) { const x = mix(a + .15, b - .15, j / 2), z = 4.65 + i * .25; ia(cY(.035, .035, FI + .75, FI + .8, x - .05, z, 8), iRe); ia(cY(.035, .035, FI + .75, FI + .8, x + .05, z, 8), iDk); } }
+  ib(iDk, -.5, .5, FI, FI + .2, 6.3, 6.98); ia(cZ(.55, .55, 6.3, 6.98, 0, FI + .72, 20), pG); for (let z = 6.38; z < 6.95; z += .1) ia(tor(.56, .018, 0, FI + .72, z, 'z', 20), iSt); ia(cZ(.12, .12, 6.1, 6.3, 0, FI + .72, 10), iSt);
+  ia(cY(.05, .05, FI, OH, -1.62, 6.9, 8), pY); ia(cY(.04, .04, FI, OH, 1.62, 6.9, 8), pR); ia(cX(.04, -1.62, 1.62, FI + 2.0, 6.9, 8), pY);
+  for (let i = 0; i < 4; i++) { const x = -1.05 + i * .7; ia(new THREE.CircleGeometry(.07, 16).rotateY(PI).translate(x, FI + 1.55, 6.985), iGf); ia(tor(.072, .01, x, FI + 1.55, 6.98, 'z', 14), iBr); }
+  ib(iPan, .7, 1.3, FI + 1.0, FI + 1.4, 6.94, 7.0, .8); for (let i = 0; i < 6; i++) ib(i % 2 ? iRe : iDk, .78 + i * .085, .83 + i * .085, FI + 1.18, FI + 1.26, 6.91, 6.94);
+  ia(tor(.2, .025, 0, FI + 1.75, 6.95, 'z', 20), iRe); ib(iRe, -.2, .2, FI + 1.74, FI + 1.76, 6.94, 6.96); ib(iRe, -.01, .01, FI + 1.55, FI + 1.95, 6.94, 6.96); ia(uvRow(pl(.6, .075, 0, FI + 2.04, 6.99, PI), 5), iSg);
+  ib(iYe, -1.8, -1.2, FI, FI + .5, 6.2, 6.95); ib(iDk, -1.75, -1.25, FI + .5, FI + .52, 6.25, 6.9); ia(cY(.3, .3, FI, FI + .9, 1.5, 6.57, 16), iRe); ia(cY(.05, .05, FI + .9, FI + 1.0, 1.5, 6.57, 8), iDk);
+  // inside walls (crew only): hull sides, the dome, bulkheads, furniture, the chamber (its door is solid unless the lock is dry)
+  Wl(-2.7, -U.fx, zB, zE); Wl(U.fx, 2.7, zB, zE); for (let i = 0; i < 4; i++) { const za = U.zF + i * (zB - U.zF) / 4, zb2 = za + (zB - U.zF) / 4, h = Math.sqrt(Math.max(0, 1.6 * 1.6 - ((za + zb2) / 2 - zB) ** 2)); Wl(-2.2, -h, za, zb2); Wl(h, 2.2, za, zb2); }
+  Wl(-1.6, 1.6, -12.4, U.zF); Wl(-2.7, 2.7, zE, zE + .5); Wl(-2.7, -1.25, -8.66, -8.54); Wl(1.25, 2.7, -8.66, -8.54); for (const z of U.BH) { Wl(-2.7, -U.dw, z - .06, z + .06); Wl(U.dw, 2.7, z - .06, z + .06); }
+  Wl(-.65, .65, -11.75, -11.2, FI, FI + .72); for (const s of [-1, 1]) Wl(s < 0 ? -1.8 : 1.15, s < 0 ? -1.15 : 1.8, -10.3, -9.0, FI, FI + .45);
+  Wl(-1.85, -1.45, -8.3, -6.4); Wl(1.25, 1.85, -8.3, -6.7, FI, FI + .85); Wl(-.2, .2, -6.1, -5.7); Wl(1.15, 1.85, -5.0, -3.9, FI, FI + .9);
+  Wl(-1.8, -.95, -2.45, -.35); Wl(-1.8, -1.3, -.25, 1.5); Wl(.7, 1.8, -2.0, -1.2, FI, FI + .77); Wl(.7, 1.8, -2.45, -2.05, FI, FI + .45); Wl(.7, 1.8, -1.15, -.75, FI, FI + .45); Wl(1.25, 1.8, -.6, 1.5, FI, FI + .9); Wl(-1.8, -.95, 2.0, 4.0);
+  { const {z0, z1, dz0, dz1} = LKR; Wl(.2, 2.2, z0 - .06, z0); Wl(.18, .32, 1.45, dz0); Wl(.2, .3, dz1, z1); Wl(.2, 2.2, z1, z1 + .06); Wl(.2, .3, dz0, dz1, FI, FI + 1.9, {int: 1, door: 'i'}); }
+  for (const s of [-1, 1]) Wl(s < 0 ? -1.8 : 1.0, s < 0 ? -1.0 : 1.8, 4.5, 6.0, FI, FI + .75); Wl(-.6, .6, 6.3, 7.0, FI, FI + 1.4); Wl(-1.8, -1.2, 6.2, 6.95, FI, FI + .5); Wl(1.2, 1.8, 6.2, 6.95, FI, FI + .9);
+  // floors, helm, deck spots and interactions
+  Object.assign(BDECK, {x0: -cx, x1: cx, z0: cz0, z1: cz1, y: CAS}); BFL.push({x0: -U.fx, x1: U.fx, z0: U.zF, z1: zE, y: FI, int: 1});
+  BHELM[0] = U.HELM[0]; BHELM[1] = U.HELM[1]; BHELM[2] = FI; BSPOT.hold[0] = -1.0; BSPOT.hold[1] = 3.0; BSPOT.patch[0] = -1.5; BSPOT.patch[1] = 6.55; BSPOT.fuel[0] = 1.5; BSPOT.fuel[1] = 6.55;
+  Object.assign(g.userData, {lamps: U.lamps, radioP: [1.58, FI + 1.0, 1.17], lampM, scrM, lensM, lkLampM: [lkLampM, lkLampI], fairy, cargoAt: i => [-1.38, FI + .29 + Math.floor(i / 4) * .7, 2.3 + (i % 4) * .48], lightZ: -12.9, lightY: cy - 1.2, wz: [U.zF, zE]});
+  const busy = () => `Airlock ${LK.st === 2 ? 'flooding' : LK.st === 5 ? 'draining' : 'cycling'} ${Math.round((LK.st === 5 ? 1 - (LK.wv || 0) : (LK.wv || 0)) * 100)}%`;
+  INTER.push({kind: 'ladder', boat: 1, lx: R + .45, lz: 6.2, ly: -CAS, r: 3.5, top: 'boat', end: [.75, 6.2], label: () => 'Climb aboard', on: () => P.sw && (B.dep || 0) < .6},
+    {kind: 'shatch', boat: 1, lx: TR.x, lz: TRZ, by: CAS + .45, r: 1.9, get info() { return !B.hat && !subSurf() ? 1 : 0; }, label: () => B.hat ? 'Climb down' : subSurf() ? 'Open the hatch' : 'Hatch shut', go: () => B.hat ? subClimb(false) : act({a: 'hatch', o: 1}), on: () => !P.sw && P.ob && P.y > CAS - .5},
+    {kind: 'shatchB', boat: 1, lx: TR.x, lz: TRZ + .2, by: FI + 1.5, r: 1.8, get info() { return !B.hat && !subSurf() ? 1 : 0; }, label: () => B.hat ? 'Climb up' : subSurf() ? 'Open the hatch' : 'Hatch shut. Surface first.', go: () => B.hat ? subClimb(true) : act({a: 'hatch', o: 1}), on: () => P.ob && P.y < FI + .5},
+    {kind: 'lockIn', boat: 1, lx: 1.5, lz: LKR.z0 + .08, by: FI + 1.3, r: 1.6, get info() { return LK.st === 0 || LK.st === 3 ? 0 : 1; }, label: () => LK.st === 0 ? 'Flood the airlock and go out' : LK.st === 3 ? 'Drain the airlock' : busy(), go: () => act({a: 'lock', op: LK.st === 3 ? 'drain' : 'out'}), on: () => P.ob && inLock(P)},
+    {kind: 'lockGo', boat: 1, lx: 1.75, lz: LD.z, by: FI + .8, r: 1.4, label: () => 'Swim out', go: () => lockDropOut(), on: () => P.ob && inLock(P) && LK.st === 3},
+    {kind: 'lockOut', boat: 1, lx: .12, lz: 2.2, by: FI + 1.3, r: 1.7, get info() { return LK.st === 3 ? 0 : 1; }, label: () => LK.st === 3 ? 'Drain the airlock' : LK.st === 0 ? 'Airlock: step inside to dive out' : busy(), go: () => act({a: 'lock', op: 'drain'}), on: () => P.ob && !inLock(P) && P.y < FI + .5},
+    {kind: 'lockSea', dive: 1, boat: 1, lx: LD.x + .5, lz: LD.z, by: LD.y, r: 2.8, get info() { return LK.st === 0 || LK.st === 3 ? 0 : 1; }, label: () => LK.st === 3 ? 'Enter the airlock' : LK.st === 0 ? 'Airlock: knock to flood it' : busy(), go: () => act({a: 'lock', op: LK.st === 3 ? 'enter' : 'knock'}), on: () => P.sw},
+    {kind: 'radio', boat: 1, lx: 1.58, lz: 1.17, by: FI + 1.0, r: 1.7, label: () => G.radioOn ? 'Turn the radio off' : 'Turn on the radio', go: () => act({a: 'radio', on: !G.radioOn})},
+    {kind: 'bunk', boat: 1, lx: -1.38, lz: -2.0, by: FI + .7, r: 1.7, label: () => 'Lie down', go: () => subRestStart(), on: () => P.ob && !P.rest && P.y < FI + .5},
+    {kind: 'scope', boat: 1, lx: 0, lz: U.SCOPE[1] + .14, by: FI + 1.5, r: 1.5, get info() { return (B.dep || 0) < 3 ? 0 : 1; }, label: () => (B.dep || 0) < 3 ? 'Up periscope' : 'Periscope down', go: () => subScope(1), on: () => P.ob && !P.scope && P.y < FI + .5});
+}
+// after the bake: hang the interior and cargo off one group, raise the shared deck spots to the inner deck
+function subDone(g) { const inner = g.userData.inner = SUBC.inner; inner.add(g.userData.cargo); const FI = SUB.FI;
+  for (const it of INTER) { if (!it.boat) continue; if (it.kind === 'helm') it.by = FI + 1; else if (it.kind === 'hold') it.by = FI + .9; else if (it.kind === 'patchbox') { it.by = FI + .7; it.r = 2.2; } } }
+// ---- sub rules shared by host and clients
+const subSurf = () => (B.dep || 0) < .5 && (B.dtar || 0) < .3, lkDepth = () => (B.dep || 0) - SUB.LD.y;
+const inTrunk = p => !!(p && p.ob && p.bl && Math.hypot(p.bl[0] - SUB.TR.x, p.bl[1] - SUB.TR.z) < .9 && p.y > SUB.FI + .3 && p.y < SUB.CAS - .3);
+const inLock = p => { const L = SUB.LKR; return !!(p && p.ob && p.bl && p.bl[0] > L.x0 && p.bl[0] < L.x1 && p.bl[1] > L.z0 && p.bl[1] < L.z1 && p.y < SUB.FI + 1); };
+const inDoorway = p => { const L = SUB.LKR; return !!(p && p.ob && p.bl && Math.abs(p.bl[0] - L.x0) < .45 && p.bl[1] > L.dz0 - .1 && p.bl[1] < L.dz1 + .1 && p.y < SUB.FI + 1); };
+const freshP = p => p === P || performance.now() - (p.poseT || 0) < 1500;
+function trunkBusy() { for (const p of PL.values()) if (p.ready && !p.dead && ((p.trunkT || 0) > G.t || (inTrunk(p) && freshP(p)))) return true; return false; }
+const subInside = (p = P) => !!(BG.sub && p && p.ob && (p.y < BDECK.y - 1 || (p === P && P.climb && P.climb.b === 'bin')));
+function boatSpawn(i) { if (BG.sub) return {bl: [[-.7, -7.3], [.7, -7.3], [-.7, -6.1], [.7, -6.1], [-.7, -4.9], [.7, -4.9]][i % 6].slice(), y: SUB.FI}; return {bl: [i % 2 ? .9 : -.9, Math.min(BDECK.z1 - .5, BSPOT.hold[1] + 1.8 + Math.floor(i / 2))], y: BDECK.y}; }
+// collisions in boat space: crew aboard meet the inside walls, swimmers and divers the outside of the hull (by depth)
+function subPush(o, r, y) { const on = !!o.ob, sw = !on && o.sw, by = (on ? y : sw ? -(o.dv || 0) - B.heave : y - B.heave) - BDECK.y, [lx, lz] = bW2L(o.x, o.z), q = {x: lx, z: lz};
+  pushRects(q, r, BW.filter(w => on ? !w.ext && !(w.door && LK.st === 0) : !w.int), sw ? by - .4 : by + .2, sw ? by + .4 : by + 1.7);
+  if (q.x !== lx || q.z !== lz) { const [wx, wz] = bL2W(q.x, q.z); o.x = wx; o.z = wz; } }
+// ---- the trunk ladder (P.climb.b 'bin': P.ob stays 1 and P.bl follows the climb), the bunk, the airlock teleports
+function subClimb(up) { const T = SUB.TR, y1 = up ? SUB.CAS : SUB.FI; if (!up && P.eq >= 5) equip(0);
+  P.climb = {t: 0, T: 1.1 + Math.abs(y1 - P.y) * .3, a: [P.bl[0], P.y, P.bl[1]], b: 'bin', up, f: [T.x, T.z + .12], e: [T.x, y1, up ? T.z + .85 : T.z - .75], p0: P.pitch, po: 0, yo: 0, y0: P.yaw, eye: P.eye, rT: 0, wet: 0, bY: B.yaw};
+  P.vx = P.vz = P.vy = 0; P.cr = 0; P.run = 0; P.rest = 0; P.trunkT = G.t + P.climb.T + .4; if (!isHost()) act({a: 'trunk', T: P.climb.T}); }
+function subRestStart() { P.rest = 1; P.cr = 1; P.vx = P.vz = 0; P.yaw = B.yaw + PI; P.pitch = .2; showMsg('W to get up.', '', 2); }
+function subRest(dt) { if (K.KeyW || K.KeyA || K.KeyS || K.KeyD || ePress || !BG.sub || !P.ob || B.sink > 0 || P.down) { ePress = false; P.rest = 0; P.cr = 0; P.bl = [-.6, -1.6]; P.y = SUB.FI; return false; }
+  P.bl = [-1.38, -2.05]; P.y = SUB.FI + .48; P.vx = P.vz = 0; P.eye = mix(P.eye, .22, Math.min(1, dt * 4)); [P.x, P.z] = bL2W(P.bl[0], P.bl[1]); return true; }
+// the periscope: the view rides the mast head while she is shallow, the mouse trains it round, E or WASD lets go
+function subScope(on) { const el = SUBC.scV || (SUBC.scV = scopeEl());
+  if (on) { if ((B.dep || 0) >= 3) return; if (P.eq > 1) equip(0); Object.assign(P, {scope: 1, bl: [0, SUB.SCOPE[1] + .55], y: SUB.FI, vx: 0, vz: 0, cr: 0, yaw: B.yaw, pitch: 0}); tone(70, .04, .6, 'sawtooth', null, 160); burst(900, .6, .04, .5, 'bandpass'); }
+  else { P.scope = 0; G.fovAdd = 0; } el.style.display = on ? '' : 'none'; }
+function subScopeStep(dt) { const dp = B.dep || 0;
+  if (K.KeyW || K.KeyA || K.KeyS || K.KeyD || ePress || !BG.sub || !P.ob || B.sink > 0 || P.down || P.seat || dp >= 3) { if (BG.sub && dp >= 3) showMsg('Periscope down.', '', 1.5); ePress = false; subScope(0); return false; }
+  P.vx = P.vz = 0; [P.x, P.z] = bL2W(P.bl[0], P.bl[1]); P.pitch = clamp(P.pitch, -.4, .4);
+  const b = Math.round(((-P.yaw * 180 / PI) % 360 + 360) % 360) % 360; if (b !== SUBC.scB) { SUBC.scB = b; SUBC.scV.lastChild.textContent = String(b).padStart(3, '0') + '°'; } return true; }
+function scopeEl() { const d = document.createElement('div'), ln = 'position:absolute;left:50%;top:50%;background:rgba(10,20,12,.6);';
+  d.style.cssText = 'position:fixed;inset:0;pointer-events:none;display:none;z-index:3;background:radial-gradient(circle at 50% 50%,transparent 0,transparent 33vmin,rgba(0,0,0,.7) 34.5vmin,#000 36vmin)';
+  d.innerHTML = `<div style="${ln}width:56vmin;height:1px;margin-left:-28vmin"></div><div style="${ln}height:44vmin;width:1px;margin-top:-22vmin"></div>` + [-2, -1, 1, 2].map(i => `<div style="${ln}width:1px;height:2.4vmin;margin:-1.2vmin 0 0 ${i * 9}vmin"></div>`).join('') + '<div style="position:absolute;left:50%;top:calc(50% - 30vmin);transform:translateX(-50%);font:bold 13px ui-monospace,monospace;color:#cfe8d0;text-shadow:0 1px 2px #000">000°</div>';
+  document.body.appendChild(d); return d; }
+function washOff() { Object.assign(P, {ob: 0, sw: 1, y: 0, dv: 0, vx: 0, vz: 0, vy: 0, climb: null, rest: 0}); Snd.splash(); showMsg('The sea closes over the deck. Swim!', '', 2.5); }
+function lockDropOut() { if (!P.ob || !inLock(P) || LK.st !== 3) return; const [x, z] = bL2W(SUB.LD.x + .75, SUB.LD.z);
+  Object.assign(P, {ob: 0, sw: 1, y: 0, x, z, vx: 0, vz: 0, vy: 0, climb: null, rest: 0, cr: 0, dv: Math.max(.6, lkDepth()), yaw: B.yaw - PI / 2}); bubbles(x, -P.dv, z, 20); Snd.bubbles();
+  showMsg(P.own && P.own.suit ? 'You swim out of the airlock.' : 'Out of the airlock. Hold your breath!', '', 2.5); }
+function lockIn() { const [x, z] = bL2W(1.0, 2.9); if (P.eq >= 5) equip(0); Object.assign(P, {sw: 0, dv: 0, deep: 0, ob: 1, seat: 0, climb: null, bl: [1.0, 2.9], y: SUB.FI, x, z, vx: 0, vz: 0, vy: 0, yaw: B.yaw + PI / 2, lastBY: B.yaw}); Snd.splash(); showMsg('In the airlock. Draining.', '', 2); }
+// ---- host: the hatch, the dive interlock, grounding, the airlock cycle
+function subAct(p, m) { if (!HC().sub) return; const id = p.id, no = why => emit({k: 'subno', id, why});
+  if (m.a === 'trunk') { p.trunkT = G.t + clamp(+m.T || 2.5, 1, 4) + .8; return; } if (m.a === 'lock') { lockAct(p, m.op); return; }
+  if (!p.ob || !p.bl || Math.hypot(p.bl[0] - SUB.TR.x, p.bl[1] - SUB.TR.z) > 2.4) return;
+  if (m.o) { if (B.hat) return; if (!subSurf()) return no('Surface first.'); B.hat = 1; emit({k: 'hatch', o: 1}); }
+  else { if (!B.hat) return; if (trunkBusy()) return no('Someone is in the trunk.'); B.hat = 0; emit({k: 'hatch', o: 0}); } }
+function subDive(drv, dt) { const H = HC(); let dv = drv && drv.seat && drv.in ? drv.in[2] || 0 : 0; const mx = Math.max(0, Math.min(H.maxDep || 26, -seaBed(B.x, B.z) - 4));
+  if (dv > 0 && (B.dtar || 0) < .05) { // diving from the surface: give the deck crew three seconds, then shut the hatch (not on someone in the trunk)
+    const up = [...PL.values()].some(q => q.ready && !q.dead && q.ob && !q.seat && q.y > BDECK.y - .6 && freshP(q));
+    if (up && !SUBC.dq) { SUBC.dq = G.t + 3; emit({k: 'dive', warn: 1}); }
+    if (SUBC.dq && G.t < SUBC.dq) dv = 0;
+    else if (B.hat) { if (trunkBusy()) { dv = 0; if (G.t - (SUBC.trT ?? -9) > 3) { SUBC.trT = G.t; emit({k: 'subno', id: B.driver, why: 'Hatch open. Someone is in the trunk.'}); } } else { B.hat = 0; emit({k: 'hatch', o: 0, auto: 1}); } } }
+  if (dv <= 0 && SUBC.dq && G.t > SUBC.dq + 4) SUBC.dq = 0;
+  const was = B.dtar || 0; B.dtar = clamp(was + dv * dt * 2.2, 0, mx); if (was < .05 && B.dtar >= .05) { SUBC.dq = 0; emit({k: 'dive'}); }
+  B.dep = (B.dep || 0) + clamp(B.dtar - (B.dep || 0), -dt * 1.6, dt * 1.6);
+  if (B.hat && B.dep > .5) { B.hat = 0; emit({k: 'hatch', o: 0, auto: 1}); }
+  SUBC.ox = B.x; SUBC.oz = B.z; }
+// she draws 3.7 m (more when dived): rising sea bed ahead lifts her, a bank she cannot clear stops her
+function subGround() { if (SUBC.ox == null || Math.abs(B.v) < .05) return; const [sx, sz] = bL2W(0, B.v > 0 ? BG.zb + 2 : BG.zs - 3), bed = seaBed(sx, sz), keel = -(3.7 + (B.dep || 0));
+  if (-bed - 4 < (B.dtar || 0)) B.dtar = Math.max(0, -bed - 4);
+  if (bed > keel) { B.x = SUBC.ox; B.z = SUBC.oz; const hv = Math.abs(B.v); B.v *= .3; if (hv > 1.5 && G.t - (SUBC.gT ?? -9) > 2) { SUBC.gT = G.t; emit({k: 'bump', s: Math.min(1, hv / 7)}); if (B.driver) emit({k: 'subno', id: B.driver, why: 'Too shallow for the sub.'}); } } }
+function setLk(st, ids) { LK.st = st; LK.t = 0; if (st !== 3) LK.ent = -1; emit(ids && ids.length ? {k: 'lock', st, ids} : {k: 'lock', st}); }
+const lkIn = () => [...PL.values()].filter(q => q.ready && !q.dead && inLock(q)), lkBad = q => lkDepth() + .5 > (SUIT[suitOf(q)] || SUIT[0]).max - 1;
+function subHost(dt) { if (B.sink > 0) return; LK.t += dt;
+  switch (LK.st) {
+    case 1: if (LK.t >= .8) setLk(2); break;
+    case 2: LK.w = Math.min(1, LK.w + dt / 6); if (LK.w >= 1) { const L = lkIn(), bad = L.find(lkBad); if (bad) { emit({k: 'subno', id: bad.id, why: 'Too deep for your gear. Draining.'}); setLk(5); } else setLk(3, L.map(q => q.id)); } break;
+    case 3: if (LK.ent >= 0 && G.t - LK.ent > 2.5) setLk(4); break;
+    case 4: if (LK.t >= 1) setLk(5); break;
+    case 5: LK.w = Math.max(0, LK.w - dt / 6); if (LK.w <= 0) setLk(6); break;
+    case 6: if (LK.t >= .8) setLk(0); break; } }
+function lockAct(p, op) { if (!HC().sub || B.sink > 0) return; const id = p.id, no = why => emit({k: 'subno', id, why});
+  const [dx, dz] = bL2W(SUB.LD.x + .5, SUB.LD.z), near = p.sw && Math.hypot(p.x - dx, p.z - dz) < 3.5 && Math.abs((p.dv || 0) - lkDepth()) < 3, L = lkIn();
+  if (op === 'out') { if (LK.st !== 0 || !inLock(p)) return; if ([...PL.values()].some(q => q.ready && !q.dead && !inLock(q) && inDoorway(q))) return no('Doorway blocked.');
+    const bad = L.find(lkBad); if (bad) { const su = suitOf(bad); return no(su ? `Too deep for the ${SUIT[su].n}.` : 'No dive gear. Not at this depth.'); } setLk(1); }
+  else if (op === 'knock') { if (!near) return; if (LK.st === 3) return lockAct(p, 'enter'); if (LK.st !== 0) return; if (L.length) return no('Someone is in the airlock.'); setLk(1); }
+  else if (op === 'enter') { if (!near || LK.st !== 3) return; LK.ent = G.t; emit({k: 'lin', id}); }
+  else if (op === 'drain') { if (LK.st !== 3 || !p.ob || !p.bl || Math.hypot(p.bl[0] - .9, p.bl[1] - 2.9) > 3) return; setLk(4); } }
+// ---- events (all clients)
+function lockSfx(st) { if (!A.on || !BOAT || !BG.sub) return; const [x, z] = bL2W(1, 2.9), p = at(x, SUB.FI + 1 + B.heave, z, 3);
+  if (st === 1 || st === 6) { burst(160, 1, .35, .2, 'lowpass', p); Snd.valve(p); } else if (st === 2) { burst(700, .5, .2, 1.2, 'bandpass', p); Snd.bubbles(); } else if (st === 3) { Snd.clang(p); Snd.bubbles(); }
+  else if (st === 4) { burst(160, 1, .4, .25, 'lowpass', p); tone(90, .1, .4, 'triangle', p); } else if (st === 5) Snd.valve(p); else tone(880, .03, .5, 'sine', p); }
+function subEv(e, me) {
+  if (e.k === 'hatch') { B.hat = e.o ? 1 : 0; if (A.on && BG.sub) { const [x, z] = bL2W(SUB.TR.x, SUB.TR.z), p = at(x, SUB.CAS + .4 + B.heave, z, 4); if (e.o) { Snd.valve(p); tone(90, .05, .6, 'sawtooth', p, 60); } else Snd.clang(p); } if (e.auto && P && subInside()) showMsg('Hatch shut. Diving.', '', 2); }
+  else if (e.k === 'dive') { if (A.on && BG.sub) Snd.klaxon(at(B.x, B.heave + 1, B.z, 10)); if (P && P.ob && !P.sw) { const up = !subInside() && !P.seat, t = e.warn ? (up ? 'Diving in 3. Get below!' : P.seat ? 'Clear the deck. Diving in 3.' : 'Diving in 3.') : up ? 'Hatch shut. Hold on or swim!' : P.seat ? '' : 'Diving.'; if (t) showMsg(t, '', e.warn ? 3 : 2); } }
+  else if (e.k === 'lock') { LK.st = e.st; LK.t = 0; lockSfx(e.st); if (e.ids && P && e.ids.includes(me)) P.lkOut = .7; }
+  else if (e.k === 'lin') { if (e.id === me) lockIn(); }
+  else if (e.k === 'subno' && e.id === me) { showMsg(e.why, '', 2.5); tone(180, .05, .25, 'triangle', null, 120); } }
+// ---- rendering: is the camera inside, the waterline cut-out, lamps, fog, the moving parts and screens
+function camInSub() { if (!BG.sub || !BOAT || B.sink > 0) return false; _sc.copy(cam.position); BOAT.worldToLocal(_sc); const S = SUB, x = _sc.x, y = _sc.y, z = _sc.z; G.subL = [x, y, z];
+  if (z < S.zB) return Math.hypot(x, y - S.cy, z - S.zB) < S.dR - .05 && y > S.FI - .3;
+  if (z < S.zE + .3 && y > S.FI - .3 && Math.hypot(x, y - S.cy) < S.Ri + .05) return true;
+  return Math.hypot(x - S.TR.x, z - S.TR.z) < S.TR.r + .05 && y > S.FI && y < S.CAS + .35; }
+const lockWet = () => { const c = G.subL, L = SUB.LKR; return !!(G.subIn && c && c[0] > L.x0 && c[0] < L.x1 + .5 && c[2] > L.z0 && c[2] < L.z1 && c[1] < SUB.FI + 2.3 * (LK.wv || 0)); };
+// the hull's waterline at local height h as a stadium [half width, bow end, stern end] (null when the water is over the casing)
+function subWL(h) { const U = SUB; if (h > U.CAS) return null; const d = Math.abs(h - U.cy); let w = d < U.R ? Math.sqrt(U.R * U.R - d * d) : 0, z0 = d < U.dR ? U.zB - Math.sqrt(U.dR * U.dR - d * d) : U.zB, z1 = d <= .55 ? U.tail : d < U.R ? U.zA + 2.6 * Math.pow(1 - (d - .55) / 1.95, 1 / 1.6) : U.zA;
+  if (h > 1.05) { w = Math.max(w, U.cx); z0 = Math.min(z0, U.cz0 - .6); z1 = Math.max(z1, U.cz1 + .8); } w += .08; if (z1 - z0 < 2 * w + .2) { const m = (z0 + z1) / 2; z0 = m - w - .1; z1 = m + w + .1; } return [w, z0 - .1, z1 + .1]; }
+function subFx(dt) { G.subIn = camInSub(); const dp = B.dep || 0, dived = dp > 1.5, U = SUBC.U, sh = MAT.sea.userData.sh;
+  if (U) { U.uFogK.value = G.subIn ? 0 : 1; U.uHemi.value = G.subIn ? (dived ? .05 : .16) : .3; if (G.subIn) U.uFill.value.setRGB(dived ? .034 : .066, dived ? .006 : .054, dived ? .004 : .04); else U.uFill.value.setRGB(.03, .025, .02); }
+  if (sh && B.sink <= 0) { const w = subWL(dp - .6 * clamp(1 - dp, 0, 1) * G.sea); if (w) sh.uniforms.uBd.value.set(w[0], w[1], w[2], 2); else sh.uniforms.uBd.value.w = 0; }
+  if (!G.subIn) return;
+  scene.fog.density = Math.min(scene.fog.density, .035); if (SNOW) SNOW.visible = false;
+  // two pooled lamps follow you through the boat: this compartment's first, then the nearest one past a bulkhead
+  const c = G.subL, cmp = z => z < -8.6 ? 0 : z < -2.6 ? 1 : z < 4.2 ? 2 : 3, cc = cmp(c[2]); let a = null, b = null, da = 1e9, db = 1e9;
+  for (const q of SUB.lamps) { const d = (q[0] - c[0]) ** 2 + 4 * (q[1] - c[1]) ** 2 + (q[2] - c[2]) ** 2 + (cmp(q[2]) === cc ? 0 : 30); if (d < da) { b = a; db = da; a = q; da = d; } else if (d < db) { b = q; db = d; } }
+  const fl = (G.shake || 0) > .3 && Math.random() < .3 ? .3 : 1;
+  for (let i = 0; i < 2; i++) { const l = POOL[i], q = i ? b : a; if (!q) { l.intensity = 0; continue; } l.position.copy(_sb.set(q[0], q[1], q[2]).applyMatrix4(BOAT.matrixWorld)); l.color.setHex(dived ? 0xff3a22 : 0xffc890); l.distance = 6; l.intensity = (dived ? 4.5 : 7) * fl * (i ? .8 : 1); } }
+function subPose(dt) { const U = BOAT.userData, dp = B.dep || 0, dived = dp > 1.5, k3 = Math.min(1, dt * 3);
+  G.hatA = mix(G.hatA ?? B.hat, B.hat ? 1 : 0, Math.min(1, dt * 4)); U.hatch.rotation.x = -1.75 * G.hatA;
+  G.mastU = mix(G.mastU ?? 1, dp < 3 ? 1 : 0, Math.min(1, dt * .8)); U.masts.position.y = (G.mastU - 1) * 1.9; U.scope.position.y = (G.mastU - 1) * .6;
+  const dr = clamp(((B.dtar || 0) - dp) * .25, -.35, .35); U.bowPl.rotation.x = -dr; U.sailPl.rotation.x = -.7 * dr; U.sternPl.rotation.x = dr; U.rud.rotation.y = (B.st || 0) * .45;
+  LK.wv = isHost() ? LK.w : mix(LK.wv ?? LK.tw ?? 0, LK.tw ?? 0, Math.min(1, dt * 4)); G.lkI = mix(G.lkI ?? 1, LK.st === 0 ? 1 : 0, k3); G.lkO = mix(G.lkO ?? 0, LK.st === 3 ? 1 : 0, k3);
+  U.lkI.position.z = -.95 * G.lkI; U.lkO.position.z = .9 * G.lkO; U.lkOi.position.z = .85 * G.lkO; U.lkW.visible = LK.wv > .01; U.lkW.scale.y = 2.3 * Math.max(.001, LK.wv);
+  for (const m of U.lkLampM) { m.emissive.setHex(LK.st === 0 ? 0x30ff50 : LK.st === 3 ? 0xff2a10 : 0xffa020); m.emissiveIntensity = LK.st === 0 || LK.st === 3 ? 1.6 : Math.sin(G.wt * 9) > 0 ? 2 : .3; }
+  U.lampM.emissive.setHex(dived ? 0xff2a18 : 0xffd8a0); U.lampM.emissiveIntensity = dived ? .9 : 1.2; U.scrM.emissiveIntensity = dived ? .9 : .5;
+  const lon = dp > 1 || TOD.night > .3; U.lensM.emissiveIntensity = lon ? 2.5 : .2; U.beams.visible = lon && B.sink <= 0;
+  const mo = U.motes; mo.visible = dp > 2 && B.sink <= 0 && (G.subIn || Math.hypot(cam.position.x - B.x, cam.position.z - B.z) < 30); if (mo.visible) { const a = mo.geometry.attributes.position, v = (Math.max(0, B.v) + .2) * dt; for (let i = 0; i < a.count; i++) { let z = a.getZ(i) + v; if (z > -12.6) z -= 12; a.setXYZ(i, a.getX(i) + Math.sin(G.wt * .3 + i) * dt * .05, a.getY(i) + Math.sin(G.wt * .2 + i * 1.7) * dt * .04, z); } a.needsUpdate = true; }
+  const cd = Math.hypot(cam.position.x - B.x, cam.position.z - B.z); U.inner.visible = !!G.subIn || cd < 8 || (cd < 22 && G.subL && G.subL[2] < -9); U.glow.visible = !G.subIn; // from outside the interior only shows through the dome, the hatch or the lock
+  BOAT.updateMatrixWorld();
+  if (LK.st === 2 && G.subIn && Math.random() < dt * 14) { _sb.set(.4 + Math.random() * 1.3, SUB.FI + .05, 2.1 + Math.random() * 1.6); BOAT.localToWorld(_sb); bubbles(_sb.x, _sb.y, _sb.z, 2); }
+  if (G.subIn) subScreens(dt); }
+function subScreens(dt) { const S = SUBC, c = G.subL; if (!c) return;
+  if ((S.sT = (S.sT || 0) - dt) <= 0 && Math.hypot(c[0] - 1.5, c[2] + 7.5) < 7) { S.sT = 1 / 15; drawSonar(); }
+  const dp = B.dep || 0; if (Math.abs(dp - (S.dl ?? -9)) > .05 || (S.dT = (S.dT || 0) - dt) <= 0) { S.dl = dp; S.dT = .5; drawDepth(); }
+  const sig = (B.hat ? 1 : 0) + ':' + LK.st + ':' + ((B.dtar || 0) > .05 ? 1 : 0); if (sig !== S.iSig) { S.iSig = sig; drawInd(); } }
+// sonar: a sweeping green scope, 150 m range; contacts are painted as the beam passes them
+function drawSonar() { const S = SUBC, q = S.son.getContext('2d'), W = 256, C = 128, Rr = 116, a = (G.wt * 1.3) % TAU, pa = S.sonA == null ? a - .1 : S.sonA, k = Rr / 150; S.sonA = a;
+  q.fillStyle = 'rgba(0,16,8,.3)'; q.fillRect(0, 0, W, W); q.strokeStyle = 'rgba(70,255,140,.22)'; q.lineWidth = 1; q.beginPath(); for (let i = 1; i <= 3; i++) { q.moveTo(C + Rr * i / 3, C); q.arc(C, C, Rr * i / 3, 0, TAU); } q.moveTo(C - Rr, C); q.lineTo(C + Rr, C); q.moveTo(C, C - Rr); q.lineTo(C, C + Rr); q.stroke();
+  const sp = ((a - pa) % TAU + TAU) % TAU, hit = b => ((b - pa) % TAU + TAU) % TAU <= sp + .03;
+  const blip = (x, z, col, s) => { const [lx, lz] = bW2L(x, z), d = Math.hypot(lx, lz); if (d > 150 + s / k || !hit(Math.atan2(lx, -lz))) return; q.fillStyle = col; q.beginPath(); q.arc(C + lx * k, C + lz * k, Math.max(2, s), 0, TAU); q.fill(); };
+  for (const I of ISLES) if (Math.hypot(I.x - B.x, I.z - B.z) - I.r < 150) blip(I.x, I.z, 'rgba(90,255,140,.55)', Math.min(60, I.r * k));
+  for (const f of G.floats) if (f) blip(f[0], f[1], '#c8ff60', 2.5); for (const g of GUL) if (g && g.on) blip(g.x, g.z, '#ffb030', 3.5);
+  for (const p of PL.values()) if (p.sw && !p.dead) blip(p.x, p.z, '#80e8ff', 3); if (B.up.sonar) for (const s of SUNK) if (!s.got) blip(s.x, s.z, '#ffe060', 2.5); if (G.spines && LEV.hp) blip(LEV.hp.x, LEV.hp.z, '#ff3020', 7);
+  q.strokeStyle = 'rgba(150,255,180,.95)'; q.lineWidth = 2; q.beginPath(); q.moveTo(C, C); q.lineTo(C + Math.sin(a) * Rr, C - Math.cos(a) * Rr); q.stroke();
+  q.fillStyle = '#000e06'; q.fillRect(0, 0, 66, 22); q.fillRect(0, 234, 104, 22); q.fillRect(190, 0, 66, 22); q.fillStyle = '#8affb0'; q.font = 'bold 15px monospace'; q.textAlign = 'left';
+  q.fillText(`${(B.dep || 0).toFixed(0)} M`, 6, 16); q.fillText(`KEEL ${Math.max(0, -seaBed(B.x, B.z) - 3.5 - (B.dep || 0)).toFixed(0)}`, 6, 250); q.fillText(String(Math.round(((-B.yaw * 180 / PI) % 360 + 360) % 360)).padStart(3, '0') + '°', 196, 16);
+  S.sonT.needsUpdate = true; }
+function drawDepth() { const S = SUBC, q = S.dep.getContext('2d'), C = 64, dp = B.dep || 0, mx = HC().maxDep || 80, ang = v => (-135 + 270 * clamp(v / 100, 0, 1)) * PI / 180 - PI / 2;
+  q.fillStyle = '#ece6d4'; q.fillRect(0, 0, 128, 128); q.strokeStyle = '#b02010'; q.lineWidth = 7; q.beginPath(); q.arc(C, C, 50, ang(mx), ang(100)); q.stroke();
+  q.strokeStyle = q.fillStyle = '#1a1a1a'; q.font = 'bold 11px sans-serif'; q.textAlign = 'center'; q.textBaseline = 'middle';
+  for (let v = 0; v <= 100; v += 10) { const t = ang(v), r0 = v % 20 ? 50 : 45; q.lineWidth = v % 20 ? 1.5 : 2.5; q.beginPath(); q.moveTo(C + Math.cos(t) * r0, C + Math.sin(t) * r0); q.lineTo(C + Math.cos(t) * 55, C + Math.sin(t) * 55); q.stroke(); if (!(v % 20)) q.fillText(v, C + Math.cos(t) * 36, C + Math.sin(t) * 36); }
+  q.font = 'bold 14px monospace'; q.fillText(dp.toFixed(dp < 10 ? 1 : 0) + ' m', C, C + 30); q.font = '8px sans-serif'; q.fillText('DEPTH', C, C - 20);
+  const t = ang(dp); q.strokeStyle = '#c01810'; q.lineWidth = 3; q.beginPath(); q.moveTo(C - Math.cos(t) * 8, C - Math.sin(t) * 8); q.lineTo(C + Math.cos(t) * 48, C + Math.sin(t) * 48); q.stroke(); q.fillStyle = '#222'; q.beginPath(); q.arc(C, C, 5, 0, TAU); q.fill(); S.depT.needsUpdate = true; }
+function drawInd() { const S = SUBC, q = S.ind.getContext('2d'), dv = (B.dtar || 0) > .05; q.fillStyle = '#101414'; q.fillRect(0, 0, 128, 64); q.font = 'bold 11px monospace'; q.textAlign = 'left'; q.textBaseline = 'alphabetic';
+  [['HATCH', B.hat ? '#ff4030' : '#40ff70', B.hat ? 'OPEN' : 'SHUT'], ['LOCK', LK.st === 0 ? '#40ff70' : LK.st === 3 ? '#ff4030' : '#ffb020', ['DRY', 'SEAL', 'FLOOD', 'OPEN', 'SHUT', 'DRAIN', 'VENT'][LK.st] || ''], ['DIVE', dv ? '#ffb020' : '#40ff70', dv ? 'DIVE' : 'SURF']]
+    .forEach(([n, c, s], i) => { const y = 12 + i * 20; q.fillStyle = c; q.beginPath(); q.arc(10, y, 6, 0, TAU); q.fill(); q.fillStyle = '#c8d0c8'; q.fillText(n, 22, y + 4); q.fillStyle = c; q.fillText(s, 78, y + 4); }); S.indT.needsUpdate = true; }
+// gulpers swim around the hull, not through it; lit floodlights chase them off the bow
+function subGulPush(g) { const [lx, lz] = bW2L(g.x, g.z), ly = g.y - B.heave, U = SUB, m = .9, lo = U.cy - U.R - m;
+  if ((B.dep || 0) > 1 && lz < -12 && lz > -24 && Math.abs(lx) < 5 && g.st !== 3) { g.st = 3; g.t = 0; }
+  if (lz < -13.6 || lz > 10.8 || Math.abs(lx) > U.R + m || ly < lo || ly > 2.4) return;
+  const ex = U.R + m - Math.abs(lx), ey = Math.min(ly - lo, 2.4 - ly); if (ex < ey) { const [wx, wz] = bL2W(Math.sign(lx || 1) * (U.R + m), lz); g.x = wx; g.z = wz; } else g.y = (ly - lo < 2.4 - ly ? lo : 2.4) + B.heave; }
+// ---- sound loops: the flooding chamber, the pump, ballast air; hull ticks, drips and pings while you are inside
+function subLoops(c) { if (!c || !A.noise || !A.mute) return null; const L = (f, q, type, dst) => { const s = c.createBufferSource(); s.buffer = A.noise; s.loop = true; const fl = c.createBiquadFilter(); fl.type = type; fl.frequency.value = f; fl.Q.value = q; const g = c.createGain(); g.gain.value = 0; s.connect(fl); fl.connect(g); g.connect(dst); s.start(); return {s, f: fl, g}; };
+  const p = c.createPanner(); Object.assign(p, {panningModel: 'equalpower', distanceModel: 'inverse', refDistance: 2, rolloffFactor: 1.2}); p.connect(A.out);
+  const o = c.createOscillator(), of = c.createBiquadFilter(), pg = c.createGain(); o.type = 'sawtooth'; o.frequency.value = 95; of.type = 'lowpass'; of.frequency.value = 260; pg.gain.value = 0; o.connect(of); of.connect(pg); pg.connect(p); o.start();
+  const S = {p, lw: L(500, .7, 'lowpass', p), pg, bal: L(1700, .6, 'bandpass', A.bPan)}; A.mute.push(S.lw.g, pg, S.bal.g); return S; }
+function subAudio(dt, t, sT) { const S = A.sub || (A.sub = subLoops(A.ctx)); if (!S) return; const E = A.E, dp = B.dep || 0, dtr = B.dtar || 0, [cx, cz] = bL2W(1, 2.9); setPan(S.p, cx, SUB.FI + 1 + B.heave, cz);
+  sT(S.lw.g.gain, LK.st === 2 ? .07 : 0); sT(S.pg.gain, LK.st === 5 ? .05 : 0); sT(S.bal.g.gain, clamp(Math.abs(dtr - (E.dt0 ?? dtr)) / Math.max(dt, 1e-3) / 2.2, 0, 1) * .035 + (LK.st === 1 || LK.st === 6 ? .03 : 0)); E.dt0 = dtr;
+  const sd = Math.abs(dp - (E.sdp ?? dp)) / Math.max(dt, 1e-3); E.sdp = dp; if (!G.subIn) return;
+  const pt = () => { _sb.set((Math.random() < .5 ? -1 : 1) * 1.7, SUB.FI + 1.5 + Math.random() * .8, mix(SUB.zF, SUB.zE, Math.random())); BOAT.localToWorld(_sb); return at(_sb.x, _sb.y, _sb.z, 2); };
+  if (Math.random() < (clamp(sd, 0, 2) * 1.2 + (dp > 20 ? .15 : 0)) * dt) Snd.hullTick(pt()); if (dp > 6 && Math.random() < dt * (.15 + dp / 400)) Snd.drip(pt());
+  if (dp > 2 && (E.pgT = (E.pgT ?? 2) - dt) <= 0) { E.pgT = 4; const [px, pz] = bL2W(1.5, -7.5); Snd.ping(at(px, SUB.FI + 1.2 + B.heave, pz, 3)); } }
 
 // ---------------- rig creature navigation
 const NG = {x0: -24, z0: -24, n: 48, cells: null};
@@ -1032,11 +1405,13 @@ function navPath(fx, fy, fz, tx, ty, tz) {
 function clearLine(ax, az, bx, bz, y) { for (const w of WALLS) { if (w.y1 < y - .7 || w.y0 > y + .5) continue; if (segRect(ax, az, bx, bz, {x0: w.x0 - .35, x1: w.x1 + .35, z0: w.z0 - .35, z1: w.z1 + .35})) return false; } return true; }
 
 // ---------------- physics helpers
-function floorAt(x, z, y, noBoat) {
+function floorAt(x, z, y, noBoat, inner) {
+  // inside the sub (inner): the inner deck, or the casing straight above it when you stand in the trunk
+  if (inner && BOAT && B.sink <= 0) { const [lx, lz] = bW2L(x, z); let F = null, T = null; for (const q of BFL) { if (lx <= q.x0 || lx >= q.x1 || lz <= q.z0 || lz >= q.z1 || q.y > y + .75) continue; if (q.int) F = q; else if (!T || q.y > T.y) T = q; } if (F) return {y: (T || F).y, s: {k: 'boat'}}; }
   let best = null;
   for (const s of SURF) { if (x < s.x0 || x > s.x1 || z < s.z0 || z > s.z1) continue; let h; if (s.k === 'slab') h = s.y; else if (s.k === 'ramp') h = rampY(s, x, z); else { if (Math.hypot(x - s.x, z - s.z) > s.r) continue; h = s.y; } if (h <= y + .75 && (!best || h > best.y)) best = {y: h, s}; }
   const lh = landH(x, z); if (lh > -8 && lh <= y + .75 && (!best || lh > best.y)) best = {y: lh, s: {k: 'land'}};
-  if (!noBoat && BOAT && B.sink <= 0) { const [lx, lz] = bW2L(x, z); if (lx > BDECK.x0 && lx < BDECK.x1 && lz > BDECK.z0 && lz < BDECK.z1) { const h = BDECK.y; if (h <= y + .75 && (!best || h > best.y)) best = {y: h, s: {k: 'boat'}}; } }
+  if (!noBoat && BOAT && B.sink <= 0 && !(BG.sub && (B.dep || 0) > .3)) { const [lx, lz] = bW2L(x, z); for (const q of BFL) { if (q.int || lx <= q.x0 || lx >= q.x1 || lz <= q.z0 || lz >= q.z1) continue; if (q.y <= y + .75 && (!best || q.y > best.y)) best = {y: q.y, s: {k: 'boat'}}; } }
   return best;
 }
 function segRect(ax, az, bx, bz, r) { let t0 = 0, t1 = 1; const dx = bx - ax, dz = bz - az; for (const [p, d, lo, hi] of [[ax, dx, r.x0, r.x1], [az, dz, r.z0, r.z1]]) { if (Math.abs(d) < 1e-9) { if (p < lo || p > hi) return false; continue; } let a = (lo - p) / d, b = (hi - p) / d; if (a > b) [a, b] = [b, a]; t0 = Math.max(t0, a); t1 = Math.min(t1, b); if (t0 > t1) return false; } return true; }
@@ -1050,9 +1425,10 @@ function pushRects(o, r, list, y0, y1) {
   }
 }
 function pushBody(o, r, y) {
+  if (BG.sub && BOAT && o.ob && y < BDECK.y - 1) { subPush(o, r, y); return; }
   pushRects(o, r, WALLS, y + .2, y + 1.7);
   for (const c of PCIRC) { if (Math.abs(o.x - c.x) > c.r + 1 || Math.abs(o.z - c.z) > c.r + 1) continue; const dx = o.x - c.x, dz = o.z - c.z, d = Math.hypot(dx, dz); if (d < c.r + r && d > 1e-4 && y < 25) { o.x = c.x + dx / d * (c.r + r); o.z = c.z + dz / d * (c.r + r); } }
-  if (BOAT && Math.hypot(o.x - B.x, o.z - B.z) < BG.L * .55 + 3) { const [lx, lz] = bW2L(o.x, o.z), q = {x: lx, z: lz}; pushRects(q, r, BW.filter(w => !w.hatch || (B.dep || 0) > .6), y - BDECK.y + .2, y - BDECK.y + 1.7); if (q.x !== lx || q.z !== lz) { const [wx, wz] = bL2W(q.x, q.z); o.x = wx; o.z = wz; } }
+  if (BOAT && Math.hypot(o.x - B.x, o.z - B.z) < BG.L * .55 + 3) { if (BG.sub) { subPush(o, r, y); return; } const [lx, lz] = bW2L(o.x, o.z), q = {x: lx, z: lz}; pushRects(q, r, BW.filter(w => !w.hatch || (B.dep || 0) > .6), y - BDECK.y + .2, y - BDECK.y + 1.7); if (q.x !== lx || q.z !== lz) { const [wx, wz] = bL2W(q.x, q.z); o.x = wx; o.z = wz; } }
 }
 function seeLine(ax, ay, az, bx, by, bz) { if (Math.abs(ay - by) > 3.8) return false; const h = (ay + by) / 2 + 1.3; for (const w of WALLS) { if (!w.see || w.y0 > h || w.y1 < h) continue; if (segRect(ax, az, bx, bz, w)) return false; } return true; }
 const nearRig = (x, z) => Math.hypot(x, z) < 45;
@@ -1586,6 +1962,7 @@ function emit(e) { if (isHost()) goalHook(e, 0); applyEv(e); if (Net.role === 'h
 function applyEv(e) {
   const me = myId();
   switch (e.k) {
+    case 'hatch': case 'dive': case 'lock': case 'lin': case 'subno': subEv(e, me); break;
     case 'tod': { const L = {1: ['The sun is going down. Make the most of the light.', 'SUNSET'], 2: ['Night is coming. Something stirs under the water.', 'DUSK'], 3: ['Full dark. Stay close to land and keep a flare handy.', 'NIGHT'], 4: ['First light. Whatever was out there is sinking back down.', 'DAWN']}[e.p]; if (L) { showMsg(L[0], L[1], 6); if (e.p >= 2 && e.p < 4) Snd.deep(); } break; }
     case 'snd': { const ps = e.x != null && A.on ? at(e.x, e.y, e.z, 3) : null;
       if (e.s === 'stinger') Snd.stinger(); else if (e.s === 'creak') Snd.creak(ps || A.mPan); else if (e.s === 'lunge') Snd.shriek(A.mPan);
@@ -1632,15 +2009,15 @@ function applyEv(e) {
       if (e.dead) { Snd.roar(at(LEV.hp.x, 0, LEV.hp.z, 25)); spray(LEV.hp.x, .2, LEV.hp.z, 40, 6); if (e.by === me) { hTone(70, .35, .2); hTone(52, .3, .3, 'sine', null, .13); } }
       if (G.spines) { G.spines.leave = G.spines.t; G.spines.circle = 0; if (e.lx != null) { G.spines.gx = e.lx; G.spines.gz = e.lz; } } break; }
     case 'ram': { const nr = !!P && (P.ob || Math.hypot(cam.position.x - B.x, cam.position.z - B.z) < BG.L * .5 + 30), big = HC().big;
-      if (nr) { G.shake = big ? .6 : 1.4; Snd.ram(P.ob ? null : at(B.x, .5, B.z, 12)); showMsg(big ? 'Something huge scrapes along the keel.' : ['It slams into the hull!', 'The boat lurches. It is under us.', 'Wood splinters below the waterline!'][Math.floor(Math.random() * 3)], '', 2.5);
+      if (nr) { G.shake = big ? .6 : 1.4; Snd.ram(P.ob ? null : at(B.x, .5, B.z, 12)); showMsg(big ? 'Something huge scrapes along the keel.' : HC().sub ? 'It slams the hull. The whole sub rings like a bell.' : ['It slams into the hull!', 'The boat lurches. It is under us.', 'Wood splinters below the waterline!'][Math.floor(Math.random() * 3)], '', 2.5);
         if (P.ob && !P.seat && !inCabin() && !big && Math.random() < .12) { const [lx, lz] = P.bl; const s = lx >= 0 ? 1 : -1; P.ob = 0; const [wx, wz] = bL2W(lx + s * 3, lz); P.x = wx; P.z = wz; P.vy = 3; showMsg('You are thrown overboard!', '', 3); } }
       else if (P && G.wt - ((G.farT = G.farT || {}).a ?? -99) > 20) { G.farT.a = G.wt; showMsg('Your boat is under attack!', '', 3); } break; }
     case 'sink': { const nr = !!P && (P.ob || Math.hypot(cam.position.x - B.x, cam.position.z - B.z) < BG.L * .5 + 30);
       if (nr) { G.shake = 2; Snd.ram(P.ob ? null : at(B.x, .5, B.z, 12)); Snd.deep(); showMsg('The boat is going down! Abandon ship!', '', 5); } else if (P && G.wt - ((G.farT = G.farT || {}).s ?? -99) > 20) { G.farT.s = G.wt; showMsg('Your boat is sinking!', '', 3); }
-      if (P && P.ob) { P.ob = 0; P.seat = 0; P.y = .1; } break; }
-    case 'boatback': showMsg('A tug drags your boat back to the lighthouse. The cargo is lost.', '', 5); if (P && !P.dead && (P.sw || P.y < 1) && Math.hypot(P.x - e.x, P.z - e.z) < 80) { P.sw = 0; P.ob = 1; P.bl = [0, BSPOT.hold[1] + (BG.sub ? -1.6 : 1.6)]; P.y = BDECK.y; } break;
-    case 'horn': if (Snd.shipHorn) Snd.shipHorn(e.c, at(B.x, 6, B.z, 25 + (HULLS[e.c] || HULLS[0]).L)); break;
-    case 'hdmg': { if (A.on && Snd.crack) { const p = at(B.x, 1, B.z, 10); if ((B.up.cls || 0) <= 1) Snd.crack(p, e.n); else Snd.groan(p, e.n); } if (P && P.ob) G.shake = Math.max(G.shake || 0, e.n / 20); const h = $('hullB'); if (h && h.animate) h.animate([{filter: 'brightness(2.6)', transform: 'scaleY(2.4)'}, {filter: 'none', transform: 'none'}], {duration: 500, easing: 'ease-out'}); break; }
+      if (P && P.ob) { P.ob = 0; P.seat = 0; P.y = .1; } if (P) { P.climb = null; P.lkOut = 0; P.rest = 0; } break; }
+    case 'boatback': showMsg('A tug drags your boat back to the lighthouse. The cargo is lost.', '', 5); if (P && !P.dead && (P.sw || P.y < 1) && Math.hypot(P.x - e.x, P.z - e.z) < 80) { const sp = boatSpawn(0); P.sw = 0; P.ob = 1; P.bl = sp.bl; P.y = sp.y; } break;
+    case 'horn': if (Snd.shipHorn) Snd.shipHorn(e.c, at(B.x, B.heave + 6, B.z, 25 + (HULLS[e.c] || HULLS[0]).L)); break;
+    case 'hdmg': { if (A.on && Snd.crack) { const p = at(B.x, B.heave + 1, B.z, 10); if ((B.up.cls || 0) <= 1) Snd.crack(p, e.n); else Snd.groan(p, e.n); } if (P && P.ob) G.shake = Math.max(G.shake || 0, e.n / 20); const h = $('hullB'); if (h && h.animate) h.animate([{filter: 'brightness(2.6)', transform: 'scaleY(2.4)'}, {filter: 'none', transform: 'none'}], {duration: 500, easing: 'ease-out'}); break; }
     case 'storm': if (e.on) showMsg('The wind picks up. A storm is rolling in.', '', 4); else showMsg('The storm passes. The moon comes out.', '', 4); break;
     case 'fl': if (e.id !== me) spawnFlare(e); break;
     case 'tug': if (!isHost()) B.got = 0; showMsg(e.id === me ? 'You wash up at the lighthouse. The harbour tug towed your boat in.' : 'The harbour tug towed your boat to the jetty.', '', 4); break;
@@ -1676,6 +2053,7 @@ function applyEv(e) {
 // ---------------- host simulation
 function dropCarry(p, all = true) { if (!p.sack || !p.sack.length) return; const L = all ? p.sack.splice(0) : [p.sack.pop()]; sackSet(p); L.forEach((k, i) => dropOne(p, k, i)); }
 function dropOne(p, k, i) {
+  if (p.ob && BG.sub && p.y < BDECK.y - 1) { if (holdFits(k)) B.hold.push(k); else { p.sack.push(k); sackSet(p); emit({k: 'holdfull', id: p.id}); } return; } // inside the sub it goes on the racks
   p = {x: p.x + (i % 3 - 1) * .5, y: p.y, z: p.z + Math.floor(i / 3) * .5};
   const f = floorAt(p.x, p.z, p.y + .5);
   if (f && f.y > -.5 && f.s.k !== 'boat') { const it = addItem(k, {x: p.x, y: f.y, z: p.z}); emit({k: 'item', i: it.i, kind: k, x: p.x, y: f.y, z: p.z}); }
@@ -1714,7 +2092,7 @@ function keyCheck() {
 }
 function hostStep(dt) {
   G.t += dt;
-  boatStep(dt);
+  boatStep(dt); if (BG.sub) subHost(dt);
   for (const p of PL.values()) {
     if (!p.ready) continue;
     if (p.ob && p !== P) { const [wx, wz] = bL2W(p.bl[0], p.bl[1]); p.x = wx; p.z = wz; }
@@ -1768,7 +2146,7 @@ function hostStep(dt) {
   const homeD = Math.hypot(B.x - HOME.x, B.z - HOME.z), nearLand = OBST.some(o => o.c && o.r > 5 && Math.hypot(B.x - o.x, B.z - o.z) < o.r + 70) || Math.hypot(B.x, B.z) < 80 || Math.hypot(B.x - CRZ.x, B.z - CRZ.z) < 140;
   G.deepT = (G.deepT ?? 40) - dt;
   // it only comes for a crew that is up on (or right beside) the boat: divers down below are the gulpers' business
-  const crewUp = alive().some(p => p.ob || (Math.hypot(p.x - B.x, p.z - B.z) < 40 && !(p.sw && (p.dv || 0) > 3)));
+  const crewUp = alive().some(p => (p.ob && !(HC().sub && (B.dep || 0) > 6)) || (!p.ob && Math.hypot(p.x - B.x, p.z - B.z) < 40 && !(p.sw && (p.dv || 0) > 3)));
   if (!G.enc && B.sink <= 0 && homeD > 280 && !nearLand && G.deepT <= 0) { G.deepT = 20 + CR() * 25; if (crewUp && CR() < (D.deep + .3 * G.storm + .25 * TOD.night) * .75) { const a = CR() * TAU; G.enc = {t: 9, L: 9, a, el: 0, hp: 90, t0: G.t}; emit({k: 'circle', a, L: 9}); } }
   if (G.enc) {
     G.enc.t -= dt; G.enc.el = (G.enc.el || 0) + dt;
@@ -1828,7 +2206,7 @@ function hostAct(id, m) {
     if (p.cooler.length) { v += coolerVal(p.cooler); c.fish = p.cooler.length; p.cooler = []; emit({k: 'cooler', id, n: 0, v: 0}); } if (v) { v = Math.round(v * (D.pay || 1)); G.cash += v; G.earned += v; emit({k: 'sold', v, c}); if (G.earned >= 1500) goal(3); save(); } }
   else if (m.a === 'buyh') { const now = performance.now() / 1000; if ((p.buyT || 0) > now) return; p.buyT = now + .4; const H = HULLS[m.k]; if (!H || m.k === (B.up.cls || 0) || (H.cruise && !G.cruise)) return; const own = Array.isArray(B.up.own) ? B.up.own : (B.up.own = [0, B.up.cls || 0]), price = own.includes(m.k) || (H.cruise && G.cruise) ? 0 : hullCost(H);
     if (sackUsed(B.hold) > Math.round(H.hold * [1, 1.5, 2][B.up.hold || 0]) * 2) emit({k: 'holdbig', id}); else if (B.driver) emit({k: 'nope', id, why: 'Someone is at the wheel.'}); else if (Math.hypot(B.x - JETTY.x, B.z - JETTY.z) >= 60 + BG.L * .5) emit({k: 'nope', id, why: 'Bring the boat to the jetty first.'}); else if (G.cash < price) emit({k: 'nope', id, why: 'Not enough crew cash.'});
-    else { G.cash -= price; if (!own.includes(m.k)) own.push(m.k); B.up.cls = m.k; buildBoat(); resetBoat(false); B.fuel = tankMax(); B.hull = hullMax(); for (const q of PL.values()) if (q.ob) { q.bl = [0, Math.min(BG.zs - .8, BSPOT.hold[1] + (BG.sub ? -1.6 : 1.8))]; } emit({k: 'bought', n: H.n, hull: m.k}); save(); } }
+    else { G.cash -= price; if (!own.includes(m.k)) own.push(m.k); B.up.cls = m.k; buildBoat(); resetBoat(false); B.fuel = tankMax(); B.hull = hullMax(); { let n = 0; for (const q of PL.values()) if (q.ob) { const sp = boatSpawn(n++); q.bl = sp.bl; q.y = sp.y; q.climb = null; q.seat = 0; q.rest = 0; } } emit({k: 'bought', n: H.n, hull: m.k}); save(); } }
   else if (m.a === 'buy') { const now = performance.now() / 1000; if ((p.buyT || 0) > now) return; p.buyT = now + .4; const U = UPG[m.k], poor = c => G.cash < c && (emit({k: 'nope', id, why: 'Not enough crew cash.'}), true);
     if (U) { const lv = B.up[m.k] || 0, c = U.cost[lv]; if (c != null && !poor(c)) { G.cash -= c; B.up[m.k] = lv + 1; if (m.k === 'tank') B.fuel = tankMax(); if (m.k === 'hull') B.hull = hullMax(); emit({k: 'bought', n: U.n}); if (B.up.engine >= 3) goal(4); save(); } }
     else if (m.k === 'flares') { if ((m.fl || 0) >= 6) emit({k: 'nope', id, why: "You can't carry more flares."}); else if (!poor(30)) { G.cash -= 30; emit({k: 'give', id, kind: 'flare', n: Math.min(3, 6 - (m.fl || 0)), buy: 1}); save(); } }
@@ -1842,6 +2220,7 @@ function hostAct(id, m) {
   else if (m.a === 'buyg') { const now = performance.now() / 1000; if ((p.buyT || 0) > now) return; p.buyT = now + .4; const g = GEAR[m.k]; if (!g || (m.own && g.need && !g.need(m.own))) return; if (G.cash < g.cost) emit({k: 'nope', id, why: 'Not enough crew cash.'}); else { G.cash -= g.cost; emit({k: 'gear', id, g: m.k}); save(); } }
   else if (m.a === 'fish') { const f = FISH[m.f]; if (!f) return; if (m.f === 'bottle') { const d = DIGS.reduce((b, q, j) => q.rev || q.dug || (b >= 0 && Math.hypot(DIGS[b].x - p.x, DIGS[b].z - p.z) <= Math.hypot(q.x - p.x, q.z - p.z)) ? b : j, -1); if (d >= 0) { DIGS[d].rev = true; emit({k: 'bottle', i: d}); } else { G.bn = ((G.bn ?? -1) + 1) % BOTTLE_NOTES.length; emit({k: 'bottle', i: -1, n: G.bn}); } return; } const v = fishVal(m.f, p.x, p.z), cap = [0, 8, 12, 18][m.rod || 1] || 8; if (p.cooler.length >= cap) { emit({k: 'coolfull', id}); return; }
     p.cooler.push([m.f, v]); emit({k: 'cooler', id, n: p.cooler.length, v: coolerVal(p.cooler)}); emit({k: 'catch', id, f: m.f, kg: m.kg, v}); if (m.f === 'squid') goal(5); save(); }
+  else if (m.a === 'hatch' || m.a === 'trunk' || m.a === 'lock') subAct(p, m);
   else if (m.a === 'shoot') hostShoot(p, m);
 }
 function act(m) { if (isHost()) hostAct(myId(), m); else Net.send(Object.assign({t: 'act', px: +P.x.toFixed(2), pz: +P.z.toFixed(2), ob: P.ob}, m)); }
@@ -1858,7 +2237,7 @@ function packSnap() {
     b: [+B.x.toFixed(2), +B.z.toFixed(3), +B.yaw.toFixed(4), +B.v.toFixed(2), +B.thr.toFixed(2), B.driver || '', +B.fuel.toFixed(1), +B.hull.toFixed(1), B.sink > 0 ? 1 : 0, +(B.dep || 0).toFixed(2), +(B.dtar || 0).toFixed(2), +(B.yr || 0).toFixed(3)], rd: G.radioOn ? 1 : 0, up: B.up, sk: SUNK.map(q => q.got ? 1 : 0).join(''), hold: B.hold.map(k => KINDS.indexOf(k)),
     ps, it: ITEMS.map(i => i.taken ? 1 : 0).join(''), fl: G.floats.map(f => f ? [+f[0].toFixed(1), +f[1].toFixed(1), f[2]] : 0), va: VALVES.map(v => v.open ? 1 : 0), pw: G.power ? 1 : 0, bo: G.bbOut ? 1 : 0,
     dg: DIGS.map(d => (d.rev ? 1 : 0) + (d.dug ? 2 : 0)), cash: G.cash, earned: G.earned, disc: G.disc, goals: G.goals, st: +G.storm.toFixed(3), td: +G.tod.toFixed(4), hp: G.holdP, gt: +G.t.toFixed(1), sw: [+STS.x.toFixed(2), +STS.y.toFixed(2), +STS.z.toFixed(2), +STS.yaw.toFixed(2), STS.state, +STS.spd.toFixed(2)], gu: GUL.map(g => g.on ? [+g.x.toFixed(1), +g.y.toFixed(1), +g.z.toFixed(1), +g.yaw.toFixed(2), +g.pitch.toFixed(2), g.st] : 0), cz: G.cruise ? 1 : 0, ev: G.evq};
-  s.al = ALL ? 1 : 0;
+  s.al = ALL ? 1 : 0; if (HC().sub) s.sb = [B.hat ? 1 : 0, LK.st, +LK.w.toFixed(2), +LK.t.toFixed(2)];
   G.evq = []; return s;
 }
 function applySnap(s) {
@@ -1867,7 +2246,7 @@ function applySnap(s) {
   B.tx = s.b[0]; B.tz = s.b[1]; B.tyaw = s.b[2]; B.v = s.b[3]; B.thr = s.b[4]; B.driver = s.b[5] || null; B.fuel = s.b[6]; B.hull = s.b[7]; B.sink = s.b[8] ? 1 : 0; B.dep = s.b[9] || 0; B.dtar = s.b[10] ?? B.dep; G.radioOn = !!s.rd; if (s.sk) SUNK.forEach((q, i) => q.got = s.sk[i] === '1'); if (!B.got) { B.got = 1; B.x = B.tx; B.z = B.tz; B.yaw = B.tyaw; }
   if (Math.hypot(B.tx - B.x, B.tz - B.z) > 40) { B.x = B.tx; B.z = B.tz; B.yaw = B.tyaw; } if (M.x != null && Math.hypot(M.tx - M.x, M.tz - M.z) + Math.abs(M.ty - M.y) > 15) { M.x = M.tx; M.y = M.ty; M.z = M.tz; M.yaw = M.tyaw; } G.hostAll = !!s.al;
   B.up = s.up; B.hold = s.hold.map(i => KINDS[i]);
-  if (s.b[11] != null) B.yr = s.b[11];
+  if (s.b[11] != null) B.yr = s.b[11]; if (s.sb) { B.hat = s.sb[0]; LK.st = s.sb[1]; LK.tw = s.sb[2]; LK.t = s.sb[3]; }
   for (const id in s.ps) { const p = PL.get(id); if (!p) continue; const [d, bl, de, , ca] = s.ps[id]; p.down = !!d; p.bleed = bl; p.dead = !!de; if (Array.isArray(ca)) { p.sack = ca.map(i => KINDS[i]); p.carry = p.sack[p.sack.length - 1] || null; if (p === P) P.sack = p.sack; } }
   for (let i = 0; i < ITEMS.length; i++) ITEMS[i].taken = s.it[i] === '1';
   G.floats = s.fl.map(f => f || null);
@@ -1896,7 +2275,7 @@ function spawnFlare(e) {
 }
 function lightOn() { return !!(P && P.l && (P.eq === 1 || P.eq === 3 || P.eq === 4 || (P.sw && P.own && P.own.suit && P.dv > .5))); }
 function throwFlare() {
-  if (P.flares <= 0 || P.hd >= 0 || P.down || !alivePlay()) return; if (P.seat && HC().sub && (B.dep || 0) > .3) return;
+  if (P.flares <= 0 || P.hd >= 0 || P.down || !alivePlay()) return; if (subInside()) { showMsg('Not in here.', '', 1.2); return; }
   if (P.eq === 5) P.burn = 0; P.flares--; if (P.flares <= 0 && P.eq === 5) P.eq = 0;
   const f = eyeDir(P); let e;
   // from the wheel: over the rail on the side you are looking at, so it lands in the sea beside the hull
@@ -1912,7 +2291,7 @@ function stepFlares(dt) {
     const f = G.flares[i];
     if (!f.rest) { f.vy -= 9.8 * dt; f.x += f.vx * dt; f.z += f.vz * dt; f.y += f.vy * dt; const fl = floorAt(f.x, f.z, f.y + .3); const gy = fl && fl.y > -.1 ? fl.y + .03 : -.1;
       if (f.y < gy) { f.y = gy; f.vy *= -.25; f.vx *= .5; f.vz *= .5; if (Math.hypot(f.vx, f.vz) < .5) { f.rest = true; f.sea = !(fl && fl.y > -.1); f.surf = fl && fl.s.k === 'boat' ? bW2L(f.x, f.z) : null; noise(f.x, f.y, f.z, 10); } } }
-    else if (f.surf) { const [wx, wz] = bL2W(f.surf[0], f.surf[1]); f.x = wx; f.z = wz; }
+    else if (f.surf) { if (BG.sub && (B.dep || 0) > .3) { f.surf = null; f.rest = false; f.vy = 0; } else { const [wx, wz] = bL2W(f.surf[0], f.surf[1]); f.x = wx; f.z = wz; } }
     f.t -= f.sea ? dt * 2 : dt; f.m.position.set(f.x, f.y + (f.sea ? waveH(f.x, f.z, G.wt) + .1 : 0), f.z); f.m.rotation.set(0, 0, f.rest ? 0 : G.t * 9);
     const on = f.t > 0, k = .8 + Math.random() * .4; if (FLL[i]) FLL[i].intensity = on ? 16 * k * Math.min(1, f.t / 3) : 0; FLL[i] && FLL[i].position.set(f.x, f.m.position.y + .35, f.z); f.glow.material.opacity = on ? .8 * k : 0;
   }
@@ -1925,23 +2304,27 @@ const alivePlay = () => P && !P.dead;
 // walk straight off the boat onto a dock, jetty, wreck or beach alongside it, and back
 function gangway(dt) {
   P.gwT = Math.max(0, (P.gwT || 0) - dt); if (P.gwT > 0 || P.sw || P.seat || P.down || P.hd >= 0 || B.sink > 0 || (B.dep || 0) > .3) return;
-  const sp = Math.hypot(P.vx, P.vz); if (sp < .8) return; const ux = P.vx / sp, uz = P.vz / sp;
+  if (BG.sub && P.ob && P.y < BDECK.y - .5) return; const sp = Math.hypot(P.vx, P.vz); if (sp < .8) return; const ux = P.vx / sp, uz = P.vz / sp;
   if (P.ob) { const [lx, lz] = bW2L(P.x, P.z), c = Math.cos(B.yaw), s = Math.sin(B.yaw), lvx = ux * c - uz * s, lvz = ux * s + uz * c;
     const nearSide = Math.abs(lx) > BDECK.x1 - .55 && lvx * Math.sign(lx) > .5, nearEnd = (lz > BDECK.z1 - .6 && lvz > .5) || (lz < BDECK.z0 + .6 && lvz < -.5); if (!nearSide && !nearEnd) return;
     for (const dd of [1.2, 2, 2.8]) { const wx = P.x + ux * dd, wz = P.z + uz * dd, f = floorAt(wx, wz, BDECK.y + 1.4, true); if (f && f.y > -.4 && Math.abs(f.y - BDECK.y) < 2.4 && f.s.k !== 'boat') { P.ob = 0; P.x = wx; P.z = wz; P.y = f.y; P.vy = 0; P.gwT = .7; Snd.step('wood', 1); return; } } }
-  else if (Math.hypot(B.x - P.x, B.z - P.z) < BG.L * .6 + 4 && Math.abs(P.y - BDECK.y) < 2.4) { const [lx, lz] = bW2L(P.x + ux * 1.3, P.z + uz * 1.3);
-    if (lx > BDECK.x0 - .2 && lx < BDECK.x1 + .2 && lz > BDECK.z0 - .2 && lz < BDECK.z1 + .2) { const bl = [clamp(lx, BDECK.x0 + .45, BDECK.x1 - .45), clamp(lz, BDECK.z0 + .45, BDECK.z1 - .45)], [wx, wz] = bL2W(bl[0], bl[1]); P.ob = 1; P.bl = bl; P.x = wx; P.z = wz; P.y = BDECK.y; P.vy = 0; P.gwT = .7; P.lastBY = B.yaw; Snd.step('wood', 1); } }
+  else if (Math.hypot(B.x - P.x, B.z - P.z) < BG.L * .6 + 4 && Math.abs(P.y - BDECK.y) < 2.4) for (const dd of BG.sub ? [1.3, 2.1] : [1.3]) { const [lx, lz] = bW2L(P.x + ux * dd, P.z + uz * dd);
+    if (lx > BDECK.x0 - .2 && lx < BDECK.x1 + .2 && lz > BDECK.z0 - .2 && lz < BDECK.z1 + .2) { const bl = [clamp(lx, BDECK.x0 + .45, BDECK.x1 - .45), clamp(lz, BDECK.z0 + .45, BDECK.z1 - .45)], [wx, wz] = bL2W(bl[0], bl[1]); P.ob = 1; P.bl = bl; P.x = wx; P.z = wz; P.y = BDECK.y; P.vy = 0; P.gwT = .7; P.lastBY = B.yaw; Snd.step('wood', 1); return; } }
 }
 function stepPlayer(dt) {
   if (!alivePlay()) return;
   const bdy = B.yaw - (P.lastBY ?? B.yaw); P.lastBY = B.yaw;
   if (P.ob) { P.yaw += bdy; const [wx, wz] = bL2W(P.bl[0], P.bl[1]); P.x = wx; P.z = wz; }
+  if (P.lkOut > 0 && (P.lkOut -= dt) <= 0) lockDropOut();
+  if (BG.sub && P.ob && !P.seat && !P.climb && P.y > BDECK.y - .6 && (B.dep || 0) > 1.1) washOff();
   if (P.climb) { climbStep(dt); return; }
+  if (P.rest && subRest(dt)) return;
+  if (P.scope && subScopeStep(dt)) return;
   if (P.seat) {
-    P.bl = [BHELM[0], BHELM[1]]; const [wx, wz] = bL2W(BHELM[0], BHELM[1]); P.x = wx; P.z = wz; P.y = BDECK.y; P.ob = 1;
+    P.bl = [BHELM[0], BHELM[1]]; const [wx, wz] = bL2W(BHELM[0], BHELM[1]); P.x = wx; P.z = wz; P.y = BHELM[2] ?? BDECK.y; P.ob = 1;
     const d = angD(B.yaw, P.yaw); P.yaw = B.yaw + clamp(d, -1.3, 1.3);
     P.in = [(K.KeyW ? 1 : 0) - (K.KeyS ? 1 : 0), (K.KeyD ? 1 : 0) - (K.KeyA ? 1 : 0)];
-    P.in.push((K.KeyC ? 1 : 0) - (K.Space ? 1 : 0)); P.vx = P.vz = 0; P.eye = mix(P.eye, HC().eye || ((B.up.cls || 0) === 3 ? 8.9 : 1.62), dt * 4); return;
+    P.in.push((K.KeyC ? 1 : 0) - (K.Space ? 1 : 0)); P.vx = P.vz = 0; P.eye = mix(P.eye, HC().eye || ((B.up.cls || 0) === 3 ? 8.9 : BG.sub ? 1.15 : 1.62), dt * 4); return;
   }
   P.in = [0, 0];
   if (P.hd >= 0) {
@@ -1951,7 +2334,7 @@ function stepPlayer(dt) {
     P.gasp -= dt; $('breath').querySelector('i').style.width = P.breath * 100 + '%'; return;
   }
   const fw = (K.KeyW ? 1 : 0) - (K.KeyS ? 1 : 0), st = (K.KeyD ? 1 : 0) - (K.KeyA ? 1 : 0), mag = Math.hypot(fw, st) || 1;
-  const wade = !P.sw && P.y < -.05;
+  const wade = !P.sw && !P.ob && P.y < -.05;
   let run = (K.ShiftLeft || K.ShiftRight) && fw > 0 && P.stam > .02 && !P.cr && !P.down && !P.sw && !wade && sackUsed(P.sack) < 7;
   if (P.tired && P.stam < .3) run = false; if (P.stam > .3) P.tired = false;
   let sp = P.sw ? ((P.own && P.own.suit) ? 2.6 : 1.6) * (P.dv > 1 && (P.own && P.own.suit) ? Math.cos(P.pitch) : 1) : P.down ? .55 : P.cr ? 1.6 : run ? 5.8 : 3.0; if (wade) sp *= .6; sp *= 1 - .3 * sackUsed(P.sack) / 10;
@@ -1960,8 +2343,8 @@ function stepPlayer(dt) {
   P.vx = mix(P.vx, fw || st ? tvx : 0, Math.min(1, dt * acc)); P.vz = mix(P.vz, fw || st ? tvz : 0, Math.min(1, dt * acc));
   const ox = P.x, oz = P.z; P.x += P.vx * dt; P.z += P.vz * dt;
   pushBody(P, .33, P.y);
-  const f = floorAt(P.x, P.z, P.sw ? 0 : P.y);
-  const stand = f && f.y > -1.3;
+  const inner = BG.sub && P.ob && (P.y < BDECK.y - 1 || Math.hypot(P.bl[0] - SUB.TR.x, P.bl[1] - SUB.TR.z) < SUB.TR.r + .2), f = floorAt(P.x, P.z, P.sw ? 0 : P.y, false, inner);
+  const stand = f && (f.y > -1.3 || f.s.k === 'boat');
   if (P.sw) { if (stand) { P.sw = 0; P.y = f.y; P.dv = 0; } else { P.y = 0; P.deep = !f || f.y < -3 ? 1 : 0; } }
   if (P.sw && P.cr) P.cr = 0;
   const surf = () => P.sw || wade ? 'wet' : !f ? 'wood' : f.s.k === 'boat' ? ((B.up.cls || 0) >= 2 ? 'steel' : 'wood') : f.s.k === 'disc' ? 'stone' : inCruise(P.x, P.z, P.y) ? ((BLD[zoneOf(P.x, P.z, P.y)] || {}).kind === 'state' ? 'carpet' : 'steel') : (f.s.k === 'slab' || f.s.k === 'ramp') && nearRig(P.x, P.z) ? 'metal' : f.s.k === 'land' ? 'sand' : 'wood';
@@ -1979,7 +2362,7 @@ function stepPlayer(dt) {
     if (stand && P.y - f.y < .6) { const iv = -(P.vy || 0); P.y = mix(P.y, f.y, Math.min(1, dt * 14)); P.vy = 0; if (iv > 3.5) landed(iv); }
     else { P.vy = (P.vy || 0) - 20 * dt; P.y += P.vy * dt; if (stand && P.y < f.y) { const iv = -P.vy; P.y = f.y; P.vy = 0; if (iv > 3.5) landed(iv); } if (!stand && P.y < .1) { P.sw = 1; P.cr = 0; P.y = 0; P.vy = 0; P.ob = 0; Snd.splash(); showMsg('You are in the water! Swim to land or a ladder (E). Do not stay out in deep water.', '', 3); } }
   }
-  if (!P.sw && f && f.s.k === 'boat' && Math.abs(P.y - BDECK.y) < .3) { P.ob = 1; P.bl = bW2L(P.x, P.z); } else P.ob = 0;
+  if (!P.sw && f && f.s.k === 'boat' && Math.abs(P.y - f.y) < .3) { P.ob = 1; P.bl = bW2L(P.x, P.z); } else P.ob = 0;
   gangway(dt);
   const moved = Math.hypot(P.x - ox, P.z - oz), v = moved / Math.max(dt, 1e-4); P.run = run && v > 1 ? 1 : 0;
   if (P.run) { P.stam -= dt / 7; if (P.stam <= 0) { P.stam = 0; P.tired = true; } } else P.stam = Math.min(1, P.stam + dt / (v > .5 ? 11 : 7));
@@ -1989,11 +2372,11 @@ function stepPlayer(dt) {
   if (P.l) { P.bat -= dt / 360; if (P.bat <= 0) { P.bat = 0; P.l = 0; showMsg('Your flashlight died. Buy batteries at the harbour shed.', '', 3); } }
   const so = P.stam < .35, sw = Math.round(P.stam * 100) + '%'; if (so !== G.stamOn) { G.stamOn = so; $('stam').style.opacity = so ? 1 : 0; } if (sw !== G.stamW) { G.stamW = sw; $('stam').firstChild.style.width = sw; }
 }
-function interWorld(it) { if (!it.boat) return it; const [x, z] = bL2W(it.lx, it.lz); return {x, y: BDECK.y + it.ly, z}; }
+function interWorld(it) { if (!it.boat) return it; const [x, z] = bL2W(it.lx, it.lz); return {x, y: it.by != null ? it.by : BDECK.y + it.ly, z}; }
 function targets() {
   const L = [], far = (x, z, r = 30) => (x - P.x) * (x - P.x) + (z - P.z) * (z - P.z) > r * r, full = `Sack full (${sackUsed(P.sack)}/${sackCap(P)})`;
   for (const it of ITEMS) { if (it.taken || far(it.x, it.z)) continue; const nf = CARRY.has(it.kind) && !sackFits(P, it.kind); L.push({x: it.x, y: it.y + .2, z: it.z, r: 2.4, info: nf ? 1 : 0, label: it.kind === 'note' ? 'Read the note' : nf ? `Sack full (${sackUsed(P.sack)}/${sackCap(P)}, X drops the last thing)` : `Pick up the ${NAMES[it.kind]}` + (VALUE[it.kind] ? ` ($${VALUE[it.kind]})` : ''), go: () => it.kind === 'note' ? openNote(it.text) : act({a: 'pick', i: it.i})}); }
-  G.floats.forEach((f, i) => { if (!f) return; const r = (B.up.crane && P.ob ? 12 : 5.5) + (P.ob ? BG.hw * .6 : 0); if (far(f[0], f[1], r + 2)) return; const kind = KINDS[f[2]], nf = kind !== 'bottle' && !sackFits(P, kind); L.push({x: f[0], y: (P.ob ? BDECK.y : 0) + .2, z: f[1], r, flat: 1, info: nf ? 1 : 0, label: nf ? full : (P.ob ? 'Haul the ' : 'Grab the ') + NAMES[kind] + (P.ob ? ' aboard' : '') + (VALUE[kind] ? ` ($${VALUE[kind]})` : ''), go: () => act({a: 'float', i})}); });
+  G.floats.forEach((f, i) => { if (!f || subInside()) return; const r = (B.up.crane && P.ob ? 12 : 5.5) + (P.ob ? BG.hw * .6 : 0); if (far(f[0], f[1], r + 2)) return; const kind = KINDS[f[2]], nf = kind !== 'bottle' && !sackFits(P, kind); L.push({x: f[0], y: (P.ob ? BDECK.y : 0) + .2, z: f[1], r, flat: 1, info: nf ? 1 : 0, label: nf ? full : (P.ob ? 'Haul the ' : 'Grab the ') + NAMES[kind] + (P.ob ? ' aboard' : '') + (VALUE[kind] ? ` ($${VALUE[kind]})` : ''), go: () => act({a: 'float', i})}); });
   VALVES.forEach((v, i) => { if (!v.open) L.push({x: v.x, y: v.y + 1.1, z: v.z, r: 2.6, hold: 'v' + i, label: 'Hold E to open the ' + v.name}); });
   const gb = BLD.find(q => q.kind === 'gen'), cb = BLD.find(q => q.kind === 'ctrl'), vo = VALVES.every(v => v.open);
   if (gb) L.push({x: gb.genP[0], y: gb.genP[1], z: gb.genP[2], r: 3, hold: !G.power && vo ? 'g' : '', info: G.power || !vo ? 1 : 0, label: G.power ? 'The generator is running' : vo ? 'Hold E to start the generator' : 'Generator. No fuel: two valves are shut.'});
@@ -2005,14 +2388,14 @@ function targets() {
   if (CRZ.box) L.push({x: CRZ.x - 6, y: CRZ.D1 + 1.2, z: CRZ.z + 44, r: 2.6, label: 'Slot machines (they still work)', go: openCasino});
   if (G.shed) L.push({x: G.shed.shop[0], y: G.shed.shop[1], z: G.shed.shop[2], r: 3, label: 'Harbour shed: sell salvage, buy upgrades', go: openShop});
   for (const p of PL.values()) if (p !== P && p.down && !p.dead && p.ready) L.push({x: p.x, y: p.y + .3, z: p.z, r: 2.4, hold: 'r' + p.id, label: `Hold E to pick up ${p.name}`});
-  for (const it of INTER) { if ((!it.boat && far(it.x, it.z)) || (it.on && !it.on())) continue; const w = interWorld(it); L.push(Object.assign({}, it, {x: w.x, y: it.boat ? w.y : it.y, z: w.z, label: it.label(), hide: it.h, src: it})); }
+  for (const it of INTER) { if ((!it.boat && far(it.x, it.z)) || (it.on && !it.on())) continue; const w = interWorld(it); L.push(Object.assign({}, it, {x: w.x, y: it.boat ? w.y + (it.dive ? B.heave : 0) : it.y, z: w.z, label: it.label(), hide: it.h, src: it})); }
   return L;
 }
 function stepInteract(dt) {
   const pr = $('prompt'); P.h = '';
   if (TEST && G.forceH) { P.h = G.forceH; return; }
   const off = () => { if (G.prOp !== 0) { G.prOp = 0; pr.style.opacity = 0; } ePress = false; };
-  if (!alivePlay() || P.down || P.climb || anyPanel()) { off(); return; }
+  if (!alivePlay() || P.down || P.climb || P.scope || anyPanel()) { off(); return; }
   const ey = P.y + P.eye; cam.getWorldDirection(_fw); let best = null, bs = 1e9;
   for (const it of targets()) {
     if (P.hd >= 0) { if (it.hide && it.hide.i === P.hd) { best = it; break; } continue; }
@@ -2167,28 +2550,37 @@ function cycleSlot(d) { for (let k = 1; k <= 7; k++) { const i = ((P.eq + d * k)
 // ladders: climb over about a second instead of teleporting to the top
 function startClimb(s) {
   const boat = s.top === 'boat', y0 = waveH(P.x, P.z, G.wt) - (P.dv || 0);
-  if (boat) { const lz = BG.sub ? BDECK.z1 - .6 : BG.zs - 1, [ax, az] = bW2L(P.x, P.z); P.climb = {t: 0, T: .9 + (BDECK.y - y0) * .12, a: [ax, y0, az], b: 'boat', f: [s.lx, s.lz], e: [0, BDECK.y, lz]}; }
+  if (boat) { const ex = s.end ? s.end[0] : 0, ez = s.end ? s.end[1] : BG.zs - 1, [ax, az] = bW2L(P.x, P.z); P.climb = {t: 0, T: .9 + (BDECK.y - y0) * .12, a: [ax, y0, az], b: 'boat', f: [s.lx, s.lz], e: [ex, BDECK.y, ez]}; }
   else { const t = s.top; P.climb = {t: 0, T: .9 + (t[1] - y0) * .12, a: [P.x, y0, P.z], b: t, f: [s.x, s.z], e: [t[0], t[1], t[2]]}; }
   Object.assign(P.climb, {p0: P.pitch, po: 0, yo: 0, y0: P.yaw, eye: P.eye, rT: 0, wet: 1});
   P.sw = 0; P.ob = 0; P.dv = 0; P.deep = 0; P.vx = P.vz = P.vy = 0; P.cr = 0; P.run = 0;
 }
 function climbStep(dt) {
-  const c = P.climb, boat = c.b === 'boat';
-  if (P.down || P.seat || P.ob || (boat && (B.sink > 0 || (B.dep || 0) > .6))) { P.climb = null; return; }
+  const c = P.climb, boat = c.b === 'boat', bin = c.b === 'bin';
+  if (P.down || P.seat || (P.ob && !bin) || ((boat || bin) && B.sink > 0) || (boat && (B.dep || 0) > .6)) { P.climb = null; return; }
+  if (bin) { if (c.up && !B.hat) { P.climb = null; subClimb(false); return; } c.y0 += B.yaw - (c.bY ?? B.yaw); c.bY = B.yaw; }
   c.t += dt; const u = Math.min(1, c.t / c.T), k1 = smooth(u / .45), k3 = smooth((u - .62) / .38), ky = smooth((u - .1) / .65);
   const hx = mix(mix(c.a[0], c.f[0], k1), c.e[0], k3), hz = mix(mix(c.a[2], c.f[1], k1), c.e[2], k3), lift = boat ? B.heave * ky : 0;
   const rung = ky > .02 && ky < .98, st = rung ? Math.sin(c.t / .28 * TAU) * .03 * Math.sin(PI * ky) : 0;
   P.y = mix(c.a[1], c.e[1], ky) + lift + st; P.eye = mix(c.eye, 1.62, smooth((u - .1) / .75));
-  if (boat) { [P.x, P.z] = bL2W(hx, hz); } else { P.x = hx; P.z = hz; }
-  const [fx, fz] = boat ? bL2W(c.f[0], c.f[1]) : c.f, [tx, tz] = boat ? bL2W(c.e[0], c.e[2]) : [c.e[0], c.e[2]], ty = Math.atan2(-(tx - fx), -(tz - fz));
+  if (boat || bin) { [P.x, P.z] = bL2W(hx, hz); if (bin) P.bl = [hx, hz]; } else { P.x = hx; P.z = hz; }
+  const [fx, fz] = boat ? bL2W(c.f[0], c.f[1]) : c.f, [tx, tz] = boat ? bL2W(c.e[0], c.e[2]) : [c.e[0], c.e[2]], ty = bin ? B.yaw + PI : Math.atan2(-(tx - fx), -(tz - fz));
   const yo = angD(c.y0, ty) * smooth(u / .45); P.yaw += yo - c.yo; c.yo = yo;
   const po = (-.15 - c.p0) * Math.sin(PI * u); P.pitch += po - c.po; c.po = po;
   if (rung && (c.rT -= dt) <= 0) { c.rT = .28; Snd.rung(); }
   if (c.wet && P.y > c.a[1] + .25) { c.wet = 0; Snd.splash(); for (let i = 0; i < 6; i++) setTimeout(() => tone(1100 + Math.random() * 900, .012, .05, 'sine', null, 1800 + Math.random() * 900), 250 + i * 300 + Math.random() * 140); }
   if (u < 1) return;
   P.climb = null; P.sw = 0; P.vy = 0; P.eye = 1.62;
-  if (boat) { P.ob = 1; P.bl = [0, c.e[2]]; [P.x, P.z] = bL2W(0, c.e[2]); P.y = BDECK.y; P.lastBY = B.yaw; } else { P.x = c.b[0]; P.y = c.b[1]; P.z = c.b[2]; }
+  if (boat || bin) { P.ob = 1; P.bl = [c.e[0], c.e[2]]; [P.x, P.z] = bL2W(c.e[0], c.e[2]); P.y = c.e[1]; P.lastBY = B.yaw; } else { P.x = c.b[0]; P.y = c.b[1]; P.z = c.b[2]; }
 }
+// the sub's one-shots: hatch clang, dive klaxon, hull ticks, drips, the sonar ping
+Snd.clang = p => { tone(110, .25, .5, 'triangle', p, 70); burst(2600, 8, .22, .12, 'bandpass', p); burst(400, 1, .3, .3, 'lowpass', p); setTimeout(() => burst(5200, 12, .05, .35, 'bandpass', p), 40); };
+Snd.klaxon = p => { if (!A.on) return; const c = A.ctx, t = c.currentTime + .02, o = c.createOscillator(), f = c.createBiquadFilter(), g = c.createGain(); o.type = 'sawtooth'; f.type = 'bandpass'; f.frequency.value = 900; f.Q.value = .9; g.gain.setValueAtTime(0, t);
+  for (let i = 0; i < 2; i++) { const u = t + i * .75; o.frequency.setValueAtTime(220, u); o.frequency.linearRampToValueAtTime(440, u + .35); o.frequency.linearRampToValueAtTime(300, u + .6); g.gain.setValueAtTime(0, u); g.gain.linearRampToValueAtTime(.1, u + .03); g.gain.setValueAtTime(.1, u + .55); g.gain.linearRampToValueAtTime(0, u + .65); }
+  o.connect(f); f.connect(g); g.connect(p || A.out); o.start(t); o.stop(t + 1.6); };
+Snd.hullTick = p => { burst(5000 + Math.random() * 3000, 14, .05, .015, 'bandpass', p); tone(2400, .01, .05, 'sine', p); };
+Snd.drip = p => { tone(1400 + Math.random() * 500, .03, .07, 'sine', p, 700); setTimeout(() => burst(3000, 10, .02, .02, 'bandpass', p), 20); };
+Snd.ping = p => { tone(1480, .025, 1.6, 'sine', p); setTimeout(() => tone(1480, .01, 1.2, 'sine', p), 700); };
 Snd.rung = () => { burst(1600 * (.92 + Math.random() * .16), 3, .05, .05); tone(150, .03, .08); };
 Snd.land = (k, kind) => { burst(110, 1, .4 * k, .25, 'lowpass'); Snd.step(kind || 'wood', 1.6); };
 // footsteps by surface: a heel strike, then the toe 45 ms later at half gain
@@ -2226,21 +2618,21 @@ const VMC = new THREE.Group(); cam.add(VMC); VMC.position.set(-.05, -.42, -.75);
 function boatPose(dt) {
   if (!isHost() && B.tx != null) { const k = Math.min(1, dt * 6); const px = B.tx - Math.sin(B.tyaw) * B.v * .05, pz = B.tz - Math.cos(B.tyaw) * B.v * .05; B.x = mix(B.x, px, k); B.z = mix(B.z, pz, k); B.yaw += angD(B.yaw, B.tyaw) * k; B.x += -Math.sin(B.yaw) * B.v * dt * (1 - k); B.z += -Math.cos(B.yaw) * B.v * dt * (1 - k); }
   const t = G.wt, fx = -Math.sin(B.yaw), fz = -Math.cos(B.yaw), sx = Math.cos(B.yaw), sz = -Math.sin(B.yaw);
-  if (BOAT.userData.sig !== (B.up.cls || 0) + ':' + (B.up.paint || 0)) { const same = BOAT.userData.cls === (B.up.cls || 0); buildBoat(); if (same) { /* repaint only */ } else if (P && P.ob) { P.bl = [0, Math.min(BG.zs - .8, BSPOT.hold[1] + 1.8)]; } }
+  if (BOAT.userData.sig !== (B.up.cls || 0) + ':' + (B.up.paint || 0)) { const same = BOAT.userData.cls === (B.up.cls || 0); buildBoat(); if (same) { /* repaint only */ } else if (P && P.ob) { const sp = boatSpawn(0); P.bl = sp.bl; P.y = sp.y; P.climb = null; P.rest = 0; } }
   const hl2 = BG.L * .32, hw2 = BG.hw * .9, hf = waveH(B.x + fx * hl2, B.z + fz * hl2, t), hb = waveH(B.x - fx * hl2, B.z - fz * hl2, t), hl = waveH(B.x - sx * hw2, B.z - sz * hw2, t), hr = waveH(B.x + sx * hw2, B.z + sz * hw2, t);
   B.sinkY = B.sink > 0 ? Math.max(-6, (B.sinkY || 0) - dt * 1.2) : 0;
-  const dk = clamp(1 - (B.dep || 0), 0, 1), m = Math.pow(HC().L / 12.2, .6), dvdt = (B.v - (G.bv0 ?? B.v)) / Math.max(dt, 1e-3); G.bv0 = B.v; G.bdv = mix(G.bdv || 0, dvdt, Math.min(1, dt * 4)); B.trim = mix(B.trim || 0, (m < 1.6 ? clamp(B.v / 8, 0, 1) * .06 : 0) + clamp(G.bdv, -2, 2) * .01 / m, Math.min(1, dt * 2)); B.heave = (hf + hb + hl + hr) / 4 * dk + B.sinkY - (B.dep || 0); B.pitch = (Math.atan2(hf - hb, hl2 * 2) * .8 * dk + (B.sink > 0 ? .25 : 0)) + clamp((B.dtar - B.dep) * .06, -.12, .12) + B.trim * dk; B.roll = Math.atan2(hl - hr, hw2 * 2) * .8 * dk + (G.shake || 0) * Math.sin(G.t * 23) * .05 + clamp((B.yr || 0) * B.v * (m < 1.6 ? .03 : -.01), -.12, .12);
+  const dk = clamp(1 - (B.dep || 0), 0, 1), m = Math.pow(HC().L / 12.2, .6), dvdt = (B.v - (G.bv0 ?? B.v)) / Math.max(dt, 1e-3); G.bv0 = B.v; G.bdv = mix(G.bdv || 0, dvdt, Math.min(1, dt * 4)); B.trim = mix(B.trim || 0, (m < 1.6 ? clamp(B.v / 8, 0, 1) * .06 : 0) + clamp(G.bdv, -2, 2) * .01 / m, Math.min(1, dt * 2)); B.heave = (hf + hb + hl + hr) / 4 * dk + B.sinkY - (B.dep || 0); B.pitch = (Math.atan2(hf - hb, hl2 * 2) * .8 * dk + (B.sink > 0 ? .25 : 0)) - clamp((B.dtar - B.dep) * .06, -.12, .12) + B.trim * dk; B.roll = Math.atan2(hl - hr, hw2 * 2) * .8 * dk + (G.shake || 0) * Math.sin(G.t * 23) * .05 + clamp((B.yr || 0) * B.v * (m < 1.6 ? .03 : -.01), -.12, .12);
   { const gl = GLOWS[B.up.glow || 0], gm = BOAT.userData.glow; if (gl && gl.c) { if (gl.c < 0) gm.material.color.setHSL((G.wt * .1) % 1, 1, .55); else gm.material.color.setHex(gl.c); gm.material.opacity = (.55 - .35 * TOD.day) * (B.dep > .5 ? 0 : 1); } else gm.material.opacity = 0; }
   if (BOAT.userData.port) BOAT.userData.port.emissiveIntensity = TOD.night * .7;
   if (BOAT.userData.fire) BOAT.userData.fire.emissiveIntensity = .8 + Math.random() * .5; if (BOAT.userData.fairy) BOAT.userData.fairy.emissiveIntensity = .7 + Math.sin(G.wt * 2) * .15 + TOD.night * .5;
-  if (BOAT.userData.cat) { BOAT.userData.cat.scale.y = 1 + Math.sin(G.wt * 2.2) * .04; if (P && P.ob && A.on) { const c = BOAT.userData.catP; if (Math.hypot(P.bl[0] - c[0], P.bl[1] - c[2]) < 1.6) { G.purrT = (G.purrT || 0) - dt; if (G.purrT <= 0) { G.purrT = .55; burst(90, 1.5, .05, .45, 'lowpass', null, .7); } } } }
+  if (BOAT.userData.cat) { BOAT.userData.cat.scale.y = 1 + Math.sin(G.wt * 2.2) * .04; if (P && P.ob && A.on) { const c = BOAT.userData.catP; if (Math.hypot(P.bl[0] - c[0], P.bl[1] - c[2]) < 1.6 && Math.abs(P.y - c[1]) < 2.2) { G.purrT = (G.purrT || 0) - dt; if (G.purrT <= 0) { G.purrT = .55; burst(90, 1.5, .05, .45, 'lowpass', null, .7); } } } }
   if (BOAT.userData.winM) BOAT.userData.winM.emissiveIntensity = .05 + TOD.night * .9 * (.85 + Math.random() * .15);
   if (BOAT.userData.prop) BOAT.userData.prop.rotation.z += B.thr * dt * 20; if (BOAT.userData.radar) BOAT.userData.radar.rotation.y += dt * 1.6;
   BOAT.position.set(B.x, B.heave, B.z); BOAT.rotation.set(B.pitch, B.yaw, B.roll, 'YXZ');
-  BOAT.userData.wheel.rotation.z = -B.st * 2;
+  BOAT.userData.wheel.rotation.z = -B.st * 2; if (BG.sub) subPose(dt);
   const cg = BOAT.userData.cargo, ck = B.hold.slice(0, 8).join(); if (cg.userData.k !== ck) { cg.userData.k = ck; const keep = new Set(Object.values(MAT)); cg.traverse(o => { if (o.isMesh) { o.geometry.dispose(); if (!keep.has(o.material)) o.material.dispose(); } }); cg.clear(); }
-  while (cg.children.length < Math.min(8, B.hold.length)) { const i = cg.children.length, m = itemMesh(B.hold[i] || 'crate'); scene.remove(m); m.position.set(-1.3 + (i % 4) * .85, BDECK.y + .25 + Math.floor(i / 4) * .45, BSPOT.hold[1] + (BG.sub ? -1.4 : 1.4)); cg.add(m); }
-  const lv = B.up.light, [lx, lz] = bL2W(0, BOAT.userData.lightZ); boatL.position.set(lx, BOAT.userData.lightY + B.heave, lz); boatL.target.position.set(B.x + fx * 40, -1, B.z + fz * 40); boatL.intensity = [160, 300, 500][lv] * (1 - .85 * TOD.day * (B.dep > 1 ? 0 : 1)) * ((B.up.cls || 0) === 2 ? 1.6 : 1); boatL.distance = [90, 160, 220][lv];
+  while (cg.children.length < Math.min(8, B.hold.length)) { const i = cg.children.length, m = itemMesh(B.hold[i] || 'crate'), ca = BOAT.userData.cargoAt; scene.remove(m); if (ca) m.position.set(...ca(i)); else m.position.set(-1.3 + (i % 4) * .85, BDECK.y + .25 + Math.floor(i / 4) * .45, BSPOT.hold[1] + 1.4); cg.add(m); }
+  const lv = B.up.light, [lx, lz] = bL2W(0, BOAT.userData.lightZ); boatL.position.set(lx, BOAT.userData.lightY + B.heave, lz); boatL.target.position.set(B.x + fx * 40, BG.sub ? B.heave - 14 : -1, B.z + fz * 40); boatL.intensity = [160, 300, 500][lv] * (1 - .85 * TOD.day * (B.dep > 1 ? 0 : 1)) * ((B.up.cls || 0) === 2 ? 1.6 : 1); boatL.distance = [90, 160, 220][lv];
 }
 function specTarget() { const L = [...PL.values()].filter(p => p !== P && p.ready && !p.dead); return L.length ? L[G.spec % L.length] : null; }
 function fl2() { return (G.bolt || 0) > 0 ? G.bolt * 2 : 0; }
@@ -2255,15 +2647,16 @@ function stepDrops(dt) {
     const gr = g.createRadialGradient(d.x - d.r * .3, d.y - d.r * .3, 0, d.x, d.y, d.r); gr.addColorStop(0, `rgba(255,255,255,${a * .55})`); gr.addColorStop(.6, `rgba(180,200,215,${a * .18})`); gr.addColorStop(1, `rgba(20,30,40,${a * .35})`);
     g.fillStyle = gr; g.beginPath(); g.ellipse(d.x, d.y, d.r * .85, d.r, 0, 0, TAU); g.fill(); if (d.run && d.v > 5) { g.fillStyle = `rgba(200,215,230,${a * .15})`; g.fillRect(d.x - d.r * .3, d.y - 18, d.r * .6, 18); } }
 }
-function inCabin() { if (!P || !P.ob || !BOAT || !BOAT.userData.wz) return false; if (BG.sub) return true; const [wz0, wz1] = BOAT.userData.wz, ww = BOAT.userData.ww || 2; return P.bl[1] > wz0 && P.bl[1] < wz1 && Math.abs(P.bl[0]) < ww; }
+function inCabin() { if (!P || !P.ob || !BOAT || !BOAT.userData.wz) return false; if (BG.sub) return subInside(); const [wz0, wz1] = BOAT.userData.wz, ww = BOAT.userData.ww || 2; return P.bl[1] > wz0 && P.bl[1] < wz1 && Math.abs(P.bl[0]) < ww; }
 function updateCamera(dt) {
   let ex, ey, ez, yaw, pitch, own = alivePlay(), roll = 0;
   if (own && P.ob) { [P.x, P.z] = bL2W(P.bl[0], P.bl[1]); }
-  if (own) { ex = P.x; ey = P.y + P.eye; ez = P.z; yaw = P.yaw; pitch = P.pitch; if (P.ob) { ey += B.heave; roll = B.roll * .7; pitch += B.pitch * .5; } if (P.sw) ey = waveH(P.x, P.z, G.wt) + .25 - (P.dv || 0) * 1.0; else if (P.y < 0) ey = Math.max(ey, waveH(P.x, P.z, G.wt) + .25); }
+  if (own) { ex = P.x; ey = P.y + P.eye; ez = P.z; yaw = P.yaw; pitch = P.pitch; if (P.ob) { ey += B.heave; roll = B.roll * .7; pitch += B.pitch * .5; if (BG.sub && BOAT) { _sb.set(P.bl[0], P.y + P.eye, P.bl[1]).applyMatrix4(BOAT.matrixWorld); ex = _sb.x; ey = _sb.y; ez = _sb.z; } } if (P.sw) ey = waveH(P.x, P.z, G.wt) + .25 - (P.dv || 0) * 1.0; else if (P.y < 0 && !P.ob) ey = Math.max(ey, waveH(P.x, P.z, G.wt) + .25); }
   else if (G.drownCam) { const dc = G.drownCam; dc.t += dt; ex = dc.x; ez = dc.z; ey = waveH(ex, ez, G.wt) + .2 - Math.min(5.5, dc.t * 2.2); yaw = dc.yaw; pitch = mix(.1, -1.35, clamp(dc.t / 1.2, 0, 1)); roll = Math.sin(dc.t * 3) * .15; if (dc.t > 4) G.drownCam = null; }
-  else { const s = specTarget(); if (s) { ex = s.rx; ey = s.ry + (s.down ? .5 : 1.6) + (s.ob ? B.heave : 0); ez = s.rz; yaw = s.ryaw; pitch = s.rpitch; } else { ex = HOME.x; ey = 30; ez = HOME.z + 40; yaw = PI; pitch = -.3; } }
+  else { const s = specTarget(); if (s) { ex = s.rx; ey = s.ry + (s.down ? .5 : 1.6); ez = s.rz; yaw = s.ryaw; pitch = s.rpitch; } else { ex = HOME.x; ey = 30; ez = HOME.z + 40; yaw = PI; pitch = -.3; } }
   if (own && P.ob) { const o = seaLegs(dt); ex += o[0]; ez += o[1]; roll += o[2]; } else G.sl = null; G.fovAdd = mix(G.fovAdd || 0, own && P.ob ? clamp(Math.abs(B.v) / 12, 0, 1) * 4 : 0, Math.min(1, dt * 1.5));
   if (own && P.seat && HC().eye && BOAT && BOAT.userData.wz) { [ex, ez] = bL2W(0, BOAT.userData.wz[0] - .7); }
+  if (P && P.scope && !(own && BOAT && BG.sub)) subScope(0); else if (P && P.scope) { _sb.set(0, 4.97 + ((G.mastU ?? 1) - 1) * 1.9, SUB.SCOPE[1] - .12).applyMatrix4(BOAT.matrixWorld); ex = _sb.x; ey = _sb.y; ez = _sb.z; G.fovAdd = 28 - (SET.fov || 70); }
   const sp = own ? Math.hypot(P.vx, P.vz) : 0, bobA = own && P.hd < 0 && !P.seat ? clamp(sp / 6, 0, 1) * .05 : 0, shk = own && P.fear > .5 ? (P.fear - .5) * .006 : 0, tr = Math.min(1, G.shake || 0), nz = i => Math.sin(G.t * 13.1 + i * 7) * .5 + Math.sin(G.t * 27.7 + i * 3) * .3 + Math.sin(G.t * 51.3 + i) * .2;
   G.shake = Math.max(0, (G.shake || 0) - dt * 1.6);
   for (let i = 0, h = Math.min(dt, .05) / 2; i < 2; i++) { G.lspV = (G.lspV || 0) + (-60 * (G.lspX || 0) - 14 * G.lspV) * h; G.lspX = (G.lspX || 0) + G.lspV * h; }
@@ -2273,7 +2666,7 @@ function updateCamera(dt) {
     yaw += angD(yaw, Math.atan2(-dx, -dz)) * k; pitch = mix(pitch, Math.atan2(dy, Math.hypot(dx, dz)), k); }
   cam.position.set(ex + Math.sin(G.t * 37) * shk + nz(0) * .04 * tr, ey + bb + nz(1) * .04 * tr - ld, ez);
   cam.rotation.set(pitch + Math.sin(G.t * 31) * shk + nz(2) * .025 * tr - ld / .35 * .06, yaw + bs * .05 + nz(3) * .025 * tr, roll + (own && P.down ? .35 : bs * .08) + nz(4) * .05 * tr, 'YXZ'); cam.updateMatrixWorld();
-  VM.visible = own && P.hd < 0 && !P.down && !P.sw && !P.seat && P.eq === 1; VMF.visible = own && P.hd < 0 && !P.down && !P.seat && P.eq === 5 && P.flares > 0;
+  VM.visible = own && P.hd < 0 && !P.down && !P.sw && !P.seat && !P.scope && P.eq === 1; VMF.visible = own && P.hd < 0 && !P.down && !P.seat && P.eq === 5 && P.flares > 0;
   VM.position.set(.22 + Math.sin(P.bob || 0) * bobA * .3, -.21 - Math.abs(Math.cos(P.bob || 0)) * bobA * .3, -.42);
   if (false) { VMC.clear(); VMC.userData.k = P.carry; if (P.carry) { const m = itemMesh(P.carry); scene.remove(m); m.traverse(o => { if (o.isMesh) o.castShadow = false; }); VMC.add(m); } }
   VMC.visible = false;
@@ -2286,8 +2679,9 @@ function updateCamera(dt) {
   scene.userData.sky.position.copy(cam.position); stepBirds(G.wt, ex, ez);
   SEA.position.set(Math.round(ex / 6) * 6, 0, Math.round(ez / 6) * 6);
   { const ri = G.storm < .15 ? 0 : clamp((G.storm - .15) / .7, 0, 1), cov = inCabin() || zoneOf(ex, ez, ey - 1.6) >= 0 || (G.uw || 0) > .3, u = G.rainM.uniforms; u.uT.value = G.wt; u.uC.value.set(ex, ey, ez); u.uI.value = cov ? 0 : ri; u.uW.value.set(3 + G.storm * 5, 1.2 + G.storm * 2);
-    u.uCol.value.copy(TOD.fog).multiplyScalar(1.8).addScalar(.12 + fl2()); G.rain2.visible = ri > 0 && !cov; const su = G.splM.uniforms; su.uT.value = G.wt; su.uC.value.set(ex, ey, ez); su.uI.value = ri; su.uA.value = G.sea; su.uCol.value.copy(u.uCol.value); G.spl.visible = ri > 0 && (G.uw || 0) < .3;
+    u.uCol.value.copy(TOD.fog).multiplyScalar(1.8).addScalar(.12 + fl2()); G.rain2.visible = ri > 0 && !cov; const su = G.splM.uniforms; su.uT.value = G.wt; su.uC.value.set(ex, ey, ez); su.uI.value = ri; su.uA.value = G.sea; su.uCol.value.copy(u.uCol.value); G.spl.visible = ri > 0 && (G.uw || 0) < .3 && !G.subIn;
     G.dropsI = cov || P && P.sw ? 0 : ri; RAIN.visible = false; }
+  if (BG.sub) subFx(dt); else G.subIn = false;
   if (false) { const ra = RAIN.geometry.attributes.position.array, fall = dt * 24; for (let i = 0; i < ra.length; i += 6) { ra[i + 1] -= fall; ra[i + 4] -= fall; ra[i] -= fall * .1; ra[i + 3] -= fall * .1; if (ra[i + 1] < 0) { const x = (Math.random() - .5) * 50, y = 30, z = (Math.random() - .5) * 50; ra[i] = x; ra[i + 1] = y; ra[i + 2] = z; ra[i + 3] = x + .15; ra[i + 4] = y + .7; ra[i + 5] = z + .05; } } RAIN.geometry.attributes.position.needsUpdate = true; }
   ctlFrame(dt);
 }
@@ -2301,8 +2695,8 @@ function levPose(a, el, L, o) {
   // rear up outside the circle, strike in to a metre off the hull, then dive under it (under the keel of a big ship)
   const H = HC(), R = levRad(ab), rE = levRad(ab, 1.5, 0); let r;
   if (el < tS) { const u = (el - tB) / (tS - tB), e = Math.sin(Math.min(1, u * 1.5) * PI / 2); r = R + e * 5; o.y = mix(-1.25, 8, e) - Math.max(0, u - .82) * 10; o.jaw = clamp((u - .1) * 3, 0, 1); o.ph = 1; o.u = u; }
-  else if (el < L) { const u = (el - tS) / (L - tS); r = mix(R + 5, rE, u); o.y = mix(6.2, H.big ? -6 : -3.5, Math.min(1, u * 1.3)); o.jaw = 1 - u * .6; o.ph = 2; o.u = u; }
-  else { const u = el - L; if (H.big) { const kd = -(.6 + H.fb * .7 + H.L * .045) - 3.5; r = rE - Math.max(0, u - .7) * 9; o.y = mix(-6, kd, clamp(u / .7, 0, 1)) - Math.max(0, u - .7) * 1.5; } else { r = rE - u * 9; o.y = -3.5 - u * 6; } o.jaw = .2; o.ph = 3; o.u = u; }
+  else if (el < L) { const u = (el - tS) / (L - tS); r = mix(R + 5, rE, u); o.y = mix(6.2, H.big || H.sub ? -6 : -3.5, Math.min(1, u * 1.3)); o.jaw = 1 - u * .6; o.ph = 2; o.u = u; }
+  else { const u = el - L; if (H.big || H.sub) { const kd = H.sub ? -(3.7 + (B.dep || 0)) - 3.5 : -(.6 + H.fb * .7 + H.L * .045) - 3.5; r = rE - Math.max(0, u - .7) * 9; o.y = mix(-6, kd, clamp(u / .7, 0, 1)) - Math.max(0, u - .7) * 1.5; } else { r = rE - u * 9; o.y = -3.5 - u * 6; } o.jaw = .2; o.ph = 3; o.u = u; }
   o.x = B.x + Math.sin(ab) * r; o.z = B.z + Math.cos(ab) * r; return o;
 }
 function buildLev() {
@@ -2665,7 +3059,7 @@ function stepGulpers(dt) {
     else { tx = g.x + (g.x - px) * 2; ty = g.y - 3; tz = g.z + (g.z - pz) * 2; spd = 7; if (g.t > 6) { g.st = 0; g.t = 0; } }
     const dx = tx - g.x, dy = ty - g.y, dz = tz - g.z, d = Math.hypot(dx, dy, dz) || 1, k = Math.min(1, dt * (g.st === 2 ? 4 : 1.6));
     g.vx = mix(g.vx, dx / d * spd, k); g.vy = mix(g.vy, dy / d * spd, k); g.vz = mix(g.vz, dz / d * spd, k);
-    g.x += g.vx * dt; g.y += g.vy * dt; g.z += g.vz * dt; const bed = seaBed(g.x, g.z); g.y = clamp(g.y, bed + 1.2, -2.5);
+    g.x += g.vx * dt; g.y += g.vy * dt; g.z += g.vz * dt; const bed = seaBed(g.x, g.z); g.y = clamp(g.y, bed + 1.2, -2.5); if (BG.sub) subGulPush(g);
     const hs = Math.hypot(g.vx, g.vz); if (hs > .2) g.yaw = Math.atan2(-g.vx, -g.vz); g.pitch = Math.atan2(g.vy, Math.max(hs, .1)) * .8;
   }
 }
@@ -2834,7 +3228,7 @@ function slStep(dt) { const S2 = CAS.sl; if (S2.spin <= 0) return; S2.spin -= dt
 const RADIO = {t: 0, i: 0}, PROG = [[220, 261.6, 329.6], [174.6, 220, 261.6], [261.6, 329.6, 392], [196, 246.9, 293.7]];
 function stepRadio(dt) {
   if (!G.radioOn || !A.on || !BOAT) return; const d = Math.hypot(cam.position.x - B.x, cam.position.z - B.z); if (d > 60) return;
-  RADIO.t -= dt; if (RADIO.t > 0) return; RADIO.t = .3; const i = RADIO.i++, ch = PROG[Math.floor(i / 8) % 4], [lx, lz] = bL2W(-.43, BHELM[1] - .6), p = at(lx, BDECK.y + 1.2 + B.heave, lz, 2), v = clamp(1 - d / 60, 0, 1);
+  RADIO.t -= dt; if (RADIO.t > 0) return; RADIO.t = .3; const i = RADIO.i++, ch = PROG[Math.floor(i / 8) % 4], rp = BOAT.userData.radioP, [lx, lz] = rp ? bL2W(rp[0], rp[2]) : bL2W(-.43, BHELM[1] - .6), p = at(lx, (rp ? rp[1] : BDECK.y + 1.2) + B.heave, lz, 2), v = clamp(1 - d / 60, 0, 1);
   if (i % 8 === 0) { tone(ch[0] / 2, .06 * v, 2.2, 'sine', p); for (const f of ch) tone(f, .018 * v, 2.4, 'triangle', p); }
   const pat = [0, 1, 2, 1, 0, 2, 1, 2][i % 8]; tone(ch[pat] * 2, .03 * v, .45, 'triangle', p); if (i % 4 === 2) burst(6000, 3, .015 * v, .04, 'highpass', p);
 }
@@ -2915,7 +3309,7 @@ function updateWorldFx(dt) {
   todAt(G.tod || 0, st); scene.fog.density = TOD.fd; scene.fog.color.copy(TOD.fog); scene.background.copy(TOD.fog);
   G.lightT -= dt; const sky = scene.userData.sky.material.uniforms; sky.uS.value = st; sky.uT.value = G.wt;
   sky.zen.value.copy(TOD.zen); sky.hor.value.copy(TOD.hor); sky.fogC.value.copy(TOD.fog); sky.sunC.value.copy(TOD.sun); sky.sunI.value = TOD.sI; sky.stars.value = TOD.st; sky.aur.value = TOD.night * (1 - st) * .9;
-  const cw = waveH(cam.position.x, cam.position.z, G.wt); G.uw = mix(G.uw || 0, cam.position.y < cw - .08 ? 1 : 0, Math.min(1, dt * 12));
+  const cw = waveH(cam.position.x, cam.position.z, G.wt); G.uw = mix(G.uw || 0, G.subIn ? ((B.dep || 0) > 1 ? 1 : 0) : cam.position.y < cw - .08 ? 1 : 0, Math.min(1, dt * 12)); G.uwC = G.subIn ? mix(G.uwC || 0, lockWet() ? 1 : 0, Math.min(1, dt * 12)) : G.uw; // look vs camera-in-water (the sub's hull keeps you dry)
   { const und = G.uw > .5, U = MAT.sea.userData.U; sky.uw.value = und ? 1 : 0; U.uUs.value.w = und ? 1 : 0;
     if (und) { // underwater: clearer for the first 30 m so wreck silhouettes read, then the deep closes in; the sky becomes a lit-from-above gradient
       const dl = .25 + .75 * TOD.day, dp = cw - cam.position.y, dpt = clamp(dp / 80, 0, 1); scene.fog.color.setRGB(.012 * dl, .07 * dl, .08 * dl).multiplyScalar(1 - dpt * .92); scene.background.copy(scene.fog.color);
@@ -2956,11 +3350,11 @@ function updateRemotes(dt) {
   for (const p of PL.values()) {
     if (p === P) { if (p.av) p.av.visible = false; if (p.tag) p.tag.style.display = 'none'; continue; }
     if (!p.ready) continue;
-    let tx = p.x, tz = p.z, ty = p.sw ? waveH(p.x, p.z, G.wt) - (p.dv || 0) : p.y; if (p.ob && p.bl) { [tx, tz] = bL2W(p.bl[0], p.bl[1]); ty = BDECK.y + B.heave; }
+    let tx = p.x, tz = p.z, ty = p.sw ? waveH(p.x, p.z, G.wt) - (p.dv || 0) : p.y; if (p.ob && p.bl) { if (BG.sub && BOAT) { _sb.set(p.bl[0], p.y, p.bl[1]).applyMatrix4(BOAT.matrixWorld); tx = _sb.x; ty = _sb.y; tz = _sb.z; } else { [tx, tz] = bL2W(p.bl[0], p.bl[1]); ty = BDECK.y + B.heave; } }
     const k = Math.min(1, dt * 12), ox = p.rx, oz = p.rz; p.rx = p.ob ? tx : mix(p.rx, tx, k); p.ry = mix(p.ry, ty, k); p.rz = p.ob ? tz : mix(p.rz, tz, k); p.ryaw += angD(p.ryaw, p.yaw) * k; p.rpitch = mix(p.rpitch, p.pitch, k);
     p.rspd = mix(p.rspd, Math.hypot(p.rx - ox, p.rz - oz) / Math.max(dt, 1e-3) - (p.ob ? Math.abs(B.v) : 0), Math.min(1, dt * 6));
     animCrew(p, dt);
-    if ((p.stepD || 0) > (p.run ? 1 : .75)) { p.stepD = 0; if (!p.ob && Math.hypot(p.x - cp.x, p.z - cp.z) < 30 && !p.down) Snd.rStep(p.x, p.y, p.z, p.run ? 1.4 : .8); }
+    if ((p.stepD || 0) > (p.run ? 1 : .75)) { p.stepD = 0; if ((!p.ob || BG.sub) && Math.hypot(p.x - cp.x, p.z - cp.z) < 30 && !p.down) Snd.rStep(p.x, p.ob ? p.ry : p.y, p.z, p.run ? 1.4 : .8); }
     p.pingT = Math.max(0, (p.pingT || 0) - dt);
     const t = p.tag, d = Math.hypot(p.rx - cp.x, p.rz - cp.z); let show = !p.dead && (d < 40 || p.down || p.pingT > 0 || p.sw);
     if (show) { _v.set(p.rx, p.ry + (p.down ? .8 : 2.15), p.rz).project(cam); if (_v.z > 1 || Math.abs(_v.x) > 1.1 || Math.abs(_v.y) > 1.1) show = false; }
@@ -2993,17 +3387,17 @@ function stepFear(dt) {
     if (!A.hz) hzInit();
     const L = c.listener; cam.getWorldDirection(_fw);
     if (L.positionX) { L.positionX.value = cp.x; L.positionY.value = cp.y; L.positionZ.value = cp.z; L.forwardX.value = _fw.x; L.forwardY.value = _fw.y; L.forwardZ.value = _fw.z; L.upX.value = 0; L.upY.value = 1; L.upZ.value = 0; } else { L.setPosition(cp.x, cp.y, cp.z); L.setOrientation(_fw.x, _fw.y, _fw.z, 0, 1, 0); }
-    const inside = zoneOf(cp.x, cp.z, cp.y - 1.6) >= 0 || (P.hd >= 0) || inCabin(), st = G.storm;
+    const inside = zoneOf(cp.x, cp.z, cp.y - 1.6) >= 0 || (P.hd >= 0) || inCabin(), st = G.storm, dvd = G.subIn && (B.dep || 0) > 2 ? 0 : 1;
     A.pad.gain.setTargetAtTime(.028 * Math.max(TOD.night * .9 + (1 - TOD.day) * .3, G.storm * .7), t, 2); A.padF.frequency.setTargetAtTime(260 + 300 * TOD.night + Math.sin(G.wt * .11) * 90, t, 2);
-    A.rain.g.gain.value = (inside ? .015 : .05) * st; A.wind.g.gain.value = ((inside ? .02 : .06) + Math.sin(G.t * .13) * .02) * (.3 + st * .7) + (P.ob && !inCabin() ? clamp(Math.abs(B.v) / 11, 0, 1) * .07 : 0); A.wind.f.frequency.value = 380 + Math.sin(G.t * .21) * 140 + (P.ob ? Math.abs(B.v) * 35 : 0); A.surf.g.gain.value = clamp(.14 - cp.y * .006, .02, .14) * (.5 + st * .5) * clamp(1.2 - shoreDist() / 140, .15, 1);
-    setPan(A.bPan, B.x, 1.5, B.z); boatAudio(dt, t);
+    A.rain.g.gain.value = (inside ? .015 : .05) * st * dvd; A.wind.g.gain.value = ((inside ? .02 : .06) + Math.sin(G.t * .13) * .02) * (.3 + st * .7) * dvd + (P.ob && !inCabin() ? clamp(Math.abs(B.v) / 11, 0, 1) * .07 : 0); A.wind.f.frequency.value = 380 + Math.sin(G.t * .21) * 140 + (P.ob ? Math.abs(B.v) * 35 : 0); A.surf.g.gain.value = clamp(.14 - cp.y * .006, .02, .14) * (.5 + st * .5) * clamp(1.2 - shoreDist() / 140, .15, 1) * (G.subIn ? .35 * dvd : 1);
+    if (BG.sub) { const [ex, ez] = bL2W(0, 5.6); setPan(A.bPan, ex, B.heave + SUB.FI + 1, ez); } else setPan(A.bPan, B.x, 1.5, B.z); boatAudio(dt, t);
     if (A.mus) Mus.step(dt);
     const gb = BLD.find(q => q.kind === 'gen'); if (gb) setPan(A.gPan, gb.x, gb.fy + 1, gb.z); A.genG.gain.value = G.power ? .35 : 0;
     if (G.alarmT > 0) { G.alarmT -= dt; A.alarm.frequency.value = Math.sin(G.wt * 4) > 0 ? 620 : 470; A.alarmG.gain.value = .05; setPan(A.aPan, 0, LV[1] + 4, 0); } else A.alarmG.gain.value = 0;
     A.deepG.gain.setTargetAtTime(sp ? .2 : 0, t, .8);
     // the Steward walking the halls: a small bell, or three slow knocks somewhere close
     G.belT = (G.belT ?? 8) - dt; if (G.belT <= 0) { G.belT = 7 + Math.random() * 7; if (sOn && sd < 40 && (STS.state === 'roam' || STS.state === 'search')) { const bp = at(STS.x, STS.y + 2.4, STS.z, 4); if (Math.random() < .5) Snd.bell(bp); else for (let i = 0; i < 3; i++) setTimeout(() => burst(180, 1, .32, .16, 'lowpass', bp, .7), i * 290); } }
-    A.lp.frequency.setTargetAtTime(G.uw > .5 ? 520 : 20000, t, .08);
+    A.lp.frequency.setTargetAtTime((G.uwC ?? G.uw) > .5 ? 520 : 20000, t, .08);
     if (P.sw && (P.dv || 0) > .6) { G.brT = (G.brT ?? 0) - dt; if (G.brT <= 0) { G.brT = 3.6 - P.fear * 1.6; Snd.inhale(1); setTimeout(() => { Snd.exhale(1); bubbles(cam.position.x, cam.position.y - .2, cam.position.z, 8); }, 1300); } }
     G.mbT = (G.mbT ?? 0) - dt; if (G.mbT <= 0 && CRZ.box && Math.hypot(cp.x - CRZ.box[0], cp.z - CRZ.box[2]) < 45) { const N = [659, 587, 523, 494, 523, 587, 440, 0, 659, 698, 659, 587, 523, 0, 494, 523]; G.mbI = ((G.mbI || 0) + 1) % N.length; G.mbT = .42; if (N[G.mbI]) tone(N[G.mbI] * 2, .05, .9, 'sine', at(CRZ.box[0], CRZ.box[1], CRZ.box[2], 3)); }
     G.mimT = (G.mimT ?? 60) - dt; if (G.mimT <= 0) { G.mimT = 70 + Math.random() * 90; if (rigNear && d > 10 && d < 45 && M.state === 'roam' && PL.size > 0) Snd.whistle(at(M.x, M.y + 2, M.z, 8)); }
@@ -3051,7 +3445,7 @@ function hud() {
   { const dc = G.cash - (G.cashLast ?? G.cash); G.cashLast = G.cash;
     if (Math.abs(dc) >= 1) { const cp = $('cashPop'), r = $('nCash').getBoundingClientRect(); G.popV = (now - (G.popAt || 0) < 400 ? G.popV || 0 : 0) + dc; G.popAt = now; cp.textContent = (G.popV >= 0 ? '+' : '-') + cashStr(Math.abs(G.popV)); cp.className = ''; void cp.offsetWidth; cp.className = 'go ' + (G.popV >= 0 ? 'up' : 'dn'); cp.style.left = (r.left + r.width / 2).toFixed(1) + 'px'; cp.style.top = (r.top - 2).toFixed(1) + 'px'; }
     if (G.cashShown == null) G.cashShown = G.cash; G.cashShown += (G.cash - G.cashShown) * Math.min(1, dt * 6); if (Math.abs(G.cash - G.cashShown) < 1) G.cashShown = G.cash; setT('nCash', cashStr(G.cashShown)); }
-  { const dv = P.sw ? P.dv || 0 : 0, show = dv > .3; if (show !== G.diveShow) { G.diveShow = show; $('dive').style.opacity = show ? 1 : 0; } if (show) { const su = (P.own && P.own.suit) || 0; setT('diveD', `${dv.toFixed(dv < 10 ? 1 : 0)} m`); setS('diveA', 'width', Math.round((P.air ?? 1) * 100) + '%'); setS('diveA', 'background', P.air < .25 ? '#e04030' : '#7ad0ff'); setT('diveS', SUIT[su].n + ' · max ' + SUIT[su].max + ' m'); } }
+  { const sb = BG.sub && P.ob && !P.sw, dv = P.sw ? P.dv || 0 : sb ? B.dep || 0 : 0, show = dv > .3; if (show !== G.diveShow) { G.diveShow = show; $('dive').style.opacity = show ? 1 : 0; } if (sb !== !!G.diveSub) { G.diveSub = sb; $('dive').lastChild.textContent = sb ? '' : ' · AIR'; } if (show && sb) { const mx = HC().maxDep || 80; setT('diveD', `${dv.toFixed(dv < 10 ? 1 : 0)} m`); setS('diveA', 'width', Math.round(clamp(dv / mx, 0, 1) * 100) + '%'); setS('diveA', 'background', dv > mx * .85 ? '#e04030' : '#ffb040'); setT('diveS', `max ${mx} m`); } else if (show) { const su = (P.own && P.own.suit) || 0; setT('diveD', `${dv.toFixed(dv < 10 ? 1 : 0)} m`); setS('diveA', 'width', Math.round((P.air ?? 1) * 100) + '%'); setS('diveA', 'background', P.air < .25 ? '#e04030' : '#7ad0ff'); setT('diveS', SUIT[su].n + ' · max ' + SUIT[su].max + ' m'); } }
   setS('hullB', 'width', Math.round(clamp(B.hull / hullMax(), 0, 1) * 100) + '%'); setS('hullB', 'background', B.hull < 30 ? '#e06040' : '#8ac080');
   setT('holdT', `HOLD ${sackUsed(B.hold)}/${holdCap()} · ${cashStr(holdValue())}`);
   { const q = P.sack || [], key = q.join(); if (key !== G.sackKey) { G.sackKey = key; $('carry').innerHTML = q.length ? `${ICON.sack} ${sackUsed(q)}/${sackCap(P)}${sackVal(q) ? ' · ' + cashStr(sackVal(q)) : ''}<small>${q.map(k => NAMES[k]).join(', ')}</small>` : ''; G.sackSm = $('carry').querySelector('small'); G.sackShowT = 3.5; } if (!G.paused) G.sackShowT = (G.sackShowT || 0) - dt; if (G.sackSm) setS(G.sackSm, 'opacity', G.sackShowT > 0 ? 1 : 0); }
@@ -3077,7 +3471,7 @@ function hud() {
   // logbook banner: one at a time, 4 s each, held back while a panel is open; a goal also sends up three rockets
   { const bn = $('banner'); if (G.banA && now - G.banA > 4000) { G.banA = 0; G.banE = now; bn.classList.remove('on'); }
     if (!G.banA && G.banQ && G.banQ.length && now - (G.banE || 0) > 700 && !(G.shopOpen || G.casOpen || G.helpOpen || G.noteOpen || G.endOpen)) { const q = G.banQ.shift(); bn.innerHTML = `<small>${q.h}</small>${q.t}${q.c ? `<b>+${cashStr(q.c)}</b>` : ''}`; bn.className = q.s === 'rank' ? 'rank' : ''; void bn.offsetWidth; bn.classList.add('on'); G.banA = now;
-      if (q.s === 'rank') Snd.horn(null); else if (q.s === 'bounty') Snd.coin(); else { (Snd.goal || Snd.discover)(); setTimeout(() => Snd.coin(), 600); if (!(G.uw > .5)) for (let k = 0; k < 3; k++) setTimeout(() => G.on && spawnRocket({x: cam.position.x + (Math.random() - .5) * 24, y: cam.position.y + 3, z: cam.position.z + (Math.random() - .5) * 24, vx: Math.random() < .5 ? -2 : 2, vy: 26, vz: Math.random() < .5 ? -2 : 2, c: Math.floor(Math.random() * 5)}), 200 + k * 380); } } }
+      if (q.s === 'rank') Snd.horn(null); else if (q.s === 'bounty') Snd.coin(); else { (Snd.goal || Snd.discover)(); setTimeout(() => Snd.coin(), 600); if (!(G.uw > .5) && !G.subIn) for (let k = 0; k < 3; k++) setTimeout(() => G.on && spawnRocket({x: cam.position.x + (Math.random() - .5) * 24, y: cam.position.y + 3, z: cam.position.z + (Math.random() - .5) * 24, vx: Math.random() < .5 ? -2 : 2, vy: 26, vz: Math.random() < .5 ? -2 : 2, c: Math.floor(Math.random() * 5)}), 200 + k * 380); } } }
   // the step marker: a gold diamond on the thing to do next; a tick for a second once it is done
   { let m = G.mkEl; if (!m || !m.isConnected) { m = G.mkEl = document.createElement('div'); m.id = 'stepMk'; m.innerHTML = '<b>◆</b><small></small>'; $('tags').appendChild(m); }
     const ns = G.nstep || {}, cur = ns.mk && ns.mk.scr ? ns.mk : null;
@@ -3321,6 +3715,7 @@ function gotGear(k) {
 }
 function showFishHelp(on) { G.helpOpen = on; $('fishHelp').classList.toggle('hidden', !on); if (on) { clearKeys(); try { document.exitPointerLock(); } catch (e) {} try { localStorage.setItem('s9-fishhelp', '1'); } catch (e) {} } else if (G.on && !G.shopOpen) lockMouse(); }
 function equip(i) {
+  if ((i === 5 || i === 6) && subInside()) { showMsg('Not in here.', '', 1.2); return; }
   if (i === 6 && !P.own.fw) { showMsg('No fireworks. The harbour shed sells them.', '', 2); return; }
   if (i === 5 && P.flares <= 0) { showMsg('No flares left. The harbour shed sells them.', '', 2.5); return; }
   if (i === 2 && !P.own.rod) { showMsg('You need a fishing rod. Buy one at the harbour shed.', '', 2.5); return; }
@@ -3332,6 +3727,7 @@ function equip(i) {
 // key slots: 1 hands, 2 rod (eq 2), 3 glock (eq 3), 4 shotgun (eq 4)
 function toolDown() { if (!P) return;
   if (G.shopOpen || G.helpOpen || P.hd >= 0 || P.seat || P.down) return;
+  if (subInside() && P.eq > 1) { showMsg('Not in here.', '', 1.2); return; }
   if (P.eq === 5) { throwFlare(); return; }
   if (P.eq === 6) { launchFw(); return; }
   if (P.eq === 3 || P.eq === 4) fire();
@@ -3551,9 +3947,10 @@ function startGame(seed, crew, sv) {
   if (!BOAT || BOAT.userData.cls !== (B.up.cls || 0)) buildBoat();
   if (!Array.isArray(B.up.own)) B.up.own = [...new Set([0, B.up.cls || 0])]; for (const k of ['paints', 'glows']) if (!Array.isArray(B.up[k])) B.up[k] = [...new Set([0, B.up[k.slice(0, -1)] || 0])]; G.bn = -1; if (isHost() && sv) { for (const k of sv.hold || []) if (KINDS.includes(k) && holdFits(k)) B.hold.push(k); (sv.dg || []).forEach((v, i) => { const d = DIGS[i]; if (!d || !v) return; d.rev = true; if (v & 2) d.dug = true; }); G.bbOut = !!sv.bb; G.bn = sv.bn ?? -1; }
   Object.assign(B, {x: JETTY.x - 2.1 - BG.hw, z: JETTY.z + 3 + Math.max(0, BG.L - 12) * .5, yaw: PI, v: 0, yr: 0, trim: 0, thr: 0, st: 0, driver: null, got: 0, sink: 0, sinkY: 0, dep: 0, dtar: 0}); B.fuel = tankMax(); B.hull = hullMax();
+  Object.assign(LK, {st: 0, t: 0, w: 0, ent: -1, tw: 0, wv: 0}); B.hat = 1; SUBC.dq = 0; G.hatA = G.lkI = G.lkO = G.mastU = null; if (P && P.scope) subScope(0);
   for (const p of PL.values()) { if (p.av) scene.remove(p.av); if (p.tag) p.tag.remove(); } PL.clear();
   syncCrew(crew);
-  [...PL.values()].forEach((p, i) => { p.ob = 1; p.bl = [(i % 2 ? .9 : -.9), BSPOT.hold[1] + (BG.sub ? -1.6 : 1.8) + Math.floor(i / 2) * (BG.sub ? -1 : 1)]; const [x, z] = bL2W(p.bl[0], p.bl[1]); p.x = x; p.z = z; p.y = BDECK.y; p.rx = x; p.ry = p.y; p.rz = z; p.lx = x; p.lz = z; p.yaw = B.yaw; });
+  [...PL.values()].forEach((p, i) => { const sp = boatSpawn(i); p.ob = 1; p.bl = sp.bl; const [x, z] = bL2W(p.bl[0], p.bl[1]); p.x = x; p.z = z; p.y = sp.y; p.rx = x; p.ry = p.y; p.rz = z; p.lx = x; p.lz = z; p.yaw = B.yaw; });
   loadGear(); Object.assign(P, {eq: 1, sack: [], heldF: 0, reload: 0, coolerN: 0, coolerV: 0, ready: true, vx: 0, vz: 0, vy: 0, stam: 1, bat: 1, flares: 2, breath: 1, gasp: 0, bob: 0, stepD: 0, fear: 0, eye: 1.62, l: 0, cr: 0, hd: -1, sw: 0, seat: 0, lastBY: B.yaw, drowned: false, carry: null});
   if (isHost() && sv) { for (const k of sv.sk || []) if (CARRY.has(k) && sackFits(P, k)) P.sack.push(k); if (P.sack.length) sackSet(P); P.cooler = (sv.co || []).map(e => Array.isArray(e) ? e : FISH[e] ? [e, FISH[e].v] : null).filter(Boolean); P.coolerN = P.cooler.length; P.coolerV = coolerVal(P.cooler); if (sv.fl != null) P.flares = Math.min(6, sv.fl); }
   F.st = 'idle'; placeItems(); G.seedItems = ITEMS.length; applyAll();
@@ -3630,7 +4027,7 @@ function postRender() {
   postPass(POST.bright, POST.rt.texture, POST.a);
   for (let i = 0; i < 2; i++) { POST.blur.uniforms.d.value.set(1 / POST.bw, 0); postPass(POST.blur, POST.a.texture, POST.b); POST.blur.uniforms.d.value.set(0, 1 / POST.bh); postPass(POST.blur, POST.b.texture, POST.a); }
   const sv = sunVis(); if (sv > 0) { POST.rays.uniforms.sp.value.copy(POST.sp); postPass(POST.rays, POST.a.texture, POST.c); }
-  const u = POST.comp.uniforms; u.rays.value = POST.c.texture; u.sunV.value = sv; u.uw.value = G.uw || 0; u.ca.value = (P ? clamp(P.fear || 0, 0, 1) : 0) * .03 + (G.shake || 0) * .02 + (G.uw || 0) * .02; if (POST.sp) u.sp.value.copy(POST.sp); u.bl.value = POST.a.texture; u.ex.value = POST.ex; u.fear.value = P ? clamp(P.fear || 0, 0, 1) : 0; u.ti.value = G.wt % 10; postPass(POST.comp, POST.rt.texture, null);
+  const u = POST.comp.uniforms; u.rays.value = POST.c.texture; u.sunV.value = sv; u.uw.value = G.uwC ?? G.uw ?? 0; u.ca.value = (P ? clamp(P.fear || 0, 0, 1) : 0) * .03 + (G.shake || 0) * .02 + (G.uwC ?? G.uw ?? 0) * .02; if (POST.sp) u.sp.value.copy(POST.sp); u.bl.value = POST.a.texture; u.ex.value = POST.ex; u.fear.value = P ? clamp(P.fear || 0, 0, 1) : 0; u.ti.value = G.wt % 10; postPass(POST.comp, POST.rt.texture, null);
 }
 addEventListener('resize', () => { if (POST.rt) postInit(); });
 const DYN = {pr: Math.min(devicePixelRatio || 1, 1.25), max: Math.min(devicePixelRatio || 1, 1.25), ft: 1 / 60, t: 0, n: 0};
@@ -3660,7 +4057,7 @@ function show(id) { ['menu', 'lobby', 'end', 'pause', 'shop', 'casino', 'fishHel
 function lobby() { const L = crewList(); $('crew').innerHTML = L.map(p => `<div><i style="background:${hexS(CREW_COL[p.c % 6])}"></i>${p.name.replace(/[<>&]/g, '')}${p.id === 'H' ? ' <small style="color:var(--dim)">host</small>' : ''}</div>`).join(''); if (Net.role === 'host') Net.send({t: 'lobby', crew: L}); }
 function hostStart() { G.diff = SET.diff; const seed = (Math.random() * 1e9) | 0, crew = crewList(), sv = loadSave(); Net.started = true; Net.meta(Net.peers.size < 5); Net.send({t: 'start', seed, crew, diff: G.diff, sv, v: GAME_V, al: ALL ? 1 : 0}); startGame(seed, crew, sv); }
 Net.on('_lobby', () => { if (!G.on) lobby(); });
-Net.on('_join', m => { if (G.on && Net.role === 'host') { const crew = crewList(), op = PL.get(m.id); if (op && op.ready) { Net.send({t: 'crew', crew}); return; } syncCrew(crew); const np = PL.get(m.id); if (np) { np.ob = 1; np.bl = [0, 3.8]; } if (!np || !np.startT || performance.now() - np.startT > 4000) { if (np) np.startT = performance.now(); Net.send1(m.id, {t: 'start', seed: G.seed, crew, diff: G.diff, late: 1, v: GAME_V, al: ALL ? 1 : 0, ex: ITEMS.slice(G.seedItems || ITEMS.length).map(i => [i.kind, +i.x.toFixed(2), +i.y.toFixed(2), +i.z.toFixed(2), i.text || '']), sv: {cash: G.cash, earned: G.earned, up: B.up, disc: G.disc, goals: G.goals, cruise: G.cruise || 0}}); } Net.send({t: 'crew', crew}); showMsg(`${np ? np.name : 'Someone'} joined the crew.`); } });
+Net.on('_join', m => { if (G.on && Net.role === 'host') { const crew = crewList(), op = PL.get(m.id); if (op && op.ready) { Net.send({t: 'crew', crew}); return; } syncCrew(crew); const np = PL.get(m.id); if (np) { const sp = boatSpawn(PL.size - 1); np.ob = 1; np.bl = sp.bl; np.y = sp.y; } if (!np || !np.startT || performance.now() - np.startT > 4000) { if (np) np.startT = performance.now(); Net.send1(m.id, {t: 'start', seed: G.seed, crew, diff: G.diff, late: 1, v: GAME_V, al: ALL ? 1 : 0, ex: ITEMS.slice(G.seedItems || ITEMS.length).map(i => [i.kind, +i.x.toFixed(2), +i.y.toFixed(2), +i.z.toFixed(2), i.text || '']), sv: {cash: G.cash, earned: G.earned, up: B.up, disc: G.disc, goals: G.goals, cruise: G.cruise || 0}}); } Net.send({t: 'crew', crew}); showMsg(`${np ? np.name : 'Someone'} joined the crew.`); } });
 Net.on('_left', m => { if (!G.on) { lobby(); return; } const crew = crewList(); syncCrew(crew); Net.send({t: 'crew', crew}); showMsg(`${m.name || 'Someone'} left.`); });
 Net.on('_hostlost', () => { if (!G.on) { toMenu('The host left.'); return; } showMsg('Lost contact with the captain… holding position.', '', 20); clearTimeout(G.lostT); G.lostT = setTimeout(() => toMenu('The host left.'), 20000); });
 Net.on('_hostback', () => { if (!G.lostT) return; clearTimeout(G.lostT); G.lostT = 0; if (G.on) showMsg('Back in contact.', '', 3); });

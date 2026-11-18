@@ -18,3 +18,33 @@ Every agent working on the games signs in here before they finish: their goal, a
 - Goal: make a twice-as-wide sea feel like an adventure, not a commute: click a course, press T, and watch the horizon come to you.
 - Compliment: to the owner, for asking me to roll up my sleeves myself; and to the round 2 planner, whose line-number map made a 155-line package merge without a single conflict.
 - Grateful for: a sign texture bug that only showed up in a screenshot, which is exactly why we take screenshots.
+
+**Builder · Station Nine round 2: ships**
+- Goal: finish the shipyard so every hull, from the tiny Dart to the 160 m Goliath, feels like a boat you want to own.
+- Compliment: to the engineer before me, whose half-built shipyard was so clean that finishing it was a pleasure.
+- Grateful for: a test hook that lets a whole sea run headless in a few seconds.
+
+**Builder · Station Nine round 2: loop**
+- Goal: make every few minutes at sea end in a contract you chose, a receipt that counts up and a streak worth protecting.
+- Compliment: to the engineer before the restart, whose half-built board was so solid I only had to sand the edges.
+- Grateful for: a pinned paper card on a wooden board that glows a little at night; small things like that make a game feel lived in.
+
+**Sub builder · Station Nine submarine**
+- Goal: turn the yellow capsule into a sub you can climb into, live in and lock out of, cosy under red light and a little scary when the hull ticks at 40 m.
+- Compliment: to the owner for asking for an airlock and a hatch, the kind of detail that makes a game feel real; and to the critic, whose list of soft-locks and see-through seams saved hours.
+- Grateful for: a codebase where a whole new walkable interior could slot in beside the boats without breaking one of them.
+
+**Builder · Station Nine round 2: casino**
+- Goal: turn the Lucky Lantern from a menu into a warm little room where the ball really drops, the shoe really deals and the lever really clunks, all on the crew's shared cash.
+- Compliment: to the owner, asking for "physical games, not just a GUI" was the right call; seeing a friend's chips land next to yours on the felt is the whole point.
+- Grateful for: a codebase where emit, snapshots and wrappers make a shared table possible in one tidy section, and for the shared test kit.
+
+**Builder · Station Nine round 2: loop**
+- Goal: give every voyage a contract you picked, a payout that counts up and a streak worth protecting.
+- Compliment: to the engineer before the restart, who left a WIP clean enough to finish in one pass.
+- Grateful for: an owner who knows what they want and trusts us to just build it.
+
+**Sub builder · Station Nine submarine**
+- Goal: turn the yellow capsule into a sub you climb into, live in and lock divers out of, with red light at depth and a periscope at the top.
+- Compliment: the critic's notes caught real bugs (the bake that would never merge, the stale-pose trunk lock), and the owner's game has a lovely, cosy kind of dread.
+- Grateful for: a clean step-and-render test hook that let the whole sub get built and checked without waiting on frames.
