@@ -29,7 +29,7 @@ const hexS = c => '#' + c.toString(16).padStart(6, '0');
 
 // ---------------- net (jjfanwars relay)
 const RELAY_URL = 'wss://jjfanwars-relay.businessautomationvic.workers.dev';
-const GAME_V = 42;
+const GAME_V = 43;
 const Net = {
   tag: '[Rig]', role: 'solo', ws: null, peers: new Map(), code: '', relayT: {pose: 1}, id: '', name: '', handlers: {}, retry: 0, started: false,
   enc: new TextEncoder(), dec: new TextDecoder(),
@@ -7453,6 +7453,139 @@ function levScars() { if (!LEV.body) return; const M2 = levMem(), k = Math.min(1
     LVX.lure = new THREE.Mesh(new THREE.SphereGeometry(.28, 12, 10), new THREE.MeshBasicMaterial({color: new THREE.Color().setRGB(2.5, 4, 3)})); LVX.lure.position.set(0, 2.9, 1.8); LEV.head.add(LVX.lure); } }
 { const f0 = hud; hud = function () { const r = f0.apply(this, arguments); try { const now = performance.now(), dt = Math.min(.1, (now - (LVX.ft || now)) / 1000); LVX.ft = now; levStalkFrame(dt); if ((LVX.sc = (LVX.sc || 0) - dt) <= 0) { LVX.sc = 2; levScars(); } if (LVX.lure) LVX.lure.scale.setScalar(.8 + Math.sin(G.wt * 3) * .25); } catch (e) { if (!LVX.err) { LVX.err = 1; console.warn(e); } } return r; }; }
 { const f0 = startGame; startGame = function () { G.stk = null; G.stkC = null; LVX.drag = 0; LVX.scarK = -1; return f0.apply(this, arguments); }; }
+
+// ---------------- horror at sea: the Passenger (one more aboard than the crew), the fog bank (compass spins, chart dies, dead ships drift past), the lantern fish (a harbour lamp that
+// is a lure), the knock on the wheelhouse door, red tide, the lighthouse keeper's stare, tidewalkers out of the shallows, and small jumpscares. Host director hzStep; clients draw.
+const HZ = {t: {}, fig: null};
+const hzNight = () => TOD.night > .5, hzSea = () => Math.hypot(B.x - HOME.x, B.z - HOME.z) > 300 && !OBST.some(o => o.c && o.r > 5 && Math.hypot(B.x - o.x, B.z - o.z) < o.r + 60) && !inCruise(B.x, B.z);
+function hzFig(o = {}) { const g = new THREE.Group(), h = o.h || 1.8, k = h / 1.8, body = new THREE.MeshStandardMaterial({color: o.col ?? 0x101012, roughness: .9}), skin = new THREE.MeshStandardMaterial({color: o.skin ?? 0xd8d4cc, roughness: .6}), add = (geo, m, x, y, z, p = g) => { const q = new THREE.Mesh(geo, m); q.position.set(x, y, z); q.castShadow = true; p.add(q); return q; };
+  add(new THREE.CapsuleGeometry(.17 * k * (o.thin || 1), .62 * k, 4, 10), body, 0, 1.12 * k, 0); const hd = new THREE.Group(); hd.position.set(0, 1.62 * k, 0); g.add(hd); add(new THREE.SphereGeometry(.12 * k, 14, 10), skin, 0, 0, 0, hd).scale.set(1, 1.2, 1.05);
+  if (!o.noface) for (const s of [-1, 1]) add(new THREE.SphereGeometry(.018 * k, 8, 6), new THREE.MeshBasicMaterial({color: o.eye ?? 0x050505}), s * .045 * k, .02 * k, -.11 * k, hd);
+  const arms = []; for (const s of [-1, 1]) { const a = new THREE.Group(); a.position.set(s * .2 * k, 1.42 * k, 0); g.add(a); add(new THREE.CylinderGeometry(.045 * k, .035 * k, (o.arm || .72) * k, 6), body, 0, -(o.arm || .72) * k / 2, 0, a); add(new THREE.SphereGeometry(.05 * k, 8, 6), skin, 0, -(o.arm || .72) * k, 0, a).scale.y = 1.8; arms.push(a); }
+  for (const s of [-1, 1]) add(new THREE.CylinderGeometry(.06 * k, .05 * k, .82 * k, 6), body, s * .09 * k, .41 * k, 0); g.userData = {hd, arms}; return g; }
+function hzTag(name, col) { const c = document.createElement('canvas'); c.width = 256; c.height = 48; const q = c.getContext('2d'); q.font = 'bold 26px ui-monospace,monospace'; q.textAlign = 'center'; q.fillStyle = 'rgba(0,0,0,.45)'; q.fillRect(0, 6, 256, 36); q.fillStyle = col; q.fillText(name, 128, 34);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; const s = new THREE.Sprite(new THREE.SpriteMaterial({map: t, depthTest: false, transparent: true})); s.scale.set(1.6, .3, 1); return s; }
+const hzSting = (k = 1) => { if (!A.on) return; burst(1800, .3 * k, .5, .25 * k, 'highpass', null, .3); tone(220, .12 * k, 1.2, 'sawtooth', null, 160); tone(233, .1 * k, 1.2, 'sawtooth', null, 150); };
+// ---- host director
+function hzStep(dt) { if (!G.on || B.sink > 0) return; const T = HZ.t, ok = (k, every) => { T[k] = (T[k] ?? every * (.5 + CR())) - dt; if (T[k] > 0) return false; T[k] = every * (.7 + CR() * .6); return true; }, crew = alive(), allOb = crew.length && crew.every(p => p.ob), night = hzNight(), sea = hzSea();
+  // the Passenger
+  if (!G.pass && ok('pass', 50) && (night || G.fogEv) && sea && allOb && CR() < .12) { const src = crew[Math.floor(CR() * crew.length)]; G.pass = {t: 70, n: src.name, c: src.c, lx: (CR() < .5 ? -1 : 1) * (BG.hw - .8), lz: mix(BDECK.z0 + 1, BDECK.z1 - 1, CR())}; emit({k: 'pass', n: src.name, c: src.c, lx: +G.pass.lx.toFixed(2), lz: +G.pass.lz.toFixed(2)}); }
+  if (G.pass && (G.pass.t -= dt) <= 0) { let lost = null; if (B.hold.length) lost = B.hold.splice(Math.floor(CR() * B.hold.length), 1)[0]; G.pass = null; emit({k: 'passx', lost: lost ? KINDS.indexOf(lost) : -1}); }
+  // fog bank
+  if (!G.fogEv && ok('fog', 90) && sea && CR() < (night ? .14 : .07) * (mapRegion(B.x, B.z) && mapRegion(B.x, B.z).k === 'grave' ? 2 : 1)) { G.fogEv = {t: 150}; emit({k: 'fogev', T: 150}); }
+  if (G.fogEv && (G.fogEv.t -= dt) <= 0) { G.fogEv = null; emit({k: 'fogev', T: 0}); }
+  // the lantern fish
+  if (!G.lant && ok('lant', 60) && (night || G.fogEv) && sea && CR() < .12) { const d = 230, x = B.x - Math.sin(B.yaw) * d + (CR() - .5) * 60, z = B.z - Math.cos(B.yaw) * d + (CR() - .5) * 60; if (seaBed(x, z) < -8) { G.lant = {x, z, t: 0, st: 0}; emit({k: 'lant', x: +x.toFixed(1), z: +z.toFixed(1), st: 0}); } }
+  if (G.lant) { const L = G.lant; L.t += dt; const d = Math.hypot(B.x - L.x, B.z - L.z), fl = G.flares.find(f => f.t > 0 && Math.hypot(f.x - L.x, f.z - L.z) < 30);
+    if (L.st === 0 && (fl || L.t > 110)) { G.lant = null; emit({k: 'lant', st: 3, fl: fl ? 1 : 0}); }
+    else if (L.st === 0 && d < 34 + BG.L * .4) { L.st = 1; L.t = 0; emit({k: 'lant', st: 1, x: +L.x.toFixed(1), z: +L.z.toFixed(1)}); }
+    else if (L.st === 1 && L.t > 2.2) { L.st = 2; L.t = 0; if (Math.hypot(B.x - L.x, B.z - L.z) < 40 + BG.L * .5) { damageBoat(D.ramDmg * 1.3 / [1, 1.5, 2.2][B.up.hull] * (HC().big ? .3 : 1)); B.v *= .3; emit({k: 'ram'}); } emit({k: 'lant', st: 2}); }
+    else if (L.st === 2 && L.t > 3) { G.lant = null; emit({k: 'lant', st: 3}); } }
+  // the knock
+  if (!G.knock && ok('knock', 45) && night && allOb && !crew.some(p => p.seat && false) && CR() < .1 && BOAT && BOAT.userData.wz && !BG.sub) { G.knock = {t: 0, n: 1}; emit({k: 'knock', n: 1}); }
+  if (G.knock) { const K2 = G.knock; K2.t += dt; if (K2.n === 1 && K2.t > 12) { K2.n = 2; emit({k: 'knock', n: 2}); } else if (K2.n === 2 && K2.t > 24) { G.knock = null; emit({k: 'knocko', by: ''}); } }
+  // red tide (a whole night, now and then)
+  if (!G.redTide && night && ok('red', 120) && sea && !HZ.redNight && CR() < .18) { G.redTide = 1; emit({k: 'redtide', on: 1}); } if (night) HZ.redNight = 1; if (!night) { HZ.redNight = 0; if (G.redTide) { G.redTide = 0; emit({k: 'redtide', on: 0}); } }
+  // the lighthouse keeper's stare
+  if (!G.keeper && night && G.lh && Math.hypot(B.x - G.lh[0], B.z - G.lh[2]) < 1500 && ok('keep', 70) && CR() < .14) { G.keeper = {t: 26}; emit({k: 'keeper', T: 26}); } if (G.keeper && (G.keeper.t -= dt) <= 0) G.keeper = null;
+  // tidewalkers: a still boat near an island at night
+  if (night && Math.abs(B.v) < 1 && !(G.tw && G.tw.length) && ok('tw', 35) && CR() < .2) { const I = OBST.filter(o => o.c && o.r > 8 && landH(o.x, o.z) > .5).find(o => Math.hypot(B.x - o.x, B.z - o.z) < o.r + 140);
+    if (I) { const a = Math.atan2(B.x - I.x, B.z - I.z), n = 2 + Math.floor(CR() * 3); G.tw = []; for (let i = 0; i < n; i++) { const aa = a + (i - (n - 1) / 2) * .18, x = I.x + Math.sin(aa) * I.r * .8, z = I.z + Math.cos(aa) * I.r * .8; G.tw.push({x, z, st: 0, t: CR() * 3}); } emit({k: 'twon', n, x: +G.tw[0].x.toFixed(1), z: +G.tw[0].z.toFixed(1)}); } }
+  if (G.tw && G.tw.length) { for (let i = G.tw.length - 1; i >= 0; i--) { const w = G.tw[i]; w.t += dt; const dx = B.x - w.x, dz = B.z - w.z, d = Math.hypot(dx, dz), fl = G.flares.find(f => f.t > 0 && Math.hypot(f.x - w.x, f.z - w.z) < 22);
+      if (fl && w.st < 2) w.st = 2; if (w.st === 1 && (w.fr -= dt) <= 0) w.st = 0;
+      if (w.st === 0) { w.x += dx / d * .95 * dt; w.z += dz / d * .95 * dt; if (d < BG.hw + 2.2) { G.tw.splice(i, 1); const on = alive().filter(p => p.ob && !p.seat); if (on.length) emit({k: 'snatch', id: on[Math.floor(CR() * on.length)].id, tw: 1}); else damageBoat(10); emit({k: 'twgone', i}); continue; } }
+      else if (w.st === 2) { w.x -= dx / d * 1.6 * dt; w.z -= dz / d * 1.6 * dt; if (w.t > 0 && (w.back = (w.back || 0) + dt) > 6) { G.tw.splice(i, 1); continue; } } }
+    if (!night) G.tw = []; } }
+{ const f0 = hostStep; hostStep = function (dt) { const r = f0.apply(this, arguments); try { hzStep(dt); } catch (e) { if (!HZ.err) { HZ.err = 1; console.warn(e); } } return r; }; }
+{ const f0 = hostAct; hostAct = function (id, m) { if (m && m.a === 'passx' && G.pass) { G.pass = null; emit({k: 'passx', by: id}); return; } if (m && m.a === 'knocko' && G.knock) { G.knock = null; emit({k: 'knocko', by: id}); return; }
+  if (m && m.a === 'twlit' && G.tw && G.tw[m.i] && G.tw[m.i].st === 0) { G.tw[m.i].st = 1; G.tw[m.i].fr = 3.5; return; } return f0.apply(this, arguments); }; }
+{ const f0 = packSnap; packSnap = function () { const s = f0.apply(this, arguments); if (G.tw && G.tw.length) s.tw = G.tw.map(w => [+w.x.toFixed(1), +w.z.toFixed(1), w.st]); else if (HZ.twSent) s.tw = []; HZ.twSent = !!(G.tw && G.tw.length); return s; }; }
+{ const f0 = applySnap; applySnap = function (s) { const r = f0.apply(this, arguments); if (s.tw) G.twC = s.tw; return r; }; }
+// ---- the Passenger: looks like one of the crew (their colour and name tag) at the rail, facing the sea; get close and it turns, and it has no face
+{ const f0 = applyEv; applyEv = function (e) { const r = f0.apply(this, arguments), me = myId(), near = () => !!P && (P.ob || Math.hypot(cam.position.x - B.x, cam.position.z - B.z) < BG.L * .5 + 40);
+  switch (e.k) {
+    case 'pass': if (!BOAT) break; if (HZ.pf) BOAT.remove(HZ.pf); { const f = hzFig({col: CREW_COL[(e.c || 0) % 6], noface: 1}), tag = hzTag(e.n, '#' + new THREE.Color(CREW_COL[(e.c || 0) % 6]).getHexString()); tag.position.y = 2.15; f.add(tag); f.position.set(e.lx, BDECK.y, e.lz); f.rotation.y = e.lx > 0 ? -PI / 2 : PI / 2; BOAT.add(f); HZ.pf = f; HZ.pn = e.n; HZ.pT = 0; } break;
+    case 'passx': if (HZ.pf) { const f = HZ.pf; if (e.by === me) { f.rotation.y += PI; G.shake = 1.2; hzSting(1.3); Snd.scream && Snd.scream(); showMsg(`It had ${HZ.pn}'s face. Then it had no face at all.`, '', 4); setTimeout(() => { if (f.parent) f.parent.remove(f); }, 350); }
+      else { if (f.parent) f.parent.remove(f); if (near()) { if (e.lost >= 0) showMsg(`${HZ.pn} was never out on deck. Something is missing from the hold: ${NAMES[KINDS[e.lost]] || 'cargo'}.`, '', 5); else if (e.by) showMsg('Someone on deck screamed.', '', 3); } } HZ.pf = null; } break;
+    case 'fogev': G.fogC = e.T ? {t: 0, T: e.T} : (G.fogC ? Object.assign(G.fogC, {end: G.fogC.t}) : null); if (e.T && near()) { showMsg('A fog bank rolls over you. The compass needle is spinning.', '', 4.5); tone(55, .1, 4, 'sine'); } break;
+    case 'lant': if (e.st === 0) { G.lantC = {x: e.x, z: e.z, st: 0, t: 0}; } else if (G.lantC) { if (e.st === 1) { Object.assign(G.lantC, {st: 1, t: 0}); if (near()) { Snd.riser && Snd.riser(); } } else if (e.st === 2) { G.lantC.st = 2; G.lantC.t = 0; if (near()) { Snd.roar && Snd.roar(at(G.lantC.x, 2, G.lantC.z, 30)); G.shake = 1.4; } } else if (e.st === 3) { if (e.fl && near()) showMsg('The harbour light sinks into the sea, hissing.', '', 3); G.lantC.st = 3; G.lantC.t = 0; } } break;
+    case 'knock': if (near() && P.ob && BOAT && BOAT.userData.wz) { const [x, z] = bL2W(0, BOAT.userData.wz[1] + .1); for (let i = 0; i < (e.n === 2 ? 4 : 3); i++) setTimeout(() => { if (A.on) { tone(70, e.n === 2 ? .5 : .3, .12, 'square', at(x, BDECK.y + 1.3 + B.heave, z, 4)); burst(400, e.n === 2 ? .6 : .35, .06, .08, 'lowpass', at(x, BDECK.y + 1.3, z, 4)); } }, i * 420); if (e.n === 1) showMsg('Someone is knocking on the wheelhouse door. Everyone is accounted for.', '', 4); HZ.knock = 1; } break;
+    case 'knocko': HZ.knock = 0; if (BOAT && BOAT.userData.wz && near()) { const wz1 = BOAT.userData.wz[1], g = new THREE.Group(), m = new THREE.MeshBasicMaterial({color: 0x0a0c0e, transparent: true, opacity: .6, depthWrite: false}), sd = Math.random() < .5 ? -1 : 1;
+      for (let i = 0; i < 9; i++) { const u = i / 8, f = new THREE.Mesh(new THREE.CircleGeometry(.09, 10), m); f.scale.set(1, 1.7, 1); f.rotation.x = -PI / 2; f.position.set(mix(0, sd * (BG.hw - .4), u) + (i % 2 ? .12 : -.12), BDECK.y + .012, wz1 + .6 + u * 2.2); g.add(f); } BOAT.add(g); HZ.foot = g; setTimeout(() => { if (g.parent) g.parent.remove(g); }, 90000);
+      G.lampOut = 1.2; hzSting(.8); showMsg(e.by === me ? 'Nobody there. Wet footprints lead from the door to the rail.' : e.by ? 'The door is open. Nobody there. Wet footprints on the deck.' : 'The wheelhouse door bangs open on its own. Wet footprints lead to the rail.', '', 5); } break;
+    case 'redtide': G.redC = e.on ? 1 : 0; if (e.on && near()) showMsg('The sea has turned red. Dead fish everywhere. Something is feeding tonight.', 'RED TIDE', 6); else if (!e.on && G.redSeen) showMsg('The red has drained out of the water.', '', 3); G.redSeen = e.on; break;
+    case 'keeper': G.keepC = {t: 0, T: e.T}; if (P && Math.hypot(P.x - G.lh[0], P.z - G.lh[2]) < 1600) { showMsg('The lighthouse beam has stopped turning. It is pointing straight at you.', '', 5); tone(48, .1, 3, 'sine'); } break;
+    case 'twon': if (near()) { showMsg('Something is wading out from the island. Tall. Thin. Get a light on them, or a flare.', '', 5); hzSting(.6); } (HZ.twFoot = HZ.twFoot || []).push([e.x, e.z]); break;
+  }
+  return r; }; }
+// the Passenger ends when anyone walks up to it; the knock is answered at the door
+{ const f0 = stepPlayer; stepPlayer = function (dt) { const r = f0.apply(this, arguments); if (!P || !BOAT) return r;
+  if (HZ.pf && P.ob && !HZ.pAsk) { const d = Math.hypot(P.bl[0] - HZ.pf.position.x, P.bl[1] - HZ.pf.position.z); if (d < 3.2) { HZ.pAsk = 1; act({a: 'passx'}); setTimeout(() => HZ.pAsk = 0, 2000); } }
+  if (HZ.knock && P.ob && BOAT.userData.wz && Math.hypot(P.bl[0], P.bl[1] - BOAT.userData.wz[1]) < 1.6 && ePress) { HZ.knock = 0; act({a: 'knocko'}); }
+  if (P.l && P.bat > 0 && hzTW().length) { _v.set(0, 0, -1).applyQuaternion(cam.quaternion); hzTW().forEach((w, i) => { if (w[2] !== 0) return; const dx = w[0] - cam.position.x, dz = w[1] - cam.position.z, d = Math.hypot(dx, dz); if (d < 32 && (dx * _v.x + dz * _v.z) / d > .9 && (HZ.twLit = (HZ.twLit || 0) + dt) > .8) { HZ.twLit = 0; act({a: 'twlit', i}); } }); }
+  return r; }; }
+// ---- client per-frame visuals
+const hzTW = () => isHost() ? (G.tw || []).map(w => [w.x, w.z, w.st]) : (G.twC || []);
+function hzFrame(dt) { if (!P || !G.on) return; const t = G.wt;
+  if (HZ.pf) { HZ.pT += dt; HZ.pf.userData.hd.rotation.y = Math.sin(HZ.pT * .3) * .15; }
+  if (HZ.knock && P.ob && BOAT && BOAT.userData.wz && Math.hypot(P.bl[0], P.bl[1] - BOAT.userData.wz[1]) < 1.6) { $('pTxt') && ($('pTxt').innerHTML = '<kbd>E</kbd> Open the door'); $('prompt') && ($('prompt').style.opacity = 1); }
+  // fog bank: thick grey, ghost ships, the compass spins (drawCompass wrapper), the chart shows nothing (drawMap wrapper)
+  const fc = G.fogC; if (fc) { fc.t += dt; const k = fc.end != null ? clamp(1 - (fc.t - fc.end) / 6, 0, 1) : clamp(fc.t / 8, 0, 1); HZ.fogK = k; if (fc.end != null && k <= 0) { G.fogC = null; HZ.fogK = 0; }
+    if (!HZ.gs) { HZ.gs = []; const m = new THREE.MeshBasicMaterial({color: 0x2a2e30, transparent: true, opacity: .55, depthWrite: false}); for (let i = 0; i < 3; i++) { const g = new THREE.Group(), add = (geo, x, y, z) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); g.add(o); return o; };
+      add(new THREE.BoxGeometry(5, 3, 26), 0, 1, 0); add(new THREE.BoxGeometry(4, 2, 6), 0, 3.5, 6); for (const z of [-7, 1, 8]) { add(new THREE.CylinderGeometry(.18, .22, 16, 6), 0, 9, z); add(new THREE.BoxGeometry(7, 3.5, .1), 0, 10 + (z % 2), z).scale.y = .8 + Math.random() * .3; } g.visible = false; scene.add(g); HZ.gs.push(g); } }
+    HZ.gs.forEach((g, i) => { const ph = (fc.t * .012 + i / 3) % 1, a = i * 2.1 + 1, r = 90 + i * 25, ox = P.x + Math.sin(a) * r, oz = P.z + Math.cos(a) * r, dx = Math.cos(a), dz = -Math.sin(a); g.visible = k > .3; g.position.set(ox + dx * (ph - .5) * 300, waveH(ox, oz, t) - .5, oz + dz * (ph - .5) * 300); g.rotation.y = Math.atan2(dx, dz); g.rotation.z = Math.sin(t * .4 + i) * .06; g.children[0].material.opacity = .45 * k; });
+    if (Math.random() < dt * .08 && A.on) { tone(392, .03, 3, 'sine'); tone(523, .02, 3, 'sine'); } }
+  else if (HZ.gs) for (const g of HZ.gs) g.visible = false;
+  // lantern fish
+  const L = G.lantC; if (L) { L.t += dt; if (!HZ.lf) { const g = new THREE.Group(), dk = new THREE.MeshStandardMaterial({color: 0x0a0c0e, roughness: .35}), tth = new THREE.MeshStandardMaterial({color: 0xd8d0b8, roughness: .3}), add = (geo, m, x, y, z, p = g) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); p.add(o); return o; };
+      const head = new THREE.Group(); g.add(head); add(new THREE.SphereGeometry(6, 20, 14), dk, 0, 0, 0, head).scale.set(1.2, .7, 1); const jaw = new THREE.Group(); jaw.position.set(0, -1.5, -3); head.add(jaw); add(new THREE.SphereGeometry(5.6, 18, 12, 0, TAU, 0, PI / 2), dk, 0, 0, -1, jaw).rotation.x = PI;
+      for (let i = 0; i < 22; i++) { const a = -1.4 + i / 21 * 2.8; add(new THREE.ConeGeometry(.22, 2.2 + Math.random(), 5), tth, Math.sin(a) * 5.6, -1.6, -3 - Math.cos(a) * 4.4, head).rotation.x = PI; add(new THREE.ConeGeometry(.2, 1.8 + Math.random(), 5), tth, Math.sin(a) * 5.2, .8, -1 - Math.cos(a) * 4, jaw); }
+      for (const s of [-1, 1]) add(new THREE.SphereGeometry(.5, 10, 8), new THREE.MeshBasicMaterial({color: 0xd8e0c0}), s * 4.2, 2.2, -2.5, head);
+      const post = add(new THREE.CylinderGeometry(.12, .18, 9, 6), new THREE.MeshStandardMaterial({color: 0x2a2620, roughness: .8}), 0, 4.5, 0); const lamp = add(new THREE.BoxGeometry(.7, .9, .7), new THREE.MeshStandardMaterial({color: 0x201000, emissive: 0xffc070, emissiveIntensity: 2}), 0, 9.2, 0);
+      const gl = new THREE.Sprite(new THREE.SpriteMaterial({map: TX.glow, color: 0xffc070, transparent: true, opacity: .8, depthWrite: false, blending: THREE.AdditiveBlending, fog: false})); gl.scale.setScalar(9); gl.position.y = 9.2; g.add(gl);
+      const jt = add(new THREE.BoxGeometry(3.4, .3, 8), new THREE.MeshStandardMaterial({color: 0x2a2018, roughness: .9}), 0, .3, 3); scene.add(g); HZ.lf = {g, head, jaw, post, lamp, gl, jt}; }
+    const F2 = HZ.lf, wy = waveH(L.x, L.z, t); F2.g.visible = true; F2.g.position.set(L.x, 0, L.z); F2.g.rotation.y = Math.atan2(B.x - L.x, B.z - L.z) + PI;
+    const rise = L.st === 0 ? 0 : L.st === 1 ? smooth(L.t / 2.2) : L.st === 2 ? 1 : 1 - smooth(L.t / 3); F2.head.position.y = mix(-16, 1.5, rise) + wy; F2.jaw.rotation.x = L.st >= 1 ? clamp(rise * 1.2, 0, .9) * (L.st === 2 ? (L.t < .4 ? 1 : Math.max(0, 1 - (L.t - .4) * 2)) : 1) : 0;
+    F2.post.position.y = 4.5 + wy + rise * 4; F2.lamp.position.y = 9.2 + wy + rise * 4; F2.gl.position.y = F2.lamp.position.y; F2.jt.visible = L.st === 0; F2.gl.material.opacity = (L.st === 3 ? 1 - L.t / 3 : .85) * (.85 + Math.sin(t * 2) * .1);
+    if (L.st === 3 && L.t > 3) { G.lantC = null; F2.g.visible = false; } } else if (HZ.lf) HZ.lf.g.visible = false;
+  // red tide: a red sea, dead fish floating round you
+  const rk = HZ.redK = mix(HZ.redK || 0, G.redC ? 1 : 0, Math.min(1, dt * .3)); if (rk > .01) { MAT.sea.color.lerp(new THREE.Color(0x3a0606), rk * .55); scene.fog.color.lerp(new THREE.Color(0x2a0808), rk * .3);
+    if (!HZ.df) { const fg = new THREE.ConeGeometry(.08, .45, 5); fg.rotateZ(PI / 2); HZ.df = new THREE.InstancedMesh(fg, new THREE.MeshStandardMaterial({color: 0xd8d0c0, roughness: .6}), 60); HZ.df.frustumCulled = false; scene.add(HZ.df); HZ.dfp = [...Array(60)].map(() => [Math.random() * 120 - 60, Math.random() * 120 - 60, Math.random() * TAU]); }
+    const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), e3 = new THREE.Euler(); HZ.dfp.forEach((p, i) => { let x = p[0] + Math.round((P.x - p[0]) / 120) * 120, z = p[1] + Math.round((P.z - p[1]) / 120) * 120; e3.set(PI / 2 * .9, p[2], 0); q.setFromEuler(e3); m4.compose(_v.set(x, waveH(x, z, t) + .02, z), q, new THREE.Vector3(rk, rk, rk)); HZ.df.setMatrixAt(i, m4); }); HZ.df.instanceMatrix.needsUpdate = true; HZ.df.visible = true; } else if (HZ.df) HZ.df.visible = false;
+  // tidewalkers: tall, thin, wet grey; they walk on the bottom so they sink as the water deepens; footprints on the beach by day
+  const TW = hzTW(); HZ.tws = HZ.tws || []; while (HZ.tws.length < TW.length) { const f = hzFig({h: 4.2, col: 0x3a4044, skin: 0x8a9290, thin: .6, arm: 1.6, eye: 0xc8d8d0}); scene.add(f); HZ.tws.push(f); }
+  HZ.tws.forEach((f, i) => { const w = TW[i]; f.visible = !!w; if (!w) return; const tx = w[0], tz = w[1]; f.position.x = mix(f.position.x || tx, tx, Math.min(1, dt * 3)); f.position.z = mix(f.position.z || tz, tz, Math.min(1, dt * 3)); f.position.y = Math.min(0, seaBed(f.position.x, f.position.z)) + Math.max(0, landH(f.position.x, f.position.z));
+    f.rotation.y = Math.atan2(B.x - f.position.x, B.z - f.position.z) + PI; const ud = f.userData; ud.arms.forEach((a, k) => a.rotation.x = Math.sin(t * 1.2 + k * PI) * .3 - (w[2] === 1 ? 1.2 : 0)); ud.hd.rotation.z = w[2] === 1 ? Math.sin(t * 9) * .1 : 0; });
+  if (TOD.day > .6 && HZ.twFoot && HZ.twFoot.length && !HZ.fp) { HZ.fp = new THREE.Group(); const m = new THREE.MeshBasicMaterial({color: 0x2a241c, transparent: true, opacity: .55, depthWrite: false}); for (const [x0, z0] of HZ.twFoot) for (let i = 0; i < 14; i++) { const x = x0 + Math.sin(i * .4) * 1.5 - i * .9, z = z0 + i * .3, h = landH(x, z); if (h < 0) continue; const f = new THREE.Mesh(new THREE.CircleGeometry(.16, 10), m); f.scale.set(1, 2.6, 1); f.rotation.x = -PI / 2; f.position.set(x, h + .03, z); HZ.fp.add(f); } scene.add(HZ.fp); }
+  // jumpscares (rare, at night, only for you)
+  HZ.js = (HZ.js ?? 40) - dt; if (HZ.js <= 0) { HZ.js = 35 + Math.random() * 70; if (hzNight() && Math.random() < .3) hzJump(); }
+  if (HZ.jf) { HZ.jf.t -= dt; if (HZ.jf.t <= 0) { if (HZ.jf.o.parent) HZ.jf.o.parent.remove(HZ.jf.o); HZ.jf = null; } else if (HZ.jf.look) { _v.set(0, 0, -1).applyQuaternion(cam.quaternion); HZ.jf.o.getWorldPosition(_s0); _s0.sub(cam.position).normalize(); if (_v.dot(_s0) > .95) HZ.jf.t = Math.min(HZ.jf.t, .18); } }
+  if (G.lampOut > 0) { G.lampOut -= dt; const f = $('flash'); f.style.background = '#000'; f.style.opacity = G.lampOut > 0 ? .86 : 0; HZ.lo = 1; if (G.lampOut <= 0) setTimeout(() => { f.style.background = ''; }, 300); }
+  if (HZ.smear) { HZ.smear.t -= dt; HZ.smear.s.material.opacity = clamp(HZ.smear.t / 8, 0, .8); if (HZ.smear.t <= 0) { cam.remove(HZ.smear.s); HZ.smear = null; } } }
+const _s0 = new THREE.Vector3();
+function hzJump() { if (!BOAT || !P || P.dead) return; const ud = BOAT.userData, ins = inCabin(), opts = [];
+  if (ins && ud.wz) opts.push('face', 'chair'); if (P.ob && !ins && ud.wz) opts.push('hand'); if (G.radioOn) opts.push('radio'); if (P.seat && Math.abs(B.v) > 4) opts.push('gull'); if (!opts.length) return; const k = opts[Math.floor(Math.random() * opts.length)];
+  if (k === 'face') { const [wz0] = ud.wz, ww = ud.ww || 2, f = hzFig({h: 1.8, col: 0x0a0a0a, skin: 0xe8e4dc}), fw = -Math.sin(P.yaw - B.yaw) , side = Math.abs(fw) < .5; f.position.set(side ? 0 : Math.sign(-Math.sin(P.yaw - B.yaw)) * (ww + .5), BDECK.y - .1, side ? wz0 - .5 : P.bl[1]); f.rotation.y = side ? 0 : Math.sign(f.position.x) * PI / 2; BOAT.add(f); HZ.jf = {o: f, t: 1.1, look: 1}; hzSting(1); }
+  else if (k === 'chair') { const ww = ud.ww || 2, [wz0, wz1] = ud.wz, f = hzFig({h: 1.5, col: 0x060606, skin: 0x1a1a1a}); f.position.set(-ww + .45, BDECK.y + .05, (wz0 + wz1) / 2); f.rotation.y = PI / 2; BOAT.add(f); G.lampOut = 1.3; HZ.jf = {o: f, t: 1.3}; setTimeout(() => hzSting(.7), 1250); }
+  else if (k === 'hand') { const g = new THREE.Group(), sk = new THREE.MeshStandardMaterial({color: 0xb8c0b8, roughness: .5}); for (let i = 0; i < 4; i++) { const c = new THREE.Mesh(new THREE.CylinderGeometry(.018, .014, .2, 5), sk); c.position.set(-.06 + i * .04, .05, -.08); c.rotation.x = 1.1; g.add(c); } const pm = new THREE.Mesh(new THREE.BoxGeometry(.16, .05, .12), sk); g.add(pm);
+    g.position.set((Math.random() - .5) * BG.hw, BDECK.y + .32, BG.zs + .05); BOAT.add(g); HZ.jf = {o: g, t: 1.6}; { const [hx, hz] = bL2W(0, BG.zs + 1); Snd.splash && Snd.splash(at(hx, 0, hz, 4)); } setTimeout(() => hzSting(.5), 200); }
+  else if (k === 'radio') { const others = [...PL.values()].filter(p => p !== P && p.ready); showMsg(`“I'm right behind you.”`, others.length ? `${others[Math.floor(Math.random() * others.length)].name} (radio)` : 'RADIO', 3); if (A.on) { tone(180, .06, .9, 'sawtooth', null, 120); burst(2400, .2, .8, .3, 'bandpass'); } }
+  else if (k === 'gull') { if (A.on) { tone(90, .5, .2, 'square'); burst(600, .5, .1, .2, 'lowpass'); } G.shake = 1; const c = document.createElement('canvas'); c.width = c.height = 128; const q = c.getContext('2d'); for (let i = 0; i < 40; i++) { q.fillStyle = `rgba(${90 + Math.random() * 60},0,0,${.3 + Math.random() * .5})`; q.beginPath(); q.arc(64 + (Math.random() - .5) * 60, 50 + Math.random() * 70, 2 + Math.random() * 12, 0, TAU); q.fill(); }
+    const tx = new THREE.CanvasTexture(c); tx.colorSpace = THREE.SRGBColorSpace; const s = new THREE.Sprite(new THREE.SpriteMaterial({map: tx, transparent: true, depthTest: false, opacity: .8})); s.position.set(.15, .05, -.5); s.scale.setScalar(.35); cam.add(s); HZ.smear = {s, t: 8}; showMsg('Something hit the windscreen. It was not a gull.', '', 3); } }
+// fog: the compass spins and the chart dies; the keeper's beam stares; the cabin lamp goes out
+{ const f0 = drawCompass; drawCompass = function () { if (!(HZ.fogK > .3)) return f0.apply(this, arguments); const q = cam.quaternion.clone(); cam.quaternion.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.sin(G.wt * .7) * 2.4 + G.wt * 1.3)); try { return f0.apply(this, arguments); } finally { cam.quaternion.copy(q); } }; }
+{ const f0 = drawMap; drawMap = function () { const r = f0.apply(this, arguments); if (HZ.fogK > .3) { const c = $('map'), g = c.getContext('2d'), W = c.width, H = c.height; g.fillStyle = 'rgba(30,32,34,.92)'; g.fillRect(0, 0, W, H); for (let i = 0; i < 900; i++) { g.fillStyle = `rgba(200,200,200,${Math.random() * .25})`; g.fillRect(Math.random() * W, Math.random() * H, 2, 2); } g.fillStyle = '#c8c0b0'; g.font = 'bold 28px Georgia'; g.textAlign = 'center'; g.fillText('NOTHING ON THE CHART', W / 2, H / 2); } return r; }; }
+{ const f0 = updateWorldFx; updateWorldFx = function (...a) { const r = f0.apply(this, a); if (HZ.fogK > 0) { scene.fog.density = mix(scene.fog.density, .055, HZ.fogK); scene.fog.color.lerp(new THREE.Color(0x8a9094), HZ.fogK * .6 * (1 - TOD.night * .7)); scene.background.copy(scene.fog.color); }
+  const kc = G.keepC; if (kc && G.lhBeam) { kc.t += a[0] || 0; if (kc.t > kc.T) G.keepC = null; else { const ang = Math.atan2(B.x - G.lh[0], B.z - G.lh[2]) + Math.sin(G.wt * 9) * .004; G.lhBeam.rotation.set(0, ang, 0); lhL.target.position.set(B.x, B.heave, B.z);
+    if (!HZ.kf) { HZ.kf = hzFig({h: 1.9, col: 0x050505, skin: 0x0a0a0a}); scene.add(HZ.kf); } HZ.kf.visible = true; HZ.kf.position.set(G.lh[0] + Math.sin(ang) * 2.4, G.lh[1] - 2.2, G.lh[2] + Math.cos(ang) * 2.4); HZ.kf.rotation.y = ang + PI; } } else if (HZ.kf) HZ.kf.visible = false;
+  return r; }; }
+{ const f0 = hud; hud = function () { const r = f0.apply(this, arguments); try { const now = performance.now(), dt = Math.min(.1, (now - (HZ.ft || now)) / 1000); HZ.ft = now; hzFrame(dt);
+  if (HZ.pf && PL.size >= 1) { const el = $('team'); if (el && !el.querySelector('.hzP')) { if (PL.size === 1 && !el.children.length) el.innerHTML = `<div>${P.name} · aboard<i style="background:${hexS(CREW_COL[P.c % 6])}"></i></div>`; el.insertAdjacentHTML('beforeend', `<div class="hzP">${HZ.pn} · aboard<i style="background:${hexS(CREW_COL[0])}"></i></div>`); G.teamH = null; } }
+  else { const el = $('team'), q = el && el.querySelector('.hzP'); if (q) { q.remove(); G.teamH = null; if (PL.size === 1) el.innerHTML = ''; } } } catch (e) { if (!HZ.err2) { HZ.err2 = 1; console.warn(e); } } return r; }; }
+// red tide catches: dead-eyed fish worth more; the cabin lamp goes out with the jumpscares and the knock
+FISH.manyeye = {n: 'many-eyed fish', v: 140, s: 1.3, kg: [1, 4]};
+{ const f0 = pickFish; pickFish = function () { const k = f0.apply(this, arguments); return G.redC && !String(k).startsWith('leg_') && Math.random() < .35 ? 'manyeye' : k; }; }
+{ const f0 = startGame; startGame = function () { Object.assign(G, {pass: null, fogEv: null, lant: null, knock: null, redTide: 0, keeper: null, tw: [], twC: null, fogC: null, lantC: null, redC: 0, keepC: null}); HZ.t = {}; HZ.pf = null; HZ.fp = null; HZ.twFoot = []; return f0.apply(this, arguments); }; }
 
 menuInit();
 setTimeout(() => { buildWorld(); requestAnimationFrame(frame); }, 30);
