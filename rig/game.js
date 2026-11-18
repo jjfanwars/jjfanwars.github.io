@@ -29,7 +29,7 @@ const hexS = c => '#' + c.toString(16).padStart(6, '0');
 
 // ---------------- net (jjfanwars relay)
 const RELAY_URL = 'wss://jjfanwars-relay.businessautomationvic.workers.dev';
-const GAME_V = 32;
+const GAME_V = 33;
 const Net = {
   tag: '[Rig]', role: 'solo', ws: null, peers: new Map(), code: '', relayT: {pose: 1}, id: '', name: '', handlers: {}, retry: 0, started: false,
   enc: new TextEncoder(), dec: new TextDecoder(),
@@ -1104,7 +1104,7 @@ const UPG = {
   crane: {n: 'Cargo crane', d: 'Haul floating cargo aboard from twice as far', cost: [180]},
 };
 const B = {x: 0, z: 0, yaw: PI, v: 0, thr: 0, st: 0, driver: null, heave: 0, pitch: 0, roll: 0, fuel: 100, hull: 100, up: {engine: 0, tank: 0, hull: 0, light: 0, sonar: 0, hold: 0, crane: 0, cls: 0}, hold: [], sink: 0, dep: 0, dtar: 0};
-// hull classes: buy any of them at the shed while the boat is at the jetty
+// hull classes: buy or switch at any harbour (home jetty, Northwatch) while the boat is docked
 const HULLS = [
   {n: 'Salvage launch', d: 'The boat everyone starts with', cost: 0, L: 12.2, W: 4.4, fb: 1.3, spd: 1, turn: 1, hold: 8, hp: 1, fuel: 1, col: 0x1e3a4a, wh: [.18, .42]},
   {n: 'Fishing trawler', d: 'Long work deck, stern gantry, twice the hold', cost: 900, L: 17, W: 5.6, fb: 1.45, spd: .95, turn: .85, hold: 16, hp: 1.6, fuel: 1.4, col: 0x7a1e16, wh: [.12, .34]},
@@ -2668,8 +2668,8 @@ function hostAct(id, m) {
   else if (m.a === 'sell') { let v = 0; const c = {}, cnt = k => { if (VALUE[k]) c[k] = (c[k] || 0) + 1; }; if (voyPortNear(B.x, B.z, 60 + BG.L * .5)) { v += holdValue(); B.hold.forEach(cnt); B.hold = B.hold.filter(k => !VALUE[k]); } { const sv = sackVal(p.sack); if (sv) { v += sv; p.sack.forEach(cnt); p.sack = p.sack.filter(k => !VALUE[k]); sackSet(p); } }
     if (p.cooler.length) { v += coolerVal(p.cooler); c.fish = p.cooler.length; p.cooler = []; emit({k: 'cooler', id, n: 0, v: 0}); } if (v) { v = Math.round(v * (D.pay || 1)); G.cash += v; G.earned += v; emit({k: 'sold', v, c}); if (G.earned >= 1500) goal(3); save(); } }
   else if (m.a === 'buyh') { const now = performance.now() / 1000; if ((p.buyT || 0) > now) return; p.buyT = now + .4; const H = HULLS[m.k]; if (!H || m.k === (B.up.cls || 0) || (H.cruise && !G.cruise)) return; const own = Array.isArray(B.up.own) ? B.up.own : (B.up.own = [0, B.up.cls || 0]), price = own.includes(m.k) || (H.cruise && G.cruise) ? 0 : hullCost(H);
-    if (sackUsed(B.hold) > Math.round(H.hold * [1, 1.5, 2][B.up.hold || 0]) * 2) emit({k: 'holdbig', id}); else if (B.driver) emit({k: 'nope', id, why: 'Someone is at the wheel.'}); else if (Math.hypot(B.x - JETTY.x, B.z - JETTY.z) >= 60 + BG.L * .5) emit({k: 'nope', id, why: 'Bring the boat to the jetty first.'}); else if (G.cash < price) emit({k: 'nope', id, why: 'Not enough crew cash.'});
-    else { G.cash -= price; if (!own.includes(m.k)) own.push(m.k); B.up.cls = m.k; buildBoat(); resetBoat(false); B.fuel = tankMax(); B.hull = hullMax(); { let n = 0; for (const q of PL.values()) if (q.ob) { const sp = boatSpawn(n++); q.bl = sp.bl; q.y = sp.y; q.climb = null; q.seat = 0; q.rest = 0; } } emit({k: 'bought', n: H.n, hull: m.k}); save(); } }
+    if (sackUsed(B.hold) > Math.round(H.hold * [1, 1.5, 2][B.up.hold || 0]) * 2) emit({k: 'holdbig', id}); else if (B.driver) emit({k: 'nope', id, why: 'Someone is at the wheel.'}); else if (!voyPortNear(B.x, B.z, 60 + BG.L * .5)) emit({k: 'nope', id, why: 'Bring the boat into a harbour first.'}); else if (G.cash < price) emit({k: 'nope', id, why: 'Not enough crew cash.'});
+    else { const port = voyPortNear(B.x, B.z, 60 + BG.L * .5); G.cash -= price; if (!own.includes(m.k)) own.push(m.k); B.up.cls = m.k; buildBoat(); resetBoat(false); if (port && port !== JETTY) { B.x = port.x; B.z = port.z - 12.5 - BG.hw; B.yaw = PI / 2; } B.fuel = tankMax(); B.hull = hullMax(); { let n = 0; for (const q of PL.values()) if (q.ob) { const sp = boatSpawn(n++); q.bl = sp.bl; q.y = sp.y; q.climb = null; q.seat = 0; q.rest = 0; } } emit({k: 'bought', n: H.n, hull: m.k}); save(); } }
   else if (m.a === 'buy') { const now = performance.now() / 1000; if ((p.buyT || 0) > now) return; p.buyT = now + .4; const U = UPG[m.k], poor = c => G.cash < c && (emit({k: 'nope', id, why: 'Not enough crew cash.'}), true);
     if (U) { const lv = B.up[m.k] || 0, c = U.cost[lv]; if (c != null && !poor(c)) { G.cash -= c; B.up[m.k] = lv + 1; if (m.k === 'tank') B.fuel = tankMax(); if (m.k === 'hull') B.hull = hullMax(); emit({k: 'bought', n: U.n}); if (B.up.engine >= 3) goal(4); save(); } }
     else if (m.k === 'flares') { if ((m.fl || 0) >= 6) emit({k: 'nope', id, why: "You can't carry more flares."}); else if (!poor(30)) { G.cash -= 30; emit({k: 'give', id, kind: 'flare', n: Math.min(3, 6 - (m.fl || 0)), buy: 1}); save(); } }
@@ -2923,7 +2923,7 @@ function drawShop() {
   } else if (tab === 'jobs') { rows.push(jobRows(row, bt));
   } else if (tab === 'boats') {
     const next2 = HULLS.map((H, i) => i).filter(i => !own.includes(i) && !HULLS[i].cruise).sort((a, b) => HULLS[a].cost - HULLS[b].cost).slice(0, 2);
-    const block = H => sackUsed(B.hold) > Math.round(H.hold * hm) * 2 ? 'Unload the hold first' : B.driver ? 'Someone is at the wheel' : !docked ? 'Dock at the jetty' : ''; let hid = 0;
+    const block = H => sackUsed(B.hold) > Math.round(H.hold * hm) * 2 ? 'Unload the hold first' : B.driver ? 'Someone is at the wheel' : !docked ? 'Dock at a harbour' : ''; let hid = 0;
     HULLS.forEach((H, i) => { const sz = `${H.L} m · hold ${H.hold}`, sd = H.d.includes(`${H.L} m`) ? `hold ${H.hold}` : sz, c = hullCost(H), mine = own.includes(i) || (H.cruise && G.cruise);
       if (i === cls) rows.push(row(H.n, `${H.d} · ${sd}`, '<span class="bt"><button disabled>Aboard</button></span>', ' cur'));
       else if (H.cruise ? !G.cruise : !mine && !next2.includes(i) && !G.shopAll && G.cash < c * .5) { if (!H.cruise) hid++; rows.push(row('???', sz, bt('', H.cruise ? '???' : money(c), c, H.cruise ? 'Unclaimed' : ''), ' q')); }
