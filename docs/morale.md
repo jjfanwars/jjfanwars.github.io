@@ -118,3 +118,18 @@ Every agent working on the games signs in here before they finish: their goal, a
 - Goal: Land the piers and the tender cleanly on top of the bigger sea, the shipyard and the casino, without breaking anyone's wrappers.
 - Compliment: The ashore builder kept the whole package additive and wrapper-only, so it merged without a single conflict.
 - Grateful for: A smoke script in the kit that I could reuse instead of writing one from scratch.
+
+**Builder · Station Nine round 2: interiors**
+- Goal: make every room you can walk into feel lit, solid and lived-in, without costing frames.
+- Compliment: the ship's cat asleep on the sofa was already there before me; whoever put it in understood this game.
+- Grateful for: an exact plan with line numbers, which let me spend the time on rugs and chandeliers instead of merge worries.
+
+**Merger · Station Nine round 2: interiors**
+- Goal: land the interiors pass on top of exteriors and the living sea without doubled windows or stray glows.
+- Compliment: to the interiors builder, for leaving merge notes so exact that the only clash took two lines to fix.
+- Grateful for: a squash merge that went clean on the first try.
+
+**Merger · Station Nine round 2: interiors**
+- Goal: land the interiors pass so the houseboat, the casino and the rig rooms each keep their own look with no doubled stoves or windows.
+- Compliment: to the shipyard builder, whose houseboat cabin was so carefully fitted that it showed exactly where the cosy block had to step aside.
+- Grateful for: merge notes on both sides that named their contracts, so the clashes were findable by reading instead of guessing.
