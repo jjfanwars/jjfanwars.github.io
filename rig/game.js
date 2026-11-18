@@ -29,7 +29,7 @@ const hexS = c => '#' + c.toString(16).padStart(6, '0');
 
 // ---------------- net (jjfanwars relay)
 const RELAY_URL = 'wss://jjfanwars-relay.businessautomationvic.workers.dev';
-const GAME_V = 39;
+const GAME_V = 40;
 const Net = {
   tag: '[Rig]', role: 'solo', ws: null, peers: new Map(), code: '', relayT: {pose: 1}, id: '', name: '', handlers: {}, retry: 0, started: false,
   enc: new TextEncoder(), dec: new TextDecoder(),
@@ -7196,6 +7196,89 @@ function lootCabinet() { const b = G.shed; if (!b) return; const O = lootOwn(), 
   Object.keys(O.rel).forEach((k, i) => { const m = itemMesh(k); scene.remove(m); m.position.set(-W / 2 + .35 + i * .36, H + .02, D / 2 + .02); m.scale.setScalar(.9); g.add(m); }); }
 { const f0 = hud; hud = function () { const r = f0.apply(this, arguments); try { const now = performance.now(), dt = Math.min(.1, (now - (LOOT.ft || now)) / 1000); LOOT.ft = now; lootFrame(dt); } catch (e) { if (!LOOT.err) { LOOT.err = 1; console.warn(e); } } return r; }; }
 { const f0 = startGame; startGame = function () { LOOT.cabK = ''; const r = f0.apply(this, arguments); if (isHost() && G.stat) { G.stat.col = G.stat.col || {}; G.stat.cs = G.stat.cs || {}; G.stat.rel = G.stat.rel || {}; } return r; }; }
+
+// ---------------- fishing 2: spots (bait balls under diving birds, reefs, drop-offs, glowing water at night, legend spots), bait, legendary fish, and a real fight
+// (runs, side pulls against the rod, jumps, stamina; it can strip your line). Spots come from the seed per 500 m cell, so every client sees the same ones.
+Object.assign(FISH, {leg_home: {n: 'Old Mag, the giant grouper', v: 900, s: 2.6, kg: [180, 260], leg: 1}, leg_coral: {n: 'the Sunburst marlin', v: 1200, s: 3, kg: [250, 400], leg: 1}, leg_frost: {n: 'the Ice King halibut', v: 1100, s: 2.8, kg: [150, 250], leg: 1},
+  leg_ash: {n: 'the Cinder gar', v: 1300, s: 3.1, kg: [90, 140], leg: 1}, leg_grave: {n: 'the Widow coelacanth', v: 1500, s: 3.2, kg: [80, 120], leg: 1}, leg_abyss: {n: 'the Abyssal kraken', v: 2200, s: 3.6, kg: [400, 700], leg: 1}});
+Object.assign(GEAR, {baitS: {n: 'Shrimp bait x10', d: 'Reef and inshore fish bite more (B swaps bait)', cost: 15, need: o => o.rod}, baitQ: {n: 'Squid bait x6', d: 'Big fish: cod, tuna, squid, and the legends', cost: 40, need: o => o.rod >= 2},
+  baitG: {n: 'Glow lures x4', d: 'Night and deep-water fish: anglers, ghost fish, ember eels, oarfish', cost: 60, need: o => o.rod >= 2}});
+const BAIT = [['No bait', ''], ['Shrimp', 'bS'], ['Squid', 'bQ'], ['Glow lure', 'bG']];
+{ const f0 = gotGear; gotGear = function (k) { if (k === 'baitS' || k === 'baitQ' || k === 'baitG') { const a = P.ammo, key = 'b' + k[4], n = {S: 10, Q: 6, G: 4}[k[4]]; a[key] = (a[key] || 0) + n; P.own.bait = ' SQG'.indexOf(k[4]); Snd.coin(); saveGear(); showMsg(`Bought: ${GEAR[k].n}. Press B with the rod out to swap bait.`, 'HARBOUR SHED', 3); setTimeout(drawShop, 50); return; } return f0.apply(this, arguments); }; }
+const baitN = () => { const b = (P && P.own && P.own.bait) || 0; return b && (P.ammo[BAIT[b][1]] || 0) > 0 ? b : 0; };
+addEventListener('keydown', e => { if (e.code !== 'KeyB' || !G.on || !P || P.eq !== 2 || !P.own || G.shopOpen || G.jrnOpen || G.chat) return; for (let i = 1; i <= 4; i++) { const b = (((P.own.bait || 0) + i) % 4); if (!b || (P.ammo[BAIT[b][1]] || 0) > 0) { P.own.bait = b; break; } } saveGear(); const b = baitN(); showMsg(b ? `${BAIT[b][0]} on the hook (${P.ammo[BAIT[b][1]]} left)` : 'No bait', '', 1.6); });
+const FSP = {cells: new Map(), list: [], t: 0, gulls: null, fx: []};
+const FSP_T = {birds: ['Bait ball under the birds', 'mackerel, sardines, sea bass, tuna'], reef: ['Reef edge', 'sea bass, moray eels, snapper, parrotfish'], deep: ['Deep drop-off', 'cod, tuna, anglerfish, giant squid'], glow: ['Glowing water', 'anglerfish, ghost fish, ember eels (night)'], legend: ['Something huge circles here', 'a legend, on squid bait or a glow lure, with a carbon or deep-sea rod']};
+function fspCell(cx, cz) { const k = cx + ',' + cz; let c = FSP.cells.get(k); if (c !== undefined) return c; const r = mulberry((G.seed || 1) ^ Math.imul(cx, 73856093) ^ Math.imul(cz, 19349663) ^ 0x51f15), h = r(); c = null;
+  if (h < .5) { const x = cx * 500 + 60 + r() * 380, z = cz * 500 + 60 + r() * 380; if (Math.hypot(x - MAP_C.x, z - MAP_C.z) < MAP_R - 80 && seaBed(x, z) < -6 && !nearRig(x, z) && !inCruise(x, z) && Math.hypot(x - HOME.x, z - HOME.z) > 60) {
+    const land = OBST.filter(o => o.c && o.r > 5).reduce((m, o) => Math.min(m, Math.hypot(x - o.x, z - o.z) - o.r), 1e9), rg = mapRegion(x, z);
+    const t = h < .03 ? 'legend' : land < 110 ? 'reef' : seaBed(x, z) < -70 && r() < .6 ? 'deep' : r() < .3 ? 'glow' : 'birds'; c = {x, z, t, r: t === 'legend' ? 40 : 32, rg: rg ? rg.k : 'home', ph: r() * TAU}; } }
+  FSP.cells.set(k, c); return c; }
+function fspNear(x, z, R) { const out = [], cx = Math.floor(x / 500), cz = Math.floor(z / 500), n = Math.ceil(R / 500); for (let i = -n; i <= n; i++) for (let j = -n; j <= n; j++) { const c = fspCell(cx + i, cz + j); if (c && Math.hypot(c.x - x, c.z - z) < R) out.push(c); } return out; }
+const fspAt = (x, z) => { const nt = TOD.night > .5; for (const c of fspNear(x, z, 60)) { if (Math.hypot(c.x - x, c.z - z) > c.r) continue; if (c.t === 'birds' && nt) continue; if (c.t === 'glow' && !nt) continue; return c; } return null; };
+// the catch: spot tables and bait bias on top of the old odds; legends only at legend spots with the right bait and rod
+{ const f0 = pickFish; pickFish = function (x, z, rod) { const sp = fspAt(x, z), b = baitN(); let k = null;
+  if (sp && sp.t === 'legend' && rod >= 2 && (b === 2 || b === 3) && Math.random() < .3 + (relicOn('r_hook') ? .1 : 0)) return 'leg_' + sp.rg;
+  const T = sp ? {birds: {mack: 40, sard: 28, bass: 16, tuna: rod >= 2 ? 14 : 0}, reef: {bass: 30, eel: 24, snapper: 18, parrot: 14}, deep: {cod: 34, tuna: rod >= 2 ? 24 : 0, angler: rod >= 2 ? 10 : 0, squid: rod >= 3 ? 9 : 0, oarfish: rod >= 3 && sp.rg === 'abyss' ? 5 : 0},
+    glow: {angler: rod >= 2 ? 30 : 0, ghostfish: 18, ember: 18, eel: 20}, legend: {cod: 30, tuna: rod >= 2 ? 26 : 0, squid: rod >= 3 ? 12 : 0}}[sp.t] : null;
+  if (T && Math.random() < .7) { const w = Object.assign({}, T); for (const q in w) { if (b === 1 && /bass|eel|snapper|parrot|sard/.test(q)) w[q] *= 1.6; if (b === 2 && /cod|tuna|squid|oarfish/.test(q)) w[q] *= 2; if (b === 2 && /sard|mack/.test(q)) w[q] *= .4; if (b === 3 && /angler|ghost|ember|oar/.test(q)) w[q] *= 2.2; }
+    let s = 0; for (const q in w) s += w[q]; let r = Math.random() * s; for (const q in w) { r -= w[q]; if (r <= 0) { k = q; break; } } }
+  if (!k) { k = f0.apply(this, arguments); if (b && Math.random() < .5) { const k2 = f0.apply(this, arguments), big = q => (FISH[q] || {v: 0}).v * (b === 2 ? (FISH[q].kg[1] > 6 ? 1.6 : .6) : b === 3 ? (/angler|ghost|ember|oar/.test(q) ? 2 : 1) : (/bass|eel|snapper|parrot/.test(q) ? 1.5 : 1)); if (big(k2) > big(k)) k = k2; } }
+  if (relicOn('r_hook') && (FISH[k] || {v: 0}).v < 40 && Math.random() < .5) { const k2 = f0.apply(this, arguments); if ((FISH[k2] || {v: 0}).v > FISH[k].v) k = k2; }
+  return k; }; }
+// hooking spends bait; the fight state
+{ const f0 = hook; hook = function () { const r = f0.apply(this, arguments), b = baitN(); if (b) { P.ammo[BAIT[b][1]]--; saveGear(); } const f = FISH[F.k] || {s: 1};
+  Object.assign(F, {sta: 100, run: 0, runT: 1.2 + Math.random() * 1.5, dir: Math.random() < .5 ? -1 : 1, jump: 0, ang: 0, lost: 0, legend: !!f.leg, prog: 14, ten: 40}); if (f.leg) { showMsg(`Something enormous took the bait. Hold on.`, '', 3); G.shake = Math.max(G.shake || 0, 1); } return r; }; }
+function fishFight(dt) { const f = FISH[F.k] || {s: 1}, rod = P.own.rod || 1, kf = [1, 1, .82, .66][rod], s = f.s * (TOD.night > .5 ? 1.2 : 1) * (relicOn('r_hook') ? .85 : 1), reel = !!G.lmb;
+  const want = (K.KeyD ? 1 : 0) - (K.KeyA ? 1 : 0); F.ang = mix(F.ang, want, Math.min(1, dt * 6)); const good = F.run > 0 && F.ang * F.dir < -.4, bad = F.run > 0 && F.ang * F.dir > .3;
+  if (F.run > 0) { F.run -= dt; if (F.run <= 0) { F.runT = (1.6 + Math.random() * 2.6) / Math.sqrt(s) * (.6 + .4 * F.sta / 100) ; } }
+  else { F.runT -= dt * (.5 + F.sta / 100); if (F.runT <= 0) { F.run = (.8 + Math.random() * 1.4) * Math.sqrt(s) * (.4 + .6 * F.sta / 100); F.dir = Math.random() < .5 ? -1 : 1; Snd.tick(); } }
+  if (F.jump > 0) F.jump -= dt; else if (f.s > 1.1 && F.run <= 0 && Math.random() < dt * .07 * s) { F.jump = .75; Snd.splash(at(F.bob.x, 0, F.bob.z, 6)); }
+  // tension: reeling raises it, a running fish raises it more (a lot more if you pull the wrong way), easing off drops it, a jump punishes a tight line
+  let dT = reel ? (30 + 14 * s) * kf : -46; if (F.run > 0) dT += (reel ? 62 : 18) * s * kf * (good ? .45 : bad ? 1.5 : 1); if (F.jump > 0 && reel) dT += 140; dT += Math.sin(G.wt * 3.1 + F.ph) * 10 * s;
+  F.ten += dT * dt; const inZ = F.ten >= 30 && F.ten <= 75;
+  // line: in when you reel in the zone while it rests; out while it runs (unless you turn it)
+  if (F.run > 0) F.prog -= dt * (good ? 3 : 9) * Math.sqrt(s); else F.prog += dt * (reel ? (inZ ? 22 : 7) : -1.5) / Math.sqrt(s) * (1 + (1 - F.sta / 100) * .8);
+  F.sta = Math.max(0, F.sta - dt * ((reel && inZ ? 5 : 1.5) + (good ? 7 : 0)) / Math.sqrt(s));
+  if (reel && Math.random() < dt * 8) Snd.tick(); if (F.run > 0 && Math.random() < dt * 14) tone(1800 + Math.random() * 400, .006, .03, 'square');
+  const bx = F.bob.x - P.x, bz = F.bob.z - P.z, bl = Math.hypot(bx, bz) || 1; if (F.run > 0) { F.sx += -bz / bl * F.dir * dt * 2.2 * s; F.sz += bx / bl * F.dir * dt * 2.2 * s; }
+  const end = (t) => { F.st = 'idle'; showMsg(t, '', 3); };
+  if (F.ten >= 100) { Snd.snap(); return end(F.legend ? 'SNAP! The legend tore free. It will be back.' : 'SNAP! The line broke. Ease off when it runs or jumps.'); }
+  if (F.ten <= 0) { F.ten = 0; F.slack += dt; if (F.slack > 1.4) return end('Too much slack. It slipped the hook.'); } else F.slack = 0;
+  if (F.prog <= 0) { Snd.snap(); return end('It stripped all your line and was gone. Pull against its runs (A/D).'); } F.prog = Math.min(100, F.prog);
+  if (F.prog >= 100) { F.st = 'idle'; const kg = +(f.kg[0] + Math.random() * (f.kg[1] - f.kg[0])).toFixed(1), full = (P.coolerN || 0) >= ([0, 8, 12, 18][rod] || 8); act({a: 'fish', f: F.k, kg, rod}); Snd.discover();
+    if (F.k !== 'bottle') toast(`${f.n}`, full ? `${kg} kg · cooler full` : `${kg} kg · +${money(fishVal(F.k, P.x, P.z))}`); if (f.leg) { lootChime(4); (G.banQ = G.banQ || []).push({h: 'LEGEND LANDED', t: jobCap(f.n) + ` · ${kg} kg`, c: 0, s: 'goal'}); } }
+  const k = Math.min(1, F.prog / 100); F.bob.x = mix(F.sx, P.x, k * .9); F.bob.z = mix(F.sz, P.z, k * .9); }
+{ const f0 = stepGear; stepGear = function (dt) { const prev = F.st; if (F.st === 'reel' && P && P.eq === 2 && !P.seat && !P.down && !P.dead) { F.st = 'fight'; f0.apply(this, arguments); if (F.st === 'fight') { F.st = 'reel'; fishFight(dt); } return; }
+  const r = f0.apply(this, arguments); if (prev !== 'wait' && F.st === 'wait' && F.bob) { const sp = fspAt(F.bob.x, F.bob.z); if (sp) F.t *= {birds: .35, reef: .6, deep: .7, glow: .5, legend: .8}[sp.t]; if (baitN()) F.t *= .8; } return r; }; }
+// A/D turn the rod while a fish is on, not your feet
+{ const f0 = stepPlayer; stepPlayer = function () { if (F.st === 'reel' && P && P.eq === 2) { const a = K.KeyA, d = K.KeyD; K.KeyA = K.KeyD = false; try { return f0.apply(this, arguments); } finally { K.KeyA = a; K.KeyD = d; } } return f0.apply(this, arguments); }; }
+// HUD: a pull arrow, the fish's stamina, the spot and bait line
+{ const ui = $('fishUI'); if (ui) { ui.insertAdjacentHTML('beforeend', '<div id="fishDir" style="margin-top:6px;font:bold 15px ui-monospace,monospace;min-height:18px"></div><div id="fishSta" style="height:4px;background:rgba(255,255,255,.12);margin-top:4px"><i style="display:block;height:100%;width:100%;background:#e8a040"></i></div><div id="fishSp" style="margin-top:5px;color:#9fe6ff;font-size:12px"></div>'); } }
+{ const f0 = updateTools; updateTools = function (dt) { const r = f0.apply(this, arguments); if (!P || !$('fishDir')) return r; const reel = F.st === 'reel';
+  if (reel && P.eq === 2) { const t = $('fishT'); t.textContent = F.jump > 0 ? 'IT JUMPED! LET GO!' : F.run > 0 ? (F.ang * F.dir < -.4 ? 'Good, hold it against the run' : 'It is running! Ease off and pull the other way') : F.sta < 25 ? 'It is tiring. Reel it in!' : 'Reel in the green while it rests';
+    $('fishDir').innerHTML = F.run > 0 ? (F.dir > 0 ? '<span style="color:#ff7050">RUN ▶▶</span>  hold <kbd>A</kbd>' : 'hold <kbd>D</kbd>  <span style="color:#ff7050">◀◀ RUN</span>') : F.jump > 0 ? '<span style="color:#ffd060">⤴ JUMP</span>' : '';
+    $('fishSta').style.display = 'block'; $('fishSta').firstChild.style.width = (F.sta || 0) + '%'; }
+  else { $('fishDir').innerHTML = ''; $('fishSta').style.display = 'none'; }
+  const sp = P.eq === 2 && F.bob && (F.st === 'wait' || F.st === 'bite' || reel) ? fspAt(F.bob.x, F.bob.z) : null, b = P.eq === 2 ? baitN() : 0, txt = (sp ? `${FSP_T[sp.t][0]} · ${FSP_T[sp.t][1]}` : '') + (P.eq === 2 && F.st !== 'idle' ? `${sp ? '<br>' : ''}<span style="color:#c8c0b0">Bait: ${b ? BAIT[b][0] + ' (' + P.ammo[BAIT[b][1]] + ')' : 'none'} · B to swap</span>` : '');
+  if (txt !== FSP.txt) { FSP.txt = txt; $('fishSp').innerHTML = txt; } return r; }; }
+// spot visuals near you: diving gulls and white boils over bait balls, nervous water on reefs and drop-offs, green glow at night, a vast shadow at legend spots
+function fspFrame(dt) { if (!P || !G.on) return; FSP.t -= dt; if (FSP.t <= 0) { FSP.t = 1; FSP.list = fspNear(P.x, P.z, 420); }
+  if (!FSP.gulls) { const bg = new THREE.BufferGeometry(); bg.setAttribute('position', new THREE.Float32BufferAttribute([-.8, .14, -.1, 0, 0, .28, 0, 0, -.16, .8, .14, -.1, 0, 0, .28, 0, 0, -.16], 3)); bg.computeVertexNormals();
+    FSP.gulls = new THREE.InstancedMesh(bg, new THREE.MeshBasicMaterial({color: 0xe8ecec, side: THREE.DoubleSide}), 30); FSP.gulls.frustumCulled = false; scene.add(FSP.gulls);
+    for (let i = 0; i < 6; i++) { const m = new THREE.Mesh(new THREE.RingGeometry(.6, 1, 28), new THREE.MeshBasicMaterial({color: 0xffffff, transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide})); m.rotation.x = -PI / 2; scene.add(m); FSP.fx.push(m); }
+    FSP.sh = new THREE.Mesh(new THREE.CircleGeometry(1, 24), new THREE.MeshBasicMaterial({color: 0x000000, transparent: true, opacity: 0, depthWrite: false})); FSP.sh.rotation.x = -PI / 2; scene.add(FSP.sh); }
+  const t = G.wt, nt = TOD.night > .5, _m = new THREE.Matrix4(), _q = new THREE.Quaternion(), _e = new THREE.Euler(), _s = new THREE.Vector3(), _p = new THREE.Vector3(); let gi = 0, fi = 0; FSP.sh.material.opacity = 0;
+  for (const c of FSP.list) { if (c.t === 'birds' && nt) continue; if (c.t === 'glow' && !nt) continue; const ph = c.ph + t;
+    if (c.t === 'birds' && TOD.day > .2) for (let i = 0; i < 10 && gi < 30; i++, gi++) { const a = c.ph + i * .63 + t * (.3 + i * .02), rr = 6 + (i % 4) * 4, dv = Math.max(0, Math.sin(t * .9 + i * 1.7)), y = 9 + (i % 3) * 4 - Math.pow(dv, 6) * (8 + (i % 3) * 4), fl = Math.sin(t * 9 + i) * .5;
+      _e.set(Math.pow(dv, 6) * 1.2, -a, Math.sin(t * .5 + i) * .3); _q.setFromEuler(_e); _s.set(1, 1 + fl * .6, 1); _m.compose(_p.set(c.x + Math.cos(a) * rr, Math.max(.3, y), c.z + Math.sin(a) * rr), _q, _s); FSP.gulls.setMatrixAt(gi, _m);
+      if (y < 1 && Math.random() < dt * 3 && Math.hypot(c.x - P.x, c.z - P.z) < 200) Snd.splash(at(c.x, 0, c.z, 8)); }
+    if (fi < FSP.fx.length) { const m = FSP.fx[fi++], u = (ph * .5) % 1, R = c.t === 'birds' ? 3 + u * 9 : c.t === 'legend' ? 5 + u * 16 : 2 + u * 7; m.position.set(c.x + Math.sin(ph * .3) * 4, waveH(c.x, c.z, t) + .06, c.z + Math.cos(ph * .3) * 4); m.scale.setScalar(R);
+      m.material.color.setHex(c.t === 'glow' ? 0x40ff9a : 0xffffff); m.material.opacity = (1 - u) * (c.t === 'birds' ? .5 : c.t === 'glow' ? .55 : .22); }
+    if (c.t === 'legend') { const a = ph * .25; FSP.sh.position.set(c.x + Math.cos(a) * 14, waveH(c.x, c.z, t) - .2, c.z + Math.sin(a) * 14); FSP.sh.scale.set(6, 2.2, 1); FSP.sh.rotation.z = -a; FSP.sh.material.opacity = .35 + .1 * Math.sin(t); } }
+  for (let i = gi; i < 30; i++) { _m.makeScale(0, 0, 0); FSP.gulls.setMatrixAt(i, _m); } FSP.gulls.instanceMatrix.needsUpdate = true; for (let i = fi; i < FSP.fx.length; i++) FSP.fx[i].material.opacity = 0; }
+{ const f0 = hud; hud = function () { const r = f0.apply(this, arguments); try { const now = performance.now(), dt = Math.min(.1, (now - (FSP.ft || now)) / 1000); FSP.ft = now; fspFrame(dt); } catch (e) { if (!FSP.err) { FSP.err = 1; console.warn(e); } } return r; }; }
+{ const f0 = startGame; startGame = function () { FSP.cells.clear(); return f0.apply(this, arguments); }; }
 
 menuInit();
 setTimeout(() => { buildWorld(); requestAnimationFrame(frame); }, 30);
