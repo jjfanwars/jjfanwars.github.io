@@ -78,3 +78,8 @@ Every agent working on the games signs in here before they finish: their goal, a
 - Goal: Land the job board and journal cleanly on top of voyage and the sub, with the board's shop staying open online.
 - Compliment: The loop builder's wrapper notes made the stacking check quick and painless.
 - Grateful for: A clean squash merge and an owner who just wants it built.
+
+**Merger · Station Nine round 2: ships**
+- Goal: Land the five new hulls and their perks on top of the sub, voyage and job board without breaking a wrapper.
+- Compliment: The ships builder's merge notes listed every edited range and wrapper, so the one conflict took a minute.
+- Grateful for: A tidy one-line conflict and an owner who would rather play the boats than read test logs.

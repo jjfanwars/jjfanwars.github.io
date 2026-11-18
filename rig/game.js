@@ -29,7 +29,7 @@ const hexS = c => '#' + c.toString(16).padStart(6, '0');
 
 // ---------------- net (jjfanwars relay)
 const RELAY_URL = 'wss://jjfanwars-relay.businessautomationvic.workers.dev';
-const GAME_V = 25;
+const GAME_V = 26;
 const Net = {
   tag: '[Rig]', role: 'solo', ws: null, peers: new Map(), code: '', relayT: {pose: 1}, id: '', name: '', handlers: {}, retry: 0, started: false,
   enc: new TextEncoder(), dec: new TextDecoder(),
@@ -699,22 +699,23 @@ function buildBoat() {
   const hc = new THREE.Color((PAINTS[B.up.paint || 0] || PAINTS[0]).c || H.col), wc = new THREE.Color(0xe8e8e0), rc = new THREE.Color(0x7a1812);
   if (!H.sub) {
     // lofted hull: flared topsides, chine, V bottom, sheer rising to the bow, boot stripe and antifouling
-    const d = .6 + fb * .7 + (H.big ? L * .045 : 0), NZ = H.big ? 40 : 28, ring = [[1, 'top'], [1, fb], [.99, .36], [.985, .3], [.98, .06], [.975, .02], [.82, -d * .55], [.42, -d * .92], [0, -d]];
-    const pos = [], col = [], idx = [], nr = ring.length * 2 - 1;
-    for (let i = 0; i <= NZ; i++) { const z = mix(zb, zs, i / NZ), w = hullHW(z), t = i / NZ, top = fb + .32 + .9 * Math.pow(1 - t, 2.2) * Math.min(1.6, L / 14);
-      const pts = []; for (const [f, y] of ring) pts.push([-w * f, y === 'top' ? top : y]); for (let k = ring.length - 2; k >= 0; k--) { const [f, y] = ring[k]; pts.push([w * f, y === 'top' ? top : y]); }
-      for (const [x, y] of pts) { pos.push(x, y, z); const c = y > .33 ? hc : y > .04 ? wc : rc; col.push(c.r, c.g, c.b); } }
+    const d = .6 + fb * .7 + (H.big ? L * .045 : 0), NZ = H.big ? 40 : 28, ice = cls === 6, gy = Math.min(fb - .12, .62 + L * .004);
+    const ring = ice ? [[1, 'top', 0], [1, fb, 0], [.997, 1.5, 0], [.995, 1.42, 4], [.99, .36, 4], [.985, .3, 5], [.98, .06, 5], [.975, .02, 3], [.82, -d * .55, 3], [.42, -d * .92, 3], [0, -d, 3]] : [[1, 'top', 0], [1, fb, 0], [.995, gy, 0], [.99, .36, 1], [.985, .3, 2], [.98, .06, 2], [.975, .02, 3], [.82, -d * .55, 3], [.42, -d * .92, 3], [0, -d, 3]];
+    const pos = [], col = [], uv = [], idx = [], nr = ring.length * 2 - 1, HCOL = [hc, hc.clone().multiplyScalar(.55), wc, rc, new THREE.Color(0x4a0e0a), new THREE.Color(0x161616)], ps = 1 + L / 40, bwH = H.big ? Math.min(1.3, 1 + L * .003) : .32, shr = H.big ? Math.min(5, L * .03) : .9 * Math.min(1.6, L / 14), topAt = t => fb + bwH + shr * Math.pow(1 - t, 2.2);
+    for (let i = 0; i <= NZ; i++) { const z = mix(zb, zs, i / NZ), w = hullHW(z), t = i / NZ, top = topAt(t), rk = ice ? L * .07 * Math.pow(Math.max(0, 1 - t / .22), 2) : 0;
+      const pts = []; for (const [f, y, c] of ring) pts.push([-w * f, y === 'top' ? top : y, c]); for (let k = ring.length - 2; k >= 0; k--) { const [f, y, c] = ring[k]; pts.push([w * f, y === 'top' ? top : y, c]); }
+      for (const [x, y, c] of pts) { const zz = y < 0 ? z + rk * (-y / d) : z, q = HCOL[c]; pos.push(x, y, zz); col.push(q.r, q.g, q.b); uv.push(zz / (8 * ps), 1 + (y - fb) / (4 * ps)); } }
     for (let i = 0; i < NZ; i++) for (let k = 0; k < nr - 1; k++) { const a = i * nr + k, b = a + 1, c = a + nr, e = c + 1; idx.push(a, c, b, b, c, e); }
-    const tc = pos.length / 3; pos.push(0, fb * .4, zs); col.push(hc.r, hc.g, hc.b); for (let k = 0; k < nr - 1; k++) idx.push(tc, NZ * nr + k, NZ * nr + k + 1);
-    const hg = new THREE.BufferGeometry(); hg.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); hg.setAttribute('color', new THREE.Float32BufferAttribute(col, 3)); hg.setIndex(idx); hg.computeVertexNormals();
-    add(hg, S({vertexColors: true, roughness: .45, metalness: .1, side: THREE.DoubleSide}), 0, 0, 0);
+    const tc = pos.length / 3; pos.push(0, fb * .4, zs); col.push(hc.r, hc.g, hc.b); uv.push(zs / (8 * ps), 1 - .6 * fb / (4 * ps)); for (let k = 0; k < nr - 1; k++) idx.push(tc, NZ * nr + k, NZ * nr + k + 1);
+    const hg = new THREE.BufferGeometry(); hg.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); hg.setAttribute('color', new THREE.Float32BufferAttribute(col, 3)); hg.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); hg.setIndex(idx); hg.computeVertexNormals();
+    add(hg, S({vertexColors: true, map: shpPlate(cls === 11), roughness: cls === 11 ? .3 : .5, metalness: .1, side: THREE.DoubleSide}), 0, 0, 0);
     const f = z => Math.max(0, hullHW(z) - .05), sh = new THREE.Shape(); sh.moveTo(f(zs), -zs); for (let i = 1; i <= NZ; i++) { const z = mix(zs, zb, i / NZ); sh.lineTo(f(z), -z); } for (let i = NZ - 1; i >= 0; i--) { const z = mix(zs, zb, i / NZ); sh.lineTo(-f(z), -z); }
     const dk = new THREE.ShapeGeometry(sh); dk.rotateX(-PI / 2); dk.translate(0, fb + .005, 0); add(dk, deckM, 0, 0, 0);
     // gunwale cap and rails
-    for (const sd of [-1, 1]) for (let i = 0; i < NZ; i++) { const za = mix(zb, zs, i / NZ), zz = mix(zb, zs, (i + 1) / NZ), xa = sd * hullHW(za), xz = sd * hullHW(zz), ta = fb + .32 + .9 * Math.pow(1 - i / NZ, 2.2) * Math.min(1.6, L / 14), tz = fb + .32 + .9 * Math.pow(1 - (i + 1) / NZ, 2.2) * Math.min(1.6, L / 14);
-      const l = Math.hypot(xz - xa, zz - za, tz - ta), cap = add(new THREE.BoxGeometry(.12, .06, l + .02), whiteM, (xa + xz) / 2, (ta + tz) / 2 + .03, (za + zz) / 2); cap.rotation.set(-Math.atan2(tz - ta, zz - za), Math.atan2(xz - xa, zz - za), 0, 'YXZ');
-      if (i % 2 === 0 && i > NZ * .2) { cyl(whiteM, .025, .025, .75, xa, ta + .4, za, 0, 0, 6); } }
-    for (const sd of [-1, 1]) { const zz = zb + L * .3; const r = add(new THREE.CylinderGeometry(.025, .025, zs - zz, 6), whiteM, sd * (hw - .06), fb + 1.08, (zz + zs) / 2); r.rotation.x = PI / 2; }
+    for (const sd of [-1, 1]) for (let i = 0; i < NZ; i++) { const za = mix(zb, zs, i / NZ), zz = mix(zb, zs, (i + 1) / NZ), xa = sd * hullHW(za), xz = sd * hullHW(zz), ta = topAt(i / NZ), tz = topAt((i + 1) / NZ);
+      const l = Math.hypot(xz - xa, zz - za, tz - ta), cap = add(new THREE.BoxGeometry(H.big ? .3 : .12, .06, l + .02), whiteM, (xa + xz) / 2, (ta + tz) / 2 + .03, (za + zz) / 2); cap.rotation.set(-Math.atan2(tz - ta, zz - za), Math.atan2(xz - xa, zz - za), 0, 'YXZ');
+      if (!H.big && i % 2 === 0 && i > NZ * .2) { cyl(whiteM, .025, .025, .75, xa, ta + .4, za, 0, 0, 6); } }
+    if (!H.big) for (const sd of [-1, 1]) { const zz = zb + L * .3; const r = add(new THREE.CylinderGeometry(.025, .025, zs - zz, 6), whiteM, sd * (hw - .06), fb + 1.08, (zz + zs) / 2); r.rotation.x = PI / 2; }
     const dz0 = zb + (zs - zb) * .32, fz0 = H.big ? Math.min(dz0, mix(zb, zs, H.wh[0]) + .12) : dz0;
     BDECK.x0 = -hw + .3; BDECK.x1 = hw - .3; BDECK.z0 = fz0; BDECK.z1 = zs - .25; BDECK.y = fb;
     for (const sd of [-1, 1]) BW.push({x0: sd < 0 ? -hw - .5 : hw - .28, x1: sd < 0 ? -hw + .28 : hw + .5, z0: dz0 - 1, z1: zs + .3, y0: 0, y1: 1.1});
@@ -723,7 +724,7 @@ function buildBoat() {
     BW.push({x0: -hw, x1: -.6, z0: zs - .12, z1: zs + .4, y0: 0, y1: 1}); BW.push({x0: .6, x1: hw, z0: zs - .12, z1: zs + .4, y0: 0, y1: 1});
     // wheelhouse with real walls and windows
     const sft = cls === 3 || H.big ? 0 : L * .12, wz0 = mix(zb, zs, H.wh[0]) + sft, wz1 = mix(zb, zs, H.wh[1]) + sft, ww = Math.min(hullHW(wz0), hullHW(wz1)) * .82, hh = 2.25, y0 = fb;
-    const wallM = cls === 2 ? S({color: 0x8a9098}) : whiteM;
+    const wallM = cls === 2 ? S({color: 0x8a9098}) : cls === 9 ? S({map: TX.wood, color: 0xe8dcb8, roughness: .85}) : cls === 10 ? S({color: 0xe0dcd0, roughness: .6}) : cls === 11 ? S({color: 0xf4f4f6, roughness: .25}) : whiteM;
     box(wallM, -ww, ww, y0, y0 + 1.05, wz0, wz0 + .12, 1); box(wallM, -ww, ww, y0 + 1.9, y0 + hh, wz0, wz0 + .12); add(new THREE.BoxGeometry(ww * 2, .85, .04), glass, 0, y0 + 1.48, wz0 + .06);
     for (const sd of [-1, 1]) { const x0 = sd < 0 ? -ww : ww - .12, x1 = x0 + .12; box(wallM, x0, x1, y0, y0 + 1.05, wz0, wz1, 1); box(wallM, x0, x1, y0 + 1.9, y0 + hh, wz0, wz1); box(wallM, x0, x1, y0, y0 + hh, wz1 - .5, wz1); add(new THREE.BoxGeometry(.04, .85, wz1 - wz0 - .6), glass, sd * (ww - .06), y0 + 1.48, (wz0 + wz1) / 2 - .25);
       for (let z = wz0 + .1; z < wz1 - .5; z += (wz1 - wz0) / 3) box(wallM, x0, x1, y0 + 1.05, y0 + 1.9, z, z + .08); }
@@ -784,8 +785,8 @@ function buildBoat() {
     g.userData.lightZ = wz0 - .2; g.userData.lightY = y0 + hh + .3; g.userData.wz = [wz0, wz1]; g.userData.ww = ww; g.userData.lamp = [0, y0 + hh - .6, (wz0 + wz1) / 2];
     const aft = (wz1 + zs) / 2;
     BSPOT.hold[0] = 0; BSPOT.hold[1] = Math.min(zs - 2.2, wz1 + 1.8 + (cls === 3 ? 0 : 0)); BSPOT.fuel[0] = hw - .9; BSPOT.fuel[1] = zs - .8; BSPOT.patch[0] = -hw + .9; BSPOT.patch[1] = zs - .8;
-    if (cls === 3) { BSPOT.hold[1] = zb + L * .42; } if (cls === 7) BSPOT.hold[1] = zs - 9;
-    const hz2 = BSPOT.hold[1]; box(S({map: TX.wood, color: 0x6a5a44}), -.9, .9, fb, fb + .22, hz2 - .7, hz2 + .7); box(steel, -.95, .95, fb, fb + .08, hz2 - .75, hz2 + .75); BW.push({x0: -.9, x1: .9, z0: hz2 - .7, z1: hz2 + .7, y0: 0, y1: .2});
+    if (cls === 3) { BSPOT.hold[1] = wz0 - 2.4; } if (cls === 7) BSPOT.hold[1] = zs - 9; if (cls === 8) { BSPOT.hold[0] = -.55; BSPOT.hold[1] = wz1 + 1.1; BSPOT.fuel[0] = hw - .55; BSPOT.patch[0] = -hw + .55; BSPOT.fuel[1] = BSPOT.patch[1] = zs - .45; } if (cls === 9) { BSPOT.hold[0] = -1.3; BSPOT.hold[1] = wz1 + 1.6; } if (cls === 11) BSPOT.hold[1] = wz1 + 2.2; if (cls === 12) BSPOT.hold[1] = zs - 30;
+    const hz2 = BSPOT.hold[1], hx2 = BSPOT.hold[0], hb2 = cls === 8 ? .42 : .9, hl2 = cls === 8 ? .5 : .7; box(S({map: TX.wood, color: 0x6a5a44}), hx2 - hb2, hx2 + hb2, fb, fb + .22, hz2 - hl2, hz2 + hl2); box(steel, hx2 - hb2 - .05, hx2 + hb2 + .05, fb, fb + .08, hz2 - hl2 - .05, hz2 + hl2 + .05); BW.push({x0: hx2 - hb2, x1: hx2 + hb2, z0: hz2 - hl2, z1: hz2 + hl2, y0: 0, y1: .2});
     cyl(redM, .13, .13, .32, BSPOT.fuel[0], fb + .16, BSPOT.fuel[1]); box(yel, BSPOT.patch[0] - .3, BSPOT.patch[0] + .3, fb, fb + .4, BSPOT.patch[1] - .2, BSPOT.patch[1] + .2);
     // stern ladder down the transom
     for (let y = -.8; y < fb; y += .3) box(steel, -.32, .32, y, y + .04, zs + .05, zs + .1); for (const sd of [-1, 1]) box(steel, sd * .32 - .02, sd * .32 + .02, -.9, fb + .9, zs + .04, zs + .1);
@@ -800,6 +801,7 @@ function buildBoat() {
       for (let r = 0; r < 4; r++) for (let c = -1; c <= 1; c++) { const z0 = zb + L * .2 + r * 6.4; if (z0 + 6 > wz0 - 1) continue; const h = 1 + ((r + c + 3) % 3); for (let k = 0; k < h; k++) box(CM[(r * 3 + c + k + 6) % 5], c * 2.6 - 1.2, c * 2.6 + 1.2, fb + k * 2.5, fb + k * 2.5 + 2.45, z0, z0 + 6, k === 0); }
       for (const sd of [-1, 1]) { cyl(S({color: 0xd8a020}), .25, .3, 7, sd * (hw - 1), fb + 3.5, zb + L * .3); cyl(S({color: 0xd8a020}), .5, .5, .4, sd * (hw - 1), fb + 7.1, zb + L * .3); }
       BSPOT.fuel[1] = zs - .8; BSPOT.patch[1] = zs - .8; }
+    const SX = {g, H, L, W, hw, fb, zs, zb, wz0, wz1, ww, hh, aft, S, add, box, cyl, whiteM, deckM, redM, steel, darkM, yel, glass, wallM}; shpExtras(cls, SX);
     // deck hardware: fenders, cleats, a life ring, rope, antennas, an exhaust stack, the anchor, a name board, portholes
     { const fw = S({color: 0xe8e8e4, roughness: .5}), fbl = S({color: 0x22508a, roughness: .5}), ng = Math.max(2, Math.round(L / 6));
       for (const sd of [-1, 1]) for (let i = 0; i < ng; i++) { const z = mix(BDECK.z0 + 1, zs - 1.5, i / (ng - 1)); cyl(i % 2 ? fw : fbl, .15 + L * .004, .15 + L * .004, .55 + L * .01, sd * (hullHW(z) + .12), fb - .3, z, 0, 0, 10);
@@ -810,13 +812,14 @@ function buildBoat() {
       for (const sx of [-.4, .4]) cyl(darkM, .012, .02, 1.6 + L * .02, sx * ww, fb + hh + .9 + L * .01, wz1 - .4);
       cyl(darkM, .14, .16, .9, -ww + .5, fb + hh + .55, wz1 - .5); cyl(S({color: 0x111111}), .145, .145, .12, -ww + .5, fb + hh + .95, wz1 - .5);
       const an = add(new THREE.BoxGeometry(.06, .6, .06), darkM, 0, fb + .3, BDECK.z0 - .9); an.rotation.x = .3; const ac = add(new THREE.TorusGeometry(.2, .03, 6, 12, PI), darkM, 0, fb + .08, BDECK.z0 - .82); ac.rotation.x = PI / 2 + .3;
-      const nc = cv(512, 96, (q, w, h2) => { q.fillStyle = 'rgba(0,0,0,0)'; q.clearRect(0, 0, w, h2); q.fillStyle = cls === 7 ? '#c8a040' : '#f0ece0'; q.font = 'bold 54px Georgia'; q.textAlign = 'center'; q.fillText(['NINE LIVES', 'SALT WIFE', 'VIGILANT', 'IRON MULE', 'NAUTILUS II', 'DEEP RIGHT', 'POLAR BEAR', 'SERENADE'][cls] || 'NINE LIVES', w / 2, 66); });
+      const nc = cv(512, 96, (q, w, h2) => { q.fillStyle = 'rgba(0,0,0,0)'; q.clearRect(0, 0, w, h2); q.fillStyle = cls === 7 ? '#c8a040' : '#f0ece0'; q.font = 'bold 54px Georgia'; q.textAlign = 'center'; q.fillText(['NINE LIVES', 'SALT WIFE', 'VIGILANT', 'IRON MULE', 'NAUTILUS II', 'DEEP RIGHT', 'POLAR BEAR', 'SERENADE', 'DART', 'DRIFTWOOD', 'BULLDOG', 'AURORA', 'GOLIATH'][cls] || 'NINE LIVES', w / 2, 66); });
       const nb = add(new THREE.PlaneGeometry(Math.min(W * .8, 6), Math.min(W * .8, 6) * .19), new THREE.MeshBasicMaterial({map: new THREE.CanvasTexture(nc), transparent: true}), 0, fb * .6, zs + .02); nb.castShadow = false;
       if (L > 16) { const pm = S({color: 0x0a0e12, roughness: .1, emissive: 0xffd090, emissiveIntensity: 0, nc: 1}); g.userData.port = pm; for (const sd of [-1, 1]) for (let z = BDECK.z0 + 2; z < zs - 2; z += Math.max(2.2, L / 24)) { const ph = add(new THREE.CircleGeometry(.16 + L * .002, 14), pm, sd * (hullHW(z) + .02), fb * .62, z); ph.rotation.y = sd * PI / 2; ph.castShadow = false; } } }
     if (H.big) { const ss = S({color: 0xe8e6de, roughness: .5}), wm = new THREE.MeshStandardMaterial({color: 0x101418, emissive: 0xffc070, emissiveIntensity: .1, roughness: .2}); g.userData.winM = wm;
-      const lv = cls === 7 ? 7 : cls === 6 ? 3 : 2, sz0 = wz0, sz1 = cls === 7 ? zs - 14 : wz1 + L * .12;
-      for (let i = 0; i < lv; i++) { const k = 1 - i * (cls === 7 ? .05 : .08), w = ww * k, y = fb + hh + .12 + i * 2.8, z0 = sz0 + i * (cls === 7 ? 1.6 : .8), z1 = sz1 - i * (cls === 7 ? 3.5 : 1);
-        box(ss, -w, w, y, y + 2.8, z0, z1); for (const sd of [-1, 1]) add(new THREE.BoxGeometry(.04, .8, z1 - z0 - 1), wm, sd * (w + .02), y + 1.5, (z0 + z1) / 2); add(new THREE.BoxGeometry(w * 2 - 1, .8, .04), wm, 0, y + 1.5, z0 - .02); }
+      const lv = H.tiers || (cls === 7 ? 7 : cls === 6 ? 3 : 2), TH = cls === 12 ? 3.4 : 2.8, gl = cls === 11 ? 1.3 : .8, sz0 = wz0, sz1 = cls === 7 ? zs - 14 : cls === 12 ? wz1 : wz1 + L * .12;
+      for (let i = 0; i < lv; i++) { const k = 1 - i * (cls === 7 ? .05 : cls === 12 ? .04 : .08), w = ww * k, y = fb + hh + .12 + i * TH, z0 = sz0 + i * (cls === 7 ? 1.6 : cls === 12 ? .15 : .8), z1 = sz1 - i * (cls === 7 ? 3.5 : cls === 12 ? 2 : cls === 11 ? 2.4 : 1);
+        box(cls === 11 ? wallM : ss, -w, w, y, y + TH, z0, z1); for (const sd of [-1, 1]) add(new THREE.BoxGeometry(.04, gl, z1 - z0 - 1), wm, sd * (w + .02), y + TH * .54, (z0 + z1) / 2); add(new THREE.BoxGeometry(w * 2 - 1, gl, .04), wm, 0, y + TH * .54, z0 - .02); }
+      shpExtras(cls, Object.assign(SX, {lv, TH, sz0, sz1, ss, wm, top: fb + hh + .12 + lv * TH}), 1);
       if (cls === 7) { BW.push({x0: -ww, x1: ww, z0: wz1 + 1.6, z1: sz1, y0: 0, y1: 3}); box(ss, -ww, ww, fb, fb + hh, wz1 + 1.6, sz1); for (const sd of [-1, 1]) for (let i = 0; i < 8; i++) { const z = wz1 + 4 + i * (sz1 - wz1 - 8) / 7; cyl(S({color: 0xe06018}), .9, .9, 5, sd * (ww + .9), fb + hh + 4, z, PI / 2); }
         const fz = sz1 - (lv - 1) * 3.5 - 5; cyl(S({color: 0xc8c4b8}), 3, 3.6, 9, 0, fb + hh + lv * 2.8 + 4, fz); cyl(S({color: 0x1a3a6a}), 3.02, 3.02, 2, 0, fb + hh + lv * 2.8 + 7.5, fz);
         const pool = add(new THREE.BoxGeometry(ww, .1, 10), S({color: 0x2a8ab0, roughness: .05}), 0, fb + hh + lv * 2.8 + .2, (sz0 + sz1) / 2); }
@@ -2185,7 +2188,7 @@ function hostAct(id, m) {
     if (CARRY.has(it.kind)) { if (!sackFits(p, it.kind)) return; it.taken = true; p.sack.push(it.kind); sackSet(p); }
     else if (it.kind === 'bottle') { it.taken = true; const d = DIGS.reduce((b, q, j) => q.rev || q.dug || (b >= 0 && Math.hypot(DIGS[b].x - it.x, DIGS[b].z - it.z) <= Math.hypot(q.x - it.x, q.z - it.z)) ? b : j, -1); if (d >= 0) { DIGS[d].rev = true; emit({k: 'bottle', i: d}); } else { G.bn = ((G.bn ?? -1) + 1) % BOTTLE_NOTES.length; emit({k: 'bottle', i: -1, n: G.bn}); } }
     else { it.taken = true; emit({k: 'give', id, kind: it.kind}); } }
-  else if (m.a === 'float') { const f = G.floats[m.i]; if (!f || Math.hypot(p.x - f[0], p.z - f[1]) > (B.up.crane ? 14 : 7) + (p.ob ? BG.hw : 0)) return; const kind = KINDS[f[2]];
+  else if (m.a === 'float') { const f = G.floats[m.i]; if (!f || Math.hypot(p.x - f[0], p.z - f[1]) > (B.up.crane || HC().crane ? 14 : 7) + (p.ob ? BG.hw : 0)) return; const kind = KINDS[f[2]];
     if (kind === 'bottle') { G.floats[m.i] = null; const d = DIGS.reduce((b, q, j) => q.rev || q.dug || (b >= 0 && Math.hypot(DIGS[b].x - f[0], DIGS[b].z - f[1]) <= Math.hypot(q.x - f[0], q.z - f[1])) ? b : j, -1); if (d >= 0) { DIGS[d].rev = true; emit({k: 'bottle', i: d}); } else { G.bn = ((G.bn ?? -1) + 1) % BOTTLE_NOTES.length; emit({k: 'bottle', i: -1, n: G.bn}); } }
     else { if (!sackFits(p, kind)) return; G.floats[m.i] = null; p.sack.push(kind); sackSet(p); save(); } }
   else if (m.a === 'stow') { if (nearBoat(BSPOT.hold, 3.4)) { let n = 0; for (let i = 0; i < p.sack.length; i++) { const k = p.sack[i]; if (k !== 'key' && holdFits(k)) { B.hold.push(k); p.sack.splice(i--, 1); n++; } } if (n) { sackSet(p); emit({k: 'stow', id, v: holdValue()}); save(); } if (p.sack.some(k => k !== 'key')) emit({k: 'holdfull', id}); } }
@@ -2376,7 +2379,7 @@ function interWorld(it) { if (!it.boat) return it; const [x, z] = bL2W(it.lx, it
 function targets() {
   const L = [], far = (x, z, r = 30) => (x - P.x) * (x - P.x) + (z - P.z) * (z - P.z) > r * r, full = `Sack full (${sackUsed(P.sack)}/${sackCap(P)})`;
   for (const it of ITEMS) { if (it.taken || far(it.x, it.z)) continue; const nf = CARRY.has(it.kind) && !sackFits(P, it.kind); L.push({x: it.x, y: it.y + .2, z: it.z, r: 2.4, info: nf ? 1 : 0, label: it.kind === 'note' ? 'Read the note' : nf ? `Sack full (${sackUsed(P.sack)}/${sackCap(P)}, X drops the last thing)` : `Pick up the ${NAMES[it.kind]}` + (VALUE[it.kind] ? ` ($${VALUE[it.kind]})` : ''), go: () => it.kind === 'note' ? openNote(it.text) : act({a: 'pick', i: it.i})}); }
-  G.floats.forEach((f, i) => { if (!f || subInside()) return; const r = (B.up.crane && P.ob ? 12 : 5.5) + (P.ob ? BG.hw * .6 : 0); if (far(f[0], f[1], r + 2)) return; const kind = KINDS[f[2]], nf = kind !== 'bottle' && !sackFits(P, kind); L.push({x: f[0], y: (P.ob ? BDECK.y : 0) + .2, z: f[1], r, flat: 1, info: nf ? 1 : 0, label: nf ? full : (P.ob ? 'Haul the ' : 'Grab the ') + NAMES[kind] + (P.ob ? ' aboard' : '') + (VALUE[kind] ? ` ($${VALUE[kind]})` : ''), go: () => act({a: 'float', i})}); });
+  G.floats.forEach((f, i) => { if (!f || subInside()) return; const r = ((B.up.crane || HC().crane) && P.ob ? 12 : 5.5) + (P.ob ? BG.hw * .6 : 0); if (far(f[0], f[1], r + 2)) return; const kind = KINDS[f[2]], nf = kind !== 'bottle' && !sackFits(P, kind); L.push({x: f[0], y: (P.ob ? BDECK.y : 0) + .2, z: f[1], r, flat: 1, info: nf ? 1 : 0, label: nf ? full : (P.ob ? 'Haul the ' : 'Grab the ') + NAMES[kind] + (P.ob ? ' aboard' : '') + (VALUE[kind] ? ` ($${VALUE[kind]})` : ''), go: () => act({a: 'float', i})}); });
   VALVES.forEach((v, i) => { if (!v.open) L.push({x: v.x, y: v.y + 1.1, z: v.z, r: 2.6, hold: 'v' + i, label: 'Hold E to open the ' + v.name}); });
   const gb = BLD.find(q => q.kind === 'gen'), cb = BLD.find(q => q.kind === 'ctrl'), vo = VALVES.every(v => v.open);
   if (gb) L.push({x: gb.genP[0], y: gb.genP[1], z: gb.genP[2], r: 3, hold: !G.power && vo ? 'g' : '', info: G.power || !vo ? 1 : 0, label: G.power ? 'The generator is running' : vo ? 'Hold E to start the generator' : 'Generator. No fuel: two valves are shut.'});
@@ -2839,6 +2842,195 @@ function stepLev(dt) {
   if (o.ph === 0 && Math.random() < dt * 6) { const k = 3 + (Math.random() * 18 | 0); if (_lpts[k] && _lpts[k].y > -3) spray(_lpts[k].x, .1, _lpts[k].z, 2, 2.5, .6); }
   if (o.ph === 3 && o.u > 4) { G.spines = null; LEV.hide(); }
 }
+// ---------------- shipyard: five new hulls with their own looks, cabins and perks, perks for the old ones, weathered plating
+HULLS.push(
+  {n: 'Dart speedboat', d: 'A tiny planing hull, the fastest thing afloat. Perk: hold Shift at the wheel to boost', cost: 1200, L: 9, W: 3, fb: 1.05, spd: 1.9, turn: 1.25, hold: 4, hp: .7, fuel: 1, col: 0xd84a1a, wh: [.3, .55], boost: 1, perk: 'Boost'},
+  {n: 'Driftwood houseboat', d: 'A floating cottage with a wood stove, bunks and a porch. Perk: sleep in the bunk to skip the night', cost: 1500, L: 14, W: 6, fb: 1.1, spd: .7, turn: .7, hold: 14, hp: 1.3, fuel: 1, col: 0x2e4a34, wh: [.12, .62], sleep: 1, cosy: 1, perk: 'Sleep to dawn'},
+  {n: 'Bulldog tug', d: 'A stubby harbour tug with a magnet winch. Perk: floating cargo nearby drifts to her and stows itself', cost: 2600, L: 18, W: 7, fb: 1.6, spd: 1.05, turn: 1, hold: 18, hp: 3, fuel: 2, col: 0x1a1a1a, wh: [.3, .56], magnet: 1, perk: 'Cargo magnet'},
+  {n: 'Aurora expedition yacht', d: 'A 34 m blue-water yacht: fast, steady, a lounge and a hot tub. Perk: stabilised, and fish landed aboard sell for 25% more', cost: 9500, L: 34, W: 8, fb: 1.8, spd: 1.65, turn: .32, hold: 40, hp: 3.4, fuel: 3, col: 0xe8e8ee, wh: [.3, .55], eye: 4.2, big: 1, tiers: 2, fishK: 1.25, stab: .4, perk: 'Stabilised · fish +25%'},
+  {n: 'Goliath supertanker', d: 'A 160 m ore carrier with a 400-slot hold and a bar on the bridge. Perk: nothing in the deep can shake her', cost: 30000, L: 160, W: 28, fb: 2.4, spd: 1.05, turn: .055, hold: 400, hp: 22, fuel: 12, col: 0x7a2a1a, wh: [.84, .95], eye: 26, big: 1, tiers: 5, nodeep: 1, perk: 'No deep attacks'});
+Object.assign(HULLS[1], {net: 1, perk: 'Drag net', d: HULLS[1].d + '. Perk: her net fills with fish while she cruises over deep water'});
+Object.assign(HULLS[3], {crane: 1, perk: 'Container crane', d: HULLS[3].d + '. Perk: her crane hauls floating cargo from twice as far'});
+Object.assign(HULLS[5], {rov: 1, perk: 'Dive support', d: HULLS[5].d + '. Perk: divers near her use half the air'});
+Object.assign(HULLS[6], {ice: 1, perk: 'Ice-class hull', d: HULLS[6].d + '. Perk: ice-class, she shoulders through icebergs'});
+ENGV.push({f: [90, 210], lp: [900, 2600], am: .12, fr: 1.3, nz: .05, whine: [1900, 3800], g: .1}, {f: [30, 55], lp: [300, 700], am: .5, fr: .8, nz: .02, g: .1}, {f: [18, 34], lp: [170, 420], am: .8, fr: .4, g: .18},
+  {f: [40, 90], lp: [420, 1100], am: .15, fr: .6, whine: [1100, 2100], g: .1}, {f: [8, 14], lp: [110, 220], am: .6, fr: .3, g: .2, hiss: 1});
+KINDS.push('netfish'); NAMES.netfish = 'net of fish'; VALUE.netfish = 38; SZ.netfish = 2; CARRY.add('netfish');
+const SHP = {heat: 0, oh: 0, on: 0, netT: 50, sprT: 0, hud: ''};
+// weathered steel: plate seams, weld dots, rust runs from the scuppers under the deck edge (canvas top = deck edge), light grime; the clean one is for the yacht
+function shpPlate(clean) {
+  const k = clean ? 'shpClean' : 'hullPlate'; if (TX[k]) return TX[k];
+  const c = cv(512, 256, (q, w, h) => {
+    q.fillStyle = clean ? '#f4f4f2' : '#dcdcd6'; q.fillRect(0, 0, w, h);
+    for (let i = 0; i < (clean ? 20 : 120); i++) { q.fillStyle = `rgba(${40 + Math.random() * 30},${36 + Math.random() * 20},30,${Math.random() * (clean ? .03 : .07)})`; q.beginPath(); q.ellipse(Math.random() * w, Math.random() * h, 10 + Math.random() * 60, 4 + Math.random() * 30, 0, 0, TAU); q.fill(); }
+    q.strokeStyle = clean ? 'rgba(0,0,0,.06)' : 'rgba(30,26,22,.32)'; q.lineWidth = 2; q.beginPath();
+    for (let y = 0; y <= h; y += 64) { q.moveTo(0, y); q.lineTo(w, y); } for (let r = 0; r < h / 64; r++) for (let x = (r % 2) * 32; x <= w; x += 64) { q.moveTo(x, r * 64); q.lineTo(x, r * 64 + 64); } q.stroke();
+    if (!clean) { q.fillStyle = 'rgba(255,255,250,.28)'; for (let y = 0; y <= h; y += 64) for (let x = 3; x < w; x += 8) q.fillRect(x, y - 3.5, 1.5, 1.5); q.fillStyle = 'rgba(20,16,12,.3)'; for (let y = 0; y <= h; y += 64) for (let x = 3; x < w; x += 8) q.fillRect(x, y + 2, 1.5, 1.5);
+      for (let i = 0; i < 16; i++) { const x = Math.random() * w, l = 30 + Math.random() * 110, gr = q.createLinearGradient(0, 0, 0, l); gr.addColorStop(0, 'rgba(110,52,18,.55)'); gr.addColorStop(1, 'rgba(110,52,18,0)'); q.fillStyle = gr; q.fillRect(x, 0, 2 + Math.random() * 4, l); q.fillStyle = 'rgba(15,10,8,.7)'; q.fillRect(x - 3, 2, 9, 4); }
+      for (let i = 0; i < 10; i++) { const x = Math.random() * w, y = Math.floor(Math.random() * 4) * 64, l = 14 + Math.random() * 40, gr = q.createLinearGradient(0, y, 0, y + l); gr.addColorStop(0, 'rgba(120,60,20,.4)'); gr.addColorStop(1, 'rgba(120,60,20,0)'); q.fillStyle = gr; q.fillRect(x, y, 2 + Math.random() * 2, l); } }
+    noiseFill(q, w, h, clean ? 5 : 14); });
+  return (TX[k] = tex(c));
+}
+// per-class looks, cabins and kit; ph 0 runs after the class extras, ph 1 after a big hull's tiers (X.lv, X.TH, X.sz0, X.sz1, X.top)
+function shpExtras(cls, X, ph) {
+  const {g, H, L, hw, fb, zs, zb, wz0, wz1, ww, hh, S, add, box, cyl, whiteM, darkM, steel, yel, glass} = X, zm = (wz0 + wz1) / 2, ud = g.userData, wallM = X.wallM || whiteM, wd = S({map: TX.wood, color: 0x9a7a54, roughness: .75});
+  const glowS = (c, s, x, y, z, o = 0) => { const sp = new THREE.Sprite(new THREE.SpriteMaterial({map: TX.glow, color: c, transparent: true, opacity: o, depthWrite: false, blending: THREE.AdditiveBlending})); sp.scale.setScalar(s); sp.position.set(x, y, z); g.add(sp); return sp; };
+  const seg = (m, x0, y0, z0, x1, y1, z1, r) => { const l = Math.hypot(x1 - x0, y1 - y0, z1 - z0), o = add(new THREE.CylinderGeometry(r, r, l, 6), m, (x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2); o.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), new THREE.Vector3(x1 - x0, y1 - y0, z1 - z0).normalize()); return o; };
+  ud.shpFl = ud.shpFl || []; ud.shpNl = ud.shpNl || [];
+  if (ph) { // big hulls: masthead over the top tier, deck floods, class tops
+    const top = X.top; if (cls === 12) { cyl(steel, .08, .12, 4, 0, top + 2, X.sz0 + 2.5); ud.shpMh.position.set(0, top + 4.2, X.sz0 + 2.5); } else if (ud.shpFm) ud.shpMh.position.set(...ud.shpFm);
+    for (const sd of [-1, 1]) ud.shpFl.push(glowS(0xffe2a8, 3.2 + L * .02, sd * ww * .7, fb + hh + 1.2, wz0 - .35));
+    if (cls === 11) { // swept mast with radar domes
+      const mz = X.sz0 + 3; for (const sd of [-1, 1]) seg(whiteM, sd * 1.2, top, mz + 2.5, sd * .25, top + 3.4, mz - .2, .1); box(whiteM, -1.2, 1.2, top + 3.3, top + 3.5, mz - .6, mz + .2);
+      for (const sd of [-1, 1]) { add(new THREE.SphereGeometry(.42, 14, 10), whiteM, sd * .8, top + 3.9, mz - .2); cyl(whiteM, .06, .06, .4, sd * .8, top + 3.6, mz - .2); }
+      ud.shpMh.position.set(0, top + 4.6, mz - .2); }
+    if (cls === 12) { // bridge wings, a funnel with the company band, lifeboats in davits, a bar on the bridge
+      const yb = top - X.TH, w4 = ww * (1 - (X.lv - 1) * .04), z0 = X.sz0 + (X.lv - 1) * .15;
+      for (const sd of [-1, 1]) { const xa = sd * w4, xb = sd * (hw + .4), x0 = Math.min(xa, xb), x1 = Math.max(xa, xb); box(X.ss, x0, x1, yb - .3, yb, z0, z0 + 3.2); box(X.ss, x0, x1, yb, yb + 1.1, z0, z0 + .2); add(new THREE.BoxGeometry(x1 - x0, 1.2, .04), X.wm, (xa + xb) / 2, yb + 1.9, z0 + .6); box(X.ss, x0, x1, yb + 2.5, yb + 2.7, z0, z0 + 3.2); ud.shpNl.push(glowS(sd < 0 ? 0xff2020 : 0x20ff40, 1.6, xb, yb + 2.9, z0 + 1, .9)); }
+      const fz = X.sz1 - 2 * (X.lv - 1) - 3.6; cyl(X.ss, 2.6, 3, 9, 0, yb + 4.5, fz, 0, 0, 16); cyl(S({color: 0x1a3a6a}), 2.62, 2.62, 1.6, 0, yb + 7, fz, 0, 0, 16); cyl(darkM, 2.64, 2.64, .8, 0, yb + 8.6, fz, 0, 0, 16); ud.shpSmoke = [0, yb + 9.2, fz];
+      for (const sd of [-1, 1]) { const lx = sd * (ww + .9), ly = fb + hh + .12 + X.TH * 1.4, lz = (wz0 + wz1) / 2; const lb = add(new THREE.CapsuleGeometry(1.1, 5, 4, 10), S({color: 0xe86018, roughness: .6}), lx, ly, lz); lb.rotation.x = PI / 2; for (const dz of [-2.4, 2.4]) seg(steel, sd * ww, ly + 1.6, lz + dz, lx, ly + 1.4, lz + dz, .12); }
+      const bz = z0 + 4, bm = S({color: 0x3a1a10, roughness: .4}); box(bm, -3, 3, yb, yb + 1.1, bz, bz + .7); box(S({color: 0x101010, roughness: .3, metalness: .5}), -3.05, 3.05, yb + 1.1, yb + 1.16, bz - .05, bz + .75);
+      for (let i = 0; i < 9; i++) cyl(S({color: [0x2a6a2a, 0x8a3a1a, 0xc8b060][i % 3], roughness: .2}), .06, .06, .3, -2.4 + i * .6, yb + 1.31, bz + .35, 0, 0, 8); }
+    shpPuffs(g, 3.2); return; }
+  // every hull: a white masthead light; floods on long hulls
+  ud.shpMh = glowS(0xfff6e8, 1.2 + L * .006, 0, fb + hh + 1.6, zm);
+  if (cls === 2) ud.shpMh.position.set(0, fb + hh + 3.5, zm + .4); else if (cls === 3) { cyl(steel, .05, .07, 1.4, 0, fb + hh + 8.1, wz0 + .8); ud.shpMh.position.set(0, fb + hh + 8.9, wz0 + .8); }
+  else if (cls === 10) { cyl(steel, .04, .06, 1.3, 0, fb + hh + 2.9, zm - .6); ud.shpMh.position.set(0, fb + hh + 3.65, zm - .6); }
+  if (!H.big && L > 30) for (const sd of [-1, 1]) ud.shpFl.push(glowS(0xffe2a8, 3.6, sd * ww * .7, fb + hh + .8, wz0 - .35));
+  if (H.big && L > 30 && cls !== 11 && cls !== 12) { const fz = mix(zb, wz0, .55), mh = 6 + L * .02; cyl(steel, .1, .14, mh, 0, fb + mh / 2, fz); ud.shpFl.push(glowS(0xffe2a8, 4 + L * .02, 0, fb + mh - .2, fz + .4)); ud.shpFm = [0, fb + mh + .4, fz]; }
+  if (cls === 5) { // a lit dive cage hanging off the stern A-frame
+    const cx = -2.4, cz = zs + 1.1, y0 = fb + .4, y1 = fb + 2.4, cm = S({color: 0xe8c020, roughness: .5});
+    for (const [x, z] of [[-.7, -.7], [.7, -.7], [-.7, .7], [.7, .7]]) box(cm, cx + x - .04, cx + x + .04, y0, y1, cz + z - .04, cz + z + .04);
+    for (const y of [y0, (y0 + y1) / 2, y1]) { box(cm, cx - .74, cx + .74, y - .03, y + .03, cz - .74, cz - .66); box(cm, cx - .74, cx + .74, y - .03, y + .03, cz + .66, cz + .74); box(cm, cx - .74, cx - .66, y - .03, y + .03, cz - .74, cz + .74); box(cm, cx + .66, cx + .74, y - .03, y + .03, cz - .74, cz + .74); }
+    seg(steel, cx, fb + 5, zs - 1, cx, y1, cz, .02); add(new THREE.SphereGeometry(.09, 8, 6), S({color: 0xfff0d0, emissive: 0xfff0c0, emissiveIntensity: 2}), cx, y1 - .2, cz); ud.shpCage = glowS(0xbfe8ff, 2.6, cx, y1 - .3, cz, .5); }
+  if (cls === 8) { // Dart: raked screen, T-top on four tubes, twin outboards, racing stripe, pennant, cooler
+    const sm = S({color: 0x101418, roughness: .3}), sc = add(new THREE.BoxGeometry(ww * 2 - .1, 1.05, .03), glass, 0, fb + 1.45, wz0 - .4); sc.rotation.x = -.95; box(sm, -ww, ww, fb + .9, fb + 1.02, wz0 - .85, wz0);
+    const tz0 = wz1 + .25, tz1 = Math.min(zs - .6, wz1 + 2.3), tx = Math.min(1.12, hw - .3); for (const sx of [-tx, tx]) { for (const tz of [tz0, tz1]) cyl(steel, .035, .035, 2.05, sx, fb + 1.03, tz, 0, 0, 8); seg(steel, sx, fb + 1.86, tz0, sx, fb + 1.86, tz1, .022); seg(steel, sx * .55, fb + 1.08, wz0 - .8, sx * .75, fb + 1.08, wz0 - 2.2, .02); }
+    box(S({color: 0xf0f0ea, roughness: .5}), -tx - .15, tx + .15, fb + 2.05, fb + 2.14, tz0 - .2, tz1 + .25); box(S({color: 0xd84a1a}), -tx - .16, tx + .16, fb + 2.0, fb + 2.06, tz0 - .21, tz1 + .26);
+    for (const sx of [-.72, .72]) { const om = S({color: 0x1a1a1e, roughness: .35, metalness: .3}); box(om, sx - .2, sx + .2, fb - .2, fb + .55, zs + .1, zs + .55); box(om, sx - .06, sx + .06, -.7, fb - .2, zs + .25, zs + .4); box(S({color: 0xd84a1a}), sx - .21, sx + .21, fb + .3, fb + .38, zs + .09, zs + .56); }
+    const st = S({color: 0xf4f4f0}); for (const sd of [-1, 1]) for (let i = 2; i < 14; i++) { const za = mix(zb, zs, i / 16), zz = mix(zb, zs, (i + 1) / 16), xa = sd * (hullHW(za) + .012), xz = sd * (hullHW(zz) + .012), y = fb - .3 + (1 - i / 16) * .12, o = add(new THREE.BoxGeometry(.01, .1, Math.hypot(xz - xa, zz - za) + .02), st, (xa + xz) / 2, y, (za + zz) / 2); o.rotation.y = Math.atan2(xz - xa, zz - za); }
+    cyl(steel, .012, .012, .9, tx, fb + 2.5, tz1 + .2); const pf = new THREE.BufferGeometry(); pf.setAttribute('position', new THREE.Float32BufferAttribute([0, .4, 0, 0, 0, 0, 0, .2, .55], 3)); pf.computeVertexNormals(); add(pf, S({color: 0xd84a1a, side: THREE.DoubleSide}), tx, fb + 2.5, tz1 + .2);
+    box(S({color: 0x2a6ab0, roughness: .6}), -1.15, -.6, fb, fb + .4, zs - 1.3, zs - .85, 1); box(whiteM, -1.17, -.58, fb + .4, fb + .46, zs - 1.32, zs - .83); }
+  if (cls === 9) { // Driftwood: pitched roof, chimney, flower boxes, a porch rail and chair, string lights; bunks, stove, table, shelves inside
+    const rf = S({color: 0x6a2a20, roughness: .9}), yr = fb + hh + .12, rh = .95, a = Math.atan2(rh, ww + .3), rl = Math.hypot(rh, ww + .3), cb = S({map: TX.wood, color: 0xe8dcb8, roughness: .85, side: THREE.DoubleSide});
+    for (const sd of [-1, 1]) { const r = add(new THREE.BoxGeometry(rl + .1, .08, wz1 - wz0 + .7), rf, sd * (ww + .3) / 2, yr + rh / 2, zm); r.rotation.z = -sd * a; }
+    for (const zz of [wz0 - .3, wz1 + .2]) { const sh = new THREE.Shape(); sh.moveTo(-ww - .15, 0); sh.lineTo(ww + .15, 0); sh.lineTo(0, rh - .04); sh.lineTo(-ww - .15, 0); add(new THREE.ShapeGeometry(sh), cb, 0, yr, zz); }
+    const cz = wz0 + 1.1, cx = ww - .45; box(S({color: 0x8a3a2a, roughness: .9}), cx - .2, cx + .2, yr, yr + rh + .7, cz - .2, cz + .2); box(darkM, cx - .24, cx + .24, yr + rh + .7, yr + rh + .8, cz - .24, cz + .24); ud.shpSmoke = [cx, yr + rh + .9, cz];
+    const fbx = S({color: 0x7a5a3a, roughness: .9}); for (const sd of [-1, 1]) { box(fbx, sd * (ww + .02) - .1, sd * (ww + .02) + .1, fb + .88, fb + 1.04, zm - 1.6, zm + .6); for (let i = 0; i < 9; i++) add(new THREE.SphereGeometry(.07, 6, 5), S({color: [0xd83a5a, 0xf0d040, 0xe8e8f0][i % 3], roughness: .8}), sd * (ww + .02), fb + 1.1, zm - 1.5 + i * .26).castShadow = false; }
+    const pr = S({color: 0xe8e4d8, roughness: .7}); for (const sd of [-1, 1]) { box(pr, sd < 0 ? -(hw - .25) : .6, sd < 0 ? -.6 : hw - .25, fb + .95, fb + 1.0, zs - .2, zs - .14); for (let x = .7; x < hw - .2; x += .45) box(pr, sd * x - .025, sd * x + .025, fb, fb + .95, zs - .2, zs - .15); }
+    const ch = S({color: 0x2a6a8a, roughness: .9}); box(ch, .95, 1.5, fb + .3, fb + .36, zs - 1.15, zs - .45, 1); const bk = add(new THREE.BoxGeometry(.55, .55, .05), ch, 1.22, fb + .6, zs - .38); bk.rotation.x = -.35; for (const lx of [.98, 1.47]) for (const lz of [zs - 1.1, zs - .5]) box(wd, lx - .02, lx + .02, fb, fb + .3, lz - .02, lz + .02);
+    const sl = S({color: 0x302010, emissive: 0xffc070, emissiveIntensity: .4, nc: 1}); ud.shpStr = sl; for (let i = 0; i <= 12; i++) { const t = i / 12, z = mix(wz1 + .25, zs - .3, t), x = hw - .35, y = yr - .05 - Math.sin(t * PI) * .35; add(new THREE.SphereGeometry(.035, 6, 4), sl, x, y, z).castShadow = false; add(new THREE.SphereGeometry(.035, 6, 4), sl, -x, y, z).castShadow = false; }
+    // inside: bunks with quilts and pillows (the sleep spot), the stove with a kettle, a table for two, shelves with jars, a rug
+    const bx0 = -ww + .14, bx1 = -ww + 1, bz0 = wz0 + .75, bz1 = bz0 + 2, q1 = S({color: 0xb0402a, roughness: 1}), q2 = S({color: 0x3a5a8a, roughness: 1}), pil = S({color: 0xf0ead8, roughness: 1});
+    for (const [y, q] of [[fb + .38, q1], [fb + 1.28, q2]]) { box(wd, bx0, bx1, y - .1, y, bz0, bz1, y < fb + 1); box(q, bx0 + .03, bx1 - .03, y, y + .12, bz0 + .45, bz1 - .03); box(pil, bx0 + .12, bx1 - .12, y, y + .14, bz0 + .05, bz0 + .42); }
+    for (const z of [bz0, bz1 - .06]) box(wd, bx1 - .06, bx1, fb, fb + 1.95, z, z + .06); box(wd, bx0, bx1, fb + 1.42, fb + 1.48, bz1 - .06, bz1);
+    INTER.push({kind: 'shpbunk', boat: 1, lx: bx1 - .2, lz: (bz0 + bz1) / 2, ly: .7, r: 1.8, label: () => 'Sleep until dawn', go: () => act({a: 'shpsleep'}), on: () => !P.sw});
+    const sx0 = ww - .78, sz0 = wz0 + .8, sv = S({color: 0x1a1a1a, roughness: .6, metalness: .4}); box(sv, sx0, ww - .18, fb, fb + .75, sz0, sz0 + .6, 1); const fw = add(new THREE.BoxGeometry(.02, .24, .34), S({color: 0x200800, emissive: 0xff6a20, emissiveIntensity: 1.1, nc: 1}), sx0 - .01, fb + .4, sz0 + .3); ud.shpStove = fw.material;
+    cyl(sv, .07, .07, hh - .75, ww - .45, fb + .75 + (hh - .75) / 2, sz0 + .3); cyl(S({color: 0xc8c0b0, metalness: .6, roughness: .3}), .09, .11, .16, sx0 + .2, fb + .83, sz0 + .18, 0, 0, 10); cyl(darkM, .012, .012, .12, sx0 + .32, fb + .9, sz0 + .18, 0, PI / 3);
+    const tz = Math.min(wz1 - 1.4, zm + 1.6); box(wd, .95, 1.65, fb + .72, fb + .76, tz - .4, tz + .4, 1); box(wd, 1.27, 1.33, fb, fb + .72, tz - .03, tz + .03); for (const dz of [-.62, .62]) { box(wd, 1.1, 1.5, fb + .42, fb + .46, tz + dz - .18, tz + dz + .18); box(wd, 1.1, 1.5, fb + .46, fb + .95, tz + dz + Math.sign(dz) * .15, tz + dz + Math.sign(dz) * .19); for (const lx of [1.13, 1.47]) box(wd, lx - .02, lx + .02, fb, fb + .42, tz + dz - .02, tz + dz + .02); }
+    cyl(S({color: 0xe8e0d0}), .045, .04, .1, 1.2, fb + .81, tz - .1); cyl(S({color: 0xd8a040, emissive: 0x402000}), .04, .05, .12, 1.45, fb + .82, tz + .15);
+    const shz0 = Math.max(bz1 + .3, zm + .4), shz1 = Math.min(wz1 - .5, shz0 + 1.4); for (const y of [fb + 1.15, fb + 1.55]) { box(wd, -ww + .14, -ww + .42, y, y + .04, shz0, shz1); for (let z = shz0 + .12; z < shz1 - .1; z += .22) cyl(S({color: [0xc89a40, 0x8a2a2a, 0x4a7a4a][Math.round(z * 7 + 9) % 3], roughness: .3}), .05, .05, .16, -ww + .28, y + .12, z, 0, 0, 8); }
+    box(S({color: 0x8a4a2a, roughness: 1}), -.7, .7, fb, fb + .012, zm - 1, zm + 1); }
+  if (cls === 10) { // Bulldog: tyre fenders, pilot house with wrap-around glass, fat funnel, towing bitts, winch drum, magnet boom
+    const ty = S({color: 0x161616, roughness: .95}), n = Math.round(L / 1.5); for (const sd of [-1, 1]) for (let i = 1; i < n; i++) { const z = mix(zb + 1, zs - .4, i / n), t = add(new THREE.TorusGeometry(.3, .13, 6, 12), ty, sd * (hullHW(z) + .14), fb - .35, z); t.rotation.y = PI / 2; }
+    { const bf = add(new THREE.CylinderGeometry(.42, .42, 1.3, 12), ty, 0, fb - .35, zb + .55); bf.rotation.z = PI / 2; const sf = add(new THREE.CylinderGeometry(.4, .4, hw * 1.6, 12), ty, 0, fb - .4, zs + .25); sf.rotation.z = PI / 2; }
+    const yr = fb + hh + .12, pw = ww - .45, pz0 = wz0 + .3, pz1 = wz1 - 1.2, gm = S({color: 0x14202a, roughness: .08, metalness: .4}); box(wallM, -pw, pw, yr, yr + .8, pz0, pz1); box(wallM, -pw, pw, yr + 1.85, yr + 2.05, pz0 - .1, pz1 + .1); box(darkM, -pw - .2, pw + .2, yr + 2.05, yr + 2.15, pz0 - .35, pz1 + .2);
+    box(gm, -pw + .02, pw - .02, yr + .8, yr + 1.85, pz0 + .02, pz1 - .02); for (const sx of [-pw + .05, pw - .05]) for (const zz of [pz0 + .05, pz1 - .05]) box(darkM, sx - .05, sx + .05, yr + .8, yr + 1.85, zz - .05, zz + .05);
+    const fz = wz1 - .45; cyl(S({color: 0x222222, roughness: .5}), .62, .72, 2.8, 0, yr + 1.4, fz, 0, 0, 16); cyl(S({color: 0xb0201a}), .63, .66, .5, 0, yr + 2.1, fz, 0, 0, 16); cyl(darkM, .5, .5, .1, 0, yr + 2.82, fz, 0, 0, 14); ud.shpSmoke = [0, yr + 2.9, fz];
+    const bt = S({color: 0x2a2a2a, metalness: .5, roughness: .5}); for (const sx of [-1.6, 1.6]) { cyl(bt, .16, .18, .55, sx, fb + .27, zs - 2.6, 0, 0, 10); box(bt, sx - .2, sx + .2, fb, fb + .55, zs - 2.8, zs - 2.4, 1); }
+    const dz = zs - 1.35, dr = add(new THREE.CylinderGeometry(.42, .42, 1.6, 16), S({color: 0x6a1a14, metalness: .3}), 0, fb + .55, dz); dr.rotation.z = PI / 2; for (const sx of [-.85, .85]) box(steel, sx - .06, sx + .06, fb, fb + 1.05, dz - .5, dz + .5); BW.push({x0: -.9, x1: .9, z0: dz - .5, z1: dz + .5, y0: 0, y1: 1.05});
+    const bx = hw - .7, bz = zs - 3.2; cyl(yel, .14, .2, 2.6, bx, fb + 1.3, bz); BW.push({x0: bx - .25, x1: bx + .25, z0: bz - .25, z1: bz + .25, y0: 0, y1: 2.6});
+    const mg = new THREE.Group(); mg.position.set(bx, fb + 2.5, bz); g.add(mg); ud.shpMag = mg; const boom = new THREE.Mesh(new THREE.BoxGeometry(.18, .18, 3.2), yel); boom.position.set(1.1, .55, 0); boom.rotation.set(0, PI / 2, .35, 'YXZ'); mg.add(boom);
+    const hd = new THREE.Group(); hd.position.set(2.5, 1.05, 0); mg.add(hd); ud.shpMagH = hd; const cbl = new THREE.Mesh(new THREE.CylinderGeometry(.012, .012, 1.4, 4), steel); cbl.position.y = -.7; hd.add(cbl); const ms = new THREE.Mesh(new THREE.CylinderGeometry(.48, .48, .22, 16), S({color: 0xe8701a, roughness: .5, metalness: .3})); ms.position.y = -1.5; hd.add(ms); const mr = new THREE.Mesh(new THREE.CylinderGeometry(.5, .5, .05, 16), darkM); mr.position.y = -1.62; hd.add(mr); }
+  if (cls === 11) { // Aurora: hot tub with steam, sun loungers, swim platform, teak aft deck
+    const tz = zs - 4.6, tm = S({color: 0xf6f6f4, roughness: .3}), tk = S({map: TX.wood, color: 0xb08a5a, roughness: .7}); box(tm, -1.5, 1.5, fb, fb + .62, tz - 1.4, tz + 1.4, 1); box(tk, -1.62, 1.62, fb + .62, fb + .68, tz - 1.52, tz + 1.52);
+    const wm = new THREE.MeshStandardMaterial({color: 0x30c8d8, emissive: 0x0a5a68, emissiveIntensity: .6, roughness: .05, transparent: true, opacity: .82}), wp = add(new THREE.PlaneGeometry(2.7, 2.5), wm, 0, fb + .58, tz); wp.rotation.x = -PI / 2; wp.castShadow = false; ud.shpTub = wm;
+    const sm = new THREE.Sprite(new THREE.SpriteMaterial({map: TX.glow, color: 0xffffff, transparent: true, opacity: .14, depthWrite: false})); sm.scale.set(3, 1.6, 1); sm.position.set(0, fb + 1.3, tz); g.add(sm); ud.shpSteam = sm;
+    const lm = S({color: 0x2a3a5a, roughness: .9}); for (const sx of [-1.8, 1.8]) { const z0 = wz1 + 3.6, z1 = z0 + 1.9; box(whiteM, sx - .35, sx + .35, fb, fb + .28, z0, z1, 1); box(lm, sx - .32, sx + .32, fb + .28, fb + .36, z0 + .05, z1 - .5); const bkr = add(new THREE.BoxGeometry(.64, .08, .62), lm, sx, fb + .55, z1 - .3); bkr.rotation.x = .9; }
+    box(tk, -hw + .7, hw - .7, -.2, -.06, zs + .05, zs + 1.5); for (const sx of [-hw + .9, hw - .9]) cyl(steel, .03, .03, 1.1, sx, .45, zs + 1.4, 0, 0, 6);
+    box(tk, -hw + .35, hw - .35, fb + .005, fb + .02, wz1 + 3, zs - .3); }
+  if (cls === 12) { // Goliath: forecastle with windlasses, bulbous bow, nine hatch covers, pipework and a catwalk, two deck cranes, mast lights every 40 m
+    const hm = S({color: 0x2e4a3a, roughness: .7, metalness: .3}), pm = S({color: 0x9a8a5a, roughness: .6, metalness: .4}), cr = S({color: 0xd8a020, roughness: .55}), z0 = BDECK.z0, fc0 = zb + 3;
+    for (let i = 0; i < 6; i++) { const za = mix(fc0, z0, i / 6), zz = mix(fc0, z0, (i + 1) / 6), w = hullHW(za) * .96; box(wallM, -w, w, fb, fb + 2.6, za, zz + .01); }
+    box(S({color: 0x8a1a14, roughness: .8}), -hw * .8, hw * .8, fb + 2.6, fb + 2.68, z0 - 14, z0); for (const sx of [-4, 4]) { const wl = add(new THREE.CylinderGeometry(.9, .9, 2.2, 14), S({color: 0x2a5a3a, metalness: .4}), sx, fb + 3.6, z0 - 8); wl.rotation.z = PI / 2; box(darkM, sx - 1.3, sx + 1.3, fb + 2.68, fb + 3.2, z0 - 9, z0 - 7); }
+    const bb = add(new THREE.SphereGeometry(3, 16, 10), S({color: 0x8a1a14, roughness: .7}), 0, -(.6 + fb * .7 + L * .045) * .62, zb + 4.5); bb.scale.set(.9, .8, 2.6);
+    const hl = 6.5, cranes = []; let z = -37; for (let i = 0; i < 9; i++) { box(hm, -hw + 4, hw - 4, fb, fb + 1.4, z, z + hl, 1); for (let k = 1; k < 4; k++) box(hm, -hw + 4.05, hw - 4.05, fb + 1.4, fb + 1.48, z + k * hl / 4 - .06, z + k * hl / 4 + .06); z += hl + (i === 2 || i === 5 ? 4 : 1.5); if (i === 2 || i === 5) cranes.push(z - 2); }
+    for (const sd of [-1, 1]) { const px = sd * (hw - 3.6); cyl(pm, .22, .22, 75.5, px, fb + .5, .75, PI / 2); cyl(pm, .12, .12, 75.5, px + sd * .4, fb + .35, .75, PI / 2); BW.push({x0: Math.min(px - .45, px + sd * .65), x1: Math.max(px - .45, px + sd * .65), z0: -37, z1: 38.5, y0: 0, y1: .8}); }
+    box(steel, -.8, .8, fb + 2.6, fb + 2.68, -37, 38.5); for (let zz = -36; zz < 38; zz += 6) box(steel, -.04, .04, fb, fb + 2.6, zz, zz + .08);
+    for (const cz of cranes) { cyl(cr, 1.3, 1.5, 7, 0, fb + 3.5, cz, 0, 0, 14); BW.push({x0: -1.5, x1: 1.5, z0: cz - 1.5, z1: cz + 1.5, y0: 0, y1: 7}); box(cr, -1.6, 1.6, fb + 7, fb + 9.4, cz - 1.2, cz + 1.6); const jb = add(new THREE.BoxGeometry(.9, .9, 24), cr, 0, fb + 15, cz + 9.5); jb.rotation.x = .75; cyl(darkM, .02, .02, 10, 0, fb + 11, cz + 17); }
+    for (const mz of [-80, -40, 0, 40]) { if (mz < fc0) continue; const mx = mz < z0 ? 0 : hw - 2.2, my = mz < z0 ? fb + 2.6 : fb; cyl(steel, .12, .16, 9, mx, my + 4.5, mz); if (mz >= z0) BW.push({x0: mx - .18, x1: mx + .18, z0: mz - .18, z1: mz + .18, y0: 0, y1: 9}); ud.shpNl.push(glowS(0xfff2dc, 1.8, mx, my + 9.2, mz, 0)); } }
+  if (ud.shpSmoke) shpPuffs(g, cls === 9 ? .45 : 1);
+}
+// chimney and funnel smoke: six recycled sprites in the boat group (boat-local, drift aft and up)
+function shpPuffs(g, k) { const ud = g.userData; if (ud.shpPuff || !ud.shpSmoke) return; const s = [];
+  for (let i = 0; i < 6; i++) { const sp = new THREE.Sprite(new THREE.SpriteMaterial({map: TX.glow, color: 0x8e8c88, transparent: true, opacity: 0, depthWrite: false})); sp.visible = false; sp.userData.a = 99; g.add(sp); s.push(sp); }
+  ud.shpPuff = {s, k, i: 0, t: 0}; }
+function shpSmoke(ud, dt) { const pf = ud.shpPuff; if (!pf) return; const on = B.sink <= 0 && (B.driver || Math.abs(B.v) > .5), k = pf.k, life = 2.8, sm = ud.shpSmoke;
+  if ((pf.t -= dt) <= 0 && on) { pf.t = .5 / (1 + Math.abs(B.thr) * 1.5); const sp = pf.s[pf.i++ % pf.s.length]; sp.userData.a = 0; sp.position.set(sm[0] + (Math.random() - .5) * .2 * k, sm[1], sm[2]); }
+  else if (!on && pf.t <= 0) { pf.t = 1.4; const sp = pf.s[pf.i++ % pf.s.length]; sp.userData.a = 0; sp.position.set(sm[0], sm[1], sm[2]); }
+  const dk = 1 - TOD.night * .55;
+  for (const sp of pf.s) { const a = sp.userData.a; if (a >= life) { if (sp.visible) sp.visible = false; continue; } sp.userData.a = a + dt; sp.visible = true; const u = a / life;
+    sp.position.y += dt * (1.1 + Math.abs(B.thr)) * k; sp.position.z += dt * (.5 + Math.abs(B.v) * .55); sp.position.x += dt * .25 * k;
+    sp.scale.setScalar(k * (.6 + u * 2.6)); sp.material.opacity = .34 * (1 - u) * Math.min(1, a * 5) * dk; } }
+// horns for the new hulls (Snd.shipHorn keeps the old voices for cls < 8)
+function shpHorn(cls, p) {
+  if (!A.on) return; const c = A.ctx, t0 = c.currentTime + .02, d = p || A.out;
+  const v = (fs, type, t, dur, pk, ft, ff, q = .8) => { const f = c.createBiquadFilter(); f.type = ft; f.frequency.value = ff; f.Q.value = q; const g = c.createGain(); g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(pk, t + Math.min(.08, dur * .2)); g.gain.setValueAtTime(pk, t + dur * .75); g.gain.linearRampToValueAtTime(0, t + dur); f.connect(g); g.connect(d); for (const fr of fs) { const o = c.createOscillator(); o.type = type; o.frequency.value = fr; o.connect(f); o.start(t); o.stop(t + dur + .05); } return g; };
+  if (cls === 8) { v([1320], 'square', t0, .16, .05, 'bandpass', 1800, 1.2); v([990], 'square', t0 + .2, .22, .05, 'bandpass', 1500, 1.2); }
+  else if (cls === 9) { for (const [r, k] of [[1, .12], [2.76, .05], [5.4, .025], [8.9, .012]]) { const o = c.createOscillator(), g = c.createGain(); o.frequency.value = 640 * r; g.gain.setValueAtTime(0, t0); g.gain.linearRampToValueAtTime(k, t0 + .005); g.gain.exponentialRampToValueAtTime(.0001, t0 + 2.6 / r); o.connect(g); g.connect(d); o.start(t0); o.stop(t0 + 2.7); } v([262, 263], 'sawtooth', t0 + .9, .6, .06, 'lowpass', 1100); }
+  else if (cls === 10) { v([110, 110.6, 165], 'sawtooth', t0, .5, .1, 'lowpass', 620); v([110, 110.6, 165], 'sawtooth', t0 + .7, .7, .1, 'lowpass', 620); }
+  else if (cls === 11) v([220, 277.2, 329.6, 440, 440.8], 'sawtooth', t0, 1.8, .05, 'lowpass', 1500, .7);
+  else { const g = v([41, 41.3, 51.9, 82.2, 82.6], 'sawtooth', t0, 5.4, .085, 'lowpass', 420, .7), dl = c.createDelay(2.5), fb = c.createGain(), lp = c.createBiquadFilter(), eo = c.createGain(); dl.delayTime.value = 1.6; fb.gain.value = .35; lp.type = 'lowpass'; lp.frequency.value = 520; eo.gain.value = .5; g.connect(dl); dl.connect(lp); lp.connect(fb); fb.connect(dl); lp.connect(eo); eo.connect(A.out); setTimeout(() => { try { eo.disconnect(); fb.disconnect(); } catch (e) {} }, 14000); }
+}
+// perks: Dart boost (host), trawler net, tug magnet, Goliath calm, yacht stabilisers and fish bonus, DSV air, houseboat sleep
+function shpBoost(dt) { const H = HC(), drv = B.driver && PL.get(B.driver), on = !!(H.boost && B.sink <= 0 && drv && drv.seat && drv.in && drv.in[3] && B.thr > .05 && !SHP.oh);
+  if (on) { SHP.heat += dt; if (SHP.heat >= 6) { SHP.heat = 6; SHP.oh = 1; } B.v += .4 * B.thr * (2.4 + B.up.engine * .7) * H.spd / Math.pow(H.L / 12.2, .6) * dt; } else { if (SHP.heat > 0 && B.thr > 0) { const lv = B.up.engine, vt = H.spd * Math.sqrt(B.thr * (2.4 + lv * .7) * (1 + lv * .25) / .028); if (B.v > vt) B.v = Math.max(vt, B.v - dt * 2.5); } SHP.heat = Math.max(0, SHP.heat - dt * .6); if (SHP.heat < 1.5) SHP.oh = 0; } SHP.on = on ? 1 : 0; }
+function shpNet(dt) { if (!HC().net || B.sink > 0) return; const v = Math.abs(B.v); if (v < 1.5 || v > 6 || seaBed(B.x, B.z) >= -10) return; if ((SHP.netT -= dt) > 0) return; SHP.netT = 40 + CR() * 20; if (holdFits('netfish')) { B.hold.push('netfish'); emit({k: 'shpnet'}); save(); } }
+function shpMagnet(dt) { if (!HC().magnet || B.sink > 0) return; let got = 0;
+  for (let i = 0; i < G.floats.length; i++) { const f = G.floats[i]; if (!f) continue; const kind = KINDS[f[2]]; if (kind === 'bottle' || !CARRY.has(kind)) continue; const [lx, lz] = bW2L(f[0], f[1]), cx = clamp(lx, -BG.hw, BG.hw), cz = clamp(lz, BG.zb, BG.zs), d = Math.hypot(lx - cx, lz - cz); if (d > 35) continue;
+    if (d < 4) { if (holdFits(kind)) { B.hold.push(kind); G.floats[i] = null; emit({k: 'shpmag', kd: f[2]}); got = 1; } continue; }
+    const [wx, wz] = bL2W(cx, cz), dx = wx - f[0], dz = wz - f[1], l = Math.hypot(dx, dz) || 1, s = Math.min(2 * dt, d - 3.9); f[0] += dx / l * s; f[1] += dz / l * s; }
+  if (got) save(); }
+function shpNight(t) { t = ((t % 1) + 1) % 1; let i = 0; while (TODK[i + 1][0] < t) i++; const a = TODK[i], b = TODK[i + 1], u = (t - a[0]) / (b[0] - a[0]), el = mix(a[1], b[1], u * u * (3 - 2 * u)); return 1 - clamp((el + 22) / 18, 0, 1); } // TOD.night at time t (todAt's formula), valid on a host that does not render
+function shpSleep(id) { const p = PL.get(id); if (!p || !G.on || !HC().sleep || p.dead || p.down) return; const now = performance.now() / 1000; if ((p.shpT || 0) > now) return; p.shpT = now + 1;
+  const why = !p.ob ? 'Get aboard first.' : !(shpNight(G.tod) > .25 && G.tod < .83) ? 'It is not night yet.' : alive().some(q => !q.ob) ? 'Everyone needs to be aboard.' : G.enc ? 'Not while something circles the boat.' : '';
+  if (why) { emit({k: 'nope', id, why}); return; } G.tod = .84; G.enc = null; G.deepT = Math.max(G.deepT ?? 0, 90); emit({k: 'shpslp'}); save(); }
+function shpFade() { let e = $('shpFade'); if (!e) { e = document.createElement('div'); e.id = 'shpFade'; document.body.appendChild(e); }
+  G.shpSlp = performance.now(); e.style.transition = 'opacity .6s'; e.style.opacity = 1; clearTimeout(G.shpFT); G.shpFT = setTimeout(() => { e.style.transition = 'opacity 1.2s'; e.style.opacity = 0; }, 1300); }
+function shpLook(dt) { // client: stabilisers, night lights, boost spray and HUD, steam, stove, magnet sway
+  const ud = BOAT && BOAT.userData; if (!ud) return; const H = HC(), n = TOD.night, t = G.wt;
+  if (H.stab) { B.pitch *= H.stab; B.roll *= H.stab; BOAT.rotation.set(B.pitch, B.yaw, B.roll, 'YXZ'); }
+  if (ud.shpMh) ud.shpMh.material.opacity = Math.min(1, n * 1.1 + G.storm * .3); for (const s of ud.shpFl || []) s.material.opacity = n * .75; for (const s of ud.shpNl || []) s.material.opacity = Math.max(.25, n);
+  if (ud.shpCage) ud.shpCage.material.opacity = .25 + n * .6; if (ud.shpStove) ud.shpStove.emissiveIntensity = .8 + Math.random() * .5; if (ud.shpStr) ud.shpStr.emissiveIntensity = .3 + n * 1.2 + Math.sin(t * 1.7) * .08;
+  if (ud.shpTub) ud.shpTub.emissiveIntensity = .4 + n * .8; if (ud.shpSteam) { ud.shpSteam.material.opacity = .08 + .08 * (1 - TOD.day) + Math.sin(t * .8) * .03; ud.shpSteam.position.y = BDECK.y + 1.3 + Math.sin(t * .5) * .15; }
+  if (ud.shpMagH) ud.shpMagH.rotation.x = Math.sin(t * 1.3) * .06 - B.v * .01 + B.pitch;
+  if (H.fishK && !(GLOWS[B.up.glow || 0] || {}).c) { ud.glow.material.color.setHex(0x30c8ff); ud.glow.material.opacity = (.5 - .35 * TOD.day) * (B.dep > .5 ? 0 : 1); }
+  shpSmoke(ud, dt);
+  if (SHP.on && (SHP.sprT -= dt) <= 0) { SHP.sprT = .07; const [x, z] = bL2W(0, BG.zb + 1.2); spray(x, .3, z, 2, 1.6); }
+  const sh = !!(H.boost && P && P.seat), hs = sh ? (SHP.oh ? 'o' : '') + Math.round(SHP.heat * 10) : '';
+  if (hs !== SHP.hud) { SHP.hud = hs; let e = $('shpBoost'); if (!e && $('boatHud')) { e = document.createElement('div'); e.id = 'shpBoost'; e.innerHTML = 'BOOST <u><i></i></u>'; $('boatHud').appendChild(e); }
+    if (e) { e.style.display = sh ? '' : 'none'; const i = e.querySelector('i'); i.style.width = (100 - SHP.heat / 6 * 100) + '%'; i.style.background = SHP.oh ? '#c84a2a' : '#f0a030'; } }
+}
+{ const st = document.createElement('style'); st.id = 'st-shp'; st.textContent = '#shpFade{position:fixed;inset:0;background:#000;opacity:0;pointer-events:none;z-index:40}'; document.head.appendChild(st); }
+{ const f0 = boatStep; boatStep = function (dt) { const r = f0.apply(this, arguments); shpBoost(dt); return r; }; }
+{ const f0 = boatPose; boatPose = function (dt) { const r = f0.apply(this, arguments); shpLook(dt); return r; }; }
+{ const f0 = hostStep; hostStep = function (dt) { if (HC().nodeep) { if (G.enc) { G.enc = null; emit({k: 'deepgone'}); } G.deepT = Math.max(G.deepT ?? 0, 60); } const r = f0.apply(this, arguments); shpNet(dt); shpMagnet(dt); return r; }; }
+{ const f0 = hostAct; hostAct = function (id, m) { if (m && m.a === 'shpsleep') return shpSleep(id); return f0.apply(this, arguments); }; }
+{ const f0 = applyEv; applyEv = function (e) { const r = f0.apply(this, arguments);
+  if (e.k === 'shpslp') { shpFade(); showMsg('You sleep until dawn. The stove ticks as it cools.', '', 5); }
+  else if (e.k === 'shpnet') { if (P && P.ob) { (Snd.stow || Snd.coin)(); showMsg('+ net of fish', '', 2); } }
+  else if (e.k === 'shpmag') { if (P && P.ob) { (Snd.stow || Snd.coin)(); showMsg('+ ' + (NAMES[KINDS[e.kd]] || 'cargo'), '', 1.5); } }
+  return r; }; }
+{ const f0 = packSnap; packSnap = function () { const s = f0.apply(this, arguments); if (HC().boost) s.shp = [Math.round(SHP.heat * 10), SHP.on, SHP.oh]; return s; }; }
+{ const f0 = applySnap; applySnap = function (s) { const r = f0.apply(this, arguments); if (s.shp) { SHP.heat = s.shp[0] / 10; SHP.on = s.shp[1]; SHP.oh = s.shp[2]; } else SHP.on = 0; return r; }; }
+{ const f0 = stepPlayer; stepPlayer = function (dt) { const r = f0.apply(this, arguments); if (!P) return r; if (P.seat && P.in) P.in[3] = K.ShiftLeft || K.ShiftRight ? 1 : 0;
+  if (P.sw && (P.dv || 0) > .4 && HC().rov && B.sink <= 0 && Math.hypot(P.x - B.x, P.z - B.z) < 80) { const su = SUIT[(P.own && P.own.suit) || 0] || SUIT[0]; P.air = Math.min(1, (P.air ?? 1) + dt / su.air / 2); } return r; }; }
+{ const f0 = aInit; aInit = function () { const r = f0.apply(this, arguments); if (A.ctx && Snd.shipHorn && !Snd.shipHorn.shp) { const h0 = Snd.shipHorn, h = (cls, p) => (cls || 0) >= 8 ? shpHorn(cls, p) : h0(cls, p); h.shp = 1; Snd.shipHorn = h; } return r; }; }
+{ const f0 = fishVal; fishVal = function (k, x, z) { let v = f0.apply(this, arguments); const H = HC(); if (H.fishK && B.sink <= 0) { const [lx, lz] = bW2L(x, z); if (Math.abs(lx) < BG.hw + .6 && lz > BG.zb - .6 && lz < BG.zs + .6) v = Math.round(v * H.fishK); } return v; }; }
+{ const f0 = itemMesh; itemMesh = function (kind) { const g = f0.apply(this, arguments); if (kind !== 'netfish' || g.children.length) return g;
+  const nm = new THREE.MeshStandardMaterial({color: 0x3a5a3a, roughness: .95}), fm = new THREE.MeshStandardMaterial({color: 0xb8c4cc, roughness: .25, metalness: .5}), b = new THREE.Mesh(new THREE.SphereGeometry(.3, 10, 8), nm); b.scale.set(1.3, .75, 1); b.position.y = .22; g.add(b);
+  for (let i = 0; i < 4; i++) { const f = new THREE.Mesh(new THREE.ConeGeometry(.05, .22, 5), fm); f.position.set(Math.cos(i * 1.7) * .3, .3 + (i % 2) * .08, Math.sin(i * 1.7) * .22); f.rotation.set(i, i * 2, PI / 2 + i * .4); g.add(f); }
+  const tie = new THREE.Mesh(new THREE.TorusGeometry(.1, .025, 5, 10), new THREE.MeshStandardMaterial({color: 0xc8a050, roughness: .9})); tie.position.y = .42; tie.rotation.x = PI / 2; g.add(tie); g.traverse(o => { if (o.isMesh) o.castShadow = true; }); return g; }; }
 // ---------------- the derelict MS Serenade, far to the north. Two decks you can explore, and the Steward.
 const CRZ = {x: -250, z: 2350, D1: 9, D2: 13}, CN = [], CWL = [];
 const inCruise = (x, z, y = 99) => Math.abs(x - CRZ.x) < 15 && z > CRZ.z - 68 && z < CRZ.z + 62 && y > 6;
