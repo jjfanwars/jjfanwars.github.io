@@ -1,6 +1,7 @@
 'use strict';
 // Pace notes (for the solo co-driver and for labels on the map) and the navigator's paper map.
 const NUM = ['', 'one', 'two', 'three', 'four', 'five', 'six'];
+const DIST_W = { 100: 'one hundred', 150: 'one fifty', 200: 'two hundred', 250: 'two fifty', 300: 'three hundred' };
 const Notes = {
   build(S) {
     const out = [];
@@ -30,7 +31,10 @@ const Notes = {
     const lead = Math.max(60, speed * 3.3);
     if (st.i < notes.length && notes[st.i].s - prog < lead) {
       let n = notes[st.i], words = n.say, txt = n.txt; st.i++;
-      while (st.i < notes.length && notes[st.i].into && notes[st.i].s - prog < lead + 60) { words += ', into ' + notes[st.i].say; txt += '  ›  ' + notes[st.i].txt; st.i++; }
+      while (st.i < notes.length && notes[st.i].into && notes[st.i].s - prog < lead + 60) { words += ', ' + (/^into /.test(notes[st.i].say) ? '' : 'into ') + notes[st.i].say; txt += '  ›  ' + notes[st.i].txt; st.i++; }
+      // distance to the next call, rounded like a real co-driver ("left 4, 150, right 3")
+      const last = notes[st.i - 1], nx = notes[st.i], gap = nx ? nx.s - last.end : 0;
+      if (gap >= 90) { const d = gap > 330 ? 0 : Math.round(gap / 50) * 50; words += ', ' + (d ? DIST_W[d] : 'long straight'); txt += '  ·  ' + (d || 'LONG'); }
       say(txt, words);
     }
   },

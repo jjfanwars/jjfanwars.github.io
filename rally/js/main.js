@@ -168,7 +168,7 @@ function startStage(cfg, role, solo, myCar, seats) {
     }
     const k = cars.indexOf(myCar), n = cars.length, grid = { s: World.startS - 3 - Math.floor(Math.max(0, k) / 2) * 9, lat: n > 1 ? (k % 2 ? 1.9 : -1.9) : 0 };
     { const p0 = S.at(World.startS); MapDraw.draw(view.mapC.getContext('2d'), { x: p0.x, z: p0.z, h: p0.h, prog: World.startS }, { grades: true, vis: [140, 90, 55][cfg.fog] }); view.mapT.needsUpdate = true; }
-    Object.assign(G, { on: true, drvSeen: 0, S, cfg, role, solo, notes, view, views, tags, seats, cars, myCar, grid, race: n > 1, autoNav: solo || (role === 'drv' && !seats[myCar][1]), bufs: {}, results: {}, finShown: false, counted: false, unlockMsg: '', final: 0, car: null, phase: 'count', t: -3.5, pen: 0, splits: [], splitS: [S.L / 3, S.L * 2 / 3], nextSplit: 0, auto: {}, buf: [], other: { yaw: 0, pitch: 0, map: false }, callT: 0, finT: 0, crashes: 0, trace: [], style: { dT: 0, dA: 0, aT: 0, pts: 0, drift: 0, air: 0 }, paused: false, wasLocked: !!document.pointerLockElement, sendT: 0, lookT: 0, lastBeep: 4, startS: World.startS, finishS: World.finishS });
+    Object.assign(G, { on: true, drvSeen: 0, S, cfg, role, solo, notes, view, views, tags, seats, cars, myCar, grid, race: n > 1, autoNav: solo || (role === 'drv' && !seats[myCar][1]), bufs: {}, results: {}, finShown: false, counted: false, unlockMsg: '', final: 0, car: null, phase: 'count', t: -3.5, pen: 0, splits: [], splitS: [S.L / 3, S.L * 2 / 3], nextSplit: 0, auto: {}, buf: [], other: { yaw: 0, pitch: 0, map: false }, callT: 0, finT: 0, crashes: 0, trace: [], style: { dT: 0, dA: 0, aT: 0, pts: 0, drift: 0, air: 0 }, paused: false, wasLocked: !!document.pointerLockElement, sendT: 0, lookT: 0, lastBeep: 4, finCall: 0, tv: null, startS: World.startS, finishS: World.finishS });
     for (const c of cars) G.bufs[c] = [];
     // AI rivals on the road (solo only): you start at the back of the grid
     G.bots = []; G.rivals = null;
@@ -184,7 +184,7 @@ function startStage(cfg, role, solo, myCar, seats) {
     if (Champ.run) $('role').textContent = Champ.run.c.name.toUpperCase() + ' · STAGE ' + (Champ.run.i + 1) + ' / ' + Champ.run.c.st.length + ' · ' + STAGES[cfg.stage].name.toUpperCase();
     $('tip').innerHTML = role === 'drv' ? 'W/S throttle · brake, A/D steer, Space handbrake, R recover (+' + (PHYS.easy ? 3 : 5) + ' s)' + (PHYS.mouseSteer ? ', MOUSE turns the wheel, hold right mouse to look around' : '') + (PHYS.manual ? ', E/Q shift up/down' : '') + ', V chase cam, G ghost, Esc pause · 1-6 or click dash switches · T horn' + (CARS[mdl(myCar)].nitro ? ' · Shift nitro' : '') + (PHYS.mouseSteer ? '' : ' · mouse looks') : 'Hold <b>right mouse</b> or <b>Tab</b> for the map · callouts: A/D + 1-6, J jump, C crest, L log, K keep middle, F flat, B brake';
     $('spd').style.display = role === 'drv' ? '' : 'none'; $('dmg').style.display = role === 'drv' ? '' : 'none'; $('call').classList.remove('on');
-    bigMsg(''); msg('split', ''); $('fade').style.opacity = 0; $('lockmsg').classList.toggle('hidden', !!document.pointerLockElement); $('tip').style.opacity = 1;
+    bigMsg(''); $('big').classList.remove('fin'); msg('split', ''); $('fade').style.opacity = 0; $('lockmsg').classList.toggle('hidden', !!document.pointerLockElement); $('tip').style.opacity = 1;
     G.bestRec = bestOf(); buildProg(); ghostSetup(); CH.init = false; $('style').innerHTML = ''; $('cross').style.display = G.chase && G.role === 'drv' ? 'none' : '';
     G.lastFrame = performance.now(); G.acc = 0;
     setTimeout(() => $('tip').style.opacity = 0.5, 9000);
@@ -339,7 +339,8 @@ function stagePhase(dt) {
   } else if (G.phase === 'run') {
     G.t += dt; const c = G.car;
     if (G.nextSplit < 2 && c.prog >= G.splitS[G.nextSplit]) { G.splits.push(G.t + G.pen); const best = bestOf(); const ref = best && best.splits ? best.splits[G.nextSplit] : null; { const d = ref ? G.t + G.pen - ref : null; $('split').innerHTML = 'SPLIT ' + (G.nextSplit + 1) + ' &nbsp;' + fmtT(G.t + G.pen) + (d !== null ? ' &nbsp;<span class="' + (d >= 0 ? 'up' : 'dn') + '">' + (d >= 0 ? '+' : '\u2212') + Math.abs(d).toFixed(1) + '</span>' : ''); } setTimeout(() => msg('split', ''), 4000); G.nextSplit++; }
-    if (c.prog >= G.finishS) { G.phase = 'fin'; G.finT = 0; G.final = G.t + G.pen; msg('big', fmtT2(G.final)); Sfx.beep(true); finishRecord(); }
+    if (G.autoNav && !G.finCall && G.finishS - c.prog < Math.max(55, c.speed * 3)) { G.finCall = 1; say('FINISH  ›  FLAT', 'flat over the finish', 2400); }
+    if (c.prog >= G.finishS) { G.phase = 'fin'; G.finT = 0; G.final = G.t + G.pen; msg('big', fmtT2(G.final)); $('big').classList.add('fin'); Sfx.beep(true); finishRecord(); tvSetup(c); }
     if (G.autoNav) Notes.auto(G.auto, G.notes, c.prog, c.speed, (t, w) => say(t, w));
   } else if (G.phase === 'fin') {
     G.finT += dt; if (G.finT > 3.2 && !G.finShown) { G.finShown = true; showFinish(); }
@@ -426,7 +427,7 @@ function frame(now) {
     G.phase = st.ph === 'count' ? 'count' : st.ph; G.t = st.tm; G.pen = st.pn; G.dmg = st.dmg;
     if (G.phase === 'count') { const n = Math.ceil(-st.tm); if (n !== G.lastBeep && n >= 1 && n <= 3) { G.lastBeep = n; Sfx.beep(false); bigMsg(String(n)); } }
     if (G.phase === 'run' && G.lastBeep !== 0) { G.lastBeep = 0; Sfx.beep(true); bigMsg('GO'); setTimeout(() => msg('big', ''), 900); }
-    if (G.phase === 'fin' && !G.finShown) { if (!G.finT) { G.final = st.fin; msg('big', fmtT2(st.fin)); finishRecord(); } G.finT += dt; if (G.finT > 3.2) { G.finShown = true; showFinish(); } }
+    if (G.phase === 'fin' && !G.finShown) { if (!G.finT) { G.final = st.fin; msg('big', fmtT2(st.fin)); $('big').classList.add('fin'); finishRecord(); } G.finT += dt; if (G.finT > 3.2) { G.finShown = true; showFinish(); } }
     G.lookT -= dt; if (G.lookT <= 0) { G.lookT = 0.1; Net.send({ t: 'look', c: G.myCar, y: Math.round(look.yaw * 100) / 100, p: Math.round(look.pitch * 100) / 100, m: look.map ? 1 : 0 }); }
   }
   if (G.role === 'drv' && !G.solo) { G.lookT -= dt; if (G.lookT <= 0) { G.lookT = 0.1; Net.send({ t: 'look', c: G.myCar, y: Math.round(look.yaw * 100) / 100, p: Math.round(look.pitch * 100) / 100, m: 0 }); } }
@@ -449,10 +450,11 @@ function frame(now) {
     if (G.finShown && (G.resT = (G.resT || 0) - dt) <= 0) { G.resT = 0.5; resultsTable(prog); }
   }
   // visuals
-  const chase = G.chase && G.role === 'drv'; // navigators always ride inside
+  const tv = !!(G.tv && G.phase === 'fin' && G.role === 'drv' && G.finT > 0.5), chase = (G.chase || tv) && G.role === 'drv'; // navigators always ride inside
+  if (tv !== !!G.tvOn) { G.tvOn = tv; $('cross').style.display = tv || (G.chase && G.role === 'drv') ? 'none' : ''; }
   if (G.role === 'nav' && !G.solo && G.phase !== 'fin' && G.drvSeen && performance.now() - G.drvSeen > 15000) { G.drvSeen = 0; endToMenu('Your driver left.'); return; } // a guest driver's leave is never relayed to guests: notice the silence
   G.view.update(st, dt, chase ? 'x' : G.role, look, G.solo ? null : G.other);
-  if (chase) chaseCam(World.cam, st, dt); else G.view.camera(World.cam, st, G.role, look, dt);
+  if (tv) tvCam(World.cam, st, dt); else if (chase) chaseCam(World.cam, st, dt); else G.view.camera(World.cam, st, G.role, look, dt);
   if (G.role === 'drv') ghostStep(dt);
   if (G.bots && G.bots.length) { Bots.render(dt, look, World.cam.position); botStandings(st); }
   if (G.role === 'nav' || G.view.mapUp > 0.02 || G.solo) {
@@ -511,7 +513,7 @@ function skids(c) {
 function hud(st) {
   if ((G.hovT = (G.hovT || 0) - 1) <= 0) { G.hovT = 6; const k = document.pointerLockElement ? aimedSwitch() : freeSw, sw = st.sw || G.sw || []; G.view.hoverSw = k; $('hov').textContent = k >= 0 ? SWITCH_NAMES[k] + (sw[k] ? ' · ON' : ' · OFF') + '  (click)' : ''; }
   const done = Math.max(0, st.prog - World.startS), len = Math.max(1, G.finishS - G.startS), clk = G.phase === 'count' ? 0 : (G.phase === 'fin' ? G.final - G.pen : G.t) + G.pen;
-  $('trip').textContent = (done / 1000).toFixed(2) + ' / ' + (len / 1000).toFixed(2) + ' km';
+  $('trip').textContent = (Math.min(done, len) / 1000).toFixed(2) + ' / ' + (len / 1000).toFixed(2) + ' km';
   $('tm').textContent = fmtT(clk);
   $('progF').style.width = clamp(done / len, 0, 1) * 100 + '%';
   // live delta against the best run, sampled every 50 m
@@ -615,6 +617,19 @@ function botStandings(st) {
     const p = o.findIndex(x => x.me) + 1; $('finK').textContent = 'RACE RESULTS · ' + ordinal(p).toUpperCase() + ' PLACE';
   }
 }
+// ---------- finish line TV shot: a camera up the road beyond the line watches the car brake to a stop ----------
+function tvSetup(c) {
+  const S = G.S, camS = Math.min(S.L - 5, c.prog + Math.max(28, c.speed * c.speed / 9 + 12)); G.tv = null;
+  if (S.inTube && S.inTube(camS, 20)) return; // no shot inside a tunnel
+  const p = S.at(camS), sd = Math.random() < 0.5 ? 1 : -1, off = ROAD_HW * 0.7, x = p.x - Math.cos(p.h) * sd * off, z = p.z + Math.sin(p.h) * sd * off;
+  G.tv = { pos: new THREE.Vector3(x, Math.max(p.y, S.heightAt(x, z)) + 3.4, z), tgt: new THREE.Vector3(), fov: 38 };
+}
+function tvCam(cam, st, dt) {
+  const T = G.tv; T.tgt.lerp(TV_T.set(st.pos.x, st.pos.y + 0.6, st.pos.z), T.init ? 1 - Math.exp(-dt * 8) : 1); T.init = true;
+  cam.position.copy(T.pos); cam.lookAt(T.tgt);
+  T.fov = clamp(T.fov + dt * (T.pos.distanceTo(st.pos) < 14 ? 6 : -1.5), 30, 55); cam.fov = T.fov; cam.updateProjectionMatrix();
+}
+const TV_T = new THREE.Vector3();
 // ---------- chase camera (V) ----------
 const CH = { pos: new THREE.Vector3(), tgt: new THREE.Vector3(), f: new THREE.Vector3(), want: new THREE.Vector3(), init: false };
 function chaseCam(cam, st, dt) {
