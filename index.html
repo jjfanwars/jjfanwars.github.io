@@ -347,6 +347,7 @@ body.cbDeut #ov,body.cbDeut #mm,body.cbDeut #cards img,body.cbDeut #selpanel img
     </div>
   </div>
   <div class="mcard" id="mhome">
+    <button class="big primary mtile hero" id="bRig" style="grid-column:1/-1" title="Station Nine: online co-op open-sea exploration with horror" onclick="location.href='rig/'"><b>🌊 Station Nine: Open Sea</b><small>Co-op sea exploration for up to 6 · islands, wrecks, salvage, boat upgrades, a dead oil rig and something in the deep</small></button>
     <button class="big primary mtile hero" id="bQuick" title="Choose your nation and enemies, then start with a ready-made base and pick a unit to play straight away"><b>▶ Quick Battle</b><small>Pick a nation, spawn in and fight straight away</small></button>
     <div class="mgroup">Play</div>
     <button class="big mtile tutbtn" id="bTut" title="A guided first game: every control explained step by step"><b>🎓 Tutorial</b><small>New? Learn to play step by step</small></button>
@@ -360,7 +361,6 @@ body.cbDeut #ov,body.cbDeut #mm,body.cbDeut #cards img,body.cbDeut #selpanel img
     <button class="big mtile" id="bCamper" style="grid-column:1/-1" title="Camper Crew: co-op road trip in first person. Drive, ride, winch, push and blow your way to the lake with friends" onclick="location.href='rally/rv.html'"><b>🚐 Camper Crew</b><small>Co-op road trip with friends in a camper you can walk around in · winch, fuel, fix, dynamite</small></button>
     <button class="big mtile" id="bNight" style="grid-column:1/-1" title="Whisperpine: first-person survival horror at an abandoned summer camp" onclick="location.href='night/'"><b>🔦 Whisperpine</b><small>Survival horror at an abandoned summer camp · fuses, a generator, a radio, and something in the trees</small></button>
     <button class="big mtile" id="bHollow" style="grid-column:1/-1" title="Black Hollow: online co-op survival horror in a mountain valley at night" onclick="location.href='hollow/'"><b>🔥 Black Hollow</b><small>Co-op horror for up to 6 · light the signal beacons, revive your friends, reach the helicopter</small></button>
-    <button class="big mtile" id="bRig" style="grid-column:1/-1" title="Station Nine: online co-op open-sea exploration with horror" onclick="location.href='rig/'"><b>🌊 Station Nine: Open Sea</b><small>Co-op sea exploration for up to 6 · islands, wrecks, salvage, boat upgrades, a dead oil rig and something in the deep</small></button>
     <div class="mgroup">With friends</div>
     <button class="big mtile" id="bHost"><b>🛰 Host a game</b><small>Open a room with bots, friends click Join</small></button>
     <button class="big mtile" id="bRail" title="Co-op: man the gun cars of an armoured train and get it across the island"><b>🚂 Iron Express (co-op)</b><small>Defend an armoured train across the island with friends</small></button>
@@ -15900,6 +15900,7 @@ addEventListener('keydown', () => { if (typeof Direct !== 'undefined' && window.
   // ---- changelog: add a new entry at the TOP of this list whenever something changes
   const CHANGELOG = [
     {d: '18 Nov 2026', items: [
+      'Station Nine: real walk-in cabins in both seaplanes (lined walls, windows you can see out of, a cockpit with two seats and instruments, cabin seats, a side door with its ladder) and solid walls that match them; the F-35B lost its leftover boat hull and has a real cockpit under the canopy, and you walk on its spine. Passenger seats in every aircraft: E to sit, and nothing can throw you out. New in the air: the Gloamwing, a huge pale sky-ray that hunts aircraft flying high (about once every 7 minutes of flight). Static, flickering instruments and wingbeats warn you it is coming; shoot it down, blind it with a flare or dive low. The rig game is now at the top of the menu and opens on any device',
       'Station Nine: the Kestrel and Albatross are rebuilt as proper flying boats (fuselage, high wing, engines, tail), the brigantine\'s jib is fixed, and the seafloor finally shows: sand, weed and rock underwater, and you can see the bottom through shallow water',
       'Rally: the co-driver now calls distances between notes ("left 3, one fifty, right 5") and calls the finish, and a TV camera up the road films your car braking to a stop after the line',
       'Rally: polish: a WRONG WAY warning after a spin, the car brakes to a stop by itself after the finish, rival name tags fade out up close, finish card shortcuts (Enter again, N next stage, M menu), gamepad Start pauses and Back swaps the camera, solo runs pause when you switch tabs, and your ghost car shows up again on repeat runs',
