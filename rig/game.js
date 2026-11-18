@@ -29,7 +29,7 @@ const hexS = c => '#' + c.toString(16).padStart(6, '0');
 
 // ---------------- net (jjfanwars relay)
 const RELAY_URL = 'wss://jjfanwars-relay.businessautomationvic.workers.dev';
-const GAME_V = 54;
+const GAME_V = 55;
 const Net = {
   tag: '[Rig]', role: 'solo', ws: null, peers: new Map(), code: '', relayT: {pose: 1}, id: '', name: '', handlers: {}, retry: 0, started: false,
   enc: new TextEncoder(), dec: new TextDecoder(),
@@ -8034,6 +8034,21 @@ addEventListener('keydown', e => { if (!G.on || !P || P.dead || e.repeat || e.co
   let t = ''; if (!P.dead && !P.seat) { if (G.guT > 0) t = `Giving up… ${'█'.repeat(Math.ceil(G.guT / .15))}${'░'.repeat(Math.max(0, 10 - Math.ceil(G.guT / .15)))}`; else if ((P.sw && P.deep) || (!P.ob && P.vy < -12)) t = '<kbd>Z</kbd> hold to give up'; }
   if (el._t !== t) { el._t = t; el.innerHTML = t; } return r; }; }
 { const f0 = stepPlayer; stepPlayer = function (dt) { const r = f0.apply(this, arguments); if (P && !P.dead && !P.seat && K.KeyZ && !anyPanel()) { G.guT = (G.guT || 0) + dt; if (G.guT > 1.5 && !G.guSent) { G.guSent = 1; act({a: 'fall', g: 1}); } } else { G.guT = 0; if (P && !P.dead) G.guSent = 0; } return r; }; }
+
+// ===== swim camera rides the waves =====
+// When swimming at the surface the view tilts with the wave slope under you and lags/overshoots the swell a little;
+// below the surface it sways gently with the surge.
+{ const f0 = updateCamera; updateCamera = function (dt) { const r = f0.apply(this, arguments);
+  if (!P || P.dead || !P.sw || P.ob || G.rov) { G.swc = null; return r; }
+  const t = G.wt, x = P.x, z = P.z, h = 1.2, gx = (waveH(x + h, z, t) - waveH(x - h, z, t)) / (2 * h), gz = (waveH(x, z + h, t) - waveH(x, z - h, t)) / (2 * h);
+  const fx = -Math.sin(P.yaw), fz = -Math.cos(P.yaw), rx = Math.cos(P.yaw), rz = -Math.sin(P.yaw), sf = gx * fx + gz * fz, sr = gx * rx + gz * rz;
+  const deep = clamp((P.dv || 0) / 2, 0, 1), k = (1 - deep) * (1.8 + G.storm * .8), c = G.swc || (G.swc = {p: 0, r: 0, y: cam.position.y, v: 0});
+  const tp = clamp(sf * k, -.35, .35), tr = clamp(-sr * k * 1.2, -.4, .4); c.p = mix(c.p, tp, Math.min(1, dt * 3)); c.r = mix(c.r, tr, Math.min(1, dt * 3));
+  // springy heave: follows the surface with a little lag and overshoot so swells lift and drop you
+  const ty = cam.position.y; c.v += ((ty - c.y) * 38 - c.v * 7) * Math.min(dt, .05); c.y += c.v * Math.min(dt, .05); if (Math.abs(ty - c.y) > 3) { c.y = ty; c.v = 0; } if (deep < .2) c.y = Math.max(c.y, ty - .1);
+  const sway = deep * (Math.sin(G.t * .7) * .05 + Math.sin(G.t * 1.3 + 1) * .03), chop = (1 - deep) * Math.sin(G.t * 2.3) * .015 * (1 + G.storm * 2);
+  cam.position.y = c.y + chop; cam.position.x += rx * sway * 2; cam.position.z += rz * sway * 2;
+  cam.rotation.set(cam.rotation.x + c.p, cam.rotation.y, cam.rotation.z + c.r + sway, 'YXZ'); cam.updateMatrixWorld(); return r; }; }
 
 menuInit();
 setTimeout(() => { buildWorld(); requestAnimationFrame(frame); }, 30);

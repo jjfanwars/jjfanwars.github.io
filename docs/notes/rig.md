@@ -70,6 +70,8 @@ Read `CLAUDE.md` first (shared rules). Split out of it on 17 Nov 2026; keep this
 
 **Safer flying, quicker death (v54).** While a plane is airborne (`flyAir`), a stepPlayer wrapper snaps you back aboard if you lose the deck (walking off an edge, climb/dive desync). Space at the side (|bl.x| > hw-1.3) bails out deliberately: you start the fall at real altitude (P.y += -B.dep). Fall impact: hitting water at vy < -26 or ground at < -24 sends act 'fall' (dead drown 5). Holding Z for 1.5 s while not seated sends 'fall' with g (drown 6); HUD hint shows when deep-swimming or falling.
 
+**Swim camera (v55).** updateCamera wrapper while P.sw: pitch/roll from the waveH slope under you (camera-relative, x1.8, more in storms), springy heave that lags the surface (kept above -.1 so it doesn't flicker underwater), small chop; when diving it sways side to side instead.
+
 ## Next up (the owner's list, 18 Nov 2026; items 7-14 and the loot rework were built the same day, see the paragraphs above)
 1. **Sub visuals underwater and half underwater:** proper looks from inside and outside the research sub when it is dived and when it sits at the waterline (the waterline across the bow viewport, the sea surface seen from below, underwater fog and tint through the windows, the hull half in and half out of the water, bubbles and wake when diving).
 2. **Persisting loot and fast travel:** loot that stays where it was (taken items stay taken, a persistent world seed with slow restocks) and fast travel between ports (home, Northwatch, piers).
