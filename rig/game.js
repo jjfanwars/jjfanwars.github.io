@@ -29,7 +29,7 @@ const hexS = c => '#' + c.toString(16).padStart(6, '0');
 
 // ---------------- net (jjfanwars relay)
 const RELAY_URL = 'wss://jjfanwars-relay.businessautomationvic.workers.dev';
-const GAME_V = 35;
+const GAME_V = 36;
 const Net = {
   tag: '[Rig]', role: 'solo', ws: null, peers: new Map(), code: '', relayT: {pose: 1}, id: '', name: '', handlers: {}, retry: 0, started: false,
   enc: new TextEncoder(), dec: new TextDecoder(),
@@ -1131,7 +1131,8 @@ const BFL = [], LK = {st: 0, t: 0, w: 0, ent: -1}, SUBC = {}, _sb = new THREE.Ve
 function bL2W(lx, lz) { const c = Math.cos(B.yaw), s = Math.sin(B.yaw); return [B.x + lx * c + lz * s, B.z - lx * s + lz * c]; }
 function bW2L(x, z) { const c = Math.cos(B.yaw), s = Math.sin(B.yaw), dx = x - B.x, dz = z - B.z; return [dx * c - dz * s, dx * s + dz * c]; }
 let BOAT = null;
-function hullHW(z) { const t = clamp((z - BG.zb) / (BG.zs - BG.zb), 0, 1); return BG.hw * (t < .45 ? Math.pow(Math.sin(t / .45 * PI / 2), .75) : 1 - (t - .45) * .06); }
+function hullHW(z) { const F = BG.form || {}, t = clamp((z - BG.zb) / (BG.zs - BG.zb), 0, 1), en = F.entry ?? .45, bw = F.bowW || 0, sw = F.sternW ?? .967; // deck-edge half width; H.form shapes it (see syLoft)
+  return BG.hw * (t < en ? bw + (1 - bw) * Math.pow(Math.sin(t / en * PI / 2), F.fine ?? .75) : 1 - (1 - sw) * Math.pow((t - en) / (1 - en), F.sternP ?? 1)); }
 function buildBoat() {
   const cls = B.up.cls || 0, H = HULLS[cls];
   if (BOAT) { scene.remove(BOAT); const keep = new Set(Object.values(MATC).concat(Object.values(MAT))), txs = new Set(Object.values(TX));
@@ -1139,7 +1140,7 @@ function buildBoat() {
   for (let i = INTER.length - 1; i >= 0; i--) if (INTER[i].boat) INTER.splice(i, 1);
   BW.length = 0; BFL.length = 0; BFL.push(BDECK); BHELM.length = 2;
   const L = H.L, W = H.W, hw = W / 2, fb = H.fb, zs = L * .44, zb = -L * .56;
-  Object.assign(BG, {zs, zb, W, L, hw, sub: !!H.sub});
+  Object.assign(BG, {zs, zb, W, L, hw, sub: !!H.sub, form: H.form || {}});
   const g = new THREE.Group(), S = o => { if (o.nc) { delete o.nc; return new THREE.MeshStandardMaterial(Object.assign({roughness: .55, metalness: .15}, o)); } const k = Object.keys(o).map(q => q + ':' + (o[q] && o[q].isTexture ? o[q].uuid : o[q])).join(); return MATC[k] || (MATC[k] = new THREE.MeshStandardMaterial(Object.assign({roughness: .55, metalness: .15}, o))); };
   const whiteM = S({color: 0xd0d0c8, roughness: .45}), deckM = S({map: TX.wood, color: 0x9a8a70, roughness: .8}), redM = S({color: 0x8a1a14}), steel = S({color: 0x5a6068, metalness: .6, roughness: .4}), darkM = S({color: 0x1a1c1e}), yel = S({color: 0xd8b020});
   const glass = new THREE.MeshStandardMaterial({color: 0x9ac0d0, roughness: .03, metalness: .1, transparent: true, opacity: .16, depthWrite: false, side: THREE.DoubleSide, envMapIntensity: 1.4});
@@ -1148,38 +1149,22 @@ function buildBoat() {
   const cyl = (m, r0, r1, h, x, y, z, rx = 0, rz = 0, seg = 12) => { const o = add(new THREE.CylinderGeometry(r0, r1, h, seg), m, x, y, z); o.rotation.set(rx, 0, rz); return o; };
   const hc = new THREE.Color((PAINTS[B.up.paint || 0] || PAINTS[0]).c || H.col), wc = new THREE.Color(0xe8e8e0), rc = new THREE.Color(0x7a1812);
   if (!H.sub) {
-    // lofted hull: flared topsides, chine, V bottom, sheer rising to the bow, boot stripe and antifouling
-    const d = .6 + fb * .7 + (H.big ? L * .045 : 0), NZ = H.big ? 40 : 28, ice = cls === 6, gy = Math.min(fb - .12, .62 + L * .004);
-    const ring = ice ? [[1, 'top', 0], [1, fb, 0], [.997, 1.5, 0], [.995, 1.42, 4], [.99, .36, 4], [.985, .3, 5], [.98, .06, 5], [.975, .02, 3], [.82, -d * .55, 3], [.42, -d * .92, 3], [0, -d, 3]] : [[1, 'top', 0], [1, fb, 0], [.995, gy, 0], [.99, .36, 1], [.985, .3, 2], [.98, .06, 2], [.975, .02, 3], [.82, -d * .55, 3], [.42, -d * .92, 3], [0, -d, 3]];
-    const pos = [], col = [], uv = [], idx = [], nr = ring.length * 2 - 1, HCOL = [hc, hc.clone().multiplyScalar(.55), wc, rc, new THREE.Color(0x4a0e0a), new THREE.Color(0x161616)], ps = 1 + L / 40, bwH = H.big ? Math.min(1.3, 1 + L * .003) : .32, shr = H.big ? Math.min(5, L * .03) : .9 * Math.min(1.6, L / 14), topAt = t => fb + bwH + shr * Math.pow(1 - t, 2.2);
-    for (let i = 0; i <= NZ; i++) { const z = mix(zb, zs, i / NZ), w = hullHW(z), t = i / NZ, top = topAt(t), rk = ice ? L * .07 * Math.pow(Math.max(0, 1 - t / .22), 2) : 0;
-      const pts = []; for (const [f, y, c] of ring) pts.push([-w * f, y === 'top' ? top : y, c]); for (let k = ring.length - 2; k >= 0; k--) { const [f, y, c] = ring[k]; pts.push([w * f, y === 'top' ? top : y, c]); }
-      for (const [x, y, c] of pts) { const zz = y < 0 ? z + rk * (-y / d) : z, q = HCOL[c]; pos.push(x, y, zz); col.push(q.r, q.g, q.b); uv.push(zz / (8 * ps), 1 + (y - fb) / (4 * ps)); } }
-    for (let i = 0; i < NZ; i++) for (let k = 0; k < nr - 1; k++) { const a = i * nr + k, b = a + 1, c = a + nr, e = c + 1; idx.push(a, c, b, b, c, e); }
-    const tc = pos.length / 3; pos.push(0, fb * .4, zs); col.push(hc.r, hc.g, hc.b); uv.push(zs / (8 * ps), 1 - .6 * fb / (4 * ps)); for (let k = 0; k < nr - 1; k++) idx.push(tc, NZ * nr + k, NZ * nr + k + 1);
-    const hg = new THREE.BufferGeometry(); hg.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); hg.setAttribute('color', new THREE.Float32BufferAttribute(col, 3)); hg.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); hg.setIndex(idx); hg.computeVertexNormals();
-    add(hg, S({vertexColors: true, map: shpPlate(cls === 11), roughness: cls === 11 ? .3 : .5, metalness: .1, side: THREE.DoubleSide}), 0, 0, 0);
-    const f = z => Math.max(0, hullHW(z) - .05), sh = new THREE.Shape(); sh.moveTo(f(zs), -zs); for (let i = 1; i <= NZ; i++) { const z = mix(zs, zb, i / NZ); sh.lineTo(f(z), -z); } for (let i = NZ - 1; i >= 0; i--) { const z = mix(zs, zb, i / NZ); sh.lineTo(-f(z), -z); }
-    const dk = new THREE.ShapeGeometry(sh); dk.rotateX(-PI / 2); dk.translate(0, fb + .005, 0); add(dk, deckM, 0, 0, 0);
-    // gunwale cap and rails
-    for (const sd of [-1, 1]) for (let i = 0; i < NZ; i++) { const za = mix(zb, zs, i / NZ), zz = mix(zb, zs, (i + 1) / NZ), xa = sd * hullHW(za), xz = sd * hullHW(zz), ta = topAt(i / NZ), tz = topAt((i + 1) / NZ);
-      const l = Math.hypot(xz - xa, zz - za, tz - ta), cap = add(new THREE.BoxGeometry(H.big ? .3 : .12, .06, l + .02), whiteM, (xa + xz) / 2, (ta + tz) / 2 + .03, (za + zz) / 2); cap.rotation.set(-Math.atan2(tz - ta, zz - za), Math.atan2(xz - xa, zz - za), 0, 'YXZ');
-      if (!H.big && i % 2 === 0 && i > NZ * .2) { cyl(whiteM, .025, .025, .75, xa, ta + .4, za, 0, 0, 6); } }
-    if (!H.big) for (const sd of [-1, 1]) { const zz = zb + L * .3; const r = add(new THREE.CylinderGeometry(.025, .025, zs - zz, 6), whiteM, sd * (hw - .06), fb + 1.08, (zz + zs) / 2); r.rotation.x = PI / 2; }
+    // lofted hull from H.form (syLoft): planform, raked stem, flare, knuckle, sheer, bulwark, chine and V, transom, boot top, rubbing strake, caps and rails
+    const LF = syLoft({g, H, cls, L, W, hw, fb, zs, zb, S, add, cyl, hc, whiteM, steel, deckM}), topAt = LF.topAt, bwH = LF.bwH;
     const dz0 = zb + (zs - zb) * .32, fz0 = H.big ? Math.min(dz0, mix(zb, zs, H.wh[0]) + .12) : dz0;
     BDECK.x0 = -hw + .3; BDECK.x1 = hw - .3; BDECK.z0 = fz0; BDECK.z1 = zs - .25; BDECK.y = fb;
     for (const sd of [-1, 1]) BW.push({x0: sd < 0 ? -hw - .5 : hw - .28, x1: sd < 0 ? -hw + .28 : hw + .5, z0: dz0 - 1, z1: zs + .3, y0: 0, y1: 1.1});
-    if (fz0 < dz0) for (let i = 0; i < 12; i++) { const za = mix(fz0 - 1, dz0, i / 12), zz = mix(fz0 - 1, dz0, (i + 1) / 12), x = Math.min(hullHW(za), hullHW(zz)) - .3; BW.push({x0: -hw - .5, x1: -x, z0: za, z1: zz, y0: 0, y1: 1.1}, {x0: x, x1: hw + .5, z0: za, z1: zz, y0: 0, y1: 1.1}); }
+    { const n = Math.ceil((zs + .3 - fz0 + 1) / .8); for (let i = 0; i < n; i++) { const za = mix(fz0 - 1, zs + .3, i / n), zz = mix(fz0 - 1, zs + .3, (i + 1) / n), x = Math.min(hullHW(za), hullHW(zz)) - .3; if (x < hw - .32) BW.push({x0: -hw - .5, x1: -x, z0: za, z1: zz, y0: 0, y1: 1.1}, {x0: x, x1: hw + .5, z0: za, z1: zz, y0: 0, y1: 1.1}); } } // side walls follow the planform wherever it narrows
     BW.push({x0: -hw, x1: hw, z0: BDECK.z0 - 2, z1: BDECK.z0 + .05, y0: 0, y1: 2});
     BW.push({x0: -hw, x1: -.6, z0: zs - .12, z1: zs + .4, y0: 0, y1: 1}); BW.push({x0: .6, x1: hw, z0: zs - .12, z1: zs + .4, y0: 0, y1: 1});
     // wheelhouse with real walls and windows
     const sft = cls === 3 || H.big ? 0 : L * .12, wz0 = mix(zb, zs, H.wh[0]) + sft, wz1 = mix(zb, zs, H.wh[1]) + sft, ww = Math.min(hullHW(wz0), hullHW(wz1)) * .82, hh = 2.25, y0 = fb;
-    const wallM = cls === 2 ? S({color: 0x8a9098}) : cls === 9 ? S({map: TX.wood, color: 0xe8dcb8, roughness: .85}) : cls === 10 ? S({color: 0xe0dcd0, roughness: .6}) : cls === 11 ? S({color: 0xf4f4f6, roughness: .25}) : whiteM;
+    const CB = H.cab || {}, cabM = v => typeof v === 'number' ? S({color: v, roughness: .45}) : S(v), wallM = CB.wall != null ? cabM(CB.wall) : cls === 2 ? S({color: 0x8a9098}) : cls === 9 ? S({map: TX.wood, color: 0xe8dcb8, roughness: .85}) : cls === 10 ? S({color: 0xe0dcd0, roughness: .6}) : cls === 11 ? S({color: 0xf4f4f6, roughness: .25}) : whiteM;
     box(wallM, -ww, ww, y0, y0 + 1.05, wz0, wz0 + .12, 1); box(wallM, -ww, ww, y0 + 1.9, y0 + hh, wz0, wz0 + .12); add(new THREE.BoxGeometry(ww * 2, .85, .04), glass, 0, y0 + 1.48, wz0 + .06);
     for (const sd of [-1, 1]) { const x0 = sd < 0 ? -ww : ww - .12, x1 = x0 + .12; box(wallM, x0, x1, y0, y0 + 1.05, wz0, wz1, 1); box(wallM, x0, x1, y0 + 1.9, y0 + hh, wz0, wz1); box(wallM, x0, x1, y0, y0 + hh, wz1 - .5, wz1); add(new THREE.BoxGeometry(.04, .85, wz1 - wz0 - .6), glass, sd * (ww - .06), y0 + 1.48, (wz0 + wz1) / 2 - .25);
       for (let z = wz0 + .1; z < wz1 - .5; z += (wz1 - wz0) / 3) box(wallM, x0, x1, y0 + 1.05, y0 + 1.9, z, z + .08); }
     box(wallM, -ww, -.55, y0, y0 + hh, wz1 - .12, wz1, 1); box(wallM, .55, ww, y0, y0 + hh, wz1 - .12, wz1, 1); box(wallM, -.55, .55, y0 + 2, y0 + hh, wz1 - .12, wz1);
-    box(wallM, -ww - .15, ww + .15, y0 + hh, y0 + hh + .12, wz0 - .3, wz1 + .2);
+    box(CB.roof != null ? cabM(CB.roof) : wallM, -ww - .15, ww + .15, y0 + hh, y0 + hh + .12, wz0 - .3, wz1 + .2);
     // helm console against the windscreen, wheel on its back face
     box(darkM, -.55, .55, y0, y0 + 1.05, wz0 + .12, wz0 + .62, 1); const hz = wz0 + .62;
     const wg = new THREE.Group(); wg.position.set(0, y0 + 1.12, hz + .08); wg.rotation.x = -.45; g.add(wg);
@@ -1253,37 +1238,38 @@ function buildBoat() {
     if (cls === 1) { for (const sd of [-1, 1]) box(steel, sd * (hw - .6) - .1, sd * (hw - .6) + .1, fb, fb + 3.4, zs - .9, zs - .7, 1); box(steel, -hw + .5, hw - .5, fb + 3.3, fb + 3.5, zs - .9, zs - .7); const dr = cyl(S({color: 0x3a6a3a}), .55, .55, 2.4, 0, fb + .6, aft - 1, 0, PI / 2, 16); BW.push({x0: -1.2, x1: 1.2, z0: aft - 1.6, z1: aft - .4, y0: 0, y1: 1.2}); }
     if (cls === 2) { cyl(steel, .06, .08, 3.2, 0, fb + hh + 1.6, (wz0 + wz1) / 2 + .4); const rad = add(new THREE.BoxGeometry(1.6, .12, .25), darkM, 0, fb + hh + 3.2, (wz0 + wz1) / 2 + .4); g.userData.radar = rad;
       cyl(steel, .25, .35, .5, 0, fb + .25, wz0 - 2.2); const gun = cyl(darkM, .06, .06, 1.6, 0, fb + .6, wz0 - 2.9, PI / 2); g.userData.gun = gun; }
-    if (cls === 3) { const ss = S({color: 0xe0e0d8}); box(ss, -ww, ww, fb + hh + .12, fb + hh + 5.6, wz0 + .2, wz1 - .2); for (let lv = 0; lv < 2; lv++) add(new THREE.BoxGeometry(ww * 2 + .02, .5, .02), glass, 0, fb + hh + 1.2 + lv * 2.2, wz0 + .19);
+    if (cls === 3 && !SY_SUP[3]) { const ss = S({color: 0xe0e0d8}); box(ss, -ww, ww, fb + hh + .12, fb + hh + 5.6, wz0 + .2, wz1 - .2); for (let lv = 0; lv < 2; lv++) add(new THREE.BoxGeometry(ww * 2 + .02, .5, .02), glass, 0, fb + hh + 1.2 + lv * 2.2, wz0 + .19);
       box(ss, -ww - 1.6, ww + 1.6, fb + hh + 5.6, fb + hh + 7.4, wz0 - .3, wz1 - 1); add(new THREE.BoxGeometry(ww * 2 + 3.2, .7, .02), glass, 0, fb + hh + 6.6, wz0 - .32);
       cyl(S({color: 0x9a2a1a}), 1.1, 1.3, 4.5, 0, fb + hh + 8, wz1 - 2.2); cyl(darkM, 1.12, 1.12, .7, 0, fb + hh + 10, wz1 - 2.2);
       const CM = [MAT.cont, MAT.cont2, S({color: 0x2a5a8a}), S({color: 0x8a3a1a}), S({color: 0x3a7a3a})];
       for (let r = 0; r < 4; r++) for (let c = -1; c <= 1; c++) { const z0 = zb + L * .2 + r * 6.4; if (z0 + 6 > wz0 - 1) continue; const h = 1 + ((r + c + 3) % 3); for (let k = 0; k < h; k++) box(CM[(r * 3 + c + k + 6) % 5], c * 2.6 - 1.2, c * 2.6 + 1.2, fb + k * 2.5, fb + k * 2.5 + 2.45, z0, z0 + 6, k === 0); }
       for (const sd of [-1, 1]) { cyl(S({color: 0xd8a020}), .25, .3, 7, sd * (hw - 1), fb + 3.5, zb + L * .3); cyl(S({color: 0xd8a020}), .5, .5, .4, sd * (hw - 1), fb + 7.1, zb + L * .3); }
       BSPOT.fuel[1] = zs - .8; BSPOT.patch[1] = zs - .8; }
-    const SX = {g, H, L, W, hw, fb, zs, zb, wz0, wz1, ww, hh, aft, S, add, box, cyl, whiteM, deckM, redM, steel, darkM, yel, glass, wallM}; shpExtras(cls, SX);
+    const SX = {g, H, L, W, hw, fb, zs, zb, wz0, wz1, ww, hh, aft, S, add, box, cyl, whiteM, deckM, redM, steel, darkM, yel, glass, wallM, topAt, bwH, form: BG.form, hc, hx: LF.hx, edge: LF.edge, cls}; shpExtras(cls, SX);
     // deck hardware: fenders, cleats, a life ring, rope, antennas, an exhaust stack, the anchor, a name board, portholes
-    { const fw = S({color: 0xe8e8e4, roughness: .5}), fbl = S({color: 0x22508a, roughness: .5}), ng = Math.max(2, Math.round(L / 6));
-      for (const sd of [-1, 1]) for (let i = 0; i < ng; i++) { const z = mix(BDECK.z0 + 1, zs - 1.5, i / (ng - 1)); cyl(i % 2 ? fw : fbl, .15 + L * .004, .15 + L * .004, .55 + L * .01, sd * (hullHW(z) + .12), fb - .3, z, 0, 0, 10);
+    { const fw = S({color: 0xe8e8e4, roughness: .5}), fbl = S({color: 0x22508a, roughness: .5}), ng = Math.max(2, Math.round(L / 6)), KT = H.kit || {};
+      if (KT.fend ?? !(H.big || cls === 8 || cls === 11)) for (const sd of [-1, 1]) for (let i = 0; i < ng; i++) { const z = mix(BDECK.z0 + 1, zs - 1.5, i / (ng - 1)); cyl(i % 2 ? fw : fbl, .15 + L * .004, .15 + L * .004, .55 + L * .01, sd * (hullHW(z) + .12), fb - .3, z, 0, 0, 10);
         cyl(steel, .01, .01, .5, sd * (hullHW(z) + .05), fb + .1, z); }
       for (const sd of [-1, 1]) for (const z of [BDECK.z0 + .6, zs - .5]) { box(steel, sd * (hullHW(z) - .35) - .14, sd * (hullHW(z) - .35) + .14, fb, fb + .07, z - .04, z + .04); cyl(steel, .025, .03, .12, sd * (hullHW(z) - .35), fb + .06, z); }
-      const lr = add(new THREE.TorusGeometry(.28, .07, 8, 20), S({color: 0xf06818, roughness: .6}), ww - .6, fb + 1.45, wz1 + .09); for (let i = 0; i < 4; i++) { const b = add(new THREE.TorusGeometry(.28, .075, 6, 4, .3), whiteM, ww - .6, fb + 1.45, wz1 + .09); b.rotation.z = i * PI / 2; }
+      if (KT.ring ?? 1) { const lr = add(new THREE.TorusGeometry(.28, .07, 8, 20), S({color: 0xf06818, roughness: .6}), ww - .6, fb + 1.45, wz1 + .09); } if (KT.ring ?? 1) for (let i = 0; i < 4; i++) { const b = add(new THREE.TorusGeometry(.28, .075, 6, 4, .3), whiteM, ww - .6, fb + 1.45, wz1 + .09); b.rotation.z = i * PI / 2; }
       const rc = add(new THREE.TorusGeometry(.3, .05, 6, 18), S({color: 0x8a7050, roughness: 1}), hw - 1.1, fb + .05, zs - 1.6); rc.rotation.x = PI / 2; const rc2 = add(new THREE.TorusGeometry(.22, .05, 6, 18), S({color: 0x8a7050, roughness: 1}), hw - 1.1, fb + .14, zs - 1.6); rc2.rotation.x = PI / 2;
-      for (const sx of [-.4, .4]) cyl(darkM, .012, .02, 1.6 + L * .02, sx * ww, fb + hh + .9 + L * .01, wz1 - .4);
-      cyl(darkM, .14, .16, .9, -ww + .5, fb + hh + .55, wz1 - .5); cyl(S({color: 0x111111}), .145, .145, .12, -ww + .5, fb + hh + .95, wz1 - .5);
-      const an = add(new THREE.BoxGeometry(.06, .6, .06), darkM, 0, fb + .3, BDECK.z0 - .9); an.rotation.x = .3; const ac = add(new THREE.TorusGeometry(.2, .03, 6, 12, PI), darkM, 0, fb + .08, BDECK.z0 - .82); ac.rotation.x = PI / 2 + .3;
+      if (KT.ant ?? 1) for (const sx of [-.4, .4]) cyl(darkM, .012, .02, 1.6 + L * .02, sx * ww, fb + hh + .9 + L * .01, wz1 - .4);
+      if (KT.stack ?? 1) cyl(darkM, .14, .16, .9, -ww + .5, fb + hh + .55, wz1 - .5); if (KT.stack ?? 1) cyl(S({color: 0x111111}), .145, .145, .12, -ww + .5, fb + hh + .95, wz1 - .5);
+      if (KT.anchor ?? 1) { const an = add(new THREE.BoxGeometry(.06, .6, .06), darkM, 0, fb + .3, BDECK.z0 - .9); an.rotation.x = .3; const ac = add(new THREE.TorusGeometry(.2, .03, 6, 12, PI), darkM, 0, fb + .08, BDECK.z0 - .82); ac.rotation.x = PI / 2 + .3; }
       const nc = cv(512, 96, (q, w, h2) => { q.fillStyle = 'rgba(0,0,0,0)'; q.clearRect(0, 0, w, h2); q.fillStyle = cls === 7 ? '#c8a040' : '#f0ece0'; q.font = 'bold 54px Georgia'; q.textAlign = 'center'; q.fillText(['NINE LIVES', 'SALT WIFE', 'VIGILANT', 'IRON MULE', 'NAUTILUS II', 'DEEP RIGHT', 'POLAR BEAR', 'SERENADE', 'DART', 'DRIFTWOOD', 'BULLDOG', 'AURORA', 'GOLIATH'][cls] || 'NINE LIVES', w / 2, 66); });
-      const nb = add(new THREE.PlaneGeometry(Math.min(W * .8, 6), Math.min(W * .8, 6) * .19), new THREE.MeshBasicMaterial({map: new THREE.CanvasTexture(nc), transparent: true}), 0, fb * .6, zs + .02); nb.castShadow = false;
-      if (L > 16) { const pm = S({color: 0x0a0e12, roughness: .1, emissive: 0xffd090, emissiveIntensity: 0, nc: 1}); g.userData.port = pm; for (const sd of [-1, 1]) for (let z = BDECK.z0 + 2; z < zs - 2; z += Math.max(2.2, L / 24)) { const ph = add(new THREE.CircleGeometry(.16 + L * .002, 14), pm, sd * (hullHW(z) + .02), fb * .62, z); ph.rotation.y = sd * PI / 2; ph.castShadow = false; } } }
+      const nb = add(new THREE.PlaneGeometry(Math.min(W * .8, 6), Math.min(W * .8, 6) * .19), new THREE.MeshBasicMaterial({map: new THREE.CanvasTexture(nc), transparent: true}), 0, fb * .6, LF.tz(fb * .6) + .03); nb.castShadow = false; nb.rotation.x = LF.tilt;
+      if (KT.port ?? L > 16) { const pm = S({color: 0x0a0e12, roughness: .1, emissive: 0xffd090, emissiveIntensity: 0, nc: 1}); g.userData.port = pm; for (const sd of [-1, 1]) for (let z = BDECK.z0 + 2; z < zs - 2; z += Math.max(2.2, L / 24)) { const ph = add(new THREE.CircleGeometry(.16 + L * .002, 14), pm, sd * (LF.hx(z, fb * .62) + .025), fb * .62, z); ph.rotation.y = sd * PI / 2; ph.castShadow = false; } } }
     if (H.big) { const ss = S({color: 0xe8e6de, roughness: .5}), wm = new THREE.MeshStandardMaterial({color: 0x101418, emissive: 0xffc070, emissiveIntensity: .1, roughness: .2}); g.userData.winM = wm;
       const lv = H.tiers || (cls === 7 ? 7 : cls === 6 ? 3 : 2), TH = cls === 12 ? 3.4 : 2.8, gl = cls === 11 ? 1.3 : .8, sz0 = wz0, sz1 = cls === 7 ? zs - 14 : cls === 12 ? wz1 : wz1 + L * .12;
-      for (let i = 0; i < lv; i++) { const k = 1 - i * (cls === 7 ? .05 : cls === 12 ? .04 : .08), w = ww * k, y = fb + hh + .12 + i * TH, z0 = sz0 + i * (cls === 7 ? 1.6 : cls === 12 ? .15 : .8), z1 = sz1 - i * (cls === 7 ? 3.5 : cls === 12 ? 2 : cls === 11 ? 2.4 : 1);
+      const sup = SY_SUP[cls], top = sup ? sup(Object.assign(SX, {lv, TH, sz0, sz1, ss, wm, sy: 1})) : fb + hh + .12 + lv * TH;
+      if (!sup) for (let i = 0; i < lv; i++) { const k = 1 - i * (cls === 7 ? .05 : cls === 12 ? .04 : .08), w = ww * k, y = fb + hh + .12 + i * TH, z0 = sz0 + i * (cls === 7 ? 1.6 : cls === 12 ? .15 : .8), z1 = sz1 - i * (cls === 7 ? 3.5 : cls === 12 ? 2 : cls === 11 ? 2.4 : 1);
         box(cls === 11 ? wallM : ss, -w, w, y, y + TH, z0, z1); for (const sd of [-1, 1]) add(new THREE.BoxGeometry(.04, gl, z1 - z0 - 1), wm, sd * (w + .02), y + TH * .54, (z0 + z1) / 2); add(new THREE.BoxGeometry(w * 2 - 1, gl, .04), wm, 0, y + TH * .54, z0 - .02); }
-      shpExtras(cls, Object.assign(SX, {lv, TH, sz0, sz1, ss, wm, top: fb + hh + .12 + lv * TH}), 1);
-      if (cls === 7) { BW.push({x0: -ww, x1: ww, z0: wz1 + 1.6, z1: sz1, y0: 0, y1: 3}); box(ss, -ww, ww, fb, fb + hh, wz1 + 1.6, sz1); for (const sd of [-1, 1]) for (let i = 0; i < 8; i++) { const z = wz1 + 4 + i * (sz1 - wz1 - 8) / 7; cyl(S({color: 0xe06018}), .9, .9, 5, sd * (ww + .9), fb + hh + 4, z, PI / 2); }
+      shpExtras(cls, Object.assign(SX, {lv, TH, sz0, sz1, ss, wm, top}), 1);
+      if (cls === 7) { BW.push({x0: -ww, x1: ww, z0: wz1 + 1.6, z1: sz1, y0: 0, y1: 3}); box(ss, -ww, ww, fb, fb + hh, wz1 + 1.6, sz1); } if (cls === 7 && !sup) { for (const sd of [-1, 1]) for (let i = 0; i < 8; i++) { const z = wz1 + 4 + i * (sz1 - wz1 - 8) / 7; cyl(S({color: 0xe06018}), .9, .9, 5, sd * (ww + .9), fb + hh + 4, z, PI / 2); }
         const fz = sz1 - (lv - 1) * 3.5 - 5; cyl(S({color: 0xc8c4b8}), 3, 3.6, 9, 0, fb + hh + lv * 2.8 + 4, fz); cyl(S({color: 0x1a3a6a}), 3.02, 3.02, 2, 0, fb + hh + lv * 2.8 + 7.5, fz);
         const pool = add(new THREE.BoxGeometry(ww, .1, 10), S({color: 0x2a8ab0, roughness: .05}), 0, fb + hh + lv * 2.8 + .2, (sz0 + sz1) / 2); }
-      if (cls === 6) { for (const z of [sz1 - 5, sz1 - 1]) { cyl(S({color: 0x9a1a12}), 1.3, 1.5, 7, 0, fb + hh + lv * 2.8 + 3.5, z); cyl(darkM, 1.32, 1.32, 1, 0, fb + hh + lv * 2.8 + 6.5, z); } cyl(steel, .12, .15, 6, 0, fb + hh + lv * 2.8 + 3, sz0 + 2); const rad = add(new THREE.BoxGeometry(2.4, .15, .35), darkM, 0, fb + hh + lv * 2.8 + 6, sz0 + 2); g.userData.radar = rad; }
-      if (cls === 5) { const hp = add(new THREE.CylinderGeometry(6, 6, .25, 32), S({color: 0x2a5a3a}), 0, fb + hh + lv * 2.8 + .3, (sz0 + sz1) / 2); add(new THREE.BoxGeometry(.5, .05, 3.6), whiteM, -1, fb + hh + lv * 2.8 + .45, (sz0 + sz1) / 2); add(new THREE.BoxGeometry(.5, .05, 3.6), whiteM, 1, fb + hh + lv * 2.8 + .45, (sz0 + sz1) / 2); add(new THREE.BoxGeometry(2, .05, .5), whiteM, 0, fb + hh + lv * 2.8 + .45, (sz0 + sz1) / 2);
+      if (cls === 6 && !sup) { for (const z of [sz1 - 5, sz1 - 1]) { cyl(S({color: 0x9a1a12}), 1.3, 1.5, 7, 0, fb + hh + lv * 2.8 + 3.5, z); cyl(darkM, 1.32, 1.32, 1, 0, fb + hh + lv * 2.8 + 6.5, z); } cyl(steel, .12, .15, 6, 0, fb + hh + lv * 2.8 + 3, sz0 + 2); const rad = add(new THREE.BoxGeometry(2.4, .15, .35), darkM, 0, fb + hh + lv * 2.8 + 6, sz0 + 2); g.userData.radar = rad; }
+      if (cls === 5 && !sup) { const hp = add(new THREE.CylinderGeometry(6, 6, .25, 32), S({color: 0x2a5a3a}), 0, fb + hh + lv * 2.8 + .3, (sz0 + sz1) / 2); add(new THREE.BoxGeometry(.5, .05, 3.6), whiteM, -1, fb + hh + lv * 2.8 + .45, (sz0 + sz1) / 2); add(new THREE.BoxGeometry(.5, .05, 3.6), whiteM, 1, fb + hh + lv * 2.8 + .45, (sz0 + sz1) / 2); add(new THREE.BoxGeometry(2, .05, .5), whiteM, 0, fb + hh + lv * 2.8 + .45, (sz0 + sz1) / 2);
         cyl(yel, .6, .8, 6, -hw + 2, fb + 3, zs - 8); const boom = add(new THREE.BoxGeometry(.6, .6, 16), yel, -hw + 2, fb + 9, zs - 14); boom.rotation.x = .6; BW.push({x0: -hw + 1.2, x1: -hw + 2.8, z0: zs - 8.8, z1: zs - 7.2, y0: 0, y1: 3});
         for (const sd of [-1, 1]) box(yel, sd * (hw - 1.5) - .2, sd * (hw - 1.5) + .2, fb, fb + 5, zs - 1.2, zs - .8, 1); box(yel, -hw + 1.3, hw - 1.3, fb + 4.8, fb + 5.2, zs - 1.2, zs - .8); }
     }
@@ -3322,20 +3308,6 @@ ENGV.push({f: [90, 210], lp: [900, 2600], am: .12, fr: 1.3, nz: .05, whine: [190
   {f: [40, 90], lp: [420, 1100], am: .15, fr: .6, whine: [1100, 2100], g: .1}, {f: [8, 14], lp: [110, 220], am: .6, fr: .3, g: .2, hiss: 1});
 KINDS.push('netfish'); NAMES.netfish = 'net of fish'; VALUE.netfish = 38; SZ.netfish = 2; CARRY.add('netfish');
 const SHP = {heat: 0, oh: 0, on: 0, netT: 50, sprT: 0, hud: ''};
-// weathered steel: plate seams, weld dots, rust runs from the scuppers under the deck edge (canvas top = deck edge), light grime; the clean one is for the yacht
-function shpPlate(clean) {
-  const k = clean ? 'shpClean' : 'hullPlate'; if (TX[k]) return TX[k];
-  const c = cv(512, 256, (q, w, h) => {
-    q.fillStyle = clean ? '#f4f4f2' : '#dcdcd6'; q.fillRect(0, 0, w, h);
-    for (let i = 0; i < (clean ? 20 : 120); i++) { q.fillStyle = `rgba(${40 + Math.random() * 30},${36 + Math.random() * 20},30,${Math.random() * (clean ? .03 : .07)})`; q.beginPath(); q.ellipse(Math.random() * w, Math.random() * h, 10 + Math.random() * 60, 4 + Math.random() * 30, 0, 0, TAU); q.fill(); }
-    q.strokeStyle = clean ? 'rgba(0,0,0,.06)' : 'rgba(30,26,22,.32)'; q.lineWidth = 2; q.beginPath();
-    for (let y = 0; y <= h; y += 64) { q.moveTo(0, y); q.lineTo(w, y); } for (let r = 0; r < h / 64; r++) for (let x = (r % 2) * 32; x <= w; x += 64) { q.moveTo(x, r * 64); q.lineTo(x, r * 64 + 64); } q.stroke();
-    if (!clean) { q.fillStyle = 'rgba(255,255,250,.28)'; for (let y = 0; y <= h; y += 64) for (let x = 3; x < w; x += 8) q.fillRect(x, y - 3.5, 1.5, 1.5); q.fillStyle = 'rgba(20,16,12,.3)'; for (let y = 0; y <= h; y += 64) for (let x = 3; x < w; x += 8) q.fillRect(x, y + 2, 1.5, 1.5);
-      for (let i = 0; i < 16; i++) { const x = Math.random() * w, l = 30 + Math.random() * 110, gr = q.createLinearGradient(0, 0, 0, l); gr.addColorStop(0, 'rgba(110,52,18,.55)'); gr.addColorStop(1, 'rgba(110,52,18,0)'); q.fillStyle = gr; q.fillRect(x, 0, 2 + Math.random() * 4, l); q.fillStyle = 'rgba(15,10,8,.7)'; q.fillRect(x - 3, 2, 9, 4); }
-      for (let i = 0; i < 10; i++) { const x = Math.random() * w, y = Math.floor(Math.random() * 4) * 64, l = 14 + Math.random() * 40, gr = q.createLinearGradient(0, y, 0, y + l); gr.addColorStop(0, 'rgba(120,60,20,.4)'); gr.addColorStop(1, 'rgba(120,60,20,0)'); q.fillStyle = gr; q.fillRect(x, y, 2 + Math.random() * 2, l); } }
-    noiseFill(q, w, h, clean ? 5 : 14); });
-  return (TX[k] = tex(c));
-}
 // per-class looks, cabins and kit; ph 0 runs after the class extras, ph 1 after a big hull's tiers (X.lv, X.TH, X.sz0, X.sz1, X.top)
 function shpExtras(cls, X, ph) {
   const {g, H, L, hw, fb, zs, zb, wz0, wz1, ww, hh, S, add, box, cyl, whiteM, darkM, steel, yel, glass} = X, zm = (wz0 + wz1) / 2, ud = g.userData, wallM = X.wallM || whiteM, wd = S({map: TX.wood, color: 0x9a7a54, roughness: .75});
@@ -3343,6 +3315,7 @@ function shpExtras(cls, X, ph) {
   const seg = (m, x0, y0, z0, x1, y1, z1, r) => { const l = Math.hypot(x1 - x0, y1 - y0, z1 - z0), o = add(new THREE.CylinderGeometry(r, r, l, 6), m, (x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2); o.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), new THREE.Vector3(x1 - x0, y1 - y0, z1 - z0).normalize()); return o; };
   ud.shpFl = ud.shpFl || []; ud.shpNl = ud.shpNl || [];
   if (ph) { // big hulls: masthead over the top tier, deck floods, class tops
+    if (X.sy) { for (const q of X.flP || []) ud.shpFl.push(glowS(0xffe2a8, 3.2 + L * .02, ...q)); shpPuffs(g, X.puff || 3.2); return; }
     const top = X.top; if (cls === 12) { cyl(steel, .08, .12, 4, 0, top + 2, X.sz0 + 2.5); ud.shpMh.position.set(0, top + 4.2, X.sz0 + 2.5); } else if (ud.shpFm) ud.shpMh.position.set(...ud.shpFm);
     for (const sd of [-1, 1]) ud.shpFl.push(glowS(0xffe2a8, 3.2 + L * .02, sd * ww * .7, fb + hh + 1.2, wz0 - .35));
     if (cls === 11) { // swept mast with radar domes
@@ -3359,10 +3332,10 @@ function shpExtras(cls, X, ph) {
     shpPuffs(g, 3.2); return; }
   // every hull: a white masthead light; floods on long hulls
   ud.shpMh = glowS(0xfff6e8, 1.2 + L * .006, 0, fb + hh + 1.6, zm);
-  if (cls === 2) ud.shpMh.position.set(0, fb + hh + 3.5, zm + .4); else if (cls === 3) { cyl(steel, .05, .07, 1.4, 0, fb + hh + 8.1, wz0 + .8); ud.shpMh.position.set(0, fb + hh + 8.9, wz0 + .8); }
+  if (cls === 2) ud.shpMh.position.set(0, fb + hh + 3.5, zm + .4); else if (cls === 3 && !SY_SUP[3]) { cyl(steel, .05, .07, 1.4, 0, fb + hh + 8.1, wz0 + .8); ud.shpMh.position.set(0, fb + hh + 8.9, wz0 + .8); }
   else if (cls === 10) { cyl(steel, .04, .06, 1.3, 0, fb + hh + 2.9, zm - .6); ud.shpMh.position.set(0, fb + hh + 3.65, zm - .6); }
   if (!H.big && L > 30) for (const sd of [-1, 1]) ud.shpFl.push(glowS(0xffe2a8, 3.6, sd * ww * .7, fb + hh + .8, wz0 - .35));
-  if (H.big && L > 30 && cls !== 11 && cls !== 12) { const fz = mix(zb, wz0, .55), mh = 6 + L * .02; cyl(steel, .1, .14, mh, 0, fb + mh / 2, fz); ud.shpFl.push(glowS(0xffe2a8, 4 + L * .02, 0, fb + mh - .2, fz + .4)); ud.shpFm = [0, fb + mh + .4, fz]; }
+  if (H.big && L > 30 && cls !== 11 && cls !== 12 && !SY_SUP[cls]) { const fz = mix(zb, wz0, .55), mh = 6 + L * .02; cyl(steel, .1, .14, mh, 0, fb + mh / 2, fz); ud.shpFl.push(glowS(0xffe2a8, 4 + L * .02, 0, fb + mh - .2, fz + .4)); ud.shpFm = [0, fb + mh + .4, fz]; }
   if (cls === 5) { // a lit dive cage hanging off the stern A-frame
     const cx = -2.4, cz = zs + 1.1, y0 = fb + .4, y1 = fb + 2.4, cm = S({color: 0xe8c020, roughness: .5});
     for (const [x, z] of [[-.7, -.7], [.7, -.7], [-.7, .7], [.7, .7]]) box(cm, cx + x - .04, cx + x + .04, y0, y1, cz + z - .04, cz + z + .04);
@@ -3414,7 +3387,7 @@ function shpExtras(cls, X, ph) {
     const lm = S({color: 0x2a3a5a, roughness: .9}); for (const sx of [-1.8, 1.8]) { const z0 = wz1 + 3.6, z1 = z0 + 1.9; box(whiteM, sx - .35, sx + .35, fb, fb + .28, z0, z1, 1); box(lm, sx - .32, sx + .32, fb + .28, fb + .36, z0 + .05, z1 - .5); const bkr = add(new THREE.BoxGeometry(.64, .08, .62), lm, sx, fb + .55, z1 - .3); bkr.rotation.x = .9; }
     box(tk, -hw + .7, hw - .7, -.2, -.06, zs + .05, zs + 1.5); for (const sx of [-hw + .9, hw - .9]) cyl(steel, .03, .03, 1.1, sx, .45, zs + 1.4, 0, 0, 6);
     box(tk, -hw + .35, hw - .35, fb + .005, fb + .02, wz1 + 3, zs - .3); }
-  if (cls === 12) { // Goliath: forecastle with windlasses, bulbous bow, nine hatch covers, pipework and a catwalk, two deck cranes, mast lights every 40 m
+  if (cls === 12 && !SY_SUP[12]) { // Goliath: forecastle with windlasses, bulbous bow, nine hatch covers, pipework and a catwalk, two deck cranes, mast lights every 40 m
     const hm = S({color: 0x2e4a3a, roughness: .7, metalness: .3}), pm = S({color: 0x9a8a5a, roughness: .6, metalness: .4}), cr = S({color: 0xd8a020, roughness: .55}), z0 = BDECK.z0, fc0 = zb + 3;
     for (let i = 0; i < 6; i++) { const za = mix(fc0, z0, i / 6), zz = mix(fc0, z0, (i + 1) / 6), w = hullHW(za) * .96; box(wallM, -w, w, fb, fb + 2.6, za, zz + .01); }
     box(S({color: 0x8a1a14, roughness: .8}), -hw * .8, hw * .8, fb + 2.6, fb + 2.68, z0 - 14, z0); for (const sx of [-4, 4]) { const wl = add(new THREE.CylinderGeometry(.9, .9, 2.2, 14), S({color: 0x2a5a3a, metalness: .4}), sx, fb + 3.6, z0 - 8); wl.rotation.z = PI / 2; box(darkM, sx - 1.3, sx + 1.3, fb + 2.68, fb + 3.2, z0 - 9, z0 - 7); }
@@ -3424,8 +3397,406 @@ function shpExtras(cls, X, ph) {
     box(steel, -.8, .8, fb + 2.6, fb + 2.68, -37, 38.5); for (let zz = -36; zz < 38; zz += 6) box(steel, -.04, .04, fb, fb + 2.6, zz, zz + .08);
     for (const cz of cranes) { cyl(cr, 1.3, 1.5, 7, 0, fb + 3.5, cz, 0, 0, 14); BW.push({x0: -1.5, x1: 1.5, z0: cz - 1.5, z1: cz + 1.5, y0: 0, y1: 7}); box(cr, -1.6, 1.6, fb + 7, fb + 9.4, cz - 1.2, cz + 1.6); const jb = add(new THREE.BoxGeometry(.9, .9, 24), cr, 0, fb + 15, cz + 9.5); jb.rotation.x = .75; cyl(darkM, .02, .02, 10, 0, fb + 11, cz + 17); }
     for (const mz of [-80, -40, 0, 40]) { if (mz < fc0) continue; const mx = mz < z0 ? 0 : hw - 2.2, my = mz < z0 ? fb + 2.6 : fb; cyl(steel, .12, .16, 9, mx, my + 4.5, mz); if (mz >= z0) BW.push({x0: mx - .18, x1: mx + .18, z0: mz - .18, z1: mz + .18, y0: 0, y1: 9}); ud.shpNl.push(glowS(0xfff2dc, 1.8, mx, my + 9.2, mz, 0)); } }
+  if (SY_SUP[cls] && !H.big) SY_SUP[cls](X);
   if (ud.shpSmoke) shpPuffs(g, cls === 9 ? .45 : 1);
 }
+// ---------------- shipyard round 3 (hull forms and the big hulls' superstructures). H.form shapes the loft (syLoft), H.kit switches the common deck hardware,
+// H.cab colours the shared wheelhouse shell; the sy* helpers build lofted deckhouses (syRing/syPrism/syDeck), rails, masts, funnels and lifeboats for the big ships.
+// form: entry, fine, bowW, sternW, sternP (planform); rake (x L), ff (forefoot cut-away), transomRake (m, < 0 = reverse); sheer, sheerP, sheerAft; flare, flareAll, knuckle, kY;
+// vee (0 round .. 1 deep V), dead (draft), chine, run; bw, bwAft (bulwark); side, paintSide, band {y0, y1}, sheerC {c, h}, belt {c, y0, y1}, boot, bootY, anti; rub {c, r, y, wrap}; tex; rail; bulb
+function syLoft(X) {
+  const {H, L, fb, zs, zb, S, add, cyl, hc} = X, F = H.form || {}, big = !!H.big, ps = 1 + L / 40;
+  const d0 = F.dead ?? (.6 + fb * .7 + (big ? L * .045 : 0)), NZ = big ? 64 : 40, en = F.entry ?? .45;
+  const bw0 = F.bw ?? (big ? Math.min(1.3, 1 + L * .003) : .32), bw1 = F.bwAft ?? bw0, shr = F.sheer ?? (big ? Math.min(5, L * .03) : .9 * Math.min(1.6, L / 14)), sp = F.sheerP ?? 2.2, sa = F.sheerAft || 0;
+  const bwAt = t => mix(bw0, bw1, smooth(t)), topAt = t => fb + bwAt(t) + shr * Math.pow(1 - clamp(t, 0, 1), sp) + sa * Math.pow(clamp(t, 0, 1), 4);
+  const rk = (F.rake || 0) * L, ff = F.ff ?? .5, tr = Math.min(.9, Math.max(en, 2.4 * (F.rake || 0) * (1 + ff))), tR = F.transomRake || 0, tl = .1, run = F.run ?? (big ? .45 : .1);
+  const fl = F.flare ?? .08, flA = F.flareAll ?? .025, kn = F.knuckle || 0, yk = fb * (F.kY ?? .5), vee = F.vee ?? .3, ch = F.chine ?? .02;
+  const bt = F.bootY || [.04, .3], band = F.band, belt = F.belt, shc = F.sheerC;
+  const dAt = t => d0 * (1 - run * Math.pow(Math.max(0, (t - .8) / .2), 2));
+  const uAt = (y, d) => y >= fb ? 0 : kn ? (y > yk ? .55 * (fb - y) / (fb - yk) : .55 + .45 * Math.min(1, (yk - y) / (yk + d))) : Math.pow(Math.min(1, (fb - y) / (fb + d)), .8);
+  const fm = (t, y, d) => 1 - (fl * Math.max(0, 1 - t / (en * 1.15)) + flA) * uAt(y, d);
+  const dzAt = (t, y, d) => { let s = 0; if (rk && t < tr) { const h = (fb - y) / (fb + d); s += rk * (h + ff * Math.pow(Math.max(0, h), 3)) * Math.pow(1 - t / tr, 2); } if (tR && t > 1 - tl) s -= tR * Math.pow((t - 1 + tl) / tl, 2) * clamp((fb - y) / (fb + d), 0, 1); return s; };
+  // geometric profile of one side, top to keel: [y, f (fraction of the deck half width), crease]
+  const RB = F.flat ? [[.99, 0], [.97, -.4], [.9, -.88], [.62, -1], [0, -1]] : [[.975, 0], [.9, -.3], [.75, -.62], [.42, -.9], [0, -1]], VB = [0, .15, .45, .72, 1];
+  const geo = (t, d) => { const q = [[topAt(t), 1, 1], [fb, 1, 0]]; if (yk > ch + .08) q.push([yk, 1, kn ? 1 : 0]);
+    for (let i = 0; i < 5; i++) q.push([mix(i ? RB[i][1] * d : ch, ch - VB[i] * (ch + d), vee), mix(RB[i][0], .97 * (1 - VB[i]), vee), i === 0 && vee > .5 ? 1 : 0]); return q; };
+  const fIn = (q, y) => { if (y >= q[0][0]) return q[0][1]; for (let i = 1; i < q.length; i++) if (y >= q[i][0]) { const a = q[i - 1], b = q[i]; return mix(b[1], a[1], (y - b[0]) / Math.max(1e-6, a[0] - b[0])); } return 0; };
+  const col = (y, top) => y < bt[0] ? 3 : y < bt[1] ? 2 : belt && y >= belt.y0 && y < belt.y1 ? 4 : band && y >= band.y0 && y < band.y1 ? 1 : shc && y > top - shc.h ? 5 : 0;
+  const PAL = [new THREE.Color(B.up.paint && F.paintSide ? hc : F.side ?? hc), hc, new THREE.Color(F.boot ?? 0xe8e8e0), new THREE.Color(F.anti ?? 0x7a1812), new THREE.Color(belt ? belt.c : 0x222222), new THREE.Color(shc ? shc.c : 0xffffff)];
+  // one side's vertices (crisp colour edges and creases are doubled vertices)
+  const prof = (t, d) => { const q = geo(t, d), top = q[0][0], out = [], bk = []; if (shc) bk.push(top - shc.h); if (band) bk.push(band.y1, band.y0); if (belt) bk.push(belt.y1, belt.y0); bk.push(bt[1], bt[0]);
+    const it = q.map(([y, f, c]) => ({y, f, c, k: 0})).concat(bk.map(y => ({y, f: fIn(q, y), c: 0, k: 1}))).sort((a, b) => b.y - a.y);
+    for (const o of it) { if (o.k) out.push([o.y, o.f, col(o.y + 1e-4, top)], [o.y, o.f, col(o.y - 1e-4, top)]); else { const c = col(o.y - 1e-3, top); out.push([o.y, o.f, c]); if (o.c) out.push([o.y, o.f, c]); } } return out; };
+  const ts = []; for (let i = 0; i <= NZ; i++) { const u = i / NZ; ts.push(.45 * u + .55 * Math.pow(u, 1.6)); }
+  const pos = [], cl = [], uv = [], idx = [], edge = [[], []]; let nr = 0;
+  for (let i = 0; i <= NZ; i++) { const t = ts[i], z = mix(zb, zs, t), w = hullHW(z), d = dAt(t), pr = prof(t, d), m = pr.length, ring = pr.slice(); for (let k = m - 2; k >= 0; k--) ring.push(pr[k]); nr = ring.length;
+    ring.forEach(([y, f, c], k) => { const x = (k < m ? -1 : 1) * w * f * fm(t, y, d), zz = z + dzAt(t, y, d), q = PAL[c]; pos.push(x, y, zz); cl.push(q.r, q.g, q.b); uv.push(zz / (8 * ps), 1 + (y - fb) / (4 * ps)); });
+    for (const sd of [0, 1]) { const o = (i * nr + (sd ? nr - 1 : 0)) * 3; edge[sd].push([pos[o], pos[o + 1], pos[o + 2]]); } }
+  for (let i = 0; i < NZ; i++) for (let k = 0; k < nr - 1; k++) { const a = i * nr + k, b = a + 1, c = a + nr, e = c + 1; idx.push(a, c, b, b, c, e); }
+  // transom (and a punt bow when bowW > 0): ladder strips between the two sides so the paint bands stay crisp
+  const cap = (base, flip) => { const m = (nr + 1) / 2, o0 = pos.length / 3; for (let k = 0; k < nr; k++) { const j = (base + k) * 3; pos.push(pos[j], pos[j + 1], pos[j + 2]); cl.push(cl[j], cl[j + 1], cl[j + 2]); uv.push(pos[j] / (8 * ps), 1 + (pos[j + 1] - fb) / (4 * ps)); }
+    for (let k = 0; k < m - 1; k++) { const a = o0 + k, b = o0 + k + 1, c = o0 + nr - 1 - k, e = o0 + nr - 2 - k; if (flip) idx.push(a, c, b, b, c, e); else idx.push(a, b, c, b, e, c); } };
+  cap(NZ * nr, 0); if ((F.bowW || 0) > 0) cap(0, 1);
+  const hg = new THREE.BufferGeometry(); hg.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); hg.setAttribute('color', new THREE.Float32BufferAttribute(cl, 3)); hg.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); hg.setIndex(idx); hg.computeVertexNormals();
+  const tf = typeof F.tex === 'function', tx = tf ? (F.clean ? 'clean' : 'steel') : F.tex || (F.clean ? 'clean' : 'steel'); // tex: a shpPlate kind or a function that returns a texture
+  add(hg, S({vertexColors: true, map: tf ? F.tex() : shpPlate(tx), roughness: tx === 'clean' ? .28 : tx === 'tar' ? .75 : .55, metalness: tx === 'clean' ? .05 : .1, side: THREE.DoubleSide}), 0, 0, 0);
+  // the outside surface: half width at height y over deck-plan z (follows the rake), and the transom's z at height y
+  const tOf = (z, y) => { let t = clamp((z - zb) / (zs - zb), 0, 1); for (let i = 0; i < 4; i++) t = clamp(t - (mix(zb, zs, t) + dzAt(t, y, dAt(t)) - z) / (zs - zb), 0, 1); return t; };
+  const hx = (z, y) => { const t = tOf(z, y), d = dAt(t); return hullHW(mix(zb, zs, t)) * fIn(geo(t, d), y) * fm(t, y, d); };
+  const tz = y => zs + dzAt(1, y, dAt(1)), tilt = Math.atan2(tz(fb) - tz(0), fb);
+  // deck (follows the planform), gunwale cap on the bulwark top, rails, rubbing strake, bulb
+  const fd = z => Math.max(0, hullHW(z) - .05), sh = new THREE.Shape(); sh.moveTo(fd(zs), -zs); for (let i = 1; i <= NZ; i++) { const z = mix(zs, zb, i / NZ); sh.lineTo(fd(z), -z); } for (let i = NZ - 1; i >= 0; i--) { const z = mix(zs, zb, i / NZ); sh.lineTo(-fd(z), -z); }
+  const dk = new THREE.ShapeGeometry(sh); dk.rotateX(-PI / 2); dk.translate(0, fb + .005, 0); add(dk, X.deckM, 0, 0, 0);
+  const capM = F.capC != null ? S({color: F.capC, roughness: .5}) : X.whiteM, cw = F.capW ?? (big ? .3 : .12);
+  for (const sd of [0, 1]) { const E = edge[sd], s = sd ? -1 : 1; for (let i = 0; i < NZ; i++) { const [xa, ya, za] = E[i], [xz, yz, zz] = E[i + 1], l = Math.hypot(xz - xa, yz - ya, zz - za); if (l < 1e-3) continue; const c = add(new THREE.BoxGeometry(cw, .06, l + .02), capM, (xa + xz) / 2 + s * (cw / 2 - .015), (ya + yz) / 2 + .03, (za + zz) / 2); c.rotation.set(-Math.atan2(yz - ya, Math.hypot(zz - za, xz - xa)), Math.atan2(xz - xa, zz - za), 0, 'YXZ'); } }
+  const rail = F.rail ?? (big ? 0 : 'full'); if (rail) { const [r0, r1] = rail === 'bow' ? [.03, .5] : rail === 'aft' ? [.42, .985] : rail === 'mid' ? [.25, .985] : [.03, .985], rm = F.railC != null ? S({color: F.railC, metalness: .7, roughness: .3}) : X.whiteM, pts = [[], []];
+    for (const sd of [0, 1]) { const E = edge[sd], s = sd ? -1 : 1; let last = -1e9; for (let i = 0; i <= NZ; i++) { if (ts[i] < r0 || ts[i] > r1) continue; const [x, y, z] = E[i], ry = Math.max(y + .3, fb + (F.railH ?? 1.0)); pts[sd].push(new THREE.Vector3(x + s * .05, ry, z)); if (z - last > 1.4) { last = z; cyl(rm, .022, .022, ry - y, x + s * .05, (y + ry) / 2, z, 0, 0, 6); } } }
+    for (const P of pts) if (P.length > 1) { add(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(P), P.length * 2, .028, 6, false), rm, 0, 0, 0); add(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(P.map(v => new THREE.Vector3(v.x, v.y - .45, v.z))), P.length * 2, .016, 5, false), rm, 0, 0, 0); } }
+  if (F.rub) { const R = F.rub, ry = fb + (R.y ?? -.1), r = R.r || .08, Pp = [];
+    for (let i = 1; i <= NZ; i++) { const t = ts[i], d = dAt(t); Pp.push(new THREE.Vector3(-(hullHW(mix(zb, zs, t)) * fIn(geo(t, d), ry) * fm(t, ry, d) + r * .45), ry, mix(zb, zs, t) + dzAt(t, ry, d))); }
+    const last = Pp[Pp.length - 1], Q = Pp.map(v => new THREE.Vector3(-v.x, v.y, v.z)).reverse().concat([new THREE.Vector3(0, ry, zb + dzAt(0, ry, dAt(0)) - r * .3)], Pp);
+    if (R.wrap) for (let k = 1; k < 6; k++) Q.push(new THREE.Vector3(mix(last.x, -last.x, k / 6), ry, tz(ry) + r * .45));
+    add(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(Q, !!R.wrap, 'centripetal'), NZ * 4, r, 8, !!R.wrap), S({color: R.c ?? 0x151515, roughness: .75}), 0, 0, 0); }
+  if (F.bulb) { const r = F.bulb, d = dAt(0), yb = -Math.min(d * .55, d - r * 1.05), zt = zb + dzAt(0, yb, d) - r * .9, pr = [];
+    for (let i = 0; i <= 12; i++) { const a = i / 12; pr.push(new THREE.Vector2(Math.max(.001, r * Math.sin(Math.min(1, a * 1.6) * PI / 2) * (1 - Math.pow(Math.max(0, a - .55) / .45, 2) * .35)), -a * r * 4.2)); }
+    const lg = new THREE.LatheGeometry(pr, 14); lg.rotateX(-PI / 2); lg.scale(.8, 1.05, 1); lg.translate(0, yb, zt); add(lg, S({color: new THREE.Color(F.anti ?? 0x7a1812).multiplyScalar(.8).getHex(), roughness: .6}), 0, 0, 0); }
+  return {topAt, bwH: bw0, hx, tz, tilt, edge, ts, d: d0};
+}
+// hull skins (canvas top = deck edge): 'steel' long welded strakes with a few rust bleeds, 'rust' a hard-worked hull, 'clean' paint or gelcoat, 'tar' a tarred barge; true = clean
+function shpPlate(kind) {
+  kind = kind === true ? 'clean' : kind || 'steel'; const k = 'shpPl_' + kind; if (TX[k]) return TX[k];
+  const c = cv(512, 256, (q, w, h) => { const rr = mulberry(kind.length * 977 + 13);
+    q.fillStyle = kind === 'clean' ? '#f6f6f4' : kind === 'tar' ? '#c8c6c0' : '#e2e0da'; q.fillRect(0, 0, w, h);
+    for (let i = 0; i < (kind === 'clean' ? 14 : 70); i++) { q.fillStyle = `rgba(${40 + rr() * 30},${36 + rr() * 20},30,${rr() * (kind === 'clean' ? .018 : kind === 'tar' ? .09 : .045)})`; q.beginPath(); q.ellipse(rr() * w, rr() * h, 20 + rr() * 90, 6 + rr() * 26, 0, 0, TAU); q.fill(); }
+    if (kind !== 'clean') { // strake seams (horizontal) with staggered butts and a faint lit lip, a few rust bleeds and scuffs
+      for (let r = 0; r < 3; r++) { const y = 18 + r * 84; q.fillStyle = 'rgba(25,22,20,.16)'; q.fillRect(0, y, w, 1.5); q.fillStyle = 'rgba(255,255,250,.10)'; q.fillRect(0, y + 1.5, w, 1); for (let x = (r * 173) % 256; x < w; x += 256) { q.fillStyle = 'rgba(25,22,20,.12)'; q.fillRect(x, y, 1.5, 84); } }
+      const nr = kind === 'rust' ? 14 : kind === 'tar' ? 4 : 6; for (let i = 0; i < nr; i++) { const x = rr() * w, l = 20 + rr() * (kind === 'rust' ? 120 : 60), gr = q.createLinearGradient(0, 0, 0, l), a = kind === 'rust' ? .45 : .25; gr.addColorStop(0, `rgba(120,58,20,${a})`); gr.addColorStop(1, 'rgba(120,58,20,0)'); q.fillStyle = gr; q.fillRect(x, 0, 1.5 + rr() * 3, l); }
+      for (let i = 0; i < (kind === 'rust' ? 40 : 12); i++) { q.fillStyle = `rgba(110,60,25,${.08 + rr() * .2})`; q.beginPath(); q.ellipse(rr() * w, h * (.2 + rr() * .8), 2 + rr() * 6, 1 + rr() * 3, 0, 0, TAU); q.fill(); }
+      q.fillStyle = 'rgba(30,26,22,.10)'; q.fillRect(0, 0, w, 5); }
+    noiseFill(q, w, h, kind === 'clean' ? 3 : kind === 'tar' ? 18 : 10); });
+  return (TX[k] = tex(c));
+}
+// deckhouse plan ring (top view, bow = -z): half width w, front apex z f, back z b, front bulge c with squareness e (2 = ellipse, 6 = boxy), aft corner radius r.
+// mode 0 closed; 1 a front strip (from the sides at z = zc round the bow); 2 an aft strip (from the sides at zc round the stern)
+function syRing(w, f, b, c, e, r, mode, zc) {
+  c = clamp(c, 0, b - f - .05); r = clamp(r, 0, Math.min(w * .95, (b - f - c) * .45)); const k = 2 / (e || 2), F = [], A = [], n = 16, m = 4;
+  for (let i = 0; i <= n; i++) { const a = PI / 2 - i / n * PI, s = Math.sin(a); F.push([w * Math.sign(s) * Math.pow(Math.abs(s), k), f + c - c * Math.pow(Math.abs(Math.cos(a)), k)]); }
+  for (let i = 0; i <= m; i++) { const a = i / m * PI / 2; A.push([-w + r - r * Math.cos(a), b - r + r * Math.sin(a)]); }
+  for (let i = 0; i <= m; i++) { const a = i / m * PI / 2; A.push([w - r + r * Math.sin(a), b - r + r * Math.cos(a)]); }
+  if (mode === 1) { zc = clamp(zc, f + c, b); return [[w, zc]].concat(F, [[-w, zc]]); }
+  if (mode === 2) { zc = clamp(zc, f + c, b - r); return [[-w, zc]].concat(A, [[w, zc]]); }
+  return F.concat(A);
+}
+// a wall lofted between two equal rings (outward normals, smooth round curves, creased square corners), optional flat top/bottom caps (always closed)
+function syPrism(R0, y0, R1, y1, closed, top, bot) {
+  const n = R0.length, pos = [], uv = [], idx = []; let u = 0, cx = 0, cz = 0;
+  for (let i = 0; i < n; i++) { if (i) u += Math.hypot(R0[i][0] - R0[i - 1][0], R0[i][1] - R0[i - 1][1]); pos.push(R0[i][0], y0, R0[i][1], R1[i][0], y1, R1[i][1]); uv.push(u * .5, y0 * .5, u * .5, y1 * .5); cx += R0[i][0] / n; cz += R0[i][1] / n; }
+  let fl = false; for (let i = 0; i < n - 1; i++) { const ex = R0[i + 1][0] - R0[i][0], ez = R0[i + 1][1] - R0[i][1]; if (Math.hypot(ex, ez) < 1e-3) continue; fl = -ez * ((R0[i][0] + R0[i + 1][0]) / 2 - cx) + ex * ((R0[i][1] + R0[i + 1][1]) / 2 - cz) < 0; break; }
+  for (let i = 0; i < (closed ? n : n - 1); i++) { const j = (i + 1) % n, a = i * 2, b = j * 2, c = a + 1, d = b + 1; if (fl) idx.push(a, c, b, b, c, d); else idx.push(a, b, c, b, d, c); }
+  for (const [R, y, up] of [[R1, y1, top], [R0, y0, -bot]]) { if (!up) continue; const o = pos.length / 3; let qx = 0, qz = 0; for (const p of R) { qx += p[0] / n; qz += p[1] / n; } pos.push(qx, y, qz); uv.push(qx * .5, qz * .5);
+    for (const p of R) { pos.push(p[0], y, p[1]); uv.push(p[0] * .5, p[1] * .5); } let s = 0; for (let i = 0; i < n && !s; i++) { const j = (i + 1) % n; s = Math.sign((R[i][1] - qz) * (R[j][0] - qx) - (R[i][0] - qx) * (R[j][1] - qz)); }
+    for (let i = 0; i < n; i++) { const j = (i + 1) % n; if (s * up > 0) idx.push(o, o + 1 + i, o + 1 + j); else idx.push(o, o + 1 + j, o + 1 + i); } }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); g.setIndex(idx); g.computeVertexNormals(); return g;
+}
+// one layer of a house: o = {y0, y1, w, w1, f, f1, b, b1, c, e, r, mode, zc, d (inflate), top, bot}; f1/w1/b1 are the top ring (rake, tumblehome)
+function syLay(X, m, o) { const d = o.d || 0, R = (w, f, b) => syRing(w + d, f - d, b + d, o.c ?? 0, o.e ?? 2, (o.r ?? .3) + d, o.mode || 0, o.zc);
+  return X.add(syPrism(R(o.w, o.f, o.b), o.y0, R(o.w1 ?? o.w, o.f1 ?? o.f, o.b1 ?? o.b), o.y1, !o.mode, o.top, o.bot), m, 0, 0, 0); }
+// a rail (posts, top and mid rails) along a polyline of [x, z] at deck height y
+function syRail(X, P, y, h, m, closed) { if (P.length < 2) return; let acc = 9;
+  for (let i = 0; i < P.length; i++) { if (i) acc += Math.hypot(P[i][0] - P[i - 1][0], P[i][1] - P[i - 1][1]); if (acc > 1.4 || i === P.length - 1 && !closed) { acc = 0; X.cyl(m, .022, .022, h, P[i][0], y + h / 2, P[i][1], 0, 0, 5); } }
+  for (const [yy, r] of [[y + h, .026], [y + h * .5, .015]]) X.add(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(P.map(p => new THREE.Vector3(p[0], yy, p[1])), !!closed, 'centripetal'), P.length * 3, r, 5, !!closed), m, 0, 0, 0); }
+// a strip of the hull's outside surface (window slots, ice belt patches, decals) from z0 to z1 between heights y0 and y1, sd = side
+function syHullStrip(X, m, sd, z0, z1, y0, y1, off = .015, rnd = 0) { const n = Math.max(2, Math.ceil((z1 - z0) / .5)), pos = [], idx = [];
+  for (let i = 0; i <= n; i++) { const z = mix(z0, z1, i / n), e = rnd ? Math.min(1, Math.sin(i / n * PI) * 3) : 1, ya = mix((y0 + y1) / 2, y0, e), yb = mix((y0 + y1) / 2, y1, e); pos.push(sd * (X.hx(z, ya) + off), ya, z, sd * (X.hx(z, yb) + off), yb, z); }
+  for (let i = 0; i < n; i++) { const a = i * 2, b = a + 2; if (sd < 0) idx.push(a, b, a + 1, b, b + 1, a + 1); else idx.push(a, a + 1, b, b, a + 1, b + 1); }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx); g.computeVertexNormals(); return X.add(g, m, 0, 0, 0); }
+const syGlow = (g, c, s, x, y, z, o = 0) => { const sp = new THREE.Sprite(new THREE.SpriteMaterial({map: TX.glow, color: c, transparent: true, opacity: o, depthWrite: false, blending: THREE.AdditiveBlending})); sp.scale.setScalar(s); sp.position.set(x, y, z); g.add(sp); return sp; };
+const sySeg = (X, m, x0, y0, z0, x1, y1, z1, r, n = 6) => { const l = Math.hypot(x1 - x0, y1 - y0, z1 - z0), o = X.add(new THREE.CylinderGeometry(r, r, l, n), m, (x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2); o.quaternion.setFromUnitVectors(_v.set(0, 1, 0), _s.set(x1 - x0, y1 - y0, z1 - z0).normalize()); return o; };
+const syBox = (X, m, cx, cy, cz, sx, sy, sz, rx = 0, ry = 0, rz = 0) => { const o = X.add(new THREE.BoxGeometry(sx, sy, sz), m, cx, cy, cz); o.rotation.set(rx, ry, rz, 'YXZ'); return o; };
+// mullions round a ring between two heights (one every step metres)
+function syMull(X, m, R, y0, y1, step, r = .035, gap = 0) { let acc = step * .5; for (let i = 1; i < R.length; i++) { acc += Math.hypot(R[i][0] - R[i - 1][0], R[i][1] - R[i - 1][1]); if (acc >= step && Math.abs(R[i][0]) >= gap) { acc = 0; X.cyl(m, r, r, y1 - y0, R[i][0], (y0 + y1) / 2, R[i][1], 0, 0, 5); } } }
+// mast: tapered pole, yard with nav lights, optional radar pedestal; returns the top y
+function syMast(X, m, x, z, y0, h, yard) { X.cyl(m, .07 + h * .006, .1 + h * .01, h, x, y0 + h / 2, z, 0, 0, 8); if (yard) X.box(m, x - yard, x + yard, y0 + h * .78 - .05, y0 + h * .78 + .05, z - .06, z + .06); return y0 + h; }
+// a rounded, raked funnel with a livery band and a black top; returns the top centre
+function syFunnel(X, o) { const {y0, h, w, l, z} = o, rk = o.rk || 0, c = l * .45, R = (y, d = 0) => syRing(w + d, z - l / 2 + rk * (y - y0) - d, z + l / 2 + rk * (y - y0) + d, c, o.e || 2.4, w * .7 + d);
+  const P = (m, ya, yb, d) => X.add(syPrism(R(ya, d), ya, R(yb, d), yb, true, 1, 0), m, 0, 0, 0);
+  P(o.m, y0, y0 + h * .62); P(o.band, y0 + h * .62, y0 + h * .8); P(o.top, y0 + h * .8, y0 + h);
+  if (o.band2) P(o.band2, y0 + h * .67, y0 + h * .75, .02);
+  const zt = z + rk * h; for (const dx of [-.3, .3]) X.cyl(o.top, w * .18, w * .18, .9, dx * w, y0 + h + .35, zt - l * .1, 0, 0, 8); return [0, y0 + h + .6, zt]; }
+// an enclosed orange lifeboat (hull + canopy) on two davit arms; side sd, centre z, deck y
+function syLifeboat(X, sd, x, y, z, len, dav) { const om = X.S({color: 0xe8661c, roughness: .55}), wm = X.S({color: 0xf0eee6, roughness: .5}), r = len * .17;
+  const hb = new THREE.CapsuleGeometry(r, len - 2 * r, 4, 10); hb.rotateX(PI / 2); hb.scale(1, .75, 1); X.add(hb, wm, x, y, z); const cb = new THREE.CapsuleGeometry(r * .82, len - 2 * r, 4, 10); cb.rotateX(PI / 2); cb.scale(.95, .8, .96); X.add(cb, om, x, y + r * .42, z);
+  if (dav) for (const dz of [-len * .32, len * .32]) { sySeg(X, X.steel, sd * (Math.abs(x) - r * 1.6), y - r * 1.6, z + dz, sd * (Math.abs(x) - r * .6), y + r * 2.2, z + dz, .07); sySeg(X, X.steel, sd * (Math.abs(x) - r * .6), y + r * 2.2, z + dz, x, y + r * 2, z + dz, .06); } }
+const SY_SUP = {};
+// [11] Aurora: 34 m explorer yacht. Main-deck saloon skin round the shared shell (glass in line with its windows, open aft so the shell's door is the aft face),
+// a sky-lounge wheelhouse with a raked wrap-around windscreen ahead of the helm camera, a flybridge with a hardtop on slim pillars, the radar arch, hull windows, anchors in pockets
+SY_SUP[11] = X => {
+  const {g, L, hw, fb, zs, zb, wz0, wz1, ww, hh, S, add, box, cyl, glass, wm} = X, ud = g.userData, eye = fb + (X.H.eye || 4.2);
+  const wh = S({color: 0xf4f5f7, roughness: .26, side: THREE.DoubleSide}), wh1 = S({color: 0xf4f5f7, roughness: .26}), dk = S({color: 0x24282c, roughness: .6, side: THREE.DoubleSide}), sst = S({color: 0xc8ccd0, metalness: .85, roughness: .22});
+  const tint = S({color: 0x10161c, roughness: .05, metalness: .6}), cu = S({color: 0xe6dfd0, roughness: .9}), tk = S({map: TX.wood, color: 0xb08a5a, roughness: .7}), dkM = S({color: 0x2a2e33, roughness: .4});
+  // A: saloon skin
+  const yA = fb + hh + .22, wA = ww + .2, fA = wz0 - 1.55, cA = 1.45, eA = 2.2, zA = wz1 + .25, A = {w: wA, f: fA, b: zA, c: cA, e: eA, r: 0, mode: 1, zc: zA};
+  syLay(X, wh, {...A, y0: fb - .02, y1: fb + 1.0}); syLay(X, glass, {...A, zc: wz1 - .6, y0: fb + 1.0, y1: fb + 1.95}); syLay(X, wh, {...A, y0: fb + 1.95, y1: yA, top: 1});
+  syLay(X, tint, {...A, zc: wz1 - .6, y0: fb + 1.92, y1: fb + 2.02, d: .02}); syMull(X, wh1, syRing(wA, fA, zA, cA, eA, 0, 1, wz1 - .6), fb + 1.0, fb + 1.95, 1.7, .045);
+  for (const sd of [-1, 1]) { box(wh1, sd < 0 ? -wA : wA - .05, sd < 0 ? -wA + .05 : wA, fb + 1, fb + 1.95, wz1 - .6, zA); box(wh1, Math.min(sd * ww, sd * wA), Math.max(sd * ww, sd * wA), fb, yA, wz1 + .05, zA); }
+  // upper aft deck over the main aft deck, on two pillars, with a rail round its open end
+  const zU = wz1 + 5.2; syLay(X, wh1, {y0: yA - .2, y1: yA, w: wA, f: wz1 - .1, b: zU, c: 0, r: .9, top: 1, bot: 1}); for (const sd of [-1, 1]) { cyl(sst, .06, .06, yA - .2 - fb, sd * (wA - .2), (fb + yA - .2) / 2, zU - .3, 0, 0, 8); BW.push({x0: sd * (wA - .2) - .1, x1: sd * (wA - .2) + .1, z0: zU - .4, z1: zU - .2, y0: 0, y1: 2.2}); }
+  syRail(X, syRing(wA - .06, wz1 - .1, zU - .06, 0, 2, .84, 2, zA + .3), yA, .95, sst);
+  // B: sky lounge and wheelhouse, raked windscreen (glass ahead of the helm camera), tinted side windows, a dark interior liner
+  const yB = yA, hB = 2.55, yB1 = yB + hB, wB = ww - .05, fB = wz0 - 2.15, fB1 = wz0 - 1.0, bB = wz1 + 2.2, cB = 1.7, eB = 2.3, fAt = y => mix(fB, fB1, (y - yB) / hB), zc = fB + cB + 1.3;
+  const B0 = {w: wB, b: bB, c: cB, e: eB, r: .5}, LB = (m, y0, y1, o = {}) => syLay(X, m, {...B0, f: fAt(y0), f1: fAt(y1), y0, y1, ...o});
+  LB(wh, yB, yB + .5); LB(glass, yB + .5, yB1 - .3, {mode: 1, zc}); LB(wh, yB + .5, yB1 - .3, {mode: 2, zc}); LB(tint, yB + .62, yB1 - .42, {mode: 2, zc: zc + .15, d: .03}); LB(wh, yB1 - .3, yB1, {top: 1});
+  LB(dk, yB, yB1 - .02, {mode: 2, zc, d: -.08}); LB(dk, yB1 - .1, yB1 - .06, {d: -.08, bot: 1}); syMull(X, dkM, syRing(wB + .01, fAt(yB + .5) - .01, bB, cB, eB, .5, 1, zc), yB + .5, yB1 - .3, 2.1, .022, 1.4);
+  box(dkM, -1.3, 1.3, yB, yB + 1.0, fAt(yB + 1) + cB * .55, fAt(yB + 1) + cB * .55 + .45); add(new THREE.BoxGeometry(1.1, .02, .3), S({color: 0x201000, emissive: 0xffa040, emissiveIntensity: .5}), 0, yB + 1.01, fAt(yB + 1) + cB * .55 + .2);
+  // flybridge deck (B roof) with a visor forward and an overhang aft on pillars
+  const yC = yB1 + .18, fC = fB1 - .5, bC = bB + 2.7; syLay(X, wh1, {y0: yB1, y1: yC, w: wB + .3, f: fC, b: bC, c: cB * .85, e: eB, r: 1, top: 1, bot: 1}); syLay(X, dkM, {y0: yB1 + .06, y1: yB1 + .12, w: wB + .3, f: fC, b: bC, c: cB * .85, e: eB, r: 1, mode: 1, zc: bC - 1, d: .015});
+  for (const sd of [-1, 1]) cyl(sst, .055, .055, hB, sd * (wB + .05), yB + hB / 2, bC - .45, 0, 0, 8);
+  const cz = fC + 3.2; syLay(X, wh, {y0: yC, y1: yC + .8, w: wB + .22, f: fC + .08, b: bC, c: cB * .85, e: eB, r: 1, mode: 1, zc: cz}); syLay(X, wh1, {y0: yC + .8, y1: yC + .86, w: wB + .26, f: fC + .04, b: bC, c: cB * .85, e: eB, r: 1, mode: 1, zc: cz, d: .02});
+  syLay(X, glass, {y0: yC + .86, y1: yC + 1.2, w: wB + .1, f: fC + .3, f1: fC + .55, b: bC, c: cB * .8, e: eB, r: 1, mode: 1, zc: cz - .6});
+  syRail(X, syRing(wB + .2, fC, bC - .1, cB * .85, eB, .95, 2, cz), yC, .95, sst);
+  box(dkM, -.7, .7, yC, yC + 1.05, fC + 1.6, fC + 2.1); for (const sx of [-.55, .55]) { box(cu, sx - .28, sx + .28, yC, yC + .5, fC + 2.6, fC + 3.1); box(cu, sx - .28, sx + .28, yC + .5, yC + 1.05, fC + 3.05, fC + 3.2); }
+  box(cu, -1.3, 1.3, yC, yC + .38, bC - 2.6, bC - 1.1); box(tk, -1.45, 1.45, yC, yC + .2, bC - 2.75, bC - .95);
+  // hardtop on four slim pillars, LED fascia, radar arch with domes, satcom
+  const yH = yC + 2.4, hf = fC + 1.2, hb2 = bB - 1.2; syLay(X, wh1, {y0: yH, y1: yH + .14, w: wB - .05, f: hf, b: hb2, c: 1.1, e: 2.6, r: .7, top: 1, bot: 1}); syLay(X, S({color: 0x0c0e10, roughness: .3}), {y0: yH + .03, y1: yH + .09, w: wB - .05, f: hf, b: hb2, c: 1.1, e: 2.6, r: .7, d: .015});
+  for (const [px, pz] of [[wB - .45, hf + 1.3], [wB - .35, hb2 - .5]]) for (const sd of [-1, 1]) cyl(sst, .045, .045, yH - yC - .86, sd * px, (yC + .86 + yH) / 2, pz, 0, 0, 6);
+  const az = hb2 - .2, at = yH + 2.0; for (const sd of [-1, 1]) { sySeg(X, wh1, sd * (wB - .25), yC, az + 1.6, sd * 1.0, at, az - .3, .14, 8); sySeg(X, wh1, sd * (wB - .25), yC, az + .8, sd * 1.0, at, az - .3, .1, 8); }
+  box(wh1, -1.15, 1.15, at - .1, at + .12, az - .55, az - .05); add(new THREE.BoxGeometry(1.7, .1, .22), dkM, 0, at + .45, az - .3); cyl(dkM, .12, .14, .3, 0, at + .27, az - .3, 0, 0, 10);
+  for (const sd of [-1, 1]) { add(new THREE.SphereGeometry(.42, 16, 10), wh1, sd * .78, at + .5, az - .3); cyl(wh1, .08, .08, .32, sd * .78, at + .25, az - .3, 0, 0, 8); }
+  add(new THREE.SphereGeometry(.55, 16, 10, 0, TAU, 0, PI / 2), wh1, -.9, yH + .14, hf + 1.4); cyl(wh1, .58, .58, .12, -.9, yH + .2, hf + 1.4, 0, 0, 16);
+  ud.shpMh.position.set(0, at + .9, az - .3); cyl(wh1, .03, .03, .7, 0, at + .5, az - .3, 0, 0, 5);
+  for (const sd of [-1, 1]) ud.shpNl.push(syGlow(g, sd < 0 ? 0xff2020 : 0x20ff40, 1.1, sd * (wB + .12), yB1 - .45, fAt(yB1 - .45) + cB + .3, .9));
+  ud.lightZ = fC - .1; ud.lightY = yB1 + .05; X.flP = [[-wB * .6, yB1 - .05, fC + .35], [wB * .6, yB1 - .05, fC + .35]];
+  // foredeck: sunpad, windlass, bitts; anchors in recessed pockets; long hull windows; teak on the side decks
+  const fz = fA - .3; box(tk, -1.35, 1.35, fb, fb + .12, fz - 2.2, fz); box(cu, -1.25, 1.25, fb + .12, fb + .36, fz - 2.1, fz - .1); box(cu, -1.25, 1.25, fb + .36, fb + .62, fz - .45, fz - .1);
+  const wlz = zb + L * .14; box(dkM, -.7, .7, fb, fb + .22, wlz - .35, wlz + .35); for (const sd of [-1, 1]) { const gy = cyl(sst, .2, .2, .26, sd * .42, fb + .42, wlz, 0, 0, 12); gy.rotation.z = PI / 2; cyl(sst, .08, .09, .35, sd * .9, fb + .18, wlz - 1.3, 0, 0, 8); }
+  for (const sd of [-1, 1]) { const az2 = zb + L * .075, ay = fb - .25, x = X.hx(az2, ay), x2 = X.hx(az2 + .5, ay), ang = Math.atan2(x2 - x, .5); syBox(X, tint, sd * (x - .02), ay, az2 + .1, .1, .75, 1.3, 0, sd * ang); syBox(X, sst, sd * (x + .03), ay + .02, az2 + .1, .06, .62, .13, 0, sd * ang); syBox(X, sst, sd * (x + .03), ay - .28, az2 + .1, .07, .12, .62, 0, sd * ang); }
+  { const za = wz0 + 2.2, zz = wz1 + 4.6; for (const sd of [-1, 1]) for (let i = 0; i < 4; i++) syHullStrip(X, tint, sd, mix(za, zz, i / 4) + .3, mix(za, zz, (i + 1) / 4) - .3, fb * .42, fb * .6, .015, 1); }
+  for (const sd of [-1, 1]) box(tk, sd < 0 ? -hw + .32 : wA + .02, sd < 0 ? -wA - .02 : hw - .32, fb + .006, fb + .02, wz0, wz1 + 3);
+  return yC + .2;
+};
+// a deck plan that follows the hull: starboard side aft to fore at hullHW - inset, a shallow rounded front, port fore to aft (closed across the back)
+function syHullRing(z0, z1, inset, c = 1) { const R = [], n = 24, w = z => Math.max(.3, hullHW(z) - inset), w0 = w(z0);
+  for (let i = 0; i <= n; i++) { const z = mix(z1, z0, i / n); R.push([w(z), z]); }
+  for (let j = 1; j < 8; j++) { const a = j / 8 * PI; R.push([w0 * Math.cos(a), z0 - Math.min(c, w0 * .3) * Math.sin(a)]); }
+  for (let i = 0; i <= n; i++) { const z = mix(z0, z1, i / n); R.push([-w(z), z]); } return R; }
+const syInf = (R, d) => { let cx = 0, cz = 0; for (const p of R) { cx += p[0] / R.length; cz += p[1] / R.length; } return R.map(([x, z]) => { const l = Math.hypot(x - cx, (z - cz) * .35) || 1; return [x + (x - cx) / l * d, z + (z - cz) * .35 / l * d]; }); };
+// window piers: boxes along a ring every step metres (pw wide, out = their outer face distance) so a band behind reads as separate windows
+function syPiers(X, m, R, y0, y1, step, pw, out = .08, skip) { let acc = step * .5;
+  for (let i = 1; i < R.length; i++) { const [xa, za] = R[i - 1], [xb, zb2] = R[i], l = Math.hypot(xb - xa, zb2 - za); if (l < 1e-4) continue; acc += l;
+    while (acc >= step) { acc -= step; const u = 1 - acc / l, x = mix(xa, xb, u), z = mix(za, zb2, u), ang = Math.atan2(xb - xa, zb2 - za), nx = Math.cos(ang), nz = -Math.sin(ang);
+      if (skip && skip(x, z)) continue; syBox(X, m, x, (y0 + y1) / 2, z, .06, y1 - y0, pw, 0, ang); } } }
+// a simple deck of a ship's house from a ring list R (closed): wall, window band and piers, a top slab with overhang and an optional rail round its edge
+function syShipDeck(X, o) { const {R, y, h} = o, wall = o.wall, wb = o.win;
+  X.add(syPrism(R, y, R, y + h, true, 1, o.bot ? 1 : 0), wall, 0, 0, 0);
+  if (wb) { const Rw = syInf(R, .03); X.add(syPrism(Rw, y + wb[0], Rw, y + wb[1], true), o.wm, 0, 0, 0); if (o.step) syPiers(X, wall, syInf(R, .05).concat([syInf(R, .05)[0]]), y + wb[0] - .02, y + wb[1] + .02, o.step, o.pw || .5); }
+  if (o.slab) { const Rs = syInf(R, o.slab); X.add(syPrism(Rs, y + h, Rs, y + h + .18, true, 1, 1), o.slabM || wall, 0, 0, 0); if (o.rail) syRail(X, syInf(R, o.slab - .08).concat([syInf(R, o.slab - .08)[0]]), y + h + .18, 1.0, o.rail); }
+  return y + h + (o.slab ? .18 : 0); }
+// a jib crane: pedestal, house with a cab window, jib at angle a (radians up) pointing along dir (+1 aft / -1 fore), hook block on a wire
+function syCrane(X, m, x, z, y0, ph, jl, a, dir, wall) { const {cyl, box, add} = X; cyl(m, .55 * ph / 7 + .3, .65 * ph / 7 + .35, ph, x, y0 + ph / 2, z, 0, 0, 14); const hy = y0 + ph;
+  box(m, x - 1.1, x + 1.1, hy, hy + 2.2, z - 1.3, z + 1.3); syBox(X, X.darkM, x + .9 * (x > 0 ? -1 : 1), hy + 1.4, z + dir * 1.31, .7, .7, .04);
+  const ex = x, ey = hy + 1.2 + Math.sin(a) * jl, ez = z + dir * (1.2 + Math.cos(a) * jl); sySeg(X, m, x, hy + 1.2, z + dir * 1.2, ex, ey, ez, .32, 4); sySeg(X, m, x, hy + 2.2, z, x, hy + 4.2, z - dir * .4, .18, 6);
+  sySeg(X, X.darkM, x, hy + 4.2, z - dir * .4, ex, ey + .3, ez, .03, 4); if (wall) BW.push({x0: x - 1, x1: x + 1, z0: z - 1, z1: z + 1, y0: 0, y1: ph + 2});
+  const hd = Math.min(ey - y0 - 2, 6); sySeg(X, X.darkM, ex, ey, ez, ex, ey - hd, ez, .025, 4); box(X.yel, ex - .25, ex + .25, ey - hd - .5, ey - hd, ez - .2, ez + .2); return [ex, ey, ez]; }
+// [12] Goliath: geared handysize bulk carrier. Raised forecastle with windlasses, six hatch covers on coamings with four jib cranes between them, one pipe run to port,
+// an aft house of five decks on the shell with a full-width bridge and wings (the helm camera sits behind its glass), a square funnel, a free-fall lifeboat on a stern ramp
+SY_SUP[12] = X => {
+  const {g, L, hw, fb, zs, zb, wz0, wz1, ww, hh, S, add, box, cyl, glass, wm, steel, darkM} = X, ud = g.userData;
+  const wh = S({color: 0xe9e7e0, roughness: .5}), whD = S({color: 0xe9e7e0, roughness: .5, side: THREE.DoubleSide}), dk = S({color: 0x2a2c2e, roughness: .7, side: THREE.DoubleSide}), dm = S({color: 0x5a3a30, roughness: .8, metalness: .2});
+  const hm = S({color: 0x3c5446, roughness: .65, metalness: .3}), cm = S({color: 0x6a2a20, roughness: .75, metalness: .2}), cr = S({color: 0xd8a020, roughness: .55}), pm = S({color: 0x9a8a5a, roughness: .6, metalness: .4}), rl = X.whiteM;
+  // forecastle: raised deck following the hull, its aft face with doors, windlasses, mooring bitts, foremast with a light
+  const fz1 = zb + L * .09, FR = syHullRing(zb + 1.2, fz1, .35, .2), fy = fb + 2.6; add(syPrism(FR, fb, FR, fy, true, 1, 0), cm, 0, 0, 0); 
+  for (const sx of [-4, 4]) { box(wh, sx - .6, sx + .6, fb, fb + 2, fz1 + .01, fz1 + .05); box(darkM, sx - 1.2, sx + 1.2, fy, fy + .5, fz1 - 9, fz1 - 7); const wl = add(new THREE.CylinderGeometry(.8, .8, 1.6, 14), S({color: 0x2a5a3a, metalness: .4}), sx, fy + 1.1, fz1 - 8); wl.rotation.z = PI / 2; cyl(darkM, .35, .35, .9, sx * .5, fy + .45, fz1 - 4, 0, 0, 10); }
+  syRail(X, [[-hullHW(fz1) + .6, fz1], [hullHW(fz1) - .6, fz1]], fy, 1, rl); { const my = syMast(X, rl, 0, zb + 7, fy, 9, 1.4); ud.shpNl.push(syGlow(g, 0xfff2dc, 1.8, 0, my + .2, zb + 7, 0)); }
+  // six hatch covers on coamings (walls where they reach the walkable deck), four cranes in the gaps, a pipe run and catwalk posts to port
+  const h0 = fz1 + 2.5, h1 = zs - 34, n = 6, gap = 5.6, hl = (h1 - h0 - gap * (n - 1)) / n, cx = hw - 5.6, crz = [];
+  for (let i = 0; i < n; i++) { const z0 = h0 + i * (hl + gap), z1 = z0 + hl; box(cm, -cx, cx, fb, fb + 1.5, z0, z1, 1); X.add(syPrism(syRing(cx + .15, z0 - .15, z1 + .15, 0, 2, 0), fb + 1.5, syRing(cx - .3, z0, z1, 0, 2, 0), fb + 2.05, true, 1, 0), hm, 0, 0, 0);
+    for (let k = 1; k < 6; k++) box(hm, -cx - .1, cx + .1, fb + 1.5, fb + 1.9, z0 + k * hl / 6 - .08, z0 + k * hl / 6 + .08); box(hm, -.06, .06, fb + 2.02, fb + 2.12, z0 + .2, z1 - .2);
+    if (i < n - 1 && i !== 2) crz.push(z1 + gap / 2); }
+  crz.forEach((z, i) => syCrane(X, cr, 0, z, fb, 8, 22, .28, i % 2 ? 1 : -1, z > BDECK.z0 - 2));
+  { const px = -(hw - 3.4); cyl(pm, .3, .3, h1 - h0, px, fb + .6, (h0 + h1) / 2, PI / 2); cyl(pm, .16, .16, h1 - h0, px + .5, fb + .4, (h0 + h1) / 2, PI / 2); BW.push({x0: px - .4, x1: px + .7, z0: BDECK.z0, z1: h1, y0: 0, y1: .9});
+    for (let z = h0; z < h1; z += 8) box(steel, px - .05, px + .05, fb, fb + .6, z, z + .1); }
+  // aft house: a skin round the shell (square windows), five decks, bridge with wings (camera inside), radar mast, funnel on the casing, free-fall lifeboat on a ramp, provision crane
+  const hf = wz0 - .65, hb = wz1 + .3, wA = ww + .25, y1 = fb + hh + .22, Rh = syRing(wA, hf, hb, .3, 6, .4); add(syPrism(Rh, fb - .02, Rh, y1, true, 1, 0), whD, 0, 0, 0);
+  { const Rw = syRing(wA + .03, hf - .03, hb + .03, .3, 6, .43, 1, hb + .03); add(syPrism(Rw, fb + 1.0, Rw, fb + 1.95, false), glass, 0, 0, 0); }
+  // the band between the shell's windows and the skin: keep it see-through (glass) but frame it with piers
+  syPiers(X, wh, syRing(wA + .05, hf - .05, hb + .05, .3, 6, .45, 1, hb), fb + 1.0, fb + 1.95, 1.8, .45);
+  const DH = 2.9, nd = 5; let y = y1; for (let i = 0; i < nd; i++) { const R = syRing(wA - (i > 2 ? .4 : 0), hf + (i > 2 ? .2 : 0), hb - i * 1.6, .3, 6, .4); y = syShipDeck(X, {R, y, h: DH - .18, wall: wh, win: [.95, 1.95], wm, step: 1.7, pw: .62, slab: .12, slabM: steel});
+    if (i) syRail(X, [[-(wA - .1), hb - i * 1.6 + .2], [-(wA - .1), hb - (i - 1) * 1.6 - .12], [wA - .1, hb - (i - 1) * 1.6 - .12], [wA - .1, hb - i * 1.6 + .2]], y - DH, 1, rl); }
+  const yb = y, eyeY = fb + (X.H.eye || 18.6), bf = wz0 - 1.7, bb = wz0 + 7.5, wB = wA - .2, BH = 2.85, fAt = q => mix(bf + .45, bf, (q - yb - 1) / 1.4);
+  const RB = (yy, d = 0) => syRing(wB + d, (yy < yb + 1 ? bf + .45 : fAt(yy)) - d, bb + d, .5, 7, .4 + d);
+  add(syPrism(RB(yb), yb, RB(yb + 1), yb + 1, true), whD, 0, 0, 0); add(syPrism(RB(yb + 1), yb + 1, RB(yb + 2.4), yb + 2.4, true), glass, 0, 0, 0); add(syPrism(RB(yb + 2.4), yb + 2.4, RB(yb + BH), yb + BH, true, 1, 0), whD, 0, 0, 0);
+  syMull(X, darkM, RB(yb + 1.7, .01), yb + 1, yb + 2.4, 1.6, .04, 1.5); syLay(X, darkM, {y0: yb + 2.4, y1: yb + 2.52, w: wB + .05, f: bf - .25, b: bb, c: .5, e: 7, r: .4, top: 1, bot: 1}); add(syPrism(RB(yb, -.06), yb, RB(yb + 1, -.06), yb + 1, true), dk, 0, 0, 0);
+  { const Rl = syRing(wB - .1, bf + .6, bb - .1, .5, 7, .3, 2, bf + 2.2), Rc = syRing(wB - .1, bf + .5, bb - .1, .5, 7, .3); add(syPrism(Rl, yb, Rl, yb + BH - .05, false), dk, 0, 0, 0); add(syPrism(Rc, yb + BH - .12, Rc, yb + BH - .1, true, 0, 1), dk, 0, 0, 0); }
+  box(darkM, -3.5, 3.5, yb, yb + .8, bf + .62, bf + .9); add(new THREE.BoxGeometry(5, .02, .2), S({color: 0x201000, emissive: 0xffa040, emissiveIntensity: .5}), 0, yb + .81, bf + .76); add(syPrism(RB(yb), yb - .16, RB(yb), yb, true, 1, 1), wh, 0, 0, 0);
+  for (const sd of [-1, 1]) { const xa = sd * wB, xb = sd * (hw + .35), x0 = Math.min(xa, xb), x1 = Math.max(xa, xb); box(wh, x0, x1, yb - .25, yb, bf + .5, bf + 4); box(wh, x0, x1, yb, yb + 1.05, bf + .5, bf + .62); box(wh, x0, x1, yb + 2.4, yb + 2.6, bf + .3, bf + 4);
+    add(new THREE.BoxGeometry(x1 - x0, 1.25, .03), glass, (xa + xb) / 2, yb + 1.7, bf + .56); box(wh, xb - .1 * sd - .06, xb - .1 * sd + .06, yb + 1, yb + 2.4, bf + .5, bf + .62); ud.shpNl.push(syGlow(g, sd < 0 ? 0xff2020 : 0x20ff40, 1.6, xb, yb + 2.8, bf + 1.6, .9)); }
+  const bzb = bf + 4.3, bm = S({color: 0x3a1a10, roughness: .4}); box(bm, -3, 3, yb, yb + 1.1, bzb, bzb + .7); box(S({color: 0x101010, roughness: .3, metalness: .5}), -3.05, 3.05, yb + 1.1, yb + 1.16, bzb - .05, bzb + .75);
+  for (let i = 0; i < 9; i++) cyl(S({color: [0x2a6a2a, 0x8a3a1a, 0xc8b060][i % 3], roughness: .2}), .06, .06, .3, -2.4 + i * .6, yb + 1.31, bzb + .35, 0, 0, 8);
+  const ytop = yb + BH, mz = bf + 3.5, my = syMast(X, wh, 0, mz, ytop, 6, 2.2); for (const [yy, ln] of [[ytop + 3.2, 3.6], [ytop + 4.8, 2.6]]) { box(darkM, -ln / 2, ln / 2, yy, yy + .14, mz - .2, mz + .2); cyl(darkM, .12, .14, .3, 0, yy - .15, mz, 0, 0, 8); }
+  add(new THREE.SphereGeometry(.45, 14, 10), wh, 2.2, ytop + 1.3, mz + 1.5); cyl(wh, .1, .1, 1.1, 2.2, ytop + .55, mz + 1.5, 0, 0, 6); ud.shpMh.position.set(0, my + .3, mz);
+  const fzf = wz1 - 3.5; ud.shpSmoke = syFunnel(X, {y0: y - (DH - .18) - .18, h: 10, w: 3.4, l: 5.6, z: fzf, rk: .12, e: 7, m: wh, band: S({color: 0x1a3a6a}), band2: S({color: 0xe8c040}), top: darkM});
+  // free-fall lifeboat on a ramp over the stern of the house, a provision crane, liferafts, accommodation ladder
+  { const ly = fb + hh + .22 + DH * 1.6, lz = hb + 2.4; for (const sd of [-1, 1]) sySeg(X, steel, sd * 1.4, ly - 2.6, hb + .2, sd * 1.4, ly - .6, lz + 3.4, .14, 6); const lb = add(new THREE.CapsuleGeometry(1.15, 5.2, 4, 12), S({color: 0xe8661c, roughness: .55}), 0, ly, lz + 1); lb.rotation.x = PI / 2 - .55; lb.scale.set(1, 1, 1);
+    syCrane(X, wh, -wA + 1.2, hb - .8, y1 + DH, 1.5, 6, .5, 1, 0); for (const sd of [-1, 1]) for (const dz of [1.5, 3.5]) { const rf = add(new THREE.CylinderGeometry(.35, .35, 1.3, 10), wh, sd * (wA + .5), y1 + DH + .45, hf + dz); rf.rotation.x = PI / 2; } }
+  // hull marks: draft numbers fore and aft, a Plimsoll disc amidships
+  syMarks(X, [[zb + 6, 'draft'], [zs - 3, 'draft'], [(h0 + h1) / 2, 'plim']]);
+  X.flP = [[-wB, yb + 2.7, bf + .6], [wB, yb + 2.7, bf + .6], [-cx, fb + 9, h0 + 1], [cx, fb + 9, h1 - 1]];
+  ud.lightZ = bf - .3; ud.lightY = yb + 2.7; X.puff = 4.5; return ytop;
+};
+// hull marks from one canvas atlas (alpha-tested, so they merge): draft numbers and the Plimsoll disc, on both sides
+function syMarks(X, list) { const m = X.S({map: TX.syMarks || (TX.syMarks = tex(cv(256, 256, (q, w, h) => { q.clearRect(0, 0, w, h); q.fillStyle = '#f2f0e8'; q.font = 'bold 26px sans-serif';
+    for (let i = 0; i < 5; i++) { q.fillText(String(12 - i * 2), 8, 30 + i * 46); q.fillRect(54, 22 + i * 46, 18, 6); }
+    q.lineWidth = 7; q.strokeStyle = '#f2f0e8'; q.beginPath(); q.arc(180, 128, 42, 0, TAU); q.stroke(); q.fillRect(124, 124, 112, 8); q.fillRect(196, 70, 56, 7); q.fillRect(196, 96, 6, 60); q.font = 'bold 22px sans-serif'; q.fillText('L', 140, 190); q.fillText('R', 205, 190); }))), alphaTest: .5, roughness: .6, side: THREE.DoubleSide});
+  for (const [z, k] of list) for (const sd of [-1, 1]) { const y = k === 'plim' ? X.fb * .55 : X.fb * .5, sz = k === 'plim' ? Math.min(3, X.fb * 1.1) : Math.min(2.6, X.fb * 1.3), pg = new THREE.PlaneGeometry(k === 'plim' ? sz : sz * .5, sz), uv = pg.attributes.uv;
+    for (let i = 0; i < uv.count; i++) uv.setX(i, k === 'plim' ? .5 + uv.getX(i) * .5 : uv.getX(i) * .3); const p = X.add(pg, m, sd * (X.hx(z, y) + .03), y, z); p.rotation.y = sd * PI / 2; p.castShadow = false; } }
+// a generic forward/aft ship house over the shared shell for the work ships: a skin round the shell with framed windows in line with its glass,
+// decks above (wider, overhanging the side decks), a bridge with forward-raked wrap-round glass, wings and a dark liner (the helm camera sits inside); returns {yb, ytop, bf, wB}
+function syWorkHouse(X, o) {
+  const {g, fb, hw, wz0, wz1, ww, hh, S, add, box, glass, wm, darkM} = X, ud = g.userData, wh = o.wall, whD = o.wallD, dk = S({color: 0x26292c, roughness: .7, side: THREE.DoubleSide});
+  const hf = wz0 - .65, hb = wz1 + .3, wA = ww + .25, y1 = fb + hh + .22, Rh = syRing(wA, hf, hb, .35, 6, .4); add(syPrism(Rh, fb - .02, Rh, y1, true, 1, 0), whD, 0, 0, 0);
+  { const Rw = syRing(wA + .03, hf - .03, hb + .03, .35, 6, .43, 1, hb + .03); add(syPrism(Rw, fb + 1.0, Rw, fb + 1.95, false), glass, 0, 0, 0); syPiers(X, wh, syRing(wA + .05, hf - .05, hb + .05, .35, 6, .45, 1, hb), fb + 1.0, fb + 1.95, 1.6, .4); }
+  let y = y1; const DH = o.DH || 2.7;
+  for (let i = 0; i < o.n; i++) { const w = o.w ? o.w(i) : 0, f = o.f(i), b = o.b(i), R = o.hull ? syHullRing(f, b, o.hull(i), o.c ?? 1.2) : syRing(w, f, b, o.c ?? 1.2, o.e ?? 3, .5); y = syShipDeck(X, {R, y, h: DH - .12, wall: wh, win: [.9, 1.85], wm, step: o.step || 1.5, pw: .5, slab: .12, slabM: o.slabM || wh}); }
+  const yb = y, BH = 2.8, bf = wz0 - 1.75, bb = o.bb, c = o.bc ?? 1.6, wB = o.wB ?? hullHW(bf + c + .2) - o.hullB, e = o.be ?? 3, fAt = q => q < yb + 1 ? bf + .4 : mix(bf + .4, bf, (q - yb - 1) / 1.4), RB = (q, d = 0) => o.hullB != null ? syHullRing(fAt(q) - d, bb + d, o.hullB - d, c) : syRing(wB + d, fAt(q) - d, bb + d, c, e, .5 + d);
+  add(syPrism(RB(yb), yb, RB(yb + 1), yb + 1, true), whD, 0, 0, 0); add(syPrism(RB(yb + 1), yb + 1, RB(yb + 2.4), yb + 2.4, true), glass, 0, 0, 0); add(syPrism(RB(yb + 2.4), yb + 2.4, RB(yb + BH), yb + BH, true, 1, 0), whD, 0, 0, 0);
+  syMull(X, darkM, RB(yb + 1.7, .01), yb + 1, yb + 2.4, 1.5, .04, 1.5); { const Rv = RB(yb + 2.45, .25); add(syPrism(Rv, yb + 2.4, Rv, yb + 2.5, true, 1, 1), darkM, 0, 0, 0); add(syPrism(RB(yb, -.06), yb, RB(yb + 1, -.06), yb + 1, true), dk, 0, 0, 0); }
+  { const Rc = RB(yb + BH - .1, -.12), zc = bf + c + .8, Rl = o.hullB != null ? syAft(Rc, zc) : syRing(wB - .12, bf + .6, bb - .12, c, e, .4, 2, zc); add(syPrism(Rl, yb, Rl, yb + BH - .05, false), dk, 0, 0, 0); add(syPrism(Rc, yb + BH - .12, Rc, yb + BH - .1, true, 0, 1), dk, 0, 0, 0); add(syPrism(RB(yb), yb - .16, RB(yb), yb, true, 1, 1), wh, 0, 0, 0); add(syPrism(RB(yb, -.1), yb + .02, RB(yb, -.1), yb + .03, true, 1, 0), X.deckM, 0, 0, 0); }
+  box(darkM, -1.3, 1.3, yb, yb + .7, bf + .62, bf + .82); add(new THREE.BoxGeometry(2.2, .02, .14), S({color: 0x201000, emissive: 0xffa040, emissiveIntensity: .5}), 0, yb + .71, bf + .72);
+  if (o.wings) for (const sd of [-1, 1]) { const xa = sd * (wB - .3), xb = sd * o.wings, x0 = Math.min(xa, xb), x1 = Math.max(xa, xb), z0 = bf + c + .2, z1 = z0 + 2.6; box(wh, x0, x1, yb - .2, yb, z0, z1); box(wh, x0, x1, yb, yb + 1.05, z0, z0 + .1); box(wh, x0, x1, yb + 2.4, yb + 2.55, z0 - .2, z1);
+    add(new THREE.BoxGeometry(x1 - x0, 1.25, .03), glass, (xa + xb) / 2, yb + 1.7, z0 + .05); ud.shpNl.push(syGlow(g, sd < 0 ? 0xff2020 : 0x20ff40, 1.3, xb, yb + 2.75, z0 + 1, .9)); }
+  ud.lightZ = bf - .3; ud.lightY = yb + 2.7; return {yb, ytop: yb + BH, bf, wB, y1, hb, wA}; }
+// [6] Polar Bear: research icebreaker. Tall forward block (skin + three decks + bridge with wings), an enclosed mast with an ice-lookout cabin, one broad funnel aft of the house,
+// a hangar with the helideck on its roof, yellow cranes, orange lifeboats in davits, a research A-frame at the stern, scuffed ice belt (form)
+SY_SUP[6] = X => {
+  const {g, L, hw, fb, zs, zb, wz0, wz1, ww, S, add, box, cyl, steel, darkM, yel} = X, ud = g.userData, wh = S({color: 0xecebe6, roughness: .5}), whD = S({color: 0xecebe6, roughness: .5, side: THREE.DoubleSide}), red = S({color: 0xa01c14, roughness: .55}), rl = X.whiteM;
+  const H0 = syWorkHouse(X, {n: 3, DH: 2.6, wall: wh, wallD: whD, hull: i => .5 + i * .15, f: i => wz0 - .9 + i * .1, b: i => wz1 + 6.5 - i * 1.6, c: 1.6, bb: wz1 + 3.2, hullB: .7, bc: 1.4, wings: hw + .3, step: 1.4});
+  const {yb, ytop, bf} = H0, mz = bf + 4.2;
+  // enclosed mast with the crow's nest, radars above, masthead
+  box(wh, -.55, .55, ytop, ytop + 5.2, mz - .55, mz + .55); box(red, -.57, .57, ytop + 3.6, ytop + 4.2, mz - .57, mz + .57); box(wh, -1.1, 1.1, ytop + 5.2, ytop + 7.1, mz - .9, mz + .9); add(new THREE.BoxGeometry(2.24, .7, 1.84), X.wm, 0, ytop + 6.3, mz); box(wh, -1.25, 1.25, ytop + 7.1, ytop + 7.25, mz - 1.05, mz + 1.05);
+  const rad = add(new THREE.BoxGeometry(2.6, .14, .3), darkM, 0, ytop + 8.2, mz); ud.radar = rad; cyl(darkM, .1, .12, .9, 0, ytop + 7.7, mz, 0, 0, 8); cyl(steel, .06, .08, 2.5, .8, ytop + 8.5, mz + .3, 0, 0, 6); ud.shpMh.position.set(.8, ytop + 9.9, mz + .3);
+  add(new THREE.SphereGeometry(.45, 14, 10), wh, -1.6, ytop + .8, mz + 2.2); cyl(wh, .08, .08, .5, -1.6, ytop + .25, mz + 2.2, 0, 0, 6);
+  // the funnel on the house top aft, lifeboats on the deck-1 sides in davits
+  const fz = wz1 + 4.6; ud.shpSmoke = syFunnel(X, {y0: H0.y1 + 2.6 * 2, h: 8.5, w: 2.9, l: 5, z: fz, rk: .1, e: 4, m: red, band: wh, band2: S({color: 0x1a3a6a}), top: darkM});
+  for (const sd of [-1, 1]) syLifeboat(X, sd, sd * (hw - .4), H0.y1 + 1.4, wz1 + 1.5, 6.4, 1);
+  // hangar with the helideck on its roof (net edge, H marking, lights), research A-frame at the stern, a crane to port, containers
+  const hz0 = wz1 + 9, hz1 = hz0 + 9, hy = fb + 4.4; box(wh, -3.2, 3.2, fb, hy, hz0, hz1, 1); box(S({color: 0x8a8e92, roughness: .7, metalness: .3}), -2.4, 2.4, fb + .1, hy - .5, hz1 + .01, hz1 + .05); for (let i = 1; i < 10; i++) box(darkM, -2.4, 2.4, fb + .1 + i * .38, fb + .12 + i * .38, hz1 + .05, hz1 + .07);
+  syHeli(X, 0, hy, (hz0 + hz1) / 2, Math.min(hw - .6, 7.2), 4.6);
+  const az = zs - 1.6; for (const sd of [-1, 1]) { sySeg(X, yel, sd * (hw - 1.6), fb, az + .2, sd * (hw - 2.4), fb + 6.2, az - .6, .28, 8); BW.push({x0: sd * (hw - 1.6) - .4, x1: sd * (hw - 1.6) + .4, z0: az - .2, z1: az + .6, y0: 0, y1: 3}); sySeg(X, steel, sd * (hw - 1.6), fb + .4, az - 1.6, sd * (hw - 2.2), fb + 3.4, az - .3, .1, 6); }
+  box(yel, -(hw - 2.2), hw - 2.2, fb + 6, fb + 6.6, az - .9, az - .3); cyl(darkM, .4, .4, .3, 0, fb + 5.7, az - .6, 0, 0, 12);
+  syCrane(X, yel, -(hw - 1.6), hz1 + 4, fb, 3.2, 9, .55, 1, 1);
+  for (const [cz, cc] of [[hz1 + 7.5, 0x2a6a8a], [hz1 + 7.5 + 6.3, 0xd8d8d0]]) box(S({color: cc, roughness: .7}), 1.2, 3.6, fb, fb + 2.5, cz, cz + 6, 1);
+  X.flP = [[-(hw - 1.2), yb + 2.7, bf + 2.8], [hw - 1.2, yb + 2.7, bf + 2.8], [0, hy + .5, hz0 - .5]]; X.puff = 3.6;
+  return ytop; };
+// helideck: octagon slab with a yellow edge, safety net, white H in a yellow circle, edge lights; sits at y on its own support (caller)
+function syHeli(X, x, y, z, r, legs) { const {S, add, cyl} = X, gm = S({color: 0x3a4a3e, roughness: .8}), ye = S({color: 0xe8c020, roughness: .6}), wt = S({color: 0xf0f0ea, roughness: .6});
+  const R = []; for (let i = 0; i < 8; i++) { const a = (i + .5) / 8 * TAU; R.push([x + Math.cos(a) * r, z + Math.sin(a) * r]); } add(syPrism(R, y, R, y + .25, true, 1, 1), gm, 0, 0, 0);
+  const Ry = syInf(R, .04); add(syPrism(Ry, y + .05, Ry, y + .27, true), ye, 0, 0, 0); const Rn = syInf(R, .9); add(syPrism(Rn, y + .05, R, y + .2, true), S({color: 0x2a2a28, roughness: 1, side: THREE.DoubleSide}), 0, 0, 0);
+  const ci = new THREE.RingGeometry(r * .42, r * .5, 32); ci.rotateX(-PI / 2); add(ci, ye, x, y + .26, z); for (const dx of [-.9, .9]) X.box(wt, x + dx * r * .22 - .18, x + dx * r * .22 + .18, y + .25, y + .262, z - r * .26, z + r * .26); X.box(wt, x - r * .2, x + r * .2, y + .25, y + .262, z - .18, z + .18);
+  for (const p of R) X.cyl(S({color: 0x40ff60, emissive: 0x20a030, emissiveIntensity: 1}), .06, .06, .12, p[0], y + .32, p[1], 0, 0, 6);
+  if (legs) for (const [lx, lz] of [[-.6, -.6], [.6, -.6], [-.6, .6], [.6, .6]]) sySeg(X, X.steel, x + lx * r, y - legs, z + lz * r * .5, x + lx * r * .8, y, z + lz * r * .8, .12, 6); }
+// [5] Deep Right: dive support vessel. High forward house (skin + two decks + bridge with wings and aft DP windows), helideck over the bridge front on struts,
+// lattice mast with radars and domes, slim uptakes, a knuckle-boom crane to port, the stern A-frame with rams and sheave, ROV and sat-dive hangars, life rafts
+SY_SUP[5] = X => {
+  const {g, L, hw, fb, zs, zb, wz0, wz1, ww, S, add, box, cyl, steel, darkM, yel} = X, ud = g.userData, wh = S({color: 0xeeeeea, roughness: .5}), whD = S({color: 0xeeeeea, roughness: .5, side: THREE.DoubleSide}), bl = S({color: 0x24486a, roughness: .55}), rl = X.whiteM;
+  const H0 = syWorkHouse(X, {n: 2, DH: 2.7, wall: wh, wallD: whD, hull: i => .45 + i * .1, f: i => wz0 - .8, b: i => wz1 + 7 - i * 1.5, c: 1.6, bb: wz1 + 2, hullB: .5, bc: 1.4, wings: hw + .25, step: 1.4});
+  const {yb, ytop, bf} = H0;
+  // aft-facing DP windows on the bridge back (dark band)
+  box(X.wm, -(hw - 1.6), hw - 1.6, yb + 1.0, yb + 2.3, wz1 + 2.02, wz1 + 2.06);
+  // helideck over the bridge, overhanging forward, on struts down to the forecastle
+  const hr = Math.min(hw + 1.2, 7.4), hz = bf + 1.6, hy = ytop + .9; syHeli(X, 0, hy, hz, hr, 0); for (const sd of [-1, 1]) { sySeg(X, steel, sd * 1.6, H0.y1 + .4, bf + 1.2, sd * 2.2, hy, hz - hr * .6, .16, 6); sySeg(X, steel, sd * 1.2, ytop, bf + 2.6, sd * 1.8, hy, hz - hr * .2, .14, 6); cyl(steel, .14, .14, hy - ytop, sd * 1.8, (ytop + hy) / 2, hz + 3, 0, 0, 6); }
+  // lattice mast behind the helideck, radars, domes, masthead; slim uptakes on the house top aft
+  const mz = wz1 + 3.6, my0 = yb, MH = 9.5; for (const sd of [-1, 1]) for (const sz of [-1, 1]) sySeg(X, wh, sd * .9, my0, mz + sz * .7, sd * .35, my0 + MH, mz + sz * .25, .07, 5);
+  for (let k = 1; k < 9; k++) { const yy = my0 + k * 1.05, w2 = mix(.9, .35, k * 1.1 / 6.5), d2 = mix(.7, .25, k * 1.1 / 6.5); box(wh, -w2, w2, yy - .03, yy + .03, mz - d2, mz + d2); }
+  for (const [yy, ln] of [[my0 + MH - 2.6, 3], [my0 + MH - 1.2, 2.4]]) { box(darkM, -ln / 2, ln / 2, yy, yy + .12, mz - .18, mz + .18); cyl(darkM, .1, .12, .3, 0, yy - .15, mz, 0, 0, 8); }
+  for (const sd of [-1, 1]) { add(new THREE.SphereGeometry(.4, 14, 10), wh, sd * 1.5, my0 + MH - 3.5, mz); box(wh, sd * 1.5 - .25, sd * 1.5 + .25, my0 + MH - 4.2, my0 + MH - 3.9, mz - .25, mz + .25); sySeg(X, wh, sd * .5, my0 + MH - 3.9, mz, sd * 1.5, my0 + MH - 3.9, mz, .05, 5); }
+  ud.shpMh.position.set(0, my0 + MH + .4, mz); for (const sd of [-1, 1]) { const c = cyl(S({color: 0x2a2a2a, roughness: .6}), .45, .5, 3.2, sd * (hw - 1.8), H0.y1 + 2.7 * 2 + 1.6, wz1 + 5.6, 0, 0, 12); }
+  ud.shpSmoke = [hw - 1.8, H0.y1 + 2.7 * 2 + 3.3, wz1 + 5.6];
+  // knuckle-boom crane to port (same footprint as before), ROV and sat-dive hangars with roll-up doors, a container, life rafts on the house sides
+  const kx = -hw + 2, kz = zs - 8; cyl(yel, .6, .8, 4.2, kx, fb + 2.1, kz, 0, 0, 14); BW.push({x0: -hw + 1.2, x1: -hw + 2.8, z0: zs - 8.8, z1: zs - 7.2, y0: 0, y1: 3}); box(yel, kx - .9, kx + .9, fb + 4.2, fb + 5.6, kz - .9, kz + .9);
+  sySeg(X, yel, kx + .3, fb + 5, kz - .3, kx + .9, fb + 11.5, kz - 6, .38, 6); sySeg(X, yel, kx + .9, fb + 11.5, kz - 6, kx + 1.2, fb + 7.2, kz - 12.5, .3, 6); sySeg(X, steel, kx + .2, fb + 4.6, kz - .6, kx + .7, fb + 9, kz - 4.6, .16, 6); sySeg(X, darkM, kx + 1.2, fb + 7.2, kz - 12.5, kx + 1.2, fb + 3.6, kz - 12.5, .03, 4); box(yel, kx + .95, kx + 1.45, fb + 3.1, fb + 3.6, kz - 12.75, kz - 12.25);
+  const rz0 = wz1 + 8.6; for (const [x0, x1, z0, z1] of [[1.2, hw - .6, rz0, rz0 + 6], [-(hw - .6), -1.2, rz0, rz0 + 4.5]]) { box(wh, x0, x1, fb, fb + 3.2, z0, z1, 1); box(S({color: 0x8a8e92, roughness: .7, metalness: .3}), x0 + .3, x1 - .3, fb + .05, fb + 2.8, z1 + .01, z1 + .04); for (let i = 1; i < 8; i++) box(darkM, x0 + .3, x1 - .3, fb + .05 + i * .34, fb + .07 + i * .34, z1 + .04, z1 + .06); box(bl, x0 - .02, x1 + .02, fb + 3.0, fb + 3.25, z0 - .02, z1 + .02); }
+  box(S({color: 0x8a3a1a, roughness: .7}), 1.4, 3.8, fb, fb + 2.5, rz0 + 7, rz0 + 13, 1);
+  // A-frame: tapered legs, cross beam, sheave, hydraulic rams (walls as before)
+  for (const sd of [-1, 1]) { sySeg(X, yel, sd * (hw - 1.5), fb, zs - 1, sd * (hw - 1.7), fb + 5, zs - .4, .3, 6); box(yel, sd * (hw - 1.5) - .2, sd * (hw - 1.5) + .2, fb, fb + .5, zs - 1.2, zs - .8, 1); sySeg(X, steel, sd * (hw - 1.5), fb + .3, zs - 3, sd * (hw - 1.62), fb + 3.2, zs - .75, .12, 6); }
+  box(yel, -hw + 1.3, hw - 1.3, fb + 4.8, fb + 5.3, zs - .7, zs - .1); { const sv = cyl(darkM, .45, .45, .25, -2.4, fb + 4.6, zs - .4, 0, 0, 14); sv.rotation.z = PI / 2; }
+  for (const sd of [-1, 1]) for (const dz of [1.4, 3]) { const rf = add(new THREE.CylinderGeometry(.35, .35, 1.3, 10), wh, sd * (hw - .4), H0.y1 + .5, wz1 + dz); rf.rotation.x = PI / 2; }
+  syMarks(X, [[zb + 3.5, 'draft'], [zs - 2.5, 'draft']]);
+  X.flP = [[-(hw - 1), yb + 2.7, bf + 3], [hw - 1, yb + 2.7, bf + 3], [0, fb + 5.5, zs - 1]]; X.puff = 2.4;
+  return hy + .3; };
+// the aft part of a closed hull ring (port fore to aft, across, starboard aft to fore) from z = zc aft
+function syAft(R, zc) { const n = R.length, h = (n - 7) / 2, S1 = R.slice(0, h).filter(p => p[1] > zc), P1 = R.slice(n - h).filter(p => p[1] > zc); return P1.concat(S1); }
+// [7] MS Serenade: 1990s small luxury cruise ship. The covered promenade under a hull-painted deck with two rows of windows, terraced decks stepping aft with
+// balconies, the boat deck with lifeboats in davits, a rounded raked bridge with wings (helm camera inside), a dome mast, a raked teardrop funnel, the pool deck
+SY_SUP[7] = X => {
+  const {g, L, hw, fb, zs, zb, wz0, wz1, ww, hh, S, add, box, cyl, glass, wm, steel, darkM} = X, ud = g.userData;
+  const cr = S({color: 0xf2efe6, roughness: .45}), crD = S({color: 0xf2efe6, roughness: .45, side: THREE.DoubleSide}), nv = S({color: 0x1a2a4a, roughness: .5}), dk = S({color: 0x1e2226, roughness: .6, side: THREE.DoubleSide}), tint = S({color: 0x12181e, roughness: .08, metalness: .5}), rl = S({color: 0xe8e6e0, roughness: .5}), tk = S({map: TX.wood, color: 0xb08a5a, roughness: .7});
+  const y0 = fb + 2.7, zf = wz0 - 1.6, za = zs - 9.5;
+  // promenade pillars (walls) and the hull-painted deck above the promenade: flush with the hull side, two rows of windows
+  for (let z = wz1 + 4; z < za - 2; z += 9) for (const sd of [-1, 1]) { const x = sd * (hullHW(z) - .55); cyl(cr, .16, .16, y0 - fb, x, (fb + y0) / 2, z, 0, 0, 8); BW.push({x0: x - .2, x1: x + .2, z0: z - .2, z1: z + .2, y0: 0, y1: 2.6}); }
+  const R1 = syHullRing(zf, za, .05, 2.5); add(syPrism(R1, y0, R1, y0 + 5.6, true, 1, 1), cr, 0, 0, 0);
+  for (const yy of [y0 + .9, y0 + 3.6]) { const Rw = syInf(R1, .025); add(syPrism(Rw, yy, Rw, yy + .75, true), wm, 0, 0, 0); syPiers(X, cr, syInf(R1, .055), yy - .02, yy + .77, 1.25, .45); }
+  // boat deck: lifeboats in davits along both sides
+  const yL = y0 + 5.6; for (const sd of [-1, 1]) for (let i = 0; i < 8; i++) { const z = wz1 + 12 + i * (za - wz1 - 26) / 7; syLifeboat(X, sd, sd * (hullHW(z) - 1.6), yL + 1.1, z, 6.6, 1); }
+  // terraced decks: two balcony decks, a window deck, the bridge deck, the sun deck with the pool and funnel
+  const D = [{w: 3.2, f: zf + 1.2, b: za - 8, bal: 1}, {w: 3.5, f: zf + 1.6, b: za - 18, bal: 1}, {w: 3.9, f: zf + 2, b: za - 30}];
+  let y = yL; for (const d of D) { const R = syHullRing(d.f, d.b, d.w, 3), DH = 2.9; add(syPrism(R, y, R, y + DH - .18, true, 1, 0), cr, 0, 0, 0);
+    if (d.bal) { const Rb = syInf(R, .03); add(syPrism(Rb, y + .25, Rb, y + 2.45, true), tint, 0, 0, 0); syPiers(X, cr, syInf(R, .2), y + .1, y + 2.6, 3.2, .4, .3); const Rr = syInf(R, .5); add(syPrism(Rr, y + .9, Rr, y + 1.0, true), rl, 0, 0, 0); add(syPrism(syInf(R, .45), y, syInf(R, .55), y + .9, true), S({color: 0x3a5a6a, roughness: .1, metalness: .4}), 0, 0, 0); }
+    else { const Rw = syInf(R, .03); add(syPrism(Rw, y + .9, Rw, y + 1.9, true), wm, 0, 0, 0); syPiers(X, cr, syInf(R, .06), y + .88, y + 1.92, 1.6, .5); }
+    const Rs = syInf(R, d.bal ? .6 : .3); add(syPrism(Rs, y + DH - .18, Rs, y + DH, true, 1, 1), cr, 0, 0, 0); syRail(X, syInf(R, d.bal ? .5 : .22).concat([syInf(R, d.bal ? .5 : .22)[0]]), y + DH, 1, rl); y += DH; }
+  // bridge: rounded, forward-raked windows wrapping round, wings to the ship's side, the dark interior behind (helm camera at wz0 - .7)
+  const yb = y, BH = 2.9, bf = wz0 - 1.8, wB = hw - 4, bb = bf + 9, fAt = q => q < yb + 1 ? bf + .4 : mix(bf + .4, bf, (q - yb - 1) / 1.5), RB = (q, d = 0) => syHullRing(fAt(q) - d, bb + d, 3.6 - d, 4);
+  add(syPrism(RB(yb), yb, RB(yb + 1), yb + 1, true), crD, 0, 0, 0); add(syPrism(RB(yb + 1), yb + 1, RB(yb + 2.5), yb + 2.5, true), glass, 0, 0, 0); add(syPrism(RB(yb + 2.5), yb + 2.5, RB(yb + BH), yb + BH, true, 1, 0), crD, 0, 0, 0);
+  syMull(X, darkM, RB(yb + 1.7, .01), yb + 1, yb + 2.5, 1.6, .04, 1.5); add(syPrism(RB(yb, -.06), yb, RB(yb + 1, -.06), yb + 1, true), dk, 0, 0, 0); { const Rv = RB(yb + 2.6, .25); add(syPrism(Rv, yb + 2.5, Rv, yb + 2.62, true, 1, 1), nv, 0, 0, 0); }
+  { const Rc = RB(yb + BH - .1, -.12), Rl = syAft(Rc, bf + 4); add(syPrism(Rl, yb, Rl, yb + BH - .05, false), dk, 0, 0, 0); add(syPrism(Rc, yb + BH - .12, Rc, yb + BH - .1, true, 0, 1), dk, 0, 0, 0); add(syPrism(RB(yb), yb - .16, RB(yb), yb, true, 1, 1), cr, 0, 0, 0); }
+  box(darkM, -1.4, 1.4, yb, yb + .8, bf + .62, bf + .88); add(new THREE.BoxGeometry(2.4, .02, .2), S({color: 0x201000, emissive: 0xffa040, emissiveIntensity: .5}), 0, yb + .81, bf + .75);
+  for (const sd of [-1, 1]) { const z0 = bf + 4.5, z1 = z0 + 3, xa = sd * (hullHW(z0) - 4), xb = sd * (hw - .2), x0 = Math.min(xa, xb), x1 = Math.max(xa, xb); box(cr, x0, x1, yb - .3, yb, z0, z1); box(cr, x0, x1, yb, yb + 1.1, z0, z0 + .12); box(cr, x0, x1, yb + 2.5, yb + 2.7, z0 - .3, z1);
+    add(new THREE.BoxGeometry(x1 - x0, 1.3, .03), glass, (xa + xb) / 2, yb + 1.8, z0 + .06); ud.shpNl.push(syGlow(g, sd < 0 ? 0xff2020 : 0x20ff40, 2, xb, yb + 2.9, z0 + 1.5, .9)); }
+  // sun deck behind the bridge: pool with blue water, sunbeds, the dome mast, the raked teardrop funnel with the livery
+  const ys = yb + BH, Rsd = syHullRing(bb - 2, za - 34, 4.2, 2); add(syPrism(Rsd, yb, Rsd, ys, true, 1, 0), cr, 0, 0, 0); { const Rw = syInf(Rsd, .03); add(syPrism(Rw, yb + .9, Rw, yb + 1.9, true), wm, 0, 0, 0); syPiers(X, cr, syInf(Rsd, .06), yb + .88, yb + 1.92, 1.6, .5); }
+  syRail(X, syInf(Rsd, -.1).concat([syInf(Rsd, -.1)[0]]), ys, 1, rl); box(tk, -(hw - 4.6), hw - 4.6, ys, ys + .03, bb, za - 35);
+  const pz = (bb + za - 34) / 2 - 3; box(S({color: 0x9ad0e0, roughness: .4}), -3.2, 3.2, ys, ys + .5, pz - 5.2, pz + 5.2); add(new THREE.BoxGeometry(6, .05, 10), S({color: 0x2a9ac8, emissive: 0x0a3a58, emissiveIntensity: .4, roughness: .05, metalness: .2}), 0, ys + .48, pz);
+  for (const sd of [-1, 1]) for (let i = 0; i < 6; i++) { const bz = pz - 4.5 + i * 1.8, bm = syBox(X, S({color: 0xf4f4f0, roughness: .6}), sd * 5, ys + .25, bz, 1.9, .14, .7, 0, 0, 0); syBox(X, S({color: 0x2a5a8a, roughness: .9}), sd * 5 + sd * .2, ys + .36, bz, 1.4, .08, .62); }
+  const mz = bf + 4.2; cyl(cr, .25, .35, 4, 0, ys + 2, mz, 0, 0, 10); add(new THREE.SphereGeometry(1.1, 18, 12), cr, 0, ys + 4.6, mz); for (const [yy, ln] of [[ys + 3.2, 3.2]]) box(darkM, -ln / 2, ln / 2, yy, yy + .12, mz + 1.2, mz + 1.5);
+  ud.shpMh.position.set(0, ys + 6.1, mz); cyl(steel, .04, .04, .6, 0, ys + 5.8, mz, 0, 0, 5);
+  ud.shpSmoke = syFunnel(X, {y0: ys, h: 10.5, w: 3.2, l: 9.5, z: pz + 13, rk: .28, e: 2.2, m: cr, band: nv, band2: S({color: 0xc8a040, roughness: .4, metalness: .5}), top: nv});
+  X.flP = [[-(hw - .4), yb + 3, bf + 6], [hw - .4, yb + 3, bf + 6], [0, ys + 4, pz + 10]]; ud.lightZ = bf - .4; ud.lightY = yb + 2.8; X.puff = 5;
+  return ys; };
+// [3] Iron Mule: short-sea container coaster. Raised forecastle with a windlass and a bow mast, containers on hatch coamings, a deck crane,
+// an aft house of two recessed decks with rails and a full-beam bridge with wings (the 8.9 m helm camera looks out through its glass), a square funnel, a rescue boat
+SY_SUP[3] = X => {
+  const {g, L, hw, fb, zs, zb, wz0, wz1, ww, hh, S, add, box, cyl, glass, steel, darkM, yel} = X, ud = g.userData, wm = new THREE.MeshStandardMaterial({color: 0x101418, emissive: 0xffc070, emissiveIntensity: .1, roughness: .2}); ud.winM = wm;
+  const wh = S({color: 0xe8e6de, roughness: .5}), whD = S({color: 0xe8e6de, roughness: .5, side: THREE.DoubleSide}), rl = X.whiteM, Xw = Object.assign({}, X, {wm});
+  // forecastle, windlass, bow mast
+  const fz1 = zb + 4.6, FR = syHullRing(zb + .6, fz1, .2, .2), fy = fb + 1.4; add(syPrism(FR, fb, FR, fy, true, 1, 0), S({color: 0x1c2c3e, roughness: .6}), 0, 0, 0); add(syPrism(syInf(FR, -.01), fy, syInf(FR, -.01), fy + .01, true, 1, 0), X.deckM, 0, 0, 0); 
+  box(darkM, -1, 1, fy, fy + .35, fz1 - 2.6, fz1 - 1.6); for (const sd of [-1, 1]) { const d = add(new THREE.CylinderGeometry(.35, .35, .5, 12), S({color: 0x2a5a3a, metalness: .4}), sd * .6, fy + .6, fz1 - 2.1); d.rotation.z = PI / 2; }
+  { const my = syMast(X, rl, 0, zb + 2.6, fy, 5, .8); ud.shpNl.push(syGlow(g, 0xfff2dc, 1.2, 0, my + .15, zb + 2.6, 0)); } syRail(X, [[-hullHW(fz1) + .3, fz1], [hullHW(fz1) - .3, fz1]], fy, .9, rl);
+  // hatch coamings with the containers on them (bottom tier walls as before), a deck crane between the holds and the hold hatch
+  const CM = [MAT.cont, MAT.cont2, S({color: 0x2a5a8a}), S({color: 0x8a3a1a}), S({color: 0x3a7a3a})], cy = fb + .55;
+  for (let r = 0; r < 4; r++) { const z0 = zb + L * .2 + r * 6.4; if (z0 + 6 > wz0 - 1) continue; box(steel, -4, 4, fb, cy, z0 - .25, z0 + 6.25, 1);
+    for (let c = -1; c <= 1; c++) { const h = 1 + ((r + c + 3) % 3); for (let k = 0; k < h; k++) box(CM[(r * 3 + c + k + 6) % 5], c * 2.6 - 1.2, c * 2.6 + 1.2, cy + k * 2.5, cy + k * 2.5 + 2.45, z0, z0 + 6, k === 0); } }
+  syCrane(X, yel, -(hw - 1.25), zb + L * .2 + 6.2, fb, 3.6, 8, .5, -1, 1);
+  // aft house (two decks with side rails), bridge with wings
+  const H0 = syWorkHouse(Xw, {n: 2, DH: 2.5, wall: wh, wallD: whD, w: i => ww + .25 - i * .25, f: i => wz0 - .5 + i * .2, b: i => wz1 - .3 - i * 1.2, c: .4, e: 6, bb: wz0 + 4.4, wB: ww + .1, bc: .7, be: 6, wings: hw + .15, step: 1.5});
+  const {yb, ytop, bf} = H0; for (let i = 1; i < 3; i++) syRail(X, [[-(ww + .2), wz1 - .3 - i * 1.2 + .2], [-(ww + .2), wz1 - .3 - (i - 1) * 1.2 - .1], [ww + .2, wz1 - .3 - (i - 1) * 1.2 - .1], [ww + .2, wz1 - .3 - i * 1.2 + .2]], H0.y1 + (i - 1) * 2.5 + 2.5, .95, rl);
+  const mz = bf + 2.4, my = syMast(X, wh, 0, mz, ytop, 3.6, 1.4); box(darkM, -1.1, 1.1, ytop + 2.4, ytop + 2.52, mz - .15, mz + .15); cyl(darkM, .08, .1, .25, 0, ytop + 2.27, mz, 0, 0, 8); ud.shpMh.position.set(0, my + .25, mz);
+  ud.shpSmoke = syFunnel(X, {y0: H0.y1 + 2.5, h: 5.2, w: 1.15, l: 2.2, z: wz1 - 1.6, rk: .06, e: 7, m: X.redM, band: wh, band2: S({color: 0x1c2c3e, roughness: .6}), top: darkM});
+  { const sd = -1, rz = wz1 - 1.6, ry = H0.y1 + 1.6; const rb = new THREE.CapsuleGeometry(.45, 2.6, 4, 10); rb.rotateX(PI / 2); add(rb, S({color: 0xe8661c, roughness: .6}), sd * (ww + .75), ry, rz); sySeg(X, steel, sd * (ww + .2), H0.y1 - .2, rz, sd * (ww + .9), ry + 1.5, rz, .08, 6); sySeg(X, steel, sd * (ww + .9), ry + 1.5, rz, sd * (ww + .75), ry + .5, rz, .02, 4); }
+  syMarks(X, [[zb + 2.2, 'draft'], [zs - 1.6, 'draft']]);
+  ud.lightZ = bf - .3; ud.lightY = yb + 2.7; return ytop; };
+// hull forms for every surface hull (the small package may override 0, 1, 2, 8, 9, 10 in its own section, which runs later). Small hulls keep their entry full enough that the
+// shared shell (ww = .82 x hullHW at the shell ends) stays within a few percent of its old width; the fine waterline comes from flare and rake instead
+Object.assign(HULLS[0], {form: {entry: .43, fine: .95, rake: .08, ff: .6, flare: .12, sheer: .9, sheerAft: .1, vee: .5, transomRake: .15, sternW: .9, sternP: 2, bw: .45, rub: {c: 0x141414, r: .075}, boot: 0xf0f0ea, bootY: [.1, .19], anti: 0x7a2a1a, tex: 'steel'}});
+Object.assign(HULLS[1], {form: {entry: .41, fine: .95, rake: .07, flare: .2, knuckle: 1, kY: .6, sheer: 1.6, sheerP: 1.8, sheerAft: .3, bw: .9, vee: .35, sternW: .85, sternP: 2, transomRake: .3, rub: {c: 0x1a1a1a, r: .09}, boot: 0xe8e4d8, anti: 0x5a1a12, tex: 'rust', rail: 0}});
+Object.assign(HULLS[2], {form: {entry: .42, fine: 1.0, rake: .12, ff: .6, flare: .25, knuckle: 1, kY: .6, sheer: 1.2, vee: .7, chine: .1, transomRake: .25, sternW: .88, sternP: 2, bw: .55, bwAft: .25, rail: 'full', railC: 0xc8ccd0, rub: {c: 0x3a3e44, r: .07}, boot: 0x111111, anti: 0x5a1a14, tex: 'steel'}});
+Object.assign(HULLS[8], {form: {entry: .5, fine: 1.15, rake: .22, ff: .4, flare: .22, vee: 1, chine: .15, sheer: .35, sheerP: 1.6, transomRake: .2, sternW: .92, sternP: 2, bw: .2, rail: 'bow', railC: 0xd8dce0, side: 0xf4f4f0, band: {y0: .5, y1: .72}, boot: 0x2a2e33, bootY: [.02, .1], anti: 0x2a2e33, tex: 'clean', run: 0, dead: .75}});
+Object.assign(HULLS[9], {form: {entry: .45, fine: 1.2, bowW: .5, rake: .12, ff: 0, flare: 0, flareAll: 0, flat: 1, vee: 0, dead: .55, run: .2, transomRake: .4, sternW: .97, sheer: .2, bw: .15, rail: 0, tex: 'tar', side: 0x1e2022, paintSide: 1, boot: 0x2a7a7a, bootY: [.06, .2], anti: 0x1a1a1a}});
+Object.assign(HULLS[10], {form: {entry: .38, fine: .6, flare: .2, sheer: 1.8, sheerP: 1.6, sheerAft: .1, sternW: .95, sternP: 2.5, vee: .3, bw: .8, bwAft: .45, rail: 0, rub: {c: 0x101010, r: .2, y: -.15, wrap: 1}, anti: 0x8a1a12, boot: 0xf0f0ea, tex: 'steel'}});
+Object.assign(HULLS[3], {form: {entry: .3, fine: .9, rake: .08, ff: .3, bulb: .9, flare: .2, knuckle: 1, kY: .55, sheer: 1.8, sheerP: 3, sternW: .9, sternP: 2, bw: 1.1, rail: 0, sheerC: {c: 0xf0f0ea, h: .3}, anti: 0x8a1a12, boot: 0xe8e8e0, tex: 'steel'}, kit: {port: 0, stack: 0, ant: 0}});
+Object.assign(HULLS[5], {eye: 9.52, form: {entry: .35, fine: .85, rake: .06, ff: .3, bulb: 1.1, flare: .25, knuckle: 1, kY: .55, sheer: 3, sheerP: 2.5, sternW: .95, sternP: 3, bw: 1.5, anti: 0x8a1a12, boot: 0xf0f0ea, tex: 'steel'}, kit: {port: 0, stack: 0, ant: 0}});
+Object.assign(HULLS[6], {eye: 11.92, form: {entry: .4, fine: .8, rake: .14, ff: .15, flare: .3, knuckle: 1, kY: .6, sheer: 2.6, sternW: .8, sternP: 2, bw: 1.3, belt: {c: 0x2a2a2c, y0: .3, y1: 1.6}, boot: 0xf0f0ea, anti: 0x5a1a14, tex: 'rust'}, kit: {port: 0, stack: 0, ant: 0}});
+Object.assign(HULLS[7], {wh: [.15, .25], eye: 18.65, form: {entry: .42, fine: .95, rake: .12, ff: .35, flare: .2, sheer: 2.5, sheerP: 2.5, sternW: .72, sternP: 2.5, bw: 1.2, tex: 'clean', boot: 0x1a2a4a, bootY: [.04, .5], anti: 0x8a1a14, run: .6}, kit: {port: 0, stack: 0, ant: 0}});
+Object.assign(HULLS[11], {form: {entry: .45, fine: .95, rake: .04, ff: .25, flare: .3, sheer: 2.0, vee: .45, sternW: .9, sternP: 2, transomRake: -.3, bw: 1.0, bwAft: .35, rail: 'aft', railC: 0xd8dce0, railH: 1.05, tex: 'clean', capC: 0xf8f8f8, belt: {c: 0x8a9096, y0: 1.22, y1: 1.3}, boot: 0x2a2c30, bootY: [.04, .19], anti: 0x2a2c30}, kit: {port: 0, stack: 0, ant: 0}});
+Object.assign(HULLS[12], {eye: 18.62, form: {entry: .2, fine: .5, rake: .03, ff: .2, bulb: 3, flare: .12, sheer: 3, sheerP: 3, sternW: .82, sternP: 3, bw: 1.3, side: 0x3a1c18, paintSide: 1, anti: 0x7a1812, boot: 0xe8e8e0, bootY: [.04, .4], tex: 'rust', run: .55}, kit: {port: 0, stack: 0, ant: 0, anchor: 0}});
 // chimney and funnel smoke: six recycled sprites in the boat group (boat-local, drift aft and up)
 function shpPuffs(g, k) { const ud = g.userData; if (ud.shpPuff || !ud.shpSmoke) return; const s = [];
   for (let i = 0; i < 6; i++) { const sp = new THREE.Sprite(new THREE.SpriteMaterial({map: TX.glow, color: 0x8e8c88, transparent: true, opacity: 0, depthWrite: false})); sp.visible = false; sp.userData.a = 99; g.add(sp); s.push(sp); }
@@ -3496,6 +3867,7 @@ function shpLook(dt) { // client: stabilisers, night lights, boost spray and HUD
   const nm = new THREE.MeshStandardMaterial({color: 0x3a5a3a, roughness: .95}), fm = new THREE.MeshStandardMaterial({color: 0xb8c4cc, roughness: .25, metalness: .5}), b = new THREE.Mesh(new THREE.SphereGeometry(.3, 10, 8), nm); b.scale.set(1.3, .75, 1); b.position.y = .22; g.add(b);
   for (let i = 0; i < 4; i++) { const f = new THREE.Mesh(new THREE.ConeGeometry(.05, .22, 5), fm); f.position.set(Math.cos(i * 1.7) * .3, .3 + (i % 2) * .08, Math.sin(i * 1.7) * .22); f.rotation.set(i, i * 2, PI / 2 + i * .4); g.add(f); }
   const tie = new THREE.Mesh(new THREE.TorusGeometry(.1, .025, 5, 10), new THREE.MeshStandardMaterial({color: 0xc8a050, roughness: .9})); tie.position.y = .42; tie.rotation.x = PI / 2; g.add(tie); g.traverse(o => { if (o.isMesh) o.castShadow = true; }); return g; }; }
+const SY_PLAN = Object.fromEntries([0, 1, 2, 8, 9].map(c => { const f = HULLS[c].form; return [c, {entry: f.entry, fine: f.fine, bowW: f.bowW}]; })); // the planform the loft was tuned with, kept under the small hulls' forms so the shared shell keeps its width
 // ---------------- shipyard round 3, small hulls (launch, trawler, cutter, Dart, Driftwood, Bulldog): hull-form lines and kit for the loft, and real superstructures built as skins round the shared wheelhouse shell
 Object.assign(HULLS[0], {form: {entry: .5, fine: 1, rake: .08, flare: .12, sheer: .9, sheerAft: .1, vee: .5, transomRake: .15, sternW: .9, bw: .45, rub: {c: 0x141414, r: .07}, boot: 0xf0f0ea, anti: 0x6a1e14, rail: 'full', tex: () => smlTex('lt')},
   kit: {fend: 0, port: 0, stack: 0, ring: 1, ant: 0, anchor: 0}, cab: {wall: 0xe8e6e0, roof: 0xc4c8cc}});
@@ -3509,6 +3881,7 @@ Object.assign(HULLS[9], {form: {entry: .25, fine: .5, bowW: .7, rake: .12, trans
   kit: {fend: 0, port: 0, stack: 0, ring: 1, ant: 0, anchor: 0}, cab: {wall: 0xe8dcc0, roof: 0x5a3a2a}});
 Object.assign(HULLS[10], {form: {entry: .35, fine: .55, rake: 0, flare: .2, sheer: 1.8, sheerP: 1.6, sheerAft: .1, sternW: .95, vee: .3, bw: .8, rub: {c: 0x111111, r: .2}, boot: 0xf0f0ea, anti: 0x8a1a14, rail: 0, tex: () => smlTex('mid')},
   kit: {fend: 0, port: 0, stack: 0, ring: 1, ant: 0, anchor: 0}, cab: {wall: 0xe8e0c8, roof: 0x2a2a2a}});
+for (const c in SY_PLAN) Object.assign(HULLS[c].form, SY_PLAN[c]);
 // canvases for the small hulls: hull skins without the plate grid, clapboard, roof tiles, brick, trawl net, rusty steel, decals (registration, cutter stripes)
 function smlTex(k) {
   const key = 'sml' + k; if (TX[key]) return TX[key]; let c, rep = 1;
