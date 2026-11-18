@@ -29,7 +29,7 @@ const hexS = c => '#' + c.toString(16).padStart(6, '0');
 
 // ---------------- net (jjfanwars relay)
 const RELAY_URL = 'wss://jjfanwars-relay.businessautomationvic.workers.dev';
-const GAME_V = 45;
+const GAME_V = 46;
 const Net = {
   tag: '[Rig]', role: 'solo', ws: null, peers: new Map(), code: '', relayT: {pose: 1}, id: '', name: '', handlers: {}, retry: 0, started: false,
   enc: new TextEncoder(), dec: new TextDecoder(),
@@ -5166,7 +5166,7 @@ function wldRaftFrame(dt) {
   if (q && P && !P.dead && Math.hypot(P.x - q.x, P.z - q.z) < 14) L.push({x: q.x, y: (P.ob ? BDECK.y : 0) + .3, z: q.z, r: 6 + (P.ob ? BG.hw * .6 : 0), flat: 1, label: 'Pull the survivor aboard', go: () => act({a: 'wres'})});
   return L; }; }
 // ---------------- style: auras, boat paint and underglow, fireworks, fireflies
-let ALL = (() => { try { return localStorage.getItem('s9-all') === '1'; } catch (e) { return false; } })(); const SK = k => k + (ALL ? '-all' : ''); const SLOTS = ['s9-save2', 's9-gear', 's9-cred']; (() => { try { if (!ALL || localStorage.getItem('s9-save2-all') != null) return; const s = localStorage.getItem('s9-save2'); if (s == null) return; const j = JSON.parse(s) || {}, dirty = (j.cash || 0) >= 250000 || ((j.up || {}).own || []).length >= HULLS.length; for (const k of SLOTS) { const v = localStorage.getItem(k); if (v != null) { localStorage.setItem(k + '-all', v); if (dirty) localStorage.removeItem(k); } } } catch (e) {} })();
+let ALL = (() => { try { return localStorage.getItem('s9-all') === '1'; } catch (e) { return false; } })(); let SLOT = (() => { try { return clamp(+localStorage.getItem('s9-slot') || 1, 1, 4); } catch (e) { return 1; } })(); const SK = k => k + (SLOT > 1 ? '-s' + SLOT : '') + (ALL ? '-all' : ''); const SLOTS = ['s9-save2', 's9-gear', 's9-cred']; (() => { try { if (!ALL || localStorage.getItem('s9-save2-all') != null) return; const s = localStorage.getItem('s9-save2'); if (s == null) return; const j = JSON.parse(s) || {}, dirty = (j.cash || 0) >= 250000 || ((j.up || {}).own || []).length >= HULLS.length; for (const k of SLOTS) { const v = localStorage.getItem(k); if (v != null) { localStorage.setItem(k + '-all', v); if (dirty) localStorage.removeItem(k); } } } catch (e) {} })();
 const AURAS = [{n: 'No aura', c: 0, cost: 0}, {n: 'Sea glass', c: 0x60ffe0, cost: 300}, {n: 'Gold rush', c: 0xffc040, cost: 600}, {n: 'Void', c: 0xa050ff, cost: 900}, {n: 'Blood moon', c: 0xff3a2a, cost: 1200}, {n: 'Prism', c: -1, cost: 2500}];
 const PAINTS = [{n: 'Factory', c: 0}, {n: 'Midnight', c: 0x0c1016}, {n: 'Racing red', c: 0xb01818}, {n: 'Gold', c: 0xd8a828}, {n: 'Pearl', c: 0xe4e4e0}, {n: 'Emerald', c: 0x16604a}, {n: 'Ultraviolet', c: 0x3a1a6a}];
 const GLOWS = [{n: 'No underglow', c: 0}, {n: 'Cyan', c: 0x30f0ff}, {n: 'Magenta', c: 0xff30d0}, {n: 'Toxic', c: 0x70ff30}, {n: 'Sunset', c: 0xff8a20}, {n: 'Prism', c: -1}];
@@ -7038,7 +7038,12 @@ Net.on('_idle', () => { if (Net.role !== 'guest' || !G.on || !P) return; const p
 addEventListener('blur', () => Net.emit({t: '_idle'}));
 document.addEventListener('visibilitychange', () => { hiddenStep(document.hidden); if (document.hidden) Net.emit({t: '_idle'}); });
 addEventListener('pagehide', () => { if (Net.role === 'host' && Net.peers.size) Net.send({t: 'bye'}); });
-function saveInfo() { const s = loadSave(); $('saveInfo').textContent = s && (s.disc || []).length > 1 ? `Saved voyage: ${cashStr(s.cash || 0)} cash, ${(s.disc || []).length} places charted, ${(s.goals || []).length}/${GOALS.length} goals.` : ''; }
+function saveInfo() { const s = loadSave(); $('saveInfo').textContent = s && ((s.disc || []).length > 1 || s.earned > 0) ? `Save ${SLOT}: ${cashStr(s.cash || 0)} cash, ${(s.disc || []).length} places charted, ${(s.goals || []).length}/${GOALS.length} goals.` : `Save ${SLOT}: a new voyage.`; slotUI(); }
+// save slots: four voyages side by side (slot 1 keeps the old keys); unlock-all keeps its own set on top
+function slotPeek(n) { const k = 's9-save2' + (n > 1 ? '-s' + n : '') + (ALL ? '-all' : ''); try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } }
+function slotUI() { let el = $('slots'); if (!el) { el = document.createElement('div'); el.id = 'slots'; el.style.cssText = 'display:flex;gap:6px;margin:8px 0 2px;flex-wrap:wrap'; $('saveInfo').before(el); }
+  el.innerHTML = [1, 2, 3, 4].map(n => { const s = slotPeek(n), t = s && (s.earned > 0 || (s.disc || []).length > 1) ? `${cashStr(s.cash || 0)} · ${(s.disc || []).length} charted` : 'empty'; return `<button data-n="${n}" style="flex:1 1 0;min-width:90px;padding:6px 6px;font-size:12px;line-height:1.3${n === SLOT ? ';outline:2px solid var(--acc)' : ';opacity:.75'}"><b>Save ${n}</b><br><small>${t}</small></button>`; }).join('');
+  el.querySelectorAll('button').forEach(b => b.onclick = () => { if (G.on) return; SLOT = +b.dataset.n; try { localStorage.setItem('s9-slot', SLOT); } catch (e) {} G.relAct = relLoad(); saveInfo(); }); }
 async function refreshRooms() { const L = await Net.rooms(), el = $('rooms'); el.innerHTML = L.length ? '' : '<small style="color:var(--dim)">No open crews right now. Host one and share the code.</small>'; for (const r of L) { const d = document.createElement('div'), full = r.n >= 6; d.textContent = r.name.replace(/^\[?Rig\]? /, '') + (full ? ' · full' : r.n ? ` · ${r.n}/6` : ''); if (full) d.style.cssText = 'opacity:.4;pointer-events:none'; else d.onclick = () => joinRoom(r.code); el.appendChild(d); } }
 function joinRoom(code) {
   code = String(code || '').toUpperCase(); if (!/^[A-Z]{5}$/.test(code)) { $('err').textContent = 'Enter the 5-letter code.'; return; }
@@ -7064,7 +7069,7 @@ function menuInit() {
     w.querySelector('a').onclick = e => { e.preventDefault(); bs.forEach(b => b.disabled = false); e.target.remove(); }; }
   $('again').onclick = () => toMenu();
   $('bSell').onclick = () => { act({a: 'sell'}); setTimeout(drawShop, 150); }; $('shopX').onclick = closeShop;
-  $('resetSave').onclick = e => { e.preventDefault(); if (confirm('Wipe your saved voyage (cash, upgrades, chart)?')) { try { localStorage.removeItem(SK('s9-save2')); } catch (x) {} saveInfo(); } };
+  $('resetSave').onclick = e => { e.preventDefault(); if (confirm(`Wipe Save ${SLOT} (cash, upgrades, chart, gear)?`)) { try { for (const k of ['s9-save2', 's9-gear', 's9-cred', 's9-relics']) localStorage.removeItem(SK(k)); } catch (x) {} G.relAct = []; saveInfo(); } };
   const allUI = msg => { $('cheatM').innerHTML = (msg ? msg + ' ' : '') + (ALL ? 'Unlock-all is on (it has its own save). <a href="#" id="allOff" style="color:inherit">Turn off</a>' : ''); const o = $('allOff'); if (o) o.onclick = e => { e.preventDefault(); setAll(false); }; }; const setAll = on => { if (G.on) { allUI('Finish your voyage first.'); return; } ALL = on; try { localStorage.setItem('s9-all', on ? '1' : '0'); } catch (e) {} saveInfo(); allUI(on ? 'Everything unlocked.' : 'Back to your normal save.'); }; allUI(); $('bCheat').onclick = () => { const v = $('cheat').value.trim().toLowerCase(); if (v === 'rig67') { setAll(!ALL); Snd.coin && A.on && Snd.coin(); } else $('cheatM').textContent = v ? 'Nothing happens.' : ''; $('cheat').value = ''; };
   $('cheat').onkeydown = e => { if (e.key === 'Enter') $('bCheat').click(); };
   casInit();
@@ -7096,9 +7101,9 @@ function lootRoll(d, rng, relicOk = 1) { const r = lootRar(d, rng); if (r === 4 
 const lootRarOf = k => TRSD[k] ? TRSD[k].r : RELICS[k] ? 4 : -1;
 const lootOwn = () => { const S = isHost() ? G.stat || {} : G.colS || {}; return {col: (isHost() ? S.col : S.c) || {}, cs: (isHost() ? S.cs : S.s) || {}, rel: (isHost() ? S.rel : S.r) || {}}; };
 const lootSlots = () => 2 + (lootOwn().cs.nav ? 1 : 0);
-G.relAct = (() => { try { return JSON.parse(localStorage.getItem('s9-relics')) || []; } catch (e) { return []; } })();
+const relLoad = () => { try { return JSON.parse(localStorage.getItem(SK('s9-relics'))) || []; } catch (e) { return []; } }; G.relAct = relLoad();
 const relicOn = k => !!lootOwn().rel[k] && G.relAct.includes(k);
-function relicToggle(k) { const a = G.relAct, i = a.indexOf(k); if (i >= 0) a.splice(i, 1); else if (lootOwn().rel[k]) { a.push(k); while (a.length > lootSlots()) a.shift(); } try { localStorage.setItem('s9-relics', JSON.stringify(a)); } catch (e) {} if (G.jrnOpen) jrnDraw(); }
+function relicToggle(k) { const a = G.relAct, i = a.indexOf(k); if (i >= 0) a.splice(i, 1); else if (lootOwn().rel[k]) { a.push(k); while (a.length > lootSlots()) a.shift(); } try { localStorage.setItem(SK('s9-relics'), JSON.stringify(a)); } catch (e) {} if (G.jrnOpen) jrnDraw(); }
 // meshes: small, readable shapes per treasure; relics glow
 { const f0 = itemMesh; itemMesh = function (kind) { const T = TRSD[kind], R = RELICS[kind]; if (!T && !R) return f0.apply(this, arguments);
   const g = new THREE.Group(), c = T ? T.c : R[2], m = new THREE.MeshStandardMaterial({color: c, roughness: .3, metalness: T && /coin|instr|medal|ring/.test(T.sh) ? .8 : .2, emissive: R || (T && T.r >= 3) ? c : 0, emissiveIntensity: R ? .6 : T && T.r >= 3 ? .18 : 0}), add = (geo, x, y, z) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); g.add(o); return o; };
@@ -7155,7 +7160,7 @@ function lootChime(r) { if (!A.on) return; const N = [[660], [660, 880], [660, 8
     else if (T.r >= 3) { const p = PL.get(e.id); showMsg(`${p ? p.name : 'Crew'} found ${RAR[T.r][0].toLowerCase()} loot: ${T.n}`, '', 3); }
     if (T.r >= 4) { (G.banQ = G.banQ || []).push({h: 'LEGENDARY', t: jobCap(T.n), c: 0, s: 'goal'}); G.shake = Math.max(G.shake || 0, .6); } } }
   else if (e.k === 'relic') { const k = KINDS[e.r], R = RELICS[k]; if (R) { lootChime(4); (G.banQ = G.banQ || []).push({h: e.nw ? 'RELIC FOUND' : 'RELIC (ALREADY OWNED)', t: R[0], c: 0, s: 'goal'}); if (e.id === me) showMsg(`${R[1]}. Open the journal (J) to wear it.`, R[0], 6);
-    if (e.nw && G.relAct.length < lootSlots() && !G.relAct.includes(k)) { G.relAct.push(k); try { localStorage.setItem('s9-relics', JSON.stringify(G.relAct)); } catch (x) {} } } }
+    if (e.nw && G.relAct.length < lootSlots() && !G.relAct.includes(k)) { G.relAct.push(k); try { localStorage.setItem(SK('s9-relics'), JSON.stringify(G.relAct)); } catch (x) {} } } }
   else if (e.k === 'apr' && e.id === me) { const rows = e.rows.map(([ki, v, mu]) => { const T = TRSD[KINDS[ki]] || {n: '?', r: 0}; return `<div class="rw"><span style="color:${RAR[T.r][1]}">${jobCap(T.n)}</span><span>${money(v)}${mu >= 1.6 ? ' <b style="color:#ffc83a">×' + mu.toFixed(1) + '!</b>' : ''}</span></div>`; }).join('');
     const best = Math.max(...e.rows.map(q => q[2])); lootChime(best >= 2 ? 4 : best >= 1.4 ? 3 : 1); jobRc.push({k: 'apr', cls: 'gold', life: 4 + e.rows.length * .4, cuV: e.tot, h: `<h4>APPRAISED</h4>${rows}<b data-cu>$0</b>${best >= 2 ? '<br><span class="jobPill">JACKPOT</span>' : ''}`});
     for (const s of e.sets || []) (G.banQ = G.banQ || []).push({h: 'COLLECTION COMPLETE', t: LSETS[s.set].n + (LSETS[s.set].perk ? ' · ' + LSETS[s.set].perk : ''), c: s.v, s: 'goal'}); }
