@@ -29,7 +29,7 @@ const hexS = c => '#' + c.toString(16).padStart(6, '0');
 
 // ---------------- net (jjfanwars relay)
 const RELAY_URL = 'wss://jjfanwars-relay.businessautomationvic.workers.dev';
-const GAME_V = 23;
+const GAME_V = 24;
 const Net = {
   tag: '[Rig]', role: 'solo', ws: null, peers: new Map(), code: '', relayT: {pose: 1}, id: '', name: '', handlers: {}, retry: 0, started: false,
   enc: new TextEncoder(), dec: new TextDecoder(),
@@ -1979,10 +1979,10 @@ function applyEv(e) {
       if (e.id === me) { if (P.hd >= 0 && HIDES[P.hd]) { const h = HIDES[P.hd]; P.x = h.ex; P.z = h.ez; } const jsc = e.how === 'caught' || e.how === 'pulled'; if (jsc) { G.js = {t: 1.4, L: 1.4, mon: e.st ? STW : MON, J: e.st ? SJ : MJ}; G.shake = 1.5; } Snd.scream(); $('flash').style.opacity = jsc ? .3 : .7; setTimeout(() => $('flash').style.opacity = 0, 300); P.hd = -1; P.seat = 0; $('slats').classList.add('hidden'); $('breath').classList.add('hidden'); if (PL.size > 1) showMsg('It got you. Crawl toward your crew, they can pick you up.', '', 5); }
       else if (p) { Snd.hurt(at(p.x, p.y + 1, p.z, 6)); showMsg(`${p.name} is down! Hold E on them to pick them up.`, '', 5); } break; }
     case 'rev': { const p = PL.get(e.id); if (p) p.down = false; Snd.revive(); showMsg(e.id === me ? 'You are back on your feet.' : `${p ? p.name : ''} is back up.`); break; }
-    case 'dead': { const p = PL.get(e.id); if (p) { p.dead = true; p.down = false; p.drowned = e.drown || 0; p.sw = 0; } if (e.drown) Snd.deep(); if (e.id === me) { const t = e.drown === 3 ? 'Needle teeth close on your hose. Then nothing.' : e.drown === 2 ? 'Your air runs out. The dark closes in.' : e.drown ? 'Something huge wraps around your legs and pulls you under.' : 'You bled out.'; if (e.drown === 1) { if (!G.maw) G.maw = {t: 3, x: P.x, z: P.z}; G.maw.bite = G.maw.t + .9; G.drownCam = {t: 0, x: P.x, z: P.z, yaw: P.yaw}; } P.dead = true; P.sw = 0; P.seat = 0; P.drowned = e.drown || 0; showMsg(t, '', 5); }
-      else showMsg(`${p ? p.name : 'Someone'} ${e.drown === 2 ? 'ran out of air' : e.drown === 3 ? 'was taken in the deep' : e.drown ? 'was pulled under' : 'bled out'}. They will wash up at the lighthouse.`, '', 5); break; }
+    case 'dead': { const p = PL.get(e.id); if (p) { p.dead = true; p.down = false; p.drowned = e.drown || 0; p.sw = 0; } if (e.drown) Snd.deep(); if (e.id === me) { const t = e.drown === 4 ? 'Your arms give out. The sea closes over you.' : e.drown === 3 ? 'Needle teeth close on your hose. Then nothing.' : e.drown === 2 ? 'Your air runs out. The dark closes in.' : e.drown ? 'Something huge wraps around your legs and pulls you under.' : 'You bled out.'; if (e.drown === 1) { if (!G.maw) G.maw = {t: 3, x: P.x, z: P.z}; G.maw.bite = G.maw.t + .9; G.drownCam = {t: 0, x: P.x, z: P.z, yaw: P.yaw}; } P.dead = true; P.sw = 0; P.seat = 0; P.drowned = e.drown || 0; showMsg(t, '', 5); }
+      else showMsg(`${p ? p.name : 'Someone'} ${e.drown === 4 ? 'drowned' : e.drown === 2 ? 'ran out of air' : e.drown === 3 ? 'was taken in the deep' : e.drown ? 'was pulled under' : 'bled out'}. They will wash up at the lighthouse.`, '', 5); break; }
     case 'resp': { const p = PL.get(e.id); if (p) { p.dead = false; p.down = false; p.drowned = false; } if (e.id === me) { Object.assign(P, {dead: false, down: false, sw: 0, ob: 0, seat: 0, x: e.x, y: 2, z: e.z, vy: 0, hd: -1, bat: Math.max(P.bat, .6), drowned: false}); showMsg('You wash up at the lighthouse, coughing seawater.', '', 4); } break; }
-    case 'deepw': if (e.id === me) { G.maw = {t: 0, x: P.x, z: P.z}; Snd.bubbles(); showMsg('Something is circling beneath you. GET OUT OF THE WATER.', '', 3); } break;
+    case 'deepw': if (e.id === me) { Snd.gasp(); showMsg('Your arms are getting heavy. Get out of the water.', '', 4); } break;
     case 'give': if (e.id === me) { if (e.kind === 'battery') { P.bat = Math.min(1, P.bat + .5); showMsg('Fresh batteries.'); } if (e.kind === 'flare') { P.flares += e.n || 1; showMsg(`Picked up ${e.n > 1 ? e.n + ' flares' : 'a flare'}. Throw them with G.`); } Snd.pickup(); } break;
     case 'sack': { const p = PL.get(e.id), q = e.s.map(i => KINDS[i]); if (p) { const more = q.length > (p.sack || []).length; p.sack = q; p.carry = q[q.length - 1] || null;
       if (e.id === me) { P.sack = q; P.carry = p.carry; if (more) { const k = q[q.length - 1]; Snd.pickup(); showMsg(`+ ${NAMES[k]}${VALUE[k] ? ' · $' + VALUE[k] : ''}`, '', 1.6); } } } break; }
@@ -2101,7 +2101,7 @@ function hostStep(dt) {
     if (p === P ? lightOn() : p.l) p.heat = Math.min(1, p.heat + dt * .004);
     if (p.down && !p.dead) { if (!alive().length && p.bleed > 5) p.bleed = 5; p.bleed -= dt; if (p.bleed <= 0) { p.down = false; p.dead = true; p.deadT = 0; emit({k: 'dead', id: p.id}); } }
     if (p.dead) { p.deadT = (p.deadT || 0) + dt; if (p.deadT > (PL.size > 1 ? 12 : 5)) { p.deadT = 0; p.dead = false; p.x = -4 + CR() * 4; p.z = -262; p.y = 2; p.sw = 0; p.ob = 0; emit({k: 'resp', id: p.id, x: p.x, z: p.z}); towIfStranded(p); } }
-    if (p.sw && p.deep && !p.dead && !(suitOf(p) && (p.dv || 0) > 1.5)) { p.swT += dt; if (p.swT > D.drown - 4 && !p.warned) { p.warned = true; emit({k: 'deepw', id: p.id}); } if (p.swT > D.drown) { p.dead = true; p.deadT = 0; p.swT = 0; dropCarry(p); emit({k: 'dead', id: p.id, drown: 1}); } } else { p.swT = Math.max(0, p.swT - dt * 2); p.warned = false; }
+    if (p.sw && p.deep && !p.dead && !suitOf(p)) { const lim = D.drown * 6.5; p.swT += dt; if (p.swT > lim - 20 && !p.warned) { p.warned = true; emit({k: 'deepw', id: p.id}); } if (p.swT > lim) { p.dead = true; p.deadT = 0; p.swT = 0; dropCarry(p); emit({k: 'dead', id: p.id, drown: 4}); } } else { p.swT = Math.max(0, p.swT - dt * 3); if (p.swT < D.drown * 6.5 - 30) p.warned = false; }
   }
   // holds: valves, generator, console, digging, reviving
   const hold = {};
@@ -3459,9 +3459,10 @@ function hud() {
     G.reshow = 0; if (G.objT > 0 && !G.paused) { G.objT -= dt; if (G.objT <= 0) setS(ob, 'opacity', 0); } }
   G.teamT = (G.teamT || 0) - dt; if (G.teamT <= 0) { G.teamT = .33; const h = PL.size > 1 ? [...PL.values()].map(p => `<div class="${p.dead ? 'dead' : p.down || p.sw ? 'down' : ''}">${p.name}${p.down ? ' · DOWN ' + Math.max(0, p.bleed | 0) + 's' : p.dead ? '' : p.sw ? ' · IN THE WATER' : p.seat ? ' · at the wheel' : p.ob ? ' · aboard' : ''}<i style="background:${hexS(CREW_COL[p.c % 6])}"></i></div>`).join('') : ''; if (h !== G.teamH) { G.teamH = h; $('team').innerHTML = h; } }
   { const solo = PL.size === 1; let st = '';
-    if (P.dead) st = (P.drowned === 1 ? 'Pulled under' : 'You are dead') + '<br><small>You will wash up at the lighthouse.</small>';
+    G.swimL = P.sw && P.deep && !P.dead && !(P.own && P.own.suit) ? (G.swimL || 0) + dt : Math.max(0, (G.swimL || 0) - dt * 3);
+    if (P.dead) st = (P.drowned === 1 ? 'Pulled under' : P.drowned === 4 ? 'Drowned' : 'You are dead') + '<br><small>You will wash up at the lighthouse.</small>';
     else if (P.down) st = solo ? 'It got you<br><small>You will wash up at the lighthouse.</small>' : `You are down<br><small>Bleeding out · ${Math.max(0, P.bleed | 0)} s. Crawl to your crew.</small>`;
-    else if (!P.seat && P.sw && P.deep && !(P.own && P.own.suit)) st = '<small style="color:#ff9a7a">Deep water</small>';
+    else if (!P.seat && P.sw && P.deep && !(P.own && P.own.suit)) { const k = G.swimL / (D.drown * 6.5); st = k > .78 ? '<small style="color:#ff5a4a">Exhausted · get out of the water</small>' : k > .45 ? '<small style="color:#ffb07a">Tiring</small>' : '<small style="color:#9fd0e0">Deep water</small>'; }
     if (P.seat) { if (!G.paused) G.seatT = (G.seatT ?? 0) + dt; } else G.seatT = 0;
     if (st !== G.stTxt) { G.stTxt = st; $('state').innerHTML = st; } }
   { const nb = P.ob || P.seat || Math.hypot(B.x - P.x, B.z - P.z) < 30; if (nb !== G.bhOn) { G.bhOn = nb; $('boatHud').style.opacity = nb ? 1 : 0; $('nSpd').parentElement.style.display = nb ? '' : 'none'; } }
