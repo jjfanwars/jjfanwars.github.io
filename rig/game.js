@@ -29,7 +29,7 @@ const hexS = c => '#' + c.toString(16).padStart(6, '0');
 
 // ---------------- net (jjfanwars relay)
 const RELAY_URL = 'wss://jjfanwars-relay.businessautomationvic.workers.dev';
-const GAME_V = 28;
+const GAME_V = 29;
 const Net = {
   tag: '[Rig]', role: 'solo', ws: null, peers: new Map(), code: '', relayT: {pose: 1}, id: '', name: '', handlers: {}, retry: 0, started: false,
   enc: new TextEncoder(), dec: new TextDecoder(),
@@ -303,9 +303,7 @@ function buildHome() {
     const [sx, sz] = L2W(G.shed, 0, -2.82); sg.position.set(sx, 5.2, sz); sg.rotation.y = G.shed.th + PI; scene.add(sg); // hangs just in front of the roof edge
     const [ax, az] = L2W(G.shed, 0, -2.79), [lx, lz] = L2W(G.shed, 0, -2.96); put('dark', new THREE.BoxGeometry(.06, .06, .44), ax, 4.44, az, G.shed.th); put('dark', new THREE.CylinderGeometry(.03, .16, .1, 10), lx, 4.42, lz); put('glassL', new THREE.SphereGeometry(.07, 10, 8), lx, 4.33, lz);
     const gl = new THREE.Sprite(new THREE.SpriteMaterial({map: TX.glow, color: 0xffb860, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: .6})); gl.scale.setScalar(1.5); gl.position.set(lx, 4.32, lz); scene.add(gl); G.shedGlow = gl; G.shedLamp = [lx, 4.5, lz, 1]; }
-  G.casino = building('shed', 'The Lucky Lantern', 11, -263, 2, 'w'); { const [cx, cz] = L2W(G.casino, 0, 1.2); G.casP = [cx, 3.1, cz]; lbox(G.casino, 'carpet', 0, .07, 0, 6.8, .02, 4.8); lbox(G.casino, 'red', 0, .45, 1.2, 2.4, .9, 1.2);
-    const sc = cv(512, 128, (g, w, h) => { g.fillStyle = '#100808'; g.fillRect(0, 0, w, h); g.strokeStyle = '#ff7a20'; g.lineWidth = 4; g.strokeRect(8, 8, w - 16, h - 16); g.font = 'bold 50px Georgia'; g.textAlign = 'center'; g.fillStyle = '#ffcf60'; g.shadowColor = '#ff7a20'; g.shadowBlur = 16; g.fillText('LUCKY LANTERN', w / 2, 82); });
-    const sg = new THREE.Mesh(new THREE.PlaneGeometry(4, 1), new THREE.MeshBasicMaterial({map: new THREE.CanvasTexture(sc), color: new THREE.Color().setRGB(1.6, 1.6, 1.6)})); const [sx, sz] = L2W(G.casino, 0, -2.6); sg.position.set(sx, 5.6, sz); sg.rotation.y = G.casino.th + PI; scene.add(sg); G.casSign = sg; }
+  G.casino = casBuild(); G.casP = null;
   POIS.push({n: 'Lighthouse station', x: HOME.x, z: HOME.z, r: 40, home: 1});
 }
 // islands: noisy domes (an atoll is a ring) walkable from the beach
@@ -2294,7 +2292,6 @@ function applyEv(e) {
     case 'holdbig': if (e.id === myId()) showMsg('That hull has a smaller hold. Sell or unload your cargo first.', '', 3); break;
     case 'holdfull': if (e.id === myId()) showMsg(`Hold full (${holdCap()} slots). Sell at the shed or buy hold racks or a bigger hull.`, '', 3); break;
     case 'fw': spawnRocket(e); break;
-    case 'chips': if (e.id === myId()) { if (e.out != null) { if (e.out > 0) { cred(-e.out); casMsg(`Cashed out ${money(e.out)} to the crew.`, 1); } else casMsg('Only credits you bought can be cashed out.', 0); } else if (e.v > 0) { cred(e.v); casMsg(`Bought ${e.v} credits.`, 0); } else casMsg('The crew does not have that much cash.', 0); drawCasino(); } break;
     case 'radio': G.radioOn = !!e.on; break;
     case 'sunkp': { const q = SUNK[e.i]; if (q) q.got = true; break; }
     case 'bite': { const p = PL.get(e.id); if (e.id === me) { P.air = Math.max(0, (P.air ?? 1) - .45); G.shake = 1.6; $('flash').style.opacity = .6; setTimeout(() => $('flash').style.opacity = 0, 250); Snd.scream(); Snd.bubbles(); showMsg('Something tore at you in the dark. Your air hose is leaking. Get up, or burn a flare (6).', '', 4); } else if (p) Snd.hurt(at(p.rx, p.ry, p.rz, 8)); break; }
@@ -2455,7 +2452,6 @@ function hostAct(id, m) {
   else if (m.a === 'patch') { const i = p.sack.indexOf('patch'), j = B.hold.indexOf('patch'); if ((i >= 0 || j >= 0) && nearBoat(BSPOT.patch, 3)) { B.hull = Math.min(hullMax(), B.hull + 35 * HC().hp); if (i >= 0) { p.sack.splice(i, 1); sackSet(p); } else B.hold.splice(j, 1); emit({k: 'boatuse', what: 'patch'}); } }
   else if (m.a === 'drop') dropCarry(p, false);
   else if (m.a === 'tug') { const why = !G.shed || Math.hypot(p.x - G.shed.shop[0], p.z - G.shed.shop[2]) >= 25 ? 'Call the tug from the harbour shed.' : tugWhy(); if (!why) { resetBoat(false); emit({k: 'tug'}); } else emit({k: 'nope', id, why}); }
-  else if (m.a === 'chips') { const now = performance.now() / 1000; if ((p.buyT || 0) > now) return; p.buyT = now + .4; const v = Math.round(+m.v || 0); if (v > 0 && G.cash >= v) { G.cash -= v; p.credIn = (p.credIn || 0) + v; emit({k: 'chips', id, v}); } else if (v > 0) emit({k: 'chips', id, v: 0}); else if (v < 0) { const out = p === P ? -v : Math.min(-v, p.credIn || 0); if (p !== P) p.credIn -= out; G.cash += out; emit({k: 'chips', id, out}); } save(); }
   else if (m.a === 'radio') emit({k: 'radio', on: m.on});
   else if (m.a === 'fw') emit({k: 'fw', x: m.x, y: m.y, z: m.z, vx: m.vx, vy: m.vy, vz: m.vz, c: m.c});
   else if (m.a === 'buya') { const now = performance.now() / 1000; if ((p.buyT || 0) > now) return; p.buyT = now + .4; const A = AURAS[m.i]; if (A && G.cash >= (ALL ? 0 : A.cost)) { G.cash -= ALL ? 0 : A.cost; emit({k: 'gear', id, g: 'aura' + m.i}); save(); } }
@@ -2645,8 +2641,6 @@ function targets() {
   if (P.sw && (P.dv || 0) >= 1) for (let i = 0; i < SUNK.length; i++) { const q = SUNK[i]; if (q.got || far(q.x, q.z, 4)) continue; const nf = !sackFits(P, q.kind); L.push({x: q.x, y: q.y + .4, z: q.z, r: 4.5, dive: 1, info: nf ? 1 : 0, label: nf ? full : `Grab the sunken ${NAMES[q.kind]} ($${VALUE[q.kind] || 0})`, go: nf ? null : () => act({a: 'dpick', i})}); }
   if (cb) L.push({x: cb.console[0], y: cb.console[1], z: cb.console[2], r: 2.8, hold: G.power && !G.bbOut ? 'c' : '', info: !G.power || G.bbOut ? 1 : 0, label: !G.power ? 'Control console. No power.' : G.bbOut ? 'Static on every channel' : 'Hold E to eject the flight recorder'});
   DIGS.forEach((d, i) => { if (!d.dug && !far(d.x, d.z)) L.push({x: d.x, y: d.y + .3, z: d.z, r: 2.6, hold: 'd' + i, label: d.rev ? 'Hold E to dig where the X is' : 'Hold E to dig under the cairn'}); });
-  if (G.casP) L.push({x: G.casP[0], y: G.casP[1], z: G.casP[2], r: 3, label: 'The Lucky Lantern: blackjack, roulette, slots', go: openCasino});
-  if (CRZ.box) L.push({x: CRZ.x - 6, y: CRZ.D1 + 1.2, z: CRZ.z + 44, r: 2.6, label: 'Slot machines (they still work)', go: openCasino});
   if (G.shed) L.push({x: G.shed.shop[0], y: G.shed.shop[1], z: G.shed.shop[2], r: 3, label: 'Harbour shed: sell salvage, buy upgrades', go: openShop});
   for (const p of PL.values()) if (p !== P && p.down && !p.dead && p.ready) L.push({x: p.x, y: p.y + .3, z: p.z, r: 2.4, hold: 'r' + p.id, label: `Hold E to pick up ${p.name}`});
   for (const it of INTER) { if ((!it.boat && far(it.x, it.z)) || (it.on && !it.on())) continue; const w = interWorld(it); L.push(Object.assign({}, it, {x: w.x, y: it.boat ? w.y + (it.dive ? B.heave : 0) : it.y, z: w.z, label: it.label(), hide: it.h, src: it})); }
@@ -3735,49 +3729,471 @@ function stepFireflies(dt) {
     const c = ((t + ph * 3) % per) / per, b = c < .18 ? Math.sin(c / .18 * PI) : 0; ca[i * 3] = b * 2.2; ca[i * 3 + 1] = b * 2.6; ca[i * 3 + 2] = b * .6; }); FFLY.geometry.attributes.color.needsUpdate = true;
   FFLY.geometry.attributes.position.needsUpdate = true; FFLY.material.opacity = TOD.night;
 }
-// ---------------- the Lucky Lantern: a little credit casino (blackjack, roulette, slots)
-const CAS = {tab: 'bj', bet: 50, bj: null, rl: {bets: [], spin: 0, ang: 0, res: null}, sl: {r: ['⚓', '⚓', '⚓'], spin: 0}};
-const loadCred = () => { try { return +localStorage.getItem(SK('s9-cred')) || 0; } catch (e) { return 0; } };
-const saveCred = () => { try { localStorage.setItem(SK('s9-cred'), String(P.cred)); } catch (e) {} };
-function openCasino() { G.casOpen = true; clearKeys(); G.casAt = [P.x, P.z, P.ob ? 1 : 0]; $('casino').classList.remove('hidden'); try { document.exitPointerLock(); } catch (e) {} if (P.cred == null) P.cred = loadCred(); drawCasino(); }
-function closeCasino() { G.casOpen = false; $('casino').classList.add('hidden'); lockMouse(); }
-function cred(d) { P.cred = Math.max(0, (P.cred || 0) + d); saveCred(); }
-function casMsg(t, win) { $('casMsg').innerHTML = t; $('casMsg').className = win > 0 ? 'win' : win < 0 ? 'lose' : ''; if (win > 0) Snd.coin(); else if (win < 0) tone(150, .06, .4, 'triangle', null, 90); }
-// blackjack
-const SUITS = ['♠', '♥', '♦', '♣'], RANKS = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
-function bjDeck() { const d = []; for (let k = 0; k < 4; k++) for (const s of SUITS) for (const r of RANKS) d.push([r, s]); for (let i = d.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [d[i], d[j]] = [d[j], d[i]]; } return d; }
-function bjVal(h) { let v = 0, a = 0; for (const [r] of h) { if (r === 'A') { a++; v += 11; } else v += 'JQK'.includes(r) ? 10 : +r; } while (v > 21 && a--) v -= 10; return v; }
-const cardH = (c, hid) => hid ? '<i class="pc back"></i>' : `<i class="pc ${c[1] === '♥' || c[1] === '♦' ? 'red' : ''}">${c[0]}<b>${c[1]}</b></i>`;
-function bjDeal() { const b = CAS.bet; if ((P.cred || 0) < b) return casMsg('Not enough credits. Buy some at the cashier.', 0); cred(-b); const d = (CAS.bj && CAS.bj.d.length > 60) ? CAS.bj.d : bjDeck();
-  CAS.bj = {d, p: [d.pop(), d.pop()], h: [d.pop(), d.pop()], bet: b, on: true}; Snd.click(); if (bjVal(CAS.bj.p) === 21) bjEnd(); else { casMsg('Hit or stand?', 0); drawCasino(); } }
-function bjHit() { const B2 = CAS.bj; if (!B2 || !B2.on) return; B2.p.push(B2.d.pop()); Snd.click(); if (bjVal(B2.p) > 21) bjEnd(); else drawCasino(); }
-function bjDouble() { const B2 = CAS.bj; if (!B2 || !B2.on || B2.p.length !== 2 || (P.cred || 0) < B2.bet) return; cred(-B2.bet); B2.bet *= 2; B2.p.push(B2.d.pop()); bjEnd(); }
-function bjEnd() { const B2 = CAS.bj; B2.on = false; const pv = bjVal(B2.p), bj = pv === 21 && B2.p.length === 2; if (pv <= 21 && !bj) while (bjVal(B2.h) < 17) B2.h.push(B2.d.pop());
-  const hv = bjVal(B2.h); let w = 0, t;
-  if (pv > 21) t = `Bust with ${pv}.`; else if (bj && !(hv === 21 && B2.h.length === 2)) { w = Math.floor(B2.bet * 2.5); t = 'Blackjack! Pays 3 to 2.'; } else if (hv > 21 || pv > hv) { w = B2.bet * 2; t = `${pv} beats ${hv > 21 ? 'a dealer bust' : hv}.`; } else if (pv === hv) { w = B2.bet; t = `Push at ${pv}.`; } else t = `Dealer ${hv} beats ${pv}.`;
-  if (w) cred(w); casMsg(t + (w > B2.bet ? ` +${w - B2.bet}` : w === B2.bet ? '' : ` -${B2.bet}`), w > B2.bet ? 1 : w === B2.bet ? 0 : -1); drawCasino(); }
-// roulette (single zero)
+// ---------------- the Lucky Lantern: a real room beside the harbour shed. Roulette, blackjack and slots in first person, played with the crew's cash (host-run, shared)
+BT.casino = {w: 10, d: 8, dx: 0, dw: 1.8, wh: 3.6, wood: 1};
+const CAS_CHIPS = [10, 25, 100, 500, 1000], CAS_CC = [0xeeeae0, 0xc4242c, 0x24903c, 0x1c1c22, 0x8a3ad0];
 const RL = [0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10, 5, 24, 16, 33, 1, 20, 14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26], RED = new Set([1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36]);
-const RB = {red: [n => RED.has(n), 2, 'Red'], black: [n => n && !RED.has(n), 2, 'Black'], odd: [n => n % 2 === 1, 2, 'Odd'], even: [n => n && n % 2 === 0, 2, 'Even'], low: [n => n >= 1 && n <= 18, 2, '1-18'], high: [n => n >= 19, 2, '19-36'], d1: [n => n >= 1 && n <= 12, 3, '1st 12'], d2: [n => n >= 13 && n <= 24, 3, '2nd 12'], d3: [n => n >= 25, 3, '3rd 12']};
-function rlBet(k) { if (CAS.rl.spin > 0) return; if ((P.cred || 0) < CAS.bet) return casMsg('Not enough credits.', 0); cred(-CAS.bet); CAS.rl.bets.push([k, CAS.bet]); Snd.click(); drawCasino(); }
-function rlSpin() { const R2 = CAS.rl; if (R2.spin > 0 || !R2.bets.length) return; R2.res = Math.floor(Math.random() * 37); R2.spin = 4.2; R2.a0 = R2.ang; R2.a1 = R2.ang + TAU * 5 + (RL.indexOf(R2.res) / 37) * TAU - ((R2.ang % TAU) + TAU) % TAU; casMsg('No more bets…', 0); }
-function rlStep(dt) { const R2 = CAS.rl; if (R2.spin <= 0) return; const prev = R2.spin; R2.spin -= dt; const u = 1 - Math.max(0, R2.spin) / 4.2, e = 1 - Math.pow(1 - u, 3); R2.ang = R2.a0 + (R2.a1 - R2.a0) * e;
-  if (Math.floor(prev * 9 * (1 - u)) !== Math.floor(R2.spin * 9 * (1 - u)) && A.on) burst(4000, 8, .05, .02);
-  if (R2.spin <= 0) { const n = R2.res; let w = 0; for (const [k, b] of R2.bets) { if (typeof k === 'number' ? k === n : RB[k][0](n)) w += b * (typeof k === 'number' ? 36 : RB[k][1]); } const st = R2.bets.reduce((a, q) => a + q[1], 0); R2.bets = []; if (w) cred(w);
-    casMsg(`<b class="${n === 0 ? 'g' : RED.has(n) ? 'r' : 'k'}">${n}</b> ${w ? 'You win ' + w : 'House wins'}${w ? ` (+${w - st})` : ` (-${st})`}`, w > st ? 1 : w ? 0 : -1); R2.hist = [n].concat(R2.hist || []).slice(0, 12); drawCasino(); } }
-function rlDraw() { const c = $('rlC'); if (!c) return; const g = c.getContext('2d'), W = c.width, r = W / 2 - 6, R2 = CAS.rl; g.clearRect(0, 0, W, W); g.save(); g.translate(W / 2, W / 2);
-  g.fillStyle = '#3a2410'; g.beginPath(); g.arc(0, 0, r + 4, 0, TAU); g.fill(); g.rotate(-R2.ang);
-  for (let i = 0; i < 37; i++) { const a0 = i / 37 * TAU - PI / 2 - PI / 37, a1 = a0 + TAU / 37, n = RL[i]; g.fillStyle = n === 0 ? '#1a7a3a' : RED.has(n) ? '#a01818' : '#141414'; g.beginPath(); g.moveTo(0, 0); g.arc(0, 0, r, a0, a1); g.fill();
-    g.save(); g.rotate((a0 + a1) / 2 + PI / 2); g.fillStyle = '#f0e8d8'; g.font = 'bold 10px sans-serif'; g.textAlign = 'center'; g.fillText(n, 0, -r + 13); g.restore(); }
-  g.fillStyle = '#5a3a18'; g.beginPath(); g.arc(0, 0, r * .55, 0, TAU); g.fill(); g.fillStyle = '#c8a040'; g.beginPath(); g.arc(0, 0, r * .12, 0, TAU); g.fill(); g.restore();
-  const ba = R2.spin > 0 ? -R2.ang * 1.6 + R2.spin * 3 : -PI / 2, br = R2.spin > 1 ? r - 4 : r - 22; g.fillStyle = '#fff'; g.beginPath(); g.arc(W / 2 + Math.cos(R2.spin > 0 ? ba : -PI / 2) * br, W / 2 + Math.sin(R2.spin > 0 ? ba : -PI / 2) * br, 5, 0, TAU); g.fill(); }
-// slots
-const SYM = ['🍒', '🍋', '⚓', '🐟', '🦑', '💎', '7️⃣'], SW = [30, 24, 18, 12, 8, 5, 3], SPAY = {'🍒': 5, '🍋': 8, '⚓': 12, '🐟': 20, '🦑': 35, '💎': 60, '7️⃣': 150};
-const pickSym = () => { let r = Math.random() * SW.reduce((a, b) => a + b, 0); for (let i = 0; i < SYM.length; i++) { r -= SW[i]; if (r < 0) return SYM[i]; } return SYM[0]; };
-function slSpin() { const S2 = CAS.sl; if (S2.spin > 0) return; if ((P.cred || 0) < CAS.bet) return casMsg('Not enough credits.', 0); cred(-CAS.bet); S2.res = [pickSym(), pickSym(), pickSym()]; S2.spin = 1.9; S2.bet = CAS.bet; casMsg('', 0); }
-function slStep(dt) { const S2 = CAS.sl; if (S2.spin <= 0) return; S2.spin -= dt; for (let i = 0; i < 3; i++) S2.r[i] = S2.spin > .5 + (2 - i) * .45 ? SYM[Math.floor(Math.random() * SYM.length)] : S2.res[i];
-  if (Math.random() < .5 && A.on) burst(2500, 6, .03, .02); const el = $('slR'); if (el) el.innerHTML = S2.r.map(s => `<span>${s}</span>`).join('');
-  if (S2.spin <= 0) { const [a, b, c] = S2.res; let m = 0; if (a === b && b === c) m = SPAY[a]; else if (a === '🍒' && b === '🍒') m = 2; else if ([a, b, c].filter(s => s === '🍒').length === 1) m = 1; const w = Math.floor(S2.bet * m); if (w) cred(w); casMsg(m >= 5 ? `JACKPOT ×${m}! +${w}` : w ? `+${w}` : 'No luck.', w > S2.bet ? 1 : w ? 0 : -1); drawCasino(); } }
+// roulette, building-local: table centre (cx, cz), felt origin fx (felt coords u along x, w along z, + away from the players), wheel at wx
+const CAS_RL = {cx: -2.3, cz: 1, fx: -2.35, wx: -3.6, y: .825, st: [-3.3, -2.5, -1.7, -.9], max: 5000, out: ['1-18', 'Even', 'Red', 'Black', 'Odd', '19-36'],
+  pay: c => c <= 36 ? 35 : c <= 42 ? 2 : 1, odds: c => c <= 36 ? '35 to 1' : c <= 42 ? '2 to 1' : '1 to 1',
+  win: (c, n) => c <= 36 ? c === n : n === 0 ? false : c <= 39 ? Math.ceil(n / 12) === c - 36 : c <= 42 ? (n - 1) % 3 === c - 40 : c === 43 ? n <= 18 : c === 44 ? n % 2 === 0 : c === 45 ? RED.has(n) : c === 46 ? !RED.has(n) : c === 47 ? n % 2 === 1 : n >= 19,
+  name: c => c <= 36 ? String(c) : c <= 39 ? ['1st', '2nd', '3rd'][c - 37] + ' 12' : c <= 42 ? 'Column ' + (c - 39) : CAS_RL.out[c - 43],
+  rect(c, o) { if (c === 0) { o[1] = -.75; o[2] = -.6; o[3] = -.3; o[4] = .3; } else if (c <= 36) { const k = Math.floor((c - 1) / 3), r = (c - 1) % 3; o[1] = -.6 + k * .15; o[2] = o[1] + .15; o[3] = -.3 + r * .2; o[4] = o[3] + .2; }
+    else if (c <= 39) { o[1] = -.6 + (c - 37) * .6; o[2] = o[1] + .6; o[3] = .3; o[4] = .45; } else if (c <= 42) { o[1] = 1.2; o[2] = 1.35; o[3] = -.3 + (c - 40) * .2; o[4] = o[3] + .2; } else { o[1] = -.6 + (c - 43) * .3; o[2] = o[1] + .3; o[3] = -.45; o[4] = -.3; } o[0] = c; return o; },
+  cell(u, w, o) { let c = -1; if (w >= -.3 && w < .3) { if (u >= -.75 && u < -.6) c = 0; else if (u >= -.6 && u < 1.2) c = Math.floor((u + .6) / .15) * 3 + Math.min(2, Math.floor((w + .3) / .2)) + 1; else if (u >= 1.2 && u < 1.35) c = 40 + Math.min(2, Math.floor((w + .3) / .2)); }
+    else if (u >= -.6 && u < 1.2) { if (w >= -.45 && w < -.3) c = 43 + Math.min(5, Math.floor((u + .6) / .3)); else if (w >= .3 && w < .45) c = 37 + Math.min(2, Math.floor((u + .6) / .6)); } return c < 0 ? null : this.rect(c, o); }};
+// blackjack: half-moon centred (cx, cz), players on the -z arc, dealer at dz; cards are ints 0-51 (rank c % 13, 0 = ace)
+const CAS_BJ = {cx: 2.4, cz: 1.6, r: 1.1, dz: 2.65, max: 2000, shoe: [1.62, .93, 2.02], tray: [3.2, .87, 2.0], A: [-.6981, 0, .6981],
+  val(h) { let v = 0, a = 0; for (let i = 0; i < h.length; i++) { const c = h[i]; if (c < 0) continue; const r = c % 13; if (r === 0) { a++; v += 11; } else v += r >= 9 ? 10 : r + 1; } while (v > 21 && a) { v -= 10; a--; } return v; }};
+// slots: three walk-up machines on the +x wall; reel weights and pays give an RTP of about 94.7 %
+const CAS_SL = {z: [-2.2, -1.2, -.2], W: [30, 24, 18, 12, 8, 5, 3], X3: [5, 8, 12, 20, 35, 60, 150], max: 500,
+  pick: r => { let q = r() * 100; for (let i = 0; i < 7; i++) { q -= CAS_SL.W[i]; if (q < 0) return i; } return 0; },
+  mult: (a, b, c) => a === b && b === c ? CAS_SL.X3[a] : a === 0 && b === 0 ? 2 : (a === 0) + (b === 0) + (c === 0) === 1 ? 1 : 0};
+const casR = k => mulberry((G.seed ^ 0xca51) + 101 * k);
+const CAS = {force: null, bjForce: null, slForce: null, v: 0, sv: -1, sT: -9, dirty: 1, cd: 1, kd: 1, ct: 0, b: null, g: null,
+  seats: {rl: [null, null, null, null], bj: [null, null, null]}, rl: {ph: 'idle', T: 0, n: 0, bets: [], res: -1, t0: -99, a0: 0, k: 0},
+  bj: {ph: 'idle', T: 0, turn: -1, seats: [], dl: [], hole: -1, shoe: [], q: [], qT: 0, sh: 0, ch: [[], [], []]},
+  sl: [[null, 0, 0, 0, -99], [null, 0, 0, 0, -99], [null, 0, 0, 0, -99]], slPay: [null, null, null], rp: new Float32Array(9), rt0: [-99, -99, -99], rk: [0, 0, 0],
+  stk: [], lv: [], cv: [], hc: [0, 0, 0, 0, 0], aim: null, aimSl: -1, dl: {p: 'idle', t: 0, s: 1}, mbT: 0, mbI: 0, tickT: 0, tickP: 0, hk: [], help: null,
+  m: new THREE.Matrix4(), q: new THREE.Quaternion(), e: new THREE.Euler(0, 0, 0, 'YXZ'), p: new THREE.Vector3(), s: new THREE.Vector3(), c: new THREE.Color()};
+function casBjReset() { const J = CAS.bj; J.seats = [0, 1, 2].map(() => [null, 0, [], 0]); J.dl = []; J.hole = -1; J.q = []; J.turn = -1; J.ch = [[], [], []]; }
+casBjReset();
+function casReset() { CAS.seats.rl.fill(null); CAS.seats.bj.fill(null); Object.assign(CAS.rl, {ph: 'idle', T: 0, n: 0, bets: [], res: -1, t0: -99, a0: 0, k: 0}); Object.assign(CAS.bj, {ph: 'idle', T: 0, shoe: [], sh: 0}); casBjReset();
+  CAS.sl.forEach(q => { q[0] = null; q[4] = -99; }); CAS.slPay.fill(null); CAS.stk = []; CAS.lv = []; CAS.cv = []; CAS.v++; CAS.sT = -9; CAS.dirty = CAS.cd = CAS.kd = 1; CAS.force = CAS.bjForce = CAS.slForce = null; }
+// local <-> world for the room (it never moves)
+const casW = (lx, lz) => [CAS.b.x + lx * CAS.cs + lz * CAS.sn, CAS.b.z - lx * CAS.sn + lz * CAS.cs];
+function casInside(x, z, y) { const b = CAS.b; if (!b || Math.abs(y - b.fy - 1.5) > 2.6) return false; const dx = x - b.x, dz = z - b.z, lx = dx * CAS.cs - dz * CAS.sn, lz = dx * CAS.sn + dz * CAS.cs; return Math.abs(lx) < 5 && Math.abs(lz) < 4; }
+// ---- canvases (own art, no emoji)
+function casFelt() { return cv(1024, 512, (g, W, H) => { g.fillStyle = '#0e5530'; g.fillRect(0, 0, W, H); noiseFill(g, W, H, 10); g.translate(W, H); g.rotate(PI); // drawn as the seated player sees it
+  const X = u => (1.35 - u) / 2.6 * W, Y = w => (.625 - w) / 1.25 * H, o = [0, 0, 0, 0, 0]; g.textAlign = 'center'; g.textBaseline = 'middle';
+  for (let c = 0; c <= 48; c++) { CAS_RL.rect(c, o); const x0 = X(o[2]), x1 = X(o[1]), y0 = Y(o[4]), y1 = Y(o[3]), w = x1 - x0, h = y1 - y0, mx = x0 + w / 2, my = y0 + h / 2;
+    if (c <= 36) { g.fillStyle = c === 0 ? '#14803e' : RED.has(c) ? '#a8141c' : '#141416'; g.fillRect(x0 + 3, y0 + 3, w - 6, h - 6); g.fillStyle = '#f4ecd6'; g.font = 'bold 30px Georgia'; g.save(); g.translate(mx, my); g.rotate(-PI / 2); g.fillText(c, 0, 0); g.restore(); }
+    else if (c === 45 || c === 46) { g.fillStyle = c === 45 ? '#b0161e' : '#121214'; g.beginPath(); g.moveTo(mx - 44, my); g.lineTo(mx, my - 24); g.lineTo(mx + 44, my); g.lineTo(mx, my + 24); g.closePath(); g.fill(); g.strokeStyle = '#e8d8a8'; g.lineWidth = 2; g.stroke(); }
+    else { g.fillStyle = '#f0e4c0'; g.font = (c <= 42 ? 'bold 22px' : 'bold 26px') + ' Georgia'; if (c >= 40 && c <= 42) { g.save(); g.translate(mx, my); g.rotate(-PI / 2); g.fillText('2 to 1', 0, 0); g.restore(); } else g.fillText(c <= 39 ? ['1st 12', '2nd 12', '3rd 12'][c - 37] : CAS_RL.out[c - 43].toUpperCase(), mx, my); }
+    g.strokeStyle = '#e8d8a8'; g.lineWidth = 2.5; g.strokeRect(x0, y0, w, h); }
+  g.fillStyle = 'rgba(240,226,190,.85)'; g.font = 'italic 19px Georgia'; g.fillText('Straight up pays 35 to 1  ·  dozens and columns 2 to 1', X(.3), Y(.535));
+  g.fillText('Red, black, odd, even, high, low pay 1 to 1  ·  zero takes the outside bets', X(.3), Y(-.535)); g.font = 'bold 26px Georgia'; g.fillStyle = '#e8c060'; g.fillText('LUCKY LANTERN', X(-1.05), Y(0)); }); }
+function casFeltBJ() { return cv(512, 390, (g, W, H) => { g.fillStyle = '#0e5530'; g.fillRect(0, 0, W, H); noiseFill(g, W, H, 10); g.translate(W, H); g.rotate(PI);
+  const X = x => (1.15 - x) / 2.3 * W, Y = y => (y + .6) / 1.75 * H; g.textAlign = 'center'; g.textBaseline = 'middle'; g.strokeStyle = '#e8d8a8';
+  for (let s = 0; s < 3; s++) { const a = CAS_BJ.A[s]; g.lineWidth = 3; g.beginPath(); g.arc(X(Math.sin(a) * .78), Y(Math.cos(a) * .78), 20, 0, TAU); g.stroke(); g.lineWidth = 1.5; g.strokeRect(X(Math.sin(a) * .48) - 16, Y(Math.cos(a) * .48) - 22, 32, 44); }
+  g.lineWidth = 2; g.beginPath(); g.arc(X(0), Y(0), .62 / 1.75 * H, .15 * PI, .85 * PI); g.stroke();
+  g.fillStyle = '#f0e4c0'; g.font = 'bold 17px Georgia'; g.fillText('BLACKJACK PAYS 3 TO 2', X(0), Y(.26)); g.font = 'italic 13px Georgia'; g.fillText('Dealer stands on all 17s', X(0), Y(.15)); g.font = 'bold 15px Georgia'; g.fillStyle = '#e8c060'; g.fillText('LUCKY LANTERN', X(0), Y(-.4)); }); }
+function casSignCv() { return cv(512, 128, (g, w, h) => { g.fillStyle = '#120a08'; g.fillRect(0, 0, w, h); g.strokeStyle = '#ff7a20'; g.lineWidth = 4; g.shadowColor = '#ff7a20'; g.shadowBlur = 12; g.strokeRect(8, 8, w - 16, h - 16);
+  g.fillStyle = '#ffb040'; g.beginPath(); g.ellipse(52, 64, 18, 26, 0, 0, TAU); g.fill(); g.fillRect(44, 30, 16, 8); g.fillRect(44, 90, 16, 8); g.fillRect(w - 60, 30, 16, 8); g.beginPath(); g.ellipse(w - 52, 64, 18, 26, 0, 0, TAU); g.fill(); g.fillRect(w - 60, 90, 16, 8);
+  g.font = 'bold 50px Georgia'; g.textAlign = 'center'; g.fillStyle = '#ffcf60'; g.shadowBlur = 16; g.fillText('LUCKY LANTERN', w / 2, 82); }); }
+function casWheelCv() { return cv(512, 512, (g, W) => { const c = W / 2; g.translate(c, c); g.fillStyle = '#c8a040'; g.fillRect(-c, -c, W, W); // the corners stay brass: the turret samples the centre
+  for (let i = 0; i < 37; i++) { const a0 = (i - .5) / 37 * TAU, a1 = (i + .5) / 37 * TAU, n = RL[i]; g.fillStyle = n === 0 ? '#16883e' : RED.has(n) ? '#a8141c' : '#18181a'; g.beginPath(); g.arc(0, 0, c, a0, a1); g.arc(0, 0, c * .66, a1, a0, true); g.closePath(); g.fill();
+    g.fillStyle = 'rgba(0,0,0,.38)'; g.beginPath(); g.arc(0, 0, c * .86, a0, a1); g.arc(0, 0, c * .66, a1, a0, true); g.closePath(); g.fill(); g.strokeStyle = '#d8d0c0'; g.lineWidth = 2; g.beginPath(); g.moveTo(Math.cos(a0) * c * .66, Math.sin(a0) * c * .66); g.lineTo(Math.cos(a0) * c * .86, Math.sin(a0) * c * .86); g.stroke();
+    g.save(); g.rotate((a0 + a1) / 2 + PI / 2); g.fillStyle = '#f4ecd6'; g.font = 'bold 22px Georgia'; g.textAlign = 'center'; g.fillText(n, 0, -c * .9); g.restore(); }
+  g.strokeStyle = '#d8c070'; g.lineWidth = 3; g.beginPath(); g.arc(0, 0, c * .86, 0, TAU); g.stroke(); const gr = g.createRadialGradient(0, 0, 10, 0, 0, c * .66); gr.addColorStop(0, '#c8a040'); gr.addColorStop(.25, '#6a3a18'); gr.addColorStop(1, '#3a1e0c'); g.fillStyle = gr; g.beginPath(); g.arc(0, 0, c * .66, 0, TAU); g.fill();
+  g.strokeStyle = '#c8a040'; g.lineWidth = 6; for (let k = 0; k < 4; k++) { g.beginPath(); g.moveTo(0, 0); g.lineTo(Math.cos(k * PI / 2) * c * .6, Math.sin(k * PI / 2) * c * .6); g.stroke(); } }); }
+function casSuit(g, s, x, y, k) { g.fillStyle = s === 1 || s === 2 ? '#b8121a' : '#141418'; g.beginPath();
+  if (s === 1) { g.moveTo(x, y + k * .9); g.bezierCurveTo(x - k * 1.4, y - k * .1, x - k * .7, y - k * 1.1, x, y - k * .4); g.bezierCurveTo(x + k * .7, y - k * 1.1, x + k * 1.4, y - k * .1, x, y + k * .9); g.fill(); }
+  else if (s === 2) { g.moveTo(x, y - k); g.lineTo(x + k * .7, y); g.lineTo(x, y + k); g.lineTo(x - k * .7, y); g.fill(); }
+  else if (s === 3) { for (const [dx, dy] of [[0, -.45], [-.45, .12], [.45, .12]]) { g.moveTo(x + dx * k + k * .38, y + dy * k); g.arc(x + dx * k, y + dy * k, k * .38, 0, TAU); } g.fill(); g.fillRect(x - k * .1, y, k * .2, k * .85); }
+  else { g.moveTo(x, y - k); g.bezierCurveTo(x + k * 1.4, y + k * .1, x + k * .6, y + k * .9, x, y + k * .35); g.bezierCurveTo(x - k * .6, y + k * .9, x - k * 1.4, y + k * .1, x, y - k); g.fill(); g.fillRect(x - k * .1, y, k * .2, k * .85); } }
+function casCardCv() { return cv(1024, 512, (g, W, H) => { const cw = W / 14, ch = H / 4, R = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+  for (let s = 0; s < 4; s++) for (let r = 0; r < 14; r++) { const x = r * cw, y = (3 - s) * ch; // texture row s from the bottom
+    if (r === 13) { g.fillStyle = '#f2ece0'; g.fillRect(x, y, cw, ch); g.fillStyle = '#7a1418'; g.fillRect(x + 4, y + 4, cw - 8, ch - 8); g.strokeStyle = 'rgba(255,220,180,.35)'; g.lineWidth = 1; for (let k = -ch; k < cw + ch; k += 9) { g.beginPath(); g.moveTo(x + 4 + k, y + 4); g.lineTo(x + 4 + k + ch, y + ch - 4); g.moveTo(x + 4 + k + ch, y + 4); g.lineTo(x + 4 + k, y + ch - 4); g.stroke(); }
+      g.fillStyle = '#e8c060'; g.fillRect(x + cw / 2 - 5, y + ch / 2 - 18, 10, 30); g.fillStyle = '#fff2b0'; g.fillRect(x + cw / 2 - 7, y + ch / 2 - 26, 14, 9); continue; }
+    g.fillStyle = '#f6f2e8'; g.fillRect(x + 1, y + 1, cw - 2, ch - 2); g.strokeStyle = '#c8c0b0'; g.strokeRect(x + 2, y + 2, cw - 4, ch - 4);
+    g.fillStyle = s === 1 || s === 2 ? '#b8121a' : '#141418'; g.font = 'bold 20px Georgia'; g.textAlign = 'center'; g.fillText(R[r], x + 12, y + 22); casSuit(g, s, x + 12, y + 36, 6);
+    if (r >= 10) { g.strokeStyle = s === 1 || s === 2 ? '#b8121a' : '#2a2a40'; g.lineWidth = 2; g.strokeRect(x + 22, y + 26, cw - 32, ch - 44); g.font = 'bold 34px Georgia'; g.fillText(R[r], x + cw / 2 + 4, y + ch / 2 + 6); casSuit(g, s, x + cw / 2 + 4, y + ch / 2 + 32, 8); }
+    else casSuit(g, s, x + cw / 2 + 4, y + ch / 2 + 4, r === 0 ? 18 : 13); } }); }
+function casReelCv() { return cv(128, 1024, (g, W, H) => { const h = H / 7; g.fillStyle = '#f6f0e2'; g.fillRect(0, 0, W, H);
+  const at = (i, f) => { g.save(); g.translate(W / 2, (i + .5) * h); f(); g.restore(); g.strokeStyle = 'rgba(0,0,0,.12)'; g.lineWidth = 2; g.beginPath(); g.moveTo(0, (i + 1) * h); g.lineTo(W, (i + 1) * h); g.stroke(); };
+  at(0, () => { g.fillStyle = '#f08a5a'; for (let k = -3; k <= 3; k++) { g.beginPath(); g.moveTo(0, 30); g.lineTo(Math.sin(k * .38) * 46, 30 - Math.cos(k * .38) * 56); g.lineTo(Math.sin((k + .5) * .38) * 44, 30 - Math.cos((k + .5) * .38) * 52); g.closePath(); g.fill(); } g.fillStyle = '#c85a30'; g.fillRect(-12, 26, 24, 12); }); // shell
+  at(1, () => { g.fillStyle = '#f2d020'; g.beginPath(); g.ellipse(0, 4, 42, 30, -.2, 0, TAU); g.fill(); g.beginPath(); g.moveTo(36, -12); g.lineTo(50, -20); g.lineTo(40, -2); g.fill(); g.fillStyle = '#3a9a3a'; g.beginPath(); g.ellipse(-22, -30, 16, 7, -.6, 0, TAU); g.fill(); }); // lemon
+  at(2, () => { g.strokeStyle = '#1e3a6a'; g.lineWidth = 10; g.lineCap = 'round'; g.beginPath(); g.arc(0, -40, 9, 0, TAU); g.moveTo(0, -31); g.lineTo(0, 40); g.moveTo(-24, -18); g.lineTo(24, -18); g.moveTo(-38, 14); g.quadraticCurveTo(-30, 44, 0, 44); g.quadraticCurveTo(30, 44, 38, 14); g.stroke(); }); // anchor
+  at(3, () => { g.fillStyle = '#2a9ab0'; g.beginPath(); g.ellipse(-6, 0, 38, 22, 0, 0, TAU); g.fill(); g.beginPath(); g.moveTo(28, 0); g.lineTo(52, -22); g.lineTo(52, 22); g.fill(); g.fillStyle = '#fff'; g.beginPath(); g.arc(-26, -6, 6, 0, TAU); g.fill(); g.fillStyle = '#111'; g.beginPath(); g.arc(-26, -6, 3, 0, TAU); g.fill(); }); // fish
+  at(4, () => { g.fillStyle = '#8a40b0'; g.beginPath(); g.ellipse(0, -18, 24, 32, 0, 0, TAU); g.fill(); g.strokeStyle = '#8a40b0'; g.lineWidth = 7; g.lineCap = 'round'; for (let k = -2; k <= 2; k++) { g.beginPath(); g.moveTo(k * 9, 8); g.quadraticCurveTo(k * 18, 30, k * 12 + 6, 50); g.stroke(); } g.fillStyle = '#fff'; g.beginPath(); g.arc(-9, -14, 5, 0, TAU); g.arc(9, -14, 5, 0, TAU); g.fill(); }); // squid
+  at(5, () => { g.fillStyle = '#c89a70'; g.beginPath(); g.ellipse(0, 22, 48, 18, 0, 0, PI); g.fill(); const gr = g.createRadialGradient(-10, -12, 4, 0, 0, 32); gr.addColorStop(0, '#ffffff'); gr.addColorStop(1, '#b8c4d8'); g.fillStyle = gr; g.beginPath(); g.arc(0, 0, 30, 0, TAU); g.fill(); }); // pearl
+  at(6, () => { g.fillStyle = 'rgba(255,220,120,.35)'; g.beginPath(); g.moveTo(0, -40); g.lineTo(60, -62); g.lineTo(60, -18); g.closePath(); g.fill(); g.fillStyle = '#f4f0e8'; g.beginPath(); g.moveTo(-14, 50); g.lineTo(-9, -32); g.lineTo(9, -32); g.lineTo(14, 50); g.fill(); g.fillStyle = '#c81c1c'; g.fillRect(-12, 20, 24, 12); g.fillRect(-10, -8, 20, 10); g.fillStyle = '#ffd860'; g.fillRect(-8, -46, 16, 14);
+    g.font = 'bold 64px Georgia'; g.textAlign = 'center'; g.fillStyle = '#c81c1c'; g.strokeStyle = '#ffd860'; g.lineWidth = 3; g.strokeText('7', -34, 24); g.fillText('7', -34, 24); }); // lighthouse 7
+}); }
+// ---- the building (buildHome calls this before the BK merge): room, tables, slots, bar, signs, colliders
+function casBuild() {
+  const b = building('casino', 'The Lucky Lantern', 12, -270, 2, 'w'); CAS.b = b; CAS.cs = Math.cos(b.th); CAS.sn = Math.sin(b.th);
+  const S = o => new THREE.MeshStandardMaterial(Object.assign({roughness: .7, metalness: 0}, o)), B = o => new THREE.MeshBasicMaterial(o);
+  if (!MAT.casFelt) { MAT.casFelt = S({map: tex(casFelt()), roughness: .95}); MAT.casBJ = S({map: tex(casFeltBJ()), roughness: .95}); MAT.casSign = B({map: tex(casSignCv()), color: new THREE.Color().setRGB(1.6, 1.6, 1.6)});
+    MAT.casNeon = B({color: new THREE.Color().setRGB(2.2, .55, 1.1)}); MAT.casAwn = S({map: tex(cv(64, 16, (g, w, h) => { for (let i = 0; i < 8; i++) { g.fillStyle = i % 2 ? '#e8dcc0' : '#8a1a20'; g.fillRect(i * 8, 0, 8, h); } })), side: THREE.DoubleSide});
+    MAT.casWood = S({map: TX.wood, color: 0x8a5a34, roughness: .5, side: THREE.DoubleSide}); MAT.casRail = S({color: 0x3a1a10, roughness: .45}); MAT.casSlot = S({color: 0x7a1424, metalness: .45, roughness: .35}); MAT.casChrome = S({color: 0xd0d0d8, metalness: .9, roughness: .22});
+    MAT.casBtlG = S({color: 0x1a5a2a, roughness: .15, metalness: .2, emissive: 0x061a0a}); MAT.casBtlA = S({color: 0x8a4a12, roughness: .15, metalness: .2, emissive: 0x1a0a02}); MAT.casGlass = S({color: 0xd8e8f0, roughness: .05, metalness: .3, transparent: true, opacity: .14, depthWrite: false}); MAT.casShade = S({color: 0x1e4a2a, roughness: .5, side: THREE.DoubleSide, emissive: 0x0a1a0c}); }
+  const P3 = (k, g, lx, ly, lz, ry = 0) => { g.rotateY(ry); g.translate(lx, ly, lz); g.rotateY(b.th); g.translate(b.x, b.fy, b.z); bucket(k).push(g); return g; };
+  const solid = (x0, x1, z0, z1, h) => { const r = rectW(b, x0, x1, z0, z1); WALLS.push(Object.assign(r, {y0: b.fy, y1: b.fy + h, see: false})); };
+  const R = CAS_RL, J = CAS_BJ;
+  lbox(b, 'carpet', 0, .065, 0, 9.7, .01, 7.7);
+  // roulette: wood top with a padded rail, the printed felt, two pedestals, the wheel bowl at the -x end
+  lbox(b, 'wood', R.cx, .78, R.cz, 2.74, .08, 1.39); for (const s of [-1, 1]) lbox(b, 'dark', R.cx + s * .8, .37, R.cz, .34, .74, .9);
+  P3('casFelt', new THREE.PlaneGeometry(2.6, 1.25).rotateX(-PI / 2), R.cx, R.y, R.cz);
+  for (const s of [-1, 1]) { lbox(b, 'casRail', R.cx, .85, R.cz + s * .66, 2.74, .05, .07); lbox(b, 'casRail', R.cx + s * 1.335, .85, R.cz, .07, .05, 1.39); }
+  P3('wood', new THREE.CylinderGeometry(.5, .5, .08, 30), R.wx, .78, R.cz); P3('dark', new THREE.CylinderGeometry(.18, .26, .74, 14), R.wx, .37, R.cz);
+  P3('casWood', new THREE.LatheGeometry([[.33, .875], [.37, .885], [.405, .9], [.43, .925], [.46, .93], [.47, .91], [.47, .8]].map(([x, y]) => new THREE.Vector2(x, y)), 37), R.wx, 0, R.cz);
+  P3('dark', new THREE.CircleGeometry(.34, 37).rotateX(-PI / 2), R.wx, .872, R.cz);
+  for (let k = 0; k < 8; k++) P3('brass', new THREE.BoxGeometry(.03, .012, .015), R.wx + Math.cos(k * PI / 4) * .385, .9, R.cz + Math.sin(k * PI / 4) * .385, -k * PI / 4);
+  solid(R.cx - 1.37, R.cx + 1.37, R.cz - .7, R.cz + .7, .87); solid(R.wx - .5, R.wx + .5, R.cz - .5, R.cz + .5, .93);
+  // blackjack: a D-shaped top (arc toward the players), felt, rail, pedestal, shoe, chip rack, discard tray
+  const D = new THREE.Shape(); D.moveTo(1.1, 0); for (let i = 0; i <= 24; i++) { const a = i / 24 * PI; D.lineTo(Math.cos(a) * 1.1, Math.sin(a) * 1.1); } D.lineTo(-1.1, -.55); D.lineTo(1.1, -.55); D.closePath();
+  const top = new THREE.ExtrudeGeometry(D, {depth: .07, bevelEnabled: false}); top.rotateX(-PI / 2); P3('wood', top, J.cx, .75, J.cz);
+  const fg = new THREE.ShapeGeometry(D, 24), fp = fg.attributes.position, fu = fg.attributes.uv; for (let i = 0; i < fp.count; i++) fu.setXY(i, (fp.getX(i) + 1.15) / 2.3, (fp.getY(i) + .6) / 1.75); fg.rotateX(-PI / 2); P3('casBJ', fg, J.cx, .825, J.cz);
+  P3('casRail', new THREE.TorusGeometry(1.1, .04, 6, 30, PI).rotateX(-PI / 2), J.cx, .845, J.cz); for (const s of [-1, 1]) lbox(b, 'casRail', J.cx + s * 1.1, .845, J.cz + .275, .08, .06, .55);
+  P3('dark', new THREE.CylinderGeometry(.22, .32, .78, 14), J.cx, .39, J.cz + .1);
+  lbox(b, 'dark', J.shoe[0], .87, J.shoe[2], .14, .1, .26, .35); lbox(b, 'casRail', J.shoe[0], .93, J.shoe[2] - .1, .12, .03, .05, .35);
+  lbox(b, 'dark', J.cx, .84, 2.05, .62, .04, .14); ['white', 'red', 'genM', 'dark', 'brass'].forEach((k, i) => lbox(b, k, J.cx - .24 + i * .12, .865, 2.05, .09, .02, .1)); lbox(b, 'dark', J.tray[0], .845, J.tray[2], .14, .04, .2);
+  solid(J.cx - 1.15, J.cx + 1.15, J.cz - 1.12, J.cz + .58, .87);
+  // the dealer's spot and the stools (4 roulette, 3 blackjack on the arc)
+  PCIRC.push((([x, z]) => ({x, z, r: .32}))(casW(J.cx, J.dz)));
+  const stool = (lx, lz) => { P3('red', new THREE.CylinderGeometry(.19, .17, .07, 16), lx, .73, lz); P3('brass', new THREE.TorusGeometry(.13, .012, 5, 16).rotateX(PI / 2), lx, .4, lz); P3('steel', new THREE.CylinderGeometry(.03, .03, .68, 8), lx, .36, lz); P3('dark', new THREE.CylinderGeometry(.19, .21, .03, 16), lx, .015, lz); const [x, z] = casW(lx, lz); PCIRC.push({x, z, r: .22}); };
+  const seat = (lx, lz, dx, dz) => { const [x, z] = casW(lx, lz), wdx = dx * CAS.cs + dz * CAS.sn, wdz = -dx * CAS.sn + dz * CAS.cs; return {lx, lz, x, z, yaw: Math.atan2(-wdx, -wdz), sx: x - wdx * .75, sz: z - wdz * .75, dx, dz}; };
+  CAS.seatW = {rl: R.st.map(x => seat(x, .05, 0, 1)), bj: J.A.map(a => seat(J.cx + Math.sin(a) * 1.4, J.cz - Math.cos(a) * 1.4, -Math.sin(a), Math.cos(a)))};
+  for (const q of CAS.seatW.rl) stool(q.lx, q.lz); for (const q of CAS.seatW.bj) stool(q.lx, q.lz);
+  // slot machines against the +x wall, facing the room; reels and levers are instanced in casMeshes
+  for (const z of CAS_SL.z) { lbox(b, 'casSlot', 4.62, .48, z, .58, .96, .7); lbox(b, 'casSlot', 4.75, 1.33, z, .36, .78, .7); lbox(b, 'casChrome', 4.3, .97, z, .14, .04, .68); lbox(b, 'dark', 4.33, .3, z, .06, .14, .4);
+    for (const y of [1.06, 1.34]) lbox(b, 'casChrome', 4.45, y, z, .05, .04, .5); for (const s of [-1, 1]) lbox(b, 'casChrome', 4.45, 1.2, z + s * .23, .05, .32, .04); lbox(b, 'casGlass', 4.43, 1.2, z, .005, .26, .44);
+    lbox(b, 'casNeon', 4.68, 1.76, z, .4, .1, .66); P3('casGlass', new THREE.SphereGeometry(.065, 12, 8, 0, TAU, 0, PI / 2), 4.62, 1.81, z); lbox(b, 'casChrome', 4.62, 1.06, z + .38, .1, .1, .06);
+    solid(4.3, 4.95, z - .38, z + .44, 1.9); }
+  // the bar on the back wall: counter, two shelves of bottles
+  lbox(b, 'wood', -2.9, .5, 3.6, 3.4, 1, .5); lbox(b, 'dark', -2.9, 1.02, 3.6, 3.5, .04, .56); for (const y of [1.55, 1.95]) lbox(b, 'wood', -2.9, y, 3.86, 3.2, .04, .22);
+  for (let i = 0; i < 18; i++) { const y = i < 9 ? 1.57 : 1.97, x = -4.3 + (i % 9) * .34 + (i < 9 ? 0 : .12), h = .2 + (i * 7 % 5) * .02; P3(i % 3 ? 'casBtlA' : 'casBtlG', new THREE.CylinderGeometry(.032, .036, h, 8), x, y + h / 2, 3.86); P3('dark', new THREE.CylinderGeometry(.012, .016, .07, 6), x, y + h + .035, 3.86); }
+  solid(-4.65, -1.15, 3.32, 3.95, 1.05);
+  // neon strip under the ceiling, two green-shaded lamps over the tables (their light comes from the pooled home lamps)
+  for (const s of [-1, 1]) { lbox(b, 'casNeon', 0, 3.42, s * 3.86, 9.6, .035, .03); lbox(b, 'casNeon', s * 4.86, 3.42, 0, .03, .035, 7.6); }
+  CAS.lamps = []; for (const [lx, lz] of [[R.cx, R.cz], [J.cx, J.cz - .2]]) { P3('casShade', new THREE.ConeGeometry(.3, .22, 18, 1, true), lx, 2.42, lz); P3('glassL', new THREE.SphereGeometry(.06, 10, 8), lx, 2.34, lz); lbox(b, 'dark', lx, 3.02, lz, .02, 1.1, .02); const [x, z] = casW(lx, lz); CAS.lamps.push([x, b.fy + 2.6, z, .55]); }
+  // outside: the neon sign above the door, a second one on the north wall facing the jetty, an awning
+  P3('casSign', new THREE.PlaneGeometry(4.2, 1.05), 0, 4.2, -4.2, PI); for (const s of [-1, 1]) lbox(b, 'dark', s * 1.6, 3.95, -4.12, .06, .7, .06);
+  P3('casSign', new THREE.PlaneGeometry(3.2, .8), -5.14, 2.65, 0, -PI / 2);
+  P3('casAwn', new THREE.BoxGeometry(2.6, .04, 1).rotateX(-.32), 0, 2.42, -4.55);
+  return b;
+}
+// ---- the moving parts: one group in room space, a few instanced meshes (wheel, ball and lamps, chips, owner discs and the marker, cards, reels, levers) plus the dealer
+function casInstMat(map, key, vert, frag) { const m = new THREE.MeshStandardMaterial({map, roughness: .55, metalness: .05}); m.onBeforeCompile = s => { if (vert) s.vertexShader = vert(s.vertexShader); if (frag) s.fragmentShader = frag(s.fragmentShader); }; m.customProgramCacheKey = () => 'cas-' + key; return m; }
+function casMeshes() {
+  const b = CAS.b, g = CAS.g = new THREE.Group(); g.position.set(b.x, b.fy, b.z); g.rotation.y = b.th; g.visible = false; scene.add(g);
+  const bs = new THREE.Sphere(new THREE.Vector3(0, 1, 0), 7), inst = (geo, mat, n) => { const m = new THREE.InstancedMesh(geo, mat, n); m.boundingSphere = bs; m.castShadow = false; m.receiveShadow = true; m.instanceMatrix.setUsage(THREE.DynamicDrawUsage); g.add(m); return m; };
+  const R = CAS_RL, J = CAS_BJ, wt = new THREE.CanvasTexture(casWheelCv()); wt.colorSpace = THREE.SRGBColorSpace; wt.anisotropy = 4;
+  const cone = new THREE.ConeGeometry(.055, .07, 12); cone.translate(0, .035, 0); const cu = cone.attributes.uv; for (let i = 0; i < cu.count; i++) cu.setXY(i, .5, .5);
+  CAS.wheel = new THREE.Mesh(mergeGeos([new THREE.CircleGeometry(.34, 74).rotateX(-PI / 2), cone]), new THREE.MeshStandardMaterial({map: wt, roughness: .35, metalness: .25})); CAS.wheel.position.set(R.wx, .877, R.cz); CAS.wheel.receiveShadow = true; g.add(CAS.wheel);
+  CAS.dots = inst(new THREE.SphereGeometry(1, 12, 8), new THREE.MeshBasicMaterial(), 4); for (let i = 0; i < 4; i++) CAS.dots.setColorAt(i, CAS.c.setHex(i ? 0x6a4a20 : 0xf4f2ee));
+  CAS.discs = inst(new THREE.CylinderGeometry(1, 1, 1, 18), new THREE.MeshStandardMaterial({metalness: .5, roughness: .4}), 64); CAS.discs.setColorAt(0, CAS.c.setHex(0xd8b040)); CAS.discs.count = 0;
+  // chips: the canvas is a mask (r = white edge stripe, g = shade) mixed over the instance colour
+  const ct = new THREE.CanvasTexture(cv(128, 256, (q, w) => { q.fillStyle = 'rgb(0,255,0)'; q.fillRect(0, 0, w, 256); for (let k = 0; k < 8; k++) { q.fillStyle = 'rgb(255,255,0)'; q.beginPath(); q.arc(64, 64, 62, k * PI / 4, k * PI / 4 + .32); q.arc(64, 64, 46, k * PI / 4 + .32, k * PI / 4, true); q.fill(); q.fillRect(k * 16, 192, 6, 64); }
+    q.strokeStyle = 'rgb(0,175,0)'; q.lineWidth = 3; q.beginPath(); q.arc(64, 64, 40, 0, TAU); q.stroke(); }));
+  const chg = new THREE.CylinderGeometry(.019, .019, .0035, 20), chu = chg.attributes.uv, nSide = 21 * 2; for (let i = 0; i < chu.count; i++) { if (i < nSide) chu.setY(i, chu.getY(i) * .25); else chu.setY(i, .5 + chu.getY(i) * .5); }
+  CAS.chips = inst(chg, casInstMat(ct, 'chip', null, f => f.replace('#include <map_fragment>', 'vec4 cT = texture2D(map, vMapUv);').replace('#include <color_fragment>', 'diffuseColor.rgb = mix(vColor, vec3(.93, .9, .84), cT.r) * cT.g;')), 480); CAS.chips.setColorAt(0, CAS.c.setHex(0xffffff)); CAS.chips.count = 0;
+  // cards: two faces back to back; a per-instance atlas cell (13 ranks x 4 suits, back in column 13)
+  const cg = new THREE.BufferGeometry(), F = new THREE.PlaneGeometry(.063, .088).rotateX(-PI / 2), Bk = new THREE.PlaneGeometry(.063, .088).rotateX(PI / 2).translate(0, -.0004, 0), cat = (k, n) => { const a = new Float32Array(F.attributes[k].array.length * 2); a.set(F.attributes[k].array); a.set(Bk.attributes[k].array, F.attributes[k].array.length); return new THREE.BufferAttribute(a, n); };
+  cg.setAttribute('position', cat('position', 3)); cg.setAttribute('normal', cat('normal', 3)); cg.setAttribute('uv', cat('uv', 2)); cg.setAttribute('cb', new THREE.BufferAttribute(new Float32Array([0, 0, 0, 0, 1, 1, 1, 1]), 1)); cg.setIndex([0, 2, 1, 2, 3, 1, 4, 6, 5, 6, 7, 5]);
+  CAS.cOff = new THREE.InstancedBufferAttribute(new Float32Array(48), 2); cg.setAttribute('cOff', CAS.cOff); const at = new THREE.CanvasTexture(casCardCv()); at.colorSpace = THREE.SRGBColorSpace; at.anisotropy = 4;
+  CAS.cards = inst(cg, casInstMat(at, 'card', v => v.replace('#include <common>', '#include <common>\nattribute vec2 cOff; attribute float cb;').replace('#include <uv_vertex>', '#include <uv_vertex>\nvMapUv = (uv + mix(cOff, vec2(13., 0.), cb)) * vec2(1. / 14., .25);')), 24); CAS.cards.count = 0;
+  // reels: open cylinders on the machine's width axis; the strip scrolls per instance
+  const rg = new THREE.CylinderGeometry(.1, .1, .11, 28, 1, true).rotateX(PI / 2); CAS.rOff = new THREE.InstancedBufferAttribute(new Float32Array(9), 1); CAS.rOff.setUsage(THREE.DynamicDrawUsage); rg.setAttribute('rOff', CAS.rOff);
+  const rt = new THREE.CanvasTexture(casReelCv()); rt.colorSpace = THREE.SRGBColorSpace; rt.anisotropy = 4;
+  CAS.reels = inst(rg, casInstMat(rt, 'reel', v => v.replace('#include <common>', '#include <common>\nattribute float rOff;').replace('#include <uv_vertex>', '#include <uv_vertex>\nvMapUv = vec2(uv.y, 1. - fract(uv.x + rOff));')), 9);
+  for (let m = 0; m < 3; m++) for (let j = 0; j < 3; j++) { CAS.p.set(4.55, 1.2, CAS_SL.z[m] + (j - 1) * .14); CAS.q.identity(); CAS.s.set(1, 1, 1); CAS.reels.setMatrixAt(m * 3 + j, CAS.m.compose(CAS.p, CAS.q, CAS.s)); CAS.rOff.setX(m * 3 + j, (6.5 - j * 2) / 7 - .75); }
+  const lv = [new THREE.CylinderGeometry(.011, .011, .34, 8).translate(0, .17, 0), new THREE.SphereGeometry(.036, 12, 8).translate(0, .36, 0), new THREE.CylinderGeometry(.03, .03, .05, 10).rotateX(PI / 2)];
+  CAS.levers = inst(mergeC([colGeo(lv[0], [.85, .85, .88]), colGeo(lv[1], [.8, .06, .08]), colGeo(lv[2], [.3, .3, .32])]), new THREE.MeshStandardMaterial({vertexColors: true, metalness: .6, roughness: .3}), 3);
+  // stack labels: one atlas (4 x 8 cells), redrawn only when bets change; one instanced quad per stack
+  const lc = cv(512, 256, () => {}); CAS.lblG = lc.getContext('2d'); CAS.lblT = new THREE.CanvasTexture(lc); CAS.lblT.colorSpace = THREE.SRGBColorSpace; CAS.lblT.anisotropy = 4;
+  const lg = new THREE.PlaneGeometry(.075, .019); CAS.lOff = new THREE.InstancedBufferAttribute(new Float32Array(64), 2); lg.setAttribute('cOff', CAS.lOff);
+  const lm = new THREE.MeshBasicMaterial({map: CAS.lblT, transparent: true, depthWrite: false}); lm.onBeforeCompile = sh => { sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute vec2 cOff;').replace('#include <uv_vertex>', '#include <uv_vertex>\nvMapUv = (uv + cOff) * vec2(.25, .125);'); }; lm.customProgramCacheKey = () => 'cas-lbl';
+  CAS.lbl = inst(lg, lm, 32); CAS.lbl.receiveShadow = false; CAS.lbl.count = 0; CAS.lbl.renderOrder = 2;
+  CAS.hl = new THREE.Mesh(new THREE.PlaneGeometry(1, 1).rotateX(-PI / 2), new THREE.MeshBasicMaterial({color: 0xfff0b0, transparent: true, opacity: .3, depthWrite: false, blending: THREE.AdditiveBlending})); CAS.hl.visible = false; g.add(CAS.hl);
+  casDealer(g);
+  const gl = CAS.glow = new THREE.Sprite(new THREE.SpriteMaterial({map: TX.glow, color: 0xffa850, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: .5})); gl.scale.setScalar(3.2); const [x, z] = casW(0, -4.4); gl.position.set(x, b.fy + 2.3, z); scene.add(gl);
+}
+// the dealer: a crew avatar re-dressed (waistcoat, white shirt, bow tie), baked to one body mesh and two arms
+function casDealer(g) {
+  const c = buildCrew(0x2a1a3a), j = c.userData; scene.remove(c); c.position.set(0, 0, 0); c.updateMatrixWorld(true);
+  const col = o => { const h = o.material.color.getHex(); return o.parent === j.head && h === 0xc8a020 ? [.16, .1, .07] : h === 0xc8a020 ? [.1, .08, .12] : h === 0x2a2e30 ? [.06, .06, .07] : o.material.color.toArray(); };
+  const body = [], arms = [[], []], skip = new Set([j.beam, j.box, ...j.it.filter(Boolean)]);
+  c.traverse(o => { if (!o.isMesh || skip.has(o)) return; const side = o.parent === j['a-1'] ? 0 : o.parent === j.a1 ? 1 : -1, geo = o.geometry.clone();
+    if (side < 0) geo.applyMatrix4(o.matrixWorld); else geo.applyMatrix4(o.matrix); (side < 0 ? body : arms[side]).push(colGeo(geo, col(o))); });
+  body.push(colGeo(new THREE.BoxGeometry(.2, .3, .02).translate(0, 1.38, -.155), [.95, .94, .9]), colGeo(new THREE.ConeGeometry(.028, .05, 6).rotateZ(PI / 2).translate(-.025, 1.52, -.168), [.05, .05, .05]), colGeo(new THREE.ConeGeometry(.028, .05, 6).rotateZ(-PI / 2).translate(.025, 1.52, -.168), [.05, .05, .05]));
+  const mat = new THREE.MeshStandardMaterial({vertexColors: true, roughness: .7}), d = CAS.dealer = new THREE.Group(); d.position.set(CAS_BJ.cx, 0, CAS_BJ.dz); g.add(d);
+  d.add(new THREE.Mesh(mergeC(body), mat)); CAS.arms = arms.map((L, i) => { const m = new THREE.Mesh(mergeC(L), mat); m.position.set(i ? .27 : -.27, 1.5, 0); d.add(m); return m; });
+  c.traverse(o => { if (o.geometry) o.geometry.dispose(); });
+}
+// ---- seats (host decides, everyone applies 'csit'); seated players are pinned to the stool by the stepPlayer wrapper
+function casSitLocal(t, s) { if (!P.cas) P.casEq = P.eq; P.cas = {t, s}; P.eq = 0; F.st = 'idle'; if (P.casChip == null) P.casChip = 1; const q = CAS.seatW[t][s]; P.yaw = q.yaw; P.pitch = -.55; P.vx = P.vz = 0; Snd.casChip(0);
+  let f = ''; try { f = localStorage.getItem(SK('s9-cas-help')) || ''; } catch (e) {} if (!f.includes(t)) { CAS.help = {t, u: CAS.ct + 10}; try { localStorage.setItem(SK('s9-cas-help'), f + t + ' '); } catch (e) {} } }
+function casStandLocal() { const c = P.cas; if (!c) return; const q = CAS.seatW[c.t][c.s]; P.cas = null; P.x = q.sx; P.z = q.sz; P.y = CAS.b.fy; P.cr = 0; P.eq = P.casEq || 0; if (P.eq && !slotOk(P.eq)) P.eq = 0; if (CAS.hl) CAS.hl.visible = false; CAS.aim = null; }
+function casPin(dt) { const q = CAS.seatW[P.cas.t][P.cas.s]; P.x = q.x; P.z = q.z; P.y = CAS.b.fy; P.ob = 0; P.sw = 0; P.vx = P.vz = P.vy = 0; P.cr = 1; P.run = 0; P.eye = 1.25; P.eq = 0; P.deep = 0; P.dv = 0;
+  P.yaw = q.yaw + clamp(angD(q.yaw, P.yaw), -1.31, 1.31); P.pitch = clamp(P.pitch, -1.1, .3); P.stam = Math.min(1, P.stam + dt / 7); }
+const casSeated = t => { const L = CAS.seats[t]; for (let i = 0; i < L.length; i++) if (L[i]) return true; return false; };
+const casNope = (id, why) => emit({k: 'nope', id, why, cas: 1});
+function casLeave(id) { const J = CAS.bj, s = CAS.seats.bj.indexOf(id); if (s >= 0 && J.ph === 'bet' && J.ch[s].length) { const v = J.ch[s].reduce((a, c) => a + c, 0); G.cash += v; emit({k: 'cbet', t: 'bj', id, s, v, x: 2}); }
+  if (s >= 0 && J.ph === 'turn' && J.turn === s) casBjNext(s, 3); emit({k: 'csit', id, t: null}); }
+// ---- host: roulette rounds, the blackjack shoe and turns, slot payouts
+const casWA = t => CAS.rl.a0 + 12.222 * (1 - Math.exp(-.18 * Math.max(0, t - CAS.rl.t0)));
+function casShuffle() { const J = CAS.bj, r = casR(100000 + (++J.sh)), d = J.shoe = []; for (let k = 0; k < 6; k++) for (let c = 0; c < 52; c++) d.push(c); for (let i = d.length - 1; i > 0; i--) { const k = Math.floor(r() * (i + 1)), t = d[i]; d[i] = d[k]; d[k] = t; } }
+function casDraw() { const J = CAS.bj; if (CAS.bjForce && CAS.bjForce.length) return CAS.bjForce.shift() % 52; if (!J.shoe.length) casShuffle(); return J.shoe.pop(); }
+function casDeal() { const J = CAS.bj, live = []; for (let s = 0; s < 3; s++) if (J.seats[s][1] > 0 && J.seats[s][0]) live.push(s); if (!live.length) { J.T = 0; return; }
+  if (J.shoe.length < 78) casShuffle(); J.q = []; for (const s of live) J.q.push([s, casDraw()]); J.q.push([-1, casDraw()]); for (const s of live) J.q.push([s, casDraw()]); J.hole = casDraw(); J.q.push([-1, -1]); J.ph = 'deal'; J.qT = .25; CAS.v++; }
+function casAfterDeal() { const J = CAS.bj; for (const q of J.seats) if (q[3] === 2 && q[2].length === 2 && CAS_BJ.val(q[2]) === 21) q[3] = 5;
+  const up = J.dl[0] % 13; if ((up === 0 || up >= 9) && CAS_BJ.val([J.dl[0], J.hole]) === 21) { emit({k: 'cdeal', s: -1, c: J.hole, rv: 1}); casBjPay(); return; } J.ph = 'turn'; casBjNext(-1, 0); }
+function casBjNext(s, st) { const J = CAS.bj; if (s >= 0 && J.seats[s][3] === 2) J.seats[s][3] = st; CAS.v++;
+  for (let k = s + 1; k < 3; k++) if (J.seats[k][3] === 2) { J.turn = k; J.T = 15; J.ph = 'turn'; return; }
+  J.turn = -1; J.ph = 'dealer'; J.qT = .9; J.live = J.seats.some(q => q[3] === 3 || q[3] === 6); emit({k: 'cdeal', s: -1, c: J.hole, rv: 1}); }
+function casBjPay() { const J = CAS.bj, dv = CAS_BJ.val(J.dl), dbj = dv === 21 && J.dl.length === 2, res = [], w = new Map(); let tot = 0;
+  for (let s = 0; s < 3; s++) { const q = J.seats[s]; if (!(q[1] > 0) || !q[0]) continue; const pv = CAS_BJ.val(q[2]), nat = pv === 21 && q[2].length === 2;
+    const back = pv > 21 ? 0 : nat ? (dbj ? q[1] : Math.floor(q[1] * 2.5)) : dbj ? 0 : dv > 21 || pv > dv ? q[1] * 2 : pv === dv ? q[1] : 0;
+    tot += back; res.push([s, back - q[1], pv]); w.set(q[0], (w.get(q[0]) || 0) + back - q[1]); }
+  G.cash += tot; J.ph = 'pay'; J.T = 3.5; CAS.v++; emit({k: 'cbjr', res, d: dv}); emit({k: 'cpay', t: 'bj', w: [...w]}); save(); }
+function casSettle() { const R = CAS.rl, n = R.res, w = new Map(); let tot = 0;
+  for (const [id, c, v] of R.bets) { const back = CAS_RL.win(c, n) ? v * (CAS_RL.pay(c) + 1) : 0; tot += back; w.set(id, (w.get(id) || 0) + back - v); }
+  G.cash += tot; emit({k: 'cpay', t: 'rl', r: R.n, res: n, w: [...w]}); save(); }
+function casHost(dt) {
+  const S = CAS.seats, R = CAS.rl, J = CAS.bj;
+  for (let ti = 0; ti < 2; ti++) { const L = ti ? S.bj : S.rl; for (let s = 0; s < L.length; s++) { const id = L[s]; if (!id) continue; const p = PL.get(id); if (!p || p.dead || p.down) casLeave(id); } }
+  const rlOn = casSeated('rl'), bjOn = casSeated('bj');
+  if (R.ph === 'idle') { if (rlOn || R.bets.length) { R.ph = 'bet'; R.T = 15; CAS.v++; } }
+  else if ((R.T -= dt) <= 0) {
+    if (R.ph === 'bet') { if (R.bets.length) { const n = R.n + 1, res = CAS.force != null ? clamp(CAS.force | 0, 0, 36) : Math.floor(casR(n)() * 37); CAS.force = null; emit({k: 'crl', r: n, res, t0: +G.t.toFixed(2), a0: +(casWA(G.t) % TAU).toFixed(3)}); } else { if (!rlOn) R.ph = 'idle'; R.T = 15; CAS.v++; } }
+    else if (R.ph === 'spin') casSettle();
+    else { R.ph = rlOn ? 'bet' : 'idle'; R.T = 15; CAS.v++; } }
+  if (J.ph === 'idle') { if (bjOn) { J.ph = 'bet'; J.T = 0; CAS.v++; } }
+  else if (J.ph === 'bet') { let nb = 0, ns = 0; for (let s = 0; s < 3; s++) if (S.bj[s]) { ns++; if (J.seats[s][1] > 0) nb++; }
+    if (!ns && !nb) { J.ph = 'idle'; CAS.v++; } else if (J.T > 0) { if (nb && nb === ns && J.T > 2) { J.T = 2; CAS.v++; } if ((J.T -= dt) <= 0) casDeal(); } }
+  else if (J.ph === 'deal') { if ((J.qT -= dt) <= 0) { J.qT = .35; const d = J.q.shift(); if (d) emit({k: 'cdeal', s: d[0], c: d[1]}); else casAfterDeal(); } }
+  else if (J.ph === 'turn') { if (!S.bj[J.turn] || (J.T -= dt) <= 0) casBjNext(J.turn, 3); }
+  else if (J.ph === 'dealer') { if ((J.qT -= dt) <= 0) { J.qT = .6; if (J.live && CAS_BJ.val(J.dl) < 17) emit({k: 'cdeal', s: -1, c: casDraw()}); else casBjPay(); } }
+  else if (J.ph === 'pay') { if ((J.T -= dt) <= 0) { emit({k: 'cdeal', s: -2}); J.ph = bjOn ? 'bet' : 'idle'; J.T = 0; CAS.v++; } }
+  for (let m = 0; m < 3; m++) { const q = CAS.slPay[m]; if (q && G.t - CAS.sl[m][4] >= 2.3) { CAS.slPay[m] = null; if (q.w > 0) G.cash += q.w; emit({k: 'cpay', t: 'sl', m, w: [[q.id, q.w - q.v]], x: q.x}); save(); } }
+}
+function casAct(id, m) {
+  const p = PL.get(id), S = CAS.seats, R = CAS.rl, J = CAS.bj; if (!p || !G.on || !CAS.b) return;
+  const now = performance.now(); if (m.a !== 'csit' && !TEST && now - (p.casT || 0) < 60) return; p.casT = now;
+  if (m.g === undefined && (m.t === 'rl' || m.t === 'bj')) m = Object.assign({}, m, {g: m.t}); // direct calls may name the table t (on the wire t is the message type)
+  const v = CAS_CHIPS.includes(m.v) ? m.v : 0, ai = v >= 100 && v * 2 >= G.cash ? 1 : 0;
+  if (m.a === 'csit') { const was = S.rl.includes(id) || S.bj.includes(id);
+    if (m.g !== 'rl' && m.g !== 'bj') { if (was) casLeave(id); return; }
+    const L = S[m.g], s = m.s | 0, q = CAS.seatW[m.g][s]; if (!q) return; if (L[s] && L[s] !== id) return casNope(id, 'That seat is taken.');
+    if (Math.hypot(p.x - q.x, p.z - q.z) > 3 || Math.abs(p.y - CAS.b.fy) > 1.5) return casNope(id, 'Walk up to the table first.');
+    if (was) casLeave(id); emit({k: 'csit', id, t: m.g, s}); }
+  else if (m.a === 'cb' && m.g === 'rl') { const c = m.c | 0; if (!v || c < 0 || c > 48) return; if (!S.rl.includes(id)) return casNope(id, 'Take a seat first.'); if (R.ph !== 'bet' && R.ph !== 'idle') return casNope(id, 'No more bets.');
+    let mine = 0; for (const q of R.bets) if (q[0] === id) mine += q[2]; if (mine + v > CAS_RL.max) return casNope(id, 'Table limit: $5,000 a spin.'); if (G.cash < v) return casNope(id, 'Not enough crew cash.');
+    G.cash -= v; emit({k: 'cbet', t: 'rl', id, c, v, ai}); }
+  else if (m.a === 'cb' && m.g === 'bj') { const s = S.bj.indexOf(id); if (!v || s < 0) return; if (J.ph !== 'bet' && J.ph !== 'idle') return casNope(id, 'Wait for the next hand.');
+    if (J.seats[s][1] + v > CAS_BJ.max) return casNope(id, 'Table limit: $2,000 a hand.'); if (G.cash < v) return casNope(id, 'Not enough crew cash.');
+    G.cash -= v; emit({k: 'cbet', t: 'bj', id, s, v, ai}); }
+  else if (m.a === 'cbx') { if (m.g === 'rl') { if (R.ph !== 'bet') return; for (let i = R.bets.length - 1; i >= 0; i--) { const q = R.bets[i]; if (q[0] === id) { G.cash += q[2]; emit({k: 'cbet', t: 'rl', id, c: q[1], v: q[2], x: 1}); return; } } }
+    else { const s = S.bj.indexOf(id); if (s < 0 || J.ph !== 'bet' || !J.ch[s].length) return; const c = J.ch[s].pop(); G.cash += c; emit({k: 'cbet', t: 'bj', id, s, v: c, x: 1}); } }
+  else if (m.a === 'cbj') { const s = S.bj.indexOf(id); if (s < 0 || J.ph !== 'turn' || J.turn !== s) return; const q = J.seats[s];
+    if (m.x === 'hit') { emit({k: 'cdeal', s, c: casDraw()}); const t = CAS_BJ.val(q[2]); if (t > 21) casBjNext(s, 4); else if (t === 21) casBjNext(s, 3); else { J.T = 15; CAS.v++; } }
+    else if (m.x === 'stand') casBjNext(s, 3);
+    else if (m.x === 'dbl') { if (q[2].length !== 2) return casNope(id, 'Double on your first two cards.'); if (G.cash < q[1]) return casNope(id, 'Not enough crew cash.'); G.cash -= q[1]; emit({k: 'cbet', t: 'bj', id, s, v: q[1], dbl: 1}); emit({k: 'cdeal', s, c: casDraw()}); casBjNext(s, CAS_BJ.val(q[2]) > 21 ? 4 : 6); } }
+  else if (m.a === 'csl') { const k = m.m | 0, z = CAS_SL.z[k]; if (z == null || !v || v > CAS_SL.max) return; const [x, wz] = casW(4.1, z); if (Math.hypot(p.x - x, p.z - wz) > 3) return;
+    if (CAS.slPay[k] || G.t - CAS.sl[k][4] < 2.6) return casNope(id, 'That machine is still spinning.'); if (G.cash < v) return casNope(id, 'Not enough crew cash.');
+    const f = CAS.slForce, r = f ? f.slice(0, 3).map(i => clamp(i | 0, 0, 6)) : [0, 1, 2].map(() => CAS_SL.pick(CR)), x3 = CAS_SL.mult(r[0], r[1], r[2]); CAS.slForce = null;
+    G.cash -= v; CAS.slPay[k] = {id, v, w: Math.floor(v * x3), x: x3}; emit({k: 'cslr', m: k, id, r, v, t0: +G.t.toFixed(2), ai}); }
+}
+// ---- events on every client (the host applies its own through emit)
+const CAS_EV = new Set(['csit', 'cbet', 'crl', 'cdeal', 'cbjr', 'cslr', 'cpay']);
+function casSnd(f, lx, ly, lz, ...a) { if (!A.on || !CAS.b) return; const [x, z] = casW(lx, lz); if (Math.hypot(x - cam.position.x, z - cam.position.z) > 30) return; f(...a, at(x, CAS.b.fy + ly, z, 2.5)); }
+function casSeatL(id) { for (const t of ['rl', 'bj']) { const s = CAS.seats[t].indexOf(id); if (s >= 0) return CAS.seatW[t][s]; } return null; }
+function casEv(e) {
+  const me = myId(), R = CAS.rl, J = CAS.bj, p = PL.get(e.id), nm = p ? String(p.name).replace(/[<>&]/g, '') : 'Someone';
+  switch (e.k) {
+    case 'csit': { for (const t of ['rl', 'bj']) { const L = CAS.seats[t]; for (let i = 0; i < L.length; i++) if (L[i] === e.id) L[i] = null; }
+      if (e.t && CAS.seats[e.t] && e.s >= 0 && e.s < CAS.seats[e.t].length) CAS.seats[e.t][e.s] = e.id; if (e.id === me && P) { if (e.t) casSitLocal(e.t, e.s); else casStandLocal(); } CAS.dirty = 1; break; }
+    case 'cbet': { if (e.t === 'rl') { if (e.x) { for (let i = R.bets.length - 1; i >= 0; i--) { const q = R.bets[i]; if (q[0] === e.id && q[1] === e.c && q[2] === e.v) { R.bets.splice(i, 1); break; } } } else { R.bets.push([e.id, e.c, e.v]); if (R.ph === 'idle') { R.ph = 'bet'; R.T = 15; } }
+        const o = CAS_RL.rect(e.c, CAS.hc); casSnd(Snd.casChip, CAS_RL.fx + (o[1] + o[2]) / 2, .83, CAS_RL.cz + (o[3] + o[4]) / 2, 2); }
+      else { const q = J.seats[e.s]; if (!q) break; if (e.x === 2) { q[1] = 0; q[3] = 0; if (isHost()) J.ch[e.s] = []; } else if (e.x) { q[1] = Math.max(0, q[1] - e.v); if (!q[1]) q[3] = 0; }
+        else { q[0] = e.id; q[1] += e.v; if (!q[3]) q[3] = 1; if (isHost() && !e.dbl) J.ch[e.s].push(e.v); if (J.ph === 'idle') J.ph = 'bet'; if (J.ph === 'bet' && !(J.T > 0)) J.T = 10; }
+        casSnd(Snd.casChip, CAS_BJ.cx + Math.sin(CAS_BJ.A[e.s]) * .78, .83, CAS_BJ.cz - Math.cos(CAS_BJ.A[e.s]) * .78, 3); }
+      if (e.ai && !e.x) { showMsg(`${nm} went all in ${e.t === 'rl' ? 'on ' + CAS_RL.name(e.c).toLowerCase() : 'at blackjack'}`, 'LUCKY LANTERN', 3); Snd.casOoh(); }
+      CAS.dirty = 1; break; }
+    case 'crl': Object.assign(R, {ph: 'spin', T: 7, n: e.r, res: e.res, t0: e.t0, a0: e.a0}); casUnwrap(); casSnd(Snd.casDrop, CAS_RL.wx, .9, CAS_RL.cz); break;
+    case 'cdeal': {
+      if (e.s === -2) { for (const q of J.seats) { q[1] = 0; q[2] = []; q[3] = 0; } J.dl = []; if (isHost()) J.ch = [[], [], []]; for (const c of CAS.cv) if (!c.out) c.out = CAS.ct; CAS.dl.p = 'sweep'; CAS.dl.t = CAS.ct; CAS.dirty = 1; casSnd(Snd.casCard, CAS_BJ.cx, .85, 1.8); break; }
+      if (e.s === -1 && e.rv) { const i = J.dl.indexOf(-1); if (i >= 0) J.dl[i] = e.c; for (const c of CAS.cv) if (c.s === -1 && c.c < 0) { c.c = e.c; c.fl = CAS.ct; } CAS.kd = 1; CAS.dl.p = 'reveal'; CAS.dl.t = CAS.ct; }
+      else { const L = e.s === -1 ? J.dl : J.seats[e.s] && J.seats[e.s][2]; if (!L) break; L.push(e.c); if (e.s >= 0 && J.seats[e.s][3] < 2) J.seats[e.s][3] = 2; casCardAdd(e.s, e.c, L.length - 1, 1); CAS.dl.p = 'deal'; CAS.dl.t = CAS.ct; CAS.dl.s = e.s; }
+      CAS.cvSig = casCardSig(); casSnd(Snd.casCard, CAS_BJ.cx, .85, 1.8); break; }
+    case 'cbjr': { J.ph = 'pay'; J.T = 3.5; CAS.bjNet = e.res; for (const [s, net, pv] of e.res) if (J.seats[s] && J.seats[s][0] === me) showMsg(`${pv > 21 ? 'Bust' : pv} against ${e.d > 21 ? 'a dealer bust' : e.d}${net > 0 ? ' · +' + money(net) : net < 0 ? ' · -' + money(-net) : ' · push'}`, 'BLACKJACK', 3); break; }
+    case 'cslr': CAS.sl[e.m] = [e.id, e.r[0], e.r[1], e.r[2], e.t0]; casSnd(Snd.casLever, 4.4, 1.2, CAS_SL.z[e.m]); if (e.ai) { showMsg(`${nm} went all in on the slots`, 'LUCKY LANTERN', 3); Snd.casOoh(); } break;
+    case 'cpay': { let net = null; for (const q of e.w) if (q[0] === me) net = q[1];
+      if (e.t === 'rl') { for (const st of CAS.stk) { const win = st.rc != null && CAS_RL.win(st.rc, e.res), q = casSeatL(st.id); st.out = {t0: CAS.ct, tx: win ? (q ? q.lx : st.x) : CAS_RL.wx + .2, tz: win ? (q ? q.lz + .3 : st.z - .5) : CAS_RL.cz + .45}; CAS.lv.push(st); }
+        CAS.stk = []; R.bets = []; R.ph = 'pay'; R.T = 3.5; if (net != null && net < 1000) showMsg(`${e.res} ${e.res === 0 ? 'green' : RED.has(e.res) ? 'red' : 'black'}${net > 0 ? ' · +' + money(net) : net < 0 ? ' · -' + money(-net) : ''}`, 'ROULETTE', 3); }
+      else if (e.t === 'bj') { for (const st of CAS.stk) { const r = (CAS.bjNet || []).find(q => q[0] === st.bs), win = r && r[1] >= 0, q = CAS.seatW.bj[st.bs]; st.out = {t0: CAS.ct, tx: win && q ? q.lx : CAS_BJ.cx, tz: win && q ? q.lz + .3 : 2.05}; CAS.lv.push(st); }
+        CAS.stk = []; for (const q of J.seats) q[1] = 0; J.ph = 'pay'; J.T = 3.5; CAS.dl.p = 'sweep'; CAS.dl.t = CAS.ct + 1; }
+      else if (e.t === 'sl') { CAS.slWin = CAS.slWin || [0, 0, 0]; CAS.slWin[e.m] = e.x > 1 ? CAS.ct : 0; if (net != null && net < 1000 && e.x > 0) showMsg(e.x > 1 ? `×${e.x} · +${money(net)}` : 'Money back', 'SLOTS', 2.5);
+        if (e.x >= 35 && CAS.b) { const [x, z] = casW(4.2, CAS_SL.z[e.m]); spray(x, CAS.b.fy + 1.3, z, 30, 2.5); for (let k = 0; k < 2; k++) { const [rx, rz] = casW(0, -6 - k * 2); spawnRocket({x: rx, y: CAS.b.fy + 1, z: rz, vx: (Math.random() - .5) * 4, vy: 22 + Math.random() * 6, vz: (Math.random() - .5) * 4, c: Math.floor(Math.random() * 6)}); } casSnd(Snd.casJack, 4.4, 1.6, CAS_SL.z[e.m]); }
+        else if (e.x > 1) casSnd(Snd.casWin, 4.4, 1.6, CAS_SL.z[e.m]); }
+      if (net != null && e.t !== 'sl') { if (net > 0) Snd.casWin(); else if (net < 0) tone(150, .05, .4, 'triangle', null, 90); }
+      for (const [id, n] of e.w) if (n >= 1000) { const q = PL.get(id), who = q ? String(q.name).replace(/[<>&]/g, '') : 'Someone'; showMsg(e.t === 'rl' ? `${who} hit ${e.res}! +${money(n)}` : e.t === 'bj' ? `${who} took the dealer for ${money(n)}!` : `${who} hit the jackpot! +${money(n)}`, 'LUCKY LANTERN', 5); Snd.casOoh(); }
+      CAS.cd = 1; CAS.dirty = 1; break; }
+  }
+  if (isHost()) CAS.v++;
+}
+// ---- snapshot 'cs' (on change, at most 4 Hz, a keyframe every 3 s for late joiners)
+function casPack() { const R = CAS.rl, J = CAS.bj; return {rl: [R.ph, +R.T.toFixed(1), R.n, R.bets, R.res, R.t0, R.a0], bj: [J.ph, +Math.max(0, J.T).toFixed(1), J.turn, J.seats.map(q => [q[0], q[1], q[2], q[3]]), J.dl], sl: CAS.sl, seats: CAS.seats}; }
+function casUnpack(cs) { const R = CAS.rl, J = CAS.bj, me = myId();
+  if (cs.rl) { const [ph, T, n, bets, res, t0, a0] = cs.rl, bs = JSON.stringify(bets || []); if (bs !== JSON.stringify(R.bets)) CAS.dirty = 1; const nt = t0 !== R.t0; Object.assign(R, {ph, T, n, bets: bets || [], res, t0, a0}); if (nt) casUnwrap(); }
+  if (cs.bj) { const [ph, T, turn, seats, dl] = cs.bj; Object.assign(J, {ph, T, turn, dl: dl || []}); (seats || []).forEach((q, i) => { if (J.seats[i]) { const o = J.seats[i]; if (o[1] !== q[1]) CAS.dirty = 1; J.seats[i] = [q[0], q[1], q[2] || [], q[3]]; } }); const sg = casCardSig(); if (sg !== CAS.cvSig) casCardsSync(); }
+  if (cs.sl) cs.sl.forEach((q, i) => { if (CAS.sl[i]) CAS.sl[i] = q.slice(); });
+  if (cs.seats) { for (const t of ['rl', 'bj']) if (Array.isArray(cs.seats[t])) cs.seats[t].forEach((id, i) => { if (i < CAS.seats[t].length && CAS.seats[t][i] !== id) { CAS.seats[t][i] = id || null; CAS.dirty = 1; } });
+    if (P && G.on) { const L = P.cas && CAS.seats[P.cas.t]; if (P.cas && (!L || L[P.cas.s] !== me)) casStandLocal(); else if (!P.cas) for (const t of ['rl', 'bj']) { const s = CAS.seats[t].indexOf(me); if (s >= 0) casSitLocal(t, s); } } }
+}
+// ball choreography: pick the turn count so the ball's free path ends within half a turn of its pocket
+function casUnwrap() { const R = CAS.rl; if (R.res < 0) return; const bf = R.a0 + 1 + 16.364 * (1 - Math.exp(-.55 * 6.2)), tg = RL.indexOf(R.res) / 37 * TAU - (R.a0 + 12.222 * (1 - Math.exp(-.18 * 6.2))); R.k = Math.round((bf - tg) / TAU); }
+// ---- cards: visual list from the shoe to the felt
+function casCardSig() { const J = CAS.bj; let s = J.dl.join(','); for (const q of J.seats) s += '|' + q[2].join(','); return s; }
+function casCardAdd(s, c, k, anim) { const J = CAS_BJ; let x, z, yaw; if (s < 0) { x = J.cx + .03 - k * .022; z = 1.9; yaw = PI; } else { const a = J.A[s]; x = J.cx + Math.sin(a) * .46 - Math.cos(a) * (k * .015 - .02); z = J.cz - Math.cos(a) * .46 - Math.sin(a) * (k * .015 - .02); yaw = Math.atan2(Math.sin(a), -Math.cos(a)); }
+  CAS.cv.push({c, s, x, y: .8265 + k * .0005, z, yaw, t0: anim ? CAS.ct : -9, fl: 0, out: 0}); CAS.kd = 1; }
+function casCardsSync() { const J = CAS.bj; CAS.cv = CAS.cv.filter(c => c.out); J.dl.forEach((c, k) => casCardAdd(-1, c, k, 0)); J.seats.forEach((q, s) => q[2].forEach((c, k) => casCardAdd(s, c, k, 0))); CAS.cvSig = casCardSig(); CAS.kd = 1; }
+// ---- chip stacks: rebuilt when bets change (not per frame); greedy split, largest at the bottom, at most 12 high
+function casLayout() { CAS.dirty = 0; CAS.cd = 1; const old = new Map(CAS.stk.map(s => [s.key, s])), out = [], R = CAS.rl, J = CAS.bj, o = CAS.hc;
+  const add = (key, x, z, v, id, extra) => { const p = PL.get(id), st = old.get(key) || {key, hop: -9, v: 0}; if (v > st.v) { st.hop = CAS.ct; const q = casSeatL(id); st.hx = q ? q.lx + q.dx * .25 : x; st.hz = q ? q.lz + q.dz * .25 : z; st.hy = q ? .95 : 1.1; }
+    Object.assign(st, {x, z, y: .825, v, id, col: p ? CREW_COL[p.c % 6] : 0x888888}, extra); const ch = st.ch = []; let r = v; for (let k = 4; k >= 0; k--) while (r >= CAS_CHIPS[k] && ch.length < 12) { ch.push(k); r -= CAS_CHIPS[k]; } out.push(st); };
+  const agg = new Map(); for (const [id, c, v] of R.bets) { const k = id + '|' + c; agg.set(k, (agg.get(k) || 0) + v); }
+  for (const [k, v] of agg) { const i = k.lastIndexOf('|'), id = k.slice(0, i), c = +k.slice(i + 1), s = Math.max(0, CAS.seats.rl.indexOf(id)); CAS_RL.rect(c, o); const wide = o[2] - o[1] > .2, ox = wide ? (s - 1.5) * .05 : (s % 2 - .5) * .045, oz = wide ? 0 : (s >> 1) * .06 - .03;
+    add('r' + k, CAS_RL.fx + (o[1] + o[2]) / 2 + ox, CAS_RL.cz + (o[3] + o[4]) / 2 + oz, v, id, {rc: c, bs: -1}); }
+  J.seats.forEach((q, s) => { if (q[1] > 0) add('b' + s, CAS_BJ.cx + Math.sin(CAS_BJ.A[s]) * .78, CAS_BJ.cz - Math.cos(CAS_BJ.A[s]) * .78, q[1], q[0], {rc: null, bs: s}); });
+  CAS.stk = out; casLabels(); }
+function casLabels() { const g = CAS.lblG; if (!g) return; const n = Math.min(32, CAS.stk.length); g.clearRect(0, 0, 512, 256); g.font = 'bold 21px Georgia'; g.textAlign = 'center'; g.textBaseline = 'middle';
+  for (let i = 0; i < n; i++) { const c = i % 4, r = i >> 2, x = c * 128, y = (7 - r) * 32; g.fillStyle = 'rgba(14,9,5,.8)'; g.beginPath(); if (g.roundRect) g.roundRect(x + 10, y + 3, 108, 26, 12); else g.rect(x + 10, y + 3, 108, 26); g.fill();
+    g.fillStyle = '#ffe2a0'; g.fillText(money(CAS.stk[i].v), x + 64, y + 17); CAS.lOff.setXY(i, c, r); }
+  CAS.lOff.needsUpdate = true; CAS.lblT.needsUpdate = true; }
+// ---- client animation (render calls casStep every frame): wheel and ball, chips, cards, reels, levers, lamps, the dealer. No allocations here.
+function casStep(dt) {
+  CAS.ct += dt; if (!CAS.g || !G.on) return; if (!isHost()) { CAS.rl.T = Math.max(0, CAS.rl.T - dt); if (CAS.bj.T > 0) CAS.bj.T = Math.max(0, CAS.bj.T - dt); } const b = CAS.b, cp = cam.position, d = Math.hypot(cp.x - b.x, cp.z - b.z), vis = d < 28 && cp.y > b.fy - 4 && cp.y < b.fy + 14;
+  if (CAS.glow) CAS.glow.material.opacity = .12 + .65 * (1 - TOD.day); casAudio(dt, d);
+  if (CAS.g.visible !== vis) CAS.g.visible = vis; if (!vis) return; if (CAS.dirty) casLayout();
+  const ct = CAS.ct, R = CAS.rl, RT = CAS_RL, m = CAS.m, q = CAS.q, e = CAS.e, p = CAS.p, s = CAS.s, wa = casWA(G.t), t = G.t - R.t0; CAS.wheel.rotation.y = wa;
+  // the ball: rim run against the wheel, a spiral drop with hops, a blended landing in pocket res at 6.2 s, then it rides along
+  let ba = 1, br = .395, by = .918;
+  if (R.res >= 0 && (t >= 6.2 || t < 0)) { ba = RL.indexOf(R.res) / 37 * TAU - wa + R.k * TAU; br = .258; by = .888; }
+  else if (R.res >= 0) { ba = R.a0 + 1 + 16.364 * (1 - Math.exp(-.55 * t)); if (t > 2.26) { const u = clamp((t - 2.26) / .7, 0, 1), ss = smooth(u), w = smooth((t - 5.2) / 1), tg = RL.indexOf(R.res) / 37 * TAU - wa + R.k * TAU;
+      br = mix(.395, .258, ss); by = mix(.918, .888, ss) + Math.abs(Math.sin(u * PI * 2.5)) * .018 * (1 - u) + (u >= 1 ? Math.abs(Math.sin((t - 2.96) * 9)) * .005 * Math.max(0, 1 - (t - 2.96) / 2.3) : 0); ba += (tg - ba) * w;
+      const pk = Math.floor((ba + wa) / (TAU / 37)); if (pk !== CAS.tickP) { CAS.tickP = pk; if (ct - CAS.tickT > .04 && d < 14 && t < 6.2) { CAS.tickT = ct; if (A.on) burst(6000, 9, .04, .002); } } } }
+  p.set(RT.wx + Math.cos(ba) * br, by, RT.cz + Math.sin(ba) * br); q.identity(); s.setScalar(.011); CAS.dots.setMatrixAt(0, m.compose(p, q, s));
+  // the brass marker drops on the winning number once the ball has settled
+  const mk = R.res >= 0 && t > 6.4 && t < 20; if (mk) { CAS_RL.rect(R.res, CAS.hc); const o = CAS.hc, f = clamp((t - 6.4) / .3, 0, 1); p.set(RT.fx + (o[1] + o[2]) / 2, RT.y + .025 + (1 - f) * (1 - f) * .25, RT.cz + (o[3] + o[4]) / 2); s.set(.014, .05, .014); } else s.setScalar(0);
+  CAS.discs.setMatrixAt(0, m.compose(p, q, s));
+  // chips: stacks on the felt, the top chip hops in, settled stacks slide to the winner or the house
+  let ci = 0, di = 1; const ch = CAS.chips, dc = CAS.discs, cd = CAS.cd;
+  for (let L = 0; L < 2; L++) { const arr = L ? CAS.lv : CAS.stk; for (let a = 0; a < arr.length; a++) { const st = arr[a]; let x = st.x, z = st.z, y = st.y, sc = 1;
+    if (st.out) { const u = clamp((ct - st.out.t0) / .7, 0, 1), k = smooth(u); x = mix(st.x, st.out.tx, k); z = mix(st.z, st.out.tz, k); y += Math.sin(u * PI) * .05; sc = u > .75 ? (1 - u) * 4 : 1; if (u >= 1) CAS.lvDone = 1; }
+    if (di < 64) { p.set(x, y + .0008, z); s.set(.024 * sc, .0016, .024 * sc); q.identity(); dc.setMatrixAt(di, m.compose(p, q, s)); if (cd) dc.setColorAt(di, CAS.c.setHex(st.col)); di++; }
+    const n = st.ch.length; for (let k = 0; k < n && ci < 480; k++, ci++) { let cx = x + Math.sin(k * 2.3 + a) * .0012, cz = z + Math.cos(k * 1.7 + a) * .0012, cy = y + .0034 + k * .0036;
+      if (k === n - 1 && !st.out) { const u = (ct - st.hop) / .22; if (u >= 0 && u < 1) { cx = mix(st.hx, cx, u); cz = mix(st.hz, cz, u); cy = mix(st.hy, cy, u) + u * (1 - u) * .4; } }
+      e.set(0, k * 1.7 + a, 0); q.setFromEuler(e); p.set(cx, cy, cz); s.set(sc, 1, sc); ch.setMatrixAt(ci, m.compose(p, q, s)); if (cd) ch.setColorAt(ci, CAS.c.setHex(CAS_CC[st.ch[k]])); }
+    if (!L && a < 32) { e.set(-.5, st.bs >= 0 ? PI - CAS_BJ.A[st.bs] : PI, 0); q.setFromEuler(e); p.set(x, y + .0034 + n * .0036 + .013, z); s.set(1, 1, 1); CAS.lbl.setMatrixAt(a, m.compose(p, q, s)); } } }
+  const nl = Math.min(32, CAS.stk.length); CAS.lbl.count = nl; CAS.lbl.visible = nl > 0; if (nl) CAS.lbl.instanceMatrix.needsUpdate = true; ch.visible = ci > 0;
+  ch.count = ci; dc.count = di; ch.instanceMatrix.needsUpdate = dc.instanceMatrix.needsUpdate = true; if (cd) { CAS.cd = 0; if (ch.instanceColor) ch.instanceColor.needsUpdate = true; if (dc.instanceColor) dc.instanceColor.needsUpdate = true; }
+  if (CAS.lvDone) { CAS.lvDone = 0; CAS.lv = CAS.lv.filter(st => ct - st.out.t0 < .7); CAS.cd = 1; }
+  // cards: a .35 s arc from the shoe with a spin, flip face up as they land (the hole card flips slowly at the reveal), swept to the tray
+  const cv = CAS.cv, cm = CAS.cards, kd = CAS.kd, J = CAS_BJ; let gone = 0; const nc = Math.min(24, cv.length);
+  for (let k = 0; k < nc; k++) { const c = cv[k], u = clamp((ct - c.t0) / .35, 0, 1); let x = mix(J.shoe[0], c.x, u), z = mix(J.shoe[2], c.z, u), y = mix(J.shoe[1], c.y, u) + Math.sin(u * PI) * .1, fa = c.c < 0 ? PI : PI * (1 - smooth((u - .55) / .45)); const yaw = c.yaw + (1 - u) * 2.6;
+    if (c.fl) { const f = clamp((ct - c.fl) / .6, 0, 1); fa = PI * (1 - smooth(f)); y += Math.sin(f * PI) * .04; }
+    if (c.out) { const f = clamp((ct - c.out) / .5, 0, 1), k2 = smooth(f); x = mix(x, J.tray[0], k2); z = mix(z, J.tray[2], k2); y += Math.sin(f * PI) * .08; fa = mix(fa, PI, f); if (f >= 1) gone = 1; }
+    e.set(0, yaw, fa); q.setFromEuler(e); p.set(x, y, z); s.set(1, 1, 1); cm.setMatrixAt(k, m.compose(p, q, s)); if (kd) CAS.cOff.setXY(k, c.c < 0 ? 13 : c.c % 13, c.c < 0 ? 0 : Math.floor(c.c / 13)); }
+  cm.count = nc; cm.visible = nc > 0; cm.instanceMatrix.needsUpdate = true; if (kd) { CAS.kd = 0; CAS.cOff.needsUpdate = true; } if (gone) { CAS.cv = cv.filter(c => !c.out || ct - c.out < .5); CAS.kd = 1; }
+  // slots: reels at speed, stopping .35 s apart with a tenth-of-a-symbol overshoot; the lever dips 55 degrees and springs back; the top lamp blinks on a win
+  for (let mi = 0; mi < 3; mi++) { const st = CAS.sl[mi], t0 = st[4], tt = G.t - t0, z = CAS_SL.z[mi], near = d < 12;
+    if (t0 !== CAS.rt0[mi]) { CAS.rt0[mi] = t0; CAS.rk[mi] = 0; for (let j = 0; j < 3; j++) CAS.rp[mi * 3 + j] = CAS.rOff.getX(mi * 3 + j); }
+    for (let j = 0; j < 3; j++) { const tg = (st[1 + j] + .5) / 7 - .75, ts = 1.6 + .35 * j; let r = tg;
+      if (t0 > -50 && tt >= 0 && tt < ts) { r = mix(CAS.rp[mi * 3 + j], tg + 3.2 * (ts - tt), smooth(tt / .3)); if (near && Math.floor(r * 7) !== Math.floor(CAS.rOff.getX(mi * 3 + j) * 7) && ct - CAS.tickT > .03) { CAS.tickT = ct; if (A.on) tone(700, .012, .004, 'square'); } }
+      else if (t0 > -50 && tt >= ts && tt < ts + .25) { r = tg - .1 / 7 * Math.sin(PI * (tt - ts) / .25); if (!(CAS.rk[mi] & (1 << j))) { CAS.rk[mi] |= 1 << j; if (near && A.on) { tone(140, .1, .14, 'sine', null, 70); burst(400, 1, .06, .05, 'lowpass'); } } }
+      CAS.rOff.setX(mi * 3 + j, r); }
+    const lt = tt, pull = t0 < -50 || lt < 0 || lt > 1.3 ? 0 : lt < .22 ? smooth(lt / .22) : Math.exp(-(lt - .22) * 7) * Math.cos((lt - .22) * 18);
+    e.set(0, 0, pull * .96); q.setFromEuler(e); p.set(4.62, 1.06, z + .39); s.set(1, 1, 1); CAS.levers.setMatrixAt(mi, m.compose(p, q, s));
+    const wt = CAS.slWin ? CAS.slWin[mi] : 0, blink = wt && ct - wt < 3.5, x3 = CAS_SL.mult(st[1], st[2], st[3]), on = blink && (Math.floor(ct * (x3 >= 35 ? 12 : 7)) % 2);
+    if (on) CAS.c.setRGB(x3 >= 35 && Math.floor(ct * 6) % 2 ? 2.6 : 2.4, x3 >= 35 && Math.floor(ct * 6) % 2 ? .4 : 1.7, .4); else CAS.c.setRGB(.7 + .15 * Math.sin(ct * 2 + mi), .42, .14); CAS.dots.setColorAt(1 + mi, CAS.c);
+    p.set(4.62, 1.82, z); s.setScalar(.048); q.identity(); CAS.dots.setMatrixAt(1 + mi, m.compose(p, q, s)); }
+  CAS.rOff.needsUpdate = true; CAS.levers.instanceMatrix.needsUpdate = true; CAS.dots.instanceMatrix.needsUpdate = true; CAS.dots.instanceColor.needsUpdate = true;
+  // the dealer: three canned arm poses (deal, sweep, reveal)
+  const dl = CAS.dl, ta = ct - dl.t; let lx = .45, rx = .45, lz = 0, rz = 0;
+  if (dl.p === 'deal' && ta < .45) { const k = Math.sin(clamp(ta / .45, 0, 1) * PI); lx += .55 * k; rx += .9 * k; rz = (dl.s < 0 ? .1 : (dl.s - 1) * -.35) * k; }
+  else if (dl.p === 'sweep' && ta > 0 && ta < .9) { const k = Math.sin(ta / .9 * PI); lx += .8 * k; rx += .8 * k; lz = -.5 * k; rz = .5 * k; }
+  else if (dl.p === 'reveal' && ta < .7) rx += Math.sin(ta / .7 * PI);
+  CAS.arms[0].rotation.set(lx, 0, lz); CAS.arms[1].rotation.set(rx, 0, rz); CAS.dealer.rotation.y = Math.sin(ct * .5) * .05;
+}
+// ---- seated: the camera ray on the felt plane picks the bet (no Raycaster); the prompt and a faint highlight follow it
+function casSeatUI() {
+  const b = CAS.b, c = P.cas, v = CAS_CHIPS[P.casChip ?? 1], R = CAS.rl, J = CAS.bj, hl = CAS.hl; cam.getWorldDirection(_fw);
+  const ox = cam.position.x - b.x, oz = cam.position.z - b.z, oy = cam.position.y - b.fy - CAS_RL.y; let hit = false, lx = 0, lz = 0, html = '', hx = 0, hz = 0, sx = 0, sz = 0;
+  if (_fw.y < -.05) { const k = -oy / _fw.y, wx = ox + _fw.x * k, wz = oz + _fw.z * k; lx = wx * CAS.cs - wz * CAS.sn; lz = wx * CAS.sn + wz * CAS.cs; hit = k < 3.5; }
+  if (c.t === 'rl') { const o = hit ? CAS_RL.cell(lx - CAS_RL.fx, lz - CAS_RL.cz, CAS.hc) : null; CAS.aim = o ? o[0] : null;
+    if (R.ph === 'spin') html = '<span class="info">No more bets</span>'; else if (R.ph === 'pay' && R.res >= 0) html = `<span class="info">${R.res} ${R.res === 0 ? 'green' : RED.has(R.res) ? 'red' : 'black'}</span>`;
+    else if (o) { html = `${CAS_RL.name(o[0])} · ${CAS_RL.odds(o[0])} · ${money(v)}`; hx = CAS_RL.fx + (o[1] + o[2]) / 2; hz = CAS_RL.cz + (o[3] + o[4]) / 2; sx = o[2] - o[1]; sz = o[4] - o[3]; } }
+  else { const a = CAS_BJ.A[c.s], q = J.seats[c.s], cx = CAS_BJ.cx + Math.sin(a) * .78, cz = CAS_BJ.cz - Math.cos(a) * .78, near = hit && Math.hypot(lx - cx, lz - cz) < .3; CAS.aim = near ? 'bj' : null;
+    if (J.ph === 'turn' && J.turn === c.s) html = `<kbd>LMB</kbd> hit · <kbd>RMB</kbd> stand${q[2].length === 2 && G.cash >= q[1] ? ' · <kbd>D</kbd> double' : ''} · <b>${CAS_BJ.val(q[2])}</b>`;
+    else if (J.ph === 'bet' || J.ph === 'idle') { if (near) { html = `Bet · ${money(v)}`; hx = cx; hz = cz; sx = sz = .3; } else if (!q[1]) html = '<span class="info">Look at your circle to bet</span>'; }
+    else if (J.ph === 'turn') { const o = PL.get(CAS.seats.bj[J.turn]); html = `<span class="info">${o ? String(o.name).replace(/[<>&]/g, '') + "'s turn" : 'Waiting'}</span>`; }
+    else if (q[2].length) html = `<span class="info">${CAS_BJ.val(q[2])} · dealer ${CAS_BJ.val(J.dl)}</span>`; }
+  hl.visible = sx > 0; if (sx > 0) { hl.position.set(hx, CAS_RL.y + .003, hz); hl.scale.set(sx, 1, sz); hl.material.opacity = .22 + .08 * Math.sin(CAS.ct * 6); }
+  const pr = $('prompt'), op = html ? 1 : 0; if (html !== G.pTxtK) { G.pTxtK = html; $('pTxt').innerHTML = html; } if (op !== G.prOp) { G.prOp = op; pr.style.opacity = op; } if (G.pBarD !== 'none') { G.pBarD = 'none'; $('pBar').style.display = 'none'; } P.h = '';
+}
+function casSlotAim() { const b = CAS.b; if (Math.abs(P.x - b.x) > 9 || Math.abs(P.z - b.z) > 9) return; cam.getWorldDirection(_fw);
+  for (let m = 0; m < 3; m++) { const [x, z] = casW(4.3, CAS_SL.z[m]), dx = x - P.x, dz = z - P.z, dy = b.fy + 1.2 - cam.position.y, dd = Math.hypot(dx, dy, dz); if (dd > 1.8) continue; if ((dx * _fw.x + dy * _fw.y + dz * _fw.z) / dd < .8) continue; CAS.aimSl = m;
+    if (!CAS.slHelp) { CAS.slHelp = 1; let f = ''; try { f = localStorage.getItem(SK('s9-cas-help')) || ''; } catch (e) {} if (!f.includes('sl')) { CAS.help = {t: 'sl', u: CAS.ct + 8}; try { localStorage.setItem(SK('s9-cas-help'), f + 'sl '); } catch (e) {} } } return; } }
+const CAS_HELP = {rl: 'Click the felt to bet · right click takes a chip back · wheel or 1-5 picks the chip · E stands up', bj: 'Click your circle to bet · on your turn click hits, right click stands, D doubles · E stands up', sl: 'E pulls the lever · the mouse wheel changes the bet'};
+function casHud() { const el = CAS.hud; if (!el) return; const on = !!(P && G.on && alivePlay() && (P.cas || CAS.aimSl >= 0));
+  if (!on) { if (CAS.hudOn) { CAS.hudOn = 0; el.classList.remove('on'); } return; }
+  const me = myId(), k = CAS.hk; let v = CAS_CHIPS[P.casChip ?? 1], tab = 0, T = -1;
+  if (P.cas && P.cas.t === 'rl') { for (const q of CAS.rl.bets) if (q[0] === me) tab += q[2]; if (CAS.rl.ph === 'bet') T = Math.max(0, Math.ceil(CAS.rl.T)); }
+  else if (P.cas) { const J = CAS.bj, q = J.seats[P.cas.s]; tab = q ? q[1] : 0; if ((J.ph === 'bet' && J.T > 0) || (J.ph === 'turn' && J.turn === P.cas.s)) T = Math.max(0, Math.ceil(J.T)); }
+  else v = Math.min(v, CAS_SL.max);
+  const help = CAS.help && CAS.ct < CAS.help.u ? CAS.help.t : '';
+  if (k[0] !== v || k[1] !== G.cash || k[2] !== tab || k[3] !== T || k[4] !== help) { k[0] = v; k[1] = G.cash; k[2] = tab; k[3] = T; k[4] = help;
+    el.innerHTML = `Chip <b>${money(v)}</b> · Cash <b>${money(G.cash)}</b>${tab ? ` · On the table <b>${money(tab)}</b>` : ''}${T >= 0 ? ` · ${T} s` : ''}${help ? `<small>${CAS_HELP[help]}</small>` : ''}`; }
+  if (!CAS.hudOn) { CAS.hudOn = 1; el.classList.add('on'); } }
+// ---- room sound: murmur and a music box inside, the wheel's rumble while it turns
+const CAS_MB = [523, 0, 659, 784, 0, 659, 587, 0, 523, 0, 440, 523, 0, 587, 659, 0, 784, 0, 880, 784, 0, 659, 587, 0, 523, 587, 659, 0, 587, 0, 523, 0];
+function casAudio(dt, d) { if (!A.on || !CAS.b || d > 30) return; const cp = cam.position, inn = casInside(cp.x, cp.z, cp.y), k = inn ? 1 : clamp(1 - (d - 5) / 10, 0, 1) * .3;
+  if (k > .01) { Snd.casRoom(k); if ((CAS.mbT -= dt) <= 0) { CAS.mbT = .34; const i = CAS.mbI++ % 32, n = CAS_MB[i]; if (n) tone(n * 2, .011 * k, 1.4, 'sine'); if (i % 8 === 0) tone(n || 523, .006 * k, 2.2, 'triangle'); } }
+  const t = G.t - CAS.rl.t0; if (t >= 0 && t < 10 && d < 18) Snd.casWheel(Math.exp(-.18 * t) * (inn ? 1 : .35)); }
+Snd.casChip = (h = 0, p) => { const k = 1 + Math.min(12, h) * .04; burst(3500 * k, 7, .14, .006, 'bandpass', p); setTimeout(() => burst(5000 * k, 7, .1, .006, 'bandpass', p), 9); tone(1100 * k, .035, .06, 'sine', p); };
+Snd.casCard = p => { burst(4500, .7, .09, .015, 'highpass', p); tone(300, .06, .05, 'sine', p, 180); };
+Snd.casTick = p => burst(6000, 9, .06, .002, 'bandpass', p);
+Snd.casDrop = p => { burst(1800, .8, .05, .5, 'bandpass', p); for (let i = 0; i < 5; i++) setTimeout(() => Snd.casTick(p), 2260 + i * (50 + i * 22)); };
+Snd.casReel = p => tone(700, .02, .004, 'square', p);
+Snd.casStop = p => { tone(140, .12, .14, 'sine', p, 70); burst(400, 1, .08, .05, 'lowpass', p); };
+Snd.casLever = p => { for (let i = 0; i < 6; i++) setTimeout(() => burst(2200 - i * 120, 6, .06, .008, 'bandpass', p), i * 28); setTimeout(() => { tone(190, .07, .45, 'triangle', p, 320); tone(380, .025, .3, 'sine', p, 250); }, 220); };
+Snd.casWin = p => { [523, 659, 784, 1046].forEach((f, i) => setTimeout(() => tone(f, .05, .35, 'triangle', p), i * 85)); };
+Snd.casJack = p => { for (let i = 0; i < 14; i++) setTimeout(() => { tone([1046, 1318, 1568, 2093][i % 4], .05, .6, 'sine', p); if (i % 2) burst(7000, 4, .04, .1, 'bandpass', p); }, i * 110); };
+Snd.casOoh = () => { for (const [f, d] of [[196, 0], [247, 60], [294, 120], [220, 170]]) setTimeout(() => tone(f, .03, 1.2, 'triangle', null, f * 1.3), d); burst(520, 1.2, .07, 1.1, 'bandpass', null, .8); };
+const casLoop = (key, mk) => { let L = A[key]; if (!L) { L = A[key] = mk(A.ctx); L.g.gain.value = 0; L.g.connect(A.out); (A.mute = A.mute || []).push(L.g); } return L; };
+const casSet = (prm, v, t) => { prm.cancelScheduledValues(t); prm.setTargetAtTime(v, t, .2); prm.setTargetAtTime(0, t + .6, .25); };
+Snd.casWheel = v => { if (!A.on || !A.ctx) return; const W = casLoop('casW', c => { const o = c.createOscillator(); o.type = 'triangle'; o.frequency.value = 45; const f = c.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 160; const g = c.createGain(); o.connect(f); f.connect(g); o.start(); return {g, o}; });
+  const t = A.ctx.currentTime; casSet(W.g.gain, .13 * v, t); W.o.frequency.setTargetAtTime(30 + 25 * v, t, .2); };
+Snd.casRoom = k => { if (!A.on || !A.ctx) return; const M = casLoop('casM', c => { const s = c.createBufferSource(); s.buffer = A.noise; s.loop = true; const f = c.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 420; f.Q.value = .8; const f2 = c.createBiquadFilter(); f2.type = 'lowpass'; f2.frequency.value = 900; const g = c.createGain(); s.connect(f); f.connect(f2); f2.connect(g); s.start(); return {g}; });
+  const t = A.ctx.currentTime; casSet(M.g.gain, .05 * k * (.75 + .25 * Math.sin(t * 1.3) * Math.sin(t * .7)), t); };
+// ---- input while seated: our own capture listeners (the main handlers never see these keys)
+addEventListener('keydown', e => { if (!G.on || G.paused || !P || !P.cas || anyPanel() || (e.target && /^(INPUT|TEXTAREA)$/.test(e.target.tagName))) return; const c = e.code;
+  if (c === 'KeyE' || c === 'KeyS') { if (!e.repeat) act({a: 'csit', g: null}); }
+  else if (/^Digit[1-5]$/.test(c)) { P.casChip = +c[5] - 1; Snd.casChip(0); }
+  else if (c === 'KeyD') { if (!e.repeat) casDouble(); }
+  else if (!/^(KeyG|KeyX|KeyC|KeyR|KeyQ|KeyF|KeyH|Digit[67]|Numpad\d)$/.test(c)) return;
+  e.preventDefault(); e.stopImmediatePropagation(); }, {capture: true});
+addEventListener('mousedown', e => { if (e.button !== 2 || !G.on || G.paused || !P || !P.cas || anyPanel() || (!TEST && document.pointerLockElement !== canvas)) return; casClick(2); }, {capture: true});
+function casClick(btn) { const c = P.cas, v = CAS_CHIPS[P.casChip ?? 1], J = CAS.bj; if (!c) return;
+  if (c.t === 'rl') { if (btn === 2) act({a: 'cbx', g: 'rl'}); else if (CAS.aim != null) act({a: 'cb', g: 'rl', c: CAS.aim, v}); }
+  else if (J.ph === 'turn' && J.turn === c.s) act({a: 'cbj', x: btn === 2 ? 'stand' : 'hit'}); else if (btn === 2) act({a: 'cbx', g: 'bj'}); else if (CAS.aim === 'bj') act({a: 'cb', g: 'bj', v}); }
+function casDouble() { const c = P.cas, J = CAS.bj; if (c && c.t === 'bj' && J.ph === 'turn' && J.turn === c.s) act({a: 'cbj', x: 'dbl'}); }
+// ---- interaction targets: free stools and the slot machines
+function casTargets(L) { const b = CAS.b; if (Math.abs(P.x - b.x) > 12 || Math.abs(P.z - b.z) > 12) return;
+  for (const t of ['rl', 'bj']) CAS.seatW[t].forEach((q, s) => { if (!CAS.seats[t][s]) L.push({x: q.x, y: b.fy + .95, z: q.z, r: 2.2, label: t === 'rl' ? 'Sit at roulette' : 'Sit at blackjack', go: () => act({a: 'csit', g: t, s})}); });
+  CAS_SL.z.forEach((z, m) => { const [x, wz] = casW(4.3, z), busy = CAS.slPay[m] || G.t - CAS.sl[m][4] < 2.6, v = Math.min(CAS_SL.max, CAS_CHIPS[P.casChip ?? 1]);
+    L.push({x, y: b.fy + 1.2, z: wz, r: 1.8, info: busy ? 1 : 0, label: busy ? 'Spinning' : `Pull · ${money(v)}`, go: () => act({a: 'csl', m, v})}); }); }
+// ---- old credits become crew cash once (the host only; guests just drop the key)
+function casCredits() { try { const k = SK('s9-cred'), raw = localStorage.getItem(k); localStorage.removeItem(k); const v = Math.floor(+raw); if (raw != null && isHost() && v > 0 && isFinite(v)) { G.cash += v; save(); setTimeout(() => G.on && showMsg(`Your old casino credits were cashed in: +${money(v)}`, 'LUCKY LANTERN', 6), TEST ? 0 : 6200); } } catch (e) {} }
+// ---- wrappers
+{ const f0 = buildWorld; buildWorld = function () { const was = BUILT, r = f0.apply(this, arguments); if (!was && CAS.b && !CAS.g) { casMeshes(); if (Array.isArray(G.homeLamps)) G.homeLamps.push(...CAS.lamps); } return r; }; }
+{ const f0 = stepPlayer; stepPlayer = function (dt) { if (P && P.cas && CAS.b && alivePlay()) { if (!P.down) { casPin(dt); return; } casStandLocal(); act({a: 'csit', g: null}); } return f0.apply(this, arguments); }; }
+{ const f0 = stepInteract; stepInteract = function (dt) { CAS.aimSl = -1; if (P && P.cas && CAS.b && alivePlay() && !anyPanel()) { casSeatUI(); casHud(); return; } if (CAS.hl && CAS.hl.visible) CAS.hl.visible = false;
+  const r = f0.apply(this, arguments); if (P && CAS.b && alivePlay() && !P.sw && !anyPanel()) casSlotAim(); casHud(); return r; }; }
+{ const f0 = toolDown; toolDown = function () { if (P && P.cas) { casClick(0); return; } return f0.apply(this, arguments); }; }
+{ const f0 = toolUp; toolUp = function () { if (P && P.cas) return; return f0.apply(this, arguments); }; }
+{ const f0 = cycleSlot; cycleSlot = function (d) { if (P && (P.cas || CAS.aimSl >= 0)) { P.casChip = clamp((P.casChip ?? 1) + Math.sign(d), 0, P.cas ? 4 : 3); Snd.casChip(0); return; } return f0.apply(this, arguments); }; }
+{ const f0 = hostStep; hostStep = function (dt) { const r = f0.apply(this, arguments); if (G.on && CAS.b) casHost(dt); return r; }; }
+{ const f0 = hostAct; hostAct = function (id, m) { const r = f0.apply(this, arguments); if (m && (m.a === 'csit' || m.a === 'cb' || m.a === 'cbx' || m.a === 'cbj' || m.a === 'csl')) casAct(id, m); return r; }; }
+{ const f0 = applyEv; applyEv = function (e) { if (e && CAS_EV.has(e.k)) { casEv(e); return; } if (e && e.k === 'nope' && e.cas) { if (e.id === myId()) { showMsg(e.why, 'LUCKY LANTERN', 2.5); tone(180, .05, .25, 'triangle', null, 120); } return; } return f0.apply(this, arguments); }; }
+{ const f0 = packSnap; packSnap = function () { const s = f0.apply(this, arguments); if ((CAS.v !== CAS.sv && G.t - CAS.sT >= .25) || G.t - CAS.sT >= 3) { CAS.sv = CAS.v; CAS.sT = G.t; s.cs = casPack(); } return s; }; }
+{ const f0 = applySnap; applySnap = function (s) { const r = f0.apply(this, arguments); if (s && s.cs) casUnpack(s.cs); return r; }; }
+{ const f0 = startGame; startGame = function () { casReset(); const r = f0.apply(this, arguments); casCredits(); return r; }; }
+{ const f0 = targets; targets = function () { const L = f0.apply(this, arguments); if (CAS.b && P && !P.cas) casTargets(L); return L; }; }
 // the wheelhouse radio: a soft chord loop with an arpeggio, heard near the boat
 const RADIO = {t: 0, i: 0}, PROG = [[220, 261.6, 329.6], [174.6, 220, 261.6], [261.6, 329.6, 392], [196, 246.9, 293.7]];
 function stepRadio(dt) {
@@ -3786,33 +4202,12 @@ function stepRadio(dt) {
   if (i % 8 === 0) { tone(ch[0] / 2, .06 * v, 2.2, 'sine', p); for (const f of ch) tone(f, .018 * v, 2.4, 'triangle', p); }
   const pat = [0, 1, 2, 1, 0, 2, 1, 2][i % 8]; tone(ch[pat] * 2, .03 * v, .45, 'triangle', p); if (i % 4 === 2) burst(6000, 3, .015 * v, .04, 'highpass', p);
 }
-function casStep(dt) { if (!G.casOpen) return; rlStep(dt); slStep(dt); if (CAS.tab === 'rl') rlDraw(); }
-function drawCasino() {
-  if (!G.casOpen) return; const cr = P.cred || 0;
-  $('casCred').innerHTML = `<b>${cr.toLocaleString()}</b> credits · crew cash $${G.cash.toLocaleString()}`;
-  document.querySelectorAll('#casTabs button').forEach(b => b.classList.toggle('on', b.dataset.t === CAS.tab));
-  document.querySelectorAll('#casChips button').forEach(b => b.classList.toggle('on', +b.dataset.b === CAS.bet));
-  let h = '';
-  if (CAS.tab === 'bj') { const B2 = CAS.bj;
-    h = B2 ? `<div class="bjRow"><small>Dealer ${B2.on ? '' : bjVal(B2.h)}</small>${B2.h.map((c, i) => cardH(c, B2.on && i === 1)).join('')}</div><div class="bjRow"><small>You ${bjVal(B2.p)}</small>${B2.p.map(c => cardH(c)).join('')}</div>` : '<div class="bjRow"><small>Blackjack pays 3 to 2 · dealer stands on 17</small></div>';
-    h += `<div class="casBtns">${B2 && B2.on ? '<button data-x="hit">Hit</button><button data-x="stand">Stand</button><button data-x="dbl">Double</button>' : `<button class="go2" data-x="deal">Deal (${CAS.bet})</button>`}</div>`; }
-  else if (CAS.tab === 'rl') { const R2 = CAS.rl;
-    h = `<div class="rlWrap"><canvas id="rlC" width="230" height="230"></canvas><div><div class="rlB">${Object.entries(RB).map(([k, q]) => `<button data-r="${k}" class="${k === 'red' ? 'rr' : k === 'black' ? 'rk' : ''}">${q[2]} ×${q[1]}</button>`).join('')}</div>
-      <div class="rlB"><input id="rlN" type="number" min="0" max="36" value="7" style="width:60px"><button data-r="num">Number ×36</button></div>
-      <small>On the table: ${R2.bets.length ? R2.bets.map(([k, b]) => `${typeof k === 'number' ? k : RB[k][2]} (${b})`).join(', ') : 'nothing'}</small><div class="casBtns"><button class="go2" data-x="spin">Spin</button></div>
-      <small>Last: ${(R2.hist || []).map(n => `<b class="${n === 0 ? 'g' : RED.has(n) ? 'r' : 'k'}">${n}</b>`).join(' ')}</small></div></div>`; }
-  else { h = `<div id="slR" class="slR">${CAS.sl.r.map(s => `<span>${s}</span>`).join('')}</div><div class="casBtns"><button class="go2" data-x="pull">Pull (${CAS.bet})</button></div><small>Three of a kind: 🍒5 🍋8 ⚓12 🐟20 🦑35 💎60 7️⃣150 · two cherries ×2</small>`; }
-  $('casGame').innerHTML = h; if (CAS.tab === 'rl') rlDraw();
-  $('casGame').querySelectorAll('button').forEach(b => b.onclick = () => { const x = b.dataset.x, r = b.dataset.r;
-    if (x === 'deal') bjDeal(); else if (x === 'hit') bjHit(); else if (x === 'stand') bjEnd(); else if (x === 'dbl') bjDouble(); else if (x === 'spin') rlSpin(); else if (x === 'pull') slSpin();
-    else if (r) { const n = clamp(Math.round(+$('rlN').value || 0), 0, 36); rlBet(r === 'num' ? n : r); } });
-}
-function casInit() {
-  $('casX').onclick = closeCasino;
-  document.querySelectorAll('#casTabs button').forEach(b => b.onclick = () => { CAS.tab = b.dataset.t; drawCasino(); });
-  document.querySelectorAll('#casChips button').forEach(b => b.onclick = () => { CAS.bet = +b.dataset.b; Snd.click(); drawCasino(); });
-  document.querySelectorAll('#casCash button').forEach(b => b.onclick = () => { const v = +b.dataset.v; if (v > 0) { if (G.cash < v) return casMsg('The crew does not have that much cash.', 0); act({a: 'chips', v}); } else { const n = P.cred || 0; if (!n) return; act({a: 'chips', v: -n}); } setTimeout(drawCasino, 120); });
-}
+// ---------------- the Lucky Lantern (continued): HUD pill, and the old GUI entry points other code still calls
+function casInit() { if ($('st-cas')) return; const st = document.createElement('style'); st.id = 'st-cas';
+  st.textContent = '#casHud{position:absolute;left:50%;bottom:92px;transform:translateX(-50%);padding:5px 14px;border-radius:14px;background:rgba(22,12,6,.72);border:1px solid rgba(255,196,110,.32);color:#f2dcae;font:13px ui-monospace,monospace;letter-spacing:.03em;white-space:nowrap;pointer-events:none;opacity:0;transition:opacity .25s;text-shadow:0 1px 2px #000}#casHud.on{opacity:1}#casHud b{color:#ffd27a;font-weight:normal}#casHud small{display:block;text-align:center;color:#cdb48a;font-size:11px;margin-top:3px;white-space:normal;max-width:520px}';
+  document.head.appendChild(st); const h = CAS.hud = document.createElement('div'); h.id = 'casHud'; ($('hud') || document.body).appendChild(h); }
+function openCasino() { showMsg('Cards and roulette are at the Lucky Lantern, by the lighthouse.', '', 3); }
+function closeCasino() {}
 // cetaceans: lathe body (dark back, pale belly), curved dorsal fin, pectorals, flukes on a tail that beats
 function mkCetacean(len, top, belly, o = {}) {
   const g = new THREE.Group(), K = len / 2.4, wide = o.wide || 1;
@@ -5041,8 +5436,8 @@ function menuInit() {
     w.querySelector('a').onclick = e => { e.preventDefault(); bs.forEach(b => b.disabled = false); e.target.remove(); }; }
   $('again').onclick = () => toMenu();
   $('bSell').onclick = () => { act({a: 'sell'}); setTimeout(drawShop, 150); }; $('shopX').onclick = closeShop;
-  $('resetSave').onclick = e => { e.preventDefault(); if (confirm('Wipe your saved voyage (cash, upgrades, chart)?')) { try { localStorage.removeItem(SK('s9-save2')); localStorage.removeItem(SK('s9-cred')); } catch (x) {} if (P) P.cred = 0; saveInfo(); } };
-  const allUI = msg => { $('cheatM').innerHTML = (msg ? msg + ' ' : '') + (ALL ? 'Unlock-all is on (it has its own save). <a href="#" id="allOff" style="color:inherit">Turn off</a>' : ''); const o = $('allOff'); if (o) o.onclick = e => { e.preventDefault(); setAll(false); }; }; const setAll = on => { if (G.on) { allUI('Finish your voyage first.'); return; } ALL = on; try { localStorage.setItem('s9-all', on ? '1' : '0'); } catch (e) {} if (P) P.cred = loadCred(); saveInfo(); allUI(on ? 'Everything unlocked.' : 'Back to your normal save.'); }; allUI(); $('bCheat').onclick = () => { const v = $('cheat').value.trim().toLowerCase(); if (v === 'rig67') { setAll(!ALL); Snd.coin && A.on && Snd.coin(); } else $('cheatM').textContent = v ? 'Nothing happens.' : ''; $('cheat').value = ''; };
+  $('resetSave').onclick = e => { e.preventDefault(); if (confirm('Wipe your saved voyage (cash, upgrades, chart)?')) { try { localStorage.removeItem(SK('s9-save2')); } catch (x) {} saveInfo(); } };
+  const allUI = msg => { $('cheatM').innerHTML = (msg ? msg + ' ' : '') + (ALL ? 'Unlock-all is on (it has its own save). <a href="#" id="allOff" style="color:inherit">Turn off</a>' : ''); const o = $('allOff'); if (o) o.onclick = e => { e.preventDefault(); setAll(false); }; }; const setAll = on => { if (G.on) { allUI('Finish your voyage first.'); return; } ALL = on; try { localStorage.setItem('s9-all', on ? '1' : '0'); } catch (e) {} saveInfo(); allUI(on ? 'Everything unlocked.' : 'Back to your normal save.'); }; allUI(); $('bCheat').onclick = () => { const v = $('cheat').value.trim().toLowerCase(); if (v === 'rig67') { setAll(!ALL); Snd.coin && A.on && Snd.coin(); } else $('cheatM').textContent = v ? 'Nothing happens.' : ''; $('cheat').value = ''; };
   $('cheat').onkeydown = e => { if (e.key === 'Enter') $('bCheat').click(); };
   casInit();
   $('note').onclick = closeNote; $('fishHelpX').onclick = () => showFishHelp(false);
