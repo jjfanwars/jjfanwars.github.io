@@ -29,7 +29,7 @@ const hexS = c => '#' + c.toString(16).padStart(6, '0');
 
 // ---------------- net (jjfanwars relay)
 const RELAY_URL = 'wss://jjfanwars-relay.businessautomationvic.workers.dev';
-const GAME_V = 29;
+const GAME_V = 30;
 const Net = {
   tag: '[Rig]', role: 'solo', ws: null, peers: new Map(), code: '', relayT: {pose: 1}, id: '', name: '', handlers: {}, retry: 0, started: false,
   enc: new TextEncoder(), dec: new TextDecoder(),
@@ -3661,6 +3661,342 @@ function drawGulpers(dt) {
     m.gl.material.opacity *= m.lf; m.bulb.scale.setScalar(mix(.3, m.bulb.scale.x, m.lf));
   }
 }
+// ---------------- world: working boats and cargo traffic, a ghost ship at night, derelicts to board, maydays, shared whales and lightning
+// NPC boats run on fixed routes from host time (G.t), so every client draws them in the same place without a per-boat snapshot.
+const WLD_MARKS = [], WLD_NPC = [], WLD_DRL = [];
+const WLD = {ct: 0, M: null, vis: null, au: null, gh: {on: 0, x: 0, z: 0, yaw: 0, fade: 0, tr: 0}, may: null, snT: 0, mkT: 0, auT: 0, so: false, dropped: [], ta: {x: 0, z: 0}, tb: {x: 0, z: 0}};
+const WLD_NAMES = ['Saint Brendan', 'Kittiwake', 'Halcyon Days', 'Dorothea', 'Lucky Strike', 'Marisol', 'Northern Dawn', 'Pelican', 'Sea Wren', 'Brave Heart', 'Moonraker', 'Gannet'];
+const WLD_THANKS = ['Thank you. I thought nobody heard me.', 'Two days on that raft. Two days.', 'Something kept bumping the raft from below. Get us out of here.', 'She went down so fast. Thank you.', 'I saw your lights and shouted until my voice went.'];
+const wldMR = () => typeof MAP_R === 'number' ? MAP_R : 2600;
+const wldMC = () => typeof MAP_C === 'object' && MAP_C ? MAP_C : {x: 0, z: -60};
+const wldHW = (t, k = .38) => t < k ? Math.pow(Math.sin(t / k * PI / 2), .7) : 1 - (t - k) * .12;
+// night factor straight from G.tod (the host runs logic without rendering, so TOD may be stale there)
+function wldNight(t) { t = ((t % 1) + 1) % 1; let i = 0; while (TODK[i + 1][0] < t) i++; const a = TODK[i], b = TODK[i + 1], u = (t - a[0]) / (b[0] - a[0]), k = u * u * (3 - 2 * u); return 1 - clamp((a[1] + (b[1] - a[1]) * k + 22) / 18, 0, 1); }
+// open water m metres clear of every island, wreck, buoy, the rig, the Serenade and the Northwatch spot
+function wldClear(x, z, m) {
+  if (Math.hypot(x, z) < 45 + m || Math.hypot(x - CRZ.x, z - CRZ.z) < 75 + m || Math.hypot(x - 1150, z - 2000) < 90 + m) return false;
+  for (const o of OBST) { if (o.npc) continue; if (o.c) { if (Math.abs(x - o.x) < o.r + m && Math.abs(z - o.z) < o.r + m && Math.hypot(x - o.x, z - o.z) < o.r + m) return false; } else { const dx = Math.max(o.x0 - x, 0, x - o.x1), dz = Math.max(o.z0 - z, 0, z - o.z1); if (dx * dx + dz * dz < m * m) return false; } }
+  return landH(x, z) < -6;
+}
+function wldGrave() { if (typeof REGIONS === 'undefined' || !REGIONS) return null; const L = Array.isArray(REGIONS) ? REGIONS : Object.values(REGIONS); return L.find(R => R && R.x != null && (R.k === 'grave' || R.id === 'grave' || R.key === 'grave' || /grave/i.test(R.n || R.name || ''))) || null; }
+function wldMark(key, x, z, n, c) { let m = WLD_MARKS.find(q => q.key === key); if (!m) { m = {key, x, z, n, c}; WLD_MARKS.push(m); } Object.assign(m, {x, z, n, c}); return m; }
+function wldUnmark(key) { const i = WLD_MARKS.findIndex(q => q.key === key); if (i >= 0) WLD_MARKS.splice(i, 1); }
+// ---- routes: a polyline with cumulative lengths; position by arc length
+function wldPath(pts, loop) { const n = pts.length, p = new Float32Array(n * 2), cum = new Float32Array(n + 1); let L = 0;
+  for (let i = 0; i < n; i++) { p[i * 2] = pts[i][0]; p[i * 2 + 1] = pts[i][1]; cum[i] = L; if (i < n - 1 || loop) { const j = (i + 1) % n; L += Math.hypot(pts[j][0] - pts[i][0], pts[j][1] - pts[i][1]); } }
+  cum[n] = L; return {p, cum, n, L, loop}; }
+function wldAt(Q, s, o) { const L = Q.L; s = Q.loop ? ((s % L) + L) % L : clamp(s, 0, L - 1e-3); let lo = 0, hi = Q.n - 1; while (lo < hi) { const m = (lo + hi + 1) >> 1; if (Q.cum[m] <= s) lo = m; else hi = m - 1; }
+  const j = (lo + 1) % Q.n, u = (s - Q.cum[lo]) / Math.max(1e-6, Q.cum[lo + 1] - Q.cum[lo]); o.x = mix(Q.p[lo * 2], Q.p[j * 2], u); o.z = mix(Q.p[lo * 2 + 1], Q.p[j * 2 + 1], u); return o; }
+function wldRoute(R, t, o = {}) { const Q = R.path; let s = R.s0 + t * R.v; s = ((s % Q.L) + Q.L) % Q.L; wldAt(Q, s, o); const a = wldAt(Q, s + 9, WLD.ta), b = wldAt(Q, s - 9, WLD.tb); o.yaw = Math.atan2(-(a.x - b.x), -(a.z - b.z)); o.s = s; return o; }
+function wldEllipse(cx, cz, a, b, ang, wob, ph, step) { const n = Math.max(32, Math.round(TAU * Math.sqrt((a * a + b * b) / 2) / step)), out = [], ca = Math.cos(ang), sa = Math.sin(ang);
+  for (let i = 0; i < n; i++) { const t = i / n * TAU, k = 1 + wob * Math.sin(2 * t + ph) + wob * .5 * Math.sin(3 * t + ph * 1.7), x = Math.cos(t) * a * k, z = Math.sin(t) * b * k; out.push([cx + x * ca - z * sa, cz + x * sa + z * ca]); } return out; }
+function wldBuildTraffic() {
+  const r = mulberry(0x7a1f), MR = wldMR(), C = wldMC(); WLD.dropped = [];
+  const ok = pts => pts.every(([x, z]) => Math.hypot(x - C.x, z - C.z) < MR - 120 && Math.hypot(x - HOME.x, z - HOME.z) > 140 && wldClear(x, z, 60));
+  // push loop points out of every keep-out circle and rect, smooth, repeat: a trawler's loop bends around buoys and reefs instead of being dropped
+  const out = (p, cx, cz, m) => { const dx = p[0] - cx, dz = p[1] - cz, d = Math.hypot(dx, dz); if (d >= m) return 0; if (d < 1e-3) { p[0] = cx + m; return 1; } p[0] = cx + dx * m / d; p[1] = cz + dz * m / d; return 1; };
+  const relax = pts => { if (!pts) return pts; for (let it = 0; it < 14; it++) { let bad = 0;
+    for (const p of pts) { bad += out(p, 0, 0, 112) + out(p, CRZ.x, CRZ.z, 142) + out(p, 1150, 2000, 154) + out(p, HOME.x, HOME.z, 146);
+      for (const o of OBST) { if (o.npc) continue; if (o.c) { if (Math.abs(p[0] - o.x) < o.r + 64 && Math.abs(p[1] - o.z) < o.r + 64) bad += out(p, o.x, o.z, o.r + 64); } else { const qx = clamp(p[0], o.x0, o.x1), qz = clamp(p[1], o.z0, o.z1); if (Math.abs(p[0] - qx) < 64 && Math.abs(p[1] - qz) < 64) bad += out(p, qx, qz, 64); } } }
+    for (let sm = 0; sm < 2; sm++) { const c = pts.map(q => q.slice()); for (let i = 0; i < pts.length; i++) { const a = c[(i + pts.length - 1) % pts.length], b = c[(i + 1) % pts.length]; pts[i][0] = (a[0] + 2 * c[i][0] + b[0]) / 4; pts[i][1] = (a[1] + 2 * c[i][1] + b[1]) / 4; } }
+    if (!bad) break; } return pts; };
+  const tryLoop = mk => { for (let k = 0; k < 18; k++) { const pts = relax(mk()); if (ok(pts)) return pts; } return null; };
+  const add = (kind, n, pts, loop, L, W, v, col) => { if (!pts) { WLD.dropped.push(n); return; } const path = wldPath(pts, loop), R = {kind, n, path, L, W, v, s0: r() * path.L, col, obst: [], i: WLD_NPC.length, st: {x: 0, z: 0, yaw: 0, s: 0}};
+    const nc = Math.max(2, Math.ceil((L - W) / (W * .75)) + 1); for (let c = 0; c < nc; c++) { const o = {c: 1, x: pts[0][0], z: pts[0][1], r: W / 2, npc: 1, lz: mix(-L / 2 + W / 2, L / 2 - W / 2, c / (nc - 1))}; OBST.push(o); R.obst.push(o); }
+    WLD_NPC.push(R); };
+  // three trawlers working slow loops off Palm Key, Hermit's Isle and Coral Crown
+  [['Palm Key', 'Morning Gull'], ["Hermit's Isle", 'Kestrel'], ['Coral Crown', 'Bonny Lass']].forEach(([isle, n]) => { const I = ISLES.find(q => q.n === isle), L = 12 + r() * 5, col = [0x8a2a1c, 0x24486a, 0x2a5a3a, 0xc8c0a8, 0x3a3a6a][Math.floor(r() * 5)];
+    add('fish', n, I && tryLoop(() => { const a = 300 + r() * 300; return wldEllipse(I.x + (r() - .5) * 80, I.z + (r() - .5) * 80, a, a * (.65 + r() * .35), r() * PI, .05 + r() * .06, r() * TAU, 14); }), true, L, 4.2 + L * .06, 2.5, col); });
+  // a white yacht shuttling between home waters and Palm Key
+  { const I = ISLES.find(q => q.n === 'Palm Key');
+    add('yacht', 'Silver Lining', I && tryLoop(() => { const hx = 100 + r() * 80, hz = -150 - r() * 60, hd = Math.hypot(I.x - hx, I.z - hz) / 2; return wldEllipse((hx + I.x) / 2, (hz + I.z) / 2, hd + I.r + 80 + r() * 70, I.r + 70 + r() * 60, Math.atan2(I.z - hz, I.x - hx), .04, r() * TAU, 14); }), true, 25, 6, 6, 0xeeeeea); }
+  // two cargo ships on long straight lanes across the whole sea; they wrap at the edge
+  for (const n of ['Hesper Trader', 'Atlas Bay']) { let pts = null, th = 0;
+    for (let k = 0; k < 70 && !pts; k++) { th = r() * TAU; const d = (r() * 2 - 1) * MR * .55, ux = Math.cos(th), uz = Math.sin(th), h = Math.sqrt(MR * MR - d * d) - 80, ox = C.x - uz * d, oz = C.z + ux * d, q = [];
+      if (WLD_NPC.some(R => R.kind === 'cargo' && Math.abs(Math.sin(R.th - th)) < .35)) continue;
+      for (let s = -h; s <= h; s += 20) q.push([ox + ux * s, oz + uz * s]); if (q.every(([x, z]) => Math.hypot(x - HOME.x, z - HOME.z) > 220 && wldClear(x, z, 60))) pts = q; }
+    add('cargo', n, pts, false, 90, 13, 8, [0x1c2a3c, 0x5a1a16, 0x1a3a2a, 0x2a2a2c][Math.floor(r() * 4)]); if (pts) WLD_NPC[WLD_NPC.length - 1].th = th; }
+  if (WLD.dropped.length && TEST) console.log('[wld] dropped routes:', WLD.dropped.join(', '));
+}
+// NPC poses at time t, and their rows of moving OBST circles (the host's boatStep bumps into them)
+function wldNpcPlace(t) { for (const R of WLD_NPC) { const o = wldRoute(R, t, R.st), s = Math.sin(o.yaw), c = Math.cos(o.yaw), edge = !R.path.loop && (o.s < 40 || o.s > R.path.L - 40);
+  for (const q of R.obst) { q.x = edge ? 1e6 : o.x + q.lz * s; q.z = edge ? 1e6 : o.z + q.lz * c; } } }
+// ---- derelicts: listing hulls anchored in open water, walkable decks, a cabin, loot; built from fixed data on every client
+function wldDerelicts() {
+  const r = mulberry(0xde7e), MR = wldMR(), C = {x: 0, z: -60}, names = WLD_NAMES.slice();
+  const far = (x, z) => { if (Math.hypot(x, z) < 300 || Math.hypot(x - CRZ.x, z - CRZ.z) < 400 || Math.hypot(x - 1150, z - 2000) < 300 || Math.hypot(x - HOME.x, z - HOME.z) < 400) return false;
+    for (const o of OBST) { if (o.npc) continue; if (o.c) { if (Math.hypot(x - o.x, z - o.z) < o.r + (o.r > 5 ? 300 : 60)) return false; } else { const dx = Math.max(o.x0 - x, 0, x - o.x1), dz = Math.max(o.z0 - z, 0, z - o.z1); if (dx * dx + dz * dz < 300 * 300) return false; } }
+    for (const q of DSITES) if (Math.hypot(x - q.x, z - q.z) < q.r + 120) return false;
+    return !WLD_DRL.some(d => Math.hypot(d.x - x, d.z - z) < 450) && landH(x, z) < -8; };
+  const place = (n, d0, d1, outer) => { for (let k = 0, c = 0; k < 3000 && c < n; k++) { const a = r() * TAU, d = d0 + r() * (d1 - d0), x = Math.round(C.x + Math.sin(a) * d), z = Math.round(C.z + Math.cos(a) * d); if (!far(x, z)) continue; c++; wldDerelict(x, z, r, names.splice(Math.floor(r() * names.length), 1)[0] || 'Derelict', outer); } };
+  place(5, 900, 2300, 0); if (typeof MAP_R === 'number' && MR > 3200) place(4, 2700, MR - 300, 1);
+}
+function wldDerelict(x, z, r, n, outer) {
+  const yacht = r() < .4, L = yacht ? 20 + r() * 4 : 15 + r() * 3, W = yacht ? 6.6 : 6.2, hw = W / 2, dk = 'swne'[Math.floor(r() * 4)], th = ROT[dk], fy = 1.2;
+  const roll = (r() < .5 ? -1 : 1) * (.02 + r() * .025), pitch = (r() - .5) * .04, b = {x, z, th, fy};
+  const D = {n, x, z, th, L, W, yacht, outer, seen: 0, i: WLD_DRL.length}; WLD_DRL.push(D);
+  const m4 = new THREE.Matrix4().compose(_v.set(x, 0, z), _q.setFromEuler(_e.set(pitch, th, roll, 'YXZ')), _s.set(1, 1, 1)), m0 = new THREE.Matrix4().compose(_v.set(x, 0, z), _q.setFromEuler(_e.set(0, th, 0, 'YXZ')), _s.set(1, 1, 1));
+  const putL = (k, g, tilt = 1) => { g.applyMatrix4(tilt ? m4 : m0); bucket(k).push(g); return g; };
+  // hull: rusty (a trawler) or white over rust (a yacht gone to ruin)
+  const sheer = t => fy + .7 + .6 * Math.pow(1 - t, 2.2), topP = [[-1, 'top'], [-.99, .2]], topS = [[.99, .2], [1, 'top']], bot = [[-.99, .2], [-.95, -.2], [-.72, -.9], [0, -1.6], [.72, -.9], [.95, -.2], [.99, .2]];
+  const hk = yacht ? 'white' : 'rustH'; putL(hk, wldLoft(L, hw, topP, sheer)); putL(hk, wldLoft(L, hw, topS, sheer)); putL('rustH', wldLoft(L, hw, bot, sheer)); putL(hk, wldTransom(L, hw, [[-1, 'top'], ...bot, [1, 'top']], sheer));
+  const z0 = -L / 2 + L * .3, z1 = L / 2 - .3, hwd = hw - .35, cz = z1 - 2.2;
+  putL('planks', wldDeck(L, hw, fy - .04, -L / 2 + .6, z0 + .1, .3));
+  { const s = r() < .5 ? -1 : 1, zb = mix(z0, cz, .3 + r() * .4); putL('dark', wldT(new THREE.BoxGeometry(.12, .7 + r() * .5, 1.2 + r() * 1.4), s * hw * wldHW((zb + L / 2) / L) * .99, .25, zb)); } // a hull breach near the waterline
+  if (yacht) for (const s of [-1, 1]) putL('steel', wldT(new THREE.BoxGeometry(.05, .05, L * .5), s * (hw - .14), fy + .95, L * .12));
+  // the walkable deck, rails with a gap at the boarding ladder, and the cabin
+  const R4 = (lx0, lx1, lz0, lz1) => rectW(b, lx0, lx1, lz0, lz1), sd = r() < .5 ? -1 : 1, lzL = mix(z0 + 1.5, cz - 3, r());
+  { const q = R4(-hwd, hwd, z0, z1); slab(q.x0, q.x1, q.z0, q.z1, fy, 'planks'); }
+  const rl = (lx0, lx1, lz0, lz1) => { const q = R4(lx0, lx1, lz0, lz1); rail(q.x0, q.x1, q.z0, q.z1, fy, 'rustR'); };
+  rl(-hwd, hwd, z0, z0); for (const s of [-1, 1]) { if (s === sd) { rl(s * hwd, s * hwd, z0, lzL - .7); rl(s * hwd, s * hwd, lzL + .7, cz - 2.3); } else rl(s * hwd, s * hwd, z0, cz - 2.3); }
+  { const [cx, czw] = L2W(b, 0, cz), cab = building('cabin', n + ' cabin', cx, czw, fy, dk); cab.wreck = {n, derelict: 1}; D.cab = cab; }
+  // boarding ladder over the side
+  { const lx = sd * (hw + .06); for (let y = -1.1; y < fy; y += .34) putL('rustR', wldT(new THREE.BoxGeometry(.05, .05, .62), lx, y, lzL), 0); for (const e of [-.32, .32]) putL('rustR', wldT(new THREE.BoxGeometry(.06, fy + 1.9, .06), lx, (fy - 1.3) / 2 + .3, lzL + e), 0);
+    const [ix, iz] = L2W(b, sd * (hw + .8), lzL), [tx, tz] = L2W(b, sd * (hwd - .7), lzL); INTER.push({kind: 'ladder', x: ix, y: 0, z: iz, r: 3.5, top: [tx, fy, tz], label: () => 'Climb aboard', on: () => P.sw}); D.lad = [ix, iz]; }
+  // a broken mast, its yard across the deck, a snarl of net
+  { const mz = mix(z0 + .8, cz - 3.2, .5), h = 2 + r() * 4, tl = (.17 + r() * .44) * (r() < .5 ? -1 : 1), [mx, mzw] = L2W(b, 0, mz);
+    putL('log', wldT(new THREE.CylinderGeometry(.11, .16, h, 7), Math.sin(tl) * h / 2, fy + Math.cos(tl) * h / 2, mz, 0, 0, -tl), 0); PCIRC.push({x: mx, z: mzw, r: .3});
+    putL('log', wldT(new THREE.CylinderGeometry(.07, .08, W * .9, 6), 0, fy + .08, mz + 1.2 + r(), r() * .6 - .3, 0, PI / 2), 0);
+    putL('dark', wldT(new THREE.BoxGeometry(1.2, .25, .9), -sd * (hwd - .9), fy + .12, z0 + .9, r()), 0); }
+  // 2-4 loot spots on the open deck
+  for (let k = 0, c = 0, nn = 2 + Math.floor(r() * 3); k < 40 && c < nn; k++) { const lx = (r() * 2 - 1) * (hwd - .6), lz = mix(z0 + .7, cz - 2.7, r()), [sx, szw] = L2W(b, lx, lz);
+    if (SPOTS.some(q => q.tag === 'drl' && Math.hypot(q.x - sx, q.z - szw) < 1.4) || Math.abs(lz - lzL) < 1.4 && Math.sign(lx) === sd) continue; c++; spot('drl', sx, fy + .05, szw); }
+  // solid below the deck for swimmers, a rect for boats
+  const hr = R4(-hw, hw, -L / 2, L / 2); WALLS.push(Object.assign(hr, {y0: -3, y1: fy - .3, see: false})); OBST.push(Object.assign(R4(-hw - .2, hw + .2, -L / 2 - .3, L / 2 + .3), {drl: 1}));
+}
+// ---- geometry helpers (bow at local -z, like the player's boat)
+function wldT(g, x, y, z, ry = 0, rx = 0, rz = 0) { _e.set(rx, ry, rz, 'YXZ'); g.applyMatrix4(_m4.compose(_v.set(x, y, z), _q.setFromEuler(_e), _s.set(1, 1, 1))); return g; }
+function wldB(sx, sy, sz, x, y, z, ry = 0, tile = 0) { const g = new THREE.BoxGeometry(sx, sy, sz); if (tile) boxUV(g, sx, sy, sz, tile); return wldT(g, x, y, z, ry); }
+function wldC(r0, r1, h, x, y, z, rx = 0, rz = 0, seg = 8) { return wldT(new THREE.CylinderGeometry(r0, r1, h, seg), x, y, z, 0, rx, rz); }
+function wldRod(a, b, r) { const dx = b[0] - a[0], dy = b[1] - a[1], dz = b[2] - a[2], l = Math.hypot(dx, dy, dz) || 1, g = new THREE.CylinderGeometry(r, r, l, 5); _q.setFromUnitVectors(_s.set(0, 1, 0), _v.set(dx / l, dy / l, dz / l)); g.applyMatrix4(_m4.compose(_v.set((a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2), _q, _s.set(1, 1, 1))); return g; }
+function wldLoft(L, hw, prof, sheer, nz = 16) { const np = prof.length, pos = [], uv = [], idx = [];
+  for (let i = 0; i <= nz; i++) { const t = i / nz, z = -L / 2 + L * t, w = hw * wldHW(t), top = sheer(t); for (const [f, y0] of prof) { const y = y0 === 'top' ? top : y0; pos.push(w * f, y, z); uv.push(z / 3, y / 3 + f * 2); } }
+  for (let i = 0; i < nz; i++) for (let k = 0; k < np - 1; k++) { const a = i * np + k, b = a + 1, c = a + np, d = c + 1; idx.push(a, b, c, b, d, c); }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); g.setIndex(idx); g.computeVertexNormals(); return g; }
+function wldTransom(L, hw, prof, sheer) { const w = hw * wldHW(1), top = sheer(1), sh = new THREE.Shape(); prof.forEach(([f, y0], k) => { const y = y0 === 'top' ? top : y0; if (k) sh.lineTo(w * f, y); else sh.moveTo(w * f, y); }); sh.closePath(); const g = new THREE.ShapeGeometry(sh); g.translate(0, 0, L / 2); return g; }
+function wldDeck(L, hw, y, z0, z1, inset = .15) { const sh = new THREE.Shape(), n = 14, pts = []; for (let i = 0; i <= n; i++) { const z = mix(z0, z1, i / n); pts.push([Math.max(.05, hw * wldHW((z + L / 2) / L) - inset), z]); }
+  pts.forEach(([w, z], i) => i ? sh.lineTo(w, -z) : sh.moveTo(w, -z)); for (let i = n; i >= 0; i--) sh.lineTo(-pts[i][0], -pts[i][1]); const g = new THREE.ShapeGeometry(sh); g.rotateX(-PI / 2); g.translate(0, y, 0); const u = g.attributes.uv; for (let i = 0; i < u.count; i++) u.setXY(i, u.getX(i) * .5, u.getY(i) * .5); return g; }
+function wldMats() { if (WLD.M) return WLD.M; const S = o => new THREE.MeshStandardMaterial(Object.assign({roughness: .6, metalness: .1, side: THREE.DoubleSide}, o));
+  WLD.M = {bot: S({color: 0x1c1e20, roughness: .85}), botR: S({color: 0x6a1a12, roughness: .8}), botY: S({color: 0x14203a, roughness: .4}), hull: {}, raft: S({color: 0xff6410, roughness: .7, emissive: 0x401000}), skin: S({color: 0xc89878, roughness: .8}), jacket: S({color: 0xe0b020, roughness: .7})};
+  WLD.M.h = c => WLD.M.hull[c] || (WLD.M.hull[c] = S({color: c, roughness: c === 0xeeeeea ? .35 : .55})); return WLD.M; }
+// one NPC hull: low-poly lofts merged by material (<= 6 draw calls). Returns the group and its light offsets [x, y, z, r, g, b].
+function wldNpcMesh(R) {
+  const M = wldMats(), L = R.L, W = R.W, hw = W / 2, list = [], Lt = [], rr = mulberry(0x7a1f ^ (R.i + 1) * 0x9e37), add = (g, m, cs = 1) => list.push([g, m, cs]);
+  const loft = (fb, bow, dep, hullM, botM) => { const sheer = t => fb + .45 + bow * Math.pow(1 - t, 2.2), topP = [[-1, 'top'], [-.99, .3]], topS = [[.99, .3], [1, 'top']], bot = [[-.99, .3], [-.96, -.2], [-.74, -dep * .55], [0, -dep], [.74, -dep * .55], [.96, -.2], [.99, .3]];
+    add(wldLoft(L, hw, topP, sheer), hullM); add(wldLoft(L, hw, topS, sheer), hullM); add(wldLoft(L, hw, bot, sheer), botM, 0); add(wldTransom(L, hw, [[-1, 'top'], ...bot, [1, 'top']], sheer), hullM, 0); };
+  if (R.kind === 'fish') { const fb = 1.25, hm = M.h(R.col), zc = -L * .14; loft(fb, .75, 1.2, hm, M.bot); add(wldDeck(L, hw, fb, -L / 2 + L * .08, L / 2, .2), MAT.wood, 0);
+    add(wldB(W * .62, 2, L * .2, 0, fb + 1, zc), MAT.white); add(wldB(W * .7, .14, L * .24, 0, fb + 2.07, zc), M.bot); add(wldB(W * .57, .55, .06, 0, fb + 1.45, zc - L * .1 - .01), MAT.glass, 0);
+    for (const s of [-1, 1]) add(wldB(.06, .5, L * .12, s * W * .312, fb + 1.45, zc), MAT.glass, 0);
+    add(wldC(.06, .09, 5, 0, fb + 4.5, zc + .4), MAT.steel); add(wldB(1.8, .06, .06, 0, fb + 4.4, zc + .4), MAT.steel); add(wldRod([0, fb + 4, zc + .4], [0, fb + 2.4, L * .3], .05), MAT.steel);
+    const gz = L * .44; for (const s of [-1, 1]) { add(wldRod([s * W * .4, fb, gz], [s * W * .3, fb + 3.3, gz - .4], .09), MAT.steel); add(wldRod([s * W * .3, fb + 3.2, gz - .4], [s * W * .75, -1.2, L / 2 + 16], .025), MAT.steel, 0); }
+    add(wldB(W * .66, .16, .16, 0, fb + 3.3, gz - .4), MAT.steel); add(wldC(.62, .62, W * .48, 0, fb + .75, L * .26, 0, PI / 2, 14), M.bot); for (const s of [-1, 1]) add(wldC(.78, .78, .06, s * W * .25, fb + .75, L * .26, 0, PI / 2, 14), MAT.steel);
+    for (let i = 0; i < 4; i++) add(wldB(.5, .35, .6, (rr() - .5) * W * .5, fb + .18, L * (.05 + rr() * .1), rr()), M.bot, 0); // fish boxes
+    Lt.push([0, fb + 4.95, zc + .4, .2, 1.6, .4], [0, fb + 4.55, zc + .4, 1.5, 1.5, 1.4], [-W * .36, fb + 2.1, zc - L * .06, 1.6, .15, .1], [W * .36, fb + 2.1, zc - L * .06, .15, 1.5, .3], [0, fb + .9, L / 2, 1.3, 1.3, 1.2], [-W * .3, fb + 3.4, gz - .4, 1.5, 1.05, .55], [W * .3, fb + 3.4, gz - .4, 1.5, 1.05, .55]);
+    R.gz = [0, fb + 3.5, gz]; R.hk = .9; }
+  else if (R.kind === 'yacht') { const fb = 1.6, hm = M.h(R.col); loft(fb, .6, 1.3, hm, M.botY); add(wldDeck(L, hw, fb, -L / 2 + 1, L / 2, .25), MAT.wood, 0);
+    add(wldB(W * .74, 1.9, L * .42, 0, fb + .95, -L * .02), hm); add(wldB(W * .75, .62, L * .38, 0, fb + 1.25, -L * .03), MAT.glass, 0); add(wldB(W * .6, 1.4, L * .24, 0, fb + 2.6, L * .03), hm); add(wldB(W * .61, .5, L * .2, 0, fb + 2.7, L * .02), MAT.glass, 0);
+    add(wldB(W * .68, .12, L * .3, 0, fb + 3.36, L * .1), hm); for (const s of [-1, 1]) { add(wldRod([s * W * .3, fb + 3.3, L * .2], [s * W * .2, fb + 4.8, L * .14], .07), MAT.steel); add(wldB(.04, .04, L * .5, s * (hw - .15), fb + .9, L * .12), MAT.steel, 0); }
+    add(wldB(W * .45, .1, .4, 0, fb + 4.8, L * .14), MAT.steel); add(wldC(.05, .05, 1.6, 0, fb + 5.6, L * .14), MAT.steel); add(wldB(1.4, .12, .12, 0, fb + 5.2, L * .14), MAT.steel);
+    Lt.push([0, fb + 6.4, L * .14, 1.5, 1.5, 1.4], [-W * .4, fb + 2.3, -L * .16, 1.6, .15, .1], [W * .4, fb + 2.3, -L * .16, .15, 1.5, .3], [0, fb + .6, L / 2, 1.3, 1.3, 1.2], [-W * .38, fb + 1.2, -L * .05, 1.6, 1.1, .55], [W * .38, fb + 1.2, L * .08, 1.6, 1.1, .55], [0, fb + 2.7, L * .16, 1.6, 1.1, .55]);
+    R.hk = .7; }
+  else { const fb = 3.2, hm = M.h(R.col); loft(fb, 2.2, 4.4, hm, M.botR); add(wldDeck(L, hw, fb, -L * .45, L / 2, .3), MAT.dark, 0);
+    const sz = L * .37, sw = W * .86; add(wldB(sw, 10, L * .13, 0, fb + 5, sz), MAT.white); add(wldB(W * 1.04, 2.2, 4.6, 0, fb + 11.1, L * .33), MAT.white);
+    for (const y of [3, 5.6, 8.2]) add(wldB(sw + .04, .5, L * .132, 0, fb + y, sz), MAT.dark, 0); add(wldB(W * 1.05, .7, 4.65, 0, fb + 11.4, L * .33), MAT.dark, 0);
+    add(wldB(3.2, 5, 4, 0, fb + 12.5, L * .43), hm); add(wldB(3.3, .8, 4.1, 0, fb + 15.3, L * .43), MAT.dark); add(wldC(.15, .22, 5, 0, fb + 14.7, L * .34), MAT.dark); add(wldB(2.4, .12, .12, 0, fb + 16, L * .34), MAT.dark);
+    add(wldC(.25, .32, 9, 0, fb + 6, -L * .43), MAT.dark); add(wldB(3, .14, .14, 0, fb + 8.5, -L * .43), MAT.dark);
+    for (let b = 0; b < 5; b++) { const zc = -L * .35 + b * 12.8; if (zc + 6 > L * .29) break; const wd = hw * Math.min(wldHW((zc - 6 + L / 2) / L), wldHW((zc + 6 + L / 2) / L)) - .5, nr = Math.max(1, Math.floor(wd * 2 / 2.55));
+      for (let q = 0; q < nr; q++) { const x = (q - (nr - 1) / 2) * 2.55, tiers = 1 + Math.floor(rr() * 3.4); for (let k = 0; k < tiers; k++) { if (k && rr() < .1) break; add(wldB(2.44, 2.55, 12.1, x, fb + 1.3 + k * 2.6, zc, 0, 3), rr() < .55 ? MAT.cont : MAT.cont2); } } }
+    Lt.push([0, fb + 11, -L * .43, 1.5, 1.5, 1.4], [0, fb + 16.4, L * .34, 1.5, 1.5, 1.4], [-W * .54, fb + 11.8, L * .33, 1.6, .15, .1], [W * .54, fb + 11.8, L * .33, .15, 1.5, .3], [0, fb + 1.5, L / 2, 1.3, 1.3, 1.2]);
+    for (const z of [-.3, -.05, .2]) for (const s of [-1, 1]) Lt.push([s * hw * .8, fb + 9, L * z, 1.5, 1.1, .6]); Lt.push([-sw / 2, fb + 6, sz, 1.6, 1.1, .55], [sw / 2, fb + 3.5, sz, 1.6, 1.1, .55]);
+    R.hk = .3; }
+  const g = new THREE.Group(); for (const m of mergeByMat(list)) { m.receiveShadow = false; g.add(m); } g.visible = false; scene.add(g); R.lt = Lt; return g;
+}
+// ---- the ghost ship: a glowing hull, tattered additive sails, cold mist
+function wldGhostMesh() {
+  const L = 36, hw = 4.6, list = [], gm = new THREE.MeshStandardMaterial({color: 0x0c1814, map: TX.rustH, emissive: 0x2aff9a, emissiveMap: TX.rustH, emissiveIntensity: .7, roughness: .9, metalness: 0, transparent: true, opacity: 1, side: THREE.DoubleSide});
+  const st = tex(cv(128, 256, (q, w, h) => { const gr = q.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, 'rgba(200,255,230,.85)'); gr.addColorStop(1, 'rgba(120,220,180,.35)'); q.fillStyle = gr; q.fillRect(0, 0, w, h); q.globalCompositeOperation = 'destination-out';
+    for (let i = 0; i < 40; i++) { q.beginPath(); q.ellipse(Math.random() * w, Math.random() * h, 3 + Math.random() * 14, 4 + Math.random() * 22, Math.random(), 0, TAU); q.fill(); }
+    q.beginPath(); q.moveTo(0, h); for (let x = 0; x <= w; x += 8) q.lineTo(x, h - 10 - Math.random() * 60); q.lineTo(w, h); q.fill(); for (let y = 0; y < h; y += 4) { q.fillStyle = `rgba(0,0,0,${Math.random() * .25})`; q.fillRect(0, y, w, 2); } }), 1);
+  const sm = new THREE.MeshBasicMaterial({map: st, color: 0x6affc8, transparent: true, opacity: .5, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, fog: true});
+  const sheer = t => 2.6 + 1.8 * Math.pow(1 - t, 2) + 2.6 * smooth((t - .72) / .18), bot = [[-1, 'top'], [-.98, .2], [-.8, -1.6], [0, -3], [.8, -1.6], [.98, .2], [1, 'top']];
+  list.push([wldLoft(L, hw, bot, sheer, 18), gm, 0], [wldTransom(L, hw, bot, sheer), gm, 0], [wldDeck(L, hw, 2.4, -L / 2 + 2, L / 2, .25), gm, 0], [wldB(hw * 1.7, 2.2, 7, 0, 4.4, L * .38), gm, 0], [wldRod([0, 3, -L / 2 + 1], [0, 7, -L / 2 - 8], .2), gm, 0]);
+  const sails = []; [[-L * .24, 19, 7.5], [0, 23, 9], [L * .24, 16, 6.5]].forEach(([z, h, w]) => { list.push([wldC(.18, .3, h, 0, 2.4 + h / 2, z), gm, 0]); for (const y of [.42, .78]) { list.push([wldC(.1, .1, w * 1.1, 0, 2.4 + h * y, z, 0, PI / 2), gm, 0]);
+    const p = new THREE.PlaneGeometry(w, h * .32, 6, 3), a = p.attributes.position; for (let i = 0; i < a.count; i++) { const u = a.getX(i) / w + .5; a.setZ(i, Math.sin(u * PI) * 1.3 + Math.sin(a.getY(i) * 2 + u * 7) * .2); } p.computeVertexNormals(); sails.push(wldT(p, 0, 2.4 + h * (y - .17), z + .3)); } });
+  const g = new THREE.Group(); for (const m of mergeByMat(list)) { m.castShadow = false; g.add(m); } const sg = new THREE.Mesh(mergeGeos(sails), sm); sg.renderOrder = 5; g.add(sg);
+  const mist = [], glow = []; for (let i = 0; i < 9; i++) { const s = new THREE.Sprite(new THREE.SpriteMaterial({map: TX.glow, color: 0x8affd8, transparent: true, opacity: 0, depthWrite: false, fog: true})); s.scale.set(26 + Math.random() * 18, 7 + Math.random() * 5, 1); s.userData.p = [(Math.random() - .5) * 30, 1.5 + Math.random() * 2, (Math.random() - .5) * 50, Math.random() * TAU]; g.add(s); mist.push(s); }
+  for (const [x, y, z] of [[0, 7.4, L * .45], [-hw, 4, L * .1], [hw, 4, -L * .2], [0, 26, 0]]) { const s = new THREE.Sprite(new THREE.SpriteMaterial({map: TX.glow, color: 0x5affa8, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false})); s.scale.setScalar(3.2); s.position.set(x, y, z); g.add(s); glow.push(s); }
+  g.visible = false; scene.add(g); return {g, gm, sm, mist, glow};
+}
+// ---- the life raft with a waving survivor
+function wldRaftMesh() { const M = wldMats(), g = new THREE.Group(), add = (geo, m, x, y, z) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.castShadow = true; g.add(o); return o; };
+  const ring = add(new THREE.TorusGeometry(1.1, .3, 8, 18), M.raft, 0, .15, 0); ring.rotation.x = PI / 2; add(new THREE.CylinderGeometry(1.05, 1.05, .08, 16), M.bot, 0, 0, 0);
+  const can = add(new THREE.SphereGeometry(1, 12, 6, 0, PI, 0, PI / 2), M.raft, 0, .3, 0); can.scale.set(1.1, 1.2, 1.1); can.rotation.y = PI / 2; add(new THREE.CylinderGeometry(.03, .03, 1.4, 4), MAT.steel, 0, 1.3, 0);
+  const man = new THREE.Group(); man.position.set(.45, .1, .2); g.add(man); const b = new THREE.Mesh(new THREE.CylinderGeometry(.2, .24, .75, 8), M.jacket); b.position.y = .45; man.add(b); const h = new THREE.Mesh(new THREE.SphereGeometry(.14, 10, 8), M.skin); h.position.y = .98; man.add(h);
+  const arm = new THREE.Group(); arm.position.set(.2, .78, 0); man.add(arm); const a = new THREE.Mesh(new THREE.CylinderGeometry(.05, .05, .62, 6), M.jacket); a.position.y = .3; arm.add(a);
+  const sb = new THREE.Sprite(new THREE.SpriteMaterial({map: TX.glow, color: 0xffffff, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false, opacity: 0})); sb.scale.setScalar(4); sb.position.y = 2.1; g.add(sb);
+  g.visible = false; scene.add(g); return {g, arm, man, sb}; }
+// ---- client visuals, built on first use
+function wldVisInit() {
+  const V = WLD.vis = {npc: [], n: 0}; for (const R of WLD_NPC) { R.m = wldNpcMesh(R); R.li = V.n; V.n += R.lt.length; }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(Math.max(1, V.n) * 3).fill(-9999), 3)); g.setAttribute('color', new THREE.BufferAttribute(new Float32Array(Math.max(1, V.n) * 3), 3));
+  V.pts = new THREE.Points(g, new THREE.PointsMaterial({map: TX.glow, size: 2.4, vertexColors: true, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false})); V.pts.frustumCulled = false; V.pts.renderOrder = 6; scene.add(V.pts);
+  // gulls over the nearest trawler by day
+  const bg = new THREE.BufferGeometry(); bg.setAttribute('position', new THREE.Float32BufferAttribute([-.8, .14, -.1, 0, 0, .28, 0, 0, -.16, .8, .14, -.1, 0, 0, .28, 0, 0, -.16], 3)); bg.computeVertexNormals();
+  V.gull = new THREE.InstancedMesh(bg, new THREE.MeshBasicMaterial({color: 0xd8dcdc, side: THREE.DoubleSide}), 7); V.gull.frustumCulled = false; V.gull.visible = false; scene.add(V.gull); V.gph = [...Array(7)].map(() => [Math.random() * TAU, 6 + Math.random() * 10, 6 + Math.random() * 7, .25 + Math.random() * .2, Math.random() * TAU]);
+}
+const _wm = new THREE.Matrix4(), _wq = new THREE.Quaternion(), _we = new THREE.Euler(), _ws = new THREE.Vector3(1, 1, 1);
+function wldST(prm, v, tc = .3) { const t = A.ctx.currentTime; prm.cancelScheduledValues(t); prm.setTargetAtTime(v, t, tc); prm.setTargetAtTime(0, t + .6, .25); }
+function wldAuInit() { const c = A.ctx; if (!c || WLD.au || !A.out) return; const mu = A.mute = A.mute || [];
+  const P2 = ref => { const p = c.createPanner(); Object.assign(p, {panningModel: 'equalpower', distanceModel: 'inverse', refDistance: ref, rolloffFactor: 1, maxDistance: 1200}); p.connect(A.out); return p; };
+  // one shared engine hum, moved to whichever working boat is closest
+  const hp = P2(16), hg = c.createGain(); hg.gain.value = 0; hg.connect(hp); const hf = c.createBiquadFilter(); hf.type = 'lowpass'; hf.frequency.value = 150; hf.Q.value = 1.2; hf.connect(hg);
+  for (const [f, ty] of [[38, 'sawtooth'], [38.7, 'sawtooth'], [57, 'triangle']]) { const o = c.createOscillator(); o.type = ty; o.frequency.value = f; o.connect(hf); o.start(); }
+  { const l = c.createOscillator(), lg = c.createGain(); l.frequency.value = 6.5; lg.gain.value = 45; l.connect(lg); lg.connect(hf.frequency); l.start(); }
+  // the ghost choir: an open minor chord on breathy voices through two vowel formants, and a whisper riding a slow swell
+  const gp = P2(40), gg = c.createGain(); gg.gain.value = 0; gg.connect(gp); const f1 = c.createBiquadFilter(), f2 = c.createBiquadFilter(); f1.type = f2.type = 'bandpass'; f1.frequency.value = 640; f1.Q.value = 2.2; f2.frequency.value = 1080; f2.Q.value = 3; f1.connect(gg); f2.connect(gg);
+  for (const [f, ty] of [[110, 'sawtooth'], [130.8, 'sawtooth'], [164.8, 'triangle'], [220, 'sawtooth'], [261.6, 'triangle']]) { const o = c.createOscillator(), og = c.createGain(), v = c.createOscillator(), vg = c.createGain(); o.type = ty; o.frequency.value = f; o.detune.value = (Math.random() - .5) * 20; v.frequency.value = 4 + Math.random() * 1.5; vg.gain.value = f * .012; v.connect(vg); vg.connect(o.frequency); og.gain.value = .22; o.connect(og); og.connect(f1); og.connect(f2); o.start(); v.start(); }
+  { const ns = c.createBufferSource(), nf = c.createBiquadFilter(), nw = c.createGain(), wl = c.createOscillator(), wg = c.createGain(); ns.buffer = A.noise; ns.loop = true; nf.type = 'bandpass'; nf.frequency.value = 2600; nf.Q.value = 1.4; nw.gain.value = .25; wl.frequency.value = .31; wg.gain.value = .22; wl.connect(wg); wg.connect(nw.gain); ns.connect(nf); nf.connect(nw); nw.connect(gg); ns.start(); wl.start(); }
+  mu.push(hg, gg); WLD.au = {hp, hg, gp, gg}; }
+Snd.wldHum = (x, y, z, k) => { if (!A.on || !WLD.au) return; setPan(WLD.au.hp, x, y, z); wldST(WLD.au.hg.gain, .085 * k); };
+Snd.wldChoir = (x, y, z, k) => { if (!A.on || !WLD.au) return; setPan(WLD.au.gp, x, y, z); wldST(WLD.au.gg.gain, .07 * k, .8); };
+Snd.wldHorn = p => { if (!A.on) return; const c = A.ctx, t = c.currentTime + .02, f = c.createBiquadFilter(), g = c.createGain(), dl = c.createDelay(2), fb = c.createGain(), d = p || A.out; f.type = 'lowpass'; f.frequency.value = 520; f.Q.value = .7;
+  g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(.1, t + .35); g.gain.setValueAtTime(.1, t + 2.6); g.gain.exponentialRampToValueAtTime(.0001, t + 3.5); dl.delayTime.value = 1.15; fb.gain.value = .26; f.connect(g); g.connect(d); g.connect(dl); dl.connect(fb); fb.connect(dl); fb.connect(d);
+  for (const fr of [65, 65.4, 97.6, 130.5]) { const o = c.createOscillator(); o.type = 'sawtooth'; o.frequency.setValueAtTime(fr * .95, t); o.frequency.exponentialRampToValueAtTime(fr, t + .45); o.connect(f); o.start(t); o.stop(t + 3.6); } };
+Snd.wldGull = p => { const k = .7 + Math.random() * .5; tone(1900 * k, .035, .32, 'triangle', p, 1150 * k); setTimeout(() => tone(2000 * k, .03, .4, 'triangle', p, 1100 * k), 260 + Math.random() * 120); burst(3000 * k, 4, .02, .2, 'bandpass', p); };
+Snd.wldShout = p => { if (!A.on) return; const c = A.ctx; for (const [w, f0, f1] of [[0, 230, 330], [.55, 250, 190]]) { const t = c.currentTime + w, o = c.createOscillator(), fl = c.createBiquadFilter(), g = c.createGain(); o.type = 'sawtooth'; o.frequency.setValueAtTime(f0, t); o.frequency.linearRampToValueAtTime(f1, t + .4); fl.type = 'bandpass'; fl.frequency.value = 850; fl.Q.value = 2.5; env(g, t, .05, .12, .45); o.connect(fl); fl.connect(g); g.connect(p || A.out); o.start(t); o.stop(t + .6); } };
+Snd.wldRadio = sad => { for (let i = 0; i < 7; i++) setTimeout(() => burst(1700 + Math.random() * 900, .9, .05, .08 + Math.random() * .1, 'bandpass'), i * 90 + Math.random() * 60); if (sad) { tone(440, .03, 1.2, 'triangle', null, 220); setTimeout(() => burst(1400, .5, .06, 1.4, 'bandpass'), 700); } else { tone(880, .025, .15, 'square'); setTimeout(() => tone(880, .025, .15, 'square'), 220); } };
+// ---- host: the ghost ship, maydays, cargo spills, whales, lightning
+function wldGhostSpawn() {
+  const Rg = wldGrave(), inG = !!Rg && Math.hypot(B.x - Rg.x, B.z - Rg.z) - (Rg.r || 0) < 2000, MR = wldMR(), C = wldMC();
+  for (let k = 0; k < 24; k++) { const g = inG && k < 16, a = g ? Math.atan2(Rg.x - B.x, Rg.z - B.z) + (CR() - .5) * 1.8 : CR() * TAU, d = 500 + CR() * 400, x = B.x + Math.sin(a) * d, z = B.z + Math.cos(a) * d;
+    if (g && Math.hypot(x - Rg.x, z - Rg.z) > (Rg.r || 0) * .95) continue; if (Math.hypot(x - C.x, z - C.z) > MR - 150 || !wldClear(x, z, 80)) continue;
+    const sd = CR() < .5 ? -1 : 1, off = 60 + CR() * 100, tx = B.x + Math.cos(a) * sd * off, tz = B.z - Math.sin(a) * sd * off;
+    return {on: 1, x, z, yaw: Math.atan2(-(tx - x), -(tz - z)), tr: (CR() - .5) * .012, t0: G.t, fade: 0}; }
+  return null;
+}
+function wldGhostStep(dt) {
+  const nt = wldNight(G.tod); let gh = G.wldGh; if (nt < .25) G.wldGhDone = 0;
+  if (!gh || !gh.on) { if (nt > .6 && !G.wldGhDone && B.sink <= 0 && Math.hypot(B.x - HOME.x, B.z - HOME.z) > 900 && (G.wldGhT = (G.wldGhT ?? 2) - dt) <= 0) { G.wldGhT = 3; const q = wldGhostSpawn(); if (q) { G.wldGh = gh = q; G.wldGhDone = 1; emit({k: 'wghost', on: 1, x: +q.x.toFixed(1), z: +q.z.toFixed(1), yaw: +q.yaw.toFixed(3), tr: +q.tr.toFixed(4)}); } } return; }
+  gh.yaw += gh.tr * dt; gh.x -= Math.sin(gh.yaw) * 3 * dt; gh.z -= Math.cos(gh.yaw) * 3 * dt;
+  const d = Math.hypot(B.x - gh.x, B.z - gh.z);
+  if (!gh.fade && (d < 150 || nt < .3)) { gh.fade = .001; gh.dawn = nt < .3; emit({k: 'wghost', on: 2});
+    if (!gh.dawn) { const ki = KINDS.indexOf('relic'); for (let k = 0; k < 3; k++) { const b = 18 + k * 10, s = (CR() - .5) * 10, x = gh.x + Math.sin(gh.yaw) * b + Math.cos(gh.yaw) * s, z = gh.z + Math.cos(gh.yaw) * b - Math.sin(gh.yaw) * s; if (landH(x, z) > -1.5) continue; let i = G.floats.findIndex(q => !q); if (i < 0) i = G.floats.length; G.floats[i] = [x, z, ki]; } } }
+  if (gh.fade) gh.fade = Math.min(1, gh.fade + dt / (gh.dawn ? 4 : 8));
+  if (gh.fade >= 1 || d > 2800) { gh.on = 0; G.wldGh = null; emit({k: 'wghost', on: 0}); }
+}
+// force or roll a mayday (host): a spot in open water 600-1500 m from the boat
+function wldMayday(x, z) {
+  if (!isHost() || G.wldMay) return null; const MR = wldMR(), C = wldMC();
+  if (x == null) for (let k = 0; k < 30; k++) { const a = CR() * TAU, d = 600 + CR() * 900, qx = B.x + Math.sin(a) * d, qz = B.z + Math.cos(a) * d; if (Math.hypot(qx - C.x, qz - C.z) < MR - 150 && wldClear(qx, qz, 50)) { x = qx; z = qz; break; } }
+  if (x == null) return null; G.wldMay = {x: +x.toFixed(1), z: +z.toFixed(1), t: 240}; emit({k: 'wmay', x: G.wldMay.x, z: G.wldMay.z, t: 240}); return G.wldMay;
+}
+function wldHostStep(dt) {
+  wldGhostStep(dt);
+  // maydays: one every 6-10 minutes of sea time out past 400 m
+  const q = G.wldMay; if (q) { q.t -= dt; if (q.t <= 0) { G.wldMay = null; G.wldMayT = 360 + CR() * 240; emit({k: 'wmay', x: q.x, z: q.z, t: 0}); } }
+  else if (B.sink <= 0 && Math.hypot(B.x - HOME.x, B.z - HOME.z) > 400 && (G.wldMayT = (G.wldMayT ?? 360 + CR() * 240) - dt) <= 0) { G.wldMayT = 360 + CR() * 240; wldMayday(); }
+  // a storm hits: cargo ships within 2 km lose a few containers over the side
+  if (G.stormOn && !WLD.so) for (const R of WLD_NPC) { if (R.kind !== 'cargo' || Math.hypot(R.st.x - B.x, R.st.z - B.z) > 2000 || !R.path.loop && (R.st.s < 60 || R.st.s > R.path.L - 60)) continue;
+    const n = 4 + Math.floor(CR() * 3), s = Math.sin(R.st.yaw), c = Math.cos(R.st.yaw), ki = KINDS.indexOf('crate'); let got = 0;
+    for (let k = 0; k < n; k++) { const b = R.L / 2 + 8 + CR() * 60, l = (CR() - .5) * 30, x = R.st.x + s * b + c * l, z = R.st.z + c * b - s * l; if (landH(x, z) > -1.5) continue; let i = G.floats.findIndex(f => !f); if (i < 0) i = G.floats.length; G.floats[i] = [x, z, ki]; got++; }
+    if (got) emit({k: 'wspill', x: +R.st.x.toFixed(0), z: +R.st.z.toFixed(0), n: R.n}); }
+  WLD.so = !!G.stormOn;
+  // whale breaches everyone sees: near a random crew member aboard, in calm water
+  if ((G.wldWhT = (G.wldWhT ?? 40) - dt) <= 0) { G.wldWhT = 70 + CR() * 80; const crew = alive().filter(p => p.ob || p.seat);
+    if (G.storm < .4 && crew.length) { const p = crew[Math.floor(CR() * crew.length)], a = CR() * TAU, r = 70 + CR() * 60, x = p.x + Math.sin(a) * r, z = p.z + Math.cos(a) * r; if (landH(x, z) < -4 && !nearRig(x, z)) emit({k: 'wwhale', x: +x.toFixed(1), z: +z.toFixed(1), a: +(CR() * TAU).toFixed(2)}); } }
+  // online lightning comes from the host so every crew sees the same bolt
+  if (Net.role === 'host' && (G.wldBoltT = (G.wldBoltT ?? 8) - dt) <= 0) { G.wldBoltT = 8 + Math.random() * 20; if (G.storm > .6) emit({k: 'wbolt', d: Math.round(600 + Math.random() * 2500)}); }
+}
+// ---- client events
+function wldMayOn(x, z, t, quiet) { WLD.may = {x, z, t, rk: quiet ? 50 : 0, shT: 2, crT: 3, ph: Math.random() * TAU}; wldMark('may', x, z, 'MAYDAY', '#ff4030');
+  if (!quiet) { spawnRocket({x, y: 1, z, vx: 0, vy: 34, vz: 0, c: 0}); Snd.wldRadio(0); if (P && Math.hypot(P.x - x, P.z - z) < 3000) showMsg('"Mayday, mayday… we\'re going down…" A red flare climbs into the sky.', 'RADIO', 5); } }
+function wldMayOff() { WLD.may = null; wldUnmark('may'); if (WLD.raft) WLD.raft.g.visible = false; }
+function wldEv(e) {
+  switch (e.k) {
+    case 'wmay': if (e.t > 0) wldMayOn(e.x, e.z, e.t, 0); else { const had = !!WLD.may; wldMayOff(); if (had) { Snd.wldRadio(1); showMsg('The mayday goes silent.', 'RADIO', 3); } } break;
+    case 'wsave': { wldMayOff(); const p = PL.get(e.id), me = e.id === myId(); Snd.wldShout(e.x != null ? at(e.x, 1, e.z, 6) : null); if (Snd.coin) setTimeout(() => Snd.coin(), 400);
+      (G.banQ = G.banQ || []).push({h: 'RESCUE', t: me ? 'You pulled a survivor aboard' : `${p ? p.name : 'The crew'} pulled a survivor aboard`, c: e.v, s: 'bounty'}); showMsg(WLD_THANKS[(e.n || 0) % WLD_THANKS.length], 'SURVIVOR', 5); break; }
+    case 'wwhale': FX.whA = {t: 0, x: e.x, z: e.z, a: e.a}; if (Snd.whale) Snd.whale(at(e.x, 0, e.z, 40)); break;
+    case 'wbolt': G.bolt = .35; setTimeout(() => G.on && Snd.thunder(.6 + Math.random() * .4), e.d || 1200); break;
+    case 'wghost': { const gh = WLD.gh;
+      if (e.on === 1) { Object.assign(gh, {on: 1, x: e.x, z: e.z, yaw: e.yaw, tr: e.tr || 0, fade: 0, ap: 0}); if (P && Math.hypot(P.x - e.x, P.z - e.z) < 1400) { showMsg('Green lights on the water. A ship with no sound.', '', 4); Snd.stinger(); } }
+      else if (e.on === 2) { gh.fd = 1; if (P && gh.on && Math.hypot(cam.position.x - gh.x, cam.position.z - gh.z) < 400) { showMsg('It thins into the mist. Something glints in its wake.', '', 4); burst(900, .4, .35, 3, 'bandpass', at(gh.x, 6, gh.z, 30), .5); } }
+      else { gh.on = 0; gh.fd = 0; } break; }
+    case 'wspill': if (P && Math.hypot(P.x - e.x, P.z - e.z) < 2600) { Snd.wldRadio(0); showMsg(`${e.n}: containers over the side!`, 'RADIO', 4); } break;
+  }
+}
+// ---- client per-frame: NPC boats, nav lights, gulls, hum and horns, the ghost, the raft, derelict sightings
+function wldFrame(dt) {
+  if (!WLD.vis) wldVisInit(); const V = WLD.vis, cp = cam.position, far = Math.min(G.viewFar || 1600, 1400), nt = TOD.night, t = G.wt;
+  if (isHost()) WLD.ct = G.t; else { const e = G.t - WLD.ct; WLD.ct = Math.abs(e) > 3 ? G.t : WLD.ct + dt + e * Math.min(1, dt * 1.5); }
+  if (A.on && !WLD.au) wldAuInit(); const au = A.on && WLD.au && (WLD.auT = (WLD.auT || 0) - dt) <= 0; if (au) WLD.auT = .1;
+  wldNpcPlace(WLD.ct);
+  const pa = V.pts.geometry.attributes.position.array, ca = V.pts.geometry.attributes.color.array, lk = .12 + .88 * nt; let hum = null, hd = 200, fishN = null, fd = 350;
+  for (const R of WLD_NPC) { const o = R.st, m = R.m, d = Math.hypot(o.x - cp.x, o.z - cp.z), edge = !R.path.loop && (o.s < 40 || o.s > R.path.L - 40), s = Math.sin(o.yaw), c = Math.cos(o.yaw);
+    const vis = !edge && d < far + R.L / 2; m.visible = vis; let y = 0;
+    if (vis || d < 2600) { const hb = R.L * .45; y = waveH(o.x, o.z, t) * R.hk; if (vis) { const yb = waveH(o.x - s * hb, o.z - c * hb, t), ys = waveH(o.x + s * hb, o.z + c * hb, t); m.position.set(o.x, y, o.z); m.rotation.set((yb - ys) / R.L * .9, o.yaw, Math.sin(t * .6 + R.i * 1.7) * .04 * R.hk, 'YXZ'); const sh = d < 150; for (const q of m.children) q.castShadow = sh; } }
+    for (let k = 0; k < R.lt.length; k++) { const L = R.lt[k], j = (R.li + k) * 3; if (edge || d > 2600) { pa[j + 1] = -9999; continue; } pa[j] = o.x + L[0] * c + L[2] * s; pa[j + 1] = L[1] + y; pa[j + 2] = o.z - L[0] * s + L[2] * c; const f = lk * (Math.random() < .004 ? .3 : 1); ca[j] = L[3] * f; ca[j + 1] = L[4] * f; ca[j + 2] = L[5] * f; }
+    if (edge) continue; if (d < hd) { hd = d; hum = R; } if (R.kind === 'fish' && d < fd) { fd = d; fishN = R; }
+    // the cargo horn when one passes within 300 m of the crew's boat; spray off the bow up close
+    if (R.kind === 'cargo' && Math.hypot(o.x - B.x, o.z - B.z) < 300 + R.L / 2 && WLD.ct - (R.hornT ?? -1e9) > 90) { R.hornT = WLD.ct; if (A.on) Snd.wldHorn(at(o.x, 18, o.z, 70)); }
+    if (vis && d < 160 && R.v > 3 && (R.spT = (R.spT || 0) - dt) <= 0) { R.spT = .22; spray(o.x - s * R.L * .48, .3, o.z - c * R.L * .48, R.kind === 'cargo' ? 5 : 3, R.kind === 'cargo' ? 3.5 : 2.2); } }
+  V.pts.geometry.attributes.position.needsUpdate = V.pts.geometry.attributes.color.needsUpdate = true; V.pts.material.size = 1.6 + nt * 1.4;
+  if (au && hum) Snd.wldHum(hum.st.x, 2, hum.st.z, clamp(1.2 - hd / 200, 0, 1) * (hum.kind === 'cargo' ? 1.3 : hum.kind === 'yacht' ? .6 : .8));
+  // gulls wheel over the nearest trawler's gantry by day
+  const gon = !!fishN && TOD.day > .2 && G.storm < .5 && (G.uw || 0) < .5; V.gull.visible = gon;
+  if (gon) { const o = fishN.st, s = Math.sin(o.yaw), c = Math.cos(o.yaw), gx = o.x + fishN.gz[2] * s, gz = o.z + fishN.gz[2] * c;
+    V.gph.forEach((p, i) => { const a = p[0] + t * p[3], x = gx + Math.cos(a) * p[1], z = gz + Math.sin(a) * p[1], y = p[2] + Math.sin(t * .8 + p[4]) * 1.5, fl = Math.sin(t * 8 + p[4]) * .5; _we.set(0, -a, Math.sin(t * .5 + i) * .35); _wq.setFromEuler(_we); _ws.set(1, 1 + fl * .6, 1); _wm.compose(_v.set(x, y, z), _wq, _ws); V.gull.setMatrixAt(i, _wm); });
+    V.gull.instanceMatrix.needsUpdate = true; if (fd < 160 && Math.random() < dt * .35) Snd.wldGull(at(gx, 10, gz, 10)); }
+  wldGhostFrame(dt, au); wldRaftFrame(dt);
+  // derelicts go on the chart once you have seen one up close
+  if ((WLD.mkT -= dt) <= 0) { WLD.mkT = 1; const px = P ? P.x : cp.x, pz = P ? P.z : cp.z; for (const D of WLD_DRL) if (!D.seen && Math.hypot(D.x - px, D.z - pz) < 200) { D.seen = 1; wldMark('drl' + D.i, D.x, D.z, D.n, '#d8b070'); toast(D.n, 'Derelict, adrift'); } }
+}
+function wldGhostFrame(dt, au) {
+  const gh = WLD.gh, host = isHost();
+  if (host) { const q = G.wldGh; if (q && q.on) Object.assign(gh, {on: 1, x: q.x, z: q.z, yaw: q.yaw, fade: q.fade, tr: q.tr}); else if (gh.on && !(q && q.on)) gh.on = 0; }
+  else if (gh.on) { gh.yaw += gh.tr * dt; if (!gh.fd || gh.fade < 1) { gh.x -= Math.sin(gh.yaw) * 3 * dt; gh.z -= Math.cos(gh.yaw) * 3 * dt; } if (gh.fd) gh.fade = Math.min(1, (gh.fade || 0) + dt / 8);
+    if (gh.sx != null) { const k = Math.min(1, dt * 2); gh.x += (gh.sx - gh.x) * k; gh.z += (gh.sz - gh.z) * k; gh.sx += -Math.sin(gh.yaw) * 3 * dt; gh.sz += -Math.cos(gh.yaw) * 3 * dt; } }
+  const on = gh.on && (G.uw || 0) < .5; if (!on && !WLD.ghM) return; if (!WLD.ghM) WLD.ghM = wldGhostMesh(); const Gm = WLD.ghM, d = Math.hypot(gh.x - cam.position.x, gh.z - cam.position.z);
+  gh.ap = Math.min(1, (gh.ap || 0) + dt / 4); const k = on ? gh.ap * (1 - (gh.fade || 0)) : 0; Gm.g.visible = on && k > .01 && d < (G.viewFar || 1600) + 40; if (!Gm.g.visible) return;
+  const t = G.wt; Gm.g.position.set(gh.x, waveH(gh.x, gh.z, t) * .5 - (gh.fade || 0) * 1.5, gh.z); Gm.g.rotation.set(Math.sin(t * .4) * .02, gh.yaw, Math.sin(t * .31) * .035, 'YXZ');
+  const fl = .75 + .25 * Math.sin(t * 3.1) * Math.sin(t * 1.7); Gm.gm.opacity = k; Gm.gm.emissiveIntensity = .7 * fl * (.4 + .6 * TOD.night); Gm.sm.opacity = .5 * k * fl;
+  Gm.mist.forEach((s, i) => { const p = s.userData.p; s.position.set(p[0] + Math.sin(t * .07 + p[3]) * 6, p[1], p[2] + Math.cos(t * .05 + p[3]) * 8); s.material.opacity = .13 * k; }); Gm.glow.forEach((s, i) => s.material.opacity = k * (.5 + .5 * Math.sin(t * 2 + i * 1.9)));
+  if (au) Snd.wldChoir(gh.x, 8, gh.z, Math.pow(clamp(1 - d / 900, 0, 1), 1.4) * (1 - (gh.fade || 0) * .7));
+  if (P && d < 260) P.fear = Math.max(P.fear || 0, .42 * (1 - d / 260) * k);
+}
+function wldRaftFrame(dt) {
+  const q = WLD.may; if (!q) return; if (!WLD.raft) WLD.raft = wldRaftMesh(); const Rf = WLD.raft, t = G.wt, cp = cam.position, d = Math.hypot(q.x - cp.x, q.z - cp.z);
+  q.t -= dt; Rf.g.visible = d < Math.min(G.viewFar || 1600, 1400); if (Rf.g.visible) { Rf.g.position.set(q.x, waveH(q.x, q.z, t) - .05, q.z); Rf.g.rotation.set(Math.sin(t * 1.1 + q.ph) * .08, q.ph, Math.cos(t * .9 + q.ph) * .08, 'YXZ'); Rf.arm.rotation.z = -2.4 + Math.sin(t * 7) * .55; Rf.man.rotation.y = Math.atan2(cp.x - q.x, cp.z - q.z) - q.ph;
+    Rf.sb.material.opacity = (t % 1.3) < .08 ? .4 + .6 * TOD.night : 0; }
+  // another red flare now and then; shouts and creaks up close
+  if ((q.rk -= dt) <= 0) { q.rk = 55 + Math.random() * 20; if (q.t > 20 && d > 60) spawnRocket({x: q.x, y: 1, z: q.z, vx: 0, vy: 32, vz: 0, c: 0}); }
+  if (A.on && d < 140 && (q.shT -= dt) <= 0) { q.shT = 4 + Math.random() * 4; Snd.wldShout(at(q.x, 1, q.z, 8)); }
+  if (A.on && d < 40 && (q.crT -= dt) <= 0) { q.crT = 2 + Math.random() * 3; Snd.creak(at(q.x, .3, q.z, 3)); }
+}
+// ---- wrappers
+{ const f0 = buildFw; buildFw = function (...a) { const r = f0.apply(this, a); wldDerelicts(); wldBuildTraffic(); wldNpcPlace(0); return r; }; }
+{ const f0 = placeItems; placeItems = function (...a) { const r = f0.apply(this, a);
+  // session reset (placeItems runs once per voyage on every client), then derelict loot from WR so late joiners get the same items
+  Object.assign(G, {wldGh: null, wldGhDone: 0, wldGhT: 2, wldMay: null, wldMayT: undefined, wldWhT: 40, wldBoltT: 8}); WLD.so = false; WLD.gh.on = 0; WLD.gh.fd = 0; wldMayOff(); WLD_MARKS.length = 0; for (const D of WLD_DRL) D.seen = 0; WLD.ct = 0;
+  for (const s of SPOTS) if (s.tag === 'drl') { const u = WR(); addItem(u < .4 ? 'crate' : u < .65 ? 'scrap' : u < .85 ? 'relic' : 'chest', s); }
+  return r; }; }
+{ const f0 = hostStep; hostStep = function (dt, ...a) { wldNpcPlace(G.t); const r = f0.call(this, dt, ...a); if (G.on) wldHostStep(dt); return r; }; }
+{ const f0 = hostAct; hostAct = function (id, m, ...a) { const r = f0.call(this, id, m, ...a);
+  if (m && m.a === 'wres' && G.on) { const p = PL.get(id), q = G.wldMay; if (p && q && !p.dead && Math.hypot(p.x - q.x, p.z - q.z) < 9 + (p.ob ? BG.hw : 0)) { const d = Math.hypot(q.x - HOME.x, q.z - HOME.z), v = Math.round((220 + d / 8) * (wldNight(G.tod) > .5 ? 1.5 : 1) * (D.pay || 1));
+    G.wldMay = null; G.wldMayT = 360 + CR() * 240; G.cash += v; G.earned += v; emit({k: 'wsave', v, id, x: q.x, z: q.z, n: Math.floor(CR() * 5)}); save(); } }
+  return r; }; }
+{ const f0 = applyEv; applyEv = function (e, ...a) { const r = f0.call(this, e, ...a); if (e && typeof e.k === 'string' && e.k[0] === 'w') wldEv(e); return r; }; }
+{ const f0 = packSnap; packSnap = function (...a) { const s = f0.apply(this, a); const n = performance.now(); if (n - WLD.snT > 480) { WLD.snT = n; const g = G.wldGh, q = G.wldMay;
+  s.wg = g && g.on ? [1, +g.x.toFixed(1), +g.z.toFixed(1), +g.yaw.toFixed(3), +g.fade.toFixed(2), +g.tr.toFixed(4)] : [0]; s.wm = q ? [q.x, q.z, Math.round(q.t)] : 0; } return s; }; }
+{ const f0 = applySnap; applySnap = function (s, ...a) { const r = f0.call(this, s, ...a);
+  if (s.wg) { const gh = WLD.gh, w = s.wg; if (!w[0]) { gh.on = 0; gh.fd = 0; } else { if (!gh.on || Math.hypot(gh.x - w[1], gh.z - w[2]) > 40) Object.assign(gh, {on: 1, x: w[1], z: w[2], ap: gh.on ? gh.ap : 1}); Object.assign(gh, {sx: w[1], sz: w[2], yaw: w[3], tr: w[5] || 0}); if (w[4] > 0) { gh.fd = 1; gh.fade = Math.max(gh.fade || 0, w[4]); } else gh.fade = 0; } }
+  if (s.wm !== undefined) { if (s.wm && !WLD.may) wldMayOn(s.wm[0], s.wm[1], s.wm[2], 1); else if (!s.wm && WLD.may) wldMayOff(); else if (s.wm) WLD.may.t = s.wm[2]; }
+  return r; }; }
+{ const f0 = stepFauna; stepFauna = function (...a) { FX.whT = 1e9; return f0.apply(this, a); }; }
+{ const f0 = updateWorldFx; updateWorldFx = function (dt, ...a) { const r = f0.call(this, dt, ...a); if (G.on && WLD_NPC) wldFrame(dt); return r; }; }
+{ const f0 = targets; targets = function (...a) { const L = f0.apply(this, a), q = WLD.may;
+  if (q && P && !P.dead && Math.hypot(P.x - q.x, P.z - q.z) < 14) L.push({x: q.x, y: (P.ob ? BDECK.y : 0) + .3, z: q.z, r: 6 + (P.ob ? BG.hw * .6 : 0), flat: 1, label: 'Pull the survivor aboard', go: () => act({a: 'wres'})});
+  return L; }; }
 // ---------------- style: auras, boat paint and underglow, fireworks, fireflies
 let ALL = (() => { try { return localStorage.getItem('s9-all') === '1'; } catch (e) { return false; } })(); const SK = k => k + (ALL ? '-all' : ''); const SLOTS = ['s9-save2', 's9-gear', 's9-cred']; (() => { try { if (!ALL || localStorage.getItem('s9-save2-all') != null) return; const s = localStorage.getItem('s9-save2'); if (s == null) return; const j = JSON.parse(s) || {}, dirty = (j.cash || 0) >= 250000 || ((j.up || {}).own || []).length >= HULLS.length; for (const k of SLOTS) { const v = localStorage.getItem(k); if (v != null) { localStorage.setItem(k + '-all', v); if (dirty) localStorage.removeItem(k); } } } catch (e) {} })();
 const AURAS = [{n: 'No aura', c: 0, cost: 0}, {n: 'Sea glass', c: 0x60ffe0, cost: 300}, {n: 'Gold rush', c: 0xffc040, cost: 600}, {n: 'Void', c: 0xa050ff, cost: 900}, {n: 'Blood moon', c: 0xff3a2a, cost: 1200}, {n: 'Prism', c: -1, cost: 2500}];
@@ -4271,7 +4607,7 @@ function updateWorldFx(dt) {
   if (CRZ.redS) CRZ.redS.forEach((s, i) => s.material.opacity = Math.sin(G.wt * 1.7 + i * 2.3) > -.2 || Math.random() < .03 ? .7 : .05);
   envUpdate(dt); if (FOAM) FOAM.userData.mat.opacity = (.35 + .15 * Math.sin(G.wt * 1.3)) * (.4 + .6 * TOD.day) * (1 - st * .4);
   if (POST.on) { POST.ex = mix(1.15, .95, TOD.night) * SET.bright; }
-  if (G.lightT <= 0) { G.lightT = 8 + Math.random() * 20; if (st > .6) { G.bolt = .35; setTimeout(() => Snd.thunder(.6 + Math.random() * .4), 600 + Math.random() * 2500); } }
+  if (G.lightT <= 0) { G.lightT = 8 + Math.random() * 20; if (st > .6 && Net.role === 'solo') { G.bolt = .35; setTimeout(() => Snd.thunder(.6 + Math.random() * .4), 600 + Math.random() * 2500); } }
   G.bolt = Math.max(0, (G.bolt || 0) - dt); const fl = G.bolt > 0 ? (Math.random() < .6 ? 1 : .2) * G.bolt * 3 : 0;
   sky.uF.value = fl; hemi.color.copy(TOD.hs); hemi.groundColor.copy(TOD.hg); hemi.intensity = TOD.hI * 1.15 + fl * 3; moon.color.copy(TOD.sun); moon.intensity = TOD.kI + fl * 2;
   const sc = _v.set(Math.round(cam.position.x / 4) * 4, 0, Math.round(cam.position.z / 4) * 4); moon.position.copy(sc).addScaledVector(KEYDIR, 200); moon.target.position.copy(sc);
