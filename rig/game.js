@@ -29,7 +29,7 @@ const hexS = c => '#' + c.toString(16).padStart(6, '0');
 
 // ---------------- net (jjfanwars relay)
 const RELAY_URL = 'wss://jjfanwars-relay.businessautomationvic.workers.dev';
-const GAME_V = 27;
+const GAME_V = 28;
 const Net = {
   tag: '[Rig]', role: 'solo', ws: null, peers: new Map(), code: '', relayT: {pose: 1}, id: '', name: '', handlers: {}, retry: 0, started: false,
   enc: new TextEncoder(), dec: new TextDecoder(),
@@ -100,6 +100,26 @@ const ISLES = [
   {n: 'Frostbite Isle', x: -950, z: -1500, r: 82, top: 18, trees: 'pine'},
   {n: 'Sunken Bell Key', x: 1900, z: 620, r: 46, top: 4, trees: 'palm', hut: 1},
   {n: 'Ossuary Reef', x: -2000, z: -320, r: 40, top: 3.5, trees: 'dead', skull: 1},
+  // the far sea (round 2): five regions past the old chart edge; nw marks them so POIS indices of the old places never move
+  {n: 'Sentinel Ice', x: -1300, z: 3600, r: 70, top: 26, trees: 'pine', shape: 'spire', pal: 'snow', reg: 'frost', nw: 1},
+  {n: 'Frostmere', x: -400, z: 4300, r: 95, top: 16, trees: 'pine', pal: 'snow', hut: 1, reg: 'frost', nw: 1},
+  {n: 'Whitecap Shoal', x: 400, z: 3700, r: 55, top: 4, trees: 'pine', ring: 1, pal: 'snow', reg: 'frost', nw: 1},
+  {n: 'Gravestone Tor', x: -2100, z: 4100, r: 60, top: 30, trees: 'dead', shape: 'cliff', pal: 'snow', ruin: 1, reg: 'frost', nw: 1},
+  {n: 'Turtle Cay', x: 2800, z: 2200, r: 40, top: 4, trees: 'palm', pal: 'coral', reg: 'coral', nw: 1},
+  {n: 'Pelican Key', x: 3500, z: 2950, r: 55, top: 6, trees: 'palm', pal: 'coral', hut: 1, reg: 'coral', nw: 1},
+  {n: 'Sunrise Atoll', x: 4000, z: 2000, r: 85, top: 5, trees: 'palm', ring: 1, pal: 'coral', reg: 'coral', nw: 1},
+  {n: 'Lagoon Isle', x: 2700, z: 3400, r: 45, top: 5, trees: 'palm', pal: 'coral', reg: 'coral', nw: 1},
+  {n: 'Lone Mast Rock', x: 4600, z: -900, r: 30, top: 18, trees: 'dead', shape: 'spire', pal: 'black', reg: 'abyss', nw: 1},
+  {n: 'Stormbreak', x: 3700, z: 300, r: 60, top: 12, trees: 'pine', shape: 'cliff', pal: 'moss', hut: 1, reg: 'abyss', nw: 1},
+  {n: 'Cinder Cone', x: 300, z: -3700, r: 90, top: 40, trees: 'dead', shape: 'crater', pal: 'black', reg: 'ash', nw: 1},
+  {n: 'Obsidian Key', x: 1300, z: -4300, r: 50, top: 8, trees: 'palm', pal: 'black', reg: 'ash', nw: 1},
+  {n: 'Smoke Isle', x: -600, z: -4300, r: 65, top: 20, trees: 'dead', shape: 'cliff', pal: 'ash', hut: 1, reg: 'ash', nw: 1},
+  {n: 'Ember Reef', x: 1000, z: -3200, r: 35, top: 3, trees: 'dead', ring: 1, pal: 'black', reg: 'ash', nw: 1},
+  {n: "Hangman's Isle", x: -4500, z: 800, r: 60, top: 18, trees: 'dead', shape: 'cliff', pal: 'moss', ruin: 1, reg: 'grave', nw: 1},
+  {n: 'Bone Spit', x: -3800, z: -300, r: 35, top: 3, trees: 'dead', skull: 1, pal: 'ash', reg: 'grave', nw: 1},
+  {n: 'Lantern Shoal', x: -3500, z: 1200, r: 42, top: 4, trees: 'pine', pal: 'ash', reg: 'grave', nw: 1},
+  {n: 'Halfway Rock', x: -2700, z: 2300, r: 45, top: 10, trees: 'pine', nw: 1},
+  {n: 'Far Haven', x: 2600, z: -2700, r: 55, top: 9, trees: 'palm', hut: 1, nw: 1},
 ];
 const WRECKS = [
   {n: 'The Marguerite', x: -200, z: 250},
@@ -108,6 +128,10 @@ const WRECKS = [
   {n: 'Iron Maiden', x: 1520, z: 120},
   {n: 'The Lost Hope', x: -1120, z: 1020, ghost: 1},
   {n: 'SS Carthage', x: 320, z: -1700},
+  {n: 'The Covenant', x: -4100, z: 0, reg: 'grave', nw: 1},
+  {n: 'Morning Star', x: -4400, z: 450, ghost: 1, reg: 'grave', nw: 1},
+  {n: 'SS Halcyon', x: -3700, z: 750, reg: 'grave', nw: 1},
+  {n: 'Polar Dawn', x: -800, z: 3900, reg: 'frost', nw: 1},
 ];
 const SURF = [], WALLS = [], OBST = [], PCIRC = [], BLD = [], HIDES = [], SPOTS = [], INTER = [], LAMPS = [], DIGS = [], BUOYS = [], POIS = [];
 const BK = {}; const bucket = k => BK[k] || (BK[k] = []);
@@ -299,13 +323,13 @@ function isleH(I, x, z, clean) {
   for (const p of IPADS) { if (p.I !== I) continue; const e = Math.hypot(x - p.x, z - p.z); if (e < p.r + p.f) { const w = e < p.r ? 1 : smooth(1 - (e - p.r) / p.f); h = mix(h, p.h, w); } }
   return h;
 }
-function seaBed(x, z) { const h = landH(x, z); if (h > -9) return h; let d = Math.min(Math.hypot(x, z) - 45, Math.hypot(x - HOME.x, z - HOME.z) - 60); for (const I of ISLES) d = Math.min(d, Math.hypot(x - I.x, z - I.z) - I.r * 1.4); let b = -9 - 21 * smooth(clamp(d / 150, 0, 1)) - 25 * smooth(clamp((Math.hypot(x, z + 60) - 900) / 900, 0, 1)) + (fbm(x * .02, z * .02) - .5) * 3; for (const q of DSITES) { const e = Math.hypot(x - q.x, z - q.z) / q.r; if (e < 2) b = Math.min(b, -q.d * (1 - smooth(clamp(e - .3, 0, 1)))); } return b; }
+function seaBed(x, z) { const h = landH(x, z); if (h > -9) return h; let d = Math.min(Math.hypot(x, z) - 45, Math.hypot(x - HOME.x, z - HOME.z) - 60); for (const I of ISLES) d = Math.min(d, Math.hypot(x - I.x, z - I.z) - I.r * 1.4); const s = smooth(clamp(d / 150, 0, 1)), dc = Math.hypot(x, z + 60); let b = -9 - 21 * s - 25 * smooth(clamp((dc - 900) / 900, 0, 1)) + (fbm(x * .02, z * .02) - .5) * 3; if (dc > 2700) b = mapBed(x, z, b, s, dc); for (const q of DSITES) { const e = Math.hypot(x - q.x, z - q.z) / q.r; if (e < 2) b = q.field ? mix(b, -q.d + (fbm(x * .05, z * .05) - .5) * 6, 1 - smooth((e - .8) / .7)) : Math.min(b, -q.d * (1 - smooth(clamp(e - .3, 0, 1)))); } return b; }
 const SUNK = [];
 function placeSunk(seed) { for (const q of SUNK) scene.remove(q.m); SUNK.length = 0; const r = mulberry(seed ^ 0x51ab);
   const put = (x, z, kind) => { const y = seaBed(x, z), m = itemMesh(kind); m.scale.setScalar(1.6); m.position.set(x, y + .2, z); m.rotation.set(.3, r() * TAU, .2);
     const gl = new THREE.Sprite(new THREE.SpriteMaterial({map: TX.glow, color: 0x7affd0, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: .5})); gl.scale.setScalar(5); gl.position.set(0, .6, 0); m.add(gl); scene.add(m); SUNK.push({x, z, y, kind, m, got: false}); };
   for (const q of DSITES) for (let i = 0; i < 12; i++) { const a = r() * TAU, d = Math.sqrt(r()) * q.r * .8; put(q.x + Math.sin(a) * d, q.z + Math.cos(a) * d, ['gold', 'pearl', 'pearl', 'chest', 'relic', 'gold'][Math.floor(r() * 6)]); }
-  for (let k = 0; k < 900 && SUNK.length < 36 + 22; k++) { const a = r() * TAU, d = 150 + r() * 2200, x = Math.sin(a) * d, z = -60 + Math.cos(a) * d; if (Math.hypot(x, z + 60) > 2550 || seaBed(x, z) > -17 || SUNK.some(q => Math.hypot(q.x - x, q.z - z) < 90)) continue;
+  for (let k = 0; k < 1800 && SUNK.length < DSITES.length * 12 + 40; k++) { const a = r() * TAU, d = 150 + r() * (MAP_R - 450), x = MAP_C.x + Math.sin(a) * d, z = MAP_C.z + Math.cos(a) * d; if (Math.hypot(x - MAP_C.x, z - MAP_C.z) > MAP_R - 100 || seaBed(x, z) > -17 || SUNK.some(q => Math.hypot(q.x - x, q.z - z) < 90)) continue;
     const kind = r() < .45 ? 'chest' : r() < .5 ? 'blackbox' : 'relic', y = seaBed(x, z), m = itemMesh(kind); m.scale.setScalar(1.6); m.position.set(x, y + .2, z); m.rotation.set(.3, r() * TAU, .2);
     const gl = new THREE.Sprite(new THREE.SpriteMaterial({map: TX.glow, color: 0x7affd0, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: .5})); gl.scale.setScalar(5); gl.position.set(0, .6, 0); m.add(gl); scene.add(m); SUNK.push({x, z, y, kind, m, got: false}); } }
 function landH(x, z) { let h = -9; for (const I of ISLES) { if (Math.abs(x - I.x) > I.r * 1.4 || Math.abs(z - I.z) > I.r * 1.4) continue; h = Math.max(h, isleH(I, x, z)); } return h; }
@@ -332,7 +356,7 @@ function buildIsleSites() {
   }
   // buried treasure: cairns of stones on three islands
   for (const [ii, dx, dz] of [[3, 4, -6], [1, -12, 10], [4, 10, 8]]) { const I = ISLES[ii], x = I.x + dx, z = I.z + dz, y = isleH(I, x, z); DIGS.push({x, y, z, isle: I.n, dug: false, rev: false}); for (let k = 0; k < 5; k++) wbox('rock', x + Math.cos(k * 1.3) * .5, y + .15, z + Math.sin(k * 1.3) * .5, .4, .3, .35, k); }
-  const QR = mulberry(4242); for (const I of ISLES) { if (I.bar || DIGS.length >= 10 || DIGS.some(d => d.isle === I.n) || Math.hypot(I.x - HOME.x, I.z - HOME.z) < 900) continue;
+  const QR = mulberry(4242); for (const I of ISLES.filter(q => !q.nw).concat(ISLES.filter(q => q.nw))) { if (I.bar || DIGS.length >= 40 || DIGS.some(d => d.isle === I.n) || Math.hypot(I.x - HOME.x, I.z - HOME.z) < 900) continue;
     for (let k = 0; k < 120; k++) { const a = QR() * TAU, d = (.12 + QR() * .95) * I.r, x = I.x + Math.cos(a) * d, z = I.z + Math.sin(a) * d, y = isleH(I, x, z); if (y <= .6 || IPADS.some(p => p.I === I && Math.hypot(x - p.x, z - p.z) < p.r + 8) || (I.hut && Math.hypot(x - I.x - 6, z - I.z - 4) < 8) || (I.ruin && Math.hypot(x - I.x + 4, z - I.z - 3) < 8) || (I.skull && Math.hypot(x - I.x, z - I.z) < 13) || SPOTS.some(q => Math.hypot(x - q.x, z - q.z) < 3)) continue;
       DIGS.push({x, y, z, isle: I.n, dug: false, rev: false}); for (let j = 0; j < 5; j++) wbox('rock', x + Math.cos(j * 1.3) * .5, y + .15, z + Math.sin(j * 1.3) * .5, .4, .3, .35, j); break; } }
 }
@@ -374,11 +398,10 @@ function buildWrecks() {
   });
 }
 function buildBuoys() {
-  for (let k = 0; k < 300 && BUOYS.length < 16; k++) {
-    const x = (R() * 2 - 1) * 720, z = (R() * 2 - 1) * 720 - 60;
-    if (OBST.some(o => o.c && Math.hypot(x - o.x, z - o.z) < o.r + 50) || Math.hypot(x, z) < 70 || BUOYS.some(b => Math.hypot(b.x - x, b.z - z) < 140)) continue;
-    BUOYS.push({x, z, c: [0xff2a1a, 0x2aff4a, 0xffd02a][BUOYS.length % 3]}); OBST.push({c: 1, x, z, r: 1.2});
-  }
+  const br = mulberry(0xb0e), clear = (x, z, s) => !(OBST.some(o => o.c && Math.hypot(x - o.x, z - o.z) < o.r + 50) || Math.hypot(x, z) < 70 || BUOYS.some(b => Math.hypot(b.x - x, b.z - z) < s));
+  for (let k = 0; k < 900 && BUOYS.length < 28; k++) { const a = br() * TAU, d = Math.sqrt(br()) * 1400, x = MAP_C.x + Math.sin(a) * d, z = MAP_C.z + Math.cos(a) * d; if (!clear(x, z, 140)) continue; BUOYS.push({x, z, c: [0xff2a1a, 0x2aff4a, 0xffd02a][BUOYS.length % 3]}); OBST.push({c: 1, x, z, r: 1.2}); }
+  // channel marks: white lights along the lanes from the lighthouse out toward the far regions (all five at 45 %, three more at 70 %)
+  for (const t of [.45, .7]) for (const q of REGIONS) { if (BUOYS.length >= 36) break; for (let j = 0; j < 9; j++) { const o = (j + 1 >> 1) * (j % 2 ? 30 : -30), dx = q.x - HOME.x, dz = q.z - HOME.z, l = Math.hypot(dx, dz), x = HOME.x + dx * t + dz / l * o, z = HOME.z + dz * t - dx / l * o; if (!clear(x, z, 300)) continue; BUOYS.push({x, z, c: 0xeef4ff, ch: q.k}); OBST.push({c: 1, x, z, r: 1.2}); break; } }
 }
 
 // ---------------- exteriors: the home rock, island looks and trees, wreck variety, rig dressing, buoys and night glows
@@ -1094,12 +1117,13 @@ function boatStep(dt) {
     const [cx, cz] = bL2W(0, lz);
     for (const o of OBST) {
       let d, nx, nz;
+      if (o.ice && HC().ice) continue;
       if (o.c) { if (Math.abs(cx - o.x) > o.r + r || Math.abs(cz - o.z) > o.r + r) continue; const px = cx - o.x, pz = cz - o.z, e = Math.hypot(px, pz); if (e >= o.r + r) continue; nx = px / e; nz = pz / e; d = o.r + r - e; }
       else { const qx = clamp(cx, o.x0, o.x1), qz = clamp(cz, o.z0, o.z1), px = cx - qx, pz = cz - qz, e = Math.hypot(px, pz); if (e >= r) continue; if (e < 1e-4) { const l = cx - o.x0, rt = o.x1 - cx, t = cz - o.z0, b = o.z1 - cz, mn = Math.min(l, rt, t, b); nx = mn === l ? -1 : mn === rt ? 1 : 0; nz = nx ? 0 : mn === t ? -1 : 1; d = mn + r; } else { nx = px / e; nz = pz / e; d = r - e; } }
       B.x += nx * d; B.z += nz * d; hit = Math.max(hit, Math.abs(B.v));
     }
   }
-  const rr = Math.hypot(B.x, B.z + 60); if (rr > 2600) { B.x *= 2600 / rr; B.z = (B.z + 60) * 2600 / rr - 60; hit = Math.max(hit, Math.abs(B.v)); }
+  const rr = Math.hypot(B.x - MAP_C.x, B.z - MAP_C.z); if (rr > MAP_R) { B.x = MAP_C.x + (B.x - MAP_C.x) * MAP_R / rr; B.z = MAP_C.z + (B.z - MAP_C.z) * MAP_R / rr; hit = Math.max(hit, Math.abs(B.v)); }
   if (hit) { if (hit > 2.5) { emit({k: 'bump', s: Math.min(1, hit / 7)}); if (hit > 3.5) damageBoat((hit - 3) * 4); } B.v *= .4; }
   if (voyPortNear(B.x, B.z, 30 + BG.L * .5) && Math.abs(B.v) < 2) { B.fuel = Math.min(tankMax(), B.fuel + dt * 10); B.hull = Math.min(hullMax(), B.hull + dt * 6); }
 }
@@ -1893,7 +1917,11 @@ function addItem(kind, s, extra = {}) { const m = itemMesh(kind); m.position.set
 function hideTaken(h) { for (const p of PL.values()) if (p.hd === h.i && p !== P) return true; return false; }
 const FLM = [];
 function spawnFloat(i) {
-  for (let k = 0; k < 30; k++) { const a = CR() * TAU, r = 120 + Math.pow(CR(), 1.8) * 2300, x = Math.sin(a) * r, z = -60 + Math.cos(a) * r; if (OBST.some(o => o.c && Math.hypot(x - o.x, z - o.z) < o.r + 12) || nearRig(x, z) || inCruise(x, z)) continue; const roll = CR(); G.floats[i] = [x, z, KINDS.indexOf(roll < .5 ? 'crate' : roll < .72 ? 'scrap' : roll < .87 ? 'fuel' : roll < .91 ? 'patch' : 'bottle')]; return; }
+  // near the crew (a random living player, else the boat), anywhere on the big chart; far waters float richer cargo
+  const pl = alive(), c = pl.length ? pl[Math.floor(CR() * pl.length)] : B;
+  for (let k = 0; k < 30; k++) { const a = CR() * TAU, r = 150 + Math.pow(CR(), 1.5) * 1300, x = c.x + Math.sin(a) * r, z = c.z + Math.cos(a) * r; if (Math.hypot(x - MAP_C.x, z - MAP_C.z) > MAP_R - 100 || OBST.some(o => o.c && Math.hypot(x - o.x, z - o.z) < o.r + 12) || nearRig(x, z) || inCruise(x, z) || (Math.abs(x - CRZ.x) < 27 && Math.abs(z - CRZ.z + 3) < 78)) continue;
+    const rg = mapRegion(x, z), pay = rg ? mix(1, rg.pay, mapRegion.w) : 1, W = MAP_FLW; let sum = 0; for (const e of W) sum += e[1] * (e[2] ? pay : 1); let roll = CR() * sum, kind = 'crate';
+    for (const e of W) { roll -= e[1] * (e[2] ? pay : 1); if (roll <= 0) { kind = e[0]; break; } } G.floats[i] = [x, z, KINDS.indexOf(kind)]; return; }
 }
 function floatMesh(i) { const f = G.floats[i]; const kind = f ? KINDS[f[2]] : null; if (FLM[i] && FLM[i].kind === kind) return FLM[i]; if (FLM[i]) scene.remove(FLM[i].m); if (!kind) { FLM[i] = null; return null; }
   // a marker pole with an orange pennant and a soft glow, so floating cargo can be found by eye
@@ -2299,7 +2327,7 @@ const suitOf = p => p === P ? ((P.own && P.own.suit) || 0) : (p.su || 0);
 const money = cashStr;
 const freeAll = () => isHost() ? ALL : !!G.hostAll;
 const coolerVal = a => a.reduce((s, c) => s + (Array.isArray(c) ? c[1] : (FISH[c] ? FISH[c].v : 0)), 0);
-function fishVal(k, x, z) { const dh = Math.hypot(x - HOME.x, z - HOME.z); return Math.max(1, Math.round(FISH[k].v * clamp(.45 + dh / 1600, .45, 1.2))); }
+function fishVal(k, x, z) { const dh = Math.hypot(x - HOME.x, z - HOME.z), rg = mapRegion(x, z), pay = rg ? mix(1, rg.pay, mapRegion.w) : 1; return Math.max(1, Math.round(FISH[k].v * clamp(.45 + dh / 2400, .45, 1.5) * pay)); }
 function tugWhy() { const pl = [...PL.values()].filter(q => q.ready && !q.dead);
   return B.sink > 0 ? 'The boat is going down.' : Math.hypot(B.x - JETTY.x, B.z - JETTY.z) <= 120 + BG.L * .5 ? 'The boat is already by the jetty.' : B.driver || pl.some(q => q.ob || q.seat) ? 'Someone is aboard or at the wheel.' : pl.some(q => Math.hypot(q.x - B.x, q.z - B.z) < 60) ? 'Someone is still out by the boat.' : ''; }
 function canTug() { return !tugWhy(); }
@@ -2346,7 +2374,7 @@ function hostStep(dt) {
     else if (k === 'g') { const b = BLD.find(q => q.kind === 'gen'); ok = !G.power && VALVES.every(v => v.open) && near(b.genP[0], b.fy, b.genP[2], 3.2); }
     else if (k === 'cz') { const b = CRZ.bridge; ok = !G.cruise && p.sack.includes('key') && near(b.console[0], b.fy, b.console[2], 3); if (ok && !['chase', 'dead', 'gone', 'flee'].includes(STS.state) && (G.czT = (G.czT || 0) - dt) <= 0) { G.czT = 1; STS.state = 'inv'; stwGo(p.x, p.y, p.z); } }
     else if (k === 'c') { const b = BLD.find(q => q.kind === 'ctrl'); ok = G.power && !G.bbOut && near(b.console[0], b.fy, b.console[2], 3); }
-    else if (k[0] === 'd') { const d = DIGS[+k[1]]; ok = d && !d.dug && near(d.x, d.y, d.z, 2.6); }
+    else if (k[0] === 'd') { const d = DIGS[+k.slice(1)]; ok = d && !d.dug && near(d.x, d.y, d.z, 2.6); }
     else if (k[0] === 'r') { const q = PL.get(k.slice(1)); ok = q && q.down && near(q.x, q.y, q.z, 2.6); }
     if (ok) (hold[k] = hold[k] || []).push(p);
   }
@@ -2361,7 +2389,7 @@ function hostStep(dt) {
       else if (k === 'g') { emit({k: 'power'}); const b = BLD.find(z => z.kind === 'gen'); noise(b.x, b.fy, b.z, 70); }
       else if (k === 'cz') { G.cruise = 1; q.sack.splice(q.sack.indexOf('key'), 1); sackSet(q); emit({k: 'claim', st: Object.assign({}, G.stat, {earned: G.earned, disc: G.disc.length, goals: G.goals.length + 1, crew: [...PL.values()].map(p => p.name)})}); goal(7); save(); }
       else if (k === 'c') { G.bbOut = true; emit({k: 'bb'}); giveCarry(q, 'blackbox'); goal(1); const b = BLD.find(z => z.kind === 'ctrl'); noise(b.x, b.fy, b.z, 50); }
-      else if (k[0] === 'd') { const d = DIGS[+k[1]], far = Math.hypot(d.x - HOME.x, d.z - HOME.z), ex = far > 1600 ? ['gold', 'gold', 'pearl'] : far > 800 ? ['gold'] : []; emit({k: 'dug', i: +k[1], g: ex.length}); giveCarry(q, 'chest'); ex.forEach((kind, j) => { const x = d.x + Math.cos(j * 2.1 + .5) * 1.3, z = d.z + Math.sin(j * 2.1 + .5) * 1.3, y = Math.max(d.y - .4, landH(x, z)) + .03, it = addItem(kind, {x, y, z}); emit({k: 'item', i: it.i, kind, x, y, z}); }); goal(2); }
+      else if (k[0] === 'd') { const d = DIGS[+k.slice(1)], far = Math.hypot(d.x - HOME.x, d.z - HOME.z), ex = far > 3200 ? ['gold', 'gold', 'pearl', 'pearl'] : far > 1600 ? ['gold', 'gold', 'pearl'] : far > 800 ? ['gold'] : []; emit({k: 'dug', i: +k.slice(1), g: ex.length}); giveCarry(q, 'chest'); ex.forEach((kind, j) => { const x = d.x + Math.cos(j * 2.1 + .5) * 1.3, z = d.z + Math.sin(j * 2.1 + .5) * 1.3, y = Math.max(d.y - .4, landH(x, z)) + .03, it = addItem(kind, {x, y, z}); emit({k: 'item', i: it.i, kind, x, y, z}); }); goal(2); }
       else { const t = PL.get(k.slice(1)); if (t) { t.down = false; emit({k: 'rev', id: t.id}); } }
     }
   }
@@ -2369,18 +2397,18 @@ function hostStep(dt) {
   G.discT = (G.discT || 0) - dt; if (G.discT <= 0) { G.discT = .5; POIS.forEach((q, i) => { if (G.disc.includes(i)) return; if (alive().some(p => Math.hypot(p.x - q.x, p.z - q.z) < q.r + 40)) { emit({k: 'disc', i}); save(); if (POIS.every((_, j) => G.disc.includes(j))) goal(0); } }); }
   G.keyT = (G.keyT || 0) - dt; if (G.keyT <= 0) { G.keyT = 2; keyCheck(); } G.saveT = (G.saveT ?? 20) - dt; if (G.saveT <= 0) { G.saveT = 20; save(); }
   // floating cargo drifts; keep 16 of them out there
-  for (let i = 0; i < 16; i++) { const f = G.floats[i]; if (!f) { if (CR() < dt * .05) spawnFloat(i); continue; } f[0] += Math.sin(G.t * .05 + i) * dt * .25; f[1] += Math.cos(G.t * .04 + i * 2) * dt * .25; }
+  mapFloatCull(dt); for (let i = 0; i < MAP_FLN; i++) { const f = G.floats[i]; if (!f) { if (CR() < dt * .05) spawnFloat(i); continue; } f[0] += Math.sin(G.t * .05 + i) * dt * .25; f[1] += Math.cos(G.t * .04 + i * 2) * dt * .25; }
   // weather
   G.stormT = (G.stormT ?? 200) - dt; if (G.stormT <= 0) { G.stormOn = !G.stormOn; G.stormT = G.stormOn ? 120 + CR() * 80 : 200 + CR() * 120; emit({k: 'storm', on: G.stormOn}); }
   G.storm = mix(G.storm, G.stormOn ? 1 : 0, Math.min(1, dt / 25));
   G.tod = (G.tod + dt / TOD_LEN) % 1; const ph = G.tod < .14 ? 0 : G.tod < .24 ? 1 : G.tod < .34 ? 2 : G.tod < .8 ? 3 : G.tod < .9 ? 4 : 0;
   if (ph !== G.todPh) { if (G.todPh >= 0 && ph) emit({k: 'tod', p: ph}); G.todPh = ph; }
   // the thing in the deep
-  const homeD = Math.hypot(B.x - HOME.x, B.z - HOME.z), nearLand = OBST.some(o => o.c && o.r > 5 && Math.hypot(B.x - o.x, B.z - o.z) < o.r + 70) || Math.hypot(B.x, B.z) < 80 || Math.hypot(B.x - CRZ.x, B.z - CRZ.z) < 140;
+  const homeD = Math.hypot(B.x - HOME.x, B.z - HOME.z), dRg = mapRegion(B.x, B.z), dK = dRg ? (dRg.deep ? mix(1, dRg.deep, mapRegion.w) : 0) : 1, nearLand = OBST.some(o => o.c && o.r > 5 && Math.hypot(B.x - o.x, B.z - o.z) < o.r + 70) || Math.hypot(B.x, B.z) < 80 || Math.hypot(B.x - CRZ.x, B.z - CRZ.z) < 140;
   G.deepT = (G.deepT ?? 40) - dt;
   // it only comes for a crew that is up on (or right beside) the boat: divers down below are the gulpers' business
   const crewUp = alive().some(p => (p.ob && !(HC().sub && (B.dep || 0) > 6)) || (!p.ob && Math.hypot(p.x - B.x, p.z - B.z) < 40 && !(p.sw && (p.dv || 0) > 3)));
-  if (!G.enc && B.sink <= 0 && homeD > 280 && !nearLand && G.deepT <= 0) { G.deepT = 20 + CR() * 25; if (crewUp && CR() < (D.deep + .3 * G.storm + .25 * TOD.night) * .75) { const a = CR() * TAU; G.enc = {t: 9, L: 9, a, el: 0, hp: 90, t0: G.t}; emit({k: 'circle', a, L: 9}); } }
+  if (!G.enc && B.sink <= 0 && homeD > 280 && !nearLand && G.deepT <= 0) { G.deepT = 20 + CR() * 25; if (crewUp && CR() < (D.deep + .3 * G.storm + .25 * TOD.night) * .75 * dK) { const a = CR() * TAU; G.enc = {t: 9, L: 9, a, el: 0, hp: 90, t0: G.t}; emit({k: 'circle', a, L: 9}); } }
   if (G.enc) {
     G.enc.t -= dt; G.enc.el = (G.enc.el || 0) + dt;
     // a fresh flare in the sea (or burning on deck) close to the hull drives it off, away from the light
@@ -3406,6 +3434,8 @@ const DSITES = [
   {n: 'The Abyssal Trench', x: -1500, z: -950, r: 170, d: 125},
   {n: 'Wreck of the Aurelia', x: 700, z: 1750, r: 110, d: 72, liner: 1},
   {n: 'The Drowned Garden', x: 2000, z: -1300, r: 130, d: 58, kelp: 1},
+  {n: 'The Ship Graveyard', x: -4250, z: 250, r: 150, d: 60, field: 1, reg: 'grave', nw: 1},
+  {n: 'The Maw', x: 4200, z: -300, r: 200, d: 150, reg: 'abyss', nw: 1},
 ];
 const SUIT = [{n: 'no suit', max: 4, air: 22}, {n: 'Scuba gear', max: 45, air: 180}, {n: 'Saturation suit', max: 160, air: 540}];
 let DEEPG = null;
@@ -3490,6 +3520,103 @@ function stepGulpers(dt) {
     const hs = Math.hypot(g.vx, g.vz); if (hs > .2) g.yaw = Math.atan2(-g.vx, -g.vz); g.pitch = Math.atan2(g.vy, Math.max(hs, .1)) * .8;
   }
 }
+// ---------------- the far sea: a chart twice as wide, five regions with their own water, weather, catch and props
+// Legacy waters (within 2.6 km of MAP_C) are untouched; everything with nw: 1 lives out here and sorts after the old POIS.
+const MAP_R = 5200, MAP_C = {x: 0, z: -60}, MAP_FLN = 24;
+const REGIONS = [
+  {k: 'frost', n: 'The Frostreach', x: -900, z: 4000, r: 1700, fog: 1.3, tint: 0x0c1c2a, deep: 1.1, pay: 1.25},
+  {k: 'coral', n: 'The Coral Shallows', x: 3300, z: 2600, r: 1400, fog: 1, tint: 0x06343a, deep: 0, pay: .9},
+  {k: 'abyss', n: 'The Abyss', x: 4300, z: -400, r: 1300, fog: 1.1, tint: 0x020c16, deep: 1.6, pay: 1.4},
+  {k: 'ash', n: 'The Ashfall Isles', x: 400, z: -3900, r: 1500, fog: 1.4, tint: 0x14100c, deep: 1, pay: 1.2},
+  {k: 'grave', n: 'The Drowned Graveyard', x: -4000, z: 400, r: 1300, fog: 2.4, tint: 0x0a1410, deep: 1.3, pay: 1.35},
+];
+for (const q of REGIONS) q.tc = new THREE.Color(q.tint);
+// floating cargo kinds: [kind, weight, scales with the region's pay]
+const MAP_FLW = [['crate', .42], ['scrap', .2], ['fuel', .12], ['patch', .04], ['bottle', .06], ['relic', .08, 1], ['chest', .05, 1], ['gold', .03, 1]];
+const mapToastSeen = new Set(), MAP_FLK = new Set(MAP_FLW.map(e => KINDS.indexOf(e[0])));
+function mapRegW(x, z, q) { return 1 - smooth((Math.hypot(x - q.x, z - q.z) - .7 * q.r) / (.3 * q.r)); }
+// the strongest region here (mapRegion.w holds its weight, 0-1), or null in home waters
+function mapRegion(x, z) { let b = null, bw = 0; for (const q of REGIONS) { if (Math.abs(x - q.x) > q.r || Math.abs(z - q.z) > q.r) continue; const w = mapRegW(x, z, q); if (w > bw) { bw = w; b = q; } } mapRegion.w = bw; return b; }
+mapRegion.w = 0;
+function regionAt(x, z) { return mapRegion(x, z); }
+// sea bed past the old chart: 20 m deeper out in the open, sandy coral flats, the abyss falls away
+function mapBed(x, z, b, s, dc) { b -= 20 * smooth((dc - 2800) / 1400) * s; const q = mapRegion(x, z), w = mapRegion.w; if (!q) return b;
+  if (q.k === 'coral') return mix(b, Math.max(b, -14 + 5 * (1 - s) + (fbm(x * .013, z * .013) - .5) * 6), w);
+  if (q.k === 'abyss') return b - 40 * w * (.35 + .65 * s); return b; }
+// the host lets cargo nobody is near sink, so the slots refill around the crew
+function mapFloatCull(dt) { if ((G.mapFlT = (G.mapFlT || 0) - dt) > 0) return; G.mapFlT = 2; const pl = alive(); if (!pl.length) return;
+  for (let i = 0; i < MAP_FLN; i++) { const f = G.floats[i]; if (f && MAP_FLK.has(f[2]) && pl.every(p => Math.hypot(p.x - f[0], p.z - f[1]) > 1800)) G.floats[i] = null; } }
+// saves and snapshots keep POIS indices: old places stay 0-23 (rig, lighthouse, 6 wrecks, 12 islands, Serenade, 3 dive sites), new ones follow
+function mapPoiOrder() { const nw = q => !!((q.isle && q.isle.nw) || (q.wreck && q.wreck.nw) || (q.dive && q.dive.nw)), a = POIS.filter(q => !nw(q)), b = POIS.filter(nw);
+  if (POIS.findIndex(nw) >= 0 && POIS.findIndex(nw) < a.length) { POIS.length = 0; POIS.push(...a, ...b); }
+  if (TEST && (!POIS[20] || !POIS[20].cruise || ![21, 22, 23].every(i => POIS[i] && POIS[i].dive))) console.warn('[map] legacy POIS order broken'); }
+// the Ship Graveyard: a field of hulls on the bed, only seen underwater
+function mapFieldMeshes() { if (!DEEPG) return; const r = mulberry(0x5ea9), list = [], M4 = new THREE.Matrix4(), Q = new THREE.Quaternion(), E = new THREE.Euler(), V = new THREE.Vector3(), S3 = new THREE.Vector3(1, 1, 1);
+  const add = (g, x, y, z, rx, ry, rz) => { const uv = g.attributes.uv; if (uv) for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * .12, uv.getY(i) * .12); E.set(rx, ry, rz, 'YXZ'); g.applyMatrix4(M4.compose(V.set(x, y, z), Q.setFromEuler(E), S3)); list.push(g); };
+  for (const s of DSITES) { if (!s.field) continue; const n = 5 + Math.floor(r() * 3), at = [];
+    for (let k = 0; k < 80 && at.length < n; k++) { const a = r() * TAU, d = (.12 + r() * .7) * s.r, x = s.x + Math.sin(a) * d, z = s.z + Math.cos(a) * d; if (at.some(p => Math.hypot(p[0] - x, p[1] - z) < 42)) continue; at.push([x, z]);
+      const L = 22 + r() * 36, W = L * (.16 + r() * .05), H = W * .75, sh = new THREE.Shape(); sh.moveTo(-W / 2, L * .45); sh.lineTo(W / 2, L * .45); sh.lineTo(W * .52, -L * .2); sh.quadraticCurveTo(W * .36, -L * .42, 0, -L * .55); sh.quadraticCurveTo(-W * .36, -L * .42, -W * .52, -L * .2); sh.closePath();
+      const yaw = r() * TAU, roll = (r() - .5) * 1.3, pitch = (r() - .5) * .3, y = seaBed(x, z) + H * .45, g = new THREE.ExtrudeGeometry(sh, {depth: H, bevelEnabled: false, curveSegments: 5}); g.rotateX(PI / 2); add(g, x, y, z, pitch, yaw, roll);
+      if (r() < .7) { const c = new THREE.BoxGeometry(W * .6, H * .7, L * .18); c.translate(0, H * .35, L * .12); add(c, x, y, z, pitch, yaw, roll); }
+      if (r() < .8) { const m = new THREE.CylinderGeometry(.25, .4, L * .45, 6); m.translate(0, L * .22, -L * .1); m.rotateZ((r() - .5) * .9); add(m, x, y, z, pitch, yaw, roll); } } }
+  if (!list.length) return; const m = new THREE.Mesh(mergeGeos(list), new THREE.MeshStandardMaterial({map: TX.rustH, color: 0x4a3c34, roughness: .9, metalness: .25, side: THREE.DoubleSide})); DEEPG.add(m); DEEPG.userData.field = m; }
+// Frostreach icebergs: one instanced mesh, half sunk, bobbing near the camera; each is a hard circle (the icebreaker shoulders through)
+const mapIce = {im: null, L: [], t: 0, cx: 0, cz: 0, R: 0, M4: new THREE.Matrix4(), Q: new THREE.Quaternion(), E: new THREE.Euler(), V: new THREE.Vector3(), S: new THREE.Vector3(),
+  build() { const q = REGIONS[0], r = mulberry(0x5ea), L = this.L;
+    for (let k = 0; k < 2500 && L.length < 50; k++) { const a = r() * TAU, d = Math.sqrt(r()) * q.r * .92, x = q.x + Math.sin(a) * d, z = q.z + Math.cos(a) * d, s = 5 + Math.pow(r(), 1.6) * 13, sy = .55 + r() * .6, sx = .85 + r() * .4, sz = .85 + r() * .4, yaw = r() * TAU, ph = r() * TAU;
+      if (Math.hypot(x - MAP_C.x, z - MAP_C.z) > MAP_R - 150 || mapRegW(x, z, q) < .25 || L.some(e => Math.hypot(e.x - x, e.z - z) < 150)) continue;
+      if (OBST.some(o => o.c ? Math.hypot(x - o.x, z - o.z) < o.r + s + (o.isle ? 60 : 40) : x > o.x0 - s - 50 && x < o.x1 + s + 50 && z > o.z0 - s - 50 && z < o.z1 + s + 50)) continue;
+      L.push({x, z, s, sx, sy, sz, yaw, ph}); }
+    if (!L.length) return; const g = new THREE.IcosahedronGeometry(1, 2), p = g.attributes.position;
+    for (let i = 0; i < p.count; i++) { const x = p.getX(i), y = p.getY(i), z = p.getZ(i), k = .78 + .5 * fbm(x * 1.7 + 3, z * 1.7 + y * 1.3 + 5) + (y > .35 ? .18 * fbm(x * 4, z * 4) : 0); p.setXYZ(i, x * k, y * (y > 0 ? k * 1.15 : k * .8), z * k); }
+    g.computeVertexNormals(); const im = this.im = new THREE.InstancedMesh(g, new THREE.MeshStandardMaterial({color: 0xdcecf8, roughness: .45, metalness: 0, flatShading: true, emissive: 0x0b1824}), L.length), C = new THREE.Color();
+    L.forEach((e, i) => { OBST.push({c: 1, x: e.x, z: e.z, r: e.s * Math.min(e.sx, e.sz) * .92, ice: 1}); this.pose(i, 0); const k = .9 + r() * .12; im.setColorAt(i, C.setRGB(k * (.9 + r() * .08), k, k)); });
+    im.castShadow = true; im.receiveShadow = true; im.computeBoundingSphere(); this.cx = im.boundingSphere.center.x; this.cz = im.boundingSphere.center.z; this.R = im.boundingSphere.radius; scene.add(im); },
+  pose(i, t) { const e = this.L[i]; this.E.set(Math.sin(t * .4 + e.ph) * .025, e.yaw, Math.cos(t * .33 + e.ph) * .025, 'YXZ');
+    this.im.setMatrixAt(i, this.M4.compose(this.V.set(e.x, -e.s * e.sy * .12 + Math.sin(t * .5 + e.ph) * .3, e.z), this.Q.setFromEuler(this.E), this.S.set(e.s * e.sx, e.s * e.sy, e.s * e.sz))); },
+  step(dt) { const im = this.im; if (!im) return; const cp = cam.position; im.visible = Math.hypot(cp.x - this.cx, cp.z - this.cz) - this.R < (G.viewFar || 1600); if (!im.visible || (this.t -= dt) > 0) return; this.t = .25;
+    let ch = false; for (let i = 0; i < this.L.length; i++) { const e = this.L[i]; if (Math.abs(e.x - cp.x) > 600 || Math.abs(e.z - cp.z) > 600) continue; this.pose(i, G.wt); ch = true; } if (ch) im.instanceMatrix.needsUpdate = true; },
+};
+// Ashfall smoke columns over Cinder Cone and Smoke Isle, and the crater's glow at night; drawn without fog but faded by hand so they read from afar
+const mapSmoke = {cols: [], glow: [], C: new THREE.Color(), F: new THREE.Color(),
+  build() { const r = mulberry(0x5ed), N = 11;
+    if (!TX.mapPuff) { TX.mapPuff = new THREE.CanvasTexture(cv(128, 128, (g, w, h) => { for (let i = 0; i < 30; i++) { const x = 64 + (r() - .5) * 56, y = 64 + (r() - .5) * 56, d = 14 + r() * 26, gr = g.createRadialGradient(x, y, 0, x, y, d); gr.addColorStop(0, 'rgba(255,255,255,.2)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.fillRect(0, 0, w, h); } })); TX.mapPuff.colorSpace = THREE.SRGBColorSpace; }
+    for (const [nm, big] of [['Cinder Cone', 1], ['Smoke Isle', .6]]) { const I = ISLES.find(q => q.n === nm); if (!I) continue;
+      // the summit (or the crater rim) wherever the island's shape put it
+      let bx = I.x, bz = I.z, by = -9; for (let a = 0; a < 16; a++) for (let d = 0; d <= .55; d += .05) { const x = I.x + Math.cos(a / 16 * TAU) * d * I.r, z = I.z + Math.sin(a / 16 * TAU) * d * I.r, h = landH(x, z); if (h > by) { by = h; bx = x; bz = z; } }
+      const cx = big === 1 ? I.x : bx, cz = big === 1 ? I.z : bz, g = new THREE.Group(); g.visible = false; scene.add(g); const col = {x: cx, y: Math.max(by, 2), z: cz, big, g, s: []};
+      for (let i = 0; i < N; i++) { const sp = new THREE.Sprite(new THREE.SpriteMaterial({map: TX.mapPuff, color: 0x302c28, transparent: true, depthWrite: false, fog: false, opacity: 0})); sp.userData.o = r(); g.add(sp); col.s.push(sp); }
+      this.cols.push(col);
+      if (big === 1) { const rim = []; for (let a = 0; a < 10; a++) { let best = -9, bp = null; for (let d = .05; d <= .6; d += .025) { const x = I.x + Math.cos(a / 10 * TAU) * d * I.r, z = I.z + Math.sin(a / 10 * TAU) * d * I.r, h = landH(x, z); if (h > best) { best = h; bp = [x, h, z]; } } if (bp) rim.push(bp); }
+        for (const [x, y, z] of rim.concat([[I.x, by + 6, I.z]])) { const s = new THREE.Sprite(new THREE.SpriteMaterial({map: TX.glow, color: 0xff4a12, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false, opacity: 0})); s.position.set(x, y + 1.5, z); s.scale.setScalar(y > by + 3 ? 46 : 9 + r() * 7); s.userData.ph = r() * TAU; g.add(s); this.glow.push(s); } } } },
+  step(dt) { if (!this.cols.length) return; const cp = cam.position, vf = G.viewFar || 1600, fd = scene.fog.density, t = G.wt, day = TOD.day, nt = TOD.night;
+    for (const c of this.cols) { const d = Math.hypot(cp.x - c.x, cp.z - c.z); c.g.visible = d < vf + 200 && (G.uw || 0) < .5; if (!c.g.visible) continue;
+      const k = 1 - Math.exp(-Math.pow(d * fd * .45, 2)), ga = Math.exp(-d * fd * .4), F = this.F.copy(scene.fog.color);
+      for (let i = 0; i < c.s.length; i++) { const sp = c.s[i], p = (t * .012 * (1.3 - c.big * .3) + i / c.s.length + sp.userData.o * .03) % 1, sz = (16 + p * 75) * (.6 + .4 * c.big);
+        sp.position.set(c.x + p * p * 70 + Math.sin(t * .2 + i * 1.7) * 4, c.y + 4 + p * 150 * (.6 + .4 * c.big), c.z + p * p * 40 + Math.cos(t * .17 + i) * 4); sp.scale.setScalar(sz);
+        const v = .1 + .14 * day, lit = c.big === 1 ? Math.pow(1 - p, 4) * nt : 0; this.C.setRGB(v + lit * .5, v + lit * .14, v + lit * .04).lerp(F, k); sp.material.color.copy(this.C); sp.material.opacity = Math.pow(Math.sin(p * PI), 1.4) * .62 * (1 - k * .8); }
+      if (c.big === 1) for (let i = 0; i < this.glow.length; i++) { const s = this.glow[i]; s.material.opacity = (.12 + .78 * nt) * (.75 + .25 * Math.sin(t * 2.3 + s.userData.ph) * Math.sin(t * 3.7 + i)) * Math.min(1, ga * 1.6) * (s.scale.x > 30 ? .35 : 1); } } },
+};
+// Drowned Graveyard: green lights adrift in the fog, near the water, brighter at night
+const mapGhosts = {s: [], g: null,
+  build() { const q = REGIONS[4], r = mulberry(0x5ee); this.g = new THREE.Group(); this.g.visible = false; scene.add(this.g);
+    for (let k = 0; k < 400 && this.s.length < 12; k++) { const a = r() * TAU, d = Math.sqrt(r()) * q.r * .65, x = q.x + Math.sin(a) * d, z = q.z + Math.cos(a) * d; if (landH(x, z) > -9 || this.s.some(s => Math.hypot(s.userData.x - x, s.userData.z - z) < 120)) continue;
+      const s = new THREE.Sprite(new THREE.SpriteMaterial({map: TX.glow, color: 0x5affa0, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false, opacity: 0})); s.scale.setScalar(2.6 + r() * 1.6); Object.assign(s.userData, {x, z, R: 25 + r() * 40, ph: r() * TAU, sp: .03 + r() * .04}); this.g.add(s); this.s.push(s); } },
+  step(dt) { const g = this.g; if (!g) return; const q = REGIONS[4], cp = cam.position, vf = G.viewFar || 1600; g.visible = Math.hypot(cp.x - q.x, cp.z - q.z) < q.r + vf && (G.uw || 0) < .5; if (!g.visible) return; const t = G.wt, fd = scene.fog.density, nt = TOD.night;
+    for (const s of this.s) { const u = s.userData, x = u.x + Math.sin(t * u.sp + u.ph) * u.R, z = u.z + Math.cos(t * u.sp * .8 + u.ph * 1.3) * u.R, d = Math.hypot(cp.x - x, cp.z - z); s.visible = d < vf; if (!s.visible) continue;
+      s.position.set(x, 1.6 + Math.sin(t * .7 + u.ph) * .8, z); s.material.opacity = (.05 + .85 * nt) * (.55 + .45 * Math.sin(t * 1.9 + u.ph * 3)) * Math.min(1, 1.5 * Math.exp(-d * fd * .5)); } },
+};
+// region look by camera: fog only thickens (never below the base), colours lean toward the region's tint; a toast the first time you sail in
+const MAP_LK = {sea0: null, w: 0};
+function mapLook(dt) { const cp = cam.position, q = mapRegion(cp.x, cp.z), w = mapRegion.w, sky = scene.userData.sky && scene.userData.sky.material.uniforms;
+  if (!MAP_LK.sea0) MAP_LK.sea0 = MAT.sea.color.clone();
+  if (q && w > 0) { const up = (G.uw || 0) <= .5; if (up) scene.fog.density *= mix(1, q.fog, w); scene.fog.color.lerp(q.tc, .15 * w); scene.background.copy(scene.fog.color); if (up && sky && sky.fogC) sky.fogC.value.copy(scene.fog.color); MAT.sea.color.copy(MAP_LK.sea0).lerp(q.tc, .25 * w);
+    if (G.on && w > .35 && !mapToastSeen.has(q.k)) { mapToastSeen.add(q.k); toast(q.n, 'New waters'); Snd.discover(); } }
+  else if (MAP_LK.w) MAT.sea.color.copy(MAP_LK.sea0);
+  MAP_LK.w = q ? w : 0; mapIce.step(dt); mapSmoke.step(dt); mapGhosts.step(dt); }
+{ const f0 = buildDeep; buildDeep = function (...a) { const r = f0.apply(this, a); mapFieldMeshes(); mapPoiOrder(); return r; }; }
+{ const f0 = buildFw; buildFw = function (...a) { mapPoiOrder(); mapIce.build(); mapSmoke.build(); mapGhosts.build(); return f0.apply(this, a); }; }
+{ const f0 = updateWorldFx; updateWorldFx = function (...a) { const r = f0.apply(this, a); mapLook(a[0] || 0); return r; }; }
 // ---------------- horror helpers: who is lit, how far out the deep circles, positional dread
 // a burning flare makes you visible, though things back off from it up close
 const litP = p => p === P ? (lightOn() || (P.eq === 5 && !P.seat)) : (!!p.l || (p.eq === 5 && !p.seat));
@@ -4121,11 +4248,15 @@ const FISH = {
   bass: {n: 'sea bass', v: 28, s: 1, kg: [1, 4]}, cod: {n: 'cod', v: 35, s: 1.15, kg: [2, 8]}, eel: {n: 'moray eel', v: 45, s: 1.35, kg: [2, 6]},
   tuna: {n: 'bluefin tuna', v: 90, s: 1.8, kg: [40, 120]}, angler: {n: 'glowing anglerfish', v: 150, s: 1.6, kg: [3, 9]}, squid: {n: 'giant squid', v: 280, s: 2.4, kg: [90, 200]},
   bottle: {n: 'message in a bottle', v: 0, s: .4, kg: [.5, .6]},
+  parrot: {n: 'reef parrotfish', v: 24, s: .9, kg: [1, 3]}, snapper: {n: 'red snapper', v: 40, s: 1.1, kg: [2, 6]}, icecod: {n: 'ice cod', v: 55, s: 1.25, kg: [4, 12]},
+  ember: {n: 'ember eel', v: 70, s: 1.4, kg: [2, 5]}, ghostfish: {n: 'ghost fish', v: 120, s: 1.5, kg: [1, 3]}, oarfish: {n: 'giant oarfish', v: 320, s: 2.2, kg: [60, 150]},
 };
 function pickFish(x, z, rod) {
   const land = OBST.filter(o => o.c && o.r > 5).reduce((m, o) => Math.min(m, Math.hypot(x - o.x, z - o.z) - o.r), Math.hypot(x - CRZ.x, z - CRZ.z) - 60), deep = land > 150;
   const wreck = POIS.some(q => (q.wreck || q.rig) && Math.hypot(x - q.x, z - q.z) < 70), storm = G.storm > .5;
   const w = {boot: [0, 8, 4, 2][rod], sard: 30, mack: 22, bass: land < 60 ? 22 : 4, cod: deep ? 18 : 5, eel: wreck ? 20 : 1, tuna: deep && rod >= 2 ? 9 + rod * 2 : 0, angler: (storm || deep) && rod >= 2 ? 3 + rod : 0, squid: deep && rod >= 3 ? 3 : 0, bottle: DIGS.some(d => !d.rev) ? 2 : 0};
+  // regional catches on top (home waters keep the old odds)
+  const rg = mapRegion(x, z), rw = mapRegion.w, nt = TOD.night > .5; if (rg) { const k = rg.k; if (k === 'coral') { if (land < 60) w.parrot = 26 * rw; w.snapper = 16 * rw; } else if (k === 'frost') w.icecod = 22 * rw; else if (k === 'ash' && nt) w.ember = 16 * rw; else if (k === 'grave' && nt) w.ghostfish = 12 * rw; else if (k === 'abyss' && deep && rod >= 3) w.oarfish = 5 * rw; }
   let sum = 0; for (const k in w) sum += w[k]; let r = Math.random() * sum; for (const k in w) { r -= w[k]; if (r <= 0) return k; } return 'sard';
 }
 function loadGear() { let g = null; try { g = JSON.parse(localStorage.getItem(SK('s9-gear'))); } catch (e) {} g = g || {}; P.own = Object.assign({rod: 0, glock: 0, sg: 0}, g.own || {}); P.ammo = Object.assign({g: 0, gm: 0, s: 0, sm: 0}, g.ammo || {}); }
@@ -4752,7 +4883,7 @@ function startGame(seed, crew, sv) {
   if (isHost() && sv) { for (const k of sv.sk || []) if (CARRY.has(k) && sackFits(P, k)) P.sack.push(k); if (P.sack.length) sackSet(P); P.cooler = (sv.co || []).map(e => Array.isArray(e) ? e : FISH[e] ? [e, FISH[e].v] : null).filter(Boolean); P.coolerN = P.cooler.length; P.coolerV = coolerVal(P.cooler); if (sv.fl != null) P.flares = Math.min(6, sv.fl); }
   F.st = 'idle'; placeItems(); G.seedItems = ITEMS.length; applyAll();
   for (let i = 0; i < FLM.length; i++) if (FLM[i]) { scene.remove(FLM[i].m); FLM[i] = null; }
-  G.floats = []; for (let i = 0; i < 16; i++) spawnFloat(i);
+  G.floats = []; for (let i = 0; i < MAP_FLN; i++) spawnFloat(i);
   if (isHost() && (!sv || !sv.earned)) { const jd = q => Math.hypot(q.x - JETTY.x, q.z - JETTY.z), I = ISLES.filter(q => !q.bar && !nearRig(q.x, q.z) && jd(q) < 900).sort((a, b) => jd(a) - jd(b))[0]; if (I) { const ux = (I.x - JETTY.x) / jd(I), uz = (I.z - JETTY.z) / jd(I); [70, 120, 180].forEach((r, i) => { let x = 0, z = 0; for (let k = 0; k < 12; k++) { const s = (k + 1 >> 1) * (k % 2 ? 6 : -6); x = JETTY.x + ux * r + uz * s; z = JETTY.z + uz * r - ux * s; if (!OBST.some(o => o.c && Math.hypot(x - o.x, z - o.z) < o.r + 12)) break; } G.floats[i] = [x, z, KINDS.indexOf('crate')]; }); } }
   Object.assign(M, {hp: D.mhp, x: -4, z: 6, y: LV[2], state: 'roam', path: [], idle: 2, aware: 0, lostT: 0, flee: 0, sawHide: -1, stuck: 0, screamT: 0, spd: 0, look: 0, tgt: null, preyT: 0, avoidT: 0, vy: 0, wet: 0});
   M.tx = M.x; M.ty = M.y; M.tz = M.z; M.tyaw = 0;
