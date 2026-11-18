@@ -29,7 +29,7 @@ const hexS = c => '#' + c.toString(16).padStart(6, '0');
 
 // ---------------- net (jjfanwars relay)
 const RELAY_URL = 'wss://jjfanwars-relay.businessautomationvic.workers.dev';
-const GAME_V = 63;
+const GAME_V = 64;
 const Net = {
   tag: '[Rig]', role: 'solo', ws: null, peers: new Map(), code: '', relayT: {pose: 1}, id: '', name: '', handlers: {}, retry: 0, started: false,
   enc: new TextEncoder(), dec: new TextDecoder(),
@@ -913,9 +913,9 @@ function materials() {
   TX.carpet = tex(cv(128, 128, (g, w, h) => { g.fillStyle = '#5a1418'; g.fillRect(0, 0, w, h); g.strokeStyle = '#8a6a2a'; g.lineWidth = 2; for (let i = 0; i < w; i += 32) for (let j = 0; j < h; j += 32) { g.beginPath(); g.arc(i + 16, j + 16, 9, 0, TAU); g.stroke(); } for (let i = 0; i < 20; i++) { g.fillStyle = `rgba(20,10,5,${.15 + Math.random() * .3})`; g.beginPath(); g.arc(Math.random() * w, Math.random() * h, 6 + Math.random() * 20, 0, TAU); g.fill(); } noiseFill(g, w, h, 18); }), 1);
   TX.wallp = tex(cv(128, 128, (g, w, h) => { g.fillStyle = '#2a3a30'; g.fillRect(0, 0, w, h); g.fillStyle = '#3a4a3a'; for (let i = 0; i < w; i += 22) for (let j = 0; j < h; j += 30) { g.beginPath(); g.ellipse(i + 11, j + 15, 5, 11, 0, 0, TAU); g.fill(); } const gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, 'rgba(0,0,0,0)'); gr.addColorStop(1, 'rgba(40,30,10,.5)'); g.fillStyle = gr; g.fillRect(0, 0, w, h); noiseFill(g, w, h, 16); }), 1);
   MAT.carpet = new THREE.MeshStandardMaterial({map: TX.carpet, roughness: .95}); MAT.wallp = new THREE.MeshStandardMaterial({map: TX.wallp, roughness: .85}); MAT.brass = new THREE.MeshStandardMaterial({color: 0xb8902a, metalness: .8, roughness: .3});
-  MAT.sea = new THREE.MeshStandardMaterial({color: 0x031820, roughness: .07, metalness: 0, bumpMap: TX.ripple, bumpScale: .5, envMapIntensity: .9, side: THREE.DoubleSide});
+  MAT.sea = new THREE.MeshStandardMaterial({color: 0x03192a, roughness: .07, metalness: 0, bumpMap: TX.ripple, bumpScale: .5, envMapIntensity: .68, side: THREE.DoubleSide});
   // uniforms that outlive a recompile: shore distances (SHORE), the 8 nearest islands, boat speed, the colours seen from under the surface
-  MAT.sea.userData.U = {uShore: {value: null}, uIs: {value: [...Array(8)].map(() => new THREE.Vector4())}, uSpd: {value: 0}, uUs: {value: new THREE.Vector4()}, uUd: {value: new THREE.Color()}};
+  MAT.sea.userData.U = {uShore: {value: null}, uIs: {value: [...Array(8)].map(() => new THREE.Vector4())}, uSpd: {value: 0}, uUs: {value: new THREE.Vector4()}, uUd: {value: new THREE.Color()}, uSun: {value: new THREE.Vector4(0, 1, 0, 0)}};
   MAT.sea.onBeforeCompile = sh => {
     sh.uniforms.uT = {value: 0}; sh.uniforms.uA = {value: 1}; sh.uniforms.uBt = {value: new THREE.Vector4()}; sh.uniforms.uBd = {value: new THREE.Vector4()}; MAT.sea.userData.sh = sh;
     const U = MAT.sea.userData.U; U.uShore.value = SHORE; Object.assign(sh.uniforms, U); const NI = (ISLES.length + 1).toFixed(1);
@@ -927,7 +927,7 @@ function materials() {
     // ripples: a second, larger sample turned 30 degrees breaks the tiling; both fade out with distance (no moire, no glitter column)
     const bump = THREE.ShaderChunk.bumpmap_pars_fragment.replace('vec2 dHdxy_fwd() {', 'float ripH(vec2 u) { return texture2D(bumpMap, u).x * .75 + texture2D(bumpMap, mat2(.866, .5, -.5, .866) * u * .37 + vec2(.29, .61)).x * .55; }\n\tvec2 dHdxy_fwd() { float bS = bumpScale * (1. - smoothstep(60., 500., length(vWP.xz - cameraPosition.xz)));')
       .replace(/bumpScale \* texture2D\( bumpMap, ([^)]*) \)\.x/g, 'bS * ripH( $1 )');
-    sh.fragmentShader = 'uniform float uT; uniform float uA; uniform float uFoam; uniform vec4 uBt, uBd; varying float vWH; varying vec3 vWP;\nuniform sampler2D uShore; uniform vec4 uIs[8]; uniform float uSpd; uniform vec4 uUs; uniform vec3 uUd;\n' + sh.fragmentShader
+    sh.fragmentShader = 'uniform float uT; uniform float uA; uniform float uFoam; uniform vec4 uBt, uBd; varying float vWH; varying vec3 vWP;\nuniform sampler2D uShore; uniform vec4 uIs[8]; uniform float uSpd; uniform vec4 uUs; uniform vec3 uUd; uniform vec4 uSun;\n' + sh.fragmentShader
       .replace('#include <bumpmap_pars_fragment>', bump)
       .replace('#include <clipping_planes_fragment>', `#include <clipping_planes_fragment>
         float hf = 0., dc = length(vWP.xz - cameraPosition.xz);
@@ -941,6 +941,15 @@ function materials() {
           float a = atan(d2.y, d2.x), r0 = textureLod(uShore, vec2(a / 6.2832 + .5, (I.z + .5) / ${NI}), 0.).r, d = length(d2) - r0;
           shl = max(shl, 1. - smoothstep(0., 28., d)); fo += (1. - smoothstep(0., 3., abs(d - 1. - sin(uT * 1.2 + a * 17.) * .7))) * (.4 + .6 * fn); }
         fo = clamp(fo + hf * (.3 + .7 * fn * (sin(vWP.x * 3.1 + uT * 2.3) * sin(vWP.z * 2.7 - uT * 1.9) * .5 + .5)), 0., 1.); diffuseColor.rgb = mix(diffuseColor.rgb, vec3(.03, .2, .19), shl * .8); diffuseColor.rgb = mix(diffuseColor.rgb, vec3(.62, .68, .7), fo);`)
+      .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
+        { float fd = (1. - smoothstep(15., 150., dc)) * (gl_FrontFacing ? 1. : 0.); if (fd > 0.) { vec2 gq = vec2(0.);
+          gq += vec2(.8, .6) * cos(2.1 * dot(vWP.xz, vec2(.8, .6)) + uT * 2.9) * .1; gq += vec2(-.5, .87) * cos(2.9 * dot(vWP.xz, vec2(-.5, .87)) + uT * 3.4) * .11;
+          gq += vec2(.97, -.26) * cos(4.2 * dot(vWP.xz, vec2(.97, -.26)) + uT * 4.1) * .12; gq += vec2(-.2, -.98) * cos(5.5 * dot(vWP.xz, vec2(-.2, -.98)) + uT * 4.6) * .12;
+          gq += vec2(.6, -.8) * cos(7.3 * dot(vWP.xz, vec2(.6, -.8)) + uT * 5.3) * .1; gq += vec2(-.9, .44) * cos(9.8 * dot(vWP.xz, vec2(-.9, .44)) + uT * 6.1) * .09;
+          gq *= fd * (.16 + uA * .2); normal = normalize(normal + (viewMatrix * vec4(-gq.x, 0., -gq.y, 0.)).xyz); } }`)
+      .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
+        if (gl_FrontFacing) { vec3 vdS = normalize(vWP - cameraPosition); float bl = pow(max(dot(vdS, uSun.xyz), 0.), 4.), sss = smoothstep(-.2, 1., cr) * (bl * 1.4 + .12) * uSun.w * (1. - fo);
+          totalEmissiveRadiance += vec3(.015, .15, .13) * sss + vec3(.5, .35, .2) * fo * uSun.w * .06 * (1. - uSun.y); }`)
       .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\n roughnessFactor = mix(roughnessFactor, .28, smoothstep(40., 600., dc)); roughnessFactor = mix(roughnessFactor, .85, fo);')
       // from below: a bright Snell's window straight up, the dark reflected deep around it
       .replace('#include <opaque_fragment>', '#include <opaque_fragment>\n vec3 uwC = vec3(0.); if (uUs.w > .5 && !gl_FrontFacing) { vec3 vd = normalize(vWP - cameraPosition); float sw = .06 + max(0., -cameraPosition.y) * .005; uwC = mix(uUd, uUs.rgb * (.9 + .22 * cr), smoothstep(.66 - sw, .66 + sw, vd.y + cr * .05)) + vec3(.6, .68, .7) * fo * .15 * uUs.rgb; }')
@@ -1025,12 +1034,18 @@ function buildSea() {
         col += sunC * (pow(sd, 14.) * .3 + pow(sd, 120.) * .9) * sunI * .4 * ab * (1. - uS * .7);
         col += sunC * exp(-yy * 9.) * pow(sd, 2.5) * sunI * .22 * ab * (1. - uS * .8);
         col += sunC * smoothstep(.99988, .99994, sd) * mix(4., 22., smoothstep(0., .25, sunD.y)) * up * ab * (1. - uS);
-        vec2 uv = d.xz / (yy + .1) * .9 + uT * vec2(.006, .002); float c = fbm(uv), c2 = fbm(uv * 2.6 + 4.);
-        float cov = mix(.47, .28, uS), cl = smoothstep(cov, cov + .2, c * .75 + c2 * .25) * smoothstep(0., .08, yy);
-        vec3 cc = mix(zen * .7, hor * 1.15, .35 + .65 * pow(1. - yy, 3.)) * (.75 + .5 * (1. - c2));
-        cc += sunC * (pow(sd, 3.) * .9 + .15) * sunI * .22 * (1. - smoothstep(.45, .8, c)) * (1. - uS);
+        { vec2 cu = d.xz / (yy + .06) * .22 + uT * vec2(.01, .004); float ci = fbm(vec2(cu.x * .5 + cu.y * .2, cu.y * 3.2)) * fbm(cu * 1.7 + 3.);
+          float ca2 = smoothstep(.2, .48, ci) * smoothstep(0., .25, yy) * (1. - uS) * .45; col = mix(col, hor * 1.08 + sunC * sunI * (.1 + pow(sd, 4.) * .5), ca2); }
+        vec2 uv = d.xz / (yy + .1) * .9 + uT * vec2(.006, .002); float c = fbm(uv), c2 = fbm(uv * 2.6 + 4.), dn = c * .75 + c2 * .25;
+        float cov = mix(.47, .28, uS), cl = smoothstep(cov, cov + .2, dn) * smoothstep(0., .08, yy);
+        vec2 so = normalize(sunD.xz + 1e-4) * .16; float dn2 = fbm(uv + so) * .75 + fbm((uv + so) * 2.6 + 4.) * .25;
+        float lit = clamp(.55 + (dn - dn2) * 4.5, 0., 1.), th = smoothstep(cov, cov + .45, dn), low = 1. - smoothstep(0., .35, sunD.y);
+        vec3 cc = mix(mix(zen * .6, hor * .72, .5) * mix(1., .72, th), hor * 1.15 + sunC * sunI * .32, lit);
+        cc += sunC * sunI * pow(sd, 5.) * (1. - th) * 1.2 * (1. - uS);
+        cc += sunC * vec3(1., .55, .32) * low * .3 * sunI * (1. - lit * .4) * (1. - uS);
+        cc = mix(cc, mix(zen * .7, hor * 1.15, .35 + .65 * pow(1. - yy, 3.)), .22 + .5 * smoothstep(.25, 0., yy));
         cc = mix(cc, fogC * (.65 + .5 * c2), uS * .85);
-        col = mix(col, cc, cl * .92);
+        col = mix(col, cc, cl * .95);
         vec3 sp = d * 260.; vec3 id = floor(sp); float r = h3(id); float s = step(.986, r) * smoothstep(.34, .06, length(fract(sp) - .5));
         col += vec3(.8, .86, 1.) * s * stars * (1. - cl) * smoothstep(.0, .15, y) * (.55 + .45 * sin(uT * 2.3 + r * 90.)) * 1.6;
         float md = dot(d, moonD); float mdisc = smoothstep(.99935, .99955, md);
@@ -8509,6 +8524,9 @@ function vfxFrame(dt) { if (!G.on || !BUILT) return; vfxInit(); const cx = cam.p
       const y = waveH(x, z, t) - .5 - h * 4, pu = 1 + Math.sin(t * 1.6 + h * 30) * .18; _m4.compose(_v.set(x, y, z), _q.identity(), _s.set(pu * (.6 + h), (2 - pu) * (.6 + h), pu * (.6 + h))); VFX.jel.setMatrixAt(n, _m4); jp.setXYZ(n, x, y - .2, z); n++; }
     VFX.jel.count = n; VFX.jel.instanceMatrix.needsUpdate = true; VFX.jgl.geometry.setDrawRange(0, n); jp.needsUpdate = true; VFX.jel.material.opacity = .55 * nk; VFX.jgl.material.opacity = .5 * nk; } }
 { const f0 = hud; hud = function () { const r = f0.apply(this, arguments); try { const now = performance.now(), dt = Math.min(.1, (now - (VFX.ft || now)) / 1000); VFX.ft = now; vfxFrame(dt); } catch (e) { if (!VFX.err) { VFX.err = 1; console.warn('vfx', e); } } return r; }; }
+
+// ===== sea and sky polish: the sea's sun uniform (light through crests), fed from the sky each frame =====
+{ const f0 = hud; hud = function () { const r = f0.apply(this, arguments); const U = MAT.sea && MAT.sea.userData.U, sk = scene.userData.sky; if (U && U.uSun && sk) { const sd = sk.material.uniforms.sunD.value; U.uSun.value.set(sd.x, sd.y, sd.z, clamp(sd.y * 5 + .1, 0, 1) * (1 - (G.storm || 0) * .8)); } return r; }; }
 
 menuInit();
 setTimeout(() => { buildWorld(); requestAnimationFrame(frame); }, 30);
