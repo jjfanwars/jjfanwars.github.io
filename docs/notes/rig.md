@@ -115,5 +115,26 @@ Read `CLAUDE.md` first (shared rules). Split out of it on 17 Nov 2026; keep this
    - **The Lighthouse Hanger:** the light on a rock is a lantern held by a hanged body, which lifts its head when you reach the top.
    - **The Tent:** a zipped tent, breathing and a warm lantern. It is empty inside, and the thing stands where the tent's shadow was; then a chase to the boat.
    - **The Mourners:** a ring of figures facing away round a fresh grave, one fewer each time you look. The grave has your name on the lid, and the missing ones are behind you.
+15. **Inventory system, improved:**
+   - A proper inventory screen for the sack, the hold, the cooler and relics, with item icons, rarity colours, sizes and values.
+   - Drag or click to move items between the sack and the hold.
+   - Drop or sell from the list.
+   - Sort by value or rarity.
+   - Clearer HUD feedback when the sack is full.
+16. **Islands, visually:**
+   - A rock and sand shader instead of flat colour.
+   - Better shorelines with foam and wet sand.
+   - Varied vegetation and props per region.
+   - Cliffs and boulders.
+   - Paths, ruins and detail so each island reads as its own place.
+17. **Sub and underwater swimming visuals:** prettier and a little clearer, but still scary.
+   - Light shafts and caustics near the surface, fading into dark.
+   - Clearer near visibility with heavy falloff at range.
+   - Particulate and marine snow.
+   - Kelp, rocks and coral on the bed.
+   - A proper surface seen from below, and the waterline across the sub's viewport.
+   - Bubbles from the diver and the sub.
+   - Torch and sub lights cutting cones through the murk.
+   - The deep stays black and oppressive.
 
 Still deferred from round 2 (see the round-2 plan): selling and shopping aboard the claimed Serenade, a shipyard and job boards at Northwatch and on piers, casino prize counter and extra games, a live menu background, a music score and audio buses with Music/Effects sliders, more sound effects and ambience, underwater light shafts and an island rock/sand shader, more GPU performance work, host migration and touch controls. Round 2 shipped with minimal testing at the owner's request: online play of the new features (casino tables, tender, ghost ship and maydays, job board) has not been tried with two players.
