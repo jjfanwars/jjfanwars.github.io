@@ -29,7 +29,7 @@ const hexS = c => '#' + c.toString(16).padStart(6, '0');
 
 // ---------------- net (jjfanwars relay)
 const RELAY_URL = 'wss://jjfanwars-relay.businessautomationvic.workers.dev';
-const GAME_V = 50;
+const GAME_V = 51;
 const Net = {
   tag: '[Rig]', role: 'solo', ws: null, peers: new Map(), code: '', relayT: {pose: 1}, id: '', name: '', handlers: {}, retry: 0, started: false,
   enc: new TextEncoder(), dec: new TextDecoder(),
@@ -6017,7 +6017,7 @@ function drawMap() {
     it(cx => arrow(cx, y, PI, 5, hexS(CREW_COL[((P ? P.c : 0) + 1) % 6])), 'crew');
     it(cx => { g.fillStyle = '#a01a10'; g.font = 'bold 13px Georgia'; g.textAlign = 'center'; g.fillText('✕', cx, y + 5); }, 'treasure');
     it(cx => { g.fillStyle = '#1aa0d0'; g.beginPath(); g.moveTo(cx, y - 6); g.lineTo(cx + 4, y); g.lineTo(cx, y + 6); g.lineTo(cx - 4, y); g.closePath(); g.fill(); }, 'course'); }
-  g.fillStyle = '#1a1a1a'; g.textAlign = 'center'; g.font = '12px Georgia'; g.fillText('click: course · right-click: clear · wheel: zoom', W / 2, W - 8);
+  g.fillStyle = '#1a1a1a'; g.textAlign = 'center'; g.font = '12px Georgia'; g.fillText('click: new course · right-click or X: clear · wheel: zoom', W / 2, W - 8);
 }
 
 // ---------------- voyage: zoomable chart with a course, autopilot, the Northwatch trading post
@@ -6128,7 +6128,12 @@ addEventListener('mousemove', e => { if (!G.map || !G.on || G.paused) return; e.
   if (VOY.z) { const S = W / (voyR() * 2.077) * VOY_ZL[VOY.z]; VOY.cx += e.movementX * k / S; VOY.cz -= e.movementY * k / S; voyClampC(); } else VOY.cur = [clamp(VOY.cur[0] + e.movementX * k, 4, W - 4), clamp(VOY.cur[1] + e.movementY * k, 4, W - 4)];
   VOY.dirty = 1; }, {capture: true});
 addEventListener('mousedown', e => { if (!G.map || !G.on || G.paused) return; e.stopImmediatePropagation(); e.preventDefault(); VOY.md = 1;
-  if (e.button === 0) { G.voyWp = voyCursorWorld(); if (A.on) tone(1180, .04, .12, 'triangle'); } else if (e.button === 2) { G.voyWp = null; if (A.on) tone(520, .04, .12, 'triangle'); } VOY.dirty = 1; }, {capture: true});
+  if (e.button === 0) voyPlot(voyCursorWorld()); else if (e.button === 2) voyPlot(null); }, {capture: true});
+// plotting and cancelling a course also re-aims (or stops) a running autopilot, which now lives on the host
+function voyPlot(wp) { G.voyWp = wp; VOY.wp0 = wp; VOY.dirty = 1; if (A.on) tone(wp ? 1180 : 520, .04, .12, 'triangle');
+  if (VOY.ap) { if (wp) act({a: 'ap', on: 1, tg: wp.slice(), dock: null}); else act({a: 'ap', on: 0}); } if (!wp) showMsg('Course cleared.', '', 1.5); }
+addEventListener('contextmenu', e => { if (G.map && G.on) e.preventDefault(); }, {capture: true});
+addEventListener('keydown', e => { if (G.map && G.on && (e.code === 'Backspace' || e.code === 'Delete' || e.code === 'KeyX')) { e.stopImmediatePropagation(); e.preventDefault(); voyPlot(null); } }, {capture: true});
 addEventListener('mouseup', e => { if (VOY.md) { VOY.md = 0; e.stopImmediatePropagation(); } }, {capture: true});
 
 // ---------------- gear: guns and fishing
@@ -7990,7 +7995,7 @@ function hostAp(dt) { const a = B.ap; if (!a) return; if (B.sink > 0 || (HC().pl
 { const f0 = boatStep; boatStep = function (dt) { const a = B.ap; if (!a || a.ph !== 2 || !a.dock) return f0.apply(this, arguments); const S = a.s0, D2 = a.dock; S.t += dt; const u = smooth(S.t / S.T), px = B.x, pz = B.z;
   B.x = mix(S.x, D2.x, u); B.z = mix(S.z, D2.z, u); B.yaw = S.yaw + angD(S.yaw, D2.yaw) * u; B.v = Math.hypot(B.x - px, B.z - pz) / Math.max(dt, 1e-3) * Math.sign(S.v || 1); B.thr = 0; B.st = 0; B.yr = 0;
   if (S.t >= S.T) { B.v = 0; B.ap = null; emit({k: 'ap', on: 0, why: `Docked at ${D2.n}.`, dk: D2.n, done: 1}); } }; }
-{ const f0 = applyEv; applyEv = function (e) { const r = f0.apply(this, arguments); if (e.k === 'ap') { VOY.ap = e.on ? 1 : 0; VOY.tg = e.on ? e.tg : null; VOY.dock = e.on ? e.dk || '' : ''; VOY.set = !!e.set; if (A.on && Snd.voyChime && !e.set) Snd.voyChime(!!e.on); if (e.why) showMsg(e.why, '', 2.5); if (e.done && A.on) { tone(120, .2, .3, 'square'); burst(300, .5, .1, .3, 'lowpass'); } if (e.on && e.dk && !e.set) showMsg(`Docking at ${e.dk}. You can leave the wheel.`, '', 2.5); } return r; }; }
+{ const f0 = applyEv; applyEv = function (e) { const r = f0.apply(this, arguments); if (e.k === 'ap') { if (!e.on && e.why && G.voyWp) { G.voyWp = null; VOY.dirty = 1; } VOY.ap = e.on ? 1 : 0; VOY.tg = e.on ? e.tg : null; VOY.dock = e.on ? e.dk || '' : ''; VOY.set = !!e.set; if (A.on && Snd.voyChime && !e.set) Snd.voyChime(!!e.on); if (e.why) showMsg(e.why, '', 2.5); if (e.done && A.on) { tone(120, .2, .3, 'square'); burst(300, .5, .1, .3, 'lowpass'); } if (e.on && e.dk && !e.set) showMsg(`Docking at ${e.dk}. You can leave the wheel.`, '', 2.5); } return r; }; }
 { const f0 = packSnap; packSnap = function () { const s = f0.apply(this, arguments); s.ap = B.ap ? [B.ap.tg[0], B.ap.tg[1], B.ap.dock ? B.ap.dock.n : '', B.ap.ph] : 0; return s; }; }
 { const f0 = applySnap; applySnap = function (s) { const r = f0.apply(this, arguments); if (s.ap !== undefined) { VOY.ap = s.ap ? 1 : 0; VOY.tg = s.ap ? [s.ap[0], s.ap[1]] : null; VOY.dock = s.ap ? s.ap[2] : ''; VOY.set = s.ap && s.ap[3] === 2; } return r; }; }
 // HUD: a dock prompt at the wheel near a jetty; the autopilot line says when it is docking

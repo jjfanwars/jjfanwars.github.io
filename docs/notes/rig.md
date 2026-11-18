@@ -62,6 +62,8 @@ Read `CLAUDE.md` first (shared rules). Split out of it on 17 Nov 2026; keep this
 
 **Glass from inside (18 Nov 2026):** the WIN hud wrapper now hides the shared glass (material.visible = false) while you are seated, in the cabin or in the sub, instead of a light tint (which read white from inside); the small hulls' dark tinted panes (transparent, opacity .3-.6, no depth write, near-black) are hidden too. From outside the glass stays dark and reflective.
 
+**Chart courses (18 Nov 2026):** voyPlot(wp) is the one way to set or clear G.voyWp (map left/right click, X/Backspace/Delete while the chart is open). With the autopilot running it sends act 'ap' with the new target, or turns it off when cleared (the host-side autopilot used to keep the old target). The context menu is blocked over the open chart, and the 'ap' off event with a reason (arrived/docked) clears the plotted course.
+
 ## Next up (the owner's list, 18 Nov 2026; items 7-14 and the loot rework were built the same day, see the paragraphs above)
 1. **Sub visuals underwater and half underwater:** proper looks from inside and outside the research sub when it is dived and when it sits at the waterline (the waterline across the bow viewport, the sea surface seen from below, underwater fog and tint through the windows, the hull half in and half out of the water, bubbles and wake when diving).
 2. **Persisting loot and fast travel:** loot that stays where it was (taken items stay taken, a persistent world seed with slow restocks) and fast travel between ports (home, Northwatch, piers).
