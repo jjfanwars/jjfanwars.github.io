@@ -29,7 +29,7 @@ const hexS = c => '#' + c.toString(16).padStart(6, '0');
 
 // ---------------- net (jjfanwars relay)
 const RELAY_URL = 'wss://jjfanwars-relay.businessautomationvic.workers.dev';
-const GAME_V = 61;
+const GAME_V = 62;
 const Net = {
   tag: '[Rig]', role: 'solo', ws: null, peers: new Map(), code: '', relayT: {pose: 1}, id: '', name: '', handlers: {}, retry: 0, started: false,
   enc: new TextEncoder(), dec: new TextDecoder(),
@@ -7375,7 +7375,7 @@ function nbRovMesh() { const g = new THREE.Group(), y = new THREE.MeshStandardMa
     const gh = Math.max(0, landH(B.x, B.z)); B.dep = mix(B.dep || 0, -(gh + (gh > 0 ? .5 : 0)), Math.min(1, dt * 4)); return r; }
   // the flying boat: on the water she is a boat; at speed, Space lifts her off and she flies until she touches down
   const drv = B.driver && PL.get(B.driver), inp = B.ap && B.ap.up != null ? [B.ap.thr, B.ap.st, -B.ap.up] : drv && drv.seat && !drv.down && !drv.dead && drv.in ? drv.in : [0, 0, 0], up = -(inp[2] || 0); let alt = -(B.dep || 0);
-  const JT = H.air ? {to: -1, acc: 5, dr: .009, cl: 4, st: -10, land: 99} : H.jet ? {to: 17, acc: 18, dr: .0021, cl: 15, st: 15, land: 45} : {to: 13, acc: 9, dr: .0032, cl: 8, st: 12, land: 32};
+  const JT = H.vtol ? {to: -1, acc: 20, dr: .0019, cl: 14, st: -10, land: 60} : H.air ? {to: -1, acc: 5, dr: .009, cl: 4, st: -10, land: 99} : H.jet ? {to: 17, acc: 18, dr: .0021, cl: 15, st: 15, land: 45} : {to: 13, acc: 9, dr: .0032, cl: 8, st: 12, land: 32};
   if (alt < .05 && !(up > 0 && B.v > JT.to)) { NB.vy = 0; const r = f0.apply(this, arguments); B.dep = 0; return r; }
   B.thr = mix(B.thr, inp[0], Math.min(1, dt * 1.2)); B.st = mix(B.st, inp[1], Math.min(1, dt * 2.5)); B.fuel = tankMax();
   const lv = B.up.engine || 0; B.v += ((B.thr > 0 ? B.thr * (JT.acc + lv * 1.5) : B.thr * 4) - JT.dr * B.v * Math.abs(B.v) - NB.vy * .4) * dt; B.v = Math.max(0, B.v);
@@ -7397,7 +7397,7 @@ function nbRovMesh() { const g = new THREE.Group(), y = new THREE.MeshStandardMa
 { const f0 = stepGear; stepGear = function (dt) { const prev = F.st, r = f0.apply(this, arguments); if (prev !== 'wait' && F.st === 'wait' && P && P.ob && HC().cat) F.t *= .7; return r; }; }
 // flight HUD: altitude, airspeed, climb, a stall warning
 { const f0 = hud; hud = function () { const r = f0.apply(this, arguments); const on = P && P.seat && HC().plane; let el = NB.hudEl; if (!el && on) { el = NB.hudEl = document.createElement('div'); el.style.cssText = 'position:absolute;left:50%;top:14%;transform:translateX(-50%);font:bold 14px ui-monospace,monospace;color:#e8f4ff;text-shadow:0 1px 3px #000;text-align:center;pointer-events:none'; $('hud').appendChild(el); }
-  if (el) { el.style.display = on ? 'block' : 'none'; if (on) { const alt = -(B.dep || 0), kt = Math.round(B.v * 1.94), jt = HC().jet, st = !HC().air && alt > .5 && B.v < (jt ? 15 : 13), t = alt > .3 ? `ALT ${alt.toFixed(0)} m · ${kt} kt · ${NB.pvy >= 0 ? '▲' : '▼'} ${Math.abs(NB.pvy).toFixed(1)}${st ? '<br><span style="color:#ff5040">STALL · nose down (C), more throttle</span>' : ''}` : `${kt} kt${B.v > (jt ? 17 : 13) ? ' · <span style="color:#9fe6ff">hold Space to lift off</span>' : B.v > 3 ? ` · take-off at ${jt ? 33 : 26} kt` : ''}`; if (t !== NB.hudT) { NB.hudT = t; el.innerHTML = t; } } } return r; }; }
+  if (el) { el.style.display = on ? 'block' : 'none'; if (on) { const alt = -(B.dep || 0), kt = Math.round(B.v * 1.94), jt = HC().jet, st = !HC().air && !HC().vtol && alt > .5 && B.v < (jt ? 15 : 13), t = alt > .3 ? `ALT ${alt.toFixed(0)} m · ${kt} kt · ${NB.pvy >= 0 ? '▲' : '▼'} ${Math.abs(NB.pvy).toFixed(1)}${st ? '<br><span style="color:#ff5040">STALL · nose down (C), more throttle</span>' : ''}` : `${kt} kt${B.v > (jt ? 17 : 13) ? ' · <span style="color:#9fe6ff">hold Space to lift off</span>' : B.v > 3 ? ` · take-off at ${jt ? 33 : 26} kt` : ''}`; if (t !== NB.hudT) { NB.hudT = t; el.innerHTML = t; } } } return r; }; }
 // the ROV: pilot it from the console (your mouse aims it, WASD drives, Space/C up and down, E grabs from the sea bed, F or the console to come back)
 function rovStart() { if (G.rov) { rovStop(); return; } const ud = BOAT && BOAT.userData; if (!ud || !HC().rovx) return; const [x, z] = bL2W(0, ud.rovZ); G.rov = {x, y: -1.5, z, yaw: P.yaw, t: 0}; if (ud.rovP) ud.rovP.visible = false;
   if (!NB.rov) { NB.rov = nbRovMesh(); NB.rov.scale.setScalar(1); scene.add(NB.rov); NB.rl = new THREE.SpotLight(0xfff0d8, 40 * PI, 45, .55, .5, 0); NB.rl.castShadow = false; scene.add(NB.rl, NB.rl.target); NB.teth = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()]), new THREE.LineBasicMaterial({color: 0xffc040})); NB.teth.frustumCulled = false; scene.add(NB.teth); }
@@ -8076,7 +8076,7 @@ addEventListener('keydown', e => { if (e.code !== 'Space' || e.repeat || !G.on |
 // then descend, slow to landing speed and touch down gently near the target; on the water the normal autopilot docks her.
 { const f0 = hostAp; hostAp = function (dt) { const a = B.ap, H = HC(); if (!a || !H.plane || B.sink > 0) return f0.apply(this, arguments);
   const alt = -(B.dep || 0), [tx, tz] = a.dock ? [a.dock.x, a.dock.z] : a.tg, d = Math.hypot(tx - B.x, tz - B.z);
-  const JT = H.air ? {to: -1, st: -10, cl: 4, vf: 12} : H.jet ? {to: 17, st: 15, cl: 15, vf: 36} : {to: 13, st: 12, cl: 8, vf: 25};
+  const JT = H.vtol ? {to: -1, st: -10, cl: 14, vf: 22} : H.air ? {to: -1, st: -10, cl: 4, vf: 12} : H.jet ? {to: 17, st: 15, cl: 15, vf: 36} : {to: 13, st: 12, cl: 8, vf: 25};
   if (alt <= .3) { a.up = null; if (a.ph === 2) return; f0.apply(this, arguments); if (!B.ap) return; if (d > 1200 && a.ph === 0) { a.up = 1; a.thr = 1; } return; }
   const h = Math.atan2(-(tx - B.x), -(tz - B.z)), e = angD(B.yaw, h); a.st = clamp(-e * 1.6, -1, 1); a.ph = 0;
   const fx = -Math.sin(B.yaw), fz = -Math.cos(B.yaw); let flo = 0;
@@ -8283,6 +8283,7 @@ function nb2Look(k, X) { const {g, L, hw, fb, zs, zb, wz0, wz1, ww, hh, S, add, 
     for (const sd of [-1, 1]) for (const t of [.38, .58]) { const z = Z(t), wb = add(new THREE.CapsuleGeometry(.55, 3.6, 4, 10), S({color: 0xd8d4c8, roughness: .7}), sd * (hw + .55), fb + 1.4, z); wb.rotation.x = PI / 2; wb.scale.set(1, 1, .55); for (const dz of [-1.6, 1.6]) seg(wd, [sd * (hw - .1), fb, z + dz], [sd * (hw + .55), fb + 2.1, z + dz], .06); }
     ud.ghosts = []; const gm = new THREE.MeshStandardMaterial({color: 0x9adcd0, emissive: 0x4a9a90, emissiveIntensity: .8, transparent: true, opacity: .32, depthWrite: false});
     for (const [x, y, z, ry] of [[hw - .8, fb, Z(.25), 1.2], [-hw + .9, fb, Z(.5), -1.4], [0, fb + 6.75, Z(.45), 0], [.6, fb, Z(.7), 3], [-.5, fb + 1.2, Z(.34) + 1.6, .3]]) { const f = hzFig({h: 1.8, col: 0x9adcd0, skin: 0xbfe8e0}); f.traverse(o => { if (o.isMesh) { o.material = gm; o.castShadow = false; } }); f.position.set(x, y, z); f.rotation.y = ry; f.visible = false; g.add(f); ud.ghosts.push(f); } }
+  if (k === 2) { nb2Air(X); return; }
   if (k === 2) { // airship
     const fab = S({color: 0xc8b890, roughness: .85}), fr = S({color: 0x8a6a40, roughness: .7}), ey = top + 4.4, ez = (zb + zs) / 2 + .5;
     const env = add(new THREE.SphereGeometry(1, 36, 18), fab, 0, ey, ez); env.scale.set(3.4, 3.2, 11); for (let i = -3; i <= 3; i++) { const rg = add(new THREE.TorusGeometry(1, .012, 4, 36), fr, 0, ey, ez + i * 2.8); const s2 = Math.sqrt(Math.max(.05, 1 - Math.pow(i * 2.8 / 11, 2))); rg.scale.set(3.42 * s2, 3.22 * s2, 1); }
@@ -8337,6 +8338,100 @@ addEventListener('keydown', e => { if (e.repeat || !G.on || !P || P.dead || P.do
   const on = binoOn(); if (el._on !== on) { el._on = on; el.style.display = on ? 'block' : 'none'; }
   const o = P.own || {}, t = [o.kits ? `<kbd>N</kbd> repair ×${o.kits}` : '', o.jerry ? `<kbd>Y</kbd> fuel ×${o.jerry}` : '', o.chum ? `<kbd>U</kbd> chum ×${o.chum}` : '', G.chumT > 0 ? `chum ${Math.ceil(G.chumT)}s` : ''].filter(Boolean).join(' · ');
   if (G.cnsEl._t !== t) { G.cnsEl._t = t; G.cnsEl.innerHTML = t; } return r; }; }
+
+// ===== the abandoned carrier and its F-35B; better models (airship, Magnum, rifle) =====
+// The USS Requiem: a 180 m carrier adrift far south-west (fixed spot, axis-aligned, bow to -z). Flight deck SURF slabs at CVN.y, island WALLS, hull OBST,
+// ladders up both sides. A parked F-35B (static model) on deck: 'Steal the F-35' (host act 'f35') claims it as a boat class (HULLS[F35_I]: plane, jet, vtol).
+// VTOL: plane physics with no stall (rises and hovers at a standstill). Every plane can set down on the carrier deck (alt clamp in a boatStep wrapper).
+const CVN = {x: 0, z: 0, y: 17.5, R: []};
+const F35_I = HULLS.length;
+HULLS.push({n: 'F-35B Lightning', board: ' ', d: 'A stolen stealth jet with a lift fan: rises straight up and hovers (Space up, C down), then goes like nothing else. F fires the cannon', cost: 0, L: 15.6, W: 2.4, fb: .8, spd: 3, turn: 1.5, hold: 2, hp: 1.6, fuel: 1.2, col: 0x59606a, wh: [.22, .36], plane: 1, jet: 1, vtol: 1, f35: 1, fire: {cd: 1.2, mul: 6}, perk: 'VTOL · cannon',
+  form: {entry: .5, fine: 1, rake: .1, ff: .5, vee: .5, chine: .05, sheer: .15, transomRake: 0, sternW: .7, bw: .1, rail: 0, tex: 'clean', side: 0x59606a, boot: 0x4a5058, anti: 0x4a5058, run: 0}, kit: {fend: 0, port: 0, stack: 0, ring: 0, ant: 0, anchor: 0}, cab: {wall: 0x59606a, roof: 0x59606a}});
+ENGV.push({f: [110, 230], lp: [1100, 3200], am: .1, fr: 1.4, nz: .12, whine: [2400, 4800], g: .12});
+function f35Parts(add, S, yc, gear) { // a whole F-35B in local metres, nose to -z, centre line at height yc
+  const gr = S({color: 0x4a5058, roughness: .8, metalness: .05}), dk = S({color: 0x24272b, roughness: .7, metalness: .1}), cn = S({color: 0x2a2010, roughness: .05, metalness: .9, emissive: 0x3a2a08, emissiveIntensity: .25});
+  const pr = []; for (let i = 0; i <= 24; i++) { const t = i / 24, z = -7.8 + t * 15.6, r = t < .3 ? 1.3 * Math.pow(t / .3, .6) : t > .85 ? 1.3 - (t - .85) / .15 * .55 : 1.3; pr.push(new THREE.Vector2(Math.max(.02, r), z)); }
+  const fg = new THREE.LatheGeometry(pr, 20); fg.rotateX(PI / 2); fg.scale(1.2, .72, 1); add(fg, gr, 0, yc, 0);
+  const wing = (pts, y, m) => { for (const sd of [-1, 1]) { const g = new THREE.ExtrudeGeometry(new THREE.Shape(pts.map(([x, z]) => new THREE.Vector2(x * sd, z))), {depth: .12, bevelEnabled: false}); g.rotateX(PI / 2); add(g, m || gr, 0, y, 0); } };
+  wing([[.9, -1.6], [5.4, 3.1], [5.4, 5.0], [.9, 5.4]], yc + .05); wing([[.8, 5.2], [3.5, 7.1], [3.5, 8.0], [.8, 7.9]], yc + .15);
+  for (const sd of [-1, 1]) { const g = new THREE.ExtrudeGeometry(new THREE.Shape([new THREE.Vector2(4.9, 0), new THREE.Vector2(6.9, 2.4), new THREE.Vector2(7.7, 2.4), new THREE.Vector2(7.5, 0)]), {depth: .1, bevelEnabled: false}); g.rotateY(-PI / 2); g.rotateZ(sd * -.42); add(g, gr, sd * 1.0, yc + .5, 0);
+    const it = add(new THREE.BoxGeometry(.6, .8, 3), gr, sd * 1.3, yc - .05, -1.6); it.rotation.y = sd * .06; add(new THREE.BoxGeometry(.5, .66, .05), dk, sd * 1.32, yc - .05, -3.1); }
+  const cp = add(new THREE.SphereGeometry(1, 20, 12, 0, TAU, 0, PI / 2), cn, 0, yc + .55, -3.4); cp.scale.set(.55, .5, 1.7);
+  add(new THREE.BoxGeometry(1.1, .06, 1.4), dk, 0, yc + .95, -1.2); const nz = add(new THREE.CylinderGeometry(.62, .5, 1.3, 16), dk, 0, yc, 8.1); nz.rotation.x = PI / 2;
+  if (gear) { for (const [x, z] of [[0, -5.2], [-1.4, 1.6], [1.4, 1.6]]) { X0(add, dk, x, yc, z); } } }
+function X0(add, m, x, yc, z) { add(new THREE.CylinderGeometry(.06, .06, yc - .35, 6), m, x, (yc - .35) / 2 + .35, z); const w = add(new THREE.CylinderGeometry(.35, .35, .22, 12), m, x, .35, z); w.rotation.z = PI / 2; }
+// the flyable jet: hide the shared wheelhouse shell, wrap the slim loft in the real fuselage and parts
+{ const f0 = shpExtras; shpExtras = function (cls, X, ph) { const r = f0.apply(this, arguments); if (!ph && cls === F35_I) try { const {g, fb, wz0, wz1, ww, add, S} = X; g.updateMatrixWorld(true); const bx = new THREE.Box3(), c = new THREE.Vector3(), kill = [];
+    g.traverse(o => { if (!o.isMesh || o === g) return; bx.setFromObject(o); bx.getCenter(c); if (c.y > fb + .25 && Math.abs(c.x) < ww + .4 && c.z > wz0 - .4 && c.z < wz1 + .4) kill.push(o); }); for (const o of kill) o.parent && o.parent.remove(o);
+    f35Parts(add, S, fb + .15, 0); const jets = new THREE.Group(); g.add(jets); g.userData.jets = jets; const gl = new THREE.Sprite(new THREE.SpriteMaterial({map: TX.glow, color: 0xffa060, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending})); gl.position.set(0, fb + .15, 8.9); gl.scale.setScalar(1); jets.add(gl);
+    g.userData.muz = [[.9, fb + .6, -3]]; } catch (e) { console.warn('f35', e); } return r; }; }
+// the carrier
+function cvBuild() { const [x, z] = plFind(-3500, -2500, 30, 400, 220); Object.assign(CVN, {x, z}); const Y = CVN.y, X = (a) => x + a, Zc = (b) => z + b;
+  const hullS = new THREE.Shape([[-15, -90], [15, -90], [15, 60], [7, 86], [0, 92], [-7, 86], [-15, 60]].map(([a, b]) => new THREE.Vector2(a, b)));
+  const hg = new THREE.ExtrudeGeometry(hullS, {depth: Y + 6 - 1.2, bevelEnabled: false}); hg.rotateX(-PI / 2); plG('sub', hg, x, -6, z);
+  const dS = new THREE.Shape([[-19, -92], [19, -92], [19, 58], [9, 84], [0, 96], [-9, 84], [-19, 58]].map(([a, b]) => new THREE.Vector2(a, b))), dg = new THREE.ExtrudeGeometry(dS, {depth: 1.2, bevelEnabled: false}); dg.rotateX(-PI / 2); plG('dark', dg, x, Y - 1.2, z);
+  plB('dark', X(-28), X(-19), Y - 1.2, Y, Zc(-30), Zc(40)); plB('hull', X(-15.2), X(15.2), -1.2, .6, Zc(-60), Zc(89)); plB('rust', X(-15.3), X(15.3), 2, 6, Zc(-50), Zc(80));
+  // deck markings (bow is -z in the world: shapes above use +b for bow, so flip)
+  for (let i = 0; i < 18; i++) plB('white', X(-.25), X(.25), Y + .01, Y + .03, Zc(-80 + i * 9), Zc(-76 + i * 9)); for (const sd of [-1, 1]) plB('white', X(sd * 17.5 - .2), X(sd * 17.5 + .2), Y + .01, Y + .03, Zc(-88), Zc(55));
+  for (let i = 0; i < 12; i++) { const t = i / 11, a = -.16; plG('gold', new THREE.BoxGeometry(.4, .03, 7), X(-10 + Math.sin(a) * (i * 7)), Y + .02, Zc(40 - i * 7)); }
+  // the island (starboard, +x), bridge windows, mast and radar
+  plB('grey', X(13), X(19), Y, Y + 14, Zc(-38), Zc(-12), 1); plB('grey', X(13.5), X(18.5), Y + 14, Y + 19, Zc(-34), Zc(-16), 1); plB('black', X(12.95), X(19.05), Y + 15.5, Y + 16.6, Zc(-34.1), Zc(-15.9)); plB('black', X(12.95), X(13.05), Y + 6, Y + 6.8, Zc(-37), Zc(-14));
+  plG('grey', new THREE.CylinderGeometry(.4, .6, 12, 8), X(16), Y + 25, Zc(-25)); plB('grey', X(14), X(18), Y + 27, Y + 27.4, Zc(-25.2), Zc(-24.8)); plB('dark', X(15), X(17), Y + 20, Y + 22, Zc(-30), Zc(-28.8)); plB('dark', X(14.6), X(17.4), Y + 23, Y + 24.5, Zc(-21), Zc(-20.6));
+  WALLS.push({x0: X(13), x1: X(19), z0: Zc(-38), z1: Zc(-12), y0: Y - 1, y1: Y + 30, see: false});
+  // the flight deck floors, the hull for boats, ladders, wrecks on deck, loot
+  SURF.push({k: 'slab', x0: X(-19), x1: X(19), z0: Zc(-58), z1: Zc(92), y: Y}, {k: 'slab', x0: X(-9), x1: X(9), z0: Zc(-84), z1: Zc(-58), y: Y}, {k: 'slab', x0: X(-28), x1: X(-19), z0: Zc(-30), z1: Zc(40), y: Y});
+  OBST.push({x0: X(-16), x1: X(16), z0: Zc(-92), z1: Zc(90)}); CVN.R = [[X(-19), X(19), Zc(-60), Zc(92)], [X(-9), X(9), Zc(-90), Zc(-58)], [X(-28), X(-19), Zc(-30), Zc(40)]];
+  for (const sd of [-1, 1]) { const lx = X(sd * 15.6), lz = Zc(70); for (let y = 0; y < Y; y += .4) plB('steel' in PLC.mats ? 'grey' : 'grey', lx - .3, lx + .3, y, y + .05, lz - .02, lz + .02); INTER.push({kind: 'ladder', x: lx + sd * .6, y: 0, z: lz, r: 3.5, top: [X(sd * 14), Y, lz], label: () => 'Climb the carrier', on: () => P.sw}); }
+  for (const [a, b, ry] of [[-8, 20, .4], [6, 50, -.3], [-12, -40, 2.6]]) { const g = new THREE.BoxGeometry(2.4, 1.2, 14); plG('black', g, X(a), Y + .8, Zc(b), ry); const w = new THREE.BoxGeometry(10, .2, 4); plG('black', w, X(a), Y + .9, Zc(b + 2), ry); }
+  for (const [a, b] of [[9, 10], [10, 30], [-4, -60]]) plB('gold', X(a), X(a + 2.4), Y, Y + 1.4, Zc(b), Zc(b + 3.6), 1);
+  for (const [a, b] of [[-6, 10], [11, -8], [-15, 30], [4, 70], [-24, 0]]) plSpot(X(a), Y + .02, Zc(b), .8, 'cv');
+  { const hx = X(-14), hz = Zc(70); const hb = new THREE.CapsuleGeometry(1.4, 6, 4, 10); hb.rotateX(PI / 2); plG('dark', hb, hx, Y + 1.4, hz, .9, 0, .35); plG('dark', new THREE.BoxGeometry(.3, .3, 9), hx, Y + 2.6, hz + 2, .5); }
+  for (const [a, b] of [[16, -36], [-17, 80], [17, 80], [-17, -50]]) plGlow(X(a), Y + 1, Zc(b), 0xff2010, 3);
+  plPoi('USS Requiem (abandoned carrier)', x, z, 120);
+  // the parked F-35B, nose to the bow
+  const g = new THREE.Group(); g.position.set(X(6), Y, Zc(-2)); scene.add(g); CVN.jet = g; CVN.jx = X(6); CVN.jz = Zc(-2); const S = o => new THREE.MeshStandardMaterial(Object.assign({roughness: .7}, o)), add = (geo, m, a, b, c) => { const o = new THREE.Mesh(geo, m); o.position.set(a, b, c); o.castShadow = true; g.add(o); return o; };
+  f35Parts(add, S, 1.85, 1); WALLS.push({x0: X(6) - 1.4, x1: X(6) + 1.4, z0: Zc(-2) - 7.6, z1: Zc(-2) + 7.6, y0: Y, y1: Y + 2.6, see: true});
+  INTER.push({kind: 'f35', x: X(6) - 1.8, y: Y + 1.4, z: Zc(-3.4), r: 3, label: () => 'Steal the F-35', go: () => act({a: 'f35'}), on: () => !f35Mine()}); }
+const f35Mine = () => Array.isArray(B.up.own) && B.up.own.includes(F35_I);
+{ const f0 = plBuildB; plBuildB = function () { const r = f0.apply(this, arguments); try { cvBuild(); for (const m of mergeByMat(PLC.geo)) PLC.g.add(m); PLC.geo = []; } catch (e) { console.warn('cvBuild', e); } return r; }; }
+{ const f0 = hud; hud = function () { const r = f0.apply(this, arguments); if (CVN.jet) { const v = !f35Mine(); if (CVN.jet.visible !== v) CVN.jet.visible = v; } return r; }; }
+// host: steal it
+{ const f0 = hostAct; hostAct = function (id, m) { if (!m || m.a !== 'f35') return f0.apply(this, arguments); const p = PL.get(id); if (!p || p.dead || p.down || f35Mine() || Math.hypot(p.x - CVN.jx, p.z - CVN.jz) > 12 || Math.abs(p.y - CVN.y) > 3) return;
+  const own = Array.isArray(B.up.own) ? B.up.own : (B.up.own = [0, B.up.cls || 0]); own.push(F35_I); for (const q of PL.values()) if (q.ob) { const [wx, wz] = bL2W(q.bl[0], q.bl[1]); q.ob = 0; q.seat = 0; q.x = wx; q.z = wz; q.y = 0; q.sw = 1; }
+  B.up.cls = F35_I; buildBoat(); resetBoat(false); B.x = CVN.jx; B.z = CVN.jz; B.yaw = 0; B.v = 0; NB.vy = 0; B.dep = -(CVN.y + .25); B.fuel = tankMax(); B.hull = hullMax(); p.ob = 1; p.sw = 0; p.bl = [BHELM[0], BHELM[1]]; p.y = BDECK.y; emit({k: 'bought', n: 'F-35B Lightning (stolen)', hull: F35_I, id}); save(); }; }
+{ const f0 = applyEv; applyEv = function (e) { const r = f0.apply(this, arguments); if (e.k === 'bought' && e.hull === F35_I && e.id === myId() && !isHost()) G.f35B = 1; return r; }; }
+{ const f0 = hud; hud = function () { const r = f0.apply(this, arguments); if (G.f35B && BOAT && BOAT.userData.cls === F35_I && P) { G.f35B = 0; P.ob = 1; P.sw = 0; P.climb = null; P.bl = [BHELM[0], BHELM[1]]; P.y = BDECK.y; P.vy = 0; } return r; }; }
+// physics: VTOL numbers; every plane can set down on the carrier deck, and flying into her hull below the deck is a crash
+{ const f0 = boatStep; boatStep = function (dt) { const H = HC(), a0 = -(B.dep || 0), r = f0.apply(this, arguments); if (!H.plane || B.sink > 0) return r; if (H.vtol || H.air) NB.vy = Math.max(NB.vy, -5); const on = CVN.R.some(([x0, x1, z0, z1]) => B.x > x0 && B.x < x1 && B.z > z0 && B.z < z1); if (!on) return r;
+  const alt = -(B.dep || 0), top = CVN.y + .25; if (alt < top) { if (a0 >= top - 1.5) { const sink = -NB.vy; if (sink > 7) { emit({k: 'bump', s: 1}); damageBoat((sink - 7) * 10); } else if (sink > 2) emit({k: 'bump', s: .3}); B.dep = -top; NB.vy = Math.max(0, NB.vy); if (B.thr < .1) B.v *= Math.pow(.4, dt); } else { emit({k: 'bump', s: 1}); damageBoat(hullMax() * 1.1); B.dep = 0; NB.vy = 0; B.v = 0; } } return r; }; }
+// the takeoff gate: on the deck (alt > 0) the plane branch runs, so the jet can lift from there; the VTOL numbers go in the JT table
+// better models: the Zephyr's gasbag, and the Magnum and rifle in your hands
+function nb2Air(X) { const {g, L, hw, fb, zs, zb, wz0, wz1, ww, hh, S, add, box, cyl, steel} = X, ud = g.userData, top = fb + hh + .12, ey = top + 4.6, ez = (zb + zs) / 2 + .6;
+  const tx = new THREE.CanvasTexture(cv(1024, 256, (q, w, h) => { for (let i = 0; i < 16; i++) { q.fillStyle = i % 2 ? '#d8ccaa' : '#cfc29e'; q.fillRect(i * w / 16, 0, w / 16, h); q.fillStyle = 'rgba(80,60,30,.35)'; q.fillRect(i * w / 16, 0, 2, h); } q.fillStyle = '#8a1a12'; q.fillRect(0, h * .12, w, h * .05); q.fillRect(0, h * .83, w, h * .03); for (let y = 0; y < h; y += 16) { q.fillStyle = 'rgba(60,40,20,.08)'; q.fillRect(0, y, w, 1); } })); tx.colorSpace = THREE.SRGBColorSpace;
+  const pr = []; for (let i = 0; i <= 40; i++) { const t = i / 40 * 2 - 1, r = 3.5 * Math.sqrt(Math.max(0, 1 - t * t)) * (t > 0 ? 1 - .3 * t : 1); pr.push(new THREE.Vector2(Math.max(.03, r), t * 11.5)); }
+  const eg = new THREE.LatheGeometry(pr, 40); eg.rotateX(PI / 2); add(eg, S({map: tx, roughness: .8}), 0, ey, ez);
+  const fab = S({color: 0xd0c4a0, roughness: .8}), red = S({color: 0x8a1a12, roughness: .6}), dk = S({color: 0x3a3028, roughness: .6, metalness: .3});
+  for (let i = 0; i < 4; i++) { const a = i * PI / 2 + PI / 4, sh = new THREE.Shape([new THREE.Vector2(0, 0), new THREE.Vector2(3.2, 1.4), new THREE.Vector2(3.2, 3.6), new THREE.Vector2(0, 4.2)]); const fg = new THREE.ExtrudeGeometry(sh, {depth: .1, bevelEnabled: false}); fg.translate(1.2, 0, -.05); fg.rotateY(-PI / 2); fg.rotateX(0);
+    const f = new THREE.Group(); f.position.set(0, ey, ez + 6.2); f.rotation.z = a; g.add(f); const m = new THREE.Mesh(fg, fab); m.rotation.y = PI / 2; m.rotation.z = -PI / 2; f.add(m); const rd = new THREE.Mesh(new THREE.BoxGeometry(.12, 2.4, .9), red); rd.position.set(0, 3.2, 4.4); f.add(rd); }
+  box(dk, -.35, .35, ey - 3.55, ey - 3.3, ez - 8, ez + 6); for (const [z1, z2] of [[wz0 + .2, ez - 6], [wz1 - .2, ez - 1], [wz0 + 1, ez - 3], [wz1 - 1, ez + 3]]) for (const sd of [-1, 1]) { const a = [sd * (ww - .1), top, z1], b2 = [0, ey - 3.4, z2], l = Math.hypot(b2[0] - a[0], b2[1] - a[1], b2[2] - a[2]), o = add(new THREE.CylinderGeometry(.03, .03, l, 5), dk, (a[0] + b2[0]) / 2, (a[1] + b2[1]) / 2, (a[2] + b2[2]) / 2); o.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), new THREE.Vector3(b2[0] - a[0], b2[1] - a[1], b2[2] - a[2]).normalize()); }
+  const props = new THREE.Group(); g.add(props); ud.props = props; const pm = new THREE.MeshStandardMaterial({color: 0x2a1a10, roughness: .5});
+  for (const sd of [-1, 1]) { const px = sd * (ww + 1.7), py = top + .2, pz = wz1 - .4; const np = []; for (let i = 0; i <= 12; i++) { const t = i / 12; np.push(new THREE.Vector2(.42 * Math.sin(Math.min(1, t * 1.6) * PI / 2) * (1 - Math.max(0, t - .7) * 1.6) + .02, t * 2)); } const ng = new THREE.LatheGeometry(np, 14); ng.rotateX(PI / 2); add(ng, fab, px, py, pz - 1);
+    box(dk, Math.min(sd * ww, px) - .05 + (sd > 0 ? 0 : 0), Math.max(sd * ww, px), py - .06, py + .06, pz - .3, pz + .3); add(new THREE.ConeGeometry(.16, .4, 10), dk, px, py, pz + 1.15).rotation.x = PI / 2;
+    const p = new THREE.Group(); p.position.set(px, py, pz + 1.05); props.add(p); for (let i = 0; i < 3; i++) { const b = new THREE.Mesh(new THREE.BoxGeometry(.13, .78, .03), pm); b.geometry.translate(0, .4, 0); b.rotation.z = i * TAU / 3; p.add(b); } }
+  for (const sd of [-1, 1]) { const sp = new THREE.Sprite(new THREE.SpriteMaterial({map: TX.glow, color: sd < 0 ? 0xff3020 : 0x30ff60, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending})); sp.position.set(sd * 3.3, ey, ez - 2); sp.scale.setScalar(.9); g.add(sp); }
+  for (const z of [ez - 10, ez + 8]) { const l = add(new THREE.CylinderGeometry(.015, .015, 5, 4), dk, 0, ey - 5.5, z); } }
+const GUNM = {g: 0, s: 0};
+function gunModels() { const o = P && P.own; if (!o) return; const blk = new THREE.MeshStandardMaterial({color: 0x1a1b1d, metalness: .35, roughness: .45}), stl = new THREE.MeshStandardMaterial({color: 0x55585e, metalness: .45, roughness: .35}), wood = new THREE.MeshStandardMaterial({color: 0x4a2410, roughness: .6}), glove = new THREE.MeshStandardMaterial({color: 0xc8a020, roughness: .6}), gls = new THREE.MeshStandardMaterial({color: 0x0a2030, metalness: .9, roughness: .05});
+  const add = (g, geo, m, x, y, z, rx = 0, rz = 0) => { const q = new THREE.Mesh(geo, m); q.position.set(x, y, z); q.rotation.x = rx; q.rotation.z = rz; q.castShadow = false; g.add(q); return q; };
+  if ((o.glock || 0) !== GUNM.g) { GUNM.g = o.glock || 0; if (GUNM.g === 2) { VMG.clear(); add(VMG, new THREE.CylinderGeometry(.011, .011, .2, 10), stl, 0, .03, -.15, PI / 2); add(VMG, new THREE.BoxGeometry(.016, .022, .2), stl, 0, .045, -.15); add(VMG, new THREE.BoxGeometry(.004, .012, .01), stl, 0, .062, -.24);
+      add(VMG, new THREE.CylinderGeometry(.026, .026, .05, 6), stl, 0, .03, -.03, PI / 2); for (let i = 0; i < 6; i++) add(VMG, new THREE.CylinderGeometry(.005, .005, .052, 5), blk, Math.sin(i * PI / 3) * .017, .03 + Math.cos(i * PI / 3) * .017, -.03, PI / 2);
+      add(VMG, new THREE.BoxGeometry(.022, .04, .07), stl, 0, .03, .02); add(VMG, new THREE.BoxGeometry(.026, .09, .04), wood, 0, -.02, .06, -.35); add(VMG, new THREE.BoxGeometry(.006, .02, .012), stl, 0, .055, .05, -.5); add(VMG, new THREE.TorusGeometry(.014, .003, 4, 10, PI), blk, 0, .0, .015, 0, PI);
+      add(VMG, new THREE.SphereGeometry(.04, 8, 6), glove, 0, -.05, .07); } }
+  if ((o.sg || 0) !== GUNM.s) { GUNM.s = o.sg || 0; if (GUNM.s === 2) { VMS.clear(); add(VMS, new THREE.CylinderGeometry(.009, .011, .7, 10), blk, 0, .03, -.38, PI / 2); add(VMS, new THREE.BoxGeometry(.04, .045, .42), wood, 0, .005, -.15); add(VMS, new THREE.BoxGeometry(.038, .07, .26), wood, 0, -.02, .16, .12);
+      add(VMS, new THREE.BoxGeometry(.03, .03, .14), blk, 0, .03, .0); add(VMS, new THREE.CylinderGeometry(.006, .006, .04, 6), stl, .03, .035, .04, 0, PI / 2); add(VMS, new THREE.SphereGeometry(.009, 6, 5), stl, .05, .035, .04);
+      add(VMS, new THREE.CylinderGeometry(.016, .016, .26, 12), blk, 0, .08, -.05, PI / 2); for (const z of [-.19, .09]) add(VMS, new THREE.CylinderGeometry(.021, .018, .05, 12), blk, 0, .08, z, PI / 2); add(VMS, new THREE.CircleGeometry(.017, 12), gls, 0, .08, .116); for (const z of [-.08, .02]) add(VMS, new THREE.BoxGeometry(.012, .03, .012), blk, 0, .06, z);
+      add(VMS, new THREE.TorusGeometry(.016, .003, 4, 10, PI), blk, 0, -.01, .03, 0, PI); add(VMS, new THREE.SphereGeometry(.04, 8, 6), glove, 0, -.035, -.3); add(VMS, new THREE.SphereGeometry(.04, 8, 6), glove, .01, -.05, .05); } } }
+{ const f0 = hud; hud = function () { const r = f0.apply(this, arguments); try { gunModels(); } catch (e) {} return r; }; }
 
 menuInit();
 setTimeout(() => { buildWorld(); requestAnimationFrame(frame); }, 30);
