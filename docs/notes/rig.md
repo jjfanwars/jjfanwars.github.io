@@ -64,6 +64,8 @@ Read `CLAUDE.md` first (shared rules). Split out of it on 17 Nov 2026; keep this
 
 **Chart courses (18 Nov 2026):** voyPlot(wp) is the one way to set or clear G.voyWp (map left/right click, X/Backspace/Delete while the chart is open). With the autopilot running it sends act 'ap' with the new target, or turns it off when cleared (the host-side autopilot used to keep the old target). The context menu is blocked over the open chart, and the 'ap' off event with a reason (arrived/docked) clears the plotted course.
 
+**Low deck walls (18 Nov 2026):** jetCargo (buildBoat wrapper) now also turns every deck BW wall no higher than .6 m (the hold hatch's .2 m wall was blocking the wheelhouse door on most hulls, plus lids and low lockers) into a BFL step-up floor and disables the wall (y1 = -1). Checked that walking aft-to-forward from the hold reaches the cabin on hulls 1, 2, 3, 5, 8, 10, 11, 14, 17 (the launch has a towing post on the centreline you walk round).
+
 ## Next up (the owner's list, 18 Nov 2026; items 7-14 and the loot rework were built the same day, see the paragraphs above)
 1. **Sub visuals underwater and half underwater:** proper looks from inside and outside the research sub when it is dived and when it sits at the waterline (the waterline across the bow viewport, the sea surface seen from below, underwater fog and tint through the windows, the hull half in and half out of the water, bubbles and wake when diving).
 2. **Persisting loot and fast travel:** loot that stays where it was (taken items stay taken, a persistent world seed with slow restocks) and fast travel between ports (home, Northwatch, piers).

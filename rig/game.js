@@ -29,7 +29,7 @@ const hexS = c => '#' + c.toString(16).padStart(6, '0');
 
 // ---------------- net (jjfanwars relay)
 const RELAY_URL = 'wss://jjfanwars-relay.businessautomationvic.workers.dev';
-const GAME_V = 51;
+const GAME_V = 52;
 const Net = {
   tag: '[Rig]', role: 'solo', ws: null, peers: new Map(), code: '', relayT: {pose: 1}, id: '', name: '', handlers: {}, retry: 0, started: false,
   enc: new TextEncoder(), dec: new TextDecoder(),
@@ -7961,6 +7961,8 @@ const WIN = {m: null, k: -1};
 // cargo: hatch covers, container stacks and crates on deck get a floor on top; walk into one holding W and you climb up (and you can walk along the top and drop off)
 const CGO = {list: [], t: 0};
 function jetCargo() { CGO.list = []; if (!BOAT || BG.sub) return; const ud = BOAT.userData, wz = ud.wz || [0, 0], ww = (ud.ww || 0) + .4;
+  // low things on deck (the hold hatch, lids, low lockers): no wall, just a step up onto them
+  for (const w of BW) { if (w.y0 > .05 || w.y1 > .6 || w.y1 < 0) continue; if (w.x0 < BDECK.x0 - .5 || w.x1 > BDECK.x1 + .5 || w.z0 < BDECK.z0 - .1 || w.z1 > BDECK.z1 + .1) continue; BFL.push({x0: w.x0, x1: w.x1, z0: w.z0, z1: w.z1, y: BDECK.y + w.y1}); w.y1 = -1; }
   for (const w of BW) { const wx = w.x1 - w.x0, wd = w.z1 - w.z0; if (wx < 1 || wd < 1 || w.y1 < .45 || w.y1 > 3.3 || w.y0 > .7) continue; if (w.z1 > wz[0] - .3 && w.z0 < wz[1] + .3 && Math.max(Math.abs(w.x0), Math.abs(w.x1)) < ww) continue; if (w.x0 < BDECK.x0 - .5 || w.x1 > BDECK.x1 + .5 || w.z0 < BDECK.z0 - .1 || w.z1 > BDECK.z1 + .1) continue;
     const top = BDECK.y + w.y1; CGO.list.push({x0: w.x0, x1: w.x1, z0: w.z0, z1: w.z1, top}); BFL.push({x0: w.x0, x1: w.x1, z0: w.z0, z1: w.z1, y: top}); } }
 { const f0 = stepPlayer; stepPlayer = function (dt) { const r = f0.apply(this, arguments); if (!P || !P.ob || P.seat || P.sw || P.climb || !CGO.list.length || !K.KeyW) { CGO.t = 0; return r; }
