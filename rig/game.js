@@ -29,7 +29,7 @@ const hexS = c => '#' + c.toString(16).padStart(6, '0');
 
 // ---------------- net (jjfanwars relay)
 const RELAY_URL = 'wss://jjfanwars-relay.businessautomationvic.workers.dev';
-const GAME_V = 37;
+const GAME_V = 38;
 const Net = {
   tag: '[Rig]', role: 'solo', ws: null, peers: new Map(), code: '', relayT: {pose: 1}, id: '', name: '', handlers: {}, retry: 0, started: false,
   enc: new TextEncoder(), dec: new TextDecoder(),
@@ -3769,7 +3769,32 @@ SY_SUP[7] = X => {
   ud.shpMh.position.set(0, ys + 6.1, mz); cyl(steel, .04, .04, .6, 0, ys + 5.8, mz, 0, 0, 5);
   ud.shpSmoke = syFunnel(X, {y0: ys, h: 10.5, w: 3.2, l: 9.5, z: pz + 13, rk: .28, e: 2.2, m: cr, band: nv, band2: S({color: 0xc8a040, roughness: .4, metalness: .5}), top: nv});
   X.flP = [[-(hw - .4), yb + 3, bf + 6], [hw - .4, yb + 3, bf + 6], [0, ys + 4, pz + 10]]; ud.lightZ = bf - .4; ud.lightY = yb + 2.8; X.puff = 5;
+  // the bridge lift: brass-framed doors in the dead-end corridor beside the deckhouse (port side, forward), a landing on the bridge's back wall; the bridge floor is walkable
+  { const lz0 = wz0 + .25, lz1 = wz0 + 1.8, lx0 = -(hullHW(lz0) - .4), lx1 = -(ww + .15), lc = (lx0 + lx1) / 2, mt = S({color: 0xb8bcc0, roughness: .25, metalness: .8}), gd = S({color: 0xc8a040, roughness: .35, metalness: .6}), lit = S({color: 0x201000, emissive: 0xffa040, emissiveIntensity: .9});
+    box(cr, lx0, lx1, fb, fb + 2.65, lz0, lz1); box(gd, lc - .62, lc + .62, fb, fb + 2.35, lz1, lz1 + .04); box(mt, lc - .55, lc - .01, fb, fb + 2.22, lz1 + .04, lz1 + .07); box(mt, lc + .01, lc + .55, fb, fb + 2.22, lz1 + .04, lz1 + .07);
+    box(lit, lc - .3, lc + .3, fb + 2.4, fb + 2.54, lz1 + .02, lz1 + .06); box(lit, lc + .7, lc + .8, fb + 1.1, fb + 1.25, lz1 + .02, lz1 + .06);
+    const dz = bb - 2.0, bx = -2.9; box(gd, bx - .72, bx + .72, yb, yb + 2.35, dz - .04, dz); box(mt, bx - .65, bx - .01, yb, yb + 2.22, dz - .07, dz - .04); box(mt, bx + .01, bx + .65, yb, yb + 2.22, dz - .07, dz - .04); box(lit, bx - .3, bx + .3, yb + 2.4, yb + 2.54, dz - .06, dz - .02);
+    box(tk, -(Math.min(hullHW(bf + .9), hullHW(dz)) - 3.62), Math.min(hullHW(bf + .9), hullHW(dz)) - 3.62, yb, yb + .02, bf + .5, dz);
+    const bw2 = Math.min(hullHW(bf + .9), hullHW(dz)) - 3.6 - .45, yl = yb - fb - .1, yh = yl + 2.6;
+    BW.push({x0: lx0 - .3, x1: lx1, z0: lz0, z1: lz1, y0: 0, y1: 2.6}, {x0: -hw - 1, x1: hw + 1, z0: bf - 1, z1: bf + .95, y0: yl, y1: yh}, {x0: -hw - 1, x1: hw + 1, z0: dz - .05, z1: bb + 1, y0: yl, y1: yh}, {x0: -hw - 1, x1: -bw2, z0: bf - 1, z1: bb + 1, y0: yl, y1: yh}, {x0: bw2, x1: hw + 1, z0: bf - 1, z1: bb + 1, y0: yl, y1: yh});
+    BFL.push({x0: -bw2 - .1, x1: bw2 + .1, z0: bf + .9, z1: dz, y: yb});
+    ud.syLift = {lc, lz: lz1 + .75, yb, bx, bz: dz - .75, hz: bf + 2};
+    INTER.push({kind: 'lift', boat: 1, lx: lc, lz: lz1 + .6, by: fb + 1.2, r: 1.8, label: () => 'Take the lift up to the bridge', go: () => liftGo(1), on: () => !P.sw && P.y < fb + 3},
+      {kind: 'lift', boat: 1, lx: bx, lz: dz - .6, by: yb + 1.2, r: 1.8, label: () => 'Take the lift down to the deck', go: () => liftGo(0), on: () => P.y > yb - 1},
+      {kind: 'helm', boat: 1, lx: 0, lz: bf + 1.5, by: yb + 1, r: 2.2, label: () => P.seat ? 'Let go of the wheel' : 'Take the wheel', on: () => !P.sw && !P.seat && !B.driver && P.y > yb - 1}); }
   return ys; };
+// lift ride: a short fade to black with a hum and a chime, then you step out at the other landing (local only; poses carry the new height)
+function liftGo(up) { if (!BOAT || !BOAT.userData.syLift || P.lift || P.seat) return; P.lift = {t: 0, up, done: 0}; tone(880, .05, .25); tone(1320, .04, .4); }
+function liftFade(o) { let d = G.liftEl; if (!d) { d = G.liftEl = document.createElement('div'); d.style.cssText = 'position:fixed;inset:0;background:#000;pointer-events:none;z-index:40;opacity:0'; document.body.appendChild(d); } o = Math.round(clamp(o, 0, 1) * 50) / 50; if (o !== G.liftO) { G.liftO = o; d.style.opacity = o; } }
+{ const f0 = stepPlayer; stepPlayer = function (dt, ...a) {
+  if (P && P.lift) { const q = P.lift, L = BOAT && BOAT.userData.syLift; q.t += dt; P.vx = P.vz = 0; P.in = [0, 0]; const bdy = B.yaw - (P.lastBY ?? B.yaw); P.lastBY = B.yaw; P.yaw += bdy;
+    if (L && !q.done && q.t > .45) { q.done = 1; P.bl = q.up ? [L.bx, L.bz] : [L.lc, L.lz]; P.y = q.up ? L.yb : BDECK.y; P.yaw = B.yaw + (q.up ? 0 : PI); P.pitch = 0; tone(70, .06, 1.1, 'sine', null, 95); setTimeout(() => { tone(1318, .05, .7); tone(1046, .04, .9); }, 900); }
+    const [wx, wz] = bL2W(P.bl[0], P.bl[1]); P.x = wx; P.z = wz; P.ob = 1; P._ly = P.y;
+    liftFade(q.t < .45 ? q.t / .45 : q.t < 1.5 ? 1 : 1 - (q.t - 1.5) / .5); if (q.t > 2 || !L || !alivePlay()) { P.lift = null; liftFade(0); } return; }
+  const ws = P && P._ws, r = f0.call(this, dt, ...a); if (!P) return r;
+  if (P.seat && !ws) P.fromBr = (P._ly || 0) > BDECK.y + 5 ? 1 : 0;
+  else if (!P.seat && ws && P.fromBr) { P.fromBr = 0; const L = BOAT && BOAT.userData.syLift; if (L) { P.bl = [0, L.hz]; P.y = L.yb; const [wx, wz] = bL2W(0, L.hz); P.x = wx; P.z = wz; P.vy = 0; } }
+  P._ws = P.seat; P._ly = P.y; return r; }; }
 // [3] Iron Mule: short-sea container coaster. Raised forecastle with a windlass and a bow mast, containers on hatch coamings, a deck crane,
 // an aft house of two recessed decks with rails and a full-beam bridge with wings (the 8.9 m helm camera looks out through its glass), a square funnel, a rescue boat
 SY_SUP[3] = X => {
