@@ -29,7 +29,7 @@ const hexS = c => '#' + c.toString(16).padStart(6, '0');
 
 // ---------------- net (jjfanwars relay)
 const RELAY_URL = 'wss://jjfanwars-relay.businessautomationvic.workers.dev';
-const GAME_V = 38;
+const GAME_V = 39;
 const Net = {
   tag: '[Rig]', role: 'solo', ws: null, peers: new Map(), code: '', relayT: {pose: 1}, id: '', name: '', handlers: {}, retry: 0, started: false,
   enc: new TextEncoder(), dec: new TextDecoder(),
@@ -7071,6 +7071,132 @@ function menuInit() {
   $('note').onclick = closeNote; $('fishHelpX').onclick = () => showFishHelp(false);
   refreshRooms(); saveInfo(); setInterval(() => { if (!$('menu').classList.contains('hidden')) refreshRooms(); }, 8000);
 }
+// ---------------- loot: rarity tiers, treasures in seven collections (set bonuses and perks), relics (crew-wide finds, two active per player), appraisal at the sale, the trophy cabinet
+// treasure kinds are 't_*', relics 'r_*' (appended to KINDS so old indices hold). Danger (distance from home, region, height, the derelict/rig) shifts the rarity roll; night shifts floats.
+const RAR = [['Common', '#c8c4b8', 0xc8c4b8], ['Uncommon', '#6fe07a', 0x6fe07a], ['Rare', '#5aa8ff', 0x5aa8ff], ['Epic', '#c27aff', 0xc27aff], ['Legendary', '#ffc83a', 0xffc83a]];
+const TRS = [ // id, name, rarity, value, set, shape, colour
+  ['t_cn1', 'copper penny', 0, 30, 'coin', 'coin', 0xb06a3a], ['t_cn2', 'silver shilling', 1, 70, 'coin', 'coin', 0xc8ccd0], ['t_cn3', 'gold doubloon', 2, 180, 'coin', 'coin', 0xe8b830], ['t_cn4', 'royal sovereign', 3, 420, 'coin', 'coin', 0xffd860], ['t_cn5', "emperor's coin", 4, 1400, 'coin', 'coin', 0xfff0a0],
+  ['t_nv1', 'brass compass', 1, 90, 'nav', 'instr', 0xb8903a], ['t_nv2', 'sextant', 2, 240, 'nav', 'instr', 0xc0a050], ['t_nv3', 'ship chronometer', 3, 520, 'nav', 'instr', 0xd8c070], ['t_nv4', 'golden astrolabe', 4, 1600, 'nav', 'instr', 0xffd040],
+  ['t_wr1', 'dog tags', 0, 35, 'war', 'tag', 0x9aa0a6], ['t_wr2', 'service medal', 1, 85, 'war', 'medal', 0xb87333], ['t_wr3', 'naval cap badge', 2, 200, 'war', 'medal', 0xd8b040], ['t_wr4', 'gallantry star', 3, 480, 'war', 'medal', 0xe8e8f0],
+  ['t_oc1', 'conch shell', 0, 28, 'ocean', 'shell', 0xf0c8a8], ['t_oc2', 'red coral', 1, 80, 'ocean', 'coral', 0xd83a3a], ['t_oc3', 'ambergris', 2, 260, 'ocean', 'egg', 0x8a7a5a], ['t_oc4', 'giant pearl', 3, 600, 'ocean', 'pearl', 0xf4f0f8], ['t_oc5', 'glass nautilus', 4, 1800, 'ocean', 'shell', 0x9ae8ff],
+  ['t_fs1', 'shark tooth', 0, 32, 'fossil', 'tooth', 0xe0d4b0], ['t_fs2', 'ammonite', 1, 95, 'fossil', 'shell', 0x8a7a60], ['t_fs3', 'trilobite', 2, 230, 'fossil', 'disc', 0x6a5a48], ['t_fs4', 'megalodon tooth', 3, 560, 'fossil', 'tooth', 0x4a4038],
+  ['t_sn1', 'Station Nine crew badge', 1, 75, 's9', 'tag', 0xd05a10], ['t_sn2', 'drill core sample', 2, 210, 's9', 'jar', 0x6a4a3a], ['t_sn3', 'specimen jar', 3, 640, 's9', 'jar', 0x7aff9a], ['t_sn4', 'the warm egg', 4, 2200, 's9', 'egg', 0x5a1a2a],
+  ['t_jw1', 'silver ring', 1, 110, 'jewel', 'ring', 0xd8dce0], ['t_jw2', 'emerald', 2, 300, 'jewel', 'gem', 0x2ad870], ['t_jw3', 'sapphire tiara', 3, 700, 'jewel', 'ring', 0x3a6aff], ['t_jw4', 'Heart of the Deep', 4, 2600, 'jewel', 'gem', 0x40a0ff]];
+const TRSD = {}; for (const [id, n, r, v, set, sh, c] of TRS) TRSD[id] = {id, n, r, v, set, sh, c};
+const LSETS = {coin: {n: 'Coin collection', v: 1500, perk: 'Appraisals +10%'}, nav: {n: "Navigator's instruments", v: 2000, perk: '+1 relic slot'}, war: {n: 'War medals', v: 1800}, ocean: {n: 'Treasures of the sea', v: 1600, perk: 'Fish sell for 15% more'},
+  fossil: {n: 'Fossil drawer', v: 1600}, s9: {n: 'The Station Nine file', v: 3000}, jewel: {n: 'Crown jewels', v: 2500, perk: 'Appraisals never come in under value'}};
+const RELICS = {r_comp: ['Drowned Compass', 'A green beam rises over the nearest treasure within 500 m', 0x9affd0], r_eye: ['Glass Eye', 'You see treasure glinting through walls within 60 m', 0xbfe8ff], r_charm: ["Diver's Charm", 'Your air lasts twice as long', 0x6fd0ff],
+  r_lamp: ["Keeper's Lantern", 'Your torch never runs flat', 0xffd27a], r_hook: ['Golden Hook', 'Rare fish bite more often and fight less', 0xffd040], r_doub: ['Lucky Doubloon', 'Passive for the whole crew: every appraisal +15%', 0xffe08a]};
+for (const k of Object.keys(TRSD).concat(Object.keys(RELICS))) { KINDS.push(k); CARRY.add(k); SZ[k] = 1; NAMES[k] = TRSD[k] ? TRSD[k].n : RELICS[k][0]; JOB_SKIP.push(k); }
+for (const k in TRSD) VALUE[k] = TRSD[k].v;
+const lootD = (x, z, y = 0) => { const rg = mapRegion(x, z), pay = rg ? mix(1, rg.pay, mapRegion.w) : 1; return clamp(Math.hypot(x - HOME.x, z - HOME.z) / 4500, 0, 1) * .6 + (pay - 1) * .5 + (y > 3 ? .1 : 0) + (inCruise(x, z) ? .3 : 0) + (nearRig(x, z) ? .2 : 0); };
+function lootRar(d, rng) { const u = rng(), L = .005 + .03 * d, E = L + .03 + .07 * d, R = E + .1 + .15 * d, U = R + .28 + .1 * d; return u < L ? 4 : u < E ? 3 : u < R ? 2 : u < U ? 1 : 0; }
+function lootRoll(d, rng, relicOk = 1) { const r = lootRar(d, rng); if (r === 4 && relicOk && rng() < .3) { const own = lootOwn().rel, free = Object.keys(RELICS).filter(k => !own[k]); if (free.length) return free[Math.floor(rng() * free.length)]; }
+  const L = TRS.filter(t => t[2] === r); return L[Math.floor(rng() * L.length)][0]; }
+const lootRarOf = k => TRSD[k] ? TRSD[k].r : RELICS[k] ? 4 : -1;
+const lootOwn = () => { const S = isHost() ? G.stat || {} : G.colS || {}; return {col: (isHost() ? S.col : S.c) || {}, cs: (isHost() ? S.cs : S.s) || {}, rel: (isHost() ? S.rel : S.r) || {}}; };
+const lootSlots = () => 2 + (lootOwn().cs.nav ? 1 : 0);
+G.relAct = (() => { try { return JSON.parse(localStorage.getItem('s9-relics')) || []; } catch (e) { return []; } })();
+const relicOn = k => !!lootOwn().rel[k] && G.relAct.includes(k);
+function relicToggle(k) { const a = G.relAct, i = a.indexOf(k); if (i >= 0) a.splice(i, 1); else if (lootOwn().rel[k]) { a.push(k); while (a.length > lootSlots()) a.shift(); } try { localStorage.setItem('s9-relics', JSON.stringify(a)); } catch (e) {} if (G.jrnOpen) jrnDraw(); }
+// meshes: small, readable shapes per treasure; relics glow
+{ const f0 = itemMesh; itemMesh = function (kind) { const T = TRSD[kind], R = RELICS[kind]; if (!T && !R) return f0.apply(this, arguments);
+  const g = new THREE.Group(), c = T ? T.c : R[2], m = new THREE.MeshStandardMaterial({color: c, roughness: .3, metalness: T && /coin|instr|medal|ring/.test(T.sh) ? .8 : .2, emissive: R || (T && T.r >= 3) ? c : 0, emissiveIntensity: R ? .6 : T && T.r >= 3 ? .18 : 0}), add = (geo, x, y, z) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); g.add(o); return o; };
+  const sh = T ? T.sh : 'relic';
+  if (sh === 'coin') { for (let i = 0; i < 3; i++) add(new THREE.CylinderGeometry(.045, .045, .012, 16), (i - 1) * .05, .006 + i * .012, i * .02); }
+  else if (sh === 'instr') { const t = add(new THREE.TorusGeometry(.1, .012, 6, 20), 0, .1, 0); t.rotation.y = .4; add(new THREE.CylinderGeometry(.008, .008, .2, 6), 0, .1, 0).rotation.z = 1; add(new THREE.CylinderGeometry(.06, .07, .025, 12), 0, .012, 0); }
+  else if (sh === 'tag') { add(new THREE.BoxGeometry(.06, .005, .09), 0, .005, 0); add(new THREE.BoxGeometry(.06, .005, .09), .03, .012, .02).rotation.y = .4; }
+  else if (sh === 'medal') { add(new THREE.CylinderGeometry(.04, .04, .008, 14), 0, .006, .03); const rb = new THREE.Mesh(new THREE.BoxGeometry(.035, .004, .07), new THREE.MeshStandardMaterial({color: 0x8a1a2a, roughness: .8})); rb.position.set(0, .006, -.03); g.add(rb); }
+  else if (sh === 'shell') { const s = add(new THREE.ConeGeometry(.07, .2, 10, 1, true), 0, .05, 0); s.rotation.z = PI / 2; m.side = THREE.DoubleSide; add(new THREE.SphereGeometry(.06, 10, 8), -.06, .05, 0); }
+  else if (sh === 'coral') { for (let i = 0; i < 5; i++) { const b = add(new THREE.CylinderGeometry(.008, .016, .16, 5), Math.sin(i * 1.3) * .04, .08, Math.cos(i * 1.3) * .04); b.rotation.set(Math.sin(i) * .5, 0, Math.cos(i * 2) * .5); } }
+  else if (sh === 'egg') add(new THREE.SphereGeometry(.09, 14, 10), 0, .09, 0).scale.set(.85, 1.15, .85);
+  else if (sh === 'pearl') { add(new THREE.SphereGeometry(.07, 16, 12), 0, .07, 0); const s = new THREE.Mesh(new THREE.SphereGeometry(.16, 12, 6, 0, TAU, 0, PI / 2), new THREE.MeshStandardMaterial({color: 0x8a8070, side: THREE.DoubleSide})); s.scale.y = .35; g.add(s); }
+  else if (sh === 'tooth') add(new THREE.ConeGeometry(.05, .16, 5), 0, .05, 0).rotation.z = 1.3;
+  else if (sh === 'disc') add(new THREE.CylinderGeometry(.08, .09, .03, 9), 0, .015, 0).scale.z = .7;
+  else if (sh === 'jar') { m.transparent = true; m.opacity = .75; add(new THREE.CylinderGeometry(.06, .06, .16, 12), 0, .08, 0); const l = new THREE.Mesh(new THREE.CylinderGeometry(.063, .063, .025, 12), new THREE.MeshStandardMaterial({color: 0x3a3a3a, metalness: .6})); l.position.y = .17; g.add(l); }
+  else if (sh === 'ring') { add(new THREE.TorusGeometry(.05, .012, 8, 18), 0, .05, 0); add(new THREE.OctahedronGeometry(.022), 0, .1, 0); }
+  else if (sh === 'gem') add(new THREE.OctahedronGeometry(.08), 0, .08, 0).scale.y = 1.3;
+  else { add(new THREE.IcosahedronGeometry(.08), 0, .12, 0); const t = add(new THREE.TorusGeometry(.12, .008, 6, 24), 0, .12, 0); t.rotation.x = PI / 2; }
+  g.traverse(o => { if (o.isMesh) o.castShadow = true; }); scene.add(g); return g; }; }
+// world treasure: a rarity glint (sprite), and a legendary light pillar visible from far off (its own list, not hidden by the 200 m item cull)
+const LOOT = {beams: [], glints: [], cab: null, cabK: '', t: 0, cb: null};
+function lootBeam(c, h = 70, r = .35) { const m = new THREE.Mesh(new THREE.CylinderGeometry(r, r * 1.6, h, 10, 1, true), new THREE.MeshBasicMaterial({color: c, transparent: true, opacity: .35, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false})); m.geometry.translate(0, h / 2, 0); scene.add(m); return m; }
+{ const f0 = addItem; addItem = function (kind) { const it = f0.apply(this, arguments), r = lootRarOf(kind); if (r < 0) return it;
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({map: TX.glow, color: RAR[r][2], transparent: true, opacity: .25 + r * .12, depthWrite: false, blending: THREE.AdditiveBlending})); sp.scale.setScalar(.6 + r * .25); sp.position.y = .15; it.mesh.add(sp); it.glint = sp; LOOT.glints.push(it);
+  if (r >= 4) { const b = lootBeam(RAR[4][2]); b.position.set(it.x, it.y, it.z); it.beam = b; LOOT.beams.push(it); } return it; }; }
+// placement: after the usual spots are filled, ordinary loot rolls into treasure by danger (WR, so every client agrees)
+{ const f0 = placeItems; placeItems = function () { for (const it of LOOT.beams) scene.remove(it.beam); LOOT.beams.length = 0; LOOT.glints.length = 0; const r = f0.apply(this, arguments);
+  const swap = (it, k) => { scene.remove(it.mesh); const n = addItem(k, it); ITEMS.pop(); n.i = it.i; ITEMS[it.i] = n; };
+  for (let i = 0; i < ITEMS.length; i++) { const it = ITEMS[i]; if (!['crate', 'scrap', 'patch', 'battery', 'flare', 'fuel', 'relic', 'gold', 'pearl', 'chest'].includes(it.kind)) continue; const d = lootD(it.x, it.z, it.y), rich = ['relic', 'gold', 'pearl', 'chest'].includes(it.kind);
+    if (WR() < (rich ? .55 : .2 + .25 * d)) swap(it, lootRoll(d + (rich ? .25 : 0), WR, 0)); }
+  return r; }; }
+// floats: the host sometimes floats treasure (more at night and in far, rich waters)
+{ const f0 = spawnFloat; spawnFloat = function (i) { const r = f0.apply(this, arguments), f = G.floats[i]; if (!f) return r; const nt = TOD.night || 0, d = lootD(f[0], f[1]) + nt * .3;
+  if (CR() < .05 + .05 * nt + .06 * d) f[2] = KINDS.indexOf(lootRoll(d, CR)); return r; }; }
+// host: pickups announce rarity, relics go straight to the crew's relic case; the sale appraises treasure (chests hold two more finds)
+function lootSet(S, k, ev) { const T = TRSD[k]; if (!T) return; S.col[k] = (S.col[k] || 0) + 1; const set = T.set; if (S.cs[set]) return; if (TRS.filter(t => t[4] === set).every(t => S.col[t[0]])) { S.cs[set] = 1; const v = Math.round(LSETS[set].v * (D.pay || 1)); G.cash += v; G.earned += v; ev.push({set, v}); } }
+{ const f0 = hostAct; hostAct = function (id, m) { const p = PL.get(id); if (!p || !G.on || !m) return f0.apply(this, arguments); const S = G.stat || (G.stat = {}); S.col = S.col || {}; S.cs = S.cs || {}; S.rel = S.rel || {};
+  let apr = null; if (m.a === 'sell') { const rows = [], sets = [], q = [], lucky = S.rel.r_doub ? 1.15 : 1, coin = S.cs.coin ? 1.1 : 1, floor = S.cs.jewel ? 1 : .7, port = voyPortNear(B.x, B.z, 60 + BG.L * .5);
+    const take = (arr, sack) => { for (let i = arr.length - 1; i >= 0; i--) { const k = arr[i]; if (TRSD[k]) { q.push(k); arr.splice(i, 1); } else if (k === 'chest') for (let j = 0; j < 2; j++) q.push(lootRoll(.6, Math.random, 0)); } if (sack) sackSet(p); };
+    take(p.sack, 1); if (port) take(B.hold, 0);
+    for (const k of q) { const T = TRSD[k], u = Math.random(), mult = Math.max(floor, .7 + Math.pow(u, 3) * (T.r >= 3 ? 2.6 : 1.8)) * lucky * coin, v = Math.round(T.v * mult * (D.pay || 1)); rows.push([KINDS.indexOf(k), v, Math.round(mult * 100) / 100]); lootSet(S, k, sets); }
+    if (rows.length) { const tot = rows.reduce((a, r) => a + r[1], 0); G.cash += tot; G.earned += tot; apr = {k: 'apr', id, rows, tot, sets}; } }
+  const before = p.sack.slice(), cash0 = G.cash, r = f0.apply(this, arguments);
+  if (apr) { emit(apr); if (G.cash === cash0) emit({k: 'sold', v: apr.tot, c: {}}); save(); }
+  if (p.sack.length > before.length) { const k = p.sack[p.sack.length - 1];
+    if (RELICS[k]) { p.sack.pop(); sackSet(p); const nw = !S.rel[k]; S.rel[k] = 1; emit({k: 'relic', id, r: KINDS.indexOf(k), nw: nw ? 1 : 0}); save(); }
+    else if (TRSD[k]) emit({k: 'trs', id, t: KINDS.indexOf(k)}); }
+  return r; }; }
+{ const f0 = fishVal; fishVal = function () { const v = f0.apply(this, arguments); return lootOwn().cs.ocean ? Math.round(v * 1.15) : v; }; }
+// client: rarity toasts, the appraisal card, relic finds, set bonuses
+function lootChime(r) { if (!A.on) return; const N = [[660], [660, 880], [660, 880, 1100], [523, 784, 1046, 1318], [392, 523, 659, 784, 1046, 1318, 1568]][r]; N.forEach((f, i) => setTimeout(() => tone(f, .05 + r * .012, .5 + r * .15, r >= 3 ? 'triangle' : 'sine'), i * (r >= 4 ? 110 : 80))); }
+{ const f0 = applyEv; applyEv = function (e) { const r = f0.apply(this, arguments), me = myId();
+  if (e.k === 'trs') { const k = KINDS[e.t], T = TRSD[k]; if (T) { if (e.id === me) { lootChime(T.r); jobRc.push({k: 'trs', life: 2.6 + T.r * .6, h: `<h4 style="color:${RAR[T.r][1]}">${RAR[T.r][0].toUpperCase()}</h4><b style="color:${RAR[T.r][1]}">${jobCap(T.n)}</b><br><small style="color:#9a927e">${LSETS[T.set].n} · appraise at the shed</small>`}); }
+    else if (T.r >= 3) { const p = PL.get(e.id); showMsg(`${p ? p.name : 'Crew'} found ${RAR[T.r][0].toLowerCase()} loot: ${T.n}`, '', 3); }
+    if (T.r >= 4) { (G.banQ = G.banQ || []).push({h: 'LEGENDARY', t: jobCap(T.n), c: 0, s: 'goal'}); G.shake = Math.max(G.shake || 0, .6); } } }
+  else if (e.k === 'relic') { const k = KINDS[e.r], R = RELICS[k]; if (R) { lootChime(4); (G.banQ = G.banQ || []).push({h: e.nw ? 'RELIC FOUND' : 'RELIC (ALREADY OWNED)', t: R[0], c: 0, s: 'goal'}); if (e.id === me) showMsg(`${R[1]}. Open the journal (J) to wear it.`, R[0], 6);
+    if (e.nw && G.relAct.length < lootSlots() && !G.relAct.includes(k)) { G.relAct.push(k); try { localStorage.setItem('s9-relics', JSON.stringify(G.relAct)); } catch (x) {} } } }
+  else if (e.k === 'apr' && e.id === me) { const rows = e.rows.map(([ki, v, mu]) => { const T = TRSD[KINDS[ki]] || {n: '?', r: 0}; return `<div class="rw"><span style="color:${RAR[T.r][1]}">${jobCap(T.n)}</span><span>${money(v)}${mu >= 1.6 ? ' <b style="color:#ffc83a">×' + mu.toFixed(1) + '!</b>' : ''}</span></div>`; }).join('');
+    const best = Math.max(...e.rows.map(q => q[2])); lootChime(best >= 2 ? 4 : best >= 1.4 ? 3 : 1); jobRc.push({k: 'apr', cls: 'gold', life: 4 + e.rows.length * .4, cuV: e.tot, h: `<h4>APPRAISED</h4>${rows}<b data-cu>$0</b>${best >= 2 ? '<br><span class="jobPill">JACKPOT</span>' : ''}`});
+    for (const s of e.sets || []) (G.banQ = G.banQ || []).push({h: 'COLLECTION COMPLETE', t: LSETS[s.set].n + (LSETS[s.set].perk ? ' · ' + LSETS[s.set].perk : ''), c: s.v, s: 'goal'}); }
+  if (e.k === 'apr' && G.jrnOpen) jrnDraw(); return r; }; }
+// snapshots carry the crew's collection and relic case to guests
+{ const f0 = packSnap; packSnap = function () { const s = f0.apply(this, arguments), n = performance.now(); if (G.stat && n - (LOOT.sentT || 0) > 3000) { LOOT.sentT = n; s.col = {c: G.stat.col || {}, s: G.stat.cs || {}, r: G.stat.rel || {}}; } return s; }; }
+{ const f0 = applySnap; applySnap = function (s) { const r = f0.apply(this, arguments); if (s.col) G.colS = s.col; return r; }; }
+// journal: collections (with set bonuses and perks) and the relic case (click to wear, slots from lootSlots)
+{ const f0 = jrnDraw; jrnDraw = function () { const r = f0.apply(this, arguments), el = $('jrnB'); if (!el) return r; const O = lootOwn(), pay = D.pay || 1;
+  let h = ''; for (const set in LSETS) { const L = TRS.filter(t => t[4] === set), got = L.filter(t => O.col[t[0]]).length, S = LSETS[set];
+    h += `<h3><span>${S.n} <i>${got}/${L.length}</i></span><em class="jrS${O.cs[set] ? ' ok' : ''}">${O.cs[set] ? '✓ ' : ''}${money(S.v * pay)}${S.perk ? ' · ' + S.perk : ''}</em></h3><div class="jrG">` + L.map(t => O.col[t[0]] ? `<div class="jrT"><b style="color:${RAR[t[2]][1]}">${jobCap(t[1])}</b><small style="color:${RAR[t[2]][1]}">${RAR[t[2]][0]} · ×${O.col[t[0]]}</small></div>` : `<div class="jrT q"><b>???</b><small style="color:${RAR[t[2]][1]}">${RAR[t[2]][0]}</small></div>`).join('') + '</div>'; }
+  h += `<h3><span>Relics <i>${Object.keys(O.rel).length}/${Object.keys(RELICS).length}</i></span><em class="jrS">wearing ${G.relAct.filter(k => O.rel[k]).length}/${lootSlots()} · click to wear</em></h3><div class="jrG">` + Object.keys(RELICS).map(k => O.rel[k] ? `<div class="jrT${G.relAct.includes(k) ? ' w' : ''}" data-rel="${k}" style="cursor:pointer;pointer-events:auto"><b>${RELICS[k][0]}</b><small>${RELICS[k][1]}${G.relAct.includes(k) ? ' · WORN' : ''}</small></div>` : '<div class="jrT q"><b>???</b><small>Legendary find</small></div>').join('') + '</div>';
+  el.insertAdjacentHTML('beforeend', h); el.querySelectorAll('[data-rel]').forEach(d => d.onclick = () => relicToggle(d.dataset.rel)); return r; }; }
+// per frame (client): the compass beam, glass-eye glints, the charm and the lantern, the trophy cabinet
+function lootFrame(dt) { if (!P || !G.on) return; LOOT.t -= dt;
+  for (const it of LOOT.beams) { it.beam.visible = !it.taken; if (it.beam.visible) it.beam.material.opacity = .22 + .1 * Math.sin(G.wt * 2 + it.i); }
+  if (LOOT.t <= 0) { LOOT.t = .4; const eye = relicOn('r_eye');
+    for (const it of LOOT.glints) { const near = eye && Math.hypot(it.x - P.x, it.z - P.z) < 60, m = it.glint.material; if (m.depthTest === near) { m.depthTest = !near; m.needsUpdate = true; } it.glint.scale.setScalar((near ? 1.6 : 1) * (.6 + lootRarOf(it.kind) * .25)); if (near && !it.taken && !it.mesh.visible) it.mesh.visible = true; }
+    if (relicOn('r_comp')) { let best = null, bd = 500; for (const it of LOOT.glints) { if (it.taken) continue; const d = Math.hypot(it.x - P.x, it.z - P.z); if (d < bd && d > 4) { bd = d; best = it; } }
+      for (const f of G.floats) if (f && lootRarOf(KINDS[f[2]]) >= 0) { const d = Math.hypot(f[0] - P.x, f[1] - P.z); if (d < bd) { bd = d; best = {x: f[0], y: 0, z: f[1]}; } }
+      if (!LOOT.cb) LOOT.cb = lootBeam(0x9affd0, 40, .2); LOOT.cb.visible = !!best; if (best) LOOT.cb.position.set(best.x, best.y || 0, best.z); } else if (LOOT.cb) LOOT.cb.visible = false;
+    lootCabinet(); }
+  if (relicOn('r_charm') && P.sw && (P.dv || 0) > .4) { const su = SUIT[(P.own && P.own.suit) || 0] || SUIT[0]; P.air = Math.min(1, (P.air ?? 1) + dt / su.air / 2); }
+  if (relicOn('r_lamp') && P.bat != null) { if (LOOT.bat != null && P.bat < LOOT.bat) P.bat = LOOT.bat; LOOT.bat = Math.max(P.bat, .6); } else LOOT.bat = null; }
+// the trophy cabinet beside the shed door: glass front, four lit shelves, every treasure the crew has found (rarest first)
+function lootCabinet() { const b = G.shed; if (!b) return; const O = lootOwn(), ks = Object.keys(O.col).filter(k => TRSD[k]).sort((a, c) => TRSD[c].r - TRSD[a].r || a.localeCompare(c)).slice(0, 28), key = ks.join() + '|' + Object.keys(O.rel).join();
+  if (LOOT.cab && key === LOOT.cabK) return; LOOT.cabK = key; if (LOOT.cab) scene.remove(LOOT.cab);
+  const g = LOOT.cab = new THREE.Group(), [x, z] = L2W(b, -2.5, -2.75); g.position.set(x, b.fy, z); g.rotation.y = b.th + PI; scene.add(g);
+  const wd = new THREE.MeshStandardMaterial({map: TX.wood, color: 0x5a3a22, roughness: .6}), W = 2.2, H = 2.1, D = .5, bx = (m, x0, x1, y0, y1, z0, z1) => { const o = new THREE.Mesh(new THREE.BoxGeometry(x1 - x0, y1 - y0, z1 - z0), m); o.position.set((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2); g.add(o); return o; };
+  bx(wd, -W / 2, W / 2, 0, .12, -D / 2, D / 2); bx(wd, -W / 2, W / 2, H - .08, H, -D / 2, D / 2); bx(wd, -W / 2, -W / 2 + .06, 0, H, -D / 2, D / 2); bx(wd, W / 2 - .06, W / 2, 0, H, -D / 2, D / 2); bx(wd, -W / 2, W / 2, 0, H, -D / 2, -D / 2 + .04);
+  const sh = new THREE.MeshStandardMaterial({color: 0x2a2018, roughness: .5}); for (let i = 0; i < 4; i++) bx(sh, -W / 2 + .06, W / 2 - .06, .12 + i * .48, .14 + i * .48, -D / 2 + .04, D / 2 - .02);
+  const gl = new THREE.Mesh(new THREE.PlaneGeometry(W - .12, H - .2), new THREE.MeshStandardMaterial({color: 0xbfd8e0, transparent: true, opacity: .14, roughness: .05, metalness: .3, depthWrite: false})); gl.position.set(0, H / 2, D / 2 - .01); g.add(gl);
+  const lt = new THREE.Mesh(new THREE.BoxGeometry(W - .2, .02, .04), new THREE.MeshStandardMaterial({color: 0x201000, emissive: 0xffd8a0, emissiveIntensity: 1.2})); lt.position.set(0, H - .1, D / 2 - .08); g.add(lt);
+  const sg = document.createElement('canvas'); sg.width = 256; sg.height = 48; const q = sg.getContext('2d'); q.fillStyle = '#2a1a10'; q.fillRect(0, 0, 256, 48); q.fillStyle = '#e8c070'; q.font = 'bold 22px Georgia'; q.textAlign = 'center'; q.fillText(`TROPHIES  ${Object.keys(O.col).length}/${TRS.length}`, 128, 32);
+  const st = new THREE.CanvasTexture(sg); st.colorSpace = THREE.SRGBColorSpace; const sp = new THREE.Mesh(new THREE.PlaneGeometry(1.2, .22), new THREE.MeshBasicMaterial({map: st})); sp.position.set(0, H + .14, 0); g.add(sp);
+  ks.forEach((k, i) => { const m = itemMesh(k), row = Math.floor(i / 7), col = i % 7; scene.remove(m); m.position.set(-W / 2 + .2 + col * ((W - .4) / 6), .15 + (3 - row) * .48, 0); m.scale.setScalar(1.5); m.rotation.y = .5; g.add(m);
+    const r = TRSD[k].r; if (r >= 2) { const s = new THREE.Sprite(new THREE.SpriteMaterial({map: TX.glow, color: RAR[r][2], transparent: true, opacity: .2 + r * .08, depthWrite: false, blending: THREE.AdditiveBlending})); s.scale.setScalar(.35 + r * .08); s.position.copy(m.position); s.position.y += .1; g.add(s); } });
+  Object.keys(O.rel).forEach((k, i) => { const m = itemMesh(k); scene.remove(m); m.position.set(-W / 2 + .35 + i * .36, H + .02, D / 2 + .02); m.scale.setScalar(.9); g.add(m); }); }
+{ const f0 = hud; hud = function () { const r = f0.apply(this, arguments); try { const now = performance.now(), dt = Math.min(.1, (now - (LOOT.ft || now)) / 1000); LOOT.ft = now; lootFrame(dt); } catch (e) { if (!LOOT.err) { LOOT.err = 1; console.warn(e); } } return r; }; }
+{ const f0 = startGame; startGame = function () { LOOT.cabK = ''; const r = f0.apply(this, arguments); if (isHost() && G.stat) { G.stat.col = G.stat.col || {}; G.stat.cs = G.stat.cs || {}; G.stat.rel = G.stat.rel || {}; } return r; }; }
+
 menuInit();
 setTimeout(() => { buildWorld(); requestAnimationFrame(frame); }, 30);
 if (TEST) window.__S = {closeCasino, BOAT_: () => BOAT, BSPOT, FX, BHELM, bL2W, openCasino, AURAS, applyAll, launchFw, FWK, get ALL() { return ALL; }, get BOAT() { return BOAT; }, CN, CRZ, STS, GUL, DSITES, stepSteward, HULLS, SUNK, BG, BDECK, buildBoat, seaBed, render, levPose, LEV, MJ, TODd: () => SUNDIR, TOD, F, FISH, GEAR, equip, toolDown, toolUp, gotGear, pickFish, hostShoot, G, PL, M, B, K, SET, VALVES, ITEMS, HIDES, BLD, SPOTS, NG, SURF, POIS, DIGS, ISLES, Net, get P() { return P; }, startGame, step, hostStep, hostAct, act, targets, toggleHide, cam, scene, RND, noise, downPlayer, floorAt, navPath, applyEv, boatPose, landH, openShop, set eDown(v) { eDown = v; }, crewList, hostStart, joinRoom};
