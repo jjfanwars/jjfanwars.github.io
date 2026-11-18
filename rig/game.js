@@ -29,7 +29,7 @@ const hexS = c => '#' + c.toString(16).padStart(6, '0');
 
 // ---------------- net (jjfanwars relay)
 const RELAY_URL = 'wss://jjfanwars-relay.businessautomationvic.workers.dev';
-const GAME_V = 32;
+const GAME_V = 34;
 const Net = {
   tag: '[Rig]', role: 'solo', ws: null, peers: new Map(), code: '', relayT: {pose: 1}, id: '', name: '', handlers: {}, retry: 0, started: false,
   enc: new TextEncoder(), dec: new TextDecoder(),
@@ -179,20 +179,31 @@ function lbox(b, k, lx, ly, lz, sx, sy, sz, ry = 0, tile = 1.5) {
 function zoneOf(x, z, y, m = 0) { for (let i = 0; i < BLD.length; i++) { const b = BLD[i]; if (Math.abs(y - b.fy) > 2) continue; const l = W2L(b, x, z); if (Math.abs(l[0]) < b.w / 2 - m && Math.abs(l[1]) < b.d / 2 - m) return i; } return -1; }
 const BT = {quarters: {w: 8, d: 6, dx: 0, dw: 1.3, wh: 2.8}, gen: {w: 7, d: 6, dx: 1.5, dw: 1.6, wh: 3}, ctrl: {w: 8, d: 5.5, dx: 2, dw: 1.3, wh: 2.8}, hut: {w: 6, d: 5, dx: 1.2, dw: 1.2, wh: 2.5, wood: 1}, state: {w: 5.4, d: 8.4, dx: 0, dw: 1.1, wh: 3.4, wm: 'wallp', fm: 'carpet'}, bridge: {w: 14, d: 6, dx: 0, dw: 1.4, wh: 3.2, wm: 'white'}, cabin: {w: 5, d: 4.4, dx: 0, dw: 1.2, wh: 2.3, wood: 1}, shed: {w: 7, d: 5, dx: 0, dw: 1.6, wh: 3, wood: 1}};
 function building(kind, name, x, z, y, door) {
-  const T = BT[kind], b = {kind, name, x, z, th: ROT[door], w: T.w, d: T.d, wh: T.wh, fy: y, i: BLD.length}; BLD.push(b);
-  const t = .16, hw = b.w / 2, hd = b.d / 2, wh = b.wh, dl = T.dx - T.dw / 2, dr = T.dx + T.dw / 2, wm = T.wm || (T.wood ? 'planks' : 'plate');
+  const T = BT[kind], b = {kind, name, x, z, th: ROT[door], w: T.w, d: T.d, wh: T.wh, fy: y, i: BLD.length}; BLD.push(b); itrMats();
+  const t = .16, hw = b.w / 2, hd = b.d / 2, wh = b.wh, dl = T.dx - T.dw / 2, dr = T.dx + T.dw / 2, wm = T.wm || (T.wood ? 'planks' : 'plate'), kn = !!ITR.kinds[kind], rig = !T.wood && !T.wm;
   const wall = (lx, lz, sx, sz) => { lbox(b, wm, lx, wh / 2, lz, sx, wh, sz); const r = rectW(b, lx - sx / 2, lx + sx / 2, lz - sz / 2, lz + sz / 2); WALLS.push(Object.assign(r, {y0: y, y1: y + wh, see: true})); };
-  wall(0, hd, b.w + t, t); wall(-hw, 0, t, b.d); wall(hw, 0, t, b.d);
+  if (kind === 'bridge') { // the sea-facing wall is a real window: sill, header and mullions round one pane; the collision stays full height
+    lbox(b, wm, 0, .6, hd, b.w + t, 1.2, t); lbox(b, wm, 0, (2.4 + wh) / 2, hd, b.w + t, wh - 2.4, t); for (let i = -2; i <= 2; i++) lbox(b, wm, i * b.w / 6, 1.8, hd, .1, 1.2, t);
+    WALLS.push(Object.assign(rectW(b, -hw - t / 2, hw + t / 2, hd - t / 2, hd + t / 2), {y0: y, y1: y + wh, see: true})); itrPane(b, b.w - .1, 1.2, 0, 1.8, hd);
+  } else wall(0, hd, b.w + t, t);
+  wall(-hw, 0, t, b.d); wall(hw, 0, t, b.d);
   wall((-hw - t / 2 + dl) / 2, -hd, dl + hw + t / 2, t); wall((hw + t / 2 + dr) / 2, -hd, hw + t / 2 - dr, t);
   lbox(b, wm, T.dx, (2.1 + wh) / 2, -hd, T.dw, wh - 2.1, t);
-  lbox(b, T.wood ? 'log' : 'hazard', T.dx, 2.12, -hd, T.dw + .3, .12, t + .06);
-  lbox(b, 'door', dr + .03, 1.02, -hd + T.dw / 2 + .1, .05, 2.02, T.dw - .04);
-  lbox(b, T.wood ? 'roofW' : 'plate', 0, wh + .08, 0, b.w + .5, .16, b.d + .5);
+  lbox(b, T.wood ? 'log' : T.wm ? 'brass' : 'hazard', T.dx, 2.12, -hd, T.dw + .3, .12, t + .06);
+  lbox(b, T.wood ? 'itrDoorW' : 'itrDoorS', dr + .03, 1.02, -hd + T.dw / 2 + .1, .05, 2.02, T.dw - .04);
+  WALLS.push(Object.assign(rectW(b, dr, dr + .06, -hd + .1, -hd + T.dw + .1), {y0: y, y1: y + 2.05, see: true}));
+  if (T.wood && kn) itrGable(b, kind === 'cabin'); else lbox(b, T.wood ? 'roofW' : 'plate', 0, wh + .08, 0, b.w + (T.wm ? .1 : .5), .16, b.d + (T.wm ? .1 : .5));
   lbox(b, T.fm || (T.wood ? 'planks' : 'floorP'), 0, .03, 0, b.w, .06, b.d, 0, 1.2);
-  for (const s of [-1, 1]) lbox(b, 'glass', s * hw, 1.6, -.6, t + .05, .5, 1.1);
-  b.lamp = L2W(b, 0, 0); if (!T.wood && !T.wm) LAMPS.push([b.lamp[0], y + wh - .3, b.lamp[1], 1]);
+  if (kind !== 'state' && kind !== 'bridge') { const wz = ITR.winZ[kind] || [-.6, -.6]; for (const s of [-1, 1]) itrWin(b, s, wz[s < 0 ? 0 : 1], T.wood ? 'log' : 'steel'); }
+  itrTrim(b, T, dl, dr);
+  b.lamp = L2W(b, 0, 0);
+  if (!kn) { if (rig) LAMPS.push([b.lamp[0], y + wh - .3, b.lamp[1], 1]); }
+  else { if (T.wood) itrBeams(b); for (const lx of kind === 'bridge' ? [-3.5, 3.5] : [0]) itrFixture(b, T, lx, 0, rig); }
   b.din = L2W(b, T.dx, -hd + 1.0); b.dout = L2W(b, T.dx, -hd - 1.4);
-  b.hides = []; furnish(b); return b;
+  b.hides = []; furnish(b);
+  // wreck cabins learn they are wrecks just after this returns (cab.wreck = W): dress them then
+  if (kind === 'cabin') { let wk; Object.defineProperty(b, 'wreck', {get: () => wk, set: v => { wk = v; if (v && !b.itrW) { b.itrW = 1; itrWreck(b); } }, enumerable: true, configurable: true}); }
+  return b;
 }
 function hide(b, lx, lz, face) {
   const [x, z] = L2W(b, lx, lz), th = face + b.th, fx = -Math.sin(th), fz = -Math.cos(th);
@@ -202,7 +213,7 @@ function hide(b, lx, lz, face) {
 function locker(b, lx, lz, face) {
   lbox(b, 'locker', lx, .975, lz, .6, 1.95, .55, face);
   const fx = -Math.sin(face), fz = -Math.cos(face);
-  for (let y = .3; y < 1.8; y += .16) lbox(b, 'dark', lx + fx * .285, y, lz + fz * .285, .5, .04, .02, face);
+  for (let y = .3; y < 1.8; y += .16) lbox(b, 'dark', lx + fx * .29, y, lz + fz * .29, .5, .04, .03, face);
   const r = rectW(b, lx - .3, lx + .3, lz - .3, lz + .3); WALLS.push(Object.assign(r, {y0: b.fy, y1: b.fy + 1.95, see: false}));
   hide(b, lx, lz, face);
 }
@@ -213,35 +224,221 @@ function furnish(b) {
     lbox(b, 'white', -hw + 1.2, .35, 1.6, 1.9, .5, 2.4); lbox(b, 'fabric', -hw + 1.2, .62, 1.6, 1.8, .1, 2.3); solid(-hw + 1.2, 1.6, 1.9, 2.4, .7);
     lbox(b, 'wood', hw - .6, .4, 2.6, .9, .8, .5); solid(hw - .6, 2.6, .9, .5, .8); spot(b.capt ? 'capt' : 'cruise', ...L(hw - .6, .82, 2.6)); spot('cruise', ...L(-hw + 1.2, .7, 2.4));
     locker(b, hw - .45, .6, -PI / 2); lbox(b, 'glass', 0, 1.7, hd - .1, 1.6, 1, .05);
+    // headboard, pillows and a blanket that drapes over the open side; nightstand with a lamp; desk chair; rug and a painting
+    lbox(b, 'wood', -hw + 1.2, .75, 2.86, 1.95, 1.2, .08); for (const s of [-1, 1]) lbox(b, 'white', -hw + 1.2 + s * .45, .73, 2.62, .72, .12, .32);
+    lbox(b, 'red', -hw + 1.2, .69, 1.2, 1.84, .04, 1.5); lbox(b, 'red', -hw + 2.165, .5, 1.2, .03, .36, 1.5);
+    lbox(b, 'wood', -.25, .28, 2.6, .44, .5, .4); solid(-.25, 2.6, .44, .4, .55); itrPut(b, 'brass', new THREE.CylinderGeometry(.03, .05, .22, 6), -.25, .64, 2.62); itrPut(b, 'white', new THREE.CylinderGeometry(.06, .13, .15, 8), -.25, .82, 2.62); itrPut(b, 'itrBulb', new THREE.SphereGeometry(.035, 6, 3), -.25, .76, 2.62);
+    { const [lx, lz] = L2W(b, -.25, 2.62); LAMPS.push([lx, b.fy + .8, lz, .12, 2, 4, b.i, 1]); }
+    itrChair(b, 'wood', hw - .6, 2.02, 0); itrRug(b, b.i % 2 ? 'itrRugA' : 'itrRugB', .3, -1, 2.2, 2.8); itrArt(b, b.i, -hw + .085, 1.75, 1.5, PI / 2, .9, .65);
+    const cap = /Captain/.test(b.name); if (cap) { itrPut(b, 'itrArt', itrUV(new THREE.PlaneGeometry(.78, .42), ITR.cell[2]), hw - .6, .802, 2.6, 0, -PI / 2); itrPut(b, 'itrPaper', new THREE.CylinderGeometry(.03, .03, .55, 6), hw - .6, .83, 2.36, 0, 0, PI / 2); }
+    itrPlate(b, cap ? 'CAPTAIN' : (b.name.match(/\d+/) || ['?'])[0], -.95, 1.5, -hd - .09, PI);
+    itrPut(b, 'brass', new THREE.BoxGeometry(.14, .28, .03), 1.7, 2.02, -hd - .095); itrPut(b, 'itrBulb', new THREE.BoxGeometry(.08, .16, .08), 1.7, 2.04, -hd - .15); itrPut(b, 'brass', new THREE.BoxGeometry(.1, .02, .1), 1.7, 2.13, -hd - .15);
+    b.itrT = [[hw - .45, 1.95, .6, .15, .15], [1, .06, 3.75, .6, .22], [-1.7, .06, -3.4, .5, .3]]; if (!cap) b.itrT.push([hw - .6, .8, 2.6, .3, .1]); itrClutter(b, 4, b.i * 7 + 3);
   } else if (b.kind === 'bridge') {
-    lbox(b, 'dark', 0, .55, hd - .9, 5, 1.1, .8); solid(0, hd - .9, 5, .8, 1.1); b.console = L(0, 1.2, hd - 1.5); lbox(b, 'glass', 0, 1.8, hd - .02, b.w - .6, 1.2, .05);
+    lbox(b, 'dark', 0, .55, hd - .9, 5, 1.1, .8); solid(0, hd - .9, 5, .8, 1.1); b.console = L(0, 1.2, hd - 1.5);
     const wg = new THREE.Mesh(new THREE.TorusGeometry(.42, .04, 8, 24), MAT.brass); const [wx, wz] = L2W(b, 0, hd - 1.38); wg.position.set(wx, b.fy + 1.25, wz); wg.rotation.set(0, b.th, 0); scene.add(wg);
     locker(b, -hw + .5, 0, PI / 2); locker(b, hw - .5, 0, -PI / 2);
+    // chart table with a chart, a radio desk, the name plate by the door
+    lbox(b, 'wood', -4.3, .45, 1.6, 1.6, .9, 1); solid(-4.3, 1.6, 1.6, 1, .95); itrPut(b, 'itrArt', itrUV(new THREE.PlaneGeometry(1.3, .8), ITR.cell[2]), -4.3, .905, 1.6, .05, -PI / 2);
+    lbox(b, 'dark', 4.3, .4, 2.3, 1.4, .8, .7); solid(4.3, 2.3, 1.4, .7, .85); lbox(b, 'panel', 4.4, .95, 2.45, .55, .3, .3); lbox(b, 'screen', 4.4, .97, 2.295, .4, .16, .01); itrChair(b, 'wood', 4.1, 1.55, 0);
+    itrPlate(b, 'BRIDGE', .95, 1.5, -hd - .09, PI);
+    b.itrT = [[-1.5, 1.1, 2.1, .7, .25], [1.6, 1.1, 2.1, .6, .25], [3.85, .8, 2.15, .2, .12], [-hw + .5, 1.95, 0, .15, .15]]; itrClutter(b, 5, b.i * 7 + 3);
   } else if (b.kind === 'quarters') {
-    for (const s of [-1, 1]) { lbox(b, 'steel', s * (hw - .55), .4, 1.6, 1, .1, 2); lbox(b, 'fabric', s * (hw - .55), .5, 1.6, .9, .12, 1.9); lbox(b, 'steel', s * (hw - .55), 1.4, 1.6, 1, .1, 2); lbox(b, 'fabric', s * (hw - .55), 1.5, 1.6, .9, .12, 1.9); solid(s * (hw - .55), 1.6, 1, 2, 1.6); }
+    for (const s of [-1, 1]) { lbox(b, 'steel', s * (hw - .55), .4, 1.6, 1, .1, 2); lbox(b, 'fabric', s * (hw - .55), .5, 1.6, .9, .12, 1.9); lbox(b, 'steel', s * (hw - .55), 1.4, 1.6, 1, .1, 2); lbox(b, 'fabric', s * (hw - .55), 1.5, 1.6, .9, .12, 1.9); solid(s * (hw - .55), 1.6, 1, 2, 1.6);
+      for (const pz of [.63, 2.57]) lbox(b, 'steel', s * (hw - 1.03), .83, pz, .05, 1.66, .05);
+      for (const yy of [.56, 1.56]) { lbox(b, 'white', s * (hw - .55), yy + .05, 2.3, .6, .1, .3); lbox(b, 'red', s * (hw - .55), yy + .015, 1.25, .92, .03, 1.3); } }
     locker(b, -1.2, hd - .35, PI); locker(b, -.5, hd - .35, PI); locker(b, 1.2, hd - .35, PI);
     lbox(b, 'steel', -2.4, .75, -1.4, 1.2, .06, .8); solid(-2.4, -1.4, 1.2, .8, .8); spot('rig', ...L(-2.4, .8, -1.4)); spot('rig', ...L(hw - .55, .58, 1.2));
+    for (const lx of [-2.95, -1.85]) for (const lz of [-1.75, -1.05]) lbox(b, 'steel', lx, .39, lz, .04, .66, .04);
+    itrChair(b, 'steel', -2.4, -.62, PI); itrArt(b, 0, hw - .085, 1.6, -1.9, -PI / 2, .5, .38);
+    b.itrT = [[-2.4, .78, -1.4, .45, .25], [-.85, 1.95, hd - .35, .5, .15], [2.5, .06, -2.1, .4, .35]]; itrClutter(b, 5, b.i * 7 + 3);
   } else if (b.kind === 'gen') {
     lbox(b, 'genM', -.8, .8, 1.2, 3.2, 1.6, 1.6); solid(-.8, 1.2, 3.2, 1.6, 1.6); lbox(b, 'dark', -.8, 1.62, 1.2, 2.6, .05, 1.1);
     for (let i = 0; i < 3; i++) lbox(b, 'steel', -2 + i * .6, 1.9, 1.2, .18, .6, .18);
-    lbox(b, 'panel', 2.6, 1.3, 1.6, .9, 1.4, .3); b.genP = L(-.8, 1.2, -.2);
-    locker(b, -hw + .35, -1.2, -PI / 2); spot('rig', ...L(2.6, .9, -1.6)); lbox(b, 'steel', 2.6, .45, -1.6, 1, .9, .6); solid(2.6, -1.6, 1, .6, .9);
+    lbox(b, 'panel', 2.6, 1.3, hd - .23, .9, 1.4, .3); b.genP = L(-.8, 1.2, -.2);
+    locker(b, -hw + .35, -1.2, -PI / 2); spot('rig', ...L(2.6, .9, -.5)); lbox(b, 'steel', 2.6, .45, -.5, 1, .9, .6); solid(2.6, -.5, 1, .6, .9);
+    itrPut(b, 'red', new THREE.CylinderGeometry(.28, .28, .9, 10), -2.95, .51, 2.45); solid(-2.95, 2.45, .56, .56, .95); lbox(b, 'dark', -2.95, .97, 2.45, .3, .02, .3);
+    b.itrT = [[2.6, .9, -.5, .35, .2], [-2.9, .06, -2.3, .3, .4], [2.9, .06, .9, .25, .3]]; itrClutter(b, 4, b.i * 7 + 3);
   } else if (b.kind === 'ctrl') {
     lbox(b, 'panel', 0, .55, hd - .5, 6, 1.1, .7); solid(0, hd - .5, 6, .7, 1.1); lbox(b, 'screen', 0, 1.2, hd - .7, 5, .35, .05);
     for (let i = 0; i < 4; i++) lbox(b, 'screen', -2.4 + i * 1.6, 1.13, hd - .78, .9, .4, .03, 0);
     b.console = L(-1, 1.1, hd - 1.1); locker(b, -hw + .35, -1.2, -PI / 2); spot('rig', ...L(2.6, 1.12, hd - .55)); spot('rig', ...L(-2, .1, -1.6));
+    for (const lx of [-2.5, .5]) itrChair(b, 'steel', lx, 1.3, 0);
+    lbox(b, 'locker', hw - .45, .5, hd - .4, .6, 1, .5); solid(hw - .45, hd - .4, .6, .5, 1); for (const yy of [.3, .62]) lbox(b, 'dark', hw - .45, yy, hd - .66, .5, .04, .02);
+    b.itrT = [[hw - .45, 1, hd - .4, .2, .15], [-3.3, .06, -2.3, .3, .2], [3.4, .06, -.3, .3, .45]]; itrClutter(b, 4, b.i * 7 + 3);
   } else if (b.kind === 'hut') {
     lbox(b, 'log', -hw + .55, .3, 1, 1, .5, 2); lbox(b, 'fabric', -hw + .55, .6, 1, .9, .1, 1.9); solid(-hw + .55, 1, 1, 2, .7);
     lbox(b, 'log', 1.4, .4, 1.4, 1.4, .8, .8); solid(1.4, 1.4, 1.4, .8, .8); spot('hut', ...L(1.4, .82, 1.4)); spot('hut', ...L(-1, .1, -1.2));
     locker(b, hw - .35, -1, PI / 2);
+    // bedding, a wood stove with a fire in it, firewood, a lantern, a shelf, a picture and a rug
+    lbox(b, 'white', -hw + .55, .7, 1.72, .6, .1, .3); lbox(b, b.i % 2 ? 'red' : 'fabric', -hw + .55, .665, .75, .92, .03, 1.3); lbox(b, b.i % 2 ? 'red' : 'fabric', -hw + 1.065, .55, .75, .03, .22, 1.3);
+    lbox(b, 'dark', hw - .5, .41, hd - .42, .6, .7, .55); lbox(b, 'steel', hw - .5, .775, hd - .42, .64, .03, .59); itrPut(b, 'itrFire', new THREE.BoxGeometry(.3, .18, .012), hw - .5, .36, hd - .705);
+    itrPut(b, 'dark', new THREE.CylinderGeometry(.07, .07, b.wh - .79, 8), hw - .5, .79 + (b.wh - .79) / 2, hd - .32); solid(hw - .5, hd - .42, .6, .55, .8);
+    { const [lx, lz] = L2W(b, hw - .5, hd - .9); LAMPS.push([lx, b.fy + .45, lz, .3, 4, 4.5, b.i, 1]); }
+    for (let i = 0; i < 3; i++) itrPut(b, 'log', new THREE.CylinderGeometry(.06, .06, .42, 6), hw - .42 + (i % 2) * .13 - (i > 1 ? .06 : 0), .12 + (i > 1 ? .11 : 0), 1.25, 0, PI / 2);
+    itrLantern(b, 1, .8, 1.2);
+    lbox(b, 'wood', -.6, 1.45, hd - .2, 1.3, .04, .24); for (const lx of [-1.15, -.05]) lbox(b, 'log', lx, 1.34, hd - .17, .03, .18, .18);
+    itrArt(b, b.i + 1, -hw + .085, 1.6, 1, PI / 2, .6, .45); itrRug(b, 'itrRugA', -.3, -.5, 1.8, 1.3, .08);
+    b.itrT = [[1.6, .8, 1.5, .35, .2], [-.6, 1.47, hd - .2, .55, .06], [-1.6, .06, -1.9, .3, .3], [.3, .06, 2.15, .3, .15], [2.4, .06, -.1, .25, .35]]; itrClutter(b, 5 + b.i % 3, b.i * 7 + 3);
   } else if (b.kind === 'cabin') {
     lbox(b, 'log', 0, .35, hd - .5, 3, .7, .8); solid(0, hd - .5, 3, .8, .7); spot('wreck', ...L(.6, .72, hd - .5)); locker(b, hw - .35, -.6, PI / 2);
+    itrRug(b, 'itrRugB', -.3, -.4, 1.6, 1.2, .2); itrArt(b, 3, -.9, 1.55, hd - .085, PI, .45, .36, .12);
+    b.itrT = [[-.6, .7, hd - .5, .7, .25], [1.25, .7, hd - .5, .2, .25], [-1.8, .06, -1.4, .4, .4], [1.6, .06, .9, .3, .3]]; itrClutter(b, 5, b.i * 7 + 3);
   } else if (b.kind === 'shed') {
-    lbox(b, 'log', 0, .5, hd - .5, 5, 1, .8); solid(0, hd - .5, 5, .8, 1); lbox(b, 'paper', 0, 1.4, hd - .1, 3, 1.2, .03);
+    lbox(b, 'log', 0, .5, hd - .5, 5, 1, .8); solid(0, hd - .5, 5, .8, 1); itrPut(b, 'paper', new THREE.PlaneGeometry(3, 1.2), 0, 1.75, hd - .085, PI);
     b.shop = L(0, 1.1, hd - 1.2);
     for (const s of [-1, 1]) { lbox(b, 'crate', s * 2.6, .4, 0, .8, .8, .8); solid(s * 2.6, 0, .8, .8, .8); }
+    // more crates, a shelf unit, the ledger and the scale on the counter, a mat at the door, a picture
+    lbox(b, 'crate', 2.55, 1.075, .05, .55, .55, .55, .3); lbox(b, 'crate', 2.95, .35, 2, .7, .7, .7, .1); solid(2.95, 2, .75, .75, .7);
+    for (const lz of [1, 2.3]) lbox(b, 'wood', -3.2, 1, lz, .4, 2, .04); for (const yy of [.5, 1, 1.5, 1.98]) lbox(b, 'wood', -3.2, yy, 1.65, .4, .04, 1.3); solid(-3.2, 1.65, .42, 1.34, 2);
+    lbox(b, 'red', -1.25, 1.005, 2, .44, .01, .3); for (const s of [-1, 1]) itrPut(b, 'itrPaper', new THREE.BoxGeometry(.2, .015, .28), -1.25 + s * .105, 1.017, 2, 0, 0, s * .06); itrPut(b, 'dark', new THREE.CylinderGeometry(.006, .006, .14, 4), -1.0, 1.016, 1.9, .6, 0, PI / 2);
+    lbox(b, 'brass', 1.4, 1.025, 2, .32, .05, .2); itrPut(b, 'brass', new THREE.CylinderGeometry(.015, .015, .32, 6), 1.4, 1.21, 2); lbox(b, 'brass', 1.4, 1.37, 2, .44, .02, .02);
+    for (const s of [-1, 1]) { itrPut(b, 'brass', new THREE.CylinderGeometry(.085, .07, .015, 10), 1.4 + s * .2, 1.17, 2); itrPut(b, 'dark', new THREE.CylinderGeometry(.003, .003, .19, 3), 1.4 + s * .2, 1.27, 2); }
+    itrRug(b, 'itrRugB', 0, -1.6, 1.6, .9); itrArt(b, 1, hw - .085, 1.7, 1.15, -PI / 2, .7, .5);
+    b.itrT = [[-2.1, 1, 2, .3, .25], [.15, 1, 2, .55, .25], [2.15, 1, 2, .25, .25], [-3.2, .52, 1.65, .12, .55], [-3.2, 1.02, 1.65, .12, .55], [-3.2, 1.52, 1.65, .12, .55], [-2.6, .8, 0, .3, .3], [-2.3, .06, -1.9, .4, .3]]; itrClutter(b, 7, b.i * 7 + 3);
   }
 }
+// ---------------- interiors: lit, solid, cosy rooms (fixtures, trim, bedding, clutter, art, wreck damage, the Serenade's lights)
+const ITR = {ok: 0, kinds: {quarters: 1, gen: 1, ctrl: 1, hut: 1, state: 1, bridge: 1, cabin: 1, shed: 1}, winZ: {gen: [.4, -.6], ctrl: [.4, -.6], hut: [-.6, .7], cabin: [-.6, .9], casino: [-.6, 2]},
+  cell: [], plate: {}, fx: [], zi: -1, pa: null, pb: null, da: 0, db: 0, ta: 0, tb: 0};
+function itrMats() {
+  if (ITR.ok) return; ITR.ok = 1; const S = o => new THREE.MeshStandardMaterial(Object.assign({roughness: .8, metalness: 0}, o));
+  if (!MAT.winWarm) MAT.winWarm = S({color: 0x1c242a, roughness: .2, metalness: .1, emissive: 0xffc070, emissiveIntensity: .1});
+  if (!MAT.glassT) MAT.glassT = new THREE.MeshStandardMaterial({color: 0x9ac0d0, roughness: .03, metalness: .1, transparent: true, opacity: .16, depthWrite: false, side: THREE.DoubleSide});
+  // one atlas: four paintings (lighthouse, ship, chart, portrait) and the brass door plates
+  const PL = ['CAPTAIN', '102', '103', '104', '105', '106', '107', '108', '109', '110', '111', '112', 'BRIDGE'];
+  const at = cv(1024, 1024, (g, w, h) => {
+    const cell = (i, f) => { const x = (i % 2) * 512, y = (i >> 1) * 384; g.save(); g.translate(x, y); g.beginPath(); g.rect(0, 0, 512, 384); g.clip(); f(); g.restore(); ITR.cell[i] = [x / w, 1 - (y + 384) / h, (x + 512) / w, 1 - y / h]; };
+    const grad = (y0, y1, a, b) => { const q = g.createLinearGradient(0, y0, 0, y1); q.addColorStop(0, a); q.addColorStop(1, b); g.fillStyle = q; g.fillRect(0, y0, 512, y1 - y0); };
+    cell(0, () => { grad(0, 250, '#0c1430', '#2a3a5a'); g.fillStyle = '#fff6d8'; for (let i = 0; i < 60; i++) g.fillRect(Math.random() * 512, Math.random() * 200, 2, 2); grad(250, 384, '#14283a', '#081420');
+      g.fillStyle = '#2a2420'; g.beginPath(); g.moveTo(250, 300); g.quadraticCurveTo(330, 230, 420, 290); g.lineTo(470, 330); g.lineTo(220, 330); g.fill();
+      g.fillStyle = 'rgba(255,230,150,.28)'; g.beginPath(); g.moveTo(335, 118); g.lineTo(0, 60); g.lineTo(0, 170); g.fill(); g.fillStyle = '#e8e2d0'; g.fillRect(320, 120, 30, 130); g.fillStyle = '#a02a20'; for (let y = 140; y < 250; y += 40) g.fillRect(320, y, 30, 16); g.fillStyle = '#ffe48a'; g.fillRect(322, 104, 26, 16); g.fillStyle = '#1a1a1a'; g.fillRect(316, 96, 38, 8); });
+    cell(1, () => { grad(0, 230, '#f0a060', '#5a3a6a'); g.fillStyle = 'rgba(255,220,150,.9)'; g.beginPath(); g.arc(380, 200, 40, 0, TAU); g.fill(); grad(220, 384, '#3a3050', '#141828');
+      g.strokeStyle = 'rgba(255,200,160,.35)'; g.lineWidth = 2; for (let y = 236; y < 384; y += 14) { g.beginPath(); for (let x = 0; x <= 512; x += 16) g.lineTo(x, y + Math.sin(x * .05 + y) * 3); g.stroke(); }
+      g.fillStyle = '#1a1214'; g.beginPath(); g.moveTo(90, 222); g.lineTo(330, 222); g.lineTo(300, 252); g.lineTo(110, 252); g.fill(); g.fillRect(150, 196, 130, 28); g.fillRect(200, 150, 24, 50); g.fillStyle = 'rgba(60,50,60,.6)'; g.beginPath(); g.ellipse(250, 120, 60, 22, -.3, 0, TAU); g.fill(); });
+    cell(2, () => { g.fillStyle = '#d8c69a'; g.fillRect(0, 0, 512, 384); g.strokeStyle = 'rgba(90,70,40,.35)'; g.lineWidth = 1; for (let x = 0; x < 512; x += 48) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x, 384); g.stroke(); } for (let y = 0; y < 384; y += 48) { g.beginPath(); g.moveTo(0, y); g.lineTo(512, y); g.stroke(); }
+      g.fillStyle = '#b8a070'; g.strokeStyle = '#6a4a2a'; g.lineWidth = 3; for (const [cx, cy, r] of [[120, 120, 70], [360, 250, 90], [420, 80, 40]]) { g.beginPath(); for (let a = 0; a < TAU; a += .3) { const q = r * (.75 + Math.sin(a * 3 + cx) * .15 + Math.random() * .1); g.lineTo(cx + Math.cos(a) * q, cy + Math.sin(a) * q); } g.closePath(); g.fill(); g.stroke(); }
+      g.setLineDash([8, 8]); g.strokeStyle = '#8a1a14'; g.beginPath(); g.moveTo(60, 330); g.quadraticCurveTo(220, 260, 300, 160); g.stroke(); g.setLineDash([]); g.strokeStyle = '#3a2a1a'; g.lineWidth = 2;
+      g.beginPath(); g.arc(80, 300, 36, 0, TAU); g.stroke(); for (let i = 0; i < 8; i++) { const a = i / 8 * TAU, l = i % 2 ? 20 : 40; g.beginPath(); g.moveTo(80, 300); g.lineTo(80 + Math.cos(a) * l, 300 + Math.sin(a) * l); g.stroke(); } g.fillStyle = '#3a2a1a'; g.font = 'bold 22px Georgia'; g.fillText('N', 72, 250); });
+    cell(3, () => { grad(0, 384, '#4a4a30', '#2a2a1a'); const q = g.createRadialGradient(256, 170, 20, 256, 190, 220); q.addColorStop(0, 'rgba(220,200,150,.55)'); q.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = q; g.fillRect(0, 0, 512, 384);
+      g.fillStyle = '#16120e'; g.beginPath(); g.arc(256, 150, 62, 0, TAU); g.fill(); g.beginPath(); g.ellipse(256, 384, 150, 150, 0, PI, TAU); g.fill(); g.fillRect(232, 200, 48, 50); g.strokeStyle = '#c8a04a'; g.lineWidth = 8; g.beginPath(); g.ellipse(256, 192, 200, 176, 0, 0, TAU); g.stroke(); });
+    PL.forEach((s, i) => { const x = (i % 8) * 128, y = 768 + (i >> 3) * 64; g.fillStyle = '#9a7a34'; g.fillRect(x + 4, y + 4, 120, 56); g.strokeStyle = '#e8c870'; g.lineWidth = 3; g.strokeRect(x + 9, y + 9, 110, 46); g.fillStyle = '#2a1a08'; g.font = `bold ${s.length > 4 ? 20 : 30}px Georgia`; g.textAlign = 'center'; g.fillText(s, x + 64, y + (s.length > 4 ? 40 : 44)); ITR.plate[s] = [x / w, 1 - (y + 64) / h, (x + 128) / w, 1 - y / h]; });
+    noiseFill(g, w, h, 10); });
+  const ta = new THREE.CanvasTexture(at); ta.colorSpace = THREE.SRGBColorSpace; ta.anisotropy = 4; MAT.itrArt = S({map: ta, roughness: .7, metalness: .05});
+  const rug = (a, b2, c) => tex(cv(256, 256, (g, w, h) => { g.fillStyle = a; g.fillRect(0, 0, w, h); g.strokeStyle = b2; g.lineWidth = 10; g.strokeRect(14, 14, w - 28, h - 28); g.lineWidth = 3; g.strokeRect(30, 30, w - 60, h - 60); g.fillStyle = c;
+    for (let i = 0; i < 4; i++) { g.save(); g.translate(128, 128); g.rotate(i * PI / 2); g.beginPath(); g.moveTo(0, -70); g.lineTo(26, 0); g.lineTo(0, 70); g.lineTo(-26, 0); g.fill(); g.restore(); } for (let i = 0; i < 300; i++) { g.fillStyle = `rgba(0,0,0,${Math.random() * .12})`; g.fillRect(Math.random() * w, Math.random() * h, 3, 3); } noiseFill(g, w, h, 16); }));
+  MAT.itrRugA = S({map: rug('#6a2018', '#c89a4a', '#2a3a5a'), roughness: 1}); MAT.itrRugB = S({map: rug('#2a3a4a', '#d8c8a0', '#7a2a1a'), roughness: 1});
+  MAT.itrCurtain = S({map: tex(cv(64, 16, (g, w) => { const q = g.createLinearGradient(0, 0, w, 0); q.addColorStop(0, '#3a0608'); q.addColorStop(.5, '#a01820'); q.addColorStop(1, '#3a0608'); g.fillStyle = q; g.fillRect(0, 0, w, 16); })), roughness: .9, side: THREE.DoubleSide});
+  MAT.itrCream = S({color: 0xd8ccae, roughness: .85}); MAT.itrPaper = S({map: TX.paper, roughness: 1, side: THREE.DoubleSide});
+  MAT.itrDoorW = S({map: TX.wood, color: 0x8a6a50}); MAT.itrDoorS = S({color: 0x263030, metalness: .5, roughness: .5});
+  MAT.itrBulb = S({color: 0x302a20, emissive: 0xffd8a0, emissiveIntensity: 1.2}); MAT.itrEmer = S({color: 0x300806, emissive: 0xff2010, emissiveIntensity: 0}); MAT.itrFire = S({color: 0x200800, emissive: 0xff6a20, emissiveIntensity: 1.2});
+  // a soft shaft of daylight (crossed planes) for roof holes, and a ghost glow
+  const sh = new THREE.CanvasTexture(cv(64, 128, (g, w, h) => { const q = g.createLinearGradient(0, 0, 0, h); q.addColorStop(0, 'rgba(255,255,255,.9)'); q.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = q; g.fillRect(0, 0, w, h); g.globalCompositeOperation = 'destination-in'; const e = g.createLinearGradient(0, 0, w, 0); e.addColorStop(0, 'rgba(0,0,0,0)'); e.addColorStop(.5, 'rgba(0,0,0,1)'); e.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = e; g.fillRect(0, 0, w, h); }));
+  ITR.shM = new THREE.MeshBasicMaterial({map: sh, color: 0xfff0d0, transparent: true, opacity: .25, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide});
+  const p2 = new THREE.PlaneGeometry(1, 1); p2.rotateY(PI / 2); ITR.shG = mergeGeos([new THREE.PlaneGeometry(1, 1), p2]);
+  ITR.ghM = new THREE.SpriteMaterial({map: TX.glow, color: 0x6affb0, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: .2});
+}
+// geometry in building-local space -> world, into a BK bucket
+function itrPut(b, k, g, lx, ly, lz, ry = 0, rx = 0, rz = 0) { _e.set(rx, ry, rz, 'YXZ'); g.applyMatrix4(_m4.compose(_v.set(lx, ly, lz), _q.setFromEuler(_e), _s.set(1, 1, 1))); _e.set(0, b.th, 0, 'YXZ'); g.applyMatrix4(_m4.compose(_v.set(b.x, b.fy, b.z), _q.setFromEuler(_e), _s.set(1, 1, 1))); bucket(k).push(g); return g; }
+function itrUV(g, c) { const uv = g.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setXY(i, mix(c[0], c[2], uv.getX(i)), mix(c[1], c[3], uv.getY(i))); return g; }
+function itrArt(b, i, lx, ly, lz, ry, w, h, rz = 0) { // a framed canvas from the shared set, flat on a wall, facing ry
+  itrPut(b, 'log', new THREE.BoxGeometry(w + .08, h + .08, .03), lx, ly, lz, ry, 0, rz); itrPut(b, 'itrArt', itrUV(new THREE.PlaneGeometry(w, h), ITR.cell[i % 4]), lx + Math.sin(ry) * .016, ly, lz + Math.cos(ry) * .016, ry, 0, rz); }
+function itrArtGeo(i, w, h) { itrMats(); return itrUV(new THREE.PlaneGeometry(w, h), ITR.cell[i % 4]); }
+function itrPlate(b, s, lx, ly, lz, ry) { const c = ITR.plate[s]; if (c) itrPut(b, 'itrArt', itrUV(new THREE.PlaneGeometry(.3, .15), c), lx, ly, lz, ry); }
+function itrRug(b, k, lx, lz, sx, sz, ry = 0) { itrPut(b, k, new THREE.PlaneGeometry(sx, sz), lx, .07, lz, ry, -PI / 2); }
+function itrPane(b, w, h, lx, ly, lz) { const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), MAT.glassT), [x, z] = L2W(b, lx, lz); m.position.set(x, b.fy + ly, z); m.rotation.y = b.th; m.renderOrder = 2; scene.add(m); }
+function itrWin(b, s, lz, fk) { // a fake window: warm-lit glass outside, dark glass inside, a frame through the wall and an inner sill
+  const x = s * b.w / 2; lbox(b, 'winWarm', x + s * .085, 1.6, lz, .012, .5, 1.1); lbox(b, 'glass', x - s * .085, 1.6, lz, .012, .5, 1.1);
+  for (const dy of [-.28, .28]) lbox(b, fk, x, 1.6 + dy, lz, .26, .06, 1.22); for (const dz of [-.58, .58]) lbox(b, fk, x, 1.6, lz + dz, .26, .5, .06); lbox(b, fk, x - s * .14, 1.31, lz, .1, .03, 1.3); }
+function itrTrim(b, T, dl, dr) { // dark skirting and a cornice on the four walls (split round the door)
+  const hw = b.w / 2 - .08, hd = b.d / 2 - .08, sk = T.wood || T.wm ? 'log' : 'dark', co = T.wood ? 'log' : T.wm ? 'white' : 'steel';
+  for (const [k, y, h, d] of [[sk, .12, .12, .02], [co, b.wh - .05, .1, .05]]) {
+    lbox(b, k, 0, y, hd - d / 2, b.w - .16, h, d); for (const s of [-1, 1]) lbox(b, k, s * (hw - d / 2), y, 0, d, h, b.d - .16);
+    if (y < 1) { if (dl > -hw) lbox(b, k, (-hw + dl) / 2, y, -hd + d / 2, dl + hw, h, d); if (dr < hw) lbox(b, k, (hw + dr) / 2, y, -hd + d / 2, hw - dr, h, d); } else lbox(b, k, 0, y, -hd + d / 2, b.w - .16, h, d); }
+}
+function itrBeams(b) { for (const f of [-.3, 0, .3]) lbox(b, 'log', 0, b.wh - .08, f * b.d, b.w - .16, .14, .16); }
+function itrGable(b, hole) { // a pitched roof (prism with eaves); wreck cabins get a hole torn across it
+  const ex = b.w / 2 + .3, ed = b.d / 2 + .3, rise = Math.min(1.5, b.w * .25), sh = new THREE.Shape();
+  sh.moveTo(-ex, -.1); sh.lineTo(ex, -.1); sh.lineTo(ex, 0); sh.lineTo(0, rise); sh.lineTo(-ex, 0); sh.closePath();
+  for (const [z0, z1] of hole ? [[-ed, .45], [1.25, ed]] : [[-ed, ed]]) { const g = new THREE.ExtrudeGeometry(sh, {depth: z1 - z0, bevelEnabled: false}); g.translate(0, 0, z0); itrPut(b, 'roofW', g, 0, b.wh + .1, 0); }
+  if (hole) for (let i = 0; i < 5; i++) { const sx = (i % 2 ? 1 : -1) * (.35 + i * .32), l = .3 + (i % 3) * .14, ze = i < 3 ? .45 + l / 2 - .06 : 1.25 - l / 2 + .06, sl = Math.atan2(rise, ex) * (sx > 0 ? -1 : 1);
+    itrPut(b, 'planks', new THREE.BoxGeometry(.17, .03, l), sx, b.wh + .1 + rise * (1 - Math.abs(sx) / ex) - .02, ze, 0, (i < 3 ? .25 : -.25), sl); }
+}
+function itrFixture(b, T, lx, lz, rig) { // a hanging lamp (cord, shade, bulb) and its pooled-light entry; rig rooms add a red emergency light over the door
+  const top = b.wh - (T.wood ? .15 : 0), ys = Math.max(2.12, b.wh - .6), [x, z] = L2W(b, lx, lz);
+  if (top - ys > .07) lbox(b, 'dark', lx, (top + ys) / 2, lz, .012, top - ys, .012);
+  itrPut(b, T.wm ? 'brass' : 'dark', new THREE.CylinderGeometry(.05, .17, .12, 8), lx, ys, lz); itrPut(b, rig ? 'bulb' : 'itrBulb', new THREE.SphereGeometry(.055, 6, 4), lx, ys - .07, lz);
+  const e = rig ? [x, b.fy + ys - .12, z, 1, 1, 0, b.i, 0] : [x, b.fy + ys - .12, z, .6, 2, Math.max(b.w, b.d) * .8 + 2, b.i, b.kind === 'state' || b.kind === 'bridge' ? 1 : 0]; LAMPS.push(e); if (!b.itrL) b.itrL = e;
+  if (rig && !lx) { const hd = b.d / 2; lbox(b, 'dark', T.dx, 2.42, -hd + .11, .36, .15, .05); lbox(b, 'itrEmer', T.dx, 2.42, -hd + .145, .28, .09, .03); const [qx, qz] = L2W(b, T.dx, -hd + .6); LAMPS.push([qx, b.fy + 2.3, qz, .3, 5, 6, b.i, 1]); }
+}
+function itrChair(b, k, lx, lz, ry) { const c = Math.cos(ry), s = Math.sin(ry);
+  itrPut(b, k, new THREE.BoxGeometry(.42, .05, .42), lx, .46, lz, ry); itrPut(b, k, new THREE.BoxGeometry(.42, .46, .04), lx - s * .2, .74, lz - c * .2, ry);
+  for (const [a, d] of [[-1, -1], [-1, 1], [1, -1], [1, 1]]) itrPut(b, 'dark', new THREE.BoxGeometry(.03, .44, .03), lx + (a * c + d * s) * .18, .22, lz + (-a * s + d * c) * .18);
+  const r = rectW(b, lx - .23, lx + .23, lz - .23, lz + .23); WALLS.push(Object.assign(r, {y0: b.fy, y1: b.fy + .9, see: false})); }
+function itrLantern(b, lx, ly, lz) { itrPut(b, 'dark', new THREE.CylinderGeometry(.07, .08, .03, 8), lx, ly + .015, lz); itrPut(b, 'itrFire', new THREE.CylinderGeometry(.05, .05, .13, 8), lx, ly + .095, lz);
+  itrPut(b, 'dark', new THREE.ConeGeometry(.075, .06, 8), lx, ly + .19, lz); itrPut(b, 'dark', new THREE.TorusGeometry(.04, .006, 3, 8, PI), lx, ly + .23, lz); }
+// 4-8 seeded small props on known tops (b.itrT: [lx, top y, lz, half x, half z]); floor spots get boots, rope and fallen things
+function itrClutter(b, n, key) {
+  const r = mulberry(0x1e75 + key * 977), T = b.itrT || [], got = [];
+  for (let i = 0, tr = 0; i < n && tr < n * 4 && T.length; tr++) {
+    const t = T[(r() * T.length) | 0], fl = t[1] < .1, x = t[0] + (r() * 2 - 1) * t[3], z = t[2] + (r() * 2 - 1) * t[4], ry = r() * TAU, k = (r() * 5) | 0;
+    if (got.some(q => Math.abs(q[0] - x) < .22 && Math.abs(q[1] - z) < .22 && Math.abs(q[2] - t[1]) < .1)) continue; got.push([x, z, t[1]]); i++;
+    itrProp(b, fl ? [4, 5, 6, 1, 3][k] : [0, 1, 2, 3, 4][k], x, t[1], z, ry, r, fl);
+  }
+}
+function itrProp(b, k, x, y, z, ry, r, fl) {
+  const c = Math.cos(ry), s = Math.sin(ry);
+  if (k === 0) { itrPut(b, 'white', new THREE.CylinderGeometry(.042, .036, .095, 7), x, y + .048, z); itrPut(b, 'white', new THREE.BoxGeometry(.012, .05, .04), x + c * .048, y + .05, z - s * .048, ry); }
+  else if (k === 1) { if (fl) { itrPut(b, 'glass', new THREE.CylinderGeometry(.035, .035, .2, 7), x, y + .035, z, ry, 0, PI / 2); itrPut(b, 'glass', new THREE.CylinderGeometry(.013, .03, .08, 6), x - c * .14, y + .03, z + s * .14, ry, 0, PI / 2); }
+    else { itrPut(b, 'glass', new THREE.CylinderGeometry(.035, .035, .2, 7), x, y + .1, z); itrPut(b, 'glass', new THREE.CylinderGeometry(.013, .03, .08, 6), x, y + .24, z); } }
+  else if (k === 2) { const n = 1 + (r() * 3 | 0); for (let j = 0; j < n; j++) itrPut(b, ['red', 'fabric', 'crate', 'log'][(r() * 4) | 0], new THREE.BoxGeometry(.17, .035, .23), x, y + .018 + j * .036, z, ry + (r() - .5) * .4); }
+  else if (k === 3) itrPut(b, 'steel', new THREE.CylinderGeometry(.045, .045, .1, 8), x, y + .05, z);
+  else if (k === 4) { const n = 2 + (r() * 2 | 0); for (let j = 0; j < n; j++) itrPut(b, 'itrPaper', new THREE.PlaneGeometry(.21, .29), x + (r() - .5) * .12, y + .004 + j * .002, z + (r() - .5) * .12, ry + (r() - .5) * 1.2, -PI / 2); }
+  else if (k === 5) for (const sd of [-1, 1]) { const ox = sd * .07 * c, oz = -sd * .07 * s; itrPut(b, 'log', new THREE.BoxGeometry(.1, .1, .27), x + ox, y + .05, z + oz, ry); itrPut(b, 'log', new THREE.BoxGeometry(.1, .2, .1), x + ox - s * .085, y + .2, z + oz - c * .085, ry); }
+  else itrPut(b, 'pipe', new THREE.TorusGeometry(.13, .035, 5, 12), x, y + .035, z, ry, PI / 2);
+}
+function itrWreck(b) { // a shelf fallen against the wall, planks down from the hole in the roof, papers everywhere, a shaft of light; ghost wrecks glow green
+  const hw = b.w / 2, r = mulberry(0x5e1f + b.i * 131), a = .45, h = 1.6, d = .3, cx = -hw + .08 + d / 2 * Math.cos(a) + h / 2 * Math.sin(a), cy = .06 + d / 2 * Math.sin(a) + h / 2 * Math.cos(a);
+  itrPut(b, 'wood', new THREE.BoxGeometry(d, h, .9), cx, cy, .6, 0, 0, a); const r0 = rectW(b, -hw, cx + .45, .15, 1.05); WALLS.push(Object.assign(r0, {y0: b.fy, y1: b.fy + 1, see: false}));
+  for (let i = 0; i < 4; i++) itrProp(b, 2, cx + .55 + r() * .5, .06, .2 + r() * .9, r() * TAU, r, 1);
+  for (let i = 0; i < 4; i++) itrPut(b, 'planks', new THREE.BoxGeometry(.14, .03, 1 + r() * .5), (r() - .5) * 1.3, .075 + i * .031, .85 + (r() - .5) * .7, r() * PI);
+  for (let i = 0; i < 3; i++) itrProp(b, 4, (r() - .5) * 2.4, .06, (r() - .5) * 2.4, r() * TAU, r, 1);
+  const [x, z] = L2W(b, .1, .85), m = new THREE.Mesh(ITR.shG, ITR.shM); m.position.set(x, b.fy + b.wh / 2, z); m.scale.set(.85, b.wh, .85); m.rotation.set(.12, b.th + .4, 0); m.renderOrder = 3; scene.add(m); ITR.fx.push({m, k: 0, x, z});
+  if (b.wreck && b.wreck.ghost) { const g = new THREE.Sprite(ITR.ghM), [gx, gz] = L2W(b, 0, -.2); g.scale.setScalar(2.6); g.position.set(gx, b.fy + 1.2, gz); scene.add(g); ITR.fx.push({m: g, k: 1, x: gx, z: gz}); }
+}
+const itrInCrz = (x, y, z) => Math.abs(x - CRZ.x) < 10 && y > CRZ.D1 - .5 && y < CRZ.D2 - .3 && Math.abs(z - CRZ.z) < 45 && Math.abs(z - CRZ.z) > 8;
+// per frame: glowing windows, emergency lights and fires, shafts and ghost glows (culled past 300 m)
+function itrFx(cp) {
+  if (!ITR.ok) return; MAT.winWarm.emissiveIntensity = .1 + 1.4 * TOD.night; MAT.itrFire.emissiveIntensity = 1.1 + Math.sin(G.wt * 7.3) * .15 + Math.sin(G.wt * 13.1) * .1;
+  MAT.itrEmer.emissiveIntensity = G.power ? 0 : Math.sin(G.wt * 2.1) > -.7 ? 1.6 : .25; ITR.zi = zoneOf(cp.x, cp.z, cp.y - 1.6);
+  ITR.shM.opacity = .04 + .3 * TOD.day * (1 - .7 * G.storm); ITR.ghM.opacity = (.08 + .3 * TOD.night) * (.75 + .25 * Math.sin(G.wt * 1.1));
+  for (let i = 0; i < ITR.fx.length; i++) { const f = ITR.fx[i]; f.m.visible = Math.abs(f.x - cp.x) + Math.abs(f.z - cp.z) < 300; }
+}
+function itrCand(s, t, cp, lim) { const dx = s[0] - cp.x, dy = s[1] - cp.y, dz = s[2] - cp.z, d = dx * dx + dy * dy + dz * dz, Q = ITR; if (d > lim || s === Q.pa || s === Q.pb) return;
+  if (d < Q.da) { Q.pb = Q.pa; Q.db = Q.da; Q.tb = Q.ta; Q.pa = s; Q.da = d; Q.ta = t; } else if (d < Q.db) { Q.pb = s; Q.db = d; Q.tb = t; } }
+// the two POOL lights when not aboard: nearest of the harbour lamps, rig and room lamps within 25 m (inside a room only its own) and the Serenade's reds
+function itrPool(cp) {
+  const Q = ITR, zi = Q.zi, h = G.homeLamps || []; Q.pa = Q.pb = null; Q.da = Q.db = 1e18;
+  if (Math.hypot(cp.x - HOME.x, cp.z - HOME.z) < 60) for (let i = 0; i < h.length; i++) if (h[i]) itrCand(h[i], h[i][4] || 0, cp, 1e18);
+  for (let i = 0; i < LAMPS.length; i++) { const s = LAMPS[i]; if (s[6] !== undefined && s[6] !== zi && (s[7] || zi >= 0)) continue; if (s[4] === 5 && G.power) continue; itrCand(s, s[4] || 1, cp, 625); }
+  if (CRZ.reds && zi < 0 && Math.hypot(cp.x - CRZ.x, cp.z - CRZ.z) < 70) for (let i = 0; i < CRZ.reds.length; i++) itrCand(CRZ.reds[i], 3, cp, 1e18);
+  for (let i = 0; i < 2; i++) { const l = POOL[i], s = i ? Q.pb : Q.pa, t = i ? Q.tb : Q.ta; if (!s) { l.intensity = 0; continue; }
+    if (t === 3) { const sp = CRZ.redS && CRZ.redS[s.ri]; l.position.set(s[0], s[1] - .2, s[2]); l.color.setHex(0xff2010); l.distance = 10; l.intensity = sp && sp.material.opacity > .3 ? 6 : 0; continue; }
+    l.position.set(s[0], s[1] - (t < 2 ? .3 : 0), s[2]); l.distance = s[5] || 30;
+    if (t === 5) { l.color.setHex(0xff2010); l.intensity = MAT.itrEmer.emissiveIntensity > 1 ? 6 : 1; }
+    else if (t === 4) { l.color.setHex(0xff7a30); l.intensity = 22 * s[3] * (.85 + Math.random() * .3); }
+    else { l.color.setHex(t === 2 ? 0xffd49a : 0xffe2b0); l.intensity = 22 * s[3] * (t === 1 && !G.power ? .3 * (.7 + .3 * Math.sin(G.wt * 1.3 + s[0])) : Math.random() < .015 ? .3 : 1); } }
+}
+// the Serenade's red emergency lights get housings and mounts; the one in the captain's quarters moves to the corridor ceiling
+{ const f0 = buildCruise; buildCruise = function (...a) { const r = f0.apply(this, a); const X = CRZ.x, Z = CRZ.z, D1 = CRZ.D1, D2 = CRZ.D2;
+  if (CRZ.reds && CRZ.reds[0]) CRZ.reds[0] = [X, D1 + 3.45, Z - 40];
+  (CRZ.reds || []).forEach((p, i) => { p.ri = i; const [x, y, z] = p; wbox('dark', x, y - .12, z, .22, .14, .22); wbox('red', x, y - .03, z, .14, .05, .14);
+    if (y < D2) { const zi = zoneOf(x, z, D1), atr = Math.abs(x - X) < 10 && Math.abs(z - Z) < 8, top = zi >= 0 ? BLD[zi].fy + BLD[zi].wh : atr ? (Math.abs(x - X) < .3 ? D2 - .8 : 0) : D2 - .3;
+      if (top > y) put('steel', new THREE.CylinderGeometry(.015, .015, top - y + .05, 5), x, (top + y - .05) / 2, z); }
+    else put('steel', new THREE.CylinderGeometry(.04, .05, y - .19 - D2, 6), x, (y - .19 + D2) / 2, z); });
+  return r; }; }
+// no rain or lens drops inside the Serenade's deck 1 (the atrium stays open to the sky)
+{ const f0 = updateCamera; updateCamera = function (...a) { const r = f0.apply(this, a), c = cam.position; if (G.rainM && itrInCrz(c.x, c.y, c.z)) { G.rainM.uniforms.uI.value = 0; if (G.rain2) G.rain2.visible = false; G.dropsI = 0; } return r; }; }
 const VALVES = [];
 function valve(x, y, z, name, ry) { put('red', new THREE.TorusGeometry(.32, .05, 6, 16), x, y + 1.15, z, ry); put('steel', new THREE.CylinderGeometry(.12, .12, 1.2, 8), x, y + .55, z); wbox('pipe', x, y + .85, z + .1, .3, .3, 2.6, ry); VALVES.push({x, y, z, name, open: false}); }
 function buildRig() {
@@ -537,7 +734,7 @@ function extRig() {
   { const A = [13.4, LV[1] + .6, 12.6], Bp = [29, 23, 30]; for (const o of [-.45, .45]) { extBeam('steel', A[0] + o, A[1], A[2] - o, Bp[0] + o, Bp[1], Bp[2] - o, .14); extBeam('steel', A[0], A[1] + o * 1.4, A[2], Bp[0], Bp[1] + o * 1.4, Bp[2], .1); }
     for (let i = 0; i < 9; i++) { const t0 = i / 9, t1 = (i + 1) / 9, p = t => A.map((v, j) => mix(v, Bp[j], t)), a = p(t0), b = p(t1), s = i % 2 ? .45 : -.45; extBeam('steel', a[0] + s, a[1], a[2] - s, b[0] - s, b[1], b[2] + s, .07); }
     put('dark', new THREE.CylinderGeometry(.22, .3, .9, 8), Bp[0], Bp[1] + .4, Bp[2]); EXT.flareP = [Bp[0], Bp[1] + 1.2, Bp[2]]; }
-  for (const b of BLD) if (b.kind === 'quarters' || b.kind === 'gen' || b.kind === 'ctrl') { const hw = b.w / 2, hd = b.d / 2; lbox(b, 'winWarm', 0, 1.75, hd + .1, b.w * .55, .42, .03); lbox(b, 'dark', 0, 1.51, hd + .14, b.w * .58, .06, .1); for (const s of [-1, 1]) lbox(b, 'winWarm', s * (hw + .115), 1.6, -.6, .02, .46, 1.06); }
+  for (const b of BLD) if (b.kind === 'quarters' || b.kind === 'gen' || b.kind === 'ctrl') { const hw = b.w / 2, hd = b.d / 2; lbox(b, 'winWarm', 0, 1.75, hd + .1, b.w * .55, .42, .03); lbox(b, 'dark', 0, 1.51, hd + .14, b.w * .58, .06, .1); } // the side windows' warm outer panes come from itrWin (interiors)
 }
 // rough boulder (the shore dodecahedron) and the skull rock
 function extBoulder(k, x, y, z, s, a) { const g = new THREE.DodecahedronGeometry(1, 0); g.scale(s * (1 + h2(a, 1) * .3), s * (.6 + h2(a, 2) * .3), s * (1 + h2(a, 3) * .25)); return put(k, g, x, y, z, a * 2.3, h2(a, 4) * .5, h2(a, 5) * .4); }
@@ -909,7 +1106,7 @@ const UPG = {
   crane: {n: 'Cargo crane', d: 'Haul floating cargo aboard from twice as far', cost: [180]},
 };
 const B = {x: 0, z: 0, yaw: PI, v: 0, thr: 0, st: 0, driver: null, heave: 0, pitch: 0, roll: 0, fuel: 100, hull: 100, up: {engine: 0, tank: 0, hull: 0, light: 0, sonar: 0, hold: 0, crane: 0, cls: 0}, hold: [], sink: 0, dep: 0, dtar: 0};
-// hull classes: buy any of them at the shed while the boat is at the jetty
+// hull classes: buy or switch at any harbour (home jetty, Northwatch) while the boat is docked
 const HULLS = [
   {n: 'Salvage launch', d: 'The boat everyone starts with', cost: 0, L: 12.2, W: 4.4, fb: 1.3, spd: 1, turn: 1, hold: 8, hp: 1, fuel: 1, col: 0x1e3a4a, wh: [.18, .42]},
   {n: 'Fishing trawler', d: 'Long work deck, stern gantry, twice the hold', cost: 900, L: 17, W: 5.6, fb: 1.45, spd: .95, turn: .85, hold: 16, hp: 1.6, fuel: 1.4, col: 0x7a1e16, wh: [.12, .34]},
@@ -1001,41 +1198,50 @@ function buildBoat() {
       box(fab, -ww + .12, -ww + .62, fb, fb + .45, zm - .6, zm + 1.1, 1); box(fab, -ww + .12, -ww + .22, fb + .45, fb + .95, zm - .6, zm + 1.1);
       const rd = box(darkM, -.62, -.24, fb + 1.05, fb + 1.3, hz - .45, hz - .2); add(new THREE.BoxGeometry(.3, .06, .01), S({color: 0x201000, emissive: 0xffa040, emissiveIntensity: .5}), -.43, fb + 1.2, hz - .195);
       INTER.push({kind: 'radio', boat: 1, lx: -.43, lz: hz - .1, ly: 1.2, r: 1.7, label: () => G.radioOn ? 'Turn the radio off' : 'Turn on the radio', go: () => act({a: 'radio', on: !G.radioOn})});
-      cyl(steel, .006, .006, .5, 0, fb + hh - .25, zm); const bulb = add(new THREE.SphereGeometry(.07, 10, 8), S({color: 0xfff0d0, emissive: 0xffd8a0, emissiveIntensity: .45}), 0, fb + hh - .52, zm); bulb.castShadow = false; cyl(darkM, .02, .2, .14, 0, fb + hh - .44, zm, 0, 0, 16);
-      cyl(redM, .07, .07, .45, ww - .3, fb + .23, wz1 - .3); const ck = add(new THREE.CircleGeometry(.14, 20), S({color: 0xf0ece0}), 0, fb + 2.02, wz1 - .125); ck.rotation.y = PI; add(new THREE.BoxGeometry(.01, .1, .005), darkM, 0, fb + 2.05, wz1 - .13);
-      for (let i = 0; i < 2; i++) box(S({color: 0xe06018}), -ww + .9 + i * .45, -ww + 1.25 + i * .45, fb + 1.2, fb + 1.65, wz1 - .26, wz1 - .14);
+      cyl(steel, .006, .006, .2, 0, fb + hh - .1, zm); const bulb = add(new THREE.SphereGeometry(.07, 10, 8), S({color: 0xfff0d0, emissive: 0xffd8a0, emissiveIntensity: .45}), 0, fb + hh - .26, zm); bulb.castShadow = false; cyl(darkM, .02, .2, .14, 0, fb + hh - .18, zm, 0, 0, 16);
+      cyl(redM, .07, .07, .45, ww - .3, fb + .23, wz1 - .3); const ck = add(new THREE.CircleGeometry(.09, 20), S({color: 0xf0ece0}), 0, fb + 2.11, wz1 - .125); ck.rotation.y = PI; add(new THREE.BoxGeometry(.01, .07, .005), darkM, 0, fb + 2.13, wz1 - .13);
+      for (let i = 0; i < 2; i++) { const jx = -ww + .25 + i * .42; if (jx + .35 < -.62) box(S({color: 0xe06018}), jx, jx + .35, fb + 1.2, fb + 1.65, wz1 - .26, wz1 - .14); }
       // warm wood lining in every wheelhouse
       const pan = S({map: TX.wood, color: 0xb08860, roughness: .75}); box(pan, -ww + .12, -ww + .14, fb, fb + 1.05, wz0 + .12, wz1 - .12); box(pan, ww - .14, ww - .12, fb, fb + 1.05, wz0 + .12, wz1 - .12); box(pan, -ww + .12, -.55, fb, fb + 1.05, wz1 - .14, wz1 - .12); box(pan, .55, ww - .12, fb, fb + 1.05, wz1 - .14, wz1 - .12);
       box(pan, -ww + .12, ww - .12, fb + hh - .04, fb + hh - .02, wz0 + .12, wz1 - .12);
-      if (H.big || cls === 3) { // the cosy part: rug, sofa with a sleeping cat, wood stove, books, plants, fairy lights
-        const sof = S({color: 0x8a4a2a, roughness: .95}), cush = S({color: 0xd8b878, roughness: 1}), x0 = -ww + .7, x1 = -1.2, sz = wz1 - .14;
-        box(S({color: 0x7a2a1a, roughness: 1}), x0, x1 + .4, fb, fb + .012, sz - 2.9, sz - .9);
-        box(sof, x0, x1, fb, fb + .42, sz - .85, sz, 1); box(sof, x0, x1, fb + .42, fb + .95, sz - .25, sz); box(sof, x0 - .02, x0 + .2, fb + .42, fb + .65, sz - .85, sz); box(sof, x1 - .2, x1, fb + .42, fb + .65, sz - .85, sz);
-        for (let i = 0; i < 3; i++) { const cx = mix(x0 + .45, x1 - .45, i / 2); box(cush, cx - .32, cx + .32, fb + .42, fb + .55, sz - .78, sz - .28); }
-        box(S({color: 0x3a6a8a, roughness: 1}), x1 - .9, x1 - .2, fb + .55, fb + .58, sz - .8, sz - .25);
-        box(wd, (x0 + x1) / 2 - .5, (x0 + x1) / 2 + .5, fb + .4, fb + .45, sz - 1.9, sz - 1.3, 1); for (const lx of [-.45, .45]) for (const lz of [-1.85, -1.35]) box(wd, (x0 + x1) / 2 + lx - .025, (x0 + x1) / 2 + lx + .025, fb, fb + .4, sz + lz - .025, sz + lz + .025);
-        cyl(S({color: 0xe8e0d0}), .045, .04, .1, (x0 + x1) / 2 + .2, fb + .5, sz - 1.6); box(S({color: 0x2a3a5a}), (x0 + x1) / 2 - .3, (x0 + x1) / 2 - .05, fb + .45, fb + .48, sz - 1.7, sz - 1.5);
-        // a ship's cat asleep on the sofa
-        const cm = S({color: 0xc8783a, roughness: 1}), cat = new THREE.Group(); cat.position.set(x0 + .55, fb + .62, sz - .5); g.add(cat);
+      if (H.big || cls === 3 || H.cosy) { // the cosy part: rug, sofa with a sleeping cat, wood stove, books, plants, pictures, fairy lights (each only where it fits)
+        const sof = S({color: 0x8a4a2a, roughness: .95}), cush = S({color: 0xd8b878, roughness: 1}), sz = wz1 - .14, x1 = -.75, x0 = Math.max(-ww + .15, x1 - 2.6), dep = wz1 - wz0, sofa = x1 - x0 > 1.1 && dep > 4;
+        const cm = S({color: 0xc8783a, roughness: 1}), cat = new THREE.Group(), cp = sofa ? [x0 + .55, fb + .62, sz - .5] : [-ww + .37, fb + .58, zm + .5]; cat.position.set(...cp); g.add(cat);
+        if (sofa) { const cx = (x0 + x1) / 2, nc = clamp(Math.round((x1 - x0) / .8), 2, 3), cw = (x1 - x0 - .5) / nc;
+          box(S({color: 0x7a2a1a, roughness: 1}), x0 - .1, x1 + .3, fb, fb + .012, sz - 2.4, sz - .7);
+          box(sof, x0, x1, fb, fb + .42, sz - .85, sz, 1); box(sof, x0, x1, fb + .42, fb + .95, sz - .25, sz); box(sof, x0 - .02, x0 + .2, fb + .42, fb + .65, sz - .85, sz); box(sof, x1 - .2, x1, fb + .42, fb + .65, sz - .85, sz);
+          for (let i = 0; i < nc; i++) { const c0 = x0 + .25 + i * cw; box(cush, c0 + .02, c0 + cw - .02, fb + .42, fb + .55, sz - .78, sz - .28); }
+          box(S({color: 0x3a6a8a, roughness: 1}), x1 - .75, x1 - .2, fb + .55, fb + .58, sz - .8, sz - .25);
+          box(wd, cx - .4, cx + .4, fb + .4, fb + .45, sz - 1.6, sz - 1.1, 1); for (const lx of [-.35, .35]) for (const lz of [-1.55, -1.15]) box(wd, cx + lx - .025, cx + lx + .025, fb, fb + .4, sz + lz - .025, sz + lz + .025);
+          cyl(S({color: 0xe8e0d0}), .045, .04, .1, cx + .2, fb + .5, sz - 1.35); box(S({color: 0x2a3a5a}), cx - .3, cx - .05, fb + .45, fb + .48, sz - 1.45, sz - 1.25); }
+        // a ship's cat asleep on the sofa (or the bench)
         const cb = new THREE.Mesh(new THREE.SphereGeometry(.16, 12, 8), cm); cb.scale.set(1.5, .75, 1); cat.add(cb); const ch = new THREE.Mesh(new THREE.SphereGeometry(.09, 10, 8), cm); ch.position.set(.2, .02, .06); cat.add(ch);
         for (const e of [-1, 1]) { const ear = new THREE.Mesh(new THREE.ConeGeometry(.03, .06, 4), cm); ear.position.set(.22, .1, .06 + e * .045); cat.add(ear); }
-        const tl = new THREE.Mesh(new THREE.TorusGeometry(.17, .025, 6, 12, PI * 1.2), cm); tl.rotation.x = PI / 2; tl.position.y = -.03; cat.add(tl); g.userData.cat = cat; g.userData.catP = [x0 + .55, fb + .62, sz - .5];
-        // wood stove with a glowing window and a flue
-        const s0 = Math.min(zm + 1.1, wz1 - 1.75); box(S({color: 0x1a1a1a, roughness: .6, metalness: .4}), ww - .78, ww - .2, fb, fb + .8, s0, s0 + .6, 1);
-        const fw = add(new THREE.BoxGeometry(.02, .26, .36), S({color: 0x200800, emissive: 0xff6a20, emissiveIntensity: 1.1, nc: 1}), ww - .79, fb + .42, s0 + .3); g.userData.fire = fw.material;
-        cyl(S({color: 0x2a2a2a, metalness: .5}), .07, .07, hh - .8, ww - .5, fb + .8 + (hh - .8) / 2, s0 + .3); g.userData.stove = [ww - .9, fb + .7, s0 + .3];
-        // bookshelf, plants, pictures, fairy lights
-        const bz0 = wz0 + .75, bz1 = Math.max(bz0 + .6, zm - .8); box(wd, -ww + .14, -ww + .5, fb, fb + 1.9, bz0, bz1, 1); for (let r = 0; r < 4; r++) { box(wd, -ww + .14, -ww + .5, fb + .4 + r * .45, fb + .43 + r * .45, bz0, bz1); for (let z = bz0 + .04; z < bz1 - .06; z += .07 + (r * z * 13 % 3) * .01) box(S({color: [0x7a2a1a, 0x2a4a6a, 0x3a5a2a, 0xa08030, 0x5a2a5a][Math.floor(Math.abs(z * 31 + r) % 5)], roughness: .9}), -ww + .18, -ww + .45, fb + .43 + r * .45, fb + .43 + r * .45 + .28 + ((z * 17) % .08), z, z + .055); }
-        for (const [px, pz] of [[ww - .45, wz1 - 1.2], [-ww + .5, wz0 + .5]]) { cyl(S({color: 0x8a4a2a}), .14, .1, .26, px, fb + .13, pz); for (let i = 0; i < 6; i++) { const lf = add(new THREE.ConeGeometry(.05, .55, 4), S({color: 0x2a6a2a, roughness: .9}), px + Math.cos(i) * .06, fb + .5, pz + Math.sin(i) * .06); lf.rotation.set(Math.sin(i * 2) * .5, 0, Math.cos(i * 2) * .5); } }
-        for (const [px, pz, w2] of [[-ww + .15, zm + .2, .5], [ww - .15, zm - .9, .4]]) { const pf = add(new THREE.BoxGeometry(.02, w2 * .7, w2), S({color: 0x3a2a1a}), px, fb + 1.45, pz); const pc = add(new THREE.PlaneGeometry(w2 * .85, w2 * .6), S({color: [0x5a8aa0, 0xc89a5a][px > 0 ? 1 : 0], roughness: .9}), px + (px > 0 ? -.012 : .012), fb + 1.45, pz); pc.rotation.y = px > 0 ? -PI / 2 : PI / 2; }
+        const tl = new THREE.Mesh(new THREE.TorusGeometry(.17, .025, 6, 12, PI * 1.2), cm); tl.rotation.x = PI / 2; tl.position.y = -.03; cat.add(tl); g.userData.cat = cat; g.userData.catP = cp;
+        // wood stove with a glowing window and a flue, clear of the chart table and the extinguisher
+        const hb = cls === 9, s0 = zm + 1.1; if (hb) g.userData.stove = [ww - .9, fb + .7, wz0 + 1.1]; // the houseboat has its own bunks and stove (ships): light that one, skip ours and the bookshelf
+        if (!hb && s0 + .6 < wz1 - .45 && ww > 1.6) { box(S({color: 0x1a1a1a, roughness: .6, metalness: .4}), ww - .78, ww - .2, fb, fb + .8, s0, s0 + .6, 1);
+          const fw = add(new THREE.BoxGeometry(.02, .26, .36), S({color: 0x200800, emissive: 0xff6a20, emissiveIntensity: 1.1, nc: 1}), ww - .79, fb + .42, s0 + .3); g.userData.fire = fw.material;
+          cyl(S({color: 0x2a2a2a, metalness: .5}), .07, .07, hh - .8, ww - .5, fb + .8 + (hh - .8) / 2, s0 + .3); g.userData.stove = [ww - .9, fb + .7, s0 + .3]; }
+        // bookshelf (books merged per colour), plants in the front corners, pictures from the shared canvases, fairy lights
+        const bz0 = wz0 + .75, bz1 = Math.min(bz0 + 1.6, zm - .75); if (!hb && bz1 - bz0 > .5) { box(wd, -ww + .14, -ww + .5, fb, fb + 1.9, bz0, bz1, 1); const bk = [];
+          for (let r = 0; r < 4; r++) { box(wd, -ww + .14, -ww + .5, fb + .4 + r * .45, fb + .43 + r * .45, bz0, bz1); for (let z = bz0 + .04; z < bz1 - .06; z += .07 + (r * z * 13 % 3) * .01) { const bh = .28 + ((z * 17) % .08), q = new THREE.BoxGeometry(.27, bh, .055); q.translate(-ww + .315, fb + .43 + r * .45 + bh / 2, z + .0275); bk.push([q, S({color: [0x7a2a1a, 0x2a4a6a, 0x3a5a2a, 0xa08030, 0x5a2a5a][Math.floor(Math.abs(z * 31 + r) % 5)], roughness: .9}), 1]); } }
+          for (const m of mergeByMat(bk)) g.add(m); }
+        for (const [px, pz] of [[ww - .4, wz0 + .45], [-ww + .45, wz0 + .45]]) { cyl(S({color: 0x8a4a2a}), .14, .1, .26, px, fb + .13, pz); for (let i = 0; i < 6; i++) { const lf = add(new THREE.ConeGeometry(.05, .55, 4), S({color: 0x2a6a2a, roughness: .9}), px + Math.cos(i) * .06, fb + .5, pz + Math.sin(i) * .06); lf.rotation.set(Math.sin(i * 2) * .5, 0, Math.cos(i * 2) * .5); } }
+        for (const [px, pz, w2, ai] of [[-ww + .15, zm + .2, .5, cls], [ww - .15, zm - .9, .4, cls + 1]]) { add(new THREE.BoxGeometry(.02, w2 * .7, w2), S({color: 0x3a2a1a}), px, fb + 1.45, pz); const pc = add(itrArtGeo(ai, w2 * .85, w2 * .6), MAT.itrArt, px + (px > 0 ? -.012 : .012), fb + 1.45, pz); pc.rotation.y = px > 0 ? -PI / 2 : PI / 2; }
         const fl = S({color: 0x302010, emissive: 0xffc070, emissiveIntensity: 1, nc: 1}); g.userData.fairy = fl; for (const zz of [wz0 + .25, wz1 - .25]) for (let x = -ww + .3; x < ww - .2; x += .45) add(new THREE.SphereGeometry(.025, 6, 4), fl, x, fb + hh - .1 - Math.abs(Math.sin(x * 1.3)) * .08, zz).castShadow = false;
       }
-      if (H.big || cls === 3) { const tz = wz1 - 1.8; box(S({color: 0x0e4a2a, roughness: .9}), -.9, .9, fb + .78, fb + .84, tz - .55, tz + .55, 1); box(wd, -.95, .95, fb, fb + .78, tz - .6, tz + .6); for (const sx of [-1, 1]) cyl(fab, .2, .2, .5, sx * 1.35, fb + .25, tz);
-        box(darkM, ww - 1.1, ww - .3, fb, fb + 1.7, wz1 - .9, wz1 - .3, 1); add(new THREE.BoxGeometry(.6, .4, .02), S({color: 0x101010, emissive: 0xff3070, emissiveIntensity: .5}), ww - .7, fb + 1.25, wz1 - .91);
-        INTER.push({kind: 'cas', boat: 1, lx: 0, lz: tz, ly: 1, r: 2, label: () => 'Card table: blackjack, roulette, slots', go: openCasino}); } }
+      // the card table sits off the aisle now (decor: the real casino is the Lucky Lantern ashore); the slot cabinet stays clear of the extinguisher
+      if (H.big || cls === 3) { const tz = wz1 - 1.8, tx = ww * .35; box(S({color: 0x0e4a2a, roughness: .9}), tx - .7, tx + .7, fb + .78, fb + .84, tz - .5, tz + .5, 1); box(wd, tx - .65, tx + .65, fb, fb + .78, tz - .45, tz + .45); for (const sd of [-1, 1]) cyl(fab, .2, .2, .5, tx, fb + .25, tz + sd * .8);
+        for (let i = 0; i < 5; i++) box(S({color: 0xe8e4da}), tx - .3 + i * .12, tx - .22 + i * .12, fb + .84, fb + .845, tz - .1, tz + .02);
+        box(darkM, ww - 1.25, ww - .45, fb, fb + 1.7, wz1 - .9, wz1 - .3, 1); add(new THREE.BoxGeometry(.6, .4, .02), S({color: 0x101010, emissive: 0xff3070, emissiveIntensity: .5}), ww - .85, fb + 1.25, wz1 - .91); }
+      // the Serenade's 12 m wheelhouse: a centre island (chart table, two armchairs, a rug) under the lamp
+      if (cls === 7) { box(S({color: 0x2a3a5a, roughness: 1}), -2.3, 2.3, fb, fb + .012, zm - 1.5, zm + 1.5); box(wd, -.85, .85, fb + .78, fb + .84, zm - .5, zm + .5, 1); box(wd, -.75, .75, fb, fb + .78, zm - .4, zm + .4);
+        const cht = add(itrArtGeo(2, 1.3, .8), MAT.itrArt, 0, fb + .845, zm); cht.rotation.x = -PI / 2;
+        const arm = S({color: 0x8a4a2a, roughness: .95}); for (const sd of [-1, 1]) { const ax = sd * 1.55; box(arm, ax - .4, ax + .4, fb, fb + .42, zm - .4, zm + .4, 1); box(fab, ax + sd * .26 - .07, ax + sd * .26 + .07, fb + .42, fb + .95, zm - .4, zm + .4); for (const e of [-1, 1]) box(fab, ax - .4, ax + .4, fb + .42, fb + .62, zm + e * .4 - .06, zm + e * .4 + .06); } } }
     cyl(whiteM, .04, .04, 1.4, 0, y0 + hh + .8, (wz0 + wz1) / 2);
     for (const sd of [-1, 1]) { const nl = new THREE.Sprite(new THREE.SpriteMaterial({map: TX.glow, color: sd < 0 ? 0xff2020 : 0x20ff40, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending})); nl.scale.setScalar(.8); nl.position.set(sd * (ww + .1), y0 + hh + .1, wz0); g.add(nl); }
-    g.userData.lightZ = wz0 - .2; g.userData.lightY = y0 + hh + .3; g.userData.wz = [wz0, wz1]; g.userData.ww = ww; g.userData.lamp = [0, y0 + hh - .6, (wz0 + wz1) / 2];
+    g.userData.lightZ = wz0 - .2; g.userData.lightY = y0 + hh + .3; g.userData.wz = [wz0, wz1]; g.userData.ww = ww; g.userData.lamp = [0, y0 + hh - .3, (wz0 + wz1) / 2];
     const aft = (wz1 + zs) / 2;
     BSPOT.hold[0] = 0; BSPOT.hold[1] = Math.min(zs - 2.2, wz1 + 1.8 + (cls === 3 ? 0 : 0)); BSPOT.fuel[0] = hw - .9; BSPOT.fuel[1] = zs - .8; BSPOT.patch[0] = -hw + .9; BSPOT.patch[1] = zs - .8;
     if (cls === 3) { BSPOT.hold[1] = wz0 - 2.4; } if (cls === 7) BSPOT.hold[1] = zs - 9; if (cls === 8) { BSPOT.hold[0] = -.55; BSPOT.hold[1] = wz1 + 1.1; BSPOT.fuel[0] = hw - .55; BSPOT.patch[0] = -hw + .55; BSPOT.fuel[1] = BSPOT.patch[1] = zs - .45; } if (cls === 9) { BSPOT.hold[0] = -1.3; BSPOT.hold[1] = wz1 + 1.6; } if (cls === 11) BSPOT.hold[1] = wz1 + 2.2; if (cls === 12) BSPOT.hold[1] = zs - 30;
@@ -2468,8 +2674,8 @@ function hostAct(id, m) {
   else if (m.a === 'sell') { let v = 0; const c = {}, cnt = k => { if (VALUE[k]) c[k] = (c[k] || 0) + 1; }; if (voyPortNear(B.x, B.z, 60 + BG.L * .5)) { v += holdValue(); B.hold.forEach(cnt); B.hold = B.hold.filter(k => !VALUE[k]); } { const sv = sackVal(p.sack); if (sv) { v += sv; p.sack.forEach(cnt); p.sack = p.sack.filter(k => !VALUE[k]); sackSet(p); } }
     if (p.cooler.length) { v += coolerVal(p.cooler); c.fish = p.cooler.length; p.cooler = []; emit({k: 'cooler', id, n: 0, v: 0}); } if (v) { v = Math.round(v * (D.pay || 1)); G.cash += v; G.earned += v; emit({k: 'sold', v, c}); if (G.earned >= 1500) goal(3); save(); } }
   else if (m.a === 'buyh') { const now = performance.now() / 1000; if ((p.buyT || 0) > now) return; p.buyT = now + .4; const H = HULLS[m.k]; if (!H || m.k === (B.up.cls || 0) || (H.cruise && !G.cruise)) return; const own = Array.isArray(B.up.own) ? B.up.own : (B.up.own = [0, B.up.cls || 0]), price = own.includes(m.k) || (H.cruise && G.cruise) ? 0 : hullCost(H);
-    if (sackUsed(B.hold) > Math.round(H.hold * [1, 1.5, 2][B.up.hold || 0]) * 2) emit({k: 'holdbig', id}); else if (B.driver) emit({k: 'nope', id, why: 'Someone is at the wheel.'}); else if (Math.hypot(B.x - JETTY.x, B.z - JETTY.z) >= 60 + BG.L * .5) emit({k: 'nope', id, why: 'Bring the boat to the jetty first.'}); else if (G.cash < price) emit({k: 'nope', id, why: 'Not enough crew cash.'});
-    else { G.cash -= price; if (!own.includes(m.k)) own.push(m.k); B.up.cls = m.k; buildBoat(); resetBoat(false); B.fuel = tankMax(); B.hull = hullMax(); { let n = 0; for (const q of PL.values()) if (q.ob) { const sp = boatSpawn(n++); q.bl = sp.bl; q.y = sp.y; q.climb = null; q.seat = 0; q.rest = 0; } } emit({k: 'bought', n: H.n, hull: m.k}); save(); } }
+    if (sackUsed(B.hold) > Math.round(H.hold * [1, 1.5, 2][B.up.hold || 0]) * 2) emit({k: 'holdbig', id}); else if (B.driver) emit({k: 'nope', id, why: 'Someone is at the wheel.'}); else if (!voyPortNear(B.x, B.z, 60 + BG.L * .5)) emit({k: 'nope', id, why: 'Bring the boat into a harbour first.'}); else if (G.cash < price) emit({k: 'nope', id, why: 'Not enough crew cash.'});
+    else { const port = voyPortNear(B.x, B.z, 60 + BG.L * .5); G.cash -= price; if (!own.includes(m.k)) own.push(m.k); B.up.cls = m.k; buildBoat(); resetBoat(false); if (port && port !== JETTY) { B.x = port.x; B.z = port.z - 12.5 - BG.hw; B.yaw = PI / 2; } B.fuel = tankMax(); B.hull = hullMax(); { let n = 0; for (const q of PL.values()) if (q.ob) { const sp = boatSpawn(n++); q.bl = sp.bl; q.y = sp.y; q.climb = null; q.seat = 0; q.rest = 0; } } emit({k: 'bought', n: H.n, hull: m.k}); save(); } }
   else if (m.a === 'buy') { const now = performance.now() / 1000; if ((p.buyT || 0) > now) return; p.buyT = now + .4; const U = UPG[m.k], poor = c => G.cash < c && (emit({k: 'nope', id, why: 'Not enough crew cash.'}), true);
     if (U) { const lv = B.up[m.k] || 0, c = U.cost[lv]; if (c != null && !poor(c)) { G.cash -= c; B.up[m.k] = lv + 1; if (m.k === 'tank') B.fuel = tankMax(); if (m.k === 'hull') B.hull = hullMax(); emit({k: 'bought', n: U.n}); if (B.up.engine >= 3) goal(4); save(); } }
     else if (m.k === 'flares') { if ((m.fl || 0) >= 6) emit({k: 'nope', id, why: "You can't carry more flares."}); else if (!poor(30)) { G.cash -= 30; emit({k: 'give', id, kind: 'flare', n: Math.min(3, 6 - (m.fl || 0)), buy: 1}); save(); } }
@@ -2723,7 +2929,7 @@ function drawShop() {
   } else if (tab === 'jobs') { rows.push(jobRows(row, bt));
   } else if (tab === 'boats') {
     const next2 = HULLS.map((H, i) => i).filter(i => !own.includes(i) && !HULLS[i].cruise).sort((a, b) => HULLS[a].cost - HULLS[b].cost).slice(0, 2);
-    const block = H => sackUsed(B.hold) > Math.round(H.hold * hm) * 2 ? 'Unload the hold first' : B.driver ? 'Someone is at the wheel' : !docked ? 'Dock at the jetty' : ''; let hid = 0;
+    const block = H => sackUsed(B.hold) > Math.round(H.hold * hm) * 2 ? 'Unload the hold first' : B.driver ? 'Someone is at the wheel' : !docked ? 'Dock at a harbour' : ''; let hid = 0;
     HULLS.forEach((H, i) => { const sz = `${H.L} m · hold ${H.hold}`, sd = H.d.includes(`${H.L} m`) ? `hold ${H.hold}` : sz, c = hullCost(H), mine = own.includes(i) || (H.cruise && G.cruise);
       if (i === cls) rows.push(row(H.n, `${H.d} · ${sd}`, '<span class="bt"><button disabled>Aboard</button></span>', ' cur'));
       else if (H.cruise ? !G.cruise : !mine && !next2.includes(i) && !G.shopAll && G.cash < c * .5) { if (!H.cruise) hid++; rows.push(row('???', sz, bt('', H.cruise ? '???' : money(c), c, H.cruise ? 'Unclaimed' : ''), ' q')); }
@@ -2941,7 +3147,7 @@ function updateCamera(dt) {
   const on = own && (lightOn() || (G.js && G.js.t > 0)) && P.hd < 0 && (!P.sw || P.dv > .5); let k = on ? .55 + .45 * Math.min(1, P.bat * 3) : 0;
   const nearM = Math.hypot(ex - M.x, ez - M.z) + Math.abs(ey - M.y);
   if (G.js && G.js.t > 0) k = Math.random() < .3 ? .25 : 1; else if (on && (P.bat < .15 || nearM < 13 || M.state === 'chase' && nearM < 22) && Math.random() < .25) k *= Math.random() < .5 ? .05 : .5;
-  flash.intensity = 70 * k; VM.userData.lens.material.color.setScalar(on ? .25 + k * .35 : .04);
+  const ind = zoneOf(ex, ez, ey - 1.6) >= 0 || (inCabin() && !BG.sub) || itrInCrz(ex, ey, ez); flash.intensity = 70 * k * (ind ? .4 : 1); flash.angle = ind ? .62 : .44; VM.userData.lens.material.color.setScalar(on ? .25 + k * .35 : .04);
   _v.set(.2, -.19, -.62).applyQuaternion(cam.quaternion).add(cam.position); flash.position.copy(_v); flash.target.position.copy(_v).addScaledVector(swayV, 10);
   scene.userData.sky.position.copy(cam.position); stepBirds(G.wt, ex, ez);
   SEA.position.set(Math.round(ex / 6) * 6, 0, Math.round(ez / 6) * 6);
@@ -3313,19 +3519,32 @@ function buildCruise() {
   sw(X - 10, X - 1.1, Z - 45.2, Z - 45); sw(X + 1.1, X + 10, Z - 45.2, Z - 45); sw(X - 10, X - 1.1, Z + 45, Z + 45.2); sw(X + 1.1, X + 10, Z + 45, Z + 45.2);
   bx('white', X - 1.1, X + 1.1, D1 + 2.3, D2 - .3, Z - 45.2, Z - 45); bx('white', X - 1.1, X + 1.1, D1 + 2.3, D2 - .3, Z + 45, Z + 45.2);
   for (let i = 0; i < 18; i++) for (const sx of [-1, 1]) wbox('glass', X + sx * 10.22, D1 + 2, Z - 42 + i * 5, .04, .8, 1.6);
-  // twelve staterooms off a carpeted corridor; the one nearest the bow is the captain's
+  // cream paint over a panelled dado in the atrium and ballroom (the shell stays white outside)
+  for (const sx of [-1, 1]) { const a = X + sx * 10, b = X + sx * 9.97, c = X + sx * 9.94; bx('wood', Math.min(a, b), Math.max(a, b), D1, D1 + .98, Z - 8, Z + 44.97); bx('itrCream', Math.min(a, b), Math.max(a, b), D1 + 1.06, D2 - .3, Z - 8, Z + 44.97); bx('log', Math.min(a, c), Math.max(a, c), D1 + .97, D1 + 1.06, Z - 8, Z + 44.97);
+    const e0 = X + sx * 1.1, e1 = X + sx * 9.97; bx('wood', Math.min(e0, e1), Math.max(e0, e1), D1, D1 + .98, Z + 44.97, Z + 45); bx('itrCream', Math.min(e0, e1), Math.max(e0, e1), D1 + 1.06, D2 - .3, Z + 44.97, Z + 45); bx('log', Math.min(e0, e1), Math.max(e0, e1), D1 + .97, D1 + 1.06, Z + 44.94, Z + 45); }
+  bx('itrCream', X - 1.1, X + 1.1, D1 + 2.3, D2 - .3, Z + 44.97, Z + 45);
+  // twelve staterooms off a carpeted corridor (each brings its sconce and door plate); the one nearest the bow is the captain's
   bx('carpet', X - 1.4, X + 1.4, D1, D1 + .02, Z - 45, Z - 8);
   for (let i = 0; i < 6; i++) { const z = Z - 41.9 + i * 5.6; const a = building('state', i === 0 ? "Captain's quarters" : 'Stateroom ' + (101 + i * 2), X - 5.7, z, D1, 'e'); a.cruise = 1; if (i === 0) a.capt = 1; const b = building('state', 'Stateroom ' + (102 + i * 2), X + 5.7, z, D1, 'w'); b.cruise = 1; }
+  // a soffit over the corridor walls up to the deck head, and fillers in the slits between rooms
+  for (const sx of [-1, 1]) { const a = X + sx * 1.42, b = X + sx * 1.58, a2 = X + sx * 1.43, b2 = X + sx * 1.57; bx('itrCream', Math.min(a, b), Math.max(a, b), D1 + 3.4, D2 - .3, Z - 44.7, Z - 11.1); for (let i = 1; i < 6; i++) { const zg = Z - 44.7 + i * 5.6; bx('wallp', Math.min(a2, b2), Math.max(a2, b2), D1, D1 + 3.4, zg - .07, zg + .07); } }
   // atrium: open two decks, twin grand staircases up to deck 2
   bx('carpet', X - 10, X + 10, D1, D1 + .02, Z - 8, Z + 45);
   for (const sx of [-1, 1]) ramp(X + sx * 8.6 - 1, X + sx * 8.6 + 1, Z - 8, Z + 8, D1, D2, 'z+', 'carpet');
-  wbox('brass', X, D1 + 3.6, Z, .1, 1.2, .1); { const ch = new THREE.Mesh(new THREE.TorusGeometry(1.4, .08, 6, 24), new THREE.MeshStandardMaterial({color: 0xb8902a, metalness: .8, roughness: .3})); ch.rotation.x = PI / 2.3; ch.position.set(X + .6, D1 + .3, Z + 1); scene.add(ch); }
-  // ballroom: tables, a grand piano, the stage with the music box
-  for (let i = 0; i < 8; i++) { const tx = X + (i % 2 ? 4.5 : -4.5), tz = Z + 14 + Math.floor(i / 2) * 6; wbox('wood', tx, D1 + .75, tz, 1.6, .06, 1.6); wbox('dark', tx, D1 + .38, tz, .12, .75, .12); WALLS.push({x0: tx - .8, x1: tx + .8, z0: tz - .8, z1: tz + .8, y0: D1, y1: D1 + .8, see: false}); spot('cruise', tx + .3, D1 + .8, tz - .2); for (const c of [-1, 1]) wbox('red', tx + c * 1.1, D1 + .45, tz, .45, .9, .45, .4 * c); }
+  // the chandelier hangs from a girder across the atrium well: a rod, two brass rings of bulbs; one ring already lies on the floor
+  { const cz = Z + 3; bx('steel', X - .15, X + .15, D2 - .8, D2 - .35, Z - 8, Z + 8); put('brass', new THREE.CylinderGeometry(.03, .03, .76, 6), X, D1 + 2.83, cz); put('brass', new THREE.SphereGeometry(.07, 6, 4), X, D1 + 2.44, cz);
+    for (const [y, r, n] of [[D1 + 2.82, .6, 5], [D1 + 2.55, 1.1, 8]]) { put('brass', new THREE.TorusGeometry(r, .035, 5, 28), X, y, cz, 0, PI / 2); for (let k = 0; k < n; k++) { const a = k / n * TAU + r, x = X + Math.cos(a) * r, z = cz + Math.sin(a) * r; put('itrBulb', new THREE.SphereGeometry(.05, 6, 4), x, y + .08, z); } }
+    for (let k = 0; k < 4; k++) { const a = k * PI / 2 + .3; put('brass', new THREE.CylinderGeometry(.012, .012, 1.13, 4), X + Math.cos(a) * .55, D1 + 2.675, cz + Math.sin(a) * .55, -a, 0, Math.atan2(1.1, .25)); } }
+  { const ch = new THREE.Mesh(new THREE.TorusGeometry(1.4, .08, 6, 24), new THREE.MeshStandardMaterial({color: 0xb8902a, metalness: .8, roughness: .3})); ch.rotation.x = PI / 2.3; ch.position.set(X + .6, D1 + .3, Z + 1); scene.add(ch); }
+  // ballroom: tables in white cloths with chairs, a grand piano, the stage with the music box and a red curtain
+  for (let i = 0; i < 8; i++) { const tx = X + (i % 2 ? 4.5 : -4.5), tz = Z + 14 + Math.floor(i / 2) * 6; wbox('white', tx, D1 + .715, tz, 1.62, .15, 1.62); wbox('dark', tx, D1 + .33, tz, .12, .66, .12); wbox('dark', tx, D1 + .03, tz, .6, .04, .6); WALLS.push({x0: tx - .8, x1: tx + .8, z0: tz - .8, z1: tz + .8, y0: D1, y1: D1 + .8, see: false}); spot('cruise', tx + .3, D1 + .8, tz - .2);
+    for (const c of [-1, 1]) { const ry = .4 * c, cx = tx + c * 1.1, ox = c * .2 * Math.cos(ry), oz = -c * .2 * Math.sin(ry); wbox('red', cx, D1 + .47, tz, .46, .1, .46, ry); wbox('dark', cx, D1 + .21, tz, .08, .42, .08); wbox('dark', cx, D1 + .035, tz, .36, .03, .36, ry); wbox('red', cx + ox, D1 + .8, tz + oz, .07, .56, .46, ry); WALLS.push({x0: cx - .3, x1: cx + .3, z0: tz - .3, z1: tz + .3, y0: D1, y1: D1 + 1, see: false}); } }
   WALLS.push({x0: X - 8.6, x1: X - 3.5, z0: Z + 43.9, z1: Z + 45, y0: D1, y1: D1 + 1.8, see: false});
   for (let i = 0; i < 4; i++) { const sx = X - 8 + i * 1.3; wbox('dark', sx, D1 + .8, Z + 44.3, 1, 1.6, .7); wbox('glassL', sx, D1 + 1.25, Z + 43.94, .7, .45, .02); wbox('red', sx, D1 + 1.75, Z + 44.3, 1, .25, .7); }
   wbox('dark', X, D1 + .5, Z + 39, 8, 1, 4); WALLS.push({x0: X - 4, x1: X + 4, z0: Z + 37, z1: Z + 41, y0: D1, y1: D1 + 1, see: false});
-  wbox('dark', X - 2.5, D1 + 1.5, Z + 38.5, 2.2, .5, 1.5); wbox('wood', X + 2.2, D1 + 1.15, Z + 38.5, .3, .3, .3); spot('cruise', X + 2.6, D1 + 1, Z + 37.5); CRZ.box = [X + 2.2, D1 + 1.3, Z + 38.5];
+  { const cg = new THREE.PlaneGeometry(8.4, 2.62), uv = cg.attributes.uv; for (let k = 0; k < uv.count; k++) uv.setX(k, uv.getX(k) * 9); put('itrCurtain', cg, X, D1 + 2.31, Z + 41.15, PI); bx('itrCurtain', X - 4.4, X + 4.4, D1 + 3.3, D1 + 3.7, Z + 40.9, Z + 41.25);
+    for (const sx of [-1, 1]) { const dg = new THREE.PlaneGeometry(.9, 2.3), du = dg.attributes.uv; for (let k = 0; k < du.count; k++) du.setX(k, du.getX(k) * 2); put('itrCurtain', dg, X + sx * 3.85, D1 + 2.15, Z + 40.6, PI + sx * .3); } }
+  wbox('dark', X - 2.5, D1 + 1.5, Z + 38.5, 2.2, .5, 1.5); for (const [lx, lz] of [[-3.4, 37.95], [-3.4, 39.05], [-1.6, 38.5]]) wbox('dark', X + lx, D1 + 1.13, Z + lz, .1, .26, .1); wbox('wood', X + 2.2, D1 + 1.15, Z + 38.5, .3, .3, .3); spot('cruise', X + 2.6, D1 + 1, Z + 37.5); CRZ.box = [X + 2.2, D1 + 1.3, Z + 38.5];
   // deck 2: open lido deck around a hole over the atrium, a tower, the pool and the funnel
   slab(X - 12, X + 12, Z - 46, Z - 8, D2, 'planks'); slab(X - 12, X + 12, Z + 8, Z + 48, D2, 'planks'); slab(X - 12, X - 10, Z - 8, Z + 8, D2, 'planks'); slab(X + 10, X + 12, Z - 8, Z + 8, D2, 'planks');
   rail(X - 10, X - 9.6, Z - 8.1, Z - 7.9, D2, 'white'); rail(X - 7.6, X + 7.6, Z - 8.1, Z - 7.9, D2, 'white'); rail(X + 9.6, X + 10, Z - 8.1, Z - 7.9, D2, 'white'); rail(X - 7.6, X + 7.6, Z + 7.9, Z + 8.1, D2, 'white');
@@ -4882,13 +5101,11 @@ function updateWorldFx(dt) {
   const ang = G.wt * .45; lhL.position.set(G.lh[0], G.lh[1], G.lh[2]); lhL.target.position.set(G.lh[0] + Math.sin(ang) * 100, G.lh[1] - 6, G.lh[2] + Math.cos(ang) * 100); lhL.intensity = 30;
   G.lhBeam.position.set(G.lh[0], G.lh[1], G.lh[2]); G.lhBeam.rotation.set(0, ang, 0);
   const cp = cam.position;
-  // two pooled lamps: the boat's cabin lamp and stove while aboard (wins at the jetty too), else the two nearest harbour/rig lamps (no allocations)
+  // two pooled lamps: the boat's cabin lamp and stove while aboard (wins at the jetty too), else the two nearest room, rig and harbour lamps or the Serenade's reds (no allocations)
+  itrFx(cp);
   if (BOAT && BOAT.userData.lamp && P && P.ob && Math.hypot(cp.x - B.x, cp.z - B.z) < BG.L * .5 + 12) { const c = Math.cos(B.yaw), sn = Math.sin(B.yaw);
     for (let i = 0; i < 2; i++) { const l = POOL[i], q = i ? BOAT.userData.stove : BOAT.userData.lamp; if (!q) { l.intensity = 0; continue; } l.position.set(B.x + q[0] * c + q[2] * sn, q[1] + B.heave, B.z - q[0] * sn + q[2] * c); l.color.setHex(i ? 0xff7a30 : 0xffc890); l.distance = 12; l.intensity = i ? 5 + Math.random() * 2.5 : 7; } }
-  else if ((G.power && nearRig(cp.x, cp.z)) || Math.hypot(cp.x - HOME.x, cp.z - HOME.z) < 60) { let a = null, b = null, da = 1e18, db = 1e18; const h = G.homeLamps, nh = h.length, n = nh + (G.power ? LAMPS.length : 0);
-    for (let i = 0; i < n; i++) { const s = i < nh ? h[i] : LAMPS[i - nh], dx = s[0] - cp.x, dy = s[1] - cp.y, dz = s[2] - cp.z, d = dx * dx + dy * dy + dz * dz; if (d < da) { b = a; db = da; a = s; da = d; } else if (d < db) { b = s; db = d; } }
-    for (let i = 0; i < 2; i++) { const l = POOL[i], s = i ? b : a; if (!s) { l.intensity = 0; continue; } l.position.set(s[0], s[1] - .3, s[2]); l.color.setHex(0xffe2b0); l.distance = 30; l.intensity = 22 * s[3] * (Math.random() < .015 ? .3 : 1); } }
-  else { POOL[0].intensity = 0; POOL[1].intensity = 0; }
+  else itrPool(cp);
   if (G.shedGlow) G.shedGlow.material.opacity = .12 + .7 * (1 - TOD.day);
   extBuoyStep();
   if (G.ghostS) G.ghostS.forEach((s, i) => s.material.opacity = (.4 + Math.sin(G.wt * 1.3 + i) * .3) * (.3 + .7 * TOD.night));
@@ -5854,7 +6071,7 @@ function buildWorld() {
   beam.geometry.translate(0, -80, 0); beam.geometry.rotateX(-PI / 2 + .04); const bg = new THREE.Group(); bg.add(beam); scene.add(bg); G.lhBeam = bg;
   extBuoys();
   G.ghostS = G.ghostLights.map(p => { const s = new THREE.Sprite(new THREE.SpriteMaterial({map: TX.glow, color: 0x6affb0, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false})); s.scale.setScalar(2.4); s.position.set(...p); scene.add(s); return s; });
-  G.homeLamps = [G.shedLamp, [0, 4.5, -236, 1.2]];
+  G.homeLamps = [G.shedLamp].concat(G.shed && G.shed.itrL ? [G.shed.itrL] : [], [[0, 4.5, -236, 1.2]]);
   $('load').classList.add('hidden');
 }
 // graphics level: shadows (both casters fixed, so no shader swaps at runtime), the post chain on High, exposure carries the brightness
