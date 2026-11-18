@@ -29,7 +29,7 @@ const hexS = c => '#' + c.toString(16).padStart(6, '0');
 
 // ---------------- net (jjfanwars relay)
 const RELAY_URL = 'wss://jjfanwars-relay.businessautomationvic.workers.dev';
-const GAME_V = 46;
+const GAME_V = 47;
 const Net = {
   tag: '[Rig]', role: 'solo', ws: null, peers: new Map(), code: '', relayT: {pose: 1}, id: '', name: '', handlers: {}, retry: 0, started: false,
   enc: new TextEncoder(), dec: new TextDecoder(),
@@ -7870,6 +7870,64 @@ function plFrameB(dt) { if (!P) return; const t = G.wt, look = (x, z) => plSees(
   if (PLB.eel) { PLB.eel.t -= dt; if (!PLB.em) { PLB.em = new THREE.Mesh(new THREE.CapsuleGeometry(.35, 4, 4, 10), new THREE.MeshStandardMaterial({color: 0x1a0a06, emissive: 0xff3a00, emissiveIntensity: .6})); scene.add(PLB.em); } const v = PLB.eel.v, u = 1 - PLB.eel.t / .9; PLB.em.visible = true; PLB.em.position.set(v.x, v.y + Math.sin(u * PI) * 3, v.z); PLB.em.rotation.x = u * 1.2; if (PLB.eel.t <= 0) { PLB.eel = null; PLB.em.visible = false; } }
   if (PLB.stat) PLB.stat.forEach((s, i) => { const want = s.a + PI + (PLB.tm.r[i] || 0) * PI / 2; s.f.rotation.y += angD(s.f.rotation.y, want) * Math.min(1, dt * 3); }); if (PLB.vault) PLB.vault.position.x = mix(PLB.vault.position.x, PLB.tmp.x + (PLB.tm.open ? 4.5 : 0), Math.min(1, dt * .8)); }
 { const f0 = startGame; startGame = function () { PLB.con = null; PLB.sto = null; PLB.tm = {r: [1, 2, 3, 1], open: 0}; PLB.cts.forEach(c => c.open = 0); if (PLB.fort) PLB.fort.fixed = 0; const r = f0.apply(this, arguments); PLB.stoI = Math.floor(mulberry((G.seed || 1) ^ 0x570)() * Math.max(1, PLB.cts.length)); return r; }; }
+
+// ---------------- underwater, prettier but still scary: sun shafts in the shallows, kelp, rocks and coral on the bed (per 48 m cell round the camera, seeded), fish schools
+// that scatter, bubbles from divers and the sub, a visible torch beam, clearer shallows by day and a black deep, and now and then something enormous at the edge of sight.
+const UWX = {cells: new Map(), t: 0, kelp: null, rock: null, coral: null, fish: null, shafts: [], bub: null, beam: null, big: null, bigT: 30, fs: []};
+function uwxInit() { if (UWX.kelp) return;
+  const kg = new THREE.PlaneGeometry(.35, 1, 1, 8); kg.translate(0, .5, 0); const km = new THREE.MeshStandardMaterial({color: 0x3a5a22, roughness: .8, side: THREE.DoubleSide});
+  km.onBeforeCompile = sh => { sh.uniforms.uT = UWX.uT = {value: 0}; sh.vertexShader = 'uniform float uT;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n float ph = instanceMatrix[3].x * .37 + instanceMatrix[3].z * .23; transformed.x += sin(uT * .8 + ph + position.y * 2.) * .35 * position.y; transformed.z += cos(uT * .6 + ph) * .25 * position.y;'); };
+  UWX.kelp = new THREE.InstancedMesh(kg, km, 900); const rg = new THREE.IcosahedronGeometry(1, 1); UWX.rock = new THREE.InstancedMesh(rg, new THREE.MeshStandardMaterial({map: TX.rock, color: 0x5a6058, roughness: .95, flatShading: true}), 260);
+  const cg = new THREE.ConeGeometry(.35, 1, 6); cg.translate(0, .5, 0); UWX.coral = new THREE.InstancedMesh(cg, new THREE.MeshStandardMaterial({color: 0xffffff, roughness: .7}), 420);
+  const fg = new THREE.ConeGeometry(.07, .32, 5); fg.rotateX(-PI / 2); UWX.fish = new THREE.InstancedMesh(fg, new THREE.MeshStandardMaterial({color: 0xb8c8d0, roughness: .3, metalness: .6}), 160);
+  for (const m of [UWX.kelp, UWX.rock, UWX.coral, UWX.fish]) { m.frustumCulled = false; m.count = 0; m.visible = false; scene.add(m); }
+  // sun shafts: tall additive planes with a soft vertical gradient, crossed
+  const c = document.createElement('canvas'); c.width = 64; c.height = 256; const q = c.getContext('2d'), gr = q.createLinearGradient(0, 0, 0, 256); gr.addColorStop(0, 'rgba(255,255,255,.9)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); q.fillStyle = gr; q.fillRect(0, 0, 64, 256);
+  const hg = q.createLinearGradient(0, 0, 64, 0); hg.addColorStop(0, 'rgba(0,0,0,1)'); hg.addColorStop(.5, 'rgba(0,0,0,0)'); hg.addColorStop(1, 'rgba(0,0,0,1)'); q.globalCompositeOperation = 'destination-out'; q.fillStyle = hg; q.fillRect(0, 0, 64, 256);
+  const st = new THREE.CanvasTexture(c); for (let i = 0; i < 14; i++) { const g = new THREE.Group(); for (const r of [0, PI / 2]) { const m = new THREE.Mesh(new THREE.PlaneGeometry(2.2 + (i % 3), 36), new THREE.MeshBasicMaterial({map: st, color: 0x9ad8e0, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, fog: false})); m.rotation.y = r; m.position.y = -18; g.add(m); } g.visible = false; scene.add(g); UWX.shafts.push({g, a: Math.random() * TAU, r: 4 + Math.random() * 22, s: Math.random() * TAU}); }
+  // bubbles: one points cloud of 120 recycled bubbles
+  const bg = new THREE.BufferGeometry(); bg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(120 * 3).fill(-999), 3)); UWX.bub = new THREE.Points(bg, new THREE.PointsMaterial({map: TX.glow, color: 0xcfe8f0, size: .12, transparent: true, opacity: .7, depthWrite: false})); UWX.bub.frustumCulled = false; scene.add(UWX.bub); UWX.bp = [...Array(120)].map(() => ({x: 0, y: -999, z: 0, v: 0}));
+  // torch beam: a soft additive cone on the camera underwater
+  const bc = new THREE.ConeGeometry(2.6, 14, 20, 1, true); bc.translate(0, -7, 0); bc.rotateX(-PI / 2); UWX.beam = new THREE.Mesh(bc, new THREE.MeshBasicMaterial({color: 0xfff0d0, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, fog: false})); UWX.beam.geometry.rotateX(PI); UWX.beam.position.set(.15, -.15, 0); cam.add(UWX.beam); UWX.beam.geometry.translate(0, 0, -.3);
+  // the thing at the edge of sight
+  const big = new THREE.Group(), dm = new THREE.MeshBasicMaterial({color: 0x000000, transparent: true, opacity: 0, depthWrite: false}); const bd = new THREE.Mesh(new THREE.CapsuleGeometry(4, 38, 6, 12), dm); bd.rotation.x = PI / 2; big.add(bd); for (const s of [-1, 1]) { const f = new THREE.Mesh(new THREE.PlaneGeometry(14, 6), dm); f.rotation.x = -PI / 2; f.position.set(s * 9, 0, -4); big.add(f); } big.visible = false; scene.add(big); UWX.big = big; UWX.bigM = dm; }
+// a 48 m cell's bed dressing, seeded by position: kelp beds in the shallows (not frost), boulders everywhere, coral in the coral shallows and the home reefs
+function uwxCell(cx, cz) { const k = cx + ',' + cz; let c = UWX.cells.get(k); if (c) return c; const r = mulberry(Math.imul(cx, 73856093) ^ Math.imul(cz, 19349663) ^ 0x2a7e), out = {kelp: [], rock: [], coral: []}, x0 = cx * 48, z0 = cz * 48;
+  const rg = mapRegion(x0 + 24, z0 + 24), rk = rg ? rg.k : 'home', bed0 = seaBed(x0 + 24, z0 + 24);
+  if (bed0 < -1.5) { const kd = bed0 > -40 && rk !== 'frost' && rk !== 'ash' && r() < .55; if (kd) { const n = 8 + Math.floor(r() * 18), kx = x0 + r() * 48, kz = z0 + r() * 48; for (let i = 0; i < n; i++) { const x = kx + (r() - .5) * 14, z = kz + (r() - .5) * 14, b = seaBed(x, z); if (b < -2) out.kelp.push([x, b, z, Math.min(-b - 1.2, 4 + r() * 9), r() * TAU]); } }
+    for (let i = 0, n = 1 + Math.floor(r() * 4); i < n; i++) { const x = x0 + r() * 48, z = z0 + r() * 48, b = seaBed(x, z); out.rock.push([x, b, z, .6 + r() * 2.4, r() * TAU]); }
+    if ((rk === 'coral' || (rk === 'home' && bed0 > -22)) && r() < .7) for (let i = 0, n = 6 + Math.floor(r() * 14); i < n; i++) { const x = x0 + r() * 48, z = z0 + r() * 48, b = seaBed(x, z); if (b > -30 && b < -1) out.coral.push([x, b, z, .5 + r() * 1.6, Math.floor(r() * 5)]); } }
+  UWX.cells.set(k, out); if (UWX.cells.size > 600) UWX.cells.delete(UWX.cells.keys().next().value); return out; }
+const UWX_CC = [0xe86a5a, 0xf0a040, 0xc84a9a, 0x5ac8b8, 0xe8e0c0];
+function uwxFill() { const cp = cam.position, cx = Math.floor(cp.x / 48), cz = Math.floor(cp.z / 48), m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), s = new THREE.Vector3(), col = new THREE.Color(); let nk = 0, nr = 0, nc = 0;
+  for (let i = -2; i <= 2; i++) for (let j = -2; j <= 2; j++) { const c = uwxCell(cx + i, cz + j);
+    for (const [x, b, z, h, a] of c.kelp) { if (nk >= 900) break; e.set(0, a, 0); q.setFromEuler(e); s.set(1, h, 1); m4.compose(_v.set(x, b, z), q, s); UWX.kelp.setMatrixAt(nk++, m4); }
+    for (const [x, b, z, r, a] of c.rock) { if (nr >= 260) break; e.set(a * .3, a, 0); q.setFromEuler(e); s.set(r, r * .6, r * 1.2); m4.compose(_v.set(x, b + r * .2, z), q, s); UWX.rock.setMatrixAt(nr++, m4); }
+    for (const [x, b, z, h, ci] of c.coral) { if (nc >= 420) break; e.set((ci - 2) * .15, ci, 0); q.setFromEuler(e); s.set(h * (ci % 2 ? 1.6 : .7), h, h * (ci % 2 ? 1.6 : .7)); m4.compose(_v.set(x, b - .1, z), q, s); UWX.coral.setMatrixAt(nc, m4); UWX.coral.setColorAt(nc++, col.setHex(UWX_CC[ci])); } }
+  UWX.kelp.count = nk; UWX.rock.count = nr; UWX.coral.count = nc; for (const m of [UWX.kelp, UWX.rock, UWX.coral]) { m.instanceMatrix.needsUpdate = true; if (m.instanceColor) m.instanceColor.needsUpdate = true; } UWX.fc = cx + ',' + cz; }
+function uwxFrame(dt) { if (!G.on || !P) return; uwxInit(); const cp = cam.position, und = (G.uw || 0) > .5 && !G.subIn, sub = !!G.subIn && (B.dep || 0) > 1, see = und || sub || (G.rov && (G.uw || 0) > .5), t = G.wt;
+  const cw = waveH(cp.x, cp.z, t), dp = Math.max(0, cw - cp.y), day = TOD.day * (1 - G.storm * .6), dpt = clamp(dp / 80, 0, 1);
+  for (const m of [UWX.kelp, UWX.rock, UWX.coral]) m.visible = see; if (see && UWX.fc !== Math.floor(cp.x / 48) + ',' + Math.floor(cp.z / 48)) uwxFill(); if (UWX.uT) UWX.uT.value = t;
+  // a little clearer in the sunlit shallows by day; the deep stays black
+  if ((G.uw || 0) > .5) { const clear = day * (1 - smooth(dp / 35)); scene.fog.density *= mix(1, .7, clear); scene.fog.color.lerp(new THREE.Color(.03, .16, .18), clear * .35); scene.background.copy(scene.fog.color); if (dp > 60) { scene.fog.density = Math.max(scene.fog.density, mix(.05, .075, smooth((dp - 60) / 60))); scene.fog.color.multiplyScalar(mix(1, .35, smooth((dp - 60) / 80))); scene.background.copy(scene.fog.color); } }
+  // sun shafts
+  const sk = see ? day * (1 - smooth(dp / 45)) * (1 - G.storm * .7) : 0; for (const S of UWX.shafts) { S.g.visible = sk > .01; if (!S.g.visible) continue; S.a += dt * .02; const x = cp.x + Math.cos(S.a) * S.r, z = cp.z + Math.sin(S.a) * S.r; S.g.position.set(x, waveH(x, z, t), z); S.g.rotation.z = Math.sin(t * .3 + S.s) * .12 + .15; S.g.rotation.x = Math.cos(t * .25 + S.s) * .08;
+    for (const m of S.g.children) m.material.opacity = sk * (.06 + .05 * Math.sin(t * .7 + S.s)); }
+  // fish schools: a shoal that circles near you in the shallows and bolts when you move fast or a flare burns
+  const fon = see && dp < 45 && day + .3 * (1 - TOD.day) > .15; UWX.fish.visible = fon; if (fon) { if (!UWX.sc || Math.hypot(UWX.sc.x - cp.x, UWX.sc.z - cp.z) > 40) UWX.sc = {x: cp.x + (Math.random() - .5) * 30, y: cp.y - 2, z: cp.z + (Math.random() - .5) * 30, a: 0, flee: 0};
+    const S = UWX.sc, sp = Math.hypot(P.vx || 0, P.vz || 0); if (Math.hypot(S.x - cp.x, S.z - cp.z) < 4 && sp > 1.5) S.flee = 2; S.flee = Math.max(0, S.flee - dt); S.a += dt * (.35 + S.flee * 1.5); if (S.flee > 0) { const dx = S.x - cp.x, dz = S.z - cp.z, d = Math.hypot(dx, dz) || 1; S.x += dx / d * dt * 6; S.z += dz / d * dt * 6; } S.y = clamp(S.y, seaBed(S.x, S.z) + 1.5, cw - 1.5);
+    const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), sc = new THREE.Vector3(1, 1, 1); for (let i = 0; i < 160; i++) { const a = S.a * (1 + (i % 7) * .04) + i * .39, r = 1.5 + (i % 11) * .35 + S.flee * 2, y = S.y + Math.sin(i * 1.7 + t * .8) * 1.2, x = S.x + Math.cos(a) * r, z = S.z + Math.sin(a) * r;
+      e.set(0, -a, 0); q.setFromEuler(e); m4.compose(_v.set(x, y, z), q, sc); UWX.fish.setMatrixAt(i, m4); } UWX.fish.count = 160; UWX.fish.instanceMatrix.needsUpdate = true; }
+  // bubbles: your breath in bursts, other divers, the sub's vents when it dives or surfaces
+  UWX.bt = (UWX.bt || 0) - dt; if (UWX.bt <= 0) { UWX.bt = 3.2 + Math.random(); const src = []; if (und && P.sw) src.push([cp.x, cp.y + .1, cp.z, 7]); for (const p of PL.values()) if (p !== P && p.sw && (p.dv || 0) > .5) src.push([p.rx, -(p.dv || 0) + 1.5, p.rz, 5]); if (HC().sub && Math.abs(B.dtar - B.dep) > .5) for (let k = 0; k < 3; k++) src.push([B.x + (Math.random() - .5) * 6, B.heave - 2, B.z + (Math.random() - .5) * 10, 10]);
+    let j = 0; for (const [x, y, z, n] of src) for (let k = 0; k < n; k++) { while (j < 120 && UWX.bp[j].y > -998) j++; if (j >= 120) break; Object.assign(UWX.bp[j], {x: x + (Math.random() - .5) * .3, y: y - k * .08, z: z + (Math.random() - .5) * .3, v: .8 + Math.random() * .8}); } }
+  { const pa = UWX.bub.geometry.attributes.position; for (let i = 0; i < 120; i++) { const b = UWX.bp[i]; if (b.y > -998) { b.y += b.v * dt; b.x += Math.sin(t * 3 + i) * dt * .15; if (b.y > waveH(b.x, b.z, t) - .05) b.y = -999; } pa.setXYZ(i, b.x, b.y, b.z); } pa.needsUpdate = true; UWX.bub.visible = see; }
+  // torch beam through the murk (and the sub's lamp)
+  UWX.beam.visible = false;
+  // something enormous passes at the edge of sight in deep water (rare)
+  UWX.bigT -= dt; if (UWX.big.visible) { const B2 = UWX.big.userData; B2.t += dt; const u = B2.t / B2.T; UWX.big.position.set(B2.x + B2.dx * (u - .5) * 160, B2.y, B2.z + B2.dz * (u - .5) * 160); UWX.bigM.opacity = Math.sin(u * PI) * .55; if (u >= 1) UWX.big.visible = false; }
+  else if (UWX.bigT <= 0) { UWX.bigT = 50 + Math.random() * 80; if (see && dp > 25 && Math.random() < .5) { const a = Math.random() * TAU, d = 1 / Math.max(.02, scene.fog.density) * .9, x = cp.x + Math.sin(a) * d, z = cp.z + Math.cos(a) * d; UWX.big.userData = {t: 0, T: 18, x, z, y: cp.y - 6 - Math.random() * 10, dx: Math.cos(a), dz: -Math.sin(a)}; UWX.big.rotation.y = Math.atan2(Math.cos(a), -Math.sin(a)); UWX.big.visible = true; if (A.on) tone(38, .12, 6, 'sine', null, 30); } } }
+{ const f0 = hud; hud = function () { const r = f0.apply(this, arguments); try { const now = performance.now(), dt = Math.min(.1, (now - (UWX.ft || now)) / 1000); UWX.ft = now; uwxFrame(dt); } catch (e) { if (!UWX.err) { UWX.err = 1; console.warn(e); } } return r; }; }
 
 menuInit();
 setTimeout(() => { buildWorld(); requestAnimationFrame(frame); }, 30);
