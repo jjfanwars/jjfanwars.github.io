@@ -29,7 +29,7 @@ const hexS = c => '#' + c.toString(16).padStart(6, '0');
 
 // ---------------- net (jjfanwars relay)
 const RELAY_URL = 'wss://jjfanwars-relay.businessautomationvic.workers.dev';
-const GAME_V = 56;
+const GAME_V = 57;
 const Net = {
   tag: '[Rig]', role: 'solo', ws: null, peers: new Map(), code: '', relayT: {pose: 1}, id: '', name: '', handlers: {}, retry: 0, started: false,
   enc: new TextEncoder(), dec: new TextDecoder(),
@@ -7366,7 +7366,7 @@ function nbRovMesh() { const g = new THREE.Group(), y = new THREE.MeshStandardMa
     if (ah > 3.2) { B.x = px; B.z = pz; if (Math.abs(B.v) > 3) emit({k: 'bump', s: Math.min(1, Math.abs(B.v) / 8)}); B.v *= -.25; }
     const gh = Math.max(0, landH(B.x, B.z)); B.dep = mix(B.dep || 0, -(gh + (gh > 0 ? .5 : 0)), Math.min(1, dt * 4)); return r; }
   // the flying boat: on the water she is a boat; at speed, Space lifts her off and she flies until she touches down
-  const drv = B.driver && PL.get(B.driver), inp = drv && drv.seat && !drv.down && !drv.dead && drv.in ? drv.in : [0, 0, 0], up = -(inp[2] || 0); let alt = -(B.dep || 0);
+  const drv = B.driver && PL.get(B.driver), inp = B.ap && B.ap.up != null ? [B.ap.thr, B.ap.st, -B.ap.up] : drv && drv.seat && !drv.down && !drv.dead && drv.in ? drv.in : [0, 0, 0], up = -(inp[2] || 0); let alt = -(B.dep || 0);
   const JT = H.jet ? {to: 17, acc: 18, dr: .0021, cl: 15, st: 15, land: 45} : {to: 13, acc: 9, dr: .0032, cl: 8, st: 12, land: 32};
   if (alt < .05 && !(up > 0 && B.v > JT.to)) { NB.vy = 0; const r = f0.apply(this, arguments); B.dep = 0; return r; }
   B.thr = mix(B.thr, inp[0], Math.min(1, dt * 1.2)); B.st = mix(B.st, inp[1], Math.min(1, dt * 2.5)); B.fuel = tankMax();
@@ -7978,7 +7978,7 @@ function dockList() { const L = [], hw = BG.hw, Lh = BG.L; L.push({n: 'the home 
   L.forEach((d, i) => d.i = i); return L; }
 function dockNear(x, z, r) { let b = null, bd = r; for (const d of dockList()) { const e = Math.hypot(d.x - x, d.z - z); if (e < bd) { bd = e; b = d; } } return b; }
 { const f0 = hostAct; hostAct = function (id, m) { if (!m || m.a !== 'ap') return f0.apply(this, arguments); const p = PL.get(id); if (!p || !p.ob) return;
-  if (!m.on) { if (B.ap) { B.ap = null; emit({k: 'ap', on: 0}); } return; } if (HC().sub && (B.dep || 0) > 1) { emit({k: 'nope', id, why: 'Surface first.'}); return; } if (HC().plane && -(B.dep || 0) > .5) { emit({k: 'nope', id, why: 'Land on the water first.'}); return; }
+  if (!m.on) { if (B.ap) { B.ap = null; emit({k: 'ap', on: 0}); } return; } if (HC().sub && (B.dep || 0) > 1) { emit({k: 'nope', id, why: 'Surface first.'}); return; }
   const D2 = m.dock != null ? dockList()[m.dock] : null; B.ap = {tg: D2 ? [D2.x, D2.z] : (m.tg || [JETTY.x, JETTY.z]), thr: 0, st: 0, dock: D2 ? D2 : null, ph: 0, pT: 0}; emit({k: 'ap', on: 1, tg: B.ap.tg, dk: D2 ? D2.n : ''}); }; }
 function hostAp(dt) { const a = B.ap; if (!a) return; if (B.sink > 0 || (HC().plane && -(B.dep || 0) > .5) || (HC().sub && (B.dep || 0) > 1)) { B.ap = null; emit({k: 'ap', on: 0}); return; }
   if (a.ph === 2) return; // settling: boatStep wrapper glides her in
@@ -8061,6 +8061,21 @@ addEventListener('keydown', e => { if (e.code !== 'Space' || e.repeat || !G.on |
   G.onFl = !P.sw && !P.seat && !P.climb && Math.abs(P.vy || 0) < .01;
   if ((G.jb || (wasOb && P.vy > 0)) && !P.ob && !P.sw && !P.dead && P.y > BDECK.y - 1.5) { const l = bW2L(P.x, P.z); G.jb = [l[0], l[1], B.yaw]; } else G.jb = null;
   return r; }; }
+
+// ===== autopilot in the air =====
+// Planes: far courses take off from the water, climb to cruise (clearing islands, the rig and the liner), fly the heading,
+// then descend, slow to landing speed and touch down gently near the target; on the water the normal autopilot docks her.
+{ const f0 = hostAp; hostAp = function (dt) { const a = B.ap, H = HC(); if (!a || !H.plane || B.sink > 0) return f0.apply(this, arguments);
+  const alt = -(B.dep || 0), [tx, tz] = a.dock ? [a.dock.x, a.dock.z] : a.tg, d = Math.hypot(tx - B.x, tz - B.z);
+  const JT = H.jet ? {to: 17, st: 15, cl: 15, vf: 36} : {to: 13, st: 12, cl: 8, vf: 25};
+  if (alt <= .3) { a.up = null; if (a.ph === 2) return; f0.apply(this, arguments); if (!B.ap) return; if (d > 1200 && a.ph === 0) { a.up = 1; a.thr = 1; } return; }
+  const h = Math.atan2(-(tx - B.x), -(tz - B.z)), e = angD(B.yaw, h); a.st = clamp(-e * 1.6, -1, 1); a.ph = 0;
+  const fx = -Math.sin(B.yaw), fz = -Math.cos(B.yaw); let flo = 0;
+  for (const k of [0, 60, 140, 260, 420]) { const x = B.x + fx * k, z = B.z + fz * k, gh = landH(x, z); if (gh > .2) flo = Math.max(flo, gh + 20); if (Math.hypot(x, z) < 60) flo = Math.max(flo, 88); if (inCruise(x, z)) flo = Math.max(flo, 42); }
+  const fin = d < 260 ? 0 : d < 1100 ? (d - 260) / 840 * 75 : 95, altT = Math.max(fin, flo), vT = d < 1100 || Math.abs(e) > 1.4 ? JT.vf : 99;
+  a.thr = vT > 90 ? 1 : clamp(.25 + (vT - B.v) * .08, 0, 1);
+  const lift = clamp((B.v - JT.st + 1) / 10, 0, 1), vd = clamp((altT - alt) * .35, alt < 5 ? -1.3 : -3.5, JT.cl);
+  a.up = vd >= 0 ? clamp(vd / (JT.cl * Math.max(lift, .3)), 0, 1) : clamp(vd / (JT.cl * lift + 4), -1, 0); }; }
 
 menuInit();
 setTimeout(() => { buildWorld(); requestAnimationFrame(frame); }, 30);
