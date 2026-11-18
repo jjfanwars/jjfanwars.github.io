@@ -29,7 +29,7 @@ const hexS = c => '#' + c.toString(16).padStart(6, '0');
 
 // ---------------- net (jjfanwars relay)
 const RELAY_URL = 'wss://jjfanwars-relay.businessautomationvic.workers.dev';
-const GAME_V = 19;
+const GAME_V = 22;
 const Net = {
   tag: '[Rig]', role: 'solo', ws: null, peers: new Map(), code: '', relayT: {pose: 1}, id: '', name: '', handlers: {}, retry: 0, started: false,
   enc: new TextEncoder(), dec: new TextDecoder(),
@@ -887,7 +887,7 @@ function boatStep(dt) {
   }
   const rr = Math.hypot(B.x, B.z + 60); if (rr > 2600) { B.x *= 2600 / rr; B.z = (B.z + 60) * 2600 / rr - 60; hit = Math.max(hit, Math.abs(B.v)); }
   if (hit) { if (hit > 2.5) { emit({k: 'bump', s: Math.min(1, hit / 7)}); if (hit > 3.5) damageBoat((hit - 3) * 4); } B.v *= .4; }
-  if (Math.hypot(B.x - JETTY.x, B.z - JETTY.z) < 30 + BG.L * .5 && Math.abs(B.v) < 2) { B.fuel = Math.min(tankMax(), B.fuel + dt * 10); B.hull = Math.min(hullMax(), B.hull + dt * 6); }
+  if (voyPortNear(B.x, B.z, 30 + BG.L * .5) && Math.abs(B.v) < 2) { B.fuel = Math.min(tankMax(), B.fuel + dt * 10); B.hull = Math.min(hullMax(), B.hull + dt * 6); }
 }
 function damageBoat(n) { if (B.sink > 0) return; B.hull = Math.max(0, B.hull - n); if (n >= .5) emit({k: 'hdmg', n: Math.round(n)}); if (B.hull <= 0) { B.sink = 4.5; B.driver = null; B.yr = 0; emit({k: 'sink'}); } }
 function resetBoat(sunk) {
@@ -1824,7 +1824,7 @@ function hostAct(id, m) {
     if (G.cash < c) emit({k: 'nope', id, why: 'Not enough crew cash.'}); else { G.cash -= c; if (!own.includes(m.v)) own.push(m.v); B.up[m.k] = m.v; emit({k: 'bought', n: L[m.v].n}); save(); } }
   else if (m.a === 'dpick') { const q = SUNK[m.i]; if (q && !q.got && p.sw && Math.hypot(q.x - p.x, q.z - p.z) < 5 && Math.abs(q.y + (p.dv || 0)) < 5 && sackFits(p, q.kind)) { q.got = true; p.sack.push(q.kind); sackSet(p); emit({k: 'sunkp', i: m.i}); } }
   else if (m.a === 'drown') { if (!p.dead && p.sw) { p.dead = true; p.deadT = 0; dropCarry(p); emit({k: 'dead', id: p.id, drown: 2}); } }
-  else if (m.a === 'sell') { let v = 0; const c = {}, cnt = k => { if (VALUE[k]) c[k] = (c[k] || 0) + 1; }; if (Math.hypot(B.x - JETTY.x, B.z - JETTY.z) < 60 + BG.L * .5) { v += holdValue(); B.hold.forEach(cnt); B.hold = B.hold.filter(k => !VALUE[k]); } { const sv = sackVal(p.sack); if (sv) { v += sv; p.sack.forEach(cnt); p.sack = p.sack.filter(k => !VALUE[k]); sackSet(p); } }
+  else if (m.a === 'sell') { let v = 0; const c = {}, cnt = k => { if (VALUE[k]) c[k] = (c[k] || 0) + 1; }; if (voyPortNear(B.x, B.z, 60 + BG.L * .5)) { v += holdValue(); B.hold.forEach(cnt); B.hold = B.hold.filter(k => !VALUE[k]); } { const sv = sackVal(p.sack); if (sv) { v += sv; p.sack.forEach(cnt); p.sack = p.sack.filter(k => !VALUE[k]); sackSet(p); } }
     if (p.cooler.length) { v += coolerVal(p.cooler); c.fish = p.cooler.length; p.cooler = []; emit({k: 'cooler', id, n: 0, v: 0}); } if (v) { v = Math.round(v * (D.pay || 1)); G.cash += v; G.earned += v; emit({k: 'sold', v, c}); if (G.earned >= 1500) goal(3); save(); } }
   else if (m.a === 'buyh') { const now = performance.now() / 1000; if ((p.buyT || 0) > now) return; p.buyT = now + .4; const H = HULLS[m.k]; if (!H || m.k === (B.up.cls || 0) || (H.cruise && !G.cruise)) return; const own = Array.isArray(B.up.own) ? B.up.own : (B.up.own = [0, B.up.cls || 0]), price = own.includes(m.k) || (H.cruise && G.cruise) ? 0 : hullCost(H);
     if (sackUsed(B.hold) > Math.round(H.hold * [1, 1.5, 2][B.up.hold || 0]) * 2) emit({k: 'holdbig', id}); else if (B.driver) emit({k: 'nope', id, why: 'Someone is at the wheel.'}); else if (Math.hypot(B.x - JETTY.x, B.z - JETTY.z) >= 60 + BG.L * .5) emit({k: 'nope', id, why: 'Bring the boat to the jetty first.'}); else if (G.cash < price) emit({k: 'nope', id, why: 'Not enough crew cash.'});
@@ -2156,7 +2156,7 @@ function ctlFrame(dt) {
   if (!G.on || !P) return;
   const four = G.noteOpen || G.shopOpen || G.casOpen || G.helpOpen;
   if (four && (!alivePlay() || P.down || (B.sink > 0 && P.ob))) closePanels(false);
-  else if (four && Net.role !== 'solo') { const sh = G.shopOpen && G.shed && Math.hypot(P.x - G.shed.shop[0], P.z - G.shed.shop[2]) > 6, c = G.casAt, cs = G.casOpen && c && (c[2] ? !P.ob : Math.hypot(P.x - c[0], P.z - c[1]) > 6); if (sh || cs) closePanels(false); }
+  else if (four && Net.role !== 'solo') { const sp = G.voyShopPos || (G.shed && G.shed.shop), sh = G.shopOpen && sp && Math.hypot(P.x - sp[0], P.z - sp[2]) > 6, c = G.casAt, cs = G.casOpen && c && (c[2] ? !P.ob : Math.hypot(P.x - c[0], P.z - c[1]) > 6); if (sh || cs) closePanels(false); }
   const ap = anyPanel(); if (ap && !G.panWas) clearKeys(); G.panWas = ap;
   if (P.climb && (!alivePlay() || P.down)) P.climb = null;
   const cr = !!(alivePlay() && P.cr && !P.sw && P.hd < 0); if (cr !== G.dotCr) { G.dotCr = cr; $('dot').classList.toggle('cr', cr); }
@@ -3023,6 +3023,7 @@ function drawCompass() {
   const sm = G.nstep && G.nstep.mk && G.nstep.mk.lab ? G.nstep.mk : null; let lab = null;
   const mark = (x, z, label, col, sym = '▼') => { if (sm && Math.hypot(x - sm.x, z - sm.z) < 15) return; const a = bearing(x, z); if (Math.abs(angD(yaw, a)) > span / 2) return; const px = X(a), d = Math.hypot(x - cp.x, z - cp.z); g.fillStyle = col; g.fillText(sym, px, 10); const da = Math.abs(angD(yaw, a)); if ((da < .12 || sym === '!') && (!lab || da < lab.da)) lab = {da, px, col, t: `${label} ${dist(d)}`}; };
   mark(HOME.x, HOME.z, 'HOME', '#ffd880');
+  for (const q of VOY_PORTS) if (Math.hypot(q.x - cp.x, q.z - cp.z) < 3000 && Math.hypot(q.x - cp.x, q.z - cp.z) > 40) mark(q.x, q.z, q.n.toUpperCase(), '#9fe6ff', '⚓');
   if (P && !P.ob && !P.dead) mark(B.x, B.z, 'BOAT', '#7ad0ff');
   POIS.forEach((q, i) => { if (q.home) return; if (G.disc.includes(i)) { if (Math.hypot(q.x - cp.x, q.z - cp.z) > 60) mark(q.x, q.z, q.n, 'rgba(220,210,190,.75)', '·'); } else if (B.up.sonar) mark(q.x, q.z, 'Unknown', '#9affd0', '◆'); });
   DIGS.forEach(d => { if (d.rev && !d.dug) mark(d.x, d.z, 'X', '#ff7050', '✕'); });
@@ -3031,9 +3032,14 @@ function drawCompass() {
   { const R = B.up.sonar ? 400 : 150; for (const f of G.floats) { if (!f || Math.hypot(f[0] - cp.x, f[1] - cp.z) > R) continue; const a = bearing(f[0], f[1]); if (Math.abs(angD(yaw, a)) >= span / 2) continue; if (B.up.sonar) { g.fillStyle = '#9affd0'; g.fillRect(X(a) - 1.5, 21, 3, 3); } else { g.fillStyle = 'rgba(255,196,120,.8)'; g.fillRect(X(a) - .75, 18, 1.5, 7); } } }
   for (const p of PL.values()) if (p !== P && p.ready && !p.dead && (p.sw || p.down)) mark(p.rx, p.rz, p.name, '#ff7050', '!');
   // the current step: always labelled; pinned to an edge with an arrow when it is off the strip
-  if (sm) { const a = bearing(sm.x, sm.z), da = angD(yaw, a), t = `${sm.lab} ${dist(Math.hypot(sm.x - cp.x, sm.z - cp.z))}`, tw = g.measureText(t).width; g.fillStyle = '#ffcf60';
-    if (Math.abs(da) > span / 2) { const r = da > 0; g.textAlign = r ? 'right' : 'left'; g.font = '13px ui-monospace,monospace'; g.fillText(r ? '▶' : '◀', r ? W - 3 : 3, 28); g.font = '11px ui-monospace,monospace'; g.fillText(t, r ? W - 3 : 3, 45); g.textAlign = 'center'; if (lab && (r ? lab.px > W - tw - 50 : lab.px < tw + 50)) lab = null; }
-    else { const px = X(a), lx = clamp(px, tw / 2 + 2, W - tw / 2 - 2); g.fillText('◆', px, 10); g.fillText(t, lx, 45); if (lab && Math.abs(lab.px - lx) < tw / 2 + 50) lab = null; } }
+  // the current step and the chart course (cyan): always labelled; pinned to an edge with an arrow when off the strip; the course label steps aside from the step's
+  let smR = null; const pin = (x, z, name, col, sym, avoid) => { const a = bearing(x, z), da = angD(yaw, a), t = `${name} ${dist(Math.hypot(x - cp.x, z - cp.z))}`, tw = g.measureText(t).width; g.fillStyle = col; let x0;
+    if (Math.abs(da) > span / 2) { const r = da > 0; g.textAlign = r ? 'right' : 'left'; g.font = '13px ui-monospace,monospace'; g.fillText(r ? '▶' : '◀', r ? W - 3 : 3, avoid ? 20 : 28); g.font = '11px ui-monospace,monospace'; x0 = r ? W - 3 - tw : 3;
+      if (avoid && avoid[0] < x0 + tw + 8 && avoid[1] > x0 - 8) x0 = r ? avoid[0] - tw - 14 : avoid[1] + 14; g.textAlign = 'left'; g.fillText(t, x0, 45); g.textAlign = 'center'; }
+    else { const px = X(a); x0 = clamp(px, tw / 2 + 2, W - tw / 2 - 2) - tw / 2; if (avoid && avoid[0] < x0 + tw + 8 && avoid[1] > x0 - 8) x0 = px < (avoid[0] + avoid[1]) / 2 ? avoid[0] - tw - 14 : avoid[1] + 14; x0 = clamp(x0, 2, W - tw - 2); g.fillText(sym, px, 10); g.textAlign = 'left'; g.fillText(t, x0, 45); g.textAlign = 'center'; }
+    if (lab && lab.px > x0 - 50 && lab.px < x0 + tw + 50) lab = null; return [x0, x0 + tw]; };
+  if (sm) smR = pin(sm.x, sm.z, sm.lab, '#ffcf60', '◆');
+  if (G.voyWp) pin(G.voyWp[0], G.voyWp[1], 'COURSE', '#6fe0ff', '◇', smR);
   if (lab) { g.fillStyle = lab.col; g.fillText(lab.t, lab.px, 45); }
 }
 function hud() {
@@ -3108,42 +3114,170 @@ let grainT = 0; const gctx = $('grain').getContext('2d'), gimg = gctx.createImag
 function grain() { const f = P ? P.fear || 0 : 0; if (f < .05 && !(G.js && G.js.t > 0)) { if (G.grainQ) return; G.grainQ = true; } else G.grainQ = false; const d = gimg.data; for (let i = 0; i < d.length; i += 4) { const v = Math.random() * 255; d[i] = d[i + 1] = d[i + 2] = v; d[i + 3] = 255; } gctx.putImageData(gimg, 0, 0); setS('grain', 'opacity', G.grainQ ? .018 : .018 + .5 * f * .12); }
 let MAPBG = null;
 function drawMap() {
-  const c = $('map'), g = c.getContext('2d'), W = c.width, S = W / 5400, X = x => W / 2 + x * S, Z = z => W / 2 - (z + 60) * S, now = performance.now();
-  // at most 10 redraws a second, but always on the first call after the chart opens
-  const fresh = (G.fr || 0) - (G.mapFr ?? -9) > 1; G.mapFr = G.fr || 0; if (!fresh && now - (G.mapT || 0) < 100) return; G.mapT = now;
-  if (!MAPBG) { MAPBG = document.createElement('canvas'); MAPBG.width = MAPBG.height = W; const b = MAPBG.getContext('2d'), r = mulberry(77);
-    const gr = b.createRadialGradient(W / 2, W / 2, W * .15, W / 2, W / 2, W * .74); gr.addColorStop(0, '#93a3a5'); gr.addColorStop(1, '#7b8b8e'); b.fillStyle = gr; b.fillRect(0, 0, W, W);
-    for (let i = 0; i < 3000; i++) { b.fillStyle = `rgba(30,50,60,${r() * .08})`; b.fillRect(r() * W, r() * W, 2, 2); }
-    b.strokeStyle = 'rgba(20,40,52,.13)'; b.lineWidth = 1; b.beginPath(); for (let k = -6; k <= 6; k++) { const x = Math.round(X(k * 500)) + .5, z = Math.round(Z(k * 500)) + .5; b.moveTo(x, 0); b.lineTo(x, W); b.moveTo(0, z); b.lineTo(W, z); } b.stroke();
-    const rx = W - 44, ry = 52; b.fillStyle = b.strokeStyle = 'rgba(32,32,30,.6)'; b.lineWidth = 1;
-    for (let k = 0; k < 4; k++) { const a = k * PI / 2, L = k % 2 ? 15 : 22; b.beginPath(); b.moveTo(rx + Math.sin(a) * L, ry - Math.cos(a) * L); b.lineTo(rx + Math.sin(a + PI / 4) * 4, ry - Math.cos(a + PI / 4) * 4); b.lineTo(rx, ry); b.lineTo(rx + Math.sin(a - PI / 4) * 4, ry - Math.cos(a - PI / 4) * 4); b.closePath(); if (k) b.stroke(); else b.fill(); }
-    b.beginPath(); b.arc(rx, ry, 11, 0, TAU); b.stroke(); b.font = 'bold 12px Georgia'; b.textAlign = 'center'; b.fillText('N', rx, ry - 26);
-    const sx = 20, sy = W - 50, L5 = 500 * S; b.fillRect(sx, sy, L5, 2); b.fillRect(sx, sy - 4, 1.5, 8); b.fillRect(sx + L5 - 1.5, sy - 4, 1.5, 8); b.font = '11px Georgia'; b.textAlign = 'left'; b.fillText('500 m', sx, sy - 7); }
-  g.drawImage(MAPBG, 0, 0); g.textAlign = 'center'; g.font = '13px Georgia';
-  const arrow = (x, y, yaw, s, col, line) => { g.save(); g.translate(x, y); g.rotate(-yaw + PI); g.beginPath(); g.moveTo(0, -s); g.lineTo(s * .55, s * .75); g.lineTo(-s * .55, s * .75); g.closePath(); if (line) { g.lineWidth = 2.5; g.strokeStyle = 'rgba(16,18,20,.85)'; g.stroke(); } g.fillStyle = col; g.fill(); g.restore(); };
+  const c = $('map'), g = c.getContext('2d'), W = c.width, now = performance.now();
+  // at most 10 redraws a second (or at once on input), and always on the first call after the chart opens
+  const fresh = (G.fr || 0) - (G.mapFr ?? -9) > 1; G.mapFr = G.fr || 0; if (fresh) voyChartOpen(W); if (!fresh && !VOY.dirty && now - (G.mapT || 0) < 100) return; G.mapT = now; VOY.dirty = 0;
+  const MR = voyR(), MC = voyC(), ZL = VOY_ZL[VOY.z], S = W / (MR * 2.077) * ZL, cx = VOY.z ? VOY.cx : MC.x, cz = VOY.z ? VOY.cz : MC.z, X = x => W / 2 + (x - cx) * S, Z = z => W / 2 - (z - cz) * S;
+  g.drawImage(voyChartBg(W), 0, 0); g.textAlign = 'center';
+  // grid, map edge, scale bar
+  { const gs = ZL >= 6 ? 250 : ZL >= 2.4 ? 500 : 1000, h = W / 2 / S; g.strokeStyle = 'rgba(20,40,52,.13)'; g.lineWidth = 1; g.beginPath();
+    for (let k = Math.ceil((cx - h) / gs) * gs; k <= cx + h; k += gs) { const x = Math.round(X(k)) + .5; g.moveTo(x, 0); g.lineTo(x, W); }
+    for (let k = Math.ceil((cz - h) / gs) * gs; k <= cz + h; k += gs) { const z = Math.round(Z(k)) + .5; g.moveTo(0, z); g.lineTo(W, z); } g.stroke();
+    g.strokeStyle = 'rgba(20,30,40,.25)'; g.setLineDash([6, 6]); g.beginPath(); g.arc(X(MC.x), Z(MC.z), MR * S, 0, TAU); g.stroke(); g.setLineDash([]);
+    const sl = [100, 250, 500, 1000, 2000].filter(v => v * S <= 150).pop() || 100, L5 = sl * S, sx = 20, sy = W - 50; g.fillStyle = 'rgba(32,32,30,.6)'; g.fillRect(sx, sy, L5, 2); g.fillRect(sx, sy - 4, 1.5, 8); g.fillRect(sx + L5 - 1.5, sy - 4, 1.5, 8); g.font = '11px Georgia'; g.textAlign = 'left'; g.fillText(sl < 1000 ? sl + ' m' : sl / 1000 + ' km', sx, sy - 7); g.textAlign = 'center'; }
+  g.font = '13px Georgia';
+  const arrow = (x, y, yaw, s, col, line) => { g.save(); g.translate(x, y); g.rotate(yaw + PI); g.beginPath(); g.moveTo(0, -s); g.lineTo(s * .55, s * .75); g.lineTo(-s * .55, s * .75); g.closePath(); if (line) { g.lineWidth = 2.5; g.strokeStyle = 'rgba(16,18,20,.85)'; g.stroke(); } g.fillStyle = col; g.fill(); g.restore(); };
+  // region names, faint, once anything in the region is charted
+  if (typeof REGIONS !== 'undefined' && Array.isArray(REGIONS)) { g.font = `italic ${Math.round(clamp(15 * Math.sqrt(ZL), 15, 30))}px Georgia`; g.fillStyle = 'rgba(30,44,52,.42)';
+    for (const rg of REGIONS) { if (!rg || rg.x == null) continue; const rr = rg.r || 1000; if (POIS.some((q, i) => G.disc.includes(i) && Math.hypot(q.x - rg.x, q.z - rg.z) < rr)) g.fillText(rg.n || rg.name || '', X(rg.x), Z(rg.z)); } g.font = '13px Georgia'; }
   for (const b of BUOYS) { g.fillStyle = hexS(b.c); g.beginPath(); g.arc(X(b.x), Z(b.z), 2.5, 0, TAU); g.fill(); }
+  const hintR = Math.max(700, .18 * MR);
   POIS.forEach((q, i) => { const known = G.disc.includes(i);
     if (!known) {
       if (q.rig) { g.strokeStyle = 'rgba(28,28,28,.38)'; g.lineWidth = 1; g.strokeRect(X(q.x) - 5.5, Z(q.z) - 5.5, 11, 11); g.fillStyle = 'rgba(26,26,26,.42)'; g.font = 'italic 12px Georgia'; g.fillText('Station Nine?', X(q.x), Z(q.z) - 12); g.font = '13px Georgia'; }
-      else if (q.isle && Math.hypot(q.x - HOME.x, q.z - HOME.z) < 700) { g.setLineDash([3, 3]); g.strokeStyle = 'rgba(40,46,36,.38)'; g.lineWidth = 1; g.beginPath(); g.arc(X(q.x), Z(q.z), Math.max(4, q.isle.shore * S), 0, TAU); g.stroke(); g.setLineDash([]); }
+      else if (q.isle && Math.hypot(q.x - HOME.x, q.z - HOME.z) < hintR) { g.setLineDash([3, 3]); g.strokeStyle = 'rgba(40,46,36,.38)'; g.lineWidth = 1; g.beginPath(); g.arc(X(q.x), Z(q.z), Math.max(4, q.isle.shore * S), 0, TAU); g.stroke(); g.setLineDash([]); }
       if (B.up.sonar) { g.fillStyle = 'rgba(30,60,50,.6)'; g.fillText('?', X(q.x), Z(q.z) + 4); } return; }
     g.fillStyle = q.isle ? '#6a6a52' : q.home ? '#5a5248' : '#3a3a3a'; if (q.isle || q.home) { g.beginPath(); g.arc(X(q.x), Z(q.z), Math.max(4, (q.isle ? q.isle.shore : HOME.r) * S), 0, TAU); g.fill(); } else g.fillRect(X(q.x) - 5, Z(q.z) - 5, 10, 10);
     g.fillStyle = '#1a1a1a'; g.fillText(q.n, X(q.x), Z(q.z) - 12); });
+  // landing stages, ports, world marks
+  if (typeof PIERS !== 'undefined' && Array.isArray(PIERS)) { g.strokeStyle = 'rgba(70,52,34,.85)'; g.lineWidth = Math.max(2, 3 * S); g.beginPath(); for (const pr of PIERS) { const a = pr.root || [pr.x, pr.z], b = pr.head || [pr.x, pr.z]; g.moveTo(X(a[0]), Z(a[1])); g.lineTo(X(b[0]), Z(b[1])); } g.stroke(); }
+  const anchor = (x, y, col) => { g.strokeStyle = col; g.lineWidth = 1.6; g.beginPath(); g.arc(x, y - 6, 2.2, 0, TAU); g.moveTo(x, y - 4); g.lineTo(x, y + 5); g.moveTo(x - 4, y - 1); g.lineTo(x + 4, y - 1); g.moveTo(x - 5, y + 2); g.quadraticCurveTo(x, y + 8, x + 5, y + 2); g.stroke(); };
+  anchor(X(JETTY.x), Z(JETTY.z), '#2a3a46');
+  for (const q of VOY_PORTS) { anchor(X(q.x), Z(q.z), '#1a4a66'); g.fillStyle = '#1a3a52'; g.font = 'bold 12px Georgia'; g.fillText(q.n, X(q.x), Z(q.z) - 13); g.font = '13px Georgia'; }
+  if (typeof WLD_MARKS !== 'undefined' && Array.isArray(WLD_MARKS)) for (const m of WLD_MARKS) { if (!m) continue; const x = X(m.x), y = Z(m.z); g.fillStyle = typeof m.c === 'number' ? hexS(m.c) : m.c || '#5a3a2a'; g.beginPath(); g.moveTo(x, y - 5); g.lineTo(x + 4, y); g.lineTo(x, y + 5); g.lineTo(x - 4, y); g.closePath(); g.fill(); if (m.n) { g.font = '11px Georgia'; g.fillText(m.n, x, y - 9); g.font = '13px Georgia'; } }
   DIGS.forEach(d => { if (d.rev) { g.fillStyle = d.dug ? '#666' : '#a01a10'; g.font = 'bold 16px Georgia'; g.fillText('✕', X(d.x), Z(d.z) + 5); g.font = '13px Georgia'; } });
   if (B.up.sonar) G.floats.forEach(f => { if (f) { g.fillStyle = '#2a6a5a'; g.fillRect(X(f[0]) - 1.5, Z(f[1]) - 1.5, 3, 3); } });
+  // the course: dashed line from the boat, diamond, distance
+  if (G.voyWp) { const [wx, wz] = G.voyWp; g.strokeStyle = 'rgba(16,96,128,.9)'; g.lineWidth = 2; g.setLineDash([8, 6]); g.beginPath(); g.moveTo(X(B.x), Z(B.z)); g.lineTo(X(wx), Z(wz)); g.stroke(); g.setLineDash([]);
+    const x = X(wx), y = Z(wz); g.fillStyle = '#1aa0d0'; g.strokeStyle = '#0a2a38'; g.lineWidth = 1.5; g.beginPath(); g.moveTo(x, y - 8); g.lineTo(x + 6, y); g.lineTo(x, y + 8); g.lineTo(x - 6, y); g.closePath(); g.fill(); g.stroke();
+    const d = Math.hypot(wx - B.x, wz - B.z); g.fillStyle = '#0a3a50'; g.font = 'bold 11px ui-monospace,monospace'; g.fillText(d < 1000 ? Math.round(d) + ' m' : (d / 1000).toFixed(1) + ' km', x, y + 20); g.font = '13px Georgia'; }
   arrow(X(B.x), Z(B.z), B.yaw, 8, '#fff');
-  for (const p of PL.values()) { if (!p.ready || p.dead || p === P) continue; arrow(X(p.rx), Z(p.rz), p.ryaw, 6, hexS(CREW_COL[p.c % 6])); }
-  if (P && !P.dead) arrow(X(P.x), Z(P.z), P.yaw, 9, hexS(CREW_COL[P.c % 6]), 1);
+  // whoever is at the wheel points the way the boat is going, not where they are looking
+  for (const p of PL.values()) { if (!p.ready || p.dead || p === P) continue; arrow(X(p.rx), Z(p.rz), PL.get(B.driver) === p ? B.yaw : p.ryaw, 6, hexS(CREW_COL[p.c % 6])); }
+  if (P && !P.dead) arrow(X(P.x), Z(P.z), P.seat ? B.yaw : P.yaw, 9, hexS(CREW_COL[P.c % 6]), 1);
+  // the cursor (fixed at the centre when zoomed in: the chart pans under it)
+  { const [px, py] = VOY.z ? [W / 2, W / 2] : VOY.cur, wx = cx + (px - W / 2) / S, wz = cz - (py - W / 2) / S, d = Math.hypot(wx - B.x, wz - B.z); g.strokeStyle = 'rgba(10,20,26,.85)'; g.lineWidth = 1.5; g.beginPath(); g.arc(px, py, 7, 0, TAU); g.moveTo(px - 13, py); g.lineTo(px - 4, py); g.moveTo(px + 4, py); g.lineTo(px + 13, py); g.moveTo(px, py - 13); g.lineTo(px, py - 4); g.moveTo(px, py + 4); g.lineTo(px, py + 13); g.stroke();
+    g.fillStyle = 'rgba(10,20,26,.8)'; g.font = '11px ui-monospace,monospace'; g.textAlign = 'left'; g.fillText(d < 1000 ? Math.round(d) + ' m' : (d / 1000).toFixed(1) + ' km', px + 12, py - 10); g.textAlign = 'center'; }
   // legend
   { let x = 20; const y = W - 26, it = (draw, t) => { draw(x + 5); g.fillStyle = '#1a1a1a'; g.textAlign = 'left'; g.font = '11px Georgia'; g.fillText(t, x + 14, y + 4); x += 22 + g.measureText(t).width; };
-    it(cx => { g.fillStyle = '#5a5248'; g.beginPath(); g.arc(cx, y, 4, 0, TAU); g.fill(); }, 'home');
+    it(cx => anchor(cx, y, '#1a4a66'), 'port');
     it(cx => arrow(cx, y, PI, 6, '#fff'), 'boat');
     it(cx => arrow(cx, y, PI, 7, hexS(CREW_COL[(P ? P.c : 0) % 6]), 1), 'you');
     it(cx => arrow(cx, y, PI, 5, hexS(CREW_COL[((P ? P.c : 0) + 1) % 6])), 'crew');
     it(cx => { g.fillStyle = '#a01a10'; g.font = 'bold 13px Georgia'; g.textAlign = 'center'; g.fillText('✕', cx, y + 5); }, 'treasure');
-    it(cx => { g.fillStyle = 'rgba(30,60,50,.8)'; g.font = '13px Georgia'; g.textAlign = 'center'; g.fillText('?', cx, y + 5); }, 'unknown'); }
-  g.fillStyle = '#1a1a1a'; g.textAlign = 'center'; g.font = '12px Georgia'; g.fillText('Release Tab to close', W / 2, W - 8);
+    it(cx => { g.fillStyle = '#1aa0d0'; g.beginPath(); g.moveTo(cx, y - 6); g.lineTo(cx + 4, y); g.lineTo(cx, y + 6); g.lineTo(cx - 4, y); g.closePath(); g.fill(); }, 'course'); }
+  g.fillStyle = '#1a1a1a'; g.textAlign = 'center'; g.font = '12px Georgia'; g.fillText('click: course · right-click: clear · wheel: zoom', W / 2, W - 8);
 }
+
+// ---------------- voyage: zoomable chart with a course, autopilot, the Northwatch trading post
+const VOY_PORTS = [{n: 'Northwatch', x: 1150, z: 2000, dock: [1150, 2000], shop: null}];
+function voyPortNear(x, z, pad) { if (Math.hypot(x - JETTY.x, z - JETTY.z) < pad) return JETTY; for (const q of VOY_PORTS) if (Math.hypot(x - q.dock[0], z - q.dock[1]) < pad) return q; return null; }
+const VOY = {z: 0, cx: 0, cz: -60, cur: [380, 380], dirty: 0, bg: null, ap: 0, tg: null, wp0: null, pT: 0, bias: 0, slow: 1, arrive: 0, pill: null, pillT: 0, pillS: ''}, VOY_ZL = [1, 2.4, 6];
+function voyR() { return typeof MAP_R === 'number' ? MAP_R : 2600; }
+function voyC() { return typeof MAP_C === 'object' && MAP_C && MAP_C.x != null ? MAP_C : {x: 0, z: -60}; }
+function voyChartBg(W) {
+  if (VOY.bg && VOY.bg.width === W) return VOY.bg; const cv = VOY.bg = document.createElement('canvas'); cv.width = cv.height = W; const b = cv.getContext('2d'), r = mulberry(77);
+  const gr = b.createRadialGradient(W / 2, W / 2, W * .15, W / 2, W / 2, W * .74); gr.addColorStop(0, '#93a3a5'); gr.addColorStop(1, '#7b8b8e'); b.fillStyle = gr; b.fillRect(0, 0, W, W);
+  for (let i = 0; i < 3000; i++) { b.fillStyle = `rgba(30,50,60,${r() * .08})`; b.fillRect(r() * W, r() * W, 2, 2); }
+  const rx = W - 44, ry = 52; b.fillStyle = b.strokeStyle = 'rgba(32,32,30,.6)'; b.lineWidth = 1;
+  for (let k = 0; k < 4; k++) { const a = k * PI / 2, L = k % 2 ? 15 : 22; b.beginPath(); b.moveTo(rx + Math.sin(a) * L, ry - Math.cos(a) * L); b.lineTo(rx + Math.sin(a + PI / 4) * 4, ry - Math.cos(a + PI / 4) * 4); b.lineTo(rx, ry); b.lineTo(rx + Math.sin(a - PI / 4) * 4, ry - Math.cos(a - PI / 4) * 4); b.closePath(); if (k) b.stroke(); else b.fill(); }
+  b.beginPath(); b.arc(rx, ry, 11, 0, TAU); b.stroke(); b.font = 'bold 12px Georgia'; b.textAlign = 'center'; b.fillText('N', rx, ry - 26); return cv;
+}
+// chart opened: the cursor starts on the course (or the boat, or you); zoomed in, the view centres on the boat (or you)
+function voyChartOpen(W) {
+  const MR = voyR(), MC = voyC(), S1 = W / (MR * 2.077), ab = P && (P.ob || Math.hypot(P.x - B.x, P.z - B.z) < 60), fx = ab ? B.x : P ? P.x : 0, fz = ab ? B.z : P ? P.z : 0, [qx, qz] = G.voyWp || [fx, fz];
+  VOY.cur = [clamp(W / 2 + (qx - MC.x) * S1, 8, W - 8), clamp(W / 2 - (qz - MC.z) * S1, 8, W - 8)]; VOY.cx = fx; VOY.cz = fz;
+}
+function voyClampC() { const MR = voyR(), MC = voyC(), d = Math.hypot(VOY.cx - MC.x, VOY.cz - MC.z); if (d > MR) { VOY.cx = MC.x + (VOY.cx - MC.x) / d * MR; VOY.cz = MC.z + (VOY.cz - MC.z) / d * MR; } }
+function voyZoom(dir) {
+  const W = $('map').width, nz = clamp(VOY.z + dir, 0, 2); if (nz === VOY.z) return; const MR = voyR(), MC = voyC(), S1 = W / (MR * 2.077);
+  if (VOY.z === 0) { VOY.cx = MC.x + (VOY.cur[0] - W / 2) / S1; VOY.cz = MC.z - (VOY.cur[1] - W / 2) / S1; voyClampC(); }
+  if (nz === 0) VOY.cur = [clamp(W / 2 + (VOY.cx - MC.x) * S1, 8, W - 8), clamp(W / 2 - (VOY.cz - MC.z) * S1, 8, W - 8)];
+  VOY.z = nz; VOY.dirty = 1; if (A.on) tone(nz > 0 ? 990 : 740, .03, .08, 'triangle');
+}
+function voyCursorWorld() {
+  const W = $('map').width, MR = voyR(), MC = voyC(); if (VOY.z) return [VOY.cx, VOY.cz]; const S = W / (MR * 2.077); let x = MC.x + (VOY.cur[0] - W / 2) / S, z = MC.z - (VOY.cur[1] - W / 2) / S;
+  const d = Math.hypot(x - MC.x, z - MC.z); if (d > MR) { x = MC.x + (x - MC.x) / d * MR; z = MC.z + (z - MC.z) / d * MR; } return [x, z];
+}
+Snd.voyChime = up => { tone(up ? 660 : 990, .05, .3, 'sine'); setTimeout(() => tone(up ? 990 : 660, .05, .45, 'sine'), 120); };
+// autopilot: steers the driver's own input (sent in the pose), so it works the same for host and guests
+function voyApTarget() { if (G.voyWp) return G.voyWp.slice(); const m = G.nstep && G.nstep.mk; if (m && m.x != null && !m.scr) return [m.x, m.z]; return [JETTY.x, JETTY.z + 14]; }
+function voyApSet(on, why) {
+  if (!!on === !!VOY.ap) return; VOY.ap = on ? 1 : 0; VOY.tg = on ? voyApTarget() : null; VOY.wp0 = G.voyWp; VOY.bias = 0; VOY.slow = 1; VOY.arrive = 0; VOY.pT = 0;
+  if (A.on) Snd.voyChime(!!on); if (why) showMsg(why, '', 2.5); VOY.pillT = 0;
+}
+function voyProbe(h, tx, tz, d) {
+  const m = BG.hw + 8, L = Math.max(40, BG.L), hit = (x, z) => { for (const o of OBST) { if (o.c ? Math.hypot(x - o.x, z - o.z) < o.r + m : x > o.x0 - m && x < o.x1 + m && z > o.z0 - m && z < o.z1 + m) return o; } return null; };
+  const tin = hit(tx, tz), sc = [0, 0, 0]; let blk = false; VOY.arrive = 0;
+  [-.44, 0, .44].forEach((da, j) => { for (let k = 1; k <= 3; k++) { const s = k * L; if (s > d + L * .5) break; const a = h + da, o = hit(B.x - Math.sin(a) * s, B.z - Math.cos(a) * s); if (!o) continue; if (o === tin) { if (j === 1 && s <= Math.max(60, L)) VOY.arrive = 1; break; } sc[j] += 4 - k; if (j === 1 && s <= Math.max(60, L)) blk = true; } });
+  VOY.slow = blk ? .4 : 1; if (!sc[1]) VOY.bias *= .5; else VOY.bias = sc[0] <= sc[2] ? -.6 : .6;
+}
+function voyAp(dt) {
+  if (!P || !P.seat || P.dead || !G.on) { voyApSet(false); return; }
+  if (G.voyWp && G.voyWp !== VOY.wp0) { VOY.tg = G.voyWp.slice(); VOY.wp0 = G.voyWp; } else if (!G.voyWp && VOY.wp0) { VOY.wp0 = null; VOY.tg = voyApTarget(); }
+  if ((B.dep || 0) > .5) return;
+  const [tx, tz] = VOY.tg, d = Math.hypot(tx - B.x, tz - B.z);
+  let h = Math.atan2(-(tx - B.x), -(tz - B.z)); if ((VOY.pT -= dt) <= 0) { VOY.pT = .2; voyProbe(h, tx, tz, d); }
+  if (d < 25 + BG.L / 2 || VOY.arrive) { if (G.voyWp && Math.hypot(G.voyWp[0] - tx, G.voyWp[1] - tz) < 1) G.voyWp = null; voyApSet(false, 'Arrived.'); return; }
+  h += VOY.bias; const e = angD(B.yaw, h); P.in[1] = clamp(-e * 2.2, -1, 1); P.in[0] = Math.min(d > 250 ? 1 : d > 80 ? .6 : .3, VOY.slow);
+}
+{ const f0 = stepPlayer; stepPlayer = function (dt, ...a) { const r = f0.call(this, dt, ...a); if (VOY.ap) voyAp(dt); return r; }; }
+// the Northwatch trading post: a floating pontoon with a shop counter, built identically on every client
+function voyBuildPort() {
+  const q = VOY_PORTS[0], y = 1.6, x0 = q.x - 15, x1 = q.x + 15, z0 = q.z - 10, z1 = q.z + 10;
+  SURF.push({k: 'slab', x0, x1, z0, z1, y}); bx('wood', x0, x1, y - .3, y, z0, z1, 1.5); bx('log', x0, x1, y - .6, y - .25, z0 - .22, z0);
+  for (let x = x0 + 2; x <= x1 - 1.9; x += 4) for (const z of [z0 + 1.3, z1 - 1.3]) bx('dark', x - 1.5, x + 1.5, .15, y - .3, z - 1, z + 1);
+  for (const [px, pz] of [[x0 + .35, z0 + .35], [x1 - .35, z0 + .35], [x0 + .35, z1 - .35], [x1 - .35, z1 - .35], [q.x, z0 + .35], [q.x, z1 - .35]]) put('log', new THREE.CylinderGeometry(.22, .26, 7.5, 7), px, -1.2, pz);
+  OBST.push({x0: x0 - .5, x1: x1 + .5, z0: z0 - .5, z1: z1 + .5}, {c: 1, x: q.x, z: q.z, r: 6});
+  for (let x = x0 + 2.5; x <= x1 - 2; x += 6.25) { put('dark', new THREE.CylinderGeometry(.15, .19, .42, 8), x, y + .21, z0 + .4); put('dark', new THREE.CylinderGeometry(.24, .24, .06, 8), x, y + .44, z0 + .4); }
+  const b = building('shed', 'Northwatch trading post', q.x, q.z + 6, y, 's'); q.shop = b.shop; q.b = b;
+  { const sc = cv(512, 128, (g, w, h) => { g.fillStyle = '#16303a'; g.fillRect(0, 0, w, h); g.strokeStyle = '#8fc8d8'; g.lineWidth = 5; g.strokeRect(6, 6, w - 12, h - 12); g.fillStyle = '#e8f4f6'; g.font = 'bold 54px Georgia'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('NORTHWATCH', w / 2, h / 2 + 2); });
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(3.6, .9), new THREE.MeshStandardMaterial({map: (t => (t.colorSpace = THREE.SRGBColorSpace, t))(new THREE.CanvasTexture(sc)), roughness: .7})); const [sx, sz] = L2W(b, 0, -b.d / 2 - .1); m.position.set(sx, y + b.wh + .55, sz); m.rotation.y = b.th + PI; scene.add(m); }
+  // lamp post, fuel drums, a crate stack, a radio mast with a red light, the swim ladder
+  put('dark', new THREE.CylinderGeometry(.07, .1, 4, 6), x0 + 2.2, y + 2, z0 + 2.2); put('dark', new THREE.BoxGeometry(.7, .06, .12), x0 + 2.45, y + 3.95, z0 + 2.2); put('bulb', new THREE.SphereGeometry(.18, 10, 8), x0 + 2.75, y + 3.8, z0 + 2.2);
+  for (let i = 0; i < 5; i++) put(i % 2 ? 'red' : 'steel', new THREE.CylinderGeometry(.3, .3, .9, 10), x1 - 2.1 - (i % 3) * .66, y + .45, z1 - 2.6 - Math.floor(i / 3) * .66);
+  PCIRC.push({x: x1 - 2.75, z: z1 - 2.9, r: 1.2}, {x: x0 + 2.2, z: z0 + 2.2, r: .3});
+  for (const [cx, cz, k] of [[x0 + 3, z1 - 2.5, 0], [x0 + 3.9, z1 - 2.5, 1], [x0 + 3.45, z1 - 2.5, 2]]) wbox('crate', cx, y + (k === 2 ? 1.2 : .4), cz, .8, .8, .8, k * .3); PCIRC.push({x: x0 + 3.45, z: z1 - 2.5, r: 1});
+  put('steel', new THREE.CylinderGeometry(.08, .16, 12, 6), x1 - 1.2, y + 6, q.z + 4); for (let k = 0; k < 3; k++) put('steel', new THREE.CylinderGeometry(.015, .015, 12.6, 3), x1 - 1.2 + [-1.6, 1.4, .2][k] / 2, y + 6, q.z + 4 + [1.2, .8, -1.5][k] / 2, 0, [-1.6, 1.4, .2][k] * .065, [1.2, .8, -1.5][k] * -.065);
+  PCIRC.push({x: x1 - 1.2, z: q.z + 4, r: .3});
+  for (const sd of [-1, 1]) put('steel', new THREE.CylinderGeometry(.035, .035, 2.6, 6), q.x + sd * .32, .35, z0 - .3); for (let k = 0; k < 5; k++) put('steel', new THREE.CylinderGeometry(.025, .025, .64, 5), q.x, -.6 + k * .45, z0 - .3, 0, 0, PI / 2);
+  INTER.push({kind: 'ladder', x: q.x, y: 0, z: z0 - .8, r: 3.5, top: [q.x, y, z0 + 1.2], label: () => 'Climb the ladder', on: () => P.sw});
+  const spr = (col, s, xx, yy, zz) => { const o = new THREE.Sprite(new THREE.SpriteMaterial({map: TX.glow, color: col, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false})); o.scale.setScalar(s); o.position.set(xx, yy, zz); scene.add(o); return o; };
+  VOY.mastS = spr(0xff2010, 2.6, x1 - 1.2, y + 12.2, q.z + 4); VOY.lampS = spr(0xffd8a0, 3, x0 + 2.75, y + 3.75, z0 + 2.2);
+}
+{ const f0 = buildBuoys; buildBuoys = function (...a) { const r = f0.apply(this, a); voyBuildPort(); return r; }; }
+{ const f0 = targets; targets = function (...a) { const L = f0.apply(this, a); if (P && !P.dead) for (const q of VOY_PORTS) if (q.shop && Math.hypot(q.shop[0] - P.x, q.shop[2] - P.z) < 30) L.push({x: q.shop[0], y: q.shop[1], z: q.shop[2], r: 3, label: `${q.n}: sell, repair, supplies`, go: openShop}); return L; }; }
+{ const f0 = openShop; openShop = function (...a) {
+  let best = G.shed && G.shed.shop, port = null, bd = best && P ? Math.hypot(P.x - best[0], P.z - best[2]) : 1e9;
+  if (P) for (const q of VOY_PORTS) if (q.shop) { const d = Math.hypot(P.x - q.shop[0], P.z - q.shop[2]); if (d < bd) { bd = d; best = q.shop; port = q; } }
+  G.voyShopPos = best; G.voyPort = port; const r = f0.apply(this, a); const h = document.querySelector('#shopH h2'); if (h) h.textContent = port ? port.n.toUpperCase() : 'HARBOUR SHED'; return r; }; }
+// the sell step points at Northwatch when it is the nearer counter
+{ const f0 = nextStep; nextStep = function (...a) { const r = f0.apply(this, a); const q = VOY_PORTS[0], sh = G.shed && G.shed.shop;
+  if (r && r.mk && r.mk.lab === 'SHED' && P && q.shop && sh) { const dq = Math.hypot(q.shop[0] - P.x, q.shop[2] - P.z); if (dq < Math.hypot(sh[0] - P.x, sh[2] - P.z)) { r.t = r.t.replace('the harbour shed', q.n).replace('the shed', q.n); r.mk = Object.assign({x: q.shop[0], z: q.shop[2], lab: q.n.toUpperCase()}, dq < 40 ? {y: q.shop[1] + .9, scr: 1} : {}); } }
+  return r; }; }
+// HUD: the autopilot pill, the mast light
+function voyHud() {
+  if (VOY.mastS) { VOY.mastS.material.opacity = (G.wt % 2) < .35 ? 1 : .08; VOY.lampS.material.opacity = typeof TOD === 'object' && TOD ? clamp(TOD.night * 1.4 + .15, 0, 1) * .9 : .5; }
+  const now = performance.now(); if (now - VOY.pillT < 250) return; VOY.pillT = now;
+  let el = VOY.pill; if (!el) { const st = document.createElement('style'); st.id = 'st-voy'; st.textContent = '#voyAp{position:absolute;left:22px;bottom:122px;font:bold 11px ui-monospace,monospace;letter-spacing:.14em;color:#bff1ff;background:rgba(2,16,24,.78);border:1px solid rgba(120,220,255,.55);border-radius:12px;padding:3px 11px;opacity:0;transition:opacity .4s;pointer-events:none;text-shadow:0 1px 2px #000}#voyAp.on{opacity:1}#voyAp.dim{opacity:.55;color:#c8d8dc;border-color:rgba(200,220,230,.2)}#hud.fly #voyAp{visibility:hidden}'; document.head.appendChild(st);
+    el = VOY.pill = document.createElement('div'); el.id = 'voyAp'; ($('hud') || document.body).appendChild(el); }
+  let t = '', cls = '';
+  if (VOY.ap && VOY.tg) { const d = Math.hypot(VOY.tg[0] - B.x, VOY.tg[1] - B.z); t = `AUTOPILOT · ${d < 1000 ? Math.round(d) + ' m' : (d / 1000).toFixed(1) + ' km'} · T to stop`; cls = 'on'; }
+  else if (P && P.seat && G.voyWp) { t = 'T · AUTOPILOT TO COURSE'; cls = 'on dim'; }
+  const sig = t + cls; if (sig !== VOY.pillS) { VOY.pillS = sig; if (t) el.textContent = t; el.className = cls; }
+}
+{ const f0 = hud; hud = function (...a) { const r = f0.apply(this, a); voyHud(); return r; }; }
+// input: T toggles the autopilot at the wheel; W/A/S/D take back control; with the chart open the mouse moves the cursor (or pans), the wheel zooms, LMB sets the course and RMB clears it
+addEventListener('keydown', e => { if (!G.on || G.paused || !P) return; const t = e.target; if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA')) return;
+  if (e.code === 'KeyT' && !e.repeat && P.seat && !anyPanel()) { voyApSet(!VOY.ap); return; }
+  if (VOY.ap && !e.repeat && /^Key[WASD]$/.test(e.code)) voyApSet(false); }, {capture: true});
+addEventListener('wheel', e => { if (!G.map || !G.on || G.paused) return; e.stopImmediatePropagation(); voyZoom(e.deltaY < 0 ? 1 : -1); }, {capture: true});
+addEventListener('mousemove', e => { if (!G.map || !G.on || G.paused) return; e.stopImmediatePropagation(); const c = $('map'), W = c.width, k = W / (c.clientWidth || W);
+  if (VOY.z) { const S = W / (voyR() * 2.077) * VOY_ZL[VOY.z]; VOY.cx += e.movementX * k / S; VOY.cz -= e.movementY * k / S; voyClampC(); } else VOY.cur = [clamp(VOY.cur[0] + e.movementX * k, 4, W - 4), clamp(VOY.cur[1] + e.movementY * k, 4, W - 4)];
+  VOY.dirty = 1; }, {capture: true});
+addEventListener('mousedown', e => { if (!G.map || !G.on || G.paused) return; e.stopImmediatePropagation(); e.preventDefault(); VOY.md = 1;
+  if (e.button === 0) { G.voyWp = voyCursorWorld(); if (A.on) tone(1180, .04, .12, 'triangle'); } else if (e.button === 2) { G.voyWp = null; if (A.on) tone(520, .04, .12, 'triangle'); } VOY.dirty = 1; }, {capture: true});
+addEventListener('mouseup', e => { if (VOY.md) { VOY.md = 0; e.stopImmediatePropagation(); } }, {capture: true});
 
 // ---------------- gear: guns and fishing
 const GEAR = {
