@@ -29,7 +29,7 @@ const hexS = c => '#' + c.toString(16).padStart(6, '0');
 
 // ---------------- net (jjfanwars relay)
 const RELAY_URL = 'wss://jjfanwars-relay.businessautomationvic.workers.dev';
-const GAME_V = 59;
+const GAME_V = 60;
 const Net = {
   tag: '[Rig]', role: 'solo', ws: null, peers: new Map(), code: '', relayT: {pose: 1}, id: '', name: '', handlers: {}, retry: 0, started: false,
   enc: new TextEncoder(), dec: new TextDecoder(),
@@ -6244,19 +6244,19 @@ function hostShoot(p, m) {
         const px = o[0] + ux * t, py = o[1] + uy * t, pz = o[2] + uz * t, lo = M.y + .2, hi = M.y + ((M.four || 0) > .5 ? 1.5 : 2.75);
         if (Math.hypot(px - M.x, pz - M.z) < .45 && py > lo - .15 && py < hi + .15) {
           let blocked = false; for (const w of WALLS) { if (!w.see || w.y0 > py || w.y1 < py) continue; if (segRect(o[0], o[2], px, pz, w)) { blocked = true; break; } }
-          if (!blocked) { const isHead = py > hi - .35, base = m.w === 'g' ? 10 : 7 * (t > 20 ? .4 : 1); dm += base * (isHead ? 2 : 1); head = head || isHead; hp = [px, py, pz]; }
+          if (!blocked) { const isHead = py > hi - .35, base = (m.w === 'g' ? 10 : 7 * (t > 20 ? .4 : 1)) * hsMul(m); dm += base * (isHead ? 2 : 1); head = head || isHead; hp = [px, py, pz]; }
         }
       }
     }
     if (G.enc) { const lp = levPose(G.enc.a, G.enc.el, G.enc.L || 9, _lo2), far = Math.hypot(lp.x - o[0], lp.z - o[2]) > 15;
       const hitS = (cx, cy, cz, r) => { const tt = (cx - o[0]) * ux + (cy - o[1]) * uy + (cz - o[2]) * uz; return tt > 0 && tt < 90 + HL && Math.hypot(o[0] + ux * tt - cx, o[1] + uy * tt - cy, o[2] + uz * tt - cz) < r; };
-      const pd = m.w === 'g' ? 10 : far ? 3 : 6;
+      const pd = (m.w === 'g' ? 10 : far ? 3 : 6) * hsMul(m);
       if (lp.y > -1.2 && hitS(lp.x, lp.y + .5, lp.z, 3.2)) { dd += pd * (lp.ph === 1 ? 2.5 : 1); G.enc.hh = 1; }
       else if (lp.ph === 0) { let an = G.enc.a + G.enc.el * .45; for (let k = 1; k < 7; k++) { an -= 6.1 / levRad(an); const R = levRad(an); if (hitS(B.x + Math.sin(an) * R, -.3, B.z + Math.cos(an) * R, 2.6)) { dd += pd * .6; break; } } } }
   }
   if (STS.state !== 'dead' && STS.state !== 'gone' && Math.hypot(STS.x - o[0], STS.z - o[2]) < 70) {
     let sd = 0, sh = false, shp = null; for (const j of pel) { let ux = d[0] + j[0], uy = d[1] + j[1], uz = d[2] + j[2]; const l = Math.hypot(ux, uy, uz); ux /= l; uy /= l; uz /= l; const hh = ux * ux + uz * uz, t = hh > 1e-6 ? ((STS.x - o[0]) * ux + (STS.z - o[2]) * uz) / hh : 0;
-      if (t <= 0 || t > 70) continue; const px = o[0] + ux * t, py = o[1] + uy * t, pz = o[2] + uz * t, hi = STS.y + 3.4; if (Math.hypot(px - STS.x, pz - STS.z) < .55 && py > STS.y && py < hi + .1 && seeLine(o[0], o[1] - 1.5, o[2], px, py - 1, pz)) { const head = py > hi - .45; sd += (m.w === 'g' ? 10 : 7 * (t > 20 ? .4 : 1)) * (head ? 2 : 1); sh = sh || head; shp = [px, py, pz]; } }
+      if (t <= 0 || t > 70) continue; const px = o[0] + ux * t, py = o[1] + uy * t, pz = o[2] + uz * t, hi = STS.y + 3.4; if (Math.hypot(px - STS.x, pz - STS.z) < .55 && py > STS.y && py < hi + .1 && seeLine(o[0], o[1] - 1.5, o[2], px, py - 1, pz)) { const head = py > hi - .45; sd += ((m.w === 'g' ? 10 : 7 * (t > 20 ? .4 : 1)) * hsMul(m)) * (head ? 2 : 1); sh = sh || head; shp = [px, py, pz]; } }
     if (sd) { const out = !inCruise(p.x, p.z, p.y); if (out) sd *= .35; STS.hp -= sd; emit({k: 'shit', x: +shp[0].toFixed(2), y: +shp[1].toFixed(2), z: +shp[2].toFixed(2), head: sh, by: p.id});
       if (STS.hp <= 0) { STS.state = 'dead'; STS.deadT = 4; emit({k: 'sdown', by: p.id}); const kd = KINDS.includes('mask') ? 'mask' : 'relic', it = addItem(kd, {x: STS.x + .5, y: STS.y, z: STS.z}); emit({k: 'item', i: it.i, kind: kd, x: STS.x + .5, y: STS.y, z: STS.z}); bounty('stw', 'The Steward'); }
       else if (out) { if (STS.state !== 'flee') { STS.state = 'flee'; STS.flee = 6; STS.aware = 0; const n = CN[CN.ok[Math.floor(CR() * CN.ok.length)]]; if (n) stwGo(n.x, n.y, n.z); emit({k: 'snd', s: 'shriekS'}); } }
@@ -7367,7 +7367,7 @@ function nbRovMesh() { const g = new THREE.Group(), y = new THREE.MeshStandardMa
     const gh = Math.max(0, landH(B.x, B.z)); B.dep = mix(B.dep || 0, -(gh + (gh > 0 ? .5 : 0)), Math.min(1, dt * 4)); return r; }
   // the flying boat: on the water she is a boat; at speed, Space lifts her off and she flies until she touches down
   const drv = B.driver && PL.get(B.driver), inp = B.ap && B.ap.up != null ? [B.ap.thr, B.ap.st, -B.ap.up] : drv && drv.seat && !drv.down && !drv.dead && drv.in ? drv.in : [0, 0, 0], up = -(inp[2] || 0); let alt = -(B.dep || 0);
-  const JT = H.jet ? {to: 17, acc: 18, dr: .0021, cl: 15, st: 15, land: 45} : {to: 13, acc: 9, dr: .0032, cl: 8, st: 12, land: 32};
+  const JT = H.air ? {to: -1, acc: 5, dr: .009, cl: 4, st: -10, land: 99} : H.jet ? {to: 17, acc: 18, dr: .0021, cl: 15, st: 15, land: 45} : {to: 13, acc: 9, dr: .0032, cl: 8, st: 12, land: 32};
   if (alt < .05 && !(up > 0 && B.v > JT.to)) { NB.vy = 0; const r = f0.apply(this, arguments); B.dep = 0; return r; }
   B.thr = mix(B.thr, inp[0], Math.min(1, dt * 1.2)); B.st = mix(B.st, inp[1], Math.min(1, dt * 2.5)); B.fuel = tankMax();
   const lv = B.up.engine || 0; B.v += ((B.thr > 0 ? B.thr * (JT.acc + lv * 1.5) : B.thr * 4) - JT.dr * B.v * Math.abs(B.v) - NB.vy * .4) * dt; B.v = Math.max(0, B.v);
@@ -7382,13 +7382,14 @@ function nbRovMesh() { const g = new THREE.Group(), y = new THREE.MeshStandardMa
 { const f0 = boatPose; boatPose = function (dt) { const r = f0.apply(this, arguments), H = HC(), ud = BOAT && BOAT.userData; if (!ud) return r;
   if (ud.props) { const sp = H.plane ? (Math.abs(B.thr) > .02 || -(B.dep || 0) > .5 ? 38 : 0) : 18 * (.3 + Math.abs(B.thr)); for (const p of ud.props.children) { p.rotation.z += sp * dt; if (p.userData.disc) p.userData.disc.material.opacity = sp > 30 ? .18 : 0; } }
   if (H.plane) { const alt = -(B.dep || 0), vy = (alt - NB.lastDep) / Math.max(dt, 1e-3); NB.lastDep = alt; NB.pvy = mix(NB.pvy, vy, Math.min(1, dt * 3)); if (alt > .2) { B.pitch = Math.atan2(NB.pvy, Math.max(8, B.v)) * .9 + .04; B.roll = (B.yr || 0) * 1.4; B.heave = alt + Math.min(alt, 1) * 0; BOAT.position.y = alt; BOAT.rotation.set(B.pitch, B.yaw, B.roll, 'YXZ'); } }
+  if (H.air && -(B.dep || 0) > .2) { B.pitch = clamp(NB.pvy * .015, -.05, .05); B.roll = (B.yr || 0) * .25; BOAT.rotation.set(B.pitch, B.yaw, B.roll, 'YXZ'); }
   if (H.hover) { const gh = landH(B.x, B.z); if (gh > -.2) { B.heave = -(B.dep || 0); B.pitch *= .3; B.roll *= .3; BOAT.position.y = B.heave; BOAT.rotation.set(B.pitch, B.yaw, B.roll, 'YXZ'); } if (ud.hovL) ud.hovL.material.emissiveIntensity = (G.wt * 2) % 1 < .5 ? 1.4 : .1; }
   if (H.cat) { B.roll *= .35; BOAT.rotation.set(B.pitch, B.yaw, B.roll, 'YXZ'); } return r; }; }
 // catamaran: faster bites aboard
 { const f0 = stepGear; stepGear = function (dt) { const prev = F.st, r = f0.apply(this, arguments); if (prev !== 'wait' && F.st === 'wait' && P && P.ob && HC().cat) F.t *= .7; return r; }; }
 // flight HUD: altitude, airspeed, climb, a stall warning
 { const f0 = hud; hud = function () { const r = f0.apply(this, arguments); const on = P && P.seat && HC().plane; let el = NB.hudEl; if (!el && on) { el = NB.hudEl = document.createElement('div'); el.style.cssText = 'position:absolute;left:50%;top:14%;transform:translateX(-50%);font:bold 14px ui-monospace,monospace;color:#e8f4ff;text-shadow:0 1px 3px #000;text-align:center;pointer-events:none'; $('hud').appendChild(el); }
-  if (el) { el.style.display = on ? 'block' : 'none'; if (on) { const alt = -(B.dep || 0), kt = Math.round(B.v * 1.94), jt = HC().jet, st = alt > .5 && B.v < (jt ? 15 : 13), t = alt > .3 ? `ALT ${alt.toFixed(0)} m · ${kt} kt · ${NB.pvy >= 0 ? '▲' : '▼'} ${Math.abs(NB.pvy).toFixed(1)}${st ? '<br><span style="color:#ff5040">STALL · nose down (C), more throttle</span>' : ''}` : `${kt} kt${B.v > (jt ? 17 : 13) ? ' · <span style="color:#9fe6ff">hold Space to lift off</span>' : B.v > 3 ? ` · take-off at ${jt ? 33 : 26} kt` : ''}`; if (t !== NB.hudT) { NB.hudT = t; el.innerHTML = t; } } } return r; }; }
+  if (el) { el.style.display = on ? 'block' : 'none'; if (on) { const alt = -(B.dep || 0), kt = Math.round(B.v * 1.94), jt = HC().jet, st = !HC().air && alt > .5 && B.v < (jt ? 15 : 13), t = alt > .3 ? `ALT ${alt.toFixed(0)} m · ${kt} kt · ${NB.pvy >= 0 ? '▲' : '▼'} ${Math.abs(NB.pvy).toFixed(1)}${st ? '<br><span style="color:#ff5040">STALL · nose down (C), more throttle</span>' : ''}` : `${kt} kt${B.v > (jt ? 17 : 13) ? ' · <span style="color:#9fe6ff">hold Space to lift off</span>' : B.v > 3 ? ` · take-off at ${jt ? 33 : 26} kt` : ''}`; if (t !== NB.hudT) { NB.hudT = t; el.innerHTML = t; } } } return r; }; }
 // the ROV: pilot it from the console (your mouse aims it, WASD drives, Space/C up and down, E grabs from the sea bed, F or the console to come back)
 function rovStart() { if (G.rov) { rovStop(); return; } const ud = BOAT && BOAT.userData; if (!ud || !HC().rovx) return; const [x, z] = bL2W(0, ud.rovZ); G.rov = {x, y: -1.5, z, yaw: P.yaw, t: 0}; if (ud.rovP) ud.rovP.visible = false;
   if (!NB.rov) { NB.rov = nbRovMesh(); NB.rov.scale.setScalar(1); scene.add(NB.rov); NB.rl = new THREE.SpotLight(0xfff0d8, 40 * PI, 45, .55, .5, 0); NB.rl.castShadow = false; scene.add(NB.rl, NB.rl.target); NB.teth = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()]), new THREE.LineBasicMaterial({color: 0xffc040})); NB.teth.frustumCulled = false; scene.add(NB.teth); }
@@ -8067,7 +8068,7 @@ addEventListener('keydown', e => { if (e.code !== 'Space' || e.repeat || !G.on |
 // then descend, slow to landing speed and touch down gently near the target; on the water the normal autopilot docks her.
 { const f0 = hostAp; hostAp = function (dt) { const a = B.ap, H = HC(); if (!a || !H.plane || B.sink > 0) return f0.apply(this, arguments);
   const alt = -(B.dep || 0), [tx, tz] = a.dock ? [a.dock.x, a.dock.z] : a.tg, d = Math.hypot(tx - B.x, tz - B.z);
-  const JT = H.jet ? {to: 17, st: 15, cl: 15, vf: 36} : {to: 13, st: 12, cl: 8, vf: 25};
+  const JT = H.air ? {to: -1, st: -10, cl: 4, vf: 12} : H.jet ? {to: 17, st: 15, cl: 15, vf: 36} : {to: 13, st: 12, cl: 8, vf: 25};
   if (alt <= .3) { a.up = null; if (a.ph === 2) return; f0.apply(this, arguments); if (!B.ap) return; if (d > 1200 && a.ph === 0) { a.up = 1; a.thr = 1; } return; }
   const h = Math.atan2(-(tx - B.x), -(tz - B.z)), e = angD(B.yaw, h); a.st = clamp(-e * 1.6, -1, 1); a.ph = 0;
   const fx = -Math.sin(B.yaw), fz = -Math.cos(B.yaw); let flo = 0;
@@ -8237,6 +8238,72 @@ function cfFrame(dt) { const s = isHost() ? (NGC.cf ? [NGC.cf.x, NGC.cf.z, NGC.c
     for (let i = 0; i < 5; i++) add(new THREE.ConeGeometry(.12, .7, 5), sk, 0, .95, -1.8 + i * .9); add(new THREE.SphereGeometry(1.15, 14, 10), sk, 0, .1, -2.6).scale.set(1, .8, 1.1); g.scale.setScalar(1.5); scene.add(g); NGC.cfG = g; }
   const g = NGC.cfG; g.visible = true; g.position.x = mix(g.position.x || s[0], s[0], Math.min(1, dt * 4)); g.position.z = mix(g.position.z || s[1], s[1], Math.min(1, dt * 4)); g.position.y = mix(g.position.y, s[2], Math.min(1, dt * 3)); g.rotation.y = s[3]; g.userData.tail.rotation.y = Math.sin(G.t * 3) * .4;
   if (s[2] > -1.2 && Math.random() < dt * 2) { /* spout */ } }
+
+function hsMul(m) { return clamp(+(m && m.mul) || 1, 1, 12); }
+// ===== four more ships: a pirate brigantine, a cursed whaler, an airship and a floating fortress =====
+// Built on the shared small-hull path (loft + wheelhouse) with their own look in a shpExtras wrapper. H.fire: a deck weapon fired with F at the wheel
+// (host 'bfire', aimed at the deep thing if it is up). Airship: plane physics with no stall (H.air), so she lifts at a standstill and hovers.
+const NB2 = {i0: HULLS.length};
+HULLS.push(
+  {n: 'Black Gull brigantine', board: 'BLACK GULL', d: 'A pirate brigantine: two masts of square sail, a bowsprit, eight cannons and a captain\'s cabin with a chest. Perk: F at the wheel fires a broadside', cost: 8000, L: 22, W: 6.2, fb: 1.6, spd: 1.15, turn: .7, hold: 24, hp: 2.2, fuel: 1.2, col: 0x2a1a10, wh: [.72, .9], fire: {cd: 6, mul: 7, side: 1}, perk: 'Broadside (F)',
+    form: {entry: .4, fine: .9, rake: .12, ff: .4, flare: .18, sheer: 2.2, sheerP: 2.2, sheerAft: 1.1, bw: .9, rail: 0, tex: () => TX.wood, side: 0x3a2414, paintSide: 1, band: {y0: .62, y1: .74}, boot: 0x1a1410, anti: 0x2a1a10}, kit: {fend: 0, port: 0, stack: 0, ring: 0, ant: 0, anchor: 1}, cab: {wall: 0x4a3018, roof: 0x2a1a10}},
+  {n: 'Grim Harvest whaler', board: 'GRIM HARVEST', d: 'An old whaling ship with a bow harpoon cannon, tryworks and whaleboats on davits. Her dead crew still work her at night. Perk: F fires the harpoon; she sails faster after dark', cost: 9000, L: 26, W: 7, fb: 1.7, spd: 1.05, turn: .55, hold: 34, hp: 2.6, fuel: 1.5, col: 0x1a1c1e, wh: [.66, .82], fire: {cd: 4, mul: 10}, ghosts: 1, perk: 'Harpoon (F) · ghost crew',
+    form: {entry: .42, fine: .85, rake: .08, ff: .5, flare: .12, sheer: 1.8, sheerP: 2.2, sheerAft: .6, bw: .8, rail: 0, tex: () => TX.wood, side: 0x1a1c1e, paintSide: 1, band: {y0: .6, y1: .7}, boot: 0x3a2a1a, anti: 0x3a1a12}, kit: {fend: 0, port: 0, stack: 0, ring: 0, ant: 0, anchor: 1}, cab: {wall: 0x3a3028, roof: 0x1a1c1e}},
+  {n: 'Zephyr airship', board: 'ZEPHYR', d: 'A gondola under a 22 m gasbag. Hold Space at the wheel to rise from a standstill, C to sink; she hovers when you let go. Slow, but nothing below can touch her', cost: 11000, L: 12, W: 3.4, fb: 1.1, spd: .9, turn: .9, hold: 8, hp: 1.2, fuel: 1, col: 0x3a3a40, wh: [.16, .74], plane: 1, air: 1, perk: 'Hover flight',
+    form: {entry: .3, fine: .7, rake: .05, flat: 1, vee: .1, dead: .4, sheer: .2, sternW: .7, bw: .2, rail: 'full', railC: 0x8a7050, tex: 'clean', side: 0x3a3a40, boot: 0x2a2a2e, anti: 0x2a2a2e, run: 0}, kit: {fend: 0, port: 0, stack: 0, ring: 0, ant: 0, anchor: 0}, cab: {wall: 0x6a4a2a, roof: 0x3a3a40}},
+  {n: 'Bastion fortress barge', board: 'BASTION', d: 'A 30 m armoured barge: battlements, a deck gun, a crane and searchlight towers. Very slow, very tough. Perk: F fires the deck gun; she patches herself when stopped', cost: 14000, L: 30, W: 14, fb: 1.5, spd: .62, turn: .3, hold: 70, hp: 5.5, fuel: 2.4, col: 0x4a4e52, wh: [.74, .88], fire: {cd: 2.5, mul: 5}, fort: 1, perk: 'Deck gun (F) · self-repair',
+    form: {entry: .14, fine: .5, bowW: .85, flat: 1, vee: 0, dead: .7, sheer: .3, sternW: 1, transomRake: 0, bw: 1.1, rail: 0, tex: 'steel', side: 0x4a4e52, boot: 0x2a2a2a, anti: 0x7a1812, run: 0}, kit: {fend: 1, port: 0, stack: 0, ring: 1, ant: 1, anchor: 1}, cab: {wall: 0x6a6e72, roof: 0x3a3e42}});
+ENGV.push({f: [30, 60], lp: [300, 800], am: .3, fr: .5, g: .08}, {f: [14, 26], lp: [140, 340], am: .7, fr: .35, g: .14, hiss: 1}, {f: [70, 140], lp: [700, 1800], am: .15, fr: .9, nz: .04, g: .09}, {f: [16, 30], lp: [150, 380], am: .8, fr: .3, g: .2});
+{ const f0 = shpExtras; shpExtras = function (cls, X, ph) { const r = f0.apply(this, arguments); if (!ph && cls >= NB2.i0 && cls < NB2.i0 + 4) try { nb2Look(cls - NB2.i0, X); } catch (e) { console.warn('nb2Look', e); } return r; }; }
+function nb2Look(k, X) { const {g, L, hw, fb, zs, zb, wz0, wz1, ww, hh, S, add, box, cyl, darkM, steel} = X, ud = g.userData, top = fb + hh + .12, Z = t => mix(zb, zs, t);
+  const seg = (m, a, b, r, n = 6) => { const l = Math.hypot(b[0] - a[0], b[1] - a[1], b[2] - a[2]), o = add(new THREE.CylinderGeometry(r, r, l, n), m, (a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2); o.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), new THREE.Vector3(b[0] - a[0], b[1] - a[1], b[2] - a[2]).normalize()); return o; };
+  const wd = S({map: TX.wood, color: 0x6a4a2a, roughness: .8}), sail = S({color: 0xe0d4b4, roughness: 1, side: THREE.DoubleSide}), rope = S({color: 0x5a4a32, roughness: 1}), blk = S({color: 0x111111, roughness: .6, metalness: .4});
+  const glow = (c, s, x, y, z) => { const sp = new THREE.Sprite(new THREE.SpriteMaterial({map: TX.glow, color: c, transparent: true, opacity: .8, depthWrite: false, blending: THREE.AdditiveBlending})); sp.scale.setScalar(s); sp.position.set(x, y, z); g.add(sp); return sp; };
+  ud.muz = [];
+  if (k === 0) { // brigantine
+    for (const [t, h] of [[.28, 14], [.55, 12.5]]) { const z = Z(t); cyl(wd, .14, .2, h, 0, fb + h / 2, z); for (const [yy, w] of [[h * .38, 5.6], [h * .62, 4.6], [h * .84, 3.4]]) { seg(wd, [-w / 2, fb + yy, z], [w / 2, fb + yy, z], .07); const s = add(new THREE.PlaneGeometry(w * .92, h * .22, 6, 3), sail, 0, fb + yy - h * .115, z + .15); const p = s.geometry.attributes.position; for (let i = 0; i < p.count; i++) p.setZ(i, -Math.cos(p.getX(i) / w * PI) * .35); s.geometry.computeVertexNormals(); }
+      seg(rope, [0, fb + h, z], [hw - .1, fb + .9, z + 2.2], .02); seg(rope, [0, fb + h, z], [-hw + .1, fb + .9, z + 2.2], .02); }
+    seg(wd, [0, fb + 1.2, zb + 1], [0, fb + 2.6, zb - 5.5], .13); seg(rope, [0, fb + 14, Z(.28)], [0, fb + 2.6, zb - 5.3], .02); const jib = add(new THREE.PlaneGeometry(4, 6), sail, 0, fb + 7, zb - 1.4); jib.rotation.y = PI / 2; jib.rotation.x = -.45; jib.scale.x = .02 + 1;
+    const fl = add(new THREE.PlaneGeometry(1.6, 1), S({color: 0x0a0a0a, side: THREE.DoubleSide}), .85, fb + 14.6, Z(.28)); fl.rotation.y = PI / 2; add(new THREE.CircleGeometry(.18, 12), S({color: 0xe8e4dc, side: THREE.DoubleSide}), .86, fb + 14.65, Z(.28)).rotation.y = PI / 2;
+    for (const sd of [-1, 1]) for (let i = 0; i < 4; i++) { const z = Z(.3 + i * .12), c = cyl(blk, .12, .16, 1.3, sd * (hw - .2), fb + .55, z); c.rotation.z = PI / 2; box(darkM, sd * hw - .02, sd * hw + .02, fb + .3, fb + .8, z - .3, z + .3); ud.muz.push([sd * (hw + .6), fb + .55, z]); }
+    box(S({color: 0x5a3a1a, roughness: .7}), ww - 1.3, ww - .3, fb, fb + .55, wz0 + .5, wz0 + 1.1, true); box(S({color: 0xd8b040, metalness: .7, roughness: .3}), ww - 1.32, ww - .28, fb + .5, fb + .6, wz0 + .48, wz0 + 1.12);
+    for (const sd of [-1, 1]) glow(0xffb050, 1.6, sd * (hw - .4), top + .3, zs - .3); }
+  if (k === 1) { // whaler
+    for (const [t, h] of [[.22, 13], [.45, 15], [.62, 11]]) { const z = Z(t); cyl(wd, .14, .2, h, 0, fb + h / 2, z); for (const [yy, w] of [[h * .45, 6], [h * .72, 4.6]]) { seg(wd, [-w / 2, fb + yy, z], [w / 2, fb + yy, z], .08); const f = cyl(sail, .22, .22, w * .9, 0, fb + yy + .2, z); f.rotation.z = PI / 2; } seg(rope, [0, fb + h, z], [hw - .1, fb + .9, z + 2.5], .02); seg(rope, [0, fb + h, z], [-hw + .1, fb + .9, z + 2.5], .02); }
+    seg(wd, [0, fb + 1.3, zb + 1], [0, fb + 2.4, zb - 4.5], .13); const hz = zb + 2.2; cyl(blk, .35, .45, .9, 0, fb + .45, hz); const hb = cyl(blk, .09, .12, 2, 0, fb + 1.1, hz - .7); hb.rotation.x = PI / 2 - .12; const tip = add(new THREE.ConeGeometry(.16, .5, 4), steel, 0, fb + 1.25, hz - 1.9); tip.rotation.x = -PI / 2 - .12; ud.muz.push([0, fb + 1.2, hz - 2]);
+    const brick = S({color: 0x6a3a2a, roughness: 1}); box(brick, -1.3, 1.3, fb, fb + 1.2, Z(.34) - 1.2, Z(.34) + 1.2, true); cyl(blk, .25, .3, 2.2, 0, fb + 2.3, Z(.34)); ud.tryG = glow(0xff6a20, 2.2, 0, fb + 1.3, Z(.34) - 1.25);
+    for (const sd of [-1, 1]) for (const t of [.38, .58]) { const z = Z(t), wb = add(new THREE.CapsuleGeometry(.55, 3.6, 4, 10), S({color: 0xd8d4c8, roughness: .7}), sd * (hw + .55), fb + 1.4, z); wb.rotation.x = PI / 2; wb.scale.set(1, 1, .55); for (const dz of [-1.6, 1.6]) seg(wd, [sd * (hw - .1), fb, z + dz], [sd * (hw + .55), fb + 2.1, z + dz], .06); }
+    ud.ghosts = []; const gm = new THREE.MeshStandardMaterial({color: 0x9adcd0, emissive: 0x4a9a90, emissiveIntensity: .8, transparent: true, opacity: .32, depthWrite: false});
+    for (const [x, y, z, ry] of [[hw - .8, fb, Z(.25), 1.2], [-hw + .9, fb, Z(.5), -1.4], [0, fb + 6.75, Z(.45), 0], [.6, fb, Z(.7), 3], [-.5, fb + 1.2, Z(.34) + 1.6, .3]]) { const f = hzFig({h: 1.8, col: 0x9adcd0, skin: 0xbfe8e0}); f.traverse(o => { if (o.isMesh) { o.material = gm; o.castShadow = false; } }); f.position.set(x, y, z); f.rotation.y = ry; f.visible = false; g.add(f); ud.ghosts.push(f); } }
+  if (k === 2) { // airship
+    const fab = S({color: 0xc8b890, roughness: .85}), fr = S({color: 0x8a6a40, roughness: .7}), ey = top + 4.4, ez = (zb + zs) / 2 + .5;
+    const env = add(new THREE.SphereGeometry(1, 36, 18), fab, 0, ey, ez); env.scale.set(3.4, 3.2, 11); for (let i = -3; i <= 3; i++) { const rg = add(new THREE.TorusGeometry(1, .012, 4, 36), fr, 0, ey, ez + i * 2.8); const s2 = Math.sqrt(Math.max(.05, 1 - Math.pow(i * 2.8 / 11, 2))); rg.scale.set(3.42 * s2, 3.22 * s2, 1); }
+    for (const [rx, ry] of [[0, 1], [0, -1], [1, 0], [-1, 0]]) { const f = add(new THREE.BoxGeometry(rx ? .08 : 2.4, ry ? .08 : 2.4, 2.8), fab, rx * 2.2, ey + ry * 2.2, ez + 9.2); if (rx) f.scale.set(1, 1, 1); }
+    for (const [x, z] of [[-ww + .2, wz0 + .3], [ww - .2, wz0 + .3], [-ww + .2, wz1 - .3], [ww - .2, wz1 - .3]]) seg(rope, [x, top, z], [x * 1.4, ey - 2.6, z + (z < ez ? -1 : 1)], .025);
+    cyl(fr, .18, .18, 2.6, 0, ey - 3.3, ez); const props = new THREE.Group(); g.add(props); ud.props = props; const pm = new THREE.MeshStandardMaterial({color: 0x1a1a1a, roughness: .5});
+    for (const sd of [-1, 1]) { const px = sd * (ww + 1.6), pz = wz1 - .6; seg(steel, [sd * ww, top - .4, pz], [px, top - .2, pz], .06); const pod = add(new THREE.CapsuleGeometry(.32, 1.1, 4, 10), fab, px, top - .2, pz); pod.rotation.x = PI / 2;
+      const p = new THREE.Group(); p.position.set(px, top - .2, pz + 1.05); props.add(p); for (let i = 0; i < 2; i++) { const b = new THREE.Mesh(new THREE.BoxGeometry(.1, 1.3, .03), pm); b.rotation.z = i * PI / 2; p.add(b); } }
+    glow(0xff3020, .8, -3.4, ey, ez); glow(0x30ff60, .8, 3.4, ey, ez); }
+  if (k === 3) { // fortress barge
+    const cn = S({color: 0x7a7a74, roughness: .95}); for (const sd of [-1, 1]) for (let z = zb + 1.5; z < zs - 1; z += 1.6) box(cn, sd * (hw - .45) - .3, sd * (hw - .45) + .3, fb + 1.1, fb + 1.65, z - .4, z + .4);
+    for (let x = -hw + 1.5; x < hw - 1; x += 1.6) box(cn, x - .4, x + .4, fb + 1.1, fb + 1.65, zb + .9, zb + 1.5);
+    const tz = Z(.16); cyl(cn, 1.6, 1.8, .9, 0, fb + .45, tz); box(S({color: 0x3a3e42, metalness: .4, roughness: .5}), -1.1, 1.1, fb + .9, fb + 2.1, tz - 1.2, tz + 1.2, true); BW.push({x0: -1.8, x1: 1.8, z0: tz - 1.8, z1: tz + 1.8, y0: 0, y1: 1}); const br = cyl(blk, .14, .18, 4, 0, fb + 1.5, tz - 3); br.rotation.x = PI / 2; ud.muz.push([0, fb + 1.5, tz - 5.2]);
+    for (const [sx, t] of [[-1, .3], [1, .3], [-1, .62], [1, .62]]) { const x = sx * (hw - 1.4), z = Z(t); for (const dx of [-.5, .5]) for (const dz of [-.5, .5]) seg(steel, [x + dx, fb, z + dz], [x + dx * .3, fb + 5, z + dz * .3], .05); box(darkM, x - .45, x + .45, fb + 5, fb + 5.15, z - .45, z + .45); const sl = cyl(steel, .25, .3, .5, x, fb + 5.45, z); sl.rotation.x = PI / 2; glow(0xfff4d0, 1.6, x, fb + 5.45, z - .3); }
+    const cz = Z(.46); cyl(S({color: 0xd8a020, roughness: .6}), .3, .35, 7, hw - 2.2, fb + 3.5, cz); seg(S({color: 0xd8a020, roughness: .6}), [hw - 2.2, fb + 7, cz], [-1, fb + 9, cz - 4], .18); seg(rope, [-1, fb + 9, cz - 4], [-1, fb + 4, cz - 4], .03);
+    for (const [x, z, c] of [[-hw + 2, Z(.42), 0xa83a2a], [-hw + 2, Z(.48), 0x2a5a8a], [-hw + 4.6, Z(.45), 0x3a7a3a]]) box(S({color: c, roughness: .8}), x - 1.2, x + 1.2, fb, fb + 2.4, z - 2.4, z + 2.4, true); }
+}
+// night: the whaler's dead crew; the tryworks glow; client frame
+{ const f0 = hud; hud = function () { const r = f0.apply(this, arguments); const ud = BOAT && BOAT.userData; if (ud && ud.ghosts) { const n = TOD.night > .45; for (const f of ud.ghosts) { if (f.visible !== n) f.visible = n; if (n) f.position.y += Math.sin(G.t * 1.3 + f.position.z) * .0015; } if (ud.tryG) ud.tryG.material.opacity = .5 + Math.sin(G.t * 7) * .2; } return r; }; }
+// host: deck weapons, the whaler's night speed, the fortress patching herself; airship flight numbers
+{ const f0 = hostAct; hostAct = function (id, m) { if (!m || m.a !== 'bfire') return f0.apply(this, arguments); const p = PL.get(id), H = HC(); if (!p || !H.fire || B.driver !== id || B.sink > 0) return; const now = G.t; if ((B.fireT || 0) > now) return; B.fireT = now + H.fire.cd;
+  emit({k: 'bfire', c: B.up.cls || 0}); if (G.enc) { const lp = levPose(G.enc.a, G.enc.el, G.enc.L || 9, _lo2), o = [B.x, BDECK.y + 1.5, B.z], dx = lp.x - o[0], dy = Math.max(.5, lp.y) - o[1], dz = lp.z - o[2], l = Math.hypot(dx, dy, dz) || 1; hostShoot(p, {w: 'g', o, d: [dx / l, dy / l, dz / l], mul: H.fire.mul}); } }; }
+{ const f0 = boatStep; boatStep = function (dt) { const r = f0.apply(this, arguments), H = HC(); if (B.sink > 0) return r;
+  if (H.ghosts && TOD.night > .45 && Math.abs(B.v) > .5) { B.x += -Math.sin(B.yaw) * B.v * dt * .3; B.z += -Math.cos(B.yaw) * B.v * dt * .3; }
+  if (H.fort && Math.abs(B.v) < .5) B.hull = Math.min(hullMax(), B.hull + hullMax() * .008 * dt); return r; }; }
+{ const f0 = applyEv; applyEv = function (e) { const r = f0.apply(this, arguments); if (e.k === 'bfire') { const ud = BOAT && BOAT.userData, near = P && (P.ob || Math.hypot(P.x - B.x, P.z - B.z) < 200);
+    if (ud && ud.muz) for (const q of ud.muz) { _v.set(q[0], q[1], q[2]).applyMatrix4(BOAT.matrixWorld); const sp = new THREE.Sprite(new THREE.SpriteMaterial({map: TX.glow, color: 0xffc070, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending})); sp.position.copy(_v); sp.scale.setScalar(4); scene.add(sp); HITS.push({s: sp, t: .3}); }
+    if (near && A.on) { for (let i = 0; i < (ud && ud.muz ? Math.min(4, ud.muz.length) : 1); i++) setTimeout(() => { burst(90, .7, 1, 1.4, 'lowpass'); tone(48, .5, .8, 'sine', null, 30); }, i * 110); } if (P && P.ob) G.shake = Math.max(G.shake || 0, .5); } return r; }; }
+addEventListener('keydown', e => { if (e.code !== 'KeyF' || e.repeat || !G.on || !P || !P.seat || anyPanel() || !HC().fire) return; e.stopImmediatePropagation(); act({a: 'bfire'}); }, {capture: true});
 
 menuInit();
 setTimeout(() => { buildWorld(); requestAnimationFrame(frame); }, 30);
