@@ -1,6 +1,33 @@
 // Station Nine: Open Sea. Online co-op exploration on a night sea: islands, wrecks, salvage, boat upgrades,
 // an abandoned oil rig with something living on it, and something much bigger under the water.
 'use strict';
+// Feature hooks. Features add steps to a core function instead of wrapping it:
+//   F = before(F, function (...args) { ... return NEXT; })   runs first; returning anything but NEXT ends the call with that value
+//   F = after(F, function (r, ...args) { ... })              runs after the core (r = its result)
+//   F = around(F, function (next, ...args) { ... })          full control: call next(...args) to run the rest
+// Steps run in the order the old nested wrappers did: before/around from the newest down, after from the oldest up,
+// and a step that ends the call skips only the steps added before it. F.L lists every step of F.
+const NEXT = Symbol('next');
+function hooked(f) {
+  if (f.L) return f;
+  const d = function (...a) { return runHooks(d, d.L.length - 1, this, a); };
+  d.L = []; d.core = f;
+  return d;
+}
+function runHooks(d, top, self, a) {
+  const L = d.L; let i = top, r;
+  for (; i >= 0; i--) {
+    const s = L[i];
+    if (s.k === 'b') { if ((r = s.fn.apply(self, a)) !== NEXT) break; }
+    else if (s.k === 'w') { const at = i; r = s.fn.call(self, (...b) => runHooks(d, at - 1, self, b), ...a); break; }
+  }
+  if (i < 0) r = d.core.apply(self, a);
+  for (let j = i + 1; j <= top; j++) if (L[j].k === 'a') L[j].fn.call(self, r, ...a);
+  return r;
+}
+function before(f, fn) { const d = hooked(f); d.L.push({k: 'b', fn}); return d; }
+function after(f, fn) { const d = hooked(f); d.L.push({k: 'a', fn}); return d; }
+function around(f, fn) { const d = hooked(f); d.L.push({k: 'w', fn}); return d; }
 const $ = id => document.getElementById(id);
 const TEST = /[?&]test/.test(location.search);
 const PI = Math.PI, TAU = PI * 2;
@@ -432,15 +459,15 @@ function itrPool(cp) {
     else { l.color.setHex(t === 2 ? 0xffd49a : 0xffe2b0); l.intensity = 22 * s[3] * (t === 1 && !G.power ? .3 * (.7 + .3 * Math.sin(G.wt * 1.3 + s[0])) : Math.random() < .015 ? .3 : 1); } }
 }
 // the Serenade's red emergency lights get housings and mounts; the one in the captain's quarters moves to the corridor ceiling
-{ const f0 = buildCruise; buildCruise = function (...a) { const r = f0.apply(this, a); const X = CRZ.x, Z = CRZ.z, D1 = CRZ.D1, D2 = CRZ.D2;
+{ buildCruise = after(buildCruise, function (r, ...a) {  const X = CRZ.x, Z = CRZ.z, D1 = CRZ.D1, D2 = CRZ.D2;
   if (CRZ.reds && CRZ.reds[0]) CRZ.reds[0] = [X, D1 + 3.45, Z - 40];
   (CRZ.reds || []).forEach((p, i) => { p.ri = i; const [x, y, z] = p; wbox('dark', x, y - .12, z, .22, .14, .22); wbox('red', x, y - .03, z, .14, .05, .14);
     if (y < D2) { const zi = zoneOf(x, z, D1), atr = Math.abs(x - X) < 10 && Math.abs(z - Z) < 8, top = zi >= 0 ? BLD[zi].fy + BLD[zi].wh : atr ? (Math.abs(x - X) < .3 ? D2 - .8 : 0) : D2 - .3;
       if (top > y) put('steel', new THREE.CylinderGeometry(.015, .015, top - y + .05, 5), x, (top + y - .05) / 2, z); }
     else put('steel', new THREE.CylinderGeometry(.04, .05, y - .19 - D2, 6), x, (y - .19 + D2) / 2, z); });
-  return r; }; }
+   }); }
 // no rain or lens drops inside the Serenade's deck 1 (the atrium stays open to the sky)
-{ const f0 = updateCamera; updateCamera = function (...a) { const r = f0.apply(this, a), c = cam.position; if (G.rainM && itrInCrz(c.x, c.y, c.z)) { G.rainM.uniforms.uI.value = 0; if (G.rain2) G.rain2.visible = false; G.dropsI = 0; } return r; }; }
+{ updateCamera = after(updateCamera, function (r, ...a) { const c = cam.position; if (G.rainM && itrInCrz(c.x, c.y, c.z)) { G.rainM.uniforms.uI.value = 0; if (G.rain2) G.rain2.visible = false; G.dropsI = 0; }  }); }
 const VALVES = [];
 function valve(x, y, z, name, ry) { put('red', new THREE.TorusGeometry(.32, .05, 6, 16), x, y + 1.15, z, ry); put('steel', new THREE.CylinderGeometry(.12, .12, 1.2, 8), x, y + .55, z); wbox('pipe', x, y + .85, z + .1, .3, .3, 2.6, ry); VALVES.push({x, y, z, name, open: false}); }
 function buildRig() {
@@ -627,10 +654,10 @@ function extHomeH(x, z) {
   return mix(rock, beach, bw);
 }
 { const f0 = landH; landH = function (x, z) { const h = f0(x, z), dx = x - HOME.x, dz = z - HOME.z; return dx * dx + dz * dz > 1764 ? h : Math.max(h, extHomeH(x, z)); }; }
-{ const f0 = materials; materials = function () { const r = f0.apply(this, arguments); extMats(); return r; }; }
-{ const f0 = updateWorldFx; updateWorldFx = function () { const r = f0.apply(this, arguments); extFx(arguments[0] || 0); return r; }; }
-{ const f0 = buildFw; buildFw = function () { const r = f0.apply(this, arguments); extGlows(); return r; }; }
-{ const f0 = buildWorld; buildWorld = function () { const was = BUILT, r = f0.apply(this, arguments); if (!was && BUILT) extHarbour(); return r; }; }
+{ materials = after(materials, function (r) {  extMats();  }); }
+{ updateWorldFx = around(updateWorldFx, function (next, ...args) { const r = next.apply(this, args); extFx(args[0] || 0); return r; }); }
+{ buildFw = after(buildFw, function (r) {  extGlows();  }); }
+{ buildWorld = around(buildWorld, function (next, ...args) { const was = BUILT, r = next.apply(this, args); if (!was && BUILT) extHarbour(); return r; }); }
 function extTex() {
   if (TX.extDetail) return;
   const dots = (g, w, h, n, f) => { for (let i = 0; i < n; i++) { const x = Math.random() * w, y = Math.random() * h, r = f(); for (const ox of [-w, 0, w]) for (const oy of [-h, 0, h]) { g.beginPath(); g.arc(x + ox, y + oy, r, 0, TAU); g.fill(); } } };
@@ -1119,7 +1146,7 @@ function shoreRockClear() { const {im, L} = SHORE_ROCKS; if (!im || !L) return 0
     const c = Math.cos(b.th || 0), sn = Math.sin(b.th || 0), dx = x - b.x, dz = z - b.z, lx = dx * c - dz * sn, lz = dx * sn + dz * c; return Math.abs(lx) < (b.w || 0) / 2 + s + .5 && Math.abs(lz) < (b.d || 0) / 2 + s + .5; });
     if (bad) { im.setMatrixAt(i, M4); n++; for (let k = PCIRC.length - 1; k >= 0; k--) if (PCIRC[k].x === x && PCIRC[k].z === z) PCIRC.splice(k, 1); } });
   if (n) im.instanceMatrix.needsUpdate = true; return n; }
-{ const f0 = buildWorld; buildWorld = function (...a) { const was = BUILT, r = f0.apply(this, a); if (!was && BUILT) setTimeout(() => { try { SHORE_ROCKS.cut = shoreRockClear(); } catch (e) { console.warn(e); } }, 0); return r; }; }
+{ buildWorld = around(buildWorld, function (next, ...a) { const was = BUILT, r = next.apply(this, a); if (!was && BUILT) setTimeout(() => { try { SHORE_ROCKS.cut = shoreRockClear(); } catch (e) { console.warn(e); } }, 0); return r; }); }
 function buildBirds() {
   const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute([-.7, .12, -.1, 0, 0, .25, 0, 0, -.15, .7, .12, -.1, 0, 0, .25, 0, 0, -.15], 3)); g.computeVertexNormals();
   BIRDS = new THREE.InstancedMesh(g, new THREE.MeshBasicMaterial({color: 0x101014, side: THREE.DoubleSide, fog: true}), 14); BIRDS.frustumCulled = false; scene.add(BIRDS);
@@ -3892,15 +3919,15 @@ SY_SUP[7] = X => {
 // lift ride: a short fade to black with a hum and a chime, then you step out at the other landing (local only; poses carry the new height)
 function liftGo(up) { if (!BOAT || !BOAT.userData.syLift || P.lift || P.seat) return; P.lift = {t: 0, up, done: 0}; tone(880, .05, .25); tone(1320, .04, .4); }
 function liftFade(o) { let d = G.liftEl; if (!d) { d = G.liftEl = document.createElement('div'); d.style.cssText = 'position:fixed;inset:0;background:#000;pointer-events:none;z-index:40;opacity:0'; document.body.appendChild(d); } o = Math.round(clamp(o, 0, 1) * 50) / 50; if (o !== G.liftO) { G.liftO = o; d.style.opacity = o; } }
-{ const f0 = stepPlayer; stepPlayer = function (dt, ...a) {
+{ stepPlayer = around(stepPlayer, function (next, dt, ...a) {
   if (P && P.lift) { const q = P.lift, L = BOAT && BOAT.userData.syLift; q.t += dt; P.vx = P.vz = 0; P.in = [0, 0]; const bdy = B.yaw - (P.lastBY ?? B.yaw); P.lastBY = B.yaw; P.yaw += bdy;
     if (L && !q.done && q.t > .45) { q.done = 1; P.bl = q.up ? [L.bx, L.bz] : [L.lc, L.lz]; P.y = q.up ? L.yb : BDECK.y; P.yaw = B.yaw + (q.up ? 0 : PI); P.pitch = 0; tone(70, .06, 1.1, 'sine', null, 95); setTimeout(() => { tone(1318, .05, .7); tone(1046, .04, .9); }, 900); }
     const [wx, wz] = bL2W(P.bl[0], P.bl[1]); P.x = wx; P.z = wz; P.ob = 1; P._ly = P.y;
     liftFade(q.t < .45 ? q.t / .45 : q.t < 1.5 ? 1 : 1 - (q.t - 1.5) / .5); if (q.t > 2 || !L || !alivePlay()) { P.lift = null; liftFade(0); } return; }
-  const ws = P && P._ws, r = f0.call(this, dt, ...a); if (!P) return r;
+  const ws = P && P._ws, r = next.call(this, dt, ...a); if (!P) return r;
   if (P.seat && !ws) P.fromBr = (P._ly || 0) > BDECK.y + 5 ? 1 : 0;
   else if (!P.seat && ws && P.fromBr) { P.fromBr = 0; const L = BOAT && BOAT.userData.syLift; if (L) { P.bl = [0, L.hz]; P.y = L.yb; const [wx, wz] = bL2W(0, L.hz); P.x = wx; P.z = wz; P.vy = 0; } }
-  P._ws = P.seat; P._ly = P.y; return r; }; }
+  P._ws = P.seat; P._ly = P.y; return r; }); }
 // [3] Iron Mule: short-sea container coaster. Raised forecastle with a windlass and a bow mast, containers on hatch coamings, a deck crane,
 // an aft house of two recessed decks with rails and a full-beam bridge with wings (the 8.9 m helm camera looks out through its glass), a square funnel, a rescue boat
 SY_SUP[3] = X => {
@@ -3988,25 +4015,26 @@ function shpLook(dt) { // client: stabilisers, night lights, boost spray and HUD
     if (e) { e.style.display = sh ? '' : 'none'; const i = e.querySelector('i'); i.style.width = (100 - SHP.heat / 6 * 100) + '%'; i.style.background = SHP.oh ? '#c84a2a' : '#f0a030'; } }
 }
 { const st = document.createElement('style'); st.id = 'st-shp'; st.textContent = '#shpFade{position:fixed;inset:0;background:#000;opacity:0;pointer-events:none;z-index:40}'; document.head.appendChild(st); }
-{ const f0 = boatStep; boatStep = function (dt) { const r = f0.apply(this, arguments); shpBoost(dt); return r; }; }
-{ const f0 = boatPose; boatPose = function (dt) { const r = f0.apply(this, arguments); shpLook(dt); return r; }; }
-{ const f0 = hostStep; hostStep = function (dt) { if (HC().nodeep) { if (G.enc) { G.enc = null; emit({k: 'deepgone'}); } G.deepT = Math.max(G.deepT ?? 0, 60); } const r = f0.apply(this, arguments); shpNet(dt); shpMagnet(dt); return r; }; }
-{ const f0 = hostAct; hostAct = function (id, m) { if (m && m.a === 'shpsleep') return shpSleep(id); return f0.apply(this, arguments); }; }
-{ const f0 = applyEv; applyEv = function (e) { const r = f0.apply(this, arguments);
+{ boatStep = after(boatStep, function (r, dt) {  shpBoost(dt);  }); }
+{ boatPose = after(boatPose, function (r, dt) {  shpLook(dt);  }); }
+{ hostStep = before(hostStep, function (dt) { if (HC().nodeep) { if (G.enc) { G.enc = null; emit({k: 'deepgone'}); } G.deepT = Math.max(G.deepT ?? 0, 60); } return NEXT; });
+hostStep = after(hostStep, function (r, dt) { shpNet(dt); shpMagnet(dt); }); }
+{ hostAct = before(hostAct, function (id, m) { if (m && m.a === 'shpsleep') return shpSleep(id); return NEXT; }); }
+{ applyEv = after(applyEv, function (r, e) { 
   if (e.k === 'shpslp') { shpFade(); showMsg('You sleep until dawn. The stove ticks as it cools.', '', 5); }
   else if (e.k === 'shpnet') { if (P && P.ob) { (Snd.stow || Snd.coin)(); showMsg('+ net of fish', '', 2); } }
   else if (e.k === 'shpmag') { if (P && P.ob) { (Snd.stow || Snd.coin)(); showMsg('+ ' + (NAMES[KINDS[e.kd]] || 'cargo'), '', 1.5); } }
-  return r; }; }
-{ const f0 = packSnap; packSnap = function () { const s = f0.apply(this, arguments); if (HC().boost) s.shp = [Math.round(SHP.heat * 10), SHP.on, SHP.oh]; return s; }; }
-{ const f0 = applySnap; applySnap = function (s) { const r = f0.apply(this, arguments); if (s.shp) { SHP.heat = s.shp[0] / 10; SHP.on = s.shp[1]; SHP.oh = s.shp[2]; } else SHP.on = 0; return r; }; }
-{ const f0 = stepPlayer; stepPlayer = function (dt) { const r = f0.apply(this, arguments); if (!P) return r; if (P.seat && P.in) P.in[3] = K.ShiftLeft || K.ShiftRight ? 1 : 0;
-  if (P.sw && (P.dv || 0) > .4 && HC().rov && B.sink <= 0 && Math.hypot(P.x - B.x, P.z - B.z) < 80) { const su = SUIT[(P.own && P.own.suit) || 0] || SUIT[0]; P.air = Math.min(1, (P.air ?? 1) + dt / su.air / 2); } return r; }; }
-{ const f0 = aInit; aInit = function () { const r = f0.apply(this, arguments); if (A.ctx && Snd.shipHorn && !Snd.shipHorn.shp) { const h0 = Snd.shipHorn, h = (cls, p) => (cls || 0) >= 8 ? shpHorn(cls, p) : h0(cls, p); h.shp = 1; Snd.shipHorn = h; } return r; }; }
-{ const f0 = fishVal; fishVal = function (k, x, z) { let v = f0.apply(this, arguments); const H = HC(); if (H.fishK && B.sink <= 0) { const [lx, lz] = bW2L(x, z); if (Math.abs(lx) < BG.hw + .6 && lz > BG.zb - .6 && lz < BG.zs + .6) v = Math.round(v * H.fishK); } return v; }; }
-{ const f0 = itemMesh; itemMesh = function (kind) { const g = f0.apply(this, arguments); if (kind !== 'netfish' || g.children.length) return g;
+   }); }
+{ packSnap = after(packSnap, function (s) {  if (HC().boost) s.shp = [Math.round(SHP.heat * 10), SHP.on, SHP.oh];  }); }
+{ applySnap = after(applySnap, function (r, s) {  if (s.shp) { SHP.heat = s.shp[0] / 10; SHP.on = s.shp[1]; SHP.oh = s.shp[2]; } else SHP.on = 0;  }); }
+{ stepPlayer = after(stepPlayer, function (r, dt) {  if (!P) return; if (P.seat && P.in) P.in[3] = K.ShiftLeft || K.ShiftRight ? 1 : 0;
+  if (P.sw && (P.dv || 0) > .4 && HC().rov && B.sink <= 0 && Math.hypot(P.x - B.x, P.z - B.z) < 80) { const su = SUIT[(P.own && P.own.suit) || 0] || SUIT[0]; P.air = Math.min(1, (P.air ?? 1) + dt / su.air / 2); }  }); }
+{ aInit = after(aInit, function (r) {  if (A.ctx && Snd.shipHorn && !Snd.shipHorn.shp) { const h0 = Snd.shipHorn, h = (cls, p) => (cls || 0) >= 8 ? shpHorn(cls, p) : h0(cls, p); h.shp = 1; Snd.shipHorn = h; }  }); }
+{ fishVal = after(fishVal, function (v, k, x, z) {  const H = HC(); if (H.fishK && B.sink <= 0) { const [lx, lz] = bW2L(x, z); if (Math.abs(lx) < BG.hw + .6 && lz > BG.zb - .6 && lz < BG.zs + .6) v = Math.round(v * H.fishK); }  }); }
+{ itemMesh = after(itemMesh, function (g, kind) {  if (kind !== 'netfish' || g.children.length) return;
   const nm = new THREE.MeshStandardMaterial({color: 0x3a5a3a, roughness: .95}), fm = new THREE.MeshStandardMaterial({color: 0xb8c4cc, roughness: .25, metalness: .5}), b = new THREE.Mesh(new THREE.SphereGeometry(.3, 10, 8), nm); b.scale.set(1.3, .75, 1); b.position.y = .22; g.add(b);
   for (let i = 0; i < 4; i++) { const f = new THREE.Mesh(new THREE.ConeGeometry(.05, .22, 5), fm); f.position.set(Math.cos(i * 1.7) * .3, .3 + (i % 2) * .08, Math.sin(i * 1.7) * .22); f.rotation.set(i, i * 2, PI / 2 + i * .4); g.add(f); }
-  const tie = new THREE.Mesh(new THREE.TorusGeometry(.1, .025, 5, 10), new THREE.MeshStandardMaterial({color: 0xc8a050, roughness: .9})); tie.position.y = .42; tie.rotation.x = PI / 2; g.add(tie); g.traverse(o => { if (o.isMesh) o.castShadow = true; }); return g; }; }
+  const tie = new THREE.Mesh(new THREE.TorusGeometry(.1, .025, 5, 10), new THREE.MeshStandardMaterial({color: 0xc8a050, roughness: .9})); tie.position.y = .42; tie.rotation.x = PI / 2; g.add(tie); g.traverse(o => { if (o.isMesh) o.castShadow = true; });  }); }
 const SY_PLAN = Object.fromEntries([0, 1, 2, 8, 9].map(c => { const f = HULLS[c].form; return [c, {entry: f.entry, fine: f.fine, bowW: f.bowW}]; })); // the planform the loft was tuned with, kept under the small hulls' forms so the shared shell keeps its width
 // ---------------- shipyard round 3, small hulls (launch, trawler, cutter, Dart, Driftwood, Bulldog): hull-form lines and kit for the loft, and real superstructures built as skins round the shared wheelhouse shell
 Object.assign(HULLS[0], {form: {entry: .5, fine: 1, rake: .08, flare: .12, sheer: .9, sheerAft: .1, vee: .5, transomRake: .15, sternW: .9, bw: .45, rub: {c: 0x141414, r: .07}, boot: 0xf0f0ea, anti: 0x6a1e14, rail: 'full', tex: () => smlTex('lt')},
@@ -4283,7 +4311,7 @@ function smlLook(cls, X) {
   }
   if (tints.length) { const tm = new THREE.Mesh(mergeGeos(tints), tint); tm.renderOrder = 2; g.add(tm); tints.forEach(q => q.dispose()); }
 }
-{ const f0 = shpExtras; shpExtras = function (cls, X, ph) { if (ph || ![0, 1, 2, 8, 9, 10].includes(cls)) return f0.apply(this, arguments); if (cls >= 8) f0.call(this, -1, X, 0); else f0.apply(this, arguments); smlLook(cls, X); }; }
+{ shpExtras = around(shpExtras, function (next, ...args) { let [cls, X, ph] = args; if (ph || ![0, 1, 2, 8, 9, 10].includes(cls)) return next.apply(this, args); if (cls >= 8) next.call(this, -1, X, 0); else next.apply(this, args); smlLook(cls, X); }); }
 // ---------------- the derelict MS Serenade, far to the north. Two decks you can explore, and the Steward.
 const CRZ = {x: -250, z: 2350, D1: 9, D2: 13}, CN = [], CWL = [];
 const inCruise = (x, z, y = 99) => Math.abs(x - CRZ.x) < 15 && z > CRZ.z - 68 && z < CRZ.z + 62 && y > 6;
@@ -4498,7 +4526,8 @@ function pierBuild() {
   if (PIER_LAMPS.length && !PIER_LAMPS.m) { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(PIER_LAMPS.flat(), 3)); g.computeBoundingSphere();
     const m = new THREE.Points(g, new THREE.PointsMaterial({map: TX.glow, color: 0xffc878, size: 4.2, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false, opacity: 0})); scene.add(m); PIER_LAMPS.m = m; }
 }
-{ const f0 = buildIsles; buildIsles = function (...a) { pierPlan(); const r = f0.apply(this, a); pierBuild(); return r; }; }
+{ buildIsles = before(buildIsles, function (...a) { pierPlan(); return NEXT; });
+buildIsles = after(buildIsles, function (r, ...a) { pierBuild(); }); }
 
 // the tender: lives on davits on the starboard quarter of every hull of 17 m or more (not aircraft, hovercraft or subs); the host drives it like the boat, four seats
 const TN = {st: 'stow', x: 0, z: 0, yaw: 0, v: 0, yr: 0, thr: 0, steer: 0, drv: null, seats: [null, null, null, null], beach: 0, heave: 0, drop: 0,
@@ -4528,19 +4557,15 @@ function tnMesh() {
   return g;
 }
 // davits, the stowed tender and its launch prompt go back on after every rebuild (live children, never merged)
-{ const f0 = buildBoat; buildBoat = function (...a) {
-  if (TN.m && TN.m.parent) TN.m.parent.remove(TN.m);
-  if (TN.dv) { if (TN.dv.parent) TN.dv.parent.remove(TN.dv); TN.dv.traverse(o => { if (o.geometry) o.geometry.dispose(); }); TN.dv = null; }
-  const r = f0.apply(this, a);
-  if (tnOk() && BOAT) { const M = tnMats(), [dx, dz] = tnDavit(), fb = BDECK.y, ox = BG.hw + 1, L = [], b = (geo, mat, ...p) => tnBake(L, geo, mat, ...p), bl = Math.hypot(ox - .3 - dx, .6);
+{ buildBoat = before(buildBoat, function (...a) { if (TN.m && TN.m.parent) TN.m.parent.remove(TN.m);
+  if (TN.dv) { if (TN.dv.parent) TN.dv.parent.remove(TN.dv); TN.dv.traverse(o => { if (o.geometry) o.geometry.dispose(); }); TN.dv = null; } return NEXT; });
+buildBoat = after(buildBoat, function (r, ...a) { if (tnOk() && BOAT) { const M = tnMats(), [dx, dz] = tnDavit(), fb = BDECK.y, ox = BG.hw + 1, L = [], b = (geo, mat, ...p) => tnBake(L, geo, mat, ...p), bl = Math.hypot(ox - .3 - dx, .6);
     for (const s of [-1.45, 1.45]) { b(new THREE.CylinderGeometry(.08, .11, 2.7, 8), M.steel, dx, fb + 1.35, dz + s); b(new THREE.BoxGeometry(ox - dx + .2, .13, .13), M.steel, (dx + ox) / 2, fb + 2.66, dz + s);
       b(new THREE.BoxGeometry(bl, .07, .07), M.steel, (dx + ox - .3) / 2, fb + 2.3, dz + s, 0, 0, Math.atan2(.6, ox - .3 - dx)); b(new THREE.BoxGeometry(.36, .05, .36), M.steel, dx, fb + .03, dz + s);
       b(new THREE.CylinderGeometry(.05, .05, .16, 8), M.dark, ox, fb + 2.56, dz + s); b(new THREE.CylinderGeometry(.012, .012, .6, 4), M.rope, ox, fb + 2.2, dz + s); }
     b(new THREE.CylinderGeometry(.13, .13, .34, 10), M.dark, dx - .34, fb + .9, dz - 1.45, 0, 0, PI / 2);
     const dv = new THREE.Group(); for (const m of mergeByMat(L)) dv.add(m); BOAT.add(dv); TN.dv = dv;
-    INTER.push({kind: 'tnl', boat: 1, lx: dx - .75, lz: dz, ly: 1.1, r: 2.6, label: () => 'Launch the tender', on: () => !P.sw && !P.seat && TN.st === 'stow' && tnOk(), go: () => act({a: 'tnl'})}); }
-  return r;
-}; }
+    INTER.push({kind: 'tnl', boat: 1, lx: dx - .75, lz: dz, ly: 1.1, r: 2.6, label: () => 'Launch the tender', on: () => !P.sw && !P.seat && TN.st === 'stow' && tnOk(), go: () => act({a: 'tnl'})}); } }); }
 function tnPub(s, put) { emit({k: 'tn', s, st: TN.st, x: +TN.x.toFixed(2), z: +TN.z.toFixed(2), yaw: +TN.yaw.toFixed(3), seats: TN.seats.map(q => q || 0), put}); }
 // where a rider gets off: up the beach past the bow, onto a pier/jetty/deck beside, or over the ship's rail
 function tnLeave(p) {
@@ -4662,40 +4687,41 @@ function tnDraw(dt) {
   if (PIER_LAMPS.m) PIER_LAMPS.m.material.opacity = clamp(TOD.night * 1.1 + (1 - TOD.day) * .25, 0, 1) * .85;
   tnSnd(); tnHud(dt);
 }
-{ const f0 = resetBoat; resetBoat = function (...a) { const r = f0.apply(this, a); if (isHost() && TN.st === 'water') tnStow(); return r; }; }
-{ const f0 = startGame; startGame = function (...a) { Object.assign(TN, {st: 'stow', v: 0, yr: 0, thr: 0, steer: 0, drv: null, seats: [null, null, null, null], beach: 0, drop: 0, tx: null, snK: 0, hudT: 0, lv: null}); const r = f0.apply(this, a); if (P) Object.assign(P, {tn: null, tnY: null, tin: [0, 0]}); return r; }; }
-{ const f0 = hostStep; hostStep = function (...a) { const r = f0.apply(this, a); tnStep(a[0]); return r; }; }
-{ const f0 = hostAct; hostAct = function (id, m) { if (m && /^tn[lbxh]$/.test(m.a)) { const p = PL.get(id); if (!p || !G.on) return; if (Number.isFinite(m.px) && Number.isFinite(m.pz) && p !== P && !m.ob && Math.hypot(m.px - p.x, m.pz - p.z) < 25) { p.x = m.px; p.z = m.pz; } tnAct(p, id, m); return; } return f0.apply(this, arguments); }; }
-{ const f0 = applyEv; applyEv = function (e) { if (e && e.k === 'tn') { tnEv(e); return; } if (e && e.k === 'tnsay') { if (e.id === myId()) showMsg(e.t, '', 2.5); return; } return f0.apply(this, arguments); }; }
-{ const f0 = packSnap; packSnap = function (...a) { const s = f0.apply(this, a);
-  if (TN.st === 'water') { s.tn = ['water', +TN.x.toFixed(2), +TN.z.toFixed(2), +TN.yaw.toFixed(3), +TN.v.toFixed(2), TN.seats[0] || '', TN.seats.map(q => q || 0), +TN.thr.toFixed(2), +(TN.yr || 0).toFixed(3)]; TN.snK = 0; } else if (TN.snK++ % 30 === 0) s.tn = ['stow']; return s; }; }
-{ const f0 = applySnap; applySnap = function (s) { const r = f0.apply(this, arguments), q = s && s.tn; if (!q) return r;
+{ resetBoat = after(resetBoat, function (r, ...a) {  if (isHost() && TN.st === 'water') tnStow();  }); }
+{ startGame = before(startGame, function (...a) { Object.assign(TN, {st: 'stow', v: 0, yr: 0, thr: 0, steer: 0, drv: null, seats: [null, null, null, null], beach: 0, drop: 0, tx: null, snK: 0, hudT: 0, lv: null}); return NEXT; });
+startGame = after(startGame, function (r, ...a) { if (P) Object.assign(P, {tn: null, tnY: null, tin: [0, 0]}); }); }
+{ hostStep = after(hostStep, function (r, ...a) {  tnStep(a[0]);  }); }
+{ hostAct = before(hostAct, function (id, m) { if (m && /^tn[lbxh]$/.test(m.a)) { const p = PL.get(id); if (!p || !G.on) return; if (Number.isFinite(m.px) && Number.isFinite(m.pz) && p !== P && !m.ob && Math.hypot(m.px - p.x, m.pz - p.z) < 25) { p.x = m.px; p.z = m.pz; } tnAct(p, id, m); return; } return NEXT; }); }
+{ applyEv = before(applyEv, function (e) { if (e && e.k === 'tn') { tnEv(e); return; } if (e && e.k === 'tnsay') { if (e.id === myId()) showMsg(e.t, '', 2.5); return; } return NEXT; }); }
+{ packSnap = after(packSnap, function (s, ...a) { 
+  if (TN.st === 'water') { s.tn = ['water', +TN.x.toFixed(2), +TN.z.toFixed(2), +TN.yaw.toFixed(3), +TN.v.toFixed(2), TN.seats[0] || '', TN.seats.map(q => q || 0), +TN.thr.toFixed(2), +(TN.yr || 0).toFixed(3)]; TN.snK = 0; } else if (TN.snK++ % 30 === 0) s.tn = ['stow'];  }); }
+{ applySnap = after(applySnap, function (r, s) { const q = s && s.tn; if (!q) return;
   if (q[0] === 'water') { const was = TN.st; Object.assign(TN, {st: 'water', tx: q[1], tz: q[2], tyaw: q[3], v: q[4], drv: q[5] || null, thr: q[7] || 0, yr: q[8] || 0}); TN.seats = [0, 1, 2, 3].map(i => (q[6] || [])[i] || null);
     if (was !== 'water' || Math.hypot(TN.tx - TN.x, TN.tz - TN.z) > 30) { TN.x = TN.tx; TN.z = TN.tz; TN.yaw = TN.tyaw; } }
   else Object.assign(TN, {st: 'stow', seats: [null, null, null, null], v: 0, thr: 0, drv: null});
-  return r; }; }
+   }); }
 // seated: ride the seat, look around within 110 degrees of the bow, the driver's WASD goes to the host as tin
-{ const f0 = stepPlayer; stepPlayer = function (dt) {
+{ stepPlayer = before(stepPlayer, function (dt) {
   const s = P && TN.st === 'water' && alivePlay() ? TN.seats.indexOf(myId()) : -1;
-  if (s < 0) { if (P && P.tn != null) Object.assign(P, {tn: null, tnY: null, cr: 0, tin: [0, 0]}); return f0.apply(this, arguments); }
+  if (s < 0) { if (P && P.tn != null) Object.assign(P, {tn: null, tnY: null, cr: 0, tin: [0, 0]}); return NEXT; }
   if (s === 0 && P.tn !== 0) TN.hudT = 6;
   P.tn = s; P.yaw += angD(P.tnY ?? TN.yaw, TN.yaw); P.tnY = TN.yaw; P.yaw = TN.yaw + clamp(angD(TN.yaw, P.yaw), -1.92, 1.92);
   Object.assign(P, {ob: 0, sw: 0, dv: 0, deep: 0, cr: 1, run: 0, vx: 0, vz: 0, vy: 0, climb: null, lastBY: B.yaw}); P.eye = mix(P.eye, 1.1, Math.min(1, dt * 6)); P.stam = Math.min(1, P.stam + dt / 7); P.air = Math.min(1, (P.air ?? 1) + dt / 4);
   if (P.l) { P.bat -= dt / 360; if (P.bat <= 0) { P.bat = 0; P.l = 0; } }
   P.tin = s === 0 ? [(K.KeyW ? 1 : 0) - (K.KeyS ? 1 : 0), (K.KeyD ? 1 : 0) - (K.KeyA ? 1 : 0)] : [0, 0]; tnPlace();
-}; }
-{ const f0 = targets; targets = function (...a) { const L = f0.apply(this, a); tnTargets(L); return L; }; }
-{ const f0 = myPose; myPose = function (...a) { const r = f0.apply(this, a); if (P && P.tn != null) { r.tn = P.tn; r.tin = P.tn === 0 ? P.tin : 0; } return r; }; }
+}); }
+{ targets = after(targets, function (L, ...a) {  tnTargets(L);  }); }
+{ myPose = after(myPose, function (r, ...a) {  if (P && P.tn != null) { r.tn = P.tn; r.tin = P.tn === 0 ? P.tin : 0; }  }); }
 { const h0 = Net.handlers.pose; Net.on('pose', (m, f) => { if (h0) h0(m, f); if (!G.on) return; const id = isHost() ? f : m.from, p = id && PL.get(id); if (!p || p === P) return; p.tn = m.tn != null ? m.tn : null; p.tin = Array.isArray(m.tin) ? m.tin : [0, 0]; }); }
 // remote riders sit still on their seats
-{ const f0 = updateRemotes; updateRemotes = function (...a) {
+{ updateRemotes = around(updateRemotes, function (next, ...a) {
   tnDraw(a[0]); const w = TN.st === 'water';
   if (w) for (let i = 0; i < 4; i++) { const p = TN.seats[i] && PL.get(TN.seats[i]); if (!p || p === P || !p.ready) continue; const [x, z] = tnSeatPos(i); p.x = p.rx = x; p.z = p.rz = z; p.y = p.ry = TN.heave + .45; p.sw = 0; p.ob = 0; p.tnS = 1; }
-  const r = f0.apply(this, a);
+  const r = next.apply(this, a);
   for (const p of PL.values()) { if (!p.tnS || p === P) continue; if (!w || !TN.seats.includes(p.id)) { p.tnS = 0; continue; } const j = p.av && p.av.userData; if (!j || !p.av.visible) continue;
     p.av.position.y -= .8; j.l1.rotation.x = j['l-1'].rotation.x = 1.4; j.k1.rotation.x = j['k-1'].rotation.x = -1.4; j['a-1'].rotation.x = .35; j.body.rotation.x = 0; j.body.position.y = .95; }
   return r;
-}; }
+}); }
 // ---------------- deep dive sites, and the gulpers that hunt divers in the dark
 const DSITES = [
   {n: 'The Abyssal Trench', x: -1500, z: -950, r: 170, d: 125},
@@ -4888,9 +4914,9 @@ function mapLook(dt) { const cp = cam.position, q = mapRegion(cp.x, cp.z), w = m
     if (G.on && w > .35 && !mapToastSeen.has(q.k)) { mapToastSeen.add(q.k); toast(q.n, 'New waters'); Snd.discover(); } }
   else if (MAP_LK.w) MAT.sea.color.copy(MAP_LK.sea0);
   MAP_LK.w = q ? w : 0; mapIce.step(dt); mapSmoke.step(dt); mapGhosts.step(dt); }
-{ const f0 = buildDeep; buildDeep = function (...a) { const r = f0.apply(this, a); mapFieldMeshes(); mapPoiOrder(); return r; }; }
-{ const f0 = buildFw; buildFw = function (...a) { mapPoiOrder(); mapIce.build(); mapSmoke.build(); mapGhosts.build(); return f0.apply(this, a); }; }
-{ const f0 = updateWorldFx; updateWorldFx = function (...a) { const r = f0.apply(this, a); mapLook(a[0] || 0); return r; }; }
+{ buildDeep = after(buildDeep, function (r, ...a) {  mapFieldMeshes(); mapPoiOrder();  }); }
+{ buildFw = before(buildFw, function (...a) { mapPoiOrder(); mapIce.build(); mapSmoke.build(); mapGhosts.build(); return NEXT; }); }
+{ updateWorldFx = after(updateWorldFx, function (r, ...a) {  mapLook(a[0] || 0);  }); }
 // ---------------- horror helpers: who is lit, how far out the deep circles, positional dread
 // a burning flare makes you visible, though things back off from it up close
 const litP = p => p === P ? (lightOn() || (P.eq === 5 && !P.seat)) : (!!p.l || (p.eq === 5 && !p.seat));
@@ -5254,29 +5280,30 @@ function wldRaftFrame(dt) {
   if (A.on && d < 40 && (q.crT -= dt) <= 0) { q.crT = 2 + Math.random() * 3; Snd.creak(at(q.x, .3, q.z, 3)); }
 }
 // ---- wrappers
-{ const f0 = buildFw; buildFw = function (...a) { const r = f0.apply(this, a); wldDerelicts(); wldBuildTraffic(); wldNpcPlace(0); return r; }; }
-{ const f0 = placeItems; placeItems = function (...a) { const r = f0.apply(this, a);
+{ buildFw = after(buildFw, function (r, ...a) {  wldDerelicts(); wldBuildTraffic(); wldNpcPlace(0);  }); }
+{ placeItems = after(placeItems, function (r, ...a) { 
   // session reset (placeItems runs once per voyage on every client), then derelict loot from WR so late joiners get the same items
   Object.assign(G, {wldGh: null, wldGhDone: 0, wldGhT: 2, wldMay: null, wldMayT: undefined, wldWhT: 40, wldBoltT: 8}); WLD.so = false; WLD.gh.on = 0; WLD.gh.fd = 0; wldMayOff(); WLD_MARKS.length = 0; for (const D of WLD_DRL) D.seen = 0; WLD.ct = 0;
   for (const s of SPOTS) if (s.tag === 'drl') { const u = WR(); addItem(u < .4 ? 'crate' : u < .65 ? 'scrap' : u < .85 ? 'relic' : 'chest', s); }
-  return r; }; }
-{ const f0 = hostStep; hostStep = function (dt, ...a) { wldNpcPlace(G.t); const r = f0.call(this, dt, ...a); if (G.on) wldHostStep(dt); return r; }; }
-{ const f0 = hostAct; hostAct = function (id, m, ...a) { const r = f0.call(this, id, m, ...a);
+   }); }
+{ hostStep = before(hostStep, function (dt, ...a) { wldNpcPlace(G.t); return NEXT; });
+hostStep = after(hostStep, function (r, dt, ...a) { if (G.on) wldHostStep(dt); }); }
+{ hostAct = after(hostAct, function (r, id, m, ...a) { 
   if (m && m.a === 'wres' && G.on) { const p = PL.get(id), q = G.wldMay; if (p && q && !p.dead && !p.down && Math.hypot(p.x - q.x, p.z - q.z) < 9 + (p.ob ? BG.hw : 0)) { const d = Math.hypot(q.x - HOME.x, q.z - HOME.z), v = Math.round((220 + d / 8) * (wldNight(G.tod) > .5 ? 1.5 : 1) * (D.pay || 1));
     G.wldMay = null; G.wldMayT = 360 + CR() * 240; G.cash += v; G.earned += v; emit({k: 'wsave', v, id, x: q.x, z: q.z, n: Math.floor(CR() * 5)}); save(); } }
-  return r; }; }
-{ const f0 = applyEv; applyEv = function (e, ...a) { const r = f0.call(this, e, ...a); if (e && typeof e.k === 'string' && e.k[0] === 'w') wldEv(e); return r; }; }
-{ const f0 = packSnap; packSnap = function (...a) { const s = f0.apply(this, a); const n = performance.now(); if (n - WLD.snT > 480) { WLD.snT = n; const g = G.wldGh, q = G.wldMay;
-  s.wg = g && g.on ? [1, +g.x.toFixed(1), +g.z.toFixed(1), +g.yaw.toFixed(3), +g.fade.toFixed(2), +g.tr.toFixed(4)] : [0]; s.wm = q ? [q.x, q.z, Math.round(q.t)] : 0; } return s; }; }
-{ const f0 = applySnap; applySnap = function (s, ...a) { const r = f0.call(this, s, ...a);
+   }); }
+{ applyEv = after(applyEv, function (r, e, ...a) {  if (e && typeof e.k === 'string' && e.k[0] === 'w') wldEv(e);  }); }
+{ packSnap = after(packSnap, function (s, ...a) {  const n = performance.now(); if (n - WLD.snT > 480) { WLD.snT = n; const g = G.wldGh, q = G.wldMay;
+  s.wg = g && g.on ? [1, +g.x.toFixed(1), +g.z.toFixed(1), +g.yaw.toFixed(3), +g.fade.toFixed(2), +g.tr.toFixed(4)] : [0]; s.wm = q ? [q.x, q.z, Math.round(q.t)] : 0; }  }); }
+{ applySnap = after(applySnap, function (r, s, ...a) { 
   if (s.wg) { const gh = WLD.gh, w = s.wg; if (!w[0]) { gh.on = 0; gh.fd = 0; } else { if (!gh.on || Math.hypot(gh.x - w[1], gh.z - w[2]) > 40) Object.assign(gh, {on: 1, x: w[1], z: w[2], ap: gh.on ? gh.ap : 1}); Object.assign(gh, {sx: w[1], sz: w[2], yaw: w[3], tr: w[5] || 0}); if (w[4] > 0) { gh.fd = 1; gh.fade = Math.max(gh.fade || 0, w[4]); } else gh.fade = 0; } }
   if (s.wm !== undefined) { if (s.wm && !WLD.may) wldMayOn(s.wm[0], s.wm[1], s.wm[2], 1); else if (!s.wm && WLD.may) wldMayOff(); else if (s.wm) WLD.may.t = s.wm[2]; }
-  return r; }; }
-{ const f0 = stepFauna; stepFauna = function (...a) { FX.whT = 1e9; return f0.apply(this, a); }; }
-{ const f0 = updateWorldFx; updateWorldFx = function (dt, ...a) { const r = f0.call(this, dt, ...a); if (G.on && WLD_NPC) wldFrame(dt); return r; }; }
-{ const f0 = targets; targets = function (...a) { const L = f0.apply(this, a), q = WLD.may;
+   }); }
+{ stepFauna = before(stepFauna, function (...a) { FX.whT = 1e9; return NEXT; }); }
+{ updateWorldFx = after(updateWorldFx, function (r, dt, ...a) {  if (G.on && WLD_NPC) wldFrame(dt);  }); }
+{ targets = after(targets, function (L, ...a) { const q = WLD.may;
   if (q && P && !P.dead && Math.hypot(P.x - q.x, P.z - q.z) < 14) L.push({x: q.x, y: (P.ob ? BDECK.y : 0) + .3, z: q.z, r: 6 + (P.ob ? BG.hw * .6 : 0), flat: 1, label: 'Pull the survivor aboard', go: () => act({a: 'wres'})});
-  return L; }; }
+   }); }
 // ---------------- style: auras, boat paint and underglow, fireworks, fireflies
 let ALL = (() => { try { return localStorage.getItem('s9-all') === '1'; } catch (e) { return false; } })(); let SLOT = (() => { try { return clamp(+localStorage.getItem('s9-slot') || 1, 1, 4); } catch (e) { return 1; } })(); const SK = k => k + (SLOT > 1 ? '-s' + SLOT : '') + (ALL ? '-all' : ''); const SLOTS = ['s9-save2', 's9-gear', 's9-cred']; (() => { try { if (!ALL || localStorage.getItem('s9-save2-all') != null) return; const s = localStorage.getItem('s9-save2'); if (s == null) return; const j = JSON.parse(s) || {}, dirty = (j.cash || 0) >= 250000 || ((j.up || {}).own || []).length >= HULLS.length; for (const k of SLOTS) { const v = localStorage.getItem(k); if (v != null) { localStorage.setItem(k + '-all', v); if (dirty) localStorage.removeItem(k); } } } catch (e) {} })();
 const AURAS = [{n: 'No aura', c: 0, cost: 0}, {n: 'Sea glass', c: 0x60ffe0, cost: 300}, {n: 'Gold rush', c: 0xffc040, cost: 600}, {n: 'Void', c: 0xa050ff, cost: 900}, {n: 'Blood moon', c: 0xff3a2a, cost: 1200}, {n: 'Prism', c: -1, cost: 2500}];
@@ -5798,20 +5825,21 @@ function casTargets(L) { const b = CAS.b; if (Math.abs(P.x - b.x) > 12 || Math.a
 // ---- old credits become crew cash once (the host only; guests just drop the key)
 function casCredits() { try { const k = SK('s9-cred'), raw = localStorage.getItem(k); localStorage.removeItem(k); const v = Math.floor(+raw); if (raw != null && isHost() && v > 0 && isFinite(v)) { G.cash += v; save(); setTimeout(() => G.on && showMsg(`Your old casino credits were cashed in: +${money(v)}`, 'LUCKY LANTERN', 6), TEST ? 0 : 6200); } } catch (e) {} }
 // ---- wrappers
-{ const f0 = buildWorld; buildWorld = function () { const was = BUILT, r = f0.apply(this, arguments); if (!was && CAS.b && !CAS.g) { casMeshes(); if (Array.isArray(G.homeLamps)) G.homeLamps.push(...CAS.lamps); } return r; }; }
-{ const f0 = stepPlayer; stepPlayer = function (dt) { if (P && P.cas && CAS.b && alivePlay()) { if (!P.down) { casPin(dt); return; } casStandLocal(); act({a: 'csit', g: null}); } return f0.apply(this, arguments); }; }
-{ const f0 = stepInteract; stepInteract = function (dt) { CAS.aimSl = -1; if (P && P.cas && CAS.b && alivePlay() && !anyPanel()) { casSeatUI(); casHud(); return; } if (CAS.hl && CAS.hl.visible) CAS.hl.visible = false;
-  const r = f0.apply(this, arguments); if (P && CAS.b && alivePlay() && !P.sw && !anyPanel()) casSlotAim(); casHud(); return r; }; }
-{ const f0 = toolDown; toolDown = function () { if (P && P.cas) { casClick(0); return; } return f0.apply(this, arguments); }; }
-{ const f0 = toolUp; toolUp = function () { if (P && P.cas) return; return f0.apply(this, arguments); }; }
-{ const f0 = cycleSlot; cycleSlot = function (d) { if (P && (P.cas || CAS.aimSl >= 0)) { P.casChip = clamp((P.casChip ?? 1) + Math.sign(d), 0, P.cas ? 4 : 3); Snd.casChip(0); return; } return f0.apply(this, arguments); }; }
-{ const f0 = hostStep; hostStep = function (dt) { const r = f0.apply(this, arguments); if (G.on && CAS.b) casHost(dt); return r; }; }
-{ const f0 = hostAct; hostAct = function (id, m) { const r = f0.apply(this, arguments); if (m && (m.a === 'csit' || m.a === 'cb' || m.a === 'cbx' || m.a === 'cbj' || m.a === 'csl')) casAct(id, m); return r; }; }
-{ const f0 = applyEv; applyEv = function (e) { if (e && CAS_EV.has(e.k)) { casEv(e); return; } if (e && e.k === 'nope' && e.cas) { if (e.id === myId()) { showMsg(e.why, 'LUCKY LANTERN', 2.5); tone(180, .05, .25, 'triangle', null, 120); } return; } return f0.apply(this, arguments); }; }
-{ const f0 = packSnap; packSnap = function () { const s = f0.apply(this, arguments); if ((CAS.v !== CAS.sv && G.t - CAS.sT >= .25) || G.t - CAS.sT >= 3) { CAS.sv = CAS.v; CAS.sT = G.t; s.cs = casPack(); } return s; }; }
-{ const f0 = applySnap; applySnap = function (s) { const r = f0.apply(this, arguments); if (s && s.cs) casUnpack(s.cs); return r; }; }
-{ const f0 = startGame; startGame = function () { casReset(); const r = f0.apply(this, arguments); casCredits(); return r; }; }
-{ const f0 = targets; targets = function () { const L = f0.apply(this, arguments); if (CAS.b && P && !P.cas) casTargets(L); return L; }; }
+{ buildWorld = around(buildWorld, function (next, ...args) { const was = BUILT, r = next.apply(this, args); if (!was && CAS.b && !CAS.g) { casMeshes(); if (Array.isArray(G.homeLamps)) G.homeLamps.push(...CAS.lamps); } return r; }); }
+{ stepPlayer = before(stepPlayer, function (dt) { if (P && P.cas && CAS.b && alivePlay()) { if (!P.down) { casPin(dt); return; } casStandLocal(); act({a: 'csit', g: null}); } return NEXT; }); }
+{ stepInteract = around(stepInteract, function (next, ...args) { let [dt] = args; CAS.aimSl = -1; if (P && P.cas && CAS.b && alivePlay() && !anyPanel()) { casSeatUI(); casHud(); return; } if (CAS.hl && CAS.hl.visible) CAS.hl.visible = false;
+  const r = next.apply(this, args); if (P && CAS.b && alivePlay() && !P.sw && !anyPanel()) casSlotAim(); casHud(); return r; }); }
+{ toolDown = before(toolDown, function () { if (P && P.cas) { casClick(0); return; } return NEXT; }); }
+{ toolUp = before(toolUp, function () { if (P && P.cas) return; return NEXT; }); }
+{ cycleSlot = before(cycleSlot, function (d) { if (P && (P.cas || CAS.aimSl >= 0)) { P.casChip = clamp((P.casChip ?? 1) + Math.sign(d), 0, P.cas ? 4 : 3); Snd.casChip(0); return; } return NEXT; }); }
+{ hostStep = after(hostStep, function (r, dt) {  if (G.on && CAS.b) casHost(dt);  }); }
+{ hostAct = after(hostAct, function (r, id, m) {  if (m && (m.a === 'csit' || m.a === 'cb' || m.a === 'cbx' || m.a === 'cbj' || m.a === 'csl')) casAct(id, m);  }); }
+{ applyEv = before(applyEv, function (e) { if (e && CAS_EV.has(e.k)) { casEv(e); return; } if (e && e.k === 'nope' && e.cas) { if (e.id === myId()) { showMsg(e.why, 'LUCKY LANTERN', 2.5); tone(180, .05, .25, 'triangle', null, 120); } return; } return NEXT; }); }
+{ packSnap = after(packSnap, function (s) {  if ((CAS.v !== CAS.sv && G.t - CAS.sT >= .25) || G.t - CAS.sT >= 3) { CAS.sv = CAS.v; CAS.sT = G.t; s.cs = casPack(); }  }); }
+{ applySnap = after(applySnap, function (r, s) {  if (s && s.cs) casUnpack(s.cs);  }); }
+{ startGame = before(startGame, function () { casReset(); return NEXT; });
+startGame = after(startGame, function (r) { casCredits(); }); }
+{ targets = after(targets, function (L) {  if (CAS.b && P && !P.cas) casTargets(L);  }); }
 // the wheelhouse radio: a soft chord loop with an arpeggio, heard near the boat
 const RADIO = {t: 0, i: 0}, PROG = [[220, 261.6, 329.6], [174.6, 220, 261.6], [261.6, 329.6, 392], [196, 246.9, 293.7]];
 function stepRadio(dt) {
@@ -6187,7 +6215,7 @@ function voyAp(dt) { return;
   if (d < 25 + BG.L / 2 || VOY.arrive) { if (G.voyWp && Math.hypot(G.voyWp[0] - tx, G.voyWp[1] - tz) < 1) G.voyWp = null; voyApSet(false, 'Arrived.'); return; }
   h += VOY.bias; const e = angD(B.yaw, h); P.in[1] = clamp(-e * 2.2, -1, 1); P.in[0] = Math.min(d > 250 ? 1 : d > 80 ? .6 : .3, VOY.slow);
 }
-{ const f0 = stepPlayer; stepPlayer = function (dt, ...a) { const r = f0.call(this, dt, ...a); if (VOY.ap) voyAp(dt); return r; }; }
+{ stepPlayer = after(stepPlayer, function (r, dt, ...a) {  if (VOY.ap) voyAp(dt);  }); }
 // the Northwatch trading post: a floating pontoon with a shop counter, built identically on every client
 function voyBuildPort() {
   const q = VOY_PORTS[0], y = 1.6, x0 = q.x - 15, x1 = q.x + 15, z0 = q.z - 10, z1 = q.z + 10;
@@ -6211,16 +6239,16 @@ function voyBuildPort() {
   const spr = (col, s, xx, yy, zz) => { const o = new THREE.Sprite(new THREE.SpriteMaterial({map: TX.glow, color: col, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false})); o.scale.setScalar(s); o.position.set(xx, yy, zz); scene.add(o); return o; };
   VOY.mastS = spr(0xff2010, 2.6, x1 - 1.2, y + 12.2, q.z + 4); VOY.lampS = spr(0xffd8a0, 3, x0 + 2.75, y + 3.75, z0 + 2.2);
 }
-{ const f0 = buildBuoys; buildBuoys = function (...a) { const r = f0.apply(this, a); voyBuildPort(); return r; }; }
-{ const f0 = targets; targets = function (...a) { const L = f0.apply(this, a); if (P && !P.dead) for (const q of VOY_PORTS) if (q.shop && Math.hypot(q.shop[0] - P.x, q.shop[2] - P.z) < 30) L.push({x: q.shop[0], y: q.shop[1], z: q.shop[2], r: 3, label: `${q.n}: sell, repair, supplies`, go: openShop}); return L; }; }
-{ const f0 = openShop; openShop = function (...a) {
+{ buildBuoys = after(buildBuoys, function (r, ...a) {  voyBuildPort();  }); }
+{ targets = after(targets, function (L, ...a) {  if (P && !P.dead) for (const q of VOY_PORTS) if (q.shop && Math.hypot(q.shop[0] - P.x, q.shop[2] - P.z) < 30) L.push({x: q.shop[0], y: q.shop[1], z: q.shop[2], r: 3, label: `${q.n}: sell, repair, supplies`, go: openShop});  }); }
+{ openShop = around(openShop, function (next, ...a) {
   let best = G.shed && G.shed.shop, port = null, bd = best && P ? Math.hypot(P.x - best[0], P.z - best[2]) : 1e9;
   if (P) for (const q of VOY_PORTS) if (q.shop) { const d = Math.hypot(P.x - q.shop[0], P.z - q.shop[2]); if (d < bd) { bd = d; best = q.shop; port = q; } }
-  G.voyShopPos = P ? [P.x, P.y, P.z] : best; G.voyPort = port; const r = f0.apply(this, a); const h = document.querySelector('#shopH h2'); if (h) h.textContent = port ? port.n.toUpperCase() : 'HARBOUR SHED'; return r; }; }
+  G.voyShopPos = P ? [P.x, P.y, P.z] : best; G.voyPort = port; const r = next.apply(this, a); const h = document.querySelector('#shopH h2'); if (h) h.textContent = port ? port.n.toUpperCase() : 'HARBOUR SHED'; return r; }); }
 // the sell step points at Northwatch when it is the nearer counter
-{ const f0 = nextStep; nextStep = function (...a) { const r = f0.apply(this, a); const q = VOY_PORTS[0], sh = G.shed && G.shed.shop;
+{ nextStep = after(nextStep, function (r, ...a) {  const q = VOY_PORTS[0], sh = G.shed && G.shed.shop;
   if (r && r.mk && r.mk.lab === 'SHED' && P && q.shop && sh) { const dq = Math.hypot(q.shop[0] - P.x, q.shop[2] - P.z); if (dq < Math.hypot(sh[0] - P.x, sh[2] - P.z)) { r.t = r.t.replace('the harbour shed', q.n).replace('the shed', q.n); r.mk = Object.assign({x: q.shop[0], z: q.shop[2], lab: q.n.toUpperCase()}, dq < 40 ? {y: q.shop[1] + .9, scr: 1} : {}); } }
-  return r; }; }
+   }); }
 // HUD: the autopilot pill, the mast light
 function voyHud() {
   if (VOY.mastS) { VOY.mastS.material.opacity = (G.wt % 2) < .35 ? 1 : .08; VOY.lampS.material.opacity = typeof TOD === 'object' && TOD ? clamp(TOD.night * 1.4 + .15, 0, 1) * .9 : .5; }
@@ -6232,7 +6260,7 @@ function voyHud() {
   else if (P && P.seat && G.voyWp) { t = 'T · AUTOPILOT TO COURSE'; cls = 'on dim'; }
   const sig = t + cls; if (sig !== VOY.pillS) { VOY.pillS = sig; if (t) el.textContent = t; el.className = cls; }
 }
-{ const f0 = hud; hud = function (...a) { const r = f0.apply(this, a); voyHud(); return r; }; }
+{ hud = after(hud, function (r, ...a) {  voyHud();  }); }
 // input: T toggles the autopilot at the wheel; W/A/S/D take back control; with the chart open the mouse moves the cursor (or pans), the wheel zooms, LMB sets the course and RMB clears it
 addEventListener('keydown', e => { if (!G.on || G.paused || !P) return; const t = e.target; if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA')) return;
   if (e.code === 'KeyT' && !e.repeat && (P.seat || (VOY.ap && P.ob)) && !anyPanel()) { voyApSet(!VOY.ap); return; }
@@ -6695,7 +6723,7 @@ function jobBoardDraw() {
   }
   o.tex.needsUpdate = true;
 }
-{ const f0 = buildFw; buildFw = function () { const r = f0.apply(this, arguments);
+{ buildFw = after(buildFw, function (r) { 
   if (G.shed) { const b = G.shed, [x, z] = L2W(b, 2.35, -2.64), y = b.fy + 1.55, th = b.th + PI; jobBoard.p = [x, y, z];
     for (const s of [-1, 1]) { const [px, pz] = L2W(b, 2.35 + s * .86, -2.66); put('log', new THREE.CylinderGeometry(.06, .07, 2.5, 7), px, b.fy + 1.25, pz); }
     const [fx, fz] = L2W(b, 2.35, -2.61); wbox('wood', fx, y, fz, 1.72, 1.12, .05, th, .8);
@@ -6705,7 +6733,7 @@ function jobBoardDraw() {
     const t = jobBoard.tex = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
     const m = jobBoard.m = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 1), new THREE.MeshStandardMaterial({map: t, roughness: .92, metalness: 0, emissive: 0xffffff, emissiveMap: t, emissiveIntensity: 0}));
     const [mx, mz] = L2W(b, 2.35, -2.645); m.position.set(mx, y, mz); m.rotation.y = th; m.receiveShadow = true; scene.add(m); }
-  return r; }; }
+   }); }
 // ---- parcels
 { const f0 = itemMesh; let PM = null; itemMesh = function (kind) { if (kind !== 'parcel') return f0.apply(this, arguments);
   PM = PM || {box: new THREE.MeshStandardMaterial({color: 0xb08a5a, roughness: .95}), str: new THREE.MeshStandardMaterial({color: 0xeadfc4, roughness: .9}), seal: new THREE.MeshStandardMaterial({color: 0xa01818, roughness: .4})};
@@ -6820,20 +6848,20 @@ function jrnDraw() {
 }
 
 // ---- wrappers
-{ const f0 = goalHook; goalHook = function (e, ph) { const r = f0.apply(this, arguments); if (ph === 1 && G.stat && G.stat.job && G.stat.jr) jobHook(e); return r; }; }
-{ const f0 = hostStep; hostStep = function (dt) { const r = f0.apply(this, arguments); if (G.on) jobStep(dt); return r; }; }
-{ const f0 = hostAct; hostAct = function (id, m) {
+{ goalHook = after(goalHook, function (r, e, ph) {  if (ph === 1 && G.stat && G.stat.job && G.stat.jr) jobHook(e);  }); }
+{ hostStep = after(hostStep, function (r, dt) {  if (G.on) jobStep(dt);  }); }
+{ hostAct = around(hostAct, function (next, ...args) { let [id, m] = args;
   const p = PL.get(id);
   // a stowed parcel rides in the hold (and sinks with it); unstowing hands it back first
   if (m && p && G.on && m.a === 'unstow' && B.hold.includes('parcel') && !B.hold.includes('key') && sackFits(p, 'parcel')) { const [x, z] = bL2W(BSPOT.hold[0], BSPOT.hold[1]); if (Math.hypot(p.x - x, p.z - z) < 3.4) { B.hold.splice(B.hold.lastIndexOf('parcel'), 1); p.sack.push('parcel'); sackSet(p); save(); return; } }
-  const r = f0.apply(this, arguments); if (m && G.on && (m.a === 'job' || m.a === 'jobx' || m.a === 'jobd')) jobAct(id, m); return r; }; }
-{ const f0 = applyEv; applyEv = function (e) {
+  const r = next.apply(this, args); if (m && G.on && (m.a === 'job' || m.a === 'jobx' || m.a === 'jobd')) jobAct(id, m); return r; }); }
+{ applyEv = around(applyEv, function (next, ...args) { let [e] = args;
   const me = myId();
   if (e.k === 'sold') { (Snd.sale || Snd.coin)(e.v); const pay = D.pay || 1, rows = []; let sum = 0;
     for (const k in e.c || {}) { const n = e.c[k]; if (!(n > 0) || k === 'fish') continue; const v = Math.round((VALUE[k] || 0) * n * pay); sum += v; rows.push([`${n} ${jobPl(k, n)}`, v]); }
     if (e.c && e.c.fish > 0) rows.push([`${e.c.fish} fish`, Math.max(0, (e.v || 0) - sum)]); if (!rows.length) rows.push(['Salvage', e.v || 0]);
     jobRc.last = jobRc.push({k: 'sold', rows, tot: e.v || 0}); return; }
-  const r = f0.apply(this, arguments);
+  const r = next.apply(this, args);
   switch (e.k) {
     case 'jobs': { Snd.jobPin(); const p = PL.get(e.id); showMsg(e.id === me ? `Contract taken · ${e.t}` : `${p ? p.name : 'Crew'} took a contract · ${e.t}`, '', 2.6); break; }
     case 'jobok': { Snd.jobDone(); const st = (1 + .1 * Math.min(e.st || 0, 5)).toFixed(1);
@@ -6849,32 +6877,32 @@ function jrnDraw() {
       jobRc.push({k: 'jn', cls: 'jn', life: 3.2, h: `<h4>NEW IN THE JOURNAL</h4>${t}`}); if (G.jrnOpen) jrnDraw(); break; }
     case 'jrset': (G.banQ = G.banQ || []).push({h: 'JOURNAL', t: (JOB_SETS[e.s] || {}).n || 'Set complete', c: e.v, s: 'goal'}); if (G.jrnOpen) jrnDraw(); break;
   }
-  return r; }; }
-{ const f0 = packSnap; packSnap = function () { const s = f0.apply(this, arguments), J = G.stat && G.stat.job, n = performance.now();
+  return r; }); }
+{ packSnap = after(packSnap, function (s) { const J = G.stat && G.stat.job, n = performance.now();
   if (J && ((J.v !== G.jobSentV && n - (G.jobSentT || 0) > 500) || n - (G.jobSentT || 0) > 2000)) { G.jobSentV = J.v; G.jobSentT = n;
     s.jb = {v: J.v, st: J.st, wk: J.wk, leg: J.leg, lg: J.lg, b: J.b.map(q => !q || q.e ? {e: 1, r: q ? q.r : 0} : {id: q.id, r: q.r, t: q.t, k: q.k, n: q.n, got: q.got, pay: q.pay, x: q.x, y: q.y, z: q.z, d: q.d, act: q.act, daily: q.daily, nt: q.nt || 0})}; }
-  if (G.stat && G.stat.jr && n - (G.jrnSentT || 0) > 3000) { G.jrnSentT = n; s.jr = G.stat.jr; } return s; }; }
-{ const f0 = applySnap; applySnap = function (s) { const r = f0.apply(this, arguments); if (s.jb) G.jobsS = s.jb; if (s.jr) { G.jrnS = s.jr; if (G.jrnOpen) jrnDraw(); } return r; }; }
-{ const f0 = startGame; startGame = function () { const r = f0.apply(this, arguments);
+  if (G.stat && G.stat.jr && n - (G.jrnSentT || 0) > 3000) { G.jrnSentT = n; s.jr = G.stat.jr; }  }); }
+{ applySnap = after(applySnap, function (r, s) {  if (s.jb) G.jobsS = s.jb; if (s.jr) { G.jrnS = s.jr; if (G.jrnOpen) jrnDraw(); }  }); }
+{ startGame = after(startGame, function (r) { 
   G.jobsS = null; G.jrnS = null; G.jobV = null; G.jobT = 0; G.jobDayT = 0; G.jobSentT = 0; G.jrnSentT = 0; jrnClose(false); jobRc.reset(); jobBoard.k = '';
   if (isHost() && G.stat) { const S = G.stat; S.jr = Object.assign({f: {}, t: {}, c: {}, s: {}, rs: 0}, S.jr || {}); for (const k of ['f', 't', 'c', 's']) S.jr[k] = S.jr[k] || {};
     jobDests(); const J = S.job = Object.assign({b: [], st: 0, day: null, wk: null, leg: null, lg: null, n: 0, v: 0, gt: 0, dp: 0}, S.job || {});
     // game time restarts every voyage: shift the stored times so ages and refills carry on
     const sh = -(J.gt || 0); for (const s of J.b) if (s) { if (s.born != null) s.born += sh; if (s.refT) s.refT = Math.max(1, s.refT + sh); if (s.tk != null) s.tk += sh; } J.gt = 0;
     for (let i = 0; i < 3; i++) if (!J.b[i] || J.b[i].r !== i) J.b[i] = jobGen(i); J.b.length = 3; jobStep(.5); J.v++; }
-  return r; }; }
-{ const f0 = targets; targets = function () { const L = f0.apply(this, arguments); if (!P) return L;
+   }); }
+{ targets = after(targets, function (L) {  if (!P) return;
   const bp = jobBoard.p; if (bp && (bp[0] - P.x) * (bp[0] - P.x) + (bp[2] - P.z) * (bp[2] - P.z) < 900) L.push({x: bp[0], y: bp[1], z: bp[2], r: 2.4, label: 'Job board', go: () => { G.shopTab = 'jobs'; openShop(); G.voyShopPos = bp; }});
   const J = jobB(); if (J && J.b && (P.sack || []).includes('parcel')) J.b.forEach((s, i) => { if (s && !s.e && s.act && s.t === 'cour' && s.x != null && Math.hypot(s.x - P.x, s.z - P.z) < 30) L.push({x: s.x, y: s.y + 1.1, z: s.z, r: 3.6, label: `Deliver the parcel (${s.k})`, go: () => act({a: 'jobd', i})}); });
-  return L; }; }
-{ const f0 = nextStep; nextStep = function () { const r = f0.apply(this, arguments); if (!P || !G.goals.includes(10) || !G.helmDone) return r;
+   }); }
+{ nextStep = around(nextStep, function (next, ...args) { const r = next.apply(this, args); if (!P || !G.goals.includes(10) || !G.helmDone) return r;
   const sv = sackVal(P.sack), hold = holdValue(); if (B.hull < 30 || (sv > 0 && P.ob) || (hold > 0 && G.earned === 0) || hold >= 150 || (sv > 0 && !P.ob && Math.hypot(P.x - HOME.x, P.z - HOME.z) < 200)) return r;
   const J = jobB(); if (!J || !J.b) return r; let best = null, bd = 1e9;
   for (const s of J.b) { if (!s || s.e || !s.act || s.x == null) continue; const d = Math.hypot(s.x - P.x, s.z - P.z); if (d < bd) { bd = d; best = s; } }
   if (!best) return r; const mk = {x: best.x, z: best.z, lab: 'JOB'}; if (bd < 40 && best.y != null) Object.assign(mk, {y: best.y + 1.2, scr: 1});
-  return {t: jobTitle(best), mk}; }; }
-{ const f0 = ctlFrame; ctlFrame = function () { const r = f0.apply(this, arguments); if (G.jrnOpen && P && (!alivePlay() || P.down || (B.sink > 0 && P.ob))) jrnClose(false); return r; }; }
-{ const f0 = hud; hud = function () { const r = f0.apply(this, arguments), now = performance.now(), dt = Math.min(.1, (now - (G.jobHudT || now)) / 1000); G.jobHudT = now; const J = jobB();
+  return {t: jobTitle(best), mk}; }); }
+{ ctlFrame = after(ctlFrame, function (r) {  if (G.jrnOpen && P && (!alivePlay() || P.down || (B.sink > 0 && P.ob))) jrnClose(false);  }); }
+{ hud = after(hud, function (r) { const now = performance.now(), dt = Math.min(.1, (now - (G.jobHudT || now)) / 1000); G.jobHudT = now; const J = jobB();
   jobRc.step(dt);
   // the board: redraw on a new version, glow a little at night, hide when far
   const o = jobBoard; if (o.m) { const d = Math.hypot(cam.position.x - o.p[0], cam.position.z - o.p[2]), vis = d < 300; if (o.m.visible !== vis) o.m.visible = vis;
@@ -6885,7 +6913,7 @@ function jrnDraw() {
   if (G.map && J && J.b) { const lg = $('logbook'), A2 = J.b.filter(s => s && !s.e && s.act).slice(0, 2), k = A2.map(s => s.id + ':' + s.got).join(',');
     if (lg && (lg._jobK !== k || (A2.length && !lg.querySelector('.jobLn')))) { lg._jobK = k; lg.querySelectorAll('.jobLn').forEach(q => q.remove());
       for (const s of A2) { const d = document.createElement('div'); d.className = 'jobLn'; d.innerHTML = `<span>◆ ${jobTitle(s)}${s.n > 1 ? ` <i>(${s.got}/${s.n})</i>` : ''}</span><b>${money(s.pay * (D.pay || 1) * jobMul(s))}</b>`; lg.appendChild(d); } } }
-  return r; }; }
+   }); }
 
 // ---------------- game flow
 let BUILT = false;
@@ -7055,8 +7083,8 @@ function pfOp(id, v) { const e = $(id); if (!e) return; v = Math.round(v * 200) 
 function pfGen() { if (pfGen.n !== BLD.length) { pfGen.n = BLD.length; pfGen.v = BLD.find(q => q.kind === 'gen') || null; } return pfGen.v; }
 // sunk glows share one material
 let pfSunkMat = null;
-{ const f0 = placeSunk; placeSunk = function (...a) { const r = f0.apply(this, a); const sm = pfSunkMat || (pfSunkMat = new THREE.SpriteMaterial({map: TX.glow, color: 0x7affd0, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: .5}));
-  for (const q of SUNK) for (const o of q.m.children) if (o.isSprite && o.material !== sm && o.material.color && o.material.color.getHex() === 0x7affd0) { o.material.dispose(); o.material = sm; } return r; }; }
+{ placeSunk = after(placeSunk, function (r, ...a) {  const sm = pfSunkMat || (pfSunkMat = new THREE.SpriteMaterial({map: TX.glow, color: 0x7affd0, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: .5}));
+  for (const q of SUNK) for (const o of q.m.children) if (o.isSprite && o.material !== sm && o.material.color && o.material.color.getHex() === 0x7affd0) { o.material.dispose(); o.material = sm; }  }); }
 // no shadows from creature bits under .25 m (fingers, teeth, eyes)
 function pfSmallShadows() { for (const root of [MON, STW]) root.traverse(o => { if (!o.isMesh || !o.castShadow || !o.geometry) return; const g = o.geometry; if (!g.boundingSphere) g.computeBoundingSphere(); o.updateWorldMatrix(true, false); if (2 * g.boundingSphere.radius * o.matrixWorld.getMaxScaleOnAxis() < .25) o.castShadow = false; }); }
 // while the menu shows: build the lazy objects, set the real env map and shadow state, compile every program, and on High draw one throwaway frame with everything shown so shadow-depth and post programs exist too
@@ -7077,8 +7105,8 @@ function pfPrewarm() {
     if (pr) pr.then(fin, fin); else fin();
   } catch (e) { RND.setRenderTarget(null); if (fl) scene.remove(fl); }
 }
-{ const f0 = buildWorld; buildWorld = function (...a) { const was = BUILT, r = f0.apply(this, a); if (!was && BUILT) { pfBedCache.m.clear(); pfBedCache.lk = NaN; pfSmallShadows(); setTimeout(pfPrewarm, 60); } return r; }; }
-{ const f0 = render; render = function (...a) { if (G.on) pfFrame(a[0] || 0); return f0.apply(this, a); }; }
+{ buildWorld = around(buildWorld, function (next, ...a) { const was = BUILT, r = next.apply(this, a); if (!was && BUILT) { pfBedCache.m.clear(); pfBedCache.lk = NaN; pfSmallShadows(); setTimeout(pfPrewarm, 60); } return r; }); }
+{ render = before(render, function (...a) { if (G.on) pfFrame(a[0] || 0); return NEXT; }); }
 // ---------------- post (High): HDR scene -> bloom -> grade -> ACES
 const POST = {on: false, ex: 1.1};
 function postInit() {
@@ -7253,7 +7281,7 @@ const relLoad = () => { try { return JSON.parse(localStorage.getItem(SK('s9-reli
 const relicOn = k => !!lootOwn().rel[k] && G.relAct.includes(k);
 function relicToggle(k) { const a = G.relAct, i = a.indexOf(k); if (i >= 0) a.splice(i, 1); else if (lootOwn().rel[k]) { a.push(k); while (a.length > lootSlots()) a.shift(); } try { localStorage.setItem(SK('s9-relics'), JSON.stringify(a)); } catch (e) {} if (G.jrnOpen) jrnDraw(); }
 // meshes: small, readable shapes per treasure; relics glow
-{ const f0 = itemMesh; itemMesh = function (kind) { const T = TRSD[kind], R = RELICS[kind]; if (!T && !R) return f0.apply(this, arguments);
+{ itemMesh = before(itemMesh, function (kind) { const T = TRSD[kind], R = RELICS[kind]; if (!T && !R) return NEXT;
   const g = new THREE.Group(), c = T ? T.c : R[2], m = new THREE.MeshStandardMaterial({color: c, roughness: .3, metalness: T && /coin|instr|medal|ring/.test(T.sh) ? .8 : .2, emissive: R || (T && T.r >= 3) ? c : 0, emissiveIntensity: R ? .6 : T && T.r >= 3 ? .18 : 0}), add = (geo, x, y, z) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); g.add(o); return o; };
   const sh = T ? T.sh : 'relic';
   if (sh === 'coin') { for (let i = 0; i < 3; i++) add(new THREE.CylinderGeometry(.045, .045, .012, 16), (i - 1) * .05, .006 + i * .012, i * .02); }
@@ -7270,40 +7298,39 @@ function relicToggle(k) { const a = G.relAct, i = a.indexOf(k); if (i >= 0) a.sp
   else if (sh === 'ring') { add(new THREE.TorusGeometry(.05, .012, 8, 18), 0, .05, 0); add(new THREE.OctahedronGeometry(.022), 0, .1, 0); }
   else if (sh === 'gem') add(new THREE.OctahedronGeometry(.08), 0, .08, 0).scale.y = 1.3;
   else { add(new THREE.IcosahedronGeometry(.08), 0, .12, 0); const t = add(new THREE.TorusGeometry(.12, .008, 6, 24), 0, .12, 0); t.rotation.x = PI / 2; }
-  g.traverse(o => { if (o.isMesh) o.castShadow = true; }); scene.add(g); return g; }; }
+  g.traverse(o => { if (o.isMesh) o.castShadow = true; }); scene.add(g); return g; }); }
 // world treasure: a rarity glint (sprite), and a legendary light pillar visible from far off (its own list, not hidden by the 200 m item cull)
 const LOOT = {beams: [], glints: [], cab: null, cabK: '', t: 0, cb: null};
 function lootBeam(c, h = 70, r = .35) { const m = new THREE.Mesh(new THREE.CylinderGeometry(r, r * 1.6, h, 10, 1, true), new THREE.MeshBasicMaterial({color: c, transparent: true, opacity: .35, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false})); m.geometry.translate(0, h / 2, 0); scene.add(m); return m; }
-{ const f0 = addItem; addItem = function (kind) { const it = f0.apply(this, arguments), r = lootRarOf(kind); if (r < 0) return it;
+{ addItem = after(addItem, function (it, kind) { const r = lootRarOf(kind); if (r < 0) return;
   const sp = new THREE.Sprite(new THREE.SpriteMaterial({map: TX.glow, color: RAR[r][2], transparent: true, opacity: .25 + r * .12, depthWrite: false, blending: THREE.AdditiveBlending})); sp.scale.setScalar(.6 + r * .25); sp.position.y = .15; it.mesh.add(sp); it.glint = sp; LOOT.glints.push(it);
-  if (r >= 4) { const b = lootBeam(RAR[4][2]); b.position.set(it.x, it.y, it.z); it.beam = b; LOOT.beams.push(it); } return it; }; }
+  if (r >= 4) { const b = lootBeam(RAR[4][2]); b.position.set(it.x, it.y, it.z); it.beam = b; LOOT.beams.push(it); }  }); }
 // placement: after the usual spots are filled, ordinary loot rolls into treasure by danger (WR, so every client agrees)
-{ const f0 = placeItems; placeItems = function () { for (const it of LOOT.beams) scene.remove(it.beam); LOOT.beams.length = 0; LOOT.glints.length = 0; const r = f0.apply(this, arguments);
-  const swap = (it, k) => { scene.remove(it.mesh); const n = addItem(k, it); ITEMS.pop(); n.i = it.i; ITEMS[it.i] = n; };
+{ placeItems = before(placeItems, function () { for (const it of LOOT.beams) scene.remove(it.beam); LOOT.beams.length = 0; LOOT.glints.length = 0; return NEXT; });
+placeItems = after(placeItems, function (r) { const swap = (it, k) => { scene.remove(it.mesh); const n = addItem(k, it); ITEMS.pop(); n.i = it.i; ITEMS[it.i] = n; };
   for (let i = 0; i < ITEMS.length; i++) { const it = ITEMS[i]; if (!['crate', 'scrap', 'patch', 'battery', 'flare', 'fuel', 'relic', 'gold', 'pearl', 'chest'].includes(it.kind)) continue; const d = lootD(it.x, it.z, it.y), rich = ['relic', 'gold', 'pearl', 'chest'].includes(it.kind);
-    if (WR() < (rich ? .55 : .2 + .25 * d)) swap(it, lootRoll(d + (rich ? .25 : 0), WR, 0)); }
-  return r; }; }
+    if (WR() < (rich ? .55 : .2 + .25 * d)) swap(it, lootRoll(d + (rich ? .25 : 0), WR, 0)); } }); }
 // floats: the host sometimes floats treasure (more at night and in far, rich waters)
-{ const f0 = spawnFloat; spawnFloat = function (i) { const r = f0.apply(this, arguments), f = G.floats[i]; if (!f) return r; const nt = TOD.night || 0, d = lootD(f[0], f[1]) + nt * .3;
-  if (CR() < .05 + .05 * nt + .06 * d) f[2] = KINDS.indexOf(lootRoll(d, CR)); return r; }; }
+{ spawnFloat = after(spawnFloat, function (r, i) { const f = G.floats[i]; if (!f) return; const nt = TOD.night || 0, d = lootD(f[0], f[1]) + nt * .3;
+  if (CR() < .05 + .05 * nt + .06 * d) f[2] = KINDS.indexOf(lootRoll(d, CR));  }); }
 // host: pickups announce rarity, relics go straight to the crew's relic case; the sale appraises treasure (chests hold two more finds)
 function lootSet(S, k, ev) { const T = TRSD[k]; if (!T) return; S.col[k] = (S.col[k] || 0) + 1; const set = T.set; if (S.cs[set]) return; if (TRS.filter(t => t[4] === set).every(t => S.col[t[0]])) { S.cs[set] = 1; const v = Math.round(LSETS[set].v * (D.pay || 1)); G.cash += v; G.earned += v; ev.push({set, v}); } }
-{ const f0 = hostAct; hostAct = function (id, m) { const p = PL.get(id); if (!p || !G.on || !m) return f0.apply(this, arguments); const S = G.stat || (G.stat = {}); S.col = S.col || {}; S.cs = S.cs || {}; S.rel = S.rel || {};
+{ hostAct = around(hostAct, function (next, ...args) { let [id, m] = args; const p = PL.get(id); if (!p || !G.on || !m) return next.apply(this, args); const S = G.stat || (G.stat = {}); S.col = S.col || {}; S.cs = S.cs || {}; S.rel = S.rel || {};
   let apr = null; if (m.a === 'sell') { const rows = [], sets = [], q = [], lucky = S.rel.r_doub ? 1.15 : 1, coin = S.cs.coin ? 1.1 : 1, floor = S.cs.jewel ? 1 : .7, port = voyPortNear(B.x, B.z, 60 + BG.L * .5);
     const take = (arr, sack) => { for (let i = arr.length - 1; i >= 0; i--) { const k = arr[i]; if (TRSD[k]) { q.push(k); arr.splice(i, 1); } else if (k === 'chest') for (let j = 0; j < 2; j++) q.push(lootRoll(.6, Math.random, 0)); } if (sack) sackSet(p); };
     take(p.sack, 1); if (port) take(B.hold, 0);
     for (const k of q) { const T = TRSD[k], u = Math.random(), mult = Math.max(floor, .7 + Math.pow(u, 3) * (T.r >= 3 ? 2.6 : 1.8)) * lucky * coin, v = Math.round(T.v * mult * (D.pay || 1)); rows.push([KINDS.indexOf(k), v, Math.round(mult * 100) / 100]); lootSet(S, k, sets); }
     if (rows.length) { const tot = rows.reduce((a, r) => a + r[1], 0); G.cash += tot; G.earned += tot; apr = {k: 'apr', id, rows, tot, sets}; } }
-  const before = p.sack.slice(), cash0 = G.cash, r = f0.apply(this, arguments);
+  const before = p.sack.slice(), cash0 = G.cash, r = next.apply(this, args);
   if (apr) { emit(apr); if (G.cash === cash0) emit({k: 'sold', v: apr.tot, c: {}}); save(); }
   if (p.sack.length > before.length) { const k = p.sack[p.sack.length - 1];
     if (RELICS[k]) { p.sack.pop(); sackSet(p); const nw = !S.rel[k]; S.rel[k] = 1; emit({k: 'relic', id, r: KINDS.indexOf(k), nw: nw ? 1 : 0}); save(); }
     else if (TRSD[k]) emit({k: 'trs', id, t: KINDS.indexOf(k)}); }
-  return r; }; }
-{ const f0 = fishVal; fishVal = function () { const v = f0.apply(this, arguments); return lootOwn().cs.ocean ? Math.round(v * 1.15) : v; }; }
+  return r; }); }
+{ fishVal = around(fishVal, function (next, ...args) { const v = next.apply(this, args); return lootOwn().cs.ocean ? Math.round(v * 1.15) : v; }); }
 // client: rarity toasts, the appraisal card, relic finds, set bonuses
 function lootChime(r) { if (!A.on) return; const N = [[660], [660, 880], [660, 880, 1100], [523, 784, 1046, 1318], [392, 523, 659, 784, 1046, 1318, 1568]][r]; N.forEach((f, i) => setTimeout(() => tone(f, .05 + r * .012, .5 + r * .15, r >= 3 ? 'triangle' : 'sine'), i * (r >= 4 ? 110 : 80))); }
-{ const f0 = applyEv; applyEv = function (e) { const r = f0.apply(this, arguments), me = myId();
+{ applyEv = after(applyEv, function (r, e) { const me = myId();
   if (e.k === 'trs') { const k = KINDS[e.t], T = TRSD[k]; if (T) { if (e.id === me) { lootChime(T.r); jobRc.push({k: 'trs', life: 2.6 + T.r * .6, h: `<h4 style="color:${RAR[T.r][1]}">${RAR[T.r][0].toUpperCase()}</h4><b style="color:${RAR[T.r][1]}">${jobCap(T.n)}</b><br><small style="color:#9a927e">${LSETS[T.set].n} · appraise at the shed</small>`}); }
     else if (T.r >= 3) { const p = PL.get(e.id); showMsg(`${p ? p.name : 'Crew'} found ${RAR[T.r][0].toLowerCase()} loot: ${T.n}`, '', 3); }
     if (T.r >= 4) { (G.banQ = G.banQ || []).push({h: 'LEGENDARY', t: jobCap(T.n), c: 0, s: 'goal'}); G.shake = Math.max(G.shake || 0, .6); } } }
@@ -7312,16 +7339,16 @@ function lootChime(r) { if (!A.on) return; const N = [[660], [660, 880], [660, 8
   else if (e.k === 'apr' && e.id === me) { const rows = e.rows.map(([ki, v, mu]) => { const T = TRSD[KINDS[ki]] || {n: '?', r: 0}; return `<div class="rw"><span style="color:${RAR[T.r][1]}">${jobCap(T.n)}</span><span>${money(v)}${mu >= 1.6 ? ' <b style="color:#ffc83a">×' + mu.toFixed(1) + '!</b>' : ''}</span></div>`; }).join('');
     const best = Math.max(...e.rows.map(q => q[2])); lootChime(best >= 2 ? 4 : best >= 1.4 ? 3 : 1); jobRc.push({k: 'apr', cls: 'gold', life: 4 + e.rows.length * .4, cuV: e.tot, h: `<h4>APPRAISED</h4>${rows}<b data-cu>$0</b>${best >= 2 ? '<br><span class="jobPill">JACKPOT</span>' : ''}`});
     for (const s of e.sets || []) (G.banQ = G.banQ || []).push({h: 'COLLECTION COMPLETE', t: LSETS[s.set].n + (LSETS[s.set].perk ? ' · ' + LSETS[s.set].perk : ''), c: s.v, s: 'goal'}); }
-  if (e.k === 'apr' && G.jrnOpen) jrnDraw(); return r; }; }
+  if (e.k === 'apr' && G.jrnOpen) jrnDraw();  }); }
 // snapshots carry the crew's collection and relic case to guests
-{ const f0 = packSnap; packSnap = function () { const s = f0.apply(this, arguments), n = performance.now(); if (G.stat && n - (LOOT.sentT || 0) > 3000) { LOOT.sentT = n; s.col = {c: G.stat.col || {}, s: G.stat.cs || {}, r: G.stat.rel || {}}; } return s; }; }
-{ const f0 = applySnap; applySnap = function (s) { const r = f0.apply(this, arguments); if (s.col) G.colS = s.col; return r; }; }
+{ packSnap = after(packSnap, function (s) { const n = performance.now(); if (G.stat && n - (LOOT.sentT || 0) > 3000) { LOOT.sentT = n; s.col = {c: G.stat.col || {}, s: G.stat.cs || {}, r: G.stat.rel || {}}; }  }); }
+{ applySnap = after(applySnap, function (r, s) {  if (s.col) G.colS = s.col;  }); }
 // journal: collections (with set bonuses and perks) and the relic case (click to wear, slots from lootSlots)
-{ const f0 = jrnDraw; jrnDraw = function () { const r = f0.apply(this, arguments), el = $('jrnB'); if (!el) return r; const O = lootOwn(), pay = D.pay || 1;
+{ jrnDraw = after(jrnDraw, function (r) { const el = $('jrnB'); if (!el) return; const O = lootOwn(), pay = D.pay || 1;
   let h = ''; for (const set in LSETS) { const L = TRS.filter(t => t[4] === set), got = L.filter(t => O.col[t[0]]).length, S = LSETS[set];
     h += `<h3><span>${S.n} <i>${got}/${L.length}</i></span><em class="jrS${O.cs[set] ? ' ok' : ''}">${O.cs[set] ? '✓ ' : ''}${money(S.v * pay)}${S.perk ? ' · ' + S.perk : ''}</em></h3><div class="jrG">` + L.map(t => O.col[t[0]] ? `<div class="jrT"><b style="color:${RAR[t[2]][1]}">${jobCap(t[1])}</b><small style="color:${RAR[t[2]][1]}">${RAR[t[2]][0]} · ×${O.col[t[0]]}</small></div>` : `<div class="jrT q"><b>???</b><small style="color:${RAR[t[2]][1]}">${RAR[t[2]][0]}</small></div>`).join('') + '</div>'; }
   h += `<h3><span>Relics <i>${Object.keys(O.rel).length}/${Object.keys(RELICS).length}</i></span><em class="jrS">wearing ${G.relAct.filter(k => O.rel[k]).length}/${lootSlots()} · click to wear</em></h3><div class="jrG">` + Object.keys(RELICS).map(k => O.rel[k] ? `<div class="jrT${G.relAct.includes(k) ? ' w' : ''}" data-rel="${k}" style="cursor:pointer;pointer-events:auto"><b>${RELICS[k][0]}</b><small>${RELICS[k][1]}${G.relAct.includes(k) ? ' · WORN' : ''}</small></div>` : '<div class="jrT q"><b>???</b><small>Legendary find</small></div>').join('') + '</div>';
-  el.insertAdjacentHTML('beforeend', h); el.querySelectorAll('[data-rel]').forEach(d => d.onclick = () => relicToggle(d.dataset.rel)); return r; }; }
+  el.insertAdjacentHTML('beforeend', h); el.querySelectorAll('[data-rel]').forEach(d => d.onclick = () => relicToggle(d.dataset.rel));  }); }
 // per frame (client): the compass beam, glass-eye glints, the charm and the lantern, the trophy cabinet
 function lootFrame(dt) { if (!P || !G.on) return; LOOT.t -= dt;
   for (const it of LOOT.beams) { it.beam.visible = !it.taken; if (it.beam.visible) it.beam.material.opacity = .22 + .1 * Math.sin(G.wt * 2 + it.i); }
@@ -7347,8 +7374,9 @@ function lootCabinet() { const b = G.shed; if (!b) return; const O = lootOwn(), 
   ks.forEach((k, i) => { const m = itemMesh(k), row = Math.floor(i / 7), col = i % 7; scene.remove(m); m.position.set(-W / 2 + .2 + col * ((W - .4) / 6), .15 + (3 - row) * .48, 0); m.scale.setScalar(1.5); m.rotation.y = .5; g.add(m);
     const r = TRSD[k].r; if (r >= 2) { const s = new THREE.Sprite(new THREE.SpriteMaterial({map: TX.glow, color: RAR[r][2], transparent: true, opacity: .2 + r * .08, depthWrite: false, blending: THREE.AdditiveBlending})); s.scale.setScalar(.35 + r * .08); s.position.copy(m.position); s.position.y += .1; g.add(s); } });
   Object.keys(O.rel).forEach((k, i) => { const m = itemMesh(k); scene.remove(m); m.position.set(-W / 2 + .35 + i * .36, H + .02, D / 2 + .02); m.scale.setScalar(.9); g.add(m); }); }
-{ const f0 = hud; hud = function () { const r = f0.apply(this, arguments); try { const now = performance.now(), dt = Math.min(.1, (now - (LOOT.ft || now)) / 1000); LOOT.ft = now; lootFrame(dt); } catch (e) { if (!LOOT.err) { LOOT.err = 1; console.warn(e); } } return r; }; }
-{ const f0 = startGame; startGame = function () { LOOT.cabK = ''; const r = f0.apply(this, arguments); if (isHost() && G.stat) { G.stat.col = G.stat.col || {}; G.stat.cs = G.stat.cs || {}; G.stat.rel = G.stat.rel || {}; } return r; }; }
+{ hud = after(hud, function (r) {  try { const now = performance.now(), dt = Math.min(.1, (now - (LOOT.ft || now)) / 1000); LOOT.ft = now; lootFrame(dt); } catch (e) { if (!LOOT.err) { LOOT.err = 1; console.warn(e); } }  }); }
+{ startGame = before(startGame, function () { LOOT.cabK = ''; return NEXT; });
+startGame = after(startGame, function (r) { if (isHost() && G.stat) { G.stat.col = G.stat.col || {}; G.stat.cs = G.stat.cs || {}; G.stat.rel = G.stat.rel || {}; } }); }
 
 // ---------------- fishing 2: spots (bait balls under diving birds, reefs, drop-offs, glowing water at night, legend spots), bait, legendary fish, and a real fight
 // (runs, side pulls against the rod, jumps, stamina; it can strip your line). Spots come from the seed per 500 m cell, so every client sees the same ones.
@@ -7357,7 +7385,7 @@ Object.assign(FISH, {leg_home: {n: 'Old Mag, the giant grouper', v: 900, s: 2.6,
 Object.assign(GEAR, {baitS: {n: 'Shrimp bait x10', d: 'Reef and inshore fish bite more (B swaps bait)', cost: 15, need: o => o.rod}, baitQ: {n: 'Squid bait x6', d: 'Big fish: cod, tuna, squid, and the legends', cost: 40, need: o => o.rod >= 2},
   baitG: {n: 'Glow lures x4', d: 'Night and deep-water fish: anglers, ghost fish, ember eels, oarfish', cost: 60, need: o => o.rod >= 2}});
 const BAIT = [['No bait', ''], ['Shrimp', 'bS'], ['Squid', 'bQ'], ['Glow lure', 'bG']];
-{ const f0 = gotGear; gotGear = function (k) { if (k === 'baitS' || k === 'baitQ' || k === 'baitG') { const a = P.ammo, key = 'b' + k[4], n = {S: 10, Q: 6, G: 4}[k[4]]; a[key] = (a[key] || 0) + n; P.own.bait = ' SQG'.indexOf(k[4]); Snd.coin(); saveGear(); showMsg(`Bought: ${GEAR[k].n}. Press B with the rod out to swap bait.`, 'HARBOUR SHED', 3); setTimeout(drawShop, 50); return; } return f0.apply(this, arguments); }; }
+{ gotGear = before(gotGear, function (k) { if (k === 'baitS' || k === 'baitQ' || k === 'baitG') { const a = P.ammo, key = 'b' + k[4], n = {S: 10, Q: 6, G: 4}[k[4]]; a[key] = (a[key] || 0) + n; P.own.bait = ' SQG'.indexOf(k[4]); Snd.coin(); saveGear(); showMsg(`Bought: ${GEAR[k].n}. Press B with the rod out to swap bait.`, 'HARBOUR SHED', 3); setTimeout(drawShop, 50); return; } return NEXT; }); }
 const baitN = () => { const b = (P && P.own && P.own.bait) || 0; return b && (P.ammo[BAIT[b][1]] || 0) > 0 ? b : 0; };
 addEventListener('keydown', e => { if (e.code !== 'KeyB' || !G.on || !P || P.eq !== 2 || !P.own || (P.ob && BOAT && (BOAT.userData.brg || BOAT.userData.syLift) && F.st === 'idle') || G.shopOpen || G.jrnOpen || G.chat) return; for (let i = 1; i <= 4; i++) { const b = (((P.own.bait || 0) + i) % 4); if (!b || (P.ammo[BAIT[b][1]] || 0) > 0) { P.own.bait = b; break; } } saveGear(); const b = baitN(); showMsg(b ? `${BAIT[b][0]} on the hook (${P.ammo[BAIT[b][1]]} left)` : 'No bait', '', 1.6); });
 const FSP = {cells: new Map(), list: [], t: 0, gulls: null, fx: []};
@@ -7370,18 +7398,18 @@ function fspCell(cx, cz) { const k = cx + ',' + cz; let c = FSP.cells.get(k); if
 function fspNear(x, z, R) { const out = [], cx = Math.floor(x / 500), cz = Math.floor(z / 500), n = Math.ceil(R / 500); for (let i = -n; i <= n; i++) for (let j = -n; j <= n; j++) { const c = fspCell(cx + i, cz + j); if (c && Math.hypot(c.x - x, c.z - z) < R) out.push(c); } return out; }
 const fspAt = (x, z) => { const nt = TOD.night > .5; for (const c of fspNear(x, z, 60)) { if (Math.hypot(c.x - x, c.z - z) > c.r) continue; if (c.t === 'birds' && nt) continue; if (c.t === 'glow' && !nt) continue; return c; } return null; };
 // the catch: spot tables and bait bias on top of the old odds; legends only at legend spots with the right bait and rod
-{ const f0 = pickFish; pickFish = function (x, z, rod) { const sp = fspAt(x, z), b = baitN(); let k = null;
+{ pickFish = around(pickFish, function (next, ...args) { let [x, z, rod] = args; const sp = fspAt(x, z), b = baitN(); let k = null;
   if (sp && sp.t === 'legend' && rod >= 2 && (b === 2 || b === 3) && Math.random() < .3 + (relicOn('r_hook') ? .1 : 0)) return 'leg_' + sp.rg;
   const T = sp ? {birds: {mack: 40, sard: 28, bass: 16, tuna: rod >= 2 ? 14 : 0}, reef: {bass: 30, eel: 24, snapper: 18, parrot: 14}, deep: {cod: 34, tuna: rod >= 2 ? 24 : 0, angler: rod >= 2 ? 10 : 0, squid: rod >= 3 ? 9 : 0, oarfish: rod >= 3 && sp.rg === 'abyss' ? 5 : 0},
     glow: {angler: rod >= 2 ? 30 : 0, ghostfish: 18, ember: 18, eel: 20}, legend: {cod: 30, tuna: rod >= 2 ? 26 : 0, squid: rod >= 3 ? 12 : 0}}[sp.t] : null;
   if (T && Math.random() < .7) { const w = Object.assign({}, T); for (const q in w) { if (b === 1 && /bass|eel|snapper|parrot|sard/.test(q)) w[q] *= 1.6; if (b === 2 && /cod|tuna|squid|oarfish/.test(q)) w[q] *= 2; if (b === 2 && /sard|mack/.test(q)) w[q] *= .4; if (b === 3 && /angler|ghost|ember|oar/.test(q)) w[q] *= 2.2; }
     let s = 0; for (const q in w) s += w[q]; let r = Math.random() * s; for (const q in w) { r -= w[q]; if (r <= 0) { k = q; break; } } }
-  if (!k) { k = f0.apply(this, arguments); if (b && Math.random() < .5) { const k2 = f0.apply(this, arguments), big = q => (FISH[q] || {v: 0}).v * (b === 2 ? (FISH[q].kg[1] > 6 ? 1.6 : .6) : b === 3 ? (/angler|ghost|ember|oar/.test(q) ? 2 : 1) : (/bass|eel|snapper|parrot/.test(q) ? 1.5 : 1)); if (big(k2) > big(k)) k = k2; } }
-  if (relicOn('r_hook') && (FISH[k] || {v: 0}).v < 40 && Math.random() < .5) { const k2 = f0.apply(this, arguments); if ((FISH[k2] || {v: 0}).v > FISH[k].v) k = k2; }
-  return k; }; }
+  if (!k) { k = next.apply(this, args); if (b && Math.random() < .5) { const k2 = next.apply(this, args), big = q => (FISH[q] || {v: 0}).v * (b === 2 ? (FISH[q].kg[1] > 6 ? 1.6 : .6) : b === 3 ? (/angler|ghost|ember|oar/.test(q) ? 2 : 1) : (/bass|eel|snapper|parrot/.test(q) ? 1.5 : 1)); if (big(k2) > big(k)) k = k2; } }
+  if (relicOn('r_hook') && (FISH[k] || {v: 0}).v < 40 && Math.random() < .5) { const k2 = next.apply(this, args); if ((FISH[k2] || {v: 0}).v > FISH[k].v) k = k2; }
+  return k; }); }
 // hooking spends bait; the fight state
-{ const f0 = hook; hook = function () { const r = f0.apply(this, arguments), b = baitN(); if (b) { P.ammo[BAIT[b][1]]--; saveGear(); } const f = FISH[F.k] || {s: 1};
-  Object.assign(F, {sta: 100, run: 0, runT: 1.2 + Math.random() * 1.5, dir: Math.random() < .5 ? -1 : 1, jump: 0, ang: 0, lost: 0, legend: !!f.leg, prog: 14, ten: 40}); if (f.leg) { showMsg(`Something enormous took the bait. Hold on.`, '', 3); G.shake = Math.max(G.shake || 0, 1); } return r; }; }
+{ hook = after(hook, function (r) { const b = baitN(); if (b) { P.ammo[BAIT[b][1]]--; saveGear(); } const f = FISH[F.k] || {s: 1};
+  Object.assign(F, {sta: 100, run: 0, runT: 1.2 + Math.random() * 1.5, dir: Math.random() < .5 ? -1 : 1, jump: 0, ang: 0, lost: 0, legend: !!f.leg, prog: 14, ten: 40}); if (f.leg) { showMsg(`Something enormous took the bait. Hold on.`, '', 3); G.shake = Math.max(G.shake || 0, 1); }  }); }
 function fishFight(dt) { const f = FISH[F.k] || {s: 1}, rod = P.own.rod || 1, kf = [1, 1, .82, .66][rod], s = f.s * (TOD.night > .5 ? 1.2 : 1) * (relicOn('r_hook') ? .85 : 1), reel = !!G.lmb;
   const want = (K.KeyD ? 1 : 0) - (K.KeyA ? 1 : 0); F.ang = mix(F.ang, want, Math.min(1, dt * 6)); const good = F.run > 0 && F.ang * F.dir < -.4, bad = F.run > 0 && F.ang * F.dir > .3;
   if (F.run > 0) { F.run -= dt; if (F.run <= 0) { F.runT = (1.6 + Math.random() * 2.6) / Math.sqrt(s) * (.6 + .4 * F.sta / 100) ; } }
@@ -7402,19 +7430,19 @@ function fishFight(dt) { const f = FISH[F.k] || {s: 1}, rod = P.own.rod || 1, kf
   if (F.prog >= 100) { F.st = 'idle'; const kg = +(f.kg[0] + Math.random() * (f.kg[1] - f.kg[0])).toFixed(1), full = (P.coolerN || 0) >= ([0, 8, 12, 18][rod] || 8); act({a: 'fish', f: F.k, kg, rod}); Snd.discover();
     if (F.k !== 'bottle') toast(`${f.n}`, full ? `${kg} kg · cooler full` : `${kg} kg · +${money(fishVal(F.k, P.x, P.z))}`); if (f.leg) { lootChime(4); (G.banQ = G.banQ || []).push({h: 'LEGEND LANDED', t: jobCap(f.n) + ` · ${kg} kg`, c: 0, s: 'goal'}); } }
   const k = Math.min(1, F.prog / 100); F.bob.x = mix(F.sx, P.x, k * .9); F.bob.z = mix(F.sz, P.z, k * .9); }
-{ const f0 = stepGear; stepGear = function (dt) { const prev = F.st; if (F.st === 'reel' && P && P.eq === 2 && !P.seat && !P.down && !P.dead) { F.st = 'fight'; f0.apply(this, arguments); if (F.st === 'fight') { F.st = 'reel'; fishFight(dt); } return; }
-  const r = f0.apply(this, arguments); if (prev !== 'wait' && F.st === 'wait' && F.bob) { const sp = fspAt(F.bob.x, F.bob.z); if (sp) F.t *= {birds: .35, reef: .6, deep: .7, glow: .5, legend: .8}[sp.t]; if (baitN()) F.t *= .8; } return r; }; }
+{ stepGear = around(stepGear, function (next, ...args) { let [dt] = args; const prev = F.st; if (F.st === 'reel' && P && P.eq === 2 && !P.seat && !P.down && !P.dead) { F.st = 'fight'; next.apply(this, args); if (F.st === 'fight') { F.st = 'reel'; fishFight(dt); } return; }
+  const r = next.apply(this, args); if (prev !== 'wait' && F.st === 'wait' && F.bob) { const sp = fspAt(F.bob.x, F.bob.z); if (sp) F.t *= {birds: .35, reef: .6, deep: .7, glow: .5, legend: .8}[sp.t]; if (baitN()) F.t *= .8; } return r; }); }
 // A/D turn the rod while a fish is on, not your feet
-{ const f0 = stepPlayer; stepPlayer = function () { if (F.st === 'reel' && P && P.eq === 2) { const a = K.KeyA, d = K.KeyD; K.KeyA = K.KeyD = false; try { return f0.apply(this, arguments); } finally { K.KeyA = a; K.KeyD = d; } } return f0.apply(this, arguments); }; }
+{ stepPlayer = around(stepPlayer, function (next, ...args) { if (F.st === 'reel' && P && P.eq === 2) { const a = K.KeyA, d = K.KeyD; K.KeyA = K.KeyD = false; try { return next.apply(this, args); } finally { K.KeyA = a; K.KeyD = d; } } return next.apply(this, args); }); }
 // HUD: a pull arrow, the fish's stamina, the spot and bait line
 { const ui = $('fishUI'); if (ui) { ui.insertAdjacentHTML('beforeend', '<div id="fishDir" style="margin-top:6px;font:bold 15px ui-monospace,monospace;min-height:18px"></div><div id="fishSta" style="height:4px;background:rgba(255,255,255,.12);margin-top:4px"><i style="display:block;height:100%;width:100%;background:#e8a040"></i></div><div id="fishSp" style="margin-top:5px;color:#9fe6ff;font-size:12px"></div>'); } }
-{ const f0 = updateTools; updateTools = function (dt) { const r = f0.apply(this, arguments); if (!P || !$('fishDir')) return r; const reel = F.st === 'reel';
+{ updateTools = after(updateTools, function (r, dt) {  if (!P || !$('fishDir')) return; const reel = F.st === 'reel';
   if (reel && P.eq === 2) { const t = $('fishT'); t.textContent = F.jump > 0 ? 'IT JUMPED! LET GO!' : F.run > 0 ? (F.ang * F.dir < -.4 ? 'Good, hold it against the run' : 'It is running! Ease off and pull the other way') : F.sta < 25 ? 'It is tiring. Reel it in!' : 'Reel in the green while it rests';
     $('fishDir').innerHTML = F.run > 0 ? (F.dir > 0 ? '<span style="color:#ff7050">RUN ▶▶</span>  hold <kbd>A</kbd>' : 'hold <kbd>D</kbd>  <span style="color:#ff7050">◀◀ RUN</span>') : F.jump > 0 ? '<span style="color:#ffd060">⤴ JUMP</span>' : '';
     $('fishSta').style.display = 'block'; $('fishSta').firstChild.style.width = (F.sta || 0) + '%'; }
   else { $('fishDir').innerHTML = ''; $('fishSta').style.display = 'none'; }
   const sp = P.eq === 2 && F.bob && (F.st === 'wait' || F.st === 'bite' || reel) ? fspAt(F.bob.x, F.bob.z) : null, b = P.eq === 2 ? baitN() : 0, txt = (sp ? `${FSP_T[sp.t][0]} · ${FSP_T[sp.t][1]}` : '') + (P.eq === 2 && F.st !== 'idle' ? `${sp ? '<br>' : ''}<span style="color:#c8c0b0">Bait: ${b ? BAIT[b][0] + ' (' + P.ammo[BAIT[b][1]] + ')' : 'none'} · B to swap</span>` : '');
-  if (txt !== FSP.txt) { FSP.txt = txt; $('fishSp').innerHTML = txt; } return r; }; }
+  if (txt !== FSP.txt) { FSP.txt = txt; $('fishSp').innerHTML = txt; }  }); }
 // spot visuals near you: diving gulls and white boils over bait balls, nervous water on reefs and drop-offs, green glow at night, a vast shadow at legend spots
 function fspFrame(dt) { if (!P || !G.on) return; FSP.t -= dt; if (FSP.t <= 0) { FSP.t = 1; FSP.list = fspNear(P.x, P.z, 420); }
   if (!FSP.gulls) { const bg = new THREE.BufferGeometry(); bg.setAttribute('position', new THREE.Float32BufferAttribute([-.8, .14, -.1, 0, 0, .28, 0, 0, -.16, .8, .14, -.1, 0, 0, .28, 0, 0, -.16], 3)); bg.computeVertexNormals();
@@ -7430,8 +7458,8 @@ function fspFrame(dt) { if (!P || !G.on) return; FSP.t -= dt; if (FSP.t <= 0) { 
       m.material.color.setHex(c.t === 'glow' ? 0x40ff9a : 0xffffff); m.material.opacity = (1 - u) * (c.t === 'birds' ? .5 : c.t === 'glow' ? .55 : .22); }
     if (c.t === 'legend') { const a = ph * .25; FSP.sh.position.set(c.x + Math.cos(a) * 14, waveH(c.x, c.z, t) - .2, c.z + Math.sin(a) * 14); FSP.sh.scale.set(6, 2.2, 1); FSP.sh.rotation.z = -a; FSP.sh.material.opacity = .35 + .1 * Math.sin(t); } }
   for (let i = gi; i < 30; i++) { _m.makeScale(0, 0, 0); FSP.gulls.setMatrixAt(i, _m); } FSP.gulls.instanceMatrix.needsUpdate = true; for (let i = fi; i < FSP.fx.length; i++) FSP.fx[i].material.opacity = 0; }
-{ const f0 = hud; hud = function () { const r = f0.apply(this, arguments); try { const now = performance.now(), dt = Math.min(.1, (now - (FSP.ft || now)) / 1000); FSP.ft = now; fspFrame(dt); } catch (e) { if (!FSP.err) { FSP.err = 1; console.warn(e); } } return r; }; }
-{ const f0 = startGame; startGame = function () { FSP.cells.clear(); return f0.apply(this, arguments); }; }
+{ hud = after(hud, function (r) {  try { const now = performance.now(), dt = Math.min(.1, (now - (FSP.ft || now)) / 1000); FSP.ft = now; fspFrame(dt); } catch (e) { if (!FSP.err) { FSP.err = 1; console.warn(e); } }  }); }
+{ startGame = before(startGame, function () { FSP.cells.clear(); return NEXT; }); }
 
 // ---------------- new boats: Albatross flying boat (takes off, flies, lands), Sandpiper hovercraft (drives up beaches), Skipjack RIB, Twin Fin catamaran, Abyss Scout ROV ship
 // classes 13-17. The plane's altitude rides on B.dep < 0 (snapshotted already, and boatPose's heave = waves - dep lifts the boat and everyone aboard).
@@ -7449,9 +7477,9 @@ HULLS.push(
 ENGV.push({f: [45, 95], lp: [600, 1900], am: .35, fr: .9, nz: .05, g: .12}, {f: [60, 120], lp: [900, 2600], am: .1, nz: .09, whine: [700, 1500], g: .12}, {f: [90, 200], lp: [900, 2600], am: .12, fr: 1.3, nz: .05, whine: [1900, 3600], g: .1},
   {f: [35, 70], lp: [350, 900], am: .4, fr: .6, g: .1}, {f: [20, 38], lp: [200, 480], am: .7, fr: .4, g: .16});
 const NB = {vy: 0, pvy: 0, lastDep: 0, rov: null};
-{ const f0 = shpHorn; shpHorn = function (cls, p) { return f0.call(this, cls >= 13 ? (cls === 17 ? 10 : 8) : cls, p); }; }
+{ shpHorn = around(shpHorn, function (next, cls, p) { return next.call(this, cls >= 13 ? (cls === 17 ? 10 : 8) : cls, p); }); }
 // looks
-{ const f0 = shpExtras; shpExtras = function (cls, X, ph) { const r = f0.apply(this, arguments); if (!ph && cls >= 13 && cls <= 17) try { nbLook(cls, X); } catch (e) { console.warn('nbLook', e); } return r; }; }
+{ shpExtras = after(shpExtras, function (r, cls, X, ph) {  if (!ph && cls >= 13 && cls <= 17) try { nbLook(cls, X); } catch (e) { console.warn('nbLook', e); }  }); }
 function nbLook(cls, X) { const {g, L, hw, fb, zs, zb, wz0, wz1, ww, hh, S, add, box, cyl, darkM, steel, glass} = X, ud = g.userData, top = fb + hh + .12, zm = (wz0 + wz1) / 2, hc = X.hc;
   const seg = (m, a, b, r, n = 6) => { const l = Math.hypot(b[0] - a[0], b[1] - a[1], b[2] - a[2]), o = add(new THREE.CylinderGeometry(r, r, l, n), m, (a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2); o.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), new THREE.Vector3(b[0] - a[0], b[1] - a[1], b[2] - a[2]).normalize()); return o; };
   if (cls === 13) { // flying boat: high wing on struts, two radial engines with live props, wingtip floats, tail fin and tailplane on a raised tail
@@ -7500,16 +7528,16 @@ function nbRovMesh() { const g = new THREE.Group(), y = new THREE.MeshStandardMa
   add(new THREE.SphereGeometry(.18, 12, 8), new THREE.MeshStandardMaterial({color: 0x101820, roughness: .05, metalness: .5}), 0, .1, -.78); for (const sx of [-.45, .45]) add(new THREE.CylinderGeometry(.07, .07, .05, 10), new THREE.MeshStandardMaterial({color: 0x404040, emissive: 0xfff0d0, emissiveIntensity: 1.2}), sx, .3, -.76).rotation.x = PI / 2;
   const cl = add(new THREE.BoxGeometry(.08, .08, .5), d, .3, -.45, -.75); cl.rotation.x = .4; g.traverse(o => { if (o.isMesh) o.castShadow = true; }); return g; }
 // physics (host): the flying boat and the hovercraft
-{ const f0 = boatStep; boatStep = function (dt) { const H = HC(); if (B.sink > 0 || !(H.plane || H.hover)) return f0.apply(this, arguments);
+{ boatStep = around(boatStep, function (next, ...args) { let [dt] = args; const H = HC(); if (B.sink > 0 || !(H.plane || H.hover)) return next.apply(this, args);
   if (H.hover) { const keep = OBST.slice(), isl = OBST.filter(o => o.c && !o.npc && Math.hypot(o.x - B.x, o.z - B.z) < o.r + BG.L + 20 && landH(o.x, o.z) > -2.5); if (isl.length) { OBST.length = 0; for (const o of keep) if (!isl.includes(o)) OBST.push(o); }
-    const px = B.x, pz = B.z; let r; try { r = f0.apply(this, arguments); } finally { OBST.length = 0; for (const o of keep) OBST.push(o); }
+    const px = B.x, pz = B.z; let r; try { r = next.apply(this, args); } finally { OBST.length = 0; for (const o of keep) OBST.push(o); }
     const fx = -Math.sin(B.yaw), fz = -Math.cos(B.yaw), ah = Math.max(landH(B.x + fx * BG.L * .45 * Math.sign(B.v || 1), B.z + fz * BG.L * .45 * Math.sign(B.v || 1)), landH(B.x, B.z));
     if (ah > 3.2) { B.x = px; B.z = pz; if (Math.abs(B.v) > 3) emit({k: 'bump', s: Math.min(1, Math.abs(B.v) / 8)}); B.v *= -.25; }
     const gh = Math.max(0, landH(B.x, B.z)); B.dep = mix(B.dep || 0, -(gh + (gh > 0 ? .5 : 0)), Math.min(1, dt * 4)); return r; }
   // the flying boat: on the water she is a boat; at speed, Space lifts her off and she flies until she touches down
   const drv = B.driver && PL.get(B.driver), inp = B.ap && B.ap.up != null ? [B.ap.thr, B.ap.st, -B.ap.up] : drv && drv.seat && !drv.down && !drv.dead && drv.in ? drv.in : [0, 0, 0], up = -(inp[2] || 0); let alt = -(B.dep || 0);
   const JT = H.balloon ? {to: -1, acc: 1.5, dr: .012, cl: 3, st: -10, land: 99} : H.vtol ? {to: -1, acc: 20, dr: .0019, cl: 14, st: -10, land: 60} : H.air ? {to: -1, acc: 5, dr: .009, cl: 4, st: -10, land: 99} : H.jet ? {to: 17, acc: 18, dr: .0021, cl: 15, st: 15, land: 45} : {to: 13, acc: 9, dr: .0032, cl: 8, st: 12, land: 32};
-  if (alt < .05 && !(up > 0 && B.v > JT.to)) { NB.vy = 0; const r = f0.apply(this, arguments); B.dep = 0; return r; }
+  if (alt < .05 && !(up > 0 && B.v > JT.to)) { NB.vy = 0; const r = next.apply(this, args); B.dep = 0; return r; }
   B.thr = mix(B.thr, inp[0], Math.min(1, dt * 1.2)); B.st = mix(B.st, inp[1], Math.min(1, dt * 2.5)); B.fuel = tankMax();
   const lv = B.up.engine || 0; B.v += ((B.thr > 0 ? B.thr * (JT.acc + lv * 1.5) : B.thr * 4) - JT.dr * B.v * Math.abs(B.v) - NB.vy * .4) * dt; B.v = Math.max(0, B.v);
   const lift = clamp((B.v - JT.st + 1) / 10, 0, 1); NB.vy = mix(NB.vy, up * JT.cl * lift + (up < 0 ? up * 4 : 0), Math.min(1, dt * 1.6)); if (B.v < JT.st) NB.vy -= (JT.st - B.v) * 1.2 * dt;
@@ -7518,19 +7546,19 @@ function nbRovMesh() { const g = new THREE.Group(), y = new THREE.MeshStandardMa
   const gnd = Math.max(0, landH(B.x, B.z)), hard = (Math.hypot(B.x, B.z) < 24 && alt < 36) || (inCruise(B.x, B.z) && alt < 32);
   if ((gnd > .3 && alt < gnd + 1.2) || hard) { emit({k: 'bump', s: 1}); damageBoat(hullMax() * 1.1); B.dep = 0; NB.vy = 0; B.v = 0; return; }
   if (alt <= 0) { const sink = -NB.vy; if (sink > 5 || B.v > JT.land) { emit({k: 'bump', s: Math.min(1, sink / 10)}); damageBoat((sink - 5) * 8 + Math.max(0, B.v - JT.land) * 3); } else if (B.v > 8) emit({k: 'bump', s: .3}); alt = 0; NB.vy = 0; B.v *= .55; }
-  B.dep = -alt; }; }
+  B.dep = -alt; }); }
 // pose (every client): wing attitude in flight, hover on land ignores waves, cat barely rolls, props spin
-{ const f0 = boatPose; boatPose = function (dt) { const r = f0.apply(this, arguments), H = HC(), ud = BOAT && BOAT.userData; if (!ud) return r;
+{ boatPose = after(boatPose, function (r, dt) { const H = HC(), ud = BOAT && BOAT.userData; if (!ud) return;
   if (ud.props) { const sp = H.plane ? (Math.abs(B.thr) > .02 || -(B.dep || 0) > .5 ? 38 : 0) : 18 * (.3 + Math.abs(B.thr)); for (const p of ud.props.children) { p.rotation.z += sp * dt; if (p.userData.disc) p.userData.disc.material.opacity = sp > 30 ? .18 : 0; } }
   if (H.plane) { const alt = -(B.dep || 0), vy = (alt - NB.lastDep) / Math.max(dt, 1e-3); NB.lastDep = alt; NB.pvy = mix(NB.pvy, vy, Math.min(1, dt * 3)); if (alt > .2) { B.pitch = Math.atan2(NB.pvy, Math.max(8, B.v)) * .9 + .04; B.roll = (B.yr || 0) * 1.4; B.heave = alt + Math.min(alt, 1) * 0; BOAT.position.y = alt; BOAT.rotation.set(B.pitch, B.yaw, B.roll, 'YXZ'); } }
   if (H.air && -(B.dep || 0) > .2) { B.pitch = clamp(NB.pvy * .015, -.05, .05); B.roll = (B.yr || 0) * .25; BOAT.rotation.set(B.pitch, B.yaw, B.roll, 'YXZ'); }
   if (H.hover) { const gh = landH(B.x, B.z); if (gh > -.2) { B.heave = -(B.dep || 0); B.pitch *= .3; B.roll *= .3; BOAT.position.y = B.heave; BOAT.rotation.set(B.pitch, B.yaw, B.roll, 'YXZ'); } if (ud.hovL) ud.hovL.material.emissiveIntensity = (G.wt * 2) % 1 < .5 ? 1.4 : .1; }
-  if (H.cat) { B.roll *= .35; BOAT.rotation.set(B.pitch, B.yaw, B.roll, 'YXZ'); } return r; }; }
+  if (H.cat) { B.roll *= .35; BOAT.rotation.set(B.pitch, B.yaw, B.roll, 'YXZ'); }  }); }
 // catamaran: faster bites aboard
-{ const f0 = stepGear; stepGear = function (dt) { const prev = F.st, r = f0.apply(this, arguments); if (prev !== 'wait' && F.st === 'wait' && P && P.ob && HC().cat) F.t *= .7; return r; }; }
+{ stepGear = around(stepGear, function (next, ...args) { let [dt] = args; const prev = F.st, r = next.apply(this, args); if (prev !== 'wait' && F.st === 'wait' && P && P.ob && HC().cat) F.t *= .7; return r; }); }
 // flight HUD: altitude, airspeed, climb, a stall warning
-{ const f0 = hud; hud = function () { const r = f0.apply(this, arguments); const on = P && P.seat && HC().plane; let el = NB.hudEl; if (!el && on) { el = NB.hudEl = document.createElement('div'); el.style.cssText = 'position:absolute;left:50%;top:14%;transform:translateX(-50%);font:bold 14px ui-monospace,monospace;color:#e8f4ff;text-shadow:0 1px 3px #000;text-align:center;pointer-events:none'; $('hud').appendChild(el); }
-  if (el) { el.style.display = on ? 'block' : 'none'; if (on) { const alt = -(B.dep || 0), kt = Math.round(B.v * 1.94), jt = HC().jet, st = !HC().air && !HC().vtol && alt > .5 && B.v < (jt ? 15 : 13), t = alt > .3 ? `ALT ${alt.toFixed(0)} m · ${kt} kt · ${NB.pvy >= 0 ? '▲' : '▼'} ${Math.abs(NB.pvy).toFixed(1)}${st ? '<br><span style="color:#ff5040">STALL · nose down (C), more throttle</span>' : ''}` : `${kt} kt${B.v > (jt ? 17 : 13) ? ' · <span style="color:#9fe6ff">hold Space to lift off</span>' : B.v > 3 ? ` · take-off at ${jt ? 33 : 26} kt` : ''}`; if (t !== NB.hudT) { NB.hudT = t; el.innerHTML = t; } } } return r; }; }
+{ hud = after(hud, function (r) {  const on = P && P.seat && HC().plane; let el = NB.hudEl; if (!el && on) { el = NB.hudEl = document.createElement('div'); el.style.cssText = 'position:absolute;left:50%;top:14%;transform:translateX(-50%);font:bold 14px ui-monospace,monospace;color:#e8f4ff;text-shadow:0 1px 3px #000;text-align:center;pointer-events:none'; $('hud').appendChild(el); }
+  if (el) { el.style.display = on ? 'block' : 'none'; if (on) { const alt = -(B.dep || 0), kt = Math.round(B.v * 1.94), jt = HC().jet, st = !HC().air && !HC().vtol && alt > .5 && B.v < (jt ? 15 : 13), t = alt > .3 ? `ALT ${alt.toFixed(0)} m · ${kt} kt · ${NB.pvy >= 0 ? '▲' : '▼'} ${Math.abs(NB.pvy).toFixed(1)}${st ? '<br><span style="color:#ff5040">STALL · nose down (C), more throttle</span>' : ''}` : `${kt} kt${B.v > (jt ? 17 : 13) ? ' · <span style="color:#9fe6ff">hold Space to lift off</span>' : B.v > 3 ? ` · take-off at ${jt ? 33 : 26} kt` : ''}`; if (t !== NB.hudT) { NB.hudT = t; el.innerHTML = t; } } }  }); }
 // the ROV: pilot it from the console (your mouse aims it, WASD drives, Space/C up and down, E grabs from the sea bed, F or the console to come back)
 function rovStart() { if (G.rov) { rovStop(); return; } const ud = BOAT && BOAT.userData; if (!ud || !HC().rovx) return; const [x, z] = bL2W(0, ud.rovZ); G.rov = {x, y: -1.5, z, yaw: P.yaw, t: 0}; if (ud.rovP) ud.rovP.visible = false;
   if (!NB.rov) { NB.rov = nbRovMesh(); NB.rov.scale.setScalar(1); scene.add(NB.rov); NB.rl = new THREE.SpotLight(0xfff0d8, 40 * PI, 45, .55, .5, 0); NB.rl.castShadow = false; scene.add(NB.rl, NB.rl.target); NB.teth = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()]), new THREE.LineBasicMaterial({color: 0xffc040})); NB.teth.frustumCulled = false; scene.add(NB.teth); }
@@ -7538,21 +7566,21 @@ function rovStart() { if (G.rov) { rovStop(); return; } const ud = BOAT && BOAT.
 function rovStop() { G.rov = null; if (NB.rov) NB.rov.visible = NB.rl.visible = NB.teth.visible = false; const ud = BOAT && BOAT.userData; if (ud && ud.rovP) ud.rovP.visible = true; tone(440, .04, .3); }
 addEventListener('keydown', e => { if (!G.rov || !G.on || G.chat || (e.target && /^(INPUT|TEXTAREA)$/.test(e.target.tagName))) return; if (e.code === 'KeyF') { e.stopImmediatePropagation(); rovStop(); } else if (e.code === 'KeyE' && !e.repeat) { e.stopImmediatePropagation(); const R = G.rov; let bi = -1, bd = 4.5; SUNK.forEach((q, i) => { if (q.got) return; const d = Math.hypot(q.x - R.x, q.z - R.z, (q.y || 0) - R.y); if (d < bd) { bd = d; bi = i; } });
   if (bi >= 0) { act({a: 'rovg', i: bi}); tone(300, .05, .3, 'square'); } else showMsg('Nothing in reach of the claw.', '', 1.4); } }, {capture: true});
-{ const f0 = hostAct; hostAct = function (id, m) { if (m && m.a === 'rovg') { const q = SUNK[m.i]; if (!q || q.got || !HC().rovx || B.sink > 0 || Math.hypot(q.x - B.x, q.z - B.z) > 170) return; if (!holdFits(q.kind)) { emit({k: 'holdfull', id}); return; } q.got = true; B.hold.push(q.kind); emit({k: 'sunk', i: m.i, kind: q.kind}); save(); return; } return f0.apply(this, arguments); }; }
-{ const f0 = stepPlayer; stepPlayer = function (dt) { const R = G.rov; if (!R || !P) return f0.apply(this, arguments); if (!HC().rovx || !P.ob || P.dead || P.down || B.sink > 0) { rovStop(); return f0.apply(this, arguments); }
+{ hostAct = before(hostAct, function (id, m) { if (m && m.a === 'rovg') { const q = SUNK[m.i]; if (!q || q.got || !HC().rovx || B.sink > 0 || Math.hypot(q.x - B.x, q.z - B.z) > 170) return; if (!holdFits(q.kind)) { emit({k: 'holdfull', id}); return; } q.got = true; B.hold.push(q.kind); emit({k: 'sunk', i: m.i, kind: q.kind}); save(); return; } return NEXT; }); }
+{ stepPlayer = around(stepPlayer, function (next, ...args) { let [dt] = args; const R = G.rov; if (!R || !P) return next.apply(this, args); if (!HC().rovx || !P.ob || P.dead || P.down || B.sink > 0) { rovStop(); return next.apply(this, args); }
   const ud = BOAT.userData, [bx, bz] = bL2W(0, ud.rovZ), bdy = B.yaw - (P.lastBY ?? B.yaw); P.lastBY = B.yaw; const [wx, wz] = bL2W(P.bl[0], P.bl[1]); P.x = wx; P.z = wz; P.vx = P.vz = 0;
   const fw = (K.KeyW ? 1 : 0) - (K.KeyS ? 1 : 0), st = (K.KeyD ? 1 : 0) - (K.KeyA ? 1 : 0), vu = (K.Space ? 1 : 0) - (K.KeyC ? 1 : 0), sp = 3.2, cy = Math.cos(P.yaw), sy = Math.sin(P.yaw), cp = Math.cos(P.pitch);
   R.x += (-sy * cp * fw + cy * st) * sp * dt; R.z += (-cy * cp * fw - sy * st) * sp * dt; R.y += (Math.sin(P.pitch) * fw + vu) * sp * dt;
   const bed = seaBed(R.x, R.z); R.y = clamp(R.y, Math.max(-220, bed + .7), -1); const dx = R.x - bx, dz = R.z - bz, dh = Math.hypot(dx, dz); if (dh > 140) { R.x = bx + dx / dh * 140; R.z = bz + dz / dh * 140; }
-  if (Math.random() < dt * 2) tone(90 + Math.abs(fw) * 40, .01, .2, 'sawtooth'); return; }; }
-{ const f0 = updateCamera; updateCamera = function (dt) { const r = f0.apply(this, arguments), R = G.rov; if (!R || !NB.rov) return r; cam.position.set(R.x, R.y + .35, R.z); cam.rotation.set(P.pitch, P.yaw, 0, 'YXZ');
+  if (Math.random() < dt * 2) tone(90 + Math.abs(fw) * 40, .01, .2, 'sawtooth'); return; }); }
+{ updateCamera = after(updateCamera, function (r, dt) { const R = G.rov; if (!R || !NB.rov) return; cam.position.set(R.x, R.y + .35, R.z); cam.rotation.set(P.pitch, P.yaw, 0, 'YXZ');
   NB.rov.position.set(R.x, R.y, R.z); NB.rov.rotation.set(0, P.yaw, 0); NB.rov.visible = false; NB.rl.position.set(R.x, R.y + .2, R.z); NB.rl.target.position.set(R.x - Math.sin(P.yaw) * Math.cos(P.pitch) * 10, R.y + Math.sin(P.pitch) * 10, R.z - Math.cos(P.yaw) * Math.cos(P.pitch) * 10);
   const ud = BOAT.userData, [bx, bz] = bL2W(0, ud.rovZ), pa = NB.teth.geometry.attributes.position; pa.setXYZ(0, bx, B.heave + .5, bz); pa.setXYZ(1, R.x, R.y + .3, R.z); pa.needsUpdate = true;
   let el = NB.rovEl; if (!el) { el = NB.rovEl = document.createElement('div'); el.style.cssText = 'position:absolute;left:16px;top:50%;font:12px ui-monospace,monospace;color:#9fe6ff;text-shadow:0 1px 2px #000;pointer-events:none;white-space:pre'; $('hud').appendChild(el); }
   let near = null, nd = 30; for (const q of SUNK) { if (q.got) continue; const d = Math.hypot(q.x - R.x, q.z - R.z, (q.y || 0) - R.y); if (d < nd) { nd = d; near = q; } }
-  el.textContent = `ROV\nDEPTH ${(-R.y).toFixed(0)} m\nTETHER ${Math.hypot(R.x - bx, R.z - bz).toFixed(0)}/140 m\n${near ? (nd < 4.5 ? 'E: GRAB ' + (NAMES[near.kind] || near.kind).toUpperCase() : 'CONTACT ' + nd.toFixed(0) + ' m') : 'NO CONTACT'}\nF: back on deck`; return r; }; }
-{ const f0 = hud; hud = function () { const r = f0.apply(this, arguments); if (NB.rovEl) NB.rovEl.style.display = G.rov ? 'block' : 'none'; return r; }; }
-{ const f0 = startGame; startGame = function () { if (G.rov) rovStop(); NB.vy = 0; return f0.apply(this, arguments); }; }
+  el.textContent = `ROV\nDEPTH ${(-R.y).toFixed(0)} m\nTETHER ${Math.hypot(R.x - bx, R.z - bz).toFixed(0)}/140 m\n${near ? (nd < 4.5 ? 'E: GRAB ' + (NAMES[near.kind] || near.kind).toUpperCase() : 'CONTACT ' + nd.toFixed(0) + ' m') : 'NO CONTACT'}\nF: back on deck`;  }); }
+{ hud = after(hud, function (r) {  if (NB.rovEl) NB.rovEl.style.display = G.rov ? 'block' : 'none';  }); }
+{ startGame = before(startGame, function () { if (G.rov) rovStop(); NB.vy = 0; return NEXT; }); }
 
 // ---------------- the deep, scarier: it stalks first (a ridge of spines circling closer, a heartbeat, the fish stop biting, the lights flicker), it can snatch a crew member
 // off the deck and drag them under, it remembers (scars from your guns, a blinded eye after you beat it, angrier each time) and it learns your routes (it hunts where you sail most).
@@ -7560,22 +7588,22 @@ const LVX = {ridge: null, eyes: null, lure: null, base: null, scarK: -1, hb: 0};
 function levMem() { const S = isHost() ? (G.stat || {}) : {}; return isHost() ? (S.lev || (S.lev = {n: 0, h: 0, f: 0, k: 0})) : (G.lvS || {n: 0, h: 0, f: 0, k: 0}); }
 function levHeat() { const S = G.stat; if (!S) return 1; const H = S.lvh || {}, k = Math.floor(B.x / 400) + ',' + Math.floor(B.z / 400); return 1 + Math.min(1.2, (H[k] || 0) / 300) + (G.redTide ? 1 : 0); }
 function levStalkStart(a) { const T = 20 + CR() * 14; G.stk = {a, t: 0, T}; levMem().n++; const S = G.stat, H = S && S.lvh, k = Math.floor(B.x / 400) + ',' + Math.floor(B.z / 400); emit({k: 'stalk', a: +a.toFixed(3), T: +T.toFixed(1), hot: H && (H[k] || 0) > 220 ? 1 : 0}); }
-{ const f0 = hostStep; hostStep = function (dt) { const r = f0.apply(this, arguments); if (!G.on) return r; const S = G.stat;
+{ hostStep = after(hostStep, function (r, dt) {  if (!G.on) return; const S = G.stat;
   if (S && Math.abs(B.v) > 1.5 && Math.hypot(B.x - HOME.x, B.z - HOME.z) > 280) { const H = S.lvh || (S.lvh = {}), k = Math.floor(B.x / 400) + ',' + Math.floor(B.z / 400); H[k] = Math.min(600, (H[k] || 0) + dt); }
   const K = G.stk; if (K) { K.t += dt; const ang = K.a + K.t * .1, R = mix(160, 38, smooth(clamp(K.t / K.T, 0, 1))), x = B.x + Math.sin(ang) * R, z = B.z + Math.cos(ang) * R;
     const nearLand = OBST.some(o => o.c && o.r > 5 && Math.hypot(B.x - o.x, B.z - o.z) < o.r + 70), up = alive().some(p => p.ob || Math.hypot(p.x - B.x, p.z - B.z) < 40), fl = G.flares.find(f => f.t > 0 && (f.sea || f.surf) && Math.hypot(f.x - x, f.z - z) < 45);
     if (fl || nearLand || !up || B.sink > 0 || HC().nodeep) { G.stk = null; G.deepT = fl ? 150 + CR() * 90 : 40; if (fl) levMem().f++; emit({k: 'stalkgone', fl: fl ? 1 : 0}); }
     else if (K.t >= K.T) { G.stk = null; const M2 = levMem(), hp = Math.round(90 * Math.min(2, 1 + .25 * M2.k)); G.enc = {t: 9, L: 9, a: ang, el: 0, hp, t0: G.t}; emit({k: 'circle', a: ang, L: 9}); } }
-  return r; }; }
+   }); }
 // damage it takes is remembered as scars; a kill blinds an eye and makes it tougher next time
-{ const f0 = emit; emit = function (e) { const r = f0.apply(this, arguments); if (!isHost() || !e) return r; const M2 = G.stat ? levMem() : null;
+{ emit = around(emit, function (next, ...args) { let [e] = args; const r = next.apply(this, args); if (!isHost() || !e) return r; const M2 = G.stat ? levMem() : null;
   if (e.k === 'dhit' && M2) M2.h++; if (e.k === 'deepgone' && e.dead && M2) M2.k++;
-  if (e.k === 'ram' && G.on) { const cand = alive().filter(p => p.ob && !p.seat && !p.down && !(HC().big) && !(HC().sub)); if (cand.length && CR() < .3) { const p = cand[Math.floor(CR() * cand.length)]; f0({k: 'snatch', id: p.id}); } }
-  return r; }; }
-{ const f0 = packSnap; packSnap = function () { const s = f0.apply(this, arguments), n = performance.now(); if (G.stat && n - (LVX.sentT || 0) > 3000) { LVX.sentT = n; const M2 = levMem(); s.lv = [M2.n, M2.h, M2.f, M2.k]; } return s; }; }
-{ const f0 = applySnap; applySnap = function (s) { const r = f0.apply(this, arguments); if (s.lv) G.lvS = {n: s.lv[0], h: s.lv[1], f: s.lv[2], k: s.lv[3]}; return r; }; }
+  if (e.k === 'ram' && G.on) { const cand = alive().filter(p => p.ob && !p.seat && !p.down && !(HC().big) && !(HC().sub)); if (cand.length && CR() < .3) { const p = cand[Math.floor(CR() * cand.length)]; next({k: 'snatch', id: p.id}); } }
+  return r; }); }
+{ packSnap = after(packSnap, function (s) { const n = performance.now(); if (G.stat && n - (LVX.sentT || 0) > 3000) { LVX.sentT = n; const M2 = levMem(); s.lv = [M2.n, M2.h, M2.f, M2.k]; }  }); }
+{ applySnap = after(applySnap, function (r, s) {  if (s.lv) G.lvS = {n: s.lv[0], h: s.lv[1], f: s.lv[2], k: s.lv[3]};  }); }
 // client events
-{ const f0 = applyEv; applyEv = function (e) { const r = f0.apply(this, arguments), me = myId(), near = () => !!P && (P.ob || Math.hypot(cam.position.x - B.x, cam.position.z - B.z) < BG.L * .5 + 60);
+{ applyEv = after(applyEv, function (r, e) { const me = myId(), near = () => !!P && (P.ob || Math.hypot(cam.position.x - B.x, cam.position.z - B.z) < BG.L * .5 + 60);
   if (e.k === 'stalk') { G.stkC = {a: e.a, T: e.T, t: 0, m: 0}; if (near()) { showMsg(e.hot ? 'The water goes still. It knows this route.' : 'The water goes very still.', '', 3.5); tone(41, .14, 3, 'sine'); } }
   else if (e.k === 'stalkgone') { if (G.stkC && near()) showMsg(e.fl ? 'The ridge sinks away from the red light.' : 'The ridge slides under and is gone. For now.', '', 3); G.stkC = null; }
   else if (e.k === 'circle') { G.stkC = null; const M2 = levMem(); if (near() && M2.k > 0 && !LVX.backT) { LVX.backT = 1; setTimeout(() => showMsg(M2.k > 1 ? 'It is back again. Bigger. Angrier. It has not forgotten you.' : 'It is back. One eye milky and blind. It remembers you.', '', 4), 1800); } }
@@ -7583,11 +7611,11 @@ function levStalkStart(a) { const T = 20 + CR() * 14; G.stk = {a, t: 0, T}; levM
   else if (e.k === 'snatch') { const p = PL.get(e.id); if (e.id === me && P && !P.dead) { const [lx] = P.bl, sd = lx >= 0 ? 1 : -1, [wx, wz] = bL2W((BG.hw + 4) * sd, P.bl[1]); P.ob = 0; P.seat = 0; P.x = wx; P.z = wz; P.y = 0; P.sw = 1; P.dv = 2; P.vy = 0; P.climb = null;
       LVX.drag = 2.6; G.shake = 2; $('flash').style.background = '#600'; $('flash').style.opacity = .85; setTimeout(() => { $('flash').style.opacity = 0; setTimeout(() => $('flash').style.background = '', 400); }, 300); Snd.scream(); Snd.bubbles(); showMsg('IT HAS YOU. Mash <kbd>Space</kbd> to tear free and swim up!', '', 3.5); }
     else if (p && near()) { showMsg(`It snatched ${p.name} off the deck!`, '', 3.5); Snd.hurt(at(p.rx, p.ry, p.rz, 10)); } }
-  return r; }; }
+   }); }
 // being dragged under: you sink fast unless you fight it (Space)
-{ const f0 = stepPlayer; stepPlayer = function (dt) { const r = f0.apply(this, arguments); if (LVX.drag > 0 && P) { LVX.drag -= dt; if (K.Space) LVX.drag -= dt * 1.6; P.sw = 1; P.dv = Math.min(18, (P.dv || 0) + dt * 6); P.air = Math.max(0, (P.air ?? 1) - dt * .12); G.shake = Math.max(G.shake || 0, .5); if (LVX.drag <= 0) showMsg('You tear free. Swim for the boat!', '', 2.5); } return r; }; }
+{ stepPlayer = after(stepPlayer, function (r, dt) {  if (LVX.drag > 0 && P) { LVX.drag -= dt; if (K.Space) LVX.drag -= dt * 1.6; P.sw = 1; P.dv = Math.min(18, (P.dv || 0) + dt * 6); P.air = Math.max(0, (P.air ?? 1) - dt * .12); G.shake = Math.max(G.shake || 0, .5); if (LVX.drag <= 0) showMsg('You tear free. Swim for the boat!', '', 2.5); }  }); }
 // the fish stop biting while it stalks
-{ const f0 = stepGear; stepGear = function (dt) { if (G.stkC && F.st === 'wait') F.t = Math.max(F.t, 1.5); return f0.apply(this, arguments); }; }
+{ stepGear = before(stepGear, function (dt) { if (G.stkC && F.st === 'wait') F.t = Math.max(F.t, 1.5); return NEXT; }); }
 // visuals: the circling ridge (spines in and out of the surface with a wake), eyes under the water at night, the lure on its head, scars on its skin
 function levStalkFrame(dt) { const s = G.stkC; if (!LVX.ridge) { const bone = new THREE.MeshStandardMaterial({color: 0x15181a, roughness: .45}); LVX.ridge = new THREE.Group(); for (let i = 0; i < 7; i++) { const c = new THREE.Mesh(new THREE.ConeGeometry(.3 - i * .025, 1.9 - i * .18, 5), bone); c.position.z = i * 2.2; c.rotation.x = -.5; LVX.ridge.add(c); } scene.add(LVX.ridge);
     LVX.eyes = new THREE.Group(); for (const sx of [-1.1, 1.1]) { const e = new THREE.Sprite(new THREE.SpriteMaterial({map: TX.glow, color: 0xffa020, transparent: true, opacity: 0, depthTest: false, depthWrite: false, blending: THREE.AdditiveBlending})); e.position.x = sx; e.scale.setScalar(1.6); LVX.eyes.add(e); } scene.add(LVX.eyes);
@@ -7606,8 +7634,8 @@ function levScars() { if (!LEV.body) return; const M2 = levMem(), k = Math.min(1
   col.needsUpdate = true; if (M2.k > 0 && LEV.head) { let n = 0; LEV.head.traverse(o => { if (o.isMesh && o.material.isMeshBasicMaterial && o.position.x < 0 && n < 3) { o.material = new THREE.MeshBasicMaterial({color: 0x9aa0a0}); n++; } }); }
   if (!LVX.lure && LEV.head) { const st = new THREE.Mesh(new THREE.CylinderGeometry(.04, .07, 2.6, 6), new THREE.MeshStandardMaterial({color: 0x101416, roughness: .5})); st.position.set(0, 1.8, .9); st.rotation.x = .6; LEV.head.add(st);
     LVX.lure = new THREE.Mesh(new THREE.SphereGeometry(.28, 12, 10), new THREE.MeshBasicMaterial({color: new THREE.Color().setRGB(2.5, 4, 3)})); LVX.lure.position.set(0, 2.9, 1.8); LEV.head.add(LVX.lure); } }
-{ const f0 = hud; hud = function () { const r = f0.apply(this, arguments); try { const now = performance.now(), dt = Math.min(.1, (now - (LVX.ft || now)) / 1000); LVX.ft = now; levStalkFrame(dt); if ((LVX.sc = (LVX.sc || 0) - dt) <= 0) { LVX.sc = 2; levScars(); } if (LVX.lure) LVX.lure.scale.setScalar(.8 + Math.sin(G.wt * 3) * .25); } catch (e) { if (!LVX.err) { LVX.err = 1; console.warn(e); } } return r; }; }
-{ const f0 = startGame; startGame = function () { G.stk = null; G.stkC = null; LVX.drag = 0; LVX.scarK = -1; return f0.apply(this, arguments); }; }
+{ hud = after(hud, function (r) {  try { const now = performance.now(), dt = Math.min(.1, (now - (LVX.ft || now)) / 1000); LVX.ft = now; levStalkFrame(dt); if ((LVX.sc = (LVX.sc || 0) - dt) <= 0) { LVX.sc = 2; levScars(); } if (LVX.lure) LVX.lure.scale.setScalar(.8 + Math.sin(G.wt * 3) * .25); } catch (e) { if (!LVX.err) { LVX.err = 1; console.warn(e); } }  }); }
+{ startGame = before(startGame, function () { G.stk = null; G.stkC = null; LVX.drag = 0; LVX.scarK = -1; return NEXT; }); }
 
 // ---------------- horror at sea: the Passenger (one more aboard than the crew), the fog bank (compass spins, chart dies, dead ships drift past), the lantern fish (a harbour lamp that
 // is a lure), the knock on the wheelhouse door, red tide, the lighthouse keeper's stare, tidewalkers out of the shallows, and small jumpscares. Host director hzStep; clients draw.
@@ -7651,13 +7679,13 @@ function hzStep(dt) { if (!G.on || B.sink > 0) return; const T = HZ.t, ok = (k, 
       if (w.st === 0) { w.x += dx / d * .95 * dt; w.z += dz / d * .95 * dt; if (d < BG.hw + 2.2) { G.tw.splice(i, 1); const on = alive().filter(p => p.ob && !p.seat); if (on.length) emit({k: 'snatch', id: on[Math.floor(CR() * on.length)].id, tw: 1}); else damageBoat(10); emit({k: 'twgone', i}); continue; } }
       else if (w.st === 2) { w.x -= dx / d * 1.6 * dt; w.z -= dz / d * 1.6 * dt; if (w.t > 0 && (w.back = (w.back || 0) + dt) > 6) { G.tw.splice(i, 1); continue; } } }
     if (!night) G.tw = []; } }
-{ const f0 = hostStep; hostStep = function (dt) { const r = f0.apply(this, arguments); try { hzStep(dt); } catch (e) { if (!HZ.err) { HZ.err = 1; console.warn(e); } } return r; }; }
-{ const f0 = hostAct; hostAct = function (id, m) { if (m && m.a === 'passx' && G.pass) { G.pass = null; emit({k: 'passx', by: id}); return; } if (m && m.a === 'knocko' && G.knock) { G.knock = null; emit({k: 'knocko', by: id}); return; }
-  if (m && m.a === 'twlit' && G.tw && G.tw[m.i] && G.tw[m.i].st === 0) { G.tw[m.i].st = 1; G.tw[m.i].fr = 3.5; return; } return f0.apply(this, arguments); }; }
-{ const f0 = packSnap; packSnap = function () { const s = f0.apply(this, arguments); if (G.tw && G.tw.length) s.tw = G.tw.map(w => [+w.x.toFixed(1), +w.z.toFixed(1), w.st]); else if (HZ.twSent) s.tw = []; HZ.twSent = !!(G.tw && G.tw.length); return s; }; }
-{ const f0 = applySnap; applySnap = function (s) { const r = f0.apply(this, arguments); if (s.tw) G.twC = s.tw; return r; }; }
+{ hostStep = after(hostStep, function (r, dt) {  try { hzStep(dt); } catch (e) { if (!HZ.err) { HZ.err = 1; console.warn(e); } }  }); }
+{ hostAct = before(hostAct, function (id, m) { if (m && m.a === 'passx' && G.pass) { G.pass = null; emit({k: 'passx', by: id}); return; } if (m && m.a === 'knocko' && G.knock) { G.knock = null; emit({k: 'knocko', by: id}); return; }
+  if (m && m.a === 'twlit' && G.tw && G.tw[m.i] && G.tw[m.i].st === 0) { G.tw[m.i].st = 1; G.tw[m.i].fr = 3.5; return; } return NEXT; }); }
+{ packSnap = after(packSnap, function (s) {  if (G.tw && G.tw.length) s.tw = G.tw.map(w => [+w.x.toFixed(1), +w.z.toFixed(1), w.st]); else if (HZ.twSent) s.tw = []; HZ.twSent = !!(G.tw && G.tw.length);  }); }
+{ applySnap = after(applySnap, function (r, s) {  if (s.tw) G.twC = s.tw;  }); }
 // ---- the Passenger: looks like one of the crew (their colour and name tag) at the rail, facing the sea; get close and it turns, and it has no face
-{ const f0 = applyEv; applyEv = function (e) { const r = f0.apply(this, arguments), me = myId(), near = () => !!P && (P.ob || Math.hypot(cam.position.x - B.x, cam.position.z - B.z) < BG.L * .5 + 40);
+{ applyEv = after(applyEv, function (r, e) { const me = myId(), near = () => !!P && (P.ob || Math.hypot(cam.position.x - B.x, cam.position.z - B.z) < BG.L * .5 + 40);
   switch (e.k) {
     case 'pass': if (!BOAT) break; if (HZ.pf) BOAT.remove(HZ.pf); { const f = hzFig({col: CREW_COL[(e.c || 0) % 6], noface: 1}), tag = hzTag(e.n, '#' + new THREE.Color(CREW_COL[(e.c || 0) % 6]).getHexString()); tag.position.y = 2.15; f.add(tag); f.position.set(e.lx, BDECK.y, e.lz); f.rotation.y = e.lx > 0 ? -PI / 2 : PI / 2; BOAT.add(f); HZ.pf = f; HZ.pn = e.n; HZ.pT = 0; } break;
     case 'passx': if (HZ.pf) { const f = HZ.pf; if (e.by === me) { f.rotation.y += PI; G.shake = 1.2; hzSting(1.3); Snd.scream && Snd.scream(); showMsg(`It had ${HZ.pn}'s face. Then it had no face at all.`, '', 4); setTimeout(() => { if (f.parent) f.parent.remove(f); }, 350); }
@@ -7672,13 +7700,13 @@ function hzStep(dt) { if (!G.on || B.sink > 0) return; const T = HZ.t, ok = (k, 
     case 'keeper': G.keepC = {t: 0, T: e.T}; if (P && Math.hypot(P.x - G.lh[0], P.z - G.lh[2]) < 1600) { showMsg('The lighthouse beam has stopped turning. It is pointing straight at you.', '', 5); tone(48, .1, 3, 'sine'); } break;
     case 'twon': if (near()) { showMsg('Something is wading out from the island. Tall. Thin. Get a light on them, or a flare.', '', 5); hzSting(.6); } (HZ.twFoot = HZ.twFoot || []).push([e.x, e.z]); break;
   }
-  return r; }; }
+   }); }
 // the Passenger ends when anyone walks up to it; the knock is answered at the door
-{ const f0 = stepPlayer; stepPlayer = function (dt) { const r = f0.apply(this, arguments); if (!P || !BOAT) return r;
+{ stepPlayer = after(stepPlayer, function (r, dt) {  if (!P || !BOAT) return;
   if (HZ.pf && P.ob && !HZ.pAsk) { const d = Math.hypot(P.bl[0] - HZ.pf.position.x, P.bl[1] - HZ.pf.position.z); if (d < 3.2) { HZ.pAsk = 1; act({a: 'passx'}); setTimeout(() => HZ.pAsk = 0, 2000); } }
   if (HZ.knock && P.ob && BOAT.userData.wz && Math.hypot(P.bl[0], P.bl[1] - BOAT.userData.wz[1]) < 1.6 && ePress) { HZ.knock = 0; act({a: 'knocko'}); }
   if (P.l && P.bat > 0 && hzTW().length) { _v.set(0, 0, -1).applyQuaternion(cam.quaternion); hzTW().forEach((w, i) => { if (w[2] !== 0) return; const dx = w[0] - cam.position.x, dz = w[1] - cam.position.z, d = Math.hypot(dx, dz); if (d < 32 && (dx * _v.x + dz * _v.z) / d > .9 && (HZ.twLit = (HZ.twLit || 0) + dt) > .8) { HZ.twLit = 0; act({a: 'twlit', i}); } }); }
-  return r; }; }
+   }); }
 // ---- client per-frame visuals
 const hzTW = () => isHost() ? (G.tw || []).map(w => [w.x, w.z, w.st]) : (G.twC || []);
 function hzFrame(dt) { if (!P || !G.on) return; const t = G.wt;
@@ -7728,19 +7756,19 @@ function hzJump() { if (!BOAT || !P || P.dead) return; const ud = BOAT.userData,
   else if (k === 'gull') { if (A.on) { tone(90, .5, .2, 'square'); burst(600, .5, .1, .2, 'lowpass'); } G.shake = 1; const c = document.createElement('canvas'); c.width = c.height = 128; const q = c.getContext('2d'); for (let i = 0; i < 40; i++) { q.fillStyle = `rgba(${90 + Math.random() * 60},0,0,${.3 + Math.random() * .5})`; q.beginPath(); q.arc(64 + (Math.random() - .5) * 60, 50 + Math.random() * 70, 2 + Math.random() * 12, 0, TAU); q.fill(); }
     const tx = new THREE.CanvasTexture(c); tx.colorSpace = THREE.SRGBColorSpace; const s = new THREE.Sprite(new THREE.SpriteMaterial({map: tx, transparent: true, depthTest: false, opacity: .8})); s.position.set(.15, .05, -.5); s.scale.setScalar(.35); cam.add(s); HZ.smear = {s, t: 8}; showMsg('Something hit the windscreen. It was not a gull.', '', 3); } }
 // fog: the compass spins and the chart dies; the keeper's beam stares; the cabin lamp goes out
-{ const f0 = drawCompass; drawCompass = function () { if (!(HZ.fogK > .3)) return f0.apply(this, arguments); const q = cam.quaternion.clone(); cam.quaternion.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.sin(G.wt * .7) * 2.4 + G.wt * 1.3)); try { return f0.apply(this, arguments); } finally { cam.quaternion.copy(q); } }; }
-{ const f0 = drawMap; drawMap = function () { const r = f0.apply(this, arguments); if (HZ.fogK > .3) { const c = $('map'), g = c.getContext('2d'), W = c.width, H = c.height; g.fillStyle = 'rgba(30,32,34,.92)'; g.fillRect(0, 0, W, H); for (let i = 0; i < 900; i++) { g.fillStyle = `rgba(200,200,200,${Math.random() * .25})`; g.fillRect(Math.random() * W, Math.random() * H, 2, 2); } g.fillStyle = '#c8c0b0'; g.font = 'bold 28px Georgia'; g.textAlign = 'center'; g.fillText('NOTHING ON THE CHART', W / 2, H / 2); } return r; }; }
-{ const f0 = updateWorldFx; updateWorldFx = function (...a) { const r = f0.apply(this, a); if (HZ.fogK > 0) { scene.fog.density = mix(scene.fog.density, .055, HZ.fogK); scene.fog.color.lerp(new THREE.Color(0x8a9094), HZ.fogK * .6 * (1 - TOD.night * .7)); scene.background.copy(scene.fog.color); }
+{ drawCompass = around(drawCompass, function (next, ...args) { if (!(HZ.fogK > .3)) return next.apply(this, args); const q = cam.quaternion.clone(); cam.quaternion.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.sin(G.wt * .7) * 2.4 + G.wt * 1.3)); try { return next.apply(this, args); } finally { cam.quaternion.copy(q); } }); }
+{ drawMap = after(drawMap, function (r) {  if (HZ.fogK > .3) { const c = $('map'), g = c.getContext('2d'), W = c.width, H = c.height; g.fillStyle = 'rgba(30,32,34,.92)'; g.fillRect(0, 0, W, H); for (let i = 0; i < 900; i++) { g.fillStyle = `rgba(200,200,200,${Math.random() * .25})`; g.fillRect(Math.random() * W, Math.random() * H, 2, 2); } g.fillStyle = '#c8c0b0'; g.font = 'bold 28px Georgia'; g.textAlign = 'center'; g.fillText('NOTHING ON THE CHART', W / 2, H / 2); }  }); }
+{ updateWorldFx = after(updateWorldFx, function (r, ...a) {  if (HZ.fogK > 0) { scene.fog.density = mix(scene.fog.density, .055, HZ.fogK); scene.fog.color.lerp(new THREE.Color(0x8a9094), HZ.fogK * .6 * (1 - TOD.night * .7)); scene.background.copy(scene.fog.color); }
   const kc = G.keepC; if (kc && G.lhBeam) { kc.t += a[0] || 0; if (kc.t > kc.T) G.keepC = null; else { const ang = Math.atan2(B.x - G.lh[0], B.z - G.lh[2]) + Math.sin(G.wt * 9) * .004; G.lhBeam.rotation.set(0, ang, 0); lhL.target.position.set(B.x, B.heave, B.z);
     if (!HZ.kf) { HZ.kf = hzFig({h: 1.9, col: 0x050505, skin: 0x0a0a0a}); scene.add(HZ.kf); } HZ.kf.visible = true; HZ.kf.position.set(G.lh[0] + Math.sin(ang) * 2.4, G.lh[1] - 2.2, G.lh[2] + Math.cos(ang) * 2.4); HZ.kf.rotation.y = ang + PI; } } else if (HZ.kf) HZ.kf.visible = false;
-  return r; }; }
-{ const f0 = hud; hud = function () { const r = f0.apply(this, arguments); try { const now = performance.now(), dt = Math.min(.1, (now - (HZ.ft || now)) / 1000); HZ.ft = now; hzFrame(dt);
+   }); }
+{ hud = after(hud, function (r) {  try { const now = performance.now(), dt = Math.min(.1, (now - (HZ.ft || now)) / 1000); HZ.ft = now; hzFrame(dt);
   if (HZ.pf && PL.size >= 1) { const el = $('team'); if (el && !el.querySelector('.hzP')) { if (PL.size === 1 && !el.children.length) el.innerHTML = `<div>${P.name} · aboard<i style="background:${hexS(CREW_COL[P.c % 6])}"></i></div>`; el.insertAdjacentHTML('beforeend', `<div class="hzP">${HZ.pn} · aboard<i style="background:${hexS(CREW_COL[0])}"></i></div>`); G.teamH = null; } }
-  else { const el = $('team'), q = el && el.querySelector('.hzP'); if (q) { q.remove(); G.teamH = null; if (PL.size === 1) el.innerHTML = ''; } } } catch (e) { if (!HZ.err2) { HZ.err2 = 1; console.warn(e); } } return r; }; }
+  else { const el = $('team'), q = el && el.querySelector('.hzP'); if (q) { q.remove(); G.teamH = null; if (PL.size === 1) el.innerHTML = ''; } } } catch (e) { if (!HZ.err2) { HZ.err2 = 1; console.warn(e); } }  }); }
 // red tide catches: dead-eyed fish worth more; the cabin lamp goes out with the jumpscares and the knock
 FISH.manyeye = {n: 'many-eyed fish', v: 140, s: 1.3, kg: [1, 4]};
-{ const f0 = pickFish; pickFish = function () { const k = f0.apply(this, arguments); return G.redC && !String(k).startsWith('leg_') && Math.random() < .35 ? 'manyeye' : k; }; }
-{ const f0 = startGame; startGame = function () { Object.assign(G, {pass: null, fogEv: null, lant: null, knock: null, redTide: 0, keeper: null, tw: [], twC: null, fogC: null, lantC: null, redC: 0, keepC: null}); HZ.t = {}; HZ.pf = null; HZ.fp = null; HZ.twFoot = []; return f0.apply(this, arguments); }; }
+{ pickFish = around(pickFish, function (next, ...args) { const k = next.apply(this, args); return G.redC && !String(k).startsWith('leg_') && Math.random() < .35 ? 'manyeye' : k; }); }
+{ startGame = before(startGame, function () { Object.assign(G, {pass: null, fogEv: null, lant: null, knock: null, redTide: 0, keeper: null, tw: [], twC: null, fogC: null, lantC: null, redC: 0, keepC: null}); HZ.t = {}; HZ.pf = null; HZ.fp = null; HZ.twFoot = []; return NEXT; }); }
 
 // ---------------- island events: many small islands roll one (seeded, the same for every client): thieving gulls, the Sand Mouth, the Feast, the Lighthouse Hanger,
 // the Tent, the Mourners. Each has loot worth the fright (rare+ treasure). Host runs the dangerous parts; the looks and the private scares run on each client.
@@ -7786,21 +7814,21 @@ function ieStep(dt) { for (const e of IE.list) {
   for (let i = IE.fc.length - 1; i >= 0; i--) { const c = IE.fc[i]; c.t -= dt; let tgt = null, bd = 40; for (const p of alive()) { if (p.ob || p.sw) continue; const d = Math.hypot(p.x - c.x, p.z - c.z); if (d < bd) { bd = d; tgt = p; } }
     if (c.t <= 0 || !tgt) { if (c.t <= 0) IE.fc.splice(i, 1); continue; } const dx = tgt.x - c.x, dz = tgt.z - c.z; c.x += dx / bd * 3.5 * dt; c.z += dz / bd * 3.5 * dt; if (bd < .9) { downPlayer(tgt, 'feast'); emit({k: 'down', id: tgt.id}); IE.fc.splice(i, 1); } }
   const T2 = IE.tth; if (T2) { T2.t -= dt; const p = PL.get(T2.id); if (!p || p.ob || p.sw || p.dead || p.down || T2.t <= 0 || landH(p.x, p.z) < 0) IE.tth = null; else { const dx = p.x - T2.x, dz = p.z - T2.z, d = Math.hypot(dx, dz); T2.x += dx / d * 4.4 * dt; T2.z += dz / d * 4.4 * dt; if (d < 1) { downPlayer(p, 'tent'); emit({k: 'down', id: p.id}); IE.tth = null; } } } }
-{ const f0 = hostStep; hostStep = function (dt) { const r = f0.apply(this, arguments); if (G.on) try { ieStep(dt); } catch (e) { if (!IE.err) { IE.err = 1; console.warn(e); } } return r; }; }
-{ const f0 = hostAct; hostAct = function (id, m) { const p = PL.get(id); if (m && p && m.a === 'ietent') { const e = IE.list[m.s]; if (!e || e.open || Math.hypot(p.x - e.x, p.z - e.z) > 6) return; e.open = 1; IE.tth = {id, x: p.x + Math.sin(p.yaw) * 2.2, z: p.z + Math.cos(p.yaw) * 2.2, t: 22}; emit({k: 'tento', s: m.s, id}); return; }
+{ hostStep = after(hostStep, function (r, dt) {  if (G.on) try { ieStep(dt); } catch (e) { if (!IE.err) { IE.err = 1; console.warn(e); } }  }); }
+{ hostAct = before(hostAct, function (id, m) { const p = PL.get(id); if (m && p && m.a === 'ietent') { const e = IE.list[m.s]; if (!e || e.open || Math.hypot(p.x - e.x, p.z - e.z) > 6) return; e.open = 1; IE.tth = {id, x: p.x + Math.sin(p.yaw) * 2.2, z: p.z + Math.cos(p.yaw) * 2.2, t: 22}; emit({k: 'tento', s: m.s, id}); return; }
   if (m && p && m.a === 'iegrave') { const e = IE.list[m.s]; if (!e || e.dug || Math.hypot(p.x - e.x, p.z - e.z) > 6) return; e.dug = 1; const k = lootRoll(1.3, CR, 1); if (sackFits(p, k)) { p.sack.push(k); sackSet(p); if (TRSD[k]) emit({k: 'trs', id, t: KINDS.indexOf(k)}); else if (RELICS[k]) { p.sack.pop(); sackSet(p); G.stat.rel = G.stat.rel || {}; G.stat.rel[k] = 1; emit({k: 'relic', id, r: KINDS.indexOf(k), nw: 1}); } } emit({k: 'grave', s: m.s, id}); return; }
-  if (m && p && m.a === 'mourn') { downPlayer(p, 'mourn'); emit({k: 'down', id}); return; } return f0.apply(this, arguments); }; }
-{ const f0 = packSnap; packSnap = function () { const s = f0.apply(this, arguments); if (IE.fc.length || IE.fcS) s.fc = IE.fc.map(c => [+c.x.toFixed(1), +c.z.toFixed(1)]); IE.fcS = IE.fc.length > 0; if (IE.tth || IE.thS) s.tth = IE.tth ? [+IE.tth.x.toFixed(1), +IE.tth.z.toFixed(1)] : 0; IE.thS = !!IE.tth; s.ie = IE.list.map(e => (e.open ? 1 : 0) + (e.dug ? 2 : 0) + (e.woke ? 4 : 0)).join(','); return s; }; }
-{ const f0 = applySnap; applySnap = function (s) { const r = f0.apply(this, arguments); if (s.fc) IE.fcC = s.fc; if (s.tth !== undefined) IE.thC = s.tth || null; if (s.ie) s.ie.split(',').forEach((v, i) => { const e = IE.list[i]; if (e) { e.open = !!(v & 1); e.dug = !!(v & 2); } }); return r; }; }
+  if (m && p && m.a === 'mourn') { downPlayer(p, 'mourn'); emit({k: 'down', id}); return; } return NEXT; }); }
+{ packSnap = after(packSnap, function (s) {  if (IE.fc.length || IE.fcS) s.fc = IE.fc.map(c => [+c.x.toFixed(1), +c.z.toFixed(1)]); IE.fcS = IE.fc.length > 0; if (IE.tth || IE.thS) s.tth = IE.tth ? [+IE.tth.x.toFixed(1), +IE.tth.z.toFixed(1)] : 0; IE.thS = !!IE.tth; s.ie = IE.list.map(e => (e.open ? 1 : 0) + (e.dug ? 2 : 0) + (e.woke ? 4 : 0)).join(',');  }); }
+{ applySnap = after(applySnap, function (r, s) {  if (s.fc) IE.fcC = s.fc; if (s.tth !== undefined) IE.thC = s.tth || null; if (s.ie) s.ie.split(',').forEach((v, i) => { const e = IE.list[i]; if (e) { e.open = !!(v & 1); e.dug = !!(v & 2); } });  }); }
 // ---- client
-{ const f0 = applyEv; applyEv = function (e) { const r = f0.apply(this, arguments), me = myId(), E = IE.list[e.s];
+{ applyEv = after(applyEv, function (r, e) { const me = myId(), E = IE.list[e.s];
   if (e.k === 'gsteal' && E) { E.fly = {t: 0, x0: e.x0, z0: e.z0}; if (e.id === me) { showMsg(`A gull snatched your ${NAMES[KINDS[e.n]] || 'loot'}! It took it to its nest.`, '', 3.5); if (A.on) { tone(1200, .06, .3, 'square', null, 900); tone(1500, .05, .25, 'square', null, 1100); } } }
   else if (e.k === 'smouth' && E) { E.arm.visible = true; E.at = 0; if (P && Math.hypot(P.x - E.x, P.z - E.z) < 40) { showMsg('Something is climbing the ladder. Fast. Get away from the hole!', '', 3); for (let i = 0; i < 8; i++) setTimeout(() => A.on && burst(300 + i * 60, .4, .12, .1, 'bandpass', at(E.x, E.y - 6 + i * .7, E.z, 5)), i * 380); } }
   else if (e.k === 'dead' && e.drown === 5 && e.id === me) setTimeout(() => showMsg('It pulled you down into the sand.', '', 5), 50);
   else if (e.k === 'feastw' && E) { if (P && Math.hypot(P.x - E.x, P.z - E.z) < 40) { hzSting(1); showMsg('The tablecloth moves. Things are crawling out from under it.', '', 3.5); } E.woke = 1; }
   else if (e.k === 'tento' && E) { E.open = 1; if (E.flap) E.flap.rotation.y = 1.4; if (e.id === me) { showMsg('Empty. Just your loot, and the smell. And the shadow behind you is the wrong shape.', '', 4); setTimeout(() => { hzSting(1.4); G.shake = 1.2; }, 600); } }
   else if (e.k === 'grave' && E) { E.dug = 1; if (e.id === me) { showMsg(`There is a name scratched on the lid. It is yours: ${P.name}.`, '', 4); E.left = 0; E.behind = 1.2; } }
-  return r; }; }
+   }); }
 function ieFrame(dt) { if (!P || !G.on || !IE.list.length) return; const t = G.wt; _v.set(0, 0, -1).applyQuaternion(cam.quaternion);
   for (const e of IE.list) { const d = Math.hypot(P.x - e.x, P.z - e.z); if (d > 400 && !e.fly) { if (e.gulls) e.gulls.visible = false; continue; }
     if (e.t === 'gull') { e.gulls.visible = TOD.day > .15; const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), eu = new THREE.Euler(), sc = new THREE.Vector3(1, 1, 1);
@@ -7818,16 +7846,17 @@ function ieFrame(dt) { if (!P || !G.on || !IE.list.length) return; const t = G.w
   const FC = isHost() ? IE.fc.map(c => [c.x, c.z]) : (IE.fcC || []); IE.cr = IE.cr || []; while (IE.cr.length < FC.length) { const g = new THREE.Group(), m = ieM({color: 0xcfc6b8, roughness: .5}); ieAdd(g, new THREE.SphereGeometry(.35, 10, 8), m, 0, .25, 0).scale.set(1, .5, 1.6); for (let i = 0; i < 6; i++) { const l = ieAdd(g, new THREE.CylinderGeometry(.02, .015, .6, 4), m, (i % 2 ? 1 : -1) * .3, .2, -.3 + Math.floor(i / 2) * .3); l.rotation.z = (i % 2 ? 1 : -1) * 1.1; } ieAdd(g, new THREE.SphereGeometry(.16, 8, 6), m, 0, .3, -.5); scene.add(g); IE.cr.push(g); }
   IE.cr.forEach((g, i) => { const c = FC[i]; g.visible = !!c; if (!c) return; const ox = g.position.x, oz = g.position.z; g.position.set(mix(ox || c[0], c[0], Math.min(1, dt * 8)), Math.max(0, landH(c[0], c[1])) + Math.abs(Math.sin(t * 14 + i)) * .05, mix(oz || c[1], c[1], Math.min(1, dt * 8))); g.rotation.y = Math.atan2(g.position.x - ox, g.position.z - oz) + PI; });
   const TH = isHost() ? (IE.tth ? [IE.tth.x, IE.tth.z] : null) : IE.thC; if (TH) { if (!IE.th) { IE.th = hzFig({h: 2.7, col: 0x050505, skin: 0x0c0c0c, thin: .5, arm: 1.3, eye: 0xd8d8c8}); scene.add(IE.th); } IE.th.visible = true; IE.th.position.set(TH[0], Math.max(0, landH(TH[0], TH[1])), TH[1]); IE.th.rotation.y = Math.atan2(P.x - TH[0], P.z - TH[1]) + PI; IE.th.userData.arms.forEach((a, k) => a.rotation.x = -1.2 + Math.sin(t * 10 + k * PI) * .4); } else if (IE.th) IE.th.visible = false; }
-{ const f0 = hud; hud = function () { const r = f0.apply(this, arguments); try { const now = performance.now(), dt = Math.min(.1, (now - (IE.ft || now)) / 1000); IE.ft = now; ieFrame(dt); } catch (e) { if (!IE.err2) { IE.err2 = 1; console.warn(e); } } return r; }; }
-{ const f0 = startGame; startGame = function () { for (const e of IE.list) if (e.gulls) scene.remove(e.gulls); for (let i = INTER.length - 1; i >= 0; i--) if (['ieup', 'iedn', 'tent', 'grave'].includes(INTER[i].kind)) INTER.splice(i, 1); for (let i = SURF.length - 1; i >= 0; i--) if (SURF[i].ie) SURF.splice(i, 1);
-  IE.fc = []; IE.tth = null; IE.fcC = null; IE.thC = null; const r = f0.apply(this, arguments); try { const n0 = SURF.length; ieBuild(); for (let i = n0; i < SURF.length; i++) SURF[i].ie = 1; } catch (e) { console.warn('ieBuild', e); } return r; }; }
+{ hud = after(hud, function (r) {  try { const now = performance.now(), dt = Math.min(.1, (now - (IE.ft || now)) / 1000); IE.ft = now; ieFrame(dt); } catch (e) { if (!IE.err2) { IE.err2 = 1; console.warn(e); } }  }); }
+{ startGame = before(startGame, function () { for (const e of IE.list) if (e.gulls) scene.remove(e.gulls); for (let i = INTER.length - 1; i >= 0; i--) if (['ieup', 'iedn', 'tent', 'grave'].includes(INTER[i].kind)) INTER.splice(i, 1); for (let i = SURF.length - 1; i >= 0; i--) if (SURF[i].ie) SURF.splice(i, 1);
+  IE.fc = []; IE.tth = null; IE.fcC = null; IE.thC = null; return NEXT; });
+startGame = after(startGame, function (r) { try { const n0 = SURF.length; ieBuild(); for (let i = n0; i < SURF.length; i++) SURF[i].ie = 1; } catch (e) { console.warn('ieBuild', e); } }); }
 
 // ---------------- new places (part A): the smugglers' sea cave, the WW2 submarine pen, the Maw's lair, the ice station, the floating night market, the bird colony.
 // Built once in a buildWorld wrapper (fixed spots, nudged to the right water depth); POIS appended after everything else so old indices hold. Loot spots roll per session
 // in a placeItems wrapper (WR). Geometry is merged per material into PLC.g; floors are SURF slabs, walls WALLS rects, hulls OBST so boats bump.
 const PLC = {g: null, list: [], spots: [], geo: [], mats: {}, by: {}};
 KINDS.push('egg', 'ore'); NAMES.egg = 'seabird egg'; NAMES.ore = 'vent crystal'; VALUE.egg = 28; VALUE.ore = 160; SZ.egg = 1; SZ.ore = 1; CARRY.add('egg'); CARRY.add('ore'); JOB_SKIP.push('egg', 'ore');
-{ const f0 = itemMesh; itemMesh = function (k) { if (k !== 'egg' && k !== 'ore') return f0.apply(this, arguments); const g = new THREE.Group(), m = k === 'egg' ? new THREE.MeshStandardMaterial({color: 0xd8d0b8, roughness: .6}) : new THREE.MeshStandardMaterial({color: 0xff6a20, emissive: 0xff3a00, emissiveIntensity: .8, roughness: .2}); const o = new THREE.Mesh(k === 'egg' ? new THREE.SphereGeometry(.07, 10, 8) : new THREE.OctahedronGeometry(.12), m); o.scale.y = 1.35; o.position.y = .09; g.add(o); scene.add(g); return g; }; }
+{ itemMesh = before(itemMesh, function (k) { if (k !== 'egg' && k !== 'ore') return NEXT; const g = new THREE.Group(), m = k === 'egg' ? new THREE.MeshStandardMaterial({color: 0xd8d0b8, roughness: .6}) : new THREE.MeshStandardMaterial({color: 0xff6a20, emissive: 0xff3a00, emissiveIntensity: .8, roughness: .2}); const o = new THREE.Mesh(k === 'egg' ? new THREE.SphereGeometry(.07, 10, 8) : new THREE.OctahedronGeometry(.12), m); o.scale.y = 1.35; o.position.y = .09; g.add(o); scene.add(g); return g; }); }
 function plMat(k) { const M = PLC.mats; if (M[k]) return M[k]; const S = o => new THREE.MeshStandardMaterial(Object.assign({roughness: .85}, o));
   M[k] = {rock: S({map: TX.rock, color: 0x9a9284}), dark: S({map: TX.rock, color: 0x2a2826}), conc: S({map: TX.extGrime || TX.rock, color: 0x8a8a84, roughness: .95}), rust: S({map: TX.rustH, color: 0x8a5a3a, metalness: .3}), wood: S({map: TX.wood, color: 0x6a4a2a}), planks: S({map: TX.planks || TX.wood, color: 0x8a6a48}),
     ice: S({color: 0xdfeef6, roughness: .3}), snow: S({color: 0xf2f6fa, roughness: .9}), red: S({color: 0xa8281c}), white: S({color: 0xe8e6e0}), grey: S({color: 0x4a4e52, metalness: .4, roughness: .5}), sub: S({color: 0x2a2e30, metalness: .4, roughness: .6}), cloth: S({color: 0x6a1a1a, roughness: 1, side: THREE.DoubleSide}),
@@ -7893,16 +7922,16 @@ function plBuild() { PLC.g = new THREE.Group(); scene.add(PLC.g); PLC.geo = []; 
     plLadder(x + 14, z - 9, [x + 13, 1.5, z - 8]); plFloor('stone', x - 4, x + 4, z - 4, z + 4, y + .2); const nest = new THREE.TorusGeometry(1.2, .45, 6, 14); nest.rotateX(PI / 2); plG('wood', nest, x, y + .4, z); plSpot(x, y + .45, z, 2.0, 'nest'); PLC.birds.top = y;
     PLC.birds.flock = new THREE.InstancedMesh((() => { const bg = new THREE.BufferGeometry(); bg.setAttribute('position', new THREE.Float32BufferAttribute([-.8, .14, -.1, 0, 0, .28, 0, 0, -.16, .8, .14, -.1, 0, 0, .28, 0, 0, -.16], 3)); bg.computeVertexNormals(); return bg; })(), new THREE.MeshBasicMaterial({color: 0xf0f2f2, side: THREE.DoubleSide}), 48); PLC.birds.flock.frustumCulled = false; scene.add(PLC.birds.flock); plPoi('Bird Rock', x, z, 50); }
   for (const m of mergeByMat(PLC.geo)) PLC.g.add(m); PLC.geo = []; if (typeof plBuildB === 'function') try { plBuildB(); } catch (e) { console.warn('plB', e); } }
-{ const f0 = buildWorld; buildWorld = function (...a) { const was = BUILT, r = f0.apply(this, a); if (!was && BUILT) try { plBuild(); } catch (e) { console.warn('plBuild', e); } return r; }; }
+{ buildWorld = around(buildWorld, function (next, ...a) { const was = BUILT, r = next.apply(this, a); if (!was && BUILT) try { plBuild(); } catch (e) { console.warn('plBuild', e); } return r; }); }
 // loot at the places rolls per session (eggs on the bird ledges, the warm egg in the Maw's nest)
-{ const f0 = placeItems; placeItems = function () { const r = f0.apply(this, arguments); PLC.items = []; for (const s of PLC.spots) { const k = s.tag === 'egg' ? (WR() < .1 ? lootRoll(.8, WR, 0) : 'egg') : s.tag === 'mawegg' ? 't_sn4' : lootRoll(s.d, WR, 1); const it = addItem(k, s); it.pl = s.tag; PLC.items.push(it.i); } return r; }; }
+{ placeItems = after(placeItems, function (r) {  PLC.items = []; for (const s of PLC.spots) { const k = s.tag === 'egg' ? (WR() < .1 ? lootRoll(.8, WR, 0) : 'egg') : s.tag === 'mawegg' ? 't_sn4' : lootRoll(s.d, WR, 1); const it = addItem(k, s); it.pl = s.tag; PLC.items.push(it.i); }  }); }
 // host: the egg in the Maw wakes the deep; the ice station's radio (batteries); the night market
-{ const f0 = hostAct; hostAct = function (id, m) { const p = PL.get(id); if (!m || !p) return f0.apply(this, arguments);
-  if (m.a === 'pick') { const it = ITEMS[m.i]; const was = it && it.taken; const r = f0.apply(this, arguments); if (it && !was && it.taken && it.pl === 'mawegg' && !G.mawMad) { G.mawMad = {t: 0}; emit({k: 'mawmad'}); } if (it && !was && it.taken && (it.pl === 'egg' || it.pl === 'nest')) emit({k: 'birdmad', id}); return r; }
+{ hostAct = around(hostAct, function (next, ...args) { let [id, m] = args; const p = PL.get(id); if (!m || !p) return next.apply(this, args);
+  if (m.a === 'pick') { const it = ITEMS[m.i]; const was = it && it.taken; const r = next.apply(this, args); if (it && !was && it.taken && it.pl === 'mawegg' && !G.mawMad) { G.mawMad = {t: 0}; emit({k: 'mawmad'}); } if (it && !was && it.taken && (it.pl === 'egg' || it.pl === 'nest')) emit({k: 'birdmad', id}); return r; }
   if (m.a === 'icefix') { const I = PLC.ice; if (!I || I.fixed) return; const k = p.sack.indexOf('battery'); if (k < 0) { emit({k: 'nope', id, why: 'You need batteries for the radio.'}); return; } p.sack.splice(k, 1); sackSet(p); I.fixed = 1; const c = Math.round(700 * (D.pay || 1)); G.cash += c; G.earned += c; emit({k: 'icefix', c}); save(); return; }
   if (m.a === 'mkt') { const o = MKT[m.k]; if (!o || !mktOn() || G.cash < o.c) { emit({k: 'nope', id, why: 'Not enough crew cash.'}); return; } if (o.relic && (G.stat.rel || {})[o.relic]) return; G.cash -= o.c; const give = o.give(); if (give) { if (RELICS[give]) { G.stat.rel = G.stat.rel || {}; G.stat.rel[give] = 1; emit({k: 'relic', id, r: KINDS.indexOf(give), nw: 1}); } else if (sackFits(p, give)) { p.sack.push(give); sackSet(p); if (TRSD[give]) emit({k: 'trs', id, t: KINDS.indexOf(give)}); } else { const it = addItem(give, {x: p.x, y: p.y, z: p.z}); emit({k: 'item', i: it.i, kind: give, x: p.x, y: p.y, z: p.z}); } } emit({k: 'mktok', id, n: o.n}); save(); return; }
-  return f0.apply(this, arguments); }; }
-{ const f0 = hostStep; hostStep = function (dt) { const r = f0.apply(this, arguments); const Mm = G.mawMad, mw = PLC.maw; if (Mm && mw) { Mm.t += dt; if (Mm.t > 9 && !Mm.done) { Mm.done = 1; for (const p of alive()) if (p.sw && (p.dv || 0) > 50 && Math.hypot(p.x - mw.x, p.z - mw.z) < 140) { p.dead = true; p.deadT = 0; p.sw = 0; dropCarry(p); emit({k: 'dead', id: p.id, drown: 1}); } } if (Mm.t > 600) G.mawMad = null; } return r; }; }
+  return next.apply(this, args); }); }
+{ hostStep = after(hostStep, function (r, dt) {  const Mm = G.mawMad, mw = PLC.maw; if (Mm && mw) { Mm.t += dt; if (Mm.t > 9 && !Mm.done) { Mm.done = 1; for (const p of alive()) if (p.sw && (p.dv || 0) > 50 && Math.hypot(p.x - mw.x, p.z - mw.z) < 140) { p.dead = true; p.deadT = 0; p.sw = 0; dropCarry(p); emit({k: 'dead', id: p.id, drown: 1}); } } if (Mm.t > 600) G.mawMad = null; }  }); }
 // the night market: open on calm nights; the faceless sell rare things (no curses)
 const MKT = [{n: 'A sealed sea chest', d: 'Opens into one rare or better find', c: 650, give: () => lootRoll(1.1 + CR() * .6, CR, 0)}, {n: 'A bag of old coins', d: 'Two coins from the collection', c: 260, give: () => ['t_cn2', 't_cn3', 't_cn1'][Math.floor(CR() * 3)]},
   {n: 'The Glass Eye', d: 'Relic: see treasure through walls', c: 2600, relic: 'r_eye', give: () => 'r_eye'}, {n: "The Diver's Charm", d: 'Relic: twice the air', c: 2400, relic: 'r_charm', give: () => 'r_charm'}, {n: 'Glow lures x4', d: 'For night fish and legends', c: 45, give: () => null, gear: 'baitG'}, {n: 'A jar of something', d: 'A specimen jar, sealed. It moves', c: 900, give: () => 't_sn3'}];
@@ -7910,20 +7939,20 @@ const mktOn = () => TOD.night > .45 && G.storm < .4;
 function mktOpen(i) { let el = $('mktP'); if (!el) { el = document.createElement('div'); el.id = 'mktP'; el.style.cssText = 'position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(420px,92vw);background:linear-gradient(180deg,rgba(20,14,22,.95),rgba(10,8,12,.94));border:1px solid rgba(255,180,90,.35);border-radius:8px;padding:14px 16px;color:#e8dcc4;font:13px ui-monospace,monospace;z-index:30;pointer-events:auto;box-shadow:0 10px 40px rgba(0,0,0,.6)'; document.body.appendChild(el); }
   const own = lootOwn().rel; el.innerHTML = `<h3 style="margin:0 0 4px;font:bold 15px Georgia;color:#ffb860;letter-spacing:.1em">THE NIGHT MARKET</h3><small style="color:#9a8a7a">The merchant has no face. It waits. Crew cash: ${money(G.cash)}</small>` + MKT.map((o, k) => `<div style="display:flex;justify-content:space-between;gap:10px;align-items:center;margin-top:8px;padding:6px 8px;background:rgba(255,255,255,.04);border-radius:5px"><span><b>${o.n}</b><br><small style="color:#9a8a7a">${o.d}</small></span><button data-k="${k}" ${o.relic && own[o.relic] ? 'disabled' : ''} style="background:#3a2412;color:#ffd8a0;border:1px solid #8a5a2a;border-radius:4px;padding:5px 9px;font:12px ui-monospace;cursor:pointer">${o.relic && own[o.relic] ? 'owned' : money(o.c * 1)}</button></div>`).join('') + '<div style="text-align:right;margin-top:10px"><button id="mktX" style="background:none;color:#c8b8a0;border:1px solid #6a5a4a;border-radius:4px;padding:4px 10px;cursor:pointer">Leave</button></div>';
   el.style.display = 'block'; try { document.exitPointerLock(); } catch (e) {} clearKeys(); G.mktOpen = 1; el.querySelectorAll('[data-k]').forEach(b => b.onclick = () => { const o = MKT[+b.dataset.k]; if (o.gear) act({a: 'buyg', k: o.gear, own: P.own}); else act({a: 'mkt', k: +b.dataset.k}); setTimeout(() => G.mktOpen && mktOpen(i), 300); }); $('mktX').onclick = () => { el.style.display = 'none'; G.mktOpen = 0; lockMouse(); }; }
-{ const f0 = applyEv; applyEv = function (e) { const r = f0.apply(this, arguments), me = myId();
+{ applyEv = after(applyEv, function (r, e) { const me = myId();
   if (e.k === 'mawmad' && PLC.maw && P && Math.hypot(P.x - PLC.maw.x, P.z - PLC.maw.z) < 200) { G.shake = 2.2; Snd.roar && Snd.roar(); Snd.deep && Snd.deep(); showMsg('The whole Maw shudders. Something enormous is waking below you. SWIM UP. NOW.', '', 6); }
   else if (e.k === 'icefix') { showMsg('The radio crackles into life: a station still answering from the dark. The crew earns a salvage fee.', '+' + money(e.c), 5); tone(880, .05, .8); }
   else if (e.k === 'mktok' && e.id === me) { showMsg(`The merchant hands you ${e.n.toLowerCase()} without a word.`, '', 3); Snd.coin && Snd.coin(); }
   else if (e.k === 'birdmad' && PLC.birds && P && Math.hypot(P.x - PLC.birds.x, P.z - PLC.birds.z) < 80) { PLC.birds.mad = 6; if (e.id === me && A.on) for (let i = 0; i < 6; i++) setTimeout(() => tone(1400 + Math.random() * 500, .05, .25, 'square', null, 900), i * 120); }
-  return r; }; }
+   }); }
 // client: the market appears on calm nights, the colony wheels (and dive-bombs when you rob it), the ice window shows a shape, the Maw's eggs glow
 function plFrame(dt) { if (!P || !G.on) return; const t = G.wt, mk = PLC.mkt; if (mk) { const on = mktOn() && Math.hypot(P.x - mk.x, P.z - mk.z) < 900; mk.g.visible = on; if (on) mk.boats.forEach((b, i) => { b.position.y = waveH(mk.x + b.position.x, mk.z + b.position.z, t) - .2; b.rotation.z = Math.sin(t * .7 + i) * .04; }); if (!on && G.mktOpen) { $('mktP').style.display = 'none'; G.mktOpen = 0; } }
   const bd = PLC.birds; if (bd && Math.hypot(P.x - bd.x, P.z - bd.z) < 500) { bd.flock.visible = TOD.day > .1; bd.mad = Math.max(0, (bd.mad || 0) - dt); const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), eu = new THREE.Euler(), sc = new THREE.Vector3(1, 1, 1), mad = bd.mad > 0;
     for (let i = 0; i < 48; i++) { const a = i * .37 + t * (.2 + (i % 7) * .03), r = 8 + (i % 6) * 4, dive = mad && i % 3 === 0 ? Math.max(0, Math.sin(t * 2 + i)) : 0, px = mix(bd.x + Math.cos(a) * r, P.x, dive * .8), pz = mix(bd.z + Math.sin(a) * r, P.z, dive * .8), py = mix(8 + (i % 8) * 3.5, P.y + 2, dive * .9);
       eu.set(dive * .8, -a, Math.sin(t + i) * .3); q.setFromEuler(eu); sc.set(1, 1 + Math.sin(t * 10 + i) * .4, 1); m4.compose(_v.set(px, py, pz), q, sc); bd.flock.setMatrixAt(i, m4); } bd.flock.instanceMatrix.needsUpdate = true; if (Math.random() < dt * (mad ? 6 : .5) && A.on) tone(1200 + Math.random() * 600, .02, .2, 'square', at(bd.x, 12, bd.z, 20), 800); } else if (bd) bd.flock.visible = false;
   const ic = PLC.ice; if (ic && Math.hypot(P.x - ic.x, P.z - ic.z) < 120) { if (!ic.sh) { ic.sh = new THREE.Mesh(new THREE.CircleGeometry(1, 16), new THREE.MeshBasicMaterial({color: 0x000000, transparent: true, opacity: 0, depthWrite: false})); ic.sh.rotation.x = -PI / 2; scene.add(ic.sh); } const u = (t * .08) % 1; ic.sh.position.set(ic.wx + Math.sin(u * TAU) * 2.2, ic.fy + .05, ic.wz + Math.cos(u * TAU) * 2.2); ic.sh.scale.set(2.6, 1.1, 1); ic.sh.rotation.z = -u * TAU; ic.sh.material.opacity = .55 + Math.sin(t * .5) * .2; if (Math.random() < dt * .15 && A.on && Math.hypot(P.x - ic.wx, P.z - ic.wz) < 25) { tone(60, .4, .3, 'square', at(ic.wx, ic.fy - 1, ic.wz, 6)); G.shake = Math.max(G.shake || 0, .3); } } }
-{ const f0 = hud; hud = function () { const r = f0.apply(this, arguments); try { const now = performance.now(), dt = Math.min(.1, (now - (PLC.ft || now)) / 1000); PLC.ft = now; plFrame(dt); if (typeof plFrameB === 'function') plFrameB(dt); } catch (e) { if (!PLC.err) { PLC.err = 1; console.warn(e); } } return r; }; }
-{ const f0 = startGame; startGame = function () { G.mawMad = null; if (PLC.ice) PLC.ice.fixed = 0; return f0.apply(this, arguments); }; }
+{ hud = after(hud, function (r) {  try { const now = performance.now(), dt = Math.min(.1, (now - (PLC.ft || now)) / 1000); PLC.ft = now; plFrame(dt); if (typeof plFrameB === 'function') plFrameB(dt); } catch (e) { if (!PLC.err) { PLC.err = 1; console.warn(e); } }  }); }
+{ startGame = before(startGame, function () { G.mawMad = null; if (PLC.ice) PLC.ice.fixed = 0; return NEXT; }); }
 
 // ---------------- new places (part B): the abandoned resort and its Concierge, the capsized container ship and its Stowaway, the volcano vents and their magma eels,
 // the coral temple (turn the four statues to open the vault), the pirate radio fort, the crashed cargo plane
@@ -7986,16 +8015,16 @@ function plStepB(dt) { const R = PLB.res; if (R) { const inH = alive().filter(p 
   const S = PLB.sto; if (S) { S.t -= dt; const p = PL.get(S.id); if (!p || p.dead || p.down || p.sw || S.t <= 0 || Math.hypot(p.x - PLB.cs.x, p.z - PLB.cs.z) > 60) { PLB.sto = null; emit({k: 'stooff'}); } else { const dx = p.x - S.x, dz = p.z - S.z, d = Math.hypot(dx, dz) || 1; S.x += dx / d * 4.1 * dt; S.z += dz / d * 4.1 * dt; if (d < 1) { downPlayer(p, 'stow'); emit({k: 'down', id: p.id}); PLB.sto = null; emit({k: 'stooff', got: p.id}); } } }
   for (let i = 0; i < PLB.vents.length; i++) { const v = PLB.vents[i]; for (const p of alive()) { if (!p.sw || (p.dv || 0) < 3) continue; const d = Math.hypot(p.x - v.x, p.z - v.z, -(p.dv || 0) - v.y); if (d < 3.4) { v.w = (v.w || 0) + dt; if (v.w > .05 && !v.warned) { v.warned = 1; emit({k: 'eelwarn', v: i}); } if (v.w > 1.4) { v.w = -3; v.warned = 0; emit({k: 'bite', id: p.id}); emit({k: 'eelhit', v: i}); } } } if (v.w < 0) v.w = Math.min(0, v.w + dt); else if (!alive().some(p => p.sw && Math.hypot(p.x - v.x, p.z - v.z) < 4)) { v.w = 0; v.warned = 0; } }
   if (PLB.vf && HC().sub && (B.dep || 0) > 8 && Math.hypot(B.x - PLB.vf.x, B.z - PLB.vf.z) < 70) { PLB.wrapT = (PLB.wrapT ?? 4) - dt; if (PLB.wrapT <= 0) { PLB.wrapT = 7; damageBoat(6); emit({k: 'eelwrap'}); } } else PLB.wrapT = 4; }
-{ const f0 = hostStep; hostStep = function (dt) { const r = f0.apply(this, arguments); if (G.on) try { plStepB(dt); } catch (e) { if (!PLB.err) { PLB.err = 1; console.warn(e); } } return r; }; }
-{ const f0 = hostAct; hostAct = function (id, m) { const p = PL.get(id); if (!m || !p) return f0.apply(this, arguments);
-  if (m.a === 'pick') { const it = ITEMS[m.i]; if (it && it.pl === 'vault' && !PLB.tm.open) return; return f0.apply(this, arguments); }
+{ hostStep = after(hostStep, function (r, dt) {  if (G.on) try { plStepB(dt); } catch (e) { if (!PLB.err) { PLB.err = 1; console.warn(e); } }  }); }
+{ hostAct = around(hostAct, function (next, ...args) { let [id, m] = args; const p = PL.get(id); if (!m || !p) return next.apply(this, args);
+  if (m.a === 'pick') { const it = ITEMS[m.i]; if (it && it.pl === 'vault' && !PLB.tm.open) return; return next.apply(this, args); }
   if (m.a === 'ctopen') { const c = PLB.cts[m.i]; if (!c || c.open) return; c.open = 1; if (m.i === PLB.stoI && !PLB.sto) { PLB.sto = {id, x: c.x, z: c.z, t: 30}; emit({k: 'ctopen', i: m.i, sto: 1, id}); return; } const k = lootRoll(1.0 + CR() * .3, CR, 1), it = addItem(k, {x: c.x, y: c.y + .05, z: c.z}); emit({k: 'item', i: it.i, kind: k, x: c.x, y: c.y + .05, z: c.z}); emit({k: 'ctopen', i: m.i}); return; }
   if (m.a === 'tmrot') { if (PLB.tm.open) return; PLB.tm.r[m.i] = (PLB.tm.r[m.i] + 1) % 4; if (PLB.tm.r.every(v => v === 0)) PLB.tm.open = 1; emit({k: 'tm', r: PLB.tm.r.slice(), open: PLB.tm.open}); return; }
   if (m.a === 'fortfix') { const F2 = PLB.fort; if (!F2 || F2.fixed) return; const k = p.sack.indexOf('battery'); if (k < 0) { emit({k: 'nope', id, why: 'You need batteries for the transmitter.'}); return; } p.sack.splice(k, 1); sackSet(p); F2.fixed = 1; const c = Math.round(600 * (D.pay || 1)); G.cash += c; G.earned += c; emit({k: 'fortfix', c}); save(); return; }
-  return f0.apply(this, arguments); }; }
-{ const f0 = packSnap; packSnap = function () { const s = f0.apply(this, arguments); s.plb = [PLB.con ? [+PLB.con.x.toFixed(1), +PLB.con.z.toFixed(1), PLB.con.frozen ? 1 : 0] : 0, PLB.sto ? [+PLB.sto.x.toFixed(1), +PLB.sto.z.toFixed(1)] : 0, PLB.tm.r.join('') + PLB.tm.open, PLB.cts.map(c => c.open ? 1 : 0).join(''), PLB.fort && PLB.fort.fixed ? 1 : 0]; return s; }; }
-{ const f0 = applySnap; applySnap = function (s) { const r = f0.apply(this, arguments); if (s.plb) { PLB.conC = s.plb[0] || null; PLB.stoC = s.plb[1] || null; const t = s.plb[2]; if (t) { PLB.tm.r = t.slice(0, 4).split('').map(Number); PLB.tm.open = +t[4]; } if (s.plb[3]) s.plb[3].split('').forEach((v, i) => { if (PLB.cts[i]) PLB.cts[i].open = v === '1'; }); if (PLB.fort) PLB.fort.fixed = s.plb[4]; } return r; }; }
-{ const f0 = applyEv; applyEv = function (e) { const r = f0.apply(this, arguments), me = myId(), nearR = (q, d = 60) => q && P && Math.hypot(P.x - q.x, P.z - q.z) < d;
+  return next.apply(this, args); }); }
+{ packSnap = after(packSnap, function (s) {  s.plb = [PLB.con ? [+PLB.con.x.toFixed(1), +PLB.con.z.toFixed(1), PLB.con.frozen ? 1 : 0] : 0, PLB.sto ? [+PLB.sto.x.toFixed(1), +PLB.sto.z.toFixed(1)] : 0, PLB.tm.r.join('') + PLB.tm.open, PLB.cts.map(c => c.open ? 1 : 0).join(''), PLB.fort && PLB.fort.fixed ? 1 : 0];  }); }
+{ applySnap = after(applySnap, function (r, s) {  if (s.plb) { PLB.conC = s.plb[0] || null; PLB.stoC = s.plb[1] || null; const t = s.plb[2]; if (t) { PLB.tm.r = t.slice(0, 4).split('').map(Number); PLB.tm.open = +t[4]; } if (s.plb[3]) s.plb[3].split('').forEach((v, i) => { if (PLB.cts[i]) PLB.cts[i].open = v === '1'; }); if (PLB.fort) PLB.fort.fixed = s.plb[4]; }  }); }
+{ applyEv = after(applyEv, function (r, e) { const me = myId(), nearR = (q, d = 60) => q && P && Math.hypot(P.x - q.x, P.z - q.z) < d;
   if (e.k === 'conon' && nearR(PLB.res)) { const R = PLB.res; if (A.on) { tone(1975, .08, 2.2); tone(2960, .03, 1.6); } setTimeout(() => showMsg(`The desk bell rings by itself. A room key waits on the desk. The tag says ${P.name}.`, '', 5), 400); }
   else if (e.k === 'tucked' && e.id === me) { P.x = e.x; P.z = e.z; P.y = e.y; P.ob = 0; P.sw = 0; $('flash').style.background = '#000'; $('flash').style.opacity = 1; setTimeout(() => { $('flash').style.opacity = 0; setTimeout(() => $('flash').style.background = '', 500); }, 1500); setTimeout(() => showMsg('You wake up tucked into a hotel bed, sheets pulled tight. Someone has to come and get you.', '', 6), 1600); }
   else if (e.k === 'ctopen') { const c = PLB.cts[e.i]; if (c) c.open = 1; if (e.sto && nearR(PLB.cs, 80)) { hzSting(1.6); G.shake = 1.5; if (e.id === me) showMsg('It was in this one. It is out. RUN.', '', 3); } }
@@ -8005,7 +8034,7 @@ function plStepB(dt) { const R = PLB.res; if (R) { const inH = alive().filter(p 
   else if (e.k === 'eelwrap' && P && P.ob) { G.shake = 1; if (A.on) { tone(70, .4, 1.5, 'sawtooth', null, 55); burst(3000, .2, .1, 1.5, 'highpass'); } showMsg(['Something has wrapped the hull. The metal is cooking.', 'Steam hisses inside the sub. The depth gauge glass cracks.', 'It is squeezing. Blow ballast and rise!'][Math.floor(Math.random() * 3)], '', 3); }
   else if (e.k === 'tm') { PLB.tm.r = e.r; PLB.tm.open = e.open; if (A.on && nearR(PLB.tmp, 80)) tone(80, .3, .6, 'square', null, 60); if (e.open && nearR(PLB.tmp, 120)) { showMsg('Stone grinds on stone. The vault on top of the temple slides open.', '', 4); Snd.discover && Snd.discover(); } }
   else if (e.k === 'fortfix') { showMsg('The transmitter warms up. Out of the static, a voice reads a list of names, then music. The crew earns a bounty.', '+' + money(e.c), 5); tone(660, .05, 1); }
-  return r; }; }
+   }); }
 // ---- client per-frame
 function plFrameB(dt) { if (!P) return; const t = G.wt, look = (x, z) => plSees(P, x, z, .5);
   const C = isHost() ? (PLB.con ? [PLB.con.x, PLB.con.z, PLB.con.frozen ? 1 : 0] : null) : PLB.conC, R = PLB.res;
@@ -8019,7 +8048,8 @@ function plFrameB(dt) { if (!P) return; const t = G.wt, look = (x, z) => plSees(
   for (const v of PLB.vents) { v.gl.material.opacity = .55 + Math.sin(t * 3 + v.x) * .2 + (PLB.boil && PLB.boil.v === v ? .4 : 0); v.gl.scale.setScalar(6 + (PLB.boil && PLB.boil.v === v ? Math.random() * 4 : 0)); } if (PLB.boil) { PLB.boil.t -= dt; G.shake = Math.max(G.shake || 0, .15); if (PLB.boil.t <= 0) PLB.boil = null; }
   if (PLB.eel) { PLB.eel.t -= dt; if (!PLB.em) { PLB.em = new THREE.Mesh(new THREE.CapsuleGeometry(.35, 4, 4, 10), new THREE.MeshStandardMaterial({color: 0x1a0a06, emissive: 0xff3a00, emissiveIntensity: .6})); scene.add(PLB.em); } const v = PLB.eel.v, u = 1 - PLB.eel.t / .9; PLB.em.visible = true; PLB.em.position.set(v.x, v.y + Math.sin(u * PI) * 3, v.z); PLB.em.rotation.x = u * 1.2; if (PLB.eel.t <= 0) { PLB.eel = null; PLB.em.visible = false; } }
   if (PLB.stat) PLB.stat.forEach((s, i) => { const want = s.a + PI + (PLB.tm.r[i] || 0) * PI / 2; s.f.rotation.y += angD(s.f.rotation.y, want) * Math.min(1, dt * 3); }); if (PLB.vault) PLB.vault.position.x = mix(PLB.vault.position.x, PLB.tmp.x + (PLB.tm.open ? 4.5 : 0), Math.min(1, dt * .8)); }
-{ const f0 = startGame; startGame = function () { PLB.con = null; PLB.sto = null; PLB.tm = {r: [1, 2, 3, 1], open: 0}; PLB.cts.forEach(c => c.open = 0); if (PLB.fort) PLB.fort.fixed = 0; const r = f0.apply(this, arguments); PLB.stoI = Math.floor(mulberry((G.seed || 1) ^ 0x570)() * Math.max(1, PLB.cts.length)); return r; }; }
+{ startGame = before(startGame, function () { PLB.con = null; PLB.sto = null; PLB.tm = {r: [1, 2, 3, 1], open: 0}; PLB.cts.forEach(c => c.open = 0); if (PLB.fort) PLB.fort.fixed = 0; return NEXT; });
+startGame = after(startGame, function (r) { PLB.stoI = Math.floor(mulberry((G.seed || 1) ^ 0x570)() * Math.max(1, PLB.cts.length)); }); }
 
 // ---------------- underwater, prettier but still scary: sun shafts in the shallows, kelp, rocks and coral on the bed (per 48 m cell round the camera, seeded), fish schools
 // that scatter, bubbles from divers and the sub, a visible torch beam, clearer shallows by day and a black deep, and now and then something enormous at the edge of sight.
@@ -8077,13 +8107,13 @@ function uwxFrame(dt) { if (!G.on || !P) return; uwxInit(); const cp = cam.posit
   // something enormous passes at the edge of sight in deep water (rare)
   UWX.bigT -= dt; if (UWX.big.visible) { const B2 = UWX.big.userData; B2.t += dt; const u = B2.t / B2.T; UWX.big.position.set(B2.x + B2.dx * (u - .5) * 160, B2.y, B2.z + B2.dz * (u - .5) * 160); UWX.bigM.opacity = Math.sin(u * PI) * .55; if (u >= 1) UWX.big.visible = false; }
   else if (UWX.bigT <= 0) { UWX.bigT = 50 + Math.random() * 80; if (see && dp > 25 && Math.random() < .5) { const a = Math.random() * TAU, d = 1 / Math.max(.02, scene.fog.density) * .9, x = cp.x + Math.sin(a) * d, z = cp.z + Math.cos(a) * d; UWX.big.userData = {t: 0, T: 18, x, z, y: cp.y - 6 - Math.random() * 10, dx: Math.cos(a), dz: -Math.sin(a)}; UWX.big.rotation.y = Math.atan2(Math.cos(a), -Math.sin(a)); UWX.big.visible = true; if (A.on) tone(38, .12, 6, 'sine', null, 30); } } }
-{ const f0 = hud; hud = function () { const r = f0.apply(this, arguments); try { const now = performance.now(), dt = Math.min(.1, (now - (UWX.ft || now)) / 1000); UWX.ft = now; uwxFrame(dt); } catch (e) { if (!UWX.err) { UWX.err = 1; console.warn(e); } } return r; }; }
+{ hud = after(hud, function (r) {  try { const now = performance.now(), dt = Math.min(.1, (now - (UWX.ft || now)) / 1000); UWX.ft = now; uwxFrame(dt); } catch (e) { if (!UWX.err) { UWX.err = 1; console.warn(e); } }  }); }
 
 // ---------------- the Kestrel jet seaplane (class 18), windows that read as glass, and cargo you can climb onto and walk over
 HULLS.push({n: 'Kestrel jet seaplane', d: 'A carbon-fibre jet seaplane: twin turbofans, swept wings, a bubble canopy. Twice the speed of the Albatross and climbs like a rocket. Space to lift off past 33 kt', cost: 18000, L: 13, W: 3, fb: 1.05, spd: 2.6, turn: 1.3, hold: 4, hp: 1.3, fuel: 1, col: 0x23272d, wh: [.2, .38], plane: 1, jet: 1, perk: 'Jet flight',
   form: {entry: .5, fine: 1.2, rake: .16, ff: .8, vee: .9, chine: .12, sheer: .3, sheerP: 2, transomRake: .2, sternW: .5, sternP: 2.6, bw: .12, rail: 0, tex: 'clean', side: 0x23272d, band: {y0: .5, y1: .62}, boot: 0x3ad8e8, bootY: [.02, .12], anti: 0x15181c, run: .6}, kit: {fend: 0, port: 0, stack: 0, ring: 0, ant: 0, anchor: 0}, cab: {wall: 0x1a1e24, roof: 0x23272d}});
 ENGV.push({f: [140, 300], lp: [1800, 5200], am: .04, nz: .14, whine: [2600, 6200], g: .1});
-{ const f0 = shpExtras; shpExtras = function (cls, X, ph) { const r = f0.apply(this, arguments); if (!ph && (cls === 18 || cls === 13)) try { kesLook(X, cls === 18); } catch (e) { console.warn('jetLook', e); } return r; }; }
+{ shpExtras = after(shpExtras, function (r, cls, X, ph) {  if (!ph && (cls === 18 || cls === 13)) try { kesLook(X, cls === 18); } catch (e) { console.warn('jetLook', e); }  }); }
 // ---------------- the Kestrel rebuilt as a real jet flying boat: the boat hull stays as the planing bottom, everything above the deck becomes a faired fuselage,
 // high wing, twin turbofans on pylons over the wing roots, a T-tail and wingtip floats. tubeGeo lofts a body through rings {z, y, rx, ry} (theta 0 = top)
 const yelM = () => new THREE.MeshStandardMaterial({color: 0xe8c020, roughness: .5});
@@ -8187,13 +8217,13 @@ function pcCabin(X, o) { const {g, hw, fb, zs, add, S, steel} = X, ud = g.userDa
   box(S({color: 0xc8302a, roughness: .5}), -.95, -.45, fb + .9, fb + 1.3, zT - .3, zT - .16); add(new THREE.PlaneGeometry(.18, .05), S({color: 0xffffff}), -.7, fb + 1.1, zT - .305).rotation.y = PI; add(new THREE.PlaneGeometry(.05, .18), S({color: 0xffffff}), -.7, fb + 1.1, zT - .306).rotation.y = PI;
   Object.assign(ud, {wz: [zD - 2.4, zT], ww: hw, lamp: [0, fb + 2.05, mz], lightZ: R[1].z, lightY: fb + .5, pc: 1}); }
 // after the build: the boarding ladder hangs at the door, and gangways only work through it
-{ const f0 = buildBoat; buildBoat = function () { const r = f0.apply(this, arguments), d = BOAT && BOAT.userData.door; if (d) for (const it of INTER) if (it.boat && it.kind === 'ladder') { it.lx = d[0] * (BG.hw + .45); it.lz = d[1]; it.end = [d[0] * (BG.hw - .85), d[1]]; } return r; }; }
-{ const f0 = gangway; gangway = function (dt) { const d = BOAT && BOAT.userData.door; if (d && P && !P.sw) { const [lx, lz] = bW2L(P.x, P.z); if (Math.abs(lz - d[1]) > (P.ob ? d[2] / 2 + .1 : 1.6) || (P.ob && lx * d[0] < 0)) return; } return f0.apply(this, arguments); }; }
-{ const f0 = boatPose; boatPose = function (dt) { const r = f0.apply(this, arguments), ud = BOAT && BOAT.userData; if (ud && ud.jets) { const k = Math.max(Math.abs(B.thr), -(B.dep || 0) > .5 ? .5 : 0); for (const gl of ud.jets.children) { gl.material.opacity = k * (.7 + Math.random() * .2); gl.scale.setScalar(.6 + k * 1.6); } } return r; }; }
+{ buildBoat = after(buildBoat, function (r) { const d = BOAT && BOAT.userData.door; if (d) for (const it of INTER) if (it.boat && it.kind === 'ladder') { it.lx = d[0] * (BG.hw + .45); it.lz = d[1]; it.end = [d[0] * (BG.hw - .85), d[1]]; }  }); }
+{ gangway = before(gangway, function (dt) { const d = BOAT && BOAT.userData.door; if (d && P && !P.sw) { const [lx, lz] = bW2L(P.x, P.z); if (Math.abs(lz - d[1]) > (P.ob ? d[2] / 2 + .1 : 1.6) || (P.ob && lx * d[0] < 0)) return; } return NEXT; }); }
+{ boatPose = after(boatPose, function (r, dt) { const ud = BOAT && BOAT.userData; if (ud && ud.jets) { const k = Math.max(Math.abs(B.thr), -(B.dep || 0) > .5 ? .5 : 0); for (const gl of ud.jets.children) { gl.material.opacity = k * (.7 + Math.random() * .2); gl.scale.setScalar(.6 + k * 1.6); } }  }); }
 // windows: the shared boat glass tints dark from outside (it showed the white cabin lining and read as frosted), clear while you are inside or at the wheel
-{ const f0 = buildBoat; buildBoat = function () { const r = f0.apply(this, arguments); WIN.m = null; if (BOAT) BOAT.traverse(o => { if (!WIN.m && o.isMesh && o.material && o.material.transparent && Math.abs(o.material.opacity - .16) < .001) WIN.m = o.material; }); WIN.k = -1; jetCargo(); if ((B.up.cls || 0) === 9) BHELM[0] = -.6; return r; }; }
+{ buildBoat = after(buildBoat, function (r) {  WIN.m = null; if (BOAT) BOAT.traverse(o => { if (!WIN.m && o.isMesh && o.material && o.material.transparent && Math.abs(o.material.opacity - .16) < .001) WIN.m = o.material; }); WIN.k = -1; jetCargo(); if ((B.up.cls || 0) === 9) BHELM[0] = -.6;  }); }
 const WIN = {m: null, k: -1};
-{ const f0 = hud; hud = function () { const r = f0.apply(this, arguments), m = WIN.m; if (m && P) { const ins = P.seat || inCabin() || !!G.subIn, k = ins ? 1 : 0; if (k !== WIN.k) { WIN.k = k; m.visible = !ins; m.color.setHex(0x0e1820); m.opacity = .72; m.roughness = .04; m.metalness = .6; m.needsUpdate = true; if (BOAT) BOAT.traverse(o => { if (o.isMesh && o.material && o.material !== m && o.material.transparent && o.material.opacity >= .3 && o.material.opacity <= .6 && o.material.depthWrite === false && o.material.color && o.material.color.getHex() < 0x202020) o.material.visible = !ins; }); } } return r; }; }
+{ hud = after(hud, function (r) { const m = WIN.m; if (m && P) { const ins = P.seat || inCabin() || !!G.subIn, k = ins ? 1 : 0; if (k !== WIN.k) { WIN.k = k; m.visible = !ins; m.color.setHex(0x0e1820); m.opacity = .72; m.roughness = .04; m.metalness = .6; m.needsUpdate = true; if (BOAT) BOAT.traverse(o => { if (o.isMesh && o.material && o.material !== m && o.material.transparent && o.material.opacity >= .3 && o.material.opacity <= .6 && o.material.depthWrite === false && o.material.color && o.material.color.getHex() < 0x202020) o.material.visible = !ins; }); } }  }); }
 // cargo: hatch covers, container stacks and crates on deck get a floor on top; walk into one holding W and you climb up (and you can walk along the top and drop off)
 const CGO = {list: [], t: 0};
 function jetCargo() { CGO.list = []; if (!BOAT || BG.sub) return; const ud = BOAT.userData, wz = ud.wz || [0, 0], ww = (ud.ww || 0) + .4;
@@ -8201,10 +8231,10 @@ function jetCargo() { CGO.list = []; if (!BOAT || BG.sub) return; const ud = BOA
   for (const w of BW) { if (w.y0 > .05 || w.y1 > .6 || w.y1 < 0) continue; if (w.x0 < BDECK.x0 - .5 || w.x1 > BDECK.x1 + .5 || w.z0 < BDECK.z0 - .1 || w.z1 > BDECK.z1 + .1) continue; BFL.push({x0: w.x0, x1: w.x1, z0: w.z0, z1: w.z1, y: BDECK.y + w.y1}); w.y1 = -1; }
   for (const w of BW) { const wx = w.x1 - w.x0, wd = w.z1 - w.z0; if (wx < 1 || wd < 1 || w.y1 < .45 || w.y1 > 3.3 || w.y0 > .7) continue; if (w.z1 > wz[0] - .3 && w.z0 < wz[1] + .3 && Math.max(Math.abs(w.x0), Math.abs(w.x1)) < ww) continue; if (w.x0 < BDECK.x0 - .5 || w.x1 > BDECK.x1 + .5 || w.z0 < BDECK.z0 - .1 || w.z1 > BDECK.z1 + .1) continue;
     const top = BDECK.y + w.y1; CGO.list.push({x0: w.x0, x1: w.x1, z0: w.z0, z1: w.z1, top}); BFL.push({x0: w.x0, x1: w.x1, z0: w.z0, z1: w.z1, y: top}); } }
-{ const f0 = stepPlayer; stepPlayer = function (dt) { const r = f0.apply(this, arguments); if (!P || !P.ob || P.seat || P.sw || P.climb || !CGO.list.length || !K.KeyW) { CGO.t = 0; return r; }
+{ stepPlayer = after(stepPlayer, function (r, dt) {  if (!P || !P.ob || P.seat || P.sw || P.climb || !CGO.list.length || !K.KeyW) { CGO.t = 0; return; }
   const c = Math.cos(B.yaw), s = Math.sin(B.yaw), fx = -Math.sin(P.yaw), fz = -Math.cos(P.yaw), lfx = fx * c - fz * s, lfz = fx * s + fz * c, ax = P.bl[0] + lfx * .6, az = P.bl[1] + lfz * .6;
-  const q = CGO.list.find(q => ax > q.x0 && ax < q.x1 && az > q.z0 && az < q.z1 && q.top - P.y > .6 && q.top - P.y < 3.4); if (!q) { CGO.t = 0; return r; }
-  CGO.t += dt; if (CGO.t > .22) { CGO.t = 0; P.bl = [clamp(P.bl[0] + lfx * .9, q.x0 + .3, q.x1 - .3), clamp(P.bl[1] + lfz * .9, q.z0 + .3, q.z1 - .3)]; const [wx, wz] = bL2W(P.bl[0], P.bl[1]); P.x = wx; P.z = wz; P.y = q.top; P.vy = 0; G.lspV = (G.lspV || 0) + 3; if (A.on) burst(300, .6, .08, .15, 'lowpass'); } return r; }; }
+  const q = CGO.list.find(q => ax > q.x0 && ax < q.x1 && az > q.z0 && az < q.z1 && q.top - P.y > .6 && q.top - P.y < 3.4); if (!q) { CGO.t = 0; return; }
+  CGO.t += dt; if (CGO.t > .22) { CGO.t = 0; P.bl = [clamp(P.bl[0] + lfx * .9, q.x0 + .3, q.x1 - .3), clamp(P.bl[1] + lfz * .9, q.z0 + .3, q.z1 - .3)]; const [wx, wz] = bL2W(P.bl[0], P.bl[1]); P.x = wx; P.z = wz; P.y = q.top; P.vy = 0; G.lspV = (G.lspV || 0) + 3; if (A.on) burst(300, .6, .08, .15, 'lowpass'); }  }); }
 
 // ---------------- autopilot on the host (it keeps sailing when the helmsman walks away) and auto-docking at every jetty: the home jetty, Northwatch, every island landing stage.
 // K at the wheel near one docks you; an autopilot course that ends at one docks too. B.ap = {tg, thr, st, dock, ph, s0}; event 'ap' keeps every client's VOY in step.
@@ -8213,9 +8243,9 @@ function dockList() { const L = [], hw = BG.hw, Lh = BG.L; L.push({n: 'the home 
   for (const q of (typeof PIERS !== 'undefined' ? PIERS : [])) { if (!q.root || !q.head) continue; let ux = q.head[0] - q.root[0], uz = q.head[1] - q.root[1]; const l = Math.hypot(ux, uz) || 1; ux /= l; uz /= l; L.push({n: q.n + ' landing', x: q.head[0] + ux * (2.6 + hw), z: q.head[1] + uz * (2.6 + hw), yaw: Math.atan2(-uz, ux)}); }
   L.forEach((d, i) => d.i = i); return L; }
 function dockNear(x, z, r) { let b = null, bd = r; for (const d of dockList()) { const e = Math.hypot(d.x - x, d.z - z); if (e < bd) { bd = e; b = d; } } return b; }
-{ const f0 = hostAct; hostAct = function (id, m) { if (!m || m.a !== 'ap') return f0.apply(this, arguments); const p = PL.get(id); if (!p || !p.ob) return;
+{ hostAct = before(hostAct, function (id, m) { if (!m || m.a !== 'ap') return NEXT; const p = PL.get(id); if (!p || !p.ob) return;
   if (!m.on) { if (B.ap) { B.ap = null; emit({k: 'ap', on: 0}); } return; } if (HC().sub && (B.dep || 0) > 1) { emit({k: 'nope', id, why: 'Surface first.'}); return; }
-  const D2 = m.dock != null ? dockList()[m.dock] : null; B.ap = {tg: D2 ? [D2.x, D2.z] : (m.tg || [JETTY.x, JETTY.z]), thr: 0, st: 0, dock: D2 ? D2 : null, ph: 0, pT: 0}; emit({k: 'ap', on: 1, tg: B.ap.tg, dk: D2 ? D2.n : ''}); }; }
+  const D2 = m.dock != null ? dockList()[m.dock] : null; B.ap = {tg: D2 ? [D2.x, D2.z] : (m.tg || [JETTY.x, JETTY.z]), thr: 0, st: 0, dock: D2 ? D2 : null, ph: 0, pT: 0}; emit({k: 'ap', on: 1, tg: B.ap.tg, dk: D2 ? D2.n : ''}); }); }
 function hostAp(dt) { const a = B.ap; if (!a) return; if (B.sink > 0 || (HC().plane && -(B.dep || 0) > .5) || (HC().sub && (B.dep || 0) > 1)) { B.ap = null; emit({k: 'ap', on: 0}); return; }
   if (a.ph === 2) return; // settling: boatStep wrapper glides her in
   const D2 = a.dock, fx = D2 ? -Math.sin(D2.yaw) : 0, fz = D2 ? -Math.cos(D2.yaw) : 0, app = D2 ? [D2.x - fx * (BG.L * .7 + 18), D2.z - fz * (BG.L * .7 + 18)] : null;
@@ -8228,19 +8258,19 @@ function hostAp(dt) { const a = B.ap; if (!a) return; if (B.sink > 0 || (HC().pl
     if (db < 140) { VOY.bias = 0; VOY.slow = 1; } if (a.ph === 1) h = Math.atan2(-(D2.x - B.x), -(D2.z - B.z)); }
   else if (d < 25 + BG.L / 2 || VOY.arrive) { const D3 = dockNear(tx, tz, 200); if (D3) { a.dock = D3; a.tg = [D3.x, D3.z]; a.ph = 0; emit({k: 'ap', on: 1, tg: a.tg, dk: D3.n}); } else { B.ap = null; emit({k: 'ap', on: 0, why: 'Arrived.'}); } return; }
   h += VOY.bias; const e = angD(B.yaw, h); a.st = clamp(-e * 2.2, -1, 1); const near = D2 ? Math.hypot(D2.x - B.x, D2.z - B.z) : d; a.thr = Math.min(near > 250 ? 1 : near > 90 ? .75 : D2 ? .5 : .35, VOY.slow) * (Math.abs(e) > 1.2 ? .45 : 1); }
-{ const f0 = hostStep; hostStep = function (dt) { try { hostAp(dt); } catch (e) { if (!VOY.apErr) { VOY.apErr = 1; console.warn(e); } } return f0.apply(this, arguments); }; }
+{ hostStep = before(hostStep, function (dt) { try { hostAp(dt); } catch (e) { if (!VOY.apErr) { VOY.apErr = 1; console.warn(e); } } return NEXT; }); }
 // the last few metres: a gentle, exact glide alongside, then fenders touch and she stops
-{ const f0 = boatStep; boatStep = function (dt) { const a = B.ap; if (!a || a.ph !== 2 || !a.dock) return f0.apply(this, arguments); const S = a.s0, D2 = a.dock; S.t += dt; const u = smooth(S.t / S.T), px = B.x, pz = B.z;
+{ boatStep = before(boatStep, function (dt) { const a = B.ap; if (!a || a.ph !== 2 || !a.dock) return NEXT; const S = a.s0, D2 = a.dock; S.t += dt; const u = smooth(S.t / S.T), px = B.x, pz = B.z;
   B.x = mix(S.x, D2.x, u); B.z = mix(S.z, D2.z, u); B.yaw = S.yaw + angD(S.yaw, D2.yaw) * u; B.v = Math.hypot(B.x - px, B.z - pz) / Math.max(dt, 1e-3) * Math.sign(S.v || 1); B.thr = 0; B.st = 0; B.yr = 0;
-  if (S.t >= S.T) { B.v = 0; B.ap = null; emit({k: 'ap', on: 0, why: `Docked at ${D2.n}.`, dk: D2.n, done: 1}); } }; }
-{ const f0 = applyEv; applyEv = function (e) { const r = f0.apply(this, arguments); if (e.k === 'ap') { if (!e.on && e.why && G.voyWp) { G.voyWp = null; VOY.dirty = 1; } VOY.ap = e.on ? 1 : 0; VOY.tg = e.on ? e.tg : null; VOY.dock = e.on ? e.dk || '' : ''; VOY.set = !!e.set; if (A.on && Snd.voyChime && !e.set) Snd.voyChime(!!e.on); if (e.why) showMsg(e.why, '', 2.5); if (e.done && A.on) { tone(120, .2, .3, 'square'); burst(300, .5, .1, .3, 'lowpass'); } if (e.on && e.dk && !e.set) showMsg(`Docking at ${e.dk}. You can leave the wheel.`, '', 2.5); } return r; }; }
-{ const f0 = packSnap; packSnap = function () { const s = f0.apply(this, arguments); s.ap = B.ap ? [B.ap.tg[0], B.ap.tg[1], B.ap.dock ? B.ap.dock.n : '', B.ap.ph] : 0; return s; }; }
-{ const f0 = applySnap; applySnap = function (s) { const r = f0.apply(this, arguments); if (s.ap !== undefined) { VOY.ap = s.ap ? 1 : 0; VOY.tg = s.ap ? [s.ap[0], s.ap[1]] : null; VOY.dock = s.ap ? s.ap[2] : ''; VOY.set = s.ap && s.ap[3] === 2; } return r; }; }
+  if (S.t >= S.T) { B.v = 0; B.ap = null; emit({k: 'ap', on: 0, why: `Docked at ${D2.n}.`, dk: D2.n, done: 1}); } }); }
+{ applyEv = after(applyEv, function (r, e) {  if (e.k === 'ap') { if (!e.on && e.why && G.voyWp) { G.voyWp = null; VOY.dirty = 1; } VOY.ap = e.on ? 1 : 0; VOY.tg = e.on ? e.tg : null; VOY.dock = e.on ? e.dk || '' : ''; VOY.set = !!e.set; if (A.on && Snd.voyChime && !e.set) Snd.voyChime(!!e.on); if (e.why) showMsg(e.why, '', 2.5); if (e.done && A.on) { tone(120, .2, .3, 'square'); burst(300, .5, .1, .3, 'lowpass'); } if (e.on && e.dk && !e.set) showMsg(`Docking at ${e.dk}. You can leave the wheel.`, '', 2.5); }  }); }
+{ packSnap = after(packSnap, function (s) {  s.ap = B.ap ? [B.ap.tg[0], B.ap.tg[1], B.ap.dock ? B.ap.dock.n : '', B.ap.ph] : 0;  }); }
+{ applySnap = after(applySnap, function (r, s) {  if (s.ap !== undefined) { VOY.ap = s.ap ? 1 : 0; VOY.tg = s.ap ? [s.ap[0], s.ap[1]] : null; VOY.dock = s.ap ? s.ap[2] : ''; VOY.set = s.ap && s.ap[3] === 2; }  }); }
 // HUD: a dock prompt at the wheel near a jetty; the autopilot line says when it is docking
-{ const f0 = hud; hud = function () { const r = f0.apply(this, arguments); if (!P) return r; let t = ''; if (P.seat && !VOY.ap && !(HC().plane && -(B.dep || 0) > .5) && Math.abs(B.v) < 9) { const d = dockNear(B.x, B.z, 220); if (d) t = `<kbd>K</kbd> Dock at ${d.n} (${Math.round(Math.hypot(d.x - B.x, d.z - B.z))} m)`; }
+{ hud = after(hud, function (r) {  if (!P) return; let t = ''; if (P.seat && !VOY.ap && !(HC().plane && -(B.dep || 0) > .5) && Math.abs(B.v) < 9) { const d = dockNear(B.x, B.z, 220); if (d) t = `<kbd>K</kbd> Dock at ${d.n} (${Math.round(Math.hypot(d.x - B.x, d.z - B.z))} m)`; }
   else if (VOY.ap && VOY.dock) t = VOY.set ? `Coming alongside ${VOY.dock}…` : `AUTOPILOT · docking at ${VOY.dock} · T to stop`; else if (VOY.ap && !P.seat && P.ob) t = 'Autopilot is sailing · T to stop';
-  let el = VOY.dkEl; if (!el) { el = VOY.dkEl = document.createElement('div'); el.style.cssText = 'position:absolute;left:50%;bottom:22%;transform:translateX(-50%);font:13px ui-monospace,monospace;color:#9fe6ff;text-shadow:0 1px 3px #000;pointer-events:none;text-align:center'; $('hud').appendChild(el); } if (t !== VOY.dkT) { VOY.dkT = t; el.innerHTML = t; } return r; }; }
-{ const f0 = startGame; startGame = function () { B.ap = null; VOY.ap = 0; VOY.dock = ''; return f0.apply(this, arguments); }; }
+  let el = VOY.dkEl; if (!el) { el = VOY.dkEl = document.createElement('div'); el.style.cssText = 'position:absolute;left:50%;bottom:22%;transform:translateX(-50%);font:13px ui-monospace,monospace;color:#9fe6ff;text-shadow:0 1px 3px #000;pointer-events:none;text-align:center'; $('hud').appendChild(el); } if (t !== VOY.dkT) { VOY.dkT = t; el.innerHTML = t; }  }); }
+{ startGame = before(startGame, function () { B.ap = null; VOY.ap = 0; VOY.dock = ''; return NEXT; }); }
 
 // sightlines from the wheel: the trawler and the tug had bows so high you could not see the sea ahead
 for (const i of [1, 10]) if (HULLS[i].form) HULLS[i].form.sheer = 1.0;
@@ -8250,32 +8280,32 @@ for (const i of [1, 10]) if (HULLS[i].form) HULLS[i].form.sheer = 1.0;
 // Space at the side door jumps out on purpose. A long fall kills you on impact, and holding Z gives up (respawn).
 const flyAir = () => !!HC().plane && -(B.dep || 0) > .5;
 function flyFloor(x, z, y) { const f = floorAt(x, z, y + 2, false); return f && f.s.k === 'boat' ? f.y : null; }
-{ const f0 = stepPlayer; stepPlayer = function (dt) {
-  if (!P || P.dead) return f0.apply(this, arguments);
+{ stepPlayer = around(stepPlayer, function (next, ...args) { let [dt] = args;
+  if (!P || P.dead) return next.apply(this, args);
   G.bailT = Math.max(0, (G.bailT || 0) - dt); G.flyMsgT = Math.max(0, (G.flyMsgT || 0) - dt);
   const guard = P.ob && !P.seat && flyAir() && !G.bailT, bl = P.ob ? P.bl.slice() : null, y0 = P.y, vy0 = P.vy || 0, sw0 = P.sw;
-  const r = f0.apply(this, arguments);
+  const r = next.apply(this, args);
   if (guard && !P.ob && !P.dead && !G.bailT) { P.ob = 1; P.sw = 0; P.vx = P.vz = 0; P.vy = 0; P.climb = null; const [wx, wz] = bL2W(bl[0], bl[1]); const fy = flyFloor(wx, wz, y0); P.bl = bl; P.x = wx; P.z = wz; P.y = fy != null ? fy : BDECK.y;
     if (!G.flyMsgT) { G.flyMsgT = 6; showMsg('You grab a handhold.', 'Space at the side door to jump out', 2); } }
   if (!P.dead && !G.fallSent) { const hitW = P.sw && !sw0 && vy0 < -26, hitG = !P.sw && P.vy === 0 && vy0 < -24 && P.y < y0 + .5;
     if (hitW || hitG) { G.fallSent = 1; Snd.splash(); $('flash').style.background = '#000'; $('flash').style.opacity = 1; setTimeout(() => { $('flash').style.opacity = 0; setTimeout(() => $('flash').style.background = '', 600); }, 1200); act({a: 'fall'}); } }
   if (!P.dead && P.vy > -5) G.fallSent = 0;
-  return r; }; }
+  return r; }); }
 addEventListener('keydown', e => { if (!G.on || !P || P.dead || e.repeat || e.code !== 'Space' || P.seat || !P.ob || !flyAir() || anyPanel()) return;
   if (P.psit) return; const [lx, lz] = P.bl, hw = BG.hw || 1.5, dr = BOAT && BOAT.userData.door; if (dr ? (Math.abs(lz - dr[1]) > dr[2] / 2 + .4 || lx * dr[0] < .25) : Math.abs(lx) < hw - 1.3) { if (!G.flyMsgT) { G.flyMsgT = 4; showMsg("Move to the side door to jump out", "", 2); } return; }
   const sd = dr ? dr[0] : lx >= 0 ? 1 : -1, [wx, wz] = bL2W(sd * (hw + 1.6), lz); G.bailT = 3; P.ob = 0; P.climb = null; P.x = wx; P.z = wz; P.y += -(B.dep || 0); P.vy = 2; P.vx = P.vz = 0; showMsg('You jump out!', `${Math.round(-(B.dep || 0))} m to the water`, 2); });
-{ const f0 = hostAct; hostAct = function (id, m) { if (m && m.a === 'fall') { const p = PL.get(id); if (p && !p.dead) { p.dead = true; p.down = false; p.deadT = 0; p.sw = 0; dropCarry(p); emit({k: 'dead', id: p.id, drown: m.g ? 6 : 5}); } return; } return f0.apply(this, arguments); }; }
+{ hostAct = before(hostAct, function (id, m) { if (m && m.a === 'fall') { const p = PL.get(id); if (p && !p.dead) { p.dead = true; p.down = false; p.deadT = 0; p.sw = 0; dropCarry(p); emit({k: 'dead', id: p.id, drown: m.g ? 6 : 5}); } return; } return NEXT; }); }
 // hold Z to give up
-{ const f0 = hud; hud = function () { const r = f0.apply(this, arguments); if (!P) return r; let el = G.guEl; if (!el) { el = G.guEl = document.createElement('div'); el.style.cssText = 'position:absolute;left:50%;bottom:22%;transform:translateX(-50%);font:bold 14px ui-monospace,monospace;color:#ffd0c8;text-shadow:0 1px 3px #000;text-align:center;pointer-events:none'; $('hud').appendChild(el); }
+{ hud = after(hud, function (r) {  if (!P) return; let el = G.guEl; if (!el) { el = G.guEl = document.createElement('div'); el.style.cssText = 'position:absolute;left:50%;bottom:22%;transform:translateX(-50%);font:bold 14px ui-monospace,monospace;color:#ffd0c8;text-shadow:0 1px 3px #000;text-align:center;pointer-events:none'; $('hud').appendChild(el); }
   let t = ''; if (!P.dead && !P.seat) { if (G.guT > 0) t = `Giving up… ${'█'.repeat(Math.ceil(G.guT / .15))}${'░'.repeat(Math.max(0, 10 - Math.ceil(G.guT / .15)))}`; else if ((P.sw && P.deep) || (!P.ob && P.vy < -12)) t = '<kbd>Z</kbd> hold to give up'; }
-  if (el._t !== t) { el._t = t; el.innerHTML = t; } return r; }; }
-{ const f0 = stepPlayer; stepPlayer = function (dt) { const r = f0.apply(this, arguments); if (P && !P.dead && !P.seat && K.KeyZ && !anyPanel()) { G.guT = (G.guT || 0) + dt; if (G.guT > 1.5 && !G.guSent) { G.guSent = 1; act({a: 'fall', g: 1}); } } else { G.guT = 0; if (P && !P.dead) G.guSent = 0; } return r; }; }
+  if (el._t !== t) { el._t = t; el.innerHTML = t; }  }); }
+{ stepPlayer = after(stepPlayer, function (r, dt) {  if (P && !P.dead && !P.seat && K.KeyZ && !anyPanel()) { G.guT = (G.guT || 0) + dt; if (G.guT > 1.5 && !G.guSent) { G.guSent = 1; act({a: 'fall', g: 1}); } } else { G.guT = 0; if (P && !P.dead) G.guSent = 0; }  }); }
 
 // ===== swim camera rides the waves =====
 // When swimming at the surface the view tilts with the wave slope under you and lags/overshoots the swell a little;
 // below the surface it sways gently with the surge.
-{ const f0 = updateCamera; updateCamera = function (dt) { const r = f0.apply(this, arguments);
-  if (!P || P.dead || !P.sw || P.ob || G.rov) { G.swc = null; return r; }
+{ updateCamera = after(updateCamera, function (r, dt) { 
+  if (!P || P.dead || !P.sw || P.ob || G.rov) { G.swc = null; return; }
   const t = G.wt, x = P.x, z = P.z, h = 1.2, gx = (waveH(x + h, z, t) - waveH(x - h, z, t)) / (2 * h), gz = (waveH(x, z + h, t) - waveH(x, z - h, t)) / (2 * h);
   const fx = -Math.sin(P.yaw), fz = -Math.cos(P.yaw), rx = Math.cos(P.yaw), rz = -Math.sin(P.yaw), sf = gx * fx + gz * fz, sr = gx * rx + gz * rz;
   const deep = clamp((P.dv || 0) / 2, 0, 1), k = (1 - deep) * (1.8 + G.storm * .8), c = G.swc || (G.swc = {p: 0, r: 0, y: cam.position.y, v: 0});
@@ -8284,34 +8314,34 @@ addEventListener('keydown', e => { if (!G.on || !P || P.dead || e.repeat || e.co
   const ty = cam.position.y; c.v += ((ty - c.y) * 38 - c.v * 7) * Math.min(dt, .05); c.y += c.v * Math.min(dt, .05); if (Math.abs(ty - c.y) > 3) { c.y = ty; c.v = 0; } if (deep < .2) c.y = Math.max(c.y, ty - .1);
   const sway = deep * (Math.sin(G.t * .7) * .05 + Math.sin(G.t * 1.3 + 1) * .03), chop = (1 - deep) * Math.sin(G.t * 2.3) * .015 * (1 + G.storm * 2);
   cam.position.y = c.y + chop; cam.position.x += rx * sway * 2; cam.position.z += rz * sway * 2;
-  cam.rotation.set(cam.rotation.x + c.p, cam.rotation.y, cam.rotation.z + c.r + sway, 'YXZ'); cam.updateMatrixWorld(); return r; }; }
+  cam.rotation.set(cam.rotation.x + c.p, cam.rotation.y, cam.rotation.z + c.r + sway, 'YXZ'); cam.updateMatrixWorld();  }); }
 
 // ===== Space to jump; Space on the chart plots =====
 addEventListener('keydown', e => { if (!G.map || !G.on || G.paused || (e.code !== 'Space' && e.code !== 'Enter')) return; e.stopImmediatePropagation(); e.preventDefault(); if (!e.repeat) voyPlot(voyCursorWorld()); }, {capture: true});
 addEventListener('keydown', e => { if (e.code !== 'Space' || e.repeat || !G.on || G.paused || G.map || anyPanel() || !P || P.dead || P.down || P.seat || P.sw || P.climb || P.hd >= 0 || P.cas || G.rov || P.scope) return;
   if (P.ob && flyAir()) return; if (!G.onFl) return; P.vy = 5.6; P.y += .02; G.onFl = 0; Snd.step && Snd.step('wood', .6); });
 // while you're in the air after jumping off a deck, you keep moving with the boat
-{ const f0 = stepPlayer; stepPlayer = function (dt) {
+{ stepPlayer = around(stepPlayer, function (next, ...args) { let [dt] = args;
   if (P && G.jb && !P.ob && !P.sw && !P.dead) { const [wx, wz] = bL2W(G.jb[0], G.jb[1]); P.x = wx; P.z = wz; P.yaw += angD(G.jb[2], B.yaw); }
-  const wasOb = P && P.ob, r = f0.apply(this, arguments); if (!P) return r;
+  const wasOb = P && P.ob, r = next.apply(this, args); if (!P) return r;
   G.onFl = !P.sw && !P.seat && !P.climb && Math.abs(P.vy || 0) < .01;
   if ((G.jb || (wasOb && P.vy > 0)) && !P.ob && !P.sw && !P.dead && P.y > BDECK.y - 1.5) { const l = bW2L(P.x, P.z); G.jb = [l[0], l[1], B.yaw]; } else G.jb = null;
-  return r; }; }
+  return r; }); }
 
 // ===== autopilot in the air =====
 // Planes: far courses take off from the water, climb to cruise (clearing islands, the rig and the liner), fly the heading,
 // then descend, slow to landing speed and touch down gently near the target; on the water the normal autopilot docks her.
-{ const f0 = hostAp; hostAp = function (dt) { const a = B.ap, H = HC(); if (!a || !H.plane || B.sink > 0) return f0.apply(this, arguments);
+{ hostAp = around(hostAp, function (next, ...args) { let [dt] = args; const a = B.ap, H = HC(); if (!a || !H.plane || B.sink > 0) return next.apply(this, args);
   const alt = -(B.dep || 0), [tx, tz] = a.dock ? [a.dock.x, a.dock.z] : a.tg, d = Math.hypot(tx - B.x, tz - B.z);
   const JT = H.balloon ? {to: -1, st: -10, cl: 3, vf: 6} : H.vtol ? {to: -1, st: -10, cl: 14, vf: 22} : H.air ? {to: -1, st: -10, cl: 4, vf: 12} : H.jet ? {to: 17, st: 15, cl: 15, vf: 36} : {to: 13, st: 12, cl: 8, vf: 25};
-  if (alt <= .3) { a.up = null; if (a.ph === 2) return; f0.apply(this, arguments); if (!B.ap) return; if (d > 1200 && a.ph === 0) { a.up = 1; a.thr = 1; } return; }
+  if (alt <= .3) { a.up = null; if (a.ph === 2) return; next.apply(this, args); if (!B.ap) return; if (d > 1200 && a.ph === 0) { a.up = 1; a.thr = 1; } return; }
   const h = Math.atan2(-(tx - B.x), -(tz - B.z)), e = angD(B.yaw, h); a.st = clamp(-e * 1.6, -1, 1); a.ph = 0;
   const fx = -Math.sin(B.yaw), fz = -Math.cos(B.yaw); let flo = 0;
   for (const k of [0, 60, 140, 260, 420]) { const x = B.x + fx * k, z = B.z + fz * k, gh = landH(x, z); if (gh > .2) flo = Math.max(flo, gh + 20); if (Math.hypot(x, z) < 60) flo = Math.max(flo, 88); if (inCruise(x, z)) flo = Math.max(flo, 42); }
   const fin = d < 260 ? 0 : d < 1100 ? (d - 260) / 840 * 75 : 95, altT = Math.max(fin, flo), vT = d < 1100 || Math.abs(e) > 1.4 ? JT.vf : 99;
   a.thr = vT > 90 ? 1 : clamp(.25 + (vT - B.v) * .08, 0, 1);
   const lift = clamp((B.v - JT.st + 1) / 10, 0, 1), vd = clamp((altT - alt) * .35, alt < 5 ? -1.3 : -3.5, JT.cl);
-  a.up = vd >= 0 ? clamp(vd / (JT.cl * Math.max(lift, .3)), 0, 1) : clamp(vd / (JT.cl * lift + 4), -1, 0); }; }
+  a.up = vd >= 0 ? clamp(vd / (JT.cl * Math.max(lift, .3)), 0, 1) : clamp(vd / (JT.cl * lift + 4), -1, 0); }); }
 
 // ===== shipwright: design your own boat =====
 // One custom hull slot (HULLS[CUST_I]). The design lives in B.up.cust (saved and synced with the rest of B.up); custApply()
@@ -8339,23 +8369,23 @@ function custApply() { const d = custNorm(B.up.cust), H = HULLS[CUST_I], st = cu
     form: Object.assign({}, CW.bow[d.bow].f), cab: {wall: CW.cc[d.cc], roof: CW.cc[d.cc] === 0x1a1c20 ? 0xe8e8e4 : 0x2a2e34}, boost: undefined});
   const pk = CW.perk[d.perk]; if (pk.k) { H[pk.k] = pk.v || 1; H.perk = pk.n; } return H; }
 function boatSig() { const c = B.up.cls || 0; return c + ':' + (B.up.paint || 0) + (c === CUST_I ? ':' + JSON.stringify(custNorm(B.up.cust)) : ''); }
-{ const f0 = buildBoat; buildBoat = function () { if ((B.up.cls || 0) === CUST_I) custApply(); return f0.apply(this, arguments); }; }
+{ buildBoat = before(buildBoat, function () { if ((B.up.cls || 0) === CUST_I) custApply(); return NEXT; }); }
 // host: build or refit to a design
-{ const f0 = hostAct; hostAct = function (id, m) { if (!m || m.a !== 'cust') return f0.apply(this, arguments); const p = PL.get(id); if (!p) return; const now = performance.now() / 1000; if ((p.buyT || 0) > now) return; p.buyT = now + .6;
+{ hostAct = before(hostAct, function (id, m) { if (!m || m.a !== 'cust') return NEXT; const p = PL.get(id); if (!p) return; const now = performance.now() / 1000; if ((p.buyT || 0) > now) return; p.buyT = now + .6;
   const d = custNorm(m.d), st = custStats(d), own = Array.isArray(B.up.own) ? B.up.own : (B.up.own = [0, B.up.cls || 0]), had = own.includes(CUST_I), same = had && JSON.stringify(custNorm(B.up.cust)) === JSON.stringify(d);
   const price = freeAll() ? 0 : same ? 0 : had ? Math.round(st.cost * .3 / 50) * 50 : st.cost, port = voyPortNear(B.x, B.z, 60 + BG.L * .5);
   if (same && (B.up.cls || 0) === CUST_I) return; const H2 = Object.assign({}, HULLS[CUST_I], {hold: st.hold});
   if (sackUsed(B.hold) > Math.round(H2.hold * [1, 1.5, 2][B.up.hold || 0]) * 2) { emit({k: 'holdbig', id}); return; } if (B.driver) { emit({k: 'nope', id, why: 'Someone is at the wheel.'}); return; }
   if (!port) { emit({k: 'nope', id, why: 'Bring the boat into a harbour first.'}); return; } if (G.cash < price) { emit({k: 'nope', id, why: 'Not enough crew cash.'}); return; }
   G.cash -= price; if (!had) own.push(CUST_I); B.up.cust = d; B.up.cls = CUST_I; buildBoat(); resetBoat(false); if (port !== JETTY) { B.x = port.x; B.z = port.z - 12.5 - BG.hw; B.yaw = PI / 2; } B.fuel = tankMax(); B.hull = hullMax();
-  { let n = 0; for (const q of PL.values()) if (q.ob) { const sp = boatSpawn(n++); q.bl = sp.bl; q.y = sp.y; q.climb = null; q.seat = 0; q.rest = 0; } } emit({k: 'bought', n: HULLS[CUST_I].n, hull: CUST_I}); save(); }; }
+  { let n = 0; for (const q of PL.values()) if (q.ob) { const sp = boatSpawn(n++); q.bl = sp.bl; q.y = sp.y; q.climb = null; q.seat = 0; q.rest = 0; } } emit({k: 'bought', n: HULLS[CUST_I].n, hull: CUST_I}); save(); }); }
 // the shop: a design panel at the top of the Boats tab, with a side-on sketch and live stats
 function custSketch(c, d) { const g = c.getContext('2d'), W = c.width, H = c.height, k = (W - 40) / 22, L = d.L * k, x0 = (W - L) / 2, wl = H * .62, fb = (.95 + d.L * .03) * k * 1.4, hex = v => '#' + v.toString(16).padStart(6, '0');
   g.clearRect(0, 0, W, H); g.fillStyle = '#9cc4d8'; g.fillRect(0, wl, W, H - wl); const bowX = x0, rk = [0, .1, .02, .06][d.bow] * L, sh = [.9, 1.1, .55, .5][d.bow] * k * .9;
   g.fillStyle = hex(CW.hc[d.hc]); g.beginPath(); g.moveTo(bowX - rk, wl - fb - sh); g.quadraticCurveTo(bowX + L * .35, wl - fb, x0 + L, wl - fb); g.lineTo(x0 + L, wl + k * .9); g.lineTo(bowX + L * [.18, .3, .06, .22][d.bow], wl + k * 1.1); g.quadraticCurveTo(bowX + 2, wl + k * .5, bowX - rk, wl - fb - sh); g.fill();
   const [a, b] = CW.cab[d.cab].wh, cx0 = x0 + L * a, cx1 = x0 + L * b, ch = k * 2.1; g.fillStyle = hex(CW.cc[d.cc]); g.fillRect(cx0, wl - fb - ch, cx1 - cx0, ch); g.fillStyle = '#18242c'; g.fillRect(cx0 + 4, wl - fb - ch + 5, cx1 - cx0 - 8, ch * .4);
   { const c = CW.hc[d.hc], lu = ((c >> 16) * .3 + ((c >> 8) & 255) * .59 + (c & 255) * .11); g.fillStyle = lu > 150 ? '#1a1a1a' : '#f0ece0'; } g.font = 'bold 11px Georgia'; g.textAlign = 'center'; g.fillText(d.name, x0 + L * .72, wl - fb * .35); g.fillStyle = '#1a1a1a'; g.font = '11px Georgia'; g.fillText(`${d.L} m × ${d.W} m`, W / 2, H - 6); }
-{ const f0 = drawShop; drawShop = function () { const r = f0.apply(this, arguments); if (!G.shopOpen || G.shopTab !== 'boats') return r;
+{ drawShop = after(drawShop, function (r) {  if (!G.shopOpen || G.shopTab !== 'boats') return;
   const own = Array.isArray(B.up.own) ? B.up.own : [0], had = own.includes(CUST_I), aboard = (B.up.cls || 0) === CUST_I; if (!G.cd) G.cd = custNorm(B.up.cust);
   const d = G.cd = custNorm(G.cd), st = custStats(d), same = had && JSON.stringify(custNorm(B.up.cust)) === JSON.stringify(d), price = freeAll() ? 0 : same ? 0 : had ? Math.round(st.cost * .3 / 50) * 50 : st.cost;
   const docked = !!voyPortNear(B.x, B.z, 60 + BG.L * .5), why = !docked ? 'Dock at a harbour' : B.driver ? 'Someone is at the wheel' : G.cash < price ? `${money(price - G.cash)} short` : '';
@@ -8379,7 +8409,7 @@ function custSketch(c, d) { const g = c.getContext('2d'), W = c.width, H = c.hei
   L0.querySelectorAll('[data-cs]').forEach(e => e.onclick = () => { G.cd[e.dataset.cs] = +e.dataset.v; upd(); });
   L0.querySelectorAll('[data-cn]').forEach(e => { e.onchange = () => { G.cd.name = e.value; upd(); }; e.onkeydown = ev => ev.stopPropagation(); });
   L0.querySelectorAll('[data-cb]').forEach(e => e.onclick = () => { if (e.disabled) return; e.disabled = true; act({a: 'cust', d: G.cd}); setTimeout(drawShop, 1000); });
-  return r; }; }
+   }); }
 
 // ===== places C and monsters C: the Maelstrom (whirlpool), the Lighthouse Graveyard, the Tall Man of the Shallows, the leviathan calf =====
 const NGC = {wp: null, lg: null, tm: null, cf: null};
@@ -8409,16 +8439,16 @@ function ngBuild() {
     plPoi('Lighthouse Graveyard', x, z, 60); }
 }
 function ngClimb(T, up) { const f = $('flash'); f.style.background = '#000'; f.style.opacity = .9; setTimeout(() => { if (up) { P.x = T.x + 1.2; P.z = T.z; P.y = T.top; } else { P.x = T.x + Math.sin(T.a) * 2.6; P.z = T.z + Math.cos(T.a) * 2.6; P.y = .8; } P.vx = P.vz = P.vy = 0; f.style.opacity = 0; setTimeout(() => f.style.background = '', 400); }, 450); NGC.topT = 0; }
-{ const f0 = plBuildB; plBuildB = function () { const r = f0.apply(this, arguments); try { ngBuild(); for (const m of mergeByMat(PLC.geo)) PLC.g.add(m); PLC.geo = []; } catch (e) { console.warn('ngBuild', e); } return r; }; }
+{ plBuildB = after(plBuildB, function (r) {  try { ngBuild(); for (const m of mergeByMat(PLC.geo)) PLC.g.add(m); PLC.geo = []; } catch (e) { console.warn('ngBuild', e); }  }); }
 // the Maelstrom's pull: boats (host) and swimmers (each client) swirl round and in; its eye drags you under
 function wpPull(x, z, k, dt) { const W = NGC.wp; if (!W) return null; const dx = x - W.x, dz = z - W.z, d = Math.hypot(dx, dz); if (d > W.R || d < .01) return null; const u = 1 - d / W.R, vt = (2 + 10 * u) * k, vr = (.9 + 5 * u * u) * k;
   return [(-dz / d * vt - dx / d * vr) * dt, (dx / d * vt - dz / d * vr) * dt, d]; }
-{ const f0 = boatStep; boatStep = function (dt) { const r = f0.apply(this, arguments); if (!NGC.wp || B.sink > 0 || (HC().plane && -(B.dep || 0) > .5) || (HC().sub && (B.dep || 0) > 2)) return r; const big = HC().big, q = wpPull(B.x, B.z, big ? .3 : 1, dt); if (!q) return r;
-  B.x += q[0]; B.z += q[1]; B.yaw += (q[0] * Math.cos(B.yaw) - q[1] * Math.sin(B.yaw)) * .02; if (q[2] < 14) { damageBoat(hullMax() * .05 * dt * (big ? .3 : 1)); if ((NGC.wpT = (NGC.wpT || 0) - dt) <= 0) { NGC.wpT = 1.2; emit({k: 'bump', s: .5}); } } return r; }; }
-{ const f0 = stepPlayer; stepPlayer = function (dt) { const r = f0.apply(this, arguments); if (!P || P.dead || !P.sw || !NGC.wp) return r; const q = wpPull(P.x, P.z, .45, dt); if (!q) return r; P.x += q[0]; P.z += q[1];
-  if (q[2] < 10) { P.dv = Math.min(-NGC.wp.bed - .8, (P.dv || 0) + dt * 5); if (!NGC.wpMsg) { NGC.wpMsg = 1; showMsg('The Maelstrom drags you under!', '', 3); Snd.bubbles(); } } else NGC.wpMsg = 0; return r; }; }
+{ boatStep = after(boatStep, function (r, dt) {  if (!NGC.wp || B.sink > 0 || (HC().plane && -(B.dep || 0) > .5) || (HC().sub && (B.dep || 0) > 2)) return; const big = HC().big, q = wpPull(B.x, B.z, big ? .3 : 1, dt); if (!q) return;
+  B.x += q[0]; B.z += q[1]; B.yaw += (q[0] * Math.cos(B.yaw) - q[1] * Math.sin(B.yaw)) * .02; if (q[2] < 14) { damageBoat(hullMax() * .05 * dt * (big ? .3 : 1)); if ((NGC.wpT = (NGC.wpT || 0) - dt) <= 0) { NGC.wpT = 1.2; emit({k: 'bump', s: .5}); } }  }); }
+{ stepPlayer = after(stepPlayer, function (r, dt) {  if (!P || P.dead || !P.sw || !NGC.wp) return; const q = wpPull(P.x, P.z, .45, dt); if (!q) return; P.x += q[0]; P.z += q[1];
+  if (q[2] < 10) { P.dv = Math.min(-NGC.wp.bed - .8, (P.dv || 0) + dt * 5); if (!NGC.wpMsg) { NGC.wpMsg = 1; showMsg('The Maelstrom drags you under!', '', 3); Snd.bubbles(); } } else NGC.wpMsg = 0;  }); }
 // the leviathan calf (host): a young one surfaces beside the boat out in the deep. Leave it be and it sings and goes; hurt it and its mother comes
-{ const f0 = hostStep; hostStep = function (dt) { const r = f0.apply(this, arguments); try { cfStep(dt); } catch (e) { if (!NGC.cfErr) { NGC.cfErr = 1; console.warn(e); } } return r; }; }
+{ hostStep = after(hostStep, function (r, dt) {  try { cfStep(dt); } catch (e) { if (!NGC.cfErr) { NGC.cfErr = 1; console.warn(e); } }  }); }
 function cfStep(dt) { if (!G.on) return; let C = NGC.cf;
   if (!C) { NGC.cfT = (NGC.cfT ?? 120 + CR() * 120) - dt; if (NGC.cfT > 0) return; NGC.cfT = 200 + CR() * 200; if (B.sink > 0 || !hzSea() || seaBed(B.x, B.z) > -45 || G.enc || G.stk || HC().nodeep || CR() > .35 || (HC().plane && -(B.dep || 0) > .5)) return;
     const s = CR() < .5 ? -1 : 1, a = B.yaw + s * PI / 2; C = NGC.cf = {x: B.x - Math.sin(a) * 60, z: B.z - Math.cos(a) * 60, y: -6, yaw: B.yaw, t: 0, hp: 40, st: 0, s}; emit({k: 'calf', st: 0}); return; }
@@ -8427,18 +8457,18 @@ function cfStep(dt) { if (!G.on) return; let C = NGC.cf;
     if (C.t > 95) { C.st = 2; C.t = 0; const c = Math.round(250 * (D.pay || 1)); G.cash += c; emit({k: 'calf', st: 2, c}); save(); } }
   else { const a = Math.atan2(C.x - B.x, C.z - B.z); tx = C.x + Math.sin(a) * 50; tz = C.z + Math.cos(a) * 50; sp = C.st === 1 ? 11 : 6; C.y -= dt * (C.st === 1 ? 2.5 : 1.2); if (C.t > 14) { NGC.cf = null; return; } }
   const dx = tx - C.x, dz = tz - C.z, d = Math.hypot(dx, dz); if (d > .5) { const w = Math.atan2(-dx, -dz); C.yaw += angD(C.yaw, w) * Math.min(1, dt * 1.5); const v = Math.min(sp, d * 1.5); C.x += -Math.sin(C.yaw) * v * dt; C.z += -Math.cos(C.yaw) * v * dt; } }
-{ const f0 = hostShoot; hostShoot = function (p, m) { const C = NGC.cf; if (C && C.st === 0 && m && m.o && m.d) { const o = m.o, d = m.d, fx = -Math.sin(C.yaw), fz = -Math.cos(C.yaw); let hit = 0;
+{ hostShoot = before(hostShoot, function (p, m) { const C = NGC.cf; if (C && C.st === 0 && m && m.o && m.d) { const o = m.o, d = m.d, fx = -Math.sin(C.yaw), fz = -Math.cos(C.yaw); let hit = 0;
     for (const k of [-2.4, 0, 2.4]) { const cx = C.x + fx * k - o[0], cy = C.y - o[1], cz = C.z + fz * k - o[2], t = cx * d[0] + cy * d[1] + cz * d[2]; if (t < 0 || t > 90) continue; if (Math.hypot(cx - d[0] * t, cy - d[1] * t, cz - d[2] * t) < 1.5) hit = 1; }
-    if (hit) { C.hp -= 10; emit({k: 'calf', st: 1}); C.st = 1; C.t = 0; if (!G.stk && !G.enc) levStalkStart(Math.atan2(-(C.x - B.x), -(C.z - B.z))); } } return f0.apply(this, arguments); }; }
-{ const f0 = packSnap; packSnap = function () { const s = f0.apply(this, arguments), C = NGC.cf; if (C) s.cf = [Math.round(C.x * 10) / 10, Math.round(C.z * 10) / 10, Math.round(C.y * 10) / 10, Math.round(C.yaw * 100) / 100, C.st]; return s; }; }
-{ const f0 = applySnap; applySnap = function (s) { const r = f0.apply(this, arguments); NGC.cfC = s.cf || null; return r; }; }
+    if (hit) { C.hp -= 10; emit({k: 'calf', st: 1}); C.st = 1; C.t = 0; if (!G.stk && !G.enc) levStalkStart(Math.atan2(-(C.x - B.x), -(C.z - B.z))); } } return NEXT; }); }
+{ packSnap = after(packSnap, function (s) { const C = NGC.cf; if (C) s.cf = [Math.round(C.x * 10) / 10, Math.round(C.z * 10) / 10, Math.round(C.y * 10) / 10, Math.round(C.yaw * 100) / 100, C.st];  }); }
+{ applySnap = after(applySnap, function (r, s) {  NGC.cfC = s.cf || null;  }); }
 // a down from the new horrors (host)
-{ const f0 = hostAct; hostAct = function (id, m) { if (!m || m.a !== 'ngdown') return f0.apply(this, arguments); const p = PL.get(id); if (!p || p.down || p.dead) return; p.down = true; p.bleed = bleedFor(p); p.hd = -1; p.seat = 0; if (B.driver === p.id) B.driver = null; dropCarry(p); emit({k: 'down', id: p.id, how: m.how || 'tm'}); }; }
-{ const f0 = applyEv; applyEv = function (e) { const r = f0.apply(this, arguments);
+{ hostAct = before(hostAct, function (id, m) { if (!m || m.a !== 'ngdown') return NEXT; const p = PL.get(id); if (!p || p.down || p.dead) return; p.down = true; p.bleed = bleedFor(p); p.hd = -1; p.seat = 0; if (B.driver === p.id) B.driver = null; dropCarry(p); emit({k: 'down', id: p.id, how: m.how || 'tm'}); }); }
+{ applyEv = after(applyEv, function (r, e) { 
   if (e.k === 'calf') { if (e.st === 0) { showMsg('Something young surfaces beside the boat. It is watching you.', '', 4); for (const [f, d] of [[90, 0], [140, 900], [70, 1900]]) setTimeout(() => tone(f, .25, 2.2, 'sine', null, f * 1.6), d); }
     else if (e.st === 1) { showMsg('It shrieks and dives. Far below, something much bigger answers.', '', 5); tone(400, .3, 1.4, 'sawtooth', null, 120); setTimeout(() => { tone(38, .5, 4, 'sawtooth', null, 30); G.shake = 1; }, 1800); }
     else if (e.st === 2) { showMsg(`The calf sings once and dives. You feel lucky. +${money(e.c || 0)}`, '', 4); tone(120, .25, 2.5, 'sine', null, 260); Snd.coin(); } }
-  return r; }; }
+   }); }
 // client: the whirlpool turns, the light turns, the figure on the gallery, the Tall Man, the calf
 function ngFrame(dt) { if (!G.on || !P) return; const night = TOD.night > .5;
   if (NGC.wp && NGC.wp.m) { const d = Math.hypot(cam.position.x - NGC.wp.x, cam.position.z - NGC.wp.z); NGC.wp.m.visible = d < 1500; NGC.wp.m.rotation.y -= dt * .35; if (d < NGC.wp.R + 40 && (NGC.wpS = (NGC.wpS || 0) - dt) <= 0) { NGC.wpS = 1.4; burst(300, .4, .25 * (1 - d / (NGC.wp.R + 40)), 1.6, 'lowpass'); } }
@@ -8449,7 +8479,7 @@ function ngFrame(dt) { if (!G.on || !P) return; const night = TOD.night > .5;
       if (NGC.behind) { _v.set(T.fig.position.x - cam.position.x, 0, T.fig.position.z - cam.position.z).normalize(); cam.getWorldDirection(_fw); if (_fw.x * _v.x + _fw.z * _v.z > .6 || NGC.topT > 14) { NGC.behind = 0; NGC.topT = -30; Snd.scream(); G.shake = 1.5; const f = $('flash'); f.style.background = '#fff'; f.style.opacity = 1; setTimeout(() => { f.style.opacity = 0; setTimeout(() => f.style.background = '', 400); }, 120); T.fig.visible = false; T.fig.position.set(T.x, T.top, T.z + 1.4); act({a: 'ngdown', how: 'lh'}); } } }
     else if (!onTop) { if (NGC.behind) { NGC.behind = 0; T.fig.position.set(T.x, T.top, T.z + 1.4); } NGC.topT = Math.min(0, NGC.topT || 0) + dt; } }
   tmFrame(dt, night); cfFrame(dt); }
-{ const f0 = hud; hud = function () { const r = f0.apply(this, arguments); try { const now = performance.now(), dt = Math.min(.1, (now - (NGC.ft || now)) / 1000); NGC.ft = now; ngFrame(dt); } catch (e) { if (!NGC.fErr) { NGC.fErr = 1; console.warn(e); } } return r; }; }
+{ hud = after(hud, function (r) {  try { const now = performance.now(), dt = Math.min(.1, (now - (NGC.ft || now)) / 1000); NGC.ft = now; ngFrame(dt); } catch (e) { if (!NGC.fErr) { NGC.fErr = 1; console.warn(e); } }  }); }
 // the Tall Man of the Shallows (each client sees their own): far off, knee-deep in the shallows; every time you look away he is closer
 function tmFrame(dt, night) { let T = NGC.tm; const ok = (night || G.fogEv) && !P.dead && !P.down && !inCabin() && !(P.sw && P.dv > 1) && Math.hypot(P.x - HOME.x, P.z - HOME.z) > 300;
   if (!T) { if (!ok) return; NGC.tmT = (NGC.tmT ?? 60 + Math.random() * 60) - dt; if (NGC.tmT > 0) return; NGC.tmT = 110 + Math.random() * 120; if (Math.random() > .45) return;
@@ -8489,7 +8519,7 @@ HULLS.push(
   {n: 'Bastion fortress barge', board: 'BASTION', d: 'A 30 m armoured barge: battlements, a deck gun, a crane and searchlight towers. Very slow, very tough. Perk: F fires the deck gun; she patches herself when stopped', cost: 14000, L: 30, W: 14, fb: 1.5, spd: .62, turn: .3, hold: 70, hp: 5.5, fuel: 2.4, col: 0x4a4e52, wh: [.74, .88], fire: {cd: 2.5, mul: 5}, fort: 1, perk: 'Deck gun (F) · self-repair',
     form: {entry: .14, fine: .5, bowW: .85, flat: 1, vee: 0, dead: .7, sheer: .3, sternW: 1, transomRake: 0, bw: 1.1, rail: 0, tex: 'steel', side: 0x4a4e52, boot: 0x2a2a2a, anti: 0x7a1812, run: 0}, kit: {fend: 1, port: 0, stack: 0, ring: 1, ant: 1, anchor: 1}, cab: {wall: 0x6a6e72, roof: 0x3a3e42}});
 ENGV.push({f: [30, 60], lp: [300, 800], am: .3, fr: .5, g: .08}, {f: [14, 26], lp: [140, 340], am: .7, fr: .35, g: .14, hiss: 1}, {f: [70, 140], lp: [700, 1800], am: .15, fr: .9, nz: .04, g: .09}, {f: [16, 30], lp: [150, 380], am: .8, fr: .3, g: .2});
-{ const f0 = shpExtras; shpExtras = function (cls, X, ph) { const r = f0.apply(this, arguments); if (!ph && cls >= NB2.i0 && cls < NB2.i0 + 4) try { nb2Look(cls - NB2.i0, X); } catch (e) { console.warn('nb2Look', e); } return r; }; }
+{ shpExtras = after(shpExtras, function (r, cls, X, ph) {  if (!ph && cls >= NB2.i0 && cls < NB2.i0 + 4) try { nb2Look(cls - NB2.i0, X); } catch (e) { console.warn('nb2Look', e); }  }); }
 function nb2Look(k, X) { const {g, L, hw, fb, zs, zb, wz0, wz1, ww, hh, S, add, box, cyl, darkM, steel} = X, ud = g.userData, top = fb + hh + .12, Z = t => mix(zb, zs, t);
   const seg = (m, a, b, r, n = 6) => { const l = Math.hypot(b[0] - a[0], b[1] - a[1], b[2] - a[2]), o = add(new THREE.CylinderGeometry(r, r, l, n), m, (a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2); o.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), new THREE.Vector3(b[0] - a[0], b[1] - a[1], b[2] - a[2]).normalize()); return o; };
   const wd = S({map: TX.wood, color: 0x6a4a2a, roughness: .8}), sail = S({color: 0xe0d4b4, roughness: 1, side: THREE.DoubleSide}), rope = S({color: 0x5a4a32, roughness: 1}), blk = S({color: 0x111111, roughness: .6, metalness: .4});
@@ -8529,42 +8559,42 @@ function nb2Look(k, X) { const {g, L, hw, fb, zs, zb, wz0, wz1, ww, hh, S, add, 
     for (const [x, z, c] of [[-hw + 2, Z(.42), 0xa83a2a], [-hw + 2, Z(.48), 0x2a5a8a], [-hw + 4.6, Z(.45), 0x3a7a3a]]) box(S({color: c, roughness: .8}), x - 1.2, x + 1.2, fb, fb + 2.4, z - 2.4, z + 2.4, true); }
 }
 // night: the whaler's dead crew; the tryworks glow; client frame
-{ const f0 = hud; hud = function () { const r = f0.apply(this, arguments); const ud = BOAT && BOAT.userData; if (ud && ud.ghosts) { const n = TOD.night > .45; for (const f of ud.ghosts) { if (f.visible !== n) f.visible = n; if (n) f.position.y += Math.sin(G.t * 1.3 + f.position.z) * .0015; } if (ud.tryG) ud.tryG.material.opacity = .5 + Math.sin(G.t * 7) * .2; } return r; }; }
+{ hud = after(hud, function (r) {  const ud = BOAT && BOAT.userData; if (ud && ud.ghosts) { const n = TOD.night > .45; for (const f of ud.ghosts) { if (f.visible !== n) f.visible = n; if (n) f.position.y += Math.sin(G.t * 1.3 + f.position.z) * .0015; } if (ud.tryG) ud.tryG.material.opacity = .5 + Math.sin(G.t * 7) * .2; }  }); }
 // host: deck weapons, the whaler's night speed, the fortress patching herself; airship flight numbers
-{ const f0 = hostAct; hostAct = function (id, m) { if (!m || m.a !== 'bfire') return f0.apply(this, arguments); const p = PL.get(id), H = HC(); if (!p || !H.fire || B.driver !== id || B.sink > 0) return; const now = G.t; if ((B.fireT || 0) > now) return; B.fireT = now + H.fire.cd;
-  emit({k: 'bfire', c: B.up.cls || 0}); if (G.enc) { const lp = levPose(G.enc.a, G.enc.el, G.enc.L || 9, _lo2), o = [B.x, BDECK.y + 1.5, B.z], dx = lp.x - o[0], dy = Math.max(.5, lp.y) - o[1], dz = lp.z - o[2], l = Math.hypot(dx, dy, dz) || 1; hostShoot(p, {w: 'g', o, d: [dx / l, dy / l, dz / l], mul: H.fire.mul}); } }; }
-{ const f0 = boatStep; boatStep = function (dt) { const r = f0.apply(this, arguments), H = HC(); if (B.sink > 0) return r;
+{ hostAct = before(hostAct, function (id, m) { if (!m || m.a !== 'bfire') return NEXT; const p = PL.get(id), H = HC(); if (!p || !H.fire || B.driver !== id || B.sink > 0) return; const now = G.t; if ((B.fireT || 0) > now) return; B.fireT = now + H.fire.cd;
+  emit({k: 'bfire', c: B.up.cls || 0}); if (G.enc) { const lp = levPose(G.enc.a, G.enc.el, G.enc.L || 9, _lo2), o = [B.x, BDECK.y + 1.5, B.z], dx = lp.x - o[0], dy = Math.max(.5, lp.y) - o[1], dz = lp.z - o[2], l = Math.hypot(dx, dy, dz) || 1; hostShoot(p, {w: 'g', o, d: [dx / l, dy / l, dz / l], mul: H.fire.mul}); } }); }
+{ boatStep = after(boatStep, function (r, dt) { const H = HC(); if (B.sink > 0) return;
   if (H.ghosts && TOD.night > .45 && Math.abs(B.v) > .5) { B.x += -Math.sin(B.yaw) * B.v * dt * .3; B.z += -Math.cos(B.yaw) * B.v * dt * .3; }
-  if (H.fort && Math.abs(B.v) < .5) B.hull = Math.min(hullMax(), B.hull + hullMax() * .008 * dt); return r; }; }
-{ const f0 = applyEv; applyEv = function (e) { const r = f0.apply(this, arguments); if (e.k === 'bfire') { const ud = BOAT && BOAT.userData, near = P && (P.ob || Math.hypot(P.x - B.x, P.z - B.z) < 200);
+  if (H.fort && Math.abs(B.v) < .5) B.hull = Math.min(hullMax(), B.hull + hullMax() * .008 * dt);  }); }
+{ applyEv = after(applyEv, function (r, e) {  if (e.k === 'bfire') { const ud = BOAT && BOAT.userData, near = P && (P.ob || Math.hypot(P.x - B.x, P.z - B.z) < 200);
     if (ud && ud.muz) for (const q of ud.muz) { _v.set(q[0], q[1], q[2]).applyMatrix4(BOAT.matrixWorld); const sp = new THREE.Sprite(new THREE.SpriteMaterial({map: TX.glow, color: 0xffc070, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending})); sp.position.copy(_v); sp.scale.setScalar(4); scene.add(sp); HITS.push({s: sp, t: .3}); }
-    if (near && A.on) { for (let i = 0; i < (ud && ud.muz ? Math.min(4, ud.muz.length) : 1); i++) setTimeout(() => { burst(90, .7, 1, 1.4, 'lowpass'); tone(48, .5, .8, 'sine', null, 30); }, i * 110); } if (P && P.ob) G.shake = Math.max(G.shake || 0, .5); } return r; }; }
+    if (near && A.on) { for (let i = 0; i < (ud && ud.muz ? Math.min(4, ud.muz.length) : 1); i++) setTimeout(() => { burst(90, .7, 1, 1.4, 'lowpass'); tone(48, .5, .8, 'sine', null, 30); }, i * 110); } if (P && P.ob) G.shake = Math.max(G.shake || 0, .5); }  }); }
 addEventListener('keydown', e => { if (e.code !== 'KeyF' || e.repeat || !G.on || !P || !P.seat || anyPanel() || !HC().fire) return; e.stopImmediatePropagation(); act({a: 'bfire'}); }, {capture: true});
 
 // ===== more gear: Magnum, hunting rifle, ammo crate, binoculars, repair kits, jerrycans, chum, dive scooter =====
 function gMax() { return P && P.own && P.own.glock === 2 ? 6 : 17; } function sMax() { return P && P.own && P.own.sg === 2 ? 5 : 6; }
 function binoOn() { return !!(K.KeyV && P && P.own && P.own.bino && !P.dead && !anyPanel() && !G.map); }
-{ const f0 = gotGear; gotGear = function (k) { const o = P.own, a = P.ammo;
+{ gotGear = before(gotGear, function (k) { const o = P.own, a = P.ammo;
   if (k === 'mag') { o.glock = 2; a.g += a.gm; a.gm = 6; a.g += 12; } else if (k === 'rifle') { o.sg = 2; a.s += a.sm; a.sm = 5; a.s += 10; } else if (k === 'crate') { if (o.glock) a.g += 68; if (o.sg) a.s += 24; }
   else if (k === 'bino') o.bino = 1; else if (k === 'kit') o.kits = (o.kits || 0) + 1; else if (k === 'jerry') o.jerry = (o.jerry || 0) + 1; else if (k === 'chum') o.chum = (o.chum || 0) + 1; else if (k === 'scoot') o.scoot = 1;
-  return f0.apply(this, arguments); }; }
+  return NEXT; }); }
 addEventListener('keydown', e => { if (e.repeat || !G.on || !P || P.dead || P.down || anyPanel() || G.map) return; const o = P.own || {};
   if (e.code === 'KeyN' && o.kits) { if (!P.ob) { showMsg('Get aboard first.', '', 1.5); return; } if (B.hull >= hullMax() - 1) { showMsg('The hull is sound.', '', 1.5); return; } o.kits--; saveGear(); act({a: 'gkit', w: 'kit'}); Snd.reload(); }
   if (e.code === 'KeyY' && o.jerry) { if (!P.ob) { showMsg('Get aboard first.', '', 1.5); return; } if (B.fuel >= tankMax() - 1) { showMsg('The tank is full.', '', 1.5); return; } o.jerry--; saveGear(); act({a: 'gkit', w: 'fuel'}); burst(800, .5, .2, .8); }
   if (e.code === 'KeyU' && o.chum) { if (P.eq !== 2) { showMsg('Take out your rod first (3).', '', 1.5); return; } o.chum--; saveGear(); G.chumT = 180; showMsg('You tip the chum over the side. The water stirs.', '', 2.5); Snd.splash(); } });
-{ const f0 = hostAct; hostAct = function (id, m) { if (!m || m.a !== 'gkit') return f0.apply(this, arguments); const p = PL.get(id); if (!p || !p.ob || B.sink > 0) return;
-  if (m.w === 'kit') { B.hull = Math.min(hullMax(), B.hull + hullMax() * .3); emit({k: 'gkit', w: 'kit', n: p.name}); } else if (m.w === 'fuel') { B.fuel = Math.min(tankMax(), B.fuel + tankMax() / 3); emit({k: 'gkit', w: 'fuel', n: p.name}); } }; }
-{ const f0 = applyEv; applyEv = function (e) { const r = f0.apply(this, arguments); if (e.k === 'gkit') showMsg(e.w === 'kit' ? `${e.n} patches the hull.` : `${e.n} pours in a can of fuel.`, '', 2); return r; }; }
+{ hostAct = before(hostAct, function (id, m) { if (!m || m.a !== 'gkit') return NEXT; const p = PL.get(id); if (!p || !p.ob || B.sink > 0) return;
+  if (m.w === 'kit') { B.hull = Math.min(hullMax(), B.hull + hullMax() * .3); emit({k: 'gkit', w: 'kit', n: p.name}); } else if (m.w === 'fuel') { B.fuel = Math.min(tankMax(), B.fuel + tankMax() / 3); emit({k: 'gkit', w: 'fuel', n: p.name}); } }); }
+{ applyEv = after(applyEv, function (r, e) {  if (e.k === 'gkit') showMsg(e.w === 'kit' ? `${e.n} patches the hull.` : `${e.n} pours in a can of fuel.`, '', 2);  }); }
 // chum: quicker bites
-{ const f0 = stepGear; stepGear = function (dt) { const prev = F.st, r = f0.apply(this, arguments); if (G.chumT > 0) { G.chumT -= dt; if (prev !== 'wait' && F.st === 'wait') F.t *= .5; } return r; }; }
+{ stepGear = around(stepGear, function (next, ...args) { let [dt] = args; const prev = F.st, r = next.apply(this, args); if (G.chumT > 0) { G.chumT -= dt; if (prev !== 'wait' && F.st === 'wait') F.t *= .5; } return r; }); }
 // the dive scooter: hold Shift underwater
-{ const f0 = stepPlayer; stepPlayer = function (dt) { const r = f0.apply(this, arguments); if (P && P.own && P.own.scoot && P.sw && (P.dv || 0) > .4 && (K.ShiftLeft || K.ShiftRight) && !P.dead && !P.down) { const cp = Math.cos(P.pitch), sp = 4.2; P.x += -Math.sin(P.yaw) * cp * sp * dt; P.z += -Math.cos(P.yaw) * cp * sp * dt; const lim = Math.max(0, -seaBed(P.x, P.z) - 1.2); P.dv = clamp((P.dv || 0) - Math.sin(P.pitch) * sp * dt, .45, Math.min(lim, SUIT[P.own.suit].max)); if (Math.random() < dt * 3) Snd.bubbles(); } return r; }; }
+{ stepPlayer = after(stepPlayer, function (r, dt) {  if (P && P.own && P.own.scoot && P.sw && (P.dv || 0) > .4 && (K.ShiftLeft || K.ShiftRight) && !P.dead && !P.down) { const cp = Math.cos(P.pitch), sp = 4.2; P.x += -Math.sin(P.yaw) * cp * sp * dt; P.z += -Math.cos(P.yaw) * cp * sp * dt; const lim = Math.max(0, -seaBed(P.x, P.z) - 1.2); P.dv = clamp((P.dv || 0) - Math.sin(P.pitch) * sp * dt, .45, Math.min(lim, SUIT[P.own.suit].max)); if (Math.random() < dt * 3) Snd.bubbles(); }  }); }
 // binoculars overlay and a small consumables line
-{ const f0 = hud; hud = function () { const r = f0.apply(this, arguments); if (!P) return r; let el = G.binoEl; if (!el) { el = G.binoEl = document.createElement('div'); el.style.cssText = 'position:absolute;inset:0;pointer-events:none;display:none;background:radial-gradient(circle at 36% 50%,transparent 0 22%,#000 23%),radial-gradient(circle at 64% 50%,transparent 0 22%,#000 23%);background-blend-mode:darken'; $('hud').appendChild(el);
+{ hud = after(hud, function (r) {  if (!P) return; let el = G.binoEl; if (!el) { el = G.binoEl = document.createElement('div'); el.style.cssText = 'position:absolute;inset:0;pointer-events:none;display:none;background:radial-gradient(circle at 36% 50%,transparent 0 22%,#000 23%),radial-gradient(circle at 64% 50%,transparent 0 22%,#000 23%);background-blend-mode:darken'; $('hud').appendChild(el);
     const c = G.cnsEl = document.createElement('div'); c.style.cssText = 'position:absolute;left:22px;bottom:84px;font:12px ui-monospace,monospace;color:#cfe4ee;text-shadow:0 1px 2px #000;pointer-events:none'; $('hud').appendChild(c); }
   const on = binoOn(); if (el._on !== on) { el._on = on; el.style.display = on ? 'block' : 'none'; }
   const o = P.own || {}, t = [o.kits ? `<kbd>N</kbd> repair ×${o.kits}` : '', o.jerry ? `<kbd>Y</kbd> fuel ×${o.jerry}` : '', o.chum ? `<kbd>U</kbd> chum ×${o.chum}` : '', G.chumT > 0 ? `chum ${Math.ceil(G.chumT)}s` : ''].filter(Boolean).join(' · ');
-  if (G.cnsEl._t !== t) { G.cnsEl._t = t; G.cnsEl.innerHTML = t; } return r; }; }
+  if (G.cnsEl._t !== t) { G.cnsEl._t = t; G.cnsEl.innerHTML = t; }  }); }
 
 // ===== the abandoned carrier and its F-35B; better models (airship, Magnum, rifle) =====
 // The USS Requiem: a 180 m carrier adrift far south-west (fixed spot, axis-aligned, bow to -z). Flight deck SURF slabs at CVN.y, island WALLS, hull OBST,
@@ -8592,7 +8622,7 @@ function f35Parts(add, S, yc, gear, fly) { // a whole F-35B in local metres, nos
   if (gear) { for (const [x, z] of [[0, -5.2], [-1.4, 1.6], [1.4, 1.6]]) { X0(add, dk, x, yc, z); } } }
 function X0(add, m, x, yc, z) { add(new THREE.CylinderGeometry(.06, .06, yc - .35, 6), m, x, (yc - .35) / 2 + .35, z); const w = add(new THREE.CylinderGeometry(.35, .35, .22, 12), m, x, .35, z); w.rotation.z = PI / 2; }
 // the flyable jet: hide the shared wheelhouse shell, wrap the slim loft in the real fuselage and parts
-{ const f0 = shpExtras; shpExtras = function (cls, X, ph) { const r = f0.apply(this, arguments); if (!ph && cls === F35_I) try { f35Fly(X); } catch (e) { console.warn('f35', e); } return r; }; }
+{ shpExtras = after(shpExtras, function (r, cls, X, ph) {  if (!ph && cls === F35_I) try { f35Fly(X); } catch (e) { console.warn('f35', e); }  }); }
 // the flyable jet: the boat hull goes entirely, the jet's own body floats; you walk on its spine behind the canopy and sit in a real cockpit under it
 function f35Fly(X) { const {g, fb, add, S, steel} = X, ud = g.userData, yc = fb - .93, kill = []; g.traverse(o => { if (o.isMesh) kill.push(o); }); for (const o of kill) o.parent && o.parent.remove(o);
   f35Parts(add, S, yc, 0, 1); const jets = new THREE.Group(); g.add(jets); ud.jets = jets; const gl = new THREE.Sprite(new THREE.SpriteMaterial({map: TX.glow, color: 0xffa060, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending})); gl.position.set(0, yc, 8.9); gl.scale.setScalar(1); jets.add(gl);
@@ -8611,7 +8641,7 @@ function f35Fly(X) { const {g, fb, add, S, steel} = X, ud = g.userData, yc = fb 
   add(new THREE.BoxGeometry(.4, .03, .4), S({color: 0x40464e, roughness: .85}), 0, y0 + .005, 1.4); add(new THREE.BoxGeometry(.2, .03, .2), S({color: 0xc8302a}), -.25, y0 - .02, 4.6);
   Object.assign(ud, {wz: [-5.2, -1.6], ww: .55, door: [1, -1, 1.2], lamp: [0, y0 + .3, -3], lightZ: -7.6, lightY: yc, f35: 1}); }
 // out of the seat in the jet: climb out onto the spine
-{ const f0 = hud; hud = function () { const r = f0.apply(this, arguments); if (P && P.ob && !P.seat && !P.climb && BOAT && BOAT.userData.f35 && P.bl[1] < BDECK.z0) { P.bl = [0, BDECK.z0 + .3]; const [wx, wz] = bL2W(P.bl[0], P.bl[1]); P.x = wx; P.z = wz; P.y = BDECK.y; P.vy = 0; } return r; }; }
+{ hud = after(hud, function (r) {  if (P && P.ob && !P.seat && !P.climb && BOAT && BOAT.userData.f35 && P.bl[1] < BDECK.z0) { P.bl = [0, BDECK.z0 + .3]; const [wx, wz] = bL2W(P.bl[0], P.bl[1]); P.x = wx; P.z = wz; P.y = BDECK.y; P.vy = 0; }  }); }
 // the carrier
 function cvBuild() { const [x, z] = plFind(-3500, -2500, 30, 400, 220); Object.assign(CVN, {x, z}); const Y = CVN.y, X = (a) => x + a, Zc = (b) => z + b;
   const hullS = new THREE.Shape([[-15, -90], [15, -90], [15, 60], [7, 86], [0, 92], [-7, 86], [-15, 60]].map(([a, b]) => new THREE.Vector2(a, b)));
@@ -8640,17 +8670,17 @@ function cvBuild() { const [x, z] = plFind(-3500, -2500, 30, 400, 220); Object.a
   f35Parts(add, S, 1.85, 1); WALLS.push({x0: X(6) - 1.4, x1: X(6) + 1.4, z0: Zc(-2) - 7.6, z1: Zc(-2) + 7.6, y0: Y, y1: Y + 2.6, see: true});
   INTER.push({kind: 'f35', x: X(6) - 1.8, y: Y + 1.4, z: Zc(-3.4), r: 3, label: () => 'Steal the F-35', go: () => act({a: 'f35'}), on: () => !f35Mine()}); }
 const f35Mine = () => Array.isArray(B.up.own) && B.up.own.includes(F35_I);
-{ const f0 = plBuildB; plBuildB = function () { const r = f0.apply(this, arguments); try { cvBuild(); for (const m of mergeByMat(PLC.geo)) PLC.g.add(m); PLC.geo = []; } catch (e) { console.warn('cvBuild', e); } return r; }; }
-{ const f0 = hud; hud = function () { const r = f0.apply(this, arguments); if (CVN.jet) { const v = !f35Mine(); if (CVN.jet.visible !== v) CVN.jet.visible = v; } return r; }; }
+{ plBuildB = after(plBuildB, function (r) {  try { cvBuild(); for (const m of mergeByMat(PLC.geo)) PLC.g.add(m); PLC.geo = []; } catch (e) { console.warn('cvBuild', e); }  }); }
+{ hud = after(hud, function (r) {  if (CVN.jet) { const v = !f35Mine(); if (CVN.jet.visible !== v) CVN.jet.visible = v; }  }); }
 // host: steal it
-{ const f0 = hostAct; hostAct = function (id, m) { if (!m || m.a !== 'f35') return f0.apply(this, arguments); const p = PL.get(id); if (!p || p.dead || p.down || f35Mine() || Math.hypot(p.x - CVN.jx, p.z - CVN.jz) > 12 || Math.abs(p.y - CVN.y) > 3) return;
+{ hostAct = before(hostAct, function (id, m) { if (!m || m.a !== 'f35') return NEXT; const p = PL.get(id); if (!p || p.dead || p.down || f35Mine() || Math.hypot(p.x - CVN.jx, p.z - CVN.jz) > 12 || Math.abs(p.y - CVN.y) > 3) return;
   const own = Array.isArray(B.up.own) ? B.up.own : (B.up.own = [0, B.up.cls || 0]); own.push(F35_I); for (const q of PL.values()) if (q.ob) { const [wx, wz] = bL2W(q.bl[0], q.bl[1]); q.ob = 0; q.seat = 0; q.x = wx; q.z = wz; q.y = 0; q.sw = 1; }
-  B.up.cls = F35_I; buildBoat(); resetBoat(false); B.x = CVN.jx; B.z = CVN.jz; B.yaw = 0; B.v = 0; NB.vy = 0; B.dep = -(CVN.y + .25); B.fuel = tankMax(); B.hull = hullMax(); p.ob = 1; p.sw = 0; p.bl = [BHELM[0], BHELM[1]]; p.y = BDECK.y; emit({k: 'bought', n: 'F-35B Lightning (stolen)', hull: F35_I, id}); save(); }; }
-{ const f0 = applyEv; applyEv = function (e) { const r = f0.apply(this, arguments); if (e.k === 'bought' && e.hull === F35_I && e.id === myId() && !isHost()) G.f35B = 1; return r; }; }
-{ const f0 = hud; hud = function () { const r = f0.apply(this, arguments); if (G.f35B && BOAT && BOAT.userData.cls === F35_I && P) { G.f35B = 0; P.ob = 1; P.sw = 0; P.climb = null; P.bl = [BHELM[0], BHELM[1]]; P.y = BDECK.y; P.vy = 0; } return r; }; }
+  B.up.cls = F35_I; buildBoat(); resetBoat(false); B.x = CVN.jx; B.z = CVN.jz; B.yaw = 0; B.v = 0; NB.vy = 0; B.dep = -(CVN.y + .25); B.fuel = tankMax(); B.hull = hullMax(); p.ob = 1; p.sw = 0; p.bl = [BHELM[0], BHELM[1]]; p.y = BDECK.y; emit({k: 'bought', n: 'F-35B Lightning (stolen)', hull: F35_I, id}); save(); }); }
+{ applyEv = after(applyEv, function (r, e) {  if (e.k === 'bought' && e.hull === F35_I && e.id === myId() && !isHost()) G.f35B = 1;  }); }
+{ hud = after(hud, function (r) {  if (G.f35B && BOAT && BOAT.userData.cls === F35_I && P) { G.f35B = 0; P.ob = 1; P.sw = 0; P.climb = null; P.bl = [BHELM[0], BHELM[1]]; P.y = BDECK.y; P.vy = 0; }  }); }
 // physics: VTOL numbers; every plane can set down on the carrier deck, and flying into her hull below the deck is a crash
-{ const f0 = boatStep; boatStep = function (dt) { const H = HC(), a0 = -(B.dep || 0), r = f0.apply(this, arguments); if (!H.plane || B.sink > 0) return r; if (H.vtol || H.air) NB.vy = Math.max(NB.vy, -5); const on = CVN.R.some(([x0, x1, z0, z1]) => B.x > x0 && B.x < x1 && B.z > z0 && B.z < z1); if (!on) return r;
-  const alt = -(B.dep || 0), top = CVN.y + .25; if (alt < top) { if (a0 >= top - 1.5) { const sink = -NB.vy; if (sink > 7) { emit({k: 'bump', s: 1}); damageBoat((sink - 7) * 10); } else if (sink > 2) emit({k: 'bump', s: .3}); B.dep = -top; NB.vy = Math.max(0, NB.vy); if (B.thr < .1) B.v *= Math.pow(.4, dt); } else { emit({k: 'bump', s: 1}); damageBoat(hullMax() * 1.1); B.dep = 0; NB.vy = 0; B.v = 0; } } return r; }; }
+{ boatStep = around(boatStep, function (next, ...args) { let [dt] = args; const H = HC(), a0 = -(B.dep || 0), r = next.apply(this, args); if (!H.plane || B.sink > 0) return r; if (H.vtol || H.air) NB.vy = Math.max(NB.vy, -5); const on = CVN.R.some(([x0, x1, z0, z1]) => B.x > x0 && B.x < x1 && B.z > z0 && B.z < z1); if (!on) return r;
+  const alt = -(B.dep || 0), top = CVN.y + .25; if (alt < top) { if (a0 >= top - 1.5) { const sink = -NB.vy; if (sink > 7) { emit({k: 'bump', s: 1}); damageBoat((sink - 7) * 10); } else if (sink > 2) emit({k: 'bump', s: .3}); B.dep = -top; NB.vy = Math.max(0, NB.vy); if (B.thr < .1) B.v *= Math.pow(.4, dt); } else { emit({k: 'bump', s: 1}); damageBoat(hullMax() * 1.1); B.dep = 0; NB.vy = 0; B.v = 0; } } return r; }); }
 // the takeoff gate: on the deck (alt > 0) the plane branch runs, so the jet can lift from there; the VTOL numbers go in the JT table
 // better models: the Zephyr's gasbag, and the Magnum and rifle in your hands
 function nb2Air(X) { const {g, L, hw, fb, zs, zb, wz0, wz1, ww, hh, S, add, box, cyl, steel} = X, ud = g.userData, top = fb + hh + .12, ey = top + 4.6, ez = (zb + zs) / 2 + .6;
@@ -8678,14 +8708,14 @@ function gunModels() { const o = P && P.own; if (!o) return; const blk = new THR
       add(VMS, new THREE.BoxGeometry(.03, .03, .14), blk, 0, .03, .0); add(VMS, new THREE.CylinderGeometry(.006, .006, .04, 6), stl, .03, .035, .04, 0, PI / 2); add(VMS, new THREE.SphereGeometry(.009, 6, 5), stl, .05, .035, .04);
       add(VMS, new THREE.CylinderGeometry(.016, .016, .26, 12), blk, 0, .08, -.05, PI / 2); for (const z of [-.19, .09]) add(VMS, new THREE.CylinderGeometry(.021, .018, .05, 12), blk, 0, .08, z, PI / 2); add(VMS, new THREE.CircleGeometry(.017, 12), gls, 0, .08, .116); for (const z of [-.08, .02]) add(VMS, new THREE.BoxGeometry(.012, .03, .012), blk, 0, .06, z);
       add(VMS, new THREE.TorusGeometry(.016, .003, 4, 10, PI), blk, 0, -.01, .03, 0, PI); add(VMS, new THREE.SphereGeometry(.04, 8, 6), glove, 0, -.035, -.3); add(VMS, new THREE.SphereGeometry(.04, 8, 6), glove, .01, -.05, .05); } } }
-{ const f0 = hud; hud = function () { const r = f0.apply(this, arguments); try { gunModels(); } catch (e) {} return r; }; }
+{ hud = after(hud, function (r) {  try { gunModels(); } catch (e) {}  }); }
 
 // ===== delete a save slot =====
 function slotKeys(n) { const sf = (n > 1 ? '-s' + n : '') + (ALL ? '-all' : ''); return ['s9-save2', 's9-gear', 's9-cred', 's9-relics', 's9-cas-help'].map(k => k + sf); }
-{ const f0 = slotUI; slotUI = function () { const r = f0.apply(this, arguments), el = $('slots'); if (!el) return r;
+{ slotUI = after(slotUI, function (r) { const el = $('slots'); if (!el) return;
   el.querySelectorAll('button[data-n]').forEach(b => { const n = +b.dataset.n, s = slotPeek(n), w = document.createElement('div'); w.style.cssText = 'position:relative;flex:1 1 0;min-width:90px;display:flex'; b.style.flex = '1'; b.replaceWith(w); w.append(b);
     if (!s) return; const x = document.createElement('button'); x.title = `Delete Save ${n}`; x.textContent = '✕'; x.style.cssText = 'position:absolute;top:2px;right:2px;width:20px;height:20px;padding:0;font-size:11px;line-height:18px;min-width:0;opacity:.7'; w.append(x);
-    x.onclick = e => { e.stopPropagation(); if (G.on || !confirm(`Delete Save ${n}? Cash, boats, upgrades, chart and gear in it are gone for good.`)) return; try { for (const k of slotKeys(n)) localStorage.removeItem(k); } catch (q) {} if (n === SLOT) G.relAct = []; saveInfo(); slotUI(); }; }); return r; }; }
+    x.onclick = e => { e.stopPropagation(); if (G.on || !confirm(`Delete Save ${n}? Cash, boats, upgrades, chart and gear in it are gone for good.`)) return; try { for (const k of slotKeys(n)) localStorage.removeItem(k); } catch (q) {} if (n === SLOT) G.relAct = []; saveInfo(); slotUI(); }; });  }); }
 
 // ===== hot air balloon =====
 const BAL_I = HULLS.length;
@@ -8695,7 +8725,7 @@ ENGV.push({f: [20, 30], lp: [200, 300], am: .1, fr: .2, nz: .3, g: .04, hiss: 1}
 function balloonEnv(cols, R = 7, H = 17) { const tx = new THREE.CanvasTexture(cv(512, 256, (q, w, h) => { for (let i = 0; i < 12; i++) { q.fillStyle = cols[i % cols.length]; q.fillRect(i * w / 12, 0, w / 12 + 1, h); } q.fillStyle = 'rgba(0,0,0,.18)'; for (let i = 0; i < 12; i++) q.fillRect(i * w / 12, 0, 2, h); q.fillStyle = 'rgba(255,255,255,.12)'; q.fillRect(0, h * .55, w, h * .04); })); tx.colorSpace = THREE.SRGBColorSpace;
   const pr = []; for (let i = 0; i <= 30; i++) { const t = i / 30, y = t * H, r = t < .7 ? R * (.18 + .82 * Math.sin(Math.min(1, t / .7) * PI / 2)) : R * Math.sqrt(Math.max(0, 1 - Math.pow((t - .7) / .3, 2))) * 1; pr.push(new THREE.Vector2(Math.max(.05, t > .98 ? .05 : r), y)); }
   return new THREE.Mesh(new THREE.LatheGeometry(pr, 36), new THREE.MeshStandardMaterial({map: tx, roughness: .7, side: THREE.DoubleSide})); }
-{ const f0 = shpExtras; shpExtras = function (cls, X, ph) { const r = f0.apply(this, arguments); if (!ph && cls === BAL_I) try { const {g, fb, wz0, wz1, ww, hw, zs, zb, add, box, S} = X; g.updateMatrixWorld(true); const bx = new THREE.Box3(), c = new THREE.Vector3(), kill = [];
+{ shpExtras = after(shpExtras, function (r, cls, X, ph) {  if (!ph && cls === BAL_I) try { const {g, fb, wz0, wz1, ww, hw, zs, zb, add, box, S} = X; g.updateMatrixWorld(true); const bx = new THREE.Box3(), c = new THREE.Vector3(), kill = [];
     g.traverse(o => { if (!o.isMesh) return; bx.setFromObject(o); bx.getCenter(c); if (c.y > fb + .2 && Math.abs(c.x) < ww + .4 && c.z > wz0 - .4 && c.z < wz1 + .4) kill.push(o); }); for (const o of kill) o.parent && o.parent.remove(o);
     const wk = S({color: 0x9a7a4a, roughness: 1}), bh = 1.15, x0 = -hw + .25, x1 = hw - .25, z0 = zb + 1, z1 = zs - .6; box(wk, x0, x1, fb - .2, fb + .02, z0, z1); box(wk, x0 - .12, x0, fb, fb + bh, z0, z1, true); box(wk, x1, x1 + .12, fb, fb + bh, z0, z1, true); box(wk, x0, x1, fb, fb + bh, z0 - .12, z0, true); box(wk, x0, x1, fb, fb + bh, z1, z1 + .12, true);
     const lt = S({color: 0x4a2a14, roughness: .8}); for (const zz of [z0, z1]) box(lt, x0 - .14, x1 + .14, fb + bh, fb + bh + .08, zz - .14, zz + .14); for (const xx of [x0, x1]) box(lt, xx - .14, xx + .14, fb + bh, fb + bh + .08, z0, z1);
@@ -8703,10 +8733,10 @@ function balloonEnv(cols, R = 7, H = 17) { const tx = new THREE.CanvasTexture(cv
     for (const [a, b] of [[x0, z0], [x1, z0], [x0, z1], [x1, z1]]) { const p0 = [a, fb + bh, b], p1 = [Math.sign(a) * .5, ey - 1.1, ez + Math.sign(b - ez) * .5], l = Math.hypot(p1[0] - p0[0], p1[1] - p0[1], p1[2] - p0[2]), o = add(new THREE.CylinderGeometry(.025, .025, l, 4), st, (p0[0] + p1[0]) / 2, (p0[1] + p1[1]) / 2, (p0[2] + p1[2]) / 2); o.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), new THREE.Vector3(p1[0] - p0[0], p1[1] - p0[1], p1[2] - p0[2]).normalize()); }
     for (let i = 0; i < 12; i++) { const a = i / 12 * TAU, p0 = [Math.sin(a) * .5, ey - 1.05, ez + Math.cos(a) * .5], p1 = [Math.sin(a) * 1.3, ey, ez + Math.cos(a) * 1.3], l = Math.hypot(p1[0] - p0[0], p1[1] - p0[1], p1[2] - p0[2]), o = add(new THREE.CylinderGeometry(.015, .015, l, 3), lt, (p0[0] + p1[0]) / 2, (p0[1] + p1[1]) / 2, (p0[2] + p1[2]) / 2); o.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), new THREE.Vector3(p1[0] - p0[0], p1[1] - p0[1], p1[2] - p0[2]).normalize()); }
     const env = balloonEnv(['#e8442a', '#f2b632', '#e8442a', '#2a6ab8', '#f2ece0', '#f2b632']); env.position.set(0, ey, ez); g.add(env);
-    const fl = new THREE.Sprite(new THREE.SpriteMaterial({map: TX.glow, color: 0xffa040, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending})); fl.position.set(0, ey - .9, ez); fl.scale.set(1.2, 2.4, 1); g.add(fl); g.userData.flame = fl; } catch (e) { console.warn('balloon', e); } return r; }; }
-{ const f0 = boatStep; boatStep = function (dt) { const H = HC(); if (!H.balloon) return f0.apply(this, arguments); const r = f0.apply(this, arguments); if (-(B.dep || 0) > .5 && B.sink <= 0) { const wa = G.wt * .004 + 1.1, ws = 1.6 + Math.sin(G.wt * .013) * .8; B.x += Math.sin(wa) * ws * dt; B.z += Math.cos(wa) * ws * dt; } return r; }; }
-{ const f0 = boatPose; boatPose = function (dt) { const r = f0.apply(this, arguments), ud = BOAT && BOAT.userData; if (ud && ud.flame) { const on = NB.pvy > .4 || (B.driver && PL.get(B.driver) && PL.get(B.driver).in && PL.get(B.driver).in[2] < 0); ud.flame.material.opacity = on ? .7 + Math.random() * .3 : mix(ud.flame.material.opacity, 0, Math.min(1, dt * 6));
-  if (on && P && (P.ob || Math.hypot(P.x - B.x, P.z - B.z) < 60) && (NB.roarT = (NB.roarT || 0) - dt) <= 0) { NB.roarT = .35; burst(420, .6, .18, .5, 'bandpass'); } } return r; }; }
+    const fl = new THREE.Sprite(new THREE.SpriteMaterial({map: TX.glow, color: 0xffa040, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending})); fl.position.set(0, ey - .9, ez); fl.scale.set(1.2, 2.4, 1); g.add(fl); g.userData.flame = fl; } catch (e) { console.warn('balloon', e); }  }); }
+{ boatStep = around(boatStep, function (next, ...args) { let [dt] = args; const H = HC(); if (!H.balloon) return next.apply(this, args); const r = next.apply(this, args); if (-(B.dep || 0) > .5 && B.sink <= 0) { const wa = G.wt * .004 + 1.1, ws = 1.6 + Math.sin(G.wt * .013) * .8; B.x += Math.sin(wa) * ws * dt; B.z += Math.cos(wa) * ws * dt; } return r; }); }
+{ boatPose = after(boatPose, function (r, dt) { const ud = BOAT && BOAT.userData; if (ud && ud.flame) { const on = NB.pvy > .4 || (B.driver && PL.get(B.driver) && PL.get(B.driver).in && PL.get(B.driver).in[2] < 0); ud.flame.material.opacity = on ? .7 + Math.random() * .3 : mix(ud.flame.material.opacity, 0, Math.min(1, dt * 6));
+  if (on && P && (P.ob || Math.hypot(P.x - B.x, P.z - B.z) < 60) && (NB.roarT = (NB.roarT || 0) - dt) <= 0) { NB.roarT = .35; burst(420, .6, .18, .5, 'bandpass'); } }  }); }
 
 // ===== beautiful things: ambient balloons, seabird flocks, distant whales, shooting stars, bioluminescence, glowing jellyfish =====
 const VFX = {bal: [], flocks: [], whale: null, stars: [], bio: null, jel: null, t: 0};
@@ -8755,15 +8785,15 @@ function vfxFrame(dt) { if (!G.on || !BUILT) return; vfxInit(); const cx = cam.p
     for (let i = -5; i <= 5 && n < 60; i++) for (let j = -5; j <= 5 && n < 60; j++) { const a = gx + i, b = gz + j, h = vHash(a, b); if (h > .3) continue; const x = (a + vHash(b, a)) * C + Math.sin(t * .05 + h * 9) * 3, z = (b + vHash(a + 7, b)) * C + Math.cos(t * .04 + h * 7) * 3; if (seaBed(x, z) > -12) continue;
       const y = waveH(x, z, t) - .5 - h * 4, pu = 1 + Math.sin(t * 1.6 + h * 30) * .18; _m4.compose(_v.set(x, y, z), _q.identity(), _s.set(pu * (.6 + h), (2 - pu) * (.6 + h), pu * (.6 + h))); VFX.jel.setMatrixAt(n, _m4); jp.setXYZ(n, x, y - .2, z); n++; }
     VFX.jel.count = n; VFX.jel.instanceMatrix.needsUpdate = true; VFX.jgl.geometry.setDrawRange(0, n); jp.needsUpdate = true; VFX.jel.material.opacity = .55 * nk; VFX.jgl.material.opacity = .5 * nk; } }
-{ const f0 = hud; hud = function () { const r = f0.apply(this, arguments); try { const now = performance.now(), dt = Math.min(.1, (now - (VFX.ft || now)) / 1000); VFX.ft = now; vfxFrame(dt); } catch (e) { if (!VFX.err) { VFX.err = 1; console.warn('vfx', e); } } return r; }; }
+{ hud = after(hud, function (r) {  try { const now = performance.now(), dt = Math.min(.1, (now - (VFX.ft || now)) / 1000); VFX.ft = now; vfxFrame(dt); } catch (e) { if (!VFX.err) { VFX.err = 1; console.warn('vfx', e); } }  }); }
 
 // ===== sea and sky polish: the sea's sun uniform (light through crests), fed from the sky each frame =====
-{ const f0 = hud; hud = function () { const r = f0.apply(this, arguments); const U = MAT.sea && MAT.sea.userData.U, sk = scene.userData.sky; if (U && U.uSun && sk) { const sd = sk.material.uniforms.sunD.value; U.uSun.value.set(sd.x, sd.y, sd.z, clamp(sd.y * 5 + .1, 0, 1) * (1 - (G.storm || 0) * .8)); } return r; }; }
+{ hud = after(hud, function (r) {  const U = MAT.sea && MAT.sea.userData.U, sk = scene.userData.sky; if (U && U.uSun && sk) { const sd = sk.material.uniforms.sunD.value; U.uSun.value.set(sd.x, sd.y, sd.z, clamp(sd.y * 5 + .1, 0, 1) * (1 - (G.storm || 0) * .8)); }  }); }
 
 // ---------------- a seafloor you can see: a 96x96 depth map round the camera (rebuilt a slice per frame as you travel) lets the sea shader show sand ripples,
 // weed and rock patches and caustics through shallow water, with red light soaked up first; the seabed underwater gets sand ripples and darker rocky ground
 const SBD = {n: 96, span: 576, cx: 1e9, cz: 1e9, nx: 0, nz: 0, i: -1, buf: null, tex: null};
-{ const f0 = buildSea; buildSea = function () { const n = SBD.n; SBD.buf = new Float32Array(n * n); SBD.tex = new THREE.DataTexture(new Uint16Array(n * n), n, n, THREE.RedFormat, THREE.HalfFloatType); SBD.tex.magFilter = SBD.tex.minFilter = THREE.LinearFilter; SBD.tex.needsUpdate = true;
+{ buildSea = around(buildSea, function (next, ...args) { const n = SBD.n; SBD.buf = new Float32Array(n * n); SBD.tex = new THREE.DataTexture(new Uint16Array(n * n), n, n, THREE.RedFormat, THREE.HalfFloatType); SBD.tex.magFilter = SBD.tex.minFilter = THREE.LinearFilter; SBD.tex.needsUpdate = true;
   const U = MAT.sea.userData.U; U.uDep = {value: SBD.tex}; U.uDc = {value: new THREE.Vector3(1e9, 1e9, SBD.span)}; const ob = MAT.sea.onBeforeCompile;
   MAT.sea.onBeforeCompile = function (sh) { ob.call(this, sh); sh.uniforms.uDep = U.uDep; sh.uniforms.uDc = U.uDc;
     sh.fragmentShader = 'uniform sampler2D uDep; uniform vec3 uDc;\nfloat sbH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }\nfloat sbN(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3. - 2. * f); return mix(mix(sbH(i), sbH(i + vec2(1., 0.)), f.x), mix(sbH(i + vec2(0., 1.)), sbH(i + vec2(1., 1.)), f.x), f.y); }\n' + sh.fragmentShader.replace('diffuseColor.rgb = mix(diffuseColor.rgb, vec3(.62, .68, .7), fo);', `
@@ -8773,34 +8803,34 @@ const SBD = {n: 96, span: 576, cx: 1e9, cz: 1e9, nx: 0, nz: 0, i: -1, buf: null,
         float ca = pow(abs(sin(fp.x * .7 + uT * 1.1 + sin(fp.y * .5 + uT * .6) * 2.3) * sin(fp.y * .8 - uT * .9 + sin(fp.x * .45 - uT * .4) * 2.1)), 5.); fl *= .82 + ca * .75 * uSun.w;
         float vis = exp(-path * .028) * (1. - smoothstep(120., 230., dc)) * (1. - smoothstep(22., 38., bd)) * (1. - fo); sbF = fl * exp(-path * vec3(.11, .036, .03)) * vis; diffuseColor.rgb = mix(diffuseColor.rgb, sbF, vis * .5); } }
       diffuseColor.rgb = mix(diffuseColor.rgb, vec3(.62, .68, .7), fo);`).replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\n totalEmissiveRadiance += sbF * (.06 + .7 * uSun.w);'); };
-  const r = f0.apply(this, arguments);
+  const r = next.apply(this, args);
   if (SEABED) { SEABED.userData.cz = 1e9; const m = SEABED.material, ob2 = m.onBeforeCompile; m.color.setHex(0xa8987a); m.onBeforeCompile = function (sh) { ob2.call(this, sh); sh.fragmentShader = 'float sbH(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }\nfloat sbN(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3. - 2. * f); return mix(mix(sbH(i), sbH(i + vec2(1., 0.)), f.x), mix(sbH(i + vec2(0., 1.)), sbH(i + vec2(1., 1.)), f.x), f.y); }\n' + sh.fragmentShader.replace('#include <color_fragment>', `#include <color_fragment>
       { vec2 fp = vWq.xz; float nn = sbN(fp * .07) * .6 + sbN(fp * .23) * .4, rp = sin(fp.x * 1.6 + sin(fp.y * .45) * 2.2 + nn * 3.) * .5 + .5; vec3 k = vec3(1.25, 1.12, .86) * (.8 + .3 * rp); k = mix(k, vec3(.42, .5, .36), smoothstep(.56, .7, nn)); k = mix(k, vec3(.5, .5, .5), smoothstep(.62, .8, sbN(fp * .5 + 7.)) * .7); diffuseColor.rgb *= k; }`); }; m.needsUpdate = true; }
-  return r; }; }
+  return r; }); }
 function sbdStep() { if (!SBD.tex || !cam) return; const n = SBD.n, cp = cam.position;
   if (SBD.i < 0) { if (Math.hypot(cp.x - SBD.cx, cp.z - SBD.cz) < 90 && SBD.cx < 1e8) return; SBD.nx = Math.round(cp.x / 24) * 24; SBD.nz = Math.round(cp.z / 24) * 24; SBD.i = 0; }
   const st = SBD.span / n, x0 = SBD.nx - SBD.span / 2 + st / 2, z0 = SBD.nz - SBD.span / 2 + st / 2, first = SBD.cx > 1e8, end = Math.min(n * n, SBD.i + (first ? n * n : 900));
   for (let k = SBD.i; k < end; k++) { const i = k % n, j = (k / n) | 0; SBD.buf[k] = clamp(-seaBed(x0 + i * st, z0 + j * st), 0, 60); } SBD.i = end;
   if (end >= n * n) { { const d = SBD.tex.image.data, H = THREE.DataUtils.toHalfFloat; for (let k = 0; k < n * n; k++) d[k] = H(SBD.buf[k]); } SBD.tex.needsUpdate = true; SBD.cx = SBD.nx; SBD.cz = SBD.nz; MAT.sea.userData.U.uDc.value.set(SBD.cx, SBD.cz, SBD.span); SBD.i = -1; } }
-{ const f0 = hud; hud = function () { const r = f0.apply(this, arguments); try { sbdStep(); } catch (e) { if (!SBD.err) { SBD.err = 1; console.warn('sbd', e); } } return r; }; }
+{ hud = after(hud, function (r) {  try { sbdStep(); } catch (e) { if (!SBD.err) { SBD.err = 1; console.warn('sbd', e); } }  }); }
 // ===== passenger seats in every aircraft: E sits you down (you ride with the plane and nothing can throw you out), E or W/A/S/D stands you up =====
 // ud.pseats = [[lx, lz, yaw, dy]] (boat-local, yaw 0 faces the bow); pcCabin fills them for the seaplanes, the airship/balloon/F-35 get theirs below
 function psMesh(X, x, z, yaw, col) { const {g, fb, S} = X, m = S({color: col || 0x4a3a30, roughness: .75}), o = new THREE.Group(); o.position.set(x, fb, z); o.rotation.y = yaw; g.add(o);
   const b = (w, h, d, px, py, pz) => { const q = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); q.position.set(px, py, pz); q.castShadow = q.receiveShadow = true; o.add(q); };
   b(.5, .1, .48, 0, .44, 0); b(.5, .62, .1, 0, .78, .24); b(.06, .44, .06, -.2, .22, -.18); b(.06, .44, .06, .2, .22, -.18); b(.06, .44, .06, -.2, .22, .2); b(.06, .44, .06, .2, .22, .2); return o; }
-{ const f0 = shpExtras; shpExtras = function (cls, X, ph) { const r = f0.apply(this, arguments); if (ph) return r; try { const ud = X.g.userData, ps = ud.pseats || (ud.pseats = []);
+{ shpExtras = after(shpExtras, function (r, cls, X, ph) {  if (ph) return; try { const ud = X.g.userData, ps = ud.pseats || (ud.pseats = []);
   if (cls === NB2.i0 + 2) { const {ww, wz0, wz1} = X, zm = (wz0 + wz1) / 2; for (const sd of [-1, 1]) for (const z of [zm + 1.4, zm + 2.2]) { if (z > wz1 - .6) continue; const x = sd * (ww - .45); psMesh(X, x, z, sd * PI / 2, 0x6a3a2a); ps.push([x, z, sd * PI / 2]); } }
   if (cls === BAL_I) { const {hw, zs, fb} = X, z = zs - .6 - .4; for (const sd of [-1, 1]) { const x = sd * (hw - .7); psMesh(X, x, z, 0, 0x5a3a20); ps.push([x, z, 0]); } }
   if (cls === F35_I) { const {add, S, fb} = X, pd = S({color: 0x1c1e22, roughness: .9}), st = S({color: 0x8a8e94, metalness: .6, roughness: .4}); for (const z of [-.5, .7]) { add(new THREE.BoxGeometry(.5, .12, .55), pd, 0, fb + .07, z); const h = add(new THREE.TorusGeometry(.14, .02, 6, 12, PI), st, 0, fb + .14, z - .35); ps.push([0, z, 0]); } }
-  } catch (e) { console.warn('pseats', e); } return r; }; }
-{ const f0 = buildBoat; buildBoat = function () { const r = f0.apply(this, arguments); if (P) P.psit = null; const ps = BOAT && BOAT.userData.pseats;
-  if (ps) ps.forEach(s => INTER.push({kind: 'psit', boat: 1, lx: s[0], lz: s[1], ly: .6, r: 1.1, label: () => P.psit === s ? 'Stand up' : 'Sit down', on: () => P && !P.sw && P.ob && !P.seat && (!P.psit || P.psit === s), go: () => psSit(P.psit === s ? null : s)})); return r; }; }
+  } catch (e) { console.warn('pseats', e); }  }); }
+{ buildBoat = after(buildBoat, function (r) {  if (P) P.psit = null; const ps = BOAT && BOAT.userData.pseats;
+  if (ps) ps.forEach(s => INTER.push({kind: 'psit', boat: 1, lx: s[0], lz: s[1], ly: .6, r: 1.1, label: () => P.psit === s ? 'Stand up' : 'Sit down', on: () => P && !P.sw && P.ob && !P.seat && (!P.psit || P.psit === s), go: () => psSit(P.psit === s ? null : s)}));  }); }
 function psSit(s) { const q = P.psit; P.psit = s || null; if (!s) { P.cr = 0; if (q) { P.bl = [q[0] - Math.sin(q[2]) * .55, q[1] - Math.cos(q[2]) * .55]; const [wx, wz] = bL2W(P.bl[0], P.bl[1]); P.x = wx; P.z = wz; P.y = BDECK.y; } return; }
   P.yaw = B.yaw + s[2]; P.vx = P.vz = P.vy = 0; if (!G.psMsg) { G.psMsg = 1; showMsg('Seated. Nothing can throw you out now.', 'E or W/A/S/D to stand up', 2.5); } }
-{ const f0 = stepPlayer; stepPlayer = function (dt) { if (P && P.ob && !P.seat && !P.climb && BOAT && BOAT.userData.f35 && P.bl[1] < BDECK.z0) { P.bl = [0, BDECK.z0 + .3]; const [wx, wz] = bL2W(0, P.bl[1]); P.x = wx; P.z = wz; P.y = BDECK.y; P.vy = 0; } const s = P && P.psit; if (!s) return f0.apply(this, arguments);
-  if (!P.ob || P.sw || P.dead || P.down || P.seat || P.climb || !BOAT) { P.psit = null; P.cr = 0; return f0.apply(this, arguments); }
-  if (K.KeyW || K.KeyA || K.KeyS || K.KeyD) { psSit(null); return f0.apply(this, arguments); }
-  P.bl = [s[0], s[1]]; const [wx, wz] = bL2W(s[0], s[1]); P.x = wx; P.z = wz; P.y = BDECK.y + (s[3] || 0); P.vx = P.vz = P.vy = 0; P.cr = 1; P.run = 0; P.eye = mix(P.eye, 1.1, Math.min(1, dt * 6)); G.onFl = 1; }; }
+{ stepPlayer = around(stepPlayer, function (next, ...args) { let [dt] = args; if (P && P.ob && !P.seat && !P.climb && BOAT && BOAT.userData.f35 && P.bl[1] < BDECK.z0) { P.bl = [0, BDECK.z0 + .3]; const [wx, wz] = bL2W(0, P.bl[1]); P.x = wx; P.z = wz; P.y = BDECK.y; P.vy = 0; } const s = P && P.psit; if (!s) return next.apply(this, args);
+  if (!P.ob || P.sw || P.dead || P.down || P.seat || P.climb || !BOAT) { P.psit = null; P.cr = 0; return next.apply(this, args); }
+  if (K.KeyW || K.KeyA || K.KeyS || K.KeyD) { psSit(null); return next.apply(this, args); }
+  P.bl = [s[0], s[1]]; const [wx, wz] = bL2W(s[0], s[1]); P.x = wx; P.z = wz; P.y = BDECK.y + (s[3] || 0); P.vx = P.vz = P.vy = 0; P.cr = 1; P.run = 0; P.eye = mix(P.eye, 1.1, Math.min(1, dt * 6)); G.onFl = 1; }); }
 
 // ===== the Gloamwing: a pale sky-ray with a 30 m span that hunts aircraft flying high at night or in a storm (rarely by day). It paces you from the cloud, circles,
 // then makes diving passes: each hit tears at the hull, and anyone standing is thrown about (or out, near the door or on an open aircraft). Drive it off by shooting it
@@ -8823,17 +8853,17 @@ function skyStep(dt) { if (!G.on || dt <= 0) return; let C = SKY.c; const alt = 
   else { const a = Math.atan2(C.x - B.x, C.z - B.z); tx = C.x + Math.sin(a) * 80; tz = C.z + Math.cos(a) * 80; ty = C.y + 30; sp = 32; if (C.t > 14) { SKY.c = null; return; } }
   const dx = tx - C.x, dz = tz - C.z, w = Math.atan2(-dx, -dz), turn = angD(C.yaw, w) * Math.min(1, dt * tr); C.yaw += turn; C.bank = mix(C.bank, clamp(turn / Math.max(dt, .001) * .5, -.9, .9), Math.min(1, dt * 3));
   C.x += -Math.sin(C.yaw) * sp * dt; C.z += -Math.cos(C.yaw) * sp * dt; C.y += clamp(ty - C.y, -18, 18) * dt * (C.st === 2 ? 2 : 1); }
-{ const f0 = hostStep; hostStep = function (dt) { const r = f0.apply(this, arguments); try { skyStep(dt); } catch (e) { if (!SKY.err) { SKY.err = 1; console.warn('sky', e); } } return r; }; }
+{ hostStep = after(hostStep, function (r, dt) {  try { skyStep(dt); } catch (e) { if (!SKY.err) { SKY.err = 1; console.warn('sky', e); } }  }); }
 // shots: rifles, pistols and the F-35 cannon (aimed at it automatically when nothing in the sea is up)
 const skyRay = (C, o, d) => { for (const [k, r] of [[0, 5], [8, 3.5], [-8, 3.5]]) { const rx = Math.cos(C.yaw), rz = -Math.sin(C.yaw), cx = C.x + rx * k - o[0], cy = C.y - o[1], cz = C.z + rz * k - o[2], t = cx * d[0] + cy * d[1] + cz * d[2]; if (t > 0 && t < 260 && Math.hypot(cx - d[0] * t, cy - d[1] * t, cz - d[2] * t) < r) return 1; } return 0; };
-{ const f0 = hostShoot; hostShoot = function (p, m) { const C = SKY.c; if (C && C.st !== 3 && C.st !== 5 && m && m.o && m.d && skyRay(C, m.o, m.d)) { C.hp -= 9 * clamp(m.mul || 1, 1, 6); emit({k: 'sky', st: 4}); if (C.st === 0) { C.st = 1; C.t = 0; } else if (C.st === 1) C.t += 3; } return f0.apply(this, arguments); }; }
-{ const f0 = hostAct; hostAct = function (id, m) { const ok = m && m.a === 'bfire' && (B.fireT || 0) <= G.t && !G.enc && SKY.c && HC().fire && B.driver === id; const r = f0.apply(this, arguments); const p = PL.get(id), C = SKY.c;
-  if (ok && p && C) { const o = [B.x, BDECK.y - (B.dep || 0) + 1, B.z], dx = C.x - o[0], dy = C.y - o[1], dz = C.z - o[2], l = Math.hypot(dx, dy, dz) || 1; if (l < 300) hostShoot(p, {w: 'g', o, d: [dx / l, dy / l, dz / l], mul: HC().fire.mul}); } return r; }; }
-{ const f0 = packSnap; packSnap = function () { const s = f0.apply(this, arguments), C = SKY.c; if (C) s.sky = [Math.round(C.x * 10) / 10, Math.round(C.z * 10) / 10, Math.round(C.y * 10) / 10, Math.round(C.yaw * 100) / 100, C.st, Math.round(C.bank * 100) / 100]; return s; }; }
-{ const f0 = applySnap; applySnap = function (s) { const r = f0.apply(this, arguments); SKY.cs = s.sky || null; return r; }; }
+{ hostShoot = before(hostShoot, function (p, m) { const C = SKY.c; if (C && C.st !== 3 && C.st !== 5 && m && m.o && m.d && skyRay(C, m.o, m.d)) { C.hp -= 9 * clamp(m.mul || 1, 1, 6); emit({k: 'sky', st: 4}); if (C.st === 0) { C.st = 1; C.t = 0; } else if (C.st === 1) C.t += 3; } return NEXT; }); }
+{ hostAct = around(hostAct, function (next, ...args) { let [id, m] = args; const ok = m && m.a === 'bfire' && (B.fireT || 0) <= G.t && !G.enc && SKY.c && HC().fire && B.driver === id; const r = next.apply(this, args); const p = PL.get(id), C = SKY.c;
+  if (ok && p && C) { const o = [B.x, BDECK.y - (B.dep || 0) + 1, B.z], dx = C.x - o[0], dy = C.y - o[1], dz = C.z - o[2], l = Math.hypot(dx, dy, dz) || 1; if (l < 300) hostShoot(p, {w: 'g', o, d: [dx / l, dy / l, dz / l], mul: HC().fire.mul}); } return r; }); }
+{ packSnap = after(packSnap, function (s) { const C = SKY.c; if (C) s.sky = [Math.round(C.x * 10) / 10, Math.round(C.z * 10) / 10, Math.round(C.y * 10) / 10, Math.round(C.yaw * 100) / 100, C.st, Math.round(C.bank * 100) / 100];  }); }
+{ applySnap = after(applySnap, function (r, s) {  SKY.cs = s.sky || null;  }); }
 // events: warnings, the screech before a dive, the hit (thrown about or out), the end
-{ const f0 = applyEv; applyEv = function (e) { const r = f0.apply(this, arguments);
-  if (e.k === 'skyom') { const n = e.n; G.skyFlick = n * 1.4; if (!P || !(P.ob && flyAir())) return r;
+{ applyEv = after(applyEv, function (r, e) { 
+  if (e.k === 'skyom') { const n = e.n; G.skyFlick = n * 1.4; if (!P || !(P.ob && flyAir())) return;
     if (n === 1) { showMsg('The radio hisses. The instruments flicker and die for a second.', '', 3.5); burst(2400, .3, .18, 1.6, 'highpass'); setTimeout(() => burst(1800, .3, .12, 1, 'highpass'), 900); }
     else if (n === 2) { showMsg('Something crosses the cloud above you. Something enormous.', '', 4); SKY.gh = {t: 0}; tone(62, .4, 3.5, 'sawtooth', null, 34); setTimeout(() => tone(48, .3, 3, 'sine', null, 30), 1600); }
     else { showMsg('Wingbeats. Slow, heavy, close.', 'Find a seat, or get low', 3); for (let i = 0; i < 4; i++) setTimeout(() => { burst(110, .6, .55, .9, 'lowpass'); G.shake = Math.max(G.shake || 0, .25); }, i * 1100); } }
@@ -8849,7 +8879,7 @@ const skyRay = (C, o, d) => { for (const [k, r] of [[0, 5], [8, 3.5], [-8, 3.5]]
       const out = enc ? !!(dr && Math.abs(lz - dr[1]) < dr[2] / 2 + .6 && lx * dr[0] > 0) && Math.random() < .7 : Math.random() < .55;
       if (out) { const sd = dr ? dr[0] : (lx >= 0 ? 1 : -1), [wx, wz] = bL2W(sd * (BG.hw + 1.6), lz); G.bailT = 3; P.ob = 0; P.climb = null; P.x = wx; P.z = wz; P.y += -(B.dep || 0); P.vy = 3; P.vx = P.vz = 0; showMsg('It tears you out of the aircraft!', `${Math.round(-(B.dep || 0))} m to the water`, 3); }
       else showMsg('The whole aircraft lurches. You are thrown off your feet!', 'Sit down: E at a seat', 2.5); } }
-  return r; }; }
+   }); }
 // the model: pale manta wings with dark veins that beat slowly, a whip tail, a hooked head with a glowing maw and eyes
 function skyModel() { const g = new THREE.Group(), sk = new THREE.MeshStandardMaterial({color: 0xb8b2a4, roughness: .75, emissive: 0x0c1014, emissiveIntensity: .35, side: THREE.DoubleSide}), dkm = new THREE.MeshStandardMaterial({color: 0x2a2622, roughness: .8, emissive: 0x0a0c10});
   const body = new THREE.Mesh(new THREE.SphereGeometry(1, 20, 12), sk); body.scale.set(2.3, 1.1, 7); g.add(body); const sp = new THREE.Mesh(new THREE.SphereGeometry(1, 14, 8), dkm); sp.scale.set(1.2, .5, 5.5); sp.position.y = .7; g.add(sp);
@@ -8879,9 +8909,9 @@ function skyFrame(dt) { skyFx(dt, isHost() ? (SKY.c && [SKY.c.x, SKY.c.z, SKY.c.
   SKY.ft += dt * (C[4] === 2 ? .45 : 1.1); const fl = Math.sin(SKY.ft * 2.2), amp = C[4] === 2 ? .12 : .42; for (const [p, s] of ud.wings) p.rotation.z = s * (fl * amp + (C[4] === 2 ? .35 : 0)); ud.jaw.rotation.x = -PI / 2 - .25 - (C[4] === 2 ? .35 : .08 + Math.sin(G.wt * 1.3) * .06);
   ud.tail.forEach((s, i) => { s.rotation.y = Math.sin(G.wt * 1.6 - i * .5) * .12; s.rotation.x = Math.sin(G.wt * 1.1 - i * .4) * .05; });
   const cd = cam.position.distanceTo(m.position); if (cd < 90 && fl > .95 && !SKY.wb) { SKY.wb = 1; burst(180, .5, clamp(1.2 - cd / 80, .05, 1) * .5, .7, 'lowpass', at(m.position.x, m.position.y, m.position.z, 20)); } if (fl < .5) SKY.wb = 0; }
-{ const f0 = hud; hud = function () { const r = f0.apply(this, arguments); try { skyFrame(G.dtR || .016); } catch (e) { if (!SKY.ferr) { SKY.ferr = 1; console.warn('skyF', e); } } return r; }; }
-{ const f0 = render; render = function (dt) { G.dtR = dt; return f0.apply(this, arguments); }; }
-if (TEST) { const f0 = hud; hud = function (dt) { const r = f0.apply(this, arguments); const o = G.camOv; if (o && BOAT) { BOAT.updateMatrixWorld(true); const a = new THREE.Vector3(o[0], o[1], o[2]).applyMatrix4(BOAT.matrixWorld), b = new THREE.Vector3(o[3], o[4], o[5]).applyMatrix4(BOAT.matrixWorld); cam.position.copy(a); cam.up.set(0, 1, 0); cam.lookAt(b); } return r; }; }
+{ hud = after(hud, function (r) {  try { skyFrame(G.dtR || .016); } catch (e) { if (!SKY.ferr) { SKY.ferr = 1; console.warn('skyF', e); } }  }); }
+{ render = before(render, function (dt) { G.dtR = dt; return NEXT; }); }
+if (TEST) { hud = after(hud, function (r, dt) {  const o = G.camOv; if (o && BOAT) { BOAT.updateMatrixWorld(true); const a = new THREE.Vector3(o[0], o[1], o[2]).applyMatrix4(BOAT.matrixWorld), b = new THREE.Vector3(o[3], o[4], o[5]).applyMatrix4(BOAT.matrixWorld); cam.position.copy(a); cam.up.set(0, 1, 0); cam.lookAt(b); }  }); }
 menuInit();
 setTimeout(() => { buildWorld(); requestAnimationFrame(frame); }, 30);
 // ===== chat and emotes (Enter chats, hold O for the emote wheel; looping emotes like the Griddy keep going while you walk)
@@ -8929,9 +8959,9 @@ function chatClose() { if (!G.chat) return; G.chat = false; CHAT.inp.blur(); CHA
 function chatSend(v) { if (v[0] === '/') { const c = v.slice(1).toLowerCase().replace(/\s+/g, ''); const k = EMOTES.findIndex(E => E.n.toLowerCase().replace(/\s+/g, '') === c || (E.al || []).includes(c)); if (k >= 0) { emoteStart(k); return; } if (c === 'stop') { emoteStart(-1); return; } chatLine('', '', 'Emotes: ' + EMOTES.map(E => '/' + E.n.toLowerCase().replace(/\s+/g, '')).join(' ') + ' /stop'); return; } act({a: 'chat', s: v}); }
 function chatLine(name, col, txt) { chatUI(); const d = document.createElement('div'); if (name) { const b = document.createElement('b'); b.textContent = name; b.style.color = col; d.appendChild(b); } d.appendChild(document.createTextNode(txt)); CHAT.el.appendChild(d); while (CHAT.el.children.length > 8) CHAT.el.firstChild.remove(); setTimeout(() => d.style.opacity = 0, 12000); }
 function emoteStart(k) { if (!P || !(k < EMOTES.length)) return; if (k < 0 || (P.emo && P.emo.i === k && EMOTES[k].loop)) { P.emo = null; return; } if (P.dead || P.down || P.sw || P.seat || P.climb) return; P.emo = {i: k, t: 0}; }
-{ const f0 = hostAct; hostAct = function (id, m) { if (m && m.a === 'chat') { const p = PL.get(id); if (!p || !G.on) return; const now = performance.now(); if (now - (p.chT || 0) < 600) return; p.chT = now; const s = String(m.s || '').replace(/[\u0000-\u001f\u007f]/g, '').trim().slice(0, 120); if (s) emit({k: 'chat', id, s}); return; } return f0.apply(this, arguments); }; }
-{ const f0 = applyEv; applyEv = function (e) { if (e && e.k === 'chat') { const p = PL.get(e.id); const col = '#' + new THREE.Color(CREW_COL[((p && p.c) || 0) % 6]).getHexString(); chatLine(p ? p.name : '?', col, e.s); if (p) { p.bubS = e.s; p.bubT = 6; } Snd && Snd.click && Snd.click(); return; } return f0.apply(this, arguments); }; }
-{ const f0 = myPose; myPose = function () { const r = f0.apply(this, arguments); r.em = P && P.emo ? P.emo.i + 1 : 0; return r; }; }
+{ hostAct = before(hostAct, function (id, m) { if (m && m.a === 'chat') { const p = PL.get(id); if (!p || !G.on) return; const now = performance.now(); if (now - (p.chT || 0) < 600) return; p.chT = now; const s = String(m.s || '').replace(/[\u0000-\u001f\u007f]/g, '').trim().slice(0, 120); if (s) emit({k: 'chat', id, s}); return; } return NEXT; }); }
+{ applyEv = before(applyEv, function (e) { if (e && e.k === 'chat') { const p = PL.get(e.id); const col = '#' + new THREE.Color(CREW_COL[((p && p.c) || 0) % 6]).getHexString(); chatLine(p ? p.name : '?', col, e.s); if (p) { p.bubS = e.s; p.bubT = 6; } Snd && Snd.click && Snd.click(); return; } return NEXT; }); }
+{ myPose = after(myPose, function (r) {  r.em = P && P.emo ? P.emo.i + 1 : 0;  }); }
 // the wheel: hold O, flick the mouse toward an emote (or press 1-8), let go
 addEventListener('keydown', e => {
   if (e.target && /^(INPUT|TEXTAREA)$/.test(e.target.tagName)) return; if (!G.on || G.paused || !P) return;
@@ -8947,7 +8977,7 @@ function emoWheelDraw() { const W = G.emoW; if (Math.hypot(W.x, W.y) > 30) { con
 function emoWheelEnd() { const W = G.emoW; if (!W) return; G.emoW = null; CHAT.wheel.style.display = 'none'; if (W.sel >= 0) emoteStart(W.sel); else if (P && P.emo) emoteStart(-1); }
 // your own emote: tick it, and show yourself in third person (outside cabins) while it plays
 const EMQ = {};
-{ const f0 = updateTools; updateTools = function (dt) { const r = f0.apply(this, arguments); try { emoteSelf(dt); bubbles(dt); } catch (e) { if (TEST) console.error(e); } return r; }; }
+{ updateTools = after(updateTools, function (r, dt) {  try { emoteSelf(dt); bubbles(dt); } catch (e) { if (TEST) console.error(e); }  }); }
 function emoteSelf(dt) {
   const e = P && P.emo; if (e && (P.dead || P.down || P.sw || P.seat || P.climb || P.hd >= 0 || P.cas)) P.emo = null;
   if (!P || !P.emo) { G.emCam = 0; return; }
@@ -8991,11 +9021,11 @@ const RESTOCK = {item: 20 * 60e3, sunk: 40 * 60e3}, restockMs = (i, sunk) => (su
 const LTK = {it: {}, sk: {}, t: 0};
 function lootTimes() { const o = []; for (const k in LTK.it) o.push([+k, LTK.it[k]]); for (const k in LTK.sk) o.push([-1 - k, LTK.sk[k]]); return o; }
 const noRestock = it => !it || it.kind === 'note' || it.pl || it.one;
-{ const f0 = startGame; startGame = function (seed, crew, sv) { const r = f0.apply(this, arguments); LTK.it = {}; LTK.sk = {}; LTK.t = 0; G.ftSeen = (sv && Array.isArray(sv.ft) ? sv.ft : []).slice();
+{ startGame = after(startGame, function (r, seed, crew, sv) {  LTK.it = {}; LTK.sk = {}; LTK.t = 0; G.ftSeen = (sv && Array.isArray(sv.ft) ? sv.ft : []).slice();
   if (isHost() && sv && Array.isArray(sv.lt) && sv.ws === seed) { const now = Date.now(); for (const [i, ts] of sv.lt) { if (!(ts > 0)) continue;
     if (i >= 0) { const it = ITEMS[i]; if (!it || i >= (G.seedItems || ITEMS.length) || (!noRestock(it) && now - ts > restockMs(i))) continue; it.taken = true; LTK.it[i] = ts; }
     else { const j = -1 - i, q = SUNK[j]; if (!q || now - ts > restockMs(j, 1)) continue; q.got = true; if (q.m) q.m.visible = false; LTK.sk[j] = ts; } } }
-  return r; }; }
+   }); }
 // host, every 2 s: stamp newly taken loot, restock what has waited long enough while nobody is close, and unlock docks the boat comes near
 function lootTick(dt) { if (!isHost() || !G.on || (LTK.t -= dt) > 0) return; LTK.t = 2; const now = Date.now(), n = G.seedItems || ITEMS.length, crew = [...PL.values()].filter(p => p.ready && !p.dead), near = (x, z) => crew.some(p => Math.hypot(p.x - x, p.z - z) < 90) || Math.hypot(B.x - x, B.z - z) < 90; let ch = 0;
   for (let i = 0; i < n; i++) { const it = ITEMS[i]; if (!it) continue; if (it.taken) { if (!LTK.it[i]) { LTK.it[i] = now; ch = 1; } else if (!noRestock(it) && now - LTK.it[i] > restockMs(i) && !near(it.x, it.z)) { it.taken = false; delete LTK.it[i]; ch = 1; } } else if (LTK.it[i]) { delete LTK.it[i]; ch = 1; } }
@@ -9003,22 +9033,22 @@ function lootTick(dt) { if (!isHost() || !G.on || (LTK.t -= dt) > 0) return; LTK
   for (const d of dockList()) if (!G.ftSeen.includes(d.n) && Math.hypot(B.x - d.x, B.z - d.z) < 160) { G.ftSeen.push(d.n); ch = 1; if (G.ftSeen.length > 1) emit({k: 'ftnew', n: d.n}); }
   if (!G.ftSeen.includes('the home jetty')) G.ftSeen.push('the home jetty');
   if (ch) save(); }
-{ const f0 = hostStep; hostStep = function (dt) { const r = f0.apply(this, arguments); try { lootTick(dt); } catch (e) { if (TEST) console.error(e); } return r; }; }
+{ hostStep = after(hostStep, function (r, dt) {  try { lootTick(dt); } catch (e) { if (TEST) console.error(e); }  }); }
 // fast travel: the helmsman, docked (or crawling) at any jetty, picks another dock they have been to; the harbour pilot charges by distance and the clock moves on
 const ftDockHere = () => { const d = dockNear(B.x, B.z, 30 + BG.L * .5); return d && Math.abs(B.v) < 2.5 ? d : null; };
 const ftCost = (a, b) => Math.max(15, Math.round(Math.hypot(a.x - b.x, a.z - b.z) / 25 / 5) * 5);
 function ftWhy() { if (B.sink > 0) return 'The boat is sinking.'; if (HC().plane && -(B.dep || 0) > .5) return 'Land first.'; if (HC().sub && (B.dep || 0) > 1) return 'Surface first.'; if (!ftDockHere()) return 'Bring her alongside a jetty or landing first.'; return ''; }
-{ const f0 = hostAct; hostAct = function (id, m) { if (!m || m.a !== 'ft') return f0.apply(this, arguments); const p = PL.get(id); if (!p || !G.on || B.driver !== id) return;
+{ hostAct = before(hostAct, function (id, m) { if (!m || m.a !== 'ft') return NEXT; const p = PL.get(id); if (!p || !G.on || B.driver !== id) return;
   const L = dockList(), to = L[m.i], from = ftDockHere(), why = ftWhy(); if (why) { emit({k: 'nope', id, why}); return; } if (!to || !G.ftSeen.includes(to.n) || to.n === from.n) return;
   const c = ALL ? 0 : ftCost(from, to); if (G.cash < c) { emit({k: 'nope', id, why: `The harbour pilot wants ${money(c)}.`}); return; }
   G.cash -= c; const ox = B.x, oz = B.z, dist = Math.hypot(to.x - ox, to.z - oz); if (B.ap) { B.ap = null; emit({k: 'ap', on: 0}); } Object.assign(B, {x: to.x, z: to.z, yaw: to.yaw, v: 0, yr: 0, thr: 0, st: 0, dep: 0, dtar: 0});
   G.tod = (G.tod + Math.min(.25, dist / 14 / TOD_LEN)) % 1; G.floats = G.floats.map(() => null); for (let i = 0; i < G.floats.length; i++) spawnFloat(i);
   const ids = []; let n = 0; for (const q of PL.values()) { if (!q.ready || q.dead) continue; if (q.ob) { n++; continue; } if (Math.hypot(q.x - ox, q.z - oz) < 70) { ids.push([q.id, n]); if (q !== P) { const sp = boatSpawn(n); q.ob = 1; q.bl = sp.bl; q.y = sp.y; q.sw = 0; } n++; } }
-  emit({k: 'ft', n: to.n, c, ids}); save(); }; }
-{ const f0 = applyEv; applyEv = function (e) { if (!e || (e.k !== 'ft' && e.k !== 'ftnew')) return f0.apply(this, arguments);
+  emit({k: 'ft', n: to.n, c, ids}); save(); }); }
+{ applyEv = before(applyEv, function (e) { if (!e || (e.k !== 'ft' && e.k !== 'ftnew')) return NEXT;
   if (e.k === 'ftnew') { if (!G.ftSeen) G.ftSeen = []; if (!G.ftSeen.includes(e.n)) G.ftSeen.push(e.n); toast('New dock on the chart', `${e.n[0].toUpperCase() + e.n.slice(1)}: fast travel there from the wheel (L)`); return; }
   if (!G.ftSeen) G.ftSeen = []; ftFade(); const mine = P && e.ids.find(q => q[0] === P.id); if (mine && !P.ob) { const sp = boatSpawn(mine[1] | 0); Object.assign(P, {ob: 1, bl: sp.bl, y: sp.y, sw: 0, climb: null, vx: 0, vz: 0, vy: 0}); const [wx, wz] = bL2W(P.bl[0], P.bl[1]); P.x = wx; P.z = wz; }
-  P && (P.lastBY = B.yaw); setTimeout(() => G.on && toast(`Arrived at ${e.n}`, e.c ? `Harbour pilot: ${money(e.c)}` : ''), 700); ftClose(); }; }
+  P && (P.lastBY = B.yaw); setTimeout(() => G.on && toast(`Arrived at ${e.n}`, e.c ? `Harbour pilot: ${money(e.c)}` : ''), 700); ftClose(); }); }
 function ftFade() { let f = $('ftFade'); if (!f) { f = document.createElement('div'); f.id = 'ftFade'; f.style.cssText = 'position:fixed;inset:0;background:#02060a;opacity:0;pointer-events:none;transition:opacity .35s;z-index:40'; document.body.appendChild(f); } f.style.transition = 'none'; f.style.opacity = 1; requestAnimationFrame(() => requestAnimationFrame(() => { f.style.transition = 'opacity 1.4s'; f.style.opacity = 0; })); }
 function ftOpen() { const why = ftWhy(); if (why) { showMsg(why, '', 2.5); return; } const here = ftDockHere(), L = dockList(); let el = $('ftP');
   if (!el) { el = document.createElement('div'); el.id = 'ftP'; el.style.cssText = 'position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(440px,92vw);max-height:76vh;overflow:auto;background:rgba(8,14,20,.94);border:1px solid rgba(255,255,255,.18);border-radius:10px;padding:16px 18px;font:14px Georgia,serif;color:#e8e0cc;z-index:35;pointer-events:auto'; document.body.appendChild(el); }
@@ -9031,16 +9061,16 @@ addEventListener('keydown', e => { if (e.target && /^(INPUT|TEXTAREA)$/.test(e.t
   if (G.ftOpen) { if (e.code === 'Escape' || e.code === 'KeyL') { e.stopImmediatePropagation(); ftClose(); } return; }
   if (e.code === 'KeyL' && P.seat && !anyPanel() && !G.map) { e.stopImmediatePropagation(); ftOpen(); } }, {capture: true});
 // a hint at the wheel while docked
-{ const f0 = hud; hud = function (dt) { const r = f0.apply(this, arguments); if (P && P.seat && !G.ftOpen && G.on && (G.ftHintT = (G.ftHintT || 0) - (G.dtR || .016)) <= 0 && ftDockHere() && (G.ftSeen || []).length > 1) { G.ftHintT = 45; showMsg('Docked. <kbd>L</kbd> fast travel to another dock you have visited.', '', 4); } return r; }; }
+{ hud = after(hud, function (r, dt) {  if (P && P.seat && !G.ftOpen && G.on && (G.ftHintT = (G.ftHintT || 0) - (G.dtR || .016)) <= 0 && ftDockHere() && (G.ftSeen || []).length > 1) { G.ftHintT = 45; showMsg('Docked. <kbd>L</kbd> fast travel to another dock you have visited.', '', 4); }  }); }
 // ===== big ships: a "go to the bridge" point where you board and a "back to the deck" point by the wheel (hulls 30 m and longer)
 function bridgeHop(up) { if (!P || !P.ob || P.seat || P.sw || P.climb) return; const H = INTER.filter(q => q.boat && q.kind === 'helm'), h = H.find(q => q.by != null) || H[0]; if (!h) return;
   const sp = boatSpawn(0), to = up ? {bl: [h.lx, h.lz], y: h.by != null ? h.by - 1 : BDECK.y} : sp; ftFade(); P.psit = null; P.cr = 0; P.vx = P.vz = P.vy = 0; P.bl = to.bl.slice(); P.y = to.y; const [wx, wz] = bL2W(P.bl[0], P.bl[1]); P.x = wx; P.z = wz;
   P.yaw = B.yaw + (up ? 0 : PI); P.gwT = 1; Snd && Snd.click && Snd.click(); }
-{ const f0 = buildBoat; buildBoat = function () { const r = f0.apply(this, arguments); if ((BG.L || 0) < 30) return r; const H = INTER.filter(q => q.boat && q.kind === 'helm'), h = H.find(q => q.by != null) || H[0]; if (!h) return r;
-  const sp = boatSpawn(0), far = Math.hypot(h.lx - sp.bl[0], h.lz - sp.bl[1]); if (far < 6 && h.by == null) return r;
+{ buildBoat = after(buildBoat, function (r) {  if ((BG.L || 0) < 30) return; const H = INTER.filter(q => q.boat && q.kind === 'helm'), h = H.find(q => q.by != null) || H[0]; if (!h) return;
+  const sp = boatSpawn(0), far = Math.hypot(h.lx - sp.bl[0], h.lz - sp.bl[1]); if (far < 6 && h.by == null) return;
   INTER.push({kind: 'bridge', boat: 1, lx: sp.bl[0] + 1.6, lz: sp.bl[1], ly: 1, r: 1.6, label: () => 'Go to the bridge', on: () => P && P.ob && !P.sw && !P.seat, go: () => bridgeHop(1)});
   INTER.push({kind: 'bridge', boat: 1, lx: h.lx + 1.4, lz: h.lz + .8, ly: (h.by != null ? h.by - 1 - BDECK.y : 0) + 1, by: h.by, r: 1.3, label: () => 'Back down to the deck', on: () => P && P.ob && !P.sw && !P.seat && (h.by == null || P.y > h.by - 2), go: () => bridgeHop(0)});
-  return r; }; }
+   }); }
 // ===== a reason for every boat: perks for the plain ones and a 'Best for' line in the shop
 const sonarOn = () => !!(B.up.sonar || HC().radar);
 Object.assign(HULLS[0], {dmgK: .75, perk: 'Sturdy', best: 'Learning the ropes. Sturdy: takes a quarter less damage, and she costs nothing'});
@@ -9064,8 +9094,8 @@ if (HULLS[17]) HULLS[17].best = 'Deep wrecks without getting wet: the ROV reache
 if (HULLS[18]) HULLS[18].best = 'Getting anywhere fast: twice the Albatross\'s speed';
 for (const H of HULLS) if (!H.best) { if (H.n === 'Black Gull brigantine') H.best = 'Fighting back: broadside cannons on F'; else if (H.n === 'Grim Harvest whaler') H.best = 'Monster hunting: a harpoon on F and a ghost crew'; else if (H.n === 'Zephyr airship') H.best = 'Sightseeing and scouting: hovers anywhere'; else if (H.n === 'Bastion fortress barge') H.best = 'Holding out: a deck gun and a hull that patches itself'; else if (H.balloon) H.best = 'The best view in the game'; }
 for (const H of HULLS) if (H.L >= 38 && !H.plane && !H.air && !H.sub) H.best = (H.best || '') + '. Big ship: a purser aboard buys your salvage at sea, floating cargo drifts to her, and the crew respawn aboard';
-{ const f0 = damageBoat; damageBoat = function (n) { const H = HC(); if (H.dmgK && n > 0) n *= H.dmgK;
-  if (H.rib && B.sink <= 0 && n > 0 && B.hull - n < 1) { const was = B.hull; B.hull = 1; if (was > 1) emit({k: 'ribfloat'}); return; } return f0.call(this, n); }; }
+{ damageBoat = before(damageBoat, function (n) { const H = HC(); if (H.dmgK && n > 0) n *= H.dmgK;
+  if (H.rib && B.sink <= 0 && n > 0 && B.hull - n < 1) { const was = B.hull; B.hull = 1; if (was > 1) emit({k: 'ribfloat'}); return; } return NEXT; }); }
 // ===== boarding and leaving any boat with E: 'Climb aboard' from a dock, a beach or the water within a few metres of her side; 'Step ashore' from near her rail
 // when there is a dock or land within 7 m (the walk-on gangway still works too)
 function boardAt(cx, cz) { if (!BOAT || P.seat || P.climb) return; ftFade(); P.sw = 0; P.dv = 0; P.deep = 0; P.ob = 1; P.bl = [cx, cz]; P.y = BDECK.y; const [wx, wz] = bL2W(cx, cz); P.x = wx; P.z = wz; P.vx = P.vz = P.vy = 0; P.gwT = 1; P.lastBY = B.yaw; Snd.step && Snd.step('wood', 1); }
@@ -9078,25 +9108,25 @@ function boardTargets(L) { if (!BOAT || !P || B.sink > 0 || (B.dep || 0) > .3 ||
   if (BDECK.x1 - Math.abs(lx) < 1.6) dirs.push([Math.sign(lx) || 1, 0]); if (BDECK.z1 - lz < 1.6) dirs.push([0, 1]); if (lz - BDECK.z0 < 1.6) dirs.push([0, -1]);
   for (const [nx, nz] of dirs) for (let dd = 1; dd <= 7; dd += .5) { const [wx, wz] = bL2W(lx + nx * dd, lz + nz * dd), f = floorAt(wx, wz, BDECK.y + 1.5, true); if (f && f.s.k !== 'boat' && f.y > -.4 && f.y < BDECK.y + 1.5) {
     L.push({kind: 'board', flat: 1, x: wx, y: f.y + .5, z: wz, r: 9, label: () => 'Step ashore', go: () => ashoreAt(wx, f.y, wz)}); return; } } }
-{ const f0 = targets; targets = function (...a) { const L = f0.apply(this, a); try { boardTargets(L); } catch (e) { if (!G.bdErr) { G.bdErr = 1; console.warn(e); } } return L; }; }
+{ targets = after(targets, function (L, ...a) {  try { boardTargets(L); } catch (e) { if (!G.bdErr) { G.bdErr = 1; console.warn(e); } }  }); }
 // ===== the massive ships (38 m and up, not aircraft): a purser aboard (sell the hold anywhere at sea for a 15% cut, buy gear), cargo sweeps to her
 // like the tug's magnet (45 m), the crew respawn in her sick bay, and B jumps between the deck and the bridge on any ship that has one
 function megaShip() { const H = HC(); return !!(BOAT && B.sink <= 0 && H.L >= 38 && !H.plane && !H.air && !H.sub); }
-{ const f0 = voyPortNear; voyPortNear = function (x, z, pad) { const r = f0.apply(this, arguments); if (r || !G.megaPort || !megaShip()) return r; return {mega: 1, n: HC().n, dock: [B.x, B.z], shop: null}; }; }
-{ const f0 = drawShop; drawShop = function () { G.megaPort = !!(G.purser && megaShip()); try { return f0.apply(this, arguments); } finally { G.megaPort = false; } }; }
-{ const f0 = openShop; openShop = function () { G.purser = !!G.purserNext; G.purserNext = 0; return f0.apply(this, arguments); }; }
-{ const f0 = hostAct; hostAct = function (id, m) { const p = PL.get(id); if (!m || m.a !== 'sell' || !p || !p.ob || !megaShip() || voyPortNear(B.x, B.z, 60 + BG.L * .5)) return f0.apply(this, arguments);
-  const c0 = G.cash, e0 = G.earned; G.megaPort = true; let r; try { r = f0.apply(this, arguments); } finally { G.megaPort = false; }
-  const got = G.cash - c0; if (got > 0) { const cut = Math.round(got * .15); G.cash -= cut; G.earned = Math.max(e0, G.earned - cut); emit({k: 'purser', cut}); save(); } return r; }; }
-{ const f0 = buildBoat; buildBoat = function () { const r = f0.apply(this, arguments); if (megaShip()) { const sp = boatSpawn(0);
-  INTER.push({kind: 'purser', boat: 1, lx: sp.bl[0] - 1.4, lz: sp.bl[1], ly: 1, r: 1.8, label: () => "Ship's purser: sell salvage and the hold at sea (15% cut), buy gear", on: () => P && P.ob && !P.sw && !P.seat, go: () => { G.purserNext = 1; openShop(); }}); } return r; }; }
+{ voyPortNear = around(voyPortNear, function (next, ...args) { let [x, z, pad] = args; const r = next.apply(this, args); if (r || !G.megaPort || !megaShip()) return r; return {mega: 1, n: HC().n, dock: [B.x, B.z], shop: null}; }); }
+{ drawShop = before(drawShop, function () { G.megaPort = !!(G.purser && megaShip()); try { return NEXT; } finally { G.megaPort = false; } }); }
+{ openShop = before(openShop, function () { G.purser = !!G.purserNext; G.purserNext = 0; return NEXT; }); }
+{ hostAct = around(hostAct, function (next, ...args) { let [id, m] = args; const p = PL.get(id); if (!m || m.a !== 'sell' || !p || !p.ob || !megaShip() || voyPortNear(B.x, B.z, 60 + BG.L * .5)) return next.apply(this, args);
+  const c0 = G.cash, e0 = G.earned; G.megaPort = true; let r; try { r = next.apply(this, args); } finally { G.megaPort = false; }
+  const got = G.cash - c0; if (got > 0) { const cut = Math.round(got * .15); G.cash -= cut; G.earned = Math.max(e0, G.earned - cut); emit({k: 'purser', cut}); save(); } return r; }); }
+{ buildBoat = after(buildBoat, function (r) {  if (megaShip()) { const sp = boatSpawn(0);
+  INTER.push({kind: 'purser', boat: 1, lx: sp.bl[0] - 1.4, lz: sp.bl[1], ly: 1, r: 1.8, label: () => "Ship's purser: sell salvage and the hold at sea (15% cut), buy gear", on: () => P && P.ob && !P.sw && !P.seat, go: () => { G.purserNext = 1; openShop(); }}); }  }); }
 addEventListener('keydown', e => { if (e.code !== 'KeyB' || e.repeat || !G.on || !P || (P.eq === 2 && F.st !== 'idle') || !P.ob || P.seat || P.sw || P.dead || P.down || G.paused || G.chat || anyPanel()) return; const t = e.target; if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA')) return;
   const ud = BOAT && BOAT.userData; if (!ud) return; if (ud.brg) brgGo(P.y > ud.brg.yb - 1 ? 0 : 1); else if (ud.syLift) liftGo(P.y > ud.syLift.yb - 1 ? 0 : 1); });
 // walkable bridges on the big ships: the helm camera sits high in the superstructure, so find the bridge deck under it in the model
 // (rays down and out to the walls), give it a floor and walls, move the wheel up there and join it to the deck with stairs (a short fade)
 function brgGo(up) { const Q = BOAT && BOAT.userData.brg; if (!Q || !P || !P.ob || P.seat || P.sw || P.climb) return; ftFade(); P.cr = 0; P.vx = P.vz = P.vy = 0;
   const to = up ? Q.top : Q.foot; P.bl = [to[0], to[1]]; P.y = to[2]; const [wx, wz] = bL2W(P.bl[0], P.bl[1]); P.x = wx; P.z = wz; P.yaw = B.yaw + (up ? 0 : PI); P.gwT = 1; Snd.step && Snd.step('steel', 1); }
-{ const f0 = buildBoat; buildBoat = function () { const r = f0.apply(this, arguments); try { brgBuild(); } catch (e) { console.warn('bridge', e); } return r; }; }
+{ buildBoat = after(buildBoat, function (r) {  try { brgBuild(); } catch (e) { console.warn('bridge', e); }  }); }
 function brgBuild() { const H = HC(), ud = BOAT && BOAT.userData; if (!ud) return; ud.brg = null;
   if (H.cruise || H.sub || H.plane || H.air || H.balloon || H.hover || H.cust) return;
   const hs = INTER.filter(q => q.boat && q.kind === 'helm'); if (hs.length !== 1 || hs[0].by != null) return; const h = hs[0], cls = B.up.cls || 0;
@@ -9152,13 +9182,13 @@ function callWhy(d) { const pl = [...PL.values()].filter(q => q.ready && !q.dead
   if (B.driver || pl.some(q => q.ob || q.seat)) return 'Someone is aboard or at the wheel.'; if (HC().plane && -(B.dep || 0) > .5) return 'She is in the air.'; if (!ALL && G.cash < CALL_FEE) return `The tow costs ${money(CALL_FEE)}.`; return ''; }
 // harbours only (the home jetty and the trading ports), not island landings
 function dockForMe(p, r = 16) { if (!p || p.ob || p.sw) return null; let b = null, bd = r; for (const d of dockList()) { if (/ landing$/.test(d.n)) continue; const e = Math.hypot(d.x - p.x, d.z - p.z); if (e < bd) { bd = e; b = d; } } return b; }
-{ const f0 = hostAct; hostAct = function (id, m) { if (!m || m.a !== 'call') return f0.apply(this, arguments); const p = PL.get(id); if (!p || !G.on) return; const d = dockForMe(p, 20); if (!d) return; const why = callWhy(d); if (why) { emit({k: 'nope', id, why}); return; }
-  if (!ALL) G.cash -= CALL_FEE; if (B.ap) { B.ap = null; emit({k: 'ap', on: 0}); } Object.assign(B, {x: d.x, z: d.z, yaw: d.yaw, v: 0, yr: 0, thr: 0, st: 0, dep: 0, dtar: 0}); B.fuel = Math.max(B.fuel, tankMax() * .25); emit({k: 'called', n: d.n, id}); save(); }; }
-{ const f0 = applyEv; applyEv = function (e) { if (!e || e.k !== 'called') return f0.apply(this, arguments); toast('Your boat is here', `Towed to ${e.n}${ALL ? '' : ' · ' + money(CALL_FEE)}`); if (Snd && Snd.coin) Snd.coin(); }; }
-{ const f0 = targets; targets = function (...a) { const L = f0.apply(this, a); if (!P || P.dead || P.ob || P.sw) return L; const d = dockForMe(P); if (!d || Math.hypot(B.x - d.x, B.z - d.z) < 120) return L;
-  L.push({x: d.x, y: P.y + 1, z: d.z, r: 30, flat: 1, label: `Call your boat here (${ALL ? 'free' : money(CALL_FEE)})`, go: () => { const w = callWhy(d); if (w) showMsg(w, '', 2.5); else act({a: 'call'}); }}); return L; }; }
+{ hostAct = before(hostAct, function (id, m) { if (!m || m.a !== 'call') return NEXT; const p = PL.get(id); if (!p || !G.on) return; const d = dockForMe(p, 20); if (!d) return; const why = callWhy(d); if (why) { emit({k: 'nope', id, why}); return; }
+  if (!ALL) G.cash -= CALL_FEE; if (B.ap) { B.ap = null; emit({k: 'ap', on: 0}); } Object.assign(B, {x: d.x, z: d.z, yaw: d.yaw, v: 0, yr: 0, thr: 0, st: 0, dep: 0, dtar: 0}); B.fuel = Math.max(B.fuel, tankMax() * .25); emit({k: 'called', n: d.n, id}); save(); }); }
+{ applyEv = before(applyEv, function (e) { if (!e || e.k !== 'called') return NEXT; toast('Your boat is here', `Towed to ${e.n}${ALL ? '' : ' · ' + money(CALL_FEE)}`); if (Snd && Snd.coin) Snd.coin(); }); }
+{ targets = after(targets, function (L, ...a) {  if (!P || P.dead || P.ob || P.sw) return; const d = dockForMe(P); if (!d || Math.hypot(B.x - d.x, B.z - d.z) < 120) return;
+  L.push({x: d.x, y: P.y + 1, z: d.z, r: 30, flat: 1, label: `Call your boat here (${ALL ? 'free' : money(CALL_FEE)})`, go: () => { const w = callWhy(d); if (w) showMsg(w, '', 2.5); else act({a: 'call'}); }});  }); }
 // a one-time hint that the boat carries a tender, so a crew knows it can split up
-{ const f0 = buildBoat; buildBoat = function () { const r = f0.apply(this, arguments); if (G.on && tnOk() && !G.tnHint) { G.tnHint = 1; let seen = 0; try { seen = +localStorage.getItem('s9-tnhint') || 0; } catch (e) {} if (seen < 2) { try { localStorage.setItem('s9-tnhint', seen + 1); } catch (e) {} setTimeout(() => G.on && showMsg('This boat carries a tender on the starboard davit. Launch it to split the crew up: four seats, its own engine.', 'TENDER', 6), 2500); } } return r; }; }
+{ buildBoat = after(buildBoat, function (r) {  if (G.on && tnOk() && !G.tnHint) { G.tnHint = 1; let seen = 0; try { seen = +localStorage.getItem('s9-tnhint') || 0; } catch (e) {} if (seen < 2) { try { localStorage.setItem('s9-tnhint', seen + 1); } catch (e) {} setTimeout(() => G.on && showMsg('This boat carries a tender on the starboard davit. Launch it to split the crew up: four seats, its own engine.', 'TENDER', 6), 2500); } }  }); }
 // ===== casino readability: a big on-screen hand and result readout while seated (cards, totals, timer, stake), and a clear WIN / LOSE banner
 const CSUIT = ['♠', '♥', '♦', '♣'], CRANK = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
 function casHudEl() { let el = document.getElementById('casRd'); if (el) return el; const st = document.createElement('style');
@@ -9181,12 +9211,12 @@ function casHudFrame() { const el = casHudEl(), c = G.on && P && P.cas; if (!c) 
   else { if (el.style.display !== 'none') el.style.display = 'none'; return; }
   h += `<div class="grp"><div class="lab">CREW CASH</div><div class="big">${money(G.cash)}</div></div>`;
   if (h !== G.casHudH) { G.casHudH = h; el.innerHTML = h; } if (el.style.display !== 'flex') el.style.display = 'flex'; }
-{ const f0 = casEv; casEv = function (e) { const r = f0.apply(this, arguments); try { const me = myId();
+{ casEv = after(casEv, function (r, e) {  try { const me = myId();
     if (e.k === 'cbjr') { for (const [s, net, pv] of e.res) if (CAS.bj.seats[s] && CAS.bj.seats[s][0] === me) { const bj = pv === 21 && CAS.bj.seats[s][2].length === 2 && net > 0; casBanner(bj ? 'BLACKJACK!' : net > 0 ? 'YOU WIN' : net < 0 ? (pv > 21 ? 'BUST' : 'DEALER WINS') : 'PUSH', `${pv > 21 ? 'bust' : pv} vs ${e.d > 21 ? 'dealer bust' : e.d}${net ? ' · ' + (net > 0 ? '+' : '−') + money(Math.abs(net)) : ' · bet back'}`, net > 0 ? '#ffd86a' : net < 0 ? '#ff6a5a' : '#cfe0ff'); } }
     if (e.k === 'cpay' && (e.t === 'rl' || e.t === 'sl')) { let net = null; for (const q of e.w) if (q[0] === me) net = q[1]; if (net != null && (e.t === 'rl' || net !== 0)) { const nm = e.t === 'rl' ? `${e.res} ${e.res === 0 ? 'GREEN' : RED.has(e.res) ? 'RED' : 'BLACK'}` : 'SLOTS';
       casBanner(net > 0 ? (e.t === 'sl' && e.x >= 35 ? 'JACKPOT!' : 'YOU WIN') : net < 0 ? 'NO LUCK' : 'MONEY BACK', `${nm} · ${net > 0 ? '+' : net < 0 ? '−' : ''}${money(Math.abs(net))} · cash ${money(G.cash)}`, net > 0 ? '#ffd86a' : net < 0 ? '#ff6a5a' : '#cfe0ff'); } }
-  } catch (x) { if (TEST) console.error(x); } return r; }; }
-{ const f0 = hud; hud = function (dt) { const r = f0.apply(this, arguments); try { casHudFrame(); } catch (e) { if (TEST) console.error(e); } return r; }; }
+  } catch (x) { if (TEST) console.error(x); }  }); }
+{ hud = after(hud, function (r, dt) {  try { casHudFrame(); } catch (e) { if (TEST) console.error(e); }  }); }
 // ===== host handover: this guest takes over the voyage (the world state is what the snapshots already gave us)
 function becomeHost() { if (Net.role !== 'guest' || !G.on || !P) return; clearTimeout(G.migT); clearTimeout(G.lostT); G.lostT = 0; const old = Net.id, swap = id => id === 'H' ? null : id === old ? 'H' : id;
   try { B.driver = swap(B.driver); if (typeof TN !== 'undefined') { TN.drv = swap(TN.drv); TN.seats = TN.seats.map(swap); } if (CAS && CAS.seats) { for (const t of ['rl', 'bj']) CAS.seats[t] = CAS.seats[t].map(swap); if (CAS.bj && CAS.bj.seats) for (const q of CAS.bj.seats) q[0] = swap(q[0]); if (CAS.rl && CAS.rl.bets) CAS.rl.bets = CAS.rl.bets.filter(b => b[0] !== 'H').map(b => [swap(b[0]), b[1], b[2]]); } } catch (e) {}
@@ -9211,7 +9241,7 @@ function icBuild() { IC.list = []; IC.m.forEach(g => g && scene.remove(g)); IC.m
       IC.list.push({t, I, hx: s[0], hz: s[1], x: s[0], z: s[1], st: t === 'pale' ? 1 : 0, hp: t === 'pale' ? 60 : t === 'crawl' ? 40 : 20, cd: 0, ht: 0, yaw: rng() * TAU, i: IC.list.length}); } });
   // the home beach: the Drowned wade up toward the lighthouse on some nights (IC.hn, rolled at dusk by the host)
   const HI = {x: HOME.x, z: HOME.z, r: 34}; for (let i = 0, k = 0; i < 4 && k < 80; k++) { const a = rng() * TAU, r = 26 + rng() * 10, x = HOME.x + Math.sin(a) * r, z = HOME.z + Math.cos(a) * r, h = landH(x, z); if (h > -1.2 && h < .3 && Math.hypot(x - JETTY.x, z - JETTY.z) > 8) { IC.list.push({t: 'drowned', I: HI, home: 1, hx: x, hz: z, x, z, st: 0, hp: 20, cd: 0, ht: 0, yaw: rng() * TAU, i: IC.list.length}); i++; } } }
-{ const f0 = ieBuild; ieBuild = function () { const r = f0.apply(this, arguments); try { icBuild(); } catch (e) { console.warn('icBuild', e); } return r; }; }
+{ ieBuild = after(ieBuild, function (r) {  try { icBuild(); } catch (e) { console.warn('icBuild', e); }  }); }
 const icNight = () => shpNight(G.tod || 0) > .3 || (G.storm || 0) > .65;
 // st: 0 hidden/asleep, 1 standing (pale) or idle, 2 hunting, 3 fleeing home, 4 dead
 function icStep(dt) { const night0 = icNight(); if (night0 && !IC.wasN) IC.hn = CR() < .45; IC.wasN = night0; const crew = alive().filter(p => !p.ob && !p.sw && !p.seat);
@@ -9235,18 +9265,18 @@ function icStep(dt) { const night0 = icNight(); if (night0 && !IC.wasN) IC.hn = 
       if (c.st === 0) { if (night && tgt && bd < 36 && !c.cd) { c.st = 2; emit({k: 'icx', i: c.i, s: 'wake'}); } continue; }
       if (c.st === 2) { if (!night || !tgt) c.st = 3; else if (!(flare && bd > 2)) { go(2.4); bite(); } continue; }
       if (c.st === 3 && home()) c.st = 0; } } }
-{ const f0 = hostStep; hostStep = function (dt) { const r = f0.apply(this, arguments); if (G.on && IC.list.length) try { icStep(dt); } catch (e) { if (!IC.err) { IC.err = 1; console.warn(e); } } return r; }; }
+{ hostStep = after(hostStep, function (r, dt) {  if (G.on && IC.list.length) try { icStep(dt); } catch (e) { if (!IC.err) { IC.err = 1; console.warn(e); } }  }); }
 // bullets: a ray against each awake creature's standing column
-{ const f0 = hostShoot; hostShoot = function (p, m) { const r = f0.apply(this, arguments); try { const o = m && m.o, d = m && m.d; if (!o || !d || p.down || p.dead) return r;
+{ hostShoot = after(hostShoot, function (r, p, m) {  try { const o = m && m.o, d = m && m.d; if (!o || !d || p.down || p.dead) return;
   for (const c of IC.list) { if (c.st === 0 || c.st === 4) continue; const H = c.t === 'pale' ? 2.6 : c.t === 'crawl' ? .8 : 1.8, R = c.t === 'crawl' ? .6 : .42, gy = Math.max(c.t === 'drowned' ? -1 : 0, landH(c.x, c.z));
     const l = Math.hypot(d[0], d[1], d[2]) || 1, ux = d[0] / l, uy = d[1] / l, uz = d[2] / l, hh = ux * ux + uz * uz, t = hh > 1e-6 ? ((c.x - o[0]) * ux + (c.z - o[2]) * uz) / hh : 0; if (t <= 0 || t > 70) continue;
     const px = o[0] + ux * t, py = o[1] + uy * t, pz = o[2] + uz * t; if (Math.hypot(px - c.x, pz - c.z) > R || py < gy - .1 || py > gy + H + .1) continue;
     const head = py > gy + H - .35, dm = (m.w === 'g' ? 10 : 7 * (t > 20 ? .4 : 1)) * hsMul(m) * (head ? 2 : 1); c.hp -= dm; emit({k: 'ichit', x: +px.toFixed(2), y: +py.toFixed(2), z: +pz.toFixed(2), head, by: p.id, i: c.i});
     if (c.hp <= 0) { c.st = 4; c.ht = 0; emit({k: 'icx', i: c.i, s: 'die', by: p.id}); if (c.t !== 'drowned' || CR() < .5) { const kd = lootRoll(c.t === 'pale' ? 1.3 : c.t === 'crawl' ? 1 : .7, CR, 1), y = Math.max(.2, landH(c.x, c.z)), it = addItem(kd, {x: c.x, y, z: c.z}); emit({k: 'item', i: it.i, kind: kd, x: c.x, y, z: c.z}); } }
-    else if (c.t !== 'drowned' && c.st === 2 && CR() < (c.t === 'pale' ? .5 : .3)) { c.st = 3; emit({k: 'icx', i: c.i, s: 'flee'}); } } } catch (e) { console.warn(e); } return r; }; }
-{ const f0 = packSnap; packSnap = function () { const s = f0.apply(this, arguments); if (IC.list.length) s.ic = IC.list.map(c => [+c.x.toFixed(1), +c.z.toFixed(1), c.st, +c.yaw.toFixed(2)]); return s; }; }
-{ const f0 = applySnap; applySnap = function (s) { const r = f0.apply(this, arguments); if (Array.isArray(s.ic)) IC.snap = s.ic; return r; }; }
-{ const f0 = startGame; startGame = function () { IC.snap = null; return f0.apply(this, arguments); }; }
+    else if (c.t !== 'drowned' && c.st === 2 && CR() < (c.t === 'pale' ? .5 : .3)) { c.st = 3; emit({k: 'icx', i: c.i, s: 'flee'}); } } } catch (e) { console.warn(e); }  }); }
+{ packSnap = after(packSnap, function (s) {  if (IC.list.length) s.ic = IC.list.map(c => [+c.x.toFixed(1), +c.z.toFixed(1), c.st, +c.yaw.toFixed(2)]);  }); }
+{ applySnap = after(applySnap, function (r, s) {  if (Array.isArray(s.ic)) IC.snap = s.ic;  }); }
+{ startGame = before(startGame, function () { IC.snap = null; return NEXT; }); }
 // ---- client: models, motion, sounds and messages
 function icMesh(t) { const g = new THREE.Group();
   if (t === 'pale') { const f = hzFig({h: 2.6, col: 0xd8d2c4, skin: 0xe8e2d4, thin: .45, arm: 1.35, noface: 1}); g.add(f); g.userData.f = f; }
@@ -9265,7 +9295,7 @@ function icFrame(dt) { if (!G.on || !P || !IC.list.length) return; const S = isH
     else if (c.t === 'drowned') { const f = g.userData.f; f.userData.arms.forEach((a, k) => a.rotation.x = -1.3 + Math.sin(t * 3 + k * 2) * .25); f.rotation.z = Math.sin(t * 2.2 + i) * .1; }
     else { const L = g.userData.legs; L.forEach((lg, k) => lg.rotation.x = Math.sin(t * 18 + k * PI * .5) * Math.min(1, sp / 3) * .9); g.position.y += Math.abs(Math.sin(t * 18)) * Math.min(1, sp / 3) * .08; }
     if (A.on && s[2] === 2 && Math.random() < dt * (c.t === 'crawl' ? 1.2 : .35)) { const d = Math.hypot(s[0] - cp.x, s[1] - cp.z); if (d < 45) { const p = at(s[0], g.position.y + 1, s[1], 6); if (c.t === 'crawl') tone(900 + Math.random() * 600, .05, .12, 'square', p, -500); else if (c.t === 'drowned') { burst(400, .12, .9, .3, 'lowpass', p, .6); tone(70, .08, 1, 'sawtooth', p, 10); } else tone(48, .1, 1.8, 'sine', p, 6); } } }); }
-{ const f0 = hud; hud = function () { const r = f0.apply(this, arguments); try { const now = performance.now(), dt = Math.min(.1, (now - (IC.ft || now)) / 1000); IC.ft = now; icFrame(dt); } catch (e) { if (!IC.err2) { IC.err2 = 1; console.warn(e); } } return r; }; }
+{ hud = after(hud, function (r) {  try { const now = performance.now(), dt = Math.min(.1, (now - (IC.ft || now)) / 1000); IC.ft = now; icFrame(dt); } catch (e) { if (!IC.err2) { IC.err2 = 1; console.warn(e); } }  }); }
 const IC_N = {pale: 'the Pale Thing', crawl: 'a Crawler', drowned: 'the Drowned'};
 function icEvent(e) { const c = IC.list[e.i]; if (!c || !P) return; const near = Math.hypot(c.x - P.x, c.z - P.z) < 70 || (IC.snap && IC.snap[e.i] && Math.hypot(IC.snap[e.i][0] - P.x, IC.snap[e.i][1] - P.z) < 70);
   if (e.s === 'wake' && near) { if (c.t === 'crawl') { Snd.shriek && Snd.shriek(null); G.shake = Math.max(G.shake || 0, .6); showMsg('Something bursts out of the ground. RUN. A flare will stop it.', '', 4); }
@@ -9280,10 +9310,10 @@ const TPQ = {};
 const airHull = () => { const H = HC(); return !!(H.plane || H.air || H.balloon); };
 addEventListener('keydown', e => { if (e.code !== 'KeyP' || e.repeat || !G.on || !P || G.paused || G.chat || anyPanel()) return; const t = e.target; if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA')) return;
   G.tp = !G.tp; SET.tp = G.tp ? 1 : 0; saveSet(); showMsg(G.tp ? 'Third person (P to go back)' : 'First person', '', 1.5); });
-{ const f0 = startGame; startGame = function () { const r = f0.apply(this, arguments); G.tp = !!SET.tp; return r; }; }
-{ const f0 = updateCamera; updateCamera = function (dt) { const r = f0.apply(this, arguments); try { if (P && !P.dead && P.ob && SET.comfort !== 0 && !G.rov) { const air = airHull(), k = air ? .12 : .45;
-    if (air || (B.roll || 0) !== 0) { cam.rotation.x = mix(P.pitch, cam.rotation.x, k); cam.rotation.z = cam.rotation.z * k; cam.updateMatrixWorld(); } } } catch (e) {} return r; }; }
-{ const f0 = updateTools; updateTools = function (dt) { const r = f0.apply(this, arguments); try { tpSelf(dt); } catch (e) { if (!G.tpErr) { G.tpErr = 1; console.warn(e); } } return r; }; }
+{ startGame = after(startGame, function (r) {  G.tp = !!SET.tp;  }); }
+{ updateCamera = after(updateCamera, function (r, dt) {  try { if (P && !P.dead && P.ob && SET.comfort !== 0 && !G.rov) { const air = airHull(), k = air ? .12 : .45;
+    if (air || (B.roll || 0) !== 0) { cam.rotation.x = mix(P.pitch, cam.rotation.x, k); cam.rotation.z = cam.rotation.z * k; cam.updateMatrixWorld(); } } } catch (e) {}  }); }
+{ updateTools = after(updateTools, function (r, dt) {  try { tpSelf(dt); } catch (e) { if (!G.tpErr) { G.tpErr = 1; console.warn(e); } }  }); }
 function tpSelf(dt) { if (!G.tp || !P || P.dead || P.emo || P.scope || G.rov || P.cas || P.hd >= 0 || P.climb || P.lift || G.scoped || (G.js && G.js.t > 0)) { G.tpK = 0; return; }
   G.tpK = Math.min(1, (G.tpK || 0) + dt * 4); const k = G.tpK * G.tpK * (3 - 2 * G.tpK);
   let x = P.x, y = P.y, z = P.z; if (P.ob && BOAT) { BOAT.updateMatrixWorld(); _sb.set(P.bl[0], P.y, P.bl[1]).applyMatrix4(BOAT.matrixWorld); x = _sb.x; y = _sb.y; z = _sb.z; } else if (P.sw) y = waveH(P.x, P.z, G.wt) - (P.dv || 0) - .3;
@@ -9326,9 +9356,9 @@ Object.assign(GEAR, {
   uammo: {n: 'SMG rounds x60', d: 'For the SMG', cost: 35, need: o => o.smg},
   hg: {n: 'Harpoon gun', d: 'One heavy bolt, hits like a rifle and fires underwater (key 9)', cost: 750, need: o => !o.hg},
   bolts: {n: 'Harpoon bolts x6', d: 'For the harpoon gun', cost: 30, need: o => o.hg}});
-{ const f0 = gotGear; gotGear = function (k) { const o = P.own, a = P.ammo; if (k === 'smg') { o.smg = 1; a.um = 30; a.u = (a.u || 0) + 30; } else if (k === 'uammo') a.u = (a.u || 0) + 60; else if (k === 'hg') { o.hg = 1; a.hm = 1; a.h = (a.h || 0) + 5; } else if (k === 'bolts') a.h = (a.h || 0) + 6; return f0.apply(this, arguments); }; }
-{ const f0 = equip; equip = function (i) { if (i === 7 && !P.own.smg) { showMsg('You do not own an SMG. The harbour shed sells them.', '', 2.5); return; } if (i === 8 && !P.own.hg) { showMsg('You do not own a harpoon gun. The harbour shed sells them.', '', 2.5); return; } return f0.apply(this, arguments); }; }
-{ const f0 = reload; reload = function () { const A = P.ammo; if (P.eq === 7 || P.eq === 8) { if (P.reload > 0) return; if (P.eq === 7 && (A.u || 0) > 0 && (A.um || 0) < 30) { P.reload = 1.6; P.rk = 'u'; Snd.reload(); } else if (P.eq === 8 && (A.h || 0) > 0 && (A.hm || 0) < 1) { P.reload = 1.1; P.rk = 'h'; Snd.reload(); } return; } return f0.apply(this, arguments); }; }
+{ gotGear = before(gotGear, function (k) { const o = P.own, a = P.ammo; if (k === 'smg') { o.smg = 1; a.um = 30; a.u = (a.u || 0) + 30; } else if (k === 'uammo') a.u = (a.u || 0) + 60; else if (k === 'hg') { o.hg = 1; a.hm = 1; a.h = (a.h || 0) + 5; } else if (k === 'bolts') a.h = (a.h || 0) + 6; return NEXT; }); }
+{ equip = before(equip, function (i) { if (i === 7 && !P.own.smg) { showMsg('You do not own an SMG. The harbour shed sells them.', '', 2.5); return; } if (i === 8 && !P.own.hg) { showMsg('You do not own a harpoon gun. The harbour shed sells them.', '', 2.5); return; } return NEXT; }); }
+{ reload = before(reload, function () { const A = P.ammo; if (P.eq === 7 || P.eq === 8) { if (P.reload > 0) return; if (P.eq === 7 && (A.u || 0) > 0 && (A.um || 0) < 30) { P.reload = 1.6; P.rk = 'u'; Snd.reload(); } else if (P.eq === 8 && (A.h || 0) > 0 && (A.hm || 0) < 1) { P.reload = 1.1; P.rk = 'h'; Snd.reload(); } return; } return NEXT; }); }
 function fireX() { const A = P.ammo, smg = P.eq === 7; if ((G.fireT || 0) > 0 || P.reload > 0 || (smg && P.sw)) return;
   if (smg ? (A.um || 0) <= 0 : (A.hm || 0) <= 0) { Snd.click(); if ((smg ? A.u : A.h) > 0) reload(); else showMsg('Out of ammo. The harbour shed sells more.', '', 2); return; }
   if (smg) { A.um--; G.fireT = .085; } else { A.hm--; G.fireT = .6; } saveGear();
@@ -9337,12 +9367,12 @@ function fireX() { const A = P.ammo, smg = P.eq === 7; if ((G.fireT || 0) > 0 ||
   gunFx(o, 'g', true); P.pitch = clamp(P.pitch + (smg ? .012 : .05), -1.45, 1.45); G.recoil = smg ? .5 : 1;
   act({a: 'shoot', w: 'g', mul: smg ? .75 : 3.6, o: o.map(v => +v.toFixed(2)), d: d.map(v => +v.toFixed(3))}); }
 // reloads finish for the new guns; the SMG keeps firing while LMB is held
-{ const f0 = updateTools; updateTools = function (dt) { const r = f0.apply(this, arguments); try { if (P && P.reload <= 0 && (P.rk === 'u' || P.rk === 'h')) { const A = P.ammo; if (P.rk === 'u') { const n = Math.min(30 - (A.um || 0), A.u || 0); A.um = (A.um || 0) + n; A.u -= n; } else { const n = Math.min(1 - (A.hm || 0), A.h || 0); A.hm = (A.hm || 0) + n; A.h -= n; } P.rk = ''; saveGear(); }
-  if (P && G.lmb && P.eq === 7 && !anyPanel() && !P.seat && !P.down && P.hd < 0) fireX(); } catch (e) {} return r; }; }
+{ updateTools = after(updateTools, function (r, dt) {  try { if (P && P.reload <= 0 && (P.rk === 'u' || P.rk === 'h')) { const A = P.ammo; if (P.rk === 'u') { const n = Math.min(30 - (A.um || 0), A.u || 0); A.um = (A.um || 0) + n; A.u -= n; } else { const n = Math.min(1 - (A.hm || 0), A.h || 0); A.hm = (A.hm || 0) + n; A.h -= n; } P.rk = ''; saveGear(); }
+  if (P && G.lmb && P.eq === 7 && !anyPanel() && !P.seat && !P.down && P.hd < 0) fireX(); } catch (e) {}  }); }
 
 // ===== fishing, the fun way: a catch bar. Hold the mouse to lift your green zone, let go and it sinks; keep the darting fish inside it and the catch
 // meter fills, lose it and the meter drains. Bigger fish dart faster and further, legends wildly; better rods give a wider zone. A/D does nothing now.
-{ const f0 = hook; hook = function () { const r = f0.apply(this, arguments); Object.assign(F, {fx: 50, fv: 0, ft: 50, fT: 0, zx: 40, zv: 0, prog: 30, ten: 50, sta: 100, run: 0, jump: 0}); return r; }; }
+{ hook = after(hook, function (r) {  Object.assign(F, {fx: 50, fv: 0, ft: 50, fT: 0, zx: 40, zv: 0, prog: 30, ten: 50, sta: 100, run: 0, jump: 0});  }); }
 fishFight = function (dt) { const f = FISH[F.k] || {s: 1, kg: [1, 2]}, rod = P.own.rod || 1, s = (f.s || 1) * (TOD.night > .5 ? 1.1 : 1) * (relicOn('r_hook') ? .85 : 1) * (f.leg ? 1.5 : 1), hold = !!G.lmb;
   const zw = [26, 26, 31, 36][rod] * (f.leg ? .8 : 1); F.zw = zw;
   // the fish picks a new spot now and then, more often and further when it is big; it darts there with a little overshoot
@@ -9358,11 +9388,11 @@ fishFight = function (dt) { const f = FISH[F.k] || {s: 1, kg: [1, 2]}, rod = P.o
   if (F.prog >= 100) { F.st = 'idle'; const kg = +(f.kg[0] + Math.random() * (f.kg[1] - f.kg[0])).toFixed(1), full = (P.coolerN || 0) >= ([0, 8, 12, 18][rod] || 8); act({a: 'fish', f: F.k, kg, rod}); Snd.discover();
     if (F.k !== 'bottle') toast(`${f.n}`, full ? `${kg} kg · cooler full` : `${kg} kg · +${money(fishVal(F.k, P.x, P.z))}`); if (f.leg) { lootChime(4); (G.banQ = G.banQ || []).push({h: 'LEGEND LANDED', t: jobCap(f.n) + ` · ${kg} kg`, c: 0, s: 'goal'}); } }
   const k = Math.min(1, F.prog / 100); F.bob.x = mix(F.sx, P.x, k * .9); F.bob.z = mix(F.sz, P.z, k * .9); };
-{ const f0 = updateTools; updateTools = function (dt) { const r = f0.apply(this, arguments); try { if (P && P.eq === 2 && F.st === 'reel' && $('tenZone')) {
+{ updateTools = after(updateTools, function (r, dt) {  try { if (P && P.eq === 2 && F.st === 'reel' && $('tenZone')) {
     const z = $('tenZone'), b = $('tenBar'), n = $('tenNeedle'); b.style.height = '22px'; b.style.background = 'rgba(20,50,70,.55)'; z.style.left = (F.zx || 0) + '%'; z.style.width = (F.zw || 26) + '%'; z.style.background = F.inZ ? 'rgba(90,220,120,.7)' : 'rgba(90,200,110,.4)';
     n.style.width = '10px'; n.style.marginLeft = '-5px'; n.style.borderRadius = '50%'; n.style.top = '3px'; n.style.bottom = '3px'; n.style.background = F.jump > 0 ? '#ffd060' : '#fff';
     $('fishT').textContent = F.inZ ? 'Got it! Keep it in the green.' : 'Hold the mouse to move the green right, let go to slide left. Cover the fish!'; if ($('fishDir')) $('fishDir').innerHTML = ''; if ($('fishSta')) $('fishSta').style.display = 'none'; }
-  else if ($('tenBar') && P && F.st !== 'reel') { $('tenBar').style.height = ''; $('tenBar').style.background = ''; } } catch (e) {} return r; }; }
+  else if ($('tenBar') && P && F.st !== 'reel') { $('tenBar').style.height = ''; $('tenBar').style.background = ''; } } catch (e) {}  }); }
 
 // ===== The Jackpot Queen: a 90 m casino ship moored at sea (Places, M). A pontoon to tie up at, a gangway ramp to the deck, and one long neon hall of
 // ten games: slots, roulette, high-low, dice, the big wheel, crash, plinko, coin flip, scratch cards and a horse race. The host deals every game from
@@ -9420,10 +9450,10 @@ function cgBuild() { const [x, z] = plFind(-700, -760, 10, 60, 140); Object.assi
   box(M({color: 0x3a1a0a}), x - 2.5, x + 2.5, Y, Y + 1.1, z - 3, z + 3, true); box(goldM, x - 2.6, x + 2.6, Y + 1.1, Y + 1.2, z - 3.1, z + 3.1);
   for (const cz of [h0 + 10, z, h1 - 10]) { add(M({color: 0xfff0c0, emissive: 0xffd080, emissiveIntensity: 1.5}), new THREE.SphereGeometry(.7, 12, 8), x, Y + HH - 1.2, cz); }
   CG.poi = plPoi('The Jackpot Queen (casino ship)', x, z, 70); }
-{ const f0 = plBuildB; plBuildB = function () { const r = f0.apply(this, arguments); try { cgBuild(); for (const m of mergeByMat(PLC.geo)) PLC.g.add(m); PLC.geo = []; } catch (e) { console.warn('cgBuild', e); } return r; }; }
+{ plBuildB = after(plBuildB, function (r) {  try { cgBuild(); for (const m of mergeByMat(PLC.geo)) PLC.g.add(m); PLC.geo = []; } catch (e) { console.warn('cgBuild', e); }  }); }
 // lights only near the ship; the neon strips cycle
-{ const f0 = hud; hud = function () { const r = f0.apply(this, arguments); try { if (CG.neon && P) { const near = Math.hypot(P.x - CG.x, P.z - CG.z) < 400;
-  if (near && CG.neon) CG.neon.forEach((m, i) => m.color.setHSL(((G.wt * .08 + i * .2) % 1), 1, .55)); } } catch (e) {} return r; }; }
+{ hud = after(hud, function (r) {  try { if (CG.neon && P) { const near = Math.hypot(P.x - CG.x, P.z - CG.z) < 400;
+  if (near && CG.neon) CG.neon.forEach((m, i) => m.color.setHSL(((G.wt * .08 + i * .2) % 1), 1, .55)); } } catch (e) {}  }); }
 // ---- host: deal a game
 const cgNear = p => p && !p.sw && Math.hypot(p.x - CG.x, p.z - CG.z) < 60 && p.y > CG.y - 1;
 function cgDeal(g, ch, rnd) { const R = rnd; switch (g) {
@@ -9440,9 +9470,9 @@ function cgDeal(g, ch, rnd) { const R = rnd; switch (g) {
     const m = r[0] === r[1] && r[1] === r[2] ? {'💎': 150, '⚓': 20, '🐟': 8, '🦑': 12, '💰': 40, '🐚': 6}[r[0]] : (r[0] === r[1] || r[1] === r[2] || r[0] === r[2]) ? 1.1 : 0; return {r, m}; }
   case 'horse': { const h = clamp(+ch | 0, 0, 5); let t = R() * CG_HORSE.reduce((a, q) => a + q[1], 0), win = 5; for (let i = 0; i < 6; i++) { t -= CG_HORSE[i][1]; if (t <= 0) { win = i; break; } } return {r: [win], m: win === h ? CG_HORSE[h][0] : 0}; } }
   return {r: [], m: 0}; }
-{ const f0 = hostAct; hostAct = function (id, m) { if (!m || m.a !== 'cg') return f0.apply(this, arguments); const p = PL.get(id); if (!p || !G.on) return; const now = performance.now() / 1000; if ((p.cgT || 0) > now) return; p.cgT = now + .8;
+{ hostAct = before(hostAct, function (id, m) { if (!m || m.a !== 'cg') return NEXT; const p = PL.get(id); if (!p || !G.on) return; const now = performance.now() / 1000; if ((p.cgT || 0) > now) return; p.cgT = now + .8;
   const g = CG_GAMES.find(q => q.k === m.g), bet = Math.round(+m.bet); if (!g || !(bet >= 10 && bet <= 2000)) return; if (!cgNear(p)) { emit({k: 'nope', id, why: 'Get aboard the Jackpot Queen first.'}); return; } if (G.cash < bet) { emit({k: 'nope', id, why: 'Not enough crew cash.'}); return; }
-  const res = cgDeal(m.g, String(m.ch || ''), CR), win = Math.round(bet * res.m * cgK(m.g, String(m.ch || ''))); G.cash += win - bet; if (win > bet) G.earned += win - bet; save(); emit({k: 'cgr', id, g: m.g, r: res.r, bet, win, ch: m.ch}); }; }
+  const res = cgDeal(m.g, String(m.ch || ''), CR), win = Math.round(bet * res.m * cgK(m.g, String(m.ch || ''))); G.cash += win - bet; if (win > bet) G.earned += win - bet; save(); emit({k: 'cgr', id, g: m.g, r: res.r, bet, win, ch: m.ch}); }); }
 // ---- client: the game panel
 function cgOpen(i) { if (!G.on || !P || P.dead) return; let el = $('cgp'); if (!el) { el = document.createElement('div'); el.id = 'cgp'; el.style.cssText = 'position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(560px,94vw);max-height:86vh;overflow:auto;background:linear-gradient(#1a0a1e,#0a0610);border:2px solid #d8b040;border-radius:14px;padding:18px 20px;font:15px Georgia,serif;color:#f0e6d0;z-index:35;pointer-events:auto;text-align:center;box-shadow:0 0 40px rgba(255,180,60,.25)'; document.body.appendChild(el);
     const st = document.createElement('style'); st.textContent = '#cgp button{background:#2a1430;color:#f0e6d0;border:1px solid #d8b040;border-radius:8px;padding:7px 12px;margin:3px;cursor:pointer;font:14px Georgia,serif} #cgp button.on{background:#d8b040;color:#1a0a1e} #cgp button:disabled{opacity:.4} #cgp .big{font:bold 42px Georgia,serif;letter-spacing:.06em;margin:14px 0;min-height:56px} #cgp .res{min-height:26px;font-size:18px;margin:8px 0} #cgp .sub{color:#b8a888;font-size:13px}'; document.head.appendChild(st); }
@@ -9470,12 +9500,12 @@ addEventListener('keydown', e => { if (!G.cgOpen) return; if (e.code === 'Escape
 // boarding spot is moved to the nearest free bit of deck if it landed inside something (the body is .26 m wide aboard, .33 ashore)
 function deckFree(x, z, r = .27) { if (!(x > BDECK.x0 && x < BDECK.x1 && z > BDECK.z0 && z < BDECK.z1) || Math.abs(x) > hullHW(z) - .3) return false;
   for (const w of BW) { if (w.y1 < .2 || w.y0 > 1.7 || w.hatch || w.int) continue; const cx = clamp(x, w.x0, w.x1), cz = clamp(z, w.z0, w.z1); if (Math.hypot(x - cx, z - cz) < r) return false; } return true; }
-{ const f0 = buildBoat; buildBoat = function () { const r = f0.apply(this, arguments); try { const H = HC(); if (!H.sub && !H.plane && !H.air && !H.balloon) {
+{ buildBoat = after(buildBoat, function (r) {  try { const H = HC(); if (!H.sub && !H.plane && !H.air && !H.balloon) {
     for (let i = BW.length - 1; i >= 0; i--) { const w = BW[i]; if (w.int || w.hatch || w.y0 > .1 || w.y1 > .72 || w.y1 < .05) continue; const edge = Math.min(Math.abs(w.x0), Math.abs(w.x1)) > hullHW((w.z0 + w.z1) / 2) - .45; if (edge) continue;
       BW.splice(i, 1); if (w.y1 > .2 && (w.x1 - w.x0) > .3 && (w.z1 - w.z0) > .3) BFL.push({x0: w.x0, x1: w.x1, z0: w.z0, z1: w.z1, y: BDECK.y + w.y1, step: 1}); } }
-    BOAT.userData.spawnFix = null; } catch (e) { console.warn(e); } return r; }; }
-{ const f0 = boatSpawn; boatSpawn = function (i) { const s = f0.apply(this, arguments); if (BG.sub || !BOAT || !s || !s.bl || Math.abs(s.y - BDECK.y) > .1) return s; if (deckFree(s.bl[0], s.bl[1])) return s;
-  for (let rr = .25; rr < 8; rr += .25) for (let a = 0; a < 16; a++) { const x = s.bl[0] + Math.cos(a / 16 * TAU) * rr, z = s.bl[1] + Math.sin(a / 16 * TAU) * rr; if (deckFree(x, z)) return {bl: [x, z], y: s.y}; } return s; }; }
+    BOAT.userData.spawnFix = null; } catch (e) { console.warn(e); }  }); }
+{ boatSpawn = around(boatSpawn, function (next, ...args) { let [i] = args; const s = next.apply(this, args); if (BG.sub || !BOAT || !s || !s.bl || Math.abs(s.y - BDECK.y) > .1) return s; if (deckFree(s.bl[0], s.bl[1])) return s;
+  for (let rr = .25; rr < 8; rr += .25) for (let a = 0; a < 16; a++) { const x = s.bl[0] + Math.cos(a / 16 * TAU) * rr, z = s.bl[1] + Math.sin(a / 16 * TAU) * rr; if (deckFree(x, z)) return {bl: [x, z], y: s.y}; } return s; }); }
 
 // ===== Jackpot Queen, in 3D: every cabinet carries its real game (slot reels, a roulette wheel and ball, cards, dice in a tray, the big wheel, a crash screen,
 // a plinko board, a coin, a scratch card and a little race track). The host still deals; every client near the ship plays the result out on the machine,
@@ -9519,7 +9549,7 @@ function cg3Build() { if (!CG.st || CG3.length) return; const Y = CG.y, gold = c
     o.ctr = TB ? new THREE.Vector3(0, q.k === 'hilo' ? 1.3 : 1.0, 1.25) : new THREE.Vector3(0, {slots: 1.32, wheel: 3.0, crash: 1.3, plinko: 3.0, scratch: 1.3}[q.k], .9); });
   // the name signs move up out of the way of the tall games
   PLC.g.children.forEach(c => { if (c.isSprite && CG.st.some(([x, z]) => Math.abs(c.position.x - x) < 1.5 && Math.abs(c.position.z - z) < .2 && Math.abs(c.position.y - (Y + 3)) < .01)) c.position.y = Y + 4.5; }); }
-{ const f0 = plBuildB; plBuildB = function () { const r = f0.apply(this, arguments); try { cg3Build(); } catch (e) { console.warn('cg3', e); } return r; }; }
+{ plBuildB = after(plBuildB, function (r) {  try { cg3Build(); } catch (e) { console.warn('cg3', e); }  }); }
 function cg3Idle(o) { const t = o.tex, c = t.userData.g, w = 256, h = 320; c.fillStyle = '#0a0a12'; c.fillRect(0, 0, w, h); c.textAlign = 'center'; c.fillStyle = o.k === 'crash' ? '#ff8a20' : '#60c8ff'; c.font = 'bold 30px Georgia'; c.fillText(o.k === 'crash' ? 'ROCKET CRASH' : 'SCRATCH & WIN', w / 2, 60); c.font = '18px Georgia'; c.fillStyle = '#c8c0b0'; c.fillText(o.k === 'crash' ? 'Pick your bail-out' : 'Buy a card', w / 2, 100); t.needsUpdate = true; }
 // start a game's animation on the machine (every client); r = the host's result
 function cg3Play(e) { const i = CG_GAMES.findIndex(q => q.k === e.g), o = CG3[i]; if (!o) return; o.a = {t: 0, T: CG_T[e.g] || 3, r: e.r || [], ch: e.ch, done: 0};
@@ -9549,24 +9579,24 @@ function cg3Frame(dt) { if (!CG3.length || !P || Math.hypot(P.x - CG.x, P.z - CG
     if (o.k === 'scratch') { const t = o.tex, c = t.userData.g, w = 256, h = 320, r = A.r; c.fillStyle = '#f0e8d0'; c.fillRect(0, 0, w, h); c.fillStyle = '#1a3a6a'; c.font = 'bold 24px Georgia'; c.textAlign = 'center'; c.fillText('SCRATCH & WIN', w / 2, 40);
       for (let j = 0; j < 3; j++) { const x = 20 + j * 76, y = 90; c.fillStyle = '#ffffff'; c.fillRect(x, y, 66, 120); c.font = '46px "Segoe UI Emoji", sans-serif'; c.fillStyle = '#000'; c.fillText(r[j] || '?', x + 33, y + 76); const rev = clamp((A.t - j * .6) / .7, 0, 1); if (rev < 1) { c.fillStyle = '#9a9aa2'; c.fillRect(x, y, 66, 120 * (1 - rev)); c.fillStyle = '#c8c8d0'; c.font = '14px Georgia'; c.fillText('SCRATCH', x + 33, y + 20); } } t.needsUpdate = true; }
     if (A.t >= A.T && !A.done) { A.done = 1; cg3Snd(o, 'land'); setTimeout(() => { if (o.a === A) { o.a = null; if (o.k === 'crash' || o.k === 'scratch') setTimeout(() => !o.a && cg3Idle(o), 2500); if (o.k === 'horse') o.horses.forEach(hg => hg.position.x = -.62); } }, 1800); } } }
-{ const f0 = hud; hud = function () { const r = f0.apply(this, arguments); try { const now = performance.now(), dt = Math.min(.1, (now - (CG.ft3 || now)) / 1000); CG.ft3 = now; cg3Frame(dt); } catch (e) { if (!CG.err3) { CG.err3 = 1; console.warn(e); } } return r; }; }
+{ hud = after(hud, function (r) {  try { const now = performance.now(), dt = Math.min(.1, (now - (CG.ft3 || now)) / 1000); CG.ft3 = now; cg3Frame(dt); } catch (e) { if (!CG.err3) { CG.err3 = 1; console.warn(e); } }  }); }
 // the bettor: face the machine, a slimmer panel at the bottom, the payout only once the machine has landed
-{ const f0 = cgOpen; cgOpen = function (i) { const r = f0.apply(this, arguments); try { const o = CG3[i], el = $('cgp'); if (el) { el.style.top = 'auto'; el.style.bottom = '12px'; el.style.transform = 'translateX(-50%)'; el.style.maxHeight = '42vh'; el.style.padding = '10px 14px'; el.style.background = 'rgba(16,6,20,.88)'; }
-  if (o) { const [gx, gz] = CG.st[i], s = o.s; P.x = gx - s * 2.3; P.z = gz; P.y = CG.y; P.vx = P.vz = 0; const w = o.g.localToWorld(o.ctr.clone()), dx = w.x - P.x, dz = w.z - P.z, dy = w.y - (P.y + 1.62); P.yaw = Math.atan2(-dx, -dz); P.pitch = Math.atan2(dy, Math.hypot(dx, dz)) - .2; } } catch (e) {} return r; }; }
-{ const f0 = cgDraw; cgDraw = function () { const r = f0.apply(this, arguments); const el = $('cgp'); if (el) { const d = el.querySelector('.sub'); if (d) { d.style.fontSize = '11px'; d.style.margin = '0'; } el.querySelectorAll('button').forEach(b => { b.style.padding = '4px 9px'; b.style.margin = '2px'; }); const go = $('cgGo'); if (go) { go.style.fontSize = '16px'; go.style.padding = '6px 22px'; } } const b = $('cgBig'); if (b) { b.style.fontSize = '22px'; b.style.minHeight = '28px'; b.style.margin = '6px 0'; if (!CG.out) b.textContent = 'Watch the machine'; } return r; }; }
+{ cgOpen = after(cgOpen, function (r, i) {  try { const o = CG3[i], el = $('cgp'); if (el) { el.style.top = 'auto'; el.style.bottom = '12px'; el.style.transform = 'translateX(-50%)'; el.style.maxHeight = '42vh'; el.style.padding = '10px 14px'; el.style.background = 'rgba(16,6,20,.88)'; }
+  if (o) { const [gx, gz] = CG.st[i], s = o.s; P.x = gx - s * 2.3; P.z = gz; P.y = CG.y; P.vx = P.vz = 0; const w = o.g.localToWorld(o.ctr.clone()), dx = w.x - P.x, dz = w.z - P.z, dy = w.y - (P.y + 1.62); P.yaw = Math.atan2(-dx, -dz); P.pitch = Math.atan2(dy, Math.hypot(dx, dz)) - .2; } } catch (e) {}  }); }
+{ cgDraw = after(cgDraw, function (r) {  const el = $('cgp'); if (el) { const d = el.querySelector('.sub'); if (d) { d.style.fontSize = '11px'; d.style.margin = '0'; } el.querySelectorAll('button').forEach(b => { b.style.padding = '4px 9px'; b.style.margin = '2px'; }); const go = $('cgGo'); if (go) { go.style.fontSize = '16px'; go.style.padding = '6px 22px'; } } const b = $('cgBig'); if (b) { b.style.fontSize = '22px'; b.style.minHeight = '28px'; b.style.margin = '6px 0'; if (!CG.out) b.textContent = 'Watch the machine'; }  }); }
 cgSpin = function () { };
-{ const f0 = cgResult; cgResult = function (e) { try { cg3Play(e); } catch (x) { console.warn(x); } if (e.id !== myId()) return; const T = (CG_T[e.g] || 3) * 1000; CG.busy = 1; setTimeout(() => f0.call(this, e), Math.max(0, T - 1200)); }; }
+{ cgResult = around(cgResult, function (next, e) { try { cg3Play(e); } catch (x) { console.warn(x); } if (e.id !== myId()) return; const T = (CG_T[e.g] || 3) * 1000; CG.busy = 1; setTimeout(() => next.call(this, e), Math.max(0, T - 1200)); }); }
 
 // the Queen's bonus: every win is topped up so each bet returns about 110% on average (measured by simulation per game and choice)
 const CG_K = {slots: 1.15, 'roul:red': 1.13, 'roul:black': 1.13, 'roul:green': 1.16, hilo: 1.16, 'dice:over': 1.2, 'dice:under': 1.2, 'dice:seven': 1.32, wheel: 1.13, crash: 1.16, 'plinko:safe': 1.17, 'plinko:wild': 1.29, flip: 1.13, scratch: 1.15, horse: 1.18};
 function cgK(g, ch) { return CG_K[g + ':' + ch] || CG_K[g] || 1.1; }
-{ const f0 = cgDraw; cgDraw = function () { const r = f0.apply(this, arguments); const q = CG_GAMES[CG.open], b = $('cgBig'); if (q && b && !$('cgBon')) b.insertAdjacentHTML('beforebegin', `<div id="cgBon" style="color:#80ff90;font-size:12px">Queen's bonus: wins pay ×${cgK(q.k, String(CG.ch)).toFixed(2)} · about 110% back on average</div>`); return r; }; }
+{ cgDraw = after(cgDraw, function (r) {  const q = CG_GAMES[CG.open], b = $('cgBig'); if (q && b && !$('cgBon')) b.insertAdjacentHTML('beforebegin', `<div id="cgBon" style="color:#80ff90;font-size:12px">Queen's bonus: wins pay ×${cgK(q.k, String(CG.ch)).toFixed(2)} · about 110% back on average</div>`);  }); }
 
 // ===== the Kraken-class nuclear submarine: the research sub's walk-in interior (control room, bunks, galley, airlock) inside an 87 m black hull with a long walkable
 // deck, a tall sail, missile hatches and a pump-jet tail. Fast (spd 2.0), dives to 300 m. Built by a buildBoat wrapper around the normal sub build.
 HULLS.push({n: 'Kraken nuclear submarine', board: ' ', d: 'An 87 m nuclear attack sub: quiet, fast and deep. The walk-in interior of the research sub inside a black hull with a long deck. Dives to 300 m (C down, Space up at the helm)', cost: 42000, L: 24, W: 5.8, fb: 1.6, spd: 2.0, turn: .5, hold: 140, hp: 9, fuel: 6, col: 0x1c1f22, sub: 1, nuke: 1, maxDep: 300, perk: 'Nuclear: fast and deep', best: 'Deep, fast exploring: twice the research sub\'s speed, nearly four times the depth, and a huge hold'});
 const NUKE = {Z0: -10, Z1: 55, RB: 4.2};
-{ const f0 = buildBoat; buildBoat = function () { const r = f0.apply(this, arguments); const H = HC(); if (!H.nuke || !BOAT) return r; try {
+{ buildBoat = after(buildBoat, function (r) {  const H = HC(); if (!H.nuke || !BOAT) return; try {
   const g = BOAT, U = SUB, CAS = U.CAS, cyB = CAS - .05 - NUKE.RB, {Z0, Z1} = NUKE, M = o => new THREE.MeshStandardMaterial(Object.assign({roughness: .5, metalness: .35}, o)), hm = M({color: 0x16191c}), dk = M({color: 0x0c0d0e, roughness: .8}), red = M({color: 0x5a1410, roughness: .7});
   const add = (geo, m, x = 0, y = 0, z = 0) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.castShadow = true; o.receiveShadow = true; o.userData.nkHull = 1; g.add(o); return o; };
   const prof = [[.2, -16], [1.5, -15.2], [2.8, -13.8], [3.8, -11.8], [4.2, -9.8], [4.2, 55], [3.6, 61], [2.2, 66.5], [.9, 70], [.2, 71]].map(([rr, z]) => new THREE.Vector2(rr, z)), hull = new THREE.LatheGeometry(prof, 48); hull.rotateX(PI / 2); add(hull, hm, 0, cyB, 0);
@@ -9583,7 +9613,7 @@ const NUKE = {Z0: -10, Z1: 55, RB: 4.2};
   for (const it of INTER) if (it.boat && it.kind === 'ladder' && it.top === 'boat') { it.lx = NUKE.RB + .5; }
   Object.assign(BG, {zb: -16, zs: 71, L: 87, W: 8.4, hw: NUKE.RB});
   g.traverse(o => { if (o.isMesh && o.material && o.material.color && !o.material.userData.inner && o.material.color.getHex() === 0xd8a020) o.material.color.setHex(0x1c1f22); });
-  } catch (e) { console.warn('nuke', e); } return r; }; }
+  } catch (e) { console.warn('nuke', e); }  }); }
 
 // ===== biome dressing on the surface around the camera: kelp canopy mats (Kelp Forest), pale sand shallows (Turquoise Banks), glowing plankton at night
 // (Lantern Sea), drifting mist banks (Whispering Mist). Seeded per 40 m cell, so every client sees the same. The host keeps the Squall Line stormy and
@@ -9608,9 +9638,9 @@ function bioFrame(dt) { if (!G.on || !P) return; const cp = cam.position, q = ma
     else { Pv.set(x, wy + (kind === 'kelp' ? .05 : kind === 'tropic' ? .04 : .06), z); Ey.set(0, yaw + (kind === 'glow' ? t * .2 : 0), 0); Qt.setFromEuler(Ey); Sv.set(sz, kind === 'kelp' ? v : 1, sz * (kind === 'kelp' ? .7 : 1)); }
     M4.compose(Pv, Qt, Sv); im.setMatrixAt(n++, M4); } im.count = n; im.instanceMatrix.needsUpdate = true;
   if (kind === 'glow') im.material.opacity = .15 + .75 * (TOD.night || 0) * (.7 + .3 * Math.sin(t * 1.3)); }
-{ const f0 = updateWorldFx; updateWorldFx = function (...a) { const r = f0.apply(this, a); try { bioFrame(a[0] || 0); } catch (e) { if (!BIO.err) { BIO.err = 1; console.warn(e); } } return r; }; }
+{ updateWorldFx = after(updateWorldFx, function (r, ...a) {  try { bioFrame(a[0] || 0); } catch (e) { if (!BIO.err) { BIO.err = 1; console.warn(e); } }  }); }
 // host weather by biome: the Squall Line always storms, the Turquoise Banks never do
-{ const f0 = hostStep; hostStep = function (dt) { const r = f0.apply(this, arguments); try { if (G.on && BOAT) { const q = mapRegion(B.x, B.z), w = mapRegion.w; if (q && w > .5 && (q.storm || q.calm)) { const want = !!q.storm; if (G.stormOn !== want) { G.stormOn = want; G.stormT = 90; emit({k: 'storm', on: want}); } } } } catch (e) {} return r; }; }
+{ hostStep = after(hostStep, function (r, dt) {  try { if (G.on && BOAT) { const q = mapRegion(B.x, B.z), w = mapRegion.w; if (q && w > .5 && (q.storm || q.calm)) { const want = !!q.storm; if (G.stormOn !== want) { G.stormOn = want; G.stormT = 90; emit({k: 'storm', on: want}); } } } } catch (e) {}  }); }
 
 // ===== the Kraken's own interior, laid out like a real ballistic-missile sub on one long deck (floor SUB.FI, the 4.2 m hull round it):
 // control room (helm and planes, two periscopes, sonar and fire control, chart table, the hatch trunk) -> crew mess and galley -> berthing (triple racks)
@@ -9687,25 +9717,25 @@ function nkBuild() { const U = SUB, CAS = U.CAS, FI = U.FI, RB = NUKE.RB, cyB = 
   RND.localClippingEnabled = true; NK.mats = []; const keep = new Set(Object.values(MATC).concat(Object.values(MAT)));
   BOAT.traverse(o => { if (!o.isMesh || !o.material || o.userData.nkHull) return; let p = o; while (p && p !== BOAT) { if (p === NK.g || p === SUBC.inner) return; p = p.parent; } const ms = Array.isArray(o.material) ? o.material : [o.material]; for (const m of ms) if (!keep.has(m) && !NK.mats.includes(m)) { m.clippingPlanes = [NK.plane]; m.clipShadows = true; m.needsUpdate = true; NK.mats.push(m); } }); }
 const OHN = 1.0;
-{ const f0 = buildBoat; buildBoat = function () { if (NK.lamps0) { SUB.lamps.length = 0; SUB.lamps.push(...NK.lamps0); } NK.g = null; const r = f0.apply(this, arguments); if (!HC().nuke || !BOAT) return r; try {
+{ buildBoat = around(buildBoat, function (next, ...args) { if (NK.lamps0) { SUB.lamps.length = 0; SUB.lamps.push(...NK.lamps0); } NK.g = null; const r = next.apply(this, args); if (!HC().nuke || !BOAT) return r; try {
     BOAT.children.forEach(c => { if (c.isMesh && c.geometry && c.geometry.type === 'LatheGeometry') c.userData.nkHull = 1; }); // the big hull keeps its full shape
     for (let i = BW.length - 1; i >= 0; i--) if (BW[i].int && !BW[i].nk) BW.splice(i, 1); for (let i = BFL.length - 1; i >= 0; i--) if (BFL[i].int && !BFL[i].nk) BFL.splice(i, 1);
-    nkBuild(); } catch (e) { console.warn('nkBuild', e); } return r; }; }
-{ const f0 = camInSub; camInSub = function () { if (!HC().nuke || !BOAT || B.sink > 0) return f0.apply(this, arguments); if (f0.apply(this, arguments)) return true; _sc.copy(cam.position); BOAT.worldToLocal(_sc); const x = _sc.x, y = _sc.y, z = _sc.z, cyB = SUB.CAS - .05 - NUKE.RB; G.subL = [x, y, z];
-  return z > NK_Z0 - .1 && z < NK_Z1 + .1 && Math.hypot(x, y - cyB) < NUKE.RB - .08 && y > SUB.FI - .3; }; }
-{ const f0 = subWL; subWL = function (h) { if (!HC().nuke) return f0.apply(this, arguments); const cyB = SUB.CAS - .05 - NUKE.RB, d = Math.abs(h - cyB); if (h > SUB.CAS || d >= NUKE.RB) return null; const w = Math.sqrt(NUKE.RB * NUKE.RB - d * d); return [w, -14.5 + (1 - w / NUKE.RB) * 2, 66 - (1 - w / NUKE.RB) * 4]; }; }
-{ const f0 = subFx; subFx = function (dt) { const r = f0.apply(this, arguments); if (HC().nuke && BOAT && NK.g) { if (SUBC.inner) SUBC.inner.visible = false; const cd = Math.hypot(cam.position.x - B.x, cam.position.z - B.z); NK.g.visible = !!G.subIn || cd < 60;
-  _sb.set(0, 1, 0).applyQuaternion(BOAT.quaternion); _sc.set(0, SUB.CAS - .12, 0); BOAT.localToWorld(_sc); NK.plane.setFromNormalAndCoplanarPoint(_sb, _sc); } return r; }; }
+    nkBuild(); } catch (e) { console.warn('nkBuild', e); } return r; }); }
+{ camInSub = around(camInSub, function (next, ...args) { if (!HC().nuke || !BOAT || B.sink > 0) return next.apply(this, args); if (next.apply(this, args)) return true; _sc.copy(cam.position); BOAT.worldToLocal(_sc); const x = _sc.x, y = _sc.y, z = _sc.z, cyB = SUB.CAS - .05 - NUKE.RB; G.subL = [x, y, z];
+  return z > NK_Z0 - .1 && z < NK_Z1 + .1 && Math.hypot(x, y - cyB) < NUKE.RB - .08 && y > SUB.FI - .3; }); }
+{ subWL = before(subWL, function (h) { if (!HC().nuke) return NEXT; const cyB = SUB.CAS - .05 - NUKE.RB, d = Math.abs(h - cyB); if (h > SUB.CAS || d >= NUKE.RB) return null; const w = Math.sqrt(NUKE.RB * NUKE.RB - d * d); return [w, -14.5 + (1 - w / NUKE.RB) * 2, 66 - (1 - w / NUKE.RB) * 4]; }); }
+{ subFx = after(subFx, function (r, dt) {  if (HC().nuke && BOAT && NK.g) { if (SUBC.inner) SUBC.inner.visible = false; const cd = Math.hypot(cam.position.x - B.x, cam.position.z - B.z); NK.g.visible = !!G.subIn || cd < 60;
+  _sb.set(0, 1, 0).applyQuaternion(BOAT.quaternion); _sc.set(0, SUB.CAS - .12, 0); BOAT.localToWorld(_sc); NK.plane.setFromNormalAndCoplanarPoint(_sb, _sc); }  }); }
 
 // swimmers anywhere along the Kraken's 87 m are checked against her hull (the shared gate only reaches about 50 m from her origin)
-{ const f0 = pushBody; pushBody = function (o, r, y) { const res = f0.apply(this, arguments); try { if (HC().nuke && BOAT && !o.ob && B.sink <= 0) { const [lx, lz] = bW2L(o.x, o.z); if (lz > -17 && lz < 72 && Math.abs(lx) < NUKE.RB + 1.5) subPush(o, r, y); } } catch (e) {} return res; }; }
+{ pushBody = after(pushBody, function (res, o, r, y) {  try { if (HC().nuke && BOAT && !o.ob && B.sink <= 0) { const [lx, lz] = bW2L(o.x, o.z); if (lz > -17 && lz < 72 && Math.abs(lx) < NUKE.RB + 1.5) subPush(o, r, y); } } catch (e) {}  }); }
 
 // climb out of the water onto a ledge (a dock edge, a rock shelf) up to 2.3 m above the sea: swim into it holding W at the surface for a moment
-{ const f0 = stepPlayer; stepPlayer = function (dt) { const r = f0.apply(this, arguments); try { if (!P || !P.sw || P.down || P.climb || (P.dv || 0) > .4 || !K.KeyW) { if (P) P.ledgeT = 0; return r; }
+{ stepPlayer = after(stepPlayer, function (r, dt) {  try { if (!P || !P.sw || P.down || P.climb || (P.dv || 0) > .4 || !K.KeyW) { if (P) P.ledgeT = 0; return; }
   const fx = -Math.sin(P.yaw), fz = -Math.cos(P.yaw); let hit = null; for (const d of [.7, 1.1]) { const px = P.x + fx * d, pz = P.z + fz * d, f = floorAt(px, pz, 2.4, true); if (f && f.s.k !== 'boat' && f.y > .7 && f.y < 2.35) { hit = {x: px + fx * .35, z: pz + fz * .35, y: f.y}; break; } }
-  if (!hit) { P.ledgeT = 0; return r; } P.ledgeT = (P.ledgeT || 0) + dt; if (P.ledgeT < .3) return r; P.ledgeT = 0;
-  const f2 = floorAt(hit.x, hit.z, hit.y + .5, true); if (!f2 || Math.abs(f2.y - hit.y) > .4) return r;
-  P.sw = 0; P.dv = 0; P.deep = 0; P.x = hit.x; P.z = hit.z; P.y = f2.y; P.vx = P.vz = P.vy = 0; P.lspV = 0; G.lspV = (G.lspV || 0) + 4; Snd.splash && Snd.splash(); Snd.step && Snd.step('wood', 1.2); } catch (e) {} return r; }; }
+  if (!hit) { P.ledgeT = 0; return; } P.ledgeT = (P.ledgeT || 0) + dt; if (P.ledgeT < .3) return; P.ledgeT = 0;
+  const f2 = floorAt(hit.x, hit.z, hit.y + .5, true); if (!f2 || Math.abs(f2.y - hit.y) > .4) return;
+  P.sw = 0; P.dv = 0; P.deep = 0; P.x = hit.x; P.z = hit.z; P.y = f2.y; P.vx = P.vz = P.vy = 0; P.lspV = 0; G.lspV = (G.lspV || 0) + 4; Snd.splash && Snd.splash(); Snd.step && Snd.step('wood', 1.2); } catch (e) {}  }); }
 
 // ===== underwater light, after Abyssal Garden (github.com/Noniv/abyssal-garden, MIT, (c) 2026 Maksymilian Dendura; see rig/THIRD_PARTY.md):
 // the water colour is a turquoise base dimmed per channel with depth (red goes first), and the fog absorbs per channel too, so distant things sink
@@ -9733,11 +9763,11 @@ function kglBuild() { if (KGL.pts) return; const N = 2700, g = new THREE.BufferG
     vertexShader: 'attribute float ph; uniform float uT; varying float vA; varying float vH; void main(){ vec4 mv = modelViewMatrix * vec4(position, 1.); float d = -mv.z; float tw = .5 + .5 * sin(uT * (1.3 + fract(ph * 7.1) * 2.) + ph * 40.); vA = tw * tw * exp(-d * .045); vH = fract(ph * 13.7); gl_PointSize = (2. + 3. * tw) * clamp(28. / d, .6, 3.); gl_Position = projectionMatrix * mv; }',
     fragmentShader: 'uniform float uK; varying float vA; varying float vH; void main(){ vec2 c = gl_PointCoord - .5; float r = length(c); if (r > .5) discard; vec3 col = mix(vec3(1., .86, .45), vec3(.55, 1., .62), step(.55, vH)); gl_FragColor = vec4(col * (1. - r * 2.) * vA * uK, 1.); }'});
   KGL.pts = new THREE.Points(g, m); KGL.pts.frustumCulled = false; KGL.pts.visible = false; scene.add(KGL.pts); }
-{ const f0 = uwxFill; uwxFill = function () { const r = f0.apply(this, arguments); try { kglBuild(); if (typeof UW2 !== 'undefined' && UW2.m.grass) return r; const cp = cam.position, cx = Math.floor(cp.x / 48), cz = Math.floor(cp.z / 48), pa = KGL.pts.geometry.attributes.position, ph = KGL.pts.geometry.attributes.ph; let n = 0;
+{ uwxFill = after(uwxFill, function (r) {  try { kglBuild(); if (typeof UW2 !== 'undefined' && UW2.m.grass) return; const cp = cam.position, cx = Math.floor(cp.x / 48), cz = Math.floor(cp.z / 48), pa = KGL.pts.geometry.attributes.position, ph = KGL.pts.geometry.attributes.ph; let n = 0;
   for (let i = -2; i <= 2; i++) for (let j = -2; j <= 2; j++) { const c = uwxCell(cx + i, cz + j); if (!c || !c.kelp) continue; for (const [x, b, z, h, a] of c.kelp) for (let k = 0; k < 6 && n < pa.count; k++) { const u = Math.abs(Math.sin(x * 12.9 + z * 78.2 + k * 3.7)), v = Math.sin(a * 5 + k * 2.1);
     pa.setXYZ(n, x + Math.cos(a + k) * .25 * v, b + h * (.15 + .8 * u), z + Math.sin(a + k) * .25 * v); ph.setX(n, u); n++; } }
-  pa.needsUpdate = true; ph.needsUpdate = true; KGL.pts.geometry.setDrawRange(0, n); KGL.n = n; } catch (e) { console.warn('kgl', e); } return r; }; }
-{ const f0 = hud; hud = function () { const r = f0.apply(this, arguments); try { if (KGL.pts) { if (typeof UW2 === 'undefined' || !UW2.m.grass) KGL.pts.visible = !!(UWX.kelp && UWX.kelp.visible) && KGL.n > 0; if (KGL.pts.visible) { KGL.pts.material.uniforms.uT.value = G.wt; KGL.pts.material.uniforms.uK.value = .35 + .65 * (1 - (TOD.day || 0) * .5); } } } catch (e) {} return r; }; }
+  pa.needsUpdate = true; ph.needsUpdate = true; KGL.pts.geometry.setDrawRange(0, n); KGL.n = n; } catch (e) { console.warn('kgl', e); }  }); }
+{ hud = after(hud, function (r) {  try { if (KGL.pts) { if (typeof UW2 === 'undefined' || !UW2.m.grass) KGL.pts.visible = !!(UWX.kelp && UWX.kelp.visible) && KGL.n > 0; if (KGL.pts.visible) { KGL.pts.material.uniforms.uT.value = G.wt; KGL.pts.material.uniforms.uK.value = .35 + .65 * (1 - (TOD.day || 0) * .5); } } } catch (e) {}  }); }
 
 // ===== a living sea floor (replaces the old kelp strips, blob rocks, cone fish and flat sun shafts underwater): thousands of swaying seagrass tufts,
 // leafy kelp, barrel and tube sponges, branching coral, sea fans and brain coral, lumpy rocks and the odd rock arch, fish with real bodies in schools,
@@ -9838,7 +9868,7 @@ function uw2Frame(dt) { if (!G.on || !P) return; const und = (G.uw || 0) > .5 &&
   // mantas glide in big slow circles above the bed in open lit water
   const mon = bed < -12 && bed > -90 && day > .2; M.manta.visible = mon; if (mon) { const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), sv = new THREE.Vector3(); for (let k = 0; k < 2; k++) { const R = 26 + k * 14, a = t * (.05 + k * .015) + k * 3, cx = Math.floor(cp.x / 200) * 200 + 100, cz = Math.floor(cp.z / 200) * 200 + 100, x = cx + Math.cos(a) * R, z = cz + Math.sin(a) * R, y = Math.max(seaBed(x, z) + 5 + k * 3, cw - 25);
       e.set(Math.sin(t * .3 + k) * .08, PI - a, Math.sin(t * .5 + k) * .12, 'YXZ'); q.setFromEuler(e); sv.setScalar(1.1 + k * .25); m4.compose(new THREE.Vector3(x, y, z), q, sv); M.manta.setMatrixAt(k, m4); } M.manta.count = 2; M.manta.instanceMatrix.needsUpdate = true; } }
-{ const f0 = hud; hud = function () { const r = f0.apply(this, arguments); try { const now = performance.now(), dt = Math.min(.1, (now - (UW2.ft || now)) / 1000); UW2.ft = now; uw2Frame(dt); } catch (e) { if (!UW2.err) { UW2.err = 1; console.warn('uw2', e); } } return r; }; }
+{ hud = after(hud, function (r) {  try { const now = performance.now(), dt = Math.min(.1, (now - (UW2.ft || now)) / 1000); UW2.ft = now; uw2Frame(dt); } catch (e) { if (!UW2.err) { UW2.err = 1; console.warn('uw2', e); } }  }); }
 
 // ===== monsters where you spend your time:
 // Hullcrawlers climb over your own boat's rail at night out at sea (anywhere past the home waters) and hunt whoever is on deck; bullets, a flare or a hard turn of speed throws them off.
@@ -9879,19 +9909,19 @@ function sjStep(dt) { const night = icNight(); let c = SNJ.c; SNJ.cd = Math.max(
     else if (c.t > 3) { c.st = 1; c.t = 0; c.r = 16; } }
   else { c.y -= dt * 1.5; c.x += Math.sin(c.yaw + PI) * dt * 8; c.z += Math.cos(c.yaw + PI) * dt * 8; if (c.t > 6) { SNJ.c = null; SNJ.cd = 50 + CR() * 60; if (p) p.sjE = 0; emit({k: 'sjx', s: 'off'}); return; } }
   if (c.st !== 3) { const mx = c.x - px0, mz = c.z - pz0; if (Math.hypot(mx, mz) > 1e-4) c.yaw = Math.atan2(-mx, -mz); } }
-{ const f0 = hostStep; hostStep = function (dt) { const r = f0.apply(this, arguments); if (G.on) { try { hbStep(dt); } catch (e) { if (!HB.err) { HB.err = 1; console.warn(e); } } try { sjStep(dt); } catch (e) { if (!SNJ.err) { SNJ.err = 1; console.warn(e); } } } return r; }; }
+{ hostStep = after(hostStep, function (r, dt) {  if (G.on) { try { hbStep(dt); } catch (e) { if (!HB.err) { HB.err = 1; console.warn(e); } } try { sjStep(dt); } catch (e) { if (!SNJ.err) { SNJ.err = 1; console.warn(e); } } }  }); }
 // bullets and harpoons: ray against a crawler's column, or the Snapjaw's body
 function rayPt(o, d, x, y, z) { const l = Math.hypot(d[0], d[1], d[2]) || 1, ux = d[0] / l, uy = d[1] / l, uz = d[2] / l, t = (x - o[0]) * ux + (y - o[1]) * uy + (z - o[2]) * uz; if (t <= 0 || t > 80) return null; return {t, px: o[0] + ux * t, py: o[1] + uy * t, pz: o[2] + uz * t}; }
-{ const f0 = hostShoot; hostShoot = function (p, m) { const r = f0.apply(this, arguments); try { const o = m && m.o, d = m && m.d; if (!o || !d || p.down || p.dead) return r; const mul = typeof hsMul === 'function' ? hsMul(m) : 1;
+{ hostShoot = after(hostShoot, function (r, p, m) {  try { const o = m && m.o, d = m && m.d; if (!o || !d || p.down || p.dead) return; const mul = typeof hsMul === 'function' ? hsMul(m) : 1;
   for (const c of HB.l) { if (c.st === 3 || c.st === 4 || !BOAT) continue; const [wx, wz] = bL2W(c.lx, c.lz), gy = BDECK.y + (B.heave || 0), q = rayPt(o, d, wx, gy + .7, wz); if (!q) continue;
     if (Math.hypot(q.px - wx, q.pz - wz) > .5 || q.py < gy - .1 || q.py > gy + 1.6) continue; const head = q.py > gy + 1.25, dm = (m.w === 'g' ? 10 : 7 * (q.t > 20 ? .4 : 1)) * mul * (head ? 2 : 1); c.hp -= dm;
     emit({k: 'ichit', x: +q.px.toFixed(2), y: +q.py.toFixed(2), z: +q.pz.toFixed(2), head, by: p.id});
     if (c.hp <= 0) { c.st = 4; const v = Math.round(15 * (D.pay || 1)); G.cash += v; G.earned += v; emit({k: 'hbx', s: 'die', id: c.id, by: p.id, v}); } }
   const S = SNJ.c; if (S && S.st !== 3) { const q = rayPt(o, d, S.x, S.y, S.z); if (q && Math.hypot(q.px - S.x, q.py - S.y, q.pz - S.z) < 1.3) { S.hp -= (m.w === 'g' ? 10 : 6) * mul; emit({k: 'ichit', x: +q.px.toFixed(2), y: +q.py.toFixed(2), z: +q.pz.toFixed(2), head: false, by: p.id});
-    if (S.hp <= 0) { const v = Math.round(60 * (D.pay || 1)); G.cash += v; G.earned += v; emit({k: 'sjx', s: 'die', by: p.id, v}); SNJ.c = null; SNJ.cd = 240; const t = PL.get(S.tgt); if (t) t.sjE = 0; } else { S.st = 3; S.t = 0; emit({k: 'sjx', s: 'hurt'}); } } } } catch (e) { console.warn(e); } return r; }; }
-{ const f0 = packSnap; packSnap = function () { const s = f0.apply(this, arguments); if (HB.l.length) s.hb = HB.l.map(c => [c.id, +c.lx.toFixed(2), +c.lz.toFixed(2), c.st, +c.yaw.toFixed(2), +c.t.toFixed(2)]); if (SNJ.c) { const c = SNJ.c; s.sj = [+c.x.toFixed(2), +c.y.toFixed(2), +c.z.toFixed(2), +c.yaw.toFixed(2), c.st]; } return s; }; }
-{ const f0 = applySnap; applySnap = function (s) { const r = f0.apply(this, arguments); HB.snap = Array.isArray(s.hb) ? s.hb : []; SNJ.snap = Array.isArray(s.sj) ? s.sj : null; return r; }; }
-{ const f0 = startGame; startGame = function () { HB.l = []; HB.snap = null; HB.pend = 0; SNJ.c = null; SNJ.snap = null; return f0.apply(this, arguments); }; }
+    if (S.hp <= 0) { const v = Math.round(60 * (D.pay || 1)); G.cash += v; G.earned += v; emit({k: 'sjx', s: 'die', by: p.id, v}); SNJ.c = null; SNJ.cd = 240; const t = PL.get(S.tgt); if (t) t.sjE = 0; } else { S.st = 3; S.t = 0; emit({k: 'sjx', s: 'hurt'}); } } } } catch (e) { console.warn(e); }  }); }
+{ packSnap = after(packSnap, function (s) {  if (HB.l.length) s.hb = HB.l.map(c => [c.id, +c.lx.toFixed(2), +c.lz.toFixed(2), c.st, +c.yaw.toFixed(2), +c.t.toFixed(2)]); if (SNJ.c) { const c = SNJ.c; s.sj = [+c.x.toFixed(2), +c.y.toFixed(2), +c.z.toFixed(2), +c.yaw.toFixed(2), c.st]; }  }); }
+{ applySnap = after(applySnap, function (r, s) {  HB.snap = Array.isArray(s.hb) ? s.hb : []; SNJ.snap = Array.isArray(s.sj) ? s.sj : null;  }); }
+{ startGame = before(startGame, function () { HB.l = []; HB.snap = null; HB.pend = 0; SNJ.c = null; SNJ.snap = null; return NEXT; }); }
 // ---- client: models. Shared materials, made once.
 const MN2 = {};
 function mn2Mats() { if (MN2.skin) return MN2;
@@ -10036,9 +10066,9 @@ function mon2Frame(dt) { if (!G.on || !P) return; const t = G.wt;
   const k = Math.min(1, dt * 8); g.position.x = mix(g.position.x, J[0], k); g.position.y = mix(g.position.y, J[1] - (J[4] === 1 ? .75 : 0), k); g.position.z = mix(g.position.z, J[2], k);
   let dy = J[3] - g.rotation.y; dy = Math.atan2(Math.sin(dy), Math.cos(dy)); g.rotation.y += dy * k; sjAnim(g, J[4], t, dt);
   if (A.on && J[4] === 1 && Math.random() < dt * 1.5) { const p = at(J[0], 0, J[2], 6); burst(900, .8, .08, .3, 'bandpass', p, .5); } }
-{ const f0 = hud; hud = function () { const r = f0.apply(this, arguments); try { const now = performance.now(), dt = Math.min(.1, (now - (HB.ft || now)) / 1000); HB.ft = now; mon2Frame(dt); } catch (e) { if (!HB.err2) { HB.err2 = 1; console.warn(e); } } return r; }; }
+{ hud = after(hud, function (r) {  try { const now = performance.now(), dt = Math.min(.1, (now - (HB.ft || now)) / 1000); HB.ft = now; mon2Frame(dt); } catch (e) { if (!HB.err2) { HB.err2 = 1; console.warn(e); } }  }); }
 // ---- events
-{ const f0 = applyEv; applyEv = function (e) { const r = f0.apply(this, arguments), me = myId(); try { const aboard = !!P && P.ob, nearB = !!P && (P.ob || Math.hypot(P.x - B.x, P.z - B.z) < BG.L * .5 + 40);
+{ applyEv = after(applyEv, function (r, e) { const me = myId(); try { const aboard = !!P && P.ob, nearB = !!P && (P.ob || Math.hypot(P.x - B.x, P.z - B.z) < BG.L * .5 + 40);
   if (e.k === 'hbw' && nearB) { hzSting(.7); showMsg('Wet slapping against the hull. Something is climbing up the side.', '', 4.5); if (A.on) for (let i = 0; i < 7; i++) setTimeout(() => burst(380, .6, .2, .25, 'lowpass', null, .8), i * 520 + Math.random() * 200); }
   else if (e.k === 'hbx') { if (e.s === 'up' && nearB) { G.shake = Math.max(G.shake || 0, .5); Snd.shriek && Snd.shriek(null); showMsg(e.n > 1 ? `${e.n} things haul themselves over the rail. Shoot them, burn a flare, or open her up and shake them off.` : 'Something hauls itself over the rail. Shoot it, burn a flare, or open her up and shake it off.', 'BOARDERS', 5); }
     else if (e.s === 'got' && e.p === me) { G.shake = 1.5; Snd.scream && Snd.scream(); showMsg('Cold wet hands drag you down onto the deck.', '', 4); }
@@ -10053,4 +10083,4 @@ function mon2Frame(dt) { if (!G.on || !P) return; const t = G.wt;
     else if (e.s === 'hurt' && P && P.sw) showMsg('It peels away, bleeding.', '', 2.5);
     else if (e.s === 'die') showMsg(e.by === me ? `You killed the Snapjaw. +${money(e.v)}` : `The Snapjaw is dead. +${money(e.v)}`, '', 4); }
   else if (e.k === 'dead' && e.drown === 7 && e.id === me) setTimeout(() => showMsg('Its jaws close. The water turns red.', '', 5), 30);
-  } catch (err) { console.warn(err); } return r; }; }
+  } catch (err) { console.warn(err); }  }); }
