@@ -149,6 +149,8 @@ Read `CLAUDE.md` first (shared rules). Split out of it on 17 Nov 2026; keep this
   - **Bubbles:** speech bubbles are removed when a player leaves or a new voyage starts.
   - `emoteStart` checks the index.
 
+- **Surfaced-sub view:** inside the sub, `G.uw` is now also 1 when the camera is more than .15 m below the wave surface (it used to need `B.dep > 1`). A surfaced sub's viewports now show underwater fog, the lit underside of the sea (`uUs`), marine snow and the seabed, instead of the sea's top shading seen from below.
+
 ## Next up (the owner's list, 18 Nov 2026; items 7-14 and the loot rework were built the same day, see the paragraphs above)
 1. **Sub visuals underwater and half underwater:** proper looks from inside and outside the research sub when it is dived and when it sits at the waterline (the waterline across the bow viewport, the sea surface seen from below, underwater fog and tint through the windows, the hull half in and half out of the water, bubbles and wake when diving).
 2. **Persisting loot and fast travel:** loot that stays where it was (taken items stay taken, a persistent world seed with slow restocks) and fast travel between ports (home, Northwatch, piers).

@@ -5826,7 +5826,7 @@ function updateWorldFx(dt) {
   todAt(G.tod || 0, st); scene.fog.density = TOD.fd; scene.fog.color.copy(TOD.fog); scene.background.copy(TOD.fog);
   G.lightT -= dt; const sky = scene.userData.sky.material.uniforms; sky.uS.value = st; sky.uT.value = G.wt;
   sky.zen.value.copy(TOD.zen); sky.hor.value.copy(TOD.hor); sky.fogC.value.copy(TOD.fog); sky.sunC.value.copy(TOD.sun); sky.sunI.value = TOD.sI; sky.stars.value = TOD.st; sky.aur.value = TOD.night * (1 - st) * .9;
-  const cw = waveH(cam.position.x, cam.position.z, G.wt); G.uw = mix(G.uw || 0, G.subIn ? ((B.dep || 0) > 1 ? 1 : 0) : cam.position.y < cw - .08 ? 1 : 0, Math.min(1, dt * 12)); G.uwC = G.subIn ? mix(G.uwC || 0, lockWet() ? 1 : 0, Math.min(1, dt * 12)) : G.uw; // look vs camera-in-water (the sub's hull keeps you dry)
+  const cw = waveH(cam.position.x, cam.position.z, G.wt); G.uw = mix(G.uw || 0, G.subIn ? ((B.dep || 0) > 1 || cam.position.y < cw - .15 ? 1 : 0) : cam.position.y < cw - .08 ? 1 : 0, Math.min(1, dt * 12)); // a surfaced sub still puts your eye under the waterline: the viewports look into the sea and up at its underside G.uwC = G.subIn ? mix(G.uwC || 0, lockWet() ? 1 : 0, Math.min(1, dt * 12)) : G.uw; // look vs camera-in-water (the sub's hull keeps you dry)
   { const und = G.uw > .5, U = MAT.sea.userData.U; sky.uw.value = und ? 1 : 0; U.uUs.value.w = und ? 1 : 0;
     if (und) { // underwater: clearer for the first 30 m so wreck silhouettes read, then the deep closes in; the sky becomes a lit-from-above gradient
       const dl = .25 + .75 * TOD.day, dp = cw - cam.position.y, dpt = clamp(dp / 80, 0, 1); scene.fog.color.setRGB(.012 * dl, .07 * dl, .08 * dl).multiplyScalar(1 - dpt * .92); scene.background.copy(scene.fog.color);
