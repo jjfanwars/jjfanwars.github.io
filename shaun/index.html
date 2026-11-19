@@ -18,11 +18,11 @@ canvas#gl { position:fixed; inset:0; width:100%; height:100%; display:block; }
 canvas#hud { position:fixed; inset:0; width:100%; height:100%; pointer-events:none; z-index:4; }
 .hidden { display:none !important; }
 #visor { position:fixed; inset:-8vh -6vw; pointer-events:none; z-index:3; border-radius:50% / 46%;
-  box-shadow: inset 0 0 0 2px rgba(111,247,238,.10), inset 0 0 90px 30px rgba(0,0,0,.75), inset 0 0 0 9vmin rgba(0,0,0,.25); }
+  box-shadow: inset 0 0 120px 10px rgba(0,0,0,.35); }
 #visor:before { content:""; position:absolute; left:50%; top:7vh; width:34vw; height:2px; transform:translateX(-50%); background:linear-gradient(90deg,transparent,rgba(111,247,238,.35),transparent); }
-#scan { position:fixed; inset:0; pointer-events:none; z-index:3; opacity:.05; background:repeating-linear-gradient(180deg,#000 0 1px,transparent 1px 3px); animation:fl 4s infinite steps(40); }
+#scan { display:none; position:fixed; inset:0; pointer-events:none; z-index:3; opacity:.05; background:repeating-linear-gradient(180deg,#000 0 1px,transparent 1px 3px); animation:fl 4s infinite steps(40); }
 @keyframes fl { 0%,100%{opacity:.05} 47%{opacity:.08} 48%{opacity:.03} 50%{opacity:.06} }
-#vig { position:fixed; inset:0; pointer-events:none; z-index:2; background:radial-gradient(ellipse at center,transparent 50%,rgba(0,0,0,.65) 100%); }
+#vig { position:fixed; inset:0; pointer-events:none; z-index:2; background:radial-gradient(ellipse at center,transparent 60%,rgba(0,0,0,.3) 100%); }
 #dmg { position:fixed; inset:0; pointer-events:none; z-index:3; opacity:0; background:radial-gradient(ellipse at center,transparent 30%,rgba(200,10,0,.75) 100%); }
 #call { position:fixed; left:50%; top:28%; transform:translate(-50%,-50%); z-index:5; pointer-events:none; text-align:center; font-family:"Rajdhani",sans-serif; color:var(--cy); opacity:0; transition:opacity .5s; text-shadow:0 0 18px rgba(111,247,238,.6); }
 #call b { display:block; font-size:72px; letter-spacing:.3em; font-weight:700; line-height:1; }

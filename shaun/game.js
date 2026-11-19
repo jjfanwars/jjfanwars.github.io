@@ -92,7 +92,7 @@ RND.toneMapping = THREE.NoToneMapping; RND.shadowMap.enabled = true; RND.shadowM
 const scene = new THREE.Scene();
 const cam = new THREE.PerspectiveCamera(72, innerWidth / innerHeight, .03, 6000);
 scene.add(cam);
-const FOG = new THREE.Color(.62, .25, .1);
+const FOG = new THREE.Color(.6, .42, .3);
 scene.fog = new THREE.FogExp2(FOG, .0016);
 const POST = {};
 function mkRT(w, h, ms) { return new THREE.WebGLRenderTarget(w, h, {type: THREE.HalfFloatType, samples: ms || 0, depthBuffer: !!ms || ms === 0 && false}); }
@@ -100,20 +100,21 @@ const fsCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1), fsScene = new TH
 const fsQuad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2)); fsScene.add(fsQuad);
 const VS = 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0., 1.); }';
 const brightM = new THREE.ShaderMaterial({uniforms: {t: {value: null}, px: {value: new THREE.Vector2()}}, vertexShader: VS, depthTest: false,
-  fragmentShader: 'uniform sampler2D t; uniform vec2 px; varying vec2 vUv; void main(){ vec3 c = (texture2D(t, vUv + px*vec2(-1.,-1.)).rgb + texture2D(t, vUv + px*vec2(1.,-1.)).rgb + texture2D(t, vUv + px*vec2(-1.,1.)).rgb + texture2D(t, vUv + px*vec2(1.,1.)).rgb) * .25; float l = max(c.r, max(c.g, c.b)); c *= smoothstep(.9, 2.2, l); gl_FragColor = vec4(min(c, vec3(30.)), 1.); }'});
+  fragmentShader: 'uniform sampler2D t; uniform vec2 px; varying vec2 vUv; void main(){ vec3 c = (texture2D(t, vUv + px*vec2(-1.,-1.)).rgb + texture2D(t, vUv + px*vec2(1.,-1.)).rgb + texture2D(t, vUv + px*vec2(-1.,1.)).rgb + texture2D(t, vUv + px*vec2(1.,1.)).rgb) * .25; float l = max(c.r, max(c.g, c.b)); c *= smoothstep(1.6, 4., l); gl_FragColor = vec4(min(c, vec3(30.)), 1.); }'});
 const blurM = new THREE.ShaderMaterial({uniforms: {t: {value: null}, d: {value: new THREE.Vector2()}}, vertexShader: VS, depthTest: false,
   fragmentShader: 'uniform sampler2D t; uniform vec2 d; varying vec2 vUv; void main(){ vec3 c = texture2D(t, vUv).rgb * .227; c += (texture2D(t, vUv + d*1.38).rgb + texture2D(t, vUv - d*1.38).rgb) * .316; c += (texture2D(t, vUv + d*3.23).rgb + texture2D(t, vUv - d*3.23).rgb) * .07; gl_FragColor = vec4(c, 1.); }'});
-const compM = new THREE.ShaderMaterial({uniforms: {t: {value: null}, b: {value: null}, b2: {value: null}, time: {value: 0}, bloom: {value: .9}, exp: {value: 1}, dmg: {value: 0}, ab: {value: .004}, res: {value: new THREE.Vector2()}}, vertexShader: VS, depthTest: false,
+const compM = new THREE.ShaderMaterial({uniforms: {t: {value: null}, b: {value: null}, b2: {value: null}, time: {value: 0}, bloom: {value: .9}, exp: {value: 1}, dmg: {value: 0}, ab: {value: .0008}, res: {value: new THREE.Vector2()}}, vertexShader: VS, depthTest: false,
   fragmentShader: `uniform sampler2D t, b, b2; uniform float time, bloom, exp, dmg, ab; uniform vec2 res; varying vec2 vUv;
   vec3 aces(vec3 x){ return clamp((x*(2.51*x+.03))/(x*(2.43*x+.59)+.14), 0., 1.); }
   float hash(vec2 p){ return fract(sin(dot(p, vec2(12.9898,78.233)) + time*7.13) * 43758.5453); }
   void main(){ vec2 d = vUv - .5; float r = dot(d, d); vec2 o = d * ab * (1. + dmg*3.);
     vec3 c = vec3(texture2D(t, vUv + o).r, texture2D(t, vUv).g, texture2D(t, vUv - o).b);
     c += (texture2D(b, vUv).rgb * .6 + texture2D(b2, vUv).rgb * .8) * bloom;
-    c = aces(c * exp * .62);
+    c = aces(c * exp * .6);
+    float lu = dot(c, vec3(.2126, .7152, .0722)); c = mix(vec3(lu), c, .82);
     c = pow(c, vec3(1./2.2));
-    c *= 1. - r * .85; c = mix(c, vec3(.55, .02, 0.), clamp(dmg * smoothstep(.05, .35, r), 0., .8));
-    c += (hash(vUv * res) - .5) * .045;
+    c *= 1. - r * .4; c = mix(c, vec3(.35, .03, .01), clamp(dmg * smoothstep(.12, .4, r), 0., .5));
+    c += (hash(vUv * res) - .5) * .014;
     gl_FragColor = vec4(c, 1.); }`});
 function setupPost() {
   const pr = Math.min(devicePixelRatio, HI() ? 1.5 : .85), w = Math.max(2, innerWidth * pr | 0), h = Math.max(2, innerHeight * pr | 0);
@@ -136,7 +137,7 @@ function render() {
   blurM.uniforms.t.value = POST.c.texture; blurM.uniforms.d.value.set(1.5 / POST.c.width, 0); pass(blurM, POST.d);
   blurM.uniforms.t.value = POST.d.texture; blurM.uniforms.d.value.set(0, 1.5 / POST.c.height); pass(blurM, POST.c);
   compM.uniforms.t.value = POST.main.texture; compM.uniforms.b.value = POST.a.texture; compM.uniforms.b2.value = POST.c.texture;
-  compM.uniforms.bloom.value = HI() ? .9 : .5;
+  compM.uniforms.bloom.value = HI() ? .4 : .25;
   pass(compM, null);
 }
 
@@ -147,7 +148,7 @@ const sandTex = ctex(cvs(512, 512, (g, w, h) => {
   const id = g.createImageData(w, h), d = id.data;
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
     const n = fbm(x * .04, y * .04) * .5 + Math.random() * .35 + .5 * (Math.sin((x + fbm(x * .02, y * .02) * 40) * .25) * .5 + .5) * .3;
-    const i = (y * w + x) * 4; d[i] = 150 + n * 70; d[i + 1] = 92 + n * 45; d[i + 2] = 58 + n * 28; d[i + 3] = 255;
+    const i = (y * w + x) * 4; d[i] = 150 + n * 62; d[i + 1] = 112 + n * 46; d[i + 2] = 82 + n * 34; d[i + 3] = 255;
   }
   g.putImageData(id, 0, 0);
 }), true, true);
@@ -181,23 +182,23 @@ const skyM = new THREE.ShaderMaterial({side: THREE.BackSide, depthWrite: false, 
   vertexShader: 'varying vec3 vD; void main(){ vD = position; vec4 p = projectionMatrix * modelViewMatrix * vec4(position, 1.); gl_Position = p.xyww; }',
   fragmentShader: `uniform vec3 sunDir; uniform float flash; varying vec3 vD;
   void main(){ vec3 d = normalize(vD); float e = d.y;
-    vec3 zen = vec3(.035, .018, .04), mid = vec3(.42, .12, .05), hor = vec3(1.25, .45, .15);
+    vec3 zen = vec3(.06, .065, .1), mid = vec3(.4, .26, .18), hor = vec3(1.15, .72, .46);
     float t = max(e, 0.); vec3 c = mix(hor, mid, smoothstep(0., .16, t)); c = mix(c, zen, smoothstep(.1, .65, t));
-    if (e < 0.) c = mix(hor, vec3(.35, .12, .05), smoothstep(0., -.08, e));
+    if (e < 0.) c = mix(hor, vec3(.4, .27, .18), smoothstep(0., -.08, e));
     float sd = max(dot(d, sunDir), 0.);
-    c += vec3(1., .5, .2) * pow(sd, 6.) * .7 + vec3(1., .65, .35) * pow(sd, 60.) * 1.6;
-    c += vec3(40., 22., 9.) * smoothstep(.9993, .9996, sd);
-    c += vec3(.9, .35, .12) * exp(-abs(e) * 16.) * .3;
-    float bands = sin(e * 90. + d.x * 3.) * .5 + .5; c *= 1. - .06 * bands * smoothstep(.02, .2, e) * (1. - smoothstep(.2, .5, e));
+    c += vec3(1., .62, .35) * pow(sd, 6.) * .45 + vec3(1., .75, .5) * pow(sd, 60.) * 1.1;
+    c += vec3(22., 15., 9.) * smoothstep(.9993, .9996, sd);
+    c += vec3(.8, .55, .35) * exp(-abs(e) * 16.) * .2;
+    float bands = sin(e * 90. + d.x * 3.) * .5 + .5; c *= 1. - .02 * bands * smoothstep(.02, .2, e) * (1. - smoothstep(.2, .5, e));
     c += vec3(1., .6, .3) * flash * exp(-abs(e) * 10.);
     gl_FragColor = vec4(c, 1.); }`});
 const sky = new THREE.Mesh(new THREE.SphereGeometry(4000, 32, 16), skyM); sky.frustumCulled = false; sky.renderOrder = -10; scene.add(sky);
 { const pm = new THREE.PMREMGenerator(RND), s2 = new THREE.Scene(); s2.add(new THREE.Mesh(new THREE.SphereGeometry(100, 32, 16), skyM)); scene.environment = pm.fromScene(s2, 0, .1, 1000).texture; scene.environmentIntensity = .55; }
-const SUN = window.SUN = new THREE.DirectionalLight(0xffa066, 3.4);
+const SUN = window.SUN = new THREE.DirectionalLight(0xffc49a, 3.2);
 SUN.position.copy(SUN_DIR).multiplyScalar(200).add(new THREE.Vector3(0, 0, -30)); SUN.target.position.set(0, 0, -30); scene.add(SUN, SUN.target);
 SUN.castShadow = true; SUN.shadow.mapSize.set(2048, 2048); Object.assign(SUN.shadow.camera, {left: -70, right: 70, top: 70, bottom: -70, near: 10, far: 500}); SUN.shadow.bias = -.0006; SUN.shadow.normalBias = .04;
-const HEMI = new THREE.HemisphereLight(0xff9a70, 0x4a2414, 1.2); scene.add(HEMI);
-const fireL = new THREE.PointLight(0xff6a20, 60, 90, 1.6); fireL.position.set(-60, 6, -95); scene.add(fireL);
+const HEMI = new THREE.HemisphereLight(0xc9b8a8, 0x4a382a, 1.1); scene.add(HEMI);
+const fireL = new THREE.PointLight(0xff7a30, 35, 90, 1.6); fireL.position.set(-60, 6, -95); scene.add(fireL);
 const flareL = new THREE.PointLight(0xff3a20, 0, 160, 1.4); scene.add(flareL);
 const muzL = new THREE.PointLight(0xffb060, 0, 30, 1.6); scene.add(muzL);
 
@@ -238,7 +239,7 @@ groundM.normalScale.set(.6, .6);
 }
 // mesas
 {
-  const m = new THREE.MeshStandardMaterial({color: 0x6a3420, roughness: 1});
+  const m = new THREE.MeshStandardMaterial({color: 0x725442, roughness: 1});
   for (let i = 0; i < 16; i++) {
     const a = -1.9 + i * .24 + rnd(-.08, .08), r = rnd(900, 1700), h = rnd(60, 190), rt = rnd(60, 170);
     const g = new THREE.CylinderGeometry(rt, rt * rnd(1.15, 1.5), h, 9, 4); const p = g.attributes.position;
@@ -251,7 +252,7 @@ groundM.normalScale.set(.6, .6);
   const g = new THREE.DodecahedronGeometry(1, 1), p = g.attributes.position;
   for (let k = 0; k < p.count; k++) { const s = 1 + (h2(p.getX(k) * 9.1, p.getY(k) * 7.3 + p.getZ(k) * 3.1) - .5) * .45; p.setXYZ(k, p.getX(k) * s, p.getY(k) * s * .7, p.getZ(k) * s); }
   g.computeVertexNormals();
-  const N = 260, im = new THREE.InstancedMesh(g, new THREE.MeshStandardMaterial({color: 0x5a3324, roughness: .9}), N), o = new THREE.Object3D();
+  const N = 260, im = new THREE.InstancedMesh(g, new THREE.MeshStandardMaterial({color: 0x5e4636, roughness: .9}), N), o = new THREE.Object3D();
   for (let i = 0; i < N; i++) { let x, z; do { x = rnd(-280, 280); z = rnd(-290, 60); } while (Math.hypot(x, z) < 22); const s = Math.random() < .1 ? rnd(2, 4) : rnd(.3, 1.3); o.position.set(x, gH(x, z) - s * .2, z); o.rotation.set(rnd(0, 3), rnd(0, 6), rnd(0, 3)); o.scale.setScalar(s); o.updateMatrix(); im.setMatrixAt(i, o.matrix); }
   im.castShadow = im.receiveShadow = true; scene.add(im);
 }
@@ -263,7 +264,7 @@ class Parts {
     this.life = new Float32Array(n); this.max = new Float32Array(n); this.s0 = new Float32Array(n); this.s1 = new Float32Array(n); this.a0 = new Float32Array(n); this.grav = new Float32Array(n); this.drag = new Float32Array(n); this.stick = new Uint8Array(n);
     const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(this.pos, 3).setUsage(THREE.DynamicDrawUsage)); g.setAttribute('col', new THREE.BufferAttribute(this.col, 4).setUsage(THREE.DynamicDrawUsage)); g.setAttribute('size', new THREE.BufferAttribute(this.sz, 1).setUsage(THREE.DynamicDrawUsage));
     this.mat = new THREE.ShaderMaterial({uniforms: {map: {value: tex}, scale: {value: 600}}, transparent: true, depthWrite: false, blending: blend,
-      vertexShader: 'attribute vec4 col; attribute float size; uniform float scale; varying vec4 vC; void main(){ vC = col; vec4 mv = modelViewMatrix * vec4(position, 1.); gl_PointSize = size * scale / max(-mv.z, .1); gl_Position = projectionMatrix * mv; }',
+      vertexShader: 'attribute vec4 col; attribute float size; uniform float scale; varying vec4 vC; void main(){ vC = col; vec4 mv = modelViewMatrix * vec4(position, 1.); vC.a *= smoothstep(.6, 3., -mv.z); gl_PointSize = min(size * scale / max(-mv.z, .1), 160.); gl_Position = projectionMatrix * mv; }',
       fragmentShader: 'uniform sampler2D map; varying vec4 vC; void main(){ vec4 t = texture2D(map, gl_PointCoord); gl_FragColor = vec4(vC.rgb * t.rgb, vC.a * t.a); }'});
     this.pts = new THREE.Points(g, this.mat); this.pts.frustumCulled = false; scene.add(this.pts); this.g = g;
   }
@@ -307,7 +308,7 @@ function segMat(e, ax, ay, az, bx, by, bz, th) {
 
 // decals (goo pools)
 const decGeo = new THREE.PlaneGeometry(1, 1); decGeo.rotateX(-PI / 2);
-const DEC = pool(decGeo, new THREE.MeshStandardMaterial({map: splatT, transparent: true, depthWrite: false, roughness: .08, metalness: .1, color: 0x7fb020, polygonOffset: true, polygonOffsetFactor: -4, emissive: 0x1a3000}), 240);
+const DEC = pool(decGeo, new THREE.MeshStandardMaterial({map: splatT, transparent: true, depthWrite: false, roughness: .12, metalness: .1, color: 0x5c6a24, polygonOffset: true, polygonOffsetFactor: -4, emissive: 0x060a00}), 240);
 DEC.receiveShadow = true; DEC.renderOrder = 1;
 const decs = []; let decI = 0;
 function addDecal(x, z, s, c) { const i = decI = (decI + 1) % 240; decs[i] = {x, z, y: gH(x, z) + .03, s, r: Math.random() * TAU, t: 0, life: 30}; DEC.setColorAt(i, _v.set(c[0], c[1], c[2])); DEC.instanceColor.needsUpdate = true; }
@@ -341,7 +342,7 @@ function stepChunks(arr, M, n, dt, leg) {
 
 // tracers
 const trGeo = new THREE.CylinderGeometry(1, 1, 1, 5, 1, true); trGeo.translate(0, .5, 0);
-const TRC = pool(trGeo, new THREE.MeshBasicMaterial({color: new THREE.Color(8, 3.2, .8), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, fog: false}), 80);
+const TRC = pool(trGeo, new THREE.MeshBasicMaterial({color: new THREE.Color(3.2, 1.9, .8), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, fog: false}), 80);
 const tracers = []; let trI = 0;
 function addTracer(a, b) { trI = (trI + 1) % 80; const d = a.distanceTo(b); tracers[trI] = {ax: a.x, ay: a.y, az: a.z, dx: (b.x - a.x) / d, dy: (b.y - a.y) / d, dz: (b.z - a.z) / d, L: d, p: 0}; }
 function stepTracers(dt) {
@@ -349,13 +350,13 @@ function stepTracers(dt) {
   for (let i = 0; i < 80; i++) { const t = tracers[i]; if (!t) continue; t.p += 700 * dt;
     if (t.p > t.L + 6) { tracers[i] = null; TRC.setMatrixAt(i, ZERO); continue; }
     const p0 = Math.max(0, t.p - 7), p1 = Math.min(t.L, t.p);
-    segMat(e, t.ax + t.dx * p0, t.ay + t.dy * p0, t.az + t.dz * p0, t.ax + t.dx * p1, t.ay + t.dy * p1, t.az + t.dz * p1, .022); TRC.setMatrixAt(i, _m); }
+    segMat(e, t.ax + t.dx * p0, t.ay + t.dy * p0, t.az + t.dz * p0, t.ax + t.dx * p1, t.ay + t.dy * p1, t.az + t.dz * p1, .013); TRC.setMatrixAt(i, _m); }
   TRC.instanceMatrix.needsUpdate = true;
 }
 
 // shell casings
 const casGeo = new THREE.CylinderGeometry(.007, .007, .05, 6); casGeo.rotateZ(PI / 2);
-const CAS = pool(casGeo, new THREE.MeshBasicMaterial({color: 0xffffff}), 160);
+const CAS = pool(casGeo, new THREE.MeshStandardMaterial({color: 0xffffff, metalness: .85, roughness: .3}), 160);
 CAS.setColorAt(0, new THREE.Color(1, 1, 1));
 const cases = []; let caI = 0;
 function addCase(p, v) { caI = (caI + 1) % 160; cases[caI] = {x: p.x, y: p.y, z: p.z, vx: v.x, vy: v.y, vz: v.z, rx: 0, ry: rnd(0, 6), w: rnd(15, 40), t: 0, b: 0}; }
@@ -365,7 +366,7 @@ function stepCases(dt) {
     if (c.b < 4) { c.vy -= 9.8 * dt; c.x += c.vx * dt; c.y += c.vy * dt; c.z += c.vz * dt; c.rx += c.w * dt;
       if (c.y < .01) { c.y = .01; if (c.vy < -1) { if (c.b < 2) Sfx.tink(c.x); c.vy *= -.35; c.vx *= .55; c.vz *= .55; c.w *= .5; c.b++; } else { c.b = 4; c.rx = 0; } } }
     const h = Math.max(0, 1 - c.t * 1.2);
-    CAS.setColorAt(i, _v.set(.55 + h * 5, .38 + h * 2, .14 + h * .4));
+    CAS.setColorAt(i, _v.set(.78 + h * .4, .58 + h * .15, .28));
     _o.position.set(c.x, c.y, c.z); _o.rotation.set(c.rx, c.ry, 0); _o.scale.setScalar(1); _o.updateMatrix(); CAS.setMatrixAt(i, _o.matrix); }
   CAS.instanceMatrix.needsUpdate = true; CAS.instanceColor.needsUpdate = true;
 }
@@ -414,21 +415,21 @@ const BEAMS = [];
   const g = new THREE.CylinderGeometry(4, .25, 120, 20, 1, true); g.translate(0, -60, 0); g.rotateX(-PI / 2);
   const m = new THREE.ShaderMaterial({transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, fog: false,
     vertexShader: 'varying float vZ; void main(){ vZ = -position.z / 120.; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.); }',
-    fragmentShader: 'varying float vZ; void main(){ gl_FragColor = vec4(vec3(1., .9, .75) * .35 * pow(1. - vZ, 2.), 1.); }'});
+    fragmentShader: 'varying float vZ; void main(){ gl_FragColor = vec4(vec3(1., .92, .8) * .14 * pow(1. - vZ, 2.), 1.); }'});
   for (const x of [-16, 16]) { const b = new THREE.Mesh(g, m); b.position.set(x, 3.5, 1.5); scene.add(b); BEAMS.push({m: b, ph: Math.random() * 10, x});
     const lamp = new THREE.Mesh(new THREE.CylinderGeometry(.4, .5, .6, 10), new THREE.MeshStandardMaterial({color: 0x222, emissive: 0xffeecc, emissiveIntensity: 3})); lamp.position.set(x, 3.5, 1.5); scene.add(lamp); }
 }
 
 // ---------------- warrior bugs
 const BH = 1.15;
-function bugBodyGeo() {
+function bugBodyGeo(lo) {
   const parts = [];
   const add = (g, col, tf) => { g = g.toNonIndexed(); g.applyMatrix4(tf); const n = g.attributes.position.count, c = new Float32Array(n * 3); const C = new THREE.Color(col);
     const p = g.attributes.position; for (let i = 0; i < n; i++) { const shade = .85 + h2(p.getX(i) * 13, p.getZ(i) * 17 + p.getY(i) * 5) * .3; c[i * 3] = C.r * shade; c[i * 3 + 1] = C.g * shade; c[i * 3 + 2] = C.b * shade; }
     g.setAttribute('color', new THREE.BufferAttribute(c, 3)); g.deleteAttribute('uv'); parts.push(g); };
   const M = (x, y, z, sx, sy, sz, rx = 0, ry = 0, rz = 0) => new THREE.Matrix4().compose(new THREE.Vector3(x, y, z), new THREE.Quaternion().setFromEuler(new THREE.Euler(rx, ry, rz)), new THREE.Vector3(sx, sy, sz));
-  const sph = () => new THREE.SphereGeometry(1, 14, 10), half = () => new THREE.SphereGeometry(1, 14, 6, 0, TAU, 0, PI * .5), cone = () => new THREE.ConeGeometry(1, 1, 6);
-  const AMB = 0xb8722c, DRK = 0x3e2412, MID = 0x7a4a20, BONE = 0xdccaa0, BEL = 0xc8955a;
+  const sph = () => lo ? new THREE.SphereGeometry(1, 7, 5) : new THREE.SphereGeometry(1, 14, 10), half = () => lo ? new THREE.SphereGeometry(1, 7, 3, 0, TAU, 0, PI * .5) : new THREE.SphereGeometry(1, 14, 6, 0, TAU, 0, PI * .5), cone = () => new THREE.ConeGeometry(1, 1, lo ? 4 : 6);
+  const AMB = 0x8a5a2e, DRK = 0x2a1a10, MID = 0x5e3c20, BONE = 0xc9b998, BEL = 0x7a5a3c;
   // abdomen: segmented rings
   const seg = [[-.55, .5, .5], [-.98, .58, .56], [-1.4, .5, .5], [-1.72, .33, .34]];
   seg.forEach(([z, r, w], i) => { const y = BH + .12 + (i === 1 ? .08 : 0) - (i === 3 ? .1 : 0); add(sph(), i % 2 ? BEL : AMB, M(0, y - .04, z, w * .95, r * .8, .32)); add(half(), DRK, M(0, y, z + .02, w * 1.02, r * .95, .3, -.1)); add(cone(), DRK, M(0, y + r * .9, z, .06, .26, .1, -.5)); });
@@ -437,7 +438,7 @@ function bugBodyGeo() {
   // neck + head
   add(sph(), MID, M(0, BH - .02, .42, .26, .24, .2)); add(sph(), AMB, M(0, BH - .08, .66, .3, .26, .34, .25)); add(half(), DRK, M(0, BH - .02, .64, .32, .26, .34, .35));
   // eyes (glossy black)
-  for (const s of [-1, 1]) add(sph(), 0x0a0605, M(s * .17, BH, .82, .06, .05, .06));
+  if (!lo) for (const s of [-1, 1]) add(sph(), 0x0a0605, M(s * .17, BH, .82, .06, .05, .06));
   // mandibles
   for (const s of [-1, 1]) { add(cone(), BONE, M(s * .12, BH - .2, 1.0, .05, .42, .05, PI / 2 + .5, 0, -s * .5)); add(cone(), MID, M(s * .09, BH - .1, .9, .07, .2, .07, PI / 2 + .3, 0, -s * .3)); }
   const g = new THREE.BufferGeometry(); let n = 0; for (const p of parts) n += p.attributes.position.count;
@@ -448,17 +449,26 @@ function bugBodyGeo() {
 }
 function legGeo(rt, rb, c0, c1) { const g = new THREE.CylinderGeometry(rt, rb, 1, 7, 3); g.translate(0, .5, 0); const p = g.attributes.position, c = new Float32Array(p.count * 3), A = new THREE.Color(c0), B = new THREE.Color(c1);
   for (let i = 0; i < p.count; i++) { const t = p.getY(i); c[i * 3] = mix(A.r, B.r, t); c[i * 3 + 1] = mix(A.g, B.g, t); c[i * 3 + 2] = mix(A.b, B.b, t); } g.setAttribute('color', new THREE.BufferAttribute(c, 3)); return g; }
-const MAXB = 520;
-const bugMat = new THREE.MeshStandardMaterial({vertexColors: true, roughness: .38, metalness: .05});
-const BODY = pool(bugBodyGeo(), bugMat, MAXB, true);
-const LUP = pool(legGeo(.07, .12, 0x6a3c18, 0x3a2010), bugMat, MAXB * 6, true);
-const LLO = pool(legGeo(.006, .08, 0x3a2010, 0xc9b48a), bugMat, MAXB * 6, true);
-for (let i = 0; i < MAXB; i++) BODY.setColorAt(i, new THREE.Color(1, 1, 1));
+const MAXB = 1100, NEARB = 260, NEAR_D = 48;
+const bugMat = new THREE.MeshStandardMaterial({vertexColors: true, roughness: .42, metalness: .08});
+const BODY = pool(bugBodyGeo(false), bugMat, NEARB, true);   // detailed bodies, closest bugs
+const BODYL = pool(bugBodyGeo(true), bugMat, MAXB, false);   // low-poly bodies, everything else
+const LUP = pool(legGeo(.07, .12, 0x4e3018, 0x2a1a10), bugMat, MAXB * 6, true);
+const LLO = pool(legGeo(.006, .08, 0x2a1a10, 0xa89878), bugMat, MAXB * 6, true);
+for (let i = 0; i < NEARB; i++) BODY.setColorAt(i, new THREE.Color(1, 1, 1));
+for (let i = 0; i < MAXB; i++) BODYL.setColorAt(i, new THREE.Color(1, 1, 1));
+const DRAW = {n: 0, nl: 0, legs: 0};
+function drawBegin() { DRAW.n = DRAW.nl = DRAW.legs = 0; }
+function drawEnd() { BODY.count = DRAW.n; BODYL.count = DRAW.nl; LUP.count = LLO.count = DRAW.legs;
+  for (const m of [BODY, BODYL, LUP, LLO]) m.instanceMatrix.needsUpdate = true; BODY.instanceColor.needsUpdate = BODYL.instanceColor.needsUpdate = true; }
+// corpse piles: settled corpses raise a coarse height grid; live bugs climb over them and fresh corpses land on top
+const PILE = new Map(), pileK = (x, z) => (Math.floor(x / 1.4) + 1000) * 4000 + Math.floor(z / 1.4) + 1000;
+function pileAt(x, z) { return PILE.get(pileK(x, z)) || 0; }
 // legs: 0-3 walking, 4-5 claws. [side, hipZ, footZ]
 const LEGS = [[1, .22, .9], [-1, .22, .9], [1, -.28, -1.2], [-1, -.28, -1.2]];
 const TYPES = [
-  {s: 1, hp: 3, sp: 1, tint: [1, 1, 1], dps: 4, gib: .25},
-  {s: .78, hp: 2, sp: 1.4, tint: [1.15, .95, .7], dps: 3, leap: 1, gib: .45},
+  {s: 1, hp: 2, sp: 1, tint: [1, 1, 1], dps: 2.2, gib: .25},
+  {s: .78, hp: 1, sp: 1.4, tint: [1.1, .95, .78], dps: 1.6, leap: 1, gib: .45},
   {s: 2.1, hp: 20, sp: .72, tint: [.85, .6, .5], dps: 10, gib: 0},
   {s: .92, hp: 4, sp: .85, tint: [.7, 1.3, .5], dps: 0, spit: 1, gib: .35},      // 3 spitter (wave 4+): squats at ~42 m and lobs acid at the line
   {s: 1.15, hp: 6, sp: 1.2, tint: [.95, .72, .55], dps: 5, burrow: 1, gib: .3},  // 4 burrower (wave 6+): tunnels in under the sand, erupts at ~28 m
@@ -474,10 +484,10 @@ function spawnBug(type, x, z, id) {
     sp: 0, dead: 0, atkT: rnd(0, 1), leapT: 0, roll: 0, pitch: 0, twitch: rnd(0, 10), nx: x, nz: z, nyaw: 0};
   b.nyaw = b.yaw; bugs.push(b); byId.set(b.id, b); return b;
 }
-function freeBug(b) { const i = bugs.indexOf(b); if (i >= 0) bugs.splice(i, 1); byId.delete(b.id); freeIdx.push(b.idx); BODY.setMatrixAt(b.idx, ZERO); for (let k = 0; k < 6; k++) { LUP.setMatrixAt(b.idx * 6 + k, ZERO); LLO.setMatrixAt(b.idx * 6 + k, ZERO); } }
+function freeBug(b) { const i = bugs.indexOf(b); if (i >= 0) bugs.splice(i, 1); byId.delete(b.id); freeIdx.push(b.idx); }
 const bm4 = new THREE.Matrix4(), bp = new THREE.Vector3(), hip = new THREE.Vector3(), knee = new THREE.Vector3(), foot = new THREE.Vector3();
 function drawBug(b, time) {
-  if (b.gib || b.st === 3) { BODY.setMatrixAt(b.idx, ZERO); for (let k = 0; k < 6; k++) { LUP.setMatrixAt(b.idx * 6 + k, ZERO); LLO.setMatrixAt(b.idx * 6 + k, ZERO); } return; }
+  if (b.gib || b.st === 3) return;
   const s = b.s, dead = b.dead > 0, dt = b.dead, hk = b.hk || 0;
   // alive: lean toward the side that lost legs (limp); dead: tumble toward b.droll
   const lean = dead ? 0 : (((b.legs & 1) ? 0 : 1) + ((b.legs & 4) ? 0 : 1) - ((b.legs & 2) ? 0 : 1) - ((b.legs & 8) ? 0 : 1)) * .16;
@@ -486,14 +496,15 @@ function drawBug(b, time) {
   const sink = dead && dt > 6 ? (dt - 6) * .6 : 0;
   // a hit snaps the head up and shoves the body back a little
   _e.set(b.pitch - hk * .3 + (b.st === 1 ? -.35 - Math.max(0, Math.sin(b.t * 7)) * .25 : 0), b.yaw + (b.dyaw || 0), roll, 'YXZ'); _q.setFromEuler(_e);
-  const kb = hk * .14 * s; bp.set(b.x - Math.sin(b.yaw) * kb, b.y + (BH * lift + bob) * s - sink, b.z - Math.cos(b.yaw) * kb);
+  const kb = hk * .14 * s; bp.set(b.x - Math.sin(b.yaw) * kb, b.y + (dead ? 0 : b.py || 0) + (BH * lift + bob) * s - sink, b.z - Math.cos(b.yaw) * kb);
   bm4.compose(bp, _q, _s.set(s, s, s)); bm4.multiply(_m.makeTranslation(0, -BH, 0));
-  BODY.setMatrixAt(b.idx, bm4);
-  const fl = b.flash, T = b.T.tint; BODY.setColorAt(b.idx, _v.set(T[0] + fl * 2, T[1] + fl * 3, T[2] + fl * 1));
+  const near = (b.x - P.x) ** 2 + b.z * b.z < NEAR_D * NEAR_D * Math.max(1, s) && DRAW.n < NEARB, BM = near ? BODY : BODYL, bi = near ? DRAW.n++ : DRAW.nl++;
+  BM.setMatrixAt(bi, bm4);
+  const fl = b.flash, T = b.T.tint; BM.setColorAt(bi, _v.set(T[0] + fl * .8, T[1] + fl * .9, T[2] + fl * .5));
   const e = _m.elements, stride = .55, liftH = .4;
   for (let k = 0; k < 6; k++) {
-    const ui = b.idx * 6 + k;
-    if (!(b.legs & (1 << k))) { LUP.setMatrixAt(ui, ZERO); LLO.setMatrixAt(ui, ZERO); continue; }
+    if (!(b.legs & (1 << k))) continue;
+    const ui = DRAW.legs++;
     let sd, hx, hy, hz, fx, fy, fz, kx, ky, kz;
     if (k < 4) {
       const L = LEGS[k]; sd = L[0]; const ph = b.ph + (k === 0 || k === 3 ? 0 : PI);
@@ -514,7 +525,7 @@ function drawBug(b, time) {
     segMat(e, knee.x, knee.y, knee.z, foot.x, foot.y, foot.z, s * (k < 4 ? 1 : 1.35)); LLO.setMatrixAt(ui, _m);
   }
 }
-function bugCenter(b, out) { return out.set(b.x, b.y + BH * b.s * (b.dead ? .5 : 1), b.z); }
+function bugCenter(b, out) { return out.set(b.x, b.y + (b.dead ? 0 : b.py || 0) + BH * b.s * (b.dead ? .5 : 1), b.z); }
 
 // ---------------- gun model
 function makeGun(fp) {
@@ -523,7 +534,7 @@ function makeGun(fp) {
   const dark = new THREE.MeshStandardMaterial({color: 0x1b1d20, metalness: .7, roughness: .5});
   const olive = new THREE.MeshStandardMaterial({color: 0x45503a, metalness: .3, roughness: .6});
   const brass = new THREE.MeshStandardMaterial({color: 0xb08a3a, metalness: .9, roughness: .3});
-  const glow = new THREE.MeshBasicMaterial({color: new THREE.Color(.6, 3, 2.8)});
+  const glow = new THREE.MeshStandardMaterial({color: 0x0c1414, emissive: 0x0a3a36, metalness: .2, roughness: .15});
   const barrelM = new THREE.MeshStandardMaterial({color: 0x2a2c30, metalness: .9, roughness: .32, emissive: 0x000000});
   const decal = new THREE.MeshStandardMaterial({map: markT, metalness: .6, roughness: .45});
   const add = (geo, m, x, y, z, rx, ry, rz, par) => { const me = new THREE.Mesh(geo, m); me.position.set(x, y, z); me.rotation.set(rx || 0, ry || 0, rz || 0); (par || G).add(me); return me; };
@@ -559,8 +570,8 @@ function makeGun(fp) {
   }
   G.userData = {bar, barrelM, muzzle, eject, belt};
   // muzzle flash sprites
-  const fl = []; for (let i = 0; i < 3; i++) { const s = new THREE.Sprite(new THREE.SpriteMaterial({map: starT, color: new THREE.Color(6, 4, 2), blending: THREE.AdditiveBlending, depthWrite: false, fog: false})); s.visible = false; muzzle.add(s); fl.push(s); }
-  const side = new THREE.Mesh(new THREE.PlaneGeometry(.5, .12), new THREE.MeshBasicMaterial({map: starT, color: new THREE.Color(5, 3, 1.2), blending: THREE.AdditiveBlending, transparent: true, depthWrite: false, side: THREE.DoubleSide, fog: false})); side.visible = false; muzzle.add(side);
+  const fl = []; for (let i = 0; i < 3; i++) { const s = new THREE.Sprite(new THREE.SpriteMaterial({map: starT, color: new THREE.Color(2.6, 1.9, 1.1), blending: THREE.AdditiveBlending, depthWrite: false, fog: false})); s.visible = false; muzzle.add(s); fl.push(s); }
+  const side = new THREE.Mesh(new THREE.PlaneGeometry(.5, .12), new THREE.MeshBasicMaterial({map: starT, color: new THREE.Color(2, 1.4, .7), blending: THREE.AdditiveBlending, transparent: true, depthWrite: false, side: THREE.DoubleSide, fog: false})); side.visible = false; muzzle.add(side);
   G.userData.fl = fl; G.userData.side = side;
   G.traverse(o => { if (o.isMesh) o.castShadow = !fp; });
   return G;
@@ -658,8 +669,8 @@ function removeGunner(id) { const g = G.gunners.get(id); if (!g) return; if (g.m
 function pickTarget(g) {
   const gx = SLOTX[g.slot]; let best = null, bs = 1e9;
   for (const b of bugs) { if (b.dead || b.st === 3) continue; const dx = b.x - gx, dz = b.z, d = Math.hypot(dx, dz); if (d > 190) continue;
-    const a = Math.abs(angD(g.yaw, Math.atan2(-dx, -dz))), cone = .2 + Math.atan(2.2 * b.s / Math.max(d, 1));
-    if (a > cone) continue; const sc = a / cone * 1.2 + d / 120 - (b.st === 1 ? .5 : 0) - (b.T.titan && d < 90 ? .6 : 0); if (sc < bs) { bs = sc; best = b; } }
+    const a = Math.abs(angD(g.yaw, Math.atan2(-dx, -dz))), sz = Math.atan(1.1 * b.s / Math.max(d, 1)), cone = .045 + sz;
+    if (a > cone) continue; const sc = Math.max(0, a - sz) * 30 + d / 150 - (b.st === 1 ? .15 : 0); if (sc < bs) { bs = sc; best = b; } }
   return best;
 }
 const _sa = new THREE.Vector3(), _sb = new THREE.Vector3(), mz = new THREE.Vector3(), hitP = new THREE.Vector3(), hitP2 = new THREE.Vector3(), dirV = new THREE.Vector3();
@@ -670,33 +681,37 @@ function muzzleOf(g, out) {
   return out.set(SLOTX[g.slot], 1.4, -1);
 }
 function fireShot(g, idx) {
-  const t = g.tgt && !g.tgt.dead && byId.has(g.tgt.id) ? g.tgt : (g.tgt = pickTarget(g));
+  const ok = g.tgt && !g.tgt.dead && byId.has(g.tgt.id) && Math.abs(angD(g.yaw, Math.atan2(-(g.tgt.x - SLOTX[g.slot]), -g.tgt.z))) < .045 + Math.atan(1.1 * g.tgt.s / Math.max(1, Math.hypot(g.tgt.x - SLOTX[g.slot], g.tgt.z)));
+  const t = ok ? g.tgt : (g.tgt = pickTarget(g));
   muzzleOf(g, mz); const local = g.id === myId();
   if (t) {
-    bugCenter(t, hitP); hitP.x += rnd(-.4, .4) * t.s; hitP.y += rnd(-.3, .3) * t.s; hitP.z += rnd(-.4, .4) * t.s;
+    // impact lands where the aim line crosses the bug (not a random spot on it), with a little dispersion
+    bugCenter(t, hitP); { const ax = -Math.sin(g.yaw), az = -Math.cos(g.yaw), gx = SLOTX[g.slot], k = (hitP.x - gx) * ax + hitP.z * az, ox = gx + ax * k - hitP.x, oz = az * k - hitP.z, ol = Math.hypot(ox, oz), lim = .45 * t.s;
+      if (ol > lim) { hitP.x += ox / ol * lim; hitP.z += oz / ol * lim; } else { hitP.x += ox; hitP.z += oz; } }
+    hitP.x += rnd(-.12, .12) * t.s; hitP.y += rnd(-.15, .15) * t.s; hitP.z += rnd(-.12, .12) * t.s;
     hitFx(t, hitP, local);
     if (isHost()) damageBug(t, g, hitP);
-    if (Math.random() < .5) { const o = nearBug(hitP, t, 2.6 * t.s); if (o) { bugCenter(o, hitP2); hitFx(o, hitP2, false); if (isHost()) damageBug(o, g, hitP2); } }
+    { let from = t; for (let j = 0; j < (Math.random() < .4 ? 2 : 1); j++) { const o = nearBug(hitP, from, 2.6 * t.s); if (!o) break; bugCenter(o, hitP2); hitFx(o, hitP2, false, true); if (isHost()) damageBug(o, g, hitP2); from = o; } }
     if (G.buff && G.buff.k === 1 && idx % 2 === 0) { let from = t; _sa.copy(hitP); for (let j = 0; j < 2; j++) { const o = nearBug(_sa, from, 9 + t.s * 2); if (!o || o === t) break; bugCenter(o, _sb); shockArc(_sa, _sb); hitFx(o, _sb, false); if (isHost()) damageBug(o, g, _sb); _sa.copy(_sb); from = o; } }
   } else {
     const d = rnd(30, 90), gx = SLOTX[g.slot]; hitP.set(gx - Math.sin(g.yaw + rnd(-.03, .03)) * d, 0, -Math.cos(g.yaw + rnd(-.03, .03)) * d); hitP.y = gH(hitP.x, hitP.z);
     dustFx(hitP);
   }
-  if (idx % (G.buff && G.buff.k === 0 ? 2 : 3) === 0) addTracer(mz, hitP);
+  if (idx % (G.buff && G.buff.k === 0 ? 3 : 5) === 0) addTracer(mz, hitP);
   if (local) {
     Sfx.play('shot', {vol: .32, vr: .08});
-    P.kickV += 1.1; P.gpV += 2.2; P.cpV += .5 + P.heat * .4; P.cyV += rnd(-.6, .6); P.trauma = Math.min(1, P.trauma + .02); P.bloom = Math.min(1, P.bloom + .06);
+    P.kickV += .9; P.gpV += 1.6; P.cpV += .25 + P.heat * .15; P.cyV += rnd(-.25, .25); P.trauma = Math.min(.6, P.trauma + .008); P.bloom = Math.min(1, P.bloom + .06);
     FPG.userData.eject.getWorldPosition(_v2); dirV.set(1, 0, 0).applyQuaternion(cam.quaternion); addCase(_v2, {x: dirV.x * rnd(2, 3.5) + rnd(-.3, .3), y: rnd(1.8, 3), z: dirV.z * rnd(2, 3.5) + rnd(.2, .8)});
     if (Math.random() < .3) PS.add(mz.x, mz.y, mz.z, rnd(-.3, .3), rnd(.3, .9), rnd(-.3, .3), rnd(1, 2), .1, .6, .5, .45, .42, .18, -.2, .5);
   } else if (idx % 2 === 0) { const a = Sfx.at(mz.x, mz.z); Sfx.play('shot', {vol: .16 * a.vol, pan: a.pan, vr: .1, lp: 3000}); }
   for (let i = 0; i < 2; i++) PA.add(mz.x, mz.y, mz.z, rnd(-2, 2), rnd(-1, 2), rnd(-2, 2) - 3, rnd(.04, .1), .06, .01, 3, 2, .8, 1);
 }
-const SLIME = [[.45, .85, .08], [.7, .9, .15], [.35, .7, .05], [.85, .95, .3]];
-function hitFx(b, p, local) {
-  const n = HI() ? 7 : 4; const toCam = _v.set(P.x - p.x, 1.7 - p.y, P.z - p.z).normalize();
+const SLIME = [[.5, .58, .16], [.62, .66, .24], [.4, .46, .1], [.72, .7, .36]];
+function hitFx(b, p, local, minor) {
+  const n = minor ? 2 : HI() ? 5 : 3; const toCam = _v.set(P.x - p.x, 1.7 - p.y, P.z - p.z).normalize();
   for (let i = 0; i < n; i++) { const c = SLIME[(Math.random() * 4) | 0], sp = rnd(2, 7);
-    PG.add(p.x, p.y, p.z, toCam.x * sp * .5 + rnd(-3, 3), rnd(1, 6), toCam.z * sp * .5 + rnd(-3, 3), rnd(.8, 1.8), rnd(.08, .2) * b.s, rnd(.05, .12), c[0], c[1], c[2], .95, 14, .5, 1); }
-  PG.add(p.x, p.y, p.z, rnd(-.5, .5), rnd(0, 1), rnd(-.5, .5), .25, .3 * b.s, .9 * b.s, .5, .85, .1, .7, 0, 2);
+    PG.add(p.x, p.y, p.z, toCam.x * sp * .5 + rnd(-3, 3), rnd(1, 6), toCam.z * sp * .5 + rnd(-3, 3), rnd(.8, 1.8), rnd(.06, .14) * b.s, rnd(.04, .09), c[0], c[1], c[2], .95, 14, .5, 1); }
+  if (!minor) PG.add(p.x, p.y, p.z, rnd(-.5, .5), rnd(0, 1), rnd(-.5, .5), .2, .2 * b.s, .55 * b.s, .55, .6, .2, .5, 0, 2);
   if (Math.random() < .3) addChunk(p.x, p.y, p.z, rnd(.05, .12) * b.s, 5);
   b.flash = 1; b.hk = Math.min(1.2, (b.hk || 0) + (b.T.s > 2 ? .3 : .75));
   if (b.T.s > 2 && Math.random() < .5) for (let i = 0; i < 5; i++) PA.add(p.x, p.y, p.z, toCam.x * 4 + rnd(-4, 4), rnd(1, 5), toCam.z * 4 + rnd(-4, 4), rnd(.1, .25), .07, .02, 3, 1.8, .6, 1, 12);
@@ -715,10 +730,10 @@ function damageBug(b, g, p) {
 }
 function legOffFx(b, k) { const c = bugCenter(b, _v2); addChunk(c.x + rnd(-1, 1) * b.s, c.y, c.z, b.s * .8, 6, true); for (let i = 0; i < 8; i++) PG.add(c.x, c.y, c.z, rnd(-3, 3), rnd(2, 6), rnd(-3, 3), rnd(.8, 1.5), .15 * b.s, .08, .5, .9, .1, .95, 14, .4, 1); }
 function killBug(b, g) {
-  if (b.dead) return; b.dead = .001; b.hp = 0; b.roll = 0; b.dyaw = 0;
-  // corpse keeps its momentum: slides/tumbles forward, leapers fall out of the air; some light bugs burst apart (gib)
-  const fw = b.st === 1 ? 0 : Math.min(b.sp, 14) * .7;
-  b.dvx = Math.sin(b.yaw) * fw + rnd(-1, 1); b.dvz = Math.cos(b.yaw) * fw + rnd(-1, 1); b.dvy = b.st === 2 ? (b.vy || 0) : rnd(1.5, 3.5) / Math.sqrt(b.s);
+  if (b.dead) return; b.dead = .001; b.hp = 0; b.roll = 0; b.dyaw = 0; b.y += b.py || 0;
+  // corpse keeps its momentum (slides forward, leapers fall out of the air), minus the knock-back of the rounds that killed it; some light bugs burst apart (gib)
+  const fw = b.st === 1 ? 0 : Math.min(b.sp, 14) * .7, gx = g ? SLOTX[g.slot] : P.x, kx = b.x - gx, kz = b.z, kd = Math.hypot(kx, kz) || 1, kb = rnd(2.5, 5.5) / (b.s * b.s);
+  b.dvx = Math.sin(b.yaw) * fw + kx / kd * kb + rnd(-.8, .8); b.dvz = Math.cos(b.yaw) * fw + kz / kd * kb + rnd(-.8, .8); b.dvy = b.st === 2 ? (b.vy || 0) : rnd(1.5, 3.8) / (b.s * Math.sqrt(b.s));
   b.droll = Math.random() < .65 ? PI * (Math.random() < .5 ? 1 : -1) : PI / 2 * (Math.random() < .5 ? 1 : -1); b.dspin = rnd(-4, 4);
   b.gib = Math.random() < b.T.gib ? 1 : 0;
   if (g) { g.kills++; G.kills++; if (g.id === myId()) { G.killT = .25; } if (isHost() && !G.over && !g.sentry && (G.sup += 1 / ((140 + 20 * G.wave) * crewMul())) >= 1) { G.sup = 0; callIn(); } }
@@ -727,21 +742,21 @@ function killBug(b, g) {
   if (b.T.titan) titanDown(b);
 }
 function deathFx(b) {
-  const c = bugCenter(b, _v2), s = b.s, n = HI() ? 46 : 22;
+  const c = bugCenter(b, _v2), s = b.s, n = HI() ? 26 : 14;
   for (let i = 0; i < n; i++) { const col = SLIME[(Math.random() * 4) | 0], a = rnd(0, TAU), sp = rnd(1, 9) * Math.sqrt(s);
     PG.add(c.x, c.y, c.z, Math.cos(a) * sp, rnd(2, 9), Math.sin(a) * sp, rnd(1, 2.2), rnd(.12, .32) * s, rnd(.08, .2) * s, col[0], col[1], col[2], .95, 14, .4, 1); }
-  for (let i = 0; i < 4; i++) PG.add(c.x, c.y, c.z, rnd(-1, 1), rnd(0, 2), rnd(-1, 1), .5, .5 * s, 2 * s, .55, .9, .12, .6, 0, 3);
+  for (let i = 0; i < 2; i++) PG.add(c.x, c.y, c.z, rnd(-1, 1), rnd(0, 2), rnd(-1, 1), .45, .4 * s, 1.4 * s, .55, .6, .2, .45, 0, 3);
   for (let i = 0; i < 4 + s * 3; i++) addChunk(c.x, c.y, c.z, rnd(.08, .22) * s, 7);
   if (b.gib) { for (let k = 0; k < 6; k++) if (b.legs & (1 << k)) addChunk(c.x, c.y, c.z, s * (k < 4 ? .8 : .6), 8, true);
     for (let i = 0; i < 6; i++) addChunk(c.x, c.y, c.z, rnd(.15, .35) * s, 9);
     for (let i = 0; i < (HI() ? 30 : 14); i++) { const col = SLIME[(Math.random() * 4) | 0]; PG.add(c.x, c.y, c.z, rnd(-7, 7), rnd(3, 11), rnd(-7, 7), rnd(1, 2), rnd(.15, .4) * s, .1, col[0], col[1], col[2], .95, 14, .3, 1); }
-    PS.add(c.x, c.y, c.z, 0, .8, 0, 1.4, .6 * s, 3 * s, .5, .62, .2, .35, 0, 1); }
+    PS.add(c.x, c.y, c.z, 0, .8, 0, 1.4, .6 * s, 2.4 * s, .5, .55, .3, .25, 0, 1); }
   else if (Math.random() < .5) { b.legs &= ~(1 << ((Math.random() * 4) | 0)); addChunk(c.x, c.y, c.z, s * .8, 6, true); }
   if (b.type === 2 || b.type === 5) { for (let i = 0; i < 10; i++) PS.add(b.x + rnd(-1.5, 1.5), b.y + .3, b.z + rnd(-1.5, 1.5), rnd(-2, 2), rnd(.5, 2), rnd(-2, 2), rnd(1.2, 2.4), .6, 3, .55, .38, .25, .5, 0, 1.5);
     const d = Math.hypot(b.x - P.x, b.z - P.z); P.trauma = Math.min(1, P.trauma + clamp(1 - d / 60, 0, 1) * .5);
     if (Sfx.ctx) { const a = Sfx.at(b.x, b.z); Sfx.play('boom', {vol: .5 * a.vol + .1, pan: a.pan, rate: 1.6, lp: 900}); } }
-  addDecal(b.x + rnd(-.5, .5), b.z + rnd(-.5, .5), rnd(2, 3.4) * s, [rnd(.55, .9), rnd(.85, 1.1), rnd(.3, .6)]);
-  for (let i = 0; i < 2; i++) addDecal(b.x + rnd(-2, 2) * s, b.z + rnd(-2, 2) * s, rnd(.6, 1.4) * s, [.7, 1, .4]);
+  addDecal(b.x + rnd(-.5, .5), b.z + rnd(-.5, .5), rnd(2, 3.4) * s, [rnd(.7, .95), rnd(.85, 1), rnd(.6, .8)]);
+  for (let i = 0; i < 2; i++) addDecal(b.x + rnd(-2, 2) * s, b.z + rnd(-2, 2) * s, rnd(.6, 1.4) * s, [.85, .95, .7]);
   if (Sfx.ctx) { const a = Sfx.at(b.x, b.z); if (Sfx.lim('death', 70)) { Sfx.play('squelch', {vol: 1.1 * a.vol + .08, pan: a.pan, rate: .7}); Sfx.play('crunch', {vol: .5 * a.vol, pan: a.pan, rate: .8}); }
     if (Sfx.lim('squeal', 160)) Sfx.play('squeal', {vol: .25 * a.vol, pan: a.pan, rate: rnd(.8, 1.3) / Math.sqrt(s), lp: 4000}); }
 }
@@ -749,7 +764,7 @@ function deathFx(b) {
 // ---------------- waves + bug AI (host)
 // pacing: wave n spawns for (8 + n) s; a squad gets +50% bugs per extra gunner
 const crewMul = () => 1 + .5 * (crewN() - 1);
-const spawnRate = n => Math.min(30, 6 + n * 1.5) * crewMul();
+const spawnRate = n => Math.min(55, 11 + n * 3.5) * crewMul();
 function waveQuota(n) { return Math.round(spawnRate(n) * (8 + n)); }
 function startWave(n) {
   G.wave = n; G.quota = waveQuota(n); G.gap = 0; G.cleared = false;
@@ -768,7 +783,8 @@ function spawnOne() {
   const p2 = n >= 3 ? Math.min(.12, .03 + n * .006) : 0, p3 = n >= 4 ? Math.min(.1, .035 + (n - 4) * .01) : 0, p4 = n >= 6 ? Math.min(.12, .045 + (n - 6) * .012) : 0;
   const type = r < p2 ? 2 : r < p2 + p3 ? 3 : r < p2 + p3 + p4 ? 4 : n >= 2 && r < p2 + p3 + p4 + .28 ? 1 : 0;
   if ((type === 3 || type === 4) && !(G.seen & (1 << type))) { G.seen |= 1 << type; newTypeWarn(type); if (isHost()) G.evq.push(['n', type]); }
-  const a = rnd(-1.2, 1.2), d = rnd(130, 210);
+  if (!G.pack || (G.pack.n -= 1) <= 0) G.pack = {a: rnd(-1.15, 1.15), d: rnd(105, 165), n: 6 + (Math.random() * 18 | 0)};
+  const a = G.pack.a + rnd(-.09, .09), d = G.pack.d + rnd(-9, 9);
   spawnBug(type, Math.sin(a) * d, -Math.cos(a) * d);
   if (type === 2 && !G.bruteSeen) { G.bruteSeen = true; bruteWarn(); if (isHost()) G.evq.push(['b']); }
 }
@@ -856,8 +872,10 @@ function pickRunZ() { // the bug with the most neighbours (sampled) marks the st
   return clamp(best.z, -150, -22);
 }
 function blast(x, z, r, dmg) {
-  for (const b of bugs) { if (b.dead || b.st === 3) continue; if (Math.hypot(b.x - x, b.z - z) > r * clamp(b.s * .6, 1, 1.4)) continue;
-    b.hp -= b.T.titan ? dmg * .3 : dmg; b.hk = 1.2; if (b.hp <= 0) fxKill(b, 10); }
+  for (const b of bugs) { if (b.st === 3) continue; const dx = b.x - x, dz = b.z - z, d = Math.hypot(dx, dz);
+    if (b.dead) { if (d < r * 1.5 && !b.T.titan) { const f = (1 - d / (r * 1.5)) * 9 / b.s; b.dvx += dx / (d || 1) * f; b.dvz += dz / (d || 1) * f; b.dvy = Math.max(b.dvy, f * .8); b.dspin += rnd(-8, 8); b.dead = Math.min(b.dead, .5); } continue; }
+    if (d > r * clamp(b.s * .6, 1, 1.4)) continue;
+    b.hp -= b.T.titan ? dmg * .3 : dmg; b.hk = 1.2; if (b.hp <= 0) { fxKill(b, 10); if (!b.T.titan) { b.dvx += dx / (d || 1) * 6; b.dvz += dz / (d || 1) * 6; } } }
 }
 function stepRun(dt) {
   if (!RUN) return; const R = RUN; R.t += dt; R.x += R.dir * 95 * dt;
@@ -949,7 +967,7 @@ const grid = new Map();
 function stepBugsHost(dt) {
   if (G.over) return;
   let live = 0; for (const b of bugs) if (!b.dead) live++;
-  if (G.quota > 0) { G.spawnAcc += dt * spawnRate(G.wave); while (G.spawnAcc > 1 && G.quota > 0) { G.spawnAcc--; if (live < 380) { spawnOne(); G.quota--; live++; } else { G.spawnAcc = 0; break; } } }
+  if (G.quota > 0) { G.spawnAcc += dt * spawnRate(G.wave); while (G.spawnAcc > 1 && G.quota > 0) { G.spawnAcc--; if (live < 720) { spawnOne(); G.quota--; live++; } else { G.spawnAcc = 0; break; } } }
   else {
     // lull: once the field is nearly clear the wave counts as held (armour patch), next wave 3.5 s later; overwhelmed = next wave after 14 s anyway
     G.gap += dt;
@@ -991,29 +1009,48 @@ function stepBugsHost(dt) {
     }
   }
   // damage to the line
-  if (dmg > 0) { hurt(4 * Math.pow(dmg / 4, .6) * dt); }
+  if (dmg > 0) { hurt(4 * Math.pow(dmg / 4, .5) * dt); }
   G.attackers = attackers;
 }
 function hurt(d) {
   G.hurtT = 0; const s = Math.min(G.shield, d); G.shield -= s; d -= s; G.hp = Math.max(0, G.hp - d * .2);
   if (G.hp < 30 && !G.lowWarn) { G.lowWarn = true; callout('ARMOUR CRITICAL', 'CLEAR THE BARRICADE'); Sfx.play('alarm', {vol: .5, vr: 0}); if (isHost()) G.evq.push(['a']); }
   if (G.hp > 45) G.lowWarn = false;
-  G.dmgFlash = Math.min(1, G.dmgFlash + .08); P.trauma = Math.min(1, P.trauma + .015);
+  G.dmgFlash = Math.min(1, G.dmgFlash + .03); P.trauma = Math.min(1, P.trauma + .015);
   if (Sfx.ctx && Sfx.lim('zap', 400)) Sfx.play('zap', {vol: .45});
   if (G.hp <= 0 && !G.over) overrun();
 }
+const CGRID = new Map(), cgK = (x, z) => (Math.floor(x / 2) + 1000) * 4000 + Math.floor(z / 2) + 1000;
+const CORPSE_T = 14; // corpses stay long enough to pile up at the line
 function stepBugsCommon(dt, time) {
+  // rebuild the corpse grids: settled bodies stack into PILE, every body goes into CGRID so the living can shove it
+  PILE.clear(); CGRID.clear();
+  for (const b of bugs) { if (!b.dead || b.gib || b.T.titan) continue;
+    const ck = cgK(b.x, b.z); let c = CGRID.get(ck); if (!c) CGRID.set(ck, c = []); c.push(b);
+    if (b.dead > .7 && b.dead < CORPSE_T - 2) { const k = pileK(b.x, b.z); PILE.set(k, Math.min(2.6, (PILE.get(k) || 0) + .42 * b.s * b.s)); } }
   for (let i = bugs.length - 1; i >= 0; i--) {
     const b = bugs[i]; b.t += dt; b.flash = Math.max(0, b.flash - dt * 8);
     b.hk = (b.hk || 0) * Math.exp(-dt * 11);
-    if (b.dead) { b.dead += dt; if (b.dead > (b.gib ? 1 : 8)) { freeBug(b); continue; }
-      const rr = b.T.s > 2 ? (b.T.titan ? 1.6 : 3.5) : 8; b.roll += clamp(b.droll - b.roll, -rr * dt, rr * dt); b.pitch *= .9;
-      const gy = gH(b.x, b.z); b.dvy -= 20 * dt; b.y += b.dvy * dt;
-      if (b.y <= gy) { b.y = gy; if (b.dvy < -3) { b.dvy *= -.25; b.dspin *= .5; } else b.dvy = 0; const f = Math.exp(-dt * 5); b.dvx *= f; b.dvz *= f; b.dspin *= Math.exp(-dt * 4); }
+    if (b.dead) { b.dead += dt; if (b.dead > (b.gib ? 1 : CORPSE_T)) { freeBug(b); continue; }
+      const rr = b.T.s > 2 ? (b.T.titan ? 1.6 : 3.5) : 7; b.roll += clamp(b.droll - b.roll, -rr * dt, rr * dt); b.pitch *= .9;
+      // while it's still moving it can land on the pile; once settled its own weight is part of the pile, so keep the height it found
+      if (b.dead < .7) b.py = mix(b.py || 0, pileAt(b.x, b.z), Math.min(1, dt * 8));
+      const gy = gH(b.x, b.z) + (b.py || 0); b.dvy -= 20 * dt; b.y += b.dvy * dt;
+      if (b.y <= gy) { b.y = gy;
+        if (b.dvy < -3) { b.dvy *= -.3; b.dspin *= .6; b.dvx *= .7; b.dvz *= .7; if (b.dvy > 1.2 && b.dead > .15) dustPuff(b.x, b.y, b.z, b.s); } else b.dvy = 0;
+        const f = Math.exp(-dt * (b.T.s > 2 ? 6 : 3.2)); b.dvx *= f; b.dvz *= f; b.dspin *= Math.exp(-dt * 3.5); }
       b.x += b.dvx * dt; b.z += b.dvz * dt; b.dyaw += b.dspin * dt; }
-    else { b.ph += dt * (b.sp * 1.9 / b.s + (b.st === 1 ? 0 : .5)); }
+    else { b.ph += dt * (b.sp * 1.9 / b.s + (b.st === 1 ? 0 : .5));
+      // climb over the dead
+      b.py = mix(b.py || 0, b.st === 2 ? 0 : pileAt(b.x, b.z) * .85, Math.min(1, dt * 6));
+      // shove corpses out of the way (pushes them along, spins them a little)
+      if (b.st !== 2 && b.st !== 3 && b.sp > .5) { const k0 = cgK(b.x, b.z);
+        for (let gx = -1; gx <= 1; gx++) for (let gz = -1; gz <= 1; gz++) { const c = CGRID.get(k0 + gx * 4000 + gz); if (!c) continue;
+          for (const o of c) { const ox = o.x - b.x, oz = o.z - b.z, od = Math.hypot(ox, oz), rr = (b.s + o.s) * .75; if (od > rr || od < 1e-3) continue;
+            const push = (rr - od) / rr * b.sp * .5 * b.s / o.s; o.dvx += ox / od * push * dt * 6; o.dvz += oz / od * push * dt * 6; o.dspin += (Math.random() - .5) * push * dt * 4; } } } }
   }
 }
+function dustPuff(x, y, z, s) { for (let i = 0; i < 2; i++) PS.add(x + rnd(-.4, .4) * s, y + .1, z + rnd(-.4, .4) * s, rnd(-.8, .8), rnd(.3, 1), rnd(-.8, .8), rnd(1, 1.8), .3 * s, 1.4 * s, .55, .45, .36, .3, -.1, 1.5); }
 
 // ---------------- guest: apply snapshots
 function applySnap(m) {
@@ -1119,15 +1156,18 @@ const CY = 'rgba(111,247,238,', READ = [];
 for (let i = 0; i < 40; i++) READ.push(Math.random().toString(16).slice(2, 10).toUpperCase() + ' ' + ['SYNC', 'ACK', 'TRK', 'PWR', 'VNT', 'LNK'][i % 6]);
 function drawHud(dt, time) {
   const w = innerWidth, h = innerHeight, c = hx; c.clearRect(0, 0, w, h);
-  const fl = .85 + Math.sin(time * 60) * .03 + (Math.random() < .02 ? -.3 : 0);
+  const fl = .8;
   c.globalAlpha = fl; c.lineWidth = 1.5; c.font = '13px "Share Tech Mono",monospace';
   // crosshair
-  const cx = w / 2, cy = h / 2, gap = 12 + P.bloom * 22;
+  const cx = w / 2, cy = h / 2, gap = 7 + P.bloom * 6;
   c.strokeStyle = CY + '.85)'; c.beginPath();
-  for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { c.moveTo(cx + dx * gap, cy + dy * gap); c.lineTo(cx + dx * (gap + 12), cy + dy * (gap + 12)); }
-  c.stroke(); c.beginPath(); c.arc(cx, cy, 2, 0, TAU); c.fillStyle = CY + '.9)'; c.fill();
+  for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { c.moveTo(cx + dx * gap, cy + dy * gap); c.lineTo(cx + dx * (gap + 9), cy + dy * (gap + 9)); }
+  c.stroke(); c.beginPath(); c.arc(cx, cy, 1.5, 0, TAU); c.fillStyle = CY + '.9)'; c.fill();
   c.strokeStyle = CY + '.25)'; c.beginPath(); c.arc(cx, cy, 70 + P.bloom * 20, -.6, .6); c.stroke(); c.beginPath(); c.arc(cx, cy, 70 + P.bloom * 20, PI - .6, PI + .6); c.stroke();
   if (G.hitT > 0 || G.killT > 0) { const k = G.killT > 0; c.strokeStyle = k ? 'rgba(255,120,60,.95)' : 'rgba(230,255,230,.9)'; c.lineWidth = k ? 3 : 2; c.beginPath(); const r0 = 8, r1 = k ? 20 : 15; for (const [dx, dy] of [[1, 1], [-1, 1], [1, -1], [-1, -1]]) { c.moveTo(cx + dx * r0, cy + dy * r0); c.lineTo(cx + dx * r1, cy + dy * r1); } c.stroke(); c.lineWidth = 1.5; }
+  // the bug the rounds are going into: thin brackets on it, so you see exactly what you're hitting
+  { const lg = localGunner(), t = lg && lg.tgt; if (t && !t.dead && P.firing) { bugCenter(t, _v).project(cam); if (_v.z < 1) { const sx = (_v.x * .5 + .5) * w, sy = (-_v.y * .5 + .5) * h, d = Math.hypot(t.x - P.x, t.z - P.z), r = clamp(1.1 * t.s / Math.max(d, 1) / Math.tan(cam.fov * PI / 360) * h / 2, 7, 60);
+    c.strokeStyle = 'rgba(235,240,230,.55)'; c.lineWidth = 1.2; c.beginPath(); for (const [dx, dy] of [[1, 1], [-1, 1], [1, -1], [-1, -1]]) { c.moveTo(sx + dx * r, sy + dy * (r - 5)); c.lineTo(sx + dx * r, sy + dy * r); c.lineTo(sx + dx * (r - 5), sy + dy * r); } c.stroke(); c.lineWidth = 1.5; } } }
   // damage direction arcs
   for (const d of G.dmgDirs) { const a = angD(P.yaw, d.a); c.strokeStyle = `rgba(255,60,40,${d.t})`; c.lineWidth = 6; c.beginPath(); c.arc(cx, cy, 150, -PI / 2 - a - .25, -PI / 2 - a + .25); c.stroke(); }
   c.lineWidth = 1.5;
@@ -1187,8 +1227,8 @@ function stepWorldFx(dt, time) {
   if (Math.random() < dt * 6) PA.add(P.x + rnd(-25, 25), rnd(.5, 5), rnd(-30, 3), rnd(.5, 2), rnd(.2, .8), rnd(-.5, .5), rnd(3, 6), .05, .02, 3, 1.1, .3, 1);
   // flares
   if (!flare && Math.random() < dt * .08) flare = {x: rnd(-60, 60), y: 90, z: rnd(-150, -60), t: 0};
-  if (flare) { flare.t += dt; flare.y -= dt * 4; flare.x += dt * 1.5; flareL.position.set(flare.x, flare.y, flare.z); flareL.intensity = flare.t < 18 ? (900 + Math.random() * 200) * Math.min(1, flare.t) : 0;
-    PA.add(flare.x, flare.y, flare.z, 0, 0, 0, .1, 4, 3, 6, 1.2, .8, 1); if (Math.random() < dt * 20) PS.add(flare.x, flare.y, flare.z, rnd(-.2, .2), .6, rnd(-.2, .2), 6, .5, 3, .5, .3, .3, .25);
+  if (flare) { flare.t += dt; flare.y -= dt * 4; flare.x += dt * 1.5; flareL.position.set(flare.x, flare.y, flare.z); flareL.intensity = flare.t < 18 ? (450 + Math.random() * 100) * Math.min(1, flare.t) : 0;
+    PA.add(flare.x, flare.y, flare.z, 0, 0, 0, .1, 2.2, 1.8, 3, 1, .7, 1); if (Math.random() < dt * 20) PS.add(flare.x, flare.y, flare.z, rnd(-.2, .2), .6, rnd(-.2, .2), 6, .5, 3, .5, .3, .3, .25);
     if (flare.t > 18) flare = null; }
   // artillery flashes on the horizon
   if ((artT -= dt) < 0) { artT = rnd(3, 9); const a = rnd(-1.4, 1.4), d = rnd(500, 900), x = Math.sin(a) * d, z = -Math.cos(a) * d;
@@ -1226,7 +1266,7 @@ function updateGunVisual(gun, spin, heat, firing, time, dt) {
   const h = heat * heat; u.barrelM.emissive.setRGB(h * 4 + h * h * 6, h * 1.4 + h * h * 5, h * h * 3.5);
   for (let i = 0; i < u.belt.length; i++) u.belt[i].position.z = -.12 - (i / 8) * .1 + (firing ? Math.sin(time * 60 + i) * .004 : 0);
   const on = firing && Math.random() < .85;
-  for (const s of u.fl) { s.visible = on; if (on) { const k = rnd(.25, .6); s.scale.set(k, k, 1); s.material.rotation = rnd(0, TAU); s.position.z = rnd(-.15, .05); } }
+  for (const s of u.fl) { s.visible = on; if (on) { const k = rnd(.16, .38); s.scale.set(k, k, 1); s.material.rotation = rnd(0, TAU); s.position.z = rnd(-.15, .05); } }
   u.side.visible = on && Math.random() < .5; if (u.side.visible) { u.side.rotation.z = rnd(0, PI); u.side.scale.set(rnd(.8, 1.6), 1, 1); }
 }
 function stepFeel(dt, time) {
@@ -1239,13 +1279,12 @@ function stepFeel(dt, time) {
   [P.cy, P.cyV] = spring(P.cy, P.cyV, 60, 12);
   [P.swayX, P.swayVX] = spring(P.swayX, P.swayVX, 90, 12);
   [P.swayY, P.swayVY] = spring(P.swayY, P.swayVY, 90, 12);
-  if (firing) { P.drift += rnd(-1, 1) * dt * .4; P.drift *= .97; P.yaw += P.drift * dt * .15; }
-  P.trauma = Math.max(firing ? .28 + P.heat * .25 : 0, P.trauma - dt * 1.4); P.bloom = Math.max(0, P.bloom - dt * (firing ? .6 : 3));
+  P.trauma = Math.max(firing ? .1 + P.heat * .08 : 0, P.trauma - dt * 1.8); P.bloom = Math.max(0, P.bloom - dt * (firing ? .6 : 3));
   const sh = P.trauma * P.trauma;
   const nx = (Math.sin(time * 47.3) + Math.sin(time * 31.7 + 1) * .6) * sh * .012, ny = (Math.sin(time * 53.1 + 2) + Math.sin(time * 27.9) * .6) * sh * .012;
   const lg = localGunner(); const pitch = (lg ? lg.pitch : -.05);
   P.fovP *= Math.exp(-dt * 4);
-  cam.fov = 72 + P.fovP * 5 - (firing ? 2 : 0) * smooth(P.fireT); cam.updateProjectionMatrix();
+  cam.fov = 72 + P.fovP * 2 - (firing ? 1 : 0) * smooth(P.fireT); cam.updateProjectionMatrix();
   const breath = Math.sin(time * 1.4) * .004;
   cam.position.set(P.x + nx * .3, 1.7 + breath * .5 + (G.dmgFlash > .1 ? rnd(-.02, .02) * G.dmgFlash : 0), P.z + .02);
   cam.rotation.set(pitch + P.cp * .02 + ny + breath, P.yaw + P.cy * .01 + nx, nx * .3, 'YXZ');
@@ -1253,7 +1292,7 @@ function stepFeel(dt, time) {
   const idle = firing ? 0 : 1;
   FPG.position.set(GUN_BASE.x + P.swayX * .02 + Math.sin(time * 1.1) * .003 * idle + rnd(-1, 1) * .002 * sh * 4, GUN_BASE.y + P.swayY * .02 + Math.sin(time * 1.4) * .004 * idle + P.gp * .004, GUN_BASE.z + P.kick * .012);
   FPG.rotation.set(P.gp * .02 - P.swayY * .03, -P.swayX * .04 + .02, P.cy * .01 + P.swayX * .05);
-  muzL.intensity = firing && Math.random() < .8 ? rnd(5, 11) : 0; FPG.userData.muzzle.getWorldPosition(muzL.position);
+  muzL.intensity = firing && Math.random() < .8 ? rnd(2, 4.5) : 0; FPG.userData.muzzle.getWorldPosition(muzL.position);
 }
 
 // ---------------- main flow
@@ -1324,8 +1363,7 @@ function step(dt) {
   }
   if (Net.role !== 'host') G.evq = [];
   stepBugsCommon(dt, time);
-  for (const b of bugs) drawBug(b, time);
-  BODY.instanceMatrix.needsUpdate = LUP.instanceMatrix.needsUpdate = LLO.instanceMatrix.needsUpdate = true; if (BODY.instanceColor) BODY.instanceColor.needsUpdate = true;
+  drawBegin(); for (const b of bugs) drawBug(b, time); drawEnd();
   const lg = localGunner();
   if (lg) { P.spin = lg.spin; if (lg.spin > .97 && P.spinFull !== 1) { P.fovP = 1; } P.spinFull = lg.spin > .97 ? 1 : 0; }
   stepFeel(dt, time);
@@ -1335,7 +1373,7 @@ function step(dt) {
   PA.step(dt); PS.step(dt); PG.step(dt); stepDecals(dt); stepChunks(chunks, CHK, 300, dt); stepChunks(legsD, LGD, 80, dt, true); stepTracers(dt); stepCases(dt);
   stepWorldFx(dt, time);
   G.dmgFlash = Math.max(0, G.dmgFlash - dt * 1.5); G.hitT -= dt; G.killT -= dt; for (const d of G.dmgDirs) d.t -= dt; G.dmgDirs = G.dmgDirs.filter(d => d.t > 0);
-  compM.uniforms.dmg.value = G.dmgFlash * .9 + (G.hp < 30 ? (.25 + Math.sin(time * 6) * .1) : 0); compM.uniforms.time.value = time;
+  compM.uniforms.dmg.value = G.dmgFlash * .4 + (G.hp < 30 ? (.15 + Math.sin(time * 3) * .05) : 0); compM.uniforms.time.value = time;
   $('dmg').style.opacity = 0;
   if (callT > 0 && (callT -= dt) <= 0) $('call').style.opacity = 0;
   toastT -= dt;
