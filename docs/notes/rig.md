@@ -129,6 +129,8 @@ Read `CLAUDE.md` first (shared rules). Split out of it on 17 Nov 2026; keep this
 
 - **Sky pixelation fix:** `#grain` (200x120 noise stretched full screen, which used to be `image-rendering:pixelated` at 7% and froze when calm) now has opacity 0 unless you are scared (`grain()` fades it in with fear or a jumpscare). The `dynRes` floor went from .55 to .7 in steps of .05/.1. The audio listener skips non-finite camera positions.
 
+- **Call your boat:** standing within 16 m of any `dockList()` berth (not aboard, not swimming) and looking at it gives 'Call your boat here' (a `targets` wrapper). Act `call` (`callWhy`: nobody aboard or at the wheel, boat over 120 m away, not sinking or airborne, $40 `CALL_FEE` unless unlock-all) moves the boat to that berth, tops fuel up to 25%, then sends event `called` with a toast.
+
 ## Next up (the owner's list, 18 Nov 2026; items 7-14 and the loot rework were built the same day, see the paragraphs above)
 1. **Sub visuals underwater and half underwater:** proper looks from inside and outside the research sub when it is dived and when it sits at the waterline (the waterline across the bow viewport, the sea surface seen from below, underwater fog and tint through the windows, the hull half in and half out of the water, bubbles and wake when diving).
 2. **Persisting loot and fast travel:** loot that stays where it was (taken items stay taken, a persistent world seed with slow restocks) and fast travel between ports (home, Northwatch, piers).
