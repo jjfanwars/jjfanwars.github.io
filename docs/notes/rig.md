@@ -151,6 +151,13 @@ Read `CLAUDE.md` first (shared rules). Split out of it on 17 Nov 2026; keep this
 
 - **Surfaced-sub view:** inside the sub, `G.uw` is now also 1 when the camera is more than .15 m below the wave surface (it used to need `B.dep > 1`). A surfaced sub's viewports now show underwater fog, the lit underside of the sea (`uUs`), marine snow and the seabed, instead of the sea's top shading seen from below.
 
+- **Host handover:**
+  - **Quitting host:** `toMenu` and `pagehide` send `bye` with `next` = the first peer (join order).
+  - **Dropped host:** guests get `_hostlost`, and the first ready non-H id in `PL` order takes over after 1.5 s (the next one 4 s later, and so on). `_hostback` cancels it, and everyone else falls back to the menu after 25 s.
+  - **Takeover:** `becomeHost()` remaps ids (old H becomes null, own id becomes 'H') in B.driver, TN.drv/seats and the casino seats/bets, drops the old captain's avatar, makes P the 'H' entry in PL, then calls `Net.promote()`, which reopens the same room code as host. The relay sends 'host up', guests say hello again, and `_join` sends them `crew`.
+  - **Clean-up and saving:** crew who don't come back within 8 s are synced out. `G.guestGame` stays true, so the new captain never overwrites their own save with the crew's voyage.
+  - **Tested:** 3 pages through the real relay, quit handover only. The unannounced drop path has not been tried.
+
 ## Next up (the owner's list, 18 Nov 2026; items 7-14 and the loot rework were built the same day, see the paragraphs above)
 1. **Sub visuals underwater and half underwater:** proper looks from inside and outside the research sub when it is dived and when it sits at the waterline (the waterline across the bow viewport, the sea surface seen from below, underwater fog and tint through the windows, the hull half in and half out of the water, bubbles and wake when diving).
 2. **Persisting loot and fast travel:** loot that stays where it was (taken items stay taken, a persistent world seed with slow restocks) and fast travel between ports (home, Northwatch, piers).
