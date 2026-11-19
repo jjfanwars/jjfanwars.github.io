@@ -109,7 +109,7 @@ Read `CLAUDE.md` first (shared rules). Split out of it on 17 Nov 2026; keep this
   - Sync: the pose field `em` (index + 1). `emotePose` poses the joints. Looping emotes keep going while you walk (griddy walking).
   - Your own emote shows in third person (`emoteSelf`). The camera sits in front of you while you stand still (the mouse orbits it, `G.emOrb`) and swings behind your shoulder while you move. `emCamDist` pulls it in front of WALLS and the boat's BW (walls taller than 1.3 m), it stays above `landH`, and crewmates in the shot are hidden. It stays first person inside cabins or with less than 1.4 m of room.
 - **Names:** Host and Join need a name of at least 2 letters (`needName`). Solo still defaults to Deckhand.
-- `GAME_V` 67, because the pose has new fields.
+- `GAME_V` 67, because the pose has new fields (68 after the handover, fast travel and review-fix batch).
 
 **Persistent loot and fast travel (v67, 19 Nov 2026).**
 - **World seed:** `worldSeed(sv)` keeps the seed in the save (`ws`), so `placeItems`/`placeSunk` put the same loot in the same places every voyage. `hostStart` and Play solo both use it.
