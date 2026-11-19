@@ -16,7 +16,7 @@ function vn(x, z) { const xi = Math.floor(x), zi = Math.floor(z), xf = x - xi, z
 function fbm(x, z) { let s = 0, a = .5, f = 1; for (let i = 0; i < 4; i++) { s += a * vn(x * f, z * f); f *= 2.03; a *= .5; } return s / .9375; }
 
 // ---------------- settings
-const SET = Object.assign({diff: 'normal', sens: 1, bright: 1, gfx: 'high', name: '', vol: 1, fov: 70, inv: 0}, (() => { try { return JSON.parse(localStorage.getItem('s9-set')) || {}; } catch (e) { return {}; } })());
+const SET = Object.assign({diff: 'normal', sens: 1, bright: 1, gfx: 'high', name: '', vol: 1, fov: 70, inv: 0, ff: 'off'}, (() => { try { return JSON.parse(localStorage.getItem('s9-set')) || {}; } catch (e) { return {}; } })());
 const saveSet = () => { try { localStorage.setItem('s9-set', JSON.stringify(SET)); } catch (e) {} };
 const DIFF = {
   easy:      {chase: 4.4, sight: 20, hear: .7,  checkP: .3,  breathHear: .1, lost: 2.5, roam: 30, react: .7,  bleed: 60, down: 14, drown: 20, ramDmg: 14, deep: .2, mhp: 100, pay: .85},
@@ -29,7 +29,7 @@ const hexS = c => '#' + c.toString(16).padStart(6, '0');
 
 // ---------------- net (jjfanwars relay)
 const RELAY_URL = 'wss://jjfanwars-relay.businessautomationvic.workers.dev';
-const GAME_V = 68;
+const GAME_V = 69;
 const Net = {
   tag: '[Rig]', role: 'solo', ws: null, peers: new Map(), code: '', relayT: {pose: 1}, id: '', name: '', handlers: {}, retry: 0, started: false,
   enc: new TextEncoder(), dec: new TextDecoder(),
@@ -2489,7 +2489,7 @@ function applyEv(e) {
       break; }
     case 'mstep': { const d = Math.hypot(cam.position.x - M.x, cam.position.z - M.z) + Math.abs(cam.position.y - M.y); if (d < 40) Snd.mStep(clamp(1.2 - d / 40, .1, 1) * (M.state === 'chase' ? 1.5 : 1)); break; }
     case 'down': { const p = PL.get(e.id); if (p) { p.down = true; p.hd = -1; p.seat = 0; }
-      if (e.id === me) { if (P.hd >= 0 && HIDES[P.hd]) { const h = HIDES[P.hd]; P.x = h.ex; P.z = h.ez; } const jsc = e.how === 'caught' || e.how === 'pulled'; if (jsc) { G.js = {t: 1.4, L: 1.4, mon: e.st ? STW : MON, J: e.st ? SJ : MJ}; G.shake = 1.5; } Snd.scream(); $('flash').style.opacity = jsc ? .3 : .7; setTimeout(() => $('flash').style.opacity = 0, 300); P.hd = -1; P.seat = 0; $('slats').classList.add('hidden'); $('breath').classList.add('hidden'); if (PL.size > 1) showMsg('It got you. Crawl toward your crew, they can pick you up.', '', 5); }
+      if (e.id === me) { if (P.hd >= 0 && HIDES[P.hd]) { const h = HIDES[P.hd]; P.x = h.ex; P.z = h.ez; } const jsc = e.how === 'caught' || e.how === 'pulled'; if (jsc) { G.js = {t: 1.4, L: 1.4, mon: e.st ? STW : MON, J: e.st ? SJ : MJ}; G.shake = 1.5; } Snd.scream(); $('flash').style.opacity = jsc ? .3 : .7; setTimeout(() => $('flash').style.opacity = 0, 300); P.hd = -1; P.seat = 0; $('slats').classList.add('hidden'); $('breath').classList.add('hidden'); if (PL.size > 1) showMsg(e.how === 'ff' ? `${(PL.get(e.by) || {}).name || 'A crewmate'} shot you down. Crawl toward your crew, they can pick you up.` : 'It got you. Crawl toward your crew, they can pick you up.', '', 5); }
       else if (p) { Snd.hurt(at(p.x, p.y + 1, p.z, 6)); showMsg(`${p.name} is down! Hold E on them to pick them up.`, '', 5); } break; }
     case 'rev': { const p = PL.get(e.id); if (p) p.down = false; Snd.revive(); showMsg(e.id === me ? 'You are back on your feet.' : `${p ? p.name : ''} is back up.`); break; }
     case 'dead': { const p = PL.get(e.id); if (p) { p.dead = true; p.down = false; p.drowned = e.drown || 0; p.sw = 0; } if (e.drown) Snd.deep(); if (e.id === me) { const t = e.drown === 6 ? 'You let go. The sea takes you.' : e.drown === 5 ? 'You hit the water like concrete.' : e.drown === 4 ? 'Your arms give out. The sea closes over you.' : e.drown === 3 ? 'Needle teeth close on your hose. Then nothing.' : e.drown === 2 ? 'Your air runs out. The dark closes in.' : e.drown ? 'Something huge wraps around your legs and pulls you under.' : 'You bled out.'; if (e.drown === 1) { if (!G.maw) G.maw = {t: 3, x: P.x, z: P.z}; G.maw.bite = G.maw.t + .9; G.drownCam = {t: 0, x: P.x, z: P.z, yaw: P.yaw}; } P.dead = true; P.sw = 0; P.seat = 0; P.drowned = e.drown || 0; showMsg(t, '', 5); }
@@ -2540,6 +2540,7 @@ function applyEv(e) {
     case 'cooler': if (e.id === me) { P.coolerN = e.n; P.coolerV = e.v; } break;
     case 'catch': { const p = PL.get(e.id); if (e.id !== me && p) showMsg(`${p.name} landed a ${FISH[e.f].n} (${e.kg} kg)!`, '', 3); break; }
     case 'shot': if (e.id !== me) gunFx([e.x, e.y, e.z], e.w, false); break;
+    case 'ffhit': { const by = PL.get(e.by); if (e.id === me) { G.shake = Math.max(G.shake || 0, .5); $('flash').style.opacity = .35; setTimeout(() => $('flash').style.opacity = 0, 150); Snd.hurt(null); if (!(G.ffMsgT > G.t)) { G.ffMsgT = G.t + 4; showMsg(`${by ? by.name : 'Someone'} is shooting you!`, '', 2); } } else { hitFx(e.x, e.y, e.z, e.head, e.by); if (e.by === me && !(G.ffMsgT > G.t)) { G.ffMsgT = G.t + 4; showMsg('Friendly fire! That is your crew.', '', 2); } } break; }
     case 'mhit': hitFx(e.x, e.y, e.z, e.head, e.by); break;
     case 'mdown': Snd.scream(A.mPan); if (e.by === me) { hTone(70, .35, .2); hTone(52, .3, .3, 'sine', null, .13); } showMsg('It shrieks, collapses, and drags itself over the edge into the sea.', '', 5); break;
     case 'sunk': { const q = SUNK[e.i]; if (q) q.got = true; Snd.pickup(); Snd.discover(); showMsg(`The claw grabs a sunken ${NAMES[e.kind]} off the sea bed! It goes in the hold ($${VALUE[e.kind]}).`, '', 4); break; }
@@ -3029,7 +3030,7 @@ addEventListener('keydown', e => {
   if (e.code === 'KeyR') reload();
   if (e.code === 'KeyH') showFishHelp(true);
   if (e.code === 'KeyJ') jrnOpen();
-  if (e.code === 'KeyQ' && !P.down) { if (P.seat) { const n = performance.now(); if (n - (G.hornC || 0) > 2500) { G.hornC = n; act({a: 'horn'}); } } else if ((G.whT || 0) <= 0) { G.whT = 3; act({a: 'wh'}); } }
+  if (e.code === 'KeyQ' && !P.down) { if (P.seat) { const n = performance.now(); if (n - (G.hornC || 0) > 2500) { G.hornC = n; act({a: 'horn'}); } } else if (P.eq === 3 || P.eq === 4) {} else if ((G.whT || 0) <= 0) { G.whT = 3; act({a: 'wh'}); } }
   if (e.code === 'Tab') { if (!e.repeat) { if (G.mapStick) { G.mapStick = 0; G.tabClose = 1; G.map = false; $('map').classList.add('hidden'); } else { G.tabT = performance.now(); G.map = true; $('map').classList.remove('hidden'); } } if (G.map) drawMap(); }
 });
 addEventListener('keyup', e => { K[e.code] = false; if (e.code === 'KeyE') eDown = false; if (e.code === 'Tab') { if (G.tabClose) G.tabClose = 0; else if (G.map && performance.now() - (G.tabT || 0) < 260) { G.mapStick = 1; showMsg('Chart open. Tab again to close.', '', 1.5); } else { G.mapStick = 0; G.map = false; $('map').classList.add('hidden'); } } });
@@ -3116,8 +3117,8 @@ Snd.step = (kind, k) => { const r = .88 + Math.random() * .24, hit = g => {
   if (kind === 'metal') tone((320 + Math.random() * 60) * r, .02 * k, .08, 'triangle');
   else if (kind === 'steel') { tone(150 * r, .03 * k, .1); tone(2200 * r, .008 * k, .04); }
   else if (kind === 'wood') tone(180 * r, .015 * k, .08, 'triangle'); };
-const KEYMAP = [['W A S D', 'move'], ['Shift', 'run'], ['C', 'crouch · dive'], ['Space', 'jump · rise · hold breath'], ['Tab (tap)', 'keep the chart open'], ['V', 'binoculars'], ['N · Y · U', 'repair kit · fuel can · chum'], ['F at the wheel', 'deck gun on armed ships'], ['Z (hold)', 'give up'], ['E', 'use · hold for jobs'], ['F', 'flashlight'], ['G', 'throw a flare'], ['I', 'inventory · dive suit on/off'], ['Enter', 'chat'], ['L at the wheel', 'fast travel from a dock'], ['O (hold)', 'emote wheel · tap to stop'], ['Q', 'whistle · horn at the wheel'], ['1-7 · wheel', 'hotbar'],
-  ['LMB / RMB', 'use · aim'], ['R', 'reload'], ['X', 'drop the last thing'], ['H', 'fishing help'], ['Tab (hold)', 'chart'], ['Esc', 'pause']];
+const KEYMAP = [['W A S D', 'move'], ['Shift', 'run'], ['C', 'crouch · dive'], ['Space', 'jump · rise · hold breath'], ['Tab (tap)', 'keep the chart open'], ['V', 'binoculars'], ['N · Y · U', 'repair kit · fuel can · chum'], ['F at the wheel', 'deck gun on armed ships'], ['Z (hold)', 'give up'], ['E', 'use · hold for jobs'], ['F', 'flashlight'], ['G', 'throw a flare'], ['I', 'inventory · dive suit on/off'], ['Enter', 'chat'], ['L at the wheel', 'fast travel from a dock'], ['O (hold)', 'emote wheel · tap to stop'], ['Q', 'aim a gun (hold) · whistle · horn at the wheel'], ['1-7 · wheel', 'hotbar'],
+  ['LMB / RMB or Q', 'use · aim'], ['R', 'reload'], ['X', 'drop the last thing'], ['H', 'fishing help'], ['Tab (hold)', 'chart'], ['Esc', 'pause']];
 const keyTable = list => `<div class="keys ktab">${list.map(([k, a]) => `<span><b>${k}</b></span><span>${a}</span>`).join('')}</div>`;
 
 // ---------------- rendering
@@ -5828,13 +5829,14 @@ function updateWorldFx(dt) {
   todAt(G.tod || 0, st); scene.fog.density = TOD.fd; scene.fog.color.copy(TOD.fog); scene.background.copy(TOD.fog);
   G.lightT -= dt; const sky = scene.userData.sky.material.uniforms; sky.uS.value = st; sky.uT.value = G.wt;
   sky.zen.value.copy(TOD.zen); sky.hor.value.copy(TOD.hor); sky.fogC.value.copy(TOD.fog); sky.sunC.value.copy(TOD.sun); sky.sunI.value = TOD.sI; sky.stars.value = TOD.st; sky.aur.value = TOD.night * (1 - st) * .9;
-  const cw = waveH(cam.position.x, cam.position.z, G.wt); G.uw = mix(G.uw || 0, G.subIn ? ((B.dep || 0) > 1 || cam.position.y < cw - .15 ? 1 : 0) : cam.position.y < cw - .08 ? 1 : 0, Math.min(1, dt * 12)); // a surfaced sub still puts your eye under the waterline: the viewports look into the sea and up at its underside G.uwC = G.subIn ? mix(G.uwC || 0, lockWet() ? 1 : 0, Math.min(1, dt * 12)) : G.uw; // look vs camera-in-water (the sub's hull keeps you dry)
+  const cw = waveH(cam.position.x, cam.position.z, G.wt); G.uw = mix(G.uw || 0, G.subIn ? ((B.dep || 0) > 1 || cam.position.y < cw - .15 ? 1 : 0) : cam.position.y < cw - .08 ? 1 : 0, Math.min(1, dt * 12)); // a surfaced sub still puts your eye under the waterline: the viewports look into the sea and up at its underside
+  G.uwC = G.subIn ? mix(G.uwC || 0, lockWet() ? 1 : 0, Math.min(1, dt * 12)) : G.uw; // look vs camera-in-water (the sub's hull keeps you dry)
   { const und = G.uw > .5, U = MAT.sea.userData.U; sky.uw.value = und ? 1 : 0; U.uUs.value.w = und ? 1 : 0;
     if (und) { // underwater: clearer for the first 30 m so wreck silhouettes read, then the deep closes in; the sky becomes a lit-from-above gradient
       const dl = .25 + .75 * TOD.day, dp = cw - cam.position.y, dpt = clamp(dp / 80, 0, 1); scene.fog.color.setRGB(.012 * dl, .07 * dl, .08 * dl).multiplyScalar(1 - dpt * .92); scene.background.copy(scene.fog.color);
       scene.fog.density = mix(.035, mix(.06, .045, dpt), smooth((dp - 30) / 12)); const fc = scene.fog.color; sky.deepC.value.copy(fc).multiplyScalar(.68); sky.surfC.value.copy(fc).multiplyScalar(2.2); sky.uwk.value = TOD.day * (1 - dpt) * (1 - st * .6);
       const k = (.08 + .92 * TOD.day) * (1 - st * .5) * (1 - dpt * .7); U.uUs.value.set(.3 * k + fc.r, .5 * k + fc.g, .5 * k + fc.b, 1); U.uUd.value.copy(fc).multiplyScalar(.7); } }
-  if (SNOW) { SNOW.visible = G.uw > .5; if (SNOW.visible) { const u = SNOW.material.uniforms; u.uT.value = G.wt; u.uC.value.copy(cam.position); u.uCol.value.copy(scene.fog.color).multiplyScalar(3).addScalar(.05 * (.3 + .7 * TOD.day)); } }
+  if (SNOW) { SNOW.visible = G.uw > .5 && (!G.subIn || lockWet()); if (SNOW.visible) { const u = SNOW.material.uniforms; u.uT.value = G.wt; u.uC.value.copy(cam.position); u.uCol.value.copy(scene.fog.color).multiplyScalar(3).addScalar(.05 * (.3 + .7 * TOD.day)); } }
   const sbv = G.uw > .3 || (B.dep || 0) > .5; if (SEABED && SEABED.material.userData.sh) { const u = SEABED.material.userData.sh.uniforms; u.uT.value = G.wt; u.uC.value = TOD.day * (1 - G.storm * .7); } if (SEABED) { SEABED.visible = sbv; if (sbv && Math.hypot(cam.position.x - SEABED.userData.cx, cam.position.z - SEABED.userData.cz) > 40) seabedAt(cam.position.x, cam.position.z); }
   for (const q of SUNK) q.m.visible = sbv && !q.got && Math.abs(q.x - cam.position.x) < 120 && Math.abs(q.z - cam.position.z) < 120 && Math.hypot(q.x - cam.position.x, q.z - cam.position.z) < 120; if (DEEPG) { DEEPG.visible = sbv; if (sbv && DEEPG.userData.kT) DEEPG.userData.kT.value = G.wt; }
   if (CRZ.reds && !CRZ.redS) { CRZ.redS = CRZ.reds.map(([x, y, z]) => { const s = new THREE.Sprite(new THREE.SpriteMaterial({map: TX.glow, color: 0xff2010, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending})); s.scale.setScalar(1.6); s.position.set(x, y, z); scene.add(s); return s; }); }
@@ -6303,6 +6305,19 @@ function hitFx(x, y, z, head, by) {
   if (by && by === myId()) { const xh = $('xhair'); if (xh) { xh.classList.remove('h', 'hh'); xh.classList.add(head ? 'hh' : 'h'); clearTimeout(G.xhT); G.xhT = setTimeout(() => xh.classList.remove('h', 'hh'), 140); } Snd.hitTick(head); }
 }
 const _lo2 = {};
+// friendly fire (host setting): bullets hit crewmates too; enough hits in a short time knocks them down (revivable)
+function ffShoot(p, m, pel) { const o = m.o, d = m.d;
+  for (const q of PL.values()) { if (q === p || !q.ready || q.down || q.dead || q.seat || q.hd >= 0) continue;
+    const fy = q.sw ? -(q.dv || 0) - 1 : q.y, hi = fy + (q.cr ? 1.15 : 1.8); let dmg = 0, head = false, hp = null;
+    if (Math.hypot(q.x - o[0], q.z - o[2]) > 70) continue;
+    for (const j of pel) { let ux = d[0] + j[0], uy = d[1] + j[1], uz = d[2] + j[2]; const l = Math.hypot(ux, uy, uz); ux /= l; uy /= l; uz /= l;
+      const hh = ux * ux + uz * uz, t = hh > 1e-6 ? ((q.x - o[0]) * ux + (q.z - o[2]) * uz) / hh : 0; if (t <= .3 || t > 70) continue;
+      const px = o[0] + ux * t, py = o[1] + uy * t, pz = o[2] + uz * t; if (Math.hypot(px - q.x, pz - q.z) > .4 || py < fy || py > hi + .1) continue;
+      if (!q.sw && !p.sw && !seeLine(o[0], o[1] - 1.5, o[2], px, py - 1, pz)) continue;
+      const h = py > hi - .3; dmg += (m.w === 'g' ? 10 : 7 * (t > 20 ? .4 : 1)) * hsMul(m) * (h ? 2 : 1); head = head || h; hp = [px, py, pz]; }
+    if (!dmg) continue; q.ffd = (q.ffd || 0) * Math.max(0, 1 - (G.t - (q.ffT || 0)) / 20) + dmg; q.ffT = G.t;
+    emit({k: 'ffhit', id: q.id, by: p.id, x: +hp[0].toFixed(2), y: +hp[1].toFixed(2), z: +hp[2].toFixed(2), head});
+    if (q.ffd >= 30) { q.ffd = 0; q.down = true; q.bleed = bleedFor(q); q.hd = -1; q.seat = 0; if (B.driver === q.id) B.driver = null; dropCarry(q); emit({k: 'down', id: q.id, how: 'ff', by: p.id}); } } }
 function hostShoot(p, m) {
   const o = m.o, d = m.d; if (!o || !d || p.down || p.dead) return;
   emit({k: 'shot', id: p.id, x: o[0], y: o[1], z: o[2], w: m.w}); noise(o[0], o[1] - 1.5, o[2], m.w === 'g' ? 60 : 80);
@@ -6336,6 +6351,7 @@ function hostShoot(p, m) {
       else if (out) { if (STS.state !== 'flee') { STS.state = 'flee'; STS.flee = 6; STS.aware = 0; const n = CN[CN.ok[Math.floor(CR() * CN.ok.length)]]; if (n) stwGo(n.x, n.y, n.z); emit({k: 'snd', s: 'shriekS'}); } }
       else if (STS.state !== 'chase') { STS.state = 'chase'; STS.tgt = p.id; STS.lx = p.x; STS.ly = p.y; STS.lz = p.z; STS.lost = 0; STS.aware = 1.5; STS.seenAt = G.t; STS.seenId = p.id; } }
   }
+  if (SET.ff === 'on') ffShoot(p, m, pel);
   if (dm) {
     // shooting from a boat or the dock does little, and it goes to ground behind a wall
     const far = !nearRig(p.x, p.z); if (far) dm *= .35;
@@ -6417,7 +6433,7 @@ function updateTools(dt) {
   G.recoil = Math.max(0, (G.recoil || 0) - dt * 6); const rc = G.recoil || 0, rl = P.reload > 0 ? Math.sin(Math.min(1, P.reload) * PI) : 0;
   VMG.position.set(.16, -.16 - rl * .12, -.34 + rc * .05); VMG.rotation.x = rc * .3 - rl * .6;
   VMS.position.set(.17, -.19 - rl * .08, -.38 + rc * .1); VMS.rotation.x = rc * .25;
-  const aim = mouseR && own && P.eq >= 3; G.aimK = mix(G.aimK || 0, aim ? 1 : 0, Math.min(1, dt * 10));
+  const aim = (mouseR || K.KeyQ) && own && P.eq >= 3; G.aimK = mix(G.aimK || 0, aim ? 1 : 0, Math.min(1, dt * 10));
   if (G.aimK > .01) { VMG.position.x = mix(.16, 0, G.aimK); VMG.position.y += G.aimK * .05; VMS.position.x = mix(.17, 0, G.aimK); VMS.position.y += G.aimK * .07; }
   G.runK = mix(G.runK || 0, P && P.run ? 1 : 0, Math.min(1, dt * 4)); const fov = mix((SET.fov || 70) + G.runK * 6 + (G.fovAdd || 0) - (G.js && G.js.t > 0 ? 12 : 0) - (P && P.cas ? (P.cas.t === 'bj' ? 20 : 10) : 0) - (binoOn() ? (SET.fov || 70) - 15 : 0), P && P.own && P.own.sg === 2 && P.eq === 4 ? 24 : 52, G.aimK); if (Math.abs(cam.fov - fov) > .05) { cam.fov = fov; cam.updateProjectionMatrix(); }
   $('xhair').classList.toggle('hidden', !(own && P.eq >= 3));
@@ -7136,7 +7152,7 @@ function joinRoom(code) {
   $('code').textContent = code; show('lobby'); $('bGo').classList.add('hidden'); $('lmsg').textContent = 'Connecting…'; $('crew').innerHTML = '';
 }
 function menuInit() {
-  document.querySelectorAll('.seg').forEach(s => { const k = s.dataset.k, upd = () => s.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.v === SET[k])); s.querySelectorAll('button').forEach(b => b.onclick = () => { SET[k] = b.dataset.v; saveSet(); upd(); }); upd(); });
+  document.querySelectorAll('.seg').forEach(s => { const k = s.dataset.k, upd = () => document.querySelectorAll(`.seg[data-k="${k}"] button`).forEach(b => b.classList.toggle('on', b.dataset.v === SET[k])); s.querySelectorAll('button').forEach(b => b.onclick = () => { SET[k] = b.dataset.v; saveSet(); upd(); }); upd(); });
   $('sens').value = SET.sens; $('sens').oninput = e => { SET.sens = +e.target.value; saveSet(); };
   $('bright').value = SET.bright; $('bright').oninput = e => { SET.bright = +e.target.value; saveSet(); };
   const setVol = v => { SET.vol = v; saveSet(); if (A.out) A.out.gain.value = 1.15 * v; };
@@ -7996,7 +8012,7 @@ function uwxFrame(dt) { if (!G.on || !P) return; uwxInit(); const cp = cam.posit
   // a little clearer in the sunlit shallows by day; the deep stays black
   if ((G.uw || 0) > .5) { const clear = day * (1 - smooth(dp / 35)); scene.fog.density *= mix(1, .7, clear); scene.fog.color.lerp(new THREE.Color(.03, .16, .18), clear * .35); scene.background.copy(scene.fog.color); if (dp > 60) { scene.fog.density = Math.max(scene.fog.density, mix(.05, .075, smooth((dp - 60) / 60))); scene.fog.color.multiplyScalar(mix(1, .35, smooth((dp - 60) / 80))); scene.background.copy(scene.fog.color); } }
   // sun shafts
-  const sk = see ? day * (1 - smooth(dp / 45)) * (1 - G.storm * .7) : 0; for (const S of UWX.shafts) { S.g.visible = sk > .01; if (!S.g.visible) continue; S.a += dt * .02; const x = cp.x + Math.cos(S.a) * S.r, z = cp.z + Math.sin(S.a) * S.r; S.g.position.set(x, waveH(x, z, t), z); S.g.rotation.z = Math.sin(t * .3 + S.s) * .12 + .15; S.g.rotation.x = Math.cos(t * .25 + S.s) * .08;
+  const sk = see && !G.subIn ? day * (1 - smooth(dp / 45)) * (1 - G.storm * .7) : 0; for (const S of UWX.shafts) { S.g.visible = sk > .01; if (!S.g.visible) continue; S.a += dt * .02; const x = cp.x + Math.cos(S.a) * S.r, z = cp.z + Math.sin(S.a) * S.r; S.g.position.set(x, waveH(x, z, t), z); S.g.rotation.z = Math.sin(t * .3 + S.s) * .12 + .15; S.g.rotation.x = Math.cos(t * .25 + S.s) * .08;
     for (const m of S.g.children) m.material.opacity = sk * (.06 + .05 * Math.sin(t * .7 + S.s)); }
   // fish schools: a shoal that circles near you in the shallows and bolts when you move fast or a flare burns
   const fon = see && dp < 45 && day + .3 * (1 - TOD.day) > .15; UWX.fish.visible = fon; if (fon) { if (!UWX.sc || Math.hypot(UWX.sc.x - cp.x, UWX.sc.z - cp.z) > 40) UWX.sc = {x: cp.x + (Math.random() - .5) * 30, y: cp.y - 2, z: cp.z + (Math.random() - .5) * 30, a: 0, flee: 0};

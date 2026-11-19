@@ -109,7 +109,7 @@ Read `CLAUDE.md` first (shared rules). Split out of it on 17 Nov 2026; keep this
   - Sync: the pose field `em` (index + 1). `emotePose` poses the joints. Looping emotes keep going while you walk (griddy walking).
   - Your own emote shows in third person (`emoteSelf`). The camera sits in front of you while you stand still (the mouse orbits it, `G.emOrb`) and swings behind your shoulder while you move. `emCamDist` pulls it in front of WALLS and the boat's BW (walls taller than 1.3 m), it stays above `landH`, and crewmates in the shot are hidden. It stays first person inside cabins or with less than 1.4 m of room.
 - **Names:** Host and Join need a name of at least 2 letters (`needName`). Solo still defaults to Deckhand.
-- `GAME_V` 67, because the pose has new fields (68 after the handover, fast travel and review-fix batch).
+- `GAME_V` 67, because the pose has new fields (68 after the handover, fast travel and review-fix batch; 69 for friendly fire).
 
 **Persistent loot and fast travel (v67, 19 Nov 2026).**
 - **World seed:** `worldSeed(sv)` keeps the seed in the save (`ws`), so `placeItems`/`placeSunk` put the same loot in the same places every voyage. `hostStart` and Play solo both use it.
@@ -244,3 +244,5 @@ Read `CLAUDE.md` first (shared rules). Split out of it on 17 Nov 2026; keep this
    - The deep stays black and oppressive.
 
 Still deferred from round 2 (see the round-2 plan): selling and shopping aboard the claimed Serenade, a shipyard and job boards at Northwatch and on piers, casino prize counter and extra games, a live menu background, a music score and audio buses with Music/Effects sliders, more sound effects and ambience, underwater light shafts and an island rock/sand shader, more GPU performance work, host migration and touch controls. Round 2 shipped with minimal testing at the owner's request: online play of the new features (casino tables, tender, ghost ship and maydays, job board) has not been tried with two players.
+
+**Friendly fire, Q aim, sub view fix (v69, 19 Nov 2026).** Host setting `SET.ff` ('off'/'on', seg `data-k="ff"` in the menu and the pause menu's Controls and view; segs with the same key stay in sync). `ffShoot(p, m, pel)` runs in hostShoot when on: rays vs crewmates (not seated/hidden/down, LOS via seeLine), damage like the monster's, pooled in `q.ffd` (decays over 20 s), 30 knocks them down (revivable, event `down` how 'ff', no monster side effects); event `ffhit` gives the victim a flash/shake and the shooter a hit marker. Holding Q aims a pistol/shotgun/rifle like RMB (Q whistles only with other tools). Sub: the `G.uwC` line had been swallowed by a comment, so the post-process wobble/tint and muffled audio ran inside the hull; fixed, and marine snow and sun shafts are hidden while the camera is inside (unless the lock is flooded).
