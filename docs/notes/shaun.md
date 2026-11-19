@@ -36,6 +36,13 @@ The owner's design brief is **brain-off**: no skill needed beyond sweeping the g
 - **Deaths:** harder knock-back, half of non-gibbed bugs thrash for 1.2-2.6 s (`b.thr`, big slow leg flails), ichor pumps out for 1.6 s and sliding corpses kick dust (within 70 m), death sounds more often.
 - **Atmosphere:** radio chatter (`RADIO` lines, `radio(kind)`: start, idle every 16-30 s, low armour, titan, streak 150s; `radio` buffer is a click + garbled band-limited talk; typed out in a box at the bottom, `RAD`). Dropship flyovers every 35-70 s (`FLY` = clone of `SHIP`, `flyby` sound, drops flares). Other outposts fighting on the horizon (`FLANK`: tracer bursts, flashes, faint crackle). Wind gusts (`gust` drives wind loop gain/cutoff and sheets of blowing dust).
 
+## Visual pass (19 Nov 2026)
+- **Baked terrain lighting:** `bakeAt` marches a soft sun shadow across the heightfield (sun is ~6 degrees up, so dunes throw long shadows) and computes 8-direction horizon AO, stored per vertex in a `bake` attribute (x = sun visibility, y = AO) on both terrain meshes. `bakedShader` (groundM `onBeforeCompile`) multiplies direct light by x and indirect by y, adds a macro anti-tiling sample, `../tex/ground_c.jpg` detail and darker red steep faces. `BK` grid + `sunVis(x, z)` lets bugs (instance colour) and rocks darken in dune shadow.
+- **Mesas:** 40x22 segment eroded cylinders with gullies, base terraces, baked strata colours and base AO (vertex colours), `wall_n` normal map; 7 nearer buttes at 480-700 m; a far ragged ridge ring at ~3.3 km lost in haze. Fog is lighter (`FogExp2` 0.00105, warmer colour) so the strata read.
+- **Sky:** streaky high cloud/dust layers (`fb` noise, lit hot near the sun, drift with `ct`), a pale banded gas giant low in the east.
+- **Post:** light shafts in `compM` (32-tap radial blur of pixels brighter than 1.1 toward the sun's screen position, `sun`/`sunI` set in `render`).
+- **Bugs:** soft contact shadows (`SHD` instanced pool, one per drawn bug, shrinks while leaping). Rocks: 420, vertex AO + `prop_n`. First-person gun is rougher/less metallic so it doesn't glare into the sun.
+
 ## Code map (`shaun/game.js`; UI in `shaun/index.html`)
 - **Renderer:** own post chain (`render`). The scene goes to a HalfFloat MSAA RT, then a bright pass, two blur levels, and the composite `compM`, which does ACES, gamma, vignette, grain, chromatic aberration and the damage tint. The renderer itself has `NoToneMapping`. Low quality (`SET.gfx`) lowers the pixel ratio and turns off shadows and MSAA.
 - **World:**
@@ -90,6 +97,7 @@ The owner's design brief is **brain-off**: no skill needed beyond sweeping the g
 - Headless Chromium needs `--use-angle=swiftshader --enable-unsafe-swiftshader`. It is very slow at this scene size, so keep the step counts small.
 
 ## Changelog
+- 19 Nov 2026, visual pass: baked dune shadows + AO, stratified eroded mesas and far ridge, cloud sky + gas giant, god rays, bug contact shadows, more rocks.
 - 19 Nov 2026, feel pass: heavier gun (thump, echo tail, roar, real muzzle climb, slower spin), planted-foot bug gait, slope pitch, bugs climbing each other at the line, death throes and pumping ichor, hit-stop on brutes, radio chatter, dropship flyovers, distant outpost firefights, wind gusts.
 - 19 Nov 2026: aim assist removed: free aim up/down/left/right, rounds are real ray hits where the crosshair points.
 - 19 Nov 2026: no more waves: one endless, escalating horde from the first second, kill streak counter with armour payouts, kills patch armour, more gibs, best score = kills.

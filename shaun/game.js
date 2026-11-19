@@ -93,8 +93,8 @@ RND.toneMapping = THREE.NoToneMapping; RND.shadowMap.enabled = true; RND.shadowM
 const scene = new THREE.Scene();
 const cam = new THREE.PerspectiveCamera(72, innerWidth / innerHeight, .03, 6000);
 scene.add(cam);
-const FOG = new THREE.Color(.6, .42, .3);
-scene.fog = new THREE.FogExp2(FOG, .0016);
+const FOG = new THREE.Color(.74, .5, .35);
+scene.fog = new THREE.FogExp2(FOG, .00105);
 const POST = {};
 function mkRT(w, h, ms) { return new THREE.WebGLRenderTarget(w, h, {type: THREE.HalfFloatType, samples: ms || 0, depthBuffer: !!ms || ms === 0 && false}); }
 const fsCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1), fsScene = new THREE.Scene();
@@ -104,13 +104,16 @@ const brightM = new THREE.ShaderMaterial({uniforms: {t: {value: null}, px: {valu
   fragmentShader: 'uniform sampler2D t; uniform vec2 px; varying vec2 vUv; void main(){ vec3 c = (texture2D(t, vUv + px*vec2(-1.,-1.)).rgb + texture2D(t, vUv + px*vec2(1.,-1.)).rgb + texture2D(t, vUv + px*vec2(-1.,1.)).rgb + texture2D(t, vUv + px*vec2(1.,1.)).rgb) * .25; float l = max(c.r, max(c.g, c.b)); c *= smoothstep(1.6, 4., l); gl_FragColor = vec4(min(c, vec3(30.)), 1.); }'});
 const blurM = new THREE.ShaderMaterial({uniforms: {t: {value: null}, d: {value: new THREE.Vector2()}}, vertexShader: VS, depthTest: false,
   fragmentShader: 'uniform sampler2D t; uniform vec2 d; varying vec2 vUv; void main(){ vec3 c = texture2D(t, vUv).rgb * .227; c += (texture2D(t, vUv + d*1.38).rgb + texture2D(t, vUv - d*1.38).rgb) * .316; c += (texture2D(t, vUv + d*3.23).rgb + texture2D(t, vUv - d*3.23).rgb) * .07; gl_FragColor = vec4(c, 1.); }'});
-const compM = new THREE.ShaderMaterial({uniforms: {t: {value: null}, b: {value: null}, b2: {value: null}, time: {value: 0}, bloom: {value: .9}, exp: {value: 1}, dmg: {value: 0}, ab: {value: .0008}, res: {value: new THREE.Vector2()}}, vertexShader: VS, depthTest: false,
-  fragmentShader: `uniform sampler2D t, b, b2; uniform float time, bloom, exp, dmg, ab; uniform vec2 res; varying vec2 vUv;
+const compM = new THREE.ShaderMaterial({uniforms: {sun: {value: new THREE.Vector2(.5, .5)}, sunI: {value: 0}, t: {value: null}, b: {value: null}, b2: {value: null}, time: {value: 0}, bloom: {value: .9}, exp: {value: 1}, dmg: {value: 0}, ab: {value: .0008}, res: {value: new THREE.Vector2()}}, vertexShader: VS, depthTest: false,
+  fragmentShader: `uniform sampler2D t, b, b2; uniform float time, bloom, exp, dmg, ab, sunI; uniform vec2 res, sun; varying vec2 vUv;
   vec3 aces(vec3 x){ return clamp((x*(2.51*x+.03))/(x*(2.43*x+.59)+.14), 0., 1.); }
   float hash(vec2 p){ return fract(sin(dot(p, vec2(12.9898,78.233)) + time*7.13) * 43758.5453); }
   void main(){ vec2 d = vUv - .5; float r = dot(d, d); vec2 o = d * ab * (1. + dmg*3.);
     vec3 c = vec3(texture2D(t, vUv + o).r, texture2D(t, vUv).g, texture2D(t, vUv - o).b);
     c += (texture2D(b, vUv).rgb * .6 + texture2D(b2, vUv).rgb * .8) * bloom;
+    if (sunI > .001) { vec2 dd = (sun - vUv) / 32.; vec2 u2 = vUv + dd * hash(vUv * res); vec3 gr = vec3(0.); float w = 1.; // light shafts through dust, bugs and smoke
+      for (int i = 0; i < 32; i++) { u2 += dd; vec3 s = texture2D(t, clamp(u2, 0., 1.)).rgb; gr += max(s - 1.1, 0.) * w; w *= .95; }
+      c += gr / 32. * sunI * vec3(1., .78, .55) * 1.6; }
     c = aces(c * exp * .6);
     float lu = dot(c, vec3(.2126, .7152, .0722)); c = mix(vec3(lu), c, .82);
     c = pow(c, vec3(1./2.2));
@@ -129,6 +132,7 @@ function setupPost() {
   RND.shadowMap.enabled = HI(); if (window.SUN) { SUN.castShadow = HI(); RND.shadowMap.needsUpdate = true; }
 }
 function pass(mat, target) { fsQuad.material = mat; RND.setRenderTarget(target); RND.render(fsScene, fsCam); }
+const _gv = new THREE.Vector3();
 function render() {
   RND.setRenderTarget(POST.main); RND.render(scene, cam);
   brightM.uniforms.t.value = POST.main.texture; brightM.uniforms.px.value.set(1 / POST.w, 1 / POST.h); pass(brightM, POST.a);
@@ -139,6 +143,7 @@ function render() {
   blurM.uniforms.t.value = POST.d.texture; blurM.uniforms.d.value.set(0, 1.5 / POST.c.height); pass(blurM, POST.c);
   compM.uniforms.t.value = POST.main.texture; compM.uniforms.b.value = POST.a.texture; compM.uniforms.b2.value = POST.c.texture;
   compM.uniforms.bloom.value = HI() ? .4 : .25;
+  { _gv.copy(SUN_DIR).multiplyScalar(1000).add(cam.position).project(cam); const f = _gv.z < 1 ? clamp(1.4 - Math.hypot(_gv.x, _gv.y) * .7, 0, 1) : 0; compM.uniforms.sun.value.set(_gv.x * .5 + .5, _gv.y * .5 + .5); compM.uniforms.sunI.value = f * (HI() ? 1 : .6); }
   pass(compM, null);
 }
 
@@ -179,9 +184,12 @@ function ltex(p, srgb, rep) { const t = texL.load(p); if (srgb) t.colorSpace = T
 
 // ---------------- sky + lights
 const SUN_DIR = new THREE.Vector3(-.55, .1, -.83).normalize();
-const skyM = new THREE.ShaderMaterial({side: THREE.BackSide, depthWrite: false, fog: false, uniforms: {sunDir: {value: SUN_DIR}, flash: {value: 0}},
+const skyM = new THREE.ShaderMaterial({side: THREE.BackSide, depthWrite: false, fog: false, uniforms: {sunDir: {value: SUN_DIR}, flash: {value: 0}, ct: {value: 0}},
   vertexShader: 'varying vec3 vD; void main(){ vD = position; vec4 p = projectionMatrix * modelViewMatrix * vec4(position, 1.); gl_Position = p.xyww; }',
-  fragmentShader: `uniform vec3 sunDir; uniform float flash; varying vec3 vD;
+  fragmentShader: `uniform vec3 sunDir; uniform float flash, ct; varying vec3 vD;
+  float hs(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+  float vn(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3. - 2. * f); return mix(mix(hs(i), hs(i + vec2(1., 0.)), f.x), mix(hs(i + vec2(0., 1.)), hs(i + vec2(1., 1.)), f.x), f.y); }
+  float fb(vec2 p){ float s = 0., a = .5; for (int i = 0; i < 5; i++) { s += a * vn(p); p = p * 2.03 + 17.; a *= .5; } return s; }
   void main(){ vec3 d = normalize(vD); float e = d.y;
     vec3 zen = vec3(.06, .065, .1), mid = vec3(.4, .26, .18), hor = vec3(1.15, .72, .46);
     float t = max(e, 0.); vec3 c = mix(hor, mid, smoothstep(0., .16, t)); c = mix(c, zen, smoothstep(.1, .65, t));
@@ -191,6 +199,15 @@ const skyM = new THREE.ShaderMaterial({side: THREE.BackSide, depthWrite: false, 
     c += vec3(22., 15., 9.) * smoothstep(.9993, .9996, sd);
     c += vec3(.8, .55, .35) * exp(-abs(e) * 16.) * .2;
     float bands = sin(e * 90. + d.x * 3.) * .5 + .5; c *= 1. - .02 * bands * smoothstep(.02, .2, e) * (1. - smoothstep(.2, .5, e));
+    // a big pale gas giant low in the east, half lit by the sun
+    vec3 pd = normalize(vec3(.62, .2, -.76)); float pdd = dot(d, pd);
+    if (pdd > .9978) { vec3 off = d - pd * pdd; float rr = length(off) / sqrt(1. - .9978 * .9978); vec3 sn = normalize(off + pd * sqrt(max(0., 1. - rr * rr)) * .17);
+      float lit = clamp(dot(sn, sunDir) * 3. + .35, 0., 1.), band = .85 + .15 * sin(off.y * 2400. + sin(off.x * 800.) * 2.);
+      vec3 pc = mix(vec3(.12, .1, .13), vec3(.62, .5, .44) * band, lit); c = mix(c, pc + c * .45, smoothstep(1., .96, rr) * .65); }
+    // streaky high cloud and dust layers, lit hot near the sun
+    if (e > 0.) { vec2 uv = d.xz / (e + .06); float n = fb(uv * vec2(.7, 2.4) + vec2(ct * .006, 0.)), n2 = fb(uv * 3.1 - vec2(ct * .01, 3.));
+      float cl = smoothstep(.48, .82, n * .8 + n2 * .3) * smoothstep(0., .1, e) * (1. - smoothstep(.45, .85, e));
+      vec3 cc = mix(vec3(.2, .13, .12), vec3(1.6, .82, .45), clamp(pow(sd, 3.) * 1.2 + .12, 0., 1.)); c = mix(c, cc, cl * .7); }
     c += vec3(1., .6, .3) * flash * exp(-abs(e) * 10.);
     gl_FragColor = vec4(c, 1.); }`});
 const sky = new THREE.Mesh(new THREE.SphereGeometry(4000, 32, 16), skyM); sky.frustumCulled = false; sky.renderOrder = -10; scene.add(sky);
@@ -224,37 +241,78 @@ function groundCol(x, z, h, arr, k) {
   const n = fbm(x * .02 + 5, z * .02), t = clamp(h / 8 + .5, 0, 1);
   arr[k] = .85 + n * .3 - (1 - t) * .15; arr[k + 1] = .72 + n * .2 - (1 - t) * .12; arr[k + 2] = .62 + n * .15 - (1 - t) * .1;
 }
+// ---- baked lighting: soft sun shadows marched across the heightfield + horizon ambient occlusion, per vertex.
+// The sun sits ~6 degrees up, so every dune throws a long shadow; the shadow map only covers ~70 m around the line.
+const SUNH = Math.hypot(SUN_DIR.x, SUN_DIR.z), SDX = SUN_DIR.x / SUNH, SDZ = SUN_DIR.z / SUNH, STAN = SUN_DIR.y / SUNH;
+function bakeAt(x, z, h, far) {
+  const hf = far ? (a, b) => H0(a, b) - 2.5 : gH; let vis = 1, d = far ? 30 : 2;
+  for (let i = 0; i < (far ? 22 : 42); i++) { const th = hf(x + SDX * d, z + SDZ * d), ry = h + .25 + STAN * d; vis = Math.min(vis, clamp(.5 + (ry - th) / (d * .045 + .3), 0, 1)); if (vis <= 0) break; d *= far ? 1.18 : 1.13; }
+  let occ = 0; if (!far) for (let k = 0; k < 8; k++) { const a = k / 8 * TAU, cx = Math.cos(a), cz = Math.sin(a); let m = 0; for (const r of [2.5, 7, 16, 36]) m = Math.max(m, (gH(x + cx * r, z + cz * r) - h) / r); occ += Math.atan(Math.max(0, m)); }
+  return [vis * vis * (3 - 2 * vis), 1 - clamp(occ / 8 * 1.5, 0, .55)];
+}
+const BK = new Float32Array(GN * GN); // sun visibility on the grid (bugs use it too)
+function sunVis(x, z) { const fx = (x + GE) / GS, fz = (z + GE) / GS; if (fx < 0 || fz < 0 || fx >= GN - 1 || fz >= GN - 1) return 1; const i = fx | 0, j = fz | 0, u = fx - i, v = fz - j;
+  return mix(mix(BK[j * GN + i], BK[j * GN + i + 1], u), mix(BK[(j + 1) * GN + i], BK[(j + 1) * GN + i + 1], u), v); }
 const groundM = new THREE.MeshStandardMaterial({map: sandTex, normalMap: ltex('../tex/ground_n.jpg', false), roughness: .96, metalness: 0, vertexColors: true});
 groundM.normalScale.set(.6, .6);
+const detailT = ltex('../tex/ground_c.jpg', false);
+function bakedShader(sh, ground) {
+  sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute vec2 bake; varying vec2 vBake; varying vec3 vWp;').replace('#include <begin_vertex>', '#include <begin_vertex>\nvBake = bake; vWp = (modelMatrix * vec4(position, 1.)).xyz;');
+  let f = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec2 vBake; varying vec3 vWp;' + (ground ? ' uniform sampler2D detail;' : ''));
+  if (ground) { sh.uniforms.detail = {value: detailT};
+    f = f.replace('#include <map_fragment>', `#include <map_fragment>
+      float mm = dot(texture2D(map, vWp.xz * .0137).rgb, vec3(.3, .6, .1)) / .3; diffuseColor.rgb *= mix(1., mm, .35); // breaks up tiling
+      float dl = texture2D(detail, vWp.xz * .8).r; diffuseColor.rgb *= .78 + dl * .5;
+      vec3 wn = normalize(cross(dFdx(vWp), dFdy(vWp))); diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(.82, .66, .58), smoothstep(.93, .8, abs(wn.y))); // steep faces: darker, redder`); }
+  sh.fragmentShader = f.replace('#include <lights_fragment_end>', '#include <lights_fragment_end>\nreflectedLight.directDiffuse *= vBake.x; reflectedLight.directSpecular *= vBake.x; reflectedLight.indirectDiffuse *= vBake.y;');
+}
+groundM.onBeforeCompile = sh => bakedShader(sh, true);
 {
   const g = new THREE.PlaneGeometry(GE * 2, GE * 2, GN - 1, GN - 1); g.rotateX(-PI / 2);
   const p = g.attributes.position, col = new Float32Array(p.count * 3), uv = g.attributes.uv;
   for (let i = 0; i < p.count; i++) { const x = p.getX(i), z = p.getZ(i), h = gH(x, z); p.setY(i, h); groundCol(x, z, h, col, i * 3); uv.setXY(i, x / 7, z / 7); }
   g.setAttribute('color', new THREE.BufferAttribute(col, 3)); g.computeVertexNormals();
+  { const bk = new Float32Array(p.count * 2); for (let i = 0; i < p.count; i++) { const x = p.getX(i), z = p.getZ(i), r = bakeAt(x, z, p.getY(i), false); bk[i * 2] = r[0]; bk[i * 2 + 1] = r[1]; const gi = Math.round((x + GE) / GS), gj = Math.round((z + GE) / GS); if (gi >= 0 && gj >= 0 && gi < GN && gj < GN) BK[gj * GN + gi] = r[0]; } g.setAttribute('bake', new THREE.BufferAttribute(bk, 2)); }
   const m = new THREE.Mesh(g, groundM); m.receiveShadow = true; scene.add(m);
   const g2 = new THREE.PlaneGeometry(9000, 9000, 120, 120); g2.rotateX(-PI / 2);
   const p2 = g2.attributes.position, c2 = new Float32Array(p2.count * 3), uv2 = g2.attributes.uv;
   for (let i = 0; i < p2.count; i++) { const x = p2.getX(i), z = p2.getZ(i), h = H0(x, z) - 2.5; p2.setY(i, h); groundCol(x, z, h, c2, i * 3); uv2.setXY(i, x / 7, z / 7); }
   g2.setAttribute('color', new THREE.BufferAttribute(c2, 3)); g2.computeVertexNormals();
+  { const bk = new Float32Array(p2.count * 2); for (let i = 0; i < p2.count; i++) { const r = bakeAt(p2.getX(i), p2.getZ(i), p2.getY(i), true); bk[i * 2] = r[0]; bk[i * 2 + 1] = .9; } g2.setAttribute('bake', new THREE.BufferAttribute(bk, 2)); }
   scene.add(new THREE.Mesh(g2, groundM));
 }
-// mesas
+// mesas: eroded, gullied, layered sandstone with baked strata colours and base occlusion; plus a far hazy range behind them
 {
-  const m = new THREE.MeshStandardMaterial({color: 0x725442, roughness: 1});
-  for (let i = 0; i < 16; i++) {
-    const a = -1.9 + i * .24 + rnd(-.08, .08), r = rnd(900, 1700), h = rnd(60, 190), rt = rnd(60, 170);
-    const g = new THREE.CylinderGeometry(rt, rt * rnd(1.15, 1.5), h, 9, 4); const p = g.attributes.position;
-    for (let k = 0; k < p.count; k++) { const y = p.getY(k), s = 1 + (fbm(p.getX(k) * .02 + i, y * .05) - .5) * .5; p.setX(k, p.getX(k) * s); p.setZ(k, p.getZ(k) * s); if (y > h / 2 - 1) p.setY(k, y + (fbm(p.getX(k) * .03, p.getZ(k) * .03) - .5) * 14); }
-    g.computeVertexNormals(); const me = new THREE.Mesh(g, m); me.position.set(Math.sin(a) * r, h / 2 - 8 + H0(Math.sin(a) * r, -Math.cos(a) * r) * .2, -Math.cos(a) * r); scene.add(me);
-  }
+  const m = new THREE.MeshStandardMaterial({color: 0xffffff, vertexColors: true, roughness: 1, normalMap: ltex('../tex/wall_n.jpg', false, 1)}); m.normalScale.set(.8, .8);
+  const C1 = [.62, .36, .24], C2 = [.78, .56, .4], C3 = [.4, .25, .19], C4 = [.7, .45, .3];
+  const strata = (y, k) => { const b = Math.sin(y * .21 + Math.sin(y * .05 + k) * 2) * .5 + .5, b2 = Math.sin(y * .63 + k * 3) * .5 + .5; const A = b > .6 ? C2 : b < .25 ? C3 : C1; return [mix(A[0], C4[0], b2 * .3), mix(A[1], C4[1], b2 * .3), mix(A[2], C4[2], b2 * .3)]; };
+  const mesa = (x, z, h, rt, i, sc) => {
+    const g = new THREE.CylinderGeometry(rt, rt * rnd(1.2, 1.55), h, 40, 22); const p = g.attributes.position, col = new Float32Array(p.count * 3);
+    for (let k = 0; k < p.count; k++) { const px = p.getX(k), y = p.getY(k), pz = p.getZ(k), an = Math.atan2(pz, px), yn = y / h + .5;
+      let s = 1 + (fbm(Math.cos(an) * 2 + i, y * .03) - .5) * .55; s *= 1 - .09 * Math.pow(Math.abs(Math.sin(an * 7 + fbm(an * 2, i) * 4)), 4) * (1 - yn * .3); // gullies
+      s *= 1 + .05 * Math.floor(Math.max(0, .5 - yn) * 6) / 3; // talus terraces toward the base
+      p.setX(k, px * s); p.setZ(k, pz * s); if (y > h / 2 - 1) p.setY(k, y + (fbm(px * .03, pz * .03) - .5) * 12);
+      const c = strata(y + h / 2, i), ao = .55 + .45 * smooth(yn * 4); col[k * 3] = c[0] * ao * sc; col[k * 3 + 1] = c[1] * ao * sc; col[k * 3 + 2] = c[2] * ao * sc; }
+    g.setAttribute('color', new THREE.BufferAttribute(col, 3)); g.computeVertexNormals();
+    const uv = g.attributes.uv; for (let k = 0; k < uv.count; k++) uv.setXY(k, uv.getX(k) * rt * .25, uv.getY(k) * h * .04);
+    const me = new THREE.Mesh(g, m); me.position.set(x, h / 2 - 8 + H0(x, z) * .2, z); me.rotation.y = rnd(0, TAU); scene.add(me); };
+  for (let i = 0; i < 16; i++) { const a = -1.9 + i * .24 + rnd(-.08, .08), r = rnd(900, 1700); mesa(Math.sin(a) * r, -Math.cos(a) * r, rnd(60, 190), rnd(60, 170), i, 1); }
+  for (let i = 0; i < 7; i++) { const a = rnd(-1.3, 1.3), r = rnd(480, 700); mesa(Math.sin(a) * r, -Math.cos(a) * r, rnd(25, 55), rnd(20, 45), i + 30, 1); } // a few nearer buttes
+  // far range: a ragged ridge line well beyond the mesas, mostly lost in the haze
+  const N = 360, g = new THREE.BufferGeometry(), pos = [], idx = [];
+  for (let i = 0; i <= N; i++) { const a = -PI + i / N * TAU, r = 3300 + fbm(i * .05, 7) * 600, top = 140 + Math.pow(fbm(i * .03, 2), 2) * 700 + fbm(i * .3, 5) * 60;
+    pos.push(Math.sin(a) * r, -60, -Math.cos(a) * r, Math.sin(a) * r, top, -Math.cos(a) * r); if (i < N) { const k = i * 2; idx.push(k, k + 2, k + 1, k + 1, k + 2, k + 3); } }
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx); g.computeVertexNormals();
+  scene.add(new THREE.Mesh(g, new THREE.MeshStandardMaterial({color: 0x6a4a3a, roughness: 1, side: THREE.DoubleSide})));
 }
 // rocks
 {
   const g = new THREE.DodecahedronGeometry(1, 1), p = g.attributes.position;
   for (let k = 0; k < p.count; k++) { const s = 1 + (h2(p.getX(k) * 9.1, p.getY(k) * 7.3 + p.getZ(k) * 3.1) - .5) * .45; p.setXYZ(k, p.getX(k) * s, p.getY(k) * s * .7, p.getZ(k) * s); }
   g.computeVertexNormals();
-  const N = 260, im = new THREE.InstancedMesh(g, new THREE.MeshStandardMaterial({color: 0x5e4636, roughness: .9}), N), o = new THREE.Object3D();
-  for (let i = 0; i < N; i++) { let x, z; do { x = rnd(-280, 280); z = rnd(-290, 60); } while (Math.hypot(x, z) < 22); const s = Math.random() < .1 ? rnd(2, 4) : rnd(.3, 1.3); o.position.set(x, gH(x, z) - s * .2, z); o.rotation.set(rnd(0, 3), rnd(0, 6), rnd(0, 3)); o.scale.setScalar(s); o.updateMatrix(); im.setMatrixAt(i, o.matrix); }
+  { const c = new Float32Array(p.count * 3); for (let k = 0; k < p.count; k++) { const y = p.getY(k), ao = .45 + .55 * smooth(y * .8 + .55), n = .85 + h2(p.getX(k) * 5, p.getZ(k) * 5) * .3; c[k * 3] = ao * n; c[k * 3 + 1] = ao * n * .93; c[k * 3 + 2] = ao * n * .88; } g.setAttribute('color', new THREE.BufferAttribute(c, 3)); }
+  const N = 420, im = new THREE.InstancedMesh(g, new THREE.MeshStandardMaterial({color: 0x7a5c48, roughness: .9, vertexColors: true, normalMap: ltex('../tex/prop_n.jpg', false, 1)}), N), o = new THREE.Object3D();
+  for (let i = 0; i < N; i++) { let x, z; do { x = rnd(-280, 280); z = rnd(-290, 60); } while (Math.hypot(x, z) < 22); const s = Math.random() < .1 ? rnd(2, 4) : rnd(.3, 1.3); o.position.set(x, gH(x, z) - s * .2, z); o.rotation.set(rnd(-.3, .3), rnd(0, 6), rnd(-.3, .3)); o.scale.setScalar(s); o.updateMatrix(); im.setMatrixAt(i, o.matrix); const v = .55 + .45 * sunVis(x, z); im.setColorAt(i, new THREE.Color(v, v * .97, v * .95)); }
   im.castShadow = im.receiveShadow = true; scene.add(im);
 }
 
@@ -463,9 +521,10 @@ const LUP = pool(legGeo(.09, .15, 0x4e3018, 0x2a1a10), bugMat, MAXB * 6, true);
 const LLO = pool(legGeo(.008, .11, 0x2a1a10, 0xa89878), bugMat, MAXB * 6, true);
 for (let i = 0; i < NEARB; i++) BODY.setColorAt(i, new THREE.Color(1, 1, 1));
 for (let i = 0; i < MAXB; i++) BODYL.setColorAt(i, new THREE.Color(1, 1, 1));
-const DRAW = {n: 0, nl: 0, legs: 0};
-function drawBegin() { DRAW.n = DRAW.nl = DRAW.legs = 0; }
-function drawEnd() { BODY.count = DRAW.n; BODYL.count = DRAW.nl; LUP.count = LLO.count = DRAW.legs;
+const SHD = pool((() => { const g = new THREE.PlaneGeometry(1, 1); g.rotateX(-PI / 2); return g; })(), new THREE.MeshBasicMaterial({map: soft, color: 0x000000, transparent: true, opacity: .42, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2}), MAXB, false);
+const DRAW = {n: 0, nl: 0, legs: 0, sh: 0};
+function drawBegin() { DRAW.n = DRAW.nl = DRAW.legs = DRAW.sh = 0; }
+function drawEnd() { BODY.count = DRAW.n; BODYL.count = DRAW.nl; LUP.count = LLO.count = DRAW.legs; SHD.count = DRAW.sh; SHD.instanceMatrix.needsUpdate = true;
   for (const m of [BODY, BODYL, LUP, LLO]) m.instanceMatrix.needsUpdate = true; BODY.instanceColor.needsUpdate = BODYL.instanceColor.needsUpdate = true; }
 // corpse piles: settled corpses raise a coarse height grid; live bugs climb over them and fresh corpses land on top
 const PILE = new Map(), pileK = (x, z) => (Math.floor(x / 1.4) + 1000) * 4000 + Math.floor(z / 1.4) + 1000;
@@ -506,7 +565,9 @@ function drawBug(b, time) {
   bm4.compose(bp, _q, _s.set(s, s, s)); bm4.multiply(_m.makeTranslation(0, -BH, 0));
   const near = (b.x - P.x) ** 2 + b.z * b.z < NEAR_D * NEAR_D * Math.max(1, s) && DRAW.n < NEARB, BM = near ? BODY : BODYL, bi = near ? DRAW.n++ : DRAW.nl++;
   BM.setMatrixAt(bi, bm4);
-  const fl = b.flash, T = b.T.tint; BM.setColorAt(bi, _v.set(T[0] + fl * .8, T[1] + fl * .9, T[2] + fl * .5));
+  const fl = b.flash, T = b.T.tint, sv = .5 + .5 * sunVis(b.x, b.z); BM.setColorAt(bi, _v.set(T[0] * sv + fl * .8, T[1] * sv + fl * .9, T[2] * sv + fl * .5)); // in a dune's shadow = darker
+  if (sink < .3) { const gy = gH(b.x, b.z) + (b.py || 0), up = Math.max(0, bp.y - BH * s * lift - gy), f = 1 / (1 + up * .3); // soft contact shadow
+    _e.set(0, b.yaw + (b.dyaw || 0), 0); _q.setFromEuler(_e); _m.compose(_v2.set(b.x, gy + .05, b.z), _q, _s.set(2.6 * s * f, 1, 4.2 * s * f)); SHD.setMatrixAt(DRAW.sh++, _m); _s.set(s, s, s); }
   const e = _m.elements, stride = .7, liftH = .5;
   for (let k = 0; k < 6; k++) {
     if (!(b.legs & (1 << k))) continue;
@@ -587,7 +648,7 @@ function makeGun(fp) {
 // first-person rig
 const gunRoot = new THREE.Group(); cam.add(gunRoot);
 const FPG = makeGun(true); gunRoot.add(FPG);
-FPG.traverse(o => { if (o.isMesh && o.material.isMeshStandardMaterial) o.material.envMapIntensity = .3; }); // close to the lens the sky reflections blew the gun out
+FPG.traverse(o => { if (o.isMesh && o.material.isMeshStandardMaterial) { o.material.envMapIntensity = .3; o.material.roughness = Math.max(o.material.roughness, .62); o.material.metalness = Math.min(o.material.metalness, .6); } }); // close to the lens the sky reflections blew the gun out
 const GUN_BASE = new THREE.Vector3(.2, -.27, -.42);
 // marines (other squad members)
 function makeMarine() {
@@ -1344,7 +1405,7 @@ function stepWorldFx(dt, time) {
   if ((artT -= dt) < 0) { artT = rnd(3, 9); const a = rnd(-1.4, 1.4), d = rnd(500, 900), x = Math.sin(a) * d, z = -Math.cos(a) * d;
     for (let i = 0; i < 6; i++) PA.add(x, H0(x, z) + rnd(0, 10), z, rnd(-5, 5), rnd(5, 20), rnd(-5, 5), rnd(.3, .9), rnd(25, 50), 10, 4, 1.6, .6, 1);
     skyM.uniforms.flash.value = .5; const pan = clamp(-Math.sin(angD(P.yaw, a)), -1, 1); Sfx.play('boom', {vol: .5, at: d / 340, pan, lp: 600}); }
-  skyM.uniforms.flash.value *= Math.exp(-dt * 5);
+  skyM.uniforms.flash.value *= Math.exp(-dt * 5); skyM.uniforms.ct.value = time;
   if (G.on && !G.over) { if ((radT -= dt) <= 0) radio(G.runT < 6 ? 'start' : 'idle'); if (RAD) RAD.t += dt; if (RAD && RAD.t > 6) RAD = null; }
   // dropship flyover, low and loud, from behind the line out toward the hive
   if (!fly && (flyT -= dt) <= 0) { flyT = rnd(35, 70); fly = {x: rnd(-50, 50), y: rnd(32, 55), z: 160, vx: rnd(-6, 6)}; FLY.visible = true; if (Sfx.ctx) Sfx.play('flyby', {vol: .55, vr: .05, pan: clamp((fly.x - P.x) / 60, -.8, .8)}); }
