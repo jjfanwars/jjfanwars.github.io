@@ -29,7 +29,7 @@ const hexS = c => '#' + c.toString(16).padStart(6, '0');
 
 // ---------------- net (jjfanwars relay)
 const RELAY_URL = 'wss://jjfanwars-relay.businessautomationvic.workers.dev';
-const GAME_V = 71;
+const GAME_V = 72;
 const Net = {
   tag: '[Rig]', role: 'solo', ws: null, peers: new Map(), code: '', relayT: {pose: 1}, id: '', name: '', handlers: {}, retry: 0, started: false,
   enc: new TextEncoder(), dec: new TextDecoder(),
@@ -1106,8 +1106,16 @@ function buildFoam() {
     if (I.home && ((z - HOME.z) / Math.hypot(x - HOME.x, z - HOME.z) > .45 || (Math.abs(x - JETTY.x) < 9 && z > HOME.z))) continue; L.push([x, landH(x, z), z, s, br(), br(), br()]); if (s > 1.3) PCIRC.push({x, z, r: s * .75}); } });
   const im = new THREE.InstancedMesh(new THREE.DodecahedronGeometry(1, 0), new THREE.MeshStandardMaterial({map: TX.rock, color: 0xffffff, roughness: .95, metalness: 0, flatShading: true}), L.length), M4 = new THREE.Matrix4(), Q = new THREE.Quaternion(), E = new THREE.Euler(), V = new THREE.Vector3(), S3 = new THREE.Vector3(), C = new THREE.Color();
   L.forEach(([x, y, z, s, a, b, c], i) => { E.set(a * TAU, b * TAU, c * TAU); M4.compose(V.set(x, Math.max(y, -1.2) + s * .15, z), Q.setFromEuler(E), S3.set(s * (1 + a * .3), s * (.55 + b * .3), s * (1 + c * .25))); im.setMatrixAt(i, M4); const k = 1.05 + a * .45; im.setColorAt(i, C.setRGB(k, k * (.95 + b * .05), k * (.9 + c * .06))); });
-  im.castShadow = true; im.receiveShadow = true; im.computeBoundingSphere(); scene.add(im);
+  im.castShadow = true; im.receiveShadow = true; im.computeBoundingSphere(); scene.add(im); SHORE_ROCKS.im = im; SHORE_ROCKS.L = L;
 }
+// shore boulders never block a door or sit inside a building: after the world is built, any within 3.5 m of a door (in or out) or inside a footprint is removed
+const SHORE_ROCKS = {};
+function shoreRockClear() { const {im, L} = SHORE_ROCKS; if (!im || !L) return 0; const M4 = new THREE.Matrix4().makeScale(0, 0, 0); let n = 0;
+  L.forEach(([x, y, z, s], i) => { const bad = BLD.some(b => { if ((b.dout && Math.hypot(x - b.dout[0], z - b.dout[1]) < 3.5 + s) || (b.din && Math.hypot(x - b.din[0], z - b.din[1]) < 2.5 + s)) return true;
+    const c = Math.cos(b.th || 0), sn = Math.sin(b.th || 0), dx = x - b.x, dz = z - b.z, lx = dx * c - dz * sn, lz = dx * sn + dz * c; return Math.abs(lx) < (b.w || 0) / 2 + s + .5 && Math.abs(lz) < (b.d || 0) / 2 + s + .5; });
+    if (bad) { im.setMatrixAt(i, M4); n++; for (let k = PCIRC.length - 1; k >= 0; k--) if (PCIRC[k].x === x && PCIRC[k].z === z) PCIRC.splice(k, 1); } });
+  if (n) im.instanceMatrix.needsUpdate = true; return n; }
+{ const f0 = buildWorld; buildWorld = function (...a) { const was = BUILT, r = f0.apply(this, a); if (!was && BUILT) setTimeout(() => { try { SHORE_ROCKS.cut = shoreRockClear(); } catch (e) { console.warn(e); } }, 0); return r; }; }
 function buildBirds() {
   const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute([-.7, .12, -.1, 0, 0, .25, 0, 0, -.15, .7, .12, -.1, 0, 0, .25, 0, 0, -.15], 3)); g.computeVertexNormals();
   BIRDS = new THREE.InstancedMesh(g, new THREE.MeshBasicMaterial({color: 0x101014, side: THREE.DoubleSide, fog: true}), 14); BIRDS.frustumCulled = false; scene.add(BIRDS);
@@ -2301,7 +2309,15 @@ const Snd = {
   clicks(p) { const n = 5 + (Math.random() * 6 | 0), g = 40 + Math.random() * 50; for (let i = 0; i < n; i++) setTimeout(() => burst(2600 + Math.random() * 900, 9, .16, .012, 'bandpass', p), i * g); },
   shriek(p) { tone(780, .25, .6, 'sawtooth', p, 1500); tone(1180, .12, .5, 'sawtooth', p, 2100); burst(3000, .6, .5, .7, 'bandpass', p, 1.4); },
 };
-function showMsg(txt, who, dur = 4) { $('msg').innerHTML = (who ? `<b>${who}</b>` : '') + txt; $('msg').style.opacity = 1; G.msgT = dur; }
+// messages stack: a new one goes in at the bottom and pushes the older ones up; each fades on its own (max 4 on screen)
+const MSGS = [];
+function showMsg(txt, who, dur = 4) { const box = $('msg'); if (!box) return; const html = (who ? `<b>${who}</b>` : '') + txt; box.style.opacity = 1;
+  const last = MSGS[MSGS.length - 1]; if (last && last.html === html && !last.out) { last.t = Math.max(last.t, dur); return; }
+  const same = MSGS.find(m => m.html === html && !m.out); if (same) { same.t = 0; }
+  const el = document.createElement('div'); el.className = 'm'; el.innerHTML = html; box.appendChild(el); MSGS.push({el, html, t: dur, out: 0});
+  while (MSGS.filter(m => !m.out).length > 4) { const m = MSGS.find(m => !m.out); m.t = 0; msgOut(m); } G.msgT = 1; }
+function msgOut(m) { if (m.out) return; m.out = 1; m.el.style.opacity = 0; m.el.style.maxHeight = '0px'; m.el.style.marginTop = '0px'; setTimeout(() => { m.el.remove(); const i = MSGS.indexOf(m); if (i >= 0) MSGS.splice(i, 1); }, 450); }
+function msgTick(dt) { for (const m of MSGS) if (!m.out && (m.t -= dt) <= 0) msgOut(m); }
 function toast(t, sub) { const e = $('toast'); e.innerHTML = t + (sub ? `<small>${sub}</small>` : ''); e.style.opacity = 1; clearTimeout(G.toastT); G.toastT = setTimeout(() => e.style.opacity = 0, 3500); }
 const GOALS = ['Find every place on the sea', "Recover Station Nine's black box", 'Dig up a buried treasure chest', 'Earn $1500 from salvage', 'Fully upgrade the engine', 'Land a giant squid', 'Put down the thing on the rig', 'Start the engines of the MS Serenade', 'Dive deeper than 100 m', 'Sell your first haul', 'Buy something at the shed', 'Chart three places'];
 function hint() { G.nstep = nextStep(); G.navMark = G.nstep.mk || null; return G.nstep.t; }
@@ -2539,6 +2555,8 @@ function applyEv(e) {
       if (P && P.ob) { P.ob = 0; P.seat = 0; P.y = .1; } if (P) { P.climb = null; P.lkOut = 0; P.rest = 0; } break; }
     case 'boatback': showMsg('A tug drags your boat back to the lighthouse. The cargo is lost.', '', 5); if (P && !P.dead && (P.sw || P.y < 1) && Math.hypot(P.x - e.x, P.z - e.z) < 80) { const sp = boatSpawn(0); P.sw = 0; P.ob = 1; P.bl = sp.bl; P.y = sp.y; } break;
     case 'horn': if (Snd.shipHorn) Snd.shipHorn(e.c, at(B.x, B.heave + 6, B.z, 25 + (HULLS[e.c] || HULLS[0]).L)); break;
+    case 'icx': icEvent(e); break;
+    case 'ichit': hitFx(e.x, e.y, e.z, e.head, e.by); break;
     case 'purser': showMsg(`Sold at sea. The purser takes a 15% cut ($${e.cut}).`, '', 3); break;
     case 'ribfloat': if (P && P.ob) showMsg('The hull is wrecked, but her air tubes keep her afloat. Patch her up.', '', 4); break;
     case 'hdmg': { if (A.on && Snd.crack) { const p = at(B.x, B.heave + 1, B.z, 10); if ((B.up.cls || 0) <= 1) Snd.crack(p, e.n); else Snd.groan(p, e.n); } if (P && P.ob) G.shake = Math.max(G.shake || 0, e.n / 20); const h = $('hullB'); if (h && h.animate) h.animate([{filter: 'brightness(2.6)', transform: 'scaleY(2.4)'}, {filter: 'none', transform: 'none'}], {duration: 500, easing: 'ease-out'}); break; }
@@ -6919,7 +6937,7 @@ function step(dt) {
     if (Net.role === 'host') { stalePoses(); if ((G.sendT -= dt) <= 0) { G.sendT = 1 / 15; if (Net.ws && Net.ws.readyState === 1) Net.send(packSnap()); else { G.evq = G.evq.filter(e => !/^(mstep|sstep|snd|shot)$/.test(e.k)); if (G.evq.length > 500) G.evq.splice(0, G.evq.length - 500); } } }
     else if (Net.ws && Net.ws.readyState === 1 && !G.lostT && performance.now() - (G.lastSnapT || 0) > 2500) { if (!G.snapGap) showMsg('Waiting for the captain…', '', 4); G.snapGap = 1; } else G.snapGap = 0;
   } else G.evq.length = 0;
-  if (G.msgT > 0) { G.msgT -= dt; if (G.msgT <= 0) $('msg').style.opacity = 0; }
+  msgTick(dt);
 }
 let last = performance.now();
 function frame(t) {
@@ -7594,7 +7612,7 @@ function hzStep(dt) { if (!G.on || B.sink > 0) return; const T = HZ.t, ok = (k, 
   if (!G.pass && ok('pass', 50) && (night || G.fogEv) && sea && allOb && CR() < .12) { const src = crew[Math.floor(CR() * crew.length)]; G.pass = {t: 70, n: src.name, c: src.c, lx: (CR() < .5 ? -1 : 1) * (BG.hw - .8), lz: mix(BDECK.z0 + 1, BDECK.z1 - 1, CR())}; emit({k: 'pass', n: src.name, c: src.c, lx: +G.pass.lx.toFixed(2), lz: +G.pass.lz.toFixed(2)}); }
   if (G.pass && (G.pass.t -= dt) <= 0) { let lost = null; if (B.hold.length) lost = B.hold.splice(Math.floor(CR() * B.hold.length), 1)[0]; G.pass = null; emit({k: 'passx', lost: lost ? KINDS.indexOf(lost) : -1}); }
   // fog bank
-  if (!G.fogEv && ok('fog', 90) && sea && CR() < (night ? .14 : .07) * (mapRegion(B.x, B.z) && mapRegion(B.x, B.z).k === 'grave' ? 2 : 1)) { G.fogEv = {t: 150}; emit({k: 'fogev', T: 150}); }
+  if (false && !G.fogEv && ok('fog', 90) && sea && CR() < (night ? .14 : .07) * (mapRegion(B.x, B.z) && mapRegion(B.x, B.z).k === 'grave' ? 2 : 1)) { G.fogEv = {t: 150}; emit({k: 'fogev', T: 150}); }
   if (G.fogEv && (G.fogEv.t -= dt) <= 0) { G.fogEv = null; emit({k: 'fogev', T: 0}); }
   // the lantern fish
   if (!G.lant && ok('lant', 60) && (night || G.fogEv) && sea && CR() < .12) { const d = 230, x = B.x - Math.sin(B.yaw) * d + (CR() - .5) * 60, z = B.z - Math.cos(B.yaw) * d + (CR() - .5) * 60; if (seaBed(x, z) < -8) { G.lant = {x, z, t: 0, st: 0}; emit({k: 'lant', x: +x.toFixed(1), z: +z.toFixed(1), st: 0}); } }
@@ -8858,9 +8876,12 @@ function emotePose(p, j, dt) {
   const b = j.body, A = j.a1, L = j['a-1'], H = j.head, up = Math.min(1, t * 5);
   switch (E.n) {
     case 'Wave': A.rotation.set(.2, 0, mix(.08, 2.7, up) + Math.sin(t * 10) * .35 * up); H.rotation.z = Math.sin(t * 5) * .1; break;
-    case 'Griddy': { const f = t * 8.5, s1 = Math.sin(f), c1 = Math.cos(f); b.position.y = .9 + Math.abs(s1) * .07; b.rotation.x = .12; b.rotation.z = s1 * .06; H.rotation.x = -.15;
-      j.l1.rotation.x = Math.max(0, s1) * .75; j['l-1'].rotation.x = Math.max(0, -s1) * .75; j.k1.rotation.x = s1 > 0 ? -.05 : -.45 * Math.abs(s1); j['k-1'].rotation.x = s1 < 0 ? -.05 : -.45 * Math.abs(s1);
-      A.rotation.set(.5 + c1 * .8, 0, .45); L.rotation.set(.5 - c1 * .8, 0, -.45); break; }
+    case 'Griddy': { // heel taps on the beat, bent support knee, arms pumping opposite, and every few beats the goggles over the eyes
+      const f = t * TAU * 1.05, s1 = Math.sin(f), c1 = Math.cos(f), cyc = t % 4, gg = smooth(clamp((cyc - 2.9) * 5, 0, 1)) * (1 - smooth(clamp((cyc - 3.85) * 7, 0, 1)));
+      b.position.y = .86 + Math.abs(c1) * .06; b.rotation.x = -.2; b.rotation.z = s1 * .05; H.rotation.x = mix(-.08, -.2, gg);
+      const tapR = Math.max(0, s1), tapL = Math.max(0, -s1); j.l1.rotation.x = tapR * .65 - (1 - tapR) * .15; j['l-1'].rotation.x = tapL * .65 - (1 - tapL) * .15;
+      j.k1.rotation.x = -(1 - tapR) * .55 - .05; j['k-1'].rotation.x = -(1 - tapL) * .55 - .05;
+      A.rotation.set(mix(.25 - s1 * .95, 2.0, gg), 0, mix(.4, -.38, gg)); L.rotation.set(mix(.25 + s1 * .95, 2.0, gg), 0, mix(-.4, .38, gg)); break; }
     case 'Middle finger': { const k = up; A.rotation.set(1.5 * k, 0, .12); L.rotation.set(1.5 * k, 0, -.12); j.f1.visible = j['f-1'].visible = k > .7; b.rotation.x = .08 * k; b.position.y = .95 + Math.abs(Math.sin(t * 6)) * .02; H.rotation.x = .12; H.rotation.z = Math.sin(t * 3) * .08; break; }
     case 'Thumbs up': A.rotation.set(1.4 * up, 0, .1); j.th1.visible = up > .7; H.rotation.x = Math.max(0, Math.sin(t * 6)) * .15; break;
     case 'Clap': { const c = Math.abs(Math.sin(t * 11)); A.rotation.set(1.3, 0, -.15 - c * .25); L.rotation.set(1.3, 0, .15 + c * .25); break; }
@@ -9149,3 +9170,77 @@ function becomeHost() { if (Net.role !== 'guest' || !G.on || !P) return; clearTi
   showMsg('The captain left. You are running the voyage now.', 'NEW CAPTAIN', 6); }
 addEventListener('pagehide', () => { if (G.on && Net.role === 'host' && Net.peers.size) Net.send({t: 'bye', next: [...Net.peers.keys()][0]}); });
 if (TEST) window.__S = {becomeHost, casBanner, casHudFrame, CAS, dockForMe, callWhy, wearSuit, invOpen, invClose, bridgeHop, LTK, lootTick, ftOpen, dockList, EMOTES, emoteStart, chatSend, chatOpen, SKY, psSit, skyStep, BW, BFL, INTER, get stepPlayer() { return stepPlayer; }, closeCasino, BOAT_: () => BOAT, BSPOT, FX, BHELM, bL2W, openCasino, AURAS, applyAll, launchFw, FWK, get ALL() { return ALL; }, get BOAT() { return BOAT; }, CN, CRZ, STS, GUL, DSITES, stepSteward, HULLS, SUNK, BG, BDECK, buildBoat, seaBed, render, levPose, LEV, MJ, TODd: () => SUNDIR, TOD, F, FISH, GEAR, equip, toolDown, toolUp, gotGear, pickFish, hostShoot, G, PL, M, B, K, SET, VALVES, ITEMS, HIDES, BLD, SPOTS, NG, SURF, POIS, DIGS, ISLES, Net, get P() { return P; }, startGame, step, hostStep, hostAct, act, targets, toggleHide, cam, scene, RND, noise, downPlayer, floorAt, navPath, applyEv, boatPose, landH, openShop, set eDown(v) { eDown = v; }, crewList, hostStart, joinRoom};
+
+// ===== island creatures: every island without an island event (and over 300 m from the lighthouse) gets one, so about 3/4 of the islands hold something.
+// The Pale Thing moves only while nobody looks at it (a torch beam drives it off); a Crawler sleeps in a burrow and runs you down at night (flares and bullets);
+// the Drowned crawl out of the shallows after dark and shamble after you. Host-run; positions go out in snapshots as s.ic; each kill drops loot.
+const IC = {list: [], m: [], snap: null};
+const IC_K = ['pale', 'crawl', 'drowned'];
+function icBuild() { IC.list = []; IC.m.forEach(g => g && scene.remove(g)); IC.m = []; const rng = mulberry(((G.seed || 1) ^ 0x2c1e) >>> 0), has = new Set(IE.list.map(e => e.I));
+  ISLES.forEach(I => { if (I.bar || has.has(I) || I.r < 12 || Math.hypot(I.x - HOME.x, I.z - HOME.z) < 300) return; const t = IC_K[Math.floor(rng() * 3)];
+    const spot = d => { for (let k = 0; k < 30; k++) { const a = rng() * TAU, r = I.r * d * (.6 + rng() * .5), x = I.x + Math.sin(a) * r, z = I.z + Math.cos(a) * r, h = landH(x, z); if (t === 'drowned' ? h > -1.2 && h < .4 : h > 1.2) return [x, z]; } return null; };
+    const n = t === 'drowned' ? 3 : 1; for (let i = 0; i < n; i++) { const s = spot(t === 'drowned' ? 1 : .45); if (!s) continue;
+      IC.list.push({t, I, hx: s[0], hz: s[1], x: s[0], z: s[1], st: t === 'pale' ? 1 : 0, hp: t === 'pale' ? 60 : t === 'crawl' ? 40 : 20, cd: 0, ht: 0, yaw: rng() * TAU, i: IC.list.length}); } }); }
+{ const f0 = ieBuild; ieBuild = function () { const r = f0.apply(this, arguments); try { icBuild(); } catch (e) { console.warn('icBuild', e); } return r; }; }
+const icNight = () => shpNight(G.tod || 0) > .3 || (G.storm || 0) > .65;
+// st: 0 hidden/asleep, 1 standing (pale) or idle, 2 hunting, 3 fleeing home, 4 dead
+function icStep(dt) { const night = icNight(), crew = alive().filter(p => !p.ob && !p.sw && !p.seat);
+  for (const c of IC.list) { const I = c.I, on = crew.filter(p => Math.hypot(p.x - I.x, p.z - I.z) < I.r * 1.15 + 6); c.cd = Math.max(0, c.cd - dt);
+    if (c.st === 4) { c.ht += dt; if (c.ht > 240 && !on.length) { c.st = c.t === 'pale' ? 1 : 0; c.hp = c.t === 'pale' ? 60 : c.t === 'crawl' ? 40 : 20; c.x = c.hx; c.z = c.hz; } continue; }
+    let tgt = null, bd = 1e9; for (const p of on) { const d = Math.hypot(p.x - c.x, p.z - c.z); if (d < bd) { bd = d; tgt = p; } }
+    const flare = G.flares.some(f => f.t > 0 && Math.hypot(f.x - c.x, f.z - c.z) < 9), home = () => { const dx = c.hx - c.x, dz = c.hz - c.z, d = Math.hypot(dx, dz); if (d < .5) return true; const v = Math.min(d, (c.t === 'crawl' ? 6 : 3) * dt); c.x += dx / d * v; c.z += dz / d * v; c.yaw = Math.atan2(dx, dz); return false; };
+    const go = (sp) => { const dx = tgt.x - c.x, dz = tgt.z - c.z, d = Math.hypot(dx, dz) || 1, v = Math.min(d, sp * dt); c.x += dx / d * v; c.z += dz / d * v; c.yaw = Math.atan2(dx, dz); if (c.t !== 'drowned' && landH(c.x, c.z) < -.5) { c.x -= dx / d * v; c.z -= dz / d * v; } };
+    const bite = () => { if (bd < 1.15 && !c.cd) { downPlayer(tgt, c.t); emit({k: 'icx', i: c.i, s: 'got', id: tgt.id}); c.cd = 30; c.st = 3; } };
+    if (c.t === 'pale') { // freezes while any crew member within 60 m has it in view; a torch beam on it within 18 m sends it off
+      const seen = crew.some(p => { const d = Math.hypot(p.x - c.x, p.z - c.z); if (d > 60) return false; const fx = -Math.sin(p.yaw || 0), fz = -Math.cos(p.yaw || 0); return ((c.x - p.x) * fx + (c.z - p.z) * fz) / (d || 1) > .8; });
+      const lit = crew.some(p => { const d = Math.hypot(p.x - c.x, p.z - c.z); if (d > 18 || !p.l) return false; const fx = -Math.sin(p.yaw || 0), fz = -Math.cos(p.yaw || 0); return ((c.x - p.x) * fx + (c.z - p.z) * fz) / (d || 1) > .95; });
+      if (lit && c.st === 2) { c.st = 3; emit({k: 'icx', i: c.i, s: 'flee'}); }
+      if (c.st === 3) { if (!seen && home()) c.st = 1; continue; }
+      if (tgt && !c.cd) { if (c.st === 1) { c.st = 2; emit({k: 'icx', i: c.i, s: 'wake'}); } if (!seen) { go(night ? 7 : 3.2); bite(); } } else if (!seen && home()) c.st = 1; continue; }
+    if (c.t === 'crawl') {
+      if (c.st === 0) { if (night && tgt && bd < 28 && !c.cd) { c.st = 2; c.ht = 0; emit({k: 'icx', i: c.i, s: 'wake'}); } continue; }
+      if (c.st === 2) { c.ht += dt; if (flare || !tgt || c.ht > 16) { c.st = 3; if (flare) emit({k: 'icx', i: c.i, s: 'flee'}); } else { go(5.1); bite(); } continue; }
+      if (c.st === 3 && home()) c.st = 0; continue; }
+    if (c.t === 'drowned') {
+      if (c.st === 0) { if (night && tgt && bd < 36 && !c.cd) { c.st = 2; emit({k: 'icx', i: c.i, s: 'wake'}); } continue; }
+      if (c.st === 2) { if (!night || !tgt) c.st = 3; else if (!(flare && bd > 2)) { go(2.4); bite(); } continue; }
+      if (c.st === 3 && home()) c.st = 0; } } }
+{ const f0 = hostStep; hostStep = function (dt) { const r = f0.apply(this, arguments); if (G.on && IC.list.length) try { icStep(dt); } catch (e) { if (!IC.err) { IC.err = 1; console.warn(e); } } return r; }; }
+// bullets: a ray against each awake creature's standing column
+{ const f0 = hostShoot; hostShoot = function (p, m) { const r = f0.apply(this, arguments); try { const o = m && m.o, d = m && m.d; if (!o || !d || p.down || p.dead) return r;
+  for (const c of IC.list) { if (c.st === 0 || c.st === 4) continue; const H = c.t === 'pale' ? 2.6 : c.t === 'crawl' ? .8 : 1.8, R = c.t === 'crawl' ? .6 : .42, gy = Math.max(c.t === 'drowned' ? -1 : 0, landH(c.x, c.z));
+    const l = Math.hypot(d[0], d[1], d[2]) || 1, ux = d[0] / l, uy = d[1] / l, uz = d[2] / l, hh = ux * ux + uz * uz, t = hh > 1e-6 ? ((c.x - o[0]) * ux + (c.z - o[2]) * uz) / hh : 0; if (t <= 0 || t > 70) continue;
+    const px = o[0] + ux * t, py = o[1] + uy * t, pz = o[2] + uz * t; if (Math.hypot(px - c.x, pz - c.z) > R || py < gy - .1 || py > gy + H + .1) continue;
+    const head = py > gy + H - .35, dm = (m.w === 'g' ? 10 : 7 * (t > 20 ? .4 : 1)) * hsMul(m) * (head ? 2 : 1); c.hp -= dm; emit({k: 'ichit', x: +px.toFixed(2), y: +py.toFixed(2), z: +pz.toFixed(2), head, by: p.id, i: c.i});
+    if (c.hp <= 0) { c.st = 4; c.ht = 0; emit({k: 'icx', i: c.i, s: 'die', by: p.id}); if (c.t !== 'drowned' || CR() < .5) { const kd = lootRoll(c.t === 'pale' ? 1.3 : c.t === 'crawl' ? 1 : .7, CR, 1), y = Math.max(.2, landH(c.x, c.z)), it = addItem(kd, {x: c.x, y, z: c.z}); emit({k: 'item', i: it.i, kind: kd, x: c.x, y, z: c.z}); } }
+    else if (c.t !== 'drowned' && c.st === 2 && CR() < (c.t === 'pale' ? .5 : .3)) { c.st = 3; emit({k: 'icx', i: c.i, s: 'flee'}); } } } catch (e) { console.warn(e); } return r; }; }
+{ const f0 = packSnap; packSnap = function () { const s = f0.apply(this, arguments); if (IC.list.length) s.ic = IC.list.map(c => [+c.x.toFixed(1), +c.z.toFixed(1), c.st, +c.yaw.toFixed(2)]); return s; }; }
+{ const f0 = applySnap; applySnap = function (s) { const r = f0.apply(this, arguments); if (Array.isArray(s.ic)) IC.snap = s.ic; return r; }; }
+{ const f0 = startGame; startGame = function () { IC.snap = null; return f0.apply(this, arguments); }; }
+// ---- client: models, motion, sounds and messages
+function icMesh(t) { const g = new THREE.Group();
+  if (t === 'pale') { const f = hzFig({h: 2.6, col: 0xd8d2c4, skin: 0xe8e2d4, thin: .45, arm: 1.35, noface: 1}); g.add(f); g.userData.f = f; }
+  else if (t === 'drowned') { const f = hzFig({h: 1.75, col: 0x2a3a30, skin: 0x7a8a78, thin: .8, arm: .8, eye: 0xd8e8c0}); f.rotation.x = .25; g.add(f); g.userData.f = f; const wd = ieM({color: 0x1a3a1a, roughness: 1}); for (let i = 0; i < 5; i++) ieAdd(f, new THREE.CylinderGeometry(.015, .01, .7, 3), wd, (i - 2) * .08, 1.4, .05).rotation.z = (i - 2) * .15; }
+  else { const m = ieM({color: 0xbfb6a6, roughness: .45}), dk = new THREE.MeshBasicMaterial({color: 0x0a0000}); const b = ieAdd(g, new THREE.CapsuleGeometry(.28, 1.1, 4, 10), m, 0, .55, 0); b.rotation.x = PI / 2;
+    const hd = ieAdd(g, new THREE.SphereGeometry(.22, 10, 8), m, 0, .62, -.8); hd.scale.set(1, .8, 1.3); ieAdd(g, new THREE.BoxGeometry(.3, .05, .2), dk, 0, .52, -.98); g.userData.legs = [];
+    for (let i = 0; i < 4; i++) { const lg = new THREE.Group(); lg.position.set(i % 2 ? .26 : -.26, .6, i < 2 ? -.45 : .45); g.add(lg); const up = ieAdd(lg, new THREE.CylinderGeometry(.04, .03, .75, 5), m, (i % 2 ? .25 : -.25), -.2, 0); up.rotation.z = (i % 2 ? -1 : 1) * 1.0; g.userData.legs.push(lg); } }
+  g.traverse(o => { o.castShadow = true; }); g.visible = false; scene.add(g); return g; }
+function icFrame(dt) { if (!G.on || !P || !IC.list.length) return; const S = isHost() ? IC.list.map(c => [c.x, c.z, c.st, c.yaw]) : IC.snap; if (!S) return; const t = G.wt, cp = cam.position;
+  IC.list.forEach((c, i) => { const s = S[i]; if (!s) return; const far = Math.hypot(s[0] - cp.x, s[1] - cp.z) > 160; let g = IC.m[i];
+    const show = !far && s[2] !== 4 && (s[2] !== 0 || c.t === 'pale'); if (!show) { if (g) g.visible = false; return; } if (!g) g = IC.m[i] = icMesh(c.t);
+    if (!g.visible) { g.position.set(s[0], 0, s[1]); g.visible = true; } const ox = g.position.x, oz = g.position.z; g.position.x = mix(ox, s[0], Math.min(1, dt * 8)); g.position.z = mix(oz, s[1], Math.min(1, dt * 8));
+    const sp = Math.hypot(g.position.x - ox, g.position.z - oz) / Math.max(dt, 1e-3), gy = landH(g.position.x, g.position.z);
+    g.position.y = c.t === 'drowned' ? Math.max(gy, -1.1) - (s[2] === 3 ? .6 : 0) : Math.max(0, gy); g.rotation.y = s[3] + PI;
+    if (c.t === 'pale') { const f = g.userData.f; f.userData.arms.forEach((a, k) => a.rotation.x = s[2] === 2 ? -.5 + Math.sin(t * 2 + k) * .05 : .05); if (f.userData.hd) f.userData.hd.rotation.z = s[2] === 2 ? .5 : .2; }
+    else if (c.t === 'drowned') { const f = g.userData.f; f.userData.arms.forEach((a, k) => a.rotation.x = -1.3 + Math.sin(t * 3 + k * 2) * .25); f.rotation.z = Math.sin(t * 2.2 + i) * .1; }
+    else { const L = g.userData.legs; L.forEach((lg, k) => lg.rotation.x = Math.sin(t * 18 + k * PI * .5) * Math.min(1, sp / 3) * .9); g.position.y += Math.abs(Math.sin(t * 18)) * Math.min(1, sp / 3) * .08; }
+    if (A.on && s[2] === 2 && Math.random() < dt * (c.t === 'crawl' ? 1.2 : .35)) { const d = Math.hypot(s[0] - cp.x, s[1] - cp.z); if (d < 45) { const p = at(s[0], g.position.y + 1, s[1], 6); if (c.t === 'crawl') tone(900 + Math.random() * 600, .05, .12, 'square', p, -500); else if (c.t === 'drowned') { burst(400, .12, .9, .3, 'lowpass', p, .6); tone(70, .08, 1, 'sawtooth', p, 10); } else tone(48, .1, 1.8, 'sine', p, 6); } } }); }
+{ const f0 = hud; hud = function () { const r = f0.apply(this, arguments); try { const now = performance.now(), dt = Math.min(.1, (now - (IC.ft || now)) / 1000); IC.ft = now; icFrame(dt); } catch (e) { if (!IC.err2) { IC.err2 = 1; console.warn(e); } } return r; }; }
+const IC_N = {pale: 'the Pale Thing', crawl: 'a Crawler', drowned: 'the Drowned'};
+function icEvent(e) { const c = IC.list[e.i]; if (!c || !P) return; const near = Math.hypot(c.x - P.x, c.z - P.z) < 70 || (IC.snap && IC.snap[e.i] && Math.hypot(IC.snap[e.i][0] - P.x, IC.snap[e.i][1] - P.z) < 70);
+  if (e.s === 'wake' && near) { if (c.t === 'crawl') { Snd.shriek && Snd.shriek(null); G.shake = Math.max(G.shake || 0, .6); showMsg('Something bursts out of the ground. RUN. A flare will stop it.', '', 4); }
+    else if (c.t === 'drowned') { Snd.bubbles && Snd.bubbles(); showMsg('Figures are wading out of the shallows toward you.', '', 4); }
+    else { hzSting(1); showMsg('Something pale on the island. Do not look away from it.', '', 5); } }
+  else if (e.s === 'flee' && near) showMsg(c.t === 'pale' ? 'It shrinks from the light.' : c.t === 'crawl' ? 'It shrieks and scuttles back to its hole.' : 'They back away.', '', 2.5);
+  else if (e.s === 'die' && near) { showMsg(e.by === myId() ? `You put down ${IC_N[c.t]}.` : `${IC_N[c.t]} is down.`, '', 3); Snd.shriek && Snd.shriek(null); }
+  else if (e.s === 'got' && e.id === myId()) { G.shake = 1.5; Snd.scream && Snd.scream(); } }
