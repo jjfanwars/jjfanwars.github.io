@@ -59,7 +59,7 @@ const Net = {
     const ws = this.ws = new WebSocket(this.relay() + '/room/' + code + '?role=guest&id=' + this.id); ws.binaryType = 'arraybuffer';
     ws.onopen = () => this.send({t: 'hello', name});
     ws.onmessage = e => {
-      if (typeof e.data === 'string') { let m; try { m = JSON.parse(e.data); } catch (x) { return; } if (m.c === 'host' && !m.up) this.emit({t: '_hostgone'}); else if (m.c === 'host' && m.up) this.send({t: 'hello', name}); return; }
+      if (typeof e.data === 'string') { let m; try { m = JSON.parse(e.data); } catch (x) { return; } if (m.c === 'host' && !m.up) this.emit({t: '_hostgone'}); else if (m.c === 'host' && m.up) { this.send({t: 'hello', name}); this.emit({t: '_hostback'}); } return; }
       let m; try { m = JSON.parse(this.dec.decode(new Uint8Array(e.data))); } catch (x) { return; }
       if (m.t === 'full') { this.close(); onFail('That squad is full (4 max).'); return; }
       this.emit(m);
@@ -451,7 +451,8 @@ const bugs = []; // active bugs (alive or corpse)
 const freeIdx = []; for (let i = MAXB - 1; i >= 0; i--) freeIdx.push(i);
 const byId = new Map(); let nextId = 1;
 function spawnBug(type, x, z, id) {
-  if (!freeIdx.length) return null; const T = TYPES[type];
+  if (!freeIdx.length) { const c = bugs.find(q => q.dead); if (!c) return null; freeBug(c); } // pool full: recycle the oldest corpse
+  const T = TYPES[type];
   const b = {idx: freeIdx.pop(), id: id || nextId++, type, T, s: T.s * rnd(.92, 1.1), x, z, y: gH(x, z), vy: 0, yaw: Math.atan2(-x, -z), hp: T.hp, st: 0, ph: rnd(0, TAU), t: 0, flash: 0, legs: 63, tx: rnd(-11, 11), weave: rnd(.2, .7), wf: rnd(.5, 1.5),
     sp: 0, dead: 0, atkT: rnd(0, 1), leapT: 0, roll: 0, pitch: 0, twitch: rnd(0, 10), nx: x, nz: z, nyaw: 0};
   b.nyaw = b.yaw; bugs.push(b); byId.set(b.id, b); return b;
@@ -459,12 +460,16 @@ function spawnBug(type, x, z, id) {
 function freeBug(b) { const i = bugs.indexOf(b); if (i >= 0) bugs.splice(i, 1); byId.delete(b.id); freeIdx.push(b.idx); BODY.setMatrixAt(b.idx, ZERO); for (let k = 0; k < 6; k++) { LUP.setMatrixAt(b.idx * 6 + k, ZERO); LLO.setMatrixAt(b.idx * 6 + k, ZERO); } }
 const bm4 = new THREE.Matrix4(), bp = new THREE.Vector3(), hip = new THREE.Vector3(), knee = new THREE.Vector3(), foot = new THREE.Vector3();
 function drawBug(b, time) {
-  const s = b.s, dead = b.dead > 0, dt = b.dead;
-  const roll = b.roll, lift = dead ? mix(1, .5, smooth(dt * 2.5)) : 1;
+  if (b.gib) { BODY.setMatrixAt(b.idx, ZERO); for (let k = 0; k < 6; k++) { LUP.setMatrixAt(b.idx * 6 + k, ZERO); LLO.setMatrixAt(b.idx * 6 + k, ZERO); } return; }
+  const s = b.s, dead = b.dead > 0, dt = b.dead, hk = b.hk || 0;
+  // alive: lean toward the side that lost legs (limp); dead: tumble toward b.droll
+  const lean = dead ? 0 : (((b.legs & 1) ? 0 : 1) + ((b.legs & 4) ? 0 : 1) - ((b.legs & 2) ? 0 : 1) - ((b.legs & 8) ? 0 : 1)) * .16;
+  const roll = b.roll + lean + (dead ? 0 : Math.sin(b.t * 31) * hk * .08), lift = dead ? mix(1, .5, smooth(dt * 2.5)) : 1;
   const bob = dead ? 0 : Math.sin(b.ph * 2) * .05 * Math.min(1, b.sp / 4);
   const sink = dead && dt > 6 ? (dt - 6) * .6 : 0;
-  _e.set(b.pitch + (b.st === 1 ? -.35 - Math.max(0, Math.sin(b.t * 7)) * .25 : 0), b.yaw, roll, 'YXZ'); _q.setFromEuler(_e);
-  bp.set(b.x, b.y + (BH * lift + bob) * s - sink, b.z);
+  // a hit snaps the head up and shoves the body back a little
+  _e.set(b.pitch - hk * .3 + (b.st === 1 ? -.35 - Math.max(0, Math.sin(b.t * 7)) * .25 : 0), b.yaw + (b.dyaw || 0), roll, 'YXZ'); _q.setFromEuler(_e);
+  const kb = hk * .14 * s; bp.set(b.x - Math.sin(b.yaw) * kb, b.y + (BH * lift + bob) * s - sink, b.z - Math.cos(b.yaw) * kb);
   bm4.compose(bp, _q, _s.set(s, s, s)); bm4.multiply(_m.makeTranslation(0, -BH, 0));
   BODY.setMatrixAt(b.idx, bm4);
   const fl = b.flash, T = b.T.tint; BODY.setColorAt(b.idx, _v.set(T[0] + fl * 2, T[1] + fl * 3, T[2] + fl * 1));
@@ -546,6 +551,7 @@ function makeGun(fp) {
 // first-person rig
 const gunRoot = new THREE.Group(); cam.add(gunRoot);
 const FPG = makeGun(true); gunRoot.add(FPG);
+FPG.traverse(o => { if (o.isMesh && o.material.isMeshStandardMaterial) o.material.envMapIntensity = .3; }); // close to the lens the sky reflections blew the gun out
 const GUN_BASE = new THREE.Vector3(.2, -.27, -.42);
 // marines (other squad members)
 function makeMarine() {
@@ -577,7 +583,7 @@ const Sfx = {
       return Math.tanh((Math.sin(ph) * Math.exp(-t * 26) * 1.3 + n * Math.exp(-t * 150) * .9 + lp * Math.exp(-t * 35) * .9 + lp2 * Math.exp(-t * 12) * 1.5) * 1.6) * .8; }); });
     this.B.tink = buf(.3, t => (Math.sin(TAU * 3150 * t) * .5 + Math.sin(TAU * 4470 * t) * .35 + Math.sin(TAU * 6020 * t) * .25 + Math.sin(TAU * 7900 * t) * .15) * Math.exp(-t * 22) * (t < .002 ? t / .002 : 1));
     this.B.squelch = [0, 1, 2, 3].map(v => { let lp = 0, ph = 0; return buf(.26, t => { const n = Math.random() * 2 - 1; lp += (n - lp) * (.03 + .35 * Math.exp(-t * (18 + v * 5))); ph += TAU * (90 + 260 * Math.exp(-t * 25) + v * 20) / sr;
-      const wob = 1 + .6 * Math.sin(t * (90 + v * 30)); return (lp * 2.2 * wob + Math.sin(ph) * .5) * Math.exp(-t * (11 + v * 2)) * Math.min(1, t * 400); }); });
+      const wob = 1 + .6 * Math.sin(t * (90 + v * 30)); return (lp * 2.2 * wob + Math.sin(ph) * .5) * .5 * Math.exp(-t * (11 + v * 2)) * Math.min(1, t * 400); }); }); // peaks ~1.2: was clipping into the compressor
     this.B.crunch = [0, 1, 2].map(() => { let y = 0; return buf(.16, t => { if (Math.random() < .05) y = (Math.random() * 2 - 1); y *= .86; return y * Math.exp(-t * 22) * 1.2; }); });
     this.B.squeal = [0, 1, 2].map(v => { let ph = 0; return buf(.7, t => { const f = (1700 - v * 250) * Math.exp(-t * 2.2) + 280 + Math.sin(t * 190) * 60; ph += TAU * f / sr; const r = 1 + (Math.random() - .5) * .8;
       return (Math.sin(ph) + .5 * Math.sin(ph * 2.01) + .3 * Math.sin(ph * 3.03)) * r * .3 * Math.min(1, t * 40) * Math.exp(-t * 4); }); });
@@ -587,6 +593,7 @@ const Sfx = {
     this.B.boom = (() => { let lp = 0; return buf(2.5, t => { const n = Math.random() * 2 - 1; lp += (n - lp) * .02; return lp * 6 * Math.exp(-t * 2.2) * Math.min(1, t * 60); }); })();
     this.B.zap = (() => { let ph = 0; return buf(.35, t => { ph += TAU * (180 + 800 * Math.exp(-t * 18)) / sr; return (Math.sin(ph) > 0 ? 1 : -1) * .25 * Math.exp(-t * 9) + (Math.random() - .5) * .3 * Math.exp(-t * 20); }); })();
     this.B.horn = (() => buf(2.2, t => { const e = Math.min(1, t * 3) * Math.exp(-Math.max(0, t - 1.4) * 4); return (Math.sin(TAU * 110 * t) + .6 * Math.sin(TAU * 165.5 * t) + .4 * Math.sin(TAU * 220.5 * t) + .3 * Math.sin(TAU * 331 * t)) * .14 * e * (1 + .1 * Math.sin(t * 30)); }))();
+    this.B.alarm = buf(1.2, t => { const on = (t % .3) < .18 ? 1 : 0, f = (t % .6) < .3 ? 880 : 660; return (Math.sin(TAU * f * t) > 0 ? 1 : -1) * .18 * on * Math.min(1, (t % .3) * 200); });
     const noise = buf(2, () => Math.random() * 2 - 1);
     const loop = (filtType, f, q, g) => { const s = C.createBufferSource(); s.buffer = noise; s.loop = true; const fl = C.createBiquadFilter(); fl.type = filtType; fl.frequency.value = f; fl.Q.value = q; const gn = C.createGain(); gn.gain.value = g; s.connect(fl); fl.connect(gn); gn.connect(this.master); s.start(); return {fl, gn}; };
     this.wind = loop('lowpass', 380, .7, .14); this.hiss = loop('highpass', 2600, .7, 0); this.rattle = loop('bandpass', 1400, 2, 0);
@@ -638,7 +645,8 @@ function pickTarget(g) {
     if (a > cone) continue; const sc = a / cone * 1.2 + d / 120 - (b.st === 1 ? .5 : 0); if (sc < bs) { bs = sc; best = b; } }
   return best;
 }
-const mz = new THREE.Vector3(), hitP = new THREE.Vector3(), dirV = new THREE.Vector3();
+const mz = new THREE.Vector3(), hitP = new THREE.Vector3(), hitP2 = new THREE.Vector3(), dirV = new THREE.Vector3();
+function nearBug(p, not, r) { let best = null, bd = r * r; for (const b of bugs) { if (b.dead || b === not) continue; const dx = b.x - p.x, dz = b.z - p.z, d = dx * dx + dz * dz; if (d < bd) { bd = d; best = b; } } return best; }
 function muzzleOf(g, out) {
   if (g.id === myId()) return FPG.userData.muzzle.getWorldPosition(out);
   if (g.model) return g.model.userData.gun.userData.muzzle.getWorldPosition(out);
@@ -651,6 +659,7 @@ function fireShot(g, idx) {
     bugCenter(t, hitP); hitP.x += rnd(-.4, .4) * t.s; hitP.y += rnd(-.3, .3) * t.s; hitP.z += rnd(-.4, .4) * t.s;
     hitFx(t, hitP, local);
     if (isHost()) damageBug(t, g, hitP);
+    if (Math.random() < .5) { const o = nearBug(hitP, t, 2.6 * t.s); if (o) { bugCenter(o, hitP2); hitFx(o, hitP2, false); if (isHost()) damageBug(o, g, hitP2); } }
   } else {
     const d = rnd(30, 90), gx = SLOTX[g.slot]; hitP.set(gx - Math.sin(g.yaw + rnd(-.03, .03)) * d, 0, -Math.cos(g.yaw + rnd(-.03, .03)) * d); hitP.y = gH(hitP.x, hitP.z);
     dustFx(hitP);
@@ -671,8 +680,9 @@ function hitFx(b, p, local) {
     PG.add(p.x, p.y, p.z, toCam.x * sp * .5 + rnd(-3, 3), rnd(1, 6), toCam.z * sp * .5 + rnd(-3, 3), rnd(.8, 1.8), rnd(.08, .2) * b.s, rnd(.05, .12), c[0], c[1], c[2], .95, 14, .5, 1); }
   PG.add(p.x, p.y, p.z, rnd(-.5, .5), rnd(0, 1), rnd(-.5, .5), .25, .3 * b.s, .9 * b.s, .5, .85, .1, .7, 0, 2);
   if (Math.random() < .3) addChunk(p.x, p.y, p.z, rnd(.05, .12) * b.s, 5);
-  b.flash = 1;
-  if (Sfx.ctx && Sfx.lim('sq', local ? 55 : 110)) { const a = Sfx.at(p.x, p.z); Sfx.play(Math.random() < .7 ? 'squelch' : 'crunch', {vol: .55 * a.vol + .05, pan: a.pan, rate: rnd(.8, 1.25)}); }
+  b.flash = 1; b.hk = Math.min(1.2, (b.hk || 0) + (b.type === 2 ? .3 : .75));
+  if (b.type === 2 && Math.random() < .5) for (let i = 0; i < 5; i++) PA.add(p.x, p.y, p.z, toCam.x * 4 + rnd(-4, 4), rnd(1, 5), toCam.z * 4 + rnd(-4, 4), rnd(.1, .25), .07, .02, 3, 1.8, .6, 1, 12);
+  if (Sfx.ctx && Sfx.lim('sq', local ? 55 : 110)) { const a = Sfx.at(p.x, p.z); Sfx.play(Math.random() < .7 ? 'squelch' : 'crunch', {vol: .8 * a.vol + .06, pan: a.pan, rate: rnd(.8, 1.25)}); }
   if (local) { G.hitT = .12; }
 }
 function dustFx(p) {
@@ -680,13 +690,19 @@ function dustFx(p) {
   PA.add(p.x, p.y + .1, p.z, rnd(-3, 3), rnd(2, 5), rnd(-3, 3), .15, .08, .02, 3, 1.6, .5, 1, 12);
 }
 function damageBug(b, g, p) {
-  b.hp -= 1;
+  b.hp -= 1; b.stag = b.type === 2 ? .15 : .35;
+  if (b.type !== 2 && b.st !== 2) { const dx = b.x - SLOTX[g.slot], dz = b.z, d = Math.hypot(dx, dz) || 1; b.x += dx / d * .04; b.z += dz / d * .04; }
   if (b.hp > 0 && Math.random() < .14) { const k = (Math.random() * 6) | 0; if (b.legs & (1 << k)) { b.legs &= ~(1 << k); legOffFx(b, k); if (isHost()) G.evq.push(['l', b.id, k]); } }
   if (b.hp <= 0) { killBug(b, g); }
 }
 function legOffFx(b, k) { const c = bugCenter(b, _v2); addChunk(c.x + rnd(-1, 1) * b.s, c.y, c.z, b.s * .8, 6, true); for (let i = 0; i < 8; i++) PG.add(c.x, c.y, c.z, rnd(-3, 3), rnd(2, 6), rnd(-3, 3), rnd(.8, 1.5), .15 * b.s, .08, .5, .9, .1, .95, 14, .4, 1); }
 function killBug(b, g) {
-  if (b.dead) return; b.dead = .001; b.hp = 0; b.roll = 0;
+  if (b.dead) return; b.dead = .001; b.hp = 0; b.roll = 0; b.dyaw = 0;
+  // corpse keeps its momentum: slides/tumbles forward, leapers fall out of the air; some light bugs burst apart (gib)
+  const fw = b.st === 1 ? 0 : Math.min(b.sp, 14) * .7;
+  b.dvx = Math.sin(b.yaw) * fw + rnd(-1, 1); b.dvz = Math.cos(b.yaw) * fw + rnd(-1, 1); b.dvy = b.st === 2 ? (b.vy || 0) : rnd(1.5, 3.5) / Math.sqrt(b.s);
+  b.droll = Math.random() < .65 ? PI * (Math.random() < .5 ? 1 : -1) : PI / 2 * (Math.random() < .5 ? 1 : -1); b.dspin = rnd(-4, 4);
+  b.gib = b.type !== 2 && Math.random() < (b.type === 1 ? .45 : .25) ? 1 : 0;
   if (g) { g.kills++; G.kills++; if (g.id === myId()) { G.killT = .25; } }
   if (isHost()) G.evq.push(['k', b.id, g ? g.slot : -1]);
   deathFx(b);
@@ -697,35 +713,60 @@ function deathFx(b) {
     PG.add(c.x, c.y, c.z, Math.cos(a) * sp, rnd(2, 9), Math.sin(a) * sp, rnd(1, 2.2), rnd(.12, .32) * s, rnd(.08, .2) * s, col[0], col[1], col[2], .95, 14, .4, 1); }
   for (let i = 0; i < 4; i++) PG.add(c.x, c.y, c.z, rnd(-1, 1), rnd(0, 2), rnd(-1, 1), .5, .5 * s, 2 * s, .55, .9, .12, .6, 0, 3);
   for (let i = 0; i < 4 + s * 3; i++) addChunk(c.x, c.y, c.z, rnd(.08, .22) * s, 7);
-  if (Math.random() < .5) { b.legs &= ~(1 << ((Math.random() * 4) | 0)); addChunk(c.x, c.y, c.z, s * .8, 6, true); }
+  if (b.gib) { for (let k = 0; k < 6; k++) if (b.legs & (1 << k)) addChunk(c.x, c.y, c.z, s * (k < 4 ? .8 : .6), 8, true);
+    for (let i = 0; i < 6; i++) addChunk(c.x, c.y, c.z, rnd(.15, .35) * s, 9);
+    for (let i = 0; i < (HI() ? 30 : 14); i++) { const col = SLIME[(Math.random() * 4) | 0]; PG.add(c.x, c.y, c.z, rnd(-7, 7), rnd(3, 11), rnd(-7, 7), rnd(1, 2), rnd(.15, .4) * s, .1, col[0], col[1], col[2], .95, 14, .3, 1); }
+    PS.add(c.x, c.y, c.z, 0, .8, 0, 1.4, .6 * s, 3 * s, .5, .62, .2, .35, 0, 1); }
+  else if (Math.random() < .5) { b.legs &= ~(1 << ((Math.random() * 4) | 0)); addChunk(c.x, c.y, c.z, s * .8, 6, true); }
+  if (b.type === 2) { for (let i = 0; i < 10; i++) PS.add(b.x + rnd(-1.5, 1.5), b.y + .3, b.z + rnd(-1.5, 1.5), rnd(-2, 2), rnd(.5, 2), rnd(-2, 2), rnd(1.2, 2.4), .6, 3, .55, .38, .25, .5, 0, 1.5);
+    const d = Math.hypot(b.x - P.x, b.z - P.z); P.trauma = Math.min(1, P.trauma + clamp(1 - d / 60, 0, 1) * .5);
+    if (Sfx.ctx) { const a = Sfx.at(b.x, b.z); Sfx.play('boom', {vol: .5 * a.vol + .1, pan: a.pan, rate: 1.6, lp: 900}); } }
   addDecal(b.x + rnd(-.5, .5), b.z + rnd(-.5, .5), rnd(2, 3.4) * s, [rnd(.55, .9), rnd(.85, 1.1), rnd(.3, .6)]);
   for (let i = 0; i < 2; i++) addDecal(b.x + rnd(-2, 2) * s, b.z + rnd(-2, 2) * s, rnd(.6, 1.4) * s, [.7, 1, .4]);
-  if (Sfx.ctx) { const a = Sfx.at(b.x, b.z); if (Sfx.lim('death', 70)) { Sfx.play('squelch', {vol: .7 * a.vol + .05, pan: a.pan, rate: .7}); Sfx.play('crunch', {vol: .5 * a.vol, pan: a.pan, rate: .8}); }
+  if (Sfx.ctx) { const a = Sfx.at(b.x, b.z); if (Sfx.lim('death', 70)) { Sfx.play('squelch', {vol: 1.1 * a.vol + .08, pan: a.pan, rate: .7}); Sfx.play('crunch', {vol: .5 * a.vol, pan: a.pan, rate: .8}); }
     if (Sfx.lim('squeal', 160)) Sfx.play('squeal', {vol: .25 * a.vol, pan: a.pan, rate: rnd(.8, 1.3) / Math.sqrt(s), lp: 4000}); }
 }
 
 // ---------------- waves + bug AI (host)
-function waveQuota(n) { return 18 + n * 14 + n * n * 2; }
+// pacing: wave n spawns for (8 + n) s; a squad gets +50% bugs per extra gunner
+const crewMul = () => 1 + .5 * Math.max(0, G.gunners.size - 1);
+const spawnRate = n => Math.min(30, 6 + n * 1.5) * crewMul();
+function waveQuota(n) { return Math.round(spawnRate(n) * (8 + n)); }
 function startWave(n) {
-  G.wave = n; G.quota = waveQuota(n); G.gap = 0;
+  G.wave = n; G.quota = waveQuota(n); G.gap = 0; G.cleared = false;
   callout('WAVE ' + n, n === 1 ? 'CONTACTS INBOUND' : n % 5 === 0 ? 'MASSIVE SWARM' : 'MORE INBOUND');
-  Sfx.play('horn', {vol: .35, vr: 0});
+  Sfx.play('horn', {vol: .6, vr: 0});
   if (isHost()) G.evq.push(['w', n]);
 }
+function waveCleared() {
+  G.hp = Math.min(100, G.hp + 12); G.shield = 100;
+  heldFx(G.wave);
+  if (isHost()) G.evq.push(['c', G.wave]);
+}
+function heldFx(n) { callout('WAVE ' + n + ' HELD', 'ARMOUR PATCHED // NEXT WAVE INBOUND'); Sfx.play('horn', {vol: .35, rate: 1.5, vr: 0}); }
 function spawnOne() {
   const n = G.wave, r = Math.random();
   const type = n >= 3 && r < Math.min(.12, .03 + n * .006) ? 2 : n >= 2 && r < .3 ? 1 : 0;
   const a = rnd(-1.2, 1.2), d = rnd(130, 210);
   spawnBug(type, Math.sin(a) * d, -Math.cos(a) * d);
+  if (type === 2 && !G.bruteSeen) { G.bruteSeen = true; bruteWarn(); if (isHost()) G.evq.push(['b']); }
 }
+function bruteWarn() { setTimeout(() => { if (G.on && !G.over) callout('BRUTE', 'BIG ONE INBOUND // KEEP THE GUN ON IT'); }, 2600); }
 const grid = new Map();
 function stepBugsHost(dt) {
   if (G.over) return;
-  if (G.quota > 0) { G.spawnAcc += dt * Math.min(40, 5 + G.wave * 2.2); while (G.spawnAcc > 1 && G.quota > 0) { G.spawnAcc--; if (bugs.filter(b => !b.dead).length < 380) { spawnOne(); G.quota--; } } }
-  else { G.gap += dt; if (G.gap > 2.5) startWave(G.wave + 1); }
+  let live = 0; for (const b of bugs) if (!b.dead) live++;
+  if (G.quota > 0) { G.spawnAcc += dt * spawnRate(G.wave); while (G.spawnAcc > 1 && G.quota > 0) { G.spawnAcc--; if (live < 380) { spawnOne(); G.quota--; live++; } else { G.spawnAcc = 0; break; } } }
+  else {
+    // lull: once the field is nearly clear the wave counts as held (armour patch), next wave 3.5 s later; overwhelmed = next wave after 14 s anyway
+    G.gap += dt;
+    if (!G.cleared && live <= 4) { G.cleared = true; G.gap = 0; waveCleared(); }
+    if ((G.cleared && G.gap > 3.5) || G.gap > 14) startWave(G.wave + 1);
+  }
   const spm = Math.min(2, 1 + G.wave * .05);
   grid.clear();
-  for (const b of bugs) { if (b.dead) continue; const k = ((b.x / 3) | 0) * 1000 + ((b.z / 3) | 0); let c = grid.get(k); if (!c) grid.set(k, c = []); c.push(b); }
+  const cell = (x, z) => (Math.floor(x / 3) + 500) * 1000 + Math.floor(z / 3) + 500;
+  for (const b of bugs) { if (b.dead) continue; const k = cell(b.x, b.z); let c = grid.get(k); if (!c) grid.set(k, c = []); c.push(b); }
   let attackers = 0, dmg = 0;
   for (const b of bugs) {
     if (b.dead) continue;
@@ -734,12 +775,15 @@ function stepBugsHost(dt) {
     if (b.st === 2) { b.vy -= 18 * dt; b.y += b.vy * dt; const f = b.T.sp * 9 * spm; b.x += dx / d * f * 1.6 * dt; b.z += dz / d * f * 1.6 * dt; const gy = gH(b.x, b.z); if (b.y <= gy) { b.y = gy; b.st = 0; } b.sp = 0; continue; }
     if (d < .8) { b.st = 1; b.sp = 0; attackers++; dmg += b.T.dps * (b.legs === 63 ? 1 : .7); b.yaw += angD(b.yaw, Math.atan2(-b.x + SLOTX[0] * 0, -b.z)) * dt * 4; }
     else {
-      b.st = 0; let sp = b.T.sp * 8.5 * spm * (.8 + .2 * (b.legs & 15 ? 1 : 0)); if ((b.legs & 15) !== 15) sp *= .75;
+      b.st = 0; let sp = b.T.sp * 8.5 * spm;
+      if ((b.legs & 15) !== 15) sp *= ((b.legs & 15) ? .65 : .4) + .3 * Math.abs(Math.sin(b.ph)); // limping: lurches along
+      if (b.stag > 0) { b.stag -= dt; sp *= .35; }
       const wv = Math.sin(b.t * b.wf) * b.weave * Math.min(1, d / 30);
       let ux = dx / d, uz = dz / d; const px = -uz, pz = ux; ux += px * wv; uz += pz * wv;
       // separation
-      const k = ((b.x / 3) | 0) * 1000 + ((b.z / 3) | 0), c = grid.get(k);
-      if (c) for (const o of c) { if (o === b) continue; const ox = b.x - o.x, oz = b.z - o.z, od = ox * ox + oz * oz, rr = (b.s + o.s) * .9; if (od < rr * rr && od > 1e-4) { const f = (rr - Math.sqrt(od)) * 2; ux += ox * f; uz += oz * f; } }
+      const k0 = cell(b.x, b.z);
+      for (let gx = -1; gx <= 1; gx++) for (let gz = -1; gz <= 1; gz++) { const c = grid.get(k0 + gx * 1000 + gz); if (!c) continue;
+        for (const o of c) { if (o === b) continue; const ox = b.x - o.x, oz = b.z - o.z, od = ox * ox + oz * oz, rr = (b.s + o.s) * .9; if (od < rr * rr && od > 1e-4) { const f = (rr - Math.sqrt(od)) * 2; ux += ox * f; uz += oz * f; } } }
       const ul = Math.hypot(ux, uz) || 1; const step = Math.min(sp * dt, d);
       b.x += ux / ul * step; b.z += uz / ul * step; b.sp = sp;
       b.yaw += angD(b.yaw, Math.atan2(ux, uz)) * Math.min(1, dt * 6);
@@ -749,19 +793,26 @@ function stepBugsHost(dt) {
     }
   }
   // damage to the line
-  if (dmg > 0) { hurt(dmg * dt); }
+  if (dmg > 0) { hurt(4 * Math.pow(dmg / 4, .6) * dt); }
   G.attackers = attackers;
 }
 function hurt(d) {
-  G.hurtT = 0; const s = Math.min(G.shield, d); G.shield -= s; d -= s; G.hp = Math.max(0, G.hp - d * .12);
+  G.hurtT = 0; const s = Math.min(G.shield, d); G.shield -= s; d -= s; G.hp = Math.max(0, G.hp - d * .2);
+  if (G.hp < 30 && !G.lowWarn) { G.lowWarn = true; callout('ARMOUR CRITICAL', 'CLEAR THE BARRICADE'); Sfx.play('alarm', {vol: .5, vr: 0}); if (isHost()) G.evq.push(['a']); }
+  if (G.hp > 45) G.lowWarn = false;
   G.dmgFlash = Math.min(1, G.dmgFlash + .08); P.trauma = Math.min(1, P.trauma + .015);
-  if (Sfx.ctx && Sfx.lim('zap', 400)) Sfx.play('zap', {vol: .25});
+  if (Sfx.ctx && Sfx.lim('zap', 400)) Sfx.play('zap', {vol: .45});
   if (G.hp <= 0 && !G.over) overrun();
 }
 function stepBugsCommon(dt, time) {
   for (let i = bugs.length - 1; i >= 0; i--) {
     const b = bugs[i]; b.t += dt; b.flash = Math.max(0, b.flash - dt * 8);
-    if (b.dead) { b.dead += dt; b.roll = Math.min(PI, b.roll + dt * 7); b.pitch *= .9; b.y = gH(b.x, b.z); if (b.dead > 8) { freeBug(b); continue; } }
+    b.hk = (b.hk || 0) * Math.exp(-dt * 11);
+    if (b.dead) { b.dead += dt; if (b.dead > (b.gib ? 1 : 8)) { freeBug(b); continue; }
+      const rr = b.type === 2 ? 3.5 : 8; b.roll += clamp(b.droll - b.roll, -rr * dt, rr * dt); b.pitch *= .9;
+      const gy = gH(b.x, b.z); b.dvy -= 20 * dt; b.y += b.dvy * dt;
+      if (b.y <= gy) { b.y = gy; if (b.dvy < -3) { b.dvy *= -.25; b.dspin *= .5; } else b.dvy = 0; const f = Math.exp(-dt * 5); b.dvx *= f; b.dvz *= f; b.dspin *= Math.exp(-dt * 4); }
+      b.x += b.dvx * dt; b.z += b.dvz * dt; b.dyaw += b.dspin * dt; }
     else { b.ph += dt * (b.sp * 1.9 / b.s + (b.st === 1 ? 0 : .5)); }
   }
 }
@@ -780,6 +831,9 @@ function applySnap(m) {
   for (const e of m.e || []) {
     if (e[0] === 'k') { const b = byId.get(e[1]); if (b) { const g = [...G.gunners.values()].find(q => q.slot === e[2]); killBug(b, null); if (g && g.id === myId()) G.killT = .25; } }
     else if (e[0] === 'w') startWave(e[1]);
+    else if (e[0] === 'c') heldFx(e[1]);
+    else if (e[0] === 'b') bruteWarn();
+    else if (e[0] === 'a') { callout('ARMOUR CRITICAL', 'CLEAR THE BARRICADE'); Sfx.play('alarm', {vol: .5, vr: 0}); }
   }
   G.shield = m.sh; G.hp = m.hp; G.kills = m.k; G.wave = m.w;
   if (m.hurt) { G.hurtT = 0; G.dmgFlash = Math.min(1, G.dmgFlash + .1); }
@@ -807,7 +861,8 @@ Net.on('start', m => { if (!G.on || G.over) beginGame(false); G.wave = m.wave; n
 Net.on('s', m => { if (Net.role === 'guest' && G.on) applySnap(m); });
 Net.on('over', m => { if (Net.role === 'guest') overrun(m); });
 Net.on('restart', () => { if (Net.role === 'guest') beginGame(false); });
-Net.on('_hostgone', () => toast('Host disconnected'));
+Net.on('_hostgone', () => { toast('Host disconnected'); clearTimeout(G.goneT); G.goneT = setTimeout(() => { if (Net.role !== 'guest' || !G.on || G.over) return; G.over = true; G.lost = true; Net.close(); showEnd('SIGNAL LOST', 'The squad host left the game', G.wave, G.kills, G.runT, ''); }, 6000); });
+Net.on('_hostback', () => { clearTimeout(G.goneT); toast('Host reconnected'); });
 
 // ---------------- HUD
 const hud = $('hud'), hx = hud.getContext('2d');
@@ -815,7 +870,7 @@ let HW = 0, HH = 0;
 function resize() { cam.aspect = innerWidth / innerHeight; cam.updateProjectionMatrix(); setupPost(); const dpr = Math.min(devicePixelRatio, 2); HW = hud.width = innerWidth * dpr; HH = hud.height = innerHeight * dpr; hx.setTransform(dpr, 0, 0, dpr, 0, 0); for (const p of [PA, PS, PG]) p.mat.uniforms.scale.value = innerHeight * Math.min(devicePixelRatio, HI() ? 1.5 : .85) / (2 * Math.tan(cam.fov * PI / 360)); }
 addEventListener('resize', resize);
 let callT = 0, toastT = 0, toastS = '';
-function callout(t, s) { $('callT').textContent = t; $('callS').textContent = s; $('call').style.opacity = 1; callT = 2.4; }
+function callout(t, s) { $('callT').textContent = t; $('callT').style.fontSize = t.length > 9 ? 'min(44px, 6.5vw)' : 'min(72px, 11vw)'; $('callS').textContent = s; $('call').style.opacity = 1; callT = 2.4; }
 function toast(s) { toastS = s; toastT = 3; }
 const CY = 'rgba(111,247,238,', READ = [];
 for (let i = 0; i < 40; i++) READ.push(Math.random().toString(16).slice(2, 10).toUpperCase() + ' ' + ['SYNC', 'ACK', 'TRK', 'PWR', 'VNT', 'LNK'][i % 6]);
@@ -854,7 +909,7 @@ function drawHud(dt, time) {
   c.fillStyle = CY + '.55)'; c.fillText('AUTO-FIRE ' + (SET.auto ? 'ON' : 'OFF') + '  [F]', bx, by + 100);
   // top left: wave, kills
   c.fillStyle = CY + '.9)'; c.font = '700 30px Rajdhani,sans-serif'; c.fillText('WAVE ' + G.wave, 34, 52); c.font = '13px "Share Tech Mono",monospace';
-  c.fillText('KILLS ' + G.kills, 36, 72); c.fillStyle = CY + '.5)'; c.fillText('BEST WAVE ' + G.best, 36, 88);
+  c.fillText('KILLS ' + G.kills, 36, 72); c.fillStyle = CY + '.5)'; if (G.best) c.fillText('BEST WAVE ' + G.best, 36, 88);
   // squad
   if (Net.role !== 'solo') { let y = 112; c.fillStyle = CY + '.8)'; c.fillText(Net.role === 'host' ? 'SQUAD CODE ' + Net.code : 'SQUAD ' + Net.code, 36, y); for (const g of [...G.gunners.values()].sort((a, b) => a.slot - b.slot)) { y += 16; c.fillStyle = g.id === myId() ? '#fff' : CY + '.7)'; c.fillText((g.name || '?').padEnd(14) + ' ' + g.kills, 36, y); } }
   // top right readouts
@@ -940,13 +995,13 @@ function stepFeel(dt, time) {
   const idle = firing ? 0 : 1;
   FPG.position.set(GUN_BASE.x + P.swayX * .02 + Math.sin(time * 1.1) * .003 * idle + rnd(-1, 1) * .002 * sh * 4, GUN_BASE.y + P.swayY * .02 + Math.sin(time * 1.4) * .004 * idle + P.gp * .004, GUN_BASE.z + P.kick * .012);
   FPG.rotation.set(P.gp * .02 - P.swayY * .03, -P.swayX * .04 + .02, P.cy * .01 + P.swayX * .05);
-  muzL.intensity = firing && Math.random() < .8 ? rnd(30, 70) : 0; FPG.userData.muzzle.getWorldPosition(muzL.position);
+  muzL.intensity = firing && Math.random() < .8 ? rnd(5, 11) : 0; FPG.userData.muzzle.getWorldPosition(muzL.position);
 }
 
 // ---------------- main flow
 function resetWorld() {
   for (const b of bugs.slice()) freeBug(b); nextId = 1;
-  Object.assign(G, {wave: 0, quota: 0, spawnAcc: 0, gap: 1.5, kills: 0, shield: 100, hp: 100, hurtT: 9, over: false, evq: [], dmgDirs: [], attackers: 0});
+  Object.assign(G, {wave: 0, quota: 0, spawnAcc: 0, gap: 1.5, kills: 0, shield: 100, hp: 100, hurtT: 9, over: false, evq: [], dmgDirs: [], attackers: 0, runT: 0, cleared: false, bruteSeen: false, lowWarn: false, lost: false});
   for (const g of G.gunners.values()) g.kills = 0;
   P.heat = 0; P.spin = 0; P.vent = 0;
 }
@@ -957,14 +1012,29 @@ function beginGame(fresh) {
   G.on = true; G.paused = false; P.yaw = 0;
   ['menu', 'end', 'pause'].forEach(i => $(i).classList.add('hidden')); $('hud').classList.remove('hidden'); $('visor').classList.remove('hidden');
   if (isHost()) startWave(1);
-  if (!TEST) lockPtr();
+  if (!TEST && !isTouch) lockPtr();
+  $('bPauseT').classList.toggle('hidden', !isTouch);
+  $('bAgain').disabled = false;
 }
 function overrun(m) {
-  if (G.over) return; G.over = true; const w = m ? m.w : G.wave, k = m ? m.k : G.kills;
-  if (w > G.best) { G.best = w; try { localStorage.setItem('ls-best', w); } catch (e) {} }
-  if (Net.role === 'host') Net.send({t: 'over', w, k});
-  setTimeout(() => { if (!G.over) return; const lg = localGunner(); $('endS').innerHTML = `The line fell on wave <b>${w}</b>.<br>Squad kills: <b>${k}</b>${lg && Net.role !== 'solo' ? '<br>Your kills: <b>' + lg.kills + '</b>' : ''}`; $('bAgain').textContent = Net.role === 'guest' ? 'Waiting for host to restart' : 'Click to restart'; $('end').classList.remove('hidden'); document.exitPointerLock && document.exitPointerLock(); }, 1200);
-  Sfx.play('horn', {rate: .6, vol: .4});
+  if (G.over) return; G.over = true; const w = m ? m.w : G.wave, k = m ? m.k : G.kills, t = m && m.rt ? m.rt : G.runT;
+  const prev = G.best; if (w > G.best) { G.best = w; try { localStorage.setItem('ls-best', w); } catch (e) {} }
+  if (Net.role === 'host') Net.send({t: 'over', w, k, rt: Math.round(t)});
+  callout('OVERRUN', 'THE LINE HAS FALLEN');
+  setTimeout(() => { if (G.over) showEnd('OVERRUN', 'The hive took Kestrel-9', w, k, t, w > prev && prev > 0 ? 'NEW BEST: wave ' + w + ' (was ' + prev + ')' : 'Best: wave ' + G.best); }, 1600);
+  Sfx.play('horn', {rate: .6, vol: .7});
+}
+function fmtT(t) { t = Math.max(0, t | 0); return (t / 60 | 0) + ':' + String(t % 60).padStart(2, '0'); }
+function showEnd(title, sub, w, k, t, best) {
+  const lg = localGunner(), you = lg && Net.role !== 'solo' ? lg.kills : null;
+  $('call').style.opacity = 0; callT = 0;
+  $('endH').textContent = title; $('endSub').textContent = sub;
+  $('endS').innerHTML = `<div><b>${w}</b><small>Wave</small></div><div><b>${k}</b><small>${you !== null ? 'Squad kills' : 'Kills'}</small></div><div><b>${fmtT(t)}</b><small>Held</small></div>` + (you !== null ? `<div style="grid-column:1/-1"><small>Your kills</small> <b style="display:inline;font-size:22px">${you}</b></div>` : '');
+  $('endB').textContent = best || '';
+  const guest = Net.role === 'guest' && !G.lost;
+  $('bAgain').textContent = G.lost ? 'Back to menu' : guest ? 'Waiting for the host to restart' : 'Hold the line again';
+  $('bAgain').disabled = guest; $('endK').textContent = guest ? '' : 'or press Space';
+  $('end').classList.remove('hidden'); $('bPauseT').classList.add('hidden'); document.exitPointerLock && document.exitPointerLock();
 }
 function lockPtr() { try { const r = canvas.requestPointerLock && canvas.requestPointerLock(); if (r && r.catch) r.catch(() => {}); } catch (e) {} }
 
@@ -974,6 +1044,7 @@ function step(dt) {
   time += dt; G.t += dt;
   const live = G.on && !(G.paused && Net.role === 'solo');
   if (live) {
+    if (!G.over) G.runT += dt;
     // input sweep
     const kx = (keys.KeyD || keys.ArrowRight ? 1 : 0) - (keys.KeyA || keys.ArrowLeft ? 1 : 0);
     if (kx) { P.yaw -= kx * dt * 1.7; P.swayVX -= kx * dt * 30; }
@@ -1017,14 +1088,18 @@ addEventListener('mousemove', e => { if (document.pointerLockElement !== canvas 
 canvas.addEventListener('mousedown', e => { Sfx.init(); if (!G.on || G.over) return; if (document.pointerLockElement !== canvas && !TEST && !isTouch) { lockPtr(); return; } if (e.button === 0) mouseDown = true; if (e.button === 2 && P.vent <= 0 && P.heat > .2) { P.vent = .5; vent(); } });
 addEventListener('mouseup', e => { if (e.button === 0) mouseDown = false; });
 addEventListener('contextmenu', e => e.preventDefault());
-addEventListener('keydown', e => { keys[e.code] = true; if (!G.on) return; if (e.code === 'KeyF') { SET.auto = !SET.auto; saveSet(); syncUI(); toast('Auto-fire ' + (SET.auto ? 'on' : 'off')); } if (e.code === 'KeyR' && P.vent <= 0 && P.heat > .2) { P.vent = .5; vent(); } if (e.code === 'KeyP') pause(true); });
+addEventListener('keydown', e => { keys[e.code] = true; if (!G.on) return;
+  if (G.over) { if ((e.code === 'Space' || e.code === 'Enter') && !$('end').classList.contains('hidden') && !$('bAgain').disabled) { e.preventDefault(); $('bAgain').click(); } return; }
+  if (e.code === 'Escape' && document.pointerLockElement !== canvas && performance.now() - plT > 400) { pause(!G.paused); return; } if (e.code === 'KeyF') { SET.auto = !SET.auto; saveSet(); syncUI(); toast('Auto-fire ' + (SET.auto ? 'on' : 'off')); } if (e.code === 'KeyR' && P.vent <= 0 && P.heat > .2) { P.vent = .5; vent(); } if (e.code === 'KeyP') pause(true); });
 addEventListener('keyup', e => { keys[e.code] = false; });
 let isTouch = false, tX = null;
-addEventListener('touchstart', e => { isTouch = true; Sfx.init(); if (G.on) tX = e.touches[0].clientX; }, {passive: true});
+addEventListener('touchstart', e => { isTouch = true; Sfx.init(); if (G.on && !G.over) $('bPauseT').classList.remove('hidden'); if (G.on) tX = e.touches[0].clientX; }, {passive: true});
 addEventListener('touchmove', e => { if (!G.on || tX === null) return; const x = e.touches[0].clientX, dx = (x - tX) * .006 * SET.sens; tX = x; P.yaw = clamp(P.yaw - dx, -1.5, 1.5); P.swayVX -= dx * 40; }, {passive: true});
 addEventListener('touchend', () => { tX = null; });
-document.addEventListener('pointerlockchange', () => { const on = document.pointerLockElement === canvas; $('hint').classList.toggle('hidden', on || !G.on || G.over || isTouch || TEST); if (!on && G.on && !G.over && !TEST && !isTouch) pause(true); });
-function pause(p) { G.paused = p; $('pause').classList.toggle('hidden', !p); if (!p) lockPtr(); }
+let plT = 0;
+document.addEventListener('pointerlockchange', () => { plT = performance.now(); const on = document.pointerLockElement === canvas; $('hint').classList.toggle('hidden', on || !G.on || G.over || isTouch || TEST); if (!on && G.on && !G.over && !TEST && !isTouch) pause(true); });
+function pause(p) { G.paused = p; $('pause').classList.toggle('hidden', !p); if (!p && !isTouch) lockPtr(); }
+$('bPauseT').onclick = () => pause(true);
 
 // ---------------- menus
 function syncUI() {
@@ -1044,7 +1119,7 @@ $('bStart').onclick = () => { Net.close(); beginGame(true); };
 if ($('bHost')) $('bHost').onclick = () => {
   Sfx.init(); const code = Net.host(SET.name, st => netStatus(st === 'open' ? 'Squad open. Code ' + Net.code : 'Reconnecting to relay...'));
   beginGame(true); G.gunners.get('H').name = SET.name;
-  const link = location.origin + location.pathname + '?room=' + code; toast('Squad code ' + code + ' (link copied)'); try { navigator.clipboard.writeText(link); } catch (e) {}
+  const link = location.origin + location.pathname + '?room=' + code; toast('Squad code ' + code + ' (link copied)'); try { navigator.clipboard.writeText(link).catch(() => {}); } catch (e) {}
   $('pCode').textContent = 'Squad code ' + code + ' // ' + link;
 };
 if ($('bJoin')) $('bJoin').onclick = () => {
@@ -1054,14 +1129,16 @@ if ($('bJoin')) $('bJoin').onclick = () => {
   for (const id of [...G.gunners.keys()]) removeGunner(id);
 };
 $('bResume').onclick = () => pause(false);
-$('bQuit').onclick = () => { Net.close(); G.on = false; G.paused = false; resetWorld(); ['pause', 'end'].forEach(i => $(i).classList.add('hidden')); $('menu').classList.remove('hidden'); $('hud').classList.add('hidden'); $('visor').classList.add('hidden'); };
+$('bQuit').onclick = () => { Net.close(); clearTimeout(G.goneT); $('bPauseT').classList.add('hidden'); G.on = false; G.paused = false; resetWorld(); ['pause', 'end'].forEach(i => $(i).classList.add('hidden')); $('menu').classList.remove('hidden'); $('hud').classList.add('hidden'); $('visor').classList.add('hidden'); };
 $('bMenu').onclick = $('bQuit').onclick;
-$('bAgain').onclick = () => { if (Net.role === 'guest') return; if (Net.role === 'host') Net.send({t: 'restart'}); beginGame(false); };
+$('bAgain').onclick = () => { if (G.lost) { $('bQuit').onclick(); return; } if (Net.role === 'guest') return; if (Net.role === 'host') Net.send({t: 'restart'}); beginGame(false); };
 const openReq = () => { $('reqF').src = 'requests.html?embed'; $('reqBox').classList.remove('hidden'); document.exitPointerLock && document.exitPointerLock(); };
 for (const id of ['bReq', 'bReq2', 'bReq3']) $(id).onclick = openReq;
 $('bReqX').onclick = () => $('reqBox').classList.add('hidden');
 { const m = /[?&]room=([A-Za-z]{5})/.exec(location.search); if (m && $('jCode')) { $('jCode').value = m[1].toUpperCase(); netStatus('Squad code filled in. Press Join.'); } }
 syncUI(); resize();
 
-if (TEST) window.__LS = {G, P, bugs, Net, SET, start: () => beginGame(true), fire: v => { testFire = v; }, step: (dt, n = 1, nr) => { noRender = !!nr; for (let i = 0; i < n; i++) step(dt); noRender = false; }, setYaw: y => { P.yaw = y; }, host: () => $('bHost').click(), join: c => { $('jCode').value = c; $('bJoin').click(); }, scene, cam};
+if (TEST) window.__LS = {G, P, bugs, Net, SET, start: () => beginGame(true), fire: v => { testFire = v; }, step: (dt, n = 1, nr) => { noRender = !!nr; for (let i = 0; i < n; i++) step(dt); noRender = false; }, setYaw: y => { P.yaw = y; }, Sfx, spawnBug, killBug, host: () => $("bHost").click(), join: c => { $('jCode').value = c; $('bJoin').click(); }, scene, cam};
+// compile the shaders the fight needs up front (muzzle flash, squad marines) so the first shots don't hitch
+{ const wm = makeMarine(), u = FPG.userData; u.fl.forEach(f => f.visible = true); u.side.visible = true; try { RND.compile(scene, cam); } catch (e) {} u.fl.forEach(f => f.visible = false); u.side.visible = false; scene.remove(wm); }
 requestAnimationFrame(loop);
