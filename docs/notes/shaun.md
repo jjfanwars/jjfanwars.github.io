@@ -68,6 +68,12 @@ The owner's design brief is **brain-off**: no skill needed beyond sweeping the g
 - Lighting (`survLight`, every frame): `dayK` eases to 0 at night / 1 by day; scales `compM.exp`, `SUN` and `HEMI` (sun direction stays, so baked shadows still fit). Night flashlight `FLASH` (SpotLight on the camera, origin pushed 1.3 m forward so it doesn't blow out the gun; `T` toggles `P.torch`). Horde mode stays at 0.5 (unchanged look).
 - Score = nights survived (`ls-bestN`).
 
+## Hive raids (19 Nov 2026, survival days)
+- At dawn `makeHole` puts a hive mound 55-90 m out (`HOLE`, HUD marker HIVE); removed at nightfall (`dropHole`) unless you are inside. `[E]` at the hole (`toggleMount` checks hole/exit first) -> `enterHive`.
+- Tunnels live far off the map at z > 450 and floor `UGY` (-40). `gH` returns `UGY` for z > 450 while `TUN` is set, so bug physics, corpses, decals, shadows and crates all just work underground. `enterHive` builds a random 11-node winding tube (`TubeGeometry` on a Catmull-Rom, radius 3.6, `tunGeo` jitters walls along normals, flattens the floor, resin vertex colours, `tunM` triplanar chitin), an entrance cap with a light shaft, 3 chambers (egg clusters, green `TLIGHTS`; 4 point lights exist from load at intensity 0 so entering doesn't recompile shaders), and the brood core in the last chamber (`TUN.core`, HP 70 + 25 x night, pulsing).
+- Inside: sky hidden, dark fog, sun/hemi off, flashlight on, no god rays, wind muffled. Player and bugs are kept inside by `tunClamp` (segments + chambers). 8 + 4 x night bugs at the start (a brute guard from night 2), plus a trickle out of the walls (`tunSpawn`, faster once night is due). Rifle rays test the core sphere first (`coreHit`); misses hit floor/ceiling within 30 m.
+- Core down: collapse (`TUN.col` 30 s, shake, falling dust, rumbles; after that the hull drains 12/s). `[E]` at the entrance light -> `exitHive` (frees tunnel bugs/crates, restores the surface). A killed core removes the mound, adds `SV.hives` (each cuts night quotas by 15%, floor 55%) and offers a bonus perk. Night can't fall while you are underground (`SV.day` holds at 0.01 with warnings).
+
 ## Code map (`shaun/game.js`; UI in `shaun/index.html`)
 - **Renderer:** own post chain (`render`). The scene goes to a HalfFloat MSAA RT, then a bright pass, two blur levels, and the composite `compM`, which does ACES, gamma, vignette, grain, chromatic aberration and the damage tint. The renderer itself has `NoToneMapping`. Low quality (`SET.gfx`) lowers the pixel ratio and turns off shadows and MSAA.
 - **World:**
@@ -122,6 +128,7 @@ The owner's design brief is **brain-off**: no skill needed beyond sweeping the g
 - Headless Chromium needs `--use-angle=swiftshader --enable-unsafe-swiftshader`. It is very slow at this scene size, so keep the step counts small.
 
 ## Changelog
+- 19 Nov 2026: hive raids in survival days: go down a hive mound into dark winding tunnels, fight in chambers, loot crates, kill the brood core and escape the collapse for fewer bugs that night and a bonus perk.
 - 19 Nov 2026: Survival is multi-night: 3-wave nights, dawn with perks and a 90 s scavenging day, dark nights with a flashlight, best = nights survived.
 - 19 Nov 2026: Survival mode (solo): get off the cannon, rifle on foot, scavenge crates between waves, bugs come for you from every side, finite cannon belt.
 - 19 Nov 2026: bugs ~18% slower (base run speed `T.sp x 7 x spm`, was 8.5; leaps 7.5, was 9).

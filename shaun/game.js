@@ -143,7 +143,7 @@ function render() {
   blurM.uniforms.t.value = POST.d.texture; blurM.uniforms.d.value.set(0, 1.5 / POST.c.height); pass(blurM, POST.c);
   compM.uniforms.t.value = POST.main.texture; compM.uniforms.b.value = POST.a.texture; compM.uniforms.b2.value = POST.c.texture;
   compM.uniforms.bloom.value = HI() ? .4 : .25;
-  { _gv.copy(SUN_DIR).multiplyScalar(1000).add(cam.position).project(cam); const f = _gv.z < 1 ? clamp(1.4 - Math.hypot(_gv.x, _gv.y) * .7, 0, 1) : 0; compM.uniforms.sun.value.set(_gv.x * .5 + .5, _gv.y * .5 + .5); compM.uniforms.sunI.value = f * (HI() ? 1 : .6); }
+  { _gv.copy(SUN_DIR).multiplyScalar(1000).add(cam.position).project(cam); const f = _gv.z < 1 ? clamp(1.4 - Math.hypot(_gv.x, _gv.y) * .7, 0, 1) : 0; compM.uniforms.sun.value.set(_gv.x * .5 + .5, _gv.y * .5 + .5); compM.uniforms.sunI.value = TUN ? 0 : f * (HI() ? 1 : .6); }
   pass(compM, null);
 }
 
@@ -287,9 +287,11 @@ function H0(x, z) {
   const roll = (fbm(x * .004 + 11, z * .004 - 3) - .5) * 26;
   return f * (dune + roll + (fbm(x * .05, z * .05) - .5) * 1.6 - 1.5) + smooth((r - 280) / 500) * 30;
 }
+let TUN = null; const UGY = -40;
 const HG = new Float32Array(GN * GN);
 for (let j = 0; j < GN; j++) for (let i = 0; i < GN; i++) HG[j * GN + i] = H0(-GE + i * GS, -GE + j * GS);
 function gH(x, z) {
+  if (z > 450 && TUN) return UGY; // inside the hive tunnels (they sit far off the map)
   const fx = (x + GE) / GS, fz = (z + GE) / GS;
   if (fx < 0 || fz < 0 || fx >= GN - 1 || fz >= GN - 1) return H0(x, z);
   const i = fx | 0, j = fz | 0, u = fx - i, v = fz - j, a = HG[j * GN + i], b = HG[j * GN + i + 1], c = HG[(j + 1) * GN + i], d = HG[(j + 1) * GN + i + 1];
@@ -923,7 +925,11 @@ function fireShot(g, idx) {
   const foot = local && SURV() && P.foot, sp2 = foot ? (.003 + Math.min(1, P.fireT) * .006 + (P.moveL || 0) * .006) * (1 - ads * .75) : spr;
   const yw = g.yaw + rnd(-sp2, sp2), pt = g.pitch + rnd(-sp2, sp2), ox = foot ? P.x : SLOTX[g.slot], oy = foot ? P.eyeY : 1.7, oz = foot ? P.z : 0;
   const dx = -Math.sin(yw) * Math.cos(pt), dy = Math.sin(pt), dz = -Math.cos(yw) * Math.cos(pt);
-  const hits = rayBugs(ox, oy, oz, dx, dy, dz), t = hits.length ? hits[0][0] : null; g.tgt = t;
+  const hits = rayBugs(ox, oy, oz, dx, dy, dz);
+  if (foot && TUN && !TUN.dead) { const c = TUN.core, ex = c.x - ox, ey = c.y - oy, ez = c.z - oz, k = ex * dx + ey * dy + ez * dz;
+    if (k > 0) { const qx = ex - dx * k, qy = ey - dy * k, qz = ez - dz * k, q2 = qx * qx + qy * qy + qz * qz; if (q2 < c.r * c.r) { const tc = k - Math.sqrt(c.r * c.r - q2);
+      if (!hits.length || tc < hits[0][1]) { muzzleOf(g, mz); hitP.set(ox + dx * tc, oy + dy * tc, oz + dz * tc); coreHit(hitP); shotTail(g, idx, local); return; } } } }
+  const t = hits.length ? hits[0][0] : null; g.tgt = t;
   muzzleOf(g, mz);
   const mate = G.ff ? mateOnLine(g, t) : null;
   if (mate) friendlyHit(g, mate, local);
@@ -931,8 +937,8 @@ function fireShot(g, idx) {
     for (let j = 0; j < hits.length; j++) { const [b, tt] = hits[j]; if (j && (foot ? !has('pierce') : Math.random() < .4)) break; const P2 = j ? hitP2 : hitP; P2.set(ox + dx * tt, oy + dy * tt, oz + dz * tt); hitFx(b, P2, local && !j, !!j); if (isHost()) damageBug(b, g, P2); }
     if (G.buff && G.buff.k === 1 && idx % 2 === 0) { let from = t; _sa.copy(hitP); for (let j = 0; j < 2; j++) { const o = nearBug(_sa, from, 9 + t.s * 2); if (!o || o === t) break; bugCenter(o, _sb); shockArc(_sa, _sb); hitFx(o, _sb, false); if (isHost()) damageBug(o, g, _sb); _sa.copy(_sb); from = o; } }
   } else {
-    let d = 220; if (dy < -.002) d = Math.min(220, (oy - gH(ox + dx * 60, oz + dz * 60)) / -dy);
-    hitP.set(ox + dx * d, oy + dy * d, oz + dz * d); if (d < 219) { hitP.y = gH(hitP.x, hitP.z); dustFx(hitP); }
+    let d = 220; if (TUN && foot) d = Math.min(30, dy < -.01 ? (oy - UGY) / -dy : dy > .01 ? (UGY + 6 - oy) / dy : 30, 10 + Math.random() * 15); else if (dy < -.002) d = Math.min(220, (oy - gH(ox + dx * 60, oz + dz * 60)) / -dy);
+    hitP.set(ox + dx * d, oy + dy * d, oz + dz * d); if (TUN && foot) dustFx(hitP); else if (d < 219) { hitP.y = gH(hitP.x, hitP.z); dustFx(hitP); }
   }
   shotTail(g, idx, local);
 }
@@ -1275,7 +1281,7 @@ function scatterItems(n, r0, r1, compound) { for (let i = 0; i < n; i++) { let x
   if (compound) { x = rnd(-12, 12); z = rnd(1.5, 13); } else { const a = rnd(-PI, PI), r = rnd(r0, r1); x = Math.sin(a) * r; z = -Math.cos(a) * r; }
   addItem(pickK(), x, z); } }
 function clearItems() { for (const it of SV.items) scene.remove(it.m); SV.items = []; }
-function survStart() { Object.assign(SV, {mag: 30, res: 150, belt: 1200, rel: 0, lull: 0, wt: 0, q0: 0, emptyT: 0, night: 1, nw: 0, day: 0, perks: [], offer: []}); hidePerks(); clearItems(); P.foot = false; P.x = 0; P.z = 0; P.eyeY = 1.7; scatterItems(7, 0, 0, true); scatterItems(4, 25, 60); }
+function survStart() { Object.assign(SV, {mag: 30, res: 150, belt: 1200, rel: 0, lull: 0, wt: 0, q0: 0, emptyT: 0, night: 1, nw: 0, day: 0, perks: [], offer: [], hives: 0}); hidePerks(); clearItems(); P.foot = false; P.x = 0; P.z = 0; P.eyeY = 1.7; scatterItems(7, 0, 0, true); scatterItems(4, 25, 60); }
 // multi-night: each night is WPN waves with short breathers, then dawn: the hive pulls back, a timed day to scavenge and pick a perk
 const WPN = 3, DAY_T = 90;
 const PERKS = [
@@ -1283,14 +1289,14 @@ const PERKS = [
   {id: 'belt', n: 'HEAVY BELT', d: '+1000 cannon rounds now, bigger belt pickups'}, {id: 'plate', n: 'ARMOUR PLATING', d: 'Take 25% less damage'}, {id: 'run', n: 'MARATHON', d: 'Move and sprint faster'},
   {id: 'pierce', n: 'AP ROUNDS', d: 'Rifle rounds punch through to a second bug'}, {id: 'scav', n: 'SCAVENGER', d: '+3 crates every day'}, {id: 'res', n: 'AMMO CACHE', d: '+180 rifle rounds now, ammo crates give more'}];
 const has = id => SV.perks && SV.perks.includes(id);
-function survWave(n) { G.wave = n; SV.nw = (SV.nw || 0) + 1; G.quota = Math.round((24 + n * 14) * (n % 5 === 0 ? .7 : 1)); SV.q0 = G.quota; SV.dur = 20 + n * 2; SV.lull = 0; SV.wt = 0;
+function survWave(n) { G.wave = n; SV.nw = (SV.nw || 0) + 1; G.quota = Math.round((24 + n * 14) * (n % 5 === 0 ? .7 : 1) * Math.max(.55, 1 - .15 * (SV.hives || 0))); SV.q0 = G.quota; SV.dur = 20 + n * 2; SV.lull = 0; SV.wt = 0;
   callout(SV.nw === 1 ? 'NIGHT ' + SV.night : 'WAVE ' + SV.nw + ' / ' + WPN, SV.nw === 1 ? (SV.night === 1 ? 'THEY KNOW YOU ARE HERE' : 'THE HIVE IS BACK') : 'INBOUND FROM ALL SIDES'); Sfx.play('horn', {vol: .6, vr: 0}); if (n % 5 === 0) spawnTitan(n); }
 function startDay() {
   SV.day = DAY_T; SV.nw = 0; G.shield = 100; G.hp = Math.min(100, G.hp + 20); SV.offer = PERKS.filter(q => !has(q.id)).sort(() => Math.random() - .5).slice(0, 3);
   callout('DAWN', 'NIGHT ' + SV.night + ' SURVIVED // THE HIVE PULLS BACK'); Sfx.play('horn', {vol: .45, rate: 1.4, vr: 0}); radio('idle');
-  scatterItems(8 + (has('scav') ? 3 : 0), 22, 110); scatterItems(3, 0, 0, true); showPerks();
+  scatterItems(8 + (has('scav') ? 3 : 0), 22, 110); scatterItems(3, 0, 0, true); showPerks(); makeHole(); setTimeout(() => { if (G.on && SURV() && SV.day > 0 && !TUN) toast('A hive mound has opened in the dunes. Raid it: [E] at the hole'); }, 3500);
 }
-function nightFall() { SV.day = 0; SV.night++; hidePerks(); startWave(G.wave + 1); }
+function nightFall() { dropHole(); SV.day = 0; SV.night++; hidePerks(); startWave(G.wave + 1); }
 function showPerks() { const el = $('perks'); if (!el || !SV.offer.length) return; el.innerHTML = '<div class="ph">DAWN // PICK ONE</div>' + SV.offer.map((q, i) => `<button data-i="${i}"><b>[${i + 1}] ${q.n}</b><small>${q.d}</small></button>`).join('');
   el.classList.remove('hidden'); for (const b of el.querySelectorAll('button')) b.onclick = () => pickPerk(+b.dataset.i); }
 function hidePerks() { const el = $('perks'); if (el) el.classList.add('hidden'); SV.offer = []; }
@@ -1299,8 +1305,8 @@ function pickPerk(i) { const q = SV.offer && SV.offer[i]; if (!q) return; SV.per
   toast('PERK: ' + q.n); Sfx.play('zap', {vol: .2, rate: 1.5}); hidePerks(); }
 function survSpawn(dt, live) {
   if (SV.day > 0) { // daytime: no spawns, stragglers run off into the dunes
-    for (const b of bugs.slice()) if (!b.dead && Math.hypot(b.x, b.z) > 170) { if (G.titan === b) G.titan = null; freeBug(b); }
-    if ((SV.day -= dt) <= 0) nightFall(); return; }
+    for (const b of bugs.slice()) if (!b.dead && b.z < 450 && Math.hypot(b.x, b.z) > 170) { if (G.titan === b) G.titan = null; freeBug(b); }
+    if ((SV.day -= dt) <= 0) { if (TUN) SV.day = .01; else nightFall(); } return; }
   if (G.quota > 0) { G.spawnAcc += dt * SV.q0 / SV.dur; while (G.spawnAcc > 1 && G.quota > 0) { G.spawnAcc--; spawnOne(); G.quota--; } SV.wt += dt; return; }
   if (SV.lull > 0) { if ((SV.lull -= dt) <= 0) startWave(G.wave + 1); return; }
   if (live <= 2 || (SV.wt += dt) > SV.dur + 70) {
@@ -1311,6 +1317,8 @@ const angW = a => ((a + PI) % TAU + TAU) % TAU - PI;
 const inLine = (x, z) => Math.abs(x) < 13.7 && Math.abs(z - (-1.4 - (x / 13) ** 2 * 2.2)) < .55;
 function toggleMount() {
   if (!SURV() || G.over) return;
+  if (P.ug) { if (Math.hypot(P.x - TUN.N[0][0], P.z - TUN.N[0][1]) < 4) exitHive(); else toast('Climb out at the light where you came in'); return; }
+  if (P.foot && HOLE && SV.day > 0 && Math.hypot(P.x - HOLE.x, P.z - HOLE.z) < 4) { enterHive(); return; }
   if (P.foot) { if (Math.hypot(P.x, P.z - .3) > 2.3) { toast('Get to the cannon to man it'); return; }
     P.foot = false; P.x = 0; P.z = 0; P.eyeY = 1.7; P.yaw = clamp(angW(P.yaw), -1.5, 1.5); P.pitch = clamp(P.pitch, -.55, .4); Sfx.play('tink', {vol: .4, rate: .6}); }
   else { P.foot = true; P.z = 1.1; P.pitch = clamp(P.pitch, -.3, .3); const lg = localGunner(); if (lg) lg.spin = 0; P.spin = 0; P.heat = 0; Sfx.play('tink', {vol: .4, rate: .8}); }
@@ -1329,9 +1337,9 @@ function survMove(dt) {
   const run = keys.ShiftLeft || keys.ShiftRight ? (has('run') ? 2 : 1.7) : 1, sp = (has('run') ? 4.8 : 4.2) * run * (1 - P.ads * .5), l = Math.min(1, Math.hypot(f, r)), ox = P.x, oz = P.z;
   if (l > .05) { const k = l / Math.hypot(f, r) * sp * dt, fx = -Math.sin(P.yaw), fz = -Math.cos(P.yaw), rx = Math.cos(P.yaw), rz = -Math.sin(P.yaw); P.x += (fx * f + rx * r) * k; P.z += (fz * f + rz * r) * k; SV.bob += dt * sp * 1.9;
     if (Sfx.ctx && Math.sin(SV.bob) * Math.sin(SV.bob - dt * sp * 1.9) < 0) Sfx.play('crunch', {vol: .06 * run, rate: rnd(.5, .7), lp: 1200}); }
-  if (inLine(P.x, P.z) && !inLine(ox, oz)) { P.x = ox; P.z = oz; } // the sandbag line: go round the ends
+  if (!P.ug && inLine(P.x, P.z) && !inLine(ox, oz)) { P.x = ox; P.z = oz; } // the sandbag line: go round the ends
   for (const b of bugs) { if (b.dead || b.st === 3) continue; const dx = P.x - b.x, dz = P.z - b.z, d2 = dx * dx + dz * dz, rr = .7 * b.s + .3; if (d2 < rr * rr && d2 > 1e-4) { const d = Math.sqrt(d2); P.x += dx / d * (rr - d) * .5; P.z += dz / d * (rr - d) * .5; } }
-  const rr = Math.hypot(P.x, P.z); if (rr > 160) { P.x *= 160 / rr; P.z *= 160 / rr; }
+  if (P.ug) { const q = tunClamp(P.x, P.z, .6); if (q) { P.x = q[0]; P.z = q[1]; } } else { const rr = Math.hypot(P.x, P.z); if (rr > 160) { P.x *= 160 / rr; P.z *= 160 / rr; } }
   P.eyeY = gH(P.x, P.z) + 1.65 + Math.sin(SV.bob) * .035 * l; P.moveL = l * run;
 }
 const FLASH = new THREE.SpotLight(0xfff0d8, 0, 80, .4, .55, 1.3); FLASH.position.set(0, .15, -1.3); FLASH.target.position.set(0, -.6, -10); cam.add(FLASH, FLASH.target);
@@ -1339,8 +1347,8 @@ let dayK = .5;
 function survLight(dt) { // night = dark with a flashlight; day = bright and hazy (the sun stays low so the baked shadows still fit)
   const tgt = !SURV() ? .5 : SV.day > 0 ? (SV.day < 8 ? .5 * SV.day / 8 : 1) : .0; dayK += (tgt - dayK) * Math.min(1, dt * .5);
   const k = dayK < .5 ? mix(.34, 1, dayK * 2) : mix(1, 1.45, (dayK - .5) * 2);
-  compM.uniforms.exp.value = k; SUN.intensity = 3.2 * mix(.4, 1.25, Math.min(1, dayK * 1.3)); HEMI.intensity = 1.1 * mix(.45, 1.5, dayK);
-  FLASH.intensity = SURV() && dayK < .35 ? 26 * (1 - dayK / .35) * (P.torch === false ? 0 : 1) : 0;
+  compM.uniforms.exp.value = TUN ? .95 : k; SUN.intensity = TUN ? 0 : 3.2 * mix(.4, 1.25, Math.min(1, dayK * 1.3)); HEMI.intensity = TUN ? .05 : 1.1 * mix(.45, 1.5, dayK);
+  FLASH.intensity = TUN ? 30 * (P.torch === false ? 0 : 1) : SURV() && dayK < .35 ? 26 * (1 - dayK / .35) * (P.torch === false ? 0 : 1) : 0;
 }
 function survStep(dt) {
   if (!SURV()) return;
@@ -1351,6 +1359,95 @@ function survStep(dt) {
     if (it.k === 0) SV.res += has('res') ? 140 : 90; else if (it.k === 1) SV.belt += has('belt') ? 800 : 500; else if (it.k === 2) G.hp = Math.min(100, G.hp + (has('medic') ? 60 : 35)); else { G.shield = 100; G.hp = Math.min(100, G.hp + 10); }
     toast(ITEMK[it.k].n); Sfx.play('tink', {vol: .5, rate: 1.3}); Sfx.play('zap', {vol: .1, rate: 2}); scene.remove(it.m); SV.items.splice(i, 1); }
   if (!P.foot && SV.belt <= 0 && wantFire() && (SV.emptyT -= dt) <= 0) { SV.emptyT = 2.5; toast('BELT EMPTY: get off the gun [E] and find a cannon belt'); Sfx.play('tink', {vol: .3, rate: .45}); }
+}
+
+// ---------------- hive raids: by day a hive mound opens in the dunes; go down, fight in the dark, kill the brood core
+let HOLE = null;
+const TLIGHTS = []; for (let i = 0; i < 4; i++) { const l = new THREE.PointLight(0x7aff4a, 0, 22, 1.2); l.position.set(0, -500, 0); scene.add(l); TLIGHTS.push(l); } // always present: no shader recompiles on entry
+const tunM = triMat(new THREE.MeshStandardMaterial({vertexColors: true, roughness: .7, metalness: .05, side: THREE.DoubleSide}), CHIT.map, .2, .7, 'tunnel', .45, 60);
+function makeHole() {
+  if (HOLE) scene.remove(HOLE.m);
+  const a = rnd(-PI, PI), r = rnd(55, 90), x = Math.sin(a) * r, z = -Math.cos(a) * r, g = new THREE.Group(), res = new THREE.MeshStandardMaterial({color: 0x4a2e1e, roughness: .85});
+  const lat = new THREE.LatheGeometry([[1.7, -.3], [1.8, .5], [2.4, 1.4], [3.3, 1.7], [4.6, 1.1], [6.5, .1], [7, -.4]].map(([r, y]) => new THREE.Vector2(r, y)), 24); const lp = lat.attributes.position;
+  for (let k = 0; k < lp.count; k++) { const s2 = 1 + (vn(lp.getX(k) * .5 + 3, lp.getZ(k) * .5) - .5) * .35; lp.setX(k, lp.getX(k) * s2); lp.setZ(k, lp.getZ(k) * s2); } lat.computeVertexNormals();
+  const mound = new THREE.Mesh(lat, triMat(res, ROCK.map, .35, .8, 'mound', .5, 80)); mound.castShadow = mound.receiveShadow = true; g.add(mound);
+  const hole = new THREE.Mesh(new THREE.CircleGeometry(1.9, 24), new THREE.MeshBasicMaterial({color: 0x000000})); hole.rotation.x = -PI / 2; hole.position.y = .25; g.add(hole);
+  for (let i = 0; i < 9; i++) { const aa = i / 9 * TAU + rnd(-.2, .2), sp = new THREE.Mesh(new THREE.ConeGeometry(.22, rnd(1.6, 3), 6), res); sp.position.set(Math.cos(aa) * rnd(2.6, 3.6), 1.6, Math.sin(aa) * rnd(2.6, 3.6)); sp.rotation.set(Math.sin(aa) * .5, 0, -Math.cos(aa) * .5); sp.castShadow = true; g.add(sp); }
+  g.position.set(x, gH(x, z) - .2, z); scene.add(g); HOLE = {x, z, m: g, done: false};
+}
+function dropHole() { if (HOLE && !TUN) { scene.remove(HOLE.m); HOLE = null; } }
+function tunGeo(geo, cy) { // organic resin walls: jitter along normals, flat floor at UGY, dark resin vertex colours
+  const p = geo.attributes.position, n = geo.attributes.normal, col = new Float32Array(p.count * 3);
+  for (let k = 0; k < p.count; k++) { const x = p.getX(k), y = p.getY(k), z = p.getZ(k), j = (vn(x * .35 + y * .2, z * .35) - .5) * 1.3 + (vn(x * 1.3, z * 1.3 + y) - .5) * .3;
+    let nx = x + n.getX(k) * j, ny = y + n.getY(k) * j * .6, nz = z + n.getZ(k) * j; if (ny < UGY) ny = UGY; p.setXYZ(k, nx, ny, nz);
+    const fl = ny < UGY + .05, v = .8 + vn(x * .2, z * .2) * .4, vein = vn(x * .6 + 7, z * .6 + y * .8) > .78 ? 1 : 0;
+    col[k * 3] = (fl ? .34 : .22 + vein * .12) * v; col[k * 3 + 1] = (fl ? .26 : .14 + vein * .2) * v; col[k * 3 + 2] = (fl ? .2 : .12 + vein * .05) * v; }
+  geo.setAttribute('color', new THREE.BufferAttribute(col, 3)); geo.computeVertexNormals(); return geo;
+}
+function enterHive() {
+  const N = [[0, 520]]; let hd = 0, x = 0, z = 520; for (let i = 1; i < 11; i++) { hd = clamp(hd + rnd(-.75, .75), -1.2, 1.2); x += Math.sin(hd) * 13; z += Math.cos(hd) * 13; N.push([x, z]); }
+  const CHS = [{i: 4, r: 7}, {i: 7, r: 7.5}, {i: 10, r: 10}].map(c => ({x: N[c.i][0], z: N[c.i][1], r: c.r})), CYc = UGY + 3, R = 3.6, grp = new THREE.Group();
+  const tube = tunGeo(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(N.map(([a, b]) => new THREE.Vector3(a, CYc, b))), 240, R, 16, false), CYc); grp.add(new THREE.Mesh(tube, tunM));
+  for (const c of [...CHS, {x: N[0][0], z: N[0][1] - 1, r: 4.5}]) { const sg = new THREE.SphereGeometry(c.r, 30, 20); sg.translate(c.x, UGY + c.r * .5, c.z); grp.add(new THREE.Mesh(tunGeo(sg), tunM)); }
+  // light shaft down the entrance
+  const shaft = new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.7, 14, 16, 1, true), new THREE.MeshBasicMaterial({color: new THREE.Color(.5, .42, .32), transparent: true, opacity: .25, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide}));
+  shaft.position.set(N[0][0], UGY + 7, N[0][1] - 1); grp.add(shaft);
+  // egg clusters + green glow in the chambers; the brood core in the last one
+  const eggM = new THREE.MeshStandardMaterial({color: 0x6a7a3a, emissive: 0x2a4a08, emissiveIntensity: .9, roughness: .3, transparent: true, opacity: .9});
+  CHS.forEach((c, ci) => { for (let i = 0; i < 9; i++) { const a = rnd(0, TAU), rr = c.r * rnd(.6, .85), e = new THREE.Mesh(new THREE.SphereGeometry(rnd(.35, .7), 12, 9), eggM); e.scale.y = 1.3; e.position.set(c.x + Math.cos(a) * rr, UGY + .5, c.z + Math.sin(a) * rr); grp.add(e); }
+    TLIGHTS[ci].position.set(c.x, UGY + c.r * .6, c.z); TLIGHTS[ci].intensity = 14; });
+  TLIGHTS[3].position.set(N[0][0], UGY + 6, N[0][1] - 1); TLIGHTS[3].color.set(0xffd8a8); TLIGHTS[3].intensity = 20;
+  const last = CHS[2], coreM = new THREE.MeshStandardMaterial({color: 0x7a2a10, emissive: 0xff5a10, emissiveIntensity: 1.2, roughness: .35}), core = new THREE.Mesh(new THREE.SphereGeometry(1.7, 28, 20), coreM);
+  core.position.set(last.x, UGY + 2.3, last.z); grp.add(core); for (let i = 0; i < 5; i++) { const t = new THREE.Mesh(new THREE.TorusGeometry(1.75, .07, 6, 30), new THREE.MeshStandardMaterial({color: 0x2a140a, roughness: .6})); t.position.copy(core.position); t.rotation.set(rnd(0, PI), rnd(0, PI), 0); grp.add(t); }
+  TLIGHTS[2].color.set(0xff6a20); TLIGHTS[0].color.set(0x7aff4a); TLIGHTS[1].color.set(0x7aff4a);
+  scene.add(grp);
+  TUN = {N, CHS, R, grp, core: {x: last.x, y: UGY + 2.3, z: last.z, r: 1.7, hp: 70 + SV.night * 25, hp0: 70 + SV.night * 25, m: core, M: coreM}, trk: 4, col: 0, dead: false, lateT: 0};
+  for (const c of CHS.slice(0, 2)) for (let i = 0; i < 2; i++) addItem(pickK(), c.x + rnd(-3, 3), c.z + rnd(-3, 3));
+  P.ug = true; P.x = N[0][0]; P.z = N[0][1] + 1; P.yaw = PI - Math.atan2(N[1][0] - N[0][0], N[1][1] - N[0][1]) + PI; P.yaw = Math.atan2(-(N[1][0] - N[0][0]), -(N[1][1] - N[0][1]));
+  sky.visible = false; scene.fog.color.set(0x070504); scene.fog.density = .035;
+  const n0 = 8 + SV.night * 4; for (let i = 0; i < n0; i++) tunSpawn(false); if (SV.night >= 2) { const b = spawnBug(2, last.x + 3, last.z + 3); if (b) b.st = 0; }
+  callout('THE HIVE', 'FIND THE BROOD CORE // KILL IT'); Sfx.play('boom', {vol: .4, rate: .5, lp: 500}); toast('[E] at the light to climb out');
+}
+function tunSpawn(fx) {
+  const N = TUN.N; let i = 0, tries = 0; do { i = 2 + (Math.random() * (N.length - 2) | 0); tries++; } while (tries < 8 && Math.hypot(N[i][0] - P.x, N[i][1] - P.z) < 14);
+  const r = Math.random(), type = SV.night >= 2 && r < .08 ? 2 : r < .3 ? 1 : 0, b = spawnBug(type, N[i][0] + rnd(-2, 2), N[i][1] + rnd(-2, 2)); if (!b) return; b.st = 0; if (fx) surfaceFx(b);
+}
+function tunClamp(x, z, pad) {
+  const N = TUN.N, R = TUN.R; let bd = 1e9, bx = x, bz = z;
+  for (let i = 0; i < N.length - 1; i++) { const ax = N[i][0], az = N[i][1], ex = N[i + 1][0] - ax, ez = N[i + 1][1] - az, t = clamp(((x - ax) * ex + (z - az) * ez) / (ex * ex + ez * ez), 0, 1), px = ax + ex * t, pz = az + ez * t, d = Math.hypot(x - px, z - pz); if (d < bd) { bd = d; bx = px; bz = pz; } }
+  if (bd <= R - pad) return null; const cs = [...TUN.CHS, {x: N[0][0], z: N[0][1] - 1, r: 4.5}];
+  for (const c of cs) if (Math.hypot(x - c.x, z - c.z) <= c.r - pad) return null;
+  let nx = bx + (x - bx) * (R - pad) / bd, nz = bz + (z - bz) * (R - pad) / bd, nd = Math.hypot(x - nx, z - nz);
+  for (const c of cs) { const dc = Math.hypot(x - c.x, z - c.z), cx = c.x + (x - c.x) * (c.r - pad) / dc, cz = c.z + (z - c.z) * (c.r - pad) / dc, d = Math.hypot(x - cx, z - cz); if (d < nd) { nd = d; nx = cx; nz = cz; } }
+  return [nx, nz];
+}
+function coreHit(p) { const c = TUN.core; c.hp -= has('pierce') ? 1.5 : 1; c.M.emissiveIntensity = 3;
+  for (let i = 0; i < 3; i++) PG.add(p.x, p.y, p.z, rnd(-3, 3), rnd(1, 4), rnd(-3, 3), rnd(.6, 1.2), rnd(.1, .2), .06, .9, .4, .1, .95, 14, .4, 1);
+  if (Sfx.ctx && Sfx.lim('core', 60)) Sfx.play('squelch', {vol: .5, rate: .5}); G.hitT = .12;
+  if (c.hp <= 0 && !TUN.dead) { TUN.dead = true; TUN.col = 30; SV.hives = (SV.hives || 0) + 1; c.m.visible = false; G.hs = .12; P.trauma = 1;
+    for (let i = 0; i < 40; i++) { const cl = SLIME[(Math.random() * 4) | 0]; PG.add(c.x, c.y, c.z, rnd(-9, 9), rnd(2, 12), rnd(-9, 9), rnd(1, 2.2), rnd(.2, .5), .1, cl[0], cl[1], cl[2], .95, 14, .3, 1); }
+    for (let i = 0; i < 14; i++) PA.add(c.x, c.y, c.z, rnd(-6, 6), rnd(0, 8), rnd(-6, 6), rnd(.4, .9), rnd(2, 4), 1, 4, 1.6, .5, 1);
+    Sfx.play('boom', {vol: .9, rate: .6}); Sfx.play('screech', {vol: .7, rate: .35, vr: 0}); TLIGHTS[2].color.set(0xff2a10);
+    callout('BROOD CORE DOWN', 'THE HIVE IS COLLAPSING // GET OUT'); for (const b of bugs) if (!b.dead && b.z > 450) b.stag = 1.5; }
+}
+function hiveStep(dt) {
+  if (!TUN) return;
+  const c = TUN.core; if (!TUN.dead) { c.M.emissiveIntensity = mix(c.M.emissiveIntensity, 1.1 + Math.sin(G.t * 3) * .4, Math.min(1, dt * 4)); c.m.scale.setScalar(1 + Math.sin(G.t * 3) * .04); TLIGHTS[2].intensity = 12 + Math.sin(G.t * 3) * 5; }
+  if (!TUN.dead && (TUN.trk -= dt) <= 0) { TUN.trk = SV.day > .01 ? Math.max(2, 6 - SV.night * .6) : .7; let n = 0; for (const b of bugs) if (!b.dead && b.z > 450) n++; if (n < 40) tunSpawn(true); }
+  if (TUN.dead) { TUN.col -= dt; P.trauma = Math.max(P.trauma, .25 + (TUN.col < 10 ? .3 : 0));
+    if (Math.random() < dt * 25) PS.add(P.x + rnd(-6, 6), UGY + 6, P.z + rnd(-6, 6), rnd(-.3, .3), rnd(-3, -1), rnd(-.3, .3), rnd(1, 2), .3, 1.5, .4, .3, .22, .5, 6, .5);
+    if (Math.random() < dt * 1.5 && Sfx.ctx) Sfx.play('boom', {vol: .35, rate: rnd(.5, .8), lp: 500});
+    if (TUN.col <= 0) { G.hurtT = 0; G.shield = 0; G.hp = Math.max(0, G.hp - dt * 12); if (G.hp <= 0) overrun(); } }
+  if (SV.day <= .01 && (TUN.lateT -= dt) <= 0) { TUN.lateT = 4; toast('NIGHT IS FALLING: GET OUT OF THE HIVE'); }
+}
+function exitHive() {
+  const won = TUN.dead; P.ug = false; scene.remove(TUN.grp); TUN.grp.traverse(o => { if (o.geometry) o.geometry.dispose(); });
+  for (const b of bugs.slice()) if (b.z > 450) freeBug(b); for (let i = SV.items.length - 1; i >= 0; i--) if (SV.items[i].z > 450) { scene.remove(SV.items[i].m); SV.items.splice(i, 1); }
+  for (const l of TLIGHTS) { l.intensity = 0; l.position.set(0, -500, 0); }
+  TUN = null; sky.visible = true; scene.fog.color.copy(FOG); scene.fog.density = .00105; P.x = HOLE.x + 3; P.z = HOLE.z + 1;
+  if (won) { scene.remove(HOLE.m); HOLE = null; callout('HIVE DESTROYED', 'FEWER BUGS TONIGHT // BONUS PERK'); Sfx.play('horn', {vol: .45, rate: 1.4, vr: 0});
+    SV.offer = PERKS.filter(q => !has(q.id)).sort(() => Math.random() - .5).slice(0, 3); showPerks(); }
+  else toast('Back on the surface');
 }
 const grid = new Map();
 function stepBugsHost(dt) {
@@ -1369,7 +1466,7 @@ function stepBugsHost(dt) {
   for (const b of bugs) {
     if (b.dead) continue;
     const goalZ = -3.4 - b.s * 1.5 - Math.pow(Math.abs(b.tx) / 13, 2) * 2.2;
-    const sv = SURV(), fl = sv && SV.day > 0, dx = fl ? b.x * 9 : sv ? P.x - b.x : b.tx - b.x, dz = fl ? b.z * 9 + 1 : sv ? P.z - b.z : goalZ - b.z, d = Math.hypot(dx, dz) || 1e-3;
+    const sv = SURV(), fl = sv && SV.day > 0 && b.z < 450, dx = fl ? b.x * 9 : sv ? P.x - b.x : b.tx - b.x, dz = fl ? b.z * 9 + 1 : sv ? P.z - b.z : goalZ - b.z, d = Math.hypot(dx, dz) || 1e-3;
     if (b.st === 2) { b.vy -= 18 * dt; b.y += b.vy * dt; const f = b.T.sp * 7.5 * spm; b.x += dx / d * f * 1.6 * dt; b.z += dz / d * f * 1.6 * dt; const gy = gH(b.x, b.z); if (b.y <= gy) { b.y = gy; b.st = 0; } b.sp = 0; continue; }
     if (b.st === 3) { const sp = b.T.sp * 7 * spm * 1.5, st = Math.min(sp * dt, d); b.x += dx / d * st; b.z += dz / d * st; b.y = gH(b.x, b.z); b.sp = sp; b.yaw = Math.atan2(dx, dz);
       if (Math.random() < dt * 8) PS.add(b.x, b.y + .1, b.z, rnd(-1, 1), rnd(.5, 1.5), rnd(-1, 1), rnd(.8, 1.4), .4, 1.6, .62, .42, .28, .5, 1, 1);
@@ -1436,6 +1533,7 @@ function stepBugsCommon(dt, time) {
       if (near && b.y <= gy + .05 && b.dvx * b.dvx + b.dvz * b.dvz > 4 && Math.random() < dt * 12) dustPuff(b.x, b.y, b.z, b.s * .7); // skid dust
     }
     else { b.ph += dt * (b.sp * 2.7 / b.s + (b.st === 1 ? 0 : .3)); // matches the planted-foot stride, so feet don't skate
+      if (TUN && b.z > 450) { const q = tunClamp(b.x, b.z, .5 * b.s); if (q) { b.x = q[0]; b.z = q[1]; } }
       { const fx = Math.sin(b.yaw) * 1.5 * b.s, fz = Math.cos(b.yaw) * 1.5 * b.s, sl = (gH(b.x + fx, b.z + fz) + pileAt(b.x + fx, b.z + fz) * .85 - gH(b.x - fx, b.z - fz) - pileAt(b.x - fx, b.z - fz) * .85) / (3 * b.s);
         if (b.st !== 2) b.pitch += (-Math.atan(sl) * .8 - b.pitch) * Math.min(1, dt * 5); } // body follows the slope and the pile
       // climb over the dead
@@ -1591,10 +1689,15 @@ function drawHud(dt, time) {
   c.fillStyle = CY + '.55)'; c.fillText('AUTO-FIRE ' + (SET.auto ? 'ON' : 'OFF') + '  [F]   AIM [Q]' + (G.ff ? '   FF ON' : ''), bx, by + 100);
   if (SURV()) { c.font = '700 22px Rajdhani,sans-serif'; c.fillStyle = (P.foot ? SV.mag === 0 : SV.belt <= 0) ? 'rgba(255,90,60,.95)' : '#fff';
     c.fillText(P.foot ? (SV.rel > 0 ? 'RELOADING' : SV.mag + ' / ' + SV.res) : 'BELT ' + SV.belt, bx, by - 34); c.font = '12px "Share Tech Mono",monospace'; c.fillStyle = CY + '.7)'; c.fillText(P.foot ? 'RIFLE  [R] RELOAD  [E] GUN' : 'CANNON  [E] GET OFF', bx, by - 18); c.font = '13px "Share Tech Mono",monospace';
-    if (P.foot && Math.hypot(P.x, P.z - .3) < 2.3) { c.font = '700 18px Rajdhani,sans-serif'; c.fillStyle = '#fff'; const tx = '[E] MAN THE CANNON'; c.fillText(tx, w / 2 - c.measureText(tx).width / 2, h * .62); c.font = '13px "Share Tech Mono",monospace'; }
-    for (const it of SV.items) { const d = Math.hypot(it.x - P.x, it.z - P.z); if (d > 90) continue; _v.set(it.x, it.m.position.y + .7, it.z).project(cam); if (_v.z > 1 || Math.abs(_v.x) > 1.1 || Math.abs(_v.y) > 1.1) continue;
-      const sx = (_v.x * .5 + .5) * w, sy = (-_v.y * .5 + .5) * h, col = '#' + ITEMK[it.k].c.toString(16).padStart(6, '0'); c.strokeStyle = col; c.globalAlpha = clamp(1.3 - d / 90, .35, 1); c.lineWidth = 1.5;
-      c.beginPath(); c.moveTo(sx, sy - 7); c.lineTo(sx + 6, sy); c.lineTo(sx, sy + 7); c.lineTo(sx - 6, sy); c.closePath(); c.stroke(); c.fillStyle = col; c.font = '11px "Share Tech Mono",monospace'; c.fillText(ITEMK[it.k].n.split(' ')[0] + ' ' + (d | 0) + 'm', sx + 9, sy + 4); c.globalAlpha = 1; } c.lineWidth = 1; c.font = '13px "Share Tech Mono",monospace'; }
+    { const nearHole = HOLE && !TUN && SV.day > 0 && Math.hypot(P.x - HOLE.x, P.z - HOLE.z) < 4, nearExit = TUN && Math.hypot(P.x - TUN.N[0][0], P.z - TUN.N[0][1]) < 4; if (P.foot && (nearHole || nearExit)) { c.font = '700 18px Rajdhani,sans-serif'; c.fillStyle = '#fff'; const tx = nearHole ? '[E] GO DOWN INTO THE HIVE' : '[E] CLIMB OUT'; c.fillText(tx, w / 2 - c.measureText(tx).width / 2, h * .62); c.font = '13px "Share Tech Mono",monospace'; } }
+    if (TUN) { c.font = '700 16px Rajdhani,sans-serif'; c.fillStyle = TUN.dead ? 'rgba(255,90,60,.95)' : '#ffd27a'; const tx = TUN.dead ? 'HIVE COLLAPSING: GET OUT ' + Math.max(0, Math.ceil(TUN.col)) + 'S' : 'BROOD CORE ' + Math.max(0, Math.ceil(TUN.core.hp / TUN.core.hp0 * 100)) + '%'; c.fillText(tx, w / 2 - c.measureText(tx).width / 2, 96); c.font = '13px "Share Tech Mono",monospace'; }
+    if (P.foot && !P.ug && Math.hypot(P.x, P.z - .3) < 2.3) { c.font = '700 18px Rajdhani,sans-serif'; c.fillStyle = '#fff'; const tx = '[E] MAN THE CANNON'; c.fillText(tx, w / 2 - c.measureText(tx).width / 2, h * .62); c.font = '13px "Share Tech Mono",monospace'; }
+    const MK = SV.items.map(it => ({x: it.x, y: it.m.position.y + .7, z: it.z, c: ITEMK[it.k].c, n: ITEMK[it.k].n.split(' ')[0], r: 90}));
+    if (HOLE && !TUN && SV.day > 0) MK.push({x: HOLE.x, y: gH(HOLE.x, HOLE.z) + 3, z: HOLE.z, c: 0xff5a2a, n: 'HIVE', r: 400});
+    if (TUN) { MK.push({x: TUN.N[0][0], y: UGY + 2.5, z: TUN.N[0][1], c: 0xffe0b0, n: 'EXIT', r: 400}); if (!TUN.dead) MK.push({x: TUN.core.x, y: TUN.core.y + 2.2, z: TUN.core.z, c: 0xff6a20, n: 'CORE', r: 400}); }
+    for (const it of MK) { const d = Math.hypot(it.x - P.x, it.z - P.z); if (d > it.r) continue; _v.set(it.x, it.y, it.z).project(cam); if (_v.z > 1 || Math.abs(_v.x) > 1.1 || Math.abs(_v.y) > 1.1) continue;
+      const sx = (_v.x * .5 + .5) * w, sy = (-_v.y * .5 + .5) * h, col = '#' + it.c.toString(16).padStart(6, '0'); c.strokeStyle = col; c.globalAlpha = clamp(1.3 - d / it.r, .35, 1); c.lineWidth = 1.5;
+      c.beginPath(); c.moveTo(sx, sy - 7); c.lineTo(sx + 6, sy); c.lineTo(sx, sy + 7); c.lineTo(sx - 6, sy); c.closePath(); c.stroke(); c.fillStyle = col; c.font = '11px "Share Tech Mono",monospace'; c.fillText(it.n + ' ' + (d | 0) + 'm', sx + 9, sy + 4); c.globalAlpha = 1; } c.lineWidth = 1; c.font = '13px "Share Tech Mono",monospace'; }
   // top left: wave, kills
   c.fillStyle = CY + '.9)'; c.font = '700 30px Rajdhani,sans-serif'; c.fillText('KILLS ' + G.kills, 34, 52); c.font = '13px "Share Tech Mono",monospace';
   c.fillText(SURV() ? (SV.day > 0 ? 'DAY ' + SV.night + '   NIGHTFALL IN ' + Math.ceil(SV.day) + 'S   [N] SKIP' : 'NIGHT ' + SV.night + '   WAVE ' + Math.max(1, SV.nw) + '/' + WPN + (SV.lull > 0 ? '   BREATHER ' + Math.ceil(SV.lull) + 'S' : '   CONTACTS ' + (G.quota + SV.live))) : 'HELD ' + fmtT(G.runT) + '   THREAT ' + G.wave, 36, 72); c.fillStyle = CY + '.5)'; if (SURV()) { if (G.bestS) c.fillText('BEST: ' + G.bestS + ' NIGHTS', 36, 88); if (SV.perks.length) c.fillText(SV.perks.map(q => PERKS.find(x => x.id === q).n).join(' / '), 36, Net.role !== 'solo' ? 220 : 140); } else if (G.best) c.fillText('BEST ' + G.best + ' KILLS', 36, 88);
@@ -1676,7 +1779,7 @@ function stepWorldFx(dt, time) {
       if (Sfx.ctx && Math.random() < dt * 9) { const d = Math.hypot(F.x - P.x, F.z), pan = clamp(-Math.sin(angD(P.yaw, Math.atan2(-F.x, -F.z))), -1, 1); Sfx.play('shot', {vol: .05, pan, lp: 450, rate: .7, at: Math.min(1.5, d / 340 * .3)}); } } }
   // wind gusts: louder wind and a sheet of dust blowing across
   gustV += (rnd(-1, 1) * .8 - gust * .25) * dt; gust = clamp(gust + gustV * dt, 0, 1); if (Math.random() < dt * .05) gustV += .6;
-  if (Sfx.ctx) { Sfx.wind.gn.gain.setTargetAtTime(.1 + gust * .2, Sfx.ctx.currentTime, .3); Sfx.wind.fl.frequency.setTargetAtTime(300 + gust * 500, Sfx.ctx.currentTime, .3); }
+  if (Sfx.ctx) { Sfx.wind.gn.gain.setTargetAtTime((.1 + gust * .2) * (TUN ? .15 : 1), Sfx.ctx.currentTime, .3); Sfx.wind.fl.frequency.setTargetAtTime(300 + gust * 500, Sfx.ctx.currentTime, .3); }
   if (Math.random() < dt * gust * (HI() ? 40 : 15)) PS.add(P.x + rnd(-60, 30), rnd(.2, 4), rnd(-70, 0), rnd(6, 11), rnd(-.2, .4), rnd(-1, 1), rnd(3, 6), rnd(.6, 1.4), rnd(3, 6), .68, .5, .36, .1);
   for (const B of BEAMS) { B.ph += dt * .25; B.m.rotation.set(.35 + Math.sin(B.ph * 1.3) * .2, Math.sin(B.ph) * .8 + (B.x < 0 ? .3 : -.3), 0); }
   // ambient chitter
@@ -1759,7 +1862,7 @@ function resetWorld() {
   P.heat = 0; P.spin = 0; P.vent = 0;
 }
 function beginGame(fresh) {
-  Sfx.init(); resetWorld(); if (Net.role !== 'solo') G.mode = 'horde';
+  Sfx.init(); resetWorld(); if (TUN) { if (!HOLE) HOLE = {x: 0, z: 0, m: new THREE.Group()}; TUN.dead = false; exitHive(); } dropHole(); P.ug = false; if (Net.role !== 'solo') G.mode = 'horde';
   if (SURV()) survStart(); else { clearItems(); P.foot = false; P.x = SLOTX[0]; P.z = 0; P.eyeY = 1.7; }
   P.pitch = -.04;
   if (fresh) { for (const id of [...G.gunners.keys()]) removeGunner(id); addGunner(myId(), 0, SET.name); }
@@ -1818,7 +1921,7 @@ function step(dt) {
     stepSpecials(dt);
     for (const g of G.gunners.values()) stepGunner(g, dt, g.id === myId());
     G.hurtT += dt; if (G.hurtT > (SURV() ? 3 : 1.2) && isHost()) G.shield = Math.min(100, G.shield + dt * (SURV() ? 18 : 45));
-    survStep(dt);
+    survStep(dt); hiveStep(dt);
     if (G.hurtT < .1 && isHost()) { // direction indicator from nearest attacker
       let nb = null, nd = 1e9; for (const b of bugs) if (b.st === 1 && !b.dead) { const d = Math.abs(b.x - P.x); if (d < nd) { nd = d; nb = b; } }
       if (nb && Math.random() < .1) G.dmgDirs.push({a: Math.atan2(-(nb.x - P.x), -(nb.z - P.z)), t: 1}); }
@@ -1913,7 +2016,7 @@ $('bReqX').onclick = () => $('reqBox').classList.add('hidden');
 syncUI(); resize();
 addEventListener('pagehide', hostBye);
 
-if (TEST) window.__LS = {SV, toggleMount, G, P, bugs, Net, SET, start: () => beginGame(true), fire: v => { testFire = v; }, step: (dt, n = 1, nr) => { noRender = !!nr; for (let i = 0; i < n; i++) step(dt); noRender = false; }, setYaw: y => { P.yaw = y; }, Sfx, spawnBug, killBug, host: () => $("bHost").click(), startWave, callIn, spawnTitan, dropCan, CANS, gunRun, dropSentry, join: c => { $('jCode').value = c; $('bJoin').click(); }, scene, cam};
+if (TEST) window.__LS = {SV, toggleMount, startDay, enterHive, exitHive, tun: () => TUN, hole: () => HOLE, G, P, bugs, Net, SET, start: () => beginGame(true), fire: v => { testFire = v; }, step: (dt, n = 1, nr) => { noRender = !!nr; for (let i = 0; i < n; i++) step(dt); noRender = false; }, setYaw: y => { P.yaw = y; }, Sfx, spawnBug, killBug, host: () => $("bHost").click(), startWave, callIn, spawnTitan, dropCan, CANS, gunRun, dropSentry, join: c => { $('jCode').value = c; $('bJoin').click(); }, scene, cam};
 // compile the shaders the fight needs up front (muzzle flash, squad marines) so the first shots don't hitch
 { const wm = makeMarine(), u = FPG.userData; u.fl.forEach(f => f.visible = true); u.side.visible = true; try { RND.compile(scene, cam); } catch (e) {} u.fl.forEach(f => f.visible = false); u.side.visible = false; scene.remove(wm); }
 requestAnimationFrame(loop);
