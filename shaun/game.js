@@ -687,7 +687,39 @@ function muzzleOf(g, out) {
   if (g.model) return g.model.userData.gun.userData.muzzle.getWorldPosition(out);
   return out.set(SLOTX[g.slot], 1.4, -1);
 }
+// no aim assist for people: every round is a ray from the gunner's eye along yaw/pitch (+ a little spread) tested against
+// each bug's hit spheres (thorax, head, tail). Rounds go through the first bug into a second one on the same line.
+const RAYH = [];
+function rayBugs(ox, oy, oz, dx, dy, dz) {
+  RAYH.length = 0; let t1 = 1e9, b1 = null, t2 = 1e9, b2 = null;
+  for (const b of bugs) { if (b.dead || b.st === 3) continue; const ex = b.x - ox, ez = b.z - oz, s = b.s, k0 = ex * dx + ez * dz; if (k0 < -4 * s || k0 > 230) continue;
+    const fx = Math.sin(b.yaw), fz = Math.cos(b.yaw), cy = b.y + (b.py || 0) + BH * s - oy; let best = 1e9;
+    for (let i = 0; i < 3; i++) { const f = i === 0 ? 0 : i === 1 ? .8 : -1.15, up = i === 0 ? 0 : i === 1 ? -.12 : .35, r = (i === 0 ? .48 : i === 1 ? .36 : .44) * s;
+      const cx = ex + fx * f * s, cyy = cy + up * s, cz = ez + fz * f * s, k = cx * dx + cyy * dy + cz * dz; if (k < 0) continue;
+      const qx = cx - dx * k, qy = cyy - dy * k, qz = cz - dz * k, d2 = qx * qx + qy * qy + qz * qz; if (d2 > r * r) continue;
+      const tt = k - Math.sqrt(r * r - d2); if (tt < best) best = tt; }
+    if (best < t1) { t2 = t1; b2 = b1; t1 = best; b1 = b; } else if (best < t2) { t2 = best; b2 = b; } }
+  if (b1) RAYH.push([b1, t1]); if (b2) RAYH.push([b2, t2]); return RAYH;
+}
 function fireShot(g, idx) {
+  if (g.sentry) return fireShotAuto(g, idx);
+  const local = g.id === myId(), ads = local ? P.ads : g.ads || 0, spr = (.006 + (local ? P.heat : g.heat || 0) * .006) * (1 - ads * .7);
+  const yw = g.yaw + rnd(-spr, spr), pt = g.pitch + rnd(-spr, spr), ox = SLOTX[g.slot], oy = 1.7, oz = 0;
+  const dx = -Math.sin(yw) * Math.cos(pt), dy = Math.sin(pt), dz = -Math.cos(yw) * Math.cos(pt);
+  const hits = rayBugs(ox, oy, oz, dx, dy, dz), t = hits.length ? hits[0][0] : null; g.tgt = t;
+  muzzleOf(g, mz);
+  const mate = G.ff ? mateOnLine(g, t) : null;
+  if (mate) friendlyHit(g, mate, local);
+  else if (t) {
+    for (let j = 0; j < hits.length; j++) { const [b, tt] = hits[j]; if (j && Math.random() < .4) break; const P2 = j ? hitP2 : hitP; P2.set(ox + dx * tt, oy + dy * tt, oz + dz * tt); hitFx(b, P2, local && !j, !!j); if (isHost()) damageBug(b, g, P2); }
+    if (G.buff && G.buff.k === 1 && idx % 2 === 0) { let from = t; _sa.copy(hitP); for (let j = 0; j < 2; j++) { const o = nearBug(_sa, from, 9 + t.s * 2); if (!o || o === t) break; bugCenter(o, _sb); shockArc(_sa, _sb); hitFx(o, _sb, false); if (isHost()) damageBug(o, g, _sb); _sa.copy(_sb); from = o; } }
+  } else {
+    let d = 220; if (dy < -.002) d = Math.min(220, (oy - gH(ox + dx * 60, oz + dz * 60)) / -dy);
+    hitP.set(ox + dx * d, oy + dy * d, oz + dz * d); if (d < 219) { hitP.y = gH(hitP.x, hitP.z); dustFx(hitP); }
+  }
+  shotTail(g, idx, local);
+}
+function fireShotAuto(g, idx) { // sentry pods keep their auto-targeting
   const ok = g.tgt && !g.tgt.dead && byId.has(g.tgt.id) && Math.abs(angD(g.yaw, Math.atan2(-(g.tgt.x - SLOTX[g.slot]), -g.tgt.z))) < coneOf(g) + Math.atan(1.1 * g.tgt.s / Math.max(1, Math.hypot(g.tgt.x - SLOTX[g.slot], g.tgt.z)));
   const t = ok ? g.tgt : (g.tgt = pickTarget(g));
   muzzleOf(g, mz); const local = g.id === myId();
@@ -706,6 +738,9 @@ function fireShot(g, idx) {
     const d = rnd(30, 90), gx = SLOTX[g.slot]; hitP.set(gx - Math.sin(g.yaw + rnd(-.03, .03)) * d, 0, -Math.cos(g.yaw + rnd(-.03, .03)) * d); hitP.y = gH(hitP.x, hitP.z);
     dustFx(hitP);
   }
+  shotTail(g, idx, local);
+}
+function shotTail(g, idx, local) {
   if (idx % (G.buff && G.buff.k === 0 ? 3 : 5) === 0) addTracer(mz, hitP);
   if (local) {
     Sfx.play('shot', {vol: .32, vr: .08});
@@ -1111,7 +1146,7 @@ function applySnap(m) {
   G.shield = m.sh; G.hp = m.hp; G.kills = m.k; G.wave = m.w; G.ff = !!m.ff; if (m.sp !== undefined) { G.sup = m.sp / 100; G.supN = m.sn; G.buff = m.bf ? {k: m.bf[0], t: m.bf[1] / 10} : null; G.dropT = m.dt; }
   if (m.q !== undefined) { G.quota = m.q; G.gap = m.gp / 10; G.cleared = !!m.cl; G.bruteSeen = !!m.bs; }
   if (m.hurt) { G.hurtT = 0; G.dmgFlash = Math.min(1, G.dmgFlash + .1); }
-  for (const r of m.g) { const g = G.gunners.get(r[0]); if (!g) continue; g.kills = r[3]; if (r[0] !== myId()) { g.yaw = r[1] / 100; g.fire = r[2]; } }
+  for (const r of m.g) { const g = G.gunners.get(r[0]); if (!g) continue; g.kills = r[3]; if (r[0] !== myId()) { g.yaw = r[1] / 100; g.fire = r[2]; if (r[4] !== undefined) g.pitch = r[4] / 100; } }
 }
 function stepBugsGuest(dt) {
   for (const b of bugs) { if (b.dead) continue; b.age = (b.age || 0) + dt; const ex = Math.min(b.age, .25);
@@ -1123,14 +1158,14 @@ function stepBugsGuest(dt) {
 function packSnap() {
   const a = [];
   for (const b of bugs) { if (b.dead) continue; a.push(b.id, Math.round(b.x * 10), Math.round(b.z * 10), Math.round(b.yaw * 100), b.type | (b.st << 3) | (b.legs << 5) | (clamp(Math.ceil(b.hp), 0, 4000) << 11), Math.round(b.y * 10)); }
-  const g = [...G.gunners.values()].map(q => [q.id, Math.round(q.yaw * 100), q.fire ? 1 : 0, q.kills]);
+  const g = [...G.gunners.values()].map(q => [q.id, Math.round(q.yaw * 100), q.fire ? 1 : 0, q.kills, Math.round(q.pitch * 100)]);
   const m = {t: 's', b: a, e: G.evq, g, sh: Math.round(G.shield), hp: Math.round(G.hp * 10) / 10, k: G.kills, w: G.wave, hurt: G.hurtT < .15 ? 1 : 0, q: G.quota, gp: Math.round(G.gap * 10), cl: G.cleared ? 1 : 0, bs: G.bruteSeen ? 1 : 0, rt: Math.round(G.runT), sp: Math.round(G.sup * 100), sn: G.supN, bf: G.buff ? [G.buff.k, Math.round(G.buff.t * 10)] : 0, dt: Math.round(G.dropT), ff: G.ff ? 1 : 0};
   G.evq = []; return m;
 }
 function crewMsg() { return {t: 'crew', crew: [...G.gunners.values()].filter(g => !g.sentry).map(g => [g.id, g.slot, g.name, g.id === 'H' ? 0 : (g.j || 99)])}; }
 Net.on('_join', m => { const p = Net.peers.get(m.id), g = addGunner(p.id, p.slot, p.name); g.j = p.j; g.kills = Math.max(g.kills, p.kills || 0); Net.send(crewMsg()); Net.send1(m.id, {t: 'start', wave: G.wave}); if (!(G.migT > 0)) toast(p.name + ' joined the line'); });
 Net.on('_left', m => { if (!G.gunners.has(m.id)) return; removeGunner(m.id); Net.send(crewMsg()); toast(m.name + ' left'); });
-Net.on('aim', (m, id) => { const g = G.gunners.get(id); if (g) { g.yaw = clamp(+m.y || 0, -1.6, 1.6); g.fire = m.f ? 1 : 0; g.ads = m.a ? 1 : 0; } });
+Net.on('aim', (m, id) => { const g = G.gunners.get(id); if (g) { g.yaw = clamp(+m.y || 0, -1.6, 1.6); g.pitch = clamp(+m.p || 0, -.6, .45); g.fire = m.f ? 1 : 0; g.ads = m.a ? 1 : 0; } });
 Net.on('crew', m => { const ids = new Set(), h0 = G.gunners.get('H'), hn = h0 && h0.name; for (const [id, slot, name, j] of m.crew) { ids.add(id); addGunner(id, slot, name).j = j; } if (hn && G.gunners.get('H') && G.gunners.get('H').name !== hn && G.hostMoved) toast(G.gunners.get('H').name + ' took over the squad'); for (const [id, g] of [...G.gunners]) if (!ids.has(id) && !g.sentry) removeGunner(id); });
 Net.on('start', m => { if (!G.on || G.over) beginGame(false); G.wave = m.wave; netStatus('In squad ' + Net.code); });
 Net.on('s', m => { if (Net.role === 'guest' && G.on) applySnap(m); });
@@ -1289,8 +1324,9 @@ function stepGunner(g, dt, local) {
   if (local && !P.firing) P.heat = Math.max(0, P.heat - dt * (P.vent > 0 ? .5 : .12));
   if (!local) { g.heat = g.fire ? Math.min(1, g.heat + dt / 9) : Math.max(0, g.heat - dt * .12); }
   // target retarget timer
+  if (local) { g.pitch = P.pitch; return; } if (!g.sentry) return; // people aim pitch themselves (sent as `p`)
   g.tgtT -= dt; if (g.tgtT <= 0) { g.tgtT = .12; g.tgt = pickTarget(g); }
-  // auto pitch toward target
+  // sentries: auto pitch toward target
   let tp = -.05; if (g.tgt && !g.tgt.dead) { const dx = g.tgt.x - SLOTX[g.slot], dz = g.tgt.z, d = Math.hypot(dx, dz); tp = Math.atan2(g.tgt.y + BH * g.tgt.s - 1.7, d); tp = clamp(tp, -.4, .25); }
   g.pitch += (tp - g.pitch) * Math.min(1, dt * 5);
 }
@@ -1383,6 +1419,7 @@ function step(dt) {
     P.ads = clamp(P.ads + (aiming() ? dt : -dt) / .18, 0, 1);
     const kx = (keys.KeyD || keys.ArrowRight ? 1 : 0) - (keys.KeyA || keys.ArrowLeft ? 1 : 0);
     if (kx) { P.yaw -= kx * dt * 1.7 * adsSens(); P.swayVX -= kx * dt * 30; }
+    const ky = (keys.KeyW || keys.ArrowUp ? 1 : 0) - (keys.KeyS || keys.ArrowDown ? 1 : 0); if (ky) P.pitch = clamp(P.pitch + ky * dt * 1.0 * adsSens(), -.55, .4);
     P.yaw = clamp(P.yaw, -1.5, 1.5);
     const lg = localGunner(); if (lg) lg.yaw = P.yaw;
     if (isHost()) { G.ff = SET.ff && crewN() > 1; stepBugsHost(dt); } else stepBugsGuest(dt);
@@ -1395,7 +1432,7 @@ function step(dt) {
     if (Net.role === 'guest' && G.hurtT < .1 && Math.random() < .1) G.dmgDirs.push({a: P.yaw + rnd(-1, 1), t: 1});
     if (Net.role === 'host' && (G.sendT -= dt) <= 0) { G.sendT = 1 / 12; Net.send(packSnap()); }
     if (Net.role === 'host' && G.migT > 0 && (G.migT -= dt) <= 0) { for (const id of [...G.gunners.keys()]) if (id !== 'H' && id[0] !== 'S' && !Net.peers.has(id)) removeGunner(id); Net.send(crewMsg()); }
-    if (Net.role === 'guest' && (G.sendT -= dt) <= 0) { G.sendT = 1 / 15; Net.send({t: 'aim', y: Math.round(P.yaw * 1000) / 1000, f: wantFire() && P.vent <= 0 ? 1 : 0, a: P.ads > .5 ? 1 : 0}); }
+    if (Net.role === 'guest' && (G.sendT -= dt) <= 0) { G.sendT = 1 / 15; Net.send({t: 'aim', y: Math.round(P.yaw * 1000) / 1000, p: Math.round(P.pitch * 1000) / 1000, f: wantFire() && P.vent <= 0 ? 1 : 0, a: P.ads > .5 ? 1 : 0}); }
   }
   if (Net.role !== 'host') G.evq = [];
   stepBugsCommon(dt, time);
@@ -1420,7 +1457,7 @@ function step(dt) {
 function loop(now) { const dt = Math.min(.05, (now - last) / 1000); last = now; step(dt); requestAnimationFrame(loop); }
 
 // ---------------- input
-addEventListener('mousemove', e => { if (document.pointerLockElement !== canvas || !G.on) return; const dx = e.movementX * .0022 * SET.sens * adsSens(); P.yaw = clamp(P.yaw - dx, -1.5, 1.5); P.swayVX -= dx * 40; P.swayVY += e.movementY * .0022 * SET.sens * 20; });
+addEventListener('mousemove', e => { if (document.pointerLockElement !== canvas || !G.on) return; const dx = e.movementX * .0022 * SET.sens * adsSens(); P.yaw = clamp(P.yaw - dx, -1.5, 1.5); P.pitch = clamp(P.pitch - e.movementY * .0022 * SET.sens * adsSens(), -.55, .4); P.swayVX -= dx * 40; P.swayVY += e.movementY * .0022 * SET.sens * 20; });
 canvas.addEventListener('mousedown', e => { Sfx.init(); if (!G.on || G.over) return; if (document.pointerLockElement !== canvas && !TEST && !isTouch) { lockPtr(); return; } if (e.button === 0) mouseDown = true; if (e.button === 2 && P.vent <= 0 && P.heat > .2) { P.vent = .5; vent(); } });
 addEventListener('mouseup', e => { if (e.button === 0) mouseDown = false; });
 addEventListener('contextmenu', e => e.preventDefault());
@@ -1428,9 +1465,9 @@ addEventListener('keydown', e => { keys[e.code] = true; if (!G.on) return;
   if (G.over) { if ((e.code === 'Space' || e.code === 'Enter') && !$('end').classList.contains('hidden') && !$('bAgain').disabled) { e.preventDefault(); $('bAgain').click(); } return; }
   if (e.code === 'Escape' && document.pointerLockElement !== canvas && performance.now() - plT > 400) { pause(!G.paused); return; } if (e.code === 'KeyF') { SET.auto = !SET.auto; saveSet(); syncUI(); toast('Auto-fire ' + (SET.auto ? 'on' : 'off')); } if (e.code === 'KeyR' && P.vent <= 0 && P.heat > .2) { P.vent = .5; vent(); } if (e.code === 'KeyP') pause(true); });
 addEventListener('keyup', e => { keys[e.code] = false; });
-let isTouch = false, tX = null, tId = null;
-addEventListener('touchstart', e => { isTouch = true; Sfx.init(); if (G.on && !G.over) { $('bPauseT').classList.remove('hidden'); $('bAimT').classList.remove('hidden'); $('bFireT').classList.remove('hidden'); } const t = e.changedTouches[0]; if (G.on && tId === null && !(t.target.closest && t.target.closest('button'))) { tId = t.identifier; tX = t.clientX; } }, {passive: true});
-addEventListener('touchmove', e => { if (!G.on || tX === null) return; const t = [...e.touches].find(q => q.identifier === tId); if (!t) return; const x = t.clientX, dx = (x - tX) * .006 * SET.sens * adsSens(); tX = x; P.yaw = clamp(P.yaw - dx, -1.5, 1.5); P.swayVX -= dx * 40; }, {passive: true});
+let isTouch = false, tX = null, tY = null, tId = null;
+addEventListener('touchstart', e => { isTouch = true; Sfx.init(); if (G.on && !G.over) { $('bPauseT').classList.remove('hidden'); $('bAimT').classList.remove('hidden'); $('bFireT').classList.remove('hidden'); } const t = e.changedTouches[0]; if (G.on && tId === null && !(t.target.closest && t.target.closest('button'))) { tId = t.identifier; tX = t.clientX; tY = t.clientY; } }, {passive: true});
+addEventListener('touchmove', e => { if (!G.on || tX === null) return; const t = [...e.touches].find(q => q.identifier === tId); if (!t) return; const x = t.clientX, dx = (x - tX) * .006 * SET.sens * adsSens(); tX = x; P.pitch = clamp(P.pitch - (t.clientY - tY) * .006 * SET.sens * adsSens(), -.55, .4); tY = t.clientY; P.yaw = clamp(P.yaw - dx, -1.5, 1.5); P.swayVX -= dx * 40; }, {passive: true});
 const tEnd = e => { for (const t of e.changedTouches) if (t.identifier === tId) { tId = null; tX = null; } }; addEventListener('touchend', tEnd); addEventListener('touchcancel', tEnd);
 let plT = 0;
 document.addEventListener('pointerlockchange', () => { plT = performance.now(); const on = document.pointerLockElement === canvas; $('hint').classList.toggle('hidden', on || !G.on || G.over || isTouch || TEST); if (!on && G.on && !G.over && !TEST && !isTouch) pause(true); });
