@@ -56,7 +56,7 @@ const hexS = c => '#' + c.toString(16).padStart(6, '0');
 
 // ---------------- net (jjfanwars relay)
 const RELAY_URL = 'wss://jjfanwars-relay.businessautomationvic.workers.dev';
-const GAME_V = 82;
+const GAME_V = 83;
 const Net = {
   tag: '[Rig]', role: 'solo', ws: null, peers: new Map(), code: '', relayT: {pose: 1}, id: '', name: '', handlers: {}, retry: 0, started: false,
   enc: new TextEncoder(), dec: new TextDecoder(),
@@ -2159,7 +2159,7 @@ const holdCap = () => holdMax() * 2, holdFits = k => sackUsed(B.hold) + (SZ[k] |
 const holdValue = () => B.hold.reduce((s, k) => s + (VALUE[k] || 0), 0);
 // the sack: several things at once, each takes slots by size
 const SZ = {crate: 2, scrap: 1, fuel: 2, patch: 1, relic: 1, chest: 3, blackbox: 2, fang: 1, pearl: 1, gold: 2, key: 1, mask: 1, spine: 2};
-const sackCap = p => [4, 7, 10][(p === P ? (P.own && P.own.sack) : p.sc) || 0] || 4;
+const sackCap = p => [6, 9, 12][(p === P ? (P.own && P.own.sack) : p.sc) || 0] || 6;
 const sackUsed = q => (q || []).reduce((a, k) => a + (SZ[k] || 1), 0);
 const sackVal = q => (q || []).reduce((a, k) => a + (VALUE[k] || 0), 0);
 const sackFits = (p, k) => sackUsed(p.sack) + (SZ[k] || 1) <= sackCap(p);
@@ -6291,8 +6291,8 @@ const GEAR = {
   scuba: {n: 'Scuba gear', d: 'Dive to 45 m with 3 minutes of air (hold C to dive, Space to rise, swim where you look)', cost: 260, need: o => !(o.suitOwn ?? o.suit)},
   sat: {n: 'Saturation suit', d: 'Hard-hat suit with a helmet lamp: 160 m and 9 minutes of air. The trenches are dark', cost: 1400, need: o => (o.suitOwn ?? o.suit) === 1},
   fw: {n: 'Firework rockets x5', d: 'Slot 7. Light up the night sky', cost: 60, need: o => true},
-  sack1: {n: 'Big sack', d: 'Carry 7 slots of salvage instead of 4', cost: 90, need: o => !o.sack},
-  sack2: {n: "Hauler's pack", d: 'Carry 10 slots of salvage', cost: 220, need: o => o.sack === 1},
+  sack1: {n: 'Big sack', d: 'Carry 9 slots of salvage instead of 6', cost: 90, need: o => !o.sack},
+  sack2: {n: "Hauler's pack", d: 'Carry 12 slots of salvage', cost: 220, need: o => o.sack === 1},
   mag: {n: 'Magnum revolver', d: 'Replaces the Glock: six rounds, slow, hits about as hard as three Glock shots (key 4)', cost: 650, need: o => o.glock === 1},
   rifle: {n: 'Hunting rifle', d: 'Replaces the shotgun: five rounds, one heavy accurate shot, a scope when you aim (key 5)', cost: 900, need: o => o.sg === 1},
   crate: {n: 'Ammo crate', d: '68 pistol rounds and 24 shells or rifle rounds, cheaper than loose', cost: 70, need: o => o.glock || o.sg},
