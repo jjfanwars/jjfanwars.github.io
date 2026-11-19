@@ -34,7 +34,12 @@ const Net = {
   send1(id, o) { if (!this.ws || this.ws.readyState !== 1) return; const ib = this.enc.encode(id), b = this.enc.encode(JSON.stringify(o)), out = new Uint8Array(1 + ib.length + b.length); out[0] = ib.length; out.set(ib, 1); out.set(b, 1 + ib.length); try { this.ws.send(out); } catch (e) {} },
   meta(open) { try { this.ws.send(JSON.stringify({c: 'meta', name: this.tag + ' ' + this.name + "'s squad", open})); } catch (e) {} },
   newCode() { let s = ''; for (let i = 0; i < 5; i++) s += 'ABCDEFGHJKLMNPQRSTUVWXYZ'[(Math.random() * 24) | 0]; return s; },
-  host(name, onStatus) { this.close(); this.role = 'host'; this.name = name; this.code = this.newCode(); this.peers = new Map(); this.onStatus = onStatus; this.hostConnect(); return this.code; },
+  host(name, onStatus) { this.close(); this.role = 'host'; this.name = name; this.code = this.newCode(); this.peers = new Map(); this.seq = 0; this.mySlot = 0; this.onStatus = onStatus; this.hostConnect(); return this.code; },
+  // host migration: a guest takes over the same room code (the relay sends 'host up' to the other guests, who say hello again)
+  promote(onStatus, slot, seq) { clearInterval(this.pingT); if (this.ws) { const w = this.ws; this.ws = null; w.onclose = null; try { w.close(); } catch (e) {} }
+    this.role = 'host'; this.peers = new Map(); this.seq = seq || 0; this.mySlot = slot; this.onStatus = onStatus; this.retry = 0; this.hostConnect(); },
+  host0(code) { this.close(); this.role = 'host'; this.code = code; this.peers = new Map(); this.seq = this.seq || 0; this.mySlot = this.mySlot || 0; this.retry = 0; this.hostConnect(); },
+  helloMsg() { return Object.assign({t: 'hello', name: this.name}, this.helloX ? this.helloX() : {}); },
   hostConnect() {
     const ws = this.ws = new WebSocket(this.relay() + '/room/' + this.code + '?role=host'); ws.binaryType = 'arraybuffer';
     ws.onopen = () => { this.retry = 0; this.meta(true); this.onStatus && this.onStatus('open'); };
@@ -43,23 +48,31 @@ const Net = {
       const b = new Uint8Array(e.data), k = b[0], id = this.dec.decode(b.subarray(1, 1 + k)); let m; try { m = JSON.parse(this.dec.decode(b.subarray(1 + k))); } catch (x) { return; }
       if (m.t === 'hello') {
         if (!this.peers.has(id) && this.peers.size >= 3) { this.send1(id, {t: 'full'}); return; }
-        const used = new Set([0, ...[...this.peers.values()].map(p => p.slot)]); let s = 1; while (used.has(s)) s++;
-        const p = this.peers.get(id) || {id, slot: s, kills: 0, yaw: 0, fire: 0};
+        let p = this.peers.get(id);
+        if (!p) { // a returning squad member (after a host migration) asks for its old slot, kills and join order
+          const used = new Set([this.mySlot || 0, ...[...this.peers.values()].map(q => q.slot)]); let s = 0; while (used.has(s)) s++;
+          const want = m.slot | 0; if (m.slot !== undefined && want >= 0 && want < 4 && !used.has(want)) s = want;
+          p = {id, slot: s, kills: Math.max(0, m.kills | 0), j: m.j > 0 ? m.j | 0 : ++this.seq, yaw: 0, fire: 0}; this.seq = Math.max(this.seq, p.j);
+        }
         p.name = String(m.name || 'Trooper').replace(/[^A-Za-z0-9 ._-]/g, '').slice(0, 14) || 'Trooper';
         this.peers.set(id, p); this.emit({t: '_join', id}); return;
       }
       if (!this.peers.has(id)) return;
       m.from = id; this.emit(m, id);
     };
-    ws.onclose = () => { if (this.role === 'host' && this.ws === ws) { this.onStatus && this.onStatus('retry'); setTimeout(() => { if (this.role === 'host' && this.ws === ws) this.hostConnect(); }, Math.min(8000, 1000 * ++this.retry)); } };
+    ws.onclose = ev => { if (this.role !== 'host' || this.ws !== ws) return;
+      if (ev.code === 4001) { this.ws = null; this.emit({t: '_replaced'}); return; } // another squad member took over the room while we were away
+      this.onStatus && this.onStatus('retry');
+      // one quick retry as host; after that a guest has probably taken over, so come back as a guest (the game re-hosts if the room is empty)
+      setTimeout(() => { if (this.role !== 'host' || this.ws !== ws) return; if (this.retry > 1 && this.peers.size) this.emit({t: '_hostlost'}); else this.hostConnect(); }, Math.min(8000, 1000 * ++this.retry)); };
     clearInterval(this.pingT); this.pingT = setInterval(() => { try { if (this.ws && this.ws.readyState === 1) this.ws.send('ping'); } catch (e) {} }, 15000);
   },
   join(code, name, onFail) {
     this.close(); this.role = 'guest'; this.code = code; this.name = name; this.id = Math.random().toString(36).slice(2, 11);
     const ws = this.ws = new WebSocket(this.relay() + '/room/' + code + '?role=guest&id=' + this.id); ws.binaryType = 'arraybuffer';
-    ws.onopen = () => this.send({t: 'hello', name});
+    ws.onopen = () => this.send(this.helloMsg());
     ws.onmessage = e => {
-      if (typeof e.data === 'string') { let m; try { m = JSON.parse(e.data); } catch (x) { return; } if (m.c === 'host' && !m.up) this.emit({t: '_hostgone'}); else if (m.c === 'host' && m.up) { this.send({t: 'hello', name}); this.emit({t: '_hostback'}); } return; }
+      if (typeof e.data === 'string') { let m; try { m = JSON.parse(e.data); } catch (x) { return; } if (m.c === 'host' && !m.up) this.emit({t: '_hostgone'}); else if (m.c === 'host' && m.up) { this.send(this.helloMsg()); this.emit({t: '_hostback'}); } return; }
       let m; try { m = JSON.parse(this.dec.decode(new Uint8Array(e.data))); } catch (x) { return; }
       if (m.t === 'full') { this.close(); onFail('That squad is full (4 max).'); return; }
       this.emit(m);
@@ -825,7 +838,7 @@ function applySnap(m) {
     let b = byId.get(id); if (!b) { b = spawnBug(f & 3, x, z, id); if (!b) continue; }
     if (b.dead) continue;
     seen.add(id); b.vx = (x - b.nx) * 10; b.vz = (z - b.nz) * 10; b.nx = x; b.nz = z; b.nyaw = yaw; b.ny = y; b.age = 0;
-    b.st = (f >> 2) & 3; const lg = (f >> 4) & 63; if (lg !== b.legs) { for (let k = 0; k < 6; k++) if ((b.legs & (1 << k)) && !(lg & (1 << k))) legOffFx(b, k); b.legs = lg; }
+    b.st = (f >> 2) & 3; if (f >> 10) b.hp = f >> 10; const lg = (f >> 4) & 63; if (lg !== b.legs) { for (let k = 0; k < 6; k++) if ((b.legs & (1 << k)) && !(lg & (1 << k))) legOffFx(b, k); b.legs = lg; }
   }
   for (const b of bugs.slice()) if (!b.dead && !seen.has(b.id)) freeBug(b);
   for (const e of m.e || []) {
@@ -835,7 +848,7 @@ function applySnap(m) {
     else if (e[0] === 'b') bruteWarn();
     else if (e[0] === 'a') { callout('ARMOUR CRITICAL', 'CLEAR THE BARRICADE'); Sfx.play('alarm', {vol: .5, vr: 0}); }
   }
-  G.shield = m.sh; G.hp = m.hp; G.kills = m.k; G.wave = m.w;
+  G.shield = m.sh; G.hp = m.hp; G.kills = m.k; G.wave = m.w; if (m.q !== undefined) { G.quota = m.q; G.gap = m.gp / 10; G.cleared = !!m.cl; G.bruteSeen = !!m.bs; }
   if (m.hurt) { G.hurtT = 0; G.dmgFlash = Math.min(1, G.dmgFlash + .1); }
   for (const r of m.g) { const g = G.gunners.get(r[0]); if (!g) continue; g.kills = r[3]; if (r[0] !== myId()) { g.yaw = r[1] / 100; g.fire = r[2]; } }
 }
@@ -847,22 +860,57 @@ function stepBugsGuest(dt) {
 }
 function packSnap() {
   const a = [];
-  for (const b of bugs) { if (b.dead) continue; a.push(b.id, Math.round(b.x * 10), Math.round(b.z * 10), Math.round(b.yaw * 100), b.type | (b.st << 2) | (b.legs << 4), Math.round(b.y * 10)); }
+  for (const b of bugs) { if (b.dead) continue; a.push(b.id, Math.round(b.x * 10), Math.round(b.z * 10), Math.round(b.yaw * 100), b.type | (b.st << 2) | (b.legs << 4) | (clamp(Math.ceil(b.hp), 0, 63) << 10), Math.round(b.y * 10)); }
   const g = [...G.gunners.values()].map(q => [q.id, Math.round(q.yaw * 100), q.fire ? 1 : 0, q.kills]);
-  const m = {t: 's', b: a, e: G.evq, g, sh: Math.round(G.shield), hp: Math.round(G.hp * 10) / 10, k: G.kills, w: G.wave, hurt: G.hurtT < .15 ? 1 : 0};
+  const m = {t: 's', b: a, e: G.evq, g, sh: Math.round(G.shield), hp: Math.round(G.hp * 10) / 10, k: G.kills, w: G.wave, hurt: G.hurtT < .15 ? 1 : 0, q: G.quota, gp: Math.round(G.gap * 10), cl: G.cleared ? 1 : 0, bs: G.bruteSeen ? 1 : 0, rt: Math.round(G.runT)};
   G.evq = []; return m;
 }
-function crewMsg() { return {t: 'crew', crew: [...G.gunners.values()].map(g => [g.id, g.slot, g.name])}; }
-Net.on('_join', m => { const p = Net.peers.get(m.id); addGunner(p.id, p.slot, p.name); Net.send(crewMsg()); Net.send1(m.id, {t: 'start', wave: G.wave}); toast(p.name + ' joined the line'); });
-Net.on('_left', m => { removeGunner(m.id); Net.send(crewMsg()); toast(m.name + ' left'); });
+function crewMsg() { return {t: 'crew', crew: [...G.gunners.values()].map(g => [g.id, g.slot, g.name, g.id === 'H' ? 0 : (g.j || 99)])}; }
+Net.on('_join', m => { const p = Net.peers.get(m.id), g = addGunner(p.id, p.slot, p.name); g.j = p.j; g.kills = Math.max(g.kills, p.kills || 0); Net.send(crewMsg()); Net.send1(m.id, {t: 'start', wave: G.wave}); if (!(G.migT > 0)) toast(p.name + ' joined the line'); });
+Net.on('_left', m => { if (!G.gunners.has(m.id)) return; removeGunner(m.id); Net.send(crewMsg()); toast(m.name + ' left'); });
 Net.on('aim', (m, id) => { const g = G.gunners.get(id); if (g) { g.yaw = clamp(+m.y || 0, -1.6, 1.6); g.fire = m.f ? 1 : 0; } });
-Net.on('crew', m => { const ids = new Set(); for (const [id, slot, name] of m.crew) { ids.add(id); addGunner(id, slot, name); } for (const id of [...G.gunners.keys()]) if (!ids.has(id)) removeGunner(id); });
+Net.on('crew', m => { const ids = new Set(), h0 = G.gunners.get('H'), hn = h0 && h0.name; for (const [id, slot, name, j] of m.crew) { ids.add(id); addGunner(id, slot, name).j = j; } if (hn && G.gunners.get('H') && G.gunners.get('H').name !== hn && G.hostMoved) toast(G.gunners.get('H').name + ' took over the squad'); for (const id of [...G.gunners.keys()]) if (!ids.has(id)) removeGunner(id); });
 Net.on('start', m => { if (!G.on || G.over) beginGame(false); G.wave = m.wave; netStatus('In squad ' + Net.code); });
 Net.on('s', m => { if (Net.role === 'guest' && G.on) applySnap(m); });
 Net.on('over', m => { if (Net.role === 'guest') overrun(m); });
 Net.on('restart', () => { if (Net.role === 'guest') beginGame(false); });
-Net.on('_hostgone', () => { toast('Host disconnected'); clearTimeout(G.goneT); G.goneT = setTimeout(() => { if (Net.role !== 'guest' || !G.on || G.over) return; G.over = true; G.lost = true; Net.close(); showEnd('SIGNAL LOST', 'The squad host left the game', G.wave, G.kills, G.runT, ''); }, 6000); });
-Net.on('_hostback', () => { clearTimeout(G.goneT); toast('Host reconnected'); });
+// ---------------- host migration
+// The longest-connected guest (lowest join order j) takes over the bug sim on the same room code. A host that quits says 'bye'
+// first, naming its successor, so the handover is instant; if the host just drops, the successor waits 1.5 s for a quick
+// reconnect, and the next in line steps in 2.5 s later if the first never shows up.
+function successors() { return [...G.gunners.values()].filter(g => g.id !== 'H').sort((a, b) => (a.j || 99) - (b.j || 99) || (a.id < b.id ? -1 : 1)); }
+function hostBye() { if (Net.role !== 'host' || !Net.peers.size) return; const p = [...Net.peers.values()].sort((a, b) => a.j - b.j)[0]; Net.send({t: 'bye', next: p.id}); }
+function becomeHost() {
+  if (Net.role !== 'guest') return; clearTimeout(G.goneT); G.hostDown = false;
+  const me = G.gunners.get(Net.id), seq = Math.max(0, ...[...G.gunners.values()].map(g => g.j || 0));
+  removeGunner('H'); let slot = 0;
+  if (me) { G.gunners.delete(Net.id); me.id = 'H'; me.j = 0; G.gunners.set('H', me); slot = me.slot; }
+  Net.promote(hostStatus, slot, seq);
+  if (!me) addGunner('H', slot, SET.name);
+  // take over the sim from the interpolated view: settle positions, ids carry on, leapers drop out of the air
+  let mx = 0; for (const b of bugs) { mx = Math.max(mx, b.id); if (b.dead) continue; b.x = b.nx; b.z = b.nz; if (b.st === 2) { b.vy = 0; } }
+  nextId = mx + 1; G.evq = []; G.sendT = 0; G.migT = 6;
+  if (!G.wave) startWave(1);
+  toast('Host left. You are running the squad now'); $('pCode').textContent = 'Squad code ' + Net.code;
+  if (G.over) showEnd($('endH').textContent, $('endSub').textContent, G.wave, G.kills, G.runT, $('endB').textContent);
+}
+function hostStatus(st) { netStatus(st === 'open' ? 'Squad open. Code ' + Net.code : 'Reconnecting to relay...'); }
+function rejoinAsGuest(slot) { // our host socket was replaced (or we dropped) and someone else runs the room now
+  const me = G.gunners.get('H'); G.gunners.delete('H');
+  Net.join(Net.code, SET.name, why => { if (why === 'No such squad code.' && G.on) { const g = G.gunners.get(Net.id); Net.host0(Net.code); if (g) { G.gunners.delete(g.id); g.id = 'H'; G.gunners.set('H', g); } G.migT = 6; toast('Squad reopened'); return; } joinFail(why); });
+  if (me) { me.id = Net.id; me.j = 99; G.gunners.set(Net.id, me); }
+  for (const b of bugs) { b.nx = b.x; b.nz = b.z; b.nyaw = b.yaw; b.ny = b.y; b.age = 0; }
+  G.hostMoved = true; toast('Rejoining the squad...');
+}
+Net.helloX = () => { const g = localGunner(); return g ? {slot: g.slot, kills: g.kills, j: g.j || 0} : {}; };
+Net.on('bye', m => { if (Net.role !== 'guest') return; G.hostMoved = true; if (m.next === Net.id) becomeHost(); else { G.hostDown = true; clearTimeout(G.goneT); G.goneT = setTimeout(becomeHost, 6000); } });
+Net.on('_hostgone', () => {
+  if (Net.role !== 'guest' || G.hostDown && G.goneT) return; G.hostDown = true; G.hostMoved = true; toast('Host disconnected');
+  const r = Math.max(0, successors().findIndex(g => g.id === Net.id)); clearTimeout(G.goneT); G.goneT = setTimeout(() => { if (G.hostDown) becomeHost(); }, 1500 + r * 2500);
+});
+Net.on('_hostback', () => { clearTimeout(G.goneT); G.goneT = 0; if (G.hostDown) toast('Squad link restored'); G.hostDown = false; });
+Net.on('_replaced', () => rejoinAsGuest());
+Net.on('_hostlost', () => rejoinAsGuest());
 
 // ---------------- HUD
 const hud = $('hud'), hx = hud.getContext('2d');
@@ -1058,6 +1106,7 @@ function step(dt) {
       if (nb && Math.random() < .1) G.dmgDirs.push({a: Math.atan2(-(nb.x - P.x), -(nb.z - P.z)), t: 1}); }
     if (Net.role === 'guest' && G.hurtT < .1 && Math.random() < .1) G.dmgDirs.push({a: P.yaw + rnd(-1, 1), t: 1});
     if (Net.role === 'host' && (G.sendT -= dt) <= 0) { G.sendT = 1 / 12; Net.send(packSnap()); }
+    if (Net.role === 'host' && G.migT > 0 && (G.migT -= dt) <= 0) { for (const id of [...G.gunners.keys()]) if (id !== 'H' && !Net.peers.has(id)) removeGunner(id); Net.send(crewMsg()); }
     if (Net.role === 'guest' && (G.sendT -= dt) <= 0) { G.sendT = 1 / 15; Net.send({t: 'aim', y: Math.round(P.yaw * 1000) / 1000, f: wantFire() && P.vent <= 0 ? 1 : 0}); }
   }
   if (Net.role !== 'host') G.evq = [];
@@ -1114,6 +1163,7 @@ for (const id of ['vol', 'vol2']) $(id).oninput = e => { SET.vol = +e.target.val
 for (const id of ['gfx', 'gfx2']) for (const b of $(id).children) b.onclick = () => { SET.gfx = b.dataset.v; saveSet(); syncUI(); resize(); };
 for (const id of ['auto', 'auto2']) if ($(id)) $(id).onchange = e => { SET.auto = e.target.checked; saveSet(); syncUI(); };
 if ($('name')) $('name').oninput = e => { SET.name = e.target.value.replace(/[^A-Za-z0-9 ._-]/g, '').slice(0, 14) || 'Trooper'; saveSet(); };
+function joinFail(why) { netStatus(why); if (G.on) { G.on = false; $('menu').classList.remove('hidden'); $('hud').classList.add('hidden'); $('end').classList.add('hidden'); $('visor').classList.add('hidden'); document.exitPointerLock && document.exitPointerLock(); } }
 function netStatus(s) { if ($('netS')) $('netS').textContent = s; }
 $('bStart').onclick = () => { Net.close(); beginGame(true); };
 if ($('bHost')) $('bHost').onclick = () => {
@@ -1125,11 +1175,11 @@ if ($('bHost')) $('bHost').onclick = () => {
 if ($('bJoin')) $('bJoin').onclick = () => {
   const code = ($('jCode').value || '').toUpperCase().replace(/[^A-Z]/g, ''); if (code.length !== 5) { netStatus('Enter the 5-letter squad code.'); return; }
   Sfx.init(); netStatus('Joining ' + code + '...');
-  Net.join(code, SET.name, why => { netStatus(why); if (G.on) { G.on = false; $('menu').classList.remove('hidden'); $('hud').classList.add('hidden'); $('end').classList.add('hidden'); document.exitPointerLock && document.exitPointerLock(); } });
+  Net.join(code, SET.name, joinFail);
   for (const id of [...G.gunners.keys()]) removeGunner(id);
 };
 $('bResume').onclick = () => pause(false);
-$('bQuit').onclick = () => { Net.close(); clearTimeout(G.goneT); $('bPauseT').classList.add('hidden'); G.on = false; G.paused = false; resetWorld(); ['pause', 'end'].forEach(i => $(i).classList.add('hidden')); $('menu').classList.remove('hidden'); $('hud').classList.add('hidden'); $('visor').classList.add('hidden'); };
+$('bQuit').onclick = () => { hostBye(); Net.close(); clearTimeout(G.goneT); $('bPauseT').classList.add('hidden'); G.on = false; G.paused = false; resetWorld(); ['pause', 'end'].forEach(i => $(i).classList.add('hidden')); $('menu').classList.remove('hidden'); $('hud').classList.add('hidden'); $('visor').classList.add('hidden'); };
 $('bMenu').onclick = $('bQuit').onclick;
 $('bAgain').onclick = () => { if (G.lost) { $('bQuit').onclick(); return; } if (Net.role === 'guest') return; if (Net.role === 'host') Net.send({t: 'restart'}); beginGame(false); };
 const openReq = () => { $('reqF').src = 'requests.html?embed'; $('reqBox').classList.remove('hidden'); document.exitPointerLock && document.exitPointerLock(); };
@@ -1137,6 +1187,7 @@ for (const id of ['bReq', 'bReq2', 'bReq3']) $(id).onclick = openReq;
 $('bReqX').onclick = () => $('reqBox').classList.add('hidden');
 { const m = /[?&]room=([A-Za-z]{5})/.exec(location.search); if (m && $('jCode')) { $('jCode').value = m[1].toUpperCase(); netStatus('Squad code filled in. Press Join.'); } }
 syncUI(); resize();
+addEventListener('pagehide', hostBye);
 
 if (TEST) window.__LS = {G, P, bugs, Net, SET, start: () => beginGame(true), fire: v => { testFire = v; }, step: (dt, n = 1, nr) => { noRender = !!nr; for (let i = 0; i < n; i++) step(dt); noRender = false; }, setYaw: y => { P.yaw = y; }, Sfx, spawnBug, killBug, host: () => $("bHost").click(), join: c => { $('jCode').value = c; $('bJoin').click(); }, scene, cam};
 // compile the shaders the fight needs up front (muzzle flash, squad marines) so the first shots don't hitch
