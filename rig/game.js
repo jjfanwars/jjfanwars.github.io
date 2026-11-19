@@ -29,7 +29,7 @@ const hexS = c => '#' + c.toString(16).padStart(6, '0');
 
 // ---------------- net (jjfanwars relay)
 const RELAY_URL = 'wss://jjfanwars-relay.businessautomationvic.workers.dev';
-const GAME_V = 76;
+const GAME_V = 77;
 const Net = {
   tag: '[Rig]', role: 'solo', ws: null, peers: new Map(), code: '', relayT: {pose: 1}, id: '', name: '', handlers: {}, retry: 0, started: false,
   enc: new TextEncoder(), dec: new TextDecoder(),
@@ -1704,8 +1704,8 @@ function subClimb(up) { const T = SUB.TR, y1 = up ? SUB.CAS : SUB.FI; if (!up &&
   P.climb = {t: 0, T: 1.1 + Math.abs(y1 - P.y) * .3, a: [P.bl[0], P.y, P.bl[1]], b: 'bin', up, f: [T.x, T.z + .12], e: [T.x, y1, up ? T.z + .85 : T.z - .75], p0: P.pitch, po: 0, yo: 0, y0: P.yaw, eye: P.eye, rT: 0, wet: 0, bY: B.yaw};
   P.vx = P.vz = P.vy = 0; P.cr = 0; P.run = 0; P.rest = 0; P.trunkT = G.t + P.climb.T + .4; if (!isHost()) act({a: 'trunk', T: P.climb.T}); }
 function subRestStart() { P.rest = 1; P.cr = 1; P.vx = P.vz = 0; P.yaw = B.yaw + PI; P.pitch = .2; showMsg('W to get up.', '', 2); }
-function subRest(dt) { if (K.KeyW || K.KeyA || K.KeyS || K.KeyD || ePress || !BG.sub || !P.ob || B.sink > 0 || P.down) { ePress = false; P.rest = 0; P.cr = 0; P.bl = [-.6, -1.6]; P.y = SUB.FI; return false; }
-  P.bl = [-1.38, -2.05]; P.y = SUB.FI + .48; P.vx = P.vz = 0; P.eye = mix(P.eye, .22, Math.min(1, dt * 4)); [P.x, P.z] = bL2W(P.bl[0], P.bl[1]); return true; }
+function subRest(dt) { if (K.KeyW || K.KeyA || K.KeyS || K.KeyD || ePress || !BG.sub || !P.ob || B.sink > 0 || P.down) { ePress = false; P.rest = 0; P.cr = 0; P.bl = HC().nuke ? [-1.4, 12.5] : [-.6, -1.6]; P.y = SUB.FI; return false; }
+  P.bl = HC().nuke ? [-2.6, 12.5] : [-1.38, -2.05]; P.y = SUB.FI + .48; P.vx = P.vz = 0; P.eye = mix(P.eye, .22, Math.min(1, dt * 4)); [P.x, P.z] = bL2W(P.bl[0], P.bl[1]); return true; }
 // the periscope: the view rides the mast head while she is shallow, the mouse trains it round, E or WASD lets go
 function subScope(on) { const el = SUBC.scV || (SUBC.scV = scopeEl());
   if (on) { if ((B.dep || 0) >= 3) return; if (P.eq > 1) equip(0); Object.assign(P, {scope: 1, bl: [0, SUB.SCOPE[1] + .55], y: SUB.FI, vx: 0, vz: 0, cr: 0, yaw: B.yaw, pitch: 0}); tone(70, .04, .6, 'sawtooth', null, 160); burst(900, .6, .04, .5, 'bandpass'); }
@@ -9674,6 +9674,8 @@ function nkBuild() { const U = SUB, CAS = U.CAS, FI = U.FI, RB = NUKE.RB, cyB = 
   for (const m of mergeByMat(L)) g.add(m); g.traverse(o => { if (o.isMesh) { o.receiveShadow = true; o.castShadow = false; } });
   // floor, lamps for the pooled lights, and the interactions moved into the new rooms
   BFL.push({x0: -3.9, x1: 3.9, z0: NK_Z0 + .05, z1: NK_Z1 - .05, y: F, int: 1, nk: 1});
+  // the outer hull is solid to swimmers and to anyone ashore (crew aboard skip ext walls): the full-width body, the tapered nose and tail as narrower boxes
+  for (const [x, z0, z1] of [[RB, -9.8, 55], [3.4, -12.5, -9.8], [2.2, -15, -12.5], [3.4, 55, 62], [2, 62, 69]]) BW.push({x0: -x, x1: x, z0, z1, y0: cyB - x - CAS, y1: Math.min(0, cyB + x - CAS), ext: 1, nk: 1});
   if (!NK.lamps0) NK.lamps0 = U.lamps.slice(); U.lamps.length = 0; for (let z = -11; z < 56; z += 4.5) U.lamps.push([0, .5, z]);
   for (let i = INTER.length - 1; i >= 0; i--) { const it = INTER[i]; if (!it.boat) continue; if (/^lock/.test(it.kind)) INTER.splice(i, 1); else if (it.kind === 'bunk') { it.lx = -1.6; it.lz = 12.4; } else if (it.kind === 'hold') { it.lx = 0; it.lz = 53.5; it.by = F + 1; } else if (it.kind === 'patchbox') { it.lx = 1.0; it.lz = 47; } else if (it.kind === 'radio') { it.lx = 2.2; it.lz = 4.2; } }
   BSPOT.hold[0] = 0; BSPOT.hold[1] = 53.5; BSPOT.patch[0] = 1.0; BSPOT.patch[1] = 47; BSPOT.fuel[0] = -1; BSPOT.fuel[1] = 47;
@@ -9690,3 +9692,6 @@ const OHN = 1.0;
 { const f0 = subWL; subWL = function (h) { if (!HC().nuke) return f0.apply(this, arguments); const cyB = SUB.CAS - .05 - NUKE.RB, d = Math.abs(h - cyB); if (h > SUB.CAS || d >= NUKE.RB) return null; const w = Math.sqrt(NUKE.RB * NUKE.RB - d * d); return [w, -14.5 + (1 - w / NUKE.RB) * 2, 66 - (1 - w / NUKE.RB) * 4]; }; }
 { const f0 = subFx; subFx = function (dt) { const r = f0.apply(this, arguments); if (HC().nuke && BOAT && NK.g) { if (SUBC.inner) SUBC.inner.visible = false; const cd = Math.hypot(cam.position.x - B.x, cam.position.z - B.z); NK.g.visible = !!G.subIn || cd < 60;
   _sb.set(0, 1, 0).applyQuaternion(BOAT.quaternion); _sc.set(0, SUB.CAS - .12, 0); BOAT.localToWorld(_sc); NK.plane.setFromNormalAndCoplanarPoint(_sb, _sc); } return r; }; }
+
+// swimmers anywhere along the Kraken's 87 m are checked against her hull (the shared gate only reaches about 50 m from her origin)
+{ const f0 = pushBody; pushBody = function (o, r, y) { const res = f0.apply(this, arguments); try { if (HC().nuke && BOAT && !o.ob && B.sink <= 0) { const [lx, lz] = bW2L(o.x, o.z); if (lz > -17 && lz < 72 && Math.abs(lx) < NUKE.RB + 1.5) subPush(o, r, y); } } catch (e) {} return res; }; }
