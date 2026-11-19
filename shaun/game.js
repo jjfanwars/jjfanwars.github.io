@@ -770,8 +770,31 @@ function makeGun(fp) {
 // first-person rig
 const gunRoot = new THREE.Group(); cam.add(gunRoot);
 const FPG = makeGun(true); gunRoot.add(FPG);
+const RIF = makeRifle(); RIF.scale.setScalar(.82); gunRoot.add(RIF);
+const MOUNT = makeGun(false); MOUNT.position.set(0, 1.32, -.25); MOUNT.visible = false; scene.add(MOUNT);
+{ const tm = new THREE.MeshStandardMaterial({color: 0x2a2d30, metalness: .7, roughness: .5}); for (let i = 0; i < 3; i++) { const a = i / 3 * TAU, l = new THREE.Mesh(new THREE.CylinderGeometry(.025, .03, 1.45, 8), tm); l.position.set(Math.sin(a) * .28, -.66, Math.cos(a) * .28 + .1); l.rotation.set(Math.cos(a) * .22, 0, -Math.sin(a) * .22); MOUNT.add(l); } }
 FPG.traverse(o => { if (o.isMesh && o.material.isMeshStandardMaterial) { o.material.envMapIntensity = .3; o.material.roughness = Math.max(o.material.roughness, .62); o.material.metalness = Math.min(o.material.metalness, .6); } }); // close to the lens the sky reflections blew the gun out
 const GUN_BASE = new THREE.Vector3(.2, -.27, -.42);
+// survival: rifle in first person, and the cannon left standing on its mount when you walk off
+function makeRifle() {
+  const G = new THREE.Group(), dk = new THREE.MeshStandardMaterial({color: 0x1d2022, metalness: .6, roughness: .5}), pl = new THREE.MeshStandardMaterial({color: 0x3b4033, metalness: .1, roughness: .8}), mt = new THREE.MeshStandardMaterial({color: 0x45494e, metalness: .8, roughness: .4});
+  const glove = new THREE.MeshStandardMaterial({color: 0x23261f, roughness: .85}), arm = new THREE.MeshStandardMaterial({color: 0x3c4436, metalness: .35, roughness: .6}), lens = new THREE.MeshStandardMaterial({color: 0x102a30, metalness: 1, roughness: .05, emissive: 0x041618});
+  const RB = (w, h, d, r = .006) => { const g = new THREE.BoxGeometry(w, h, d, 2, 2, 2); return g; };
+  const add = (geo, m, x, y, z, rx = 0, ry = 0, rz = 0) => { const me = new THREE.Mesh(geo, m); me.position.set(x, y, z); me.rotation.set(rx, ry, rz); G.add(me); return me; }, C = (a, b, l, n = 14) => new THREE.CylinderGeometry(a, b, l, n);
+  add(RB(.055, .085, .36), dk, 0, 0, -.22); add(RB(.062, .07, .34), pl, 0, -.005, -.56); for (let i = 0; i < 5; i++) add(RB(.064, .012, .03), dk, 0, .02, -.45 - i * .055);
+  add(C(.011, .011, .32), mt, 0, .005, -.88, PI / 2); add(C(.017, .017, .07), dk, 0, .005, -1.06, PI / 2); for (const s of [-1, 1]) add(RB(.004, .01, .03), new THREE.MeshBasicMaterial({color: 0}), s * .017, .005, -1.07);
+  add(RB(.04, .15, .075), dk, 0, -.11, -.27, .22); add(RB(.034, .1, .045), pl, 0, -.08, -.08, -.35); add(RB(.05, .085, .22), pl, 0, -.015, .1); add(RB(.054, .1, .03), dk, 0, -.02, .215);
+  add(RB(.03, .012, .3), dk, 0, .05, -.25); add(C(.022, .022, .13), dk, 0, .082, -.24, PI / 2); add(new THREE.CircleGeometry(.019, 16), lens, 0, .082, -.306, 0, PI); add(new THREE.CircleGeometry(.019, 16), lens, 0, .082, -.174);
+  add(RB(.02, .02, .05), dk, 0, .055, -.2); add(RB(.02, .02, .05), dk, 0, .055, -.29);
+  add(RB(.05, .06, .09), glove, 0, -.06, -.58); for (let i = 0; i < 4; i++) add(new THREE.CapsuleGeometry(.011, .04, 3, 6), glove, .024, -.045 - i * .002, -.61 + i * .022, 0, 0, PI / 2 - .3);
+  add(RB(.05, .07, .07), glove, 0, -.08, -.06); add(new THREE.CapsuleGeometry(.011, .04, 3, 6), glove, .015, -.035, -.14, PI / 2, 0, 0);
+  const mkArm = (a, b) => { const d = b.clone().sub(a), m = new THREE.Mesh(C(.05, .065, 1, 12), arm); m.scale.y = d.length(); m.position.copy(a).add(b).multiplyScalar(.5); m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), d.normalize()); G.add(m); };
+  mkArm(new THREE.Vector3(-.28, -.42, -.1), new THREE.Vector3(-.01, -.07, -.56)); mkArm(new THREE.Vector3(.18, -.42, .3), new THREE.Vector3(.01, -.09, -.04));
+  const muzzle = new THREE.Object3D(); muzzle.position.set(0, .005, -1.12); G.add(muzzle); const eject = new THREE.Object3D(); eject.position.set(.035, .01, -.2); G.add(eject);
+  const fl = new THREE.Sprite(new THREE.SpriteMaterial({map: starT, color: new THREE.Color(2.4, 1.7, 1), blending: THREE.AdditiveBlending, depthWrite: false, fog: false})); fl.visible = false; muzzle.add(fl);
+  G.userData = {muzzle, eject, fl, flT: 0}; G.traverse(o => { if (o.isMesh) o.castShadow = false; }); G.visible = false; return G;
+}
+
 // marines (other squad members)
 function makeMarine() {
   const g = new THREE.Group(), arm = new THREE.MeshStandardMaterial({color: 0x46503e, metalness: .45, roughness: .5}), dk = new THREE.MeshStandardMaterial({color: 0x22261f, metalness: .4, roughness: .6}), vis = new THREE.MeshBasicMaterial({color: new THREE.Color(.5, 2.6, 2.4)});
@@ -850,7 +873,7 @@ const Sfx = {
 // ---------------- game state
 const P = {x: 0, z: 0, yaw: 0, pitch: -.04, spin: 0, heat: 0, vent: 0, firing: false, fireAcc: 0, shots: 0, fireT: 0,
   kick: 0, kickV: 0, gp: 0, gpV: 0, cp: 0, cpV: 0, cy: 0, cyV: 0, trauma: 0, ads: 0, swayX: 0, swayY: 0, swayVX: 0, swayVY: 0, fovP: 0, drift: 0, mdx: 0, bloom: 0};
-const G = {on: false, paused: false, over: false, wave: 0, quota: 0, spawnAcc: 0, gap: 3, kills: 0, shield: 100, hp: 100, hurtT: 9, t: 0, sendT: 0, dmgFlash: 0, dmgDirs: [], hitT: 0, killT: 0, scores: {}, best: +(localStorage.getItem('ls-bestk') || 0), gunners: new Map()};
+const G = {on: false, paused: false, over: false, wave: 0, quota: 0, spawnAcc: 0, gap: 3, kills: 0, shield: 100, hp: 100, hurtT: 9, t: 0, sendT: 0, dmgFlash: 0, dmgDirs: [], hitT: 0, killT: 0, scores: {}, best: +(localStorage.getItem('ls-bestk') || 0), bestS: +(localStorage.getItem('ls-bestS') || 0), mode: 'horde', gunners: new Map()};
 // gunners: id -> {slot, name, yaw, pitch, fire, spin, heat, acc, n, kills, model}
 function myId() { return Net.role === 'guest' ? Net.id : 'H'; }
 function localGunner() { return G.gunners.get(myId()); }
@@ -876,7 +899,7 @@ function pickTarget(g) {
 const _sa = new THREE.Vector3(), _sb = new THREE.Vector3(), mz = new THREE.Vector3(), hitP = new THREE.Vector3(), hitP2 = new THREE.Vector3(), dirV = new THREE.Vector3();
 function nearBug(p, not, r) { let best = null, bd = r * r; for (const b of bugs) { if (b.dead || b === not || b.st === 3) continue; const dx = b.x - p.x, dz = b.z - p.z, d = dx * dx + dz * dz; if (d < bd) { bd = d; best = b; } } return best; }
 function muzzleOf(g, out) {
-  if (g.id === myId()) return FPG.userData.muzzle.getWorldPosition(out);
+  if (g.id === myId()) return (SURV() && P.foot ? RIF : FPG).userData.muzzle.getWorldPosition(out);
   if (g.model) return g.model.userData.gun.userData.muzzle.getWorldPosition(out);
   return out.set(SLOTX[g.slot], 1.4, -1);
 }
@@ -897,14 +920,15 @@ function rayBugs(ox, oy, oz, dx, dy, dz) {
 function fireShot(g, idx) {
   if (g.sentry) return fireShotAuto(g, idx);
   const local = g.id === myId(), ads = local ? P.ads : g.ads || 0, spr = (.006 + (local ? P.heat : g.heat || 0) * .006) * (1 - ads * .7);
-  const yw = g.yaw + rnd(-spr, spr), pt = g.pitch + rnd(-spr, spr), ox = SLOTX[g.slot], oy = 1.7, oz = 0;
+  const foot = local && SURV() && P.foot, sp2 = foot ? (.003 + Math.min(1, P.fireT) * .006 + (P.moveL || 0) * .006) * (1 - ads * .75) : spr;
+  const yw = g.yaw + rnd(-sp2, sp2), pt = g.pitch + rnd(-sp2, sp2), ox = foot ? P.x : SLOTX[g.slot], oy = foot ? P.eyeY : 1.7, oz = foot ? P.z : 0;
   const dx = -Math.sin(yw) * Math.cos(pt), dy = Math.sin(pt), dz = -Math.cos(yw) * Math.cos(pt);
   const hits = rayBugs(ox, oy, oz, dx, dy, dz), t = hits.length ? hits[0][0] : null; g.tgt = t;
   muzzleOf(g, mz);
   const mate = G.ff ? mateOnLine(g, t) : null;
   if (mate) friendlyHit(g, mate, local);
   else if (t) {
-    for (let j = 0; j < hits.length; j++) { const [b, tt] = hits[j]; if (j && Math.random() < .4) break; const P2 = j ? hitP2 : hitP; P2.set(ox + dx * tt, oy + dy * tt, oz + dz * tt); hitFx(b, P2, local && !j, !!j); if (isHost()) damageBug(b, g, P2); }
+    for (let j = 0; j < hits.length; j++) { const [b, tt] = hits[j]; if (j && (foot || Math.random() < .4)) break; const P2 = j ? hitP2 : hitP; P2.set(ox + dx * tt, oy + dy * tt, oz + dz * tt); hitFx(b, P2, local && !j, !!j); if (isHost()) damageBug(b, g, P2); }
     if (G.buff && G.buff.k === 1 && idx % 2 === 0) { let from = t; _sa.copy(hitP); for (let j = 0; j < 2; j++) { const o = nearBug(_sa, from, 9 + t.s * 2); if (!o || o === t) break; bugCenter(o, _sb); shockArc(_sa, _sb); hitFx(o, _sb, false); if (isHost()) damageBug(o, g, _sb); _sa.copy(_sb); from = o; } }
   } else {
     let d = 220; if (dy < -.002) d = Math.min(220, (oy - gH(ox + dx * 60, oz + dz * 60)) / -dy);
@@ -934,6 +958,13 @@ function fireShotAuto(g, idx) { // sentry pods keep their auto-targeting
   shotTail(g, idx, local);
 }
 function shotTail(g, idx, local) {
+  if (local && SURV() && P.foot) { // rifle
+    if (idx % 3 === 0) addTracer(mz, hitP);
+    Sfx.play('shot', {vol: .3, rate: 1.3, vr: .06}); Sfx.play('thump', {vol: .2, rate: 1.6}); if (idx % 2 === 0) Sfx.play('shot', {vol: .05, at: rnd(.15, .25), lp: 700, rate: .9});
+    P.kickV += 2.4; P.gpV += 3; P.cpV += .9; P.cyV += rnd(-.6, .6); P.pitch = clamp(P.pitch + .006 * (1 - P.ads * .5), -1.35, 1.35); P.yaw += rnd(-.0025, .0025); P.trauma = Math.min(.5, P.trauma + .02);
+    RIF.userData.eject.getWorldPosition(_v2); dirV.set(1, 0, 0).applyQuaternion(cam.quaternion); addCase(_v2, {x: dirV.x * rnd(1.5, 2.5), y: rnd(1.5, 2.5), z: dirV.z * rnd(1.5, 2.5) + rnd(0, .4)}); RIF.userData.flT = .04;
+    for (let i = 0; i < 2; i++) PA.add(mz.x, mz.y, mz.z, rnd(-1, 1), rnd(-.5, 1), rnd(-1, 1), rnd(.03, .07), .05, .01, 3, 2, .8, 1); return; }
+  if (local && SURV()) SV.belt = Math.max(0, SV.belt - 1);
   if (idx % (G.buff && G.buff.k === 0 ? 3 : 5) === 0) addTracer(mz, hitP);
   if (local) {
     Sfx.play('shot', {vol: .32, vr: .08}); if (idx % 2 === 0) Sfx.play('thump', {vol: .4, vr: .12}); if (idx % 4 === 0) Sfx.play('shot', {vol: .06, at: rnd(.12, .2), lp: 700, rate: .8});
@@ -1027,6 +1058,7 @@ const LEVEL_T = 28;
 const spawnRate = n => Math.min(55, 15 + n * 3) * crewMul();
 function waveQuota(n) { return 1e9; }
 function startWave(n) {
+  if (SURV()) return survWave(n);
   G.wave = n; G.quota = 1e9; G.gap = 0; G.cleared = false;
   if (n === 1) { callout('HOLD THE LINE', 'THEY JUST KEEP COMING'); Sfx.play('horn', {vol: .6, vr: 0}); }
   if (isHost()) { G.evq.push(['w', n]); if (n % 5 === 0) spawnTitan(n);
@@ -1043,7 +1075,7 @@ function spawnOne() {
   const p2 = n >= 3 ? Math.min(.12, .03 + n * .006) : 0, p3 = n >= 4 ? Math.min(.1, .035 + (n - 4) * .01) : 0, p4 = n >= 6 ? Math.min(.12, .045 + (n - 6) * .012) : 0;
   const type = r < p2 ? 2 : r < p2 + p3 ? 3 : r < p2 + p3 + p4 ? 4 : n >= 2 && r < p2 + p3 + p4 + .28 ? 1 : 0;
   if ((type === 3 || type === 4) && !(G.seen & (1 << type))) { G.seen |= 1 << type; newTypeWarn(type); if (isHost()) G.evq.push(['n', type]); }
-  if (!G.pack || (G.pack.n -= 1) <= 0) G.pack = {a: rnd(-1.15, 1.15), d: rnd(105, 165), n: 6 + (Math.random() * 18 | 0)};
+  if (!G.pack || (G.pack.n -= 1) <= 0) G.pack = SURV() ? {a: Math.random() < .55 ? rnd(-1.2, 1.2) : rnd(-PI, PI), d: rnd(95, 140), n: 4 + (Math.random() * 10 | 0)} : {a: rnd(-1.15, 1.15), d: rnd(105, 165), n: 6 + (Math.random() * 18 | 0)};
   const a = G.pack.a + rnd(-.09, .09), d = G.pack.d + rnd(-9, 9);
   spawnBug(type, Math.sin(a) * d, -Math.cos(a) * d);
   if (type === 2 && !G.bruteSeen) { G.bruteSeen = true; bruteWarn(); if (isHost()) G.evq.push(['b']); }
@@ -1062,8 +1094,8 @@ function surfaceFx(b) { // a burrower erupts out of the sand
 }
 // acid globs (spitters)
 const GLOBS = [];
-function spit(b, tx) {
-  const sy = b.y + BH * b.s * 1.2, ez = -2.3 - Math.pow(Math.abs(tx) / 13, 2) * 2.2, T = 1.7;
+function spit(b, tx, tz) {
+  const sy = b.y + BH * b.s * 1.2, ez = tz !== undefined ? tz : -2.3 - Math.pow(Math.abs(tx) / 13, 2) * 2.2, T = 1.7;
   GLOBS.push({x: b.x, y: sy, z: b.z, vx: (tx - b.x) / T, vz: (ez - b.z) / T, vy: (1.1 - sy) / T + 9 * T, t: 0, T});
   for (let i = 0; i < 8; i++) PG.add(b.x, sy, b.z, rnd(-2, 2), rnd(2, 5), rnd(-2, 2), rnd(.5, 1), .2, .1, .5, 1, .2, .9, 14, .4, 1);
   if (Sfx.ctx && Sfx.lim('spit', 120)) { const a = Sfx.at(b.x, b.z); Sfx.play('squelch', {vol: .6 * a.vol + .04, pan: a.pan, rate: .45}); }
@@ -1077,7 +1109,7 @@ function stepGlobs(dt) {
     addDecal(g.x, g.z - .6, rnd(1, 1.6), [.6, 1.2, .3]);
     if (Sfx.ctx) { const a = Sfx.at(g.x, g.z); Sfx.play('squelch', {vol: .7 * a.vol, pan: a.pan, rate: .6}); Sfx.play('zap', {vol: .2, rate: .5}); }
     G.dmgDirs.push({a: Math.atan2(-(g.x - P.x), -(g.z - P.z)) + rnd(-.3, .3), t: 1}); P.trauma = Math.min(1, P.trauma + .12);
-    if (isHost() && !G.over) hurt(7); }
+    if (isHost() && !G.over && (!SURV() || Math.hypot(g.x - P.x, g.z - P.z) < 2.6)) hurt(7); }
 }
 // the hive titan: every 5th wave
 // kill streak: kills within 1.6 s of each other chain; every 50 in a chain pays out armour + a chime
@@ -1227,13 +1259,75 @@ function resetSpecials() {
   for (const g of [...G.gunners.values()]) if (g.sentry) removeGunner(g.id);
   Object.assign(G, {buff: null, sup: 0, supN: 0, titan: null, slow: 0, shock: null, dropT: 20, seen: 0});
 }
+
+// ---------------- survival mode (solo): get off the gun, walk the outpost with a rifle, scavenge supplies between waves
+const SURV = () => G.mode === 'surv';
+const SV = {mag: 30, res: 150, belt: 1200, rel: 0, lull: 0, wt: 0, items: [], q0: 0, dur: 1, bob: 0, live: 0, emptyT: 0};
+const ITEMK = [{n: 'RIFLE AMMO +90', c: 0xd8a21c}, {n: 'CANNON BELT +500', c: 0xff7a30}, {n: 'MED KIT +35', c: 0xe04040}, {n: 'ARMOUR CELL', c: 0x6ff7ee}];
+const pickK = () => { const r = Math.random(); return r < .4 ? 0 : r < .62 ? 1 : r < .84 ? 2 : 3; };
+function addItem(k, x, z) {
+  const g = new THREE.Group(), box = new THREE.Mesh(new THREE.BoxGeometry(.62, .36, .42), new THREE.MeshStandardMaterial({map: CRATE.map, normalMap: CRATE.nrm, roughnessMap: CRATE.rgh, roughness: 1, metalness: .2}));
+  box.position.y = .18; box.castShadow = true; g.add(box);
+  const band = new THREE.Mesh(new THREE.BoxGeometry(.64, .07, .44), new THREE.MeshStandardMaterial({color: ITEMK[k].c, emissive: ITEMK[k].c, emissiveIntensity: .8, roughness: .5})); band.position.y = .22; g.add(band);
+  g.position.set(x, gH(x, z), z); g.rotation.y = rnd(0, TAU); scene.add(g); SV.items.push({k, x, z, m: g});
+}
+function scatterItems(n, r0, r1, compound) { for (let i = 0; i < n; i++) { let x, z;
+  if (compound) { x = rnd(-12, 12); z = rnd(1.5, 13); } else { const a = rnd(-PI, PI), r = rnd(r0, r1); x = Math.sin(a) * r; z = -Math.cos(a) * r; }
+  addItem(pickK(), x, z); } }
+function clearItems() { for (const it of SV.items) scene.remove(it.m); SV.items = []; }
+function survStart() { Object.assign(SV, {mag: 30, res: 150, belt: 1200, rel: 0, lull: 0, wt: 0, q0: 0, emptyT: 0}); clearItems(); P.foot = false; P.x = 0; P.z = 0; P.eyeY = 1.7; scatterItems(7, 0, 0, true); scatterItems(4, 25, 60); }
+function survWave(n) { G.wave = n; G.quota = Math.round((26 + n * 16) * (n % 5 === 0 ? .7 : 1)); SV.q0 = G.quota; SV.dur = 22 + n * 2; SV.lull = 0; SV.wt = 0;
+  callout('WAVE ' + n, n === 1 ? 'THEY KNOW YOU ARE HERE' : 'INBOUND FROM ALL SIDES'); Sfx.play('horn', {vol: .6, vr: 0}); if (n % 5 === 0) spawnTitan(n); }
+function survSpawn(dt, live) {
+  if (G.quota > 0) { G.spawnAcc += dt * SV.q0 / SV.dur; while (G.spawnAcc > 1 && G.quota > 0) { G.spawnAcc--; spawnOne(); G.quota--; } SV.wt += dt; return; }
+  if (SV.lull > 0) { if ((SV.lull -= dt) <= 0) startWave(G.wave + 1); return; }
+  if (live <= 2 || (SV.wt += dt) > SV.dur + 70) { SV.lull = 25; callout('WAVE ' + G.wave + ' SURVIVED', 'SCAVENGE // NEXT WAVE IN 25 S'); Sfx.play('horn', {vol: .35, rate: 1.5, vr: 0}); scatterItems(5, 22, 85); scatterItems(2, 0, 0, true); G.shield = 100; }
+}
+const angW = a => ((a + PI) % TAU + TAU) % TAU - PI;
+const inLine = (x, z) => Math.abs(x) < 13.7 && Math.abs(z - (-1.4 - (x / 13) ** 2 * 2.2)) < .55;
+function toggleMount() {
+  if (!SURV() || G.over) return;
+  if (P.foot) { if (Math.hypot(P.x, P.z - .3) > 2.3) { toast('Get to the cannon to man it'); return; }
+    P.foot = false; P.x = 0; P.z = 0; P.eyeY = 1.7; P.yaw = clamp(angW(P.yaw), -1.5, 1.5); P.pitch = clamp(P.pitch, -.55, .4); Sfx.play('tink', {vol: .4, rate: .6}); }
+  else { P.foot = true; P.z = 1.1; P.pitch = clamp(P.pitch, -.3, .3); const lg = localGunner(); if (lg) lg.spin = 0; P.spin = 0; P.heat = 0; Sfx.play('tink', {vol: .4, rate: .8}); }
+}
+function reload() { if (!P.foot || SV.rel > 0 || SV.mag >= 30 || SV.res <= 0) return; SV.rel = 1.8; Sfx.play('tink', {vol: .35, rate: .6}); setTimeout(() => Sfx.play('crunch', {vol: .3, rate: 1.6}), 1000); }
+function rifleStep(g, dt) {
+  g.spin = 0; P.firing = false; g.pitch = P.pitch;
+  if (SV.rel > 0) { if ((SV.rel -= dt) <= 0) { const n = Math.min(30 - SV.mag, SV.res); SV.mag += n; SV.res -= n; } g.acc = 1; return; }
+  const want = wantFire() && !G.over;
+  if (want && SV.mag > 0) { g.acc += dt * 10; while (g.acc >= 1 && SV.mag > 0) { g.acc--; SV.mag--; fireShot(g, g.n++); } P.firing = true; P.fireT += dt; }
+  else { g.acc = 1; P.fireT = Math.max(0, P.fireT - dt * 3); }
+  if (want && SV.mag === 0) { if (SV.res > 0) reload(); else if (Sfx.lim('dry', 350)) { Sfx.play('tink', {vol: .3, rate: .45}); toast('Out of rifle ammo: find a crate or man the cannon'); } }
+}
+function survMove(dt) {
+  const f = (keys.KeyW || keys.ArrowUp ? 1 : 0) - (keys.KeyS || keys.ArrowDown ? 1 : 0) + (P.mvY || 0), r = (keys.KeyD || keys.ArrowRight ? 1 : 0) - (keys.KeyA || keys.ArrowLeft ? 1 : 0) + (P.mvX || 0);
+  const run = keys.ShiftLeft || keys.ShiftRight ? 1.7 : 1, sp = 4.2 * run * (1 - P.ads * .5), l = Math.min(1, Math.hypot(f, r)), ox = P.x, oz = P.z;
+  if (l > .05) { const k = l / Math.hypot(f, r) * sp * dt, fx = -Math.sin(P.yaw), fz = -Math.cos(P.yaw), rx = Math.cos(P.yaw), rz = -Math.sin(P.yaw); P.x += (fx * f + rx * r) * k; P.z += (fz * f + rz * r) * k; SV.bob += dt * sp * 1.9;
+    if (Sfx.ctx && Math.sin(SV.bob) * Math.sin(SV.bob - dt * sp * 1.9) < 0) Sfx.play('crunch', {vol: .06 * run, rate: rnd(.5, .7), lp: 1200}); }
+  if (inLine(P.x, P.z) && !inLine(ox, oz)) { P.x = ox; P.z = oz; } // the sandbag line: go round the ends
+  for (const b of bugs) { if (b.dead || b.st === 3) continue; const dx = P.x - b.x, dz = P.z - b.z, d2 = dx * dx + dz * dz, rr = .7 * b.s + .3; if (d2 < rr * rr && d2 > 1e-4) { const d = Math.sqrt(d2); P.x += dx / d * (rr - d) * .5; P.z += dz / d * (rr - d) * .5; } }
+  const rr = Math.hypot(P.x, P.z); if (rr > 160) { P.x *= 160 / rr; P.z *= 160 / rr; }
+  P.eyeY = gH(P.x, P.z) + 1.65 + Math.sin(SV.bob) * .035 * l; P.moveL = l * run;
+}
+function survStep(dt) {
+  if (!SURV()) return;
+  for (let i = SV.items.length - 1; i >= 0; i--) { const it = SV.items[i]; it.m.rotation.y += dt * .4;
+    if (Math.random() < dt * .8) PA.add(it.x, it.m.position.y + .5, it.z, 0, rnd(.6, 1.4), 0, rnd(.6, 1), .08, .02, 1.5 * ((ITEMK[it.k].c >> 16) / 255) + .2, 1.5 * ((ITEMK[it.k].c >> 8 & 255) / 255) + .1, 1.5 * ((ITEMK[it.k].c & 255) / 255) + .1, 1);
+    if (!P.foot || Math.hypot(it.x - P.x, it.z - P.z) > 1.5) continue;
+    if (it.k === 0) SV.res += 90; else if (it.k === 1) SV.belt += 500; else if (it.k === 2) G.hp = Math.min(100, G.hp + 35); else { G.shield = 100; G.hp = Math.min(100, G.hp + 10); }
+    toast(ITEMK[it.k].n); Sfx.play('tink', {vol: .5, rate: 1.3}); Sfx.play('zap', {vol: .1, rate: 2}); scene.remove(it.m); SV.items.splice(i, 1); }
+  if (!P.foot && SV.belt <= 0 && wantFire() && (SV.emptyT -= dt) <= 0) { SV.emptyT = 2.5; toast('BELT EMPTY: get off the gun [E] and find a cannon belt'); Sfx.play('tink', {vol: .3, rate: .45}); }
+}
 const grid = new Map();
 function stepBugsHost(dt) {
   if (G.over) return;
   let live = 0; for (const b of bugs) if (!b.dead) live++;
   // endless: spawn nonstop (a little faster when the field thins out so it never goes quiet), threat level rises every LEVEL_T s
-  G.spawnAcc += dt * spawnRate(G.wave) * (live < 60 ? 2 : 1); while (G.spawnAcc > 1) { G.spawnAcc--; if (live < 720) { spawnOne(); live++; } else { G.spawnAcc = 0; break; } }
-  if ((G.gap += dt) > LEVEL_T) startWave(G.wave + 1);
+  SV.live = live;
+  if (SURV()) survSpawn(dt, live);
+  else { G.spawnAcc += dt * spawnRate(G.wave) * (live < 60 ? 2 : 1); while (G.spawnAcc > 1) { G.spawnAcc--; if (live < 720) { spawnOne(); live++; } else { G.spawnAcc = 0; break; } }
+  if ((G.gap += dt) > LEVEL_T) startWave(G.wave + 1); }
   const spm = Math.min(2, 1 + G.wave * .05);
   grid.clear();
   const cell = (x, z) => (Math.floor(x / 3) + 500) * 1000 + Math.floor(z / 3) + 500;
@@ -1242,19 +1336,20 @@ function stepBugsHost(dt) {
   for (const b of bugs) {
     if (b.dead) continue;
     const goalZ = -3.4 - b.s * 1.5 - Math.pow(Math.abs(b.tx) / 13, 2) * 2.2;
-    const dx = b.tx - b.x, dz = goalZ - b.z, d = Math.hypot(dx, dz);
+    const sv = SURV(), dx = sv ? P.x - b.x : b.tx - b.x, dz = sv ? P.z - b.z : goalZ - b.z, d = Math.hypot(dx, dz) || 1e-3;
     if (b.st === 2) { b.vy -= 18 * dt; b.y += b.vy * dt; const f = b.T.sp * 7.5 * spm; b.x += dx / d * f * 1.6 * dt; b.z += dz / d * f * 1.6 * dt; const gy = gH(b.x, b.z); if (b.y <= gy) { b.y = gy; b.st = 0; } b.sp = 0; continue; }
     if (b.st === 3) { const sp = b.T.sp * 7 * spm * 1.5, st = Math.min(sp * dt, d); b.x += dx / d * st; b.z += dz / d * st; b.y = gH(b.x, b.z); b.sp = sp; b.yaw = Math.atan2(dx, dz);
       if (Math.random() < dt * 8) PS.add(b.x, b.y + .1, b.z, rnd(-1, 1), rnd(.5, 1.5), rnd(-1, 1), rnd(.8, 1.4), .4, 1.6, .62, .42, .28, .5, 1, 1);
       if (d < 28) { b.st = 0; surfaceFx(b); } continue; }
-    if (b.T.spit && Math.hypot(b.x, b.z) < 42) { b.st = 1; b.sp = 0; b.yaw += angD(b.yaw, Math.atan2(-b.x, -b.z)) * Math.min(1, dt * 4);
-      if ((b.atkT -= dt) <= 0) { b.atkT = rnd(2.6, 3.8); const tx = rnd(-11, 11); spit(b, tx); G.evq.push(['g', b.id, Math.round(tx * 10)]); } continue; }
-    if (d < .8) { b.st = 1; b.sp = 0; attackers++; dmg += b.T.dps * (b.legs === 63 ? 1 : .7); b.yaw += angD(b.yaw, Math.atan2(-b.x + SLOTX[0] * 0, -b.z)) * dt * 4; }
+    if (b.T.spit && (sv ? d < 30 : Math.hypot(b.x, b.z) < 42)) { b.st = 1; b.sp = 0; b.yaw += angD(b.yaw, sv ? Math.atan2(dx, dz) : Math.atan2(-b.x, -b.z)) * Math.min(1, dt * 4);
+      if ((b.atkT -= dt) <= 0) { b.atkT = rnd(2.6, 3.8); if (sv) spit(b, P.x + rnd(-2.5, 2.5), P.z + rnd(-2.5, 2.5)); else { const tx = rnd(-11, 11); spit(b, tx); G.evq.push(['g', b.id, Math.round(tx * 10)]); } } continue; }
+    if (d < (sv ? .9 + .55 * b.s : .8)) { b.st = 1; b.sp = 0; attackers++; dmg += b.T.dps * (b.legs === 63 ? 1 : .7); b.yaw += angD(b.yaw, sv ? Math.atan2(dx, dz) : Math.atan2(-b.x, -b.z)) * dt * 4; }
     else {
       b.st = 0; let sp = b.T.sp * 7 * spm;
       if ((b.legs & 15) !== 15) sp *= ((b.legs & 15) ? .65 : .4) + .3 * Math.abs(Math.sin(b.ph)); // limping: lurches along
       if (b.stag > 0) { b.stag -= dt; sp *= .35; }
       sp *= .8 + .4 * (.5 + .5 * Math.sin(b.t * 1.3 + b.wf * 7)); // surges: scuttle, slow, scuttle
+      if (sv && inLine(b.x, b.z)) sp *= .4; // clambering over the sandbags
       const wv = Math.sin(b.t * b.wf) * b.weave * Math.min(1, d / 30);
       let ux = dx / d, uz = dz / d; const px = -uz, pz = ux; ux += px * wv; uz += pz * wv;
       // separation
@@ -1275,7 +1370,7 @@ function stepBugsHost(dt) {
   G.attackers = attackers;
 }
 function hurt(d) {
-  G.hurtT = 0; const s = Math.min(G.shield, d); G.shield -= s; d -= s; G.hp = Math.max(0, G.hp - d * .2);
+  G.hurtT = 0; const s = Math.min(G.shield, d); G.shield -= s; d -= s; G.hp = Math.max(0, G.hp - d * (SURV() ? .45 : .2));
   if (G.hp < 30 && !G.lowWarn) { G.lowWarn = true; setTimeout(() => radio('low'), 1500); callout('ARMOUR CRITICAL', 'CLEAR THE BARRICADE'); Sfx.play('alarm', {vol: .5, vr: 0}); if (isHost()) G.evq.push(['a']); }
   if (G.hp > 45) G.lowWarn = false;
   G.dmgFlash = Math.min(1, G.dmgFlash + .03); P.trauma = Math.min(1, P.trauma + .015);
@@ -1461,9 +1556,15 @@ function drawHud(dt, time) {
   c.fillStyle = 'rgba(2,20,22,.5)'; c.fillRect(bx, by + 76, 270, 8);
   const hg = c.createLinearGradient(bx, 0, bx + 270, 0); hg.addColorStop(0, '#ff8a2a'); hg.addColorStop(.7, '#ffd27a'); hg.addColorStop(1, '#ffffff'); c.fillStyle = hg; c.fillRect(bx, by + 76, 270 * heat, 8);
   c.fillStyle = CY + '.55)'; c.fillText('AUTO-FIRE ' + (SET.auto ? 'ON' : 'OFF') + '  [F]   AIM [Q]' + (G.ff ? '   FF ON' : ''), bx, by + 100);
+  if (SURV()) { c.font = '700 22px Rajdhani,sans-serif'; c.fillStyle = (P.foot ? SV.mag === 0 : SV.belt <= 0) ? 'rgba(255,90,60,.95)' : '#fff';
+    c.fillText(P.foot ? (SV.rel > 0 ? 'RELOADING' : SV.mag + ' / ' + SV.res) : 'BELT ' + SV.belt, bx, by - 34); c.font = '12px "Share Tech Mono",monospace'; c.fillStyle = CY + '.7)'; c.fillText(P.foot ? 'RIFLE  [R] RELOAD  [E] GUN' : 'CANNON  [E] GET OFF', bx, by - 18); c.font = '13px "Share Tech Mono",monospace';
+    if (P.foot && Math.hypot(P.x, P.z - .3) < 2.3) { c.font = '700 18px Rajdhani,sans-serif'; c.fillStyle = '#fff'; const tx = '[E] MAN THE CANNON'; c.fillText(tx, w / 2 - c.measureText(tx).width / 2, h * .62); c.font = '13px "Share Tech Mono",monospace'; }
+    for (const it of SV.items) { const d = Math.hypot(it.x - P.x, it.z - P.z); if (d > 90) continue; _v.set(it.x, it.m.position.y + .7, it.z).project(cam); if (_v.z > 1 || Math.abs(_v.x) > 1.1 || Math.abs(_v.y) > 1.1) continue;
+      const sx = (_v.x * .5 + .5) * w, sy = (-_v.y * .5 + .5) * h, col = '#' + ITEMK[it.k].c.toString(16).padStart(6, '0'); c.strokeStyle = col; c.globalAlpha = clamp(1.3 - d / 90, .35, 1); c.lineWidth = 1.5;
+      c.beginPath(); c.moveTo(sx, sy - 7); c.lineTo(sx + 6, sy); c.lineTo(sx, sy + 7); c.lineTo(sx - 6, sy); c.closePath(); c.stroke(); c.fillStyle = col; c.font = '11px "Share Tech Mono",monospace'; c.fillText(ITEMK[it.k].n.split(' ')[0] + ' ' + (d | 0) + 'm', sx + 9, sy + 4); c.globalAlpha = 1; } c.lineWidth = 1; c.font = '13px "Share Tech Mono",monospace'; }
   // top left: wave, kills
   c.fillStyle = CY + '.9)'; c.font = '700 30px Rajdhani,sans-serif'; c.fillText('KILLS ' + G.kills, 34, 52); c.font = '13px "Share Tech Mono",monospace';
-  c.fillText('HELD ' + fmtT(G.runT) + '   THREAT ' + G.wave, 36, 72); c.fillStyle = CY + '.5)'; if (G.best) c.fillText('BEST ' + G.best + ' KILLS', 36, 88);
+  c.fillText(SURV() ? (SV.lull > 0 ? 'SCAVENGE  NEXT WAVE ' + Math.ceil(SV.lull) + 'S' : 'WAVE ' + G.wave + '   CONTACTS ' + (G.quota + SV.live)) : 'HELD ' + fmtT(G.runT) + '   THREAT ' + G.wave, 36, 72); c.fillStyle = CY + '.5)'; if (SURV()) { if (G.bestS) c.fillText('BEST: WAVE ' + G.bestS, 36, 88); } else if (G.best) c.fillText('BEST ' + G.best + ' KILLS', 36, 88);
   if (G.combo >= 3) { const sc = 1 + G.comboPop * 2.2, a = Math.min(1, G.comboT * 1.5); c.save(); c.translate(cx - 120, cy + 40); c.scale(sc, sc); c.globalAlpha = a; c.font = '700 26px Rajdhani,sans-serif';
     c.fillStyle = G.comboFlash > 0 ? '#ffd27a' : G.combo >= 50 ? 'rgba(255,170,90,.95)' : 'rgba(230,255,250,.9)'; c.fillText(G.combo + 'x', 0, 0); c.font = '11px "Share Tech Mono",monospace'; c.fillText('STREAK', 0, 13); c.restore(); }
   // squad
@@ -1556,10 +1657,11 @@ function aiming() { return !!(keys.KeyQ || aimTouch) && G.on && !G.over; }
 const adsSens = () => 1 - P.ads * .5;
 function wantFire() { return testFire !== null ? testFire : (SET.auto || mouseDown || fireTouch); }
 function stepGunner(g, dt, local) {
+  if (local && SURV() && P.foot) return rifleStep(g, dt);
   const want = local ? wantFire() && !G.over : !!g.fire;
   g.spin = clamp(g.spin + (want ? dt / .6 : -dt / 2.2), 0, 1); // heavy barrels: slower spin-up, long run-down
   if (local && P.vent > 0) { P.vent -= dt; }
-  const can = g.spin > .97 && (!local || P.vent <= 0);
+  const can = g.spin > .97 && (!local || P.vent <= 0) && !(local && SURV() && SV.belt <= 0);
   const od = G.buff && G.buff.k === 0;
   if (can && want) { g.acc += dt * (g.sentry ? 16 : od ? 60 : 36); let n = 0; while (g.acc >= 1) { g.acc--; fireShot(g, g.n++); n++; } if (local) { P.firing = true; P.fireT += dt; P.heat = od ? Math.max(0, P.heat - dt * .3) : Math.min(1, P.heat + dt / 9); if (P.heat >= 1) { P.vent = .6; P.heat = .55; vent(); } } }
   else { g.acc = 0; if (local) { P.firing = false; P.fireT = Math.max(0, P.fireT - dt * 3); } }
@@ -1599,13 +1701,19 @@ function stepFeel(dt, time) {
   const ad = smooth(P.ads); cam.fov = mix(72, 40, ad) + P.fovP * 2 - (firing ? 1 : 0) * smooth(P.fireT); cam.updateProjectionMatrix();
   { const sc = innerHeight * Math.min(devicePixelRatio, HI() ? 1.5 : .85) / (2 * Math.tan(cam.fov * PI / 360)); for (const p of [PA, PS, PG]) p.mat.uniforms.scale.value = sc; }
   const breath = Math.sin(time * 1.4) * .004;
-  cam.position.set(P.x + nx * .3, 1.7 + breath * .5 + (G.dmgFlash > .1 ? rnd(-.02, .02) * G.dmgFlash : 0), P.z + .02);
+  cam.position.set(P.x + nx * .3, (P.eyeY || 1.7) + breath * .5 + (G.dmgFlash > .1 ? rnd(-.02, .02) * G.dmgFlash : 0), P.z + .02);
   cam.rotation.set(pitch + P.cp * .02 + ny + breath, P.yaw + P.cy * .01 + nx, nx * .3, 'YXZ');
   // gun pose
   const idle = firing ? 0 : 1;
   FPG.position.set(GUN_BASE.x - ad * .03 + P.swayX * .02 + (firing ? rnd(-1, 1) * .0025 : 0) + Math.sin(time * 1.1) * .003 * idle + rnd(-1, 1) * .002 * sh * 4, GUN_BASE.y - ad * .05 + P.swayY * .02 + (firing ? rnd(-1, 1) * .0025 : 0) + Math.sin(time * 1.4) * .004 * idle + P.gp * .004, GUN_BASE.z + ad * .06 + P.kick * .012 * (1 - ad * .5));
   FPG.rotation.set(P.gp * .02 - P.swayY * .03, -P.swayX * .04 + .02, P.cy * .01 + P.swayX * .05);
-  muzL.intensity = firing && Math.random() < .8 ? rnd(2, 4.5) : 0; FPG.userData.muzzle.getWorldPosition(muzL.position);
+  const foot = SURV() && P.foot; FPG.visible = !foot; RIF.visible = foot; MOUNT.visible = foot;
+  if (foot) { const bob = Math.sin(SV.bob) * .012 * (P.moveL || 0) * (1 - ad), bx2 = Math.cos(SV.bob * .5) * .01 * (P.moveL || 0) * (1 - ad), rl = SV.rel > 0 ? Math.sin(Math.min(1, (1.8 - SV.rel) / 1.8) * PI) : 0;
+    RIF.position.set(mix(.14, 0, ad) + P.swayX * .02 + bx2, mix(-.2, -.068, ad) + P.swayY * .02 + bob - rl * .12 + P.gp * .003, mix(-.22, -.16, ad) + P.kick * .015);
+    RIF.rotation.set(P.gp * .03 - P.swayY * .03 - rl * .5, -P.swayX * .04 + (1 - ad) * .03, P.swayX * .05 + rl * .6);
+    const u = RIF.userData; u.fl.visible = u.flT > 0; if (u.flT > 0) { u.flT -= dt; const k = rnd(.12, .22); u.fl.scale.set(k, k, 1); u.fl.material.rotation = rnd(0, TAU); }
+    MOUNT.rotation.y = 0; updateGunVisual(MOUNT, 0, 0, false, time, dt); }
+  muzL.intensity = firing && Math.random() < .8 ? rnd(2, 4.5) : 0; (foot ? RIF : FPG).userData.muzzle.getWorldPosition(muzL.position);
 }
 
 // ---------------- main flow
@@ -1618,18 +1726,24 @@ function resetWorld() {
   P.heat = 0; P.spin = 0; P.vent = 0;
 }
 function beginGame(fresh) {
-  Sfx.init(); resetWorld();
+  Sfx.init(); resetWorld(); if (Net.role !== 'solo') G.mode = 'horde';
+  if (SURV()) survStart(); else { clearItems(); P.foot = false; P.x = SLOTX[0]; P.z = 0; P.eyeY = 1.7; }
+  P.pitch = -.04;
   if (fresh) { for (const id of [...G.gunners.keys()]) removeGunner(id); addGunner(myId(), 0, SET.name); }
   if (!G.gunners.has(myId())) addGunner(myId(), 0, SET.name);
   G.on = true; G.paused = false; P.yaw = 0;
   ['menu', 'end', 'pause'].forEach(i => $(i).classList.add('hidden')); $('hud').classList.remove('hidden'); $('visor').classList.remove('hidden');
   if (isHost()) startWave(1);
   if (!TEST && !isTouch) lockPtr();
-  $('bPauseT').classList.toggle('hidden', !isTouch); $('bAimT').classList.toggle('hidden', !isTouch); $('bFireT').classList.toggle('hidden', !isTouch);
+  $('bPauseT').classList.toggle('hidden', !isTouch); $('bAimT').classList.toggle('hidden', !isTouch); $('bFireT').classList.toggle('hidden', !isTouch); $('bUseT').classList.toggle('hidden', !isTouch || !SURV());
   $('bAgain').disabled = false;
 }
 function overrun(m) {
-  if (G.over) return; G.over = true; const w = m ? m.w : G.wave, k = m ? m.k : G.kills, t = m && m.rt ? m.rt : G.runT;
+  if (G.over) return;
+  if (SURV()) { G.over = true; const w = G.wave, prev = G.bestS || 0; if (w > prev) { G.bestS = w; try { localStorage.setItem('ls-bestS', w); } catch (e) {} }
+    callout('KILLED IN ACTION', 'THE HIVE GOT YOU'); Sfx.play('horn', {rate: .6, vol: .7});
+    setTimeout(() => { if (G.over) showEnd('KILLED IN ACTION', 'You fell on wave ' + w, w, G.kills, G.runT, w > prev && prev > 0 ? 'NEW BEST: wave ' + w + ' (was ' + prev + ')' : 'Best: wave ' + Math.max(w, prev)); }, 1600); return; }
+  G.over = true; const w = m ? m.w : G.wave, k = m ? m.k : G.kills, t = m && m.rt ? m.rt : G.runT;
   const prev = G.best; if (k > G.best) { G.best = k; try { localStorage.setItem('ls-bestk', k); } catch (e) {} }
   if (Net.role === 'host') Net.send({t: 'over', w, k, rt: Math.round(t)});
   callout('OVERRUN', 'THE LINE HAS FALLEN');
@@ -1646,7 +1760,7 @@ function showEnd(title, sub, w, k, t, best) {
   const guest = Net.role === 'guest' && !G.lost;
   $('bAgain').textContent = G.lost ? 'Back to menu' : guest ? 'Waiting for the host to restart' : 'Hold the line again';
   $('bAgain').disabled = guest; $('endK').textContent = guest ? '' : 'or press Space';
-  $('end').classList.remove('hidden'); $('bPauseT').classList.add('hidden'); $('bAimT').classList.add('hidden'); $('bFireT').classList.add('hidden'); aimTouch = fireTouch = false; document.exitPointerLock && document.exitPointerLock();
+  $('end').classList.remove('hidden'); $('bPauseT').classList.add('hidden'); $('bAimT').classList.add('hidden'); $('bFireT').classList.add('hidden'); $('bUseT').classList.add('hidden'); aimTouch = fireTouch = false; document.exitPointerLock && document.exitPointerLock();
 }
 function lockPtr() { try { const r = canvas.requestPointerLock && canvas.requestPointerLock(); if (r && r.catch) r.catch(() => {}); } catch (e) {} }
 
@@ -1661,15 +1775,17 @@ function step(dt) {
     if (!G.over) G.runT += dt;
     // input sweep
     P.ads = clamp(P.ads + (aiming() ? dt : -dt) / .18, 0, 1);
-    const kx = (keys.KeyD || keys.ArrowRight ? 1 : 0) - (keys.KeyA || keys.ArrowLeft ? 1 : 0);
+    if (SURV() && P.foot) survMove(dt);
+    else { const kx = (keys.KeyD || keys.ArrowRight ? 1 : 0) - (keys.KeyA || keys.ArrowLeft ? 1 : 0);
     if (kx) { P.yaw -= kx * dt * 1.7 * adsSens(); P.swayVX -= kx * dt * 30; }
     const ky = (keys.KeyW || keys.ArrowUp ? 1 : 0) - (keys.KeyS || keys.ArrowDown ? 1 : 0); if (ky) P.pitch = clamp(P.pitch + ky * dt * 1.0 * adsSens(), -.55, .4);
-    P.yaw = clamp(P.yaw, -1.5, 1.5);
+    P.yaw = clamp(P.yaw, -1.5, 1.5); }
     const lg = localGunner(); if (lg) lg.yaw = P.yaw;
     if (isHost()) { G.ff = SET.ff && crewN() > 1; stepBugsHost(dt); } else stepBugsGuest(dt);
     stepSpecials(dt);
     for (const g of G.gunners.values()) stepGunner(g, dt, g.id === myId());
-    G.hurtT += dt; if (G.hurtT > 1.2 && isHost()) G.shield = Math.min(100, G.shield + dt * 45);
+    G.hurtT += dt; if (G.hurtT > (SURV() ? 3 : 1.2) && isHost()) G.shield = Math.min(100, G.shield + dt * (SURV() ? 18 : 45));
+    survStep(dt);
     if (G.hurtT < .1 && isHost()) { // direction indicator from nearest attacker
       let nb = null, nd = 1e9; for (const b of bugs) if (b.st === 1 && !b.dead) { const d = Math.abs(b.x - P.x); if (d < nd) { nd = d; nb = b; } }
       if (nb && Math.random() < .1) G.dmgDirs.push({a: Math.atan2(-(nb.x - P.x), -(nb.z - P.z)), t: 1}); }
@@ -1702,18 +1818,18 @@ function step(dt) {
 function loop(now) { const dt = clamp((now - last) / 1000, 0, .05); last = now; step(dt); requestAnimationFrame(loop); }
 
 // ---------------- input
-addEventListener('mousemove', e => { if (document.pointerLockElement !== canvas || !G.on) return; const dx = e.movementX * .0022 * SET.sens * adsSens(); P.yaw = clamp(P.yaw - dx, -1.5, 1.5); P.pitch = clamp(P.pitch - e.movementY * .0022 * SET.sens * adsSens(), -.55, .4); P.swayVX -= dx * 40; P.swayVY += e.movementY * .0022 * SET.sens * 20; });
+addEventListener('mousemove', e => { if (document.pointerLockElement !== canvas || !G.on) return; const dx = e.movementX * .0022 * SET.sens * adsSens(); const ft = SURV() && P.foot; P.yaw = ft ? P.yaw - dx : clamp(P.yaw - dx, -1.5, 1.5); P.pitch = clamp(P.pitch - e.movementY * .0022 * SET.sens * adsSens(), ft ? -1.35 : -.55, ft ? 1.35 : .4); P.swayVX -= dx * 40; P.swayVY += e.movementY * .0022 * SET.sens * 20; });
 canvas.addEventListener('mousedown', e => { Sfx.init(); if (!G.on || G.over) return; if (document.pointerLockElement !== canvas && !TEST && !isTouch) { lockPtr(); return; } if (e.button === 0) mouseDown = true; if (e.button === 2 && P.vent <= 0 && P.heat > .2) { P.vent = .5; vent(); } });
 addEventListener('mouseup', e => { if (e.button === 0) mouseDown = false; });
 addEventListener('contextmenu', e => e.preventDefault());
 addEventListener('keydown', e => { keys[e.code] = true; if (!G.on) return;
   if (G.over) { if ((e.code === 'Space' || e.code === 'Enter') && !$('end').classList.contains('hidden') && !$('bAgain').disabled) { e.preventDefault(); $('bAgain').click(); } return; }
-  if (e.code === 'Escape' && document.pointerLockElement !== canvas && performance.now() - plT > 400) { pause(!G.paused); return; } if (e.code === 'KeyF') { SET.auto = !SET.auto; saveSet(); syncUI(); toast('Auto-fire ' + (SET.auto ? 'on' : 'off')); } if (e.code === 'KeyR' && P.vent <= 0 && P.heat > .2) { P.vent = .5; vent(); } if (e.code === 'KeyP') pause(true); });
+  if (e.code === 'Escape' && document.pointerLockElement !== canvas && performance.now() - plT > 400) { pause(!G.paused); return; } if (e.code === 'KeyF') { SET.auto = !SET.auto; saveSet(); syncUI(); toast('Auto-fire ' + (SET.auto ? 'on' : 'off')); } if (e.code === 'KeyE') toggleMount(); if (e.code === 'KeyR') { if (SURV() && P.foot) reload(); else if (P.vent <= 0 && P.heat > .2) { P.vent = .5; vent(); } } if (e.code === 'KeyP') pause(true); });
 addEventListener('keyup', e => { keys[e.code] = false; });
-let isTouch = false, tX = null, tY = null, tId = null;
-addEventListener('touchstart', e => { isTouch = true; Sfx.init(); if (G.on && !G.over) { $('bPauseT').classList.remove('hidden'); $('bAimT').classList.remove('hidden'); $('bFireT').classList.remove('hidden'); } const t = e.changedTouches[0]; if (G.on && tId === null && !(t.target.closest && t.target.closest('button'))) { tId = t.identifier; tX = t.clientX; tY = t.clientY; } }, {passive: true});
-addEventListener('touchmove', e => { if (!G.on || tX === null) return; const t = [...e.touches].find(q => q.identifier === tId); if (!t) return; const x = t.clientX, dx = (x - tX) * .006 * SET.sens * adsSens(); tX = x; P.pitch = clamp(P.pitch - (t.clientY - tY) * .006 * SET.sens * adsSens(), -.55, .4); tY = t.clientY; P.yaw = clamp(P.yaw - dx, -1.5, 1.5); P.swayVX -= dx * 40; }, {passive: true});
-const tEnd = e => { for (const t of e.changedTouches) if (t.identifier === tId) { tId = null; tX = null; } }; addEventListener('touchend', tEnd); addEventListener('touchcancel', tEnd);
+let isTouch = false, tX = null, tY = null, tId = null, mId = null, mX = 0, mY = 0;
+addEventListener('touchstart', e => { isTouch = true; Sfx.init(); if (G.on && !G.over) { $('bPauseT').classList.remove('hidden'); $('bAimT').classList.remove('hidden'); $('bFireT').classList.remove('hidden'); if (SURV()) $('bUseT').classList.remove('hidden'); } const t = e.changedTouches[0]; if (G.on && SURV() && P.foot && mId === null && t.clientX < innerWidth * .4 && !(t.target.closest && t.target.closest('button'))) { mId = t.identifier; mX = t.clientX; mY = t.clientY; return; } if (G.on && tId === null && !(t.target.closest && t.target.closest('button'))) { tId = t.identifier; tX = t.clientX; tY = t.clientY; } }, {passive: true});
+addEventListener('touchmove', e => { if (G.on && mId !== null) { const m = [...e.touches].find(q => q.identifier === mId); if (m) { P.mvX = clamp((m.clientX - mX) / 55, -1, 1); P.mvY = clamp(-(m.clientY - mY) / 55, -1, 1); } } if (!G.on || tX === null) return; const t = [...e.touches].find(q => q.identifier === tId); if (!t) return; const x = t.clientX, dx = (x - tX) * .006 * SET.sens * adsSens(); tX = x; P.pitch = clamp(P.pitch - (t.clientY - tY) * .006 * SET.sens * adsSens(), SURV() && P.foot ? -1.35 : -.55, SURV() && P.foot ? 1.35 : .4); tY = t.clientY; P.yaw = SURV() && P.foot ? P.yaw - dx : clamp(P.yaw - dx, -1.5, 1.5); P.swayVX -= dx * 40; }, {passive: true});
+const tEnd = e => { for (const t of e.changedTouches) { if (t.identifier === tId) { tId = null; tX = null; } if (t.identifier === mId) { mId = null; P.mvX = P.mvY = 0; } } }; addEventListener('touchend', tEnd); addEventListener('touchcancel', tEnd);
 let plT = 0;
 document.addEventListener('pointerlockchange', () => { plT = performance.now(); const on = document.pointerLockElement === canvas; $('hint').classList.toggle('hidden', on || !G.on || G.over || isTouch || TEST); if (!on && G.on && !G.over && !TEST && !isTouch) pause(true); });
 function pause(p) { G.paused = p; $('pause').classList.toggle('hidden', !p); if (!p && !isTouch) lockPtr(); }
@@ -1734,11 +1850,13 @@ for (const id of ['gfx', 'gfx2']) for (const b of $(id).children) b.onclick = ()
 for (const id of ['auto', 'auto2']) if ($(id)) $(id).onchange = e => { SET.auto = e.target.checked; saveSet(); syncUI(); };
 for (const id of ['ff', 'ff2']) if ($(id)) $(id).onchange = e => { SET.ff = e.target.checked; saveSet(); syncUI(); toast('Friendly fire ' + (SET.ff ? 'on' : 'off')); };
 if ($('bAimT')) { const on = v => e => { e.preventDefault(); aimTouch = v; $('bAimT').classList.toggle('on', v); }; $('bAimT').addEventListener('touchstart', on(true), {passive: false}); $('bAimT').addEventListener('touchend', on(false)); $('bAimT').addEventListener('touchcancel', on(false)); }
+if ($('bUseT')) $('bUseT').addEventListener('touchstart', e => { e.preventDefault(); if (SURV() && (!P.foot || Math.hypot(P.x, P.z - .3) < 2.3)) toggleMount(); else reload(); }, {passive: false});
 if ($('bFireT')) { const on = v => e => { e.preventDefault(); fireTouch = v; $('bFireT').classList.toggle('on', v); }; for (const [ev, v] of [['touchstart', true], ['touchend', false], ['touchcancel', false]]) $('bFireT').addEventListener(ev, on(v), {passive: false}); }
 if ($('name')) $('name').oninput = e => { SET.name = e.target.value.replace(/[^A-Za-z0-9 ._-]/g, '').slice(0, 14) || 'Trooper'; saveSet(); };
 function joinFail(why) { netStatus(why); if (G.on) { G.on = false; $('menu').classList.remove('hidden'); $('hud').classList.add('hidden'); $('end').classList.add('hidden'); $('visor').classList.add('hidden'); document.exitPointerLock && document.exitPointerLock(); } }
 function netStatus(s) { if ($('netS')) $('netS').textContent = s; }
-$('bStart').onclick = () => { Net.close(); beginGame(true); };
+$('bStart').onclick = () => { Net.close(); G.mode = 'horde'; beginGame(true); };
+if ($('bSurv')) $('bSurv').onclick = () => { Net.close(); G.mode = 'surv'; beginGame(true); };
 if ($('bHost')) $('bHost').onclick = () => {
   Sfx.init(); const code = Net.host(SET.name, st => netStatus(st === 'open' ? 'Squad open. Code ' + Net.code : 'Reconnecting to relay...'));
   beginGame(true); G.gunners.get('H').name = SET.name;
@@ -1752,7 +1870,7 @@ if ($('bJoin')) $('bJoin').onclick = () => {
   for (const id of [...G.gunners.keys()]) removeGunner(id);
 };
 $('bResume').onclick = () => pause(false);
-$('bQuit').onclick = () => { hostBye(); Net.close(); clearTimeout(G.goneT); $('bPauseT').classList.add('hidden'); $('bAimT').classList.add('hidden'); $('bFireT').classList.add('hidden'); aimTouch = fireTouch = false; G.on = false; G.paused = false; resetWorld(); ['pause', 'end'].forEach(i => $(i).classList.add('hidden')); $('menu').classList.remove('hidden'); $('hud').classList.add('hidden'); $('visor').classList.add('hidden'); };
+$('bQuit').onclick = () => { hostBye(); Net.close(); clearTimeout(G.goneT); $('bPauseT').classList.add('hidden'); $('bAimT').classList.add('hidden'); $('bFireT').classList.add('hidden'); $('bUseT').classList.add('hidden'); aimTouch = fireTouch = false; G.on = false; G.paused = false; resetWorld(); ['pause', 'end'].forEach(i => $(i).classList.add('hidden')); $('menu').classList.remove('hidden'); $('hud').classList.add('hidden'); $('visor').classList.add('hidden'); };
 $('bMenu').onclick = $('bQuit').onclick;
 $('bAgain').onclick = () => { if (G.lost) { $('bQuit').onclick(); return; } if (Net.role === 'guest') return; if (Net.role === 'host') Net.send({t: 'restart'}); beginGame(false); };
 const openReq = () => { $('reqF').src = 'requests.html?embed'; $('reqBox').classList.remove('hidden'); document.exitPointerLock && document.exitPointerLock(); };
@@ -1762,7 +1880,7 @@ $('bReqX').onclick = () => $('reqBox').classList.add('hidden');
 syncUI(); resize();
 addEventListener('pagehide', hostBye);
 
-if (TEST) window.__LS = {G, P, bugs, Net, SET, start: () => beginGame(true), fire: v => { testFire = v; }, step: (dt, n = 1, nr) => { noRender = !!nr; for (let i = 0; i < n; i++) step(dt); noRender = false; }, setYaw: y => { P.yaw = y; }, Sfx, spawnBug, killBug, host: () => $("bHost").click(), startWave, callIn, spawnTitan, dropCan, CANS, gunRun, dropSentry, join: c => { $('jCode').value = c; $('bJoin').click(); }, scene, cam};
+if (TEST) window.__LS = {SV, toggleMount, G, P, bugs, Net, SET, start: () => beginGame(true), fire: v => { testFire = v; }, step: (dt, n = 1, nr) => { noRender = !!nr; for (let i = 0; i < n; i++) step(dt); noRender = false; }, setYaw: y => { P.yaw = y; }, Sfx, spawnBug, killBug, host: () => $("bHost").click(), startWave, callIn, spawnTitan, dropCan, CANS, gunRun, dropSentry, join: c => { $('jCode').value = c; $('bJoin').click(); }, scene, cam};
 // compile the shaders the fight needs up front (muzzle flash, squad marines) so the first shots don't hitch
 { const wm = makeMarine(), u = FPG.userData; u.fl.forEach(f => f.visible = true); u.side.visible = true; try { RND.compile(scene, cam); } catch (e) {} u.fl.forEach(f => f.visible = false); u.side.visible = false; scene.remove(wm); }
 requestAnimationFrame(loop);

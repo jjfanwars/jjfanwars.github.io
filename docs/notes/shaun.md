@@ -55,6 +55,13 @@ The owner's design brief is **brain-off**: no skill needed beyond sweeping the g
 - Gun (`makeGun`): bevelled parts (`RB` = extruded rounded box), rail with slots, side plates and bolts, ejection port, finned motor housing with bolt circle and power cable, open vented heat shroud, barrels with muzzle sleeves and bores, flash cage, holo sight with red dot, ribbed front grip, trigger + guard, ribbed ammo drum with latch and handle, segmented feed chute, round brass belt, gloved hands with fingers on both grips, arm cuffs.
 - Gotcha: a `//` comment inside a one-line GLSL replacement in `triMat` commented out the closing brace, so the shader failed and bug bodies, rocks and mesas vanished (fixed). Check the console for `Shader Error` after shader edits.
 
+## Survival mode (19 Nov 2026, solo only)
+- Menu button `#bSurv` sets `G.mode = 'surv'` (`SURV()`); `bStart` and any squad set `'horde'`. Best = highest wave (`ls-bestS`, `G.bestS`). Death = `overrun` -> KILLED IN ACTION card.
+- Player: `P.foot` (on foot) vs on the cannon. `toggleMount` (E, touch USE `#bUseT`) within 2.3 m of the cannon. On foot: `survMove` (WASD, Shift sprint, touch left-side stick `mId` -> `P.mvX/mvY`), free 360 yaw and +-1.35 pitch, `P.eyeY` from terrain + bob, can't cross the sandbag line (`inLine`, go round the ends), bugs shove you, 160 m leash.
+- Rifle (`RIF` = `makeRifle`, first person; `MOUNT` = cannon left standing on a tripod): `rifleStep` 10 rounds/s, mag 30 (`SV.mag`), reserve `SV.res`, R reload 1.8 s, single-target rays from the eye (`fireShot` uses P.x/eyeY/P.z when `foot`), spread grows with sustained fire and moving, real climb. Cannon has a finite belt `SV.belt` (1200 start).
+- Waves: `survWave` (quota 26 + 16n, spawned over 22 + 2n s, packs from all directions with a front bias, titan every 5th), `survSpawn`: when 2 or fewer remain (or 70 s after the quota is out) -> 25 s lull (`SV.lull`), shield refilled, crates scattered. Bugs target the player (`P.x/P.z`), attack within 0.9 + 0.55 x size, crawl slowly over the sandbags; spitters lob at the player from 30 m (globs only hurt within 2.6 m). Hull takes 0.45x after the shield (0.2x in horde), shield regen 18/s after 3 s.
+- Crates (`SV.items`, `addItem`, `scatterItems`, `ITEMK`): rifle ammo +90, cannon belt +500, med kit +35, armour cell (full shield +10); walk over them on foot. 7 in the compound + 4 out in the field at start, 5 field + 2 compound each lull. HUD diamonds with distance within 90 m, ammo readout, wave/contacts or scavenge timer, `[E] MAN THE CANNON` prompt.
+
 ## Code map (`shaun/game.js`; UI in `shaun/index.html`)
 - **Renderer:** own post chain (`render`). The scene goes to a HalfFloat MSAA RT, then a bright pass, two blur levels, and the composite `compM`, which does ACES, gamma, vignette, grain, chromatic aberration and the damage tint. The renderer itself has `NoToneMapping`. Low quality (`SET.gfx`) lowers the pixel ratio and turns off shadows and MSAA.
 - **World:**
@@ -109,6 +116,7 @@ The owner's design brief is **brain-off**: no skill needed beyond sweeping the g
 - Headless Chromium needs `--use-angle=swiftshader --enable-unsafe-swiftshader`. It is very slow at this scene size, so keep the step counts small.
 
 ## Changelog
+- 19 Nov 2026: Survival mode (solo): get off the cannon, rifle on foot, scavenge crates between waves, bugs come for you from every side, finite cannon belt.
 - 19 Nov 2026: bugs ~18% slower (base run speed `T.sp x 7 x spm`, was 8.5; leaps 7.5, was 9).
 - 19 Nov 2026: detailed near bugs (armour plates, spikes, serrated jaws, jointed barbed legs), detailed gun and gloved hands; fixed the triplanar shader that hid bug bodies, rocks and mesas.
 - 19 Nov 2026: procedural texture sets (rippled sand, woven sandbags, chitin plates on bugs, cracked rock, chipped crates, rusty steel), negative-dt fix.
