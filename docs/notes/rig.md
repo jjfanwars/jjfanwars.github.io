@@ -135,6 +135,20 @@ Read `CLAUDE.md` first (shared rules). Split out of it on 17 Nov 2026; keep this
 
 - **Casino readability:** while seated, `casHudFrame` (in a hud wrapper; element `#casRd`, since `#casHud` was already taken) shows big DOM cards for the dealer (the hole card face down) and you, with totals, BUST and YOUR TURN, a roulette countdown/result with your stake, and crew cash. A `casEv` wrapper shows `#casBan` banners: YOU WIN / BLACKJACK! / BUST / DEALER WINS / PUSH, and roulette/slots YOU WIN / NO LUCK / JACKPOT!, each with the amount. The camera zooms in when seated (fov -20 at blackjack, -10 at roulette).
 
+- **Code review fixes (19 Nov 2026):**
+  - **Bad incoming data:**
+    - `poseOk` rejects poses with non-finite x/y/z and clamps `hd`, `in`, `bl`, `au`, `su`, `em` and `st`. A bad hide index used to stop the host's creature AI, and a bad aura index stopped every client's frame.
+    - The host checks `buyh`/`buy`/`buyg`/`buya`/`fish` keys with `Number.isInteger`/`Object.hasOwn`. Keys like 'length' or 'constructor' used to make crew cash NaN and corrupt the save.
+    - Fireworks need finite values, a clamped colour and a 300 ms rate limit. `fish` has a 2.5 s rate limit and a clamped rod.
+    - `m.px`/`m.pz` must be finite. `sell` needs to be within 140 m of a harbour or 40 m of the shed. `wres` refuses downed players.
+  - **Leaks:** `disposeTree(o, keep)` disposes everything except shared MAT/MATC materials and TX textures. It is used for float meshes (`flmDrop`, keeping the shared pole and flag) and for avatars of crew who leave. Aura points of crew who leave are removed, and shooting-star materials are disposed.
+  - **Float list:** `floatSlot()` keeps `G.floats` at most MAP_FLN long (ghost relics, storm spills and dropped items used to grow it without limit).
+  - **Casino:** `casR` mixes in `CAS_SALT`, host-only randomness per session, so results no longer repeat for a save and can't be predicted from the seed.
+  - **Keys and panels:** the main keydown ignores keys while the fast-travel, inventory or chat panels are open. The ROV keys ignore typing.
+  - **Fast travel:** late joiners get `ft` in the start save. Each teleported crew member gets their own spawn index. Autopilot is cleared with an `ap` event. The docked hint uses `G.dtR`, because `hud()` gets no dt.
+  - **Bubbles:** speech bubbles are removed when a player leaves or a new voyage starts.
+  - `emoteStart` checks the index.
+
 ## Next up (the owner's list, 18 Nov 2026; items 7-14 and the loot rework were built the same day, see the paragraphs above)
 1. **Sub visuals underwater and half underwater:** proper looks from inside and outside the research sub when it is dived and when it sits at the waterline (the waterline across the bow viewport, the sea surface seen from below, underwater fog and tint through the windows, the hull half in and half out of the water, bubbles and wake when diving).
 2. **Persisting loot and fast travel:** loot that stays where it was (taken items stay taken, a persistent world seed with slow restocks) and fast travel between ports (home, Northwatch, piers).

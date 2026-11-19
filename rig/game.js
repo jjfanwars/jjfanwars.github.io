@@ -528,6 +528,8 @@ function placeSunk(seed) { for (const q of SUNK) scene.remove(q.m); SUNK.length 
     const kind = r() < .45 ? 'chest' : r() < .5 ? 'blackbox' : 'relic', y = seaBed(x, z), m = itemMesh(kind); m.scale.setScalar(1.6); m.position.set(x, y + .2, z); m.rotation.set(.3, r() * TAU, .2);
     const gl = new THREE.Sprite(new THREE.SpriteMaterial({map: TX.glow, color: 0x7affd0, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: .5})); gl.scale.setScalar(5); gl.position.set(0, .6, 0); m.add(gl); scene.add(m); SUNK.push({x, z, y, kind, m, got: false}); } }
 function landH(x, z) { const g = pfIsleGrid(), ix = Math.floor((x - g.x0) / 64), iz = Math.floor((z - g.z0) / 64); if (ix < 0 || iz < 0 || ix >= g.nx || iz >= g.nz) return -9; const L = g.c[ix * g.nz + iz]; if (!L) return -9; let h = -9; for (let i = 0; i < L.length; i++) { const I = L[i]; if (Math.abs(x - I.x) > I.r * 1.4 || Math.abs(z - I.z) > I.r * 1.4) continue; h = Math.max(h, isleH(I, x, z)); } return h; }
+// dispose a removed subtree's geometries and materials, except the shared MAT/MATC materials, TX textures and anything in keep
+function disposeTree(o, keep) { const km = new Set(Object.values(MAT).concat(typeof MATC !== 'undefined' ? Object.values(MATC) : [])), kt = new Set(Object.values(TX)); o.traverse(q => { if (keep && keep.has(q.geometry)) {} else if (q.geometry && !q.isSprite) q.geometry.dispose(); const ms = Array.isArray(q.material) ? q.material : q.material ? [q.material] : []; for (const m of ms) { if (km.has(m) || (keep && keep.has(m))) continue; if (m.map && !kt.has(m.map) && !(keep && keep.has(m.map))) m.map.dispose(); m.dispose(); } }); }
 function colGeo(g, c) { const n = g.attributes.position.count, a = new Float32Array(n * 3); for (let i = 0; i < n; i++) { const k = .75 + .25 * h2(i, 7); a[i * 3] = c[0] * k; a[i * 3 + 1] = c[1] * k; a[i * 3 + 2] = c[2] * k; } g.setAttribute('color', new THREE.BufferAttribute(a, 3)); return g; }
 function mergeC(list) { const qs = list.map(g => g.index ? g.toNonIndexed() : g); let n = 0; qs.forEach(q => n += q.attributes.position.count); const p = new Float32Array(n * 3), no = new Float32Array(n * 3), c = new Float32Array(n * 3); let o = 0; for (const q of qs) { p.set(q.attributes.position.array, o * 3); no.set(q.attributes.normal.array, o * 3); c.set(q.attributes.color.array, o * 3); o += q.attributes.position.count; } const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(p, 3)); g.setAttribute('normal', new THREE.BufferAttribute(no, 3)); g.setAttribute('color', new THREE.BufferAttribute(c, 3)); return g; }
 // trees (lo: the far variant): a curved palm with drooping fronds, a tiered pine, a dead snag; each with scrub at its foot
@@ -2093,7 +2095,7 @@ const PL = new Map(); let P = null;
 const M = {hp: 140, x: 0, z: 0, y: LV[2], yaw: 0, state: 'roam', path: [], rep: 0, goal: null, spd: 0, ph: 0, jit: 0, jr: 0, aware: 0, lostT: 0, idle: 0, flee: 0, sawHide: -1, chk: [], chkT: 0, stuck: 0, sx: 0, sz: 0, screamT: 0, look: 0, seenAt: -99, tgt: null, preyT: 0, prey: null, vy: 0, wet: 0};
 function mkPlayer(id, name, c) { return {id, name, c, sack: [], sc: 0, x: 0, z: 0, y: BDECK.y, yaw: 0, pitch: 0, cr: 0, l: 1, run: 0, h: '', hd: -1, hb: 0, down: false, bleed: 0, dead: false, deadT: 0, ready: false, sd: 0, lx: 0, lz: 0, spd: 0, rx: 0, ry: 0, rz: 0, ryaw: 0, rpitch: 0, rspd: 0, av: null, tag: null, heat: 0, ob: 0, bl: [0, 0], sw: 0, deep: 0, swT: 0, seat: 0, in: [0, 0], carry: null, cooler: [], eq: 0}; }
 function ensurePlayer(id, name, c) { let p = PL.get(id); if (!p) { p = mkPlayer(id, name, c); PL.set(id, p); } p.name = name; p.c = c; if (!p.av) { p.av = buildCrew(CREW_COL[c % 6], c); const t = document.createElement('div'); t.className = 'tag'; $('tags').appendChild(t); p.tag = t; } return p; }
-function syncCrew(crew) { const ids = new Set(crew.map(c => c.id)); for (const [id, p] of PL) if (!ids.has(id)) { if (p.av) scene.remove(p.av); if (p.tag) p.tag.remove(); if (isHost() && G.on && p !== P) { if (p.sack && p.sack.length) dropCarry(p); const v = coolerVal(p.cooler || []); if (v) { G.cash += v; G.earned += v; const t = `${p.name} left. Their catch sold for ${money(v)}.`; setTimeout(() => showMsg(t), 0); } save(); } PL.delete(id); if (B.driver === id) B.driver = null; } for (const c of crew) ensurePlayer(c.id, c.name, c.c); P = PL.get(myId()); }
+function syncCrew(crew) { const ids = new Set(crew.map(c => c.id)); for (const [id, p] of PL) if (!ids.has(id)) { if (p.av) { scene.remove(p.av); disposeTree(p.av); } if (p.tag) p.tag.remove(); if (p.bubEl) { p.bubEl.remove(); p.bubEl = null; } if (isHost() && G.on && p !== P) { if (p.sack && p.sack.length) dropCarry(p); const v = coolerVal(p.cooler || []); if (v) { G.cash += v; G.earned += v; const t = `${p.name} left. Their catch sold for ${money(v)}.`; setTimeout(() => showMsg(t), 0); } save(); } PL.delete(id); if (B.driver === id) B.driver = null; } for (const c of crew) ensurePlayer(c.id, c.name, c.c); P = PL.get(myId()); }
 const alive = () => [...PL.values()].filter(p => p.ready && !p.down && !p.dead);
 const onRig = p => !p.ob && !p.sw && p.y > 1 && nearRig(p.x, p.z);
 
@@ -2161,6 +2163,9 @@ function placeItems() {
 function addItem(kind, s, extra = {}) { const m = itemMesh(kind); m.position.set(s.x, s.y + .03, s.z); m.rotation.y = WR() * TAU; const it = Object.assign({kind, mesh: m, x: s.x, y: s.y, z: s.z, taken: false, i: ITEMS.length}, extra); ITEMS.push(it); return it; }
 function hideTaken(h) { for (const p of PL.values()) if (p.hd === h.i && p !== P) return true; return false; }
 const FLM = [];
+// a free floating-cargo slot below MAP_FLN, else the one farthest from the boat (the list never grows past MAP_FLN)
+function floatSlot() { let i = -1, far = -1; for (let j = 0; j < MAP_FLN; j++) { const f = G.floats[j]; if (!f) return j; const d = Math.hypot(f[0] - B.x, f[1] - B.z); if (d > far) { far = d; i = j; } } return i; }
+function flmDrop(i) { const o = FLM[i]; if (!o) return; scene.remove(o.m); const Q = floatMesh.Q, keep = Q ? new Set([Q.pole.geometry, Q.pole.material, Q.flag.geometry, Q.flag.material]) : null; disposeTree(o.m, keep); }
 function spawnFloat(i) {
   // near the crew (a random living player, else the boat), anywhere on the big chart; far waters float richer cargo
   const pl = alive(), c = pl.length ? pl[Math.floor(CR() * pl.length)] : B;
@@ -2168,7 +2173,7 @@ function spawnFloat(i) {
     const rg = mapRegion(x, z), pay = rg ? mix(1, rg.pay, mapRegion.w) : 1, W = MAP_FLW; let sum = 0; for (const e of W) sum += e[1] * (e[2] ? pay : 1); let roll = CR() * sum, kind = 'crate';
     for (const e of W) { roll -= e[1] * (e[2] ? pay : 1); if (roll <= 0) { kind = e[0]; break; } } G.floats[i] = [x, z, KINDS.indexOf(kind)]; return; }
 }
-function floatMesh(i) { const f = G.floats[i]; const kind = f ? KINDS[f[2]] : null; if (FLM[i] && FLM[i].kind === kind) return FLM[i]; if (FLM[i]) scene.remove(FLM[i].m); if (!kind) { FLM[i] = null; return null; }
+function floatMesh(i) { const f = G.floats[i]; const kind = f ? KINDS[f[2]] : null; if (FLM[i] && FLM[i].kind === kind) return FLM[i]; if (FLM[i]) flmDrop(i); if (!kind) { FLM[i] = null; return null; }
   // a marker pole with an orange pennant and a soft glow, so floating cargo can be found by eye
   const m = itemMesh(kind), Q = floatMesh.Q || (floatMesh.Q = (() => { const fg = new THREE.BufferGeometry(); fg.setAttribute('position', new THREE.Float32BufferAttribute([0, 1.84, 0, 0, 1.54, 0, .44, 1.69, 0], 3)); fg.computeVertexNormals();
     return {pole: new THREE.Mesh(new THREE.CylinderGeometry(.018, .024, 1.6, 5), new THREE.MeshStandardMaterial({color: 0xd8d0c0, roughness: .6})), flag: new THREE.Mesh(fg, new THREE.MeshStandardMaterial({color: 0xff6a1a, emissive: 0x501800, roughness: .7, side: THREE.DoubleSide}))}; })());
@@ -2563,7 +2568,7 @@ function dropOne(p, k, i) {
   const f = floorAt(p.x, p.z, p.y + .5);
   if (f && f.y > -.5 && f.s.k !== 'boat') { const it = addItem(k, {x: p.x, y: f.y, z: p.z}); emit({k: 'item', i: it.i, kind: k, x: p.x, y: f.y, z: p.z}); }
   else if (f && f.s.k === 'boat' && holdFits(k)) B.hold.push(k);
-  else { let i = G.floats.findIndex(q => !q); if (i < 0) i = G.floats.length; G.floats[i] = [p.x, p.z, KINDS.indexOf(k)]; }
+  else { let i = floatSlot(); G.floats[i] = [p.x, p.z, KINDS.indexOf(k)]; }
 }
 // survival rules: bleed-out, suits, the harbour tug, the key card, fish prices
 function bleedFor(p) { return alive().some(q => q !== p) ? D.bleed : PL.size > 1 ? 6 : 3.5; }
@@ -2684,7 +2689,7 @@ function goalHook(e, ph) {
 function giveCarry(p, kind) { if (!sackFits(p, kind)) { const f = floorAt(p.x, p.z, p.y + .5); const it = addItem(kind, {x: p.x + .6, y: f ? f.y : p.y, z: p.z}); emit({k: 'item', i: it.i, kind, x: p.x + .6, y: f ? f.y : p.y, z: p.z}); return; } p.sack.push(kind); sackSet(p); }
 function hostAct(id, m) {
   const p = PL.get(id); if (!p || !G.on) return;
-  if (m.px != null && p !== P && !m.ob && Math.hypot(m.px - p.x, m.pz - p.z) < 25) { p.x = m.px; p.z = m.pz; }
+  if (Number.isFinite(m.px) && Number.isFinite(m.pz) && p !== P && !m.ob && Math.hypot(m.px - p.x, m.pz - p.z) < 25) { p.x = m.px; p.z = m.pz; }
   const nearBoat = (pt, r) => { const [x, z] = bL2W(pt[0], pt[1]); return Math.hypot(p.x - x, p.z - z) < r; };
   if (m.a === 'pick') { const it = ITEMS[m.i]; if (!it || it.taken || it.kind === 'note' || Math.hypot(p.x - it.x, p.z - it.z) > 3.5) return;
     if (CARRY.has(it.kind)) { if (!sackFits(p, it.kind)) return; it.taken = true; p.sack.push(it.kind); sackSet(p); }
@@ -2700,18 +2705,19 @@ function hostAct(id, m) {
   else if (m.a === 'drop') dropCarry(p, false);
   else if (m.a === 'tug') { const why = !G.shed || Math.hypot(p.x - G.shed.shop[0], p.z - G.shed.shop[2]) >= 25 ? 'Call the tug from the harbour shed.' : tugWhy(); if (!why) { resetBoat(false); emit({k: 'tug'}); } else emit({k: 'nope', id, why}); }
   else if (m.a === 'radio') emit({k: 'radio', on: m.on});
-  else if (m.a === 'fw') emit({k: 'fw', x: m.x, y: m.y, z: m.z, vx: m.vx, vy: m.vy, vz: m.vz, c: m.c});
-  else if (m.a === 'buya') { const now = performance.now() / 1000; if ((p.buyT || 0) > now) return; p.buyT = now + .4; const A = AURAS[m.i]; if (A && G.cash >= (ALL ? 0 : A.cost)) { G.cash -= ALL ? 0 : A.cost; emit({k: 'gear', id, g: 'aura' + m.i}); save(); } }
+  else if (m.a === 'fw') { if (![m.x, m.y, m.z, m.vx, m.vy, m.vz].every(Number.isFinite) || Math.hypot(m.vx, m.vy, m.vz) > 80) return; const now = performance.now(); if (now - (p.fwT || 0) < 300) return; p.fwT = now; m.c = clamp(m.c | 0, 0, FWC.length - 1); } if (m.a === 'fw') emit({k: 'fw', x: m.x, y: m.y, z: m.z, vx: m.vx, vy: m.vy, vz: m.vz, c: m.c});
+  else if (m.a === 'buya') { const now = performance.now() / 1000; if ((p.buyT || 0) > now) return; p.buyT = now + .4; const A = Number.isInteger(m.i) && m.i > 0 ? AURAS[m.i] : null; if (A && G.cash >= (ALL ? 0 : A.cost)) { G.cash -= ALL ? 0 : A.cost; emit({k: 'gear', id, g: 'aura' + m.i}); save(); } }
   else if (m.a === 'buyc') { const now = performance.now() / 1000; if ((p.buyT || 0) > now) return; p.buyT = now + .4; const L = m.k === 'paint' ? PAINTS : m.k === 'glow' ? GLOWS : null; if (!L || !L[m.v] || (B.up[m.k] || 0) === m.v) return; const own = Array.isArray(B.up[m.k + 's']) ? B.up[m.k + 's'] : (B.up[m.k + 's'] = [0]), c = own.includes(m.v) || ALL ? 0 : STYLE_COST[m.k];
     if (G.cash < c) emit({k: 'nope', id, why: 'Not enough crew cash.'}); else { G.cash -= c; if (!own.includes(m.v)) own.push(m.v); B.up[m.k] = m.v; emit({k: 'bought', n: L[m.v].n}); save(); } }
   else if (m.a === 'dpick') { const q = SUNK[m.i]; if (q && !q.got && p.sw && Math.hypot(q.x - p.x, q.z - p.z) < 5 && Math.abs(q.y + (p.dv || 0)) < 5 && sackFits(p, q.kind)) { q.got = true; p.sack.push(q.kind); sackSet(p); emit({k: 'sunkp', i: m.i}); } }
   else if (m.a === 'drown') { if (!p.dead && p.sw) { p.dead = true; p.deadT = 0; dropCarry(p); emit({k: 'dead', id: p.id, drown: 2}); } }
+  else if (m.a === 'sell' && !voyPortNear(p.x, p.z, 140) && !(G.shed && Math.hypot(p.x - G.shed.shop[0], p.z - G.shed.shop[2]) < 40)) return;
   else if (m.a === 'sell') { let v = 0; const c = {}, cnt = k => { if (VALUE[k]) c[k] = (c[k] || 0) + 1; }; if (voyPortNear(B.x, B.z, 60 + BG.L * .5)) { v += holdValue(); B.hold.forEach(cnt); B.hold = B.hold.filter(k => !VALUE[k]); } { const sv = sackVal(p.sack); if (sv) { v += sv; p.sack.forEach(cnt); p.sack = p.sack.filter(k => !VALUE[k]); sackSet(p); } }
     if (p.cooler.length) { v += coolerVal(p.cooler); c.fish = p.cooler.length; p.cooler = []; emit({k: 'cooler', id, n: 0, v: 0}); } if (v) { v = Math.round(v * (D.pay || 1)); G.cash += v; G.earned += v; emit({k: 'sold', v, c}); if (G.earned >= 1500) goal(3); save(); } }
-  else if (m.a === 'buyh') { const now = performance.now() / 1000; if ((p.buyT || 0) > now) return; p.buyT = now + .4; const H = HULLS[m.k]; if (!H || m.k === (B.up.cls || 0) || (H.cruise && !G.cruise)) return; const own = Array.isArray(B.up.own) ? B.up.own : (B.up.own = [0, B.up.cls || 0]), price = own.includes(m.k) || (H.cruise && G.cruise) ? 0 : hullCost(H);
+  else if (m.a === 'buyh') { const now = performance.now() / 1000; if ((p.buyT || 0) > now) return; p.buyT = now + .4; const H = Number.isInteger(m.k) && m.k >= 0 ? HULLS[m.k] : null; if (!H || m.k === (B.up.cls || 0) || (H.cruise && !G.cruise)) return; const own = Array.isArray(B.up.own) ? B.up.own : (B.up.own = [0, B.up.cls || 0]), price = own.includes(m.k) || (H.cruise && G.cruise) ? 0 : hullCost(H);
     if (sackUsed(B.hold) > Math.round(H.hold * [1, 1.5, 2][B.up.hold || 0]) * 2) emit({k: 'holdbig', id}); else if (B.driver) emit({k: 'nope', id, why: 'Someone is at the wheel.'}); else if (!voyPortNear(B.x, B.z, 60 + BG.L * .5)) emit({k: 'nope', id, why: 'Bring the boat into a harbour first.'}); else if (G.cash < price) emit({k: 'nope', id, why: 'Not enough crew cash.'});
     else { const port = voyPortNear(B.x, B.z, 60 + BG.L * .5); G.cash -= price; if (!own.includes(m.k)) own.push(m.k); B.up.cls = m.k; buildBoat(); resetBoat(false); if (port && port !== JETTY) { B.x = port.x; B.z = port.z - 12.5 - BG.hw; B.yaw = PI / 2; } B.fuel = tankMax(); B.hull = hullMax(); { let n = 0; for (const q of PL.values()) if (q.ob) { const sp = boatSpawn(n++); q.bl = sp.bl; q.y = sp.y; q.climb = null; q.seat = 0; q.rest = 0; } } emit({k: 'bought', n: H.n, hull: m.k}); save(); } }
-  else if (m.a === 'buy') { const now = performance.now() / 1000; if ((p.buyT || 0) > now) return; p.buyT = now + .4; const U = UPG[m.k], poor = c => G.cash < c && (emit({k: 'nope', id, why: 'Not enough crew cash.'}), true);
+  else if (m.a === 'buy') { const now = performance.now() / 1000; if ((p.buyT || 0) > now) return; p.buyT = now + .4; const U = Object.hasOwn(UPG, m.k) ? UPG[m.k] : null, poor = c => G.cash < c && (emit({k: 'nope', id, why: 'Not enough crew cash.'}), true);
     if (U) { const lv = B.up[m.k] || 0, c = U.cost[lv]; if (c != null && !poor(c)) { G.cash -= c; B.up[m.k] = lv + 1; if (m.k === 'tank') B.fuel = tankMax(); if (m.k === 'hull') B.hull = hullMax(); emit({k: 'bought', n: U.n}); if (B.up.engine >= 3) goal(4); save(); } }
     else if (m.k === 'flares') { if ((m.fl || 0) >= 6) emit({k: 'nope', id, why: "You can't carry more flares."}); else if (!poor(30)) { G.cash -= 30; emit({k: 'give', id, kind: 'flare', n: Math.min(3, 6 - (m.fl || 0)), buy: 1}); save(); } }
     else if (m.k === 'battery' && !poor(20)) { G.cash -= 20; emit({k: 'give', id, kind: 'battery', buy: 1}); save(); } }
@@ -2721,8 +2727,8 @@ function hostAct(id, m) {
   else if (m.a === 'unhelm') { if (B.driver === id) emit({k: 'helm', id, on: 0}); }
   else if (m.a === 'horn') { const n = performance.now(); if (B.driver === id && n - (G.hornH || 0) > 2500) { G.hornH = n; emit({k: 'horn', c: B.up.cls || 0}); noise(B.x, 1, B.z, 90); } }
   else if (m.a === 'gasp') noise(p.x, p.y, p.z, 9);
-  else if (m.a === 'buyg') { const now = performance.now() / 1000; if ((p.buyT || 0) > now) return; p.buyT = now + .4; const g = GEAR[m.k]; if (!g || (m.own && g.need && !g.need(m.own))) return; if (G.cash < g.cost) emit({k: 'nope', id, why: 'Not enough crew cash.'}); else { G.cash -= g.cost; emit({k: 'gear', id, g: m.k}); save(); } }
-  else if (m.a === 'fish') { const f = FISH[m.f]; if (!f) return; if (m.f === 'bottle') { const d = DIGS.reduce((b, q, j) => q.rev || q.dug || (b >= 0 && Math.hypot(DIGS[b].x - p.x, DIGS[b].z - p.z) <= Math.hypot(q.x - p.x, q.z - p.z)) ? b : j, -1); if (d >= 0) { DIGS[d].rev = true; emit({k: 'bottle', i: d}); } else { G.bn = ((G.bn ?? -1) + 1) % BOTTLE_NOTES.length; emit({k: 'bottle', i: -1, n: G.bn}); } return; } const v = fishVal(m.f, p.x, p.z), cap = [0, 8, 12, 18][m.rod || 1] || 8; if (p.cooler.length >= cap) { emit({k: 'coolfull', id}); return; }
+  else if (m.a === 'buyg') { const now = performance.now() / 1000; if ((p.buyT || 0) > now) return; p.buyT = now + .4; const g = Object.hasOwn(GEAR, m.k) ? GEAR[m.k] : null; if (!g || (m.own && g.need && !g.need(m.own))) return; if (G.cash < g.cost) emit({k: 'nope', id, why: 'Not enough crew cash.'}); else { G.cash -= g.cost; emit({k: 'gear', id, g: m.k}); save(); } }
+  else if (m.a === 'fish') { const f = Object.hasOwn(FISH, m.f) ? FISH[m.f] : null; if (!f) return; { const now = performance.now(); if (now - (p.fishT || 0) < 2500) return; p.fishT = now; } m.rod = clamp(m.rod | 0, 1, 3); if (m.f === 'bottle') { const d = DIGS.reduce((b, q, j) => q.rev || q.dug || (b >= 0 && Math.hypot(DIGS[b].x - p.x, DIGS[b].z - p.z) <= Math.hypot(q.x - p.x, q.z - p.z)) ? b : j, -1); if (d >= 0) { DIGS[d].rev = true; emit({k: 'bottle', i: d}); } else { G.bn = ((G.bn ?? -1) + 1) % BOTTLE_NOTES.length; emit({k: 'bottle', i: -1, n: G.bn}); } return; } const v = fishVal(m.f, p.x, p.z), cap = [0, 8, 12, 18][m.rod || 1] || 8; if (p.cooler.length >= cap) { emit({k: 'coolfull', id}); return; }
     p.cooler.push([m.f, v]); emit({k: 'cooler', id, n: p.cooler.length, v: coolerVal(p.cooler)}); emit({k: 'catch', id, f: m.f, kg: m.kg, v}); if (m.f === 'squid') goal(5); save(); }
   else if (m.a === 'hatch' || m.a === 'trunk' || m.a === 'lock') subAct(p, m);
   else if (m.a === 'shoot') hostShoot(p, m);
@@ -2762,8 +2768,13 @@ function applySnap(s) {
   if (s.gu) s.gu.forEach((q, i) => { const g = GUL[i] || (GUL[i] = {}); if (!q) { g.on = 0; return; } const was = g.on; Object.assign(g, {on: 1, tx: q[0], ty: q[1], tz: q[2], tyaw: q[3], tpitch: q[4], st: q[5]}); if (!was) Object.assign(g, {x: q[0], y: q[1], z: q[2], yaw: q[3], pitch: q[4]}); }); for (let i = (s.gu || []).length; i < GUL.length; i++) GUL[i].on = 0;
 }
 Net.on('snap', m => { if (G.on && !isHost()) { G.lastSnapT = performance.now(); applySnap(m); } });
+// reject or clamp bad pose data so one broken (or modified) client can't stop the host's sim or everyone's frame
+function poseOk(m) { const f = Number.isFinite; if (!m || !f(m.x) || !f(m.y) || !f(m.z) || !f(m.yw)) return false; if (!f(m.pt)) m.pt = 0;
+  m.hd = Number.isInteger(m.hd) && m.hd >= 0 && m.hd < HIDES.length ? m.hd : -1; const cl = v => f(v) ? clamp(v, -1, 1) : 0; m.in = Array.isArray(m.in) ? m.in.slice(0, 3).map(cl) : 0;
+  if (m.bl && !(Array.isArray(m.bl) && f(m.bl[0]) && f(m.bl[1]))) m.bl = 0; m.au = Number.isInteger(m.au) && m.au >= 0 && m.au < AURAS.length ? m.au : 0; m.su = Number.isInteger(m.su) ? clamp(m.su, 0, 2) : 0; m.em = Number.isInteger(m.em) && m.em >= 0 && m.em <= EMOTES.length ? m.em : 0; m.st = m.st === 1 || m.st === 2 ? m.st : 0; if (!f(m.dv)) m.dv = 0; return true; }
 Net.on('pose', (m, from) => {
   if (!G.on) return; const id = isHost() ? from : m.from; if (!id || id === myId()) return; const p = PL.get(id); if (!p) return;
+  if (!poseOk(m)) return;
   p.x = m.x; p.z = m.z; p.y = m.y; p.yaw = m.yw; p.pitch = m.pt; p.cr = m.cr; p.l = m.l; p.run = m.rn; p.h = m.h || ''; p.hd = m.hd; p.hb = m.hb; p.ob = m.ob; p.bl = m.bl || p.bl; p.sw = m.sw; p.deep = m.dp; p.in = m.in || [0, 0]; p.eq = m.eq || 0; p.sc = m.sc || 0; p.dv = m.dv || 0; p.su = m.su || 0; p.au = m.au || 0; p.st = m.st || 0; p.em = m.em || 0; p.poseT = performance.now();
   if (!p.ready) { p.ready = true; p.rx = p.x; p.ry = p.y; p.rz = p.z; p.lx = p.x; p.lz = p.z; }
   p.stepD = (p.stepD || 0) + Math.hypot(m.x - (p.px ?? m.x), m.z - (p.pz ?? m.z)); p.px = m.x; p.pz = m.z;
@@ -3004,7 +3015,7 @@ addEventListener('keydown', e => {
   if (G.casOpen) { if (e.code === 'Escape' && !e.repeat) closeCasino(); return; }
   if (G.helpOpen) { if (['KeyE', 'Escape', 'KeyH', 'Enter'].includes(e.code) && !e.repeat) showFishHelp(false); return; }
   if (G.jrnOpen) { if (['KeyJ', 'KeyE', 'Escape'].includes(e.code) && !e.repeat) jrnClose(); return; }
-  if (G.endOpen) return;
+  if (G.endOpen || G.ftOpen || G.invOpen || G.chat) return;
   if (e.repeat) return;
   if (e.code === 'KeyE') { eDown = true; ePress = true; }
   if (!alivePlay()) return;
@@ -4610,7 +4621,7 @@ function tnDraw(dt) {
 { const f0 = resetBoat; resetBoat = function (...a) { const r = f0.apply(this, a); if (isHost() && TN.st === 'water') tnStow(); return r; }; }
 { const f0 = startGame; startGame = function (...a) { Object.assign(TN, {st: 'stow', v: 0, yr: 0, thr: 0, steer: 0, drv: null, seats: [null, null, null, null], beach: 0, drop: 0, tx: null, snK: 0, hudT: 0, lv: null}); const r = f0.apply(this, a); if (P) Object.assign(P, {tn: null, tnY: null, tin: [0, 0]}); return r; }; }
 { const f0 = hostStep; hostStep = function (...a) { const r = f0.apply(this, a); tnStep(a[0]); return r; }; }
-{ const f0 = hostAct; hostAct = function (id, m) { if (m && /^tn[lbxh]$/.test(m.a)) { const p = PL.get(id); if (!p || !G.on) return; if (m.px != null && p !== P && !m.ob && Math.hypot(m.px - p.x, m.pz - p.z) < 25) { p.x = m.px; p.z = m.pz; } tnAct(p, id, m); return; } return f0.apply(this, arguments); }; }
+{ const f0 = hostAct; hostAct = function (id, m) { if (m && /^tn[lbxh]$/.test(m.a)) { const p = PL.get(id); if (!p || !G.on) return; if (Number.isFinite(m.px) && Number.isFinite(m.pz) && p !== P && !m.ob && Math.hypot(m.px - p.x, m.pz - p.z) < 25) { p.x = m.px; p.z = m.pz; } tnAct(p, id, m); return; } return f0.apply(this, arguments); }; }
 { const f0 = applyEv; applyEv = function (e) { if (e && e.k === 'tn') { tnEv(e); return; } if (e && e.k === 'tnsay') { if (e.id === myId()) showMsg(e.t, '', 2.5); return; } return f0.apply(this, arguments); }; }
 { const f0 = packSnap; packSnap = function (...a) { const s = f0.apply(this, a);
   if (TN.st === 'water') { s.tn = ['water', +TN.x.toFixed(2), +TN.z.toFixed(2), +TN.yaw.toFixed(3), +TN.v.toFixed(2), TN.seats[0] || '', TN.seats.map(q => q || 0), +TN.thr.toFixed(2), +(TN.yr || 0).toFixed(3)]; TN.snK = 0; } else if (TN.snK++ % 30 === 0) s.tn = ['stow']; return s; }; }
@@ -5099,7 +5110,7 @@ function wldGhostStep(dt) {
   gh.yaw += gh.tr * dt; gh.x -= Math.sin(gh.yaw) * 3 * dt; gh.z -= Math.cos(gh.yaw) * 3 * dt;
   const d = Math.hypot(B.x - gh.x, B.z - gh.z);
   if (!gh.fade && (d < 150 || nt < .3)) { gh.fade = .001; gh.dawn = nt < .3; emit({k: 'wghost', on: 2});
-    if (!gh.dawn) { const ki = KINDS.indexOf('relic'); for (let k = 0; k < 3; k++) { const b = 18 + k * 10, s = (CR() - .5) * 10, x = gh.x + Math.sin(gh.yaw) * b + Math.cos(gh.yaw) * s, z = gh.z + Math.cos(gh.yaw) * b - Math.sin(gh.yaw) * s; if (landH(x, z) > -1.5) continue; let i = G.floats.findIndex(q => !q); if (i < 0) i = G.floats.length; G.floats[i] = [x, z, ki]; } } }
+    if (!gh.dawn) { const ki = KINDS.indexOf('relic'); for (let k = 0; k < 3; k++) { const b = 18 + k * 10, s = (CR() - .5) * 10, x = gh.x + Math.sin(gh.yaw) * b + Math.cos(gh.yaw) * s, z = gh.z + Math.cos(gh.yaw) * b - Math.sin(gh.yaw) * s; if (landH(x, z) > -1.5) continue; let i = floatSlot(); G.floats[i] = [x, z, ki]; } } }
   if (gh.fade) gh.fade = Math.min(1, gh.fade + dt / (gh.dawn ? 4 : 8));
   if (gh.fade >= 1 || d > 2800) { gh.on = 0; G.wldGh = null; emit({k: 'wghost', on: 0}); }
 }
@@ -5117,7 +5128,7 @@ function wldHostStep(dt) {
   // a storm hits: cargo ships within 2 km lose a few containers over the side
   if (G.stormOn && !WLD.so) for (const R of WLD_NPC) { if (R.kind !== 'cargo' || Math.hypot(R.st.x - B.x, R.st.z - B.z) > 2000 || !R.path.loop && (R.st.s < 60 || R.st.s > R.path.L - 60)) continue;
     const n = 4 + Math.floor(CR() * 3), s = Math.sin(R.st.yaw), c = Math.cos(R.st.yaw), ki = KINDS.indexOf('crate'); let got = 0;
-    for (let k = 0; k < n; k++) { const b = R.L / 2 + 8 + CR() * 60, l = (CR() - .5) * 30, x = R.st.x + s * b + c * l, z = R.st.z + c * b - s * l; if (landH(x, z) > -1.5) continue; let i = G.floats.findIndex(f => !f); if (i < 0) i = G.floats.length; G.floats[i] = [x, z, ki]; got++; }
+    for (let k = 0; k < n; k++) { const b = R.L / 2 + 8 + CR() * 60, l = (CR() - .5) * 30, x = R.st.x + s * b + c * l, z = R.st.z + c * b - s * l; if (landH(x, z) > -1.5) continue; let i = G.floats.findIndex((f, j) => !f && j < MAP_FLN); if (i < 0) i = G.floats.findIndex((f, j) => j < MAP_FLN && f && Math.hypot(f[0] - B.x, f[1] - B.z) > 600); if (i < 0) continue; G.floats[i] = [x, z, ki]; got++; }
     if (got) emit({k: 'wspill', x: +R.st.x.toFixed(0), z: +R.st.z.toFixed(0), n: R.n}); }
   WLD.so = !!G.stormOn;
   // whale breaches everyone sees: near a random crew member aboard, in calm water
@@ -5201,7 +5212,7 @@ function wldRaftFrame(dt) {
   return r; }; }
 { const f0 = hostStep; hostStep = function (dt, ...a) { wldNpcPlace(G.t); const r = f0.call(this, dt, ...a); if (G.on) wldHostStep(dt); return r; }; }
 { const f0 = hostAct; hostAct = function (id, m, ...a) { const r = f0.call(this, id, m, ...a);
-  if (m && m.a === 'wres' && G.on) { const p = PL.get(id), q = G.wldMay; if (p && q && !p.dead && Math.hypot(p.x - q.x, p.z - q.z) < 9 + (p.ob ? BG.hw : 0)) { const d = Math.hypot(q.x - HOME.x, q.z - HOME.z), v = Math.round((220 + d / 8) * (wldNight(G.tod) > .5 ? 1.5 : 1) * (D.pay || 1));
+  if (m && m.a === 'wres' && G.on) { const p = PL.get(id), q = G.wldMay; if (p && q && !p.dead && !p.down && Math.hypot(p.x - q.x, p.z - q.z) < 9 + (p.ob ? BG.hw : 0)) { const d = Math.hypot(q.x - HOME.x, q.z - HOME.z), v = Math.round((220 + d / 8) * (wldNight(G.tod) > .5 ? 1.5 : 1) * (D.pay || 1));
     G.wldMay = null; G.wldMayT = 360 + CR() * 240; G.cash += v; G.earned += v; emit({k: 'wsave', v, id, x: q.x, z: q.z, n: Math.floor(CR() * 5)}); save(); } }
   return r; }; }
 { const f0 = applyEv; applyEv = function (e, ...a) { const r = f0.call(this, e, ...a); if (e && typeof e.k === 'string' && e.k[0] === 'w') wldEv(e); return r; }; }
@@ -5234,9 +5245,10 @@ const AURM = new Map(), _ac = new THREE.Color();
 function auraOf(p) { const q = AURM.get(p.id); if (q) return q; const n = 40, g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(n * 3), 3)); g.setAttribute('color', new THREE.BufferAttribute(new Float32Array(n * 3), 3));
   const m = new THREE.Points(g, new THREE.PointsMaterial({map: TX.glow, size: .22, vertexColors: true, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending})); m.frustumCulled = false; scene.add(m); const o = {m, ph: [...Array(n)].map(() => [Math.random() * TAU, Math.random(), .35 + Math.random() * .4, .6 + Math.random()])}; AURM.set(p.id, o); return o; }
 function updateAuras(dt) {
+  for (const [id, o] of AURM) if (!PL.has(id)) { scene.remove(o.m); o.m.geometry.dispose(); o.m.material.dispose(); AURM.delete(id); } // crew who left
   const t = G.wt;
   for (const p of PL.values()) {
-    const au = p === P ? (P.own && P.own.aura) || 0 : p.au || 0, A = AURAS[au]; const q = AURM.get(p.id);
+    const au = p === P ? (P.own && P.own.aura) || 0 : p.au || 0, A = AURAS[au] || AURAS[0]; const q = AURM.get(p.id);
     if (!au || !p.ready || p.dead || (p === P && P.hd >= 0)) { if (q) q.m.visible = false; continue; }
     const o = auraOf(p); o.m.visible = true; const x = p === P ? P.x : p.rx, z = p === P ? P.z : p.rz, y = p === P ? P.y + (P.ob ? B.heave : 0) - (P.sw ? P.dv || 0 : 0) : p.ry;
     const pa = o.m.geometry.attributes.position.array, ca = o.m.geometry.attributes.color.array;
@@ -5304,7 +5316,8 @@ const CAS_BJ = {cx: 2.4, cz: 1.6, r: 1.1, dz: 2.65, max: 2000, shoe: [1.62, .93,
 const CAS_SL = {z: [-2.2, -1.2, -.2], W: [30, 24, 18, 12, 8, 5, 3], X3: [5, 8, 12, 20, 35, 60, 150], max: 500,
   pick: r => { let q = r() * 100; for (let i = 0; i < 7; i++) { q -= CAS_SL.W[i]; if (q < 0) return i; } return 0; },
   mult: (a, b, c) => a === b && b === c ? CAS_SL.X3[a] : a === 0 && b === 0 ? 2 : (a === 0) + (b === 0) + (c === 0) === 1 ? 1 : 0};
-const casR = k => mulberry((G.seed ^ 0xca51) + 101 * k);
+const CAS_SALT = (Math.random() * 2 ** 31) | 0; // host-only: never sent, so spins and shoes differ every session and guests can't work them out from the seed
+const casR = k => mulberry(((G.seed ^ 0xca51) + 101 * k) ^ CAS_SALT);
 const CAS = {force: null, bjForce: null, slForce: null, v: 0, sv: -1, sT: -9, dirty: 1, cd: 1, kd: 1, ct: 0, b: null, g: null,
   seats: {rl: [null, null, null, null], bj: [null, null, null]}, rl: {ph: 'idle', T: 0, n: 0, bets: [], res: -1, t0: -99, a0: 0, k: 0},
   bj: {ph: 'idle', T: 0, turn: -1, seats: [], dl: [], hole: -1, shoe: [], q: [], qT: 0, sh: 0, ch: [[], [], []]},
@@ -5843,7 +5856,7 @@ function updateWorldFx(dt) {
   extBuoyStep();
   if (G.ghostS) G.ghostS.forEach((s, i) => s.material.opacity = (.4 + Math.sin(G.wt * 1.3 + i) * .3) * (.3 + .7 * TOD.night));
   G.floats.forEach((f, i) => { const o = floatMesh(i); if (!o) return; o.m.position.set(f[0], waveH(f[0], f[1], G.wt) - .15, f[1]); o.m.rotation.set(Math.sin(G.wt + i) * .2, i, Math.cos(G.wt * .8 + i) * .2); });
-  for (let i = 0; i < FLM.length; i++) if (FLM[i] && !G.floats[i]) { scene.remove(FLM[i].m); FLM[i] = null; }
+  for (let i = 0; i < FLM.length; i++) if (FLM[i] && !G.floats[i]) { flmDrop(i); FLM[i] = null; }
   stepFauna(dt);
 }
 const pfRL = [], pfRLs = (a, b) => a.pfD - b.pfD;
@@ -6844,13 +6857,13 @@ function startGame(seed, crew, sv) {
   if (!Array.isArray(B.up.own)) B.up.own = [...new Set([0, B.up.cls || 0])]; for (const k of ['paints', 'glows']) if (!Array.isArray(B.up[k])) B.up[k] = [...new Set([0, B.up[k.slice(0, -1)] || 0])]; G.bn = -1; if (isHost() && sv) { for (const k of sv.hold || []) if (KINDS.includes(k) && holdFits(k)) B.hold.push(k); (sv.dg || []).forEach((v, i) => { const d = DIGS[i]; if (!d || !v) return; d.rev = true; if (v & 2) d.dug = true; }); G.bbOut = !!sv.bb; G.bn = sv.bn ?? -1; }
   Object.assign(B, {x: JETTY.x - 2.1 - BG.hw, z: JETTY.z + 3 + Math.max(0, BG.L - 12) * .5, yaw: PI, v: 0, yr: 0, trim: 0, thr: 0, st: 0, driver: null, got: 0, sink: 0, sinkY: 0, dep: 0, dtar: 0}); B.fuel = tankMax(); B.hull = hullMax();
   Object.assign(LK, {st: 0, t: 0, w: 0, ent: -1, tw: 0, wv: 0}); B.hat = 1; SUBC.dq = 0; G.hatA = G.lkI = G.lkO = G.mastU = null; if (P && P.scope) subScope(0);
-  for (const p of PL.values()) { if (p.av) scene.remove(p.av); if (p.tag) p.tag.remove(); } PL.clear();
+  for (const p of PL.values()) { if (p.av) { scene.remove(p.av); disposeTree(p.av); } if (p.tag) p.tag.remove(); if (p.bubEl) p.bubEl.remove(); } PL.clear();
   syncCrew(crew);
   [...PL.values()].forEach((p, i) => { const sp = boatSpawn(i); p.ob = 1; p.bl = sp.bl; const [x, z] = bL2W(p.bl[0], p.bl[1]); p.x = x; p.z = z; p.y = sp.y; p.rx = x; p.ry = p.y; p.rz = z; p.lx = x; p.lz = z; p.yaw = B.yaw; });
   loadGear(); Object.assign(P, {eq: 1, sack: [], heldF: 0, reload: 0, coolerN: 0, coolerV: 0, ready: true, vx: 0, vz: 0, vy: 0, stam: 1, bat: 1, flares: 2, breath: 1, gasp: 0, bob: 0, stepD: 0, fear: 0, eye: 1.62, l: 0, cr: 0, hd: -1, sw: 0, seat: 0, lastBY: B.yaw, drowned: false, carry: null});
   if (isHost() && sv) { for (const k of sv.sk || []) if (CARRY.has(k) && sackFits(P, k)) P.sack.push(k); if (P.sack.length) sackSet(P); P.cooler = (sv.co || []).map(e => Array.isArray(e) ? e : FISH[e] ? [e, FISH[e].v] : null).filter(Boolean); P.coolerN = P.cooler.length; P.coolerV = coolerVal(P.cooler); if (sv.fl != null) P.flares = Math.min(6, sv.fl); }
   F.st = 'idle'; placeItems(); G.seedItems = ITEMS.length; applyAll();
-  for (let i = 0; i < FLM.length; i++) if (FLM[i]) { scene.remove(FLM[i].m); FLM[i] = null; }
+  for (let i = 0; i < FLM.length; i++) if (FLM[i]) { flmDrop(i); FLM[i] = null; }
   G.floats = []; for (let i = 0; i < MAP_FLN; i++) spawnFloat(i);
   if (isHost() && (!sv || !sv.earned)) { const jd = q => Math.hypot(q.x - JETTY.x, q.z - JETTY.z), I = ISLES.filter(q => !q.bar && !nearRig(q.x, q.z) && jd(q) < 900).sort((a, b) => jd(a) - jd(b))[0]; if (I) { const ux = (I.x - JETTY.x) / jd(I), uz = (I.z - JETTY.z) / jd(I); [70, 120, 180].forEach((r, i) => { let x = 0, z = 0; for (let k = 0; k < 12; k++) { const s = (k + 1 >> 1) * (k % 2 ? 6 : -6); x = JETTY.x + ux * r + uz * s; z = JETTY.z + uz * r - ux * s; if (!OBST.some(o => o.c && Math.hypot(x - o.x, z - o.z) < o.r + 12)) break; } G.floats[i] = [x, z, KINDS.indexOf('crate')]; }); } }
   Object.assign(M, {hp: D.mhp, x: -4, z: 6, y: LV[2], state: 'roam', path: [], idle: 2, aware: 0, lostT: 0, flee: 0, sawHide: -1, stuck: 0, screamT: 0, spd: 0, look: 0, tgt: null, preyT: 0, avoidT: 0, vy: 0, wet: 0});
@@ -7076,7 +7089,7 @@ function show(id) { ['menu', 'lobby', 'end', 'pause', 'shop', 'casino', 'fishHel
 function lobby() { const L = crewList(); $('crew').innerHTML = L.map(p => `<div><i style="background:${hexS(CREW_COL[p.c % 6])}"></i>${p.name.replace(/[<>&]/g, '')}${p.id === 'H' ? ' <small style="color:var(--dim)">host</small>' : ''}</div>`).join(''); if (Net.role === 'host') Net.send({t: 'lobby', crew: L}); }
 function hostStart() { G.diff = SET.diff; const sv = loadSave(), seed = worldSeed(sv), crew = crewList(); Net.started = true; Net.meta(Net.peers.size < 5); Net.send({t: 'start', seed, crew, diff: G.diff, sv, v: GAME_V, al: ALL ? 1 : 0}); startGame(seed, crew, sv); }
 Net.on('_lobby', () => { if (!G.on) lobby(); });
-Net.on('_join', m => { if (G.on && Net.role === 'host') { const crew = crewList(), op = PL.get(m.id); if (op && op.ready) { Net.send({t: 'crew', crew}); return; } syncCrew(crew); const np = PL.get(m.id); if (np) { const sp = boatSpawn(PL.size - 1); np.ob = 1; np.bl = sp.bl; np.y = sp.y; } if (!np || !np.startT || performance.now() - np.startT > 4000) { if (np) np.startT = performance.now(); Net.send1(m.id, {t: 'start', seed: G.seed, crew, diff: G.diff, late: 1, v: GAME_V, al: ALL ? 1 : 0, ex: ITEMS.slice(G.seedItems || ITEMS.length).map(i => [i.kind, +i.x.toFixed(2), +i.y.toFixed(2), +i.z.toFixed(2), i.text || '']), sv: {cash: G.cash, earned: G.earned, up: B.up, disc: G.disc, goals: G.goals, cruise: G.cruise || 0}}); } Net.send({t: 'crew', crew}); showMsg(`${np ? np.name : 'Someone'} joined the crew.`); } });
+Net.on('_join', m => { if (G.on && Net.role === 'host') { const crew = crewList(), op = PL.get(m.id); if (op && op.ready) { Net.send({t: 'crew', crew}); return; } syncCrew(crew); const np = PL.get(m.id); if (np) { const sp = boatSpawn(PL.size - 1); np.ob = 1; np.bl = sp.bl; np.y = sp.y; } if (!np || !np.startT || performance.now() - np.startT > 4000) { if (np) np.startT = performance.now(); Net.send1(m.id, {t: 'start', seed: G.seed, crew, diff: G.diff, late: 1, v: GAME_V, al: ALL ? 1 : 0, ex: ITEMS.slice(G.seedItems || ITEMS.length).map(i => [i.kind, +i.x.toFixed(2), +i.y.toFixed(2), +i.z.toFixed(2), i.text || '']), sv: {cash: G.cash, earned: G.earned, up: B.up, disc: G.disc, goals: G.goals, ft: G.ftSeen || [], cruise: G.cruise || 0}}); } Net.send({t: 'crew', crew}); showMsg(`${np ? np.name : 'Someone'} joined the crew.`); } });
 Net.on('_left', m => { if (!G.on) { lobby(); return; } const crew = crewList(); syncCrew(crew); Net.send({t: 'crew', crew}); showMsg(`${m.name || 'Someone'} left.`); });
 Net.on('_hostlost', () => { if (!G.on) { toMenu('The host left.'); return; } showMsg('Lost contact with the captain… holding position.', '', 20); clearTimeout(G.lostT); G.lostT = setTimeout(() => toMenu('The host left.'), 20000); });
 Net.on('_hostback', () => { if (!G.lostT) return; clearTimeout(G.lostT); G.lostT = 0; if (G.on) showMsg('Back in contact.', '', 3); });
@@ -7454,7 +7467,7 @@ function rovStart() { if (G.rov) { rovStop(); return; } const ud = BOAT && BOAT.
   if (!NB.rov) { NB.rov = nbRovMesh(); NB.rov.scale.setScalar(1); scene.add(NB.rov); NB.rl = new THREE.SpotLight(0xfff0d8, 40 * PI, 45, .55, .5, 0); NB.rl.castShadow = false; scene.add(NB.rl, NB.rl.target); NB.teth = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()]), new THREE.LineBasicMaterial({color: 0xffc040})); NB.teth.frustumCulled = false; scene.add(NB.teth); }
   NB.rov.visible = NB.rl.visible = NB.teth.visible = true; showMsg('ROV online. Mouse to aim, WASD to drive, Space/C to rise and dive, E to grab, F to come back.', 'ROV', 5); tone(660, .04, .3); }
 function rovStop() { G.rov = null; if (NB.rov) NB.rov.visible = NB.rl.visible = NB.teth.visible = false; const ud = BOAT && BOAT.userData; if (ud && ud.rovP) ud.rovP.visible = true; tone(440, .04, .3); }
-addEventListener('keydown', e => { if (!G.rov || !G.on) return; if (e.code === 'KeyF') { e.stopImmediatePropagation(); rovStop(); } else if (e.code === 'KeyE' && !e.repeat) { e.stopImmediatePropagation(); const R = G.rov; let bi = -1, bd = 4.5; SUNK.forEach((q, i) => { if (q.got) return; const d = Math.hypot(q.x - R.x, q.z - R.z, (q.y || 0) - R.y); if (d < bd) { bd = d; bi = i; } });
+addEventListener('keydown', e => { if (!G.rov || !G.on || G.chat || (e.target && /^(INPUT|TEXTAREA)$/.test(e.target.tagName))) return; if (e.code === 'KeyF') { e.stopImmediatePropagation(); rovStop(); } else if (e.code === 'KeyE' && !e.repeat) { e.stopImmediatePropagation(); const R = G.rov; let bi = -1, bd = 4.5; SUNK.forEach((q, i) => { if (q.got) return; const d = Math.hypot(q.x - R.x, q.z - R.z, (q.y || 0) - R.y); if (d < bd) { bd = d; bi = i; } });
   if (bi >= 0) { act({a: 'rovg', i: bi}); tone(300, .05, .3, 'square'); } else showMsg('Nothing in reach of the claw.', '', 1.4); } }, {capture: true});
 { const f0 = hostAct; hostAct = function (id, m) { if (m && m.a === 'rovg') { const q = SUNK[m.i]; if (!q || q.got || !HC().rovx || B.sink > 0 || Math.hypot(q.x - B.x, q.z - B.z) > 170) return; if (!holdFits(q.kind)) { emit({k: 'holdfull', id}); return; } q.got = true; B.hold.push(q.kind); emit({k: 'sunk', i: m.i, kind: q.kind}); save(); return; } return f0.apply(this, arguments); }; }
 { const f0 = stepPlayer; stepPlayer = function (dt) { const R = G.rov; if (!R || !P) return f0.apply(this, arguments); if (!HC().rovx || !P.ob || P.dead || P.down || B.sink > 0) { rovStop(); return f0.apply(this, arguments); }
@@ -8661,7 +8674,7 @@ function vfxFrame(dt) { if (!G.on || !BUILT) return; vfxInit(); const cx = cam.p
   // shooting stars on clear nights
   if (TOD.st > .5 && (VFX.sT = (VFX.sT ?? 8) - dt) <= 0) { VFX.sT = 5 + Math.random() * 14; const a = Math.random() * TAU, el = .35 + Math.random() * .5, d = 1000, p0 = new THREE.Vector3(Math.sin(a) * Math.cos(el) * d, Math.sin(el) * d, Math.cos(a) * Math.cos(el) * d), dir = new THREE.Vector3(Math.random() - .5, -.35 - Math.random() * .3, Math.random() - .5).normalize();
     const l = new THREE.Line(new THREE.BufferGeometry().setFromPoints([p0, p0.clone()]), new THREE.LineBasicMaterial({color: 0xf0f4ff, transparent: true, opacity: 1, fog: false, depthWrite: false})); l.frustumCulled = false; l.renderOrder = 1001; scene.add(l); VFX.stars.push({l, p0, dir, t: 0, T: .6 + Math.random() * .5, sp: 500 + Math.random() * 300}); }
-  for (let i = VFX.stars.length - 1; i >= 0; i--) { const s = VFX.stars[i]; s.t += dt; const k = s.t / s.T, head = s.p0.clone().addScaledVector(s.dir, s.sp * s.t), tail = s.p0.clone().addScaledVector(s.dir, Math.max(0, s.sp * s.t - 90)); const pa = s.l.geometry.attributes.position; pa.setXYZ(0, tail.x + cx, tail.y, tail.z + cz); pa.setXYZ(1, head.x + cx, head.y, head.z + cz); pa.needsUpdate = true; s.l.material.opacity = Math.sin(Math.min(1, k) * PI); if (k >= 1) { scene.remove(s.l); s.l.geometry.dispose(); VFX.stars.splice(i, 1); } }
+  for (let i = VFX.stars.length - 1; i >= 0; i--) { const s = VFX.stars[i]; s.t += dt; const k = s.t / s.T, head = s.p0.clone().addScaledVector(s.dir, s.sp * s.t), tail = s.p0.clone().addScaledVector(s.dir, Math.max(0, s.sp * s.t - 90)); const pa = s.l.geometry.attributes.position; pa.setXYZ(0, tail.x + cx, tail.y, tail.z + cz); pa.setXYZ(1, head.x + cx, head.y, head.z + cz); pa.needsUpdate = true; s.l.material.opacity = Math.sin(Math.min(1, k) * PI); if (k >= 1) { scene.remove(s.l); s.l.geometry.dispose(); s.l.material.dispose(); VFX.stars.splice(i, 1); } }
   // bioluminescence: blue sparks in the wake and round swimmers at night
   const bio = VFX.bio, pa = bio.pts.geometry.attributes.position, ca = bio.pts.geometry.attributes.color, nk = clamp((TOD.night - .4) * 2, 0, 1); bio.pts.visible = nk > 0 && sea;
   if (bio.pts.visible) { const emit = (x, z, n) => { for (let j = 0; j < n; j++) { const q = bio.p[bio.i = (bio.i + 1) % bio.p.length]; q.x = x + (Math.random() - .5) * 1.6; q.z = z + (Math.random() - .5) * 1.6; q.l = 1.5 + Math.random() * 2; q.L = q.l; } };
@@ -8843,7 +8856,7 @@ function chatOpen(pre = '') { chatUI(); if (!G.on || G.chat) return; G.chat = tr
 function chatClose() { if (!G.chat) return; G.chat = false; CHAT.inp.blur(); CHAT.inp.style.display = 'none'; CHAT.el.classList.remove('open'); if (G.on && !G.paused) lockMouse(); }
 function chatSend(v) { if (v[0] === '/') { const c = v.slice(1).toLowerCase().replace(/\s+/g, ''); const k = EMOTES.findIndex(E => E.n.toLowerCase().replace(/\s+/g, '') === c || (E.al || []).includes(c)); if (k >= 0) { emoteStart(k); return; } if (c === 'stop') { emoteStart(-1); return; } chatLine('', '', 'Emotes: ' + EMOTES.map(E => '/' + E.n.toLowerCase().replace(/\s+/g, '')).join(' ') + ' /stop'); return; } act({a: 'chat', s: v}); }
 function chatLine(name, col, txt) { chatUI(); const d = document.createElement('div'); if (name) { const b = document.createElement('b'); b.textContent = name; b.style.color = col; d.appendChild(b); } d.appendChild(document.createTextNode(txt)); CHAT.el.appendChild(d); while (CHAT.el.children.length > 8) CHAT.el.firstChild.remove(); setTimeout(() => d.style.opacity = 0, 12000); }
-function emoteStart(k) { if (!P) return; if (k < 0 || (P.emo && P.emo.i === k && EMOTES[k].loop)) { P.emo = null; return; } if (P.dead || P.down || P.sw || P.seat || P.climb) return; P.emo = {i: k, t: 0}; }
+function emoteStart(k) { if (!P || !(k < EMOTES.length)) return; if (k < 0 || (P.emo && P.emo.i === k && EMOTES[k].loop)) { P.emo = null; return; } if (P.dead || P.down || P.sw || P.seat || P.climb) return; P.emo = {i: k, t: 0}; }
 { const f0 = hostAct; hostAct = function (id, m) { if (m && m.a === 'chat') { const p = PL.get(id); if (!p || !G.on) return; const now = performance.now(); if (now - (p.chT || 0) < 600) return; p.chT = now; const s = String(m.s || '').replace(/[\u0000-\u001f\u007f]/g, '').trim().slice(0, 120); if (s) emit({k: 'chat', id, s}); return; } return f0.apply(this, arguments); }; }
 { const f0 = applyEv; applyEv = function (e) { if (e && e.k === 'chat') { const p = PL.get(e.id); const col = '#' + new THREE.Color(CREW_COL[((p && p.c) || 0) % 6]).getHexString(); chatLine(p ? p.name : '?', col, e.s); if (p) { p.bubS = e.s; p.bubT = 6; } Snd && Snd.click && Snd.click(); return; } return f0.apply(this, arguments); }; }
 { const f0 = myPose; myPose = function () { const r = f0.apply(this, arguments); r.em = P && P.emo ? P.emo.i + 1 : 0; return r; }; }
@@ -8913,7 +8926,7 @@ const noRestock = it => !it || it.kind === 'note' || it.pl || it.one;
   return r; }; }
 // host, every 2 s: stamp newly taken loot, restock what has waited long enough while nobody is close, and unlock docks the boat comes near
 function lootTick(dt) { if (!isHost() || !G.on || (LTK.t -= dt) > 0) return; LTK.t = 2; const now = Date.now(), n = G.seedItems || ITEMS.length, crew = [...PL.values()].filter(p => p.ready && !p.dead), near = (x, z) => crew.some(p => Math.hypot(p.x - x, p.z - z) < 90) || Math.hypot(B.x - x, B.z - z) < 90; let ch = 0;
-  for (let i = 0; i < n; i++) { const it = ITEMS[i]; if (!it) continue; if (it.taken) { if (!LTK.it[i]) { LTK.it[i] = now; ch = 1; } else if (!noRestock(it) && now - LTK.it[i] > restockMs(i) && !near(it.x, it.z) && !hideTaken(it)) { it.taken = false; delete LTK.it[i]; ch = 1; } } else if (LTK.it[i]) { delete LTK.it[i]; ch = 1; } }
+  for (let i = 0; i < n; i++) { const it = ITEMS[i]; if (!it) continue; if (it.taken) { if (!LTK.it[i]) { LTK.it[i] = now; ch = 1; } else if (!noRestock(it) && now - LTK.it[i] > restockMs(i) && !near(it.x, it.z)) { it.taken = false; delete LTK.it[i]; ch = 1; } } else if (LTK.it[i]) { delete LTK.it[i]; ch = 1; } }
   for (let j = 0; j < SUNK.length; j++) { const q = SUNK[j]; if (q.got) { if (!LTK.sk[j]) { LTK.sk[j] = now; ch = 1; } else if (now - LTK.sk[j] > restockMs(j, 1) && !near(q.x, q.z)) { q.got = false; if (q.m) q.m.visible = true; delete LTK.sk[j]; ch = 1; } } else if (LTK.sk[j]) { delete LTK.sk[j]; ch = 1; } }
   for (const d of dockList()) if (!G.ftSeen.includes(d.n) && Math.hypot(B.x - d.x, B.z - d.z) < 160) { G.ftSeen.push(d.n); ch = 1; if (G.ftSeen.length > 1) emit({k: 'ftnew', n: d.n}); }
   if (!G.ftSeen.includes('the home jetty')) G.ftSeen.push('the home jetty');
@@ -8926,13 +8939,13 @@ function ftWhy() { if (B.sink > 0) return 'The boat is sinking.'; if (HC().plane
 { const f0 = hostAct; hostAct = function (id, m) { if (!m || m.a !== 'ft') return f0.apply(this, arguments); const p = PL.get(id); if (!p || !G.on || B.driver !== id) return;
   const L = dockList(), to = L[m.i], from = ftDockHere(), why = ftWhy(); if (why) { emit({k: 'nope', id, why}); return; } if (!to || !G.ftSeen.includes(to.n) || to.n === from.n) return;
   const c = ALL ? 0 : ftCost(from, to); if (G.cash < c) { emit({k: 'nope', id, why: `The harbour pilot wants ${money(c)}.`}); return; }
-  G.cash -= c; const ox = B.x, oz = B.z, dist = Math.hypot(to.x - ox, to.z - oz); B.ap = null; Object.assign(B, {x: to.x, z: to.z, yaw: to.yaw, v: 0, yr: 0, thr: 0, st: 0, dep: 0, dtar: 0});
+  G.cash -= c; const ox = B.x, oz = B.z, dist = Math.hypot(to.x - ox, to.z - oz); if (B.ap) { B.ap = null; emit({k: 'ap', on: 0}); } Object.assign(B, {x: to.x, z: to.z, yaw: to.yaw, v: 0, yr: 0, thr: 0, st: 0, dep: 0, dtar: 0});
   G.tod = (G.tod + Math.min(.25, dist / 14 / TOD_LEN)) % 1; G.floats = G.floats.map(() => null); for (let i = 0; i < G.floats.length; i++) spawnFloat(i);
-  const ids = []; let n = 0; for (const q of PL.values()) { if (!q.ready || q.dead) continue; if (q.ob) { n++; continue; } if (Math.hypot(q.x - ox, q.z - oz) < 70) { ids.push(q.id); const sp = boatSpawn(n++); q.ob = 1; q.bl = sp.bl; q.y = sp.y; q.sw = 0; } }
+  const ids = []; let n = 0; for (const q of PL.values()) { if (!q.ready || q.dead) continue; if (q.ob) { n++; continue; } if (Math.hypot(q.x - ox, q.z - oz) < 70) { ids.push([q.id, n]); if (q !== P) { const sp = boatSpawn(n); q.ob = 1; q.bl = sp.bl; q.y = sp.y; q.sw = 0; } n++; } }
   emit({k: 'ft', n: to.n, c, ids}); save(); }; }
 { const f0 = applyEv; applyEv = function (e) { if (!e || (e.k !== 'ft' && e.k !== 'ftnew')) return f0.apply(this, arguments);
   if (e.k === 'ftnew') { if (!G.ftSeen) G.ftSeen = []; if (!G.ftSeen.includes(e.n)) G.ftSeen.push(e.n); toast('New dock on the chart', `${e.n[0].toUpperCase() + e.n.slice(1)}: fast travel there from the wheel (L)`); return; }
-  if (!G.ftSeen) G.ftSeen = []; ftFade(); if (P && e.ids.includes(P.id) && !P.ob) { const sp = boatSpawn(0); Object.assign(P, {ob: 1, bl: sp.bl, y: sp.y, sw: 0, climb: null, vx: 0, vz: 0, vy: 0}); const [wx, wz] = bL2W(P.bl[0], P.bl[1]); P.x = wx; P.z = wz; }
+  if (!G.ftSeen) G.ftSeen = []; ftFade(); const mine = P && e.ids.find(q => q[0] === P.id); if (mine && !P.ob) { const sp = boatSpawn(mine[1] | 0); Object.assign(P, {ob: 1, bl: sp.bl, y: sp.y, sw: 0, climb: null, vx: 0, vz: 0, vy: 0}); const [wx, wz] = bL2W(P.bl[0], P.bl[1]); P.x = wx; P.z = wz; }
   P && (P.lastBY = B.yaw); setTimeout(() => G.on && toast(`Arrived at ${e.n}`, e.c ? `Harbour pilot: ${money(e.c)}` : ''), 700); ftClose(); }; }
 function ftFade() { let f = $('ftFade'); if (!f) { f = document.createElement('div'); f.id = 'ftFade'; f.style.cssText = 'position:fixed;inset:0;background:#02060a;opacity:0;pointer-events:none;transition:opacity .35s;z-index:40'; document.body.appendChild(f); } f.style.transition = 'none'; f.style.opacity = 1; requestAnimationFrame(() => requestAnimationFrame(() => { f.style.transition = 'opacity 1.4s'; f.style.opacity = 0; })); }
 function ftOpen() { const why = ftWhy(); if (why) { showMsg(why, '', 2.5); return; } const here = ftDockHere(), L = dockList(); let el = $('ftP');
@@ -8946,7 +8959,7 @@ addEventListener('keydown', e => { if (e.target && /^(INPUT|TEXTAREA)$/.test(e.t
   if (G.ftOpen) { if (e.code === 'Escape' || e.code === 'KeyL') { e.stopImmediatePropagation(); ftClose(); } return; }
   if (e.code === 'KeyL' && P.seat && !anyPanel() && !G.map) { e.stopImmediatePropagation(); ftOpen(); } }, {capture: true});
 // a hint at the wheel while docked
-{ const f0 = hud; hud = function (dt) { const r = f0.apply(this, arguments); if (P && P.seat && !G.ftOpen && G.on && (G.ftHintT = (G.ftHintT || 0) - dt) <= 0 && ftDockHere() && (G.ftSeen || []).length > 1) { G.ftHintT = 45; showMsg('Docked. <kbd>L</kbd> fast travel to another dock you have visited.', '', 4); } return r; }; }
+{ const f0 = hud; hud = function (dt) { const r = f0.apply(this, arguments); if (P && P.seat && !G.ftOpen && G.on && (G.ftHintT = (G.ftHintT || 0) - (G.dtR || .016)) <= 0 && ftDockHere() && (G.ftSeen || []).length > 1) { G.ftHintT = 45; showMsg('Docked. <kbd>L</kbd> fast travel to another dock you have visited.', '', 4); } return r; }; }
 // ===== big ships: a "go to the bridge" point where you board and a "back to the deck" point by the wheel (hulls 30 m and longer)
 function bridgeHop(up) { if (!P || !P.ob || P.seat || P.sw || P.climb) return; const H = INTER.filter(q => q.boat && q.kind === 'helm'), h = H.find(q => q.by != null) || H[0]; if (!h) return;
   const sp = boatSpawn(0), to = up ? {bl: [h.lx, h.lz], y: h.by != null ? h.by - 1 : BDECK.y} : sp; ftFade(); P.psit = null; P.cr = 0; P.vx = P.vz = P.vy = 0; P.bl = to.bl.slice(); P.y = to.y; const [wx, wz] = bL2W(P.bl[0], P.bl[1]); P.x = wx; P.z = wz;
@@ -8985,7 +8998,7 @@ function callWhy(d) { const pl = [...PL.values()].filter(q => q.ready && !q.dead
 // harbours only (the home jetty and the trading ports), not island landings
 function dockForMe(p, r = 16) { if (!p || p.ob || p.sw) return null; let b = null, bd = r; for (const d of dockList()) { if (/ landing$/.test(d.n)) continue; const e = Math.hypot(d.x - p.x, d.z - p.z); if (e < bd) { bd = e; b = d; } } return b; }
 { const f0 = hostAct; hostAct = function (id, m) { if (!m || m.a !== 'call') return f0.apply(this, arguments); const p = PL.get(id); if (!p || !G.on) return; const d = dockForMe(p, 20); if (!d) return; const why = callWhy(d); if (why) { emit({k: 'nope', id, why}); return; }
-  if (!ALL) G.cash -= CALL_FEE; B.ap = null; Object.assign(B, {x: d.x, z: d.z, yaw: d.yaw, v: 0, yr: 0, thr: 0, st: 0, dep: 0, dtar: 0}); B.fuel = Math.max(B.fuel, tankMax() * .25); emit({k: 'called', n: d.n, id}); save(); }; }
+  if (!ALL) G.cash -= CALL_FEE; if (B.ap) { B.ap = null; emit({k: 'ap', on: 0}); } Object.assign(B, {x: d.x, z: d.z, yaw: d.yaw, v: 0, yr: 0, thr: 0, st: 0, dep: 0, dtar: 0}); B.fuel = Math.max(B.fuel, tankMax() * .25); emit({k: 'called', n: d.n, id}); save(); }; }
 { const f0 = applyEv; applyEv = function (e) { if (!e || e.k !== 'called') return f0.apply(this, arguments); toast('Your boat is here', `Towed to ${e.n}${ALL ? '' : ' · ' + money(CALL_FEE)}`); if (Snd && Snd.coin) Snd.coin(); }; }
 { const f0 = targets; targets = function (...a) { const L = f0.apply(this, a); if (!P || P.dead || P.ob || P.sw) return L; const d = dockForMe(P); if (!d || Math.hypot(B.x - d.x, B.z - d.z) < 120) return L;
   L.push({x: d.x, y: P.y + 1, z: d.z, r: 30, flat: 1, label: `Call your boat here (${ALL ? 'free' : money(CALL_FEE)})`, go: () => { const w = callWhy(d); if (w) showMsg(w, '', 2.5); else act({a: 'call'}); }}); return L; }; }
