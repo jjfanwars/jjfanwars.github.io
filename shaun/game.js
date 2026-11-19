@@ -498,7 +498,7 @@ function drawBug(b, time) {
   // alive: lean toward the side that lost legs (limp); dead: tumble toward b.droll
   const lean = dead ? 0 : (((b.legs & 1) ? 0 : 1) + ((b.legs & 4) ? 0 : 1) - ((b.legs & 2) ? 0 : 1) - ((b.legs & 8) ? 0 : 1)) * .16;
   const roll = b.roll + lean + (dead ? 0 : Math.sin(b.t * 31) * hk * .08), lift = dead ? mix(1, .38, smooth(dt * 2.5)) : 1;
-  const bob = dead ? 0 : Math.sin(b.ph * 2) * .05 * Math.min(1, b.sp / 4);
+  const bob = dead ? 0 : Math.sin(b.ph * 2) * .08 * Math.min(1, b.sp / 4);
   const sink = dead && dt > 6 ? (dt - 6) * .6 : 0;
   // a hit snaps the head up and shoves the body back a little
   _e.set(b.pitch - hk * .3 + (b.st === 1 ? -.35 - Math.max(0, Math.sin(b.t * 7)) * .25 : 0), b.yaw + (b.dyaw || 0), roll, 'YXZ'); _q.setFromEuler(_e);
@@ -507,7 +507,7 @@ function drawBug(b, time) {
   const near = (b.x - P.x) ** 2 + b.z * b.z < NEAR_D * NEAR_D * Math.max(1, s) && DRAW.n < NEARB, BM = near ? BODY : BODYL, bi = near ? DRAW.n++ : DRAW.nl++;
   BM.setMatrixAt(bi, bm4);
   const fl = b.flash, T = b.T.tint; BM.setColorAt(bi, _v.set(T[0] + fl * .8, T[1] + fl * .9, T[2] + fl * .5));
-  const e = _m.elements, stride = .55, liftH = .4;
+  const e = _m.elements, stride = .7, liftH = .5;
   for (let k = 0; k < 6; k++) {
     if (!(b.legs & (1 << k))) continue;
     const ui = DRAW.legs++;
@@ -515,15 +515,17 @@ function drawBug(b, time) {
     if (k < 4) {
       const L = LEGS[k]; sd = L[0]; const ph = b.ph + (k === 0 || k === 3 ? 0 : PI);
       hx = sd * .26; hy = BH + .12; hz = L[1]; const fr = k < 2 ? 1 : -1;
-      if (dead) { const tw = Math.sin(time * 18 + b.twitch + k) * Math.max(0, 1 - dt / 4) * .25; const c = smooth(dt * 1.5);
+      if (dead) { const th = b.thr && dt < b.thr, tw = Math.sin(time * (th ? 11 : 18) + b.twitch + k * 1.7) * (th ? .9 * (1 - dt / b.thr) + .2 : Math.max(0, 1 - dt / 4) * .25); const c = smooth(dt * 1.5);
         fx = sd * mix(1.15, .5, c); fy = mix(0, BH + 1.3, c) + tw; fz = L[2] * mix(1, .4, c); kx = sd * mix(.7, .8, c); ky = BH + mix(1.1, 1.5, c); kz = hz + fr * mix(.55, .3, c); }
       else if (b.st === 2) { fx = sd * 1.0; fy = .3; fz = L[2] + fr * .5; kx = sd * .75; ky = BH + 1.0; kz = hz + fr * .7; }
-      else { const sw = Math.sin(ph) * stride * Math.min(1, b.sp / 3 + .15), up = Math.max(0, Math.cos(ph)) * liftH * Math.min(1, b.sp / 3 + .1);
+      else { // stance (foot planted, sliding back at body speed) 60% of the cycle, quick lifted swing forward 40%
+        const u = ((ph / TAU) % 1 + 1) % 1; let sw, up; if (u < .6) { sw = stride * (1 - 2 * u / .6); up = 0; } else { const v = (u - .6) / .4; sw = stride * (-1 + 2 * smooth(v)); up = Math.sin(v * PI) * liftH; }
+        sw *= Math.min(1, b.sp / 3 + .15); up *= Math.min(1, b.sp / 3 + .1);
         fx = sd * 1.0; fy = up; fz = L[2] + sw; kx = sd * .6; ky = BH + 1.3 + up * .4; kz = hz + fr * .5 + sw * .3; }
     } else {
       sd = k === 4 ? 1 : -1; hx = sd * .2; hy = BH + .1; hz = .42;
       const a = b.st === 1 ? Math.sin(b.t * 7 + (sd > 0 ? 0 : 1.6)) : Math.sin(b.ph + (sd > 0 ? 0 : PI)) * .3;
-      if (dead) { const c = smooth(dt * 1.5), tw = Math.sin(time * 15 + b.twitch * 2 + k) * Math.max(0, 1 - dt / 4) * .3; kx = sd * .5; ky = BH + .6 * c + .6; kz = .7; fx = sd * .25; fy = BH + 1.2 * c + tw; fz = 1.2 - c * .5; }
+      if (dead) { const c = smooth(dt * 1.5), tw = Math.sin(time * (b.thr && dt < b.thr ? 9 : 15) + b.twitch * 2 + k) * (b.thr && dt < b.thr ? 1.1 * (1 - dt / b.thr) + .2 : Math.max(0, 1 - dt / 4) * .3); kx = sd * .5; ky = BH + .6 * c + .6; kz = .7; fx = sd * .25; fy = BH + 1.2 * c + tw; fz = 1.2 - c * .5; }
       else { const at = b.st === 1 ? Math.max(0, a) : 0; kx = sd * .42; ky = BH + 1.0 + a * .25; kz = .75 + a * .1; fx = sd * .2; fy = BH + .35 - at * 1.4 + (b.st === 1 ? 0 : a * .2); fz = 1.55 + a * .2 + at * .35; }
     }
     hip.set(hx, hy, hz).applyMatrix4(bm4); knee.set(kx, ky, kz).applyMatrix4(bm4); foot.set(fx, fy, fz).applyMatrix4(bm4);
@@ -628,9 +630,16 @@ const Sfx = {
     this.B.zap = (() => { let ph = 0; return buf(.35, t => { ph += TAU * (180 + 800 * Math.exp(-t * 18)) / sr; return (Math.sin(ph) > 0 ? 1 : -1) * .25 * Math.exp(-t * 9) + (Math.random() - .5) * .3 * Math.exp(-t * 20); }); })();
     this.B.horn = (() => buf(2.2, t => { const e = Math.min(1, t * 3) * Math.exp(-Math.max(0, t - 1.4) * 4); return (Math.sin(TAU * 110 * t) + .6 * Math.sin(TAU * 165.5 * t) + .4 * Math.sin(TAU * 220.5 * t) + .3 * Math.sin(TAU * 331 * t)) * .14 * e * (1 + .1 * Math.sin(t * 30)); }))();
     this.B.alarm = buf(1.2, t => { const on = (t % .3) < .18 ? 1 : 0, f = (t % .6) < .3 ? 880 : 660; return (Math.sin(TAU * f * t) > 0 ? 1 : -1) * .18 * on * Math.min(1, (t % .3) * 200); });
+    // heavier gun: a low body thump under each round, a rolling echo tail off the dunes when you let go
+    this.B.thump = (() => { let ph = 0; return buf(.18, t => { ph += TAU * (52 + 60 * Math.exp(-t * 60)) / sr; return Math.sin(ph) * Math.exp(-t * 22) * 1.1 * Math.min(1, t * 900); }); })();
+    this.B.tail = (() => { let lp = 0, lp2 = 0; return buf(2.6, t => { const n = Math.random() * 2 - 1; lp += (n - lp) * .05; lp2 += (lp - lp2) * .2; const e = Math.exp(-t * 1.7) * (1 + .5 * Math.sin(t * 9) * Math.exp(-t * 2)); return lp2 * 4 * e * Math.min(1, t * 20); }); })();
+    // radio: a click, then band-limited noise chopped into syllables (sounds like garbled talk)
+    this.B.radio = (() => { let a = 0, b = 0, env = 0, tgt = 0, nx = 0; return buf(2.4, (t, i) => { const n = Math.random() * 2 - 1; a += (n - a) * .35; b += (a - b) * .06; if (t > nx) { nx = t + rnd(.06, .16); tgt = Math.random() < .25 ? .1 : rnd(.5, 1); } env += (tgt - env) * .004;
+      const click = t < .012 ? (Math.random() * 2 - 1) * 1.2 : 0, beep = t < .09 ? Math.sin(TAU * 1250 * t) * .25 : 0; return (a - b) * 2.4 * env * (t > .1 && t < 2.2 ? 1 : 0) * (1 - Math.max(0, t - 2) * 5) + click + beep; }); })();
+    this.B.flyby = (() => { let lp = 0, lp2 = 0; return buf(5, t => { const n = Math.random() * 2 - 1; lp += (n - lp) * .08; lp2 += (lp - lp2) * .3; const e = Math.exp(-Math.pow((t - 2) / .9, 2)) + .15 * Math.exp(-Math.pow((t - 2) / 2, 2)); return (lp2 * 3 + Math.sin(TAU * (90 - t * 6) * t) * .2) * e; }); })();
     const noise = buf(2, () => Math.random() * 2 - 1);
     const loop = (filtType, f, q, g) => { const s = C.createBufferSource(); s.buffer = noise; s.loop = true; const fl = C.createBiquadFilter(); fl.type = filtType; fl.frequency.value = f; fl.Q.value = q; const gn = C.createGain(); gn.gain.value = g; s.connect(fl); fl.connect(gn); gn.connect(this.master); s.start(); return {fl, gn}; };
-    this.wind = loop('lowpass', 380, .7, .14); this.hiss = loop('highpass', 2600, .7, 0); this.rattle = loop('bandpass', 1400, 2, 0);
+    this.wind = loop('lowpass', 380, .7, .14); this.roar = loop('bandpass', 240, .9, 0); this.hiss = loop('highpass', 2600, .7, 0); this.rattle = loop('bandpass', 1400, 2, 0);
     this.o1 = C.createOscillator(); this.o1.type = 'sawtooth'; this.o2 = C.createOscillator(); this.o2.type = 'square'; this.of = C.createBiquadFilter(); this.of.type = 'lowpass'; this.of.Q.value = 4; this.og = C.createGain(); this.og.gain.value = 0;
     this.o1.connect(this.of); this.o2.connect(this.of); this.of.connect(this.og); this.og.connect(this.master); this.o1.start(); this.o2.start();
     this.last = {};
@@ -646,8 +655,9 @@ const Sfx = {
   lim(k, ms) { const n = performance.now(); if (this.last && n - (this.last[k] || 0) < ms) return false; if (this.last) this.last[k] = n; return true; },
   tink(x) { if (this.ctx && this.lim('tink', 25)) this.play('tink', {vol: .07, rate: rnd(.8, 1.35), vr: 0, pan: (x - P.x) * .3}); },
   at(x, z) { const dx = x - P.x, dz = z - P.z, d = Math.hypot(dx, dz), a = angD(P.yaw, Math.atan2(-dx, -dz)); return {pan: clamp(-Math.sin(a) * 1.2, -1, 1), vol: 1 / (1 + d * .04), d}; },
-  gun(spin, heat, vent) {
+  gun(spin, heat, vent, firing) {
     if (!this.ctx) return; const t = this.ctx.currentTime;
+    this.roar.gn.gain.setTargetAtTime(firing ? .5 : 0, t, firing ? .03 : .12); this.roar.fl.frequency.setTargetAtTime(200 + heat * 120, t, .1);
     this.o1.frequency.setTargetAtTime(70 + spin * 380, t, .05); this.o2.frequency.setTargetAtTime(105 + spin * 570, t, .05); this.of.frequency.setTargetAtTime(400 + spin * 2400, t, .05);
     this.og.gain.setTargetAtTime(spin > .01 ? .025 + spin * .04 : 0, t, .08); this.rattle.gn.gain.setTargetAtTime(spin * .05, t, .05); this.rattle.fl.frequency.setTargetAtTime(900 + spin * 1500, t, .05);
     this.hiss.gn.gain.setTargetAtTime(vent ? .22 : heat > .8 ? (heat - .8) * .25 : 0, t, .06);
@@ -743,8 +753,11 @@ function fireShotAuto(g, idx) { // sentry pods keep their auto-targeting
 function shotTail(g, idx, local) {
   if (idx % (G.buff && G.buff.k === 0 ? 3 : 5) === 0) addTracer(mz, hitP);
   if (local) {
-    Sfx.play('shot', {vol: .32, vr: .08});
-    P.kickV += .9; P.gpV += 1.6; P.cpV += .25 + P.heat * .15; P.cyV += rnd(-.25, .25); P.trauma = Math.min(.6, P.trauma + .008); P.bloom = Math.min(1, P.bloom + .06);
+    Sfx.play('shot', {vol: .32, vr: .08}); if (idx % 2 === 0) Sfx.play('thump', {vol: .4, vr: .12}); if (idx % 4 === 0) Sfx.play('shot', {vol: .06, at: rnd(.12, .2), lp: 700, rate: .8});
+    P.kickV += 1.5; P.gpV += 2.6; P.cpV += .45 + P.heat * .2; P.cyV += rnd(-.4, .4);
+    // real recoil: the muzzle climbs and wanders, you hold it down
+    P.pitch = clamp(P.pitch + .0008 * (1 - P.ads * .5), -.55, .4); P.yaw = clamp(P.yaw + rnd(-.0007, .0007), -1.5, 1.5);
+    if (Math.random() < .35) { _v2.set(P.x + rnd(-.6, .6), 1.05, P.z - 1.1); PS.add(_v2.x, _v2.y, _v2.z, rnd(-.6, .6), rnd(.2, .9), rnd(-2.5, -.8), rnd(.8, 1.5), .15, .9, .6, .48, .36, .22, -.1, 1.2); } // muzzle blast lifts dust off the sandbags P.trauma = Math.min(.6, P.trauma + .008); P.bloom = Math.min(1, P.bloom + .06);
     FPG.userData.eject.getWorldPosition(_v2); dirV.set(1, 0, 0).applyQuaternion(cam.quaternion); addCase(_v2, {x: dirV.x * rnd(2, 3.5) + rnd(-.3, .3), y: rnd(1.8, 3), z: dirV.z * rnd(2, 3.5) + rnd(.2, .8)});
     if (Math.random() < .3) PS.add(mz.x, mz.y, mz.z, rnd(-.3, .3), rnd(.3, .9), rnd(-.3, .3), rnd(1, 2), .1, .6, .5, .45, .42, .18, -.2, .5);
   } else if (idx % 2 === 0) { const a = Sfx.at(mz.x, mz.z); Sfx.play('shot', {vol: .16 * a.vol, pan: a.pan, vr: .1, lp: 3000}); }
@@ -794,10 +807,10 @@ function legOffFx(b, k) { const c = bugCenter(b, _v2); addChunk(c.x + rnd(-1, 1)
 function killBug(b, g) {
   if (b.dead) return; b.dead = .001; b.hp = 0; b.roll = 0; b.dyaw = 0; b.y += b.py || 0;
   // corpse keeps its momentum (slides forward, leapers fall out of the air), minus the knock-back of the rounds that killed it; some light bugs burst apart (gib)
-  const fw = b.st === 1 ? 0 : Math.min(b.sp, 14) * .7, gx = g ? SLOTX[g.slot] : P.x, kx = b.x - gx, kz = b.z, kd = Math.hypot(kx, kz) || 1, kb = rnd(2.5, 5.5) / (b.s * b.s);
+  const fw = b.st === 1 ? 0 : Math.min(b.sp, 14) * .7, gx = g ? SLOTX[g.slot] : P.x, kx = b.x - gx, kz = b.z, kd = Math.hypot(kx, kz) || 1, kb = rnd(3.5, 7.5) / (b.s * b.s);
   b.dvx = Math.sin(b.yaw) * fw + kx / kd * kb + rnd(-.8, .8); b.dvz = Math.cos(b.yaw) * fw + kz / kd * kb + rnd(-.8, .8); b.dvy = b.st === 2 ? (b.vy || 0) : rnd(1.5, 3.8) / (b.s * Math.sqrt(b.s));
   b.droll = Math.random() < .65 ? PI * (Math.random() < .5 ? 1 : -1) : PI / 2 * (Math.random() < .5 ? 1 : -1); b.dspin = rnd(-4, 4);
-  b.gib = Math.random() < b.T.gib ? 1 : 0;
+  b.gib = Math.random() < b.T.gib ? 1 : 0; b.thr = !b.gib && Math.random() < .5 ? rnd(1.2, 2.6) : 0; // death throes: some thrash a while
   if (g) { g.kills++; G.kills++; if (g.id === myId()) myKill(); if (isHost() && !G.over && !g.sentry) G.hp = Math.min(100, G.hp + .02); if (isHost() && !G.over && !g.sentry && (G.sup += 1 / ((140 + 20 * G.wave) * crewMul())) >= 1) { G.sup = 0; callIn(); } }
   if (isHost()) G.evq.push(['k', b.id, g ? g.slot : -1]);
   deathFx(b);
@@ -815,12 +828,12 @@ function deathFx(b) {
     PS.add(c.x, c.y, c.z, 0, .8, 0, 1.4, .6 * s, 2.4 * s, .5, .55, .3, .25, 0, 1); }
   else if (Math.random() < .5) { b.legs &= ~(1 << ((Math.random() * 4) | 0)); addChunk(c.x, c.y, c.z, s * .8, 6, true); }
   if (b.type === 2 || b.type === 5) { for (let i = 0; i < 10; i++) PS.add(b.x + rnd(-1.5, 1.5), b.y + .3, b.z + rnd(-1.5, 1.5), rnd(-2, 2), rnd(.5, 2), rnd(-2, 2), rnd(1.2, 2.4), .6, 3, .55, .38, .25, .5, 0, 1.5);
-    const d = Math.hypot(b.x - P.x, b.z - P.z); P.trauma = Math.min(1, P.trauma + clamp(1 - d / 60, 0, 1) * .5);
+    const d = Math.hypot(b.x - P.x, b.z - P.z); P.trauma = Math.min(1, P.trauma + clamp(1 - d / 60, 0, 1) * .5); if (d < 70 && b.type === 2) G.hs = .06;
     if (Sfx.ctx) { const a = Sfx.at(b.x, b.z); Sfx.play('boom', {vol: .5 * a.vol + .1, pan: a.pan, rate: 1.6, lp: 900}); } }
   addDecal(b.x + rnd(-.5, .5), b.z + rnd(-.5, .5), rnd(2, 3.4) * s, [rnd(.7, .95), rnd(.85, 1), rnd(.6, .8)]);
   for (let i = 0; i < 2; i++) addDecal(b.x + rnd(-2, 2) * s, b.z + rnd(-2, 2) * s, rnd(.6, 1.4) * s, [.85, .95, .7]);
-  if (Sfx.ctx) { const a = Sfx.at(b.x, b.z); if (Sfx.lim('death', 70)) { Sfx.play('squelch', {vol: 1.1 * a.vol + .08, pan: a.pan, rate: .7}); Sfx.play('crunch', {vol: .5 * a.vol, pan: a.pan, rate: .8}); }
-    if (Sfx.lim('squeal', 160)) Sfx.play('squeal', {vol: .25 * a.vol, pan: a.pan, rate: rnd(.8, 1.3) / Math.sqrt(s), lp: 4000}); }
+  if (Sfx.ctx) { const a = Sfx.at(b.x, b.z); if (Sfx.lim('death', 45)) { Sfx.play('squelch', {vol: 1.1 * a.vol + .08, pan: a.pan, rate: .7}); Sfx.play('crunch', {vol: .5 * a.vol, pan: a.pan, rate: .8}); }
+    if (Sfx.lim('squeal', 110)) Sfx.play('squeal', {vol: .25 * a.vol, pan: a.pan, rate: rnd(.8, 1.3) / Math.sqrt(s), lp: 4000}); }
 }
 
 // ---------------- waves + bug AI (host)
@@ -886,13 +899,13 @@ function stepGlobs(dt) {
 // the hive titan: every 5th wave
 // kill streak: kills within 1.6 s of each other chain; every 50 in a chain pays out armour + a chime
 function myKill() { G.killT = .25; G.combo = (G.comboT > 0 ? G.combo : 0) + 1; G.comboT = 1.6; G.comboPop = .18; G.comboBest = Math.max(G.comboBest || 0, G.combo);
-  if (G.combo % 50 === 0) { G.comboFlash = 1; Sfx.play('horn', {vol: .3, rate: 1.6 + Math.min(.8, G.combo / 500), vr: 0}); if (isHost()) { G.hp = Math.min(100, G.hp + 4); G.shield = 100; } }
+  if (G.combo % 50 === 0) { G.comboFlash = 1; if (G.combo % 150 === 0) radio('streak'); Sfx.play('horn', {vol: .3, rate: 1.6 + Math.min(.8, G.combo / 500), vr: 0}); if (isHost()) { G.hp = Math.min(100, G.hp + 4); G.shield = 100; } }
 }
 function spawnTitan(n) {
   const b = spawnBug(5, rnd(-25, 25), -205); if (!b) return;
   b.hp = b.hp0 = Math.round(300 * crewMul() * (1 + .25 * (n / 5 - 1))); G.titan = b; titanWarn(); G.evq.push(['T']);
 }
-function titanWarn() { setTimeout(() => { if (!G.on || G.over) return; callout('HIVE TITAN', 'SOMETHING HUGE // POUR IT ON'); Sfx.play('horn', {vol: .6, rate: .5, vr: 0}); }, 1800); }
+function titanWarn() { setTimeout(() => { if (!G.on || G.over) return; radio('titan'); callout('HIVE TITAN', 'SOMETHING HUGE // POUR IT ON'); Sfx.play('horn', {vol: .6, rate: .5, vr: 0}); }, 1800); }
 function titanDown(b) {
   G.titan = null; G.slow = 1.8; G.shock = {x: b.x, z: b.z, r: 0};
   for (let i = 0; i < (HI() ? 160 : 70); i++) { const a = rnd(0, TAU), sp = rnd(4, 26); PA.add(b.x, b.y + rnd(1, 6), b.z, Math.cos(a) * sp, rnd(3, 22), Math.sin(a) * sp, rnd(.6, 1.6), rnd(1, 3), 4, 3, 1.4, .4, 1, 8, 1); }
@@ -1058,16 +1071,18 @@ function stepBugsHost(dt) {
       b.st = 0; let sp = b.T.sp * 8.5 * spm;
       if ((b.legs & 15) !== 15) sp *= ((b.legs & 15) ? .65 : .4) + .3 * Math.abs(Math.sin(b.ph)); // limping: lurches along
       if (b.stag > 0) { b.stag -= dt; sp *= .35; }
+      sp *= .8 + .4 * (.5 + .5 * Math.sin(b.t * 1.3 + b.wf * 7)); // surges: scuttle, slow, scuttle
       const wv = Math.sin(b.t * b.wf) * b.weave * Math.min(1, d / 30);
       let ux = dx / d, uz = dz / d; const px = -uz, pz = ux; ux += px * wv; uz += pz * wv;
       // separation
-      const k0 = cell(b.x, b.z);
+      const k0 = cell(b.x, b.z); let ov = 0;
       for (let gx = -1; gx <= 1; gx++) for (let gz = -1; gz <= 1; gz++) { const c = grid.get(k0 + gx * 1000 + gz); if (!c) continue;
-        for (const o of c) { if (o === b) continue; const ox = b.x - o.x, oz = b.z - o.z, od = ox * ox + oz * oz, rr = (b.s + o.s) * .9; if (od < rr * rr && od > 1e-4) { const f = (rr - Math.sqrt(od)) * 2; ux += ox * f; uz += oz * f; } } }
+        for (const o of c) { if (o === b) continue; const ox = b.x - o.x, oz = b.z - o.z, od = ox * ox + oz * oz, rr = (b.s + o.s) * .9; if (od < rr * rr && od > 1e-4) { const f = (rr - Math.sqrt(od)) * 2; ux += ox * f; uz += oz * f; ov += f; } } }
       const ul = Math.hypot(ux, uz) || 1; const step = Math.min(sp * dt, d);
       b.x += ux / ul * step; b.z += uz / ul * step; b.sp = sp;
       b.yaw += angD(b.yaw, Math.atan2(ux, uz)) * Math.min(1, dt * 6);
-      b.y = gH(b.x, b.z);
+      // jammed against the line the horde climbs over itself
+      b.clm = mix(b.clm || 0, d < 14 && !b.T.titan ? Math.min(1.8 * b.s, ov * .55) : 0, Math.min(1, dt * 3)); b.y = gH(b.x, b.z) + b.clm;
       if (b.T.leap && d > 18 && d < 45 && b.leapT <= 0 && Math.random() < dt * .8) { b.st = 2; b.vy = 9; b.leapT = 6; if (Sfx.ctx && Sfx.lim('scr', 300)) { const a = Sfx.at(b.x, b.z); Sfx.play('screech', {vol: .3 * a.vol, pan: a.pan, rate: rnd(.9, 1.3)}); } }
       b.leapT -= dt;
     }
@@ -1078,7 +1093,7 @@ function stepBugsHost(dt) {
 }
 function hurt(d) {
   G.hurtT = 0; const s = Math.min(G.shield, d); G.shield -= s; d -= s; G.hp = Math.max(0, G.hp - d * .2);
-  if (G.hp < 30 && !G.lowWarn) { G.lowWarn = true; callout('ARMOUR CRITICAL', 'CLEAR THE BARRICADE'); Sfx.play('alarm', {vol: .5, vr: 0}); if (isHost()) G.evq.push(['a']); }
+  if (G.hp < 30 && !G.lowWarn) { G.lowWarn = true; setTimeout(() => radio('low'), 1500); callout('ARMOUR CRITICAL', 'CLEAR THE BARRICADE'); Sfx.play('alarm', {vol: .5, vr: 0}); if (isHost()) G.evq.push(['a']); }
   if (G.hp > 45) G.lowWarn = false;
   G.dmgFlash = Math.min(1, G.dmgFlash + .03); P.trauma = Math.min(1, P.trauma + .015);
   if (Sfx.ctx && Sfx.lim('zap', 400)) Sfx.play('zap', {vol: .45});
@@ -1103,8 +1118,15 @@ function stepBugsCommon(dt, time) {
       if (b.y <= gy) { b.y = gy;
         if (b.dvy < -3) { b.dvy *= -.3; b.dspin *= .6; b.dvx *= .7; b.dvz *= .7; if (b.dvy > 1.2 && b.dead > .15) dustPuff(b.x, b.y, b.z, b.s); } else b.dvy = 0;
         const f = Math.exp(-dt * (b.T.s > 2 ? 6 : 3.2)); b.dvx *= f; b.dvz *= f; b.dspin *= Math.exp(-dt * 3.5); }
-      b.x += b.dvx * dt; b.z += b.dvz * dt; b.dyaw += b.dspin * dt; }
-    else { b.ph += dt * (b.sp * 1.9 / b.s + (b.st === 1 ? 0 : .5));
+      b.x += b.dvx * dt; b.z += b.dvz * dt; b.dyaw += b.dspin * dt;
+      const near = (b.x - P.x) ** 2 + b.z * b.z < 4900;
+      if (near && !b.gib && b.dead < 1.6 && Math.random() < dt * 16) { const c = bugCenter(b, _v), cl = SLIME[(Math.random() * 4) | 0], f = 1 - b.dead / 1.6; // ichor pumping out
+        PG.add(c.x + Math.sin(b.yaw) * .5 * b.s, c.y, c.z + Math.cos(b.yaw) * .5 * b.s, rnd(-1.5, 1.5), rnd(2, 6) * f, rnd(-1.5, 1.5), rnd(.8, 1.4), rnd(.08, .18) * b.s, .06, cl[0], cl[1], cl[2], .95, 14, .4, 1); }
+      if (near && b.y <= gy + .05 && b.dvx * b.dvx + b.dvz * b.dvz > 4 && Math.random() < dt * 12) dustPuff(b.x, b.y, b.z, b.s * .7); // skid dust
+    }
+    else { b.ph += dt * (b.sp * 2.7 / b.s + (b.st === 1 ? 0 : .3)); // matches the planted-foot stride, so feet don't skate
+      { const fx = Math.sin(b.yaw) * 1.5 * b.s, fz = Math.cos(b.yaw) * 1.5 * b.s, sl = (gH(b.x + fx, b.z + fz) + pileAt(b.x + fx, b.z + fz) * .85 - gH(b.x - fx, b.z - fz) - pileAt(b.x - fx, b.z - fz) * .85) / (3 * b.s);
+        if (b.st !== 2) b.pitch += (-Math.atan(sl) * .8 - b.pitch) * Math.min(1, dt * 5); } // body follows the slope and the pile
       // climb over the dead
       b.py = mix(b.py || 0, b.st === 2 ? 0 : pileAt(b.x, b.z) * .85, Math.min(1, dt * 6));
       // shove corpses out of the way (pushes them along, spins them a little)
@@ -1278,12 +1300,33 @@ function drawHud(dt, time) {
   for (const cn of CANS.values()) { _v.set(cn.x, cn.y + 1.6, cn.z).project(cam); if (_v.z > 1 || Math.abs(_v.x) > 1.1) continue; const px = (_v.x + 1) / 2 * w, py = clamp((1 - _v.y) / 2 * h, 20, h - 40), K = CANK[cn.k], col = K.c.map(v => Math.min(255, v * 255 | 0)).join(',');
     const pul = 7 + Math.sin(time * 8) * 2; c.strokeStyle = `rgba(${col},.95)`; c.lineWidth = 2; c.beginPath(); c.moveTo(px, py - pul); c.lineTo(px + pul, py); c.lineTo(px, py + pul); c.lineTo(px - pul, py); c.closePath(); c.stroke(); c.lineWidth = 1.5;
     c.fillStyle = `rgba(${col},.9)`; c.fillText(K.n, px - c.measureText(K.n).width / 2, py - 14); }
+  if (RAD) { const n = Math.min(RAD.txt.length, RAD.t * 38 | 0), a = Math.min(1, (6 - RAD.t) * 1.5), y = h - 64; c.globalAlpha = a; c.font = '12px "Share Tech Mono",monospace'; c.fillStyle = 'rgba(255,200,120,.85)';
+    const tx = w / 2 - 260; c.fillStyle = 'rgba(2,10,12,.45)'; c.fillRect(tx - 10, y - 16, 540, 44); c.fillStyle = 'rgba(255,200,120,.85)'; c.fillText('\u25CF ' + RAD.who, tx, y); c.font = '15px "Share Tech Mono",monospace'; c.fillStyle = 'rgba(220,240,235,.92)'; c.fillText(RAD.txt.slice(0, n) + (n < RAD.txt.length && (time * 8 | 0) % 2 ? '_' : ''), tx, y + 19); c.globalAlpha = 1; }
   if (toastT > 0) { c.globalAlpha = Math.min(1, toastT); c.fillStyle = '#fff'; c.font = '16px "Share Tech Mono",monospace'; c.fillText(toastS, w / 2 - c.measureText(toastS).width / 2, h * .68); }
   c.globalAlpha = 1;
 }
 
 // ---------------- world fx (fires, flares, artillery, dust)
 let flare = null, artT = 4;
+// ---------------- atmosphere: radio chatter, dropship flyovers, other outposts fighting on the flanks, wind gusts
+const RADIO = {
+  start: ['Kestrel-9, this is Actual. Evac is negative. Hold that line.', 'All stations, the hive is moving. Kestrel, you are the wall.'],
+  idle: ['Bravo position just went dark. Anyone hear Bravo?', 'Artillery is walking the north dunes. Keep your heads down.', 'Kestrel, we have you on thermal. That is... a lot of contacts.',
+    'Charlie Two falling back to the wreck! Say again, falling back!', 'Medevac is grounded. Repeat, medevac is grounded.', 'Contacts through the canyon on the east flank!',
+    'Keep that barrel turning, trooper. We need it running.', 'Fleet says orbital fire is denied. You are on your own down there.', 'Watch the sand. Some of them come up from below.',
+    'Delta, report! ... Delta, respond!', 'Command says hold till dawn. Dawn is nine hours out.', 'Dropship inbound to Foxtrot, not to you. Sorry, Kestrel.',
+    'They just keep coming over that ridge.', 'Good kills, Kestrel. Keep pouring it on.', 'Echo is out of ammo. Echo is fixing bayonets.', 'Comms are breaking up. Hold, hold, hold.'],
+  low: ['Kestrel, your line is buckling! Hold on!', 'Kestrel-9, you are being overrun. Do not give ground!'],
+  titan: ['Something huge just broke the ridge line. All guns on it!'],
+  streak: ['Holy hell, Kestrel. Do not stop shooting.', 'That is a wall of dead bugs out there. Outstanding.'],
+};
+const RCALL = ['KESTREL ACTUAL', 'BRAVO-6', 'CHARLIE-2', 'FLEET OPS', 'ECHO LEAD', 'OVERWATCH'];
+let radT = 3, RAD = null;
+function radio(kind) { const L = RADIO[kind]; if (!L || !G.on || G.over) return; const who = kind === 'start' || kind === 'low' ? RCALL[0] : RCALL[(Math.random() * RCALL.length) | 0];
+  RAD = {who, txt: L[(Math.random() * L.length) | 0], t: 0}; radT = rnd(16, 30); if (Sfx.ctx) Sfx.play('radio', {vol: .3, vr: .05, rate: rnd(.92, 1.08)}); }
+const FLY = SHIP.clone(); FLY.visible = false; scene.add(FLY); let flyT = 25, fly = null;
+const FLANK = [{x: -430, z: -140, bt: 0, t: 2}, {x: 470, z: -260, bt: 0, t: 6}, {x: -150, z: -620, bt: 0, t: 9}];
+let gust = 0, gustV = 0;
 function stepWorldFx(dt, time) {
   for (const f of FIRES) { if (Math.random() < dt * 30 * f.s) PA.add(f.p.x + rnd(-1, 1) * f.s, f.p.y, f.p.z + rnd(-1, 1) * f.s, rnd(-.3, .3), rnd(1.5, 3) * f.s, rnd(-.3, .3), rnd(.5, 1.1), f.s * rnd(1, 1.8), f.s * .3, 2.2, .8, .2, .8, -1);
     if (Math.random() < dt * 8 * f.s) PS.add(f.p.x, f.p.y + f.s, f.p.z, rnd(-.5, .5) + 1.2, rnd(2, 3.5), rnd(-.5, .5), rnd(5, 9), f.s, f.s * 6, .07, .05, .045, .6, -.15, .1);
@@ -1302,6 +1345,22 @@ function stepWorldFx(dt, time) {
     for (let i = 0; i < 6; i++) PA.add(x, H0(x, z) + rnd(0, 10), z, rnd(-5, 5), rnd(5, 20), rnd(-5, 5), rnd(.3, .9), rnd(25, 50), 10, 4, 1.6, .6, 1);
     skyM.uniforms.flash.value = .5; const pan = clamp(-Math.sin(angD(P.yaw, a)), -1, 1); Sfx.play('boom', {vol: .5, at: d / 340, pan, lp: 600}); }
   skyM.uniforms.flash.value *= Math.exp(-dt * 5);
+  if (G.on && !G.over) { if ((radT -= dt) <= 0) radio(G.runT < 6 ? 'start' : 'idle'); if (RAD) RAD.t += dt; if (RAD && RAD.t > 6) RAD = null; }
+  // dropship flyover, low and loud, from behind the line out toward the hive
+  if (!fly && (flyT -= dt) <= 0) { flyT = rnd(35, 70); fly = {x: rnd(-50, 50), y: rnd(32, 55), z: 160, vx: rnd(-6, 6)}; FLY.visible = true; if (Sfx.ctx) Sfx.play('flyby', {vol: .55, vr: .05, pan: clamp((fly.x - P.x) / 60, -.8, .8)}); }
+  if (fly) { fly.z -= dt * 80; fly.x += fly.vx * dt; FLY.position.set(fly.x, fly.y, fly.z); FLY.rotation.set(-.05, 0, Math.sin(time) * .05);
+    if (Math.random() < dt * 30) PS.add(fly.x + rnd(-6, 6), fly.y, fly.z + 4, 0, 0, 0, rnd(.6, 1.2), 1, 4, .4, .38, .36, .15);
+    if (fly.z < -90 && fly.z > -96 && !fly.fl) { fly.fl = 1; for (let i = 0; i < 6; i++) PA.add(fly.x, fly.y - 1, fly.z, rnd(-12, 12), rnd(-4, 6), rnd(-8, 4), rnd(3, 5), 1.2, .8, 3, 1.4, .5, 1, 2, .3); } // drops flares
+    if (fly.z < -650) { fly = null; FLY.visible = false; } }
+  // other outposts fighting it out on the horizon: tracer streams, flashes, a faint crackle
+  for (const F of FLANK) { if ((F.t -= dt) <= 0) { F.bt = rnd(1.5, 4); F.t = F.bt + rnd(2, 7); F.a = rnd(-.6, .6); }
+    if (F.bt > 0) { F.bt -= dt; const y = H0(F.x, F.z) + 4; if (Math.random() < dt * 22) { const a = F.a + rnd(-.25, .25), sp = rnd(160, 220); PA.add(F.x, y, F.z, Math.sin(a) * sp * .4 + (-F.x) * .15, rnd(30, 80), Math.cos(a) * sp * .4 - 40, rnd(.6, 1.1), 2.2, 1.5, 3, 1.2, .5, 1, 30); }
+      if (Math.random() < dt * 1.2) for (let i = 0; i < 3; i++) PA.add(F.x + rnd(-30, 30), y + rnd(0, 8), F.z + rnd(-30, 30) - 60, rnd(-4, 4), rnd(4, 14), rnd(-4, 4), rnd(.3, .7), rnd(14, 26), 6, 4, 1.6, .6, 1);
+      if (Sfx.ctx && Math.random() < dt * 9) { const d = Math.hypot(F.x - P.x, F.z), pan = clamp(-Math.sin(angD(P.yaw, Math.atan2(-F.x, -F.z))), -1, 1); Sfx.play('shot', {vol: .05, pan, lp: 450, rate: .7, at: Math.min(1.5, d / 340 * .3)}); } } }
+  // wind gusts: louder wind and a sheet of dust blowing across
+  gustV += (rnd(-1, 1) * .8 - gust * .25) * dt; gust = clamp(gust + gustV * dt, 0, 1); if (Math.random() < dt * .05) gustV += .6;
+  if (Sfx.ctx) { Sfx.wind.gn.gain.setTargetAtTime(.1 + gust * .2, Sfx.ctx.currentTime, .3); Sfx.wind.fl.frequency.setTargetAtTime(300 + gust * 500, Sfx.ctx.currentTime, .3); }
+  if (Math.random() < dt * gust * (HI() ? 40 : 15)) PS.add(P.x + rnd(-60, 30), rnd(.2, 4), rnd(-70, 0), rnd(6, 11), rnd(-.2, .4), rnd(-1, 1), rnd(3, 6), rnd(.6, 1.4), rnd(3, 6), .68, .5, .36, .1);
   for (const B of BEAMS) { B.ph += dt * .25; B.m.rotation.set(.35 + Math.sin(B.ph * 1.3) * .2, Math.sin(B.ph) * .8 + (B.x < 0 ? .3 : -.3), 0); }
   // ambient chitter
   if (Sfx.ctx && bugs.length && Math.random() < dt * Math.min(6, bugs.length * .05)) { const b = bugs[(Math.random() * bugs.length) | 0]; if (!b.dead) { const a = Sfx.at(b.x, b.z); Sfx.play(Math.random() < .2 ? 'screech' : 'chitter', {vol: .25 * a.vol, pan: a.pan, rate: rnd(.7, 1.4), lp: 2500}); } }
@@ -1315,7 +1374,7 @@ const adsSens = () => 1 - P.ads * .5;
 function wantFire() { return testFire !== null ? testFire : (SET.auto || mouseDown || fireTouch); }
 function stepGunner(g, dt, local) {
   const want = local ? wantFire() && !G.over : !!g.fire;
-  g.spin = clamp(g.spin + (want ? dt / .4 : -dt / 1.4), 0, 1);
+  g.spin = clamp(g.spin + (want ? dt / .6 : -dt / 2.2), 0, 1); // heavy barrels: slower spin-up, long run-down
   if (local && P.vent > 0) { P.vent -= dt; }
   const can = g.spin > .97 && (!local || P.vent <= 0);
   const od = G.buff && G.buff.k === 0;
@@ -1349,7 +1408,7 @@ function stepFeel(dt, time) {
   [P.cy, P.cyV] = spring(P.cy, P.cyV, 60, 12);
   [P.swayX, P.swayVX] = spring(P.swayX, P.swayVX, 90, 12);
   [P.swayY, P.swayVY] = spring(P.swayY, P.swayVY, 90, 12);
-  P.trauma = Math.max(firing ? (.1 + P.heat * .08) * (1 - P.ads * .6) : 0, P.trauma - dt * 1.8); P.bloom = Math.max(0, P.bloom - dt * (firing ? .6 : 3));
+  P.trauma = Math.max(firing ? (.13 + P.heat * .1 + smooth(Math.min(1, P.fireT / 3)) * .08) * (1 - P.ads * .55) : 0, P.trauma - dt * 1.8); P.bloom = Math.max(0, P.bloom - dt * (firing ? .6 : 3));
   const sh = P.trauma * P.trauma;
   const nx = (Math.sin(time * 47.3) + Math.sin(time * 31.7 + 1) * .6) * sh * .012, ny = (Math.sin(time * 53.1 + 2) + Math.sin(time * 27.9) * .6) * sh * .012;
   const lg = localGunner(); const pitch = (lg ? lg.pitch : -.05);
@@ -1361,13 +1420,14 @@ function stepFeel(dt, time) {
   cam.rotation.set(pitch + P.cp * .02 + ny + breath, P.yaw + P.cy * .01 + nx, nx * .3, 'YXZ');
   // gun pose
   const idle = firing ? 0 : 1;
-  FPG.position.set(GUN_BASE.x - ad * .03 + P.swayX * .02 + Math.sin(time * 1.1) * .003 * idle + rnd(-1, 1) * .002 * sh * 4, GUN_BASE.y - ad * .05 + P.swayY * .02 + Math.sin(time * 1.4) * .004 * idle + P.gp * .004, GUN_BASE.z + ad * .06 + P.kick * .012 * (1 - ad * .5));
+  FPG.position.set(GUN_BASE.x - ad * .03 + P.swayX * .02 + (firing ? rnd(-1, 1) * .0025 : 0) + Math.sin(time * 1.1) * .003 * idle + rnd(-1, 1) * .002 * sh * 4, GUN_BASE.y - ad * .05 + P.swayY * .02 + (firing ? rnd(-1, 1) * .0025 : 0) + Math.sin(time * 1.4) * .004 * idle + P.gp * .004, GUN_BASE.z + ad * .06 + P.kick * .012 * (1 - ad * .5));
   FPG.rotation.set(P.gp * .02 - P.swayY * .03, -P.swayX * .04 + .02, P.cy * .01 + P.swayX * .05);
   muzL.intensity = firing && Math.random() < .8 ? rnd(2, 4.5) : 0; FPG.userData.muzzle.getWorldPosition(muzL.position);
 }
 
 // ---------------- main flow
 function resetWorld() {
+  RAD = null; radT = 2.5; fly = null; FLY.visible = false; G.hs = 0;
   for (const b of bugs.slice()) freeBug(b); nextId = 1;
   Object.assign(G, {wave: 0, quota: 0, spawnAcc: 0, gap: 1.5, kills: 0, shield: 100, hp: 100, hurtT: 9, over: false, evq: [], dmgDirs: [], attackers: 0, runT: 0, combo: 0, comboT: 0, comboBest: 0, cleared: false, bruteSeen: false, lowWarn: false, lost: false});
   resetSpecials();
@@ -1410,6 +1470,7 @@ function lockPtr() { try { const r = canvas.requestPointerLock && canvas.request
 let last = performance.now(), time = 0;
 let noRender = false;
 function step(dt) {
+  if (G.hs > 0) { G.hs -= dt; dt *= .2; } // brief hit-stop on big kills
   if (G.slow > 0) { G.slow -= dt; dt *= .25 + .75 * smooth(1 - G.slow / 1.8); } // titan kill slow-mo
   time += dt; G.t += dt;
   const live = G.on && !(G.paused && Net.role === 'solo');
@@ -1442,7 +1503,8 @@ function step(dt) {
   stepFeel(dt, time);
   updateGunVisual(FPG, P.spin, P.heat, P.firing, time, dt);
   for (const g of G.gunners.values()) if (g.model) { g.model.rotation.y = g.yaw; const gun = g.model.userData.gun; gun.rotation.x = g.pitch; updateGunVisual(gun, g.spin, g.heat, g.spin > .97 && g.fire, time, dt); }
-  Sfx.gun(P.spin, P.heat, P.vent > 0);
+  Sfx.gun(P.spin, P.heat, P.vent > 0, P.firing);
+  if (P.firing) P.burst = (P.burst || 0) + dt; else { if (P.burst > .35 && Sfx.ctx) Sfx.play('tail', {vol: Math.min(.5, .2 + P.burst * .08), vr: .05, lp: 900}); P.burst = 0; }
   PA.step(dt); PS.step(dt); PG.step(dt); stepDecals(dt); stepChunks(chunks, CHK, 300, dt); stepChunks(legsD, LGD, 80, dt, true); stepTracers(dt); stepCases(dt);
   stepWorldFx(dt, time);
   G.dmgFlash = Math.max(0, G.dmgFlash - dt * 1.5); G.hitT -= dt; G.killT -= dt; if ((G.comboT -= dt) <= 0) G.combo = 0; G.comboPop = Math.max(0, (G.comboPop || 0) - dt); G.comboFlash = Math.max(0, (G.comboFlash || 0) - dt * 1.2); for (const d of G.dmgDirs) d.t -= dt; G.dmgDirs = G.dmgDirs.filter(d => d.t > 0);

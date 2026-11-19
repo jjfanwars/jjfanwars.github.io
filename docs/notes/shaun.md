@@ -30,6 +30,12 @@ The owner's design brief is **brain-off**: no skill needed beyond sweeping the g
 - **Supply canisters** (`CANS`, `dropCan`, `stepCans`, `popCan`): from wave 2 the host drops one every 30-46 s (`G.dropT`), parachuting from 55 m to 16-32 m out. They pop when any squad gunner's spinning gun points within ~0.06 rad + size of one (host decides). They expire after 26 s. Kinds `CANK`: 0 OVERDRIVE (12 s, 60 rounds/s, heat bleeds off, more tracers), 1 SHOCK ROUNDS (12 s, every other hit arcs to 2 more bugs: `shockArc`), 2 ARMOUR CELL (+25 armour, full shield; more likely below 55 armour). `G.buff` = {k, t}. HUD shows a diamond marker and label on screen, plus the buff timer. Events `['D', id, x*10, z*10, k]`, `['O', id]` (popped), `['X', id]` (expired).
 - `resetSpecials` (called from `resetWorld`) clears all of it.
 
+## Feel pass (19 Nov 2026, playtester asked for gun weight, bug movement, deaths, atmosphere)
+- **Gun weight:** spin-up 0.6 s, run-down 2.2 s. Per round: `thump` (low body, every 2nd), faint dune slapback (every 4th), stronger kick/climb springs, and real recoil: `P.pitch` climbs 0.0008 rad per round (less in ADS) with small yaw wander, so you hold it down. `Sfx.roar` (bandpassed noise loop) under sustained fire; letting go after > 0.35 s plays the `tail` echo (`P.burst`). Muzzle blast lifts dust off the sandbags; gun vibrates while firing; shake grows over 3 s of fire. Brute kills within 70 m give a 60 ms hit-stop (`G.hs`, dt x0.2).
+- **Bug movement:** planted-foot gait in `drawBug` (60% stance sliding back at body speed, 40% lifted swing; `b.ph` rate 2.7 x sp / s, stride 0.7), body pitches with the slope and corpse pile, speed surges per bug, and near the line jammed bugs climb over each other (`b.clm` from separation overlap within 14 m of the goal, added to `b.y` on the host so guests get it via snapshots).
+- **Deaths:** harder knock-back, half of non-gibbed bugs thrash for 1.2-2.6 s (`b.thr`, big slow leg flails), ichor pumps out for 1.6 s and sliding corpses kick dust (within 70 m), death sounds more often.
+- **Atmosphere:** radio chatter (`RADIO` lines, `radio(kind)`: start, idle every 16-30 s, low armour, titan, streak 150s; `radio` buffer is a click + garbled band-limited talk; typed out in a box at the bottom, `RAD`). Dropship flyovers every 35-70 s (`FLY` = clone of `SHIP`, `flyby` sound, drops flares). Other outposts fighting on the horizon (`FLANK`: tracer bursts, flashes, faint crackle). Wind gusts (`gust` drives wind loop gain/cutoff and sheets of blowing dust).
+
 ## Code map (`shaun/game.js`; UI in `shaun/index.html`)
 - **Renderer:** own post chain (`render`). The scene goes to a HalfFloat MSAA RT, then a bright pass, two blur levels, and the composite `compM`, which does ACES, gamma, vignette, grain, chromatic aberration and the damage tint. The renderer itself has `NoToneMapping`. Low quality (`SET.gfx`) lowers the pixel ratio and turns off shadows and MSAA.
 - **World:**
@@ -84,6 +90,7 @@ The owner's design brief is **brain-off**: no skill needed beyond sweeping the g
 - Headless Chromium needs `--use-angle=swiftshader --enable-unsafe-swiftshader`. It is very slow at this scene size, so keep the step counts small.
 
 ## Changelog
+- 19 Nov 2026, feel pass: heavier gun (thump, echo tail, roar, real muzzle climb, slower spin), planted-foot bug gait, slope pitch, bugs climbing each other at the line, death throes and pumping ichor, hit-stop on brutes, radio chatter, dropship flyovers, distant outpost firefights, wind gusts.
 - 19 Nov 2026: aim assist removed: free aim up/down/left/right, rounds are real ray hits where the crosshair points.
 - 19 Nov 2026: no more waves: one endless, escalating horde from the first second, kill streak counter with armour payouts, kills patch armour, more gibs, best score = kills.
 - 19 Nov 2026: bugs reshaped from spider-like to upright warrior bugs (high-arched spike legs, scythe arms, raised tail, pincers). Manual fire by default (hold LMB / touch FIRE); auto-fire is now an option.
