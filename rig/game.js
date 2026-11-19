@@ -29,7 +29,7 @@ const hexS = c => '#' + c.toString(16).padStart(6, '0');
 
 // ---------------- net (jjfanwars relay)
 const RELAY_URL = 'wss://jjfanwars-relay.businessautomationvic.workers.dev';
-const GAME_V = 78;
+const GAME_V = 79;
 const Net = {
   tag: '[Rig]', role: 'solo', ws: null, peers: new Map(), code: '', relayT: {pose: 1}, id: '', name: '', handlers: {}, retry: 0, started: false,
   enc: new TextEncoder(), dec: new TextDecoder(),
@@ -5880,8 +5880,8 @@ function updateWorldFx(dt) {
   G.uwC = G.subIn ? mix(G.uwC || 0, lockWet() ? 1 : 0, Math.min(1, dt * 12)) : G.uw; // look vs camera-in-water (the sub's hull keeps you dry)
   { const und = G.uw > .5, U = MAT.sea.userData.U; sky.uw.value = und ? 1 : 0; U.uUs.value.w = und ? 1 : 0;
     if (und) { // underwater: clearer for the first 30 m so wreck silhouettes read, then the deep closes in; the sky becomes a lit-from-above gradient
-      const dl = .25 + .75 * TOD.day, dp = cw - cam.position.y, dpt = clamp(dp / 80, 0, 1); scene.fog.color.setRGB(.012 * dl, .07 * dl, .08 * dl).multiplyScalar(1 - dpt * .92); scene.background.copy(scene.fog.color);
-      scene.fog.density = mix(.035, mix(.06, .045, dpt), smooth((dp - 30) / 12)); const fc = scene.fog.color; sky.deepC.value.copy(fc).multiplyScalar(.68); sky.surfC.value.copy(fc).multiplyScalar(2.2); sky.uwk.value = TOD.day * (1 - dpt) * (1 - st * .6);
+      const dl = .25 + .75 * TOD.day, dp = cw - cam.position.y, dpt = clamp(dp / 80, 0, 1); uwWater(scene.fog.color, dp, dl * (1 - st * .45)); scene.fog.color.multiplyScalar(1 - dpt * .8); scene.background.copy(scene.fog.color);
+      scene.fog.density = mix(mix(.026, .035, smooth(dp / 25)), mix(.06, .045, dpt), smooth((dp - 30) / 12)); const fc = scene.fog.color; sky.deepC.value.copy(fc).multiplyScalar(.68); sky.surfC.value.copy(fc).multiplyScalar(2.2); sky.uwk.value = TOD.day * (1 - dpt) * (1 - st * .6);
       const k = (.08 + .92 * TOD.day) * (1 - st * .5) * (1 - dpt * .7); U.uUs.value.set(.3 * k + fc.r, .5 * k + fc.g, .5 * k + fc.b, 1); U.uUd.value.copy(fc).multiplyScalar(.7); } }
   if (SNOW) { SNOW.visible = G.uw > .5 && (!G.subIn || lockWet()); if (SNOW.visible) { const u = SNOW.material.uniforms; u.uT.value = G.wt; u.uC.value.copy(cam.position); u.uCol.value.copy(scene.fog.color).multiplyScalar(3).addScalar(.05 * (.3 + .7 * TOD.day)); } }
   const sbv = G.uw > .3 || (B.dep || 0) > .5; if (SEABED && SEABED.material.userData.sh) { const u = SEABED.material.userData.sh.uniforms; u.uT.value = G.wt; u.uC.value = TOD.day * (1 - G.storm * .7); } if (SEABED) { SEABED.visible = sbv; if (sbv && Math.hypot(cam.position.x - SEABED.userData.cx, cam.position.z - SEABED.userData.cz) > 40) seabedAt(cam.position.x, cam.position.z); }
@@ -9704,3 +9704,35 @@ const OHN = 1.0;
   if (!hit) { P.ledgeT = 0; return r; } P.ledgeT = (P.ledgeT || 0) + dt; if (P.ledgeT < .3) return r; P.ledgeT = 0;
   const f2 = floorAt(hit.x, hit.z, hit.y + .5, true); if (!f2 || Math.abs(f2.y - hit.y) > .4) return r;
   P.sw = 0; P.dv = 0; P.deep = 0; P.x = hit.x; P.z = hit.z; P.y = f2.y; P.vx = P.vz = P.vy = 0; P.lspV = 0; G.lspV = (G.lspV || 0) + 4; Snd.splash && Snd.splash(); Snd.step && Snd.step('wood', 1.2); } catch (e) {} return r; }; }
+
+// ===== underwater light, after Abyssal Garden (github.com/Noniv/abyssal-garden, MIT, (c) 2026 Maksymilian Dendura; see rig/THIRD_PARTY.md):
+// the water colour is a turquoise base dimmed per channel with depth (red goes first), and the fog absorbs per channel too, so distant things sink
+// into blue-green instead of a flat grey. The renderer's FogExp2 density is handed to shaders as a negative number while the camera is underwater
+// (a getter on scene.fog, flipped only inside RND.render), and the patched fog chunk then uses exp(-k * rgb * d) instead of the exp2 mix.
+const UW_WCOL = [.16, .58, .90], UW_KD = [.056, .0245, .017];
+function uwWater(c, dp, light) { const d = Math.max(0, dp); return c.setRGB(UW_WCOL[0] * Math.exp(-UW_KD[0] * d * 1.1), UW_WCOL[1] * Math.exp(-UW_KD[1] * d * 1.1), UW_WCOL[2] * Math.exp(-UW_KD[2] * d * 1.1)).multiplyScalar(.44 * light + .012); }
+THREE.ShaderChunk.fog_fragment = `#ifdef USE_FOG
+	#ifdef FOG_EXP2
+		float fogFactor = 1.0 - exp( - fogDensity * fogDensity * vFogDepth * vFogDepth );
+		vec3 fogMixK = vec3( fogFactor );
+		if ( fogDensity < 0.0 ) { vec3 fogExt = exp( - abs( fogDensity ) * 1.25 * vec3( 2.2, 1.0, .8 ) * vFogDepth ); fogMixK = 1.0 - fogExt; fogFactor = max( fogMixK.g, 1e-4 ); }
+	#else
+		float fogFactor = smoothstep( fogNear, fogFar, vFogDepth );
+		vec3 fogMixK = vec3( fogFactor );
+	#endif
+	gl_FragColor.rgb = mix( gl_FragColor.rgb, fogColor, fogMixK / max( fogFactor, 1e-4 ) * fogFactor );
+#endif`;
+{ const F = scene.fog; let d = F.density; Object.defineProperty(F, 'density', {get() { return G.fogNeg ? -d : d; }, set(v) { d = v; }, configurable: true});
+  const r0 = RND.render.bind(RND); RND.render = function (sc, cm) { G.fogNeg = (G.uw || 0) > .5 && !G.subIn && sc === scene; try { return r0(sc, cm); } finally { G.fogNeg = false; } }; }
+// glinting specks along the kelp (gold and green, twinkling), rebuilt with the kelp beds round the camera
+const KGL = {pts: null, n: 0};
+function kglBuild() { if (KGL.pts) return; const N = 2700, g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(N * 3), 3)); g.setAttribute('ph', new THREE.BufferAttribute(new Float32Array(N), 1)); g.setDrawRange(0, 0);
+  const m = new THREE.ShaderMaterial({transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, uniforms: {uT: {value: 0}, uK: {value: 1}},
+    vertexShader: 'attribute float ph; uniform float uT; varying float vA; varying float vH; void main(){ vec4 mv = modelViewMatrix * vec4(position, 1.); float d = -mv.z; float tw = .5 + .5 * sin(uT * (1.3 + fract(ph * 7.1) * 2.) + ph * 40.); vA = tw * tw * exp(-d * .045); vH = fract(ph * 13.7); gl_PointSize = (2. + 3. * tw) * clamp(28. / d, .6, 3.); gl_Position = projectionMatrix * mv; }',
+    fragmentShader: 'uniform float uK; varying float vA; varying float vH; void main(){ vec2 c = gl_PointCoord - .5; float r = length(c); if (r > .5) discard; vec3 col = mix(vec3(1., .86, .45), vec3(.55, 1., .62), step(.55, vH)); gl_FragColor = vec4(col * (1. - r * 2.) * vA * uK, 1.); }'});
+  KGL.pts = new THREE.Points(g, m); KGL.pts.frustumCulled = false; KGL.pts.visible = false; scene.add(KGL.pts); }
+{ const f0 = uwxFill; uwxFill = function () { const r = f0.apply(this, arguments); try { kglBuild(); const cp = cam.position, cx = Math.floor(cp.x / 48), cz = Math.floor(cp.z / 48), pa = KGL.pts.geometry.attributes.position, ph = KGL.pts.geometry.attributes.ph; let n = 0;
+  for (let i = -2; i <= 2; i++) for (let j = -2; j <= 2; j++) { const c = uwxCell(cx + i, cz + j); if (!c || !c.kelp) continue; for (const [x, b, z, h, a] of c.kelp) for (let k = 0; k < 6 && n < pa.count; k++) { const u = Math.abs(Math.sin(x * 12.9 + z * 78.2 + k * 3.7)), v = Math.sin(a * 5 + k * 2.1);
+    pa.setXYZ(n, x + Math.cos(a + k) * .25 * v, b + h * (.15 + .8 * u), z + Math.sin(a + k) * .25 * v); ph.setX(n, u); n++; } }
+  pa.needsUpdate = true; ph.needsUpdate = true; KGL.pts.geometry.setDrawRange(0, n); KGL.n = n; } catch (e) { console.warn('kgl', e); } return r; }; }
+{ const f0 = hud; hud = function () { const r = f0.apply(this, arguments); try { if (KGL.pts) { KGL.pts.visible = !!(UWX.kelp && UWX.kelp.visible) && KGL.n > 0; if (KGL.pts.visible) { KGL.pts.material.uniforms.uT.value = G.wt; KGL.pts.material.uniforms.uK.value = .35 + .65 * (1 - (TOD.day || 0) * .5); } } } catch (e) {} return r; }; }
