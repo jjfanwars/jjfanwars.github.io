@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Last Stand Requests</title>
+<!-- Request box for LAST STAND. Builds a prefilled GitHub new-issue link (label shaun-request); no tokens here. Lists open requests via the public API. -->
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+:root { --cy:#6ff7ee; --dim:#5d9c98; --line:rgba(111,247,238,.22); --warn:#ffb347; }
+* { box-sizing:border-box; }
+html,body { margin:0; background:#071114; color:#d8f4f2; font:16px/1.45 "Rajdhani",system-ui,sans-serif; }
+body.embed { background:transparent; }
+main { max-width:680px; margin:0 auto; padding:22px 18px 40px; }
+h1 { margin:0 0 4px; font-size:34px; letter-spacing:.14em; color:#fff; } h1 span { color:var(--warn); }
+p.sub { margin:0 0 16px; color:var(--dim); font:13px "Share Tech Mono",monospace; letter-spacing:.08em; }
+textarea { width:100%; min-height:130px; background:#0b1c20; border:1px solid var(--line); color:#fff; padding:12px; font:16px "Rajdhani",sans-serif; resize:vertical; }
+input { width:100%; background:#0b1c20; border:1px solid var(--line); color:#fff; padding:10px 12px; font:16px "Rajdhani",sans-serif; margin-bottom:8px; }
+.row { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
+button { flex:1; padding:11px 14px; border:1px solid var(--line); background:#0f2c30; color:#fff; font:700 16px "Rajdhani",sans-serif; letter-spacing:.08em; cursor:pointer; }
+button.go { background:linear-gradient(90deg,#b5420e,#e07a1c); border:0; }
+button:hover { filter:brightness(1.25); }
+#msg { min-height:20px; margin-top:10px; color:var(--cy); font:13px "Share Tech Mono",monospace; }
+h2 { font-size:18px; letter-spacing:.15em; color:var(--cy); margin:28px 0 8px; border-bottom:1px solid var(--line); padding-bottom:4px; }
+ul { list-style:none; padding:0; margin:0; } li { padding:8px 0; border-bottom:1px solid rgba(255,255,255,.06); }
+li a { color:#fff; text-decoration:none; } li a:hover { color:var(--cy); } li small { color:var(--dim); font:12px "Share Tech Mono",monospace; margin-left:6px; }
+.back { color:var(--dim); font-size:14px; text-decoration:none; }
+</style>
+</head>
+<body>
+<main>
+  <h1>REQUEST <span>BOX</span></h1>
+  <p class="sub">Want more bugs, a new gun, a new map? Write it here. It goes to GitHub so it can be built later.</p>
+  <input id="title" maxlength="80" placeholder="Short title (optional)">
+  <textarea id="text" placeholder="What should be added or changed?"></textarea>
+  <div class="row"><button class="go" id="send">Send to GitHub</button><button id="copy">Copy text</button></div>
+  <div id="msg"></div>
+  <h2>QUEUED REQUESTS</h2>
+  <ul id="list"><li><small>Loading...</small></li></ul>
+  <p style="margin-top:24px"><a class="back" id="back" href="./">&larr; Back to the game</a></p>
+</main>
+<script>
+'use strict';
+const REPO = 'jjfanwars/jjfanwars.github.io', LABEL = 'shaun-request';
+if (/[?&]embed/.test(location.search)) { document.body.classList.add('embed'); document.getElementById('back').style.display = 'none'; }
+const $ = id => document.getElementById(id);
+function parts() {
+  const text = $('text').value.trim(), t = $('title').value.trim() || text.split('\n')[0].slice(0, 60);
+  return {title: '[shaun] ' + (t || 'Game request'), body: text + '\n\n---\nSent from the Last Stand request box (shaun/).'};
+}
+$('send').onclick = () => {
+  const p = parts(); if (!$('text').value.trim()) { $('msg').textContent = 'Type your request first.'; return; }
+  const url = 'https://github.com/' + REPO + '/issues/new?title=' + encodeURIComponent(p.title) + '&body=' + encodeURIComponent(p.body) + '&labels=' + LABEL;
+  const w = window.open(url, '_blank', 'noopener');
+  $('msg').textContent = w === null ? 'Pop-up blocked. Use Copy text, or allow pop-ups.' : 'GitHub opened in a new tab. Press "Submit new issue" there (you need to be signed in).';
+};
+$('copy').onclick = async () => {
+  const p = parts(), s = p.title + '\n\n' + p.body;
+  try { await navigator.clipboard.writeText(s); $('msg').textContent = 'Copied. Paste it into a new issue at github.com/' + REPO + '/issues'; }
+  catch (e) { $('text').select(); $('msg').textContent = 'Select the text and copy it by hand (Ctrl+C).'; }
+};
+fetch('https://api.github.com/repos/' + REPO + '/issues?labels=' + LABEL + '&state=open&per_page=50').then(r => r.json()).then(a => {
+  const ul = $('list'); ul.innerHTML = '';
+  if (!Array.isArray(a) || !a.length) { ul.innerHTML = '<li><small>Nothing queued yet.</small></li>'; return; }
+  for (const i of a) { const li = document.createElement('li'), l = document.createElement('a'); l.href = i.html_url; l.target = '_blank'; l.rel = 'noopener'; l.textContent = i.title.replace(/^\[shaun\]\s*/, ''); li.append(l); const s = document.createElement('small'); s.textContent = '#' + i.number + ' ' + i.created_at.slice(0, 10); li.append(s); ul.append(li); }
+}).catch(() => { $('list').innerHTML = '<li><small>Could not load the list right now.</small></li>'; });
+</script>
+</body>
+</html>

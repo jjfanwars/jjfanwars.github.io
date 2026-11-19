@@ -67,6 +67,7 @@ Browser war game in one file: `index.html` (Three.js r170, inlined: the ESM buil
 - `night/`: Whisperpine, solo survival horror. Notes: `docs/notes/night.md`.
 - `hollow/`: Black Hollow, co-op survival horror. Notes: `docs/notes/hollow.md`.
 - `rig/`: Station Nine: Open Sea, co-op sea exploration. Notes: `docs/notes/rig.md`.
+- `shaun/`: Last Stand, first-person horde shooter (rotary cannon vs warrior bugs, squad co-op). Notes: `docs/notes/shaun.md`. Check open issues labelled `shaun-request` for queued work.
 - `legal/`: Courtroom Duel, Legal Studies revision game (not jjfanwars). Notes: `docs/notes/legal.md`.
 
 ## Recently done (Nov 2026)

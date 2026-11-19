@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Last Stand</title>
+<!--
+  LAST STAND: first-person horde shooter. Hold the line with a rotary cannon against endless waves of warrior bugs.
+  Everything (world, bugs, gun, audio, HUD) is in game.js; Three.js r170 classic build from ../three-r170.js.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+:root { --cy:#6ff7ee; --cy2:rgba(111,247,238,.55); --dim:#5d9c98; --warn:#ffb347; --red:#ff4433; --panel:rgba(4,14,18,.86); --line:rgba(111,247,238,.22); }
+* { box-sizing:border-box; }
+html,body { margin:0; height:100%; background:#120806; color:#d8f4f2; font:15px/1.4 "Rajdhani",system-ui,sans-serif; overflow:hidden; user-select:none; }
+canvas#gl { position:fixed; inset:0; width:100%; height:100%; display:block; }
+canvas#hud { position:fixed; inset:0; width:100%; height:100%; pointer-events:none; z-index:4; }
+.hidden { display:none !important; }
+#visor { position:fixed; inset:-8vh -6vw; pointer-events:none; z-index:3; border-radius:50% / 46%;
+  box-shadow: inset 0 0 0 2px rgba(111,247,238,.10), inset 0 0 90px 30px rgba(0,0,0,.75), inset 0 0 0 9vmin rgba(0,0,0,.25); }
+#visor:before { content:""; position:absolute; left:50%; top:7vh; width:34vw; height:2px; transform:translateX(-50%); background:linear-gradient(90deg,transparent,rgba(111,247,238,.35),transparent); }
+#scan { position:fixed; inset:0; pointer-events:none; z-index:3; opacity:.05; background:repeating-linear-gradient(180deg,#000 0 1px,transparent 1px 3px); animation:fl 4s infinite steps(40); }
+@keyframes fl { 0%,100%{opacity:.05} 47%{opacity:.08} 48%{opacity:.03} 50%{opacity:.06} }
+#vig { position:fixed; inset:0; pointer-events:none; z-index:2; background:radial-gradient(ellipse at center,transparent 50%,rgba(0,0,0,.65) 100%); }
+#dmg { position:fixed; inset:0; pointer-events:none; z-index:3; opacity:0; background:radial-gradient(ellipse at center,transparent 30%,rgba(200,10,0,.75) 100%); }
+#call { position:fixed; left:50%; top:28%; transform:translate(-50%,-50%); z-index:5; pointer-events:none; text-align:center; font-family:"Rajdhani",sans-serif; color:var(--cy); opacity:0; transition:opacity .5s; text-shadow:0 0 18px rgba(111,247,238,.6); }
+#call b { display:block; font-size:72px; letter-spacing:.3em; font-weight:700; line-height:1; }
+#call small { font:14px "Share Tech Mono",monospace; letter-spacing:.4em; color:var(--warn); }
+.scr { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; padding:16px; z-index:10; overflow:auto; background:rgba(8,3,2,.55); }
+#menu { background:linear-gradient(180deg,rgba(10,2,0,.2),rgba(10,3,0,.75)); }
+.card { width:min(820px,100%); background:var(--panel); border:1px solid var(--line); padding:26px 28px; max-height:100%; overflow:auto; box-shadow:0 0 40px rgba(111,247,238,.08), inset 0 0 30px rgba(111,247,238,.04); clip-path:polygon(0 0,calc(100% - 22px) 0,100% 22px,100% 100%,22px 100%,0 calc(100% - 22px)); }
+h1 { margin:0; font-size:64px; font-weight:700; letter-spacing:.18em; line-height:.95; color:#fff; text-shadow:0 0 30px rgba(255,120,40,.55); }
+h1 span { color:var(--warn); }
+.sub { color:var(--dim); font:13px "Share Tech Mono",monospace; letter-spacing:.2em; margin:10px 0 18px; text-transform:uppercase; }
+.cols { display:grid; grid-template-columns:1.2fr 1fr; gap:24px; } @media (max-width:720px) { .cols { grid-template-columns:1fr; } h1 { font-size:40px; } }
+label { display:block; font:11px "Share Tech Mono",monospace; text-transform:uppercase; letter-spacing:.16em; color:var(--dim); margin:12px 0 5px; }
+input[type=range] { width:100%; accent-color:var(--cy); }
+.seg { display:flex; gap:4px; } .seg button { flex:1; padding:7px 6px; font-size:14px; background:#0b1c20; border:1px solid transparent; }
+.seg button.on { border-color:var(--cy); color:#fff; background:#0f2c30; }
+button { padding:10px 16px; border:1px solid var(--line); background:#0b1c20; color:#d8f4f2; font:600 15px "Rajdhani",sans-serif; letter-spacing:.08em; cursor:pointer; }
+button:hover { filter:brightness(1.3); }
+button.go { background:linear-gradient(90deg,#b5420e,#e07a1c); border:0; color:#fff; font-size:22px; letter-spacing:.3em; width:100%; padding:14px; margin-top:16px; text-transform:uppercase; }
+.keys { color:#9cc; font-size:15px; line-height:1.8; } .keys b { color:#fff; font:12px "Share Tech Mono",monospace; border:1px solid #2a5a5a; padding:0 6px; border-radius:3px; }
+.best { font:12px "Share Tech Mono",monospace; color:var(--warn); margin-top:10px; min-height:16px; }
+.row { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; } .row button { flex:1; }
+.back { color:var(--dim); font-size:13px; text-decoration:none; } .back:hover { color:var(--cy); }
+#end h2 { font-size:64px; letter-spacing:.25em; margin:0; color:var(--red); text-shadow:0 0 30px rgba(255,40,20,.6); }
+#end p { font:16px "Share Tech Mono",monospace; color:#cde; }
+#reqBox .card { width:min(720px,100%); height:min(760px,100%); padding:0; display:flex; flex-direction:column; }
+#reqBox iframe { flex:1; border:0; width:100%; background:transparent; }
+#reqBox .bar { display:flex; justify-content:flex-end; padding:8px 10px; border-bottom:1px solid var(--line); }
+.txt { background:#0b1c20; border:1px solid var(--line); color:#fff; padding:9px 10px; font:15px "Share Tech Mono",monospace; width:100%; }
+label input[type=checkbox] { accent-color:var(--cy); vertical-align:middle; }
+#hint { position:fixed; bottom:14px; left:50%; transform:translateX(-50%); z-index:5; font:12px "Share Tech Mono",monospace; color:var(--dim); letter-spacing:.15em; pointer-events:none; }
+</style>
+</head>
+<body>
+<canvas id="gl"></canvas>
+<div id="vig"></div>
+<div id="dmg"></div>
+<div id="visor" class="hidden"></div>
+<div id="scan"></div>
+<canvas id="hud" class="hidden"></canvas>
+<div id="call"><b id="callT">WAVE 1</b><small id="callS">CONTACTS INBOUND</small></div>
+<div id="hint" class="hidden">CLICK TO ENGAGE</div>
+
+<div id="menu" class="scr">
+  <div class="card">
+    <h1>LAST <span>STAND</span></h1>
+    <div class="sub">Outpost Kestrel-9 // Perimeter breached // No evac</div>
+    <div class="cols">
+      <div>
+        <p style="margin-top:0;color:#bcd">The dropship is down, the line is gone and the hive is coming over the dunes. You have a barricade, an energy shield and a six-barrel rotary cannon with an endless belt. Hold as long as you can.</p>
+        <div class="keys">
+          <b>MOUSE</b> / <b>A D</b> / <b>&larr; &rarr;</b> / drag: sweep the gun left and right<br>
+          The gun fires on its own and locks onto anything near the crosshair. Just point it at bugs.<br>
+          <b>F</b> auto-fire on/off (off: hold <b>LMB</b>) &nbsp; <b>R</b> / <b>RMB</b> vent &nbsp; <b>ESC</b> pause<br>
+          Squad: up to 4 friends on the same barricade. Host, send the code or link, they press Join.
+        </div>
+        <div class="best" id="best"></div>
+      </div>
+      <div>
+        <label>Mouse sensitivity</label><input type="range" id="sens" min="0.2" max="2.5" step="0.05">
+        <label>Master volume</label><input type="range" id="vol" min="0" max="1" step="0.01">
+        <label>Quality</label><div class="seg" id="gfx"><button data-v="high">High</button><button data-v="low">Low</button></div>
+        <label><input type="checkbox" id="auto"> Auto-fire (gun runs on its own, just sweep)</label>
+        <label>Callsign</label><input id="name" maxlength="14" class="txt">
+        <div class="row"><button id="bReq">Requests</button></div>
+      </div>
+    </div>
+    <button class="go" id="bStart">Solo: hold the line</button>
+    <div class="row"><button id="bHost">Host squad</button><input id="jCode" class="txt" maxlength="5" placeholder="CODE" style="width:110px;text-transform:uppercase"><button id="bJoin">Join squad</button></div>
+    <div class="best" id="netS" style="color:#9cc"></div>
+    <div style="margin-top:12px"><a class="back" href="../">&larr; jjfanwars</a></div>
+  </div>
+</div>
+
+<div id="pause" class="scr hidden">
+  <div class="card" style="width:min(460px,100%)">
+    <h1 style="font-size:42px">PAUSED</h1>
+    <label>Mouse sensitivity</label><input type="range" id="sens2" min="0.2" max="2.5" step="0.05">
+    <label>Master volume</label><input type="range" id="vol2" min="0" max="1" step="0.01">
+    <label><input type="checkbox" id="auto2"> Auto-fire</label>
+    <div class="best" id="pCode" style="user-select:text"></div>
+    <label>Quality</label><div class="seg" id="gfx2"><button data-v="high">High</button><button data-v="low">Low</button></div>
+    <button class="go" id="bResume">Resume</button>
+    <div class="row"><button id="bReq2">Requests</button><button id="bQuit">Quit to menu</button></div>
+  </div>
+</div>
+
+<div id="end" class="scr hidden">
+  <div class="card" style="width:min(560px,100%);text-align:center">
+    <h2>OVERRUN</h2>
+    <p id="endS"></p>
+    <button class="go" id="bAgain">Click to restart</button>
+    <div class="row"><button id="bMenu">Menu</button><button id="bReq3">Requests</button></div>
+  </div>
+</div>
+
+<div id="reqBox" class="scr hidden">
+  <div class="card"><div class="bar"><button id="bReqX">Close</button></div><iframe id="reqF" title="Requests"></iframe></div>
+</div>
+
+<script src="../three-r170.js"></script>
+<script src="game.js"></script>
+</body>
+</html>
