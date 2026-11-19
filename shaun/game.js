@@ -753,7 +753,7 @@ function stepBugsHost(dt) {
   G.attackers = attackers;
 }
 function hurt(d) {
-  G.hurtT = 0; const s = Math.min(G.shield, d); G.shield -= s; d -= s; G.hp = Math.max(0, G.hp - d * .5);
+  G.hurtT = 0; const s = Math.min(G.shield, d); G.shield -= s; d -= s; G.hp = Math.max(0, G.hp - d * .12);
   G.dmgFlash = Math.min(1, G.dmgFlash + .08); P.trauma = Math.min(1, P.trauma + .015);
   if (Sfx.ctx && Sfx.lim('zap', 400)) Sfx.play('zap', {vol: .25});
   if (G.hp <= 0 && !G.over) overrun();
@@ -969,6 +969,7 @@ function overrun(m) {
 function lockPtr() { try { const r = canvas.requestPointerLock && canvas.requestPointerLock(); if (r && r.catch) r.catch(() => {}); } catch (e) {} }
 
 let last = performance.now(), time = 0;
+let noRender = false;
 function step(dt) {
   time += dt; G.t += dt;
   const live = G.on && !(G.paused && Net.role === 'solo');
@@ -1007,7 +1008,7 @@ function step(dt) {
   toastT -= dt;
   if (G.on) drawHud(dt, time);
   if (!G.on) { P.yaw = Math.sin(time * .07) * .5; cam.position.set(0, 1.7, 0); cam.rotation.set(-.03, P.yaw, 0, 'YXZ'); }
-  render();
+  if (!noRender) render();
 }
 function loop(now) { const dt = Math.min(.05, (now - last) / 1000); last = now; step(dt); requestAnimationFrame(loop); }
 
@@ -1062,5 +1063,5 @@ $('bReqX').onclick = () => $('reqBox').classList.add('hidden');
 { const m = /[?&]room=([A-Za-z]{5})/.exec(location.search); if (m && $('jCode')) { $('jCode').value = m[1].toUpperCase(); netStatus('Squad code filled in. Press Join.'); } }
 syncUI(); resize();
 
-if (TEST) window.__LS = {G, P, bugs, Net, SET, start: () => beginGame(true), fire: v => { testFire = v; }, step: (dt, n = 1) => { for (let i = 0; i < n; i++) step(dt); }, setYaw: y => { P.yaw = y; }, host: () => $('bHost').click(), join: c => { $('jCode').value = c; $('bJoin').click(); }, scene, cam};
+if (TEST) window.__LS = {G, P, bugs, Net, SET, start: () => beginGame(true), fire: v => { testFire = v; }, step: (dt, n = 1, nr) => { noRender = !!nr; for (let i = 0; i < n; i++) step(dt); noRender = false; }, setYaw: y => { P.yaw = y; }, host: () => $('bHost').click(), join: c => { $('jCode').value = c; $('bJoin').click(); }, scene, cam};
 requestAnimationFrame(loop);
