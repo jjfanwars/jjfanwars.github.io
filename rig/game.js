@@ -10445,3 +10445,324 @@ applyEv = after(applyEv, function (r, e) { const N = NEST.c, nearB = () => !!P &
 // the boat lights stutter while the water swells
 hud = after(hud, function () { if (LV3.flick > 0 && boatL) boatL.intensity *= Math.random() < .4 ? .04 : 1; });
 startGame = before(startGame, function () { G.mwg = null; G.mwgC = null; LV3.gcd = 20; lv3Duck(false); return NEXT; });
+
+// ---------------- islands, visually (v83): a terrain shader (rock strata and cracks on steep faces, sand grain, grass and soil mottling, a wet band and lacy swash
+// foam that follow the real wave height), per-biome vegetation, cliff outcrops and boulders, paths from each landing stage, ruins, landmarks and small props.
+// Everything is seeded per island (mulberry 0x83a1 + index * 7919), so every client builds the same thing. Purely visual apart from PCIRC circles on the big solid pieces.
+// Per island: one merged prop mesh, one merged swaying vegetation mesh and one path decal mesh, culled by distance in isvFx.
+const ISV = {U: {uT: {value: 0}, uA: {value: .5}, uN: {value: 0}, uW: {value: 0}}, isles: [], t: 0, T: {}, mats: null, nm: new THREE.Matrix3(), v: new THREE.Vector3(), n: new THREE.Vector3()};
+const ISV_LMR = {stones: 7, wall: 7, tower: 6, tiki: 6, ribs: 9, mast: 7, basalt: 6, charred: 6, graves: 8};
+const ISV_BIO = {
+  green: {lm: ['stones', 'wall', 'tower'], mi: ['cairn', 'fire', 'fence', 'crates', 'dinghy', 'drift'], veg: [['tuft', 2.6], ['bush', .9], ['fern', .45], ['flower', .5]], g: [.16, .27, .1], b: [.12, .22, .08], fl: [[.9, .82, .25], [.85, .85, .8], [.7, .32, .6]], path: [.5, .4, .28], rock: [.4, .38, .35], wood: [.32, .23, .15], top: [.16, .24, .09]},
+  moor: {lm: ['stones', 'tower', 'wall'], mi: ['cairn', 'fence', 'fire'], veg: [['tuft', 3], ['heath', 1.1], ['bush', .3]], g: [.2, .24, .12], b: [.28, .14, .27], fl: [[.55, .25, .55]], path: [.42, .36, .27], rock: [.34, .36, .3], wood: [.28, .22, .15], top: [.18, .25, .1]},
+  tropic: {lm: ['tiki', 'wall'], mi: ['dinghy', 'fire', 'crates', 'drift', 'drift'], veg: [['fern', 1.5], ['tuft', 1.8], ['flower', 1.1], ['bush', .55]], g: [.2, .34, .11], b: [.14, .3, .09], fl: [[.95, .22, .32], [.95, .68, .18], [.95, .5, .78]], path: [.78, .68, .5], rock: [.56, .46, .4], wood: [.38, .26, .15]},
+  frost: {lm: ['ribs', 'mast', 'stones'], mi: ['cairn', 'crates', 'fence', 'drift'], veg: [['shrub', .8], ['tuft', .9], ['ice', .25]], g: [.4, .41, .32], b: [.13, .2, .16], path: [.66, .68, .72], rock: [.32, .35, .4], wood: [.3, .25, .2], top: [.85, .9, .95], bone: [.8, .78, .7]},
+  ash: {lm: ['basalt', 'charred'], mi: ['cairn', 'fire'], veg: [['tuft', .9], ['stump', .45], ['obs', .35]], g: [.3, .29, .26], b: [.1, .1, .1], path: [.2, .19, .18], rock: [.13, .13, .13], wood: [.07, .06, .05]},
+  grave: {lm: ['graves', 'tower'], mi: ['fence', 'cairn', 'lantern', 'lantern'], veg: [['twig', 1.3], ['tuft', 1.5], ['bush', .25]], g: [.17, .19, .11], b: [.11, .13, .08], path: [.32, .29, .25], rock: [.33, .34, .32], wood: [.2, .17, .13], top: [.15, .2, .09]},
+  glow: {lm: ['stones'], mi: ['cairn', 'fire'], veg: [['tuft', 2], ['fern', .8], ['shroom', .9]], g: [.12, .24, .18], b: [.1, .2, .16], fl: [[.2, .95, .8], [.45, .8, .98]], path: [.38, .38, .33], rock: [.32, .36, .36], wood: [.25, .2, .14], top: [.12, .26, .2]},
+};
+function isvBio(I) { const L = I.extL || extLook(I), p = L.pal, q = I.reg || ((typeof regionAt === 'function' && regionAt(I.x, I.z)) || {}).k || '';
+  if (p === 'snow' || q === 'frost') return 'frost'; if (q === 'grave') return 'grave'; if (p === 'black' || p === 'ash' || q === 'ash') return 'ash';
+  if (p === 'coral' || q === 'coral' || q === 'tropic' || I.trees === 'palm') return 'tropic'; if (q === 'glow') return 'glow'; if (I.trees === 'dead') return 'grave';
+  if (p === 'moss' || q === 'mist' || q === 'storm' || q === 'kelp') return 'moor'; return 'green'; }
+// the terrain shader: patched into the shared island material (the home rock uses it too)
+function isvTerrain() {
+  const m = EXT.isleMat; if (!m || m.userData.isv) return; m.userData.isv = 1; const U = ISV.U;
+  const wv = WAVES.map(([a, l, s, dx, dz]) => { const k = TAU / l / Math.hypot(dx, dz); return `${a.toFixed(4)} * sin(${(k * dx).toFixed(6)} * p.x + ${(k * dz).toFixed(6)} * p.y + uT * ${s.toFixed(4)})`; }).join(' + ');
+  m.onBeforeCompile = sh => { sh.uniforms.uT = U.uT; sh.uniforms.uA = U.uA;
+    sh.vertexShader = 'varying vec3 vIW; varying vec3 vIN;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n vIW = (modelMatrix * vec4(transformed, 1.)).xyz; vIN = normalize(mat3(modelMatrix) * objectNormal);');
+    sh.fragmentShader = `uniform float uT, uA; varying vec3 vIW; varying vec3 vIN;
+      float isvH(vec2 p) { vec3 q = fract(vec3(p.xyx) * .1031); q += dot(q, q.yzx + 33.33); return fract((q.x + q.y) * q.z); }
+      float isvN(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3. - 2. * f); return mix(mix(isvH(i), isvH(i + vec2(1., 0.)), f.x), mix(isvH(i + vec2(0., 1.)), isvH(i + vec2(1., 1.)), f.x), f.y); }
+      float isvW(vec2 p) { return ${wv}; }\n` + sh.fragmentShader
+      .replace('#include <color_fragment>', `#include <color_fragment>
+        float iWet = 0.;
+        { vec3 c = diffuseColor.rgb; float y = vIW.y, sl = 1. - abs(vIN.y), dc = length(vIW - cameraPosition), fd = 1. - smoothstep(25., 110., dc);
+          float n1 = isvN(vIW.xz * .17), n2 = isvN(vIW.xz * 1.1 + 7.3), n3 = mix(.5, isvN(vIW.xz * 5.7 - 3.1), fd);
+          float rk = smoothstep(.12, .3, sl + (n1 - .5) * .16);
+          vec2 hz = normalize(vIN.xz + vec2(1e-4)); float u = dot(vIW.xz, vec2(-hz.y, hz.x));
+          float st = isvN(vec2(u * .3, y * 2.4 + n1 * 2.5)), ck = isvN(vec2(u, y) * 2.2 + 11.);
+          c *= mix(1., .68 + .52 * st + (ck - .5) * .45 * fd, rk);
+          float sd = (1. - rk) * (1. - smoothstep(1., 2.3, y));
+          c *= 1. + ((n3 - .5) * .26 + (n2 - .5) * .14) * sd;
+          float gr = (1. - rk) * smoothstep(1.3, 2.6, y) * (1. - smoothstep(.55, .8, max(c.r, c.b)));
+          c *= mix(1., .8 + .4 * n2, gr * .85);
+          c = mix(c, c * vec3(1.2, .9, .66), gr * smoothstep(.6, .78, n1 * .55 + n2 * .45) * .55);
+          float sw = isvW(vIW.xz) * uA, wl = sw + .3 + .2 * uA + (n2 - .5) * .25;
+          float wet = 1. - smoothstep(wl - .15, wl + .3, y);
+          c *= 1. - .42 * wet * (1. - rk * .4);
+          float lace = smoothstep(.42, .78, isvN(vIW.xz * 2.3 + vec2(uT * .31, -uT * .23)) * .65 + n3 * .45);
+          float fm = (1. - smoothstep(0., .16 + .12 * uA, abs(y - sw - .04))) * lace * (1. - rk * .5);
+          c = mix(c, vec3(.74, .78, .78), fm * .85);
+          diffuseColor.rgb = c; iWet = wet * (1. - fm); }`)
+      .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\n roughnessFactor = mix(roughnessFactor, .3, iWet);'); };
+  m.customProgramCacheKey = () => 'isv83'; m.needsUpdate = true;
+}
+function isvMats() {
+  if (ISV.mats) return ISV.mats; const U = ISV.U;
+  const veg = new THREE.MeshStandardMaterial({vertexColors: true, roughness: .88, metalness: 0, side: THREE.DoubleSide});
+  veg.onBeforeCompile = sh => { sh.uniforms.uT = U.uT; sh.uniforms.uN = U.uN; sh.uniforms.uW = U.uW;
+    sh.vertexShader = 'attribute vec2 aS; uniform float uT, uW; varying float vEm;\n' + sh.vertexShader.replace('#include <begin_vertex>', `#include <begin_vertex>
+      vEm = aS.y; { vec3 q = (modelMatrix * vec4(transformed, 1.)).xyz; float a = aS.x * (.07 + .1 * uW); transformed.x += sin(uT * 1.7 + q.x * .37 + q.z * .21) * a; transformed.z += cos(uT * 1.31 + q.z * .33 - q.x * .1) * a * .7; }`);
+    sh.fragmentShader = 'uniform float uN; varying float vEm;\n' + sh.fragmentShader.replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\n totalEmissiveRadiance += diffuseColor.rgb * vEm * (.12 + 1.7 * uN);'); };
+  veg.customProgramCacheKey = () => 'isvVeg';
+  const prop = new THREE.MeshStandardMaterial({vertexColors: true, map: TX.extDetail, roughness: .93, metalness: 0, flatShading: true, side: THREE.DoubleSide});
+  const path = new THREE.MeshStandardMaterial({vertexColors: true, map: isvPathTex(), transparent: true, depthWrite: false, roughness: 1, metalness: 0, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -4});
+  return (ISV.mats = {veg, prop, path});
+}
+function isvPathTex() {
+  if (TX.isvPath) return TX.isvPath; const r = mulberry(0x9a7e);
+  TX.isvPath = tex(cv(64, 256, (g, w, h) => { g.fillStyle = '#d6d2ca'; g.fillRect(0, 0, w, h);
+    for (let i = 0; i < 800; i++) { g.fillStyle = r() < .55 ? `rgba(60,50,40,${.15 + r() * .3})` : `rgba(255,250,240,${.1 + r() * .25})`; g.beginPath(); g.arc(r() * w, r() * h, .5 + r() * 1.8, 0, TAU); g.fill(); }
+    const im = g.getImageData(0, 0, w, h), d = im.data;
+    for (let y = 0; y < h; y++) { const t = y / h * TAU, e0 = .2 + .1 * Math.sin(t * 3) * Math.sin(t * 5 + 1), e1 = .2 + .1 * Math.sin(t * 4 + 2) * Math.sin(t * 7);
+      for (let x = 0; x < w; x++) { const u = x / (w - 1); d[(y * w + x) * 4 + 3] = smooth(u / e0) * smooth((1 - u) / e1) * 230; } }
+    g.putImageData(im, 0, 0); }));
+  TX.isvPath.wrapS = THREE.ClampToEdgeWrapping; return TX.isvPath;
+}
+// low-poly templates (non-indexed, base at y 0 where it matters)
+function isvTpl() {
+  const T = ISV.T; if (T.rock0) return T;
+  const fin = (k, g, dy, up) => { const q = g.index ? g.toNonIndexed() : g; if (dy) q.translate(0, dy, 0); q.computeVertexNormals(); q.computeBoundingBox();
+    const n = q.attributes.normal.array; if (up) for (let i = 0; i < n.length; i += 3) { const x = n[i] * .35, y = Math.abs(n[i + 1]) * .35 + 1, z = n[i + 2] * .35, l = Math.hypot(x, y, z); n[i] = x / l; n[i + 1] = y / l; n[i + 2] = z / l; }
+    T[k] = {p: q.attributes.position.array, n, u: q.attributes.uv ? q.attributes.uv.array : null, y0: q.boundingBox.min.y, y1: q.boundingBox.max.y}; };
+  const lump = (g, amp, f, o) => { const p = g.attributes.position; for (let i = 0; i < p.count; i++) { const x = p.getX(i), y = p.getY(i), z = p.getZ(i), k = 1 + (vn(x * f + o, z * f - y * .7 + o) - .5) * amp + (vn(y * f * 2 + o, x * f * 2 - z) - .5) * amp * .5; p.setXYZ(i, x * k, y * k * (y < 0 ? .7 : 1), z * k); } return g; };
+  const tri = (P) => { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); return g; };
+  for (let i = 0; i < 3; i++) fin('rock' + i, lump(new THREE.IcosahedronGeometry(1, 1), .55, 1.3, i * 17.3));
+  fin('slab', lump(new THREE.BoxGeometry(1, 1, 1, 2, 3, 2), .4, 1.7, 5.1));
+  fin('blob', lump(new THREE.IcosahedronGeometry(1, 0), .35, 1.5, 3.3));
+  fin('block', new THREE.BoxGeometry(1, 1, 1), .5); fin('col6', new THREE.CylinderGeometry(.5, .5, 1, 6), .5); fin('post', new THREE.CylinderGeometry(.5, .5, 1, 5), .5);
+  fin('barrel', new THREE.CylinderGeometry(.5, .5, 1, 8), .5); fin('cone', new THREE.ConeGeometry(.5, 1, 6), .5); fin('shard', new THREE.OctahedronGeometry(.5, 0), .5); fin('gem', new THREE.OctahedronGeometry(.5, 0));
+  { const g = new THREE.CylinderGeometry(.5, .5, 1, 8, 4, true, 0, PI); g.rotateZ(PI / 2); const p = g.attributes.position; for (let i = 0; i < p.count; i++) { const x = p.getX(i), t = 1 - Math.pow(Math.abs(x * 2), 3) * .85; p.setY(i, p.getY(i) * t); p.setZ(i, p.getZ(i) * t); } fin('hull', g); }
+  fin('rib', new THREE.TubeGeometry(new THREE.CatmullRomCurve3([new THREE.Vector3(0, 0, 0), new THREE.Vector3(.35, .7, 0), new THREE.Vector3(.42, 1.35, 0), new THREE.Vector3(.2, 1.9, 0)]), 6, .07, 4));
+  const blades = (n, w, lean, hh) => { const P = []; for (let b = 0; b < n; b++) { const a = b / n * TAU + (b * 1.7) % 1, c = Math.cos(a), s = Math.sin(a), h = hh * (.8 + (b * .37) % .2); P.push(c * .04 - s * w, 0, s * .04 + c * w, c * .04 + s * w, 0, s * .04 - c * w, c * lean, h, s * lean); } return tri(P); };
+  fin('tuft', blades(5, .06, .3, 1), 0, 1); fin('twig', blades(6, .025, .5, 1), 0, 1);
+  { const P = []; for (let f = 0; f < 6; f++) { const a = f / 6 * TAU + .3 * (f % 2), ca = Math.cos(a), sa = Math.sin(a); let pr = null;
+      for (let s = 0; s <= 3; s++) { const t = s / 3, y = Math.sin(t * 2.2) * .5, w = .17 * Math.sin(PI * Math.min(1, t * 1.1 + .06)), cx = ca * t, cz = sa * t, px = -sa * w, pz = ca * w, Lq = [cx - px, y, cz - pz], Rq = [cx + px, y, cz + pz];
+        if (pr) P.push(...pr[0], ...pr[1], ...Lq, ...pr[1], ...Rq, ...Lq); pr = [Lq, Rq]; } }
+    fin('fern', tri(P), 0, 1); }
+  return T;
+}
+// one template into a buffer: position, normal, colour (darker toward the base, optional top colour), optional uv (props) or sway/emissive (vegetation)
+function isvPut(B, k, x, y, z, ry, sx, sy, sz, col, o) {
+  const t = ISV.T[k], M = _m4.compose(_v.set(x, y, z), _q.setFromEuler(_e.set(o && o.rx || 0, ry, o && o.rz || 0, 'YXZ')), _s.set(sx, sy, sz)), N = ISV.nm.getNormalMatrix(M), V = ISV.v, Nv = ISV.n;
+  const p = t.p, n = t.n, cnt = p.length / 3, hy = t.y1 - t.y0 || 1, sw = o && o.sw || 0, swk = o && o.swk, em = o && o.em || 0, ao = o && o.ao != null ? o.ao : .35, tc = o && o.tc, us = Math.max(sx, sz) * .5, vs = sy * .5;
+  for (let i = 0; i < cnt; i++) { const ly = (p[i * 3 + 1] - t.y0) / hy; V.set(p[i * 3], p[i * 3 + 1], p[i * 3 + 2]).applyMatrix4(M); B.p.push(V.x, V.y, V.z); Nv.set(n[i * 3], n[i * 3 + 1], n[i * 3 + 2]).applyMatrix3(N).normalize(); B.n.push(Nv.x, Nv.y, Nv.z);
+    let r = col[0], g = col[1], b = col[2]; if (tc) { const w = smooth((ly - .55) / .3) * (o.tk || 1); r += (tc[0] - r) * w; g += (tc[1] - g) * w; b += (tc[2] - b) * w; }
+    const kk = (1 - ao + ao * ly) * (1 + (h2(V.x * 3.1, V.z * 2.7 + V.y) - .5) * .16); B.c.push(r * kk, g * kk, b * kk);
+    if (B.s) B.s.push(swk ? sw : sw * ly * ly, em); if (B.u) B.u.push(t.u ? t.u[i * 2] * us : 0, t.u ? t.u[i * 2 + 1] * vs : 0); }
+}
+function isvMesh(B, mat) {
+  if (!B.p.length) return null; const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(B.p, 3)); g.setAttribute('normal', new THREE.Float32BufferAttribute(B.n, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(B.c, 3));
+  if (B.u) g.setAttribute('uv', new THREE.Float32BufferAttribute(B.u, 2)); if (B.s) g.setAttribute('aS', new THREE.Float32BufferAttribute(B.s, 2)); if (B.i) g.setIndex(B.i);
+  g.computeBoundingSphere(); const m = new THREE.Mesh(g, mat); m.receiveShadow = true; m.matrixAutoUpdate = false; m.updateMatrix(); scene.add(m); return m;
+}
+// one island's dressing
+function isvIsle(I, k) {
+  isvTpl(); const bio = isvBio(I), BI = ISV_BIO[bio], rn = mulberry(0x83a1 + k * 7919), L = I.extL || extLook(I), R = I.r, sh = L.shape;
+  const P = {p: [], n: [], c: [], u: []}, Vg = {p: [], n: [], c: [], s: []}, Pa = {p: [], n: [], c: [], u: [], i: []}, e = {I, k, bio, R: R * 1.2, it: []};
+  const H = (x, z) => isleH(I, x, z), grad = (x, z) => [(H(x + .8, z) - H(x - .8, z)) / 1.6, (H(x, z + .8) - H(x, z - .8)) / 1.6], ny = (x, z) => { const [a, b] = grad(x, z); return 1 / Math.hypot(a, b, 1); };
+  const near = (x, z, m) => Math.abs(x - I.x) < R * 1.5 + m && Math.abs(z - I.z) < R * 1.5 + m, jit = (c, a) => { const q = 1 + (rn() - .5) * a; return [c[0] * q, c[1] * q, c[2] * q]; };
+  const pads = IPADS.filter(p => p.I === I), spots = SPOTS.filter(q => near(q.x, q.z, 0)), digs = DIGS.filter(q => near(q.x, q.z, 0)), blds = BLD.filter(b => near(b.x, b.z, 30));
+  const box = q => q.x0 != null && q.x1 - q.x0 < 200 && q.z1 - q.z0 < 200 && near((q.x0 + q.x1) / 2, (q.z0 + q.z1) / 2, 30), walls = WALLS.filter(box), surf = SURF.filter(box);
+  const inter = INTER.filter(q => !q.boat && typeof q.x === 'number' && typeof q.z === 'number' && near(q.x, q.z, 0)), trees = PCIRC.filter(c => c.tree && near(c.x, c.z, 0)), keep = [];
+  if (I.ruin) keep.push([I.x - 4, I.z + 3, 5]); if (I.skull) keep.push([I.x, I.z, 11]);
+  const inBox = (x, z, q, pad) => x > q.x0 - pad && x < q.x1 + pad && z > q.z0 - pad && z < q.z1 + pad;
+  const blocked = (x, z, pad) => { for (const p of pads) if (Math.hypot(x - p.x, z - p.z) < p.r + p.f * .6 + pad) return true;
+    for (const q of spots) if (Math.hypot(x - q.x, z - q.z) < 1.6 + pad) return true; for (const q of digs) if (Math.hypot(x - q.x, z - q.z) < 2 + pad) return true;
+    for (const q of inter) if (Math.hypot(x - q.x, z - q.z) < 1.5 + pad) return true; for (const f of keep) if (Math.hypot(x - f[0], z - f[1]) < f[2] + pad) return true;
+    for (const w of walls) if (inBox(x, z, w, pad + .4)) return true; for (const s of surf) if (inBox(x, z, s, pad + .4)) return true;
+    for (const b of blds) { if ((b.dout && Math.hypot(x - b.dout[0], z - b.dout[1]) < 3 + pad) || (b.din && Math.hypot(x - b.din[0], z - b.din[1]) < 2 + pad)) return true;
+      const c = Math.cos(b.th || 0), sn = Math.sin(b.th || 0), dx = x - b.x, dz = z - b.z; if (Math.abs(dx * c - dz * sn) < (b.w || 0) / 2 + pad + .5 && Math.abs(dx * sn + dz * c) < (b.d || 0) / 2 + pad + .5) return true; }
+    return rockKeep(x, z, pad); };
+  const treeNear = (x, z, r) => trees.some(t => Math.abs(t.x - x) < r && Math.abs(t.z - z) < r && Math.hypot(t.x - x, t.z - z) < r);
+  // items: a contiguous run of vertices in one buffer, hidden as a whole if this game's island event lands on it
+  let cur = null; const begin = (b, x, z, r) => { cur = {b, x, z, r, s: (b === 'v' ? Vg : P).p.length / 3, n: 0, pc: []}; }, end = () => { cur.n = (cur.b === 'v' ? Vg : P).p.length / 3 - cur.s; if (cur.n) e.it.push(cur); cur = null; };
+  const circ = (x, z, r) => { const c = {x, z, r, isv: 1}; PCIRC.push(c); cur.pc.push(c); };
+  const pp = (kk, x, z, dy, ry, sx, sy, sz, col, o) => isvPut(P, kk, x, H(x, z) + dy, z, ry, sx, sy, sz, col, o), pv = (kk, x, z, dy, ry, sx, sy, sz, col, o) => isvPut(Vg, kk, x, H(x, z) + dy, z, ry, sx, sy, sz, col, o);
+  const frame = (cx, cz, a) => { const c = Math.cos(a), s = Math.sin(a); return (lx, lz) => [cx + lx * c + lz * s, cz - lx * s + lz * c]; };
+  const stoneC = () => jit(BI.rock, .25), woodC = () => jit(BI.wood || [.3, .22, .15], .3), topO = BI.top ? {tc: BI.top, tk: bio === 'frost' ? 1 : .7} : {};
+  const X = {rn, BI, bio, P, Vg, pp, pv, circ, begin, end, frame, stoneC, woodC, jit, H, topO};
+  // a flat-enough spot
+  const findSpot = (r0, r1, hmin, rad, tries, hmax = 1e9, nym = .82) => { for (let a = 0; a < tries; a++) { const an = rn() * TAU, d = (r0 + rn() * (r1 - r0)) * R, x = I.x + Math.cos(an) * d, z = I.z + Math.sin(an) * d, h = H(x, z);
+      if (h < hmin || h > hmax || ny(x, z) < nym) continue; let ok = true; for (const [dx, dz] of [[rad, 0], [-rad, 0], [0, rad], [0, -rad]]) { const q = H(x + dx * .7, z + dz * .7); if (q < hmin - .4 || Math.abs(q - h) > 1.4) { ok = false; break; } }
+      if (!ok || blocked(x, z, rad) || treeNear(x, z, rad * .6)) continue; return {x, z, h, a: rn() * TAU}; } return null; };
+  // ---- landmark (one per island over 24 m)
+  let lmP = null;
+  if (R >= 24) { const kind = BI.lm[Math.floor(rn() * BI.lm.length)], lr = ISV_LMR[kind]; lmP = findSpot(.1, .6, 1.4, lr, 90); if (lmP) { lmP.kind = kind; lmP.r = lr; keep.push([lmP.x, lmP.z, lr]); isvLandmark(kind, lmP, X); } }
+  // ---- minor props
+  const nmi = (R < 18 ? 0 : 1) + Math.floor(R / 32) + (rn() < .5 ? 1 : 0), mis = [];
+  for (let i = 0; i < nmi; i++) { const kind = BI.mi[Math.floor(rn() * BI.mi.length)], s = kind === 'drift' ? findSpot(.4, 1.2, .35, 1.6, 60, 1.05, .7) : findSpot(.12, .85, 1.1, kind === 'fence' ? 6 : 2.5, 60);
+    if (!s) continue; s.kind = kind; keep.push([s.x, s.z, kind === 'fence' ? 6 : 2.5]); mis.push(s); isvMinor(kind, s, X); }
+  // ---- paths: from the landing stage to the landmark, the hut door, the old ruin and one minor prop
+  const pier = PIERS.find(q => q.ii === k), cells = new Set(), pkey = (x, z) => Math.floor(x / 2) + ',' + Math.floor(z / 2), pts0 = [];
+  if (pier && pier.root && R >= 16) {
+    const tg = []; if (lmP) tg.push([lmP.x, lmP.z, lmP.r * .75]);
+    for (const b of blds) if (b.dout && Math.hypot(b.dout[0] - I.x, b.dout[1] - I.z) < R) tg.push([b.dout[0], b.dout[1], 1.2]);
+    if (I.ruin) tg.push([I.x - 4, I.z + 3, 4]); if (mis.length && mis[0].kind !== 'drift') tg.push([mis[0].x, mis[0].z, 2.4]);
+    const [rx, rz] = pier.root, w = R < 30 ? 1.2 : 1.6;
+    for (const [tx, tz, stop] of tg) { let sx = rx, sz = rz, bd = Math.hypot(tx - rx, tz - rz); for (const q of pts0) { const d = Math.hypot(tx - q[0], tz - q[1]); if (d < bd - 6) { bd = d; sx = q[0]; sz = q[1]; } }
+      const dx = tx - sx, dz = tz - sz, l = Math.hypot(dx, dz); if (l < 5) continue; const ux = dx / l, uz = dz / l, el = l - stop, n = Math.ceil(el / 1.1), amp = Math.min(5, l * .12) * (rn() < .5 ? -1 : 1), ph = rn() * TAU, pts = [];
+      for (let i = 0; i <= n; i++) { const t = i / n, a = t * el, o = Math.sin(t * PI) * Math.sin(t * PI * 1.6 + ph) * amp, x = sx + ux * a - uz * o, z = sz + uz * a + ux * o; if (i > 2 && (H(x, z) < .6 || ny(x, z) < .74)) break; pts.push([x, z]); }
+      if (pts.length < 4) continue; isvRibbon(Pa, pts, w, H, BI.path); for (const q of pts) { pts0.push(q); for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) cells.add(pkey(q[0] + a * 1.2, q[1] + b * 1.2)); }
+      // edge stones along the path
+      for (let i = 2; i < pts.length - 1; i++) { if (rn() > .2) continue; const [x, z] = pts[i], [x2, z2] = pts[i + 1], tl = Math.hypot(x2 - x, z2 - z) || 1, sd = rn() < .5 ? -1 : 1, ox = x - (z2 - z) / tl * sd * (w * .5 + .25), oz = z + (x2 - x) / tl * sd * (w * .5 + .25), s = .12 + rn() * .22;
+        begin('p', ox, oz, s); pp('rock' + (i % 3), ox, oz, -s * .25, rn() * TAU, s * 1.2, s * .7, s, stoneC(), topO); end(); } }
+    // a signpost at the foot of the path
+    if (pts0.length > 3) { const [x0, z0] = pts0[0], [x1, z1] = pts0[3], tl = Math.hypot(x1 - x0, z1 - z0) || 1, px = x0 - (z1 - z0) / tl * (w * .5 + .5), pz = z0 + (x1 - x0) / tl * (w * .5 + .5), a = Math.atan2(x1 - x0, z1 - z0), wc = woodC();
+      if (!blocked(px, pz, .2)) { begin('p', px, pz, .4); pp('post', px, pz, -.2, 0, .12, 2.3, .12, wc); pp('block', px, pz, 1.55, a - PI / 2 + .2, .9, .2, .05, jit(wc, .2)); pp('block', px, pz, 1.2, a - PI / 2 - .5, .75, .18, .05, jit(wc, .2)); circ(px, pz, .2); end(); } }
+  }
+  const onPath = (x, z) => cells.has(pkey(x, z));
+  // ---- cliff outcrops on the steep ground (basalt column clusters in the ash isles, snow-capped in the frost)
+  const steep = sh === 'cliff' || sh === 'spire' || sh === 'crater', nc = Math.round(steep ? R * .7 : I.top > 6 ? R * .25 : R * .08);
+  for (let a = 0, c = 0; a < nc * 12 && c < nc; a++) { const an = rn() * TAU, d = (.2 + rn() * .9) * R, x = I.x + Math.cos(an) * d, z = I.z + Math.sin(an) * d, h = H(x, z); if (h < .2 || ny(x, z) > .74 || onPath(x, z) || blocked(x, z, 2)) continue;
+    const [gx, gz] = grad(x, z), gl = Math.hypot(gx, gz) || 1, yaw = Math.atan2(-gx, -gz), lean = Math.atan(gl) * .55; c++;
+    if (bio === 'ash' && rn() < .7) { begin('p', x, z, 2.5); const m = 3 + Math.floor(rn() * 5); for (let j = 0; j < m; j++) { const ox = x + (rn() - .5) * 2.6, oz = z + (rn() - .5) * 2.6, hh = 1.5 + rn() * 3.5; pp('col6', ox, oz, -1, rn(), .8 + rn() * .3, hh, .8 + rn() * .3, jit(BI.rock, .3), {rx: (rn() - .5) * .12}); } end(); continue; }
+    const sx = 2.5 + rn() * 3.5, sy = 1.8 + rn() * 3, sz = 1.2 + rn() * 1.2; begin('p', x, z, sx * .5);
+    isvPut(P, 'slab', x + gx / gl * sz * .25, h - sy * .3, z + gz / gl * sz * .25, yaw, sx, sy, sz, jit(BI.rock, .25), Object.assign({rx: -lean, rz: (rn() - .5) * .2, ao: .45}, bio === 'frost' ? {tc: BI.top, tk: .9} : {}));
+    if (rn() < .5) isvPut(P, 'slab', x - gz / gl * sx * .45, h - sy * .45, z + gx / gl * sx * .45, yaw + (rn() - .5) * .6, sx * .6, sy * .8, sz, jit(BI.rock, .3), {rx: -lean * .8, ao: .45}); end(); }
+  // ---- boulders in clusters, on beaches and slopes
+  const nb = clamp(Math.round(R * .45), 5, 40);
+  for (let a = 0, c = 0; a < nb * 6 && c < nb; a++) { const an = rn() * TAU, d = (.1 + rn() * 1.05) * R, cx = I.x + Math.cos(an) * d, cz = I.z + Math.sin(an) * d; if (H(cx, cz) < -.5) continue; c++;
+    const m = 1 + Math.floor(rn() * 3.5); for (let j = 0; j < m; j++) { const x = cx + (rn() - .5) * 4, z = cz + (rn() - .5) * 4, h = H(x, z), s = rn() < .12 ? 1.3 + rn() * 1.1 : .35 + rn() * .7;
+      if (h < -.6 || onPath(x, z) || blocked(x, z, s + .6) || treeNear(x, z, s + .6)) continue; begin('p', x, z, s);
+      pp('rock' + Math.floor(rn() * 3), x, z, -s * .28, rn() * TAU, s * (1 + rn() * .35), s * (.6 + rn() * .35), s * (1 + rn() * .3), jit(BI.rock, .3), Object.assign({rx: (rn() - .5) * .3, ao: .45}, h > .8 ? topO : {}));
+      if (s > .9 && h > .2) circ(x, z, s * .8); end(); } }
+  // ---- vegetation by biome, clumped, off the paths and the wet sand
+  const area = R * R / 28 * (L.dens || 1), snowLine = bio === 'frost' ? Math.max(2.5, I.top * .45 - 1) : 1e9;
+  for (const [vk, wt] of BI.veg) { const n = Math.min(700, Math.round(wt * area)), gate = vk === 'tuft' ? .32 : vk === 'flower' ? .5 : .45;
+    for (let a = 0, c = 0; a < n * 6 && c < n; a++) { const an = rn() * TAU, d = Math.sqrt(rn()) * R * 1.05, x = I.x + Math.cos(an) * d, z = I.z + Math.sin(an) * d;
+      if (fbm(x * .06 + k * 3.1, z * .06 + vk.length) < gate) continue; const h = H(x, z); if (h < 1 || h > snowLine || ny(x, z) < (vk === 'tuft' ? .7 : .8) || onPath(x, z)) continue;
+      const big = vk === 'bush' || vk === 'heath' || vk === 'ice' || vk === 'obs' || vk === 'stump' || vk === 'shrub'; if (blocked(x, z, big ? .8 : .2) || (big && treeNear(x, z, 1))) continue; c++;
+      isvVeg(vk, x, z, X); } }
+  // build the meshes (keep the original positions so island-event spots can be hidden and restored)
+  const M = isvMats(); e.prop = isvMesh(P, M.prop); e.veg = isvMesh(Vg, M.veg); e.path = isvMesh(Pa, M.path);
+  if (e.prop) { e.prop.castShadow = true; e.prop.userData.p0 = e.prop.geometry.attributes.position.array.slice(); } if (e.veg) e.veg.userData.p0 = e.veg.geometry.attributes.position.array.slice();
+  if (e.path) e.path.renderOrder = 1; e.lm = lmP; e.mis = mis; e.np = pts0.length; ISV.isles.push(e); return e;
+}
+// a path decal: a ribbon on the ground, tapered at the ends, normals from the slope
+function isvRibbon(Pa, pts, w, H, col) {
+  const s0 = Pa.p.length / 3; let v = 0;
+  for (let i = 0; i < pts.length; i++) { const [x, z] = pts[i], a = pts[Math.max(0, i - 1)], b = pts[Math.min(pts.length - 1, i + 1)]; let tx = b[0] - a[0], tz = b[1] - a[1]; const tl = Math.hypot(tx, tz) || 1; tx /= tl; tz /= tl;
+    if (i) v += Math.hypot(x - pts[i - 1][0], z - pts[i - 1][1]); const wk = w * .5 * Math.min(1, .35 + i * .3, .35 + (pts.length - 1 - i) * .3);
+    for (const sd of [-1, 1]) { const qx = x - tz * wk * sd, qz = z + tx * wk * sd, gx = H(qx + .5, qz) - H(qx - .5, qz), gz = H(qx, qz + .5) - H(qx, qz - .5), gl = Math.hypot(gx, 1, gz), c = .85 + h2(qx * .7, qz * .7) * .3;
+      Pa.p.push(qx, H(qx, qz) + .07, qz); Pa.n.push(-gx / gl, 1 / gl, -gz / gl); Pa.u.push(sd < 0 ? 0 : 1, v / 3); Pa.c.push(col[0] * c, col[1] * c, col[2] * c); } }
+  for (let i = 0; i < pts.length - 1; i++) { const a = s0 + i * 2; Pa.i.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); }
+}
+// landmarks: the piece that makes the island its own place. W(lx, lz) is the landmark's own frame (yaw a): local x lies along yaw a, so a box turned by a lines up with it
+function isvLandmark(kind, S, X) {
+  const {rn, BI, pp, pv, circ, begin, end, frame, stoneC, woodC, jit, H, topO} = X, W = frame(S.x, S.z, S.a), a = S.a; begin('p', S.x, S.z, S.r);
+  if (kind === 'stones') { const n = 5 + Math.floor(rn() * 4), rr = 3.2 + rn() * 2;
+    for (let i = 0; i < n; i++) { const an = i / n * TAU + rn() * .2, [x, z] = W(Math.cos(an) * rr, Math.sin(an) * rr), hh = 1.7 + rn() * 1.4;
+      if (rn() < .15) pp('block', x, z, -.1, a - an + rn() * .4, .8, .55, hh, stoneC(), {rx: .1, ao: .3}); else { pp('slab', x, z, -.35, a - an - PI / 2, .9 + rn() * .3, hh + .35, .55, stoneC(), Object.assign({rx: (rn() - .5) * .16, rz: (rn() - .5) * .14, ao: .4}, topO)); circ(x, z, .55); } }
+    pp('block', S.x, S.z, -.25, a, 1.7, .6, 1.1, stoneC(), topO); circ(S.x, S.z, .7);
+    if (n > 6) { const [x, z] = W(rr, 0); pp('block', x, z, 2.1, a + PI / 2, 2.4, .5, .6, stoneC(), {rz: .08}); } }
+  else if (kind === 'wall') { const segs = [[0, 6 + rn() * 3], [PI / 2, 4 + rn() * 3]];
+    for (const [sa, len] of segs) { const ux = Math.cos(sa), uz = Math.sin(sa), ph = rn() * 9;
+      for (let s = 0; s < len; s += .9) { const hm = 2.2 * (.25 + .75 * vn(s * .45 + ph, 3.3)) * (1 - s / len * .5), [x, z] = W(ux * s, uz * s), y0 = H(x, z) - .25;
+        for (let c = 0, y = 0; y < hm; c++, y += .5) { const o = s + (c % 2) * .45, [bx2, bz2] = W(ux * o, uz * o); pp('block', bx2, bz2, y0 + y - H(bx2, bz2), a - sa + (rn() - .5) * .08, .84, .48, .62, stoneC(), {ao: .2}); }
+        if (hm > .6) circ(x, z, .5); } }
+    for (let i = 0; i < 7; i++) { const [x, z] = W((rn() - .3) * 7, (rn() - .3) * 6); pp('block', x, z, -.15, rn() * TAU, .8, .45, .6, stoneC(), {rx: (rn() - .5) * .5, rz: (rn() - .5) * .5}); } }
+  else if (kind === 'tower') { const rr = 2.6, nb = 12, door = rn() * TAU, ph = rn() * 9;
+    for (let i = 0; i < nb; i++) { const an = i / nb * TAU, gap = Math.abs(angD(an, door)) < .4, hm = gap ? 0 : 3.4 * (.3 + .7 * vn(an * 1.3 + ph, 1.7)), [x, z] = W(Math.cos(an) * rr, Math.sin(an) * rr), y0 = H(x, z);
+      for (let c = 0, y = 0; y < hm; c++, y += .5) { const ao2 = an + (c % 2) * PI / nb, [bx2, bz2] = W(Math.cos(ao2) * rr, Math.sin(ao2) * rr); pp('block', bx2, bz2, y - .25 + y0 - H(bx2, bz2), a - ao2 - PI / 2, 1.3, .5, .7, stoneC(), {ao: .2}); }
+      if (hm > .6) circ(x, z, .7); }
+    for (let i = 0; i < 9; i++) { const an = rn() * TAU, d = rr + .8 + rn() * 2.5, [x, z] = W(Math.cos(an) * d, Math.sin(an) * d); pp('block', x, z, -.12, rn() * TAU, .9, .45, .6, stoneC(), {rx: (rn() - .5) * .6, rz: (rn() - .5) * .6}); } }
+  else if (kind === 'tiki') { pp('block', S.x, S.z, -.12, a, 5.4, .3, 2.6, stoneC(), {ao: .2}); const n = 3 + Math.floor(rn() * 3);
+    for (let i = 0; i < n; i++) { const lx = (i - (n - 1) / 2) * 1.2, [x, z] = W(lx, -.5), hh = 2 + rn() * 1.2, wc = woodC(); pp('post', x, z, .1, a, .62, hh, .62, wc, {ao: .5}); circ(x, z, .4);
+      for (const ex of [-.14, .14]) { const [qx, qz] = W(lx + ex, -.17); pp('block', qx, qz, .1 + hh * .72, a, .13, .1, .08, [.9, .85, .7]); } { const [fx, fz] = W(lx, -.18); pp('block', fx, fz, .1 + hh * .5, a, .34, .1, .08, [.05, .04, .03]); }
+      pp('cone', x, z, .1 + hh, a + i, .8, .5, .8, jit(BI.fl ? BI.fl[i % BI.fl.length] : wc, .2)); }
+    for (const sx2 of [-2.6, 2.6]) { const [x, z] = W(sx2, 1.1); pp('post', x, z, 0, 0, .09, 1.7, .09, woodC()); pv('gem', x, z, 1.85, 0, .22, .36, .22, [1, .55, .2], {em: 1}); } }
+  else if (kind === 'ribs') { const bc = BI.bone || [.8, .78, .7], len = 10 + rn() * 3;
+    for (let s = -len / 2; s < len / 2; s += .7) { const [x, z] = W(s, 0); pp('blob', x, z, .1, a, .32, .22, .26, jit(bc, .1)); }
+    for (let s = -len / 2 + 1.5; s < len / 2 - 2.5; s += .9) { const kz = 1 - Math.abs(s) / (len * .55), sc = .9 + 1.4 * kz;
+      for (const sd of [-1, 1]) { const [x, z] = W(s, sd * .15); pp('rib', x, z, -.05, a - sd * PI / 2, sc * 1.1, sc, sc * 1.1, jit(bc, .12), {rz: (rn() - .5) * .25, ao: .2}); } }
+    { const [x, z] = W(len / 2 + .9, 0); pp('rock0', x, z, .2, a, 1.4, .6, .9, bc, {ao: .25}); circ(x, z, .9); for (const sd of [-1, 1]) { const [qx, qz] = W(len / 2 + 2.6, sd * .55); pp('blob', qx, qz, .1, a + sd * .2, 1.6, .14, .18, bc); } } }
+  else if (kind === 'mast') { const st = [.48, .2, .13], wh = [.7, .7, .68];
+    for (let j = 0; j < 3; j++) { const an = j / 3 * TAU, [x, z] = W(Math.cos(an) * .7, Math.sin(an) * .7); pp('post', x, z, -.1, 0, .1, 3.2 + rn() * .6, .1, j % 2 ? wh : st); circ(x, z, .2); }
+    for (let y = .8; y < 3; y += 1) pp('block', S.x, S.z, y, a + y, 1.25, .06, .06, st);
+    for (let r2 = 0; r2 < 3; r2++) { const oz = r2 === 2 ? 0 : r2 ? .6 : -.6, oy = r2 === 2 ? .9 : .25, [x, z] = W(8, oz); pp('post', x, z, oy, a, .09, 7, .09, r2 % 2 ? wh : st, {rz: PI / 2}); }
+    for (let s = 1.5; s < 8; s += 1.2) { const [x, z] = W(s, 0); pp('block', x, z, .55, a + .7, .07, .07, 1.2, st, {rx: .6}); }
+    { const [x, z] = W(-2.8, 2.2); pp('cone', x, z, -.1, a, 2, .7, 2, wh, {rx: 1.1}); const [bx2, bz2] = W(-1.5, -2.4); pp('block', bx2, bz2, 0, a + .3, 1.2, .9, .8, [.3, .32, .28]); circ(bx2, bz2, .7); } }
+  else if (kind === 'basalt') { for (let q = -3; q <= 3; q++) for (let r2 = -3; r2 <= 3; r2++) { const dd = Math.max(Math.abs(q), Math.abs(r2), Math.abs(q + r2)); if (dd > 3 || rn() < .25) continue;
+      const [x, z] = W(q * .9 + r2 * .45, r2 * .78), hh = .6 + 3.6 * (1 - dd / 3.6) * (.4 + .6 * rn()); pp('col6', x, z, -.4, a, .92, hh, .92, jit(BI.rock, .35), {ao: .3}); if (hh > 1.2) circ(x, z, .5); } }
+  else if (kind === 'charred') { const wc = BI.wood, C = [[-2, -1.5], [2, -1.5], [2, 1.5], [-2, 1.5]];
+    C.forEach(([lx, lz], i) => { const [x, z] = W(lx, lz), hh = i === 2 ? 1.1 : 2.2 + rn() * .4; pp('post', x, z, -.1, 0, .2, hh, .2, jit(wc, .3)); circ(x, z, .25); });
+    { const [x, z] = W(0, -1.5); pp('block', x, z, 2.2, a, 4.2, .18, .18, wc); } { const [x, z] = W(-2, 0); pp('block', x, z, 2.1, a + PI / 2, 3.2, .18, .18, wc); }
+    { const [x, z] = W(.8, .6); pp('block', x, z, .6, a + .4, 4, .16, .16, wc, {rz: .3}); }
+    for (let i = 0; i < 7; i++) { const [x, z] = W(-1.8 + i * .55, (rn() - .5) * .6); pp('block', x, z, .02, a + PI / 2 + (rn() - .5) * .2, 2.2 + rn(), .06, .45, jit(wc, .4)); }
+    for (let i = 0; i < 4; i++) { const [x, z] = W((rn() - .5) * 6, (rn() - .5) * 5); pp('post', x, z, .15, rn() * TAU, .15, 1.4 + rn(), .15, wc, {rz: PI / 2}); } }
+  else if (kind === 'graves') { const rows = 3, cols = 5;
+    for (let r2 = 0; r2 < rows; r2++) for (let c = 0; c < cols; c++) { if (rn() < .2) continue; const [x, z] = W((c - (cols - 1) / 2) * 1.6, (r2 - 1) * 2.3), sc = stoneC();
+      if (rn() < .35) { const wc = woodC(), hh = 1.1 + rn() * .3, t = (rn() - .5) * .3; pp('post', x, z, -.1, a, .08, hh, .08, wc, {rx: t}); pp('block', x, z, hh * .72, a, .6, .08, .08, wc, {rx: t}); }
+      else pp('block', x, z, -.15, a + (rn() - .5) * .2, .6, .75 + rn() * .3, .14, sc, Object.assign({rx: (rn() - .5) * .35, rz: (rn() - .5) * .2, ao: .3}, topO));
+      const [mx, mz] = W((c - (cols - 1) / 2) * 1.6, (r2 - 1) * 2.3 + .9); pp('blob', mx, mz, -.02, a, .45, .16, .85, jit([.16, .13, .09], .2)); }
+    for (const sd of [-1.4, 1.4]) { const [x, z] = W(sd, -4.6); pp('block', x, z, -.1, a, .55, 2.6, .55, stoneC(), topO); circ(x, z, .4); }
+    { const [x, z] = W(0, -4.6), br = rn() < .5; pp('block', x, z, br ? 2.2 : 2.6, a, 3.4, .42, .6, stoneC(), {rz: br ? .25 : 0}); }
+    { const [x, z] = W(2.4, -5.4); pp('post', x, z, 0, 0, .08, 1.9, .08, woodC()); pp('block', x, z, 1.85, a, .5, .05, .05, woodC()); const [lx, lz] = W(2.62, -5.4); pv('gem', lx, lz, 1.6, a, .18, .26, .18, [.95, .7, .35], {em: .8}); } }
+  end();
+}
+// small props: cairns, camp fires, crates, fences, an upturned dinghy, driftwood, lantern posts
+function isvMinor(kind, S, X) {
+  const {rn, BI, pp, pv, circ, begin, end, frame, stoneC, woodC, jit} = X, W = frame(S.x, S.z, S.a), a = S.a; begin('p', S.x, S.z, kind === 'fence' ? 6 : 2.5);
+  if (kind === 'cairn') { let y = -.15; const n = 4 + Math.floor(rn() * 3); for (let i = 0; i < n; i++) { const s = .55 - i * .07; pp('rock' + (i % 3), S.x + (rn() - .5) * .1, S.z + (rn() - .5) * .1, y + s * .35, rn() * TAU, s, s * .5, s * .9, stoneC(), {ao: .3}); y += s * .55; } circ(S.x, S.z, .5); }
+  else if (kind === 'fire') { for (let i = 0; i < 7; i++) { const an = i / 7 * TAU, [x, z] = W(Math.cos(an) * .75, Math.sin(an) * .75); pp('rock' + (i % 3), x, z, -.04, rn() * TAU, .2, .14, .18, stoneC()); }
+    pp('blob', S.x, S.z, -.08, 0, .6, .07, .6, [.04, .035, .03]); for (let i = 0; i < 3; i++) pp('post', S.x, S.z, .1, a + i * 1.1, .1, 1.1, .1, [.06, .05, .04], {rz: PI / 2 - .15});
+    const [lx, lz] = W(1.6, .3); pp('post', lx, lz, .18, a + 1.4, .3, 1.6, .3, woodC(), {rz: PI / 2}); }
+  else if (kind === 'crates') { const n = 2 + Math.floor(rn() * 3); for (let i = 0; i < n; i++) { const s = .7 + rn() * .3, [x, z] = W((i % 2) * 1.05 - .5, Math.floor(i / 2) * 1.1 - .5); pp('block', x, z, i === n - 1 && n > 2 ? .95 : -.02, a + (rn() - .5) * .4, s, s * .85, s, woodC(), {ao: .3}); circ(x, z, .5); }
+    const [bx2, bz2] = W(1.6, .8); pp('barrel', bx2, bz2, -.02, 0, .62, .9, .62, jit([.26, .2, .14], .2), {ao: .3}); circ(bx2, bz2, .35); }
+  else if (kind === 'fence') { const n = 5 + Math.floor(rn() * 4), wc = woodC(); let prev = null;
+    for (let i = 0; i < n; i++) { const [x, z] = W(i * 1.6 - n * .8, 0), lean = (rn() - .5) * .25; pp('post', x, z, -.15, 0, .12, 1.25, .12, jit(wc, .2), {rz: lean});
+      if (prev && rn() < .8) for (const yy of [.4, .85]) { if (rn() < .2) continue; pp('block', (x + prev[0]) / 2, (z + prev[1]) / 2, yy, a, 1.65, .09, .05, jit(wc, .2), {rz: (rn() - .5) * .15}); } prev = [x, z]; } }
+  else if (kind === 'dinghy') { pp('hull', S.x, S.z, .02, a, 3.2, .6, 1.25, jit([.32, .36, .42], .3), {ao: .2}); circ(S.x, S.z, 1); const [ox, oz] = W(.4, 1.3); pp('block', ox, oz, .03, a + .3, 2.1, .04, .13, woodC()); }
+  else if (kind === 'drift') { const n = 2 + Math.floor(rn() * 2); for (let i = 0; i < n; i++) { const [x, z] = W((rn() - .5) * 2.5, (rn() - .5) * 2.5); pp('post', x, z, .1, a + rn() * 1.2, .26 + rn() * .1, 2 + rn() * 2.2, .26, jit([.6, .56, .5], .2), {rz: PI / 2}); } }
+  else if (kind === 'lantern') { const wc = woodC(); pp('post', S.x, S.z, -.1, 0, .09, 2.2, .09, wc); pp('block', S.x, S.z, 2.05, a, .6, .06, .06, wc); const [lx, lz] = W(.26, 0); pv('gem', lx, lz, 1.8, a, .2, .3, .2, [.95, .68, .32], {em: .8}); circ(S.x, S.z, .15); }
+  end();
+}
+// one vegetation piece (the rocky ones go in the prop buffer)
+function isvVeg(vk, x, z, X) {
+  const {rn, BI, bio, P, Vg, begin, end, jit, H} = X, s = .7 + rn() * .6, ry = rn() * TAU, put = (B, k, dx, dy, dz, r2, sx, sy, sz, col, o) => isvPut(B, k, x + dx, H(x + dx, z + dz) + dy, z + dz, r2, sx, sy, sz, col, o);
+  if (vk === 'tuft') { begin('v', x, z, .4); put(Vg, bio === 'grave' || bio === 'ash' ? 'twig' : 'tuft', 0, -.04, 0, ry, s * .55, s * (.35 + rn() * .4), s * .55, jit(BI.g, .35), {sw: 1, ao: .6}); end(); }
+  else if (vk === 'twig') { begin('v', x, z, .6); put(Vg, 'twig', 0, -.05, 0, ry, s * .8, s * (.8 + rn() * .6), s * .8, jit([.24, .2, .16], .3), {sw: .5, ao: .5}); end(); }
+  else if (vk === 'bush' || vk === 'heath') { begin('v', x, z, 1.2); const m = vk === 'heath' ? 2 : 2 + Math.floor(rn() * 2), c = jit(BI.b, .3);
+    for (let i = 0; i < m; i++) { const dx = (rn() - .5) * s, dz = (rn() - .5) * s, q = vk === 'heath' ? [s * (.8 + rn() * .6), s * (.28 + rn() * .12), s * (.8 + rn() * .5)] : [s * (.55 + rn() * .4), s * (.45 + rn() * .3), s * (.55 + rn() * .4)];
+      put(Vg, 'blob', dx, q[1] * .55, dz, rn() * TAU, q[0], q[1], q[2], jit(c, .15), {sw: .25, ao: .55}); }
+    if (BI.fl && rn() < .35) for (let i = 0; i < 4; i++) put(Vg, 'gem', (rn() - .5) * s, s * .7, (rn() - .5) * s, rn(), .1, .1, .1, BI.fl[Math.floor(rn() * BI.fl.length)], {sw: .2, swk: 1}); end(); }
+  else if (vk === 'fern') { begin('v', x, z, .9); put(Vg, 'fern', 0, -.03, 0, ry, s * 1.1, s * (.8 + rn() * .4), s * 1.1, jit([BI.g[0] * .9, BI.g[1] * 1.15, BI.g[2] * .9], .25), {sw: .9, ao: .6}); end(); }
+  else if (vk === 'flower') { begin('v', x, z, .5); put(Vg, 'tuft', 0, -.04, 0, ry, s * .4, s * .45, s * .4, jit(BI.g, .3), {sw: 1, ao: .6}); const fc = BI.fl[Math.floor(rn() * BI.fl.length)];
+    for (let i = 0; i < 3; i++) put(Vg, 'gem', (rn() - .5) * .35, s * (.32 + rn() * .14), (rn() - .5) * .35, rn(), .09, .07, .09, jit(fc, .15), {sw: .5, swk: 1}); end(); }
+  else if (vk === 'shrub') { begin('v', x, z, .8); put(Vg, 'cone', 0, -.1, 0, ry, s * .9, s * 1.2, s * .9, jit(BI.b, .25), {sw: .15, ao: .5}); put(Vg, 'cone', 0, s * .45, 0, ry + .5, s * .55, s * .62, s * .55, [.82, .86, .9], {sw: .15}); end(); }
+  else if (vk === 'shroom') { begin('v', x, z, .6); const c = BI.fl[Math.floor(rn() * BI.fl.length)], m = 3 + Math.floor(rn() * 4);
+    for (let i = 0; i < m; i++) { const dx = (rn() - .5) * .9, dz = (rn() - .5) * .9, hh = .12 + rn() * .25; put(Vg, 'post', dx, -.02, dz, 0, .05, hh, .05, [.6, .62, .58]); put(Vg, 'cone', dx, hh - .04, dz, rn(), .22 + rn() * .12, .12, .22 + rn() * .12, jit(c, .2), {em: 1}); } end(); }
+  else if (vk === 'ice' || vk === 'obs') { begin('p', x, z, .8); const c = vk === 'ice' ? [.55, .7, .85] : [.035, .035, .045], m = 2 + Math.floor(rn() * 3);
+    for (let i = 0; i < m; i++) put(P, 'shard', (rn() - .5) * .8, -.15, (rn() - .5) * .8, rn() * TAU, .3 + rn() * .25, .7 + rn() * 1.3, .3 + rn() * .2, jit(c, .2), {rx: (rn() - .5) * .6, rz: (rn() - .5) * .6, ao: .2}); end(); }
+  else if (vk === 'stump') { begin('p', x, z, .6); put(P, 'post', 0, -.1, 0, ry, .32 * s, .5 + rn() * .7, .32 * s, jit(BI.wood, .3), {ao: .4}); if (rn() < .5) put(P, 'post', .4, .08, 0, ry, .1, .9, .1, BI.wood, {rz: 1.2}); end(); }
+}
+// hide the dressing where this game's island events sit (they are seeded per game, the dressing is not), and bring back what an earlier game hid
+function isvIE() {
+  const dirty = new Set();
+  for (const e of ISV.isles) { const ev = (IE.list || []).filter(q => q.I === e.I); for (const it of e.it) { const hid = ev.some(q => Math.hypot(q.x - it.x, q.z - it.z) < it.r + 6); if (!!it.hid === hid) continue; it.hid = hid;
+    const m = it.b === 'v' ? e.veg : e.prop; if (!m) continue; const pa = m.geometry.attributes.position, o = m.userData.p0, ar = pa.array;
+    for (let i = it.s; i < it.s + it.n; i++) { const j = hid ? it.s : i; ar[i * 3] = o[j * 3]; ar[i * 3 + 1] = o[j * 3 + 1]; ar[i * 3 + 2] = o[j * 3 + 2]; } dirty.add(pa);
+    for (const c of it.pc) { const j = PCIRC.indexOf(c); if (hid && j >= 0) PCIRC.splice(j, 1); else if (!hid && j < 0) PCIRC.push(c); } } }
+  dirty.forEach(pa => pa.needsUpdate = true); return dirty.size;
+}
+function isvBuild() {
+  if (ISV.built) return; ISV.built = true; const t0 = performance.now();
+  ISLES.forEach((I, k) => { if (I.bar) return; try { isvIsle(I, k); } catch (err) { console.warn('isv', I.n, err); } });
+  ISV.ms = Math.round(performance.now() - t0);
+}
+function isvFx(dt) {
+  const U = ISV.U; U.uT.value = G.wt || 0; U.uA.value = G.sea || .5; U.uN.value = TOD.night || 0; U.uW.value = G.storm || 0;
+  if ((ISV.t -= dt) > 0 || !ISV.isles.length) return; ISV.t = .3; const cp = cam.position, far = G.viewFar || 1600, uw = (G.uw || 0) > .5, lo = SET.gfx !== 'high';
+  for (const e of ISV.isles) { const d = Math.hypot(e.I.x - cp.x, e.I.z - cp.z) - e.R;
+    if (e.prop) { e.prop.visible = !uw && d < Math.min(far, 700); e.prop.castShadow = d < 120; }
+    if (e.veg) e.veg.visible = !uw && d < Math.min(far, lo ? 130 : 240);
+    if (e.path) e.path.visible = !uw && d < Math.min(far, 450); }
+}
+{ materials = after(materials, function (r) { isvTerrain(); }); }
+{ buildWorld = around(buildWorld, function (next, ...a) { const was = BUILT, r = next.apply(this, a); if (!was && BUILT) { try { isvBuild(); } catch (err) { console.warn('isvBuild', err); } } return r; }); }
+{ updateWorldFx = after(updateWorldFx, function (r, dt) { isvFx(dt || 0); }); }
+{ startGame = after(startGame, function (r) { try { isvIE(); } catch (err) { console.warn('isvIE', err); } }); }
+if (TEST && window.__S) Object.assign(window.__S, {ISV, isvIE, isvBio});
