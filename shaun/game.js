@@ -14,7 +14,8 @@ function vn(x, z) { const xi = Math.floor(x), zi = Math.floor(z), xf = x - xi, z
 function fbm(x, z) { let s = 0, a = .5, f = 1; for (let i = 0; i < 4; i++) { s += a * vn(x * f, z * f); f *= 2.03; a *= .5; } return s / .9375; }
 
 // ---------------- settings
-const SET = Object.assign({sens: 1, vol: .8, gfx: 'high', auto: true, ff: false, name: 'Trooper'}, (() => { try { return JSON.parse(localStorage.getItem('ls-set')) || {}; } catch (e) { return {}; } })());
+const SET = Object.assign({sens: 1, vol: .8, gfx: 'high', auto: false, ff: false, name: 'Trooper'}, (() => { try { return JSON.parse(localStorage.getItem('ls-set')) || {}; } catch (e) { return {}; } })());
+if (!SET.v2) { SET.auto = false; SET.v2 = 1; try { localStorage.setItem('ls-set', JSON.stringify(SET)); } catch (e) {} } // manual fire is the default now
 const saveSet = () => { try { localStorage.setItem('ls-set', JSON.stringify(SET)); } catch (e) {} };
 const HI = () => SET.gfx === 'high';
 
@@ -421,7 +422,7 @@ const BEAMS = [];
 }
 
 // ---------------- warrior bugs
-const BH = 1.15;
+const BH = 1.5;
 function bugBodyGeo(lo) {
   const parts = [];
   const add = (g, col, tf) => { g = g.toNonIndexed(); g.applyMatrix4(tf); const n = g.attributes.position.count, c = new Float32Array(n * 3); const C = new THREE.Color(col);
@@ -430,17 +431,22 @@ function bugBodyGeo(lo) {
   const M = (x, y, z, sx, sy, sz, rx = 0, ry = 0, rz = 0) => new THREE.Matrix4().compose(new THREE.Vector3(x, y, z), new THREE.Quaternion().setFromEuler(new THREE.Euler(rx, ry, rz)), new THREE.Vector3(sx, sy, sz));
   const sph = () => lo ? new THREE.SphereGeometry(1, 7, 5) : new THREE.SphereGeometry(1, 14, 10), half = () => lo ? new THREE.SphereGeometry(1, 7, 3, 0, TAU, 0, PI * .5) : new THREE.SphereGeometry(1, 14, 6, 0, TAU, 0, PI * .5), cone = () => new THREE.ConeGeometry(1, 1, lo ? 4 : 6);
   const AMB = 0x8a5a2e, DRK = 0x2a1a10, MID = 0x5e3c20, BONE = 0xc9b998, BEL = 0x7a5a3c;
-  // abdomen: segmented rings
-  const seg = [[-.55, .5, .5], [-.98, .58, .56], [-1.4, .5, .5], [-1.72, .33, .34]];
-  seg.forEach(([z, r, w], i) => { const y = BH + .12 + (i === 1 ? .08 : 0) - (i === 3 ? .1 : 0); add(sph(), i % 2 ? BEL : AMB, M(0, y - .04, z, w * .95, r * .8, .32)); add(half(), DRK, M(0, y, z + .02, w * 1.02, r * .95, .3, -.1)); add(cone(), DRK, M(0, y + r * .9, z, .06, .26, .1, -.5)); });
-  // thorax
-  add(sph(), AMB, M(0, BH, 0, .42, .36, .5)); add(half(), DRK, M(0, BH + .03, -.02, .44, .4, .48, -.05)); add(cone(), DRK, M(0, BH + .45, -.05, .07, .3, .12, -.4));
-  // neck + head
-  add(sph(), MID, M(0, BH - .02, .42, .26, .24, .2)); add(sph(), AMB, M(0, BH - .08, .66, .3, .26, .34, .25)); add(half(), DRK, M(0, BH - .02, .64, .32, .26, .34, .35));
-  // eyes (glossy black)
-  if (!lo) for (const s of [-1, 1]) add(sph(), 0x0a0605, M(s * .17, BH, .82, .06, .05, .06));
-  // mandibles
-  for (const s of [-1, 1]) { add(cone(), BONE, M(s * .12, BH - .2, 1.0, .05, .42, .05, PI / 2 + .5, 0, -s * .5)); add(cone(), MID, M(s * .09, BH - .1, .9, .07, .2, .07, PI / 2 + .3, 0, -s * .3)); }
+  // warrior bug, not a spider: slim armoured thorax, a long tapering tail that sweeps up behind, wedge head with big pincers
+  const seg = [[-.5, .32, .3, .08], [-.85, .3, .27, .2], [-1.18, .26, .23, .34], [-1.48, .21, .18, .5], [-1.74, .16, .13, .68], [-1.95, .11, .09, .86]];
+  seg.forEach(([z, r, w, dy], i) => { const y = BH + dy, tilt = -.35 - i * .08; add(sph(), i % 2 ? BEL : AMB, M(0, y - .03, z, w, r * .85, .24, tilt)); add(half(), DRK, M(0, y, z + .02, w * 1.06, r, .23, tilt - .05)); if (!lo || i % 2 === 0) add(cone(), DRK, M(0, y + r * .85, z + .03, .04, .18, .06, -.9)); });
+  add(cone(), DRK, M(0, BH + 1.02, -2.12, .06, .42, .06, -2.1)); // tail spike
+  // thorax: armoured, narrow, with a raised spine plate
+  add(sph(), AMB, M(0, BH, 0, .3, .3, .55)); add(half(), DRK, M(0, BH + .04, -.02, .33, .36, .56, -.04));
+  for (const z of [.25, -.05, -.32]) add(cone(), DRK, M(0, BH + .38, z, .05, .24, .08, -.5));
+  // head: long wedge, low and forward
+  add(sph(), MID, M(0, BH - .05, .5, .2, .2, .2)); add(sph(), AMB, M(0, BH - .14, .78, .22, .18, .36, .3)); add(half(), DRK, M(0, BH - .08, .76, .24, .17, .37, .4));
+  if (!lo) for (const s of [-1, 1]) add(sph(), 0x0a0605, M(s * .15, BH - .06, .9, .05, .04, .05));
+  // pincers: two long curved outer jaws plus two short inner ones
+  for (const s of [-1, 1]) {
+    add(cone(), MID, M(s * .17, BH - .22, 1.02, .07, .34, .07, PI / 2 + .35, 0, -s * .55));
+    add(cone(), BONE, M(s * .26, BH - .36, 1.3, .045, .44, .045, PI / 2 + .45, 0, s * .6));
+    if (!lo) add(cone(), BONE, M(s * .07, BH - .3, 1.08, .03, .26, .03, PI / 2 + .6, 0, -s * .2));
+  }
   const g = new THREE.BufferGeometry(); let n = 0; for (const p of parts) n += p.attributes.position.count;
   const pos = new Float32Array(n * 3), nor = new Float32Array(n * 3), col = new Float32Array(n * 3); let o = 0;
   for (const p of parts) { pos.set(p.attributes.position.array, o * 3); nor.set(p.attributes.normal.array, o * 3); col.set(p.attributes.color.array, o * 3); o += p.attributes.position.count; }
@@ -453,8 +459,8 @@ const MAXB = 1100, NEARB = 260, NEAR_D = 48;
 const bugMat = new THREE.MeshStandardMaterial({vertexColors: true, roughness: .42, metalness: .08});
 const BODY = pool(bugBodyGeo(false), bugMat, NEARB, true);   // detailed bodies, closest bugs
 const BODYL = pool(bugBodyGeo(true), bugMat, MAXB, false);   // low-poly bodies, everything else
-const LUP = pool(legGeo(.07, .12, 0x4e3018, 0x2a1a10), bugMat, MAXB * 6, true);
-const LLO = pool(legGeo(.006, .08, 0x2a1a10, 0xa89878), bugMat, MAXB * 6, true);
+const LUP = pool(legGeo(.09, .15, 0x4e3018, 0x2a1a10), bugMat, MAXB * 6, true);
+const LLO = pool(legGeo(.008, .11, 0x2a1a10, 0xa89878), bugMat, MAXB * 6, true);
 for (let i = 0; i < NEARB; i++) BODY.setColorAt(i, new THREE.Color(1, 1, 1));
 for (let i = 0; i < MAXB; i++) BODYL.setColorAt(i, new THREE.Color(1, 1, 1));
 const DRAW = {n: 0, nl: 0, legs: 0};
@@ -465,7 +471,7 @@ function drawEnd() { BODY.count = DRAW.n; BODYL.count = DRAW.nl; LUP.count = LLO
 const PILE = new Map(), pileK = (x, z) => (Math.floor(x / 1.4) + 1000) * 4000 + Math.floor(z / 1.4) + 1000;
 function pileAt(x, z) { return PILE.get(pileK(x, z)) || 0; }
 // legs: 0-3 walking, 4-5 claws. [side, hipZ, footZ]
-const LEGS = [[1, .22, .9], [-1, .22, .9], [1, -.28, -1.2], [-1, -.28, -1.2]];
+const LEGS = [[1, .2, 1.5], [-1, .2, 1.5], [1, -.3, -1.75], [-1, -.3, -1.75]];
 const TYPES = [
   {s: 1, hp: 2, sp: 1, tint: [1, 1, 1], dps: 2.2, gib: .25},
   {s: .78, hp: 1, sp: 1.4, tint: [1.1, .95, .78], dps: 1.6, leap: 1, gib: .45},
@@ -491,7 +497,7 @@ function drawBug(b, time) {
   const s = b.s, dead = b.dead > 0, dt = b.dead, hk = b.hk || 0;
   // alive: lean toward the side that lost legs (limp); dead: tumble toward b.droll
   const lean = dead ? 0 : (((b.legs & 1) ? 0 : 1) + ((b.legs & 4) ? 0 : 1) - ((b.legs & 2) ? 0 : 1) - ((b.legs & 8) ? 0 : 1)) * .16;
-  const roll = b.roll + lean + (dead ? 0 : Math.sin(b.t * 31) * hk * .08), lift = dead ? mix(1, .5, smooth(dt * 2.5)) : 1;
+  const roll = b.roll + lean + (dead ? 0 : Math.sin(b.t * 31) * hk * .08), lift = dead ? mix(1, .38, smooth(dt * 2.5)) : 1;
   const bob = dead ? 0 : Math.sin(b.ph * 2) * .05 * Math.min(1, b.sp / 4);
   const sink = dead && dt > 6 ? (dt - 6) * .6 : 0;
   // a hit snaps the head up and shoves the body back a little
@@ -508,21 +514,21 @@ function drawBug(b, time) {
     let sd, hx, hy, hz, fx, fy, fz, kx, ky, kz;
     if (k < 4) {
       const L = LEGS[k]; sd = L[0]; const ph = b.ph + (k === 0 || k === 3 ? 0 : PI);
-      hx = sd * .3; hy = BH + .02; hz = L[1];
+      hx = sd * .26; hy = BH + .12; hz = L[1]; const fr = k < 2 ? 1 : -1;
       if (dead) { const tw = Math.sin(time * 18 + b.twitch + k) * Math.max(0, 1 - dt / 4) * .25; const c = smooth(dt * 1.5);
-        fx = sd * mix(1.5, .5, c); fy = mix(0, BH + 1.1, c) + tw; fz = L[2] * mix(1, .4, c); kx = sd * mix(1.2, .8, c); ky = BH + mix(.95, 1.4, c); kz = hz + (fz - hz) * .5; }
-      else if (b.st === 2) { fx = sd * 1.3; fy = .4; fz = L[2] - 1.2 * (k < 2 ? -1 : 1) * .3 - .6; kx = sd * 1.1; ky = BH + .7; kz = (hz + fz) / 2; }
+        fx = sd * mix(1.15, .5, c); fy = mix(0, BH + 1.3, c) + tw; fz = L[2] * mix(1, .4, c); kx = sd * mix(.7, .8, c); ky = BH + mix(1.1, 1.5, c); kz = hz + fr * mix(.55, .3, c); }
+      else if (b.st === 2) { fx = sd * 1.0; fy = .3; fz = L[2] + fr * .5; kx = sd * .75; ky = BH + 1.0; kz = hz + fr * .7; }
       else { const sw = Math.sin(ph) * stride * Math.min(1, b.sp / 3 + .15), up = Math.max(0, Math.cos(ph)) * liftH * Math.min(1, b.sp / 3 + .1);
-        fx = sd * 1.55; fy = up; fz = L[2] + sw; kx = sd * 1.05; ky = BH + .95 + up * .5; kz = (hz + fz) * .5; }
+        fx = sd * 1.0; fy = up; fz = L[2] + sw; kx = sd * .6; ky = BH + 1.3 + up * .4; kz = hz + fr * .5 + sw * .3; }
     } else {
-      sd = k === 4 ? 1 : -1; hx = sd * .2; hy = BH - .02; hz = .5;
+      sd = k === 4 ? 1 : -1; hx = sd * .2; hy = BH + .1; hz = .42;
       const a = b.st === 1 ? Math.sin(b.t * 7 + (sd > 0 ? 0 : 1.6)) : Math.sin(b.ph + (sd > 0 ? 0 : PI)) * .3;
-      if (dead) { const c = smooth(dt * 1.5), tw = Math.sin(time * 15 + b.twitch * 2 + k) * Math.max(0, 1 - dt / 4) * .3; kx = sd * .5; ky = BH + .6 * c + .5; kz = .7; fx = sd * .25; fy = BH + 1.2 * c + tw; fz = 1.2 - c * .5; }
-      else { kx = sd * .48; ky = BH + .7 + a * .25; kz = .95 + a * .15; fx = sd * .22; fy = BH - .55 + a * .7; fz = 1.75 + a * .35; }
+      if (dead) { const c = smooth(dt * 1.5), tw = Math.sin(time * 15 + b.twitch * 2 + k) * Math.max(0, 1 - dt / 4) * .3; kx = sd * .5; ky = BH + .6 * c + .6; kz = .7; fx = sd * .25; fy = BH + 1.2 * c + tw; fz = 1.2 - c * .5; }
+      else { const at = b.st === 1 ? Math.max(0, a) : 0; kx = sd * .42; ky = BH + 1.0 + a * .25; kz = .75 + a * .1; fx = sd * .2; fy = BH + .35 - at * 1.4 + (b.st === 1 ? 0 : a * .2); fz = 1.55 + a * .2 + at * .35; }
     }
     hip.set(hx, hy, hz).applyMatrix4(bm4); knee.set(kx, ky, kz).applyMatrix4(bm4); foot.set(fx, fy, fz).applyMatrix4(bm4);
-    segMat(e, hip.x, hip.y, hip.z, knee.x, knee.y, knee.z, s * (k < 4 ? 1 : 1.15)); LUP.setMatrixAt(ui, _m);
-    segMat(e, knee.x, knee.y, knee.z, foot.x, foot.y, foot.z, s * (k < 4 ? 1 : 1.35)); LLO.setMatrixAt(ui, _m);
+    segMat(e, hip.x, hip.y, hip.z, knee.x, knee.y, knee.z, s * (k < 4 ? 1 : 1.25)); LUP.setMatrixAt(ui, _m);
+    segMat(e, knee.x, knee.y, knee.z, foot.x, foot.y, foot.z, s * (k < 4 ? 1.15 : 1.6)); LLO.setMatrixAt(ui, _m);
   }
 }
 function bugCenter(b, out) { return out.set(b.x, b.y + (b.dead ? 0 : b.py || 0) + BH * b.s * (b.dead ? .5 : 1), b.z); }
@@ -1264,10 +1270,10 @@ function stepWorldFx(dt, time) {
 
 // ---------------- gun + camera feel
 const keys = {};
-let mouseDown = false, testFire = null, aimTouch = false;
+let mouseDown = false, testFire = null, aimTouch = false, fireTouch = false;
 function aiming() { return !!(keys.KeyQ || aimTouch) && G.on && !G.over; }
 const adsSens = () => 1 - P.ads * .5;
-function wantFire() { return testFire !== null ? testFire : (SET.auto || mouseDown); }
+function wantFire() { return testFire !== null ? testFire : (SET.auto || mouseDown || fireTouch); }
 function stepGunner(g, dt, local) {
   const want = local ? wantFire() && !G.over : !!g.fire;
   g.spin = clamp(g.spin + (want ? dt / .4 : -dt / 1.4), 0, 1);
@@ -1336,7 +1342,7 @@ function beginGame(fresh) {
   ['menu', 'end', 'pause'].forEach(i => $(i).classList.add('hidden')); $('hud').classList.remove('hidden'); $('visor').classList.remove('hidden');
   if (isHost()) startWave(1);
   if (!TEST && !isTouch) lockPtr();
-  $('bPauseT').classList.toggle('hidden', !isTouch); $('bAimT').classList.toggle('hidden', !isTouch);
+  $('bPauseT').classList.toggle('hidden', !isTouch); $('bAimT').classList.toggle('hidden', !isTouch); $('bFireT').classList.toggle('hidden', !isTouch);
   $('bAgain').disabled = false;
 }
 function overrun(m) {
@@ -1357,7 +1363,7 @@ function showEnd(title, sub, w, k, t, best) {
   const guest = Net.role === 'guest' && !G.lost;
   $('bAgain').textContent = G.lost ? 'Back to menu' : guest ? 'Waiting for the host to restart' : 'Hold the line again';
   $('bAgain').disabled = guest; $('endK').textContent = guest ? '' : 'or press Space';
-  $('end').classList.remove('hidden'); $('bPauseT').classList.add('hidden'); $('bAimT').classList.add('hidden'); aimTouch = false; document.exitPointerLock && document.exitPointerLock();
+  $('end').classList.remove('hidden'); $('bPauseT').classList.add('hidden'); $('bAimT').classList.add('hidden'); $('bFireT').classList.add('hidden'); aimTouch = fireTouch = false; document.exitPointerLock && document.exitPointerLock();
 }
 function lockPtr() { try { const r = canvas.requestPointerLock && canvas.requestPointerLock(); if (r && r.catch) r.catch(() => {}); } catch (e) {} }
 
@@ -1418,10 +1424,10 @@ addEventListener('keydown', e => { keys[e.code] = true; if (!G.on) return;
   if (G.over) { if ((e.code === 'Space' || e.code === 'Enter') && !$('end').classList.contains('hidden') && !$('bAgain').disabled) { e.preventDefault(); $('bAgain').click(); } return; }
   if (e.code === 'Escape' && document.pointerLockElement !== canvas && performance.now() - plT > 400) { pause(!G.paused); return; } if (e.code === 'KeyF') { SET.auto = !SET.auto; saveSet(); syncUI(); toast('Auto-fire ' + (SET.auto ? 'on' : 'off')); } if (e.code === 'KeyR' && P.vent <= 0 && P.heat > .2) { P.vent = .5; vent(); } if (e.code === 'KeyP') pause(true); });
 addEventListener('keyup', e => { keys[e.code] = false; });
-let isTouch = false, tX = null;
-addEventListener('touchstart', e => { isTouch = true; Sfx.init(); if (G.on && !G.over) { $('bPauseT').classList.remove('hidden'); $('bAimT').classList.remove('hidden'); } if (G.on) tX = e.touches[0].clientX; }, {passive: true});
-addEventListener('touchmove', e => { if (!G.on || tX === null) return; const x = e.touches[0].clientX, dx = (x - tX) * .006 * SET.sens * adsSens(); tX = x; P.yaw = clamp(P.yaw - dx, -1.5, 1.5); P.swayVX -= dx * 40; }, {passive: true});
-addEventListener('touchend', () => { tX = null; });
+let isTouch = false, tX = null, tId = null;
+addEventListener('touchstart', e => { isTouch = true; Sfx.init(); if (G.on && !G.over) { $('bPauseT').classList.remove('hidden'); $('bAimT').classList.remove('hidden'); $('bFireT').classList.remove('hidden'); } const t = e.changedTouches[0]; if (G.on && tId === null && !(t.target.closest && t.target.closest('button'))) { tId = t.identifier; tX = t.clientX; } }, {passive: true});
+addEventListener('touchmove', e => { if (!G.on || tX === null) return; const t = [...e.touches].find(q => q.identifier === tId); if (!t) return; const x = t.clientX, dx = (x - tX) * .006 * SET.sens * adsSens(); tX = x; P.yaw = clamp(P.yaw - dx, -1.5, 1.5); P.swayVX -= dx * 40; }, {passive: true});
+const tEnd = e => { for (const t of e.changedTouches) if (t.identifier === tId) { tId = null; tX = null; } }; addEventListener('touchend', tEnd); addEventListener('touchcancel', tEnd);
 let plT = 0;
 document.addEventListener('pointerlockchange', () => { plT = performance.now(); const on = document.pointerLockElement === canvas; $('hint').classList.toggle('hidden', on || !G.on || G.over || isTouch || TEST); if (!on && G.on && !G.over && !TEST && !isTouch) pause(true); });
 function pause(p) { G.paused = p; $('pause').classList.toggle('hidden', !p); if (!p && !isTouch) lockPtr(); }
@@ -1442,6 +1448,7 @@ for (const id of ['gfx', 'gfx2']) for (const b of $(id).children) b.onclick = ()
 for (const id of ['auto', 'auto2']) if ($(id)) $(id).onchange = e => { SET.auto = e.target.checked; saveSet(); syncUI(); };
 for (const id of ['ff', 'ff2']) if ($(id)) $(id).onchange = e => { SET.ff = e.target.checked; saveSet(); syncUI(); toast('Friendly fire ' + (SET.ff ? 'on' : 'off')); };
 if ($('bAimT')) { const on = v => e => { e.preventDefault(); aimTouch = v; $('bAimT').classList.toggle('on', v); }; $('bAimT').addEventListener('touchstart', on(true), {passive: false}); $('bAimT').addEventListener('touchend', on(false)); $('bAimT').addEventListener('touchcancel', on(false)); }
+if ($('bFireT')) { const on = v => e => { e.preventDefault(); fireTouch = v; $('bFireT').classList.toggle('on', v); }; for (const [ev, v] of [['touchstart', true], ['touchend', false], ['touchcancel', false]]) $('bFireT').addEventListener(ev, on(v), {passive: false}); }
 if ($('name')) $('name').oninput = e => { SET.name = e.target.value.replace(/[^A-Za-z0-9 ._-]/g, '').slice(0, 14) || 'Trooper'; saveSet(); };
 function joinFail(why) { netStatus(why); if (G.on) { G.on = false; $('menu').classList.remove('hidden'); $('hud').classList.add('hidden'); $('end').classList.add('hidden'); $('visor').classList.add('hidden'); document.exitPointerLock && document.exitPointerLock(); } }
 function netStatus(s) { if ($('netS')) $('netS').textContent = s; }
@@ -1459,7 +1466,7 @@ if ($('bJoin')) $('bJoin').onclick = () => {
   for (const id of [...G.gunners.keys()]) removeGunner(id);
 };
 $('bResume').onclick = () => pause(false);
-$('bQuit').onclick = () => { hostBye(); Net.close(); clearTimeout(G.goneT); $('bPauseT').classList.add('hidden'); $('bAimT').classList.add('hidden'); aimTouch = false; G.on = false; G.paused = false; resetWorld(); ['pause', 'end'].forEach(i => $(i).classList.add('hidden')); $('menu').classList.remove('hidden'); $('hud').classList.add('hidden'); $('visor').classList.add('hidden'); };
+$('bQuit').onclick = () => { hostBye(); Net.close(); clearTimeout(G.goneT); $('bPauseT').classList.add('hidden'); $('bAimT').classList.add('hidden'); $('bFireT').classList.add('hidden'); aimTouch = fireTouch = false; G.on = false; G.paused = false; resetWorld(); ['pause', 'end'].forEach(i => $(i).classList.add('hidden')); $('menu').classList.remove('hidden'); $('hud').classList.add('hidden'); $('visor').classList.add('hidden'); };
 $('bMenu').onclick = $('bQuit').onclick;
 $('bAgain').onclick = () => { if (G.lost) { $('bQuit').onclick(); return; } if (Net.role === 'guest') return; if (Net.role === 'host') Net.send({t: 'restart'}); beginGame(false); };
 const openReq = () => { $('reqF').src = 'requests.html?embed'; $('reqBox').classList.remove('hidden'); document.exitPointerLock && document.exitPointerLock(); };
