@@ -473,8 +473,8 @@ function pileAt(x, z) { return PILE.get(pileK(x, z)) || 0; }
 // legs: 0-3 walking, 4-5 claws. [side, hipZ, footZ]
 const LEGS = [[1, .2, 1.5], [-1, .2, 1.5], [1, -.3, -1.75], [-1, -.3, -1.75]];
 const TYPES = [
-  {s: 1, hp: 2, sp: 1, tint: [1, 1, 1], dps: 2.2, gib: .25},
-  {s: .78, hp: 1, sp: 1.4, tint: [1.1, .95, .78], dps: 1.6, leap: 1, gib: .45},
+  {s: 1, hp: 2, sp: 1, tint: [1, 1, 1], dps: 2.2, gib: .4},
+  {s: .78, hp: 1, sp: 1.4, tint: [1.1, .95, .78], dps: 1.6, leap: 1, gib: .6},
   {s: 2.1, hp: 20, sp: .72, tint: [.85, .6, .5], dps: 10, gib: 0},
   {s: .92, hp: 4, sp: .85, tint: [.7, 1.3, .5], dps: 0, spit: 1, gib: .35},      // 3 spitter (wave 4+): squats at ~42 m and lobs acid at the line
   {s: 1.15, hp: 6, sp: 1.2, tint: [.95, .72, .55], dps: 5, burrow: 1, gib: .3},  // 4 burrower (wave 6+): tunnels in under the sand, erupts at ~28 m
@@ -657,7 +657,7 @@ const Sfx = {
 // ---------------- game state
 const P = {x: 0, z: 0, yaw: 0, pitch: -.04, spin: 0, heat: 0, vent: 0, firing: false, fireAcc: 0, shots: 0, fireT: 0,
   kick: 0, kickV: 0, gp: 0, gpV: 0, cp: 0, cpV: 0, cy: 0, cyV: 0, trauma: 0, ads: 0, swayX: 0, swayY: 0, swayVX: 0, swayVY: 0, fovP: 0, drift: 0, mdx: 0, bloom: 0};
-const G = {on: false, paused: false, over: false, wave: 0, quota: 0, spawnAcc: 0, gap: 3, kills: 0, shield: 100, hp: 100, hurtT: 9, t: 0, sendT: 0, dmgFlash: 0, dmgDirs: [], hitT: 0, killT: 0, scores: {}, best: +(localStorage.getItem('ls-best') || 0), gunners: new Map()};
+const G = {on: false, paused: false, over: false, wave: 0, quota: 0, spawnAcc: 0, gap: 3, kills: 0, shield: 100, hp: 100, hurtT: 9, t: 0, sendT: 0, dmgFlash: 0, dmgDirs: [], hitT: 0, killT: 0, scores: {}, best: +(localStorage.getItem('ls-bestk') || 0), gunners: new Map()};
 // gunners: id -> {slot, name, yaw, pitch, fire, spin, heat, acc, n, kills, model}
 function myId() { return Net.role === 'guest' ? Net.id : 'H'; }
 function localGunner() { return G.gunners.get(myId()); }
@@ -763,7 +763,7 @@ function killBug(b, g) {
   b.dvx = Math.sin(b.yaw) * fw + kx / kd * kb + rnd(-.8, .8); b.dvz = Math.cos(b.yaw) * fw + kz / kd * kb + rnd(-.8, .8); b.dvy = b.st === 2 ? (b.vy || 0) : rnd(1.5, 3.8) / (b.s * Math.sqrt(b.s));
   b.droll = Math.random() < .65 ? PI * (Math.random() < .5 ? 1 : -1) : PI / 2 * (Math.random() < .5 ? 1 : -1); b.dspin = rnd(-4, 4);
   b.gib = Math.random() < b.T.gib ? 1 : 0;
-  if (g) { g.kills++; G.kills++; if (g.id === myId()) { G.killT = .25; } if (isHost() && !G.over && !g.sentry && (G.sup += 1 / ((140 + 20 * G.wave) * crewMul())) >= 1) { G.sup = 0; callIn(); } }
+  if (g) { g.kills++; G.kills++; if (g.id === myId()) myKill(); if (isHost() && !G.over && !g.sentry) G.hp = Math.min(100, G.hp + .02); if (isHost() && !G.over && !g.sentry && (G.sup += 1 / ((140 + 20 * G.wave) * crewMul())) >= 1) { G.sup = 0; callIn(); } }
   if (isHost()) G.evq.push(['k', b.id, g ? g.slot : -1]);
   deathFx(b);
   if (b.T.titan) titanDown(b);
@@ -791,13 +791,15 @@ function deathFx(b) {
 // ---------------- waves + bug AI (host)
 // pacing: wave n spawns for (8 + n) s; a squad gets +50% bugs per extra gunner
 const crewMul = () => 1 + .5 * (crewN() - 1);
-const spawnRate = n => Math.min(55, 11 + n * 3.5) * crewMul();
-function waveQuota(n) { return Math.round(spawnRate(n) * (8 + n)); }
+// no waves: one endless horde. G.wave is a hidden threat level that rises every LEVEL_T s (spawn rate, bug mix, titan every 5th level)
+const LEVEL_T = 28;
+const spawnRate = n => Math.min(55, 15 + n * 3) * crewMul();
+function waveQuota(n) { return 1e9; }
 function startWave(n) {
-  G.wave = n; G.quota = waveQuota(n); G.gap = 0; G.cleared = false;
-  callout('WAVE ' + n, n === 1 ? 'CONTACTS INBOUND' : n % 5 === 0 ? 'MASSIVE SWARM' : 'MORE INBOUND');
-  Sfx.play('horn', {vol: .6, vr: 0});
-  if (isHost()) { G.evq.push(['w', n]); if (n % 5 === 0) spawnTitan(n); }
+  G.wave = n; G.quota = 1e9; G.gap = 0; G.cleared = false;
+  if (n === 1) { callout('HOLD THE LINE', 'THEY JUST KEEP COMING'); Sfx.play('horn', {vol: .6, vr: 0}); }
+  if (isHost()) { G.evq.push(['w', n]); if (n % 5 === 0) spawnTitan(n);
+    if (n === 1) for (let i = 0; i < 70; i++) { if (!G.pack || (G.pack.n -= 1) <= 0) G.pack = {a: rnd(-1.1, 1.1), d: rnd(60, 120), n: 10 + (Math.random() * 14 | 0)}; spawnOne(); } } // open on a horde already charging
 }
 function waveCleared() {
   G.hp = Math.min(100, G.hp + 12); G.shield = 100;
@@ -847,6 +849,10 @@ function stepGlobs(dt) {
     if (isHost() && !G.over) hurt(7); }
 }
 // the hive titan: every 5th wave
+// kill streak: kills within 1.6 s of each other chain; every 50 in a chain pays out armour + a chime
+function myKill() { G.killT = .25; G.combo = (G.comboT > 0 ? G.combo : 0) + 1; G.comboT = 1.6; G.comboPop = .18; G.comboBest = Math.max(G.comboBest || 0, G.combo);
+  if (G.combo % 50 === 0) { G.comboFlash = 1; Sfx.play('horn', {vol: .3, rate: 1.6 + Math.min(.8, G.combo / 500), vr: 0}); if (isHost()) { G.hp = Math.min(100, G.hp + 4); G.shield = 100; } }
+}
 function spawnTitan(n) {
   const b = spawnBug(5, rnd(-25, 25), -205); if (!b) return;
   b.hp = b.hp0 = Math.round(300 * crewMul() * (1 + .25 * (n / 5 - 1))); G.titan = b; titanWarn(); G.evq.push(['T']);
@@ -994,13 +1000,9 @@ const grid = new Map();
 function stepBugsHost(dt) {
   if (G.over) return;
   let live = 0; for (const b of bugs) if (!b.dead) live++;
-  if (G.quota > 0) { G.spawnAcc += dt * spawnRate(G.wave); while (G.spawnAcc > 1 && G.quota > 0) { G.spawnAcc--; if (live < 720) { spawnOne(); G.quota--; live++; } else { G.spawnAcc = 0; break; } } }
-  else {
-    // lull: once the field is nearly clear the wave counts as held (armour patch), next wave 3.5 s later; overwhelmed = next wave after 14 s anyway
-    G.gap += dt;
-    if (!G.cleared && live <= 4) { G.cleared = true; G.gap = 0; waveCleared(); }
-    if ((G.cleared && G.gap > 3.5) || G.gap > 14) startWave(G.wave + 1);
-  }
+  // endless: spawn nonstop (a little faster when the field thins out so it never goes quiet), threat level rises every LEVEL_T s
+  G.spawnAcc += dt * spawnRate(G.wave) * (live < 60 ? 2 : 1); while (G.spawnAcc > 1) { G.spawnAcc--; if (live < 720) { spawnOne(); live++; } else { G.spawnAcc = 0; break; } }
+  if ((G.gap += dt) > LEVEL_T) startWave(G.wave + 1);
   const spm = Math.min(2, 1 + G.wave * .05);
   grid.clear();
   const cell = (x, z) => (Math.floor(x / 3) + 500) * 1000 + Math.floor(z / 3) + 500;
@@ -1091,7 +1093,7 @@ function applySnap(m) {
   }
   for (const b of bugs.slice()) if (!b.dead && !seen.has(b.id)) freeBug(b);
   for (const e of m.e || []) {
-    if (e[0] === 'k') { const b = byId.get(e[1]); if (b) { const g = [...G.gunners.values()].find(q => q.slot === e[2]); killBug(b, null); if (g && g.id === myId()) G.killT = .25; } }
+    if (e[0] === 'k') { const b = byId.get(e[1]); if (b) { const g = [...G.gunners.values()].find(q => q.slot === e[2]); killBug(b, null); if (g && g.id === myId()) myKill(); } }
     else if (e[0] === 'w') startWave(e[1]);
     else if (e[0] === 'c') heldFx(e[1]);
     else if (e[0] === 'b') bruteWarn();
@@ -1220,8 +1222,10 @@ function drawHud(dt, time) {
   const hg = c.createLinearGradient(bx, 0, bx + 270, 0); hg.addColorStop(0, '#ff8a2a'); hg.addColorStop(.7, '#ffd27a'); hg.addColorStop(1, '#ffffff'); c.fillStyle = hg; c.fillRect(bx, by + 76, 270 * heat, 8);
   c.fillStyle = CY + '.55)'; c.fillText('AUTO-FIRE ' + (SET.auto ? 'ON' : 'OFF') + '  [F]   AIM [Q]' + (G.ff ? '   FF ON' : ''), bx, by + 100);
   // top left: wave, kills
-  c.fillStyle = CY + '.9)'; c.font = '700 30px Rajdhani,sans-serif'; c.fillText('WAVE ' + G.wave, 34, 52); c.font = '13px "Share Tech Mono",monospace';
-  c.fillText('KILLS ' + G.kills, 36, 72); c.fillStyle = CY + '.5)'; if (G.best) c.fillText('BEST WAVE ' + G.best, 36, 88);
+  c.fillStyle = CY + '.9)'; c.font = '700 30px Rajdhani,sans-serif'; c.fillText('KILLS ' + G.kills, 34, 52); c.font = '13px "Share Tech Mono",monospace';
+  c.fillText('HELD ' + fmtT(G.runT) + '   THREAT ' + G.wave, 36, 72); c.fillStyle = CY + '.5)'; if (G.best) c.fillText('BEST ' + G.best + ' KILLS', 36, 88);
+  if (G.combo >= 3) { const sc = 1 + G.comboPop * 2.2, a = Math.min(1, G.comboT * 1.5); c.save(); c.translate(cx - 120, cy + 40); c.scale(sc, sc); c.globalAlpha = a; c.font = '700 26px Rajdhani,sans-serif';
+    c.fillStyle = G.comboFlash > 0 ? '#ffd27a' : G.combo >= 50 ? 'rgba(255,170,90,.95)' : 'rgba(230,255,250,.9)'; c.fillText(G.combo + 'x', 0, 0); c.font = '11px "Share Tech Mono",monospace'; c.fillText('STREAK', 0, 13); c.restore(); }
   // squad
   if (Net.role !== 'solo') { let y = 112; c.fillStyle = CY + '.8)'; c.fillText(Net.role === 'host' ? 'SQUAD CODE ' + Net.code : 'SQUAD ' + Net.code, 36, y); for (const g of [...G.gunners.values()].filter(q => !q.sentry).sort((a, b) => a.slot - b.slot)) { y += 16; c.fillStyle = g.id === myId() ? '#fff' : CY + '.7)'; c.fillText((g.name || '?').padEnd(14) + ' ' + g.kills, 36, y); } }
   // top right readouts
@@ -1329,7 +1333,7 @@ function stepFeel(dt, time) {
 // ---------------- main flow
 function resetWorld() {
   for (const b of bugs.slice()) freeBug(b); nextId = 1;
-  Object.assign(G, {wave: 0, quota: 0, spawnAcc: 0, gap: 1.5, kills: 0, shield: 100, hp: 100, hurtT: 9, over: false, evq: [], dmgDirs: [], attackers: 0, runT: 0, cleared: false, bruteSeen: false, lowWarn: false, lost: false});
+  Object.assign(G, {wave: 0, quota: 0, spawnAcc: 0, gap: 1.5, kills: 0, shield: 100, hp: 100, hurtT: 9, over: false, evq: [], dmgDirs: [], attackers: 0, runT: 0, combo: 0, comboT: 0, comboBest: 0, cleared: false, bruteSeen: false, lowWarn: false, lost: false});
   resetSpecials();
   for (const g of G.gunners.values()) g.kills = 0;
   P.heat = 0; P.spin = 0; P.vent = 0;
@@ -1347,10 +1351,10 @@ function beginGame(fresh) {
 }
 function overrun(m) {
   if (G.over) return; G.over = true; const w = m ? m.w : G.wave, k = m ? m.k : G.kills, t = m && m.rt ? m.rt : G.runT;
-  const prev = G.best; if (w > G.best) { G.best = w; try { localStorage.setItem('ls-best', w); } catch (e) {} }
+  const prev = G.best; if (k > G.best) { G.best = k; try { localStorage.setItem('ls-bestk', k); } catch (e) {} }
   if (Net.role === 'host') Net.send({t: 'over', w, k, rt: Math.round(t)});
   callout('OVERRUN', 'THE LINE HAS FALLEN');
-  setTimeout(() => { if (G.over) showEnd('OVERRUN', 'The hive took Kestrel-9', w, k, t, w > prev && prev > 0 ? 'NEW BEST: wave ' + w + ' (was ' + prev + ')' : 'Best: wave ' + G.best); }, 1600);
+  setTimeout(() => { if (G.over) showEnd('OVERRUN', 'The hive took Kestrel-9', w, k, t, k > prev && prev > 0 ? 'NEW BEST: ' + k + ' kills (was ' + prev + ')' : 'Best: ' + G.best + ' kills'); }, 1600);
   Sfx.play('horn', {rate: .6, vol: .7});
 }
 function fmtT(t) { t = Math.max(0, t | 0); return (t / 60 | 0) + ':' + String(t % 60).padStart(2, '0'); }
@@ -1358,7 +1362,7 @@ function showEnd(title, sub, w, k, t, best) {
   const lg = localGunner(), you = lg && Net.role !== 'solo' ? lg.kills : null;
   $('call').style.opacity = 0; callT = 0;
   $('endH').textContent = title; $('endSub').textContent = sub;
-  $('endS').innerHTML = `<div><b>${w}</b><small>Wave</small></div><div><b>${k}</b><small>${you !== null ? 'Squad kills' : 'Kills'}</small></div><div><b>${fmtT(t)}</b><small>Held</small></div>` + (you !== null ? `<div style="grid-column:1/-1"><small>Your kills</small> <b style="display:inline;font-size:22px">${you}</b></div>` : '');
+  $('endS').innerHTML = `<div><b>${G.comboBest || 0}x</b><small>Best streak</small></div><div><b>${k}</b><small>${you !== null ? 'Squad kills' : 'Kills'}</small></div><div><b>${fmtT(t)}</b><small>Held</small></div>` + (you !== null ? `<div style="grid-column:1/-1"><small>Your kills</small> <b style="display:inline;font-size:22px">${you}</b></div>` : '');
   $('endB').textContent = best || '';
   const guest = Net.role === 'guest' && !G.lost;
   $('bAgain').textContent = G.lost ? 'Back to menu' : guest ? 'Waiting for the host to restart' : 'Hold the line again';
@@ -1404,7 +1408,7 @@ function step(dt) {
   Sfx.gun(P.spin, P.heat, P.vent > 0);
   PA.step(dt); PS.step(dt); PG.step(dt); stepDecals(dt); stepChunks(chunks, CHK, 300, dt); stepChunks(legsD, LGD, 80, dt, true); stepTracers(dt); stepCases(dt);
   stepWorldFx(dt, time);
-  G.dmgFlash = Math.max(0, G.dmgFlash - dt * 1.5); G.hitT -= dt; G.killT -= dt; for (const d of G.dmgDirs) d.t -= dt; G.dmgDirs = G.dmgDirs.filter(d => d.t > 0);
+  G.dmgFlash = Math.max(0, G.dmgFlash - dt * 1.5); G.hitT -= dt; G.killT -= dt; if ((G.comboT -= dt) <= 0) G.combo = 0; G.comboPop = Math.max(0, (G.comboPop || 0) - dt); G.comboFlash = Math.max(0, (G.comboFlash || 0) - dt * 1.2); for (const d of G.dmgDirs) d.t -= dt; G.dmgDirs = G.dmgDirs.filter(d => d.t > 0);
   compM.uniforms.dmg.value = G.dmgFlash * .4 + (G.hp < 30 ? (.15 + Math.sin(time * 3) * .05) : 0); compM.uniforms.time.value = time;
   $('dmg').style.opacity = 0;
   if (callT > 0 && (callT -= dt) <= 0) $('call').style.opacity = 0;
@@ -1440,7 +1444,7 @@ function syncUI() {
   for (const id of ['auto', 'auto2']) if ($(id)) $(id).checked = SET.auto;
   for (const id of ['ff', 'ff2']) if ($(id)) { $(id).checked = SET.ff; $(id).disabled = Net.role === 'guest'; }
   if ($('name')) $('name').value = SET.name;
-  $('best').textContent = G.best ? 'Best: held until wave ' + G.best : '';
+  $('best').textContent = G.best ? 'Best: ' + G.best + ' kills' : '';
 }
 for (const id of ['sens', 'sens2']) $(id).oninput = e => { SET.sens = +e.target.value; saveSet(); syncUI(); };
 for (const id of ['vol', 'vol2']) $(id).oninput = e => { SET.vol = +e.target.value; saveSet(); if (Sfx.master) Sfx.master.gain.value = SET.vol; syncUI(); };
