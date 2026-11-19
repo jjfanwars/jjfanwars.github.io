@@ -4445,10 +4445,10 @@ function pierBuild() {
 }
 { const f0 = buildIsles; buildIsles = function (...a) { pierPlan(); const r = f0.apply(this, a); pierBuild(); return r; }; }
 
-// the tender: lives on davits on the starboard quarter of every hull of 30 m or more; the host drives it like the boat, four seats
+// the tender: lives on davits on the starboard quarter of every hull of 17 m or more (not aircraft, hovercraft or subs); the host drives it like the boat, four seats
 const TN = {st: 'stow', x: 0, z: 0, yaw: 0, v: 0, yr: 0, thr: 0, steer: 0, drv: null, seats: [null, null, null, null], beach: 0, heave: 0, drop: 0,
   seat: [[0, .95], [-.42, -.85], [.42, -.85], [-.64, 1.55]], m: null, dv: null, mat: null, au: null, snK: 0, bumpT: 0, lv: null, lvT: 0, hudT: 0, hud: null, hudK: null, tx: null};
-const tnOk = () => { const H = HC(); return !!H && !H.sub && H.L >= 30 && H.tender !== 0; };
+const tnOk = () => { const H = HC(); return !!H && !H.sub && !H.plane && !H.air && !H.hover && !H.balloon && H.L >= 17 && H.tender !== 0; };
 function tnDavit() { return [BG.hw - .3, BG.zs - Math.max(6, BG.L * .1)]; }
 const tnL2W = (lx, lz) => { const c = Math.cos(TN.yaw), s = Math.sin(TN.yaw); return [TN.x + lx * c + lz * s, TN.z - lx * s + lz * c]; };
 function tnSeatPos(i) { return tnL2W(TN.seat[i][0], TN.seat[i][1]); }
@@ -8978,14 +8978,17 @@ function invDraw() { const el = $('inv'); if (!el || !G.invOpen) return; const o
 addEventListener('keydown', e => { if (e.target && /^(INPUT|TEXTAREA)$/.test(e.target.tagName)) return; if (!G.on || G.paused || !P || e.repeat) return;
   if (G.invOpen) { if (e.code === 'Escape' || e.code === 'KeyI') { e.stopImmediatePropagation(); invClose(); } return; }
   if (e.code === 'KeyI' && !anyPanel() && !G.map && !P.dead) { e.stopImmediatePropagation(); invOpen(); } }, {capture: true});
-// ===== call your boat to whichever dock you stand on (the boat must be empty and over 120 m away); a $40 tow
+// ===== call your boat to whichever harbour you stand at (the boat must be empty and over 120 m away); a $40 tow
 const CALL_FEE = 40;
 function callWhy(d) { const pl = [...PL.values()].filter(q => q.ready && !q.dead); if (B.sink > 0) return 'The boat is going down.'; if (Math.hypot(B.x - d.x, B.z - d.z) < 120) return 'Your boat is already close.';
   if (B.driver || pl.some(q => q.ob || q.seat)) return 'Someone is aboard or at the wheel.'; if (HC().plane && -(B.dep || 0) > .5) return 'She is in the air.'; if (!ALL && G.cash < CALL_FEE) return `The tow costs ${money(CALL_FEE)}.`; return ''; }
-function dockForMe(p, r = 16) { if (!p || p.ob || p.sw) return null; let b = null, bd = r; for (const d of dockList()) { const e = Math.hypot(d.x - p.x, d.z - p.z); if (e < bd) { bd = e; b = d; } } return b; }
+// harbours only (the home jetty and the trading ports), not island landings
+function dockForMe(p, r = 16) { if (!p || p.ob || p.sw) return null; let b = null, bd = r; for (const d of dockList()) { if (/ landing$/.test(d.n)) continue; const e = Math.hypot(d.x - p.x, d.z - p.z); if (e < bd) { bd = e; b = d; } } return b; }
 { const f0 = hostAct; hostAct = function (id, m) { if (!m || m.a !== 'call') return f0.apply(this, arguments); const p = PL.get(id); if (!p || !G.on) return; const d = dockForMe(p, 20); if (!d) return; const why = callWhy(d); if (why) { emit({k: 'nope', id, why}); return; }
   if (!ALL) G.cash -= CALL_FEE; B.ap = null; Object.assign(B, {x: d.x, z: d.z, yaw: d.yaw, v: 0, yr: 0, thr: 0, st: 0, dep: 0, dtar: 0}); B.fuel = Math.max(B.fuel, tankMax() * .25); emit({k: 'called', n: d.n, id}); save(); }; }
 { const f0 = applyEv; applyEv = function (e) { if (!e || e.k !== 'called') return f0.apply(this, arguments); toast('Your boat is here', `Towed to ${e.n}${ALL ? '' : ' · ' + money(CALL_FEE)}`); if (Snd && Snd.coin) Snd.coin(); }; }
 { const f0 = targets; targets = function (...a) { const L = f0.apply(this, a); if (!P || P.dead || P.ob || P.sw) return L; const d = dockForMe(P); if (!d || Math.hypot(B.x - d.x, B.z - d.z) < 120) return L;
   L.push({x: d.x, y: P.y + 1, z: d.z, r: 30, flat: 1, label: `Call your boat here (${ALL ? 'free' : money(CALL_FEE)})`, go: () => { const w = callWhy(d); if (w) showMsg(w, '', 2.5); else act({a: 'call'}); }}); return L; }; }
+// a one-time hint that the boat carries a tender, so a crew knows it can split up
+{ const f0 = buildBoat; buildBoat = function () { const r = f0.apply(this, arguments); if (G.on && tnOk() && !G.tnHint) { G.tnHint = 1; let seen = 0; try { seen = +localStorage.getItem('s9-tnhint') || 0; } catch (e) {} if (seen < 2) { try { localStorage.setItem('s9-tnhint', seen + 1); } catch (e) {} setTimeout(() => G.on && showMsg('This boat carries a tender on the starboard davit. Launch it to split the crew up: four seats, its own engine.', 'TENDER', 6), 2500); } } return r; }; }
 if (TEST) window.__S = {dockForMe, callWhy, wearSuit, invOpen, invClose, bridgeHop, LTK, lootTick, ftOpen, dockList, EMOTES, emoteStart, chatSend, chatOpen, SKY, psSit, skyStep, BW, BFL, INTER, get stepPlayer() { return stepPlayer; }, closeCasino, BOAT_: () => BOAT, BSPOT, FX, BHELM, bL2W, openCasino, AURAS, applyAll, launchFw, FWK, get ALL() { return ALL; }, get BOAT() { return BOAT; }, CN, CRZ, STS, GUL, DSITES, stepSteward, HULLS, SUNK, BG, BDECK, buildBoat, seaBed, render, levPose, LEV, MJ, TODd: () => SUNDIR, TOD, F, FISH, GEAR, equip, toolDown, toolUp, gotGear, pickFish, hostShoot, G, PL, M, B, K, SET, VALVES, ITEMS, HIDES, BLD, SPOTS, NG, SURF, POIS, DIGS, ISLES, Net, get P() { return P; }, startGame, step, hostStep, hostAct, act, targets, toggleHide, cam, scene, RND, noise, downPlayer, floorAt, navPath, applyEv, boatPose, landH, openShop, set eDown(v) { eDown = v; }, crewList, hostStart, joinRoom};
