@@ -11001,3 +11001,214 @@ function bfDressAll(root) { const t0 = performance.now(), L = (BF_ROOMS[B.up.cls
   sides.forEach(([m, sd]) => { m.side = sd; });
   BF.dress = {rooms: out, ms: Math.round(performance.now() - t0)}; return out; }
 if (TEST && window.__S) Object.assign(window.__S, {bfDressAll});
+
+// ---------------- poker aboard (v84): a 6-seat Texas hold'em table on every larger boat
+// PKT (client) is the table on the current boat: found by pkSpot (a clear floor rectangle, wheelhouse first), built by pkBuild in a buildBoat
+// after-step: felt oval, padded rail, pedestal, six chairs, card and chip meshes driven by the public state PKS. The host runs the game in PK
+// (pkHost each hostStep): blinds 10/20, betting rounds with min-raise, all-ins with side pots, showdown with pkBest (best 5 of 7), 30 s turns.
+// Chips are poker chips, not crew cash: PK.bank[name] (host localStorage s9-pk) starts at 1000 and refills to 1000 when you sit down broke.
+// When only one person is seated, bots (Old Salt, Mags, Cookie) fill seats so you can play alone. Acts: 'pks' {s} sit, 'pku' stand,
+// 'pka' {x: fold|call|raise|all, v}. Events: 'pk' (the public state, also in snapshots as 'pk'), 'pkm' (a line for the table log).
+// Hole cards go only to their owner: host -> Net.send1(id, {t: 'pkh'}). Seated players are pinned to the chair; keys F fold, C check/call,
+// R raise (wheel sizes it), A all-in, E stand.
+const PK_N = 6, PK_SB = 10, PK_BB = 20, PK_START = 1000, PK_TURN = 30, PK_BOTS = ['Old Salt', 'Mags', 'Cookie'];
+const PK = {seats: Array(PK_N).fill(null), ph: 'wait', board: [], deck: [], pot: 0, btn: 0, cur: -1, curBet: 0, minR: PK_BB, T: 4, hand: 0, show: null, res: '', bank: null, v: 0, R: mulberry(Date.now() & 0xffff)};
+let PKS = null, PKT = null, PKH = [];
+const pkRank = c => c % 13, pkSuit = c => (c / 13) | 0, PK_RS = '23456789TJQKA', PK_SS = ['♠', '♥', '♦', '♣'];
+const pkName = c => PK_RS[pkRank(c)].replace('T', '10') + PK_SS[pkSuit(c)];
+// 5-card score: category * 15^5 + tie-breakers (higher is better)
+function pkEval5(cs) { const r = cs.map(pkRank).sort((a, b) => b - a), fl = cs.every(c => pkSuit(c) === pkSuit(cs[0])), cnt = {};
+  for (const x of r) cnt[x] = (cnt[x] || 0) + 1; const g = Object.keys(cnt).map(Number).sort((a, b) => cnt[b] - cnt[a] || b - a), u = [...new Set(r)];
+  let st = -1; if (u.length === 5) { if (u[0] - u[4] === 4) st = u[0]; else if (u[0] === 12 && u[1] === 3) st = 3; }
+  const sc = (cat, t) => cat * 759375 + t.reduce((a, x, i) => a + x * Math.pow(15, 4 - i), 0);
+  if (st >= 0 && fl) return sc(8, [st]); if (cnt[g[0]] === 4) return sc(7, [g[0], g[1]]); if (cnt[g[0]] === 3 && cnt[g[1]] === 2) return sc(6, [g[0], g[1]]);
+  if (fl) return sc(5, r); if (st >= 0) return sc(4, [st]); if (cnt[g[0]] === 3) return sc(3, g); if (cnt[g[0]] === 2 && cnt[g[1]] === 2) return sc(2, g); if (cnt[g[0]] === 2) return sc(1, g); return sc(0, r); }
+function pkBest(cs) { let b = -1, bh = null; const n = cs.length; for (let a = 0; a < n; a++) for (let c = a + 1; c < n; c++) { const h = cs.filter((_, i) => i !== a && i !== c); if (h.length !== 5) continue; const s = pkEval5(h); if (s > b) { b = s; bh = h; } } if (n === 5) { b = pkEval5(cs); bh = cs; } return {s: b, h: bh}; }
+const PK_CAT = ['High card', 'Pair', 'Two pair', 'Three of a kind', 'Straight', 'Flush', 'Full house', 'Four of a kind', 'Straight flush'];
+const pkCat = s => PK_CAT[Math.floor(s / 759375)] || '';
+function pkBankLoad() { if (PK.bank) return PK.bank; try { PK.bank = JSON.parse(localStorage.getItem(SK('s9-pk')) || '{}') || {}; } catch (e) { PK.bank = {}; } return PK.bank; }
+function pkBankSave() { if (TEST && !G.saveTest) return; try { localStorage.setItem(SK('s9-pk'), JSON.stringify(PK.bank)); } catch (e) {} }
+const pkPname = id => { const p = PL.get(id); return p ? String(p.name).replace(/[<>&]/g, '').slice(0, 14) : 'Sailor'; };
+// ---- host
+function pkPub() { const S = PK.seats.map(q => q && [q.id, q.n, q.st, q.bet, q.f ? 1 : 0, q.all ? 1 : 0, q.bot ? 1 : 0, q.inh ? 1 : 0, q.last || '']);
+  return {s: S, ph: PK.ph, b: PK.board, p: PK.pot, btn: PK.btn, cur: PK.cur, cb: PK.curBet, mr: PK.minR, T: +Math.max(0, PK.T).toFixed(1), sh: PK.show, r: PK.res, h: PK.hand}; }
+function pkSend() { PK.v++; emit({k: 'pk', st: pkPub()}); }
+const pkMsg = t => emit({k: 'pkm', t});
+function pkHumans() { return PK.seats.filter(q => q && !q.bot).length; }
+function pkFillBots() { const hu = pkHumansLive(); let bots = PK.seats.filter(q => q && q.bot).length; const want = hu === 1 ? 3 : 0;
+  if (PK.ph === 'wait') { for (let i = 0; i < PK_N && bots > want; i++) if (PK.seats[i] && PK.seats[i].bot) { PK.seats[i] = null; bots--; }
+    for (let i = 0, k = 0; i < PK_N && bots < want; i++) if (!PK.seats[(i * 2 + 1) % PK_N]) { const s = (i * 2 + 1) % PK_N; while (PK.seats.some(q => q && q.n === PK_BOTS[k])) k++; PK.seats[s] = {id: 'bot' + s, n: PK_BOTS[k % 3], st: PK_START, bot: 1, bet: 0}; bots++; } } }
+function pkReset(refund) { if (refund && PK.ph !== 'wait') for (const q of PK.seats) if (q) { q.st += q.tot || 0; q.bet = 0; q.tot = 0; }
+  for (let i = 0; i < PK_N; i++) if (PK.seats[i] && PK.seats[i].gone) { const q = PK.seats[i]; if (!q.bot) { pkBankLoad()[q.n] = q.st; pkBankSave(); } PK.seats[i] = null; }
+  PK.ph = 'wait'; PK.board = []; PK.pot = 0; PK.cur = -1; PK.curBet = 0; PK.show = null; PK.T = 4; for (const q of PK.seats) if (q) { q.inh = 0; q.f = 0; q.all = 0; q.bet = 0; q.tot = 0; q.last = ''; q.hole = null; } }
+const pkAct = (q) => q && q.inh && !q.f && !q.all;
+function pkNext(from) { for (let k = 1; k <= PK_N; k++) { const i = (from + k) % PK_N; if (pkAct(PK.seats[i])) return i; } return -1; }
+function pkStartHand() { const live = PK.seats.map((q, i) => q && q.st > 0 ? i : -1).filter(i => i >= 0); if (live.length < 2) return false;
+  PK.hand++; const d = []; for (let i = 0; i < 52; i++) d.push(i); for (let i = 51; i > 0; i--) { const j = Math.floor(PK.R() * (i + 1)); [d[i], d[j]] = [d[j], d[i]]; } PK.deck = d;
+  PK.board = []; PK.pot = 0; PK.show = null; PK.res = ''; for (const q of PK.seats) if (q) { q.inh = q.st > 0 ? 1 : 0; q.f = 0; q.all = 0; q.bet = 0; q.tot = 0; q.last = ''; q.acted = 0; q.hole = null; }
+  do PK.btn = (PK.btn + 1) % PK_N; while (!(PK.seats[PK.btn] && PK.seats[PK.btn].inh));
+  const hu = live.length === 2, sb = hu ? PK.btn : pkNext(PK.btn), bb = pkNext(sb);
+  for (const q of PK.seats) if (q && q.inh) { q.hole = [PK.deck.pop(), PK.deck.pop()]; if (!q.bot) { if (q.id === myId()) pkHole(q.hole); else Net.send1 && Net.role === 'host' && Net.send1(q.id, {t: 'pkh', c: q.hole, h: PK.hand}); } }
+  pkPut(sb, PK_SB, 'SB'); pkPut(bb, PK_BB, 'BB'); PK.curBet = PK_BB; PK.minR = PK_BB; PK.ph = 'pre'; PK.cur = pkNext(bb); PK.T = PK_TURN; PK.bb = bb;
+  for (const q of PK.seats) if (q) q.acted = 0; pkMsg(`Hand ${PK.hand}. Blinds ${PK_SB}/${PK_BB}.`); if (PK.cur < 0) pkRound(); return true; }
+function pkPut(i, v, why) { const q = PK.seats[i]; v = Math.min(v, q.st); q.st -= v; q.bet += v; q.tot += v; PK.pot += v; if (!q.st) q.all = 1; if (why) q.last = why; return v; }
+function pkRound() { // betting round over: collect and deal the next street, or show down
+  for (const q of PK.seats) if (q) { q.bet = 0; q.acted = 0; } PK.curBet = 0; PK.minR = PK_BB;
+  const inn = PK.seats.filter(q => q && q.inh && !q.f); if (inn.length < 2) return pkWin();
+  const n = PK.board.length; if (n >= 5) return pkShow(); PK.deck.pop(); if (n === 0) PK.board.push(PK.deck.pop(), PK.deck.pop(), PK.deck.pop()); else PK.board.push(PK.deck.pop());
+  PK.ph = ['flop', 'turn', 'river'][Math.min(2, PK.board.length - 3)]; for (const q of PK.seats) if (q && q.last !== 'All in') q.last = '';
+  PK.cur = PK.seats.filter(pkAct).length >= 2 ? pkNext(PK.btn) : -1; PK.T = PK.cur < 0 ? 1.4 : PK_TURN; }
+function pkWin() { const w = PK.seats.findIndex(q => q && q.inh && !q.f); if (w >= 0) { PK.seats[w].st += PK.pot; PK.res = `${PK.seats[w].n} takes ${PK.pot}`; emit({k: 'pkm', t: PK.res, win: PK.seats[w].id}); } PK.pot = 0; PK.ph = 'end'; PK.cur = -1; PK.T = 4; pkSettle(); }
+function pkShow() { const inn = PK.seats.map((q, i) => [q, i]).filter(([q]) => q && q.inh && !q.f), sc = new Map(); for (const [q, i] of inn) sc.set(i, pkBest(q.hole.concat(PK.board)).s);
+  PK.show = {}; for (const [q, i] of inn) PK.show[i] = q.hole; // side pots by contribution level
+  const lv = [...new Set(PK.seats.filter(q => q && q.inh).map(q => q.tot))].filter(v => v > 0).sort((a, b) => a - b); let prev = 0; const won = {}, lines = [];
+  for (const L of lv) { const part = PK.seats.map((q, i) => [q, i]).filter(([q]) => q && q.inh && q.tot >= L), amt = PK.seats.reduce((a, q) => a + (q && q.inh ? Math.min(q.tot, L) - Math.min(q.tot, prev) : 0), 0);
+    const el = part.filter(([q, i]) => !q.f), best = Math.max(...el.map(([, i]) => sc.get(i))), ws = el.filter(([, i]) => sc.get(i) === best);
+    if (ws.length) { const each = Math.floor(amt / ws.length); ws.forEach(([q, i], k) => { const v = each + (k === 0 ? amt - each * ws.length : 0); q.st += v; won[i] = (won[i] || 0) + v; }); } prev = L; }
+  for (const i in won) lines.push(`${PK.seats[i].n} wins ${won[i]} with ${pkCat(sc.get(+i))}`); PK.res = lines.join(' · '); PK.pot = 0; PK.ph = 'end'; PK.cur = -1; PK.T = 6.5;
+  const top = Object.keys(won).sort((a, b) => won[b] - won[a])[0]; emit({k: 'pkm', t: PK.res, win: top != null ? PK.seats[top].id : null}); pkSettle(); }
+function pkSettle() { const bk = pkBankLoad(); for (const q of PK.seats) if (q && !q.bot) bk[q.n] = q.st; pkBankSave(); }
+const pkHumansLive = () => PK.seats.filter(q => q && !q.bot && !q.gone).length;
+function pkAfter(i) { // after seat i acted: next player, or the round is over
+  const live = PK.seats.filter(q => q && q.inh && !q.f); if (live.length < 2) return pkWin();
+  const need = PK.seats.filter(q => pkAct(q) && (!q.acted || q.bet < PK.curBet)); if (!need.length) return pkRound();
+  PK.cur = pkNext(i); PK.T = PK_TURN; }
+function pkDo(i, x, v) { const q = PK.seats[i]; if (!q || PK.cur !== i || !pkAct(q)) return; const call = PK.curBet - q.bet;
+  if (x === 'fold') { if (call <= 0) x = 'call'; else { q.f = 1; q.last = 'Fold'; } }
+  if (x === 'call') { if (call > 0) { pkPut(i, call); q.last = q.all ? 'All in' : 'Call ' + PK.curBet; } else q.last = 'Check'; }
+  if (x === 'all') { x = 'raise'; v = q.st + q.bet; }
+  if (x === 'raise') { v = Math.floor(+v || 0); const max = q.st + q.bet; let to = clamp(v, PK.curBet + PK.minR, max); if (max <= PK.curBet) { pkPut(i, q.st); q.last = 'All in'; }
+    else { if (to < PK.curBet + PK.minR) to = max; const add = to - q.bet; pkPut(i, add); if (to - PK.curBet >= PK.minR) { PK.minR = to - PK.curBet; for (const o of PK.seats) if (o && o !== q) o.acted = 0; } PK.curBet = Math.max(PK.curBet, to); q.last = q.all ? 'All in' : (call > 0 ? 'Raise ' : 'Bet ') + to; } }
+  q.acted = 1; emit({k: 'pkx', s: i, x: q.last}); pkAfter(i); pkSend(); }
+// bots: a rough hand strength (preflop from the hole cards, later from the made hand) against the price to call
+function pkBot(i) { const q = PK.seats[i], call = PK.curBet - q.bet, R = PK.R; let s;
+  if (!PK.board.length) { const [a, b] = q.hole.map(pkRank).sort((x, y) => y - x); s = (a + b) / 26 * .55 + (a === b ? .35 + a / 40 : 0) + (pkSuit(q.hole[0]) === pkSuit(q.hole[1]) ? .06 : 0) + (a - b === 1 ? .04 : 0); }
+  else { const sc = pkBest(q.hole.concat(PK.board)).s, cat = Math.floor(sc / 759375), bd = PK.board.length >= 5 ? Math.floor(pkBest(PK.board).s / 759375) : -1; s = [.2, .48, .68, .78, .86, .88, .93, .97, 1][cat] - (cat === bd ? .25 : 0) + (cat === 1 && Math.floor(sc / 50625) % 15 >= Math.max(...PK.board.map(pkRank)) ? .1 : 0); }
+  s += (R() - .5) * .18; const odds = call / (PK.pot + call || 1);
+  if (s > .82 && R() < .7) return pkDo(i, 'raise', PK.curBet + Math.max(PK.minR, Math.round(PK.pot * (.5 + R() * .5) / 10) * 10));
+  if (call <= 0) return R() < .12 && s > .4 ? pkDo(i, 'raise', PK.curBet + PK.minR * 2) : pkDo(i, 'call');
+  if (s > odds + .12 || (call <= PK_BB && s > .3) || R() < .05) return pkDo(i, 'call'); pkDo(i, 'fold'); }
+function pkHost(dt) { if (!PKT) { if (PK.seats.some(q => q)) { pkReset(true); pkSettle(); PK.seats.fill(null); pkSend(); } return; }
+  for (let i = 0; i < PK_N; i++) { const q = PK.seats[i]; if (q && !q.bot && !q.gone && !PL.get(q.id)) pkLeave(i); }
+  PK.T -= dt; let chg = 0;
+  if (PK.ph === 'wait') { pkFillBots(); if (PK.seats.filter(q => q && q.st > 0).length >= 2 && pkHumansLive() > 0) { if (PK.T <= 0) chg = pkStartHand(); } else PK.T = Math.max(PK.T, 2.5); }
+  else if (PK.ph === 'end') { if (PK.T <= 0) { for (let i = 0; i < PK_N; i++) { const q = PK.seats[i]; if (q && q.bot && q.st <= 0) q.st = PK_START; } pkReset(); pkFillBots(); chg = 1; } }
+  else if (PK.cur < 0) { if (PK.T <= 0) { pkRound(); chg = 1; } }
+  else { const q = PK.seats[PK.cur]; if (q && q.bot && PK.T < PK_TURN - 1.2 - (PK.hand * 7 + PK.cur) % 5 * .3) pkBot(PK.cur); else if (PK.T <= 0) { pkDo(PK.cur, 'fold'); } }
+  if (chg) pkSend(); else if ((PK.sT = (PK.sT || 0) - dt) <= 0) { PK.sT = 1; pkSend(); } }
+function pkLeave(i) { const q = PK.seats[i]; if (!q || q.gone) return; const mid = PK.ph !== 'wait' && PK.ph !== 'end' && q.inh;
+  if (mid) { q.gone = 1; if (!q.f) { if (PK.cur === i) { pkDo(i, 'fold'); q.last = 'Left'; } else { q.f = 1; q.last = 'Left'; if (PK.seats.filter(o => o && o.inh && !o.f).length < 2) pkWin(); } } } // the seat stays (its chips are in the pot) until the hand ends
+  else PK.seats[i] = null; if (!q.bot) { pkBankLoad()[q.n] = q.st; pkBankSave(); } emit({k: 'pksit', id: q.id, s: -1}); pkSend(); }
+function pkHostAct(id, m) { const me = PK.seats.findIndex(q => q && q.id === id && !q.gone);
+  if (m.a === 'pks') { const s = m.s | 0; if (!PKT || s < 0 || s >= PK_N) return; if (me >= 0) return; let o = PK.seats[s]; if (o && o.bot) { if (PK.ph !== 'wait' && PK.ph !== 'end' && o.inh && !o.f) { emit({k: 'nope', id, why: 'Wait for this hand to end.', pk: 1}); return; } PK.seats[s] = o = null; }
+    if (o) { emit({k: 'nope', id, why: 'Someone is sitting there.', pk: 1}); return; } const n = pkPname(id), bk = pkBankLoad(); let st = bk[n]; if (!(st > 0)) st = PK_START;
+    PK.seats[s] = {id, n, st, bet: 0, inh: 0}; emit({k: 'pksit', id, s}); pkMsg(`${n} sits down with ${st} chips.`); pkFillBots(); pkSend(); return; }
+  if (me < 0) return; if (m.a === 'pku') { pkLeave(me); return; } if (m.a === 'pka') pkDo(me, String(m.x), m.v); }
+// ---- client
+function pkHole(c) { PKH = c.slice(); PKH.h = PK.hand; if (PKT) PKT.dirty = 1; }
+function pkEvent(e) { if (e.k === 'pk') { const old = PKS; PKS = e.st; if (old && old.h !== PKS.h) { if (!isHost()) PKH = PKH.h === PKS.h ? PKH : []; pkSnd('deal'); } if (old && old.b.length < PKS.b.length) pkSnd('deal'); if (PKT) PKT.dirty = 1; return; }
+  if (e.k === 'pkx') { pkSnd(/Fold|Check/.test(e.x) ? 'tap' : 'chip'); pkLog(`${PKS && PKS.s[e.s] ? PKS.s[e.s][1] : ''}: ${e.x}`); return; }
+  if (e.k === 'pkm') { pkLog(e.t); if (e.win) { pkSnd(e.win === myId() ? 'win' : 'chip'); if (e.win === myId() && Snd.sale) Snd.sale(); } return; }
+  if (e.k === 'pksit') { if (e.id === myId()) { if (e.s >= 0) pkSitLocal(e.s); else pkStandLocal(); } return; } }
+function pkSnd(k) { if (!A.on || !PKT || !P || !P.ob) return; try { if (k === 'chip') Snd.casChip(2); else if (k === 'deal') { for (let i = 0; i < 3; i++) setTimeout(() => burst(5200, 3, .06, .02, 'bandpass'), i * 70); } else if (k === 'tap') tone(220, .04, .12, 'triangle'); else if (k === 'win') { Snd.casChip(8); setTimeout(() => Snd.casChip(10), 120); } } catch (e) {} }
+const PKLOG = [];
+function pkLog(t) { if (!t) return; PKLOG.push(t); if (PKLOG.length > 4) PKLOG.shift(); if (PKT) PKT.hudDirty = 1; }
+Net.on('pkh', m => { if (!isHost()) { pkHole(m.c); PKH.h = m.h; } });
+// ---- the table (client, boat-local; table axis along the boat)
+const PK_AX = .74, PK_AZ = 1.22, PK_SEAT = [[0, -1.78], [1.3, -.62], [1.3, .62], [0, 1.78], [-1.3, .62], [-1.3, -.62]];
+const pkOk = H => H && H.L >= 20 && !H.plane && !H.air && !H.balloon && !H.f35;
+// a clear rectangle (x +-1.65, z +-2.15) on one floor, away from the helm and the work spots; inside the wheelhouse first, then the nearest to midships
+function pkSpot() { const fb = BDECK.y, hx = 1.65, hz = 2.15, wz = BOAT && BOAT.userData.wz, ww = BOAT && BOAT.userData.ww, spots = [[BHELM[0], BHELM[1]], BSPOT.hold, BSPOT.fuel, BSPOT.patch];
+  let best = null; for (const f of BFL) { if (f.x1 - f.x0 < hx * 2 || f.z1 - f.z0 < hz * 2) continue;
+    for (let x = f.x0 + hx; x <= f.x1 - hx + 1e-6; x += .25) for (let z = f.z0 + hz; z <= f.z1 - hz + 1e-6; z += .25) {
+      let ok = true; for (const [a, b] of [[-1, -1], [1, -1], [-1, 1], [1, 1], [0, -1], [0, 1], [-1, 0], [1, 0], [0, 0]]) if (Math.abs(floorAtBoat(x + a * hx, z + b * hz, f.y + .3) - f.y) > .05) { ok = false; break; } if (!ok) { if (PK.dbg) PK.dbg.fl++; continue; }
+      for (const w of BW) { if (w.y1 < f.y - fb + .05 || w.y0 > f.y - fb + 1.9) continue; if (w.x1 > x - hx && w.x0 < x + hx && w.z1 > z - hz && w.z0 < z + hz) { ok = false; break; } } if (!ok) { if (PK.dbg) PK.dbg.bw++; continue; }
+      if (spots.some(p => p && Math.abs(p[0] - x) < hx + .9 && Math.abs(p[1] - z) < hz + .9) && Math.abs(f.y - (BHELM[2] ?? fb)) < .3) { if (PK.dbg) PK.dbg.sp++; continue; }
+      if (INTER.some(it => it.boat && it.lx > x - hx - .5 && it.lx < x + hx + .5 && it.lz > z - hz - .5 && it.lz < z + hz + .5)) { if (PK.dbg) PK.dbg.it++; continue; }
+      const inW = wz && z - hz > wz[0] && z + hz < wz[1] && Math.abs(x) + hx < ww ? 0 : 1, sc = inW * 100 + Math.abs(z - (BG.zs + BG.zb) / 2) * .5 + Math.abs(f.y - fb) * 3;
+      if (!best || sc < best.sc) best = {x, z, y: f.y, sc}; } }
+  return best; }
+function pkCardGeo() { const g = new THREE.PlaneGeometry(.068, .096); g.rotateX(-PI / 2); return g; }
+function pkCardUV(m, c, up) { const col = c == null || !up ? 13 : (pkRank(c) + 1) % 13, row = c == null || !up ? 0 : pkSuit(c), u = m.geometry.attributes.uv, u0 = col / 14, u1 = (col + 1) / 14, v0 = row / 4, v1 = (row + 1) / 4;
+  u.setXY(0, u0, v1); u.setXY(1, u1, v1); u.setXY(2, u0, v0); u.setXY(3, u1, v0); u.needsUpdate = true; }
+function pkBuild() { PKT = null; const H = HULLS[B.up.cls || 0]; if (!BOAT || !pkOk(H)) return; const sp = pkSpot(); if (!sp) return;
+  const g = new THREE.Group(); g.position.set(sp.x, sp.y, sp.z); BOAT.add(g); const T = PKT = {g, x: sp.x, y: sp.y, z: sp.z, cards: [], hole: [], stacks: [], bets: [], labels: [], bots: [], dirty: 1, hudDirty: 1};
+  const M = PK.mat || (PK.mat = {felt: new THREE.MeshStandardMaterial({color: 0x1d6a3c, roughness: .95, map: TX.bffab || null}), rail: new THREE.MeshStandardMaterial({color: 0x2a1a12, roughness: .45}), wood: new THREE.MeshStandardMaterial({map: TX.wood, color: 0xa07850, roughness: .5}),
+    base: new THREE.MeshStandardMaterial({color: 0x1a1a1c, metalness: .6, roughness: .35}), seat: new THREE.MeshStandardMaterial({color: 0x6a1a1a, roughness: .8}), card: new THREE.MeshStandardMaterial({roughness: .5}), line: new THREE.MeshStandardMaterial({color: 0xd8c890, roughness: .6}),
+    chip: [0xc81e1e, 0x1e48c8, 0x1a1a1a, 0x1e9a3a].map(c => new THREE.MeshStandardMaterial({color: c, roughness: .4, map: PK.chipTx || (PK.chipTx = tex(cv(128, 16, (q, w, h) => { q.fillStyle = '#fff'; q.fillRect(0, 0, w, h); q.fillStyle = '#c8c8c8'; for (let x = 0; x < w; x += 16) q.fillRect(x, 0, 6, h); })))})), btn: new THREE.MeshStandardMaterial({color: 0xf4f0e6, roughness: .4}), skin: new THREE.MeshStandardMaterial({color: 0xc89070, roughness: .8}),
+    coat: [0x2a3a4a, 0x5a3a20, 0x3a4a2a].map(c => new THREE.MeshStandardMaterial({color: c, roughness: .9})), cap: new THREE.MeshStandardMaterial({color: 0x1a2030, roughness: .8})});
+  if (!PK.cardMap) { PK.cardMap = new THREE.CanvasTexture(casCardCv()); PK.cardMap.colorSpace = THREE.SRGBColorSpace; PK.cardMap.anisotropy = 4; M.card.map = PK.cardMap; M.card.needsUpdate = true; }
+  const add = (geo, m, x, y, z) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.castShadow = o.receiveShadow = true; g.add(o); return o; };
+  // the table: stadium felt, a padded rail, a wooden apron, a pedestal on a cross foot
+  const stad = (a, b) => { const s = new THREE.Shape(), r = a, L = b - a; s.moveTo(-r, -L); s.lineTo(-r, L); s.absarc(0, L, r, PI, 0, true); s.lineTo(r, -L); s.absarc(0, -L, r, 0, PI, true); return s; };
+  const felt = new THREE.ShapeGeometry(stad(PK_AX - .02, PK_AZ - .02), 24); felt.rotateX(-PI / 2); { const p = felt.attributes.position, uv = felt.attributes.uv; for (let i = 0; i < p.count; i++) uv.setXY(i, p.getX(i) * 2, p.getZ(i) * 2); } add(felt, M.felt, 0, .79, 0).castShadow = false;
+  const ln = new THREE.ShapeGeometry(stad(PK_AX * .62, PK_AZ * .74), 24); ln.rotateX(-PI / 2); { const hole = stad(PK_AX * .62 - .012, PK_AZ * .74 - .012); const sh = stad(PK_AX * .62, PK_AZ * .74); sh.holes.push(hole); const lg = new THREE.ShapeGeometry(sh, 24); lg.rotateX(-PI / 2); add(lg, M.line, 0, .792, 0).castShadow = false; }
+  const ring = stad(PK_AX + .12, PK_AZ + .12); ring.holes.push(stad(PK_AX - .02, PK_AZ - .02)); const rg = new THREE.ExtrudeGeometry(ring, {depth: .04, bevelEnabled: true, bevelThickness: .035, bevelSize: .03, bevelSegments: 4, curveSegments: 24}); rg.rotateX(-PI / 2); add(rg, M.rail, 0, .78, 0);
+  const ap = new THREE.ExtrudeGeometry(stad(PK_AX + .04, PK_AZ + .04), {depth: .1, bevelEnabled: false, curveSegments: 24}); ap.rotateX(-PI / 2); add(ap, M.wood, 0, .68, 0);
+  add(new THREE.CylinderGeometry(.16, .2, .64, 16), M.base, 0, .36, 0); for (const r of [0, PI / 2]) { const f = add(new THREE.BoxGeometry(.12, .05, 1.5), M.base, 0, .03, 0); f.rotation.y = r; f.scale.z = r ? .9 : 1.3; }
+  BW.push({x0: sp.x - PK_AX - .12, x1: sp.x + PK_AX + .12, z0: sp.z - PK_AZ - .12, z1: sp.z + PK_AZ + .12, y0: sp.y - BDECK.y, y1: sp.y - BDECK.y + .82});
+  // chairs: cushioned seat and back on four legs, facing the felt; sit with E
+  PK_SEAT.forEach(([x, z], i) => { const yaw = Math.atan2(x, z), c = new THREE.Group(); c.position.set(x, 0, z); c.rotation.y = yaw; g.add(c);
+    const s = new THREE.Mesh(bfCushGeo(.46, .09, .44, .04), M.seat); s.position.y = .47; c.add(s); const bk = new THREE.Mesh(bfCushGeo(.44, .48, .08, .04), M.seat); bk.position.set(0, .78, .22); bk.rotation.x = -.12; c.add(bk);
+    for (const [lx, lz] of [[-.19, -.18], [.19, -.18], [-.19, .18], [.19, .18]]) { const l = new THREE.Mesh(new THREE.CylinderGeometry(.018, .015, .43, 8), M.wood); l.position.set(lx, .215, lz); c.add(l); } c.traverse(o => { if (o.isMesh) o.castShadow = o.receiveShadow = true; });
+    INTER.push({kind: 'pk', boat: 1, lx: sp.x + x, lz: sp.z + z, by: sp.y + .6, r: 1.1, label: () => { const q = PKS && PKS.s[i]; return q && q[6] ? `Take ${q[1]}'s seat at poker` : 'Sit down at poker'; },
+      on: () => P && P.ob && !P.sw && !P.seat && P.pk == null && !(PKS && PKS.s[i] && !PKS.s[i][6]), go: () => act({a: 'pks', s: i})});
+    // per seat: two hole cards, a stack, a bet, a name label, a bot figure
+    const k = .43, cx = x * k, cz = z * k, sd = [Math.cos(yaw), -Math.sin(yaw)]; T.hole.push([0, 1].map(j => { const m = add(pkCardGeo(), M.card, cx + sd[0] * (j - .5) * .075, .798 + j * .001, cz + sd[1] * (j - .5) * .075); m.rotation.y = yaw; m.visible = false; return m; }));
+    const cg = PK.chipG || (PK.chipG = new THREE.CylinderGeometry(.02, .02, 1, 16)), col = (n, bx, bz, m0) => Array.from({length: n}, (_, j) => { const o = add(cg, M.chip[(m0 + j) % 4], bx + sd[0] * (j - (n - 1) / 2) * .045, .8, bz + sd[1] * (j - (n - 1) / 2) * .045); o.visible = false; return o; });
+    T.stacks.push(col(3, x * .52 + sd[0] * .2, z * .52 + sd[1] * .2, i)); T.bets.push(col(2, x * .3, z * .3, i + 1));
+    const cvs = document.createElement('canvas'); cvs.width = 256; cvs.height = 72; const tx = new THREE.CanvasTexture(cvs); tx.colorSpace = THREE.SRGBColorSpace; const sp2 = new THREE.Sprite(new THREE.SpriteMaterial({map: tx, transparent: true, depthWrite: false})); sp2.scale.set(.62, .175, 1); sp2.position.set(x * 1.02, 1.62, z * 1.02); sp2.visible = false; g.add(sp2); T.labels.push({sp: sp2, cv: cvs, tx, key: ''});
+    const bot = new THREE.Group(); bot.position.set(x, 0, z); bot.rotation.y = yaw; const coat = M.coat[i % 3]; const bm = (geo, m, px, py, pz) => { const o = new THREE.Mesh(geo, m); o.position.set(px, py, pz); o.castShadow = true; bot.add(o); return o; };
+    bm(new THREE.CylinderGeometry(.17, .2, .55, 12), coat, 0, .82, .04); bm(new THREE.SphereGeometry(.12, 14, 10), M.skin, 0, 1.22, 0); bm(new THREE.CylinderGeometry(.125, .13, .07, 14), M.cap, 0, 1.31, 0); bm(new THREE.BoxGeometry(.2, .02, .08), M.cap, 0, 1.285, -.11);
+    for (const s2 of [-1, 1]) { const a = bm(new THREE.CylinderGeometry(.05, .045, .42, 8), coat, s2 * .2, .86, -.16); a.rotation.x = 1.15; bm(new THREE.SphereGeometry(.045, 8, 6), M.skin, s2 * .17, .83, -.36); const lg = bm(new THREE.CylinderGeometry(.065, .06, .42, 8), M.cap, s2 * .1, .5, -.2); lg.rotation.x = PI / 2; bm(new THREE.CylinderGeometry(.055, .05, .45, 8), M.cap, s2 * .1, .24, -.4); }
+    bot.visible = false; g.add(bot); T.bots.push(bot); });
+  for (let i = 0; i < 5; i++) { const m = add(pkCardGeo(), M.card, 0, .798, (i - 2) * .085); m.rotation.y = PI / 2; m.visible = false; T.cards.push(m); }
+  T.pot = [[.2, 0], [.25, .04], [.25, -.04], [.3, 0], [.2, .08], [.2, -.08]].map(([x, z], j) => { const o = add(PK.chipG, M.chip[j % 4], x, .8, z); o.visible = false; return o; });
+  T.dbtn = add(new THREE.CylinderGeometry(.03, .03, .012, 18), M.btn, 0, .8, 0); T.dbtn.visible = false;
+  pkDraw(); }
+const pkH = v => Math.min(.16, .006 + Math.ceil(v / 20) * .0035); // a chip stack's height for v chips
+// v chips over a set of columns: 20 a chip, at most 16 chips (5.4 mm each) a column, filled left to right
+function pkStacks(L, v) { let n = Math.ceil(Math.max(0, v) / 20); const per = Math.max(1, Math.ceil(n / L.length)), cap = 16; for (const o of L) { const k = Math.min(n, Math.min(cap, per)); n -= k; o.visible = k > 0; if (k) { const h = k * .0054; o.scale.y = h; o.position.y = .795 + h / 2; } } }
+function pkDraw() { const T = PKT; if (!T) return; const S = PKS, me = myId(), mine = S ? S.s.findIndex(q => q && q[0] === me) : -1;
+  for (let i = 0; i < PK_N; i++) { const q = S && S.s[i], show = S && S.sh && S.sh[i];
+    T.hole[i].forEach((m, j) => { const has = q && q[7] && !q[4] && S.ph !== 'wait'; m.visible = !!has; if (!has) return; const c = show ? show[j] : (i === mine && PKH.length === 2 ? PKH[j] : null); pkCardUV(m, c, c != null); m.position.y = .798 + j * .001 + (i === mine && !show ? .012 : 0); m.rotation.x = i === mine && !show ? .0 : 0; });
+    pkStacks(T.stacks[i], q ? q[2] : 0); pkStacks(T.bets[i], q ? q[3] : 0);
+    T.bots[i].visible = !!(q && q[6]);
+    const L = T.labels[i], cur = S && S.cur === i, key = q ? [q[1], q[2], q[8], cur, q[4]].join('|') : ''; L.sp.visible = !!q; if (q && key !== L.key) { L.key = key; const g = L.cv.getContext('2d'); g.clearRect(0, 0, 256, 72); g.fillStyle = cur ? 'rgba(200,150,40,.9)' : 'rgba(8,14,20,.72)'; g.beginPath(); g.roundRect(4, 4, 248, 64, 14); g.fill();
+      g.fillStyle = q[4] ? '#8a9094' : '#fff'; g.font = 'bold 26px sans-serif'; g.textAlign = 'center'; g.fillText(`${q[1]}  ${q[2]}`, 128, 32); g.font = '20px sans-serif'; g.fillStyle = cur ? '#1a1206' : '#c8d4dc'; g.fillText(cur ? 'to act' : (q[8] || ' '), 128, 58); L.tx.needsUpdate = true; } }
+  const bn = S ? S.b.length : 0; T.cards.forEach((m, i) => { m.visible = i < bn; if (i < bn) pkCardUV(m, S.b[i], true); });
+  const pv = S ? S.p - S.s.reduce((a, q) => a + (q ? q[3] : 0), 0) : 0; pkStacks(T.pot, pv);
+  T.dbtn.visible = !!(S && S.ph !== 'wait' && S.s[S.btn]); if (T.dbtn.visible) { const [x, z] = PK_SEAT[S.btn]; T.dbtn.position.set(x * .38 + .12, .805, z * .38 - .08); } }
+// ---- sitting
+function pkSitLocal(s) { if (!PKT) return; if (P.pk == null) P.pkEq = P.eq; P.pk = s; P.eq = 0; if (P.psit) P.psit = null; const [x, z] = PK_SEAT[s]; P.yaw = B.yaw + Math.atan2(x, z); P.pitch = -.62; P.pkR = 0; if (PKT) PKT.hudDirty = 1;
+  if (!G.pkHelp) { G.pkHelp = 1; showMsg('C check/call · R raise (wheel sizes it) · A all in · F fold · E stand up', 'POKER', 6); } }
+function pkStandLocal() { if (P.pk == null) return; const s = P.pk; P.pk = null; P.cr = 0; P.eq = P.pkEq || 0; if (P.eq && !slotOk(P.eq)) P.eq = 0; if (PKT) { const [x, z] = PK_SEAT[s], d = Math.hypot(x, z); P.bl = [PKT.x + x + x / d * .5, PKT.z + z + z / d * .5]; P.y = PKT.y; const [wx, wz] = bL2W(P.bl[0], P.bl[1]); P.x = wx; P.z = wz; } pkHud(); }
+function pkPin(dt) { const [x, z] = PK_SEAT[P.pk], sy = Math.atan2(x, z); P.ob = true; P.bl = [PKT.x + x * 1.04, PKT.z + z * 1.04]; const [wx, wz] = bL2W(P.bl[0], P.bl[1]); P.x = wx; P.z = wz; P.y = PKT.y; P.sw = 0; P.vx = P.vz = P.vy = 0; P.cr = 1; P.run = 0; P.eye = mix(P.eye, 1.12, Math.min(1, dt * 6)); P.eq = 0; G.onFl = 1;
+  const yw = B.yaw + sy; P.yaw = yw + clamp(angD(yw, P.yaw), -1.4, 1.4); P.pitch = clamp(P.pitch, -1.2, .35); }
+// ---- HUD: your cards big, the board, pot and price, the keys
+function pkHud() { let el = $('pkHud'); const on = P && P.pk != null && PKS; if (!el) { if (!on) return; el = document.createElement('div'); el.id = 'pkHud'; el.style.cssText = 'position:fixed;right:16px;top:50%;transform:translateY(-50%);background:rgba(6,12,18,.82);border:1px solid rgba(220,190,120,.35);border-radius:12px;padding:10px 16px;color:#e8e2d4;font:14px/1.35 sans-serif;text-align:center;z-index:12;width:300px;max-width:44vw;pointer-events:none'; document.body.appendChild(el); }
+  el.style.display = on ? '' : 'none'; if (!on) return; const S = PKS, me = myId(), i = S.s.findIndex(q => q && q[0] === me), q = S.s[i]; if (!q) { el.style.display = 'none'; return; }
+  const card = c => { const red = pkSuit(c) === 1 || pkSuit(c) === 2; return `<span style="display:inline-block;background:#f6f2e8;color:${red ? '#b8121a' : '#141418'};border-radius:5px;padding:2px 7px;margin:0 2px;font:bold 20px Georgia">${pkName(c)}</span>`; };
+  const mineC = S.sh && S.sh[i] ? S.sh[i] : PKH, call = Math.max(0, S.cb - q[3]), turn = S.cur === i, minTo = S.cb + S.mr, maxTo = q[2] + q[3];
+  if (turn) P.pkR = clamp(P.pkR || minTo, Math.min(minTo, maxTo), maxTo); const hand = mineC.length === 2 && q[7] && S.ph !== 'wait' ? mineC.map(card).join('') + (S.b.length >= 3 ? ` <small style="color:#c8b880">${pkCat(pkBest(mineC.concat(S.b)).s)}</small>` : '') : '<span style="color:#8a9094">no cards</span>';
+  const ph = {wait: 'Waiting for players', pre: 'Pre-flop', flop: 'Flop', turn: 'Turn', river: 'River', end: 'Showdown'}[S.ph] || '', who = S.cur >= 0 && S.s[S.cur] ? (turn ? '<b style="color:#ffd070">Your turn</b>' : `${S.s[S.cur][1]} to act`) : '';
+  const keys = turn ? `<div style="margin-top:6px"><b>C</b> ${call ? 'Call ' + call : 'Check'} · <b>R</b> ${call || S.cb ? 'Raise' : 'Bet'} to ${P.pkR} <small>(wheel)</small> · <b>A</b> All in ${maxTo} · <b>F</b> Fold · ${Math.ceil(S.T)} s</div>` : `<div style="margin-top:6px;color:#9aa4ac">E stand up</div>`;
+  el.innerHTML = `<div style="color:#c8b880;font-size:12px;letter-spacing:.12em">POKER · ${ph} · POT ${S.p}${S.ph === 'end' || S.r ? '' : ''}</div><div style="margin:6px 0">${hand}</div><div>Your chips <b>${q[2]}</b>${who ? ' · ' + who : ''}</div>${S.r && S.ph === 'end' ? `<div style="color:#ffd070;margin-top:4px">${S.r}</div>` : ''}${keys}<div style="color:#8a9094;font-size:12px;margin-top:4px">${PKLOG.slice(-2).join('<br>')}</div>`; }
+addEventListener('keydown', e => { if (!G.on || G.paused || !P || P.pk == null || anyPanel() || (e.target && /^(INPUT|TEXTAREA)$/.test(e.target.tagName))) return; const c = e.code, S = PKS, i = S ? S.s.findIndex(q => q && q[0] === myId()) : -1, turn = S && S.cur === i;
+  if (c === 'KeyE') { if (!e.repeat) act({a: 'pku'}); } else if (c === 'KeyF') { if (turn) act({a: 'pka', x: 'fold'}); } else if (c === 'KeyC') { if (turn) act({a: 'pka', x: 'call'}); }
+  else if (c === 'KeyR') { if (turn) act({a: 'pka', x: 'raise', v: P.pkR}); } else if (c === 'KeyA') { if (turn && !e.repeat) act({a: 'pka', x: 'all'}); }
+  else if (/^(KeyW|KeyS|KeyD|KeyX|KeyG|KeyQ|KeyH|Space|Digit\d|Numpad\d)$/.test(c)) {} else return; e.preventDefault(); e.stopImmediatePropagation(); }, {capture: true});
+addEventListener('wheel', e => { if (!G.on || !P || P.pk == null || !PKS) return; const q = PKS.s.find(q => q && q[0] === myId()); if (!q) return; const step = Math.max(PK_BB, Math.round((PKS.p || 0) / 4 / 10) * 10 || PK_BB); P.pkR = clamp((P.pkR || PKS.cb + PKS.mr) + (e.deltaY < 0 ? step : -step), Math.min(PKS.cb + PKS.mr, q[2] + q[3]), q[2] + q[3]); pkHud(); e.preventDefault(); e.stopImmediatePropagation(); }, {capture: true, passive: false});
+// ---- hooks
+{ buildBoat = after(buildBoat, function (r) { const was = P && P.pk != null; try { pkBuild(); } catch (err) { console.warn('pkBuild', err); PKT = null; } if (was && P) { P.pk = null; P.cr = 0; } if (isHost() && G.on) { if (!PKT) { if (PK.seats.some(q => q)) { pkReset(true); pkSettle(); PK.seats.forEach(q => q && emit({k: 'pksit', id: q.id, s: -1})); PK.seats.fill(null); pkSend(); } } else if (PK.seats.some(q => q && !q.bot)) { pkReset(true); for (let i = 0; i < PK_N; i++) if (PK.seats[i] && !PK.seats[i].bot) { emit({k: 'pksit', id: PK.seats[i].id, s: -1}); PK.seats[i] = null; } pkSettle(); pkSend(); } } }); }
+{ hostStep = after(hostStep, function (r, dt) { if (G.on) try { pkHost(dt); } catch (err) { console.warn('pkHost', err); } }); }
+{ hostAct = after(hostAct, function (r, id, m) { if (m && (m.a === 'pks' || m.a === 'pku' || m.a === 'pka')) pkHostAct(id, m); }); }
+{ applyEv = before(applyEv, function (e) { if (e && (e.k === 'pk' || e.k === 'pkx' || e.k === 'pkm' || e.k === 'pksit')) { pkEvent(e); return; } if (e && e.k === 'nope' && e.pk) { if (e.id === myId()) showMsg(e.why, 'POKER', 2.5); return; } return NEXT; }); }
+{ packSnap = after(packSnap, function (s) { if (PK.v !== PK.sv2 || G.t - (PK.sT2 || 0) > 3) { PK.sv2 = PK.v; PK.sT2 = G.t; s.pk = pkPub(); } }); }
+{ applySnap = after(applySnap, function (r, s) { if (s && s.pk) { const h = PKS && PKS.h; PKS = s.pk; if (h !== PKS.h && PKH.h !== PKS.h) PKH = []; if (PKT) PKT.dirty = 1; } }); }
+{ stepPlayer = before(stepPlayer, function (dt) { if (P && P.pk != null) { if (!PKT || !alivePlay() || P.down || P.dead) { pkStandLocal(); act({a: 'pku'}); return NEXT; } pkPin(dt); return; } return NEXT; }); }
+{ stepInteract = around(stepInteract, function (next, ...a) { if (P && P.pk != null && PKT && !anyPanel()) { const pr = $('prompt'); if (pr && G.prOp !== 0) { G.prOp = 0; pr.style.opacity = 0; } if (PKT.dirty) { PKT.dirty = 0; pkDraw(); pkHud(); } else if ((PKT.hT = (PKT.hT || 0) - a[0]) <= 0) { PKT.hT = .25; pkHud(); } return; } if (PKT && PKT.dirty) { PKT.dirty = 0; pkDraw(); } pkHud(); return next.apply(this, a); }); }
+{ toolDown = before(toolDown, function () { if (P && P.pk != null) return; return NEXT; }); }
+{ toolUp = before(toolUp, function () { if (P && P.pk != null) return; return NEXT; }); }
+{ startGame = before(startGame, function () { PK.seats.fill(null); pkReset(); PKS = null; PKH = []; PKLOG.length = 0; if (P) P.pk = null; return NEXT; }); }
+if (TEST && window.__S) { Object.assign(window.__S, {PK, pkBest, pkEval5, pkDo, pkHostAct, pkSpot, pkHost}); Object.defineProperties(window.__S, {PKS: {get: () => PKS}, PKT: {get: () => PKT}, PKH: {get: () => PKH}}); }
