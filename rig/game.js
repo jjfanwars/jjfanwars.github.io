@@ -56,7 +56,7 @@ const hexS = c => '#' + c.toString(16).padStart(6, '0');
 
 // ---------------- net (jjfanwars relay)
 const RELAY_URL = 'wss://jjfanwars-relay.businessautomationvic.workers.dev';
-const GAME_V = 83;
+const GAME_V = 84;
 const Net = {
   tag: '[Rig]', role: 'solo', ws: null, peers: new Map(), code: '', relayT: {pose: 1}, id: '', name: '', handlers: {}, retry: 0, started: false,
   enc: new TextEncoder(), dec: new TextDecoder(),
@@ -1248,12 +1248,12 @@ function buildBoat() {
     { const zm = (wz0 + wz1) / 2, fab = S({color: 0x6a2a24, roughness: .9}), wd = S({map: TX.wood, color: 0x8a6a48, roughness: .7});
       box(wd, ww - .7, ww - .12, fb + .82, fb + .88, zm - .2, zm + .9, 1); box(wd, ww - .66, ww - .62, fb, fb + .82, zm - .15, zm - .1); const mp = add(new THREE.PlaneGeometry(.5, .8), S({map: TX.paper, roughness: 1}), ww - .4, fb + .885, zm + .35); mp.rotation.x = -PI / 2;
       cyl(S({color: 0xe8e0d0}), .04, .035, .1, ww - .55, fb + .93, zm - .05); cyl(S({color: 0x2a2a2a}), .006, .006, .25, ww - .3, fb + .9, zm + .6, 0, PI / 2);
-      box(fab, -ww + .12, -ww + .62, fb, fb + .45, zm - .6, zm + 1.1, 1); box(fab, -ww + .12, -ww + .22, fb + .45, fb + .95, zm - .6, zm + 1.1);
+      box(wd, -ww + .12, -ww + .6, fb, fb + .33, zm - .6, zm + 1.1, 1); bfBench(add, fab, -ww + .12, -ww + .62, fb + .33, zm - .6, zm + 1.1);
       const rd = box(darkM, -.62, -.24, fb + 1.05, fb + 1.3, hz - .45, hz - .2); add(new THREE.BoxGeometry(.3, .06, .01), S({color: 0x201000, emissive: 0xffa040, emissiveIntensity: .5}), -.43, fb + 1.2, hz - .195);
       INTER.push({kind: 'radio', boat: 1, lx: -.43, lz: hz - .1, ly: 1.2, r: 1.7, label: () => G.radioOn ? 'Turn the radio off' : 'Turn on the radio', go: () => act({a: 'radio', on: !G.radioOn})});
       cyl(steel, .006, .006, .2, 0, fb + hh - .1, zm); const bulb = add(new THREE.SphereGeometry(.07, 10, 8), S({color: 0xfff0d0, emissive: 0xffd8a0, emissiveIntensity: .45}), 0, fb + hh - .26, zm); bulb.castShadow = false; cyl(darkM, .02, .2, .14, 0, fb + hh - .18, zm, 0, 0, 16);
       cyl(redM, .07, .07, .45, ww - .3, fb + .23, wz1 - .3); const ck = add(new THREE.CircleGeometry(.09, 20), S({color: 0xf0ece0}), 0, fb + 2.11, wz1 - .125); ck.rotation.y = PI; add(new THREE.BoxGeometry(.01, .07, .005), darkM, 0, fb + 2.13, wz1 - .13);
-      for (let i = 0; i < 2; i++) { const jx = -ww + .25 + i * .42; if (jx + .35 < -.62) box(S({color: 0xe06018}), jx, jx + .35, fb + 1.2, fb + 1.65, wz1 - .26, wz1 - .14); }
+      for (let i = 0; i < 2; i++) { const jx = -ww + .25 + i * .42; if (jx + .35 < -.62) bfJacket(g, jx + .175, fb + 1.2, wz1 - .12, S); }
       // warm wood lining in every wheelhouse
       const pan = S({map: TX.wood, color: 0xb08860, roughness: .75}); box(pan, -ww + .12, -ww + .14, fb, fb + 1.05, wz0 + .12, wz1 - .12); box(pan, ww - .14, ww - .12, fb, fb + 1.05, wz0 + .12, wz1 - .12); box(pan, -ww + .12, -.55, fb, fb + 1.05, wz1 - .14, wz1 - .12); box(pan, .55, ww - .12, fb, fb + 1.05, wz1 - .14, wz1 - .12);
       box(pan, -ww + .12, ww - .12, fb + hh - .04, fb + hh - .02, wz0 + .12, wz1 - .12);
@@ -3809,7 +3809,7 @@ SY_SUP[6] = X => {
   const rad = add(new THREE.BoxGeometry(2.6, .14, .3), darkM, 0, ytop + 8.2, mz); ud.radar = rad; cyl(darkM, .1, .12, .9, 0, ytop + 7.7, mz, 0, 0, 8); cyl(steel, .06, .08, 2.5, .8, ytop + 8.5, mz + .3, 0, 0, 6); ud.shpMh.position.set(.8, ytop + 9.9, mz + .3);
   add(new THREE.SphereGeometry(.45, 14, 10), wh, -1.6, ytop + .8, mz + 2.2); cyl(wh, .08, .08, .5, -1.6, ytop + .25, mz + 2.2, 0, 0, 6);
   // the funnel on the house top aft, lifeboats on the deck-1 sides in davits
-  const fz = wz1 + 4.6; ud.shpSmoke = syFunnel(X, {y0: H0.y1 + 2.6 * 2, h: 8.5, w: 2.9, l: 5, z: fz, rk: .1, e: 4, m: red, band: wh, band2: S({color: 0x1a3a6a}), top: darkM});
+  const fz = wz1 + 5.9; ud.shpSmoke = syFunnel(X, {y0: H0.y1 + 2.6 * 2, h: 8.5, w: 2.9, l: 5, z: fz, rk: .1, e: 4, m: red, band: wh, band2: S({color: 0x1a3a6a}), top: darkM});
   for (const sd of [-1, 1]) syLifeboat(X, sd, sd * (hw - .4), H0.y1 + 1.4, wz1 + 1.5, 6.4, 1);
   // hangar with the helideck on its roof (net edge, H marking, lights), research A-frame at the stern, a crane to port, containers
   const hz0 = wz1 + 9, hz1 = hz0 + 9, hy = fb + 4.4; box(wh, -3.2, 3.2, fb, hy, hz0, hz1, 1); box(S({color: 0x8a8e92, roughness: .7, metalness: .3}), -2.4, 2.4, fb + .1, hy - .5, hz1 + .01, hz1 + .05); for (let i = 1; i < 10; i++) box(darkM, -2.4, 2.4, fb + .1 + i * .38, fb + .12 + i * .38, hz1 + .05, hz1 + .07);
@@ -10766,3 +10766,238 @@ function isvFx(dt) {
 { updateWorldFx = after(updateWorldFx, function (r, dt) { isvFx(dt || 0); }); }
 { startGame = after(startGame, function (r) { try { isvIE(); } catch (err) { console.warn('isvIE', err); } }); }
 if (TEST && window.__S) Object.assign(window.__S, {ISV, isvIE, isvBio});
+
+// ---------------- boat finish (v84): procedural interior/exterior surfaces and z-fight removal on every hull
+// bfTex builds four seamless canvas textures once (varnished planks, painted panels, fabric weave, brushed metal), each with a matching
+// bump map; their mean tone matches the old flat materials so hull colours keep their look. bfFinish (a buildBoat after-step) walks the
+// boat: box-like meshes (>= 85% of their area on axis-aligned faces) get metre-scaled UVs projected per triangle in boat space, so planks run
+// fore-aft on decks and up the walls at the same size on every part, and their material is swapped for a finished clone (cached by the
+// original material). Then coplanar faces of different meshes that overlap (z-fighting) are found per plane, and the smaller one is lifted 2.5 mm.
+const BF = {tx: null, mats: new Map(), stat: null, tile: {wood: 1.9, paint: 2.2, fab: .5, metal: .9, rub: .6}};
+function bfTex() {
+  if (BF.tx) return BF.tx; const R = mulberry(9184), N = 512, T = {};
+  const mk = (draw, rep) => { const c = cv(N, N, draw), t = tex(c); const b = new THREE.CanvasTexture(c); b.wrapS = b.wrapT = THREE.RepeatWrapping; b.anisotropy = 4; return [t, b]; };
+  const grain = (g, x0, w, base, k) => { // one plank: base tone, long warped grain lines, a knot now and then
+    g.fillStyle = base; g.fillRect(x0, 0, w, N);
+    for (let i = 0; i < 26; i++) { const x = x0 + R() * w, a = .04 + R() * .09, ph = R() * 9, fr = .004 + R() * .01; g.strokeStyle = `rgba(${R() < .5 ? '20,10,4' : '255,220,170'},${a * k})`; g.lineWidth = .6 + R() * 1.6; g.beginPath();
+      for (let y = 0; y <= N; y += 8) { const xx = x + Math.sin(y * fr + ph) * 3 + Math.sin(y * fr * 3.1 + ph) * 1.2; if (y) g.lineTo(clamp(xx, x0 + 1, x0 + w - 1), y); else g.moveTo(xx, y); } g.stroke(); }
+    if (R() < .35) { const ky = R() * N, kx = x0 + w * (.3 + R() * .4); for (let r = 9; r > 1; r -= 1.5) { g.strokeStyle = `rgba(30,14,4,${.12 * k})`; g.beginPath(); g.ellipse(kx, ky, r * .7, r * 1.6, 0, 0, TAU); g.stroke(); } } };
+  // varnished planks: 8 strips across U (15 cm at 1.2 m a tile), butt joints at random heights, dark caulk seams; mean near the old #4a3a2a
+  [T.wood, T.woodB] = mk((g, w, h) => { const pw = w / 8; for (let i = 0; i < 8; i++) { const v = .82 + R() * .36, c = [74, 58, 42].map(q => Math.round(clamp(q * v, 0, 255))); grain(g, i * pw, pw, `rgb(${c})`, 1);
+      const j = R() * h; g.fillStyle = 'rgba(12,6,2,.75)'; g.fillRect(i * pw, j, pw, 2); g.fillStyle = 'rgba(12,6,2,.8)'; g.fillRect(i * pw, 0, 2, h); }
+    noiseFill(g, w, h, 10); });
+  // painted panels: near-white so the material colour shows; faint seams every tile with screw heads, orange peel, a soft wear band
+  [T.paint, T.paintB] = mk((g, w, h) => { g.fillStyle = '#e4e4e0'; g.fillRect(0, 0, w, h);
+    for (let i = 0; i < 1400; i++) { g.fillStyle = `rgba(${R() < .5 ? '0,0,0' : '255,255,255'},${R() * .035})`; g.beginPath(); g.arc(R() * w, R() * h, 2 + R() * 10, 0, TAU); g.fill(); }
+    g.fillStyle = 'rgba(40,40,40,.35)'; g.fillRect(0, 0, w, 3); g.fillRect(0, 0, 3, h); g.fillStyle = 'rgba(255,255,255,.4)'; g.fillRect(0, 3, w, 1); g.fillRect(3, 0, 1, h);
+    for (const [x, y] of [[14, 14], [w / 2, 14], [14, h / 2], [w / 2, h / 2]]) { g.fillStyle = 'rgba(60,60,60,.4)'; g.beginPath(); g.arc(x, y, 3.2, 0, TAU); g.fill(); g.fillStyle = 'rgba(255,255,255,.35)'; g.beginPath(); g.arc(x - .8, y - .8, 1.4, 0, TAU); g.fill(); }
+    noiseFill(g, w, h, 7); });
+  // fabric: a fine weave with slubs
+  [T.fab, T.fabB] = mk((g, w, h) => { g.fillStyle = '#d6d6d2'; g.fillRect(0, 0, w, h); for (let y = 0; y < h; y += 4) for (let x = 0; x < w; x += 4) { g.fillStyle = ((x + y) / 4) % 2 ? 'rgba(0,0,0,.09)' : 'rgba(255,255,255,.07)'; g.fillRect(x, y, 4, 2); }
+    for (let i = 0; i < 160; i++) { g.fillStyle = `rgba(${R() < .5 ? '0,0,0' : '255,255,255'},${.05 + R() * .07})`; g.fillRect(R() * w, R() * h, 6 + R() * 26, 1.5); } noiseFill(g, w, h, 12); });
+  // brushed metal: long streaks and a few scratches
+  [T.metal, T.metalB] = mk((g, w, h) => { g.fillStyle = '#d0d0d0'; g.fillRect(0, 0, w, h); for (let i = 0; i < 900; i++) { g.fillStyle = `rgba(${R() < .5 ? '0,0,0' : '255,255,255'},${R() * .06})`; g.fillRect(0, R() * h, w, .5 + R() * 1.5); }
+    for (let i = 0; i < 40; i++) { g.strokeStyle = `rgba(255,255,255,${.1 + R() * .15})`; g.lineWidth = .7; g.beginPath(); const x = R() * w, y = R() * h; g.moveTo(x, y); g.lineTo(x + (R() - .5) * 60, y + (R() - .5) * 30); g.stroke(); } noiseFill(g, w, h, 8); });
+  // rubber/plastic: fine stipple (non-slip mats, dark consoles)
+  [T.rub, T.rubB] = mk((g, w, h) => { g.fillStyle = '#c8c8c8'; g.fillRect(0, 0, w, h); for (let y = 8; y < h; y += 16) for (let x = (y / 16 % 2) * 8 + 8; x < w; x += 16) { g.fillStyle = 'rgba(255,255,255,.18)'; g.beginPath(); g.arc(x, y, 3, 0, TAU); g.fill(); g.fillStyle = 'rgba(0,0,0,.18)'; g.beginPath(); g.arc(x + 1, y + 1, 3, PI * .2, PI * 1.2); g.fill(); } noiseFill(g, w, h, 14); });
+  // CC0 photo textures from Poly Haven (rig/tex, see THIRD_PARTY.md) replace the canvas ones for wood, paint and fabric once they load
+  const ld = new THREE.TextureLoader(), photo = (k, f, nf) => { const a = ld.load('tex/' + f, t => { T[k] = a; BF.mats.forEach(m => { if (m.userData.bf === k) { m.map = a; m.needsUpdate = true; } }); }), b = ld.load('tex/' + nf, () => BF.mats.forEach(m => { if (m.userData.bf === k) { m.bumpMap = null; m.normalMap = b; m.normalScale.setScalar(k === 'wood' ? .45 : .5); m.needsUpdate = true; } }));
+    for (const t of [a, b]) { t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 4; } a.colorSpace = THREE.SRGBColorSpace; b.colorSpace = THREE.NoColorSpace; T[k + 'P'] = a; T[k + 'PN'] = b; };
+  photo('wood', 'deck.jpg', 'deck_n.jpg'); photo('paint', 'paint.jpg', 'paint_n.jpg'); photo('fab', 'fab.jpg', 'fab_n.jpg');
+  for (const k in T) TX['bf' + k] = T[k]; // in TX so a rebuild never disposes them
+  for (const k in T) T[k].colorSpace = /(B|PN)$/.test(k) ? THREE.NoColorSpace : THREE.SRGBColorSpace;
+  return BF.tx = T;
+}
+// which finish a material gets (null = leave it alone)
+function bfKind(m) {
+  if (!m || !m.isMeshStandardMaterial || m.transparent || m.userData.bf || m.vertexColors) return null;
+  if (m.emissive && m.emissiveIntensity > 0 && m.emissive.getHex() !== 0) return null;
+  if (m.map) return (m.map === TX.wood || m.map === TX.planks) ? 'wood' : null;
+  const c = m.color, lum = c.r * .3 + c.g * .59 + c.b * .11;
+  if (m.metalness >= .45) return 'metal';
+  if (m.roughness >= .85) return 'fab';
+  if (lum < .03) return 'rub';
+  return 'paint';
+}
+function bfMat(m, kind) {
+  const key = m.uuid; let r = BF.mats.get(key); if (r) return r; const T = bfTex();
+  r = m.clone(); r.userData = Object.assign({}, m.userData, {bf: kind});
+  if (kind === 'wood') { r.map = T.wood; r.bumpMap = T.woodB; r.bumpScale = .9; r.roughness = clamp(r.roughness, .66, .8); r.envMapIntensity = .4; }
+  else if (kind === 'paint') { r.map = T.paint; r.bumpMap = T.paintB; r.bumpScale = .35; r.roughness = clamp(r.roughness + .08, .35, .7); }
+  else if (kind === 'fab') { r.map = T.fab; r.bumpMap = T.fabB; r.bumpScale = .6; }
+  else if (kind === 'metal') { r.map = T.metal; r.bumpMap = T.metalB; r.bumpScale = .15; r.roughnessMap = T.metalB; }
+  else { r.map = T.rub; r.bumpMap = T.rubB; r.bumpScale = .5; r.roughness = Math.max(r.roughness, .7); }
+  // the textures average about .87 (wood about 1 relative to the old map), so lift the colour back to the old tone
+  if (kind !== 'wood') r.color.multiplyScalar(kind === 'paint' ? 1.12 : kind === 'rub' ? 1.25 : 1.15);
+  if (T[kind + 'P'] && T[kind + 'P'].image) { r.map = T[kind + 'P']; } if (T[kind + 'PN'] && T[kind + 'PN'].image) { r.bumpMap = null; r.normalMap = T[kind + 'PN']; r.normalScale.setScalar(kind === 'wood' ? .45 : .5); }
+  r.needsUpdate = true; BF.mats.set(key, r); MATC['bf:' + key] = r; return r; // in MATC so a rebuild never disposes it
+}
+const _bfM = new THREE.Matrix4(), _bfN = new THREE.Matrix3(), _bfV = new THREE.Vector3(), _bfA = new THREE.Vector3(), _bfB = new THREE.Vector3(), _bfC = new THREE.Vector3();
+function bfFinish(root) {
+  if (!root) return; const t0 = performance.now(); root.updateMatrixWorld(true); const inv = new THREE.Matrix4().copy(root.matrixWorld).invert();
+  const meshes = [], seen = new Set(), st = {uv: 0, swap: 0, zf: 0, tri: 0};
+  root.traverse(o => { if (!o.isMesh || o.isInstancedMesh || o.isSkinnedMesh || !o.geometry || !o.geometry.attributes.position || Array.isArray(o.material)) return; if (o.material.transparent || o.material.depthWrite === false) return; meshes.push(o); });
+  const planes = new Map(); // key -> [{o, a (area), r: [u0,u1,v0,v1], ids}]
+  for (const o of meshes) {
+    let geo = o.geometry; if (seen.has(geo)) { geo = o.geometry = geo.clone(); } if (geo.index) { const ng = geo.toNonIndexed(); geo.dispose(); geo = o.geometry = ng; } seen.add(geo);
+    const P = geo.attributes.position, n = P.count / 3 | 0; if (!n || n > 60000) continue; st.tri += n;
+    _bfM.multiplyMatrices(inv, o.matrixWorld); _bfN.getNormalMatrix(_bfM);
+    const BP = new Float32Array(P.count * 3), ax = new Int8Array(n), sg = new Int8Array(n); let aAx = 0, aAll = 0;
+    for (let i = 0; i < P.count; i++) { _bfV.fromBufferAttribute(P, i).applyMatrix4(_bfM); BP[i * 3] = _bfV.x; BP[i * 3 + 1] = _bfV.y; BP[i * 3 + 2] = _bfV.z; }
+    for (let t = 0; t < n; t++) { const j = t * 9; _bfA.set(BP[j + 3] - BP[j], BP[j + 4] - BP[j + 1], BP[j + 5] - BP[j + 2]); _bfB.set(BP[j + 6] - BP[j], BP[j + 7] - BP[j + 1], BP[j + 8] - BP[j + 2]); _bfC.crossVectors(_bfA, _bfB); const ar = _bfC.length() / 2; if (ar < 1e-9) { ax[t] = -1; continue; } _bfC.divideScalar(ar * 2);
+      const q = [Math.abs(_bfC.x), Math.abs(_bfC.y), Math.abs(_bfC.z)], k = q[0] > q[1] ? (q[0] > q[2] ? 0 : 2) : (q[1] > q[2] ? 1 : 2); ax[t] = k; sg[t] = _bfC.getComponent(k) > 0 ? 1 : -1; aAll += ar; if (q[k] > .995) aAx += ar; else ax[t] += 3; }
+    const kind = bfKind(o.material), boxy = aAll > 0 && aAx / aAll >= .85;
+    if (kind && boxy) { // metre-scaled UVs, projected per triangle in boat space
+      const tl = BF.tile[kind], uv = new Float32Array(P.count * 2);
+      for (let t = 0; t < n; t++) { const k = ax[t] < 0 ? 1 : ax[t] % 3; for (let v = 0; v < 3; v++) { const i = t * 3 + v, x = BP[i * 3], y = BP[i * 3 + 1], z = BP[i * 3 + 2]; let u, w;
+          if (k === 1) { u = z; w = x; } else if (k === 0) { u = z * sg[t]; w = y; } else { u = -x * sg[t]; w = y; } uv[i * 2] = u / tl; uv[i * 2 + 1] = w / tl; } }
+      geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2)); o.material = bfMat(o.material, kind); st.uv++; st.swap++; }
+    // collect axis-aligned faces for the z-fight pass
+    for (let t = 0; t < n; t++) { const k = ax[t]; if (k < 0 || k > 2) continue; const j = t * 9, c = BP[j + k], key = k + (sg[t] > 0 ? '+' : '-') + Math.round(c * 400);
+      const a1 = (k + 1) % 3, a2 = (k + 2) % 3; let u0 = 1e9, u1 = -1e9, v0 = 1e9, v1 = -1e9; for (let v = 0; v < 3; v++) { const p = BP[j + v * 3 + a1], q = BP[j + v * 3 + a2]; u0 = Math.min(u0, p); u1 = Math.max(u1, p); v0 = Math.min(v0, q); v1 = Math.max(v1, q); }
+      let L = planes.get(key); if (!L) planes.set(key, L = []); let e = L.find(e => e.o === o); if (!e) L.push(e = {o, a: 0, R: [], ids: []}); e.R.push([u0, u1, v0, v1]); e.ids.push(t); e.a += (u1 - u0) * (v1 - v0) / 2; }
+    o.userData.bfK = ax; o.userData.bfS = sg;
+  }
+  // z-fight: two different-material meshes with overlapping coplanar same-facing faces; lift the smaller set 2.5 mm along the normal
+  const lifted = new Set();
+  for (const [key, L] of planes) { if (L.length < 2) continue;
+    for (let i = 0; i < L.length; i++) for (let j = i + 1; j < L.length; j++) { const A = L[i], Bq = L[j]; if (A.o.material === Bq.o.material) continue; let ov = 0;
+      for (const r of A.R) { for (const s of Bq.R) { const du = Math.min(r[1], s[1]) - Math.max(r[0], s[0]), dv = Math.min(r[3], s[3]) - Math.max(r[2], s[2]); if (du > .004 && dv > .004) { ov += du * dv; if (ov > 2e-4) break; } } if (ov > 2e-4) break; }
+      if (ov <= 2e-4) continue; const sm = A.a <= Bq.a ? A : Bq, lk = sm.o.uuid + key; if (lifted.has(lk)) continue; lifted.add(lk);
+      const o = sm.o, P = o.geometry.attributes.position, k = +key[0], s = key[1] === '+' ? 1 : -1; _bfM.multiplyMatrices(inv, o.matrixWorld); const im = new THREE.Matrix4().copy(_bfM).invert(); const d = new THREE.Vector3().setComponent(k, s * .0025).applyMatrix3(new THREE.Matrix3().setFromMatrix4(im));
+      for (const t of sm.ids) for (let v = 0; v < 3; v++) { const q = t * 3 + v; P.setXYZ(q, P.getX(q) + d.x, P.getY(q) + d.y, P.getZ(q) + d.z); } P.needsUpdate = true; o.geometry.computeBoundingSphere(); st.zf++; } }
+  for (const o of meshes) { delete o.userData.bfK; delete o.userData.bfS; }
+  st.ms = Math.round(performance.now() - t0); BF.stat = st; return st;
+}
+{ buildBoat = after(buildBoat, function (r) { if (SET.bfOff || !BOAT) return; try { bfDressAll(BOAT); } catch (err) { console.warn('bfDress', err); } try { bfFinish(BOAT); } catch (err) { console.warn('bfFinish', err); } }); }
+if (TEST && window.__S) Object.assign(window.__S, {BF, bfFinish, bfTex});
+
+// ---------------- boat rooms (v84): find enclosed rooms on any hull and dress the empty ones
+// bfRooms samples every boat floor (BFL) on a 0.5 m grid; a point is indoors when a ray up hits a ceiling within 3.4 m and rays out hit walls
+// within 9 m on all four sides. Indoor points flood-fill into rooms per floor level; fill = share of points with something standing on them
+// (a ray down from 1.6 m hits above floor + 0.15). Rooms over 6 m2 and under 10% full are dressed by bfDress.
+const _bfR = new THREE.Raycaster(), _bfO = new THREE.Vector3(), _bfD = new THREE.Vector3();
+function bfCast(meshes, M, x, y, z, dx, dy, dz, far) { _bfO.set(x, y, z).applyMatrix4(M); _bfD.set(dx, dy, dz).transformDirection(M); _bfR.set(_bfO, _bfD); _bfR.far = far; _bfR.near = 0; const h = _bfR.intersectObjects(meshes, false); return h.length ? h[0].distance : Infinity; }
+function bfRooms(root) {
+  root.updateMatrixWorld(true); const M = root.matrixWorld, meshes = []; root.traverse(o => { if (o.isMesh && o.visible && !o.isSprite && o.material && !o.material.transparent) meshes.push(o); });
+  const st = .5, rooms = [];
+  for (const f of BFL) { if (f.x1 - f.x0 < 1.5 || f.z1 - f.z0 < 1.5) continue; const nx = Math.floor((f.x1 - f.x0) / st), nz = Math.floor((f.z1 - f.z0) / st), cell = new Map();
+    for (let i = 0; i < nx; i++) for (let j = 0; j < nz; j++) { const x = f.x0 + (i + .5) * st, z = f.z0 + (j + .5) * st, y = f.y;
+      if (floorAtBoat(x, z, y + .5) !== y) continue;
+      const up = bfCast(meshes, M, x, y + 1.2, z, 0, 1, 0, 2.3); if (up === Infinity) continue;
+      if ([[1, 0], [-1, 0], [0, 1], [0, -1]].some(([a, b]) => bfCast(meshes, M, x, y + 1.3, z, a, 0, b, 9) === Infinity)) continue;
+      const dn = bfCast(meshes, M, x, y + 1.6, z, 0, -1, 0, 1.6); cell.set(i + ',' + j, {i, j, x, z, full: dn < 1.45, h: up + 1.2}); }
+    const seen = new Set();
+    for (const [k, c] of cell) { if (seen.has(k)) continue; const R = {y: f.y, pts: [], x0: 1e9, x1: -1e9, z0: 1e9, z1: -1e9, full: 0, h: 9}, q = [c]; seen.add(k);
+      while (q.length) { const p = q.pop(); R.pts.push(p); R.x0 = Math.min(R.x0, p.x - st / 2); R.x1 = Math.max(R.x1, p.x + st / 2); R.z0 = Math.min(R.z0, p.z - st / 2); R.z1 = Math.max(R.z1, p.z + st / 2); if (p.full) R.full++; R.h = Math.min(R.h, p.h);
+        for (const [a, b] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const kk = (p.i + a) + ',' + (p.j + b); if (cell.has(kk) && !seen.has(kk)) { seen.add(kk); q.push(cell.get(kk)); } } }
+      R.area = R.pts.length * st * st; R.fill = R.full / R.pts.length; rooms.push(R); } }
+  return {rooms, meshes};
+}
+// the floor height a walker would stand on at boat-local (x, z) from height y (top BFL at or below y)
+function floorAtBoat(x, z, y) { let b = -1e9; for (const f of BFL) if (x >= f.x0 && x <= f.x1 && z >= f.z0 && z <= f.z1 && f.y <= y + .01 && f.y > b) b = f.y; return b; }
+if (TEST && window.__S) Object.assign(window.__S, {bfRooms});
+
+// rounded upholstery: a rounded-rectangle profile (w x h) extruded d along z with a soft bevel, centred on the origin
+const BFC = new Map();
+function bfCushGeo(w, h, d, r = .04) { const k = [w, h, d, r].map(v => v.toFixed(3)).join(); let g = BFC.get(k); if (g) return g.clone();
+  const b = Math.min(r, w / 3, h / 3) * .5, x = w / 2 - b, y = h / 2 - b, q = Math.min(r, x * .9, y * .9), sh = new THREE.Shape();
+  sh.moveTo(-x + q, -y); sh.lineTo(x - q, -y); sh.quadraticCurveTo(x, -y, x, -y + q); sh.lineTo(x, y - q); sh.quadraticCurveTo(x, y, x - q, y); sh.lineTo(-x + q, y); sh.quadraticCurveTo(-x, y, -x, y - q); sh.lineTo(-x, -y + q); sh.quadraticCurveTo(-x, -y, -x + q, -y);
+  g = new THREE.ExtrudeGeometry(sh, {depth: Math.max(.01, d - b * 2), bevelEnabled: true, bevelThickness: b, bevelSize: b * .9, bevelSegments: 3, curveSegments: 4}); g.translate(0, 0, -(d - b * 2) / 2); g.computeVertexNormals(); BFC.set(k, g); return g.clone(); }
+// a wall bench: seat and back cushions with a crease between each seat (x0..x1 against the wall at x0, seat top at y)
+function bfBench(add, m, x0, x1, y, z0, z1) { const n = Math.max(1, Math.round((z1 - z0) / .62)), L = (z1 - z0) / n, dk = new THREE.Color(m.color).multiplyScalar(.75);
+  for (let i = 0; i < n; i++) { const zc = z0 + (i + .5) * L; add(bfCushGeo(x1 - x0 - .1, .12, L - .02, .05), m, (x0 + x1) / 2 + .05, y + .06, zc);
+    const bk = add(bfCushGeo(.11, .46, L - .02, .05), m, x0 + .07, y + .36, zc); bk.rotation.z = .12; } }
+// a life jacket on a hook: two foam front panels, a collar, two black straps with buckles and reflective tape (centre x, top y, wall z; it faces +x... -z)
+function bfJacket(g, x, y, z, S) { const j = new THREE.Group(), or = S({color: 0xe8541a, roughness: .7}), bl = S({color: 0x1a1a1c, roughness: .8}), rf = S({color: 0xd8dcdc, roughness: .3, metalness: .6}), hk = S({color: 0x8a8a84, metalness: .7, roughness: .35});
+  const P = (geo, m, px, py, pz, rx = 0, ry = 0, rz = 0) => { const o = new THREE.Mesh(geo, m); o.position.set(px, py, pz); o.rotation.set(rx, ry, rz); o.castShadow = o.receiveShadow = true; j.add(o); return o; };
+  for (const sd of [-1, 1]) { P(bfCushGeo(.15, .4, .07, .05), or, sd * .085, -.25, -.05, .06, 0, sd * .05); P(new THREE.BoxGeometry(.13, .03, .005), rf, sd * .085, -.17, -.088, .06); }
+  P(new THREE.TorusGeometry(.1, .035, 8, 14, PI), or, 0, -.04, -.04, PI * .5, 0, 0).scale.set(1, 1, .7);
+  for (const yy of [-.28, -.38]) { P(new THREE.BoxGeometry(.34, .025, .012), bl, 0, yy, -.092); P(new THREE.BoxGeometry(.05, .035, .018), bl, 0, yy, -.098); }
+  P(new THREE.CylinderGeometry(.008, .008, .06, 6), hk, 0, .005, -.02, PI / 2); j.position.set(x, y + .45, z); j.rotation.y = 0; g.add(j); return j; }
+
+// bfDress: furnish one empty room. A bridge (the helm is in it, or it is the highest room) gets a console bank under the front windows with
+// radar, ECDIS and engine screens, a captain's chair, a chart table and overhead panels; any other room becomes a crew room with lockers,
+// a mess table and benches, a notice board, a clock and an extinguisher. Pieces go only where rays find a solid wall behind them (no doors,
+// no stairs), and tall pieces push BW boxes so you bump into them.
+function bfScreens() { if (BF.scr) return BF.scr; const R = mulberry(77);
+  const radar = cv(256, 256, (g, w) => { g.fillStyle = '#020a06'; g.fillRect(0, 0, w, w); g.strokeStyle = 'rgba(60,255,140,.45)'; g.lineWidth = 1.5; for (let r = 30; r < 128; r += 30) { g.beginPath(); g.arc(128, 128, r, 0, TAU); g.stroke(); } g.beginPath(); g.moveTo(128, 8); g.lineTo(128, 248); g.moveTo(8, 128); g.lineTo(248, 128); g.stroke();
+    const gr = g.createRadialGradient(128, 128, 0, 128, 128, 120); gr.addColorStop(0, 'rgba(60,255,140,.5)'); gr.addColorStop(1, 'rgba(60,255,140,0)'); g.fillStyle = gr; g.beginPath(); g.moveTo(128, 128); g.arc(128, 128, 120, -1.2, -.5); g.fill();
+    for (let i = 0; i < 40; i++) { const a = R() * TAU, r = 20 + R() * 100; g.fillStyle = `rgba(150,255,170,${.4 + R() * .6})`; g.fillRect(128 + Math.cos(a) * r, 128 + Math.sin(a) * r, 2 + R() * 4, 2 + R() * 3); } });
+  const ecdis = cv(256, 160, (g, w, h) => { g.fillStyle = '#9ec8e8'; g.fillRect(0, 0, w, h); g.fillStyle = '#e8d8a0'; for (let i = 0; i < 5; i++) { g.beginPath(); const x = R() * w, y = R() * h; g.ellipse(x, y, 10 + R() * 40, 8 + R() * 25, R() * 3, 0, TAU); g.fill(); }
+    g.strokeStyle = 'rgba(40,90,140,.5)'; for (let i = 0; i < 6; i++) { g.beginPath(); g.moveTo(0, R() * h); g.bezierCurveTo(w * .3, R() * h, w * .6, R() * h, w, R() * h); g.stroke(); }
+    g.strokeStyle = '#d02020'; g.lineWidth = 2; g.beginPath(); g.moveTo(20, h - 20); g.lineTo(w * .45, h * .5); g.lineTo(w - 30, 25); g.stroke(); g.fillStyle = '#202830'; g.fillRect(0, 0, w, 14); g.fillStyle = '#7fe0ff'; g.font = '10px monospace'; g.fillText('ECDIS  HDG 042  SOG 11.8kn  XTE 0.02', 4, 10); });
+  const eng = cv(256, 160, (g, w, h) => { g.fillStyle = '#0a0e14'; g.fillRect(0, 0, w, h); for (let i = 0; i < 4; i++) { const cx = 34 + i * 62, cy = 62; g.strokeStyle = '#3a4a5a'; g.lineWidth = 6; g.beginPath(); g.arc(cx, cy, 24, PI * .75, PI * 2.25); g.stroke(); g.strokeStyle = i === 3 ? '#ffb030' : '#40d0ff'; g.beginPath(); g.arc(cx, cy, 24, PI * .75, PI * (.75 + .3 + R() * 1.1)); g.stroke(); }
+    g.fillStyle = '#9ab'; g.font = '10px monospace'; ['RPM', 'LOAD', 'OIL', 'EGT'].forEach((t, i) => g.fillText(t, 22 + i * 62, 104)); for (let i = 0; i < 18; i++) { g.fillStyle = R() < .85 ? '#2a8a4a' : '#c04020'; g.fillRect(10 + i * 13, 125, 10, 22); } });
+  const mk = c => { const t = tex(c); t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping; TX['bfs' + c.width + c.height + Object.keys(TX).length] = t; return t; };
+  return BF.scr = {radar: mk(radar), ecdis: mk(ecdis), eng: mk(eng)}; }
+function bfDress(root, R, kind, meshes) {
+  const M = root.matrixWorld, g = new THREE.Group(), fb = BDECK.y, y = R.y, H = Math.min(R.h, 3.2), pieces = [];
+  const mat = (o, nc) => { const m = new THREE.MeshStandardMaterial(Object.assign({roughness: .6, metalness: .1}, o)); return m; };
+  const C = BF.dm || (BF.dm = {con: mat({color: 0x2c3238, roughness: .5}), top: mat({color: 0x1a1e22, roughness: .4}), steel: mat({color: 0x8a9096, metalness: .6, roughness: .35}), lock: mat({color: 0x5a6a78, metalness: .4, roughness: .45}), teak: new THREE.MeshStandardMaterial({map: TX.wood, color: 0xb08860, roughness: .6}), seat: mat({color: 0x22303e, roughness: .9}), red: mat({color: 0xa01810, roughness: .45}), cork: mat({color: 0x9a7448, roughness: 1}), paper: mat({color: 0xf0ece0, roughness: 1}), light: new THREE.MeshStandardMaterial({color: 0xffffff, emissive: 0xfff4e0, emissiveIntensity: .9, roughness: .3}), btn: new THREE.MeshStandardMaterial({color: 0x202020, emissive: 0x30ff60, emissiveIntensity: .8})});
+  const add = (geo, m, x, yy, z, ry = 0, rx = 0) => { const o = new THREE.Mesh(geo, m); o.position.set(x, yy, z); o.rotation.set(rx, ry, 0); o.castShadow = o.receiveShadow = true; g.add(o); return o; };
+  const box = (m, x0, x1, y0, y1, z0, z1, wall) => { const o = add(new THREE.BoxGeometry(x1 - x0, y1 - y0, z1 - z0), m, (x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2); if (wall) BW.push({x0, x1, z0, z1, y0: y0 - fb, y1: y1 - fb}); return o; };
+  const solid = (x, z, dx, dz, hs, d = .7) => hs.every(h => bfCast(meshes, M, x, y + h, z, dx, 0, dz, d) < d); // a wall right behind (x, z) in direction (dx, dz)
+  const inR = (x, z) => R.pts.some(p => Math.abs(p.x - x) < .26 && Math.abs(p.z - z) < .26);
+  const free = (x0, x1, z0, z1) => { for (let x = x0 + .1; x <= x1 - .1; x += .25) for (let z = z0 + .1; z <= z1 - .1; z += .25) { if (!inR(x, z)) return false; if (bfCast(meshes, M, x, y + 1.7, z, 0, -1, 0, 1.5) < 1.45) return false; } return true; };
+  // runs of solid wall along an edge: returns [[a0, a1], ...] spans along the edge's axis
+  const runs = (axis, fixed, dir, a0, a1, hs) => { const out = []; let s = null; for (let a = a0 + .25; a <= a1 - .25 + 1e-6; a += .25) { const x = axis === 'x' ? a : fixed, z = axis === 'x' ? fixed : a, ok = inR(x, z) && solid(x, z, axis === 'x' ? 0 : dir, axis === 'x' ? dir : 0, hs, .45);
+      if (ok && s == null) s = a; if (!ok && s != null) { out.push([s - .2, a - .05]); s = null; } } if (s != null) out.push([s - .2, a1 - .05]); return out.filter(r => r[1] - r[0] > .55); };
+  const ceil = y + H - .02, cx = (R.x0 + R.x1) / 2, cz = (R.z0 + R.z1) / 2;
+  // ceiling light panels on a 2 m grid, all rooms
+  for (let x = R.x0 + 1; x < R.x1 - .5; x += 2) for (let z = R.z0 + 1; z < R.z1 - .5; z += 2.2) if (inR(x, z)) { box(C.steel, x - .32, x + .32, ceil - .03, ceil, z - .17, z + .17); box(C.light, x - .28, x + .28, ceil - .035, ceil - .03, z - .13, z + .13); }
+  const used = [];
+  const take = (x0, x1, z0, z1) => { if (used.some(u => x0 < u[1] && x1 > u[0] && z0 < u[3] && z1 > u[2])) return false; if (!free(x0, x1, z0, z1)) return false; used.push([x0, x1, z0, z1]); return true; };
+  const hz = BHELM[1], hx = BHELM[0], helmIn = hz > R.z0 - .5 && hz < R.z1 + .5 && hx > R.x0 && hx < R.x1 && Math.abs(floorAtBoat(hx, hz, y + .4) - y) < .2;
+  if (helmIn) used.push([hx - (BHELM[2] != null ? 1.45 : .9), hx + (BHELM[2] != null ? 1.45 : .9), hz - 1.6, hz + .8]); // the big ships' helm console is 2.6 m wide
+  const scr = bfScreens(), sm = t => new THREE.MeshStandardMaterial({map: t, emissive: 0xffffff, emissiveMap: t, emissiveIntensity: .75, roughness: .25});
+  if (kind === 'bridge') {
+    // console bank along the front (bow, -z) wall: carcass, a sloped top with screens and button rows
+    // console bank along the front (bow, -z) wall: each 1.1 m segment finds the real wall (raked or curved fronts) with rays at knee height
+    const unit = (x0, x1, fz) => { const xm = (x0 + x1) / 2, w = x1 - x0; box(C.con, x0 + .02, x1 - .02, y, y + .82, fz, fz + .62, 1); pieces.push(add(new THREE.BoxGeometry(w - .04, .05, .5), C.top, xm, y + .9, fz + .36, 0, -.35));
+      const t = [scr.radar, scr.ecdis, scr.eng][Math.round(Math.abs(xm) * 3) % 3], sw = Math.min(.46, w - .2), sh = t === scr.radar ? sw : sw * .62;
+      box(C.top, xm - sw / 2 - .03, xm + sw / 2 + .03, y + .92, y + 1.02 + sh, fz + .08, fz + .12); add(new THREE.PlaneGeometry(sw, sh), sm(t), xm, y + .97 + sh / 2, fz + .125);
+      for (let i = 0; i < 5; i++) add(new THREE.BoxGeometry(.035, .02, .035), C.btn, x0 + .2 + i * .08, y + .94, fz + .55, 0, -.35); };
+    // a helm bridge: wing consoles in line with the helm console, outward until the room or a wall stops them
+    const hc = helmIn && BHELM[2] != null ? bfCast(meshes, M, hx, y + .4, hz, 0, 0, -1, 2) : Infinity;
+    let nw = 0; if (hc < 2) { const z1 = hz - hc, z0 = z1 - .66; for (const sd of [-1, 1]) for (let k = 0; k < 6; k++) { const xa = hx + sd * (1.47 + k * .84), xb = xa + sd * .82, x0 = Math.min(xa, xb), x1 = Math.max(xa, xb);
+        const dF = Math.min(...[x0 + .05, x1 - .05].map(x => bfCast(meshes, M, x, y + .45, z1 - .02, 0, 0, -1, 1))), dB = Math.min(...[x0 + .05, x1 - .05].map(x => bfCast(meshes, M, x, y + .45, z1 - .3, 0, 0, 1, 1)));
+        if (x0 < R.x0 || x1 > R.x1 || dF < .45 || dB < .5 || !take(x0, x1, z1 - Math.min(.66, dF - .04), z1)) break; unit(x0, x1, z1 - Math.min(.66, dF - .04)); nw++; } }
+    const czm = Math.min(R.z1 - .5, R.z0 + 3.5); if (!nw) for (let x0 = R.x0 + .15; x0 < R.x1 - .55; x0 += .85) { const x1 = Math.min(R.x1 - .15, x0 + .82); if (x1 - x0 < .55) continue;
+      const ds = [x0 + .08, (x0 + x1) / 2, x1 - .08].map(x => bfCast(meshes, M, x, y + .45, czm, 0, 0, -1, 6)); if (ds.some(d => d === Infinity)) continue; const fz = czm - Math.min(...ds) + .03;
+      if (Math.max(...ds) - Math.min(...ds) > 1.3 || !take(x0, x1, fz, fz + .7)) continue; unit(x0, x1, fz); }
+    // captain's chair behind the helm (or mid-room), a chart table against the back wall
+    const chx = helmIn ? hx + 1.2 : cx, chz = helmIn ? hz + (BHELM[2] != null ? 1.25 : .2) : R.z0 + 1.6; if (take(chx - .4, chx + .4, chz - .4, chz + .4)) { cylP(add, C.steel, .05, .05, .45, chx, y + .225, chz); box(C.steel, chx - .25, chx + .25, y, y + .03, chz - .25, chz + .25); add(bfCushGeo(.55, .12, .55, .06), C.seat, chx, y + .52, chz); add(bfCushGeo(.55, .6, .1, .05), C.seat, chx, y + .9, chz + .27).rotation.x = .12;
+      for (const sd of [-1, 1]) { add(bfCushGeo(.08, .06, .4, .03), C.seat, chx + sd * .3, y + .72, chz + .02); box(C.steel, chx + sd * .3 - .015, chx + sd * .3 + .015, y + .5, y + .69, chz + .1, chz + .13); } BW.push({x0: chx - .3, x1: chx + .3, z0: chz - .3, z1: chz + .3, y0: y - fb, y1: y - fb + 1.2}); }
+    const bz = R.z1 - .12; for (const [a0, a1] of runs('x', bz - .1, 1, R.x0, R.x1, [.5, 1.2])) { const x0 = (a0 + a1) / 2 - .7, x1 = x0 + 1.4; if (a1 - a0 > 1.5 && take(x0, x1, bz - .8, bz)) { box(C.teak, x0, x1, y + .9, y + .95, bz - .8, bz, 1); box(C.con, x0 + .05, x1 - .05, y, y + .9, bz - .7, bz - .05);
+        const mp = add(new THREE.PlaneGeometry(1.1, .65), new THREE.MeshStandardMaterial({map: TX.paper || null, color: 0xf2ead2, roughness: 1}), (x0 + x1) / 2, y + .952, bz - .4); mp.rotation.x = -PI / 2; break; } }
+  } else {
+    // lockers along the longest solid side wall, a mess table with benches in the middle, a notice board, a clock, an extinguisher
+    let best = null; for (const [sd, fx] of [[-1, R.x0 + .12], [1, R.x1 - .12]]) for (const r of runs('z', fx - sd * .1, sd, R.z0, R.z1, [.5, 1.6])) if (!best || r[1] - r[0] > best.r[1] - best.r[0]) best = {sd, fx, r};
+    if (best) { const {sd, fx} = best, n = Math.min(8, Math.floor((best.r[1] - best.r[0]) / .5)); const x0 = sd < 0 ? fx : fx - .5, x1 = x0 + .5;
+      for (let i = 0; i < n; i++) { const z0 = best.r[0] + i * .5, z1 = z0 + .48; if (!take(x0, x1, z0, z1)) continue; box(C.lock, x0, x1, y, y + 1.85, z0, z1, 1); const fx2 = sd < 0 ? x1 + .003 : x0 - .003;
+        for (let k = 0; k < 3; k++) box(C.top, fx2 - .002, fx2 + .002, y + 1.55 + k * .05, y + 1.57 + k * .05, z0 + .1, z1 - .1); box(C.steel, fx2 - .01, fx2 + .01, y + 1.0, y + 1.12, z1 - .1, z1 - .07); } }
+    const tw = Math.min(2.2, R.z1 - R.z0 - 1.8), tx = best ? (best.sd < 0 ? Math.max(cx, R.x0 + 1.6) : Math.min(cx, R.x1 - 1.6)) : cx;
+    if (tw > .9 && R.x1 - R.x0 > 2.6 && take(tx - .9, tx + .9, cz - tw / 2, cz + tw / 2)) { box(C.teak, tx - .4, tx + .4, y + .72, y + .76, cz - tw / 2 + .1, cz + tw / 2 - .1, 1); cylP(add, C.steel, .04, .04, .72, tx, y + .36, cz);
+      box(C.steel, tx - .25, tx + .25, y, y + .02, cz - .2, cz + .2); for (const sd of [-1, 1]) { const bx = tx + sd * .68; box(C.steel, bx - .2, bx + .2, y, y + .36, cz - tw / 2 + .15, cz + tw / 2 - .15); add(bfCushGeo(.42, .08, tw - .3, .04), C.seat, bx, y + .4, cz); }
+      for (let i = 0; i < 3; i++) { const mz = cz + (i - 1) * tw * .3; cylP(add, i === 1 ? C.red : C.paper, .04, .035, .09, tx + (i - 1) * .12, y + .805, mz); } }
+    // notice board on any solid wall stretch at eye height, clock, extinguisher on the other side
+    for (const [dz, fz] of [[1, R.z1 - .12], [-1, R.z0 + .12]]) { const rr = runs('x', fz - dz * .1, dz, R.x0, R.x1, [1.4]); if (!rr.length) continue; const xm = (rr[0][0] + rr[0][1]) / 2, w2 = Math.min(1, rr[0][1] - rr[0][0] - .2);
+      box(C.cork, xm - w2 / 2, xm + w2 / 2, y + 1.2, y + 1.8, fz - dz * .02, fz); for (let i = 0; i < 5; i++) { const px = xm - w2 / 2 + .1 + (i / 5) * (w2 - .2); const p = add(new THREE.PlaneGeometry(.16, .2), C.paper, px + .05, y + 1.35 + (i % 2) * .22, fz - dz * .025); p.rotation.y = dz > 0 ? PI : 0; p.rotation.z = (i - 2) * .06; }
+      cylP(add, C.red, .07, .07, .45, rr[0][1] - .2, y + .3, fz - dz * .1); break; }
+  }
+  for (const p of pieces) p.castShadow = false; root.add(g); return g; }
+function cylP(add, m, r0, r1, h, x, y, z) { return add(new THREE.CylinderGeometry(r0, r1, h, 14), m, x, y, z); }
+// empty rooms per hull class (boat-local floor y and bounds), found with bfRooms (too slow to run live on the big ships) and checked by eye
+const BF_ROOMS = {};
+function bfDressAll(root) { const t0 = performance.now(), L = (BF_ROOMS[B.up.cls || 0] || []).slice(), out = []; root.updateMatrixWorld(true);
+  const meshes = [], sides = []; root.traverse(o => { if (o.isMesh && o.visible && !o.isSprite && o.material && !o.material.transparent) meshes.push(o); });
+  for (const o of meshes) if (o.material.side !== THREE.DoubleSide && !sides.some(q => q[0] === o.material)) { sides.push([o.material, o.material.side]); o.material.side = THREE.DoubleSide; } // rays must hit walls from inside too
+  // the big ships' bridge: the floor the helm stands on (BHELM[2] is its height), dressed round the helm
+  const hy = BHELM[2]; if (hy != null) { const f = BFL.find(f => Math.abs(f.y - hy) < .05 && BHELM[0] >= f.x0 && BHELM[0] <= f.x1 && BHELM[1] >= f.z0 - .6 && BHELM[1] <= f.z1 + .6); if (f && (f.x1 - f.x0) * (f.z1 - f.z0) > 12) L.unshift({y: f.y, x0: f.x0 + .1, x1: f.x1 - .1, z0: f.z0 + .1, z1: f.z1 - .1, k: 'bridge'}); }
+  for (const q of L) { const pts = []; for (let x = q.x0 + .25; x < q.x1; x += .5) for (let z = q.z0 + .25; z < q.z1; z += .5) pts.push({x, z});
+    const ups = pts.filter((p, i) => i % 3 === 0).map(p => bfCast(meshes, root.matrixWorld, p.x, q.y + 1.9, p.z, 0, 1, 0, 3)).filter(d => d < 3).sort((a, b) => a - b), up = ups.length ? ups[ups.length >> 1] + 1.9 : 2.4;
+    try { bfDress(root, Object.assign({pts, h: Math.min(3.2, up)}, q), q.k, meshes); out.push(q.k); } catch (err) { console.warn('bfDress', err); } }
+  sides.forEach(([m, sd]) => { m.side = sd; });
+  BF.dress = {rooms: out, ms: Math.round(performance.now() - t0)}; return out; }
+if (TEST && window.__S) Object.assign(window.__S, {bfDressAll});

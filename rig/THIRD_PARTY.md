@@ -25,3 +25,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
+
+## Boat surface textures (rig/tex)
+
+`tex/deck.jpg`, `tex/deck_n.jpg` (from *Wood Floor Deck*), `tex/paint.jpg`, `tex/paint_n.jpg` (from *Painted Plaster Wall*, greyscaled, with panel seams and screw heads drawn on) and `tex/fab.jpg`, `tex/fab_n.jpg` (from *Rough Linen*, greyscaled) are derived from textures by **Poly Haven** (https://polyhaven.com), released under **CC0** (public domain). No attribution is required; credited here anyway.
