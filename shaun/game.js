@@ -14,7 +14,7 @@ function vn(x, z) { const xi = Math.floor(x), zi = Math.floor(z), xf = x - xi, z
 function fbm(x, z) { let s = 0, a = .5, f = 1; for (let i = 0; i < 4; i++) { s += a * vn(x * f, z * f); f *= 2.03; a *= .5; } return s / .9375; }
 
 // ---------------- settings
-const SET = Object.assign({sens: 1, vol: .8, gfx: 'high', auto: true, name: 'Trooper'}, (() => { try { return JSON.parse(localStorage.getItem('ls-set')) || {}; } catch (e) { return {}; } })());
+const SET = Object.assign({sens: 1, vol: .8, gfx: 'high', auto: true, ff: false, name: 'Trooper'}, (() => { try { return JSON.parse(localStorage.getItem('ls-set')) || {}; } catch (e) { return {}; } })());
 const saveSet = () => { try { localStorage.setItem('ls-set', JSON.stringify(SET)); } catch (e) {} };
 const HI = () => SET.gfx === 'high';
 
@@ -650,7 +650,7 @@ const Sfx = {
 
 // ---------------- game state
 const P = {x: 0, z: 0, yaw: 0, pitch: -.04, spin: 0, heat: 0, vent: 0, firing: false, fireAcc: 0, shots: 0, fireT: 0,
-  kick: 0, kickV: 0, gp: 0, gpV: 0, cp: 0, cpV: 0, cy: 0, cyV: 0, trauma: 0, swayX: 0, swayY: 0, swayVX: 0, swayVY: 0, fovP: 0, drift: 0, mdx: 0, bloom: 0};
+  kick: 0, kickV: 0, gp: 0, gpV: 0, cp: 0, cpV: 0, cy: 0, cyV: 0, trauma: 0, ads: 0, swayX: 0, swayY: 0, swayVX: 0, swayVY: 0, fovP: 0, drift: 0, mdx: 0, bloom: 0};
 const G = {on: false, paused: false, over: false, wave: 0, quota: 0, spawnAcc: 0, gap: 3, kills: 0, shield: 100, hp: 100, hurtT: 9, t: 0, sendT: 0, dmgFlash: 0, dmgDirs: [], hitT: 0, killT: 0, scores: {}, best: +(localStorage.getItem('ls-best') || 0), gunners: new Map()};
 // gunners: id -> {slot, name, yaw, pitch, fire, spin, heat, acc, n, kills, model}
 function myId() { return Net.role === 'guest' ? Net.id : 'H'; }
@@ -665,11 +665,12 @@ function addGunner(id, slot, name) {
 }
 function removeGunner(id) { const g = G.gunners.get(id); if (!g) return; if (g.model) scene.remove(g.model); G.gunners.delete(id); }
 
-// aim assist: best bug in a wide cone around a gunner's yaw
+// aim assist: best bug in a tight cone around a gunner's yaw (tighter still while aiming down sights; guests send `a`)
+const coneOf = g => .045 - .025 * (g.id === myId() ? P.ads : g.ads || 0);
 function pickTarget(g) {
   const gx = SLOTX[g.slot]; let best = null, bs = 1e9;
   for (const b of bugs) { if (b.dead || b.st === 3) continue; const dx = b.x - gx, dz = b.z, d = Math.hypot(dx, dz); if (d > 190) continue;
-    const a = Math.abs(angD(g.yaw, Math.atan2(-dx, -dz))), sz = Math.atan(1.1 * b.s / Math.max(d, 1)), cone = .045 + sz;
+    const a = Math.abs(angD(g.yaw, Math.atan2(-dx, -dz))), sz = Math.atan(1.1 * b.s / Math.max(d, 1)), cone = coneOf(g) + sz;
     if (a > cone) continue; const sc = Math.max(0, a - sz) * 30 + d / 150 - (b.st === 1 ? .15 : 0); if (sc < bs) { bs = sc; best = b; } }
   return best;
 }
@@ -681,10 +682,12 @@ function muzzleOf(g, out) {
   return out.set(SLOTX[g.slot], 1.4, -1);
 }
 function fireShot(g, idx) {
-  const ok = g.tgt && !g.tgt.dead && byId.has(g.tgt.id) && Math.abs(angD(g.yaw, Math.atan2(-(g.tgt.x - SLOTX[g.slot]), -g.tgt.z))) < .045 + Math.atan(1.1 * g.tgt.s / Math.max(1, Math.hypot(g.tgt.x - SLOTX[g.slot], g.tgt.z)));
+  const ok = g.tgt && !g.tgt.dead && byId.has(g.tgt.id) && Math.abs(angD(g.yaw, Math.atan2(-(g.tgt.x - SLOTX[g.slot]), -g.tgt.z))) < coneOf(g) + Math.atan(1.1 * g.tgt.s / Math.max(1, Math.hypot(g.tgt.x - SLOTX[g.slot], g.tgt.z)));
   const t = ok ? g.tgt : (g.tgt = pickTarget(g));
   muzzleOf(g, mz); const local = g.id === myId();
-  if (t) {
+  const mate = G.ff ? mateOnLine(g, t) : null;
+  if (mate) friendlyHit(g, mate, local);
+  else if (t) {
     // impact lands where the aim line crosses the bug (not a random spot on it), with a little dispersion
     bugCenter(t, hitP); { const ax = -Math.sin(g.yaw), az = -Math.cos(g.yaw), gx = SLOTX[g.slot], k = (hitP.x - gx) * ax + hitP.z * az, ox = gx + ax * k - hitP.x, oz = az * k - hitP.z, ol = Math.hypot(ox, oz), lim = .45 * t.s;
       if (ol > lim) { hitP.x += ox / ol * lim; hitP.z += oz / ol * lim; } else { hitP.x += ox; hitP.z += oz; } }
@@ -705,6 +708,24 @@ function fireShot(g, idx) {
     if (Math.random() < .3) PS.add(mz.x, mz.y, mz.z, rnd(-.3, .3), rnd(.3, .9), rnd(-.3, .3), rnd(1, 2), .1, .6, .5, .45, .42, .18, -.2, .5);
   } else if (idx % 2 === 0) { const a = Sfx.at(mz.x, mz.z); Sfx.play('shot', {vol: .16 * a.vol, pan: a.pan, vr: .1, lp: 3000}); }
   for (let i = 0; i < 2; i++) PA.add(mz.x, mz.y, mz.z, rnd(-2, 2), rnd(-1, 2), rnd(-2, 2) - 3, rnd(.04, .1), .06, .01, 3, 2, .8, 1);
+}
+// friendly fire (host setting G.ff): a squadmate within 0.55 m of the aim line, nearer than the target, takes the round
+function mateOnLine(g, t) {
+  const gx = SLOTX[g.slot], ax = -Math.sin(g.yaw), az = -Math.cos(g.yaw), td = t ? Math.hypot(t.x - gx, t.z) : 1e9;
+  for (const o of G.gunners.values()) { if (o === g || o.sentry) continue; const dx = SLOTX[o.slot] - gx, dz = .1, k = dx * ax + dz * az; if (k <= .3 || k > td) continue;
+    if (Math.abs(dx * az - dz * ax) < .55) return o; }
+  return null;
+}
+function friendlyHit(g, o, local) {
+  hitP.set(SLOTX[o.slot] + rnd(-.15, .15), rnd(1.1, 1.6), .1 + rnd(-.1, .1));
+  for (let i = 0; i < 4; i++) PA.add(hitP.x, hitP.y, hitP.z, rnd(-3, 3), rnd(0, 3), rnd(-3, 3), rnd(.08, .2), .05, .01, 3, 2, 1, 1, 12);
+  if (Math.random() < .4) PG.add(hitP.x, hitP.y, hitP.z, rnd(-1, 1), rnd(0, 2), rnd(-1, 1), .5, .08, .04, .45, .04, .03, .9, 14, .5, 1);
+  if (Sfx.ctx && Sfx.lim('ff', 120)) { const a = Sfx.at(hitP.x, hitP.z); Sfx.play('tink', {vol: .6 * a.vol + .1, pan: a.pan, rate: rnd(.7, 1)}); }
+  if (isHost()) { hurt(1.2); if (!o.ffT || G.t - o.ffT > 2) { o.ffT = G.t; G.evq.push(['f', g.slot, o.slot]); ffNote(g.slot, o.slot); } }
+}
+function ffNote(from, to) {
+  const me = localGunner(); if (!me) return; const nm = s => { for (const q of G.gunners.values()) if (q.slot === s && !q.sentry) return q.name; return 'squadmate'; };
+  if (me.slot === from) toast('FRIENDLY FIRE: you hit ' + nm(to)); else if (me.slot === to) { toast('FRIENDLY FIRE from ' + nm(from)); P.trauma = Math.min(1, P.trauma + .4); G.dmgFlash = Math.min(1, G.dmgFlash + .3); }
 }
 const SLIME = [[.5, .58, .16], [.62, .66, .24], [.4, .46, .1], [.72, .7, .36]];
 function hitFx(b, p, local, minor) {
@@ -1076,9 +1097,10 @@ function applySnap(m) {
     else if (e[0] === 'D') { if (!CANS.has(e[1])) dropCan(e[1], e[2] / 10, e[3] / 10, e[4]); }
     else if (e[0] === 'O') { const c = CANS.get(e[1]); if (c) popCan(c); }
     else if (e[0] === 'X') { const c = CANS.get(e[1]); if (c) popGone(c); }
+    else if (e[0] === 'f') ffNote(e[1], e[2]);
     else if (e[0] === 'a') { callout('ARMOUR CRITICAL', 'CLEAR THE BARRICADE'); Sfx.play('alarm', {vol: .5, vr: 0}); }
   }
-  G.shield = m.sh; G.hp = m.hp; G.kills = m.k; G.wave = m.w; if (m.sp !== undefined) { G.sup = m.sp / 100; G.supN = m.sn; G.buff = m.bf ? {k: m.bf[0], t: m.bf[1] / 10} : null; G.dropT = m.dt; }
+  G.shield = m.sh; G.hp = m.hp; G.kills = m.k; G.wave = m.w; G.ff = !!m.ff; if (m.sp !== undefined) { G.sup = m.sp / 100; G.supN = m.sn; G.buff = m.bf ? {k: m.bf[0], t: m.bf[1] / 10} : null; G.dropT = m.dt; }
   if (m.q !== undefined) { G.quota = m.q; G.gap = m.gp / 10; G.cleared = !!m.cl; G.bruteSeen = !!m.bs; }
   if (m.hurt) { G.hurtT = 0; G.dmgFlash = Math.min(1, G.dmgFlash + .1); }
   for (const r of m.g) { const g = G.gunners.get(r[0]); if (!g) continue; g.kills = r[3]; if (r[0] !== myId()) { g.yaw = r[1] / 100; g.fire = r[2]; } }
@@ -1094,13 +1116,13 @@ function packSnap() {
   const a = [];
   for (const b of bugs) { if (b.dead) continue; a.push(b.id, Math.round(b.x * 10), Math.round(b.z * 10), Math.round(b.yaw * 100), b.type | (b.st << 3) | (b.legs << 5) | (clamp(Math.ceil(b.hp), 0, 4000) << 11), Math.round(b.y * 10)); }
   const g = [...G.gunners.values()].map(q => [q.id, Math.round(q.yaw * 100), q.fire ? 1 : 0, q.kills]);
-  const m = {t: 's', b: a, e: G.evq, g, sh: Math.round(G.shield), hp: Math.round(G.hp * 10) / 10, k: G.kills, w: G.wave, hurt: G.hurtT < .15 ? 1 : 0, q: G.quota, gp: Math.round(G.gap * 10), cl: G.cleared ? 1 : 0, bs: G.bruteSeen ? 1 : 0, rt: Math.round(G.runT), sp: Math.round(G.sup * 100), sn: G.supN, bf: G.buff ? [G.buff.k, Math.round(G.buff.t * 10)] : 0, dt: Math.round(G.dropT)};
+  const m = {t: 's', b: a, e: G.evq, g, sh: Math.round(G.shield), hp: Math.round(G.hp * 10) / 10, k: G.kills, w: G.wave, hurt: G.hurtT < .15 ? 1 : 0, q: G.quota, gp: Math.round(G.gap * 10), cl: G.cleared ? 1 : 0, bs: G.bruteSeen ? 1 : 0, rt: Math.round(G.runT), sp: Math.round(G.sup * 100), sn: G.supN, bf: G.buff ? [G.buff.k, Math.round(G.buff.t * 10)] : 0, dt: Math.round(G.dropT), ff: G.ff ? 1 : 0};
   G.evq = []; return m;
 }
 function crewMsg() { return {t: 'crew', crew: [...G.gunners.values()].filter(g => !g.sentry).map(g => [g.id, g.slot, g.name, g.id === 'H' ? 0 : (g.j || 99)])}; }
 Net.on('_join', m => { const p = Net.peers.get(m.id), g = addGunner(p.id, p.slot, p.name); g.j = p.j; g.kills = Math.max(g.kills, p.kills || 0); Net.send(crewMsg()); Net.send1(m.id, {t: 'start', wave: G.wave}); if (!(G.migT > 0)) toast(p.name + ' joined the line'); });
 Net.on('_left', m => { if (!G.gunners.has(m.id)) return; removeGunner(m.id); Net.send(crewMsg()); toast(m.name + ' left'); });
-Net.on('aim', (m, id) => { const g = G.gunners.get(id); if (g) { g.yaw = clamp(+m.y || 0, -1.6, 1.6); g.fire = m.f ? 1 : 0; } });
+Net.on('aim', (m, id) => { const g = G.gunners.get(id); if (g) { g.yaw = clamp(+m.y || 0, -1.6, 1.6); g.fire = m.f ? 1 : 0; g.ads = m.a ? 1 : 0; } });
 Net.on('crew', m => { const ids = new Set(), h0 = G.gunners.get('H'), hn = h0 && h0.name; for (const [id, slot, name, j] of m.crew) { ids.add(id); addGunner(id, slot, name).j = j; } if (hn && G.gunners.get('H') && G.gunners.get('H').name !== hn && G.hostMoved) toast(G.gunners.get('H').name + ' took over the squad'); for (const [id, g] of [...G.gunners]) if (!ids.has(id) && !g.sentry) removeGunner(id); });
 Net.on('start', m => { if (!G.on || G.over) beginGame(false); G.wave = m.wave; netStatus('In squad ' + Net.code); });
 Net.on('s', m => { if (Net.role === 'guest' && G.on) applySnap(m); });
@@ -1190,7 +1212,7 @@ function drawHud(dt, time) {
   const heat = P.heat; c.fillStyle = CY + '.8)'; c.fillText(P.vent > 0 ? 'VENTING' : 'BARREL TEMP', bx, by + 70); c.fillText(((P.spin * 2200) | 0) + ' RPM', bx + 190, by + 70);
   c.fillStyle = 'rgba(2,20,22,.5)'; c.fillRect(bx, by + 76, 270, 8);
   const hg = c.createLinearGradient(bx, 0, bx + 270, 0); hg.addColorStop(0, '#ff8a2a'); hg.addColorStop(.7, '#ffd27a'); hg.addColorStop(1, '#ffffff'); c.fillStyle = hg; c.fillRect(bx, by + 76, 270 * heat, 8);
-  c.fillStyle = CY + '.55)'; c.fillText('AUTO-FIRE ' + (SET.auto ? 'ON' : 'OFF') + '  [F]', bx, by + 100);
+  c.fillStyle = CY + '.55)'; c.fillText('AUTO-FIRE ' + (SET.auto ? 'ON' : 'OFF') + '  [F]   AIM [Q]' + (G.ff ? '   FF ON' : ''), bx, by + 100);
   // top left: wave, kills
   c.fillStyle = CY + '.9)'; c.font = '700 30px Rajdhani,sans-serif'; c.fillText('WAVE ' + G.wave, 34, 52); c.font = '13px "Share Tech Mono",monospace';
   c.fillText('KILLS ' + G.kills, 36, 72); c.fillStyle = CY + '.5)'; if (G.best) c.fillText('BEST WAVE ' + G.best, 36, 88);
@@ -1242,7 +1264,9 @@ function stepWorldFx(dt, time) {
 
 // ---------------- gun + camera feel
 const keys = {};
-let mouseDown = false, testFire = null;
+let mouseDown = false, testFire = null, aimTouch = false;
+function aiming() { return !!(keys.KeyQ || aimTouch) && G.on && !G.over; }
+const adsSens = () => 1 - P.ads * .5;
 function wantFire() { return testFire !== null ? testFire : (SET.auto || mouseDown); }
 function stepGunner(g, dt, local) {
   const want = local ? wantFire() && !G.over : !!g.fire;
@@ -1279,18 +1303,19 @@ function stepFeel(dt, time) {
   [P.cy, P.cyV] = spring(P.cy, P.cyV, 60, 12);
   [P.swayX, P.swayVX] = spring(P.swayX, P.swayVX, 90, 12);
   [P.swayY, P.swayVY] = spring(P.swayY, P.swayVY, 90, 12);
-  P.trauma = Math.max(firing ? .1 + P.heat * .08 : 0, P.trauma - dt * 1.8); P.bloom = Math.max(0, P.bloom - dt * (firing ? .6 : 3));
+  P.trauma = Math.max(firing ? (.1 + P.heat * .08) * (1 - P.ads * .6) : 0, P.trauma - dt * 1.8); P.bloom = Math.max(0, P.bloom - dt * (firing ? .6 : 3));
   const sh = P.trauma * P.trauma;
   const nx = (Math.sin(time * 47.3) + Math.sin(time * 31.7 + 1) * .6) * sh * .012, ny = (Math.sin(time * 53.1 + 2) + Math.sin(time * 27.9) * .6) * sh * .012;
   const lg = localGunner(); const pitch = (lg ? lg.pitch : -.05);
   P.fovP *= Math.exp(-dt * 4);
-  cam.fov = 72 + P.fovP * 2 - (firing ? 1 : 0) * smooth(P.fireT); cam.updateProjectionMatrix();
+  const ad = smooth(P.ads); cam.fov = mix(72, 40, ad) + P.fovP * 2 - (firing ? 1 : 0) * smooth(P.fireT); cam.updateProjectionMatrix();
+  { const sc = innerHeight * Math.min(devicePixelRatio, HI() ? 1.5 : .85) / (2 * Math.tan(cam.fov * PI / 360)); for (const p of [PA, PS, PG]) p.mat.uniforms.scale.value = sc; }
   const breath = Math.sin(time * 1.4) * .004;
   cam.position.set(P.x + nx * .3, 1.7 + breath * .5 + (G.dmgFlash > .1 ? rnd(-.02, .02) * G.dmgFlash : 0), P.z + .02);
   cam.rotation.set(pitch + P.cp * .02 + ny + breath, P.yaw + P.cy * .01 + nx, nx * .3, 'YXZ');
   // gun pose
   const idle = firing ? 0 : 1;
-  FPG.position.set(GUN_BASE.x + P.swayX * .02 + Math.sin(time * 1.1) * .003 * idle + rnd(-1, 1) * .002 * sh * 4, GUN_BASE.y + P.swayY * .02 + Math.sin(time * 1.4) * .004 * idle + P.gp * .004, GUN_BASE.z + P.kick * .012);
+  FPG.position.set(GUN_BASE.x - ad * .03 + P.swayX * .02 + Math.sin(time * 1.1) * .003 * idle + rnd(-1, 1) * .002 * sh * 4, GUN_BASE.y - ad * .05 + P.swayY * .02 + Math.sin(time * 1.4) * .004 * idle + P.gp * .004, GUN_BASE.z + ad * .06 + P.kick * .012 * (1 - ad * .5));
   FPG.rotation.set(P.gp * .02 - P.swayY * .03, -P.swayX * .04 + .02, P.cy * .01 + P.swayX * .05);
   muzL.intensity = firing && Math.random() < .8 ? rnd(2, 4.5) : 0; FPG.userData.muzzle.getWorldPosition(muzL.position);
 }
@@ -1311,7 +1336,7 @@ function beginGame(fresh) {
   ['menu', 'end', 'pause'].forEach(i => $(i).classList.add('hidden')); $('hud').classList.remove('hidden'); $('visor').classList.remove('hidden');
   if (isHost()) startWave(1);
   if (!TEST && !isTouch) lockPtr();
-  $('bPauseT').classList.toggle('hidden', !isTouch);
+  $('bPauseT').classList.toggle('hidden', !isTouch); $('bAimT').classList.toggle('hidden', !isTouch);
   $('bAgain').disabled = false;
 }
 function overrun(m) {
@@ -1332,7 +1357,7 @@ function showEnd(title, sub, w, k, t, best) {
   const guest = Net.role === 'guest' && !G.lost;
   $('bAgain').textContent = G.lost ? 'Back to menu' : guest ? 'Waiting for the host to restart' : 'Hold the line again';
   $('bAgain').disabled = guest; $('endK').textContent = guest ? '' : 'or press Space';
-  $('end').classList.remove('hidden'); $('bPauseT').classList.add('hidden'); document.exitPointerLock && document.exitPointerLock();
+  $('end').classList.remove('hidden'); $('bPauseT').classList.add('hidden'); $('bAimT').classList.add('hidden'); aimTouch = false; document.exitPointerLock && document.exitPointerLock();
 }
 function lockPtr() { try { const r = canvas.requestPointerLock && canvas.requestPointerLock(); if (r && r.catch) r.catch(() => {}); } catch (e) {} }
 
@@ -1345,11 +1370,12 @@ function step(dt) {
   if (live) {
     if (!G.over) G.runT += dt;
     // input sweep
+    P.ads = clamp(P.ads + (aiming() ? dt : -dt) / .18, 0, 1);
     const kx = (keys.KeyD || keys.ArrowRight ? 1 : 0) - (keys.KeyA || keys.ArrowLeft ? 1 : 0);
-    if (kx) { P.yaw -= kx * dt * 1.7; P.swayVX -= kx * dt * 30; }
+    if (kx) { P.yaw -= kx * dt * 1.7 * adsSens(); P.swayVX -= kx * dt * 30; }
     P.yaw = clamp(P.yaw, -1.5, 1.5);
     const lg = localGunner(); if (lg) lg.yaw = P.yaw;
-    if (isHost()) stepBugsHost(dt); else stepBugsGuest(dt);
+    if (isHost()) { G.ff = SET.ff && crewN() > 1; stepBugsHost(dt); } else stepBugsGuest(dt);
     stepSpecials(dt);
     for (const g of G.gunners.values()) stepGunner(g, dt, g.id === myId());
     G.hurtT += dt; if (G.hurtT > 1.2 && isHost()) G.shield = Math.min(100, G.shield + dt * 45);
@@ -1359,7 +1385,7 @@ function step(dt) {
     if (Net.role === 'guest' && G.hurtT < .1 && Math.random() < .1) G.dmgDirs.push({a: P.yaw + rnd(-1, 1), t: 1});
     if (Net.role === 'host' && (G.sendT -= dt) <= 0) { G.sendT = 1 / 12; Net.send(packSnap()); }
     if (Net.role === 'host' && G.migT > 0 && (G.migT -= dt) <= 0) { for (const id of [...G.gunners.keys()]) if (id !== 'H' && id[0] !== 'S' && !Net.peers.has(id)) removeGunner(id); Net.send(crewMsg()); }
-    if (Net.role === 'guest' && (G.sendT -= dt) <= 0) { G.sendT = 1 / 15; Net.send({t: 'aim', y: Math.round(P.yaw * 1000) / 1000, f: wantFire() && P.vent <= 0 ? 1 : 0}); }
+    if (Net.role === 'guest' && (G.sendT -= dt) <= 0) { G.sendT = 1 / 15; Net.send({t: 'aim', y: Math.round(P.yaw * 1000) / 1000, f: wantFire() && P.vent <= 0 ? 1 : 0, a: P.ads > .5 ? 1 : 0}); }
   }
   if (Net.role !== 'host') G.evq = [];
   stepBugsCommon(dt, time);
@@ -1384,7 +1410,7 @@ function step(dt) {
 function loop(now) { const dt = Math.min(.05, (now - last) / 1000); last = now; step(dt); requestAnimationFrame(loop); }
 
 // ---------------- input
-addEventListener('mousemove', e => { if (document.pointerLockElement !== canvas || !G.on) return; const dx = e.movementX * .0022 * SET.sens; P.yaw = clamp(P.yaw - dx, -1.5, 1.5); P.swayVX -= dx * 40; P.swayVY += e.movementY * .0022 * SET.sens * 20; });
+addEventListener('mousemove', e => { if (document.pointerLockElement !== canvas || !G.on) return; const dx = e.movementX * .0022 * SET.sens * adsSens(); P.yaw = clamp(P.yaw - dx, -1.5, 1.5); P.swayVX -= dx * 40; P.swayVY += e.movementY * .0022 * SET.sens * 20; });
 canvas.addEventListener('mousedown', e => { Sfx.init(); if (!G.on || G.over) return; if (document.pointerLockElement !== canvas && !TEST && !isTouch) { lockPtr(); return; } if (e.button === 0) mouseDown = true; if (e.button === 2 && P.vent <= 0 && P.heat > .2) { P.vent = .5; vent(); } });
 addEventListener('mouseup', e => { if (e.button === 0) mouseDown = false; });
 addEventListener('contextmenu', e => e.preventDefault());
@@ -1393,8 +1419,8 @@ addEventListener('keydown', e => { keys[e.code] = true; if (!G.on) return;
   if (e.code === 'Escape' && document.pointerLockElement !== canvas && performance.now() - plT > 400) { pause(!G.paused); return; } if (e.code === 'KeyF') { SET.auto = !SET.auto; saveSet(); syncUI(); toast('Auto-fire ' + (SET.auto ? 'on' : 'off')); } if (e.code === 'KeyR' && P.vent <= 0 && P.heat > .2) { P.vent = .5; vent(); } if (e.code === 'KeyP') pause(true); });
 addEventListener('keyup', e => { keys[e.code] = false; });
 let isTouch = false, tX = null;
-addEventListener('touchstart', e => { isTouch = true; Sfx.init(); if (G.on && !G.over) $('bPauseT').classList.remove('hidden'); if (G.on) tX = e.touches[0].clientX; }, {passive: true});
-addEventListener('touchmove', e => { if (!G.on || tX === null) return; const x = e.touches[0].clientX, dx = (x - tX) * .006 * SET.sens; tX = x; P.yaw = clamp(P.yaw - dx, -1.5, 1.5); P.swayVX -= dx * 40; }, {passive: true});
+addEventListener('touchstart', e => { isTouch = true; Sfx.init(); if (G.on && !G.over) { $('bPauseT').classList.remove('hidden'); $('bAimT').classList.remove('hidden'); } if (G.on) tX = e.touches[0].clientX; }, {passive: true});
+addEventListener('touchmove', e => { if (!G.on || tX === null) return; const x = e.touches[0].clientX, dx = (x - tX) * .006 * SET.sens * adsSens(); tX = x; P.yaw = clamp(P.yaw - dx, -1.5, 1.5); P.swayVX -= dx * 40; }, {passive: true});
 addEventListener('touchend', () => { tX = null; });
 let plT = 0;
 document.addEventListener('pointerlockchange', () => { plT = performance.now(); const on = document.pointerLockElement === canvas; $('hint').classList.toggle('hidden', on || !G.on || G.over || isTouch || TEST); if (!on && G.on && !G.over && !TEST && !isTouch) pause(true); });
@@ -1406,6 +1432,7 @@ function syncUI() {
   for (const id of ['sens', 'sens2']) $(id).value = SET.sens; for (const id of ['vol', 'vol2']) $(id).value = SET.vol;
   for (const id of ['gfx', 'gfx2']) for (const b of $(id).children) b.classList.toggle('on', b.dataset.v === SET.gfx);
   for (const id of ['auto', 'auto2']) if ($(id)) $(id).checked = SET.auto;
+  for (const id of ['ff', 'ff2']) if ($(id)) { $(id).checked = SET.ff; $(id).disabled = Net.role === 'guest'; }
   if ($('name')) $('name').value = SET.name;
   $('best').textContent = G.best ? 'Best: held until wave ' + G.best : '';
 }
@@ -1413,6 +1440,8 @@ for (const id of ['sens', 'sens2']) $(id).oninput = e => { SET.sens = +e.target.
 for (const id of ['vol', 'vol2']) $(id).oninput = e => { SET.vol = +e.target.value; saveSet(); if (Sfx.master) Sfx.master.gain.value = SET.vol; syncUI(); };
 for (const id of ['gfx', 'gfx2']) for (const b of $(id).children) b.onclick = () => { SET.gfx = b.dataset.v; saveSet(); syncUI(); resize(); };
 for (const id of ['auto', 'auto2']) if ($(id)) $(id).onchange = e => { SET.auto = e.target.checked; saveSet(); syncUI(); };
+for (const id of ['ff', 'ff2']) if ($(id)) $(id).onchange = e => { SET.ff = e.target.checked; saveSet(); syncUI(); toast('Friendly fire ' + (SET.ff ? 'on' : 'off')); };
+if ($('bAimT')) { const on = v => e => { e.preventDefault(); aimTouch = v; $('bAimT').classList.toggle('on', v); }; $('bAimT').addEventListener('touchstart', on(true), {passive: false}); $('bAimT').addEventListener('touchend', on(false)); $('bAimT').addEventListener('touchcancel', on(false)); }
 if ($('name')) $('name').oninput = e => { SET.name = e.target.value.replace(/[^A-Za-z0-9 ._-]/g, '').slice(0, 14) || 'Trooper'; saveSet(); };
 function joinFail(why) { netStatus(why); if (G.on) { G.on = false; $('menu').classList.remove('hidden'); $('hud').classList.add('hidden'); $('end').classList.add('hidden'); $('visor').classList.add('hidden'); document.exitPointerLock && document.exitPointerLock(); } }
 function netStatus(s) { if ($('netS')) $('netS').textContent = s; }
@@ -1430,7 +1459,7 @@ if ($('bJoin')) $('bJoin').onclick = () => {
   for (const id of [...G.gunners.keys()]) removeGunner(id);
 };
 $('bResume').onclick = () => pause(false);
-$('bQuit').onclick = () => { hostBye(); Net.close(); clearTimeout(G.goneT); $('bPauseT').classList.add('hidden'); G.on = false; G.paused = false; resetWorld(); ['pause', 'end'].forEach(i => $(i).classList.add('hidden')); $('menu').classList.remove('hidden'); $('hud').classList.add('hidden'); $('visor').classList.add('hidden'); };
+$('bQuit').onclick = () => { hostBye(); Net.close(); clearTimeout(G.goneT); $('bPauseT').classList.add('hidden'); $('bAimT').classList.add('hidden'); aimTouch = false; G.on = false; G.paused = false; resetWorld(); ['pause', 'end'].forEach(i => $(i).classList.add('hidden')); $('menu').classList.remove('hidden'); $('hud').classList.add('hidden'); $('visor').classList.add('hidden'); };
 $('bMenu').onclick = $('bQuit').onclick;
 $('bAgain').onclick = () => { if (G.lost) { $('bQuit').onclick(); return; } if (Net.role === 'guest') return; if (Net.role === 'host') Net.send({t: 'restart'}); beginGame(false); };
 const openReq = () => { $('reqF').src = 'requests.html?embed'; $('reqBox').classList.remove('hidden'); document.exitPointerLock && document.exitPointerLock(); };
