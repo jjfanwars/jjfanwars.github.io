@@ -5893,7 +5893,7 @@ function stepFear(dt) {
     setPan(A.mPan, M.x, M.y + 2, M.z);
     if (!A.hz) hzInit();
     const L = c.listener; cam.getWorldDirection(_fw);
-    if (pfLis(cp, _fw)) { if (L.positionX) { L.positionX.value = cp.x; L.positionY.value = cp.y; L.positionZ.value = cp.z; L.forwardX.value = _fw.x; L.forwardY.value = _fw.y; L.forwardZ.value = _fw.z; L.upX.value = 0; L.upY.value = 1; L.upZ.value = 0; } else { L.setPosition(cp.x, cp.y, cp.z); L.setOrientation(_fw.x, _fw.y, _fw.z, 0, 1, 0); } }
+    if (isFinite(cp.x + cp.y + cp.z + _fw.x + _fw.y + _fw.z) && pfLis(cp, _fw)) { if (L.positionX) { L.positionX.value = cp.x; L.positionY.value = cp.y; L.positionZ.value = cp.z; L.forwardX.value = _fw.x; L.forwardY.value = _fw.y; L.forwardZ.value = _fw.z; L.upX.value = 0; L.upY.value = 1; L.upZ.value = 0; } else { L.setPosition(cp.x, cp.y, cp.z); L.setOrientation(_fw.x, _fw.y, _fw.z, 0, 1, 0); } }
     const inside = zoneOf(cp.x, cp.z, cp.y - 1.6) >= 0 || (P.hd >= 0) || inCabin(), st = G.storm, dvd = G.subIn && (B.dep || 0) > 2 ? 0 : 1;
     if (au) { pfTA(A.pad.gain, .028 * Math.max(TOD.night * .9 + (1 - TOD.day) * .3, G.storm * .7), t, 2); pfTA(A.padF.frequency, 260 + 300 * TOD.night + Math.sin(G.wt * .11) * 90, t, 2); }
     if (au) { pfSV(A.rain.g.gain, (inside ? .015 : .05) * st * dvd); pfSV(A.wind.g.gain, ((inside ? .02 : .06) + Math.sin(G.t * .13) * .02) * (.3 + st * .7) * dvd + (P.ob && !inCabin() ? clamp(Math.abs(B.v) / 11, 0, 1) * .07 : 0)); pfSV(A.wind.f.frequency, 380 + Math.sin(G.t * .21) * 140 + (P.ob ? Math.abs(B.v) * 35 : 0)); pfSV(A.surf.g.gain, clamp(.14 - cp.y * .006, .02, .14) * (.5 + st * .5) * clamp(1.2 - shoreDist() / 140, .15, 1) * (G.subIn ? .35 * dvd : 1)); }
@@ -6013,7 +6013,7 @@ function showEnd(st) {
   $('again').textContent = 'Keep sailing'; $('again').onclick = () => { $('end').classList.add('hidden'); G.endOpen = false; if (G.paused) pause(false); else lockMouse(); };
 }
 let grainT = 0; const gctx = $('grain').getContext('2d'), gimg = gctx.createImageData(200, 120), pfGrainF = []; let pfGrainI = 0; // six noise frames made once, shown in random order
-function grain() { const f = P ? P.fear || 0 : 0; if (f < .05 && !(G.js && G.js.t > 0)) { if (G.grainQ) return; G.grainQ = true; } else G.grainQ = false; if (!pfGrainF.length) for (let k = 0; k < 6; k++) { const im = k ? gctx.createImageData(200, 120) : gimg, d = im.data; for (let i = 0; i < d.length; i += 4) { const v = Math.random() * 255; d[i] = d[i + 1] = d[i + 2] = v; d[i + 3] = 255; } pfGrainF.push(im); } pfGrainI = (pfGrainI + 1 + Math.floor(Math.random() * 5)) % 6; gctx.putImageData(pfGrainF[pfGrainI], 0, 0); setS('grain', 'opacity', G.grainQ ? .018 : .018 + .5 * f * .12); }
+function grain() { const f = P ? P.fear || 0 : 0, js = G.js && G.js.t > 0, op = js ? .09 : clamp((f - .05) * .25, 0, .08); if (op !== G.grainOp) { G.grainOp = op; $('grain').style.opacity = op.toFixed(3); } if (f < .05 && !js) { if (G.grainQ) return; G.grainQ = true; } else G.grainQ = false; if (!pfGrainF.length) for (let k = 0; k < 6; k++) { const im = k ? gctx.createImageData(200, 120) : gimg, d = im.data; for (let i = 0; i < d.length; i += 4) { const v = Math.random() * 255; d[i] = d[i + 1] = d[i + 2] = v; d[i + 3] = 255; } pfGrainF.push(im); } pfGrainI = (pfGrainI + 1 + Math.floor(Math.random() * 5)) % 6; gctx.putImageData(pfGrainF[pfGrainI], 0, 0); setS('grain', 'opacity', G.grainQ ? .018 : .018 + .5 * f * .12); }
 let MAPBG = null;
 function drawMap() {
   const c = $('map'), g = c.getContext('2d'), W = c.width, now = performance.now();
@@ -7049,9 +7049,9 @@ function dynRes(dt) {
   DYN.ft = mix(DYN.ft, dt, .05); DYN.hold = Math.max(0, (DYN.hold || 0) - dt); if (!G.on) { DYN.go = 0; return; } if (G.prLock) return;
   if (!DYN.go) { DYN.go = 1; DYN.ws = 0; DYN.wn = -3; DYN.t = DYN.sum = DYN.cnt = DYN.ok = 0; }
   let pr = DYN.pr;
-  if (DYN.go === 1) { if (++DYN.wn > 0) DYN.ws += dt; if (DYN.ws < 2) return; DYN.go = 2; const av = DYN.ws / DYN.wn; if (av >= .02) { pr = Math.max(.55, Math.min(pr, DYN.max) * Math.sqrt(1 / 60 / av)); DYN.hold = 8; } else pr = DYN.max; }
+  if (DYN.go === 1) { if (++DYN.wn > 0) DYN.ws += dt; if (DYN.ws < 2) return; DYN.go = 2; const av = DYN.ws / DYN.wn; if (av >= .02) { pr = Math.max(.7, Math.min(pr, DYN.max) * Math.sqrt(1 / 60 / av)); DYN.hold = 8; } else pr = DYN.max; }
   else { DYN.t += dt; DYN.sum += dt; DYN.cnt++; if (DYN.t < .75) return; const av = DYN.sum / DYN.cnt; DYN.t = DYN.sum = DYN.cnt = 0;
-    if (av > 1 / 42 && pr > .55) { pr = Math.max(.55, pr - (av > 1 / 30 ? .15 : .1)); DYN.hold = 8; DYN.ok = 0; }
+    if (av > 1 / 42 && pr > .7) { pr = Math.max(.7, pr - (av > 1 / 30 ? .1 : .05)); DYN.hold = 8; DYN.ok = 0; }
     else if (av < 1 / 57 && pr < DYN.max) { DYN.ok = (DYN.ok || 0) + 1; if (DYN.ok >= 3 && DYN.hold <= 0) { pr = Math.min(DYN.max, pr + .05); DYN.ok = 0; } } else DYN.ok = 0; }
   pr = Math.round(pr * 20) / 20; if (pr === DYN.pr) return; DYN.pr = pr;
   if (Math.floor(innerWidth * pr) === canvas.width && Math.floor(innerHeight * pr) === canvas.height) return; // same buffer: skip the resize
