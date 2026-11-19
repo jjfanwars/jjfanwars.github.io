@@ -16,7 +16,19 @@ The owner's design brief is **brain-off**: no skill needed beyond sweeping the g
 - Rounds punch through: half of them also hit the nearest bug within 2.6 m (x size) of the target (`nearBug`), so dense crowds die faster.
 - The fail state is forgiving. Attackers' summed dps is soft-capped (`4 * (dps/4)^0.6`), drains a shared shield (100, +45/s after 1.2 s without a hit), then hull (`G.hp`) at 0.2x. Under 30 hull: "ARMOUR CRITICAL" banner + alarm (`G.lowWarn`). Hull 0 = OVERRUN end card (wave, kills, time held `G.runT`, best; Space restarts).
 - First brute of a run gets a "BRUTE" banner (`bruteWarn`).
-- Bot play-test (always sweeping to the nearest bug): solo lasts about 4 min, dies on wave 10 with ~1900 kills, and the last 35 s is a visible slide (shield gone, armour dropping, one patch). A human is worse, so expect wave 6 to 9.
+- Bot play-test (always sweeping to the nearest bug), after milestone 2: solo lasts about 4 min and dies on wave 11 with ~2000 kills. Call-ins arrive about every 35 s, and armour holds at 100 until wave 9, then slides. The bot ignores the titan unless it is the nearest bug (a human sweeps onto the big bar), so the wave-10 titan usually finishes it. Expect a human to reach wave 6 to 10.
+
+## Milestone 2 content (all brain-off: nothing to press, just sweep)
+- **New bugs** (`TYPES` 3-5; type is 3 bits now):
+  - Spitter (3, wave 4+): squats at 42 m (`st` 1) and lobs acid globs (`spit`, `GLOBS`, `stepGlobs`: 1.7 s arc, `hurt(7)` on landing, green splash and decal).
+  - Burrower (4, wave 6+): spawns underground (`st` 3, body hidden, dust trail, skipped by `pickTarget`/`nearBug`/blasts), erupts at 28 m (`surfaceFx`; guests detect the 3 to 0 change in `applySnap`).
+  - The first spitter and the first burrower each get a banner (`newTypeWarn`, event `['n', type]`; `G.seen` bitmask). Spawn odds are in `spawnOne` (p2 brute, p3 spitter, p4 burrower, then runners).
+- **Hive titan** (5): spawns at the start of every 5th wave (`spawnTitan`, HP `300 x crewMul x (1 + .25(n/5 - 1))`), 4.3x scale, footstep shake and roars (`stepTitanFx`), HP bar at the top of the HUD (`G.titan`). Aim assist favours it inside 90 m. Gun runs only do 30% damage to it. Its death (`titanDown`, run from `killBug` on host and guests) is the finale: 1.8 s slow-mo (`G.slow` scales dt at the top of `step`), fireball, sky flash, triple boom, a dust shockwave (`G.shock`, `stepShock`: 70 m/s out to 75 m, kills every bug it passes, host side), "TITAN DOWN" banner and full shield + armour.
+- **Support call-ins** (`callIn`): squad kills fill `G.sup` (cost `(140 + 20 x wave) x crewMul` kills; sentry kills don't count). When full, the next call-in fires on its own, alternating:
+  - Gun run (`gunRun`, `stepRun`, mesh `SHIP`): a dropship strafes along x at the densest z (`pickRunZ`) at 95 m/s, 18 impacts/s, `blast(x, z, 6, 8)` per impact. Kills toss corpses (`fxKill`). Event `['R', z*10, dir]`.
+  - Sentry pod (`dropSentry`, `stepSentries`, `makeSentry`): falls onto slot 4 or 5 (`SLOTX` -9.6/9.6) and fires 16 rounds/s at the closest bug for 18 s. It is a gunner in `G.gunners` with id `S4`/`S5` and `g.sentry` set; it is left out of `crewMsg`, `crewN`/`crewMul`, the squad list, successors and migration pruning. Event `['S', slot]`; guests take its yaw/fire from snapshots.
+- **Supply canisters** (`CANS`, `dropCan`, `stepCans`, `popCan`): from wave 2 the host drops one every 30-46 s (`G.dropT`), parachuting from 55 m to 16-32 m out. They pop when any squad gunner's spinning gun points within ~0.06 rad + size of one (host decides). They expire after 26 s. Kinds `CANK`: 0 OVERDRIVE (12 s, 60 rounds/s, heat bleeds off, more tracers), 1 SHOCK ROUNDS (12 s, every other hit arcs to 2 more bugs: `shockArc`), 2 ARMOUR CELL (+25 armour, full shield; more likely below 55 armour). `G.buff` = {k, t}. HUD shows a diamond marker and label on screen, plus the buff timer. Events `['D', id, x*10, z*10, k]`, `['O', id]` (popped), `['X', id]` (expired).
+- `resetSpecials` (called from `resetWorld`) clears all of it.
 
 ## Code map (`shaun/game.js`; UI in `shaun/index.html`)
 - **Renderer:** own post chain (`render`). The scene goes to a HalfFloat MSAA RT, then a bright pass, two blur levels, and the composite `compM`, which does ACES, gamma, vignette, grain, chromatic aberration and the damage tint. The renderer itself has `NoToneMapping`. Low quality (`SET.gfx`) lowers the pixel ratio and turns off shadows and MSAA.
@@ -45,20 +57,36 @@ The owner's design brief is **brain-off**: no skill needed beyond sweeping the g
 - **Join:** the player enters the code (or it is prefilled from `?room=`). The host caps the squad at 3 guests.
 - **Host-authoritative:**
   - The host runs the bug AI and resolves every gunner's shots. Guests send `{t:'aim', y: yaw, f: fire}` at 15 Hz; the host fires for them with the same `pickTarget`.
-  - The host broadcasts `packSnap()` at 12 Hz: flat bug array `[id, x*10, z*10, yaw*100, type|st<<2|legs<<4, y*10]`, events `e` (`['k', id, slot]` kills, `['l', id, leg]`, `['w', wave]`), gunners `[id, yaw*100, fire, kills]`, plus shield, hp, kills and wave.
+  - The host broadcasts `packSnap()` at 12 Hz: flat bug array `[id, x*10, z*10, yaw*100, type | st<<3 | legs<<5 | hp<<11, y*10]`, events `e` (`['k', id, slot]` kills, `['l', id, leg]`, `['w', wave]`, plus the milestone 2 events above), gunners `[id, yaw*100, fire, kills]` (sentries included), shield, hp, kills, wave, and the state a guest needs to take over: `q` quota, `gp` gap, `cl` cleared, `bs` brute seen, `rt` run time, `sp`/`sn` support meter, `bf` buff, `dt` next drop timer.
   - Guests interpolate bug positions (`stepBugsGuest`) and run every gunner's shots as visual-only effects locally (same target pick), so splatter is instant. Only kills and HP come from the host.
 - Other messages:
   - `crew` (id, slot, name list) places the marines at `SLOTX`.
   - `start` (sent to a joiner), `over`, `restart` (the host clicks restart).
 - Shield and hull are shared by the squad. Kills are shown per player and in total.
 - Snapshot events also carry `['c', wave]` (wave held), `['b']` (first brute) and `['a']` (armour critical) so guests get the same banners.
-- Host leaving: guests get a "Host disconnected" toast; if the host is not back within 6 s (`_hostback` cancels) they get the SIGNAL LOST end card with a Back to menu button. Not done: host migration.
+- **Host migration** (milestone 2; the relay worker is unchanged). It works because a new `?role=host` socket on the same room code makes the relay send 'host up' to every guest, and they re-send `hello`.
+  - Join order: the host gives each new peer `j` (`Net.seq`); `crew` rows are `[id, slot, name, j]`. Successor = the guest with the lowest `j` (`successors()`).
+  - A host that quits (`bQuit`, `pagehide`) sends `{t:'bye', next}` first, so the successor takes over at once (`becomeHost`). Others wait up to 6 s for the new host's 'host up'.
+  - A host that just drops: guests get `_hostgone`; the successor promotes after 1.5 s, the next in line 2.5 s after that, and so on (`'host up'` cancels via `_hostback`).
+  - `becomeHost`: `Net.promote` closes the guest socket and opens a host socket on the same code. The local gunner is re-keyed to `'H'` (keeps slot and kills), the old `'H'` marine is removed, bug positions settle to the last snapshot, `nextId`/`canId` carry on, and the wave state comes from the last snapshot. Bug HP comes from snapshots too (`hp<<11`). `G.migT` 6 s later drops gunners who never said hello again.
+  - Returning members: `hello` carries `slot`, `kills` and `j` (`Net.helloX`), so they keep their place and kills. The old host, if it comes back: one quick retry as host, then `_hostlost` makes it rejoin as a guest (`rejoinAsGuest`; it re-hosts if the room has no host, error 4404). If it is replaced anyway (close code 4001), `_replaced` makes it a guest.
+  - SIGNAL LOST is no longer shown on host loss (a guest always takes over). `G.lost` and the card's Back to menu path still exist.
+  - The guest ignores the relay's 'host up' that arrives right after connecting (it used to send `hello` twice, so the host sent `start` twice).
 
 ## Testing
-- `?test` exposes `window.__LS` = {start, fire(bool|null), step(dt, n, noRender), setYaw, host, join(code), G, P, bugs, Sfx}. `step(1/20, 100, true)` simulates 5 s without rendering (fast); a bot that turns `P.yaw` toward the nearest bug each step is a good stand-in for a brain-off player.
+- `?test` exposes `window.__LS` = {start, fire(bool|null), step(dt, n, noRender), setYaw, host, join(code), G, P, bugs, Net, Sfx, spawnBug, killBug, startWave, callIn, spawnTitan, dropCan, CANS, gunRun, dropSentry}. Screenshots need one rendered `step(1/60, 1, false)` first (noRender steps leave the canvas black).
+- Migration test: 3 browser contexts host/join through the real relay; quit the host (`#bQuit`) or kill its socket (`Net.role = 'solo'; ws.onclose = null; ws.close()`), keep calling `step` on the rest and check `Net.role`, the crew and wave state. A client `ws.close()` against the relay may not fire `close` quickly, so call `ws.onclose({code: 1006})` by hand to simulate a drop.
+- Port 8765 may already be taken by another clone's server; use your own port. `step(1/20, 100, true)` simulates 5 s without rendering (fast); a bot that turns `P.yaw` toward the nearest bug each step is a good stand-in for a brain-off player.
 - Two pages in one headless browser can host and join through the real relay (the host page's clipboard write is refused headless; that's caught).
 - To drive frames by hand, stub `requestAnimationFrame` and then call `step`.
 - Headless Chromium needs `--use-angle=swiftshader --enable-unsafe-swiftshader`. It is very slow at this scene size, so keep the step counts small.
 
 ## Changelog
+- 19 Nov 2026, milestone 2: host migration (longest-connected guest takes over seamlessly; quitting hosts hand over instantly; an old host that comes back rejoins as a guest). New bugs: spitters (acid lobbers, wave 4+), burrowers (tunnel in, wave 6+). Hive titan finale every 5 waves (HP bar, slow-mo kill, shockwave, full repair). Automatic support call-ins from kills (dropship gun run, sentry pod). Supply canisters you pop by sweeping (overdrive, shock rounds, armour cell). Fixes: guests sent hello twice on joining, BRUTE banner subtitle wrapped.
 - 19 Nov 2026, milestone 1 polish: new wave pacing with a held-wave armour patch and lull, squad-size scaling, rounds punch through to a second bug, soft-capped barricade damage (slower, visible slide instead of a 5 s collapse), bug hit flinch/stagger/limp, corpse momentum and tumbling, gibs, heavier brute deaths, better crowd separation, ARMOUR CRITICAL and BRUTE banners, new end card (wave, kills, time held, best, Space to restart), SIGNAL LOST card when the host leaves, touch pause button, ESC toggles pause when the pointer isn't locked, menu buttons above the fold, muzzle light and gun reflections toned down (they blew out the sandbags and gun), sound balance (hit squelch no longer clips; horn, alarm and shield zap audible over the gun), shader warm-up so the first shots and the first squad join don't hitch, clipboard rejection error fixed.
+
+## Still open (after milestone 2)
+- Untested with real people: a lag playtest of migration over real networks (tested only with headless pages through the real relay: quit hand-over, drop with 1.5 s wait, late-returning host, 4001 replacement).
+- A gun run that is in flight when the host migrates stops dealing damage (the new host only sees the visuals).
+- Balance pass with a human: the titan's 18 dps at the line and the call-in cost were tuned with the nearest-bug bot, which never aims for the titan on its own.
+- Ideas not built: a short "hive surge" finale at the end of non-titan waves, more call-in kinds (napalm line, orbital lance), a per-run stats breakdown on the end card (call-in kills, titans felled).
