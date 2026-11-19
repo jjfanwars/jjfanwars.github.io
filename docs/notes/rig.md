@@ -107,7 +107,7 @@ Read `CLAUDE.md` first (shared rules). Split out of it on 17 Nov 2026; keep this
 - **Emotes:** `EMOTES` has Wave, Griddy (loops), Middle finger, Thumbs up, Clap, Salute and Jig (loops).
   - Controls: hold O for the wheel, flick the mouse or press 1-8, then release. Tap O to stop. Chat commands `/griddy`, `/bird`, `/stop` and so on also work.
   - Sync: the pose field `em` (index + 1). `emotePose` poses the joints. Looping emotes keep going while you walk (griddy walking).
-  - Your own emote shows in third person (`emoteSelf`). The camera sits in front of you while you stand still and swings behind your shoulder while you move. It stays first person inside cabins.
+  - Your own emote shows in third person (`emoteSelf`). The camera sits in front of you while you stand still (the mouse orbits it, `G.emOrb`) and swings behind your shoulder while you move. `emCamDist` pulls it in front of WALLS and the boat's BW (walls taller than 1.3 m), it stays above `landH`, and crewmates in the shot are hidden. It stays first person inside cabins or with less than 1.4 m of room.
 - **Names:** Host and Join need a name of at least 2 letters (`needName`). Solo still defaults to Deckhand.
 - `GAME_V` 67, because the pose has new fields.
 

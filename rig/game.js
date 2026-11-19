@@ -8856,7 +8856,7 @@ addEventListener('keydown', e => {
   if (e.code === 'KeyO' && !anyPanel() && !G.map && !G.emoW) { chatUI(); G.emoW = {x: 0, y: 0, sel: -1, t0: performance.now()}; CHAT.wheel.style.display = 'block'; emoWheelDraw(); }
 }, {capture: true});
 addEventListener('keyup', e => { if (e.code === 'KeyO' && G.emoW) emoWheelEnd(); }, {capture: true});
-addEventListener('mousemove', e => { if (!G.emoW) return; e.stopImmediatePropagation(); const W = G.emoW; W.x = clamp(W.x + (e.movementX || 0), -120, 120); W.y = clamp(W.y + (e.movementY || 0), -120, 120); emoWheelDraw(); }, {capture: true});
+addEventListener('mousemove', e => { if (!G.emoW && G.emCam > .5 && P && P.emo && !(K.KeyW || K.KeyA || K.KeyS || K.KeyD) && !anyPanel()) { e.stopImmediatePropagation(); G.emOrb = (G.emOrb || 0) - (e.movementX || 0) * .006; return; } if (!G.emoW) return; e.stopImmediatePropagation(); const W = G.emoW; W.x = clamp(W.x + (e.movementX || 0), -120, 120); W.y = clamp(W.y + (e.movementY || 0), -120, 120); emoWheelDraw(); }, {capture: true});
 addEventListener('mousedown', e => { if (G.chat && e.target !== CHAT.inp) { chatClose(); } if (!G.emoW) return; e.stopImmediatePropagation(); e.preventDefault(); emoWheelEnd(); }, {capture: true});
 function emoWheelDraw() { const W = G.emoW; if (Math.hypot(W.x, W.y) > 30) { const a = Math.atan2(W.x, -W.y); W.sel = ((Math.round(a / TAU * EMOTES.length) % EMOTES.length) + EMOTES.length) % EMOTES.length; } [...CHAT.wheel.children].forEach((o, k) => o.tagName === 'I' && o.classList.toggle('on', k === W.sel)); CHAT.wheel.querySelector('em').textContent = W.sel >= 0 ? EMOTES[W.sel].n : (P && P.emo ? 'let go to stop' : 'flick the mouse'); }
 function emoWheelEnd() { const W = G.emoW; if (!W) return; G.emoW = null; CHAT.wheel.style.display = 'none'; if (W.sel >= 0) emoteStart(W.sel); else if (P && P.emo) emoteStart(-1); }
@@ -8871,13 +8871,27 @@ function emoteSelf(dt) {
   let x = P.x, y = P.y, z = P.z; if (P.ob && BOAT) { BOAT.updateMatrixWorld(); _sb.set(P.bl[0], P.y, P.bl[1]).applyMatrix4(BOAT.matrixWorld); x = _sb.x; y = _sb.y; z = _sb.z; }
   const sp = Math.hypot(P.vx || 0, P.vz || 0);
   Object.assign(EMQ, {av: P.av, dead: false, hd: -1, ready: true, rx: x, ry: y, rz: z, ryaw: P.yaw, rpitch: 0, rspd: sp, c: P.c, st: 0, cr: P.cr, sw: 0, run: P.run, sack: P.sack, down: false, l: 0, su: 0, eq: 0, em: P.emo.i + 1});
-  animCrew(EMQ, dt);
+  animCrew(EMQ, dt); P.av.visible = true;
   // camera: in front looking back while standing, swings behind your shoulder while you walk
+  const mv = K.KeyW || K.KeyA || K.KeyS || K.KeyD; if (!G.emCam) G.emOrb = 0; if (mv) G.emOrb = mix(G.emOrb || 0, 0, Math.min(1, dt * 3));
   G.emCam = Math.min(1, (G.emCam || 0) + dt * 3); G.emA = mix(G.emA ?? 0, sp > .5 ? PI - .5 : 0, Math.min(1, dt * 2.5));
-  const a = P.yaw + G.emA, d = 3.1, fx = -Math.sin(a), fz = -Math.cos(a), k = G.emCam * G.emCam * (3 - 2 * G.emCam);
-  const tx = x + fx * d, tz = z + fz * d, ty = y + 1.75; cam.position.set(mix(cam.position.x, tx, k), mix(cam.position.y, ty, k), mix(cam.position.z, tz, k)); cam.up.set(0, 1, 0); cam.lookAt(x, y + 1.15, z); cam.updateMatrixWorld();
+  const a = P.yaw + G.emA + (G.emOrb || 0), fx = -Math.sin(a), fz = -Math.cos(a), k = G.emCam * G.emCam * (3 - 2 * G.emCam), hy = y + 1.5;
+  // pull the camera in front of walls (world WALLS, the boat's BW in boat space) and keep it off the ground
+  let d = emCamDist(x, z, hy, fx, fz, 3.1, y); if (d < 1.4) { G.emCam = 0; G.emD = null; P.av.visible = false; return; } G.emD = Math.min(d, mix(G.emD ?? d, d, Math.min(1, dt * 4))); d = G.emD;
+  const tx = x + fx * d, tz = z + fz * d; let ty = y + 1.3 + d * .15; if (!P.ob) { const g = landH(tx, tz); if (g > -5) ty = Math.max(ty, g + .5); }
+  cam.position.set(mix(cam.position.x, tx, k), mix(cam.position.y, ty, k), mix(cam.position.z, tz, k)); cam.up.set(0, 1, 0); cam.lookAt(x, y + 1.15, z); cam.updateMatrixWorld();
+  // crewmates standing in the shot fade out of the way
+  for (const q of PL.values()) if (q !== P && q.av && q.av.visible) { const ux = q.rx - x, uz = q.rz - z, t = clamp((ux * fx + uz * fz) / d, 0, 1), ex = ux - fx * d * t, ez = uz - fz * d * t; if (t > .05 && Math.hypot(ex, ez) < .7) q.av.visible = false; }
   VM.visible = VMF.visible = VMG.visible = VMS.visible = VMR.visible = false;
 }
+function segT(ax, az, bx, bz, r, m) { let t0 = 0, t1 = 1; const dx = bx - ax, dz = bz - az;
+  if (Math.abs(dx) < 1e-9) { if (ax < r.x0 - m || ax > r.x1 + m) return 2; } else { let a = (r.x0 - m - ax) / dx, b = (r.x1 + m - ax) / dx; if (a > b) { const q = a; a = b; b = q; } if (a > t0) t0 = a; if (b < t1) t1 = b; if (t0 > t1) return 2; }
+  if (Math.abs(dz) < 1e-9) { if (az < r.z0 - m || az > r.z1 + m) return 2; } else { let a = (r.z0 - m - az) / dz, b = (r.z1 + m - az) / dz; if (a > b) { const q = a; a = b; b = q; } if (a > t0) t0 = a; if (b < t1) t1 = b; if (t0 > t1) return 2; }
+  return t0; }
+function emCamDist(x, z, hy, fx, fz, D, fy) { let t = 1; const bx = x + fx * D, bz = z + fz * D, m = .3;
+  for (let i = 0; i < WALLS.length; i++) { const w = WALLS[i]; if (w.y1 < hy - 1.2 || w.y0 > hy + .6 || w.x1 < Math.min(x, bx) - 1 || w.x0 > Math.max(x, bx) + 1 || w.z1 < Math.min(z, bz) - 1 || w.z0 > Math.max(z, bz) + 1) continue; const q = segT(x, z, bx, bz, w, m); if (q < t) t = q; }
+  if (P.ob && BOAT) { const [ax, az] = bW2L(x, z), [cx, cz] = bW2L(bx, bz), ly = fy - BDECK.y; for (const w of BW) { if (w.y1 < ly + 1.3 || w.y0 > ly + 2) continue; const q = segT(ax, az, cx, cz, w, m); if (q < t) t = q; } }
+  return Math.max(.7, D * t - .15); }
 function bubbles(dt) {
   for (const p of PL.values()) { if (p.bubT > 0) p.bubT -= dt; const show = p !== P && p.bubT > 0 && p.av && p.av.visible;
     if (!show) { if (p.bubEl) { p.bubEl.remove(); p.bubEl = null; } continue; }
