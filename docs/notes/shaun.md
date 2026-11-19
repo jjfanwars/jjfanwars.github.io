@@ -109,6 +109,7 @@ The owner's design brief is **brain-off**: no skill needed beyond sweeping the g
 - Headless Chromium needs `--use-angle=swiftshader --enable-unsafe-swiftshader`. It is very slow at this scene size, so keep the step counts small.
 
 ## Changelog
+- 19 Nov 2026: bugs ~18% slower (base run speed `T.sp x 7 x spm`, was 8.5; leaps 7.5, was 9).
 - 19 Nov 2026: detailed near bugs (armour plates, spikes, serrated jaws, jointed barbed legs), detailed gun and gloved hands; fixed the triplanar shader that hid bug bodies, rocks and mesas.
 - 19 Nov 2026: procedural texture sets (rippled sand, woven sandbags, chitin plates on bugs, cracked rock, chipped crates, rusty steel), negative-dt fix.
 - 19 Nov 2026, visual pass: baked dune shadows + AO, stratified eroded mesas and far ridge, cloud sky + gas giant, god rays, bug contact shadows, more rocks.

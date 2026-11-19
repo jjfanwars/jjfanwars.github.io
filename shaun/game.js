@@ -1243,15 +1243,15 @@ function stepBugsHost(dt) {
     if (b.dead) continue;
     const goalZ = -3.4 - b.s * 1.5 - Math.pow(Math.abs(b.tx) / 13, 2) * 2.2;
     const dx = b.tx - b.x, dz = goalZ - b.z, d = Math.hypot(dx, dz);
-    if (b.st === 2) { b.vy -= 18 * dt; b.y += b.vy * dt; const f = b.T.sp * 9 * spm; b.x += dx / d * f * 1.6 * dt; b.z += dz / d * f * 1.6 * dt; const gy = gH(b.x, b.z); if (b.y <= gy) { b.y = gy; b.st = 0; } b.sp = 0; continue; }
-    if (b.st === 3) { const sp = b.T.sp * 8.5 * spm * 1.5, st = Math.min(sp * dt, d); b.x += dx / d * st; b.z += dz / d * st; b.y = gH(b.x, b.z); b.sp = sp; b.yaw = Math.atan2(dx, dz);
+    if (b.st === 2) { b.vy -= 18 * dt; b.y += b.vy * dt; const f = b.T.sp * 7.5 * spm; b.x += dx / d * f * 1.6 * dt; b.z += dz / d * f * 1.6 * dt; const gy = gH(b.x, b.z); if (b.y <= gy) { b.y = gy; b.st = 0; } b.sp = 0; continue; }
+    if (b.st === 3) { const sp = b.T.sp * 7 * spm * 1.5, st = Math.min(sp * dt, d); b.x += dx / d * st; b.z += dz / d * st; b.y = gH(b.x, b.z); b.sp = sp; b.yaw = Math.atan2(dx, dz);
       if (Math.random() < dt * 8) PS.add(b.x, b.y + .1, b.z, rnd(-1, 1), rnd(.5, 1.5), rnd(-1, 1), rnd(.8, 1.4), .4, 1.6, .62, .42, .28, .5, 1, 1);
       if (d < 28) { b.st = 0; surfaceFx(b); } continue; }
     if (b.T.spit && Math.hypot(b.x, b.z) < 42) { b.st = 1; b.sp = 0; b.yaw += angD(b.yaw, Math.atan2(-b.x, -b.z)) * Math.min(1, dt * 4);
       if ((b.atkT -= dt) <= 0) { b.atkT = rnd(2.6, 3.8); const tx = rnd(-11, 11); spit(b, tx); G.evq.push(['g', b.id, Math.round(tx * 10)]); } continue; }
     if (d < .8) { b.st = 1; b.sp = 0; attackers++; dmg += b.T.dps * (b.legs === 63 ? 1 : .7); b.yaw += angD(b.yaw, Math.atan2(-b.x + SLOTX[0] * 0, -b.z)) * dt * 4; }
     else {
-      b.st = 0; let sp = b.T.sp * 8.5 * spm;
+      b.st = 0; let sp = b.T.sp * 7 * spm;
       if ((b.legs & 15) !== 15) sp *= ((b.legs & 15) ? .65 : .4) + .3 * Math.abs(Math.sin(b.ph)); // limping: lurches along
       if (b.stag > 0) { b.stag -= dt; sp *= .35; }
       sp *= .8 + .4 * (.5 + .5 * Math.sin(b.t * 1.3 + b.wf * 7)); // surges: scuttle, slow, scuttle
