@@ -184,7 +184,7 @@ const BURL = genTex(512, (u, v) => {
 const burlapT = BURL.map;
 // chitin (triplanar on the bugs): armour plates with grooves between them, pits, scratches. R = height, G = roughness, B = tone
 const CHIT = genTex(512, (u, v) => {
-  const c = vor(u * 7, v * 7, 7), e = c[1] - c[0], groove = smooth(e / .12), pit = vor(u * 40, v * 40, 40)[0], sc = Math.abs(Math.sin((u * 3 + v * 11) * 14 + pf(u * 6, v * 6, 6) * 9)) < .03 ? 1 : 0;
+  const c = vor(u * 7, v * 7, 7), e = c[1] - c[0], groove = smooth(e / .12), pit = vor(u * 18, v * 18, 18)[0] + .06, sc = Math.abs(Math.sin((u * 3 + v * 11) * 14 + pf(u * 6, v * 6, 6) * 9)) < .03 ? 1 : 0;
   const h = groove * (.7 + (1 - c[0]) * .3) - (pit < .12 ? (1 - pit / .12) * .35 : 0) - sc * .15 + pf(u * 20, v * 20, 20, 2) * .1;
   return [h, h, .25 + (1 - groove) * .45 + sc * .2 + pf(u * 5, v * 5, 5, 3) * .2, .75 + c[2] * .35 + groove * .1 - sc * .2, 1]; }, 6, false);
 // rock (triplanar on rocks + mesas): layered grain with cracks. R = height, G = roughness, B = tone
@@ -213,7 +213,7 @@ function triMat(m, tex, scale, bump, key, toneAmt = .45, fade = 40) {
       .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\nroughnessFactor = clamp(roughnessFactor * (.55 + tri.g * .9), .05, 1.);')
       .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
       { vec3 dpx = dFdx(-vViewPosition), dpy = dFdy(-vViewPosition); float dhx = dFdx(tri.r), dhy = dFdy(tri.r); vec3 r1 = cross(dpy, normal), r2 = cross(normal, dpx); float det = dot(dpx, r1);
-        vec3 grad = sign(det) * (dhx * r1 + dhy * r2) * triB * smoothstep(triF, triF * .2, length(vViewPosition)); // fade out with distance: no sparkle normal = normalize(abs(det) * normal - grad); }`);
+        vec3 grad = sign(det) * (dhx * r1 + dhy * r2) * triB * smoothstep(triF, triF * .2, length(vViewPosition)); normal = normalize(abs(det) * normal - grad); }`);
   };
   return m;
 }
@@ -563,6 +563,26 @@ function bugBodyGeo(lo) {
     add(cone(), BONE, M(s * .26, BH - .36, 1.3, .045, .44, .045, PI / 2 + .45, 0, s * .6));
     if (!lo) add(cone(), BONE, M(s * .07, BH - .3, 1.08, .03, .26, .03, PI / 2 + .6, 0, -s * .2));
   }
+  if (!lo) { // close-up detail: overlapping armour, lateral spikes, spiracles, belly plates, jaw serrations, eye clusters, palps, neck tendons, crest
+    const cyl = () => new THREE.CylinderGeometry(1, 1, 1, 6), SPI = 0x14100c, CRE = 0x3a2416;
+    for (const [z, sc] of [[.32, 1], [.1, 1.05], [-.14, 1], [-.36, .9]]) { add(half(), z > 0 ? DRK : CRE, M(0, BH + .12 - Math.abs(z) * .08, z, .31 * sc, .28 * sc, .17, -.35)); add(cone(), BONE, M(0, BH + .36, z - .04, .025, .12, .04, -.7)); }
+    for (const s of [-1, 1]) { // thorax side plates + spiracles
+      add(sph(), CRE, M(s * .27, BH - .02, .05, .08, .2, .42, 0, 0, s * .25));
+      for (const z of [.2, -.05, -.3]) add(sph(), SPI, M(s * .29, BH - .08, z, .025, .035, .035));
+    }
+    seg.forEach(([z, r, w, dy], i) => { const y = BH + dy; if (i > 4) return;
+      for (const s of [-1, 1]) { add(cone(), DRK, M(s * w * .95, y + .02, z - .02, .03, .2 * (1 - i * .12), .04, -.9, 0, -s * 1.15)); add(sph(), SPI, M(s * w * .85, y - r * .3, z, .02, .03, .03)); }
+      add(sph(), BEL, M(0, y - r * .62, z + .02, w * .75, .05, .17, -.35 - i * .08)); });
+    for (const z of [.2, -.1]) add(sph(), BEL, M(0, BH - .25, z, .2, .07, .2));
+    add(cone(), DRK, M(0, BH + .08, .78, .05, .5, .07, PI / 2 + .35)); // head crest
+    for (const s of [-1, 1]) {
+      for (const [ex, ey, ez, r] of [[.11, -.02, .97, .028], [.18, -.1, .93, .022], [.08, -.1, 1.0, .018]]) add(sph(), 0x050302, M(s * ex, BH + ey, ez, r, r * .8, r));
+      for (let k = 0; k < 4; k++) { const t = .25 + k * .17; add(cone(), BONE, M(s * mix(.2, .33, t), BH - mix(.27, .5, t), mix(1.1, 1.55, t), .014, .07, .014, PI / 2 + .45, 0, -s * 1.3)); } // serrations
+      add(cone(), MID, M(s * .07, BH - .32, .92, .02, .3, .02, PI / 2 + 1.05, 0, -s * .3)); // palp
+      const nk = new THREE.Vector3(s * .12, BH + .05, .28), hd = new THREE.Vector3(s * .1, BH - .05, .62), d = hd.clone().sub(nk), q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), d.clone().normalize());
+      add(cyl(), 0x6a4630, new THREE.Matrix4().compose(nk.clone().add(hd).multiplyScalar(.5), q, new THREE.Vector3(.025, d.length(), .025))); // neck tendon
+    }
+  }
   const g = new THREE.BufferGeometry(); let n = 0; for (const p of parts) n += p.attributes.position.count;
   const pos = new Float32Array(n * 3), nor = new Float32Array(n * 3), col = new Float32Array(n * 3); let o = 0;
   for (const p of parts) { pos.set(p.attributes.position.array, o * 3); nor.set(p.attributes.normal.array, o * 3); col.set(p.attributes.color.array, o * 3); o += p.attributes.position.count; }
@@ -571,19 +591,31 @@ function bugBodyGeo(lo) {
 }
 function legGeo(rt, rb, c0, c1) { const g = new THREE.CylinderGeometry(rt, rb, 1, 7, 3); g.translate(0, .5, 0); const p = g.attributes.position, c = new Float32Array(p.count * 3), A = new THREE.Color(c0), B = new THREE.Color(c1);
   for (let i = 0; i < p.count; i++) { const t = p.getY(i); c[i * 3] = mix(A.r, B.r, t); c[i * 3 + 1] = mix(A.g, B.g, t); c[i * 3 + 2] = mix(A.b, B.b, t); } g.setAttribute('color', new THREE.BufferAttribute(c, 3)); return g; }
+function legGeoHi(prof, c0, c1, barbs) { // lathe along +y 0..1 (radius profile), with small barbs; vertex colour graded along the leg
+  const g0 = new THREE.LatheGeometry(prof.map(([y, r]) => new THREE.Vector2(r, y)), 9).toNonIndexed(), parts = [g0];
+  for (const [y, sz, ax] of barbs) { const b = new THREE.ConeGeometry(.045 * sz, .12 * sz, 5).toNonIndexed(); b.rotateZ(-PI / 2 + .5); b.rotateY(ax); b.translate(Math.cos(ax) * .1, y, -Math.sin(ax) * .1); parts.push(b); }
+  let n = 0; for (const p of parts) { p.deleteAttribute('uv'); n += p.attributes.position.count; }
+  const pos = new Float32Array(n * 3), nor = new Float32Array(n * 3), col = new Float32Array(n * 3), A = new THREE.Color(c0), B = new THREE.Color(c1); let o = 0;
+  for (const p of parts) { pos.set(p.attributes.position.array, o * 3); nor.set(p.attributes.normal.array, o * 3); o += p.attributes.position.count; }
+  for (let i = 0; i < n; i++) { const t = clamp(pos[i * 3 + 1], 0, 1), sh = .85 + h2(pos[i * 3] * 40, t * 31) * .3; col[i * 3] = mix(A.r, B.r, t) * sh; col[i * 3 + 1] = mix(A.g, B.g, t) * sh; col[i * 3 + 2] = mix(A.b, B.b, t) * sh; }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('normal', new THREE.BufferAttribute(nor, 3)); g.setAttribute('color', new THREE.BufferAttribute(col, 3)); g.computeBoundingSphere(); return g;
+}
 const MAXB = 1100, NEARB = 260, NEAR_D = 48;
-const bugMat = triMat(new THREE.MeshStandardMaterial({vertexColors: true, roughness: .42, metalness: .08}), CHIT.map, .55, .35, 'chitin', .3);
+const bugMat = triMat(new THREE.MeshStandardMaterial({vertexColors: true, roughness: .42, metalness: .08}), CHIT.map, .35, .18, 'chitin', .2, 25);
 const legMat = new THREE.MeshStandardMaterial({vertexColors: true, roughness: .45, metalness: .08}); // legs are stretched cylinders: no triplanar detail
 const BODY = pool(bugBodyGeo(false), bugMat, NEARB, true);   // detailed bodies, closest bugs
 const BODYL = pool(bugBodyGeo(true), bugMat, MAXB, false);   // low-poly bodies, everything else
 const LUP = pool(legGeo(.09, .15, 0x4e3018, 0x2a1a10), legMat, MAXB * 6, true);
 const LLO = pool(legGeo(.008, .11, 0x2a1a10, 0xa89878), legMat, MAXB * 6, true);
+// near bugs get jointed, muscled, barbed legs
+const LUPH = pool(legGeoHi([[0, 0], [0, .12], [.08, .15], [.3, .19], [.5, .17], [.75, .11], [.9, .1], [.96, .14], [1, .1], [1.02, 0]], 0x5a3a1e, 0x24160c, [[.35, 1, PI / 2], [.55, .8, PI / 2], [.72, .6, PI / 2]]), legMat, NEARB * 6, true);
+const LLOH = pool(legGeoHi([[0, 0], [0, .1], [.03, .13], [.07, .1], [.15, .09], [.45, .065], [.75, .04], [.92, .02], [1, .002]], 0x24160c, 0xb8a888, [[.25, .7, PI / 2], [.45, .55, PI / 2], [.62, .4, -PI / 2]]), legMat, NEARB * 6, true);
 for (let i = 0; i < NEARB; i++) BODY.setColorAt(i, new THREE.Color(1, 1, 1));
 for (let i = 0; i < MAXB; i++) BODYL.setColorAt(i, new THREE.Color(1, 1, 1));
 const SHD = pool((() => { const g = new THREE.PlaneGeometry(1, 1); g.rotateX(-PI / 2); return g; })(), new THREE.MeshBasicMaterial({map: soft, color: 0x000000, transparent: true, opacity: .42, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2}), MAXB, false);
-const DRAW = {n: 0, nl: 0, legs: 0, sh: 0};
-function drawBegin() { DRAW.n = DRAW.nl = DRAW.legs = DRAW.sh = 0; }
-function drawEnd() { BODY.count = DRAW.n; BODYL.count = DRAW.nl; LUP.count = LLO.count = DRAW.legs; SHD.count = DRAW.sh; SHD.instanceMatrix.needsUpdate = true;
+const DRAW = {n: 0, nl: 0, legs: 0, lh: 0, sh: 0};
+function drawBegin() { DRAW.n = DRAW.nl = DRAW.legs = DRAW.lh = DRAW.sh = 0; }
+function drawEnd() { BODY.count = DRAW.n; BODYL.count = DRAW.nl; LUP.count = LLO.count = DRAW.legs; SHD.count = DRAW.sh; SHD.instanceMatrix.needsUpdate = true; LUPH.count = LLOH.count = DRAW.lh; LUPH.instanceMatrix.needsUpdate = LLOH.instanceMatrix.needsUpdate = true;
   for (const m of [BODY, BODYL, LUP, LLO]) m.instanceMatrix.needsUpdate = true; BODY.instanceColor.needsUpdate = BODYL.instanceColor.needsUpdate = true; }
 // corpse piles: settled corpses raise a coarse height grid; live bugs climb over them and fresh corpses land on top
 const PILE = new Map(), pileK = (x, z) => (Math.floor(x / 1.4) + 1000) * 4000 + Math.floor(z / 1.4) + 1000;
@@ -630,7 +662,7 @@ function drawBug(b, time) {
   const e = _m.elements, stride = .7, liftH = .5;
   for (let k = 0; k < 6; k++) {
     if (!(b.legs & (1 << k))) continue;
-    const ui = DRAW.legs++;
+    const hi = near && DRAW.lh < NEARB * 6, ui = hi ? DRAW.lh++ : DRAW.legs++, LU = hi ? LUPH : LUP, LL = hi ? LLOH : LLO;
     let sd, hx, hy, hz, fx, fy, fz, kx, ky, kz;
     if (k < 4) {
       const L = LEGS[k]; sd = L[0]; const ph = b.ph + (k === 0 || k === 3 ? 0 : PI);
@@ -649,8 +681,8 @@ function drawBug(b, time) {
       else { const at = b.st === 1 ? Math.max(0, a) : 0; kx = sd * .42; ky = BH + 1.0 + a * .25; kz = .75 + a * .1; fx = sd * .2; fy = BH + .35 - at * 1.4 + (b.st === 1 ? 0 : a * .2); fz = 1.55 + a * .2 + at * .35; }
     }
     hip.set(hx, hy, hz).applyMatrix4(bm4); knee.set(kx, ky, kz).applyMatrix4(bm4); foot.set(fx, fy, fz).applyMatrix4(bm4);
-    segMat(e, hip.x, hip.y, hip.z, knee.x, knee.y, knee.z, s * (k < 4 ? 1 : 1.25)); LUP.setMatrixAt(ui, _m);
-    segMat(e, knee.x, knee.y, knee.z, foot.x, foot.y, foot.z, s * (k < 4 ? 1.15 : 1.6)); LLO.setMatrixAt(ui, _m);
+    segMat(e, hip.x, hip.y, hip.z, knee.x, knee.y, knee.z, s * (k < 4 ? 1 : 1.25) * (hi ? .8 : 1)); LU.setMatrixAt(ui, _m);
+    segMat(e, knee.x, knee.y, knee.z, foot.x, foot.y, foot.z, s * (k < 4 ? 1.15 : 1.6) * (hi ? .85 : 1)); LL.setMatrixAt(ui, _m);
   }
 }
 function bugCenter(b, out) { return out.set(b.x, b.y + (b.dead ? 0 : b.py || 0) + BH * b.s * (b.dead ? .5 : 1), b.z); }
@@ -667,34 +699,65 @@ function makeGun(fp) {
   const decal = new THREE.MeshStandardMaterial({map: markT, metalness: .6, roughness: .45});
   const add = (geo, m, x, y, z, rx, ry, rz, par) => { const me = new THREE.Mesh(geo, m); me.position.set(x, y, z); me.rotation.set(rx || 0, ry || 0, rz || 0); (par || G).add(me); return me; };
   const B = (w, h, d) => new THREE.BoxGeometry(w, h, d), C = (r1, r2, l, n) => new THREE.CylinderGeometry(r1, r2, l, n || 16);
-  add(B(.16, .17, .46), metal, 0, 0, -.28); add(B(.18, .06, .5), dark, 0, .1, -.3);
-  add(C(.075, .075, .2), dark, 0, 0, -.02, PI / 2); add(C(.06, .06, .05), metal, 0, 0, .1, PI / 2);
-  for (const s of [-1, 1]) add(new THREE.PlaneGeometry(.42, .1), decal, s * .082, -.01, -.3, 0, s * PI / 2);
-  add(B(.03, .03, .3), glow, .0, .135, -.3); add(B(.012, .04, .02), glow, .085, .05, -.1);
-  // heat shield with slots
-  for (let i = 0; i < 6; i++) add(B(.17, .015, .06), dark, 0, .095, -.6 - i * .09);
-  add(B(.02, .08, .6), dark, .09, .05, -.82); add(B(.02, .08, .6), dark, -.09, .05, -.82);
-  // barrel cluster
+  const RB = (w, h, d, r = .01) => { const hw = w / 2 - r, hh = h / 2 - r, sh = new THREE.Shape(); // rounded, bevelled box (no hard CG edges)
+    sh.moveTo(-hw, -h / 2); sh.lineTo(hw, -h / 2); sh.quadraticCurveTo(w / 2, -h / 2, w / 2, -hh); sh.lineTo(w / 2, hh); sh.quadraticCurveTo(w / 2, h / 2, hw, h / 2);
+    sh.lineTo(-hw, h / 2); sh.quadraticCurveTo(-w / 2, h / 2, -w / 2, hh); sh.lineTo(-w / 2, -hh); sh.quadraticCurveTo(-w / 2, -h / 2, -hw, -h / 2);
+    const g = new THREE.ExtrudeGeometry(sh, {depth: Math.max(.001, d - 2 * r), bevelEnabled: true, bevelThickness: r, bevelSize: r * .5, bevelSegments: 2, curveSegments: 3}); g.translate(0, 0, -(d - 2 * r) / 2); return g; };
+  const worn = new THREE.MeshStandardMaterial({color: 0x4a4f55, metalness: .8, roughness: .5}), poly = new THREE.MeshStandardMaterial({color: 0x2c2f2a, metalness: .1, roughness: .8});
+  const red = new THREE.MeshBasicMaterial({color: new THREE.Color(4, .4, .2)}), glass = new THREE.MeshStandardMaterial({color: 0x203030, metalness: .9, roughness: .05, transparent: true, opacity: .35});
+  const bolt = (x, y, z, rx, ry, rz, r = .007) => add(C(r, r, .008, 6), metal, x, y, z, rx, ry, rz);
+  // receiver: bevelled body, top rail with cross slots, side panels with decal, bolts
+  add(RB(.17, .18, .5, .02), worn, 0, 0, -.28); add(RB(.15, .05, .44, .012), dark, 0, -.1, -.3);
+  add(RB(.07, .025, .46, .006), dark, 0, .102, -.3); for (let i = 0; i < 15; i++) add(B(.074, .008, .012), dark, 0, .118, -.08 - i * .03);
+  for (const s of [-1, 1]) { add(new THREE.PlaneGeometry(.42, .1), decal, s * .0895, -.01, -.3, 0, s * PI / 2); add(RB(.012, .13, .34, .004), dark, s * .092, .01, -.3, 0, 0, 0);
+    for (const z of [-.08, -.5]) for (const y of [-.06, .06]) bolt(s * .093, y, z, 0, 0, PI / 2); }
+  add(B(.03, .03, .3), glow, .0, .135, -.3); add(B(.012, .04, .02), glow, .088, .05, -.1);
+  // ejection port with a spring-loaded cover
+  add(B(.004, .05, .09), new THREE.MeshStandardMaterial({color: 0x050505, roughness: 1}), .0915, -.02, -.22); add(B(.006, .055, .095), metal, .097, .015, -.22, 0, 0, -.5);
+  // motor housing at the back: finned cylinder, end cap with bolt circle, power cable
+  add(C(.072, .072, .2, 24), dark, 0, 0, -.0, PI / 2); for (let i = 0; i < 7; i++) add(C(.085, .085, .008, 24), worn, 0, 0, .07 - i * .024, PI / 2);
+  add(C(.06, .065, .03, 24), metal, 0, 0, .115, PI / 2); for (let i = 0; i < 6; i++) { const a = i / 6 * TAU; bolt(Math.cos(a) * .045, Math.sin(a) * .045, .132, PI / 2, 0, 0, .006); }
+  { const cv = new THREE.CatmullRomCurve3([new THREE.Vector3(-.05, -.05, .1), new THREE.Vector3(-.13, -.12, .08), new THREE.Vector3(-.2, -.2, -.02), new THREE.Vector3(-.21, -.2, -.1)]); add(new THREE.TubeGeometry(cv, 16, .012, 6), poly, 0, 0, 0); }
+  // heat shroud: open half-shell over the barrels, rows of vent holes, side rails
+  const shroud = new THREE.CylinderGeometry(.098, .098, .56, 28, 1, true, -PI * .62, PI * 1.24); add(shroud, worn, 0, 0, -.82, PI / 2, 0, 0).material.side = THREE.DoubleSide;
+  const holeM = new THREE.MeshBasicMaterial({color: 0x050403});
+  for (let r = 0; r < 3; r++) for (let i = 0; i < 9; i++) { const a = (r - 1) * .55, z = -.58 - i * .055; const h = add(new THREE.CircleGeometry(.011, 10), holeM, Math.sin(a) * .0995, Math.cos(a) * .0995, z); h.lookAt(Math.sin(a) * 2, Math.cos(a) * 2, z); }
+  add(B(.02, .07, .6), dark, .1, -.02, -.82); add(B(.02, .07, .6), dark, -.1, -.02, -.82);
+  { const st = add(new THREE.PlaneGeometry(.12, .05), decal, .1115, -.02, -.95, 0, PI / 2); st.material = decal; }
+  // barrel cluster (spins): six fluted barrels, rotor, mid clamp, muzzle clamp with a flash cage
   const bar = new THREE.Group(); bar.position.set(0, 0, -.5); G.add(bar);
-  for (let i = 0; i < 6; i++) { const a = i / 6 * TAU; add(C(.015, .016, .78, 10), barrelM, Math.cos(a) * .045, Math.sin(a) * .045, -.39, PI / 2, 0, 0, bar); }
-  add(C(.07, .07, .07), metal, 0, 0, -.02, PI / 2, 0, 0, bar); add(C(.072, .072, .03, 6), dark, 0, 0, -.36, PI / 2, 0, 0, bar); add(C(.075, .075, .035, 6), metal, 0, 0, -.74, PI / 2, 0, 0, bar);
+  for (let i = 0; i < 6; i++) { const a = i / 6 * TAU, x = Math.cos(a) * .045, y = Math.sin(a) * .045; add(C(.015, .016, .78, 10), barrelM, x, y, -.39, PI / 2, 0, 0, bar);
+    add(C(.0185, .0185, .03, 10), metal, x, y, -.77, PI / 2, 0, 0, bar); add(C(.006, .006, .02, 6), new THREE.MeshBasicMaterial({color: 0x000000}), x, y, -.79, PI / 2, 0, 0, bar); }
+  add(C(.07, .07, .07, 24), metal, 0, 0, -.02, PI / 2, 0, 0, bar); add(C(.072, .072, .03, 6), dark, 0, 0, -.36, PI / 2, 0, 0, bar); add(C(.076, .076, .04, 6), worn, 0, 0, -.73, PI / 2, 0, 0, bar);
+  for (let i = 0; i < 6; i++) { const a = (i + .5) / 6 * TAU; add(B(.008, .008, .05), dark, Math.cos(a) * .072, Math.sin(a) * .072, -.76, 0, 0, a, bar); }
   add(C(.02, .02, .8, 8), dark, 0, 0, -.39, PI / 2, 0, 0, bar);
-  // carry handle + grips
-  add(new THREE.TorusGeometry(.1, .016, 8, 14, PI), dark, 0, .13, -.32, 0, PI / 2, 0);
-  add(C(.022, .025, .16, 10), olive, 0, -.15, -.5, .2); add(C(.024, .024, .15, 10), olive, 0, -.14, -.02, -.25);
-  // ammo drum + belt
-  add(C(.15, .15, .13, 20), olive, -.2, -.1, -.12, 0, 0, PI / 2); add(C(.155, .155, .02, 20), dark, -.2, -.1, -.12, 0, 0, PI / 2);
+  // carry handle, holo sight on the rail
+  add(new THREE.TorusGeometry(.1, .016, 10, 20, PI), dark, 0, .13, -.32, 0, PI / 2, 0);
+  add(RB(.05, .03, .09, .006), dark, 0, .135, -.12); add(RB(.06, .055, .012, .004), dark, 0, .175, -.155); add(RB(.06, .055, .012, .004), dark, 0, .175, -.085);
+  add(new THREE.PlaneGeometry(.045, .04), glass, 0, .177, -.15); add(new THREE.CircleGeometry(.003, 8), red, 0, .18, -.149);
+  // grips: ribbed front grip, rear pistol grip with trigger + guard
+  add(new THREE.CapsuleGeometry(.024, .12, 4, 10), poly, 0, -.16, -.5, .2); for (let i = 0; i < 4; i++) add(new THREE.TorusGeometry(.025, .004, 6, 14), poly, 0, -.12 - i * .03, -.5 + i * .006, PI / 2 + .2);
+  add(new THREE.CapsuleGeometry(.026, .1, 4, 10), poly, 0, -.15, -.02, -.25); add(B(.008, .04, .012), metal, 0, -.105, -.07, .3);
+  add(new THREE.TorusGeometry(.04, .006, 6, 14, PI), dark, 0, -.1, -.07, 0, PI / 2, PI);
+  // ammo drum: ribbed can with latch and handle, flexible feed chute to the receiver, brass belt
+  add(C(.15, .15, .13, 28), olive, -.2, -.1, -.12, 0, 0, PI / 2); for (const x of [-.27, -.13]) add(C(.156, .156, .012, 28), dark, x, -.1, -.12, 0, 0, PI / 2);
+  for (let i = 0; i < 3; i++) add(new THREE.TorusGeometry(.15, .004, 6, 32), dark, -.2 + (i - 1) * .035, -.1, -.12, 0, PI / 2, 0);
+  add(B(.03, .03, .05), metal, -.2, .05, -.06); add(new THREE.TorusGeometry(.04, .007, 6, 14, PI), dark, -.2, .055, -.17, 0, PI / 2, 0);
+  for (let i = 0; i < 7; i++) { const t = i / 6; add(RB(.05, .016, .04, .004), dark, mix(-.17, -.09, t), mix(.02, .03, t) + Math.sin(t * PI) * .035, mix(-.15, -.22, t), 0, 0, .3 - t * .4); }
   const belt = [];
-  for (let i = 0; i < 9; i++) { const t = i / 8, x = mix(-.2, -.07, t), y = mix(.05, .02, t) + Math.sin(t * PI) * .05, z = mix(-.12, -.22, t); belt.push(add(B(.03, .012, .05), brass, x, y, z, 0, 0, .3)); }
+  for (let i = 0; i < 9; i++) { const t = i / 8, x = mix(-.2, -.07, t), y = mix(.05, .02, t) + Math.sin(t * PI) * .05, z = mix(-.12, -.22, t); belt.push(add(C(.006, .006, .05, 8), brass, x, y, z, 0, 0, PI / 2 + .3)); }
   const muzzle = new THREE.Object3D(); muzzle.position.set(0, 0, -1.3); G.add(muzzle);
   const eject = new THREE.Object3D(); eject.position.set(.09, -.02, -.22); G.add(eject);
-  // arms
+  // arms: armoured sleeves, gauntlets, fingers wrapped round the grips
   if (fp) {
-    const arm = new THREE.MeshStandardMaterial({color: 0x3c4436, metalness: .4, roughness: .55}), plate = new THREE.MeshStandardMaterial({color: 0x59624d, metalness: .5, roughness: .45});
-    const mkArm = (hx, hy, hz, ex, ey, ez) => { const a = new THREE.Vector3(hx, hy, hz), b = new THREE.Vector3(ex, ey, ez), m = new THREE.Mesh(C(.06, .075, 1, 10), arm); const d = b.clone().sub(a); m.scale.y = d.length(); m.position.copy(a).add(b).multiplyScalar(.5); m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), d.normalize()); G.add(m);
-      const p = new THREE.Mesh(B(.15, .1, .2), plate); p.position.copy(m.position); p.quaternion.copy(m.quaternion); p.scale.set(1, 1.6, 1); G.add(p); const s = new THREE.Mesh(B(.02, .05, .02), glow); s.position.copy(p.position).add(new THREE.Vector3(0, .07, 0)); G.add(s); };
+    const arm = new THREE.MeshStandardMaterial({color: 0x3c4436, metalness: .35, roughness: .6}), plate = new THREE.MeshStandardMaterial({color: 0x59624d, metalness: .5, roughness: .45}), glove = new THREE.MeshStandardMaterial({color: 0x23261f, metalness: .1, roughness: .85});
+    const mkArm = (hx, hy, hz, ex, ey, ez) => { const a = new THREE.Vector3(hx, hy, hz), b = new THREE.Vector3(ex, ey, ez), m = new THREE.Mesh(C(.06, .075, 1, 14), arm); const d = b.clone().sub(a); m.scale.y = d.length(); m.position.copy(a).add(b).multiplyScalar(.5); m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), d.normalize()); G.add(m);
+      const p = new THREE.Mesh(RB(.15, .1, .2, .02), plate); p.position.copy(m.position); p.quaternion.copy(m.quaternion); p.scale.set(1, 1.6, 1); G.add(p); const s = new THREE.Mesh(B(.02, .05, .02), glow); s.position.copy(p.position).add(new THREE.Vector3(0, .07, 0)); G.add(s);
+      const cuff = new THREE.Mesh(C(.08, .08, .05, 14), plate); cuff.position.copy(b).addScaledVector(d, -.06); cuff.quaternion.copy(m.quaternion); G.add(cuff); };
     mkArm(.2, -.5, .45, .02, -.17, -.0); mkArm(-.35, -.55, .2, -.02, -.19, -.48);
-    add(B(.1, .09, .12), plate, 0, -.17, -.02); add(B(.1, .09, .12), plate, 0, -.19, -.5);
+    for (const [gy, gz, tilt] of [[-.15, -.02, -.25], [-.16, -.5, .2]]) { add(RB(.08, .09, .1, .015), glove, 0, gy + .02, gz + .045, tilt);
+      for (let i = 0; i < 4; i++) add(new THREE.CapsuleGeometry(.013, .05, 3, 8), glove, .022, gy - .035 + i * .024, gz - .028 + i * Math.sin(tilt) * .02, PI / 2, 0, 0);
+      add(new THREE.CapsuleGeometry(.014, .045, 3, 8), glove, -.03, gy + .03, gz - .02, PI / 2 - .4, 0, .3); }
   }
   G.userData = {bar, barrelM, muzzle, eject, belt};
   // muzzle flash sprites

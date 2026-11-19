@@ -49,6 +49,12 @@ The owner's design brief is **brain-off**: no skill needed beyond sweeping the g
 - `triMat(material, tex, scale, bump, key, toneAmt, fade)`: object-space triplanar detail (R height -> derivative bump, G roughness, B tone), works on instanced meshes. Bump fades out past `fade` metres to avoid sparkle. Used with `CHIT` (armour plates/pits/scratches) on bug bodies and `ROCK` (cracks/layers) on rocks and mesas. Legs use plain `legMat` (stretched cylinders).
 - Fix: the frame loop clamps dt at 0 (a slow load made the first rAF timestamp earlier than `last`, giving a negative dt that blew up shake and time).
 
+## Detail pass (19 Nov 2026)
+- Near bug body (`bugBodyGeo(false)`) adds overlapping thorax armour plates with bone ridges, side plates + spiracles, lateral spikes and spiracles on the tail segments, belly plates, head crest, eye clusters, jaw serrations, palps and neck tendons. The far LOD is unchanged.
+- Near bugs get detailed legs: `legGeoHi` (lathe profile with muscle bulge, knee knob, joint collar, tapering spike, barbs), pools `LUPH`/`LLOH` (NEARB x 6), counted with `DRAW.lh`; far bugs keep the plain cylinders.
+- Gun (`makeGun`): bevelled parts (`RB` = extruded rounded box), rail with slots, side plates and bolts, ejection port, finned motor housing with bolt circle and power cable, open vented heat shroud, barrels with muzzle sleeves and bores, flash cage, holo sight with red dot, ribbed front grip, trigger + guard, ribbed ammo drum with latch and handle, segmented feed chute, round brass belt, gloved hands with fingers on both grips, arm cuffs.
+- Gotcha: a `//` comment inside a one-line GLSL replacement in `triMat` commented out the closing brace, so the shader failed and bug bodies, rocks and mesas vanished (fixed). Check the console for `Shader Error` after shader edits.
+
 ## Code map (`shaun/game.js`; UI in `shaun/index.html`)
 - **Renderer:** own post chain (`render`). The scene goes to a HalfFloat MSAA RT, then a bright pass, two blur levels, and the composite `compM`, which does ACES, gamma, vignette, grain, chromatic aberration and the damage tint. The renderer itself has `NoToneMapping`. Low quality (`SET.gfx`) lowers the pixel ratio and turns off shadows and MSAA.
 - **World:**
@@ -103,6 +109,7 @@ The owner's design brief is **brain-off**: no skill needed beyond sweeping the g
 - Headless Chromium needs `--use-angle=swiftshader --enable-unsafe-swiftshader`. It is very slow at this scene size, so keep the step counts small.
 
 ## Changelog
+- 19 Nov 2026: detailed near bugs (armour plates, spikes, serrated jaws, jointed barbed legs), detailed gun and gloved hands; fixed the triplanar shader that hid bug bodies, rocks and mesas.
 - 19 Nov 2026: procedural texture sets (rippled sand, woven sandbags, chitin plates on bugs, cracked rock, chipped crates, rusty steel), negative-dt fix.
 - 19 Nov 2026, visual pass: baked dune shadows + AO, stratified eroded mesas and far ridge, cloud sky + gas giant, god rays, bug contact shadows, more rocks.
 - 19 Nov 2026, feel pass: heavier gun (thump, echo tail, roar, real muzzle climb, slower spin), planted-foot bug gait, slope pitch, bugs climbing each other at the line, death throes and pumping ichor, hit-stop on brutes, radio chatter, dropship flyovers, distant outpost firefights, wind gusts.
