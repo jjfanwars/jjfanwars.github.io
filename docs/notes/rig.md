@@ -133,6 +133,8 @@ Read `CLAUDE.md` first (shared rules). Split out of it on 17 Nov 2026; keep this
 
 - **Tenders on more boats:** `tnOk` now allows hulls 17 m and longer (not planes, airships, balloons, hovercraft or subs), so the trawler, cutter, brigantine, whaler, ROV ship, yacht and others carry the 4-seat tender, and crews can split up. A one-time 'TENDER' hint shows the first two times such a hull is built (`s9-tnhint`).
 
+- **Casino readability:** while seated, `casHudFrame` (in a hud wrapper; element `#casRd`, since `#casHud` was already taken) shows big DOM cards for the dealer (the hole card face down) and you, with totals, BUST and YOUR TURN, a roulette countdown/result with your stake, and crew cash. A `casEv` wrapper shows `#casBan` banners: YOU WIN / BLACKJACK! / BUST / DEALER WINS / PUSH, and roulette/slots YOU WIN / NO LUCK / JACKPOT!, each with the amount. The camera zooms in when seated (fov -20 at blackjack, -10 at roulette).
+
 ## Next up (the owner's list, 18 Nov 2026; items 7-14 and the loot rework were built the same day, see the paragraphs above)
 1. **Sub visuals underwater and half underwater:** proper looks from inside and outside the research sub when it is dived and when it sits at the waterline (the waterline across the bow viewport, the sea surface seen from below, underwater fog and tint through the windows, the hull half in and half out of the water, bubbles and wake when diving).
 2. **Persisting loot and fast travel:** loot that stays where it was (taken items stay taken, a persistent world seed with slow restocks) and fast travel between ports (home, Northwatch, piers).
