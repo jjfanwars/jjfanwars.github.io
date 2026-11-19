@@ -69,6 +69,7 @@ Browser war game in one file: `index.html` (Three.js r170, inlined: the ESM buil
 - `rig/`: Station Nine: Open Sea, co-op sea exploration. Notes: `docs/notes/rig.md`.
 - `shaun/`: Last Stand, first-person horde shooter (rotary cannon vs warrior bugs, squad co-op). Notes: `docs/notes/shaun.md`. Check open issues labelled `shaun-request` for queued work.
 - `legal/`: Courtroom Duel, Legal Studies revision game (not jjfanwars). Notes: `docs/notes/legal.md`.
+- `physics/`: Year 10 physics study hub (electricity & astronomy). Notes: `docs/notes/physics.md`.
 
 ## Recently done (Nov 2026)
 - 10 Nov 2026: enclosed Iron Express (replaced the open-deck walkable train), emote wheel with outline poses + third-person camera while emoting + walk while emoting, big-map perf (`Fields.work` time-slices whole-map flow fields when N > 200, cache capped by memory; `terrainChunks` 32-cell chunks sharing one vertex buffer with 3 LODs in `updateLod`), driving fixes in `moveVehicle` (slope speed, vehicle collisions, smoothed z), `separate` sidesteps when blocked, faster opening tax (`income`), `UI.fitSelBar`, death screen hides HUD (`Direct.deadView`).

@@ -1,0 +1,1288 @@
+<!DOCTYPE html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SCE16 Physics Study Hub: Electricity &amp; Astronomy</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,500;8..60,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f7f5f0;--bg2:#ffffff;--card:#ffffff;--card2:#f4f2ec;--ink:#1a1a1a;--mute:#666;--line:#dcd8cf;--acc:#1d4ed8;--acc2:#eef2fb;--good:#15803d;--goodbg:#eaf6ee;--bad:#b91c1c;--badbg:#fcefee;--warn:#92400e;--warnbg:#fdf7e7;--elec:#92400e;--astro:#5b21b6;--r:8px}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 "IBM Plex Sans",system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+h1,h2,h3{font-family:"Source Serif 4",Georgia,serif;font-weight:600;letter-spacing:-.005em}
+a{color:var(--acc)}
+header{max-width:1100px;margin:0 auto;padding:28px 18px 14px;border-bottom:1px solid var(--line)}
+header h1{margin:0;font-size:clamp(1.6rem,3vw,2.1rem)}
+header p{margin:4px 0 0;color:var(--mute);max-width:720px}
+.grad{color:inherit}
+nav{position:sticky;top:0;z-index:20;background:var(--bg);border-bottom:1px solid var(--line)}
+nav .in{max-width:1100px;margin:0 auto;display:flex;gap:2px;overflow-x:auto;padding:0 12px;scrollbar-width:thin}
+nav button{flex:none;border:0;border-bottom:2px solid transparent;background:none;color:var(--mute);padding:11px 10px;font:inherit;font-size:.9rem;cursor:pointer;white-space:nowrap}
+nav button:hover{color:var(--ink)}
+nav button.on{color:var(--ink);border-bottom-color:var(--ink);font-weight:600}
+main{max-width:1100px;margin:0 auto;padding:20px 16px 80px}
+section{display:none}section.on{display:block}
+h2{font-size:1.55rem;margin:4px 0 4px}
+h2+p.sub{margin:0 0 14px;color:var(--mute)}
+h3{font-size:1.12rem;margin:16px 0 6px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:16px 18px;margin:12px 0}
+.grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(250px,1fr))}
+.g2{display:grid;gap:14px;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr)}
+@media (max-width:860px){.g2{grid-template-columns:1fr}}
+.tag{display:inline-block;font-size:.72rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;margin-right:8px;vertical-align:1px}
+.tag.e{color:var(--elec)}.tag.a{color:var(--astro)}.tag.w{color:var(--bad)}
+.btn{border:1px solid var(--line);background:#fff;color:var(--ink);padding:7px 13px;border-radius:6px;font:inherit;font-size:.9rem;cursor:pointer}
+.btn:hover{border-color:var(--ink)}
+.btn.p{background:var(--ink);border-color:var(--ink);color:#fff}
+.btn.g{color:var(--good);border-color:var(--good)}
+.btn.r{color:var(--bad);border-color:var(--bad)}
+.btn.sm{padding:4px 10px;font-size:.84rem}
+.btn:disabled{opacity:.4;cursor:default}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.mute{color:var(--mute)}
+.small{font-size:.87rem}
+.f{font-family:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;background:var(--acc2);color:#1e3a8a;padding:0 6px;border-radius:4px;white-space:nowrap;font-size:.9em}
+table{border-collapse:collapse;width:100%;font-size:.92rem}
+th,td{border-bottom:1px solid var(--line);padding:7px 9px;text-align:left;vertical-align:top}
+th{color:var(--mute);font-weight:600;font-size:.8rem}
+.tbl{overflow-x:auto}
+ul,ol{padding-left:20px;margin:6px 0}li{margin:3px 0}
+input[type=text],input[type=number],input[type=date],select,textarea{font:inherit;font-size:.92rem;padding:7px 10px;border-radius:6px;border:1px solid var(--line);background:#fff;color:var(--ink);max-width:100%}
+input[type=number]{width:100px}
+input[type=range]{accent-color:var(--ink);width:100%}
+label.ctl{display:block;font-size:.85rem;color:var(--mute);margin:8px 0 2px}
+.work{white-space:pre-wrap;font-family:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;font-size:.85rem;line-height:1.6;background:var(--card2);border-left:3px solid var(--line);padding:10px 12px;margin-top:8px;overflow-x:auto}
+.note{border-left:3px solid var(--warn);background:var(--warnbg);padding:8px 12px;margin:8px 0;font-size:.92rem}
+.note.bad{border-color:var(--bad);background:var(--badbg)}
+.note.good{border-color:var(--good);background:var(--goodbg)}
+details{border:1px solid var(--line);border-radius:6px;padding:8px 12px;margin:8px 0;background:#fff}
+summary{cursor:pointer;font-weight:600}
+.stage{position:relative;width:100%;height:min(62vh,500px);min-height:340px;border-radius:var(--r);overflow:hidden;border:1px solid #222;background:#05070c}
+.stage canvas{display:block}
+.lbl{position:absolute;pointer-events:none;font-size:.72rem;color:#e5e7eb;text-shadow:0 1px 2px #000;white-space:nowrap;transform:translate(-50%,-150%)}
+.hud{position:absolute;left:10px;top:10px;font-size:.82rem;color:#e5e7eb;background:rgba(5,7,12,.75);border:1px solid #333;border-radius:4px;padding:6px 10px;max-width:70%}
+.hud .mute{color:#9ca3af}
+.hud2{position:absolute;right:10px;bottom:10px;font-size:.75rem;color:#9ca3af}
+.stat{font-family:"Source Serif 4",Georgia,serif;font-size:1.6rem;font-weight:600;line-height:1.1}
+.pill{display:inline-block;padding:1px 8px;border:1px solid var(--line);border-radius:4px;font-size:.8rem;margin:2px}
+.qdiag{margin:10px 0;padding:8px;background:#fff;border:1px solid var(--line);border-radius:6px;overflow-x:auto}
+.qdiag svg text{font-family:"IBM Plex Sans",sans-serif;fill:#1a1a1a}
+/* circuit */
+.cwrap{position:relative;width:100%;aspect-ratio:680/390;background:#fff;border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.cwrap svg,.cwrap canvas{position:absolute;inset:0;width:100%;height:100%}
+.cwrap canvas{pointer-events:none}
+.cwrap svg text{font-family:"IBM Plex Sans",sans-serif;fill:#1a1a1a}
+.part{cursor:pointer}
+.part:hover .body{stroke:var(--acc)}
+.part.sel .body{stroke:#d97706}
+.sliders{display:grid;gap:4px 14px;grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
+.sl{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center;font-size:.85rem}
+.sl b{min-width:34px}
+.sl input[type=number]{width:78px;padding:4px 6px}
+/* flashcards & quiz */
+.face{min-height:200px;border-radius:8px;border:1px solid var(--line);background:#fff;font-family:"Source Serif 4",Georgia,serif;display:flex;align-items:center;justify-content:center;text-align:center;padding:26px;font-size:1.18rem;cursor:pointer;user-select:none;transition:transform .2s}
+
+.face.back{background:var(--acc2);border-color:var(--acc);font-size:1.02rem}
+.face small{display:block;color:var(--mute);font-size:.7rem;letter-spacing:.06em;margin-bottom:10px}
+.bar{height:7px;background:var(--line);border-radius:99px;overflow:hidden}.bar>i{display:block;height:100%;background:var(--ink);width:0;transition:width .25s}
+.opt{display:block;width:100%;text-align:left;margin:7px 0;padding:10px 13px;border:1px solid var(--line);border-radius:6px;background:#fff;color:var(--ink);font:inherit;cursor:pointer}
+.opt:hover:not(:disabled){border-color:var(--acc)}
+.opt.ok{background:var(--goodbg);border-color:var(--good)}
+.opt.no{background:var(--badbg);border-color:var(--bad)}
+.exp{margin-top:10px;padding:10px 12px;border-left:3px solid var(--acc);background:var(--acc2)}
+.fb.ok{color:var(--good);font-weight:600}.fb.no{color:var(--bad);font-weight:600}
+.flow{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:8px 0}
+.flow span.b{padding:5px 10px;border-radius:4px;border:1px solid var(--line);background:#fff;font-size:.88rem}
+.flow span.ar{color:var(--mute)}
+.chk label{display:block;padding:4px 0}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.seg button{border:0;background:#fff;color:var(--ink);padding:7px 12px;font:inherit;font-size:.85rem;cursor:pointer;border-right:1px solid var(--line)}
+.seg button:last-child{border-right:0}
+.seg button.on{background:var(--ink);color:#fff;font-weight:600}
+canvas.plot{width:100%;height:320px;background:#fff;border:1px solid var(--line);border-radius:8px;display:block}
+.kbd{font-family:"JetBrains Mono",monospace;font-size:.75rem;border:1px solid var(--line);border-radius:5px;padding:0 5px}
+#hardBtn.on{background:var(--bad);border-color:var(--bad);color:#fff;font-weight:600}
+.qhead{display:flex;justify-content:space-between;gap:10px;align-items:baseline;flex-wrap:wrap}
+</style>
+</head>
+<body>
+<header>
+<h1>SCE16 Physics: Electricity &amp; Astronomy</h1>
+<div class="row" style="float:right;margin-top:6px"><button class="btn" id="hardBtn" title="Only the harder, multi-step questions">Hard mode: off</button></div><p>Exam revision built from the SCE16 revision sheets: notes, interactive labs, every sheet question, and practice.</p>
+</header>
+<nav><div class="in" id="nav"></div></nav>
+<main>
+
+<!-- START -->
+<section id="start">
+<h2>Start here</h2>
+<p class="sub">Everything on this page comes from your revision sheets: Astronomy 1, Electricity 1–5, Revision Sheets 1–3 and the Electricity Revision Quiz.</p>
+<div class="grid">
+<div class="card"><span class="tag a">Astronomy</span><h3>What the exam tests</h3>
+<ul><li>Mass vs weight, <span class="f">F<sub>w</sub> = mg</span></li><li>Gravitational force <span class="f">F = GMm/r²</span></li><li>Field strength at altitude <span class="f">g = GM/(R+h)²</span></li><li>Light travel &amp; light-years, <span class="f">s = vt</span></li><li>Why stars end as white dwarfs, neutron stars or black holes</li></ul></div>
+<div class="card"><span class="tag e">Electricity</span><h3>What the exam tests</h3>
+<ul><li>Static charge (only electrons move)</li><li><span class="f">Q = It</span>, <span class="f">V = W/Q</span>, <span class="f">V = IR</span></li><li>Series, parallel &amp; combination resistance</li><li>Full circuit analysis: every V, I and P</li><li><span class="f">P = VI = I²R = V²/R</span>, <span class="f">E = Pt = VIt</span></li><li>V–I graphs: gradient = resistance, ohmic vs non-ohmic</li><li>Switches, globes, brightness, fuses, meters</li></ul></div>
+</div>
+<div class="card"><h3 style="margin-top:0">Pick a method</h3>
+<div class="tbl"><table>
+<tr><th>Method</th><th>Use it for</th><th>Tab</th></tr>
+<tr><td>Explore visually</td><td>Building intuition: why parallel lowers resistance, why g drops with altitude</td><td><a href="#solar">Solar System 3D</a> · <a href="#gravity">Gravity 3D</a> · <a href="#stars">Star Lives 3D</a> · <a href="#circuit">Circuit Lab</a></td></tr>
+<tr><td>Read &amp; summarise</td><td>First pass through a topic</td><td><a href="#notes">Notes</a> · <a href="#formulas">Formulas</a></td></tr>
+<tr><td>Worked examples</td><td>Checking against your answer sheets</td><td><a href="#sheet">Sheet answers</a></td></tr><tr><td>Get graded</td><td>Writing exam answers and getting marker feedback</td><td><a href="#claude">Claude tutor</a></td></tr>
+<tr><td>Active recall</td><td>Definitions, formulas, facts</td><td><a href="#cards">Flashcards</a></td></tr>
+<tr><td>Practice testing</td><td>Exam-style multiple choice</td><td><a href="#quiz">Quiz</a></td></tr>
+<tr><td>Deliberate practice</td><td>Calculations until they're automatic</td><td><a href="#practice">Practice</a> · <a href="#graph">Graph Lab</a></td></tr>
+<tr><td>Mnemonics &amp; teach-back</td><td>Lists, sequences and long answers</td><td><a href="#tricks">Study tricks</a></td></tr>
+<tr><td>Spacing &amp; exam technique</td><td>Remembering it on the day and getting marks</td><td><a href="#plan">Plan &amp; exam tips</a></td></tr>
+</table></div></div>
+<div class="card"><h3 style="margin-top:0">A 45-minute session</h3>
+<ol><li><b>5 min:</b> play with one lab (e.g. Circuit Lab, change one resistor and watch what happens).</li>
+<li><b>10 min:</b> read the matching Notes, then cover them and blurt everything onto paper.</li>
+<li><b>10 min:</b> flashcards. Say the answer out loud before flipping.</li>
+<li><b>10 min:</b> Practice until 5 correct in a row.</li>
+<li><b>10 min:</b> one sheet question from memory, then check it in Sheet answers.</li></ol></div>
+<div class="note bad"><b>Heads-up: errors in the handwritten answers.</b> I checked every calculation. Three don't hold up:
+<ul><li><b>Astronomy 1 Q4b</b> (Earth–Mars): written as 4.48×10¹⁴ N (that's Q4c's answer). Correct: <b>4.17×10¹⁶ N</b>.</li>
+<li><b>Revision Sheet 2 Q2</b>: written as R₂ = 3.2 Ω. Correct: <b>R₂ = 12 Ω</b>.</li>
+<li><b>Electricity Quiz Q24</b>: key says D (8 A). Correct: <b>C (4 A)</b>, since 2 + (2∥2) = 3 Ω and 12 ÷ 3 = 4 A.</li></ul>
+Also, Astronomy Q8's answer (star fates) mixes up star mass with core mass; see Star Lives 3D. Electricity 2 Q7 lists R₅ twice, so I assumed R₆ = 20 Ω.</div>
+<div class="card" id="progress"></div>
+</section>
+
+<!-- NOTES -->
+<section id="notes">
+<h2>Notes</h2><p class="sub">Matched to your sheets. Toggle topic below.</p>
+<div class="seg" id="noteSeg"><button class="on" data-k="e">Electricity</button><button data-k="a">Astronomy</button></div>
+<div id="note-e">
+<div class="card"><h3 style="margin-top:0"><span class="tag e">1</span>Charge &amp; static electricity</h3>
+<ul><li>Matter has protons (+, stuck in the nucleus) and electrons (−, can move).</li>
+<li>Rubbing two objects together transfers <b>electrons only</b> from one to the other.</li>
+<li>Gains electrons → <b>negative</b>. Loses electrons → <b>positive</b>. Protons are never added or removed.</li>
+<li>A charged ruler picks up paper by <b>electrostatic attraction</b>, not magnetism.</li>
+<li>Like charges repel, unlike charges attract.</li></ul>
+<p class="mute small">Try it: <a href="#static">Static lab</a>.</p></div>
+
+<div class="card"><h3 style="margin-top:0"><span class="tag e">2</span>Current, voltage, resistance</h3>
+<div class="tbl"><table><tr><th>Quantity</th><th>Symbol · unit</th><th>Formula</th><th>Meaning</th></tr>
+<tr><td>Charge</td><td>Q · coulomb (C)</td><td><span class="f">Q = It</span></td><td>Amount of charge passing a point</td></tr>
+<tr><td>Current</td><td>I · ampere (A)</td><td><span class="f">I = Q/t</span></td><td>Rate of flow of charge (C per second)</td></tr>
+<tr><td>Potential difference</td><td>V · volt (V)</td><td><span class="f">V = W/Q</span></td><td>Energy (work) per coulomb of charge</td></tr>
+<tr><td>Resistance</td><td>R · ohm (Ω)</td><td><span class="f">R = V/I</span></td><td>Opposition to current</td></tr>
+</table></div>
+<p class="small mute">e.g. 16 J moving 4.0 C → V = 16/4 = 4.0 V (Quiz Q6). 12 J moving 5 C → 12/5 V (Quiz Q30).</p></div>
+
+<div class="card"><h3 style="margin-top:0"><span class="tag e">3</span>Ohm's law &amp; V–I graphs</h3>
+<p><span class="f">V = IR</span>. A resistor is <b>ohmic</b> if V ∝ I: a straight line through the origin.</p>
+<ul><li>On a <b>V (y) vs I (x)</b> graph, <b>gradient = R</b>. (Electricity 4: gradient 6/3 = 2 Ω.)</li>
+<li>On an <b>I (y) vs V (x)</b> graph, gradient = 1/R. A steeper line means lower resistance.</li>
+<li>A curved line is <b>non-ohmic</b> (e.g. a filament globe, which heats up so R increases).</li>
+<li>Use the line of best fit, not one point, when data has an outlier (Sheet 1 Q9: 12 V reading is off).</li></ul>
+<p class="small mute">Try it: <a href="#graph">Graph Lab</a>.</p></div>
+
+<div class="card"><h3 style="margin-top:0"><span class="tag e">4</span>Series, parallel &amp; combination</h3>
+<div class="tbl"><table><tr><th></th><th>Series</th><th>Parallel</th></tr>
+<tr><td>Current</td><td>Same through every component</td><td>Splits; branch currents add to I<sub>T</sub></td></tr>
+<tr><td>Voltage</td><td>Shared; adds up to V<sub>B</sub></td><td>Same across every branch</td></tr>
+<tr><td>Resistance</td><td><span class="f">R<sub>T</sub> = R₁ + R₂ + …</span></td><td><span class="f">1/R<sub>T</sub> = 1/R₁ + 1/R₂ + …</span></td></tr>
+<tr><td>Check</td><td>R<sub>T</sub> bigger than any one</td><td>R<sub>T</sub> smaller than the smallest</td></tr></table></div>
+<p><b>Shortcuts:</b> n identical resistors in parallel = R/n (e.g. 3 × 90 Ω → 30 Ω). Two resistors: <span class="f">R = R₁R₂/(R₁+R₂)</span>.</p>
+<p><b>Combination circuit method</b> (Electricity 2, Sheet 3):</p>
+<ol><li>Find the equivalent resistance of each parallel block.</li><li>Add it to the series resistors → R<sub>T</sub>.</li><li><span class="f">I<sub>T</sub> = V<sub>B</sub>/R<sub>T</sub></span>.</li><li>Series parts get I<sub>T</sub>: <span class="f">V = I<sub>T</sub>R</span>.</li><li>Parallel block voltage = V<sub>B</sub> − (series voltages).</li><li>Each branch: <span class="f">I = V/R</span>. Check the branch currents add to I<sub>T</sub>.</li><li>Powers: <span class="f">P = VI</span>; check they add to <span class="f">P<sub>T</sub> = V<sub>B</sub>I<sub>T</sub></span>.</li></ol>
+<p class="small mute">If you're given a current instead of V<sub>B</sub>, work outwards from that component (Electricity 2 Q4–Q7).</p></div>
+
+<div class="card"><h3 style="margin-top:0"><span class="tag e">5</span>Power &amp; energy</h3>
+<p><span class="f">P = VI</span> · <span class="f">P = I²R</span> · <span class="f">P = V²/R</span> · <span class="f">E = Pt = VIt = VQ</span></p>
+<ul><li>Power in watts (W) = joules per second. Time <b>must be in seconds</b>.</li>
+<li>Blender: 1200 W on 240 V → R = V²/P = 48 Ω; I = 5 A; 12 min = 720 s → Q = 3600 C, E = 8.64×10⁵ J.</li>
+<li>Most current drawn = biggest P/V (spotlight 48/12 = 4 A beats TV 180/240 = 0.75 A).</li></ul></div>
+
+<div class="card"><h3 style="margin-top:0"><span class="tag e">6</span>Meters, cells, switches, globes &amp; fuses</h3>
+<ul><li><b>Ammeter in series</b> (very low resistance). <b>Voltmeter in parallel</b> across the component (very high resistance).</li>
+<li>Cells in <b>series</b> add voltages: three 1.5 V cells in a line = 4.5 V. Parallel cells keep 1.5 V.</li>
+<li>A switch in the main line controls everything. A switch in a branch controls only that branch.</li>
+<li>Globe brightness depends on its power. A globe in the main line carries I<sub>T</sub>, so it's brighter than identical globes sharing current in parallel.</li>
+<li>20 identical lamps in series on 240 V: each gets 240/20 = 12 V.</li>
+<li>A fuse blows if current exceeds its rating: check I = V/R<sub>T</sub> against the fuse.</li></ul>
+<p class="small mute">Try the switch puzzles in <a href="#circuit">Circuit Lab</a>.</p></div>
+</div>
+
+<div id="note-a" style="display:none">
+<div class="card"><h3 style="margin-top:0"><span class="tag a">1</span>Mass vs weight</h3>
+<ul><li><b>Mass</b> (kg): amount of matter. The same everywhere.</li>
+<li><b>Weight</b> (N): the gravitational force on a mass. Depends on where you are: <span class="f">F<sub>w</sub> = mg</span>.</li>
+<li>15 kg dog on Earth: 15 × 9.8 = 147 N. 90 kg person on the Moon: 90 × 1.6 = 144 N. 1.5 t = 1500 kg on Planet X: 1500 × 7.4 = 11 100 N.</li></ul></div>
+
+<div class="card"><h3 style="margin-top:0"><span class="tag a">2</span>Newton's law of universal gravitation</h3>
+<p><span class="f">F = G M m / r²</span>, with <span class="f">G = 6.67×10⁻¹¹ N m² kg⁻²</span>. r is centre-to-centre distance in <b>metres</b>.</p>
+<ul><li>There is gravity between <b>all</b> masses: planets, stars, you and your desk.</li>
+<li><b>Inverse square:</b> double r → force ÷ 4. Triple r → ÷ 9.</li>
+<li>Table distances are in 10⁹ m, so 57.9 → 57.9×10⁹ m. Masses are in 10²⁴ kg.</li>
+<li>Earth–Mars closest approach: r = 227.9 − 149.6 = 78.3×10⁹ m.</li></ul></div>
+
+<div class="card"><h3 style="margin-top:0"><span class="tag a">3</span>Gravitational field strength</h3>
+<p><span class="f">g = G M / r²</span> (N/kg), and at altitude h: <span class="f">r = R + h</span>.</p>
+<ul><li>Always add the planet's radius to the altitude, and convert km → m (5000 km = 5.00×10⁶ m).</li>
+<li>At 5000 km: Earth 3.08 N/kg, Moon 0.107 N/kg, Jupiter 21.6 N/kg.</li></ul>
+<p class="small mute">Try it: <a href="#gravity">Gravity 3D</a>.</p></div>
+
+<div class="card"><h3 style="margin-top:0"><span class="tag a">4</span>Planet data (from your sheet)</h3>
+<div class="tbl" id="planetTable"></div>
+<p class="small mute">Mass of the Sun = 1.99×10³⁰ kg. *Moon's orbital radius is around Earth.</p></div>
+
+<div class="card"><h3 style="margin-top:0"><span class="tag a">5</span>Light &amp; light-years</h3>
+<ul><li>c = 3.00×10⁸ m/s. Use <span class="f">s = vt</span> with t in <b>seconds</b>.</li>
+<li>1 μs → 300 m. 3.4 min (204 s) → 6.12×10¹⁰ m. 2.8 days → 7.26×10¹³ m.</li>
+<li><b>Light-year</b> = the <b>distance</b> light travels in one year = 3.00×10⁸ × 31 557 600 s = <b>9.47×10¹⁵ m</b>.</li>
+<li>Looking far away = looking back in time: a supernova 172 ly away is seen 172 years after it happens. 172 ly = 1.63×10¹⁸ m.</li></ul></div>
+
+<div class="card"><h3 style="margin-top:0"><span class="tag a">6</span>How stars live and die</h3>
+<p>A star is a balance: <b>gravity</b> pulls in, <b>radiation pressure</b> from fusion pushes out. When fuel runs out, gravity wins and the core collapses. How far it collapses depends on <b>mass</b>.</p>
+<div class="flow"><span class="b">Nebula</span><span class="ar">→</span><span class="b">Protostar</span><span class="ar">→</span><span class="b">Main sequence</span><span class="ar">→</span><span class="b">Red giant</span><span class="ar">→</span><span class="b">Planetary nebula</span><span class="ar">→</span><span class="b">White dwarf</span></div>
+<div class="flow"><span class="b">Nebula</span><span class="ar">→</span><span class="b">Protostar</span><span class="ar">→</span><span class="b">Main sequence</span><span class="ar">→</span><span class="b">Red supergiant</span><span class="ar">→</span><span class="b">Supernova</span><span class="ar">→</span><span class="b">Neutron star / black hole</span></div>
+<div class="tbl"><table><tr><th>Leftover core mass</th><th>Ends as</th><th>Roughly, star's starting mass</th></tr>
+<tr><td>&lt; 1.4 M☉</td><td>White dwarf</td><td>up to ~8 Suns</td></tr>
+<tr><td>1.4 – ~3 M☉</td><td>Neutron star</td><td>~8 – 20 Suns</td></tr>
+<tr><td>&gt; ~3 M☉</td><td>Black hole</td><td>more than ~20 Suns</td></tr></table></div>
+<p class="note">Your sheet's answer to Q8 uses "less than 1.5 Suns → white dwarf; 5 Suns → black hole". Those numbers are for the leftover <i>core</i>, not the whole star. Check with your teacher which version they want, but always explain that <b>the fate depends on mass</b>.</p></div>
+</div>
+</section>
+
+<!-- FORMULAS -->
+<section id="formulas">
+<h2>Formula sheet</h2><p class="sub">Every formula your sheets use, with units. Tap a card to hide or show it for self-testing.</p>
+<div class="row" style="margin-bottom:6px"><button class="btn sm" id="fHide">Hide all (test mode)</button><button class="btn sm" id="fShow">Show all</button></div>
+<div class="grid" id="fGrid"></div>
+<div class="card"><h3 style="margin-top:0">Unit conversions that cost marks</h3>
+<div class="tbl"><table><tr><th>From</th><th>To</th><th>Do</th></tr>
+<tr><td>minutes</td><td>seconds</td><td>× 60 (2 min 20 s = 140 s)</td></tr><tr><td>hours / days</td><td>seconds</td><td>× 3600 / × 86 400</td></tr>
+<tr><td>mA</td><td>A</td><td>÷ 1000 (200 mA = 0.200 A)</td></tr><tr><td>kJ</td><td>J</td><td>× 1000 (28.8 kJ = 28 800 J)</td></tr>
+<tr><td>km</td><td>m</td><td>× 1000 (5000 km = 5.00×10⁶ m)</td></tr><tr><td>tonne</td><td>kg</td><td>× 1000 (1.5 t = 1500 kg)</td></tr>
+<tr><td>table "10⁹ m"</td><td>m</td><td>57.9 → 57.9×10⁹ m</td></tr><tr><td>table "10²⁴ kg"</td><td>kg</td><td>5.97 → 5.97×10²⁴ kg</td></tr></table></div>
+<p class="small mute">Calculator: type 6.67×10⁻¹¹ as <span class="kbd">6.67</span> <span class="kbd">EXP</span> (or <span class="kbd">×10ˣ</span>) <span class="kbd">−11</span>. Bracket the whole bottom line when dividing by r².</p></div>
+</section>
+
+<!-- SOLAR -->
+<section id="solar">
+<h2>Solar System 3D</h2><p class="sub">Built from your sheet's data table. Drag to rotate, scroll or pinch to zoom, tap a planet for its numbers.</p>
+<div class="g2">
+<div>
+<div class="stage" id="solarStage"><div class="hud" id="solarHud">Tap a planet</div><div class="hud2">drag · zoom · tap</div></div>
+<div class="row" style="margin-top:10px">
+<button class="btn p" id="pulseBtn">Send a light pulse from the Sun</button>
+<button class="btn" id="followBtn">Follow: off</button>
+<label class="small mute" style="display:flex;align-items:center;gap:6px">Speed <input type="range" id="solarSpeed" min="0" max="3" step="0.01" value="1.3" style="width:120px"> <span id="solarSpeedL"></span></label>
+</div>
+<p class="small mute">Distances use a square-root scale and planet sizes are enlarged, otherwise Neptune would be 77 times further out than Mercury and everything would be specks. Orbit <b>periods</b> are the true ratios from the sheet.</p>
+</div>
+<div><div class="card" id="solarInfo" style="margin-top:0"><b>Pick a planet</b><p class="mute small">Tap any body to see its data, your weight there, the Sun's pull on it, and how long sunlight takes to arrive.</p></div>
+<div class="card"><b>Your mass</b> <input type="number" id="myMass" value="60" min="1"> kg<p class="small mute" style="margin:6px 0 0">Mass stays the same everywhere. Weight changes with g.</p><div id="weightAll" class="small"></div></div></div>
+</div>
+</section>
+
+<!-- GRAVITY -->
+<section id="gravity">
+<h2>Gravity 3D</h2><p class="sub">Field strength gets weaker with distance as an inverse square. Move the satellite and watch g change. The arrows show field strength at each distance.</p>
+<div class="g2">
+<div>
+<div class="stage" id="gravStage"><div class="hud" id="gravHud"></div><div class="hud2">drag · zoom</div></div>
+<canvas class="plot" id="gravPlot" style="height:220px;margin-top:10px"></canvas>
+</div>
+<div>
+<div class="card" style="margin-top:0">
+<label class="ctl">Body</label><select id="gravBody"></select>
+<label class="ctl">Altitude h: <b id="gravHL"></b></label><input type="range" id="gravH" min="0" max="40000" step="50" value="5000">
+<label class="ctl">Object mass m (kg)</label><input type="number" id="gravM" value="60">
+<div class="row" style="margin-top:10px"><span class="small mute">Sheet Q5:</span><button class="btn sm" data-gq="Earth">a. Earth</button><button class="btn sm" data-gq="Moon">b. Moon</button><button class="btn sm" data-gq="Jupiter">c. Jupiter</button></div>
+<div class="work" id="gravWork"></div>
+</div>
+<div class="card"><b>Force between two bodies</b> <span class="mute small">(Q4)</span>
+<label class="ctl">Pair</label><select id="fgPair"></select>
+<div class="work" id="fgWork"></div></div>
+</div></div>
+</section>
+
+<!-- STARS -->
+<section id="stars">
+<h2>Star Lives 3D</h2><p class="sub">Set a star's mass, then play its life. The ending depends on mass (Astronomy 1 Q8).</p>
+<div class="g2">
+<div><div class="stage" id="starStage"><div class="hud" id="starHud"></div><div class="hud2">drag · zoom</div></div>
+<div class="row" style="margin-top:10px" id="stageBtns"></div></div>
+<div><div class="card" style="margin-top:0">
+<label class="ctl">Starting mass: <b id="starML"></b></label><input type="range" id="starM" min="-0.3" max="1.6" step="0.01" value="0">
+<div class="row" style="margin-top:8px"><button class="btn sm" data-sm="1">Sun (1)</button><button class="btn sm" data-sm="12">12 Suns</button><button class="btn sm" data-sm="30">30 Suns</button></div>
+<div class="row" style="margin-top:12px"><button class="btn p" id="starPlay">Play whole life</button></div>
+<div id="starInfo" style="margin-top:12px"></div></div>
+<div class="card"><b>Exam answer (model)</b><p class="small">The fate of a star depends on its <b>mass</b>. When fusion stops, gravity collapses the core. Low and medium mass stars (like the Sun) swell into red giants, shed their outer layers and leave a <b>white dwarf</b>. Massive stars become red supergiants and explode as a <b>supernova</b>. If the leftover core is about 1.4–3 solar masses, it is crushed into a <b>neutron star</b>. If it's more than about 3 solar masses, nothing can stop the collapse and it becomes a <b>black hole</b>.</p></div>
+</div></div>
+</section>
+
+<!-- CIRCUIT -->
+<section id="circuit">
+<h2>Circuit Lab</h2><p class="sub">The circuits from your sheets, simulated live. Moving dots show current, and their speed shows its size. Drag the sliders, tap switches, tap a part to inspect it.</p>
+<div class="row" style="margin-bottom:10px"><select id="cPreset" style="max-width:100%"></select>
+<div class="seg" id="flowSeg"><button class="on" data-f="conv">Conventional current</button><button data-f="elec">Electron flow</button></div>
+<button class="btn sm" id="cReset">Reset to sheet values</button></div>
+<div class="note" id="cNote" style="display:none"></div>
+<div class="g2">
+<div><div class="cwrap" id="cwrap"><svg id="csvg" viewBox="0 0 680 390" preserveAspectRatio="xMidYMid meet"></svg><canvas id="ccan"></canvas></div>
+<div class="card"><b>Adjust</b><div class="sliders" id="cSliders" style="margin-top:6px"></div></div></div>
+<div>
+<div class="card" style="margin-top:0" id="cTotals"></div>
+<div class="card"><b>Meter readings</b><div class="tbl" id="cTable"></div></div>
+<div class="card" id="cStepsCard"><b>Worked solution</b> <span class="mute small">(updates live)</span><div class="work" id="cSteps"></div></div>
+</div></div>
+</section>
+
+<!-- GRAPH -->
+<section id="graph">
+<h2>Graph Lab: V–I graphs</h2><p class="sub">Gradient of a V (y) vs I (x) graph = resistance. Tap a point to exclude it as an outlier.</p>
+<div class="g2"><div><canvas class="plot" id="gPlot" style="height:360px"></canvas></div>
+<div><div class="card" style="margin-top:0">
+<label class="ctl">Data set</label><select id="gSet"></select>
+<label class="ctl">Data (V, I per line)</label><textarea id="gData" rows="7" style="width:100%;font-family:IBM Plex Mono,monospace"></textarea>
+<div class="row" style="margin-top:6px"><button class="btn sm p" id="gPlotBtn">Plot</button><label class="small mute"><input type="checkbox" id="gOrigin" checked> line through origin</label></div>
+<div class="work" id="gWork"></div></div></div></div>
+</section>
+
+<!-- STATIC -->
+<section id="static">
+<h2>Static electricity lab</h2><p class="sub">Electricity Quiz Q1–5: rub a plastic ruler with a woollen jumper and watch what actually moves.</p>
+<div class="g2"><div><div class="cwrap" style="aspect-ratio:680/360"><svg id="ssvg" viewBox="0 0 680 360"></svg></div>
+<div class="row" style="margin-top:10px"><button class="btn p" id="sRub">Rub ruler on jumper</button><button class="btn" id="sNear">Bring ruler to paper</button><button class="btn" id="sReset">Reset</button></div></div>
+<div><div class="card" style="margin-top:0" id="sInfo"></div>
+<div class="card"><b>Key ideas</b><ul class="small"><li>Only <b>electrons</b> (−) move. Protons stay locked in nuclei.</li><li>Ruler gains electrons → negative. Jumper loses electrons → positive (it's <i>not</i> that protons were added).</li><li>The charged ruler attracts neutral paper: its electrons are pushed to the far side, leaving the near side slightly positive. That's <b>electrostatic attraction</b>, not magnetism.</li></ul></div></div></div>
+</section>
+
+<!-- SHEET -->
+<section id="sheet">
+<h2>Sheet answers</h2><p class="sub">Every question from your revision sheets with the answers from your answer sheets. Try it first, then reveal, or have Claude grade your attempt.</p><div class="note hardnote" style="display:none">Hard mode is on: only the harder, multi-step questions are shown.</div>
+<div class="row" style="margin-bottom:8px"><select id="shSel"></select><button class="btn sm" id="shOpen">Reveal all</button><button class="btn sm" id="shClose">Hide all</button></div>
+<div id="shBox"></div>
+</section>
+
+<!-- CLAUDE -->
+<section id="claude">
+<h2>Claude tutor</h2><p class="sub">Write your answer, Claude grades it like an exam marker and tells you how to fix it. Or just ask for help. This uses your own Claude account.</p>
+<div class="note" id="clUnavail" style="display:none">Claude isn't connected in this view.</div>
+<div class="seg" id="clSeg"><button class="on" data-m="grade">Grade my answer</button><button data-m="chat">Ask anything</button><button data-m="advice">Study advice</button></div>
+<div id="cl-grade"><div class="card">
+<label class="ctl">Question (pick one from your sheets or type your own)</label>
+<select id="clQSel" style="width:100%"></select>
+<div id="clDiag"></div><textarea id="clQ" rows="3" style="width:100%;margin-top:6px" placeholder="Question text"></textarea>
+<label class="ctl">Marks available</label><input type="number" id="clMarks" value="3" min="1" max="10">
+<label class="ctl">Your answer and working</label>
+<textarea id="clA" rows="7" style="width:100%" placeholder="Write it like you would in the exam: formula, substitution, answer with unit."></textarea>
+<div class="row" style="margin-top:8px"><button class="btn p" id="clGrade">Grade it</button><button class="btn" id="clStop1" style="display:none">Stop</button></div>
+<div id="clGradeOut" style="margin-top:10px"></div></div></div>
+<div id="cl-chat" style="display:none"><div class="card">
+<div id="clLog" style="max-height:460px;overflow-y:auto"></div>
+<div class="row" style="margin-top:8px"><textarea id="clIn" rows="2" style="flex:1;min-width:200px" placeholder="e.g. Why does adding a resistor in parallel lower the total resistance?"></textarea><button class="btn p" id="clSend">Send</button><button class="btn" id="clStop2" style="display:none">Stop</button></div>
+<div class="row" style="margin-top:6px" id="clChips"></div></div></div>
+<div id="cl-advice" style="display:none"><div class="card">
+<p class="small mute">Claude looks at your flashcards, quiz and practice results on this page and gives you a plan.</p>
+<label class="ctl">Exam date (optional)</label><input type="date" id="clDate">
+<label class="ctl">Anything else? (what you find hardest, time per day)</label><textarea id="clCtx" rows="2" style="width:100%"></textarea>
+<div class="row" style="margin-top:8px"><button class="btn p" id="clAdvise">Get my plan</button></div>
+<div id="clAdviceOut" style="margin-top:10px"></div></div></div>
+</section>
+
+<!-- CARDS -->
+<section id="cards">
+<h2>Flashcards</h2><p class="sub">Say the answer out loud before flipping. Mark the ones you're still learning and drill only those.</p>
+<div class="card">
+<div class="row"><select id="fcTopic"><option value="all">All cards</option><option value="e">Electricity</option><option value="a">Astronomy</option></select>
+<label class="small mute"><input type="checkbox" id="fcLearn"> only "still learning"</label>
+<button class="btn sm" id="fcShuffle">Shuffle</button><button class="btn sm" id="fcReset">Reset progress</button></div>
+<div class="bar" style="margin-top:12px"><i id="fcBar"></i></div>
+<div class="mute small" id="fcCount" style="margin-top:4px"></div>
+<div id="fcBox" style="margin:12px 0"></div>
+<div class="row"><button class="btn" id="fcPrev">←</button><button class="btn r" id="fcNo">Still learning</button><button class="btn g" id="fcYes">Got it</button><button class="btn" id="fcNext">→</button></div>
+<p class="mute small" style="margin-bottom:0"><span class="kbd">Space</span> flips · <span class="kbd">←</span> <span class="kbd">→</span> move</p></div>
+</section>
+
+<!-- QUIZ -->
+<section id="quiz">
+<h2>Quiz</h2><p class="sub">Your Electricity Revision Quiz (with Q24 corrected) plus astronomy questions from Astronomy 1. Ten random questions per round.</p><div class="note hardnote" style="display:none">Hard mode is on: only the harder, multi-step questions are shown.</div>
+<div class="card"><div class="row"><select id="qzTopic"><option value="all">Mixed</option><option value="e">Electricity</option><option value="a">Astronomy</option></select><button class="btn p" id="qzStart">New quiz</button></div>
+<div id="qzBox" style="margin-top:12px"></div></div>
+</section>
+
+<!-- PRACTICE -->
+<section id="practice">
+<h2>Calculation practice</h2><p class="sub">Endless questions in the style of your sheets. Worked solution after each one.</p><div class="note hardnote" style="display:none">Hard mode is on: only the harder, multi-step questions are shown.</div>
+<div class="card"><div class="row"><select id="prType"></select><button class="btn p" id="prNew">New question</button><span class="mute small" id="prScore"></span></div>
+<div id="prBox" style="margin-top:12px"></div></div>
+<div class="card"><b>Routine for every calculation</b> <span class="mute small">(this is where the marks are)</span>
+<ol><li>List the givens with units (convert to SI: s, A, m, kg, J).</li><li>Write the formula.</li><li>Rearrange, then substitute.</li><li>Answer with the unit and sensible significant figures.</li><li>Sanity check: does parallel R<sub>T</sub> come out smaller than the smallest resistor?</li></ol></div>
+</section>
+
+<!-- TRICKS -->
+<section id="tricks">
+<h2>Study tricks</h2><p class="sub">Memory hooks, plus teach-back to practise long answers.</p>
+<div class="grid">
+<div class="card"><b>Planets in order</b><p><i>My Very Eager Mother Just Served Us Noodles</i><br><span class="mute small">Mercury Venus Earth Mars Jupiter Saturn Uranus Neptune</span></p></div>
+<div class="card"><b>Series vs parallel</b><p><b>S</b>eries: <b>S</b>ame current, <b>S</b>hared voltage.<br><b>P</b>arallel: same <b>P</b>otential difference, current s<b>P</b>lits.</p></div>
+<div class="card"><b>Meters</b><p><b>A</b>mmeter = <b>A</b>long the line (series).<br><b>V</b>oltmeter = <b>V</b>isits both ends (parallel).</p></div>
+<div class="card"><b>Don't forget to flip</b><p>1/R<sub>T</sub> = 0.2 means R<sub>T</sub> = 5 Ω, <b>not</b> 0.2 Ω. Always finish with ( … )⁻¹.</p></div>
+<div class="card"><b>Power triangle family</b><p>"<b>P</b>ower <b>V</b>ery <b>I</b>mportant": P = VI. Swap in V = IR to get I²R and V²/R.</p></div>
+<div class="card"><b>R + h</b><p>"Height plus home": altitude is measured from the surface, but r is from the centre. Add the radius.</p></div>
+<div class="card"><b>Weight vs mass</b><p>Mass is <b>m</b>atter (kg, fixed). Weight is a force (N, changes with g).</p></div>
+<div class="card"><b>Star endings</b><p>"<b>W</b>impy, <b>N</b>ormal-heavy, <b>B</b>ig": White dwarf, Neutron star, Black hole as mass goes up.</p></div>
+<div class="card"><b>Static</b><p>"<b>E</b>lectrons <b>E</b>scape": only electrons transfer. Positive means electrons lost.</p></div>
+</div>
+<h3>Teach-back (Feynman method)</h3>
+<p class="mute small">Explain each out loud as if to a younger sibling, with no notes. Then open the checklist and tick what you covered. Or type your explanation and have Claude grade it.</p>
+<div id="tbBox"></div>
+</section>
+
+<!-- PLAN -->
+<section id="plan">
+<h2>Plan &amp; exam tips</h2>
+<div class="card"><b>Spaced repetition planner</b><p class="small mute">Review just as you start to forget. Pick your exam date.</p>
+<div class="row"><input type="date" id="exDate"><button class="btn p" id="exGo">Build plan</button></div><div id="plBox" style="margin-top:12px"></div></div>
+<div class="card"><b>Command words</b><div class="tbl"><table>
+<tr><th>Word</th><th>Do this</th></tr><tr><td>State / Name</td><td>Short answer, no reason needed</td></tr><tr><td>Calculate / Determine</td><td>Formula → substitution → answer + unit</td></tr><tr><td>Explain</td><td>Give the reason: "because…", "so…"</td></tr><tr><td>Describe</td><td>Say what happens or what you'd see</td></tr><tr><td>Sketch</td><td>Labelled axes with units, correct shape</td></tr><tr><td>Show your working</td><td>Marks are for method. A right answer with no working can lose marks</td></tr></table></div></div>
+<div class="card"><b>Mistakes your sheets are designed to catch</b><ul>
+<li>Forgetting to add the planet's radius to the altitude (g at 5000 km).</li><li>Not converting minutes, km, kJ or mA into SI units.</li>
+<li>Forgetting to flip 1/R<sub>T</sub>.</li><li>Using V<sub>B</sub> instead of the parallel-block voltage for a branch current.</li>
+<li>Saying a light-year is a time.</li><li>Saying protons move in static charging.</li>
+<li>Copying the answer from the previous part (Astronomy Q4b!).</li><li>Reading a value off the wrong line on a graph (Electricity 5 Q2).</li></ul></div>
+<div class="card chk"><b>Exam-day checklist</b>
+<label><input type="checkbox"> Calculator in degree mode, EXP key practised</label><label><input type="checkbox"> Underline the command word and quantity asked for</label>
+<label><input type="checkbox"> Write the formula first, every time</label><label><input type="checkbox"> Units on every answer</label>
+<label><input type="checkbox"> Check parallel currents add up to I<sub>T</sub></label><label><input type="checkbox"> Last 5 minutes: re-check unit conversions</label></div>
+</section>
+
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+/* ===== core helpers ===== */
+var $=function(id){return document.getElementById(id)};
+function sg(k){try{return localStorage.getItem('sce16_'+k)}catch(e){return null}}
+function ss(k,v){try{localStorage.setItem('sce16_'+k,v)}catch(e){}}
+function shuffle(a){a=a.slice();for(var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=a[i];a[i]=a[j];a[j]=t}return a}
+function rnd(a,b){return Math.floor(Math.random()*(b-a+1))+a}
+function pick(a){return a[Math.floor(Math.random()*a.length)]}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+var SUP={'-':'⁻','0':'⁰','1':'¹','2':'²','3':'³','4':'⁴','5':'⁵','6':'⁶','7':'⁷','8':'⁸','9':'⁹'};
+function sup(n){return String(n).split('').map(function(c){return SUP[c]||c}).join('')}
+/* 3 significant figures, scientific when large/small */
+function sf(x,n){n=n||3;if(!isFinite(x))return '∞';if(x===0)return '0';var ax=Math.abs(x);
+  if(ax>=1e5||ax<1e-3){var e=Math.floor(Math.log10(ax));var m=x/Math.pow(10,e);var ms=m.toFixed(n-1);if(Math.abs(parseFloat(ms))>=10){e++;ms=(x/Math.pow(10,e)).toFixed(n-1)}return ms+'×10'+sup(e)}
+  var d=n-1-Math.floor(Math.log10(ax));d=Math.max(0,Math.min(6,d));var s=x.toFixed(d);
+  if(s.indexOf('.')>=0&&d>0){s=s.replace(/0+$/,'').replace(/\.$/,'')}return s==='-0'?'0':s}
+function sci(m,e){return m+'×10'+sup(e)}
+
+/* ===== sheet data ===== */
+var G=6.67e-11, C=3.00e8, MSUN=1.99e30;
+/* name, orbit (1e9 m), mass (1e24 kg), radius (1e6 m), g (N/kg), period (days), colour */
+var PLANETS=[
+['Mercury',57.9,0.330,2.44,3.7,88.0,'#a9a39b'],
+['Venus',108.2,4.87,6.052,8.9,224.7,'#e8c27a'],
+['Earth',149.6,5.97,6.378,9.8,365.2,'#3f86ff'],
+['Moon',0.384,0.073,1.74,1.6,27.3,'#bdbdbd'],
+['Mars',227.9,0.642,3.397,3.7,687.0,'#d4643b'],
+['Jupiter',778.6,1899,71.492,23.1,4331,'#d8b48a'],
+['Saturn',1433.5,568,60.27,9.0,10747,'#e6d39b'],
+['Uranus',2872.5,86.8,25.56,8.7,30589,'#9fe3ea'],
+['Neptune',4495.1,102,24.74,11.0,59800,'#4f74e8']];
+function P(name){for(var i=0;i<PLANETS.length;i++)if(PLANETS[i][0]===name)return PLANETS[i]}
+
+/* ===== hard mode ===== */
+var HARD=sg('hard')==='1',HARD_HOOKS=[];
+var HARDQ=[7,8,9,10,12,13,14,17,18,19,21,22,25,28,29,30,32,36];
+function setHard(v){HARD=v;ss('hard',v?'1':'0');var b=$('hardBtn');if(b){b.classList.toggle('on',v);b.textContent=v?'Hard mode: on':'Hard mode: off'}
+  document.querySelectorAll('.hardnote').forEach(function(n){n.style.display=v?'':'none'});HARD_HOOKS.forEach(function(f){try{f()}catch(e){}})}
+/* ===== tabs ===== */
+var TABS=[['start','Start','#94a3b8'],['notes','Notes','#94a3b8'],['formulas','Formulas','#94a3b8'],['solar','Solar System 3D','#a78bfa'],['gravity','Gravity 3D','#a78bfa'],['stars','Star Lives 3D','#a78bfa'],['circuit','Circuit Lab','#fbbf24'],['graph','Graph Lab','#fbbf24'],['static','Static','#fbbf24'],['sheet','Sheet answers','#6ea8ff'],['claude','Claude tutor','#6ea8ff'],['cards','Flashcards','#4ade80'],['quiz','Quiz','#4ade80'],['practice','Practice','#4ade80'],['tricks','Study tricks','#f472b6'],['plan','Plan & exam tips','#f472b6']];
+var LABS={};var curTab=null;
+function showTab(id){
+  if(!$(id)||$(id).tagName!=='SECTION')id='start';
+  if(curTab&&LABS[curTab]&&LABS[curTab].stop)LABS[curTab].stop();
+  TABS.forEach(function(t){$(t[0]).classList.toggle('on',t[0]===id)});
+  Array.prototype.forEach.call($('nav').children,function(b){b.classList.toggle('on',b.dataset.id===id);if(b.dataset.id===id&&b.scrollIntoView)try{b.scrollIntoView({block:'nearest',inline:'nearest'})}catch(e){}});
+  curTab=id;
+  if(LABS[id]){var L=LABS[id];try{if(!L.ready){L.init();L.ready=true}if(L.start)L.start()}catch(e){console.error(e);var st=$(id).querySelector('.stage');if(st&&!st.querySelector('.err')){var d=document.createElement('div');d.className='hud err';d.style.top='auto';d.style.bottom='10px';d.textContent='This 3D view could not start ('+e.message+'). Try reloading.';st.appendChild(d)}}}
+  if(id==='start')renderProgress();
+}
+(function(){
+  var nav=$('nav');
+  TABS.forEach(function(t){var b=document.createElement('button');b.textContent=t[1];b.dataset.id=t[0];
+    b.onclick=function(){if(location.hash==='#'+t[0])showTab(t[0]);else location.hash=t[0];window.scrollTo(0,0)};nav.appendChild(b)});
+  window.addEventListener('hashchange',function(){showTab(location.hash.slice(1));window.scrollTo(0,0)});
+})();
+
+/* notes toggle */
+document.querySelectorAll('#noteSeg button').forEach(function(b){b.onclick=function(){
+  document.querySelectorAll('#noteSeg button').forEach(function(x){x.classList.toggle('on',x===b)});
+  $('note-e').style.display=b.dataset.k==='e'?'':'none';$('note-a').style.display=b.dataset.k==='a'?'':'none'}});
+
+/* planet table */
+(function(){var h='<table><tr><th></th><th>Orbital radius (10⁹ m)</th><th>Mass (10²⁴ kg)</th><th>Radius (10⁶ m)</th><th>g (N/kg)</th><th>Period (days)</th></tr>';
+  PLANETS.forEach(function(p){h+='<tr><td><b style="color:'+p[6]+'">'+p[0]+'</b></td><td>'+p[1]+(p[0]==='Moon'?'*':'')+'</td><td>'+p[2]+'</td><td>'+p[3]+'</td><td>'+p[4]+'</td><td>'+p[5].toLocaleString()+'</td></tr>'});
+  $('planetTable').innerHTML=h+'</table>'})();
+
+/* formulas */
+var FORMS=[
+['e','Charge','Q = I t','Q coulombs (C), I amps (A), t seconds (s)'],
+['e','Potential difference','V = W / Q','V volts, W energy (J), Q coulombs'],
+['e','Ohm\'s law','V = I R','R ohms (Ω)'],
+['e','Power','P = V I','P watts (W) = J/s'],
+['e','Power (with R)','P = I²R  ·  P = V²/R','use whichever two quantities you know'],
+['e','Energy','E = P t = V I t','E joules (J), t seconds'],
+['e','Series resistance','R_T = R₁ + R₂ + …','bigger than any single resistor'],
+['e','Parallel resistance','1/R_T = 1/R₁ + 1/R₂ + …','then flip! smaller than the smallest'],
+['e','V–I graph','gradient = ΔV / ΔI = R','V on y-axis, I on x-axis'],
+['a','Weight','F_w = m g','F_w newtons (N), m kg, g N/kg'],
+['a','Gravitation','F = G M m / r²','G = 6.67×10⁻¹¹ N m² kg⁻², r in metres (centre to centre)'],
+['a','Field strength','g = G M / r²','at altitude: r = R + h'],
+['a','Speed of light','s = v t  (v = c = 3.00×10⁸ m/s)','t in seconds'],
+['a','Light-year','1 ly = 9.47×10¹⁵ m','distance, not time']];
+(function(){var h='';FORMS.forEach(function(f,i){h+='<div class="card fcard" data-i="'+i+'" style="cursor:pointer;margin:0"><span class="tag '+(f[0]==='e'?'e':'a')+'">'+(f[0]==='e'?'Electricity':'Astronomy')+'</span><div style="font-weight:600;margin-top:6px">'+f[1]+'</div><div class="fx" style="font-family:IBM Plex Mono,monospace;font-size:1.05rem;margin:6px 0;">'+esc(f[2])+'</div><div class="mute small fx">'+esc(f[3])+'</div></div>'});
+  $('fGrid').innerHTML=h;
+  function setAll(v){document.querySelectorAll('#fGrid .fx').forEach(function(x){x.style.visibility=v?'visible':'hidden'})}
+  document.querySelectorAll('#fGrid .fcard').forEach(function(c){c.onclick=function(){var fx=c.querySelectorAll('.fx');var hid=fx[0].style.visibility==='hidden';fx.forEach(function(x){x.style.visibility=hid?'visible':'hidden'})}});
+  $('fHide').onclick=function(){setAll(false)};$('fShow').onclick=function(){setAll(true)};})();
+
+/* progress */
+function renderProgress(){
+  var fc={};try{fc=JSON.parse(sg('fc')||'{}')}catch(e){}
+  var known=0;for(var k in fc)if(fc[k]===1)known++;
+  var qb=parseInt(sg('qzBest')||'-1',10),pr=parseInt(sg('prRight')||'0',10),pt=parseInt(sg('prTotal')||'0',10);
+  $('progress').innerHTML='<b>Your progress</b> <span class="mute small">(saved in this browser only)</span><div class="grid" style="margin-top:8px">'+
+  '<div><div class="stat">'+known+'/'+(typeof CARDS!=='undefined'?CARDS.length:'?')+'</div><div class="mute small">flashcards known</div></div>'+
+  '<div><div class="stat">'+(qb>=0?qb+'%':'–')+'</div><div class="mute small">best quiz</div></div>'+
+  '<div><div class="stat">'+pr+'/'+pt+'</div><div class="mute small">practice correct</div></div></div>';
+}
+
+/* ===== Circuit Lab: series-parallel solver + animated SVG ===== */
+/* chain = [block], block = [branch], branch = [element]; element = [name, type R|L|S, value] */
+var CPRE=[
+{id:'e2q1',n:'Electricity 2 Q1: series 20/30/50 Ω',V:9,ch:[[[['R1','R',20]]],[[['R2','R',30]]],[[['R3','R',50]]]]},
+{id:'e2q2',n:'Electricity 2 Q2: 80 Ω ∥ 80 Ω',V:15,ch:[[[['R1','R',80]],[['R2','R',80]]]]},
+{id:'e2q3',n:'Electricity 2 Q3: 40 Ω ∥ 160 Ω',V:15,ch:[[[['R1','R',40]],[['R2','R',160]]]]},
+{id:'e2q4',n:'Electricity 2 Q4: 70 + (40 ∥ 40), I_T = 0.4 A',V:36,note:'Sheet gives I_T = 0.4 A, so V_B = 0.4 × 90 = 36 V.',ch:[[[['R1','R',70]]],[[['R2','R',40]],[['R3','R',40]]]]},
+{id:'e2q5',n:'Electricity 2 Q5: 24 + (20 ∥ 80), I_T = 0.3 A',V:12,note:'Sheet gives I_T = 0.3 A, so V_B = 0.3 × 40 = 12 V.',ch:[[[['R1','R',24]]],[[['R2','R',20]],[['R3','R',80]]]]},
+{id:'e2q6',n:'Electricity 2 Q6: (10+10+20) ∥ (80 ∥ 20), then 10',V:22.5,note:'Sheet gives I₄ = 0.15 A, which works out to V_B = 22.5 V.',ch:[[[['R1','R',10],['R2','R',10],['R3','R',20]],[['R4','R',80]],[['R5','R',20]]],[[['R6','R',10]]]]},
+{id:'e2q7',n:'Electricity 2 Q7: (20+20+30) ∥ (60 ∥ 40), then 20',V:29.67,note:'Sheet gives I₂ = 0.2 A → V_B ≈ 29.7 V (R₆ = 20 Ω assumed; the sheet lists R₅ twice).',ch:[[[['R1','R',20],['R2','R',20],['R3','R',30]],[['R4','R',60]],[['R5','R',40]]],[[['R6','R',20]]]]},
+{id:'e3',n:'Electricity 3 (NEAP): 100 + (400 ∥ [200+200])',V:6,note:'0.010 A through the 400 Ω means 4 V across the block, so V_B = 6 V.',ch:[[[['R100','R',100]]],[[['R400','R',400]],[['R200a','R',200],['R200b','R',200]]]]},
+{id:'e4',n:'Electricity 4 Q2: 5 + (8 ∥ 12), 30 V',V:30,ch:[[[['R5','R',5]]],[[['R8','R',8]],[['R12','R',12]]]]},
+{id:'e5',n:'Electricity 5 Q2e: 4 + (8 ∥ X) + 4, 12 V',V:12,note:'X = 8 Ω gives 1.0 A, matching the sheet.',ch:[[[['R4a','R',4]]],[[['R8','R',8]],[['X','R',8]]],[[['R4b','R',4]]]]},
+{id:'s2q1',n:'Revision Sheet 2 Q1: 4 + 3 Ω, 14 V',V:14,ch:[[[['R1','R',4]]],[[['R2','R',3]]]]},
+{id:'s2q2',n:'Revision Sheet 2 Q2: 3 ∥ R₂, 12 V, 5 A',V:12,note:'With R₂ = 12 Ω the total current is 5.0 A, as the sheet says.',ch:[[[['R1','R',3]],[['R2','R',12]]]]},
+{id:'s2q3',n:'Revision Sheet 2 Q3: 3 + (3 ∥ 3), 8 A',V:36,ch:[[[['R1','R',3]]],[[['R2','R',3]],[['R3','R',3]]]]},
+{id:'s3q4',n:'Revision Sheet 3 Q4: 15 + 10 Ω, 30 V',V:30,ch:[[[['R2','R',15]]],[[['R1','R',10]]]]},
+{id:'s3q5',n:'Revision Sheet 3 Q5: 6 ∥ 3, 15 V',V:15,ch:[[[['R1','R',6]],[['R2','R',3]]]]},
+{id:'s3q6',n:'Revision Sheet 3 Q6: 6 ∥ 8, 12 V',V:12,ch:[[[['R1','R',6]],[['R2','R',8]]]]},
+{id:'s3q7',n:'Revision Sheet 3 Q7: 6 + (2 ∥ 4), 20 V',V:20,ch:[[[['R1','R',6]]],[[['R2','R',2]],[['R3','R',4]]]]},
+{id:'s3q9',n:'Revision Sheet 3 Q9: 8 ∥ 10, 25 V',V:25,ch:[[[['R1','R',8]],[['R2','R',10]]]]},
+{id:'s3q10',n:'Revision Sheet 3 Q10: (10∥20) + R₃ + (20∥10), 90 V',V:90,ch:[[[['R1','R',10]],[['R2','R',20]]],[[['R3','R',16.67]]],[[['R4','R',20]],[['R5','R',10]]]]},
+{id:'sw1',n:'Quiz Q13–15: switch puzzle (globes I–IV)',V:6,sw:1,note:'Tap switches X, Y and Z. Which globes glow? (Quiz Q13: X only → I and IV.)',ch:[[[['I','L',10]]],[[['X','S',0]]],[[['Y','S',0],['II','L',10]],[['Z','S',0],['III','L',10]],[['IV','L',10]]]]},
+{id:'sw2',n:'Quiz Q11–12: G1, G2, G3 brightness',V:6,sw:1,note:'Close S1 and S2 and compare brightness: G1 is brightest, G2 = G3.',ch:[[[['S1','S',0]]],[[['G1','L',10]]],[[['G2','L',10]],[['S2','S',0],['G3','L',10]]]]},
+{id:'q22',n:'Quiz Q22–23: two 60 Ω globes, 12 V',V:12,ch:[[[['G1','L',60]]],[[['G2','L',60]]]]}];
+/* shared circuit layout + textbook-style SVG */
+function layoutCh(ch,noBat){var TOP=40,CY=225,x=noBat?50:70,items=[],paths=[],blocks=[],ymin=CY,ymax=CY;
+  ch.forEach(function(b,bi){var n=b.length,maxLen=Math.max.apply(null,b.map(function(br){return br.length}));var w=maxLen*96+(n>1?40:0);var xL=x,xR=x+w;
+    var ys=b.map(function(_,i){return CY+(i-(n-1)/2)*Math.min(80,300/n)});ys.forEach(function(y){ymin=Math.min(ymin,y);ymax=Math.max(ymax,y)});blocks.push({xL:xL,xR:xR,ys:ys});
+    b.forEach(function(br,ri){var y=ys[ri];var i0=xL+(n>1?20:0),i1=xR-(n>1?20:0);var slot=(i1-i0)/br.length;
+      br.forEach(function(e,k){items.push({e:e,x:i0+slot*(k+.5),y:y,bi:bi,ri:ri})});paths.push({pts:[[xL,CY],[xL,y],[xR,y],[xR,CY]],bi:bi,ri:ri})});x=xR+40});
+  var xEnd=x-40+30,W=Math.max(noBat?0:680,xEnd+(noBat?20:50));
+  for(var i=0;i<blocks.length-1;i++)paths.push({pts:[[blocks[i].xR,CY],[blocks[i+1].xL,CY]],main:1});
+  paths.push({pts:[[blocks[blocks.length-1].xR,CY],[xEnd,CY]],main:1});
+  if(noBat)paths.push({pts:[[20,CY],[blocks[0].xL,CY]],main:1});else paths.push({pts:[[xEnd,CY],[xEnd,TOP],[30,TOP],[30,CY],[blocks[0].xL,CY]],main:1,bat:1});
+  return{W:W,TOP:TOP,CY:CY,xEnd:xEnd,blocks:blocks,items:items,paths:paths,bx:(30+xEnd)/2,noBat:noBat,y0:noBat?ymin-45:0,y1:Math.max(ymax+48,noBat?0:300)}}
+function lblV(v){return typeof v==='string'?v:sf(v)+' Ω'}
+function circSVG(L,V,o){o=o||{};var h='',K='#1a1a1a';
+  function ln(a,b,c,d){return '<line x1="'+a+'" y1="'+b+'" x2="'+c+'" y2="'+d+'" stroke="'+K+'" stroke-width="2" stroke-linecap="square"/>'}
+  L.paths.forEach(function(p){for(var i=0;i<p.pts.length-1;i++)h+=ln(p.pts[i][0],p.pts[i][1],p.pts[i+1][0],p.pts[i+1][1])});
+  if(L.noBat){h+='<circle cx="20" cy="'+L.CY+'" r="4" fill="#fff" stroke="'+K+'" stroke-width="2"/><circle cx="'+L.xEnd+'" cy="'+L.CY+'" r="4" fill="#fff" stroke="'+K+'" stroke-width="2"/>'}
+  else{var bx=L.bx,T=L.TOP;h+='<rect x="'+(bx-14)+'" y="'+(T-22)+'" width="28" height="44" fill="#fff"/><line x1="'+(bx-6)+'" y1="'+(T-18)+'" x2="'+(bx-6)+'" y2="'+(T+18)+'" stroke="'+K+'" stroke-width="2"/><line x1="'+(bx+6)+'" y1="'+(T-9)+'" x2="'+(bx+6)+'" y2="'+(T+9)+'" stroke="'+K+'" stroke-width="5"/><text x="'+(bx-20)+'" y="'+(T-10)+'" font-size="13">+</text>'+(V?'<text x="'+bx+'" y="'+(T+36)+'" font-size="13" text-anchor="middle" font-weight="600">'+esc(V)+'</text>':'')}
+  L.items.forEach(function(it,k){var e=it.e,x=it.x,y=it.y;h+='<g class="'+(o.live?'part':'')+(o.sel===e[0]?' sel':'')+'" data-k="'+k+'">';
+    if(e[1]==='R')h+='<rect x="'+(x-24)+'" y="'+(y-9)+'" width="48" height="18" fill="#fff" stroke-width="2" stroke="'+K+'" class="body"/>';
+    else if(e[1]==='L')h+=(o.live?'<circle cx="'+x+'" cy="'+y+'" r="30" fill="url(#glow)" opacity="0" id="glow'+k+'"/>':'')+'<circle cx="'+x+'" cy="'+y+'" r="12" fill="#fff" stroke="'+K+'" stroke-width="2" class="body"/><path d="M'+(x-8)+' '+(y-8)+'L'+(x+8)+' '+(y+8)+'M'+(x+8)+' '+(y-8)+'L'+(x-8)+' '+(y+8)+'" stroke="'+K+'" stroke-width="1.6"/>';
+    else{var on=e[2];h+='<rect x="'+(x-24)+'" y="'+(y-26)+'" width="48" height="34" fill="#fff" opacity="'+(o.live?1:1)+'"/><line x1="'+(x-24)+'" y1="'+y+'" x2="'+(x-16)+'" y2="'+y+'" stroke="'+K+'" stroke-width="2"/><line x1="'+(x+16)+'" y1="'+y+'" x2="'+(x+24)+'" y2="'+y+'" stroke="'+K+'" stroke-width="2"/><circle cx="'+(x-16)+'" cy="'+y+'" r="2.6" fill="'+K+'"/><circle cx="'+(x+16)+'" cy="'+y+'" r="2.6" fill="'+K+'"/><line x1="'+(x-16)+'" y1="'+y+'" x2="'+(x+16)+'" y2="'+(on?y:y-16)+'" stroke="'+(o.live?(on?'#15803d':'#b91c1c'):K)+'" stroke-width="2.4" stroke-linecap="round" class="body"/>'}
+    var nm=e[0]?esc(e[0]):'',val=e[1]==='S'?(o.live?(e[2]?' closed':' open'):''):(e[2]===''?'':(nm?' = ':'')+esc(lblV(e[2])));
+    h+='<text x="'+x+'" y="'+(y-(e[1]==='S'?32:17))+'" font-size="12.5" text-anchor="middle" font-weight="600">'+nm+val+'</text>'+(o.live?'<text x="'+x+'" y="'+(y+(e[1]==='L'?29:25))+'" font-size="11" text-anchor="middle" fill="#1d4ed8" id="rd'+k+'"></text>':'')+'</g>'});
+  if(o.caption)h+='<text x="'+(L.W/2)+'" y="'+(L.y1-8)+'" font-size="12.5" text-anchor="middle" fill="#1d4ed8" font-weight="600">'+esc(o.caption)+'</text>';
+  return '<defs><radialGradient id="glow"><stop offset="0" stop-color="#fff7cc"/><stop offset=".45" stop-color="#f59e0b" stop-opacity=".7"/><stop offset="1" stop-color="#f59e0b" stop-opacity="0"/></radialGradient></defs>'+h}
+/* static diagram for questions: spec {ch, V (string|null), cap} */
+function diagram(sp){var L=layoutCh(sp.ch,sp.V===null);var hgt=L.y1-L.y0;return '<div class="qdiag"><svg viewBox="0 '+L.y0+' '+L.W+' '+hgt+'" style="width:100%;max-width:'+Math.min(560,L.W*0.85)+'px;display:block">'+circSVG(L,sp.V,{caption:sp.cap})+'</svg></div>'}
+LABS.circuit=(function(){
+  var cur,raf,last=0,elec=false,ph={},sel=null,orig;
+  function elR(e){return e[1]==='S'?(e[2]?0:Infinity):e[2]}
+  function solve(){var V=cur.V,blocks=cur.ch.map(function(b){var brs=b.map(function(br){var r=0;br.forEach(function(e){r+=elR(e)});return r});var inv=0,zero=0;brs.forEach(function(r){if(r===0)zero++;else if(isFinite(r))inv+=1/r});var R=zero?0:(inv?1/inv:Infinity);return{brs:brs,R:R,zero:zero}});
+    var RT=0;blocks.forEach(function(b){RT+=b.R});var IT=RT===0?Infinity:(isFinite(RT)?V/RT:0);var short=!isFinite(IT);if(short)IT=999;
+    var res={RT:RT,IT:IT,V:V,short:short,el:{},br:[]};
+    blocks.forEach(function(b,bi){var Vb=b.R===0?0:IT*b.R;if(!isFinite(b.R))Vb=V;res.br[bi]=[];
+      b.brs.forEach(function(r,ri){var I;if(b.zero)I=r===0?IT/b.zero:0;else I=isFinite(r)&&r>0?Vb/r:0;if(!isFinite(b.R))I=0;res.br[bi][ri]=I;
+        cur.ch[bi][ri].forEach(function(e){var R=elR(e);var v=isFinite(R)?I*R:(I===0&&isFinite(b.R)?0:Vb);if(e[1]==='S'&&!e[2]){v=isFinite(b.R)?0:Vb;var others=cur.ch[bi][ri].some(function(x){return x!==e&&x[1]==='S'&&!x[2]});if(others)v=Vb/2}res.el[e[0]]={R:R,V:v,I:I,P:isFinite(R)?I*I*R:0,t:e[1]}})})});
+    return res}
+  var L;
+  function layout(){L=layoutCh(cur.ch,false)}
+  function draw(){var s=$('csvg');s.setAttribute('viewBox','0 0 '+L.W+' 390');$('cwrap').style.aspectRatio=L.W+'/390';
+    s.innerHTML=circSVG(L,sf(cur.V)+' V',{live:true,sel:sel});
+    s.querySelectorAll('.part').forEach(function(g){g.onclick=function(){var it=L.items[+g.dataset.k];if(it.e[1]==='S'){it.e[2]=it.e[2]?0:1;draw();update()}else{sel=sel===it.e[0]?null:it.e[0];draw();update()}}})}
+  var res;
+  function update(){res=solve();var pmax=0;L.items.forEach(function(it){if(it.e[1]==='L')pmax=Math.max(pmax,res.el[it.e[0]].P)});
+    L.items.forEach(function(it,k){var r=res.el[it.e[0]];var d=$('rd'+k);if(d)d.textContent=it.e[1]==='S'?'':sf(r.V)+' V · '+sf(r.I)+' A';var g=$('glow'+k);if(g)g.setAttribute('opacity',pmax>1e-9?Math.min(1,0.15+0.85*r.P/pmax)*(r.P>1e-9?1:0):0)});
+    var tb='<table><tr><th>Part</th><th>R (Ω)</th><th>V (V)</th><th>I (A)</th><th>P (W)</th></tr>';
+    L.items.forEach(function(it){var e=it.e,r=res.el[e[0]];if(e[1]==='S')return;tb+='<tr style="'+(sel===e[0]?'background:var(--warnbg)':'')+'"><td><b>'+esc(e[0])+'</b>'+(e[1]==='L'?' <span class="mute small">globe</span>':'')+'</td><td>'+sf(r.R)+'</td><td>'+sf(r.V)+'</td><td>'+sf(r.I)+'</td><td>'+sf(r.P)+'</td></tr>'});
+    $('cTable').innerHTML=tb+'</table>';
+    $('cTotals').innerHTML=(res.short?'<div class="note bad">⚠ Short circuit! Current would be huge, so a fuse should blow.</div>':'')+'<div class="grid" style="grid-template-columns:repeat(4,1fr);gap:8px"><div><div class="mute small">V_B</div><div class="stat" style="font-size:1.3rem">'+sf(cur.V)+' V</div></div><div><div class="mute small">R_T</div><div class="stat" style="font-size:1.3rem">'+(isFinite(res.RT)?sf(res.RT)+' Ω':'∞')+'</div></div><div><div class="mute small">I_T</div><div class="stat" style="font-size:1.3rem">'+(res.short?'∞':sf(res.IT)+' A')+'</div></div><div><div class="mute small">P_T</div><div class="stat" style="font-size:1.3rem">'+(res.short?'∞':sf(res.IT*cur.V)+' W')+'</div></div></div>';
+    $('cStepsCard').style.display=cur.sw?'none':'';if(!cur.sw)$('cSteps').textContent=steps()}
+  function steps(){var out=[],bs=[];cur.ch.forEach(function(b,bi){var names=b.map(function(br){return br.map(function(e){return e[0]}).join('+')});var brR=b.map(function(br){return br.reduce(function(a,e){return a+e[2]},0)});
+      b.forEach(function(br,ri){if(br.length>1)out.push(names[ri]+' (series) = '+br.map(function(e){return sf(e[2])}).join(' + ')+' = '+sf(brR[ri])+' Ω')});
+      if(b.length>1){var inv=brR.reduce(function(a,r){return a+1/r},0);out.push('1/R = '+brR.map(function(r){return '1/'+sf(r)}).join(' + ')+' → R = '+sf(1/inv)+' Ω  ('+names.join(' ∥ ')+')');bs.push({nm:'('+names.join('∥')+')',R:1/inv})}
+      else bs.push({nm:names[0],R:brR[0]})});
+    var RT=bs.reduce(function(a,b){return a+b.R},0);
+    out.push(bs.length>1?'R_T = '+bs.map(function(b){return sf(b.R)}).join(' + ')+' = '+sf(RT)+' Ω':'R_T = '+sf(RT)+' Ω');
+    var IT=cur.V/RT;out.push('I_T = V_B / R_T = '+sf(cur.V)+' / '+sf(RT)+' = '+sf(IT)+' A','');
+    cur.ch.forEach(function(b,bi){var Vb=IT*bs[bi].R;if(b.length===1&&b[0].length===1){var e=b[0][0];out.push('V_'+e[0]+' = I_T × R = '+sf(IT)+' × '+sf(e[2])+' = '+sf(Vb)+' V')}
+      else{out.push('Block '+bs[bi].nm+': V = '+sf(IT)+' × '+sf(bs[bi].R)+' = '+sf(Vb)+' V');b.forEach(function(br){var r=br.reduce(function(a,e){return a+e[2]},0),I=Vb/r;out.push('  I through '+br.map(function(e){return e[0]}).join('+')+' = '+sf(Vb)+' / '+sf(r)+' = '+sf(I)+' A');if(br.length>1)br.forEach(function(e){out.push('    V_'+e[0]+' = '+sf(I)+' × '+sf(e[2])+' = '+sf(I*e[2])+' V')})})}});
+    out.push('','Powers (P = VI):');cur.ch.forEach(function(b,bi){var Vb=IT*bs[bi].R;b.forEach(function(br){var r=br.reduce(function(a,e){return a+e[2]},0),I=b.length===1?IT:Vb/r;br.forEach(function(e){out.push('  P_'+e[0]+' = '+sf(I*I*e[2])+' W')})})});
+    out.push('P_T = V_B × I_T = '+sf(cur.V)+' × '+sf(IT)+' = '+sf(cur.V*IT)+' W');return out.join('\n')}
+  function sliders(){var h='<div class="sl"><b>V_B</b><input type="range" min="1" max="'+Math.max(100,cur.V*2)+'" step="0.5" value="'+cur.V+'" data-v="1"><input type="number" step="any" value="'+cur.V+'" data-vn="1"></div>';
+    var k=0;cur.ch.forEach(function(b){b.forEach(function(br){br.forEach(function(e){if(e[1]!=='S')h+='<div class="sl"><b>'+esc(e[0])+'</b><input type="range" min="1" max="'+Math.max(200,e[2]*3)+'" step="0.5" value="'+e[2]+'" data-e="'+e[0]+'"><input type="number" step="any" value="'+e[2]+'" data-en="'+e[0]+'"></div>'})})});
+    $('cSliders').innerHTML=h;
+    function find(n){var f;cur.ch.forEach(function(b){b.forEach(function(br){br.forEach(function(e){if(e[0]===n)f=e})})});return f}
+    $('cSliders').querySelectorAll('input').forEach(function(inp){inp.oninput=function(){var v=parseFloat(inp.value);if(!(v>0))return;
+      if(inp.dataset.v||inp.dataset.vn){cur.V=v;$('cSliders').querySelector('[data-'+(inp.dataset.v?'vn':'v')+']').value=v}
+      else{var n=inp.dataset.e||inp.dataset.en;find(n)[2]=v;$('cSliders').querySelector(inp.dataset.e?'[data-en="'+n+'"]':'[data-e="'+n+'"]').value=v;draw()}update()}})}
+  function load(id){var p=CPRE.filter(function(x){return x.id===id})[0]||CPRE[0];cur=JSON.parse(JSON.stringify(p));orig=p;sel=null;ph={};
+    $('cPreset').value=p.id;$('cNote').style.display=p.note?'':'none';$('cNote').textContent=p.note||'';layout();draw();sliders();update()}
+  function frame(t){raf=requestAnimationFrame(frame);var dt=Math.min(0.05,(t-last)/1000||0);last=t;var c=$('ccan');var w=c.clientWidth,h=c.clientHeight;if(!w)return;var dpr=window.devicePixelRatio||1;
+    if(c.width!==Math.round(w*dpr)){c.width=Math.round(w*dpr);c.height=Math.round(h*dpr)}var g=c.getContext('2d');g.setTransform(1,0,0,1,0,0);g.clearRect(0,0,c.width,c.height);
+    var sc=Math.min(w/L.W,h/390);var ox=(w-L.W*sc)/2,oy=(h-390*sc)/2;g.setTransform(sc*dpr,0,0,sc*dpr,ox*dpr,oy*dpr);
+    var Iref=Math.max(1e-6,res.short?1:res.IT);g.fillStyle=elec?'#2563eb':'#d97706';
+    L.paths.forEach(function(p,pi){var I=p.main?(res.short?Iref*3:res.IT):res.br[p.bi][p.ri];if(!(I>1e-7))return;var sp=Math.max(8,Math.min(320,70*I/Iref));ph[pi]=((ph[pi]||0)+sp*dt)%22;
+      var seg=[],tot=0;for(var i=0;i<p.pts.length-1;i++){var a=p.pts[i],b=p.pts[i+1];var l=Math.hypot(b[0]-a[0],b[1]-a[1]);seg.push([a,b,l]);tot+=l}
+      for(var d=ph[pi];d<tot;d+=22){var dd=elec?tot-d:d,acc=0;for(var j=0;j<seg.length;j++){if(dd<=acc+seg[j][2]){var f=(dd-acc)/seg[j][2];g.beginPath();g.arc(seg[j][0][0]+(seg[j][1][0]-seg[j][0][0])*f,seg[j][0][1]+(seg[j][1][1]-seg[j][0][1])*f,3.2,0,7);g.fill();break}acc+=seg[j][2]}}})}
+  return{init:function(){$('cPreset').innerHTML=CPRE.map(function(p){return '<option value="'+p.id+'">'+esc(p.n)+'</option>'}).join('');$('cPreset').onchange=function(){load(this.value)};
+      $('cReset').onclick=function(){load(cur.id)};document.querySelectorAll('#flowSeg button').forEach(function(b){b.onclick=function(){elec=b.dataset.f==='elec';document.querySelectorAll('#flowSeg button').forEach(function(x){x.classList.toggle('on',x===b)})}});load('e2q4')},
+    start:function(){if(PENDING_LAB&&PENDING_LAB.circuit){load(PENDING_LAB.circuit);PENDING_LAB=null}cancelAnimationFrame(raf);raf=requestAnimationFrame(frame)},stop:function(){cancelAnimationFrame(raf)}}
+})();
+
+/* ===== Graph Lab ===== */
+LABS.graph=(function(){
+  var SETS={s1:['Revision Sheet 1 Q9','3.0,0.151\n6.0,0.310\n9.0,0.448\n12.0,0.511\n15.0,0.750'],e4:['Electricity 4 Q1d','0,0\n2,1\n4,2\n6,3'],q19:['Quiz Q19–20 graph','0,0\n2,1\n4,2\n6,3'],fil:['Filament globe (non-ohmic)','0,0\n1,0.30\n2,0.45\n4,0.62\n6,0.74\n8,0.83\n10,0.90'],own:['Your own data','']};
+  var pts=[],ex={},fitR=0;
+  function parse(){pts=[];$('gData').value.split('\n').forEach(function(l){var p=l.split(/[,\s]+/).map(parseFloat);if(p.length>=2&&isFinite(p[0])&&isFinite(p[1]))pts.push({V:p[0],I:p[1]})});ex={};plot()}
+  function plot(){var c=$('gPlot'),w=c.clientWidth,h=c.clientHeight;if(!w)return;var dpr=window.devicePixelRatio||1;c.width=w*dpr;c.height=h*dpr;var g=c.getContext('2d');g.scale(dpr,dpr);
+    var m={l:56,r:16,t:16,b:44},Imax=Math.max(0.1,Math.max.apply(null,pts.map(function(p){return p.I}).concat([0])))*1.15,Vmax=Math.max(1,Math.max.apply(null,pts.map(function(p){return p.V}).concat([0])))*1.15;
+    var X=function(I){return m.l+I/Imax*(w-m.l-m.r)},Y=function(V){return h-m.b-V/Vmax*(h-m.t-m.b)};
+    g.strokeStyle='#e7e3da';g.fillStyle='#6b6b6b';g.font='11px Inter';g.lineWidth=1;
+    for(var i=0;i<=5;i++){var iv=Imax*i/5,vv=Vmax*i/5;g.beginPath();g.moveTo(X(iv),Y(0));g.lineTo(X(iv),m.t);g.moveTo(m.l,Y(vv));g.lineTo(w-m.r,Y(vv));g.stroke();g.textAlign='center';g.fillText(sf(iv,2),X(iv),h-m.b+16);g.textAlign='right';g.fillText(sf(vv,2),m.l-6,Y(vv)+4)}
+    g.fillStyle='#1a1a1a';g.textAlign='center';g.fillText('Current I (A)',(m.l+w-m.r)/2,h-8);g.save();g.translate(14,(m.t+h-m.b)/2);g.rotate(-Math.PI/2);g.fillText('Voltage V (V)',0,0);g.restore();
+    var use=pts.filter(function(p,i){return !ex[i]}),orig=$('gOrigin').checked,a=0,b=0;
+    if(use.length>=2){if(orig){var sxy=0,sxx=0;use.forEach(function(p){sxy+=p.I*p.V;sxx+=p.I*p.I});a=sxy/sxx;b=0}else{var n=use.length,sx=0,sy=0,sxy2=0,sxx2=0;use.forEach(function(p){sx+=p.I;sy+=p.V;sxy2+=p.I*p.V;sxx2+=p.I*p.I});a=(n*sxy2-sx*sy)/(n*sxx2-sx*sx);b=(sy-a*sx)/n}
+      g.strokeStyle='#1d4ed8';g.lineWidth=2;g.beginPath();g.moveTo(X(0),Y(b));g.lineTo(X(Imax),Y(a*Imax+b));g.stroke();
+      var i1=Imax*0.25,i2=Imax*0.75;g.strokeStyle='#b45309';g.setLineDash([5,4]);g.lineWidth=1.5;g.beginPath();g.moveTo(X(i1),Y(a*i1+b));g.lineTo(X(i2),Y(a*i1+b));g.lineTo(X(i2),Y(a*i2+b));g.stroke();g.setLineDash([]);
+      g.fillStyle='#b45309';g.textAlign='center';g.fillText('ΔI = '+sf(i2-i1,2),X((i1+i2)/2),Y(a*i1+b)+15);g.textAlign='left';g.fillText('ΔV = '+sf(a*(i2-i1),2),X(i2)+6,Y(a*(i1+i2)/2+b))}
+    pts.forEach(function(p,i){g.beginPath();g.arc(X(p.I),Y(p.V),6,0,7);g.fillStyle=ex[i]?'#fde2e2':'#15803d';g.strokeStyle=ex[i]?'#b91c1c':'#fff';g.lineWidth=2;g.fill();g.stroke()});
+    fitR=a;var curve=pts.length>=3&&use.length>=3&&(function(){var r=use.map(function(p){return p.I>0?p.V/p.I:null}).filter(function(x){return x});var mn=Math.min.apply(null,r),mx=Math.max.apply(null,r);return mx/mn>1.6})();
+    $('gWork').textContent=use.length<2?'Need at least 2 points.':'Line of best fit'+(orig?' (through origin)':'')+':\ngradient = ΔV / ΔI = '+sf(a)+' V/A\n∴ R = '+sf(a)+' Ω'+(curve?'\n\nThe points curve, so V/I is not constant. This is NON-OHMIC (e.g. a filament heating up).':'\n\nStraight line through the origin, so it is OHMIC.')+(Object.keys(ex).length?'\n('+Object.keys(ex).length+' point(s) excluded as outliers)':'\nTap a point to exclude it as an outlier.');
+    c.onclick=function(e){var r=c.getBoundingClientRect(),mx=e.clientX-r.left,my=e.clientY-r.top;pts.forEach(function(p,i){if(Math.hypot(X(p.I)-mx,Y(p.V)-my)<12){ex[i]=!ex[i];if(!ex[i])delete ex[i];plot()}})}}
+  function set(k){$('gSet').value=k;$('gData').value=SETS[k][1];parse()}
+  return{init:function(){$('gSet').innerHTML=Object.keys(SETS).map(function(k){return '<option value="'+k+'">'+SETS[k][0]+'</option>'}).join('');$('gSet').onchange=function(){set(this.value)};$('gPlotBtn').onclick=parse;$('gOrigin').onchange=plot;window.addEventListener('resize',function(){if(curTab==='graph')plot()});set('s1')},
+    start:function(){if(PENDING_LAB&&PENDING_LAB.graph){set(PENDING_LAB.graph);PENDING_LAB=null}else plot()}}
+})();
+
+/* ===== Static lab ===== */
+LABS.static=(function(){
+  var rodE=[],clothE=[],moved=0,near=false,raf,paper=[];
+  function init(){var s=$('ssvg');rodE=[];clothE=[];moved=0;near=false;
+    for(var i=0;i<10;i++){rodE.push({x:120+i*24,y:118,tx:120+i*24,ty:118})}
+    for(var j=0;j<14;j++){clothE.push({x:90+(j%7)*36,y:236+Math.floor(j/7)*28,tx:0,ty:0,mv:false});clothE[j].tx=clothE[j].x;clothE[j].ty=clothE[j].y}
+    paper=[];for(var k=0;k<6;k++)paper.push({x:470+k*28,y:300,ty:300});render()}
+  function render(){var h='<rect x="100" y="100" width="260" height="36" rx="8" fill="#7c3aed" opacity=".55"/><text x="230" y="92" text-anchor="middle" font-size="13" font-weight="600">Plastic ruler</text>';
+    h+='<rect x="70" y="214" width="280" height="80" rx="16" fill="#be123c" opacity=".45"/><text x="210" y="316" text-anchor="middle" font-size="13" font-weight="600">Woollen jumper</text>';
+    for(var i=0;i<10;i++)h+='<text x="'+(122+i*24)+'" y="'+(i%2?126:130)+'" font-size="15" fill="#b91c1c" text-anchor="middle">+</text>';
+    for(var j=0;j<14;j++)h+='<text x="'+(108+(j%7)*36)+'" y="'+(244+Math.floor(j/7)*28)+'" font-size="15" fill="#b91c1c" text-anchor="middle">+</text>';
+    rodE.concat(clothE).forEach(function(e){h+='<circle cx="'+e.x+'" cy="'+e.y+'" r="7" fill="#2563eb"/><text x="'+e.x+'" y="'+(e.y+4)+'" font-size="11" text-anchor="middle" fill="#fff" font-weight="700">−</text>'});
+    paper.forEach(function(p){h+='<rect x="'+(p.x-9)+'" y="'+(p.y-5)+'" width="18" height="10" fill="#fff" stroke="#888" transform="rotate('+((p.x*7)%30-15)+' '+p.x+' '+p.y+')"/>'});
+    if(near)h+='<rect x="450" y="112" width="200" height="30" rx="6" fill="#7c3aed" opacity=".55"/><text x="550" y="104" text-anchor="middle" font-size="12">charged ruler</text>';h+='<text x="555" y="340" text-anchor="middle" font-size="12" fill="#6b6b6b">paper bits</text>';
+    var rc=moved,cc=-moved;h+='<text x="380" y="124" font-size="14" font-weight="700" fill="'+(rc?'#2563eb':'#6b6b6b')+'">charge: '+(rc?'−'+rc:'0 (neutral)')+'</text><text x="370" y="262" font-size="14" font-weight="700" fill="'+(cc?'#b91c1c':'#6b6b6b')+'">charge: '+(cc?'+'+(-cc):'0 (neutral)')+'</text>';
+    $('ssvg').innerHTML=h;
+    $('sInfo').innerHTML='<b>What\'s happening</b><p class="small">'+(moved===0?'Both objects are neutral: equal numbers of + (protons) and − (electrons).':near?'The negative ruler repels electrons in the paper to the far side. The near side is left slightly positive, so the paper is pulled up: <b>electrostatic attraction</b>.':'<b>'+moved+' electrons</b> have moved from the jumper to the ruler. Ruler: <b>negative</b> (gained electrons). Jumper: <b>positive</b> (lost electrons). The + charges never moved.')+'</p>'}
+  function anim(){var go=false;rodE.concat(clothE).forEach(function(e){var dx=e.tx-e.x,dy=e.ty-e.y;if(Math.abs(dx)+Math.abs(dy)>0.5){e.x+=dx*0.12;e.y+=dy*0.12;go=true}});paper.forEach(function(p){var d=p.ty-p.y;if(Math.abs(d)>0.5){p.y+=d*0.1;go=true}});render();if(go)raf=requestAnimationFrame(anim)}
+  function rub(){var left=clothE.filter(function(e){return !e.mv});if(!left.length)return;var n=Math.min(3,left.length);
+    for(var i=0;i<n;i++){var e=left[i];e.mv=true;moved++;e.tx=110+((moved*37)%240);e.ty=106+((moved*13)%26);rodE.push(e);clothE.splice(clothE.indexOf(e),1)}
+    cancelAnimationFrame(raf);anim()}
+  function bring(){if(!moved){$('sInfo').innerHTML+='<p class="small mute">Rub the ruler first, as a neutral ruler won\'t attract anything.</p>';return}near=!near;paper.forEach(function(p,i){p.ty=near?150+((i*17)%30):300});
+    $('sNear').textContent=near?'Move ruler away':'Bring ruler to paper';cancelAnimationFrame(raf);anim()}
+  return{init:function(){$('sRub').onclick=rub;$('sNear').onclick=bring;$('sReset').onclick=function(){$('sNear').textContent='Bring ruler to paper';init()};init()}}
+})();
+
+/* ===== diagrams attached to questions ===== */
+function rr(n,v){return [n,'R',v]}
+function SER(){return Array.prototype.map.call(arguments,function(e){return [[Array.isArray(e)?e:rr('',e)]]})}
+function PAR(){return [Array.prototype.map.call(arguments,function(e){return Array.isArray(e[0])?e:[Array.isArray(e)?e:rr('',e)]})]}
+var QVIS={
+'Electricity 1|1a':{V:null,ch:SER(130,20)},'Electricity 1|1b':{V:null,ch:SER(5,71,143)},'Electricity 1|1c':{V:null,ch:PAR(10,10)},'Electricity 1|1d':{V:null,ch:PAR(90,90,90)},
+'Electricity 1|1e':{V:null,ch:PAR(10,40)},'Electricity 1|1f':{V:null,ch:PAR(40,40,40)},'Electricity 1|1g':{V:null,ch:PAR(10,190)},'Electricity 1|1h':{V:null,ch:PAR(50,60,90)},
+'Electricity 1|1i':{V:null,ch:SER(70).concat(PAR(90,10))},'Electricity 1|1j':{V:null,ch:SER(80).concat(PAR(70,40))},
+'Electricity 2|1':{V:'V_B = 9 V',ch:SER(rr('R1',20),rr('R2',30),rr('R3',50))},'Electricity 2|2':{V:'V_B = 15 V',ch:PAR(rr('R1',80),rr('R2',80))},'Electricity 2|3':{V:'V_B = 15 V',ch:PAR(rr('R1',40),rr('R2',160))},
+'Electricity 2|4':{V:'V_B = ?',cap:'I_T = 0.4 A',ch:SER(rr('R1',70)).concat(PAR(rr('R2',40),rr('R3',40)))},'Electricity 2|5':{V:'V_B = ?',cap:'I_T = 0.3 A',ch:SER(rr('R1',24)).concat(PAR(rr('R2',20),rr('R3',80)))},
+'Electricity 2|6':{V:'V_B = ?',cap:'I₄ = 0.15 A',ch:[[[rr('R1',10),rr('R2',10),rr('R3',20)],[rr('R4',80)],[rr('R5',20)]],[[rr('R6',10)]]]},
+'Electricity 2|7':{V:'V_B = ?',cap:'I₂ = 0.2 A (left branch)',ch:[[[rr('R1',20),rr('R2',20),rr('R3',30)],[rr('R4',60)],[rr('R5',40)]],[[rr('R6',20)]]]},
+'Electricity 4|2a':{V:'30 V',ch:SER(5).concat(PAR(8,12))},'Electricity 4|2b':{V:'30 V',ch:SER(5).concat(PAR(8,12))},'Electricity 4|2c':{V:'30 V',ch:SER(5).concat(PAR(8,12))},
+'Electricity 5|2b':{V:'',cap:'V across A = 2.0 V',ch:SER(rr('A',''),rr('B',''))},'Electricity 5|2c':{V:'',cap:'V across A = 2.0 V',ch:PAR(rr('A',''),rr('B',''))},'Electricity 5|2d':{V:'',cap:'V across A = 2.0 V',ch:PAR(rr('A',''),rr('B',''))},
+'Electricity 5|2e':{V:'12.0 V',cap:'Current through the 4.0 Ω resistors = 1.0 A',ch:SER(4).concat(PAR(8,rr('X','?')),SER(4))},
+'Revision Sheet 2|1':{V:'14 V',ch:SER(rr('R1',4),rr('R2',3))},'Revision Sheet 2|2':{V:'12 V',cap:'I = 5.0 A',ch:PAR(rr('R1',3),rr('R2','?'))},'Revision Sheet 2|3':{V:'V = ?',cap:'I = 8.0 A',ch:SER(rr('R1',3)).concat(PAR(rr('R2',3),rr('R3',3)))},
+'Revision Sheet 2|4':{V:'40.0 V',cap:'I = 3.3 A in R₂\'s branch',ch:PAR(rr('R1',6),rr('R2','?'))},'Revision Sheet 2|5':{V:'',cap:'I₃ = ? (main line)',ch:PAR(rr('I₁ = 2.1 A',''),rr('I₂ = 1.5 A',''))},
+'Revision Sheet 2|6':{V:'12.0 V',ch:SER(rr('V₁ = 8.0 V',''),rr('V₂ = ?',''))},'Revision Sheet 2|7':{V:'45.0 V',ch:SER(rr('V₁ = 11.0 V','')).concat(PAR(rr('V₂ = ?',''),rr('V₃ = ?','')))},'Revision Sheet 2|8':{V:'',ch:SER(rr('R1',15),rr('R2',20))},
+'Revision Sheet 3|1':{V:'',ch:PAR(rr('R1',6),rr('R2',8))},'Revision Sheet 3|2':{V:'',ch:SER(rr('R1',2)).concat(PAR(rr('R2',3),rr('R3',6)))},'Revision Sheet 3|3':{V:null,ch:PAR(2,4,8)},
+'Revision Sheet 3|4':{V:'30.0 V',ch:SER(rr('R2',15),rr('R1',10))},'Revision Sheet 3|5':{V:'15.0 V',ch:PAR(rr('R1',6),rr('R2',3))},'Revision Sheet 3|6':{V:'12.0 V',ch:PAR(rr('R1',6),rr('R2',8))},
+'Revision Sheet 3|7':{V:'20.0 V',ch:SER(rr('R1',6)).concat(PAR(rr('R2',2),rr('R3',4)))},'Revision Sheet 3|8':{V:'V = ?',cap:'I = 8.0 A',ch:SER(rr('R1',2),rr('R2',2.5),rr('R3',3))},
+'Revision Sheet 3|9':{V:'25.0 V',ch:PAR(rr('R1',8),rr('R2',10))},'Revision Sheet 3|10':{V:'90 V',cap:'I₁ = 3.0 A',ch:PAR(rr('R1',10),rr('R2',20)).concat(SER(rr('R3','?')),PAR(rr('R4',20),rr('R5',10)))}};
+['1','2','3'].forEach(function(q){QVIS['Electricity 3|'+q]={V:'',cap:'Ammeter: 0.010 A through the 400 Ω',ch:SER(100).concat(PAR(400,[rr('',200),rr('',200)]))}});
+function sw1(x,y,z){return [[[['I','L',10]]],[[['X','S',x]]],[[['Y','S',y],['II','L',10]],[['Z','S',z],['III','L',10]],[['IV','L',10]]]]}
+var QZVIS={4:{V:'',cap:'2 A through the 5 Ω',ch:SER(5,10)},7:{V:'',ch:[[[['S1','S',1]]],[[['G1','L',10]]],[[['G2','L',10]],[['S2','S',1],['G3','L',10]]]]},8:{V:'',cap:'X closed · Y, Z open',ch:sw1(1,0,0)},9:{V:'',cap:'Y closed · X, Z open',ch:sw1(0,1,0)},10:{V:'',cap:'X, Z closed · Y open',ch:sw1(1,0,1)},
+15:{V:'12 V',ch:[[[['','L','60 Ω']]],[[['','L','60 Ω']]]]},16:{V:'12 V',ch:[[[['','L','60 Ω']]],[[['','L','60 Ω']]]]},17:{V:'12 V',ch:SER(2).concat(PAR(2,2))},18:{V:'24 V',ch:SER(rr('R1',4),rr('R2',8))}};
+
+/* ===== sheet questions with the answer-sheet answers ===== */
+var SHEETS=[
+{n:'Astronomy 1',t:'a',qs:[
+['1','What is the difference between mass and weight?',2,'Mass is a measure of the amount of matter in a body. It is constant no matter which planet the object is on.\nWeight is a force determined by both the mass of an object and the gravitational force on the body. An object\'s mass remains constant, while the weight of an object depends on the planet/moon it is on.'],
+['2','Is there gravity between (a) planets; (b) stars?',2,'a. Yes. Determined as gravitational force F = G×M_A×M_B / R²\nb. Yes. Same as above.'],
+['3a','Calculate the weight of a 15 kg dog on Earth.',2,'Fw = m × g = 15 × 9.8 = 147 N'],
+['3b','Calculate the weight of a 90 kg person on the Moon (g = 1.6 N/kg).',2,'Fw = m × g = 90 × 1.6 = 144 N'],
+['3c','Calculate the weight of a 1.5 t vehicle on Planet X (g = 7.4 N/kg).',2,'Fw = 1500 × 7.4 = 11 100 N'],
+['4a','Calculate the gravitational force of attraction between the Sun and Mercury. (G = 6.67×10⁻¹¹ N m² kg⁻²)',3,'Fg = G M_A M_B / R²\n= 6.67×10⁻¹¹ × 1.99×10³⁰ × 0.330×10²⁴ / (57.9×10⁹)²\n= 4.38×10⁴³ / 3.352×10²¹\n= 1.3×10²² N',null,'g:Sun–Mercury'],
+['4b','Calculate the gravitational force between Earth and Mars at closest positions.',3,'Fg = 6.67×10⁻¹¹ × 5.97×10²⁴ × 0.642×10²⁴ / ([227.9 − 149.6]×10⁹)²\n= 207.30×10⁵⁴ / 46.24×10⁴⁰ = 4.48×10¹⁴ N','The written working uses the black-hole numbers from 4c. With Earth and Mars values: 2.556×10³⁸ / (78.3×10⁹)² = 4.17×10¹⁶ N. Check with your teacher.','g:Earth–Mars (closest)'],
+['4c','Calculate the gravitational force between a 4.2×10³⁴ kg black hole and a pulsar of mass 7.4×10³¹ kg, 6.8×10²⁰ m away.',3,'Fg = 6.67×10⁻¹¹ × 4.2×10³⁴ × 7.4×10³¹ / (6.8×10²⁰)²\n= 207.30×10⁵⁴ / 46.24×10⁴⁰\n= 4.48×10¹⁴ N',null,'g:Black hole–pulsar'],
+['5a','Calculate the strength of Earth\'s gravitational field at an altitude of 5000 km.',3,'(R = radius of Earth + radius of orbit, in metres)\ng = G×M/R² = 6.67×10⁻¹¹ × 5.97×10²⁴ / (6.378×10⁶ + 5.00×10⁶)²\n= 39.82×10¹³ / 129.46×10¹² = 3.07 N/kg',null,'grav:Earth'],
+['5b','Calculate the strength of the Moon\'s gravitational field at an altitude of 5000 km.',3,'g = 6.67×10⁻¹¹ × 0.073×10²⁴ / (1.74×10⁶ + 5.00×10⁶)²\n= 4.87×10¹² / 45.43×10¹² = 0.107 N/kg',null,'grav:Moon'],
+['5c','Calculate the strength of Jupiter\'s gravitational field at an altitude of 5000 km.',3,'g = 6.67×10⁻¹¹ × 1899×10²⁴ / (71.492×10⁶ + 5.00×10⁶)²\n= 12.666×10¹³ / 5850.7×10¹² = 21.6 N/kg',null,'grav:Jupiter'],
+['6a','How far does light travel (c = 3.00×10⁸ m/s) through the vacuum of space in 1 microsecond?',2,'1 μs = 1×10⁻⁶ s\ns = v×t = 3.00×10⁸ × 10⁻⁶ = 300 m'],
+['6b','How far does light travel in 3.4 minutes?',2,'3.4 min = 3.4 × 60 = 204 s\ns = v×t = 3.00×10⁸ × 204 = 6.12×10¹⁰ m'],
+['6c','How far does light travel in 2.8 days?',2,'2.8 days = 67.2 h = 4032 min = 241 920 s\ns = 3.00×10⁸ × 241 920 = 7.26×10¹³ m'],
+['6d','How far does light travel in 1 year?',2,'1 year = 365.25 days = 8766 h = 525 960 min = 31 557 600 s\ns = 3.00×10⁸ × 31 557 600 = 9.47×10¹⁵ m'],
+['7a','A star 172 light-years from us goes supernova. How long will it take for this event to be apparent to us?',1,'The definition of a light-year is the distance light travels in 1 year. If the supernova is 172 ly away, it would take 172 years before we saw it.'],
+['7b','How far (in metres, to 3 sig figs) is this supernova from us?',2,'172 years = 172 × 365.25 × 24 × 60 × 60 = 5.43×10⁹ s\ns = 5.43×10⁹ × 3.0×10⁸ = 1.63×10¹⁸ m'],
+['8','Explain why some stars eventually become black holes and others neutron stars or white dwarfs.',3,'The fate of the star depends on their mass. The bigger stars (for example 5 times the mass of our Sun) become black holes. The stars that are least massive (less than 1.5 times our Sun) become white dwarfs. Stars in between become neutron stars.','"Depends on mass" is the key point. The 1.5 and 5 numbers describe the leftover core. Whole stars need about 8+ Suns for a neutron star and about 20+ for a black hole.','stars']]},
+{n:'Electricity 1',t:'e',qs:[
+['1a','Effective resistance: 130 Ω and 20 Ω in series.',1,'R_T = 130 + 20 = 150 Ω (series)'],
+['1b','Effective resistance: 5 Ω, 71 Ω and 143 Ω in series.',1,'R_T = 5 + 71 + 143 = 219 Ω (series)'],
+['1c','Effective resistance: 10 Ω and 10 Ω in parallel.',2,'1/R_T = 1/10 + 1/10 → R_T = (2/10)⁻¹ = 5 Ω'],
+['1d','Effective resistance: three 90 Ω in parallel.',2,'1/R_T = 1/90 + 1/90 + 1/90 → R_T = (3/90)⁻¹ = 30 Ω'],
+['1e','Effective resistance: 10 Ω and 40 Ω in parallel.',2,'1/R_T = 1/10 + 1/40 = (4+1)/40 → R_T = (5/40)⁻¹ = 8 Ω'],
+['1f','Effective resistance: three 40 Ω in parallel.',2,'1/R_T = 3/40 → R_T = 40/3 = 13.3 Ω'],
+['1g','Effective resistance: 10 Ω and 190 Ω in parallel.',2,'1/R_T = 1/10 + 1/190 = (19+1)/190 → R_T = (20/190)⁻¹ = 9.5 Ω'],
+['1h','Effective resistance: 50 Ω, 60 Ω and 90 Ω in parallel.',2,'1/R_T = 1/50 + 1/60 + 1/90 = (90+75+50)/4500 → R_T = 20.93 Ω'],
+['1i','Effective resistance: 70 Ω in series with (90 Ω ∥ 10 Ω).',2,'R_T = 70 + (1/90 + 1/10)⁻¹ = 70 + (10/90)⁻¹ = 70 + 9 = 79 Ω'],
+['1j','Effective resistance: 80 Ω in series with (70 Ω ∥ 40 Ω).',2,'R_T = 80 + (1/70 + 1/40)⁻¹ = 80 + (110/2800)⁻¹ = 80 + 25.45 = 105.45 Ω']]},
+{n:'Electricity 2',t:'e',none:true,qs:[
+['1','9 V battery with R₁ = 20 Ω, R₂ = 30 Ω, R₃ = 50 Ω in series. Find R_T, I_T, V_R1, V_R2, V_R3, P_B, P_R1, P_R2, P_R3, P_T.',6,'R_T = 20 + 30 + 50 = 100 Ω\nI_T = 9/100 = 0.09 A\nV_R1 = 1.8 V, V_R2 = 2.7 V, V_R3 = 4.5 V\nP_R1 = 0.162 W, P_R2 = 0.243 W, P_R3 = 0.405 W\nP_B = P_T = 9 × 0.09 = 0.81 W',null,'c:e2q1'],
+['2','15 V battery, R₁ = 80 Ω ∥ R₂ = 80 Ω. Find R_T, I_T, V_R1, V_R2, I₁, I₂, P_B, P_R1, P_R2, P_T.',6,'R_T = 80/2 = 40 Ω\nI_T = 15/40 = 0.375 A\nV_R1 = V_R2 = 15 V\nI₁ = I₂ = 15/80 = 0.1875 A\nP_R1 = P_R2 = 15 × 0.1875 = 2.81 W\nP_B = P_T = 15 × 0.375 = 5.63 W',null,'c:e2q2'],
+['3','15 V battery, R₁ = 40 Ω ∥ R₂ = 160 Ω. Find R_T, I_T, V_R1, V_R2, I₁, I₂, P_B, P_R1, P_R2, P_T.',6,'R_T = (1/40 + 1/160)⁻¹ = 32 Ω\nI_T = 15/32 = 0.469 A\nV_R1 = V_R2 = 15 V\nI₁ = 15/40 = 0.375 A, I₂ = 15/160 = 0.0938 A\nP_R1 = 5.63 W, P_R2 = 1.41 W\nP_B = P_T = 7.03 W',null,'c:e2q3'],
+['4','I_T = 0.4 A, R₁ = 70 Ω in series with (R₂ = 40 Ω ∥ R₃ = 40 Ω). Find V_R1, I₂, I₃, V_R2, V_R3, V_B, P_B, P_R1, P_R2, P_R3, P_T.',6,'R₂∥R₃ = 20 Ω, R_T = 90 Ω\nV_R1 = 0.4 × 70 = 28 V\nV_R2 = V_R3 = 0.4 × 20 = 8 V\nI₂ = I₃ = 8/40 = 0.2 A\nV_B = 28 + 8 = 36 V\nP_R1 = 11.2 W, P_R2 = P_R3 = 1.6 W\nP_B = P_T = 36 × 0.4 = 14.4 W',null,'c:e2q4'],
+['5','I_T = 0.3 A, R₁ = 24 Ω in series with (R₂ = 20 Ω ∥ R₃ = 80 Ω). Find V_R1, R_T, V_B, V_R2, V_R3, I₂, I₃, P_B, P_R1, P_R2, P_R3, P_T.',6,'R₂∥R₃ = 16 Ω, R_T = 40 Ω\nV_R1 = 0.3 × 24 = 7.2 V\nV_R2 = V_R3 = 0.3 × 16 = 4.8 V\nV_B = 12 V\nI₂ = 4.8/20 = 0.24 A, I₃ = 4.8/80 = 0.06 A\nP_R1 = 2.16 W, P_R2 = 1.15 W, P_R3 = 0.288 W\nP_T = 12 × 0.3 = 3.6 W',null,'c:e2q5'],
+['6','I₄ = 0.15 A, R₁ = R₂ = R₆ = 10 Ω, R₃ = 20 Ω, R₄ = 80 Ω, R₅ = 20 Ω. (R₁+R₂+R₃) ∥ (R₄∥R₅), then R₆ in series. Find everything.',8,'V_R4 = 0.15 × 80 = 12 V = V_R5\nI₅ = 12/20 = 0.6 A\nLeft branch 40 Ω: I₂ = 12/40 = 0.3 A (V_R1 = V_R2 = 3 V, V_R3 = 6 V)\nI_T = 0.15 + 0.6 + 0.3 = 1.05 A\nV_R6 = 1.05 × 10 = 10.5 V\nV_B = 12 + 10.5 = 22.5 V\nP_R1 = P_R2 = 0.9 W, P_R3 = 1.8 W, P_R4 = 1.8 W, P_R5 = 7.2 W, P_R6 = 11.0 W\nP_T = 22.5 × 1.05 = 23.6 W',null,'c:e2q6'],
+['7','I₂ = 0.2 A, R₁ = R₂ = R₆ = 20 Ω, R₃ = 30 Ω, R₄ = 60 Ω, R₅ = 40 Ω. (R₁+R₂+R₃) ∥ (R₄∥R₅), then R₆ in series. Find everything.',8,'(Sheet lists R₅ twice; R₆ = 20 Ω assumed.)\nLeft branch 70 Ω: V = 0.2 × 70 = 14 V (V_R1 = V_R2 = 4 V, V_R3 = 6 V)\nI₄ = 14/60 = 0.233 A, I₅ = 14/40 = 0.35 A\nI_T = 0.2 + 0.233 + 0.35 = 0.783 A\nV_R6 = 0.783 × 20 = 15.7 V\nV_B = 14 + 15.7 = 29.7 V\nP_T = 29.7 × 0.783 = 23.2 W',null,'c:e2q7']]},
+{n:'Electricity 3',t:'e',qs:[
+['1','100 Ω in series with (400 Ω ∥ [200 Ω + 200 Ω]). 0.010 A flows through the 400 Ω. What is the equivalent resistance? A 100 Ω  B 300 Ω  C 400 Ω  D 900 Ω',1,'B. 300 Ω',null,'c:e3'],
+['2','What voltage does the 400 Ω resistor use? A 2.5 V  B 4.0 V  C 6.0 V  D 9.0 V',1,'B. 4.0 V',null,'c:e3'],
+['3','What current flows through the 200 Ω resistors? A 0.0050 A  B 0.010 A  C 0.020 A  D 0.040 A',1,'B. 0.010 A',null,'c:e3'],
+['4a','A 1200 W blender on a 240 V supply is used for 12 minutes. Calculate its resistance.',2,'P = V²/R ∴ R = V²/P = 240²/1200 = 48 Ω'],
+['4b','Determine the charge (Q) that flows through the blender in 12 minutes.',2,'P = V×I ∴ I = P/V = 1200/240 = 5 A\n12 min = 720 s\nQ = I×t = 5 × 720 = 3600 C'],
+['4c','Determine the energy used by the blender in 12 minutes.',2,'E = P×t = 1200 × 720 = 8.64×10⁵ J']]},
+{n:'Electricity 4',t:'e',qs:[
+['1a','A 12 V battery delivers 5.0 A through a load for 2 min 20 s. Determine the charge.',2,'Q = I×t = 5.0 × 140 = 700 C'],
+['1b','How much energy does the 12 V battery provide?',2,'E = V×I×t = 12 × 5 × 140 = 8400 J'],
+['1c','Two meters must be connected from A to B and from C to D to measure a light bulb. Which meters go where?',2,'Ammeter between A and B (in series with the bulb). Voltmeter between C and D (in parallel across the bulb).'],
+['1d','V–I data: (0 A, 0 V), (1, 2), (2, 4), (3, 6). Find the gradient of V vs I and say what it represents.',2,'Gradient = 6/3 = 2\nIt represents resistance, as V/I = R (2 Ω).',null,'graph:e4'],
+['2a','30 V battery, 5 Ω in series with (8 Ω ∥ 12 Ω). Determine the effective resistance.',2,'R_T = 5 + (1/8 + 1/12)⁻¹ = 5 + (5/24)⁻¹ = 5 + 4.8 = 9.8 Ω',null,'c:e4'],
+['2b','Calculate the voltage across the 5 Ω resistor.',2,'I_T = V_T/R_T = 30/9.8 = 3.06 A\nV_5Ω = I × R = 3.06 × 5 = 15.3 V',null,'c:e4'],
+['2c','Determine the current through the 12 Ω resistor.',2,'V_12Ω = 30 − 15.3 = 14.7 V\nI_12Ω = V/R = 14.7/12 = 1.22 A',null,'c:e4']]},
+{n:'Electricity 5',t:'e',qs:[
+['1','4.0 A flows through a heating element for two minutes, producing 28.8 kJ. Determine the potential difference.',3,'I = 4.0 A, t = 2 × 60 = 120 s, E = 28 800 J\nE = V×I×t ∴ V = E/(I×t) = 28 800/(4.0 × 120) = 60 V'],
+['2a','From the I–V graph of resistors A and B, which obeys Ohm\'s law? Explain.',2,'Resistor A obeys Ohm\'s law because it shows a proportional relationship between voltage and current, and so a constant resistance.'],
+['2b','A and B in series; voltage across A is 2.0 V. What current flows through B? Explain.',2,'When V = 2.0 V, according to the graph the current through resistor A is 200 mA. As the resistors are in series the current is the same, so 200 mA flows through B.'],
+['2c','A and B in parallel; voltage across A is 2.0 V. Calculate the current through the supply.',2,'I_A = 200 mA, I_B = 400 mA\nI_T = 200 + 400 = 600 mA'],
+['2d','Calculate the total resistance of this parallel circuit.',2,'R_T = V_T/I_T = 2.0/0.6 = 3.3 Ω'],
+['2e','12.0 V supply, two 4.0 Ω resistors in series with (8.0 Ω ∥ X). Current through the 4.0 Ω resistors is 1.0 A. Find X.',3,'R_T = V_T/I_T = 12.0/1.0 = 12.0 Ω\nR_p = 12.0 − 4.0 − 4.0 = 4.0 Ω\n1/4 = 1/8 + 1/X → 1/X = 2/8 − 1/8 = 1/8\nX = 8 Ω',null,'c:e5']]},
+{n:'Revision Sheet 1',t:'e',qs:[
+['1','3.60 A flows for 15.3 s. Calculate the charge.',2,'Q = I×t = 3.60 × 15.3 = 55.1 C'],
+['2','5.60 C passes a point in 15.4 s. Calculate the current.',2,'I = Q/t = 5.60/15.4 = 0.364 A'],
+['3','Potential difference to produce 8.00 A through 12.0 Ω?',2,'V = I×R = 8.00 × 12.0 = 96 V'],
+['4','Heat produced in 25.0 s by 11.0 A through 7.20 Ω?',3,'V = I×R = 11.0 × 7.20 = 79.2 V\nE = V×I×t = 79.2 × 11.0 × 25.0 = 21 780 J'],
+['5','150 J of heat in 5.50 s with 10.0 A. Resistance?',3,'E = V×I×t ∴ V = E/(I×t) = 150/(10.0 × 5.50) = 2.73 V\nR = V/I = 2.73/10.0 = 0.273 Ω'],
+['6','Current through a 400 W appliance on a 120 V line?',2,'I = P/V = 400/120 = 3.33 A'],
+['7','Appliance on 120 V draws 18.3 A. Resistance?',2,'R = V/I = 120/18.3 = 6.56 Ω'],
+['8','Potential difference for 20.0 A through 6.00 Ω?',2,'V = I×R = 20.0 × 6.00 = 120.0 V'],
+['9','V–I data: 3.0 V 0.151 A; 6.0 V 0.310 A; 9.0 V 0.448 A; 12.0 V 0.511 A; 15.0 V 0.750 A. Graph it and find the resistance.',3,'Calculate the resistance as the gradient of the curve, V = I×R ∴ V/I = R\n3.0/0.151 = 19.87 Ω ≈ 20 Ω',null,'graph:s1']]},
+{n:'Revision Sheet 2',t:'e',qs:[
+['1','14 V, R₁ = 4.0 Ω and R₂ = 3.0 Ω in series with three ammeters. Find I₁, I₂, I₃.',2,'As all in series, I₁ = I₂ = I₃\nR_T = 3.0 + 4.0 = 7.0 Ω\nI = V/R = 14/7.0 = 2 A',null,'c:s2q1'],
+['2','12 V, I = 5.0 A, R₁ = 3.0 Ω ∥ R₂. Find R₂.',2,'R_T = V/I = 12/5.0 = 2.4 Ω\n1/2.4 = 1/3 + 1/R₂ … R₂ = 3.2 Ω','Check: 3 Ω ∥ 3.2 Ω gives 1.55 Ω, not 2.4 Ω. 1/R₂ = 1/2.4 − 1/3 = 1/12, so R₂ = 12 Ω.','c:s2q2'],
+['3','I = 8.0 A, R₁ = 3.0 Ω in series with (R₂ = 3.0 Ω ∥ R₃ = 3.0 Ω). What p.d. does the source supply?',2,'R_T = 3.0 + (1/3 + 1/3)⁻¹ = 3.0 + 1.5 = 4.5 Ω\nV = I×R_T = 8.0 × 4.5 = 36 V',null,'c:s2q3'],
+['4','40.0 V across R₁ = 6.0 Ω ∥ R₂, with 3.3 A in R₂\'s branch. Find V₁, V₂ and R₂.',3,'As parallel, V₁ = V₂ = 40.0 V\nI_R1 = 40.0/6.0 = 6.67 A\nR₂ = V/I = 40.0/3.3 = 12.12 Ω'],
+['5','I₁ = 2.1 A and I₂ = 1.5 A in two branches. Find I₃ (main line).',1,'I₃ is in the main branch and is the sum of I₂ + I₁ = 1.5 + 2.1 = 3.6 A'],
+['6','12.0 V with two resistors in series; V₁ = 8.0 V. Find V₂.',1,'As resistors are in series, total voltage is the sum of V₁ + V₂: 12.0 = 8.0 + V₂ ∴ V₂ = 4.0 V'],
+['7','45.0 V; V₁ = 11.0 V across a series resistor, then two resistors in parallel. Find V₂ and V₃.',2,'Combination of a series resistor and two in parallel. The two in parallel have the same voltage: V₃ = V₂.\n45.0 − 11.0 = 34.0 V ∴ V₂ = V₃ = 34.0 V'],
+['8','Total resistance: R₁ = 15 Ω and R₂ = 20 Ω in series.',1,'R_T = R₁ + R₂ = 15 + 20 = 35 Ω']]},
+{n:'Revision Sheet 3',t:'e',none:true,qs:[
+['1','Total resistance: R₁ = 6.0 Ω ∥ R₂ = 8.0 Ω.',2,'R_T = (1/6 + 1/8)⁻¹ = 3.43 Ω'],
+['2','Total resistance: R₁ = 2.0 Ω in series with (R₂ = 3.0 Ω ∥ R₃ = 6.0 Ω).',2,'3 ∥ 6 = (1/3 + 1/6)⁻¹ = 2.0 Ω\nR_T = 2.0 + 2.0 = 4.0 Ω'],
+['3','Total resistance of 2 Ω, 4 Ω and 8 Ω in parallel.',2,'1/R_T = 1/2 + 1/4 + 1/8 = 7/8 → R_T = 1.14 Ω'],
+['4','30.0 V, R₁ = 10 Ω and R₂ = 15 Ω in series. Find I₁, I₂ and P₁.',3,'R_T = 25 Ω, I₁ = I₂ = 30/25 = 1.2 A\nP₁ = I²R = 1.2² × 10 = 14.4 W',null,'c:s3q4'],
+['5','15.0 V, R₁ = 6.0 Ω ∥ R₂ = 3.0 Ω. Find total current and power in R₁.',3,'R_T = 2.0 Ω, I_T = 15/2 = 7.5 A\nP₁ = V²/R = 15²/6 = 37.5 W',null,'c:s3q5'],
+['6','12.0 V, R₁ = 6.0 Ω ∥ R₂ = 8.0 Ω. Find I_T, I₂ and total power.',3,'R_T = 3.43 Ω, I_T = 12/3.43 = 3.5 A\nI₂ = 12/8 = 1.5 A\nP_T = 12 × 3.5 = 42 W',null,'c:s3q6'],
+['7','20.0 V, R₁ = 6.0 Ω in series with (R₂ = 2.0 Ω ∥ R₃ = 4.0 Ω). Find I₁, I₂, I₃.',3,'2 ∥ 4 = 1.33 Ω, R_T = 7.33 Ω\nI₁ = 20/7.33 = 2.73 A\nV_parallel = 2.73 × 1.33 = 3.64 V\nI₂ = 3.64/2 = 1.82 A, I₃ = 3.64/4 = 0.909 A',null,'c:s3q7'],
+['8','I = 8.0 A through R₁ = 2.0 Ω, R₂ = 2.5 Ω, R₃ = 3.0 Ω in series. Find supply p.d. and total power.',2,'R_T = 7.5 Ω, V = 8.0 × 7.5 = 60 V\nP = V×I = 60 × 8 = 480 W'],
+['9','25.0 V, R₁ = 8.0 Ω ∥ R₂ = 10.0 Ω. Find I₁ (main) and total power.',2,'R_T = (1/8 + 1/10)⁻¹ = 4.44 Ω\nI₁ = 25/4.44 = 5.63 A\nP = 25 × 5.63 = 141 W',null,'c:s3q9'],
+['10','90 V, I₁ = 3.0 A. (10 Ω ∥ 20 Ω), then R₃, then (20 Ω ∥ 10 Ω) in series. Find R₃, I₂, I₃, I₄.',4,'R_T = 90/3 = 30 Ω\nEach parallel block = (1/10 + 1/20)⁻¹ = 6.67 Ω\nR₃ = 30 − 6.67 − 6.67 = 16.7 Ω\nI₃ = 3.0 A (series)\nBlock voltage = 3 × 6.67 = 20 V: I₂ = 20/20 = 1.0 A, I₄ = 20/10 = 2.0 A',null,'c:s3q10']]}
+];
+
+/* sheet tab */
+(function(){
+  var sel=$('shSel');sel.innerHTML='<option value="all">All sheets</option>'+SHEETS.map(function(s,i){return '<option value="'+i+'">'+s.n+'</option>'}).join('');
+  function render(){
+    var v=sel.value,h='';
+    SHEETS.forEach(function(s,si){if(v!=='all'&&+v!==si)return;
+      h+='<div class="card"><h3 style="margin-top:0"><span class="tag '+s.t+'">'+(s.t==='e'?'Electricity':'Astronomy')+'</span>'+s.n+'</h3>';
+      if(s.t==='a')h+='<details><summary>Data table (from the sheet)</summary>'+$('planetTable').innerHTML+'<p class="small mute">Mass of the Sun = 1.99×10³⁰ kg</p></details>';if(s.none)h+='<p class="small mute">No answer sheet for this one in your PDF, so these answers were worked out for you.</p>';
+      s.qs.forEach(function(q,qi){if(HARD&&q[2]<3)return;
+        h+='<div style="border-top:1px solid var(--line);padding:10px 0"><div class="qhead"><div><b>Q'+q[0]+'.</b> '+esc(q[1])+' <span class="mute small">['+q[2]+']</span></div>'+
+        '<div class="row"><button class="btn sm" data-rev="'+si+'-'+qi+'">Reveal</button>'+(q[5]?'<button class="btn sm" data-lab="'+q[5]+'">Open in lab</button>':'')+'<button class="btn sm" data-grade="'+si+'-'+qi+'">Grade me</button></div></div>'+
+        (QVIS[s.n+'|'+q[0]]?diagram(QVIS[s.n+'|'+q[0]]):'')+'<div class="ans" id="ans-'+si+'-'+qi+'" style="display:none"><div class="work">'+esc(q[3])+'</div>'+(q[4]?'<div class="note bad">⚠ '+esc(q[4])+'</div>':'')+'</div></div>';
+      });h+='</div>'});
+    $('shBox').innerHTML=h;
+    document.querySelectorAll('[data-rev]').forEach(function(b){b.onclick=function(){var a=$('ans-'+b.dataset.rev);var on=a.style.display==='none';a.style.display=on?'':'none';b.textContent=on?'Hide':'Reveal'}});
+    document.querySelectorAll('[data-lab]').forEach(function(b){b.onclick=function(){openLab(b.dataset.lab)}});
+    document.querySelectorAll('[data-grade]').forEach(function(b){b.onclick=function(){var p=b.dataset.grade.split('-');gradeSheetQ(+p[0],+p[1])}});
+  }
+  sel.onchange=render;render();HARD_HOOKS.push(render);
+  $('shOpen').onclick=function(){document.querySelectorAll('#shBox .ans').forEach(function(a){a.style.display=''});document.querySelectorAll('[data-rev]').forEach(function(b){b.textContent='Hide'})};
+  $('shClose').onclick=function(){document.querySelectorAll('#shBox .ans').forEach(function(a){a.style.display='none'});document.querySelectorAll('[data-rev]').forEach(function(b){b.textContent='Reveal'})};
+})();
+var PENDING_LAB=null;
+function openLab(s){
+  var k=s.split(':');
+  if(k[0]==='c'){PENDING_LAB={circuit:k[1]};location.hash='circuit'}
+  else if(k[0]==='grav'){PENDING_LAB={grav:k[1]};location.hash='gravity'}
+  else if(k[0]==='g'){PENDING_LAB={pair:k[1]};location.hash='gravity'}
+  else if(k[0]==='graph'){PENDING_LAB={graph:k[1]};location.hash='graph'}
+  else if(k[0]==='stars'){location.hash='stars'}
+}
+
+/* ===== flashcards ===== */
+var CARDS=[
+['e','What moves when two objects are rubbed together and become charged?','Electrons only. Protons stay in the nucleus.'],
+['e','An object becomes positively charged by friction. What happened?','It lost electrons (electrons were removed from it).'],
+['e','Why does a rubbed plastic ruler pick up paper?','Electrostatic attraction (not magnetism).'],
+['e','Formula linking charge, current and time?','Q = I t  (C = A × s)'],
+['e','Definition of potential difference (formula)?','V = W/Q: energy (J) per coulomb of charge.'],
+['e','Ohm\'s law?','V = I R'],
+['e','Three formulas for electrical power?','P = VI, P = I²R, P = V²/R'],
+['e','Energy formula for an electrical device?','E = P t = V I t'],
+['e','Series: what is the same and what is shared?','Current is the same; voltage is shared (adds to V_B).'],
+['e','Parallel: what is the same and what is shared?','Voltage is the same across each branch; current splits (branches add to I_T).'],
+['e','Total resistance in series?','R_T = R₁ + R₂ + …'],
+['e','Total resistance in parallel?','1/R_T = 1/R₁ + 1/R₂ + … then flip. Always less than the smallest resistor.'],
+['e','Shortcut: n identical resistors R in parallel?','R/n (e.g. three 90 Ω → 30 Ω)'],
+['e','How are an ammeter and voltmeter connected?','Ammeter in series. Voltmeter in parallel across the component.'],
+['e','What does the gradient of a V (y) vs I (x) graph represent?','Resistance (R = V/I).'],
+['e','How do you tell an ohmic resistor from its graph?','Straight line through the origin (V ∝ I, constant R).'],
+['e','Three 1.5 V cells give 4.5 V when connected how?','In series.'],
+['e','20 identical lamps in series on 240 V: voltage across each?','12 V (240 ÷ 20)'],
+['e','Two identical globes in series with 12 V; one has a 60 Ω and the other 60 Ω. Current?','0.1 A (12 ÷ 120); each globe gets 6 V.'],
+['e','Which draws more current: 180 W TV on 240 V or 48 W spotlight on 12 V?','Spotlight: 4 A vs 0.75 A (I = P/V).'],
+['e','When does a fuse blow?','When the current exceeds its rating (check I = V/R_T).'],
+['e','A globe in the main line vs identical globes in parallel branches: which is brightest?','The main-line globe: it carries the whole current.'],
+['e','Combination circuit: how do you find a branch current?','Find the parallel block voltage (V_B − series voltages), then I = V/R for that branch.'],
+['a','Difference between mass and weight?','Mass = amount of matter (kg), constant. Weight = gravitational force (N) = mg, depends on location.'],
+['a','Weight formula?','F_w = m g'],
+['a','Newton\'s law of universal gravitation?','F = G M m / r²,  G = 6.67×10⁻¹¹ N m² kg⁻²'],
+['a','If the distance between two masses doubles, the force…?','Becomes ¼ (inverse square).'],
+['a','Gravitational field strength formula at altitude h?','g = G M / (R + h)²'],
+['a','g at 5000 km above Earth?','3.07 N/kg'],
+['a','Earth–Mars distance at closest approach (sheet data)?','227.9 − 149.6 = 78.3×10⁹ m'],
+['a','Speed of light?','3.00×10⁸ m/s'],
+['a','What is a light-year?','The distance light travels in one year: 9.47×10¹⁵ m.'],
+['a','A supernova 172 ly away: when do we see it?','172 years after it happens (light takes 172 years).'],
+['a','What decides whether a star becomes a white dwarf, neutron star or black hole?','Its mass.'],
+['a','Life cycle of a Sun-like star?','Nebula → protostar → main sequence → red giant → planetary nebula → white dwarf'],
+['a','Life cycle of a very massive star?','Nebula → protostar → main sequence → red supergiant → supernova → neutron star or black hole'],
+['a','What two forces balance in a main-sequence star?','Gravity (inwards) and radiation pressure from fusion (outwards).'],
+['a','Mass of the Sun?','1.99×10³⁰ kg']];
+(function(){
+  var st={};try{st=JSON.parse(sg('fc')||'{}')}catch(e){}
+  var deck=[],di=0,fl=false;
+  function build(){var t=$('fcTopic').value,only=$('fcLearn').checked;var ix=[];CARDS.forEach(function(c,i){if((t==='all'||c[0]===t)&&(!only||st[i]!==1))ix.push(i)});deck=shuffle(ix);di=0;fl=false;draw()}
+  function draw(){var b=$('fcBox');if(!deck.length){b.innerHTML='<div class="face">Nothing left here. Nice work.</div>';$('fcCount').textContent='';$('fcBar').style.width='100%';return}
+    var c=CARDS[deck[di]];b.innerHTML='<div class="face'+(fl?' back':'')+'" id="fcF"><div><small>'+(c[0]==='e'?'ELECTRICITY':'ASTRONOMY')+' · '+(fl?'ANSWER':'TAP TO FLIP')+'</small>'+esc(fl?c[2]:c[1])+'</div></div>';
+    $('fcF').onclick=function(){fl=!fl;draw()};$('fcCount').textContent='Card '+(di+1)+' of '+deck.length;$('fcBar').style.width=((di+1)/deck.length*100)+'%'}
+  function mv(d){if(!deck.length)return;di=(di+d+deck.length)%deck.length;fl=false;draw()}
+  function mark(v){if(!deck.length)return;st[deck[di]]=v;ss('fc',JSON.stringify(st));mv(1)}
+  $('fcPrev').onclick=function(){mv(-1)};$('fcNext').onclick=function(){mv(1)};$('fcYes').onclick=function(){mark(1)};$('fcNo').onclick=function(){mark(0)};
+  $('fcShuffle').onclick=build;$('fcReset').onclick=function(){st={};ss('fc','{}');build()};$('fcTopic').onchange=build;$('fcLearn').onchange=build;
+  document.addEventListener('keydown',function(e){if(curTab!=='cards')return;var tg=e.target.tagName;if(tg==='INPUT'||tg==='SELECT'||tg==='TEXTAREA')return;
+    if(e.key===' '){e.preventDefault();fl=!fl;draw()}else if(e.key==='ArrowRight')mv(1);else if(e.key==='ArrowLeft')mv(-1)});
+  build();
+})();
+
+/* ===== quiz (Electricity Revision Quiz 2024 + astronomy) ===== */
+var QUIZ=[
+['e','When two bodies are rubbed together and become charged, it is because…',['protons only are transferred','electrons only are transferred','electrons and protons are interchanged','charge is only redistributed within each body'],1,'Only electrons move between the objects.'],
+['e','A body charged positively by friction…',['contains no electrons','has had protons removed','has had electrons removed','has had protons added'],2,'Positive = lost electrons. Protons never move.'],
+['e','A plastic ruler rubbed with a woollen jumper attracts small pieces of paper because…',['it exerts an electrostatic attraction','it exerts a magnetic attraction','it is charged and magnetic','both are insulators'],0,'Charged objects attract neutral ones electrostatically.'],
+['e','16 J of work moves 4.0 C from X to Y. The potential difference is…',['0.25 V','4.0 V','20 V','64 V'],1,'V = W/Q = 16/4.0 = 4.0 V'],
+['e','A 5 Ω and a 10 Ω resistor are in series. 2 A flows through the 5 Ω. Current through the 10 Ω?',['1 A','2 A','4 A','5 A'],1,'Series: the current is the same everywhere.'],
+['e','Which combination of 1.5 V cells supplies 4.5 V?',['three in parallel','two in parallel with one','three in series','two in series'],2,'Series cells add: 3 × 1.5 = 4.5 V.'],
+['e','20 identical lamps in series on 240 V. Voltage across each?',['4.8 V','12 V','240 V','4800 V'],1,'Voltage is shared equally: 240/20 = 12 V.'],
+['e','G1 is in the main line; G2 and G3 are identical globes in parallel branches. Both switches closed. Brightness?',['G1 < G2, G2 < G3','G1 = G2, G2 > G3','G1 > G2, G2 = G3','all equal'],2,'G1 carries the total current; G2 and G3 share it equally.'],
+['e','Globe I and switch X are in the main line. Globes II (with switch Y), III (with switch Z) and IV are in parallel branches. X closed, Y and Z open. Which glow?',['I only','IV only','I and IV only','none'],2,'II and III are switched off; current flows through I and IV.'],
+['e','Same circuit: Y closed, X and Z open. Which glow?',['I, II and IV','I and II','II and IV','none of them'],3,'X is in the main line, so nothing flows.'],
+['e','Same circuit: X and Z closed, Y open. Which glow?',['I and IV','I, III and IV','I and III','III and IV'],1,'Branches III and IV are complete; II is off.'],
+['e','Which graph best illustrates Ohm\'s law (current vs voltage)?',['curve bending upwards','straight line sloping down','curve flattening off','straight line through the origin'],3,'Ohmic = current proportional to voltage.'],
+['e','Circuit I: 12 V, (3 Ω ∥ 2 Ω) with a 4 A fuse. Circuit II: 12 V, 3 Ω + 2 Ω in series with a 3 A fuse. Which fuses blow?',['both','circuit I only','circuit II only','neither'],1,'I: 1.2 Ω → 10 A > 4 A blows. II: 5 Ω → 2.4 A < 3 A.'],
+['e','A fixed resistor has 6 V across it at 3 A. When 1.5 A flows, the p.d. is…',['0.75 V','1.5 V','3.0 V','cannot tell'],2,'R = 2 Ω, so V = 1.5 × 2 = 3.0 V.'],
+['e','Which globe has the greatest resistance? Torch 2.5 V/0.3 A · bike tail-lamp 6 V/0.04 A · car headlamp 12 V/5 A · projector 250 V/4 A',['torch','bicycle tail-lamp','car headlamp','projector'],1,'R = V/I: 6/0.04 = 150 Ω, the biggest.'],
+['e','Two 60 Ω globes in series with 12 V. Ammeter reading?',['0.1 A','0.2 A','10 A','20 A'],0,'I = 12/120 = 0.1 A'],
+['e','Two 60 Ω globes in series with 12 V. Voltmeter across one globe?',['6 V','12 V','24 V','60 V'],0,'Shared equally: 6 V each.'],
+['e','12 V battery with 2 Ω in series with (2 Ω ∥ 2 Ω). Current from X to Y?',['2 A','3 A','4 A','8 A'],2,'R_T = 2 + 1 = 3 Ω, I = 12/3 = 4 A. (Your answer key says 8 A, but that is wrong.)'],
+['e','24 V battery, R₁ = 4 Ω and R₂ = 8 Ω in series. P.d. across R₁?',['2 V','8 V','16 V','24 V'],1,'I = 24/12 = 2 A; V₁ = 2 × 4 = 8 V.'],
+['e','Which draws the largest current? TV 240 V 180 W · soldering iron 240 V 80 W · drill 240 V 160 W · spotlight 12 V 48 W',['TV','soldering iron','electric drill','spotlight'],3,'I = P/V: spotlight 48/12 = 4 A.'],
+['e','An appliance on 12 V is rated 48 W. Current?',['0.25 A','4 A','36 A','576 A'],1,'I = P/V = 48/12 = 4 A'],
+['e','An appliance produces 3.6×10⁵ J of heat in 10 minutes. Power?',['600 W','3.6×10⁴ W','3.6×10⁵ W','2.16×10⁸ W'],0,'P = E/t = 3.6×10⁵/600 s = 600 W'],
+['e','Which globe uses the most power? Torch 2.5 V/0.3 A · tail-lamp 6 V/0.04 A · headlamp 12 V/5 A · projector 250 V/4 A',['torch','tail-lamp','headlamp','projector'],3,'P = VI: 250 × 4 = 1000 W.'],
+['e','12 J of work moves 5 C between two points. The p.d. is…',['12/5 V','5/12 V','5 × 12 V','1/(5 × 12) V'],0,'V = W/Q = 12/5 V'],
+['e','Effective resistance of three 90 Ω resistors in parallel?',['270 Ω','90 Ω','30 Ω','10 Ω'],2,'90/3 = 30 Ω'],
+['e','A 1200 W blender runs on 240 V. Its resistance is…',['0.2 Ω','5 Ω','48 Ω','288 kΩ'],2,'R = V²/P = 57 600/1200 = 48 Ω'],
+['a','Mass vs weight: which is true?',['Mass changes on other planets','Weight is measured in kg','Weight depends on g; mass does not','They are the same thing'],2,'Weight = mg; mass is constant.'],
+['a','Weight of a 90 kg person on the Moon (g = 1.6 N/kg)?',['56 N','144 N','882 N','1.6 N'],1,'Fw = mg = 90 × 1.6 = 144 N'],
+['a','If the distance between two masses is tripled, the gravitational force becomes…',['3 times bigger','1/3','1/9','9 times bigger'],2,'Inverse square: 1/3² = 1/9.'],
+['a','To find g at 5000 km above Earth, r in g = GM/r² is…',['5.00×10⁶ m','6.378×10⁶ m','1.1378×10⁷ m','5000 m'],2,'r = R + h = 6.378×10⁶ + 5.00×10⁶ m'],
+['a','Earth\'s field strength at 5000 km altitude is about…',['9.8 N/kg','3.07 N/kg','0.107 N/kg','21.6 N/kg'],1,'g = GM/(R+h)² ≈ 3.07 N/kg'],
+['a','A light-year is a unit of…',['time','speed','distance','brightness'],2,'Distance light travels in a year, 9.47×10¹⁵ m.'],
+['a','How far does light travel in 3.4 minutes?',['1.02×10⁹ m','6.12×10¹⁰ m','6.12×10⁸ m','1.8×10¹⁰ m'],1,'s = 3.00×10⁸ × 204 s = 6.12×10¹⁰ m'],
+['a','A star 172 ly away goes supernova. We see it…',['instantly','172 days later','172 years later','1.63×10¹⁸ years later'],2,'Light takes 172 years to reach us.'],
+['a','What mainly determines whether a star ends as a white dwarf, neutron star or black hole?',['its colour','its mass','its distance from us','its age'],1,'Fate depends on mass.'],
+['a','A Sun-sized star ends as…',['a black hole','a neutron star','a white dwarf','a supernova remnant only'],2,'Red giant → planetary nebula → white dwarf.'],
+['a','The gravitational force between the Sun and Mercury is closest to…',['1.3×10²² N','4.4×10⁴³ N','3.7 N','1.3×10¹² N'],0,'F = GMm/r² = 1.3×10²² N'],
+['a','Is there gravity between two stars?',['No, only between planets','Yes, between all masses','Only if they touch','Only in a galaxy'],1,'Every mass attracts every other mass.']];
+(function(){
+  var qz=[],qi=0,sc=0,best=parseInt(sg('qzBest')||'-1',10);
+  function start(){var t=$('qzTopic').value;qz=shuffle(QUIZ.filter(function(q,qi){return (t==='all'||q[0]===t)&&(!HARD||HARDQ.indexOf(qi)>=0)})).slice(0,10).map(function(q){var o=shuffle([0,1,2,3]);return{vis:QZVIS[QUIZ.indexOf(q)],q:q[1],opts:o.map(function(i){return q[2][i]}),ans:o.indexOf(q[3]),exp:q[4]}});qi=0;sc=0;draw()}
+  function draw(){var b=$('qzBox');
+    if(qi>=qz.length){var p=Math.round(sc/qz.length*100);if(p>best){best=p;ss('qzBest',String(p))}
+      b.innerHTML='<div class="stat">'+sc+' / '+qz.length+' ('+p+'%)</div><p>'+(p>=80?'Strong. Try writing full answers in the Claude tutor next.':p>=50?'Getting there. Re-read the explanations you missed and go again.':'Hit the Notes and Flashcards for the weak topic, then retry.')+'</p><button class="btn p" id="qzA">New quiz</button>';$('qzA').onclick=start;return}
+    var q=qz[qi];b.innerHTML='<div class="mute small">Question '+(qi+1)+' of '+qz.length+' · score '+sc+'</div><h3>'+esc(q.q)+'</h3>'+(q.vis?diagram(q.vis):'')+'<div id="qO"></div><div id="qF"></div>';
+    q.opts.forEach(function(t,i){var o=document.createElement('button');o.className='opt';o.textContent=t;o.onclick=function(){
+      var all=$('qO').children;for(var k=0;k<all.length;k++)all[k].disabled=true;all[q.ans].classList.add('ok');var ok=i===q.ans;if(ok)sc++;else o.classList.add('no');
+      $('qF').innerHTML='<div class="exp"><b class="fb '+(ok?'ok':'no')+'">'+(ok?'Correct.':'Not quite.')+'</b> '+esc(q.exp)+'</div><div class="row" style="margin-top:10px"><button class="btn p" id="qN">'+(qi===qz.length-1?'See score':'Next')+'</button>'+(!ok?'<button class="btn" id="qWhy">Ask Claude why</button>':'')+'</div><div id="qWhyOut"></div>';
+      $('qN').onclick=function(){qi++;draw()};
+      if(!ok)$('qWhy').onclick=function(){askInline($('qWhyOut'),'A Year 10 physics student answered this multiple-choice question wrong.\nQuestion: '+q.q+'\nOptions: '+q.opts.join(' | ')+'\nThey chose: '+t+'\nCorrect: '+q.opts[q.ans]+'\n\nIn under 120 words, explain why their choice is wrong, why the correct answer is right, and give one tip to avoid this mistake. Plain text, friendly, Australian spelling.',this)};
+    };$('qO').appendChild(o)});
+  }
+  $('qzStart').onclick=start;start();HARD_HOOKS.push(start);
+})();
+
+/* ===== practice generator ===== */
+(function(){
+  var TYPES=[['any','Random mix'],['Q','Charge Q = It'],['VWQ','Voltage V = W/Q'],['I','Ohm\'s law'],['P','Power P = VI'],['PR','Power P = V²/R or I²R'],['E','Energy E = VIt'],['S','Series resistance'],['Pa','Parallel resistance'],['Cm','Combination circuit'],['W','Weight F = mg'],['Fg','Gravitational force'],['g','Field strength at altitude'],['L','Light distance s = ct']];
+  $('prType').innerHTML=TYPES.map(function(t){return '<option value="'+t[0]+'">'+t[1]+'</option>'}).join('');
+  var right=parseInt(sg('prRight')||'0',10),tot=parseInt(sg('prTotal')||'0',10),cur;
+  function up(){$('prScore').textContent=tot?('Score '+right+'/'+tot):''}
+  var PRS=[[6,3],[12,4],[10,10],[20,5],[30,15],[40,10],[60,20],[9,18],[4,12],[15,10],[8,24],[90,90]];
+  function gen(t){if(t==='any')t=HARD?pick(['Cm','Cm','Fg','g','g','E','PR','L']):pick(TYPES.slice(1))[0];var a,b,c,r;
+    if(t==='Q'){a=pick([0.5,1.2,2.5,3.6,4,5]);b=pick([10,15.3,30,60,120,140]);r=a*b;return{q:'A current of '+a+' A flows for '+b+' s. Calculate the charge.',a:r,u:'C',w:'Q = I t\nQ = '+a+' × '+b+'\nQ = '+sf(r)+' C'}}
+    if(t==='VWQ'){b=pick([2,4,5,8,10]);a=b*pick([3,4,6,9,12]);r=a/b;return{q:a+' J of work is done moving '+b+' C of charge. What is the potential difference?',a:r,u:'V',w:'V = W / Q\nV = '+a+' / '+b+'\nV = '+sf(r)+' V'}}
+    if(t==='I'){var k=rnd(0,2);c=pick([4,6,8,12,20,48]);a=pick([0.5,1,2,3,5]);var v=a*c;
+      if(k===0)return{q:'A '+v+' V supply drives current through a '+c+' Ω resistor. Find the current.',a:a,u:'A',w:'I = V / R\nI = '+v+' / '+c+'\nI = '+sf(a)+' A'};
+      if(k===1)return{q:'A current of '+a+' A flows through '+c+' Ω. Find the potential difference.',a:v,u:'V',w:'V = I R\nV = '+a+' × '+c+'\nV = '+sf(v)+' V'};
+      return{q:'An appliance on '+v+' V draws '+a+' A. Find its resistance.',a:c,u:'Ω',w:'R = V / I\nR = '+v+' / '+a+'\nR = '+sf(c)+' Ω'}}
+    if(t==='P'){a=pick([120,240,12,230]);b=pick([400,1200,2000,60,48,100]);r=b/a;return{q:'What current flows through a '+b+' W appliance on a '+a+' V supply?',a:r,u:'A',w:'P = V I  →  I = P / V\nI = '+b+' / '+a+'\nI = '+sf(r)+' A'}}
+    if(t==='PR'){if(Math.random()<.5){a=pick([12,24,120,240]);b=pick([4,6,10,48,60]);r=a*a/b;return{q:'Find the power used by a '+b+' Ω element on '+a+' V.',a:r,u:'W',w:'P = V² / R\nP = '+a+'² / '+b+'\nP = '+sf(r)+' W'}}
+      a=pick([0.5,1.2,2,3,5]);b=pick([4,10,15,20]);r=a*a*b;return{q:'A current of '+a+' A flows through '+b+' Ω. Find the power.',a:r,u:'W',w:'P = I² R\nP = '+a+'² × '+b+'\nP = '+sf(r)+' W'}}
+    if(t==='E'){a=pick([12,240]);b=pick([0.5,2,5,11]);c=pick([2,5,12]);r=a*b*c*60;return{q:'A '+a+' V device draws '+b+' A for '+c+' minutes. Energy used?',a:r,u:'J',w:'t = '+c+' × 60 = '+(c*60)+' s\nE = V I t\nE = '+a+' × '+b+' × '+(c*60)+'\nE = '+sf(r)+' J'}}
+    if(t==='S'){a=rnd(2,150);b=rnd(2,150);c=rnd(2,90);r=a+b+c;return{ch:{V:null,ch:SER(a,b,c)},q:'Find the effective resistance of '+a+' Ω, '+b+' Ω and '+c+' Ω in series.',a:r,u:'Ω',w:'R_T = '+a+' + '+b+' + '+c+'\nR_T = '+r+' Ω'}}
+    if(t==='Pa'){var p=pick(PRS);r=p[0]*p[1]/(p[0]+p[1]);return{ch:{V:null,ch:window.PAR(p[0],p[1])},q:'Find the effective resistance of '+p[0]+' Ω and '+p[1]+' Ω in parallel.',a:r,u:'Ω',w:'1/R_T = 1/'+p[0]+' + 1/'+p[1]+'\nR_T = ('+p[0]+' × '+p[1]+') / ('+p[0]+' + '+p[1]+')\nR_T = '+sf(r)+' Ω  (smaller than both ✓)'}}
+    if(t==='Cm'){var p=pick(PRS);a=pick([5,10,20,24,70,80]);var rp=p[0]*p[1]/(p[0]+p[1]);var rt=a+rp;v=pick([12,24,30,36,90]);var it=v/rt;var vp=it*rp;var k=rnd(0,1);
+      var dg={V:v+' V',ch:SER(a).concat(window.PAR(p[0],p[1]))};if(k===0)return{ch:dg,q:v+' V supply. '+a+' Ω in series with ('+p[0]+' Ω ∥ '+p[1]+' Ω). Find the total current.',a:it,u:'A',w:p[0]+' ∥ '+p[1]+' = '+sf(rp)+' Ω\nR_T = '+a+' + '+sf(rp)+' = '+sf(rt)+' Ω\nI_T = V / R_T = '+v+' / '+sf(rt)+' = '+sf(it)+' A'};
+      var ib=vp/p[0];return{ch:dg,q:v+' V supply. '+a+' Ω in series with ('+p[0]+' Ω ∥ '+p[1]+' Ω). Find the current through the '+p[0]+' Ω resistor.',a:ib,u:'A',w:'R_T = '+a+' + '+sf(rp)+' = '+sf(rt)+' Ω\nI_T = '+v+' / '+sf(rt)+' = '+sf(it)+' A\nV_series = '+sf(it)+' × '+a+' = '+sf(it*a)+' V\nV_parallel = '+v+' − '+sf(it*a)+' = '+sf(vp)+' V\nI = '+sf(vp)+' / '+p[0]+' = '+sf(ib)+' A'}}
+    if(t==='W'){var pl=pick(PLANETS);a=pick([15,60,90,250,1500]);r=a*pl[4];return{q:'Calculate the weight of a '+a+' kg object on '+pl[0]+' (g = '+pl[4]+' N/kg).',a:r,u:'N',w:'F_w = m g\nF_w = '+a+' × '+pl[4]+'\nF_w = '+sf(r)+' N'}}
+    if(t==='Fg'){var pl=pick(PLANETS.filter(function(x){return x[0]!=='Moon'}));var rr=pl[1]*1e9,m=pl[2]*1e24;r=G*MSUN*m/(rr*rr);return{q:'Calculate the gravitational force between the Sun (1.99×10³⁰ kg) and '+pl[0]+' (mass '+pl[2]+'×10²⁴ kg, orbital radius '+pl[1]+'×10⁹ m).',a:r,u:'N',sci:true,w:'F = G M m / r²\nF = 6.67×10⁻¹¹ × 1.99×10³⁰ × '+pl[2]+'×10²⁴ / ('+pl[1]+'×10⁹)²\nF = '+sf(r)+' N'}}
+    if(t==='g'){var pl=pick(PLANETS);var h=pick([1000,2000,5000,10000,20000]);var R=pl[3]*1e6,M=pl[2]*1e24;var rr=R+h*1e3;r=G*M/(rr*rr);return{q:'Calculate the gravitational field strength '+h+' km above '+pl[0]+' (M = '+pl[2]+'×10²⁴ kg, R = '+pl[3]+'×10⁶ m).',a:r,u:'N/kg',w:'r = R + h = '+pl[3]+'×10⁶ + '+sf(h*1e3)+' = '+sf(rr,4)+' m\ng = G M / r²\ng = 6.67×10⁻¹¹ × '+pl[2]+'×10²⁴ / ('+sf(rr,4)+')²\ng = '+sf(r)+' N/kg'}}
+    var opts=[['2.5 minutes',150],['8.3 minutes',498],['1 hour',3600],['4.5 days',388800],['10 microseconds',1e-5],['0.5 seconds',0.5]];var o=pick(opts);r=C*o[1];
+    return{q:'How far does light travel in '+o[0]+'?',a:r,u:'m',sci:true,w:'t = '+o[0]+' = '+sf(o[1],4)+' s\ns = c t = 3.00×10⁸ × '+sf(o[1],4)+'\ns = '+sf(r)+' m'}}
+  function nq(){cur=gen($('prType').value);var done=false;
+    $('prBox').innerHTML='<p><b>'+esc(cur.q)+'</b></p>'+(cur.ch?diagram(cur.ch):'')+'<div class="row"><input type="text" id="prIn" placeholder="'+(cur.sci?'e.g. 1.3e22':'answer')+'" style="width:150px"> <b>'+cur.u+'</b><button class="btn p" id="prC">Check</button><button class="btn" id="prS">Show working</button><button class="btn" id="prAsk">Ask Claude</button></div><div id="prF" style="margin-top:8px"></div><div id="prAI"></div>';
+    function chk(){if(done)return;var raw=$('prIn').value.replace(/×10\^?/,'e').replace(/x10\^?/i,'e').replace(/\s/g,'');var v=parseFloat(raw);if(isNaN(v)){$('prF').innerHTML='<span class="mute">Type a number (you can use 1.3e22 for 1.3×10²²).</span>';return}
+      done=true;tot++;var ok=Math.abs(v-cur.a)<=Math.abs(cur.a)*0.02+1e-12;if(ok)right++;ss('prRight',String(right));ss('prTotal',String(tot));up();
+      $('prF').innerHTML='<span class="fb '+(ok?'ok':'no')+'">'+(ok?'Correct!':'Not quite. Answer: '+sf(cur.a)+' '+cur.u)+'</span><div class="work">'+esc(cur.w)+'</div>'}
+    $('prC').onclick=chk;$('prIn').onkeydown=function(e){if(e.key==='Enter')chk()};
+    $('prS').onclick=function(){$('prF').innerHTML='<div class="work">'+esc(cur.w)+'</div>'};
+    $('prAsk').onclick=function(){askInline($('prAI'),'Year 10 physics. Question: '+cur.q+'\nWorked answer: '+cur.w+'\nThe student wrote: '+($('prIn').value||'(nothing yet)')+'\n\nIn under 120 words: if they wrote something, say if it is right and where any slip is. Then explain the key idea behind the method and one common trap. Plain text, Australian spelling.',this)};
+  }
+  $('prNew').onclick=nq;nq();up();HARD_HOOKS.push(nq);
+})();
+
+/* ===== teach-back ===== */
+var TEACH=[
+['Explain why adding a resistor in parallel lowers the total resistance.',['Extra branch = extra path for current','Same voltage across each branch','More total current for the same voltage','R = V/I, so R_T goes down; always less than the smallest']],
+['Explain how to find every current and voltage in a combination circuit.',['Combine the parallel block first, then add series parts → R_T','I_T = V_B / R_T','Series parts: V = I_T × R','Parallel block voltage = V_B − series voltages','Branch currents I = V/R, and they add to I_T']],
+['Explain what happens when a plastic ruler is rubbed with a woollen jumper and then picks up paper.',['Friction transfers electrons from jumper to ruler','Ruler becomes negative, jumper positive','Protons do not move','Paper is attracted by electrostatic attraction (charges in paper shift)']],
+['Explain the difference between mass and weight, using the Moon as an example.',['Mass = amount of matter, kg, constant','Weight = gravitational force, N, F = mg','g on Moon (1.6) is less than Earth (9.8)','So same mass but smaller weight on the Moon']],
+['Explain why gravitational field strength is lower at 5000 km altitude than at the surface.',['g = GM/r²','r is measured from the centre: r = R + h','Larger r → much smaller g (inverse square)','Earth: 9.8 N/kg at surface vs 3.07 N/kg at 5000 km']],
+['Explain why some stars become black holes and others neutron stars or white dwarfs.',['Fate depends on mass','Fusion stops, gravity collapses the core','Low/medium mass → red giant → white dwarf','High mass → supernova → neutron star','Very high mass core → black hole']],
+['Explain why seeing a supernova 172 light-years away means looking into the past.',['A light-year is a distance','Light takes 172 years to travel 172 ly','We see the explosion 172 years after it happened']]];
+(function(){var h='';TEACH.forEach(function(t,i){h+='<div class="card"><b>'+esc(t[0])+'</b><details><summary>Checklist</summary><div class="chk">'+t[1].map(function(p){return '<label><input type="checkbox"> '+esc(p)+'</label>'}).join('')+'</div></details>'+
+  '<details><summary>Type it and have Claude grade it</summary><textarea id="tb'+i+'" rows="4" style="width:100%" placeholder="Your explanation"></textarea><div class="row" style="margin-top:6px"><button class="btn sm p" data-tb="'+i+'">Grade</button></div><div id="tbo'+i+'"></div></details></div>'});
+  $('tbBox').innerHTML=h;
+  document.querySelectorAll('[data-tb]').forEach(function(b){b.onclick=function(){var i=+b.dataset.tb,ans=$('tb'+i).value.trim();if(!ans){$('tbo'+i).innerHTML='<p class="mute small">Write your explanation first.</p>';return}
+    askInline($('tbo'+i),gradePrompt(TEACH[i][0],4,ans,'Key points a full answer covers: '+TEACH[i][1].join('; ')),b)}});
+})();
+
+/* ===== planner ===== */
+$('exGo').onclick=function(){var v=$('exDate').value;if(!v){$('plBox').innerHTML='<span class="mute">Pick a date first.</span>';return}
+  var td=new Date();td.setHours(0,0,0,0);var p=v.split('-');var ex=new Date(+p[0],+p[1]-1,+p[2]);var left=Math.round((ex-td)/86400000);
+  if(left<0){$('plBox').innerHTML='<span class="mute">That date has passed.</span>';return}
+  var h='<p><b>'+left+' day'+(left===1?'':'s')+' to go.</b></p>';
+  if(left<3){$('plBox').innerHTML=h+'<p>Short on time: flashcards on "still learning", one mixed quiz, have Claude grade two sheet answers, then sleep properly.</p>';return}
+  var offs=[0,1,3,7,14,21].filter(function(o){return o<left-1});
+  var tasks=['Learn: Notes + Circuit Lab + Gravity 3D, then Flashcards','Review: Flashcards ("still learning") + 10 Practice questions','Review: Electricity sheets from memory, then check Sheet answers','Review: Astronomy sheet from memory + Quiz','Review: Weakest topic + Claude-grade 3 long answers','Review: Full mixed Quiz + Teach-back'];
+  h+='<div class="tbl"><table><tr><th>Date</th><th>Do this</th></tr>';offs.forEach(function(o,i){var d=new Date(td);d.setDate(d.getDate()+o);h+='<tr><td>'+d.toDateString()+'</td><td>'+tasks[i]+'</td></tr>'});
+  var l=new Date(ex);l.setDate(l.getDate()-1);h+='<tr><td>'+l.toDateString()+'</td><td>Formula sheet + flashcards, then early night</td></tr></table></div>';$('plBox').innerHTML=h};
+
+/* ===== Claude (sample capability) ===== */
+var SAMPLE=null,SAMPLE_STATE='loading';
+(function(){
+  if(!window.claude||!window.claude.use){SAMPLE_STATE='none';markUnavail();return}
+  window.claude.use('sample').then(function(s){SAMPLE=s;SAMPLE_STATE=s?'ok':'none';if(!s)markUnavail()}).catch(function(){SAMPLE_STATE='none';markUnavail()});
+})();
+function markUnavail(){var u=$('clUnavail');if(u)u.style.display=apiKey()?'none':''}
+function apiKey(){return sg('apikey')||''}
+/* secret key popup: Ctrl+Shift+K or tap the title 5 times */
+(function(){var m=document.createElement('div');m.id='keyModal';m.style.cssText='display:none;position:fixed;inset:0;z-index:99;background:rgba(0,0,0,.45);align-items:center;justify-content:center;padding:16px';
+  m.innerHTML='<div class="card" style="max-width:420px;width:100%;margin:0"><h3 style="margin-top:0">Anthropic API key</h3><p class="small mute">Saved only in this browser (localStorage). Used to call Claude when the page isn\'t opened inside claude.ai.</p><input type="password" id="keyIn" placeholder="sk-ant-..." style="width:100%" autocomplete="off"><div class="row" style="margin-top:10px"><button class="btn p" id="keySave">Save</button><button class="btn" id="keyClear">Remove key</button><button class="btn" id="keyClose">Close</button></div><p class="small" id="keyMsg"></p></div>';
+  document.body.appendChild(m);
+  function open(){m.style.display='flex';$('keyIn').value='';$('keyMsg').textContent=apiKey()?'A key is saved (ends …'+apiKey().slice(-4)+').':'No key saved.';setTimeout(function(){$('keyIn').focus()},30)}
+  function close(){m.style.display='none'}
+  $('keySave').onclick=function(){var k=$('keyIn').value.trim();if(!k){$('keyMsg').textContent='Paste a key first.';return}ss('apikey',k);$('keyMsg').textContent='Saved.';markUnavail();setTimeout(close,600)};
+  $('keyClear').onclick=function(){try{localStorage.removeItem('sce16_apikey')}catch(e){}$('keyMsg').textContent='Key removed.';markUnavail()};
+  $('keyClose').onclick=close;m.onclick=function(e){if(e.target===m)close()};
+  document.addEventListener('keydown',function(e){if(e.ctrlKey&&e.shiftKey&&(e.key==='K'||e.key==='k')){e.preventDefault();open()}if(e.key==='Escape')close()});
+  var taps=0,tt;document.querySelector('header h1').addEventListener('click',function(){taps++;clearTimeout(tt);tt=setTimeout(function(){taps=0},1500);if(taps>=5){taps=0;open()}});
+})();
+function apiAsk(input,tier,signal){var msgs=typeof input==='string'?[{role:'user',content:input}]:input.slice();
+  var merged=[];msgs.forEach(function(m){if(merged.length&&merged[merged.length-1].role===m.role)merged[merged.length-1].content+='\n\n'+m.content;else merged.push({role:m.role,content:m.content})});
+  return fetch('https://api.anthropic.com/v1/messages',{method:'POST',signal:signal,headers:{'content-type':'application/json','x-api-key':apiKey(),'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+    body:JSON.stringify({model:tier==='quick'?'claude-haiku-5-5':'claude-sonnet-5-5',max_tokens:1500,messages:merged})})
+  .then(function(r){return r.json().then(function(j){if(!r.ok)throw{code:'api',message:(j.error&&j.error.message)||('HTTP '+r.status)};return (j.content||[]).filter(function(b){return b.type==='text'}).map(function(b){return b.text}).join('')})})}
+function md(t){var h=esc(t);h=h.replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/^#{1,4}\s*(.+)$/gm,'<b>$1</b>').replace(/^\s*[-•]\s+(.+)$/gm,'• $1');return '<div style="white-space:pre-wrap;line-height:1.6">'+h+'</div>'}
+var ERRS={not_granted:'Claude access wasn\'t allowed for this page.',sampling_disabled:'Claude isn\'t available on this account.',rate_limited:'Too many requests right now. Wait a bit and try again.',session_expired:'Please sign in to claude.ai again.',refused:'Claude declined that one. Try rewording.',empty_completion:'Claude returned nothing. Try again.',upstream_error:'Connection hiccup. Try again.'};
+function errMsg(e){return ERRS[e&&e.code]||('Something went wrong'+(e&&e.code?' ('+e.code+')':'')+'.')}
+/* run a prompt into an element with streaming */
+function askClaude(input,outEl,opts){opts=opts||{};
+  if(!SAMPLE&&apiKey()){var ac=new AbortController();outEl.innerHTML='<div class="exp"><span class="mute">Claude is thinking…</span></div>';if(opts.stopBtn){opts.stopBtn.style.display='';opts.stopBtn.onclick=function(){ac.abort()}}
+    return apiAsk(input,opts.tier,ac.signal).then(function(t){outEl.innerHTML='<div class="exp">'+md(t)+'</div>';return t}).catch(function(e){if(e&&e.name==='AbortError'){outEl.innerHTML='';return null}outEl.innerHTML='<div class="note bad">Claude API error: '+esc(e&&e.message||e)+'</div>';return null}).finally(function(){if(opts.stopBtn)opts.stopBtn.style.display='none'})}
+  if(!SAMPLE){outEl.innerHTML='<div class="note">'+(SAMPLE_STATE==='loading'?'Claude is still connecting. Try again in a few seconds.':'Claude isn\'t connected here.')+'</div>';return Promise.resolve(null)}
+  var ctl=new AbortController();outEl.innerHTML='<div class="exp"><span class="mute">Claude is thinking…</span></div>';
+  if(opts.stopBtn){opts.stopBtn.style.display='';opts.stopBtn.onclick=function(){ctl.abort()}}
+  return SAMPLE(input,{signal:ctl.signal,cache:opts.cache,modelTier:opts.tier,onText:function(u){outEl.innerHTML='<div class="exp">'+md(u.text)+'</div>'}})
+  .then(function(r){outEl.innerHTML='<div class="exp">'+md(r.text)+(r.truncated?'<p class="mute small">(cut short)</p>':'')+'</div>';return r.text})
+  .catch(function(e){if(e&&e.code==='cancelled'){outEl.innerHTML=e.text?'<div class="exp">'+md(e.text)+'</div>':'';return null}
+    outEl.innerHTML=(e&&e.text?'<div class="exp">'+md(e.text)+'</div>':'')+'<div class="note bad">'+errMsg(e)+'</div>';if(e&&/not_granted|sampling_disabled|not_declared|capability/.test(e.code))markUnavail();return null})
+  .finally(function(){if(opts.stopBtn)opts.stopBtn.style.display='none'})}
+function askInline(el,prompt,btn){if(btn)btn.disabled=true;return askClaude(prompt,el,{tier:'quick'}).finally(function(){if(btn)btn.disabled=false})}
+function gradePrompt(q,marks,ans,ref){
+  return 'You are a strict but encouraging Year 10 physics exam marker (Australian school, SCE16 Electricity & Astronomy unit).\n\n'+
+  'QUESTION ['+marks+' mark'+(marks>1?'s':'')+']:\n'+q+'\n\n'+(ref?'REFERENCE ANSWER (from the class answer sheet; may itself contain errors, so use real physics):\n'+ref+'\n\n':'')+
+  'STUDENT ANSWER:\n'+ans+'\n\n'+
+  'Mark it like an exam: method marks for correct formula and substitution, answer mark for correct value WITH unit. Penalise missing units, missing unit conversions (min→s, km→m, kJ→J, mA→A) and forgetting R+h or to flip 1/R.\n'+
+  'Reply in this exact format, plain text, Australian spelling, under 180 words:\n'+
+  '**Mark: X/'+marks+'**\n**What you got right:** ...\n**What lost marks:** ... (or "Nothing")\n**Fix:** the corrected working in a few short lines\n**Tip:** one sentence for next time';
+}
+/* ---- tutor tab ---- */
+(function(){
+  document.querySelectorAll('#clSeg button').forEach(function(b){b.onclick=function(){document.querySelectorAll('#clSeg button').forEach(function(x){x.classList.toggle('on',x===b)});['grade','chat','advice'].forEach(function(m){$('cl-'+m).style.display=m===b.dataset.m?'':'none'})}});
+  var sel=$('clQSel'),h='<option value="">— Type my own question —</option>';
+  SHEETS.forEach(function(s,si){h+='<optgroup label="'+s.n+'">';s.qs.forEach(function(q,qi){h+='<option value="'+si+'-'+qi+'">Q'+q[0]+': '+esc(q[1].slice(0,70))+(q[1].length>70?'…':'')+'</option>'});h+='</optgroup>'});
+  sel.innerHTML=h;
+  sel.onchange=function(){$('clDiag').innerHTML='';if(!sel.value){$('clQ').value='';return}var p=sel.value.split('-');var sh=SHEETS[+p[0]],q=sh.qs[+p[1]];$('clQ').value=q[1];$('clMarks').value=q[2];var v=QVIS[sh.n+'|'+q[0]];if(v)$('clDiag').innerHTML=diagram(v)};
+  $('clGrade').onclick=function(){var q=$('clQ').value.trim(),a=$('clA').value.trim(),m=parseInt($('clMarks').value,10)||3;
+    if(!q||!a){$('clGradeOut').innerHTML='<p class="mute small">Add the question and your answer first.</p>';return}
+    var ref=null;if(sel.value){var p=sel.value.split('-');var sq=SHEETS[+p[0]].qs[+p[1]];ref=sq[3]+(sq[4]?'\nNOTE: '+sq[4]:'')}
+    var b=this;b.disabled=true;askClaude(gradePrompt(q,m,a,ref),$('clGradeOut'),{stopBtn:$('clStop1'),cache:false}).finally(function(){b.disabled=false})};
+  /* chat */
+  var turns=[],RULES='You are a friendly, sharp physics tutor for a Year 10 student (Australian school) revising for an exam on Electricity (static charge, Q=It, V=W/Q, V=IR, series/parallel/combination circuits, P=VI=I²R=V²/R, E=VIt, meters, V–I graphs, fuses, switches and globes) and Astronomy (mass vs weight, F=mg, F=GMm/r², g=GM/(R+h)², light-years, s=ct, star life cycles and fates by mass). Keep answers short (under 150 words unless asked), use worked examples with units, check understanding with a quick question at the end when useful. Australian spelling. Plain text, no LaTeX.';
+  function addMsg(role,html){var d=document.createElement('div');d.style.cssText='margin:8px 0;padding:10px 12px;border-radius:12px;'+(role==='user'?'background:var(--acc2);margin-left:15%':'background:var(--card2);margin-right:5%');d.innerHTML=html;$('clLog').appendChild(d);$('clLog').scrollTop=1e9;return d}
+  function send(txt){txt=(txt||$('clIn').value).trim();if(!txt)return;$('clIn').value='';addMsg('user',esc(txt));turns.push({role:'user',content:txt});
+    if(turns.length>16)turns=turns.slice(-16);if(turns[0].role!=='user')turns.shift();
+    var out=addMsg('assistant','');$('clSend').disabled=true;
+    askClaude([{role:'user',content:RULES}].concat(turns),out,{stopBtn:$('clStop2'),cache:false}).then(function(t){if(t)turns.push({role:'assistant',content:t});else turns.pop()}).finally(function(){$('clSend').disabled=false;$('clLog').scrollTop=1e9})}
+  $('clSend').onclick=function(){send()};$('clIn').onkeydown=function(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send()}};
+  ['Explain combination circuits step by step','Why is g smaller at 5000 km altitude?','Quiz me with 3 hard questions','What\'s the difference between V = W/Q and V = IR?','How do I read a V–I graph?'].forEach(function(c){var b=document.createElement('button');b.className='btn sm';b.textContent=c;b.onclick=function(){send(c)};$('clChips').appendChild(b)});
+  addMsg('assistant',md('Hey! Ask me anything about electricity or astronomy for your exam. I can explain, check your working or quiz you.'));
+  /* advice */
+  $('clAdvise').onclick=function(){var fc={};try{fc=JSON.parse(sg('fc')||'{}')}catch(e){}
+    var learning=[],known=0;for(var k in fc){if(fc[k]===1)known++;else if(fc[k]===0&&CARDS[k])learning.push(CARDS[k][1])}
+    var stats='Flashcards known: '+known+'/'+CARDS.length+'. Still learning: '+(learning.length?learning.slice(0,12).join(' | '):'none marked')+'.\nBest quiz score: '+(sg('qzBest')||'not taken')+'%.\nPractice: '+(sg('prRight')||0)+' correct of '+(sg('prTotal')||0)+'.\nHard mode: '+(HARD?'on':'off')+'.';
+    var d=$('clDate').value;var today=new Date().toISOString().slice(0,10);
+    var p='You are a study coach for a Year 10 physics student preparing for an exam on Electricity and Astronomy (topics: static charge, Q=It, V=W/Q, Ohm\'s law, series/parallel/combination circuits, power & energy, V–I graphs, switches/fuses/meters; mass vs weight, F=GMm/r², g at altitude, light-years, star fates).\nToday: '+today+'.'+(d?' Exam date: '+d+'.':'')+'\nTheir progress on the study page:\n'+stats+'\nThey say: '+($('clCtx').value||'(nothing)')+'\n\nThe page has: Notes, Formulas, Solar System 3D, Gravity 3D, Star Lives 3D, Circuit Lab (simulates their sheet circuits), Graph Lab, Static lab, Sheet answers, Flashcards, Quiz, Practice (with Hard mode), Claude grading, Study tricks.\nGive: 1) a 2-line read of where they are, 2) their 3 weakest areas to fix, 3) a day-by-day plan until the exam (or a 7-day plan) naming which tabs to use, max 20 minutes per item. Under 250 words, plain text, encouraging but honest, Australian spelling.';
+    var b=this;b.disabled=true;askClaude(p,$('clAdviceOut'),{cache:false}).finally(function(){b.disabled=false})};
+})();
+function gradeSheetQ(si,qi){var q=SHEETS[si].qs[qi];location.hash='claude';
+  document.querySelectorAll('#clSeg button')[0].click();$('clQSel').value=si+'-'+qi;$('clQSel').onchange();$('clA').value='';$('clGradeOut').innerHTML='';setTimeout(function(){$('clA').focus()},50)}
+
+/* ===== shared 3D helpers ===== */
+function need3D(){if(typeof THREE==='undefined')throw new Error('3D library did not load');}
+var SHARED_REN=null;function mkRenderer(stage){if(!SHARED_REN){SHARED_REN=new THREE.WebGLRenderer({antialias:true,alpha:false,powerPreference:'low-power'});SHARED_REN.setPixelRatio(Math.min(2,window.devicePixelRatio||1));SHARED_REN.setClearColor(0x05070c)}attach(stage);return SHARED_REN}
+function attach(stage){var c=SHARED_REN.domElement;if(c.parentNode!==stage)stage.insertBefore(c,stage.firstChild);SHARED_REN.setSize(stage.clientWidth,stage.clientHeight)}
+function fit(stage,r,cam){attach(stage);var w=stage.clientWidth,h=stage.clientHeight;if(!w||!h)return;r.setSize(w,h);cam.aspect=w/h;cam.updateProjectionMatrix()}
+function starfield(scene,n,R){var g=new THREE.BufferGeometry(),p=new Float32Array(n*3),c=new Float32Array(n*3);for(var i=0;i<n;i++){var u=Math.random()*2-1,t=Math.random()*6.283,s=Math.sqrt(1-u*u);p[i*3]=R*s*Math.cos(t);p[i*3+1]=R*u;p[i*3+2]=R*s*Math.sin(t);var b=0.5+Math.random()*0.5,tint=Math.random();c[i*3]=b*(tint>.85?1:.85);c[i*3+1]=b*.9;c[i*3+2]=b*(tint<.2?1:.95)}
+  g.setAttribute('position',new THREE.BufferAttribute(p,3));g.setAttribute('color',new THREE.BufferAttribute(c,3));scene.add(new THREE.Points(g,new THREE.PointsMaterial({size:1.6,sizeAttenuation:false,vertexColors:true})))}
+function glowTex(inner,outer){var c=document.createElement('canvas');c.width=c.height=128;var g=c.getContext('2d');var gr=g.createRadialGradient(64,64,0,64,64,64);gr.addColorStop(0,inner);gr.addColorStop(0.25,outer);gr.addColorStop(1,'rgba(0,0,0,0)');g.fillStyle=gr;g.fillRect(0,0,128,128);return new THREE.CanvasTexture(c)}
+function glowSprite(inner,outer,s){var m=new THREE.SpriteMaterial({map:glowTex(inner,outer),blending:THREE.AdditiveBlending,depthWrite:false,transparent:true});var sp=new THREE.Sprite(m);sp.scale.set(s,s,1);return sp}
+function planetTex(hex,kind,seed){var c=document.createElement('canvas');c.width=512;c.height=256;var g=c.getContext('2d');var col=new THREE.Color(hex);var rand=(function(s){return function(){s=(s*9301+49297)%233280;return s/233280}})(seed||7);
+  g.fillStyle=hex;g.fillRect(0,0,512,256);
+  if(kind==='gas'){for(var y=0;y<256;y+=2){var k=0.75+0.5*(Math.sin(y*0.09+seed)*0.5+Math.sin(y*0.31+seed*2)*0.3+rand()*0.2);var cc=col.clone().multiplyScalar(k);g.fillStyle='#'+cc.getHexString();g.fillRect(0,y,512,2)}
+    if(seed===5){g.fillStyle='rgba(190,90,60,.8)';g.beginPath();g.ellipse(330,165,34,16,0,0,7);g.fill()}}
+  else if(kind==='earth'){g.fillStyle='#1d4ed8';g.fillRect(0,0,512,256);for(var i=0;i<26;i++){g.fillStyle=rand()>.35?'#3f8f3a':'#b9a36b';g.beginPath();g.ellipse(rand()*512,30+rand()*196,20+rand()*55,10+rand()*35,rand()*3,0,7);g.fill()}g.fillStyle='#f1f5f9';g.fillRect(0,0,512,14);g.fillRect(0,242,512,14);for(var j=0;j<40;j++){g.fillStyle='rgba(255,255,255,.35)';g.beginPath();g.ellipse(rand()*512,rand()*256,30+rand()*40,4+rand()*6,0,0,7);g.fill()}}
+  else{for(var i2=0;i2<900;i2++){var cc2=col.clone().multiplyScalar(0.6+rand()*0.6);g.fillStyle='#'+cc2.getHexString();g.globalAlpha=0.5;g.beginPath();g.arc(rand()*512,rand()*256,1+rand()*7,0,7);g.fill()}g.globalAlpha=1}
+  var t=new THREE.CanvasTexture(c);return t}
+function makeControls(cam,el){var c=new THREE.OrbitControls(cam,el);c.enabled=false;c.enableDamping=true;c.dampingFactor=0.08;return c}
+
+/* ===== Solar System ===== */
+LABS.solar=(function(){
+  var stage,ren,scene,cam,ctl,raf,bodies=[],labels=[],sel=null,follow=false,pulse=null,pulseT=0,reached={},days=0,last=0,ray=new THREE_SAFE_RAY();
+  function THREE_SAFE_RAY(){return null}
+  function sc(r){return 7+12.5*Math.sqrt(r/57.9)}
+  function init(){need3D();stage=$('solarStage');ren=mkRenderer(stage);scene=new THREE.Scene();cam=new THREE.PerspectiveCamera(50,stage.clientWidth/stage.clientHeight,0.1,3000);cam.position.set(0,95,165);ctl=makeControls(cam,ren.domElement);ctl.maxDistance=600;ctl.minDistance=6;
+    starfield(scene,2500,900);scene.add(new THREE.AmbientLight(0xffffff,0.22));var pl=new THREE.PointLight(0xfff2d0,1.8,0,0);scene.add(pl);
+    var sun=new THREE.Mesh(new THREE.SphereGeometry(5,48,32),new THREE.MeshBasicMaterial({map:planetTex('#ffb52e','rock',3),color:0xffe08a}));scene.add(sun);sun.add(glowSprite('rgba(255,250,220,1)','rgba(255,170,40,.55)',34));
+    bodies.push({name:'Sun',mesh:sun,d:0,ang:0});
+    ray=new THREE.Raycaster();
+    PLANETS.forEach(function(p,i){if(p[0]==='Moon')return;var size=0.7+0.95*Math.cbrt(p[3]/2.44);var kind=p[2]>50?'gas':(p[0]==='Earth'?'earth':'rock');
+      var m=new THREE.Mesh(new THREE.SphereGeometry(size,40,28),new THREE.MeshStandardMaterial({map:planetTex(p[6],kind,i+1),roughness:0.9,metalness:0}));m.rotation.z=0.3;scene.add(m);
+      var d=sc(p[1]);var pts=[];for(var k=0;k<=160;k++){var a=k/160*6.2832;pts.push(new THREE.Vector3(Math.cos(a)*d,0,Math.sin(a)*d))}
+      scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),new THREE.LineBasicMaterial({color:0x6ea8ff,transparent:true,opacity:0.22})));
+      if(p[0]==='Saturn'){var rg=new THREE.Mesh(new THREE.RingGeometry(size*1.35,size*2.3,64),new THREE.MeshBasicMaterial({color:0xe6d39b,side:THREE.DoubleSide,transparent:true,opacity:0.55}));rg.rotation.x=-Math.PI/2+0.45;m.add(rg)}
+      var b={name:p[0],p:p,mesh:m,d:d,ang:Math.random()*6.28,size:size};bodies.push(b);
+      if(p[0]==='Earth'){var mo=new THREE.Mesh(new THREE.SphereGeometry(0.45,24,16),new THREE.MeshStandardMaterial({map:planetTex('#bdbdbd','rock',11)}));scene.add(mo);bodies.push({name:'Moon',p:P('Moon'),mesh:mo,moonOf:b,d:size+1.6,ang:0,size:0.45})}});
+    bodies.forEach(function(b){var l=document.createElement('div');l.className='lbl';l.textContent=b.name;stage.appendChild(l);labels.push(l)});
+    var down=null;ren.domElement.addEventListener('pointerdown',function(e){down=[e.clientX,e.clientY]});
+    ren.domElement.addEventListener('pointerup',function(e){if(curTab!=='solar'||!down||Math.hypot(e.clientX-down[0],e.clientY-down[1])>6)return;var r=ren.domElement.getBoundingClientRect();var v=new THREE.Vector2((e.clientX-r.left)/r.width*2-1,-(e.clientY-r.top)/r.height*2+1);ray.setFromCamera(v,cam);
+      var best=null,bd=1e9;bodies.forEach(function(b){var pos=b.mesh.position.clone().project(cam);var dx=(pos.x-v.x)*r.width/2,dy=(pos.y-v.y)*r.height/2;var dd=Math.hypot(dx,dy);if(dd<26&&dd<bd&&pos.z<1){bd=dd;best=b}});if(best)select(best)});
+    $('pulseBtn').onclick=function(){if(pulse){scene.remove(pulse)}pulse=new THREE.Mesh(new THREE.SphereGeometry(1,48,32),new THREE.MeshBasicMaterial({color:0xfff3b0,transparent:true,opacity:0.18,side:THREE.DoubleSide,depthWrite:false}));scene.add(pulse);pulseT=0;reached={};$('solarHud').innerHTML='Light pulse launched…'};
+    $('followBtn').onclick=function(){follow=!follow;this.textContent='Follow: '+(follow?'on':'off');if(!follow)ctl.target.set(0,0,0)};
+    $('solarSpeed').oninput=spd;spd();$('myMass').oninput=function(){if(sel)select(sel);weights()};weights();
+    window.addEventListener('resize',function(){if(curTab==='solar')fit(stage,ren,cam)})}
+  function rate(){return Math.pow(10,+$('solarSpeed').value)}
+  function spd(){$('solarSpeedL').textContent=sf(rate(),2)+' days/s'}
+  function weights(){var m=parseFloat($('myMass').value)||0;$('weightAll').innerHTML='<table>'+PLANETS.map(function(p){return '<tr><td>'+p[0]+'</td><td>'+sf(m*p[4])+' N</td></tr>'}).join('')+'</table>'}
+  function select(b){sel=b;var m=parseFloat($('myMass').value)||60,h;
+    if(b.name==='Sun'){h='<b style="font-size:1.1rem">The Sun</b><p class="small">Mass 1.99×10³⁰ kg (from your sheet). It holds every planet in orbit with gravity.</p><div class="work">Your weight on the Sun\'s "surface" (g ≈ 274 N/kg):\nF_w = m g = '+m+' × 274 = '+sf(m*274)+' N</div>'}
+    else{var p=b.p,r=p[1]*1e9,M=p[2]*1e24;h='<b style="font-size:1.1rem;color:'+p[6]+'">'+p[0]+'</b><table class="small" style="margin-top:6px"><tr><td>Orbital radius</td><td>'+p[1]+'×10⁹ m'+(p[0]==='Moon'?' (around Earth)':'')+'</td></tr><tr><td>Mass</td><td>'+p[2]+'×10²⁴ kg</td></tr><tr><td>Radius</td><td>'+p[3]+'×10⁶ m</td></tr><tr><td>g</td><td>'+p[4]+' N/kg</td></tr><tr><td>Orbital period</td><td>'+p[5].toLocaleString()+' days</td></tr></table>';
+      h+='<div class="work">Your weight here:\nF_w = m g = '+m+' × '+p[4]+' = '+sf(m*p[4])+' N\n(on Earth: '+sf(m*9.8)+' N)</div>';
+      if(p[0]!=='Moon'){var F=G*MSUN*M/(r*r);h+='<div class="work">Sun\'s pull on '+p[0]+':\nF = G M m / r²\n= 6.67×10⁻¹¹ × 1.99×10³⁰ × '+p[2]+'×10²⁴ / ('+p[1]+'×10⁹)²\n= '+sf(F)+' N</div><div class="work">Sunlight travel time:\nt = s / c = '+p[1]+'×10⁹ / 3.00×10⁸\n= '+sf(r/C)+' s = '+sf(r/C/60)+' min</div>'}
+      else{var Fm=G*5.97e24*M/(r*r);h+='<div class="work">Earth\'s pull on the Moon:\nF = 6.67×10⁻¹¹ × 5.97×10²⁴ × 0.073×10²⁴ / (0.384×10⁹)²\n= '+sf(Fm)+' N\nLight from the Moon takes '+sf(r/C)+' s.</div>'}}
+    $('solarInfo').innerHTML=h;$('solarHud').textContent=b.name+' selected'}
+  function frame(t){raf=requestAnimationFrame(frame);var dt=Math.min(0.05,(t-last)/1000||0);last=t;days+=dt*rate();
+    bodies.forEach(function(b){if(!b.p)return;var w=6.2832/b.p[5];if(b.moonOf){var a=days*w;b.mesh.position.set(b.moonOf.mesh.position.x+Math.cos(a)*b.d,0,b.moonOf.mesh.position.z+Math.sin(a)*b.d)}else{var a2=b.ang+days*w;b.mesh.position.set(Math.cos(a2)*b.d,0,-Math.sin(a2)*b.d)}b.mesh.rotation.y+=dt*0.5});
+    if(pulse){pulseT+=dt*12;var dist=C*pulseT*60;var R=dist<=0?0:sc(dist/1e9);pulse.scale.setScalar(Math.max(5,R));pulse.material.opacity=Math.max(0.04,0.2-pulseT/2000);
+      var msg='Light travel time: <b>'+sf(pulseT,3)+' min</b>';PLANETS.forEach(function(p){if(p[0]==='Moon')return;var tt=p[1]*1e9/C/60;if(pulseT>=tt&&!reached[p[0]]){reached[p[0]]=sf(tt,3)}});
+      var ks=Object.keys(reached);if(ks.length)msg+='<br><span class="small">'+ks.map(function(k){return k+' '+reached[k]+' min'}).join(' · ')+'</span>';$('solarHud').innerHTML=msg;if(pulseT>260){scene.remove(pulse);pulse=null}}
+    if(follow&&sel){ctl.target.lerp(sel.mesh.position,0.1)}ctl.update();ren.render(scene,cam);
+    var w=stage.clientWidth,h=stage.clientHeight;bodies.forEach(function(b,i){var v=b.mesh.position.clone();v.y+=(b.size||5)+0.4;v.project(cam);var l=labels[i];if(v.z>1||v.z<-1){l.style.display='none';return}l.style.display='';l.style.left=((v.x+1)/2*w)+'px';l.style.top=((1-v.y)/2*h)+'px';l.style.color=b===sel?'#fbbf24':''})}
+  return{init:init,start:function(){ctl.enabled=true;fit(stage,ren,cam);cancelAnimationFrame(raf);last=performance.now();raf=requestAnimationFrame(frame)},stop:function(){cancelAnimationFrame(raf);ctl.enabled=false}}
+})();
+
+/* ===== Gravity lab ===== */
+LABS.gravity=(function(){
+  var stage,ren,scene,cam,ctl,raf,planet,sat,line,arrows=[],wArrow,body,VIS=5,ringMeshes=[];
+  var PAIRS=[['Sun–Mercury',MSUN,'1.99×10³⁰',0.330e24,'0.330×10²⁴',57.9e9,'57.9×10⁹'],['Sun–Earth',MSUN,'1.99×10³⁰',5.97e24,'5.97×10²⁴',149.6e9,'149.6×10⁹'],['Earth–Moon',5.97e24,'5.97×10²⁴',0.073e24,'0.073×10²⁴',0.384e9,'0.384×10⁹'],['Earth–Mars (closest)',5.97e24,'5.97×10²⁴',0.642e24,'0.642×10²⁴',78.3e9,'(227.9 − 149.6)×10⁹'],['Black hole–pulsar',4.2e34,'4.2×10³⁴',7.4e31,'7.4×10³¹',6.8e20,'6.8×10²⁰'],['Sun–Jupiter',MSUN,'1.99×10³⁰',1899e24,'1899×10²⁴',778.6e9,'778.6×10⁹']];
+  function init(){need3D();stage=$('gravStage');ren=mkRenderer(stage);scene=new THREE.Scene();cam=new THREE.PerspectiveCamera(50,stage.clientWidth/stage.clientHeight,0.1,2000);cam.position.set(14,10,26);ctl=makeControls(cam,ren.domElement);
+    starfield(scene,1500,700);scene.add(new THREE.AmbientLight(0xffffff,0.3));var dl=new THREE.DirectionalLight(0xffffff,1.1);dl.position.set(30,20,20);scene.add(dl);
+    planet=new THREE.Mesh(new THREE.SphereGeometry(VIS,64,40),new THREE.MeshStandardMaterial({roughness:0.85}));scene.add(planet);
+    var atm=glowSprite('rgba(120,170,255,.0)','rgba(110,168,255,.25)',VIS*3.2);planet.add(atm);
+    sat=new THREE.Group();var bodyM=new THREE.Mesh(new THREE.BoxGeometry(0.6,0.6,0.9),new THREE.MeshStandardMaterial({color:0xd4d4d8,metalness:0.6,roughness:0.3}));sat.add(bodyM);
+    [-1,1].forEach(function(s){var pnl=new THREE.Mesh(new THREE.BoxGeometry(1.6,0.04,0.7),new THREE.MeshStandardMaterial({color:0x1e3a8a,metalness:0.4,roughness:0.4,emissive:0x0b1a40}));pnl.position.x=s*1.15;sat.add(pnl)});scene.add(sat);
+    line=new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(),new THREE.Vector3(1,0,0)]),new THREE.LineDashedMaterial({color:0xfbbf24,dashSize:0.4,gapSize:0.25}));scene.add(line);
+    wArrow=new THREE.ArrowHelper(new THREE.Vector3(-1,0,0),new THREE.Vector3(),2,0xff7b72,0.5,0.35);scene.add(wArrow);
+    var shells=[1.25,1.8,2.6,3.6];shells.forEach(function(k){var n=k<2?14:18;for(var i=0;i<n;i++){var y=1-2*(i+0.5)/n,r=Math.sqrt(1-y*y),th=i*2.39996;var dir=new THREE.Vector3(Math.cos(th)*r,y,Math.sin(th)*r);var len=2.6/(k*k);
+      var a=new THREE.ArrowHelper(dir.clone().negate(),dir.clone().multiplyScalar(VIS*k),Math.max(0.25,len*VIS*0.55),0x6ea8ff,Math.max(0.15,len*0.9),Math.max(0.1,len*0.6));a.line.material.transparent=true;a.line.material.opacity=0.65;scene.add(a);arrows.push(a)}});
+    $('gravBody').innerHTML=PLANETS.map(function(p){return '<option>'+p[0]+'</option>'}).join('');$('gravBody').value='Earth';
+    $('gravBody').onchange=setBody;$('gravH').oninput=upd;$('gravM').oninput=upd;
+    document.querySelectorAll('[data-gq]').forEach(function(b){b.onclick=function(){$('gravBody').value=b.dataset.gq;$('gravH').value=5000;setBody()}});
+    $('fgPair').innerHTML=PAIRS.map(function(p,i){return '<option value="'+i+'">'+p[0]+'</option>'}).join('');$('fgPair').onchange=fg;fg();
+    setBody();window.addEventListener('resize',function(){if(curTab==='gravity'){fit(stage,ren,cam);plot()}})}
+  function fg(){var p=PAIRS[+$('fgPair').value];var F=G*p[1]*p[3]/(p[5]*p[5]);$('fgWork').textContent='F = G M m / r²\n= 6.67×10⁻¹¹ × '+p[2]+' × '+p[4]+'\n  / ('+p[6]+')²\n= '+sf(F)+' N'}
+  function setBody(){body=P($('gravBody').value);var kind=body[2]>50?'gas':(body[0]==='Earth'?'earth':'rock');planet.material.map=planetTex(body[6],kind,PLANETS.indexOf(body)+1);planet.material.needsUpdate=true;upd()}
+  function upd(){var h=+$('gravH').value,m=parseFloat($('gravM').value)||0,R=body[3]*1e6,M=body[2]*1e24,r=R+h*1e3,g=G*M/(r*r),g0=G*M/(R*R);
+    $('gravHL').textContent=h.toLocaleString()+' km';var d=VIS*r/R;var ang=0.6;sat.position.set(d*Math.cos(ang),d*0.35,d*Math.sin(ang));sat.lookAt(0,0,0);
+    line.geometry.setFromPoints([new THREE.Vector3(),sat.position.clone()]);line.computeLineDistances();
+    var dir=sat.position.clone().normalize().negate();wArrow.position.copy(sat.position);wArrow.setDirection(dir);var wl=Math.max(0.5,4*g/g0);wArrow.setLength(wl,Math.min(0.6,wl*0.3),Math.min(0.4,wl*0.2));
+    var dist=Math.max(26,d*2.2);if(cam.position.length()<d*1.3||cam.position.length()>dist*2.5)cam.position.setLength(dist);
+    $('gravHud').innerHTML=body[0]+' · h = '+h.toLocaleString()+' km<br><b style="font-size:1.05rem;color:#fcd34d">g = '+sf(g)+' N/kg</b> <span class="mute">('+sf(100*g/g0,3)+'% of surface)</span>';
+    $('gravWork').textContent='r = R + h\n  = '+body[3]+'×10⁶ + '+(h?sf(h*1e3,3).replace('×','×'):'0')+' m\n  = '+sf(r,4)+' m\n\ng = G M / r²\n  = 6.67×10⁻¹¹ × '+body[2]+'×10²⁴ / ('+sf(r,4)+')²\n  = '+sf(g)+' N/kg\n\nWeight of '+m+' kg here:\nF_w = m g = '+m+' × '+sf(g)+' = '+sf(m*g)+' N';plot()}
+  function plot(){var c=$('gravPlot'),w=c.clientWidth,h=c.clientHeight;if(!w||!body)return;var dpr=window.devicePixelRatio||1;c.width=w*dpr;c.height=h*dpr;var x=c.getContext('2d');x.scale(dpr,dpr);
+    var R=body[3]*1e6,M=body[2]*1e24,g0=G*M/(R*R),Hm=40000,mg={l:50,r:14,t:14,b:34};var X=function(hh){return mg.l+hh/Hm*(w-mg.l-mg.r)},Y=function(g){return h-mg.b-g/g0*(h-mg.t-mg.b)};
+    x.strokeStyle='#e7e3da';x.fillStyle='#6b6b6b';x.font='11px Inter';for(var i=0;i<=4;i++){x.beginPath();x.moveTo(X(Hm*i/4),Y(0));x.lineTo(X(Hm*i/4),mg.t);x.stroke();x.textAlign='center';x.fillText((Hm*i/4/1000)+'k km',X(Hm*i/4),h-mg.b+15);x.beginPath();x.moveTo(mg.l,Y(g0*i/4));x.lineTo(w-mg.r,Y(g0*i/4));x.stroke();x.textAlign='right';x.fillText(sf(g0*i/4,2),mg.l-5,Y(g0*i/4)+4)}
+    x.strokeStyle='#1d4ed8';x.lineWidth=2;x.beginPath();for(var k=0;k<=200;k++){var hh=Hm*k/200,r=R+hh*1e3,g=G*M/(r*r);k?x.lineTo(X(hh),Y(g)):x.moveTo(X(hh),Y(g))}x.stroke();
+    var hc=+$('gravH').value,rc=R+hc*1e3,gc=G*M/(rc*rc);x.fillStyle='#b45309';x.beginPath();x.arc(X(hc),Y(gc),6,0,7);x.fill();x.fillStyle='#1a1a1a';x.textAlign='left';x.fillText('g (N/kg) vs altitude: inverse square',mg.l+6,mg.t+12)}
+  function frame(t){raf=requestAnimationFrame(frame);planet.rotation.y+=0.002;ctl.update();ren.render(scene,cam)}
+  return{init:init,start:function(){ctl.enabled=true;if(PENDING_LAB){if(PENDING_LAB.grav){$('gravBody').value=PENDING_LAB.grav;$('gravH').value=5000;setBody()}if(PENDING_LAB.pair){PAIRS.forEach(function(p,i){if(p[0]===PENDING_LAB.pair)$('fgPair').value=i});fg()}PENDING_LAB=null}fit(stage,ren,cam);plot();cancelAnimationFrame(raf);raf=requestAnimationFrame(frame)},stop:function(){cancelAnimationFrame(raf);ctl.enabled=false}}
+})();
+
+/* ===== Star lives ===== */
+LABS.stars=(function(){
+  var stage,ren,scene,cam,ctl,raf,last=0,neb,nebBase,star,glow,shell,disc,beams,core,stage_i=0,st=0,playing=false,mass=1;
+  var STAGES=['Nebula','Protostar','Main sequence','Giant','Death','Remnant'];
+  function path(){return mass<8?'low':mass<20?'mid':'high'}
+  function msColor(){return mass<0.8?0xff8a4c:mass<1.5?0xfff1b5:mass<4?0xf4f7ff:0x9cc4ff}
+  function msR(){return 1.2*Math.pow(mass,0.55)}
+  function init(){need3D();stage=$('starStage');ren=mkRenderer(stage);scene=new THREE.Scene();cam=new THREE.PerspectiveCamera(50,stage.clientWidth/stage.clientHeight,0.1,2000);cam.position.set(0,6,34);ctl=makeControls(cam,ren.domElement);
+    starfield(scene,1800,600);scene.add(new THREE.AmbientLight(0xffffff,0.2));
+    var n=4000,g=new THREE.BufferGeometry(),p=new Float32Array(n*3),c=new Float32Array(n*3);nebBase=new Float32Array(n*3);
+    for(var i=0;i<n;i++){var r=4+Math.pow(Math.random(),0.6)*14,u=Math.random()*2-1,t=Math.random()*6.283,s=Math.sqrt(1-u*u);var x=r*s*Math.cos(t),y=r*u*0.55,z=r*s*Math.sin(t);nebBase[i*3]=x;nebBase[i*3+1]=y;nebBase[i*3+2]=z;var pk=Math.random();c[i*3]=pk<.5?0.95:0.45;c[i*3+1]=pk<.5?0.45:0.55;c[i*3+2]=pk<.5?0.75:1}
+    p.set(nebBase);g.setAttribute('position',new THREE.BufferAttribute(p,3));g.setAttribute('color',new THREE.BufferAttribute(c,3));
+    neb=new THREE.Points(g,new THREE.PointsMaterial({size:0.35,vertexColors:true,transparent:true,opacity:0.8,blending:THREE.AdditiveBlending,depthWrite:false}));scene.add(neb);
+    star=new THREE.Mesh(new THREE.SphereGeometry(1,64,40),new THREE.MeshBasicMaterial({color:0xffffff,map:planetTex('#ffffff','rock',9)}));scene.add(star);
+    glow=glowSprite('rgba(255,255,255,1)','rgba(255,200,120,.5)',1);scene.add(glow);
+    shell=new THREE.Mesh(new THREE.SphereGeometry(1,48,32),new THREE.MeshBasicMaterial({color:0x5eead4,transparent:true,opacity:0.25,side:THREE.DoubleSide,blending:THREE.AdditiveBlending,depthWrite:false}));scene.add(shell);
+    var dc=document.createElement('canvas');dc.width=dc.height=256;var dg=dc.getContext('2d');var gr=dg.createRadialGradient(128,128,40,128,128,128);gr.addColorStop(0,'rgba(0,0,0,0)');gr.addColorStop(0.3,'rgba(255,240,200,1)');gr.addColorStop(0.55,'rgba(255,140,40,.9)');gr.addColorStop(1,'rgba(120,20,0,0)');dg.fillStyle=gr;dg.fillRect(0,0,256,256);
+    disc=new THREE.Mesh(new THREE.RingGeometry(1.4,6,96),new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(dc),side:THREE.DoubleSide,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false}));disc.rotation.x=-Math.PI/2+0.35;scene.add(disc);
+    var ringUV=disc.geometry.attributes.uv,pos=disc.geometry.attributes.position,v=new THREE.Vector3();for(var k=0;k<pos.count;k++){v.fromBufferAttribute(pos,k);var rr=(v.length()-1.4)/(6-1.4);ringUV.setXY(k,0.5+0.5*v.x/v.length()*(0.3+0.7*rr),0.5+0.5*v.y/v.length()*(0.3+0.7*rr))}
+    core=new THREE.Mesh(new THREE.SphereGeometry(1,32,24),new THREE.MeshBasicMaterial({color:0x000000}));scene.add(core);
+    beams=new THREE.Group();[1,-1].forEach(function(s){var cn=new THREE.Mesh(new THREE.ConeGeometry(0.9,12,24,1,true),new THREE.MeshBasicMaterial({color:0x93c5fd,transparent:true,opacity:0.35,blending:THREE.AdditiveBlending,side:THREE.DoubleSide,depthWrite:false}));cn.position.y=s*6;if(s>0)cn.rotation.x=Math.PI;beams.add(cn)});beams.rotation.z=0.4;scene.add(beams);
+    var hb='';STAGES.forEach(function(s,i){hb+='<button class="btn sm" data-st="'+i+'">'+(i+1)+'. '+s+'</button>'});$('stageBtns').innerHTML=hb;
+    document.querySelectorAll('[data-st]').forEach(function(b){b.onclick=function(){playing=false;go(+b.dataset.st)}});
+    $('starM').oninput=function(){mass=Math.pow(10,+this.value);lab();go(stage_i)};document.querySelectorAll('[data-sm]').forEach(function(b){b.onclick=function(){mass=+b.dataset.sm;$('starM').value=Math.log10(mass);lab();go(0)}});
+    $('starPlay').onclick=function(){playing=true;go(0)};lab();go(0);window.addEventListener('resize',function(){if(curTab==='stars')fit(stage,ren,cam)})}
+  function lab(){$('starML').textContent=sf(mass,2)+' × Sun'}
+  function name(i){var p=path();if(i===3)return p==='low'?'Red giant':'Red supergiant';if(i===4)return p==='low'?'Planetary nebula':'Supernova!';if(i===5)return p==='low'?'White dwarf':p==='mid'?'Neutron star (pulsar)':'Black hole';return STAGES[i]}
+  var TXT=['A cloud of gas (mostly hydrogen) and dust. Gravity starts pulling it together.','Gravity collapses the cloud. It heats up until the core is hot enough for nuclear fusion.','Hydrogen fuses into helium. Gravity (in) is balanced by radiation pressure (out). This is the longest stage.',
+    {low:'Core hydrogen runs out. The core contracts and the outer layers swell and cool → red giant.',mid:'Core runs out of hydrogen; the star swells into a huge red supergiant, fusing heavier elements.',high:'A monster red supergiant, fusing elements all the way up to iron.'},
+    {low:'Outer layers drift away, forming a glowing planetary nebula.',mid:'Fusion stops at iron. The core collapses in under a second and the star explodes as a supernova.',high:'Iron core collapses and the star explodes as a supernova, briefly outshining a whole galaxy.'},
+    {low:'The leftover core (< 1.4 Suns) is a white dwarf: Earth-sized, very hot and dense. It slowly cools.',mid:'Leftover core of ~1.4–3 Suns is crushed into a neutron star: a city-sized ball of neutrons, often spinning as a pulsar.',high:'Leftover core over ~3 Suns: nothing can stop the collapse. A black hole forms, and not even light escapes.'}];
+  function go(i){stage_i=i;st=0;var t=TXT[i];t=typeof t==='string'?t:t[path()];
+    $('starHud').innerHTML='<b>'+(i+1)+'. '+name(i)+'</b> <span class="mute">· '+sf(mass,2)+' M☉</span>';
+    var life=1e10*Math.pow(mass,-2.5);$('starInfo').innerHTML='<p><b>'+name(i)+'</b><br><span class="small">'+t+'</span></p><div class="small mute">Main-sequence lifetime ≈ '+(life>=1e9?sf(life/1e9,2)+' billion':sf(life/1e6,2)+' million')+' years<br>Ending: <b style="color:var(--ink)">'+name(5)+'</b></div>';
+    document.querySelectorAll('[data-st]').forEach(function(b){b.classList.toggle('p',+b.dataset.st===i)})}
+  function frame(tm){raf=requestAnimationFrame(frame);var dt=Math.min(0.05,(tm-last)/1000||0);last=tm;st=Math.min(1,st+dt/(stage_i===4?2.2:3));var e=1-Math.pow(1-st,3),p=path();
+    var pa=neb.geometry.attributes.position,arr=pa.array;neb.rotation.y+=dt*0.05;
+    var shrink=stage_i===0?1-0.15*e:stage_i===1?0.85-0.8*e:0.05;neb.visible=stage_i<=1||stage_i===4&&p==='low'?true:stage_i<=1;
+    if(stage_i<=1){for(var i=0;i<arr.length;i++)arr[i]=nebBase[i]*shrink;pa.needsUpdate=true;neb.material.opacity=stage_i===1?0.8-0.6*e:0.8}
+    star.visible=glow.visible=false;shell.visible=disc.visible=core.visible=beams.visible=false;var col=new THREE.Color(msColor()),R=msR();
+    if(stage_i===1){star.visible=glow.visible=true;star.scale.setScalar(0.3+0.6*e);star.material.color.set(0xff9a5c);glow.scale.setScalar(3+5*e);glow.material.color.set(0xff9a5c)}
+    if(stage_i===2){star.visible=glow.visible=true;star.scale.setScalar(R);star.material.color.copy(col);glow.material.color.copy(col);glow.scale.setScalar(R*5*(1+0.03*Math.sin(tm/300)))}
+    if(stage_i===3){star.visible=glow.visible=true;var big=p==='low'?6:9;var rr=R+(big-R)*e;star.scale.setScalar(rr);star.material.color.copy(col.clone().lerp(new THREE.Color(0xff5a36),e));glow.material.color.copy(star.material.color);glow.scale.setScalar(rr*3)}
+    if(stage_i===4){if(p==='low'){shell.visible=true;shell.material.color.set(0x5eead4);shell.scale.setScalar(6+8*e);shell.material.opacity=0.3*(1-e*0.5);star.visible=glow.visible=true;star.scale.setScalar(6-5.6*e);star.material.color.set(0xffffff);glow.scale.setScalar(4);neb.visible=false}
+      else{glow.visible=true;glow.material.color.set(0xffffff);glow.scale.setScalar(4+60*Math.sin(Math.min(1,st*1.2)*Math.PI*0.5)*(1-0.6*e));shell.visible=true;shell.material.color.set(0xfca5a5);shell.scale.setScalar(2+22*e);shell.material.opacity=0.45*(1-e)}}
+    if(stage_i===5){if(p==='low'){star.visible=glow.visible=true;star.material.color.set(0xe0f2ff);star.scale.setScalar(0.45);glow.material.color.set(0xbfdbfe);glow.scale.setScalar(4);shell.visible=true;shell.scale.setScalar(14+2*e);shell.material.opacity=0.12*(1-e)+0.03}
+      else if(p==='mid'){star.visible=glow.visible=beams.visible=true;star.material.color.set(0xbfdbfe);star.scale.setScalar(0.3);glow.material.color.set(0x93c5fd);glow.scale.setScalar(3);beams.rotation.y+=dt*6}
+      else{core.visible=disc.visible=glow.visible=true;core.scale.setScalar(1.3);disc.rotation.z+=dt*0.8;glow.material.color.set(0xff8c32);glow.scale.setScalar(9)}}
+    if(playing&&st>=1){if(stage_i<5){go(stage_i+1)}else playing=false}
+    ctl.update();ren.render(scene,cam)}
+  return{init:init,start:function(){ctl.enabled=true;fit(stage,ren,cam);cancelAnimationFrame(raf);last=performance.now();raf=requestAnimationFrame(frame)},stop:function(){cancelAnimationFrame(raf);ctl.enabled=false}}
+})();
+
+$('hardBtn').onclick=function(){setHard(!HARD)};setHard(HARD);showTab(location.hash.slice(1)||'start');
+</script>
+</body>
+</html>
