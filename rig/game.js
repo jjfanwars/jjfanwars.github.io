@@ -29,7 +29,7 @@ const hexS = c => '#' + c.toString(16).padStart(6, '0');
 
 // ---------------- net (jjfanwars relay)
 const RELAY_URL = 'wss://jjfanwars-relay.businessautomationvic.workers.dev';
-const GAME_V = 69;
+const GAME_V = 70;
 const Net = {
   tag: '[Rig]', role: 'solo', ws: null, peers: new Map(), code: '', relayT: {pose: 1}, id: '', name: '', handlers: {}, retry: 0, started: false,
   enc: new TextEncoder(), dec: new TextDecoder(),
@@ -529,7 +529,7 @@ function placeSunk(seed) { for (const q of SUNK) scene.remove(q.m); SUNK.length 
   for (let k = 0; k < 1800 && SUNK.length < DSITES.length * 12 + 40; k++) { const a = r() * TAU, d = 150 + r() * (MAP_R - 450), x = MAP_C.x + Math.sin(a) * d, z = MAP_C.z + Math.cos(a) * d; if (Math.hypot(x - MAP_C.x, z - MAP_C.z) > MAP_R - 100 || seaBed(x, z) > -17 || SUNK.some(q => Math.hypot(q.x - x, q.z - z) < 90)) continue;
     const kind = r() < .45 ? 'chest' : r() < .5 ? 'blackbox' : 'relic', y = seaBed(x, z), m = itemMesh(kind); m.scale.setScalar(1.6); m.position.set(x, y + .2, z); m.rotation.set(.3, r() * TAU, .2);
     const gl = new THREE.Sprite(new THREE.SpriteMaterial({map: TX.glow, color: 0x7affd0, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: .5})); gl.scale.setScalar(5); gl.position.set(0, .6, 0); m.add(gl); scene.add(m); SUNK.push({x, z, y, kind, m, got: false}); } }
-function landH(x, z) { const g = pfIsleGrid(), ix = Math.floor((x - g.x0) / 64), iz = Math.floor((z - g.z0) / 64); if (ix < 0 || iz < 0 || ix >= g.nx || iz >= g.nz) return -9; const L = g.c[ix * g.nz + iz]; if (!L) return -9; let h = -9; for (let i = 0; i < L.length; i++) { const I = L[i]; if (Math.abs(x - I.x) > I.r * 1.4 || Math.abs(z - I.z) > I.r * 1.4) continue; h = Math.max(h, isleH(I, x, z)); } return h; }
+function landH(x, z) { const g = pfIsleGrid(), ix = Math.floor((x - g.x0) / 64), iz = Math.floor((z - g.z0) / 64); if (ix < 0 || iz < 0 || ix >= g.nx || iz >= g.nz) return -9; const L = g.c[ix * g.nz + iz]; if (!L) return -9; let h = -9; for (let i = 0; i < L.length; i++) { const I = L[i]; if (Math.abs(x - I.x) > I.r * 1.4 || Math.abs(z - I.z) > I.r * 1.4) continue; const mh = I.mh ? isleMeshH(I, x, z) : null; h = Math.max(h, mh != null && mh > -4.49 ? mh : isleH(I, x, z)); } return h; }
 // dispose a removed subtree's geometries and materials, except the shared MAT/MATC materials, TX textures and anything in keep
 function disposeTree(o, keep) { const km = new Set(Object.values(MAT).concat(typeof MATC !== 'undefined' ? Object.values(MATC) : [])), kt = new Set(Object.values(TX)); o.traverse(q => { if (keep && keep.has(q.geometry)) {} else if (q.geometry && !q.isSprite) q.geometry.dispose(); const ms = Array.isArray(q.material) ? q.material : q.material ? [q.material] : []; for (const m of ms) { if (km.has(m) || (keep && keep.has(m))) continue; if (m.map && !kt.has(m.map) && !(keep && keep.has(m.map))) m.map.dispose(); m.dispose(); } }); }
 function colGeo(g, c) { const n = g.attributes.position.count, a = new Float32Array(n * 3); for (let i = 0; i < n; i++) { const k = .75 + .25 * h2(i, 7); a[i * 3] = c[0] * k; a[i * 3 + 1] = c[1] * k; a[i * 3 + 2] = c[2] * k; } g.setAttribute('color', new THREE.BufferAttribute(a, 3)); return g; }
@@ -679,8 +679,17 @@ function extRing(cx, cz, rad, segs, hf, cf) {
 function extIsleMesh(I) {
   const L = I.extL || extLook(I), P = EXT_PAL[L.pal] || EXT_PAL.green, PS = EXT_PAL[L.sand] || P, segs = clamp(Math.round(1.3 * I.r), 24, 96), rings = clamp(Math.round(I.r / 3), 18, 30), rad = [];
   for (let i = 0; i <= rings; i++) rad.push(1.4 * Math.pow(i / rings, .85) * I.r);
-  return extRing(I.x, I.z, rad, segs, (x, z) => Math.max(-4.5, isleH(I, x, z)), (C, h, ny, x, z) => extCol(C, P, PS, h, ny, I.top, x, z));
+  const m = extRing(I.x, I.z, rad, segs, (x, z) => Math.max(-4.5, isleH(I, x, z)), (C, h, ny, x, z) => extCol(C, P, PS, h, ny, I.top, x, z));
+  // keep the mesh's vertex heights: walking reads the ground you can see (landH), not the smooth formula between the vertices
+  const pa = m.geometry.attributes.position.array, hv = new Float32Array(pa.length / 3); for (let v = 0; v < hv.length; v++) hv[v] = pa[v * 3 + 1]; I.mh = {rad, segs, rings, h: hv};
+  return m;
 }
+// the island mesh's height at x, z (the same triangles extRing drew), or null outside it
+function isleMeshH(I, x, z) { const M = I.mh; if (!M) return null; const dx = x - I.x, dz = z - I.z, d = Math.hypot(dx, dz), R = M.rad, n = M.rings; if (d >= R[n]) return null;
+  let i = Math.min(n - 1, Math.floor(Math.pow(d / R[n], 1 / .85) * n)); while (i > 0 && R[i] > d) i--; while (i < n - 1 && R[i + 1] < d) i++;
+  const fu = clamp((d - R[i]) / (R[i + 1] - R[i] || 1), 0, 1); let a = Math.atan2(dz, dx); if (a < 0) a += TAU; const v = a / TAU * M.segs, j = Math.floor(v) % M.segs, fv = v - Math.floor(v), j1 = (j + 1) % M.segs, S = M.segs, H = M.h;
+  const A = H[i * S + j], Bq = H[i * S + j1], C = H[(i + 1) * S + j], Dq = H[(i + 1) * S + j1];
+  return fu + fv <= 1 ? A + (Bq - A) * fv + (C - A) * fu : Dq + (C - Dq) * (1 - fv) + (Bq - Dq) * (1 - fu); }
 // trees: one InstancedMesh per island (its kind), clumped, leaning, with a low-poly far variant swapped in by distance
 function extTreeGeo() { if (!EXT.geo) EXT.geo = {palm: {hi: palmGeo(), lo: palmGeo(1)}, pine: {hi: pineGeo(), lo: pineGeo(1)}, dead: {hi: deadGeo(), lo: deadGeo(1)}}; return EXT.geo; }
 function extInst(G0, list, tint, bs) {
@@ -1794,7 +1803,7 @@ function drawSonar() { const S = SUBC, q = S.son.getContext('2d'), W = 256, C = 
   const blip = (x, z, col, s) => { const [lx, lz] = bW2L(x, z), d = Math.hypot(lx, lz); if (d > 150 + s / k || !hit(Math.atan2(lx, -lz))) return; q.fillStyle = col; q.beginPath(); q.arc(C + lx * k, C + lz * k, Math.max(2, s), 0, TAU); q.fill(); };
   for (const I of ISLES) if (Math.hypot(I.x - B.x, I.z - B.z) - I.r < 150) blip(I.x, I.z, 'rgba(90,255,140,.55)', Math.min(60, I.r * k));
   for (const f of G.floats) if (f) blip(f[0], f[1], '#c8ff60', 2.5); for (const g of GUL) if (g && g.on) blip(g.x, g.z, '#ffb030', 3.5);
-  for (const p of PL.values()) if (p.sw && !p.dead) blip(p.x, p.z, '#80e8ff', 3); if (B.up.sonar) for (const s of SUNK) if (!s.got) blip(s.x, s.z, '#ffe060', 2.5); if (G.spines && LEV.hp) blip(LEV.hp.x, LEV.hp.z, '#ff3020', 7);
+  for (const p of PL.values()) if (p.sw && !p.dead) blip(p.x, p.z, '#80e8ff', 3); if (sonarOn()) for (const s of SUNK) if (!s.got) blip(s.x, s.z, '#ffe060', 2.5); if (G.spines && LEV.hp) blip(LEV.hp.x, LEV.hp.z, '#ff3020', 7);
   q.strokeStyle = 'rgba(150,255,180,.95)'; q.lineWidth = 2; q.beginPath(); q.moveTo(C, C); q.lineTo(C + Math.sin(a) * Rr, C - Math.cos(a) * Rr); q.stroke();
   q.fillStyle = '#000e06'; q.fillRect(0, 0, 66, 22); q.fillRect(0, 234, 104, 22); q.fillRect(190, 0, 66, 22); q.fillStyle = '#8affb0'; q.font = 'bold 15px monospace'; q.textAlign = 'left';
   q.fillText(`${(B.dep || 0).toFixed(0)} M`, 6, 16); q.fillText(`KEEL ${Math.max(0, -seaBed(B.x, B.z) - 3.5 - (B.dep || 0)).toFixed(0)}`, 6, 250); q.fillText(String(Math.round(((-B.yaw * 180 / PI) % 360 + 360) % 360)).padStart(3, '0') + '°', 196, 16);
@@ -2530,6 +2539,7 @@ function applyEv(e) {
       if (P && P.ob) { P.ob = 0; P.seat = 0; P.y = .1; } if (P) { P.climb = null; P.lkOut = 0; P.rest = 0; } break; }
     case 'boatback': showMsg('A tug drags your boat back to the lighthouse. The cargo is lost.', '', 5); if (P && !P.dead && (P.sw || P.y < 1) && Math.hypot(P.x - e.x, P.z - e.z) < 80) { const sp = boatSpawn(0); P.sw = 0; P.ob = 1; P.bl = sp.bl; P.y = sp.y; } break;
     case 'horn': if (Snd.shipHorn) Snd.shipHorn(e.c, at(B.x, B.heave + 6, B.z, 25 + (HULLS[e.c] || HULLS[0]).L)); break;
+    case 'ribfloat': if (P && P.ob) showMsg('The hull is wrecked, but her air tubes keep her afloat. Patch her up.', '', 4); break;
     case 'hdmg': { if (A.on && Snd.crack) { const p = at(B.x, B.heave + 1, B.z, 10); if ((B.up.cls || 0) <= 1) Snd.crack(p, e.n); else Snd.groan(p, e.n); } if (P && P.ob) G.shake = Math.max(G.shake || 0, e.n / 20); const h = $('hullB'); if (h && h.animate) h.animate([{filter: 'brightness(2.6)', transform: 'scaleY(2.4)'}, {filter: 'none', transform: 'none'}], {duration: 500, easing: 'ease-out'}); break; }
     case 'storm': if (e.on) showMsg('The wind picks up. A storm is rolling in.', '', 4); else showMsg('The storm passes. The moon comes out.', '', 4); break;
     case 'fl': if (e.id !== me) spawnFlare(e); break;
@@ -2861,7 +2871,11 @@ function stepPlayer(dt) {
   P.vx = mix(P.vx, fw || st ? tvx : 0, Math.min(1, dt * acc)); P.vz = mix(P.vz, fw || st ? tvz : 0, Math.min(1, dt * acc));
   const ox = P.x, oz = P.z; P.x += P.vx * dt; P.z += P.vz * dt;
   pushBody(P, .33, P.y);
-  const inner = BG.sub && P.ob && (P.y < BDECK.y - 1 || Math.hypot(P.bl[0] - SUB.TR.x, P.bl[1] - SUB.TR.z) < SUB.TR.r + .2), f = floorAt(P.x, P.z, P.sw ? 0 : P.y, false, inner);
+  const inner = BG.sub && P.ob && (P.y < BDECK.y - 1 || Math.hypot(P.bl[0] - SUB.TR.x, P.bl[1] - SUB.TR.z) < SUB.TR.r + .2); let f = floorAt(P.x, P.z, P.sw ? 0 : P.y + (P.vy > 2 ? .25 : 0), false, inner);
+  // never inside an island: a swimmer is stopped by rock above the climb-out height; a walker who has sunk under the ground (a steep step, a low frame rate) is put back on top
+  if (!inner && !P.climb && !P.ob) { const lh = landH(P.x, P.z);
+    if (P.sw && lh > 1.1 && !(f && f.s.k !== 'land')) { if (landH(ox, oz) < lh) { P.x = ox; P.z = oz; P.vx *= .3; P.vz *= .3; f = floorAt(P.x, P.z, 0, false, inner); } }
+    else if (!P.sw && lh > -8 && lh > P.y + .5 && lh - P.y < 6 && (!f || f.s.k === 'land' || f.y < P.y - .3)) { P.y = lh; P.vy = 0; f = {y: lh, s: {k: 'land'}}; } }
   const stand = f && (f.y > -1.3 || f.s.k === 'boat');
   if (P.sw) { if (stand) { P.sw = 0; P.y = f.y; P.dv = 0; } else { P.y = 0; P.deep = !f || f.y < -3 ? 1 : 0; } }
   if (P.sw && P.cr) P.cr = 0;
@@ -2877,7 +2891,8 @@ function stepPlayer(dt) {
   if (P.dv > .4 && Math.random() < dt * .6) Snd.bubbles();
   if (!P.sw) {
     P.deep = 0;
-    if (stand && P.y - f.y < .6 && !(P.vy > 0)) { const iv = -(P.vy || 0); P.y = mix(P.y, f.y, Math.min(1, dt * 14)); P.vy = 0; if (iv > 3.5) landed(iv); }
+    if (stand && P.y - f.y < .6 && !(P.vy > 0)) { const iv = -(P.vy || 0); P.y = Math.max(f.y - .2, mix(P.y, f.y, Math.min(1, dt * 14))); P.vy = 0; if (iv > 3.5) landed(iv);
+      if (K.Space && !P.down && !P.cr && P.hd < 0 && !P.seat && !(G.jumpT > G.t) && sackUsed(P.sack) < 9) { P.vy = 5.6; P.y += .02; G.jumpT = G.t + .45; } }
     else { P.vy = (P.vy || 0) - 20 * dt; P.y += P.vy * dt; if (stand && P.y < f.y) { const iv = -P.vy; P.y = f.y; P.vy = 0; if (iv > 3.5) landed(iv); } if (!stand && P.y < .1) { P.sw = 1; P.cr = 0; P.y = 0; P.vy = 0; P.ob = 0; Snd.splash(); showMsg('You are in the water! Swim to land or a ladder (E). Do not stay out in deep water.', '', 3); } }
   }
   if (!P.sw && f && f.s.k === 'boat' && Math.abs(P.y - f.y) < .3) { P.ob = 1; P.bl = bW2L(P.x, P.z); } else P.ob = 0;
@@ -2980,9 +2995,9 @@ function drawShop() {
     const next2 = HULLS.map((H, i) => i).filter(i => !own.includes(i) && !HULLS[i].cruise && !HULLS[i].cust).sort((a, b) => HULLS[a].cost - HULLS[b].cost).slice(0, 2);
     const block = H => sackUsed(B.hold) > Math.round(H.hold * hm) * 2 ? 'Unload the hold first' : B.driver ? 'Someone is at the wheel' : !docked ? 'Dock at a harbour' : ''; let hid = 0;
     HULLS.forEach((H, i) => { if (H.cust) return; const sz = `${H.L} m · hold ${H.hold}`, sd = H.d.includes(`${H.L} m`) ? `hold ${H.hold}` : sz, c = hullCost(H), mine = own.includes(i) || (H.cruise && G.cruise);
-      if (i === cls) rows.push(row(H.n, `${H.d} · ${sd}`, '<span class="bt"><button disabled>Aboard</button></span>', ' cur'));
+      if (i === cls) rows.push(row(H.n, `${H.d} · ${sd}` + (H.best ? `<br><span style="color:#9ad0a0">Best for: ${H.best}</span>` : ''), '<span class="bt"><button disabled>Aboard</button></span>', ' cur'));
       else if (H.cruise ? !G.cruise : !mine && !next2.includes(i) && !G.shopAll && G.cash < c * .5) { if (!H.cruise) hid++; rows.push(row('???', sz, bt('', H.cruise ? '???' : money(c), c, H.cruise ? 'Unclaimed' : ''), ' q')); }
-      else rows.push(row(H.n, `${H.d} · ${sd}`, bt(`data-h="${i}"`, mine ? 'Switch' : c ? money(c) : 'Free', mine ? 0 : c, block(H)))); });
+      else rows.push(row(H.n, `${H.d} · ${sd}` + (H.best ? `<br><span style="color:#9ad0a0">Best for: ${H.best}</span>` : ''), bt(`data-h="${i}"`, mine ? 'Switch' : c ? money(c) : 'Free', mine ? 0 : c, block(H)))); });
     if (hid || G.shopAll) rows.push(`<div class="rowb" style="justify-content:flex-end"><button data-all="1">${G.shopAll ? 'Hide unknown ships' : 'Show all ships'}</button></div>`);
   } else if (tab === 'upgrades') {
     for (const [k, U] of Object.entries(UPG)) { const lv = B.up[k] || 0, q = U.cost[lv]; rows.push(row(`${U.n} <span class="pip">${'●'.repeat(lv)}${'○'.repeat(U.cost.length - lv)}</span>`, U.d, q == null ? bt('', '✓', 0, 'Maxed') : bt(`data-k="${k}"`, money(q), q))); }
@@ -5943,11 +5958,11 @@ function drawCompass() {
   mark(HOME.x, HOME.z, 'HOME', '#ffd880');
   for (const q of VOY_PORTS) if (Math.hypot(q.x - cp.x, q.z - cp.z) < 3000 && Math.hypot(q.x - cp.x, q.z - cp.z) > 40) mark(q.x, q.z, q.n.toUpperCase(), '#9fe6ff', '⚓');
   if (P && !P.ob && !P.dead) mark(B.x, B.z, 'BOAT', '#7ad0ff');
-  POIS.forEach((q, i) => { if (q.home) return; if (G.disc.includes(i)) { if (Math.hypot(q.x - cp.x, q.z - cp.z) > 60) mark(q.x, q.z, q.n, 'rgba(220,210,190,.75)', '·'); } else if (B.up.sonar) mark(q.x, q.z, 'Unknown', '#9affd0', '◆'); });
+  POIS.forEach((q, i) => { if (q.home) return; if (G.disc.includes(i)) { if (Math.hypot(q.x - cp.x, q.z - cp.z) > 60) mark(q.x, q.z, q.n, 'rgba(220,210,190,.75)', '·'); } else if (sonarOn()) mark(q.x, q.z, 'Unknown', '#9affd0', '◆'); });
   DIGS.forEach(d => { if (d.rev && !d.dug) mark(d.x, d.z, 'X', '#ff7050', '✕'); });
   if (B.up.sonar && HC().sub) SUNK.forEach(q => { if (!q.got) mark(q.x, q.z, 'WRECKAGE', '#7affd0', '◆'); });
   // floating cargo: sonar shows it out to 400 m; without sonar the nearest (150 m) still show as small ticks
-  { const R = B.up.sonar ? 400 : 150; for (const f of G.floats) { if (!f || Math.hypot(f[0] - cp.x, f[1] - cp.z) > R) continue; const a = bearing(f[0], f[1]); if (Math.abs(angD(yaw, a)) >= span / 2) continue; if (B.up.sonar) { g.fillStyle = '#9affd0'; g.fillRect(X(a) - 1.5, 21, 3, 3); } else { g.fillStyle = 'rgba(255,196,120,.8)'; g.fillRect(X(a) - .75, 18, 1.5, 7); } } }
+  { const R = sonarOn() ? 400 : 150; for (const f of G.floats) { if (!f || Math.hypot(f[0] - cp.x, f[1] - cp.z) > R) continue; const a = bearing(f[0], f[1]); if (Math.abs(angD(yaw, a)) >= span / 2) continue; if (B.up.sonar) { g.fillStyle = '#9affd0'; g.fillRect(X(a) - 1.5, 21, 3, 3); } else { g.fillStyle = 'rgba(255,196,120,.8)'; g.fillRect(X(a) - .75, 18, 1.5, 7); } } }
   for (const p of PL.values()) if (p !== P && p.ready && !p.dead && (p.sw || p.down)) mark(p.rx, p.rz, p.name, '#ff7050', '!');
   // the current step: always labelled; pinned to an edge with an arrow when it is off the strip
   // the current step and the chart course (cyan): always labelled; pinned to an edge with an arrow when off the strip; the course label steps aside from the step's
@@ -6055,7 +6070,7 @@ function drawMap() {
     if (!known) {
       if (q.rig) { g.strokeStyle = 'rgba(28,28,28,.38)'; g.lineWidth = 1; g.strokeRect(X(q.x) - 5.5, Z(q.z) - 5.5, 11, 11); g.fillStyle = 'rgba(26,26,26,.42)'; g.font = 'italic 12px Georgia'; g.fillText('Station Nine?', X(q.x), Z(q.z) - 12); g.font = '13px Georgia'; }
       else if (q.isle && Math.hypot(q.x - HOME.x, q.z - HOME.z) < hintR) { g.setLineDash([3, 3]); g.strokeStyle = 'rgba(40,46,36,.38)'; g.lineWidth = 1; g.beginPath(); g.arc(X(q.x), Z(q.z), Math.max(4, q.isle.shore * S), 0, TAU); g.stroke(); g.setLineDash([]); }
-      if (B.up.sonar) { g.fillStyle = 'rgba(30,60,50,.6)'; g.fillText('?', X(q.x), Z(q.z) + 4); } return; }
+      if (sonarOn()) { g.fillStyle = 'rgba(30,60,50,.6)'; g.fillText('?', X(q.x), Z(q.z) + 4); } return; }
     g.fillStyle = q.isle ? '#6a6a52' : q.home ? '#5a5248' : '#3a3a3a'; if (q.isle || q.home) { g.beginPath(); g.arc(X(q.x), Z(q.z), Math.max(4, (q.isle ? q.isle.shore : HOME.r) * S), 0, TAU); g.fill(); } else g.fillRect(X(q.x) - 5, Z(q.z) - 5, 10, 10);
     g.fillStyle = '#1a1a1a'; g.fillText(q.n, X(q.x), Z(q.z) - 12); });
   // landing stages, ports, world marks
@@ -6065,7 +6080,7 @@ function drawMap() {
   for (const q of VOY_PORTS) { anchor(X(q.x), Z(q.z), '#1a4a66'); g.fillStyle = '#1a3a52'; g.font = 'bold 12px Georgia'; g.fillText(q.n, X(q.x), Z(q.z) - 13); g.font = '13px Georgia'; }
   if (typeof WLD_MARKS !== 'undefined' && Array.isArray(WLD_MARKS)) for (const m of WLD_MARKS) { if (!m) continue; const x = X(m.x), y = Z(m.z); g.fillStyle = typeof m.c === 'number' ? hexS(m.c) : m.c || '#5a3a2a'; g.beginPath(); g.moveTo(x, y - 5); g.lineTo(x + 4, y); g.lineTo(x, y + 5); g.lineTo(x - 4, y); g.closePath(); g.fill(); if (m.n) { g.font = '11px Georgia'; g.fillText(m.n, x, y - 9); g.font = '13px Georgia'; } }
   DIGS.forEach(d => { if (d.rev) { g.fillStyle = d.dug ? '#666' : '#a01a10'; g.font = 'bold 16px Georgia'; g.fillText('✕', X(d.x), Z(d.z) + 5); g.font = '13px Georgia'; } });
-  if (B.up.sonar) G.floats.forEach(f => { if (f) { g.fillStyle = '#2a6a5a'; g.fillRect(X(f[0]) - 1.5, Z(f[1]) - 1.5, 3, 3); } });
+  if (sonarOn()) G.floats.forEach(f => { if (f) { g.fillStyle = '#2a6a5a'; g.fillRect(X(f[0]) - 1.5, Z(f[1]) - 1.5, 3, 3); } });
   // the course: dashed line from the boat, diamond, distance
   if (G.voyWp) { const [wx, wz] = G.voyWp; g.strokeStyle = 'rgba(16,96,128,.9)'; g.lineWidth = 2; g.setLineDash([8, 6]); g.beginPath(); g.moveTo(X(B.x), Z(B.z)); g.lineTo(X(wx), Z(wz)); g.stroke(); g.setLineDash([]);
     const x = X(wx), y = Z(wz); g.fillStyle = '#1aa0d0'; g.strokeStyle = '#0a2a38'; g.lineWidth = 1.5; g.beginPath(); g.moveTo(x, y - 8); g.lineTo(x + 6, y); g.lineTo(x, y + 8); g.lineTo(x - 6, y); g.closePath(); g.fill(); g.stroke();
@@ -8989,6 +9004,61 @@ function bridgeHop(up) { if (!P || !P.ob || P.seat || P.sw || P.climb) return; c
   INTER.push({kind: 'bridge', boat: 1, lx: sp.bl[0] + 1.6, lz: sp.bl[1], ly: 1, r: 1.6, label: () => 'Go to the bridge', on: () => P && P.ob && !P.sw && !P.seat, go: () => bridgeHop(1)});
   INTER.push({kind: 'bridge', boat: 1, lx: h.lx + 1.4, lz: h.lz + .8, ly: (h.by != null ? h.by - 1 - BDECK.y : 0) + 1, by: h.by, r: 1.3, label: () => 'Back down to the deck', on: () => P && P.ob && !P.sw && !P.seat && (h.by == null || P.y > h.by - 2), go: () => bridgeHop(0)});
   return r; }; }
+// ===== a reason for every boat: perks for the plain ones and a 'Best for' line in the shop
+const sonarOn = () => !!(B.up.sonar || HC().radar);
+Object.assign(HULLS[0], {dmgK: .75, perk: 'Sturdy', best: 'Learning the ropes. Sturdy: takes a quarter less damage, and she costs nothing'});
+Object.assign(HULLS[1], {best: 'Money while you sail: the net fills with fish over deep water'});
+Object.assign(HULLS[2], {radar: 1, perk: 'Radar', best: 'Scouting: her radar puts floating cargo and unfound places on the compass from 400 m, like the sonar upgrade'});
+Object.assign(HULLS[3], {best: 'Hauling salvage: a big hold and a crane that grabs cargo from twice as far'});
+Object.assign(HULLS[4], {best: 'Sunken treasure: the only boat that dives to the wrecks herself'});
+Object.assign(HULLS[5], {best: 'Diving crews: divers near her use half the air, and she carries a huge hold'});
+Object.assign(HULLS[6], {dmgK: .5, best: 'The far north and rough seas: crushes through ice and takes half damage from everything'});
+Object.assign(HULLS[7], {best: 'Showing off: a 120 m liner with a casino and a hold of 260'});
+Object.assign(HULLS[8], {best: 'Speed runs and quick errands: the fastest thing afloat, with a boost'});
+Object.assign(HULLS[9], {best: 'Night owls: sleep in the bunk to skip the night'});
+Object.assign(HULLS[10], {best: 'Lazy salvage: floating cargo drifts to her and stows itself'});
+Object.assign(HULLS[11], {best: 'Fishing for profit far from home: fast, steady, and fish caught aboard sell for 25% more'});
+Object.assign(HULLS[12], {best: 'The deep: nothing down there can attack her, and her hold takes 400'});
+if (HULLS[13]) HULLS[13].best = 'Crossing the map: fly over islands and storms';
+if (HULLS[14]) HULLS[14].best = 'Beach landings: drives straight up the sand onto islands';
+if (HULLS[15]) Object.assign(HULLS[15], {rib: 1, perk: 'Unsinkable', best: 'Cheap and safe: her air tubes keep her afloat even when the hull is wrecked'});
+if (HULLS[16]) HULLS[16].best = 'Fishing: bites come 30% faster aboard';
+if (HULLS[17]) HULLS[17].best = 'Deep wrecks without getting wet: the ROV reaches 220 m';
+if (HULLS[18]) HULLS[18].best = 'Getting anywhere fast: twice the Albatross\'s speed';
+for (const H of HULLS) if (!H.best) { if (H.n === 'Black Gull brigantine') H.best = 'Fighting back: broadside cannons on F'; else if (H.n === 'Grim Harvest whaler') H.best = 'Monster hunting: a harpoon on F and a ghost crew'; else if (H.n === 'Zephyr airship') H.best = 'Sightseeing and scouting: hovers anywhere'; else if (H.n === 'Bastion fortress barge') H.best = 'Holding out: a deck gun and a hull that patches itself'; else if (H.balloon) H.best = 'The best view in the game'; }
+{ const f0 = damageBoat; damageBoat = function (n) { const H = HC(); if (H.dmgK && n > 0) n *= H.dmgK;
+  if (H.rib && B.sink <= 0 && n > 0 && B.hull - n < 1) { const was = B.hull; B.hull = 1; if (was > 1) emit({k: 'ribfloat'}); return; } return f0.call(this, n); }; }
+// walkable bridges on the big ships: the helm camera sits high in the superstructure, so find the bridge deck under it in the model
+// (rays down and out to the walls), give it a floor and walls, move the wheel up there and join it to the deck with stairs (a short fade)
+function brgGo(up) { const Q = BOAT && BOAT.userData.brg; if (!Q || !P || !P.ob || P.seat || P.sw || P.climb) return; ftFade(); P.cr = 0; P.vx = P.vz = P.vy = 0;
+  const to = up ? Q.top : Q.foot; P.bl = [to[0], to[1]]; P.y = to[2]; const [wx, wz] = bL2W(P.bl[0], P.bl[1]); P.x = wx; P.z = wz; P.yaw = B.yaw + (up ? 0 : PI); P.gwT = 1; Snd.step && Snd.step('steel', 1); }
+{ const f0 = buildBoat; buildBoat = function () { const r = f0.apply(this, arguments); try { brgBuild(); } catch (e) { console.warn('bridge', e); } return r; }; }
+function brgBuild() { const H = HC(), ud = BOAT && BOAT.userData; if (!ud) return; ud.brg = null;
+  if (H.cruise || H.sub || H.plane || H.air || H.balloon || H.hover || H.cust) return;
+  const hs = INTER.filter(q => q.boat && q.kind === 'helm'); if (hs.length !== 1 || hs[0].by != null) return; const h = hs[0], cls = B.up.cls || 0;
+  const eo = ud.seatEye || (H.eye ? H.eye + .55 : cls === 3 ? 9.45 : 0); if (eo < 3.4) return;
+  const cx = H.eye && ud.wz ? 0 : BHELM[0], cz = H.eye && ud.wz ? ud.wz[0] - .7 : BHELM[1], cy = BDECK.y + eo;
+  // rays in boat space: put the boat at the origin for a moment
+  const op = BOAT.position.clone(), oq = BOAT.quaternion.clone(); BOAT.position.set(0, 0, 0); BOAT.quaternion.identity(); BOAT.updateMatrixWorld(true);
+  const rc = new THREE.Raycaster(), objs = []; BOAT.traverse(o => { if ((o.isMesh || o.isInstancedMesh) && o.visible !== false && o.material && !(o.material.blending === THREE.AdditiveBlending)) objs.push(o); });
+  const cast = (o, d, far) => { rc.set(o, d); rc.far = far; return rc.intersectObjects(objs, false); };
+  let res = null;
+  try { const oz = cz + 1.1, hd = cast(new THREE.Vector3(cx, cy, oz), new THREE.Vector3(0, -1, 0), 12).filter(q => q.point.y < cy - .9 && q.point.y > BDECK.y + 1.8);
+    if (hd.length) { const yb = hd[0].point.y, o = new THREE.Vector3(cx, yb + 1.85, oz), out = (dx, dz) => { const q = cast(o, new THREE.Vector3(dx, 0, dz), 30).find(q => q.distance > .15); return q ? q.distance : 0; };
+      const xl = out(-1, 0), xr = out(1, 0), zf = out(0, -1), zb = out(0, 1);
+      if (xl > .8 && xr > .8 && zf > .4 && zb > .9) res = {yb, x0: cx - Math.min(xl, 12), x1: cx + Math.min(xr, 12), z0: oz - Math.min(zf, 8), z1: oz + Math.min(zb, 10)}; } }
+  finally { BOAT.position.copy(op); BOAT.quaternion.copy(oq); BOAT.updateMatrixWorld(true); }
+  if (!res) return; const {yb, x0, x1, z0, z1} = res, i = .3, yl = yb - BDECK.y, wl = .4;
+  BFL.push({x0, x1, z0, z1, y: yb, brg: 1});
+  BW.push({x0: x0 - wl, x1: x0 + i, z0: z0 - wl, z1: z1 + wl, y0: yl, y1: yl + 2.4}, {x0: x1 - i, x1: x1 + wl, z0: z0 - wl, z1: z1 + wl, y0: yl, y1: yl + 2.4}, {x0: x0 - wl, x1: x1 + wl, z0: z0 - wl, z1: z0 + i, y0: yl, y1: yl + 2.4}, {x0: x0 - wl, x1: x1 + wl, z0: z1 - i, z1: z1 + wl, y0: yl, y1: yl + 2.4});
+  const foot = [h.lx, h.lz + .9, BDECK.y], top = [cx, clamp(z1 - 1.1, z0 + .8, z1 - .8), yb];
+  // the wheel moves up: you sit where the camera always was
+  BHELM[0] = cx; BHELM[1] = clamp(cz + .8, z0 + .6, z1 - .6); BHELM[2] = yb; ud.seatEye = cy - yb;
+  h.lx = BHELM[0]; h.lz = BHELM[1] - .4; h.by = yb + 1; h.r = 2;
+  for (let k = INTER.length - 1; k >= 0; k--) if (INTER[k].boat && INTER[k].kind === 'bridge') INTER.splice(k, 1);
+  INTER.push({kind: 'bridge', boat: 1, lx: foot[0], lz: foot[1] - .9, by: BDECK.y + 1, r: 1.8, label: () => 'Stairs up to the bridge', on: () => P && P.ob && !P.sw && !P.seat && P.y < yb - 1, go: () => brgGo(1)},
+    {kind: 'bridge', boat: 1, lx: top[0], lz: Math.min(z1 - .5, top[1] + .5), by: yb + 1, r: 1.5, label: () => 'Stairs down to the deck', on: () => P && P.ob && !P.sw && !P.seat && P.y > yb - 1, go: () => brgGo(0)});
+  ud.brg = {yb, foot, top, rect: [x0, x1, z0, z1]}; }
 // ===== inventory (I): the dive suit goes on and off here (out of the water), plus your gear, sack, cooler and the boat's hold at a glance
 function wearSuit(n) { const o = P && P.own; if (!o) return; n = clamp(n | 0, 0, o.suitOwn || 0); if (n === (o.suit || 0)) return; if (P.sw) { showMsg("You can't change suits in the water.", '', 2); return; }
   o.suit = n; saveGear(); Snd && Snd.click && Snd.click(); showMsg(n ? `You pull on the ${SUIT[n].n.toLowerCase()}.` : 'You take the dive suit off.', '', 2); if (G.invOpen) invDraw(); }
