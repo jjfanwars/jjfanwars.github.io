@@ -43,6 +43,12 @@ The owner's design brief is **brain-off**: no skill needed beyond sweeping the g
 - **Post:** light shafts in `compM` (32-tap radial blur of pixels brighter than 1.1 toward the sun's screen position, `sun`/`sunI` set in `render`).
 - **Bugs:** soft contact shadows (`SHD` instanced pool, one per drawn bug, shrinks while leaping). Rocks: 420, vertex AO + `prop_n`. First-person gun is rougher/less metallic so it doesn't glare into the sun.
 
+## Textures (19 Nov 2026)
+- All procedural at load, tileable: `genTex(N, f, normalStrength)` takes a height + colour + roughness function and returns `{map, nrm, rgh}` (normal map from height differences). Helpers `pn`/`pf` (periodic value noise/fbm), `vor` (periodic voronoi).
+- `SAND` (1024 on High, 512 Low): wind ripples, coarse grains in troughs, pebbles; used by the terrain with its own normal + roughness maps (ground_c.jpg stays as fine detail). `BURL`: woven jute for sandbags. `CRATE`: chipped olive paint. `STEEL`: scraped plates with rust.
+- `triMat(material, tex, scale, bump, key, toneAmt, fade)`: object-space triplanar detail (R height -> derivative bump, G roughness, B tone), works on instanced meshes. Bump fades out past `fade` metres to avoid sparkle. Used with `CHIT` (armour plates/pits/scratches) on bug bodies and `ROCK` (cracks/layers) on rocks and mesas. Legs use plain `legMat` (stretched cylinders).
+- Fix: the frame loop clamps dt at 0 (a slow load made the first rAF timestamp earlier than `last`, giving a negative dt that blew up shake and time).
+
 ## Code map (`shaun/game.js`; UI in `shaun/index.html`)
 - **Renderer:** own post chain (`render`). The scene goes to a HalfFloat MSAA RT, then a bright pass, two blur levels, and the composite `compM`, which does ACES, gamma, vignette, grain, chromatic aberration and the damage tint. The renderer itself has `NoToneMapping`. Low quality (`SET.gfx`) lowers the pixel ratio and turns off shadows and MSAA.
 - **World:**
@@ -97,6 +103,7 @@ The owner's design brief is **brain-off**: no skill needed beyond sweeping the g
 - Headless Chromium needs `--use-angle=swiftshader --enable-unsafe-swiftshader`. It is very slow at this scene size, so keep the step counts small.
 
 ## Changelog
+- 19 Nov 2026: procedural texture sets (rippled sand, woven sandbags, chitin plates on bugs, cracked rock, chipped crates, rusty steel), negative-dt fix.
 - 19 Nov 2026, visual pass: baked dune shadows + AO, stratified eroded mesas and far ridge, cloud sky + gas giant, god rays, bug contact shadows, more rocks.
 - 19 Nov 2026, feel pass: heavier gun (thump, echo tail, roar, real muzzle climb, slower spin), planted-foot bug gait, slope pitch, bugs climbing each other at the line, death throes and pumping ichor, hit-stop on brutes, radio chatter, dropship flyovers, distant outpost firefights, wind gusts.
 - 19 Nov 2026: aim assist removed: free aim up/down/left/right, rounds are real ray hits where the crosshair points.

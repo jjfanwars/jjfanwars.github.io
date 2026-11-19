@@ -150,14 +150,73 @@ function render() {
 // ---------------- canvas textures
 function cvs(w, h, f) { const c = document.createElement('canvas'); c.width = w; c.height = h; f(c.getContext('2d'), w, h); return c; }
 function ctex(c, srgb = true, rep) { const t = new THREE.CanvasTexture(c); if (srgb) t.colorSpace = THREE.SRGBColorSpace; if (rep) { t.wrapS = t.wrapT = THREE.RepeatWrapping; } t.anisotropy = 4; return t; }
-const sandTex = ctex(cvs(512, 512, (g, w, h) => {
-  const id = g.createImageData(w, h), d = id.data;
-  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-    const n = fbm(x * .04, y * .04) * .5 + Math.random() * .35 + .5 * (Math.sin((x + fbm(x * .02, y * .02) * 40) * .25) * .5 + .5) * .3;
-    const i = (y * w + x) * 4; d[i] = 150 + n * 62; d[i + 1] = 112 + n * 46; d[i + 2] = 82 + n * 34; d[i + 3] = 255;
-  }
-  g.putImageData(id, 0, 0);
-}), true, true);
+// ---- procedural texture sets: tileable colour + normal (+ roughness) generated from one height function
+function pn(x, y, P) { const xi = Math.floor(x), yi = Math.floor(y), xf = x - xi, yf = y - yi, u = xf * xf * (3 - 2 * xf), v = yf * yf * (3 - 2 * yf), w = a => ((a % P) + P) % P;
+  return mix(mix(h2(w(xi), w(yi)), h2(w(xi + 1), w(yi)), u), mix(h2(w(xi), w(yi + 1)), h2(w(xi + 1), w(yi + 1)), u), v); }
+function pf(x, y, P, o = 4) { let s = 0, a = .5, f = 1, n = 0; for (let i = 0; i < o; i++) { s += a * pn(x * f, y * f, P * f); n += a; f *= 2; a *= .5; } return s / n; }
+function vor(x, y, P) { const xi = Math.floor(x), yi = Math.floor(y); let d1 = 9, d2 = 9, id = 0; // periodic voronoi: nearest, second nearest, cell id
+  for (let j = -1; j <= 1; j++) for (let i = -1; i <= 1; i++) { const cx = xi + i, cy = yi + j, wx = ((cx % P) + P) % P, wy = ((cy % P) + P) % P, px = cx + h2(wx, wy * 1.7 + 3), py = cy + h2(wx * 2.3 + 7, wy), d = Math.hypot(x - px, y - py);
+    if (d < d1) { d2 = d1; d1 = d; id = h2(wx + 11, wy + 5); } else if (d < d2) d2 = d; } return [d1, d2, id]; }
+function genTex(N, f, nStr, srgb = true) { // f(u, v) -> [height, r, g, b, rough] (colour 0..1 in sRGB)
+  const H = new Float32Array(N * N), cc = document.createElement('canvas'), cn = document.createElement('canvas'), cr = document.createElement('canvas'); cc.width = cc.height = cn.width = cn.height = cr.width = cr.height = N;
+  const gc = cc.getContext('2d'), gn = cn.getContext('2d'), gr = cr.getContext('2d'), dc = gc.createImageData(N, N), dn = gn.createImageData(N, N), dr = gr.createImageData(N, N);
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) { const o = f(x / N, y / N), i = y * N + x, k = i * 4; H[i] = o[0];
+    dc.data[k] = clamp(o[1], 0, 1) * 255; dc.data[k + 1] = clamp(o[2], 0, 1) * 255; dc.data[k + 2] = clamp(o[3], 0, 1) * 255; dc.data[k + 3] = 255; const r = clamp(o[4] ?? .9, 0, 1) * 255; dr.data[k] = dr.data[k + 1] = dr.data[k + 2] = r; dr.data[k + 3] = 255; }
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) { const at = (a, b) => H[((b + N) % N) * N + ((a + N) % N)], dx = (at(x + 1, y) - at(x - 1, y)) * nStr, dy = (at(x, y + 1) - at(x, y - 1)) * nStr, l = Math.hypot(dx, dy, 1), k = (y * N + x) * 4;
+    dn.data[k] = (-dx / l * .5 + .5) * 255; dn.data[k + 1] = (dy / l * .5 + .5) * 255; dn.data[k + 2] = (1 / l * .5 + .5) * 255; dn.data[k + 3] = 255; }
+  gc.putImageData(dc, 0, 0); gn.putImageData(dn, 0, 0); gr.putImageData(dr, 0, 0);
+  const map = ctex(cc, srgb, true), nrm = ctex(cn, false, true), rgh = ctex(cr, false, true); for (const t of [map, nrm, rgh]) t.anisotropy = 8; return {map, nrm, rgh, H}; }
+// desert sand: wind ripples (sharp crests, soft stoss slopes), coarse grains in the troughs, scattered pebbles
+const SAND = genTex(HI() ? 1024 : 512, (u, v) => {
+  const q = u * 34 + pf(u * 4, v * 4, 4) * 2.4 + pf(u * 9 + 3, v * 9, 9, 2) * .4, t = q - Math.floor(q), rip = t < .72 ? t / .72 : (1 - t) / .28;
+  const big = pf(u * 3, v * 3, 3, 3), g = h2(u * 997.3, v * 787.1), cell = vor(u * 26, v * 26, 26), peb = cell[0] < .16 * (cell[2] > .7 ? 1 : 0) ? 1 - cell[0] / .16 : 0;
+  const h = rip * .55 + big * .6 + g * .12 + peb * .9, tr = 1 - rip, n = .9 + big * .2 + (g - .5) * .14;
+  let r = .78 * n - tr * .05, gg = .58 * n - tr * .045, b = .42 * n - tr * .035; if (peb > 0) { const pc = cell[2] * 3 % 1; r = mix(r, .38 + pc * .2, Math.min(1, peb * 3)); gg = mix(gg, .27 + pc * .12, Math.min(1, peb * 3)); b = mix(b, .2 + pc * .08, Math.min(1, peb * 3)); }
+  return [h, r, gg, b, .82 + tr * .15 - peb * .25]; }, 5);
+const sandTex = SAND.map;
+// burlap: over/under weave of jute threads, fuzzy fibres, dust and stains
+const BURL = genTex(512, (u, v) => {
+  const n = 40, gx = u * n, gy = v * n, i = Math.floor(gx), j = Math.floor(gy), fx = gx - i - .5, fy = gy - j - .5, wo = (i + j) % 2;
+  const warp = Math.cos(fx * PI) * (wo ? 1 : .55), weft = Math.cos(fy * PI) * (wo ? .55 : 1), th = Math.max(warp, weft), fib = h2(u * 1531, v * 1291) * .25 + Math.sin((wo ? gy : gx) * 40 + h2(i, j) * 6) * .08;
+  const st = pf(u * 3, v * 3, 3, 4), dust = pf(u * 6 + 4, v * 6, 6, 3), sl = h2(i * .37, j * .91);
+  const h = th + fib, k = (.62 + th * .35 + (sl - .5) * .12) * (1 - smooth((st - .55) * 4) * .35);
+  return [h, .66 * k + dust * .08, .52 * k + dust * .06, .34 * k + dust * .04, .97]; }, 4);
+const burlapT = BURL.map;
+// chitin (triplanar on the bugs): armour plates with grooves between them, pits, scratches. R = height, G = roughness, B = tone
+const CHIT = genTex(512, (u, v) => {
+  const c = vor(u * 7, v * 7, 7), e = c[1] - c[0], groove = smooth(e / .12), pit = vor(u * 40, v * 40, 40)[0], sc = Math.abs(Math.sin((u * 3 + v * 11) * 14 + pf(u * 6, v * 6, 6) * 9)) < .03 ? 1 : 0;
+  const h = groove * (.7 + (1 - c[0]) * .3) - (pit < .12 ? (1 - pit / .12) * .35 : 0) - sc * .15 + pf(u * 20, v * 20, 20, 2) * .1;
+  return [h, h, .25 + (1 - groove) * .45 + sc * .2 + pf(u * 5, v * 5, 5, 3) * .2, .75 + c[2] * .35 + groove * .1 - sc * .2, 1]; }, 6, false);
+// rock (triplanar on rocks + mesas): layered grain with cracks. R = height, G = roughness, B = tone
+const ROCK = genTex(512, (u, v) => {
+  const c = vor(u * 5, v * 5, 5), crack = smooth((c[1] - c[0]) / .05), lay = Math.sin(v * TAU * 9 + pf(u * 4, v * 4, 4) * 5) * .5 + .5, gr = pf(u * 24, v * 24, 24, 3), fine = h2(u * 911, v * 677);
+  const h = crack * .6 + lay * .25 + gr * .3 + fine * .06; return [h, h, .8 + (1 - crack) * .2, .7 + lay * .25 + gr * .25 - (1 - crack) * .35, 1]; }, 5, false);
+// olive drab ammo crates with chipped paint, steel plates with scrapes and rust
+const CRATE = genTex(256, (u, v) => {
+  const edge = Math.min(u, v, 1 - u, 1 - v), rim = edge < .06 ? 1 : 0, rib = Math.abs(((u * 4) % 1) - .5) < .04 && edge > .06 ? 1 : 0, chip = pf(u * 9, v * 9, 9, 4), bare = chip > .68 - (edge < .1 ? .12 : 0) ? 1 : 0, dirt = pf(u * 3 + 5, v * 3, 3, 3);
+  const k = .85 + dirt * .25; let r = .29 * k, g = .34 * k, b = .22 * k; if (bare) { r = .46; g = .44; b = .4; } if (rim) { r *= .8; g *= .8; b *= .8; }
+  return [rim * .6 + rib * .4 - bare * .15, r, g, b, bare ? .45 : .75]; }, 3);
+const STEEL = genTex(256, (u, v) => {
+  const sc = pf(u * 2, v * 40, 2, 3), rust = smooth((pf(u * 4 + 9, v * 4, 4, 4) - .6) * 6), sp = h2(u * 300, v * 200);
+  return [sc * .3 + rust * .3, .26 + sc * .08 + rust * .2 + sp * .03, .27 + sc * .08 + rust * .08, .29 + sc * .08 - rust * .02, .35 + rust * .5 + sc * .15]; }, 3);
+// triplanar detail + derivative bump in object space (works on instanced meshes): tex R = height, G = roughness, B = tone
+function triMat(m, tex, scale, bump, key, toneAmt = .45, fade = 40) {
+  m.customProgramCacheKey = () => 'tri-' + key;
+  m.onBeforeCompile = sh => {
+    sh.uniforms.triT = {value: tex}; sh.uniforms.triS = {value: scale}; sh.uniforms.triB = {value: bump}; sh.uniforms.triF = {value: fade};
+    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vOP, vON;').replace('#include <begin_vertex>', '#include <begin_vertex>\nvOP = position; vON = normal;');
+    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
+      varying vec3 vOP, vON; uniform sampler2D triT; uniform float triS, triB, triF;
+      vec4 triS4(vec3 p, vec3 n){ vec3 w = pow(abs(n), vec3(4.)); w /= (w.x + w.y + w.z); return texture2D(triT, p.yz) * w.x + texture2D(triT, p.xz) * w.y + texture2D(triT, p.xy) * w.z; }`)
+      .replace('#include <map_fragment>', `#include <map_fragment>
+      vec4 tri = triS4(vOP * triS, normalize(vON)); diffuseColor.rgb *= mix(1., tri.b * 1.25, ${toneAmt.toFixed(2)});`)
+      .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\nroughnessFactor = clamp(roughnessFactor * (.55 + tri.g * .9), .05, 1.);')
+      .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
+      { vec3 dpx = dFdx(-vViewPosition), dpy = dFdy(-vViewPosition); float dhx = dFdx(tri.r), dhy = dFdy(tri.r); vec3 r1 = cross(dpy, normal), r2 = cross(normal, dpx); float det = dot(dpx, r1);
+        vec3 grad = sign(det) * (dhx * r1 + dhy * r2) * triB * smoothstep(triF, triF * .2, length(vViewPosition)); // fade out with distance: no sparkle normal = normalize(abs(det) * normal - grad); }`);
+  };
+  return m;
+}
 const soft = ctex(cvs(64, 64, (g) => { const r = g.createRadialGradient(32, 32, 0, 32, 32, 32); r.addColorStop(0, 'rgba(255,255,255,1)'); r.addColorStop(.4, 'rgba(255,255,255,.5)'); r.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = r; g.fillRect(0, 0, 64, 64); }), false);
 const blobT = ctex(cvs(64, 64, (g) => { let r = g.createRadialGradient(32, 32, 0, 32, 32, 30); r.addColorStop(0, 'rgba(255,255,255,1)'); r.addColorStop(.75, 'rgba(220,220,220,.95)'); r.addColorStop(1, 'rgba(180,180,180,0)'); g.fillStyle = r; g.fillRect(0, 0, 64, 64);
   r = g.createRadialGradient(24, 22, 0, 24, 22, 10); r.addColorStop(0, 'rgba(255,255,255,1)'); r.addColorStop(1, 'rgba(255,255,255,0)'); g.globalCompositeOperation = 'lighter'; g.fillStyle = r; g.fillRect(0, 0, 64, 64); }), false);
@@ -171,7 +230,6 @@ const splatT = ctex(cvs(128, 128, (g) => {
   for (let i = 0; i < 22; i++) { const a = Math.random() * TAU, d = Math.random() * 34, r = 8 + Math.random() * 18; g.beginPath(); g.arc(Math.cos(a) * d, Math.sin(a) * d, r * (1 - d / 60), 0, TAU); g.fill(); }
   for (let i = 0; i < 14; i++) { const a = Math.random() * TAU, d = 40 + Math.random() * 20; g.beginPath(); g.arc(Math.cos(a) * d, Math.sin(a) * d, 2 + Math.random() * 3, 0, TAU); g.fill(); }
 }), true);
-const burlapT = ctex(cvs(128, 128, (g, w, h) => { g.fillStyle = '#8a7350'; g.fillRect(0, 0, w, h); for (let i = 0; i < 128; i += 2) { g.fillStyle = `rgba(40,25,10,${.1 + Math.random() * .15})`; g.fillRect(0, i, w, 1); g.fillRect(i, 0, 1, h); } for (let i = 0; i < 300; i++) { g.fillStyle = `rgba(${Math.random() < .5 ? '30,20,10' : '200,170,120'},.12)`; g.fillRect(Math.random() * w, Math.random() * h, 3, 3); } }), true, true);
 const markT = ctex(cvs(512, 128, (g, w, h) => {
   g.fillStyle = '#2b3034'; g.fillRect(0, 0, w, h);
   for (let i = -2; i < 10; i++) { g.fillStyle = i % 2 ? '#d8a21c' : '#151515'; g.beginPath(); g.moveTo(400 + i * 18, 0); g.lineTo(418 + i * 18, 0); g.lineTo(400 + i * 18 - 40, h); g.lineTo(382 + i * 18 - 40, h); g.fill(); }
@@ -253,8 +311,8 @@ function bakeAt(x, z, h, far) {
 const BK = new Float32Array(GN * GN); // sun visibility on the grid (bugs use it too)
 function sunVis(x, z) { const fx = (x + GE) / GS, fz = (z + GE) / GS; if (fx < 0 || fz < 0 || fx >= GN - 1 || fz >= GN - 1) return 1; const i = fx | 0, j = fz | 0, u = fx - i, v = fz - j;
   return mix(mix(BK[j * GN + i], BK[j * GN + i + 1], u), mix(BK[(j + 1) * GN + i], BK[(j + 1) * GN + i + 1], u), v); }
-const groundM = new THREE.MeshStandardMaterial({map: sandTex, normalMap: ltex('../tex/ground_n.jpg', false), roughness: .96, metalness: 0, vertexColors: true});
-groundM.normalScale.set(.6, .6);
+const groundM = new THREE.MeshStandardMaterial({map: sandTex, normalMap: SAND.nrm, roughnessMap: SAND.rgh, roughness: 1, metalness: 0, vertexColors: true});
+groundM.normalScale.set(1, 1);
 const detailT = ltex('../tex/ground_c.jpg', false);
 function bakedShader(sh, ground) {
   sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute vec2 bake; varying vec2 vBake; varying vec3 vWp;').replace('#include <begin_vertex>', '#include <begin_vertex>\nvBake = bake; vWp = (modelMatrix * vec4(position, 1.)).xyz;');
@@ -283,7 +341,7 @@ groundM.onBeforeCompile = sh => bakedShader(sh, true);
 }
 // mesas: eroded, gullied, layered sandstone with baked strata colours and base occlusion; plus a far hazy range behind them
 {
-  const m = new THREE.MeshStandardMaterial({color: 0xffffff, vertexColors: true, roughness: 1, normalMap: ltex('../tex/wall_n.jpg', false, 1)}); m.normalScale.set(.8, .8);
+  const m = triMat(new THREE.MeshStandardMaterial({color: 0xffffff, vertexColors: true, roughness: 1}), ROCK.map, 1 / 14, .7, 'mesa', .5, 1e5);
   const C1 = [.62, .36, .24], C2 = [.78, .56, .4], C3 = [.4, .25, .19], C4 = [.7, .45, .3];
   const strata = (y, k) => { const b = Math.sin(y * .21 + Math.sin(y * .05 + k) * 2) * .5 + .5, b2 = Math.sin(y * .63 + k * 3) * .5 + .5; const A = b > .6 ? C2 : b < .25 ? C3 : C1; return [mix(A[0], C4[0], b2 * .3), mix(A[1], C4[1], b2 * .3), mix(A[2], C4[2], b2 * .3)]; };
   const mesa = (x, z, h, rt, i, sc) => {
@@ -311,7 +369,7 @@ groundM.onBeforeCompile = sh => bakedShader(sh, true);
   for (let k = 0; k < p.count; k++) { const s = 1 + (h2(p.getX(k) * 9.1, p.getY(k) * 7.3 + p.getZ(k) * 3.1) - .5) * .45; p.setXYZ(k, p.getX(k) * s, p.getY(k) * s * .7, p.getZ(k) * s); }
   g.computeVertexNormals();
   { const c = new Float32Array(p.count * 3); for (let k = 0; k < p.count; k++) { const y = p.getY(k), ao = .45 + .55 * smooth(y * .8 + .55), n = .85 + h2(p.getX(k) * 5, p.getZ(k) * 5) * .3; c[k * 3] = ao * n; c[k * 3 + 1] = ao * n * .93; c[k * 3 + 2] = ao * n * .88; } g.setAttribute('color', new THREE.BufferAttribute(c, 3)); }
-  const N = 420, im = new THREE.InstancedMesh(g, new THREE.MeshStandardMaterial({color: 0x7a5c48, roughness: .9, vertexColors: true, normalMap: ltex('../tex/prop_n.jpg', false, 1)}), N), o = new THREE.Object3D();
+  const N = 420, im = new THREE.InstancedMesh(g, triMat(new THREE.MeshStandardMaterial({color: 0x7a5c48, roughness: .9, vertexColors: true}), ROCK.map, .45, .9, 'rock', .5, 120), N), o = new THREE.Object3D();
   for (let i = 0; i < N; i++) { let x, z; do { x = rnd(-280, 280); z = rnd(-290, 60); } while (Math.hypot(x, z) < 22); const s = Math.random() < .1 ? rnd(2, 4) : rnd(.3, 1.3); o.position.set(x, gH(x, z) - s * .2, z); o.rotation.set(rnd(-.3, .3), rnd(0, 6), rnd(-.3, .3)); o.scale.setScalar(s); o.updateMatrix(); im.setMatrixAt(i, o.matrix); const v = .55 + .45 * sunVis(x, z); im.setColorAt(i, new THREE.Color(v, v * .97, v * .95)); }
   im.castShadow = im.receiveShadow = true; scene.add(im);
 }
@@ -436,7 +494,7 @@ const SLOTX = [0, -3.4, 3.4, -6.8, -9.6, 9.6]; // 0-3 squad gunners, 4-5 sentry 
   const bag = new THREE.SphereGeometry(1, 12, 8), p = bag.attributes.position;
   for (let k = 0; k < p.count; k++) { const y = p.getY(k); p.setY(k, Math.sign(y) * Math.pow(Math.abs(y), .6)); }
   bag.scale(.32, .14, .2); bag.computeVertexNormals();
-  const bm = new THREE.MeshStandardMaterial({map: burlapT, roughness: .95, color: 0xb89a74});
+  const bm = new THREE.MeshStandardMaterial({map: burlapT, normalMap: BURL.nrm, roughness: .97, color: 0xf0e0c8}); burlapT.repeat.set(2, 1); BURL.nrm.repeat.set(2, 1);
   const list = [];
   for (let L = 0; L < 6; L++) for (let x = -13; x <= 13; x += .6) { const xx = x + (L % 2) * .3, z = -1.25 - Math.pow(Math.abs(xx) / 13, 2) * 2.2 - (L < 2 ? .25 : 0); list.push([xx + rnd(-.04, .04), .14 + L * .2, z + rnd(-.05, .05), rnd(-.15, .15)]); }
   const im = new THREE.InstancedMesh(bag, bm, list.length);
@@ -447,10 +505,10 @@ const SLOTX = [0, -3.4, 3.4, -6.8, -9.6, 9.6]; // 0-3 squad gunners, 4-5 sentry 
   const box = (w, h, d, x, y, z, ry, m) => { const me = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m || cm); me.position.set(x, y, z); me.rotation.y = ry || 0; me.castShadow = me.receiveShadow = true; scene.add(me); return me; };
   box(2.5, 2.2, 1.2, -14.5, 1.1, -2.5, .5); box(2.5, 2.2, 1.2, 14.5, 1.1, -2.5, -.5); box(1.4, 1, 1, -9, .5, 1.8, .2); box(30, .3, 6, 0, -.1, 2);
   box(.6, 3.2, .6, -12, 1.6, 1.5); box(.6, 3.2, .6, 12, 1.6, 1.5);
-  const plate = new THREE.MeshStandardMaterial({color: 0x3c4046, metalness: .85, roughness: .45});
+  const plate = new THREE.MeshStandardMaterial({map: STEEL.map, normalMap: STEEL.nrm, roughnessMap: STEEL.rgh, metalness: .8, roughness: 1});
   for (const x of [-10, -5.1, 5.1, 10]) { const z = -1.3 - Math.pow(Math.abs(x) / 13, 2) * 2.2; box(1.4, 1.5, .08, x, .9, z - .35, -Math.atan(x / 13 * .35), plate); }
   // crates
-  const crate = new THREE.MeshStandardMaterial({color: 0x4b5a3a, roughness: .7, metalness: .2});
+  const crate = new THREE.MeshStandardMaterial({map: CRATE.map, normalMap: CRATE.nrm, roughnessMap: CRATE.rgh, roughness: 1, metalness: .25});
   box(.8, .5, .5, 1.6, .25, 1.1, .3, crate); box(.8, .5, .5, 1.5, .75, 1.15, .1, crate); box(.8, .5, .5, -1.8, .25, 1.3, -.2, crate);
 }
 // crashed dropship + burning wrecks
@@ -514,11 +572,12 @@ function bugBodyGeo(lo) {
 function legGeo(rt, rb, c0, c1) { const g = new THREE.CylinderGeometry(rt, rb, 1, 7, 3); g.translate(0, .5, 0); const p = g.attributes.position, c = new Float32Array(p.count * 3), A = new THREE.Color(c0), B = new THREE.Color(c1);
   for (let i = 0; i < p.count; i++) { const t = p.getY(i); c[i * 3] = mix(A.r, B.r, t); c[i * 3 + 1] = mix(A.g, B.g, t); c[i * 3 + 2] = mix(A.b, B.b, t); } g.setAttribute('color', new THREE.BufferAttribute(c, 3)); return g; }
 const MAXB = 1100, NEARB = 260, NEAR_D = 48;
-const bugMat = new THREE.MeshStandardMaterial({vertexColors: true, roughness: .42, metalness: .08});
+const bugMat = triMat(new THREE.MeshStandardMaterial({vertexColors: true, roughness: .42, metalness: .08}), CHIT.map, .55, .35, 'chitin', .3);
+const legMat = new THREE.MeshStandardMaterial({vertexColors: true, roughness: .45, metalness: .08}); // legs are stretched cylinders: no triplanar detail
 const BODY = pool(bugBodyGeo(false), bugMat, NEARB, true);   // detailed bodies, closest bugs
 const BODYL = pool(bugBodyGeo(true), bugMat, MAXB, false);   // low-poly bodies, everything else
-const LUP = pool(legGeo(.09, .15, 0x4e3018, 0x2a1a10), bugMat, MAXB * 6, true);
-const LLO = pool(legGeo(.008, .11, 0x2a1a10, 0xa89878), bugMat, MAXB * 6, true);
+const LUP = pool(legGeo(.09, .15, 0x4e3018, 0x2a1a10), legMat, MAXB * 6, true);
+const LLO = pool(legGeo(.008, .11, 0x2a1a10, 0xa89878), legMat, MAXB * 6, true);
 for (let i = 0; i < NEARB; i++) BODY.setColorAt(i, new THREE.Color(1, 1, 1));
 for (let i = 0; i < MAXB; i++) BODYL.setColorAt(i, new THREE.Color(1, 1, 1));
 const SHD = pool((() => { const g = new THREE.PlaneGeometry(1, 1); g.rotateX(-PI / 2); return g; })(), new THREE.MeshBasicMaterial({map: soft, color: 0x000000, transparent: true, opacity: .42, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2}), MAXB, false);
@@ -1577,7 +1636,7 @@ function step(dt) {
   if (!G.on) { P.yaw = Math.sin(time * .07) * .5; cam.position.set(0, 1.7, 0); cam.rotation.set(-.03, P.yaw, 0, 'YXZ'); }
   if (!noRender) render();
 }
-function loop(now) { const dt = Math.min(.05, (now - last) / 1000); last = now; step(dt); requestAnimationFrame(loop); }
+function loop(now) { const dt = clamp((now - last) / 1000, 0, .05); last = now; step(dt); requestAnimationFrame(loop); }
 
 // ---------------- input
 addEventListener('mousemove', e => { if (document.pointerLockElement !== canvas || !G.on) return; const dx = e.movementX * .0022 * SET.sens * adsSens(); P.yaw = clamp(P.yaw - dx, -1.5, 1.5); P.pitch = clamp(P.pitch - e.movementY * .0022 * SET.sens * adsSens(), -.55, .4); P.swayVX -= dx * 40; P.swayVY += e.movementY * .0022 * SET.sens * 20; });
