@@ -29,7 +29,7 @@ const hexS = c => '#' + c.toString(16).padStart(6, '0');
 
 // ---------------- net (jjfanwars relay)
 const RELAY_URL = 'wss://jjfanwars-relay.businessautomationvic.workers.dev';
-const GAME_V = 74;
+const GAME_V = 75;
 const Net = {
   tag: '[Rig]', role: 'solo', ws: null, peers: new Map(), code: '', relayT: {pose: 1}, id: '', name: '', handlers: {}, retry: 0, started: false,
   enc: new TextEncoder(), dec: new TextDecoder(),
@@ -4795,6 +4795,12 @@ const REGIONS = [
   {k: 'abyss', n: 'The Abyss', x: 4300, z: -400, r: 1300, fog: 1.1, tint: 0x020c16, deep: 1.6, pay: 1.4},
   {k: 'ash', n: 'The Ashfall Isles', x: 400, z: -3900, r: 1500, fog: 1.4, tint: 0x14100c, deep: 1, pay: 1.2},
   {k: 'grave', n: 'The Drowned Graveyard', x: -4000, z: 400, r: 1300, fog: 2.4, tint: 0x0a1410, deep: 1.3, pay: 1.35},
+  // biomes that fill the open water between them (19 Nov 2026)
+  {k: 'kelp', n: 'The Kelp Forest', x: -2900, z: 2500, r: 1300, fog: 1.2, tint: 0x24481a, deep: .8, pay: 1.1, sea: .8, fogK: .35},
+  {k: 'tropic', n: 'The Turquoise Banks', x: 2300, z: -2300, r: 1300, fog: .55, tint: 0x30b8b0, deep: .7, pay: 1.05, sea: .6, fogK: .25, calm: 1},
+  {k: 'storm', n: 'The Squall Line', x: -2700, z: -2500, r: 1400, fog: 1.5, tint: 0x1a2026, deep: 1.2, pay: 1.3, sea: .5, fogK: .35, storm: 1},
+  {k: 'mist', n: 'The Whispering Mist', x: 1700, z: 1300, r: 1000, fog: 3.2, tint: 0x8a969a, deep: 1, pay: 1.2, sea: .35, fogK: .6},
+  {k: 'glow', n: 'The Lantern Sea', x: -1900, z: -700, r: 900, fog: 1.1, tint: 0x06303e, deep: 1, pay: 1.15, sea: .5, fogK: .3},
 ];
 for (const q of REGIONS) q.tc = new THREE.Color(q.tint);
 // floating cargo kinds: [kind, weight, scales with the region's pay]
@@ -4876,7 +4882,7 @@ const mapGhosts = {s: [], g: null,
 const MAP_LK = {sea0: null, w: 0};
 function mapLook(dt) { const cp = cam.position, q = mapRegion(cp.x, cp.z), w = mapRegion.w, sky = scene.userData.sky && scene.userData.sky.material.uniforms;
   if (!MAP_LK.sea0) MAP_LK.sea0 = MAT.sea.color.clone();
-  if (q && w > 0) { const up = (G.uw || 0) <= .5; if (up) scene.fog.density *= mix(1, q.fog, w); scene.fog.color.lerp(q.tc, .15 * w); scene.background.copy(scene.fog.color); if (up && sky && sky.fogC) sky.fogC.value.copy(scene.fog.color); MAT.sea.color.copy(MAP_LK.sea0).lerp(q.tc, .25 * w);
+  if (q && w > 0) { const up = (G.uw || 0) <= .5; if (up) scene.fog.density *= mix(1, q.fog, w); scene.fog.color.lerp(q.tc, (q.fogK || .15) * w); scene.background.copy(scene.fog.color); if (up && sky && sky.fogC) sky.fogC.value.copy(scene.fog.color); MAT.sea.color.copy(MAP_LK.sea0).lerp(q.tc, (q.sea || .25) * w);
     if (G.on && w > .35 && !mapToastSeen.has(q.k)) { mapToastSeen.add(q.k); toast(q.n, 'New waters'); Snd.discover(); } }
   else if (MAP_LK.w) MAT.sea.color.copy(MAP_LK.sea0);
   MAP_LK.w = q ? w : 0; mapIce.step(dt); mapSmoke.step(dt); mapGhosts.step(dt); }
@@ -9432,7 +9438,7 @@ function cgDeal(g, ch, rnd) { const R = rnd; switch (g) {
   return {r: [], m: 0}; }
 { const f0 = hostAct; hostAct = function (id, m) { if (!m || m.a !== 'cg') return f0.apply(this, arguments); const p = PL.get(id); if (!p || !G.on) return; const now = performance.now() / 1000; if ((p.cgT || 0) > now) return; p.cgT = now + .8;
   const g = CG_GAMES.find(q => q.k === m.g), bet = Math.round(+m.bet); if (!g || !(bet >= 10 && bet <= 2000)) return; if (!cgNear(p)) { emit({k: 'nope', id, why: 'Get aboard the Jackpot Queen first.'}); return; } if (G.cash < bet) { emit({k: 'nope', id, why: 'Not enough crew cash.'}); return; }
-  const res = cgDeal(m.g, String(m.ch || ''), CR), win = Math.round(bet * res.m); G.cash += win - bet; if (win > bet) G.earned += win - bet; save(); emit({k: 'cgr', id, g: m.g, r: res.r, bet, win, ch: m.ch}); }; }
+  const res = cgDeal(m.g, String(m.ch || ''), CR), win = Math.round(bet * res.m * cgK(m.g, String(m.ch || ''))); G.cash += win - bet; if (win > bet) G.earned += win - bet; save(); emit({k: 'cgr', id, g: m.g, r: res.r, bet, win, ch: m.ch}); }; }
 // ---- client: the game panel
 function cgOpen(i) { if (!G.on || !P || P.dead) return; let el = $('cgp'); if (!el) { el = document.createElement('div'); el.id = 'cgp'; el.style.cssText = 'position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(560px,94vw);max-height:86vh;overflow:auto;background:linear-gradient(#1a0a1e,#0a0610);border:2px solid #d8b040;border-radius:14px;padding:18px 20px;font:15px Georgia,serif;color:#f0e6d0;z-index:35;pointer-events:auto;text-align:center;box-shadow:0 0 40px rgba(255,180,60,.25)'; document.body.appendChild(el);
     const st = document.createElement('style'); st.textContent = '#cgp button{background:#2a1430;color:#f0e6d0;border:1px solid #d8b040;border-radius:8px;padding:7px 12px;margin:3px;cursor:pointer;font:14px Georgia,serif} #cgp button.on{background:#d8b040;color:#1a0a1e} #cgp button:disabled{opacity:.4} #cgp .big{font:bold 42px Georgia,serif;letter-spacing:.06em;margin:14px 0;min-height:56px} #cgp .res{min-height:26px;font-size:18px;margin:8px 0} #cgp .sub{color:#b8a888;font-size:13px}'; document.head.appendChild(st); }
@@ -9546,3 +9552,58 @@ function cg3Frame(dt) { if (!CG3.length || !P || Math.hypot(P.x - CG.x, P.z - CG
 { const f0 = cgDraw; cgDraw = function () { const r = f0.apply(this, arguments); const el = $('cgp'); if (el) { const d = el.querySelector('.sub'); if (d) { d.style.fontSize = '11px'; d.style.margin = '0'; } el.querySelectorAll('button').forEach(b => { b.style.padding = '4px 9px'; b.style.margin = '2px'; }); const go = $('cgGo'); if (go) { go.style.fontSize = '16px'; go.style.padding = '6px 22px'; } } const b = $('cgBig'); if (b) { b.style.fontSize = '22px'; b.style.minHeight = '28px'; b.style.margin = '6px 0'; if (!CG.out) b.textContent = 'Watch the machine'; } return r; }; }
 cgSpin = function () { };
 { const f0 = cgResult; cgResult = function (e) { try { cg3Play(e); } catch (x) { console.warn(x); } if (e.id !== myId()) return; const T = (CG_T[e.g] || 3) * 1000; CG.busy = 1; setTimeout(() => f0.call(this, e), Math.max(0, T - 1200)); }; }
+
+// the Queen's bonus: every win is topped up so each bet returns about 110% on average (measured by simulation per game and choice)
+const CG_K = {slots: 1.15, 'roul:red': 1.13, 'roul:black': 1.13, 'roul:green': 1.16, hilo: 1.16, 'dice:over': 1.2, 'dice:under': 1.2, 'dice:seven': 1.32, wheel: 1.13, crash: 1.16, 'plinko:safe': 1.17, 'plinko:wild': 1.29, flip: 1.13, scratch: 1.15, horse: 1.18};
+function cgK(g, ch) { return CG_K[g + ':' + ch] || CG_K[g] || 1.1; }
+{ const f0 = cgDraw; cgDraw = function () { const r = f0.apply(this, arguments); const q = CG_GAMES[CG.open], b = $('cgBig'); if (q && b && !$('cgBon')) b.insertAdjacentHTML('beforebegin', `<div id="cgBon" style="color:#80ff90;font-size:12px">Queen's bonus: wins pay ×${cgK(q.k, String(CG.ch)).toFixed(2)} · about 110% back on average</div>`); return r; }; }
+
+// ===== the Kraken-class nuclear submarine: the research sub's walk-in interior (control room, bunks, galley, airlock) inside an 87 m black hull with a long walkable
+// deck, a tall sail, missile hatches and a pump-jet tail. Fast (spd 2.0), dives to 300 m. Built by a buildBoat wrapper around the normal sub build.
+HULLS.push({n: 'Kraken nuclear submarine', board: ' ', d: 'An 87 m nuclear attack sub: quiet, fast and deep. The walk-in interior of the research sub inside a black hull with a long deck. Dives to 300 m (C down, Space up at the helm)', cost: 42000, L: 24, W: 5.8, fb: 1.6, spd: 2.0, turn: .5, hold: 140, hp: 9, fuel: 6, col: 0x1c1f22, sub: 1, nuke: 1, maxDep: 300, perk: 'Nuclear: fast and deep', best: 'Deep, fast exploring: twice the research sub\'s speed, nearly four times the depth, and a huge hold'});
+const NUKE = {Z0: -10, Z1: 55, RB: 4.2};
+{ const f0 = buildBoat; buildBoat = function () { const r = f0.apply(this, arguments); const H = HC(); if (!H.nuke || !BOAT) return r; try {
+  const g = BOAT, U = SUB, CAS = U.CAS, cyB = CAS - .05 - NUKE.RB, {Z0, Z1} = NUKE, M = o => new THREE.MeshStandardMaterial(Object.assign({roughness: .5, metalness: .35}, o)), hm = M({color: 0x16191c}), dk = M({color: 0x0c0d0e, roughness: .8}), red = M({color: 0x5a1410, roughness: .7});
+  const add = (geo, m, x = 0, y = 0, z = 0) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.castShadow = true; o.receiveShadow = true; g.add(o); return o; };
+  const prof = [[.2, -16], [1.5, -15.2], [2.8, -13.8], [3.8, -11.8], [4.2, -9.8], [4.2, 55], [3.6, 61], [2.2, 66.5], [.9, 70], [.2, 71]].map(([rr, z]) => new THREE.Vector2(rr, z)), hull = new THREE.LatheGeometry(prof, 48); hull.rotateX(PI / 2); add(hull, hm, 0, cyB, 0);
+  add(new THREE.BoxGeometry(2.7, .05, Z1 - Z0), dk, 0, CAS - .03, (Z0 + Z1) / 2); // the deck strip
+  add(new THREE.BoxGeometry(1.4, 4.2, 4.1), hm, 0, CAS + 2.1, -6.45); add(new THREE.BoxGeometry(1.25, .2, 3.9), dk, 0, CAS + 4.3, -6.45); // the sail
+  for (const sd of [-1, 1]) { const f = add(new THREE.BoxGeometry(3.2, .12, 1.5), hm, sd * 2.5, CAS + 2.6, -6.2); f.rotation.z = 0; } // sail planes
+  for (let k = 0; k < 12; k++) for (const sd of [-1, 1]) add(new THREE.CylinderGeometry(.55, .55, .06, 18), red, sd * .75, CAS + .01, 10 + k * 3); // missile hatches
+  for (const [w, h, ry] of [[7, .2, 0], [.2, 7, 0]]) add(new THREE.BoxGeometry(w, h, 3), hm, 0, cyB, 63); // cruciform tail
+  { const sh = new THREE.CylinderGeometry(1.5, 1.7, 2.6, 24, 1, true); sh.rotateX(PI / 2); add(sh, M({color: 0x101214, side: THREE.DoubleSide}), 0, cyB, 68.5); }
+  // the long deck: floors and rails fore and aft of the research casing, the casing's end walls removed
+  for (let i = BW.length - 1; i >= 0; i--) { const w = BW[i]; if (!w.int && Math.abs(w.x0 + U.cx) < .01 && Math.abs(w.x1 - U.cx) < .01 && (Math.abs(w.z0 - (U.cz0 - .4)) < .01 || Math.abs(w.z0 - U.cz1) < .01)) BW.splice(i, 1); }
+  BFL.push({x0: -1.3, x1: 1.3, z0: Z0, z1: U.cz0 + .05, y: CAS}, {x0: -1.3, x1: 1.3, z0: U.cz1 - .05, z1: Z1, y: CAS});
+  for (const [z0, z1] of [[Z0, U.cz0], [U.cz1, Z1]]) BW.push({x0: -1.62, x1: -1.3, z0, z1, y0: 0, y1: 1}, {x0: 1.3, x1: 1.62, z0, z1, y0: 0, y1: 1}); BW.push({x0: -1.62, x1: 1.62, z0: Z0 - .4, z1: Z0, y0: 0, y1: 1}, {x0: -1.62, x1: 1.62, z0: Z1, z1: Z1 + .4, y0: 0, y1: 1}, {x0: -.72, x1: .72, z0: -8.5, z1: -4.4, y0: 0, y1: 4});
+  for (const it of INTER) if (it.boat && it.kind === 'ladder' && it.top === 'boat') { it.lx = NUKE.RB + .5; }
+  Object.assign(BG, {zb: -16, zs: 71, L: 87, W: 8.4, hw: NUKE.RB});
+  g.traverse(o => { if (o.isMesh && o.material && o.material.color && !o.material.userData.inner && o.material.color.getHex() === 0xd8a020) o.material.color.setHex(0x1c1f22); });
+  } catch (e) { console.warn('nuke', e); } return r; }; }
+
+// ===== biome dressing on the surface around the camera: kelp canopy mats (Kelp Forest), pale sand shallows (Turquoise Banks), glowing plankton at night
+// (Lantern Sea), drifting mist banks (Whispering Mist). Seeded per 40 m cell, so every client sees the same. The host keeps the Squall Line stormy and
+// the Turquoise Banks calm while the boat is in them.
+const BIO = {t: 0, cx: 1e9, cz: 1e9, k: {}};
+function bioMesh(k) { if (BIO.k[k]) return BIO.k[k]; let geo, mat, n = 220;
+  if (k === 'kelp') { geo = new THREE.IcosahedronGeometry(1, 1); geo.scale(1, .08, 1); mat = new THREE.MeshStandardMaterial({color: 0x6a7a24, roughness: .95}); }
+  else if (k === 'tropic') { geo = new THREE.CircleGeometry(1, 20); geo.rotateX(-PI / 2); mat = new THREE.MeshBasicMaterial({color: 0xbff8e8, transparent: true, opacity: .32, depthWrite: false}); }
+  else if (k === 'glow') { geo = new THREE.SphereGeometry(.18, 6, 4); mat = new THREE.MeshBasicMaterial({color: 0x40fff0, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending}); n = 900; }
+  else { geo = new THREE.PlaneGeometry(1, 1); mat = new THREE.MeshBasicMaterial({map: TX.glow, color: 0xdfe6ea, transparent: true, opacity: .28, depthWrite: false}); n = 60; }
+  const im = new THREE.InstancedMesh(geo, mat, n); im.count = 0; im.frustumCulled = false; im.renderOrder = k === 'mist' ? 6 : 0; scene.add(im); return BIO.k[k] = {im, n, L: []}; }
+function bioFill(q, cx, cz) { const B2 = bioMesh(q.k), L = B2.L; L.length = 0; const R = q.k === 'mist' ? 420 : q.k === 'glow' ? 160 : 320, C = q.k === 'glow' ? 16 : 40;
+  for (let i = Math.floor((cx - R) / C); i <= Math.floor((cx + R) / C); i++) for (let j = Math.floor((cz - R) / C); j <= Math.floor((cz + R) / C); j++) { const r = mulberry((Math.imul(i, 73856093) ^ Math.imul(j, 19349663) ^ 0xb10) >>> 0);
+    const per = q.k === 'glow' ? 3 : q.k === 'mist' ? (r() < .12 ? 1 : 0) : q.k === 'kelp' ? (r() < .85 ? 2 : 1) : (r() < .45 ? 1 : 0); for (let n = 0; n < per && L.length < B2.n; n++) { const x = i * C + r() * C, z = j * C + r() * C; if (Math.hypot(x - cx, z - cz) > R || mapRegW(x, z, q) < .35 || landH(x, z) > -1.5) continue;
+      L.push(q.k === 'kelp' ? [x, z, 6 + r() * 12, r() * TAU, 1 + r() * .6] : q.k === 'tropic' ? [x, z, 8 + r() * 18, r() * TAU, 1] : q.k === 'glow' ? [x, z, .6 + r() * 1.2, r() * TAU, r()] : [x, z, 40 + r() * 50, r() * TAU, r()]); } } }
+function bioFrame(dt) { if (!G.on || !P) return; const cp = cam.position, q = mapRegion(cp.x, cp.z), kind = q && ['kelp', 'tropic', 'glow', 'mist'].includes(q.k) ? q.k : null;
+  for (const k in BIO.k) if (k !== kind) BIO.k[k].im.visible = false; if (!kind || (G.uw || 0) > .5) return; const B2 = bioMesh(kind), im = B2.im; im.visible = true;
+  if (Math.hypot(cp.x - BIO.cx, cp.z - BIO.cz) > 60 || BIO.kind !== kind) { BIO.cx = cp.x; BIO.cz = cp.z; BIO.kind = kind; bioFill(q, cp.x, cp.z); }
+  BIO.t -= dt; if (BIO.t > 0 && kind !== 'mist') return; BIO.t = .12; const t = G.wt, M4 = BIO.M4 || (BIO.M4 = new THREE.Matrix4()), Qt = BIO.Q || (BIO.Q = new THREE.Quaternion()), Sv = BIO.S || (BIO.S = new THREE.Vector3()), Pv = BIO.P || (BIO.P = new THREE.Vector3()), Ey = BIO.E || (BIO.E = new THREE.Euler());
+  let n = 0; for (const e of B2.L) { const [x, z, sz, yaw, v] = e, wy = waveH(x, z, t);
+    if (kind === 'mist') { Pv.set(x + Math.sin(t * .02 + yaw) * 20, 5 + v * 6, z + Math.cos(t * .015 + yaw) * 20); Qt.copy(cam.quaternion); Sv.set(sz, sz * .35, 1); }
+    else { Pv.set(x, wy + (kind === 'kelp' ? .05 : kind === 'tropic' ? .04 : .06), z); Ey.set(0, yaw + (kind === 'glow' ? t * .2 : 0), 0); Qt.setFromEuler(Ey); Sv.set(sz, kind === 'kelp' ? v : 1, sz * (kind === 'kelp' ? .7 : 1)); }
+    M4.compose(Pv, Qt, Sv); im.setMatrixAt(n++, M4); } im.count = n; im.instanceMatrix.needsUpdate = true;
+  if (kind === 'glow') im.material.opacity = .15 + .75 * (TOD.night || 0) * (.7 + .3 * Math.sin(t * 1.3)); }
+{ const f0 = updateWorldFx; updateWorldFx = function (...a) { const r = f0.apply(this, a); try { bioFrame(a[0] || 0); } catch (e) { if (!BIO.err) { BIO.err = 1; console.warn(e); } } return r; }; }
+// host weather by biome: the Squall Line always storms, the Turquoise Banks never do
+{ const f0 = hostStep; hostStep = function (dt) { const r = f0.apply(this, arguments); try { if (G.on && BOAT) { const q = mapRegion(B.x, B.z), w = mapRegion.w; if (q && w > .5 && (q.storm || q.calm)) { const want = !!q.storm; if (G.stormOn !== want) { G.stormOn = want; G.stormT = 90; emit({k: 'storm', on: want}); } } } } catch (e) {} return r; }; }

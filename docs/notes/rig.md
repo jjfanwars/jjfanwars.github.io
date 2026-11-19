@@ -109,7 +109,7 @@ Read `CLAUDE.md` first (shared rules). Split out of it on 17 Nov 2026; keep this
   - Sync: the pose field `em` (index + 1). `emotePose` poses the joints. Looping emotes keep going while you walk (griddy walking).
   - Your own emote shows in third person (`emoteSelf`). The camera sits in front of you while you stand still (the mouse orbits it, `G.emOrb`) and swings behind your shoulder while you move. `emCamDist` pulls it in front of WALLS and the boat's BW (walls taller than 1.3 m), it stays above `landH`, and crewmates in the shot are hidden. It stays first person inside cabins or with less than 1.4 m of room.
 - **Names:** Host and Join need a name of at least 2 letters (`needName`). Solo still defaults to Deckhand.
-- `GAME_V` 67, because the pose has new fields (68 after the handover, fast travel and review-fix batch; 69 for friendly fire; 70 for walkable bridges and the ground fix; 71 for big-ship perks; 72 for island creatures; 73 for the casino ship, guns, fishing bar; 74 for 3D casino games and walk-around decks).
+- `GAME_V` 67, because the pose has new fields (68 after the handover, fast travel and review-fix batch; 69 for friendly fire; 70 for walkable bridges and the ground fix; 71 for big-ship perks; 72 for island creatures; 73 for the casino ship, guns, fishing bar; 74 for 3D casino games and walk-around decks; 75 for biomes, the nuclear sub and the casino bonus).
 
 **Persistent loot and fast travel (v67, 19 Nov 2026).**
 - **World seed:** `worldSeed(sv)` keeps the seed in the save (`ws`), so `placeItems`/`placeSunk` put the same loot in the same places every voyage. `hostStart` and Play solo both use it.
@@ -279,3 +279,9 @@ Still deferred from round 2 (see the round-2 plan): selling and shopping aboard 
 
 ## Next up (19 Nov 2026)
 Still open from the owner's list above: 5 (boat interiors, visually), 9 (a scarier sea monster), 15 (inventory screen), 16 (islands, visually), 17 (underwater visuals, partly done), the boss fights (docs/plans/rig-bosses.md), a PvP mode (teams, HP, respawns, score; the guns and friendly fire are ready), and an online playtest of everything built since round 2.
+
+**Biomes, nuclear sub, casino bonus (v75).**
+- Casino: `CG_K` / `cgK(g, ch)` multiplies every win so each game and choice returns about 110% on average (simulated 1.09 to 1.14); the panel shows the bonus.
+- Biomes: five REGIONS appended (the first five keep their indices): kelp (-2900, 2500), tropic (2300, -2300, `calm`), storm (-2700, -2500, `storm`), mist (1700, 1300), glow (-1900, -700). New fields: `sea` (sea colour lerp strength, default .25) and `fogK` (fog colour lerp, default .15) used by mapLook. `BIO` (updateWorldFx wrapper) dresses the surface round the camera from 40 m seeded cells: kelp mats, pale sand shallows, glowing plankton at night (Lantern Sea), drifting mist banks. A hostStep wrapper forces the storm on in the Squall Line and off in the Turquoise Banks while the boat is in them.
+- Kraken nuclear submarine (HULLS index 26, `nuke: 1`, sub: 1, spd 2.0, maxDep 300, hold 140, $42000): the research sub is built as usual, then a buildBoat wrapper adds an 87 m black lathe hull (radius `NUKE.RB` 4.2, top just under the casing), a deck strip, a bigger sail with a walkway past it, 24 missile hatches, a cruciform tail and a pump-jet shroud; the casing's end walls are removed and BFL/BW extend the deck from z -10 to 55; the swim ladder moves out to the new hull; BG is overridden (zb -16, zs 71, L 87, hw 4.2). The interior is the research sub's (the outer hull is front-face only, so the viewports still look out into the sea).
+- The sub interior water fix from v69 was re-checked: inside a dived sub `G.uwC` is 0 and the marine snow is hidden.
