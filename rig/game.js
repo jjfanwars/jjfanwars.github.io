@@ -2730,7 +2730,7 @@ function hostAct(id, m) {
 function act(m) { if (isHost()) hostAct(myId(), m); else Net.send(Object.assign({t: 'act', px: +P.x.toFixed(2), pz: +P.z.toFixed(2), ob: P.ob}, m)); }
 
 // ---------------- save (host)
-function save() { if (!isHost() || (TEST && !G.saveTest) || G.guestGame) return; try { localStorage.setItem(SK('s9-save2'), JSON.stringify({cash: G.cash, earned: G.earned, up: B.up, disc: G.disc, goals: G.goals, cruise: G.cruise || 0, hold: B.sink > 0 ? [] : B.hold.slice(), dg: DIGS.map(d => (d.rev ? 1 : 0) + (d.dug ? 2 : 0)), bb: G.bbOut ? 1 : 0, sk: P ? P.sack.slice() : [], co: P && P.cooler ? P.cooler.slice() : [], fl: P ? P.flares : 2, stat: G.stat || null, bn: G.bn ?? -1})); } catch (e) {} }
+function save() { if (!isHost() || (TEST && !G.saveTest) || G.guestGame) return; try { localStorage.setItem(SK('s9-save2'), JSON.stringify({cash: G.cash, earned: G.earned, up: B.up, disc: G.disc, goals: G.goals, cruise: G.cruise || 0, hold: B.sink > 0 ? [] : B.hold.slice(), dg: DIGS.map(d => (d.rev ? 1 : 0) + (d.dug ? 2 : 0)), bb: G.bbOut ? 1 : 0, sk: P ? P.sack.slice() : [], co: P && P.cooler ? P.cooler.slice() : [], fl: P ? P.flares : 2, stat: G.stat || null, bn: G.bn ?? -1, ws: G.seed, lt: lootTimes(), ft: G.ftSeen || []})); } catch (e) {} }
 function loadSave() { try { return JSON.parse(localStorage.getItem(SK('s9-save2'))) || null; } catch (e) { return null; } }
 addEventListener('pagehide', () => { if (G.on) save(); });
 
@@ -2748,7 +2748,7 @@ function applySnap(s) {
   for (const e of s.ev || []) applyEv(e);
   const [x, y, z, yaw, st, spd, look] = s.m; M.tx = x; M.ty = y; M.tz = z; M.tyaw = yaw; M.state = st; M.spd = spd; M.look = look;
   { const now = performance.now(), sdt = clamp((now - (B.snT || now - 67)) / 1000, .03, .3), nd = s.b[9] || 0; B.snT = now; if (B.tyaw != null) { B.tyr = angD(B.tyaw, s.b[2]) / sdt; B.tvy = (nd - (B.sdep ?? nd)) / sdt; } B.sdep = nd; B.tdep = nd; } B.tx = s.b[0]; B.tz = s.b[1]; B.tyaw = s.b[2]; B.v = s.b[3]; B.thr = s.b[4]; B.driver = s.b[5] || null; B.fuel = s.b[6]; B.hull = s.b[7]; B.sink = s.b[8] ? 1 : 0; if (B.dep == null || Math.abs(B.tdep - (B.dep || 0)) > 25 || !B.got) B.dep = B.tdep; B.dtar = s.b[10] ?? B.tdep; G.radioOn = !!s.rd; if (s.sk) SUNK.forEach((q, i) => q.got = s.sk[i] === '1'); if (!B.got) { B.got = 1; B.x = B.tx; B.z = B.tz; B.yaw = B.tyaw; }
-  if (Math.hypot(B.tx - B.x, B.tz - B.z) > 40) { B.x = B.tx; B.z = B.tz; B.yaw = B.tyaw; } if (M.x != null && Math.hypot(M.tx - M.x, M.tz - M.z) + Math.abs(M.ty - M.y) > 15) { M.x = M.tx; M.y = M.ty; M.z = M.tz; M.yaw = M.tyaw; } G.hostAll = !!s.al;
+  if (Math.hypot(B.tx - B.x, B.tz - B.z) > 40) { B.x = B.tx; B.z = B.tz; B.yaw = B.tyaw; B.tyr = 0; B.tvy = 0; B.dep = B.tdep; } if (M.x != null && Math.hypot(M.tx - M.x, M.tz - M.z) + Math.abs(M.ty - M.y) > 15) { M.x = M.tx; M.y = M.ty; M.z = M.tz; M.yaw = M.tyaw; } G.hostAll = !!s.al;
   if (s.up) B.up = s.up; if (s.hold) B.hold = s.hold.map(i => KINDS[i]);
   if (s.b[11] != null) B.yr = s.b[11]; if (s.sb) { B.hat = s.sb[0]; LK.st = s.sb[1]; LK.tw = s.sb[2]; LK.t = s.sb[3]; }
   for (const id in s.ps) { const p = PL.get(id); if (!p) continue; const [d, bl, de, , ca] = s.ps[id]; p.down = !!d; p.bleed = bl; p.dead = !!de; if (Array.isArray(ca)) { p.sack = ca.map(i => KINDS[i]); p.carry = p.sack[p.sack.length - 1] || null; if (p === P) P.sack = p.sack; } }
@@ -3039,7 +3039,7 @@ function lockMouse() { if (!TEST && canvas.requestPointerLock) try { const r = c
 function pause(p) { G.paused = p; G.wantResume = false; $('pause').classList.toggle('hidden', !p); if (p) { clearKeys(); G.map = false; G.mapStick = 0; $('map').classList.add('hidden'); $('pVol').value = SET.vol; $('pSens').value = SET.sens; $('pBright').value = SET.bright; $('pFov').value = SET.fov || 70; $('pInv').checked = !!SET.inv; } $('pauseN').textContent = Net.role === 'solo' ? 'The sea waits for you. Progress is saved.' : 'Online games keep running.'; if (Net.role === 'solo' && A.ctx) p ? A.ctx.suspend() : A.ctx.resume(); }
 function resumeReq() { if (TEST || document.pointerLockElement === canvas || !canvas.requestPointerLock) { pause(false); return; } G.wantResume = true; lockMouse(); $('pauseN').textContent = 'Click Resume again if the mouse does not lock.'; }
 function clearKeys() { for (const k in K) K[k] = false; eDown = false; ePress = false; mouseR = false; G.lmb = false; }
-const anyPanel = () => !!(G.chat || G.noteOpen || G.shopOpen || G.casOpen || G.helpOpen || G.endOpen || G.jrnOpen);
+const anyPanel = () => !!(G.chat || G.ftOpen || G.noteOpen || G.shopOpen || G.casOpen || G.helpOpen || G.endOpen || G.jrnOpen);
 function closePanels(relock) { G.noteOpen = G.shopOpen = G.casOpen = G.helpOpen = G.jrnOpen = false; ['shop', 'casino', 'fishHelp', 'note'].forEach(id => $(id).classList.add('hidden')); if ($('jrn')) $('jrn').classList.add('hidden'); if (relock && G.on) lockMouse(); }
 // once per rendered frame, after the camera: panels that should close, the crouch dot, the click-to-look hint
 function ctlFrame(dt) {
@@ -3103,7 +3103,7 @@ Snd.step = (kind, k) => { const r = .88 + Math.random() * .24, hit = g => {
   if (kind === 'metal') tone((320 + Math.random() * 60) * r, .02 * k, .08, 'triangle');
   else if (kind === 'steel') { tone(150 * r, .03 * k, .1); tone(2200 * r, .008 * k, .04); }
   else if (kind === 'wood') tone(180 * r, .015 * k, .08, 'triangle'); };
-const KEYMAP = [['W A S D', 'move'], ['Shift', 'run'], ['C', 'crouch · dive'], ['Space', 'jump · rise · hold breath'], ['Tab (tap)', 'keep the chart open'], ['V', 'binoculars'], ['N · Y · U', 'repair kit · fuel can · chum'], ['F at the wheel', 'deck gun on armed ships'], ['Z (hold)', 'give up'], ['E', 'use · hold for jobs'], ['F', 'flashlight'], ['G', 'throw a flare'], ['Enter', 'chat'], ['O (hold)', 'emote wheel · tap to stop'], ['Q', 'whistle · horn at the wheel'], ['1-7 · wheel', 'hotbar'],
+const KEYMAP = [['W A S D', 'move'], ['Shift', 'run'], ['C', 'crouch · dive'], ['Space', 'jump · rise · hold breath'], ['Tab (tap)', 'keep the chart open'], ['V', 'binoculars'], ['N · Y · U', 'repair kit · fuel can · chum'], ['F at the wheel', 'deck gun on armed ships'], ['Z (hold)', 'give up'], ['E', 'use · hold for jobs'], ['F', 'flashlight'], ['G', 'throw a flare'], ['Enter', 'chat'], ['L at the wheel', 'fast travel from a dock'], ['O (hold)', 'emote wheel · tap to stop'], ['Q', 'whistle · horn at the wheel'], ['1-7 · wheel', 'hotbar'],
   ['LMB / RMB', 'use · aim'], ['R', 'reload'], ['X', 'drop the last thing'], ['H', 'fishing help'], ['Tab (hold)', 'chart'], ['Esc', 'pause']];
 const keyTable = list => `<div class="keys ktab">${list.map(([k, a]) => `<span><b>${k}</b></span><span>${a}</span>`).join('')}</div>`;
 
@@ -7074,7 +7074,7 @@ const myName = () => (SET.name || 'Deckhand').replace(/[^A-Za-z0-9 ._-]/g, '').s
 function crewList() { return [{id: 'H', name: myName(), c: 0}, ...[...Net.peers.values()].map(p => ({id: p.id, name: p.name, c: p.c}))]; }
 function show(id) { ['menu', 'lobby', 'end', 'pause', 'shop', 'casino', 'fishHelp'].forEach(k => $(k).classList.toggle('hidden', k !== id)); G.casOpen = G.helpOpen = G.shopOpen = false; }
 function lobby() { const L = crewList(); $('crew').innerHTML = L.map(p => `<div><i style="background:${hexS(CREW_COL[p.c % 6])}"></i>${p.name.replace(/[<>&]/g, '')}${p.id === 'H' ? ' <small style="color:var(--dim)">host</small>' : ''}</div>`).join(''); if (Net.role === 'host') Net.send({t: 'lobby', crew: L}); }
-function hostStart() { G.diff = SET.diff; const seed = (Math.random() * 1e9) | 0, crew = crewList(), sv = loadSave(); Net.started = true; Net.meta(Net.peers.size < 5); Net.send({t: 'start', seed, crew, diff: G.diff, sv, v: GAME_V, al: ALL ? 1 : 0}); startGame(seed, crew, sv); }
+function hostStart() { G.diff = SET.diff; const sv = loadSave(), seed = worldSeed(sv), crew = crewList(); Net.started = true; Net.meta(Net.peers.size < 5); Net.send({t: 'start', seed, crew, diff: G.diff, sv, v: GAME_V, al: ALL ? 1 : 0}); startGame(seed, crew, sv); }
 Net.on('_lobby', () => { if (!G.on) lobby(); });
 Net.on('_join', m => { if (G.on && Net.role === 'host') { const crew = crewList(), op = PL.get(m.id); if (op && op.ready) { Net.send({t: 'crew', crew}); return; } syncCrew(crew); const np = PL.get(m.id); if (np) { const sp = boatSpawn(PL.size - 1); np.ob = 1; np.bl = sp.bl; np.y = sp.y; } if (!np || !np.startT || performance.now() - np.startT > 4000) { if (np) np.startT = performance.now(); Net.send1(m.id, {t: 'start', seed: G.seed, crew, diff: G.diff, late: 1, v: GAME_V, al: ALL ? 1 : 0, ex: ITEMS.slice(G.seedItems || ITEMS.length).map(i => [i.kind, +i.x.toFixed(2), +i.y.toFixed(2), +i.z.toFixed(2), i.text || '']), sv: {cash: G.cash, earned: G.earned, up: B.up, disc: G.disc, goals: G.goals, cruise: G.cruise || 0}}); } Net.send({t: 'crew', crew}); showMsg(`${np ? np.name : 'Someone'} joined the crew.`); } });
 Net.on('_left', m => { if (!G.on) { lobby(); return; } const crew = crewList(); syncCrew(crew); Net.send({t: 'crew', crew}); showMsg(`${m.name || 'Someone'} left.`); });
@@ -7127,7 +7127,7 @@ function menuInit() {
   $('pVol').oninput = e => setVol(+e.target.value); $('pSens').oninput = e => { SET.sens = +e.target.value; saveSet(); }; $('pBright').oninput = e => { SET.bright = +e.target.value; saveSet(); if (!POST.on) RND.toneMappingExposure = 1.15 * SET.bright; };
   document.querySelectorAll('[data-k=gfx] button').forEach(b => b.addEventListener('click', () => { if (G.on) applyGfx(); document.querySelectorAll('[data-k=gfx] button').forEach(q => q.classList.toggle('on', q.dataset.v === SET.gfx)); }));
   $('name').value = SET.name; $('name').oninput = e => { SET.name = e.target.value; saveSet(); if (/name first/.test($('err').textContent)) $('err').textContent = ''; };
-  $('bSolo').onclick = () => { Net.close(); G.diff = SET.diff; startGame((Math.random() * 1e9) | 0, [{id: 'H', name: myName(), c: 0}], loadSave()); };
+  $('bSolo').onclick = () => { Net.close(); G.diff = SET.diff; { const sv = loadSave(); startGame(worldSeed(sv), [{id: 'H', name: myName(), c: 0}], sv); } };
   $('bHost').onclick = () => { if (!needName()) return; aInit(); buildWorld(); const code = Net.host(myName(), s => { if (G.on) { if (s === 'open') showMsg('Reconnected.', '', 3); else showMsg('Relay connection dropped. Reconnecting…', '', 6); return; } $('lmsg').textContent = s === 'open' ? 'Share the code. Up to 6 crew. Friends can join mid-voyage.' : 'Connection lost, retrying…'; }); $('code').textContent = code; show('lobby'); $('bGo').classList.remove('hidden'); $('lmsg').textContent = 'Connecting…'; lobby(); };
   $('bJoin').onclick = () => joinRoom($('joinC').value); $('joinC').onkeydown = e => { if (e.key === 'Enter') joinRoom($('joinC').value); };
   $('bGo').onclick = hostStart; $('bLeave').onclick = () => toMenu(); $('resume').onclick = resumeReq; $('quit').onclick = () => { if (Net.role === 'host' && Net.peers.size && !confirm('Leaving ends the voyage for your crew. Leave?')) return; toMenu(); }; $('endMenu').onclick = () => toMenu();
@@ -8803,21 +8803,20 @@ if (TEST) { const f0 = hud; hud = function (dt) { const r = f0.apply(this, argum
 menuInit();
 setTimeout(() => { buildWorld(); requestAnimationFrame(frame); }, 30);
 // ===== chat and emotes (Enter chats, hold O for the emote wheel; looping emotes like the Griddy keep going while you walk)
-const EMOTES = [{n: 'Wave', d: 2.4, ic: '👋'}, {n: 'Griddy', loop: 1, ic: '🕺'}, {n: 'Middle finger', d: 2.6, ic: '🖕', al: ['bird', 'finger', 'mf']}, {n: 'Dab', d: 1.8, ic: '💪'}, {n: 'Thumbs up', d: 2, ic: '👍', al: ['thumbs', 'ty']}, {n: 'Clap', d: 2.6, ic: '👏'}, {n: 'Salute', d: 2.2, ic: '🫡'}, {n: 'Jig', loop: 1, ic: '💃', al: ['dance']}];
+const EMOTES = [{n: 'Wave', d: 2.4, ic: '👋'}, {n: 'Griddy', loop: 1, ic: '🕺'}, {n: 'Middle finger', d: 2.6, ic: '🖕', al: ['bird', 'finger', 'mf']}, {n: 'Thumbs up', d: 2, ic: '👍', al: ['thumbs', 'ty']}, {n: 'Clap', d: 2.6, ic: '👏'}, {n: 'Salute', d: 2.2, ic: '🫡'}, {n: 'Jig', loop: 1, ic: '💃', al: ['dance']}];
 function emotePose(p, j, dt) {
   if (p.em !== p.emL) { p.emL = p.em; p.emT = 0; } const t = (p.emT = (p.emT || 0) + dt), E = EMOTES[p.em - 1]; if (!E) return;
   const b = j.body, A = j.a1, L = j['a-1'], H = j.head, up = Math.min(1, t * 5);
-  switch (p.em - 1) {
-    case 0: A.rotation.set(.2, 0, mix(.08, 2.7, up) + Math.sin(t * 10) * .35 * up); H.rotation.z = Math.sin(t * 5) * .1; break;
-    case 1: { const f = t * 8.5, s1 = Math.sin(f), c1 = Math.cos(f); b.position.y = .9 + Math.abs(s1) * .07; b.rotation.x = .12; b.rotation.z = s1 * .06; H.rotation.x = -.15;
+  switch (E.n) {
+    case 'Wave': A.rotation.set(.2, 0, mix(.08, 2.7, up) + Math.sin(t * 10) * .35 * up); H.rotation.z = Math.sin(t * 5) * .1; break;
+    case 'Griddy': { const f = t * 8.5, s1 = Math.sin(f), c1 = Math.cos(f); b.position.y = .9 + Math.abs(s1) * .07; b.rotation.x = .12; b.rotation.z = s1 * .06; H.rotation.x = -.15;
       j.l1.rotation.x = Math.max(0, s1) * .75; j['l-1'].rotation.x = Math.max(0, -s1) * .75; j.k1.rotation.x = s1 > 0 ? -.05 : -.45 * Math.abs(s1); j['k-1'].rotation.x = s1 < 0 ? -.05 : -.45 * Math.abs(s1);
       A.rotation.set(.5 + c1 * .8, 0, .45); L.rotation.set(.5 - c1 * .8, 0, -.45); break; }
-    case 2: { const k = up; A.rotation.set(1.5 * k, 0, .12); L.rotation.set(1.5 * k, 0, -.12); j.f1.visible = j['f-1'].visible = k > .7; b.rotation.x = .08 * k; b.position.y = .95 + Math.abs(Math.sin(t * 6)) * .02; H.rotation.x = .12; H.rotation.z = Math.sin(t * 3) * .08; break; }
-    case 3: L.rotation.set(1.55 * up, 0, .95 * up); A.rotation.set(.35 * up, 0, 2.1 * up); H.rotation.x = -.5 * up; H.rotation.y = .55 * up; b.rotation.z = .1 * up; break;
-    case 4: A.rotation.set(1.4 * up, 0, .1); j.th1.visible = up > .7; H.rotation.x = Math.max(0, Math.sin(t * 6)) * .15; break;
-    case 5: { const c = Math.abs(Math.sin(t * 11)); A.rotation.set(1.3, 0, -.15 - c * .25); L.rotation.set(1.3, 0, .15 + c * .25); break; }
-    case 6: A.rotation.set(2.45 * up, 0, -.75 * up); b.rotation.x = .05; H.rotation.x = .05; break;
-    case 7: { const f = t * 7, s1 = Math.sin(f); b.position.y = .95 + Math.max(0, Math.sin(f * 2)) * .09; j.l1.rotation.x = Math.max(0, s1) * 1.1; j['l-1'].rotation.x = Math.max(0, -s1) * 1.1; j.k1.rotation.x = -Math.max(0, s1) * 1.2; j['k-1'].rotation.x = -Math.max(0, -s1) * 1.2;
+    case 'Middle finger': { const k = up; A.rotation.set(1.5 * k, 0, .12); L.rotation.set(1.5 * k, 0, -.12); j.f1.visible = j['f-1'].visible = k > .7; b.rotation.x = .08 * k; b.position.y = .95 + Math.abs(Math.sin(t * 6)) * .02; H.rotation.x = .12; H.rotation.z = Math.sin(t * 3) * .08; break; }
+    case 'Thumbs up': A.rotation.set(1.4 * up, 0, .1); j.th1.visible = up > .7; H.rotation.x = Math.max(0, Math.sin(t * 6)) * .15; break;
+    case 'Clap': { const c = Math.abs(Math.sin(t * 11)); A.rotation.set(1.3, 0, -.15 - c * .25); L.rotation.set(1.3, 0, .15 + c * .25); break; }
+    case 'Salute': A.rotation.set(2.45 * up, 0, -.75 * up); b.rotation.x = .05; H.rotation.x = .05; break;
+    case 'Jig': { const f = t * 7, s1 = Math.sin(f); b.position.y = .95 + Math.max(0, Math.sin(f * 2)) * .09; j.l1.rotation.x = Math.max(0, s1) * 1.1; j['l-1'].rotation.x = Math.max(0, -s1) * 1.1; j.k1.rotation.x = -Math.max(0, s1) * 1.2; j['k-1'].rotation.x = -Math.max(0, -s1) * 1.2;
       A.rotation.set(-.15, 0, .9); L.rotation.set(-.15, 0, -.9); H.rotation.z = s1 * .12; break; }
   }
 }
@@ -8851,7 +8850,7 @@ function emoteStart(k) { if (!P) return; if (k < 0 || (P.emo && P.emo.i === k &&
 // the wheel: hold O, flick the mouse toward an emote (or press 1-8), let go
 addEventListener('keydown', e => {
   if (e.target && /^(INPUT|TEXTAREA)$/.test(e.target.tagName)) return; if (!G.on || G.paused || !P) return;
-  if (G.emoW && /^Digit[1-8]$/.test(e.code)) { e.stopImmediatePropagation(); e.preventDefault(); G.emoW.sel = +e.code.slice(5) - 1; emoWheelEnd(); return; }
+  if (G.emoW && /^Digit[1-9]$/.test(e.code) && +e.code.slice(5) <= EMOTES.length) { e.stopImmediatePropagation(); e.preventDefault(); G.emoW.sel = +e.code.slice(5) - 1; emoWheelEnd(); return; }
   if (e.repeat) return;
   if ((e.code === 'Enter' || e.code === 'Slash') && !anyPanel() && !G.map) { e.stopImmediatePropagation(); e.preventDefault(); chatOpen(e.code === 'Slash' ? '/' : ''); return; }
   if (e.code === 'KeyO' && !anyPanel() && !G.map && !G.emoW) { chatUI(); G.emoW = {x: 0, y: 0, sel: -1, t0: performance.now()}; CHAT.wheel.style.display = 'block'; emoWheelDraw(); }
@@ -8886,4 +8885,52 @@ function bubbles(dt) {
     if (p.bubEl.textContent !== p.bubS) p.bubEl.textContent = p.bubS; _v.set(p.rx, p.ry + 2.55, p.rz).project(cam); const vis = _v.z < 1 && Math.abs(_v.x) < 1.05 && Math.abs(_v.y) < 1.05 && Math.hypot(p.rx - cam.position.x, p.rz - cam.position.z) < 60;
     p.bubEl.style.display = vis ? 'block' : 'none'; if (vis) { p.bubEl.style.left = Math.round((_v.x + 1) / 2 * innerWidth) + 'px'; p.bubEl.style.top = Math.round((1 - _v.y) / 2 * innerHeight) + 'px'; p.bubEl.style.opacity = Math.min(1, p.bubT); } }
 }
-if (TEST) window.__S = {EMOTES, emoteStart, chatSend, chatOpen, SKY, psSit, skyStep, BW, BFL, INTER, get stepPlayer() { return stepPlayer; }, closeCasino, BOAT_: () => BOAT, BSPOT, FX, BHELM, bL2W, openCasino, AURAS, applyAll, launchFw, FWK, get ALL() { return ALL; }, get BOAT() { return BOAT; }, CN, CRZ, STS, GUL, DSITES, stepSteward, HULLS, SUNK, BG, BDECK, buildBoat, seaBed, render, levPose, LEV, MJ, TODd: () => SUNDIR, TOD, F, FISH, GEAR, equip, toolDown, toolUp, gotGear, pickFish, hostShoot, G, PL, M, B, K, SET, VALVES, ITEMS, HIDES, BLD, SPOTS, NG, SURF, POIS, DIGS, ISLES, Net, get P() { return P; }, startGame, step, hostStep, hostAct, act, targets, toggleHide, cam, scene, RND, noise, downPlayer, floorAt, navPath, applyEv, boatPose, landH, openShop, set eDown(v) { eDown = v; }, crewList, hostStart, joinRoom};
+// ===== persistent loot (taken stays taken, slow restock in real time) and fast travel between docks
+// the world seed is kept in the save, so loot sits in the same places every voyage; lootTimes() = [[i, takenAt], ...] for ITEMS (i) and SUNK (-1 - i)
+function worldSeed(sv) { return sv && sv.ws ? sv.ws : (Math.random() * 1e9) | 0; }
+const RESTOCK = {item: 20 * 60e3, sunk: 40 * 60e3}, restockMs = (i, sunk) => (sunk ? RESTOCK.sunk : RESTOCK.item) * (.7 + .6 * ((Math.imul(i + 7, 2654435761) >>> 0) % 1000) / 1000);
+const LTK = {it: {}, sk: {}, t: 0};
+function lootTimes() { const o = []; for (const k in LTK.it) o.push([+k, LTK.it[k]]); for (const k in LTK.sk) o.push([-1 - k, LTK.sk[k]]); return o; }
+const noRestock = it => !it || it.kind === 'note' || it.pl || it.one;
+{ const f0 = startGame; startGame = function (seed, crew, sv) { const r = f0.apply(this, arguments); LTK.it = {}; LTK.sk = {}; LTK.t = 0; G.ftSeen = (sv && Array.isArray(sv.ft) ? sv.ft : []).slice();
+  if (isHost() && sv && Array.isArray(sv.lt) && sv.ws === seed) { const now = Date.now(); for (const [i, ts] of sv.lt) { if (!(ts > 0)) continue;
+    if (i >= 0) { const it = ITEMS[i]; if (!it || i >= (G.seedItems || ITEMS.length) || (!noRestock(it) && now - ts > restockMs(i))) continue; it.taken = true; LTK.it[i] = ts; }
+    else { const j = -1 - i, q = SUNK[j]; if (!q || now - ts > restockMs(j, 1)) continue; q.got = true; if (q.m) q.m.visible = false; LTK.sk[j] = ts; } } }
+  return r; }; }
+// host, every 2 s: stamp newly taken loot, restock what has waited long enough while nobody is close, and unlock docks the boat comes near
+function lootTick(dt) { if (!isHost() || !G.on || (LTK.t -= dt) > 0) return; LTK.t = 2; const now = Date.now(), n = G.seedItems || ITEMS.length, crew = [...PL.values()].filter(p => p.ready && !p.dead), near = (x, z) => crew.some(p => Math.hypot(p.x - x, p.z - z) < 90) || Math.hypot(B.x - x, B.z - z) < 90; let ch = 0;
+  for (let i = 0; i < n; i++) { const it = ITEMS[i]; if (!it) continue; if (it.taken) { if (!LTK.it[i]) { LTK.it[i] = now; ch = 1; } else if (!noRestock(it) && now - LTK.it[i] > restockMs(i) && !near(it.x, it.z) && !hideTaken(it)) { it.taken = false; delete LTK.it[i]; ch = 1; } } else if (LTK.it[i]) { delete LTK.it[i]; ch = 1; } }
+  for (let j = 0; j < SUNK.length; j++) { const q = SUNK[j]; if (q.got) { if (!LTK.sk[j]) { LTK.sk[j] = now; ch = 1; } else if (now - LTK.sk[j] > restockMs(j, 1) && !near(q.x, q.z)) { q.got = false; if (q.m) q.m.visible = true; delete LTK.sk[j]; ch = 1; } } else if (LTK.sk[j]) { delete LTK.sk[j]; ch = 1; } }
+  for (const d of dockList()) if (!G.ftSeen.includes(d.n) && Math.hypot(B.x - d.x, B.z - d.z) < 160) { G.ftSeen.push(d.n); ch = 1; if (G.ftSeen.length > 1) emit({k: 'ftnew', n: d.n}); }
+  if (!G.ftSeen.includes('the home jetty')) G.ftSeen.push('the home jetty');
+  if (ch) save(); }
+{ const f0 = hostStep; hostStep = function (dt) { const r = f0.apply(this, arguments); try { lootTick(dt); } catch (e) { if (TEST) console.error(e); } return r; }; }
+// fast travel: the helmsman, docked (or crawling) at any jetty, picks another dock they have been to; the harbour pilot charges by distance and the clock moves on
+const ftDockHere = () => { const d = dockNear(B.x, B.z, 30 + BG.L * .5); return d && Math.abs(B.v) < 2.5 ? d : null; };
+const ftCost = (a, b) => Math.max(15, Math.round(Math.hypot(a.x - b.x, a.z - b.z) / 25 / 5) * 5);
+function ftWhy() { if (B.sink > 0) return 'The boat is sinking.'; if (HC().plane && -(B.dep || 0) > .5) return 'Land first.'; if (HC().sub && (B.dep || 0) > 1) return 'Surface first.'; if (!ftDockHere()) return 'Bring her alongside a jetty or landing first.'; return ''; }
+{ const f0 = hostAct; hostAct = function (id, m) { if (!m || m.a !== 'ft') return f0.apply(this, arguments); const p = PL.get(id); if (!p || !G.on || B.driver !== id) return;
+  const L = dockList(), to = L[m.i], from = ftDockHere(), why = ftWhy(); if (why) { emit({k: 'nope', id, why}); return; } if (!to || !G.ftSeen.includes(to.n) || to.n === from.n) return;
+  const c = ALL ? 0 : ftCost(from, to); if (G.cash < c) { emit({k: 'nope', id, why: `The harbour pilot wants ${money(c)}.`}); return; }
+  G.cash -= c; const ox = B.x, oz = B.z, dist = Math.hypot(to.x - ox, to.z - oz); B.ap = null; Object.assign(B, {x: to.x, z: to.z, yaw: to.yaw, v: 0, yr: 0, thr: 0, st: 0, dep: 0, dtar: 0});
+  G.tod = (G.tod + Math.min(.25, dist / 14 / TOD_LEN)) % 1; G.floats = G.floats.map(() => null); for (let i = 0; i < G.floats.length; i++) spawnFloat(i);
+  const ids = []; let n = 0; for (const q of PL.values()) { if (!q.ready || q.dead) continue; if (q.ob) { n++; continue; } if (Math.hypot(q.x - ox, q.z - oz) < 70) { ids.push(q.id); const sp = boatSpawn(n++); q.ob = 1; q.bl = sp.bl; q.y = sp.y; q.sw = 0; } }
+  emit({k: 'ft', n: to.n, c, ids}); save(); }; }
+{ const f0 = applyEv; applyEv = function (e) { if (!e || (e.k !== 'ft' && e.k !== 'ftnew')) return f0.apply(this, arguments);
+  if (e.k === 'ftnew') { if (!G.ftSeen) G.ftSeen = []; if (!G.ftSeen.includes(e.n)) G.ftSeen.push(e.n); toast('New dock on the chart', `${e.n[0].toUpperCase() + e.n.slice(1)}: fast travel there from the wheel (L)`); return; }
+  if (!G.ftSeen) G.ftSeen = []; ftFade(); if (P && e.ids.includes(P.id) && !P.ob) { const sp = boatSpawn(0); Object.assign(P, {ob: 1, bl: sp.bl, y: sp.y, sw: 0, climb: null, vx: 0, vz: 0, vy: 0}); const [wx, wz] = bL2W(P.bl[0], P.bl[1]); P.x = wx; P.z = wz; }
+  P && (P.lastBY = B.yaw); setTimeout(() => G.on && toast(`Arrived at ${e.n}`, e.c ? `Harbour pilot: ${money(e.c)}` : ''), 700); ftClose(); }; }
+function ftFade() { let f = $('ftFade'); if (!f) { f = document.createElement('div'); f.id = 'ftFade'; f.style.cssText = 'position:fixed;inset:0;background:#02060a;opacity:0;pointer-events:none;transition:opacity .35s;z-index:40'; document.body.appendChild(f); } f.style.transition = 'none'; f.style.opacity = 1; requestAnimationFrame(() => requestAnimationFrame(() => { f.style.transition = 'opacity 1.4s'; f.style.opacity = 0; })); }
+function ftOpen() { const why = ftWhy(); if (why) { showMsg(why, '', 2.5); return; } const here = ftDockHere(), L = dockList(); let el = $('ftP');
+  if (!el) { el = document.createElement('div'); el.id = 'ftP'; el.style.cssText = 'position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(440px,92vw);max-height:76vh;overflow:auto;background:rgba(8,14,20,.94);border:1px solid rgba(255,255,255,.18);border-radius:10px;padding:16px 18px;font:14px Georgia,serif;color:#e8e0cc;z-index:35'; ($('hud') || document.body).appendChild(el); }
+  const opts = L.filter(d => d.n !== here.n && (G.ftSeen || []).includes(d.n)).map(d => ({d, km: Math.hypot(d.x - B.x, d.z - B.z) / 1000, c: ALL ? 0 : ftCost(here, d)})).sort((a, b) => a.km - b.km);
+  el.innerHTML = `<div style="font-size:18px;margin-bottom:4px">Fast travel</div><div style="opacity:.7;font-size:12px;margin-bottom:10px">From ${here.n}. Crew aboard (and anyone on this dock) come too. Crew cash ${money(G.cash)}.</div>` + (opts.length ? opts.map((o, k) => `<button data-i="${o.d.i}" style="display:flex;justify-content:space-between;width:100%;margin:4px 0;padding:8px 10px;text-align:left;cursor:pointer"${G.cash < o.c ? ' disabled' : ''}><span>${o.d.n[0].toUpperCase() + o.d.n.slice(1)}</span><span style="opacity:.75">${o.km.toFixed(1)} km · ${o.c ? money(o.c) : 'free'}</span></button>`).join('') : '<div style="opacity:.75">No other docks yet. Sail near a jetty or island landing to add it.</div>') + '<button id="ftX" style="width:100%;margin-top:10px">Close (Esc)</button>';
+  el.querySelectorAll('button[data-i]').forEach(b => b.onclick = () => { act({a: 'ft', i: +b.dataset.i}); ftClose(); }); $('ftX').onclick = ftClose;
+  G.ftOpen = true; el.style.display = 'block'; for (const k in K) K[k] = false; try { document.exitPointerLock(); } catch (e) {} }
+function ftClose() { const el = $('ftP'); if (!G.ftOpen) return; G.ftOpen = false; if (el) el.style.display = 'none'; if (G.on && !G.paused) lockMouse(); }
+addEventListener('keydown', e => { if (e.target && /^(INPUT|TEXTAREA)$/.test(e.target.tagName)) return; if (!G.on || G.paused || !P || e.repeat) return;
+  if (G.ftOpen) { if (e.code === 'Escape' || e.code === 'KeyL') { e.stopImmediatePropagation(); ftClose(); } return; }
+  if (e.code === 'KeyL' && P.seat && !anyPanel() && !G.map) { e.stopImmediatePropagation(); ftOpen(); } }, {capture: true});
+// a hint at the wheel while docked
+{ const f0 = hud; hud = function (dt) { const r = f0.apply(this, arguments); if (P && P.seat && !G.ftOpen && G.on && (G.ftHintT = (G.ftHintT || 0) - dt) <= 0 && ftDockHere() && (G.ftSeen || []).length > 1) { G.ftHintT = 45; showMsg('Docked. <kbd>L</kbd> fast travel to another dock you have visited.', '', 4); } return r; }; }
+if (TEST) window.__S = {LTK, lootTick, ftOpen, dockList, EMOTES, emoteStart, chatSend, chatOpen, SKY, psSit, skyStep, BW, BFL, INTER, get stepPlayer() { return stepPlayer; }, closeCasino, BOAT_: () => BOAT, BSPOT, FX, BHELM, bL2W, openCasino, AURAS, applyAll, launchFw, FWK, get ALL() { return ALL; }, get BOAT() { return BOAT; }, CN, CRZ, STS, GUL, DSITES, stepSteward, HULLS, SUNK, BG, BDECK, buildBoat, seaBed, render, levPose, LEV, MJ, TODd: () => SUNDIR, TOD, F, FISH, GEAR, equip, toolDown, toolUp, gotGear, pickFish, hostShoot, G, PL, M, B, K, SET, VALVES, ITEMS, HIDES, BLD, SPOTS, NG, SURF, POIS, DIGS, ISLES, Net, get P() { return P; }, startGame, step, hostStep, hostAct, act, targets, toggleHide, cam, scene, RND, noise, downPlayer, floorAt, navPath, applyEv, boatPose, landH, openShop, set eDown(v) { eDown = v; }, crewList, hostStart, joinRoom};

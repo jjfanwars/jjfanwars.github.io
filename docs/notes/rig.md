@@ -104,12 +104,24 @@ Read `CLAUDE.md` first (shared rules). Split out of it on 17 Nov 2026; keep this
 - **Guest boat/plane smoothing:** `applySnap` measures the turn rate (`B.tyr`) and climb rate (`B.tvy`) between snapshots. `boatPose` dead-reckons both the target and the boat forward, then eases toward the target. Altitude (`B.dep`) used to be set raw from 15 Hz snapshots, so passengers in planes stuttered.
   - Synthetic test (40 m/s, turning, climbing 6 m/s): the steady position error went from about 4.4 m of lag to 0.67 m (one frame), and altitude follows exactly.
 - **Chat:** Enter (or /) opens `#chatIn`. Act `chat` is rate-limited and clipped to 120 characters, the host emits event `chat`, and it shows in `#chatLog` plus a speech bubble over the speaker (`p.bubS`/`p.bubT`, `bubbles()`). Text is set with `textContent`. `G.chat` counts in `anyPanel()`.
-- **Emotes:** `EMOTES` has Wave, Griddy (loops), Middle finger, Dab, Thumbs up, Clap, Salute and Jig (loops).
+- **Emotes:** `EMOTES` has Wave, Griddy (loops), Middle finger, Thumbs up, Clap, Salute and Jig (loops).
   - Controls: hold O for the wheel, flick the mouse or press 1-8, then release. Tap O to stop. Chat commands `/griddy`, `/bird`, `/stop` and so on also work.
   - Sync: the pose field `em` (index + 1). `emotePose` poses the joints. Looping emotes keep going while you walk (griddy walking).
   - Your own emote shows in third person (`emoteSelf`). The camera sits in front of you while you stand still and swings behind your shoulder while you move. It stays first person inside cabins.
 - **Names:** Host and Join need a name of at least 2 letters (`needName`). Solo still defaults to Deckhand.
 - `GAME_V` 67, because the pose has new fields.
+
+**Persistent loot and fast travel (v67, 19 Nov 2026).**
+- **World seed:** `worldSeed(sv)` keeps the seed in the save (`ws`), so `placeItems`/`placeSunk` put the same loot in the same places every voyage. `hostStart` and Play solo both use it.
+- **Loot timers:** the host's `lootTick` (2 s, in a `hostStep` wrapper) stamps when each ITEMS/SUNK entry was taken (`LTK.it`/`LTK.sk`, saved as `lt`: `[i, ms]`, with SUNK stored as `-1 - i`). It restocks an entry after `restockMs` (items about 14-26 min, sunk treasure about 28-52 min, real time, so it also runs between sessions) once no crew or boat is within 90 m.
+  - Notes, `it.pl` placed-event items and `it.one` never restock.
+  - The startGame wrapper re-applies the timers only when `sv.ws` matches the seed. Guests get the taken state through the existing snapshot keys `it`/`sk`.
+- **Fast travel:** from the wheel, press L (`ftOpen`) while docked or slow (< 2.5) within 30 + L/2 of any `dockList()` entry (home jetty, Northwatch, every island landing).
+  - Destinations are the docks in `G.ftSeen`: the boat has been within 160 m (saved as `ft`, event `ftnew` with a toast).
+  - Host act `ft`: the driver only, refused while sinking, airborne or dived.
+  - The pilot fee is `ftCost` (about $1 per 25 m, minimum $15, free with unlock-all). The time of day advances by distance and floating cargo re-rolls around the new spot.
+  - Crew aboard ride along. Crew within 70 m of the old dock are put aboard (event `ft` with `ids`; each client puts itself aboard and gets a fade plus a toast).
+  - Guests: a jump of more than 40 m in `applySnap` also clears the dead-reckoning rates.
 
 ## Next up (the owner's list, 18 Nov 2026; items 7-14 and the loot rework were built the same day, see the paragraphs above)
 1. **Sub visuals underwater and half underwater:** proper looks from inside and outside the research sub when it is dived and when it sits at the waterline (the waterline across the bow viewport, the sea surface seen from below, underwater fog and tint through the windows, the hull half in and half out of the water, bubbles and wake when diving).
