@@ -29,7 +29,7 @@ const hexS = c => '#' + c.toString(16).padStart(6, '0');
 
 // ---------------- net (jjfanwars relay)
 const RELAY_URL = 'wss://jjfanwars-relay.businessautomationvic.workers.dev';
-const GAME_V = 66;
+const GAME_V = 67;
 const Net = {
   tag: '[Rig]', role: 'solo', ws: null, peers: new Map(), code: '', relayT: {pose: 1}, id: '', name: '', handlers: {}, retry: 0, started: false,
   enc: new TextEncoder(), dec: new TextDecoder(),
@@ -2023,34 +2023,67 @@ function animBody(MON, MJ, M, dt, st, spd) {
 }
 
 // ---------------- crew avatars
-function buildCrew(col) {
+// chunky cartoon deckhands: big head with eyes and a beanie, overalls in the crew colour, yellow gloves, boots; two-part legs (hip l±1, knee k±1)
+const SKINS = [0xe8b896, 0xb07850, 0xf1c9a5, 0x7a4a2e, 0xd49a70, 0x5a3622];
+function buildCrew(col, ci = 0) {
   const g = new THREE.Group(), j = {};
-  const vest = new THREE.MeshStandardMaterial({color: col, roughness: .7}), coat = new THREE.MeshStandardMaterial({color: 0x2a2e30, roughness: .6, metalness: .1}), skin = new THREE.MeshStandardMaterial({color: 0xb08a6a, roughness: .8}), hood = new THREE.MeshStandardMaterial({color: 0xc8a020, roughness: .5});
-  const m = (geo, mat, x, y, z, p = g) => { const o = new THREE.Mesh(geo, mat); o.position.set(x, y, z); o.castShadow = true; p.add(o); return o; };
+  const vest = new THREE.MeshStandardMaterial({color: col, roughness: .75}), coat = new THREE.MeshStandardMaterial({color: 0x2a2e30, roughness: .8}), skin = new THREE.MeshStandardMaterial({color: SKINS[ci % 6], roughness: .7}), hood = new THREE.MeshStandardMaterial({color: 0xc8a020, roughness: .5});
+  const hat = new THREE.MeshStandardMaterial({color: new THREE.Color(col).multiplyScalar(.6), roughness: .95}), boot = new THREE.MeshStandardMaterial({color: 0x2b211a, roughness: .7}), white = new THREE.MeshStandardMaterial({color: 0xf4f4ee, roughness: .3}), ink = new THREE.MeshStandardMaterial({color: 0x101014, roughness: .2}), refl = new THREE.MeshStandardMaterial({color: 0xd8dcd8, roughness: .3, metalness: .4, emissive: 0x303430});
+  const m = (geo, mat, x, y, z, p = g) => { const o = new THREE.Mesh(geo, mat); o.position.set(x, y, z); o.castShadow = true; p.add(o); return o; }, crew = o => (o.userData.crew = 1, o);
   const body = new THREE.Group(); body.position.y = .95; g.add(body); j.body = body;
-  m(new THREE.CapsuleGeometry(.21, .42, 4, 8), hood, 0, .32, 0, body); m(new THREE.BoxGeometry(.46, .38, .3), vest, 0, .42, 0, body);
-  const hd = new THREE.Group(); hd.position.y = .74; body.add(hd); j.head = hd; m(new THREE.SphereGeometry(.12, 12, 10), skin, 0, .02, 0, hd); m(new THREE.SphereGeometry(.14, 12, 8, 0, TAU, 0, 1.6), hood, 0, .04, -.02, hd);
+  m(new THREE.SphereGeometry(.2, 14, 10), coat, 0, .04, 0, body).scale.set(1.05, .7, .8);
+  m(new THREE.CapsuleGeometry(.22, .26, 6, 14), vest, 0, .38, 0, body).scale.set(1.1, 1, .72);
+  m(new THREE.CylinderGeometry(.235, .235, .055, 14), coat, 0, .16, 0, body).scale.set(1.1, 1, .74);
+  crew(m(new THREE.CylinderGeometry(.24, .24, .045, 14), refl, 0, .4, 0, body)).scale.set(1.1, 1, .74);
+  crew(m(new THREE.BoxGeometry(.025, .3, .02), refl, 0, .36, -.165, body));
+  crew(m(new THREE.TorusGeometry(.12, .045, 6, 14), hat, 0, .66, 0, body)).rotation.x = PI / 2;
+  const hd = new THREE.Group(); hd.position.y = .8; body.add(hd); j.head = hd;
+  m(new THREE.SphereGeometry(.19, 18, 14), skin, 0, .02, 0, hd).scale.set(1, .95, .95);
+  for (const s of [-1, 1]) { crew(m(new THREE.SphereGeometry(.045, 10, 8), white, s * .072, .03, -.15, hd)).scale.set(1, 1.2, .6); crew(m(new THREE.SphereGeometry(.026, 8, 6), ink, s * .072, .03, -.178, hd)); m(new THREE.SphereGeometry(.04, 8, 6), skin, s * .185, .01, 0, hd).scale.set(.5, 1, .8); }
+  crew(m(new THREE.SphereGeometry(.028, 8, 6), skin, 0, -.025, -.18, hd)); crew(m(new THREE.TorusGeometry(.04, .009, 4, 10, PI), ink, 0, -.075, -.165, hd)).rotation.z = PI;
+  const hair = m(new THREE.SphereGeometry(.2, 14, 8, 0, TAU, 0, 1.5), hood, 0, .04, .01, hd); hair.visible = false; j.hair = hair;
+  crew(m(new THREE.SphereGeometry(.205, 16, 10, 0, TAU, 0, 1.45), hat, 0, .045, .005, hd)); crew(m(new THREE.CylinderGeometry(.206, .2, .07, 16), hat, 0, .07, .005, hd)); crew(m(new THREE.SphereGeometry(.055, 10, 8), white, 0, .255, .01, hd));
+  const helm = crew(m(new THREE.SphereGeometry(.26, 16, 12), new THREE.MeshStandardMaterial({color: 0xb08a3a, metalness: .8, roughness: .35}), 0, .02, 0, hd)); helm.visible = false; j.helm = helm;
+  crew(m(new THREE.CircleGeometry(.13, 16), new THREE.MeshStandardMaterial({color: 0x9ad0e0, roughness: .05, metalness: .3, transparent: true, opacity: .7}), 0, 0, -.262, helm)).rotation.y = PI;
   for (const s of [-1, 1]) {
-    const leg = new THREE.Group(); leg.position.set(s * .1, .95, 0); g.add(leg); j['l' + s] = leg; m(new THREE.CapsuleGeometry(.075, .72, 4, 8), coat, 0, -.47, 0, leg);
-    const arm = new THREE.Group(); arm.position.set(s * .27, .55, 0); body.add(arm); j['a' + s] = arm; m(new THREE.CapsuleGeometry(.06, .5, 4, 8), hood, 0, -.3, 0, arm);
+    const leg = new THREE.Group(); leg.position.set(s * .11, .95, 0); g.add(leg); j['l' + s] = leg; m(new THREE.CapsuleGeometry(.09, .25, 4, 10), coat, 0, -.2, 0, leg);
+    const kn = new THREE.Group(); kn.position.y = -.43; leg.add(kn); j['k' + s] = kn; m(new THREE.CapsuleGeometry(.08, .24, 4, 10), coat, 0, -.2, 0, kn);
+    m(new THREE.CapsuleGeometry(.095, .12, 4, 10), boot, 0, -.44, -.04, kn).rotation.x = PI / 2;
+    const arm = new THREE.Group(); arm.position.set(s * .29, .55, 0); body.add(arm); j['a' + s] = arm; m(new THREE.CapsuleGeometry(.075, .36, 4, 10), vest, 0, -.24, 0, arm);
+    m(new THREE.SphereGeometry(.075, 10, 8), hood, 0, -.53, 0, arm).scale.set(.95, 1.1, 1.05);
+    j['f' + s] = crew(m(new THREE.CapsuleGeometry(.022, .07, 3, 6), hood, 0, -.55, -.1, arm)); j['f' + s].rotation.x = PI / 2; j['f' + s].visible = false;
+    j['th' + s] = crew(m(new THREE.CapsuleGeometry(.024, .05, 3, 6), hood, -s * .03, -.52, -.09, arm)); j['th' + s].rotation.x = PI / 2; j['th' + s].visible = false;
   }
-  const box = m(new THREE.SphereGeometry(.26, 10, 8), new THREE.MeshStandardMaterial({color: 0x8a7a5a, roughness: .95}), 0, .45, .26, body); box.scale.set(1, 1.15, .75); j.box = box;
+  const box = m(new THREE.SphereGeometry(.26, 10, 8), new THREE.MeshStandardMaterial({color: 0x8a7a5a, roughness: .95}), 0, .45, .3, body); box.scale.set(1, 1.15, .75); j.box = box;
   const beam = new THREE.Mesh(new THREE.ConeGeometry(2.6, 14, 24, 1, true), beamMat(0xfff0d0, .22));
-  beam.geometry.translate(0, -7, 0); beam.geometry.rotateX(PI / 2); beam.position.set(0, -.6, -.15); j.a1.add(beam); j.beam = beam;
+  beam.geometry.translate(0, -7, 0); beam.position.set(0, -.62, 0); j.a1.add(beam); j.beam = beam;
   const blk = new THREE.MeshStandardMaterial({color: 0x1a1c1e, metalness: .6, roughness: .4});
-  j.it = [null, m(new THREE.CylinderGeometry(.012, .02, 1.8, 5), new THREE.MeshStandardMaterial({color: 0x3a2a1a}), 0, -1.2, -.6, j.a1), m(new THREE.BoxGeometry(.05, .12, .2), blk, 0, -.62, -.1, j.a1), m(new THREE.BoxGeometry(.06, .08, .8), blk, 0, -.6, -.25, j.a1)];
-  j.it[1].rotation.x = -1.1;
+  j.it = [null, m(new THREE.CylinderGeometry(.012, .02, 1.8, 5), new THREE.MeshStandardMaterial({color: 0x3a2a1a}), 0, -1.35, .3, j.a1), m(new THREE.BoxGeometry(.05, .2, .12), blk, 0, -.68, -.03, j.a1), m(new THREE.BoxGeometry(.06, .8, .08), blk, 0, -.82, -.02, j.a1)];
+  j.it[1].rotation.x = .4;
   g.userData = j; scene.add(g); return g;
 }
 function animCrew(p, dt) {
   const g = p.av, j = g.userData; g.visible = !p.dead && p.hd < 0 && p.ready; if (!g.visible) return;
   g.position.set(p.rx, p.ry + (p.sw ? -1.1 : 0), p.rz); g.rotation.y = p.ryaw;
-  p.anim = (p.anim || 0) + dt * p.rspd * 2.2; const s = Math.sin(p.anim) * clamp(p.rspd / 3, 0, 1);
-  j.l1.rotation.x = s * .6; j['l-1'].rotation.x = -s * .6; j['a-1'].rotation.x = p.sw ? -2.5 + Math.sin(G.t * 4) : -s * .5; j.a1.rotation.x = -.6 - p.rpitch * .8;
-  j.body.rotation.x = p.cr ? .35 : 0; j.body.position.y = p.cr ? .7 : .95; j.box.visible = !!(p.sack && p.sack.length); j.box.scale.setScalar(.7 + Math.min(1, sackUsed(p.sack) / 8) * .5);
-  if (p.down) { g.rotation.x = -PI / 2 + .15; g.position.y += .25; } else g.rotation.x = 0;
-  j.head.rotation.x = -p.rpitch * .5; j.beam.visible = !!p.l && !p.down && !p.sw;
-  for (let i = 1; i < 4; i++) j.it[i].visible = p.eq === i + 1 && !p.down && !p.sw; if (p.eq >= 2) j.a1.rotation.x = -1.3 - p.rpitch * .8;
+  const t = G.t + (p.c || 0) * 1.7, sp = clamp(p.rspd / 3, 0, 1.3), sit = p.st === 2, helm = p.st === 1;
+  p.anim = (p.anim || 0) + dt * Math.min(p.rspd, 8) * 2.2; const ph = p.anim, s = Math.sin(ph) * sp;
+  let by = .95 + Math.abs(Math.cos(ph)) * .045 * sp, bx = -.1 * Math.min(1, sp) * (p.run ? 1.6 : 1), a0 = -s * .7, a1 = s * .7, l0 = s * .75, l1 = -s * .75, k0 = -Math.max(0, Math.cos(ph)) * 1.1 * sp, k1 = -Math.max(0, -Math.cos(ph)) * 1.1 * sp;
+  if (sp < .08) { by += Math.sin(t * 1.6) * .008; a0 = a1 = Math.sin(t * 1.6) * .03; }
+  if (p.cr) { by = .68; bx = -.32; l0 += .9; l1 += .7; k0 -= 1.3; k1 -= 1.2; }
+  if (sit) { by = .58; bx = .05; l0 = l1 = 1.45; k0 = k1 = -1.4; a0 = a1 = .35; }
+  if (helm) { a0 = a1 = 1.15; }
+  if (p.sw) { by = .95; bx = -.25; const sw = Math.sin(t * 4); a0 = 2.4 + sw; a1 = 2.4 - sw; l0 = Math.sin(t * 8) * .35; l1 = -l0; k0 = k1 = -.25; }
+  j.body.position.y = by; j.body.rotation.x = bx; j.body.rotation.z = sp > .08 ? Math.sin(ph) * .04 * sp : 0;
+  j.l1.rotation.x = l0; j['l-1'].rotation.x = l1; j.k1.rotation.x = k0; j['k-1'].rotation.x = k1;
+  j['a-1'].rotation.x = a1; j['a-1'].rotation.z = -.08; j.a1.rotation.z = .08;
+  j.a1.rotation.x = p.l && !p.sw ? 1.35 + p.rpitch : a0;
+  j.box.visible = !!(p.sack && p.sack.length); j.box.scale.setScalar(.7 + Math.min(1, sackUsed(p.sack) / 8) * .5);
+  if (p.down) { g.rotation.x = -PI / 2 + .15; g.position.y += .25; j.a1.rotation.x = 2.6 + Math.sin(t * 2) * .3; } else g.rotation.x = 0;
+  j.head.rotation.x = p.rpitch * .6 - bx; j.head.rotation.y = 0; j.head.rotation.z = sp < .08 ? Math.sin(t * .7) * .06 : 0; j.beam.visible = !!p.l && !p.down && !p.sw;
+  j.helm.visible = !!(p.sw && p.su);
+  for (let i = 1; i < 4; i++) j.it[i].visible = p.eq === i + 1 && !p.down && !p.sw; if (p.eq >= 2 && !p.down && !p.sw) j.a1.rotation.x = (p.eq === 2 ? .9 : 1.45) + p.rpitch;
+  j.f1.visible = j['f-1'].visible = j.th1.visible = j['th-1'].visible = false; j['a-1'].rotation.y = j.a1.rotation.y = j.head.rotation.z * 0;
+  if (p.em && !p.down && !p.sw && !p.st && !p.dead) emotePose(p, j, dt);
 }
 
 // ---------------- state
@@ -2059,7 +2092,7 @@ const G = {wt: 0, tod: .015, on: false, t: 0, seed: 1, evq: [], holdP: {}, flare
 const PL = new Map(); let P = null;
 const M = {hp: 140, x: 0, z: 0, y: LV[2], yaw: 0, state: 'roam', path: [], rep: 0, goal: null, spd: 0, ph: 0, jit: 0, jr: 0, aware: 0, lostT: 0, idle: 0, flee: 0, sawHide: -1, chk: [], chkT: 0, stuck: 0, sx: 0, sz: 0, screamT: 0, look: 0, seenAt: -99, tgt: null, preyT: 0, prey: null, vy: 0, wet: 0};
 function mkPlayer(id, name, c) { return {id, name, c, sack: [], sc: 0, x: 0, z: 0, y: BDECK.y, yaw: 0, pitch: 0, cr: 0, l: 1, run: 0, h: '', hd: -1, hb: 0, down: false, bleed: 0, dead: false, deadT: 0, ready: false, sd: 0, lx: 0, lz: 0, spd: 0, rx: 0, ry: 0, rz: 0, ryaw: 0, rpitch: 0, rspd: 0, av: null, tag: null, heat: 0, ob: 0, bl: [0, 0], sw: 0, deep: 0, swT: 0, seat: 0, in: [0, 0], carry: null, cooler: [], eq: 0}; }
-function ensurePlayer(id, name, c) { let p = PL.get(id); if (!p) { p = mkPlayer(id, name, c); PL.set(id, p); } p.name = name; p.c = c; if (!p.av) { p.av = buildCrew(CREW_COL[c % 6]); const t = document.createElement('div'); t.className = 'tag'; $('tags').appendChild(t); p.tag = t; } return p; }
+function ensurePlayer(id, name, c) { let p = PL.get(id); if (!p) { p = mkPlayer(id, name, c); PL.set(id, p); } p.name = name; p.c = c; if (!p.av) { p.av = buildCrew(CREW_COL[c % 6], c); const t = document.createElement('div'); t.className = 'tag'; $('tags').appendChild(t); p.tag = t; } return p; }
 function syncCrew(crew) { const ids = new Set(crew.map(c => c.id)); for (const [id, p] of PL) if (!ids.has(id)) { if (p.av) scene.remove(p.av); if (p.tag) p.tag.remove(); if (isHost() && G.on && p !== P) { if (p.sack && p.sack.length) dropCarry(p); const v = coolerVal(p.cooler || []); if (v) { G.cash += v; G.earned += v; const t = `${p.name} left. Their catch sold for ${money(v)}.`; setTimeout(() => showMsg(t), 0); } save(); } PL.delete(id); if (B.driver === id) B.driver = null; } for (const c of crew) ensurePlayer(c.id, c.name, c.c); P = PL.get(myId()); }
 const alive = () => [...PL.values()].filter(p => p.ready && !p.down && !p.dead);
 const onRig = p => !p.ob && !p.sw && p.y > 1 && nearRig(p.x, p.z);
@@ -2714,7 +2747,7 @@ function packSnap() {
 function applySnap(s) {
   for (const e of s.ev || []) applyEv(e);
   const [x, y, z, yaw, st, spd, look] = s.m; M.tx = x; M.ty = y; M.tz = z; M.tyaw = yaw; M.state = st; M.spd = spd; M.look = look;
-  B.tx = s.b[0]; B.tz = s.b[1]; B.tyaw = s.b[2]; B.v = s.b[3]; B.thr = s.b[4]; B.driver = s.b[5] || null; B.fuel = s.b[6]; B.hull = s.b[7]; B.sink = s.b[8] ? 1 : 0; B.dep = s.b[9] || 0; B.dtar = s.b[10] ?? B.dep; G.radioOn = !!s.rd; if (s.sk) SUNK.forEach((q, i) => q.got = s.sk[i] === '1'); if (!B.got) { B.got = 1; B.x = B.tx; B.z = B.tz; B.yaw = B.tyaw; }
+  { const now = performance.now(), sdt = clamp((now - (B.snT || now - 67)) / 1000, .03, .3), nd = s.b[9] || 0; B.snT = now; if (B.tyaw != null) { B.tyr = angD(B.tyaw, s.b[2]) / sdt; B.tvy = (nd - (B.sdep ?? nd)) / sdt; } B.sdep = nd; B.tdep = nd; } B.tx = s.b[0]; B.tz = s.b[1]; B.tyaw = s.b[2]; B.v = s.b[3]; B.thr = s.b[4]; B.driver = s.b[5] || null; B.fuel = s.b[6]; B.hull = s.b[7]; B.sink = s.b[8] ? 1 : 0; if (B.dep == null || Math.abs(B.tdep - (B.dep || 0)) > 25 || !B.got) B.dep = B.tdep; B.dtar = s.b[10] ?? B.tdep; G.radioOn = !!s.rd; if (s.sk) SUNK.forEach((q, i) => q.got = s.sk[i] === '1'); if (!B.got) { B.got = 1; B.x = B.tx; B.z = B.tz; B.yaw = B.tyaw; }
   if (Math.hypot(B.tx - B.x, B.tz - B.z) > 40) { B.x = B.tx; B.z = B.tz; B.yaw = B.tyaw; } if (M.x != null && Math.hypot(M.tx - M.x, M.tz - M.z) + Math.abs(M.ty - M.y) > 15) { M.x = M.tx; M.y = M.ty; M.z = M.tz; M.yaw = M.tyaw; } G.hostAll = !!s.al;
   if (s.up) B.up = s.up; if (s.hold) B.hold = s.hold.map(i => KINDS[i]);
   if (s.b[11] != null) B.yr = s.b[11]; if (s.sb) { B.hat = s.sb[0]; LK.st = s.sb[1]; LK.tw = s.sb[2]; LK.t = s.sb[3]; }
@@ -2731,7 +2764,7 @@ function applySnap(s) {
 Net.on('snap', m => { if (G.on && !isHost()) { G.lastSnapT = performance.now(); applySnap(m); } });
 Net.on('pose', (m, from) => {
   if (!G.on) return; const id = isHost() ? from : m.from; if (!id || id === myId()) return; const p = PL.get(id); if (!p) return;
-  p.x = m.x; p.z = m.z; p.y = m.y; p.yaw = m.yw; p.pitch = m.pt; p.cr = m.cr; p.l = m.l; p.run = m.rn; p.h = m.h || ''; p.hd = m.hd; p.hb = m.hb; p.ob = m.ob; p.bl = m.bl || p.bl; p.sw = m.sw; p.deep = m.dp; p.in = m.in || [0, 0]; p.eq = m.eq || 0; p.sc = m.sc || 0; p.dv = m.dv || 0; p.su = m.su || 0; p.au = m.au || 0; p.poseT = performance.now();
+  p.x = m.x; p.z = m.z; p.y = m.y; p.yaw = m.yw; p.pitch = m.pt; p.cr = m.cr; p.l = m.l; p.run = m.rn; p.h = m.h || ''; p.hd = m.hd; p.hb = m.hb; p.ob = m.ob; p.bl = m.bl || p.bl; p.sw = m.sw; p.deep = m.dp; p.in = m.in || [0, 0]; p.eq = m.eq || 0; p.sc = m.sc || 0; p.dv = m.dv || 0; p.su = m.su || 0; p.au = m.au || 0; p.st = m.st || 0; p.em = m.em || 0; p.poseT = performance.now();
   if (!p.ready) { p.ready = true; p.rx = p.x; p.ry = p.y; p.rz = p.z; p.lx = p.x; p.lz = p.z; }
   p.stepD = (p.stepD || 0) + Math.hypot(m.x - (p.px ?? m.x), m.z - (p.pz ?? m.z)); p.px = m.x; p.pz = m.z;
 });
@@ -2957,7 +2990,7 @@ function drawShop() {
     const m = b.dataset.c ? {a: 'buyc', k: b.dataset.c, v: +b.dataset.v} : b.dataset.h ? {a: 'buyh', k: +b.dataset.h} : b.dataset.g ? {a: 'buyg', k: b.dataset.g, own: P.own} : b.dataset.tug ? {a: 'tug'} : {a: 'buy', k: b.dataset.k, fl: P.flares};
     document.querySelectorAll('#shopL button, #bSell').forEach(q => q.disabled = true); act(m); setTimeout(drawShop, 1000); });
 }
-function myPose() { return {t: 'pose', x: +P.x.toFixed(2), z: +P.z.toFixed(2), y: +P.y.toFixed(2), yw: +P.yaw.toFixed(3), pt: +P.pitch.toFixed(3), cr: P.cr ? 1 : 0, rn: P.run, h: P.h, hd: P.hd, hb: P.hb, ob: P.ob, bl: P.ob ? [+P.bl[0].toFixed(2), +P.bl[1].toFixed(2)] : 0, sw: P.sw, dp: P.deep, in: P.seat ? P.in : 0, eq: P.eq, sc: (P.own && P.own.sack) || 0, dv: +(P.dv || 0).toFixed(2), su: (P.own && P.own.suit) || 0, au: (P.own && P.own.aura) || 0, l: lightOn() ? 1 : 0}; }
+function myPose() { return {t: 'pose', x: +P.x.toFixed(2), z: +P.z.toFixed(2), y: +P.y.toFixed(2), yw: +P.yaw.toFixed(3), pt: +P.pitch.toFixed(3), cr: P.cr ? 1 : 0, rn: P.run, h: P.h, hd: P.hd, hb: P.hb, ob: P.ob, bl: P.ob ? [+P.bl[0].toFixed(2), +P.bl[1].toFixed(2)] : 0, sw: P.sw, dp: P.deep, in: P.seat ? P.in : 0, eq: P.eq, sc: (P.own && P.own.sack) || 0, dv: +(P.dv || 0).toFixed(2), su: (P.own && P.own.suit) || 0, au: (P.own && P.own.aura) || 0, l: lightOn() ? 1 : 0, st: P.seat ? 1 : P.psit ? 2 : 0}; }
 
 // ---------------- input
 addEventListener('keydown', e => {
@@ -3006,7 +3039,7 @@ function lockMouse() { if (!TEST && canvas.requestPointerLock) try { const r = c
 function pause(p) { G.paused = p; G.wantResume = false; $('pause').classList.toggle('hidden', !p); if (p) { clearKeys(); G.map = false; G.mapStick = 0; $('map').classList.add('hidden'); $('pVol').value = SET.vol; $('pSens').value = SET.sens; $('pBright').value = SET.bright; $('pFov').value = SET.fov || 70; $('pInv').checked = !!SET.inv; } $('pauseN').textContent = Net.role === 'solo' ? 'The sea waits for you. Progress is saved.' : 'Online games keep running.'; if (Net.role === 'solo' && A.ctx) p ? A.ctx.suspend() : A.ctx.resume(); }
 function resumeReq() { if (TEST || document.pointerLockElement === canvas || !canvas.requestPointerLock) { pause(false); return; } G.wantResume = true; lockMouse(); $('pauseN').textContent = 'Click Resume again if the mouse does not lock.'; }
 function clearKeys() { for (const k in K) K[k] = false; eDown = false; ePress = false; mouseR = false; G.lmb = false; }
-const anyPanel = () => !!(G.noteOpen || G.shopOpen || G.casOpen || G.helpOpen || G.endOpen || G.jrnOpen);
+const anyPanel = () => !!(G.chat || G.noteOpen || G.shopOpen || G.casOpen || G.helpOpen || G.endOpen || G.jrnOpen);
 function closePanels(relock) { G.noteOpen = G.shopOpen = G.casOpen = G.helpOpen = G.jrnOpen = false; ['shop', 'casino', 'fishHelp', 'note'].forEach(id => $(id).classList.add('hidden')); if ($('jrn')) $('jrn').classList.add('hidden'); if (relock && G.on) lockMouse(); }
 // once per rendered frame, after the camera: panels that should close, the crouch dot, the click-to-look hint
 function ctlFrame(dt) {
@@ -3070,7 +3103,7 @@ Snd.step = (kind, k) => { const r = .88 + Math.random() * .24, hit = g => {
   if (kind === 'metal') tone((320 + Math.random() * 60) * r, .02 * k, .08, 'triangle');
   else if (kind === 'steel') { tone(150 * r, .03 * k, .1); tone(2200 * r, .008 * k, .04); }
   else if (kind === 'wood') tone(180 * r, .015 * k, .08, 'triangle'); };
-const KEYMAP = [['W A S D', 'move'], ['Shift', 'run'], ['C', 'crouch · dive'], ['Space', 'jump · rise · hold breath'], ['Tab (tap)', 'keep the chart open'], ['V', 'binoculars'], ['N · Y · U', 'repair kit · fuel can · chum'], ['F at the wheel', 'deck gun on armed ships'], ['Z (hold)', 'give up'], ['E', 'use · hold for jobs'], ['F', 'flashlight'], ['G', 'throw a flare'], ['Q', 'whistle · horn at the wheel'], ['1-7 · wheel', 'hotbar'],
+const KEYMAP = [['W A S D', 'move'], ['Shift', 'run'], ['C', 'crouch · dive'], ['Space', 'jump · rise · hold breath'], ['Tab (tap)', 'keep the chart open'], ['V', 'binoculars'], ['N · Y · U', 'repair kit · fuel can · chum'], ['F at the wheel', 'deck gun on armed ships'], ['Z (hold)', 'give up'], ['E', 'use · hold for jobs'], ['F', 'flashlight'], ['G', 'throw a flare'], ['Enter', 'chat'], ['O (hold)', 'emote wheel · tap to stop'], ['Q', 'whistle · horn at the wheel'], ['1-7 · wheel', 'hotbar'],
   ['LMB / RMB', 'use · aim'], ['R', 'reload'], ['X', 'drop the last thing'], ['H', 'fishing help'], ['Tab (hold)', 'chart'], ['Esc', 'pause']];
 const keyTable = list => `<div class="keys ktab">${list.map(([k, a]) => `<span><b>${k}</b></span><span>${a}</span>`).join('')}</div>`;
 
@@ -3090,7 +3123,9 @@ const VMF = new THREE.Group(); cam.add(VMF); VMF.position.set(.2, -.24, -.45); V
 { const st = new THREE.Mesh(new THREE.CylinderGeometry(.018, .018, .3, 8), new THREE.MeshStandardMaterial({color: 0xb01a10, roughness: .6})); VMF.add(st); const tp = new THREE.Mesh(new THREE.SphereGeometry(.022, 8, 6), new THREE.MeshBasicMaterial({color: new THREE.Color().setRGB(6, 1.2, .5)})); tp.position.y = .16; VMF.add(tp); VMF.userData.tip = tp; }
 const VMC = new THREE.Group(); cam.add(VMC); VMC.position.set(-.05, -.42, -.75);
 function boatPose(dt) {
-  if (!isHost() && B.tx != null) { const k = Math.min(1, dt * 6); const px = B.tx - Math.sin(B.tyaw) * B.v * .05, pz = B.tz - Math.cos(B.tyaw) * B.v * .05; B.x = mix(B.x, px, k); B.z = mix(B.z, pz, k); B.yaw += angD(B.yaw, B.tyaw) * k; B.x += -Math.sin(B.yaw) * B.v * dt * (1 - k); B.z += -Math.cos(B.yaw) * B.v * dt * (1 - k); }
+  if (!isHost() && B.tx != null) { // guests dead-reckon the last snapshot forward (heading, speed, turn rate, climb rate), then ease toward it, so passengers ride smoothly at plane speeds
+    const k = Math.min(1, dt * 7), ex = B.sink > 0 ? 0 : 1, dyw = (B.tyr || 0) * dt * ex, dx = -Math.sin(B.tyaw) * B.v * dt * ex, dz = -Math.cos(B.tyaw) * B.v * dt * ex; B.tyaw += dyw; B.yaw += dyw; B.tx += dx; B.tz += dz; B.x += dx; B.z += dz; if (B.tdep != null) { const dd = (B.tvy || 0) * dt * ex; B.tdep += dd; B.dep = mix((B.dep || 0) + dd, B.tdep, k); }
+    B.x = mix(B.x, B.tx, k); B.z = mix(B.z, B.tz, k); B.yaw += angD(B.yaw, B.tyaw) * k; }
   const t = G.wt, fx = -Math.sin(B.yaw), fz = -Math.cos(B.yaw), sx = Math.cos(B.yaw), sz = -Math.sin(B.yaw);
   if (BOAT.userData.sig !== boatSig()) { const same = BOAT.userData.cls === (B.up.cls || 0); buildBoat(); if (same) { /* repaint only */ } else if (P && P.ob) { const sp = boatSpawn(0); P.bl = sp.bl; P.y = sp.y; P.climb = null; P.rest = 0; } }
   const hl2 = BG.L * .32, hw2 = BG.hw * .9, hf = waveH(B.x + fx * hl2, B.z + fz * hl2, t), hb = waveH(B.x - fx * hl2, B.z - fz * hl2, t), hl = waveH(B.x - sx * hw2, B.z - sz * hw2, t), hr = waveH(B.x + sx * hw2, B.z + sz * hw2, t);
@@ -4603,7 +4638,7 @@ function tnDraw(dt) {
   if (w) for (let i = 0; i < 4; i++) { const p = TN.seats[i] && PL.get(TN.seats[i]); if (!p || p === P || !p.ready) continue; const [x, z] = tnSeatPos(i); p.x = p.rx = x; p.z = p.rz = z; p.y = p.ry = TN.heave + .45; p.sw = 0; p.ob = 0; p.tnS = 1; }
   const r = f0.apply(this, a);
   for (const p of PL.values()) { if (!p.tnS || p === P) continue; if (!w || !TN.seats.includes(p.id)) { p.tnS = 0; continue; } const j = p.av && p.av.userData; if (!j || !p.av.visible) continue;
-    p.av.position.y -= .8; j.l1.rotation.x = j['l-1'].rotation.x = 1.4; j['a-1'].rotation.x = -.35; j.body.rotation.x = 0; j.body.position.y = .95; }
+    p.av.position.y -= .8; j.l1.rotation.x = j['l-1'].rotation.x = 1.4; j.k1.rotation.x = j['k-1'].rotation.x = -1.4; j['a-1'].rotation.x = .35; j.body.rotation.x = 0; j.body.position.y = .95; }
   return r;
 }; }
 // ---------------- deep dive sites, and the gulpers that hunt divers in the dark
@@ -5425,7 +5460,7 @@ function casMeshes() {
 function casDealer(g) {
   const c = buildCrew(0x2a1a3a), j = c.userData; scene.remove(c); c.position.set(0, 0, 0); c.updateMatrixWorld(true);
   const col = o => { const h = o.material.color.getHex(); return o.parent === j.head && h === 0xc8a020 ? [.16, .1, .07] : h === 0xc8a020 ? [.1, .08, .12] : h === 0x2a2e30 ? [.06, .06, .07] : o.material.color.toArray(); };
-  const body = [], arms = [[], []], skip = new Set([j.beam, j.box, ...j.it.filter(Boolean)]);
+  const body = [], arms = [[], []], skip = new Set([j.beam, j.box, ...j.it.filter(Boolean)]); c.traverse(o => { if (o.userData.crew) o.traverse(q => skip.add(q)); });
   c.traverse(o => { if (!o.isMesh || skip.has(o)) return; const side = o.parent === j['a-1'] ? 0 : o.parent === j.a1 ? 1 : -1, geo = o.geometry.clone();
     if (side < 0) geo.applyMatrix4(o.matrixWorld); else geo.applyMatrix4(o.matrix); (side < 0 ? body : arms[side]).push(colGeo(geo, col(o))); });
   body.push(colGeo(new THREE.BoxGeometry(.2, .3, .02).translate(0, 1.38, -.155), [.95, .94, .9]), colGeo(new THREE.ConeGeometry(.028, .05, 6).rotateZ(PI / 2).translate(-.025, 1.52, -.168), [.05, .05, .05]), colGeo(new THREE.ConeGeometry(.028, .05, 6).rotateZ(-PI / 2).translate(.025, 1.52, -.168), [.05, .05, .05]));
@@ -5813,13 +5848,14 @@ function updateWorldFx(dt) {
 }
 const pfRL = [], pfRLs = (a, b) => a.pfD - b.pfD;
 function updateRemotes(dt) {
+  if (BOAT) BOAT.updateMatrixWorld();
   let si = 0; const cp = cam.position, L = pfRL; L.length = 0; for (const p of PL.values()) if (p !== P && p.ready) { p.pfD = (p.x - cp.x) ** 2 + (p.z - cp.z) ** 2; L.push(p); } L.sort(pfRLs);
   for (const p of PL.values()) {
     if (p === P) { if (p.av) p.av.visible = false; if (p.tag && p.tag.style.display !== 'none') p.tag.style.display = 'none'; continue; }
     if (!p.ready) continue;
-    let tx = p.x, tz = p.z, ty = p.sw ? waveH(p.x, p.z, G.wt) - (p.dv || 0) : p.y; if (p.ob && p.bl) { if (BG.sub && BOAT) { _sb.set(p.bl[0], p.y, p.bl[1]).applyMatrix4(BOAT.matrixWorld); tx = _sb.x; ty = _sb.y; tz = _sb.z; } else { const c = Math.cos(B.yaw), s = Math.sin(B.yaw); tx = B.x + p.bl[0] * c + p.bl[1] * s; tz = B.z - p.bl[0] * s + p.bl[1] * c; ty = BDECK.y + B.heave; } }
-    const k = Math.min(1, dt * 12), ox = p.rx, oz = p.rz; p.rx = p.ob ? tx : mix(p.rx, tx, k); p.ry = mix(p.ry, ty, k); p.rz = p.ob ? tz : mix(p.rz, tz, k); p.ryaw += angD(p.ryaw, p.yaw) * k; p.rpitch = mix(p.rpitch, p.pitch, k);
-    p.rspd = mix(p.rspd, Math.hypot(p.rx - ox, p.rz - oz) / Math.max(dt, 1e-3) - (p.ob ? Math.abs(B.v) : 0), Math.min(1, dt * 6));
+    let tx = p.x, tz = p.z, ty = p.sw ? waveH(p.x, p.z, G.wt) - (p.dv || 0) : p.y; if (p.ob && p.bl) { const sb = p.sbl && Math.hypot(p.sbl[0] - p.bl[0], p.sbl[1] - p.bl[1]) < 4 ? p.sbl : (p.sbl = [p.bl[0], p.bl[1], p.y]), kk = Math.min(1, dt * 12); sb[0] = mix(sb[0], p.bl[0], kk); sb[1] = mix(sb[1], p.bl[1], kk); sb[2] = mix(isFinite(sb[2]) ? sb[2] : p.y, p.y, kk); if (BOAT) { _sb.set(sb[0], isFinite(sb[2]) ? sb[2] : BDECK.y, sb[1]).applyMatrix4(BOAT.matrixWorld); tx = _sb.x; ty = _sb.y; tz = _sb.z; } else { const c = Math.cos(B.yaw), s = Math.sin(B.yaw); tx = B.x + p.bl[0] * c + p.bl[1] * s; tz = B.z - p.bl[0] * s + p.bl[1] * c; ty = BDECK.y + B.heave; } }
+    const k = Math.min(1, dt * 12), ox = p.rx, oz = p.rz; p.rx = p.ob ? tx : mix(p.rx, tx, k); p.ry = p.ob ? ty : mix(p.ry, ty, k); p.rz = p.ob ? tz : mix(p.rz, tz, k); p.ryaw += angD(p.ryaw, p.yaw) * k; p.rpitch = mix(p.rpitch, p.pitch, k);
+    { let v; if (p.ob && p.sbl) { const q = p.pbl || p.sbl; v = Math.hypot(p.sbl[0] - q[0], p.sbl[1] - q[1]) / Math.max(dt, 1e-3); p.pbl = [p.sbl[0], p.sbl[1]]; v = Math.min(v, 9); } else { p.pbl = null; v = Math.hypot(p.rx - ox, p.rz - oz) / Math.max(dt, 1e-3); } p.rspd = mix(p.rspd, v, Math.min(1, dt * 6)); }
     animCrew(p, dt);
     if ((p.stepD || 0) > (p.run ? 1 : .75)) { p.stepD = 0; if ((!p.ob || BG.sub) && Math.hypot(p.x - cp.x, p.z - cp.z) < 30 && !p.down) Snd.rStep(p.x, p.ob ? p.ry : p.y, p.z, p.run ? 1.4 : .8); }
     p.pingT = Math.max(0, (p.pingT || 0) - dt);
@@ -7032,6 +7068,8 @@ function render(dt) {
 }
 
 // ---------------- menu, lobby
+// online play needs a real name (solo falls back to Deckhand)
+function needName() { const ok = (SET.name || '').replace(/[^A-Za-z0-9 ._-]/g, '').trim().length >= 2; if (!ok) { $('err').textContent = 'Type your name first (at least 2 letters) so your crew knows who you are.'; const n = $('name'); n.classList.add('need'); n.focus(); setTimeout(() => n.classList.remove('need'), 1600); } return ok; }
 const myName = () => (SET.name || 'Deckhand').replace(/[^A-Za-z0-9 ._-]/g, '').slice(0, 14) || 'Deckhand';
 function crewList() { return [{id: 'H', name: myName(), c: 0}, ...[...Net.peers.values()].map(p => ({id: p.id, name: p.name, c: p.c}))]; }
 function show(id) { ['menu', 'lobby', 'end', 'pause', 'shop', 'casino', 'fishHelp'].forEach(k => $(k).classList.toggle('hidden', k !== id)); G.casOpen = G.helpOpen = G.shopOpen = false; }
@@ -7076,7 +7114,7 @@ function slotUI() { let el = $('slots'); if (!el) { el = document.createElement(
   el.querySelectorAll('button').forEach(b => b.onclick = () => { if (G.on) return; SLOT = +b.dataset.n; try { localStorage.setItem('s9-slot', SLOT); } catch (e) {} G.relAct = relLoad(); saveInfo(); }); }
 async function refreshRooms() { const L = await Net.rooms(), el = $('rooms'); el.innerHTML = L.length ? '' : '<small style="color:var(--dim)">No open crews right now. Host one and share the code.</small>'; for (const r of L) { const d = document.createElement('div'), full = r.n >= 6; d.textContent = r.name.replace(/^\[?Rig\]? /, '') + (full ? ' · full' : r.n ? ` · ${r.n}/6` : ''); if (full) d.style.cssText = 'opacity:.4;pointer-events:none'; else d.onclick = () => joinRoom(r.code); el.appendChild(d); } }
 function joinRoom(code) {
-  code = String(code || '').toUpperCase(); if (!/^[A-Z]{5}$/.test(code)) { $('err').textContent = 'Enter the 5-letter code.'; return; }
+  code = String(code || '').toUpperCase(); if (!/^[A-Z]{5}$/.test(code)) { $('err').textContent = 'Enter the 5-letter code.'; return; } if (!needName()) return;
   aInit(); buildWorld(); Net.join(code, myName(), why => { if (G.on) toMenu(why); else { show('menu'); $('err').textContent = why; } });
   $('code').textContent = code; show('lobby'); $('bGo').classList.add('hidden'); $('lmsg').textContent = 'Connecting…'; $('crew').innerHTML = '';
 }
@@ -7088,9 +7126,9 @@ function menuInit() {
   $('vol').value = SET.vol; $('vol').oninput = e => setVol(+e.target.value);
   $('pVol').oninput = e => setVol(+e.target.value); $('pSens').oninput = e => { SET.sens = +e.target.value; saveSet(); }; $('pBright').oninput = e => { SET.bright = +e.target.value; saveSet(); if (!POST.on) RND.toneMappingExposure = 1.15 * SET.bright; };
   document.querySelectorAll('[data-k=gfx] button').forEach(b => b.addEventListener('click', () => { if (G.on) applyGfx(); document.querySelectorAll('[data-k=gfx] button').forEach(q => q.classList.toggle('on', q.dataset.v === SET.gfx)); }));
-  $('name').value = SET.name; $('name').oninput = e => { SET.name = e.target.value; saveSet(); };
+  $('name').value = SET.name; $('name').oninput = e => { SET.name = e.target.value; saveSet(); if (/name first/.test($('err').textContent)) $('err').textContent = ''; };
   $('bSolo').onclick = () => { Net.close(); G.diff = SET.diff; startGame((Math.random() * 1e9) | 0, [{id: 'H', name: myName(), c: 0}], loadSave()); };
-  $('bHost').onclick = () => { aInit(); buildWorld(); const code = Net.host(myName(), s => { if (G.on) { if (s === 'open') showMsg('Reconnected.', '', 3); else showMsg('Relay connection dropped. Reconnecting…', '', 6); return; } $('lmsg').textContent = s === 'open' ? 'Share the code. Up to 6 crew. Friends can join mid-voyage.' : 'Connection lost, retrying…'; }); $('code').textContent = code; show('lobby'); $('bGo').classList.remove('hidden'); $('lmsg').textContent = 'Connecting…'; lobby(); };
+  $('bHost').onclick = () => { if (!needName()) return; aInit(); buildWorld(); const code = Net.host(myName(), s => { if (G.on) { if (s === 'open') showMsg('Reconnected.', '', 3); else showMsg('Relay connection dropped. Reconnecting…', '', 6); return; } $('lmsg').textContent = s === 'open' ? 'Share the code. Up to 6 crew. Friends can join mid-voyage.' : 'Connection lost, retrying…'; }); $('code').textContent = code; show('lobby'); $('bGo').classList.remove('hidden'); $('lmsg').textContent = 'Connecting…'; lobby(); };
   $('bJoin').onclick = () => joinRoom($('joinC').value); $('joinC').onkeydown = e => { if (e.key === 'Enter') joinRoom($('joinC').value); };
   $('bGo').onclick = hostStart; $('bLeave').onclick = () => toMenu(); $('resume').onclick = resumeReq; $('quit').onclick = () => { if (Net.role === 'host' && Net.peers.size && !confirm('Leaving ends the voyage for your crew. Leave?')) return; toMenu(); }; $('endMenu').onclick = () => toMenu();
   $('pFov').oninput = e => { SET.fov = +e.target.value; saveSet(); }; $('pInv').onchange = e => { SET.inv = e.target.checked ? 1 : 0; saveSet(); };
@@ -8764,4 +8802,88 @@ function skyFrame(dt) { skyFx(dt, isHost() ? (SKY.c && [SKY.c.x, SKY.c.z, SKY.c.
 if (TEST) { const f0 = hud; hud = function (dt) { const r = f0.apply(this, arguments); const o = G.camOv; if (o && BOAT) { BOAT.updateMatrixWorld(true); const a = new THREE.Vector3(o[0], o[1], o[2]).applyMatrix4(BOAT.matrixWorld), b = new THREE.Vector3(o[3], o[4], o[5]).applyMatrix4(BOAT.matrixWorld); cam.position.copy(a); cam.up.set(0, 1, 0); cam.lookAt(b); } return r; }; }
 menuInit();
 setTimeout(() => { buildWorld(); requestAnimationFrame(frame); }, 30);
-if (TEST) window.__S = {SKY, psSit, skyStep, BW, BFL, INTER, get stepPlayer() { return stepPlayer; }, closeCasino, BOAT_: () => BOAT, BSPOT, FX, BHELM, bL2W, openCasino, AURAS, applyAll, launchFw, FWK, get ALL() { return ALL; }, get BOAT() { return BOAT; }, CN, CRZ, STS, GUL, DSITES, stepSteward, HULLS, SUNK, BG, BDECK, buildBoat, seaBed, render, levPose, LEV, MJ, TODd: () => SUNDIR, TOD, F, FISH, GEAR, equip, toolDown, toolUp, gotGear, pickFish, hostShoot, G, PL, M, B, K, SET, VALVES, ITEMS, HIDES, BLD, SPOTS, NG, SURF, POIS, DIGS, ISLES, Net, get P() { return P; }, startGame, step, hostStep, hostAct, act, targets, toggleHide, cam, scene, RND, noise, downPlayer, floorAt, navPath, applyEv, boatPose, landH, openShop, set eDown(v) { eDown = v; }, crewList, hostStart, joinRoom};
+// ===== chat and emotes (Enter chats, hold O for the emote wheel; looping emotes like the Griddy keep going while you walk)
+const EMOTES = [{n: 'Wave', d: 2.4, ic: '👋'}, {n: 'Griddy', loop: 1, ic: '🕺'}, {n: 'Middle finger', d: 2.6, ic: '🖕', al: ['bird', 'finger', 'mf']}, {n: 'Dab', d: 1.8, ic: '💪'}, {n: 'Thumbs up', d: 2, ic: '👍', al: ['thumbs', 'ty']}, {n: 'Clap', d: 2.6, ic: '👏'}, {n: 'Salute', d: 2.2, ic: '🫡'}, {n: 'Jig', loop: 1, ic: '💃', al: ['dance']}];
+function emotePose(p, j, dt) {
+  if (p.em !== p.emL) { p.emL = p.em; p.emT = 0; } const t = (p.emT = (p.emT || 0) + dt), E = EMOTES[p.em - 1]; if (!E) return;
+  const b = j.body, A = j.a1, L = j['a-1'], H = j.head, up = Math.min(1, t * 5);
+  switch (p.em - 1) {
+    case 0: A.rotation.set(.2, 0, mix(.08, 2.7, up) + Math.sin(t * 10) * .35 * up); H.rotation.z = Math.sin(t * 5) * .1; break;
+    case 1: { const f = t * 8.5, s1 = Math.sin(f), c1 = Math.cos(f); b.position.y = .9 + Math.abs(s1) * .07; b.rotation.x = .12; b.rotation.z = s1 * .06; H.rotation.x = -.15;
+      j.l1.rotation.x = Math.max(0, s1) * .75; j['l-1'].rotation.x = Math.max(0, -s1) * .75; j.k1.rotation.x = s1 > 0 ? -.05 : -.45 * Math.abs(s1); j['k-1'].rotation.x = s1 < 0 ? -.05 : -.45 * Math.abs(s1);
+      A.rotation.set(.5 + c1 * .8, 0, .45); L.rotation.set(.5 - c1 * .8, 0, -.45); break; }
+    case 2: { const k = up; A.rotation.set(1.5 * k, 0, .12); L.rotation.set(1.5 * k, 0, -.12); j.f1.visible = j['f-1'].visible = k > .7; b.rotation.x = .08 * k; b.position.y = .95 + Math.abs(Math.sin(t * 6)) * .02; H.rotation.x = .12; H.rotation.z = Math.sin(t * 3) * .08; break; }
+    case 3: L.rotation.set(1.55 * up, 0, .95 * up); A.rotation.set(.35 * up, 0, 2.1 * up); H.rotation.x = -.5 * up; H.rotation.y = .55 * up; b.rotation.z = .1 * up; break;
+    case 4: A.rotation.set(1.4 * up, 0, .1); j.th1.visible = up > .7; H.rotation.x = Math.max(0, Math.sin(t * 6)) * .15; break;
+    case 5: { const c = Math.abs(Math.sin(t * 11)); A.rotation.set(1.3, 0, -.15 - c * .25); L.rotation.set(1.3, 0, .15 + c * .25); break; }
+    case 6: A.rotation.set(2.45 * up, 0, -.75 * up); b.rotation.x = .05; H.rotation.x = .05; break;
+    case 7: { const f = t * 7, s1 = Math.sin(f); b.position.y = .95 + Math.max(0, Math.sin(f * 2)) * .09; j.l1.rotation.x = Math.max(0, s1) * 1.1; j['l-1'].rotation.x = Math.max(0, -s1) * 1.1; j.k1.rotation.x = -Math.max(0, s1) * 1.2; j['k-1'].rotation.x = -Math.max(0, -s1) * 1.2;
+      A.rotation.set(-.15, 0, .9); L.rotation.set(-.15, 0, -.9); H.rotation.z = s1 * .12; break; }
+  }
+}
+const CHAT = {log: [], el: null, inp: null, wheel: null};
+function chatUI() {
+  if (CHAT.el) return; const st = document.createElement('style');
+  st.textContent = `#chatLog{position:absolute;left:22px;bottom:120px;width:min(420px,70vw);font:13px ui-monospace,monospace;color:#e8e0cc;pointer-events:none;z-index:30}
+#chatLog div{background:rgba(6,10,14,.55);padding:3px 8px;margin-top:3px;border-radius:6px;width:fit-content;max-width:100%;overflow-wrap:anywhere;transition:opacity .6s;text-shadow:0 1px 2px #000}
+#chatLog b{margin-right:6px} #chatLog.open div{opacity:1!important}
+#chatIn{position:absolute;left:22px;bottom:88px;width:min(420px,70vw);font:13px ui-monospace,monospace;background:rgba(6,10,14,.8);color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:6px;padding:6px 8px;z-index:31;display:none;outline:none}
+.bub{position:absolute;transform:translate(-50%,-100%);background:#f4f1e8;color:#1a1c20;font:13px system-ui,sans-serif;padding:5px 10px;border-radius:12px;max-width:220px;text-align:center;pointer-events:none;z-index:25;box-shadow:0 2px 8px rgba(0,0,0,.4);overflow-wrap:anywhere}
+.bub:after{content:'';position:absolute;left:50%;bottom:-6px;margin-left:-6px;border:6px solid transparent;border-bottom:0;border-top-color:#f4f1e8}
+#emoW{position:absolute;left:50%;top:50%;width:340px;height:340px;margin:-170px 0 0 -170px;border-radius:50%;background:radial-gradient(circle,rgba(6,10,14,.25) 0 22%,rgba(6,10,14,.7) 23% 100%);z-index:32;display:none;pointer-events:none}
+#emoW i{position:absolute;width:76px;height:64px;margin:-32px 0 0 -38px;text-align:center;font:11px ui-monospace,monospace;color:#cfc8b8;font-style:normal;border-radius:12px;padding-top:4px;transition:transform .1s,background .1s}
+#emoW i span{display:block;font-size:26px;line-height:34px} #emoW i.on{background:rgba(255,210,120,.25);color:#fff;transform:scale(1.15)}
+#emoW em{position:absolute;left:0;right:0;top:50%;margin-top:-8px;text-align:center;font:12px ui-monospace,monospace;color:#fff;font-style:normal}`;
+  document.head.appendChild(st);
+  const hudEl = $('hud') || document.body; CHAT.el = document.createElement('div'); CHAT.el.id = 'chatLog'; hudEl.appendChild(CHAT.el);
+  const i = CHAT.inp = document.createElement('input'); i.id = 'chatIn'; i.maxLength = 120; i.placeholder = 'Say something… (/griddy, /wave, /bird…)'; i.autocomplete = 'off'; hudEl.appendChild(i);
+  const w = CHAT.wheel = document.createElement('div'); w.id = 'emoW'; EMOTES.forEach((E, k) => { const a = k / EMOTES.length * TAU, o = document.createElement('i'); o.style.left = (170 + Math.sin(a) * 118) + 'px'; o.style.top = (170 - Math.cos(a) * 118) + 'px'; o.innerHTML = `<span>${E.ic}</span>${E.n}`; w.appendChild(o); }); w.appendChild(document.createElement('em')); hudEl.appendChild(w);
+  i.addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Enter') { const v = i.value.trim(); i.value = ''; chatClose(); if (v) chatSend(v); } else if (e.key === 'Escape') chatClose(); });
+}
+function chatOpen(pre = '') { chatUI(); if (!G.on || G.chat) return; G.chat = true; for (const k in K) K[k] = false; eDown = false; CHAT.inp.style.display = 'block'; CHAT.inp.value = pre; CHAT.el.classList.add('open'); setTimeout(() => CHAT.inp.focus(), 0); }
+function chatClose() { if (!G.chat) return; G.chat = false; CHAT.inp.blur(); CHAT.inp.style.display = 'none'; CHAT.el.classList.remove('open'); if (G.on && !G.paused) lockMouse(); }
+function chatSend(v) { if (v[0] === '/') { const c = v.slice(1).toLowerCase().replace(/\s+/g, ''); const k = EMOTES.findIndex(E => E.n.toLowerCase().replace(/\s+/g, '') === c || (E.al || []).includes(c)); if (k >= 0) { emoteStart(k); return; } if (c === 'stop') { emoteStart(-1); return; } chatLine('', '', 'Emotes: ' + EMOTES.map(E => '/' + E.n.toLowerCase().replace(/\s+/g, '')).join(' ') + ' /stop'); return; } act({a: 'chat', s: v}); }
+function chatLine(name, col, txt) { chatUI(); const d = document.createElement('div'); if (name) { const b = document.createElement('b'); b.textContent = name; b.style.color = col; d.appendChild(b); } d.appendChild(document.createTextNode(txt)); CHAT.el.appendChild(d); while (CHAT.el.children.length > 8) CHAT.el.firstChild.remove(); setTimeout(() => d.style.opacity = 0, 12000); }
+function emoteStart(k) { if (!P) return; if (k < 0 || (P.emo && P.emo.i === k && EMOTES[k].loop)) { P.emo = null; return; } if (P.dead || P.down || P.sw || P.seat || P.climb) return; P.emo = {i: k, t: 0}; }
+{ const f0 = hostAct; hostAct = function (id, m) { if (m && m.a === 'chat') { const p = PL.get(id); if (!p || !G.on) return; const now = performance.now(); if (now - (p.chT || 0) < 600) return; p.chT = now; const s = String(m.s || '').replace(/[\u0000-\u001f\u007f]/g, '').trim().slice(0, 120); if (s) emit({k: 'chat', id, s}); return; } return f0.apply(this, arguments); }; }
+{ const f0 = applyEv; applyEv = function (e) { if (e && e.k === 'chat') { const p = PL.get(e.id); const col = '#' + new THREE.Color(CREW_COL[((p && p.c) || 0) % 6]).getHexString(); chatLine(p ? p.name : '?', col, e.s); if (p) { p.bubS = e.s; p.bubT = 6; } Snd && Snd.click && Snd.click(); return; } return f0.apply(this, arguments); }; }
+{ const f0 = myPose; myPose = function () { const r = f0.apply(this, arguments); r.em = P && P.emo ? P.emo.i + 1 : 0; return r; }; }
+// the wheel: hold O, flick the mouse toward an emote (or press 1-8), let go
+addEventListener('keydown', e => {
+  if (e.target && /^(INPUT|TEXTAREA)$/.test(e.target.tagName)) return; if (!G.on || G.paused || !P) return;
+  if (G.emoW && /^Digit[1-8]$/.test(e.code)) { e.stopImmediatePropagation(); e.preventDefault(); G.emoW.sel = +e.code.slice(5) - 1; emoWheelEnd(); return; }
+  if (e.repeat) return;
+  if ((e.code === 'Enter' || e.code === 'Slash') && !anyPanel() && !G.map) { e.stopImmediatePropagation(); e.preventDefault(); chatOpen(e.code === 'Slash' ? '/' : ''); return; }
+  if (e.code === 'KeyO' && !anyPanel() && !G.map && !G.emoW) { chatUI(); G.emoW = {x: 0, y: 0, sel: -1, t0: performance.now()}; CHAT.wheel.style.display = 'block'; emoWheelDraw(); }
+}, {capture: true});
+addEventListener('keyup', e => { if (e.code === 'KeyO' && G.emoW) emoWheelEnd(); }, {capture: true});
+addEventListener('mousemove', e => { if (!G.emoW) return; e.stopImmediatePropagation(); const W = G.emoW; W.x = clamp(W.x + (e.movementX || 0), -120, 120); W.y = clamp(W.y + (e.movementY || 0), -120, 120); emoWheelDraw(); }, {capture: true});
+addEventListener('mousedown', e => { if (G.chat && e.target !== CHAT.inp) { chatClose(); } if (!G.emoW) return; e.stopImmediatePropagation(); e.preventDefault(); emoWheelEnd(); }, {capture: true});
+function emoWheelDraw() { const W = G.emoW; if (Math.hypot(W.x, W.y) > 30) { const a = Math.atan2(W.x, -W.y); W.sel = ((Math.round(a / TAU * EMOTES.length) % EMOTES.length) + EMOTES.length) % EMOTES.length; } [...CHAT.wheel.children].forEach((o, k) => o.tagName === 'I' && o.classList.toggle('on', k === W.sel)); CHAT.wheel.querySelector('em').textContent = W.sel >= 0 ? EMOTES[W.sel].n : (P && P.emo ? 'let go to stop' : 'flick the mouse'); }
+function emoWheelEnd() { const W = G.emoW; if (!W) return; G.emoW = null; CHAT.wheel.style.display = 'none'; if (W.sel >= 0) emoteStart(W.sel); else if (P && P.emo) emoteStart(-1); }
+// your own emote: tick it, and show yourself in third person (outside cabins) while it plays
+const EMQ = {};
+{ const f0 = updateTools; updateTools = function (dt) { const r = f0.apply(this, arguments); try { emoteSelf(dt); bubbles(dt); } catch (e) { if (TEST) console.error(e); } return r; }; }
+function emoteSelf(dt) {
+  const e = P && P.emo; if (e && (P.dead || P.down || P.sw || P.seat || P.climb || P.hd >= 0 || P.cas)) P.emo = null;
+  if (!P || !P.emo) { G.emCam = 0; return; }
+  const E = EMOTES[P.emo.i]; P.emo.t += dt; if (!E.loop && P.emo.t > E.d) { P.emo = null; G.emCam = 0; return; }
+  if (P.ob && inCabin()) { G.emCam = 0; return; }
+  let x = P.x, y = P.y, z = P.z; if (P.ob && BOAT) { BOAT.updateMatrixWorld(); _sb.set(P.bl[0], P.y, P.bl[1]).applyMatrix4(BOAT.matrixWorld); x = _sb.x; y = _sb.y; z = _sb.z; }
+  const sp = Math.hypot(P.vx || 0, P.vz || 0);
+  Object.assign(EMQ, {av: P.av, dead: false, hd: -1, ready: true, rx: x, ry: y, rz: z, ryaw: P.yaw, rpitch: 0, rspd: sp, c: P.c, st: 0, cr: P.cr, sw: 0, run: P.run, sack: P.sack, down: false, l: 0, su: 0, eq: 0, em: P.emo.i + 1});
+  animCrew(EMQ, dt);
+  // camera: in front looking back while standing, swings behind your shoulder while you walk
+  G.emCam = Math.min(1, (G.emCam || 0) + dt * 3); G.emA = mix(G.emA ?? 0, sp > .5 ? PI - .5 : 0, Math.min(1, dt * 2.5));
+  const a = P.yaw + G.emA, d = 3.1, fx = -Math.sin(a), fz = -Math.cos(a), k = G.emCam * G.emCam * (3 - 2 * G.emCam);
+  const tx = x + fx * d, tz = z + fz * d, ty = y + 1.75; cam.position.set(mix(cam.position.x, tx, k), mix(cam.position.y, ty, k), mix(cam.position.z, tz, k)); cam.up.set(0, 1, 0); cam.lookAt(x, y + 1.15, z); cam.updateMatrixWorld();
+  VM.visible = VMF.visible = VMG.visible = VMS.visible = VMR.visible = false;
+}
+function bubbles(dt) {
+  for (const p of PL.values()) { if (p.bubT > 0) p.bubT -= dt; const show = p !== P && p.bubT > 0 && p.av && p.av.visible;
+    if (!show) { if (p.bubEl) { p.bubEl.remove(); p.bubEl = null; } continue; }
+    if (!p.bubEl) { p.bubEl = document.createElement('div'); p.bubEl.className = 'bub'; ($('hud') || document.body).appendChild(p.bubEl); }
+    if (p.bubEl.textContent !== p.bubS) p.bubEl.textContent = p.bubS; _v.set(p.rx, p.ry + 2.55, p.rz).project(cam); const vis = _v.z < 1 && Math.abs(_v.x) < 1.05 && Math.abs(_v.y) < 1.05 && Math.hypot(p.rx - cam.position.x, p.rz - cam.position.z) < 60;
+    p.bubEl.style.display = vis ? 'block' : 'none'; if (vis) { p.bubEl.style.left = Math.round((_v.x + 1) / 2 * innerWidth) + 'px'; p.bubEl.style.top = Math.round((1 - _v.y) / 2 * innerHeight) + 'px'; p.bubEl.style.opacity = Math.min(1, p.bubT); } }
+}
+if (TEST) window.__S = {EMOTES, emoteStart, chatSend, chatOpen, SKY, psSit, skyStep, BW, BFL, INTER, get stepPlayer() { return stepPlayer; }, closeCasino, BOAT_: () => BOAT, BSPOT, FX, BHELM, bL2W, openCasino, AURAS, applyAll, launchFw, FWK, get ALL() { return ALL; }, get BOAT() { return BOAT; }, CN, CRZ, STS, GUL, DSITES, stepSteward, HULLS, SUNK, BG, BDECK, buildBoat, seaBed, render, levPose, LEV, MJ, TODd: () => SUNDIR, TOD, F, FISH, GEAR, equip, toolDown, toolUp, gotGear, pickFish, hostShoot, G, PL, M, B, K, SET, VALVES, ITEMS, HIDES, BLD, SPOTS, NG, SURF, POIS, DIGS, ISLES, Net, get P() { return P; }, startGame, step, hostStep, hostAct, act, targets, toggleHide, cam, scene, RND, noise, downPlayer, floorAt, navPath, applyEv, boatPose, landH, openShop, set eDown(v) { eDown = v; }, crewList, hostStart, joinRoom};
