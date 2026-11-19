@@ -125,6 +125,8 @@ Read `CLAUDE.md` first (shared rules). Split out of it on 17 Nov 2026; keep this
 
 - **Bridge hop (big ships):** on hulls 30 m and longer whose wheel is 6 m or more from the boarding spot (or up on a bridge, `helm.by`), a buildBoat wrapper adds INTER `bridge` points: 'Go to the bridge' beside `boatSpawn(0)` and 'Back down to the deck' beside the wheel. `bridgeHop(up)` moves you with a fade.
 
+- **Inventory (I):** `invOpen`/`invDraw` (panel `#inv`, `G.invOpen` in `anyPanel`) shows the dive suit picker, gear chips with ammo, the sack (drop the last item, stow), the cooler and the hold. Suits are now worn or not: `P.own.suitOwn` = best owned, `P.own.suit` = the one worn (0 = none; older saves are migrated in `loadGear`). `wearSuit(n)` works only out of the water. GEAR `need` reads `suitOwn`. Avatars show the helmet whenever a suit is worn. Panels added from JS go on `document.body` with `pointer-events:auto`, because the canvas sits over `#hud`.
+
 ## Next up (the owner's list, 18 Nov 2026; items 7-14 and the loot rework were built the same day, see the paragraphs above)
 1. **Sub visuals underwater and half underwater:** proper looks from inside and outside the research sub when it is dived and when it sits at the waterline (the waterline across the bow viewport, the sea surface seen from below, underwater fog and tint through the windows, the hull half in and half out of the water, bubbles and wake when diving).
 2. **Persisting loot and fast travel:** loot that stays where it was (taken items stay taken, a persistent world seed with slow restocks) and fast travel between ports (home, Northwatch, piers).

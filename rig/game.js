@@ -2080,7 +2080,7 @@ function animCrew(p, dt) {
   j.box.visible = !!(p.sack && p.sack.length); j.box.scale.setScalar(.7 + Math.min(1, sackUsed(p.sack) / 8) * .5);
   if (p.down) { g.rotation.x = -PI / 2 + .15; g.position.y += .25; j.a1.rotation.x = 2.6 + Math.sin(t * 2) * .3; } else g.rotation.x = 0;
   j.head.rotation.x = p.rpitch * .6 - bx; j.head.rotation.y = 0; j.head.rotation.z = sp < .08 ? Math.sin(t * .7) * .06 : 0; j.beam.visible = !!p.l && !p.down && !p.sw;
-  j.helm.visible = !!(p.sw && p.su);
+  j.helm.visible = !!p.su;
   for (let i = 1; i < 4; i++) j.it[i].visible = p.eq === i + 1 && !p.down && !p.sw; if (p.eq >= 2 && !p.down && !p.sw) j.a1.rotation.x = (p.eq === 2 ? .9 : 1.45) + p.rpitch;
   j.f1.visible = j['f-1'].visible = j.th1.visible = j['th-1'].visible = false; j['a-1'].rotation.y = j.a1.rotation.y = j.head.rotation.z * 0;
   if (p.em && !p.down && !p.sw && !p.st && !p.dead) emotePose(p, j, dt);
@@ -3039,7 +3039,7 @@ function lockMouse() { if (!TEST && canvas.requestPointerLock) try { const r = c
 function pause(p) { G.paused = p; G.wantResume = false; $('pause').classList.toggle('hidden', !p); if (p) { clearKeys(); G.map = false; G.mapStick = 0; $('map').classList.add('hidden'); $('pVol').value = SET.vol; $('pSens').value = SET.sens; $('pBright').value = SET.bright; $('pFov').value = SET.fov || 70; $('pInv').checked = !!SET.inv; } $('pauseN').textContent = Net.role === 'solo' ? 'The sea waits for you. Progress is saved.' : 'Online games keep running.'; if (Net.role === 'solo' && A.ctx) p ? A.ctx.suspend() : A.ctx.resume(); }
 function resumeReq() { if (TEST || document.pointerLockElement === canvas || !canvas.requestPointerLock) { pause(false); return; } G.wantResume = true; lockMouse(); $('pauseN').textContent = 'Click Resume again if the mouse does not lock.'; }
 function clearKeys() { for (const k in K) K[k] = false; eDown = false; ePress = false; mouseR = false; G.lmb = false; }
-const anyPanel = () => !!(G.chat || G.ftOpen || G.noteOpen || G.shopOpen || G.casOpen || G.helpOpen || G.endOpen || G.jrnOpen);
+const anyPanel = () => !!(G.chat || G.ftOpen || G.invOpen || G.noteOpen || G.shopOpen || G.casOpen || G.helpOpen || G.endOpen || G.jrnOpen);
 function closePanels(relock) { G.noteOpen = G.shopOpen = G.casOpen = G.helpOpen = G.jrnOpen = false; ['shop', 'casino', 'fishHelp', 'note'].forEach(id => $(id).classList.add('hidden')); if ($('jrn')) $('jrn').classList.add('hidden'); if (relock && G.on) lockMouse(); }
 // once per rendered frame, after the camera: panels that should close, the crouch dot, the click-to-look hint
 function ctlFrame(dt) {
@@ -3103,7 +3103,7 @@ Snd.step = (kind, k) => { const r = .88 + Math.random() * .24, hit = g => {
   if (kind === 'metal') tone((320 + Math.random() * 60) * r, .02 * k, .08, 'triangle');
   else if (kind === 'steel') { tone(150 * r, .03 * k, .1); tone(2200 * r, .008 * k, .04); }
   else if (kind === 'wood') tone(180 * r, .015 * k, .08, 'triangle'); };
-const KEYMAP = [['W A S D', 'move'], ['Shift', 'run'], ['C', 'crouch · dive'], ['Space', 'jump · rise · hold breath'], ['Tab (tap)', 'keep the chart open'], ['V', 'binoculars'], ['N · Y · U', 'repair kit · fuel can · chum'], ['F at the wheel', 'deck gun on armed ships'], ['Z (hold)', 'give up'], ['E', 'use · hold for jobs'], ['F', 'flashlight'], ['G', 'throw a flare'], ['Enter', 'chat'], ['L at the wheel', 'fast travel from a dock'], ['O (hold)', 'emote wheel · tap to stop'], ['Q', 'whistle · horn at the wheel'], ['1-7 · wheel', 'hotbar'],
+const KEYMAP = [['W A S D', 'move'], ['Shift', 'run'], ['C', 'crouch · dive'], ['Space', 'jump · rise · hold breath'], ['Tab (tap)', 'keep the chart open'], ['V', 'binoculars'], ['N · Y · U', 'repair kit · fuel can · chum'], ['F at the wheel', 'deck gun on armed ships'], ['Z (hold)', 'give up'], ['E', 'use · hold for jobs'], ['F', 'flashlight'], ['G', 'throw a flare'], ['I', 'inventory · dive suit on/off'], ['Enter', 'chat'], ['L at the wheel', 'fast travel from a dock'], ['O (hold)', 'emote wheel · tap to stop'], ['Q', 'whistle · horn at the wheel'], ['1-7 · wheel', 'hotbar'],
   ['LMB / RMB', 'use · aim'], ['R', 'reload'], ['X', 'drop the last thing'], ['H', 'fishing help'], ['Tab (hold)', 'chart'], ['Esc', 'pause']];
 const keyTable = list => `<div class="keys ktab">${list.map(([k, a]) => `<span><b>${k}</b></span><span>${a}</span>`).join('')}</div>`;
 
@@ -6196,8 +6196,8 @@ const GEAR = {
   ammo: {n: '9mm rounds x34', d: 'For the Glock', cost: 20, need: o => o.glock},
   sg: {n: 'Pump shotgun', d: 'Six in the tube plus 12 shells, hits hard up close (key 5)', cost: 260, need: o => !o.sg},
   shells: {n: 'Shotgun shells x12', d: 'For the shotgun', cost: 30, need: o => o.sg},
-  scuba: {n: 'Scuba gear', d: 'Dive to 45 m with 3 minutes of air (hold C to dive, Space to rise, swim where you look)', cost: 260, need: o => !o.suit},
-  sat: {n: 'Saturation suit', d: 'Hard-hat suit with a helmet lamp: 160 m and 9 minutes of air. The trenches are dark', cost: 1400, need: o => o.suit === 1},
+  scuba: {n: 'Scuba gear', d: 'Dive to 45 m with 3 minutes of air (hold C to dive, Space to rise, swim where you look)', cost: 260, need: o => !(o.suitOwn ?? o.suit)},
+  sat: {n: 'Saturation suit', d: 'Hard-hat suit with a helmet lamp: 160 m and 9 minutes of air. The trenches are dark', cost: 1400, need: o => (o.suitOwn ?? o.suit) === 1},
   fw: {n: 'Firework rockets x5', d: 'Slot 7. Light up the night sky', cost: 60, need: o => true},
   sack1: {n: 'Big sack', d: 'Carry 7 slots of salvage instead of 4', cost: 90, need: o => !o.sack},
   sack2: {n: "Hauler's pack", d: 'Carry 10 slots of salvage', cost: 220, need: o => o.sack === 1},
@@ -6208,7 +6208,7 @@ const GEAR = {
   kit: {n: 'Hull repair kit', d: 'Press N aboard to patch 30% of the hull anywhere at sea (carry 3)', cost: 160, need: o => (o.kits || 0) < 3},
   jerry: {n: 'Jerrycan of fuel', d: 'Press Y aboard to top the tank up by a third (carry 2)', cost: 90, need: o => (o.jerry || 0) < 2},
   chum: {n: 'Chum bucket', d: 'Press U while fishing: bites come twice as fast for 3 minutes (carry 5)', cost: 35, need: o => (o.chum || 0) < 5},
-  scoot: {n: 'Dive scooter', d: 'Hold Shift underwater to be towed along twice as fast', cost: 480, need: o => o.suit && !o.scoot},
+  scoot: {n: 'Dive scooter', d: 'Hold Shift underwater to be towed along twice as fast', cost: 480, need: o => (o.suitOwn ?? o.suit) && !o.scoot},
 };
 const FISH = {
   boot: {n: 'old boot', v: 1, s: .4, kg: [.6, 1.2]}, sard: {n: 'sardine', v: 8, s: .55, kg: [.1, .3]}, mack: {n: 'mackerel', v: 15, s: .75, kg: [.4, 1.2]},
@@ -6226,12 +6226,12 @@ function pickFish(x, z, rod) {
   const rg = mapRegion(x, z), rw = mapRegion.w, nt = TOD.night > .5; if (rg) { const k = rg.k; if (k === 'coral') { if (land < 60) w.parrot = 26 * rw; w.snapper = 16 * rw; } else if (k === 'frost') w.icecod = 22 * rw; else if (k === 'ash' && nt) w.ember = 16 * rw; else if (k === 'grave' && nt) w.ghostfish = 12 * rw; else if (k === 'abyss' && deep && rod >= 3) w.oarfish = 5 * rw; }
   let sum = 0; for (const k in w) sum += w[k]; let r = Math.random() * sum; for (const k in w) { r -= w[k]; if (r <= 0) return k; } return 'sard';
 }
-function loadGear() { let g = null; try { g = JSON.parse(localStorage.getItem(SK('s9-gear'))); } catch (e) {} g = g || {}; P.own = Object.assign({rod: 0, glock: 0, sg: 0}, g.own || {}); P.ammo = Object.assign({g: 0, gm: 0, s: 0, sm: 0}, g.ammo || {}); }
+function loadGear() { let g = null; try { g = JSON.parse(localStorage.getItem(SK('s9-gear'))); } catch (e) {} g = g || {}; P.own = Object.assign({rod: 0, glock: 0, sg: 0}, g.own || {}); if (P.own.suitOwn == null) P.own.suitOwn = P.own.suit || 0; P.ammo = Object.assign({g: 0, gm: 0, s: 0, sm: 0}, g.ammo || {}); }
 function saveGear() { if (TEST) return; try { localStorage.setItem(SK('s9-gear'), JSON.stringify({own: P.own, ammo: P.ammo})); } catch (e) {} }
 function gotGear(k) {
   const o = P.own, a = P.ammo; Snd.coin();
   if (k === 'fw') o.fw = (o.fw || 0) + 5; if (k.startsWith('aura')) { const i = +k.slice(4); o.auras = (o.auras || [0]).concat([i]); o.aura = i; }
-  if (k === 'scuba') o.suit = 1; else if (k === 'sat') o.suit = 2;
+  if (k === 'scuba') o.suit = o.suitOwn = 1; else if (k === 'sat') o.suit = o.suitOwn = 2;
   if (k === 'sack1') o.sack = 1; else if (k === 'sack2') o.sack = 2;
   if (k === 'rod1') o.rod = 1; else if (k === 'rod2') o.rod = 2; else if (k === 'rod3') o.rod = 3;
   else if (k === 'glock') { o.glock = 1; a.gm = 17; a.g += 17; } else if (k === 'ammo') a.g += 34;
@@ -8826,7 +8826,7 @@ function chatUI() {
   st.textContent = `#chatLog{position:absolute;left:22px;bottom:120px;width:min(420px,70vw);font:13px ui-monospace,monospace;color:#e8e0cc;pointer-events:none;z-index:30}
 #chatLog div{background:rgba(6,10,14,.55);padding:3px 8px;margin-top:3px;border-radius:6px;width:fit-content;max-width:100%;overflow-wrap:anywhere;transition:opacity .6s;text-shadow:0 1px 2px #000}
 #chatLog b{margin-right:6px} #chatLog.open div{opacity:1!important}
-#chatIn{position:absolute;left:22px;bottom:88px;width:min(420px,70vw);font:13px ui-monospace,monospace;background:rgba(6,10,14,.8);color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:6px;padding:6px 8px;z-index:31;display:none;outline:none}
+#chatIn{position:absolute;left:22px;bottom:88px;width:min(420px,70vw);font:13px ui-monospace,monospace;background:rgba(6,10,14,.8);color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:6px;padding:6px 8px;z-index:31;display:none;outline:none;pointer-events:auto}
 .bub{position:absolute;transform:translate(-50%,-100%);background:#f4f1e8;color:#1a1c20;font:13px system-ui,sans-serif;padding:5px 10px;border-radius:12px;max-width:220px;text-align:center;pointer-events:none;z-index:25;box-shadow:0 2px 8px rgba(0,0,0,.4);overflow-wrap:anywhere}
 .bub:after{content:'';position:absolute;left:50%;bottom:-6px;margin-left:-6px;border:6px solid transparent;border-bottom:0;border-top-color:#f4f1e8}
 #emoW{position:absolute;left:50%;top:50%;width:340px;height:340px;margin:-170px 0 0 -170px;border-radius:50%;background:radial-gradient(circle,rgba(6,10,14,.25) 0 22%,rgba(6,10,14,.7) 23% 100%);z-index:32;display:none;pointer-events:none}
@@ -8870,7 +8870,7 @@ function emoteSelf(dt) {
   if (P.ob && inCabin()) { G.emCam = 0; return; }
   let x = P.x, y = P.y, z = P.z; if (P.ob && BOAT) { BOAT.updateMatrixWorld(); _sb.set(P.bl[0], P.y, P.bl[1]).applyMatrix4(BOAT.matrixWorld); x = _sb.x; y = _sb.y; z = _sb.z; }
   const sp = Math.hypot(P.vx || 0, P.vz || 0);
-  Object.assign(EMQ, {av: P.av, dead: false, hd: -1, ready: true, rx: x, ry: y, rz: z, ryaw: P.yaw, rpitch: 0, rspd: sp, c: P.c, st: 0, cr: P.cr, sw: 0, run: P.run, sack: P.sack, down: false, l: 0, su: 0, eq: 0, em: P.emo.i + 1});
+  Object.assign(EMQ, {av: P.av, dead: false, hd: -1, ready: true, rx: x, ry: y, rz: z, ryaw: P.yaw, rpitch: 0, rspd: sp, c: P.c, st: 0, cr: P.cr, sw: 0, run: P.run, sack: P.sack, down: false, l: 0, su: suitOf(P), eq: 0, em: P.emo.i + 1});
   animCrew(EMQ, dt); P.av.visible = true;
   // camera: in front looking back while standing, swings behind your shoulder while you walk
   const mv = K.KeyW || K.KeyA || K.KeyS || K.KeyD; if (!G.emCam) G.emOrb = 0; if (mv) G.emOrb = mix(G.emOrb || 0, 0, Math.min(1, dt * 3));
@@ -8936,7 +8936,7 @@ function ftWhy() { if (B.sink > 0) return 'The boat is sinking.'; if (HC().plane
   P && (P.lastBY = B.yaw); setTimeout(() => G.on && toast(`Arrived at ${e.n}`, e.c ? `Harbour pilot: ${money(e.c)}` : ''), 700); ftClose(); }; }
 function ftFade() { let f = $('ftFade'); if (!f) { f = document.createElement('div'); f.id = 'ftFade'; f.style.cssText = 'position:fixed;inset:0;background:#02060a;opacity:0;pointer-events:none;transition:opacity .35s;z-index:40'; document.body.appendChild(f); } f.style.transition = 'none'; f.style.opacity = 1; requestAnimationFrame(() => requestAnimationFrame(() => { f.style.transition = 'opacity 1.4s'; f.style.opacity = 0; })); }
 function ftOpen() { const why = ftWhy(); if (why) { showMsg(why, '', 2.5); return; } const here = ftDockHere(), L = dockList(); let el = $('ftP');
-  if (!el) { el = document.createElement('div'); el.id = 'ftP'; el.style.cssText = 'position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(440px,92vw);max-height:76vh;overflow:auto;background:rgba(8,14,20,.94);border:1px solid rgba(255,255,255,.18);border-radius:10px;padding:16px 18px;font:14px Georgia,serif;color:#e8e0cc;z-index:35'; ($('hud') || document.body).appendChild(el); }
+  if (!el) { el = document.createElement('div'); el.id = 'ftP'; el.style.cssText = 'position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(440px,92vw);max-height:76vh;overflow:auto;background:rgba(8,14,20,.94);border:1px solid rgba(255,255,255,.18);border-radius:10px;padding:16px 18px;font:14px Georgia,serif;color:#e8e0cc;z-index:35;pointer-events:auto'; document.body.appendChild(el); }
   const opts = L.filter(d => d.n !== here.n && (G.ftSeen || []).includes(d.n)).map(d => ({d, km: Math.hypot(d.x - B.x, d.z - B.z) / 1000, c: ALL ? 0 : ftCost(here, d)})).sort((a, b) => a.km - b.km);
   el.innerHTML = `<div style="font-size:18px;margin-bottom:4px">Fast travel</div><div style="opacity:.7;font-size:12px;margin-bottom:10px">From ${here.n}. Crew aboard (and anyone on this dock) come too. Crew cash ${money(G.cash)}.</div>` + (opts.length ? opts.map((o, k) => `<button data-i="${o.d.i}" style="display:flex;justify-content:space-between;width:100%;margin:4px 0;padding:8px 10px;text-align:left;cursor:pointer"${G.cash < o.c ? ' disabled' : ''}><span>${o.d.n[0].toUpperCase() + o.d.n.slice(1)}</span><span style="opacity:.75">${o.km.toFixed(1)} km · ${o.c ? money(o.c) : 'free'}</span></button>`).join('') : '<div style="opacity:.75">No other docks yet. Sail near a jetty or island landing to add it.</div>') + '<button id="ftX" style="width:100%;margin-top:10px">Close (Esc)</button>';
   el.querySelectorAll('button[data-i]').forEach(b => b.onclick = () => { act({a: 'ft', i: +b.dataset.i}); ftClose(); }); $('ftX').onclick = ftClose;
@@ -8956,4 +8956,26 @@ function bridgeHop(up) { if (!P || !P.ob || P.seat || P.sw || P.climb) return; c
   INTER.push({kind: 'bridge', boat: 1, lx: sp.bl[0] + 1.6, lz: sp.bl[1], ly: 1, r: 1.6, label: () => 'Go to the bridge', on: () => P && P.ob && !P.sw && !P.seat, go: () => bridgeHop(1)});
   INTER.push({kind: 'bridge', boat: 1, lx: h.lx + 1.4, lz: h.lz + .8, ly: (h.by != null ? h.by - 1 - BDECK.y : 0) + 1, by: h.by, r: 1.3, label: () => 'Back down to the deck', on: () => P && P.ob && !P.sw && !P.seat && (h.by == null || P.y > h.by - 2), go: () => bridgeHop(0)});
   return r; }; }
-if (TEST) window.__S = {bridgeHop, LTK, lootTick, ftOpen, dockList, EMOTES, emoteStart, chatSend, chatOpen, SKY, psSit, skyStep, BW, BFL, INTER, get stepPlayer() { return stepPlayer; }, closeCasino, BOAT_: () => BOAT, BSPOT, FX, BHELM, bL2W, openCasino, AURAS, applyAll, launchFw, FWK, get ALL() { return ALL; }, get BOAT() { return BOAT; }, CN, CRZ, STS, GUL, DSITES, stepSteward, HULLS, SUNK, BG, BDECK, buildBoat, seaBed, render, levPose, LEV, MJ, TODd: () => SUNDIR, TOD, F, FISH, GEAR, equip, toolDown, toolUp, gotGear, pickFish, hostShoot, G, PL, M, B, K, SET, VALVES, ITEMS, HIDES, BLD, SPOTS, NG, SURF, POIS, DIGS, ISLES, Net, get P() { return P; }, startGame, step, hostStep, hostAct, act, targets, toggleHide, cam, scene, RND, noise, downPlayer, floorAt, navPath, applyEv, boatPose, landH, openShop, set eDown(v) { eDown = v; }, crewList, hostStart, joinRoom};
+// ===== inventory (I): the dive suit goes on and off here (out of the water), plus your gear, sack, cooler and the boat's hold at a glance
+function wearSuit(n) { const o = P && P.own; if (!o) return; n = clamp(n | 0, 0, o.suitOwn || 0); if (n === (o.suit || 0)) return; if (P.sw) { showMsg("You can't change suits in the water.", '', 2); return; }
+  o.suit = n; saveGear(); Snd && Snd.click && Snd.click(); showMsg(n ? `You pull on the ${SUIT[n].n.toLowerCase()}.` : 'You take the dive suit off.', '', 2); if (G.invOpen) invDraw(); }
+function invOpen() { if (!G.on || !P || P.dead) return; let el = $('inv'); if (!el) { el = document.createElement('div'); el.id = 'inv'; el.style.cssText = 'position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(560px,94vw);max-height:84vh;overflow:auto;background:rgba(8,14,20,.95);border:1px solid rgba(255,255,255,.18);border-radius:10px;padding:16px 18px;font:14px Georgia,serif;color:#e8e0cc;z-index:35;pointer-events:auto'; document.body.appendChild(el);
+    const st = document.createElement('style'); st.textContent = '#inv h3{font:bold 12px ui-monospace,monospace;letter-spacing:.12em;color:#9fb4c0;margin:14px 0 6px} #inv .chips{display:flex;flex-wrap:wrap;gap:6px} #inv .chip{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:7px;padding:5px 9px;font-size:13px} #inv .chip b{color:#ffd88a;font-weight:normal;margin-left:6px} #inv button.on{background:#2c6a8a;color:#fff;border-color:#6ab8e0} #inv .row{display:flex;gap:6px;flex-wrap:wrap} #inv .dim{opacity:.6;font-size:12px}'; document.head.appendChild(st); }
+  G.invOpen = true; clearKeys(); el.style.display = 'block'; invDraw(); try { document.exitPointerLock(); } catch (e) {} }
+function invClose() { const el = $('inv'); if (!G.invOpen) return; G.invOpen = false; if (el) el.style.display = 'none'; if (G.on && !G.paused) lockMouse(); }
+function invDraw() { const el = $('inv'); if (!el || !G.invOpen) return; const o = P.own || {}, a = P.ammo || {}, esc = t => String(t).replace(/[<>&]/g, ''), chip = (n, v) => `<span class="chip">${esc(n)}${v != null ? `<b>${esc(v)}</b>` : ''}</span>`, cap = s => s[0].toUpperCase() + s.slice(1);
+  const so = o.suitOwn || 0, sw = o.suit || 0; let h = `<div style="display:flex;justify-content:space-between;align-items:baseline"><div style="font-size:19px">Inventory</div><div class="dim">${money(G.cash)} crew cash</div></div>`;
+  h += `<h3>DIVE SUIT</h3>` + (so ? `<div class="row">${[0, 1, 2].filter(i => i <= so).map(i => `<button data-suit="${i}" class="${i === sw ? 'on' : ''}">${i ? SUIT[i].n : 'No suit'}</button>`).join('')}</div><div class="dim" style="margin-top:5px">${sw ? `Wearing the ${SUIT[sw].n.toLowerCase()}: ${SUIT[sw].max} m, ${Math.round(SUIT[sw].air / 60)} min of air.` : 'Not wearing a suit. You can only hold your breath underwater.'}${P.sw ? ' Get out of the water to change.' : ''}</div>` : `<div class="dim">No dive gear yet. The harbour shed sells scuba gear.</div>`);
+  const g = []; if (o.rod) g.push(chip(['', 'Fishing rod', 'Carbon rod', 'Deep-sea rod'][o.rod])); if (o.glock) g.push(chip(o.glock === 2 ? 'Magnum revolver' : 'Glock', `${a.gm || 0}+${a.g || 0}`)); if (o.sg) g.push(chip(o.sg === 2 ? 'Hunting rifle' : 'Pump shotgun', `${a.sm || 0}+${a.s || 0}`));
+  if (o.bino) g.push(chip('Binoculars')); if (o.scoot) g.push(chip('Dive scooter')); if (o.kits) g.push(chip('Repair kits', o.kits)); if (o.jerry) g.push(chip('Jerrycans', o.jerry)); if (o.chum) g.push(chip('Chum buckets', o.chum)); if (o.fw) g.push(chip('Fireworks', o.fw)); g.push(chip('Flares', P.flares || 0)); g.push(chip('Torch battery', Math.round((P.bat || 0) * 100) + '%'));
+  h += `<h3>GEAR</h3><div class="chips">${g.join('')}</div>`;
+  const sk = P.sack || [], sv = sk.reduce((t, k) => t + (VALUE[k] || 0), 0); h += `<h3>SACK · ${sackUsed(sk)}/${sackCap(P)} SLOTS${sv ? ' · ' + money(sv) : ''}</h3>` + (sk.length ? `<div class="chips">${sk.map(k => chip(cap(NAMES[k] || k), VALUE[k] ? money(VALUE[k]) : null)).join('')}</div><div class="row" style="margin-top:8px"><button id="invDrop">Drop the last item (X)</button>${P.ob ? '<button id="invStow">Stow in the hold</button>' : ''}</div>` : '<div class="dim">Empty.</div>');
+  const cl = P.cooler || []; h += `<h3>COOLER · ${cl.length} FISH${cl.length ? ' · ' + money(coolerVal(cl)) : ''}</h3>` + (cl.length ? `<div class="chips">${Object.entries(cl.reduce((m, e) => (m[e[0]] = (m[e[0]] || 0) + 1, m), {})).map(([f, n]) => chip(cap((FISH[f] || {}).n || f), 'x' + n)).join('')}</div>` : '<div class="dim">No fish.</div>');
+  h += `<h3>BOAT HOLD · ${sackUsed(B.hold)}/${holdMax()} · ${money(holdValue())}</h3>` + (B.hold.length ? `<div class="chips">${Object.entries(B.hold.reduce((m, k) => (m[k] = (m[k] || 0) + 1, m), {})).map(([k, n]) => chip(cap(NAMES[k] || k), 'x' + n)).join('')}</div>` : '<div class="dim">Empty.</div>');
+  h += `<button id="invX" style="width:100%;margin-top:14px">Close (I or Esc)</button>`; el.innerHTML = h;
+  el.querySelectorAll('[data-suit]').forEach(b => b.onclick = () => wearSuit(+b.dataset.suit)); const d = $('invDrop'); if (d) d.onclick = () => { act({a: 'drop'}); setTimeout(invDraw, 120); };
+  const sw2 = $('invStow'); if (sw2) sw2.onclick = () => { act({a: 'stow'}); setTimeout(invDraw, 150); }; $('invX').onclick = invClose; }
+addEventListener('keydown', e => { if (e.target && /^(INPUT|TEXTAREA)$/.test(e.target.tagName)) return; if (!G.on || G.paused || !P || e.repeat) return;
+  if (G.invOpen) { if (e.code === 'Escape' || e.code === 'KeyI') { e.stopImmediatePropagation(); invClose(); } return; }
+  if (e.code === 'KeyI' && !anyPanel() && !G.map && !P.dead) { e.stopImmediatePropagation(); invOpen(); } }, {capture: true});
+if (TEST) window.__S = {wearSuit, invOpen, invClose, bridgeHop, LTK, lootTick, ftOpen, dockList, EMOTES, emoteStart, chatSend, chatOpen, SKY, psSit, skyStep, BW, BFL, INTER, get stepPlayer() { return stepPlayer; }, closeCasino, BOAT_: () => BOAT, BSPOT, FX, BHELM, bL2W, openCasino, AURAS, applyAll, launchFw, FWK, get ALL() { return ALL; }, get BOAT() { return BOAT; }, CN, CRZ, STS, GUL, DSITES, stepSteward, HULLS, SUNK, BG, BDECK, buildBoat, seaBed, render, levPose, LEV, MJ, TODd: () => SUNDIR, TOD, F, FISH, GEAR, equip, toolDown, toolUp, gotGear, pickFish, hostShoot, G, PL, M, B, K, SET, VALVES, ITEMS, HIDES, BLD, SPOTS, NG, SURF, POIS, DIGS, ISLES, Net, get P() { return P; }, startGame, step, hostStep, hostAct, act, targets, toggleHide, cam, scene, RND, noise, downPlayer, floorAt, navPath, applyEv, boatPose, landH, openShop, set eDown(v) { eDown = v; }, crewList, hostStart, joinRoom};
