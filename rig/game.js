@@ -29,7 +29,7 @@ const hexS = c => '#' + c.toString(16).padStart(6, '0');
 
 // ---------------- net (jjfanwars relay)
 const RELAY_URL = 'wss://jjfanwars-relay.businessautomationvic.workers.dev';
-const GAME_V = 81;
+const GAME_V = 82;
 const Net = {
   tag: '[Rig]', role: 'solo', ws: null, peers: new Map(), code: '', relayT: {pose: 1}, id: '', name: '', handlers: {}, retry: 0, started: false,
   enc: new TextEncoder(), dec: new TextDecoder(),
@@ -9892,35 +9892,149 @@ function rayPt(o, d, x, y, z) { const l = Math.hypot(d[0], d[1], d[2]) || 1, ux 
 { const f0 = packSnap; packSnap = function () { const s = f0.apply(this, arguments); if (HB.l.length) s.hb = HB.l.map(c => [c.id, +c.lx.toFixed(2), +c.lz.toFixed(2), c.st, +c.yaw.toFixed(2), +c.t.toFixed(2)]); if (SNJ.c) { const c = SNJ.c; s.sj = [+c.x.toFixed(2), +c.y.toFixed(2), +c.z.toFixed(2), +c.yaw.toFixed(2), c.st]; } return s; }; }
 { const f0 = applySnap; applySnap = function (s) { const r = f0.apply(this, arguments); HB.snap = Array.isArray(s.hb) ? s.hb : []; SNJ.snap = Array.isArray(s.sj) ? s.sj : null; return r; }; }
 { const f0 = startGame; startGame = function () { HB.l = []; HB.snap = null; HB.pend = 0; SNJ.c = null; SNJ.snap = null; return f0.apply(this, arguments); }; }
-// ---- client: models
-function hbMesh() { const g = new THREE.Group(), f = hzFig({h: 1.7, col: 0x1a2622, skin: 0x5a6a62, thin: .55, arm: 1.45, eye: 0xd0ffb8}); f.rotation.x = .55; f.position.z = .25; g.add(f); g.userData.f = f;
-  const wd = ieM({color: 0x14301c, roughness: 1}); for (let i = 0; i < 6; i++) ieAdd(f, new THREE.CylinderGeometry(.012, .008, .5 + i * .05, 3), wd, (i - 2.5) * .07, 1.25, .1).rotation.z = (i - 2.5) * .2; return g; }
-function sjMesh() { const g = new THREE.Group(), sk = ieM({color: 0x2c3438, roughness: .4}), bl = ieM({color: 0x8a908a, roughness: .5}), dk = new THREE.MeshBasicMaterial({color: 0x050202}), tm = ieM({color: 0xe0d8c8, roughness: .2});
-  const pts = []; for (let i = 0; i <= 14; i++) { const u = i / 14; pts.push(new THREE.Vector2(Math.max(.02, Math.sin(Math.pow(u, .7) * PI) * .75 * (1 - u * .35)), u * 6.5 - 3.25)); }
-  const body = new THREE.Mesh(new THREE.LatheGeometry(pts, 14), sk); body.rotation.x = -PI / 2; body.scale.set(1, 1, .8); g.add(body);
-  const belly = new THREE.Mesh(new THREE.LatheGeometry(pts.map(v => new THREE.Vector2(v.x * .96, v.y)), 14, PI * .6, PI * .8), bl); belly.rotation.x = -PI / 2; belly.scale.set(1, 1, .8); belly.position.y = -.04; g.add(belly);
-  const fin = new THREE.Mesh(new THREE.ConeGeometry(.5, 1.5, 3), sk); fin.scale.set(.18, 1, 1); fin.position.set(0, 1.15, .3); fin.rotation.x = -.35; g.add(fin); g.userData.fin = fin;
-  const tail = new THREE.Group(); tail.position.z = 3.1; g.add(tail); const t1 = new THREE.Mesh(new THREE.ConeGeometry(.45, 1.6, 3), sk); t1.scale.set(.15, 1, 1); t1.position.set(0, .6, .6); t1.rotation.x = .9; tail.add(t1); const t2 = t1.clone(); t2.position.y = -.5; t2.rotation.x = 2.3; tail.add(t2); g.userData.tail = tail;
-  const jaw = new THREE.Group(); jaw.position.set(0, -.2, -2.4); g.add(jaw); const jm = new THREE.Mesh(new THREE.SphereGeometry(.5, 10, 6), sk); jm.scale.set(1.1, .3, 1.6); jm.position.z = -.4; jaw.add(jm); g.userData.jaw = jaw;
-  const mo = new THREE.Mesh(new THREE.SphereGeometry(.42, 10, 6), dk); mo.scale.set(1.1, .45, 1.2); mo.position.set(0, -.2, -2.8); g.add(mo);
-  for (let i = 0; i < 16; i++) { const a = -1.2 + i / 15 * 2.4, t = new THREE.Mesh(new THREE.ConeGeometry(.03, .28, 4), tm); t.rotation.x = PI; t.position.set(Math.sin(a) * .46, -.08, -2.75 - Math.cos(a) * .55); g.add(t); }
-  for (const s of [-1, 1]) { const e = new THREE.Mesh(new THREE.SphereGeometry(.07, 8, 6), new THREE.MeshBasicMaterial({color: 0xf0f8e0})); e.position.set(s * .42, .12, -2.5); g.add(e); const pf = new THREE.Mesh(new THREE.ConeGeometry(.35, 1.3, 3), sk); pf.scale.set(.15, 1, 1); pf.rotation.set(0, 0, s * 1.9); pf.position.set(s * .8, -.25, -1.1); g.add(pf); }
-  g.traverse(o => o.castShadow = true); scene.add(g); g.visible = false; return g; }
+// ---- client: models. Shared materials, made once.
+const MN2 = {};
+function mn2Mats() { if (MN2.skin) return MN2;
+  const sk = tex(cv(256, 256, (g, w, h) => { g.fillStyle = '#b4b8ac'; g.fillRect(0, 0, w, h);
+    for (let i = 0; i < 300; i++) { g.fillStyle = `rgba(${90 + Math.random() * 50 | 0},${100 + Math.random() * 40 | 0},${96 + Math.random() * 30 | 0},${.06 + Math.random() * .14})`; g.beginPath(); g.arc(Math.random() * w, Math.random() * h, 4 + Math.random() * 24, 0, TAU); g.fill(); }
+    g.lineWidth = 1.2; for (let i = 0; i < 70; i++) { let x = Math.random() * w, y = Math.random() * h; g.strokeStyle = Math.random() < .6 ? `rgba(40,60,90,.35)` : `rgba(${90 + Math.random() * 50 | 0},20,34,.4)`; g.beginPath(); g.moveTo(x, y); for (let k = 0; k < 8; k++) { x += (Math.random() - .5) * 22; y += Math.random() * 16; g.lineTo(x, y); } g.stroke(); }
+    noiseFill(g, w, h, 30); }), 2);
+  MN2.skin = new THREE.MeshStandardMaterial({map: sk, bumpMap: sk, bumpScale: .5, color: 0xc4c8bc, roughness: .28, metalness: 0});
+  MN2.lskin = new THREE.MeshStandardMaterial({map: sk, color: 0x8a8e84, roughness: .4});
+  MN2.hair = new THREE.MeshStandardMaterial({color: 0x040405, roughness: .55, side: THREE.DoubleSide}); // wet, glossy, sickly
+  MN2.bone = new THREE.MeshStandardMaterial({color: 0xd8ccb0, roughness: .25});
+  MN2.gum = new THREE.MeshStandardMaterial({color: 0x080102, roughness: .3});
+  MN2.hole = new THREE.MeshBasicMaterial({color: 0x020101});
+  MN2.eye = new THREE.MeshBasicMaterial({color: new THREE.Color().setRGB(.85, 1, .7)});
+  MN2.weed = new THREE.MeshStandardMaterial({color: 0x0e1a0c, roughness: 1, side: THREE.DoubleSide});
+  const jt = tex(cv(256, 128, (g, w, h) => { g.fillStyle = '#26303a'; g.fillRect(0, 0, w, h); g.fillStyle = '#6e7a78'; g.fillRect(0, h * .62, w, h); // dark back, pale belly, scars and spots
+    for (let i = 0; i < 260; i++) { g.fillStyle = `rgba(${Math.random() < .5 ? '8,10,14' : '120,130,128'},${.2 + Math.random() * .35})`; g.beginPath(); g.arc(Math.random() * w, Math.random() * h * .65, 1 + Math.random() * 4, 0, TAU); g.fill(); }
+    g.strokeStyle = 'rgba(190,180,170,.55)'; g.lineWidth = 1.5; for (let i = 0; i < 18; i++) { const x = Math.random() * w, y = Math.random() * h * .6; g.beginPath(); g.moveTo(x, y); g.lineTo(x + 10 + Math.random() * 25, y + (Math.random() - .5) * 8); g.stroke(); }
+    noiseFill(g, w, h, 22); }), 1);
+  MN2.jskin = new THREE.MeshStandardMaterial({map: jt, bumpMap: jt, bumpScale: 2, roughness: .3, metalness: .1});
+  MN2.glow = new THREE.MeshBasicMaterial({color: 0xff3018, transparent: true, opacity: .32, blending: THREE.AdditiveBlending, depthWrite: false});
+  MN2.limb = (() => { const g = new THREE.CylinderGeometry(.6, 1, 1, 7, 3); g.translate(0, .5, 0); return g; })(); // unit length, radius scaled per bone
+  return MN2; }
+const _bu = new THREE.Vector3(0, 1, 0), _bd = new THREE.Vector3(), _bk = new THREE.Vector3(), _bn = new THREE.Vector3();
+function mn2Bone(m, a, b) { _bd.subVectors(b, a); const l = _bd.length() || 1e-3; m.position.copy(a); m.quaternion.setFromUnitVectors(_bu, _bd.multiplyScalar(1 / l)); m.scale.y = l; }
+// two-bone IK: root A, foot F, lengths, a bend hint; returns the knee in K
+function mn2IK(A, F, l1, l2, H, K) { _bd.subVectors(F, A); let d = _bd.length(); d = Math.min(Math.max(d, 1e-3), l1 + l2 - 1e-3); _bd.normalize(); const a = (l1 * l1 - l2 * l2 + d * d) / (2 * d), h = Math.sqrt(Math.max(0, l1 * l1 - a * a));
+  _bn.copy(H).addScaledVector(_bd, -H.dot(_bd)).normalize(); K.copy(A).addScaledVector(_bd, a).addScaledVector(_bn, h); return K; }
+// the Hullcrawler: a drowned person gone wrong, on all fours. Too-long arms with the elbows up past its back, knees up like a spider's, every rib and vertebra showing,
+// black wet hair hanging off a bowed head to the deck, two pin-point eyes in the hair, and a lower jaw that unhinges down to its chest on a mouth of needles
+function hbMesh() { const M = mn2Mats(), g = new THREE.Group(), U = g.userData, add = (geo, m, p, x, y, z) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.castShadow = true; p.add(o); return o; };
+  const body = new THREE.Group(); body.position.set(0, .5, 0); g.add(body); U.body = body;
+  // torso along -z (chest forward): broad shoulders, a pinched waist, a narrow pelvis
+  const prof = [[.02, -.4], [.12, -.37], [.16, -.28], [.165, -.12], [.14, 0], [.1, .12], [.095, .2], [.11, .3], [.08, .38], [.02, .42]].map(([r, y]) => new THREE.Vector2(r, y));
+  const tg = new THREE.LatheGeometry(prof, 16); tg.rotateX(PI / 2); tg.scale(1.15, .72, 1); add(tg, M.skin, body, 0, 0, 0);
+  for (let i = 0; i < 6; i++) { const rb = add(new THREE.TorusGeometry(.15 - i * .008, .011, 4, 16, PI), M.skin, body, 0, -.004, -.3 + i * .06); rb.scale.set(1.15, .72, 1); rb.rotation.z = PI; }
+  for (let i = 0; i < 12; i++) { const v = add(new THREE.SphereGeometry(.022, 6, 4), M.skin, body, 0, .108 - Math.abs(i - 4) * .004, -.36 + i * .065); v.scale.set(1.2, .8, 1); }
+  for (const s of [-1, 1]) { const sb = add(new THREE.SphereGeometry(.07, 8, 6), M.skin, body, s * .1, .07, -.24); sb.scale.set(1, .45, 1.4); sb.rotation.z = s * .3; }
+  // neck bowed down and forward, the head hanging
+  const neck = new THREE.Group(); neck.position.set(0, .05, -.38); body.add(neck); U.neck = neck; const ng = new THREE.CylinderGeometry(.045, .06, .2, 8); ng.rotateX(PI / 2 - .25); ng.translate(0, -.02, -.09); add(ng, M.skin, neck, 0, 0, 0);
+  const head = new THREE.Group(); head.position.set(0, -.04, -.2); neck.add(head); U.head = head;
+  const cr = add(new THREE.SphereGeometry(.105, 16, 12), M.skin, head, 0, .02, 0); cr.scale.set(.88, .95, 1.1);
+  const fc = add(new THREE.SphereGeometry(.08, 12, 10), M.skin, head, 0, -.04, -.07); fc.scale.set(.85, 1.1, .7); // cheekbones and face
+  for (const s of [-1, 1]) { add(new THREE.SphereGeometry(.02, 8, 6), M.hole, head, s * .034, -.012, -.108).scale.set(1.1, .55, .4); const e = add(new THREE.SphereGeometry(.0045, 6, 4), M.eye, head, s * .034, -.014, -.113); e.castShadow = false; } // deep slits, a pin of light in each
+  const jaw = new THREE.Group(); jaw.position.set(0, -.07, -.02); head.add(jaw); U.jaw = jaw; // hinge under the ears; it drops a long way
+  const jm = add(new THREE.SphereGeometry(.06, 10, 8), M.skin, jaw, 0, -.02, -.12); jm.scale.set(.85, .35, 1.6);
+  const gul = add(new THREE.SphereGeometry(.05, 10, 8), M.gum, jaw, 0, .005, -.1); gul.scale.set(.75, .3, 1.4);
+  for (let i = 0; i < 11; i++) { const a = -1.15 + i / 10 * 2.3, t = add(new THREE.ConeGeometry(.0045, .04 + Math.random() * .03, 4), M.bone, jaw, Math.sin(a) * .045, .02, -.1 - Math.cos(a) * .085); t.castShadow = false; }
+  for (let i = 0; i < 11; i++) { const a = -1.15 + i / 10 * 2.3, t = add(new THREE.ConeGeometry(.0045, .035 + Math.random() * .03, 4), M.bone, head, Math.sin(a) * .045, -.085, -.1 - Math.cos(a) * .07); t.rotation.x = PI; t.castShadow = false; }
+  // hair: long wet strands from the crown, hanging straight down past the face (they follow gravity in hbAnim)
+  U.hair = new THREE.Group(); head.add(U.hair); U.hair.position.set(0, .07, .01);
+  for (let i = 0; i < 40; i++) { const fr = i % 2 === 0, a = fr ? (Math.random() - .5) * 2.2 + PI : Math.random() * TAU, rr = fr ? .1 + Math.random() * .025 : .05 + Math.random() * .04, l = fr ? .38 + Math.random() * .3 : .3 + Math.random() * .32, hg = new THREE.PlaneGeometry(.022 + Math.random() * .02, l); hg.translate(0, -l / 2, 0);
+    const hm = add(hg, M.hair, U.hair, Math.sin(a) * rr, 0, Math.cos(a) * rr * (fr ? 1.1 : Math.cos(a) < 0 ? .6 : 1)); hm.rotation.y = -a; hm.rotation.z = (Math.random() - .5) * .15; hm.castShadow = false; }
+  for (let i = 0; i < 5; i++) { const w = add(new THREE.PlaneGeometry(.03, .14 + Math.random() * .18), M.weed, body, (Math.random() - .5) * .22, -.1, -.3 + Math.random() * .6); w.rotation.set(.1, Math.random() * PI, (Math.random() - .5) * .3); w.castShadow = false; }
+  // limbs: bones laid between IK points every frame
+  U.legs = []; const mk = (r) => { const m = new THREE.Mesh(M.limb, M.lskin); m.scale.set(r, 1, r); m.castShadow = true; g.add(m); return m; }, kn = (r) => { const m = new THREE.Mesh(new THREE.SphereGeometry(r, 7, 5), M.lskin); m.castShadow = true; g.add(m); return m; };
+  for (const [s, fr] of [[-1, 1], [1, 1], [-1, 0], [1, 0]]) { const hand = new THREE.Group(); g.add(hand);
+    for (let f = 0; f < (fr ? 4 : 3); f++) { const L = fr ? .17 : .11, fg = new THREE.CylinderGeometry(.005, .01, L, 5); fg.rotateX(-PI / 2); fg.translate(0, .006, -L / 2); const fm = new THREE.Mesh(fg, M.lskin); fm.rotation.y = (f - (fr ? 1.5 : 1)) * .3; hand.add(fm);
+      const c = new THREE.Mesh(new THREE.ConeGeometry(.005, .05, 4), M.bone); c.rotation.x = -PI / 2 - .9; c.position.set(-Math.sin(fm.rotation.y) * L, -.005, -Math.cos(fm.rotation.y) * L); hand.add(c); }
+    U.legs.push({s, fr, a: mk(fr ? .03 : .04), b: mk(fr ? .022 : .028), k: kn(fr ? .028 : .034), hand, l1: fr ? .5 : .46, l2: fr ? .58 : .5,
+      root: new THREE.Vector3(s * (fr ? .16 : .1), .02, fr ? -.26 : .34), home: new THREE.Vector3(s * (fr ? .38 : .36), 0, fr ? -.68 : .56), K: new THREE.Vector3(), F: new THREE.Vector3(), R: new THREE.Vector3(), ph: (fr ? 0 : PI) + (s < 0 ? 0 : PI) }); }
+  U.ph = Math.random() * TAU; U.tw = 0; U.jo = 0; return g; }
+const _hH = new THREE.Vector3();
+// st 1 climbing (u 0..1), 2 hunting, 3 leaping off; sp = ground speed
+function hbAnim(g, st, u, sp, t, dt) { const U = g.userData, run = Math.min(1, sp / 2.5); U.ph += dt * (2 + sp * 3.4);
+  U.body.position.y = .5 + Math.sin(U.ph * 2) * .025 * run; U.body.rotation.z = Math.sin(U.ph) * .08 * run; U.body.rotation.x = .12;
+  // the head twitches: snaps to a new angle, holds it, snaps again
+  if ((U.tw -= dt) <= 0) { U.tw = .08 + Math.random() * (st === 2 ? .7 : 1.4); U.hy = (Math.random() - .5) * .8; U.hz = (Math.random() - .5) * (Math.random() < .3 ? 1.6 : .5); U.hx = -.2 + Math.random() * .5; }
+  const k = Math.min(1, dt * 35); U.head.rotation.y += ((U.hy || 0) - U.head.rotation.y) * k; U.head.rotation.z += ((U.hz || 0) - U.head.rotation.z) * k; U.neck.rotation.x += ((U.hx || 0) - U.neck.rotation.x) * k;
+  U.hair.rotation.set(-U.neck.rotation.x - U.body.rotation.x, 0, -U.head.rotation.z); // hair hangs straight down whatever the head does
+  const want = st === 2 ? (Math.sin(t * 2.3 + U.ph * .1) > .2 ? 1.05 : .35) : st === 1 ? .8 : .15; U.jo += (want - U.jo) * Math.min(1, dt * 6); U.jaw.rotation.x = -U.jo;
+  for (const L of U.legs) { const p = U.ph + L.ph, lift = Math.max(0, Math.sin(p)) * .14 * run;
+    L.F.copy(L.home); L.F.z += Math.cos(p) * .2 * run; L.F.y = lift;
+    if (st === 1 && L.fr) L.F.set(L.s * .35, .9 + Math.sin(t * 7 + L.s) * .1, -.6); // reaching up over the rail
+    L.R.copy(L.root).applyEuler(U.body.rotation).add(U.body.position);
+    _hH.set(L.s * .5, 1, L.fr ? .2 : -.3); mn2IK(L.R, L.F, L.l1, L.l2, _hH, L.K); mn2Bone(L.a, L.R, L.K); mn2Bone(L.b, L.K, L.F); L.k.position.copy(L.K);
+    L.hand.position.copy(L.F); L.hand.rotation.set(0, L.s * (L.fr ? .3 : .5), 0); } }
+// the Snapjaw: a 7 m eel-shark. One smooth body that writhes along its whole length (the tube is bent on the CPU each frame), a long head with a
+// viperfish gape: fangs too long to fit inside the closed mouth, a lower jaw that drops right open, small dead eyes, glowing gill slits and photophores,
+// and a ridge of torn spines (the tallest break the surface while it circles)
+const SJ_NR = 26, SJ_NA = 14, SJ_L = 6.2;
+const sjR = u => (u < .12 ? .52 + u / .12 * .2 : .72 * Math.pow(1 - (u - .12) / .88, .85) + .04);
+function sjMesh() { const M = mn2Mats(), g = new THREE.Group(), U = g.userData, add = (geo, m, p, x, y, z) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.castShadow = true; p.add(o); return o; };
+  if (!MN2.etex) MN2.etex = tex(cv(256, 128, (c, w, h) => { const gr = c.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, '#1a2026'); gr.addColorStop(.55, '#222a30'); gr.addColorStop(.66, '#5c6462'); gr.addColorStop(.86, '#5c6462'); gr.addColorStop(.95, '#1e252b'); c.fillStyle = gr; c.fillRect(0, 0, w, h);
+    for (let i = 0; i < 380; i++) { c.fillStyle = `rgba(${Math.random() < .6 ? '6,8,10' : '90,96,96'},${.2 + Math.random() * .35})`; c.beginPath(); c.arc(Math.random() * w, Math.random() * h, .8 + Math.random() * 3, 0, TAU); c.fill(); }
+    c.strokeStyle = 'rgba(170,160,150,.5)'; c.lineWidth = 1.2; for (let i = 0; i < 22; i++) { const x = Math.random() * w, y = Math.random() * h * .55; c.beginPath(); c.moveTo(x, y); c.lineTo(x + 8 + Math.random() * 30, y + (Math.random() - .5) * 10); c.stroke(); }
+    noiseFill(c, w, h, 18); }), 1);
+  const em = new THREE.MeshStandardMaterial({map: MN2.etex, bumpMap: MN2.etex, bumpScale: 1.5, roughness: .28, metalness: .08});
+  // the body tube
+  const n = SJ_NR * (SJ_NA + 1), pos = new Float32Array(n * 3), uv = new Float32Array(n * 2), idx = [];
+  for (let i = 0; i < SJ_NR; i++) for (let j = 0; j <= SJ_NA; j++) { const k = i * (SJ_NA + 1) + j; uv[k * 2] = i / (SJ_NR - 1) * 3; uv[k * 2 + 1] = j / SJ_NA; }
+  for (let i = 0; i < SJ_NR - 1; i++) for (let j = 0; j < SJ_NA; j++) { const a = i * (SJ_NA + 1) + j, b = a + SJ_NA + 1; idx.push(a, b, a + 1, a + 1, b, b + 1); }
+  const tg = new THREE.BufferGeometry(); tg.setAttribute('position', new THREE.BufferAttribute(pos, 3)); tg.setAttribute('uv', new THREE.BufferAttribute(uv, 2)); tg.setIndex(idx);
+  const tube = new THREE.Mesh(tg, em); tube.castShadow = true; tube.frustumCulled = false; g.add(tube); U.tube = tube; U.sx = new Float32Array(SJ_NR);
+  // spines along the back, positioned on the tube every frame
+  U.sp = []; for (let i = 0; i < 9; i++) { const u = .16 + i * .075, h = (.25 + Math.sin(Math.min(1, i / 5) * PI * .5) * .9) * (1 - i * .07) * (.7 + Math.random() * .5), s = add(new THREE.ConeGeometry(.07, h, 4), em, g, 0, 0, 0); s.geometry.translate(0, h / 2, 0); s.scale.x = .3; s.userData.u = u; s.userData.rx = .5 + Math.random() * .3; U.sp.push(s); }
+  U.fins = []; for (const sd of [-1, 1]) { const f = add(new THREE.ConeGeometry(.28, 1.3, 3), em, g, 0, 0, 0); f.geometry.translate(0, .65, 0); f.scale.x = .12; f.userData.sd = sd; U.fins.push(f); }
+  const tail = new THREE.Group(); g.add(tail); U.tail = tail; for (const s of [-1, 1]) { const tf = add(new THREE.ConeGeometry(.32, 1.4, 3), em, tail, 0, 0, 0); tf.geometry.translate(0, .7, 0); tf.scale.x = .1; tf.rotation.x = s > 0 ? .75 : PI - .75; }
+  // the head (front at -z), joined to the front of the tube
+  const head = new THREE.Group(); g.add(head); U.head = head;
+  const sk = add(new THREE.SphereGeometry(.55, 18, 12), em, head, 0, .1, -.2); sk.scale.set(1.05, .78, 1.6);
+  const sng = new THREE.ConeGeometry(.36, 1.3, 14); sng.rotateX(-PI / 2); const sn = add(sng, em, head, 0, .16, -1.25); sn.scale.set(1, .5, 1); // a long blade of a snout over the mouth
+  const pal = add(new THREE.SphereGeometry(.42, 12, 8, 0, TAU, PI / 2, PI / 2), M.gum, head, 0, -.04, -.6); pal.scale.set(.95, .4, 1.9); pal.rotation.x = PI; // the roof of the mouth
+  const fang = (p, x, y, z, l, up, out) => { const f = add(new THREE.ConeGeometry(.03, l, 5), M.bone, p, x, y, z); f.rotation.set(up ? -.12 : PI + .12, 0, out); f.castShadow = false; f.geometry.translate(0, 0, 0); };
+  const FA = [-.75, -.5, -.22, .22, .5, .75]; FA.forEach((a, i) => fang(head, Math.sin(a) * .34, -.26, -1.15 + Math.abs(a) * .55, .45 + (i % 2) * .15, false, a * .4)); // upper fangs, over the lower lip when closed
+  for (let i = 0; i < 18; i++) { const a = -1.3 + i / 17 * 2.6; fang(head, Math.sin(a) * .36, -.12, -.75 - Math.cos(a) * .42, .1, false, 0); }
+  const jaw = new THREE.Group(); jaw.position.set(0, -.22, .25); head.add(jaw); U.jaw = jaw;
+  const jm = add(new THREE.SphereGeometry(.48, 14, 8, 0, TAU, PI / 2, PI / 2), em, jaw, 0, .06, -.75); jm.scale.set(.92, .55, 1.95);
+  const tng = add(new THREE.SphereGeometry(.3, 12, 8), M.gum, jaw, 0, .02, -.6); tng.scale.set(.75, .15, 1.6);
+  [-.8, -.55, -.3, .3, .55, .8].forEach((a, i) => fang(jaw, Math.sin(a) * .36, .14, -1.38 + Math.abs(a) * .55, .5 + (i % 3) * .14, true, -a * .35)); // lower fangs, the longest
+  for (let i = 0; i < 16; i++) { const a = -1.25 + i / 15 * 2.5; fang(jaw, Math.sin(a) * .38, .06, -.75 - Math.cos(a) * .55, .09, true, 0); }
+  for (const s of [-1, 1]) { const e = add(new THREE.SphereGeometry(.05, 10, 8), M.deye || (M.deye = new THREE.MeshBasicMaterial({color: 0xa8c4c8})), head, s * .42, .26, -.55); e.castShadow = false; // small dead eyes
+    for (let i = 0; i < 4; i++) { const gs = add(new THREE.BoxGeometry(.02, .3, .07), M.glow, head, s * .58, -.02, .2 + i * .12); gs.rotation.z = s * .3; gs.castShadow = false; } // gills
+    for (let i = 0; i < 6; i++) { const ph = add(new THREE.SphereGeometry(.025, 6, 4), M.pho || (M.pho = new THREE.MeshBasicMaterial({color: 0x60e8ff})), jaw, s * (.3 + i * .015), -.12, -1.25 + i * .2); ph.castShadow = false; } } // photophores along the jaw
+  g.visible = false; scene.add(g); return g; }
+function sjAnim(g, st, t, dt) { const U = g.userData, f = st === 2 ? 11 : 4, amp = st === 2 ? .5 : .32, pos = U.tube.geometry.attributes.position.array, sx = U.sx;
+  for (let i = 0; i < SJ_NR; i++) { const u = i / (SJ_NR - 1); sx[i] = Math.sin(t * f - u * 7) * amp * Math.pow(u, 1.3); }
+  const off = sx[0];
+  for (let i = 0; i < SJ_NR; i++) { const u = i / (SJ_NR - 1), r = sjR(u), z = .3 + u * SJ_L, x = sx[i] - off;
+    for (let j = 0; j <= SJ_NA; j++) { const a = j / SJ_NA * TAU, k = (i * (SJ_NA + 1) + j) * 3; pos[k] = x + Math.cos(a) * r; pos[k + 1] = Math.sin(a) * r * .8 - (u < .12 ? .05 : 0); pos[k + 2] = z; } }
+  U.tube.geometry.attributes.position.needsUpdate = true; U.tube.geometry.computeVertexNormals();
+  const sa = u => { const fi = u * (SJ_NR - 1), i = Math.min(SJ_NR - 2, Math.floor(fi)), w = fi - i; return [mix(sx[i], sx[i + 1], w) - off, (sx[i + 1] - sx[i]) * (SJ_NR - 1) / SJ_L]; };
+  for (const s of U.sp) { const u = s.userData.u, [x, sl] = sa(u); s.position.set(x, sjR(u) * .78, .3 + u * SJ_L); s.rotation.set(s.userData.rx, -Math.atan(sl), 0); }
+  for (const fn of U.fins) { const u = .2, [x, sl] = sa(u); fn.position.set(x + fn.userData.sd * sjR(u) * .8, -.2, .3 + u * SJ_L); fn.rotation.set(.9, -Math.atan(sl), fn.userData.sd * 1.9 + Math.sin(t * 3) * .15 * fn.userData.sd); }
+  { const [x, sl] = sa(1); U.tail.position.set(x, 0, .3 + SJ_L); U.tail.rotation.y = -Math.atan(sl) * 1.6; }
+  U.head.rotation.y = Math.atan(sa(.02)[1]) * .5 + Math.sin(t * f) * .04;
+  const o = st === 2 ? .95 : .06 + Math.max(0, Math.sin(t * .8)) * .22; U.jaw.rotation.x += (-o - U.jaw.rotation.x) * Math.min(1, dt * (st === 2 ? 9 : 3)); }
 function mon2Frame(dt) { if (!G.on || !P) return; const t = G.wt;
   // crawlers ride in the boat group
   const S = isHost() ? HB.l.map(c => [c.id, c.lx, c.lz, c.st, c.yaw, c.t]) : (HB.snap || []), seen = new Set();
   for (const s of S) { const [id, lx, lz, st, yaw, ct] = s; seen.add(id); let g = HB.m[id]; if (!BOAT) break; if (!g) { g = HB.m[id] = hbMesh(); BOAT.add(g); g.position.set(lx, BDECK.y, lz); } if (g.parent !== BOAT) BOAT.add(g);
-    const sd = Math.sign(lx) || 1, f = g.userData.f; g.visible = ct > 0 || st !== 1; g.position.x = mix(g.position.x, lx, Math.min(1, dt * 10)); g.position.z = mix(g.position.z, lz, Math.min(1, dt * 10)); g.rotation.y = yaw;
-    if (st === 1) { const u = clamp(ct / 1.6, 0, 1); g.position.x = lx + sd * (1 - u) * .5; g.position.y = BDECK.y - 1.7 * (1 - u); f.rotation.x = .55 + (1 - u) * .9; f.userData.arms.forEach(a => a.rotation.x = -2.6 + u * 1.2); }
-    else if (st === 3) { const u = clamp(ct / 1.1, 0, 1); g.position.x = lx + sd * u * 2.5; g.position.y = BDECK.y + Math.sin(u * PI) * .8 - u * u * 3; f.rotation.x = .55 + u * 1.5; }
-    else { g.position.y = BDECK.y + Math.abs(Math.sin(t * 9 + id)) * .05; f.rotation.x = .55; f.userData.arms.forEach((a, k) => a.rotation.x = -1.4 + Math.sin(t * 9 + k * PI) * .45); f.rotation.z = Math.sin(t * 4.5 + id) * .12; }
-    if (A.on && st === 2 && Math.random() < dt * .5) { const [wx, wz] = bL2W(g.position.x, g.position.z), p = at(wx, BDECK.y + 1, wz, 5); if (Math.random() < .5) burst(500, .5, .12, .35, 'lowpass', p, .8); else tone(110 + Math.random() * 40, .07, .7, 'sawtooth', p, -60); } }
+    const sd = Math.sign(lx) || 1, ox = g.position.x, oz = g.position.z; g.visible = ct > 0 || st !== 1; g.position.x = mix(ox, lx, Math.min(1, dt * 10)); g.position.z = mix(oz, lz, Math.min(1, dt * 10));
+    let dy = yaw - g.rotation.y; dy = Math.atan2(Math.sin(dy), Math.cos(dy)); g.rotation.y += dy * Math.min(1, dt * 8); const sp = Math.hypot(g.position.x - ox, g.position.z - oz) / Math.max(dt, 1e-3);
+    if (st === 1) { const u = clamp(ct / 1.6, 0, 1); g.position.x = lx + sd * (1 - u) * .45; g.position.y = BDECK.y - 1.4 * (1 - u); g.rotation.x = -(1 - u) * 1.2; hbAnim(g, 1, u, 1.5, t, dt); }
+    else if (st === 3) { const u = clamp(ct / 1.1, 0, 1); g.position.x = lx + sd * u * 2.5; g.position.y = BDECK.y + Math.sin(u * PI) * .8 - u * u * 3; g.rotation.x = u * 1.4; hbAnim(g, 3, u, 0, t, dt); }
+    else { g.position.y = BDECK.y; g.rotation.x = 0; hbAnim(g, 2, 1, sp, t, dt); }
+    if (A.on && st === 2 && Math.random() < dt * .6) { const [wx, wz] = bL2W(g.position.x, g.position.z), p = at(wx, BDECK.y + 1, wz, 5), r = Math.random(); if (r < .35) burst(500, .5, .12, .35, 'lowpass', p, .8); else if (r < .7) tone(110 + Math.random() * 40, .07, .7, 'sawtooth', p, -60); else for (let i = 0; i < 5; i++) tone(1800 + Math.random() * 900, .03, .03, 'square', p, -400); } } // wet slaps, a gurgle, teeth clicking
   for (const id in HB.m) if (!seen.has(+id)) { const g = HB.m[id]; if (g.parent) g.parent.remove(g); delete HB.m[id]; }
   // the Snapjaw
   const J = isHost() ? (SNJ.c ? [SNJ.c.x, SNJ.c.y, SNJ.c.z, SNJ.c.yaw, SNJ.c.st] : null) : SNJ.snap; if (!J) { if (SNJ.m) SNJ.m.visible = false; return; }
   const g = SNJ.m || (SNJ.m = sjMesh()); if (!g.visible) { g.position.set(J[0], J[1], J[2]); g.rotation.y = J[3]; g.visible = true; }
-  const k = Math.min(1, dt * 8); g.position.x = mix(g.position.x, J[0], k); g.position.y = mix(g.position.y, J[1] - (J[4] === 1 ? .55 : 0), k); g.position.z = mix(g.position.z, J[2], k);
-  let dy = J[3] - g.rotation.y; dy = Math.atan2(Math.sin(dy), Math.cos(dy)); g.rotation.y += dy * k; g.userData.tail.rotation.y = Math.sin(t * (J[4] === 2 ? 14 : 5)) * .45; g.userData.jaw.rotation.x = J[4] === 2 ? .5 + Math.sin(t * 20) * .1 : .08;
+  const k = Math.min(1, dt * 8); g.position.x = mix(g.position.x, J[0], k); g.position.y = mix(g.position.y, J[1] - (J[4] === 1 ? .75 : 0), k); g.position.z = mix(g.position.z, J[2], k);
+  let dy = J[3] - g.rotation.y; dy = Math.atan2(Math.sin(dy), Math.cos(dy)); g.rotation.y += dy * k; sjAnim(g, J[4], t, dt);
   if (A.on && J[4] === 1 && Math.random() < dt * 1.5) { const p = at(J[0], 0, J[2], 6); burst(900, .8, .08, .3, 'bandpass', p, .5); } }
 { const f0 = hud; hud = function () { const r = f0.apply(this, arguments); try { const now = performance.now(), dt = Math.min(.1, (now - (HB.ft || now)) / 1000); HB.ft = now; mon2Frame(dt); } catch (e) { if (!HB.err2) { HB.err2 = 1; console.warn(e); } } return r; }; }
 // ---- events
