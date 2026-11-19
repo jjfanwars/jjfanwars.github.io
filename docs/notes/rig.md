@@ -123,6 +123,8 @@ Read `CLAUDE.md` first (shared rules). Split out of it on 17 Nov 2026; keep this
   - Crew aboard ride along. Crew within 70 m of the old dock are put aboard (event `ft` with `ids`; each client puts itself aboard and gets a fade plus a toast).
   - Guests: a jump of more than 40 m in `applySnap` also clears the dead-reckoning rates.
 
+- **Bridge hop (big ships):** on hulls 30 m and longer whose wheel is 6 m or more from the boarding spot (or up on a bridge, `helm.by`), a buildBoat wrapper adds INTER `bridge` points: 'Go to the bridge' beside `boatSpawn(0)` and 'Back down to the deck' beside the wheel. `bridgeHop(up)` moves you with a fade.
+
 ## Next up (the owner's list, 18 Nov 2026; items 7-14 and the loot rework were built the same day, see the paragraphs above)
 1. **Sub visuals underwater and half underwater:** proper looks from inside and outside the research sub when it is dived and when it sits at the waterline (the waterline across the bow viewport, the sea surface seen from below, underwater fog and tint through the windows, the hull half in and half out of the water, bubbles and wake when diving).
 2. **Persisting loot and fast travel:** loot that stays where it was (taken items stay taken, a persistent world seed with slow restocks) and fast travel between ports (home, Northwatch, piers).
