@@ -29,7 +29,7 @@ const hexS = c => '#' + c.toString(16).padStart(6, '0');
 
 // ---------------- net (jjfanwars relay)
 const RELAY_URL = 'wss://jjfanwars-relay.businessautomationvic.workers.dev';
-const GAME_V = 80;
+const GAME_V = 81;
 const Net = {
   tag: '[Rig]', role: 'solo', ws: null, peers: new Map(), code: '', relayT: {pose: 1}, id: '', name: '', handlers: {}, retry: 0, started: false,
   enc: new TextEncoder(), dec: new TextDecoder(),
@@ -9205,15 +9205,17 @@ if (TEST) window.__S = {becomeHost, casBanner, casHudFrame, CAS, dockForMe, call
 const IC = {list: [], m: [], snap: null};
 const IC_K = ['pale', 'crawl', 'drowned'];
 function icBuild() { IC.list = []; IC.m.forEach(g => g && scene.remove(g)); IC.m = []; const rng = mulberry(((G.seed || 1) ^ 0x2c1e) >>> 0), has = new Set(IE.list.map(e => e.I));
-  ISLES.forEach(I => { if (I.bar || has.has(I) || I.r < 12 || Math.hypot(I.x - HOME.x, I.z - HOME.z) < 300) return; const t = IC_K[Math.floor(rng() * 3)];
+  ISLES.forEach(I => { if (I.bar || has.has(I) || I.r < 12 || Math.hypot(I.x - HOME.x, I.z - HOME.z) < 140) return; const t = IC_K[Math.floor(rng() * 3)];
     const spot = d => { for (let k = 0; k < 30; k++) { const a = rng() * TAU, r = I.r * d * (.6 + rng() * .5), x = I.x + Math.sin(a) * r, z = I.z + Math.cos(a) * r, h = landH(x, z); if (t === 'drowned' ? h > -1.2 && h < .4 : h > 1.2) return [x, z]; } return null; };
     const n = t === 'drowned' ? 3 : 1; for (let i = 0; i < n; i++) { const s = spot(t === 'drowned' ? 1 : .45); if (!s) continue;
-      IC.list.push({t, I, hx: s[0], hz: s[1], x: s[0], z: s[1], st: t === 'pale' ? 1 : 0, hp: t === 'pale' ? 60 : t === 'crawl' ? 40 : 20, cd: 0, ht: 0, yaw: rng() * TAU, i: IC.list.length}); } }); }
+      IC.list.push({t, I, hx: s[0], hz: s[1], x: s[0], z: s[1], st: t === 'pale' ? 1 : 0, hp: t === 'pale' ? 60 : t === 'crawl' ? 40 : 20, cd: 0, ht: 0, yaw: rng() * TAU, i: IC.list.length}); } });
+  // the home beach: the Drowned wade up toward the lighthouse on some nights (IC.hn, rolled at dusk by the host)
+  const HI = {x: HOME.x, z: HOME.z, r: 34}; for (let i = 0, k = 0; i < 4 && k < 80; k++) { const a = rng() * TAU, r = 26 + rng() * 10, x = HOME.x + Math.sin(a) * r, z = HOME.z + Math.cos(a) * r, h = landH(x, z); if (h > -1.2 && h < .3 && Math.hypot(x - JETTY.x, z - JETTY.z) > 8) { IC.list.push({t: 'drowned', I: HI, home: 1, hx: x, hz: z, x, z, st: 0, hp: 20, cd: 0, ht: 0, yaw: rng() * TAU, i: IC.list.length}); i++; } } }
 { const f0 = ieBuild; ieBuild = function () { const r = f0.apply(this, arguments); try { icBuild(); } catch (e) { console.warn('icBuild', e); } return r; }; }
 const icNight = () => shpNight(G.tod || 0) > .3 || (G.storm || 0) > .65;
 // st: 0 hidden/asleep, 1 standing (pale) or idle, 2 hunting, 3 fleeing home, 4 dead
-function icStep(dt) { const night = icNight(), crew = alive().filter(p => !p.ob && !p.sw && !p.seat);
-  for (const c of IC.list) { const I = c.I, on = crew.filter(p => Math.hypot(p.x - I.x, p.z - I.z) < I.r * 1.15 + 6); c.cd = Math.max(0, c.cd - dt);
+function icStep(dt) { const night0 = icNight(); if (night0 && !IC.wasN) IC.hn = CR() < .45; IC.wasN = night0; const crew = alive().filter(p => !p.ob && !p.sw && !p.seat);
+  for (const c of IC.list) { const night = night0 && (!c.home || IC.hn), I = c.I, on = crew.filter(p => Math.hypot(p.x - I.x, p.z - I.z) < I.r * 1.15 + 6); c.cd = Math.max(0, c.cd - dt);
     if (c.st === 4) { c.ht += dt; if (c.ht > 240 && !on.length) { c.st = c.t === 'pale' ? 1 : 0; c.hp = c.t === 'pale' ? 60 : c.t === 'crawl' ? 40 : 20; c.x = c.hx; c.z = c.hz; } continue; }
     let tgt = null, bd = 1e9; for (const p of on) { const d = Math.hypot(p.x - c.x, p.z - c.z); if (d < bd) { bd = d; tgt = p; } }
     const flare = G.flares.some(f => f.t > 0 && Math.hypot(f.x - c.x, f.z - c.z) < 9), home = () => { const dx = c.hx - c.x, dz = c.hz - c.z, d = Math.hypot(dx, dz); if (d < .5) return true; const v = Math.min(d, (c.t === 'crawl' ? 6 : 3) * dt); c.x += dx / d * v; c.z += dz / d * v; c.yaw = Math.atan2(dx, dz); return false; };
@@ -9267,7 +9269,7 @@ function icFrame(dt) { if (!G.on || !P || !IC.list.length) return; const S = isH
 const IC_N = {pale: 'the Pale Thing', crawl: 'a Crawler', drowned: 'the Drowned'};
 function icEvent(e) { const c = IC.list[e.i]; if (!c || !P) return; const near = Math.hypot(c.x - P.x, c.z - P.z) < 70 || (IC.snap && IC.snap[e.i] && Math.hypot(IC.snap[e.i][0] - P.x, IC.snap[e.i][1] - P.z) < 70);
   if (e.s === 'wake' && near) { if (c.t === 'crawl') { Snd.shriek && Snd.shriek(null); G.shake = Math.max(G.shake || 0, .6); showMsg('Something bursts out of the ground. RUN. A flare will stop it.', '', 4); }
-    else if (c.t === 'drowned') { Snd.bubbles && Snd.bubbles(); showMsg('Figures are wading out of the shallows toward you.', '', 4); }
+    else if (c.t === 'drowned') { if (c.home && (IC.hwT || 0) > performance.now()) return; if (c.home) IC.hwT = performance.now() + 20000; Snd.bubbles && Snd.bubbles(); showMsg(c.home ? 'The Drowned are wading up the home beach toward the lighthouse.' : 'Figures are wading out of the shallows toward you.', '', 4); }
     else { hzSting(1); showMsg('Something pale on the island. Do not look away from it.', '', 5); } }
   else if (e.s === 'flee' && near) showMsg(c.t === 'pale' ? 'It shrinks from the light.' : c.t === 'crawl' ? 'It shrieks and scuttles back to its hole.' : 'They back away.', '', 2.5);
   else if (e.s === 'die' && near) { showMsg(e.by === myId() ? `You put down ${IC_N[c.t]}.` : `${IC_N[c.t]} is down.`, '', 3); Snd.shriek && Snd.shriek(null); }
@@ -9837,3 +9839,104 @@ function uw2Frame(dt) { if (!G.on || !P) return; const und = (G.uw || 0) > .5 &&
   const mon = bed < -12 && bed > -90 && day > .2; M.manta.visible = mon; if (mon) { const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), sv = new THREE.Vector3(); for (let k = 0; k < 2; k++) { const R = 26 + k * 14, a = t * (.05 + k * .015) + k * 3, cx = Math.floor(cp.x / 200) * 200 + 100, cz = Math.floor(cp.z / 200) * 200 + 100, x = cx + Math.cos(a) * R, z = cz + Math.sin(a) * R, y = Math.max(seaBed(x, z) + 5 + k * 3, cw - 25);
       e.set(Math.sin(t * .3 + k) * .08, PI - a, Math.sin(t * .5 + k) * .12, 'YXZ'); q.setFromEuler(e); sv.setScalar(1.1 + k * .25); m4.compose(new THREE.Vector3(x, y, z), q, sv); M.manta.setMatrixAt(k, m4); } M.manta.count = 2; M.manta.instanceMatrix.needsUpdate = true; } }
 { const f0 = hud; hud = function () { const r = f0.apply(this, arguments); try { const now = performance.now(), dt = Math.min(.1, (now - (UW2.ft || now)) / 1000); UW2.ft = now; uw2Frame(dt); } catch (e) { if (!UW2.err) { UW2.err = 1; console.warn('uw2', e); } } return r; }; }
+
+// ===== monsters where you spend your time:
+// Hullcrawlers climb over your own boat's rail at night out at sea (anywhere past the home waters) and hunt whoever is on deck; bullets, a flare or a hard turn of speed throws them off.
+// The Snapjaw hunts swimmers in any open water, day or night: a fin circles closer and closer, then it lunges. Two bites and you are gone. Get out of the water or shoot it.
+// On some nights the Drowned wade up the home beach toward the lighthouse (see icBuild/icStep).
+const HB = {l: [], cd: 150, pend: 0, m: [], snap: null, n: 0}, HB_HP = 30;
+const hbOk = () => { const H = HC(); return !!BOAT && !H.sub && !H.air && !BG.sub && !(B.sink > 0) && Math.hypot(B.x - HOME.x, B.z - HOME.z) > 260; };
+const hbClamp = c => { c.lz = clamp(c.lz, BG.zb + 1, BG.zs - .6); const w = Math.max(.4, hullHW(c.lz) - .35); c.lx = clamp(c.lx, -w, w); };
+function hbStep(dt) { const night = icNight(), crew = alive().filter(p => p.ob && p.bl), ok = hbOk();
+  HB.l = HB.l.filter(c => !(c.st === 3 && (c.t += dt) > 1.2) && c.st !== 4);
+  if (!ok || !crew.length) { if (HB.l.length) { HB.l.forEach(c => c.st = 3); } HB.pend = 0; }
+  if (ok && night && crew.length && !HB.l.length && !HB.pend) { HB.cd -= dt * (G.redTide ? 2 : 1); if (HB.cd <= 0) { HB.cd = 140 + CR() * 160; HB.pend = 4.5; emit({k: 'hbw'}); } }
+  if (HB.pend) { HB.pend -= dt; if (HB.pend <= 0) { HB.pend = 0; const n = Math.min(5, 1 + crew.length + (CR() < .4 ? 1 : 0) + (BG.L > 30 ? 1 : 0));
+    for (let i = 0; i < n; i++) { const lz = mix(BG.zb + 2, BG.zs - 1, CR()), sd = CR() < .5 ? -1 : 1, c = {id: HB.n++, lx: sd * (hullHW(lz) - .3), lz, st: 1, t: -i * .7, hp: HB_HP, yaw: sd > 0 ? -PI / 2 : PI / 2, cd: 0}; HB.l.push(c); } emit({k: 'hbx', s: 'up', n}); } }
+  const fast = Math.abs(B.v || 0) > 9;
+  for (const c of HB.l) { if (c.st === 3) continue; c.t += dt; c.cd = Math.max(0, c.cd - dt);
+    if (c.st === 1) { if (c.t > 1.6) c.st = 2; continue; }
+    const [wx, wz] = bL2W(c.lx, c.lz);
+    if (G.flares.some(f => f.t > 0 && Math.hypot(f.x - wx, f.z - wz) < 7)) { c.st = 3; c.t = 0; emit({k: 'hbx', s: 'flee', id: c.id}); continue; }
+    if (fast && CR() < dt * .22) { c.st = 3; c.t = 0; emit({k: 'hbx', s: 'fling', id: c.id}); continue; }
+    let tgt = null, bd = 1e9; for (const p of crew) { const d = Math.hypot(p.bl[0] - c.lx, p.bl[1] - c.lz); if (d < bd) { bd = d; tgt = p; } }
+    if (!tgt) continue; const dx = tgt.bl[0] - c.lx, dz = tgt.bl[1] - c.lz, d = bd || 1, v = Math.min(d, 3.5 * dt); c.lx += dx / d * v; c.lz += dz / d * v; hbClamp(c); c.yaw = Math.atan2(-dx, -dz);
+    if (bd < 1.05 && !c.cd && Math.abs(tgt.y - (BDECK.y + (B.heave || 0))) < 2.4) { downPlayer(tgt, 'hb'); emit({k: 'hbx', s: 'got', id: c.id, p: tgt.id}); c.st = 3; c.t = 0; } } }
+// the Snapjaw: one at a time; exposure builds while a swimmer is in open water
+const SNJ = {c: null, cd: 40, snap: null, m: null};
+function sjStep(dt) { const night = icNight(); let c = SNJ.c; SNJ.cd = Math.max(0, SNJ.cd - dt);
+  const open = p => p.sw && !p.ob && seaBed(p.x, p.z) < -5 && Math.hypot(p.x - HOME.x, p.z - HOME.z) > 110;
+  for (const p of PL.values()) { if (!p.ready) continue; if (!p.dead && !p.down && open(p)) p.sjE = (p.sjE || 0) + dt * (night ? 1.6 : 1) * (G.redTide ? 2 : 1); else p.sjE = Math.max(0, (p.sjE || 0) - dt * 3); }
+  if (!c) { if (SNJ.cd > 0) return; let best = null; for (const p of alive()) if (open(p) && p.sjE > (p.sjT || (p.sjT = 22 + CR() * 30)) && (!best || p.sjE > best.sjE)) best = p; if (!best) return;
+    const a = CR() * TAU; c = SNJ.c = {tgt: best.id, a, r: 28, x: best.x + Math.sin(a) * 28, z: best.z + Math.cos(a) * 28, y: -.55, st: 1, t: 0, hp: 45, yaw: 0, bites: 0}; best.sjT = 0; emit({k: 'sjx', s: 'on', id: best.id}); return; }
+  const p = PL.get(c.tgt), px0 = c.x, pz0 = c.z; c.t += dt;
+  if (c.st !== 3 && (!p || p.dead || !open(p))) { c.st = 3; c.t = 0; }
+  if (c.st === 1) { c.r = Math.max(6.5, c.r - dt * 1.9); c.a += dt * 6.5 / c.r; c.x = p.x + Math.sin(c.a) * c.r; c.z = p.z + Math.cos(c.a) * c.r; c.y = -.55;
+    if (c.t > 11 + (c.bites ? -4 : 0)) { c.st = 2; c.t = 0; emit({k: 'sjx', s: 'lunge', id: p.id}); } }
+  else if (c.st === 2) { const py = -(p.dv || 0) - .3, dx = p.x - c.x, dz = p.z - c.z, dy = py - c.y, d = Math.hypot(dx, dy, dz) || 1, v = Math.min(d, 14 * dt); c.x += dx / d * v; c.z += dz / d * v; c.y += dy / d * v;
+    if (d < 1.7) { c.bites++; if (p.sjB && G.t - p.sjB < 25) { p.dead = true; p.deadT = 0; p.sw = 0; dropCarry(p); p.sjE = 0; emit({k: 'dead', id: p.id, drown: 7}); c.st = 3; c.t = 0; }
+      else { p.sjB = G.t; emit({k: 'sjx', s: 'bite', id: p.id}); c.st = 1; c.t = 0; c.r = 18; c.a += PI; } }
+    else if (c.t > 3) { c.st = 1; c.t = 0; c.r = 16; } }
+  else { c.y -= dt * 1.5; c.x += Math.sin(c.yaw + PI) * dt * 8; c.z += Math.cos(c.yaw + PI) * dt * 8; if (c.t > 6) { SNJ.c = null; SNJ.cd = 50 + CR() * 60; if (p) p.sjE = 0; emit({k: 'sjx', s: 'off'}); return; } }
+  if (c.st !== 3) { const mx = c.x - px0, mz = c.z - pz0; if (Math.hypot(mx, mz) > 1e-4) c.yaw = Math.atan2(-mx, -mz); } }
+{ const f0 = hostStep; hostStep = function (dt) { const r = f0.apply(this, arguments); if (G.on) { try { hbStep(dt); } catch (e) { if (!HB.err) { HB.err = 1; console.warn(e); } } try { sjStep(dt); } catch (e) { if (!SNJ.err) { SNJ.err = 1; console.warn(e); } } } return r; }; }
+// bullets and harpoons: ray against a crawler's column, or the Snapjaw's body
+function rayPt(o, d, x, y, z) { const l = Math.hypot(d[0], d[1], d[2]) || 1, ux = d[0] / l, uy = d[1] / l, uz = d[2] / l, t = (x - o[0]) * ux + (y - o[1]) * uy + (z - o[2]) * uz; if (t <= 0 || t > 80) return null; return {t, px: o[0] + ux * t, py: o[1] + uy * t, pz: o[2] + uz * t}; }
+{ const f0 = hostShoot; hostShoot = function (p, m) { const r = f0.apply(this, arguments); try { const o = m && m.o, d = m && m.d; if (!o || !d || p.down || p.dead) return r; const mul = typeof hsMul === 'function' ? hsMul(m) : 1;
+  for (const c of HB.l) { if (c.st === 3 || c.st === 4 || !BOAT) continue; const [wx, wz] = bL2W(c.lx, c.lz), gy = BDECK.y + (B.heave || 0), q = rayPt(o, d, wx, gy + .7, wz); if (!q) continue;
+    if (Math.hypot(q.px - wx, q.pz - wz) > .5 || q.py < gy - .1 || q.py > gy + 1.6) continue; const head = q.py > gy + 1.25, dm = (m.w === 'g' ? 10 : 7 * (q.t > 20 ? .4 : 1)) * mul * (head ? 2 : 1); c.hp -= dm;
+    emit({k: 'ichit', x: +q.px.toFixed(2), y: +q.py.toFixed(2), z: +q.pz.toFixed(2), head, by: p.id});
+    if (c.hp <= 0) { c.st = 4; const v = Math.round(15 * (D.pay || 1)); G.cash += v; G.earned += v; emit({k: 'hbx', s: 'die', id: c.id, by: p.id, v}); } }
+  const S = SNJ.c; if (S && S.st !== 3) { const q = rayPt(o, d, S.x, S.y, S.z); if (q && Math.hypot(q.px - S.x, q.py - S.y, q.pz - S.z) < 1.3) { S.hp -= (m.w === 'g' ? 10 : 6) * mul; emit({k: 'ichit', x: +q.px.toFixed(2), y: +q.py.toFixed(2), z: +q.pz.toFixed(2), head: false, by: p.id});
+    if (S.hp <= 0) { const v = Math.round(60 * (D.pay || 1)); G.cash += v; G.earned += v; emit({k: 'sjx', s: 'die', by: p.id, v}); SNJ.c = null; SNJ.cd = 240; const t = PL.get(S.tgt); if (t) t.sjE = 0; } else { S.st = 3; S.t = 0; emit({k: 'sjx', s: 'hurt'}); } } } } catch (e) { console.warn(e); } return r; }; }
+{ const f0 = packSnap; packSnap = function () { const s = f0.apply(this, arguments); if (HB.l.length) s.hb = HB.l.map(c => [c.id, +c.lx.toFixed(2), +c.lz.toFixed(2), c.st, +c.yaw.toFixed(2), +c.t.toFixed(2)]); if (SNJ.c) { const c = SNJ.c; s.sj = [+c.x.toFixed(2), +c.y.toFixed(2), +c.z.toFixed(2), +c.yaw.toFixed(2), c.st]; } return s; }; }
+{ const f0 = applySnap; applySnap = function (s) { const r = f0.apply(this, arguments); HB.snap = Array.isArray(s.hb) ? s.hb : []; SNJ.snap = Array.isArray(s.sj) ? s.sj : null; return r; }; }
+{ const f0 = startGame; startGame = function () { HB.l = []; HB.snap = null; HB.pend = 0; SNJ.c = null; SNJ.snap = null; return f0.apply(this, arguments); }; }
+// ---- client: models
+function hbMesh() { const g = new THREE.Group(), f = hzFig({h: 1.7, col: 0x1a2622, skin: 0x5a6a62, thin: .55, arm: 1.45, eye: 0xd0ffb8}); f.rotation.x = .55; f.position.z = .25; g.add(f); g.userData.f = f;
+  const wd = ieM({color: 0x14301c, roughness: 1}); for (let i = 0; i < 6; i++) ieAdd(f, new THREE.CylinderGeometry(.012, .008, .5 + i * .05, 3), wd, (i - 2.5) * .07, 1.25, .1).rotation.z = (i - 2.5) * .2; return g; }
+function sjMesh() { const g = new THREE.Group(), sk = ieM({color: 0x2c3438, roughness: .4}), bl = ieM({color: 0x8a908a, roughness: .5}), dk = new THREE.MeshBasicMaterial({color: 0x050202}), tm = ieM({color: 0xe0d8c8, roughness: .2});
+  const pts = []; for (let i = 0; i <= 14; i++) { const u = i / 14; pts.push(new THREE.Vector2(Math.max(.02, Math.sin(Math.pow(u, .7) * PI) * .75 * (1 - u * .35)), u * 6.5 - 3.25)); }
+  const body = new THREE.Mesh(new THREE.LatheGeometry(pts, 14), sk); body.rotation.x = -PI / 2; body.scale.set(1, 1, .8); g.add(body);
+  const belly = new THREE.Mesh(new THREE.LatheGeometry(pts.map(v => new THREE.Vector2(v.x * .96, v.y)), 14, PI * .6, PI * .8), bl); belly.rotation.x = -PI / 2; belly.scale.set(1, 1, .8); belly.position.y = -.04; g.add(belly);
+  const fin = new THREE.Mesh(new THREE.ConeGeometry(.5, 1.5, 3), sk); fin.scale.set(.18, 1, 1); fin.position.set(0, 1.15, .3); fin.rotation.x = -.35; g.add(fin); g.userData.fin = fin;
+  const tail = new THREE.Group(); tail.position.z = 3.1; g.add(tail); const t1 = new THREE.Mesh(new THREE.ConeGeometry(.45, 1.6, 3), sk); t1.scale.set(.15, 1, 1); t1.position.set(0, .6, .6); t1.rotation.x = .9; tail.add(t1); const t2 = t1.clone(); t2.position.y = -.5; t2.rotation.x = 2.3; tail.add(t2); g.userData.tail = tail;
+  const jaw = new THREE.Group(); jaw.position.set(0, -.2, -2.4); g.add(jaw); const jm = new THREE.Mesh(new THREE.SphereGeometry(.5, 10, 6), sk); jm.scale.set(1.1, .3, 1.6); jm.position.z = -.4; jaw.add(jm); g.userData.jaw = jaw;
+  const mo = new THREE.Mesh(new THREE.SphereGeometry(.42, 10, 6), dk); mo.scale.set(1.1, .45, 1.2); mo.position.set(0, -.2, -2.8); g.add(mo);
+  for (let i = 0; i < 16; i++) { const a = -1.2 + i / 15 * 2.4, t = new THREE.Mesh(new THREE.ConeGeometry(.03, .28, 4), tm); t.rotation.x = PI; t.position.set(Math.sin(a) * .46, -.08, -2.75 - Math.cos(a) * .55); g.add(t); }
+  for (const s of [-1, 1]) { const e = new THREE.Mesh(new THREE.SphereGeometry(.07, 8, 6), new THREE.MeshBasicMaterial({color: 0xf0f8e0})); e.position.set(s * .42, .12, -2.5); g.add(e); const pf = new THREE.Mesh(new THREE.ConeGeometry(.35, 1.3, 3), sk); pf.scale.set(.15, 1, 1); pf.rotation.set(0, 0, s * 1.9); pf.position.set(s * .8, -.25, -1.1); g.add(pf); }
+  g.traverse(o => o.castShadow = true); scene.add(g); g.visible = false; return g; }
+function mon2Frame(dt) { if (!G.on || !P) return; const t = G.wt;
+  // crawlers ride in the boat group
+  const S = isHost() ? HB.l.map(c => [c.id, c.lx, c.lz, c.st, c.yaw, c.t]) : (HB.snap || []), seen = new Set();
+  for (const s of S) { const [id, lx, lz, st, yaw, ct] = s; seen.add(id); let g = HB.m[id]; if (!BOAT) break; if (!g) { g = HB.m[id] = hbMesh(); BOAT.add(g); g.position.set(lx, BDECK.y, lz); } if (g.parent !== BOAT) BOAT.add(g);
+    const sd = Math.sign(lx) || 1, f = g.userData.f; g.visible = ct > 0 || st !== 1; g.position.x = mix(g.position.x, lx, Math.min(1, dt * 10)); g.position.z = mix(g.position.z, lz, Math.min(1, dt * 10)); g.rotation.y = yaw;
+    if (st === 1) { const u = clamp(ct / 1.6, 0, 1); g.position.x = lx + sd * (1 - u) * .5; g.position.y = BDECK.y - 1.7 * (1 - u); f.rotation.x = .55 + (1 - u) * .9; f.userData.arms.forEach(a => a.rotation.x = -2.6 + u * 1.2); }
+    else if (st === 3) { const u = clamp(ct / 1.1, 0, 1); g.position.x = lx + sd * u * 2.5; g.position.y = BDECK.y + Math.sin(u * PI) * .8 - u * u * 3; f.rotation.x = .55 + u * 1.5; }
+    else { g.position.y = BDECK.y + Math.abs(Math.sin(t * 9 + id)) * .05; f.rotation.x = .55; f.userData.arms.forEach((a, k) => a.rotation.x = -1.4 + Math.sin(t * 9 + k * PI) * .45); f.rotation.z = Math.sin(t * 4.5 + id) * .12; }
+    if (A.on && st === 2 && Math.random() < dt * .5) { const [wx, wz] = bL2W(g.position.x, g.position.z), p = at(wx, BDECK.y + 1, wz, 5); if (Math.random() < .5) burst(500, .5, .12, .35, 'lowpass', p, .8); else tone(110 + Math.random() * 40, .07, .7, 'sawtooth', p, -60); } }
+  for (const id in HB.m) if (!seen.has(+id)) { const g = HB.m[id]; if (g.parent) g.parent.remove(g); delete HB.m[id]; }
+  // the Snapjaw
+  const J = isHost() ? (SNJ.c ? [SNJ.c.x, SNJ.c.y, SNJ.c.z, SNJ.c.yaw, SNJ.c.st] : null) : SNJ.snap; if (!J) { if (SNJ.m) SNJ.m.visible = false; return; }
+  const g = SNJ.m || (SNJ.m = sjMesh()); if (!g.visible) { g.position.set(J[0], J[1], J[2]); g.rotation.y = J[3]; g.visible = true; }
+  const k = Math.min(1, dt * 8); g.position.x = mix(g.position.x, J[0], k); g.position.y = mix(g.position.y, J[1] - (J[4] === 1 ? .55 : 0), k); g.position.z = mix(g.position.z, J[2], k);
+  let dy = J[3] - g.rotation.y; dy = Math.atan2(Math.sin(dy), Math.cos(dy)); g.rotation.y += dy * k; g.userData.tail.rotation.y = Math.sin(t * (J[4] === 2 ? 14 : 5)) * .45; g.userData.jaw.rotation.x = J[4] === 2 ? .5 + Math.sin(t * 20) * .1 : .08;
+  if (A.on && J[4] === 1 && Math.random() < dt * 1.5) { const p = at(J[0], 0, J[2], 6); burst(900, .8, .08, .3, 'bandpass', p, .5); } }
+{ const f0 = hud; hud = function () { const r = f0.apply(this, arguments); try { const now = performance.now(), dt = Math.min(.1, (now - (HB.ft || now)) / 1000); HB.ft = now; mon2Frame(dt); } catch (e) { if (!HB.err2) { HB.err2 = 1; console.warn(e); } } return r; }; }
+// ---- events
+{ const f0 = applyEv; applyEv = function (e) { const r = f0.apply(this, arguments), me = myId(); try { const aboard = !!P && P.ob, nearB = !!P && (P.ob || Math.hypot(P.x - B.x, P.z - B.z) < BG.L * .5 + 40);
+  if (e.k === 'hbw' && nearB) { hzSting(.7); showMsg('Wet slapping against the hull. Something is climbing up the side.', '', 4.5); if (A.on) for (let i = 0; i < 7; i++) setTimeout(() => burst(380, .6, .2, .25, 'lowpass', null, .8), i * 520 + Math.random() * 200); }
+  else if (e.k === 'hbx') { if (e.s === 'up' && nearB) { G.shake = Math.max(G.shake || 0, .5); Snd.shriek && Snd.shriek(null); showMsg(e.n > 1 ? `${e.n} things haul themselves over the rail. Shoot them, burn a flare, or open her up and shake them off.` : 'Something hauls itself over the rail. Shoot it, burn a flare, or open her up and shake it off.', 'BOARDERS', 5); }
+    else if (e.s === 'got' && e.p === me) { G.shake = 1.5; Snd.scream && Snd.scream(); showMsg('Cold wet hands drag you down onto the deck.', '', 4); }
+    else if (e.s === 'die' && nearB) showMsg(e.by === me ? `You put a Hullcrawler down. It slides over the side. +${money(e.v)}` : `A Hullcrawler is down. +${money(e.v)}`, '', 3);
+    else if (e.s === 'flee' && nearB) showMsg('It shrieks at the flare and throws itself overboard.', '', 2.5);
+    else if (e.s === 'fling' && nearB) showMsg('One loses its grip and goes over the side.', '', 2.5); }
+  else if (e.k === 'sjx') { const mine = e.id === me;
+    if (e.s === 'on' && mine) { hzSting(.6); showMsg('A fin breaks the surface nearby. It is circling you. Get out of the water.', '', 5); }
+    else if (e.s === 'on' && P && !P.sw) { const p = PL.get(e.id); if (p && Math.hypot(p.x - P.x, p.z - P.z) < 120) showMsg(`A fin is circling ${p.name}.`, '', 4); }
+    else if (e.s === 'lunge' && mine) { Snd.shriek && Snd.shriek(null); showMsg('It is coming straight at you!', '', 2); }
+    else if (e.s === 'bite' && mine) { G.shake = 1.8; $('flash').style.opacity = .7; setTimeout(() => $('flash').style.opacity = 0, 260); Snd.scream && Snd.scream(); Snd.bubbles && Snd.bubbles(); showMsg('Teeth. It tore into you and let go. It will not let go next time.', '', 4.5); }
+    else if (e.s === 'hurt' && P && P.sw) showMsg('It peels away, bleeding.', '', 2.5);
+    else if (e.s === 'die') showMsg(e.by === me ? `You killed the Snapjaw. +${money(e.v)}` : `The Snapjaw is dead. +${money(e.v)}`, '', 4); }
+  else if (e.k === 'dead' && e.drown === 7 && e.id === me) setTimeout(() => showMsg('Its jaws close. The water turns red.', '', 5), 30);
+  } catch (err) { console.warn(err); } return r; }; }
