@@ -29,7 +29,7 @@ const hexS = c => '#' + c.toString(16).padStart(6, '0');
 
 // ---------------- net (jjfanwars relay)
 const RELAY_URL = 'wss://jjfanwars-relay.businessautomationvic.workers.dev';
-const GAME_V = 75;
+const GAME_V = 76;
 const Net = {
   tag: '[Rig]', role: 'solo', ws: null, peers: new Map(), code: '', relayT: {pose: 1}, id: '', name: '', handlers: {}, retry: 0, started: false,
   enc: new TextEncoder(), dec: new TextDecoder(),
@@ -9564,7 +9564,7 @@ HULLS.push({n: 'Kraken nuclear submarine', board: ' ', d: 'An 87 m nuclear attac
 const NUKE = {Z0: -10, Z1: 55, RB: 4.2};
 { const f0 = buildBoat; buildBoat = function () { const r = f0.apply(this, arguments); const H = HC(); if (!H.nuke || !BOAT) return r; try {
   const g = BOAT, U = SUB, CAS = U.CAS, cyB = CAS - .05 - NUKE.RB, {Z0, Z1} = NUKE, M = o => new THREE.MeshStandardMaterial(Object.assign({roughness: .5, metalness: .35}, o)), hm = M({color: 0x16191c}), dk = M({color: 0x0c0d0e, roughness: .8}), red = M({color: 0x5a1410, roughness: .7});
-  const add = (geo, m, x = 0, y = 0, z = 0) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.castShadow = true; o.receiveShadow = true; g.add(o); return o; };
+  const add = (geo, m, x = 0, y = 0, z = 0) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.castShadow = true; o.receiveShadow = true; o.userData.nkHull = 1; g.add(o); return o; };
   const prof = [[.2, -16], [1.5, -15.2], [2.8, -13.8], [3.8, -11.8], [4.2, -9.8], [4.2, 55], [3.6, 61], [2.2, 66.5], [.9, 70], [.2, 71]].map(([rr, z]) => new THREE.Vector2(rr, z)), hull = new THREE.LatheGeometry(prof, 48); hull.rotateX(PI / 2); add(hull, hm, 0, cyB, 0);
   add(new THREE.BoxGeometry(2.7, .05, Z1 - Z0), dk, 0, CAS - .03, (Z0 + Z1) / 2); // the deck strip
   add(new THREE.BoxGeometry(1.4, 4.2, 4.1), hm, 0, CAS + 2.1, -6.45); add(new THREE.BoxGeometry(1.25, .2, 3.9), dk, 0, CAS + 4.3, -6.45); // the sail
@@ -9607,3 +9607,86 @@ function bioFrame(dt) { if (!G.on || !P) return; const cp = cam.position, q = ma
 { const f0 = updateWorldFx; updateWorldFx = function (...a) { const r = f0.apply(this, a); try { bioFrame(a[0] || 0); } catch (e) { if (!BIO.err) { BIO.err = 1; console.warn(e); } } return r; }; }
 // host weather by biome: the Squall Line always storms, the Turquoise Banks never do
 { const f0 = hostStep; hostStep = function (dt) { const r = f0.apply(this, arguments); try { if (G.on && BOAT) { const q = mapRegion(B.x, B.z), w = mapRegion.w; if (q && w > .5 && (q.storm || q.calm)) { const want = !!q.storm; if (G.stormOn !== want) { G.stormOn = want; G.stormT = 90; emit({k: 'storm', on: want}); } } } } catch (e) {} return r; }; }
+
+// ===== the Kraken's own interior, laid out like a real ballistic-missile sub on one long deck (floor SUB.FI, the 4.2 m hull round it):
+// control room (helm and planes, two periscopes, sonar and fire control, chart table, the hatch trunk) -> crew mess and galley -> berthing (triple racks)
+// -> wardroom and captain's stateroom -> missile compartment (16 tubes) -> reactor tunnel (lead-glass windows onto the glowing vessel) -> engine room.
+// The research sub's interior is hidden for this hull and the small sub's shell is clipped away below the casing.
+const NK = {g: null, plane: new THREE.Plane(), mats: [], lamps0: null};
+const NK_Z0 = -12.8, NK_Z1 = 57;
+function nkBuild() { const U = SUB, CAS = U.CAS, FI = U.FI, RB = NUKE.RB, cyB = CAS - .05 - RB, L = [], g = new THREE.Group(); NK.g = g; BOAT.add(g); g.userData.nk = 1;
+  const SI = o => subMat(new THREE.MeshStandardMaterial(Object.assign({name: 'si', roughness: .6, metalness: .2, envMapIntensity: .15}, o))), BS = c => new THREE.MeshBasicMaterial({color: c});
+  const M = {wall: SI({color: 0xb8bcb4, side: THREE.BackSide}), floor: SI({color: 0x3a4044, roughness: .8}), grey: SI({color: 0x7a8288}), dark: SI({color: 0x2a2e32}), steel: SI({color: 0xa8b0b8, metalness: .7, roughness: .3}), blue: SI({color: 0x2a3a6a}), wood: SI({color: 0x6a4a2a}), red: SI({color: 0x8a1a14}), yel: SI({color: 0xc8a020}), green: SI({color: 0x2a5a3a}), white: SI({color: 0xe8e8e2}), cloth: SI({color: 0x1c2c4a, roughness: 1}), bulk: SI({color: 0x9aa0a6}), pipe: SI({color: 0x8a6a3a, metalness: .4}),
+    scrG: BS(0x30ff80), scrR: BS(0xff4030), scrB: BS(0x40a0ff), lamp: BS(0xfff0d0), glow: new THREE.MeshBasicMaterial({color: 0x40c8ff, transparent: true, opacity: .85}), stove: BS(0xff5020), glass: new THREE.MeshStandardMaterial({color: 0x80b0a0, transparent: true, opacity: .3, roughness: .05})};
+  const bx = (m, x0, x1, y0, y1, z0, z1, wall) => { L.push([new THREE.BoxGeometry(Math.abs(x1 - x0), Math.abs(y1 - y0), Math.abs(z1 - z0)).translate((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2), m, false]); if (wall) BW.push({x0: Math.min(x0, x1), x1: Math.max(x0, x1), z0: Math.min(z0, z1), z1: Math.max(z0, z1), y0: y0 - CAS, y1: y1 - CAS, int: 1, nk: 1}); };
+  const cyl = (m, r, x, y0, y1, z, n = 14, wall) => { L.push([new THREE.CylinderGeometry(r, r, y1 - y0, n).translate(x, (y0 + y1) / 2, z), m, false]); if (wall) BW.push({x0: x - r, x1: x + r, z0: z - r, z1: z + r, y0: y0 - CAS, y1: y1 - CAS, int: 1, nk: 1}); };
+  const cz = (m, r, x, y, z0, z1, n = 16) => L.push([new THREE.CylinderGeometry(r, r, z1 - z0, n).rotateX(PI / 2).translate(x, y, (z0 + z1) / 2), m, false]);
+  const F = FI, top = y => cyB + Math.sqrt(Math.max(0, (RB - .15) ** 2 - y * y)); // lining height at |x| = y
+  // shell: lining, floor plates, ceiling run with light strips, end bulkheads, side walls
+  L.push([new THREE.CylinderGeometry(RB - .12, RB - .12, NK_Z1 - NK_Z0, 40, 1, true).rotateX(PI / 2).translate(0, cyB, (NK_Z0 + NK_Z1) / 2), M.wall, false]);
+  bx(M.floor, -3.95, 3.95, F - .12, F, NK_Z0, NK_Z1); for (let z = NK_Z0 + 1; z < NK_Z1; z += 1.2) bx(M.dark, -3.9, 3.9, F + .001, F + .006, z, z + .03);
+  bx(M.grey, -1.6, 1.6, .85, .95, NK_Z0, NK_Z1); for (let z = NK_Z0 + 1.5; z < NK_Z1 - 1; z += 3) bx(M.lamp, -.5, .5, .83, .85, z, z + 1.2);
+  L.push([new THREE.CircleGeometry(RB - .1, 32).rotateY(PI).translate(0, cyB, NK_Z1), SI({color: 0x9aa0a6, side: THREE.DoubleSide}), false]); { const vp = new THREE.Mesh(new THREE.CircleGeometry(RB - .1, 32).translate(0, cyB, NK_Z0), new THREE.MeshStandardMaterial({color: 0x9ac0d0, transparent: true, opacity: .12, roughness: .03, depthWrite: false, side: THREE.DoubleSide})); g.add(vp); for (let a = 0; a < 8; a++) bx(M.steel, Math.cos(a / 8 * TAU) * (RB - .2) - .05, Math.cos(a / 8 * TAU) * (RB - .2) + .05, cyB + Math.sin(a / 8 * TAU) * (RB - .2) - .05, cyB + Math.sin(a / 8 * TAU) * (RB - .2) + .05, NK_Z0, NK_Z0 + .1); } // the bow is a viewport: the helm looks out through it
+  for (const sd of [-1, 1]) BW.push({x0: sd < 0 ? -4.6 : 3.8, x1: sd < 0 ? -3.8 : 4.6, z0: NK_Z0 - .5, z1: NK_Z1 + .5, y0: F - CAS, y1: OHN - CAS, int: 1, nk: 1});
+  BW.push({x0: -4.6, x1: 4.6, z0: NK_Z0 - .6, z1: NK_Z0, y0: F - CAS, y1: OHN - CAS, int: 1, nk: 1}, {x0: -4.6, x1: 4.6, z0: NK_Z1, z1: NK_Z1 + .6, y0: F - CAS, y1: OHN - CAS, int: 1, nk: 1});
+  // pipes and cable runs along the upper hull
+  for (const sd of [-1, 1]) { cz(M.pipe, .07, sd * 2.4, .1, NK_Z0, NK_Z1); cz(M.steel, .05, sd * 2.7, -.3, NK_Z0, NK_Z1); cz(M.red, .04, sd * 1.8, .6, NK_Z0, NK_Z1); }
+  // watertight bulkheads with oval doors, frames and a sign over each
+  const SIGN = {[-2]: 'CREW MESS', 9: 'BERTHING', 20: 'WARDROOM', 25: 'MISSILE COMPT', 40: '☢ REACTOR', 46: 'ENGINE ROOM'};
+  for (const z of [-2, 9, 20, 25, 40, 46]) { for (const sd of [-1, 1]) bx(M.bulk, sd * .62, sd * 3.95, F, 1.0, z - .08, z + .08, 1); bx(M.bulk, -.62, .62, F + 2.05, 1.0, z - .08, z + .08); for (const sd of [-1, 1]) bx(M.yel, sd * .62 - .05, sd * .62 + .05, F, F + 2.05, z - .1, z + .1); bx(M.yel, -.67, .67, F + 2.0, F + 2.1, z - .1, z + .1); bx(M.dark, -.65, .65, F, F + .12, z - .1, z + .1);
+    for (const fz of [z - .13, z + .13]) { const sp = new THREE.Mesh(new THREE.PlaneGeometry(1.3, .26), new THREE.MeshBasicMaterial({map: cgTex(256, 52, (c, w, h) => { c.fillStyle = '#1a2a1a'; c.fillRect(0, 0, w, h); c.fillStyle = SIGN[z] && SIGN[z].includes('☢') ? '#ffd040' : '#e8f0e0'; c.font = 'bold 26px Georgia'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(SIGN[z] || '', w / 2, h / 2 + 2); })})); sp.position.set(0, F + 2.35, fz); if (fz > z) sp.rotation.y = 0; else sp.rotation.y = PI; g.add(sp); } }
+  // ---- control room (z -12.8..-2)
+  for (const sd of [-1, 1]) { bx(M.dark, sd * .25, sd * 1.1, F, F + .45, -11.75, -11.2); bx(M.blue, sd * .3, sd * 1.05, F + .45, F + .55, -11.75, -11.2); bx(M.blue, sd * .3, sd * 1.05, F + .55, F + 1.25, -11.25, -11.15); }
+  bx(M.dark, -2.2, 2.2, F, F + .85, -12.75, -12.1, 1); for (let i = 0; i < 6; i++) bx(i % 2 ? M.scrB : M.scrG, -2 + i * .68, -1.45 + i * .68, F + .5, F + .8, -12.09, -12.08);
+  for (const sd of [-1, 1]) { const yk = new THREE.TorusGeometry(.16, .025, 6, 16, PI).translate(sd * .65, F + 1.05, -11.95); L.push([yk, M.steel, false]); }
+  cyl(M.steel, .17, 0, F, .9, -5.76, 14, 1); cyl(M.steel, .17, 0, F, .9, -7.6, 14, 1); for (const pz of [-5.76, -7.6]) { bx(M.dark, -.35, .35, F + 1.5, F + 1.75, pz - .12, pz + .12); cyl(M.yel, .2, 0, F, F + .05, pz); }
+  for (let i = 0; i < 3; i++) { const z = -10.2 + i * 2.4; bx(M.dark, -3.85, -2.85, F, F + 1.0, z, z + 2, 1); bx(M.dark, -3.85, -3.3, F + 1.0, F + 1.9, z, z + 2); bx(M.scrG, -3.29, -3.28, F + 1.1, F + 1.75, z + .15, z + 1.85); bx(M.grey, -2.85, -2.6, F + .95, F + 1.0, z, z + 2);
+    bx(M.dark, 2.85, 3.85, F, F + 1.0, z, z + 2, 1); bx(M.dark, 3.3, 3.85, F + 1.0, F + 1.9, z, z + 2); bx(M.scrR, 3.28, 3.29, F + 1.1, F + 1.75, z + .15, z + 1.85); bx(M.grey, 2.6, 2.85, F + .95, F + 1.0, z, z + 2); }
+  bx(M.wood, 1.1, 2.1, F, F + .95, -5.4, -4.2, 1); bx(M.white, 1.15, 2.05, F + .95, F + .97, -5.35, -4.25); // chart table
+  for (let y = F + .3; y < .9; y += .3) bx(M.steel, -.25, .25, y, y + .03, -3.3, -3.27); for (const sd of [-1, 1]) bx(M.steel, sd * .25 - .02, sd * .25 + .02, F, .9, -3.31, -3.27); // trunk ladder
+  // ---- crew mess and galley (z -2..9)
+  bx(M.steel, 2.7, 3.85, F, F + .92, -1.5, 6.4, 1); bx(M.dark, 2.7, 3.85, F + .92, F + .95, -1.5, 6.4); bx(M.steel, 3.3, 3.75, F + 1.5, F + 2.1, -1.5, 6.4, 0);
+  for (let i = 0; i < 4; i++) { const z = -1.1 + i * .6; for (const dz of [0, .28]) cyl(M.stove, .1, 3.0 + (i % 2) * .4, F + .95, F + .97, z + dz, 12); } bx(M.dark, 2.68, 2.7, F + .15, F + .75, -1.2, .9); bx(M.grey, 2.67, 2.68, F + .55, F + .6, -1.0, .7); // stove tops, oven door
+  bx(M.dark, 2.95, 3.6, F + .95, F + 1.0, 1.6, 2.5); bx(M.steel, 3.0, 3.55, F + .9, F + .95, 1.7, 2.4); cyl(M.steel, .03, 3.4, F + .95, F + 1.25, 2.05); // sink
+  bx(M.dark, 3.1, 3.55, F + .95, F + 1.4, 3.2, 3.6); bx(M.red, 3.08, 3.1, F + 1.2, F + 1.3, 3.3, 3.5); // coffee machine
+  bx(M.steel, 2.75, 3.85, F, F + 2.0, 6.5, 8.6, 1); bx(M.dark, 2.74, 2.75, F + .2, F + 1.95, 7.53, 7.57); bx(M.grey, 2.72, 2.74, F + .9, F + 1.3, 6.7, 6.75); // fridge-freezer
+  for (let i = 0; i < 4; i++) { const z = -.6 + i * 2.3; bx(M.wood, -2.9, -.9, F + .72, F + .76, z, z + .9, 1); bx(M.dark, -2.0, -1.8, F, F + .72, z + .35, z + .55);
+    for (const dz of [-.45, 1.15]) { bx(M.blue, -2.9, -.9, F + .42, F + .48, z + dz, z + dz + .3, 1); bx(M.dark, -2.0, -1.8, F, F + .42, z + dz + .1, z + dz + .2); } bx(M.white, -2.5, -2.3, F + .76, F + .9, z + .3, z + .5); }
+  bx(M.dark, -3.62, -3.58, F + 1.0, F + 1.7, 2.5, 4.0); bx(M.scrB, -3.57, -3.56, F + 1.05, F + 1.65, 2.6, 3.9); // TV
+  // ---- berthing (z 9..20): triple racks with curtains and lockers
+  for (const sd of [-1, 1]) for (let k = 0; k < 5; k++) { const z = 9.4 + k * 2.1, x0 = sd * 1.95, x1 = sd * 3.3; bx(M.dark, x0, x1, F, F + .08, z, z + 2); for (let lv = 0; lv < 3; lv++) { const y = F + .35 + lv * .78; bx(M.steel, x0, x1, y - .04, y, z, z + 2); bx(M.cloth, x0 - sd * .02, x1 - sd * .1, y, y + .14, z + .05, z + 1.95); bx(M.white, x0 + sd * .9, x1 - sd * .15, y + .14, y + .24, z + 1.55, z + 1.9); bx(M.blue, x0 - sd * .03, x0 - sd * .01, y + .2, y + .65, z + .1, z + 1.9 * (lv === 1 ? .5 : .9)); }
+    BW.push({x0: Math.min(x0, x1 + sd * .6), x1: Math.max(x0, x1 + sd * .6), z0: z, z1: z + 2, y0: F - CAS, y1: F + 2.3 - CAS, int: 1, nk: 1}); bx(M.steel, x0, x0 + sd * .05, F, F + 2.4, z - .02, z + .02); }
+  // ---- wardroom and captain's stateroom (z 20..25)
+  bx(M.wood, -3.0, -.9, F + .74, F + .78, 20.8, 23.8, 1); bx(M.white, -2.95, -.95, F + .78, F + .785, 20.85, 23.75); for (const dz of [21.2, 22.2, 23.2]) for (const x of [-3.25, -.65]) bx(M.green, x - .2, x + .2, F, F + .9, dz - .2, dz + .2, 0);
+  bx(M.wood, 2.5, 3.6, F, F + 2.0, 20.4, 22.3, 1); for (let y = F + .4; y < F + 2; y += .4) bx(M.red, 2.55, 3.0, y, y + .3, 20.5, 22.2); bx(M.wood, 2.4, 3.6, F + .72, F + .76, 23.0, 24.6, 1); bx(M.green, 2.0, 2.3, F, F + .9, 23.5, 23.9);
+  // ---- missile compartment (z 25..40): two rows of eight tubes with hatches, numbers and a walkway
+  for (const sd of [-1, 1]) for (let k = 0; k < 8; k++) { const z = 26.1 + k * 1.85, x = sd * 2.45, h = top(Math.abs(x)) - .05; cyl(M.grey, .82, x, F, h, z, 20, 1); for (const y of [F + .5, F + 1.6]) { L.push([new THREE.TorusGeometry(.83, .03, 6, 20).rotateX(PI / 2).translate(x, y, z), M.yel, false]); }
+    const sp = new THREE.Mesh(new THREE.PlaneGeometry(.4, .4), new THREE.MeshBasicMaterial({map: cgFace(String(k + 1 + (sd > 0 ? 8 : 0)), '#e8e8e0', '#1a1a1a', 70)})); sp.position.set(x - sd * .83, F + 1.1, z); sp.rotation.y = -sd * PI / 2; g.add(sp); }
+  bx(M.dark, -.6, .6, F, F + 1.1, 39.0, 39.6, 0); bx(M.scrR, -.5, .5, F + .7, F + 1.0, 38.99, 38.995); // launch panel
+  // ---- reactor tunnel (z 40..46): a narrow passage with lead-glass windows; the vessel glows blue behind the port glass
+  for (const sd of [-1, 1]) { bx(M.bulk, sd * .8, sd * 3.95, F, 1.0, 40.1, 45.9, 1); bx(M.bulk, sd * .78, sd * .8, F, F + 2.1, 40.1, 45.9); } bx(M.bulk, -.8, .8, F + 2.1, F + 2.2, 40.1, 45.9);
+  for (const z of [41.5, 44]) { bx(M.glass, -.81, -.79, F + 1.0, F + 1.6, z, z + .8); bx(M.glass, .79, .81, F + 1.0, F + 1.6, z, z + .8); }
+  cyl(M.steel, 1.2, -2.3, F + .2, F + 2.4, 43, 20); cyl(M.glow, 1.0, -2.3, F + .4, F + 2.0, 43, 20); 
+  { const tr = new THREE.Mesh(new THREE.PlaneGeometry(.5, .5), new THREE.MeshBasicMaterial({map: cgFace('☢', '#ffd040', '#1a1a1a', 90)})); tr.position.set(-.79, F + 1.85, 42.5); tr.rotation.y = PI / 2; g.add(tr); const t2 = tr.clone(); t2.position.x = .79; t2.rotation.y = -PI / 2; g.add(t2); }
+  // ---- engine room (z 46..57): twin turbines, reduction gear, the shaft, maneuvering panel, valves
+  for (const sd of [-1, 1]) { cz(M.grey, .95, sd * 2.4, F + 1.05, 47.5, 54); BW.push({x0: sd < 0 ? -3.4 : 1.4, x1: sd < 0 ? -1.4 : 3.4, z0: 47.5, z1: 54, y0: F - CAS, y1: F + 2 - CAS, int: 1, nk: 1}); for (let z = 48; z < 54; z += 1.2) L.push([new THREE.TorusGeometry(.96, .05, 6, 20).translate(sd * 2.4, F + 1.05, z), M.yel, false]); }
+  bx(M.grey, -1.4, 1.4, F, F + 1.6, 54.8, 56.6, 1); cz(M.steel, .2, 0, F + .5, 56.6, 57); bx(M.dark, -1.2, -.4, F, F + 1.5, 46.5, 47.1, 1); bx(M.scrG, -1.15, -.45, F + 1.0, F + 1.4, 47.11, 47.12); for (let i = 0; i < 6; i++) { const v = new THREE.TorusGeometry(.12, .025, 6, 12).translate(-.8 + i * .32, F + 1.9, 47.3); L.push([v, M.red, false]); }
+  for (const m of mergeByMat(L)) g.add(m); g.traverse(o => { if (o.isMesh) { o.receiveShadow = true; o.castShadow = false; } });
+  // floor, lamps for the pooled lights, and the interactions moved into the new rooms
+  BFL.push({x0: -3.9, x1: 3.9, z0: NK_Z0 + .05, z1: NK_Z1 - .05, y: F, int: 1, nk: 1});
+  if (!NK.lamps0) NK.lamps0 = U.lamps.slice(); U.lamps.length = 0; for (let z = -11; z < 56; z += 4.5) U.lamps.push([0, .5, z]);
+  for (let i = INTER.length - 1; i >= 0; i--) { const it = INTER[i]; if (!it.boat) continue; if (/^lock/.test(it.kind)) INTER.splice(i, 1); else if (it.kind === 'bunk') { it.lx = -1.6; it.lz = 12.4; } else if (it.kind === 'hold') { it.lx = 0; it.lz = 53.5; it.by = F + 1; } else if (it.kind === 'patchbox') { it.lx = 1.0; it.lz = 47; } else if (it.kind === 'radio') { it.lx = 2.2; it.lz = 4.2; } }
+  BSPOT.hold[0] = 0; BSPOT.hold[1] = 53.5; BSPOT.patch[0] = 1.0; BSPOT.patch[1] = 47; BSPOT.fuel[0] = -1; BSPOT.fuel[1] = 47;
+  // the small sub's exterior below the casing is clipped away (its shell would cut through these rooms)
+  RND.localClippingEnabled = true; NK.mats = []; const keep = new Set(Object.values(MATC).concat(Object.values(MAT)));
+  BOAT.traverse(o => { if (!o.isMesh || !o.material || o.userData.nkHull) return; let p = o; while (p && p !== BOAT) { if (p === NK.g || p === SUBC.inner) return; p = p.parent; } const ms = Array.isArray(o.material) ? o.material : [o.material]; for (const m of ms) if (!keep.has(m) && !NK.mats.includes(m)) { m.clippingPlanes = [NK.plane]; m.clipShadows = true; m.needsUpdate = true; NK.mats.push(m); } }); }
+const OHN = 1.0;
+{ const f0 = buildBoat; buildBoat = function () { if (NK.lamps0) { SUB.lamps.length = 0; SUB.lamps.push(...NK.lamps0); } NK.g = null; const r = f0.apply(this, arguments); if (!HC().nuke || !BOAT) return r; try {
+    BOAT.children.forEach(c => { if (c.isMesh && c.geometry && c.geometry.type === 'LatheGeometry') c.userData.nkHull = 1; }); // the big hull keeps its full shape
+    for (let i = BW.length - 1; i >= 0; i--) if (BW[i].int && !BW[i].nk) BW.splice(i, 1); for (let i = BFL.length - 1; i >= 0; i--) if (BFL[i].int && !BFL[i].nk) BFL.splice(i, 1);
+    nkBuild(); } catch (e) { console.warn('nkBuild', e); } return r; }; }
+{ const f0 = camInSub; camInSub = function () { if (!HC().nuke || !BOAT || B.sink > 0) return f0.apply(this, arguments); if (f0.apply(this, arguments)) return true; _sc.copy(cam.position); BOAT.worldToLocal(_sc); const x = _sc.x, y = _sc.y, z = _sc.z, cyB = SUB.CAS - .05 - NUKE.RB; G.subL = [x, y, z];
+  return z > NK_Z0 - .1 && z < NK_Z1 + .1 && Math.hypot(x, y - cyB) < NUKE.RB - .08 && y > SUB.FI - .3; }; }
+{ const f0 = subWL; subWL = function (h) { if (!HC().nuke) return f0.apply(this, arguments); const cyB = SUB.CAS - .05 - NUKE.RB, d = Math.abs(h - cyB); if (h > SUB.CAS || d >= NUKE.RB) return null; const w = Math.sqrt(NUKE.RB * NUKE.RB - d * d); return [w, -14.5 + (1 - w / NUKE.RB) * 2, 66 - (1 - w / NUKE.RB) * 4]; }; }
+{ const f0 = subFx; subFx = function (dt) { const r = f0.apply(this, arguments); if (HC().nuke && BOAT && NK.g) { if (SUBC.inner) SUBC.inner.visible = false; const cd = Math.hypot(cam.position.x - B.x, cam.position.z - B.z); NK.g.visible = !!G.subIn || cd < 60;
+  _sb.set(0, 1, 0).applyQuaternion(BOAT.quaternion); _sc.set(0, SUB.CAS - .12, 0); BOAT.localToWorld(_sc); NK.plane.setFromNormalAndCoplanarPoint(_sb, _sc); } return r; }; }
