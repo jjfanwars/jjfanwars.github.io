@@ -364,8 +364,8 @@ Also, Astronomy Q8's answer (star fates) mixes up star mass with core mass; see 
 <!-- CLAUDE -->
 <section id="claude">
 <h2>Claude tutor</h2><p class="sub">Write your answer, Claude grades it like an exam marker and tells you how to fix it. Or just ask for help. This uses your own Claude account.</p>
-<div class="note" id="clUnavail" style="display:none">Claude isn't connected in this view.</div>
-<div class="seg" id="clSeg"><button class="on" data-m="grade">Grade my answer</button><button data-m="chat">Ask anything</button><button data-m="advice">Study advice</button></div>
+<div class="note" id="clUnavail" style="display:none">Claude isn't connected in this view. <button class="btn sm" onclick="openKey()">Add API key</button></div>
+<div class="row" style="justify-content:flex-end;margin-bottom:6px"><button class="btn sm" onclick="openKey()">API key</button></div><div class="seg" id="clSeg"><button class="on" data-m="grade">Grade my answer</button><button data-m="chat">Ask anything</button><button data-m="advice">Study advice</button></div>
 <div id="cl-grade"><div class="card">
 <label class="ctl">Question (pick one from your sheets or type your own)</label>
 <select id="clQSel" style="width:100%"></select>
@@ -1061,12 +1061,12 @@ function apiKey(){return sg('apikey')||''}
   m.innerHTML='<div class="card" style="max-width:420px;width:100%;margin:0"><h3 style="margin-top:0">Anthropic API key</h3><p class="small mute">Saved only in this browser (localStorage). Used to call Claude when the page isn\'t opened inside claude.ai.</p><input type="password" id="keyIn" placeholder="sk-ant-..." style="width:100%" autocomplete="off"><div class="row" style="margin-top:10px"><button class="btn p" id="keySave">Save</button><button class="btn" id="keyClear">Remove key</button><button class="btn" id="keyClose">Close</button></div><p class="small" id="keyMsg"></p></div>';
   document.body.appendChild(m);
   function open(){m.style.display='flex';$('keyIn').value='';$('keyMsg').textContent=apiKey()?'A key is saved (ends …'+apiKey().slice(-4)+').':'No key saved.';setTimeout(function(){$('keyIn').focus()},30)}
-  function close(){m.style.display='none'}
+  function close(){m.style.display='none'}window.openKey=open;
   $('keySave').onclick=function(){var k=$('keyIn').value.trim();if(!k){$('keyMsg').textContent='Paste a key first.';return}ss('apikey',k);$('keyMsg').textContent='Saved.';markUnavail();setTimeout(close,600)};
   $('keyClear').onclick=function(){try{localStorage.removeItem('sce16_apikey')}catch(e){}$('keyMsg').textContent='Key removed.';markUnavail()};
   $('keyClose').onclick=close;m.onclick=function(e){if(e.target===m)close()};
-  document.addEventListener('keydown',function(e){if(e.ctrlKey&&e.shiftKey&&(e.key==='K'||e.key==='k')){e.preventDefault();open()}if(e.key==='Escape')close()});
-  var taps=0,tt;document.querySelector('header h1').addEventListener('click',function(){taps++;clearTimeout(tt);tt=setTimeout(function(){taps=0},1500);if(taps>=5){taps=0;open()}});
+  document.addEventListener('keydown',function(e){if((e.ctrlKey||e.metaKey||e.altKey)&&e.shiftKey&&(e.key==='K'||e.key==='k'||e.code==='KeyK')){e.preventDefault();open()}if(e.key==='Escape')close()});
+  if(/[?&#]key\b/.test(location.search+location.hash))setTimeout(open,300);var taps=0,tt;document.querySelector('header h1').addEventListener('click',function(){taps++;clearTimeout(tt);tt=setTimeout(function(){taps=0},1500);if(taps>=5){taps=0;open()}});
 })();
 function apiAsk(input,tier,signal){var msgs=typeof input==='string'?[{role:'user',content:input}]:input.slice();
   var merged=[];msgs.forEach(function(m){if(merged.length&&merged[merged.length-1].role===m.role)merged[merged.length-1].content+='\n\n'+m.content;else merged.push({role:m.role,content:m.content})});
