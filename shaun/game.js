@@ -873,7 +873,7 @@ const Sfx = {
 // ---------------- game state
 const P = {x: 0, z: 0, yaw: 0, pitch: -.04, spin: 0, heat: 0, vent: 0, firing: false, fireAcc: 0, shots: 0, fireT: 0,
   kick: 0, kickV: 0, gp: 0, gpV: 0, cp: 0, cpV: 0, cy: 0, cyV: 0, trauma: 0, ads: 0, swayX: 0, swayY: 0, swayVX: 0, swayVY: 0, fovP: 0, drift: 0, mdx: 0, bloom: 0};
-const G = {on: false, paused: false, over: false, wave: 0, quota: 0, spawnAcc: 0, gap: 3, kills: 0, shield: 100, hp: 100, hurtT: 9, t: 0, sendT: 0, dmgFlash: 0, dmgDirs: [], hitT: 0, killT: 0, scores: {}, best: +(localStorage.getItem('ls-bestk') || 0), bestS: +(localStorage.getItem('ls-bestS') || 0), mode: 'horde', gunners: new Map()};
+const G = {on: false, paused: false, over: false, wave: 0, quota: 0, spawnAcc: 0, gap: 3, kills: 0, shield: 100, hp: 100, hurtT: 9, t: 0, sendT: 0, dmgFlash: 0, dmgDirs: [], hitT: 0, killT: 0, scores: {}, best: +(localStorage.getItem('ls-bestk') || 0), bestS: +(localStorage.getItem('ls-bestN') || 0), mode: 'horde', gunners: new Map()};
 // gunners: id -> {slot, name, yaw, pitch, fire, spin, heat, acc, n, kills, model}
 function myId() { return Net.role === 'guest' ? Net.id : 'H'; }
 function localGunner() { return G.gunners.get(myId()); }
@@ -928,7 +928,7 @@ function fireShot(g, idx) {
   const mate = G.ff ? mateOnLine(g, t) : null;
   if (mate) friendlyHit(g, mate, local);
   else if (t) {
-    for (let j = 0; j < hits.length; j++) { const [b, tt] = hits[j]; if (j && (foot || Math.random() < .4)) break; const P2 = j ? hitP2 : hitP; P2.set(ox + dx * tt, oy + dy * tt, oz + dz * tt); hitFx(b, P2, local && !j, !!j); if (isHost()) damageBug(b, g, P2); }
+    for (let j = 0; j < hits.length; j++) { const [b, tt] = hits[j]; if (j && (foot ? !has('pierce') : Math.random() < .4)) break; const P2 = j ? hitP2 : hitP; P2.set(ox + dx * tt, oy + dy * tt, oz + dz * tt); hitFx(b, P2, local && !j, !!j); if (isHost()) damageBug(b, g, P2); }
     if (G.buff && G.buff.k === 1 && idx % 2 === 0) { let from = t; _sa.copy(hitP); for (let j = 0; j < 2; j++) { const o = nearBug(_sa, from, 9 + t.s * 2); if (!o || o === t) break; bugCenter(o, _sb); shockArc(_sa, _sb); hitFx(o, _sb, false); if (isHost()) damageBug(o, g, _sb); _sa.copy(_sb); from = o; } }
   } else {
     let d = 220; if (dy < -.002) d = Math.min(220, (oy - gH(ox + dx * 60, oz + dz * 60)) / -dy);
@@ -1275,13 +1275,37 @@ function scatterItems(n, r0, r1, compound) { for (let i = 0; i < n; i++) { let x
   if (compound) { x = rnd(-12, 12); z = rnd(1.5, 13); } else { const a = rnd(-PI, PI), r = rnd(r0, r1); x = Math.sin(a) * r; z = -Math.cos(a) * r; }
   addItem(pickK(), x, z); } }
 function clearItems() { for (const it of SV.items) scene.remove(it.m); SV.items = []; }
-function survStart() { Object.assign(SV, {mag: 30, res: 150, belt: 1200, rel: 0, lull: 0, wt: 0, q0: 0, emptyT: 0}); clearItems(); P.foot = false; P.x = 0; P.z = 0; P.eyeY = 1.7; scatterItems(7, 0, 0, true); scatterItems(4, 25, 60); }
-function survWave(n) { G.wave = n; G.quota = Math.round((26 + n * 16) * (n % 5 === 0 ? .7 : 1)); SV.q0 = G.quota; SV.dur = 22 + n * 2; SV.lull = 0; SV.wt = 0;
-  callout('WAVE ' + n, n === 1 ? 'THEY KNOW YOU ARE HERE' : 'INBOUND FROM ALL SIDES'); Sfx.play('horn', {vol: .6, vr: 0}); if (n % 5 === 0) spawnTitan(n); }
+function survStart() { Object.assign(SV, {mag: 30, res: 150, belt: 1200, rel: 0, lull: 0, wt: 0, q0: 0, emptyT: 0, night: 1, nw: 0, day: 0, perks: [], offer: []}); hidePerks(); clearItems(); P.foot = false; P.x = 0; P.z = 0; P.eyeY = 1.7; scatterItems(7, 0, 0, true); scatterItems(4, 25, 60); }
+// multi-night: each night is WPN waves with short breathers, then dawn: the hive pulls back, a timed day to scavenge and pick a perk
+const WPN = 3, DAY_T = 90;
+const PERKS = [
+  {id: 'mag', n: 'EXTENDED MAGS', d: '45-round magazines'}, {id: 'fast', n: 'FAST HANDS', d: 'Reload in 1.1 s'}, {id: 'medic', n: 'FIELD MEDIC', d: 'Med kits heal more, slow health regen'},
+  {id: 'belt', n: 'HEAVY BELT', d: '+1000 cannon rounds now, bigger belt pickups'}, {id: 'plate', n: 'ARMOUR PLATING', d: 'Take 25% less damage'}, {id: 'run', n: 'MARATHON', d: 'Move and sprint faster'},
+  {id: 'pierce', n: 'AP ROUNDS', d: 'Rifle rounds punch through to a second bug'}, {id: 'scav', n: 'SCAVENGER', d: '+3 crates every day'}, {id: 'res', n: 'AMMO CACHE', d: '+180 rifle rounds now, ammo crates give more'}];
+const has = id => SV.perks && SV.perks.includes(id);
+function survWave(n) { G.wave = n; SV.nw = (SV.nw || 0) + 1; G.quota = Math.round((24 + n * 14) * (n % 5 === 0 ? .7 : 1)); SV.q0 = G.quota; SV.dur = 20 + n * 2; SV.lull = 0; SV.wt = 0;
+  callout(SV.nw === 1 ? 'NIGHT ' + SV.night : 'WAVE ' + SV.nw + ' / ' + WPN, SV.nw === 1 ? (SV.night === 1 ? 'THEY KNOW YOU ARE HERE' : 'THE HIVE IS BACK') : 'INBOUND FROM ALL SIDES'); Sfx.play('horn', {vol: .6, vr: 0}); if (n % 5 === 0) spawnTitan(n); }
+function startDay() {
+  SV.day = DAY_T; SV.nw = 0; G.shield = 100; G.hp = Math.min(100, G.hp + 20); SV.offer = PERKS.filter(q => !has(q.id)).sort(() => Math.random() - .5).slice(0, 3);
+  callout('DAWN', 'NIGHT ' + SV.night + ' SURVIVED // THE HIVE PULLS BACK'); Sfx.play('horn', {vol: .45, rate: 1.4, vr: 0}); radio('idle');
+  scatterItems(8 + (has('scav') ? 3 : 0), 22, 110); scatterItems(3, 0, 0, true); showPerks();
+}
+function nightFall() { SV.day = 0; SV.night++; hidePerks(); startWave(G.wave + 1); }
+function showPerks() { const el = $('perks'); if (!el || !SV.offer.length) return; el.innerHTML = '<div class="ph">DAWN // PICK ONE</div>' + SV.offer.map((q, i) => `<button data-i="${i}"><b>[${i + 1}] ${q.n}</b><small>${q.d}</small></button>`).join('');
+  el.classList.remove('hidden'); for (const b of el.querySelectorAll('button')) b.onclick = () => pickPerk(+b.dataset.i); }
+function hidePerks() { const el = $('perks'); if (el) el.classList.add('hidden'); SV.offer = []; }
+function pickPerk(i) { const q = SV.offer && SV.offer[i]; if (!q) return; SV.perks.push(q.id);
+  if (q.id === 'belt') SV.belt += 1000; if (q.id === 'res') SV.res += 180; if (q.id === 'mag') SV.mag = Math.min(45, SV.mag);
+  toast('PERK: ' + q.n); Sfx.play('zap', {vol: .2, rate: 1.5}); hidePerks(); }
 function survSpawn(dt, live) {
+  if (SV.day > 0) { // daytime: no spawns, stragglers run off into the dunes
+    for (const b of bugs.slice()) if (!b.dead && Math.hypot(b.x, b.z) > 170) { if (G.titan === b) G.titan = null; freeBug(b); }
+    if ((SV.day -= dt) <= 0) nightFall(); return; }
   if (G.quota > 0) { G.spawnAcc += dt * SV.q0 / SV.dur; while (G.spawnAcc > 1 && G.quota > 0) { G.spawnAcc--; spawnOne(); G.quota--; } SV.wt += dt; return; }
   if (SV.lull > 0) { if ((SV.lull -= dt) <= 0) startWave(G.wave + 1); return; }
-  if (live <= 2 || (SV.wt += dt) > SV.dur + 70) { SV.lull = 25; callout('WAVE ' + G.wave + ' SURVIVED', 'SCAVENGE // NEXT WAVE IN 25 S'); Sfx.play('horn', {vol: .35, rate: 1.5, vr: 0}); scatterItems(5, 22, 85); scatterItems(2, 0, 0, true); G.shield = 100; }
+  if (live <= 2 || (SV.wt += dt) > SV.dur + 70) {
+    if (SV.nw >= WPN) startDay();
+    else { SV.lull = 12; callout('WAVE ' + SV.nw + ' / ' + WPN + ' CLEARED', 'BREATHE // MORE COMING'); Sfx.play('horn', {vol: .3, rate: 1.5, vr: 0}); scatterItems(2, 15, 40); G.shield = 100; } }
 }
 const angW = a => ((a + PI) % TAU + TAU) % TAU - PI;
 const inLine = (x, z) => Math.abs(x) < 13.7 && Math.abs(z - (-1.4 - (x / 13) ** 2 * 2.2)) < .55;
@@ -1291,10 +1315,10 @@ function toggleMount() {
     P.foot = false; P.x = 0; P.z = 0; P.eyeY = 1.7; P.yaw = clamp(angW(P.yaw), -1.5, 1.5); P.pitch = clamp(P.pitch, -.55, .4); Sfx.play('tink', {vol: .4, rate: .6}); }
   else { P.foot = true; P.z = 1.1; P.pitch = clamp(P.pitch, -.3, .3); const lg = localGunner(); if (lg) lg.spin = 0; P.spin = 0; P.heat = 0; Sfx.play('tink', {vol: .4, rate: .8}); }
 }
-function reload() { if (!P.foot || SV.rel > 0 || SV.mag >= 30 || SV.res <= 0) return; SV.rel = 1.8; Sfx.play('tink', {vol: .35, rate: .6}); setTimeout(() => Sfx.play('crunch', {vol: .3, rate: 1.6}), 1000); }
+function reload() { if (!P.foot || SV.rel > 0 || SV.mag >= (has('mag') ? 45 : 30) || SV.res <= 0) return; SV.rel = has('fast') ? 1.1 : 1.8; SV.rel0 = SV.rel; Sfx.play('tink', {vol: .35, rate: .6}); setTimeout(() => Sfx.play('crunch', {vol: .3, rate: 1.6}), 1000); }
 function rifleStep(g, dt) {
   g.spin = 0; P.firing = false; g.pitch = P.pitch;
-  if (SV.rel > 0) { if ((SV.rel -= dt) <= 0) { const n = Math.min(30 - SV.mag, SV.res); SV.mag += n; SV.res -= n; } g.acc = 1; return; }
+  if (SV.rel > 0) { if ((SV.rel -= dt) <= 0) { const n = Math.min((has('mag') ? 45 : 30) - SV.mag, SV.res); SV.mag += n; SV.res -= n; } g.acc = 1; return; }
   const want = wantFire() && !G.over;
   if (want && SV.mag > 0) { g.acc += dt * 10; while (g.acc >= 1 && SV.mag > 0) { g.acc--; SV.mag--; fireShot(g, g.n++); } P.firing = true; P.fireT += dt; }
   else { g.acc = 1; P.fireT = Math.max(0, P.fireT - dt * 3); }
@@ -1302,7 +1326,7 @@ function rifleStep(g, dt) {
 }
 function survMove(dt) {
   const f = (keys.KeyW || keys.ArrowUp ? 1 : 0) - (keys.KeyS || keys.ArrowDown ? 1 : 0) + (P.mvY || 0), r = (keys.KeyD || keys.ArrowRight ? 1 : 0) - (keys.KeyA || keys.ArrowLeft ? 1 : 0) + (P.mvX || 0);
-  const run = keys.ShiftLeft || keys.ShiftRight ? 1.7 : 1, sp = 4.2 * run * (1 - P.ads * .5), l = Math.min(1, Math.hypot(f, r)), ox = P.x, oz = P.z;
+  const run = keys.ShiftLeft || keys.ShiftRight ? (has('run') ? 2 : 1.7) : 1, sp = (has('run') ? 4.8 : 4.2) * run * (1 - P.ads * .5), l = Math.min(1, Math.hypot(f, r)), ox = P.x, oz = P.z;
   if (l > .05) { const k = l / Math.hypot(f, r) * sp * dt, fx = -Math.sin(P.yaw), fz = -Math.cos(P.yaw), rx = Math.cos(P.yaw), rz = -Math.sin(P.yaw); P.x += (fx * f + rx * r) * k; P.z += (fz * f + rz * r) * k; SV.bob += dt * sp * 1.9;
     if (Sfx.ctx && Math.sin(SV.bob) * Math.sin(SV.bob - dt * sp * 1.9) < 0) Sfx.play('crunch', {vol: .06 * run, rate: rnd(.5, .7), lp: 1200}); }
   if (inLine(P.x, P.z) && !inLine(ox, oz)) { P.x = ox; P.z = oz; } // the sandbag line: go round the ends
@@ -1310,12 +1334,21 @@ function survMove(dt) {
   const rr = Math.hypot(P.x, P.z); if (rr > 160) { P.x *= 160 / rr; P.z *= 160 / rr; }
   P.eyeY = gH(P.x, P.z) + 1.65 + Math.sin(SV.bob) * .035 * l; P.moveL = l * run;
 }
+const FLASH = new THREE.SpotLight(0xfff0d8, 0, 80, .4, .55, 1.3); FLASH.position.set(0, .15, -1.3); FLASH.target.position.set(0, -.6, -10); cam.add(FLASH, FLASH.target);
+let dayK = .5;
+function survLight(dt) { // night = dark with a flashlight; day = bright and hazy (the sun stays low so the baked shadows still fit)
+  const tgt = !SURV() ? .5 : SV.day > 0 ? (SV.day < 8 ? .5 * SV.day / 8 : 1) : .0; dayK += (tgt - dayK) * Math.min(1, dt * .5);
+  const k = dayK < .5 ? mix(.34, 1, dayK * 2) : mix(1, 1.45, (dayK - .5) * 2);
+  compM.uniforms.exp.value = k; SUN.intensity = 3.2 * mix(.4, 1.25, Math.min(1, dayK * 1.3)); HEMI.intensity = 1.1 * mix(.45, 1.5, dayK);
+  FLASH.intensity = SURV() && dayK < .35 ? 26 * (1 - dayK / .35) * (P.torch === false ? 0 : 1) : 0;
+}
 function survStep(dt) {
   if (!SURV()) return;
+  if (has('medic') && G.hurtT > 4) G.hp = Math.min(100, G.hp + dt * .6);
   for (let i = SV.items.length - 1; i >= 0; i--) { const it = SV.items[i]; it.m.rotation.y += dt * .4;
     if (Math.random() < dt * .8) PA.add(it.x, it.m.position.y + .5, it.z, 0, rnd(.6, 1.4), 0, rnd(.6, 1), .08, .02, 1.5 * ((ITEMK[it.k].c >> 16) / 255) + .2, 1.5 * ((ITEMK[it.k].c >> 8 & 255) / 255) + .1, 1.5 * ((ITEMK[it.k].c & 255) / 255) + .1, 1);
     if (!P.foot || Math.hypot(it.x - P.x, it.z - P.z) > 1.5) continue;
-    if (it.k === 0) SV.res += 90; else if (it.k === 1) SV.belt += 500; else if (it.k === 2) G.hp = Math.min(100, G.hp + 35); else { G.shield = 100; G.hp = Math.min(100, G.hp + 10); }
+    if (it.k === 0) SV.res += has('res') ? 140 : 90; else if (it.k === 1) SV.belt += has('belt') ? 800 : 500; else if (it.k === 2) G.hp = Math.min(100, G.hp + (has('medic') ? 60 : 35)); else { G.shield = 100; G.hp = Math.min(100, G.hp + 10); }
     toast(ITEMK[it.k].n); Sfx.play('tink', {vol: .5, rate: 1.3}); Sfx.play('zap', {vol: .1, rate: 2}); scene.remove(it.m); SV.items.splice(i, 1); }
   if (!P.foot && SV.belt <= 0 && wantFire() && (SV.emptyT -= dt) <= 0) { SV.emptyT = 2.5; toast('BELT EMPTY: get off the gun [E] and find a cannon belt'); Sfx.play('tink', {vol: .3, rate: .45}); }
 }
@@ -1336,7 +1369,7 @@ function stepBugsHost(dt) {
   for (const b of bugs) {
     if (b.dead) continue;
     const goalZ = -3.4 - b.s * 1.5 - Math.pow(Math.abs(b.tx) / 13, 2) * 2.2;
-    const sv = SURV(), dx = sv ? P.x - b.x : b.tx - b.x, dz = sv ? P.z - b.z : goalZ - b.z, d = Math.hypot(dx, dz) || 1e-3;
+    const sv = SURV(), fl = sv && SV.day > 0, dx = fl ? b.x * 9 : sv ? P.x - b.x : b.tx - b.x, dz = fl ? b.z * 9 + 1 : sv ? P.z - b.z : goalZ - b.z, d = Math.hypot(dx, dz) || 1e-3;
     if (b.st === 2) { b.vy -= 18 * dt; b.y += b.vy * dt; const f = b.T.sp * 7.5 * spm; b.x += dx / d * f * 1.6 * dt; b.z += dz / d * f * 1.6 * dt; const gy = gH(b.x, b.z); if (b.y <= gy) { b.y = gy; b.st = 0; } b.sp = 0; continue; }
     if (b.st === 3) { const sp = b.T.sp * 7 * spm * 1.5, st = Math.min(sp * dt, d); b.x += dx / d * st; b.z += dz / d * st; b.y = gH(b.x, b.z); b.sp = sp; b.yaw = Math.atan2(dx, dz);
       if (Math.random() < dt * 8) PS.add(b.x, b.y + .1, b.z, rnd(-1, 1), rnd(.5, 1.5), rnd(-1, 1), rnd(.8, 1.4), .4, 1.6, .62, .42, .28, .5, 1, 1);
@@ -1370,7 +1403,7 @@ function stepBugsHost(dt) {
   G.attackers = attackers;
 }
 function hurt(d) {
-  G.hurtT = 0; const s = Math.min(G.shield, d); G.shield -= s; d -= s; G.hp = Math.max(0, G.hp - d * (SURV() ? .45 : .2));
+  G.hurtT = 0; const s = Math.min(G.shield, d); G.shield -= s; d -= s; G.hp = Math.max(0, G.hp - d * (SURV() ? .45 * (has('plate') ? .75 : 1) : .2));
   if (G.hp < 30 && !G.lowWarn) { G.lowWarn = true; setTimeout(() => radio('low'), 1500); callout('ARMOUR CRITICAL', 'CLEAR THE BARRICADE'); Sfx.play('alarm', {vol: .5, vr: 0}); if (isHost()) G.evq.push(['a']); }
   if (G.hp > 45) G.lowWarn = false;
   G.dmgFlash = Math.min(1, G.dmgFlash + .03); P.trauma = Math.min(1, P.trauma + .015);
@@ -1564,7 +1597,7 @@ function drawHud(dt, time) {
       c.beginPath(); c.moveTo(sx, sy - 7); c.lineTo(sx + 6, sy); c.lineTo(sx, sy + 7); c.lineTo(sx - 6, sy); c.closePath(); c.stroke(); c.fillStyle = col; c.font = '11px "Share Tech Mono",monospace'; c.fillText(ITEMK[it.k].n.split(' ')[0] + ' ' + (d | 0) + 'm', sx + 9, sy + 4); c.globalAlpha = 1; } c.lineWidth = 1; c.font = '13px "Share Tech Mono",monospace'; }
   // top left: wave, kills
   c.fillStyle = CY + '.9)'; c.font = '700 30px Rajdhani,sans-serif'; c.fillText('KILLS ' + G.kills, 34, 52); c.font = '13px "Share Tech Mono",monospace';
-  c.fillText(SURV() ? (SV.lull > 0 ? 'SCAVENGE  NEXT WAVE ' + Math.ceil(SV.lull) + 'S' : 'WAVE ' + G.wave + '   CONTACTS ' + (G.quota + SV.live)) : 'HELD ' + fmtT(G.runT) + '   THREAT ' + G.wave, 36, 72); c.fillStyle = CY + '.5)'; if (SURV()) { if (G.bestS) c.fillText('BEST: WAVE ' + G.bestS, 36, 88); } else if (G.best) c.fillText('BEST ' + G.best + ' KILLS', 36, 88);
+  c.fillText(SURV() ? (SV.day > 0 ? 'DAY ' + SV.night + '   NIGHTFALL IN ' + Math.ceil(SV.day) + 'S   [N] SKIP' : 'NIGHT ' + SV.night + '   WAVE ' + Math.max(1, SV.nw) + '/' + WPN + (SV.lull > 0 ? '   BREATHER ' + Math.ceil(SV.lull) + 'S' : '   CONTACTS ' + (G.quota + SV.live))) : 'HELD ' + fmtT(G.runT) + '   THREAT ' + G.wave, 36, 72); c.fillStyle = CY + '.5)'; if (SURV()) { if (G.bestS) c.fillText('BEST: ' + G.bestS + ' NIGHTS', 36, 88); if (SV.perks.length) c.fillText(SV.perks.map(q => PERKS.find(x => x.id === q).n).join(' / '), 36, Net.role !== 'solo' ? 220 : 140); } else if (G.best) c.fillText('BEST ' + G.best + ' KILLS', 36, 88);
   if (G.combo >= 3) { const sc = 1 + G.comboPop * 2.2, a = Math.min(1, G.comboT * 1.5); c.save(); c.translate(cx - 120, cy + 40); c.scale(sc, sc); c.globalAlpha = a; c.font = '700 26px Rajdhani,sans-serif';
     c.fillStyle = G.comboFlash > 0 ? '#ffd27a' : G.combo >= 50 ? 'rgba(255,170,90,.95)' : 'rgba(230,255,250,.9)'; c.fillText(G.combo + 'x', 0, 0); c.font = '11px "Share Tech Mono",monospace'; c.fillText('STREAK', 0, 13); c.restore(); }
   // squad
@@ -1708,7 +1741,7 @@ function stepFeel(dt, time) {
   FPG.position.set(GUN_BASE.x - ad * .03 + P.swayX * .02 + (firing ? rnd(-1, 1) * .0025 : 0) + Math.sin(time * 1.1) * .003 * idle + rnd(-1, 1) * .002 * sh * 4, GUN_BASE.y - ad * .05 + P.swayY * .02 + (firing ? rnd(-1, 1) * .0025 : 0) + Math.sin(time * 1.4) * .004 * idle + P.gp * .004, GUN_BASE.z + ad * .06 + P.kick * .012 * (1 - ad * .5));
   FPG.rotation.set(P.gp * .02 - P.swayY * .03, -P.swayX * .04 + .02, P.cy * .01 + P.swayX * .05);
   const foot = SURV() && P.foot; FPG.visible = !foot; RIF.visible = foot; MOUNT.visible = foot;
-  if (foot) { const bob = Math.sin(SV.bob) * .012 * (P.moveL || 0) * (1 - ad), bx2 = Math.cos(SV.bob * .5) * .01 * (P.moveL || 0) * (1 - ad), rl = SV.rel > 0 ? Math.sin(Math.min(1, (1.8 - SV.rel) / 1.8) * PI) : 0;
+  if (foot) { const bob = Math.sin(SV.bob) * .012 * (P.moveL || 0) * (1 - ad), bx2 = Math.cos(SV.bob * .5) * .01 * (P.moveL || 0) * (1 - ad), rl = SV.rel > 0 ? Math.sin(Math.min(1, ((SV.rel0 || 1.8) - SV.rel) / (SV.rel0 || 1.8)) * PI) : 0;
     RIF.position.set(mix(.14, 0, ad) + P.swayX * .02 + bx2, mix(-.2, -.068, ad) + P.swayY * .02 + bob - rl * .12 + P.gp * .003, mix(-.22, -.16, ad) + P.kick * .015);
     RIF.rotation.set(P.gp * .03 - P.swayY * .03 - rl * .5, -P.swayX * .04 + (1 - ad) * .03, P.swayX * .05 + rl * .6);
     const u = RIF.userData; u.fl.visible = u.flT > 0; if (u.flT > 0) { u.flT -= dt; const k = rnd(.12, .22); u.fl.scale.set(k, k, 1); u.fl.material.rotation = rnd(0, TAU); }
@@ -1740,9 +1773,9 @@ function beginGame(fresh) {
 }
 function overrun(m) {
   if (G.over) return;
-  if (SURV()) { G.over = true; const w = G.wave, prev = G.bestS || 0; if (w > prev) { G.bestS = w; try { localStorage.setItem('ls-bestS', w); } catch (e) {} }
+  if (SURV()) { G.over = true; hidePerks(); const w = SV.night - (SV.day > 0 ? 0 : 1), prev = G.bestS || 0; if (w > prev) { G.bestS = w; try { localStorage.setItem('ls-bestN', w); } catch (e) {} }
     callout('KILLED IN ACTION', 'THE HIVE GOT YOU'); Sfx.play('horn', {rate: .6, vol: .7});
-    setTimeout(() => { if (G.over) showEnd('KILLED IN ACTION', 'You fell on wave ' + w, w, G.kills, G.runT, w > prev && prev > 0 ? 'NEW BEST: wave ' + w + ' (was ' + prev + ')' : 'Best: wave ' + Math.max(w, prev)); }, 1600); return; }
+    setTimeout(() => { if (G.over) showEnd('KILLED IN ACTION', 'You fell on night ' + SV.night + ' after surviving ' + w + (w === 1 ? ' night' : ' nights'), w, G.kills, G.runT, w > prev && prev > 0 ? 'NEW BEST: ' + w + ' nights (was ' + prev + ')' : 'Best: ' + Math.max(w, prev) + ' nights'); }, 1600); return; }
   G.over = true; const w = m ? m.w : G.wave, k = m ? m.k : G.kills, t = m && m.rt ? m.rt : G.runT;
   const prev = G.best; if (k > G.best) { G.best = k; try { localStorage.setItem('ls-bestk', k); } catch (e) {} }
   if (Net.role === 'host') Net.send({t: 'over', w, k, rt: Math.round(t)});
@@ -1799,7 +1832,7 @@ function step(dt) {
   drawBegin(); for (const b of bugs) drawBug(b, time); drawEnd();
   const lg = localGunner();
   if (lg) { P.spin = lg.spin; if (lg.spin > .97 && P.spinFull !== 1) { P.fovP = 1; } P.spinFull = lg.spin > .97 ? 1 : 0; }
-  stepFeel(dt, time);
+  survLight(dt); stepFeel(dt, time);
   updateGunVisual(FPG, P.spin, P.heat, P.firing, time, dt);
   for (const g of G.gunners.values()) if (g.model) { g.model.rotation.y = g.yaw; const gun = g.model.userData.gun; gun.rotation.x = g.pitch; updateGunVisual(gun, g.spin, g.heat, g.spin > .97 && g.fire, time, dt); }
   Sfx.gun(P.spin, P.heat, P.vent > 0, P.firing);
@@ -1824,7 +1857,7 @@ addEventListener('mouseup', e => { if (e.button === 0) mouseDown = false; });
 addEventListener('contextmenu', e => e.preventDefault());
 addEventListener('keydown', e => { keys[e.code] = true; if (!G.on) return;
   if (G.over) { if ((e.code === 'Space' || e.code === 'Enter') && !$('end').classList.contains('hidden') && !$('bAgain').disabled) { e.preventDefault(); $('bAgain').click(); } return; }
-  if (e.code === 'Escape' && document.pointerLockElement !== canvas && performance.now() - plT > 400) { pause(!G.paused); return; } if (e.code === 'KeyF') { SET.auto = !SET.auto; saveSet(); syncUI(); toast('Auto-fire ' + (SET.auto ? 'on' : 'off')); } if (e.code === 'KeyE') toggleMount(); if (e.code === 'KeyR') { if (SURV() && P.foot) reload(); else if (P.vent <= 0 && P.heat > .2) { P.vent = .5; vent(); } } if (e.code === 'KeyP') pause(true); });
+  if (e.code === 'Escape' && document.pointerLockElement !== canvas && performance.now() - plT > 400) { pause(!G.paused); return; } if (e.code === 'KeyF') { SET.auto = !SET.auto; saveSet(); syncUI(); toast('Auto-fire ' + (SET.auto ? 'on' : 'off')); } if (e.code === 'KeyE') toggleMount(); if (SURV() && SV.offer && SV.offer.length && /^Digit[123]$/.test(e.code)) pickPerk(+e.code[5] - 1); if (SURV() && e.code === 'KeyN' && SV.day > 0) { SV.day = Math.min(SV.day, .01); } if (e.code === 'KeyT') { P.torch = P.torch === false; toast('Flashlight ' + (P.torch === false ? 'off' : 'on')); } if (e.code === 'KeyR') { if (SURV() && P.foot) reload(); else if (P.vent <= 0 && P.heat > .2) { P.vent = .5; vent(); } } if (e.code === 'KeyP') pause(true); });
 addEventListener('keyup', e => { keys[e.code] = false; });
 let isTouch = false, tX = null, tY = null, tId = null, mId = null, mX = 0, mY = 0;
 addEventListener('touchstart', e => { isTouch = true; Sfx.init(); if (G.on && !G.over) { $('bPauseT').classList.remove('hidden'); $('bAimT').classList.remove('hidden'); $('bFireT').classList.remove('hidden'); if (SURV()) $('bUseT').classList.remove('hidden'); } const t = e.changedTouches[0]; if (G.on && SURV() && P.foot && mId === null && t.clientX < innerWidth * .4 && !(t.target.closest && t.target.closest('button'))) { mId = t.identifier; mX = t.clientX; mY = t.clientY; return; } if (G.on && tId === null && !(t.target.closest && t.target.closest('button'))) { tId = t.identifier; tX = t.clientX; tY = t.clientY; } }, {passive: true});
@@ -1870,7 +1903,7 @@ if ($('bJoin')) $('bJoin').onclick = () => {
   for (const id of [...G.gunners.keys()]) removeGunner(id);
 };
 $('bResume').onclick = () => pause(false);
-$('bQuit').onclick = () => { hostBye(); Net.close(); clearTimeout(G.goneT); $('bPauseT').classList.add('hidden'); $('bAimT').classList.add('hidden'); $('bFireT').classList.add('hidden'); $('bUseT').classList.add('hidden'); aimTouch = fireTouch = false; G.on = false; G.paused = false; resetWorld(); ['pause', 'end'].forEach(i => $(i).classList.add('hidden')); $('menu').classList.remove('hidden'); $('hud').classList.add('hidden'); $('visor').classList.add('hidden'); };
+$('bQuit').onclick = () => { hidePerks(); hostBye(); Net.close(); clearTimeout(G.goneT); $('bPauseT').classList.add('hidden'); $('bAimT').classList.add('hidden'); $('bFireT').classList.add('hidden'); $('bUseT').classList.add('hidden'); aimTouch = fireTouch = false; G.on = false; G.paused = false; resetWorld(); ['pause', 'end'].forEach(i => $(i).classList.add('hidden')); $('menu').classList.remove('hidden'); $('hud').classList.add('hidden'); $('visor').classList.add('hidden'); };
 $('bMenu').onclick = $('bQuit').onclick;
 $('bAgain').onclick = () => { if (G.lost) { $('bQuit').onclick(); return; } if (Net.role === 'guest') return; if (Net.role === 'host') Net.send({t: 'restart'}); beginGame(false); };
 const openReq = () => { $('reqF').src = 'requests.html?embed'; $('reqBox').classList.remove('hidden'); document.exitPointerLock && document.exitPointerLock(); };

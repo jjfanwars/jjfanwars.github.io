@@ -62,6 +62,12 @@ The owner's design brief is **brain-off**: no skill needed beyond sweeping the g
 - Waves: `survWave` (quota 26 + 16n, spawned over 22 + 2n s, packs from all directions with a front bias, titan every 5th), `survSpawn`: when 2 or fewer remain (or 70 s after the quota is out) -> 25 s lull (`SV.lull`), shield refilled, crates scattered. Bugs target the player (`P.x/P.z`), attack within 0.9 + 0.55 x size, crawl slowly over the sandbags; spitters lob at the player from 30 m (globs only hurt within 2.6 m). Hull takes 0.45x after the shield (0.2x in horde), shield regen 18/s after 3 s.
 - Crates (`SV.items`, `addItem`, `scatterItems`, `ITEMK`): rifle ammo +90, cannon belt +500, med kit +35, armour cell (full shield +10); walk over them on foot. 7 in the compound + 4 out in the field at start, 5 field + 2 compound each lull. HUD diamonds with distance within 90 m, ammo readout, wave/contacts or scavenge timer, `[E] MAN THE CANNON` prompt.
 
+## Multi-night survival (19 Nov 2026)
+- A night = `WPN` (3) waves with 12 s breathers (`SV.nw`, `SV.night`). After the 3rd: `startDay` (dawn callout, +20 health, full shield, 8 field + 3 compound crates) and a `DAY_T` 90 s day (`SV.day`): no spawns, bugs flee (AI target flips away, freed past 170 m), `[N]` skips. `nightFall` -> next night, waves keep the global `G.wave` count for difficulty.
+- Perks at dawn (`PERKS`, `SV.offer` 3 random unowned, keys 1-3 or the `#perks` buttons, `pickPerk`, `has(id)`): extended mags (45), fast hands (1.1 s reload), field medic (bigger med kits + regen), heavy belt, armour plating (-25% damage), marathon, AP rounds (rifle pierce), scavenger (+3 crates/day), ammo cache.
+- Lighting (`survLight`, every frame): `dayK` eases to 0 at night / 1 by day; scales `compM.exp`, `SUN` and `HEMI` (sun direction stays, so baked shadows still fit). Night flashlight `FLASH` (SpotLight on the camera, origin pushed 1.3 m forward so it doesn't blow out the gun; `T` toggles `P.torch`). Horde mode stays at 0.5 (unchanged look).
+- Score = nights survived (`ls-bestN`).
+
 ## Code map (`shaun/game.js`; UI in `shaun/index.html`)
 - **Renderer:** own post chain (`render`). The scene goes to a HalfFloat MSAA RT, then a bright pass, two blur levels, and the composite `compM`, which does ACES, gamma, vignette, grain, chromatic aberration and the damage tint. The renderer itself has `NoToneMapping`. Low quality (`SET.gfx`) lowers the pixel ratio and turns off shadows and MSAA.
 - **World:**
@@ -116,6 +122,7 @@ The owner's design brief is **brain-off**: no skill needed beyond sweeping the g
 - Headless Chromium needs `--use-angle=swiftshader --enable-unsafe-swiftshader`. It is very slow at this scene size, so keep the step counts small.
 
 ## Changelog
+- 19 Nov 2026: Survival is multi-night: 3-wave nights, dawn with perks and a 90 s scavenging day, dark nights with a flashlight, best = nights survived.
 - 19 Nov 2026: Survival mode (solo): get off the cannon, rifle on foot, scavenge crates between waves, bugs come for you from every side, finite cannon belt.
 - 19 Nov 2026: bugs ~18% slower (base run speed `T.sp x 7 x spm`, was 8.5; leaps 7.5, was 9).
 - 19 Nov 2026: detailed near bugs (armour plates, spikes, serrated jaws, jointed barbed legs), detailed gun and gloved hands; fixed the triplanar shader that hid bug bodies, rocks and mesas.
