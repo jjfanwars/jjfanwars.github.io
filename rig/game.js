@@ -29,7 +29,7 @@ const hexS = c => '#' + c.toString(16).padStart(6, '0');
 
 // ---------------- net (jjfanwars relay)
 const RELAY_URL = 'wss://jjfanwars-relay.businessautomationvic.workers.dev';
-const GAME_V = 77;
+const GAME_V = 78;
 const Net = {
   tag: '[Rig]', role: 'solo', ws: null, peers: new Map(), code: '', relayT: {pose: 1}, id: '', name: '', handlers: {}, retry: 0, started: false,
   enc: new TextEncoder(), dec: new TextDecoder(),
@@ -508,6 +508,7 @@ function buildHome() {
 // islands: noisy domes (an atoll is a ring) walkable from the beach
 const IPADS = [];
 function isleH(I, x, z, clean) {
+  if (I.mh && !clean) { const m = isleMeshH(I, x, z); if (m != null && m > -4.49) return m; } // once the mesh exists, everything placed on the island sits on the ground you see
   const d = Math.hypot(x - I.x, z - I.z) / I.r; if (d > 1.4) return -9;
   const sp = (I.extL || extLook(I)).shape; let h;
   if (I.ring) { const p = Math.exp(-((d - .75) ** 2) / .03); h = d < .75 ? mix(-1.4, I.top, p) : mix(-4.5, I.top, p); }
@@ -2890,6 +2891,7 @@ function stepPlayer(dt) {
   let run = (K.ShiftLeft || K.ShiftRight) && fw > 0 && P.stam > .02 && !P.cr && !P.down && !P.sw && !wade && sackUsed(P.sack) < 7;
   if (P.tired && P.stam < .3) run = false; if (P.stam > .3) P.tired = false;
   let sp = P.sw ? ((P.own && P.own.suit) ? 2.6 : 1.6) * (P.dv > 1 && (P.own && P.own.suit) ? Math.cos(P.pitch) : 1) : P.down ? .55 : P.cr ? 1.6 : run ? 5.8 : 3.0; if (wade) sp *= .6; sp *= 1 - .3 * sackUsed(P.sack) / 10;
+  if (P.sw && !P.down && (K.ShiftLeft || K.ShiftRight) && fw > 0 && P.stam > .05 && !P.tired && !(P.own && P.own.scoot && (P.dv || 0) > .5)) { sp *= 1.55; P.stam -= dt / 6; if (P.stam <= .02) { P.stam = 0; P.tired = true; } } // a hard crawl at the surface
   const sy = Math.sin(P.yaw), cy = Math.cos(P.yaw);
   const tvx = (-sy * fw + cy * st) / mag * sp, tvz = (-cy * fw - sy * st) / mag * sp, acc = (fw || st) ? 9 : 12;
   P.vx = mix(P.vx, fw || st ? tvx : 0, Math.min(1, dt * acc)); P.vz = mix(P.vz, fw || st ? tvz : 0, Math.min(1, dt * acc));
@@ -2907,7 +2909,7 @@ function stepPlayer(dt) {
   const landed = iv => { G.land = Math.min(1, (iv - 3.5) / 9); Snd.land(G.land, surf()); G.lspV = (G.lspV || 0) + 8.8 * G.land;
     if (iv > 13) { tone(180, .1, .3, 'sawtooth', null, 110); burst(520, .8, .1, .3, 'bandpass', null, .7); $('flash').style.opacity = .25; setTimeout(() => $('flash').style.opacity = 0, 200); P.stam = Math.max(0, P.stam - .4); } };
   const su = (P.own && P.own.suit) || 0, SU = SUIT[su]; let vy = 0;
-  if (P.sw && !P.down) { if (K.KeyC) vy += 1; if (K.Space) vy -= 1; if (!su && (P.air ?? 1) <= 0) vy = -1; if (su && fw) vy += -Math.sin(P.pitch) * fw; }
+  if (P.sw && !P.down) { if (K.KeyC) vy += 1; if (K.Space) vy -= 1; if (!su && (P.air ?? 1) <= 0) vy = -1; if (fw && (su || Math.abs(P.pitch) > .3)) vy += -Math.sin(P.pitch) * fw * (su ? 1 : .8); }
   const lim = Math.max(0, Math.min(SU.max, -seaBed(P.x, P.z) - 1.2)); P.dv = P.sw ? clamp((P.dv || 0) + (vy ? vy * (su ? 2.4 : 1.4) : su ? 0 : -2.2) * dt, 0, lim) : 0;
   if (P.sw && P.dv >= SU.max - .5 && vy > 0 && !G.pressT) { G.pressT = 1; showMsg(su ? `Too deep for the ${SU.n}. The pressure crushes in on your chest.` : 'You need diving gear to go deeper. The harbour shed sells it.', '', 3); } if (P.dv < SU.max - 3) G.pressT = 0;
   P.air = clamp((P.air ?? 1) + (P.dv > .4 ? -dt / SU.air : dt / 4), 0, 1);
@@ -9624,7 +9626,7 @@ function nkBuild() { const U = SUB, CAS = U.CAS, FI = U.FI, RB = NUKE.RB, cyB = 
   const F = FI, top = y => cyB + Math.sqrt(Math.max(0, (RB - .15) ** 2 - y * y)); // lining height at |x| = y
   // shell: lining, floor plates, ceiling run with light strips, end bulkheads, side walls
   L.push([new THREE.CylinderGeometry(RB - .12, RB - .12, NK_Z1 - NK_Z0, 40, 1, true).rotateX(PI / 2).translate(0, cyB, (NK_Z0 + NK_Z1) / 2), M.wall, false]);
-  bx(M.floor, -3.95, 3.95, F - .12, F, NK_Z0, NK_Z1); for (let z = NK_Z0 + 1; z < NK_Z1; z += 1.2) bx(M.dark, -3.9, 3.9, F + .001, F + .006, z, z + .03);
+  bx(M.floor, -3.95, 3.95, F - .12, F, NK_Z0, NK_Z1); for (let z = NK_Z0 + 1; z < NK_Z1; z += 1.2) bx(M.dark, -3.9, 3.9, F + .012, F + .02, z, z + .03);
   bx(M.grey, -1.6, 1.6, .85, .95, NK_Z0, NK_Z1); for (let z = NK_Z0 + 1.5; z < NK_Z1 - 1; z += 3) bx(M.lamp, -.5, .5, .83, .85, z, z + 1.2);
   L.push([new THREE.CircleGeometry(RB - .1, 32).rotateY(PI).translate(0, cyB, NK_Z1), SI({color: 0x9aa0a6, side: THREE.DoubleSide}), false]); { const vp = new THREE.Mesh(new THREE.CircleGeometry(RB - .1, 32).translate(0, cyB, NK_Z0), new THREE.MeshStandardMaterial({color: 0x9ac0d0, transparent: true, opacity: .12, roughness: .03, depthWrite: false, side: THREE.DoubleSide})); g.add(vp); for (let a = 0; a < 8; a++) bx(M.steel, Math.cos(a / 8 * TAU) * (RB - .2) - .05, Math.cos(a / 8 * TAU) * (RB - .2) + .05, cyB + Math.sin(a / 8 * TAU) * (RB - .2) - .05, cyB + Math.sin(a / 8 * TAU) * (RB - .2) + .05, NK_Z0, NK_Z0 + .1); } // the bow is a viewport: the helm looks out through it
   for (const sd of [-1, 1]) BW.push({x0: sd < 0 ? -4.6 : 3.8, x1: sd < 0 ? -3.8 : 4.6, z0: NK_Z0 - .5, z1: NK_Z1 + .5, y0: F - CAS, y1: OHN - CAS, int: 1, nk: 1});
@@ -9695,3 +9697,10 @@ const OHN = 1.0;
 
 // swimmers anywhere along the Kraken's 87 m are checked against her hull (the shared gate only reaches about 50 m from her origin)
 { const f0 = pushBody; pushBody = function (o, r, y) { const res = f0.apply(this, arguments); try { if (HC().nuke && BOAT && !o.ob && B.sink <= 0) { const [lx, lz] = bW2L(o.x, o.z); if (lz > -17 && lz < 72 && Math.abs(lx) < NUKE.RB + 1.5) subPush(o, r, y); } } catch (e) {} return res; }; }
+
+// climb out of the water onto a ledge (a dock edge, a rock shelf) up to 2.3 m above the sea: swim into it holding W at the surface for a moment
+{ const f0 = stepPlayer; stepPlayer = function (dt) { const r = f0.apply(this, arguments); try { if (!P || !P.sw || P.down || P.climb || (P.dv || 0) > .4 || !K.KeyW) { if (P) P.ledgeT = 0; return r; }
+  const fx = -Math.sin(P.yaw), fz = -Math.cos(P.yaw); let hit = null; for (const d of [.7, 1.1]) { const px = P.x + fx * d, pz = P.z + fz * d, f = floorAt(px, pz, 2.4, true); if (f && f.s.k !== 'boat' && f.y > .7 && f.y < 2.35) { hit = {x: px + fx * .35, z: pz + fz * .35, y: f.y}; break; } }
+  if (!hit) { P.ledgeT = 0; return r; } P.ledgeT = (P.ledgeT || 0) + dt; if (P.ledgeT < .3) return r; P.ledgeT = 0;
+  const f2 = floorAt(hit.x, hit.z, hit.y + .5, true); if (!f2 || Math.abs(f2.y - hit.y) > .4) return r;
+  P.sw = 0; P.dv = 0; P.deep = 0; P.x = hit.x; P.z = hit.z; P.y = f2.y; P.vx = P.vz = P.vy = 0; P.lspV = 0; G.lspV = (G.lspV || 0) + 4; Snd.splash && Snd.splash(); Snd.step && Snd.step('wood', 1.2); } catch (e) {} return r; }; }
