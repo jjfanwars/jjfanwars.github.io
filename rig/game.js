@@ -10084,3 +10084,364 @@ function mon2Frame(dt) { if (!G.on || !P) return; const t = G.wt;
     else if (e.s === 'die') showMsg(e.by === me ? `You killed the Snapjaw. +${money(e.v)}` : `The Snapjaw is dead. +${money(e.v)}`, '', 4); }
   else if (e.k === 'dead' && e.drown === 7 && e.id === me) setTimeout(() => showMsg('Its jaws close. The water turns red.', '', 5), 30);
   } catch (err) { console.warn(err); }  }); }
+// ---------------- inventory screen (v83): item tiles (icon, rarity colour, size, value) for the sack, the hold, the cooler and relics; click or drag
+// to move one item between the sack and the hold (host acts 'stow'/'unstow' with `ik`), drop or sell one item ('drop'/'sell' with `ik`, `src`),
+// sort by value/rarity/size/newest, and a sack-full HUD (slot pips on #carry, a warning when it fills, a pulse while a pickup prompt says full)
+const INV2 = {sort: (() => { try { return localStorage.getItem('s9-invsort') || 'value'; } catch (e) { return 'value'; } })(), sel: null, drag: null, sig: '', t: 0, mute: 0, ck: '', used: -1, rq: 0};
+const INV_RAR = {crate: 0, scrap: 0, fuel: 0, patch: 0, netfish: 0, egg: 0, parcel: 0, battery: 0, key: 1, fang: 1, pearl: 1, ore: 1, relic: 2, chest: 2, gold: 2, blackbox: 3, spine: 3, mask: 4};
+const INV_COL = {crate: 0x9a6a3a, scrap: 0x8a9098, fuel: 0xc03a2a, patch: 0xd8c050, chest: 0xa07030, blackbox: 0xe07020, fang: 0xe8e0c8, pearl: 0x50506a, gold: 0xffc840, key: 0x5ab0e0, mask: 0xf0ece0, spine: 0xd8d0b8, netfish: 0x6aa0b0, parcel: 0xb08a5a, ore: 0x7affe0, egg: 0xe8dcc0, battery: 0x3a9a3a, relic: 0x9affd0, fish: 0x6ab0d0};
+const invRar = k => { const r = lootRarOf(k); return r >= 0 ? r : INV_RAR[k] ?? 0; };
+// [filled outline, extra lines] per shape, 24x24
+const INV_SVG = {
+  coin: ['<circle cx="9.5" cy="13.5" r="6"/><circle cx="14.5" cy="10.5" r="6"/>', '<path d="M14.5 8v5"/>'], instr: ['<circle cx="12" cy="12" r="8.5"/>', '<path d="M12 5.5l2 6.5-2 6.5-2-6.5z"/>'],
+  tag: ['<rect x="6.5" y="3.5" width="11" height="16" rx="3"/>', '<circle cx="12" cy="7" r="1"/><path d="M9.5 11h5M9.5 14h5"/>'], medal: ['<circle cx="12" cy="15" r="5.5"/>', '<path d="M8 3l4 6.5L16 3M12 12.5v5M9.5 15h5"/>'],
+  shell: ['<path d="M4 18.5c0-7.5 4-13.5 8-13.5s8 6 8 13.5z"/>', '<path d="M12 5v13.5M8.3 7.5L6.8 18.5M15.7 7.5l1.5 11"/>'], coral: ['', '<path d="M12 21v-8M12 13L8 9V4.5M12 13l4-5V3.5M8 9L5 7M16 8l3-2.5M12 17l-3-2.5"/>'],
+  egg: ['<path d="M12 3c3.5 0 6.5 6 6.5 10.5a6.5 6.5 0 0 1-13 0C5.5 9 8.5 3 12 3z"/>', ''], pearl: ['<path d="M3 16c2.5-6.5 15.5-6.5 18 0-4 3.5-14 3.5-18 0z"/>', '<circle cx="12" cy="12" r="3.3"/>'],
+  tooth: ['<path d="M5.5 4h13l-5.5 16.5h-2z"/>', ''], disc: ['<ellipse cx="12" cy="12" rx="6.5" ry="8.5"/>', '<path d="M12 3.5v17M6 9h12M5.6 13h12.8M7 17h10"/>'],
+  jar: ['<rect x="7" y="7" width="10" height="13.5" rx="2"/>', '<rect x="6.5" y="3.8" width="11" height="3.2" rx="1"/><path d="M10 13c1 1 3 1 4 0"/>'], ring: ['<path d="M9.5 6.5L12 3l2.5 3.5L12 9.5z"/>', '<circle cx="12" cy="15" r="5.5"/>'],
+  gem: ['<path d="M7 4h10l4 5-9 12L3 9z"/>', '<path d="M3 9h18M9 4l3 5 3-5M12 9v12"/>'], relic: ['<path d="M12 2l2.8 7.2L22 12l-7.2 2.8L12 22l-2.8-7.2L2 12l7.2-2.8z"/>', '<circle cx="12" cy="12" r="2"/>'],
+  crate: ['<rect x="3.5" y="5" width="17" height="15" rx="1"/>', '<path d="M3.5 5l17 15M20.5 5l-17 15"/>'], scrap: ['<path d="M3 15.5l5-8.5 4 3 3.5-5.5L21 14l-4 5.5H6.5z"/>', '<circle cx="9" cy="14.5" r="1"/>'],
+  fuel: ['<path d="M5.5 5h9.5l3.5 3.5V21h-13z"/>', '<path d="M9 10h6.5M9 5V2.8h4M9 14l6.5 4M15.5 14L9 18"/>'], patch: ['<rect x="3.5" y="7" width="17" height="10" rx="2"/>', '<path d="M12 9.2v5.6M9.2 12h5.6"/>'],
+  chest: ['<path d="M3 11a9 6 0 0 1 18 0v8.5H3z"/>', '<path d="M3 12.5h18M10.8 11.2h2.4v3.4h-2.4z"/>'], blackbox: ['<rect x="3.5" y="6" width="17" height="13" rx="2"/>', '<path d="M3.5 10h17M7.5 14.5h4"/><circle cx="16" cy="14.5" r="1.6"/>'],
+  fang: ['<path d="M7.5 3c4.5 0 8.5 1 8.5 4.2-1 6.3-4 11-7 13.8 0-5 1.2-9.5-1.5-18z"/>', ''], gold: ['<path d="M2.5 18l3.2-7.5h12.6l3.2 7.5z"/>', '<path d="M8 10.5L9.5 6h5l1.5 4.5"/>'],
+  key: ['<rect x="2.5" y="6" width="19" height="12.5" rx="2"/>', '<rect x="5.5" y="9" width="5" height="4" rx=".5"/><path d="M13.5 10h5M13.5 13.5h3.5"/>'], mask: ['<path d="M5 4.5c4-2 10-2 14 0 0 8.5-2 15.5-7 15.5S5 13 5 4.5z"/>', '<path d="M8 10h3M13 10h3M10 16h4"/>'],
+  spine: ['', '<path d="M3.5 20.5C8 14.5 12 8.5 20.5 3.5M6 15.8L3 14.6M9 12.3L7.3 9.3M12.2 9.3l-.7-3.4M15.6 6.9V3.5M7.5 17.8l.8 3.2M11 14.5l2.3 1.8M14.2 11.4l3.2.9M17.4 8.6l3.1 1.6"/>'],
+  netfish: ['<path d="M4 4h16l-3 16.5H7z"/>', '<path d="M5 9h14M6.2 14h11.6M10 4l-1 16.5M14 4l1 16.5"/>'], parcel: ['<rect x="3.5" y="7" width="17" height="12.5"/>', '<path d="M3.5 7L6.5 4h11l3 3M12 4v15.5M9 7h6"/>'],
+  ore: ['<path d="M12 2.5l5.5 6.5-2 12.5h-7l-2-12.5z"/>', '<path d="M12 2.5v19M6.5 9h11"/>'], battery: ['<rect x="2.5" y="8" width="16.5" height="9" rx="1"/>', '<path d="M19 11h2.3v3H19M6.5 12.5h4.5M8.75 10.25v4.5"/>'],
+  fish: ['<path d="M2.5 12c3-4.8 9.2-6 14-1.8L21 7v10l-4.5-3.2C11.7 18 5.5 16.8 2.5 12z"/>', '<circle cx="7.5" cy="11" r=".9"/>'], none: ['<circle cx="12" cy="12" r="7.5"/>', '<path d="M12 8.5v4M12 15.5v.1"/>']};
+function invIcon(k, col) { const T = TRSD[k], Rl = RELICS[k], sh = T ? T.sh : Rl ? 'relic' : INV_SVG[k] ? k : 'none', c = col != null ? col : T ? T.c : Rl ? Rl[2] : INV_COL[k] ?? 0x9a9a9a, S = INV_SVG[sh] || INV_SVG.none;
+  return `<svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><g fill="${hexS(c)}" fill-opacity=".45">${S[0]}</g><g fill="none">${S[1]}</g></svg>`; }
+const invCap1 = n => String(n)[0].toUpperCase() + String(n).slice(1);
+const invName = k => invCap1(NAMES[k] || k);
+const invEsc = t => String(t).replace(/[<>&"]/g, '');
+function invAtHold() { if (!P || !BOAT || !BSPOT.hold || B.sink > 0) return false; const [x, z] = bL2W(BSPOT.hold[0], BSPOT.hold[1]); return Math.hypot(P.x - x, P.z - z) < 3.4; }
+function invSellHere() { if (!P) return ''; const q = voyPortNear(P.x, P.z, 140); if (q) return q === JETTY ? 'the harbour shed' : q.n || 'this port'; if (G.shed && G.shed.shop && Math.hypot(P.x - G.shed.shop[0], P.z - G.shed.shop[2]) < 40) return 'the harbour shed';
+  return P.ob && megaShip() ? "the ship's purser (15% cut)" : ''; }
+const invHoldSells = () => !!invSellHere() && (!!voyPortNear(B.x, B.z, 60 + BG.L * .5) || !!(P.ob && megaShip()));
+// why a move/sell can't happen right now ('' = it can); the host checks the same rules again
+function invWhy(op, src, k) {
+  if (op === 'move') { if (!invAtHold()) return P.ob ? 'Stand at the hold to move things' : 'The hold is aboard the boat'; if (src === 's') return k === 'key' ? 'The key card stays with you' : holdFits(k) ? '' : 'The hold is full'; return sackFits(P, k) ? '' : 'Your sack is full'; }
+  if (op === 'sell') { if (src !== 'c' && !VALUE[k]) return 'Worth nothing at a sale'; if (!invSellHere()) return 'Sell at a harbour shed or port'; if (src === 'h' && !invHoldSells()) return 'Bring the boat into the harbour to sell the hold'; return ''; }
+  return ''; }
+function invDo(op, src, k) { if (invWhy(op, src, k)) return; INV2.sel = null;
+  if (op === 'move') act({a: src === 's' ? 'stow' : 'unstow', ik: k}); else if (op === 'drop') act({a: 'drop', ik: k}); else if (op === 'sell') act({a: 'sell', src, ik: k});
+  if (Snd && Snd.click) Snd.click(); invSoon(); }
+function invSoon(ms = 140) { clearTimeout(INV2.rq); INV2.rq = setTimeout(() => { if (G.invOpen && !INV2.drag) invDraw(); }, ms); }
+function invSorted(L) { const s = INV2.sort, v = e => (VALUE[e.k] || 0) * (e.n || 1), r = e => invRar(e.k), z = e => SZ[e.k] || 1;
+  return L.slice().sort(s === 'rarity' ? (a, b) => r(b) - r(a) || v(b) - v(a) : s === 'size' ? (a, b) => z(b) - z(a) || v(b) - v(a) : s === 'new' ? (a, b) => b.at - a.at : (a, b) => v(b) - v(a) || r(b) - r(a)); }
+function invTile(e, src) { const k = e.k, R0 = RAR[invRar(k)] || RAR[0], z = SZ[k] || 1, v = VALUE[k] || 0, sel = INV2.sel && INV2.sel.src === src && INV2.sel.k === k;
+  return `<div class="iv2t${sel ? ' sel' : ''}" draggable="true" data-src="${src}" data-k="${invEsc(k)}" style="--rc:${R0[1]}" title="${invEsc(invName(k))}${TRSD[k] ? ' · appraised when sold' : ''}"><i>${invIcon(k)}</i><div><b>${invEsc(invName(k))}${e.n > 1 ? ` <em>×${e.n}</em>` : ''}</b>`
+    + `<small><span style="color:${R0[1]}">${R0[0]}</span> <span class="iv2z" title="${z} slot${z > 1 ? 's' : ''}">${'<span></span>'.repeat(z)}</span></small></div>${v ? `<u>${TRSD[k] ? '~' : ''}${money(v * (e.n || 1))}</u>` : ''}</div>`; }
+function invSlots(L, cap) { let h = '', u = 0; for (const k of L) { const z = SZ[k] || 1; for (let j = 0; j < z && u < cap; j++, u++) h += `<i style="background:${(RAR[invRar(k)] || RAR[0])[1]}${j ? ';opacity:.7' : ''}"></i>`; } for (; u < cap; u++) h += '<i></i>'; return `<div class="iv2s">${h}</div>`; }
+function invBody() {
+  const sk = P.sack || [], hd = B.hold || [], cap = sackCap(P), used = sackUsed(sk), hc = holdCap(), hu = sackUsed(hd), at = invAtHold(), sh = invSellHere(), S = INV2.sel;
+  const sackL = invSorted(sk.map((k, i) => ({k, n: 1, at: i}))), grp = {}; hd.forEach((k, i) => { const g = grp[k] || (grp[k] = {k, n: 0, at: 0}); g.n++; g.at = i; }); const holdL = invSorted(Object.values(grp));
+  const btn = (op, src, k, label) => { const w = invWhy(op, src, k); return `<button class="iv2b" data-op="${op}" data-src="${src}" data-k="${invEsc(k)}"${w ? ` disabled title="${invEsc(w)}"` : ''}>${label}</button>${w ? `<small class="why">${invEsc(w)}</small>` : ''}`; };
+  let h = `<div class="iv2top"><span class="dim">${at ? 'At the hold: click an item to move it, double-click, or drag it across.' : P.ob ? 'Walk to the hold on deck to move things between your sack and the hold.' : 'The hold is aboard the boat.'}${sh ? ` Selling here: ${sh}.` : ''}</span>`
+    + `<span class="seg iv2sort">${[['value', 'Value'], ['rarity', 'Rarity'], ['size', 'Size'], ['new', 'Newest']].map(([k, n]) => `<button data-sort="${k}" class="${INV2.sort === k ? 'on' : ''}">${n}</button>`).join('')}</span></div>`;
+  h += `<div class="iv2c"><div class="iv2col${used >= cap ? ' full' : ''}" data-zone="s"><h3>SACK · ${used}/${cap} SLOTS${sackVal(sk) ? ' · ' + money(sackVal(sk)) : ''}${used >= cap ? ' <span class="iv2f">FULL</span>' : ''}</h3>${invSlots(sk, cap)}`
+    + `<div class="iv2l">${sackL.length ? sackL.map(e => invTile(e, 's')).join('') : '<div class="dim">Empty. Pick things up with E.</div>'}</div>`
+    + `<div class="row iv2a"><button id="iv2Stow"${at && sk.some(k => k !== 'key') ? '' : ' disabled'}>Stow all</button><button id="iv2Sell"${sh && (sackVal(sk) || (P.coolerV || 0) || (invHoldSells() && holdValue())) ? '' : ' disabled'}>Sell everything here</button><span class="iv2x" data-zone="x">Drag here to drop</span></div></div>`;
+  h += `<div class="iv2col${hu >= hc ? ' full' : ''}" data-zone="h"><h3>BOAT HOLD · ${hu}/${hc} · ${money(holdValue())}${hu >= hc ? ' <span class="iv2f">FULL</span>' : ''}</h3><div class="iv2bar"><b style="width:${Math.min(100, hu / Math.max(1, hc) * 100).toFixed(1)}%"></b></div>`
+    + `<div class="iv2l">${holdL.length ? holdL.map(e => invTile(e, 'h')).join('') : '<div class="dim">Empty.</div>'}</div></div></div>`;
+  // what you can do with the selected item
+  if (S && (S.src === 's' ? sk.includes(S.k) : hd.includes(S.k))) { const v = VALUE[S.k] || 0, R0 = RAR[invRar(S.k)] || RAR[0];
+    h += `<div class="iv2act" style="--rc:${R0[1]}"><span><i>${invIcon(S.k)}</i><span><b>${invEsc(invName(S.k))}</b><small>${S.src === 's' ? 'In your sack' : 'In the hold'}${TRSD[S.k] ? ` · ${invEsc(LSETS[TRSD[S.k].set].n)} · appraised at the sale` : ''}</small></span></span>`
+      + `<span class="bt">${btn('move', S.src, S.k, S.src === 's' ? 'Move to the hold →' : '← Take into the sack')}</span>${S.src === 's' ? `<span class="bt">${btn('drop', 's', S.k, 'Drop')}</span>` : ''}${v ? `<span class="bt">${btn('sell', S.src, S.k, `Sell ${TRSD[S.k] ? '~' : ''}${money(Math.round(v * (D.pay || 1)))}`)}</span>` : ''}</div>`; } else INV2.sel = null;
+  const cl = P.cooler || [], cn = P.cooler ? cl.length : P.coolerN || 0, cv = P.cooler ? coolerVal(cl) : P.coolerV || 0, cap2 = [0, 8, 12, 18][(P.own || {}).rod || 0] || 0;
+  h += `<h3>COOLER · ${cn}${cap2 ? '/' + cap2 : ''} FISH${cv ? ' · ' + money(cv) : ''}${cap2 && cn >= cap2 ? ' <span class="iv2f">FULL</span>' : ''}</h3>`;
+  if (cn) { const fg = {}; if (P.cooler) for (const e of cl) { const f = Array.isArray(e) ? e[0] : e, g = fg[f] || (fg[f] = {n: 0, v: 0}); g.n++; g.v += Array.isArray(e) ? e[1] : 0; }
+    h += `<div class="iv2l">` + (P.cooler ? Object.entries(fg).sort((a, b) => b[1].v - a[1].v).map(([f, g]) => { const F2 = FISH[f] || {}, rr = F2.leg ? 4 : 0; return `<div class="iv2t" style="--rc:${RAR[rr][1]}"><i>${invIcon('fish', INV_COL.fish)}</i><div><b>${invEsc(invCap1(F2.n || f))}${g.n > 1 ? ` <em>×${g.n}</em>` : ''}</b><small>${F2.leg ? `<span style="color:${RAR[4][1]}">Legend</span>` : `${g.n} on ice`}</small></div><u>${money(g.v)}</u></div>`; }).join('') : `<div class="dim">${cn} fish on ice.</div>`)
+      + `</div><div class="row iv2a"><span class="bt">${btn('sell', 'c', 'fish', `Sell the catch ${money(Math.round(cv * (D.pay || 1)))}`)}</span></div>`; }
+  else h += '<div class="dim">No fish.</div>';
+  const O = lootOwn().rel, worn = G.relAct.filter(k => O[k]).length;
+  h += `<h3>RELICS · ${Object.keys(O).length}/${Object.keys(RELICS).length} FOUND · WEARING ${worn}/${lootSlots()} · CLICK TO WEAR</h3><div class="iv2l">` + Object.keys(RELICS).map(k => { const Rl = RELICS[k], got = !!O[k], on = got && G.relAct.includes(k);
+    return got ? `<div class="iv2t rel${on ? ' sel' : ''}" data-rel="${k}" style="--rc:${hexS(Rl[2])}" title="Click to ${on ? 'take it off' : 'wear it'}"><i>${invIcon(k)}</i><div><b>${invEsc(Rl[0])}${on ? ' <em>worn</em>' : ''}</b><small>${invEsc(Rl[1])}</small></div></div>`
+      : `<div class="iv2t q"><i>${invIcon('none', 0x333333)}</i><div><b>Unknown relic</b><small>Legendary finds can be relics</small></div></div>`; }).join('') + '</div>';
+  return h; }
+function invWire(box) {
+  box.querySelectorAll('[data-sort]').forEach(b => b.onclick = () => { INV2.sort = b.dataset.sort; try { localStorage.setItem('s9-invsort', INV2.sort); } catch (e) {} invDraw(); });
+  box.querySelectorAll('.iv2t[data-src]').forEach(t => { const src = t.dataset.src, k = t.dataset.k;
+    t.onclick = () => { INV2.sel = INV2.sel && INV2.sel.src === src && INV2.sel.k === k ? null : {src, k}; invDraw(); };
+    t.ondblclick = () => invDo('move', src, k);
+    t.ondragstart = e => { INV2.drag = {src, k}; try { e.dataTransfer.setData('text/plain', k); e.dataTransfer.effectAllowed = 'move'; } catch (x) {} t.classList.add('drag'); };
+    t.ondragend = () => { INV2.drag = null; box.querySelectorAll('.over').forEach(z => z.classList.remove('over')); t.classList.remove('drag'); invSoon(60); }; });
+  box.querySelectorAll('[data-zone]').forEach(z => { const zn = z.dataset.zone, ok = () => { const d = INV2.drag; return !!d && (zn === 'x' ? d.src === 's' : zn !== d.src && !invWhy('move', d.src, d.k)); };
+    z.ondragover = e => { if (!ok()) return; e.preventDefault(); e.stopPropagation(); z.classList.add('over'); };
+    z.ondragleave = e => { if (!z.contains(e.relatedTarget)) z.classList.remove('over'); };
+    z.ondrop = e => { e.preventDefault(); e.stopPropagation(); z.classList.remove('over'); const d = INV2.drag; if (!d || !ok()) return; INV2.drag = null; invDo(zn === 'x' ? 'drop' : 'move', d.src, d.k); }; });
+  box.querySelectorAll('.iv2b').forEach(b => b.onclick = e => { e.stopPropagation(); invDo(b.dataset.op, b.dataset.src, b.dataset.k); });
+  box.querySelectorAll('[data-rel]').forEach(t => t.onclick = () => { relicToggle(t.dataset.rel); invDraw(); });
+  const st = box.querySelector('#iv2Stow'); if (st) st.onclick = () => { act({a: 'stow'}); invSoon(); };
+  const sl = box.querySelector('#iv2Sell'); if (sl) sl.onclick = () => { act({a: 'sell'}); invSoon(); }; }
+function invCss() { if ($('iv2css')) return; const st = document.createElement('style'); st.id = 'iv2css'; st.textContent = `
+#inv .iv2top{display:flex;justify-content:space-between;align-items:center;gap:10px;margin:10px 0 4px;flex-wrap:wrap} #inv .iv2sort button{padding:4px 9px;font-size:12px}
+#inv .iv2c{display:grid;grid-template-columns:1fr 1fr;gap:12px} #inv .iv2col{border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:2px 10px 10px;background:rgba(255,255,255,.02);transition:background .15s,border-color .15s;min-width:0}
+#inv .iv2col.over{border-color:#6ab8e0;background:rgba(74,168,200,.12)} #inv .iv2col.full h3{color:#ff9a60} #inv .iv2f{background:#a8401a;color:#fff;border-radius:3px;padding:0 5px;margin-left:4px;letter-spacing:.08em}
+#inv .iv2l{display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:6px;margin-top:6px}
+#inv .iv2t{display:flex;gap:8px;align-items:center;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-left:3px solid var(--rc);border-radius:7px;padding:5px 7px;cursor:pointer;min-width:0}
+#inv .iv2t:hover{background:rgba(255,255,255,.1)} #inv .iv2t.sel{outline:1px solid var(--rc);background:rgba(255,255,255,.12)} #inv .iv2t.drag{opacity:.45} #inv .iv2t.q{opacity:.45;cursor:default;border-left-color:#444}
+#inv .iv2t i,#inv .iv2act i{flex:none;width:30px;height:30px;color:#e8e0cc;display:inline-block;border-radius:6px;background:radial-gradient(circle,color-mix(in srgb,var(--rc) 30%,transparent),transparent 72%)} #inv .iv2t svg,#inv .iv2act svg{width:100%;height:100%;display:block}
+#inv .iv2t div{min-width:0} #inv .iv2t b{display:block;font-weight:normal;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis} #inv .iv2t b em{color:#9fb4c0;font-style:normal;font-size:12px}
+#inv .iv2t small{display:block;font:11px ui-monospace,monospace;color:#9a9282;white-space:nowrap;overflow:hidden;text-overflow:ellipsis} #inv .iv2t u{flex:none;margin-left:auto;padding-left:4px;text-decoration:none;color:#ffd88a;font:12px ui-monospace,monospace} #inv .iv2t.rel small{white-space:normal} #inv .iv2z{display:inline-flex;gap:2px;margin-left:4px;vertical-align:0} #inv .iv2z span{width:5px;height:8px;border-radius:1px;background:#8b8577}
+#inv .iv2s{display:flex;gap:2px;margin:2px 0 4px} #inv .iv2s i{flex:1;height:6px;border-radius:2px;background:rgba(255,255,255,.12)} #inv .iv2bar{height:6px;border-radius:2px;background:rgba(255,255,255,.12);margin:2px 0 4px} #inv .iv2bar b{display:block;height:100%;border-radius:2px;background:#4aa8c8}
+#inv .iv2col.full .iv2bar b{background:#e07040} #inv .iv2a{margin-top:8px;align-items:flex-start;justify-content:flex-start} #inv .iv2a > .bt{flex:none} #inv .iv2a button,#inv .iv2act button{padding:6px 11px;font-size:13px}
+#inv .iv2x{flex:1;min-width:90px;text-align:center;border:1px dashed rgba(255,255,255,.2);border-radius:6px;padding:5px;font-size:12px;color:#8b8577} #inv .iv2x.over{border-color:#e07040;color:#ffb090;background:rgba(224,112,64,.12)}
+#inv .iv2act{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:10px;padding:8px 10px;border:1px solid rgba(255,255,255,.14);border-left:3px solid var(--rc);border-radius:8px;background:rgba(74,168,200,.08)} #inv .iv2act > span:first-child{display:flex;gap:8px;align-items:center;flex:1;min-width:160px}
+#inv .iv2act b{font-weight:normal} #inv .iv2act small{display:block;font:11px ui-monospace,monospace;color:#9a9282} #inv .bt{display:inline-flex;flex-direction:column;align-items:center} #inv .why{font:10px ui-monospace,monospace;color:#c89a7a;margin-top:3px}
+@media (max-width:720px){#inv .iv2c{grid-template-columns:1fr}}
+#carry .ivp{display:flex;justify-content:center;gap:2px;margin:3px 0 1px} #carry .ivp i{width:10px;height:5px;border-radius:1px;background:rgba(255,255,255,.2)} #carry .ivp i.on{background:#e8d8a8} #carry.full .ivp i.on{background:#ff8a50}
+#carry.full{color:#ffb070} #carry em{font-style:normal;font-size:10px;letter-spacing:.12em;background:#a8401a;color:#fff;border-radius:3px;padding:0 4px;margin-left:6px;vertical-align:1px}
+#carry.nag{animation:ivNag .5s ease-in-out infinite alternate} @keyframes ivNag{from{transform:translateX(-50%) scale(1)}to{transform:translateX(-50%) scale(1.12);color:#ff7040}}`; document.head.appendChild(st); }
+// the old panel keeps its header, suit and gear; everything from the SACK heading on is replaced by the new body
+{ invOpen = after(invOpen, function () { const el = $('inv'); if (el) { el.style.width = 'min(900px,96vw)'; el.style.maxHeight = '88vh'; } }); }
+{ invDraw = after(invDraw, function () { const el = $('inv'); if (!el || !G.invOpen || !P) return; invCss();
+  const s0 = [...el.querySelectorAll(':scope > h3')].find(q => /^SACK/.test(q.textContent)), x = $('invX');
+  if (s0) { let n = s0; while (n && n !== x) { const nx = n.nextSibling; n.remove(); n = nx; } }
+  const box = document.createElement('div'); box.id = 'iv2'; box.innerHTML = invBody(); el.insertBefore(box, x && x.parentNode === el ? x : null); invWire(box);
+  INV2.sig = invSig(); }); }
+const invSig = () => P ? [(P.sack || []).join(), (B.hold || []).join(), P.coolerN || 0, (P.cooler || []).length, invAtHold() ? 1 : 0, invSellHere(), invHoldSells() ? 1 : 0, sackCap(P), holdCap(), G.relAct.join(), Object.keys(lootOwn().rel).join()].join('|') : '';
+{ applyEv = after(applyEv, function (r, e) { if (G.invOpen && e && /^(sack|stow|sold|apr|cooler|holdfull|relic|purser)$/.test(e.k)) invSoon(); }); }
+// host: one item at a time. The core acts work on the whole sack (stow), the last item (drop, unstow) or everything (sell), so the chosen item is
+// handed to them alone (the rest set aside and put back after) and every rule they check still applies; sackSet stays quiet until it is all back
+{ sackSet = before(sackSet, function (p) { if (!INV2.mute) return NEXT; p.carry = p.sack.length ? p.sack[p.sack.length - 1] : null; }); }
+{ hostAct = around(hostAct, function (next, ...args) { const [id, m] = args, p = PL.get(id);
+  if (!m || !p || !G.on || m.ik === undefined || !/^(stow|unstow|drop|sell)$/.test(m.a)) return next(...args);
+  const k = String(m.ik), put = (rest, j, left) => { rest.splice(j < 0 ? rest.length : Math.min(j, rest.length), 0, ...left); return rest; };
+  if (m.a === 'drop') { const j = p.sack.lastIndexOf(k); if (j < 0) return; p.sack.push(p.sack.splice(j, 1)[0]); return next(...args); }
+  const src = m.a === 'stow' ? 's' : m.a === 'unstow' ? 'h' : m.src; if (!/^[shc]$/.test(src)) return;
+  const js = src === 's' ? p.sack.lastIndexOf(k) : -1, jh = src === 'h' ? B.hold.lastIndexOf(k) : -1; if ((src === 's' && js < 0) || (src === 'h' && jh < 0)) return;
+  const rs = p.sack.slice(), rh = B.hold.slice(), c0 = p.cooler; if (js >= 0) rs.splice(js, 1); if (jh >= 0) rh.splice(jh, 1);
+  if (m.a === 'stow') p.sack = [k]; else if (m.a === 'unstow') B.hold = [k]; else { p.sack = js >= 0 ? [k] : []; B.hold = jh >= 0 ? [k] : []; if (src !== 'c') p.cooler = []; }
+  INV2.mute++; let r;
+  try { r = next(...args); }
+  finally { INV2.mute--;
+    if (m.a === 'stow') p.sack = put(rs, js, p.sack);
+    else if (m.a === 'unstow') B.hold = put(rh, jh, B.hold);
+    else { const ls = p.sack, lh = B.hold; p.sack = put(rs, js, ls); B.hold = put(rh, jh, lh); if (src !== 'c') p.cooler = c0; }
+    sackSet(p); }
+  return r; }); }
+// HUD: slot pips under the sack line, FULL in orange, one warning when it fills, a pulse while the pickup prompt says it is full
+{ hud = after(hud, function () { if (!P || !G.on) return; const el = $('carry'); if (!el) return; const q = P.sack || [], used = sackUsed(q), cap = sackCap(P), full = q.length > 0 && used >= cap;
+  if ((G.sackKey || '') + '|' + cap + '|' + el.childElementCount !== INV2.ck) { invCss(); el.querySelectorAll('.ivp,em').forEach(n => n.remove()); el.classList.toggle('full', full);
+    if (q.length) { const pp = document.createElement('span'); pp.className = 'ivp'; pp.innerHTML = Array.from({length: cap}, (_, i) => `<i class="${i < used ? 'on' : ''}"></i>`).join(''); el.insertBefore(pp, el.querySelector('small')); if (full) { const t = document.createElement('em'); t.textContent = 'FULL'; el.insertBefore(t, pp); } }
+    INV2.ck = (G.sackKey || '') + '|' + cap + '|' + el.childElementCount; }
+  if (INV2.used >= 0 && used > INV2.used && used >= cap) showMsg(`Sack full (${used}/${cap}). Stow it at the boat's hold or sell at a harbour. I opens the inventory.`, '', 3.5);
+  INV2.used = used;
+  const pr = $('prompt'), nag = full && !!pr && pr.offsetParent !== null && /Sack full/.test(pr.textContent || ''); if (el.classList.contains('nag') !== nag) el.classList.toggle('nag', nag); if (nag) G.sackShowT = Math.max(G.sackShowT || 0, .5);
+  if (G.invOpen && !INV2.drag) { const now = performance.now(); if (now - INV2.t > 400) { INV2.t = now; if (invSig() !== INV2.sig) invDraw(); } } }); }
+
+// ---------------- the deep thing, scarier still (v83): a new body (a thin neck behind an armoured skull, a heavy scaled trunk, a torn dorsal frill, two pairs of clawed
+// paddles), a crown of horns, four lit eyes a side, fangs and side mandibles that splay when it opens; it swims in S-curves and breaches while it circles. Every strike is
+// telegraphed: it dives, the sea goes quiet, the water swells where it will come up, its eyes light under the surface and the boat lights stutter, so a flare there or
+// full throttle away (LV3.DODGE of top speed, held from the dive to the strike) beats it. Timing stays on the host: the 'circle' event's L is longer (LV3.CX + LV3.TG) and levPose
+// plays the dive (ph 5) for every client and for hit tests. And the nest in the Maw: a ring of what it dragged home at the surface (an older one's bones, half-sunk boats),
+// a clutch of glowing eggs, shed skins and wrecks on the bed, and if divers linger near the nest it comes home (event 'mwg' s 0 warn, 1 arrives and coils, 2 strikes, 3 leaves).
+const LV3 = {TG: 3, CX: 2, DODGE: .8, o: {}, frill: null, pads: [], eyeM: [], glow: .4, flick: 0, duck: false, cen: new Float32Array(46 * 3), up: new Float32Array(46 * 3), sd: new Float32Array(46 * 3), mand: [], thr: [], q: null, wd: 0, wa: 0, gcd: 20};
+const NEST = {c: null, surf: null, deep: null, eggs: [], glints: [], deb: null, ph: 0, hb: 0, alarm: 0};
+const _p3 = new THREE.Vector3(), _k3 = new THREE.Vector4(), _m3 = new THREE.Matrix4(), _q3 = new THREE.Quaternion(), _e3 = new THREE.Euler(), _v3a = new THREE.Vector3(), _v3b = new THREE.Vector3(), _v3c = new THREE.Vector3();
+// a tube along a curve that tapers from r0 to r1 (horns, ribs, shed skins)
+function lv3Horn(pts, r0, r1, seg = 12, rad = 7) { const c = new THREE.CatmullRomCurve3(pts.map(p => new THREE.Vector3(p[0], p[1], p[2]))), g = new THREE.TubeGeometry(c, seg, 1, rad, false), pa = g.attributes.position, v = new THREE.Vector3();
+  for (let i = 0; i <= seg; i++) { const cp = c.getPointAt(i / seg), r = mix(r0, r1, i / seg); for (let j = 0; j <= rad; j++) { const k = i * (rad + 1) + j; v.fromBufferAttribute(pa, k).sub(cp).multiplyScalar(r).add(cp); pa.setXYZ(k, v.x, v.y, v.z); } }
+  g.computeVertexNormals(); return g; }
+function lv3SkinTex() { const c = document.createElement('canvas'); c.width = c.height = 256; const x = c.getContext('2d'), r = mulberry(8311); x.fillStyle = '#b8b8b8'; x.fillRect(0, 0, 256, 256);
+  for (let row = -1; row <= 16; row++) for (let k = -1; k <= 16; k++) { const cx = k * 16 + (row & 1) * 8, cy = row * 16, l = 150 + r() * 80 | 0, gr = x.createRadialGradient(cx, cy + 2, 1, cx, cy, 11);
+    gr.addColorStop(0, `rgb(${l + 25},${l + 25},${l + 22})`); gr.addColorStop(.75, `rgb(${l},${l},${l})`); gr.addColorStop(1, 'rgb(70,70,70)'); x.fillStyle = gr; x.beginPath(); x.arc(cx, cy, 10.5, 0, PI); x.fill(); }
+  x.strokeStyle = 'rgba(230,230,225,.5)'; x.lineWidth = 1.5; for (let i = 0; i < 6; i++) { x.beginPath(); const y = r() * 256; x.moveTo(0, y); for (let s = 1; s <= 8; s++) x.lineTo(s * 32, y + (r() - .5) * 18); x.stroke(); }
+  const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 4; return t; }
+// a thinner neck behind the head, a heavy trunk, a long tail
+levR = around(levR, function (next, u) { return u < .035 ? mix(1.4, 1.1, u / .035) : u < .22 ? mix(1.1, 2.4, smooth((u - .035) / .185)) : 2.4 * Math.pow(Math.max(0, 1 - (u - .22) / .78), .85) + .1; });
+function lv3Paddle(mem, bone, tooth) { const g = new THREE.Group(), piv = new THREE.Group(); g.add(piv);
+  const sh = new THREE.Shape(), pts = [[0, .6], [1.5, .5], [2.9, -.3], [2.5, -.8], [3.2, -1.4], [2.1, -1.6], [2.3, -2.3], [1.0, -1.6], [0, -.6]]; sh.moveTo(...pts[0]); for (const p of pts.slice(1)) sh.lineTo(...p);
+  const mg = new THREE.ShapeGeometry(sh); mg.rotateX(-PI / 2); piv.add(new THREE.Mesh(mg, mem));
+  for (const [tx, tz] of [[2.9, .3], [3.2, 1.4], [2.3, 2.3]]) { const l = Math.hypot(tx, tz), b = new THREE.Mesh(new THREE.CylinderGeometry(.06, .13, l, 5), bone); b.position.set(tx / 2, .02, tz / 2); b.quaternion.setFromUnitVectors(_v3a.set(0, 1, 0), _v3b.set(tx, 0, tz).normalize()); piv.add(b);
+    const cl = new THREE.Mesh(new THREE.ConeGeometry(.08, .55, 5), tooth); cl.position.set(tx + tx / l * .2, -.05, tz + tz / l * .2); cl.quaternion.setFromUnitVectors(_v3a.set(0, 1, 0), _v3b.set(tx, -.6, tz).normalize()); piv.add(cl); }
+  g.userData.piv = piv; scene.add(g); return g; }
+// the new head and body parts, built once after buildLev
+function lv3Build() {
+  const tex = lv3SkinTex(), skin = LEV.body.material, g = LEV.body.geometry, {NS, NR} = LEV, uv = new Float32Array(NS * NR * 2), col = g.attributes.color.array;
+  for (let i = 0; i < NS; i++) for (let j = 0; j < NR; j++) { const k = i * NR + j; uv[k * 2] = i / (NS - 1) * 12; uv[k * 2 + 1] = (1 - Math.abs(1 - 2 * j / NR)) * 3; }
+  g.setAttribute('uv', new THREE.BufferAttribute(uv, 2)); for (let i = 0; i < col.length; i++) col[i] *= 1.3;
+  skin.map = tex; skin.bumpMap = tex; skin.bumpScale = 1.6; skin.roughness = .36; skin.needsUpdate = true;
+  const th = tex.clone(); th.repeat.set(2, 2); th.needsUpdate = true;
+  const hm = new THREE.MeshStandardMaterial({color: 0x1a2022, map: th, bumpMap: th, bumpScale: 1.4, roughness: .36, envMapIntensity: .5}), bone = new THREE.MeshStandardMaterial({color: 0x23231f, roughness: .45}),
+    tooth = new THREE.MeshStandardMaterial({color: 0xcfc8b0, roughness: .22}), gum = new THREE.MeshStandardMaterial({color: 0x1c0a0c, roughness: .3, emissive: 0x160406}), sock = new THREE.MeshStandardMaterial({color: 0x050505, roughness: .2});
+  // hide the old head (keep the barbels, which levDraw animates), then build the new one at 1.15x
+  const keep = new Set(); for (const s of [-1, 1]) for (let i = 0; i < 3; i++) keep.add(LEV['tn' + s + i]); if (LEV.fin1) LEV.fin1.visible = LEV['fin-1'].visible = false;
+  LEV.head.traverse(o => { if (o.isMesh && !keep.has(o)) o.visible = false; });
+  const SC = 1.15, H = new THREE.Group(); H.scale.setScalar(SC); LEV.head.add(H); LV3.H = H; LEV.jaw.position.multiplyScalar(SC); LEV.jaw.scale.setScalar(SC);
+  const m3 = (geo, m, x, y, z, sx = 1, sy = 1, sz = 1, rx = 0, ry = 0, rz = 0, p = H) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.scale.set(sx, sy, sz); o.rotation.set(rx, ry, rz); o.castShadow = true; p.add(o); return o; };
+  const sph = new THREE.SphereGeometry(1, 28, 20);
+  m3(sph, hm, 0, .3, .15, 1.25, .8, 1.7); m3(sph, hm, 0, .1, 2.45, .62, .42, 2.3); m3(sph, hm, 0, .5, 2.1, .2, .2, 2.0); m3(sph, hm, 0, .72, -.4, .5, .4, 1.4);
+  for (const s of [-1, 1]) {
+    m3(sph, hm, s * .8, .74, 1.4, .44, .24, 1.35, .28, s * .25, s * .4); m3(sph, hm, s * 1.02, -.05, .55, .5, .55, 1.1);
+    m3(lv3Horn([[s * .55, .95, .2], [s * 1.15, 1.55, -1.1], [s * 1.0, 2.25, -3.1]], .34, .03), bone, 0, 0, 0);
+    m3(lv3Horn([[s * .95, .7, -.2], [s * 1.75, .95, -1.4], [s * 2.05, 1.1, -2.8]], .26, .02), bone, 0, 0, 0);
+    m3(lv3Horn([[s * 1.1, .25, -.3], [s * 1.85, .15, -1.0], [s * 2.2, .3, -1.9]], .17, .02, 8, 6), bone, 0, 0, 0);
+    // four eyes a side under the brow; the left set goes milky after a kill
+    const em = LV3.eyeM[s < 0 ? 0 : 1] = new THREE.MeshBasicMaterial({color: new THREE.Color().setRGB(7, 4.5, 1)});
+    for (const [x, y, z, r] of [[.98, .6, 1.75, .17], [1.08, .5, 1.35, .14], [1.13, .38, .97, .12], [.9, .44, 2.12, .1]]) { m3(sph, sock, s * (x - .03), y, z, r * 1.45, r * 1.25, r * 1.6); const e = m3(sph, em, s * (x + .02), y, z, r * 1.3, r * 1.1, r * 1.5); e.castShadow = false; }
+    const eg = new THREE.Sprite(new THREE.SpriteMaterial({map: TX.glow, color: 0xffa020, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending})); eg.position.set(s * 1.15, .5, 1.5); eg.scale.set(1.4, .9, 1); H.add(eg); (LV3.eg || (LV3.eg = [])).push(eg);
+    // fangs along the upper jaw, the longest at the front and the corners
+    for (let k = 0; k < 9; k++) { const len = (k === 1 || k === 6 ? 1.25 : .55 + (k * 37 % 5) * .09), z = .7 + k * .4, w = z < 1.6 ? .78 : .6 * Math.sqrt(Math.max(.05, 1 - ((z - 2.45) / 2.3) ** 2)) - .04; m3(new THREE.ConeGeometry(.09 + len * .04, len, 5), tooth, s * w, -.2 - len * .35, z, 1, 1, 1, PI + .15, 0, s * .12); }
+    // side mandibles: hinged plates with hooks that swing out when it opens
+    const mp = new THREE.Group(); mp.position.set(s * .95, -.32, .45); H.add(mp); LV3.mand.push([mp, s]);
+    m3(sph, hm, 0, 0, .9, .22, .2, 1.25, 0, 0, 0, mp); for (let k = 0; k < 3; k++) m3(new THREE.ConeGeometry(.07, .5, 5), tooth, -s * .16, -.05, .4 + k * .5, 1, 1, 1, 0, 0, s * PI / 2, mp); }
+  // the lower jaw: a long shell with teeth, a dark gum floor and a few cold lights deep in the throat
+  const J = LEV.jaw; m3(sph, hm, 0, -.25, 2.0, .86, .28, 2.05, 0, 0, 0, J); m3(sph, gum, 0, -.06, 1.95, .72, .16, 1.85, 0, 0, 0, J);
+  for (const s of [-1, 1]) for (let k = 0; k < 8; k++) m3(new THREE.ConeGeometry(.08, .45 + (k * 13 % 4) * .1, 5), tooth, s * (.68 - k * .05), .12, .7 + k * .42, 1, 1, 1, 0, 0, 0, J);
+  const tm = new THREE.MeshBasicMaterial({color: new THREE.Color().setRGB(.6, 3, 2.4)}); for (let k = 0; k < 5; k++) { const o = m3(sph, tm, (k % 2 ? 1 : -1) * .22 * (k % 3), .02, .9 + k * .35, .05, .05, .05, 0, 0, 0, J); o.castShadow = false; LV3.thr.push(o); }
+  // dorsal frill: a strip from the neck to the tail, rebuilt from the body every frame
+  const NF = NS - 6, fg = new THREE.BufferGeometry(), fi = []; fg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(NF * 2 * 3), 3)); for (let f = 0; f < NF - 1; f++) { const a = f * 2; fi.push(a, a + 2, a + 1, a + 1, a + 2, a + 3); } fg.setIndex(fi);
+  LV3.frill = new THREE.Mesh(fg, new THREE.MeshStandardMaterial({color: 0x151011, roughness: .55, transparent: true, opacity: .8, side: THREE.DoubleSide, emissive: 0x060203, depthWrite: false})); LV3.frill.frustumCulled = false; LV3.frill.renderOrder = 3; scene.add(LV3.frill); LV3.NF = NF;
+  const mem = new THREE.MeshStandardMaterial({color: 0x1c2224, roughness: .5, transparent: true, opacity: .88, side: THREE.DoubleSide});
+  for (const [i, sc] of [[8, 1], [19, .72]]) for (const sd of [-1, 1]) LV3.pads.push({g: lv3Paddle(mem, bone, tooth), i, sc, sd});
+  LEV.hide = after(LEV.hide, function () { LV3.frill.visible = false; for (const p of LV3.pads) p.g.visible = false; });
+  LEV.hide();
+}
+buildLev = after(buildLev, function () { try { lv3Build(); } catch (e) { console.warn('lv3Build', e); } });
+// sinuous swim: the head weaves across its own path, so the body (which follows the head's trail) lies in S-curves
+levDraw = before(levDraw, function (hp, jaw, look, t) { const q = LV3.q || (LV3.q = new THREE.Vector3().copy(hp)), dx = hp.x - q.x, dz = hp.z - q.z; let d = Math.hypot(dx, dz);
+  if (!LEV.on || d > 25) { d = 0; LV3.wa = 0; } q.copy(hp); LV3.wd += d; LV3.wa = mix(LV3.wa, clamp(d * 9, 0, 1), .08);
+  if (d > 1e-4) { LV3.px = dz / d; LV3.pz = -dx / d; }
+  if (LV3.px != null && LV3.wa > .01) { const w = Math.sin(LV3.wd * TAU / 15) * 1.5 * LV3.wa; hp.x += LV3.px * w; hp.z += LV3.pz * w; if (hp.y < -.6) hp.y += Math.cos(LV3.wd * TAU / 15) * .3 * LV3.wa; }
+  return NEXT; });
+levDraw = after(levDraw, function (r, hp, jaw, look, t) { try { lv3Draw(jaw, t); } catch (e) { if (!LV3.err) { LV3.err = 1; console.warn(e); } } });
+function lv3Draw(jaw, t) { if (!LV3.frill) return; const {NS, NR} = LEV, pos = LEV.body.geometry.attributes.position.array, C = LV3.cen, U = LV3.up, S = LV3.sd, h7 = NR / 2;
+  for (let i = 0; i < NS; i++) { const k0 = i * NR * 3, k7 = (i * NR + h7) * 3, k3 = (i * NR + 3) * 3, k4 = (i * NR + 4) * 3, c = i * 3;
+    for (let a = 0; a < 3; a++) { C[c + a] = (pos[k0 + a] + pos[k7 + a]) / 2; U[c + a] = pos[k0 + a] - C[c + a]; S[c + a] = (pos[k3 + a] + pos[k4 + a]) / 2 - C[c + a]; }
+    let l = Math.hypot(U[c], U[c + 1], U[c + 2]) || 1; U[c] /= l; U[c + 1] /= l; U[c + 2] /= l; l = Math.hypot(S[c], S[c + 1], S[c + 2]) || 1; S[c] /= l; S[c + 1] /= l; S[c + 2] /= l; }
+  const fp = LV3.frill.geometry.attributes.position.array, NF = LV3.NF;
+  for (let f = 0; f < NF; f++) { const i = f + 2, k0 = i * NR * 3, c = i * 3, h = (.35 + 1.25 * Math.sin(PI * Math.min(1, (f + 1) / (NF * .9)))) * (f % 3 === 1 ? .6 : 1) * (1 - f / NF * .55), rp = Math.sin(t * 3 - f * .45) * .25 * h;
+    for (let a = 0; a < 3; a++) { fp[f * 6 + a] = pos[k0 + a] - U[c + a] * .15; fp[f * 6 + 3 + a] = pos[k0 + a] + U[c + a] * h + S[c + a] * rp; } }
+  LV3.frill.geometry.attributes.position.needsUpdate = true; LV3.frill.geometry.computeVertexNormals(); LV3.frill.visible = LEV.body.visible;
+  for (const p of LV3.pads) { const i = p.i, c = i * 3, r = levR(i / (NS - 1)); _v3a.set(C[c - 3] - C[c + 3], C[c - 2] - C[c + 4], C[c - 1] - C[c + 5]).normalize().negate(); _v3b.set(U[c], U[c + 1], U[c + 2]); _v3c.crossVectors(_v3b, _v3a).normalize(); _v3b.crossVectors(_v3a, _v3c).normalize();
+    _m3.makeBasis(_v3c, _v3b, _v3a); p.g.quaternion.setFromRotationMatrix(_m3); p.g.position.set(C[c] + _v3c.x * p.sd * r * .8 - _v3b.x * r * .35, C[c + 1] + _v3c.y * p.sd * r * .8 - _v3b.y * r * .35, C[c + 2] + _v3c.z * p.sd * r * .8 - _v3b.z * r * .35);
+    p.g.scale.set(p.sd * p.sc * 1.3, p.sc * 1.3, p.sc * 1.3); const ph = t * 2.1 + i * .4 + (p.sd > 0 ? 0 : .5); p.g.userData.piv.rotation.set(0, Math.sin(ph + PI / 2) * .35, -.3 + Math.sin(ph) * .45); p.g.visible = LEV.body.visible; }
+  for (const [mp, s] of LV3.mand) mp.rotation.y = s * (.06 + clamp(jaw, 0, 1) * .8);
+  for (let k = 0; k < LV3.thr.length; k++) LV3.thr[k].scale.setScalar(.05 + .03 * Math.sin(t * 5 + k * 1.7));
+  const g = LV3.glow, blind = (levMem().k || 0) > 0; LV3.eyeM[1].color.setRGB(7 * g, 4.5 * g, 1 * g); if (LV3.eg) LV3.eg.forEach((e, i) => e.material.opacity = clamp((g - .3) * .45, 0, .85) * (blind && i === 0 ? 0 : 1)); if (blind) LV3.eyeM[0].color.setRGB(.5, .55, .55); else LV3.eyeM[0].color.copy(LV3.eyeM[1].color); }
+// ---- the telegraphed strike: the circle runs CX s longer, then TG s of dive, silence and swell (ph 5), then the old rear-up and strike
+levPose = around(levPose, function (next, a, el, L, o) { if (!(L >= 11)) return next(a, el, L, o);
+  const TG = LV3.TG, Lp = L - TG, tB = Lp - 3.4; o.br = null;
+  if (el < tB) { next(a, el, Lp, o); const f = (a * 517.3) % 1; if (f < .65) { const b0 = 1.9 + ((a * 91.7) % 1) * 1.2, bd = 2.4, u = (el - b0) / bd; if (u > 0 && u < 1) { const k = Math.sin(PI * u); o.y += 7.2 * k; const ang = a + el * .45; o.x += Math.sin(ang) * 2 * k; o.z += Math.cos(ang) * 2 * k; o.br = u; } } return o; }
+  if (el < tB + TG) { const u = (el - tB) / TG, ab = a + tB * .45, r = levRad(ab) + 1.5 * Math.sin(PI * u); o.x = B.x + Math.sin(ab) * r; o.z = B.z + Math.cos(ab) * r;
+    o.y = u < .4 ? mix(-1.25, -13, smooth(u / .4)) : u < .6 ? -13 : mix(-13, -1.25, smooth((u - .6) / .4)); o.jaw = .05; o.ph = 5; o.u = u; return o; }
+  return next(a, el - TG, Lp, o); });
+emit = around(emit, function (next, ...args) { const e = args[0]; if (e && e.k === 'circle' && isHost() && !(e.L >= 11)) { const L = (e.L || 9) + LV3.CX + LV3.TG; if (G.enc) { G.enc.t += L - (G.enc.L || 9); G.enc.L = L; } e.L = L; } return next.apply(this, args); });
+// host: covering LV3.DODGE of the boat's top speed (the boatStep balance of thrust and drag) between the dive and the strike makes it miss (big ships need less, they are long)
+function lv3DodgeD() { const H = HC(), lv = (B.up && B.up.engine) || 0, vt = (H.spd || 1) * Math.sqrt((2.4 + lv * .7) * (1 + lv * .25) / .028); return LV3.DODGE * vt * (LV3.TG + 3.4) * (H.big ? .6 : 1); }
+hostStep = before(hostStep, function (dt) { const E = G.enc; if (E && E.L >= 11 && G.on) { const tB = E.L - LV3.TG - 3.4;
+  if (E.el >= tB && E.bx == null) { E.bx = B.x; E.bz = B.z; }
+  if (E.bx != null && E.t - dt <= 0 && Math.hypot(B.x - E.bx, B.z - E.bz) >= lv3DodgeD()) { G.enc = null; G.deepT = 90 + CR() * 60; const M2 = levMem(); M2.d = (M2.d || 0) + 1; emit({k: 'deepmiss'}); } }
+  return NEXT; });
+function lv3Side(x, z) { const [lx, lz] = bW2L(x, z), f = clamp((lz - BG.zb) / ((BG.zs - BG.zb) || 1), 0, 1), inl = Math.abs(lx) < BG.hw + 2;
+  if (inl && f < .2) return 'bow, dead ahead'; if (inl && f > .8) return 'stern'; return (lx >= 0 ? 'starboard' : 'port') + (f < .33 ? ' bow' : f > .67 ? ' quarter' : ' beam'); }
+function lv3Duck(on) { if (LV3.duck === on) return; LV3.duck = on; if (A.on && A.out) A.out.gain.setTargetAtTime(1.15 * SET.vol * (on ? .2 : 1), A.ctx.currentTime, on ? .35 : .12); }
+function lv3Bulge(o, bul, dt, t) {
+  if (!LV3.bul) { const dm = new THREE.SphereGeometry(1, 28, 10, 0, TAU, 0, PI / 2); LV3.bul = new THREE.Mesh(dm, new THREE.MeshStandardMaterial({color: 0x07161c, roughness: .12, metalness: .1, transparent: true, opacity: .92})); scene.add(LV3.bul);
+    const rc = document.createElement('canvas'); rc.width = rc.height = 128; const rx = rc.getContext('2d'), gr = rx.createRadialGradient(64, 64, 20, 64, 64, 63); gr.addColorStop(0, 'rgba(255,255,255,0)'); gr.addColorStop(.62, 'rgba(255,255,255,.05)'); gr.addColorStop(.8, 'rgba(255,255,255,.75)'); gr.addColorStop(.88, 'rgba(255,255,255,.3)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); rx.fillStyle = gr; rx.fillRect(0, 0, 128, 128);
+    LV3.ring = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), new THREE.MeshBasicMaterial({map: new THREE.CanvasTexture(rc), color: 0xd8e8ec, transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide})); LV3.ring.rotation.x = -PI / 2; scene.add(LV3.ring);
+    LV3.ue = new THREE.Group(); for (let i = 0; i < 2; i++) { const sp = new THREE.Sprite(new THREE.SpriteMaterial({map: TX.glow, color: 0xffa424, transparent: true, opacity: 0, depthTest: false, depthWrite: false, blending: THREE.AdditiveBlending})); sp.scale.setScalar(2.2); LV3.ue.add(sp); } scene.add(LV3.ue); }
+  const on = bul > .01 && !!o; LV3.bul.visible = LV3.ring.visible = LV3.ue.visible = on; if (!on) return;
+  const wy = waveH(o.x, o.z, t), dx = B.x - o.x, dz = B.z - o.z, dl = Math.hypot(dx, dz) || 1;
+  LV3.bul.position.set(o.x, wy - .7 + bul * .6, o.z); LV3.bul.scale.set(5 + bul * 4, .15 + bul * 1.5 + Math.sin(t * 7) * .08 * bul, 5 + bul * 4);
+  LV3.ring.position.set(o.x, wy + .35, o.z); LV3.ring.scale.setScalar(7 + bul * 7 + Math.sin(t * 3) * .6); LV3.ring.material.opacity = .6 * bul;
+  LV3.ue.children.forEach((sp, i) => { const sd = i ? 1 : -1; sp.position.set(o.x + dz / dl * 1.3 * sd + dx / dl * 2, wy - 1 - (1 - bul) * 3, o.z - dx / dl * 1.3 * sd + dz / dl * 2); sp.material.opacity = bul * (.55 + .45 * TOD.night) * (.75 + .25 * Math.sin(t * 9)); });
+  if (Math.random() < dt * 14 * bul) spray(o.x + (Math.random() - .5) * 8, wy + .1, o.z + (Math.random() - .5) * 8, 2, 2.5, .7); }
+// client: the cues for each beat, the breach splashes, its eye glow
+function lv3Frame(dt) { const s = G.spines, t = G.wt; let o = null, ph = -1;
+  LV3.flick = Math.max(0, LV3.flick - dt);
+  if (s && s.leave == null && (s.L || 9) >= 11) { o = levPose(s.a, s.t, s.L, LV3.o); ph = o.ph; }
+  const near = !!P && (P.ob || Math.hypot(cam.position.x - B.x, cam.position.z - B.z) < BG.L * .5 + 40);
+  let glow = .3 + .45 * TOD.night, bul = 0;
+  if (ph === 0) { const y0 = LV3.by ?? o.y; if (near && ((y0 < .3) !== (o.y < .3)) && o.br != null) { spray(o.x, .2, o.z, 34, 6.5); Snd.splash(at(o.x, 0, o.z, 25)); burst(240, .6, .5, 1.1, 'lowpass'); G.shake = Math.max(G.shake || 0, .3); } LV3.by = o.y; if (o.br != null) glow = 1.2; }
+  else LV3.by = null;
+  if (ph === 5) { const u = o.u;
+    if (!s.g0) { s.g0 = 1; if (near) { spray(o.x, .2, o.z, 26, 5); Snd.splash(at(o.x, 0, o.z, 25)); burst(160, .7, .5, 1.6, 'lowpass'); showMsg('It dives. The sea goes quiet…', '', 2.2); } }
+    if (near) lv3Duck(u > .25 && u < .97);
+    if (u > .5) { bul = smooth((u - .5) / .5); glow = 1.8;
+      if (!s.g1) { s.g1 = 1; if (near) { const side = lv3Side(o.x, o.z); let seen = 0; try { seen = localStorage.getItem('s9-tip-tg'); localStorage.setItem('s9-tip-tg', '1'); } catch (x) {}
+        showMsg(seen ? `The water swells off the ${side}!` : `The water swells off the ${side}! It is coming up there. <kbd>G</kbd> a flare into the swell, or full throttle away.`, '', seen ? 2.6 : 5);
+        if (A.on) { tone(30, .6, 1.8, 'sine', A.lp, 64); burst(70, .8, .7, 1.8, 'lowpass', A.lp); hTone(44, .3, .25, 'sine', A.lp, .7); hTone(44, .35, .25, 'sine', A.lp, 1.15); } } }
+      if (near) { LV3.flick = .15; G.shake = Math.max(G.shake || 0, .14 * bul); } }
+  } else if (LV3.duck) lv3Duck(false);
+  if (ph === 1 || ph === 2) glow = 2.3;
+  if (!G.mwgC) LV3.glow = mix(LV3.glow, glow, Math.min(1, dt * 4)); lv3Bulge(o, bul, dt, t); }
+// ---- the nest in the Maw
+function lv3Nest() { const mw = PLC.maw; if (!mw) return; const N = NEST.c = {x: mw.x, z: mw.z, y: mw.y}, list = [], bm = new THREE.MeshStandardMaterial({map: TX.rock, color: 0x8c8574, roughness: .92}), rng = mulberry(4421);
+  const put = (geo, m, x, y, z, rx = 0, ry = 0, rz = 0, sx = 1, sy = 1, sz = 1) => { _e3.set(rx, ry, rz, 'YXZ'); geo.applyMatrix4(_m3.compose(_v3a.set(x, y, z), _q3.setFromEuler(_e3), _v3b.set(sx, sy, sz))); list.push([geo.index ? geo.toNonIndexed() : geo, m, true]); };
+  const hull = (x, y, z, ry, rx, rz, L, m) => { const g = new THREE.BoxGeometry(L * .3, L * .17, L, 3, 2, 6), p = g.attributes.position; for (let k = 0; k < p.count; k++) { const zz = p.getZ(k) / L + .5; p.setX(k, p.getX(k) * (1 - Math.max(0, zz - .6) * 1.9) * (p.getY(k) < 0 ? .7 : 1)); } g.computeVertexNormals(); put(g, m, x, y, z, rx, ry, rz);
+    put(new THREE.CylinderGeometry(.08, .12, L * .55, 6), plMat('wood'), x + Math.sin(ry) * L * .05, y + L * .2, z + Math.cos(ry) * L * .05, rx + .5, ry, rz - .4); };
+  // surface: an older one's skeleton breaking the water (spine, ribs, skull) and the boats it dragged here, in a ring round the Maw
+  const S = new THREE.Group(); NEST.surf = S; scene.add(S);
+  { const a0 = 1.1, cx = N.x + Math.sin(a0) * 160, cz = N.z + Math.cos(a0) * 160, tx = Math.cos(a0), tz = -Math.sin(a0);
+    for (let k = 0; k < 15; k++) { const u = (k - 7) * 4.6, bend = Math.sin(k * .35) * 5, x = cx + tx * u + Math.sin(a0) * bend, z = cz + tz * u + Math.cos(a0) * bend; put(new THREE.SphereGeometry(1, 12, 8), bm, x, -.9 + Math.sin(k * .8) * .3, z, 0, 0, 0, 1.7 - k * .05, 1.3, 1.9);
+      if (k > 1 && k < 13) { OBST.push({c: 1, x, z, r: 3}); for (const sd of [-1, 1]) { const brk = k % 4 === 2, len = (brk ? .5 : 1) * (13 - Math.abs(k - 6) * .7), nx = Math.sin(a0) * sd, nz = Math.cos(a0) * sd;
+        const pts = [[0, -.5, 0], [nx * len * .45, len * .7, nz * len * .45], [nx * len * .9, len * .55 - (brk ? 0 : 3), nz * len * .9], [nx * len, len * .2 - 4, nz * len]]; put(lv3Horn(brk ? pts.slice(0, 3) : pts, .85, .2, 14, 7), bm, x, 0, z); } } }
+    const sx = cx - tx * 40, sz = cz - tz * 40, ay = Math.atan2(-tx, -tz); put(new THREE.SphereGeometry(1, 20, 14), bm, sx, -1.2, sz, -.25, ay, 0, 4.2, 2.6, 7); OBST.push({c: 1, x: sx, z: sz, r: 4.5});
+    for (const sd of [-1, 1]) { put(new THREE.SphereGeometry(1, 12, 10), plMat('black'), sx + Math.cos(ay) * 2.6 * sd + Math.sin(ay) * 2.5, .5, sz - Math.sin(ay) * 2.6 * sd + Math.cos(ay) * 2.5, 0, 0, 0, .9, .7, 1.1);
+      put(lv3Horn([[0, 0, 0], [Math.cos(ay) * 3 * sd, 3, -Math.sin(ay) * 3 * sd], [Math.cos(ay) * 3.4 * sd - Math.sin(ay) * 5, 6.5, -Math.sin(ay) * 3.4 * sd - Math.cos(ay) * 5]], .9, .08), bm, sx + Math.cos(ay) * 2 * sd, 1, sz - Math.sin(ay) * 2 * sd); } }
+  for (let i = 0; i < 7; i++) { const a = .3 + i * .86 + rng() * .3, r = 115 + rng() * 70, x = N.x + Math.sin(a) * r, z = N.z + Math.cos(a) * r, L = 7 + rng() * 7; hull(x, -L * .12, z, rng() * TAU, -.45 - rng() * .35, (rng() - .5) * .9, L, plMat(i % 3 ? 'hull' : 'wood')); OBST.push({c: 1, x, z, r: Math.min(4.5, L * .35)}); }
+  for (const m of mergeByMat(list)) S.add(m); list.length = 0;
+  NEST.deb = new THREE.InstancedMesh(new THREE.BoxGeometry(2.2, .12, .35), plMat('wood'), 40); NEST.deb.frustumCulled = false; NEST.deb.userData.p = []; for (let i = 0; i < 40; i++) { const a = rng() * TAU, r = 90 + rng() * 110; NEST.deb.userData.p.push([N.x + Math.sin(a) * r, N.z + Math.cos(a) * r, rng() * TAU, rng()]); } S.add(NEST.deb);
+  NEST.buoys = []; for (let i = 0; i < 4; i++) { const b = new THREE.Mesh(new THREE.TorusGeometry(.42, .13, 8, 16), plMat('red')), a = i * 1.7 + .4, r = 130 + i * 12; b.userData.p = [N.x + Math.sin(a) * r, N.z + Math.cos(a) * r]; S.add(b); NEST.buoys.push(b); }
+  // the bed: a clutch of lit eggs round the old nest, shed skins, wrecks it dragged down, an older skull, eyes in the rocks
+  const Dg = new THREE.Group(); Dg.visible = false; NEST.deep = Dg; scene.add(Dg); const y = N.y;
+  const sm = new THREE.MeshStandardMaterial({color: 0x8a8c80, roughness: .6, transparent: true, opacity: .42, side: THREE.DoubleSide, depthWrite: false});
+  for (let k = 0; k < 3; k++) { const pts = [], a0 = k * 2.1 + .5; for (let i = 0; i < 9; i++) { const a = a0 + i * .55, r = 11 + i * 2.3; pts.push([N.x + Math.sin(a) * r, y + .6 + Math.sin(i * 1.3) * .4, N.z + Math.cos(a) * r]); } Dg.add(new THREE.Mesh(lv3Horn(pts, 1.3, .25, 40, 9), sm)); }
+  for (let i = 0; i < 4; i++) { const a = i * 1.6 + .9, r = 30 + i * 4; hull(N.x + Math.sin(a) * r, y + .8, N.z + Math.cos(a) * r, a * 2.1, .2 * (i - 1.5), .9 - i * .35, 9 + i * 2, plMat('rust')); }
+  { const a = 4.1, x = N.x + Math.sin(a) * 36, z = N.z + Math.cos(a) * 36; put(new THREE.SphereGeometry(1, 20, 14), bm, x, y + .6, z, .3, a, .2, 3.4, 2.1, 6); put(lv3Horn([[0, 0, 0], [2, 3, -2], [2.6, 5, -6]], .7, .06), bm, x + 1.5, y + 1.5, z); put(lv3Horn([[0, 0, 0], [-2, 3, -2], [-2.6, 5, -6]], .7, .06), bm, x - 1.5, y + 1.5, z); }
+  for (const m of mergeByMat(list)) Dg.add(m);
+  NEST.shellM = new THREE.MeshStandardMaterial({color: 0x4a3440, roughness: .18, transparent: true, opacity: .62, emissive: 0x1a5a4a, emissiveIntensity: .8, depthWrite: false});
+  const emb = new THREE.MeshStandardMaterial({color: 0x050405, roughness: .4}), tg = new THREE.TorusGeometry(.38, .15, 8, 16, 4.4), eg = new THREE.SphereGeometry(1, 18, 14);
+  for (let i = 0; i < 9; i++) { const a = i / 9 * TAU + .3, r = 6.5 + (i % 3) * 1.1, e = new THREE.Group(); e.position.set(N.x + Math.sin(a) * r, y + 1.1, N.z + Math.cos(a) * r); e.rotation.z = (rng() - .5) * .5;
+    const sh = new THREE.Mesh(eg, NEST.shellM); sh.scale.set(.85, 1.2, .85); sh.renderOrder = 4; e.add(sh); const em = new THREE.Mesh(tg, emb); em.rotation.set(rng() * 3, rng() * 3, 0); e.add(em);
+    const gl = new THREE.Sprite(new THREE.SpriteMaterial({map: TX.glow, color: 0x5affd0, transparent: true, opacity: .4, depthWrite: false, blending: THREE.AdditiveBlending})); gl.scale.setScalar(3.2); e.add(gl); Dg.add(e); NEST.eggs.push({e, em, gl}); }
+  for (let i = 0; i < 6; i++) { const a = i / 6 * TAU + .25, g = new THREE.Group(); g.position.set(N.x + Math.sin(a) * 26, y + 4 + (i % 3) * 2.5, N.z + Math.cos(a) * 26); for (const sd of [-1, 1]) { const sp = new THREE.Sprite(new THREE.SpriteMaterial({map: TX.glow, color: 0xffa020, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending})); sp.position.set(Math.cos(a) * .7 * sd, 0, -Math.sin(a) * .7 * sd); sp.scale.setScalar(.9); g.add(sp); } Dg.add(g); NEST.glints.push(g); } }
+plBuild = after(plBuild, function () { try { lv3Nest(); } catch (e) { console.warn('lv3Nest', e); } });
+function lv3NestFrame(dt) { const N = NEST.c; if (!N || !P || !NEST.surf) return; const cp = cam.position, t = G.wt, dh = Math.hypot(cp.x - N.x, cp.z - N.z);
+  NEST.surf.visible = dh < 1500;
+  if (dh < 600) { const D = NEST.deb; D.userData.p.forEach((q, i) => { const wy = waveH(q[0], q[1], t); _e3.set(Math.sin(t + q[3] * 9) * .08, q[2], Math.cos(t * .8 + q[3] * 7) * .08); _m3.compose(_v3a.set(q[0], wy + .02, q[1]), _q3.setFromEuler(_e3), _v3b.set(1, 1, 1)); D.setMatrixAt(i, _m3); }); D.instanceMatrix.needsUpdate = true;
+    for (const b of NEST.buoys) { const [x, z] = b.userData.p; b.position.set(x, waveH(x, z, t) + .05, z); b.rotation.set(PI / 2 + Math.sin(t * 1.1 + x) * .12, 0, Math.cos(t + z) * .12); }
+    if (!NEST.seenS && P.ob && dh < 210) { NEST.seenS = 1; showMsg('Bones and broken hulls stick out of the water in a ring. Everything it ever took is here. This is the Maw.', '', 5); } }
+  const dv = cp.y < -25 && dh < 320; NEST.deep.visible = dv; if (!dv) return;
+  const d3 = Math.hypot(dh, cp.y - N.y), pr = clamp(1 - d3 / 80, 0, 1); NEST.alarm = Math.max(0, NEST.alarm - dt * .04); const hot = NEST.alarm > 0 || !!G.mwgC;
+  NEST.ph += dt * (.5 + pr * 1.2 + (hot ? 2.5 : 0)); const pulse = .5 + .5 * Math.sin(NEST.ph * TAU);
+  NEST.shellM.emissiveIntensity = .5 + pulse * (.9 + pr * 1.8 + (hot ? 2 : 0)); NEST.shellM.emissive.setHex(hot ? 0x6a3a1a : 0x1a5a4a);
+  for (const g of NEST.eggs) { g.gl.material.opacity = (.25 + pulse * .5) * (hot ? 1.4 : 1); g.gl.material.color.setHex(hot ? 0xffa050 : 0x5affd0); if (Math.random() < dt * (.3 + pr * 2)) { g.em.rotation.x += (Math.random() - .5) * .9; g.em.rotation.y += (Math.random() - .5) * .9; } }
+  NEST.glints.forEach((g, i) => { const on = dh < 140 && h2(i * 7.1, Math.floor(t * .35 + i * .37)) > (hot ? .2 : .62); for (const sp of g.children) sp.material.opacity = mix(sp.material.opacity, on ? .85 : 0, Math.min(1, dt * 6)); });
+  if (pr > .15 && P.sw) { NEST.hb -= dt; if (NEST.hb <= 0) { NEST.hb = mix(1.7, .6, pr); tone(44, .06 + .14 * pr, .3, 'sine'); } }
+  if (!NEST.seenD && d3 < 60 && P.sw) { NEST.seenD = 1; showMsg('The nest. Eggs as big as you, lit from inside. Something this big does not leave its eggs alone for long.', '', 5); } }
+// it comes home and coils round the nest (drawn with the same body as at the surface)
+function lv3Coil(dt) { const c = G.mwgC, N = NEST.c; if (!N) { G.mwgC = null; return; } c.t += dt; const t = G.wt;
+  if (c.ang == null) { c.ang = Math.random() * TAU; c.r = 95; c.y = N.y + 40; } if (c.mad && c.s === 2 && c.t > 22) { c.s = 3; c.t = 0; }
+  const lv = c.s === 3, k = 1 - Math.exp(-dt * (lv ? .35 : .55)); c.ang += dt * (lv ? .25 : .34); c.r = mix(c.r, lv ? 150 : 12.5, k); c.y = mix(c.y, lv ? N.y + 35 : N.y + 8, k);
+  if (lv && c.t > 12) { G.mwgC = null; if (LEV.on) LEV.hide(); return; }
+  if (Math.hypot(cam.position.x - N.x, cam.position.z - N.z) > 450 || cam.position.y > -20) { if (LEV.on) LEV.hide(); return; }
+  _p3.set(N.x + Math.sin(c.ang) * c.r, c.y + Math.sin(c.t * .9) * 1.2, N.z + Math.cos(c.ang) * c.r);
+  let look = null; const cd = cam.position.distanceTo(_p3); if (cd < 45) { _k3.set(cam.position.x - _p3.x, cam.position.y - _p3.y, cam.position.z - _p3.z, .55); const l = Math.hypot(_k3.x, _k3.y, _k3.z) || 1; _k3.x /= l; _k3.y /= l; _k3.z /= l; look = _k3; }
+  LV3.glow = mix(LV3.glow, c.s === 2 ? 2.4 : 1.4, Math.min(1, dt * 3)); levDraw(_p3, c.s === 2 ? .9 : .25 + .2 * Math.sin(c.t * 1.7), look, t); }
+stepLev = around(stepLev, function (next, dt) { if (G.mwgC && !G.maw && !G.spines && LEV.body) lv3Coil(dt); else next(dt);
+  try { lv3Frame(dt); lv3NestFrame(dt); } catch (e) { if (!LV3.err2) { LV3.err2 = 1; console.warn(e); } } });
+// host: divers who linger near the nest bring it home; whoever is still beside the eggs when it strikes is taken
+function lv3Guard(dt) { const N = NEST.c; if (!N || !G.on) return; LV3.gcd -= dt; const g = G.mwg, nearN = (p, r) => p.sw && (p.dv || 0) > 60 && Math.hypot(p.x - N.x, p.z - N.z) < r;
+  if (!g) { if (LV3.gcd <= 0 && !G.mawMad && alive().some(p => nearN(p, 70))) { G.mwg = {t: 0, s: 0}; emit({k: 'mwg', s: 0}); } return; }
+  g.t += dt;
+  if (g.s === 0 && g.t > 9) { g.s = 1; emit({k: 'mwg', s: 1}); }
+  else if (g.s === 1 && g.t > 16) { g.s = 2; emit({k: 'mwg', s: 2}); for (const p of alive()) if (nearN(p, 34)) { p.dead = true; p.deadT = 0; p.sw = 0; dropCarry(p); emit({k: 'dead', id: p.id, drown: 1}); } }
+  else if (g.s === 2 && g.t > 32) { emit({k: 'mwg', s: 3}); G.mwg = null; LV3.gcd = 75; } }
+hostStep = after(hostStep, function (r, dt) { try { lv3Guard(dt); } catch (e) { if (!LV3.err3) { LV3.err3 = 1; console.warn(e); } } });
+// it hunts harder over its own nest
+levHeat = around(levHeat, function (next, ...a) { const r = next(...a), N = NEST.c; return N && Math.hypot(B.x - N.x, B.z - N.z) < 260 ? r + 1.5 : r; });
+applyEv = after(applyEv, function (r, e) { const N = NEST.c, nearB = () => !!P && (P.ob || Math.hypot(cam.position.x - B.x, cam.position.z - B.z) < BG.L * .5 + 60);
+  if (e.k === 'deepmiss') { const s = G.spines; if (s) { s.leave = s.t; s.circle = 0; } if (LV3.duck) lv3Duck(false); if (nearB()) { const hp = LEV.hp; spray(hp.x, .2, hp.z, 40, 7); Snd.splash(at(hp.x, 0, hp.z, 25)); G.shake = Math.max(G.shake || 0, .6); showMsg('Its jaws slam shut on your wake. It missed. It sinks back into the dark.', '', 3.5); } }
+  else if (e.k === 'mwg') { const nn = N && P && Math.hypot(P.x - N.x, P.z - N.z) < 260 && (P.dv || 0) > 30;
+    if (e.s === 0) { NEST.alarm = 1; if (nn) { showMsg('The eggs flare and pulse faster. Something is coming home. Get away from the nest!', '', 4.5); tone(36, .4, 2.5, 'sine', null, 60); } }
+    else if (e.s === 1) { G.mwgC = {s: 1, t: 0}; if (nn) { Snd.roar(at(N.x, N.y + 10, N.z, 60), .8); G.shake = Math.max(G.shake || 0, 1.2); showMsg('It is here. It coils round its eggs. GET CLEAR.', '', 3.5); } }
+    else if (e.s === 2) { if (G.mwgC) G.mwgC.s = 2; if (nn) { Snd.roar(at(N.x, N.y + 6, N.z, 40), 1); G.shake = Math.max(G.shake || 0, 1.6); } }
+    else if (e.s === 3) { if (G.mwgC) { G.mwgC.s = 3; G.mwgC.t = 0; } if (nn && !P.dead) showMsg('It slides away into the dark. The eggs dim.', '', 3); } }
+  else if (e.k === 'mawmad') { G.mwgC = {s: 2, t: 0, mad: 1}; NEST.alarm = 1; } });
+// the boat lights stutter while the water swells
+hud = after(hud, function () { if (LV3.flick > 0 && boatL) boatL.intensity *= Math.random() < .4 ? .04 : 1; });
+startGame = before(startGame, function () { G.mwg = null; G.mwgC = null; LV3.gcd = 20; lv3Duck(false); return NEXT; });
