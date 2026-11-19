@@ -29,7 +29,7 @@ const hexS = c => '#' + c.toString(16).padStart(6, '0');
 
 // ---------------- net (jjfanwars relay)
 const RELAY_URL = 'wss://jjfanwars-relay.businessautomationvic.workers.dev';
-const GAME_V = 72;
+const GAME_V = 73;
 const Net = {
   tag: '[Rig]', role: 'solo', ws: null, peers: new Map(), code: '', relayT: {pose: 1}, id: '', name: '', handlers: {}, retry: 0, started: false,
   enc: new TextEncoder(), dec: new TextDecoder(),
@@ -1103,11 +1103,14 @@ function buildFoam() {
   // boulders strewn along every island's waterline
   const br = mulberry(777), L = [];
   SL.forEach((I, row) => { if (I.bar) return; const n = 12 + Math.floor(br() * 14); for (let k = 0; k < n; k++) { const i = Math.floor(br() * NA), a = ((i + .5) / NA - .5) * TAU, r = r0s[row][i] + (br() * 2 - 1) * 2, x = I.x + Math.cos(a) * r, z = I.z + Math.sin(a) * r, s = .6 + br() * 1.6;
-    if (I.home && ((z - HOME.z) / Math.hypot(x - HOME.x, z - HOME.z) > .45 || (Math.abs(x - JETTY.x) < 9 && z > HOME.z))) continue; L.push([x, landH(x, z), z, s, br(), br(), br()]); if (s > 1.3) PCIRC.push({x, z, r: s * .75}); } });
+    if (I.home && ((z - HOME.z) / Math.hypot(x - HOME.x, z - HOME.z) > .45 || (Math.abs(x - JETTY.x) < 9 && z > HOME.z))) continue; if (typeof rockKeep === 'function' && rockKeep(x, z, s)) continue; L.push([x, landH(x, z), z, s, br(), br(), br()]); if (s > 1.3) PCIRC.push({x, z, r: s * .75}); } });
   const im = new THREE.InstancedMesh(new THREE.DodecahedronGeometry(1, 0), new THREE.MeshStandardMaterial({map: TX.rock, color: 0xffffff, roughness: .95, metalness: 0, flatShading: true}), L.length), M4 = new THREE.Matrix4(), Q = new THREE.Quaternion(), E = new THREE.Euler(), V = new THREE.Vector3(), S3 = new THREE.Vector3(), C = new THREE.Color();
   L.forEach(([x, y, z, s, a, b, c], i) => { E.set(a * TAU, b * TAU, c * TAU); M4.compose(V.set(x, Math.max(y, -1.2) + s * .15, z), Q.setFromEuler(E), S3.set(s * (1 + a * .3), s * (.55 + b * .3), s * (1 + c * .25))); im.setMatrixAt(i, M4); const k = 1.05 + a * .45; im.setColorAt(i, C.setRGB(k, k * (.95 + b * .05), k * (.9 + c * .06))); });
   im.castShadow = true; im.receiveShadow = true; im.computeBoundingSphere(); scene.add(im); SHORE_ROCKS.im = im; SHORE_ROCKS.L = L;
 }
+// rocks keep clear of building doors and the home buildings (shed, casino, lighthouse door), whatever placed them
+function rockKeep(x, z, pad = 1) { if (Math.hypot(x + 7, z + 265) < 6 + pad || Math.hypot(x - 8, z + 270) < 7 + pad || Math.hypot(x - 6, z + 281) < 3 + pad) return true;
+  for (const b of BLD) if ((b.dout && Math.hypot(x - b.dout[0], z - b.dout[1]) < 3 + pad) || (b.din && Math.hypot(x - b.din[0], z - b.din[1]) < 2 + pad)) return true; return false; }
 // shore boulders never block a door or sit inside a building: after the world is built, any within 3.5 m of a door (in or out) or inside a footprint is removed
 const SHORE_ROCKS = {};
 function shoreRockClear() { const {im, L} = SHORE_ROCKS; if (!im || !L) return 0; const M4 = new THREE.Matrix4().makeScale(0, 0, 0); let n = 0;
@@ -2556,6 +2559,7 @@ function applyEv(e) {
     case 'boatback': showMsg('A tug drags your boat back to the lighthouse. The cargo is lost.', '', 5); if (P && !P.dead && (P.sw || P.y < 1) && Math.hypot(P.x - e.x, P.z - e.z) < 80) { const sp = boatSpawn(0); P.sw = 0; P.ob = 1; P.bl = sp.bl; P.y = sp.y; } break;
     case 'horn': if (Snd.shipHorn) Snd.shipHorn(e.c, at(B.x, B.heave + 6, B.z, 25 + (HULLS[e.c] || HULLS[0]).L)); break;
     case 'icx': icEvent(e); break;
+    case 'cgr': cgResult(e); break;
     case 'ichit': hitFx(e.x, e.y, e.z, e.head, e.by); break;
     case 'purser': showMsg(`Sold at sea. The purser takes a 15% cut ($${e.cut}).`, '', 3); break;
     case 'ribfloat': if (P && P.ob) showMsg('The hull is wrecked, but her air tubes keep her afloat. Patch her up.', '', 4); break;
@@ -3060,17 +3064,17 @@ addEventListener('keydown', e => {
   if (e.code === 'KeyC' && !P.down && !P.seat && !P.sw) P.cr = P.cr ? 0 : 1;
   if (e.code === 'KeyG' && !P.climb) throwFlare();
   if (e.code === 'KeyX' && P.sack.length && !P.climb) act({a: 'drop'});
-  const dg = /^(Digit|Numpad)([1-7])$/.exec(e.code); if (dg && !P.climb) equip(+dg[2] - 1);
+  const dg = /^(Digit|Numpad)([1-9])$/.exec(e.code); if (dg && !P.climb) equip(+dg[2] - 1);
   if (e.code === 'KeyR') reload();
   if (e.code === 'KeyH') showFishHelp(true);
   if (e.code === 'KeyJ') jrnOpen();
-  if (e.code === 'KeyQ' && !P.down) { if (P.seat) { const n = performance.now(); if (n - (G.hornC || 0) > 2500) { G.hornC = n; act({a: 'horn'}); } } else if (P.eq === 3 || P.eq === 4) {} else if ((G.whT || 0) <= 0) { G.whT = 3; act({a: 'wh'}); } }
+  if (e.code === 'KeyQ' && !P.down) { if (P.seat) { const n = performance.now(); if (n - (G.hornC || 0) > 2500) { G.hornC = n; act({a: 'horn'}); } } else if (P.eq === 3 || P.eq === 4 || P.eq === 7 || P.eq === 8) {} else if ((G.whT || 0) <= 0) { G.whT = 3; act({a: 'wh'}); } }
   if (e.code === 'Tab') { if (!e.repeat) { if (G.mapStick) { G.mapStick = 0; G.tabClose = 1; G.map = false; $('map').classList.add('hidden'); } else { G.tabT = performance.now(); G.map = true; $('map').classList.remove('hidden'); } } if (G.map) drawMap(); }
 });
 addEventListener('keyup', e => { K[e.code] = false; if (e.code === 'KeyE') eDown = false; if (e.code === 'Tab') { if (G.tabClose) G.tabClose = 0; else if (G.map && performance.now() - (G.tabT || 0) < 260) { G.mapStick = 1; showMsg('Chart open. Tab again to close.', '', 1.5); } else { G.mapStick = 0; G.map = false; $('map').classList.add('hidden'); } } });
 addEventListener('mousemove', e => {
   if (!G.on || G.paused || document.pointerLockElement !== canvas || !P) return;
-  const s = .0022 * SET.sens; P.yaw -= e.movementX * s; P.pitch = clamp(P.pitch - e.movementY * s * (SET.inv ? -1 : 1), -1.45, 1.45);
+  const s = .0022 * SET.sens * Math.min(1, (cam.fov || 70) / (SET.fov || 70)); P.yaw -= e.movementX * s; P.pitch = clamp(P.pitch - e.movementY * s * (SET.inv ? -1 : 1), -1.45, 1.45);
   if (P.hd >= 0) { const h = HIDES[P.hd], d = angD(h.yaw, P.yaw); P.yaw = h.yaw + clamp(d, -.7, .7); P.pitch = clamp(P.pitch, -.5, .4); }
 });
 canvas.addEventListener('mousedown', e => { if (!G.on || G.paused) return; if (G.noteOpen) { closeNote(); return; } if (anyPanel()) return; if (document.pointerLockElement !== canvas) { lockMouse(); return; } if (e.button === 2) mouseR = true; if (e.button === 0 && !alivePlay()) G.spec++; if (e.button === 0 && alivePlay() && !P.climb) { G.lmb = true; toolDown(); } });
@@ -3087,7 +3091,7 @@ function lockMouse() { if (!TEST && canvas.requestPointerLock) try { const r = c
 function pause(p) { G.paused = p; G.wantResume = false; $('pause').classList.toggle('hidden', !p); if (p) { clearKeys(); G.map = false; G.mapStick = 0; $('map').classList.add('hidden'); $('pVol').value = SET.vol; $('pSens').value = SET.sens; $('pBright').value = SET.bright; $('pFov').value = SET.fov || 70; $('pInv').checked = !!SET.inv; } $('pauseN').textContent = Net.role === 'solo' ? 'The sea waits for you. Progress is saved.' : 'Online games keep running.'; if (Net.role === 'solo' && A.ctx) p ? A.ctx.suspend() : A.ctx.resume(); }
 function resumeReq() { if (TEST || document.pointerLockElement === canvas || !canvas.requestPointerLock) { pause(false); return; } G.wantResume = true; lockMouse(); $('pauseN').textContent = 'Click Resume again if the mouse does not lock.'; }
 function clearKeys() { for (const k in K) K[k] = false; eDown = false; ePress = false; mouseR = false; G.lmb = false; }
-const anyPanel = () => !!(G.chat || G.ftOpen || G.invOpen || G.noteOpen || G.shopOpen || G.casOpen || G.helpOpen || G.endOpen || G.jrnOpen);
+const anyPanel = () => !!(G.chat || G.ftOpen || G.invOpen || G.plOpen || G.cgOpen || G.noteOpen || G.shopOpen || G.casOpen || G.helpOpen || G.endOpen || G.jrnOpen);
 function closePanels(relock) { G.noteOpen = G.shopOpen = G.casOpen = G.helpOpen = G.jrnOpen = false; ['shop', 'casino', 'fishHelp', 'note'].forEach(id => $(id).classList.add('hidden')); if ($('jrn')) $('jrn').classList.add('hidden'); if (relock && G.on) lockMouse(); }
 // once per rendered frame, after the camera: panels that should close, the crouch dot, the click-to-look hint
 function ctlFrame(dt) {
@@ -3151,7 +3155,7 @@ Snd.step = (kind, k) => { const r = .88 + Math.random() * .24, hit = g => {
   if (kind === 'metal') tone((320 + Math.random() * 60) * r, .02 * k, .08, 'triangle');
   else if (kind === 'steel') { tone(150 * r, .03 * k, .1); tone(2200 * r, .008 * k, .04); }
   else if (kind === 'wood') tone(180 * r, .015 * k, .08, 'triangle'); };
-const KEYMAP = [['W A S D', 'move'], ['Shift', 'run'], ['C', 'crouch · dive'], ['Space', 'jump · rise · hold breath'], ['Tab (tap)', 'keep the chart open'], ['V', 'binoculars'], ['N · Y · U', 'repair kit · fuel can · chum'], ['F at the wheel', 'deck gun on armed ships'], ['Z (hold)', 'give up'], ['E', 'use · hold for jobs'], ['F', 'flashlight'], ['G', 'throw a flare'], ['I', 'inventory · dive suit on/off'], ['Enter', 'chat'], ['L at the wheel', 'fast travel from a dock'], ['O (hold)', 'emote wheel · tap to stop'], ['B aboard a big ship', 'bridge · back to the deck'], ['Q', 'aim a gun (hold) · whistle · horn at the wheel'], ['1-7 · wheel', 'hotbar'],
+const KEYMAP = [['W A S D', 'move'], ['Shift', 'run'], ['C', 'crouch · dive'], ['Space', 'jump · rise · hold breath'], ['Tab (tap)', 'keep the chart open'], ['V', 'binoculars'], ['N · Y · U', 'repair kit · fuel can · chum'], ['F at the wheel', 'deck gun on armed ships'], ['Z (hold)', 'give up'], ['E', 'use · hold for jobs'], ['F', 'flashlight'], ['G', 'throw a flare'], ['I', 'inventory · dive suit on/off'], ['Enter', 'chat'], ['L at the wheel', 'fast travel from a dock'], ['O (hold)', 'emote wheel · tap to stop'], ['B aboard a big ship', 'bridge · back to the deck'], ['P', 'third person on / off'], ['M', 'places: find the carrier, wrecks and landmarks'], ['Q', 'aim a gun (hold) · whistle · horn at the wheel'], ['1-9 · wheel', 'hotbar (8 SMG, 9 harpoon gun)'],
   ['LMB / RMB or Q', 'use · aim'], ['R', 'reload'], ['X', 'drop the last thing'], ['H', 'fishing help'], ['Tab (hold)', 'chart'], ['Esc', 'pause']];
 const keyTable = list => `<div class="keys ktab">${list.map(([k, a]) => `<span><b>${k}</b></span><span>${a}</span>`).join('')}</div>`;
 
@@ -6307,7 +6311,7 @@ function toolDown() { if (!P) return;
   if (subInside() && P.eq > 1) { showMsg('Not in here.', '', 1.2); return; }
   if (P.eq === 5) { throwFlare(); return; }
   if (P.eq === 6) { launchFw(); return; }
-  if (P.eq === 3 || P.eq === 4) fire();
+  if (P.eq === 3 || P.eq === 4) fire(); else if (P.eq === 7 || P.eq === 8) fireX();
   else if (P.eq === 2) { if (F.st === 'idle') { if (P.sw) return; F.st = 'charge'; F.pow = 0; } else if (F.st === 'bite') hook(); else if (F.st === 'wait') { F.st = 'idle'; showMsg('You reel the line back in.', '', 1.5); } }
 }
 function toolUp() { if (!P) return; if (P.eq === 2 && F.st === 'charge') castLine(); }
@@ -6409,7 +6413,7 @@ function hook() { F.k = pickFish(F.bob.x, F.bob.z, P.own.rod); F.st = 'reel'; F.
 function stepGear(dt) {
   if (!P || !P.own) return;
   G.fireT = (G.fireT || 0) - dt;
-  if (P.reload > 0) { P.reload -= dt; if (P.reload <= 0) { const A = P.ammo; if (P.rk === 'g') { const n = Math.min(gMax() - A.gm, A.g); A.gm += n; A.g -= n; } else if (A.s > 0) { A.sm++; A.s--; if (A.sm < sMax() && A.s > 0 && P.eq === 4) { P.reload = .55; Snd.reload(); } } saveGear(); } }
+  if (P.reload > 0) { P.reload -= dt; if (P.reload <= 0) { const A = P.ammo; if (P.rk === 'g') { const n = Math.min(gMax() - A.gm, A.g); A.gm += n; A.g -= n; } else if (P.rk === 's' && A.s > 0) { A.sm++; A.s--; if (A.sm < sMax() && A.s > 0 && P.eq === 4) { P.reload = .55; Snd.reload(); } } saveGear(); } }
   if (P.eq !== 2 || P.seat || P.down || P.dead) { if (F.st !== 'idle') F.st = 'idle'; return; }
   const rod = P.own.rod;
   switch (F.st) {
@@ -6419,7 +6423,7 @@ function stepGear(dt) {
       if (fl && fl.y > -1.3 && b.y <= fl.y + .05) { F.st = 'idle'; showMsg(fl.s.k === 'boat' ? 'That landed on the deck. Cast out over the rail.' : 'That landed on dry ground. Cast into open water.', '', 2.5); break; }
       if (b.y <= 0) { if (fl && fl.y > -1.6) { F.st = 'idle'; showMsg('Too shallow here. Cast further out.', '', 2.5); break; } F.st = 'wait'; F.t = (5 + Math.random() * 9) / (1 + .35 * (rod - 1)); Snd.splash(at(b.x, 0, b.z, 3)); }
       if (Math.hypot(b.x - P.x, b.z - P.z) > 45) F.st = 'idle'; break; }
-    case 'wait': F.t -= dt; if (F.t <= 0) { F.st = 'bite'; F.t = 1.1 + .2 * rod; Snd.bite(); } break;
+    case 'wait': F.t -= dt; if (F.t <= 0) { F.st = 'bite'; F.t = 1.8 + .2 * rod; Snd.bite(); } break;
     case 'bite': F.t -= dt; if (F.t <= 0) { F.st = 'wait'; F.t = 4 + Math.random() * 6; showMsg('It took the bait and got away. Click faster when you see !', '', 2.5); } break;
     case 'reel': {
       const f = FISH[F.k], kf = [1, 1, .72, .52][rod];
@@ -6463,14 +6467,16 @@ let ROD_TIP = null, LINE = null, BOB = null, MFLASH = null;
 })();
 function updateTools(dt) {
   const own = alivePlay() && P.hd < 0 && !P.seat && !P.down && !P.sw;
-  VMG.visible = own && P.eq === 3; VMS.visible = own && P.eq === 4; VMR.visible = own && P.eq === 2;
+  VMG.visible = own && (P.eq === 3 || P.eq === 7); VMS.visible = own && (P.eq === 4 || P.eq === 8); VMR.visible = own && P.eq === 2;
   G.recoil = Math.max(0, (G.recoil || 0) - dt * 6); const rc = G.recoil || 0, rl = P.reload > 0 ? Math.sin(Math.min(1, P.reload) * PI) : 0;
   VMG.position.set(.16, -.16 - rl * .12, -.34 + rc * .05); VMG.rotation.x = rc * .3 - rl * .6;
   VMS.position.set(.17, -.19 - rl * .08, -.38 + rc * .1); VMS.rotation.x = rc * .25;
-  const aim = (mouseR || K.KeyQ) && own && P.eq >= 3; G.aimK = mix(G.aimK || 0, aim ? 1 : 0, Math.min(1, dt * 10));
+  const aim = (mouseR || K.KeyQ) && own && (P.eq === 3 || P.eq === 4 || P.eq === 7 || P.eq === 8); G.aimK = mix(G.aimK || 0, aim ? 1 : 0, Math.min(1, dt * 10));
   if (G.aimK > .01) { VMG.position.x = mix(.16, 0, G.aimK); VMG.position.y += G.aimK * .05; VMS.position.x = mix(.17, 0, G.aimK); VMS.position.y += G.aimK * .07; }
   G.runK = mix(G.runK || 0, P && P.run ? 1 : 0, Math.min(1, dt * 4)); const fov = mix((SET.fov || 70) + G.runK * 6 + (G.fovAdd || 0) - (G.js && G.js.t > 0 ? 12 : 0) - (P && P.cas ? (P.cas.t === 'bj' ? 20 : 10) : 0) - (binoOn() ? (SET.fov || 70) - 15 : 0), P && P.own && P.own.sg === 2 && P.eq === 4 ? 24 : 52, G.aimK); if (Math.abs(cam.fov - fov) > .05) { cam.fov = fov; cam.updateProjectionMatrix(); }
-  $('xhair').classList.toggle('hidden', !(own && P.eq >= 3));
+  { const sc = own && P.eq === 4 && P.own && P.own.sg === 2 && G.aimK > .8; let o = $('scopeOv'); if (!o && sc) { o = document.createElement('div'); o.id = 'scopeOv'; o.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:5;background:radial-gradient(circle at 50% 50%, transparent 0 31vmin, #000 31.3vmin);'; o.innerHTML = '<div style="position:absolute;left:0;right:0;top:50%;height:1px;background:#000"></div><div style="position:absolute;top:0;bottom:0;left:50%;width:1px;background:#000"></div><div style="position:absolute;left:50%;top:50%;width:5px;height:5px;margin:-2px;border-radius:50%;background:#c01818"></div>'; document.body.appendChild(o); }
+    if (o) o.style.display = sc ? '' : 'none'; if (sc) VMS.visible = false; G.scoped = sc; }
+  $('xhair').classList.toggle('hidden', !(own && P.eq >= 3) || !!G.scoped);
   G.gunFlash = (G.gunFlash || 0) - dt; gunL.intensity = G.gunFlash > 0 ? gunL.intensity : 0;
   if (VMF.visible && G.gunFlash <= 0) { VMF.userData.tip.getWorldPosition(gunL.position); gunL.color.setHex(0xff3018); gunL.intensity = 14 * (.8 + Math.random() * .4); gunL.distance = 22; VMF.userData.tip.scale.setScalar(.8 + Math.random() * .5); if (Math.random() < dt * 3) Snd.flare && Math.random() < .3 && Snd.flare(null); }
   else if (G.gunFlash > 0) gunL.color.setHex(0xffd090);
@@ -6490,7 +6496,7 @@ function updateTools(dt) {
   ui.classList.toggle('hidden', !show);
   if (show) {
     const t = $('fishT'); t.className = F.st === 'bite' ? 'bite' : '';
-    t.textContent = F.st === 'charge' ? 'Casting power: let go to cast' : F.st === 'wait' ? 'Waiting for a bite… (click to reel in)' : F.st === 'bite' ? '! CLICK !' : 'Hold to reel, let go to ease off. Keep it in the green.';
+    t.textContent = F.st === 'charge' ? 'Casting power: let go to cast' : F.st === 'wait' ? 'Waiting for a bite… (click to reel in)' : F.st === 'bite' ? '! CLICK !' : 'Hold the mouse to move the green zone right, let go to slide it left. Cover the fish!';
     $('tenBar').style.display = F.st === 'reel' ? 'block' : 'none';
     $('progBar').style.display = F.st === 'reel' || F.st === 'charge' ? 'block' : 'none';
     $('progFill').style.width = (F.st === 'charge' ? F.pow * 100 : Math.min(100, F.prog)) + '%';
@@ -6498,7 +6504,7 @@ function updateTools(dt) {
   }
   // hud tool line
   const A = P.ammo || {}, own2 = P.own || {};
-  const S7 = [[ICON.hand, 'Hands', 1, ''], [ICON.light, 'Flashlight', 1, P.l ? '' : 'off'], [ICON.rod, ['', 'Rod', 'Carbon rod', 'Deep-sea rod'][own2.rod || 0], own2.rod, ''], [ICON.pistol, own2.glock === 2 ? 'Magnum' : 'Glock', own2.glock, `${A.gm}/${A.g}`], [ICON.shotgun, own2.sg === 2 ? 'Rifle' : 'Shotgun', own2.sg, `${A.sm}/${A.s}`], [ICON.flare, 'Flare', P.flares > 0, P.flares], [ICON.rocket, 'Fireworks', own2.fw > 0, own2.fw]];
+  const S7 = [[ICON.hand, 'Hands', 1, ''], [ICON.light, 'Flashlight', 1, P.l ? '' : 'off'], [ICON.rod, ['', 'Rod', 'Carbon rod', 'Deep-sea rod'][own2.rod || 0], own2.rod, ''], [ICON.pistol, own2.glock === 2 ? 'Magnum' : 'Glock', own2.glock, `${A.gm}/${A.g}`], [ICON.shotgun, own2.sg === 2 ? 'Rifle' : 'Shotgun', own2.sg, `${A.sm}/${A.s}`], [ICON.flare, 'Flare', P.flares > 0, P.flares], [ICON.rocket, 'Fireworks', own2.fw > 0, own2.fw], [ICON.pistol, 'SMG', own2.smg, `${A.um || 0}/${A.u || 0}`], [ICON.shotgun, 'Harpoon gun', own2.hg, `${A.hm || 0}/${A.h || 0}`]];
   const cur = S7[P.eq] || [], hk = P.eq + '|' + S7.map(q => q[2] ? 1 : 0).join('') + '|' + cur[3] + '|' + (P.reload > 0) + '|' + (P.coolerN || 0);
   if (hk !== G.toolK) { G.toolK = hk; $('tool').innerHTML = `<div id="toolN">${cur[2] ? cur[1] + (cur[3] !== '' ? ' ' + cur[3] : '') : ''}</div>` + S7.map((q, i) => q[2] ? `<b class="${P.eq === i ? 'on' : ''}"><em>${i + 1}</em>${q[0]}${P.eq === i ? ` <span>${q[1]}${q[3] !== '' ? ' ' + q[3] : ''}</span>` : ''}</b>` : '').join('') + (P.reload > 0 ? '<span class="rl">reloading</span>' : '') + (P.coolerN ? `<span class="rl">${ICON.fish} ${P.coolerN}</span>` : ''); }
 }
@@ -7198,7 +7204,7 @@ function menuInit() {
   $('bHost').onclick = () => { if (!needName()) return; aInit(); buildWorld(); const code = Net.host(myName(), s => { if (G.on) { if (s === 'open') showMsg('Reconnected.', '', 3); else showMsg('Relay connection dropped. Reconnecting…', '', 6); return; } $('lmsg').textContent = s === 'open' ? 'Share the code. Up to 6 crew. Friends can join mid-voyage.' : 'Connection lost, retrying…'; }); $('code').textContent = code; show('lobby'); $('bGo').classList.remove('hidden'); $('lmsg').textContent = 'Connecting…'; lobby(); };
   $('bJoin').onclick = () => joinRoom($('joinC').value); $('joinC').onkeydown = e => { if (e.key === 'Enter') joinRoom($('joinC').value); };
   $('bGo').onclick = hostStart; $('bLeave').onclick = () => toMenu(); $('resume').onclick = resumeReq; $('quit').onclick = () => { if (Net.role === 'host' && Net.peers.size && !confirm('Leave? Your crew keeps sailing with a new captain.')) return; toMenu(); }; $('endMenu').onclick = () => toMenu();
-  $('pFov').oninput = e => { SET.fov = +e.target.value; saveSet(); }; $('pInv').onchange = e => { SET.inv = e.target.checked ? 1 : 0; saveSet(); };
+  $('pFov').oninput = e => { SET.fov = +e.target.value; saveSet(); }; $('pInv').onchange = e => { SET.inv = e.target.checked ? 1 : 0; saveSet(); }; if ($('pCalm')) { $('pCalm').checked = SET.comfort !== 0; $('pCalm').onchange = e => { SET.comfort = e.target.checked ? 1 : 0; saveSet(); }; }
   $('pKeys').innerHTML = keyTable(KEYMAP); $('mKeys').innerHTML = keyTable(KEYMAP.slice(0, 9));
   $('again').onclick = () => toMenu();
   $('bSell').onclick = () => { act({a: 'sell'}); setTimeout(drawShop, 150); }; $('shopX').onclick = closeShop;
@@ -7344,7 +7350,7 @@ Object.assign(GEAR, {baitS: {n: 'Shrimp bait x10', d: 'Reef and inshore fish bit
 const BAIT = [['No bait', ''], ['Shrimp', 'bS'], ['Squid', 'bQ'], ['Glow lure', 'bG']];
 { const f0 = gotGear; gotGear = function (k) { if (k === 'baitS' || k === 'baitQ' || k === 'baitG') { const a = P.ammo, key = 'b' + k[4], n = {S: 10, Q: 6, G: 4}[k[4]]; a[key] = (a[key] || 0) + n; P.own.bait = ' SQG'.indexOf(k[4]); Snd.coin(); saveGear(); showMsg(`Bought: ${GEAR[k].n}. Press B with the rod out to swap bait.`, 'HARBOUR SHED', 3); setTimeout(drawShop, 50); return; } return f0.apply(this, arguments); }; }
 const baitN = () => { const b = (P && P.own && P.own.bait) || 0; return b && (P.ammo[BAIT[b][1]] || 0) > 0 ? b : 0; };
-addEventListener('keydown', e => { if (e.code !== 'KeyB' || !G.on || !P || P.eq !== 2 || !P.own || G.shopOpen || G.jrnOpen || G.chat) return; for (let i = 1; i <= 4; i++) { const b = (((P.own.bait || 0) + i) % 4); if (!b || (P.ammo[BAIT[b][1]] || 0) > 0) { P.own.bait = b; break; } } saveGear(); const b = baitN(); showMsg(b ? `${BAIT[b][0]} on the hook (${P.ammo[BAIT[b][1]]} left)` : 'No bait', '', 1.6); });
+addEventListener('keydown', e => { if (e.code !== 'KeyB' || !G.on || !P || P.eq !== 2 || !P.own || (P.ob && BOAT && (BOAT.userData.brg || BOAT.userData.syLift) && F.st === 'idle') || G.shopOpen || G.jrnOpen || G.chat) return; for (let i = 1; i <= 4; i++) { const b = (((P.own.bait || 0) + i) % 4); if (!b || (P.ammo[BAIT[b][1]] || 0) > 0) { P.own.bait = b; break; } } saveGear(); const b = baitN(); showMsg(b ? `${BAIT[b][0]} on the hook (${P.ammo[BAIT[b][1]]} left)` : 'No bait', '', 1.6); });
 const FSP = {cells: new Map(), list: [], t: 0, gulls: null, fx: []};
 const FSP_T = {birds: ['Bait ball under the birds', 'mackerel, sardines, sea bass, tuna'], reef: ['Reef edge', 'sea bass, moray eels, snapper, parrotfish'], deep: ['Deep drop-off', 'cod, tuna, anglerfish, giant squid'], glow: ['Glowing water', 'anglerfish, ghost fish, ember eels (night)'], legend: ['Something huge circles here', 'a legend, on squid bait or a glow lure, with a carbon or deep-sea rod']};
 function fspCell(cx, cz) { const k = cx + ',' + cz; let c = FSP.cells.get(k); if (c !== undefined) return c; const r = mulberry((G.seed || 1) ^ Math.imul(cx, 73856093) ^ Math.imul(cz, 19349663) ^ 0x51f15), h = r(); c = null;
@@ -7821,7 +7827,7 @@ function plMat(k) { const M = PLC.mats; if (M[k]) return M[k]; const S = o => ne
 const plG = (k, geo, x, y, z, ry = 0, rx = 0, rz = 0, sc) => { _e.set(rx, ry, rz, 'YXZ'); geo.applyMatrix4(_m4.compose(_v.set(x, y, z), _q.setFromEuler(_e), sc || _s.set(1, 1, 1))); PLC.geo.push([geo.index ? geo.toNonIndexed() : geo, plMat(k), true]); return geo; };
 const plB = (k, x0, x1, y0, y1, z0, z1, wall) => { plG(k, new THREE.BoxGeometry(x1 - x0, y1 - y0, z1 - z0), (x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2); if (wall) WALLS.push({x0, x1, z0, z1, y0, y1, see: false}); };
 const plFloor = (k, x0, x1, z0, z1, y) => { SURF.push({k: 'slab', x0, x1, z0, z1, y}); plB(k, x0, x1, y - .25, y, z0, z1); };
-const plRock = (k, x, y, z, r, sy = 1, seed = 1) => { const g = new THREE.IcosahedronGeometry(r, 3), p = g.attributes.position, hf = (a, b, c) => { const v = Math.sin(a * 1.71 + b * 2.37 + c * 3.11 + seed * 9.7) * 43758.5453; return v - Math.floor(v); };
+const plRock = (k, x, y, z, r, sy = 1, seed = 1) => { if (r < 3 && rockKeep(x, z, r + 1)) return null; const g = new THREE.IcosahedronGeometry(r, 3), p = g.attributes.position, hf = (a, b, c) => { const v = Math.sin(a * 1.71 + b * 2.37 + c * 3.11 + seed * 9.7) * 43758.5453; return v - Math.floor(v); };
   for (let i = 0; i < p.count; i++) { const X = p.getX(i), Y = p.getY(i), Z = p.getZ(i), n = Math.hypot(X, Y, Z) || 1, ux = X / n, uy = Y / n, uz = Z / n, f = .82 + .22 * hf(Math.round(ux * 4), Math.round(uy * 4), Math.round(uz * 4)) + .1 * Math.sin(ux * 5 + seed) * Math.cos(uz * 4 - seed); p.setXYZ(i, X * f, Y * f * sy * (uy < -.2 ? .6 : 1), Z * f); } g.computeVertexNormals(); plG(k, g, x, y, z); };
 const plSpot = (x, y, z, d, tag) => PLC.spots.push({x, y, z, d, tag});
 const plGlow = (x, y, z, c, s) => { const sp = new THREE.Sprite(new THREE.SpriteMaterial({map: TX.glow, color: c, transparent: true, opacity: .8, depthWrite: false, blending: THREE.AdditiveBlending})); sp.position.set(x, y, z); sp.scale.setScalar(s); PLC.g.add(sp); return sp; };
@@ -8030,7 +8036,7 @@ function uwxInit() { if (UWX.kelp) return;
 function uwxCell(cx, cz) { const k = cx + ',' + cz; let c = UWX.cells.get(k); if (c) return c; const r = mulberry(Math.imul(cx, 73856093) ^ Math.imul(cz, 19349663) ^ 0x2a7e), out = {kelp: [], rock: [], coral: []}, x0 = cx * 48, z0 = cz * 48;
   const rg = mapRegion(x0 + 24, z0 + 24), rk = rg ? rg.k : 'home', bed0 = seaBed(x0 + 24, z0 + 24);
   if (bed0 < -1.5) { const kd = bed0 > -40 && rk !== 'frost' && rk !== 'ash' && r() < .55; if (kd) { const n = 8 + Math.floor(r() * 18), kx = x0 + r() * 48, kz = z0 + r() * 48; for (let i = 0; i < n; i++) { const x = kx + (r() - .5) * 14, z = kz + (r() - .5) * 14, b = seaBed(x, z); if (b < -2) out.kelp.push([x, b, z, Math.min(-b - 1.2, 4 + r() * 9), r() * TAU]); } }
-    for (let i = 0, n = 1 + Math.floor(r() * 4); i < n; i++) { const x = x0 + r() * 48, z = z0 + r() * 48, b = seaBed(x, z); out.rock.push([x, b, z, .6 + r() * 2.4, r() * TAU]); }
+    for (let i = 0, n = 1 + Math.floor(r() * 4); i < n; i++) { const x = x0 + r() * 48, z = z0 + r() * 48, b = seaBed(x, z); if (b > -1.5 || rockKeep(x, z, 3)) continue; out.rock.push([x, b, z, .6 + r() * 2.4, r() * TAU]); }
     if ((rk === 'coral' || (rk === 'home' && bed0 > -22)) && r() < .7) for (let i = 0, n = 6 + Math.floor(r() * 14); i < n; i++) { const x = x0 + r() * 48, z = z0 + r() * 48, b = seaBed(x, z); if (b > -30 && b < -1) out.coral.push([x, b, z, .5 + r() * 1.6, Math.floor(r() * 5)]); } }
   UWX.cells.set(k, out); if (UWX.cells.size > 600) UWX.cells.delete(UWX.cells.keys().next().value); return out; }
 const UWX_CC = [0xe86a5a, 0xf0a040, 0xc84a9a, 0x5ac8b8, 0xe8e0c0];
@@ -9051,6 +9057,19 @@ for (const H of HULLS) if (!H.best) { if (H.n === 'Black Gull brigantine') H.bes
 for (const H of HULLS) if (H.L >= 38 && !H.plane && !H.air && !H.sub) H.best = (H.best || '') + '. Big ship: a purser aboard buys your salvage at sea, floating cargo drifts to her, and the crew respawn aboard';
 { const f0 = damageBoat; damageBoat = function (n) { const H = HC(); if (H.dmgK && n > 0) n *= H.dmgK;
   if (H.rib && B.sink <= 0 && n > 0 && B.hull - n < 1) { const was = B.hull; B.hull = 1; if (was > 1) emit({k: 'ribfloat'}); return; } return f0.call(this, n); }; }
+// ===== boarding and leaving any boat with E: 'Climb aboard' from a dock, a beach or the water within a few metres of her side; 'Step ashore' from near her rail
+// when there is a dock or land within 7 m (the walk-on gangway still works too)
+function boardAt(cx, cz) { if (!BOAT || P.seat || P.climb) return; ftFade(); P.sw = 0; P.dv = 0; P.deep = 0; P.ob = 1; P.bl = [cx, cz]; P.y = BDECK.y; const [wx, wz] = bL2W(cx, cz); P.x = wx; P.z = wz; P.vx = P.vz = P.vy = 0; P.gwT = 1; P.lastBY = B.yaw; Snd.step && Snd.step('wood', 1); }
+function ashoreAt(x, y, z) { ftFade(); P.ob = 0; P.sw = 0; P.x = x; P.z = z; P.y = y; P.vx = P.vz = P.vy = 0; P.gwT = 1; Snd.step && Snd.step('wood', 1); }
+function boardTargets(L) { if (!BOAT || !P || B.sink > 0 || (B.dep || 0) > .3 || -(B.dep || 0) > .6 || P.seat || P.climb || P.down || BG.sub) return; const H = HC();
+  if (!P.ob) { if (Math.hypot(P.x - B.x, P.z - B.z) > BG.L * .6 + 8) return; const [lx, lz] = bW2L(P.x, P.z), cz = clamp(lz, BDECK.z0 + .6, BDECK.z1 - .6), hw = Math.max(.3, Math.min(BDECK.x1, hullHW(cz)) - .6), cx = clamp(lx, -hw, hw), d = Math.hypot(lx - cx, lz - cz);
+    if (d > (P.sw ? 4.5 : 5.5) || d < .2 || (P.sw && (P.dv || 0) > .6)) return; const dy = BDECK.y - (P.sw ? 0 : P.y); if (dy > 5 || dy < -3.5) return; const [wx, wz] = bL2W(cx, cz);
+    L.push({kind: 'board', flat: 1, x: wx, y: BDECK.y + .5, z: wz, r: 7, label: () => `Climb aboard the ${H.n}`, go: () => boardAt(cx, cz)}); return; }
+  if (P.sw || Math.abs(P.y - BDECK.y) > .6) return; const [lx, lz] = P.bl || [0, 0], dirs = [];
+  if (BDECK.x1 - Math.abs(lx) < 1.6) dirs.push([Math.sign(lx) || 1, 0]); if (BDECK.z1 - lz < 1.6) dirs.push([0, 1]); if (lz - BDECK.z0 < 1.6) dirs.push([0, -1]);
+  for (const [nx, nz] of dirs) for (let dd = 1; dd <= 7; dd += .5) { const [wx, wz] = bL2W(lx + nx * dd, lz + nz * dd), f = floorAt(wx, wz, BDECK.y + 1.5, true); if (f && f.s.k !== 'boat' && f.y > -.4 && f.y < BDECK.y + 1.5) {
+    L.push({kind: 'board', flat: 1, x: wx, y: f.y + .5, z: wz, r: 9, label: () => 'Step ashore', go: () => ashoreAt(wx, f.y, wz)}); return; } } }
+{ const f0 = targets; targets = function (...a) { const L = f0.apply(this, a); try { boardTargets(L); } catch (e) { if (!G.bdErr) { G.bdErr = 1; console.warn(e); } } return L; }; }
 // ===== the massive ships (38 m and up, not aircraft): a purser aboard (sell the hold anywhere at sea for a 15% cut, buy gear), cargo sweeps to her
 // like the tug's magnet (45 m), the crew respawn in her sick bay, and B jumps between the deck and the bridge on any ship that has one
 function megaShip() { const H = HC(); return !!(BOAT && B.sink <= 0 && H.L >= 38 && !H.plane && !H.air && !H.sub); }
@@ -9062,7 +9081,7 @@ function megaShip() { const H = HC(); return !!(BOAT && B.sink <= 0 && H.L >= 38
   const got = G.cash - c0; if (got > 0) { const cut = Math.round(got * .15); G.cash -= cut; G.earned = Math.max(e0, G.earned - cut); emit({k: 'purser', cut}); save(); } return r; }; }
 { const f0 = buildBoat; buildBoat = function () { const r = f0.apply(this, arguments); if (megaShip()) { const sp = boatSpawn(0);
   INTER.push({kind: 'purser', boat: 1, lx: sp.bl[0] - 1.4, lz: sp.bl[1], ly: 1, r: 1.8, label: () => "Ship's purser: sell salvage and the hold at sea (15% cut), buy gear", on: () => P && P.ob && !P.sw && !P.seat, go: () => { G.purserNext = 1; openShop(); }}); } return r; }; }
-addEventListener('keydown', e => { if (e.code !== 'KeyB' || e.repeat || !G.on || !P || P.eq === 2 || !P.ob || P.seat || P.sw || P.dead || P.down || G.paused || G.chat || anyPanel()) return; const t = e.target; if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA')) return;
+addEventListener('keydown', e => { if (e.code !== 'KeyB' || e.repeat || !G.on || !P || (P.eq === 2 && F.st !== 'idle') || !P.ob || P.seat || P.sw || P.dead || P.down || G.paused || G.chat || anyPanel()) return; const t = e.target; if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA')) return;
   const ud = BOAT && BOAT.userData; if (!ud) return; if (ud.brg) brgGo(P.y > ud.brg.yb - 1 ? 0 : 1); else if (ud.syLift) liftGo(P.y > ud.syLift.yb - 1 ? 0 : 1); });
 // walkable bridges on the big ships: the helm camera sits high in the superstructure, so find the bridge deck under it in the model
 // (rays down and out to the walls), give it a floor and walls, move the wheel up there and join it to the deck with stairs (a short fade)
@@ -9244,3 +9263,194 @@ function icEvent(e) { const c = IC.list[e.i]; if (!c || !P) return; const near =
   else if (e.s === 'flee' && near) showMsg(c.t === 'pale' ? 'It shrinks from the light.' : c.t === 'crawl' ? 'It shrieks and scuttles back to its hole.' : 'They back away.', '', 2.5);
   else if (e.s === 'die' && near) { showMsg(e.by === myId() ? `You put down ${IC_N[c.t]}.` : `${IC_N[c.t]} is down.`, '', 3); Snd.shriek && Snd.shriek(null); }
   else if (e.s === 'got' && e.id === myId()) { G.shake = 1.5; Snd.scream && Snd.scream(); } }
+
+// ===== third person (P toggles, on foot, aboard, at the wheel and flying) and a calmer camera in aircraft (pause menu: Reduce motion, on by default)
+const TPQ = {};
+const airHull = () => { const H = HC(); return !!(H.plane || H.air || H.balloon); };
+addEventListener('keydown', e => { if (e.code !== 'KeyP' || e.repeat || !G.on || !P || G.paused || G.chat || anyPanel()) return; const t = e.target; if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA')) return;
+  G.tp = !G.tp; SET.tp = G.tp ? 1 : 0; saveSet(); showMsg(G.tp ? 'Third person (P to go back)' : 'First person', '', 1.5); });
+{ const f0 = startGame; startGame = function () { const r = f0.apply(this, arguments); G.tp = !!SET.tp; return r; }; }
+{ const f0 = updateCamera; updateCamera = function (dt) { const r = f0.apply(this, arguments); try { if (P && !P.dead && P.ob && SET.comfort !== 0 && !G.rov) { const air = airHull(), k = air ? .12 : .45;
+    if (air || (B.roll || 0) !== 0) { cam.rotation.x = mix(P.pitch, cam.rotation.x, k); cam.rotation.z = cam.rotation.z * k; cam.updateMatrixWorld(); } } } catch (e) {} return r; }; }
+{ const f0 = updateTools; updateTools = function (dt) { const r = f0.apply(this, arguments); try { tpSelf(dt); } catch (e) { if (!G.tpErr) { G.tpErr = 1; console.warn(e); } } return r; }; }
+function tpSelf(dt) { if (!G.tp || !P || P.dead || P.emo || P.scope || G.rov || P.cas || P.hd >= 0 || P.climb || P.lift || G.scoped || (G.js && G.js.t > 0)) { G.tpK = 0; return; }
+  G.tpK = Math.min(1, (G.tpK || 0) + dt * 4); const k = G.tpK * G.tpK * (3 - 2 * G.tpK);
+  let x = P.x, y = P.y, z = P.z; if (P.ob && BOAT) { BOAT.updateMatrixWorld(); _sb.set(P.bl[0], P.y, P.bl[1]).applyMatrix4(BOAT.matrixWorld); x = _sb.x; y = _sb.y; z = _sb.z; } else if (P.sw) y = waveH(P.x, P.z, G.wt) - (P.dv || 0) - .3;
+  Object.assign(TPQ, {av: P.av, dead: false, hd: -1, ready: true, rx: x, ry: y, rz: z, ryaw: P.yaw, rpitch: P.pitch, rspd: Math.hypot(P.vx || 0, P.vz || 0), c: P.c, st: P.seat ? 1 : 0, cr: P.cr, sw: P.sw, dv: P.dv, run: P.run, sack: P.sack, down: P.down, l: P.l, su: suitOf(P), eq: P.eq, em: 0});
+  animCrew(TPQ, dt); P.av.visible = true; VM.visible = VMF.visible = VMG.visible = VMS.visible = VMR.visible = false;
+  const cy = Math.cos(P.pitch), fx = -Math.sin(P.yaw) * cy, fy = Math.sin(P.pitch), fz = -Math.cos(P.yaw) * cy, rx = Math.cos(P.yaw), rz = -Math.sin(P.yaw);
+  let tx, ty, tz;
+  if (P.seat || (P.ob && airHull())) { // the whole vessel in shot: orbit behind her along your view
+    const d = clamp(BG.L * 1.15 + 7, 10, 190), cx = B.x, cz = B.z, cyy = B.heave - (B.dep || 0) + Math.max(2, BG.L * .08); tx = cx - fx * d; ty = cyy - fy * d + d * .22; tz = cz - fz * d; ty = Math.max(ty, waveH(tx, tz, G.wt) + 1.5, landH(tx, tz) + 1.5);
+    cam.position.set(mix(cam.position.x, tx, k), mix(cam.position.y, ty, k), mix(cam.position.z, tz, k)); cam.up.set(0, 1, 0); cam.lookAt(cx + fx * 8, cyy + fy * 8 + 1, cz + fz * 8); cam.updateMatrixWorld(); return; }
+  // on foot: over the right shoulder, pulled in front of walls, aim stays at the screen centre
+  const hy = y + (P.cr ? 1.1 : 1.55), D = P.sw ? 3.6 : 2.9; let d = emCamDist(x, z, hy, -Math.sin(P.yaw + PI), -Math.cos(P.yaw + PI), D, y); d = Math.max(.6, d);
+  tx = x - fx * d + rx * .5; ty = hy - fy * d + .25; tz = z - fz * d + rz * .5; if (!P.ob && !P.sw) { const g = landH(tx, tz); if (g > -5) ty = Math.max(ty, g + .4); }
+  cam.position.set(mix(cam.position.x, tx, k), mix(cam.position.y, ty, k), mix(cam.position.z, tz, k)); cam.rotation.set(P.pitch, P.yaw, 0, 'YXZ'); cam.updateMatrixWorld(); }
+
+// ===== places (M): every landmark by name with its bearing and distance, the famous ones even before you find them; 'Set course' pins it on the compass and chart
+// (T at the wheel runs the autopilot there)
+const PL_KIND = q => q.pl ? 'Landmark' : q.cruise ? 'Liner' : q.rig ? 'Rig' : q.dive ? 'Dive site' : q.wreck ? 'Wreck' : q.home ? 'Home' : 'Island';
+function plcOpen() { if (!G.on || !P || P.dead) return; let el = $('plc'); if (!el) { el = document.createElement('div'); el.id = 'plc'; el.style.cssText = 'position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(620px,94vw);max-height:84vh;overflow:auto;background:rgba(8,14,20,.95);border:1px solid rgba(255,255,255,.18);border-radius:10px;padding:16px 18px;font:14px Georgia,serif;color:#e8e0cc;z-index:35;pointer-events:auto'; document.body.appendChild(el);
+    const st = document.createElement('style'); st.textContent = '#plc h3{font:bold 12px ui-monospace,monospace;letter-spacing:.12em;color:#9fb4c0;margin:14px 0 6px} #plc .r{display:flex;align-items:center;gap:10px;padding:6px 4px;border-bottom:1px solid rgba(255,255,255,.07)} #plc .r b{flex:1;font-weight:normal} #plc .r i{color:#9fb4c0;font-style:normal;font:12px ui-monospace,monospace;min-width:120px;text-align:right} #plc .r.q b{color:#8a8a80} #plc button{background:#1c3442;color:#e8e0cc;border:1px solid #3a6a80;border-radius:6px;padding:4px 10px;cursor:pointer} #plc button.on{background:#2c6a8a;color:#fff}'; document.head.appendChild(st); }
+  G.plOpen = true; clearKeys(); el.style.display = 'block'; plcDraw(); try { document.exitPointerLock(); } catch (e) {} }
+function plcClose() { const el = $('plc'); if (!G.plOpen) return; G.plOpen = false; if (el) el.style.display = 'none'; if (G.on && !G.paused) lockMouse(); }
+function plcDraw() { const el = $('plc'); if (!el || !G.plOpen) return; const ab = P.ob || P.seat, fx = ab ? B.x : P.x, fz = ab ? B.z : P.z, disc = new Set(G.disc || []), esc = t => String(t).replace(/[<>&]/g, '');
+  const dirOf = (x, z) => { const a = (Math.atan2(x - fx, -(z - fz)) * 180 / PI + 360) % 360; return ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'][Math.round(a / 45) % 8]; };
+  const rows = POIS.map((q, i) => ({q, i, d: Math.hypot(q.x - fx, q.z - fz), seen: disc.has(i)})).filter(o => !o.q.home && (o.seen || !o.q.isle) && !(o.q.wreck && !o.seen));
+  const fam = rows.filter(o => !o.q.isle).sort((a, b) => a.d - b.d), isl = rows.filter(o => o.q.isle).sort((a, b) => a.d - b.d), wp = G.voyWp;
+  const row = o => { const on = wp && Math.hypot(wp[0] - o.q.x, wp[1] - o.q.z) < 2; return `<div class="r${o.seen ? '' : ' q'}"><b>${esc(o.q.n)} <small style="color:#7a8a90">· ${PL_KIND(o.q)}${o.seen ? '' : ' · not found yet'}</small></b><i>${Math.round(o.d) >= 1000 ? (o.d / 1000).toFixed(1) + ' km' : Math.round(o.d) + ' m'} ${dirOf(o.q.x, o.q.z)}</i><button data-p="${o.i}" class="${on ? 'on' : ''}">${on ? 'Course set' : 'Set course'}</button></div>`; };
+  const unc = POIS.filter((q, i) => q.isle && !disc.has(i)).length;
+  el.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center"><b style="font-size:18px">Places</b><button id="plcX">Close (M)</button></div><div style="color:#9fb4c0;font-size:12px;margin-top:4px">Set course pins it on the compass and the chart. At the wheel, T steers there.${wp ? ' <a href="#" id="plcClr" style="color:#ffd88a">Clear course</a>' : ''}</div>`
+    + `<h3>LANDMARKS, WRECKS AND DIVE SITES</h3>${fam.map(row).join('')}<h3>ISLANDS YOU HAVE CHARTED</h3>${isl.map(row).join('') || '<div class="r q"><b>None yet</b></div>'}${unc ? `<div style="color:#8a8a80;font-size:12px;margin-top:8px">${unc} islands still uncharted. Sail close to chart them.</div>` : ''}`;
+  el.querySelectorAll('[data-p]').forEach(b => b.onclick = () => { const q = POIS[+b.dataset.p]; if (!q) return; voyPlot([q.x, q.z]); showMsg(`Course set: ${q.n}. Follow the ◇ on the compass.`, '', 3); plcDraw(); });
+  $('plcX').onclick = plcClose; const c = $('plcClr'); if (c) c.onclick = ev => { ev.preventDefault(); voyPlot(null); plcDraw(); }; }
+addEventListener('keydown', e => { if (e.target && /^(INPUT|TEXTAREA)$/.test(e.target.tagName)) return; if (!G.on || G.paused || !P || e.repeat) return;
+  if (G.plOpen) { if (e.code === 'Escape' || e.code === 'KeyM') { e.stopImmediatePropagation(); plcClose(); } return; }
+  if (e.code === 'KeyM' && !anyPanel() && !G.map && !P.dead) { e.stopImmediatePropagation(); plcOpen(); } }, {capture: true});
+
+// ===== more guns (PvP-ready: with friendly fire on they hit crewmates too): slot 8 SMG (hold to fire, 30-round mags), slot 9 harpoon gun (one heavy bolt, works underwater)
+Object.assign(GEAR, {
+  smg: {n: 'SMG', d: 'Full auto: hold to spray 30 rounds (key 8)', cost: 1100, need: o => !o.smg},
+  uammo: {n: 'SMG rounds x60', d: 'For the SMG', cost: 35, need: o => o.smg},
+  hg: {n: 'Harpoon gun', d: 'One heavy bolt, hits like a rifle and fires underwater (key 9)', cost: 750, need: o => !o.hg},
+  bolts: {n: 'Harpoon bolts x6', d: 'For the harpoon gun', cost: 30, need: o => o.hg}});
+{ const f0 = gotGear; gotGear = function (k) { const o = P.own, a = P.ammo; if (k === 'smg') { o.smg = 1; a.um = 30; a.u = (a.u || 0) + 30; } else if (k === 'uammo') a.u = (a.u || 0) + 60; else if (k === 'hg') { o.hg = 1; a.hm = 1; a.h = (a.h || 0) + 5; } else if (k === 'bolts') a.h = (a.h || 0) + 6; return f0.apply(this, arguments); }; }
+{ const f0 = equip; equip = function (i) { if (i === 7 && !P.own.smg) { showMsg('You do not own an SMG. The harbour shed sells them.', '', 2.5); return; } if (i === 8 && !P.own.hg) { showMsg('You do not own a harpoon gun. The harbour shed sells them.', '', 2.5); return; } return f0.apply(this, arguments); }; }
+{ const f0 = reload; reload = function () { const A = P.ammo; if (P.eq === 7 || P.eq === 8) { if (P.reload > 0) return; if (P.eq === 7 && (A.u || 0) > 0 && (A.um || 0) < 30) { P.reload = 1.6; P.rk = 'u'; Snd.reload(); } else if (P.eq === 8 && (A.h || 0) > 0 && (A.hm || 0) < 1) { P.reload = 1.1; P.rk = 'h'; Snd.reload(); } return; } return f0.apply(this, arguments); }; }
+function fireX() { const A = P.ammo, smg = P.eq === 7; if ((G.fireT || 0) > 0 || P.reload > 0 || (smg && P.sw)) return;
+  if (smg ? (A.um || 0) <= 0 : (A.hm || 0) <= 0) { Snd.click(); if ((smg ? A.u : A.h) > 0) reload(); else showMsg('Out of ammo. The harbour shed sells more.', '', 2); return; }
+  if (smg) { A.um--; G.fireT = .085; } else { A.hm--; G.fireT = .6; } saveGear();
+  cam.getWorldDirection(_fw); const o = [cam.position.x, cam.position.y, cam.position.z], sp = smg ? .025 * (1 - (G.aimK || 0) * .6) : 0;
+  const d = [_fw.x + (Math.random() - .5) * sp, _fw.y + (Math.random() - .5) * sp, _fw.z + (Math.random() - .5) * sp];
+  gunFx(o, 'g', true); P.pitch = clamp(P.pitch + (smg ? .012 : .05), -1.45, 1.45); G.recoil = smg ? .5 : 1;
+  act({a: 'shoot', w: 'g', mul: smg ? .75 : 3.6, o: o.map(v => +v.toFixed(2)), d: d.map(v => +v.toFixed(3))}); }
+// reloads finish for the new guns; the SMG keeps firing while LMB is held
+{ const f0 = updateTools; updateTools = function (dt) { const r = f0.apply(this, arguments); try { if (P && P.reload <= 0 && (P.rk === 'u' || P.rk === 'h')) { const A = P.ammo; if (P.rk === 'u') { const n = Math.min(30 - (A.um || 0), A.u || 0); A.um = (A.um || 0) + n; A.u -= n; } else { const n = Math.min(1 - (A.hm || 0), A.h || 0); A.hm = (A.hm || 0) + n; A.h -= n; } P.rk = ''; saveGear(); }
+  if (P && G.lmb && P.eq === 7 && !anyPanel() && !P.seat && !P.down && P.hd < 0) fireX(); } catch (e) {} return r; }; }
+
+// ===== fishing, the fun way: a catch bar. Hold the mouse to lift your green zone, let go and it sinks; keep the darting fish inside it and the catch
+// meter fills, lose it and the meter drains. Bigger fish dart faster and further, legends wildly; better rods give a wider zone. A/D does nothing now.
+{ const f0 = hook; hook = function () { const r = f0.apply(this, arguments); Object.assign(F, {fx: 50, fv: 0, ft: 50, fT: 0, zx: 40, zv: 0, prog: 30, ten: 50, sta: 100, run: 0, jump: 0}); return r; }; }
+fishFight = function (dt) { const f = FISH[F.k] || {s: 1, kg: [1, 2]}, rod = P.own.rod || 1, s = (f.s || 1) * (TOD.night > .5 ? 1.1 : 1) * (relicOn('r_hook') ? .85 : 1) * (f.leg ? 1.5 : 1), hold = !!G.lmb;
+  const zw = [26, 26, 31, 36][rod] * (f.leg ? .8 : 1); F.zw = zw;
+  // the fish picks a new spot now and then, more often and further when it is big; it darts there with a little overshoot
+  F.fT -= dt; if (F.fT <= 0) { F.fT = (.5 + Math.random() * 1.1) / Math.sqrt(s); const jump = 18 + Math.random() * 40 * Math.min(1.6, s); F.ft = clamp(F.fx + (Math.random() < .5 ? -1 : 1) * jump, 3, 97); if (s > 1.2 && Math.random() < .15) { F.jump = .5; Snd.splash(at(F.bob.x, 0, F.bob.z, 6)); } }
+  F.fv += ((F.ft - F.fx) * 9 * Math.min(2, s) - F.fv * 4.5) * dt; F.fx = clamp(F.fx + F.fv * dt, 0, 100); if (F.jump > 0) F.jump -= dt;
+  // your zone: lift while holding, sink when you let go, a soft bounce at the ends
+  F.zv += (hold ? 150 : -120) * dt; F.zv = clamp(F.zv, -90, 90); F.zx += F.zv * dt; if (F.zx < 0) { F.zx = 0; F.zv = -F.zv * .3; } if (F.zx > 100 - zw) { F.zx = 100 - zw; F.zv = -F.zv * .3; }
+  const inZ = F.fx >= F.zx && F.fx <= F.zx + zw; F.inZ = inZ;
+  F.prog += (inZ ? 26 / Math.sqrt(s) : -15 * Math.sqrt(Math.min(2, s)) * .8) * dt; F.ten = F.fx; F.sta = clamp(F.prog, 0, 100);
+  if (inZ && Math.random() < dt * 9) Snd.tick();
+  const bx = F.bob.x - P.x, bz = F.bob.z - P.z, bl = Math.hypot(bx, bz) || 1; F.sx += -bz / bl * (F.fv / 60) * dt * s; F.sz += bx / bl * (F.fv / 60) * dt * s;
+  if (F.prog <= 0) { F.st = 'idle'; Snd.snap(); showMsg(f.leg ? 'It tore free. The legend will be back.' : 'It got away. Keep the green zone on the fish.', '', 3); return; }
+  if (F.prog >= 100) { F.st = 'idle'; const kg = +(f.kg[0] + Math.random() * (f.kg[1] - f.kg[0])).toFixed(1), full = (P.coolerN || 0) >= ([0, 8, 12, 18][rod] || 8); act({a: 'fish', f: F.k, kg, rod}); Snd.discover();
+    if (F.k !== 'bottle') toast(`${f.n}`, full ? `${kg} kg · cooler full` : `${kg} kg · +${money(fishVal(F.k, P.x, P.z))}`); if (f.leg) { lootChime(4); (G.banQ = G.banQ || []).push({h: 'LEGEND LANDED', t: jobCap(f.n) + ` · ${kg} kg`, c: 0, s: 'goal'}); } }
+  const k = Math.min(1, F.prog / 100); F.bob.x = mix(F.sx, P.x, k * .9); F.bob.z = mix(F.sz, P.z, k * .9); };
+{ const f0 = updateTools; updateTools = function (dt) { const r = f0.apply(this, arguments); try { if (P && P.eq === 2 && F.st === 'reel' && $('tenZone')) {
+    const z = $('tenZone'), b = $('tenBar'), n = $('tenNeedle'); b.style.height = '22px'; b.style.background = 'rgba(20,50,70,.55)'; z.style.left = (F.zx || 0) + '%'; z.style.width = (F.zw || 26) + '%'; z.style.background = F.inZ ? 'rgba(90,220,120,.7)' : 'rgba(90,200,110,.4)';
+    n.style.width = '10px'; n.style.marginLeft = '-5px'; n.style.borderRadius = '50%'; n.style.top = '3px'; n.style.bottom = '3px'; n.style.background = F.jump > 0 ? '#ffd060' : '#fff';
+    $('fishT').textContent = F.inZ ? 'Got it! Keep it in the green.' : 'Hold the mouse to move the green right, let go to slide left. Cover the fish!'; if ($('fishDir')) $('fishDir').innerHTML = ''; if ($('fishSta')) $('fishSta').style.display = 'none'; }
+  else if ($('tenBar') && P && F.st !== 'reel') { $('tenBar').style.height = ''; $('tenBar').style.background = ''; } } catch (e) {} return r; }; }
+
+// ===== The Jackpot Queen: a 90 m casino ship moored at sea (Places, M). A pontoon to tie up at, a gangway ramp to the deck, and one long neon hall of
+// ten games: slots, roulette, high-low, dice, the big wheel, crash, plinko, coin flip, scratch cards and a horse race. The host deals every game from
+// crew cash (act 'cg' -> event 'cgr'); the panel animates the result. Bets $10 to $2000, house edge about 5%.
+const CG = {x: 0, z: 0, y: 6, open: null, busy: 0, bet: 50};
+const CG_GAMES = [
+  {k: 'slots', n: 'Lucky Sevens slots', c: 0xff3a6a, d: 'Three reels. Three of a kind pays up to 50x, two cherries 2x, any pair gives your bet back.'},
+  {k: 'roul', n: 'Red, Black or Green', c: 0xe82020, d: 'Red or black pays 2x, green (the zero) pays 35x.', ch: [['red', 'Red'], ['black', 'Black'], ['green', 'Green']]},
+  {k: 'hilo', n: 'High-Low', c: 0x3aa0ff, d: 'Guess if the next card is higher or lower. Pays 1.9x.', ch: [['hi', 'Higher'], ['lo', 'Lower']]},
+  {k: 'dice', n: 'Dice: Over or Under', c: 0xffd040, d: 'Two dice. Over 7 or under 7 pays 2.2x, exactly 7 pays 5x.', ch: [['over', 'Over 7'], ['seven', 'Seven'], ['under', 'Under 7']]},
+  {k: 'wheel', n: 'The Big Wheel', c: 0xb050ff, d: 'Spin for 0x, 1x, 1.2x, 2x, 3x, 5x or the 8x jackpot.'},
+  {k: 'crash', n: 'Rocket Crash', c: 0xff8a20, d: 'Pick when to bail out. If the rocket climbs past it, you win that multiple.', ch: [['1.5', '1.5x'], ['2', '2x'], ['3', '3x'], ['5', '5x'], ['10', '10x']]},
+  {k: 'plinko', n: 'Plinko', c: 0x40e0a0, d: 'Drop a ball through the pegs. Safe: steady small wins. Wild: big edges, big misses.', ch: [['safe', 'Safe'], ['wild', 'Wild']]},
+  {k: 'flip', n: 'Coin Flip', c: 0xd8d8d8, d: 'Heads or tails. Pays 1.95x.', ch: [['h', 'Heads'], ['t', 'Tails']]},
+  {k: 'scratch', n: 'Scratch Cards', c: 0x60c8ff, d: 'Scratch three panels. Three matching pay up to 150x, any pair 1.1x.'},
+  {k: 'horse', n: 'Horse Race', c: 0x8ad040, d: 'Six horses. The favourite pays 3x, the long shot 15x.', ch: [['0', 'Bolt 3x'], ['1', 'Mabel 4x'], ['2', 'Biscuit 5x'], ['3', 'Thunder 8x'], ['4', 'Gravy 10x'], ['5', 'Old Ned 15x']]}];
+const CG_HORSE = [[3, 1 / 3], [4, 1 / 4], [5, 1 / 5], [8, 1 / 8], [10, 1 / 10], [15, 1 / 15]], CG_WHEEL = [0, 1, 0, 1.2, 0, 0, 2, 0, 1, 0, 0, 3, 0, 0, 0, 0, 1.2, 0, 0, 5, 0, 1, 0, 8];
+function cgLabel(t, col) { const c = document.createElement('canvas'); c.width = 512; c.height = 96; const g = c.getContext('2d'); g.fillStyle = 'rgba(0,0,0,.6)'; g.fillRect(0, 0, 512, 96); g.font = 'bold 44px Georgia'; g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.shadowColor = col; g.shadowBlur = 18; g.fillStyle = col; g.fillText(t, 256, 50); const tx = new THREE.CanvasTexture(c); tx.colorSpace = THREE.SRGBColorSpace; return new THREE.SpriteMaterial({map: tx, transparent: true, depthWrite: false}); }
+function cgBuild() { const [x, z] = plFind(-700, -760, 10, 60, 140); Object.assign(CG, {x, z}); const Y = CG.y, M = o => new THREE.MeshStandardMaterial(Object.assign({roughness: .5}, o));
+  const hullM = M({color: 0x101828, roughness: .6}), whiteM = M({color: 0xf0ece4, emissive: 0x2a2218, emissiveIntensity: .5}), goldM = M({color: 0xd8b040, metalness: .8, roughness: .3}), carpet = M({color: 0x5a0a1a, roughness: 1, emissive: 0x3a0610, emissiveIntensity: .6}), deckM = M({map: TX.planks || TX.wood || null, color: 0x9a7a58}), glassM = M({color: 0x0a1018, emissive: 0xffc070, emissiveIntensity: .35, roughness: .1, metalness: .4});
+  const add = (m, geo, px, py, pz, ry = 0) => { geo.applyMatrix4(new THREE.Matrix4().makeRotationY(ry)); geo.translate(px, py, pz); PLC.geo.push([geo.index ? geo.toNonIndexed() : geo, m, true]); };
+  const box = (m, x0, x1, y0, y1, z0, z1, wall) => { add(m, new THREE.BoxGeometry(x1 - x0, y1 - y0, z1 - z0), (x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2); if (wall) WALLS.push({x0, x1, z0, z1, y0, y1, see: false}); };
+  const L = 90, W = 20, hx = W / 2, z0 = z - L / 2, z1 = z + L / 2;
+  // hull, a raked bow, the boot stripe and portholes
+  box(hullM, x - hx, x + hx, -3, Y - .25, z0 + 8, z1); { const sh = new THREE.Shape([new THREE.Vector2(-hx, 0), new THREE.Vector2(hx, 0), new THREE.Vector2(0, -12)]); const g = new THREE.ExtrudeGeometry(sh, {depth: Y + 2.75, bevelEnabled: false}); g.rotateX(-PI / 2); add(hullM, g, x, -3, z0 + 8); }
+  box(goldM, x - hx - .02, x + hx + .02, Y - 1.2, Y - .9, z0 + 8, z1); for (let k = 0; k < 18; k++) for (const s of [-1, 1]) box(glassM, x + s * (hx + .01) - .02, x + s * (hx + .01) + .02, 2.2, 2.9, z0 + 12 + k * 4.4, z0 + 12.8 + k * 4.4);
+  OBST.push({x0: x - hx - 1, x1: x + hx + 1, z0: z0 - 4, z1: z1 + 1});
+  // the deck (walkable) and rails, the hall: carpet, neon trim, a gold roof edge, a big sign
+  SURF.push({k: 'slab', x0: x - hx, x1: x + hx, z0: z0 + 2, z1: z1, y: Y}); box(deckM, x - hx, x + hx, Y - .25, Y, z0 + 8, z1); box(deckM, x - 3, x + 3, Y - .25, Y, z0 + 2, z0 + 8);
+  for (const s of [-1, 1]) { box(whiteM, x + s * hx - .08, x + s * hx + .08, Y, Y + 1.1, z0 + 8, s > 0 ? z + 8 : z1, true); if (s > 0) box(whiteM, x + hx - .08, x + hx + .08, Y, Y + 1.1, z + 14, z1, true); }
+  box(whiteM, x - hx, x + hx, Y, Y + 1.1, z1 - .08, z1 + .08, true); box(whiteM, x - 3, x + 3, Y, Y + 1.1, z0 + 1.9, z0 + 2.1, true);
+  const h0 = z0 + 12, h1 = z1 - 8, hw = 8, HH = 6.5; CG.hall = {x0: x - hw, x1: x + hw, z0: h0, z1: h1};
+  box(carpet, x - hw + .2, x + hw - .2, Y, Y + .02, h0 + .2, h1 - .2); box(whiteM, x - hw, x + hw, Y + HH, Y + HH + .4, h0, h1); box(goldM, x - hw - .1, x + hw + .1, Y + HH + .4, Y + HH + .6, h0 - .1, h1 + .1);
+  box(whiteM, x - hw, x - hw + .3, Y, Y + HH, h0, h1, true); box(whiteM, x + hw - .3, x + hw, Y, Y + HH, h0, h1, true); box(whiteM, x - hw, x + hw, Y, Y + HH, h0, h0 + .3, true);
+  box(whiteM, x - hw, x - 2.2, Y, Y + HH, h1 - .3, h1, true); box(whiteM, x + 2.2, x + hw, Y, Y + HH, h1 - .3, h1, true); box(whiteM, x - 2.2, x + 2.2, Y + 3, Y + HH, h1 - .3, h1);
+  for (let k = 0; k < 10; k++) for (const s of [-1, 1]) box(glassM, x + s * hw - .05 * s - .03, x + s * hw - .05 * s + .03, Y + 1.2, Y + 4.5, h0 + 2 + k * 5.6, h0 + 5.6 + k * 5.6);
+  const neon = [0xff3a6a, 0x3aa0ff, 0xffd040, 0xb050ff, 0x40e0a0], NM = neon.map(c => new THREE.MeshBasicMaterial({color: c})); CG.neon = NM;
+  for (let k = 0; k < 5; k++) for (const sd of [-1, 1]) { box(NM[k], x + sd * (hw - .36) - .05, x + sd * (hw - .36) + .05, Y + HH - .6, Y + HH - .45, h0 + k * (h1 - h0) / 5, h0 + (k + 1) * (h1 - h0) / 5); box(NM[(k + 2) % 5], x + sd * (hw + .14) - .05, x + sd * (hw + .14) + .05, Y + HH - .1, Y + HH + .05, h0 + k * (h1 - h0) / 5, h0 + (k + 1) * (h1 - h0) / 5); }
+  for (const s of [-1, 1]) box(NM[s > 0 ? 0 : 1], x + s * (hw + .12) - .05, x + s * (hw + .12) + .05, Y + .3, Y + .45, h0, h1);
+  { const sp = new THREE.Sprite(cgLabel('JACKPOT QUEEN', '#ffd860')); sp.scale.set(22, 4.1, 1); sp.position.set(x, Y + HH + 4, h1 - 6); PLC.g.add(sp); const sp2 = sp.clone(); sp2.position.set(x, Y + HH + 4, h0 + 6); PLC.g.add(sp2); }
+  // the pontoon (tie up here), a ramp up the starboard side, ladders from the water
+  const px0 = x + hx + 1, px1 = x + hx + 6; SURF.push({k: 'slab', x0: px0, x1: px1, z0: z - 22, z1: z + 22, y: 1.2}); box(deckM, px0, px1, .7, 1.2, z - 22, z + 22); OBST.push({x0: px0 - .5, x1: px1 + .5, z0: z - 22.5, z1: z + 22.5});
+  for (let k = 0; k <= 8; k++) box(hullM, px0 + .2, px0 + .6, -1.5, .9, z - 22 + k * 5.5, z - 21.6 + k * 5.5);
+  SURF.push({k: 'ramp', x0: x + hx + .2, x1: x + hx + 2.6, z0: z + 2, z1: z + 14, y0: 1.2, y1: Y, ax: 'z+'}); { const g = new THREE.BoxGeometry(2.4, .2, Math.hypot(12, Y - 1.2)); g.rotateX(-Math.atan2(Y - 1.2, 12)); add(deckM, g, x + hx + 1.4, (Y + 1.2) / 2 - .1, z + 8); }
+  SURF.push({k: 'slab', x0: x + hx - .2, x1: x + hx + 2.6, z0: z + 13.6, z1: z + 14.6, y: Y}); box(goldM, x + hx + 2.5, x + hx + 2.6, 1.2, Y + 1, z + 2, z + 14.6, true);
+  for (const lz of [z - 18, z + 18]) plLadder(px1 + .4, lz, [px1 - 1, 1.2, lz], 4);
+  // the games: a lit cabinet or table for each, a name sign over it, an E prompt
+  CG.st = []; const glow = c => new THREE.MeshStandardMaterial({color: 0x101010, emissive: c, emissiveIntensity: 1.3, roughness: .4});
+  CG_GAMES.forEach((q, i) => { const s = i % 2 ? 1 : -1, row = Math.floor(i / 2), gx = x + s * (hw - 1.6), gz = h0 + 5 + row * ((h1 - h0 - 10) / 4), cab = M({color: 0x1a1a22, metalness: .5});
+    box(cab, gx - .8, gx + .8, Y, Y + 1.9, gz - .7, gz + .7); add(glow(q.c), new THREE.BoxGeometry(.05, .9, 1.1), gx - s * .82, Y + 1.3, gz); box(goldM, gx - .85, gx + .85, Y + 1.9, Y + 2.05, gz - .75, gz + .75); WALLS.push({x0: gx - .8, x1: gx + .8, z0: gz - .7, z1: gz + .7, y0: Y, y1: Y + 2, see: true});
+    const sp = new THREE.Sprite(cgLabel(q.n, '#' + q.c.toString(16).padStart(6, '0'))); sp.scale.set(4.4, .82, 1); sp.position.set(gx - s * .3, Y + 3, gz); PLC.g.add(sp);
+    INTER.push({kind: 'cg', x: gx - s * 1.5, y: Y + 1.2, z: gz, r: 2.4, label: () => `Play ${q.n}`, go: () => cgOpen(i), on: () => !P.sw}); CG.st.push([gx, gz]); });
+  // a bar and lounge in the middle, chandeliers
+  box(M({color: 0x3a1a0a}), x - 2.5, x + 2.5, Y, Y + 1.1, z - 3, z + 3, true); box(goldM, x - 2.6, x + 2.6, Y + 1.1, Y + 1.2, z - 3.1, z + 3.1);
+  for (const cz of [h0 + 10, z, h1 - 10]) { add(M({color: 0xfff0c0, emissive: 0xffd080, emissiveIntensity: 1.5}), new THREE.SphereGeometry(.7, 12, 8), x, Y + HH - 1.2, cz); }
+  CG.poi = plPoi('The Jackpot Queen (casino ship)', x, z, 70); }
+{ const f0 = plBuildB; plBuildB = function () { const r = f0.apply(this, arguments); try { cgBuild(); for (const m of mergeByMat(PLC.geo)) PLC.g.add(m); PLC.geo = []; } catch (e) { console.warn('cgBuild', e); } return r; }; }
+// lights only near the ship; the neon strips cycle
+{ const f0 = hud; hud = function () { const r = f0.apply(this, arguments); try { if (CG.neon && P) { const near = Math.hypot(P.x - CG.x, P.z - CG.z) < 400;
+  if (near && CG.neon) CG.neon.forEach((m, i) => m.color.setHSL(((G.wt * .08 + i * .2) % 1), 1, .55)); } } catch (e) {} return r; }; }
+// ---- host: deal a game
+const cgNear = p => p && !p.sw && Math.hypot(p.x - CG.x, p.z - CG.z) < 60 && p.y > CG.y - 1;
+function cgDeal(g, ch, rnd) { const R = rnd; switch (g) {
+  case 'slots': { const S = ['7', 'BAR', 'BELL', 'LEMON', 'CHERRY', 'STAR'], w = [1, 2, 3, 5, 5, 4], pick = () => { let t = R() * 20; for (let i = 0; i < 6; i++) { t -= w[i]; if (t <= 0) return S[i]; } return S[5]; }, r = [pick(), pick(), pick()];
+    const pay = r[0] === r[1] && r[1] === r[2] ? {7: 50, BAR: 20, BELL: 12, LEMON: 6, CHERRY: 8, STAR: 10}[r[0]] : r.filter(q => q === 'CHERRY').length >= 2 ? 2 : r[0] === r[1] || r[1] === r[2] || r[0] === r[2] ? 1 : 0; return {r, m: pay}; }
+  case 'roul': { const n = Math.floor(R() * 37), col = n === 0 ? 'green' : [1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36].includes(n) ? 'red' : 'black'; return {r: [n, col], m: col === ch ? (ch === 'green' ? 35 : 2) : 0}; }
+  case 'hilo': { const a = 2 + Math.floor(R() * 13); let b = 2 + Math.floor(R() * 13); while (b === a) b = 2 + Math.floor(R() * 13); return {r: [a, b], m: (ch === 'hi') === (b > a) ? 1.9 : 0}; }
+  case 'dice': { const a = 1 + Math.floor(R() * 6), b = 1 + Math.floor(R() * 6), t = a + b; return {r: [a, b], m: ch === 'seven' ? (t === 7 ? 5 : 0) : ch === 'over' ? (t > 7 ? 2.2 : 0) : (t < 7 ? 2.2 : 0)}; }
+  case 'wheel': { const seg = CG_WHEEL, i = Math.floor(R() * seg.length); return {r: [i, seg.length], m: seg[i]}; }
+  case 'crash': { const c = Math.max(1, .95 / (1 - R())), t = +ch || 2; return {r: [+c.toFixed(2), t], m: c >= t ? t : 0}; }
+  case 'plinko': { let pos = 0; const path = []; for (let i = 0; i < 10; i++) { const d = R() < .5 ? -1 : 1; pos += d; path.push(d); } const k = Math.abs(pos) / 2, tbl = ch === 'wild' ? [.3, .5, 1, 2.2, 6, 20] : [.6, .9, 1.1, 1.4, 2, 3]; return {r: path, m: tbl[Math.min(5, k)]}; }
+  case 'flip': { const s = R() < .5 ? 'h' : 't'; return {r: [s], m: s === ch ? 1.95 : 0}; }
+  case 'scratch': { const S = ['💎', '⚓', '🐟', '🦑', '💰', '🐚'], w = [.04, .14, .26, .2, .1, .26], pick = () => { let t = R(); for (let i = 0; i < 6; i++) { t -= w[i]; if (t <= 0) return S[i]; } return S[5]; }, r = [pick(), pick(), pick()];
+    const m = r[0] === r[1] && r[1] === r[2] ? {'💎': 150, '⚓': 20, '🐟': 8, '🦑': 12, '💰': 40, '🐚': 6}[r[0]] : (r[0] === r[1] || r[1] === r[2] || r[0] === r[2]) ? 1.1 : 0; return {r, m}; }
+  case 'horse': { const h = clamp(+ch | 0, 0, 5); let t = R() * CG_HORSE.reduce((a, q) => a + q[1], 0), win = 5; for (let i = 0; i < 6; i++) { t -= CG_HORSE[i][1]; if (t <= 0) { win = i; break; } } return {r: [win], m: win === h ? CG_HORSE[h][0] : 0}; } }
+  return {r: [], m: 0}; }
+{ const f0 = hostAct; hostAct = function (id, m) { if (!m || m.a !== 'cg') return f0.apply(this, arguments); const p = PL.get(id); if (!p || !G.on) return; const now = performance.now() / 1000; if ((p.cgT || 0) > now) return; p.cgT = now + .8;
+  const g = CG_GAMES.find(q => q.k === m.g), bet = Math.round(+m.bet); if (!g || !(bet >= 10 && bet <= 2000)) return; if (!cgNear(p)) { emit({k: 'nope', id, why: 'Get aboard the Jackpot Queen first.'}); return; } if (G.cash < bet) { emit({k: 'nope', id, why: 'Not enough crew cash.'}); return; }
+  const res = cgDeal(m.g, String(m.ch || ''), CR), win = Math.round(bet * res.m); G.cash += win - bet; if (win > bet) G.earned += win - bet; save(); emit({k: 'cgr', id, g: m.g, r: res.r, bet, win, ch: m.ch}); }; }
+// ---- client: the game panel
+function cgOpen(i) { if (!G.on || !P || P.dead) return; let el = $('cgp'); if (!el) { el = document.createElement('div'); el.id = 'cgp'; el.style.cssText = 'position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(560px,94vw);max-height:86vh;overflow:auto;background:linear-gradient(#1a0a1e,#0a0610);border:2px solid #d8b040;border-radius:14px;padding:18px 20px;font:15px Georgia,serif;color:#f0e6d0;z-index:35;pointer-events:auto;text-align:center;box-shadow:0 0 40px rgba(255,180,60,.25)'; document.body.appendChild(el);
+    const st = document.createElement('style'); st.textContent = '#cgp button{background:#2a1430;color:#f0e6d0;border:1px solid #d8b040;border-radius:8px;padding:7px 12px;margin:3px;cursor:pointer;font:14px Georgia,serif} #cgp button.on{background:#d8b040;color:#1a0a1e} #cgp button:disabled{opacity:.4} #cgp .big{font:bold 42px Georgia,serif;letter-spacing:.06em;margin:14px 0;min-height:56px} #cgp .res{min-height:26px;font-size:18px;margin:8px 0} #cgp .sub{color:#b8a888;font-size:13px}'; document.head.appendChild(st); }
+  CG.open = i; CG.ch = (CG_GAMES[i].ch || [[null]])[0][0]; CG.out = ''; CG.res = ''; G.cgOpen = true; clearKeys(); el.style.display = 'block'; cgDraw(); try { document.exitPointerLock(); } catch (e) {} }
+function cgClose() { const el = $('cgp'); if (!G.cgOpen) return; G.cgOpen = false; CG.open = null; if (el) el.style.display = 'none'; if (G.on && !G.paused) lockMouse(); }
+function cgDraw() { const el = $('cgp'); if (!el || CG.open == null) return; const q = CG_GAMES[CG.open];
+  el.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center"><b style="font-size:20px;color:#ffd860">${q.n}</b><button id="cgX">Leave (Esc)</button></div><div class="sub">${q.d}</div>
+    <div class="big" id="cgBig">${CG.out || '?'}</div><div class="res" id="cgRes">${CG.res}</div>
+    ${q.ch ? `<div>${q.ch.map(c => `<button data-ch="${c[0]}" class="${CG.ch === c[0] ? 'on' : ''}">${c[1]}</button>`).join('')}</div>` : ''}
+    <div style="margin-top:8px">Bet: ${[10, 50, 100, 250, 500, 1000, 2000].map(v => `<button data-b="${v}" class="${CG.bet === v ? 'on' : ''}">$${v}</button>`).join('')}</div>
+    <div style="margin-top:10px"><button id="cgGo" style="font-size:18px;padding:10px 30px" ${CG.busy ? 'disabled' : ''}>${q.k === 'slots' ? 'Pull the lever' : q.k === 'scratch' ? 'Buy and scratch' : q.k === 'horse' ? 'Start the race' : q.k === 'plinko' ? 'Drop the ball' : 'Play'}</button></div>
+    <div class="sub" style="margin-top:8px">Crew cash ${money(G.cash)}</div>`;
+  el.querySelectorAll('[data-ch]').forEach(b => b.onclick = () => { CG.ch = b.dataset.ch; cgDraw(); }); el.querySelectorAll('[data-b]').forEach(b => b.onclick = () => { CG.bet = +b.dataset.b; cgDraw(); });
+  $('cgX').onclick = cgClose; $('cgGo').onclick = () => { if (CG.busy) return; if (G.cash < CG.bet) { CG.res = '<span style="color:#ff8070">Not enough crew cash.</span>'; cgDraw(); return; } CG.busy = 1; CG.res = ''; cgDraw(); cgSpin(); act({a: 'cg', g: q.k, bet: CG.bet, ch: CG.ch}); setTimeout(() => { if (CG.busy === 1) { CG.busy = 0; cgDraw(); } }, 4000); }; }
+function cgSpin() { const q = CG_GAMES[CG.open], el = $('cgBig'); if (!el) return; const F = {slots: () => ['7', 'BAR', 'BELL', 'LEMON', 'CHERRY', 'STAR'].sort(() => Math.random() - .5).slice(0, 3).join(' · '), roul: () => Math.floor(Math.random() * 37), hilo: () => '🂠', dice: () => '⚀⚁⚂⚃⚄⚅'[Math.floor(Math.random() * 6)] + ' ' + '⚀⚁⚂⚃⚄⚅'[Math.floor(Math.random() * 6)], wheel: () => '◐◓◑◒'[Math.floor(G.wt * 12) % 4], crash: () => '🚀 ' + (1 + Math.random() * 3).toFixed(2) + 'x', plinko: () => '●', flip: () => Math.random() < .5 ? '🪙' : '⭕', scratch: () => '▒ ▒ ▒', horse: () => '🐎 . . . 🏁'}[q.k];
+  CG.spinI = setInterval(() => { const e = $('cgBig'); if (e && F) e.textContent = F(); if (A.on && Math.random() < .5) tone(600 + Math.random() * 600, .03, .05, 'square'); }, 90); }
+function cgResult(e) { if (e.id !== myId()) return; setTimeout(() => { clearInterval(CG.spinI); CG.busy = 0; const r = e.r || [], H = ['', '', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
+  CG.out = {slots: () => r.join(' · '), roul: () => `<span style="color:${r[1] === 'red' ? '#ff4040' : r[1] === 'green' ? '#40e070' : '#e0e0e0'}">${r[0]} ${String(r[1]).toUpperCase()}</span>`, hilo: () => `${H[r[0]]} → ${H[r[1]]}`, dice: () => `${'⚀⚁⚂⚃⚄⚅'[r[0] - 1]} ${'⚀⚁⚂⚃⚄⚅'[r[1] - 1]} = ${r[0] + r[1]}`,
+    wheel: () => `${CG_WHEEL[r[0]]}x`, crash: () => `🚀 crashed at ${r[0]}x`, plinko: () => r.map(d => d < 0 ? '↙' : '↘').join(''), flip: () => r[0] === 'h' ? 'HEADS' : 'TAILS', scratch: () => r.join(' '), horse: () => `🐎 ${['Bolt', 'Mabel', 'Biscuit', 'Thunder', 'Gravy', 'Old Ned'][r[0]]} wins!`}[e.g]();
+  const net = e.win - e.bet; CG.res = e.win > 0 ? `<span style="color:#80ff90">You win ${money(e.win)}${net > 0 ? ` (+${money(net)})` : ''}</span>` : `<span style="color:#ff8070">Lost ${money(e.bet)}</span>`;
+  if (A.on) { if (e.win > e.bet) { tone(880, .06, .15); setTimeout(() => tone(1320, .06, .25), 120); if (e.win >= e.bet * 10) setTimeout(() => lootChime && lootChime(4), 250); } else tone(180, .05, .3, 'sawtooth'); } if (G.cgOpen) cgDraw(); }, 1200); }
+addEventListener('keydown', e => { if (!G.cgOpen) return; if (e.code === 'Escape' || e.code === 'KeyE') { e.stopImmediatePropagation(); cgClose(); } }, {capture: true});

@@ -170,8 +170,8 @@ button.go { background:#124a5a; color:#f3e9d8; font-size:17px; letter-spacing:.2
   <ol style="line-height:1.7;padding-left:20px;margin:0">
     <li>Buy a <b>fishing rod</b> at the harbour shed, then press <b>3</b> to take it out.</li>
     <li>Face <b>open water</b>: off the boat's deck, the jetty, a dock or a beach. <b>Hold left mouse</b> to wind up and <b>let go to cast</b>. The longer you hold, the further it flies.</li>
-    <li>Wait for a bite. When the bobber goes under and you see <b>!</b>, <b>click quickly</b> to set the hook.</li>
-    <li>Reel it in: <b>hold left mouse to reel</b>, let go to ease off. Keep the needle in the <b style="color:#7ad08a">green</b>. Too much tension snaps the line; too little and the fish slips off. Big fish surge, so ease off when the needle jumps.</li>
+    <li>Wait for a bite. When the bobber goes under and you see <b>!</b>, <b>click</b> to set the hook (you have about two seconds).</li>
+    <li>Land it: a bar appears with the fish darting along it. <b>Hold left mouse</b> to slide your <b style="color:#7ad08a">green zone</b> right, let go and it slides left. Keep the fish inside the green and the catch meter fills; lose it and the meter drains. Big fish dart harder; better rods give a wider zone.</li>
     <li>Fish go in your <b>cooler</b>. Sell them at the harbour shed.</li>
   </ol>
   <p style="color:var(--dim);font-size:13px;margin:12px 0 0">Where to fish: near islands for sea bass, deep water far from land for cod and tuna, around wrecks and the rig for eels. Storms bring up stranger things. Better rods mean quicker bites, easier fights and rarer catches. Press <b>H</b> any time for this card.</p>
@@ -235,7 +235,7 @@ button.go { background:#124a5a; color:#f3e9d8; font-size:17px; letter-spacing:.2
   <div style="text-align:left;margin-bottom:10px"><label>Volume</label><input type="range" id="pVol" min="0" max="1.5" step="0.05"><label>Mouse sensitivity</label><input type="range" id="pSens" min="0.3" max="2.5" step="0.05"><label>Brightness</label><input type="range" id="pBright" min="0.7" max="1.6" step="0.05"><label>Graphics</label><div class="seg" data-k="gfx"><button data-v="low">Low</button><button data-v="high">High</button></div></div>
   <button class="go" id="resume" style="margin-top:0">Resume</button>
   <button id="quit" style="width:100%;margin-top:8px">Leave to menu</button>
-  <details id="pMore" style="text-align:left;margin-top:10px"><summary>Controls and view</summary><div id="pKeys"></div><label>Field of view</label><input type="range" id="pFov" min="60" max="95" step="1"><label><input type="checkbox" id="pInv"> Invert mouse</label><label>Friendly fire (host decides)</label><div class="seg" data-k="ff"><button data-v="off">Off</button><button data-v="on">On</button></div></details>
+  <details id="pMore" style="text-align:left;margin-top:10px"><summary>Controls and view</summary><div id="pKeys"></div><label>Field of view</label><input type="range" id="pFov" min="60" max="95" step="1"><label><input type="checkbox" id="pInv"> Invert mouse</label><label><input type="checkbox" id="pCalm"> Reduce motion (steady camera in planes and boats)</label><label>Friendly fire (host decides)</label><div class="seg" data-k="ff"><button data-v="off">Off</button><button data-v="on">On</button></div></details>
 </div></div>
 
 <div id="end" class="scr hidden"><div class="card" style="width:min(520px,100%);text-align:center">
@@ -246,6 +246,6 @@ button.go { background:#124a5a; color:#f3e9d8; font-size:17px; letter-spacing:.2
 
 <div id="load">Loading…</div>
 <script src="../three-r170.js"></script>
-<script src="game.js?v=72"></script>
+<script src="game.js?v=73"></script>
 </body>
 </html>

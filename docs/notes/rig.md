@@ -109,7 +109,7 @@ Read `CLAUDE.md` first (shared rules). Split out of it on 17 Nov 2026; keep this
   - Sync: the pose field `em` (index + 1). `emotePose` poses the joints. Looping emotes keep going while you walk (griddy walking).
   - Your own emote shows in third person (`emoteSelf`). The camera sits in front of you while you stand still (the mouse orbits it, `G.emOrb`) and swings behind your shoulder while you move. `emCamDist` pulls it in front of WALLS and the boat's BW (walls taller than 1.3 m), it stays above `landH`, and crewmates in the shot are hidden. It stays first person inside cabins or with less than 1.4 m of room.
 - **Names:** Host and Join need a name of at least 2 letters (`needName`). Solo still defaults to Deckhand.
-- `GAME_V` 67, because the pose has new fields (68 after the handover, fast travel and review-fix batch; 69 for friendly fire; 70 for walkable bridges and the ground fix; 71 for big-ship perks; 72 for island creatures).
+- `GAME_V` 67, because the pose has new fields (68 after the handover, fast travel and review-fix batch; 69 for friendly fire; 70 for walkable bridges and the ground fix; 71 for big-ship perks; 72 for island creatures; 73 for the casino ship, guns, fishing bar).
 
 **Persistent loot and fast travel (v67, 19 Nov 2026).**
 - **World seed:** `worldSeed(sv)` keeps the seed in the save (`ws`), so `placeItems`/`placeSunk` put the same loot in the same places every voyage. `hostStart` and Play solo both use it.
@@ -260,3 +260,14 @@ Still deferred from round 2 (see the round-2 plan): selling and shopping aboard 
 - Griddy: heel taps on the beat, bent support knee, arms pumping opposite, goggles over the eyes every 4 s.
 - The fog bank event no longer starts (`if (false && ...)`, the code is kept).
 - Shore boulders: `shoreRockClear()` removes any within 3.5 m of a building door or inside a footprint after the world is built (removed none on the current map; the doorway rocks the owner saw were not found).
+
+**Big batch (v73).** All at the end of game.js unless noted.
+- B: works with the rod out when no line is out (the bait swap is skipped then on a ship with a bridge or lift).
+- Rifle scope: `#scopeOv` black ring and crosshair when aimed with the rifle (`G.scoped`), the gun model hidden, mouse sensitivity scales with the FOV.
+- Rocks: `rockKeep(x, z, pad)` keeps shore boulders, small place rocks (`plRock` r < 3) and seabed dressing (which now also skips anything above -1.5 m) clear of every BLD door and the home shed, casino and lighthouse door.
+- Boarding: `boardTargets` (targets wrapper) offers 'Climb aboard the <boat>' within ~5 m of her side (dock, beach or water; not the sub) and 'Step ashore' from near her rail when a dock or land is within 7 m (`boardAt`, `ashoreAt`, with a fade).
+- Third person: P toggles `G.tp` (saved as SET.tp); `tpSelf` (updateTools wrapper) shows your avatar and puts the camera over the shoulder on foot (pulled in by `emCamDist`) or behind the whole vessel at the wheel or in aircraft. Reduce motion (pause menu `pCalm`, SET.comfort, on by default): an updateCamera wrapper keeps the horizon nearly level in aircraft and halves boat roll and pitch.
+- Places (M): `plcOpen/plcDraw` lists landmarks, wrecks and dive sites (even unfound) and charted islands with distance and bearing; 'Set course' calls `voyPlot` (compass and chart pin, T autopilot).
+- Guns: GEAR smg/uammo/hg/bolts; slot 8 SMG (`fireX`, full auto while LMB is held, 30-round mags, mul .75), slot 9 harpoon gun (one bolt, mul 3.6, fires underwater). Ammo `A.u/um`, `A.h/hm`, reload kinds 'u'/'h' (the old reload end now checks `P.rk === 's'`). They go through hostShoot, so they hit crewmates with friendly fire on (PvP later).
+- Fishing: `fishFight` replaced by a catch bar: hold LMB to slide your green zone (width by rod), keep the darting fish in it to fill the meter, lose it and it drains. The bite window is 1.8 s + rod. The help card is updated. Boss plan: docs/plans/rig-bosses.md.
+- The Jackpot Queen (`CG`, cgBuild in a plBuildB wrapper): a 90 m casino ship at plFind(-700, -760), POI, pontoon (y 1.2) with ladders, a ramp to the deck (y 6), a neon hall with 10 games (`CG_GAMES`: slots, roulette, high-low, dice, big wheel, crash, plinko, coin flip, scratch cards, horse race). E at a cabinet opens `#cgp`; host act 'cg' runs `cgDeal` with CR and pays from crew cash (bet $10-2000, aboard only); event 'cgr' shows the result. Simulated return per bet is 0.83 to 0.97.

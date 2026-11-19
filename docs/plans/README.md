@@ -11,6 +11,7 @@ Saved design plans. Nothing here is built unless it says so. Status last updated
 | **jjdrop**: Siege-style tactical CQB: operators and gadgets, destructible walls, bomb plant/defuse, multi-storey houses, online | Built (11 Nov 2026), see [drop.md](drop.md) | `drop.html` |
 | Co-op campaign "Operation Chain" | Idea | below |
 | 1v1 PvP modes | Idea | below |
+| **Station Nine boss fights** (fishing legends, the Maw, Pale Mother, Leviathan, Ghost Carrier) | Plan | [rig-bosses.md](rig-bosses.md) |
 
 **Current direction (2026-11-07): see [direction.md](direction.md).** Priority: feel and balance, then Red Star roles, then accounts, aiming for a public launch within a month.
 
