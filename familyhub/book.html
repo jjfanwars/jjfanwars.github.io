@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+
+<html class="no-js" lang="en-AU">
+<head>
+<meta charset="utf-8"/>
+<!-- PREVIEW ONLY: delete from here to "end preview" to use this file on the live site as book.html. -->
+<base href="https://familyhub.aiautomationvic.com/"/>
+<meta name="robots" content="noindex, nofollow"/>
+<style>/* paper-edge masks must be same-origin */html[data-scheme] .site-footer::before{-webkit-mask-image:url(https://jjfanwars.github.io/familyhub/img/edge-foot.svg);mask-image:url(https://jjfanwars.github.io/familyhub/img/edge-foot.svg)}html[data-scheme] .page-hero::after{-webkit-mask-image:url(https://jjfanwars.github.io/familyhub/img/edge-paper.svg);mask-image:url(https://jjfanwars.github.io/familyhub/img/edge-paper.svg)}</style>
+<!-- end preview -->
+<meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"/>
+<title>Book | Surf Coast Family Hub</title>
+<meta content="Answer a few quick questions to find the right practitioner, see fees and rebates, and book online." name="description"/>
+<meta content="#3C6869" name="theme-color"/>
+<meta content="website" property="og:type"/>
+<meta content="Surf Coast Family Hub" property="og:site_name"/>
+<meta content="Book | Surf Coast Family Hub" property="og:title"/>
+<meta content="Answer a few quick questions to find the right practitioner, see fees and rebates, and book online." property="og:description"/>
+<link href="img/logo-mark.webp" rel="icon" type="image/webp"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT@0,9..144,400..700,100;1,9..144,400..600,100&amp;family=Public+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="styles.css" rel="stylesheet"/>
+<script>document.documentElement.classList.remove("no-js")</script>
+<script defer="" src="script.js"></script>
+<link href="theme.css" rel="stylesheet"/>
+<script>try{var d=document.documentElement,s=localStorage.getItem("sch-scheme")||"earth",f=localStorage.getItem("sch-font");if(s==="none")s="";if(s)d.setAttribute("data-scheme",s);if(s==="custom"){var v=JSON.parse(localStorage.getItem("sch-vars")||"{}");for(var k in v)d.style.setProperty(k,v[k])}if(f)d.setAttribute("data-font",f)}catch(e){}</script>
+<script defer="" src="theme.js"></script>
+<style>
+/* Booking finder: guided "who should I see" flow on top of the site's own styles */
+.finder-sec{padding-top:0;margin-top:clamp(-150px,-11vw,-80px);position:relative;z-index:2}
+.finder{max-width:880px;margin:0 auto;padding:clamp(22px,4vw,40px) clamp(18px,4vw,44px) clamp(26px,4vw,40px)}
+.fd-top{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:36px;margin-bottom:6px}
+.fd-back{display:inline-flex;align-items:center;gap:6px;background:none;border:0;padding:6px 8px 6px 2px;font:650 15px/1 var(--body);color:var(--teal-deep);cursor:pointer;border-radius:8px}
+.fd-back svg{width:18px;height:18px}
+.fd-back[hidden]{display:inline-flex;visibility:hidden}
+.fd-steps{display:flex;gap:7px;align-items:center;font:600 13px/1 var(--body);color:var(--muted)}
+.fd-dot{width:28px;height:7px;border-radius:99px;background:var(--line);transition:background .3s}
+.fd-dot.on{background:var(--teal-deep)}
+.fd-dot.done{background:var(--teal)}
+.fd-step{animation:fdIn .35s cubic-bezier(.2,.8,.2,1)}
+@keyframes fdIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.fd-step{animation:none}}
+.fd-q{font-size:clamp(26px,3.6vw,38px);margin:4px 0 6px}
+.fd-sub{color:var(--muted);margin:0 0 22px;max-width:40em}
+.fd-opts{display:grid;gap:12px;list-style:none;padding:0;margin:0}
+@media (min-width:640px){.fd-opts{grid-template-columns:1fr 1fr}}
+.fd-opt{display:flex;align-items:center;gap:14px;width:100%;min-height:76px;padding:14px 16px;text-align:left;background:var(--card);border:1.5px solid var(--inkline);border-radius:var(--r-sm);box-shadow:3px 4px 0 rgba(109,149,149,.25);font:inherit;color:var(--ink);cursor:pointer;transition:transform .2s cubic-bezier(.2,.8,.2,1),box-shadow .2s,background-color .2s,border-color .2s}
+.fd-opt:hover{transform:translate(-1px,-2px);box-shadow:5px 6px 0 rgba(109,149,149,.32);background:#fff}
+.fd-opt:active{transform:translate(2px,3px);box-shadow:0 0 0 transparent}
+.fd-opt[aria-pressed="true"]{background:var(--teal-mist);border-color:var(--teal-deep);box-shadow:3px 4px 0 var(--mustard)}
+.fd-ico{flex:none;display:grid;place-items:center;width:46px;height:46px;border-radius:50%;background:var(--cream);color:var(--teal-deep);border:1.5px solid var(--line)}
+.fd-ico svg{width:24px;height:24px}
+.fd-opt b{display:block;font:600 18px/1.2 var(--display);margin-bottom:3px}
+.fd-opt small{display:block;font-size:14.5px;line-height:1.35;color:var(--muted)}
+.fd-arrow{margin-left:auto;flex:none;width:20px;height:20px;color:var(--teal-deep);opacity:.7}
+.fd-shortcut{margin:20px 0 0;font-size:15px;color:var(--muted)}
+.fd-shortcut button{background:none;border:0;padding:0;font:inherit;font-weight:650;color:var(--teal-deep);text-decoration:underline;text-decoration-color:var(--mustard);text-underline-offset:3px;cursor:pointer}
+.fd-group{margin:0 0 22px}
+.fd-group h3{font:650 17px/1.3 var(--body);margin:0 0 4px;letter-spacing:0}
+.fd-group p{margin:0 0 10px;font-size:14.5px;color:var(--muted)}
+.fd-pills{display:flex;flex-wrap:wrap;gap:10px}
+.fd-pill{min-height:46px;padding:0 18px;background:var(--card);border:1.5px solid var(--inkline);border-radius:99px;font:600 15.5px/1 var(--body);color:var(--ink);cursor:pointer;transition:background-color .2s,border-color .2s,color .2s}
+.fd-pill:hover{background:#fff}
+.fd-pill[aria-pressed="true"]{background:var(--teal-deep);border-color:var(--teal-deep);color:#fff}
+.fd-next{margin-top:8px}
+.fd-next[disabled]{opacity:.45;pointer-events:none}
+.fd-summary{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 20px}
+.fd-tag{display:inline-flex;align-items:center;min-height:30px;padding:0 12px;border-radius:99px;background:var(--teal-mist);color:var(--teal-dark);font:600 13.5px/1 var(--body)}
+.fd-results{display:grid;gap:16px;list-style:none;padding:0;margin:0}
+.fd-res{display:grid;grid-template-columns:auto 1fr;gap:6px 18px;align-items:start;padding:20px;background:var(--card);border:1.5px solid var(--inkline);border-radius:var(--r-card);box-shadow:4px 5px 0 rgba(109,149,149,.28)}
+.fd-results li:nth-child(3n+2) .fd-res{box-shadow:4px 5px 0 rgba(232,162,145,.38)}
+.fd-results li:nth-child(3n) .fd-res{box-shadow:4px 5px 0 rgba(230,188,118,.5)}
+.fd-res img{grid-row:span 2;width:88px;height:88px;object-fit:cover;border-radius:50%;border:1.5px solid var(--inkline)}
+.fd-res h3{font-size:24px;margin:2px 0 2px}
+.fd-role{margin:0;font-size:14.5px;color:var(--muted)}
+.fd-why{margin:8px 0 0;font-size:15.5px}
+.fd-body{grid-column:1/-1}
+.fd-cost{margin:12px 0 0;padding:12px 14px;border-radius:var(--r-sm);background:var(--cream);font-size:15px;line-height:1.45}
+.fd-cost b{font-weight:700}
+.fd-tip{margin:10px 0 0;padding:10px 14px;border-left:3px solid var(--mustard);background:rgba(230,188,118,.12);font-size:14.5px;line-height:1.45;border-radius:0 10px 10px 0}
+.fd-acts{display:flex;flex-wrap:wrap;gap:4px 12px;align-items:center}
+.fd-acts .btn{margin-top:14px}
+.fd-more{font-size:15px;font-weight:650;color:var(--teal-deep);margin-top:14px}
+@media (max-width:519px){.fd-res{grid-template-columns:1fr}.fd-res img{grid-row:auto;width:76px;height:76px}.fd-acts .btn{width:100%}}
+.fd-help{margin-top:22px;padding:18px 20px;border:1.5px dashed var(--inkline);border-radius:var(--r-card);display:flex;flex-wrap:wrap;gap:6px 18px;align-items:center;justify-content:space-between}
+.fd-help p{margin:0;max-width:34em}
+.fd-help .btn{margin-top:0}
+.fd-note{margin:18px 0 0;font-size:13.5px;color:var(--muted)}
+.fd-restart{margin-top:22px;text-align:center}
+.all-sec{padding-top:12px}
+.all-sec h2{font-size:clamp(26px,3.4vw,38px)}
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+<div class="wrap">
+<a class="brand" href="index.html"><img alt="" height="258" src="img/logo-mark.webp" width="240"/><span class="brand-name"><small>Surf Coast</small><b>Family Hub</b></span><span class="sr"> home page</span></a>
+<nav aria-label="Main" class="nav"><a href="index.html">Home</a><a href="services.html">Services</a><a href="team.html">Our team</a><a href="referrals.html">Referrals</a><a href="fees.html">Fees</a><a href="first-visit.html">First visit</a><a href="blog.html">Blog</a><a href="contact.html">Contact</a></nav>
+<a class="header-phone" href="tel:0491184788"><svg aria-hidden="true" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"></path></svg>0491 184 788</a><a class="btn btn-primary btn-sm header-cta" href="book.html">Book<span class="sr"> an appointment</span></a>
+<button aria-controls="mobile-menu" aria-expanded="false" aria-label="Open menu" class="menu-btn" type="button">
+<span class="open"><svg aria-hidden="true" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"></path></svg></span><span class="close"><svg aria-hidden="true" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"></path></svg></span>
+</button>
+</div>
+</header>
+<div class="mobile-menu" id="mobile-menu">
+<nav aria-label="Mobile"><a class="m-link" href="index.html">Home</a><a class="m-link" href="services.html">Services</a><a class="m-link" href="team.html">Our team</a><a class="m-link" href="referrals.html">Referrals</a><a class="m-link" href="fees.html">Fees</a><a class="m-link" href="first-visit.html">First visit</a><a class="m-link" href="blog.html">Blog</a><a class="m-link" href="contact.html">Contact</a></nav>
+<a class="btn btn-primary" href="book.html"><svg aria-hidden="true" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24"><rect height="15" rx="2.5" width="17" x="3.5" y="5"></rect><path d="M8 3v4M16 3v4M3.5 10h17"></path></svg>Book an appointment</a>
+<a class="btn btn-outline" href="tel:0491184788"><svg aria-hidden="true" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"></path></svg>Call 0491 184 788</a>
+</div>
+<main id="main">
+<section class="page-hero hero-short">
+<div class="wrap">
+<p class="eyebrow">Book an appointment</p>
+<h1>Let’s find the right person for you</h1>
+<p class="lede">Answer two or three quick questions and we’ll show you who can help, what it costs and how to book. Rather talk to someone? Call us on <a class="nb" href="tel:0491184788">0491 184 788</a>.</p>
+</div>
+</section>
+<section class="section section-tight finder-sec">
+<div class="wrap">
+<div class="finder card" id="finder" aria-live="polite">
+<noscript><p>This booking guide needs JavaScript. You can still <a href="book.html#all">choose a practitioner below</a> or call us on <a href="tel:0491184788">0491 184 788</a>.</p></noscript>
+</div>
+</div>
+</section>
+<section class="section section-tight all-sec" id="all">
+<div class="wrap">
+<div class="section-head">
+<h2>Prefer to choose someone yourself?</h2>
+<p>Tap a practitioner to go straight to their booking. First time with us? Read <a href="first-visit.html">what to expect at your first visit</a>, or check <a href="fees.html">fees and rebates</a>.</p>
+</div>
+<ul class="grid book-grid" id="allGrid"></ul>
+</div>
+</section>
+</main>
+<footer class="site-footer">
+<div class="wrap">
+<div class="foot-grid">
+<div>
+<a class="foot-brand" href="index.html"><img alt="" height="258" loading="lazy" src="img/logo-mark.webp" width="240"/><span>Surf Coast<br/>Family Hub</span></a>
+<p style="margin-top:16px;max-width:28em">A warm, comfortable, inclusive and welcoming space in Jan Juc, on the Surf Coast.</p>
+</div>
+<div>
+<p class="foot-title">Pages</p>
+<ul class="foot-links"><li><a href="index.html">Home</a></li><li><a href="services.html">Services</a></li><li><a href="team.html">Our team</a></li><li><a href="referrals.html">Referrals</a></li><li><a href="fees.html">Fees</a></li><li><a href="first-visit.html">First visit</a></li><li><a href="blog.html">Blog</a></li><li><a href="village.html">Our village</a></li><li><a href="contact.html">Contact</a></li><li><a href="book.html">Book online</a></li></ul>
+</div>
+<div>
+<p class="foot-title">Get in touch</p>
+<ul class="foot-links">
+<li><a href="tel:0491184788">0491 184 788</a></li>
+<li><a href="mailto:hello@surfcoastfamilyhub.com.au">hello@surfcoastfamilyhub.com.au</a></li>
+<li><a href="https://www.google.com/maps/search/?api=1&amp;query=Surf+Coast+Family+Hub+Stuart+Avenue+Jan+Juc+VIC+3228">Jan Juc Village, Stuart Avenue, Jan Juc VIC 3228</a></li>
+<li><a href="https://www.facebook.com/surfcoastfamilyhub">Facebook</a> · <a href="https://www.instagram.com/surfcoastfamilyhub">Instagram</a></li>
+</ul>
+</div>
+</div>
+<div class="crisis"><p class="crisis-line"><b>We are not a crisis service.</b> If you need support right now, call Lifeline on <a href="tel:131114">13 11 14</a> (24 hours, every day). In an emergency, call <a href="tel:000">000</a>.</p></div>
+<div class="foot-bottom"><span>© <span data-year="">2026</span> Surf Coast Family Hub</span><span>Jan Juc, on the Surf Coast, Victoria</span></div>
+</div>
+</footer>
+<div aria-label="Quick contact" class="action-bar">
+<a class="btn btn-outline" href="tel:0491184788"><svg aria-hidden="true" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"></path></svg>Call</a>
+<a class="btn btn-primary" href="book.html"><svg aria-hidden="true" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24"><rect height="15" rx="2.5" width="17" x="3.5" y="5"></rect><path d="M8 3v4M16 3v4M3.5 10h17"></path></svg>Book</a>
+</div>
+<script>
+/* Booking finder for Surf Coast Family Hub.
+   Option 2: no Halaxy connection. It matches the client to practitioners, explains cost
+   and sends them to that practitioner's own booking page. Nothing is stored or sent. */
+(function(){
+var HX='https://www.halaxy.com/book/', PHONE='0491 184 788', TEL='tel:0491184788';
+var CLINIKO='https://dr-anna-morrow.au5.cliniko.com/bookings#service';
+
+// ---------- practitioners ----------
+// book: {url, how:'online'|'ext'|'contact'}; psych: Halaxy psychology booking (shows the service-type tip)
+var P={
+ adi:{name:'Dr Adi Brown',first:'Adi',role:'Clinical Psychologist',url:HX+'psychologist/dr-adi-brown/256944/503631',psych:1,
+  why:'Adults at every life stage, with extra training in perinatal and infant mental health, birth trauma and loss.'},
+ hannah:{name:'Hannah Jensen',first:'Hannah',role:'Clinical Psychologist',url:HX+'widget/psychologist/hannah-jensen/680341/503631',psych:1,
+  why:'Perinatal psychology, infant mental health and trauma. Formerly Senior Clinical Psychologist at the Royal Women’s Hospital.'},
+ melinda:{name:'Melinda Sullivan',first:'Melinda',role:'Clinical & Child Psychologist',url:HX+'widget/psychologist/melinda-sullivan/1343231/503631',psych:1,
+  why:'Clinical and perinatal psychologist and family therapist, and a former midwife and maternal and child health nurse.'},
+ ellie:{name:'Ellie James',first:'Ellie',role:'Psychologist',url:HX+'widget/psychologist/ellie-james/1026431/503631',psych:1,
+  why:'Perinatal anxiety and depression, birth trauma and the transition to parenthood.'},
+ maddy:{name:'Maddy Keegan',first:'Maddy',role:'Psychologist',url:HX+'psychologist/ms-madelaine-keegan/1807285/503631',psych:1,
+  why:'Trying to conceive and infertility (her PhD area), pregnancy, birth and parenthood.'},
+ meaghan:{name:'Meaghan Cook',first:'Meaghan',role:'Child & Adolescent Therapist',contact:1,
+  why:'Children (6 to 12) and teens through play, art and talk, parent coaching, and ADHD, autism and cognitive assessments.'},
+ 'michelle-ferris':{name:'Michelle Ferris',first:'Michelle',role:'Individual & Couples Counsellor',url:HX+'widget/social-worker/ms-michelle-ferris/331996/503631',
+  why:'20 years with individuals and couples, including becoming parents. Emotion Focused Couples Therapy and EMDR.'},
+ 'michelle-joseph':{name:'Michelle Joseph',first:'Michelle',role:'Mental Health Social Worker & Art Therapist',url:'https://www.artroomtherapy.com.au/refernow',ext:'her booking site',
+  why:'Art therapy for children, adults, and parents with their child, plus NDIS supports. No artistic skill needed.'},
+ jodie:{name:'Jodie Morzinek',first:'Jodie',role:'Counsellor',url:'https://www.yoursupportspace.com.au/',ext:'her website',
+  why:'Gentle, relationship-based support. Previously at the Barwon Health Early Parenting Centre. Mostly online.'},
+ laura:{name:'Laura Rees',first:'Laura',role:'Massage Therapist',url:HX+'widget/massage-therapist/ms-laura-rees/659711/503631',
+  why:'Remedial, relaxation, pregnancy, postpartum and teen massage. 15+ years’ experience, HICAPS on site.'},
+ kate:{name:'Kate Heagney',first:'Kate',role:'Acupuncturist',url:HX+'widget/acupuncturist/kate-heagney/659721/503631',
+  why:'Gentle Japanese acupuncture for fertility, IVF, pregnancy and birth preparation, plus general health.'},
+ anna:{name:'Dr Anna Morrow',first:'Anna',role:'Osteopath',url:CLINIKO,
+  why:'Almost 20 years’ experience, including pregnancy, postpartum, babies and children.'},
+ melissa:{name:'Melissa Andrew',first:'Melissa',role:'Osteopath',url:CLINIKO,leave:1,/* on leave: hidden everywhere until this flag is removed */
+  why:'Holistic osteopathy that draws on her Pilates and yoga training.'}
+};
+var ORDER=['adi','melinda','hannah','ellie','maddy','michelle-ferris','kate','laura','anna','melissa','meaghan','michelle-joseph','jodie'];
+
+// fee: [amount, minutes, medicare rebate (0 = none)] or a text note
+var CLIN=[245,50,149.05], PSY_FEES={adi:CLIN,hannah:CLIN,melinda:[235,50,149.05],ellie:[190,50,101.55],maddy:'See our fees page or ask us.',meaghan:[180,50,0]};
+
+// ---------- what people can ask for ----------
+var NEED={
+ talk:{t:'Someone to talk to',s:'Psychology for anxiety, low mood, stress, trauma or big changes',ico:'talk',plan:1,how:1,fee:PSY_FEES},
+ conceive:{t:'Someone to talk to',s:'Fertility, IVF, pregnancy worries, anxiety or low mood',ico:'talk',plan:1,how:1,fee:PSY_FEES},
+ counsel:{t:'Counselling',s:'Practical support for stress, burnout, parenting and life changes',ico:'leafy',plan:1,how:1,
+  fee:{'michelle-ferris':[215,50,89.50],jodie:[120,60,0]}},
+ parenthood:{t:'Couple support for becoming parents',s:'Communication, new roles and staying connected',ico:'heart',how:1,
+  fee:{adi:'Ask us about fees for couple sessions.'},contactOnly:{adi:1}},
+ couples:{t:'Couples therapy',s:'Conflict, stress, intimacy, separation or feeling stuck',ico:'couple',how:1,
+  fee:{'michelle-ferris':[245,60,0]}},
+ child:{t:'Therapy for my child or teen',s:'Play, art and talk-based therapy, plus parent coaching',ico:'star',plan:1,how:1,fee:PSY_FEES},
+ assess:{t:'An ADHD, autism or learning assessment',s:'A clear picture of strengths and challenges, with a written report',ico:'clip',
+  fee:{meaghan:'Assessment fees depend on the type of assessment. Ask us for a quote.'}},
+ art:{t:'Art therapy',s:'Creative therapy when words are hard. No art skills needed.',ico:'palette',plan:1,how:1,
+  fee:{'michelle-joseph':[220,50,89.50]}},
+ dyadic:{t:'Parent and child art therapy',s:'Strengthen your bond with your little one through art',ico:'palette',
+  fee:{'michelle-joseph':[240,50,0]}},
+ ndis:{t:'NDIS supports',s:'Counselling and capacity building, at home, online or in the community',ico:'puzzle',
+  fee:{'michelle-joseph':'NDIS capacity building: $193.99 per hour, claimed from your plan.',jodie:'Claimed from your NDIS plan. Ask Jodie which category applies.'}},
+ massage:{t:'Massage',s:'Remedial, relaxation, pregnancy and postpartum',ico:'hand',
+  fee:{laura:'$65 for 30 minutes or $120 for 60 minutes. Health fund rebates, HICAPS on site.'}},
+ acu:{t:'Acupuncture',s:'Gentle Japanese acupuncture',ico:'leaf',
+  fee:{kate:'$150 first visit (60 min), $110 follow-up (50 min). Concession $130 / $100. Check your health fund.'}},
+ osteo:{t:'Osteopathy',s:'Hands-on care for pain, posture, pregnancy and babies',ico:'spine',
+  fee:{anna:'$190 new patient (up to 1 hour), $140 return visit. Concession $170 / $130. Check your health fund.',melissa:'See our fees page or ask us.'}}
+};
+// who → list of [need, title override, subtitle override, practitioner order]
+var WHO={
+ preg:{t:'Pregnancy or trying to conceive',s:'Fertility, IVF, pregnancy and preparing for birth',ico:'heart',needs:[
+  ['conceive',0,0,['maddy','ellie','hannah','melinda','adi']],
+  ['parenthood',0,0,['adi']],
+  ['acu','Acupuncture for fertility or pregnancy','IVF support, pregnancy care and birth preparation',['kate']],
+  ['massage','Pregnancy massage','Nurturing, tailored care for mums-to-be',['laura']],
+  ['osteo','Osteopathy in pregnancy','Ease back, hip and pelvic pain',['anna','melissa']]]},
+ early:{t:'Birth and the early days',s:'Support for you, your baby and your relationship',ico:'moon',needs:[
+  ['talk','Someone to talk to','Birth trauma, low mood, anxiety or adjusting to life with a baby',['hannah','ellie','melinda','adi','maddy']],
+  ['counsel','Early parenting counselling','Sleep-deprived, overwhelmed or finding your feet',['jodie','michelle-ferris']],
+  ['parenthood',0,0,['adi']],
+  ['dyadic',0,0,['michelle-joseph']],
+  ['massage','Postpartum massage','Rest and recovery after birth',['laura']],
+  ['osteo','Osteopathy for you or your baby','Postpartum recovery, and gentle care for babies',['anna','melissa']]]},
+ child:{t:'My child or teen',s:'Therapy, assessments and support for young people',ico:'star',needs:[
+  ['child',0,0,['melinda','meaghan']],
+  ['assess',0,0,['meaghan']],
+  ['art',0,'For kids who find it hard to put feelings into words',['michelle-joseph']],
+  ['dyadic',0,0,['michelle-joseph']],
+  ['ndis',0,0,['jodie','michelle-joseph']],
+  ['osteo','Osteopathy for babies and children',0,['anna','melissa']]]},
+ me:{t:'Me',s:'Support for adults at any stage of life',ico:'person',needs:[
+  ['talk',0,0,['adi','hannah','melinda','ellie','maddy']],
+  ['counsel',0,0,['michelle-ferris','jodie']],
+  ['art',0,0,['michelle-joseph']],
+  ['ndis',0,0,['jodie','michelle-joseph']],
+  ['massage',0,0,['laura']],
+  ['acu',0,'Fertility, women’s health, pain, digestion, stress',['kate']],
+  ['osteo',0,0,['anna','melissa']]]},
+ couple:{t:'Us, as a couple',s:'Relationship support, including becoming parents',ico:'couple',needs:[
+  ['couples',0,0,['michelle-ferris']],
+  ['parenthood',0,0,['adi']]]},
+ body:{t:'Body care',s:'Massage, acupuncture or osteopathy',ico:'leaf',hidden:1,needs:[
+  ['massage',0,0,['laura']],
+  ['acu',0,'Fertility, pregnancy, pain, digestion, stress',['kate']],
+  ['osteo',0,0,['anna','melissa']]]}
+};
+
+// ---------- icons ----------
+var IC={
+ person:'<circle cx="12" cy="8" r="3.6"/><path d="M5 20c1.4-4 4-6 7-6s5.6 2 7 6"/>',
+ couple:'<circle cx="8.5" cy="8.5" r="2.8"/><circle cx="16" cy="8.5" r="2.8"/><path d="M3 19c1-3 3-5 5.5-5s4.5 2 5.5 5M14 14.3c.6-.2 1.3-.3 2-.3 2.5 0 4.2 2 5 5"/>',
+ heart:'<path d="M12 20s-7.5-4.6-7.5-10.2A4.2 4.2 0 0 1 12 7.4a4.2 4.2 0 0 1 7.5 2.4C19.5 15.4 12 20 12 20z"/>',
+ moon:'<path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/>',
+ star:'<path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/>',
+ talk:'<path d="M4 5.5h16v10.5H10l-5 4v-4H4z"/><path d="M8 10h8M8 13h5"/>',
+ leafy:'<path d="M4 20c2-6 6-10 16-12-1 8-6 12-12 12H4z"/><path d="M4 20c4-4 7-6 10-7"/>',
+ leaf:'<path d="M5 19C5 11 11 5 19 5c0 8-6 14-14 14z"/><path d="M5 19l7-7"/>',
+ palette:'<path d="M12 3.5a8.5 8.5 0 1 0 0 17c1 0 1.5-.7 1.5-1.5 0-1.2-1-1.5-1-2.6 0-.9.7-1.6 1.7-1.6H17a3.5 3.5 0 0 0 3.5-3.6C20.5 6.9 16.7 3.5 12 3.5z"/><circle cx="8" cy="11" r="1"/><circle cx="11" cy="7.5" r="1"/><circle cx="15.5" cy="8" r="1"/>',
+ clip:'<rect x="5.5" y="4.5" width="13" height="16" rx="2"/><path d="M9 4.5h6V7H9zM9 11.5h6M9 15.5h4"/>',
+ puzzle:'<path d="M10 4h4v2.5a1.5 1.5 0 0 0 3 0V4h3v6h-2.5a1.5 1.5 0 0 0 0 3H20v7H4V13h2.5a1.5 1.5 0 0 0 0-3H4V4h6z"/>',
+ hand:'<path d="M7 12V6.5a1.5 1.5 0 0 1 3 0V11M10 10V5a1.5 1.5 0 0 1 3 0v6M13 10V6a1.5 1.5 0 0 1 3 0v6M16 11V8.5a1.5 1.5 0 0 1 3 0V14c0 4-3 7-7 7h-.5A6.5 6.5 0 0 1 6 18l-2.3-4a1.5 1.5 0 0 1 2.6-1.5L7 14"/>',
+ spine:'<path d="M12 3v18"/><rect x="8.5" y="4.5" width="7" height="3" rx="1.2"/><rect x="8" y="9" width="8" height="3" rx="1.2"/><rect x="8" y="13.5" width="8" height="3" rx="1.2"/><rect x="8.5" y="18" width="7" height="2.5" rx="1.2"/>',
+ arrow:'<path d="M5 12h14M13 6l6 6-6 6"/>',
+ back:'<path d="M15 6l-6 6 6 6"/>',
+ cal:'<rect height="15" rx="2.5" width="17" x="3.5" y="5"/><path d="M8 3v4M16 3v4M3.5 10h17"/>',
+ phone:'<path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"/>',
+ mail:'<rect x="3.5" y="5.5" width="17" height="13" rx="2"/><path d="M4 7l8 6 8-6"/>'
+};
+function svg(k,c){return '<svg class="'+(c||'')+'" aria-hidden="true" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" viewBox="0 0 24 24">'+IC[k]+'</svg>'}
+function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+function money(n){return '$'+(n%1?n.toFixed(2):n)}
+
+// ---------- state (kept in the URL hash so Back works and links can be shared) ----------
+var S={};
+function readHash(){var o={};location.hash.replace(/^#/,'').split('&').forEach(function(p){var kv=p.split('=');if(kv[0])o[kv[0]]=decodeURIComponent(kv[1]||'')});
+ if(!WHO[o.who])o={};else if(o.need&&!findNeed(o.who,o.need))delete o.need;return o}
+function writeHash(push){var h=['who','need','plan','how','r'].filter(function(k){return S[k]}).map(function(k){return k+'='+S[k]}).join('&');
+ var url=location.href.split('#')[0]+(h?'#'+h:'');
+ try{history[push?'pushState':'replaceState'](null,'',url)}catch(e){}}
+function findNeed(who,k){var l=WHO[who].needs;for(var i=0;i<l.length;i++)if(l[i][0]===k)return l[i];return null}
+function stepOf(){if(!S.who)return 1;if(!S.need)return 2;if(needsQs()&&!(S.r&&answered()))return 3;return 4}
+function answered(){var n=NEED[S.need];return (!n.plan||S.plan)&&(!n.how||S.how)}
+function needsQs(){var n=NEED[S.need];return n&&(n.plan||n.how)}
+
+var box=document.getElementById('finder');
+function go(o){if(!('r' in o))delete S.r;for(var k in o){if(o[k]==null)delete S[k];else S[k]=o[k]}writeHash(true);render(true)}
+
+function head(step){
+ // steps shown: who, need, (questions), results
+ var list=['who','need'].concat(S.need&&!needsQs()?[]:['qs']).concat(['res']);
+ var cur=step===4?list.length:(step===3?3:step);
+ var dots=list.map(function(_,i){return '<span class="fd-dot '+(i+1<cur?'done':i+1===cur?'on':'')+'"></span>'}).join('');
+ return '<div class="fd-top"><button type="button" class="fd-back" data-back'+(step===1?' hidden':'')+'>'+svg('back')+'Back</button>'+
+  '<div class="fd-steps"><span class="sr">Step '+cur+' of '+list.length+'</span>'+dots+'</div></div>'}
+
+function optBtn(attrs,ico,t,s,pressed){return '<li><button type="button" class="fd-opt" '+attrs+(pressed?' aria-pressed="true"':'')+'><span class="fd-ico">'+svg(ico)+'</span><span><b>'+esc(t)+'</b><small>'+esc(s)+'</small></span>'+svg('arrow','fd-arrow')+'</button></li>'}
+
+function renderWho(){
+ var h=head(1)+'<div class="fd-step"><h2 class="fd-q" tabindex="-1">Who is the appointment for?</h2><p class="fd-sub">Pick the one that fits best. You can change it later.</p><ul class="fd-opts">';
+ for(var k in WHO){var w=WHO[k];if(!w.hidden)h+=optBtn('data-who="'+k+'"',w.ico,w.t,w.s,S.who===k)}
+ h+='</ul><p class="fd-shortcut">Just after a massage, acupuncture or osteopathy? <button type="button" data-who="body">Go straight to body care</button></p></div>';
+ return h}
+
+function renderNeed(){
+ var w=WHO[S.who],q=S.who==='child'?'What would help your child most?':S.who==='couple'?'What are you looking for?':S.who==='body'?'Which kind of body care?':'What would help most?';
+ var h=head(2)+'<div class="fd-step"><h2 class="fd-q" tabindex="-1">'+q+'</h2><p class="fd-sub">'+esc(w.t)+'</p><ul class="fd-opts">';
+ w.needs.forEach(function(n){var d=NEED[n[0]];h+=optBtn('data-need="'+n[0]+'"',d.ico,n[1]||d.t,n[2]||d.s,S.need===n[0])});
+ return h+'</ul></div>'}
+
+function pills(key,opts){return '<div class="fd-pills" role="group">'+opts.map(function(o){return '<button type="button" class="fd-pill" data-'+key+'="'+o[0]+'" aria-pressed="'+(S[key]===o[0])+'">'+esc(o[1])+'</button>'}).join('')+'</div>'}
+
+function renderQs(){
+ var n=NEED[S.need],kid=S.who==='child',h=head(3)+'<div class="fd-step"><h2 class="fd-q" tabindex="-1">Two quick questions</h2><p class="fd-sub">These help us show the right fees and the right option to choose when you book.</p>';
+ if(n.plan)h+='<div class="fd-group"><h3>'+(kid?'Does your child have a Mental Health Treatment Plan?':'Do you have a Mental Health Treatment Plan?')+'</h3><p>A plan from your GP'+(kid?', paediatrician':'')+' or psychiatrist gives you a Medicare rebate for up to 10 sessions a year.</p>'+
+  pills('plan',[['yes','Yes'],['no','No'],['unsure','Not sure']])+'</div>';
+ if(n.how)h+='<div class="fd-group"><h3>How would you like to meet?</h3><p>Most sessions can be at the Hub in Jan Juc or by video or phone.</p>'+
+  pills('how',[['in','At the Hub'],['online','Video or phone'],['any','Either is fine']])+'</div>';
+ h+='<button type="button" class="btn btn-primary fd-next" data-show'+(answered()?'':' disabled')+'>Show who can help'+svg('arrow')+'</button></div>';
+ return h}
+
+function feeLine(pid){
+ var n=NEED[S.need],f=(n.fee||{})[pid];
+ if(!f)return '';
+ if(typeof f==='string')return '<p class="fd-cost">'+esc(f)+'</p>';
+ var base=money(f[0])+' for '+f[1]+' minutes';
+ if(!f[2])return '<p class="fd-cost"><b>'+base+'.</b> No Medicare rebate for this service.</p>';
+ if(S.plan==='yes')return '<p class="fd-cost"><b>'+base+'.</b> Medicare gives back about '+money(f[2])+', so you pay about <b>'+money(Math.round((f[0]-f[2])*100)/100)+'</b> a session.</p>';
+ return '<p class="fd-cost"><b>'+base+'.</b> With a Mental Health Treatment Plan you’d get about '+money(f[2])+' back from Medicare (up to 10 sessions a year).</p>'}
+
+function tip(pid){
+ var p=P[pid],n=NEED[S.need];
+ if(!p.psych||!n.plan||(NEED[S.need].contactOnly||{})[pid])return '';
+ var med=S.plan==='yes',on=S.how==='online',t;
+ if(med)t=on?'choose the <b>Medicare telehealth</b> or <b>Medicare phone</b> appointment.':'choose the <b>Medicare face-to-face</b> appointment.';
+ else t=on?'choose the <b>Telehealth</b> or <b>Phone</b> psychology appointment.':'choose the <b>Private</b> psychology appointment'+(S.plan==='unsure'?'. If you get a plan from your GP before your first session, choose the Medicare option instead.':'.');
+ return '<p class="fd-tip">On '+esc(p.first)+'’s booking page, '+t+' The names vary a little between practitioners.</p>'}
+
+function actions(pid){
+ var p=P[pid],n=NEED[S.need],more='<a class="fd-more" href="team.html#'+pid+'">About '+esc(p.first)+'</a>';
+ if(p.contact||(n.contactOnly||{})[pid])
+  return '<div class="fd-acts"><a class="btn btn-primary btn-sm" href="'+TEL+'">'+svg('phone')+'Call '+PHONE+'</a><a class="btn btn-outline btn-sm" href="contact.html">'+svg('mail')+'Send an enquiry</a>'+more+'</div>';
+ var label='Book with '+p.first+(p.ext?' <span class="sr">on '+p.ext+'</span>':'');
+ return '<div class="fd-acts"><a class="btn btn-primary btn-sm" href="'+p.url+'" target="_blank" rel="noopener">'+svg('cal')+label+'<span class="sr"> (opens in a new tab)</span></a>'+more+'</div>'}
+
+function renderRes(){
+ var w=WHO[S.who],nd=findNeed(S.who,S.need),n=NEED[S.need],ids=nd[3].filter(function(id){return !P[id].leave});
+ // with a plan, services without a Medicare rebate move down the list; for video/phone, mostly-online counsellors come first
+ function noReb(id){var f=(n.fee||{})[id];return Array.isArray(f)&&!f[2]?1:0}
+ if(S.plan==='yes')ids.sort(function(a,b){return noReb(a)-noReb(b)});
+ if(S.how==='online')ids.sort(function(a,b){return (b==='jodie')-(a==='jodie')});
+ var tags=[w.t,nd[1]||n.t];
+ if(S.plan)tags.push(S.plan==='yes'?'Has a Mental Health Treatment Plan':S.plan==='no'?'No plan':'Not sure about a plan');
+ if(S.how)tags.push(S.how==='in'?'At the Hub':S.how==='online'?'Video or phone':'Either');
+ var h=head(4)+'<div class="fd-step"><h2 class="fd-q" tabindex="-1">'+(ids.length>1?'Here’s who can help':'Here’s who can help you')+'</h2>'+
+  '<div class="fd-summary">'+tags.map(function(t){return '<span class="fd-tag">'+esc(t)+'</span>'}).join('')+'</div><ul class="fd-results">';
+ ids.forEach(function(pid){var p=P[pid];
+  h+='<li><article class="fd-res"><img src="img/team/colour/'+pid+'.webp" alt="" width="88" height="88" loading="lazy"><div><h3>'+esc(p.name)+'</h3><p class="fd-role">'+esc(p.role)+'</p></div>'+
+   '<div class="fd-body"><p class="fd-why">'+esc(p.why)+'</p>'+feeLine(pid)+tip(pid)+actions(pid)+'</div></article></li>'});
+ h+='</ul><div class="fd-help"><p><b>Still not sure who to see?</b> Call us and we’ll help you choose. There’s no wrong door.</p><a class="btn btn-outline btn-sm" href="'+TEL+'">'+svg('phone')+'Call '+PHONE+'</a></div>'+
+  '<p class="fd-note">Fees and rebates are a guide. Check the <a href="fees.html">fees page</a> or ask us. Nothing you choose here is saved or sent anywhere; you book on each practitioner’s own secure booking page.</p>'+
+  '<p class="fd-restart"><button type="button" class="btn btn-outline btn-sm" data-restart>Start again</button></p></div>';
+ return h}
+
+function render(focus){
+ var st=stepOf();
+ box.innerHTML=st===1?renderWho():st===2?renderNeed():st===3?renderQs():renderRes();
+ if(focus){var q=box.querySelector('.fd-q');var r=box.getBoundingClientRect();
+  if(r.top<0||r.top>innerHeight*.6)box.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'});
+  if(q)q.focus({preventScroll:true})}}
+
+box.addEventListener('click',function(e){
+ var b=e.target.closest('button');if(!b)return;var d=b.dataset;
+ if('back' in d){go(backState());return}
+ if(d.who){go({who:d.who,need:null,plan:null,how:null});return}
+ if(d.need){var n=NEED[d.need];go({need:d.need,plan:n.plan?S.plan:null,how:n.how?S.how:null});return}
+ if(d.plan||d.how){var k=d.plan?'plan':'how';S[k]=d[k];writeHash(false);
+  [].forEach.call(box.querySelectorAll('[data-'+k+']'),function(x){x.setAttribute('aria-pressed',x===b)});
+  var nx=box.querySelector('[data-show]');if(nx)nx.disabled=!answered();return}
+ if('show' in d){go({r:'1'});return}
+ if('restart' in d){S={};writeHash(true);render(true)}
+});
+function backState(){var st=stepOf();if(st===4&&needsQs())return {r:null};if(st>=3)return {need:null};return {who:null}}
+window.addEventListener('popstate',function(){S=readHash();render(true)});
+S=readHash();render(false);
+
+// ---------- "choose someone yourself" grid ----------
+var grid=document.getElementById('allGrid');
+grid.innerHTML=ORDER.filter(function(id){return !P[id].leave}).map(function(pid){var p=P[pid],href=p.contact?'contact.html':p.url,ext=!p.contact;
+ return '<li><a class="book-card card" data-person="'+pid+'" href="'+href+'"'+(ext?' target="_blank" rel="noopener"':'')+'><img alt="" class="bk-photo" height="300" loading="lazy" src="img/team/colour/'+pid+'.webp" width="300"/><span class="bk-name">'+esc(p.name)+'</span><span class="bk-role">'+esc(p.role)+'</span><span class="bk-go">'+(p.contact?'Contact us to book':'Book with '+esc(p.first))+' '+svg('arrow')+'</span>'+(ext?'<span class="sr"> (opens the booking page in a new tab)</span>':'')+'</a></li>'}).join('');
+})();
+</script>
+</body>
+</html>
