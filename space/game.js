@@ -4,6 +4,9 @@
 // Rendering uses a floating origin: the camera sits at 0 and everything is placed relative to O (the camera's inertial position).
 const $ = id => document.getElementById(id);
 const V3 = THREE.Vector3, Q4 = THREE.Quaternion;
+// sun shadows only cover a square around the camera: fade them out toward its edge so the square never shows
+THREE.ShaderChunk.shadowmap_pars_fragment = THREE.ShaderChunk.shadowmap_pars_fragment.replace('return mix( 1.0, shadow, shadowIntensity );',
+  'vec2 shE = abs(shadowCoord.xy - .5); return mix(1.0, mix( 1.0, shadow, shadowIntensity ), 1. - smoothstep(.3, .48, max(shE.x, shE.y)));');
 const SET = Object.assign({gfx: 'high', name: ''}, (() => { try { return JSON.parse(localStorage.getItem('ye-set') || '{}'); } catch (e) { return {}; } })());
 const saveSet = () => { try { localStorage.setItem('ye-set', JSON.stringify(SET)); } catch (e) {} };
 const HI = () => SET.gfx === 'high';
@@ -175,6 +178,22 @@ function bakeSky() {
       col += vec3(.95, .22, .32) * smoothstep(.6, .82, fbm3(d * 6. + 9., 5)) * band * .7;     // red emission nebulae
       col += vec3(.25, .45, .95) * smoothstep(.64, .84, fbm3(d * 5. + 31., 5)) * (.2 + band) * .3; // blue reflection nebulae
       col *= .0035;
+      // a big emission nebula: domain-warped gas, pink hydrogen / teal oxygen / gold, bright filaments, dark dust pillars, a young blue cluster
+      { vec3 nd = normalize(vec3(-.42, .5, .76)), t1 = normalize(cross(nd, vec3(0., 1., 0.))), t2 = cross(nd, t1);
+        float na = acos(clamp(dot(d, nd), -1., 1.));
+        if (na < 1.5) { vec2 uv = vec2(dot(d, t1), dot(d, t2)); uv = mat2(.8, -.6, .6, .8) * uv; uv.x *= .55; // tilted, stretched cloud
+          vec3 q = vec3(uv * 3.2, 1.7);
+          float w1 = fbm3(q, 5), w2 = fbm3(q + 4. * vec3(w1, w1 * .7, 0.) + 1.3, 5), n = fbm3(q + 4. * vec3(w2, w1, w2) + 7.1, 6);
+          float r = length(uv) / (.36 + .14 * (w1 - .5)), env = exp(-r * r * 1.6) * smoothstep(1.5, .8, na);
+          float gas = pow(smoothstep(.3, .85, n), 1.6) * env;
+          float rim = pow(clamp(1. - abs(n - .58) * 7., 0., 1.), 3.) * env;       // bright ionised edges
+          float dust = smoothstep(.55, .72, fbm3(q * 2.2 + 4. * vec3(w2) + 11., 5)) * smoothstep(.1, .6, env);
+          vec3 tint = mix(vec3(1., .16, .42), vec3(.05, .75, 1.), smoothstep(.42, .56, w2 + (n - .5) * .6));
+          tint = mix(tint, vec3(1., .7, .3), smoothstep(.58, .75, w1) * .8);
+          vec3 neb = tint * gas * 2. + mix(vec3(1., .5, .7), vec3(.6, .95, 1.), w2) * rim * 1.5 + vec3(.5, .65, 1.) * exp(-pow(r / .25, 2.)) * 1.3;
+          neb += tint * env * .35; // soft glow under the structure
+          col += neb * (1. - dust * .9) * .04;
+          col += stars(d, 900., env * .1, .006, 14.) * vec3(.8, .9, 1.2); } }
       col += stars(d, 160., .45, .006, 26.) + stars(d, 520., .08 + band * .3, .0011, 18.) + stars(d, 1300., band * .5 * (1. - dust), .0004, 6.);
       gl_FragColor = vec4(col, 1.); }`});
   const sc = new THREE.Scene(); sc.add(new THREE.Mesh(new THREE.SphereGeometry(50, 64, 32), m));
@@ -248,19 +267,19 @@ const avgM = new THREE.ShaderMaterial({vertexShader: VS, depthTest: false, unifo
   fragmentShader: 'uniform sampler2D t, prev; uniform float k; varying vec2 vUv; void main(){ float s = 0., w = 0.; for (int y = 0; y < 8; y++) for (int x = 0; x < 16; x++) { vec2 uv = (vec2(x, y) + .5) / vec2(16., 8.); float ww = 1.2 - length(uv - .5) * 1.4; s += texture2D(t, uv).r * ww; w += ww; }\n  float L = exp(s / w), p = texture2D(prev, vec2(.5)).r; if (p <= 0.) p = L; gl_FragColor = vec4(exp(mix(log(p), log(L), k)), 0., 0., 1.); }'});
 const EMAX = {value: 14};
 const brightM = new THREE.ShaderMaterial({vertexShader: VS, depthTest: false, uniforms: {t: {value: null}, ad: {value: null}, eMax: EMAX},
-  fragmentShader: 'uniform float eMax; uniform sampler2D t, ad; varying vec2 vUv; void main(){ float e = clamp(.1 / texture2D(ad, vec2(.5)).r, .02, eMax); vec3 c = texture2D(t, vUv).rgb * e; float l = max(c.r, max(c.g, c.b)); gl_FragColor = vec4(min(c * smoothstep(1.5, 5., l), vec3(60.)), 1.); }'});
+  fragmentShader: 'uniform float eMax; uniform sampler2D t, ad; varying vec2 vUv; void main(){ float e = clamp(.1 / texture2D(ad, vec2(.5)).r, .02, eMax); vec3 c = texture2D(t, vUv).rgb * e; float l = max(c.r, max(c.g, c.b)); gl_FragColor = vec4(min(c * smoothstep(1.5, 5., l), vec3(6.)), 1.); }'});
 const downM = new THREE.ShaderMaterial({vertexShader: VS, depthTest: false, uniforms: {t: {value: null}, px: {value: new THREE.Vector2()}},
   fragmentShader: 'uniform sampler2D t; uniform vec2 px; varying vec2 vUv; void main(){ gl_FragColor = vec4((texture2D(t, vUv + px * vec2(-1., -1.)).rgb + texture2D(t, vUv + px * vec2(1., -1.)).rgb + texture2D(t, vUv + px * vec2(-1., 1.)).rgb + texture2D(t, vUv + px).rgb) * .25, 1.); }'});
 const blurM = new THREE.ShaderMaterial({vertexShader: VS, depthTest: false, uniforms: {t: {value: null}, d: {value: new THREE.Vector2()}},
   fragmentShader: 'uniform sampler2D t; uniform vec2 d; varying vec2 vUv; void main(){ vec3 c = texture2D(t, vUv).rgb * .227; c += (texture2D(t, vUv + d*1.38).rgb + texture2D(t, vUv - d*1.38).rgb) * .316; c += (texture2D(t, vUv + d*3.23).rgb + texture2D(t, vUv - d*3.23).rgb) * .07; gl_FragColor = vec4(c, 1.); }'});
 const compM = new THREE.ShaderMaterial({vertexShader: VS, depthTest: false,
-  uniforms: {eMax: EMAX, t: {value: null}, b: {value: null}, b2: {value: null}, ad: {value: null}, tDep: {value: null}, sunUV: {value: new THREE.Vector2(-9, -9)}, sunCol: {value: new V3(1, 1, 1)}, aspect: {value: 1}, sunOn: {value: 0}, time: {value: 0}},
-  fragmentShader: `uniform float eMax; uniform sampler2D t, b, b2, ad, tDep; uniform vec2 sunUV; uniform vec3 sunCol; uniform float aspect, sunOn, time; varying vec2 vUv;
+  uniforms: {tR: {value: null}, rOn: {value: 0}, eMax: EMAX, t: {value: null}, b: {value: null}, b2: {value: null}, ad: {value: null}, tDep: {value: null}, sunUV: {value: new THREE.Vector2(-9, -9)}, sunCol: {value: new V3(1, 1, 1)}, aspect: {value: 1}, sunOn: {value: 0}, time: {value: 0}},
+  fragmentShader: `uniform float eMax, rOn; uniform sampler2D t, b, b2, ad, tDep, tR; uniform vec2 sunUV; uniform vec3 sunCol; uniform float aspect, sunOn, time; varying vec2 vUv;
   vec3 aces(vec3 x){ return clamp((x*(2.51*x+.03))/(x*(2.43*x+.59)+.14), 0., 1.); }
   float hh(vec2 p){ return fract(sin(dot(p, vec2(12.9898, 78.233)) + time) * 43758.5453); }
   void main(){
     float e = clamp(.1 / texture2D(ad, vec2(.5)).r, .02, eMax);
-    vec3 c = texture2D(t, vUv).rgb * e + texture2D(b, vUv).rgb * .14 + texture2D(b2, vUv).rgb * .12;
+    vec3 c = texture2D(t, vUv).rgb * e + texture2D(b, vUv).rgb * .14 + texture2D(b2, vUv).rgb * .12; if (rOn > .5) c += texture2D(tR, vUv).rgb * e;
     if (sunOn > .5) { // how much of the sun disc is unblocked (depth taps around it), then glare, starburst and ghosts
       float vis = 0.; for (int y = -2; y <= 2; y++) for (int x = -2; x <= 2; x++) vis += step(.99999, texture2D(tDep, sunUV + vec2(x, y) * .0035 * vec2(1. / aspect, 1.)).x); vis /= 25.;
       vis *= smoothstep(-.1, .05, min(min(sunUV.x, sunUV.y), min(1. - sunUV.x, 1. - sunUV.y)));
@@ -273,6 +292,14 @@ const compM = new THREE.ShaderMaterial({vertexShader: VS, depthTest: false,
     c = aces(c); c = pow(c, vec3(1. / 2.2));
     vec2 d = vUv - .5; c *= 1. - dot(d, d) * .3; c += (hh(vUv * 1000.) - .5) / 255.;
     gl_FragColor = vec4(c, 1.); }`});
+const raysM = new THREE.ShaderMaterial({vertexShader: VS, depthTest: false, uniforms: {tCol: {value: null}, tDep: {value: null}, sunUV: {value: new THREE.Vector2()}, aspect: {value: 1}, k: {value: 1}},
+  fragmentShader: `uniform sampler2D tCol, tDep; uniform vec2 sunUV; uniform float aspect, k; varying vec2 vUv;
+  float hh(vec2 p){ return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
+  void main(){ vec2 stp = (sunUV - vUv) / 56.; vec2 uv = vUv + stp * hh(vUv * 917.); float dec = 1.; vec3 sum = vec3(0.);
+    for (int i = 0; i < 56; i++) { uv += stp; if (uv.x < 0. || uv.y < 0. || uv.x > 1. || uv.y > 1.) { dec *= .97; continue; }
+      float sky = step(.99999, texture2D(tDep, uv).x); vec2 o = (uv - sunUV) * vec2(aspect, 1.);
+      vec3 cc = texture2D(tCol, uv).rgb; sum += min(cc, vec3(14.)) * smoothstep(.2, 2., dot(cc, vec3(.33))) * sky * exp(-length(o) * 4.5) * dec; dec *= .975; }
+    gl_FragColor = vec4(sum / 56. * k, 1.); }`});
 const POST = {};
 function setupPost() {
   const pr = Math.min(devicePixelRatio, HI() ? 1.5 : .75), w = Math.max(2, innerWidth * pr | 0), h = Math.max(2, innerHeight * pr | 0);
@@ -284,7 +311,7 @@ function setupPost() {
   POST.sky = new THREE.WebGLRenderTarget(w, h, HF);
   const bw = Math.max(2, w >> 2), bh = Math.max(2, h >> 2);
   POST.a = new THREE.WebGLRenderTarget(bw, bh, HF); POST.b = POST.a.clone();
-  POST.c = new THREE.WebGLRenderTarget(Math.max(2, bw >> 2), Math.max(2, bh >> 2), HF); POST.d = POST.c.clone();
+  POST.c = new THREE.WebGLRenderTarget(Math.max(2, bw >> 2), Math.max(2, bh >> 2), HF); POST.d = POST.c.clone(); POST.r = POST.a.clone();
   POST.lum = new THREE.WebGLRenderTarget(16, 8, {type: THREE.FloatType, depthBuffer: false});
   POST.ad0 = new THREE.WebGLRenderTarget(1, 1, {type: THREE.FloatType, depthBuffer: false}); POST.ad1 = POST.ad0.clone();
   atmoM.uniforms.steps.value = HI() ? 14 : 8; atmoM.uniforms.aoOn.value = HI() ? 1 : 0; atmoM.uniforms.aoPx.value.set(1 / POST.ao.width, 1 / POST.ao.height);
@@ -302,16 +329,21 @@ function render(dt) {
   // eye adaptation
   lumM.uniforms.t.value = POST.sky.texture; pass(lumM, POST.lum);
   const pa = POST.ad0, pb = POST.ad1; avgM.uniforms.t.value = POST.lum.texture; avgM.uniforms.prev.value = pa.texture; avgM.uniforms.k.value = 1 - Math.exp(-(dt || .016) * 1.6); pass(avgM, pb); POST.ad0 = pb; POST.ad1 = pa;
+  // sun position on screen + light shafts
+  const cu = compM.uniforms; _sv4.copy(SUN).multiplyScalar(1e5).project(cam); const front = SUN.dot(cam.getWorldDirection(new V3())) > 0;
+  cu.sunUV.value.set(_sv4.x * .5 + .5, _sv4.y * .5 + .5); const near = front && Math.abs(cu.sunUV.value.x - .5) < 1.4 && Math.abs(cu.sunUV.value.y - .5) < 1.4;
+  cu.rOn.value = near && HI() ? 1 : 0;
+  if (cu.rOn.value) { const r = raysM.uniforms; r.tCol.value = POST.sky.texture; r.tDep.value = POST.main.depthTexture; r.sunUV.value.copy(cu.sunUV.value); r.aspect.value = cam.aspect;
+    const alt = G.O.distanceTo(PLANET.c) - PLANET.R; r.k.value = lerp(1.8, .4, sstep(PLANET.atmo * .5, PLANET.atmo * 1.5, alt)); pass(raysM, POST.r);
+    for (let i = 0; i < 2; i++) { blurM.uniforms.t.value = POST.r.texture; blurM.uniforms.d.value.set(1.6 / POST.r.width, 0); pass(blurM, POST.b); blurM.uniforms.t.value = POST.b.texture; blurM.uniforms.d.value.set(0, 1.6 / POST.r.height); pass(blurM, POST.r); } }
   // bloom: 1/4 and 1/16 resolution
   brightM.uniforms.t.value = POST.sky.texture; brightM.uniforms.ad.value = POST.ad0.texture; pass(brightM, POST.a);
   blurM.uniforms.t.value = POST.a.texture; blurM.uniforms.d.value.set(1 / POST.a.width, 0); pass(blurM, POST.b);
   blurM.uniforms.t.value = POST.b.texture; blurM.uniforms.d.value.set(0, 1 / POST.a.height); pass(blurM, POST.a);
   downM.uniforms.t.value = POST.a.texture; downM.uniforms.px.value.set(1 / POST.a.width, 1 / POST.a.height); pass(downM, POST.c);
   for (let i = 0; i < 2; i++) { blurM.uniforms.t.value = POST.c.texture; blurM.uniforms.d.value.set(1.5 / POST.c.width, 0); pass(blurM, POST.d); blurM.uniforms.t.value = POST.d.texture; blurM.uniforms.d.value.set(0, 1.5 / POST.c.height); pass(blurM, POST.c); }
-  // sun on screen?
-  const cu = compM.uniforms; _sv4.copy(SUN).multiplyScalar(1e5).project(cam); const front = SUN.dot(cam.getWorldDirection(new V3())) > 0;
-  cu.sunOn.value = front ? 1 : 0; cu.sunUV.value.set(_sv4.x * .5 + .5, _sv4.y * .5 + .5); cu.aspect.value = cam.aspect; cu.tDep.value = POST.main.depthTexture; cu.time.value = G.t % 100;
-  cu.t.value = POST.sky.texture; cu.b.value = POST.a.texture; cu.b2.value = POST.c.texture; cu.ad.value = POST.ad0.texture; pass(compM, null);
+  cu.sunOn.value = front ? 1 : 0; cu.aspect.value = cam.aspect; cu.tDep.value = POST.main.depthTexture; cu.time.value = G.t % 100;
+  cu.tR.value = POST.r.texture; cu.t.value = POST.sky.texture; cu.b.value = POST.a.texture; cu.b2.value = POST.c.texture; cu.ad.value = POST.ad0.texture; pass(compM, null);
 }
 
 // ---------------- terrain: cube-sphere quadtree with skirts and baked AO
@@ -780,5 +812,5 @@ function boot() {
   requestAnimationFrame(frame);
 }
 function placeAt(x, y, z, yaw, pitch) { siteToBody(new V3(x, y, z), P.pos); const up = P.pos.clone().normalize(); P.fwd.set(Math.sin(yaw), 0, -Math.cos(yaw)).applyQuaternion(site.q); P.fwd.addScaledVector(up, -P.fwd.dot(up)).normalize(); P.pitch = pitch || 0; P.vel.set(0, 0, 0); }
-window.YE = {prebuild: (ms = 20000) => { placeCamera(); for (const b of BODIES) { b.group.position.copy(b.c).sub(G.O); b.group.quaternion.copy(b.q); } const t0 = performance.now(); while (updateTerrain(200) > 0 && performance.now() - t0 < ms); }, placeAt, G, P, PLANET, MOON, site, TERR, heightAt, spawnPlayer, SET, setupPost, atmoM, POST, RND, SUN, cam, waterMat, terrMat, scene};
+window.YE = {prebuild: (ms = 20000) => { placeCamera(); for (const b of BODIES) { b.group.position.copy(b.c).sub(G.O); b.group.quaternion.copy(b.q); } const t0 = performance.now(); while (updateTerrain(200) > 0 && performance.now() - t0 < ms); }, placeAt, G, P, PLANET, MOON, site, TERR, heightAt, spawnPlayer, SET, setupPost, atmoM, POST, RND, SUN, cam, waterMat, terrMat, scene, compM, raysM};
 boot();
