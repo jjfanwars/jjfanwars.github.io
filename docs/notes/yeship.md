@@ -18,6 +18,17 @@ Sandbox only to start. Astronauts are thrown out only when the ship explodes.
 - **Scale:** planet R 60 km, g 9.81, air `atmo` 18 km; moon R 20 km, g 1.63. About 4 minutes to orbit.
 - **Terrain:** `heightAt(b, x, y, z)` (unit direction, body-fixed) and `colorAt` (also fills `_wt`, material weights grass/sand/rock/snow). Cube-sphere quadtree (`Node`, `updateTree`, `updateTerrain(budgetMs)`), 32x32 chunks with skirts, baked AO from neighbour heights, sea mesh per chunk. `terrMat` shader blends 4 textures (colour as a detail ratio on top of the vertex colour, plus normal maps on High). UVs are chunk-local, snapped to 512 m so they stay small.
 - **Space centre:** `SITE` direction (equator), `buildSite()`. Site frame: x east, y up, z south; `siteToBody`/`bodyToSite`. Terrain under it is a true flat plane (`SITE_H + d²/2R`). Collision boxes in `site.boxes`; launch pads in `site.pads`. Helpers: `box`, `cyl`, `mergeGeos`/`beamGeo`/`boxGeo` (one draw call for lattices), `signTex`/`logo`/`decal` (canvas signs).
+- **Visual pass (20 Nov 2026, owner wants realistic and stunning above all):**
+  - `bakeSky()`: Milky Way (band, bulge, dust lanes, red/blue nebulae) + 3 star layers baked into a HalfFloat cube map, one face per frame (`G.skyBake`), used as `scene.background`. Fades in daylight via `scene.backgroundIntensity`.
+  - Shared GLSL: `GLSL_ATMO` (`rs`, `scatter`) and `GLSL_NOISE` (`h31`, `vn`, `fbm3`); `atmoU()` gives the uniforms. `SUN_I` = sun irradiance in the same units as the directional light (3.4); keep them matched or the sky washes out the ground.
+  - Sun: limb-darkened disc + glow in `atmoM`; glare, starburst and 6 lens ghosts in `compM` (visibility from depth taps around the sun).
+  - Eye adaptation: `lumM` -> `avgM` (log average, centre weighted, eased) in `POST.ad0/ad1`; exposure = .16 / adapted, clamped .02..3.
+  - Bloom at 1/4 and 1/16 res. SSAO (`ssaoM`, half res, 12 taps, High only) multiplies the scene before the atmosphere pass.
+  - `updateEnv`: PMREM sky reflections from the real scattering (`envMat`), every 1.5 s.
+  - Clouds: `makeClouds` shell at `CLOUD_H` 2.6 km, child of the planet group. Two passes: depth only where thick (`DEPTHONLY`, c > .6), then colour with no depth writes. Per-pixel sunlight through the air (sunset colours) and planet shadow.
+  - Ocean: `waveTex` (tileable wave normals made at load), 3 scrolling samples in `waterMat`, UVs per chunk (/64 m).
+  - Moon: `CRATERS` (700, power-law sizes, `young` ones with ray streaks), `mareAt` (dark basalt plains), `microCraters` (3 scales, 2x2x2 cells). `CR_NEAR` = craters near the chunk being built (speed). `moonMat` = grey-only texture detail (`customProgramCacheKey` 'moon').
+  - Test hooks: `YE.prebuild(ms)` builds terrain synchronously; `G.noGrav` freezes the player.
 - **Render:** log depth buffer, HalfFloat target with depth texture. Post: `atmoM` ray-marched single scattering (Rayleigh + Mie, planet shadow) uses scene depth for aerial perspective; then bloom and ACES (`compM`). View rays use the near plane (far-plane unprojection is NaN with this near/far). `sunColour` = CPU transmittance for the sun light colour. `updateEnv` = PMREM sky reflections every 2 s.
 - **Player:** `P` (body-fixed pos/vel, `fwd` tangent kept by parallel transport, pitch), `stepPlayer`, `placeCamera`. `[` `]` change time speed (test).
 - **Testing:** `YE.placeAt(x, y, z, yaw, pitch)` in site coords. Headless Chromium is slow with this renderer: take one screenshot at a time with a long screenshot timeout.
