@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+
+<html class="no-js" lang="en-AU">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"/>
+<title>Book | Surf Coast Family Hub</title>
+<meta content="Find the right practitioner, see their next free times and book online in under a minute." name="description"/>
+<meta content="#3C6869" name="theme-color"/>
+<meta content="website" property="og:type"/>
+<meta content="Surf Coast Family Hub" property="og:site_name"/>
+<meta content="Book | Surf Coast Family Hub" property="og:title"/>
+<meta content="Find the right practitioner, see their next free times and book online in under a minute." property="og:description"/>
+<link href="img/logo-mark.webp" rel="icon" type="image/webp"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT@0,9..144,400..700,100;1,9..144,400..600,100&amp;family=Public+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="styles.css" rel="stylesheet"/>
+<script>document.documentElement.classList.remove("no-js")</script>
+<script defer="" src="script.js"></script>
+<link href="theme.css" rel="stylesheet"/>
+<script>try{var d=document.documentElement,s=localStorage.getItem("sch-scheme")||"earth",f=localStorage.getItem("sch-font");if(s==="none")s="";if(s)d.setAttribute("data-scheme",s);if(s==="custom"){var v=JSON.parse(localStorage.getItem("sch-vars")||"{}");for(var k in v)d.style.setProperty(k,v[k])}if(f)d.setAttribute("data-font",f)}catch(e){}</script>
+<script defer="" src="theme.js"></script>
+<style>
+/* Booking finder: guided "who should I see" flow on top of the site's own styles */
+.finder-sec{padding-top:0;margin-top:clamp(-150px,-11vw,-80px);position:relative;z-index:2}
+.finder{max-width:880px;margin:0 auto;padding:clamp(22px,4vw,40px) clamp(18px,4vw,44px) clamp(26px,4vw,40px)}
+.fd-top{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:36px;margin-bottom:6px}
+.fd-back{display:inline-flex;align-items:center;gap:6px;background:none;border:0;padding:6px 8px 6px 2px;font:650 15px/1 var(--body);color:var(--teal-deep);cursor:pointer;border-radius:8px}
+.fd-back svg{width:18px;height:18px}
+.fd-back[hidden]{display:inline-flex;visibility:hidden}
+.fd-steps{display:flex;gap:7px;align-items:center;font:600 13px/1 var(--body);color:var(--muted)}
+.fd-dot{width:28px;height:7px;border-radius:99px;background:var(--line);transition:background .3s}
+.fd-dot.on{background:var(--teal-deep)}
+.fd-dot.done{background:var(--teal)}
+.fd-step{animation:fdIn .35s cubic-bezier(.2,.8,.2,1)}
+@keyframes fdIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.fd-step{animation:none}}
+.fd-q{font-size:clamp(26px,3.6vw,38px);margin:4px 0 6px}
+.fd-sub{color:var(--muted);margin:0 0 22px;max-width:40em}
+.fd-opts{display:grid;gap:12px;list-style:none;padding:0;margin:0}
+@media (min-width:640px){.fd-opts{grid-template-columns:1fr 1fr}}
+.fd-opt{display:flex;align-items:center;gap:14px;width:100%;min-height:76px;padding:14px 16px;text-align:left;background:var(--card);border:1.5px solid var(--inkline);border-radius:var(--r-sm);box-shadow:3px 4px 0 rgba(109,149,149,.25);font:inherit;color:var(--ink);cursor:pointer;transition:transform .2s cubic-bezier(.2,.8,.2,1),box-shadow .2s,background-color .2s,border-color .2s}
+.fd-opt:hover{transform:translate(-1px,-2px);box-shadow:5px 6px 0 rgba(109,149,149,.32);background:#fff}
+.fd-opt:active{transform:translate(2px,3px);box-shadow:0 0 0 transparent}
+.fd-opt[aria-pressed="true"]{background:var(--teal-mist);border-color:var(--teal-deep);box-shadow:3px 4px 0 var(--mustard)}
+.fd-ico{flex:none;display:grid;place-items:center;width:46px;height:46px;border-radius:50%;background:var(--cream);color:var(--teal-deep);border:1.5px solid var(--line)}
+.fd-ico svg{width:24px;height:24px}
+.fd-opt b{display:block;font:600 18px/1.2 var(--display);margin-bottom:3px}
+.fd-opt small{display:block;font-size:14.5px;line-height:1.35;color:var(--muted)}
+.fd-arrow{margin-left:auto;flex:none;width:20px;height:20px;color:var(--teal-deep);opacity:.7}
+.fd-shortcut{margin:20px 0 0;font-size:15px;color:var(--muted)}
+.fd-shortcut button{background:none;border:0;padding:0;font:inherit;font-weight:650;color:var(--teal-deep);text-decoration:underline;text-decoration-color:var(--mustard);text-underline-offset:3px;cursor:pointer}
+.fd-group{margin:0 0 22px}
+.fd-group h3{font:650 17px/1.3 var(--body);margin:0 0 4px;letter-spacing:0}
+.fd-group p{margin:0 0 10px;font-size:14.5px;color:var(--muted)}
+.fd-pills{display:flex;flex-wrap:wrap;gap:10px}
+.fd-pill{min-height:46px;padding:0 18px;background:var(--card);border:1.5px solid var(--inkline);border-radius:99px;font:600 15.5px/1 var(--body);color:var(--ink);cursor:pointer;transition:background-color .2s,border-color .2s,color .2s}
+.fd-pill:hover{background:#fff}
+.fd-pill[aria-pressed="true"]{background:var(--teal-deep);border-color:var(--teal-deep);color:#fff}
+.fd-next{margin-top:8px}
+.fd-next[disabled]{opacity:.45;pointer-events:none}
+.fd-summary{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 20px}
+.fd-tag{display:inline-flex;align-items:center;min-height:30px;padding:0 12px;border-radius:99px;background:var(--teal-mist);color:var(--teal-dark);font:600 13.5px/1 var(--body)}
+.fd-results{display:grid;gap:16px;list-style:none;padding:0;margin:0}
+.fd-res{display:grid;grid-template-columns:auto 1fr;gap:6px 18px;align-items:start;padding:20px;background:var(--card);border:1.5px solid var(--inkline);border-radius:var(--r-card);box-shadow:4px 5px 0 rgba(109,149,149,.28)}
+.fd-results li:nth-child(3n+2) .fd-res{box-shadow:4px 5px 0 rgba(232,162,145,.38)}
+.fd-results li:nth-child(3n) .fd-res{box-shadow:4px 5px 0 rgba(230,188,118,.5)}
+.fd-res img{grid-row:span 2;width:88px;height:88px;object-fit:cover;border-radius:50%;border:1.5px solid var(--inkline)}
+.fd-res h3{font-size:24px;margin:2px 0 2px}
+.fd-role{margin:0;font-size:14.5px;color:var(--muted)}
+.fd-why{margin:8px 0 0;font-size:15.5px}
+.fd-body{grid-column:1/-1}
+.fd-cost{margin:12px 0 0;padding:12px 14px;border-radius:var(--r-sm);background:var(--cream);font-size:15px;line-height:1.45}
+.fd-cost b{font-weight:700}
+.fd-tip{margin:10px 0 0;padding:10px 14px;border-left:3px solid var(--mustard);background:rgba(230,188,118,.12);font-size:14.5px;line-height:1.45;border-radius:0 10px 10px 0}
+.fd-acts{display:flex;flex-wrap:wrap;gap:4px 12px;align-items:center}
+.fd-acts .btn{margin-top:14px}
+.fd-more{font-size:15px;font-weight:650;color:var(--teal-deep);margin-top:14px}
+@media (max-width:519px){.fd-res{grid-template-columns:1fr}.fd-res img{grid-row:auto;width:76px;height:76px}.fd-acts .btn{width:100%}}
+.fd-help{margin-top:22px;padding:18px 20px;border:1.5px dashed var(--inkline);border-radius:var(--r-card);display:flex;flex-wrap:wrap;gap:6px 18px;align-items:center;justify-content:space-between}
+.fd-help p{margin:0;max-width:34em}
+.fd-help .btn{margin-top:0}
+.fd-note{margin:18px 0 0;font-size:13.5px;color:var(--muted)}
+.fd-restart{margin-top:22px;text-align:center}
+.all-sec{padding-top:12px}
+.all-sec h2{font-size:clamp(26px,3.4vw,38px)}
+</style>
+<style>
+/* live times, soonest banner, booking sheet */
+.demo-bar{max-width:880px;margin:0 auto 14px;padding:10px 16px;border-radius:99px;background:rgba(253,248,241,.94);box-shadow:0 2px 12px rgba(60,40,30,.12);font-size:14.5px;text-align:center;position:relative;z-index:3}
+.demo-bar b{display:inline-block;margin-right:6px;padding:2px 9px;border-radius:99px;background:var(--mustard);color:#3B322D;font-size:12px;letter-spacing:.08em;text-transform:uppercase}
+.fd-soon{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin:0 0 18px;padding:14px 16px;border-radius:var(--r-sm);background:var(--teal-deep);color:#fff;box-shadow:3px 4px 0 var(--mustard)}
+.fd-soon b{display:block;font:600 19px/1.25 var(--display)}
+.fd-soon span{font-size:14.5px;opacity:.9}
+.fd-soon>div{flex:1;min-width:180px}
+.fd-soon-ico{flex:none;display:grid;place-items:center;width:42px;height:42px;border-radius:50%;background:rgba(255,255,255,.14)}
+.fd-soon-ico svg{width:22px;height:22px}
+.fd-soon .btn{margin:0;background:var(--cream);color:var(--teal-dark);border-color:var(--cream);box-shadow:3px 4px 0 rgba(10,30,30,.35)}
+.fd-soon .btn:hover{background:#fff;color:var(--teal-dark)}
+.fd-times{margin-top:14px}
+.fd-times-h{display:flex;align-items:center;gap:7px;margin:0 0 8px;font:650 14.5px/1.3 var(--body);color:var(--teal-dark)}
+.fd-times-h svg{width:17px;height:17px}
+.fd-days{display:grid;gap:10px}
+.fd-day{display:grid;grid-template-columns:118px 1fr;gap:8px;align-items:center}
+.fd-dname{font-weight:650;font-size:14.5px}
+.fd-chips{display:flex;flex-wrap:wrap;gap:8px}
+.fd-chip{min-height:42px;min-width:74px;padding:0 14px;border:1.5px solid var(--teal-deep);border-radius:12px;background:#fff;color:var(--teal-dark);font:650 15px/1 var(--body);cursor:pointer;transition:background-color .15s,color .15s,transform .15s}
+.fd-chip:hover{background:var(--teal-deep);color:#fff;transform:translateY(-1px)}
+@media (max-width:519px){.fd-day{grid-template-columns:1fr;gap:6px}}
+.fd-skel{display:flex;gap:8px;flex-wrap:wrap}
+.fd-skel span{width:74px;height:42px;border-radius:12px;background:linear-gradient(90deg,var(--teal-mist),#fff,var(--teal-mist));background-size:200% 100%;animation:fdSk 1.1s linear infinite}
+@keyframes fdSk{to{background-position:-200% 0}}
+.fd-none{margin:0;padding:12px 14px;border-radius:var(--r-sm);background:var(--teal-mist);font-size:15px}
+.fd-linkbtn{display:inline-flex;align-items:center;gap:7px;background:none;border:0;padding:6px 0;margin-top:10px;font:650 15px/1.3 var(--body);color:var(--teal-deep);text-align:left;cursor:pointer;text-decoration:underline;text-decoration-color:var(--mustard);text-underline-offset:3px}
+.fd-linkbtn svg{width:17px;height:17px;flex:none}
+.fd-acts-live{gap:4px 18px}
+.fd-help-wait{border-style:solid;background:rgba(227,237,235,.5)}
+html.bk-lock{overflow:hidden}
+.bk-sheet{width:min(560px,100%);max-height:min(92vh,900px);margin:auto;padding:0;border:1.5px solid var(--inkline);border-radius:var(--r-card);background:var(--card);color:var(--ink);box-shadow:6px 8px 0 rgba(109,149,149,.35)}
+.bk-sheet::backdrop{background:rgba(46,40,36,.45);backdrop-filter:blur(2px)}
+.bk-sheet[open]{animation:bkUp .3s cubic-bezier(.2,.8,.2,1)}
+@keyframes bkUp{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:none}}
+@media (max-width:639px){.bk-sheet{margin:auto 0 0;width:100%;max-width:100%;max-height:94vh;border-radius:24px 24px 0 0;border-bottom:0}}
+@media (prefers-reduced-motion:reduce){.bk-sheet[open]{animation:none}}
+.bk-in{padding:22px clamp(18px,4vw,30px) 26px}
+.bk-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
+.bk-head h2{font-size:28px;margin:0}
+.bk-x{flex:none;display:grid;place-items:center;width:42px;height:42px;border-radius:50%;border:1.5px solid var(--line);background:#fff;color:var(--ink);cursor:pointer}
+.bk-x svg{width:20px;height:20px}
+.bk-appt{display:flex;gap:14px;align-items:center;padding:14px;border-radius:var(--r-sm);background:var(--teal-mist);margin-bottom:12px}
+.bk-appt img{width:64px;height:64px;border-radius:50%;object-fit:cover;border:1.5px solid var(--inkline);flex:none}
+.bk-appt b{display:block;font:600 19px/1.2 var(--display);margin-bottom:4px}
+.bk-appt span{display:flex;align-items:center;gap:7px;font-size:14.5px;line-height:1.5}
+.bk-appt svg{width:16px;height:16px;flex:none;color:var(--teal-deep)}
+.bk-svc{display:flex;gap:8px;align-items:flex-start;margin:0 0 8px;font-size:14.5px;line-height:1.45}
+.bk-svc svg{width:18px;height:18px;flex:none;color:var(--teal-deep);margin-top:1px}
+.bk-cost{margin:0 0 16px;font-size:14.5px;line-height:1.5;color:var(--muted)}
+.bk-lead{margin:0 0 16px;color:var(--muted)}
+.bk-form{display:grid;gap:14px}
+.bk-row{display:grid;gap:14px}
+@media (min-width:520px){.bk-row{grid-template-columns:1fr 1fr}}
+.bk-f{display:grid;gap:6px;font-weight:650;font-size:14.5px}
+.bk-f input{min-height:50px;padding:0 14px;border:1.5px solid var(--inkline);border-radius:12px;background:#fff;font:500 16.5px var(--body);color:var(--ink);width:100%}
+.bk-f input:focus{outline:3px solid var(--mustard);outline-offset:1px;border-color:var(--teal-deep)}
+.bk-fs{border:0;padding:0;margin:0}
+.bk-fs legend{font-weight:650;font-size:14.5px;margin-bottom:8px;padding:0}
+.bk-fs .fd-pill{min-height:42px;padding:0 15px;font-size:14.5px}
+.bk-check{display:flex;gap:10px;align-items:flex-start;font-size:14.5px;line-height:1.45}
+.bk-check input{width:22px;height:22px;margin:0;flex:none;accent-color:var(--teal-deep)}
+.bk-err{margin:0;padding:10px 12px;border-radius:10px;background:#FBE3DC;color:#7A2E1C;font-size:14.5px;font-weight:600}
+.bk-submit{width:100%;margin-top:2px}
+.bk-submit[disabled]{opacity:.7}
+.bk-spin{width:18px;height:18px;border:2.5px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:bkSp .7s linear infinite}
+@keyframes bkSp{to{transform:rotate(360deg)}}
+.bk-demo{margin:4px 0 0;font-size:13px;color:var(--muted);text-align:center}
+.bk-done{text-align:center;margin:0 0 14px}
+.bk-done p{margin:10px 0 0}
+.bk-tick{display:inline-grid;place-items:center;width:64px;height:64px;border-radius:50%;background:var(--teal-deep);color:#fff;box-shadow:3px 4px 0 var(--mustard);animation:bkPop .45s cubic-bezier(.2,1.4,.4,1)}
+.bk-tick svg{width:34px;height:34px;stroke-width:2.4}
+@keyframes bkPop{from{transform:scale(.4);opacity:0}to{transform:none;opacity:1}}
+.bk-acts{display:flex;flex-wrap:wrap;gap:10px}
+.bk-acts .btn{margin:0;flex:1;min-width:180px}
+.bk-sooner{margin-top:18px;padding:16px;border:1.5px dashed var(--inkline);border-radius:var(--r-sm)}
+.bk-sooner h3{display:flex;align-items:center;gap:8px;font:650 17px/1.3 var(--body);margin:0 0 4px;letter-spacing:0}
+.bk-sooner h3 svg{width:19px;height:19px;color:var(--teal-deep)}
+.bk-sooner p{margin:0 0 10px;font-size:14.5px;color:var(--muted)}
+.bk-sooner .btn{margin:0}
+.bk-ok{display:flex;gap:8px;align-items:center;margin:0;font-weight:650;color:var(--teal-dark)}
+.bk-ok svg{width:18px;height:18px}
+</style>
+<style>
+.mg .fd-back{margin-bottom:6px}
+.mg-acts{display:flex;flex-wrap:wrap;gap:10px;margin-top:6px}
+.mg-acts .btn{margin:0}
+.mg-danger{background:#9A3B26;border-color:#9A3B26}
+.mg-danger:hover{background:#7A2E1C;border-color:#7A2E1C}
+.mg-warn{display:flex;gap:8px;align-items:flex-start;margin:14px 0 0;padding:10px 12px;border-radius:10px;background:rgba(230,188,118,.2);font-size:14.5px}
+.mg-warn svg{width:18px;height:18px;flex:none;margin-top:1px}
+.mg-list{list-style:none;padding:0;margin:0;display:grid;gap:10px}
+.mg-item{display:block;text-decoration:none;color:inherit}
+.mg-item .bk-appt{margin:0;transition:transform .2s}
+.mg-item:hover .bk-appt{transform:translateY(-2px)}
+.mg-svc{font-size:13.5px!important;color:var(--muted)}
+.mg-from{margin:0 0 16px;font-size:17px}
+.mg-from s{color:var(--muted)}
+</style>
+<script>window.HUB_SITE=''</script>
+<script src="hub-core.js"></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+<div class="wrap">
+<a class="brand" href="index.html"><img alt="" height="258" src="img/logo-mark.webp" width="240"/><span class="brand-name"><small>Surf Coast</small><b>Family Hub</b></span><span class="sr"> home page</span></a>
+<nav aria-label="Main" class="nav"><a href="index.html">Home</a><a href="services.html">Services</a><a href="team.html">Our team</a><a href="referrals.html">Referrals</a><a href="fees.html">Fees</a><a href="first-visit.html">First visit</a><a href="blog.html">Blog</a><a href="contact.html">Contact</a></nav>
+<a class="header-phone" href="tel:0491184788"><svg aria-hidden="true" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"></path></svg>0491 184 788</a><a class="btn btn-primary btn-sm header-cta" href="book.html">Book<span class="sr"> an appointment</span></a>
+<button aria-controls="mobile-menu" aria-expanded="false" aria-label="Open menu" class="menu-btn" type="button">
+<span class="open"><svg aria-hidden="true" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"></path></svg></span><span class="close"><svg aria-hidden="true" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"></path></svg></span>
+</button>
+</div>
+</header>
+<div class="mobile-menu" id="mobile-menu">
+<nav aria-label="Mobile"><a class="m-link" href="index.html">Home</a><a class="m-link" href="services.html">Services</a><a class="m-link" href="team.html">Our team</a><a class="m-link" href="referrals.html">Referrals</a><a class="m-link" href="fees.html">Fees</a><a class="m-link" href="first-visit.html">First visit</a><a class="m-link" href="blog.html">Blog</a><a class="m-link" href="contact.html">Contact</a></nav>
+<a class="btn btn-primary" href="book.html"><svg aria-hidden="true" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24"><rect height="15" rx="2.5" width="17" x="3.5" y="5"></rect><path d="M8 3v4M16 3v4M3.5 10h17"></path></svg>Book an appointment</a>
+<a class="btn btn-outline" href="tel:0491184788"><svg aria-hidden="true" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"></path></svg>Call 0491 184 788</a>
+</div>
+<main id="main">
+<section class="page-hero hero-short">
+<div class="wrap">
+<p class="eyebrow">Book an appointment</p>
+<h1>Let’s find the right person for you</h1>
+<p class="lede">Answer two or three quick questions, see who can help and their next free times, and book in under a minute. Rather talk to someone? Call us on <a class="nb" href="tel:0491184788">0491 184 788</a>.</p>
+</div>
+</section>
+<section class="section section-tight finder-sec">
+<div class="wrap">
+<p class="demo-bar"><b>Demo</b> Times and bookings are pretend. <a href="admin.html" target="_blank" rel="noopener">Open the Hub dashboard</a> to see what Adi sees.</p>
+<div class="finder card" id="finder" aria-live="polite">
+<noscript><p>This booking guide needs JavaScript. You can still <a href="#all">choose a practitioner below</a> or call us on <a href="tel:0491184788">0491 184 788</a>.</p></noscript>
+</div>
+</div>
+</section>
+<section class="section section-tight all-sec" id="all">
+<div class="wrap">
+<div class="section-head">
+<h2>Prefer to choose someone yourself?</h2>
+<p>Tap a practitioner to go straight to their booking. First time with us? Read <a href="first-visit.html">what to expect at your first visit</a>, or check <a href="fees.html">fees and rebates</a>.</p>
+</div>
+<ul class="grid book-grid" id="allGrid"></ul>
+</div>
+</section>
+<dialog class="bk-sheet" id="bkSheet" aria-label="Booking"><div class="bk-in"></div></dialog>
+</main>
+
+<footer class="site-footer">
+<div class="wrap">
+<div class="foot-grid">
+<div>
+<a class="foot-brand" href="index.html"><img alt="" height="258" loading="lazy" src="img/logo-mark.webp" width="240"/><span>Surf Coast<br/>Family Hub</span></a>
+<p style="margin-top:16px;max-width:28em">A warm, comfortable, inclusive and welcoming space in Jan Juc, on the Surf Coast.</p>
+</div>
+<div>
+<p class="foot-title">Pages</p>
+<ul class="foot-links"><li><a href="index.html">Home</a></li><li><a href="services.html">Services</a></li><li><a href="team.html">Our team</a></li><li><a href="referrals.html">Referrals</a></li><li><a href="fees.html">Fees</a></li><li><a href="first-visit.html">First visit</a></li><li><a href="blog.html">Blog</a></li><li><a href="village.html">Our village</a></li><li><a href="contact.html">Contact</a></li><li><a href="book.html">Book online</a></li></ul>
+</div>
+<div>
+<p class="foot-title">Get in touch</p>
+<ul class="foot-links">
+<li><a href="tel:0491184788">0491 184 788</a></li>
+<li><a href="mailto:hello@surfcoastfamilyhub.com.au">hello@surfcoastfamilyhub.com.au</a></li>
+<li><a href="https://www.google.com/maps/search/?api=1&amp;query=Surf+Coast+Family+Hub+Stuart+Avenue+Jan+Juc+VIC+3228">Jan Juc Village, Stuart Avenue, Jan Juc VIC 3228</a></li>
+<li><a href="https://www.facebook.com/surfcoastfamilyhub">Facebook</a> · <a href="https://www.instagram.com/surfcoastfamilyhub">Instagram</a></li>
+</ul>
+</div>
+</div>
+<div class="crisis"><p class="crisis-line"><b>We are not a crisis service.</b> If you need support right now, call Lifeline on <a href="tel:131114">13 11 14</a> (24 hours, every day). In an emergency, call <a href="tel:000">000</a>.</p></div>
+<div class="foot-bottom"><span>© <span data-year="">2026</span> Surf Coast Family Hub</span><span>Jan Juc, on the Surf Coast, Victoria</span></div>
+</div>
+</footer>
+<div aria-label="Quick contact" class="action-bar">
+<a class="btn btn-outline" href="tel:0491184788"><svg aria-hidden="true" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"></path></svg>Call</a>
+<a class="btn btn-primary" href="book.html"><svg aria-hidden="true" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24"><rect height="15" rx="2.5" width="17" x="3.5" y="5"></rect><path d="M8 3v4M16 3v4M3.5 10h17"></path></svg>Book</a>
+</div>
+<script>
+/* Booking finder + live booking (demo backend in hub-core.js). */
+(function(){
+var H=window.HUB,P=H.P,F=H.fmt,esc=F.esc,money=F.money,api=H.api;
+var PHONE='0491 184 788', TEL='tel:0491184788';
+
+// fee: [amount, minutes, medicare rebate (0 = none)] or a text note
+var CLIN=[245,50,149.05], PSY_FEES={adi:CLIN,hannah:CLIN,melinda:[235,50,149.05],ellie:[190,50,101.55],maddy:'See our fees page or ask us.',meaghan:[180,50,0]};
+var NEED={
+ talk:{t:'Someone to talk to',s:'Psychology for anxiety, low mood, stress, trauma or big changes',ico:'talk',plan:1,how:1,fee:PSY_FEES,wl:'Psychology'},
+ conceive:{t:'Someone to talk to',s:'Fertility, IVF, pregnancy worries, anxiety or low mood',ico:'talk',plan:1,how:1,fee:PSY_FEES,wl:'Perinatal psychology'},
+ counsel:{t:'Counselling',s:'Practical support for stress, burnout, parenting and life changes',ico:'leafy',plan:1,how:1,
+  fee:{'michelle-ferris':[215,50,89.50],jodie:[120,60,0]},wl:'Counselling'},
+ parenthood:{t:'Couple support for becoming parents',s:'Communication, new roles and staying connected',ico:'heart',how:1,
+  fee:{adi:'Ask us about fees for couple sessions.'},contactOnly:{adi:1}},
+ couples:{t:'Couples therapy',s:'Conflict, stress, intimacy, separation or feeling stuck',ico:'couple',how:1,
+  fee:{'michelle-ferris':[245,60,0]},wl:'Couples therapy'},
+ child:{t:'Therapy for my child or teen',s:'Play, art and talk-based therapy, plus parent coaching',ico:'star',plan:1,how:1,fee:PSY_FEES,wl:'Child psychology'},
+ assess:{t:'An ADHD, autism or learning assessment',s:'A clear picture of strengths and challenges, with a written report',ico:'clip',
+  fee:{meaghan:'Assessment fees depend on the type of assessment. Ask us for a quote.'}},
+ art:{t:'Art therapy',s:'Creative therapy when words are hard. No art skills needed.',ico:'palette',plan:1,how:1,
+  fee:{'michelle-joseph':[220,50,89.50]}},
+ dyadic:{t:'Parent and child art therapy',s:'Strengthen your bond with your little one through art',ico:'palette',
+  fee:{'michelle-joseph':[240,50,0]}},
+ ndis:{t:'NDIS supports',s:'Counselling and capacity building, at home, online or in the community',ico:'puzzle',
+  fee:{'michelle-joseph':'NDIS capacity building: $193.99 per hour, claimed from your plan.',jodie:'Claimed from your NDIS plan. Ask Jodie which category applies.'}},
+ massage:{t:'Massage',s:'Remedial, relaxation, pregnancy and postpartum',ico:'hand',wl:'Massage',
+  fee:{laura:'$65 for 30 minutes or $120 for 60 minutes. Health fund rebates, HICAPS on site.'}},
+ acu:{t:'Acupuncture',s:'Gentle Japanese acupuncture',ico:'leaf',wl:'Acupuncture',
+  fee:{kate:'$150 first visit (60 min), $110 follow-up (50 min). Concession $130 / $100. Check your health fund.'}},
+ osteo:{t:'Osteopathy',s:'Hands-on care for pain, posture, pregnancy and babies',ico:'spine',
+  fee:{anna:'$190 new patient (up to 1 hour), $140 return visit. Concession $170 / $130. Check your health fund.',melissa:'See our fees page or ask us.'}}
+};
+var WHO={
+ preg:{t:'Pregnancy or trying to conceive',s:'Fertility, IVF, pregnancy and preparing for birth',ico:'heart',needs:[
+  ['conceive',0,0,['maddy','ellie','hannah','melinda','adi']],
+  ['parenthood',0,0,['adi']],
+  ['acu','Acupuncture for fertility or pregnancy','IVF support, pregnancy care and birth preparation',['kate']],
+  ['massage','Pregnancy massage','Nurturing, tailored care for mums-to-be',['laura']],
+  ['osteo','Osteopathy in pregnancy','Ease back, hip and pelvic pain',['anna','melissa']]]},
+ early:{t:'Birth and the early days',s:'Support for you, your baby and your relationship',ico:'moon',needs:[
+  ['talk','Someone to talk to','Birth trauma, low mood, anxiety or adjusting to life with a baby',['hannah','ellie','melinda','adi','maddy']],
+  ['counsel','Early parenting counselling','Sleep-deprived, overwhelmed or finding your feet',['jodie','michelle-ferris']],
+  ['parenthood',0,0,['adi']],
+  ['dyadic',0,0,['michelle-joseph']],
+  ['massage','Postpartum massage','Rest and recovery after birth',['laura']],
+  ['osteo','Osteopathy for you or your baby','Postpartum recovery, and gentle care for babies',['anna','melissa']]]},
+ child:{t:'My child or teen',s:'Therapy, assessments and support for young people',ico:'star',needs:[
+  ['child',0,0,['melinda','meaghan']],
+  ['assess',0,0,['meaghan']],
+  ['art',0,'For kids who find it hard to put feelings into words',['michelle-joseph']],
+  ['dyadic',0,0,['michelle-joseph']],
+  ['ndis',0,0,['jodie','michelle-joseph']],
+  ['osteo','Osteopathy for babies and children',0,['anna','melissa']]]},
+ me:{t:'Me',s:'Support for adults at any stage of life',ico:'person',needs:[
+  ['talk',0,0,['adi','hannah','melinda','ellie','maddy']],
+  ['counsel',0,0,['michelle-ferris','jodie']],
+  ['art',0,0,['michelle-joseph']],
+  ['ndis',0,0,['jodie','michelle-joseph']],
+  ['massage',0,0,['laura']],
+  ['acu',0,'Fertility, women’s health, pain, digestion, stress',['kate']],
+  ['osteo',0,0,['anna','melissa']]]},
+ couple:{t:'Us, as a couple',s:'Relationship support, including becoming parents',ico:'couple',needs:[
+  ['couples',0,0,['michelle-ferris']],
+  ['parenthood',0,0,['adi']]]},
+ body:{t:'Body care',s:'Massage, acupuncture or osteopathy',ico:'leaf',hidden:1,needs:[
+  ['massage',0,0,['laura']],
+  ['acu',0,'Fertility, pregnancy, pain, digestion, stress',['kate']],
+  ['osteo',0,0,['anna','melissa']]]}
+};
+
+var IC={
+ person:'<circle cx="12" cy="8" r="3.6"/><path d="M5 20c1.4-4 4-6 7-6s5.6 2 7 6"/>',
+ couple:'<circle cx="8.5" cy="8.5" r="2.8"/><circle cx="16" cy="8.5" r="2.8"/><path d="M3 19c1-3 3-5 5.5-5s4.5 2 5.5 5M14 14.3c.6-.2 1.3-.3 2-.3 2.5 0 4.2 2 5 5"/>',
+ heart:'<path d="M12 20s-7.5-4.6-7.5-10.2A4.2 4.2 0 0 1 12 7.4a4.2 4.2 0 0 1 7.5 2.4C19.5 15.4 12 20 12 20z"/>',
+ moon:'<path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/>',
+ star:'<path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/>',
+ talk:'<path d="M4 5.5h16v10.5H10l-5 4v-4H4z"/><path d="M8 10h8M8 13h5"/>',
+ leafy:'<path d="M4 20c2-6 6-10 16-12-1 8-6 12-12 12H4z"/><path d="M4 20c4-4 7-6 10-7"/>',
+ leaf:'<path d="M5 19C5 11 11 5 19 5c0 8-6 14-14 14z"/><path d="M5 19l7-7"/>',
+ palette:'<path d="M12 3.5a8.5 8.5 0 1 0 0 17c1 0 1.5-.7 1.5-1.5 0-1.2-1-1.5-1-2.6 0-.9.7-1.6 1.7-1.6H17a3.5 3.5 0 0 0 3.5-3.6C20.5 6.9 16.7 3.5 12 3.5z"/><circle cx="8" cy="11" r="1"/><circle cx="11" cy="7.5" r="1"/><circle cx="15.5" cy="8" r="1"/>',
+ clip:'<rect x="5.5" y="4.5" width="13" height="16" rx="2"/><path d="M9 4.5h6V7H9zM9 11.5h6M9 15.5h4"/>',
+ puzzle:'<path d="M10 4h4v2.5a1.5 1.5 0 0 0 3 0V4h3v6h-2.5a1.5 1.5 0 0 0 0 3H20v7H4V13h2.5a1.5 1.5 0 0 0 0-3H4V4h6z"/>',
+ hand:'<path d="M7 12V6.5a1.5 1.5 0 0 1 3 0V11M10 10V5a1.5 1.5 0 0 1 3 0v6M13 10V6a1.5 1.5 0 0 1 3 0v6M16 11V8.5a1.5 1.5 0 0 1 3 0V14c0 4-3 7-7 7h-.5A6.5 6.5 0 0 1 6 18l-2.3-4a1.5 1.5 0 0 1 2.6-1.5L7 14"/>',
+ spine:'<path d="M12 3v18"/><rect x="8.5" y="4.5" width="7" height="3" rx="1.2"/><rect x="8" y="9" width="8" height="3" rx="1.2"/><rect x="8" y="13.5" width="8" height="3" rx="1.2"/><rect x="8.5" y="18" width="7" height="2.5" rx="1.2"/>',
+ arrow:'<path d="M5 12h14M13 6l6 6-6 6"/>',
+ back:'<path d="M15 6l-6 6 6 6"/>',
+ cal:'<rect height="15" rx="2.5" width="17" x="3.5" y="5"/><path d="M8 3v4M16 3v4M3.5 10h17"/>',
+ phone:'<path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"/>',
+ mail:'<rect x="3.5" y="5.5" width="17" height="13" rx="2"/><path d="M4 7l8 6 8-6"/>',
+ bolt:'<path d="M13 3L5 13.5h6L10 21l8-10.5h-6z"/>',
+ bell:'<path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/>',
+ x:'<path d="M6 6l12 12M18 6 6 18"/>',
+ check:'<path d="M5 12.5l4.5 4.5L19 7.5"/>',
+ clock:'<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>',
+ pin:'<path d="M12 21s-6.5-6-6.5-11a6.5 6.5 0 0 1 13 0c0 5-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.3"/>',
+ video:'<rect x="3.5" y="6.5" width="12" height="11" rx="2"/><path d="M15.5 10.5l5-3v9l-5-3"/>'
+};
+function svg(k,c){return '<svg class="'+(c||'')+'" aria-hidden="true" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" viewBox="0 0 24 24">'+IC[k]+'</svg>'}
+
+// ---------- state in the URL hash ----------
+var S={};
+function readHash(){var o={};location.hash.replace(/^#/,'').split('&').forEach(function(p){var kv=p.split('=');if(kv[0])o[kv[0]]=decodeURIComponent(kv[1]||'')});
+ if(!WHO[o.who])o={};else if(o.need&&!findNeed(o.who,o.need))delete o.need;return o}
+function writeHash(push){var h=['who','need','plan','how','r'].filter(function(k){return S[k]}).map(function(k){return k+'='+S[k]}).join('&');
+ var url=location.href.split('#')[0]+(h?'#'+h:'');try{history[push?'pushState':'replaceState'](null,'',url)}catch(e){}}
+function findNeed(who,k){var l=WHO[who].needs;for(var i=0;i<l.length;i++)if(l[i][0]===k)return l[i];return null}
+function needsQs(){var n=NEED[S.need];return n&&(n.plan||n.how)}
+function answered(){var n=NEED[S.need];return (!n.plan||S.plan)&&(!n.how||S.how)}
+function stepOf(){if(!S.who)return 1;if(!S.need)return 2;if(needsQs()&&!(S.r&&answered()))return 3;return 4}
+
+var box=document.getElementById('finder');
+function go(o){if(!('r' in o))delete S.r;for(var k in o){if(o[k]==null)delete S[k];else S[k]=o[k]}writeHash(true);render(true)}
+
+function head(step){
+ var list=['who','need'].concat(S.need&&!needsQs()?[]:['qs']).concat(['res']);
+ var cur=step===4?list.length:step;
+ var dots=list.map(function(_,i){return '<span class="fd-dot '+(i+1<cur?'done':i+1===cur?'on':'')+'"></span>'}).join('');
+ return '<div class="fd-top"><button type="button" class="fd-back" data-back'+(step===1?' hidden':'')+'>'+svg('back')+'Back</button>'+
+  '<div class="fd-steps"><span class="sr">Step '+cur+' of '+list.length+'</span>'+dots+'</div></div>'}
+function optBtn(attrs,ico,t,s,pressed){return '<li><button type="button" class="fd-opt" '+attrs+(pressed?' aria-pressed="true"':'')+'><span class="fd-ico">'+svg(ico)+'</span><span><b>'+esc(t)+'</b><small>'+esc(s)+'</small></span>'+svg('arrow','fd-arrow')+'</button></li>'}
+
+function renderWho(){
+ var h=head(1)+'<div class="fd-step"><h2 class="fd-q" tabindex="-1">Who is the appointment for?</h2><p class="fd-sub">Pick the one that fits best. You can change it later.</p><ul class="fd-opts">';
+ for(var k in WHO){var w=WHO[k];if(!w.hidden)h+=optBtn('data-who="'+k+'"',w.ico,w.t,w.s,S.who===k)}
+ return h+'</ul><p class="fd-shortcut">Just after a massage, acupuncture or osteopathy? <button type="button" data-who="body">Go straight to body care</button></p></div>'}
+function renderNeed(){
+ var w=WHO[S.who],q=S.who==='child'?'What would help your child most?':S.who==='couple'?'What are you looking for?':S.who==='body'?'Which kind of body care?':'What would help most?';
+ var h=head(2)+'<div class="fd-step"><h2 class="fd-q" tabindex="-1">'+q+'</h2><p class="fd-sub">'+esc(w.t)+'</p><ul class="fd-opts">';
+ w.needs.forEach(function(n){var d=NEED[n[0]];h+=optBtn('data-need="'+n[0]+'"',d.ico,n[1]||d.t,n[2]||d.s,S.need===n[0])});
+ return h+'</ul></div>'}
+function pills(key,opts,cur){return '<div class="fd-pills" role="group">'+opts.map(function(o){return '<button type="button" class="fd-pill" data-'+key+'="'+o[0]+'" aria-pressed="'+(cur===o[0])+'">'+esc(o[1])+'</button>'}).join('')+'</div>'}
+function renderQs(){
+ var n=NEED[S.need],kid=S.who==='child',h=head(3)+'<div class="fd-step"><h2 class="fd-q" tabindex="-1">Two quick questions</h2><p class="fd-sub">So we book the right appointment type and show the right fees.</p>';
+ if(n.plan)h+='<div class="fd-group"><h3>'+(kid?'Does your child have a Mental Health Treatment Plan?':'Do you have a Mental Health Treatment Plan?')+'</h3><p>A plan from your GP'+(kid?', paediatrician':'')+' or psychiatrist gives you a Medicare rebate for up to 10 sessions a year.</p>'+
+  pills('plan',[['yes','Yes'],['no','No'],['unsure','Not sure']],S.plan)+'</div>';
+ if(n.how)h+='<div class="fd-group"><h3>How would you like to meet?</h3><p>Most sessions can be at the Hub in Jan Juc or by video or phone.</p>'+
+  pills('how',[['in','At the Hub'],['online','Video or phone'],['any','Either is fine']],S.how)+'</div>';
+ return h+'<button type="button" class="btn btn-primary fd-next" data-show'+(answered()?'':' disabled')+'>Show times'+svg('arrow')+'</button></div>'}
+
+function feeOf(pid){var f=(NEED[S.need].fee||{})[pid];return f}
+function feeLine(pid){
+ var f=feeOf(pid);if(!f)return '';
+ if(typeof f==='string')return '<p class="fd-cost">'+esc(f)+'</p>';
+ var base=money(f[0])+' for '+f[1]+' minutes';
+ if(!f[2])return '<p class="fd-cost"><b>'+base+'.</b> No Medicare rebate for this service.</p>';
+ if(S.plan==='yes')return '<p class="fd-cost"><b>'+base+'.</b> Medicare gives back about '+money(f[2])+', so you pay about <b>'+money(Math.round((f[0]-f[2])*100)/100)+'</b>.</p>';
+ return '<p class="fd-cost"><b>'+base+'.</b> With a Mental Health Treatment Plan you’d get about '+money(f[2])+' back from Medicare.</p>'}
+function isLive(pid){var n=NEED[S.need];return P[pid].live&&!(n.contactOnly||{})[pid]}
+function actions(pid){
+ var p=P[pid],n=NEED[S.need],more='<a class="fd-more" href="'+H.SITE+'team.html#'+pid+'">About '+esc(p.first)+'</a>';
+ if(p.contact||(n.contactOnly||{})[pid])
+  return '<div class="fd-acts"><a class="btn btn-primary btn-sm" href="'+TEL+'">'+svg('phone')+'Call '+PHONE+'</a><a class="btn btn-outline btn-sm" href="'+H.SITE+'contact.html">'+svg('mail')+'Send an enquiry</a>'+more+'</div>';
+ return '<div class="fd-acts"><a class="btn btn-primary btn-sm" href="'+p.url+'" target="_blank" rel="noopener">'+svg('cal')+'Book with '+p.first+(p.ext?' <span class="sr">on '+p.ext+'</span>':'')+'<span class="sr"> (opens in a new tab)</span></a>'+more+'</div>'}
+
+var SLOTS={},SHOWN={};
+function renderRes(){
+ var w=WHO[S.who],nd=findNeed(S.who,S.need),n=NEED[S.need],ids=nd[3].filter(function(id){return !P[id].leave});
+ function noReb(id){var f=feeOf(id);return Array.isArray(f)&&!f[2]?1:0}
+ if(S.plan==='yes')ids.sort(function(a,b){return noReb(a)-noReb(b)});
+ if(S.how==='online')ids.sort(function(a,b){return (b==='jodie')-(a==='jodie')});
+ var tags=[w.t,nd[1]||n.t];
+ if(S.plan)tags.push(S.plan==='yes'?'Has a Mental Health Treatment Plan':S.plan==='no'?'No plan':'Not sure about a plan');
+ if(S.how)tags.push(S.how==='in'?'At the Hub':S.how==='online'?'Video or phone':'Either');
+ var live=ids.filter(isLive);
+ var h=head(4)+'<div class="fd-step"><h2 class="fd-q" tabindex="-1">'+(live.length?'Pick a time that suits':'Here’s who can help')+'</h2>'+
+  '<div class="fd-summary">'+tags.map(function(t){return '<span class="fd-tag">'+esc(t)+'</span>'}).join('')+'</div>';
+ if(live.length>1)h+='<div class="fd-soon" id="fdSoon" aria-live="polite"><span class="fd-soon-ico">'+svg('bolt')+'</span><div><b>Finding the soonest time…</b></div></div>';
+ h+='<ul class="fd-results">';
+ ids.forEach(function(pid){var p=P[pid];
+  h+='<li><article class="fd-res" data-pid="'+pid+'"><img src="'+H.photo(pid)+'" alt="" width="88" height="88" loading="lazy"><div><h3>'+esc(p.name)+'</h3><p class="fd-role">'+esc(p.role)+'</p></div>'+
+   '<div class="fd-body"><p class="fd-why">'+esc(p.why)+'</p>'+feeLine(pid)+
+   (isLive(pid)?'<div class="fd-times" data-times="'+pid+'"><div class="fd-skel"><span></span><span></span><span></span><span></span></div></div>'+
+     '<div class="fd-acts fd-acts-live"><button type="button" class="fd-linkbtn" data-wait="'+pid+'">'+svg('bell')+'Nothing suits? Get a text if something sooner opens</button><a class="fd-more" href="'+H.SITE+'team.html#'+pid+'">About '+esc(p.first)+'</a></div>'
+    :actions(pid))+'</div></article></li>'});
+ h+='</ul>';
+ if(live.length>1)h+='<div class="fd-help fd-help-wait"><p><b>Happy with anyone?</b> Join the waitlist for everyone above and we’ll text you the moment an earlier spot opens.</p><button type="button" class="btn btn-outline btn-sm" data-wait="'+live.join(',')+'">'+svg('bell')+'Join the waitlist</button></div>';
+ h+='<div class="fd-help"><p><b>Still not sure who to see?</b> Call us and we’ll help you choose. There’s no wrong door.</p><a class="btn btn-outline btn-sm" href="'+TEL+'">'+svg('phone')+'Call '+PHONE+'</a></div>'+
+  '<p class="fd-note">Fees and rebates are a guide; check the <a href="'+H.SITE+'fees.html">fees page</a> or ask us.</p>'+
+  '<p class="fd-restart"><button type="button" class="btn btn-outline btn-sm" data-restart>Start again</button></p></div>';
+ setTimeout(function(){loadTimes(live)},0);
+ return h}
+
+function loadTimes(pids){if(!pids.length)return;
+ api.slots(pids,21).then(function(res){SLOTS=res;pids.forEach(function(pid){SHOWN[pid]=SHOWN[pid]||3;drawTimes(pid)});drawSoon(pids)})}
+function groupDays(list){var g=[],cur=null;list.forEach(function(d){var k=d.toDateString();if(!cur||cur.k!==k){cur={k:k,d:d,t:[]};g.push(cur)}cur.t.push(d)});return g}
+function drawTimes(pid){var el=box.querySelector('[data-times="'+pid+'"]');if(!el)return;
+ var g=groupDays(SLOTS[pid]||[]),n=SHOWN[pid];
+ if(!g.length){el.innerHTML='<p class="fd-none">'+esc(P[pid].first)+' is fully booked for the next three weeks. Join the waitlist below and we’ll text you if a spot opens.</p>';return}
+ var h='<p class="fd-times-h">'+svg('clock')+'Next available with '+esc(P[pid].first)+'</p><div class="fd-days">';
+ g.slice(0,n).forEach(function(day){h+='<div class="fd-day"><span class="fd-dname">'+esc(F.day(day.d))+'</span><div class="fd-chips">'+
+  day.t.map(function(t){return '<button type="button" class="fd-chip" data-slot="'+pid+'|'+t.toISOString()+'">'+F.time(t)+'</button>'}).join('')+'</div></div>'});
+ h+='</div>';if(g.length>n)h+='<button type="button" class="fd-linkbtn fd-moretimes" data-more="'+pid+'">More times</button>';
+ el.innerHTML=h}
+function drawSoon(pids){var el=document.getElementById('fdSoon');if(!el)return;var best=null;
+ pids.forEach(function(pid){var s=(SLOTS[pid]||[])[0];if(s&&(!best||s<best.t))best={pid:pid,t:s}});
+ if(!best){el.innerHTML='<span class="fd-soon-ico">'+svg('bell')+'</span><div><b>Everyone is booked up for now.</b><span>Join the waitlist below and we’ll text you when a spot opens.</span></div>';return}
+ el.innerHTML='<span class="fd-soon-ico">'+svg('bolt')+'</span><div><b>Soonest: '+esc(F.day(best.t,1))+', '+F.time(best.t)+'</b><span>with '+esc(P[best.pid].name)+'</span></div><button type="button" class="btn btn-primary btn-sm" data-slot="'+best.pid+'|'+best.t.toISOString()+'">Book it</button>'}
+
+function render(focus){
+ var st=stepOf();
+ box.innerHTML=st===1?renderWho():st===2?renderNeed():st===3?renderQs():renderRes();
+ if(focus){var q=box.querySelector('.fd-q');var r=box.getBoundingClientRect();
+  if(r.top<0||r.top>innerHeight*.6)box.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'});
+  if(q)q.focus({preventScroll:true})}}
+
+box.addEventListener('click',function(e){
+ var b=e.target.closest('button');if(!b)return;var d=b.dataset;
+ if('back' in d){go(backState());return}
+ if(d.who){go({who:d.who,need:null,plan:null,how:null});return}
+ if(d.need){var n=NEED[d.need];go({need:d.need,plan:n.plan?S.plan:null,how:n.how?S.how:null});return}
+ if(d.plan||d.how){var k=d.plan?'plan':'how';S[k]=d[k];writeHash(false);
+  [].forEach.call(box.querySelectorAll('[data-'+k+']'),function(x){x.setAttribute('aria-pressed',x===b)});
+  var nx=box.querySelector('[data-show]');if(nx)nx.disabled=!answered();return}
+ if('show' in d){go({r:'1'});return}
+ if('restart' in d){S={};writeHash(true);render(true);return}
+ if(d.more){SHOWN[d.more]+=4;drawTimes(d.more);return}
+ if(d.slot){var i=d.slot.indexOf('|');openBook(d.slot.slice(0,i),new Date(d.slot.slice(i+1)));return}
+ if(d.wait){openWait(d.wait.split(','));return}
+});
+function backState(){var st=stepOf();if(st===4&&needsQs())return {r:null};if(st>=3)return {need:null};return {who:null}}
+window.addEventListener('popstate',function(){S=readHash();render(true)});
+// times change when someone else books or a spot is refilled (other tab = the dashboard)
+api.on(function(){if(stepOf()===4&&!dlg.open){var live=[].map.call(box.querySelectorAll('[data-times]'),function(x){return x.dataset.times});if(live.length)api.slots(live,21).then(function(r){SLOTS=r;live.forEach(drawTimes);drawSoon(live)})}});
+
+// ---------- booking + waitlist sheet ----------
+var dlg=document.getElementById('bkSheet'),sheet=dlg.querySelector('.bk-in');
+function closeSheet(){dlg.close()}
+dlg.addEventListener('click',function(e){if(e.target===dlg||e.target.closest('[data-close]'))closeSheet()});
+dlg.addEventListener('close',function(){document.documentElement.classList.remove('bk-lock')});
+function showSheet(html){sheet.innerHTML=html;if(!dlg.open){dlg.showModal();document.documentElement.classList.add('bk-lock')}
+ var f=sheet.querySelector('[autofocus]')||sheet.querySelector('h2');if(f)f.focus()}
+function sheetHead(t){return '<div class="bk-head"><h2 tabindex="-1">'+t+'</h2><button type="button" class="bk-x" data-close aria-label="Close">'+svg('x')+'</button></div>'}
+function apptLine(pid,t){var p=P[pid],on=S.how==='online';
+ return '<div class="bk-appt"><img src="'+H.photo(pid)+'" alt="" width="64" height="64"><div><b>'+esc(p.name)+'</b><span>'+svg('cal')+esc(F.day(t,1))+', '+F.time(t)+' ('+p.len+' min)</span>'+
+  '<span>'+svg(on?'video':'pin')+(on?'Video or phone (link sent by text)':'At the Hub, Jan Juc Village, Stuart Ave')+'</span></div></div>'}
+function costNote(pid){var f=feeOf(pid);if(!Array.isArray(f))return typeof f==='string'?'<p class="bk-cost">'+esc(f)+'</p>':'';
+ if(f[2]&&S.plan==='yes')return '<p class="bk-cost"><b>'+money(f[0])+'</b>, about <b>'+money(Math.round((f[0]-f[2])*100)/100)+'</b> after your Medicare rebate. Bring your Mental Health Treatment Plan, or ask your GP to send it to us.</p>';
+ return '<p class="bk-cost"><b>'+money(f[0])+'</b> per session'+(f[2]?'. Get a Mental Health Treatment Plan from your GP first and Medicare gives back about '+money(f[2])+'.':'.')+'</p>'}
+var DRAFT={};try{DRAFT=JSON.parse(sessionStorage.getItem('scfh-draft')||'{}')}catch(e){}
+function field(id,label,type,ac,extra){return '<label class="bk-f"><span>'+label+'</span><input id="'+id+'" name="'+id+'" type="'+type+'" autocomplete="'+ac+'" value="'+esc(DRAFT[id]||'')+'" '+(extra||'')+' required></label>'}
+
+function openBook(pid,t){
+ var p=P[pid];
+ showSheet(sheetHead('Book with '+esc(p.first))+apptLine(pid,t)+
+  '<p class="bk-svc">'+svg('check')+'<span>We’ll book it as <b>'+esc(H.serviceName(pid,S.plan,S.how==='any'?'in':S.how))+'</b>, so you don’t need to pick an appointment type.</span></p>'+costNote(pid)+
+  '<form class="bk-form" novalidate>'+
+   field('bkName','Full name','text','name','autofocus')+
+   '<div class="bk-row">'+field('bkPhone','Mobile','tel','tel','inputmode="tel" placeholder="04xx xxx xxx"')+field('bkEmail','Email','email','email')+'</div>'+
+   '<fieldset class="bk-fs"><legend>Is this your first visit to the Hub?</legend><div class="fd-pills"><button type="button" class="fd-pill" data-first="yes" aria-pressed="false">Yes, first time</button><button type="button" class="fd-pill" data-first="no" aria-pressed="false">I’ve been before</button></div></fieldset>'+
+   '<label class="bk-check"><input type="checkbox" id="bkOk" required><span>I agree to the Hub’s privacy policy. My details go to '+esc(p.first)+'’s practice records so they can see me.</span></label>'+
+   '<p class="bk-err" role="alert" hidden></p>'+
+   '<button type="submit" class="btn btn-primary bk-submit">'+svg('check')+'Confirm booking</button>'+
+   '<p class="bk-demo">Demo: no real booking is made.</p></form>');
+ var form=sheet.querySelector('form'),first='';
+ form.addEventListener('click',function(e){var b=e.target.closest('[data-first]');if(!b)return;first=b.dataset.first;[].forEach.call(form.querySelectorAll('[data-first]'),function(x){x.setAttribute('aria-pressed',x===b)})});
+ form.addEventListener('input',function(e){DRAFT[e.target.id]=e.target.value;try{sessionStorage.setItem('scfh-draft',JSON.stringify(DRAFT))}catch(x){}});
+ form.addEventListener('submit',function(e){e.preventDefault();
+  var name=form.bkName.value.trim(),phone=form.bkPhone.value.trim(),email=form.bkEmail.value.trim(),err=form.querySelector('.bk-err');
+  var bad=!name?'Please add your name.':!/^(\+?61|0)4[\d ]{8,11}$/.test(phone.replace(/\s/g,'').replace(/^\+61/,'0').replace(/^61/,'0'))?'Please add an Australian mobile number (04xx xxx xxx).':!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)?'Please check your email address.':!form.bkOk.checked?'Please tick the privacy box so we can book you in.':'';
+  if(bad){err.textContent=bad;err.hidden=false;return}
+  var go=form.querySelector('.bk-submit');go.disabled=true;go.innerHTML='<span class="bk-spin"></span>Booking…';
+  api.book({pid:pid,start:t.toISOString(),name:name,phone:phone,email:email,plan:S.plan,how:S.how==='any'?'in':S.how,firstVisit:first}).then(function(r){
+   if(!r.ok){err.textContent='Sorry, someone just grabbed that time. Pick another one below.';err.hidden=false;go.disabled=false;go.innerHTML=svg('check')+'Confirm booking';
+    setTimeout(closeSheet,1600);return}
+   api.remember(r.booking.token);done(r.booking)})});
+}
+function ics(b){var p=P[b.pid],s=new Date(b.start),e=new Date(s.getTime()+p.len*6e4);
+ function z(d){return d.toISOString().replace(/[-:]/g,'').replace(/\.\d+/,'')}
+ return 'BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Surf Coast Family Hub//Booking//EN\r\nBEGIN:VEVENT\r\nUID:'+b.id+'@surfcoastfamilyhub\r\nDTSTAMP:'+z(new Date())+'\r\nDTSTART:'+z(s)+'\r\nDTEND:'+z(e)+
+  '\r\nSUMMARY:Appointment with '+p.name+'\r\nLOCATION:Surf Coast Family Hub\\, Jan Juc Village\\, Stuart Ave\\, Jan Juc VIC 3228\r\nDESCRIPTION:Need to change it? Call 0491 184 788.\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n'}
+function done(b){var p=P[b.pid],t=new Date(b.start);
+ var url=URL.createObjectURL(new Blob([ics(b)],{type:'text/calendar'}));
+ showSheet(sheetHead('You’re booked')+'<div class="bk-done"><span class="bk-tick">'+svg('check')+'</span><p>We’ve sent a confirmation text to <b>'+esc(b.phone)+'</b>.</p></div>'+apptLine(b.pid,t)+
+  '<div class="bk-acts"><a class="btn btn-primary btn-sm" href="'+url+'" download="hub-appointment.ics">'+svg('cal')+'Add to calendar</a><a class="btn btn-outline btn-sm" href="manage.html#t='+b.token+'">Change or cancel</a></div>'+
+  '<div class="bk-sooner"><h3>'+svg('bell')+'Want something sooner?</h3><p>We’ll text you if an earlier spot with '+esc(p.first)+' opens up. Tap to claim it, and we’ll move your booking.</p>'+
+  '<button type="button" class="btn btn-outline btn-sm" data-sooner>Yes, text me</button></div>'+
+  '<p class="bk-demo">Demo: open the <a href="admin.html" target="_blank" rel="noopener">Hub dashboard</a> to see this booking arrive.</p>');
+ sheet.querySelector('[data-sooner]').addEventListener('click',function(){var btn=this;btn.disabled=true;
+  api.joinWaitlist({name:b.name,phone:b.phone,pids:[b.pid],need:'Earlier time',days:[1,2,3,4,5,6],times:['am','pm'],moveToken:b.token}).then(function(){btn.outerHTML='<p class="bk-ok">'+svg('check')+'Done. We’ll text you if something earlier opens.</p>'})});
+ render(false)}
+
+function openWait(pids){
+ pids=pids.filter(function(x){return P[x]&&!P[x].leave});
+ var many=pids.length>1;
+ showSheet(sheetHead('Get a text when a spot opens')+
+  '<p class="bk-lead">When someone cancels, we text the waitlist. The first person to tap the link gets the spot. No fees, no obligation.</p>'+
+  '<form class="bk-form" novalidate>'+field('wlName','Full name','text','name','autofocus')+field('wlPhone','Mobile','tel','tel','inputmode="tel" placeholder="04xx xxx xxx"')+
+  (many?'<fieldset class="bk-fs"><legend>Who are you happy to see?</legend><div class="fd-pills">'+pids.map(function(pid){return '<button type="button" class="fd-pill" data-wp="'+pid+'" aria-pressed="true">'+esc(P[pid].first)+'</button>'}).join('')+'</div></fieldset>':'')+
+  '<fieldset class="bk-fs"><legend>Which days work?</legend><div class="fd-pills">'+[1,2,3,4,5,6].map(function(d){return '<button type="button" class="fd-pill" data-wd="'+d+'" aria-pressed="'+(d<6)+'">'+F.DAY[d]+'</button>'}).join('')+'</div></fieldset>'+
+  '<fieldset class="bk-fs"><legend>Which times?</legend><div class="fd-pills"><button type="button" class="fd-pill" data-wt="am" aria-pressed="true">Mornings</button><button type="button" class="fd-pill" data-wt="pm" aria-pressed="true">Afternoons</button></div></fieldset>'+
+  '<label class="bk-check"><input type="checkbox" id="wlOk" required><span>Text me about spots that open up. I can reply STOP at any time.</span></label>'+
+  '<p class="bk-err" role="alert" hidden></p><button type="submit" class="btn btn-primary bk-submit">'+svg('bell')+'Join the waitlist</button><p class="bk-demo">Demo: no real texts are sent.</p></form>');
+ var form=sheet.querySelector('form');
+ form.addEventListener('click',function(e){var b=e.target.closest('.fd-pill');if(b)b.setAttribute('aria-pressed',b.getAttribute('aria-pressed')!=='true')});
+ form.addEventListener('submit',function(e){e.preventDefault();
+  function on(a){return [].filter.call(form.querySelectorAll('[data-'+a+'][aria-pressed="true"]'),function(){return 1}).map(function(x){return x.dataset[a]})}
+  var name=form.wlName.value.trim(),phone=form.wlPhone.value.trim(),err=form.querySelector('.bk-err');
+  var who=many?on('wp'):pids,days=on('wd').map(Number),times=on('wt');
+  var bad=!name?'Please add your name.':!/^(\+?61|0)4[\d ]{8,11}$/.test(phone.replace(/\s/g,''))?'Please add an Australian mobile number.':!who.length?'Pick at least one practitioner.':!days.length?'Pick at least one day.':!times.length?'Pick mornings, afternoons or both.':!form.wlOk.checked?'Please tick the box so we can text you.':'';
+  if(bad){err.textContent=bad;err.hidden=false;return}
+  api.joinWaitlist({name:name,phone:phone,pids:who,need:(NEED[S.need]||{}).wl,days:days,times:times}).then(function(){
+   showSheet(sheetHead('You’re on the list')+'<div class="bk-done"><span class="bk-tick">'+svg('check')+'</span><p>We’ll text <b>'+esc(phone)+'</b> when a spot opens with '+esc(who.map(function(x){return P[x].first}).join(', '))+'. Be quick, first tap gets it.</p></div>'+
+    '<p class="bk-demo">Demo: in the <a href="admin.html" target="_blank" rel="noopener">Hub dashboard</a>, cancel an appointment to watch the text arrive.</p>')})});
+}
+
+S=readHash();render(false);
+
+// ---------- "choose someone yourself" grid ----------
+var grid=document.getElementById('allGrid');
+grid.innerHTML=H.ORDER.filter(function(id){return !P[id].leave}).map(function(pid){var p=P[pid],href=p.contact?H.SITE+'contact.html':p.url,ext=!p.contact;
+ return '<li><a class="book-card card" data-person="'+pid+'" href="'+href+'"'+(ext?' target="_blank" rel="noopener"':'')+'><img alt="" class="bk-photo" height="300" loading="lazy" src="'+H.photo(pid)+'" width="300"/><span class="bk-name">'+esc(p.name)+'</span><span class="bk-role">'+esc(p.role)+'</span><span class="bk-go">'+(p.contact?'Contact us to book':'Book with '+esc(p.first))+' '+svg('arrow')+'</span>'+(ext?'<span class="sr"> (opens the booking page in a new tab)</span>':'')+'</a></li>'}).join('');
+})();
+</script>
+</body>
+</html>
