@@ -119,7 +119,7 @@ function head(step){
  var cur=step===4?list.length:step;
  var dots=list.map(function(_,i){return '<span class="fd-dot '+(i+1<cur?'done':i+1===cur?'on':'')+'"></span>'}).join('');
  return '<div class="fd-top"><button type="button" class="fd-back" data-back'+(step===1?' hidden':'')+'>'+svg('back')+'Back</button>'+
-  '<div class="fd-steps"><span class="sr">Step '+cur+' of '+list.length+'</span>'+dots+'</div></div>'}
+  '<div class="fd-steps"><span>Step '+cur+' of '+list.length+'</span><span class="fd-bar" aria-hidden="true">'+dots+'</span></div></div>'}
 function optBtn(attrs,ico,t,s,pressed){return '<li><button type="button" class="fd-opt" '+attrs+(pressed?' aria-pressed="true"':'')+'><span class="fd-ico">'+svg(ico)+'</span><span><b>'+esc(t)+'</b><small>'+esc(s)+'</small></span>'+svg('arrow','fd-arrow')+'</button></li>'}
 
 function renderWho(){
@@ -141,13 +141,14 @@ function renderQs(){
  return h+'<button type="button" class="btn btn-primary fd-next" data-show'+(answered()?'':' disabled')+'>Show times'+svg('arrow')+'</button></div>'}
 
 function feeOf(pid){var f=(NEED[S.need].fee||{})[pid];return f}
+function priceTag(pid){var f=feeOf(pid);if(!Array.isArray(f))return '';
+ return '<div class="fd-price"><b>'+money(f[0])+'</b><span>'+f[1]+' min session</span></div>'}
 function feeLine(pid){
  var f=feeOf(pid);if(!f)return '';
  if(typeof f==='string')return '<p class="fd-cost">'+esc(f)+'</p>';
- var base=money(f[0])+' for '+f[1]+' minutes';
- if(!f[2])return '<p class="fd-cost"><b>'+base+'.</b> No Medicare rebate for this service.</p>';
- if(S.plan==='yes')return '<p class="fd-cost"><b>'+base+'.</b> Medicare gives back about '+money(f[2])+', so you pay about <b>'+money(Math.round((f[0]-f[2])*100)/100)+'</b>.</p>';
- return '<p class="fd-cost"><b>'+base+'.</b> With a Mental Health Treatment Plan you’d get about '+money(f[2])+' back from Medicare.</p>'}
+ if(!f[2])return '<p class="fd-cost">No Medicare rebate for this service.</p>';
+ if(S.plan==='yes')return '<p class="fd-cost">You pay about <b>'+money(Math.round((f[0]-f[2])*100)/100)+'</b> after the '+money(f[2])+' Medicare rebate.</p>';
+ return '<p class="fd-cost">With a Mental Health Treatment Plan, Medicare gives back about '+money(f[2])+'.</p>'}
 function isLive(pid){var n=NEED[S.need];return P[pid].live&&!(n.contactOnly||{})[pid]}
 function actions(pid){
  var p=P[pid],n=NEED[S.need],more='<a class="fd-more" href="'+H.SITE+'team.html#'+pid+'">About '+esc(p.first)+'</a>';
@@ -166,11 +167,11 @@ function renderRes(){
  if(S.how)tags.push(S.how==='in'?'At the Hub':S.how==='online'?'Video or phone':'Either');
  var live=ids.filter(isLive);
  var h=head(4)+'<div class="fd-step"><h2 class="fd-q" tabindex="-1">'+(live.length?'Pick a time that suits':'Here’s who can help')+'</h2>'+
-  '<div class="fd-summary">'+tags.map(function(t){return '<span class="fd-tag">'+esc(t)+'</span>'}).join('')+'</div>';
+  '<p class="fd-summary">'+tags.map(esc).join('<span class="fd-sep" aria-hidden="true"> · </span>')+'</p>';
  if(live.length>1)h+='<div class="fd-soon" id="fdSoon" aria-live="polite"><span class="fd-soon-ico">'+svg('bolt')+'</span><div><b>Finding the soonest time…</b></div></div>';
  h+='<ul class="fd-results">';
  ids.forEach(function(pid){var p=P[pid];
-  h+='<li><article class="fd-res" data-pid="'+pid+'"><img src="'+H.photo(pid)+'" alt="" width="88" height="88" loading="lazy"><div><h3>'+esc(p.name)+'</h3><p class="fd-role">'+esc(p.role)+'</p></div>'+
+  h+='<li><article class="fd-res" data-pid="'+pid+'"><img src="'+H.photo(pid)+'" alt="" width="88" height="88" loading="lazy"><div><h3>'+esc(p.name)+'</h3><p class="fd-role">'+esc(p.role)+'</p></div>'+priceTag(pid)+
    '<div class="fd-body"><p class="fd-why">'+esc(p.why)+'</p>'+(p.note?'<p class="fd-pnote">'+esc(p.note)+'</p>':'')+feeLine(pid)+
    (isLive(pid)?'<div class="fd-times" data-times="'+pid+'"><div class="fd-skel"><span></span><span></span><span></span><span></span></div></div>'+
      '<div class="fd-acts fd-acts-live"><button type="button" class="fd-linkbtn" data-wait="'+pid+'">'+svg('bell')+'Nothing suits? Get a text if something sooner opens</button><a class="fd-more" href="'+H.SITE+'team.html#'+pid+'">About '+esc(p.first)+'</a></div>'
@@ -178,8 +179,8 @@ function renderRes(){
  h+='</ul>';
  if(live.length>1)h+='<div class="fd-help fd-help-wait"><p><b>Happy with anyone?</b> Join the waitlist for everyone above and we’ll text you the moment an earlier spot opens.</p><button type="button" class="btn btn-outline btn-sm" data-wait="'+live.join(',')+'">'+svg('bell')+'Join the waitlist</button></div>';
  h+='<div class="fd-help"><p><b>Still not sure who to see?</b> Call us and we’ll help you choose. There’s no wrong door.</p><a class="btn btn-outline btn-sm" href="'+TEL+'">'+svg('phone')+'Call '+PHONE+'</a></div>'+
-  '<p class="fd-note">Fees and rebates are a guide; check the <a href="'+H.SITE+'fees.html">fees page</a> or ask us.</p>'+
-  '<p class="fd-restart"><button type="button" class="btn btn-outline btn-sm" data-restart>Start again</button></p></div>';
+  '<p class="fd-note">Fees and rebates are a guide. See the <a href="'+H.SITE+'fees.html">fees page</a> or ask us.</p>'+
+  '<p class="fd-restart"><button type="button" data-restart>Start again</button></p></div>';
  setTimeout(function(){loadTimes(live)},0);
  return h}
 

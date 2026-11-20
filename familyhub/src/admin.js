@@ -12,13 +12,13 @@ function wl(id){return api.state().waitlist.filter(function(w){return w.id===id}
 
 function stats(){var S=api.state(),st=S.stats,open=S.offers.filter(function(o){return o.status==='open'}).length,
   avg=st.mins.length?Math.round(st.mins.reduce(function(a,b){return a+b},0)/st.mins.length):0,wln=S.waitlist.filter(function(w){return !w.booked}).length;
- $('admStats').innerHTML=[['bolt',st.filled,'spots refilled'],['cash',F.money(st.value),'income saved'],['clock',st.filled?avg+' min':'–','average time to refill'],['users',wln,'on the waitlist'],['send',open,'offers out now']]
-  .map(function(x){return '<div class="adm-stat"><span class="adm-si">'+svg(x[0])+'</span><b>'+x[1]+'</b><span>'+x[2]+'</span></div>'}).join('')}
+ $('admStats').innerHTML=[['bolt',st.filled,'Spots refilled'],['cash',F.money(st.value),'Income saved'],['clock',st.filled?avg+' min':'–','Avg. time to refill'],['users',wln,'On the waitlist'],['send',open,'Offers out now']]
+  .map(function(x){return '<div class="adm-stat"><span class="adm-sl">'+svg(x[0])+x[2]+'</span><b>'+x[1]+'</b></div>'}).join('')}
 
 function tryBox(){var S=api.state();
  var started=S.feed.some(function(f){return f.kind==='cancel'});
  $('admTry').innerHTML='<h2>'+(started?'Try it again':'Try it: cancel an appointment')+'</h2><p>Pick any appointment under <b>Coming up</b> and tap <b>Cancel</b>. Watch the texts land on the phones below, then tap a link to claim the spot. Or tap <b>Everyone taps at once</b> to see that only one person can win.</p>'+
-  '<button type="button" class="btn btn-primary btn-sm" data-quick>'+svg('bolt')+'Cancel the next appointment for me</button>'}
+  '<button type="button" class="btn btn-primary btn-sm" data-quick>'+svg('bolt')+'Cancel the next appointment</button>'}
 
 function needs(){var S=api.state(),items=S.offers.filter(function(o){return o.status==='approval'||o.status==='queued'});
  var el=$('admNeeds');el.hidden=!items.length;if(!items.length)return;
