@@ -359,14 +359,16 @@ addEventListener('keydown', e => {
   if (k === 'KeyV' && pilot()) C.view = C.view === 'in' ? 'out' : 'in';
   if (k === 'Comma' || k === 'BracketLeft') setWarp(G.wi - 1);
   if (k === 'Period' || k === 'BracketRight') setWarp(G.wi + 1);
-  if (!pilot()) return;
+  if (!pilot()) { if (R.on && C.in && /^(Digit[1-4]|Numpad[1-4]|KeyT|KeyZ|KeyX)$/.test(k)) showHint('Sit in the middle (Pilot) seat to fly: walk to it and press F', 2500); return; }
   if (k === 'Space') { e.preventDefault(); stage(); }
   if (k === 'KeyZ') R.thr = 1; if (k === 'KeyX') R.thr = 0;
-  const modes = {Digit1: 'hold', Digit2: 'pro', Digit3: 'retro', Digit4: 'up', KeyT: R.sas === 'off' ? 'hold' : 'off'}; if (modes[k]) setSas(modes[k]);
+  const modes = {Digit1: 'hold', Digit2: 'pro', Digit3: 'retro', Digit4: 'up', Numpad1: 'hold', Numpad2: 'pro', Numpad3: 'retro', Numpad4: 'up', KeyT: R.sas === 'off' ? 'hold' : 'off'}; if (modes[k]) setSas(modes[k]);
   if (k === 'Backspace') { e.preventDefault(); if (R.st !== 'fly') { resetRocket(); showHint('New rocket on the pad', 2500); } }
 });
 addEventListener('pointerdown', sndInit);
-function setSas(m) { R.sas = m; R.hold.copy(R.q); }
+function setSas(m) { R.sas = m; R.hold.copy(R.q);
+  const names = {hold: 'Holding direction', pro: 'Pointing prograde (where you are going)', retro: 'Pointing retrograde (backwards, to slow down)', up: 'Pointing up', off: 'Autopilot off'};
+  if ((m === 'pro' || m === 'retro') && (R.st !== 'fly' || relVel(new V3()).length() < 3)) showHint((m === 'pro' ? 'Prograde' : 'Retrograde') + ' needs you to be moving: it turns once you are flying', 3000); else showHint(names[m], 1800); }
 function setWarp(i) { let mx = WARPS.length - 1; if (R.on && R.st === 'fly' && (R.F > 0 || R.p > 0 || altAbove() < 12000)) mx = 2; if (!R.on && G.on) mx = 6;
   G.wi = clamp(i, 0, mx); G.warp = WARPS[G.wi]; if (i > mx) showHint(R.on ? 'Faster time needs space, engines off' : 'Max time speed', 2000); }
 function stepThrottle(dt) { if (!pilot()) return; if (keys.ShiftLeft || keys.ShiftRight) R.thr = Math.min(1, R.thr + dt * .9); if (keys.KeyC) R.thr = Math.max(0, R.thr - dt * .9); }
@@ -664,7 +666,7 @@ function moonBake(budget) {
   const mk = (data, srgb) => { const t = new THREE.DataTexture(data, W, H); t.wrapS = THREE.RepeatWrapping; t.minFilter = THREE.LinearMipmapLinearFilter; t.magFilter = THREE.LinearFilter; t.generateMipmaps = true; t.anisotropy = 8; if (srgb) t.colorSpace = THREE.SRGBColorSpace; t.needsUpdate = true; return t; };
   MI.mesh.material.uniforms.mC.value = mk(MI.col, true); MI.mesh.material.uniforms.mN.value = mk(n, false); MI.ready = true; MI.h = null;
 }
-function moonFar() { moonBake(3); const far = MI.ready && G.O.distanceTo(MOON.c) > 3e6; MI.mesh.visible = far; MOON.group.visible = !far;
+function moonFar() { moonBake(1.5); const far = MI.ready && G.O.distanceTo(MOON.c) > 3e6; MI.mesh.visible = far; MOON.group.visible = !far;
   if (far) { MI.mesh.position.copy(MOON.c).sub(G.O); MI.mesh.quaternion.copy(MOON.q); MI.mesh.material.uniforms.mRot.value.setFromMatrix4(new THREE.Matrix4().makeRotationFromQuaternion(MOON.q)); } }
 
 // ---------------- Test menu (` key, or "Test mode" on the main menu): jump straight to any part of the game

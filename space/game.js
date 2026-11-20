@@ -189,16 +189,16 @@ function bakeSky() {
         float na = acos(clamp(dot(d, nd), -1., 1.));
         if (na < 1.5) { vec2 uv = vec2(dot(d, t1), dot(d, t2)); uv = mat2(.8, -.6, .6, .8) * uv; uv.x *= .55; // tilted, stretched cloud
           vec3 q = vec3(uv * 3.2, 1.7);
-          float w1 = fbm3(q, 5), w2 = fbm3(q + 4. * vec3(w1, w1 * .7, 0.) + 1.3, 5), n = fbm3(q + 4. * vec3(w2, w1, w2) + 7.1, 6);
-          float r = length(uv) / (.36 + .14 * (w1 - .5)), env = exp(-r * r * 1.6) * smoothstep(1.5, .8, na);
+          float w1 = fbm3(q, 5), w2 = fbm3(q + 2.2 * vec3(w1, w1 * .7, 0.) + 1.3, 5), n = fbm3(q + 2.2 * vec3(w2, w1, w2) + 7.1, 6) * .8 + fbm3(q * 4. + 3.3, 4) * .2;
+          float r = length(uv) / (.27 + .1 * (w1 - .5)), env = exp(-r * r * 1.6) * smoothstep(1.5, .8, na);
           float gas = pow(smoothstep(.3, .85, n), 1.6) * env;
           float rim = pow(clamp(1. - abs(n - .58) * 7., 0., 1.), 3.) * env;       // bright ionised edges
           float dust = smoothstep(.55, .72, fbm3(q * 2.2 + 4. * vec3(w2) + 11., 5)) * smoothstep(.1, .6, env);
-          vec3 tint = mix(vec3(1., .16, .42), vec3(.05, .75, 1.), smoothstep(.42, .56, w2 + (n - .5) * .6));
-          tint = mix(tint, vec3(1., .7, .3), smoothstep(.58, .75, w1) * .8);
-          vec3 neb = tint * gas * 2. + mix(vec3(1., .5, .7), vec3(.6, .95, 1.), w2) * rim * 1.5 + vec3(.5, .65, 1.) * exp(-pow(r / .25, 2.)) * 1.3;
+          vec3 tint = mix(vec3(.85, .22, .32), vec3(.32, .58, .72), smoothstep(.5, .66, w2 + (n - .5) * .5) * .7); // mostly hydrogen red, a little oxygen teal
+          tint = mix(tint, vec3(.85, .62, .42), smoothstep(.6, .78, w1) * .5);
+          vec3 neb = tint * gas * 2. + tint * rim * .8 + vec3(.55, .62, .8) * exp(-pow(r / .2, 2.)) * .5;
           neb += tint * env * .35; // soft glow under the structure
-          col += neb * (1. - dust * .9) * .04;
+          col += neb * (1. - dust * .9) * .017; // faint, like a real nebula to the eye
           col += stars(d, 900., env * .1, .006, 14.) * vec3(.8, .9, 1.2); } }
       col += stars(d, 160., .45, .006, 26.) + stars(d, 520., .08 + band * .3, .0011, 18.) + stars(d, 1300., band * .5 * (1. - dust), .0004, 6.);
       gl_FragColor = vec4(col, 1.); }`});
@@ -223,7 +223,7 @@ const envScene = new THREE.Scene(), envMat = new THREE.ShaderMaterial({side: THR
 envScene.add(new THREE.Mesh(new THREE.SphereGeometry(10, 32, 16), envMat));
 let pmrem = null, envRT = null, envT = 0;
 function updateEnv(dt, sunCol) {
-  if ((envT -= dt) > 0) return; envT = 1.5;
+  if ((envT -= dt) > 0) return; envT = 3;
   pmrem = pmrem || new THREE.PMREMGenerator(RND);
   envMat.uniforms.camPos.value.copy(G.O).sub(PLANET.c); envMat.uniforms.sunDir.value.copy(SUN); envMat.uniforms.sunC.value.setRGB(sunCol[0] * 3.4, sunCol[1] * 3.4, sunCol[2] * 3.4);
   const nrt = pmrem.fromScene(envScene, 0, .1, 100); if (envRT) envRT.dispose(); envRT = nrt;
@@ -350,7 +350,7 @@ const cloudM = new THREE.ShaderMaterial({vertexShader: VS, depthTest: false, dep
       float dd = clDens(pb, h, cov, false); if (dd < .002) continue;
       float sig = dd * .05;
       // light march toward the sun (growing steps), coarse density
-      float od = 0., ls = 70.; vec3 lp = p; for (int j = 0; j < 5; j++) { lp += sunDir * ls; float lh = (length(lp) - rb) / (CT - CB); if (lh > 1. || lh < 0.) break; vec3 lb = bInv * lp; od += clDens(lb, lh, clWeather(lb), true) * ls; ls *= 1.9; }
+      float od = 0., ls = 70.; vec3 lp = p; for (int j = 0; j < 5; j++) { lp += sunDir * ls; float lh = (length(lp) - rb) / (CT - CB); if (lh > 1. || lh < 0.) break; vec3 lb = bInv * lp; od += clDens(lb, lh, cov, true) * ls; ls *= 1.9; }
       od *= .05;
       // multiple scattering (3 octaves) + powder darkening of thin edges facing the sun
       float ms = exp(-od) * ph + .5 * exp(-od * .45) * ph2 + .25 * exp(-od * .2) * .08;
@@ -400,19 +400,28 @@ const raysM = new THREE.ShaderMaterial({vertexShader: VS, depthTest: false, unif
       float sky = step(.99999, texture2D(tDep, uv).x); vec2 o = (uv - sunUV) * vec2(aspect, 1.);
       vec3 cc = texture2D(tCol, uv).rgb; sum += min(cc, vec3(14.)) * smoothstep(6., 40., dot(cc, vec3(.33))) * sky * exp(-length(o) * 4.5) * dec; dec *= .975; }
     gl_FragColor = vec4(sum / 56. * k, 1.); }`});
+// FXAA on the final image (smooth edges; MSAA broke the depth texture on some GPUs)
+const fxaaM = new THREE.ShaderMaterial({vertexShader: VS, depthTest: false, uniforms: {t: {value: null}, px: {value: new THREE.Vector2()}},
+  fragmentShader: `uniform sampler2D t; uniform vec2 px; varying vec2 vUv; float lum(vec3 c){ return dot(c, vec3(.299, .587, .114)); }
+  void main(){ vec3 m = texture2D(t, vUv).rgb, nw = texture2D(t, vUv + vec2(-1., -1.) * px).rgb, ne = texture2D(t, vUv + vec2(1., -1.) * px).rgb, sw = texture2D(t, vUv + vec2(-1., 1.) * px).rgb, se = texture2D(t, vUv + vec2(1., 1.) * px).rgb;
+    float lm = lum(m), a = lum(nw), b = lum(ne), c = lum(sw), d = lum(se), lo = min(lm, min(min(a, b), min(c, d))), hi = max(lm, max(max(a, b), max(c, d)));
+    vec2 dir = vec2(-((a + b) - (c + d)), (a + c) - (b + d)); float red = max((a + b + c + d) * .03125, 1. / 128.), rc = 1. / (min(abs(dir.x), abs(dir.y)) + red); dir = clamp(dir * rc, -8., 8.) * px;
+    vec3 A = .5 * (texture2D(t, vUv + dir * (1. / 3. - .5)).rgb + texture2D(t, vUv + dir * (2. / 3. - .5)).rgb), B = A * .5 + .25 * (texture2D(t, vUv - dir * .5).rgb + texture2D(t, vUv + dir * .5).rgb);
+    float lb = lum(B); gl_FragColor = vec4(lb < lo || lb > hi ? A : B, 1.); }`});
 const POST = {};
 function setupPost() {
-  const pr = Math.min(devicePixelRatio, HI() ? 1.5 : .75), w = Math.max(2, innerWidth * pr | 0), h = Math.max(2, innerHeight * pr | 0);
+  const pr = Math.min(devicePixelRatio, HI() ? 1.5 : .75) * (G.rs || 1), w = Math.max(2, innerWidth * pr | 0), h = Math.max(2, innerHeight * pr | 0);
   RND.setPixelRatio(pr); RND.setSize(innerWidth, innerHeight, false); cam.aspect = innerWidth / innerHeight; cam.updateProjectionMatrix();
   for (const k in POST) POST[k].dispose();
   const HF = {type: THREE.HalfFloatType, depthBuffer: false};
-  POST.main = new THREE.WebGLRenderTarget(w, h, {type: THREE.HalfFloatType, samples: HI() ? 4 : 0, depthTexture: new THREE.DepthTexture(w, h, THREE.UnsignedIntType)});
+  POST.main = new THREE.WebGLRenderTarget(w, h, {type: THREE.HalfFloatType, samples: 0, depthTexture: new THREE.DepthTexture(w, h, THREE.UnsignedIntType)});
   POST.ao = new THREE.WebGLRenderTarget(Math.max(2, w >> 1), Math.max(2, h >> 1), {depthBuffer: false});
   POST.sky = new THREE.WebGLRenderTarget(w, h, HF);
   POST.cl = new THREE.WebGLRenderTarget(Math.max(2, w >> 1), Math.max(2, h >> 1), HF); POST.cl2 = POST.cl.clone();
   const bw = Math.max(2, w >> 2), bh = Math.max(2, h >> 2);
   POST.a = new THREE.WebGLRenderTarget(bw, bh, HF); POST.b = POST.a.clone();
   POST.c = new THREE.WebGLRenderTarget(Math.max(2, bw >> 2), Math.max(2, bh >> 2), HF); POST.d = POST.c.clone(); POST.r = POST.a.clone();
+  POST.ldr = new THREE.WebGLRenderTarget(w, h, {depthBuffer: false}); fxaaM.uniforms.px.value.set(1 / w, 1 / h);
   POST.lum = new THREE.WebGLRenderTarget(16, 8, {type: THREE.FloatType, depthBuffer: false});
   POST.ad0 = new THREE.WebGLRenderTarget(1, 1, {type: THREE.FloatType, depthBuffer: false}); POST.ad1 = POST.ad0.clone();
   atmoM.uniforms.steps.value = HI() ? 14 : 8; atmoM.uniforms.aoOn.value = HI() ? 1 : 0; atmoM.uniforms.aoPx.value.set(1 / POST.ao.width, 1 / POST.ao.height);
@@ -422,6 +431,7 @@ function setupPost() {
 function pass(m, rt) { fsQuad.material = m; RND.setRenderTarget(rt); RND.render(fsScene, fsCam); }
 const _sv4 = new V3();
 function render(dt) {
+  RND.shadowMap.autoUpdate = false; RND.shadowMap.needsUpdate = (G.frameN = (G.frameN || 0) + 1) % 2 === 0 || !!G.shadowEvery; // shadows at half rate (matrices update with the map, so no swimming)
   RND.setRenderTarget(POST.main); RND.render(scene, cam);
   if (HI()) { const s = ssaoM.uniforms; s.tDep.value = POST.main.depthTexture; s.invProj.value.copy(cam.projectionMatrixInverse); s.proj.value.copy(cam.projectionMatrix); pass(ssaoM, POST.ao); }
   if (!WX.done) { WX.done = true; pass(weatherM, WX.rt); }
@@ -450,7 +460,7 @@ function render(dt) {
   downM.uniforms.t.value = POST.a.texture; downM.uniforms.px.value.set(1 / POST.a.width, 1 / POST.a.height); pass(downM, POST.c);
   for (let i = 0; i < 2; i++) { blurM.uniforms.t.value = POST.c.texture; blurM.uniforms.d.value.set(1.5 / POST.c.width, 0); pass(blurM, POST.d); blurM.uniforms.t.value = POST.d.texture; blurM.uniforms.d.value.set(0, 1.5 / POST.c.height); pass(blurM, POST.c); }
   cu.sunOn.value = front ? 1 : 0; cu.aspect.value = cam.aspect; cu.tDep.value = POST.main.depthTexture; cu.time.value = G.t % 100;
-  cu.tR.value = POST.r.texture; cu.t.value = POST.sky.texture; cu.b.value = POST.a.texture; cu.b2.value = POST.c.texture; cu.ad.value = POST.ad0.texture; pass(compM, null);
+  cu.tR.value = POST.r.texture; cu.t.value = POST.sky.texture; cu.b.value = POST.a.texture; cu.b2.value = POST.c.texture; cu.ad.value = POST.ad0.texture; pass(compM, POST.ldr); fxaaM.uniforms.t.value = POST.ldr.texture; pass(fxaaM, null);
 }
 
 // ---------------- terrain: cube-sphere quadtree with skirts and baked AO
@@ -961,7 +971,7 @@ function updateLight() {
   amb.groundColor.setRGB(.16 * (.3 + day), .13 * (.3 + day), .1 * (.3 + day));
   // hemisphere "up" must follow the local vertical: three's hemisphere light uses its position as the sky direction
   amb.position.copy(up);
-  EMAX.value = lerp(3.5, 14, sstep(PLANET.atmo * .3, PLANET.atmo, alt)); // dusk on the ground stays dusky; space can open up for stars
+  EMAX.value = lerp(3.5, 11, sstep(PLANET.atmo * .3, PLANET.atmo, alt)); // dusk on the ground stays dusky; space can open up for stars
   updateEnv(G.dt || 0, t); scene.environmentIntensity = alt > PLANET.atmo * 2 ? .15 : 1;
   scene.backgroundIntensity = lerp(1, .004, sstep(-.16, .08, el) * (1 - sstep(PLANET.atmo * .35, PLANET.atmo, alt))); // stars wash out in a daylight sky
   if (PLANET.cloudMeshes) for (const m of PLANET.cloudMeshes) m.visible = !HI(); // High uses the volumetric clouds
@@ -997,9 +1007,11 @@ function frame(ts) {
   for (const b of BODIES) { b.group.position.copy(b.c).sub(G.O); b.group.quaternion.copy(b.q); }
   FLIGHT.visuals(dt);
   if (G.skyBake) G.skyBake();
-  updateTerrain(HI() ? 8 : 5);
+  updateTerrain(HI() ? 4 : 3);
   updateLight();
   if (G.on) { if (R.on) FLIGHT.hud(dt); else { FLIGHT.hideHud(); updateHud(dt); } }
+  // adaptive resolution: drop a little when frames are slow, climb back when there is room
+  if (G.on && (G.rsT = (G.rsT || 0) + dt) > 3) { G.rsT = 0; const rs = G.rs || 1; let n = rs; if (fps < 42 && rs > .65) n = rs - .1; else if (fps > 57 && rs < 1) n = Math.min(1, rs + .1); if (n !== rs) { G.rs = n; setupPost(); } }
   render(dt);
 }
 
@@ -1021,5 +1033,5 @@ function boot() {
   requestAnimationFrame(frame);
 }
 function placeAt(x, y, z, yaw, pitch) { siteToBody(new V3(x, y, z), P.pos); const up = P.pos.clone().normalize(); P.fwd.set(Math.sin(yaw), 0, -Math.cos(yaw)).applyQuaternion(site.q); P.fwd.addScaledVector(up, -P.fwd.dot(up)).normalize(); P.pitch = pitch || 0; P.vel.set(0, 0, 0); }
-window.YE = {CLOUD3D, CL, WX, weatherM, prebuild: (ms = 20000) => { placeCamera(); for (const b of BODIES) { b.group.position.copy(b.c).sub(G.O); b.group.quaternion.copy(b.q); } const t0 = performance.now(); while (updateTerrain(200) > 0 && performance.now() - t0 < ms); }, placeAt, G, P, PLANET, MOON, site, TERR, heightAt, spawnPlayer, SET, setupPost, atmoM, POST, RND, SUN, cam, waterMat, terrMat, scene, compM, raysM};
+window.YE = {bench(n = 5) { const gl = RND.getContext(), px = new Uint8Array(4); render(.016); gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px); const t0 = performance.now(); for (let i = 0; i < n; i++) render(.016); gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px); return (performance.now() - t0) / n; }, cloudM, ssaoM, CLOUD3D, CL, WX, weatherM, prebuild: (ms = 20000) => { placeCamera(); for (const b of BODIES) { b.group.position.copy(b.c).sub(G.O); b.group.quaternion.copy(b.q); } const t0 = performance.now(); while (updateTerrain(200) > 0 && performance.now() - t0 < ms); }, placeAt, G, P, PLANET, MOON, site, TERR, heightAt, spawnPlayer, SET, setupPost, atmoM, POST, RND, SUN, cam, waterMat, terrMat, scene, compM, raysM};
 // boot() is called at the end of flight.js
