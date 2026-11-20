@@ -15,3 +15,9 @@ A website for a family wellbeing hub in Jan Juc (not a game). There are four tak
   - Bird Rock is a flat-topped stack on a rock platform (`ROCK`, `SHELF`).
   - In the distance, flat-topped cliffs run towards Bells (`HEAD`, `HEAD_FACE`).
 - No kelp. The opening is a muted dusk gradient on `#stage`, not white paper, and the colours are slightly muted. The phone view is centred on x 880 so the sun stays in frame.
+
+## familyhub/book.html (booking finder)
+- Guided "who should I see" booking page for the live demo site (familyhub.aiautomationvic.com, served by the Cloudflare Worker `surfcoast-family-hub`; its source is not in this repo). Option 2 of the booking plan: no Halaxy API, it sends people to each practitioner's own Halaxy / Cliniko / website booking.
+- Steps: who it's for (`WHO`) → what would help (`NEED`, per-who list with practitioner order) → Mental Health Treatment Plan + in person/online (only for needs with `plan`/`how`) → results with fee, Medicare rebate and out-of-pocket, and a tip for which Halaxy service type to choose. "Body care" shortcut. State lives in the URL hash (`who, need, plan, how, r`) so Back and shared links work. Nothing is stored or sent.
+- Practitioner data (`P`) and fees come from the demo site's team and fees pages (Nov 2026). Maddy's and Melissa's fees and assessment fees are unknown, so the page says "ask us".
+- The head has a PREVIEW ONLY block (base href to the demo site, noindex, same-origin paper-edge masks from `familyhub/img/`). Delete it to drop the file into the live site as `book.html`.
