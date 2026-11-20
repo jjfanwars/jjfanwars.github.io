@@ -56,7 +56,7 @@ const hexS = c => '#' + c.toString(16).padStart(6, '0');
 
 // ---------------- net (jjfanwars relay)
 const RELAY_URL = 'wss://jjfanwars-relay.businessautomationvic.workers.dev';
-const GAME_V = 84;
+const GAME_V = 85;
 const Net = {
   tag: '[Rig]', role: 'solo', ws: null, peers: new Map(), code: '', relayT: {pose: 1}, id: '', name: '', handlers: {}, retry: 0, started: false,
   enc: new TextEncoder(), dec: new TextDecoder(),
@@ -3205,7 +3205,7 @@ const VMF = new THREE.Group(); cam.add(VMF); VMF.position.set(.2, -.24, -.45); V
 { const st = new THREE.Mesh(new THREE.CylinderGeometry(.018, .018, .3, 8), new THREE.MeshStandardMaterial({color: 0xb01a10, roughness: .6})); VMF.add(st); const tp = new THREE.Mesh(new THREE.SphereGeometry(.022, 8, 6), new THREE.MeshBasicMaterial({color: new THREE.Color().setRGB(6, 1.2, .5)})); tp.position.y = .16; VMF.add(tp); VMF.userData.tip = tp; }
 const VMC = new THREE.Group(); cam.add(VMC); VMC.position.set(-.05, -.42, -.75);
 function boatPose(dt) {
-  if (!isHost() && B.tx != null) { // guests dead-reckon the last snapshot forward (heading, speed, turn rate, climb rate), then ease toward it, so passengers ride smoothly at plane speeds
+  if (!isHost() && B.tx != null && !BI.on) { // (fallback when snapshots carry no host clock) guests dead-reckon the last snapshot forward (heading, speed, turn rate, climb rate), then ease toward it, so passengers ride smoothly at plane speeds
     const k = Math.min(1, dt * 7), ex = B.sink > 0 ? 0 : 1, dyw = (B.tyr || 0) * dt * ex, dx = -Math.sin(B.tyaw) * B.v * dt * ex, dz = -Math.cos(B.tyaw) * B.v * dt * ex; B.tyaw += dyw; B.yaw += dyw; B.tx += dx; B.tz += dz; B.x += dx; B.z += dz; if (B.tdep != null) { const dd = (B.tvy || 0) * dt * ex; B.tdep += dd; B.dep = mix((B.dep || 0) + dd, B.tdep, k); }
     B.x = mix(B.x, B.tx, k); B.z = mix(B.z, B.tz, k); B.yaw += angD(B.yaw, B.tyaw) * k; }
   const t = G.wt, fx = -Math.sin(B.yaw), fz = -Math.cos(B.yaw), sx = Math.cos(B.yaw), sz = -Math.sin(B.yaw);
@@ -4199,7 +4199,7 @@ function smlLook(cls, X) {
     const W0 = [wz0 - 1.35, fb + .3], W1 = [wz0 - .3, fb + hh + .02], zW = y => W0[0] + (y - W0[1]) / (W1[1] - W0[1]) * (W1[0] - W0[0]), xs = ww + .06;
     const Pa = [zW(fb + .93) + .12, fb + .93], Pb = [wz1 - .56, fb + 1.3], Pc = [wz1 - .56, fb + 1.88], Pd = [zW(fb + 1.72) + .12, fb + 1.72], kb = (Pb[1] - Pa[1]) / (Pb[0] - Pa[0]), yb = z => Pa[1] + (z - Pa[0]) * kb, zA = wz1 + .06;
     const A4 = [zW(fb + .93), fb + .93], A3 = [zA, yb(zA)];
-    for (const sd of [-1, 1]) { const c0 = sd > 0 ? ww + .02 : -xs, c1 = c0 + .04; plate(wh, 'x', [[W0[0], fb + .01], [zA, fb + .01], A3, A4, W0], c0, c1); plate(bk, 'x', [A4, A3, [zA, fb + hh + .02], W1], c0, c1, [[Pa, Pb, Pc, Pd]]); tints.push(pgeo('x', [Pa, Pb, Pc, Pd], c0 + .015, c0 + .025)); }
+    for (const sd of [-1, 1]) { const c0 = sd > 0 ? ww + .02 : -xs, c1 = c0 + .04; plate(wh, 'x', [[W0[0], fb + .01], [zA, fb + .01], A3, A4, W0], c0, c1); const Q = [A4, A3, [zA, fb + hh + .02], W1], qc = Q.reduce((a, q) => [a[0] + q[0] / 4, a[1] + q[1] / 4], [0, 0]), Qi = Q.map(q => [mix(q[0], qc[0], .1), mix(q[1], qc[1], .12)]); plate(bk, 'x', Q, c0, c1, [Qi]); tints.push(pgeo('x', Qi, c0 + .015, c0 + .025)); } // v84: the whole upper side is glass in a slim frame (the solid panel blocked the view from the helm)
     plate(wh, 'z', R(-xs, fb + .01, xs, W0[1]), W0[0] - .04, W0[0]); // front of the cabin moulding under the screen
     { const q = new THREE.BufferGeometry(); q.setAttribute('position', new THREE.Float32BufferAttribute([-xs, W0[1], W0[0], xs, W0[1], W0[0], xs, W1[1], W1[0], -xs, W0[1], W0[0], xs, W1[1], W1[0], -xs, W1[1], W1[0]], 3)); q.computeVertexNormals(); tints.push(q); }
     for (const sx of [-xs, xs]) seg(bk, sx, W0[1], W0[0], sx, W1[1], W1[0], .05, 6); seg(bk, -xs, W0[1] + .02, W0[0] + .01, xs, W0[1] + .02, W0[0] + .01, .04, 6);
@@ -7097,9 +7097,12 @@ function pfPrewarm() {
     fl = new THREE.Group(); fl.add(itemMesh('flare')); fl.add(new THREE.Sprite(new THREE.SpriteMaterial({map: TX.glow, color: 0xff3018, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending}))); fl.visible = false; scene.add(fl);
     applyGfx(); envUpdate(0, true); pfBeaScan();
     const fin = () => { try { if (fl) scene.remove(fl); if (G.on) return;
-        if (SET.gfx === 'high') { const sv = []; scene.traverse(o => { sv.push(o, o.visible, o.frustumCulled); o.visible = true; o.frustumCulled = false; });
+        // one stand-in per program (material + object kind) is enough to build every shader; instanced meshes draw one instance. Drawing the whole world here froze the menu for seconds.
+        if (SET.gfx === 'high') { const sv = [], seen = new Set(), ic = []; scene.traverse(o => { sv.push(o, o.visible, o.frustumCulled); o.frustumCulled = false; const ms = o.material ? (Array.isArray(o.material) ? o.material : [o.material]) : null;
+            if (!ms) { o.visible = true; return; } const k = ms.map(m => m.uuid).join() + (o.isInstancedMesh ? 'i' : '') + (o.isSkinnedMesh ? 's' : '') + (o.isPoints ? 'p' : o.isLine ? 'l' : o.isSprite ? 'r' : '') + (o.geometry && o.geometry.morphAttributes && o.geometry.morphAttributes.position ? 'm' : '') + (o.castShadow ? 'c' : '');
+            o.visible = !seen.has(k); seen.add(k); if (o.visible && o.isInstancedMesh && o.count > 1) { ic.push(o, o.count); o.count = 1; } });
           try { moon.shadow.needsUpdate = flash.shadow.needsUpdate = true; RND.shadowMap.needsUpdate = true; if (POST.on) { postRender(); postPass(POST.rays, POST.a.texture, POST.c); } else RND.render(scene, cam); }
-          finally { for (let i = 0; i < sv.length; i += 3) { sv[i].visible = sv[i + 1]; sv[i].frustumCulled = sv[i + 2]; } } }
+          finally { for (let i = 0; i < sv.length; i += 3) { sv[i].visible = sv[i + 1]; sv[i].frustumCulled = sv[i + 2]; } for (let i = 0; i < ic.length; i += 2) ic[i].count = ic[i + 1]; } }
         RND.setRenderTarget(null); G.drawn = false; PF.prog = [p0, (RND.info.programs || []).length]; } catch (e) { RND.setRenderTarget(null); } };
     RND.setRenderTarget(POST.on ? POST.rt : null); const pr = RND.compileAsync ? RND.compileAsync(scene, cam) : (RND.compile(scene, cam), null); RND.setRenderTarget(null);
     if (pr) pr.then(fin, fin); else fin();
@@ -10986,7 +10989,7 @@ function bfDress(root, R, kind, meshes) {
       box(C.cork, xm - w2 / 2, xm + w2 / 2, y + 1.2, y + 1.8, fz - dz * .02, fz); for (let i = 0; i < 5; i++) { const px = xm - w2 / 2 + .1 + (i / 5) * (w2 - .2); const p = add(new THREE.PlaneGeometry(.16, .2), C.paper, px + .05, y + 1.35 + (i % 2) * .22, fz - dz * .025); p.rotation.y = dz > 0 ? PI : 0; p.rotation.z = (i - 2) * .06; }
       cylP(add, C.red, .07, .07, .45, rr[0][1] - .2, y + .3, fz - dz * .1); break; }
   }
-  for (const p of pieces) p.castShadow = false; root.add(g); return g; }
+  for (const p of pieces) p.castShadow = false; bfMerge(g); root.add(g); return g; }
 function cylP(add, m, r0, r1, h, x, y, z) { return add(new THREE.CylinderGeometry(r0, r1, h, 14), m, x, y, z); }
 // empty rooms per hull class (boat-local floor y and bounds), found with bfRooms (too slow to run live on the big ships) and checked by eye
 const BF_ROOMS = {};
@@ -10994,7 +10997,7 @@ function bfDressAll(root) { const t0 = performance.now(), L = (BF_ROOMS[B.up.cls
   const meshes = [], sides = []; root.traverse(o => { if (o.isMesh && o.visible && !o.isSprite && o.material && !o.material.transparent) meshes.push(o); });
   for (const o of meshes) if (o.material.side !== THREE.DoubleSide && !sides.some(q => q[0] === o.material)) { sides.push([o.material, o.material.side]); o.material.side = THREE.DoubleSide; } // rays must hit walls from inside too
   // the big ships' bridge: the floor the helm stands on (BHELM[2] is its height), dressed round the helm
-  const hy = BHELM[2]; if (hy != null) { const f = BFL.find(f => Math.abs(f.y - hy) < .05 && BHELM[0] >= f.x0 && BHELM[0] <= f.x1 && BHELM[1] >= f.z0 - .6 && BHELM[1] <= f.z1 + .6); if (f && (f.x1 - f.x0) * (f.z1 - f.z0) > 12) L.unshift({y: f.y, x0: f.x0 + .1, x1: f.x1 - .1, z0: f.z0 + .1, z1: f.z1 - .1, k: 'bridge'}); }
+  const HB = HULLS[B.up.cls || 0], hy = BHELM[2]; if (hy != null && (HB.big || (B.up.cls || 0) === 3) && !HB.sub && hy > BDECK.y + 2) { const f = BFL.find(f => Math.abs(f.y - hy) < .05 && BHELM[0] >= f.x0 && BHELM[0] <= f.x1 && BHELM[1] >= f.z0 - .6 && BHELM[1] <= f.z1 + .6); if (f && (f.x1 - f.x0) * (f.z1 - f.z0) > 12) L.unshift({y: f.y, x0: f.x0 + .1, x1: f.x1 - .1, z0: f.z0 + .1, z1: f.z1 - .1, k: 'bridge'}); }
   for (const q of L) { const pts = []; for (let x = q.x0 + .25; x < q.x1; x += .5) for (let z = q.z0 + .25; z < q.z1; z += .5) pts.push({x, z});
     const ups = pts.filter((p, i) => i % 3 === 0).map(p => bfCast(meshes, root.matrixWorld, p.x, q.y + 1.9, p.z, 0, 1, 0, 3)).filter(d => d < 3).sort((a, b) => a - b), up = ups.length ? ups[ups.length >> 1] + 1.9 : 2.4;
     try { bfDress(root, Object.assign({pts, h: Math.min(3.2, up)}, q), q.k, meshes); out.push(q.k); } catch (err) { console.warn('bfDress', err); } }
@@ -11154,7 +11157,7 @@ function pkBuild() { PKT = null; const H = HULLS[B.up.cls || 0]; if (!BOAT || !p
     INTER.push({kind: 'pk', boat: 1, lx: sp.x + x, lz: sp.z + z, by: sp.y + .6, r: 1.1, label: () => { const q = PKS && PKS.s[i]; return q && q[6] ? `Take ${q[1]}'s seat at poker` : 'Sit down at poker'; },
       on: () => P && P.ob && !P.sw && !P.seat && P.pk == null && !(PKS && PKS.s[i] && !PKS.s[i][6]), go: () => act({a: 'pks', s: i})});
     // per seat: two hole cards, a stack, a bet, a name label, a bot figure
-    const k = .43, cx = x * k, cz = z * k, sd = [Math.cos(yaw), -Math.sin(yaw)]; T.hole.push([0, 1].map(j => { const m = add(pkCardGeo(), M.card, cx + sd[0] * (j - .5) * .075, .798 + j * .001, cz + sd[1] * (j - .5) * .075); m.rotation.y = yaw; m.visible = false; return m; }));
+    const k = .43, cx = x * k, cz = z * k, sd = [Math.cos(yaw), -Math.sin(yaw)]; T.hole.push([0, 1].map(j => { const m = add(pkCardGeo(), M.card.clone ? M.card : M.card, cx + sd[0] * (j - .5) * .075, .798 + j * .001, cz + sd[1] * (j - .5) * .075); m.rotation.y = yaw; m.visible = false; return m; }));
     const cg = PK.chipG || (PK.chipG = new THREE.CylinderGeometry(.02, .02, 1, 16)), col = (n, bx, bz, m0) => Array.from({length: n}, (_, j) => { const o = add(cg, M.chip[(m0 + j) % 4], bx + sd[0] * (j - (n - 1) / 2) * .045, .8, bz + sd[1] * (j - (n - 1) / 2) * .045); o.visible = false; return o; });
     T.stacks.push(col(3, x * .52 + sd[0] * .2, z * .52 + sd[1] * .2, i)); T.bets.push(col(2, x * .3, z * .3, i + 1));
     const cvs = document.createElement('canvas'); cvs.width = 256; cvs.height = 72; const tx = new THREE.CanvasTexture(cvs); tx.colorSpace = THREE.SRGBColorSpace; const sp2 = new THREE.Sprite(new THREE.SpriteMaterial({map: tx, transparent: true, depthWrite: false})); sp2.scale.set(.62, .175, 1); sp2.position.set(x * 1.02, 1.62, z * 1.02); sp2.visible = false; g.add(sp2); T.labels.push({sp: sp2, cv: cvs, tx, key: ''});
@@ -11165,7 +11168,7 @@ function pkBuild() { PKT = null; const H = HULLS[B.up.cls || 0]; if (!BOAT || !p
   for (let i = 0; i < 5; i++) { const m = add(pkCardGeo(), M.card, 0, .798, (i - 2) * .085); m.rotation.y = PI / 2; m.visible = false; T.cards.push(m); }
   T.pot = [[.2, 0], [.25, .04], [.25, -.04], [.3, 0], [.2, .08], [.2, -.08]].map(([x, z], j) => { const o = add(PK.chipG, M.chip[j % 4], x, .8, z); o.visible = false; return o; });
   T.dbtn = add(new THREE.CylinderGeometry(.03, .03, .012, 18), M.btn, 0, .8, 0); T.dbtn.visible = false;
-  pkDraw(); }
+  for (const L of [T.cards, T.hole.flat(), T.stacks.flat(), T.bets.flat(), T.pot, [T.dbtn], T.bots]) for (const o of L) if (o) o.userData.dyn = 1; for (const L of T.labels) L.sp.userData.dyn = 1; bfMerge(g); pkDraw(); }
 const pkH = v => Math.min(.16, .006 + Math.ceil(v / 20) * .0035); // a chip stack's height for v chips
 // v chips over a set of columns: 20 a chip, at most 16 chips (5.4 mm each) a column, filled left to right
 function pkStacks(L, v) { let n = Math.ceil(Math.max(0, v) / 20); const per = Math.max(1, Math.ceil(n / L.length)), cap = 16; for (const o of L) { const k = Math.min(n, Math.min(cap, per)); n -= k; o.visible = k > 0; if (k) { const h = k * .0054; o.scale.y = h; o.position.y = .795 + h / 2; } } }
@@ -11212,3 +11215,28 @@ addEventListener('wheel', e => { if (!G.on || !P || P.pk == null || !PKS) return
 { toolUp = before(toolUp, function () { if (P && P.pk != null) return; return NEXT; }); }
 { startGame = before(startGame, function () { PK.seats.fill(null); pkReset(); PKS = null; PKH = []; PKLOG.length = 0; if (P) P.pk = null; return NEXT; }); }
 if (TEST && window.__S) { Object.assign(window.__S, {PK, pkBest, pkEval5, pkDo, pkHostAct, pkSpot, pkHost}); Object.defineProperties(window.__S, {PKS: {get: () => PKS}, PKT: {get: () => PKT}, PKH: {get: () => PKH}}); }
+
+// ---------------- guest boat interpolation (v84): guests draw the boat ~110 ms in the past, blended between two real snapshots.
+// The old dead-reckoning (heading + turn rate + ease) mispredicted every steering change, which showed as chop under the host's autopilot,
+// in the docking glide and whenever the host's frame rate dipped. Snapshots carry the host clock (s.bt, ms); BI.off is the smallest
+// arrival - host offset seen (relaxing 1 ms/s for drift), so network jitter does not shift the timeline. Jumps over 40 m reset the buffer.
+const BI = {buf: [], off: null, on: false, iv: 67, lt: 0};
+{ packSnap = after(packSnap, function (s) { s.bt = Math.round(performance.now()); }); }
+{ applySnap = after(applySnap, function (r, s) { if (isHost() || BI.dis || !s || !s.b || s.bt == null) return; const now = performance.now(), o = now - s.bt;
+  BI.off = BI.off == null ? o : Math.min(BI.off + (now - (BI.lt || now)) * .001, o); BI.lt = now; const L = BI.buf, last = L[L.length - 1];
+  if (last && s.bt <= last.t) return; if (last) BI.iv = mix(BI.iv, clamp(s.bt - last.t, 20, 400), .1);
+  const q = {t: s.bt, x: s.b[0], z: s.b[1], yaw: s.b[2], dep: s.b[9] || 0}; if (last && Math.hypot(q.x - last.x, q.z - last.z) > 40) L.length = 0; L.push(q); if (L.length > 30) L.shift(); BI.on = true; }); }
+{ boatPose = before(boatPose, function (dt) { if (isHost() || BI.dis || !BI.on || !BI.buf.length) return NEXT; const L = BI.buf, rt = performance.now() - BI.off - Math.max(110, BI.iv * 1.6); let a = L[0], b = null;
+  for (let i = L.length - 1; i >= 0; i--) if (L[i].t <= rt) { a = L[i]; b = L[i + 1] || null; break; }
+  let x, z, yaw, dep; if (b) { const u = clamp((rt - a.t) / Math.max(1, b.t - a.t), 0, 1); x = mix(a.x, b.x, u); z = mix(a.z, b.z, u); yaw = a.yaw + angD(a.yaw, b.yaw) * u; dep = mix(a.dep, b.dep, u); }
+  else { const n = L.length, p = L[n - 1], o = L[n - 2]; if (rt < L[0].t || !o) { x = p.x; z = p.z; yaw = p.yaw; dep = p.dep; if (rt < L[0].t) { x = L[0].x; z = L[0].z; yaw = L[0].yaw; dep = L[0].dep; } }
+    else { const e = clamp(rt - p.t, 0, 250) / Math.max(1, p.t - o.t); x = p.x + (p.x - o.x) * e; z = p.z + (p.z - o.z) * e; yaw = p.yaw + angD(o.yaw, p.yaw) * e; dep = p.dep + (p.dep - o.dep) * e; } }
+  B.x = x; B.z = z; B.yaw = yaw; B.dep = dep; B.tx = x; B.tz = z; B.tyaw = yaw; B.tdep = dep; B.tyr = 0; B.tvy = 0; return NEXT; }); }
+{ startGame = before(startGame, function () { BI.buf.length = 0; BI.off = null; BI.on = false; return NEXT; }); }
+if (TEST && window.__S) Object.assign(window.__S, {BI, boatPose});
+
+// merge every static mesh under g (skipping userData.dyn ones and their children) into one mesh per material; parts under 30 cm cast no shadow
+function bfMerge(g, skip) { g.updateMatrixWorld(true); const inv = new THREE.Matrix4().copy(g.matrixWorld).invert(), L = [], dead = [];
+  g.traverse(o => { if (o === g || !o.isMesh || o.isSprite || o.isInstancedMesh || Array.isArray(o.material)) return; for (let q = o; q && q !== g; q = q.parent) if (q.userData.dyn || (skip && skip.has(q))) return;
+    const geo = o.geometry.clone(); geo.applyMatrix4(new THREE.Matrix4().multiplyMatrices(inv, o.matrixWorld)); if (!geo.boundingSphere) geo.computeBoundingSphere(); L.push([geo, o.material, o.castShadow && geo.boundingSphere.radius > .15]); dead.push(o); });
+  for (const o of dead) { o.parent.remove(o); o.geometry.dispose(); } for (const m of mergeByMat(L)) g.add(m); return L.length; }
