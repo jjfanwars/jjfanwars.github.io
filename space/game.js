@@ -24,8 +24,8 @@ function ridged(x, y, z, o, s) { let t = 0, a = .5, f = 1; for (let i = 0; i < o
 
 // ---------------- solar system (semi-real: small planet, real gravity)
 const SUN = new V3(1, .18, .35).normalize(); // inertial direction to the sun
-const PLANET = {name: 'Home', R: 60000, GM: 9.81 * 60000 * 60000, atmo: 7500, day: 3600, maxL: 12, seed: 11, water: true};
-const MOON = {name: 'Moon', R: 20000, GM: 1.63 * 20000 * 20000, atmo: 0, maxL: 10, seed: 71, water: false, orbit: 400000};
+const PLANET = {name: 'Home', R: 600000, GM: 9.81 * 600000 * 600000, atmo: 22000, day: 21600, maxL: 15, seed: 11, water: true};
+const MOON = {name: 'Moon', R: 200000, GM: 1.63 * 200000 * 200000, atmo: 0, maxL: 14, seed: 71, water: false, orbit: 12000000};
 MOON.period = 2 * Math.PI * Math.sqrt(MOON.orbit ** 3 / PLANET.GM);
 const BODIES = [PLANET, MOON];
 const SITE = new V3(1, 0, 0); // space centre direction (body-fixed), on the equator
@@ -43,8 +43,8 @@ function bodyState(b, t) { // centre (inertial) and rotation
 // ---------------- heights
 const CRATERS = (() => { const out = []; let s = 7; const r = () => (s = (Math.imul(s, 1664525) + 1013904223) >>> 0) / 4294967296;
   for (let i = 0; i < 700; i++) { const z = r() * 2 - 1, a = r() * 6.283, q = Math.sqrt(1 - z * z); const big = i < 18;
-    const rad = big ? 2500 + r() * 4000 : Math.min(2400, 140 / Math.pow(1 - r() * .985, .62));
-    const c = {d: new V3(q * Math.cos(a), z, q * Math.sin(a)), r: rad, young: !big && rad > 500 && i % 61 === 3, seed: i}; c.cos = Math.cos(Math.min(1.5, 7 * rad / 20000)); out.push(c); }
+    const rad = big ? 20000 + r() * 30000 : Math.min(19000, 1100 / Math.pow(1 - r() * .985, .62));
+    const c = {d: new V3(q * Math.cos(a), z, q * Math.sin(a)), r: rad, young: !big && rad > 4000 && i % 61 === 3, seed: i}; c.cos = Math.cos(Math.min(1.5, 7 * rad / 200000)); out.push(c); }
   return out; })();
 let CR_NEAR = null; // craters that can touch the chunk being built
 // moon features shared by height and colour
@@ -59,23 +59,23 @@ function microCraters(px, py, pz, amp) { // 2x2x2 nearest cells, one crater per 
 function siteDist(x, y, z) { return Math.acos(clamp(x * SITE.x + y * SITE.y + z * SITE.z, -1, 1)) * PLANET.R; }
 function heightAt(b, x, y, z) { // unit direction, body-fixed -> metres above sea level / datum
   if (b === PLANET) {
-    const ox = 13.1, cont = fbm(x * 1.8 + ox, y * 1.8, z * 1.8, 5, 1);
-    let h = cont * 2600 - 120;
-    const m = ridged(x * 7, y * 7, z * 7, 5, 9); h += m * m * 1900 * sstep(-.05, .35, cont);
-    h += fbm(x * 60, y * 60, z * 60, 3, 20) * 90 + fbm(x * 500, y * 500, z * 500, 3, 30) * 9 + noise3(x * 3000, y * 3000, z * 3000, 40) * 1.2;
+    const ox = 13.1, cont = fbm(x * 1.8 + ox, y * 1.8, z * 1.8, 7, 1);
+    let h = cont * 4200 - 200;
+    const m = ridged(x * 7, y * 7, z * 7, 7, 9); h += m * m * 4800 * sstep(-.05, .35, cont);
+    h += fbm(x * 60, y * 60, z * 60, 4, 20) * 260 + fbm(x * 500, y * 500, z * 500, 3, 30) * 45 + fbm(x * 4000, y * 4000, z * 4000, 3, 35) * 7 + noise3(x * 30000, y * 30000, z * 30000, 40) * 1.2;
     const sd = siteDist(x, y, z);
     if (sd < 11000) { const k = 1 - sstep(2200, 11000, sd); h = lerp(h, 30 + Math.max(0, h) * .25 + fbm(x * 90, y * 90, z * 90, 3, 50) * 60, k);
       h = lerp(h, SITE_H + sd * sd / (2 * PLANET.R), 1 - sstep(1500, 2300, sd)); } // flat plane (tangent to the planet) under the space centre
     return h;
   }
   const mare = mareAt(x, y, z);
-  let h = (fbm(x * 3, y * 3, z * 3, 5, 3) * 700 + fbm(x * 40, y * 40, z * 40, 3, 6) * 50) * (1 - .75 * mare) - 420 * mare + noise3(x * 900, y * 900, z * 900, 8) * 2;
+  let h = (fbm(x * 3, y * 3, z * 3, 6, 3) * 2400 + fbm(x * 40, y * 40, z * 40, 4, 6) * 220 + fbm(x * 400, y * 400, z * 400, 3, 12) * 25) * (1 - .75 * mare) - 1400 * mare + noise3(x * 9000, y * 9000, z * 9000, 8) * 2.5;
   const CL = CR_NEAR || CRATERS; for (let i = 0; i < CL.length; i++) { const c = CL[i]; const dd = x * c.d.x + y * c.d.y + z * c.d.z; if (dd < c.cos) continue;
     const d = Math.acos(Math.min(1, dd)) * MOON.R / c.r; if (d > 2.2) continue;
     const depth = c.r * (c.r > 1500 ? .12 : .32), rim = c.r * .07;
     h += d < 1 ? Math.max(-depth, depth * (d * d - 1)) * (1 - d ** 8) + rim * d ** 6 + (c.r > 1500 ? c.r * .07 * Math.exp(-((d / .16) ** 2)) : 0) // bowl, flat floor, central peak
       : rim * Math.exp(-(((d - 1) * 2.6) ** 2)); }
-  const k = 1 - .5 * mare; h += microCraters(x * MOON.R / 420, y * MOON.R / 420, z * MOON.R / 420, 420 * k) + microCraters(x * MOON.R / 95, y * MOON.R / 95, z * MOON.R / 95, 95 * k) + microCraters(x * MOON.R / 22, y * MOON.R / 22, z * MOON.R / 22, 22 * k) + microCraters(x * MOON.R / 6, y * MOON.R / 6, z * MOON.R / 6, 5 * k);
+  const k = 1 - .5 * mare; h += microCraters(x * MOON.R / 3000, y * MOON.R / 3000, z * MOON.R / 3000, 3000 * k) + microCraters(x * MOON.R / 420, y * MOON.R / 420, z * MOON.R / 420, 420 * k) + microCraters(x * MOON.R / 95, y * MOON.R / 95, z * MOON.R / 95, 95 * k) + microCraters(x * MOON.R / 22, y * MOON.R / 22, z * MOON.R / 22, 22 * k) + microCraters(x * MOON.R / 6, y * MOON.R / 6, z * MOON.R / 6, 5 * k);
   return h;
 }
 // colour (linear rgb) for a vertex
@@ -89,9 +89,9 @@ function colorAt(b, x, y, z, h, slope) {
     if (h < -2) { const dp = sstep(-2, -60, h); r = lerp(.5, .03, dp); g = lerp(.47, .07, dp); bl = lerp(.36, .1, dp); sand = 1; } // sea floor: sand in the shallows, dark further out
     else if (h < 4 + n * 10 && siteDist(x, y, z) > 2300) { r = .82; g = .74; bl = .52; sand = 1; } // beach
     else { const f = sstep(.25, .75, n); r = lerp(.4, .25, f); g = lerp(.48, .34, f); bl = lerp(.26, .18, f); } // grass / forest
-    const rock = Math.max(sstep(.35, .6, slope), sstep(950, 1400, h + n * 250));
+    const rock = Math.max(sstep(.35, .6, slope), sstep(2300, 3100, h + n * 500));
     r = lerp(r, .42, rock); g = lerp(g, .39, rock); bl = lerp(bl, .36, rock);
-    const snow = Math.max(sstep(1350, 1700, h + n * 300), sstep(.82, .9, lat + n * .05)) * (1 - sstep(.55, .75, slope));
+    const snow = Math.max(sstep(3200, 3800, h + n * 600), sstep(.82, .9, lat + n * .05)) * (1 - sstep(.55, .75, slope));
     r = lerp(r, .95, snow); g = lerp(g, .96, snow); bl = lerp(bl, 1, snow);
     _wt[0] = (1 - sand) * (1 - rock) * (1 - snow); _wt[1] = sand * (1 - rock) * (1 - snow); _wt[2] = rock * (1 - snow); _wt[3] = snow;
   } else { _wt[0] = 0; _wt[1] = .55; _wt[2] = .45; _wt[3] = 0;
@@ -109,7 +109,7 @@ function colorAt(b, x, y, z, h, slope) {
 const canvas = $('gl');
 const RND = new THREE.WebGLRenderer({canvas, antialias: false, logarithmicDepthBuffer: true, powerPreference: 'high-performance'});
 RND.shadowMap.enabled = true; RND.shadowMap.type = THREE.PCFSoftShadowMap;
-const FAR = 5e6;
+const FAR = 6e7;
 // ---------------- textures (CC0, Poly Haven: see THIRD_PARTY.md). name_c = colour, _n = normal (GL), _r = roughness
 const TXL = new THREE.TextureLoader(), TX = {};
 function tex(name, kind) { const k = name + kind; if (TX[k]) return TX[k];
@@ -125,23 +125,24 @@ sunL.shadow.mapSize.set(2048, 2048); const sc = sunL.shadow.camera; sc.left = -2
 const amb = new THREE.HemisphereLight(0x9ec8ff, 0x2a2418, .5); scene.add(amb);
 
 // ---------------- shared GLSL: atmosphere scattering + noise
-const BR = new V3(5.8e-6, 13.5e-6, 33.1e-6).multiplyScalar(6), BM = 21e-6 * 2.8, HR = 950, HM = 190, SUN_I = 3.6; // sun irradiance: same units as the directional light, so sky and ground brightness match
+const BR = new V3(5.8e-6, 13.5e-6, 33.1e-6).multiplyScalar(3.2), BM = 21e-6 * 1.9, HR = 2500, HM = 500, BO = new V3(.65e-6, 1.881e-6, .085e-6).multiplyScalar(3.2), OZ_C = 7800, OZ_W = 4700, SUN_I = 3.6; // sun irradiance: same units as the directional light, so sky and ground brightness match
 const GLSL_ATMO = `
-uniform vec3 bR; uniform float bM, hR, hM, R, Ra, sunI;
+uniform vec3 bR, bO; uniform float bM, hR, hM, R, Ra, sunI;
+float ozone(float h){ return max(0., 1. - abs(h - ${OZ_C}.) / ${OZ_W}.); }
 vec2 rs(vec3 o, vec3 d, float r){ float b = dot(o, d), c = dot(o, o) - r*r, h = b*b - c; if (h < 0.) return vec2(1e20, -1e20); h = sqrt(h); return vec2(-b - h, -b + h); }
 // single scattering (Rayleigh + Mie) along o + d*t for t in [t0, t1]; returns in-scattered light and the transmittance
 vec3 scatter(vec3 o, vec3 d, float t0, float t1, vec3 sunDir, int steps, out vec3 trans) {
-  float ds = (t1 - t0) / float(steps), odR = 0., odM = 0.; vec3 sR = vec3(0.), sM = vec3(0.);
+  float ds = (t1 - t0) / float(steps), odR = 0., odM = 0., odO = 0.; vec3 sR = vec3(0.), sM = vec3(0.);
   for (int i = 0; i < 24; i++) { if (i >= steps) break;
     vec3 p = o + d * (t0 + ds * (float(i) + .5)); float hh = max(0., length(p) - R);
-    float dR = exp(-hh / hR) * ds, dM = exp(-hh / hM) * ds; odR += dR; odM += dM;
+    float dR = exp(-hh / hR) * ds, dM = exp(-hh / hM) * ds; odR += dR; odM += dM; odO += ozone(hh) * ds;
     vec2 sh = rs(p, sunDir, R - 60.); if (sh.x > 0. && sh.x < 1e19) continue; // in the planet's shadow
-    float lt = rs(p, sunDir, Ra).y / 4., lR = 0., lM = 0.;
-    for (int j = 0; j < 4; j++) { vec3 q = p + sunDir * lt * (float(j) + .5); float h2 = max(0., length(q) - R); lR += exp(-h2 / hR) * lt; lM += exp(-h2 / hM) * lt; }
-    vec3 at = exp(-(bR * (odR + lR) + bM * 1.1 * (odM + lM))); sR += at * dR; sM += at * dM; }
+    float lt = rs(p, sunDir, Ra).y / 4., lR = 0., lM = 0., lO = 0.;
+    for (int j = 0; j < 4; j++) { vec3 q = p + sunDir * lt * (float(j) + .5); float h2 = max(0., length(q) - R); lR += exp(-h2 / hR) * lt; lM += exp(-h2 / hM) * lt; lO += ozone(h2) * lt; }
+    vec3 at = exp(-(bR * (odR + lR) + bM * 1.1 * (odM + lM) + bO * (odO + lO))); sR += at * dR; sM += at * dM; }
   float mu = dot(d, sunDir), g = .76;
   float pR = .0596831 * (1. + mu*mu), pM = .1193662 * ((1. - g*g) * (1. + mu*mu)) / ((2. + g*g) * pow(1. + g*g - 2.*g*mu, 1.5));
-  trans = exp(-(bR * odR + bM * 1.1 * odM));
+  trans = exp(-(bR * odR + bM * 1.1 * odM + bO * odO));
   return sunI * (sR * bR * pR + sM * bM * pM);
 }`;
 const GLSL_NOISE = `
@@ -149,7 +150,7 @@ float h31(vec3 p){ p = fract(p * vec3(.1031, .1030, .0973)); p += dot(p, p.yxz +
 float vn(vec3 x){ vec3 i = floor(x), f = fract(x); f = f*f*(3.-2.*f);
   return mix(mix(mix(h31(i), h31(i+vec3(1,0,0)), f.x), mix(h31(i+vec3(0,1,0)), h31(i+vec3(1,1,0)), f.x), f.y), mix(mix(h31(i+vec3(0,0,1)), h31(i+vec3(1,0,1)), f.x), mix(h31(i+vec3(0,1,1)), h31(i+vec3(1,1,1)), f.x), f.y), f.z); }
 float fbm3(vec3 p, int o){ float t = 0., a = .5; for (int i = 0; i < 8; i++) { if (i >= o) break; t += a * vn(p); p = p * 2.03 + 17.1; a *= .5; } return t; }`;
-const atmoU = () => ({bR: {value: BR}, bM: {value: BM}, hR: {value: HR}, hM: {value: HM}, R: {value: PLANET.R}, Ra: {value: PLANET.R + PLANET.atmo}, sunI: {value: SUN_I}});
+const atmoU = () => ({bO: {value: BO}, bR: {value: BR}, bM: {value: BM}, hR: {value: HR}, hM: {value: HM}, R: {value: PLANET.R}, Ra: {value: PLANET.R + PLANET.atmo}, sunI: {value: SUN_I}});
 
 // ---------------- the galaxy: Milky Way band, dust lanes, nebulae and ~a million stars, baked once into a cube map
 function bakeSky() {
@@ -235,7 +236,7 @@ const atmoM = new THREE.ShaderMaterial({vertexShader: VS, depthTest: false, dept
     vec2 a = rs(camPos, d, Ra); float t0 = max(a.x, 0.), t1 = min(a.y, dist);
     vec2 gp = rs(camPos, d, R - 30.); if (dist > 1e19 && gp.x > 0. && gp.x < 1e19) { t1 = min(t1, gp.x); col = vec3(.02, .025, .02) * max(0., dot(normalize(camPos + d * gp.x), sunDir)); dist = gp.x; } // ground not built yet: dark stand-in
     if (t1 > t0) { vec3 ins = scatter(camPos, d, t0, t1, sunDir, steps, trans); col = col * trans + ins; }
-    if (dist > 1e6) { // the sun: limb-darkened disc + a tight glow
+    if (dist > 1e19) { // the sun: limb-darkened disc + a tight glow
       float c = dot(d, sunDir), ang = acos(clamp(c, -1., 1.)), rr = ang / .0062;
       if (rr < 1.) { float mu = sqrt(1. - rr * rr); col += trans * vec3(1., .97, .92) * 30000. * (.4 + .6 * pow(mu, .6)); }
       col += trans * vec3(1., .93, .84) * (exp(-ang * 90.) * 30. + exp(-ang * 14.) * .6); }
@@ -245,26 +246,27 @@ const lumM = new THREE.ShaderMaterial({vertexShader: VS, depthTest: false, unifo
   fragmentShader: 'uniform sampler2D t; varying vec2 vUv; void main(){ float s = 0.; for (int y = 0; y < 4; y++) for (int x = 0; x < 4; x++) { vec3 c = texture2D(t, vUv + (vec2(x, y) - 1.5) / vec2(256., 128.)).rgb; s += log(max(dot(c, vec3(.2126, .7152, .0722)), .012)); } gl_FragColor = vec4(s / 16., 0., 0., 1.); }'});
 const avgM = new THREE.ShaderMaterial({vertexShader: VS, depthTest: false, uniforms: {t: {value: null}, prev: {value: null}, k: {value: .05}},
   fragmentShader: 'uniform sampler2D t, prev; uniform float k; varying vec2 vUv; void main(){ float s = 0., w = 0.; for (int y = 0; y < 8; y++) for (int x = 0; x < 16; x++) { vec2 uv = (vec2(x, y) + .5) / vec2(16., 8.); float ww = 1.2 - length(uv - .5) * 1.4; s += texture2D(t, uv).r * ww; w += ww; }\n  float L = exp(s / w), p = texture2D(prev, vec2(.5)).r; if (p <= 0.) p = L; gl_FragColor = vec4(exp(mix(log(p), log(L), k)), 0., 0., 1.); }'});
-const brightM = new THREE.ShaderMaterial({vertexShader: VS, depthTest: false, uniforms: {t: {value: null}, ad: {value: null}},
-  fragmentShader: 'uniform sampler2D t, ad; varying vec2 vUv; void main(){ float e = clamp(.1 / texture2D(ad, vec2(.5)).r, .02, 14.); vec3 c = texture2D(t, vUv).rgb * e; float l = max(c.r, max(c.g, c.b)); gl_FragColor = vec4(min(c * smoothstep(1.5, 5., l), vec3(60.)), 1.); }'});
+const EMAX = {value: 14};
+const brightM = new THREE.ShaderMaterial({vertexShader: VS, depthTest: false, uniforms: {t: {value: null}, ad: {value: null}, eMax: EMAX},
+  fragmentShader: 'uniform float eMax; uniform sampler2D t, ad; varying vec2 vUv; void main(){ float e = clamp(.1 / texture2D(ad, vec2(.5)).r, .02, eMax); vec3 c = texture2D(t, vUv).rgb * e; float l = max(c.r, max(c.g, c.b)); gl_FragColor = vec4(min(c * smoothstep(1.5, 5., l), vec3(60.)), 1.); }'});
 const downM = new THREE.ShaderMaterial({vertexShader: VS, depthTest: false, uniforms: {t: {value: null}, px: {value: new THREE.Vector2()}},
   fragmentShader: 'uniform sampler2D t; uniform vec2 px; varying vec2 vUv; void main(){ gl_FragColor = vec4((texture2D(t, vUv + px * vec2(-1., -1.)).rgb + texture2D(t, vUv + px * vec2(1., -1.)).rgb + texture2D(t, vUv + px * vec2(-1., 1.)).rgb + texture2D(t, vUv + px).rgb) * .25, 1.); }'});
 const blurM = new THREE.ShaderMaterial({vertexShader: VS, depthTest: false, uniforms: {t: {value: null}, d: {value: new THREE.Vector2()}},
   fragmentShader: 'uniform sampler2D t; uniform vec2 d; varying vec2 vUv; void main(){ vec3 c = texture2D(t, vUv).rgb * .227; c += (texture2D(t, vUv + d*1.38).rgb + texture2D(t, vUv - d*1.38).rgb) * .316; c += (texture2D(t, vUv + d*3.23).rgb + texture2D(t, vUv - d*3.23).rgb) * .07; gl_FragColor = vec4(c, 1.); }'});
 const compM = new THREE.ShaderMaterial({vertexShader: VS, depthTest: false,
-  uniforms: {t: {value: null}, b: {value: null}, b2: {value: null}, ad: {value: null}, tDep: {value: null}, sunUV: {value: new THREE.Vector2(-9, -9)}, sunCol: {value: new V3(1, 1, 1)}, aspect: {value: 1}, sunOn: {value: 0}, time: {value: 0}},
-  fragmentShader: `uniform sampler2D t, b, b2, ad, tDep; uniform vec2 sunUV; uniform vec3 sunCol; uniform float aspect, sunOn, time; varying vec2 vUv;
+  uniforms: {eMax: EMAX, t: {value: null}, b: {value: null}, b2: {value: null}, ad: {value: null}, tDep: {value: null}, sunUV: {value: new THREE.Vector2(-9, -9)}, sunCol: {value: new V3(1, 1, 1)}, aspect: {value: 1}, sunOn: {value: 0}, time: {value: 0}},
+  fragmentShader: `uniform float eMax; uniform sampler2D t, b, b2, ad, tDep; uniform vec2 sunUV; uniform vec3 sunCol; uniform float aspect, sunOn, time; varying vec2 vUv;
   vec3 aces(vec3 x){ return clamp((x*(2.51*x+.03))/(x*(2.43*x+.59)+.14), 0., 1.); }
   float hh(vec2 p){ return fract(sin(dot(p, vec2(12.9898, 78.233)) + time) * 43758.5453); }
   void main(){
-    float e = clamp(.1 / texture2D(ad, vec2(.5)).r, .02, 14.);
+    float e = clamp(.1 / texture2D(ad, vec2(.5)).r, .02, eMax);
     vec3 c = texture2D(t, vUv).rgb * e + texture2D(b, vUv).rgb * .14 + texture2D(b2, vUv).rgb * .12;
     if (sunOn > .5) { // how much of the sun disc is unblocked (depth taps around it), then glare, starburst and ghosts
       float vis = 0.; for (int y = -2; y <= 2; y++) for (int x = -2; x <= 2; x++) vis += step(.99999, texture2D(tDep, sunUV + vec2(x, y) * .0035 * vec2(1. / aspect, 1.)).x); vis /= 25.;
       vis *= smoothstep(-.1, .05, min(min(sunUV.x, sunUV.y), min(1. - sunUV.x, 1. - sunUV.y)));
       if (vis > 0.) { vec2 sv = vUv - sunUV; sv.x *= aspect; float r = length(sv), a = atan(sv.y, sv.x);
-        float sp = pow(abs(cos(a * 3.)), 120.) + pow(abs(cos(a * 3. + .5236)), 160.) * .6 + pow(abs(cos(a * 9. + .3)), 40.) * .15;
-        c += sunCol * vis * (sp * exp(-r * 8.) * .55 + exp(-r * 14.) * .55 + exp(-r * 3.) * .05);
+        float sp = pow(abs(cos(a * 2. + .4)), 900.) + pow(abs(cos(a * 3. + 1.1)), 1400.) * .5;
+        c += sunCol * vis * (sp * exp(-r * 4.) * .35 + exp(-r * 22.) * 1.2 + exp(-r * 6.) * .18 + exp(-r * 1.6) * .03);
         vec2 ax = vec2(.5) - sunUV; float fs[6] = float[6](.35, .62, .95, 1.25, 1.55, 2.1), sz[6] = float[6](.03, .06, .018, .1, .04, .14);
         vec3 tc[6] = vec3[6](vec3(.4, .9, .5), vec3(.5, .6, 1.), vec3(1., .8, .3), vec3(.3, .5, 1.), vec3(1., .4, .6), vec3(.6, .9, 1.));
         for (int i = 0; i < 6; i++) { vec2 q = vUv - (sunUV + ax * fs[i]); q.x *= aspect; float d = length(q); c += sunCol * tc[i] * vis * smoothstep(sz[i], sz[i] * .7, d) * (.05 + .1 * smoothstep(sz[i] * .6, sz[i], d)) * .5; } } }
@@ -324,15 +326,21 @@ const terrIndex = (() => { const idx = [];
 const terrMat = new THREE.MeshStandardMaterial({vertexColors: true, roughness: .93, metalness: 0});
 const TMATS = ['grass', 'sand', 'rock', 'snow'];
 // cloud shadows: the same coverage noise as the cloud layer, looked up where the sun ray through this point crosses it
-const CLOUDU = {sunB: {value: new V3()}, cT: {value: 0}, cOn: {value: 1}};
+const CLOUDU = {sunB: {value: new V3()}, cT: {value: 0}, cOn: {value: 1}, camT: {value: new V3(1, 1, 1)}};
 function cloudShadow(sh, isTerr) {
-  Object.assign(sh.uniforms, CLOUDU, {pR: {value: PLANET.R}});
+  Object.assign(sh.uniforms, CLOUDU, {pR: {value: PLANET.R}, aRa: {value: PLANET.R + PLANET.atmo}, aBR: {value: BR}, aBO: {value: BO}, aBM: {value: BM}, aHR: {value: HR}, aHM: {value: HM}});
   sh.vertexShader = 'attribute vec3 bd; varying vec3 vBd;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n vBd = bd;');
-  sh.fragmentShader = 'uniform vec3 sunB; uniform float cT, cOn, pR; varying vec3 vBd;\n' + GLSL_NOISE + `
+  sh.fragmentShader = 'uniform vec3 sunB, camT, aBR, aBO; uniform float cT, cOn, pR, aRa, aBM, aHR, aHM; varying vec3 vBd; vec3 gSunT = vec3(1.);\n' + GLSL_NOISE + `
+    // sunlight reaching this point on the ground: reddened by the air, cut off by the planet (soft terminator)
+    vec3 sunTrans(){ vec3 b = normalize(vBd); float mu = dot(b, sunB); if (mu < -.1) return vec3(0.);
+      vec3 p = b * (pR + 5.); float bb = dot(p, sunB), c = dot(p, p) - aRa * aRa, tt = -bb + sqrt(max(bb * bb - c, 0.)), ds = tt / 6., oR = 0., oM = 0., oO = 0.;
+      for (int i = 0; i < 6; i++) { float hh = max(0., length(p + sunB * ds * (float(i) + .5)) - pR); oR += exp(-hh / aHR) * ds; oM += exp(-hh / aHM) * ds; oO += max(0., 1. - abs(hh - ${OZ_C}.) / ${OZ_W}.) * ds; }
+      return exp(-(aBR * oR + aBM * 1.1 * oM + aBO * oO)) * smoothstep(-.01, .006, mu); }
     float cshadow(){ if (cOn < .5) return 1.; vec3 b = normalize(vBd); float su = dot(b, sunB); if (su < -.05) return 1.;
       vec3 p = normalize(b * pR + sunB * ${CLOUD_H}. / max(su, .12)); vec3 q = p * 6. + vec3(cT * .0006, 0., cT * .0004);
       float c = smoothstep(.47, .8, fbm3(q, 4) + (fbm3(p * 55. + q * .2, 2) - .5) * .32); return 1. - c * .72 * smoothstep(-.05, .15, su); }\n` +
-    sh.fragmentShader.replace('#include <color_fragment>', '#include <color_fragment>\n diffuseColor.rgb *= cshadow();');
+    sh.fragmentShader.replace('#include <color_fragment>', '#include <color_fragment>\n diffuseColor.rgb *= cshadow(); gSunT = sunTrans() / max(camT, vec3(.002));')
+      .replace('#include <lights_fragment_begin>', THREE.ShaderChunk.lights_fragment_begin.replace('getDirectionalLightInfo( directionalLight, directLight );', 'getDirectionalLightInfo( directionalLight, directLight ); directLight.color *= gSunT;'));
 }
 const moonMat = terrMat.clone(); moonMat.userData.hue = 0; terrMat.userData.hue = .2; moonMat.customProgramCacheKey = () => 'moon';
 terrMat.onBeforeCompile = moonMat.onBeforeCompile = function (sh) {
@@ -422,7 +430,7 @@ function initBody(b) {
   if (b === PLANET) makeClouds(b);
 }
 // cloud layer at 2.6 km: noise coverage, sun + self shadow, slow drift, rotates with the planet
-const CLOUD_H = 1500;
+const CLOUD_H = 2200;
 function makeClouds(b) {
   const m = new THREE.ShaderMaterial({transparent: true, depthWrite: true, side: THREE.DoubleSide,
     uniforms: Object.assign(atmoU(), {sun: {value: new V3()}, sunC: {value: new THREE.Color()}, sky: {value: new THREE.Color()}, t: {value: 0}}),
@@ -439,9 +447,10 @@ function makeClouds(b) {
         vec3 n = normalize(vN), wp = n * (R + ${CLOUD_H}.); float l = dot(n, sun), sh = cov(normalize(vP + sun * .004));
         // sunlight reaching this cloud: blocked by the planet, reddened by the air in between
         vec3 sl = vec3(0.); vec2 g = rs(wp, sun, R - 200.);
-        if (!(g.x > 0. && g.x < 1e19)) { float lt = rs(wp, sun, Ra).y / 6., oR = 0., oM = 0.; for (int j = 0; j < 6; j++) { float hh = max(0., length(wp + sun * lt * (float(j) + .5)) - R); oR += exp(-hh / hR) * lt; oM += exp(-hh / hM) * lt; } sl = exp(-(bR * oR + bM * 1.1 * oM)); }
+        if (!(g.x > 0. && g.x < 1e19)) { float lt = rs(wp, sun, Ra).y / 8., oR = 0., oM = 0., oO = 0.; for (int j = 0; j < 8; j++) { float hh = max(0., length(wp + sun * lt * (float(j) + .5)) - R); oR += exp(-hh / hR) * lt; oM += exp(-hh / hM) * lt; oO += ozone(hh) * lt; } sl = exp(-(bR * oR + bM * 1.1 * oM + bO * oO)); }
         float lit = (.35 + .65 * smoothstep(-.3, .3, l)) * (1. - sh * .5);
-        vec3 col = sl * sunC * lit * (.85 + .15 * c) + sky * (.4 + .3 * c) * (.3 + .7 * smoothstep(-.25, .15, l));
+        float tw = smoothstep(.25, 0., l) * smoothstep(-.2, .02, l); // twilight: cloud undersides pick up a pink-violet glow from the sky
+        vec3 col = sl * sunC * lit * (.85 + .15 * c) * 1.3 + sky * (.4 + .3 * c) * (.15 + .85 * smoothstep(-.05, .35, l)) + vec3(.6, .3, .42) * tw * .3 * (.5 + .5 * c);
         gl_FragColor = vec4(col, smoothstep(0., .6, c) * .95); }`});
   // depth only where the cloud is thick (so thin edges don't cut off the sky glow behind them), then colour without depth writes
   const dm = m.clone(); dm.uniforms = m.uniforms; dm.colorWrite = false; dm.transparent = false; dm.defines = {DEPTHONLY: 1}; m.depthWrite = false;
@@ -453,7 +462,7 @@ function makeClouds(b) {
 function updateTree(n, cp, want) {
   const dist = cp.distanceTo(n.c), split = n.l < n.b.maxL && dist < n.size * 1.7;
   // horizon cull: skip nodes well beyond the horizon
-  const cl = cp.length(), R = n.b.R, hor = Math.sqrt(Math.max(0, cl * cl - R * R)) + Math.sqrt(Math.max(0, (R + 4000) ** 2 - R * R));
+  const cl = cp.length(), R = n.b.R, hor = Math.sqrt(Math.max(0, cl * cl - R * R)) + Math.sqrt(Math.max(0, (R + 9000) ** 2 - R * R));
   if (dist - n.size > hor && n.l > 0) { if (n.mesh) n.mesh.visible = false; if (n.kids) for (const k of n.kids) hideAll(k); return true; }
   if (split) {
     if (!n.kids) { const h = n.s / 2; n.kids = [new Node(n.b, n.f, n.l + 1, n.u, n.v, h), new Node(n.b, n.f, n.l + 1, n.u + h, n.v, h), new Node(n.b, n.f, n.l + 1, n.u, n.v + h, h), new Node(n.b, n.f, n.l + 1, n.u + h, n.v + h, h)]; }
@@ -694,8 +703,8 @@ function sunColour(posRel) { // posRel = position relative to planet centre
   // ground shadow
   const cg = posRel.lengthSq() - (R - 3) ** 2, hg = b * b - cg; if (hg > 0 && -b - Math.sqrt(hg) > 0) return [0, 0, 0];
   let oR = 0, oM = 0; const n = 16, ds = t1 / n;
-  for (let i = 0; i < n; i++) { _lp.copy(posRel).addScaledVector(SUN, ds * (i + .5)); const hh = Math.max(0, _lp.length() - R); oR += Math.exp(-hh / HR) * ds; oM += Math.exp(-hh / HM) * ds; }
-  return [Math.exp(-(BR.x * oR + BM * 1.1 * oM)), Math.exp(-(BR.y * oR + BM * 1.1 * oM)), Math.exp(-(BR.z * oR + BM * 1.1 * oM))];
+  let oO = 0; for (let i = 0; i < n; i++) { _lp.copy(posRel).addScaledVector(SUN, ds * (i + .5)); const hh = Math.max(0, _lp.length() - R); oR += Math.exp(-hh / HR) * ds; oM += Math.exp(-hh / HM) * ds; oO += Math.max(0, 1 - Math.abs(hh - OZ_C) / OZ_W) * ds; }
+  return [Math.exp(-(BR.x * oR + BM * 1.1 * oM + BO.x * oO)), Math.exp(-(BR.y * oR + BM * 1.1 * oM + BO.y * oO)), Math.exp(-(BR.z * oR + BM * 1.1 * oM + BO.z * oO))];
 }
 const _rel = new V3();
 function updateLight() {
@@ -713,10 +722,11 @@ function updateLight() {
   amb.groundColor.setRGB(.16 * (.3 + day), .13 * (.3 + day), .1 * (.3 + day));
   // hemisphere "up" must follow the local vertical: three's hemisphere light uses its position as the sky direction
   amb.position.copy(up);
+  EMAX.value = lerp(3.5, 14, sstep(PLANET.atmo * .3, PLANET.atmo, alt)); // dusk on the ground stays dusky; space can open up for stars
   updateEnv(G.dt || 0, t); scene.environmentIntensity = alt > PLANET.atmo * 2 ? .15 : 1;
   scene.backgroundIntensity = lerp(1, .004, sstep(-.16, .08, el) * (1 - sstep(PLANET.atmo * .35, PLANET.atmo, alt))); // stars wash out in a daylight sky
   if (PLANET.clouds) { const u = PLANET.clouds.uniforms; u.sun.value.copy(SUN); u.sunC.value.setRGB(1, 1, 1).multiplyScalar(3.4 * .85 / Math.PI * 1.6); u.sky.value.setRGB(.06, .09, .14).multiplyScalar(.2 + day * 2); u.t.value = G.t; }
-  if (G.waterT) G.waterT.value = G.t; CLOUDU.sunB.value.copy(SUN).applyQuaternion(PLANET.q.clone().invert()); CLOUDU.cT.value = G.t; CLOUDU.cOn.value = HI() ? 1 : 0; amb.intensity *= .25; compM.uniforms.sunCol.value.set(t[0], t[1], t[2]).multiplyScalar(.9);
+  if (G.waterT) G.waterT.value = G.t; CLOUDU.sunB.value.copy(SUN).applyQuaternion(PLANET.q.clone().invert()); CLOUDU.cT.value = G.t; CLOUDU.cOn.value = HI() ? 1 : 0; CLOUDU.camT.value.set(t[0], t[1], t[2]); amb.intensity *= .25; compM.uniforms.sunCol.value.set(t[0], t[1], t[2]).multiplyScalar(.9);
 }
 
 // ---------------- HUD
