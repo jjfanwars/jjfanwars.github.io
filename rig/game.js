@@ -3220,6 +3220,9 @@ function boatPose(dt) {
   if (BOAT.userData.cat) { BOAT.userData.cat.scale.y = 1 + Math.sin(G.wt * 2.2) * .04; if (P && P.ob && A.on) { const c = BOAT.userData.catP; if (Math.hypot(P.bl[0] - c[0], P.bl[1] - c[2]) < 1.6 && Math.abs(P.y - c[1]) < 2.2) { G.purrT = (G.purrT || 0) - dt; if (G.purrT <= 0) { G.purrT = .55; burst(90, 1.5, .05, .45, 'lowpass', null, .7); } } } }
   if (BOAT.userData.winM) BOAT.userData.winM.emissiveIntensity = .05 + TOD.night * .9 * (.85 + Math.random() * .15);
   if (BOAT.userData.prop) BOAT.userData.prop.rotation.z += B.thr * dt * 20; if (BOAT.userData.radar) BOAT.userData.radar.rotation.y += dt * 1.6;
+  { // v85: big hulls and subs ride the swell slower and flatter (they bobbed like the launch); a low-pass by size, roll/pitch scaled down; sinking is left alone
+    const Hc = HC(), big = clamp((BG.L - 14) / 40, 0, 1), sb = Hc.sub && !Hc.plane, amp = (1 - .55 * big) * (sb ? .5 : 1), rate = Math.min(1, dt * mix(7, 1.4, big) * (sb ? .6 : 1));
+    if (!(B.sink > 0) && !Hc.plane && !Hc.air) { G.bpR = mix(G.bpR ?? B.roll, B.roll * amp, rate); G.bpP = mix(G.bpP ?? B.pitch, B.pitch * (big > .5 || sb ? amp : 1), rate); G.bpH = mix(G.bpH ?? B.heave, B.heave, Math.min(1, rate * 1.5)); if (Math.abs(G.bpH - B.heave) > 3) G.bpH = B.heave; B.roll = G.bpR; B.pitch = G.bpP; B.heave = G.bpH; } else { G.bpR = B.roll; G.bpP = B.pitch; G.bpH = B.heave; } }
   BOAT.position.set(B.x, B.heave, B.z); BOAT.rotation.set(B.pitch, B.yaw, B.roll, 'YXZ');
   BOAT.userData.wheel.rotation.z = -B.st * 2; if (BG.sub) subPose(dt);
   const cg = BOAT.userData.cargo, ck = B.hold.slice(0, 8).join(); if (cg.userData.k !== ck) { cg.userData.k = ck; const keep = new Set(Object.values(MAT)); cg.traverse(o => { if (o.isMesh) { o.geometry.dispose(); if (!keep.has(o.material)) o.material.dispose(); } }); cg.clear(); }
@@ -5905,7 +5908,7 @@ function updateWorldFx(dt) {
   todAt(G.tod || 0, st); scene.fog.density = TOD.fd; scene.fog.color.copy(TOD.fog); scene.background.copy(TOD.fog);
   G.lightT -= dt; const sky = scene.userData.sky.material.uniforms; sky.uS.value = st; sky.uT.value = G.wt;
   sky.zen.value.copy(TOD.zen); sky.hor.value.copy(TOD.hor); sky.fogC.value.copy(TOD.fog); sky.sunC.value.copy(TOD.sun); sky.sunI.value = TOD.sI; sky.stars.value = TOD.st; sky.aur.value = TOD.night * (1 - st) * .9;
-  const cw = waveH(cam.position.x, cam.position.z, G.wt); G.uw = mix(G.uw || 0, G.subIn ? ((B.dep || 0) > 1 || cam.position.y < cw - .15 ? 1 : 0) : cam.position.y < cw - .08 ? 1 : 0, Math.min(1, dt * 12)); // a surfaced sub still puts your eye under the waterline: the viewports look into the sea and up at its underside
+  const cw = waveH(cam.position.x, cam.position.z, G.wt); { const cy = cam.position.y, on = G.uwS ? cy < cw + .15 : cy < cw - .25, sd = G.subDS ? (B.dep || 0) > .6 : (B.dep || 0) > 1.2; G.uwS = on ? 1 : 0; G.subDS = sd ? 1 : 0; G.uw = mix(G.uw || 0, G.subIn ? (sd || on ? 1 : 0) : on ? 1 : 0, Math.min(1, dt * 12)); } // v85: hysteresis, so the underwater look does not flicker at the waterline // a surfaced sub still puts your eye under the waterline: the viewports look into the sea and up at its underside
   G.uwC = G.subIn ? mix(G.uwC || 0, lockWet() ? 1 : 0, Math.min(1, dt * 12)) : G.uw; // look vs camera-in-water (the sub's hull keeps you dry)
   { const und = G.uw > .5, U = MAT.sea.userData.U; sky.uw.value = und ? 1 : 0; U.uUs.value.w = und ? 1 : 0;
     if (und) { // underwater: clearer for the first 30 m so wreck silhouettes read, then the deep closes in; the sky becomes a lit-from-above gradient
@@ -9659,7 +9662,7 @@ const NK = {g: null, plane: new THREE.Plane(), mats: [], lamps0: null};
 const NK_Z0 = -12.8, NK_Z1 = 57;
 function nkBuild() { const U = SUB, CAS = U.CAS, FI = U.FI, RB = NUKE.RB, cyB = CAS - .05 - RB, L = [], g = new THREE.Group(); NK.g = g; BOAT.add(g); g.userData.nk = 1;
   const SI = o => subMat(new THREE.MeshStandardMaterial(Object.assign({name: 'si', roughness: .6, metalness: .2, envMapIntensity: .15}, o))), BS = c => new THREE.MeshBasicMaterial({color: c});
-  const M = {wall: SI({color: 0xb8bcb4, side: THREE.BackSide}), floor: SI({color: 0x3a4044, roughness: .8}), grey: SI({color: 0x7a8288}), dark: SI({color: 0x2a2e32}), steel: SI({color: 0xa8b0b8, metalness: .7, roughness: .3}), blue: SI({color: 0x2a3a6a}), wood: SI({color: 0x6a4a2a}), red: SI({color: 0x8a1a14}), yel: SI({color: 0xc8a020}), green: SI({color: 0x2a5a3a}), white: SI({color: 0xe8e8e2}), cloth: SI({color: 0x1c2c4a, roughness: 1}), bulk: SI({color: 0x9aa0a6}), pipe: SI({color: 0x8a6a3a, metalness: .4}),
+  const M = {wall: SI({color: 0xccc6b4, side: THREE.BackSide}), floor: SI({color: 0x3a4044, roughness: .8}), grey: SI({color: 0x7a8288}), dark: SI({color: 0x2a2e32}), steel: SI({color: 0xa8b0b8, metalness: .7, roughness: .3}), blue: SI({color: 0x4e5a44}), wood: SI({color: 0x6a4a2a}), red: SI({color: 0x8a1a14}), yel: SI({color: 0xc8a020}), green: SI({color: 0x2a5a3a}), white: SI({color: 0xe8e8e2}), cloth: SI({color: 0x3a3226, roughness: 1}), bulk: SI({color: 0xa8a49a}), pipe: SI({color: 0x8a6a3a, metalness: .4}),
     scrG: BS(0x30ff80), scrR: BS(0xff4030), scrB: BS(0x40a0ff), lamp: BS(0xfff0d0), glow: new THREE.MeshBasicMaterial({color: 0x40c8ff, transparent: true, opacity: .85}), stove: BS(0xff5020), glass: new THREE.MeshStandardMaterial({color: 0x80b0a0, transparent: true, opacity: .3, roughness: .05})};
   const bx = (m, x0, x1, y0, y1, z0, z1, wall) => { L.push([new THREE.BoxGeometry(Math.abs(x1 - x0), Math.abs(y1 - y0), Math.abs(z1 - z0)).translate((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2), m, false]); if (wall) BW.push({x0: Math.min(x0, x1), x1: Math.max(x0, x1), z0: Math.min(z0, z1), z1: Math.max(z0, z1), y0: y0 - CAS, y1: y1 - CAS, int: 1, nk: 1}); };
   const cyl = (m, r, x, y0, y1, z, n = 14, wall) => { L.push([new THREE.CylinderGeometry(r, r, y1 - y0, n).translate(x, (y0 + y1) / 2, z), m, false]); if (wall) BW.push({x0: x - r, x1: x + r, z0: z - r, z1: z + r, y0: y0 - CAS, y1: y1 - CAS, int: 1, nk: 1}); };
@@ -9857,7 +9860,7 @@ function uw2Fill() { const cp = cam.position, M = UW2.m, m4 = new THREE.Matrix4(
   // kelp glints follow the new kelp
   if (typeof KGL !== 'undefined' && KGL.pts) { const pa = KGL.pts.geometry.attributes.position, ph = KGL.pts.geometry.attributes.ph; let n = 0; for (const [i, j] of order) { const c = uw2Cell(ci + i, cj + j); for (const [x, b, z, sc, a] of c.kelp) for (let k = 0; k < 7 && n < pa.count; k++) { const u = Math.abs(Math.sin(x * 12.9 + z * 78.2 + k * 3.7)), w = Math.sin(a * 5 + k * 2.1); pa.setXYZ(n, x + Math.cos(a + k) * .3 * w, b + 10 * sc * (.12 + .85 * u), z + Math.sin(a + k) * .3 * w); ph.setX(n, u); n++; } } pa.needsUpdate = true; ph.needsUpdate = true; KGL.pts.geometry.setDrawRange(0, n); KGL.n = n; }
   UW2.cx = cp.x; UW2.cz = cp.z; }
-function uw2Frame(dt) { if (!G.on || !P) return; const und = (G.uw || 0) > .5 && !G.subIn, sub = !!G.subIn && (B.dep || 0) > 1, see = und || sub || !!(G.rov && (G.uw || 0) > .5); const cp = cam.position, t = G.wt;
+function uw2Frame(dt) { if (!G.on || !P) return; const und = (G.uw || 0) > .5 && !G.subIn, sub = !!G.subIn && !!G.subDS, see = und || sub || !!(G.rov && (G.uw || 0) > .5); const cp = cam.position, t = G.wt;
   if (see) uw2Init(); if (!UW2.m.grass) return; UW2.uT.value = t; const M = UW2.m, list = [M.grass, M.kelp, M.barrel, M.tube, M.branch, M.fan, M.brain, ...M.rock, M.arch];
   for (const im of list) im.visible = see; if (UWX.kelp) { UWX.kelp.visible = UWX.rock.visible = UWX.coral.visible = false; if (UWX.fish) UWX.fish.visible = false; for (const S of UWX.shafts) S.g.visible = false; }
   if (typeof KGL !== 'undefined' && KGL.pts) KGL.pts.visible = see && KGL.n > 0;
@@ -10830,7 +10833,7 @@ function bfKind(m) {
 }
 function bfMat(m, kind) {
   const key = m.uuid; let r = BF.mats.get(key); if (r) return r; const T = bfTex();
-  r = m.clone(); r.userData = Object.assign({}, m.userData, {bf: kind});
+  r = m.clone(); r.userData = Object.assign({}, m.userData, {bf: kind}); if (m.onBeforeCompile) { r.onBeforeCompile = m.onBeforeCompile; r.customProgramCacheKey = m.customProgramCacheKey; } // keep shader hooks (the subs' interior light and no-fog hook)
   if (kind === 'wood') { r.map = T.wood; r.bumpMap = T.woodB; r.bumpScale = .9; r.roughness = clamp(r.roughness, .7, .85); r.envMapIntensity = .15; }
   else if (kind === 'paint') { r.map = T.paint; r.bumpMap = T.paintB; r.bumpScale = .35; r.roughness = clamp(r.roughness + .08, .35, .7); }
   else if (kind === 'fab') { r.map = T.fab; r.bumpMap = T.fabB; r.bumpScale = .6; }
@@ -11338,3 +11341,5 @@ function nkLadders() { const H = HC(); if (!H.nuke || !BOAT) return; const R = N
   BOAT.traverse(o => { if (!o.isMesh || !o.geometry) return; for (let q = o; q; q = q.parent) if (q === ud.f35ck) return; const gg = o.geometry; gg.computeBoundingBox(); const bb = gg.boundingBox.clone().applyMatrix4(new THREE.Matrix4().multiplyMatrices(inv, o.matrixWorld));
     if (bb.max.x < .45 && bb.min.x > -.45 && bb.min.y > fb - .1 && bb.max.y < fb + .5 && bb.min.z > Math.min(...rz) - .6 && bb.max.z < Math.max(...rz) + .6) kill.push(o); });
   for (const o of kill) { o.parent.remove(o); o.geometry.dispose(); } }); }
+// the Kraken's screw: the research sub's propeller sat at its own stern (z 10.45), mid-hull inside the Kraken; it goes into the pump-jet shroud
+{ buildBoat = after(buildBoat, function (r) { const H = HC(); if (!H.nuke || !BOAT || !BOAT.userData.prop) return; const p = BOAT.userData.prop; p.position.set(0, SUB.CAS - .05 - NUKE.RB, 68.3); p.scale.setScalar(1.55); BHELM[0] = -.68; BHELM[1] = -11.4; }); } // and the helm camera sits in the helmsman's seat (it sat behind both seat backs)
