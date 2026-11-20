@@ -1285,8 +1285,7 @@ function buildBoat() {
         const fl = S({color: 0x302010, emissive: 0xffc070, emissiveIntensity: 1, nc: 1}); g.userData.fairy = fl; for (const zz of [wz0 + .25, wz1 - .25]) for (let x = -ww + .3; x < ww - .2; x += .45) add(new THREE.SphereGeometry(.025, 6, 4), fl, x, fb + hh - .1 - Math.abs(Math.sin(x * 1.3)) * .08, zz).castShadow = false;
       }
       // the card table sits off the aisle now (decor: the real casino is the Lucky Lantern ashore); the slot cabinet stays clear of the extinguisher
-      if (H.big || cls === 3) { const tz = wz1 - 1.8, tx = ww * .35; box(S({color: 0x0e4a2a, roughness: .9}), tx - .7, tx + .7, fb + .78, fb + .84, tz - .5, tz + .5, 1); box(wd, tx - .65, tx + .65, fb, fb + .78, tz - .45, tz + .45); for (const sd of [-1, 1]) cyl(fab, .2, .2, .5, tx, fb + .25, tz + sd * .8);
-        for (let i = 0; i < 5; i++) box(S({color: 0xe8e4da}), tx - .3 + i * .12, tx - .22 + i * .12, fb + .84, fb + .845, tz - .1, tz + .02);
+      if (H.big || cls === 3) { // (the decor card table went in v85: the big ships have a real poker table now)
         box(darkM, ww - 1.25, ww - .45, fb, fb + 1.7, wz1 - .9, wz1 - .3, 1); add(new THREE.BoxGeometry(.6, .4, .02), S({color: 0x101010, emissive: 0xff3070, emissiveIntensity: .5}), ww - .85, fb + 1.25, wz1 - .91); }
       // the Serenade's 12 m wheelhouse: a centre island (chart table, two armchairs, a rug) under the lamp
       if (cls === 7) { box(S({color: 0x2a3a5a, roughness: 1}), -2.3, 2.3, fb, fb + .012, zm - 1.5, zm + 1.5); box(wd, -.85, .85, fb + .78, fb + .84, zm - .5, zm + .5, 1); box(wd, -.75, .75, fb, fb + .78, zm - .4, zm + .4);
@@ -8213,7 +8212,7 @@ function pcCabin(X, o) { const {g, hw, fb, zs, add, S, steel} = X, ud = g.userDa
   else { const cv = S({color: 0x6a6a4a, roughness: .95}), fr = S({color: 0x8a8a80, metalness: .5, roughness: .5}); for (const sd of [-1, 1]) { const zb2 = cz0 + .2, ze = sd < 0 ? dz0 - .35 : cz1 - 1.6; if (ze - zb2 > .6) { const bx = sd * (cw + .1); box(cv, bx - .25, bx + .25, fb + .42, fb + .48, zb2, ze); box(cv, sd > 0 ? bx + .2 : bx - .25, sd > 0 ? bx + .25 : bx - .2, fb + .48, fb + 1.15, zb2, ze); for (let z = zb2; z < ze; z += .55) X.cyl(fr, .02, .02, .42, bx, fb + .21, z + .25); for (let z = zb2 + .35; z < ze - .25; z += .62) PS.push([bx - sd * .05, z, sd * PI / 2]); BWp({x0: sd > 0 ? bx - .26 : -hw, x1: sd > 0 ? hw : bx + .26, z0: zb2, z1: ze, y0: 0, y1: .5}); } }
     for (const [x, z, s] of [[cw - .05, cz1 - 1.2, .6], [cw - .05, cz1 - .55, .55], [cw - .05, cz1 - .9, .45]]) box(S({map: TX.wood, color: 0x9a7a4a, roughness: .8}), x - s / 2, x + s / 2, fb + (z === cz1 - .9 ? .6 : 0), fb + (z === cz1 - .9 ? .6 + s : s), z - s / 2, z + s / 2); BWp({x0: cw - .4, x1: hw, z0: cz1 - 1.5, z1: cz1 + .3, y0: 0, y1: 1.1});
     const net = add(new THREE.PlaneGeometry(1.2, 1.1, 8, 8), S({color: 0x2a2a20, wireframe: true}), cw - .38, fb + .6, cz1 - .9); net.rotation.y = -PI / 2;
-    for (let z = cz0; z < cz1; z += .9) { const r = prof(z); const rib = add(new THREE.TorusGeometry(1, .03, 4, 24, PI * 1.1), S({color: 0x8a8476, roughness: .7}), 0, r.y, z); rib.scale.set(r.rx * .955, r.ry * .955, 1); rib.rotation.z = -PI * .05; } }
+    for (let z = cz0; z < cz1; z += .9) { const r = prof(z); if (z < cz0 + .6) continue; const rib = add(new THREE.TorusGeometry(1, .03, 4, 18, PI * .64), S({color: 0x8a8476, roughness: .7}), 0, r.y, z); rib.scale.set(r.rx * .955, r.ry * .955, 1); rib.rotation.z = PI * .18; } } // ceiling arcs only (v85: the full ribs crossed the windows)
   // aft bulkhead with the first-aid/patch locker and a fuel point; a lamp over the cabin; inCabin covers the whole fuselage
   const ab = prof(zT - .2); { const sh = new THREE.Shape(); for (let j = 0; j <= 32; j++) { const a = j / 32 * TAU, x = ab.rx * .96 * Math.sin(a), y = ab.ry * .96 * Math.cos(a) + ab.y; j ? sh.lineTo(x, y) : sh.moveTo(x, y); } const m = add(new THREE.ShapeGeometry(sh, 24), S({color: o.lin, roughness: .85, side: THREE.DoubleSide}), 0, 0, zT - .14); }
   BSPOT.patch[0] = -.7; BSPOT.patch[1] = zT - .55; BSPOT.fuel[0] = .7; BSPOT.fuel[1] = zT - .55; BSPOT.hold[0] = 0; BSPOT.hold[1] = clamp(BSPOT.hold[1], cz0 + .3, zT - 1.6);
@@ -10804,7 +10803,7 @@ function bfTex() {
   // rubber/plastic: fine stipple (non-slip mats, dark consoles)
   [T.rub, T.rubB] = mk((g, w, h) => { g.fillStyle = '#c8c8c8'; g.fillRect(0, 0, w, h); for (let y = 8; y < h; y += 16) for (let x = (y / 16 % 2) * 8 + 8; x < w; x += 16) { g.fillStyle = 'rgba(255,255,255,.18)'; g.beginPath(); g.arc(x, y, 3, 0, TAU); g.fill(); g.fillStyle = 'rgba(0,0,0,.18)'; g.beginPath(); g.arc(x + 1, y + 1, 3, PI * .2, PI * 1.2); g.fill(); } noiseFill(g, w, h, 14); });
   // CC0 photo textures from Poly Haven (rig/tex, see THIRD_PARTY.md) replace the canvas ones for wood, paint and fabric once they load
-  const ld = new THREE.TextureLoader(), photo = (k, f, nf) => { const a = ld.load('tex/' + f, t => { T[k] = a; BF.mats.forEach(m => { if (m.userData.bf === k) { m.map = a; m.needsUpdate = true; } }); }), b = ld.load('tex/' + nf, () => BF.mats.forEach(m => { if (m.userData.bf === k) { m.bumpMap = null; m.normalMap = b; m.normalScale.setScalar(k === 'wood' ? .45 : .5); m.needsUpdate = true; } }));
+  const ld = new THREE.TextureLoader(), photo = (k, f, nf) => { const a = ld.load('tex/' + f, t => { T[k] = a; BF.mats.forEach(m => { if (m.userData.bf === k) { m.map = a; m.needsUpdate = true; } }); }), b = ld.load('tex/' + nf, () => BF.mats.forEach(m => { if (m.userData.bf === k) { m.bumpMap = null; m.normalMap = b; m.normalScale.setScalar(k === 'wood' ? .3 : .5); m.needsUpdate = true; } }));
     for (const t of [a, b]) { t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 4; } a.colorSpace = THREE.SRGBColorSpace; b.colorSpace = THREE.NoColorSpace; T[k + 'P'] = a; T[k + 'PN'] = b; };
   photo('wood', 'deck.jpg', 'deck_n.jpg'); photo('paint', 'paint.jpg', 'paint_n.jpg'); photo('fab', 'fab.jpg', 'fab_n.jpg');
   for (const k in T) TX['bf' + k] = T[k]; // in TX so a rebuild never disposes them
@@ -10825,14 +10824,14 @@ function bfKind(m) {
 function bfMat(m, kind) {
   const key = m.uuid; let r = BF.mats.get(key); if (r) return r; const T = bfTex();
   r = m.clone(); r.userData = Object.assign({}, m.userData, {bf: kind});
-  if (kind === 'wood') { r.map = T.wood; r.bumpMap = T.woodB; r.bumpScale = .9; r.roughness = clamp(r.roughness, .66, .8); r.envMapIntensity = .4; }
+  if (kind === 'wood') { r.map = T.wood; r.bumpMap = T.woodB; r.bumpScale = .9; r.roughness = clamp(r.roughness, .7, .85); r.envMapIntensity = .15; }
   else if (kind === 'paint') { r.map = T.paint; r.bumpMap = T.paintB; r.bumpScale = .35; r.roughness = clamp(r.roughness + .08, .35, .7); }
   else if (kind === 'fab') { r.map = T.fab; r.bumpMap = T.fabB; r.bumpScale = .6; }
   else if (kind === 'metal') { r.map = T.metal; r.bumpMap = T.metalB; r.bumpScale = .15; r.roughnessMap = T.metalB; }
   else { r.map = T.rub; r.bumpMap = T.rubB; r.bumpScale = .5; r.roughness = Math.max(r.roughness, .7); }
   // the textures average about .87 (wood about 1 relative to the old map), so lift the colour back to the old tone
   if (kind !== 'wood') r.color.multiplyScalar(kind === 'paint' ? 1.12 : kind === 'rub' ? 1.25 : 1.15);
-  if (T[kind + 'P'] && T[kind + 'P'].image) { r.map = T[kind + 'P']; } if (T[kind + 'PN'] && T[kind + 'PN'].image) { r.bumpMap = null; r.normalMap = T[kind + 'PN']; r.normalScale.setScalar(kind === 'wood' ? .45 : .5); }
+  if (T[kind + 'P'] && T[kind + 'P'].image) { r.map = T[kind + 'P']; } if (T[kind + 'PN'] && T[kind + 'PN'].image) { r.bumpMap = null; r.normalMap = T[kind + 'PN']; r.normalScale.setScalar(kind === 'wood' ? .3 : .5); }
   r.needsUpdate = true; BF.mats.set(key, r); MATC['bf:' + key] = r; return r; // in MATC so a rebuild never disposes it
 }
 const _bfM = new THREE.Matrix4(), _bfN = new THREE.Matrix3(), _bfV = new THREE.Vector3(), _bfA = new THREE.Vector3(), _bfB = new THREE.Vector3(), _bfC = new THREE.Vector3();
