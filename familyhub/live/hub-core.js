@@ -192,7 +192,7 @@ var api={
  // what the booking page needs
  slots:function(pids,days){var out={};pids.forEach(function(pid){out[pid]=freeSlots(pid,now(),days||84)});return delay(out)},
  book:function(d){var k=slotKey(d.pid,d.start);if(slotState(d.pid,new Date(d.start))!=='free'||openOfferFor(d.pid,new Date(d.start)))return delay({ok:false,reason:'taken'});
-  var b=makeBooking({pid:d.pid,start:d.start,name:d.name,phone:d.phone,email:d.email,service:serviceName(d.pid,d.need,d.plan,d.how,d.firstVisit),need:d.need,len:lenOf(d.pid,d.need),plan:d.plan,how:d.how,first:d.firstVisit,source:'online'});
+  var b=makeBooking({pid:d.pid,start:d.start,name:d.name,child:d.child||'',phone:d.phone,email:d.email,service:serviceName(d.pid,d.need,d.plan,d.how,d.firstVisit),need:d.need,len:lenOf(d.pid,d.need),plan:d.plan,how:d.how,first:d.firstVisit,source:'online'});
   feed('booked','New booking: '+P[d.pid].first+', '+fmtWhen(d.start)+' ('+d.name+', online).',{pid:d.pid});
   sms(d.phone,d.name,'Hi '+d.name.split(' ')[0]+', you’re booked with '+P[d.pid].first+' '+onDay(d.start)+' at '+fmtTime(d.start)+'. Manage or cancel: sfch.au/m/'+b.token,'out',{kind:'confirm'});
   save();return delay({ok:true,booking:b})},

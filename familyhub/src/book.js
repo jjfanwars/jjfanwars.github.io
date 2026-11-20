@@ -133,7 +133,7 @@ function renderNeed(){
  return h+'</ul></div>'}
 function pills(key,opts,cur){return '<div class="fd-pills" role="group">'+opts.map(function(o){return '<button type="button" class="fd-pill" data-'+key+'="'+o[0]+'" aria-pressed="'+(cur===o[0])+'">'+esc(o[1])+'</button>'}).join('')+'</div>'}
 function renderQs(){
- var n=NEED[S.need],kid=S.who==='child',h=head(3)+'<div class="fd-step"><h2 class="fd-q" tabindex="-1">Two quick questions</h2><p class="fd-sub">So we book the right appointment type and show the right fees.</p>';
+ var n=NEED[S.need],kid=S.who==='child',h=head(3)+'<div class="fd-step"><h2 class="fd-q" tabindex="-1">'+(n.plan&&n.how?'Two quick questions':'One quick question')+'</h2><p class="fd-sub">So we book the right appointment type and show the right fees.</p>';
  if(n.plan)h+='<div class="fd-group"><h3>'+(kid?'Does your child have a Mental Health Treatment Plan?':'Do you have a Mental Health Treatment Plan?')+'</h3><p>A plan from '+(kid?'your child’s regular GP, paediatrician or psychiatrist':'your regular GP (or psychiatrist)')+' gives you a Medicare rebate for up to 10 sessions a year. Since November 2025 it usually needs to come from your regular GP.</p>'+
   pills('plan',[['yes','Yes'],['no','No'],['unsure','Not sure']],S.plan)+'</div>';
  if(n.how)h+='<div class="fd-group"><h3>How would you like to meet?</h3><p>Most sessions can be at the Hub in Jan Juc or by video or phone.</p>'+
@@ -240,7 +240,8 @@ function apptLine(pid,t,len){var p=P[pid],on=S.how==='online';
   '<span>'+svg(on?'video':'pin')+(on?'Video or phone (link sent by text)':'At the Hub, Jan Juc Village, Stuart Ave')+'</span></div></div>'}
 function costNote(pid){var f=feeOf(pid);if(!Array.isArray(f))return typeof f==='string'?'<p class="bk-cost">'+esc(f)+'</p>':'';
  if(f[2]&&S.plan==='yes')return '<p class="bk-cost"><b>'+money(f[0])+'</b>, about <b>'+money(Math.round((f[0]-f[2])*100)/100)+'</b> after your Medicare rebate. Bring your Mental Health Treatment Plan, or ask your GP to send it to us.</p>';
- return '<p class="bk-cost"><b>'+money(f[0])+'</b> per session'+(f[2]?'. Get a Mental Health Treatment Plan from your GP first and Medicare gives back about '+money(f[2])+'.':'.')+'</p>'}
+ if(f[2]&&S.plan==='unsure')return '<p class="bk-cost"><b>'+money(f[0])+'</b> per session. We’ll book it as private for now. If you get a Mental Health Treatment Plan from your regular GP before your first session, tell us and we’ll switch it to Medicare (about '+money(f[2])+' back).</p>';
+ return '<p class="bk-cost"><b>'+money(f[0])+'</b> per session'+(f[2]?'. Get a Mental Health Treatment Plan from your regular GP first and Medicare gives back about '+money(f[2])+'.':'.')+'</p>'}
 var DRAFT={};try{DRAFT=JSON.parse(sessionStorage.getItem('scfh-draft')||'{}')}catch(e){}
 function field(id,label,type,ac,extra){return '<label class="bk-f"><span>'+label+'</span><input id="'+id+'" name="'+id+'" type="'+type+'" autocomplete="'+ac+'" value="'+esc(DRAFT[id]||'')+'" '+(extra||'')+' required></label>'}
 
@@ -249,7 +250,8 @@ function openBook(pid,t){
  showSheet(sheetHead('Book with '+esc(p.first))+apptLine(pid,t)+
   '<p class="bk-svc">'+svg('check')+'<span>We’ll book it as <b id="bkSvc">'+esc(H.serviceName(pid,S.need,S.plan,S.how==='any'?'in':S.how,'yes'))+'</b>, so you don’t need to pick an appointment type.</span></p>'+costNote(pid)+
   '<form class="bk-form" novalidate>'+
-   field('bkName','Full name','text','name','autofocus')+
+   (S.who==='child'?'<div class="bk-row">'+field('bkName','Your name (parent or carer)','text','name','autofocus')+field('bkKid','Child’s first name','text','off')+'</div>':
+    field('bkName',S.who==='couple'||S.need==='parenthood'?'Your name (we’ll ask for your partner’s at the session)':'Full name','text','name','autofocus'))+
    '<div class="bk-row">'+field('bkPhone','Mobile','tel','tel','inputmode="tel" placeholder="04xx xxx xxx"')+field('bkEmail','Email','email','email')+'</div>'+
    '<fieldset class="bk-fs"><legend>Is this your first visit to the Hub?</legend><div class="fd-pills"><button type="button" class="fd-pill" data-first="yes" aria-pressed="false">Yes, first time</button><button type="button" class="fd-pill" data-first="no" aria-pressed="false">I’ve been before</button></div></fieldset>'+
    '<label class="bk-check"><input type="checkbox" id="bkOk" required><span>I agree to the Hub’s privacy policy. My details go to '+esc(p.first)+'’s practice records so they can see me.</span></label>'+
@@ -262,10 +264,11 @@ function openBook(pid,t){
  form.addEventListener('input',function(e){DRAFT[e.target.id]=e.target.value;try{sessionStorage.setItem('scfh-draft',JSON.stringify(DRAFT))}catch(x){}});
  form.addEventListener('submit',function(e){e.preventDefault();
   var name=form.bkName.value.trim(),phone=form.bkPhone.value.trim(),email=form.bkEmail.value.trim(),err=form.querySelector('.bk-err');
-  var bad=!name?'Please add your name.':!/^(\+?61|0)4[\d ]{8,11}$/.test(phone.replace(/\s/g,'').replace(/^\+61/,'0').replace(/^61/,'0'))?'Please add an Australian mobile number (04xx xxx xxx).':!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)?'Please check your email address.':!form.bkOk.checked?'Please tick the privacy box so we can book you in.':'';
+  var kid=form.bkKid?form.bkKid.value.trim():'';
+  var bad=!name?'Please add your name.':form.bkKid&&!kid?'Please add your child’s first name.':!/^(\+?61|0)4[\d ]{8,11}$/.test(phone.replace(/\s/g,'').replace(/^\+61/,'0').replace(/^61/,'0'))?'Please add an Australian mobile number (04xx xxx xxx).':!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)?'Please check your email address.':!form.bkOk.checked?'Please tick the privacy box so we can book you in.':'';
   if(bad){err.textContent=bad;err.hidden=false;return}
   var go=form.querySelector('.bk-submit');go.disabled=true;go.innerHTML='<span class="bk-spin"></span>Booking…';
-  api.book({pid:pid,need:S.need,start:t.toISOString(),name:name,phone:phone,email:email,plan:S.plan,how:S.how==='any'?'in':S.how,firstVisit:first}).then(function(r){
+  api.book({pid:pid,need:S.need,start:t.toISOString(),name:name,child:kid,phone:phone,email:email,plan:S.plan,how:S.how==='any'?'in':S.how,firstVisit:first}).then(function(r){
    if(!r.ok){err.textContent='Sorry, someone just grabbed that time. Pick another one below.';err.hidden=false;go.disabled=false;go.innerHTML=svg('check')+'Confirm booking';
     setTimeout(closeSheet,1600);return}
    api.remember(r.booking.token);done(r.booking)})});
@@ -278,6 +281,7 @@ function done(b){var p=P[b.pid],t=new Date(b.start);
  var url=URL.createObjectURL(new Blob([ics(b)],{type:'text/calendar'}));
  showSheet(sheetHead('You’re booked')+'<div class="bk-done"><span class="bk-tick">'+svg('check')+'</span><p>We’ve sent a confirmation text to <b>'+esc(b.phone)+'</b>.</p></div>'+apptLine(b.pid,t,b.len)+'<p class="bk-svc">'+svg('check')+'<span>'+esc(b.service)+'</span></p>'+
   '<div class="bk-acts"><a class="btn btn-primary btn-sm" href="'+url+'" download="hub-appointment.ics">'+svg('cal')+'Add to calendar</a><a class="btn btn-outline btn-sm" href="manage.html#t='+b.token+'">Change or cancel</a></div>'+
+  (b.how==='online'?'':'<p class="bk-dir">'+svg('pin')+'<span>Jan Juc Village, Stuart Ave, Jan Juc VIC 3228. <a href="https://www.google.com/maps/search/?api=1&amp;query=Surf+Coast+Family+Hub+Stuart+Avenue+Jan+Juc+VIC+3228" target="_blank" rel="noopener">Get directions</a></span></p>')+
   '<div class="bk-sooner"><h3>'+svg('bell')+'Want something sooner?</h3><p>We’ll text you if an earlier spot with '+esc(p.first)+' opens up. Tap to claim it, and we’ll move your booking.</p>'+
   '<button type="button" class="btn btn-outline btn-sm" data-sooner>Yes, text me</button></div>'+
   '<p class="bk-demo">Demo: open the <a href="admin.html" target="_blank" rel="noopener">Hub dashboard</a> to see this booking arrive.</p>');
