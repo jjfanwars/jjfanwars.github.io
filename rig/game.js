@@ -5929,7 +5929,7 @@ function updateWorldFx(dt) {
   // two pooled lamps: the boat's cabin lamp and stove while aboard (wins at the jetty too), else the two nearest room, rig and harbour lamps or the Serenade's reds (no allocations)
   itrFx(cp);
   if (BOAT && BOAT.userData.lamp && P && P.ob && Math.hypot(cp.x - B.x, cp.z - B.z) < BG.L * .5 + 12) { const c = Math.cos(B.yaw), sn = Math.sin(B.yaw);
-    for (let i = 0; i < 2; i++) { const l = POOL[i], q = i ? BOAT.userData.stove : BOAT.userData.lamp; if (!q) { l.intensity = 0; continue; } l.position.set(B.x + q[0] * c + q[2] * sn, q[1] + B.heave, B.z - q[0] * sn + q[2] * c); l.color.setHex(i ? 0xff7a30 : 0xffc890); l.distance = 12; l.intensity = i ? 5 + Math.random() * 2.5 : 7; } }
+    for (let i = 0; i < 2; i++) { const l = POOL[i], q = i ? BOAT.userData.stove : BOAT.userData.lamp; if (!q) { l.intensity = 0; continue; } l.position.set(B.x + q[0] * c + q[2] * sn, q[1] + B.heave, B.z - q[0] * sn + q[2] * c); l.color.setHex(i ? 0xff7a30 : 0xffc890); l.distance = 12; l.intensity = i ? 5 + Math.random() * 2.5 : (BOAT.userData.lampI ?? 7); } }
   else itrPool(cp);
   if (G.shedGlow) G.shedGlow.material.opacity = .12 + .7 * (1 - TOD.day);
   extBuoyStep();
@@ -11240,3 +11240,63 @@ function bfMerge(g, skip) { g.updateMatrixWorld(true); const inv = new THREE.Mat
   g.traverse(o => { if (o === g || !o.isMesh || o.isSprite || o.isInstancedMesh || Array.isArray(o.material)) return; for (let q = o; q && q !== g; q = q.parent) if (q.userData.dyn || (skip && skip.has(q))) return;
     const geo = o.geometry.clone(); geo.applyMatrix4(new THREE.Matrix4().multiplyMatrices(inv, o.matrixWorld)); if (!geo.boundingSphere) geo.computeBoundingSphere(); L.push([geo, o.material, o.castShadow && geo.boundingSphere.radius > .15]); dead.push(o); });
   for (const o of dead) { o.parent.remove(o); o.geometry.dispose(); } for (const m of mergeByMat(L)) g.add(m); return L.length; }
+
+// ---------------- F-35 cockpit (v85): a real office round the seated eye (BHELM, y0 = the old cockpit floor)
+// Tub walls and sills, side consoles (side-stick right, throttle left), the panoramic cockpit display with canvas pages (moving map, attitude,
+// engine/fuel, stores), a glare shield with the up-front controller and standby display, canopy bow and rails with mirrors, rudder pedals and an
+// ejection seat with headbox, harness and the yellow-black handle. Static parts are merged per material (bfMerge).
+function f35PcdCv() { return cv(1024, 320, (g, W, H) => { g.fillStyle = '#04070a'; g.fillRect(0, 0, W, H); const pw = W / 4;
+  const frame = (i, t) => { g.strokeStyle = '#1d3a48'; g.lineWidth = 3; g.strokeRect(i * pw + 6, 6, pw - 12, H - 12); g.fillStyle = '#7fd8ff'; g.font = 'bold 18px monospace'; g.fillText(t, i * pw + 16, 30); for (let k = 0; k < 5; k++) { g.fillStyle = '#123040'; g.fillRect(i * pw + 14 + k * 48, H - 34, 40, 22); g.fillStyle = '#9fe8ff'; g.font = '11px monospace'; g.fillText(['TSD', 'FUEL', 'ENG', 'SMS', 'FCS'][k], i * pw + 19 + k * 48, H - 18); } };
+  // 0: tactical situation: compass rose, ownship, waypoints, contacts
+  { const cx = pw / 2, cy = 160; g.strokeStyle = '#2a8ab0'; g.lineWidth = 1.5; for (const r of [40, 80, 115]) { g.beginPath(); g.arc(cx, cy, r, 0, TAU); g.stroke(); } for (let a = 0; a < 36; a++) { const q = a / 36 * TAU, r0 = a % 9 ? 108 : 100; g.beginPath(); g.moveTo(cx + Math.sin(q) * r0, cy - Math.cos(q) * r0); g.lineTo(cx + Math.sin(q) * 115, cy - Math.cos(q) * 115); g.stroke(); }
+    g.fillStyle = '#ffffff'; g.beginPath(); g.moveTo(cx, cy - 12); g.lineTo(cx - 8, cy + 8); g.lineTo(cx + 8, cy + 8); g.fill(); g.strokeStyle = '#e0e070'; g.setLineDash([6, 5]); g.beginPath(); g.moveTo(cx, cy); g.lineTo(cx + 50, cy - 70); g.lineTo(cx + 90, cy - 60); g.stroke(); g.setLineDash([]);
+    for (const [x, y, c] of [[cx + 50, cy - 70, '#e0e070'], [cx - 60, cy - 50, '#ff4040'], [cx + 70, cy + 40, '#40ff70'], [cx - 30, cy + 75, '#ff4040']]) { g.strokeStyle = c; g.lineWidth = 2; g.strokeRect(x - 6, y - 6, 12, 12); } frame(0, 'TSD 1'); }
+  // 1: attitude: sky over sea, pitch ladder, heading tape
+  { const x0 = pw, cx = x0 + pw / 2, cy = 165; g.save(); g.beginPath(); g.rect(x0 + 10, 40, pw - 20, H - 80); g.clip(); g.translate(cx, cy); g.rotate(-.12); g.fillStyle = '#1f5aa8'; g.fillRect(-200, -200, 400, 200); g.fillStyle = '#6a4424'; g.fillRect(-200, 0, 400, 200);
+    g.strokeStyle = '#fff'; g.lineWidth = 2; g.beginPath(); g.moveTo(-200, 0); g.lineTo(200, 0); g.stroke(); for (let p = -3; p <= 3; p++) if (p) { g.beginPath(); g.moveTo(-30, p * 26); g.lineTo(30, p * 26); g.stroke(); } g.restore();
+    g.strokeStyle = '#ffd040'; g.lineWidth = 4; g.beginPath(); g.moveTo(cx - 60, cy); g.lineTo(cx - 20, cy); g.lineTo(cx - 10, cy + 10); g.moveTo(cx + 60, cy); g.lineTo(cx + 20, cy); g.lineTo(cx + 10, cy + 10); g.stroke(); frame(1, 'ADI'); }
+  // 2: engine and fuel: arcs and bars
+  { const x0 = 2 * pw; for (const [i, t, v] of [[0, 'N2', .78], [1, 'EGT', .64]]) { const cx = x0 + 70 + i * 120, cy = 110; g.strokeStyle = '#26404c'; g.lineWidth = 10; g.beginPath(); g.arc(cx, cy, 42, PI * .8, PI * 2.2); g.stroke(); g.strokeStyle = i ? '#ffb030' : '#40e0ff'; g.beginPath(); g.arc(cx, cy, 42, PI * .8, PI * (.8 + 1.4 * v)); g.stroke(); g.fillStyle = '#cfefff'; g.font = 'bold 16px monospace'; g.fillText(t, cx - 14, cy + 6); }
+    for (let k = 0; k < 4; k++) { const bx = x0 + 30 + k * 50, v = [.8, .62, .7, .45][k]; g.fillStyle = '#16303c'; g.fillRect(bx, 175, 30, 100); g.fillStyle = '#40e070'; g.fillRect(bx, 175 + 100 * (1 - v), 30, 100 * v); } frame(2, 'ENG / FUEL 8 400'); }
+  // 3: stores: top-down jet with bay doors and stations
+  { const x0 = 3 * pw, cx = x0 + pw / 2, cy = 160; g.fillStyle = '#9fb8c4'; g.beginPath(); g.moveTo(cx, cy - 90); g.lineTo(cx + 18, cy - 30); g.lineTo(cx + 95, cy + 20); g.lineTo(cx + 95, cy + 40); g.lineTo(cx + 22, cy + 45); g.lineTo(cx + 40, cy + 90); g.lineTo(cx - 40, cy + 90); g.lineTo(cx - 22, cy + 45); g.lineTo(cx - 95, cy + 40); g.lineTo(cx - 95, cy + 20); g.lineTo(cx - 18, cy - 30); g.closePath(); g.fill();
+    for (const [x, y, c] of [[-60, 25, '#40ff70'], [60, 25, '#40ff70'], [-10, 10, '#ffd040'], [10, 10, '#ffd040'], [0, -40, '#7fd8ff']]) { g.fillStyle = c; g.fillRect(cx + x - 5, cy + y - 12, 10, 24); } frame(3, 'SMS  GUN 180'); } }); }
+function f35Cockpit() { if (!BOAT || !BOAT.userData.f35) return; const ud = BOAT.userData, fb = BDECK.y, y0 = fb + .005, hz = BHELM[1], g = new THREE.Group(); ud.seatEye = fb + .3 - BHELM[2]; const E = fb + .3, SK = fb + .02; // eye 1.8 m: the canopy apex is at fb + .53, the body skin at fb - .05
+  // the old cockpit (a flat tub, two plain screens, block seat, sticks, a HUD pane) goes: every small mesh inside the cockpit volume
+  { const kill = []; BOAT.updateMatrixWorld(true); const inv = new THREE.Matrix4().copy(BOAT.matrixWorld).invert(), v = new THREE.Vector3(); BOAT.traverse(o => { if (!o.isMesh || o.isSprite || !o.geometry) return; const gg = o.geometry; if (!gg.boundingSphere) gg.computeBoundingSphere();
+      v.copy(gg.boundingSphere.center).applyMatrix4(o.matrixWorld).applyMatrix4(inv); const r = gg.boundingSphere.radius * o.matrixWorld.getMaxScaleOnAxis(); if (r < 1.6 && Math.abs(v.x) < .5 && v.z > hz - 1.75 && v.z < hz + .75 && v.y > y0 - .25 && v.y < E + .6) kill.push(o); });
+    for (const o of kill) { o.parent.remove(o); o.geometry.dispose(); } ud.f35kill = kill.length; }
+  BOAT.add(g);
+  const M = F35C.m || (F35C.m = {tub: new THREE.MeshStandardMaterial({color: 0x15171a, roughness: .85}), con: new THREE.MeshStandardMaterial({color: 0x0f1012, roughness: .6}), knob: new THREE.MeshStandardMaterial({color: 0x0c0c0d, roughness: .55, metalness: 0}),
+    frame: new THREE.MeshStandardMaterial({color: 0x3a3e44, roughness: .45, metalness: .5}), seat: new THREE.MeshStandardMaterial({color: 0x3a3c32, roughness: .9}), cush: new THREE.MeshStandardMaterial({color: 0x4a4636, roughness: 1}), strap: new THREE.MeshStandardMaterial({color: 0x5a6a3a, roughness: .9}),
+    yb: new THREE.MeshStandardMaterial({color: 0xe8c020, roughness: .5}), blk: new THREE.MeshStandardMaterial({color: 0x101012, roughness: .5}), led: new THREE.MeshStandardMaterial({color: 0x102010, emissive: 0x40ff70, emissiveIntensity: .9}), amb: new THREE.MeshStandardMaterial({color: 0x201000, emissive: 0xffa030, emissiveIntensity: .8}),
+    mir: new THREE.MeshStandardMaterial({color: 0xc8d4dc, roughness: .05, metalness: 1}), pcd: null});
+  if (!M.pcd) { const t = new THREE.CanvasTexture(f35PcdCv()); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; M.pcd = new THREE.MeshStandardMaterial({map: t, emissive: 0xffffff, emissiveMap: t, emissiveIntensity: .85, roughness: .2}); }
+  const add = (geo, m, x, y, z, rx = 0, ry = 0, rz = 0) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.rotation.set(rx, ry, rz); o.castShadow = o.receiveShadow = true; g.add(o); return o; };
+  const box = (m, x0, x1, ya, yb, z0, z1) => add(new THREE.BoxGeometry(x1 - x0, yb - ya, z1 - z0), m, (x0 + x1) / 2, (ya + yb) / 2, (z0 + z1) / 2);
+  const zP = hz - 1.25, zS = hz + .42, sill = SK + .08, wx = .4, top = fb + .5;
+  // tub walls up to the sills, a floor, the side consoles on the sills with knobs, switches and lit labels
+  for (const sd of [-1, 1]) { box(M.tub, sd * wx - .02, sd * wx + .02, SK - .02, sill, zP - .2, zS + .4); box(M.con, sd > 0 ? wx - .2 : -wx, sd > 0 ? wx : -wx + .2, sill - .06, sill, zP + .35, zS);
+    for (let i = 0; i < 7; i++) { const z = zP + .45 + i * .2, x = sd * (wx - .1); if (Math.abs(z - (hz - .25)) < .12) continue; add(new THREE.CylinderGeometry(.016, .016, .02, 10), M.knob, x - .03, sill + .01, z); add(new THREE.BoxGeometry(.008, .02, .008), M.knob, x + .04, sill + .012, z, .4); add(new THREE.PlaneGeometry(.05, .012), i % 3 ? M.led : M.amb, x, sill + .001, z + .05, -PI / 2); } }
+  box(M.tub, -wx + .02, wx - .02, SK + .005, SK + .02, zP - .1, zS + .3); // a dark cockpit floor over the body skin
+  // side-stick (right) and throttle (left) on the consoles
+  { const x = wx - .1, z = hz - .2; add(new THREE.CylinderGeometry(.016, .02, .12, 10), M.knob, x, sill + .06, z, .15); const gr = add(new THREE.CylinderGeometry(.024, .028, .11, 12), M.blk, x, sill + .16, z - .01, .25); add(new THREE.CylinderGeometry(.008, .008, .02, 8), M.amb, x, sill + .22, z - .02); add(new THREE.BoxGeometry(.012, .03, .02), M.knob, x - .02, sill + .16, z - .04, .25); }
+  { const x = -wx + .1, z = hz - .25; box(M.con, x - .05, x + .05, sill, sill + .03, z - .12, z + .06); add(new THREE.BoxGeometry(.05, .09, .07), M.blk, x, sill + .09, z - .02, -.3); add(new THREE.CylinderGeometry(.006, .006, .02, 6), M.amb, x + .02, sill + .135, z - .04); }
+  // rudder pedals ahead on the floor
+  for (const sd of [-1, 1]) { add(new THREE.BoxGeometry(.09, .1, .02), M.knob, sd * .13, SK + .08, zP + .2, -.6); }
+  // instrument panel: the panoramic display (two halves), a frame, the glare shield with the up-front controller and the standby display
+  const pT = E - .05, pB = SK + .03, pz = zP; box(M.con, -.4, .4, SK - .02, pT, pz - .1, pz); add(new THREE.PlaneGeometry(.72, Math.min(.22, pT - pB - .02)), M.pcd, 0, (pT + pB) / 2 + .01, pz + .004); box(M.blk, -.005, .005, pB + .02, pT - .01, pz + .002, pz + .008);
+  box(M.blk, -.38, .38, pT, pT + .025, pz - .15, pz + .1); box(M.con, -.16, .16, pT + .03, pT + .07, pz - .02, pz + .07); for (let i = 0; i < 6; i++) add(new THREE.BoxGeometry(.03, .012, .02), i % 2 ? M.led : M.amb, -.1 + i * .04, pT + .072, pz + .045);
+  add(new THREE.PlaneGeometry(.07, .05), M.pcd, .2, pT + .055, pz + .072, -.2).scale.set(1, 1, 1);
+  // canopy bow (the frame ahead) and rails along the sills, with three mirrors; the aft arch behind the seat
+  const arch = (z, r, h, t) => { const a = add(new THREE.TorusGeometry(1, t, 6, 28, PI), M.frame, 0, sill, z); a.scale.set(r, h, 1); return a; };
+  arch(zP - .12, wx, top - sill, .022); arch(zS + .35, wx, top - sill + .02, .03); for (const sd of [-1, 1]) box(M.frame, sd * wx - .025, sd * wx + .025, sill, sill + .04, zP - .15, zS + .4);
+  for (const x of [-.16, 0, .16]) { const yy = sill + (top - sill) * Math.sqrt(Math.max(0, 1 - (x / wx) ** 2)) - .03; add(new THREE.BoxGeometry(.09, .035, .008), M.mir, x, yy - .03, zP - .08, .3); }
+  // ejection seat: bucket, cushions, headbox, harness, the yellow-black handle between the knees
+  const sz = hz + .25, sb = SK + .04; box(M.seat, -.24, .24, SK - .02, sb, sz - .25, sz + .25); add(bfCushGeo(.42, .05, .3, .02), M.cush, 0, sb + .025, sz + .05); add(bfCushGeo(.42, top - sb - .2, .08, .03), M.cush, 0, (sb + top - .14) / 2, sz + .23, -.12);
+  box(M.seat, -.26, .26, sb + .02, top - .12, sz + .27, sz + .37); box(M.seat, -.2, .2, top - .2, top - .06, sz + .22, sz + .4); add(bfCushGeo(.24, .14, .06, .02), M.cush, 0, top - .17, sz + .19, -.1);
+  for (const sd of [-1, 1]) box(M.strap, sd * .1 - .025, sd * .1 + .025, sb + .1, top - .18, sz + .2, sz + .22); // shoulder straps on the seat back (behind the eye)
+  { add(new THREE.TorusGeometry(.05, .01, 6, 16, PI), M.yb, 0, SK + .02, zP + .5, -PI / 2); } // the ejection handle, low between the pedals
+  bfMerge(g); ud.f35ck = g; ud.lamp = [0, top - .06, zP + .55]; ud.lampI = 1.2; }
+const F35C = {m: null};
+{ buildBoat = after(buildBoat, function (r) { try { f35Cockpit(); } catch (err) { console.warn('f35ck', err); } }); }
