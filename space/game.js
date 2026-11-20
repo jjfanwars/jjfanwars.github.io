@@ -134,6 +134,7 @@ function interiorMat(m, U = INT_MC) { m.onBeforeCompile = sh => { sh.uniforms.in
 
 // ---------------- shared GLSL: atmosphere scattering + noise
 const BR = new V3(5.8e-6, 13.5e-6, 33.1e-6).multiplyScalar(3.2), BM = 21e-6 * 1.9, HR = 2500, HM = 500, BO = new V3(.65e-6, 1.881e-6, .085e-6).multiplyScalar(3.2), OZ_C = 7800, OZ_W = 4700, SUN_I = 3.6; // sun irradiance: same units as the directional light, so sky and ground brightness match
+const CL = {base: 1500, top: 4300, cov: {value: .5}};
 const GLSL_ATMO = `
 uniform vec3 bR, bO; uniform float bM, hR, hM, R, Ra, sunI;
 float ozone(float h){ return max(0., 1. - abs(h - ${OZ_C}.) / ${OZ_W}.); }
@@ -249,8 +250,8 @@ const ssaoM = new THREE.ShaderMaterial({vertexShader: VS, depthTest: false, dept
     float ao = 1. - occ / 12.; gl_FragColor = vec4(vec3(mix(1., ao * ao, smoothstep(220., 120., z))), 1.); }`});
 const atmoM = new THREE.ShaderMaterial({vertexShader: VS, depthTest: false, depthWrite: false,
   uniforms: Object.assign(atmoU(), {tCol: {value: null}, tDep: {value: null}, tAO: {value: null}, aoOn: {value: 1}, invProj: {value: new THREE.Matrix4()}, camRot: {value: new THREE.Matrix3()}, camPos: {value: new V3()}, sunDir: {value: SUN.clone()},
-    logC: {value: Math.log2(FAR + 1)}, steps: {value: 12}, aoPx: {value: new THREE.Vector2()}}),
-  fragmentShader: GLSL_ATMO + `uniform sampler2D tCol, tDep, tAO; uniform mat4 invProj; uniform mat3 camRot; uniform vec3 camPos, sunDir; uniform float logC, aoOn; uniform int steps; uniform vec2 aoPx; varying vec2 vUv;
+    logC: {value: Math.log2(FAR + 1)}, steps: {value: 12}, aoPx: {value: new THREE.Vector2()}, tCl: {value: null}, clOn: {value: 0}}),
+  fragmentShader: GLSL_ATMO + `uniform sampler2D tCol, tDep, tAO, tCl; uniform float clOn; uniform mat4 invProj; uniform mat3 camRot; uniform vec3 camPos, sunDir; uniform float logC, aoOn; uniform int steps; uniform vec2 aoPx; varying vec2 vUv;
   void main(){
     vec4 v = invProj * vec4(vUv * 2. - 1., -1., 1.); vec3 dv = normalize(v.xyz / v.w); vec3 d = normalize(camRot * dv);
     float dep = texture2D(tDep, vUv).x; float dist = dep >= .99999 ? 1e20 : (exp2(dep * logC) - 1.) / max(1e-4, -dv.z);
@@ -259,13 +260,107 @@ const atmoM = new THREE.ShaderMaterial({vertexShader: VS, depthTest: false, dept
     vec3 trans = vec3(1.);
     vec2 a = rs(camPos, d, Ra); float t0 = max(a.x, 0.), t1 = min(a.y, dist);
     vec2 gp = rs(camPos, d, R - 30.); if (dist > 1e19 && gp.x > 0. && gp.x < 1e19) { t1 = min(t1, gp.x); col = vec3(.02, .025, .02) * max(0., dot(normalize(camPos + d * gp.x), sunDir)); dist = gp.x; } // ground not built yet: dark stand-in
-    if (t1 > t0) { vec3 ins = scatter(camPos, d, t0, t1, sunDir, steps, trans); col = col * trans + ins; }
+    vec4 cl = clOn > .5 ? texture2D(tCl, vUv) : vec4(0., 0., 0., 1.);
+    if (cl.a < .995) { // clouds: split the air at the cloud layer so near clouds stay crisp and far ones fade into the haze
+      float rc = length(camPos) < R + ${CL.base}. ? R + ${CL.base}. : R + ${CL.top}.; vec2 ic = rs(camPos, d, rc); float tc = length(camPos) < R + ${CL.top}. && length(camPos) > R + ${CL.base}. ? 0. : (length(camPos) < rc ? ic.y : ic.x);
+      tc = clamp(tc, t0, max(t0, t1)); vec3 tr1 = vec3(1.), tr2 = vec3(1.), ins1 = vec3(0.), ins2 = vec3(0.); int hs = max(steps / 2, 4);
+      if (tc > t0) ins1 = scatter(camPos, d, t0, tc, sunDir, hs, tr1); if (t1 > tc) ins2 = scatter(camPos, d, tc, t1, sunDir, hs, tr2);
+      col = ins1 + tr1 * (cl.rgb + cl.a * (ins2 + tr2 * col)); trans = tr1 * tr2 * cl.a; }
+    else if (t1 > t0) { vec3 ins = scatter(camPos, d, t0, t1, sunDir, steps, trans); col = col * trans + ins; }
     if (dist > 1e19) { // the sun: limb-darkened disc + a tight glow
       float c = dot(d, sunDir), ang = acos(clamp(c, -1., 1.)), rr = ang / .0062;
       if (rr < 1.) { float mu = sqrt(1. - rr * rr); col += trans * vec3(1., .97, .92) * 30000. * (.4 + .6 * pow(mu, .6)); }
       col += trans * vec3(1., .93, .84) * (exp(-ang * 90.) * 30. + exp(-ang * 14.) * .6); }
     gl_FragColor = vec4(col, 1.); }`});
+// ---------------- volumetric clouds (High): ray-marched cumulus layer, 3D noise texture made at load (tileable Perlin-Worley + Worley octaves)
+const CLOUD3D = (() => { const N = 64, data = new Uint8Array(N * N * N * 4);
+  const pts = cells => { const a = new Float32Array(cells * cells * cells * 3); let s = cells * 977 + 3; for (let i = 0; i < a.length; i++) { s = (Math.imul(s, 1664525) + 1013904223) >>> 0; a[i] = s / 4294967296; } return a; };
+  const P = {}; for (const c of [4, 8, 16, 32]) P[c] = pts(c);
+  const wor = (x, y, z, c) => { const p = P[c], fx = x * c, fy = y * c, fz = z * c, ix = Math.floor(fx), iy = Math.floor(fy), iz = Math.floor(fz); let m = 9;
+    for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) for (let d = -1; d <= 1; d++) { const cx = ix + a, cy = iy + b, cz = iz + d, wx = (cx % c + c) % c, wy = (cy % c + c) % c, wz = (cz % c + c) % c, k = ((wz * c + wy) * c + wx) * 3;
+      const dx = cx + p[k] - fx, dy = cy + p[k + 1] - fy, dz = cz + p[k + 2] - fz, dd = dx * dx + dy * dy + dz * dz; if (dd < m) m = dd; }
+    return 1 - Math.min(1, Math.sqrt(m)); };
+  const vnp = (x, y, z, per, s) => { const fx = x * per, fy = y * per, fz = z * per, ix = Math.floor(fx), iy = Math.floor(fy), iz = Math.floor(fz); let tx = fx - ix, ty = fy - iy, tz = fz - iz; tx = tx * tx * (3 - 2 * tx); ty = ty * ty * (3 - 2 * ty); tz = tz * tz * (3 - 2 * tz);
+    const h = (a, b, c) => hsh(((ix + a) % per + per) % per, ((iy + b) % per + per) % per, ((iz + c) % per + per) % per, s);
+    return lerp(lerp(lerp(h(0, 0, 0), h(1, 0, 0), tx), lerp(h(0, 1, 0), h(1, 1, 0), tx), ty), lerp(lerp(h(0, 0, 1), h(1, 0, 1), tx), lerp(h(0, 1, 1), h(1, 1, 1), tx), ty), tz); };
+  for (let k = 0; k < N; k++) for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) { const x = (i + .5) / N, y = (j + .5) / N, z = (k + .5) / N;
+    const w4 = wor(x, y, z, 4), w8 = wor(x, y, z, 8), w16 = wor(x, y, z, 16), w32 = wor(x, y, z, 32);
+    const pf = (vnp(x, y, z, 4, 1) * .5 + vnp(x, y, z, 8, 2) * .25 + vnp(x, y, z, 16, 3) * .125) / .875, wf = w4 * .625 + w8 * .25 + w16 * .125;
+    const pw = clamp((pf - (wf - 1)) / (2 - wf) * 1.15 - .1, 0, 1); // Perlin-Worley: billowy Perlin carved by Worley cells
+    const o = ((k * N + j) * N + i) * 4; data[o] = pw * 255; data[o + 1] = w8 * 255; data[o + 2] = w16 * 255; data[o + 3] = w32 * 255; }
+  const t = new THREE.Data3DTexture(data, N, N, N); t.format = THREE.RGBAFormat; t.type = THREE.UnsignedByteType; t.minFilter = t.magFilter = THREE.LinearFilter; t.wrapS = t.wrapT = t.wrapR = THREE.RepeatWrapping; t.unpackAlignment = 1; t.needsUpdate = true; return t; })();
+// planet weather map (equirect, baked once on the GPU): cyclone spirals in the storm tracks, zonal streaks, a cloudy equator, clearer subtropics
+const WX = {rt: new THREE.WebGLRenderTarget(2048, 1024, {depthBuffer: false, generateMipmaps: false, minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, wrapS: THREE.RepeatWrapping, wrapT: THREE.ClampToEdgeWrapping}), done: false};
+const weatherM = new THREE.ShaderMaterial({vertexShader: VS, depthTest: false, depthWrite: false, fragmentShader: GLSL_NOISE + `varying vec2 vUv;
+  vec3 rotA(vec3 p, vec3 ax, float a){ return p * cos(a) + cross(ax, p) * sin(a) + ax * dot(ax, p) * (1. - cos(a)); }
+  float hs(float n){ return fract(sin(n * 127.1 + 311.7) * 43758.5453); }
+  void main(){
+    float lon = (vUv.x - .5) * 6.2831853, lat = (vUv.y - .5) * 3.1415927; vec3 d = vec3(cos(lat) * cos(lon), sin(lat), -cos(lat) * sin(lon)), p = d;
+    // cyclones: twist the domain around storm centres (counter-clockwise in the north, clockwise in the south)
+    for (int i = 0; i < 20; i++) { float fi = float(i), sgn = hs(fi) < .5 ? -1. : 1., cl = sgn * (.5 + .55 * hs(fi + 7.)), co = hs(fi + 3.) * 6.2831853;
+      vec3 c = vec3(cos(cl) * cos(co), sin(cl), -cos(cl) * sin(co)); float dd = acos(clamp(dot(p, c), -1., 1.)), r = .13 + .12 * hs(fi + 11.);
+      p = rotA(p, c, sgn * (3.5 + 3. * hs(fi + 5.)) * exp(-dd * dd / (r * r)) * (1. - dd / (r * 3.) * .2)); }
+    vec3 q = vec3(p.x, p.y * 2.1, p.z) * 2.6; // stretched east-west
+    vec3 w = vec3(fbm3(q * 1.4 + 1.7, 4), fbm3(q * 1.4 + 9.2, 4), fbm3(q * 1.4 + 4.4, 4)) - .5;
+    float base = fbm3(q + w * 1.8, 6), wisp = fbm3((q + w * 2.4) * vec3(5., 9., 5.), 5), fine = fbm3((q + w) * 26., 3);
+    float al = abs(lat) * 57.3, latf = .22 * exp(-pow((al - 52.) / 14., 2.)) + .08 * exp(-pow(lat * 57.3 / 6., 2.)) - .2 * exp(-pow((al - 24.) / 9., 2.)) + .12 * smoothstep(65., 85., al);
+    float c = base * .9 + (wisp - .5) * .55 + (fine - .5) * .18 + latf - .36;
+    gl_FragColor = vec4(smoothstep(0., .32, c), wisp, fine, 1.); }`});
+const GLSL_CLOUD = `
+uniform sampler3D nTex; uniform sampler2D wTex; uniform float clCov, clTime;
+const float CB = ${CL.base}., CT = ${CL.top}.;
+float remap(float v, float a, float b, float c, float d){ return c + (v - a) / (b - a) * (d - c); }
+// pb = body-fixed position in metres
+float clWeather(vec3 pb){ vec3 d = normalize(pb); float lon = atan(-d.z, d.x) + clTime * 2e-5, lat = asin(clamp(d.y, -1., 1.));
+  vec4 w = texture(wTex, vec2(lon / 6.2831853 + .5, lat / 3.1415927 + .5)); float e = texture(nTex, pb / 21000.).r;
+  return clamp(w.r + (clCov - .5) * .6 + (e - .62) * .15, 0., 1.); }
+float clDens(vec3 pb, float h, float cov, bool cheap){
+  vec3 wind = vec3(clTime * 7., clTime * .3, clTime * 3.); vec4 n = texture(nTex, (pb + wind) / 4200.);
+  float wf = n.g * .625 + n.b * .25 + n.a * .125, shape = remap(n.r, wf - 1., 1., 0., 1.);
+  float hg = smoothstep(0., .1, h) * smoothstep(1., .3 + .45 * cov, h) * (1. - .35 * h); // flat bases, rounded tops (taller where cover is thick)
+  float d = remap(shape * hg, 1. - min(1., cov * 1.5), 1., 0., 1.) * min(1., cov * 1.8); // sheets where the weather map is cloudy, broken cumulus at the edges
+  if (d <= 0. || cheap) return max(d, 0.);
+  vec4 dn = texture(nTex, (pb + wind * 2.) / 900.); float df = dn.g * .625 + dn.b * .25 + dn.a * .125; df = mix(df, 1. - df, clamp(h * 3., 0., 1.)); // wispy at the base, billowy above
+  return max(remap(d, df * .38, 1., 0., 1.), 0.); }`;
+const cloudM = new THREE.ShaderMaterial({vertexShader: VS, depthTest: false, depthWrite: false,
+  uniforms: Object.assign(atmoU(), {tDep: {value: null}, invProj: {value: new THREE.Matrix4()}, camRot: {value: new THREE.Matrix3()}, camPos: {value: new V3()}, sunDir: {value: SUN.clone()}, bInv: {value: new THREE.Matrix3()},
+    logC: {value: Math.log2(FAR + 1)}, nTex: {value: CLOUD3D}, wTex: {value: WX.rt.texture}, clCov: CL.cov, clTime: {value: 0}, steps: {value: 64}, frame: {value: 0}}),
+  fragmentShader: GLSL_ATMO + GLSL_CLOUD + `uniform sampler2D tDep; uniform mat4 invProj; uniform mat3 camRot, bInv; uniform vec3 camPos, sunDir; uniform float logC, frame; uniform int steps; varying vec2 vUv;
+  float hg(float g, float mu){ float g2 = g * g; return (1. - g2) / (12.566 * pow(1. + g2 - 2. * g * mu, 1.5)); }
+  void main(){
+    vec4 v = invProj * vec4(vUv * 2. - 1., -1., 1.); vec3 dv = normalize(v.xyz / v.w), d = normalize(camRot * dv);
+    float dep = texture2D(tDep, vUv).x, dist = dep >= .99999 ? 1e20 : (exp2(dep * logC) - 1.) / max(1e-4, -dv.z);
+    vec3 o = camPos; float r0 = length(o), rb = R + CB, rt = R + CT; vec2 it = rs(o, d, rt), ib = rs(o, d, rb), gp = rs(o, d, R);
+    float t0, t1; bool hitB = ib.x > 0. && ib.x < 1e19;
+    if (r0 < rb) { t0 = ib.y; t1 = it.y; } else if (r0 < rt) { t0 = 0.; t1 = hitB ? ib.x : it.y; } else { if (it.x > 1e19 || it.y < 0.) { gl_FragColor = vec4(0., 0., 0., 1.); return; } t0 = it.x; t1 = hitB ? ib.x : it.y; }
+    if (gp.x > 0. && gp.x < 1e19) t1 = min(t1, gp.x); t1 = min(min(t1, dist), t0 + 80000.);
+    if (t1 <= t0) { gl_FragColor = vec4(0., 0., 0., 1.); return; }
+    // sunlight reaching the cloud layer along this view (air reddening + the planet's shadow), sky light
+    vec3 pm = o + d * (t0 + min(t1 - t0, 4000.) * .5), up = normalize(pm); float el = dot(up, sunDir);
+    vec3 sunT = vec3(0.); vec2 sh = rs(pm, sunDir, R - 300.);
+    if (!(sh.x > 0. && sh.x < 1e19)) { float lt = rs(pm, sunDir, Ra).y / 8., oR = 0., oM = 0., oO = 0.; for (int j = 0; j < 8; j++) { float hh = max(0., length(pm + sunDir * lt * (float(j) + .5)) - R); oR += exp(-hh / hR) * lt; oM += exp(-hh / hM) * lt; oO += ozone(hh) * lt; } sunT = exp(-(bR * oR + bM * 1.1 * oM + bO * oO)); }
+    sunT *= smoothstep(-.06, .02, el);
+    float day = smoothstep(-.12, .35, el), tw = smoothstep(.2, 0., el) * smoothstep(-.2, -.02, el);
+    vec3 amb = (vec3(.32, .48, .82) * day + vec3(.55, .32, .5) * tw * .6) * sunI * .065 + vec3(.0006, .0008, .0014);
+    float mu = dot(d, sunDir), ph = mix(hg(.8, mu), hg(-.2, mu), .35), ph2 = mix(hg(.4, mu), hg(-.1, mu), .4);
+    float ds = (t1 - t0) / float(steps), jit = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(.06711056, .00583715))) + frame * .618);
+    float T = 1.; vec3 L = vec3(0.);
+    for (int i = 0; i < 96; i++) { if (i >= steps) break; float t = t0 + (float(i) + jit) * ds; vec3 p = o + d * t; float h = (length(p) - rb) / (CT - CB); if (h < 0. || h > 1.) continue;
+      vec3 pb = bInv * p; float cov = clWeather(pb); if (cov < .02) continue;
+      float dd = clDens(pb, h, cov, false); if (dd < .002) continue;
+      float sig = dd * .05;
+      // light march toward the sun (growing steps), coarse density
+      float od = 0., ls = 70.; vec3 lp = p; for (int j = 0; j < 5; j++) { lp += sunDir * ls; float lh = (length(lp) - rb) / (CT - CB); if (lh > 1. || lh < 0.) break; vec3 lb = bInv * lp; od += clDens(lb, lh, clWeather(lb), true) * ls; ls *= 1.9; }
+      od *= .05;
+      // multiple scattering (3 octaves) + powder darkening of thin edges facing the sun
+      float ms = exp(-od) * ph + .5 * exp(-od * .45) * ph2 + .25 * exp(-od * .2) * .08;
+      float pw = 1. - exp(-sig * 140.);
+      vec3 S = sunI * sunT * ms * 12. * mix(.55, 1., pw) + amb * (.35 + .65 * h) * mix(1., .55, exp(-od * .2));
+      float Ti = exp(-sig * ds); L += T * S * (1. - Ti); T *= Ti; if (T < .01) break; }
+    gl_FragColor = vec4(L, T); }`});
 // eye adaptation: log-average brightness, centre weighted, eased over time
+let _cbm = null; function cloudBlurM() { return _cbm || (_cbm = new THREE.ShaderMaterial({vertexShader: VS, depthTest: false, uniforms: blurM.uniforms,
+  fragmentShader: 'uniform sampler2D t; uniform vec2 d; varying vec2 vUv; void main(){ vec4 c = texture2D(t, vUv) * .4; c += (texture2D(t, vUv + d) + texture2D(t, vUv - d)) * .22; c += (texture2D(t, vUv + d * 2.2) + texture2D(t, vUv - d * 2.2)) * .08; gl_FragColor = c; }'})); }
 const lumM = new THREE.ShaderMaterial({vertexShader: VS, depthTest: false, uniforms: {t: {value: null}},
   fragmentShader: 'uniform sampler2D t; varying vec2 vUv; void main(){ float s = 0.; for (int y = 0; y < 4; y++) for (int x = 0; x < 4; x++) { vec3 c = texture2D(t, vUv + (vec2(x, y) - 1.5) / vec2(256., 128.)).rgb; s += log(max(dot(c, vec3(.2126, .7152, .0722)), .012)); } gl_FragColor = vec4(s / 16., 0., 0., 1.); }'});
 const avgM = new THREE.ShaderMaterial({vertexShader: VS, depthTest: false, uniforms: {t: {value: null}, prev: {value: null}, k: {value: .05}},
@@ -278,19 +373,19 @@ const downM = new THREE.ShaderMaterial({vertexShader: VS, depthTest: false, unif
 const blurM = new THREE.ShaderMaterial({vertexShader: VS, depthTest: false, uniforms: {t: {value: null}, d: {value: new THREE.Vector2()}},
   fragmentShader: 'uniform sampler2D t; uniform vec2 d; varying vec2 vUv; void main(){ vec3 c = texture2D(t, vUv).rgb * .227; c += (texture2D(t, vUv + d*1.38).rgb + texture2D(t, vUv - d*1.38).rgb) * .316; c += (texture2D(t, vUv + d*3.23).rgb + texture2D(t, vUv - d*3.23).rgb) * .07; gl_FragColor = vec4(c, 1.); }'});
 const compM = new THREE.ShaderMaterial({vertexShader: VS, depthTest: false,
-  uniforms: {tR: {value: null}, rOn: {value: 0}, eMax: EMAX, t: {value: null}, b: {value: null}, b2: {value: null}, ad: {value: null}, tDep: {value: null}, sunUV: {value: new THREE.Vector2(-9, -9)}, sunCol: {value: new V3(1, 1, 1)}, aspect: {value: 1}, sunOn: {value: 0}, time: {value: 0}},
-  fragmentShader: `uniform float eMax, rOn; uniform sampler2D t, b, b2, ad, tDep, tR; uniform vec2 sunUV; uniform vec3 sunCol; uniform float aspect, sunOn, time; varying vec2 vUv;
+  uniforms: {tCl: {value: null}, clOn: {value: 0}, tR: {value: null}, rOn: {value: 0}, eMax: EMAX, t: {value: null}, b: {value: null}, b2: {value: null}, ad: {value: null}, tDep: {value: null}, sunUV: {value: new THREE.Vector2(-9, -9)}, sunCol: {value: new V3(1, 1, 1)}, aspect: {value: 1}, sunOn: {value: 0}, time: {value: 0}},
+  fragmentShader: `uniform float eMax, rOn, clOn; uniform sampler2D t, b, b2, ad, tDep, tR, tCl; uniform vec2 sunUV; uniform vec3 sunCol; uniform float aspect, sunOn, time; varying vec2 vUv;
   vec3 aces(vec3 x){ return clamp((x*(2.51*x+.03))/(x*(2.43*x+.59)+.14), 0., 1.); }
   float hh(vec2 p){ return fract(sin(dot(p, vec2(12.9898, 78.233)) + time) * 43758.5453); }
   void main(){
     float e = clamp(.1 / texture2D(ad, vec2(.5)).r, .02, eMax);
     vec3 c = texture2D(t, vUv).rgb * e + texture2D(b, vUv).rgb * .14 + texture2D(b2, vUv).rgb * .12; if (rOn > .5) c += texture2D(tR, vUv).rgb * e;
     if (sunOn > .5) { // how much of the sun disc is unblocked (depth taps around it), then glare, starburst and ghosts
-      float vis = 0.; for (int y = -2; y <= 2; y++) for (int x = -2; x <= 2; x++) vis += step(.99999, texture2D(tDep, sunUV + vec2(x, y) * .0035 * vec2(1. / aspect, 1.)).x); vis /= 25.;
+      float vis = 0.; for (int y = -2; y <= 2; y++) for (int x = -2; x <= 2; x++) vis += step(.99999, texture2D(tDep, sunUV + vec2(x, y) * .0035 * vec2(1. / aspect, 1.)).x); vis /= 25.; if (clOn > .5) vis *= texture2D(tCl, sunUV).a;
       vis *= smoothstep(-.1, .05, min(min(sunUV.x, sunUV.y), min(1. - sunUV.x, 1. - sunUV.y)));
       if (vis > 0.) { vec2 sv = vUv - sunUV; sv.x *= aspect; float r = length(sv), a = atan(sv.y, sv.x);
         float sp = pow(abs(cos(a * 2. + .4)), 900.) + pow(abs(cos(a * 3. + 1.1)), 1400.) * .5;
-        c += sunCol * vis * (sp * exp(-r * 4.) * .35 + exp(-r * 22.) * 1.2 + exp(-r * 6.) * .18 + exp(-r * 1.6) * .03);
+        c += sunCol * vis * (sp * exp(-r * 4.) * .35 + exp(-r * 22.) * 1.2 + exp(-r * 6.) * .12 + exp(-r * 1.6) * .012);
         vec2 ax = vec2(.5) - sunUV; float fs[6] = float[6](.35, .62, .95, 1.25, 1.55, 2.1), sz[6] = float[6](.03, .06, .018, .1, .04, .14);
         vec3 tc[6] = vec3[6](vec3(.4, .9, .5), vec3(.5, .6, 1.), vec3(1., .8, .3), vec3(.3, .5, 1.), vec3(1., .4, .6), vec3(.6, .9, 1.));
         for (int i = 0; i < 6; i++) { vec2 q = vUv - (sunUV + ax * fs[i]); q.x *= aspect; float d = length(q); c += sunCol * tc[i] * vis * smoothstep(sz[i], sz[i] * .7, d) * (.05 + .1 * smoothstep(sz[i] * .6, sz[i], d)) * .5; } } }
@@ -303,7 +398,7 @@ const raysM = new THREE.ShaderMaterial({vertexShader: VS, depthTest: false, unif
   void main(){ vec2 stp = (sunUV - vUv) / 56.; vec2 uv = vUv + stp * hh(vUv * 917.); float dec = 1.; vec3 sum = vec3(0.);
     for (int i = 0; i < 56; i++) { uv += stp; if (uv.x < 0. || uv.y < 0. || uv.x > 1. || uv.y > 1.) { dec *= .97; continue; }
       float sky = step(.99999, texture2D(tDep, uv).x); vec2 o = (uv - sunUV) * vec2(aspect, 1.);
-      vec3 cc = texture2D(tCol, uv).rgb; sum += min(cc, vec3(14.)) * smoothstep(.2, 2., dot(cc, vec3(.33))) * sky * exp(-length(o) * 4.5) * dec; dec *= .975; }
+      vec3 cc = texture2D(tCol, uv).rgb; sum += min(cc, vec3(14.)) * smoothstep(6., 40., dot(cc, vec3(.33))) * sky * exp(-length(o) * 4.5) * dec; dec *= .975; }
     gl_FragColor = vec4(sum / 56. * k, 1.); }`});
 const POST = {};
 function setupPost() {
@@ -311,9 +406,10 @@ function setupPost() {
   RND.setPixelRatio(pr); RND.setSize(innerWidth, innerHeight, false); cam.aspect = innerWidth / innerHeight; cam.updateProjectionMatrix();
   for (const k in POST) POST[k].dispose();
   const HF = {type: THREE.HalfFloatType, depthBuffer: false};
-  POST.main = new THREE.WebGLRenderTarget(w, h, {type: THREE.HalfFloatType, samples: 0, depthTexture: new THREE.DepthTexture(w, h, THREE.UnsignedIntType)});
+  POST.main = new THREE.WebGLRenderTarget(w, h, {type: THREE.HalfFloatType, samples: HI() ? 4 : 0, depthTexture: new THREE.DepthTexture(w, h, THREE.UnsignedIntType)});
   POST.ao = new THREE.WebGLRenderTarget(Math.max(2, w >> 1), Math.max(2, h >> 1), {depthBuffer: false});
   POST.sky = new THREE.WebGLRenderTarget(w, h, HF);
+  POST.cl = new THREE.WebGLRenderTarget(Math.max(2, w >> 1), Math.max(2, h >> 1), HF); POST.cl2 = POST.cl.clone();
   const bw = Math.max(2, w >> 2), bh = Math.max(2, h >> 2);
   POST.a = new THREE.WebGLRenderTarget(bw, bh, HF); POST.b = POST.a.clone();
   POST.c = new THREE.WebGLRenderTarget(Math.max(2, bw >> 2), Math.max(2, bh >> 2), HF); POST.d = POST.c.clone(); POST.r = POST.a.clone();
@@ -328,6 +424,12 @@ const _sv4 = new V3();
 function render(dt) {
   RND.setRenderTarget(POST.main); RND.render(scene, cam);
   if (HI()) { const s = ssaoM.uniforms; s.tDep.value = POST.main.depthTexture; s.invProj.value.copy(cam.projectionMatrixInverse); s.proj.value.copy(cam.projectionMatrix); pass(ssaoM, POST.ao); }
+  if (!WX.done) { WX.done = true; pass(weatherM, WX.rt); }
+  const clOn = HI() && G.O.distanceTo(PLANET.c) - PLANET.R < 2e7 ? 1 : 0; atmoM.uniforms.clOn.value = compM.uniforms.clOn.value = clOn;
+  if (clOn) { const c = cloudM.uniforms; c.tDep.value = POST.main.depthTexture; c.invProj.value.copy(cam.projectionMatrixInverse); c.camRot.value.setFromMatrix4(cam.matrixWorld); c.camPos.value.copy(G.O).sub(PLANET.c); c.sunDir.value.copy(SUN);
+    c.bInv.value.setFromMatrix4(new THREE.Matrix4().makeRotationFromQuaternion(PLANET.q).invert()); c.clTime.value = G.t; c.frame.value = (c.frame.value + 1) % 64; pass(cloudM, POST.cl);
+    blurM.uniforms.t.value = POST.cl.texture; blurM.uniforms.d.value.set(.7 / POST.cl.width, 0); pass(cloudBlurM(), POST.cl2); blurM.uniforms.t.value = POST.cl2.texture; blurM.uniforms.d.value.set(0, .7 / POST.cl.height); pass(cloudBlurM(), POST.cl);
+    atmoM.uniforms.tCl.value = compM.uniforms.tCl.value = POST.cl.texture; }
   const u = atmoM.uniforms; u.tCol.value = POST.main.texture; u.tDep.value = POST.main.depthTexture; u.tAO.value = POST.ao.texture; u.invProj.value.copy(cam.projectionMatrixInverse);
   u.camRot.value.setFromMatrix4(cam.matrixWorld); u.camPos.value.copy(G.O).sub(PLANET.c); u.sunDir.value.copy(SUN);
   pass(atmoM, POST.sky);
@@ -339,7 +441,7 @@ function render(dt) {
   cu.sunUV.value.set(_sv4.x * .5 + .5, _sv4.y * .5 + .5); const near = front && Math.abs(cu.sunUV.value.x - .5) < 1.4 && Math.abs(cu.sunUV.value.y - .5) < 1.4;
   cu.rOn.value = near && HI() ? 1 : 0;
   if (cu.rOn.value) { const r = raysM.uniforms; r.tCol.value = POST.sky.texture; r.tDep.value = POST.main.depthTexture; r.sunUV.value.copy(cu.sunUV.value); r.aspect.value = cam.aspect;
-    const alt = G.O.distanceTo(PLANET.c) - PLANET.R; r.k.value = lerp(1.8, .4, sstep(PLANET.atmo * .5, PLANET.atmo * 1.5, alt)); pass(raysM, POST.r);
+    const alt = G.O.distanceTo(PLANET.c) - PLANET.R; r.k.value = lerp(1.1, .4, sstep(PLANET.atmo * .5, PLANET.atmo * 1.5, alt)); pass(raysM, POST.r);
     for (let i = 0; i < 2; i++) { blurM.uniforms.t.value = POST.r.texture; blurM.uniforms.d.value.set(1.6 / POST.r.width, 0); pass(blurM, POST.b); blurM.uniforms.t.value = POST.b.texture; blurM.uniforms.d.value.set(0, 1.6 / POST.r.height); pass(blurM, POST.r); } }
   // bloom: 1/4 and 1/16 resolution
   brightM.uniforms.t.value = POST.sky.texture; brightM.uniforms.ad.value = POST.ad0.texture; pass(brightM, POST.a);
@@ -365,17 +467,25 @@ const TMATS = ['grass', 'sand', 'rock', 'snow'];
 // cloud shadows: the same coverage noise as the cloud layer, looked up where the sun ray through this point crosses it
 const CLOUDU = {sunB: {value: new V3()}, cT: {value: 0}, cOn: {value: 1}, camT: {value: new V3(1, 1, 1)}};
 function cloudShadow(sh, isTerr) {
-  Object.assign(sh.uniforms, CLOUDU, {pR: {value: PLANET.R}, aRa: {value: PLANET.R + PLANET.atmo}, aBR: {value: BR}, aBO: {value: BO}, aBM: {value: BM}, aHR: {value: HR}, aHM: {value: HM}});
+  Object.assign(sh.uniforms, CLOUDU, {nTex: {value: CLOUD3D}, wTex: {value: WX.rt.texture}, clCov: CL.cov, clTime: CLOUDU.cT, pR: {value: PLANET.R}, aRa: {value: PLANET.R + PLANET.atmo}, aBR: {value: BR}, aBO: {value: BO}, aBM: {value: BM}, aHR: {value: HR}, aHM: {value: HM}});
   sh.vertexShader = 'attribute vec3 bd; varying vec3 vBd;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n vBd = bd;');
-  sh.fragmentShader = 'uniform vec3 sunB, camT, aBR, aBO; uniform float cT, cOn, pR, aRa, aBM, aHR, aHM; varying vec3 vBd; vec3 gSunT = vec3(1.);\n' + GLSL_NOISE + `
+  sh.fragmentShader = 'uniform vec3 sunB, camT, aBR, aBO; uniform float cT, cOn, pR, aRa, aBM, aHR, aHM; varying vec3 vBd; vec3 gSunT = vec3(1.);\n' + GLSL_NOISE + GLSL_CLOUD + `
     // sunlight reaching this point on the ground: reddened by the air, cut off by the planet (soft terminator)
-    vec3 sunTrans(){ vec3 b = normalize(vBd); float mu = dot(b, sunB); if (mu < -.1) return vec3(0.);
+    vec3 sunTrans(){
+#ifdef IS_MOON
+      return vec3(1.);
+#endif
+      vec3 b = normalize(vBd); float mu = dot(b, sunB); if (mu < -.1) return vec3(0.);
       vec3 p = b * (pR + 5.); float bb = dot(p, sunB), c = dot(p, p) - aRa * aRa, tt = -bb + sqrt(max(bb * bb - c, 0.)), ds = tt / 6., oR = 0., oM = 0., oO = 0.;
       for (int i = 0; i < 6; i++) { float hh = max(0., length(p + sunB * ds * (float(i) + .5)) - pR); oR += exp(-hh / aHR) * ds; oM += exp(-hh / aHM) * ds; oO += max(0., 1. - abs(hh - ${OZ_C}.) / ${OZ_W}.) * ds; }
       return exp(-(aBR * oR + aBM * 1.1 * oM + aBO * oO)) * smoothstep(-.01, .006, mu); }
-    float cshadow(){ if (cOn < .5) return 1.; vec3 b = normalize(vBd); float su = dot(b, sunB); if (su < -.05) return 1.;
-      vec3 p = normalize(b * pR + sunB * ${CLOUD_H}. / max(su, .12)); vec3 q = p * 6. + vec3(cT * .0006, 0., cT * .0004);
-      float c = smoothstep(.47, .8, fbm3(q, 4) + (fbm3(p * 55. + q * .2, 2) - .5) * .32); return 1. - c * .72 * smoothstep(-.05, .15, su); }\n` +
+    float cshadow(){
+#ifdef IS_MOON
+      return 1.;
+#endif
+      if (cOn < .5) return 1.; vec3 b = normalize(vBd); float su = dot(b, sunB); if (su < -.05) return 1.;
+      vec3 pc = b * pR + sunB * ${(CL.base + CL.top) / 2}. / max(su, .12), pc2 = pc + sunB * 900. / max(su, .12); float cv = clWeather(pc);
+      float c = clamp((clDens(pc, .35, cv, true) + clDens(pc2, .65, cv, true)) * 3., 0., 1.); return 1. - c * .8 * smoothstep(-.05, .15, su); }\n` +
     sh.fragmentShader.replace('#include <color_fragment>', '#include <color_fragment>\n diffuseColor.rgb *= cshadow(); gSunT = sunTrans() / max(camT, vec3(.002));')
       .replace('#include <lights_fragment_begin>', THREE.ShaderChunk.lights_fragment_begin.replace('getDirectionalLightInfo( directionalLight, directLight );', 'getDirectionalLightInfo( directionalLight, directLight ); directLight.color *= gSunT;'));
 }
@@ -383,7 +493,7 @@ const moonMat = terrMat.clone(); moonMat.userData.hue = 0; terrMat.userData.hue 
 terrMat.onBeforeCompile = moonMat.onBeforeCompile = function (sh) {
   TMATS.forEach((m, i) => { sh.uniforms['tC' + i] = {value: tex(m, 'c')}; sh.uniforms['tN' + i] = {value: tex(m, 'n')}; sh.uniforms['aC' + i] = {get value() { return tex(m, 'c').userData.avg; }}; });
   sh.uniforms.hiQ = {get value() { return HI() ? 1 : 0; }}; sh.uniforms.tHue = {value: this.userData.hue};
-  cloudShadow(sh, true); sh.vertexShader = 'attribute vec2 tuv; attribute vec4 mw; attribute float tax; varying vec2 vTu; varying vec4 vMw; varying vec3 vT, vB;\n' + sh.vertexShader.replace('#include <begin_vertex>', `#include <begin_vertex>
+  cloudShadow(sh, true); if (this === moonMat) sh.fragmentShader = '#define IS_MOON\n' + sh.fragmentShader; sh.vertexShader = 'attribute vec2 tuv; attribute vec4 mw; attribute float tax; varying vec2 vTu; varying vec4 vMw; varying vec3 vT, vB;\n' + sh.vertexShader.replace('#include <begin_vertex>', `#include <begin_vertex>
     vTu = tuv; vMw = mw; vec3 tA = tax < .5 ? vec3(0., 0., 1.) : vec3(1., 0., 0.); vec3 bA = tax > .5 && tax < 1.5 ? vec3(0., 0., 1.) : vec3(0., 1., 0.);
     vT = normalize(normalMatrix * tA); vB = normalize(normalMatrix * bA);`);
   sh.fragmentShader = 'uniform sampler2D tC0, tC1, tC2, tC3, tN0, tN1, tN2, tN3; uniform vec3 aC0, aC1, aC2, aC3; uniform float hiQ, tHue; varying vec2 vTu; varying vec4 vMw; varying vec3 vT, vB;\n' +
@@ -493,7 +603,7 @@ function makeClouds(b) {
   const dm = m.clone(); dm.uniforms = m.uniforms; dm.colorWrite = false; dm.transparent = false; dm.defines = {DEPTHONLY: 1}; m.depthWrite = false;
   const geo = new THREE.SphereGeometry(b.R + CLOUD_H, 384, 192);
   const sd = new THREE.Mesh(geo, dm); sd.renderOrder = 1; sd.frustumCulled = false; b.group.add(sd);
-  const sp = new THREE.Mesh(geo, m); sp.renderOrder = 2; sp.frustumCulled = false; b.group.add(sp); b.clouds = m;
+  const sp = new THREE.Mesh(geo, m); sp.renderOrder = 2; sp.frustumCulled = false; b.group.add(sp); b.clouds = m; b.cloudMeshes = [sd, sp];
 }
 // walk the tree: show leaves that are ready, queue missing meshes (nearest first)
 function updateTree(n, cp, want) {
@@ -837,7 +947,7 @@ function sunColour(posRel) { // posRel = position relative to planet centre
 }
 const _rel = new V3();
 function updateLight() {
-  _rel.copy(G.O).sub(PLANET.c); const t = sunColour(_rel);
+  _rel.copy(G.O).sub(PLANET.c); const t = sunColour(_rel).map(v => Math.max(v, .002)); // never fully black: the moon divides by this to get full sunlight
   sunL.color.setRGB(t[0], t[1], t[2]); sunL.intensity = 3.4;
   sunL.position.copy(SUN).multiplyScalar(600); sunL.target.position.set(0, 0, 0); sunL.target.updateMatrixWorld();
   { // snap the shadow camera to whole texels so shadows don't crawl as you move
@@ -854,6 +964,7 @@ function updateLight() {
   EMAX.value = lerp(3.5, 14, sstep(PLANET.atmo * .3, PLANET.atmo, alt)); // dusk on the ground stays dusky; space can open up for stars
   updateEnv(G.dt || 0, t); scene.environmentIntensity = alt > PLANET.atmo * 2 ? .15 : 1;
   scene.backgroundIntensity = lerp(1, .004, sstep(-.16, .08, el) * (1 - sstep(PLANET.atmo * .35, PLANET.atmo, alt))); // stars wash out in a daylight sky
+  if (PLANET.cloudMeshes) for (const m of PLANET.cloudMeshes) m.visible = !HI(); // High uses the volumetric clouds
   if (PLANET.clouds) { const u = PLANET.clouds.uniforms; u.sun.value.copy(SUN); u.sunC.value.setRGB(1, 1, 1).multiplyScalar(3.4 * .85 / Math.PI * 1.6); u.sky.value.setRGB(.06, .09, .14).multiplyScalar(.2 + day * 2); u.t.value = G.t; }
   if (G.waterT) G.waterT.value = G.t; CLOUDU.sunB.value.copy(SUN).applyQuaternion(PLANET.q.clone().invert()); CLOUDU.cT.value = G.t; CLOUDU.cOn.value = HI() ? 1 : 0; CLOUDU.camT.value.set(t[0], t[1], t[2]); amb.intensity *= .25; compM.uniforms.sunCol.value.set(t[0], t[1], t[2]).multiplyScalar(.9);
 }
@@ -910,5 +1021,5 @@ function boot() {
   requestAnimationFrame(frame);
 }
 function placeAt(x, y, z, yaw, pitch) { siteToBody(new V3(x, y, z), P.pos); const up = P.pos.clone().normalize(); P.fwd.set(Math.sin(yaw), 0, -Math.cos(yaw)).applyQuaternion(site.q); P.fwd.addScaledVector(up, -P.fwd.dot(up)).normalize(); P.pitch = pitch || 0; P.vel.set(0, 0, 0); }
-window.YE = {prebuild: (ms = 20000) => { placeCamera(); for (const b of BODIES) { b.group.position.copy(b.c).sub(G.O); b.group.quaternion.copy(b.q); } const t0 = performance.now(); while (updateTerrain(200) > 0 && performance.now() - t0 < ms); }, placeAt, G, P, PLANET, MOON, site, TERR, heightAt, spawnPlayer, SET, setupPost, atmoM, POST, RND, SUN, cam, waterMat, terrMat, scene, compM, raysM};
+window.YE = {CLOUD3D, CL, WX, weatherM, prebuild: (ms = 20000) => { placeCamera(); for (const b of BODIES) { b.group.position.copy(b.c).sub(G.O); b.group.quaternion.copy(b.q); } const t0 = performance.now(); while (updateTerrain(200) > 0 && performance.now() - t0 < ms); }, placeAt, G, P, PLANET, MOON, site, TERR, heightAt, spawnPlayer, SET, setupPost, atmoM, POST, RND, SUN, cam, waterMat, terrMat, scene, compM, raysM};
 // boot() is called at the end of flight.js
