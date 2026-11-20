@@ -69,6 +69,7 @@ Browser war game in one file: `index.html` (Three.js r170, inlined: the ESM buil
 - `rig/`: Station Nine: Open Sea, co-op sea exploration. Notes: `docs/notes/rig.md`.
 - `shaun/`: Last Stand, first-person horde shooter (rotary cannon vs warrior bugs, squad co-op). Notes: `docs/notes/shaun.md`. Check open issues labelled `shaun-request` for queued work.
 - `legal/`: Courtroom Duel, Legal Studies revision game (not jjfanwars). Notes: `docs/notes/legal.md`.
+- `space/`: YeShip, co-op rocket builder (orbit, moon, stations). Notes: `docs/notes/yeship.md`. Design: `docs/plans/yeship.md`.
 - `physics/`: Year 10 physics study hub (electricity & astronomy). Notes: `docs/notes/physics.md`.
 
 ## Recently done (Nov 2026)

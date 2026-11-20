@@ -9,7 +9,7 @@ Saved design plans. Nothing here is built unless it says so. Status last updated
 | **Submarine crew** co-op | Chosen, needs detail | below |
 | **Heist** co-op | Chosen, needs detail | below |
 | **jjdrop**: Siege-style tactical CQB: operators and gadgets, destructible walls, bomb plant/defuse, multi-storey houses, online | Built (11 Nov 2026), see [drop.md](drop.md) | `drop.html` |
-| **YeShip**: co-op rocket builder, orbit, moon, stations | Design agreed 20 Nov 2026 | [yeship.md](yeship.md) |
+| **YeShip**: co-op rocket builder, orbit, moon, stations | Building at `/space/`: step 1 (planet, space centre, walking) done 20 Nov 2026 | [yeship.md](yeship.md) |
 | Co-op campaign "Operation Chain" | Idea | below |
 | 1v1 PvP modes | Idea | below |
 | **Station Nine boss fights** (fishing legends, the Maw, Pale Mother, Leviathan, Ghost Carrier) | Plan | [rig-bosses.md](rig-bosses.md) |

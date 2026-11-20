@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>YeShip</title>
+<!-- YeShip: co-op rocket builder. Everything is in game.js; Three.js r170 classic build from ../three-r170.js. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root { --ink:#eaf4ff; --dim:#9fb6cc; --acc:#ffcf4a; --panel:rgba(10,18,32,.78); --line:rgba(255,255,255,.14); }
+* { box-sizing:border-box; }
+html,body { margin:0; height:100%; background:#000; color:var(--ink); font:15px/1.4 "Fredoka",system-ui,sans-serif; overflow:hidden; user-select:none; }
+canvas#gl { position:fixed; inset:0; width:100%; height:100%; display:block; }
+.hidden { display:none !important; }
+#hud { position:fixed; left:14px; top:12px; z-index:4; pointer-events:none; text-shadow:0 1px 3px rgba(0,0,0,.7); }
+#hud .big { font-size:22px; font-weight:600; }
+#hud .s { color:var(--dim); font-size:13px; }
+#hint { position:fixed; left:50%; bottom:18px; transform:translateX(-50%); z-index:4; pointer-events:none; padding:6px 14px; border-radius:20px; background:rgba(0,0,0,.35); color:var(--dim); font-size:13px; transition:opacity 1.5s; }
+#cross { position:fixed; left:50%; top:50%; width:6px; height:6px; margin:-3px 0 0 -3px; border-radius:50%; background:rgba(255,255,255,.7); z-index:4; pointer-events:none; }
+.scr { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; padding:16px; z-index:10; }
+#menu { background:radial-gradient(ellipse at 30% 40%, rgba(20,40,80,.35), rgba(0,0,0,.65)); }
+.card { width:min(420px,100%); background:var(--panel); border:1px solid var(--line); border-radius:18px; padding:26px; backdrop-filter:blur(6px); }
+h1 { margin:0 0 4px; font-size:54px; font-weight:600; letter-spacing:.02em; }
+h1 span { color:var(--acc); }
+.sub { color:var(--dim); margin-bottom:18px; }
+label { display:block; color:var(--dim); font-size:12px; margin:12px 0 4px; text-transform:uppercase; letter-spacing:.08em; }
+input[type=text] { width:100%; padding:9px 12px; border-radius:10px; border:1px solid var(--line); background:rgba(255,255,255,.06); color:var(--ink); font:inherit; }
+.seg { display:flex; gap:6px; } .seg button { flex:1; }
+button { font:inherit; color:var(--ink); background:rgba(255,255,255,.08); border:1px solid var(--line); border-radius:10px; padding:8px 12px; cursor:pointer; }
+button.on { border-color:var(--acc); background:rgba(255,207,74,.15); }
+#play { width:100%; margin-top:20px; padding:12px; font-size:20px; font-weight:600; background:var(--acc); color:#1a1300; border:0; }
+#load { position:fixed; inset:0; z-index:20; display:flex; align-items:center; justify-content:center; background:#02040a; color:var(--dim); font-size:18px; }
+</style>
+</head>
+<body>
+<canvas id="gl"></canvas>
+<div id="cross" class="hidden"></div>
+<div id="hud" class="hidden"><div class="big" id="hLoc"></div><div class="s" id="hInfo"></div></div>
+<div id="hint" class="hidden"></div>
+<div id="load">Making a planet...</div>
+<div id="menu" class="scr hidden"><div class="card">
+  <h1>Ye<span>Ship</span></h1>
+  <div class="sub">Build rockets with friends. Fly to the moon.</div>
+  <label>Your name</label><input id="name" type="text" maxlength="14" placeholder="Astronaut">
+  <label>Graphics</label><div class="seg" id="gfx"><button data-v="low">Low</button><button data-v="high">High</button></div>
+  <button id="play">Play (Sandbox)</button>
+</div></div>
+<script src="../three-r170.js"></script>
+<script src="game.js"></script>
+</body>
+</html>
