@@ -198,7 +198,7 @@ var P={
   why:'Gentle Japanese acupuncture for fertility, IVF, pregnancy and birth preparation, plus general health.'},
  anna:{name:'Dr Anna Morrow',first:'Anna',role:'Osteopath',url:CLINIKO,
   why:'Almost 20 years’ experience, including pregnancy, postpartum, babies and children.'},
- melissa:{name:'Melissa Andrew',first:'Melissa',role:'Osteopath',url:CLINIKO,
+ melissa:{name:'Melissa Andrew',first:'Melissa',role:'Osteopath',url:CLINIKO,leave:1,/* on leave: hidden everywhere until this flag is removed */
   why:'Holistic osteopathy that draws on her Pilates and yoga training.'}
 };
 var ORDER=['adi','melinda','hannah','ellie','maddy','michelle-ferris','kate','laura','anna','melissa','meaghan','michelle-joseph','jodie'];
@@ -369,7 +369,7 @@ function actions(pid){
  return '<div class="fd-acts"><a class="btn btn-primary btn-sm" href="'+p.url+'" target="_blank" rel="noopener">'+svg('cal')+label+'<span class="sr"> (opens in a new tab)</span></a>'+more+'</div>'}
 
 function renderRes(){
- var w=WHO[S.who],nd=findNeed(S.who,S.need),n=NEED[S.need],ids=nd[3].slice();
+ var w=WHO[S.who],nd=findNeed(S.who,S.need),n=NEED[S.need],ids=nd[3].filter(function(id){return !P[id].leave});
  // with a plan, services without a Medicare rebate move down the list; for video/phone, mostly-online counsellors come first
  function noReb(id){var f=(n.fee||{})[id];return Array.isArray(f)&&!f[2]?1:0}
  if(S.plan==='yes')ids.sort(function(a,b){return noReb(a)-noReb(b)});
@@ -411,7 +411,7 @@ S=readHash();render(false);
 
 // ---------- "choose someone yourself" grid ----------
 var grid=document.getElementById('allGrid');
-grid.innerHTML=ORDER.map(function(pid){var p=P[pid],href=p.contact?'contact.html':p.url,ext=!p.contact;
+grid.innerHTML=ORDER.filter(function(id){return !P[id].leave}).map(function(pid){var p=P[pid],href=p.contact?'contact.html':p.url,ext=!p.contact;
  return '<li><a class="book-card card" data-person="'+pid+'" href="'+href+'"'+(ext?' target="_blank" rel="noopener"':'')+'><img alt="" class="bk-photo" height="300" loading="lazy" src="img/team/colour/'+pid+'.webp" width="300"/><span class="bk-name">'+esc(p.name)+'</span><span class="bk-role">'+esc(p.role)+'</span><span class="bk-go">'+(p.contact?'Contact us to book':'Book with '+esc(p.first))+' '+svg('arrow')+'</span>'+(ext?'<span class="sr"> (opens the booking page in a new tab)</span>':'')+'</a></li>'}).join('');
 })();
 </script>
