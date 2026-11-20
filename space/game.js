@@ -638,7 +638,7 @@ function buildSite() {
     site.boxes.push({x0: px - 16, x1: px + 16, y0: 0, y1: 3, z0: pz - 16, z1: pz + 16});
     box(px, 2.9, pz, 9, .2, 9, 0x2b2b2b, false, {cast: false}); // flame hole
     box(px - 14, 2.95, pz, 10, .1, 4, 0x1a1a1a, false, {cast: false}); // trench
-    const L = [], tx = px + 12, tz = pz, tw = 2.4, top = 52;
+    const L = [], tx = px + 12, tz = pz, tw = 2.4, top = 32;
     for (const [dx, dz] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) L.push(beamGeo(new V3(tx + dx * tw, 3, tz + dz * tw), new V3(tx + dx * tw, top, tz + dz * tw), .22, 0xc2442e));
     for (let y = 3; y < top; y += 4) { const c = [[-1, -1], [1, -1], [1, 1], [-1, 1]]; for (let i = 0; i < 4; i++) { const a = c[i], b2 = c[(i + 1) % 4];
       L.push(beamGeo(new V3(tx + a[0] * tw, y, tz + a[1] * tw), new V3(tx + b2[0] * tw, y, tz + b2[1] * tw), .09, 0xc2442e, 4));
@@ -781,16 +781,17 @@ let last = 0, fps = 60;
 function frame(ts) {
   requestAnimationFrame(frame);
   let dt = Math.min(.05, Math.max(0, (ts - last) / 1000)); last = ts; G.dt = dt; fps = lerp(fps, 1 / Math.max(dt, 1e-3), .05);
-  if (keys.BracketRight) G.warp = Math.min(500, G.warp * (1 + dt * 2)); if (keys.BracketLeft) G.warp = Math.max(1, G.warp / (1 + dt * 2)); // test day/night with [ ]
   G.t += dt * (G.on ? G.warp : 1);
   for (const b of BODIES) bodyState(b, G.t);
-  if (G.on && !G.noGrav) { const n = Math.ceil(dt / .02); for (let i = 0; i < n; i++) stepPlayer(dt / n); } // noGrav: test hook, freezes the player
-  placeCamera();
+  if (G.on && !G.noGrav && !R.on) { const n = Math.ceil(dt / .02); for (let i = 0; i < n; i++) stepPlayer(dt / n); } // noGrav: test hook, freezes the player
+  FLIGHT.step(dt); // rocket + debris (flight.js)
+  if (R.on) FLIGHT.camera(dt); else placeCamera();
   for (const b of BODIES) { b.group.position.copy(b.c).sub(G.O); b.group.quaternion.copy(b.q); }
+  FLIGHT.visuals(dt);
   if (G.skyBake) G.skyBake();
   updateTerrain(HI() ? 8 : 5);
   updateLight();
-  if (G.on) updateHud(dt);
+  if (G.on) { if (R.on) FLIGHT.hud(dt); else { FLIGHT.hideHud(); updateHud(dt); } }
   render(dt);
 }
 
@@ -807,10 +808,10 @@ function boot() {
   segs.forEach(b => b.onclick = () => { SET.gfx = b.dataset.v; saveSet(); mark(); setupPost(); });
   $('play').onclick = () => { SET.name = $('name').value.trim().slice(0, 14); saveSet(); $('menu').classList.add('hidden'); G.on = true;
     $('hud').classList.remove('hidden'); $('cross').classList.remove('hidden'); canvas.requestPointerLock && canvas.requestPointerLock();
-    showHint('WASD walk · Shift run · Space jump · click to look around · [ ] speed up time'); };
+    showHint('WASD walk · Shift run · Space jump · click to look · the rocket is on the pad to the east'); };
   addEventListener('resize', setupPost);
   requestAnimationFrame(frame);
 }
 function placeAt(x, y, z, yaw, pitch) { siteToBody(new V3(x, y, z), P.pos); const up = P.pos.clone().normalize(); P.fwd.set(Math.sin(yaw), 0, -Math.cos(yaw)).applyQuaternion(site.q); P.fwd.addScaledVector(up, -P.fwd.dot(up)).normalize(); P.pitch = pitch || 0; P.vel.set(0, 0, 0); }
 window.YE = {prebuild: (ms = 20000) => { placeCamera(); for (const b of BODIES) { b.group.position.copy(b.c).sub(G.O); b.group.quaternion.copy(b.q); } const t0 = performance.now(); while (updateTerrain(200) > 0 && performance.now() - t0 < ms); }, placeAt, G, P, PLANET, MOON, site, TERR, heightAt, spawnPlayer, SET, setupPost, atmoM, POST, RND, SUN, cam, waterMat, terrMat, scene, compM, raysM};
-boot();
+// boot() is called at the end of flight.js

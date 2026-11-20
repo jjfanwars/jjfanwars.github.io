@@ -31,6 +31,18 @@ button { font:inherit; color:var(--ink); background:rgba(255,255,255,.08); borde
 button.on { border-color:var(--acc); background:rgba(255,207,74,.15); }
 #play { width:100%; margin-top:20px; padding:12px; font-size:20px; font-weight:600; background:var(--acc); color:#1a1300; border:0; }
 #load { position:fixed; inset:0; z-index:20; display:flex; align-items:center; justify-content:center; background:#02040a; color:var(--dim); font-size:18px; }
+#fl { position:fixed; left:50%; bottom:14px; transform:translateX(-50%); z-index:5; display:flex; gap:12px; align-items:stretch; padding:10px 14px; border-radius:16px; background:rgba(6,12,22,.62); border:1px solid var(--line); backdrop-filter:blur(6px); text-shadow:0 1px 2px rgba(0,0,0,.6); }
+#fl .bar { width:12px; border-radius:6px; background:rgba(255,255,255,.1); position:relative; overflow:hidden; } #fl .bar i { position:absolute; left:0; right:0; bottom:0; border-radius:6px; }
+#fThr { background:var(--acc); } #fFuel { background:#5fd38a; }
+#fl .mid { min-width:210px; text-align:center; } #fAlt { font-size:30px; font-weight:600; line-height:1.1; } #fSpd { font-size:18px; color:var(--ink); }
+#fl .orb { display:flex; justify-content:center; gap:14px; color:var(--dim); font-size:13px; margin-top:2px; } #fl .orb b { color:var(--ink); font-weight:600; }
+#fStage { color:var(--dim); font-size:12px; text-transform:uppercase; letter-spacing:.08em; } #fNext { color:var(--acc); font-size:14px; font-weight:600; min-height:18px; }
+#fSas { display:flex; flex-direction:column; gap:4px; justify-content:center; } #fSas button { padding:3px 9px; font-size:12px; border-radius:8px; text-align:left; } #fSas button span { color:var(--dim); margin-right:5px; }
+.mk { position:fixed; z-index:4; pointer-events:none; width:26px; height:26px; margin:-13px 0 0 -13px; border-radius:50%; border:2.5px solid #c8f25a; box-shadow:0 0 4px rgba(0,0,0,.6); }
+.mk::after { content:''; position:absolute; left:50%; top:50%; width:4px; height:4px; margin:-2px; border-radius:50%; background:#c8f25a; }
+#mRet { border-color:#ffb347; } #mRet::after { width:16px; height:2.5px; margin:-1.25px -8px; border-radius:0; background:#ffb347; transform:rotate(45deg); }
+body.fly #hint { bottom:150px; }
+#rTag { position:fixed; z-index:4; pointer-events:none; transform:translate(-50%,-100%); padding:3px 10px; border-radius:12px; background:rgba(0,0,0,.45); color:var(--acc); font-size:14px; font-weight:600; white-space:nowrap; }
 </style>
 </head>
 <body>
@@ -38,6 +50,14 @@ button.on { border-color:var(--acc); background:rgba(255,207,74,.15); }
 <div id="cross" class="hidden"></div>
 <div id="hud" class="hidden"><div class="big" id="hLoc"></div><div class="s" id="hInfo"></div></div>
 <div id="hint" class="hidden"></div>
+<div id="mPro" class="mk hidden"></div><div id="mRet" class="mk hidden"></div><div id="rTag" class="hidden"></div>
+<div id="fl" class="hidden">
+  <div class="bar" title="Throttle"><i id="fThr"></i></div>
+  <div class="mid"><div id="fStage"></div><div id="fAlt"></div><div id="fSpd"></div><div class="orb"><span>Ap <b id="fAp"></b></span><span>Pe <b id="fPe"></b></span></div><div id="fNext"></div></div>
+  <div class="bar" title="Fuel"><i id="fFuel"></i></div>
+  <div id="fSas"><button data-m="hold"><span>1</span>Hold</button><button data-m="pro"><span>2</span>Prograde</button><button data-m="retro"><span>3</span>Retrograde</button><button data-m="up"><span>4</span>Up</button><button data-m="off"><span>T</span>Off</button></div>
+</div>
+
 <div id="load">Making a planet...</div>
 <div id="menu" class="scr hidden"><div class="card">
   <h1>Ye<span>Ship</span></h1>
@@ -48,5 +68,6 @@ button.on { border-color:var(--acc); background:rgba(255,207,74,.15); }
 </div></div>
 <script src="../three-r170.js"></script>
 <script src="game.js"></script>
+<script src="flight.js"></script>
 </body>
 </html>
