@@ -86,7 +86,7 @@ function colorAt(b, x, y, z, h, slope) {
   if (b === PLANET) {
     const n = fbm(x * 220, y * 220, z * 220, 2, 60) * .5 + .5, lat = Math.abs(y);
     let sand = 0;
-    if (h < -2) { r = .55; g = .5; bl = .38; sand = 1; } // sea floor
+    if (h < -2) { const dp = sstep(-2, -60, h); r = lerp(.5, .03, dp); g = lerp(.47, .07, dp); bl = lerp(.36, .1, dp); sand = 1; } // sea floor: sand in the shallows, dark further out
     else if (h < 4 + n * 10 && siteDist(x, y, z) > 2300) { r = .82; g = .74; bl = .52; sand = 1; } // beach
     else { const f = sstep(.25, .75, n); r = lerp(.4, .25, f); g = lerp(.48, .34, f); bl = lerp(.26, .18, f); } // grass / forest
     const rock = Math.max(sstep(.35, .6, slope), sstep(950, 1400, h + n * 250));
@@ -125,7 +125,7 @@ sunL.shadow.mapSize.set(2048, 2048); const sc = sunL.shadow.camera; sc.left = -2
 const amb = new THREE.HemisphereLight(0x9ec8ff, 0x2a2418, .5); scene.add(amb);
 
 // ---------------- shared GLSL: atmosphere scattering + noise
-const BR = new V3(5.8e-6, 13.5e-6, 33.1e-6).multiplyScalar(8), BM = 21e-6 * 3.2, HR = 950, HM = 190, SUN_I = 3.6; // sun irradiance: same units as the directional light, so sky and ground brightness match
+const BR = new V3(5.8e-6, 13.5e-6, 33.1e-6).multiplyScalar(6), BM = 21e-6 * 2.8, HR = 950, HM = 190, SUN_I = 3.6; // sun irradiance: same units as the directional light, so sky and ground brightness match
 const GLSL_ATMO = `
 uniform vec3 bR; uniform float bM, hR, hM, R, Ra, sunI;
 vec2 rs(vec3 o, vec3 d, float r){ float b = dot(o, d), c = dot(o, o) - r*r, h = b*b - c; if (h < 0.) return vec2(1e20, -1e20); h = sqrt(h); return vec2(-b - h, -b + h); }
@@ -246,7 +246,7 @@ const lumM = new THREE.ShaderMaterial({vertexShader: VS, depthTest: false, unifo
 const avgM = new THREE.ShaderMaterial({vertexShader: VS, depthTest: false, uniforms: {t: {value: null}, prev: {value: null}, k: {value: .05}},
   fragmentShader: 'uniform sampler2D t, prev; uniform float k; varying vec2 vUv; void main(){ float s = 0., w = 0.; for (int y = 0; y < 8; y++) for (int x = 0; x < 16; x++) { vec2 uv = (vec2(x, y) + .5) / vec2(16., 8.); float ww = 1.2 - length(uv - .5) * 1.4; s += texture2D(t, uv).r * ww; w += ww; }\n  float L = exp(s / w), p = texture2D(prev, vec2(.5)).r; if (p <= 0.) p = L; gl_FragColor = vec4(exp(mix(log(p), log(L), k)), 0., 0., 1.); }'});
 const brightM = new THREE.ShaderMaterial({vertexShader: VS, depthTest: false, uniforms: {t: {value: null}, ad: {value: null}},
-  fragmentShader: 'uniform sampler2D t, ad; varying vec2 vUv; void main(){ float e = clamp(.16 / texture2D(ad, vec2(.5)).r, .02, 14.); vec3 c = texture2D(t, vUv).rgb * e; float l = max(c.r, max(c.g, c.b)); gl_FragColor = vec4(min(c * smoothstep(1.5, 5., l), vec3(60.)), 1.); }'});
+  fragmentShader: 'uniform sampler2D t, ad; varying vec2 vUv; void main(){ float e = clamp(.1 / texture2D(ad, vec2(.5)).r, .02, 14.); vec3 c = texture2D(t, vUv).rgb * e; float l = max(c.r, max(c.g, c.b)); gl_FragColor = vec4(min(c * smoothstep(1.5, 5., l), vec3(60.)), 1.); }'});
 const downM = new THREE.ShaderMaterial({vertexShader: VS, depthTest: false, uniforms: {t: {value: null}, px: {value: new THREE.Vector2()}},
   fragmentShader: 'uniform sampler2D t; uniform vec2 px; varying vec2 vUv; void main(){ gl_FragColor = vec4((texture2D(t, vUv + px * vec2(-1., -1.)).rgb + texture2D(t, vUv + px * vec2(1., -1.)).rgb + texture2D(t, vUv + px * vec2(-1., 1.)).rgb + texture2D(t, vUv + px).rgb) * .25, 1.); }'});
 const blurM = new THREE.ShaderMaterial({vertexShader: VS, depthTest: false, uniforms: {t: {value: null}, d: {value: new THREE.Vector2()}},
@@ -257,7 +257,7 @@ const compM = new THREE.ShaderMaterial({vertexShader: VS, depthTest: false,
   vec3 aces(vec3 x){ return clamp((x*(2.51*x+.03))/(x*(2.43*x+.59)+.14), 0., 1.); }
   float hh(vec2 p){ return fract(sin(dot(p, vec2(12.9898, 78.233)) + time) * 43758.5453); }
   void main(){
-    float e = clamp(.16 / texture2D(ad, vec2(.5)).r, .02, 14.);
+    float e = clamp(.1 / texture2D(ad, vec2(.5)).r, .02, 14.);
     vec3 c = texture2D(t, vUv).rgb * e + texture2D(b, vUv).rgb * .14 + texture2D(b2, vUv).rgb * .12;
     if (sunOn > .5) { // how much of the sun disc is unblocked (depth taps around it), then glare, starburst and ghosts
       float vis = 0.; for (int y = -2; y <= 2; y++) for (int x = -2; x <= 2; x++) vis += step(.99999, texture2D(tDep, sunUV + vec2(x, y) * .0035 * vec2(1. / aspect, 1.)).x); vis /= 25.;
@@ -357,11 +357,11 @@ const waveTex = (() => { const N2 = 256, c = document.createElement('canvas'); c
   for (let j = 0; j < N2; j++) for (let i = 0; i < N2; i++) { const dx = H[j * N2 + (i + 1) % N2] - H[j * N2 + (i + N2 - 1) % N2], dy = H[((j + 1) % N2) * N2 + i] - H[((j + N2 - 1) % N2) * N2 + i];
     const n = new V3(-dx * 3, -dy * 3, 1).normalize(), o = (j * N2 + i) * 4; im.data[o] = (n.x * .5 + .5) * 255; im.data[o + 1] = (n.y * .5 + .5) * 255; im.data[o + 2] = (n.z * .5 + .5) * 255; im.data[o + 3] = 255; }
   x.putImageData(im, 0, 0); const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 8; return t; })();
-const waterMat = new THREE.MeshStandardMaterial({color: 0x021627, roughness: .06, metalness: 0, transparent: true, opacity: .93, normalMap: waveTex, normalScale: new THREE.Vector2(.35, .35)});
+const waterMat = new THREE.MeshStandardMaterial({color: 0x010a14, roughness: .06, metalness: 0, transparent: true, opacity: .97, envMapIntensity: .12, normalMap: waveTex, normalScale: new THREE.Vector2(.35, .35)});
 waterMat.onBeforeCompile = sh => { sh.uniforms.wT = G.waterT = G.waterT || {value: 0}; cloudShadow(sh);
   sh.fragmentShader = 'uniform float wT;\n' + sh.fragmentShader.replace('#include <normal_fragment_maps>', `vec3 wn1 = texture2D(normalMap, vNormalMapUv + vec2(wT * .013, wT * .007)).xyz * 2. - 1., wn2 = texture2D(normalMap, vNormalMapUv * 2.7 - vec2(wT * .011, -wT * .017)).xyz * 2. - 1., wn3 = texture2D(normalMap, vNormalMapUv * .23 + vec2(wT * .002, wT * .003)).xyz * 2. - 1.;
     vec3 mapN = normalize(vec3(wn1.xy + wn2.xy * .6 + wn3.xy * 1.2, 1.)); mapN.xy *= normalScale * (1. - smoothstep(200., 3000., length(vViewPosition)) * .8);
-    normal = normalize(tbn * mapN);`).replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\n roughnessFactor = mix(roughnessFactor, .2, smoothstep(300., 8000., length(vViewPosition)));'); };
+    normal = normalize(tbn * mapN);`).replace('#include <lights_fragment_maps>', '#include <lights_fragment_maps>\n radiance *= .12; iblIrradiance *= .12;').replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\n roughnessFactor = mix(roughnessFactor, .2, smoothstep(300., 8000., length(vViewPosition)));'); };
 function cubeDir(f, u, v, out) { const F = FACES[f]; let x = F[0] + F[3] * u + F[6] * v, y = F[1] + F[4] * u + F[7] * v, z = F[2] + F[5] * u + F[8] * v;
   // spherified cube for even cells
   const x2 = x * x, y2 = y * y, z2 = z * z;
@@ -770,5 +770,5 @@ function boot() {
   requestAnimationFrame(frame);
 }
 function placeAt(x, y, z, yaw, pitch) { siteToBody(new V3(x, y, z), P.pos); const up = P.pos.clone().normalize(); P.fwd.set(Math.sin(yaw), 0, -Math.cos(yaw)).applyQuaternion(site.q); P.fwd.addScaledVector(up, -P.fwd.dot(up)).normalize(); P.pitch = pitch || 0; P.vel.set(0, 0, 0); }
-window.YE = {prebuild: (ms = 20000) => { placeCamera(); for (const b of BODIES) { b.group.position.copy(b.c).sub(G.O); b.group.quaternion.copy(b.q); } const t0 = performance.now(); while (updateTerrain(200) > 0 && performance.now() - t0 < ms); }, placeAt, G, P, PLANET, MOON, site, TERR, heightAt, spawnPlayer, SET, setupPost, atmoM, POST, RND, SUN, cam};
+window.YE = {prebuild: (ms = 20000) => { placeCamera(); for (const b of BODIES) { b.group.position.copy(b.c).sub(G.O); b.group.quaternion.copy(b.q); } const t0 = performance.now(); while (updateTerrain(200) > 0 && performance.now() - t0 < ms); }, placeAt, G, P, PLANET, MOON, site, TERR, heightAt, spawnPlayer, SET, setupPost, atmoM, POST, RND, SUN, cam, waterMat, terrMat, scene};
 boot();
