@@ -432,22 +432,35 @@ function canvasTex(w, h, draw, rep) { const c = document.createElement('canvas')
 // cabin materials (indoor lighting)
 const CM = {};
 { const im = o => interiorMat(new THREE.MeshStandardMaterial(o), INT_CAB);
-  CM.lining = im({side: THREE.BackSide, roughness: .85, map: canvasTex(1024, 256, (x, w, h) => { x.fillStyle = '#d9d8d2'; x.fillRect(0, 0, w, h);
-    for (let i = 0; i < 32; i++) for (let j = 0; j < 6; j++) { const px = i * 32, py = j * 43; const g = x.createRadialGradient(px + 16, py + 21, 2, px + 16, py + 21, 26); g.addColorStop(0, '#e8e7e2'); g.addColorStop(1, '#bdbcb5'); x.fillStyle = g; x.fillRect(px + 1, py + 1, 30, 41); }
-    x.fillStyle = '#1b1d22'; x.fillRect(0, h * .78, w, 3); x.fillStyle = '#b8a77a'; for (let i = 0; i < 18; i++) { x.fillRect((i * 197) % w, 30 + (i * 53) % (h - 60), 5, 3); } // velcro dots
-    x.fillStyle = '#3a6ea5'; for (let i = 0; i < 6; i++) x.fillRect(80 + i * 150, h * .52, 34, 22); x.fillStyle = '#ffffff'; x.font = '9px sans-serif'; for (let i = 0; i < 6; i++) x.fillText(['O2', 'CO2', 'H2O', 'MED', 'FOOD', 'TOOLS'][i], 82 + i * 150, h * .52 + 14); })});
-  CM.floor = im({roughness: .5, metalness: .6, map: canvasTex(256, 256, (x, w, h) => { x.fillStyle = '#4a4f57'; x.fillRect(0, 0, w, h); x.strokeStyle = '#2c3036'; x.lineWidth = 3; for (let i = 0; i <= w; i += 16) { x.beginPath(); x.moveTo(i, 0); x.lineTo(i, h); x.stroke(); x.beginPath(); x.moveTo(0, i); x.lineTo(w, i); x.stroke(); } }, [3, 3])});
-  CM.fabric = im({color: 0x2a3f66, roughness: .95}); CM.frame = im({color: 0x8a9099, roughness: .4, metalness: .8}); CM.dark = im({color: 0x1e2127, roughness: .5, metalness: .4});
-  CM.panel = im({color: 0x5b6470, roughness: .55, metalness: .3}); CM.rail = im({color: 0xffc83a, roughness: .4, metalness: .3}); CM.red = im({color: 0xc2302a, roughness: .4});
-  CM.bag = [0xe9e6dc, 0x3b5f8a, 0x9aa1a8, 0xd9cfb0].map(c => im({color: c, roughness: .95}));
-  CM.switches = im({side: THREE.BackSide, roughness: .5, metalness: .2, emissive: 0xffffff, emissiveIntensity: 1, map: null});
-  { const t = canvasTex(1024, 128, (x, w, h) => { x.fillStyle = '#3d434c'; x.fillRect(0, 0, w, h); for (let i = 0; i < 12; i++) { x.strokeStyle = '#22262c'; x.strokeRect(i * 85 + 4, 6, 78, h - 12); }
-      for (let i = 0; i < 120; i++) { const px = 14 + (i % 40) * 25, py = 22 + Math.floor(i / 40) * 34; x.fillStyle = '#c8ccd2'; x.fillRect(px, py, 6, 12); x.fillStyle = ['#2bd46a', '#ffb02e', '#20232a', '#20232a', '#e0453a', '#20232a'][(i * 7) % 6]; x.fillRect(px + 8, py + 2, 5, 5); } });
-    const e = canvasTex(1024, 128, (x, w, h) => { x.fillStyle = '#000'; x.fillRect(0, 0, w, h); for (let i = 0; i < 120; i++) { const px = 14 + (i % 40) * 25, py = 22 + Math.floor(i / 40) * 34; const c = ['#2bd46a', '#ffb02e', null, null, '#e0453a', null][(i * 7) % 6]; if (c) { x.fillStyle = c; x.fillRect(px + 8, py + 2, 5, 5); } } });
-    CM.switches.map = t; CM.switches.emissiveMap = e; }
-  CM.glass = new THREE.MeshStandardMaterial({color: 0x9fb6c8, roughness: .02, metalness: .1, transparent: true, opacity: .12, side: THREE.DoubleSide, depthWrite: false});
+  // clean white wall panels: colour + normal map with bevelled seams and fasteners (u = around, v = up the cone)
+  const PU = 28, PV = 4, W = 2048, H = 512, mk = fn => { const c = document.createElement('canvas'); c.width = W; c.height = H; fn(c.getContext('2d')); const t = new THREE.CanvasTexture(c); t.anisotropy = 8; return t; };
+  const col = mk(x => { for (let i = 0; i < PU; i++) for (let j = 0; j < PV; j++) { const lo = j === PV - 1, tone = lo ? 196 : (i * 7 + j * 3) % 9 === 0 ? 218 : 232; x.fillStyle = `rgb(${tone},${tone + 1},${tone + 2})`; x.fillRect(i * W / PU, j * H / PV, W / PU, H / PV); }
+    x.fillStyle = '#8e9296'; for (let i = 0; i <= PU; i++) x.fillRect(i * W / PU - 1, 0, 2, H); for (let j = 0; j <= PV; j++) x.fillRect(0, j * H / PV - 1, W, 2);
+    x.fillStyle = '#7d8185'; for (let i = 0; i < PU; i++) for (let j = 0; j < PV; j++) for (const [u, v] of [[.12, .14], [.88, .14], [.12, .86], [.88, .86]]) { x.beginPath(); x.arc((i + u) * W / PU, (j + v) * H / PV, 2.2, 0, 7); x.fill(); } });
+  col.colorSpace = THREE.SRGBColorSpace;
+  const nrm = mk(x => { x.fillStyle = 'rgb(128,128,255)'; x.fillRect(0, 0, W, H);
+    for (let i = 0; i <= PU; i++) { const p = i * W / PU; x.fillStyle = 'rgb(70,128,225)'; x.fillRect(p - 5, 0, 4, H); x.fillStyle = 'rgb(186,128,225)'; x.fillRect(p + 1, 0, 4, H); }
+    for (let j = 0; j <= PV; j++) { const p = j * H / PV; x.fillStyle = 'rgb(128,186,225)'; x.fillRect(0, p - 5, W, 4); x.fillStyle = 'rgb(128,70,225)'; x.fillRect(0, p + 1, W, 4); } });
+  CM.lining = im({side: THREE.BackSide, roughness: .5, metalness: 0, map: col, normalMap: nrm, normalScale: new THREE.Vector2(1.4, 1.4)});
+  CM.floor = im({color: 0x3b3e43, roughness: .8, metalness: .2, map: canvasTex(256, 256, (x, w, h) => { x.fillStyle = '#9a9a9a'; x.fillRect(0, 0, w, h); for (let i = 0; i < 6000; i++) { const v = 130 + Math.random() * 60 | 0; x.fillStyle = `rgb(${v},${v},${v})`; x.fillRect(Math.random() * w, Math.random() * h, 1.5, 1.5); } }, [6, 6])});
+  CM.trim = im({color: 0x8d939b, roughness: .35, metalness: .85}); CM.fabric = im({color: 0x2a2c31, roughness: .92}); CM.fabric2 = im({color: 0xc9ccd1, roughness: .85});
+  CM.frame = im({color: 0x9aa0a8, roughness: .32, metalness: .85}); CM.dark = im({color: 0x1d1f23, roughness: .45, metalness: .3}); CM.darkB = im({color: 0x24272c, roughness: .4, metalness: .35, side: THREE.BackSide});
+  CM.panel = im({color: 0xe3e5e7, roughness: .45}); CM.console = im({color: 0x26292e, roughness: .38, metalness: .25}); CM.cab = im({color: 0xd4d7da, roughness: .4, side: THREE.BackSide});
+  CM.rail = im({color: 0xb8bec6, roughness: .3, metalness: .7}); CM.red = im({color: 0xc2302a, roughness: .35});
+  CM.led = new THREE.MeshBasicMaterial({color: new THREE.Color(2.2, 2.05, 1.8)}); CM.ledDim = new THREE.MeshBasicMaterial({color: new THREE.Color(.9, .85, .75)});
+  CM.lamp = new THREE.MeshBasicMaterial({vertexColors: false, color: 0xffffff});
+  CM.glass = new THREE.MeshStandardMaterial({color: 0x9fb6c8, roughness: .02, metalness: .1, transparent: true, opacity: .1, side: THREE.DoubleSide, depthWrite: false});
   CM.winFrame = new THREE.MeshStandardMaterial({color: 0x2a2d33, roughness: .4, metalness: .7, side: THREE.DoubleSide});
 }
+// rounded box (bevelled extrusion), centred
+function rbox(w, h, d, r) { const b = Math.min(r, d * .45, w * .45, h * .45), iw = w / 2 - b, ih = h / 2 - b, rr = Math.max(.001, Math.min(r - b, iw * .9, ih * .9) + .001), s = new THREE.Shape();
+  s.moveTo(-iw + rr, -ih); s.lineTo(iw - rr, -ih); s.quadraticCurveTo(iw, -ih, iw, -ih + rr); s.lineTo(iw, ih - rr); s.quadraticCurveTo(iw, ih, iw - rr, ih); s.lineTo(-iw + rr, ih); s.quadraticCurveTo(-iw, ih, -iw, ih - rr); s.lineTo(-iw, -ih + rr); s.quadraticCurveTo(-iw, -ih, -iw + rr, -ih);
+  const g = new THREE.ExtrudeGeometry(s, {depth: Math.max(.001, d - 2 * b), bevelEnabled: true, bevelThickness: b, bevelSize: b, bevelSegments: 3, curveSegments: 5}); g.translate(0, 0, -(d - 2 * b) / 2); g.computeVertexNormals(); return g; }
+// instanced small parts placed on the cabin wall, facing the centre
+function wallParts(geo, mat, list, out) { const m = new THREE.InstancedMesh(geo, mat, list.length), M4 = new THREE.Matrix4(), q = new Q4(), q2 = new Q4(), k = (CAB.rb - CAB.rt) / (CAB.y1 - CAB.y0);
+  list.forEach(([a, y, off, tilt, col], i) => { const r = rIn(y) - off, n = new V3(-Math.sin(a), -k, Math.cos(a)).normalize(); q.setFromUnitVectors(new V3(0, 1, 0), n); q2.setFromAxisAngle(new V3(1, 0, 0), tilt || 0); q.multiply(q2);
+    M4.compose(new V3(Math.sin(a) * r, y, -Math.cos(a) * r), q, new V3(1, 1, 1)); m.setMatrixAt(i, M4); if (col !== undefined) m.setColorAt(i, new THREE.Color(col)); });
+  m.castShadow = true; m.receiveShadow = true; out.add(m); return m; }
 const SEATS = [{a: 0, name: 'Pilot', scr: 'tele'}, {a: -1.15, name: 'Navigator', scr: 'orbit'}, {a: 1.15, name: 'Engineer', scr: 'sys'}];
 function buildCapsule(g) {
   // outside: heat shield, cone with window holes + frames + glass, nose, docking ring, stripes, RCS blocks, hatch outline
@@ -460,38 +473,46 @@ function buildCapsule(g) {
   g.add(cylY(1.0, .95, 25.45, 25.95, RM.white, 48)); g.add(cylY(.78, .75, 25.95, 26.1, RM.grey, 32));
   g.add(mesh(shellGeo(.008, (a, y) => y > 22.15 && y < 22.32), RM.black));
   for (let k = 0; k < 4; k++) { const a = k * Math.PI / 2 + Math.PI / 4, y = 24.4, r = rOut(y) + .1; const q = mesh(new THREE.BoxGeometry(.24, .3, .24), RM.grey, Math.sin(a) * r, y, -Math.cos(a) * r); q.rotation.y = -a; g.add(q); }
-  // inside: lining (same holes), window reveals, floor, ceiling + light ring, docking hatch
+  // inside: clean panelled lining (same holes), window reveals, floor with trim + LED strip, ceiling with LED ring and docking hatch
   const lin = new THREE.Mesh(shellGeo(-CAB.wall, (a, y) => !inWin(a, y) && y > CAB.floor - .05 && y < CAB.ceil + .05), CM.lining); lin.receiveShadow = true; g.add(lin);
-  const rv = new THREE.Mesh(shellGeo(-CAB.wall - .006, (a, y) => inWin(a, y, .05, .06) && !inWin(a, y)), CM.dark); g.add(rv);
-  const fl = new THREE.Mesh(new THREE.CircleGeometry(rIn(CAB.floor) + .01, 64), CM.floor); fl.rotation.x = -Math.PI / 2; fl.position.y = CAB.floor; fl.receiveShadow = true; g.add(fl);
+  const rv = new THREE.Mesh(shellGeo(-CAB.wall - .006, (a, y) => inWin(a, y, .05, .06) && !inWin(a, y)), CM.darkB); g.add(rv);
+  const fl = new THREE.Mesh(new THREE.CircleGeometry(rIn(CAB.floor) - .1, 64), CM.floor); fl.rotation.x = -Math.PI / 2; fl.position.y = CAB.floor; fl.receiveShadow = true; g.add(fl);
+  const ft = new THREE.Mesh(new THREE.RingGeometry(rIn(CAB.floor) - .1, rIn(CAB.floor) + .01, 96), CM.trim); ft.rotation.x = -Math.PI / 2; ft.position.y = CAB.floor + .002; ft.receiveShadow = true; g.add(ft);
+  const fled = new THREE.Mesh(new THREE.TorusGeometry(rIn(CAB.floor + .06) - .03, .006, 4, 128), CM.ledDim); fled.rotation.x = Math.PI / 2; fled.position.y = CAB.floor + .06; g.add(fled);
   const ce = new THREE.Mesh(new THREE.CircleGeometry(rIn(CAB.ceil) + .01, 48), CM.panel); ce.rotation.x = Math.PI / 2; ce.position.y = CAB.ceil; g.add(ce);
-  const ring = new THREE.Mesh(new THREE.TorusGeometry(.62, .04, 8, 48), new THREE.MeshBasicMaterial({color: new THREE.Color(2.4, 2.25, 2.0)})); ring.rotation.x = Math.PI / 2; ring.position.y = CAB.ceil - .03; g.add(ring);
-  const dh = new THREE.Mesh(new THREE.CylinderGeometry(.42, .42, .06, 32), CM.dark); dh.position.y = CAB.ceil - .03; g.add(dh);
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(.64, .018, 6, 96), CM.led); ring.rotation.x = Math.PI / 2; ring.position.y = CAB.ceil - .02; g.add(ring);
+  const cove = new THREE.Mesh(new THREE.TorusGeometry(rIn(CAB.ceil - .06) - .02, .006, 4, 96), CM.ledDim); cove.rotation.x = Math.PI / 2; cove.position.y = CAB.ceil - .06; g.add(cove);
+  { const dh = mesh(new THREE.CylinderGeometry(.44, .44, .05, 48), CM.trim); dh.position.y = CAB.ceil - .03; g.add(dh); const dd = mesh(new THREE.CylinderGeometry(.38, .38, .06, 48), CM.panel); dd.position.y = CAB.ceil - .04; g.add(dd);
+    const wh = mesh(new THREE.TorusGeometry(.14, .012, 8, 32), CM.frame); wh.rotation.x = Math.PI / 2; wh.position.y = CAB.ceil - .08; g.add(wh); }
   // handrails: ring under the ceiling, verticals by the hatch
-  const hr = mesh(new THREE.TorusGeometry(rIn(24.6) - .1, .022, 6, 64), CM.rail); hr.rotation.x = Math.PI / 2; hr.position.y = 24.6; g.add(hr);
-  for (const s of [-1, 1]) { const a = CAB.hatchA + s * .4, r = rIn(23) - .07; const v = mesh(new THREE.CylinderGeometry(.02, .02, 1.3, 6), CM.rail, Math.sin(a) * r, 23, -Math.cos(a) * r); g.add(v); }
-  // overhead switch band (front half)
-  const sw = new THREE.Mesh(shellGeo(-CAB.wall - .02, (a, y) => Math.abs(a) < 1.55 && y > 24.15 && y < 24.85, [-1.55, 1.55, 24.15, 24.85]), CM.switches); g.add(sw);
+  const hr = mesh(new THREE.TorusGeometry(rIn(24.6) - .1, .018, 8, 96), CM.rail); hr.rotation.x = Math.PI / 2; hr.position.y = 24.6; g.add(hr);
+  for (const s of [-1, 1]) { const a = CAB.hatchA + s * .4, r = rIn(23) - .07; g.add(mesh(new THREE.CylinderGeometry(.016, .016, 1.3, 10), CM.rail, Math.sin(a) * r, 23, -Math.cos(a) * r)); }
+  // overhead panel: dark satin band with real toggle switches, guards and status lights
+  g.add(new THREE.Mesh(shellGeo(-CAB.wall - .012, (a, y) => Math.abs(a) < 1.45 && y > 24.18 && y < 24.82), CM.darkB));
+  { const tg = [], gd = [], ld = []; for (const y of [24.32, 24.5, 24.68]) for (let a = -1.32; a <= 1.32; a += .055) { if (((a + 1.32) / .055 | 0) % 9 === 8) continue; const up = Math.sin(a * 37 + y * 11) > 0;
+      tg.push([a, y, .028, up ? .45 : -.45]); gd.push([a, y, .016, 0]); if (((a * 100 | 0) + y * 10 | 0) % 3 === 0) ld.push([a + .022, y + .05, .016, 0, [0x2bd46a, 0xffb02e, 0x2bd46a, 0x3aa0ff][(a * 50 | 0) & 3]]); }
+    wallParts(new THREE.CylinderGeometry(.0045, .006, .032, 8), CM.frame, tg, g); wallParts(new THREE.BoxGeometry(.024, .006, .036), CM.dark, gd, g);
+    wallParts(new THREE.SphereGeometry(.006, 8, 6), new THREE.MeshBasicMaterial({color: 0xffffff}), ld, g); }
   // inner hatch door with handle
-  g.add(new THREE.Mesh(shellGeo(-CAB.wall - .02, (a, y) => inReg(CHATCH, a, y), [CHATCH.a - CHATCH.w, CHATCH.a + CHATCH.w, CHATCH.y0, CHATCH.y1]), (() => { const m = CM.panel.clone(); m.side = THREE.BackSide; return interiorMat(m, INT_CAB); })()));
-  { const r = rIn(23) - .08, a = CAB.hatchA; const h = mesh(new THREE.TorusGeometry(.16, .02, 6, 24), CM.rail, Math.sin(a) * r, 23, -Math.cos(a) * r); h.rotation.y = -a; g.add(h); }
-  // seats + consoles
+  g.add(new THREE.Mesh(shellGeo(-CAB.wall - .02, (a, y) => inReg(CHATCH, a, y), [CHATCH.a - CHATCH.w, CHATCH.a + CHATCH.w, CHATCH.y0, CHATCH.y1]), CM.cab));
+  { const r = rIn(23) - .08, a = CAB.hatchA; const h = mesh(new THREE.TorusGeometry(.15, .016, 10, 32), CM.frame, Math.sin(a) * r, 23, -Math.cos(a) * r); h.rotation.y = -a; g.add(h); }
+  // seats + consoles (rounded, charcoal with light trim and harness)
+  const RB = {pan: rbox(.6, .1, .56, .04), back: rbox(.6, .82, .12, .05), head: rbox(.42, .3, .12, .05), bol: rbox(.08, .7, .14, .035), con: rbox(.98, .62, .1, .03), shelf: rbox(.9, .04, .28, .015), strap: new THREE.BoxGeometry(.05, .6, .012)};
   for (const S of SEATS) { const sg = new THREE.Group(); sg.rotation.y = -S.a; g.add(sg); const fy = CAB.floor, rz = -1.0; // seat-local: -z = outward (towards the wall)
     const add = (geo, m, x, y, z, rx = 0) => { const o = mesh(geo, m, x, y, z); o.rotation.x = rx; sg.add(o); return o; };
-    add(new THREE.BoxGeometry(.62, .12, .58), CM.fabric, 0, fy + .45, rz); add(new THREE.BoxGeometry(.62, .8, .1), CM.fabric, 0, fy + .9, rz + .32, -.18); add(new THREE.BoxGeometry(.4, .28, .1), CM.fabric, 0, fy + 1.47, rz + .4, -.18);
-    for (const sx of [-1, 1]) { add(new THREE.BoxGeometry(.06, .06, .5), CM.frame, sx * .36, fy + .66, rz + .02); add(new THREE.BoxGeometry(.05, .45, .05), CM.frame, sx * .26, fy + .2, rz - .15); add(new THREE.BoxGeometry(.05, .45, .05), CM.frame, sx * .26, fy + .2, rz + .2); }
-    add(new THREE.BoxGeometry(.6, .05, .5), CM.frame, 0, fy + .02, rz);
-    // console under the window, tilted to face the seat
-    const cr = -(rIn(22.6) - .34); const c = add(new THREE.BoxGeometry(.95, .62, .28), CM.panel, 0, 22.55, cr, -.75);
-    const sc = new THREE.Mesh(new THREE.PlaneGeometry(.66, .38), screenMat(S.scr, 1.5)); sc.position.set(0, .03, .145); c.add(sc);
-    const bt = new THREE.Mesh(new THREE.PlaneGeometry(.8, .08), CM.switches); bt.position.set(0, -.26, .145); c.add(bt);
-    add(new THREE.BoxGeometry(.9, .05, .3), CM.dark, 0, 22.3, cr + .25); // armrest shelf
-    S.pos = new V3(Math.sin(S.a) * .8, fy, -Math.cos(S.a) * .8); }
-  // lockers and stowage bags on the back wall either side of the hatch
-  let bi = 0; for (const s of [-1, 1]) for (let row = 0; row < 3; row++) for (let col = 0; col < 2; col++) { const a = CAB.hatchA + s * (.62 + col * .3), y = 22.3 + row * .42, r = rIn(y + .17) - .19;
-    const b = mesh(new THREE.BoxGeometry(.48, .36, .34), CM.bag[(bi++) % 4], Math.sin(a) * r, y + .18, -Math.cos(a) * r); b.rotation.y = -a; g.add(b);
-    const st = mesh(new THREE.BoxGeometry(.05, .37, .35), CM.dark, Math.sin(a) * r, y + .18, -Math.cos(a) * r); st.rotation.y = -a; g.add(st); }
-  { const a = CAB.hatchA - .45, r = rIn(22.3) - .12; g.add(mesh(new THREE.CylinderGeometry(.08, .08, .5, 12), CM.red, Math.sin(a) * r, 22.3, -Math.cos(a) * r)); } // extinguisher
+    add(RB.pan, CM.fabric, 0, fy + .45, rz, -Math.PI / 2); add(RB.back, CM.fabric, 0, fy + .9, rz + .32, -.18); add(RB.head, CM.fabric, 0, fy + 1.47, rz + .4, -.18);
+    for (const sx of [-1, 1]) { add(RB.bol, CM.fabric2, sx * .32, fy + .88, rz + .33, -.18); add(RB.strap, CM.dark, sx * .13, fy + .95, rz + .26, -.18); add(new THREE.CylinderGeometry(.022, .022, .5, 10), CM.frame, sx * .26, fy + .22, rz, 0); }
+    add(new THREE.CylinderGeometry(.03, .03, .64, 10), CM.frame, 0, fy + .38, rz + .26, 0).rotation.z = Math.PI / 2; add(new THREE.CylinderGeometry(.03, .03, .64, 10), CM.frame, 0, fy + .38, rz - .24, 0).rotation.z = Math.PI / 2;
+    // console under the window, tilted to face the seat: glossy display glass and a row of hard buttons
+    const cr = -(rIn(22.6) - .34); const c = add(RB.con, CM.console, 0, 22.55, cr, -.75);
+    const sc = new THREE.Mesh(new THREE.PlaneGeometry(.78, .44), screenGlass(S.scr, 1.6)); sc.position.set(0, .05, .051); c.add(sc);
+    for (let b = 0; b < 8; b++) { const k = mesh(new THREE.CylinderGeometry(.018, .018, .02, 14), b === 7 ? CM.red : CM.frame, -.35 + b * .1, -.25, .055); k.rotation.x = Math.PI / 2; c.add(k); }
+    add(RB.shelf, CM.trim, 0, 22.3, cr + .25); S.pos = new V3(Math.sin(S.a) * .8, fy, -Math.cos(S.a) * .8); }
+  // flush stowage cabinets either side of the hatch, with recessed handles
+  for (const s of [-1, 1]) for (const [y0, y1] of [[22.25, 22.85], [22.95, 23.55]]) { const a0 = CAB.hatchA + s * .5, a1 = CAB.hatchA + s * 1.0, lo = Math.min(a0, a1), hi = Math.max(a0, a1);
+    g.add(new THREE.Mesh(shellGeo(-CAB.wall - .014, (a, y) => { const d = angD(a, 0) < 0 ? angD(a, 0) + 2 * Math.PI : angD(a, 0); const aa = a < 0 ? a + 2 * Math.PI : a; return aa > lo && aa < hi && y > y0 && y < y1; }), CM.cab));
+    const am = (a0 + a1) / 2, r = rIn((y0 + y1) / 2) - .03; const hd = mesh(new THREE.BoxGeometry(.16, .025, .02), CM.dark, Math.sin(am) * r, (y0 + y1) / 2, -Math.cos(am) * r); hd.rotation.y = -am; g.add(hd); }
+  { const a = CAB.hatchA - .38, r = rIn(22.3) - .12; g.add(mesh(new THREE.CylinderGeometry(.07, .07, .45, 16), CM.red, Math.sin(a) * r, 22.35, -Math.cos(a) * r)); g.add(mesh(new THREE.CylinderGeometry(.03, .03, .08, 12), CM.dark, Math.sin(a) * r, 22.62, -Math.cos(a) * r)); } // extinguisher
   // parachute (hidden until it opens)
   const ch = new THREE.Group(); ch.position.y = 26.1; const can = new THREE.Mesh(new THREE.SphereGeometry(10, 32, 10, 0, Math.PI * 2, 0, 1.25), RM.chute); can.position.y = 15; can.castShadow = true; ch.add(can);
   const lp = []; for (let k = 0; k < 16; k++) { const a = k / 16 * Math.PI * 2, rr = 10 * Math.sin(1.25); lp.push(0, 0, 0, Math.cos(a) * rr, 15 + 10 * Math.cos(1.25), Math.sin(a) * rr); }
@@ -504,6 +525,7 @@ const cabL = new THREE.PointLight(0xfff0dc, 0, 7, 2); scene.add(cabL); // cabin 
 const SCR = {}, HIST = []; let scrT = 0, histT = 0;
 function scr(name) { if (SCR[name]) return SCR[name]; const big = name === 'map', c = document.createElement('canvas'); c.width = big ? 1024 : 512; c.height = big ? 512 : 256;
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; const s = SCR[name] = {c, x: c.getContext('2d'), t, w: c.width, h: c.height, mats: {}, drawn: false}; return s; }
+function screenGlass(name, k = 1.5) { const s = scr(name), key = 'g' + k; return s.mats[key] || (s.mats[key] = interiorMat(new THREE.MeshStandardMaterial({color: 0x030405, roughness: .1, metalness: 0, emissive: 0xffffff, emissiveMap: s.t, emissiveIntensity: k}), INT_CAB)); } // glossy display glass
 function screenMat(name, k = 1.5) { const s = scr(name); return s.mats[k] || (s.mats[k] = new THREE.MeshBasicMaterial({map: s.t, color: new THREE.Color(k, k, k)})); }
 function scrBg(s, title, col = '#7fd4ff') { const x = s.x; x.fillStyle = '#050c18'; x.fillRect(0, 0, s.w, s.h); x.strokeStyle = 'rgba(80,140,200,.12)'; x.lineWidth = 1;
   for (let i = 0; i < s.w; i += 32) { x.beginPath(); x.moveTo(i, 0); x.lineTo(i, s.h); x.stroke(); } for (let i = 0; i < s.h; i += 32) { x.beginPath(); x.moveTo(0, i); x.lineTo(s.w, i); x.stroke(); }
@@ -604,14 +626,87 @@ function cabinAct() { const n = cabinNear(); if (!n) return;
   if (n.k === 'hatch' && R.st !== 'fly') getOut(); }
 const pilot = () => R.on && C.in && C.seat === 0;
 
+// ---------------- the Moon from afar: colour + slope maps baked from the real moon terrain (a few rows per frame) on a smooth sphere
+// Terrain chunks are too coarse beyond ~3000 km, so this sphere takes over there. Lunar lighting: Lommel-Seeliger (why the full moon looks flat and bright to the edge).
+const MI = {W: 1024, H: 512, row: 0, ready: false};
+MI.mesh = new THREE.Mesh(new THREE.SphereGeometry(MOON.R, 256, 128), new THREE.ShaderMaterial({uniforms: {mC: {value: null}, mN: {value: null}, sunD: {value: SUN}, mRot: {value: new THREE.Matrix3()}},
+  vertexShader: `#include <common>
+#include <logdepthbuf_pars_vertex>
+varying vec3 vD, vW; void main(){ vD = normalize(position); vec4 w = modelMatrix * vec4(position, 1.); vW = w.xyz; gl_Position = projectionMatrix * viewMatrix * w;
+#include <logdepthbuf_vertex>
+}`,
+  fragmentShader: `#include <common>
+#include <logdepthbuf_pars_fragment>
+uniform sampler2D mC, mN; uniform vec3 sunD; uniform mat3 mRot; varying vec3 vD, vW;
+void main(){
+#include <logdepthbuf_fragment>
+  vec3 d = normalize(vD); float lat = asin(clamp(d.y, -1., 1.)), lon = atan(-d.z, d.x); vec2 uv = vec2(lon / 6.2831853 + .5, lat / 3.1415927 + .5);
+  vec3 alb = texture2D(mC, uv).rgb; vec2 g = (texture2D(mN, uv).rg - .5) * 2.;
+  vec3 e = vec3(-sin(lon), 0., -cos(lon)), nn = vec3(-sin(lat) * cos(lon), cos(lat), sin(lat) * sin(lon));
+  vec3 n = normalize(mRot * normalize(d - e * g.x * 1.3 - nn * g.y * 1.3)), v = normalize(-vW);
+  float mu0 = max(dot(n, sunD), 0.), mu = max(dot(n, v), 0.), ls = 2. * mu0 / (mu0 + mu + 1e-4);
+  float shade = mix(mu0, ls * smoothstep(0., .08, dot(normalize(mRot * d), sunD) + .02), .72);
+  gl_FragColor = vec4(alb * (3.4 / 3.14159) * shade * .9 + alb * .0015, 1.); }`}));
+MI.mesh.visible = false; MI.mesh.frustumCulled = false; scene.add(MI.mesh);
+function moonBake(budget) {
+  if (MI.ready) return; const t0 = performance.now(), W = MI.W, H = MI.H;
+  if (!MI.col) { MI.col = new Uint8Array(W * H * 4); MI.h = new Float32Array(W * H); }
+  while (MI.row < H && performance.now() - t0 < budget) { const j = MI.row, lat = -Math.PI / 2 + (j + .5) / H * Math.PI, cl = Math.cos(lat), sl = Math.sin(lat);
+    CR_NEAR = CRATERS.filter(c => Math.abs(Math.asin(c.d.y) - lat) < c.r * 2.3 / MOON.R + .01);
+    for (let i = 0; i < W; i++) { const lon = -Math.PI + (i + .5) / W * 2 * Math.PI, x = cl * Math.cos(lon), y = sl, z = -cl * Math.sin(lon), h = heightAt(MOON, x, y, z); MI.h[j * W + i] = h;
+      const c = colorAt(MOON, x, y, z, h, 0), o = (j * W + i) * 4; MI.col[o] = Math.pow(c.r, 1 / 2.2) * 255; MI.col[o + 1] = Math.pow(c.g, 1 / 2.2) * 255; MI.col[o + 2] = Math.pow(c.b, 1 / 2.2) * 255; MI.col[o + 3] = 255; }
+    CR_NEAR = null; MI.row++; }
+  if (MI.row < H) return;
+  const n = new Uint8Array(W * H * 4), latM = Math.PI * MOON.R / H;
+  for (let j = 0; j < H; j++) { const lonM = Math.max(200, 2 * Math.PI * MOON.R * Math.cos(-Math.PI / 2 + (j + .5) / H * Math.PI) / W);
+    for (let i = 0; i < W; i++) { const gE = (MI.h[j * W + (i + 1) % W] - MI.h[j * W + (i + W - 1) % W]) / (2 * lonM), gN = (MI.h[Math.min(H - 1, j + 1) * W + i] - MI.h[Math.max(0, j - 1) * W + i]) / (2 * latM), o = (j * W + i) * 4;
+      n[o] = clamp(gE * .5 + .5, 0, 1) * 255; n[o + 1] = clamp(gN * .5 + .5, 0, 1) * 255; n[o + 3] = 255; } }
+  const mk = (data, srgb) => { const t = new THREE.DataTexture(data, W, H); t.wrapS = THREE.RepeatWrapping; t.minFilter = THREE.LinearMipmapLinearFilter; t.magFilter = THREE.LinearFilter; t.generateMipmaps = true; t.anisotropy = 8; if (srgb) t.colorSpace = THREE.SRGBColorSpace; t.needsUpdate = true; return t; };
+  MI.mesh.material.uniforms.mC.value = mk(MI.col, true); MI.mesh.material.uniforms.mN.value = mk(n, false); MI.ready = true; MI.h = null;
+}
+function moonFar() { moonBake(3); const far = MI.ready && G.O.distanceTo(MOON.c) > 3e6; MI.mesh.visible = far; MOON.group.visible = !far;
+  if (far) { MI.mesh.position.copy(MOON.c).sub(G.O); MI.mesh.quaternion.copy(MOON.q); MI.mesh.material.uniforms.mRot.value.setFromMatrix4(new THREE.Matrix4().makeRotationFromQuaternion(MOON.q)); } }
+
+// ---------------- Test menu (` key, or "Test mode" on the main menu): jump straight to any part of the game
+function hourNow() { const s = SITE.clone().applyQuaternion(PLANET.q), a = Math.atan2(s.z * SUN.x - s.x * SUN.z, s.x * SUN.x + s.z * SUN.z); return ((12 - a / Math.PI * 12) % 24 + 24) % 24; }
+function setHour(h) { G.t += ((h - hourNow()) % 24 + 24) % 24 / 24 * PLANET.day; for (const b of BODIES) bodyState(b, G.t); if (R.st !== 'fly') latch(G.t); }
+function clearDebris() { for (const d of R.debris) scene.remove(d.g); R.debris = []; }
+function toPilot() { C.in = true; R.on = true; C.seat = 0; C.view = 'in'; C.yaw = 0; C.pitch = -.1; C.pos.copy(SEATS[0].pos); C.vel.set(0, 0, 0); $('cross').classList.add('hidden'); }
+function onFoot() { if (R.st === 'fly' || R.st === 'dead') resetRocket(); if (R.on) { R.on = false; C.in = false; C.seat = -1; cabL.intensity = 0; } $('cross').classList.remove('hidden'); G.wi = 0; G.warp = 1; }
+function flyFrom(drop) { resetRocket(); R.on = true; stage(); for (let i = 0; i < drop; i++) stage(); clearDebris(); R.st = 'fly'; R.thr = 0; R.t0 = G.t; R.w.set(0, 0, 0); }
+const TESTS = {
+  pad() { onFoot(); resetRocket(); board(); toPilot(); showHint('On the pad in the Pilot seat. Space to launch', 4000); },
+  cabin() { onFoot(); resetRocket(); board(); },
+  orbit() { onFoot(); flyFrom(1); const up = SITE.clone().applyQuaternion(PLANET.q), east = new V3(0, 1, 0).cross(up).normalize(), r = PLANET.R + 80000;
+    R.pos.copy(up).multiplyScalar(r); R.vel.copy(east).multiplyScalar(Math.sqrt(PLANET.GM / r)); R.q.setFromUnitVectors(new V3(0, 1, 0), east); R.hold.copy(R.q); R.sas = 'pro'; toPilot(); showHint('80 km orbit. Upper stage has fuel. V = outside view', 4000); },
+  reentry() { onFoot(); flyFrom(2); const up = SITE.clone().applyQuaternion(PLANET.q).applyAxisAngle(new V3(0, 1, 0), .5), east = new V3(0, 1, 0).cross(up).normalize(), r = PLANET.R + 45000;
+    R.pos.copy(up).multiplyScalar(r); R.vel.copy(east).multiplyScalar(2250).addScaledVector(up, -90); R.q.setFromUnitVectors(new V3(0, 1, 0), R.vel.clone().normalize().negate()); R.hold.copy(R.q); R.sas = 'retro'; toPilot(); showHint('Re-entry: Space arms the parachute', 4000); },
+  chute() { onFoot(); flyFrom(2); const up = SITE.clone().applyQuaternion(PLANET.q), r = PLANET.R + 3000; R.pos.copy(up).multiplyScalar(r); groundVel(PLANET, R.pos, G.t, R.vel).addScaledVector(up, -120);
+    R.q.setFromUnitVectors(new V3(0, 1, 0), up); R.hold.copy(R.q); stage(); toPilot(); C.view = 'out'; showHint('Falling with the parachute armed', 4000); },
+  moonOrbit() { onFoot(); flyFrom(1); const d = SUN.clone().addScaledVector(MOON.c.clone().normalize(), -1).normalize(), r = MOON.R + 30000, t = new V3(0, 1, 0).cross(d).normalize();
+    R.pos.copy(MOON.c).addScaledVector(d, r); R.vel.copy(moonVel(G.t, new V3())).addScaledVector(t, Math.sqrt(MOON.GM / r)); R.q.setFromUnitVectors(new V3(0, 1, 0), t); R.hold.copy(R.q); R.sas = 'pro'; toPilot(); C.view = 'out'; showHint('30 km over the Moon', 4000); },
+  moonWalk() { onFoot(); const d = SUN.clone().applyQuaternion(MOON.q.clone().invert()).add(new V3(.3, .1, .2)).normalize(); P.body = MOON; P.pos.copy(d).multiplyScalar(MOON.R + heightAt(MOON, d.x, d.y, d.z) + 2); P.vel.set(0, 0, 0);
+    P.fwd.set(0, 1, 0).addScaledVector(d, -d.y).normalize(); P.pitch = .1; showHint('On the Moon. Space to hop', 4000); },
+  mc() { onFoot(); P.body = PLANET; placeAt(-72.25, .1, 79, 0, 0); showHint('Mission control. Stairs on the left wall go up to the deck', 4000); },
+  deck() { onFoot(); P.body = PLANET; placeAt(-88, 6.1, 72, -1.2, -.05); },
+  centre() { onFoot(); spawnPlayer(); P.body = PLANET; },
+  sunrise() { setHour(6.4); }, noon() { setHour(12); }, sunset() { setHour(17.7); }, night() { setHour(23); },
+  fuel() { R.fuel = STAGES.map(s => s.fuel); showHint('Tanks full', 1500); },
+  cloudsMore() { CL.cov.value = Math.min(1, CL.cov.value + .15); }, cloudsLess() { CL.cov.value = Math.max(0, CL.cov.value - .15); },
+};
+function testMenu(show) { const t = $('test'); show = show ?? t.classList.contains('hidden'); t.classList.toggle('hidden', !show); if (show && document.pointerLockElement) document.exitPointerLock(); }
+document.querySelectorAll('#test [data-t]').forEach(b => b.onclick = e => { e.stopPropagation(); TESTS[b.dataset.t](); if (!b.dataset.keep) testMenu(false); });
+$('testX').onclick = () => testMenu(false);
+addEventListener('keydown', e => { if (e.code === 'Backquote' && G.on) testMenu(); });
+
 // hooks for game.js's frame loop
 const FLIGHT = {step(dt) { stepThrottle(dt); flightStep(dt); if (R.on && C.in) cabinStep(dt); },
   camera(dt) { if (R.st === 'dead' || (C.seat === 0 && C.view === 'out')) { cabL.intensity = 0; flightCamera(dt); } else cabinCamera(); },
-  visuals(dt) { flightVisuals(dt); sndUpdate(); updateScreens(dt); },
+  visuals(dt) { flightVisuals(dt); sndUpdate(); updateScreens(dt); moonFar(); },
   hud(dt) { const n = R.st === 'dead' ? null : cabinNear(); $('act').classList.toggle('hidden', !n); if (n) $('act').textContent = n.t; $('cross').classList.toggle('hidden', C.seat >= 0 || C.view === 'out');
     if (C.seat >= 0 || R.st === 'dead') flightHud(dt); else { $('fl').classList.add('hidden'); $('mPro').classList.add('hidden'); $('mRet').classList.add('hidden'); $('hLoc').textContent = 'In the capsule'; $('hInfo').textContent = R.felt.y > .6 || R.st !== 'fly' ? 'WASD walk · F interact' : 'Weightless · WASD push · Space/Shift up/down'; } },
   hideHud() { document.body.classList.remove('fly'); $('fl').classList.add('hidden'); $('mPro').classList.add('hidden'); $('mRet').classList.add('hidden'); $('act').classList.add('hidden'); }};
 const _bootOrig = boot;
-boot = function () { _bootOrig(); siteToBody(new V3(-82, 0, 70), MC_P); resetRocket(); R.cam.ref.set(1, 0, 0).applyQuaternion(site.q).applyQuaternion(PLANET.q); };
-Object.assign(window.YE, {FLIGHT, C, SEATS, cabinAct, CAB, R, STAGES, stage, board, getOut, resetRocket, setWarp, setSas, rocketStep, flightStep, PT, explode});
+boot = function () { _bootOrig(); $('testPlay').onclick = () => { $('play').click(); setTimeout(() => testMenu(true), 50); }; siteToBody(new V3(-82, 0, 70), MC_P); resetRocket(); R.cam.ref.set(1, 0, 0).applyQuaternion(site.q).applyQuaternion(PLANET.q); };
+Object.assign(window.YE, {TESTS, testMenu, MI, moonBake, FLIGHT, C, SEATS, cabinAct, CAB, R, STAGES, stage, board, getOut, resetRocket, setWarp, setSas, rocketStep, flightStep, PT, explode});
 boot();
