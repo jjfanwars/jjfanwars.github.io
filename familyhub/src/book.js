@@ -4,14 +4,16 @@ var H=window.HUB,P=H.P,F=H.fmt,esc=F.esc,money=F.money,api=H.api;
 var PHONE='0491 184 788', TEL='tel:0491184788';
 
 // fee: [amount, minutes, medicare rebate (0 = none)] or a text note
-var CLIN=[245,50,149.05], PSY_FEES={adi:CLIN,hannah:CLIN,melinda:[235,50,149.05],ellie:[190,50,101.55],maddy:'See our fees page or ask us.',meaghan:[180,50,0]};
+var CLIN=[245,50,149.05], PSY_FEES={adi:CLIN,hannah:CLIN,melinda:[235,50,149.05],ellie:[170,50,101.55],maddy:[200,50,101.55],meaghan:[180,50,0]};
 var NEED={
  talk:{t:'Someone to talk to',s:'Psychology for anxiety, low mood, stress, trauma or big changes',ico:'talk',plan:1,how:1,fee:PSY_FEES,wl:'Psychology'},
  conceive:{t:'Someone to talk to',s:'Fertility, IVF, pregnancy worries, anxiety or low mood',ico:'talk',plan:1,how:1,fee:PSY_FEES,wl:'Perinatal psychology'},
  counsel:{t:'Counselling',s:'Practical support for stress, burnout, parenting and life changes',ico:'leafy',plan:1,how:1,
   fee:{'michelle-ferris':[215,50,89.50],jodie:[120,60,0]},wl:'Counselling'},
- parenthood:{t:'Couple support for becoming parents',s:'Communication, new roles and staying connected',ico:'heart',how:1,
-  fee:{adi:'Ask us about fees for couple sessions.'},contactOnly:{adi:1}},
+ parenthood:{t:'Couple support for becoming parents',s:'Communication, new roles and staying connected',ico:'heart',how:1,wl:'Couple support',
+  fee:{adi:'$245 for 50 minutes, or $365 for an extended 90-minute couples session. No Medicare rebate for couple sessions.'}},
+ eating:{t:'Eating disorder treatment',s:'Psychological treatment, with or without an Eating Disorder Plan',ico:'leafy',how:1,wl:'Eating disorder treatment',
+  fee:{adi:'$245 for 50 minutes. With an Eating Disorder Treatment and Management Plan from your GP, Medicare covers part of the cost.',hannah:'$245 for 50 minutes. With an Eating Disorder Treatment and Management Plan from your GP, Medicare covers part of the cost.'}},
  couples:{t:'Couples therapy',s:'Conflict, stress, intimacy, separation or feeling stuck',ico:'couple',how:1,
   fee:{'michelle-ferris':[245,60,0]},wl:'Couples therapy'},
  child:{t:'Therapy for my child or teen',s:'Play, art and talk-based therapy, plus parent coaching',ico:'star',plan:1,how:1,fee:PSY_FEES,wl:'Child psychology'},
@@ -53,6 +55,7 @@ var WHO={
   ['osteo','Osteopathy for babies and children',0,['anna','melissa']]]},
  me:{t:'Me',s:'Support for adults at any stage of life',ico:'person',needs:[
   ['talk',0,0,['adi','hannah','melinda','ellie','maddy']],
+  ['eating',0,0,['adi','hannah']],
   ['counsel',0,0,['michelle-ferris','jodie']],
   ['art',0,0,['michelle-joseph']],
   ['ndis',0,0,['jodie','michelle-joseph']],
@@ -131,7 +134,7 @@ function renderNeed(){
 function pills(key,opts,cur){return '<div class="fd-pills" role="group">'+opts.map(function(o){return '<button type="button" class="fd-pill" data-'+key+'="'+o[0]+'" aria-pressed="'+(cur===o[0])+'">'+esc(o[1])+'</button>'}).join('')+'</div>'}
 function renderQs(){
  var n=NEED[S.need],kid=S.who==='child',h=head(3)+'<div class="fd-step"><h2 class="fd-q" tabindex="-1">Two quick questions</h2><p class="fd-sub">So we book the right appointment type and show the right fees.</p>';
- if(n.plan)h+='<div class="fd-group"><h3>'+(kid?'Does your child have a Mental Health Treatment Plan?':'Do you have a Mental Health Treatment Plan?')+'</h3><p>A plan from your GP'+(kid?', paediatrician':'')+' or psychiatrist gives you a Medicare rebate for up to 10 sessions a year.</p>'+
+ if(n.plan)h+='<div class="fd-group"><h3>'+(kid?'Does your child have a Mental Health Treatment Plan?':'Do you have a Mental Health Treatment Plan?')+'</h3><p>A plan from '+(kid?'your child’s regular GP, paediatrician or psychiatrist':'your regular GP (or psychiatrist)')+' gives you a Medicare rebate for up to 10 sessions a year. Since November 2025 it usually needs to come from your regular GP.</p>'+
   pills('plan',[['yes','Yes'],['no','No'],['unsure','Not sure']],S.plan)+'</div>';
  if(n.how)h+='<div class="fd-group"><h3>How would you like to meet?</h3><p>Most sessions can be at the Hub in Jan Juc or by video or phone.</p>'+
   pills('how',[['in','At the Hub'],['online','Video or phone'],['any','Either is fine']],S.how)+'</div>';
@@ -168,7 +171,7 @@ function renderRes(){
  h+='<ul class="fd-results">';
  ids.forEach(function(pid){var p=P[pid];
   h+='<li><article class="fd-res" data-pid="'+pid+'"><img src="'+H.photo(pid)+'" alt="" width="88" height="88" loading="lazy"><div><h3>'+esc(p.name)+'</h3><p class="fd-role">'+esc(p.role)+'</p></div>'+
-   '<div class="fd-body"><p class="fd-why">'+esc(p.why)+'</p>'+feeLine(pid)+
+   '<div class="fd-body"><p class="fd-why">'+esc(p.why)+'</p>'+(p.note?'<p class="fd-pnote">'+esc(p.note)+'</p>':'')+feeLine(pid)+
    (isLive(pid)?'<div class="fd-times" data-times="'+pid+'"><div class="fd-skel"><span></span><span></span><span></span><span></span></div></div>'+
      '<div class="fd-acts fd-acts-live"><button type="button" class="fd-linkbtn" data-wait="'+pid+'">'+svg('bell')+'Nothing suits? Get a text if something sooner opens</button><a class="fd-more" href="'+H.SITE+'team.html#'+pid+'">About '+esc(p.first)+'</a></div>'
     :actions(pid))+'</div></article></li>'});
@@ -181,12 +184,14 @@ function renderRes(){
  return h}
 
 function loadTimes(pids){if(!pids.length)return;
- api.slots(pids,21).then(function(res){SLOTS=res;pids.forEach(function(pid){SHOWN[pid]=SHOWN[pid]||3;drawTimes(pid)});drawSoon(pids)})}
+ api.slots(pids,84).then(function(res){SLOTS=res;pids.forEach(function(pid){SHOWN[pid]=SHOWN[pid]||3;drawTimes(pid)});drawSoon(pids)})}
 function groupDays(list){var g=[],cur=null;list.forEach(function(d){var k=d.toDateString();if(!cur||cur.k!==k){cur={k:k,d:d,t:[]};g.push(cur)}cur.t.push(d)});return g}
 function drawTimes(pid){var el=box.querySelector('[data-times="'+pid+'"]');if(!el)return;
  var g=groupDays(SLOTS[pid]||[]),n=SHOWN[pid];
- if(!g.length){el.innerHTML='<p class="fd-none">'+esc(P[pid].first)+' is fully booked for the next three weeks. Join the waitlist below and we’ll text you if a spot opens.</p>';return}
- var h='<p class="fd-times-h">'+svg('clock')+'Next available with '+esc(P[pid].first)+'</p><div class="fd-days">';
+ if(!g.length){el.innerHTML='<p class="fd-none">'+esc(P[pid].first)+' is fully booked for the next three months. Join the waitlist below and we’ll text you if a spot opens.</p>';return}
+ var far=g[0].d.getTime()-H.now()>14*864e5;
+ var h=(far?'<p class="fd-none fd-far">'+svg('bell')+'<span><b>'+esc(P[pid].first)+' is booked out until '+esc(F.day(g[0].d,1))+'.</b> Join the waitlist below and we’ll text you if something opens sooner.</span></p>':'')+
+  '<p class="fd-times-h">'+svg('clock')+(far?'First available':'Next available')+' with '+esc(P[pid].first)+'</p><div class="fd-days">';
  g.slice(0,n).forEach(function(day){h+='<div class="fd-day"><span class="fd-dname">'+esc(F.day(day.d))+'</span><div class="fd-chips">'+
   day.t.map(function(t){return '<button type="button" class="fd-chip" data-slot="'+pid+'|'+t.toISOString()+'">'+F.time(t)+'</button>'}).join('')+'</div></div>'});
  h+='</div>';if(g.length>n)h+='<button type="button" class="fd-linkbtn fd-moretimes" data-more="'+pid+'">More times</button>';
@@ -220,7 +225,7 @@ box.addEventListener('click',function(e){
 function backState(){var st=stepOf();if(st===4&&needsQs())return {r:null};if(st>=3)return {need:null};return {who:null}}
 window.addEventListener('popstate',function(){S=readHash();render(true)});
 // times change when someone else books or a spot is refilled (other tab = the dashboard)
-api.on(function(){if(stepOf()===4&&!dlg.open){var live=[].map.call(box.querySelectorAll('[data-times]'),function(x){return x.dataset.times});if(live.length)api.slots(live,21).then(function(r){SLOTS=r;live.forEach(drawTimes);drawSoon(live)})}});
+api.on(function(){if(stepOf()===4&&!dlg.open){var live=[].map.call(box.querySelectorAll('[data-times]'),function(x){return x.dataset.times});if(live.length)api.slots(live,84).then(function(r){SLOTS=r;live.forEach(drawTimes);drawSoon(live)})}});
 
 // ---------- booking + waitlist sheet ----------
 var dlg=document.getElementById('bkSheet'),sheet=dlg.querySelector('.bk-in');
@@ -230,8 +235,8 @@ dlg.addEventListener('close',function(){document.documentElement.classList.remov
 function showSheet(html){sheet.innerHTML=html;if(!dlg.open){dlg.showModal();document.documentElement.classList.add('bk-lock')}
  var f=sheet.querySelector('[autofocus]')||sheet.querySelector('h2');if(f)f.focus()}
 function sheetHead(t){return '<div class="bk-head"><h2 tabindex="-1">'+t+'</h2><button type="button" class="bk-x" data-close aria-label="Close">'+svg('x')+'</button></div>'}
-function apptLine(pid,t){var p=P[pid],on=S.how==='online';
- return '<div class="bk-appt"><img src="'+H.photo(pid)+'" alt="" width="64" height="64"><div><b>'+esc(p.name)+'</b><span>'+svg('cal')+esc(F.day(t,1))+', '+F.time(t)+' ('+p.len+' min)</span>'+
+function apptLine(pid,t,len){var p=P[pid],on=S.how==='online';
+ return '<div class="bk-appt"><img src="'+H.photo(pid)+'" alt="" width="64" height="64"><div><b>'+esc(p.name)+'</b><span>'+svg('cal')+esc(F.day(t,1))+', '+F.time(t)+' ('+(len||H.lenOf(pid,S.need))+' min)</span>'+
   '<span>'+svg(on?'video':'pin')+(on?'Video or phone (link sent by text)':'At the Hub, Jan Juc Village, Stuart Ave')+'</span></div></div>'}
 function costNote(pid){var f=feeOf(pid);if(!Array.isArray(f))return typeof f==='string'?'<p class="bk-cost">'+esc(f)+'</p>':'';
  if(f[2]&&S.plan==='yes')return '<p class="bk-cost"><b>'+money(f[0])+'</b>, about <b>'+money(Math.round((f[0]-f[2])*100)/100)+'</b> after your Medicare rebate. Bring your Mental Health Treatment Plan, or ask your GP to send it to us.</p>';
@@ -242,7 +247,7 @@ function field(id,label,type,ac,extra){return '<label class="bk-f"><span>'+label
 function openBook(pid,t){
  var p=P[pid];
  showSheet(sheetHead('Book with '+esc(p.first))+apptLine(pid,t)+
-  '<p class="bk-svc">'+svg('check')+'<span>We’ll book it as <b>'+esc(H.serviceName(pid,S.plan,S.how==='any'?'in':S.how))+'</b>, so you don’t need to pick an appointment type.</span></p>'+costNote(pid)+
+  '<p class="bk-svc">'+svg('check')+'<span>We’ll book it as <b id="bkSvc">'+esc(H.serviceName(pid,S.need,S.plan,S.how==='any'?'in':S.how,'yes'))+'</b>, so you don’t need to pick an appointment type.</span></p>'+costNote(pid)+
   '<form class="bk-form" novalidate>'+
    field('bkName','Full name','text','name','autofocus')+
    '<div class="bk-row">'+field('bkPhone','Mobile','tel','tel','inputmode="tel" placeholder="04xx xxx xxx"')+field('bkEmail','Email','email','email')+'</div>'+
@@ -252,25 +257,26 @@ function openBook(pid,t){
    '<button type="submit" class="btn btn-primary bk-submit">'+svg('check')+'Confirm booking</button>'+
    '<p class="bk-demo">Demo: no real booking is made.</p></form>');
  var form=sheet.querySelector('form'),first='';
- form.addEventListener('click',function(e){var b=e.target.closest('[data-first]');if(!b)return;first=b.dataset.first;[].forEach.call(form.querySelectorAll('[data-first]'),function(x){x.setAttribute('aria-pressed',x===b)})});
+ form.addEventListener('click',function(e){var b=e.target.closest('[data-first]');if(!b)return;first=b.dataset.first;[].forEach.call(form.querySelectorAll('[data-first]'),function(x){x.setAttribute('aria-pressed',x===b)});
+  var sv=document.getElementById('bkSvc');if(sv)sv.textContent=H.serviceName(pid,S.need,S.plan,S.how==='any'?'in':S.how,first)});
  form.addEventListener('input',function(e){DRAFT[e.target.id]=e.target.value;try{sessionStorage.setItem('scfh-draft',JSON.stringify(DRAFT))}catch(x){}});
  form.addEventListener('submit',function(e){e.preventDefault();
   var name=form.bkName.value.trim(),phone=form.bkPhone.value.trim(),email=form.bkEmail.value.trim(),err=form.querySelector('.bk-err');
   var bad=!name?'Please add your name.':!/^(\+?61|0)4[\d ]{8,11}$/.test(phone.replace(/\s/g,'').replace(/^\+61/,'0').replace(/^61/,'0'))?'Please add an Australian mobile number (04xx xxx xxx).':!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)?'Please check your email address.':!form.bkOk.checked?'Please tick the privacy box so we can book you in.':'';
   if(bad){err.textContent=bad;err.hidden=false;return}
   var go=form.querySelector('.bk-submit');go.disabled=true;go.innerHTML='<span class="bk-spin"></span>Booking…';
-  api.book({pid:pid,start:t.toISOString(),name:name,phone:phone,email:email,plan:S.plan,how:S.how==='any'?'in':S.how,firstVisit:first}).then(function(r){
+  api.book({pid:pid,need:S.need,start:t.toISOString(),name:name,phone:phone,email:email,plan:S.plan,how:S.how==='any'?'in':S.how,firstVisit:first}).then(function(r){
    if(!r.ok){err.textContent='Sorry, someone just grabbed that time. Pick another one below.';err.hidden=false;go.disabled=false;go.innerHTML=svg('check')+'Confirm booking';
     setTimeout(closeSheet,1600);return}
    api.remember(r.booking.token);done(r.booking)})});
 }
-function ics(b){var p=P[b.pid],s=new Date(b.start),e=new Date(s.getTime()+p.len*6e4);
+function ics(b){var p=P[b.pid],s=new Date(b.start),e=new Date(s.getTime()+(b.len||p.len)*6e4);
  function z(d){return d.toISOString().replace(/[-:]/g,'').replace(/\.\d+/,'')}
  return 'BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Surf Coast Family Hub//Booking//EN\r\nBEGIN:VEVENT\r\nUID:'+b.id+'@surfcoastfamilyhub\r\nDTSTAMP:'+z(new Date())+'\r\nDTSTART:'+z(s)+'\r\nDTEND:'+z(e)+
   '\r\nSUMMARY:Appointment with '+p.name+'\r\nLOCATION:Surf Coast Family Hub\\, Jan Juc Village\\, Stuart Ave\\, Jan Juc VIC 3228\r\nDESCRIPTION:Need to change it? Call 0491 184 788.\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n'}
 function done(b){var p=P[b.pid],t=new Date(b.start);
  var url=URL.createObjectURL(new Blob([ics(b)],{type:'text/calendar'}));
- showSheet(sheetHead('You’re booked')+'<div class="bk-done"><span class="bk-tick">'+svg('check')+'</span><p>We’ve sent a confirmation text to <b>'+esc(b.phone)+'</b>.</p></div>'+apptLine(b.pid,t)+
+ showSheet(sheetHead('You’re booked')+'<div class="bk-done"><span class="bk-tick">'+svg('check')+'</span><p>We’ve sent a confirmation text to <b>'+esc(b.phone)+'</b>.</p></div>'+apptLine(b.pid,t,b.len)+'<p class="bk-svc">'+svg('check')+'<span>'+esc(b.service)+'</span></p>'+
   '<div class="bk-acts"><a class="btn btn-primary btn-sm" href="'+url+'" download="hub-appointment.ics">'+svg('cal')+'Add to calendar</a><a class="btn btn-outline btn-sm" href="manage.html#t='+b.token+'">Change or cancel</a></div>'+
   '<div class="bk-sooner"><h3>'+svg('bell')+'Want something sooner?</h3><p>We’ll text you if an earlier spot with '+esc(p.first)+' opens up. Tap to claim it, and we’ll move your booking.</p>'+
   '<button type="button" class="btn btn-outline btn-sm" data-sooner>Yes, text me</button></div>'+

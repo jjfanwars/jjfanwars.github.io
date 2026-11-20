@@ -162,3 +162,17 @@ html.bk-lock{overflow:hidden}
 .mg-from{margin:0 0 16px;font-size:17px}
 .mg-from s{color:var(--muted)}
 </style>
+<style>
+.fd-pnote{margin:8px 0 0;padding:8px 12px;border-radius:10px;background:rgba(230,188,118,.18);font-size:14.5px;font-weight:600}
+.fd-far{display:flex;gap:10px;align-items:flex-start;margin-bottom:12px;background:rgba(230,188,118,.2)}
+.fd-far svg{width:18px;height:18px;flex:none;margin-top:2px;color:var(--teal-deep)}
+.fd-crisis{max-width:880px;margin:16px auto 0;font-size:14px;color:var(--muted);text-align:center;line-height:1.55}
+.fd-crisis a{white-space:nowrap}
+</style>
+<style>
+.fd-pnote{margin:8px 0 0;padding:8px 12px;border-radius:10px;background:rgba(230,188,118,.18);font-size:14.5px;font-weight:600}
+.fd-far{display:flex;gap:10px;align-items:flex-start;margin-bottom:12px;background:rgba(230,188,118,.2)}
+.fd-far svg{width:18px;height:18px;flex:none;margin-top:2px;color:var(--teal-deep)}
+.fd-crisis{max-width:880px;margin:16px auto 0;font-size:14px;color:var(--muted);text-align:center;line-height:1.55}
+.fd-crisis a{white-space:nowrap}
+</style>

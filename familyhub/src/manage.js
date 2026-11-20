@@ -8,7 +8,7 @@ var IC={cal:'<rect height="15" rx="2.5" width="17" x="3.5" y="5"/><path d="M8 3v
 function svg(k){return '<svg aria-hidden="true" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" viewBox="0 0 24 24">'+IC[k]+'</svg>'}
 function tok(){var m=location.hash.match(/t=([a-z0-9]+)/i);return m&&m[1]}
 function appt(b){var p=P[b.pid],t=new Date(b.start);
- return '<div class="bk-appt"><img src="'+H.photo(b.pid)+'" alt="" width="64" height="64"><div><b>'+esc(p.name)+'</b><span>'+svg('cal')+esc(F.day(t,1))+', '+F.time(t)+' ('+p.len+' min)</span><span>'+svg('pin')+(b.how==='online'?'Video or phone':'At the Hub, Jan Juc Village, Stuart Ave')+'</span>'+(b.service?'<span class="mg-svc">'+esc(b.service)+'</span>':'')+'</div></div>'}
+ return '<div class="bk-appt"><img src="'+H.photo(b.pid)+'" alt="" width="64" height="64"><div><b>'+esc(p.name)+'</b><span>'+svg('cal')+esc(F.day(t,1))+', '+F.time(t)+' ('+(b.len||p.len)+' min)</span><span>'+svg('pin')+(b.how==='online'?'Video or phone':'At the Hub, Jan Juc Village, Stuart Ave')+'</span>'+(b.service?'<span class="mg-svc">'+esc(b.service)+'</span>':'')+'</div></div>'}
 
 function list(){api.myBookings().then(function(bs){
  bs=bs.filter(function(b){return b.status==='booked'}).sort(function(a,b){return new Date(a.start)-new Date(b.start)});

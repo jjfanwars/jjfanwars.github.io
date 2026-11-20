@@ -9,41 +9,57 @@ var SITE=window.HUB_SITE||'https://familyhub.aiautomationvic.com/';
 var HX='https://www.halaxy.com/book/', CLINIKO='https://dr-anna-morrow.au5.cliniko.com/bookings#service';
 
 // ---------- practitioners ----------
-// live: books through the hub (Halaxy practice group) so the demo shows times; days: weekdays worked (0 Sun);
-// hours: start hours; len: minutes. Schedules are made up for the demo.
-var PSY_H=[9,10,11,13,14,15,16];
+// live: books through Halaxy, so the demo shows times. sched: real weekly pattern of online-bookable start
+// times read from each practitioner's public Halaxy page on 20 Nov 2026 (day 0 = Sunday). openFrom: they were
+// booked out until this date. svc: Halaxy appointment names, so the booking lands on the right service.
+// The busy/free pattern after openFrom is made up for the demo.
+var PSY_SVC={med:'Medicare - Face to Face Psychology Appointment',priv:'Private Psychology Appointment',tele:'Telehealth Psychology Appointment',phone:'Phone Psychology Appointment'};
 var P={
- adi:{name:'Dr Adi Brown',first:'Adi',role:'Clinical Psychologist',url:HX+'psychologist/dr-adi-brown/256944/503631',psych:1,live:1,days:[1,2,4],hours:PSY_H,len:50,
+ adi:{name:'Dr Adi Brown',first:'Adi',role:'Clinical Psychologist',url:HX+'psychologist/dr-adi-brown/256944/503631',psych:1,live:1,len:50,openFrom:'2027-01-04',
+  sched:{1:['9:00','10:00','11:00','13:00','14:00','15:00'],3:['9:00','10:00','11:00','13:00','14:00','15:00'],4:['9:00','10:00','11:00','13:00','14:00']},
+  svc:Object.assign({parenthood:'Preparing for Parenthood - Couple Support',eating:'Eating Disorder Psychological Treatment'},PSY_SVC),
   why:'Adults at every life stage, with extra training in perinatal and infant mental health, birth trauma and loss.'},
- hannah:{name:'Hannah Jensen',first:'Hannah',role:'Clinical Psychologist',url:HX+'widget/psychologist/hannah-jensen/680341/503631',psych:1,live:1,days:[3,5],hours:PSY_H,len:50,
+ hannah:{name:'Hannah Jensen',first:'Hannah',role:'Clinical Psychologist',url:HX+'widget/psychologist/hannah-jensen/680341/503631',psych:1,live:1,len:50,openFrom:'2027-02-02',
+  sched:{2:['9:00','10:00','11:00','13:00','14:00'],4:['9:00','10:00','11:00','13:00','14:00'],5:['9:00','10:00','11:00','13:00']},
+  svc:Object.assign({eating:'Eating Disorder Psychological Treatment'},PSY_SVC),
   why:'Perinatal psychology, infant mental health and trauma. Formerly Senior Clinical Psychologist at the Royal Women’s Hospital.'},
- melinda:{name:'Melinda Sullivan',first:'Melinda',role:'Clinical & Child Psychologist',url:HX+'widget/psychologist/melinda-sullivan/1343231/503631',psych:1,live:1,days:[1,3,4],hours:PSY_H,len:50,
+ melinda:{name:'Melinda Sullivan',first:'Melinda',role:'Clinical & Child Psychologist',url:HX+'widget/psychologist/melinda-sullivan/1343231/503631',psych:1,live:1,len:50,
+  sched:{3:['9:00','10:30','11:30','13:30','14:30','16:00'],4:['9:00','10:00','11:00','12:00','13:30','14:30']},svc:PSY_SVC,
   why:'Clinical and perinatal psychologist and family therapist, and a former midwife and maternal and child health nurse.'},
- ellie:{name:'Ellie James',first:'Ellie',role:'Psychologist',url:HX+'widget/psychologist/ellie-james/1026431/503631',psych:1,live:1,days:[2,3,5],hours:PSY_H,len:50,
+ ellie:{name:'Ellie James',first:'Ellie',role:'Psychologist',url:HX+'widget/psychologist/ellie-james/1026431/503631',psych:1,live:1,len:50,
+  sched:{1:['9:00','10:30','12:00','13:30']},
+  svc:{med:'Medicare - Face to Face Psychology Appointment',priv:'Private - Psychology Appointment',tele:'Telehealth - Psychology Appointment',phone:'Phone Psychology Appointment'},
   why:'Perinatal anxiety and depression, birth trauma and the transition to parenthood.'},
- maddy:{name:'Maddy Keegan',first:'Maddy',role:'Psychologist',url:HX+'psychologist/ms-madelaine-keegan/1807285/503631',psych:1,live:1,days:[1,4],hours:PSY_H,len:50,
+ maddy:{name:'Maddy Keegan',first:'Maddy',role:'Psychologist',url:HX+'psychologist/ms-madelaine-keegan/1807285/503631',psych:1,live:1,len:50,
+  sched:{2:['9:00','10:00','11:00'],5:['9:00','10:00','11:00','13:00','14:00','15:00']},
+  svc:{med:'Medicare Face to Face Psychology Appointment',priv:'Private Psychology Appointment',tele:'Medicare Telehealth Psychology Appointment',phone:'Medicare Phone Psychology Appointment'},
   why:'Trying to conceive and infertility (her PhD area), pregnancy, birth and parenthood.'},
  meaghan:{name:'Meaghan Cook',first:'Meaghan',role:'Child & Adolescent Therapist',contact:1,
   why:'Children (6 to 12) and teens through play, art and talk, parent coaching, and ADHD, autism and cognitive assessments.'},
- 'michelle-ferris':{name:'Michelle Ferris',first:'Michelle',role:'Individual & Couples Counsellor',url:HX+'widget/social-worker/ms-michelle-ferris/331996/503631',live:1,days:[2,4],hours:[9,10,11,13,14,15],len:60,
+ 'michelle-ferris':{name:'Michelle Ferris',first:'Michelle',role:'Individual & Couples Counsellor',url:HX+'widget/social-worker/ms-michelle-ferris/331996/503631',live:1,len:50,
+  sched:{2:['9:00','10:00','11:00','12:00'],3:['9:15','10:15','11:30','13:00','14:00','15:00','16:00'],4:['13:00','14:15','17:00','19:00']},
+  svc:{counsel:'Psychotherapy',couples:'Couples Therapy'},lens:{couples:60},
   why:'20 years with individuals and couples, including becoming parents. Emotion Focused Couples Therapy and EMDR.'},
  'michelle-joseph':{name:'Michelle Joseph',first:'Michelle',role:'Mental Health Social Worker & Art Therapist',url:'https://www.artroomtherapy.com.au/refernow',ext:'her booking site',
+  note:'Sessions are online until early 2027.',
   why:'Art therapy for children, adults, and parents with their child, plus NDIS supports. No artistic skill needed.'},
  jodie:{name:'Jodie Morzinek',first:'Jodie',role:'Counsellor',url:'https://www.yoursupportspace.com.au/',ext:'her website',
   why:'Gentle, relationship-based support. Previously at the Barwon Health Early Parenting Centre. Mostly online.'},
- laura:{name:'Laura Rees',first:'Laura',role:'Massage Therapist',url:HX+'widget/massage-therapist/ms-laura-rees/659711/503631',live:1,days:[1,2,5,6],hours:[9,10,11,12,13,14,15],len:60,
+ laura:{name:'Laura Rees',first:'Laura',role:'Massage Therapist',url:HX+'widget/massage-therapist/ms-laura-rees/659711/503631',live:1,len:60,
+  sched:{6:['9:00','10:15','11:30']},svc:{massage:'60 Min Massage'},
   why:'Remedial, relaxation, pregnancy, postpartum and teen massage. 15+ years’ experience, HICAPS on site.'},
- kate:{name:'Kate Heagney',first:'Kate',role:'Acupuncturist',url:HX+'widget/acupuncturist/kate-heagney/659721/503631',live:1,days:[3,6],hours:[9,10,11,13,14],len:60,
+ kate:{name:'Kate Heagney',first:'Kate',role:'Acupuncturist',url:HX+'widget/acupuncturist/kate-heagney/659721/503631',live:1,len:60,
+  sched:{3:['9:00','10:00','11:00','12:00','13:00','14:00']},svc:{acu:'Initial acupuncture consultation',acu2:'Follow-up acupuncture consultation'},
   why:'Gentle Japanese acupuncture for fertility, IVF, pregnancy and birth preparation, plus general health.'},
  anna:{name:'Dr Anna Morrow',first:'Anna',role:'Osteopath',url:CLINIKO,
   why:'Almost 20 years’ experience, including pregnancy, postpartum, babies and children.'},
- melissa:{name:'Melissa Andrew',first:'Melissa',role:'Osteopath',url:CLINIKO,leave:1,/* on leave: hidden everywhere until this flag is removed */
+ melissa:{name:'Melissa Andrew',first:'Melissa',role:'Osteopath',url:CLINIKO,leave:1,/* on maternity leave: hidden everywhere until this flag is removed */
   why:'Holistic osteopathy that draws on her Pilates and yoga training.'}
 };
 var ORDER=['adi','melinda','hannah','ellie','maddy','michelle-ferris','kate','laura','anna','melissa','meaghan','michelle-joseph','jodie'];
 function photo(pid){return SITE+'img/team/colour/'+pid+'.webp'}
 // typical session value per practitioner, for "income recovered" on the dashboard
-var VALUE={adi:245,hannah:245,melinda:235,ellie:190,maddy:190,'michelle-ferris':215,laura:120,kate:110};
+var VALUE={adi:245,hannah:245,melinda:235,ellie:170,maddy:200,'michelle-ferris':215,laura:120,kate:150};
 
 // ---------- small helpers ----------
 var DAY=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'], MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -62,21 +78,21 @@ function uid(n){var a='abcdefghjkmnpqrstuvwxyz23456789',s='';for(var i=0;i<(n||1
 function slotKey(pid,start){return pid+'|'+new Date(start).toISOString()}
 
 // ---------- demo store ----------
-var KEY='scfh-demo-v1', S;
+var KEY='scfh-demo-v2', S;
 var FIRST=['Sarah','Jess','Emma','Kate','Chloe','Mia','Tom','Ben','Lucy','Grace','Olivia','Hannah','Zoe','Ruby','Amy','Georgia','Lily','Sam','Ella','Nina'];
 var LAST=['M.','T.','K.','R.','B.','L.','W.','H.','P.','S.','D.','C.'];
-function defaults(){return {v:1,skew:0,bookings:[],freed:{},taken:{},waitlist:seedWaitlist(),offers:[],sms:[],feed:[],
+function defaults(){return {v:2,skew:0,bookings:[],freed:{},taken:{},waitlist:seedWaitlist(),offers:[],sms:[],feed:[],
  settings:{mode:'auto',batch:3,expiry:30,minNotice:2,quiet:true,quietFrom:20,quietTo:8,weekCap:3},stats:{filled:0,value:0,mins:[]}}}
 function seedWaitlist(){var t=Date.now(),D=864e5;return [
  {id:'w1',name:'Sarah M.',phone:'0400 000 101',pids:['ellie','hannah','maddy','adi','melinda'],need:'Psychology',days:[1,2,3,4,5],times:['am','pm'],since:t-26*D,offers:[]},
- {id:'w2',name:'Jess T.',phone:'0400 000 102',pids:['hannah'],need:'Perinatal psychology',days:[3,5],times:['am'],since:t-21*D,offers:[]},
+ {id:'w2',name:'Jess T.',phone:'0400 000 102',pids:['hannah'],need:'Perinatal psychology',days:[2,4,5],times:['am'],since:t-21*D,offers:[]},
  {id:'w3',name:'Emma K.',phone:'0400 000 103',pids:['adi','melinda','ellie'],need:'Psychology',days:[1,2,4],times:['am','pm'],since:t-17*D,offers:[]},
  {id:'w4',name:'Chloe R.',phone:'0400 000 104',pids:['ellie','maddy'],need:'Psychology',days:[1,2,3,4,5],times:['pm'],since:t-12*D,offers:[]},
- {id:'w5',name:'Tom B.',phone:'0400 000 105',pids:['michelle-ferris'],need:'Couples therapy',days:[2,4],times:['am','pm'],since:t-9*D,offers:[]},
+ {id:'w5',name:'Tom B.',phone:'0400 000 105',pids:['michelle-ferris'],need:'Couples therapy',days:[2,3,4],times:['am','pm'],since:t-9*D,offers:[]},
  {id:'w6',name:'Mia L.',phone:'0400 000 106',pids:['melinda','adi','hannah','ellie','maddy'],need:'Psychology',days:[1,2,3,4,5],times:['am','pm'],since:t-6*D,offers:[]},
- {id:'w7',name:'Grace W.',phone:'0400 000 107',pids:['laura'],need:'Pregnancy massage',days:[1,2,5,6],times:['am','pm'],since:t-4*D,offers:[]},
+ {id:'w7',name:'Grace W.',phone:'0400 000 107',pids:['laura'],need:'Pregnancy massage',days:[6],times:['am','pm'],since:t-4*D,offers:[]},
  {id:'w8',name:'Lucy H.',phone:'0400 000 108',pids:['adi','hannah','melinda','ellie','maddy'],need:'Psychology',days:[1,2,3,4,5],times:['am','pm'],since:t-2*D,offers:[]}]}
-function load(){try{S=JSON.parse(localStorage.getItem(KEY))}catch(e){S=null}if(!S||S.v!==1)S=defaults()}
+function load(){try{S=JSON.parse(localStorage.getItem(KEY))}catch(e){S=null}if(!S||S.v!==2)S=defaults()}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}emit()}
 var subs=[];function emit(){subs.forEach(function(f){try{f()}catch(e){console.error(e)}})}
 window.addEventListener('storage',function(e){if(e.key===KEY){load();emit()}});
@@ -85,14 +101,14 @@ function now(){return Date.now()+(S.skew||0)}
 
 // ---------- availability ----------
 // A slot is "taken" by a made-up client unless freed by a cancellation. Busy-ness is seeded so it's stable.
-function baseTaken(pid,d){return hash(pid+d.toISOString())<0.74}
+function baseTaken(pid,d){var o=P[pid].openFrom;if(o&&d<new Date(o+'T00:00:00'))return true;return hash(pid+d.toISOString())<0.6}
 function fakeClient(pid,d){var h=hash('c'+pid+d.toISOString());return FIRST[Math.floor(h*FIRST.length)]+' '+LAST[Math.floor(hash('l'+pid+d)*LAST.length)]}
 function slotState(pid,d){var k=slotKey(pid,d);
  if(S.taken[k])return 'booked';                 // booked through the hub (demo client or refilled)
  if(S.freed[k])return 'free';                   // a seeded client cancelled
  return baseTaken(pid,d)?'seeded':'free'}
-function daySlots(pid,day){var p=P[pid],out=[];if(!p||!p.live||p.leave||p.days.indexOf(day.getDay())<0)return out;
- p.hours.forEach(function(h){if(day.getDay()===6&&h>12)return;var d=new Date(day);d.setHours(h,0,0,0);out.push(d)});return out}
+function daySlots(pid,day){var p=P[pid],out=[];if(!p||!p.live||p.leave||!p.sched[day.getDay()])return out;
+ p.sched[day.getDay()].forEach(function(t){var hm=t.split(':'),d=new Date(day);d.setHours(+hm[0],+hm[1],0,0);out.push(d)});return out}
 function freeSlots(pid,from,days){var out=[],d0=new Date(from);d0.setHours(0,0,0,0);var cut=now()+3*36e5;
  for(var i=0;i<days;i++){var day=new Date(d0);day.setDate(d0.getDate()+i);
   daySlots(pid,day).forEach(function(d){if(d.getTime()>cut&&slotState(pid,d)==='free'&&!openOfferFor(pid,d))out.push(d)})}
@@ -164,17 +180,19 @@ function claim(tok,via){
 // ---------- bookings ----------
 function makeBooking(x){var b=Object.assign({id:uid(8),token:uid(12),status:'booked',created:now()},x);b.start=new Date(b.start).toISOString();
  S.bookings.push(b);S.taken[slotKey(b.pid,b.start)]=b.id;return b}
-function serviceName(pid,plan,how){var p=P[pid];
- if(p.psych){var on=how==='online';return (plan==='yes'?'Medicare ':'Private ')+(on?'telehealth ':'face-to-face ')+'psychology ('+p.len+' min)'}
- if(pid==='michelle-ferris')return (how==='online'?'Telehealth ':'')+'counselling ('+p.len+' min)';
- if(pid==='laura')return 'Massage (60 min)';if(pid==='kate')return 'Acupuncture consultation';return 'Appointment'}
+// The Halaxy appointment type a booking lands on, so clients never have to pick from Halaxy's list.
+function serviceName(pid,need,plan,how,first){var p=P[pid],v=p.svc||{};
+ if(v[need])return need==='acu'&&first==='no'?v.acu2:v[need];
+ if(p.psych){if(how==='online')return plan==='yes'&&pid==='maddy'?v.tele:v.tele||v.priv;return plan==='yes'?v.med:v.priv}
+ return v.counsel||'Appointment'}
+function lenOf(pid,need){var p=P[pid];return (p.lens||{})[need]||p.len}
 
 var delay=function(v){return new Promise(function(r){setTimeout(function(){r(v)},180+Math.random()*220)})};
 var api={
  // what the booking page needs
- slots:function(pids,days){var out={};pids.forEach(function(pid){out[pid]=freeSlots(pid,now(),days||21)});return delay(out)},
+ slots:function(pids,days){var out={};pids.forEach(function(pid){out[pid]=freeSlots(pid,now(),days||84)});return delay(out)},
  book:function(d){var k=slotKey(d.pid,d.start);if(slotState(d.pid,new Date(d.start))!=='free'||openOfferFor(d.pid,new Date(d.start)))return delay({ok:false,reason:'taken'});
-  var b=makeBooking({pid:d.pid,start:d.start,name:d.name,phone:d.phone,email:d.email,service:serviceName(d.pid,d.plan,d.how),plan:d.plan,how:d.how,first:d.firstVisit,source:'online'});
+  var b=makeBooking({pid:d.pid,start:d.start,name:d.name,phone:d.phone,email:d.email,service:serviceName(d.pid,d.need,d.plan,d.how,d.firstVisit),need:d.need,len:lenOf(d.pid,d.need),plan:d.plan,how:d.how,first:d.firstVisit,source:'online'});
   feed('booked','New booking: '+P[d.pid].first+', '+fmtWhen(d.start)+' ('+d.name+', online).',{pid:d.pid});
   sms(d.phone,d.name,'Hi '+d.name.split(' ')[0]+', you’re booked with '+P[d.pid].first+' '+onDay(d.start)+' at '+fmtTime(d.start)+'. Manage or cancel: sfch.au/m/'+b.token,'out',{kind:'confirm'});
   save();return delay({ok:true,booking:b})},
@@ -219,5 +237,5 @@ var api={
  reset:function(){S=defaults();try{localStorage.removeItem('scfh-demo-mine')}catch(e){}save()},
  on:function(f){subs.push(f)}
 };
-window.HUB={P:P,ORDER:ORDER,photo:photo,SITE:SITE,api:api,fmt:{time:fmtTime,day:fmtDay,when:fmtWhen,money:money,esc:esc,DAY:DAY,MON:MON},serviceName:serviceName,now:now,slotKey:slotKey};
+window.HUB={P:P,ORDER:ORDER,photo:photo,SITE:SITE,api:api,fmt:{time:fmtTime,day:fmtDay,when:fmtWhen,money:money,esc:esc,DAY:DAY,MON:MON},serviceName:serviceName,lenOf:lenOf,now:now,slotKey:slotKey};
 })();
