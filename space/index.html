@@ -41,6 +41,7 @@ button.on { border-color:var(--acc); background:rgba(255,207,74,.15); }
 .mk { position:fixed; z-index:4; pointer-events:none; width:26px; height:26px; margin:-13px 0 0 -13px; border-radius:50%; border:2.5px solid #c8f25a; box-shadow:0 0 4px rgba(0,0,0,.6); }
 .mk::after { content:''; position:absolute; left:50%; top:50%; width:4px; height:4px; margin:-2px; border-radius:50%; background:#c8f25a; }
 #mRet { border-color:#ffb347; } #mRet::after { width:16px; height:2.5px; margin:-1.25px -8px; border-radius:0; background:#ffb347; transform:rotate(45deg); }
+#act { position:fixed; left:50%; top:58%; transform:translateX(-50%); z-index:5; pointer-events:none; padding:5px 14px; border-radius:14px; background:rgba(0,0,0,.45); color:var(--acc); font-size:15px; font-weight:600; }
 body.fly #hint { bottom:150px; }
 #rTag { position:fixed; z-index:4; pointer-events:none; transform:translate(-50%,-100%); padding:3px 10px; border-radius:12px; background:rgba(0,0,0,.45); color:var(--acc); font-size:14px; font-weight:600; white-space:nowrap; }
 </style>
@@ -50,7 +51,7 @@ body.fly #hint { bottom:150px; }
 <div id="cross" class="hidden"></div>
 <div id="hud" class="hidden"><div class="big" id="hLoc"></div><div class="s" id="hInfo"></div></div>
 <div id="hint" class="hidden"></div>
-<div id="mPro" class="mk hidden"></div><div id="mRet" class="mk hidden"></div><div id="rTag" class="hidden"></div>
+<div id="mPro" class="mk hidden"></div><div id="mRet" class="mk hidden"></div><div id="rTag" class="hidden"></div><div id="act" class="hidden"></div>
 <div id="fl" class="hidden">
   <div class="bar" title="Throttle"><i id="fThr"></i></div>
   <div class="mid"><div id="fStage"></div><div id="fAlt"></div><div id="fSpd"></div><div class="orb"><span>Ap <b id="fAp"></b></span><span>Pe <b id="fPe"></b></span></div><div id="fNext"></div></div>

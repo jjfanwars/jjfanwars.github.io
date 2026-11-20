@@ -78,8 +78,8 @@ const PLUME_GEO = new THREE.CylinderGeometry(1, 1, 1, 32, 40, true);
 // stage table, bottom to top. Masses in kg, thrust in N (vacuum), Isp in s.
 const STAGES = [
   {name: 'Booster', dry: 2200, fuel: 15000, thrust: 330000, ispS: 270, ispV: 300, y0: 0, y1: 16.6, exit: .95, hot: 1},
-  {name: 'Upper stage', dry: 700, fuel: 3800, thrust: 60000, ispS: 210, ispV: 345, y0: 14.7, y1: 20.4, exit: .7, hot: 0},
-  {name: 'Capsule', dry: 1300, fuel: 0, y0: 20.4, y1: 23.6, chute: true},
+  {name: 'Upper stage', dry: 900, fuel: 3800, thrust: 80000, ispS: 210, ispV: 345, y0: 14.7, y1: 21.6, exit: .7, hot: 0},
+  {name: 'Capsule', dry: 2200, fuel: 0, y0: 21.6, y1: 26.1, chute: true},
 ];
 function buildStage(i) {
   const g = new THREE.Group(), S = STAGES[i];
@@ -91,21 +91,8 @@ function buildStage(i) {
     const fg = finGeo(); for (let k = 0; k < 4; k++) { const f = mesh(fg, RM.black); const a = Math.PI / 4 + k * Math.PI / 2; f.position.set(Math.cos(a) * 1.22, 3.6, -Math.sin(a) * 1.22); f.rotation.y = a; g.add(f); }
   } else if (i === 1) {
     g.add(mesh(bellGeo(.22, .7, 1.35), RM.bell2, 0, 14.75, 0)); g.add(cylY(.28, .28, 16.1, 16.55, RM.grey, 20)); g.add(mesh(new THREE.BoxGeometry(.32, .32, .3), RM.gold, .3, 16.3, 0));
-    g.add(cylY(1.25, 1.25, 16.55, 20.4, RM.tank2, 48));
-  } else {
-    g.add(cylY(1.27, 1.25, 20.4, 20.65, RM.shield, 48)); const cone = cylY(1.22, .56, 20.65, 23.0, RM.cap, 48); g.add(cone);
-    g.add(cylY(.56, .5, 23.0, 23.5, RM.white, 32)); g.add(cylY(.5, .2, 23.5, 23.62, RM.grey, 24));
-    g.add(cylY(1.235, 1.2, 20.9, 21.05, RM.black, 48)); // stripe
-    const slope = Math.atan((1.22 - .56) / 2.35);
-    for (const a of [-.32, .32]) { const w = mesh(new THREE.PlaneGeometry(.36, .44), RM.win); const y = 22.05, r = 1.22 + (.56 - 1.22) * (y - 20.65) / 2.35 + .012;
-      w.position.set(Math.sin(a) * r, y, -Math.cos(a) * r); w.rotation.order = 'YXZ'; w.rotation.y = Math.PI - a; w.rotation.x = -slope; w.castShadow = false; g.add(w); }
-    for (let k = 0; k < 4; k++) { const a = k * Math.PI / 2 + Math.PI / 4, y = 22.4, r = 1.22 + (.56 - 1.22) * (y - 20.65) / 2.35; const q = mesh(new THREE.BoxGeometry(.16, .2, .16), RM.grey, Math.sin(a) * r, y, Math.cos(a) * r); g.add(q); }
-    // parachute (hidden until it opens)
-    const ch = new THREE.Group(); ch.position.y = 23.6; const can = new THREE.Mesh(new THREE.SphereGeometry(7, 32, 10, 0, Math.PI * 2, 0, 1.25), RM.chute); can.position.y = 12; can.castShadow = true; ch.add(can);
-    const lp = []; for (let k = 0; k < 16; k++) { const a = k / 16 * Math.PI * 2, rr = 7 * Math.sin(1.25); lp.push(0, 0, 0, Math.cos(a) * rr, 12 + 7 * Math.cos(1.25), Math.sin(a) * rr); }
-    const lg = new THREE.BufferGeometry(); lg.setAttribute('position', new THREE.Float32BufferAttribute(lp, 3)); ch.add(new THREE.LineSegments(lg, new THREE.LineBasicMaterial({color: 0x9a9a9a})));
-    ch.visible = false; g.add(ch); g.userData.chute = ch;
-  }
+    g.add(cylY(1.25, 1.25, 16.55, 20.4, RM.tank2, 48)); g.add(cylY(1.25, 2.5, 20.4, 21.6, RM.white, 64)); g.add(cylY(1.27, 1.27, 20.4, 20.55, RM.grey, 48)); // flared adapter up to the wide capsule
+  } else buildCapsule(g);
   if (S.thrust) { // two-layer plume hung below the bell
     const pg = new THREE.Group(); pg.position.y = S.y0 + (i === 1 ? .05 : 0);
     const hot = S.hot ? [[1, .92, .75], [1, .5, .16]] : [[.85, .78, 1], [.45, .4, 1]];
@@ -117,7 +104,7 @@ function buildStage(i) {
 
 // ---------------- rocket state
 const R = {on: false, st: 'pad', body: PLANET, pos: new V3(), vel: new V3(), q: new Q4(), w: new V3(), lp: new V3(), lq: new Q4(),
-  thr: 1, sas: 'hold', hold: new Q4(), bot: 0, lit: false, fuel: [], chute: 0, chA: 0, comY: 10, F: 0, p: 0, qd: 0, deadT: 0,
+  thr: 1, sas: 'hold', felt: new V3(0, 9.81, 0), t0: 0, hold: new Q4(), bot: 0, lit: false, fuel: [], chute: 0, chA: 0, comY: 10, F: 0, p: 0, qd: 0, deadT: 0,
   g: new THREE.Group(), inner: new THREE.Group(), sg: [], debris: [],
   cam: {yaw: 1.65, pitch: .12, dist: 48, ref: new V3()}};
 R.g.add(R.inner); scene.add(R.g);
@@ -127,7 +114,7 @@ function rocketMass() { let m = 0; for (let i = R.bot; i < STAGES.length; i++) m
 function comOf() { let m = 0, my = 0; for (let i = R.bot; i < STAGES.length; i++) { const S = STAGES[i], mi = S.dry + R.fuel[i]; m += mi; my += mi * (S.y0 + S.y1) / 2; } return my / m; }
 function resetRocket() {
   for (const g of R.sg) R.inner.remove(g); R.sg = STAGES.map((_, i) => buildStage(i)); for (const g of R.sg) R.inner.add(g);
-  R.fuel = STAGES.map(s => s.fuel); R.bot = 0; R.lit = false; R.thr = 1; R.chute = 0; R.chA = 0; R.w.set(0, 0, 0); R.sas = 'hold'; R.st = 'pad'; R.body = PLANET; R.deadT = 0; R.g.visible = true;
+  R.fuel = STAGES.map(s => s.fuel); R.bot = 0; R.lit = false; R.thr = 1; R.chute = 0; R.chA = 0; R.w.set(0, 0, 0); R.sas = 'hold'; R.st = 'pad'; R.body = PLANET; R.deadT = 0; R.g.visible = true; R.t0 = 0; HIST.length = 0;
   R.comY = comOf(); const pad = site.pads[0]; siteToBody(new V3(pad.x, pad.y + R.comY, pad.z), R.lp); R.lq.copy(site.q).multiply(_ry);
   latch(G.t); R.hold.copy(R.q);
 }
@@ -160,20 +147,21 @@ function rocketStep(h, t) {
   // engine
   R.F = 0; if (R.lit && S.thrust && R.fuel[R.bot] > 0 && R.thr > 0) { const isp = lerp(S.ispV, S.ispS, p); R.F = S.thrust * R.thr * isp / S.ispV; R.fuel[R.bot] = Math.max(0, R.fuel[R.bot] - R.F / (isp * G0) * h); if (R.fuel[R.bot] === 0) { R.lit = false; showHint('Out of fuel. Space: next stage', 3000); } }
   if (R.st !== 'fly') { // held by the pad clamps, or sitting on the ground
-    latch(t); const gl = gravAt(R.pos, t, _a).length();
-    if (R.F / m > gl * 1.02) { R.st = 'fly'; R.w.set(0, 0, 0); R.hold.copy(R.q); } else return;
+    latch(t); const gl = gravAt(R.pos, t, _a).length(); R.felt.set(0, gl, 0);
+    if (R.F / m > gl * 1.02) { R.st = 'fly'; R.w.set(0, 0, 0); R.hold.copy(R.q); if (!R.t0) R.t0 = t; } else return;
   }
   // air
   groundVel(PLANET, R.pos, t, _va); _va.subVectors(R.vel, _va); const vs = _va.length(); const rho = 1.225 * p; R.qd = .5 * rho * vs * vs;
   // parachute: opens when armed, below 9 km and slower than 280 m/s
   if (R.chute === 1 && p > .07 && vs < 280) { R.chute = 2; sfx('chute'); showHint('Parachute open', 2500); R.sg[R.sg.length - 1].userData.chute.visible = true; }
   if (R.chute === 2) { const tg = alt > 1000 ? .07 : 1; R.chA += clamp(tg - R.chA, -h, h / 3); } // drogue high up, full canopy below 1 km
-  const cdA = (R.bot === 0 ? 1.9 : R.bot === 1 ? 1.7 : 2.4) + R.chA * 420;
+  const cdA = (R.bot < 2 ? 4.5 : 16) + R.chA * 650;
   gravAt(R.pos, t, _a); _a.addScaledVector(nz, R.F / m);
   if (vs > .01 && R.qd > 0) _a.addScaledVector(_va, -R.qd * cdA / (m * vs));
+  R.felt.copy(_a).sub(gravAt(R.pos, t, _t1)).applyQuaternion(_qa.copy(R.q).invert()); // what the crew feels (thrust + drag)
   R.vel.addScaledVector(_a, h); R.pos.addScaledVector(R.vel, h);
   // rotation: player input, else SAS, plus aerodynamic weathervaning
-  const ix = (keys.KeyS ? 1 : 0) - (keys.KeyW ? 1 : 0), iz = (keys.KeyA ? 1 : 0) - (keys.KeyD ? 1 : 0), iy = (keys.KeyQ ? 1 : 0) - (keys.KeyE ? 1 : 0);
+  const pk = pilot() ? keys : {}, ix = (pk.KeyS ? 1 : 0) - (pk.KeyW ? 1 : 0), iz = (pk.KeyA ? 1 : 0) - (pk.KeyD ? 1 : 0), iy = (pk.KeyQ ? 1 : 0) - (pk.KeyE ? 1 : 0);
   const mr = .55, wt = _t1.set(0, 0, 0); let free = false;
   if (ix || iy || iz) { wt.set(ix * mr, iy * .8, iz * mr); R.hold.copy(R.q); }
   else if (R.sas === 'off') { wt.copy(R.w); free = true; }
@@ -238,7 +226,7 @@ function explode() {
     d.w = new V3(Math.random() - .5, Math.random() - .5, Math.random() - .5).multiplyScalar(4); d.cdA = 6; R.debris.push(d); }
   R.sg = []; showHint('Kaboom! Back to the space centre...', 3500);
 }
-function respawn() { resetRocket(); if (R.on) { R.on = false; spawnPlayer(); P.body = PLANET; } }
+function respawn() { resetRocket(); if (R.on) { R.on = false; C.in = false; C.seat = -1; cabL.intensity = 0; $('cross').classList.remove('hidden'); spawnPlayer(); P.body = PLANET; } }
 
 // ---------------- particles: smoke, fire, explosions (camera-relative billboards, premultiplied alpha)
 const PN = 2000, PT = {n: 0, head: 0, pos: new Float64Array(PN * 3), vel: new Float32Array(PN * 3), age: new Float32Array(PN), life: new Float32Array(PN), s0: new Float32Array(PN), gr: new Float32Array(PN), heat: new Float32Array(PN), hk: new Float32Array(PN), tone: new Float32Array(PN), drag: new Float32Array(PN), rise: new Float32Array(PN)};
@@ -356,21 +344,22 @@ addEventListener('wheel', e => { if (!G.on || !R.on) return; e.preventDefault();
 // ---------------- boarding
 function canBoard() { if (R.st === 'fly' || R.st === 'dead' || P.body !== R.body) return false; const base = R.lp.clone().addScaledVector(new V3(0, 1, 0).applyQuaternion(R.lq), -(R.comY - STAGES[R.bot].y0));
   const up = base.clone().normalize(), d = P.pos.clone().sub(base); return d.dot(up) < 26 && d.addScaledVector(up, -d.dot(up)).length() < 20; }
-function board() { R.on = true; $('cross').classList.add('hidden'); const c = R.cam; c.dist = 48; c.pitch = .05; c.yaw = 1.65; c.ref.set(1, 0, 0).applyQuaternion(site.q).applyQuaternion(PLANET.q); if (R.st !== 'pad') { c.ref.copy(new V3(0, 0, -1).applyQuaternion(R.q)); c.yaw = 0; }
-  showHint(R.st === 'pad' ? 'Space: launch · W/S A/D steer · Q/E roll · Shift/C throttle · 1-4 autopilot · drag to look' : 'F: get out · Space: stage', 9000); }
+function board() { R.on = true; C.in = true; C.seat = -1; C.view = 'in'; C.pos.set(0, CAB.floor, .3); C.vel.set(0, 0, 0); C.yaw = 0; C.pitch = 0; const c = R.cam; c.dist = 48; c.pitch = .05; c.yaw = 1.65; c.ref.set(1, 0, 0).applyQuaternion(site.q).applyQuaternion(PLANET.q); if (R.st !== 'pad') { c.ref.copy(new V3(0, 0, -1).applyQuaternion(R.q)); c.yaw = 0; }
+  showHint('You are in the capsule. Walk to the middle seat and press F to fly · F at the hatch (back) to get out', 9000); }
 function getOut() { if (R.st === 'fly' || R.st === 'dead') { showHint('Land first to get out', 2000); return; }
   const b = R.body, up = R.lp.clone().normalize(), side = new V3(0, 0, 1).applyQuaternion(R.lq); side.addScaledVector(up, -side.dot(up)).normalize();
   const base = R.lp.clone().addScaledVector(up, -(R.comY - STAGES[R.bot].y0));
-  P.body = b; P.pos.copy(base).addScaledVector(side, 7).addScaledVector(up, 1.5); P.vel.set(0, 0, 0); P.fwd.copy(side).negate(); P.pitch = .3; R.on = false; $('cross').classList.remove('hidden');
+  P.body = b; P.pos.copy(base).addScaledVector(side, 7).addScaledVector(up, 1.5); P.vel.set(0, 0, 0); P.fwd.copy(side).negate(); P.pitch = .3; R.on = false; C.in = false; C.seat = -1; cabL.intensity = 0; $('cross').classList.remove('hidden');
   showHint(b === MOON ? 'You are on the Moon. WASD walk, Space hop' : 'F at the rocket to get back in', 4000); }
 
 // ---------------- keys
 addEventListener('keydown', e => {
   sndInit(); if (!G.on || e.repeat) return; const k = e.code;
-  if (k === 'KeyF') { if (R.on) getOut(); else if (canBoard()) board(); }
+  if (k === 'KeyF') { if (R.on) cabinAct(); else if (canBoard()) board(); }
+  if (k === 'KeyV' && pilot()) C.view = C.view === 'in' ? 'out' : 'in';
   if (k === 'Comma' || k === 'BracketLeft') setWarp(G.wi - 1);
   if (k === 'Period' || k === 'BracketRight') setWarp(G.wi + 1);
-  if (!R.on) return;
+  if (!pilot()) return;
   if (k === 'Space') { e.preventDefault(); stage(); }
   if (k === 'KeyZ') R.thr = 1; if (k === 'KeyX') R.thr = 0;
   const modes = {Digit1: 'hold', Digit2: 'pro', Digit3: 'retro', Digit4: 'up', KeyT: R.sas === 'off' ? 'hold' : 'off'}; if (modes[k]) setSas(modes[k]);
@@ -380,7 +369,7 @@ addEventListener('pointerdown', sndInit);
 function setSas(m) { R.sas = m; R.hold.copy(R.q); }
 function setWarp(i) { let mx = WARPS.length - 1; if (R.on && R.st === 'fly' && (R.F > 0 || R.p > 0 || altAbove() < 12000)) mx = 2; if (!R.on && G.on) mx = 6;
   G.wi = clamp(i, 0, mx); G.warp = WARPS[G.wi]; if (i > mx) showHint(R.on ? 'Faster time needs space, engines off' : 'Max time speed', 2000); }
-function stepThrottle(dt) { if (!R.on) return; if (keys.ShiftLeft || keys.ShiftRight) R.thr = Math.min(1, R.thr + dt * .9); if (keys.KeyC) R.thr = Math.max(0, R.thr - dt * .9); }
+function stepThrottle(dt) { if (!pilot()) return; if (keys.ShiftLeft || keys.ShiftRight) R.thr = Math.min(1, R.thr + dt * .9); if (keys.KeyC) R.thr = Math.max(0, R.thr - dt * .9); }
 
 // ---------------- sound (WebAudio noise, no files)
 const SND = {};
@@ -423,9 +412,206 @@ function markers() { // prograde / retrograde markers on screen
     if (ok) { el.style.left = ((p.x * .5 + .5) * innerWidth) + 'px'; el.style.top = ((-p.y * .5 + .5) * innerHeight) + 'px'; } } }
 document.querySelectorAll('#fSas button').forEach(el => el.onclick = e => { e.stopPropagation(); setSas(el.dataset.m); });
 
+// ---------------- capsule: walk-in crew cabin (outer shell with real window holes, padded lining, seats, consoles, lockers, hatch)
+const CAB = {y0: 21.85, y1: 25.45, rb: 2.5, rt: 1.0, wall: .09, floor: 22.0, ceil: 25.15, hatchA: Math.PI};
+const rOut = y => CAB.rb + (CAB.rt - CAB.rb) * (clamp(y, CAB.y0, CAB.y1) - CAB.y0) / (CAB.y1 - CAB.y0), rIn = y => rOut(y) - CAB.wall;
+const angD = (a, b) => { let d = a - b; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI; return d; };
+const CWIN = [{a: -.25, w: .19, y0: 22.95, y1: 24.0}, {a: .25, w: .19, y0: 22.95, y1: 24.0}, {a: -1.15, w: .15, y0: 23.0, y1: 23.85}, {a: 1.15, w: .15, y0: 23.0, y1: 23.85}];
+const CHATCH = {a: Math.PI, w: .3, y0: 22.2, y1: 23.75};
+function inReg(R0, a, y, pa = 0, py = 0) { return Math.abs(angD(a, R0.a)) < R0.w + pa && y > R0.y0 - py && y < R0.y1 + py; }
+const inWin = (a, y, pa, py) => CWIN.some(w => inReg(w, a, y, pa, py));
+// a lathe-like shell r(y) + inset, built quad by quad so window holes can be left out; uv over [a0,a1]x[y0,y1] when uvr is given
+function shellGeo(inset, keep, uvr, y0 = CAB.y0, y1 = CAB.y1, na = 128, ny = 36) {
+  const P = [], N = [], U = [], da = 2 * Math.PI / na, dy = (y1 - y0) / ny, k = -(CAB.rt - CAB.rb) / (CAB.y1 - CAB.y0);
+  const pt = (a, y) => { const r = rOut(y) + inset; return [r * Math.sin(a), y, -r * Math.cos(a)]; }, nm = a => { const v = new V3(Math.sin(a), k, -Math.cos(a)).normalize(); return [v.x, v.y, v.z]; };
+  const uvf = (a, y) => uvr ? [(angD(a, uvr[0]) ) / (uvr[1] - uvr[0]), (y - uvr[2]) / (uvr[3] - uvr[2])] : [(a + Math.PI) / (2 * Math.PI), (y - y0) / (y1 - y0)];
+  for (let j = 0; j < ny; j++) for (let i = 0; i < na; i++) { const a0 = -Math.PI + i * da, a1 = a0 + da, ya = y0 + j * dy, yb = ya + dy; if (!keep((a0 + a1) / 2, (ya + yb) / 2)) continue;
+    for (const [a, y] of [[a0, ya], [a1, yb], [a1, ya], [a0, ya], [a0, yb], [a1, yb]]) { P.push(...pt(a, y)); N.push(...nm(a)); U.push(...uvf(a, y)); } }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); g.setAttribute('normal', new THREE.Float32BufferAttribute(N, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(U, 2)); return g; }
+function canvasTex(w, h, draw, rep) { const c = document.createElement('canvas'); c.width = w; c.height = h; draw(c.getContext('2d'), w, h); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; if (rep) { t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(rep[0], rep[1]); } return t; }
+// cabin materials (indoor lighting)
+const CM = {};
+{ const im = o => interiorMat(new THREE.MeshStandardMaterial(o), INT_CAB);
+  CM.lining = im({side: THREE.BackSide, roughness: .85, map: canvasTex(1024, 256, (x, w, h) => { x.fillStyle = '#d9d8d2'; x.fillRect(0, 0, w, h);
+    for (let i = 0; i < 32; i++) for (let j = 0; j < 6; j++) { const px = i * 32, py = j * 43; const g = x.createRadialGradient(px + 16, py + 21, 2, px + 16, py + 21, 26); g.addColorStop(0, '#e8e7e2'); g.addColorStop(1, '#bdbcb5'); x.fillStyle = g; x.fillRect(px + 1, py + 1, 30, 41); }
+    x.fillStyle = '#1b1d22'; x.fillRect(0, h * .78, w, 3); x.fillStyle = '#b8a77a'; for (let i = 0; i < 18; i++) { x.fillRect((i * 197) % w, 30 + (i * 53) % (h - 60), 5, 3); } // velcro dots
+    x.fillStyle = '#3a6ea5'; for (let i = 0; i < 6; i++) x.fillRect(80 + i * 150, h * .52, 34, 22); x.fillStyle = '#ffffff'; x.font = '9px sans-serif'; for (let i = 0; i < 6; i++) x.fillText(['O2', 'CO2', 'H2O', 'MED', 'FOOD', 'TOOLS'][i], 82 + i * 150, h * .52 + 14); })});
+  CM.floor = im({roughness: .5, metalness: .6, map: canvasTex(256, 256, (x, w, h) => { x.fillStyle = '#4a4f57'; x.fillRect(0, 0, w, h); x.strokeStyle = '#2c3036'; x.lineWidth = 3; for (let i = 0; i <= w; i += 16) { x.beginPath(); x.moveTo(i, 0); x.lineTo(i, h); x.stroke(); x.beginPath(); x.moveTo(0, i); x.lineTo(w, i); x.stroke(); } }, [3, 3])});
+  CM.fabric = im({color: 0x2a3f66, roughness: .95}); CM.frame = im({color: 0x8a9099, roughness: .4, metalness: .8}); CM.dark = im({color: 0x1e2127, roughness: .5, metalness: .4});
+  CM.panel = im({color: 0x5b6470, roughness: .55, metalness: .3}); CM.rail = im({color: 0xffc83a, roughness: .4, metalness: .3}); CM.red = im({color: 0xc2302a, roughness: .4});
+  CM.bag = [0xe9e6dc, 0x3b5f8a, 0x9aa1a8, 0xd9cfb0].map(c => im({color: c, roughness: .95}));
+  CM.switches = im({side: THREE.BackSide, roughness: .5, metalness: .2, emissive: 0xffffff, emissiveIntensity: 1, map: null});
+  { const t = canvasTex(1024, 128, (x, w, h) => { x.fillStyle = '#3d434c'; x.fillRect(0, 0, w, h); for (let i = 0; i < 12; i++) { x.strokeStyle = '#22262c'; x.strokeRect(i * 85 + 4, 6, 78, h - 12); }
+      for (let i = 0; i < 120; i++) { const px = 14 + (i % 40) * 25, py = 22 + Math.floor(i / 40) * 34; x.fillStyle = '#c8ccd2'; x.fillRect(px, py, 6, 12); x.fillStyle = ['#2bd46a', '#ffb02e', '#20232a', '#20232a', '#e0453a', '#20232a'][(i * 7) % 6]; x.fillRect(px + 8, py + 2, 5, 5); } });
+    const e = canvasTex(1024, 128, (x, w, h) => { x.fillStyle = '#000'; x.fillRect(0, 0, w, h); for (let i = 0; i < 120; i++) { const px = 14 + (i % 40) * 25, py = 22 + Math.floor(i / 40) * 34; const c = ['#2bd46a', '#ffb02e', null, null, '#e0453a', null][(i * 7) % 6]; if (c) { x.fillStyle = c; x.fillRect(px + 8, py + 2, 5, 5); } } });
+    CM.switches.map = t; CM.switches.emissiveMap = e; }
+  CM.glass = new THREE.MeshStandardMaterial({color: 0x9fb6c8, roughness: .02, metalness: .1, transparent: true, opacity: .12, side: THREE.DoubleSide, depthWrite: false});
+  CM.winFrame = new THREE.MeshStandardMaterial({color: 0x2a2d33, roughness: .4, metalness: .7, side: THREE.DoubleSide});
+}
+const SEATS = [{a: 0, name: 'Pilot', scr: 'tele'}, {a: -1.15, name: 'Navigator', scr: 'orbit'}, {a: 1.15, name: 'Engineer', scr: 'sys'}];
+function buildCapsule(g) {
+  // outside: heat shield, cone with window holes + frames + glass, nose, docking ring, stripes, RCS blocks, hatch outline
+  g.add(cylY(2.53, 2.5, 21.6, 21.85, RM.shield, 64));
+  const outer = mesh(shellGeo(0, (a, y) => !inWin(a, y)), RM.cap); g.add(outer);
+  const fr = mesh(shellGeo(.012, (a, y) => inWin(a, y, .06, .07) && !inWin(a, y)), RM.black); fr.material = CM.winFrame; g.add(fr);
+  const gl = new THREE.Mesh(shellGeo(-.045, (a, y) => inWin(a, y)), CM.glass); gl.renderOrder = 4; g.add(gl);
+  const hf = mesh(shellGeo(.01, (a, y) => inReg(CHATCH, a, y, .05, .06) && !inReg(CHATCH, a, y)), RM.black); g.add(hf);
+  g.add(mesh(shellGeo(.006, (a, y) => inReg(CHATCH, a, y, -.03, -.05) && y > 22.9 && y < 22.97), RM.grey));
+  g.add(cylY(1.0, .95, 25.45, 25.95, RM.white, 48)); g.add(cylY(.78, .75, 25.95, 26.1, RM.grey, 32));
+  g.add(mesh(shellGeo(.008, (a, y) => y > 22.15 && y < 22.32), RM.black));
+  for (let k = 0; k < 4; k++) { const a = k * Math.PI / 2 + Math.PI / 4, y = 24.4, r = rOut(y) + .1; const q = mesh(new THREE.BoxGeometry(.24, .3, .24), RM.grey, Math.sin(a) * r, y, -Math.cos(a) * r); q.rotation.y = -a; g.add(q); }
+  // inside: lining (same holes), window reveals, floor, ceiling + light ring, docking hatch
+  const lin = new THREE.Mesh(shellGeo(-CAB.wall, (a, y) => !inWin(a, y) && y > CAB.floor - .05 && y < CAB.ceil + .05), CM.lining); lin.receiveShadow = true; g.add(lin);
+  const rv = new THREE.Mesh(shellGeo(-CAB.wall - .006, (a, y) => inWin(a, y, .05, .06) && !inWin(a, y)), CM.dark); g.add(rv);
+  const fl = new THREE.Mesh(new THREE.CircleGeometry(rIn(CAB.floor) + .01, 64), CM.floor); fl.rotation.x = -Math.PI / 2; fl.position.y = CAB.floor; fl.receiveShadow = true; g.add(fl);
+  const ce = new THREE.Mesh(new THREE.CircleGeometry(rIn(CAB.ceil) + .01, 48), CM.panel); ce.rotation.x = Math.PI / 2; ce.position.y = CAB.ceil; g.add(ce);
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(.62, .04, 8, 48), new THREE.MeshBasicMaterial({color: new THREE.Color(2.4, 2.25, 2.0)})); ring.rotation.x = Math.PI / 2; ring.position.y = CAB.ceil - .03; g.add(ring);
+  const dh = new THREE.Mesh(new THREE.CylinderGeometry(.42, .42, .06, 32), CM.dark); dh.position.y = CAB.ceil - .03; g.add(dh);
+  // handrails: ring under the ceiling, verticals by the hatch
+  const hr = mesh(new THREE.TorusGeometry(rIn(24.6) - .1, .022, 6, 64), CM.rail); hr.rotation.x = Math.PI / 2; hr.position.y = 24.6; g.add(hr);
+  for (const s of [-1, 1]) { const a = CAB.hatchA + s * .4, r = rIn(23) - .07; const v = mesh(new THREE.CylinderGeometry(.02, .02, 1.3, 6), CM.rail, Math.sin(a) * r, 23, -Math.cos(a) * r); g.add(v); }
+  // overhead switch band (front half)
+  const sw = new THREE.Mesh(shellGeo(-CAB.wall - .02, (a, y) => Math.abs(a) < 1.55 && y > 24.15 && y < 24.85, [-1.55, 1.55, 24.15, 24.85]), CM.switches); g.add(sw);
+  // inner hatch door with handle
+  g.add(new THREE.Mesh(shellGeo(-CAB.wall - .02, (a, y) => inReg(CHATCH, a, y), [CHATCH.a - CHATCH.w, CHATCH.a + CHATCH.w, CHATCH.y0, CHATCH.y1]), (() => { const m = CM.panel.clone(); m.side = THREE.BackSide; return interiorMat(m, INT_CAB); })()));
+  { const r = rIn(23) - .08, a = CAB.hatchA; const h = mesh(new THREE.TorusGeometry(.16, .02, 6, 24), CM.rail, Math.sin(a) * r, 23, -Math.cos(a) * r); h.rotation.y = -a; g.add(h); }
+  // seats + consoles
+  for (const S of SEATS) { const sg = new THREE.Group(); sg.rotation.y = -S.a; g.add(sg); const fy = CAB.floor, rz = -1.0; // seat-local: -z = outward (towards the wall)
+    const add = (geo, m, x, y, z, rx = 0) => { const o = mesh(geo, m, x, y, z); o.rotation.x = rx; sg.add(o); return o; };
+    add(new THREE.BoxGeometry(.62, .12, .58), CM.fabric, 0, fy + .45, rz); add(new THREE.BoxGeometry(.62, .8, .1), CM.fabric, 0, fy + .9, rz + .32, -.18); add(new THREE.BoxGeometry(.4, .28, .1), CM.fabric, 0, fy + 1.47, rz + .4, -.18);
+    for (const sx of [-1, 1]) { add(new THREE.BoxGeometry(.06, .06, .5), CM.frame, sx * .36, fy + .66, rz + .02); add(new THREE.BoxGeometry(.05, .45, .05), CM.frame, sx * .26, fy + .2, rz - .15); add(new THREE.BoxGeometry(.05, .45, .05), CM.frame, sx * .26, fy + .2, rz + .2); }
+    add(new THREE.BoxGeometry(.6, .05, .5), CM.frame, 0, fy + .02, rz);
+    // console under the window, tilted to face the seat
+    const cr = -(rIn(22.6) - .34); const c = add(new THREE.BoxGeometry(.95, .62, .28), CM.panel, 0, 22.55, cr, -.75);
+    const sc = new THREE.Mesh(new THREE.PlaneGeometry(.66, .38), screenMat(S.scr, 1.5)); sc.position.set(0, .03, .145); c.add(sc);
+    const bt = new THREE.Mesh(new THREE.PlaneGeometry(.8, .08), CM.switches); bt.position.set(0, -.26, .145); c.add(bt);
+    add(new THREE.BoxGeometry(.9, .05, .3), CM.dark, 0, 22.3, cr + .25); // armrest shelf
+    S.pos = new V3(Math.sin(S.a) * .8, fy, -Math.cos(S.a) * .8); }
+  // lockers and stowage bags on the back wall either side of the hatch
+  let bi = 0; for (const s of [-1, 1]) for (let row = 0; row < 3; row++) for (let col = 0; col < 2; col++) { const a = CAB.hatchA + s * (.62 + col * .3), y = 22.3 + row * .42, r = rIn(y + .17) - .19;
+    const b = mesh(new THREE.BoxGeometry(.48, .36, .34), CM.bag[(bi++) % 4], Math.sin(a) * r, y + .18, -Math.cos(a) * r); b.rotation.y = -a; g.add(b);
+    const st = mesh(new THREE.BoxGeometry(.05, .37, .35), CM.dark, Math.sin(a) * r, y + .18, -Math.cos(a) * r); st.rotation.y = -a; g.add(st); }
+  { const a = CAB.hatchA - .45, r = rIn(22.3) - .12; g.add(mesh(new THREE.CylinderGeometry(.08, .08, .5, 12), CM.red, Math.sin(a) * r, 22.3, -Math.cos(a) * r)); } // extinguisher
+  // parachute (hidden until it opens)
+  const ch = new THREE.Group(); ch.position.y = 26.1; const can = new THREE.Mesh(new THREE.SphereGeometry(10, 32, 10, 0, Math.PI * 2, 0, 1.25), RM.chute); can.position.y = 15; can.castShadow = true; ch.add(can);
+  const lp = []; for (let k = 0; k < 16; k++) { const a = k / 16 * Math.PI * 2, rr = 10 * Math.sin(1.25); lp.push(0, 0, 0, Math.cos(a) * rr, 15 + 10 * Math.cos(1.25), Math.sin(a) * rr); }
+  const lg = new THREE.BufferGeometry(); lg.setAttribute('position', new THREE.Float32BufferAttribute(lp, 3)); ch.add(new THREE.LineSegments(lg, new THREE.LineBasicMaterial({color: 0x9a9a9a})));
+  ch.visible = false; g.add(ch); g.userData.chute = ch;
+}
+const cabL = new THREE.PointLight(0xfff0dc, 0, 7, 2); scene.add(cabL); // cabin light (always in the scene)
+
+// ---------------- live screens (canvas textures shared by the cabin and mission control)
+const SCR = {}, HIST = []; let scrT = 0, histT = 0;
+function scr(name) { if (SCR[name]) return SCR[name]; const big = name === 'map', c = document.createElement('canvas'); c.width = big ? 1024 : 512; c.height = big ? 512 : 256;
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; const s = SCR[name] = {c, x: c.getContext('2d'), t, w: c.width, h: c.height, mats: {}, drawn: false}; return s; }
+function screenMat(name, k = 1.5) { const s = scr(name); return s.mats[k] || (s.mats[k] = new THREE.MeshBasicMaterial({map: s.t, color: new THREE.Color(k, k, k)})); }
+function scrBg(s, title, col = '#7fd4ff') { const x = s.x; x.fillStyle = '#050c18'; x.fillRect(0, 0, s.w, s.h); x.strokeStyle = 'rgba(80,140,200,.12)'; x.lineWidth = 1;
+  for (let i = 0; i < s.w; i += 32) { x.beginPath(); x.moveTo(i, 0); x.lineTo(i, s.h); x.stroke(); } for (let i = 0; i < s.h; i += 32) { x.beginPath(); x.moveTo(0, i); x.lineTo(s.w, i); x.stroke(); }
+  x.fillStyle = '#0d1f38'; x.fillRect(0, 0, s.w, 30); x.fillStyle = col; x.font = '600 18px monospace'; x.textBaseline = 'middle'; x.textAlign = 'left'; x.fillText(title, 10, 15);
+  x.textAlign = 'right'; x.fillStyle = '#ffcf4a'; x.fillText('YESHIP', s.w - 10, 15); x.textAlign = 'left'; }
+const fmtT = s => { s = Math.max(0, s | 0); return String(s / 3600 | 0).padStart(2, '0') + ':' + String((s / 60 | 0) % 60).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0'); };
+function situation(b, alt, o) { return R.st === 'pad' ? 'ON THE PAD' : R.st === 'landed' ? 'LANDED' : R.st === 'dead' ? 'VEHICLE LOST' : o.pe > (b === PLANET ? PLANET.atmo : 2000) ? 'IN ORBIT' : alt < 20000 && b === PLANET ? 'FLYING' : 'SUBORBITAL'; }
+const DRAW = {
+  tele(s) { scrBg(s, 'FLIGHT DYNAMICS'); const x = s.x, b = domBody(R.pos), alt = R.pos.distanceTo(b.c) - b.R, o = orbitOf(b), v = relVel(new V3()).length();
+    const rows = [['MET', R.t0 ? 'T+' + fmtT(G.t - R.t0) : 'T- HOLD'], ['ALT', fmtD(alt)], ['VEL', Math.round(v) + ' m/s'], ['AP', o.ap === Infinity ? 'ESCAPE' : fmtD(o.ap)], ['PE', o.pe < -b.R * .5 ? '--' : fmtD(o.pe)], ['STAGE', STAGES[R.bot].name.toUpperCase()], ['THR', Math.round(R.thr * 100) + '%'], ['BODY', b.name.toUpperCase()]];
+    x.font = '600 21px monospace'; rows.forEach(([k, v2], i) => { const cx = i < 4 ? 14 : 270, cy = 62 + (i % 4) * 46; x.fillStyle = '#5c8fbf'; x.fillText(k, cx, cy); x.fillStyle = '#eaf4ff'; x.fillText(v2, cx + 76, cy); });
+    x.fillStyle = R.st === 'dead' ? '#ff5a4a' : '#5fd38a'; x.font = '600 16px monospace'; x.fillText(situation(b, alt, o), 14, s.h - 14); },
+  orbit(s) { scrBg(s, 'TRAJECTORY'); const x = s.x, b = domBody(R.pos), mu = b.GM, rr = R.pos.clone().sub(b.c), vv = R.vel.clone(); if (b === MOON) vv.sub(moonVel(G.t, new V3()));
+    const hv = rr.clone().cross(vv), p = hv.lengthSq() / mu, ev = vv.clone().cross(hv).multiplyScalar(1 / mu).sub(rr.clone().normalize()), e = ev.length(), o = orbitOf(b);
+    const ex = e > 1e-4 ? ev.clone().normalize() : rr.clone().normalize(), ey = hv.clone().cross(ex).normalize(), nu = Math.atan2(rr.dot(ey), rr.dot(ex));
+    const span = Math.max(b.R * 1.25, Math.min(o.ap === Infinity ? b.R * 4 : o.ap + b.R, b.R * 6)), sc = (s.h - 60) / 2 / span, cx = s.w / 2 + (e < 1 && o.ap !== Infinity ? (o.ap - o.pe) / 2 * sc * .5 : 0), cy = s.h / 2 + 14;
+    x.fillStyle = b === PLANET ? '#1d4f7a' : '#6b6b6b'; x.beginPath(); x.arc(cx, cy, b.R * sc, 0, 7); x.fill(); if (b === PLANET) { x.strokeStyle = 'rgba(120,190,255,.5)'; x.lineWidth = 3; x.beginPath(); x.arc(cx, cy, (b.R + PLANET.atmo) * sc, 0, 7); x.stroke(); }
+    x.strokeStyle = '#c8f25a'; x.lineWidth = 2; x.beginPath(); const lim = e < 1 ? Math.PI : Math.acos(-1 / e) - .02; let first = true;
+    for (let i = 0; i <= 240; i++) { const th = -lim + 2 * lim * i / 240, r = p / (1 + e * Math.cos(th)); if (r <= 0 || r > span * 3) { first = true; continue; } const px = cx - r * Math.cos(th) * sc, py = cy - r * Math.sin(th) * sc; first ? x.moveTo(px, py) : x.lineTo(px, py); first = false; } x.stroke();
+    const r0 = rr.length(); x.fillStyle = '#ffcf4a'; x.beginPath(); x.arc(cx - r0 * Math.cos(nu) * sc, cy - r0 * Math.sin(nu) * sc, 5, 0, 7); x.fill();
+    x.font = '15px monospace'; x.fillStyle = '#9fd0ff'; x.fillText('AP ' + (o.ap === Infinity ? 'ESC' : fmtD(o.ap)), 12, s.h - 34); x.fillText('PE ' + (o.pe < -b.R * .5 ? '--' : fmtD(o.pe)), 12, s.h - 14); x.textAlign = 'right'; x.fillText(b.name.toUpperCase(), s.w - 12, s.h - 14); x.textAlign = 'left'; },
+  sys(s) { scrBg(s, 'SYSTEMS', '#ffb347'); const x = s.x; x.font = '15px monospace';
+    STAGES.forEach((S, i) => { const y = 50 + i * 36, f = i < R.bot ? 0 : S.fuel ? R.fuel[i] / S.fuel : 0; x.fillStyle = i < R.bot ? '#4a5563' : '#cfe3f7'; x.fillText(S.name.toUpperCase(), 12, y + 10);
+      x.fillStyle = '#132640'; x.fillRect(170, y, 220, 18); if (S.fuel) { x.fillStyle = f < .15 ? '#ff6a4a' : '#5fd38a'; x.fillRect(170, y, 220 * f, 18); } else { x.fillStyle = '#5c8fbf'; x.fillText(i < R.bot ? 'SEP' : 'NO FUEL', 176, y + 10); }
+      x.fillStyle = '#9fd0ff'; x.fillText(i < R.bot ? 'SEP' : i === R.bot ? (R.F > 0 ? 'BURN' : 'IDLE') : 'ATT', 404, y + 10); });
+    x.fillStyle = '#5c8fbf'; x.fillText('THROTTLE', 12, 170); x.fillStyle = '#132640'; x.fillRect(170, 160, 220, 18); x.fillStyle = '#ffcf4a'; x.fillRect(170, 160, 220 * R.thr, 18);
+    x.fillStyle = '#5c8fbf'; x.fillText('SAS', 12, 200); x.fillStyle = '#eaf4ff'; x.fillText(R.sas.toUpperCase(), 170, 200); x.fillStyle = '#5c8fbf'; x.fillText('CHUTE', 12, 226); x.fillStyle = '#eaf4ff'; x.fillText(['STOWED', 'ARMED', 'OPEN'][R.chute], 170, 226);
+    x.fillStyle = '#5c8fbf'; x.fillText('Q', 300, 200); x.fillStyle = '#eaf4ff'; x.fillText((R.qd / 1000).toFixed(1) + ' kPa', 330, 200); },
+  graph(s) { scrBg(s, 'ALTITUDE / VELOCITY'); const x = s.x, n = HIST.length; if (n < 2) { x.fillStyle = '#5c8fbf'; x.font = '16px monospace'; x.fillText('AWAITING LAUNCH', 150, 140); return; }
+    let ma = 1, mv = 1; for (const h of HIST) { ma = Math.max(ma, h.a); mv = Math.max(mv, h.v); } const t0 = HIST[0].t, t1 = HIST[n - 1].t || 1;
+    for (const [key, m, col] of [['a', ma, '#5fd38a'], ['v', mv, '#ffcf4a']]) { x.strokeStyle = col; x.lineWidth = 2; x.beginPath(); HIST.forEach((h, i) => { const px = 30 + (h.t - t0) / Math.max(1, t1 - t0) * (s.w - 50), py = s.h - 20 - h[key] / m * (s.h - 70); i ? x.lineTo(px, py) : x.moveTo(px, py); }); x.stroke(); }
+    x.font = '14px monospace'; x.fillStyle = '#5fd38a'; x.fillText('ALT ' + fmtD(HIST[n - 1].a), 30, 48); x.fillStyle = '#ffcf4a'; x.fillText('VEL ' + Math.round(HIST[n - 1].v) + ' m/s', 220, 48); },
+  map(s) { const x = s.x, w = s.w, h = s.h; mapBuild(); x.imageSmoothingEnabled = true; x.drawImage(MAPB.c, 0, 0, w, h);
+    // night side
+    const sb = SUN.clone().applyQuaternion(PLANET.q.clone().invert()); x.fillStyle = 'rgba(0,4,16,.55)';
+    for (let i = 0; i < 128; i++) for (let j = 0; j < 64; j++) { const lon = (i + .5) / 128 * 2 * Math.PI - Math.PI, lat = Math.PI / 2 - (j + .5) / 64 * Math.PI, d = Math.cos(lat) * Math.cos(lon) * sb.x + Math.sin(lat) * sb.y - Math.cos(lat) * Math.sin(lon) * sb.z;
+      if (d < .05) { x.globalAlpha = Math.min(1, (.05 - d) * 6); x.fillRect(i * w / 128, j * h / 64, w / 128 + 1, h / 64 + 1); } } x.globalAlpha = 1;
+    x.strokeStyle = 'rgba(160,210,255,.18)'; x.lineWidth = 1; for (let i = 0; i <= 12; i++) { x.beginPath(); x.moveTo(i * w / 12, 0); x.lineTo(i * w / 12, h); x.stroke(); } for (let j = 0; j <= 6; j++) { x.beginPath(); x.moveTo(0, j * h / 6); x.lineTo(w, j * h / 6); x.stroke(); }
+    x.fillStyle = '#ffcf4a'; x.beginPath(); x.moveTo(w / 2, h / 2 - 9); x.lineTo(w / 2 + 7, h / 2 + 5); x.lineTo(w / 2 - 7, h / 2 + 5); x.fill(); // space centre
+    x.strokeStyle = '#c8f25a'; x.lineWidth = 3; x.beginPath(); let px0 = null; for (const p of HIST) { if (p.lon === undefined) { px0 = null; continue; } const px = (p.lon / (2 * Math.PI) + .5) * w, py = (.5 - p.lat / Math.PI) * h; if (px0 === null || Math.abs(px - px0) > w / 2) x.moveTo(px, py); else x.lineTo(px, py); px0 = px; } x.stroke();
+    const ll = latLon(R.pos); if (ll) { const px = (ll[1] / (2 * Math.PI) + .5) * w, py = (.5 - ll[0] / Math.PI) * h; x.fillStyle = '#ffffff'; x.beginPath(); x.arc(px, py, 7 + 2 * Math.sin(G.t * 4), 0, 7); x.fill(); }
+    x.fillStyle = 'rgba(5,12,24,.7)'; x.fillRect(0, 0, w, 40); x.fillStyle = '#7fd4ff'; x.font = '600 22px monospace'; x.fillText('GROUND TRACK · ' + PLANET.name.toUpperCase(), 14, 20); x.textAlign = 'right'; x.fillStyle = '#ffcf4a'; x.fillText('LOCAL ' + localTime(), w - 14, 20); x.textAlign = 'left'; },
+  code(s) { if (s.drawn) return; scrBg(s, 'GUIDANCE', '#5fd38a'); const x = s.x; x.font = '13px monospace'; x.fillStyle = '#3fbf6a'; let r = 9; for (let i = 0; i < 13; i++) { let l = ''; for (let k = 0; k < 6; k++) { r = (r * 16807) % 2147483647; l += (r % 65536).toString(16).padStart(4, '0') + ' '; } x.fillText(l, 12, 50 + i * 15); } },
+  wx(s) { if (s.drawn) return; scrBg(s, 'WEATHER'); const x = s.x; for (let i = 0; i < 40; i++) { const px = (i * 131) % s.w, py = 40 + (i * 71) % (s.h - 50), r = 10 + (i * 13) % 30; const g = x.createRadialGradient(px, py, 1, px, py, r); g.addColorStop(0, i % 5 ? 'rgba(95,211,138,.6)' : 'rgba(255,207,74,.7)'); g.addColorStop(1, 'rgba(0,0,0,0)'); x.fillStyle = g; x.fillRect(px - r, py - r, 2 * r, 2 * r); }
+    x.fillStyle = '#eaf4ff'; x.font = '15px monospace'; x.fillText('WIND 4 m/s E   VIS 30 km   GO', 12, s.h - 14); },
+  net(s) { scrBg(s, 'GO / NO-GO'); const x = s.x, L = ['BOOSTER', 'GUIDANCE', 'NAV', 'SYSTEMS', 'COMMS', 'WEATHER', 'RECOVERY', 'RANGE', 'CAPCOM', 'FLIGHT']; x.font = '600 16px monospace';
+    L.forEach((n, i) => { const cx = 14 + (i % 2) * 250, cy = 52 + (i >> 1) * 40; x.fillStyle = '#132640'; x.fillRect(cx, cy - 13, 230, 28); x.fillStyle = '#cfe3f7'; x.fillText(n, cx + 8, cy + 1); const ok = R.st !== 'dead'; x.fillStyle = ok ? '#5fd38a' : '#ff5a4a'; x.fillText(ok ? 'GO' : 'NO GO', cx + 170, cy + 1); }); },
+};
+function latLon(p) { if (domBody(p) !== PLANET) return null; const d = p.clone().applyQuaternion(PLANET.q.clone().invert()).normalize(); return [Math.asin(d.y), Math.atan2(-d.z, d.x)]; }
+const MAPB = {row: 0}; // planet map baked a row at a time (heightAt is slow)
+function mapBuild() { if (!MAPB.c) { MAPB.c = document.createElement('canvas'); MAPB.c.width = 256; MAPB.c.height = 128; MAPB.x = MAPB.c.getContext('2d'); MAPB.x.fillStyle = '#0b2440'; MAPB.x.fillRect(0, 0, 256, 128); MAPB.im = MAPB.x.createImageData(256, 1); }
+  for (let n = 0; n < 2 && MAPB.row < 128; n++, MAPB.row++) { const j = MAPB.row, lat = Math.PI / 2 - (j + .5) / 128 * Math.PI, d = MAPB.im.data;
+    for (let i = 0; i < 256; i++) { const lon = (i + .5) / 256 * 2 * Math.PI - Math.PI, cx = Math.cos(lat) * Math.cos(lon), cy = Math.sin(lat), cz = -Math.cos(lat) * Math.sin(lon), h = heightAt(PLANET, cx, cy, cz);
+      let c; if (h < 0) { const k = clamp(-h / 2500, 0, 1); c = [14 - 6 * k, 58 - 26 * k, 98 - 36 * k]; } else if (h > 3300) c = [225, 230, 235]; else { const k = clamp(h / 3000, 0, 1); c = [62 + 70 * k, 104 - 10 * k, 54 + 20 * k]; }
+      d[i * 4] = c[0]; d[i * 4 + 1] = c[1]; d[i * 4 + 2] = c[2]; d[i * 4 + 3] = 255; } MAPB.x.putImageData(MAPB.im, 0, j); } }
+const MC_P = new V3(); // mission control centre (body-fixed), set at boot
+function updateScreens(dt) {
+  if (R.st === 'fly' && (histT -= dt * G.warp) <= 0) { histT = Math.max(1, G.warp); const b = domBody(R.pos), ll = latLon(R.pos); HIST.push({t: G.t, a: R.pos.distanceTo(b.c) - b.R, v: relVel(new V3()).length(), lat: ll && ll[0], lon: ll && ll[1]}); if (HIST.length > 1500) HIST.shift(); }
+  const nearMC = !R.on && P.body === PLANET && P.pos.distanceTo(MC_P) < 120; if (!(R.on && C.in) && !nearMC) return; if (nearMC && MAPB.row < 128) { mapBuild(); if (MAPB.tex && MAPB.row % 8 === 0) MAPB.tex.needsUpdate = true; }
+  if ((scrT -= dt) > 0) return; scrT = .35;
+  for (const k in SCR) { if (!nearMC && !['tele', 'orbit', 'sys'].includes(k)) continue; if (DRAW[k]) { DRAW[k](SCR[k]); if (!SCR[k].drawn || !['code', 'wx'].includes(k)) SCR[k].t.needsUpdate = true; SCR[k].drawn = true; } }
+}
+
+// ---------------- crew in the cabin: walk (floor = local -y), float in zero-g, sit at a station
+const C = {in: false, seat: -1, view: 'in', pos: new V3(0, CAB.floor, 0), vel: new V3(), yaw: 0, pitch: 0, ground: false};
+const _cq = new Q4(), _cq2 = new Q4(), _cx = new V3(1, 0, 0), _cy = new V3(0, 1, 0);
+function cabinStep(dt) {
+  const sens = .0022; C.yaw -= look.dx * sens; C.pitch = clamp(C.pitch - look.dy * sens, -1.45, 1.45); look.dx = look.dy = 0;
+  if (C.seat >= 0) { const s = SEATS[C.seat]; C.yaw = -s.a + clamp(angD(C.yaw, -s.a), -1.7, 1.7); return; }
+  const gy = R.st === 'dead' ? 0 : R.felt.y, grav = gy > .6, fw = new V3(-Math.sin(C.yaw), 0, -Math.cos(C.yaw)), rt = new V3(Math.cos(C.yaw), 0, -Math.sin(C.yaw)), wish = new V3();
+  if (keys.KeyW) wish.add(fw); if (keys.KeyS) wish.sub(fw); if (keys.KeyD) wish.add(rt); if (keys.KeyA) wish.sub(rt); if (wish.lengthSq()) wish.normalize();
+  if (grav) { const k = C.ground ? 1 - Math.exp(-dt * 12) : 1 - Math.exp(-dt * 1.5); C.vel.x += (wish.x * 2.2 - C.vel.x) * k; C.vel.z += (wish.z * 2.2 - C.vel.z) * k; C.vel.y -= Math.min(gy, 30) * dt;
+    if (C.ground && keys.Space) { C.vel.y = Math.sqrt(2 * Math.min(gy, 30) * .35); C.ground = false; } }
+  else { // zero-g: push gently, drift
+    const look3 = fw.clone().multiplyScalar(Math.cos(C.pitch)).addScaledVector(_cy, Math.sin(C.pitch)); const push = new V3(); if (keys.KeyW) push.add(look3); if (keys.KeyS) push.sub(look3); if (keys.KeyD) push.add(rt); if (keys.KeyA) push.sub(rt);
+    if (keys.Space) push.y += 1; if (keys.ShiftLeft || keys.ShiftRight) push.y -= 1; C.vel.addScaledVector(push, 1.6 * dt).multiplyScalar(Math.exp(-dt * .5)); C.ground = false; }
+  C.pos.addScaledVector(C.vel, dt);
+  // walls: floor, ceiling, cone (head height is the tight spot)
+  C.ground = false; if (C.pos.y < CAB.floor) { C.pos.y = CAB.floor; if (C.vel.y < 0) C.vel.y = grav ? 0 : -C.vel.y * .3; C.ground = grav; }
+  if (C.pos.y > CAB.ceil - 1.8) { C.pos.y = CAB.ceil - 1.8; if (C.vel.y > 0) C.vel.y = -C.vel.y * .3; }
+  const rmax = Math.min(rIn(C.pos.y + 1.75), rIn(C.pos.y + .3)) - .3, r = Math.hypot(C.pos.x, C.pos.z);
+  if (r > rmax) { const nx = C.pos.x / r, nz = C.pos.z / r; C.pos.x = nx * rmax; C.pos.z = nz * rmax; const vo = C.vel.x * nx + C.vel.z * nz; if (vo > 0) { C.vel.x -= nx * vo; C.vel.z -= nz * vo; } }
+}
+function cabinEye(out) { if (C.seat >= 0) { const s = SEATS[C.seat]; return out.set(Math.sin(s.a) * .9, CAB.floor + 1.25, -Math.cos(s.a) * .9); } return out.copy(C.pos).add(new V3(0, C.ground || R.felt.y > .6 ? 1.62 : .9, 0)); }
+function cabinCamera() {
+  const e = cabinEye(new V3()); e.y -= R.comY; G.O.copy(e).applyQuaternion(R.q).add(R.pos);
+  cam.quaternion.copy(R.q).multiply(_cq.setFromAxisAngle(_cy, C.yaw)).multiply(_cq2.setFromAxisAngle(_cx, C.pitch)); cam.position.set(0, 0, 0); cam.updateMatrixWorld();
+  const l = new V3(0, CAB.ceil - .25 - R.comY, 0).applyQuaternion(R.q).add(R.pos).sub(G.O); cabL.position.copy(l); cabL.intensity = 7;
+}
+function cabinNear() { // what F would do from here
+  if (C.seat >= 0) return {k: 'stand', t: 'F · Get up' + (C.seat === 0 ? ' · V outside view' : '')};
+  const p = C.pos; for (let i = 0; i < SEATS.length; i++) { const s = SEATS[i]; if (Math.hypot(p.x - s.pos.x, p.z - s.pos.z) < .85) return {k: 'sit', i, t: 'F · Sit: ' + s.name + (i === 0 ? ' (fly)' : '')}; }
+  const a = Math.atan2(p.x, -p.z); if (Math.hypot(p.x, p.z) > .7 && Math.abs(angD(a, CAB.hatchA)) < .6) return {k: 'hatch', t: R.st === 'fly' ? 'Hatch locked in flight' : 'F · Open hatch'};
+  return null; }
+function cabinAct() { const n = cabinNear(); if (!n) return;
+  if (n.k === 'stand') { const s = SEATS[C.seat]; C.seat = -1; C.view = 'in'; C.pos.set(Math.sin(s.a) * .4, CAB.floor, -Math.cos(s.a) * .4); C.vel.set(0, 0, 0); return; }
+  if (n.k === 'sit') { C.seat = n.i; C.yaw = -SEATS[n.i].a; C.pitch = -.05; C.vel.set(0, 0, 0); if (n.i === 0) showHint('Space: ' + (R.st === 'pad' ? 'launch' : 'stage') + ' · W/S A/D steer · Q/E roll · Shift/C throttle · 1-4 autopilot · V outside view', 8000); return; }
+  if (n.k === 'hatch' && R.st !== 'fly') getOut(); }
+const pilot = () => R.on && C.in && C.seat === 0;
+
 // hooks for game.js's frame loop
-const FLIGHT = {step(dt) { stepThrottle(dt); flightStep(dt); }, camera: flightCamera, visuals(dt) { flightVisuals(dt); sndUpdate(); }, hud: flightHud, hideHud() { document.body.classList.remove('fly'); $('fl').classList.add('hidden'); $('mPro').classList.add('hidden'); $('mRet').classList.add('hidden'); }};
+const FLIGHT = {step(dt) { stepThrottle(dt); flightStep(dt); if (R.on && C.in) cabinStep(dt); },
+  camera(dt) { if (R.st === 'dead' || (C.seat === 0 && C.view === 'out')) { cabL.intensity = 0; flightCamera(dt); } else cabinCamera(); },
+  visuals(dt) { flightVisuals(dt); sndUpdate(); updateScreens(dt); },
+  hud(dt) { const n = R.st === 'dead' ? null : cabinNear(); $('act').classList.toggle('hidden', !n); if (n) $('act').textContent = n.t; $('cross').classList.toggle('hidden', C.seat >= 0 || C.view === 'out');
+    if (C.seat >= 0 || R.st === 'dead') flightHud(dt); else { $('fl').classList.add('hidden'); $('mPro').classList.add('hidden'); $('mRet').classList.add('hidden'); $('hLoc').textContent = 'In the capsule'; $('hInfo').textContent = R.felt.y > .6 || R.st !== 'fly' ? 'WASD walk · F interact' : 'Weightless · WASD push · Space/Shift up/down'; } },
+  hideHud() { document.body.classList.remove('fly'); $('fl').classList.add('hidden'); $('mPro').classList.add('hidden'); $('mRet').classList.add('hidden'); $('act').classList.add('hidden'); }};
 const _bootOrig = boot;
-boot = function () { _bootOrig(); resetRocket(); R.cam.ref.set(1, 0, 0).applyQuaternion(site.q).applyQuaternion(PLANET.q); };
-Object.assign(window.YE, {FLIGHT, R, STAGES, stage, board, getOut, resetRocket, setWarp, setSas, rocketStep, flightStep, PT, explode});
+boot = function () { _bootOrig(); siteToBody(new V3(-82, 0, 70), MC_P); resetRocket(); R.cam.ref.set(1, 0, 0).applyQuaternion(site.q).applyQuaternion(PLANET.q); };
+Object.assign(window.YE, {FLIGHT, C, SEATS, cabinAct, CAB, R, STAGES, stage, board, getOut, resetRocket, setWarp, setSas, rocketStep, flightStep, PT, explode});
 boot();
