@@ -81,7 +81,7 @@ const F1 = (() => {
       const dLat = M * this.ay * HCG, dFf = dLat * RSF / TF, dFr = dLat * (1 - RSF) / TR;
       const Z = [Math.max(60, Fzf / 2 + dFf), Math.max(60, Fzf / 2 - dFf), Math.max(60, Fzr / 2 + dFr), Math.max(60, Fzr / 2 - dFr)]; // FL FR RL RR (ay>0: load moves left)
       const lsw = (fz, ref) => clamp(1 - 0.12 * (fz / ref - 1), 0.7, 1.15);
-      const cap = [base * tg(this.tf) * sMu(f1) * ls(Fzf, M * G * CB / L) * lsw(Z[0], Fzf / 2) * Z[0], base * tg(this.tf) * sMu(f2) * ls(Fzf, M * G * CB / L) * lsw(Z[1], Fzf / 2) * Z[1],
+      const cap = [base * tg(this.tf) * sMu(f1) * ls(Fzf, M * G * CB / L) * lsw(Z[0], Fzf / 2) * Z[0] * 1.05, base * tg(this.tf) * sMu(f2) * ls(Fzf, M * G * CB / L) * lsw(Z[1], Fzf / 2) * Z[1] * 1.05, // fronts +5%: less low-speed understeer
         base * tg(this.tr) * sMu(r1) * ls(Fzr, M * G * CA / L) * lsw(Z[2], Fzr / 2) * Z[2] * 1.1, base * tg(this.tr) * sMu(r2) * ls(Fzr, M * G * CA / L) * lsw(Z[3], Fzr / 2) * Z[3] * 1.1]; // wider rears
       const capF = cap[0] + cap[1], capR = cap[2] + cap[3]; this.Z = Z;
       // powertrain
@@ -136,6 +136,8 @@ const F1 = (() => {
       this.slipPF = sF + this.lockF * capF * Math.abs(this.vx) * 0.5; this.slipPR = sR + (this.spinR + this.lockR) * capR * 2;
       const sgv = Math.max(v, 0.01); Fx -= drag * this.vx / sgv; Fy -= drag * this.vy / sgv * 0.3; Mz -= this.r * v * 90; // floor/diffuser yaw damping
       const axl = Fx / M, ayl = Fy / M;
+      // transient yaw damping: resists yaw rate that runs ahead of the path (r vs ay / vx), zero in a steady corner, so it stops the dart-and-ring on turn-in without costing grip
+      if (this.vx > 5) Mz -= (this.r - ayl / this.vx) * 10000;
       this.vx += (axl + this.r * this.vy) * dt; this.vy += (ayl - this.r * this.vx) * dt; this.r += Mz / IZ * dt;
       if (v < 5) { const k = 1 - v / 5; this.vy *= 1 - k * dt * 8; this.r = lerp(this.r, this.vx * Math.tan(d) / L, k * Math.min(1, dt * 10)); }
       this.ax += (axl - this.ax) * Math.min(1, dt * 12); this.ay += (ayl - this.ay) * Math.min(1, dt * 12);
