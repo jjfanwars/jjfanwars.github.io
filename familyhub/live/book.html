@@ -861,7 +861,7 @@ function openBook(pid,t){
    ref:REF?REF.tok:'',referral:S.plan==='yes'&&!REF?{how:B.rf,file:B.rf==='upload'?B.file:null,gp:B.rf==='gp'&&form.bkGp?form.bkGp.value.trim():''}:null};
   var call=B.every?api.bookSeries(dt,B.plan.filter(function(x){return x.start}).map(function(x){return x.start.toISOString()})):api.book(dt);
   call.then(function(r){
-   if(!r.ok){err.textContent='Sorry, someone just grabbed '+(B.every?'one of those times':'that time')+'. Pick another one.';err.hidden=false;go.disabled=false;go.innerHTML=svg('check')+'<span>Confirm booking</span>';
+   if(!r.ok){err.textContent='Sorry, '+(B.every?'one of those times':'that time')+' has just been booked. Please choose another one.';err.hidden=false;go.disabled=false;go.innerHTML=svg('check')+'<span>Confirm booking</span>';
     setTimeout(closeSheet,1800);return}
    var bs=r.bookings||[r.booking];bs.forEach(function(b){api.remember(b.token)});done(bs)})});
 }
@@ -917,7 +917,7 @@ function openWait(pids){
  pids=pids.filter(function(x){return P[x]&&!P[x].leave});
  var many=pids.length>1,len=Math.max.apply(null,pids.map(function(x){return H.lenOf(x,S.need)}));
  showSheet(sheetHead('Get a text when a spot opens')+
-  '<p class="bk-lead">When someone cancels, we text the waitlist. The first person to tap the link gets the spot. No fees, no obligation.</p>'+
+  '<p class="bk-lead">When a time opens up, we text a few people on the waitlist it suits. It’s booked in the order people reply, and you can always let one pass. No fees, no obligation.</p>'+
   '<form class="bk-form" novalidate>'+field('wlName','Full name','text','name','autofocus')+field('wlPhone','Mobile','tel','tel','inputmode="tel" placeholder="04xx xxx xxx"')+
   (many?'<fieldset class="bk-fs"><legend>Who are you happy to see?</legend><div class="fd-pills">'+pids.map(function(pid){return '<button type="button" class="fd-pill" data-wp="'+pid+'" aria-pressed="true">'+esc(P[pid].first)+'</button>'}).join('')+'</div></fieldset>':'')+
   '<fieldset class="bk-fs"><legend>Which days work?</legend><div class="fd-pills">'+[1,2,3,4,5,6].map(function(d){return '<button type="button" class="fd-pill" data-wd="'+d+'" aria-pressed="'+(d<6)+'">'+F.DAY[d]+'</button>'}).join('')+'</div></fieldset>'+
@@ -933,7 +933,7 @@ function openWait(pids){
   var bad=!name?'Please add your name.':!/^(\+?61|0)4[\d ]{8,11}$/.test(phone.replace(/\s/g,''))?'Please add an Australian mobile number.':!who.length?'Pick at least one practitioner.':!days.length?'Pick at least one day.':!times.length?'Pick mornings, afternoons or both.':!form.wlOk.checked?'Please tick the box so we can text you.':'';
   if(bad){err.textContent=bad;err.hidden=false;return}
   api.joinWaitlist({name:name,phone:phone,pids:who,need:(NEED[S.need]||{}).wl,len:len,days:days,times:times}).then(function(){
-   showSheet(sheetHead('You’re on the list')+'<div class="bk-done"><span class="bk-tick">'+svg('check')+'</span><p>We’ll text <b>'+esc(phone)+'</b> when a spot opens with '+esc(who.map(function(x){return P[x].first}).join(', '))+'. Be quick, first tap gets it.</p></div>'+
+   showSheet(sheetHead('You’re on the list')+'<div class="bk-done"><span class="bk-tick">'+svg('check')+'</span><p>We’ll text <b>'+esc(phone)+'</b> when a spot opens with '+esc(who.map(function(x){return P[x].first}).join(', '))+'. You’re welcome to take it or let it pass, there’s no obligation.</p></div>'+
     '<p class="bk-demo">Demo: in the <a href="admin.html" target="_blank" rel="noopener">Hub dashboard</a>, cancel an appointment to watch the text arrive.</p>')})});
 }
 

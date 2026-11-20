@@ -384,7 +384,7 @@ a.adm-cx:hover{background:var(--teal-mist);border-color:var(--teal-deep);color:v
     <li>Two days before, every client gets a reminder with “confirm” and “can’t make it” links. Can’t-make-its free the time early, while it can still be filled.</li>
     <li>A client cancels by text link, on this site, or staff cancel it in Halaxy. Halaxy tells the hub straight away (a webhook).</li>
     <li>The hub works out how long the gap is, then texts the best-matched people on the waitlist: right practitioner, day, time and session length, longest waiting first.</li>
-    <li>The first tap books them into Halaxy. Everyone else gets a polite “it’s gone” text. If they already had a later booking, that time goes to the next person.</li>
+    <li>The first tap books them into Halaxy. Everyone else gets a kind note that it’s been filled and they’re still on the list. If they already had a later booking, that time goes to the next person.</li>
     <li>No taker in time? The next people get it. Too close to the time? It goes back on the online booking page.</li>
     <li>After a month on the list, people get a “still keen?” text, so offers only go to people who still want a spot.</li>
    </ol></section>
@@ -429,7 +429,7 @@ function needs(){var S=api.state(),items=S.offers.filter(function(o){return o.st
   return '<div class="adm-need"><img src="'+H.photo(o.pid)+'" alt="" width="44" height="44"><div><b>'+esc(p.first)+', '+esc(F.when(o.start))+'</b><span>'+(o.status==='approval'?'Spot opened. Send it to the waitlist?':'Quiet hours. Offers go out at '+S.settings.quietTo+'am.')+'</span></div>'+
    '<button type="button" class="btn btn-primary btn-sm" data-approve="'+o.id+'">'+svg('send')+'Send offers</button><button type="button" class="btn btn-outline btn-sm" data-dismiss="'+o.id+'">Leave it</button></div>'}).join('')}
 
-var STATE_TXT={sent:'Texted',won:'Got it',lost:'Too late',expired:'No reply',late:'Too late'};
+var STATE_TXT={sent:'Texted',won:'Booked',lost:'Already filled',expired:'No reply',late:'Already filled'};
 function offers(){var S=api.state(),list=S.offers.filter(function(o){return o.status!=='approval'&&o.status!=='queued'}).slice(0,6);
  $('admClock').textContent='Demo clock: '+F.day(H.now())+', '+F.time(new Date(H.now()));
  if(!list.length){$('admOffers').innerHTML='<p class="adm-empty">Nothing yet. When someone cancels, it shows up here.</p>';return}
@@ -486,7 +486,7 @@ function waitlist(){var S=api.state(),q=($('admWlQ').value||'').trim().toLowerCa
 function fillPractFilter(){var sel=$('admWlP');if(sel.options.length>1)return;
  H.ORDER.filter(function(id){return P[id].live&&!P[id].leave}).forEach(function(id){var o=document.createElement('option');o.value=id;o.textContent=P[id].name;sel.appendChild(o)})}
 
-var STATE_LONG={sent:'Texted, no reply yet',won:'Took the spot',lost:'Tapped too late',expired:'Didn’t reply in time',late:'Tapped too late'};
+var STATE_LONG={sent:'Texted, no reply yet',won:'Booked the time',lost:'Replied after it was filled',expired:'Didn’t reply this time',late:'Replied after it was filled'};
 var openPerson=null;
 function person(id){var S=api.state(),w=S.waitlist.filter(function(x){return x.id===id})[0];if(!w)return;openPerson=id;openRef=null;
  var offers=[];S.offers.forEach(function(o){o.sent.forEach(function(s){if(s.wid===w.id)offers.push({o:o,s:s})})});
@@ -514,7 +514,7 @@ function recRows(){var S=api.state();
   return [P[o.pid].first+', '+F.when(o.start),F.when(new Date(o.created)),{open:'Offering',filled:'Refilled',unfilled:'Back online',approval:'Waiting for you',queued:'Queued (quiet hours)'}[o.status]||o.status,String(o.sent.length),w?w.name:'']})};
  if(recTab==='referrals')return {head:['Received','Client','From','To','Medicare plan','Status','Via'],rows:S.referrals.map(function(r){
   return [F.when(new Date(r.at)),r.client.name,r.from.name+(r.from.practice?', '+r.from.practice:''),r.to==='team'?'Psychology Team':P[r.to].first,r.plan==='yes'?(r.planIn?'Received':'Not yet'):'None',REF_ST[r.status],r.source]})};
- if(recTab==='payments')return {head:['When','Client','Practitioner','What','Amount','Status','Card'],rows:S.pay.map(function(x){return [F.when(new Date(x.at)),x.name,P[x.pid].first,PK[x.kind],(x.kind==='refund'?'-':'')+F.money(x.amount),{paid:'Paid',due:'Due',failed:'Card declined',refunded:'Refunded',claimed:'Claimed',void:'Cancelled (refilled)'}[x.status]||x.status,x.last4?'•••• '+x.last4:(x.via||'')]})};
+ if(recTab==='payments')return {head:['When','Client','Practitioner','What','Amount','Status','Card'],rows:S.pay.map(function(x){return [F.when(new Date(x.at)),x.name,P[x.pid].first,PK[x.kind],(x.kind==='refund'?'-':'')+F.money(x.amount),{paid:'Paid',due:'Due',failed:'Didn’t go through',refunded:'Refunded',claimed:'Claimed',void:'Cancelled (refilled)'}[x.status]||x.status,x.last4?'•••• '+x.last4:(x.via||'')]})};
  if(recTab==='reminders')return {head:['Appointment','Client','Sent','Reply'],rows:Object.keys(S.rem).map(function(k){return S.rem[k]}).sort(function(a,b){return new Date(a.start)-new Date(b.start)}).map(function(r){
   return [P[r.pid].first+', '+F.when(r.start),r.name,F.when(new Date(r.at)),r.state==='confirmed'?'Confirmed':r.state==='cancelled'?'Can’t make it':'No reply yet']})};
  return {head:['Time','To','Message'],rows:S.sms.slice().reverse().map(function(m){return [F.when(new Date(m.at)),(m.dir==='in'?'From ':'')+(m.name||m.to),m.body]})}}
@@ -564,14 +564,14 @@ $('admPerson').addEventListener('close',function(){openPerson=null;openRef=null}
 $('admWlQ').addEventListener('input',waitlist);$('admWlP').addEventListener('change',waitlist);
 
 // ---------- payments ----------
-var PK={deposit:'Deposit',session:'Session fee',late:'Late cancellation fee',noshow:'Missed session fee',refund:'Refund',medicare:'Medicare claim'};
+var PK={deposit:'Deposit',session:'Session fee',late:'Short-notice cancellation fee',noshow:'Missed appointment fee',refund:'Refund',medicare:'Medicare claim'};
 function payments(){var S=api.state(),L=S.pay,day=new Date(H.now());day.setHours(0,0,0,0);
  var today=L.filter(function(x){return x.at>=day.getTime()&&x.status!=='due'&&x.status!=='failed'&&x.kind!=='medicare'&&x.kind!=='refund'}).reduce(function(s,x){return s+x.amount},0);
  var owe=L.filter(function(x){return x.status==='due'||x.status==='failed'}),fees=api.feesToDecide(),done=L.filter(function(x){return x.status!=='due'&&x.status!=='failed'&&x.status!=='void'});
  $('admPaySub').textContent=F.money(Math.round(today*100)/100)+' collected today · '+owe.length+' outstanding';
  $('admPay').innerHTML=(fees.length?'<h3 class="adm-day">Fees to decide</h3><ul class="adm-up">'+fees.map(function(b){var fee=b.noShow?b.noShowFee:b.lateFee;
-   return '<li><span><b>'+esc(b.name)+'</b> with '+esc(P[b.pid].first)+', '+esc(F.when(b.start))+' <em class="adm-tag adm-tag-n">'+(b.noShow?'no-show':'late cancel')+'</em></span><b class="adm-amt">'+F.money(fee)+'</b><button type="button" class="adm-cx adm-cx-ok" data-fee="'+b.id+'">Charge</button><button type="button" class="adm-cx" data-waive="'+b.id+'">Waive</button></li>'}).join('')+'</ul><p class="adm-muted">The practitioner decides. Waive for illness, emergencies, hardship or a first slip.</p>':'')+
-  (owe.length?'<h3 class="adm-day">Outstanding</h3><ul class="adm-up">'+owe.map(function(x){return '<li><span><b>'+esc(x.name)+'</b> · '+PK[x.kind].toLowerCase()+' for '+esc(P[x.pid].first)+(x.status==='failed'?' <em class="adm-tag adm-tag-p">card declined</em>':' <em class="adm-tag adm-tag-n">no card</em>')+'</span><b class="adm-amt">'+F.money(x.amount)+'</b><button type="button" class="adm-cx adm-cx-ok" data-paylink="'+x.id+'">Resend link</button><button type="button" class="adm-cx adm-cx-ok" data-paidin="'+x.id+'">Paid in person</button></li>'}).join('')+'</ul>':'')+
+   return '<li><span><b>'+esc(b.name)+'</b> with '+esc(P[b.pid].first)+', '+esc(F.when(b.start))+' <em class="adm-tag adm-tag-n">'+(b.noShow?'missed session':'short-notice cancel')+'</em></span><b class="adm-amt">'+F.money(fee)+'</b><button type="button" class="adm-cx adm-cx-ok" data-fee="'+b.id+'">Charge</button><button type="button" class="adm-cx" data-waive="'+b.id+'">Waive</button></li>'}).join('')+'</ul><p class="adm-muted">The practitioner decides. Waive for illness, emergencies, hardship or a first slip.</p>':'')+
+  (owe.length?'<h3 class="adm-day">Outstanding</h3><ul class="adm-up">'+owe.map(function(x){return '<li><span><b>'+esc(x.name)+'</b> · '+PK[x.kind].toLowerCase()+' for '+esc(P[x.pid].first)+(x.status==='failed'?' <em class="adm-tag adm-tag-p">didn’t go through</em>':' <em class="adm-tag adm-tag-n">no card</em>')+'</span><b class="adm-amt">'+F.money(x.amount)+'</b><button type="button" class="adm-cx adm-cx-ok" data-paylink="'+x.id+'">Resend link</button><button type="button" class="adm-cx adm-cx-ok" data-paidin="'+x.id+'">Paid in person</button></li>'}).join('')+'</ul>':'')+
   '<h3 class="adm-day">Recent</h3>'+(done.length?'<ul class="adm-up">'+done.slice(0,5).map(function(x){
    return '<li><span><b>'+esc(x.name)+'</b> · '+PK[x.kind]+(x.status==='refunded'?' (refunded)':x.status==='claimed'?' (to client’s bank)':'')+' · '+esc(P[x.pid].first)+'</span><b class="adm-amt'+(x.kind==='refund'?' neg':'')+'">'+(x.kind==='refund'?'−':'')+F.money(x.amount)+'</b>'+(x.status==='paid'&&x.kind!=='refund'?'<button type="button" class="adm-cx" data-refund="'+x.id+'">Refund</button>':x.kind==='medicare'?'':'<a class="adm-cx adm-cx-ok" href="pay.html#p='+x.id+'" target="_blank" rel="noopener">Receipt</a>')+'</li>'}).join('')+'</ul>':'<p class="adm-empty">No payments yet.</p>')}
 
@@ -670,7 +670,7 @@ document.addEventListener('click',function(e){var b=e.target.closest('button');i
  if('quick' in d){var pool=api.upcoming(14).filter(function(x){return x.seeded&&x.start.getTime()-H.now()>api.state().settings.minNotice*36e5+36e5&&H.P[x.pid].psych}).slice(0,14),a=pool[Math.floor(Math.random()*pool.length)];if(a){api.simulateCancel(a.pid,a.start);setTimeout(function(){$('admOffers').scrollIntoView({behavior:'smooth',block:'start'})},500)}return}
  if(d.race){var r=api.race(d.race);if(r){var win=r.filter(function(x){return x.ok})[0];toast(r.length+' people tapped within the same second. Only '+(win?wl(win.offer.winner).name:'one')+' got it.')}return}
  if(d.link){var k=d.link[0],tk=d.link.slice(2),res;
-  if(k==='c'){res=api.claim(tk,'tap');toast(res.ok?'Claimed. Booked in and confirmed by text.':'Too late, someone else got it.')}
+  if(k==='c'){res=api.claim(tk,'tap');toast(res.ok?'Claimed. Booked in and confirmed by text.':'Already filled by someone else on the list. They’ve had a kind note.')}
   else if(k==='r'){res=api.confirmAppt(tk);toast(res.ok?'Confirmed. One less person to chase.':'Already answered.')}
   else if(k==='x'){res=api.cantMake(tk);toast(res.ok?'Cancelled from the reminder. Offering the time to the waitlist now.':'Already answered.')}
   else if(k==='k'){res=api.keep(tk);toast(res.ok?'Still keen. They stay on the waitlist.':'Already answered.')}
@@ -681,7 +681,7 @@ document.addEventListener('click',function(e){var b=e.target.closest('button');i
   else if(k==='i')window.open('intake.html#t='+tk,'_blank');
   return}
  if(d.refopen){refDrawer(d.refopen);return}
- if(d.fee){var px=api.chargeFee(d.fee);toast(px&&px.status==='paid'?'Fee charged. Receipt texted.':px?'Card declined. Payment link texted.':'Already decided.');return}
+ if(d.fee){var px=api.chargeFee(d.fee);toast(px&&px.status==='paid'?'Fee charged. Receipt texted.':px?'Payment didn’t go through. Payment link texted.':'Already decided.');return}
  if(d.waive){var why=prompt('Reason for waiving (for the records)','Unwell');if(why!==null){api.waiveFee(d.waive,why);toast('Fee waived.')}return}
  if(d.paylink){api.resendPay(d.paylink);toast('Payment link texted again.');return}
  if(d.paidin){api.markPaid(d.paidin,'in person');toast('Marked as paid.');return}
@@ -690,7 +690,7 @@ document.addEventListener('click',function(e){var b=e.target.closest('button');i
  if(d.refplan){api.updateReferral(d.refplan,{planIn:true});toast('Plan marked as received.');return}
  if(d.refclose){if(confirm('Close this referral?')){api.updateReferral(d.refclose,{status:'closed'});$('admPerson').close()}return}
  if(d.unpause){api.unpause(d.unpause);toast('Back on the active waitlist.');return}
- if(d.yes){var res2=api.claim(d.yes,'yes');toast(res2.ok?'YES received. Booked in.':'Too late, someone else got it.');return}
+ if(d.yes){var res2=api.claim(d.yes,'yes');toast(res2.ok?'YES received. Booked in.':'Already filled by someone else on the list. They’ve had a kind note.');return}
  if(d.ff){api.forward(Number(d.ff)+1);return}
  if(d.approve){api.approve(d.approve);return}
  if(d.dismiss){api.dismiss(d.dismiss);return}

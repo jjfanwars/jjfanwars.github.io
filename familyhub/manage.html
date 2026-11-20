@@ -560,9 +560,9 @@ function list(){api.myBookings().then(function(bs){
 function show(b){
  box.onclick=null;
  if(!b){box.innerHTML='<h2 class="fd-q">We couldn’t find that booking</h2><p class="fd-sub">The link may be old. Call us on <a href="tel:0491184788">0491 184 788</a> and we’ll sort it out.</p>';return}
- if(b.status==='cancelled'){box.innerHTML='<h2 class="fd-q">This appointment was cancelled</h2>'+appt(b)+(b.lateFee?'<p class="mg-warn">'+svg('info')+(b.feeWaived?(b.waivedWhy==='refilled'?'We filled your time from the waitlist, so there’s no late fee.':'The late fee has been waived.'):b.feeCharged?'This was a late cancellation, so the '+F.money(b.lateFee)+' fee was charged under the policy.':'This was a late cancellation, so the '+F.money(b.lateFee)+' fee applies unless we fill your time.')+'</p>':'')+'<div class="mg-acts mg-gap"><a class="btn btn-primary" href="book.html">Book a new time</a></div>';return}
+ if(b.status==='cancelled'){box.innerHTML='<h2 class="fd-q">This appointment was cancelled</h2>'+appt(b)+(b.lateFee?'<p class="mg-warn">'+svg('info')+(b.feeWaived?(b.waivedWhy==='refilled'?'We filled your time from the waitlist, so there’s no late fee.':'The late fee has been waived.'):b.feeCharged?'A '+F.money(b.lateFee)+' cancellation fee was charged under our policy. If that’s hard for you right now, give us a call.':'As this was within '+(b.policy?b.policy.hrs:24)+' hours, a '+F.money(b.lateFee)+' cancellation fee may apply. If we can offer your time to someone else, there’s no fee.')+'</p>':'')+'<div class="mg-acts mg-gap"><a class="btn btn-primary" href="book.html">Book a new time</a></div>';return}
  if(new Date(b.start).getTime()+(b.len||P[b.pid].len)*6e4<H.now()){var pp=api.payments().filter(function(x){return x.bid===b.id&&x.kind!=='medicare'});
-  box.innerHTML='<h2 class="fd-q" tabindex="-1">'+(b.noShow?'This session was missed':'This session has finished')+'</h2>'+appt(b)+(pp.length?'<div class="mg-pay"><h3>Payments</h3><ul>'+pp.map(function(x){var due=x.status==='due'||x.status==='failed';return '<li'+(due?' class="due"':'')+'><span>'+({deposit:'Deposit',session:'Session fee',late:'Late fee',noshow:'Missed session fee',refund:'Refund'}[x.kind])+(x.status==='refunded'?' (refunded)':x.status==='void'?' (cancelled)':'')+'</span><b>'+F.money(x.amount)+'</b>'+(x.status==='void'?'':'<a href="pay.html#p='+x.id+'">'+(due?'Pay now':'Receipt')+'</a>')+'</li>'}).join('')+'</ul></div>':'')+
+  box.innerHTML='<h2 class="fd-q" tabindex="-1">'+(b.noShow?'We missed you at this session':'This session has finished')+'</h2>'+appt(b)+(pp.length?'<div class="mg-pay"><h3>Payments</h3><ul>'+pp.map(function(x){var due=x.status==='due'||x.status==='failed';return '<li'+(due?' class="due"':'')+'><span>'+({deposit:'Deposit',session:'Session fee',late:'Cancellation fee',noshow:'Missed appointment fee',refund:'Refund'}[x.kind])+(x.status==='refunded'?' (refunded)':x.status==='void'?' (cancelled)':'')+'</span><b>'+F.money(x.amount)+'</b>'+(x.status==='void'?'':'<a href="pay.html#p='+x.id+'">'+(due?'Pay now':'Receipt')+'</a>')+'</li>'}).join('')+'</ul></div>':'')+
    '<div class="mg-acts mg-gap"><a class="btn btn-primary" href="book.html#p='+b.pid+'">Book another session</a></div>';return}
  var pol=polOf(b),h=hrsLeft(b),late=h<pol.hrs,ser=api.seriesOf(b).filter(function(x){return x.status==='booked'}),ref=b.referral,onWl=api.onWaitlistFor(b.token);
  var freeBy=new Date(new Date(b.start).getTime()-pol.hrs*36e5);
@@ -574,13 +574,13 @@ function show(b){
  var intake=ik?(ik.status==='done'?'<p class="mg-note">'+svg('check')+'Your intake form is done. <a href="intake.html#t='+ik.tok+'">Review it</a></p>':
   '<div class="bk-intake"><div>'+svg('file')+'<p><b>Your intake form'+(ik.status==='started'?' is half done':'')+'</b><span>About 5 minutes. Please finish it before your first session.</span></p></div><a class="btn btn-primary btn-sm" href="intake.html#t='+ik.tok+'">'+(ik.status==='started'?'Finish it':'Fill it in')+'</a></div>'):'';
  var pays=api.payments().filter(function(x){return x.bid===b.id||ser.some(function(s){return s.id===x.bid})}),card=api.cardOf(b.phone);
- var KIND={deposit:'Deposit',session:'Session fee',late:'Late cancellation fee',noshow:'Missed session fee',refund:'Refund',medicare:'Medicare rebate claimed'};
+ var KIND={deposit:'Deposit',session:'Session fee',late:'Short-notice cancellation fee',noshow:'Missed appointment fee',refund:'Refund',medicare:'Medicare rebate claimed'};
  var payBox=pays.length||card?'<div class="mg-pay"><h3>Payments</h3>'+(pays.length?'<ul>'+pays.map(function(x){var due=x.status==='due'||x.status==='failed';
-   return '<li'+(due?' class="due"':'')+'><span>'+KIND[x.kind]+' · '+esc(F.day(x.at))+(x.status==='refunded'?' (refunded)':x.status==='failed'?' (card declined)':x.status==='void'?' (cancelled, time refilled)':'')+'</span><b>'+F.money(x.amount)+'</b>'+(x.kind==='medicare'?'':'<a href="pay.html#p='+x.id+'">'+(due?'Pay now':'Receipt')+'</a>')+'</li>'}).join('')+'</ul>':'')+
+   return '<li'+(due?' class="due"':'')+'><span>'+KIND[x.kind]+' · '+esc(F.day(x.at))+(x.status==='refunded'?' (refunded)':x.status==='failed'?' (payment didn’t go through)':x.status==='void'?' (cancelled, time refilled)':'')+'</span><b>'+F.money(x.amount)+'</b>'+(x.kind==='medicare'?'':'<a href="pay.html#p='+x.id+'">'+(due?'Pay now':'Receipt')+'</a>')+'</li>'}).join('')+'</ul>':'')+
   (card?'<p>Card ending '+esc(card.last4)+' on file. Session fees are charged after each session and you get a receipt by text.</p>':'')+'</div>':'';
  box.innerHTML='<h2 class="fd-q" tabindex="-1">Hi '+esc(b.name.split(' ')[0])+', you’re booked in</h2>'+appt(b)+join+intake+plan+
   '<div class="mg-acts"><button type="button" class="btn btn-primary" data-move>'+svg('move')+'Move to another time</button><button type="button" class="btn btn-outline" data-cancel>'+svg('x')+'Can’t make it</button></div>'+
-  '<p class="mg-pol">'+svg('shield')+(late?'<span>This is less than '+pol.hrs+' hours away. '+(pol.fee?'If you cancel now, the '+F.money(pol.fee)+' late fee applies unless we fill your time from the waitlist.':'Please still tell us if you can’t come, so someone else can have the time.')+'</span>':
+  '<p class="mg-pol">'+svg('shield')+(late?'<span>This is within '+pol.hrs+' hours. '+(pol.fee?'If you need to cancel now, a '+F.money(pol.fee)+' fee may apply, but if we can offer your time to someone else there’s no fee.':'Please still tell us if you can’t come, so someone else can have the time.')+'</span>':
    '<span>Free to move or cancel until <b>'+esc(F.when(freeBy))+'</b>.</span>')+'</p>'+
   (ser.length>1?'<div class="mg-ser"><h3>'+svg('repeat')+'Your regular sessions</h3><ol>'+ser.map(function(x){return '<li'+(x.id===b.id?' class="on"':'')+'><a href="#t='+x.token+'"><span>'+x.series.n+'</span>'+esc(F.day(x.start,1))+', '+F.time(new Date(x.start))+'</a></li>'}).join('')+'</ol></div>':'')+
   cal(ser.length>1?ser:[b])+payBox+
@@ -605,7 +605,7 @@ function move(b){
     '<div class="mg-acts"><button type="button" class="btn btn-primary" data-yes>'+svg('check')+'Yes, move it</button><button type="button" class="btn btn-outline" data-no>Pick another time</button></div>';
    box.querySelector('[data-no]').onclick=function(){move(b)};
    box.querySelector('[data-yes]').onclick=function(){this.disabled=true;api.reschedule(b.token,t).then(function(r){
-    if(!r.ok){box.insertAdjacentHTML('beforeend','<p class="bk-err">Someone just took that time. Pick another.</p>');setTimeout(function(){move(b)},1400);return}
+    if(!r.ok){box.insertAdjacentHTML('beforeend','<p class="bk-err">That time has just been booked. Please choose another one.</p>');setTimeout(function(){move(b)},1400);return}
     box.innerHTML='<div class="bk-done"><span class="bk-tick">'+svg('check')+'</span><h2 class="fd-q">Moved</h2><p>We’ve texted you the new time.</p></div>'+appt(r.booking)+'<p class="bk-demo"><a href="#t='+b.token+'">Back to my booking</a></p>'})}}})}
 
 function cancel(b){
@@ -613,7 +613,7 @@ function cancel(b){
  box.innerHTML='<button type="button" class="fd-back" data-b>'+svg('back')+'Back</button><h2 class="fd-q">Can’t make it?</h2><p class="fd-sub">No worries. Letting us know means someone on the waitlist can have your time.</p>'+appt(b)+
   (rest.length>1?'<div class="fd-group"><h3>Which sessions?</h3><div class="fd-pills"><button type="button" class="fd-pill" data-all="0" aria-pressed="true">Just this one</button><button type="button" class="fd-pill" data-all="1" aria-pressed="false">This and the '+(rest.length-1)+' after it</button></div></div>':'')+
   '<div class="fd-group"><h3>What’s happened? (optional)</h3><div class="fd-pills">'+['Unwell','Something came up','Feeling better','Booked by mistake','Other'].map(function(r){return '<button type="button" class="fd-pill" data-r="'+r+'" aria-pressed="false">'+r+'</button>'}).join('')+'</div></div>'+
-  (late?'<p class="mg-warn">'+svg('info')+(pol.fee?'This is less than '+pol.hrs+' hours away, so the '+F.money(pol.fee)+' late fee applies. If we fill your time from the waitlist, there’s no fee.':'This is less than '+pol.hrs+' hours away. Thanks for still letting us know.')+'</p>':'')+
+  (late?'<p class="mg-warn">'+svg('info')+(pol.fee?'This is within '+pol.hrs+' hours, so a '+F.money(pol.fee)+' fee may apply. If we can offer your time to someone else, there’s no fee. We understand things come up.':'This is within '+pol.hrs+' hours. Thanks for letting us know.')+'</p>':'')+
   '<div class="mg-acts mg-gap"><button type="button" class="btn btn-primary mg-danger" data-yes>'+svg('x')+'Cancel it</button><button type="button" class="btn btn-outline" data-mv>Move it instead</button></div>';
  box.querySelector('[data-b]').onclick=function(){show(b)};
  box.querySelector('[data-mv]').onclick=function(){move(b)};
@@ -622,7 +622,7 @@ function cancel(b){
   if(a){all=a.dataset.all==='1';[].forEach.call(box.querySelectorAll('[data-all]'),function(x){x.setAttribute('aria-pressed',x===a)})}};
  box.querySelector('[data-yes]').onclick=function(){this.disabled=true;(all?api.cancelSeries(b.token,reason):api.cancel(b.token,reason)).then(function(r){box.onclick=null;
   box.innerHTML='<div class="bk-done"><span class="bk-tick">'+svg('heart')+'</span><h2 class="fd-q">'+(all?'Cancelled '+r.n+' sessions.':'Cancelled.')+' Thank you.</h2><p>Letting us know means someone on our waitlist can have your time. We’ve just texted them.</p></div>'+
-   (r.fee?'<p class="mg-warn">'+svg('info')+'As this was inside '+pol.hrs+' hours, the '+F.money(r.fee)+' late fee applies unless your time is refilled. We’ll text you either way.</p>':'')+
+   (r.fee?'<p class="mg-warn">'+svg('info')+'As this was within '+pol.hrs+' hours, a '+F.money(r.fee)+' fee may apply. If we can offer your time to someone else, there’s no fee. We’ll let you know either way.</p>':'')+
    '<div class="mg-acts mg-gap"><a class="btn btn-primary" href="book.html">Book a new time</a></div><p class="bk-demo">Demo: the <a href="admin.html" target="_blank" rel="noopener">Hub dashboard</a> shows the offer going out.</p>'})}}
 
 function route(){var t=tok();if(t)api.booking(t).then(show);else list()}

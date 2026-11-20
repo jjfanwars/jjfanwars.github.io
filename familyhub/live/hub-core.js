@@ -171,7 +171,7 @@ function sendRound(o){var p=P[o.pid],c=candidates(o).slice(0,S.settings.batch);
  if(!c.length){o.status='unfilled';feed('none','No one on the waitlist fits '+p.first+', '+fmtWhen(o.start)+'. It’s back on the online booking page.',{oid:o.id});return}
  o.status='open';o.round++;o.expires=now()+S.settings.expiry*6e4;
  c.forEach(function(w){var tok=uid(8);o.sent.push({wid:w.id,tok:tok,round:o.round,at:now(),state:'sent'});w.offers=(w.offers||[]).concat(now());
-  sms(w.phone,w.name,'Hi '+w.name.split(' ')[0]+', it’s Surf Coast Family Hub. We’ve had a cancellation with '+p.first+' '+onDay(o.start)+' at '+fmtTime(o.start)+'. Want it? Tap to grab it: sfch.au/c/'+tok+' (first in gets it, link expires '+fmtTime(o.expires)+'). Reply STOP to opt out.','out',{oid:o.id,wid:w.id,tok:tok,kind:'offer'})});
+  sms(w.phone,w.name,'Hi '+w.name.split(' ')[0]+', it’s Surf Coast Family Hub. A time has come up with '+p.first+' '+onDay(o.start)+' at '+fmtTime(o.start)+'. If you’d like it, tap here to book: sfch.au/c/'+tok+' We’ve let a few people on the waitlist know, so it’s booked in the order people reply. The link works until '+fmtTime(o.expires)+'. No need to reply if it doesn’t suit. Reply STOP to leave the list.','out',{oid:o.id,wid:w.id,tok:tok,kind:'offer'})});
  feed('offer','Offered '+p.first+', '+fmtWhen(o.start)+' ('+o.len+' min free) to '+c.map(function(w){return w.name}).join(', ')+(o.round>1?' (round '+o.round+')':'')+'.',{oid:o.id})}
 
 // ---------- reminders: confirm, or "can't make it" ----------
@@ -204,7 +204,7 @@ function freshTick(){if(!S.settings.fresh||inQuiet())return false;var ch=false,D
   if(w.check){if(now()-w.check.at>S.settings.freshGrace*D){w.paused=now();feed('none','Paused '+w.name+' on the waitlist: no reply to the check-in after '+S.settings.freshGrace+' days.');ch=true}return}
   var days=Math.round((now()-(w.checked||w.since))/D);if(days<S.settings.freshDays)return;
   var tok=uid(8);w.check={tok:tok,at:now()};
-  sms(w.phone,w.name,'Hi '+fn+', it’s Surf Coast Family Hub. You’ve been on our waitlist for '+Math.round((now()-w.since)/D)+' days. Still keen for a spot? Tap to keep your place: sfch.au/k/'+tok+' If we don’t hear back within a week, we’ll pause your place. Reply STOP to leave the list.','out',{wid:w.id,tok:tok,kind:'check'});
+  sms(w.phone,w.name,'Hi '+fn+', it’s Surf Coast Family Hub. You’ve been on our waitlist for '+Math.round((now()-w.since)/D)+' days. Still keen for a spot? Tap to keep your place: sfch.au/k/'+tok+' If we don’t hear back within a week, we’ll pause your place for now, and you can come back any time. Reply STOP to leave the list.','out',{wid:w.id,tok:tok,kind:'check'});
   feed('wait','Checked in with '+w.name+' (on the list '+Math.round((now()-w.since)/D)+' days).');ch=true});
  return ch}
 
@@ -228,9 +228,9 @@ function claim(tok,via){
  var w=S.waitlist.filter(function(x){return x.id===s.wid})[0],p=P[o.pid];
  if(s.state==='won')return {ok:true,already:true,offer:o,booking:S.bookings.filter(function(b){return b.phone===w.phone&&b.status==='booked'&&slotKey(b.pid,b.start)===o.key})[0]||null};   // tapped their link again
  if(via==='yes')sms(w.phone,w.name,'YES','in',{oid:o.id,wid:w.id});
- if(S.blocked[o.key]&&o.status==='open'){o.status='unfilled';feed('none','Withdrew the offer for '+p.first+', '+fmtWhen(o.start)+': '+p.first+' is unavailable that day.',{oid:o.id})}
+ if(S.blocked[o.key]&&o.status==='open'){o.status='unfilled';feed('none','Withdrew the offer for '+p.first+', '+fmtWhen(o.start)+': '+p.first+' isn’t working that day.',{oid:o.id})}
  if(o.status!=='open'||s.state==='expired'){
-  if(s.state!=='late'&&s.state!=='lost'){s.state='late';sms(w.phone,w.name,'Thanks '+w.name.split(' ')[0]+', that spot’s just been filled. You’re still on our list and we’ll text you next time one comes up.','out',{oid:o.id,wid:w.id,kind:'taken'})}
+  if(s.state!=='late'&&s.state!=='lost'){s.state='late';sms(w.phone,w.name,'Thanks '+w.name.split(' ')[0]+'. That time has now been filled, so there’s nothing you need to do. You’re still on our waitlist and we’ll text you when another time comes up.','out',{oid:o.id,wid:w.id,kind:'taken'})}
   save();return {ok:false,reason:'taken',offer:o}}
  // In the real system this is one database transaction plus Halaxy's fail-on-double-booking, so two taps can never both win.
  o.status='filled';o.winner=w.id;o.filledAt=now();s.state='won';w.booked=true;
@@ -241,7 +241,7 @@ function claim(tok,via){
   if(S.settings.intake&&!S.bookings.some(function(x){return x!==b&&normPhone(x.phone)===normPhone(w.phone)}))startIntake(b);
   sms(w.phone,w.name,'You’re booked '+onDay(o.start)+' at '+fmtTime(o.start)+' with '+p.first+' at 16 Princes Tce, Jan Juc. Need to change it? Manage your booking: sfch.au/m/'+b.token,'out',{oid:o.id,wid:w.id,kind:'confirm'})}
  o.sent.forEach(function(x){if(x!==s&&x.state==='sent'){x.state='lost';var ww=S.waitlist.filter(function(q){return q.id===x.wid})[0];
-  sms(ww.phone,ww.name,'Thanks '+ww.name.split(' ')[0]+', that spot’s just been filled. You’re still on our list and we’ll text you next time one comes up.','out',{oid:o.id,wid:ww.id,kind:'taken'})}});
+  sms(ww.phone,ww.name,'Thanks '+ww.name.split(' ')[0]+'. That time has now been filled, so there’s nothing you need to do. You’re still on our waitlist and we’ll text you when another time comes up.','out',{oid:o.id,wid:ww.id,kind:'taken'})}});
  var mins=Math.max(1,Math.round((now()-o.created)/6e4));
  S.stats.filled++;S.stats.value+=VALUE[o.pid]||200;S.stats.mins.push(mins);
  feed('filled','Filled: '+p.first+', '+fmtWhen(o.start)+' → '+w.name+(old?' (moved up from '+fmtWhen(old)+')':'')+' (round '+o.round+', '+mins+' min after it opened).',{oid:o.id,pid:o.pid});
@@ -265,7 +265,7 @@ function lenOf(pid,need){var p=P[pid];return (p.lens||{})[need]||p.len}
 function feeAmt(pid){return VALUE[pid]||200}
 function lateFee(pid){var f=S.settings.lateFee,v=feeAmt(pid);return f==='full'?v:f==='half'?Math.round(v/2):0}
 function policyText(pid){var s=S.settings,f=lateFee(pid);
- return 'Free to move or cancel up to '+s.policyHrs+' hours before. '+(f?'Later than that, or if you miss the session, '+(s.lateFee==='full'?'the full fee':'half the fee')+' ('+money(f)+') applies. If we fill your time from the waitlist, there’s no fee.':'If you can’t make it after that, please still tell us so someone on the waitlist can have the time.')}
+ return 'You’re welcome to move or cancel up to '+s.policyHrs+' hours before, at no cost. '+(f?'With less notice, or if you can’t make it on the day, '+(s.lateFee==='full'?'the session fee':'half the session fee')+' ('+money(f)+') may be charged. If we can offer your time to someone else, there’s no fee, and we always understand that things come up.':'If something comes up after that, please still let us know so someone on the waitlist can have the time.')}
 function isLate(start){return new Date(start).getTime()-now()<S.settings.policyHrs*36e5}
 function isFree(pid,d){return d.getTime()>now()+3*36e5&&slotState(pid,d)==='free'&&!openOfferFor(pid,d)}
 function doCancel(b,reason,noRefill){
@@ -303,20 +303,20 @@ function intakeByTok(tok){return S.bookings.filter(function(b){return b.intake&&
 
 // ---------- payments ----------
 // Money goes to each practitioner's own merchant account (they're separate businesses); the hub just runs it.
-// Demo: a pretend payment provider. Cards ending 0002 are declined, so the failed-payment path can be shown.
+// Demo: a pretend payment provider. Cards ending 0002 don't go through, so that path can be shown.
 var REBATE={adi:149.05,hannah:149.05,melinda:149.05,ellie:101.55,maddy:101.55,'michelle-ferris':89.50};
 function rebateFor(b){return b.plan==='yes'&&b.mode!=='couples'?REBATE[b.pid]||0:0}
 function cardFor(phone){return S.cards[normPhone(phone)]||null}
 function paysFor(bid){return S.pay.filter(function(x){return x.bid===bid})}
 function paidFor(bid,kind){return paysFor(bid).filter(function(x){return x.status==='paid'&&(!kind||x.kind===kind)}).reduce(function(s,x){return s+x.amount},0)}
-var PAYK={deposit:'Deposit',session:'Session fee',late:'Late cancellation fee',noshow:'Missed session fee',refund:'Refund',medicare:'Medicare rebate claim'};
+var PAYK={deposit:'Deposit',session:'Session fee',late:'Short-notice cancellation fee',noshow:'Missed appointment fee',refund:'Refund',medicare:'Medicare rebate claim'};
 function payLog(b,kind,amount,status,extra){var x=Object.assign({id:'p'+uid(9),bid:b.id,pid:b.pid,name:b.name,phone:b.phone,kind:kind,amount:Math.round(amount*100)/100,status:status,at:now(),last4:(cardFor(b.phone)||{}).last4||''},extra||{});
  S.pay.unshift(x);if(S.pay.length>400)S.pay.length=400;return x}
 function charge(b,kind,amount,why){if(!(amount>0))return null;var c=cardFor(b.phone),fn=b.name.split(' ')[0],p=P[b.pid];
- if(!c){var due=payLog(b,kind,amount,'due');sms(b.phone,b.name,'Hi '+fn+', your '+PAYK[kind].toLowerCase()+' of '+money(due.amount)+' for '+p.first+' ('+fmtDay(b.start,1)+') is ready to pay: sfch.au/p/'+due.id,'out',{kind:'pay'});
+ if(!c){var due=payLog(b,kind,amount,'due');sms(b.phone,b.name,'Hi '+fn+', your '+PAYK[kind].toLowerCase()+' of '+money(due.amount)+' for '+p.first+' ('+fmtDay(b.start,1)+') is ready to pay whenever suits: sfch.au/p/'+due.id,'out',{kind:'pay'});
   feed('pay',PAYK[kind]+' of '+money(due.amount)+' for '+b.name+' is due. Payment link sent.');return due}
- if(c.last4==='0002'){var f=payLog(b,kind,amount,'failed',{why:'Card declined'});sms(b.phone,b.name,'Hi '+fn+', we couldn’t take '+money(f.amount)+' for your session with '+p.first+'. Your card was declined. Please pay here: sfch.au/p/'+f.id+' or call us on 0491 184 788.','out',{kind:'pay'});
-  feed('payfail','Card declined: '+money(f.amount)+' from '+b.name+' ('+PAYK[kind].toLowerCase()+'). Payment link sent.');return f}
+ if(c.last4==='0002'){var f=payLog(b,kind,amount,'failed',{why:'Payment didn’t go through'});sms(b.phone,b.name,'Hi '+fn+', the payment of '+money(f.amount)+' for your session with '+p.first+' didn’t go through. These things happen. When it suits, you can pay here: sfch.au/p/'+f.id+' or give us a call on 0491 184 788.','out',{kind:'pay'});
+  feed('payfail','Payment didn’t go through: '+money(f.amount)+' from '+b.name+' ('+PAYK[kind].toLowerCase()+'). Payment link sent.');return f}
  var x=payLog(b,kind,amount,'paid',{why:why||''});
  sms(b.phone,b.name,'Paid: '+money(x.amount)+' '+PAYK[kind].toLowerCase()+' to '+p.name+(why?' ('+why+')':'')+', card ending '+c.last4+'. Receipt: sfch.au/p/'+x.id,'out',{kind:'pay'});
  feed('pay','Charged '+b.name+' '+money(x.amount)+' ('+PAYK[kind].toLowerCase()+') to '+p.first+'’s account.');return x}
@@ -333,7 +333,7 @@ function seedPay(){var t=now(),H=36e5;
   delete S.taken[slotKey(pid,b.start)];if(card)S.cards[normPhone(phone)]={last4:card,brand:'Visa',exp:'08/28'};return b}
  var a=past('hannah',26,'Olivia K.','0400 000 401','yes','4242');a.billed=t-25*H;a.attended=true;
  var x=payLog(a,'session',245,'paid');x.at=t-25*H;var m=payLog(a,'medicare',149.05,'claimed',{why:'Paid by Medicare into the client’s bank account'});m.at=t-25*H;
- var b=past('ellie',75,'Tara N.','0400 000 402','no','0002');b.billed=t-74*H;b.attended=true;var f=payLog(b,'session',170,'failed',{why:'Card declined'});f.at=t-74*H;
+ var b=past('ellie',75,'Tara N.','0400 000 402','no','0002');b.billed=t-74*H;b.attended=true;var f=payLog(b,'session',170,'failed',{why:'Payment didn’t go through'});f.at=t-74*H;
  var c=past('maddy',20,'Lena F.','0400 000 403','yes','4242');c.status='cancelled';c.reason='Something came up';c.cancelledAt=t-27*H;c.late=true;c.lateFee=200;
  var d=past('adi',50,'Chris M.','0400 000 404','yes','4242');d.noShow=true;d.billed=t-49*H;d.noShowFee=245}
 
@@ -385,7 +385,7 @@ function inbound(d){
  var src={sms:'Text',email:'Email',voicemail:'Voicemail',call:'Missed call',form:'Website enquiry'}[d.channel];
  if(c.urgent){th.urgent=true;
   feed('urgent','Urgent: '+src.toLowerCase()+' from '+th.name+' may be a safety concern. Call them now.',{tid:th.id});
-  if(S.settings.safetyReply&&(th.phone||th.email))threadOut(th,th.phone?'sms':'email','Thanks for reaching out'+(fn&&!/^0/.test(fn)?', '+fn:'')+'. We’ve asked someone from our team to call you as soon as possible. Our messages aren’t monitored around the clock, so if you’re in danger or might hurt yourself, please call 000 now. You can talk to someone any time on Lifeline 13 11 14, or PANDA 1300 726 306 (weekdays and some evenings).','auto');
+  if(S.settings.safetyReply&&(th.phone||th.email))threadOut(th,th.phone?'sms':'email','Thank you for reaching out'+(fn&&!/^0/.test(fn)?', '+fn:'')+'. We’re glad you did. Someone from our team will call you as soon as they can. Our messages aren’t checked around the clock, so if you’re in danger or might hurt yourself, please call 000 now. You can talk to someone any time on Lifeline 13 11 14, or PANDA 1300 726 306 (weekdays and some evenings).','auto');
   return th}
  feed('inbox',src+' from '+th.name+(th.match.length?'':' (new contact)')+': '+c.label.toLowerCase()+'.',{tid:th.id});
  var auto=S.settings.autoReply==='admin';
@@ -548,7 +548,7 @@ var api={
   if(r.bid){var b=bookingById(r.bid);if(b&&b.status==='booked')res=doCancel(b,'Can’t make it (reminder)')}
   else{S.freed[r.key]=1;res.late=isLate(r.start);feed('cancel','Can’t make it: '+r.name+' with '+P[r.pid].first+', '+fmtWhen(r.start)+' (tapped the reminder).',{pid:r.pid});slotFreed(r.pid,r.start,'cancelled',r.phone)}
   r.state='cancelled';r.repAt=now();
-  sms(r.phone,r.name,'Thanks for letting us know, '+r.name.split(' ')[0]+'. You’re cancelled'+(res.fee?'. As it’s inside '+S.settings.policyHrs+' hours, the '+money(res.fee)+' late fee applies unless we fill your time.':', at no cost.')+' Book again any time: sfch.au/book','out',{kind:'remind'});
+  sms(r.phone,r.name,'Thanks for letting us know, '+r.name.split(' ')[0]+'. You’re cancelled'+(res.fee?'. As it’s within '+S.settings.policyHrs+' hours, a '+money(res.fee)+' cancellation fee may apply, but if we can offer your time to someone else there’s no fee.':', at no cost.')+' Book again any time: sfch.au/book','out',{kind:'remind'});
   save();return {ok:true,late:res.late,fee:res.fee}},
  keep:function(tok){var w=S.waitlist.filter(function(x){return x.check&&x.check.tok===tok})[0];if(!w)return {ok:false};
   w.checked=now();w.check=null;w.paused=0;sms(w.phone,w.name,'Still keen (tapped the link)','in',{wid:w.id});
@@ -589,7 +589,7 @@ var api={
   if(b&&x.kind==='session')claimMedicare(b);save();return {ok:true}},
  markPaid:function(id,how){var x=S.pay.filter(function(p){return p.id===id})[0];if(!x||(x.status!=='due'&&x.status!=='failed'))return;x.status='paid';x.paidAt=now();x.via=how||'in person';x.last4='';
   var b=bookingById(x.bid);if(b&&x.kind==='session')claimMedicare(b);feed('pay','Marked '+money(x.amount)+' from '+x.name+' as paid '+(how||'in person')+'.');save()},
- resendPay:function(id){var x=S.pay.filter(function(p){return p.id===id})[0];if(!x)return;sms(x.phone,x.name,'Hi '+x.name.split(' ')[0]+', a reminder that '+money(x.amount)+' is still to pay for your session with '+P[x.pid].first+': sfch.au/p/'+x.id,'out',{kind:'pay'});feed('pay','Resent the payment link to '+x.name+'.');save()},
+ resendPay:function(id){var x=S.pay.filter(function(p){return p.id===id})[0];if(!x)return;sms(x.phone,x.name,'Hi '+x.name.split(' ')[0]+', just a gentle reminder about the '+money(x.amount)+' for your session with '+P[x.pid].first+'. You can pay here whenever suits: sfch.au/p/'+x.id+' If anything’s making it hard, give us a call and we’ll work it out.','out',{kind:'pay'});feed('pay','Resent the payment link to '+x.name+'.');save()},
  refund:function(id,why){var x=S.pay.filter(function(p){return p.id===id})[0];var r=refundPay(x,why);save();return r},
  feesToDecide:function(pid){return S.bookings.filter(function(b){return (b.lateFee&&b.status==='cancelled'||b.noShow&&b.noShowFee)&&!b.feeWaived&&!b.feeCharged&&(!pid||b.pid===pid)})},
  chargeFee:function(bid){var b=bookingById(bid);if(!b||b.feeCharged||b.feeWaived)return null;var fee=b.noShow?b.noShowFee:b.lateFee,dep=paidFor(b.id,'deposit');b.feeCharged=now();
