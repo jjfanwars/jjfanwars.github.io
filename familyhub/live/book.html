@@ -193,15 +193,60 @@ html.bk-lock{overflow:hidden}
 .fd-crisis a{white-space:nowrap}
 </style>
 <style>
-.fd-pnote{margin:8px 0 0;padding:8px 12px;border-radius:10px;background:rgba(230,188,118,.18);font-size:14.5px;font-weight:600}
-.fd-far{display:flex;gap:10px;align-items:flex-start;margin-bottom:12px;background:rgba(230,188,118,.2)}
-.fd-far svg{width:18px;height:18px;flex:none;margin-top:2px;color:var(--teal-deep)}
-.fd-crisis{max-width:880px;margin:16px auto 0;font-size:14px;color:var(--muted);text-align:center;line-height:1.55}
-.fd-crisis a{white-space:nowrap}
-</style>
-<style>
 .bk-dir{display:flex;gap:8px;align-items:flex-start;margin:12px 0 0;font-size:14.5px;line-height:1.45}
 .bk-dir svg{width:17px;height:17px;flex:none;margin-top:2px;color:var(--teal-deep)}
+</style>
+<style>
+/* Spacing system: 8 / 16 / 24 everywhere. Ids beat the site's own p/h margins. */
+#finder .fd-top{margin:0 0 16px}
+#finder .fd-q,#mg .fd-q{margin:0 0 8px}
+#finder .fd-sub,#mg .fd-sub{margin:0 0 24px}
+#finder .fd-opts{gap:16px}
+#finder .fd-opts>li{display:flex}
+#finder .fd-opt{height:100%;margin:0}
+#finder .fd-shortcut{margin:24px 0 0}
+#finder .fd-group{margin:0 0 24px}
+#finder .fd-group h3{margin:0 0 4px}
+#finder .fd-group p{margin:0 0 16px}
+#finder .fd-next{margin:0}
+#finder .fd-summary{margin:8px 0 24px}
+#finder .fd-soon{margin:0 0 16px}
+#finder .fd-results{gap:24px}
+#finder .fd-res{gap:0 16px;padding:24px;align-items:center}
+#finder .fd-res img{grid-row:auto}
+#finder .fd-res h3{margin:0 0 4px}
+#finder .fd-body{margin:16px 0 0}
+#finder .fd-body>*{margin:16px 0 0}
+#finder .fd-body>:first-child{margin-top:0}
+#finder .fd-times>*{margin:0 0 8px}
+#finder .fd-times>.fd-far,#finder .fd-times>.fd-pnote{margin:0 0 16px}
+#finder .fd-times>:last-child{margin-bottom:0}
+#finder .fd-days{gap:8px}
+#finder .fd-moretimes{margin:8px 0 0}
+#finder .fd-acts{margin:16px 0 0;gap:8px 16px}
+#finder .fd-acts>*{margin:0}
+#finder .fd-help{margin:24px 0 0;gap:8px 16px;padding:16px 24px}
+#finder .fd-help+.fd-help{margin-top:16px}
+#finder .fd-help p{margin:0}
+#finder .fd-note{margin:24px 0 0}
+#finder .fd-restart{margin:24px 0 0}
+#mg .bk-appt{margin:0 0 16px}
+#mg .fd-q{margin-bottom:16px}
+#mg .fd-q+.fd-sub{margin-top:-8px}
+#mg .mg-acts{margin:0;gap:16px}
+#mg .mg-list{gap:16px}
+#mg .mg-warn{margin:16px 0 0}
+#mg .bk-demo{margin:16px 0 0}
+#mg .fd-back{margin:0 0 16px}
+#mg .fd-group{margin:0 0 24px}
+#mg .fd-group h3{margin:0 0 8px}
+#mg .fd-days{gap:8px}
+#bkSheet .bk-appt{margin:0 0 16px}
+#bkSheet .bk-svc,#bkSheet .fd-cost{margin:0 0 16px}
+#bkSheet .bk-acts{gap:16px}
+#bkSheet .bk-dir{margin:16px 0 0}
+#bkSheet .bk-demo{margin:16px 0 0}
+@media (max-width:519px){#finder .fd-res{padding:16px;align-items:start}#finder .fd-res>div:not(.fd-body){margin-top:8px}#finder .fd-help{padding:16px}}
 </style>
 <script>window.HUB_SITE=''</script>
 <script src="hub-core.js"></script>
