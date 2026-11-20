@@ -27,6 +27,7 @@ A website for a family wellbeing hub in Jan Juc (not a game). There are four tak
 ### Homepage colours: less green (20 Nov 2026)
 - The owner found the homepage too green after the earthy pass. Recoloured the painted layers on the worker: `scrub-am/-warm` (dunes now golden straw, bushes soft olive) and `cliffs-am/-warm` (cliff-top scrub bronze-olive), via `familyhub/tools/recolour_scene.py` (HSV hue remap of the green band, split by lightness; run it on the worker's original `mNN-img_*.webp` modules). Cache keys bumped to `?v=earth2` (scrub) and `?v=cliff3` in index.html.
 - theme.css earth scheme: `--band` is blush to honey (was blush to mint), and lilac paint washes swap to gold/peach (Adi asked for less pink and purple). Sea and teal buttons stay (hub colours).
+- Cliff repainted (same day, `?v=cliff4`) by `familyhub/tools/paint_cliff.py <orig cliffs-warm.webp> <index.html> <out warm> <out am>`: near cliff between the ink top path and the ink foot line (376,492)-(1519,710), perspective strata (golden ochre top, rust middle, cream ledges, warm khaki-brown base), erosion fluting lit from the left, sandy cap + olive scrub, rose/apricot washes, boulders filled under the ink arcs, soft shadow on the sand; the far headland left of x 376 is hazy. The am version is a warmer, softer copy (no mauve).
 - The site's "Request changes" briefs live in the worker's `TEXT` KV under `brief:c:<id>`.
 
 ### Dashboard data tools and Ask Claude (20 Nov 2026)
