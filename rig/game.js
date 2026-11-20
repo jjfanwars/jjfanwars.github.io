@@ -2947,7 +2947,9 @@ function stepPlayer(dt) {
       if (K.Space && !P.down && !P.cr && P.hd < 0 && !P.seat && !(G.jumpT > G.t) && sackUsed(P.sack) < 9) { P.vy = 5.6; P.y += .02; G.jumpT = G.t + .45; } }
     else { P.vy = (P.vy || 0) - 20 * dt; P.y += P.vy * dt; if (stand && P.y < f.y) { const iv = -P.vy; P.y = f.y; P.vy = 0; if (iv > 3.5) landed(iv); } if (!stand && P.y < .1) { P.sw = 1; P.cr = 0; P.y = 0; P.vy = 0; P.ob = 0; Snd.splash(); showMsg('You are in the water! Swim to land or a ladder (E). Do not stay out in deep water.', '', 3); } }
   }
-  if (!P.sw && f && f.s.k === 'boat' && Math.abs(P.y - f.y) < .3) { P.ob = 1; P.bl = bW2L(P.x, P.z); } else P.ob = 0;
+  if (!P.sw && f && f.s.k === 'boat' && Math.abs(P.y - f.y) < .3) { P.ob = 1; P.bl = bW2L(P.x, P.z); }
+  else if (!P.sw && P.ob && BOAT && !(B.sink > 0)) { const l = bW2L(P.x, P.z), fy = floorAtBoat(l[0], l[1], P.y + .05); if (fy > -1e8 && P.y - fy < 3) P.bl = l; else P.ob = 0; } // mid-jump over boat floor you stay aboard (a sub's floor is below the sea; a moving deck carries you)
+  else P.ob = 0;
   gangway(dt);
   const moved = Math.hypot(P.x - ox, P.z - oz), v = moved / Math.max(dt, 1e-4); P.run = run && v > 1 ? 1 : 0;
   if (P.run) { P.stam -= dt / 7; if (P.stam <= 0) { P.stam = 0; P.tired = true; } } else P.stam = Math.min(1, P.stam + dt / (v > .5 ? 11 : 7));
@@ -7095,14 +7097,19 @@ function pfPrewarm() {
     stepFireflies(0); if (FFLY) FFLY.visible = false;
     fl = new THREE.Group(); fl.add(itemMesh('flare')); fl.add(new THREE.Sprite(new THREE.SpriteMaterial({map: TX.glow, color: 0xff3018, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending}))); fl.visible = false; scene.add(fl);
     applyGfx(); envUpdate(0, true); pfBeaScan();
-    const fin = () => { try { if (fl) scene.remove(fl); if (G.on) return;
+    // the underwater set (kelp, rocks, coral, grass, glow points) is built on the first dive: build it now and compile its shaders with everything else
+    const uwL = []; try { if (typeof uwxInit === 'function') uwxInit(); if (typeof uw2Init === 'function') uw2Init(); if (typeof kglBuild === 'function') kglBuild();
+      const add = o => { if (o && o.isObject3D && !o.visible) { uwL.push(o); o.visible = true; } }; if (typeof UWX !== 'undefined') { add(UWX.kelp); add(UWX.rock); add(UWX.coral); add(UWX.fish); (UWX.shafts || []).forEach(q => add(q.g)); }
+      if (typeof UW2 !== 'undefined') for (const v of Object.values(UW2.m)) (Array.isArray(v) ? v : [v]).forEach(add); if (typeof KGL !== 'undefined') add(KGL.pts); } catch (e) { console.warn('uw prewarm', e); }
+    PF.uwL = uwL; try { for (const o of uwL) o.traverse(q => { const ms = q.material ? (Array.isArray(q.material) ? q.material : [q.material]) : []; for (const m of ms) for (const k of ['map', 'normalMap', 'bumpMap', 'roughnessMap', 'emissiveMap', 'alphaMap']) if (m[k] && m[k].isTexture && RND.initTexture) RND.initTexture(m[k]); }); } catch (e) {} // upload their textures now too
+    const fin = () => { try { if (fl) scene.remove(fl); const uwOff = () => { if (PF.uwL) { PF.uwL.forEach(o => o.visible = false); PF.uwL = null; } }; if (G.on) { uwOff(); return; }
         // one stand-in per program (material + object kind) is enough to build every shader; instanced meshes draw one instance. Drawing the whole world here froze the menu for seconds.
         if (SET.gfx === 'high') { const sv = [], seen = new Set(), ic = []; scene.traverse(o => { sv.push(o, o.visible, o.frustumCulled); o.frustumCulled = false; const ms = o.material ? (Array.isArray(o.material) ? o.material : [o.material]) : null;
             if (!ms) { o.visible = true; return; } const k = ms.map(m => m.uuid).join() + (o.isInstancedMesh ? 'i' : '') + (o.isSkinnedMesh ? 's' : '') + (o.isPoints ? 'p' : o.isLine ? 'l' : o.isSprite ? 'r' : '') + (o.geometry && o.geometry.morphAttributes && o.geometry.morphAttributes.position ? 'm' : '') + (o.castShadow ? 'c' : '');
             o.visible = !seen.has(k); seen.add(k); if (o.visible && o.isInstancedMesh && o.count > 1) { ic.push(o, o.count); o.count = 1; } });
           try { moon.shadow.needsUpdate = flash.shadow.needsUpdate = true; RND.shadowMap.needsUpdate = true; if (POST.on) { postRender(); postPass(POST.rays, POST.a.texture, POST.c); } else RND.render(scene, cam); }
           finally { for (let i = 0; i < sv.length; i += 3) { sv[i].visible = sv[i + 1]; sv[i].frustumCulled = sv[i + 2]; } for (let i = 0; i < ic.length; i += 2) ic[i].count = ic[i + 1]; } }
-        RND.setRenderTarget(null); G.drawn = false; PF.prog = [p0, (RND.info.programs || []).length]; } catch (e) { RND.setRenderTarget(null); } };
+        uwOff(); RND.setRenderTarget(null); G.drawn = false; PF.prog = [p0, (RND.info.programs || []).length]; } catch (e) { if (PF.uwL) { PF.uwL.forEach(o => o.visible = false); PF.uwL = null; } RND.setRenderTarget(null); } };
     RND.setRenderTarget(POST.on ? POST.rt : null); const pr = RND.compileAsync ? RND.compileAsync(scene, cam) : (RND.compile(scene, cam), null); RND.setRenderTarget(null);
     if (pr) pr.then(fin, fin); else fin();
   } catch (e) { RND.setRenderTarget(null); if (fl) scene.remove(fl); }
@@ -11267,7 +11274,7 @@ function f35Cockpit() { if (!BOAT || !BOAT.userData.f35) return; const ud = BOAT
     for (const o of kill) { o.parent.remove(o); o.geometry.dispose(); } ud.f35kill = kill.length; }
   BOAT.add(g);
   const M = F35C.m || (F35C.m = {tub: new THREE.MeshStandardMaterial({color: 0x15171a, roughness: .85}), con: new THREE.MeshStandardMaterial({color: 0x0f1012, roughness: .6}), knob: new THREE.MeshStandardMaterial({color: 0x0c0c0d, roughness: .55, metalness: 0}),
-    frame: new THREE.MeshStandardMaterial({color: 0x3a3e44, roughness: .45, metalness: .5}), seat: new THREE.MeshStandardMaterial({color: 0x3a3c32, roughness: .9}), cush: new THREE.MeshStandardMaterial({color: 0x4a4636, roughness: 1}), strap: new THREE.MeshStandardMaterial({color: 0x5a6a3a, roughness: .9}),
+    frame: new THREE.MeshStandardMaterial({color: 0x24272b, roughness: .6, metalness: .15}), seat: new THREE.MeshStandardMaterial({color: 0x1e201b, roughness: .95}), cush: new THREE.MeshStandardMaterial({color: 0x34322a, roughness: 1}), strap: new THREE.MeshStandardMaterial({color: 0x5a6a3a, roughness: .9}),
     yb: new THREE.MeshStandardMaterial({color: 0xe8c020, roughness: .5}), blk: new THREE.MeshStandardMaterial({color: 0x101012, roughness: .5}), led: new THREE.MeshStandardMaterial({color: 0x102010, emissive: 0x40ff70, emissiveIntensity: .9}), amb: new THREE.MeshStandardMaterial({color: 0x201000, emissive: 0xffa030, emissiveIntensity: .8}),
     mir: new THREE.MeshStandardMaterial({color: 0xc8d4dc, roughness: .05, metalness: 1}), pcd: null});
   if (!M.pcd) { const t = new THREE.CanvasTexture(f35PcdCv()); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; M.pcd = new THREE.MeshStandardMaterial({map: t, emissive: 0xffffff, emissiveMap: t, emissiveIntensity: .85, roughness: .2}); }
@@ -11289,13 +11296,45 @@ function f35Cockpit() { if (!BOAT || !BOAT.userData.f35) return; const ud = BOAT
   add(new THREE.PlaneGeometry(.07, .05), M.pcd, .2, pT + .055, pz + .072, -.2).scale.set(1, 1, 1);
   // canopy bow (the frame ahead) and rails along the sills, with three mirrors; the aft arch behind the seat
   const arch = (z, r, h, t) => { const a = add(new THREE.TorusGeometry(1, t, 6, 28, PI), M.frame, 0, sill, z); a.scale.set(r, h, 1); return a; };
-  arch(zP - .12, wx, top - sill, .022); arch(zS + .35, wx, top - sill + .02, .03); for (const sd of [-1, 1]) box(M.frame, sd * wx - .025, sd * wx + .025, sill, sill + .04, zP - .15, zS + .4);
+  arch(zP - .12, wx, top - sill, .022); for (const sd of [-1, 1]) box(M.frame, sd * wx - .025, sd * wx + .025, sill, sill + .04, zP - .15, zS + .4);
   for (const x of [-.16, 0, .16]) { const yy = sill + (top - sill) * Math.sqrt(Math.max(0, 1 - (x / wx) ** 2)) - .03; add(new THREE.BoxGeometry(.09, .035, .008), M.mir, x, yy - .03, zP - .08, .3); }
   // ejection seat: bucket, cushions, headbox, harness, the yellow-black handle between the knees
   const sz = hz + .25, sb = SK + .04; box(M.seat, -.24, .24, SK - .02, sb, sz - .25, sz + .25); add(bfCushGeo(.42, .05, .3, .02), M.cush, 0, sb + .025, sz + .05); add(bfCushGeo(.42, top - sb - .2, .08, .03), M.cush, 0, (sb + top - .14) / 2, sz + .23, -.12);
   box(M.seat, -.26, .26, sb + .02, top - .12, sz + .27, sz + .37); box(M.seat, -.2, .2, top - .2, top - .06, sz + .22, sz + .4); add(bfCushGeo(.24, .14, .06, .02), M.cush, 0, top - .17, sz + .19, -.1);
   for (const sd of [-1, 1]) box(M.strap, sd * .1 - .025, sd * .1 + .025, sb + .1, top - .18, sz + .2, sz + .22); // shoulder straps on the seat back (behind the eye)
   { add(new THREE.TorusGeometry(.05, .01, 6, 16, PI), M.yb, 0, SK + .02, zP + .5, -PI / 2); } // the ejection handle, low between the pedals
+  // the back seats (v85): a rear tub along the spine with two proper seats, each with a small display and a low wind deflector; seated eye at the pilot's height
+  { const rz = (ud.pseats || []).map(q => q[1]).filter(z => z > hz + .8); const kill = [], v = new THREE.Vector3(), inv = new THREE.Matrix4().copy(BOAT.matrixWorld).invert();
+    BOAT.traverse(o => { if (!o.isMesh || o.isSprite || !o.geometry || o === g) return; for (let q = o.parent; q; q = q.parent) if (q === g) return; const gg = o.geometry; gg.computeBoundingBox(); const bb = gg.boundingBox.clone().applyMatrix4(new THREE.Matrix4().multiplyMatrices(inv, o.matrixWorld));
+      if (bb.max.x < .45 && bb.min.x > -.45 && bb.min.y > fb - .1 && bb.max.y < fb + .5 && bb.min.z > Math.min(...rz) - .6 && bb.max.z < Math.max(...rz) + .6) kill.push(o); }); // the old pads and grab rails (merged across both seats) for (const o of kill) { o.parent.remove(o); o.geometry.dispose(); }
+    if (rz.length) { const z0 = Math.min(...rz) - .8, z1 = Math.max(...rz) + .45, rs = fb + .1, gl = new THREE.MeshStandardMaterial({color: 0x9ac0d0, roughness: .03, metalness: .2, transparent: true, opacity: .2, depthWrite: false, side: THREE.DoubleSide});
+      for (const sd of [-1, 1]) { box(M.tub, sd * .42 - .02, sd * .42 + .02, SK - .02, rs, z0, z1); box(M.con, sd > 0 ? .26 : -.42, sd > 0 ? .42 : -.26, rs - .04, rs, z0 + .1, z1 - .1); for (let z = z0 + .25; z < z1 - .15; z += .3) add(new THREE.PlaneGeometry(.04, .012), (z * 10 | 0) % 2 ? M.led : M.amb, sd * .34, rs + .001, z, -PI / 2); }
+      box(M.tub, -.4, .4, SK + .005, SK + .02, z0, z1);
+      for (const z of rz) { const pz2 = z - .62; box(M.con, -.3, .3, SK, rs + .12, pz2 - .06, pz2); add(new THREE.PlaneGeometry(.4, .13), M.pcd, 0, rs + .05, pz2 + .004); const ws = add(new THREE.PlaneGeometry(.56, .2), gl, 0, rs + .23, pz2 - .05, -.5); ws.castShadow = false; ws.userData.dyn = 1;
+        box(M.frame, -.3, .3, rs + .12, rs + .135, pz2 - .07, pz2 + .01); for (const sd of [-1, 1]) add(new THREE.TorusGeometry(.05, .01, 6, 12, PI), M.frame, sd * .3, rs + .03, z - .2, 0, PI / 2);
+        box(M.seat, -.22, .22, SK, SK + .06, z - .2, z + .22); add(bfCushGeo(.4, .05, .3, .02), M.cush, 0, SK + .085, z + .02); box(M.seat, -.24, .24, SK + .06, fb + .44, z + .22, z + .3); add(bfCushGeo(.38, fb + .34 - SK, .07, .03), M.cush, 0, (SK + fb + .4) / 2, z + .19, -.1);
+        box(M.seat, -.18, .18, fb + .4, fb + .52, z + .18, z + .32); for (const sd of [-1, 1]) box(M.strap, sd * .09 - .02, sd * .09 + .02, SK + .12, fb + .38, z + .155, z + .17); }
+      for (const q of ud.pseats) if (q[1] > hz + .8) { q[2] = 0; q[3] = -.8; } } } // sit low in the tub: eye about fb + .3, like the pilot
   bfMerge(g); ud.f35ck = g; ud.lamp = [0, top - .06, zP + .55]; ud.lampI = 1.2; }
 const F35C = {m: null};
 { buildBoat = after(buildBoat, function (r) { try { f35Cockpit(); } catch (err) { console.warn('f35ck', err); } }); }
+
+// ---------------- Kraken side ladders (v85): three a side, rungs and rails following the hull from the waterline up to the deck edge, each with a climb point
+function nkLadders() { const H = HC(); if (!H.nuke || !BOAT) return; const R = NUKE.RB + .07, cy = SUB.CAS - .05 - NUKE.RB, g = new THREE.Group(), st = new THREE.MeshStandardMaterial({color: 0x8a9096, metalness: .6, roughness: .4}), yl = new THREE.MeshStandardMaterial({color: 0xd8b020, roughness: .5});
+  const t0 = Math.asin(1.45 / NUKE.RB), t1 = Math.acos((-.35 - cy) / NUKE.RB), pt = (sd, t, r = R) => [sd * r * Math.sin(t), cy + r * Math.cos(t)];
+  const seg = (m, a, b, rad) => { const d = new THREE.Vector3(b[0] - a[0], b[1] - a[1], b[2] - a[2]), L = d.length(), o = new THREE.Mesh(new THREE.CylinderGeometry(rad, rad, L, 8), m); o.position.set((a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2); o.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), d.normalize()); g.add(o); };
+  for (const sd of [-1, 1]) for (const z of [6.2, 24, 42]) { const n = Math.ceil((t1 - t0) * NUKE.RB / .3), P = [];
+    for (let i = 0; i <= n; i++) { const t = mix(t0, t1, i / n), [x, y] = pt(sd, t); P.push([x, y]); if (i) seg(i % 2 ? st : st, [x, y, z - .22], [x, y, z + .22], .018); }
+    for (const dz of [-.24, .24]) for (let i = 1; i < P.length; i++) seg(i < 3 ? yl : st, [P[i - 1][0], P[i - 1][1], z + dz], [P[i][0], P[i][1], z + dz], .022);
+    const [hx, hy] = pt(sd, t0, R + .02); for (const dz of [-.24, .24]) { seg(yl, [hx, hy, z + dz], [hx * .92, hy + .55, z + dz], .022); } seg(yl, [hx * .92, hy + .55, z - .24], [hx * .92, hy + .55, z + .24], .022); // grab hoops at the top
+    if (!(sd > 0 && z === 6.2)) INTER.push({kind: 'ladder', boat: 1, lx: sd * (NUKE.RB + .5), lz: z, ly: -SUB.CAS, r: 3.5, top: 'boat', end: [sd * .75, z], label: () => 'Climb aboard', on: () => P.sw && (B.dep || 0) < .6}); }
+  g.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } }); BOAT.add(g); bfMerge(g); }
+{ buildBoat = after(buildBoat, function (r) { try { nkLadders(); } catch (err) { console.warn('nkLadders', err); } }); }
+// sitting in the jet's back seats: no first-person hands (they hung in front of the display)
+{ updateCamera = after(updateCamera, function (r) { if (P && P.psit && BOAT && BOAT.userData.f35) VM.visible = VMF.visible = VMG.visible = VMS.visible = VMR.visible = false; }); }
+// last of the buildBoat steps: the jet's old back-seat pads and grab rails (added by a later step than f35Cockpit) go
+{ buildBoat = after(buildBoat, function (r) { const ud = BOAT && BOAT.userData; if (!ud || !ud.f35 || !ud.f35ck) return; const fb = BDECK.y, rz = (ud.pseats || []).map(q => q[1]).filter(z => z > BHELM[1] + .8); if (!rz.length) return;
+  BOAT.updateMatrixWorld(true); const inv = new THREE.Matrix4().copy(BOAT.matrixWorld).invert(), kill = [];
+  BOAT.traverse(o => { if (!o.isMesh || !o.geometry) return; for (let q = o; q; q = q.parent) if (q === ud.f35ck) return; const gg = o.geometry; gg.computeBoundingBox(); const bb = gg.boundingBox.clone().applyMatrix4(new THREE.Matrix4().multiplyMatrices(inv, o.matrixWorld));
+    if (bb.max.x < .45 && bb.min.x > -.45 && bb.min.y > fb - .1 && bb.max.y < fb + .5 && bb.min.z > Math.min(...rz) - .6 && bb.max.z < Math.max(...rz) + .6) kill.push(o); });
+  for (const o of kill) { o.parent.remove(o); o.geometry.dispose(); } }); }
