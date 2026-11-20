@@ -51,7 +51,7 @@ function phones(){var S=api.state(),o=S.offers.filter(function(x){return x.statu
  $('admPhones').innerHTML=order.map(function(ph){var msgs=S.sms.filter(function(m){return m.to===ph}),name=(msgs[msgs.length-1]||{}).name||ph;msgs=msgs.slice(-5);
   var yes=o&&o.status==='open'&&o.sent.filter(function(s){var w=wl(s.wid);return w&&w.phone===ph&&s.state==='sent'&&s.round===o.round})[0];
   return '<div class="phone"><div class="ph-notch"></div><div class="ph-top"><span class="ph-av">'+esc(name[0])+'</span><b>Surf Coast Family Hub</b><small>to '+esc(name)+'</small></div><div class="ph-msgs">'+
-   msgs.map(function(m){var body=esc(m.body).replace(/sfch\.au\/([crxkbvm])\/([a-z0-9]+)/gi,function(_,k,t){return '<button type="button" class="ph-link" data-link="'+k+'|'+t+'">sfch.au/'+k+'/'+t+'</button>'});
+   msgs.map(function(m){var body=esc(m.body).replace(/sfch\.au\/([crxkbvmpi])\/([a-z0-9]+)/gi,function(_,k,t){return '<button type="button" class="ph-link" data-link="'+k+'|'+t+'">sfch.au/'+k+'/'+t+'</button>'});
     return '<div class="ph-b '+m.dir+'">'+body+'<time>'+F.time(new Date(m.at))+'</time></div>'}).join('')+'</div>'+
    (yes?'<div class="ph-bar"><button type="button" data-yes="'+yes.tok+'">Reply YES</button></div>':'<div class="ph-bar ph-off">iMessage</div>')+
    '</div>'}).join('');
@@ -63,10 +63,11 @@ function upcoming(){var list=api.upcoming(4).slice(0,40),days={};
   var b=a.booking,r=a.rem,chips=(b&&b.source==='refill'?' <em class="adm-tag">refilled</em>':b&&b.source==='referral'?' <em class="adm-tag">referral</em>':b?' <em class="adm-tag">booked online</em>':'')+
    (b&&b.mode==='video'?' <em class="adm-tag adm-tag-g">video</em>':b&&b.mode==='phone'?' <em class="adm-tag adm-tag-g">phone</em>':'')+(b&&b.series?' <em class="adm-tag adm-tag-g">'+b.series.n+'/'+b.series.of+'</em>':'')+
    (b&&b.plan==='yes'&&!(b.referral&&b.referral.planIn)?' <em class="adm-tag adm-tag-n">no plan yet</em>':'')+
+   (b&&b.intake?(b.intake.status==='done'?' <em class="adm-tag adm-tag-g">intake done</em>':' <em class="adm-tag adm-tag-n">intake '+(b.intake.status==='started'?'half done':'not done')+'</em>'):'')+
    (r?(r.state==='confirmed'?' <em class="adm-rs ok" title="Confirmed by text">'+svg('check')+'Confirmed</em>':' <em class="adm-rs" title="Reminder sent, no reply yet">Reminded</em>'):'');
   return '<li><time>'+F.time(a.start)+'</time><img src="'+H.photo(a.pid)+'" alt="" width="30" height="30"><span><b>'+esc(a.name)+'</b> with '+esc(p.first)+chips+'</span><button type="button" class="adm-cx" data-cx="'+a.pid+'|'+a.start.toISOString()+'">Cancel</button></li>'}).join('')+'</ul>'}).join('')||'<p class="adm-empty">No appointments in the next few days.</p>'}
 
-var ICONK={cancel:'x',offer:'send',filled:'check',booked:'check',wait:'users',move:'ff',none:'list',skip:'list',ask:'bolt',queue:'clock',clock:'clock',remind:'bell',confirm:'check',ref:'file',inbox:'send',urgent:'bolt',send:'send'};
+var ICONK={cancel:'x',offer:'send',filled:'check',booked:'check',wait:'users',move:'ff',none:'list',skip:'list',ask:'bolt',queue:'clock',clock:'clock',remind:'bell',confirm:'check',ref:'file',inbox:'send',urgent:'bolt',send:'send',pay:'cash',payfail:'x',intake:'file'};
 function feed(){var S=api.state();
  $('admFeed').innerHTML=S.feed.slice(0,18).map(function(f){return '<li class="fk-'+f.kind+'"><span class="adm-fi">'+svg(ICONK[f.kind]||'list')+'</span><p>'+esc(f.text)+'<time>'+ago(f.at)+'</time></p></li>'}).join('')||'<li class="adm-empty">Quiet so far.</li>'}
 
@@ -112,14 +113,15 @@ function recRows(){var S=api.state();
   return [P[o.pid].first+', '+F.when(o.start),F.when(new Date(o.created)),{open:'Offering',filled:'Refilled',unfilled:'Back online',approval:'Waiting for you',queued:'Queued (quiet hours)'}[o.status]||o.status,String(o.sent.length),w?w.name:'']})};
  if(recTab==='referrals')return {head:['Received','Client','From','To','Medicare plan','Status','Via'],rows:S.referrals.map(function(r){
   return [F.when(new Date(r.at)),r.client.name,r.from.name+(r.from.practice?', '+r.from.practice:''),r.to==='team'?'Psychology Team':P[r.to].first,r.plan==='yes'?(r.planIn?'Received':'Not yet'):'None',REF_ST[r.status],r.source]})};
+ if(recTab==='payments')return {head:['When','Client','Practitioner','What','Amount','Status','Card'],rows:S.pay.map(function(x){return [F.when(new Date(x.at)),x.name,P[x.pid].first,PK[x.kind],(x.kind==='refund'?'-':'')+F.money(x.amount),{paid:'Paid',due:'Due',failed:'Card declined',refunded:'Refunded',claimed:'Claimed',void:'Cancelled (refilled)'}[x.status]||x.status,x.last4?'•••• '+x.last4:(x.via||'')]})};
  if(recTab==='reminders')return {head:['Appointment','Client','Sent','Reply'],rows:Object.keys(S.rem).map(function(k){return S.rem[k]}).sort(function(a,b){return new Date(a.start)-new Date(b.start)}).map(function(r){
   return [P[r.pid].first+', '+F.when(r.start),r.name,F.when(new Date(r.at)),r.state==='confirmed'?'Confirmed':r.state==='cancelled'?'Can’t make it':'No reply yet']})};
  return {head:['Time','To','Message'],rows:S.sms.slice().reverse().map(function(m){return [F.when(new Date(m.at)),(m.dir==='in'?'From ':'')+(m.name||m.to),m.body]})}}
 function records(){var r=recRows();
- [].forEach.call(document.querySelectorAll('[data-rec]'),function(b){b.setAttribute('aria-selected',b.dataset.rec===recTab)});
- $('admRecBody').innerHTML=r.rows.length?'<div class="adm-tbl"><table><thead><tr>'+r.head.map(function(x){return '<th scope="col">'+x+'</th>'}).join('')+'</tr></thead><tbody>'+
+ [].forEach.call(document.querySelectorAll('[data-rec]'),function(b){b.setAttribute('aria-pressed',b.dataset.rec===recTab)});
+ $('admRecBody').innerHTML=r.rows.length?'<div class="adm-tbl" tabindex="0" role="region" aria-label="Records table"><table><thead><tr>'+r.head.map(function(x){return '<th scope="col">'+x+'</th>'}).join('')+'</tr></thead><tbody>'+
   r.rows.slice(0,50).map(function(row){return '<tr>'+row.map(function(c){return '<td>'+esc(c)+'</td>'}).join('')+'</tr>'}).join('')+'</tbody></table></div>'+(r.rows.length>50?'<p class="adm-muted">Showing 50 of '+r.rows.length+'. Export for the lot.</p>':''):
-  '<p class="adm-empty">'+{bookings:'No online bookings yet. Book a time on the booking page to see it here.',offers:'No spots offered yet. Cancel an appointment to start one.',texts:'No texts sent yet.',referrals:'No referrals yet.',reminders:'No reminders sent yet.'}[recTab]+'</p>'}
+  '<p class="adm-empty">'+{bookings:'No online bookings yet. Book a time on the booking page to see it here.',offers:'No spots offered yet. Cancel an appointment to start one.',texts:'No texts sent yet.',payments:'No payments yet.',referrals:'No referrals yet.',reminders:'No reminders sent yet.'}[recTab]+'</p>'}
 
 // ---------- CSV export ----------
 function confirmExport(){return confirm('This file has clients’ personal and health details. Keep it on a secure work device, don’t email it unencrypted, and delete it when you’re done.')}
@@ -159,6 +161,18 @@ $('admAskQ').addEventListener('input',function(){this.style.height='';this.style
 [$('admAsk'),$('admPerson')].forEach(function(d){d.addEventListener('click',function(e){if(e.target===d||e.target.closest('[data-close]'))d.close()})});
 $('admPerson').addEventListener('close',function(){openPerson=null;openRef=null});
 $('admWlQ').addEventListener('input',waitlist);$('admWlP').addEventListener('change',waitlist);
+
+// ---------- payments ----------
+var PK={deposit:'Deposit',session:'Session fee',late:'Late cancellation fee',noshow:'Missed session fee',refund:'Refund',medicare:'Medicare claim'};
+function payments(){var S=api.state(),L=S.pay,day=new Date(H.now());day.setHours(0,0,0,0);
+ var today=L.filter(function(x){return x.at>=day.getTime()&&x.status!=='due'&&x.status!=='failed'&&x.kind!=='medicare'&&x.kind!=='refund'}).reduce(function(s,x){return s+x.amount},0);
+ var owe=L.filter(function(x){return x.status==='due'||x.status==='failed'}),fees=api.feesToDecide(),done=L.filter(function(x){return x.status!=='due'&&x.status!=='failed'&&x.status!=='void'});
+ $('admPaySub').textContent=F.money(Math.round(today*100)/100)+' collected today · '+owe.length+' outstanding';
+ $('admPay').innerHTML=(fees.length?'<h3 class="adm-day">Fees to decide</h3><ul class="adm-up">'+fees.map(function(b){var fee=b.noShow?b.noShowFee:b.lateFee;
+   return '<li><span><b>'+esc(b.name)+'</b> with '+esc(P[b.pid].first)+', '+esc(F.when(b.start))+' <em class="adm-tag adm-tag-n">'+(b.noShow?'no-show':'late cancel')+'</em></span><b class="adm-amt">'+F.money(fee)+'</b><button type="button" class="adm-cx adm-cx-ok" data-fee="'+b.id+'">Charge</button><button type="button" class="adm-cx" data-waive="'+b.id+'">Waive</button></li>'}).join('')+'</ul><p class="adm-muted">The practitioner decides. Waive for illness, emergencies, hardship or a first slip.</p>':'')+
+  (owe.length?'<h3 class="adm-day">Outstanding</h3><ul class="adm-up">'+owe.map(function(x){return '<li><span><b>'+esc(x.name)+'</b> · '+PK[x.kind].toLowerCase()+' for '+esc(P[x.pid].first)+(x.status==='failed'?' <em class="adm-tag adm-tag-p">card declined</em>':' <em class="adm-tag adm-tag-n">no card</em>')+'</span><b class="adm-amt">'+F.money(x.amount)+'</b><button type="button" class="adm-cx adm-cx-ok" data-paylink="'+x.id+'">Resend link</button><button type="button" class="adm-cx adm-cx-ok" data-paidin="'+x.id+'">Paid in person</button></li>'}).join('')+'</ul>':'')+
+  '<h3 class="adm-day">Recent</h3>'+(done.length?'<ul class="adm-up">'+done.slice(0,5).map(function(x){
+   return '<li><span><b>'+esc(x.name)+'</b> · '+PK[x.kind]+(x.status==='refunded'?' (refunded)':x.status==='claimed'?' (to client’s bank)':'')+' · '+esc(P[x.pid].first)+'</span><b class="adm-amt'+(x.kind==='refund'?' neg':'')+'">'+(x.kind==='refund'?'−':'')+F.money(x.amount)+'</b>'+(x.status==='paid'&&x.kind!=='refund'?'<button type="button" class="adm-cx" data-refund="'+x.id+'">Refund</button>':x.kind==='medicare'?'':'<a class="adm-cx adm-cx-ok" href="pay.html#p='+x.id+'" target="_blank" rel="noopener">Receipt</a>')+'</li>'}).join('')+'</ul>':'<p class="adm-empty">No payments yet.</p>')}
 
 // ---------- inbox summary ----------
 var CHN={sms:'Text',email:'Email',voicemail:'Voicemail',call:'Missed call',form:'Website enquiry'};
@@ -226,6 +240,9 @@ function settings(){var s=api.state().settings;
   '<h3 class="adm-sh">Waitlist and booking</h3>'+
   row('“Still keen?” check-in','People who don’t reply within a week are paused, not removed.',seg('freshDays',[[0,'Off'],[30,'After 30 days'],[60,'After 60 days']],s.fresh?s.freshDays:0))+
   row('Regular (weekly or fortnightly) booking online','',seg('series',[[true,'On'],[false,'Off']]))+
+  row('Intake form for new clients','Texted after booking and in the reminder until it’s done.',seg('intake',[[true,'On'],[false,'Off']]))+
+  row('Deposit for new clients','Comes off the first session fee. Refunded if they cancel in time.',seg('deposit',[[0,'None'],[50,'$50'],['full','Full fee']]))+
+  row('Session fees','Charged to the card on file when the session ends, with the Medicare claim lodged at the same time.',seg('charge',[['auto','Charge automatically'],['manual','Staff charge them']]))+
   row('Referral to a named practitioner','',seg('autoInvite',[[true,'Text the client a booking link'],[false,'Wait for staff']]))+
   '<h3 class="adm-sh">Inbox</h3>'+
   row('Automatic replies','Admin only: “running late” (and tells the practitioner) and confirmations. Everything else waits for a person.',seg('autoReply',[['admin','Admin only'],['off','Off']]))+
@@ -233,7 +250,7 @@ function settings(){var s=api.state().settings;
   row('After-hours reply','',seg('afterHours',[[true,'On'],[false,'Off']]))+
   row('Safety reply','Messages that may mean someone is at risk get an instant reply with 000 and Lifeline, and are flagged urgent. Always on.','<div class="adm-seg"><button type="button" aria-pressed="true" disabled>On</button></div>')}
 
-function all(){stats();tryBox();needs();offers();phones();reminders();upcoming();inboxCard();feed();refs();fillPractFilter();waitlist();records();settings();
+function all(){stats();tryBox();needs();offers();phones();payments();reminders();upcoming();inboxCard();feed();refs();fillPractFilter();waitlist();records();settings();
  if($('admPerson').open){if(openPerson&&document.activeElement!==$('admNote'))person(openPerson);else if(openRef)refDrawer(openRef)}}
 api.on(all);all();
 setInterval(function(){stats();offers()},1000);
@@ -259,8 +276,15 @@ document.addEventListener('click',function(e){var b=e.target.closest('button');i
   else if(k==='b')window.open('book.html#ref='+tk,'_blank');
   else if(k==='m')window.open('manage.html#t='+tk,'_blank');
   else if(k==='v')toast('In the live system this opens the practitioner’s Halaxy telehealth room.');
+  else if(k==='p')window.open('pay.html#p='+tk,'_blank');
+  else if(k==='i')window.open('intake.html#t='+tk,'_blank');
   return}
  if(d.refopen){refDrawer(d.refopen);return}
+ if(d.fee){var px=api.chargeFee(d.fee);toast(px&&px.status==='paid'?'Fee charged. Receipt texted.':px?'Card declined. Payment link texted.':'Already decided.');return}
+ if(d.waive){var why=prompt('Reason for waiving (for the records)','Unwell');if(why!==null){api.waiveFee(d.waive,why);toast('Fee waived.')}return}
+ if(d.paylink){api.resendPay(d.paylink);toast('Payment link texted again.');return}
+ if(d.paidin){api.markPaid(d.paidin,'in person');toast('Marked as paid.');return}
+ if(d.refund){if(confirm('Refund this payment to the client’s card?')){api.refund(d.refund,'refunded by the Hub');toast('Refunded.')}return}
  if(d.refsend){var pick=document.querySelector('[data-refpick="'+d.refsend+'"]'),to=(d.to||(pick&&pick.value)||'').split(',').filter(Boolean);api.inviteReferral(d.refsend,to);toast('Booking link texted.');return}
  if(d.refplan){api.updateReferral(d.refplan,{planIn:true});toast('Plan marked as received.');return}
  if(d.refclose){if(confirm('Close this referral?')){api.updateReferral(d.refclose,{status:'closed'});$('admPerson').close()}return}

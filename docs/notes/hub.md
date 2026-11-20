@@ -90,3 +90,39 @@ Edited the demo site copy (in the worker) and booking copy to fit Ahpra's advert
 - **Contact page:** `src/enquiry.js` (worker route `/hub-enquiry.js`, plus hub-core on `contact.html`) sends the enquiry form into the inbox instead of opening the visitor's email app.
 - **Docs:** the privacy page covers messages kept, Claude's two uses, and urgent flagging. SOP section 17 covers the inbox and group messages.
 - **Live needs:** an SMS provider with inbound webhooks and a registered sender ID, an inbound email address, and a phone provider for missed calls and voicemail transcripts (for example forwarding the Hub number). Message storage hosted in Australia.
+
+### Intake forms, payments, and a full test pass (20 Nov 2026)
+- **Store and seeding:** store `scfh-demo-v5`. `seedPay` adds four past hub bookings: a paid session with a Medicare claim, a declined card, a late cancel and a no-show (fees to decide).
+- **Intake forms:**
+  - New clients (`needsIntake`: first visit, referral, or a new person booked from the waitlist) get `b.intake={tok,status}` and a text with `sfch.au/i/<tok>`. The reminder repeats the link until the form is done.
+  - `intake.html` (`intake.js`) saves as it goes (`api.saveIntake`). It covers details, a child section (parental responsibility, court orders), emergency contact, GP and sharing, Medicare (check-digit validated) and health fund, card on file, a "before you come" note (practitioner only), telehealth location, consents and a typed signature.
+  - The practitioner view reads intakes from "New clients coming up". The dashboard shows intake tags.
+- **Payments:**
+  - Ledger `S.pay` (kinds deposit, session, late, noshow, refund, medicare; statuses paid, due, failed, refunded, claimed, void). Cards live in `S.cards` by phone; demo cards ending 0002 decline.
+  - `billTick` charges the session (less any deposit) when it ends, and lodges the Medicare claim (`REBATE` map).
+  - No card or a declined card means a `sfch.au/p/` payment link (`pay.html`, which also shows receipts).
+  - Deposit setting: none, $50 or full fee. The deposit is refunded on an on-time cancel and kept towards a late fee.
+  - `feesToDecide`, `chargeFee`, `waiveFee`, `markNoShow`, `refund`, `payLink`, `markPaid`, `resendPay`.
+  - A refill waives the late fee, and refunds it if it was already charged (a due fee becomes void).
+  - The dashboard Payments card covers fees to decide, outstanding and recent payments with refunds, plus a Records "Payments" tab. The practitioner view has "Your payments" and "Recent sessions" with a mark no-show button. The report has a Payments card. The manage page has payments and finished-session views.
+- **Storage caps:** `trim()` in `save()` caps offers at 300, threads at 200 (100 messages each) and mail at 200, prunes old cancelled bookings beyond 1500, and recovers if storage is full.
+- **Tests (scripts in the scratchpad, not the repo):**
+  - Engine fuzz with invariants: no double bookings, `taken` consistent, one live offer per slot, one winner per filled offer, nothing booked into blocked days, no session charged twice, refunds recorded, waived fees not kept. 20+ seeds and a 12,000-op run all came out clean; state stayed at 2.2 MB.
+  - Browser sweep of 18 pages at 1280, 768 and 360 wide: page errors, horizontal overflow, axe WCAG A/AA serious and critical issues, script-injection canaries in every name and message field.
+  - 21-step end-to-end journeys, live on desktop and phone.
+  - Worker endpoint abuse: method, bad JSON, empty, wrong role, evil origin, 450 KB body.
+  - Link check of 107 internal links.
+- **Bugs found and fixed:**
+  - A winner re-tapping their claim link was told "too late".
+  - Sick-day cancels left live refill offers claimable into the blocked day.
+  - `reschedule` accepted cancelled bookings.
+  - A late fee charged and then the time refilled kept both flags.
+  - Referral links prefilled the last person's typed details.
+  - Past and no-show bookings showed as upcoming on the manage page.
+  - Records tabs had invalid ARIA.
+  - Scroll areas weren't keyboard focusable.
+  - Contrast was under AA in a few places: phone timestamps and links, the risk tag, teal links on tinted panels.
+  - Overflow on the practitioner view at 360 wide.
+- **Known limits, for when it goes live:**
+  - The `/api/hub/*` endpoints accept requests with no Origin (curl), limited only per IP. Live needs staff sign-in.
+  - Demo state is per browser, so two tabs can race. Live claims must go through the server transaction plus Halaxy's `fail-on-double-booking`.

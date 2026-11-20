@@ -113,12 +113,12 @@ body.adm :focus-visible{outline:2px solid var(--teal-deep);outline-offset:2px}
 .ph-b{max-width:88%;padding:8px 10px;border-radius:15px;font-size:12.5px;line-height:1.38;animation:phIn .35s cubic-bezier(.2,.8,.2,1)}
 .ph-b.out{align-self:flex-start;background:#E5E2DC;color:#2B2522;border-bottom-left-radius:4px}
 .ph-b.in{align-self:flex-end;background:#2F80ED;color:#fff;border-bottom-right-radius:4px}
-.ph-b time{display:block;font-size:10px;opacity:.6;margin-top:3px}
+.ph-b time{display:block;font-size:10px;color:#5F5650;margin-top:3px}
 @keyframes phIn{from{opacity:0;transform:translateY(8px) scale(.97)}to{opacity:1;transform:none}}
-.ph-link{background:none;border:0;padding:0;font:inherit;color:#1F6FD6;text-decoration:underline;cursor:pointer;font-weight:600}
+.ph-link{background:none;border:0;padding:0;font:inherit;color:#1557B0;text-decoration:underline;cursor:pointer;font-weight:600}
 .ph-bar{padding:8px;background:#fff;border-top:1px solid rgba(0,0,0,.08)}
 .ph-bar button{width:100%;min-height:34px;border-radius:99px;border:0;background:#2F80ED;color:#fff;font:600 13px var(--body);cursor:pointer}
-.ph-off{text-align:center;font-size:12px;color:#999}
+.ph-off{text-align:center;font-size:12px;color:#666}
 
 /* coming up */
 .adm-day{margin:24px 0 8px;font:600 12.5px/1.3 var(--body);letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
@@ -206,9 +206,9 @@ body.adm :focus-visible{outline:2px solid var(--teal-deep);outline-offset:2px}
 
 /* ---------- records ---------- */
 .adm-tabs{display:flex;flex-wrap:wrap;align-items:center;gap:4px;margin:0 0 16px;padding-bottom:12px;border-bottom:1px solid var(--ui-line)}
-.adm-tabs [role=tab]{min-height:34px;padding:0 12px;border:0;border-radius:8px;background:none;font:600 14px var(--body);color:var(--muted);cursor:pointer}
-.adm-tabs [role=tab]:hover{color:var(--ink);background:var(--ui-sunk)}
-.adm-tabs [role=tab][aria-selected=true]{background:var(--teal-mist);color:var(--teal-dark)}
+.adm-tabs [data-rec]{min-height:34px;padding:0 12px;border:0;border-radius:8px;background:none;font:600 14px var(--body);color:var(--muted);cursor:pointer}
+.adm-tabs [data-rec]:hover{color:var(--ink);background:var(--ui-sunk)}
+.adm-tabs [aria-pressed=true]{background:var(--teal-mist);color:var(--teal-dark)}
 .adm-tabs .adm-ghost{margin-left:auto;min-height:34px}
 .adm-tbl{overflow-x:auto;border:1px solid var(--ui-line);border-radius:var(--ui-r-sm)}
 .adm-tbl table{width:100%;border-collapse:collapse;font-size:13.5px;background:#fff}
@@ -336,7 +336,7 @@ a.adm-cx:hover{background:var(--teal-mist);border-color:var(--teal-deep);color:v
 
 /* inbox summary */
 .adm-inboxbtn em{display:inline-grid;place-items:center;min-width:20px;height:20px;margin-left:6px;padding:0 5px;border-radius:99px;background:var(--teal-deep);color:#fff;font-style:normal;font-size:12px}
-.adm-inboxbtn em.u{background:#C0663A}
+.adm-inboxbtn em.u{background:#A4502A}
 .adm-ibl{list-style:none;margin:0;padding:0}
 .adm-ibl li+li{border-top:1px solid var(--ui-line)}
 .adm-ibl a{display:block;margin:0 -8px;padding:10px 8px;border-radius:var(--ui-r-sm);color:inherit;text-decoration:none}
@@ -346,6 +346,12 @@ a.adm-cx:hover{background:var(--teal-mist);border-color:var(--teal-deep);color:v
 .adm-ibl span{display:block;font-size:12.5px;color:var(--muted)}
 .adm-ibl p{margin:4px 0 0;font-size:13.5px;line-height:1.45;color:var(--ink);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .adm-seg button[disabled]{cursor:default}
+.adm-amt{flex:none;font-weight:600;font-variant-numeric:tabular-nums;color:var(--ink)}
+.adm-amt.neg{color:#9A3B26}
+.adm-cx-ok:hover{background:var(--teal-mist)!important;border-color:var(--teal-deep)!important;color:var(--teal-dark)!important}
+#admPay .adm-day{margin-top:16px}
+#admPay .adm-day:first-child{margin-top:0}
+#admPay .adm-up li{flex-wrap:wrap}
 </style>
 <style>
 /* Report, practitioner view and SOP: same system as the dashboard. Chart colours validated (refilled #00897B, not refilled #C0663A). */
@@ -364,7 +370,8 @@ body.adm{--rp-a:#00897B;--rp-b:#C0663A}
 @media (max-width:1099px){.rp-kpis{grid-template-columns:repeat(3,1fr)}.rp-kpi:nth-child(4){border-left:0}.rp-kpi:nth-child(n+4){border-top:1px solid var(--ui-line)}}
 @media (max-width:599px){.rp-kpis{grid-template-columns:1fr 1fr}.rp-kpi{border-left:0;border-top:1px solid var(--ui-line);padding:12px 16px}.rp-kpi:nth-child(even){border-left:1px solid var(--ui-line)}.rp-kpi:nth-child(-n+2){border-top:0}.rp-kpi b{font-size:23px}}
 .rp-grid,.rp-grid3{display:grid;gap:24px;margin:0 0 24px}
-@media (min-width:1000px){.rp-grid{grid-template-columns:1.4fr 1fr;align-items:start}.rp-grid3{grid-template-columns:repeat(3,1fr);align-items:start}}
+@media (min-width:1000px){.rp-grid{grid-template-columns:1.4fr 1fr;align-items:start}.rp-grid3{grid-template-columns:repeat(2,1fr);align-items:start}}
+@media (min-width:1280px){.rp-grid3{grid-template-columns:repeat(4,1fr)}}
 .rp>.adm-card{margin:0 0 24px}
 /* chart */
 .rp-legend{display:flex;gap:16px;margin:0 0 12px;font-size:13px;color:var(--muted)}
@@ -419,6 +426,8 @@ body.adm{--rp-a:#00897B;--rp-b:#C0663A}
 .pv-code .adm-ghost{position:absolute;top:8px;right:8px;min-height:30px;font-size:12.5px;background:#fff}
 .pv-prev{display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin:16px 0 0;padding:16px;border:1px dashed var(--ui-line-2);border-radius:var(--ui-r-sm);background:var(--ui-sunk)}
 .pv-prev p{margin:0;font-size:13px;color:var(--muted)}
+.pv-page #pvLink{overflow-wrap:anywhere;word-break:break-all}
+.sop-doc th{color:var(--ink)}
 .pv-page .adm-wl li{padding:12px 0}
 .pv-page .adm-wl li:first-child{padding-top:0}
 .pv-page .adm-col{display:grid;gap:24px;min-width:0}
@@ -490,6 +499,8 @@ body.adm{--rp-a:#00897B;--rp-b:#C0663A}
  <li><a href="#s15">Adding or removing a practitioner</a></li>
  <li><a href="#s16">If the system is down</a></li>
  <li><a href="#s17">The inbox and group messages</a></li>
+ <li><a href="#s18">Intake forms</a></li>
+ <li><a href="#s19">Payments</a></li>
 </ol></nav>
 <article class="adm-card sop-doc">
 <h1>Front desk standard operating procedure</h1>
@@ -513,6 +524,8 @@ body.adm{--rp-a:#00897B;--rp-b:#C0663A}
  <li><b>Reminders:</b> in the afternoon, call everyone still showing “No reply yet” for tomorrow. One call now prevents most no-shows.</li>
  <li><b>Coming up:</b> check for “no plan yet” tags on Medicare sessions in the next 3 days and chase the GP (section 4).</li>
  <li>Glance at <b>Activity</b> for anything unusual, like a refill that went unfilled close to the time.</li>
+ <li><b>Payments:</b> clear <b>Fees to decide</b> with the practitioner, and follow up anything <b>Outstanding</b> (section 19).</li>
+ <li><b>Intake:</b> check “intake not done” tags on first sessions in the next 2 days and resend the link (section 18).</li>
  <li><b>Inbox:</b> clear <b>Urgent</b> first, then <b>Needs reply</b>. Aim to answer every message the same business day (section 17).</li>
 </ul>
 </section>
@@ -657,6 +670,26 @@ body.adm{--rp-a:#00897B;--rp-b:#C0663A}
 <li>Group messages are for service information only. Anything promotional, like newsletters or new services, needs people’s consent first and an unsubscribe (Spam Act).</li></ul>
 <h3>Phone</h3>
 <p>Calls to the Hub number ring as normal. Missed calls and voicemails appear in the inbox. When you call someone back, use <b>Log a call</b> with a short admin note, never clinical details.</p>
+</section>
+
+<section id="s18"><h2>18. Intake forms</h2>
+<p>New clients (first visits, referrals and new people booked from the waitlist) get a text with a link to their intake form straight after booking, and again in their reminder until it’s done. It covers their details, emergency contact, GP, Medicare and health fund, consent (confidentiality and its limits, fees and cancellations, texts and email, telehealth, care) and a typed signature.</p>
+<ul><li>The form saves as they go, so clients can finish it later from the same link.</li>
+<li>If it isn’t done 2 days before the first session, resend it from the client’s record, or go through it with them by phone.</li>
+<li>For children: if the parent says there are court orders, the practitioner must see a copy before the first session.</li>
+<li>The “before your first session” answer is for the practitioner only. Front desk staff don’t open it. When live, the form goes into the practitioner’s Halaxy record.</li>
+<li>The consent wording is a template. Each practitioner should check it matches their own consent and confidentiality information.</li></ul>
+</section>
+
+<section id="s19"><h2>19. Payments</h2>
+<p>Each practitioner is paid directly into their own account. The hub runs the process; it never holds client money or card numbers.</p>
+<ul><li><b>Session fees</b> are charged to the card on file when the session ends (setting), with the Medicare claim lodged at the same time so the rebate goes to the client’s bank account. Clients get a receipt by text.</li>
+<li><b>Deposits</b> (if switched on) are taken when a new client books, come off the first session fee, and are refunded automatically if they cancel in time.</li>
+<li><b>Card declined or no card:</b> the client is texted a payment link. If it’s still unpaid after 2 business days, resend the link or call. Mark it paid if they pay at the desk.</li>
+<li><b>Late cancellations and no-shows</b> appear under <b>Fees to decide</b>. The practitioner chooses to charge or waive (with a reason). If the time is refilled from the waitlist, the fee is waived automatically, and refunded if it was already charged.</li>
+<li><b>No-shows:</b> mark them under <b>Recent sessions</b> in the practitioner view after the session time. If the session fee was already charged, it’s refunded and the policy fee goes to Fees to decide.</li>
+<li><b>Refunds</b> go back to the original card. Use them for billing errors, sessions cancelled by the Hub, and anything the director approves.</li>
+<li>Never take card numbers by phone, email or text, and never write them down.</li></ul>
 </section>
 </article>
 </div>

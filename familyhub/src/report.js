@@ -21,7 +21,7 @@ function draw(){var r=api.report(days),T=r.totals,MON=F.MON;
 // stacked weekly bars: refilled (teal) under lost (clay). Colours validated for colour-blind separation.
 function chart(r){var el=$('rpChart'),W=r.weeks,max=Math.max.apply(null,W.map(function(w){return w.refilled+w.lost}).concat([1]));
  function wl(w){var a=new Date(w.from),b=new Date(w.from+6*864e5);return a.getDate()+' '+F.MON[a.getMonth()]+'–'+b.getDate()+' '+F.MON[b.getMonth()]}
- if(asTable){el.innerHTML='<div class="adm-tbl"><table><thead><tr><th scope="col">Week</th><th scope="col">Refilled</th><th scope="col">Not refilled</th><th scope="col">Fill rate</th></tr></thead><tbody>'+
+ if(asTable){el.innerHTML='<div class="adm-tbl" tabindex="0" role="region" aria-label="Cancellations by week"><table><thead><tr><th scope="col">Week</th><th scope="col">Refilled</th><th scope="col">Not refilled</th><th scope="col">Fill rate</th></tr></thead><tbody>'+
   W.map(function(w){return '<tr><td>'+wl(w)+'</td><td>'+w.refilled+'</td><td>'+w.lost+'</td><td>'+pct(w.refilled,w.refilled+w.lost)+'%</td></tr>'}).join('')+'</tbody></table></div>';return}
  var step=max>12?5:2,ticks=[];for(var t=0;t<=max;t+=step)ticks.push(t);var top=ticks[ticks.length-1]<max?ticks[ticks.length-1]+step:ticks[ticks.length-1];if(ticks[ticks.length-1]<top)ticks.push(top);
  el.innerHTML='<div class="rp-legend"><span class="a">Refilled</span><span class="b">Not refilled</span></div><div class="rp-chart" role="img" aria-label="Cancellations per week, split into refilled and not refilled. Use Show as table for the numbers.">'+
@@ -56,6 +56,7 @@ function side(r){var w=r.waitlist,f=r.referrals,x=r.reminders;
  function dl(rows){return '<dl class="rp-dl">'+rows.map(function(k){return '<div><dt>'+k[0]+'</dt><dd>'+k[1]+'</dd></div>'}).join('')+'</dl>'}
  $('rpWl').innerHTML=dl([['Waiting now',w.active],['Paused (no reply to check-in)',w.paused],['Check-in sent, no reply yet',w.checking],['Median time waiting',(w.medianDays||0)+' days'],['Booked from the waitlist',w.booked]])+
   (w.longest.length?'<h3 class="adm-day">Waiting longest</h3><ol class="rp-ol">'+w.longest.map(function(l){return '<li><b>'+esc(l.name)+'</b> '+l.days+' days · '+esc(l.need)+'</li>'}).join('')+'</ol>':'');
+ var M=r.money;$('rpPay').innerHTML=dl([['Collected',m(M.collected)],['Refunded',m(M.refunded)],['Outstanding',m(M.outstanding)+' ('+M.outstandingCount+')'],['Medicare rebates claimed for clients',m(M.medicare)],['Late and missed-session fees charged',m(M.feesCharged)],['Fees waived',M.feesWaived],['Fees still to decide',M.feesToDecide]])+'<p class="adm-muted">Hub bookings only. Paid straight to each practitioner.</p>';
  $('rpRef').innerHTML=dl([['Received',f.received],['Booked',f.booked],['Not booked yet',f.waiting],['Medicare plans still to come',f.plansMissing],['Median days, referral to booking',f.medianDays!=null?f.medianDays:'–']]);
  $('rpTxt').innerHTML=dl([['Reminders sent',x.sent],['Confirmed',x.confirmed+' ('+pct(x.confirmed,x.sent)+'%)'],['Can’t make it (freed early)',x.cantMake],['Texts sent, all kinds',r.texts.count],['Estimated SMS cost',m(r.texts.cost)]])+
   (r.series?'<p class="adm-muted">'+r.series+' regular (weekly or fortnightly) series booked online.</p>':'')}

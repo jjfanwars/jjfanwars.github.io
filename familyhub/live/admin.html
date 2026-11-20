@@ -110,12 +110,12 @@ body.adm :focus-visible{outline:2px solid var(--teal-deep);outline-offset:2px}
 .ph-b{max-width:88%;padding:8px 10px;border-radius:15px;font-size:12.5px;line-height:1.38;animation:phIn .35s cubic-bezier(.2,.8,.2,1)}
 .ph-b.out{align-self:flex-start;background:#E5E2DC;color:#2B2522;border-bottom-left-radius:4px}
 .ph-b.in{align-self:flex-end;background:#2F80ED;color:#fff;border-bottom-right-radius:4px}
-.ph-b time{display:block;font-size:10px;opacity:.6;margin-top:3px}
+.ph-b time{display:block;font-size:10px;color:#5F5650;margin-top:3px}
 @keyframes phIn{from{opacity:0;transform:translateY(8px) scale(.97)}to{opacity:1;transform:none}}
-.ph-link{background:none;border:0;padding:0;font:inherit;color:#1F6FD6;text-decoration:underline;cursor:pointer;font-weight:600}
+.ph-link{background:none;border:0;padding:0;font:inherit;color:#1557B0;text-decoration:underline;cursor:pointer;font-weight:600}
 .ph-bar{padding:8px;background:#fff;border-top:1px solid rgba(0,0,0,.08)}
 .ph-bar button{width:100%;min-height:34px;border-radius:99px;border:0;background:#2F80ED;color:#fff;font:600 13px var(--body);cursor:pointer}
-.ph-off{text-align:center;font-size:12px;color:#999}
+.ph-off{text-align:center;font-size:12px;color:#666}
 
 /* coming up */
 .adm-day{margin:24px 0 8px;font:600 12.5px/1.3 var(--body);letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
@@ -203,9 +203,9 @@ body.adm :focus-visible{outline:2px solid var(--teal-deep);outline-offset:2px}
 
 /* ---------- records ---------- */
 .adm-tabs{display:flex;flex-wrap:wrap;align-items:center;gap:4px;margin:0 0 16px;padding-bottom:12px;border-bottom:1px solid var(--ui-line)}
-.adm-tabs [role=tab]{min-height:34px;padding:0 12px;border:0;border-radius:8px;background:none;font:600 14px var(--body);color:var(--muted);cursor:pointer}
-.adm-tabs [role=tab]:hover{color:var(--ink);background:var(--ui-sunk)}
-.adm-tabs [role=tab][aria-selected=true]{background:var(--teal-mist);color:var(--teal-dark)}
+.adm-tabs [data-rec]{min-height:34px;padding:0 12px;border:0;border-radius:8px;background:none;font:600 14px var(--body);color:var(--muted);cursor:pointer}
+.adm-tabs [data-rec]:hover{color:var(--ink);background:var(--ui-sunk)}
+.adm-tabs [aria-pressed=true]{background:var(--teal-mist);color:var(--teal-dark)}
 .adm-tabs .adm-ghost{margin-left:auto;min-height:34px}
 .adm-tbl{overflow-x:auto;border:1px solid var(--ui-line);border-radius:var(--ui-r-sm)}
 .adm-tbl table{width:100%;border-collapse:collapse;font-size:13.5px;background:#fff}
@@ -333,7 +333,7 @@ a.adm-cx:hover{background:var(--teal-mist);border-color:var(--teal-deep);color:v
 
 /* inbox summary */
 .adm-inboxbtn em{display:inline-grid;place-items:center;min-width:20px;height:20px;margin-left:6px;padding:0 5px;border-radius:99px;background:var(--teal-deep);color:#fff;font-style:normal;font-size:12px}
-.adm-inboxbtn em.u{background:#C0663A}
+.adm-inboxbtn em.u{background:#A4502A}
 .adm-ibl{list-style:none;margin:0;padding:0}
 .adm-ibl li+li{border-top:1px solid var(--ui-line)}
 .adm-ibl a{display:block;margin:0 -8px;padding:10px 8px;border-radius:var(--ui-r-sm);color:inherit;text-decoration:none}
@@ -343,6 +343,12 @@ a.adm-cx:hover{background:var(--teal-mist);border-color:var(--teal-deep);color:v
 .adm-ibl span{display:block;font-size:12.5px;color:var(--muted)}
 .adm-ibl p{margin:4px 0 0;font-size:13.5px;line-height:1.45;color:var(--ink);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .adm-seg button[disabled]{cursor:default}
+.adm-amt{flex:none;font-weight:600;font-variant-numeric:tabular-nums;color:var(--ink)}
+.adm-amt.neg{color:#9A3B26}
+.adm-cx-ok:hover{background:var(--teal-mist)!important;border-color:var(--teal-deep)!important;color:var(--teal-dark)!important}
+#admPay .adm-day{margin-top:16px}
+#admPay .adm-day:first-child{margin-top:0}
+#admPay .adm-up li{flex-wrap:wrap}
 </style>
 <script>window.HUB_SITE=''</script>
 <script src="hub-core.js"></script>
@@ -361,16 +367,17 @@ a.adm-cx:hover{background:var(--teal-mist);border-color:var(--teal-deep);color:v
    <section class="adm-card" id="admNeeds" hidden></section>
    <section class="adm-card"><div class="adm-h"><h2>Spots being refilled</h2><span class="adm-sub" id="admClock"></span></div><div id="admOffers"></div></section>
    <section class="adm-card"><div class="adm-h"><h2>Phones</h2><span class="adm-sub">The latest texts, as clients see them. Tap a link to act on it.</span></div><div class="adm-phones" id="admPhones"></div></section>
+   <section class="adm-card" id="admPayCard"><div class="adm-h"><h2>Payments</h2><span class="adm-sub" id="admPaySub"></span></div><div id="admPay"></div></section>
    <section class="adm-card" id="admRemCard"><div class="adm-h"><h2>Reminders</h2><span class="adm-sub" id="admRemSub"></span></div><div id="admRem"></div></section>
    <section class="adm-card"><div class="adm-h"><h2>Coming up</h2><span class="adm-sub">Tap Cancel to pretend a client cancelled</span></div><div id="admUp"></div><div class="adm-ff"><span>Demo clock</span><button type="button" class="adm-ghost" data-ff="60">+1 hour</button><button type="button" class="adm-ghost" data-ff="360">+6 hours</button><button type="button" class="adm-ghost" data-ff="1440">+1 day</button></div></section>
   </div>
   <div class="adm-col">
    <section class="adm-card" id="admIbCard"><div class="adm-h"><h2>Inbox</h2><span class="adm-sub" id="admIbSub"></span><a class="adm-ghost adm-h-act" href="inbox.html">Open inbox</a></div><div id="admIb"></div></section>
-   <section class="adm-card"><div class="adm-h"><h2>Activity</h2></div><ol class="adm-feed" id="admFeed"></ol></section>
+   <section class="adm-card"><div class="adm-h"><h2>Activity</h2></div><ol class="adm-feed" id="admFeed" tabindex="0" aria-label="Activity"></ol></section>
    <section class="adm-card" id="admRefCard"><div class="adm-h"><h2>Referrals</h2><span class="adm-sub" id="admRefN"></span><a class="adm-ghost adm-h-act" href="refer.html?staff=1" target="_blank" rel="noopener">Log a referral</a></div><div id="admRef"></div></section>
    <section class="adm-card" id="admWlCard"><div class="adm-h"><h2>Waitlist</h2><span class="adm-sub" id="admWlN"></span></div><div class="adm-tools"><label class="adm-search"><span class="sr">Search the waitlist</span><input id="admWlQ" type="search" placeholder="Search name, phone or service" autocomplete="off"></label><label><span class="sr">Practitioner</span><select id="admWlP"><option value="">Everyone</option></select></label><button type="button" class="adm-ghost" data-csv="waitlist" title="Download as a spreadsheet (CSV)">Export</button></div><div id="admWl"></div></section>
    <section class="adm-card" id="admRec"><div class="adm-h"><h2>Records</h2><span class="adm-sub">Everything the hub has logged</span></div>
-    <div class="adm-tabs" role="tablist"><button type="button" role="tab" data-rec="bookings" aria-selected="true">Online bookings</button><button type="button" role="tab" data-rec="offers" aria-selected="false">Refill offers</button><button type="button" role="tab" data-rec="texts" aria-selected="false">Texts</button><button type="button" role="tab" data-rec="referrals" aria-selected="false">Referrals</button><button type="button" role="tab" data-rec="reminders" aria-selected="false">Reminders</button><button type="button" class="adm-ghost" data-csv="rec">Export</button></div>
+    <div class="adm-tabs" role="group" aria-label="Which records"><button type="button" data-rec="bookings" aria-pressed="true">Online bookings</button><button type="button" data-rec="offers" aria-pressed="false">Refill offers</button><button type="button" data-rec="texts" aria-pressed="false">Texts</button><button type="button" data-rec="referrals" aria-pressed="false">Referrals</button><button type="button" data-rec="reminders" aria-pressed="false">Reminders</button><button type="button" data-rec="payments" aria-pressed="false">Payments</button><button type="button" class="adm-ghost" data-csv="rec">Export</button></div>
     <div id="admRecBody"></div></section>
    <section class="adm-card"><div class="adm-h"><h2>Settings</h2></div><div id="admSet"></div></section>
    <section class="adm-card adm-how"><h2>How it works when it’s live</h2><ol>
@@ -445,7 +452,7 @@ function phones(){var S=api.state(),o=S.offers.filter(function(x){return x.statu
  $('admPhones').innerHTML=order.map(function(ph){var msgs=S.sms.filter(function(m){return m.to===ph}),name=(msgs[msgs.length-1]||{}).name||ph;msgs=msgs.slice(-5);
   var yes=o&&o.status==='open'&&o.sent.filter(function(s){var w=wl(s.wid);return w&&w.phone===ph&&s.state==='sent'&&s.round===o.round})[0];
   return '<div class="phone"><div class="ph-notch"></div><div class="ph-top"><span class="ph-av">'+esc(name[0])+'</span><b>Surf Coast Family Hub</b><small>to '+esc(name)+'</small></div><div class="ph-msgs">'+
-   msgs.map(function(m){var body=esc(m.body).replace(/sfch\.au\/([crxkbvm])\/([a-z0-9]+)/gi,function(_,k,t){return '<button type="button" class="ph-link" data-link="'+k+'|'+t+'">sfch.au/'+k+'/'+t+'</button>'});
+   msgs.map(function(m){var body=esc(m.body).replace(/sfch\.au\/([crxkbvmpi])\/([a-z0-9]+)/gi,function(_,k,t){return '<button type="button" class="ph-link" data-link="'+k+'|'+t+'">sfch.au/'+k+'/'+t+'</button>'});
     return '<div class="ph-b '+m.dir+'">'+body+'<time>'+F.time(new Date(m.at))+'</time></div>'}).join('')+'</div>'+
    (yes?'<div class="ph-bar"><button type="button" data-yes="'+yes.tok+'">Reply YES</button></div>':'<div class="ph-bar ph-off">iMessage</div>')+
    '</div>'}).join('');
@@ -457,10 +464,11 @@ function upcoming(){var list=api.upcoming(4).slice(0,40),days={};
   var b=a.booking,r=a.rem,chips=(b&&b.source==='refill'?' <em class="adm-tag">refilled</em>':b&&b.source==='referral'?' <em class="adm-tag">referral</em>':b?' <em class="adm-tag">booked online</em>':'')+
    (b&&b.mode==='video'?' <em class="adm-tag adm-tag-g">video</em>':b&&b.mode==='phone'?' <em class="adm-tag adm-tag-g">phone</em>':'')+(b&&b.series?' <em class="adm-tag adm-tag-g">'+b.series.n+'/'+b.series.of+'</em>':'')+
    (b&&b.plan==='yes'&&!(b.referral&&b.referral.planIn)?' <em class="adm-tag adm-tag-n">no plan yet</em>':'')+
+   (b&&b.intake?(b.intake.status==='done'?' <em class="adm-tag adm-tag-g">intake done</em>':' <em class="adm-tag adm-tag-n">intake '+(b.intake.status==='started'?'half done':'not done')+'</em>'):'')+
    (r?(r.state==='confirmed'?' <em class="adm-rs ok" title="Confirmed by text">'+svg('check')+'Confirmed</em>':' <em class="adm-rs" title="Reminder sent, no reply yet">Reminded</em>'):'');
   return '<li><time>'+F.time(a.start)+'</time><img src="'+H.photo(a.pid)+'" alt="" width="30" height="30"><span><b>'+esc(a.name)+'</b> with '+esc(p.first)+chips+'</span><button type="button" class="adm-cx" data-cx="'+a.pid+'|'+a.start.toISOString()+'">Cancel</button></li>'}).join('')+'</ul>'}).join('')||'<p class="adm-empty">No appointments in the next few days.</p>'}
 
-var ICONK={cancel:'x',offer:'send',filled:'check',booked:'check',wait:'users',move:'ff',none:'list',skip:'list',ask:'bolt',queue:'clock',clock:'clock',remind:'bell',confirm:'check',ref:'file',inbox:'send',urgent:'bolt',send:'send'};
+var ICONK={cancel:'x',offer:'send',filled:'check',booked:'check',wait:'users',move:'ff',none:'list',skip:'list',ask:'bolt',queue:'clock',clock:'clock',remind:'bell',confirm:'check',ref:'file',inbox:'send',urgent:'bolt',send:'send',pay:'cash',payfail:'x',intake:'file'};
 function feed(){var S=api.state();
  $('admFeed').innerHTML=S.feed.slice(0,18).map(function(f){return '<li class="fk-'+f.kind+'"><span class="adm-fi">'+svg(ICONK[f.kind]||'list')+'</span><p>'+esc(f.text)+'<time>'+ago(f.at)+'</time></p></li>'}).join('')||'<li class="adm-empty">Quiet so far.</li>'}
 
@@ -506,14 +514,15 @@ function recRows(){var S=api.state();
   return [P[o.pid].first+', '+F.when(o.start),F.when(new Date(o.created)),{open:'Offering',filled:'Refilled',unfilled:'Back online',approval:'Waiting for you',queued:'Queued (quiet hours)'}[o.status]||o.status,String(o.sent.length),w?w.name:'']})};
  if(recTab==='referrals')return {head:['Received','Client','From','To','Medicare plan','Status','Via'],rows:S.referrals.map(function(r){
   return [F.when(new Date(r.at)),r.client.name,r.from.name+(r.from.practice?', '+r.from.practice:''),r.to==='team'?'Psychology Team':P[r.to].first,r.plan==='yes'?(r.planIn?'Received':'Not yet'):'None',REF_ST[r.status],r.source]})};
+ if(recTab==='payments')return {head:['When','Client','Practitioner','What','Amount','Status','Card'],rows:S.pay.map(function(x){return [F.when(new Date(x.at)),x.name,P[x.pid].first,PK[x.kind],(x.kind==='refund'?'-':'')+F.money(x.amount),{paid:'Paid',due:'Due',failed:'Card declined',refunded:'Refunded',claimed:'Claimed',void:'Cancelled (refilled)'}[x.status]||x.status,x.last4?'•••• '+x.last4:(x.via||'')]})};
  if(recTab==='reminders')return {head:['Appointment','Client','Sent','Reply'],rows:Object.keys(S.rem).map(function(k){return S.rem[k]}).sort(function(a,b){return new Date(a.start)-new Date(b.start)}).map(function(r){
   return [P[r.pid].first+', '+F.when(r.start),r.name,F.when(new Date(r.at)),r.state==='confirmed'?'Confirmed':r.state==='cancelled'?'Can’t make it':'No reply yet']})};
  return {head:['Time','To','Message'],rows:S.sms.slice().reverse().map(function(m){return [F.when(new Date(m.at)),(m.dir==='in'?'From ':'')+(m.name||m.to),m.body]})}}
 function records(){var r=recRows();
- [].forEach.call(document.querySelectorAll('[data-rec]'),function(b){b.setAttribute('aria-selected',b.dataset.rec===recTab)});
- $('admRecBody').innerHTML=r.rows.length?'<div class="adm-tbl"><table><thead><tr>'+r.head.map(function(x){return '<th scope="col">'+x+'</th>'}).join('')+'</tr></thead><tbody>'+
+ [].forEach.call(document.querySelectorAll('[data-rec]'),function(b){b.setAttribute('aria-pressed',b.dataset.rec===recTab)});
+ $('admRecBody').innerHTML=r.rows.length?'<div class="adm-tbl" tabindex="0" role="region" aria-label="Records table"><table><thead><tr>'+r.head.map(function(x){return '<th scope="col">'+x+'</th>'}).join('')+'</tr></thead><tbody>'+
   r.rows.slice(0,50).map(function(row){return '<tr>'+row.map(function(c){return '<td>'+esc(c)+'</td>'}).join('')+'</tr>'}).join('')+'</tbody></table></div>'+(r.rows.length>50?'<p class="adm-muted">Showing 50 of '+r.rows.length+'. Export for the lot.</p>':''):
-  '<p class="adm-empty">'+{bookings:'No online bookings yet. Book a time on the booking page to see it here.',offers:'No spots offered yet. Cancel an appointment to start one.',texts:'No texts sent yet.',referrals:'No referrals yet.',reminders:'No reminders sent yet.'}[recTab]+'</p>'}
+  '<p class="adm-empty">'+{bookings:'No online bookings yet. Book a time on the booking page to see it here.',offers:'No spots offered yet. Cancel an appointment to start one.',texts:'No texts sent yet.',payments:'No payments yet.',referrals:'No referrals yet.',reminders:'No reminders sent yet.'}[recTab]+'</p>'}
 
 // ---------- CSV export ----------
 function confirmExport(){return confirm('This file has clients’ personal and health details. Keep it on a secure work device, don’t email it unencrypted, and delete it when you’re done.')}
@@ -553,6 +562,18 @@ $('admAskQ').addEventListener('input',function(){this.style.height='';this.style
 [$('admAsk'),$('admPerson')].forEach(function(d){d.addEventListener('click',function(e){if(e.target===d||e.target.closest('[data-close]'))d.close()})});
 $('admPerson').addEventListener('close',function(){openPerson=null;openRef=null});
 $('admWlQ').addEventListener('input',waitlist);$('admWlP').addEventListener('change',waitlist);
+
+// ---------- payments ----------
+var PK={deposit:'Deposit',session:'Session fee',late:'Late cancellation fee',noshow:'Missed session fee',refund:'Refund',medicare:'Medicare claim'};
+function payments(){var S=api.state(),L=S.pay,day=new Date(H.now());day.setHours(0,0,0,0);
+ var today=L.filter(function(x){return x.at>=day.getTime()&&x.status!=='due'&&x.status!=='failed'&&x.kind!=='medicare'&&x.kind!=='refund'}).reduce(function(s,x){return s+x.amount},0);
+ var owe=L.filter(function(x){return x.status==='due'||x.status==='failed'}),fees=api.feesToDecide(),done=L.filter(function(x){return x.status!=='due'&&x.status!=='failed'&&x.status!=='void'});
+ $('admPaySub').textContent=F.money(Math.round(today*100)/100)+' collected today · '+owe.length+' outstanding';
+ $('admPay').innerHTML=(fees.length?'<h3 class="adm-day">Fees to decide</h3><ul class="adm-up">'+fees.map(function(b){var fee=b.noShow?b.noShowFee:b.lateFee;
+   return '<li><span><b>'+esc(b.name)+'</b> with '+esc(P[b.pid].first)+', '+esc(F.when(b.start))+' <em class="adm-tag adm-tag-n">'+(b.noShow?'no-show':'late cancel')+'</em></span><b class="adm-amt">'+F.money(fee)+'</b><button type="button" class="adm-cx adm-cx-ok" data-fee="'+b.id+'">Charge</button><button type="button" class="adm-cx" data-waive="'+b.id+'">Waive</button></li>'}).join('')+'</ul><p class="adm-muted">The practitioner decides. Waive for illness, emergencies, hardship or a first slip.</p>':'')+
+  (owe.length?'<h3 class="adm-day">Outstanding</h3><ul class="adm-up">'+owe.map(function(x){return '<li><span><b>'+esc(x.name)+'</b> · '+PK[x.kind].toLowerCase()+' for '+esc(P[x.pid].first)+(x.status==='failed'?' <em class="adm-tag adm-tag-p">card declined</em>':' <em class="adm-tag adm-tag-n">no card</em>')+'</span><b class="adm-amt">'+F.money(x.amount)+'</b><button type="button" class="adm-cx adm-cx-ok" data-paylink="'+x.id+'">Resend link</button><button type="button" class="adm-cx adm-cx-ok" data-paidin="'+x.id+'">Paid in person</button></li>'}).join('')+'</ul>':'')+
+  '<h3 class="adm-day">Recent</h3>'+(done.length?'<ul class="adm-up">'+done.slice(0,5).map(function(x){
+   return '<li><span><b>'+esc(x.name)+'</b> · '+PK[x.kind]+(x.status==='refunded'?' (refunded)':x.status==='claimed'?' (to client’s bank)':'')+' · '+esc(P[x.pid].first)+'</span><b class="adm-amt'+(x.kind==='refund'?' neg':'')+'">'+(x.kind==='refund'?'−':'')+F.money(x.amount)+'</b>'+(x.status==='paid'&&x.kind!=='refund'?'<button type="button" class="adm-cx" data-refund="'+x.id+'">Refund</button>':x.kind==='medicare'?'':'<a class="adm-cx adm-cx-ok" href="pay.html#p='+x.id+'" target="_blank" rel="noopener">Receipt</a>')+'</li>'}).join('')+'</ul>':'<p class="adm-empty">No payments yet.</p>')}
 
 // ---------- inbox summary ----------
 var CHN={sms:'Text',email:'Email',voicemail:'Voicemail',call:'Missed call',form:'Website enquiry'};
@@ -620,6 +641,9 @@ function settings(){var s=api.state().settings;
   '<h3 class="adm-sh">Waitlist and booking</h3>'+
   row('“Still keen?” check-in','People who don’t reply within a week are paused, not removed.',seg('freshDays',[[0,'Off'],[30,'After 30 days'],[60,'After 60 days']],s.fresh?s.freshDays:0))+
   row('Regular (weekly or fortnightly) booking online','',seg('series',[[true,'On'],[false,'Off']]))+
+  row('Intake form for new clients','Texted after booking and in the reminder until it’s done.',seg('intake',[[true,'On'],[false,'Off']]))+
+  row('Deposit for new clients','Comes off the first session fee. Refunded if they cancel in time.',seg('deposit',[[0,'None'],[50,'$50'],['full','Full fee']]))+
+  row('Session fees','Charged to the card on file when the session ends, with the Medicare claim lodged at the same time.',seg('charge',[['auto','Charge automatically'],['manual','Staff charge them']]))+
   row('Referral to a named practitioner','',seg('autoInvite',[[true,'Text the client a booking link'],[false,'Wait for staff']]))+
   '<h3 class="adm-sh">Inbox</h3>'+
   row('Automatic replies','Admin only: “running late” (and tells the practitioner) and confirmations. Everything else waits for a person.',seg('autoReply',[['admin','Admin only'],['off','Off']]))+
@@ -627,7 +651,7 @@ function settings(){var s=api.state().settings;
   row('After-hours reply','',seg('afterHours',[[true,'On'],[false,'Off']]))+
   row('Safety reply','Messages that may mean someone is at risk get an instant reply with 000 and Lifeline, and are flagged urgent. Always on.','<div class="adm-seg"><button type="button" aria-pressed="true" disabled>On</button></div>')}
 
-function all(){stats();tryBox();needs();offers();phones();reminders();upcoming();inboxCard();feed();refs();fillPractFilter();waitlist();records();settings();
+function all(){stats();tryBox();needs();offers();phones();payments();reminders();upcoming();inboxCard();feed();refs();fillPractFilter();waitlist();records();settings();
  if($('admPerson').open){if(openPerson&&document.activeElement!==$('admNote'))person(openPerson);else if(openRef)refDrawer(openRef)}}
 api.on(all);all();
 setInterval(function(){stats();offers()},1000);
@@ -653,8 +677,15 @@ document.addEventListener('click',function(e){var b=e.target.closest('button');i
   else if(k==='b')window.open('book.html#ref='+tk,'_blank');
   else if(k==='m')window.open('manage.html#t='+tk,'_blank');
   else if(k==='v')toast('In the live system this opens the practitioner’s Halaxy telehealth room.');
+  else if(k==='p')window.open('pay.html#p='+tk,'_blank');
+  else if(k==='i')window.open('intake.html#t='+tk,'_blank');
   return}
  if(d.refopen){refDrawer(d.refopen);return}
+ if(d.fee){var px=api.chargeFee(d.fee);toast(px&&px.status==='paid'?'Fee charged. Receipt texted.':px?'Card declined. Payment link texted.':'Already decided.');return}
+ if(d.waive){var why=prompt('Reason for waiving (for the records)','Unwell');if(why!==null){api.waiveFee(d.waive,why);toast('Fee waived.')}return}
+ if(d.paylink){api.resendPay(d.paylink);toast('Payment link texted again.');return}
+ if(d.paidin){api.markPaid(d.paidin,'in person');toast('Marked as paid.');return}
+ if(d.refund){if(confirm('Refund this payment to the client’s card?')){api.refund(d.refund,'refunded by the Hub');toast('Refunded.')}return}
  if(d.refsend){var pick=document.querySelector('[data-refpick="'+d.refsend+'"]'),to=(d.to||(pick&&pick.value)||'').split(',').filter(Boolean);api.inviteReferral(d.refsend,to);toast('Booking link texted.');return}
  if(d.refplan){api.updateReferral(d.refplan,{planIn:true});toast('Plan marked as received.');return}
  if(d.refclose){if(confirm('Close this referral?')){api.updateReferral(d.refclose,{status:'closed'});$('admPerson').close()}return}

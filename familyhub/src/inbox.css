@@ -7,7 +7,7 @@
 .ib-tabs button:hover{background:var(--ui-sunk);color:var(--ink)}
 .ib-tabs button[aria-selected=true]{background:var(--teal-mist);color:var(--teal-dark)}
 .ib-tabs em{min-width:20px;padding:1px 6px;border-radius:99px;background:rgba(59,50,45,.08);font-style:normal;font-size:12px;text-align:center}
-.ib-tabs button.u em{background:#C0663A;color:#fff}
+.ib-tabs button.u em{background:#A4502A;color:#fff}
 .ib-q{display:block;flex:none!important;margin:0 12px 8px}
 .ib-tabs{flex:none}
 .ib-q input{width:100%;min-height:38px;padding:0 12px;border:1px solid var(--ui-line-2);border-radius:var(--ui-r-sm);background:#fff;font:500 14.5px var(--body)}
@@ -27,7 +27,7 @@
 .ib-pv{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-size:13px;line-height:1.4;color:var(--muted)}
 .ib-meta{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
 .ib-meta i,.ib-topic{display:inline-block;padding:1px 7px;border-radius:6px;background:var(--ui-sunk);box-shadow:inset 0 0 0 1px var(--ui-line);font-style:normal;font-size:11.5px;font-weight:600;color:var(--muted)}
-.ib-topic.t-risk{background:#C0663A;color:#fff;box-shadow:none}
+.ib-topic.t-risk{background:#A4502A;color:#fff;box-shadow:none}
 .ib-topic.t-new,.ib-topic.t-referral{background:var(--teal-mist);color:var(--teal-dark);box-shadow:none}
 .ib-topic.t-cancel,.ib-topic.t-move,.ib-topic.t-late{background:rgba(226,184,103,.22);color:#6B4A0E;box-shadow:none}
 .ib-row time{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}

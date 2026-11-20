@@ -113,7 +113,7 @@ function defaultFor(pid,kid){var order=kid?['child','early','me']:['me','early',
 function readHash(){var o={};location.hash.replace(/^#/,'').split('&').forEach(function(p){var kv=p.split('=');if(kv[0])o[kv[0]]=decodeURIComponent(kv[1]||'')});
  REF=null;
  if(o.ref){var r=api.referral(o.ref);if(r&&r.status!=='closed'&&r.pids&&r.pids.length){REF=r;var d=defaultFor(r.pids[0],!!r.client.child);if(d){o.who=d.who;o.need=d.need}if(r.plan==='yes'&&!o.plan)o.plan='yes';
-   DRAFT.bkName=DRAFT.bkName||r.client.name;DRAFT.bkPhone=DRAFT.bkPhone||r.client.phone;DRAFT.bkEmail=DRAFT.bkEmail||r.client.email||'';if(r.client.child)DRAFT.bkKid=DRAFT.bkKid||r.client.child}else delete o.ref}
+   if(DRAFT.ref!==r.tok){DRAFT={ref:r.tok,bkName:r.client.name,bkPhone:r.client.phone,bkEmail:r.client.email||'',bkKid:r.client.child||''}}}else delete o.ref}
  if(o.p){var q=P[o.p];if(q&&!q.leave&&(q.live||q.url||q.contact)){if(!o.who||!WHO[o.who]){var d2=defaultFor(o.p);if(d2){o.who=d2.who;o.need=d2.need}}}else delete o.p}
  if(!WHO[o.who])o={};else if(o.need&&!findNeed(o.who,o.need))delete o.need;return o}
 function only(){return REF?REF.pids.filter(function(x){return P[x]&&!P[x].leave}):S.p?[S.p]:null}
@@ -292,7 +292,7 @@ function openBook(pid,t){
  function cardOn(){return pol.card==='all'||(pol.card==='new'&&B.first==='yes')}
  function cardBox(){var el=root.querySelector('[data-cardbox]');if(!cardOn()){el.innerHTML='';return}
   el.innerHTML='<div class="bk-card">'+(B.card?'<p class="bk-ok">'+svg('card')+'Visa ending '+B.card.last4+' held for this booking</p>':
-   '<p>New clients: we keep a card on file to hold your first booking. It’s only charged under the policy above. Card details go straight to our payment provider; the Hub never sees them.</p><button type="button" class="btn btn-outline btn-sm" data-addcard>'+svg('card')+'Add a card</button><small>Demo: this adds a pretend card. No card details are asked for.</small>')+'</div>'}
+   '<p>'+(pol.deposit?'New clients: we take a '+money(pol.deposit)+' deposit now, which comes off your first session fee and is refunded if you cancel in time. The card stays on file for session fees.':'New clients: we keep a card on file to hold your first booking. It’s used for session fees after each session and under the policy above.')+' Card details go straight to our payment provider; the Hub never sees them.</p><button type="button" class="btn btn-outline btn-sm" data-addcard>'+svg('card')+'Add a card</button><small>Demo: this adds a pretend card. No card details are asked for.</small>')+'</div>'}
  function submitLabel(){var s=root.querySelector('.bk-submit span');if(s)s.textContent=B.every&&B.plan?'Book '+B.plan.filter(function(x){return x.start}).length+' sessions':'Confirm booking'}
  function series(){var box=root.querySelector('.bk-series');if(!box)return;if(!B.every){box.hidden=true;B.plan=null;submitLabel();return}
   box.hidden=false;box.innerHTML='<div class="bk-cnt">'+seg('count',[[4,'4 sessions'],[6,'6'],[10,'10']],B.count)+'</div><p class="bk-hint">Checking times…</p>';
@@ -368,6 +368,7 @@ function done(bs){var b=bs[0],p=P[b.pid],t=new Date(b.start),many=bs.length>1;
  showSheet(sheetHead(many?'You’re booked for '+bs.length+' sessions':'You’re booked')+'<div class="bk-done"><span class="bk-tick">'+svg('check')+'</span><p>We’ve sent a confirmation text to <b>'+esc(b.phone)+'</b>.</p></div>'+apptLine(b.pid,t,b.len,b.mode)+
   (many?'<ol class="bk-dates bk-dates-done">'+bs.map(function(x,i){return '<li class="ok"><span>'+(i+1)+'</span><b>'+esc(F.day(x.start,1))+', '+F.time(new Date(x.start))+'</b></li>'}).join('')+'</ol>':'')+
   '<p class="bk-svc">'+svg('check')+'<span>'+esc(b.service)+'</span></p>'+tele+plan+
+  (b.intake?'<div class="bk-intake"><div>'+svg('file')+'<p><b>One more thing: your intake form</b><span>About 5 minutes: your details, emergency contact and consent. We’ve texted you the link too.</span></p></div><a class="btn btn-primary btn-sm" href="intake.html#t='+b.intake.tok+'">Fill it in now</a></div>':'')+
   '<p class="bk-dir">'+svg('shield')+'<span>Free to move or cancel up to '+(b.policy?b.policy.hrs:24)+' hours before. We’ll text a reminder 2 days ahead, with a link if you can’t make it.</span></p>'+
   calButtons(bs)+
   '<div class="bk-acts"><a class="btn btn-primary btn-sm" href="manage.html#t='+b.token+'">Manage '+(many?'my sessions':'my booking')+'</a></div>'+

@@ -400,6 +400,61 @@ html.fd-embed body{background:var(--paper,#fff)}
 #rf .bk-demo{margin:16px 0 0;font-size:13px;color:var(--muted);text-align:center}
 #rf .rf-next{margin:0 0 24px;padding-left:20px;font-size:15px;line-height:1.55}
 #rf .rf-next li{margin:0 0 8px}
+
+/* ---------- intake form ---------- */
+.ik-top{display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:space-between;gap:8px 24px}
+#rf .ik-save{margin:8px 0 0;font-size:13px;color:var(--teal-dark);font-weight:600}
+#rf .ik-n{display:inline-grid;place-items:center;width:26px;height:26px;margin-right:10px;border-radius:50%;background:var(--teal-mist);color:var(--teal-dark);font:700 13px var(--body);vertical-align:2px}
+#rf select{min-height:46px;width:100%;padding:0 10px;border:1px solid var(--ui-line-2);border-radius:var(--ui-r-sm);background:#fff;font:500 16px var(--body);color:var(--ink)}
+#rf .bk-f input[disabled]{background:var(--ui-sunk);color:var(--muted)}
+#rf .ik-note{display:block;margin:8px 0 0;padding:10px 12px;border-radius:var(--ui-r-sm);background:rgba(230,188,118,.14);font-size:14px;line-height:1.5}
+#rf p.ik-note{margin:0}
+@media (min-width:520px){#rf .ik-half{max-width:calc(50% - 8px)}#rf .ik-medi{grid-template-columns:2fr 1fr 1fr}}
+.ik-card{display:grid;gap:8px;justify-items:start;padding:16px;border:1px solid var(--ui-line);border-radius:var(--ui-r);background:var(--ui-sunk)}
+#rf .ik-card .rf-q{margin:0}
+.ik-card .btn{margin:0}
+.ik-demo{font-size:12.5px;color:var(--muted)}
+.ik-info{padding:12px 16px;border:1px solid var(--ui-line);border-radius:var(--ui-r-sm);background:#fff}
+.ik-info summary{cursor:pointer;font-weight:600;font-size:15px}
+#rf .ik-info p{margin:8px 0 0;font-size:14.5px;line-height:1.55;color:var(--muted)}
+#rf .bk-ok{display:flex;gap:8px;align-items:center;margin:0;font-weight:600;color:var(--teal-dark)}
+#rf .bk-ok svg{width:18px;height:18px}
+#rf .bk-done{text-align:center}
+
+/* ---------- payment and receipt ---------- */
+.py-head{display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:space-between;gap:12px}
+.py-head .btn{margin:0}
+.py-head .btn svg{width:16px;height:16px}
+.py-dl{margin:16px 0 0;border:1px solid var(--ui-line);border-radius:var(--ui-r);overflow:hidden;background:#fff}
+.py-dl div{display:grid;grid-template-columns:150px 1fr;gap:12px;padding:12px 16px;border-top:1px solid var(--ui-line);font-size:15px}
+.py-dl div:first-child{border-top:0}
+.py-dl dt{color:var(--muted)}
+.py-dl dd{margin:0;font-weight:600;font-variant-numeric:tabular-nums}
+.py-dl dd small{font-weight:500;color:var(--muted);font-size:13px}
+.py-dl .tot{background:var(--ui-sunk)}
+.py-dl .tot dd{font-size:18px}
+@media (max-width:480px){.py-dl div{grid-template-columns:1fr;gap:2px}}
+@media print{.site-header,.site-footer,.page-hero,.demo-bar,.py-head .btn,.fd-crisis,.sp-btn,.rc-btn{display:none!important}#rf{box-shadow:none;border:0}}
+
+.bk-intake{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px 16px;margin:16px 0 0;padding:16px;border:1px solid rgba(60,104,105,.35);border-radius:var(--ui-r);background:rgba(60,104,105,.06)}
+.bk-intake>div{display:flex;gap:12px;align-items:flex-start;flex:1;min-width:220px}
+.bk-intake>div>svg{width:22px;height:22px;flex:none;color:var(--teal-deep);margin-top:2px}
+#bkSheet .bk-intake p,#mg .bk-intake p{margin:0}
+.bk-intake b{display:block;font-size:15.5px}
+.bk-intake span{display:block;font-size:14px;line-height:1.45;color:var(--muted)}
+.bk-intake .btn{margin:0}
+.mg-pay{margin:24px 0 0}
+#mg .mg-pay h3{margin:0 0 8px;font:600 15px/1.3 var(--body);letter-spacing:0}
+.mg-pay ul{list-style:none;margin:0;padding:0;border:1px solid var(--ui-line);border-radius:var(--ui-r-sm);overflow:hidden}
+.mg-pay li{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:10px 12px;font-size:14.5px}
+.mg-pay li+li{border-top:1px solid var(--ui-line)}
+.mg-pay li span{flex:1;min-width:160px}
+.mg-pay li b{font-variant-numeric:tabular-nums}
+.mg-pay li a{font-weight:600;color:var(--teal-deep)}
+.mg-pay li.due{background:rgba(230,188,118,.12)}
+#mg .mg-pay p{margin:8px 0 0;font-size:13.5px;color:var(--muted)}
+/* AA contrast on tinted panels (the site's teal is just under 4.5:1 there) */
+#finder .fd-ctx .fd-linkbtn,#finder .fd-times .fd-moretimes,#rf .ik-card .fd-linkbtn,#mg .mg-pay li a,#rf .ik-card .ik-demo .fd-linkbtn{color:var(--teal-dark)}
 </style>
 <script>window.HUB_SITE='https://familyhub.aiautomationvic.com/'</script>
 <script src="hub-core.js"></script>
@@ -595,7 +650,7 @@ function defaultFor(pid,kid){var order=kid?['child','early','me']:['me','early',
 function readHash(){var o={};location.hash.replace(/^#/,'').split('&').forEach(function(p){var kv=p.split('=');if(kv[0])o[kv[0]]=decodeURIComponent(kv[1]||'')});
  REF=null;
  if(o.ref){var r=api.referral(o.ref);if(r&&r.status!=='closed'&&r.pids&&r.pids.length){REF=r;var d=defaultFor(r.pids[0],!!r.client.child);if(d){o.who=d.who;o.need=d.need}if(r.plan==='yes'&&!o.plan)o.plan='yes';
-   DRAFT.bkName=DRAFT.bkName||r.client.name;DRAFT.bkPhone=DRAFT.bkPhone||r.client.phone;DRAFT.bkEmail=DRAFT.bkEmail||r.client.email||'';if(r.client.child)DRAFT.bkKid=DRAFT.bkKid||r.client.child}else delete o.ref}
+   if(DRAFT.ref!==r.tok){DRAFT={ref:r.tok,bkName:r.client.name,bkPhone:r.client.phone,bkEmail:r.client.email||'',bkKid:r.client.child||''}}}else delete o.ref}
  if(o.p){var q=P[o.p];if(q&&!q.leave&&(q.live||q.url||q.contact)){if(!o.who||!WHO[o.who]){var d2=defaultFor(o.p);if(d2){o.who=d2.who;o.need=d2.need}}}else delete o.p}
  if(!WHO[o.who])o={};else if(o.need&&!findNeed(o.who,o.need))delete o.need;return o}
 function only(){return REF?REF.pids.filter(function(x){return P[x]&&!P[x].leave}):S.p?[S.p]:null}
@@ -774,7 +829,7 @@ function openBook(pid,t){
  function cardOn(){return pol.card==='all'||(pol.card==='new'&&B.first==='yes')}
  function cardBox(){var el=root.querySelector('[data-cardbox]');if(!cardOn()){el.innerHTML='';return}
   el.innerHTML='<div class="bk-card">'+(B.card?'<p class="bk-ok">'+svg('card')+'Visa ending '+B.card.last4+' held for this booking</p>':
-   '<p>New clients: we keep a card on file to hold your first booking. It’s only charged under the policy above. Card details go straight to our payment provider; the Hub never sees them.</p><button type="button" class="btn btn-outline btn-sm" data-addcard>'+svg('card')+'Add a card</button><small>Demo: this adds a pretend card. No card details are asked for.</small>')+'</div>'}
+   '<p>'+(pol.deposit?'New clients: we take a '+money(pol.deposit)+' deposit now, which comes off your first session fee and is refunded if you cancel in time. The card stays on file for session fees.':'New clients: we keep a card on file to hold your first booking. It’s used for session fees after each session and under the policy above.')+' Card details go straight to our payment provider; the Hub never sees them.</p><button type="button" class="btn btn-outline btn-sm" data-addcard>'+svg('card')+'Add a card</button><small>Demo: this adds a pretend card. No card details are asked for.</small>')+'</div>'}
  function submitLabel(){var s=root.querySelector('.bk-submit span');if(s)s.textContent=B.every&&B.plan?'Book '+B.plan.filter(function(x){return x.start}).length+' sessions':'Confirm booking'}
  function series(){var box=root.querySelector('.bk-series');if(!box)return;if(!B.every){box.hidden=true;B.plan=null;submitLabel();return}
   box.hidden=false;box.innerHTML='<div class="bk-cnt">'+seg('count',[[4,'4 sessions'],[6,'6'],[10,'10']],B.count)+'</div><p class="bk-hint">Checking times…</p>';
@@ -850,6 +905,7 @@ function done(bs){var b=bs[0],p=P[b.pid],t=new Date(b.start),many=bs.length>1;
  showSheet(sheetHead(many?'You’re booked for '+bs.length+' sessions':'You’re booked')+'<div class="bk-done"><span class="bk-tick">'+svg('check')+'</span><p>We’ve sent a confirmation text to <b>'+esc(b.phone)+'</b>.</p></div>'+apptLine(b.pid,t,b.len,b.mode)+
   (many?'<ol class="bk-dates bk-dates-done">'+bs.map(function(x,i){return '<li class="ok"><span>'+(i+1)+'</span><b>'+esc(F.day(x.start,1))+', '+F.time(new Date(x.start))+'</b></li>'}).join('')+'</ol>':'')+
   '<p class="bk-svc">'+svg('check')+'<span>'+esc(b.service)+'</span></p>'+tele+plan+
+  (b.intake?'<div class="bk-intake"><div>'+svg('file')+'<p><b>One more thing: your intake form</b><span>About 5 minutes: your details, emergency contact and consent. We’ve texted you the link too.</span></p></div><a class="btn btn-primary btn-sm" href="intake.html#t='+b.intake.tok+'">Fill it in now</a></div>':'')+
   '<p class="bk-dir">'+svg('shield')+'<span>Free to move or cancel up to '+(b.policy?b.policy.hrs:24)+' hours before. We’ll text a reminder 2 days ahead, with a link if you can’t make it.</span></p>'+
   calButtons(bs)+
   '<div class="bk-acts"><a class="btn btn-primary btn-sm" href="manage.html#t='+b.token+'">Manage '+(many?'my sessions':'my booking')+'</a></div>'+

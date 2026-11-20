@@ -29,26 +29,37 @@ function cal(bs){var url=URL.createObjectURL(new Blob([ics(bs)],{type:'text/cale
  return '<div class="bk-cal"><p>'+svg('cal')+'Add to your calendar</p><div class="bk-calb"><a class="btn btn-outline btn-sm" href="'+url+'" download="hub-appointment.ics">Apple / iPhone</a><a class="btn btn-outline btn-sm" href="'+gcal(bs[0])+'" target="_blank" rel="noopener">Google</a><a class="btn btn-outline btn-sm" href="'+url+'" download="hub-appointment.ics">Outlook</a><a class="btn btn-outline btn-sm" href="'+url+'" download="hub-appointment.ics">Other (.ics)</a></div></div>'}
 
 function list(){api.myBookings().then(function(bs){
- bs=bs.filter(function(b){return b.status==='booked'}).sort(function(a,b){return new Date(a.start)-new Date(b.start)});
+ bs=bs.filter(function(b){return b.status==='booked'&&!b.noShow&&new Date(b.start).getTime()>H.now()-36e5}).sort(function(a,b){return new Date(a.start)-new Date(b.start)});
  if(!bs.length){box.innerHTML='<h2 class="fd-q">No bookings on this device</h2><p class="fd-sub">Use the link in your confirmation text, or call us on <a href="tel:0491184788">0491 184 788</a>.</p><a class="btn btn-primary" href="book.html">Book an appointment</a><p class="bk-demo">Demo: book a time on the booking page first, then come back here.</p>';return}
  box.innerHTML='<h2 class="fd-q">Your upcoming appointments</h2><ul class="mg-list">'+bs.map(function(b){return '<li><a class="mg-item" href="#t='+b.token+'">'+appt(b)+'</a></li>'}).join('')+'</ul>'})}
 
 function show(b){
  box.onclick=null;
  if(!b){box.innerHTML='<h2 class="fd-q">We couldn’t find that booking</h2><p class="fd-sub">The link may be old. Call us on <a href="tel:0491184788">0491 184 788</a> and we’ll sort it out.</p>';return}
- if(b.status==='cancelled'){box.innerHTML='<h2 class="fd-q">This appointment was cancelled</h2>'+appt(b)+(b.lateFee?'<p class="mg-warn">'+svg('info')+(b.feeWaived?'We filled your time from the waitlist, so there’s no late fee.':'This was a late cancellation, so the '+F.money(b.lateFee)+' fee applies unless we fill your time.')+'</p>':'')+'<div class="mg-acts mg-gap"><a class="btn btn-primary" href="book.html">Book a new time</a></div>';return}
+ if(b.status==='cancelled'){box.innerHTML='<h2 class="fd-q">This appointment was cancelled</h2>'+appt(b)+(b.lateFee?'<p class="mg-warn">'+svg('info')+(b.feeWaived?(b.waivedWhy==='refilled'?'We filled your time from the waitlist, so there’s no late fee.':'The late fee has been waived.'):b.feeCharged?'This was a late cancellation, so the '+F.money(b.lateFee)+' fee was charged under the policy.':'This was a late cancellation, so the '+F.money(b.lateFee)+' fee applies unless we fill your time.')+'</p>':'')+'<div class="mg-acts mg-gap"><a class="btn btn-primary" href="book.html">Book a new time</a></div>';return}
+ if(new Date(b.start).getTime()+(b.len||P[b.pid].len)*6e4<H.now()){var pp=api.payments().filter(function(x){return x.bid===b.id&&x.kind!=='medicare'});
+  box.innerHTML='<h2 class="fd-q" tabindex="-1">'+(b.noShow?'This session was missed':'This session has finished')+'</h2>'+appt(b)+(pp.length?'<div class="mg-pay"><h3>Payments</h3><ul>'+pp.map(function(x){var due=x.status==='due'||x.status==='failed';return '<li'+(due?' class="due"':'')+'><span>'+({deposit:'Deposit',session:'Session fee',late:'Late fee',noshow:'Missed session fee',refund:'Refund'}[x.kind])+(x.status==='refunded'?' (refunded)':x.status==='void'?' (cancelled)':'')+'</span><b>'+F.money(x.amount)+'</b>'+(x.status==='void'?'':'<a href="pay.html#p='+x.id+'">'+(due?'Pay now':'Receipt')+'</a>')+'</li>'}).join('')+'</ul></div>':'')+
+   '<div class="mg-acts mg-gap"><a class="btn btn-primary" href="book.html#p='+b.pid+'">Book another session</a></div>';return}
  var pol=polOf(b),h=hrsLeft(b),late=h<pol.hrs,ser=api.seriesOf(b).filter(function(x){return x.status==='booked'}),ref=b.referral,onWl=api.onWaitlistFor(b.token);
  var freeBy=new Date(new Date(b.start).getTime()-pol.hrs*36e5);
  var join=b.mode==='video'?'<div class="mg-join"><div>'+svg('video')+'<p><b>Video session</b><span>'+(h<0.25?'Your practitioner is ready when you are.':'The room opens 10 minutes before. Use a quiet, private spot and headphones if you can.')+'</span></p></div><button type="button" class="btn btn-primary btn-sm" data-join>Join video call</button></div>':
   b.mode==='phone'?'<p class="mg-note">'+svg('phone')+esc(P[b.pid].first)+' will call you on <b>'+esc(b.phone)+'</b> at your appointment time.</p>':'';
  var plan=b.plan==='yes'?(ref&&ref.planIn?'<p class="mg-note">'+svg('file')+'Your Mental Health Treatment Plan is with us'+(ref.file?' ('+esc(ref.file.name)+')':'')+'.</p>':
   '<div class="mg-plan"><p>'+svg('file')+'<span><b>We don’t have your Mental Health Treatment Plan yet.</b> Medicare needs it before your first session. Upload a photo or PDF, or ask your GP to send it.</span></p><label class="bk-file"><input type="file" id="mgFile" accept="image/*,application/pdf"><span>'+svg('file')+'Upload my plan</span></label></div>'):'';
- box.innerHTML='<h2 class="fd-q" tabindex="-1">Hi '+esc(b.name.split(' ')[0])+', you’re booked in</h2>'+appt(b)+join+plan+
+ var ik=b.intake||(ser[0]&&ser[0].intake)||null;
+ var intake=ik?(ik.status==='done'?'<p class="mg-note">'+svg('check')+'Your intake form is done. <a href="intake.html#t='+ik.tok+'">Review it</a></p>':
+  '<div class="bk-intake"><div>'+svg('file')+'<p><b>Your intake form'+(ik.status==='started'?' is half done':'')+'</b><span>About 5 minutes. Please finish it before your first session.</span></p></div><a class="btn btn-primary btn-sm" href="intake.html#t='+ik.tok+'">'+(ik.status==='started'?'Finish it':'Fill it in')+'</a></div>'):'';
+ var pays=api.payments().filter(function(x){return x.bid===b.id||ser.some(function(s){return s.id===x.bid})}),card=api.cardOf(b.phone);
+ var KIND={deposit:'Deposit',session:'Session fee',late:'Late cancellation fee',noshow:'Missed session fee',refund:'Refund',medicare:'Medicare rebate claimed'};
+ var payBox=pays.length||card?'<div class="mg-pay"><h3>Payments</h3>'+(pays.length?'<ul>'+pays.map(function(x){var due=x.status==='due'||x.status==='failed';
+   return '<li'+(due?' class="due"':'')+'><span>'+KIND[x.kind]+' · '+esc(F.day(x.at))+(x.status==='refunded'?' (refunded)':x.status==='failed'?' (card declined)':x.status==='void'?' (cancelled, time refilled)':'')+'</span><b>'+F.money(x.amount)+'</b>'+(x.kind==='medicare'?'':'<a href="pay.html#p='+x.id+'">'+(due?'Pay now':'Receipt')+'</a>')+'</li>'}).join('')+'</ul>':'')+
+  (card?'<p>Card ending '+esc(card.last4)+' on file. Session fees are charged after each session and you get a receipt by text.</p>':'')+'</div>':'';
+ box.innerHTML='<h2 class="fd-q" tabindex="-1">Hi '+esc(b.name.split(' ')[0])+', you’re booked in</h2>'+appt(b)+join+intake+plan+
   '<div class="mg-acts"><button type="button" class="btn btn-primary" data-move>'+svg('move')+'Move to another time</button><button type="button" class="btn btn-outline" data-cancel>'+svg('x')+'Can’t make it</button></div>'+
   '<p class="mg-pol">'+svg('shield')+(late?'<span>This is less than '+pol.hrs+' hours away. '+(pol.fee?'If you cancel now, the '+F.money(pol.fee)+' late fee applies unless we fill your time from the waitlist.':'Please still tell us if you can’t come, so someone else can have the time.')+'</span>':
    '<span>Free to move or cancel until <b>'+esc(F.when(freeBy))+'</b>.</span>')+'</p>'+
   (ser.length>1?'<div class="mg-ser"><h3>'+svg('repeat')+'Your regular sessions</h3><ol>'+ser.map(function(x){return '<li'+(x.id===b.id?' class="on"':'')+'><a href="#t='+x.token+'"><span>'+x.series.n+'</span>'+esc(F.day(x.start,1))+', '+F.time(new Date(x.start))+'</a></li>'}).join('')+'</ol></div>':'')+
-  cal(ser.length>1?ser:[b])+
+  cal(ser.length>1?ser:[b])+payBox+
   (onWl||b.series?'':'<div class="bk-sooner"><h3>'+svg('bell')+'Want something sooner?</h3><p>We’ll text you if an earlier time with '+esc(P[b.pid].first)+' opens. Tap to claim it and we’ll move this booking.</p><button type="button" class="btn btn-outline btn-sm" data-sooner>Yes, text me</button></div>')+
   '<p class="bk-demo"><a href="manage.html">All my bookings</a></p>';
  box.querySelector('[data-move]').onclick=function(){move(b)};
