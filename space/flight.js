@@ -667,6 +667,38 @@ function moonBake(budget) {
 function moonFar() { moonBake(3); const far = MI.ready && G.O.distanceTo(MOON.c) > 3e6; MI.mesh.visible = far; MOON.group.visible = !far;
   if (far) { MI.mesh.position.copy(MOON.c).sub(G.O); MI.mesh.quaternion.copy(MOON.q); MI.mesh.material.uniforms.mRot.value.setFromMatrix4(new THREE.Matrix4().makeRotationFromQuaternion(MOON.q)); } }
 
+// ---------------- Test menu (` key, or "Test mode" on the main menu): jump straight to any part of the game
+function hourNow() { const s = SITE.clone().applyQuaternion(PLANET.q), a = Math.atan2(s.z * SUN.x - s.x * SUN.z, s.x * SUN.x + s.z * SUN.z); return ((12 - a / Math.PI * 12) % 24 + 24) % 24; }
+function setHour(h) { G.t += ((h - hourNow()) % 24 + 24) % 24 / 24 * PLANET.day; for (const b of BODIES) bodyState(b, G.t); if (R.st !== 'fly') latch(G.t); }
+function clearDebris() { for (const d of R.debris) scene.remove(d.g); R.debris = []; }
+function toPilot() { C.in = true; R.on = true; C.seat = 0; C.view = 'in'; C.yaw = 0; C.pitch = -.1; C.pos.copy(SEATS[0].pos); C.vel.set(0, 0, 0); $('cross').classList.add('hidden'); }
+function onFoot() { if (R.st === 'fly' || R.st === 'dead') resetRocket(); if (R.on) { R.on = false; C.in = false; C.seat = -1; cabL.intensity = 0; } $('cross').classList.remove('hidden'); G.wi = 0; G.warp = 1; }
+function flyFrom(drop) { resetRocket(); R.on = true; stage(); for (let i = 0; i < drop; i++) stage(); clearDebris(); R.st = 'fly'; R.thr = 0; R.t0 = G.t; R.w.set(0, 0, 0); }
+const TESTS = {
+  pad() { onFoot(); resetRocket(); board(); toPilot(); showHint('On the pad in the Pilot seat. Space to launch', 4000); },
+  cabin() { onFoot(); resetRocket(); board(); },
+  orbit() { onFoot(); flyFrom(1); const up = SITE.clone().applyQuaternion(PLANET.q), east = new V3(0, 1, 0).cross(up).normalize(), r = PLANET.R + 80000;
+    R.pos.copy(up).multiplyScalar(r); R.vel.copy(east).multiplyScalar(Math.sqrt(PLANET.GM / r)); R.q.setFromUnitVectors(new V3(0, 1, 0), east); R.hold.copy(R.q); R.sas = 'pro'; toPilot(); showHint('80 km orbit. Upper stage has fuel. V = outside view', 4000); },
+  reentry() { onFoot(); flyFrom(2); const up = SITE.clone().applyQuaternion(PLANET.q).applyAxisAngle(new V3(0, 1, 0), .5), east = new V3(0, 1, 0).cross(up).normalize(), r = PLANET.R + 45000;
+    R.pos.copy(up).multiplyScalar(r); R.vel.copy(east).multiplyScalar(2250).addScaledVector(up, -90); R.q.setFromUnitVectors(new V3(0, 1, 0), R.vel.clone().normalize().negate()); R.hold.copy(R.q); R.sas = 'retro'; toPilot(); showHint('Re-entry: Space arms the parachute', 4000); },
+  chute() { onFoot(); flyFrom(2); const up = SITE.clone().applyQuaternion(PLANET.q), r = PLANET.R + 3000; R.pos.copy(up).multiplyScalar(r); groundVel(PLANET, R.pos, G.t, R.vel).addScaledVector(up, -120);
+    R.q.setFromUnitVectors(new V3(0, 1, 0), up); R.hold.copy(R.q); stage(); toPilot(); C.view = 'out'; showHint('Falling with the parachute armed', 4000); },
+  moonOrbit() { onFoot(); flyFrom(1); const d = SUN.clone().addScaledVector(MOON.c.clone().normalize(), -1).normalize(), r = MOON.R + 30000, t = new V3(0, 1, 0).cross(d).normalize();
+    R.pos.copy(MOON.c).addScaledVector(d, r); R.vel.copy(moonVel(G.t, new V3())).addScaledVector(t, Math.sqrt(MOON.GM / r)); R.q.setFromUnitVectors(new V3(0, 1, 0), t); R.hold.copy(R.q); R.sas = 'pro'; toPilot(); C.view = 'out'; showHint('30 km over the Moon', 4000); },
+  moonWalk() { onFoot(); const d = SUN.clone().applyQuaternion(MOON.q.clone().invert()).add(new V3(.3, .1, .2)).normalize(); P.body = MOON; P.pos.copy(d).multiplyScalar(MOON.R + heightAt(MOON, d.x, d.y, d.z) + 2); P.vel.set(0, 0, 0);
+    P.fwd.set(0, 1, 0).addScaledVector(d, -d.y).normalize(); P.pitch = .1; showHint('On the Moon. Space to hop', 4000); },
+  mc() { onFoot(); P.body = PLANET; placeAt(-72.25, .1, 79, 0, 0); showHint('Mission control. Stairs on the left wall go up to the deck', 4000); },
+  deck() { onFoot(); P.body = PLANET; placeAt(-88, 6.1, 72, -1.2, -.05); },
+  centre() { onFoot(); spawnPlayer(); P.body = PLANET; },
+  sunrise() { setHour(6.4); }, noon() { setHour(12); }, sunset() { setHour(17.7); }, night() { setHour(23); },
+  fuel() { R.fuel = STAGES.map(s => s.fuel); showHint('Tanks full', 1500); },
+  cloudsMore() { CL.cov.value = Math.min(1, CL.cov.value + .15); }, cloudsLess() { CL.cov.value = Math.max(0, CL.cov.value - .15); },
+};
+function testMenu(show) { const t = $('test'); show = show ?? t.classList.contains('hidden'); t.classList.toggle('hidden', !show); if (show && document.pointerLockElement) document.exitPointerLock(); }
+document.querySelectorAll('#test [data-t]').forEach(b => b.onclick = e => { e.stopPropagation(); TESTS[b.dataset.t](); if (!b.dataset.keep) testMenu(false); });
+$('testX').onclick = () => testMenu(false);
+addEventListener('keydown', e => { if (e.code === 'Backquote' && G.on) testMenu(); });
+
 // hooks for game.js's frame loop
 const FLIGHT = {step(dt) { stepThrottle(dt); flightStep(dt); if (R.on && C.in) cabinStep(dt); },
   camera(dt) { if (R.st === 'dead' || (C.seat === 0 && C.view === 'out')) { cabL.intensity = 0; flightCamera(dt); } else cabinCamera(); },
@@ -675,6 +707,6 @@ const FLIGHT = {step(dt) { stepThrottle(dt); flightStep(dt); if (R.on && C.in) c
     if (C.seat >= 0 || R.st === 'dead') flightHud(dt); else { $('fl').classList.add('hidden'); $('mPro').classList.add('hidden'); $('mRet').classList.add('hidden'); $('hLoc').textContent = 'In the capsule'; $('hInfo').textContent = R.felt.y > .6 || R.st !== 'fly' ? 'WASD walk · F interact' : 'Weightless · WASD push · Space/Shift up/down'; } },
   hideHud() { document.body.classList.remove('fly'); $('fl').classList.add('hidden'); $('mPro').classList.add('hidden'); $('mRet').classList.add('hidden'); $('act').classList.add('hidden'); }};
 const _bootOrig = boot;
-boot = function () { _bootOrig(); siteToBody(new V3(-82, 0, 70), MC_P); resetRocket(); R.cam.ref.set(1, 0, 0).applyQuaternion(site.q).applyQuaternion(PLANET.q); };
-Object.assign(window.YE, {MI, moonBake, FLIGHT, C, SEATS, cabinAct, CAB, R, STAGES, stage, board, getOut, resetRocket, setWarp, setSas, rocketStep, flightStep, PT, explode});
+boot = function () { _bootOrig(); $('testPlay').onclick = () => { $('play').click(); setTimeout(() => testMenu(true), 50); }; siteToBody(new V3(-82, 0, 70), MC_P); resetRocket(); R.cam.ref.set(1, 0, 0).applyQuaternion(site.q).applyQuaternion(PLANET.q); };
+Object.assign(window.YE, {TESTS, testMenu, MI, moonBake, FLIGHT, C, SEATS, cabinAct, CAB, R, STAGES, stage, board, getOut, resetRocket, setWarp, setSas, rocketStep, flightStep, PT, explode});
 boot();
