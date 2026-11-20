@@ -32,3 +32,38 @@ A website for a family wellbeing hub in Jan Juc (not a game). There are four tak
 
 ### Ahpra advertising pass (20 Nov 2026)
 Edited the demo site copy (in the worker) and booking copy to fit Ahpra's advertising rules (National Law s133 and Board guidelines): removed the "best massage ever" testimonial, "safe and effective", acupuncture claims (natural labour induction, "heal itself", treating anxiety/depression, "food as medicine"), the Myobrace jaw-growth claim, osteopathy "can help ... babies"; replaced "specialises/specialised/Specialist Training/expert" with interest/focus wording; Melinda's title is "Clinical Psychologist" (no "Child Psychologist"); Medicare plan wording now says regular GP. Still to check with the owner's client: that each "Clinical Psychologist" holds the area of practice endorsement on the Ahpra register.
+
+### Booking front end, round 2 (20 Nov 2026)
+- **Engine (hub-core.js, store `scfh-demo-v3`):**
+  - Reminders: `remindTick` texts every appointment in the next `remindHrs` (48) with confirm (`sfch.au/r/`) and can't-make-it (`sfch.au/x/`) links. Made-up Halaxy clients auto-confirm over a few hours. `api.confirmAppt` and `api.cantMake` handle the links; can't-make-it cancels and refills.
+  - Cancellation policy settings: `policyHrs`, `lateFee` (full/half/none), `card` (new/all/off). Late cancels record `b.lateFee`, and the fee is waived when the time is refilled (`o.bid`).
+  - Duration-aware refill: `gapLen` (to the next taken slot, 90 min after the day's last slot, cap 120) and `w.len` per waitlister. Too-short matches are logged ("Not offered ... the gap is 60 min").
+  - Waitlist check-ins: `freshTick` sends a "still keen?" text (`sfch.au/k/`) after `freshDays`. No reply in `freshGrace` days sets `w.paused`. `api.keep` and `api.unpause`.
+  - Recurring bookings: `seriesPlan` (same weekday and time, nearest free time that week if taken), `api.bookSeries` and `api.cancelSeries`.
+  - Referrals (`S.referrals`): `api.refer` (online form), `invite` texts a booking link (`sfch.au/b/`, opens `book.html#ref=`), `inviteReferral`, `updateReferral`, `attachPlan`. Plans uploaded at booking create a referral record too.
+  - Practitioner prefs `S.pp` (refill auto/ask/off, series on/off) through `api.prefs`.
+  - `api.report(days)` combines seeded sample history (`history()`, 4 weeks) with live demo events. `snapshot()` now also sends referrals (no reason, date of birth or file names), reminders and a 4-week summary to Ask Claude.
+- **Booking page (book.js):**
+  - `#p=<pid>` goes straight to one practitioner. The team and services pages and the "choose someone yourself" grid now link there instead of Halaxy.
+  - `#ref=<tok>` opens a referral link, prefilled and limited to the chosen practitioners.
+  - `?embed=1` hides the site chrome for the widget.
+  - The booking sheet has: meeting type (Hub/video/phone, which sets the Halaxy service), regular sessions (weekly or fortnightly, 4/6/10), the Mental Health Treatment Plan (upload, GP will send, bring it), the cancellation policy and agreement, and a demo card on file for new clients.
+  - The done screen has Apple/Google/Outlook/.ics calendar links (all sessions in the .ics), telehealth instructions and plan status.
+- **Manage page:** join video, plan upload, the free-cancel deadline, the session list for a series, "can't make it" (this session or the rest of the series), late-fee warning, calendar links, and "text me if earlier".
+- **Dashboard:**
+  - Header links: Report, Practitioner view, SOP.
+  - Phones show the three most recent conversations, and every link in them works.
+  - New Reminders card (confirmed, no reply, can't make it; call list).
+  - New Referrals inbox (send booking link and pick a practitioner for Psychology Team referrals, resend, plan received, detail drawer with the reason, staff only).
+  - Coming up shows reminder, video, series and no-plan tags, with demo clock skip buttons.
+  - Settings are grouped and include reminders, policy, card, check-ins, series and referral auto-link. Records gain Referrals and Reminders tabs.
+- **New pages (build.py; worker routes added):**
+  - `refer.html`: online referral form for GPs. `?staff=1` logs fax and email referrals. The worker's referrals page has a "Send a referral online" card.
+  - `report.html`: last 7 days or 4 weeks, with KPIs, a weekly stacked bar chart (refilled #00897B and not refilled #C0663A, both validated), insights, a per-practitioner table, waitlist, referrals and texts. Print and CSV.
+  - `practitioner.html`: one practitioner's own week, KPIs, referrals, waitlist, preferences and their website booking button.
+  - `sop.html`: front-desk SOP (draft for the owner's client).
+  - `widget.js`: `<script src=".../widget.js" data-practitioner="hannah" data-label="Book with Hannah" async>` adds a shadow-DOM button that opens `book.html?embed=1#p=` in an overlay.
+- **Privacy page:** adds reminders, referrals and plans, card handled by the payment provider, telehealth, and a "Decisions made automatically" section (APP 1.7, from 10 Dec 2026).
+- **Deploy (20 Nov):**
+  - The worker had outside edits to the home page scene at 10:43 UTC (`index.html`, cliff and scrub images, `theme.css`), so the deploy was rebuilt on a fresh download of the live modules. Always re-download first.
+  - New modules: `hub-refer.html`, `hub-report.html`, `hub-practitioner.html`, `hub-sop.html` and `hub-widget.js.txt`.

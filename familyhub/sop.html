@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+
+<html class="no-js" lang="en-AU">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"/>
+<title>Front desk SOP | Surf Coast Family Hub</title>
+<meta content="How the Hub runs bookings, cancellations, the waitlist, referrals and client information." name="description"/>
+<meta content="#3C6869" name="theme-color"/>
+<meta content="website" property="og:type"/>
+<meta content="Surf Coast Family Hub" property="og:site_name"/>
+<meta content="Front desk SOP | Surf Coast Family Hub" property="og:title"/>
+<meta content="How the Hub runs bookings, cancellations, the waitlist, referrals and client information." property="og:description"/>
+<link href="https://familyhub.aiautomationvic.com/img/logo-mark.webp" rel="icon" type="image/webp"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT@0,9..144,400..700,100;1,9..144,400..600,100&amp;family=Public+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://familyhub.aiautomationvic.com/styles.css" rel="stylesheet"/>
+<script>document.documentElement.classList.remove("no-js")</script>
+<link href="https://familyhub.aiautomationvic.com/theme.css" rel="stylesheet"/>
+<script>try{var d=document.documentElement,s=localStorage.getItem("sch-scheme")||"earth",f=localStorage.getItem("sch-font");if(s==="none")s="";if(s)d.setAttribute("data-scheme",s);if(s==="custom"){var v=JSON.parse(localStorage.getItem("sch-vars")||"{}");for(var k in v)d.style.setProperty(k,v[k])}if(f)d.setAttribute("data-font",f)}catch(e){}</script>
+<!-- Preview build: styles and photos load from the demo site. Run build.py live for drop-in copies. -->
+<meta name="robots" content="noindex, nofollow"/>
+<style>html[data-scheme] .site-footer::before{-webkit-mask-image:url(https://jjfanwars.github.io/familyhub/img/edge-foot.svg);mask-image:url(https://jjfanwars.github.io/familyhub/img/edge-foot.svg)}html[data-scheme] .page-hero::after{-webkit-mask-image:url(https://jjfanwars.github.io/familyhub/img/edge-paper.svg);mask-image:url(https://jjfanwars.github.io/familyhub/img/edge-paper.svg)}</style>
+<meta name="robots" content="noindex, nofollow"/>
+<style>
+/* ==========================================================================
+   Hub dashboard. Same system as the booking UI: thin borders, soft elevation,
+   serif section titles, sans UI text, tabular numbers. Spacing 4/8/12/16/24.
+   ========================================================================== */
+body.adm{
+ --ui-surface:#FFFEFB;--ui-sunk:rgba(59,50,45,.035);
+ --ui-line:rgba(59,50,45,.12);--ui-line-2:rgba(59,50,45,.24);
+ --ui-r:14px;--ui-r-sm:10px;
+ --ui-sh:0 1px 2px rgba(59,50,45,.05),0 4px 14px -6px rgba(59,50,45,.12);
+ --ui-ring:0 0 0 3px rgba(60,104,105,.22);
+ background:var(--paper);min-height:100vh;font-variant-numeric:tabular-nums}
+body.adm :focus-visible{outline:2px solid var(--teal-deep);outline-offset:2px}
+
+/* top bar */
+.adm-top{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding:12px clamp(16px,3vw,32px);background:rgba(250,248,243,.88);backdrop-filter:saturate(1.4) blur(10px);border-bottom:1px solid var(--ui-line)}
+.adm-brand{display:flex;align-items:center;gap:12px;text-decoration:none;color:var(--ink)}
+.adm-brand img{width:34px;height:auto}
+.adm-brand small{display:block;font-size:12px;letter-spacing:.02em;color:var(--muted)}
+.adm-brand b{display:block;font:600 19px/1.15 var(--display)}
+.adm-demo{padding:3px 8px;border-radius:6px;background:rgba(230,188,118,.28);color:#6B4A0E;font:700 11px/1.5 var(--body);letter-spacing:.08em;text-transform:uppercase}
+.adm-nav{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
+.adm-nav .btn{margin:0;min-height:38px;padding:0 14px;font-size:14.5px;background:var(--ui-surface);border:1px solid var(--ui-line-2);box-shadow:0 1px 2px rgba(59,50,45,.06)}
+.adm-nav .btn:hover{border-color:var(--teal-deep);color:var(--teal-dark);transform:none}
+.adm-main{max-width:1320px;margin:0 auto;padding:24px clamp(16px,3vw,32px) 64px}
+
+/* stats strip */
+.adm-stats{display:grid;grid-template-columns:repeat(5,1fr);margin:0 0 24px;background:var(--ui-surface);border:1px solid var(--ui-line);border-radius:var(--ui-r);box-shadow:var(--ui-sh);overflow:hidden}
+.adm-stat{display:flex;flex-direction:column;gap:8px;padding:16px 20px;border-left:1px solid var(--ui-line)}
+.adm-stat:first-child{border-left:0}
+.adm-sl{display:flex;align-items:center;gap:6px;font:600 12.5px/1.2 var(--body);letter-spacing:.03em;text-transform:uppercase;color:var(--muted)}
+.adm-sl svg{width:15px;height:15px;color:var(--teal-deep)}
+.adm-stat b{font:600 28px/1 var(--body);letter-spacing:-.02em;color:var(--ink)}
+
+/* layout + cards */
+.adm-grid{display:grid;gap:24px}
+@media (min-width:1000px){.adm-grid{grid-template-columns:1.35fr 1fr;align-items:start}}
+.adm-col{display:grid;gap:24px;min-width:0}
+.adm-card{background:var(--ui-surface);border:1px solid var(--ui-line);border-radius:var(--ui-r);padding:24px;box-shadow:var(--ui-sh);min-width:0;scroll-margin-top:84px}
+.adm-h{display:flex;align-items:baseline;justify-content:space-between;gap:8px 16px;flex-wrap:wrap;margin:0 0 16px}
+.adm-h h2,.adm-card>h2{margin:0;font-size:21px;line-height:1.2;letter-spacing:-.005em}
+.adm-sub{font-size:13.5px;color:var(--muted)}
+.adm-empty,li.adm-empty{grid-column:1/-1;margin:0;padding:24px 16px;border:1px dashed var(--ui-line-2);border-radius:var(--ui-r-sm);background:var(--ui-sunk);text-align:center;color:var(--muted);font-size:14.5px;list-style:none}
+
+/* try-it hero */
+.adm-hero{background:var(--teal-deep);color:#fff;border-color:transparent;box-shadow:0 1px 2px rgba(20,40,40,.2),0 12px 30px -14px rgba(20,60,60,.55);background-image:radial-gradient(120% 140% at 100% 0%,rgba(255,255,255,.12),transparent 55%)}
+.adm-hero h2{margin:0 0 8px;color:#fff;font-size:24px}
+.adm-hero p{margin:0 0 16px;max-width:46em;font-size:15.5px;line-height:1.55;color:rgba(255,255,255,.88)}
+.adm-hero b{color:#fff}
+#admTry .btn{margin:0;background:#fff;color:var(--teal-dark);border-color:#fff;box-shadow:0 2px 8px rgba(0,0,0,.18);white-space:nowrap}
+#admTry .btn:hover{background:var(--cream);transform:translateY(-1px)}
+
+/* needs you */
+.adm-need{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 0;border-top:1px solid var(--ui-line)}
+.adm-need:first-of-type{border-top:0;padding-top:0}
+.adm-need img,.adm-oh img{border-radius:50%;object-fit:cover;flex:none;box-shadow:0 0 0 1px var(--ui-line)}
+.adm-need div{flex:1;min-width:180px}.adm-need b,.adm-oh b{display:block;font-weight:600}.adm-need span,.adm-oh span{font-size:13.5px;color:var(--muted)}
+.adm-need .btn,.adm-oa .btn{margin:0}
+
+/* offers */
+.adm-offer{padding:16px;border:1px solid var(--ui-line);border-radius:var(--ui-r-sm);margin-top:12px;background:#fff}
+.adm-offer:first-child{margin-top:0}
+.adm-offer.is-open{border-color:rgba(60,104,105,.55);box-shadow:var(--ui-ring)}
+.adm-oh{display:flex;align-items:center;gap:12px}
+.adm-oh div{flex:1;min-width:0}
+.adm-badge{flex:none;display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:99px;background:var(--ui-sunk);border:1px solid var(--ui-line);font:600 12.5px/1.3 var(--body);color:var(--muted);white-space:nowrap}
+.adm-badge.live{background:rgba(230,188,118,.2);border-color:rgba(200,150,60,.4);color:#6B4A0E}
+.adm-badge.live::before{content:"";width:7px;height:7px;border-radius:50%;background:#D9932B;animation:admP 1.4s ease-in-out infinite}
+.adm-badge.ok{background:var(--teal-mist);border-color:rgba(60,104,105,.35);color:var(--teal-dark)}
+@keyframes admP{50%{opacity:.3}}
+@media (prefers-reduced-motion:reduce){.adm-badge.live::before{animation:none}}
+.adm-who{list-style:none;padding:0;margin:12px 0 0;display:flex;flex-wrap:wrap;gap:8px}
+.adm-who li{display:flex;flex-direction:column;padding:6px 10px;border:1px solid var(--ui-line);border-radius:8px;background:var(--ui-sunk);font-size:14px;font-weight:600}
+.adm-who em{font-style:normal;font-weight:500;font-size:12px;color:var(--muted)}
+.adm-who .st-won{background:var(--teal-deep);border-color:var(--teal-deep);color:#fff}.adm-who .st-won em{color:#E3EDEB}
+.adm-who .st-lost,.adm-who .st-late,.adm-who .st-expired{opacity:.55}
+.adm-oa{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
+.adm-oa .btn-outline,.adm-need .btn-outline{background:#fff;border:1px solid var(--ui-line-2);box-shadow:0 1px 2px rgba(59,50,45,.06)}
+
+/* phones */
+.adm-phones{display:grid;grid-template-columns:repeat(auto-fill,minmax(196px,1fr));gap:16px;padding:4px 2px 8px}
+.phone{max-width:250px;width:100%;justify-self:center;height:440px;display:flex;flex-direction:column;border:7px solid #2B2522;border-radius:34px;background:#F4F1EC;overflow:hidden;position:relative;box-shadow:0 16px 30px -18px rgba(40,30,25,.55)}
+.ph-notch{position:absolute;top:6px;left:50%;transform:translateX(-50%);width:80px;height:18px;border-radius:12px;background:#2B2522;z-index:2}
+.ph-top{padding:30px 12px 8px;text-align:center;border-bottom:1px solid rgba(0,0,0,.08);background:#fff}
+.ph-av{display:inline-grid;place-items:center;width:30px;height:30px;border-radius:50%;background:var(--teal);color:#fff;font-weight:700;font-size:13px}
+.ph-top b{display:block;font-size:12.5px;margin-top:3px}.ph-top small{display:block;font-size:11px;color:var(--muted)}
+.ph-msgs{flex:1;overflow-y:auto;padding:10px;display:flex;flex-direction:column;gap:7px}
+.ph-b{max-width:88%;padding:8px 10px;border-radius:15px;font-size:12.5px;line-height:1.38;animation:phIn .35s cubic-bezier(.2,.8,.2,1)}
+.ph-b.out{align-self:flex-start;background:#E5E2DC;color:#2B2522;border-bottom-left-radius:4px}
+.ph-b.in{align-self:flex-end;background:#2F80ED;color:#fff;border-bottom-right-radius:4px}
+.ph-b time{display:block;font-size:10px;opacity:.6;margin-top:3px}
+@keyframes phIn{from{opacity:0;transform:translateY(8px) scale(.97)}to{opacity:1;transform:none}}
+.ph-link{background:none;border:0;padding:0;font:inherit;color:#1F6FD6;text-decoration:underline;cursor:pointer;font-weight:600}
+.ph-bar{padding:8px;background:#fff;border-top:1px solid rgba(0,0,0,.08)}
+.ph-bar button{width:100%;min-height:34px;border-radius:99px;border:0;background:#2F80ED;color:#fff;font:600 13px var(--body);cursor:pointer}
+.ph-off{text-align:center;font-size:12px;color:#999}
+
+/* coming up */
+.adm-day{margin:24px 0 8px;font:600 12.5px/1.3 var(--body);letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+.adm-day:first-child{margin-top:0}
+.adm-up{list-style:none;padding:0;margin:0;border:1px solid var(--ui-line);border-radius:var(--ui-r-sm);overflow:hidden}
+.adm-up li{display:flex;align-items:center;gap:12px;min-height:52px;padding:8px 12px;border-top:1px solid var(--ui-line);font-size:14.5px;background:#fff;transition:background-color .12s}
+.adm-up li:first-child{border-top:0}
+.adm-up li:hover{background:#FCFAF6}
+.adm-up time{flex:none;width:56px;font-weight:600;color:var(--ink)}
+.adm-up img{border-radius:50%;object-fit:cover;flex:none;box-shadow:0 0 0 1px var(--ui-line)}
+.adm-up span{flex:1;min-width:0;color:var(--muted)}
+.adm-up span b{color:var(--ink);font-weight:600}
+.adm-tag{display:inline-block;margin-left:4px;padding:1px 7px;border-radius:6px;background:var(--teal-mist);color:var(--teal-dark);font-style:normal;font-size:11.5px;font-weight:600;white-space:nowrap}
+.adm-cx{flex:none;min-height:32px;padding:0 12px;border:1px solid var(--ui-line-2);border-radius:8px;background:#fff;font:600 13px var(--body);cursor:pointer;color:var(--ink);transition:background-color .12s,border-color .12s,color .12s}
+.adm-cx:hover{background:#FCEEE9;border-color:#C9765F;color:#7A2E1C}
+
+/* activity */
+.adm-feed{list-style:none;padding:0;margin:0;max-height:430px;overflow-y:auto}
+.adm-feed li{position:relative;display:flex;gap:12px;padding:0 0 16px;animation:phIn .35s}
+.adm-feed li:not(:last-child)::after{content:"";position:absolute;left:14px;top:32px;bottom:4px;width:1px;background:var(--ui-line)}
+.adm-fi{flex:none;display:grid;place-items:center;width:29px;height:29px;border-radius:50%;background:var(--teal-mist);color:var(--teal-deep)}
+.adm-fi svg{width:15px;height:15px}
+.fk-filled .adm-fi{background:var(--teal-deep);color:#fff}.fk-cancel .adm-fi{background:#FCEEE9;color:#9A3B26}.fk-offer .adm-fi{background:rgba(230,188,118,.3);color:#6B4A0E}
+.adm-feed p{margin:4px 0 0;font-size:14px;line-height:1.45}
+.adm-feed time{display:block;margin-top:2px;font-size:12px;color:var(--muted)}
+.adm-feed li.adm-empty{display:block;padding:24px 16px;animation:none}
+
+/* waitlist */
+.adm-wl{list-style:none;padding:0;margin:0}
+.adm-wl li{display:flex;gap:12px;align-items:center;padding:12px 0;border-top:1px solid var(--ui-line)}
+.adm-wl li:first-child{border-top:0;padding-top:0}
+.adm-wa{flex:none;display:grid;place-items:center;width:34px;height:34px;border-radius:50%;background:var(--teal-mist);color:var(--teal-dark);font-weight:700;font-size:14px}
+.adm-wl div{flex:1;min-width:0}.adm-wl b{display:block;font-size:14.5px;font-weight:600}.adm-wl div span{display:block;font-size:12.5px;line-height:1.45;color:var(--muted)}
+.adm-wl>li>em{flex:none;padding:2px 8px;border-radius:6px;background:var(--ui-sunk);font-style:normal;font-size:12.5px;font-weight:600;color:var(--muted)}
+
+/* settings */
+.adm-set{margin:0 0 16px}
+.adm-set:last-child{margin-bottom:0}
+.adm-set label{display:block;margin:0 0 8px;font-weight:600;font-size:14px}
+.adm-seg{display:inline-flex;flex-wrap:wrap;gap:0;padding:3px;border:1px solid var(--ui-line);border-radius:var(--ui-r-sm);background:var(--ui-sunk)}
+.adm-seg button{min-height:34px;padding:0 12px;border:0;border-radius:7px;background:none;font:600 13.5px var(--body);cursor:pointer;color:var(--muted);transition:background-color .12s,color .12s}
+.adm-seg button:hover{color:var(--ink)}
+.adm-seg button[aria-pressed="true"]{background:#fff;color:var(--ink);box-shadow:0 1px 2px rgba(59,50,45,.12),0 0 0 1px var(--ui-line)}
+
+/* how it works */
+.adm-how ol{margin:12px 0 0;padding:0;list-style:none;counter-reset:s;font-size:14.5px;line-height:1.5}
+.adm-how li{position:relative;margin:0 0 12px;padding-left:36px;counter-increment:s}
+.adm-how li:last-child{margin-bottom:0}
+.adm-how li::before{content:counter(s);position:absolute;left:0;top:0;display:grid;place-items:center;width:24px;height:24px;border-radius:50%;background:var(--teal-mist);color:var(--teal-dark);font-size:12.5px;font-weight:700}
+
+/* toast */
+.adm-toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,30px);opacity:0;max-width:min(520px,calc(100% - 32px));padding:12px 16px;border-radius:12px;background:#2B2522;color:#fff;font-weight:600;font-size:14.5px;box-shadow:0 12px 30px -10px rgba(0,0,0,.45);transition:opacity .25s,transform .25s;z-index:50;pointer-events:none}
+.adm-toast.on{opacity:1;transform:translate(-50%,0)}
+
+@media (max-width:999px){.adm-stats{grid-template-columns:repeat(3,1fr)}.adm-stat:nth-child(4){border-left:0}.adm-stat:nth-child(n+4){border-top:1px solid var(--ui-line)}}
+@media (max-width:700px){.adm-top{position:static}.adm-nav{margin-left:0}}
+@media (max-width:599px){
+ .adm-stats{grid-template-columns:1fr 1fr}
+ .adm-stat{padding:12px 16px;border-left:0;border-top:1px solid var(--ui-line)}
+ .adm-stat:nth-child(even){border-left:1px solid var(--ui-line)}
+ .adm-stat:nth-child(-n+2){border-top:0}
+ .adm-stat:last-child:nth-child(odd){grid-column:1/-1}
+ .adm-stat b{font-size:24px}
+ .adm-card{padding:16px}
+ .adm-grid,.adm-col{gap:16px}
+ .adm-top{gap:8px 12px}
+ #admTry .btn{width:100%}
+}
+
+/* ---------- waitlist tools ---------- */
+.adm-tools{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 16px}
+.adm-search{flex:1 1 200px}
+.adm-tools input,.adm-tools select{width:100%;min-height:38px;padding:0 12px;border:1px solid var(--ui-line-2);border-radius:var(--ui-r-sm);background:#fff;font:500 14.5px var(--body);color:var(--ink)}
+.adm-tools select{width:auto;padding-right:28px}
+.adm-tools input:focus,.adm-tools select:focus,.adm-sec textarea:focus,.adm-askf textarea:focus{outline:none;border-color:var(--teal-deep);box-shadow:var(--ui-ring)}
+.adm-ghost{display:inline-flex;align-items:center;gap:6px;min-height:38px;padding:0 12px;border:1px solid var(--ui-line-2);border-radius:var(--ui-r-sm);background:#fff;font:600 14px var(--body);color:var(--ink);text-decoration:none;cursor:pointer;white-space:nowrap;transition:border-color .12s,color .12s,background-color .12s}
+.adm-ghost:hover{border-color:var(--teal-deep);color:var(--teal-dark)}
+.adm-ghost-d{color:#9A3B26}.adm-ghost-d:hover{border-color:#C9765F;background:#FCEEE9;color:#7A2E1C}
+.adm-wl li{padding:0;border-top:1px solid var(--ui-line)}
+.adm-wl li:first-child{padding-top:0}
+.adm-wlrow{display:flex;gap:12px;align-items:center;width:100%;padding:12px 8px;margin:0 -8px;width:calc(100% + 16px);border:0;border-radius:var(--ui-r-sm);background:none;text-align:left;font:inherit;color:inherit;cursor:pointer;transition:background-color .12s}
+.adm-wlrow:hover{background:var(--ui-sunk)}
+.adm-wlrow>em{flex:none;padding:2px 8px;border-radius:6px;background:var(--ui-sunk);font-style:normal;font-size:12.5px;font-weight:600;color:var(--muted)}
+.adm-tag-n{background:rgba(230,188,118,.25)!important;color:#6B4A0E!important}
+
+/* ---------- records ---------- */
+.adm-tabs{display:flex;flex-wrap:wrap;align-items:center;gap:4px;margin:0 0 16px;padding-bottom:12px;border-bottom:1px solid var(--ui-line)}
+.adm-tabs [role=tab]{min-height:34px;padding:0 12px;border:0;border-radius:8px;background:none;font:600 14px var(--body);color:var(--muted);cursor:pointer}
+.adm-tabs [role=tab]:hover{color:var(--ink);background:var(--ui-sunk)}
+.adm-tabs [role=tab][aria-selected=true]{background:var(--teal-mist);color:var(--teal-dark)}
+.adm-tabs .adm-ghost{margin-left:auto;min-height:34px}
+.adm-tbl{overflow-x:auto;border:1px solid var(--ui-line);border-radius:var(--ui-r-sm)}
+.adm-tbl table{width:100%;border-collapse:collapse;font-size:13.5px;background:#fff}
+.adm-tbl th{position:sticky;top:0;padding:8px 12px;background:#FAF7F2;border-bottom:1px solid var(--ui-line);text-align:left;font:600 12px/1.3 var(--body);letter-spacing:.04em;text-transform:uppercase;color:var(--muted);white-space:nowrap}
+.adm-tbl td{padding:10px 12px;border-top:1px solid var(--ui-line);vertical-align:top;line-height:1.45}
+.adm-tbl tr:first-child td{border-top:0}
+.adm-tbl td:first-child{white-space:nowrap;font-weight:600}
+.adm-muted{margin:12px 0 0;font-size:13.5px;color:var(--muted)}
+
+/* ---------- side panels (person, Ask Claude) ---------- */
+html:has(.adm-drawer[open]){overflow:hidden}
+.adm-drawer{position:fixed;inset:0 0 0 auto;width:min(480px,100%);max-width:100%;height:100%;max-height:100%;margin:0;padding:0;border:0;border-left:1px solid var(--ui-line);background:var(--ui-surface);color:var(--ink);box-shadow:-24px 0 60px -30px rgba(40,30,25,.5)}
+.adm-drawer::backdrop{background:rgba(40,34,30,.32);backdrop-filter:blur(2px)}
+.adm-drawer[open]{animation:dwIn .26s cubic-bezier(.2,.8,.2,1)}
+@keyframes dwIn{from{transform:translateX(24px);opacity:0}to{transform:none;opacity:1}}
+@media (prefers-reduced-motion:reduce){.adm-drawer[open]{animation:none}}
+.adm-dw{display:flex;flex-direction:column;min-height:100%;padding:24px}
+.adm-dwh{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin:0 0 24px}
+.adm-dwh h2{margin:0;font-size:24px;line-height:1.15}
+.adm-dwh p{margin:4px 0 0;font-size:14px;color:var(--muted)}
+.adm-x{flex:none;display:grid;place-items:center;width:36px;height:36px;border:0;border-radius:50%;background:var(--ui-sunk);color:var(--ink);cursor:pointer}
+.adm-x:hover{background:rgba(59,50,45,.09)}
+.adm-x svg{width:18px;height:18px}
+.adm-ph{display:flex;align-items:center;gap:12px}
+.adm-wa-lg{width:48px;height:48px;font-size:19px}
+.adm-pact{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 24px}
+.adm-dl{display:grid;gap:0;margin:0 0 24px;border:1px solid var(--ui-line);border-radius:var(--ui-r-sm);overflow:hidden}
+.adm-dl div{display:grid;grid-template-columns:130px 1fr;gap:12px;padding:10px 12px;border-top:1px solid var(--ui-line);background:#fff}
+.adm-dl div:first-child{border-top:0}
+.adm-dl dt{font-size:13.5px;color:var(--muted)}
+.adm-dl dd{margin:0;font-size:14.5px;font-weight:500}
+.adm-sec{margin:0 0 24px}
+.adm-sec h3{margin:0 0 8px;font:600 12.5px/1.3 var(--body);letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+.adm-sec textarea{width:100%;padding:10px 12px;border:1px solid var(--ui-line-2);border-radius:var(--ui-r-sm);background:#fff;font:500 14.5px/1.5 var(--body);color:var(--ink);resize:vertical}
+.adm-saved{min-height:1.2em;margin:4px 0 0;font-size:12.5px;color:var(--teal-dark)}
+.adm-list{list-style:none;margin:0;padding:0;border:1px solid var(--ui-line);border-radius:var(--ui-r-sm);overflow:hidden}
+.adm-list li{display:flex;flex-direction:column;gap:2px;padding:10px 12px;border-top:1px solid var(--ui-line);background:#fff;font-size:14px}
+.adm-list li:first-child{border-top:0}
+.adm-list li span{font-size:13px;color:var(--muted)}
+.adm-texts li span{font-size:14px;color:var(--ink);line-height:1.45}
+.adm-texts li.in{background:#F3F8FF}
+.adm-texts time{font-size:12px;color:var(--muted)}
+.adm-danger{margin-top:auto;padding-top:16px;border-top:1px solid var(--ui-line)}
+
+/* ---------- Ask Claude ---------- */
+.adm-askbtn svg{width:17px;height:17px}
+.adm-nav .adm-askbtn{background:var(--teal-deep);color:#fff;border-color:var(--teal-deep);box-shadow:0 1px 2px rgba(20,40,40,.25)}
+.adm-nav .adm-askbtn:hover{background:var(--teal-dark);border-color:var(--teal-dark);color:#fff}
+.adm-ask{width:min(560px,100%)}
+.adm-ask .adm-dw{height:100%;padding-bottom:16px}
+.adm-ask .adm-dwh{margin-bottom:16px}
+.adm-chat{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:12px;margin:0 -24px;padding:4px 24px 16px}
+.adm-hello{margin:auto 0;text-align:center;padding:24px 8px}
+.adm-hello p{max-width:34em;margin:12px auto 24px;font-size:15px;line-height:1.55;color:var(--muted)}
+.adm-spark{display:inline-grid;place-items:center;width:48px;height:48px;border-radius:14px;background:var(--teal-mist);color:var(--teal-deep)}
+.adm-spark svg{width:24px;height:24px}
+.adm-sugg{display:grid;gap:8px;text-align:left}
+.adm-sugg button{padding:12px 14px;border:1px solid var(--ui-line);border-radius:var(--ui-r-sm);background:#fff;font:500 14.5px/1.4 var(--body);color:var(--ink);text-align:left;cursor:pointer;transition:border-color .12s,background-color .12s}
+.adm-sugg button:hover{border-color:var(--teal-deep);background:#FCFEFD}
+.adm-msg{max-width:92%;font-size:14.5px;line-height:1.55}
+.adm-msg p{margin:0 0 8px}.adm-msg p:last-child{margin-bottom:0}
+.adm-msg ul{margin:0 0 8px;padding-left:20px}.adm-msg li{margin:2px 0}
+.adm-msg.user{align-self:flex-end;padding:10px 14px;border-radius:14px 14px 4px 14px;background:var(--teal-deep);color:#fff}
+.adm-msg.assistant{align-self:flex-start;padding:12px 14px;border:1px solid var(--ui-line);border-radius:14px 14px 14px 4px;background:#fff}
+.adm-typing{display:inline-flex;gap:4px;padding:4px 0}
+.adm-typing i{width:6px;height:6px;border-radius:50%;background:var(--muted);animation:tyB 1s infinite}
+.adm-typing i:nth-child(2){animation-delay:.15s}.adm-typing i:nth-child(3){animation-delay:.3s}
+@keyframes tyB{50%{opacity:.25}}
+.adm-clear{align-self:center;margin-top:4px;padding:6px 10px;border:0;border-radius:8px;background:none;font:600 13px var(--body);color:var(--muted);cursor:pointer}
+.adm-clear:hover{color:var(--teal-deep);background:var(--ui-sunk)}
+.adm-askf{display:flex;align-items:flex-end;gap:8px;padding:8px;border:1px solid var(--ui-line-2);border-radius:16px;background:#fff;box-shadow:var(--ui-sh)}
+.adm-askf:focus-within{border-color:var(--teal-deep);box-shadow:var(--ui-ring)}
+.adm-askf textarea{flex:1;min-height:40px;max-height:160px;padding:9px 8px;border:0;background:none;font:500 15px/1.45 var(--body);color:var(--ink);resize:none}
+.adm-askf textarea:focus{box-shadow:none}
+.adm-send{flex:none;display:grid;place-items:center;width:40px;height:40px;border:0;border-radius:12px;background:var(--teal-deep);color:#fff;cursor:pointer}
+.adm-send:hover{background:var(--teal-dark)}
+.adm-send svg{width:18px;height:18px}
+.adm-fine{margin:8px 0 0;font-size:12px;line-height:1.45;color:var(--muted);text-align:center}
+@media (max-width:599px){.adm-dw{padding:16px}.adm-chat{margin:0 -16px;padding:4px 16px 16px}.adm-dl div{grid-template-columns:1fr;gap:2px}}
+
+/* ---------- reminders, referrals, settings groups ---------- */
+.adm-h-act{margin-left:auto;min-height:34px!important}
+.adm-h .adm-sub+.adm-h-act{margin-left:0}
+.adm-rbar{display:flex;height:10px;margin:0 0 8px;border-radius:99px;overflow:hidden;background:var(--ui-sunk);gap:2px}
+.adm-rbar i{display:block;min-width:0}
+.adm-rbar i.ok,.adm-rkey .ok::before{background:var(--teal-deep)}
+.adm-rbar i.wait,.adm-rkey .wait::before{background:#E2B867}
+.adm-rbar i.x,.adm-rkey .x::before{background:#C9765F}
+.adm-rkey{display:flex;flex-wrap:wrap;gap:4px 16px;margin:0;font-size:13.5px;color:var(--muted)}
+.adm-rkey span{display:inline-flex;align-items:center;gap:6px}
+.adm-rkey span::before{content:"";width:8px;height:8px;border-radius:2px}
+#admRem .adm-day{margin-top:16px}
+a.adm-cx{display:inline-flex;align-items:center;text-decoration:none}
+a.adm-cx:hover{background:var(--teal-mist);border-color:var(--teal-deep);color:var(--teal-dark)}
+.adm-rs{display:inline-flex;align-items:center;gap:3px;margin-left:4px;padding:1px 7px;border-radius:6px;background:rgba(226,184,103,.22);color:#6B4A0E;font-style:normal;font-size:11.5px;font-weight:600;white-space:nowrap}
+.adm-rs.ok{background:rgba(60,104,105,.1);color:var(--teal-dark)}
+.adm-rs svg{width:11px;height:11px;stroke-width:2.6}
+.adm-tag-g{background:var(--ui-sunk)!important;color:var(--muted)!important;box-shadow:inset 0 0 0 1px var(--ui-line)}
+.adm-tag-p{background:#F3E3DD!important;color:#7A2E1C!important}
+.adm-ff{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:16px 0 0;padding-top:16px;border-top:1px solid var(--ui-line)}
+.adm-ff span{margin-right:auto;font-size:13px;font-weight:600;color:var(--muted)}
+.adm-ff .adm-ghost{min-height:32px;font-size:13px}
+.adm-refs{list-style:none;margin:0;padding:0}
+.adm-refs>li{padding:4px 0 12px;border-top:1px solid var(--ui-line)}
+.adm-refs>li:first-child{border-top:0;padding-top:0}
+.adm-refrow{display:flex;gap:12px;align-items:center;width:calc(100% + 16px);margin:0 -8px;padding:8px;border:0;border-radius:var(--ui-r-sm);background:none;text-align:left;font:inherit;color:inherit;cursor:pointer;transition:background-color .12s}
+.adm-refrow:hover{background:var(--ui-sunk)}
+.adm-refrow .adm-wa svg{width:17px;height:17px}
+.adm-refrow div{flex:1;min-width:0}
+.adm-refrow b{display:block;font-size:14.5px;font-weight:600}
+.adm-refrow div span{display:block;font-size:12.5px;line-height:1.45;color:var(--muted)}
+.adm-refa{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:4px 0 0 46px}
+.adm-refa select{min-height:36px;padding:0 8px;border:1px solid var(--ui-line-2);border-radius:var(--ui-r-sm);background:#fff;font:500 14px var(--body);color:var(--ink)}
+.adm-refa .btn{margin:0;min-height:36px}
+.adm-refa .adm-ghost{min-height:34px;font-size:13.5px}
+.adm-refa svg,.adm-ghost svg{width:15px;height:15px}
+.adm-badge.warn{background:rgba(201,118,95,.12);border-color:rgba(201,118,95,.4);color:#7A2E1C}
+.adm-sh{margin:24px 0 12px;padding-top:16px;border-top:1px solid var(--ui-line);font:600 12.5px/1.3 var(--body);letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+.adm-sh:first-child{margin-top:0;padding-top:0;border-top:0}
+.adm-set p{margin:6px 0 0;font-size:12.5px;line-height:1.45;color:var(--muted)}
+.adm-link{padding:0;border:0;background:none;font:600 13.5px var(--body);color:var(--teal-deep);text-decoration:underline;cursor:pointer}
+.adm-reason{margin:0;padding:12px;border-radius:var(--ui-r-sm);background:var(--ui-sunk);font-size:14.5px;line-height:1.5;white-space:pre-wrap}
+.adm-dl dd svg{width:14px;height:14px;vertical-align:-2px}
+@media (max-width:599px){.adm-refa{margin-left:0}}
+</style>
+<style>
+/* Report, practitioner view and SOP: same system as the dashboard. Chart colours validated (refilled #00897B, not refilled #C0663A). */
+body.adm{--rp-a:#00897B;--rp-b:#C0663A}
+.rp-head{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:16px;margin:8px 0 16px}
+.rp-head h1{margin:0;font-size:clamp(28px,4vw,38px);line-height:1.1;letter-spacing:-.015em}
+.rp-head p{margin:8px 0 0;font-size:15px;color:var(--muted)}
+.rp-note{margin:0 0 24px;padding:10px 14px;border:1px dashed var(--ui-line-2);border-radius:var(--ui-r-sm);background:var(--ui-sunk);font-size:13.5px;line-height:1.5;color:var(--muted)}
+.rp-kpis{display:grid;grid-template-columns:repeat(6,1fr);margin:0 0 24px;background:var(--ui-surface);border:1px solid var(--ui-line);border-radius:var(--ui-r);box-shadow:var(--ui-sh);overflow:hidden}
+.rp-kpi{display:flex;flex-direction:column;gap:6px;padding:16px 20px;border-left:1px solid var(--ui-line);min-width:0}
+.rp-kpi:first-child{border-left:0}
+.rp-kpi span{font:600 12px/1.3 var(--body);letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+.rp-kpi b{font:600 28px/1.05 var(--body);letter-spacing:-.02em;color:var(--ink);font-variant-numeric:tabular-nums}
+.rp-kpi.hi b{color:var(--teal-dark)}
+.rp-kpi small{font-size:12.5px;line-height:1.4;color:var(--muted)}
+@media (max-width:1099px){.rp-kpis{grid-template-columns:repeat(3,1fr)}.rp-kpi:nth-child(4){border-left:0}.rp-kpi:nth-child(n+4){border-top:1px solid var(--ui-line)}}
+@media (max-width:599px){.rp-kpis{grid-template-columns:1fr 1fr}.rp-kpi{border-left:0;border-top:1px solid var(--ui-line);padding:12px 16px}.rp-kpi:nth-child(even){border-left:1px solid var(--ui-line)}.rp-kpi:nth-child(-n+2){border-top:0}.rp-kpi b{font-size:23px}}
+.rp-grid,.rp-grid3{display:grid;gap:24px;margin:0 0 24px}
+@media (min-width:1000px){.rp-grid{grid-template-columns:1.4fr 1fr;align-items:start}.rp-grid3{grid-template-columns:repeat(3,1fr);align-items:start}}
+.rp>.adm-card{margin:0 0 24px}
+/* chart */
+.rp-legend{display:flex;gap:16px;margin:0 0 12px;font-size:13px;color:var(--muted)}
+.rp-legend span,.rp-tip span{display:inline-flex;align-items:center;gap:6px}
+.rp-legend span::before,.rp-tip span.a::before,.rp-tip span.b::before{content:"";width:10px;height:10px;border-radius:3px}
+.rp-legend .a::before,.rp-tip .a::before{background:var(--rp-a)}.rp-legend .b::before,.rp-tip .b::before{background:var(--rp-b)}
+.rp-chart{display:grid;grid-template-columns:28px 1fr;height:240px;padding-bottom:28px}
+.rp-y{position:relative}
+.rp-y span{position:absolute;right:8px;transform:translateY(50%);font-size:11.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+.rp-plot{position:relative;display:flex;align-items:stretch;gap:12px;border-bottom:1px solid var(--ui-line-2)}
+.rp-gl{position:absolute;left:0;right:0;border-top:1px solid var(--ui-line);pointer-events:none}
+.rp-col{position:relative;flex:1;display:flex;flex-direction:column;justify-content:flex-end;outline:none;cursor:default}
+.rp-col:hover .rp-stack,.rp-col:focus-visible .rp-stack{filter:brightness(1.06)}
+.rp-col:focus-visible{box-shadow:var(--ui-ring);border-radius:6px}
+.rp-stack{position:relative;height:100%;display:flex;flex-direction:column;justify-content:flex-end;gap:2px;max-width:56px;width:100%;margin:0 auto}
+.rp-stack b{display:block;width:100%;min-height:0}
+.rp-stack b.a{background:var(--rp-a);border-radius:0 0 0 0}
+.rp-stack b.b{background:var(--rp-b);border-radius:4px 4px 0 0}
+.rp-stack b.b[style*="height:0%"]+b.a{border-radius:4px 4px 0 0}
+.rp-x{position:absolute;bottom:-24px;left:50%;transform:translateX(-50%);font-size:11.5px;color:var(--muted);white-space:nowrap}
+.rp-tip{position:absolute;top:0;z-index:2;transform:translateX(-50%);display:grid;gap:4px;min-width:150px;padding:10px 12px;border:1px solid var(--ui-line);border-radius:10px;background:#fff;box-shadow:0 8px 24px -8px rgba(40,30,25,.3);font-size:13px;pointer-events:none}
+.rp-tip[hidden]{display:none}
+.rp-tip em{margin-left:auto;padding-left:12px;font-style:normal;font-weight:600;font-variant-numeric:tabular-nums}
+.rp-tip span{display:flex}
+/* insights */
+.rp-ins{list-style:none;margin:0;padding:0;display:grid;gap:12px}
+.rp-ins li{position:relative;padding:0 0 0 18px;font-size:14.5px;line-height:1.55}
+.rp-ins li::before{content:"";position:absolute;left:0;top:7px;width:8px;height:8px;border-radius:50%;background:var(--teal-deep)}
+.rp-ins li.warn::before{background:#C0663A}.rp-ins li.info::before{background:#B8A99A}
+.rp-ins b{font-weight:600}
+/* tables and lists */
+.rp-tbl table{font-variant-numeric:tabular-nums}
+.rp-tbl th.n,.rp-tbl td.n{text-align:right}
+.rp-tbl tbody th{padding:10px 12px;border-top:1px solid var(--ui-line);text-align:left;font-weight:600;white-space:nowrap;background:#fff;text-transform:none;letter-spacing:0;font-size:13.5px;color:var(--ink);position:static}
+.rp-tbl tr:first-child th{border-top:0}
+.rp-tbl tr.tot th,.rp-tbl tr.tot td{background:var(--ui-sunk);font-weight:700}
+.rp-dl{margin:0;display:grid}
+.rp-dl div{display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-top:1px solid var(--ui-line);font-size:14px}
+.rp-dl div:first-child{border-top:0;padding-top:0}
+.rp-dl dt{color:var(--muted)}
+.rp-dl dd{margin:0;font-weight:600;font-variant-numeric:tabular-nums;text-align:right}
+.rp-ol{margin:0;padding-left:20px;font-size:14px;line-height:1.5}
+.rp-ol li{margin:0 0 4px}
+.rp-foot{margin:0;font-size:12.5px;color:var(--muted)}
+/* practitioner view */
+.pv-who{display:flex;align-items:center;gap:16px}
+.pv-who img{width:64px;height:64px;border-radius:50%;object-fit:cover;box-shadow:0 0 0 1px var(--ui-line)}
+.pv-pick{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600}
+.pv-pick select{min-height:40px;padding:0 10px;border:1px solid var(--ui-line-2);border-radius:var(--ui-r-sm);background:#fff;font:500 15px var(--body);color:var(--ink)}
+.pv-code{position:relative}
+.pv-code pre{margin:0;padding:12px 84px 12px 14px;border:1px solid var(--ui-line);border-radius:var(--ui-r-sm);background:#2E2A27;color:#F5EFE6;font:500 12.5px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;white-space:pre-wrap;word-break:break-all}
+.pv-code .adm-ghost{position:absolute;top:8px;right:8px;min-height:30px;font-size:12.5px;background:#fff}
+.pv-prev{display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin:16px 0 0;padding:16px;border:1px dashed var(--ui-line-2);border-radius:var(--ui-r-sm);background:var(--ui-sunk)}
+.pv-prev p{margin:0;font-size:13px;color:var(--muted)}
+.pv-page .adm-wl li{padding:12px 0}
+.pv-page .adm-wl li:first-child{padding-top:0}
+.pv-page .adm-col{display:grid;gap:24px;min-width:0}
+/* SOP */
+.sop{display:grid;gap:24px;max-width:1120px;margin:0 auto}
+@media (min-width:1000px){.sop{grid-template-columns:240px 1fr;align-items:start}}
+.sop-toc{position:sticky;top:88px;padding:16px;border:1px solid var(--ui-line);border-radius:var(--ui-r);background:var(--ui-surface)}
+.sop-toc h2{margin:0 0 8px;font:600 12.5px/1.3 var(--body);letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+.sop-toc ol{margin:0;padding-left:20px;font-size:14px;line-height:1.5}
+.sop-toc li{margin:0 0 4px}
+.sop-toc a{color:var(--ink);text-decoration:none}.sop-toc a:hover,.sop-toc a.on{color:var(--teal-dark);text-decoration:underline}
+@media (max-width:999px){.sop-toc{position:static}}
+.sop-doc{padding:clamp(20px,4vw,40px);font-size:15.5px;line-height:1.65}
+.sop-doc h1{margin:0 0 8px;font-size:clamp(28px,4vw,38px);line-height:1.1;letter-spacing:-.015em}
+.sop-doc .sop-meta{margin:0 0 24px;font-size:13.5px;color:var(--muted)}
+.sop-doc section{padding:24px 0 0;margin:24px 0 0;border-top:1px solid var(--ui-line);scroll-margin-top:84px}
+.sop-doc h2{margin:0 0 12px;font-size:23px;line-height:1.2}
+.sop-doc h3{margin:20px 0 8px;font:600 16px/1.35 var(--body);letter-spacing:0}
+.sop-doc p,.sop-doc ul,.sop-doc ol{margin:0 0 12px;max-width:48em}
+.sop-doc ul,.sop-doc ol{padding-left:22px}
+.sop-doc li{margin:0 0 6px}
+.sop-doc .sop-who{display:inline-block;margin:0 0 12px;padding:2px 10px;border-radius:99px;background:var(--teal-mist);color:var(--teal-dark);font-size:12.5px;font-weight:600}
+.sop-doc .sop-box{margin:16px 0;padding:12px 16px;border-left:3px solid var(--teal-deep);border-radius:0 var(--ui-r-sm) var(--ui-r-sm) 0;background:var(--ui-sunk);font-size:14.5px}
+.sop-doc .sop-box.warn{border-color:#C0663A;background:rgba(192,102,58,.07)}
+.sop-doc .sop-box p:last-child{margin:0}
+.sop-doc table{width:100%;margin:0 0 16px;border-collapse:collapse;font-size:14px}
+.sop-doc th,.sop-doc td{padding:8px 10px;border:1px solid var(--ui-line);text-align:left;vertical-align:top}
+.sop-doc th{background:#FAF7F2;font-weight:600}
+.sop-doc .chk{list-style:none;padding-left:0}
+.sop-doc .chk li{position:relative;padding-left:28px}
+.sop-doc .chk li::before{content:"";position:absolute;left:0;top:4px;width:16px;height:16px;border:1.5px solid var(--ui-line-2);border-radius:4px;background:#fff}
+@media print{
+ body.adm{background:#fff}
+ .adm-top,.rp-note,.adm-ghost,[data-table],.sop-toc,.pv-pick,.adm-askbtn{display:none!important}
+ .adm-main{padding:0;max-width:none}
+ .adm-card,.rp-kpis{box-shadow:none;break-inside:avoid}
+ .rp-grid,.rp-grid3{grid-template-columns:1fr 1fr}
+ .sop{display:block}.sop-doc{padding:0;border:0}
+ .sop-doc section{break-inside:auto}
+ a{color:inherit}
+}
+</style>
+<script>window.HUB_SITE='https://familyhub.aiautomationvic.com/'</script>
+<script src="hub-core.js"></script>
+</head>
+<body class="adm sop-page">
+<header class="adm-top">
+ <a class="adm-brand" href="admin.html"><img alt="" src="https://familyhub.aiautomationvic.com/img/logo-mark.webp" width="40" height="43"><span><small>Surf Coast Family Hub</small><b>Front desk SOP</b></span></a>
+ <span class="adm-demo">Draft for review</span>
+ <nav class="adm-nav"><a class="btn btn-outline btn-sm" href="admin.html">Dashboard</a><button type="button" class="btn btn-primary btn-sm" data-print>Print or save PDF</button></nav>
+</header>
+<main class="adm-main" id="main">
+<div class="sop">
+<nav class="sop-toc" aria-label="Contents"><h2>Contents</h2><ol>
+ <li><a href="#s1">Purpose and who does what</a></li>
+ <li><a href="#s2">Daily routine</a></li>
+ <li><a href="#s3">New referrals</a></li>
+ <li><a href="#s4">New bookings</a></li>
+ <li><a href="#s5">Reminders and confirmations</a></li>
+ <li><a href="#s6">Cancellations and late fees</a></li>
+ <li><a href="#s7">Refilling cancelled time</a></li>
+ <li><a href="#s8">The waitlist</a></li>
+ <li><a href="#s9">Regular sessions</a></li>
+ <li><a href="#s10">Telehealth</a></li>
+ <li><a href="#s11">If a message raises a safety concern</a></li>
+ <li><a href="#s12">Client information and privacy</a></li>
+ <li><a href="#s13">Ask Claude</a></li>
+ <li><a href="#s14">Weekly and monthly checks</a></li>
+ <li><a href="#s15">Adding or removing a practitioner</a></li>
+ <li><a href="#s16">If the system is down</a></li>
+</ol></nav>
+<article class="adm-card sop-doc">
+<h1>Front desk standard operating procedure</h1>
+<p class="sop-meta">Bookings, cancellations, the waitlist, referrals and client information · Version 0.1, November 2026 · Draft for the Hub director to review and adapt. Not legal advice.</p>
+
+<section id="s1"><h2>1. Purpose and who does what</h2>
+<p>This is how the Hub handles every booking from first contact to the session, so clients get a consistent experience, cancelled time gets used, and client information stays safe. It applies to everyone who works the front desk or uses the Hub dashboard.</p>
+<table><thead><tr><th>Role</th><th>Responsible for</th></tr></thead><tbody>
+<tr><td>Hub director</td><td>Owns this SOP and the settings (refill rules, reminders, cancellation policy). Matches “Psychology Team” referrals. Decides on exceptions and complaints. Privacy officer.</td></tr>
+<tr><td>Front desk / admin</td><td>Runs the daily routine. Logs referrals, chases missing plans, calls unconfirmed clients, keeps the waitlist accurate.</td></tr>
+<tr><td>Practitioners</td><td>Keep their Halaxy hours, session types and fees current. Choose how their cancellations are refilled. Decide whether to charge a late fee. Own their clinical records.</td></tr>
+</tbody></table>
+<div class="sop-box"><p><b>Halaxy is the source of truth.</b> Every booking, wherever it starts, ends up in the practitioner’s Halaxy. The hub never keeps clinical notes.</p></div>
+</section>
+
+<section id="s2"><h2>2. Daily routine</h2>
+<span class="sop-who">Front desk · 15 minutes, morning and mid-afternoon</span>
+<ul class="chk">
+ <li>Open the dashboard. Clear anything under <b>Needs you</b> (spots waiting for approval or queued in quiet hours).</li>
+ <li><b>Referrals:</b> action every “New” referral the same business day (section 3). Call anyone with “No booking yet” after 3 days.</li>
+ <li><b>Reminders:</b> in the afternoon, call everyone still showing “No reply yet” for tomorrow. One call now prevents most no-shows.</li>
+ <li><b>Coming up:</b> check for “no plan yet” tags on Medicare sessions in the next 3 days and chase the GP (section 4).</li>
+ <li>Glance at <b>Activity</b> for anything unusual, like a refill that went unfilled close to the time.</li>
+ <li>Check inbound texts and voicemail. Replies to hub texts that aren’t YES or STOP need a person (section 11).</li>
+</ul>
+</section>
+
+<section id="s3"><h2>3. New referrals</h2>
+<p>Referrals arrive by the online form (straight into the dashboard), fax, email, phone or letter.</p>
+<ol>
+ <li>If it came by fax, email, phone or letter, log it with <b>Log a referral</b> on the dashboard. Attach the letter or plan. Then file the original as your normal process requires and delete local copies.</li>
+ <li><b>Named practitioner:</b> the client is texted a booking link automatically (if that setting is on). Otherwise press <b>Send booking link</b>.</li>
+ <li><b>Psychology Team:</b> the director reads the reason for referral, picks the best-matched practitioner, and presses <b>Send booking link</b>. Aim for within one business day.</li>
+ <li>No booking after 3 days: call the client. If they can’t be reached after two calls and a text over a week, let the referrer know and close the referral.</li>
+ <li>When they book, the referral and plan go to the practitioner. If the plan was “to follow”, chase it before the first session.</li>
+</ol>
+<div class="sop-box warn"><p><b>Urgent or risk information in a referral:</b> don’t wait for the client to book. Tell the director or the named practitioner straight away.</p></div>
+</section>
+
+<section id="s4"><h2>4. New bookings</h2>
+<p>Most clients book themselves on the booking page. The hub picks the right Halaxy appointment type from their answers (Medicare, private, telehealth or phone), so staff don’t have to fix types.</p>
+<h3>Phone bookings</h3>
+<ol><li>Use the booking page with the client on the phone. It asks the same questions and records consent the same way.</li><li>Read them the cancellation policy and confirm they agree.</li><li>For new clients where a card is required, send them their booking link to add a card themselves. Never take card numbers over the phone or write them down.</li></ol>
+<h3>Medicare and the Mental Health Treatment Plan</h3>
+<ul><li>Since 1 November 2025, Better Access rebates generally need the plan and referral from the client’s MyMedicare practice or usual GP. The client or GP is responsible for the plan; we check we have it.</li>
+<li>Clients can upload the plan when booking or later from their booking page. Plans that arrive by fax or email: log them against the referral and tick <b>Plan received</b>.</li>
+<li>If a plan hasn’t arrived 2 business days before the first session, text or call the client. If it still hasn’t arrived, the session goes ahead as private unless the practitioner decides otherwise.</li>
+<li>Never decide Medicare eligibility for the client. If they’re unsure, suggest they ask their GP or Medicare.</li></ul>
+</section>
+
+<section id="s5"><h2>5. Reminders and confirmations</h2>
+<p>Every appointment gets one text 2 days before (setting), with a <b>confirm</b> link and a <b>can’t make it</b> link. Halaxy’s own reminders should be off for hub practitioners so clients don’t get two.</p>
+<ul><li><b>Confirmed:</b> nothing to do.</li>
+<li><b>Can’t make it:</b> the appointment is cancelled in Halaxy and the time goes straight to the waitlist. If they tapped it outside the policy window, there’s no fee.</li>
+<li><b>No reply by the afternoon before:</b> call them (daily routine).</li></ul>
+</section>
+
+<section id="s6"><h2>6. Cancellations and late fees</h2>
+<p>The current policy is shown to every client when they book, on their booking page and in their reminder. It’s set under Settings on the dashboard.</p>
+<div class="sop-box"><p>Free to move or cancel up to <b>24 hours</b> before. Later than that, or a no-show, the policy fee applies. <b>If we refill the time from the waitlist, there’s no fee</b>; the hub waives it automatically.</p></div>
+<ol><li>Late cancellations and no-shows that weren’t refilled show in the report with the fee the policy allows.</li>
+<li>The practitioner decides whether to charge. Use discretion for illness, emergencies, family violence, financial hardship and first-time slips, and record the reason in Halaxy.</li>
+<li>Charges are made through Halaxy’s payments, never by reading out or re-entering card details.</li>
+<li>Complaints about a fee go to the director.</li></ol>
+</section>
+
+<section id="s7"><h2>7. Refilling cancelled time</h2>
+<p>When an appointment is cancelled (by the client, staff in Halaxy, or a reminder link), the hub:</p>
+<ol><li>works out how long the gap is (up to the next booked appointment);</li>
+<li>texts the best-matched people on the waitlist: right practitioner, day, time of day and session length, longest waiting first (3 at a time by default);</li>
+<li>books the first person to tap, using Halaxy’s double-booking check so two people can never get the same time;</li>
+<li>tries the next people if nobody taps in 30 minutes, and stops 2 hours before the start. After that the time goes back on the online booking page.</li></ol>
+<p>If the person who got the time already had a later booking, their old time is offered on in turn.</p>
+<h3>When staff step in</h3>
+<ul><li><b>Ask me first</b> mode, or a practitioner set to “Ask Adi first”: approve or leave each spot from <b>Needs you</b>.</li>
+<li>Quiet hours (8pm to 8am): offers wait until 8am.</li>
+<li>A client phones to take a spot that was texted out: book it from the dashboard so the others get the “it’s gone” text.</li></ul>
+</section>
+
+<section id="s8"><h2>8. The waitlist</h2>
+<ul><li>Clients join online, or staff add them. Record only admin details (who, days, times, contact). <b>No clinical notes on the waitlist.</b></li>
+<li>After 30 days, people get a “still keen?” text. No reply within a week pauses them (they stop getting offers but stay on the list). Put someone back with one click from their record.</li>
+<li>Remove people who are booked elsewhere, ask to leave or reply STOP (STOP is automatic). Their details are deleted when they leave.</li>
+<li>Export only when needed, keep the file on a work device, and delete it when done.</li></ul>
+</section>
+
+<section id="s9"><h2>9. Regular sessions</h2>
+<p>Clients can book the same weekday and time weekly or every 2 weeks, up to 10 sessions. If that time is taken one week, they’re offered the nearest free time that week. Practitioners can switch this off for themselves.</p>
+<ul><li>Clients can move or cancel any single session, or the rest of the series, from their booking page.</li>
+<li>Medicare clients: rebates cover up to 10 sessions a calendar year under Better Access. Remind clients near the limit to talk to their GP about a review.</li></ul>
+</section>
+
+<section id="s10"><h2>10. Telehealth</h2>
+<ul><li>Video sessions use the practitioner’s Halaxy telehealth room. The link is in the confirmation text, the reminder and the client’s booking page.</li>
+<li>Phone sessions: the practitioner calls the client’s mobile at the session time from a withheld or clinic number.</li>
+<li>Practitioners follow their own telehealth procedure, including confirming identity and the client’s location at the start of each session, and having an emergency plan.</li>
+<li>If a client can’t connect, call them. If it can’t be fixed in 10 minutes, offer a phone session or rebook without a fee.</li></ul>
+</section>
+
+<section id="s11"><h2>11. If a message raises a safety concern</h2>
+<div class="sop-box warn"><p>Hub texts and forms are <b>not monitored as a crisis service</b>, and every page says so. But if any message, form or call suggests someone may be at risk:</p></div>
+<ol><li>If there’s immediate danger, call <b>000</b>.</li>
+<li>Otherwise tell the client’s practitioner, or the director if they aren’t available, straight away, the same day.</li>
+<li>Give the client crisis numbers: Lifeline 13 11 14, PANDA 1300 726 306, Kids Helpline 1800 55 1800.</li>
+<li>Record what happened and what you did in the client’s Halaxy record, not in the hub.</li></ol>
+</section>
+
+<section id="s12"><h2>12. Client information and privacy</h2>
+<p>The Hub handles health information under the Privacy Act 1988 (Australian Privacy Principles) and the Health Records Act 2001 (Vic). The client-facing version is the privacy page.</p>
+<ul><li><b>Minimum necessary:</b> collect and look at only what you need for the task. Texts never mention the reason for a visit or the type of practitioner beyond their first name.</li>
+<li><b>Where things live:</b> clinical records in the practitioner’s Halaxy; bookings, waitlist and referrals in the hub (hosted in Australia when live).</li>
+<li><b>Exports and screenshots:</b> only on work devices, never in personal email or chat apps, and delete them when done.</li>
+<li><b>Access and correction requests:</b> pass to the director. Respond within 30 days.</li>
+<li><b>Retention:</b> practitioners keep health records at least 7 years after the last service, or until a child turns 25. Waitlist details are deleted when someone leaves the list.</li>
+<li><b>Data breach</b> (a lost device, a misdirected email, an export sent to the wrong person): tell the director immediately. Contain it, then assess within 30 days whether it’s likely to cause serious harm. If so, notify the affected people and the OAIC (Notifiable Data Breaches scheme).</li>
+<li><b>Automated decisions:</b> the hub decides automatically who on the waitlist is offered a time, and pauses people who don’t reply to check-ins. This is described in the privacy notice. If a client asks, explain how it works and review it by hand.</li></ul>
+</section>
+
+<section id="s13"><h2>13. Ask Claude</h2>
+<p>The dashboard’s Ask Claude panel answers questions about bookings, the waitlist, refills and referrals. It only receives de-identified data: clients are swapped for codes, and phone numbers, emails, notes, dates of birth and referral reasons are never sent.</p>
+<ul><li>Use it for admin questions (“Which free times this fortnight suit someone on the waitlist?”), never for clinical advice.</li>
+<li>Don’t type names, phone numbers or clinical details into questions.</li>
+<li>Check anything important before acting on it. It can make mistakes.</li></ul>
+</section>
+
+<section id="s14"><h2>14. Weekly and monthly checks</h2>
+<table><thead><tr><th>When</th><th>Who</th><th>Check</th></tr></thead><tbody>
+<tr><td>Weekly</td><td>Front desk</td><td>Waitlist: paused people, long waits, anyone booked elsewhere. Referrals with no booking. Plans still to come.</td></tr>
+<tr><td>Monthly</td><td>Director</td><td>Open the <b>Report</b>: fill rate, income recovered and lost, no-shows, practitioners with lots of free time, referral turnaround. Share each practitioner’s own figures via their practitioner view.</td></tr>
+<tr><td>Quarterly</td><td>Director</td><td>Review settings and this SOP. Check the SMS sender ID is still registered. Spot-check new website or booking wording against Ahpra’s advertising rules (no testimonials, correct titles, total fees shown).</td></tr>
+</tbody></table>
+</section>
+
+<section id="s15"><h2>15. Adding or removing a practitioner</h2>
+<h3>Joining</h3>
+<ul class="chk"><li>Their Halaxy is in the Hub’s practice group (or their own account is connected with an API key).</li><li>Online-bookable hours, session types and fees set in Halaxy.</li><li>Ahpra registration and any endorsement checked, and their title on the website matches the register.</li><li>Profile, photo and “who I help” wording approved by them.</li><li>Their refill and regular-booking preferences set.</li><li>Booking button added to their own website if they have one.</li></ul>
+<h3>Leaving or on leave</h3>
+<ul class="chk"><li>Mark them on leave so they disappear from booking. Existing bookings stay in Halaxy.</li><li>Tell everyone on the waitlist for only them, and offer other practitioners.</li><li>Hand over open referrals.</li></ul>
+</section>
+
+<section id="s16"><h2>16. If the system is down</h2>
+<ul><li>Halaxy still works on its own. Book and cancel there directly and tell clients to call.</li>
+<li>Refill offers pause while the hub is down. Once it’s back, check Halaxy for cancellations made in the meantime; the hub catches up automatically, but times that are now too close need a call round.</li>
+<li>Report problems to the hub provider with the time and what you saw. Don’t send client details in the report.</li></ul>
+</section>
+</article>
+</div>
+</main>
+<script>
+/* SOP page: print, and highlight the section you're reading in the contents. */
+(function(){
+document.addEventListener('click',function(e){if(e.target.closest('[data-print]'))window.print()});
+var links=[].slice.call(document.querySelectorAll('.sop-toc a'));
+if('IntersectionObserver' in window){var io=new IntersectionObserver(function(es){es.forEach(function(en){if(en.isIntersecting){links.forEach(function(a){a.classList.toggle('on',a.getAttribute('href')==='#'+en.target.id)})}})},{rootMargin:'-90px 0px -70% 0px'});
+ [].forEach.call(document.querySelectorAll('.sop-doc section'),function(s){io.observe(s)})}
+})();
+</script>
+</body>
+
+</html>

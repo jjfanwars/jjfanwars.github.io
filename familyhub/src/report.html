@@ -1,0 +1,24 @@
+<body class="adm rp-page">
+<header class="adm-top">
+ <a class="adm-brand" href="admin.html"><img alt="" src="{{SITE}}img/logo-mark.webp" width="40" height="43"><span><small>Surf Coast Family Hub</small><b>Hub report</b></span></a>
+ <span class="adm-demo">Demo · fake data</span>
+ <nav class="adm-nav"><a class="btn btn-outline btn-sm" href="admin.html">Dashboard</a><button type="button" class="btn btn-outline btn-sm" data-csv>Export CSV</button><button type="button" class="btn btn-primary btn-sm" data-print>Print or save PDF</button></nav>
+</header>
+<main class="adm-main rp" id="main">
+ <div class="rp-head"><div><h1>How the Hub is going</h1><p id="rpRange"></p></div>
+  <div class="adm-seg" role="group" aria-label="Period" id="rpPeriod"><button type="button" data-days="7" aria-pressed="false">Last 7 days</button><button type="button" data-days="28" aria-pressed="true">Last 4 weeks</button></div></div>
+ <p class="rp-note">Demo: this includes four weeks of made-up sample history so there’s something to show, plus anything you’ve done in the demo. When live, it reads Halaxy and the hub’s own records.</p>
+ <section class="rp-kpis" id="rpKpis" aria-label="Headline numbers"></section>
+ <div class="rp-grid">
+  <section class="adm-card"><div class="adm-h"><h2>Cancellations by week</h2><span class="adm-sub rp-wk">Weeks starting</span><button type="button" class="adm-ghost" data-table aria-pressed="false">Show as table</button></div><div id="rpChart"></div></section>
+  <section class="adm-card"><div class="adm-h"><h2>What stands out</h2></div><ul class="rp-ins" id="rpIns"></ul></section>
+ </div>
+ <section class="adm-card"><div class="adm-h"><h2>By practitioner</h2><span class="adm-sub">Utilisation counts refilled time as booked</span></div><div class="adm-tbl rp-tbl" id="rpPract"></div></section>
+ <div class="rp-grid3">
+  <section class="adm-card"><div class="adm-h"><h2>Waitlist</h2></div><div id="rpWl"></div></section>
+  <section class="adm-card"><div class="adm-h"><h2>Referrals</h2></div><div id="rpRef"></div></section>
+  <section class="adm-card"><div class="adm-h"><h2>Reminders and texts</h2></div><div id="rpTxt"></div></section>
+ </div>
+ <p class="rp-foot">Prepared by the hub on <span id="rpNow"></span>. Income figures use each practitioner’s standard fee. Late fees are what the policy allows; each practitioner decides whether to charge.</p>
+</main>
+</body>

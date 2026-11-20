@@ -2,7 +2,7 @@
 <header class="adm-top">
  <a class="adm-brand" href="{{SITE}}index.html"><img alt="" src="{{SITE}}img/logo-mark.webp" width="40" height="43"><span><small>Surf Coast Family Hub</small><b>Hub dashboard</b></span></a>
  <span class="adm-demo">Demo · fake data</span>
- <nav class="adm-nav"><button type="button" class="btn btn-primary btn-sm adm-askbtn" data-ask-open><svg aria-hidden="true" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" viewBox="0 0 24 24"><path d="M12 3l1.8 4.6L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.9z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/></svg>Ask Claude</button><a class="btn btn-outline btn-sm" href="book.html" target="_blank" rel="noopener">Booking page</a><button type="button" class="btn btn-outline btn-sm" id="admReset">Reset demo</button></nav>
+ <nav class="adm-nav"><button type="button" class="btn btn-primary btn-sm adm-askbtn" data-ask-open><svg aria-hidden="true" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" viewBox="0 0 24 24"><path d="M12 3l1.8 4.6L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.9z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/></svg>Ask Claude</button><a class="btn btn-outline btn-sm" href="report.html">Report</a><a class="btn btn-outline btn-sm" href="practitioner.html">Practitioner view</a><a class="btn btn-outline btn-sm" href="sop.html">SOP</a><a class="btn btn-outline btn-sm" href="book.html" target="_blank" rel="noopener">Booking page</a><button type="button" class="btn btn-outline btn-sm" id="admReset">Reset demo</button></nav>
 </header>
 <main class="adm-main" id="main">
  <section class="adm-stats" id="admStats" aria-label="This month"></section>
@@ -11,22 +11,25 @@
    <section class="adm-card adm-hero" id="admTry"></section>
    <section class="adm-card" id="admNeeds" hidden></section>
    <section class="adm-card"><div class="adm-h"><h2>Spots being refilled</h2><span class="adm-sub" id="admClock"></span></div><div id="admOffers"></div></section>
-   <section class="adm-card"><div class="adm-h"><h2>Phones</h2><span class="adm-sub">What the waitlist sees. Tap a link to claim.</span></div><div class="adm-phones" id="admPhones"></div></section>
-   <section class="adm-card"><div class="adm-h"><h2>Coming up</h2><span class="adm-sub">Tap Cancel to pretend a client cancelled</span></div><div id="admUp"></div></section>
+   <section class="adm-card"><div class="adm-h"><h2>Phones</h2><span class="adm-sub">The latest texts, as clients see them. Tap a link to act on it.</span></div><div class="adm-phones" id="admPhones"></div></section>
+   <section class="adm-card" id="admRemCard"><div class="adm-h"><h2>Reminders</h2><span class="adm-sub" id="admRemSub"></span></div><div id="admRem"></div></section>
+   <section class="adm-card"><div class="adm-h"><h2>Coming up</h2><span class="adm-sub">Tap Cancel to pretend a client cancelled</span></div><div id="admUp"></div><div class="adm-ff"><span>Demo clock</span><button type="button" class="adm-ghost" data-ff="60">+1 hour</button><button type="button" class="adm-ghost" data-ff="360">+6 hours</button><button type="button" class="adm-ghost" data-ff="1440">+1 day</button></div></section>
   </div>
   <div class="adm-col">
    <section class="adm-card"><div class="adm-h"><h2>Activity</h2></div><ol class="adm-feed" id="admFeed"></ol></section>
+   <section class="adm-card" id="admRefCard"><div class="adm-h"><h2>Referrals</h2><span class="adm-sub" id="admRefN"></span><a class="adm-ghost adm-h-act" href="refer.html?staff=1" target="_blank" rel="noopener">Log a referral</a></div><div id="admRef"></div></section>
    <section class="adm-card" id="admWlCard"><div class="adm-h"><h2>Waitlist</h2><span class="adm-sub" id="admWlN"></span></div><div class="adm-tools"><label class="adm-search"><span class="sr">Search the waitlist</span><input id="admWlQ" type="search" placeholder="Search name, phone or service" autocomplete="off"></label><label><span class="sr">Practitioner</span><select id="admWlP"><option value="">Everyone</option></select></label><button type="button" class="adm-ghost" data-csv="waitlist" title="Download as a spreadsheet (CSV)">Export</button></div><div id="admWl"></div></section>
    <section class="adm-card" id="admRec"><div class="adm-h"><h2>Records</h2><span class="adm-sub">Everything the hub has logged</span></div>
-    <div class="adm-tabs" role="tablist"><button type="button" role="tab" data-rec="bookings" aria-selected="true">Online bookings</button><button type="button" role="tab" data-rec="offers" aria-selected="false">Refill offers</button><button type="button" role="tab" data-rec="texts" aria-selected="false">Texts</button><button type="button" class="adm-ghost" data-csv="rec">Export</button></div>
+    <div class="adm-tabs" role="tablist"><button type="button" role="tab" data-rec="bookings" aria-selected="true">Online bookings</button><button type="button" role="tab" data-rec="offers" aria-selected="false">Refill offers</button><button type="button" role="tab" data-rec="texts" aria-selected="false">Texts</button><button type="button" role="tab" data-rec="referrals" aria-selected="false">Referrals</button><button type="button" role="tab" data-rec="reminders" aria-selected="false">Reminders</button><button type="button" class="adm-ghost" data-csv="rec">Export</button></div>
     <div id="admRecBody"></div></section>
    <section class="adm-card"><div class="adm-h"><h2>Settings</h2></div><div id="admSet"></div></section>
    <section class="adm-card adm-how"><h2>How it works when it’s live</h2><ol>
-    <li>A client cancels by text link, on this site, or Adi cancels it in Halaxy.</li>
-    <li>Halaxy tells the hub straight away (a webhook), so nobody has to notice.</li>
-    <li>The hub texts the best-matched people on the waitlist: right practitioner, right day and time, longest waiting first.</li>
-    <li>The first tap books them into Halaxy. Everyone else gets a polite “it’s gone” text.</li>
+    <li>Two days before, every client gets a reminder with “confirm” and “can’t make it” links. Can’t-make-its free the time early, while it can still be filled.</li>
+    <li>A client cancels by text link, on this site, or staff cancel it in Halaxy. Halaxy tells the hub straight away (a webhook).</li>
+    <li>The hub works out how long the gap is, then texts the best-matched people on the waitlist: right practitioner, day, time and session length, longest waiting first.</li>
+    <li>The first tap books them into Halaxy. Everyone else gets a polite “it’s gone” text. If they already had a later booking, that time goes to the next person.</li>
     <li>No taker in time? The next people get it. Too close to the time? It goes back on the online booking page.</li>
+    <li>After a month on the list, people get a “still keen?” text, so offers only go to people who still want a spot.</li>
    </ol></section>
   </div>
  </div>
@@ -36,6 +39,6 @@
  <div class="adm-dwh"><div><h2 id="admAskH">Ask Claude</h2><p>About the Hub’s bookings, waitlist, refills and texts</p></div><button type="button" class="adm-x" data-close aria-label="Close"><svg aria-hidden="true" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.8" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
  <div class="adm-chat" id="admChat" aria-live="polite"></div>
  <form class="adm-askf" id="admAskF"><label class="sr" for="admAskQ">Your question</label><textarea id="admAskQ" rows="1" placeholder="Ask anything about the Hub’s data…" maxlength="2000"></textarea><button type="submit" class="adm-send" aria-label="Send"><svg aria-hidden="true" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24"><path d="M12 19V5M5.5 11.5 12 5l6.5 6.5"/></svg></button></form>
- <p class="adm-fine">Claude reads the Hub’s current data to answer. It can make mistakes, so check anything important. Demo: it reads the pretend data in this browser.</p>
+ <p class="adm-fine">It never sees names, phone numbers, notes or referral reasons. Claude reads the Hub’s current data to answer. It can make mistakes, so check anything important. Demo: it reads the pretend data in this browser.</p>
 </div></dialog>
 </body>

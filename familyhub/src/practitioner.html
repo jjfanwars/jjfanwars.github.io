@@ -1,0 +1,27 @@
+<body class="adm pv-page">
+<header class="adm-top">
+ <a class="adm-brand" href="admin.html"><img alt="" src="{{SITE}}img/logo-mark.webp" width="40" height="43"><span><small>Surf Coast Family Hub</small><b>Practitioner view</b></span></a>
+ <span class="adm-demo">Demo · fake data</span>
+ <nav class="adm-nav"><label class="pv-pick"><span>Viewing as</span><select id="pvWho"></select></label><a class="btn btn-outline btn-sm" href="admin.html">Hub dashboard</a></nav>
+</header>
+<main class="adm-main rp" id="main">
+ <div class="rp-head"><div class="pv-who" id="pvHead"></div></div>
+ <p class="rp-note">Each practitioner signs in and sees only their own clients, bookings and referrals. Demo: pick anyone from “Viewing as”. The last 4 weeks include made-up sample history.</p>
+ <section class="rp-kpis" id="pvKpis" aria-label="Your last 4 weeks"></section>
+ <div class="rp-grid">
+  <section class="adm-card"><div class="adm-h"><h2>Your week</h2><span class="adm-sub">Next 7 days</span></div><div id="pvUp"></div></section>
+  <div class="adm-col">
+   <section class="adm-card"><div class="adm-h"><h2>Referrals to you</h2></div><div id="pvRef"></div></section>
+   <section class="adm-card"><div class="adm-h"><h2>Your waitlist</h2><span class="adm-sub" id="pvWlN"></span></div><div id="pvWl"></div></section>
+  </div>
+ </div>
+ <div class="rp-grid">
+  <section class="adm-card"><div class="adm-h"><h2>Booking button for your website</h2></div>
+   <p class="adm-muted pv-lead">Paste this where you want a “Book with me” button: your own website, Linktree or Psychology Today profile link page. It opens your live times, and bookings land in your Halaxy like any other.</p>
+   <div class="pv-code"><pre id="pvCode"></pre><button type="button" class="adm-ghost" data-copy>Copy</button></div>
+   <div class="pv-prev"><span id="pvBtn"></span><p>Live preview. Try it.</p></div>
+   <p class="adm-muted">Or share a direct link: <a id="pvLink" target="_blank" rel="noopener"></a></p></section>
+  <section class="adm-card"><div class="adm-h"><h2>Your preferences</h2></div><div id="pvSet"></div></section>
+ </div>
+</main>
+</body>
