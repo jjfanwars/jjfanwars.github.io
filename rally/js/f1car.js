@@ -2,11 +2,13 @@
 // James Racing: F1 car physics (planar two-axle model with Pacejka-style tyres, load transfer, downforce, drag, DRS, ERS,
 // 8-speed gearbox, brake lock-up, wheelspin, tyre temperature and wear, barrier impacts) and the AI driver.
 const F1 = (() => {
-  const A = F1T.AERO, M = A.mass, G = A.g, L = 3.6, CA = 1.98, CB = 1.62, HCG = 0.26, IZ = 1150, RW = 0.36, LOCK = 0.38, TF = 1.6, TR = 1.55, RSF = 0.56, LSD = 0.55;
+  const A = F1T.AERO, M = A.mass, G = A.g, L = 3.6, CA = 1.98, CB = 1.62, HCG = 0.26, IZ = 1150, RW = 0.36, LOCK = 0.38, TF = 1.6, TR = 1.55, RSF = 0.5, LSD = 0.55;
   const GEARS = [16.3, 13.66, 11.45, 9.6, 8.04, 6.74, 5.65, 4.73], REV = 12500, IDLE = 4000;
   const COMP = { S: { mu: 1.035, wear: 1.7, col: '#e8312b', name: 'Soft' }, M: { mu: 1, wear: 1, col: '#f5d000', name: 'Medium' }, H: { mu: 0.97, wear: 0.55, col: '#eeeeee', name: 'Hard' } };
   const SURF = [{ mu: 1, drag: 0 }, { mu: 0.93, drag: 0 }, { mu: 0.5, drag: 700 }, { mu: 0.4, drag: 2600 }, { mu: 0.96, drag: 0 }];
-  const pac = a => Math.sin(1.45 * Math.atan(22 * a));
+  const pac = a => Math.sin(1.45 * Math.atan(22 * a)), pacF = a => Math.sin(1.3 * Math.atan(20 * a)); // fronts fall off more gently past the peak (less snap understeer at big lock)
+  // speed-sensitive lock: more wheel angle at low speed (hairpins, pit boxes, turning round), the race lock at speed
+  const lockAt = v => LOCK + 0.2 * (1 - sstep(6, 28, Math.abs(v)));
   const icePower = rpm => rpm < 3000 ? 0 : rpm < 10800 ? 560000 * Math.pow((rpm - 3000) / 7800, 0.75) : rpm < 11800 ? 560000 : 560000 * (1 - (rpm - 11800) / 9000);
 
   class Car {
@@ -32,7 +34,7 @@ const F1 = (() => {
       // reverse: hold the brake at a standstill
       if (this.gear >= 1 && this.v < 0.6 && inp.brk > 0.5 && inp.thr < 0.1) { this.revT += dt; if (this.revT > 0.6) { this.gear = -1; this.ev.push('down'); } } else this.revT = 0;
       if (this.gear === -1 && inp.thr > 0.1 && this.vx > -0.5) this.gear = 1;
-      const wantD = clamp(inp.steer, -1, 1) * LOCK; this.delta += clamp(wantD - this.delta, -3.6 * dt, 3.6 * dt);
+      const wantD = clamp(inp.steer, -1, 1) * lockAt(this.v); this.delta += clamp(wantD - this.delta, -4.2 * dt, 4.2 * dt);
       // auto gearbox
       if (this.shiftT > 0) this.shiftT -= dt;
       if (this.auto && this.gear >= 1 && this.shiftT <= 0) {
@@ -67,7 +69,7 @@ const F1 = (() => {
       // aero
       const drsK = this.drs ? 1 : 0, tow = this.tow || 0, dyn = 0.5 * A.rho * v * v, down = dyn * A.ClA * (1 - 0.07 * drsK) * (1 - this.wing * 0.35) * (1 - 0.12 * tow); // dirty air
       const drag = dyn * A.CdA * (1 - 0.17 * drsK) * (1 - 0.2 * tow) + 0.012 * M * G + sDrag; // slipstream
-      const frontAero = 0.41 - this.wing * 0.1;
+      const frontAero = 0.43 - this.wing * 0.1;
       let Fzf = M * G * CB / L + down * frontAero - M * this.ax * HCG / L, Fzr = M * G * CA / L + down * (1 - frontAero) + M * this.ax * HCG / L;
       Fzf = Math.max(Fzf, 300); Fzr = Math.max(Fzr, 300);
       const tg = t => clamp(1 - ((t - 100) / 75) ** 2 * 0.55, 0.7, 1);
@@ -126,7 +128,7 @@ const F1 = (() => {
         const vxp = this.vx - this.r * WZ[k], vyp = this.vy + this.r * WX[k], vxe = Math.max(Math.abs(vxp), 5);
         const al = Math.atan2(vyp, vxe) - dl[k] * (vxp < -0.5 ? -1 : 1), front = k < 2, c = Math.max(cap[k], 1);
         const lk = front ? lerp(1, 0.3, this.lockF) : lerp(1, 0.35, Math.max(this.lockR, this.spinR));
-        const fy = -c * Math.sqrt(Math.max(0.02, 1 - (FX[k] / c) ** 2)) * lk * pac(al), cd = Math.cos(dl[k]), sd = Math.sin(dl[k]);
+        const fy = -c * Math.sqrt(Math.max(0.02, 1 - (FX[k] / c) ** 2)) * lk * (front ? pacF(al) : pac(al)), cd = Math.cos(dl[k]), sd = Math.sin(dl[k]);
         const bx = FX[k] * cd - fy * sd, by = FX[k] * sd + fy * cd;
         Fx += bx; Fy += by; Mz += WX[k] * by - WZ[k] * bx;
         if (front) { FyF += fy; aF += al / 2; sF += Math.abs(fy * Math.sin(al) * v); } else { FyR += fy; aR += al / 2; sR += Math.abs(fy * Math.sin(al) * v); }
@@ -186,7 +188,7 @@ const F1 = (() => {
     const offK = 1 - Math.min(0.25, Math.abs(c.ofs) * 0.035 * (T.KS[i] * 300));
     const tx = T.X[j] + T.nx[j] * tl, tz = T.Z[j] + T.nz[j] * tl, dx = tx - c.x, dz = tz - c.z, ch = Math.cos(c.h), sh = Math.sin(c.h);
     const lx = dx * ch + dz * sh, ly = -dx * sh + dz * ch, kap = 2 * ly / (lx * lx + ly * ly);
-    let st = Math.atan(kap * L) / LOCK + (kap * v - c.r) * 0.35 - c.vy * 0.01;
+    let st = Math.atan(kap * L) / lockAt(v) + (kap * v - c.r) * 0.35 - c.vy * 0.01;
     // speed target a little ahead, with braking room
     const la = T.wi(i + Math.round((4 + v * 0.18) / T.ds)); let vt = Math.min(c.V[la] * offK * (1 - 0.07 * (c.tow || 0) * Math.min(1, T.KS[la] * 400)), c.V[i] + 4, cap);
     if (c.off) vt = Math.min(vt, 40);
@@ -233,5 +235,5 @@ const F1 = (() => {
     const T = c.T, s = c.q.s, p = T.at(s), l = clamp(c.q.d, -T.hw + 1.5, T.hw - 1.5) * 0.5 + T.L[p.i] * 0.5;
     c.x = p.x - Math.sin(p.h) * l; c.z = p.z + Math.cos(p.h) * l; c.h = p.h; c.vx = c.vy = c.r = 0; c.gear = 1; c.lockF = c.lockR = c.spinR = 0; T.query(c.x, c.z, c.idx, c.q);
   }
-  return { Car, aiDrive, collide, reset, wakes, LOCK, TF, TR, M, GEARS, COMP, REV, RW, L, CA, CB };
+  return { Car, aiDrive, collide, reset, wakes, LOCK, lockAt, TF, TR, M, GEARS, COMP, REV, RW, L, CA, CB };
 })();
