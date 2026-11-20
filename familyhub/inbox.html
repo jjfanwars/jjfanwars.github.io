@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+
+<html class="no-js" lang="en-AU">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"/>
+<title>Inbox | Surf Coast Family Hub</title>
+<meta content="Texts, emails, calls, voicemail and website enquiries in one place." name="description"/>
+<meta content="#3C6869" name="theme-color"/>
+<meta content="website" property="og:type"/>
+<meta content="Surf Coast Family Hub" property="og:site_name"/>
+<meta content="Inbox | Surf Coast Family Hub" property="og:title"/>
+<meta content="Texts, emails, calls, voicemail and website enquiries in one place." property="og:description"/>
+<link href="https://familyhub.aiautomationvic.com/img/logo-mark.webp" rel="icon" type="image/webp"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT@0,9..144,400..700,100;1,9..144,400..600,100&amp;family=Public+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://familyhub.aiautomationvic.com/styles.css" rel="stylesheet"/>
+<script>document.documentElement.classList.remove("no-js")</script>
+<link href="https://familyhub.aiautomationvic.com/theme.css" rel="stylesheet"/>
+<script>try{var d=document.documentElement,s=localStorage.getItem("sch-scheme")||"earth",f=localStorage.getItem("sch-font");if(s==="none")s="";if(s)d.setAttribute("data-scheme",s);if(s==="custom"){var v=JSON.parse(localStorage.getItem("sch-vars")||"{}");for(var k in v)d.style.setProperty(k,v[k])}if(f)d.setAttribute("data-font",f)}catch(e){}</script>
+<!-- Preview build: styles and photos load from the demo site. Run build.py live for drop-in copies. -->
+<meta name="robots" content="noindex, nofollow"/>
+<style>html[data-scheme] .site-footer::before{-webkit-mask-image:url(https://jjfanwars.github.io/familyhub/img/edge-foot.svg);mask-image:url(https://jjfanwars.github.io/familyhub/img/edge-foot.svg)}html[data-scheme] .page-hero::after{-webkit-mask-image:url(https://jjfanwars.github.io/familyhub/img/edge-paper.svg);mask-image:url(https://jjfanwars.github.io/familyhub/img/edge-paper.svg)}</style>
+<meta name="robots" content="noindex, nofollow"/>
+<style>
+/* ==========================================================================
+   Hub dashboard. Same system as the booking UI: thin borders, soft elevation,
+   serif section titles, sans UI text, tabular numbers. Spacing 4/8/12/16/24.
+   ========================================================================== */
+body.adm{
+ --ui-surface:#FFFEFB;--ui-sunk:rgba(59,50,45,.035);
+ --ui-line:rgba(59,50,45,.12);--ui-line-2:rgba(59,50,45,.24);
+ --ui-r:14px;--ui-r-sm:10px;
+ --ui-sh:0 1px 2px rgba(59,50,45,.05),0 4px 14px -6px rgba(59,50,45,.12);
+ --ui-ring:0 0 0 3px rgba(60,104,105,.22);
+ background:var(--paper);min-height:100vh;font-variant-numeric:tabular-nums}
+body.adm :focus-visible{outline:2px solid var(--teal-deep);outline-offset:2px}
+
+/* top bar */
+.adm-top{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding:12px clamp(16px,3vw,32px);background:rgba(250,248,243,.88);backdrop-filter:saturate(1.4) blur(10px);border-bottom:1px solid var(--ui-line)}
+.adm-brand{display:flex;align-items:center;gap:12px;text-decoration:none;color:var(--ink)}
+.adm-brand img{width:34px;height:auto}
+.adm-brand small{display:block;font-size:12px;letter-spacing:.02em;color:var(--muted)}
+.adm-brand b{display:block;font:600 19px/1.15 var(--display)}
+.adm-demo{padding:3px 8px;border-radius:6px;background:rgba(230,188,118,.28);color:#6B4A0E;font:700 11px/1.5 var(--body);letter-spacing:.08em;text-transform:uppercase}
+.adm-nav{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
+.adm-nav .btn{margin:0;min-height:38px;padding:0 14px;font-size:14.5px;background:var(--ui-surface);border:1px solid var(--ui-line-2);box-shadow:0 1px 2px rgba(59,50,45,.06)}
+.adm-nav .btn:hover{border-color:var(--teal-deep);color:var(--teal-dark);transform:none}
+.adm-main{max-width:1320px;margin:0 auto;padding:24px clamp(16px,3vw,32px) 64px}
+
+/* stats strip */
+.adm-stats{display:grid;grid-template-columns:repeat(5,1fr);margin:0 0 24px;background:var(--ui-surface);border:1px solid var(--ui-line);border-radius:var(--ui-r);box-shadow:var(--ui-sh);overflow:hidden}
+.adm-stat{display:flex;flex-direction:column;gap:8px;padding:16px 20px;border-left:1px solid var(--ui-line)}
+.adm-stat:first-child{border-left:0}
+.adm-sl{display:flex;align-items:center;gap:6px;font:600 12.5px/1.2 var(--body);letter-spacing:.03em;text-transform:uppercase;color:var(--muted)}
+.adm-sl svg{width:15px;height:15px;color:var(--teal-deep)}
+.adm-stat b{font:600 28px/1 var(--body);letter-spacing:-.02em;color:var(--ink)}
+
+/* layout + cards */
+.adm-grid{display:grid;gap:24px}
+@media (min-width:1000px){.adm-grid{grid-template-columns:1.35fr 1fr;align-items:start}}
+.adm-col{display:grid;gap:24px;min-width:0}
+.adm-card{background:var(--ui-surface);border:1px solid var(--ui-line);border-radius:var(--ui-r);padding:24px;box-shadow:var(--ui-sh);min-width:0;scroll-margin-top:84px}
+.adm-h{display:flex;align-items:baseline;justify-content:space-between;gap:8px 16px;flex-wrap:wrap;margin:0 0 16px}
+.adm-h h2,.adm-card>h2{margin:0;font-size:21px;line-height:1.2;letter-spacing:-.005em}
+.adm-sub{font-size:13.5px;color:var(--muted)}
+.adm-empty,li.adm-empty{grid-column:1/-1;margin:0;padding:24px 16px;border:1px dashed var(--ui-line-2);border-radius:var(--ui-r-sm);background:var(--ui-sunk);text-align:center;color:var(--muted);font-size:14.5px;list-style:none}
+
+/* try-it hero */
+.adm-hero{background:var(--teal-deep);color:#fff;border-color:transparent;box-shadow:0 1px 2px rgba(20,40,40,.2),0 12px 30px -14px rgba(20,60,60,.55);background-image:radial-gradient(120% 140% at 100% 0%,rgba(255,255,255,.12),transparent 55%)}
+.adm-hero h2{margin:0 0 8px;color:#fff;font-size:24px}
+.adm-hero p{margin:0 0 16px;max-width:46em;font-size:15.5px;line-height:1.55;color:rgba(255,255,255,.88)}
+.adm-hero b{color:#fff}
+#admTry .btn{margin:0;background:#fff;color:var(--teal-dark);border-color:#fff;box-shadow:0 2px 8px rgba(0,0,0,.18);white-space:nowrap}
+#admTry .btn:hover{background:var(--cream);transform:translateY(-1px)}
+
+/* needs you */
+.adm-need{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 0;border-top:1px solid var(--ui-line)}
+.adm-need:first-of-type{border-top:0;padding-top:0}
+.adm-need img,.adm-oh img{border-radius:50%;object-fit:cover;flex:none;box-shadow:0 0 0 1px var(--ui-line)}
+.adm-need div{flex:1;min-width:180px}.adm-need b,.adm-oh b{display:block;font-weight:600}.adm-need span,.adm-oh span{font-size:13.5px;color:var(--muted)}
+.adm-need .btn,.adm-oa .btn{margin:0}
+
+/* offers */
+.adm-offer{padding:16px;border:1px solid var(--ui-line);border-radius:var(--ui-r-sm);margin-top:12px;background:#fff}
+.adm-offer:first-child{margin-top:0}
+.adm-offer.is-open{border-color:rgba(60,104,105,.55);box-shadow:var(--ui-ring)}
+.adm-oh{display:flex;align-items:center;gap:12px}
+.adm-oh div{flex:1;min-width:0}
+.adm-badge{flex:none;display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:99px;background:var(--ui-sunk);border:1px solid var(--ui-line);font:600 12.5px/1.3 var(--body);color:var(--muted);white-space:nowrap}
+.adm-badge.live{background:rgba(230,188,118,.2);border-color:rgba(200,150,60,.4);color:#6B4A0E}
+.adm-badge.live::before{content:"";width:7px;height:7px;border-radius:50%;background:#D9932B;animation:admP 1.4s ease-in-out infinite}
+.adm-badge.ok{background:var(--teal-mist);border-color:rgba(60,104,105,.35);color:var(--teal-dark)}
+@keyframes admP{50%{opacity:.3}}
+@media (prefers-reduced-motion:reduce){.adm-badge.live::before{animation:none}}
+.adm-who{list-style:none;padding:0;margin:12px 0 0;display:flex;flex-wrap:wrap;gap:8px}
+.adm-who li{display:flex;flex-direction:column;padding:6px 10px;border:1px solid var(--ui-line);border-radius:8px;background:var(--ui-sunk);font-size:14px;font-weight:600}
+.adm-who em{font-style:normal;font-weight:500;font-size:12px;color:var(--muted)}
+.adm-who .st-won{background:var(--teal-deep);border-color:var(--teal-deep);color:#fff}.adm-who .st-won em{color:#E3EDEB}
+.adm-who .st-lost,.adm-who .st-late,.adm-who .st-expired{opacity:.55}
+.adm-oa{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
+.adm-oa .btn-outline,.adm-need .btn-outline{background:#fff;border:1px solid var(--ui-line-2);box-shadow:0 1px 2px rgba(59,50,45,.06)}
+
+/* phones */
+.adm-phones{display:grid;grid-template-columns:repeat(auto-fill,minmax(196px,1fr));gap:16px;padding:4px 2px 8px}
+.phone{max-width:250px;width:100%;justify-self:center;height:440px;display:flex;flex-direction:column;border:7px solid #2B2522;border-radius:34px;background:#F4F1EC;overflow:hidden;position:relative;box-shadow:0 16px 30px -18px rgba(40,30,25,.55)}
+.ph-notch{position:absolute;top:6px;left:50%;transform:translateX(-50%);width:80px;height:18px;border-radius:12px;background:#2B2522;z-index:2}
+.ph-top{padding:30px 12px 8px;text-align:center;border-bottom:1px solid rgba(0,0,0,.08);background:#fff}
+.ph-av{display:inline-grid;place-items:center;width:30px;height:30px;border-radius:50%;background:var(--teal);color:#fff;font-weight:700;font-size:13px}
+.ph-top b{display:block;font-size:12.5px;margin-top:3px}.ph-top small{display:block;font-size:11px;color:var(--muted)}
+.ph-msgs{flex:1;overflow-y:auto;padding:10px;display:flex;flex-direction:column;gap:7px}
+.ph-b{max-width:88%;padding:8px 10px;border-radius:15px;font-size:12.5px;line-height:1.38;animation:phIn .35s cubic-bezier(.2,.8,.2,1)}
+.ph-b.out{align-self:flex-start;background:#E5E2DC;color:#2B2522;border-bottom-left-radius:4px}
+.ph-b.in{align-self:flex-end;background:#2F80ED;color:#fff;border-bottom-right-radius:4px}
+.ph-b time{display:block;font-size:10px;opacity:.6;margin-top:3px}
+@keyframes phIn{from{opacity:0;transform:translateY(8px) scale(.97)}to{opacity:1;transform:none}}
+.ph-link{background:none;border:0;padding:0;font:inherit;color:#1F6FD6;text-decoration:underline;cursor:pointer;font-weight:600}
+.ph-bar{padding:8px;background:#fff;border-top:1px solid rgba(0,0,0,.08)}
+.ph-bar button{width:100%;min-height:34px;border-radius:99px;border:0;background:#2F80ED;color:#fff;font:600 13px var(--body);cursor:pointer}
+.ph-off{text-align:center;font-size:12px;color:#999}
+
+/* coming up */
+.adm-day{margin:24px 0 8px;font:600 12.5px/1.3 var(--body);letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+.adm-day:first-child{margin-top:0}
+.adm-up{list-style:none;padding:0;margin:0;border:1px solid var(--ui-line);border-radius:var(--ui-r-sm);overflow:hidden}
+.adm-up li{display:flex;align-items:center;gap:12px;min-height:52px;padding:8px 12px;border-top:1px solid var(--ui-line);font-size:14.5px;background:#fff;transition:background-color .12s}
+.adm-up li:first-child{border-top:0}
+.adm-up li:hover{background:#FCFAF6}
+.adm-up time{flex:none;width:56px;font-weight:600;color:var(--ink)}
+.adm-up img{border-radius:50%;object-fit:cover;flex:none;box-shadow:0 0 0 1px var(--ui-line)}
+.adm-up span{flex:1;min-width:0;color:var(--muted)}
+.adm-up span b{color:var(--ink);font-weight:600}
+.adm-tag{display:inline-block;margin-left:4px;padding:1px 7px;border-radius:6px;background:var(--teal-mist);color:var(--teal-dark);font-style:normal;font-size:11.5px;font-weight:600;white-space:nowrap}
+.adm-cx{flex:none;min-height:32px;padding:0 12px;border:1px solid var(--ui-line-2);border-radius:8px;background:#fff;font:600 13px var(--body);cursor:pointer;color:var(--ink);transition:background-color .12s,border-color .12s,color .12s}
+.adm-cx:hover{background:#FCEEE9;border-color:#C9765F;color:#7A2E1C}
+
+/* activity */
+.adm-feed{list-style:none;padding:0;margin:0;max-height:430px;overflow-y:auto}
+.adm-feed li{position:relative;display:flex;gap:12px;padding:0 0 16px;animation:phIn .35s}
+.adm-feed li:not(:last-child)::after{content:"";position:absolute;left:14px;top:32px;bottom:4px;width:1px;background:var(--ui-line)}
+.adm-fi{flex:none;display:grid;place-items:center;width:29px;height:29px;border-radius:50%;background:var(--teal-mist);color:var(--teal-deep)}
+.adm-fi svg{width:15px;height:15px}
+.fk-filled .adm-fi{background:var(--teal-deep);color:#fff}.fk-cancel .adm-fi{background:#FCEEE9;color:#9A3B26}.fk-offer .adm-fi{background:rgba(230,188,118,.3);color:#6B4A0E}
+.adm-feed p{margin:4px 0 0;font-size:14px;line-height:1.45}
+.adm-feed time{display:block;margin-top:2px;font-size:12px;color:var(--muted)}
+.adm-feed li.adm-empty{display:block;padding:24px 16px;animation:none}
+
+/* waitlist */
+.adm-wl{list-style:none;padding:0;margin:0}
+.adm-wl li{display:flex;gap:12px;align-items:center;padding:12px 0;border-top:1px solid var(--ui-line)}
+.adm-wl li:first-child{border-top:0;padding-top:0}
+.adm-wa{flex:none;display:grid;place-items:center;width:34px;height:34px;border-radius:50%;background:var(--teal-mist);color:var(--teal-dark);font-weight:700;font-size:14px}
+.adm-wl div{flex:1;min-width:0}.adm-wl b{display:block;font-size:14.5px;font-weight:600}.adm-wl div span{display:block;font-size:12.5px;line-height:1.45;color:var(--muted)}
+.adm-wl>li>em{flex:none;padding:2px 8px;border-radius:6px;background:var(--ui-sunk);font-style:normal;font-size:12.5px;font-weight:600;color:var(--muted)}
+
+/* settings */
+.adm-set{margin:0 0 16px}
+.adm-set:last-child{margin-bottom:0}
+.adm-set label{display:block;margin:0 0 8px;font-weight:600;font-size:14px}
+.adm-seg{display:inline-flex;flex-wrap:wrap;gap:0;padding:3px;border:1px solid var(--ui-line);border-radius:var(--ui-r-sm);background:var(--ui-sunk)}
+.adm-seg button{min-height:34px;padding:0 12px;border:0;border-radius:7px;background:none;font:600 13.5px var(--body);cursor:pointer;color:var(--muted);transition:background-color .12s,color .12s}
+.adm-seg button:hover{color:var(--ink)}
+.adm-seg button[aria-pressed="true"]{background:#fff;color:var(--ink);box-shadow:0 1px 2px rgba(59,50,45,.12),0 0 0 1px var(--ui-line)}
+
+/* how it works */
+.adm-how ol{margin:12px 0 0;padding:0;list-style:none;counter-reset:s;font-size:14.5px;line-height:1.5}
+.adm-how li{position:relative;margin:0 0 12px;padding-left:36px;counter-increment:s}
+.adm-how li:last-child{margin-bottom:0}
+.adm-how li::before{content:counter(s);position:absolute;left:0;top:0;display:grid;place-items:center;width:24px;height:24px;border-radius:50%;background:var(--teal-mist);color:var(--teal-dark);font-size:12.5px;font-weight:700}
+
+/* toast */
+.adm-toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,30px);opacity:0;max-width:min(520px,calc(100% - 32px));padding:12px 16px;border-radius:12px;background:#2B2522;color:#fff;font-weight:600;font-size:14.5px;box-shadow:0 12px 30px -10px rgba(0,0,0,.45);transition:opacity .25s,transform .25s;z-index:50;pointer-events:none}
+.adm-toast.on{opacity:1;transform:translate(-50%,0)}
+
+@media (max-width:999px){.adm-stats{grid-template-columns:repeat(3,1fr)}.adm-stat:nth-child(4){border-left:0}.adm-stat:nth-child(n+4){border-top:1px solid var(--ui-line)}}
+@media (max-width:700px){.adm-top{position:static}.adm-nav{margin-left:0}}
+@media (max-width:599px){
+ .adm-stats{grid-template-columns:1fr 1fr}
+ .adm-stat{padding:12px 16px;border-left:0;border-top:1px solid var(--ui-line)}
+ .adm-stat:nth-child(even){border-left:1px solid var(--ui-line)}
+ .adm-stat:nth-child(-n+2){border-top:0}
+ .adm-stat:last-child:nth-child(odd){grid-column:1/-1}
+ .adm-stat b{font-size:24px}
+ .adm-card{padding:16px}
+ .adm-grid,.adm-col{gap:16px}
+ .adm-top{gap:8px 12px}
+ #admTry .btn{width:100%}
+}
+
+/* ---------- waitlist tools ---------- */
+.adm-tools{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 16px}
+.adm-search{flex:1 1 200px}
+.adm-tools input,.adm-tools select{width:100%;min-height:38px;padding:0 12px;border:1px solid var(--ui-line-2);border-radius:var(--ui-r-sm);background:#fff;font:500 14.5px var(--body);color:var(--ink)}
+.adm-tools select{width:auto;padding-right:28px}
+.adm-tools input:focus,.adm-tools select:focus,.adm-sec textarea:focus,.adm-askf textarea:focus{outline:none;border-color:var(--teal-deep);box-shadow:var(--ui-ring)}
+.adm-ghost{display:inline-flex;align-items:center;gap:6px;min-height:38px;padding:0 12px;border:1px solid var(--ui-line-2);border-radius:var(--ui-r-sm);background:#fff;font:600 14px var(--body);color:var(--ink);text-decoration:none;cursor:pointer;white-space:nowrap;transition:border-color .12s,color .12s,background-color .12s}
+.adm-ghost:hover{border-color:var(--teal-deep);color:var(--teal-dark)}
+.adm-ghost-d{color:#9A3B26}.adm-ghost-d:hover{border-color:#C9765F;background:#FCEEE9;color:#7A2E1C}
+.adm-wl li{padding:0;border-top:1px solid var(--ui-line)}
+.adm-wl li:first-child{padding-top:0}
+.adm-wlrow{display:flex;gap:12px;align-items:center;width:100%;padding:12px 8px;margin:0 -8px;width:calc(100% + 16px);border:0;border-radius:var(--ui-r-sm);background:none;text-align:left;font:inherit;color:inherit;cursor:pointer;transition:background-color .12s}
+.adm-wlrow:hover{background:var(--ui-sunk)}
+.adm-wlrow>em{flex:none;padding:2px 8px;border-radius:6px;background:var(--ui-sunk);font-style:normal;font-size:12.5px;font-weight:600;color:var(--muted)}
+.adm-tag-n{background:rgba(230,188,118,.25)!important;color:#6B4A0E!important}
+
+/* ---------- records ---------- */
+.adm-tabs{display:flex;flex-wrap:wrap;align-items:center;gap:4px;margin:0 0 16px;padding-bottom:12px;border-bottom:1px solid var(--ui-line)}
+.adm-tabs [role=tab]{min-height:34px;padding:0 12px;border:0;border-radius:8px;background:none;font:600 14px var(--body);color:var(--muted);cursor:pointer}
+.adm-tabs [role=tab]:hover{color:var(--ink);background:var(--ui-sunk)}
+.adm-tabs [role=tab][aria-selected=true]{background:var(--teal-mist);color:var(--teal-dark)}
+.adm-tabs .adm-ghost{margin-left:auto;min-height:34px}
+.adm-tbl{overflow-x:auto;border:1px solid var(--ui-line);border-radius:var(--ui-r-sm)}
+.adm-tbl table{width:100%;border-collapse:collapse;font-size:13.5px;background:#fff}
+.adm-tbl th{position:sticky;top:0;padding:8px 12px;background:#FAF7F2;border-bottom:1px solid var(--ui-line);text-align:left;font:600 12px/1.3 var(--body);letter-spacing:.04em;text-transform:uppercase;color:var(--muted);white-space:nowrap}
+.adm-tbl td{padding:10px 12px;border-top:1px solid var(--ui-line);vertical-align:top;line-height:1.45}
+.adm-tbl tr:first-child td{border-top:0}
+.adm-tbl td:first-child{white-space:nowrap;font-weight:600}
+.adm-muted{margin:12px 0 0;font-size:13.5px;color:var(--muted)}
+
+/* ---------- side panels (person, Ask Claude) ---------- */
+html:has(.adm-drawer[open]){overflow:hidden}
+.adm-drawer{position:fixed;inset:0 0 0 auto;width:min(480px,100%);max-width:100%;height:100%;max-height:100%;margin:0;padding:0;border:0;border-left:1px solid var(--ui-line);background:var(--ui-surface);color:var(--ink);box-shadow:-24px 0 60px -30px rgba(40,30,25,.5)}
+.adm-drawer::backdrop{background:rgba(40,34,30,.32);backdrop-filter:blur(2px)}
+.adm-drawer[open]{animation:dwIn .26s cubic-bezier(.2,.8,.2,1)}
+@keyframes dwIn{from{transform:translateX(24px);opacity:0}to{transform:none;opacity:1}}
+@media (prefers-reduced-motion:reduce){.adm-drawer[open]{animation:none}}
+.adm-dw{display:flex;flex-direction:column;min-height:100%;padding:24px}
+.adm-dwh{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin:0 0 24px}
+.adm-dwh h2{margin:0;font-size:24px;line-height:1.15}
+.adm-dwh p{margin:4px 0 0;font-size:14px;color:var(--muted)}
+.adm-x{flex:none;display:grid;place-items:center;width:36px;height:36px;border:0;border-radius:50%;background:var(--ui-sunk);color:var(--ink);cursor:pointer}
+.adm-x:hover{background:rgba(59,50,45,.09)}
+.adm-x svg{width:18px;height:18px}
+.adm-ph{display:flex;align-items:center;gap:12px}
+.adm-wa-lg{width:48px;height:48px;font-size:19px}
+.adm-pact{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 24px}
+.adm-dl{display:grid;gap:0;margin:0 0 24px;border:1px solid var(--ui-line);border-radius:var(--ui-r-sm);overflow:hidden}
+.adm-dl div{display:grid;grid-template-columns:130px 1fr;gap:12px;padding:10px 12px;border-top:1px solid var(--ui-line);background:#fff}
+.adm-dl div:first-child{border-top:0}
+.adm-dl dt{font-size:13.5px;color:var(--muted)}
+.adm-dl dd{margin:0;font-size:14.5px;font-weight:500}
+.adm-sec{margin:0 0 24px}
+.adm-sec h3{margin:0 0 8px;font:600 12.5px/1.3 var(--body);letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+.adm-sec textarea{width:100%;padding:10px 12px;border:1px solid var(--ui-line-2);border-radius:var(--ui-r-sm);background:#fff;font:500 14.5px/1.5 var(--body);color:var(--ink);resize:vertical}
+.adm-saved{min-height:1.2em;margin:4px 0 0;font-size:12.5px;color:var(--teal-dark)}
+.adm-list{list-style:none;margin:0;padding:0;border:1px solid var(--ui-line);border-radius:var(--ui-r-sm);overflow:hidden}
+.adm-list li{display:flex;flex-direction:column;gap:2px;padding:10px 12px;border-top:1px solid var(--ui-line);background:#fff;font-size:14px}
+.adm-list li:first-child{border-top:0}
+.adm-list li span{font-size:13px;color:var(--muted)}
+.adm-texts li span{font-size:14px;color:var(--ink);line-height:1.45}
+.adm-texts li.in{background:#F3F8FF}
+.adm-texts time{font-size:12px;color:var(--muted)}
+.adm-danger{margin-top:auto;padding-top:16px;border-top:1px solid var(--ui-line)}
+
+/* ---------- Ask Claude ---------- */
+.adm-askbtn svg{width:17px;height:17px}
+.adm-nav .adm-askbtn{background:var(--teal-deep);color:#fff;border-color:var(--teal-deep);box-shadow:0 1px 2px rgba(20,40,40,.25)}
+.adm-nav .adm-askbtn:hover{background:var(--teal-dark);border-color:var(--teal-dark);color:#fff}
+.adm-ask{width:min(560px,100%)}
+.adm-ask .adm-dw{height:100%;padding-bottom:16px}
+.adm-ask .adm-dwh{margin-bottom:16px}
+.adm-chat{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:12px;margin:0 -24px;padding:4px 24px 16px}
+.adm-hello{margin:auto 0;text-align:center;padding:24px 8px}
+.adm-hello p{max-width:34em;margin:12px auto 24px;font-size:15px;line-height:1.55;color:var(--muted)}
+.adm-spark{display:inline-grid;place-items:center;width:48px;height:48px;border-radius:14px;background:var(--teal-mist);color:var(--teal-deep)}
+.adm-spark svg{width:24px;height:24px}
+.adm-sugg{display:grid;gap:8px;text-align:left}
+.adm-sugg button{padding:12px 14px;border:1px solid var(--ui-line);border-radius:var(--ui-r-sm);background:#fff;font:500 14.5px/1.4 var(--body);color:var(--ink);text-align:left;cursor:pointer;transition:border-color .12s,background-color .12s}
+.adm-sugg button:hover{border-color:var(--teal-deep);background:#FCFEFD}
+.adm-msg{max-width:92%;font-size:14.5px;line-height:1.55}
+.adm-msg p{margin:0 0 8px}.adm-msg p:last-child{margin-bottom:0}
+.adm-msg ul{margin:0 0 8px;padding-left:20px}.adm-msg li{margin:2px 0}
+.adm-msg.user{align-self:flex-end;padding:10px 14px;border-radius:14px 14px 4px 14px;background:var(--teal-deep);color:#fff}
+.adm-msg.assistant{align-self:flex-start;padding:12px 14px;border:1px solid var(--ui-line);border-radius:14px 14px 14px 4px;background:#fff}
+.adm-typing{display:inline-flex;gap:4px;padding:4px 0}
+.adm-typing i{width:6px;height:6px;border-radius:50%;background:var(--muted);animation:tyB 1s infinite}
+.adm-typing i:nth-child(2){animation-delay:.15s}.adm-typing i:nth-child(3){animation-delay:.3s}
+@keyframes tyB{50%{opacity:.25}}
+.adm-clear{align-self:center;margin-top:4px;padding:6px 10px;border:0;border-radius:8px;background:none;font:600 13px var(--body);color:var(--muted);cursor:pointer}
+.adm-clear:hover{color:var(--teal-deep);background:var(--ui-sunk)}
+.adm-askf{display:flex;align-items:flex-end;gap:8px;padding:8px;border:1px solid var(--ui-line-2);border-radius:16px;background:#fff;box-shadow:var(--ui-sh)}
+.adm-askf:focus-within{border-color:var(--teal-deep);box-shadow:var(--ui-ring)}
+.adm-askf textarea{flex:1;min-height:40px;max-height:160px;padding:9px 8px;border:0;background:none;font:500 15px/1.45 var(--body);color:var(--ink);resize:none}
+.adm-askf textarea:focus{box-shadow:none}
+.adm-send{flex:none;display:grid;place-items:center;width:40px;height:40px;border:0;border-radius:12px;background:var(--teal-deep);color:#fff;cursor:pointer}
+.adm-send:hover{background:var(--teal-dark)}
+.adm-send svg{width:18px;height:18px}
+.adm-fine{margin:8px 0 0;font-size:12px;line-height:1.45;color:var(--muted);text-align:center}
+@media (max-width:599px){.adm-dw{padding:16px}.adm-chat{margin:0 -16px;padding:4px 16px 16px}.adm-dl div{grid-template-columns:1fr;gap:2px}}
+
+/* ---------- reminders, referrals, settings groups ---------- */
+.adm-h-act{margin-left:auto;min-height:34px!important}
+.adm-h .adm-sub+.adm-h-act{margin-left:0}
+.adm-rbar{display:flex;height:10px;margin:0 0 8px;border-radius:99px;overflow:hidden;background:var(--ui-sunk);gap:2px}
+.adm-rbar i{display:block;min-width:0}
+.adm-rbar i.ok,.adm-rkey .ok::before{background:var(--teal-deep)}
+.adm-rbar i.wait,.adm-rkey .wait::before{background:#E2B867}
+.adm-rbar i.x,.adm-rkey .x::before{background:#C9765F}
+.adm-rkey{display:flex;flex-wrap:wrap;gap:4px 16px;margin:0;font-size:13.5px;color:var(--muted)}
+.adm-rkey span{display:inline-flex;align-items:center;gap:6px}
+.adm-rkey span::before{content:"";width:8px;height:8px;border-radius:2px}
+#admRem .adm-day{margin-top:16px}
+a.adm-cx{display:inline-flex;align-items:center;text-decoration:none}
+a.adm-cx:hover{background:var(--teal-mist);border-color:var(--teal-deep);color:var(--teal-dark)}
+.adm-rs{display:inline-flex;align-items:center;gap:3px;margin-left:4px;padding:1px 7px;border-radius:6px;background:rgba(226,184,103,.22);color:#6B4A0E;font-style:normal;font-size:11.5px;font-weight:600;white-space:nowrap}
+.adm-rs.ok{background:rgba(60,104,105,.1);color:var(--teal-dark)}
+.adm-rs svg{width:11px;height:11px;stroke-width:2.6}
+.adm-tag-g{background:var(--ui-sunk)!important;color:var(--muted)!important;box-shadow:inset 0 0 0 1px var(--ui-line)}
+.adm-tag-p{background:#F3E3DD!important;color:#7A2E1C!important}
+.adm-ff{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:16px 0 0;padding-top:16px;border-top:1px solid var(--ui-line)}
+.adm-ff span{margin-right:auto;font-size:13px;font-weight:600;color:var(--muted)}
+.adm-ff .adm-ghost{min-height:32px;font-size:13px}
+.adm-refs{list-style:none;margin:0;padding:0}
+.adm-refs>li{padding:4px 0 12px;border-top:1px solid var(--ui-line)}
+.adm-refs>li:first-child{border-top:0;padding-top:0}
+.adm-refrow{display:flex;gap:12px;align-items:center;width:calc(100% + 16px);margin:0 -8px;padding:8px;border:0;border-radius:var(--ui-r-sm);background:none;text-align:left;font:inherit;color:inherit;cursor:pointer;transition:background-color .12s}
+.adm-refrow:hover{background:var(--ui-sunk)}
+.adm-refrow .adm-wa svg{width:17px;height:17px}
+.adm-refrow div{flex:1;min-width:0}
+.adm-refrow b{display:block;font-size:14.5px;font-weight:600}
+.adm-refrow div span{display:block;font-size:12.5px;line-height:1.45;color:var(--muted)}
+.adm-refa{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:4px 0 0 46px}
+.adm-refa select{min-height:36px;padding:0 8px;border:1px solid var(--ui-line-2);border-radius:var(--ui-r-sm);background:#fff;font:500 14px var(--body);color:var(--ink)}
+.adm-refa .btn{margin:0;min-height:36px}
+.adm-refa .adm-ghost{min-height:34px;font-size:13.5px}
+.adm-refa svg,.adm-ghost svg{width:15px;height:15px}
+.adm-badge.warn{background:rgba(201,118,95,.12);border-color:rgba(201,118,95,.4);color:#7A2E1C}
+.adm-sh{margin:24px 0 12px;padding-top:16px;border-top:1px solid var(--ui-line);font:600 12.5px/1.3 var(--body);letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+.adm-sh:first-child{margin-top:0;padding-top:0;border-top:0}
+.adm-set p{margin:6px 0 0;font-size:12.5px;line-height:1.45;color:var(--muted)}
+.adm-link{padding:0;border:0;background:none;font:600 13.5px var(--body);color:var(--teal-deep);text-decoration:underline;cursor:pointer}
+.adm-reason{margin:0;padding:12px;border-radius:var(--ui-r-sm);background:var(--ui-sunk);font-size:14.5px;line-height:1.5;white-space:pre-wrap}
+.adm-dl dd svg{width:14px;height:14px;vertical-align:-2px}
+@media (max-width:599px){.adm-refa{margin-left:0}}
+
+/* inbox summary */
+.adm-inboxbtn em{display:inline-grid;place-items:center;min-width:20px;height:20px;margin-left:6px;padding:0 5px;border-radius:99px;background:var(--teal-deep);color:#fff;font-style:normal;font-size:12px}
+.adm-inboxbtn em.u{background:#C0663A}
+.adm-ibl{list-style:none;margin:0;padding:0}
+.adm-ibl li+li{border-top:1px solid var(--ui-line)}
+.adm-ibl a{display:block;margin:0 -8px;padding:10px 8px;border-radius:var(--ui-r-sm);color:inherit;text-decoration:none}
+.adm-ibl a:hover{background:var(--ui-sunk)}
+.adm-ibl a.u{box-shadow:inset 3px 0 0 #C0663A}
+.adm-ibl b{font-size:14.5px;font-weight:600}
+.adm-ibl span{display:block;font-size:12.5px;color:var(--muted)}
+.adm-ibl p{margin:4px 0 0;font-size:13.5px;line-height:1.45;color:var(--ink);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.adm-seg button[disabled]{cursor:default}
+</style>
+<style>
+/* Inbox: two panes (list + conversation), same system as the dashboard. */
+.ib{display:grid;grid-template-columns:minmax(300px,380px) 1fr;max-width:1320px;margin:0 auto;height:calc(100vh - 69px);min-height:520px;border-left:1px solid var(--ui-line);border-right:1px solid var(--ui-line);background:var(--ui-surface)}
+.ib-side{display:flex;flex-direction:column;min-height:0;border-right:1px solid var(--ui-line)}
+.ib-tabs{display:flex;flex-wrap:wrap;gap:4px;padding:12px 12px 8px}
+.ib-tabs button{display:inline-flex;align-items:center;gap:6px;min-height:32px;padding:0 10px;border:0;border-radius:8px;background:none;font:600 13.5px var(--body);color:var(--muted);cursor:pointer}
+.ib-tabs button:hover{background:var(--ui-sunk);color:var(--ink)}
+.ib-tabs button[aria-selected=true]{background:var(--teal-mist);color:var(--teal-dark)}
+.ib-tabs em{min-width:20px;padding:1px 6px;border-radius:99px;background:rgba(59,50,45,.08);font-style:normal;font-size:12px;text-align:center}
+.ib-tabs button.u em{background:#C0663A;color:#fff}
+.ib-q{display:block;flex:none!important;margin:0 12px 8px}
+.ib-tabs{flex:none}
+.ib-q input{width:100%;min-height:38px;padding:0 12px;border:1px solid var(--ui-line-2);border-radius:var(--ui-r-sm);background:#fff;font:500 14.5px var(--body)}
+.ib-list{list-style:none;margin:0;padding:0 8px 12px;overflow:auto;flex:1}
+.ib-list>li.adm-empty{margin:8px 4px}
+.ib-row{display:grid;grid-template-columns:32px 1fr auto;gap:10px;align-items:start;width:100%;padding:10px;border:0;border-radius:var(--ui-r-sm);background:none;text-align:left;font:inherit;color:inherit;cursor:pointer;position:relative}
+.ib-row:hover{background:var(--ui-sunk)}
+.ib-row.on{background:rgba(60,104,105,.09)}
+.ib-row.unread b::after{content:"";display:inline-block;width:8px;height:8px;margin-left:6px;border-radius:50%;background:var(--teal-deep);vertical-align:1px}
+.ib-row.urg{box-shadow:inset 3px 0 0 #C0663A}
+.ib-ch{display:grid;place-items:center;width:32px;height:32px;border-radius:50%;background:var(--teal-mist);color:var(--teal-dark)}
+.ib-row.urg .ib-ch{background:rgba(192,102,58,.14);color:#8A3F1E}
+.ib-ch svg{width:16px;height:16px}
+.ib-row div{min-width:0}
+.ib-row b{display:block;font-size:14.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ib-row.unread b{font-weight:700}
+.ib-pv{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-size:13px;line-height:1.4;color:var(--muted)}
+.ib-meta{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+.ib-meta i,.ib-topic{display:inline-block;padding:1px 7px;border-radius:6px;background:var(--ui-sunk);box-shadow:inset 0 0 0 1px var(--ui-line);font-style:normal;font-size:11.5px;font-weight:600;color:var(--muted)}
+.ib-topic.t-risk{background:#C0663A;color:#fff;box-shadow:none}
+.ib-topic.t-new,.ib-topic.t-referral{background:var(--teal-mist);color:var(--teal-dark);box-shadow:none}
+.ib-topic.t-cancel,.ib-topic.t-move,.ib-topic.t-late{background:rgba(226,184,103,.22);color:#6B4A0E;box-shadow:none}
+.ib-row time{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.ib-main{display:flex;flex-direction:column;min-height:0;min-width:0}
+.ib-none{margin:auto;max-width:340px;text-align:center;color:var(--muted)}
+.ib-none svg{width:36px;height:36px;color:var(--ui-line-2)}
+.ib-none p{margin:8px 0 4px;font-weight:600;color:var(--ink)}
+.ib-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;padding:16px 24px 12px;border-bottom:1px solid var(--ui-line)}
+.ib-backb{display:none}
+.ib-who{display:flex;align-items:center;gap:12px;min-width:0}
+.ib-who h1{margin:0;font-size:22px;line-height:1.2}
+.ib-who p{margin:2px 0 0;font-size:13.5px;color:var(--muted)}
+.ib-ctl{display:flex;gap:8px}
+.ib-ctl select,.ib-ct select,.ib-nf select,.ib-nf input{min-height:36px;padding:0 8px;border:1px solid var(--ui-line-2);border-radius:var(--ui-r-sm);background:#fff;font:500 14px var(--body);color:var(--ink)}
+.ib-chips{display:flex;flex-wrap:wrap;gap:6px;padding:10px 24px;border-bottom:1px solid var(--ui-line);background:#FCFAF6}
+.ib-chip{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:99px;border:1px solid var(--ui-line);background:#fff;font-size:12.5px;font-weight:600;color:var(--muted);text-decoration:none}
+.ib-chip svg{width:13px;height:13px}
+.ib-chip.ok{color:var(--teal-dark);border-color:rgba(60,104,105,.35)}
+a.ib-chip:hover{border-color:var(--teal-deep)}
+.ib-chip.new{border-style:dashed}
+.ib-urgent{display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin:12px 24px 0;padding:12px 16px;border:1px solid rgba(192,102,58,.45);border-radius:var(--ui-r-sm);background:rgba(192,102,58,.08)}
+.ib-urgent>svg{width:22px;height:22px;color:#8A3F1E;flex:none}
+.ib-urgent div{flex:1;min-width:220px}
+.ib-urgent b{display:block;color:#7A2E1C}
+.ib-urgent span{display:block;font-size:13.5px;line-height:1.45;color:var(--ink)}
+.ib-urgent .btn{margin:0;background:#9A3B26!important;border-color:#9A3B26!important}
+.ib-thread{flex:1;overflow:auto;padding:16px 24px;display:flex;flex-direction:column;gap:12px;min-height:120px}
+.ib-msg{max-width:min(560px,85%);padding:10px 14px;border:1px solid var(--ui-line);border-radius:14px;background:#fff;box-shadow:0 1px 2px rgba(59,50,45,.04)}
+.ib-msg.out{align-self:flex-end;background:rgba(60,104,105,.08);border-color:rgba(60,104,105,.25)}
+.ib-mh{display:flex;align-items:center;gap:6px;margin:0 0 4px;font-size:11.5px;font-weight:600;color:var(--muted)}
+.ib-mh svg{width:13px;height:13px}
+.ib-mh time{margin-left:auto;padding-left:12px;font-weight:500}
+.ib-msg p{margin:0;font-size:14.5px;line-height:1.5;white-space:normal;overflow-wrap:anywhere}
+.ib-subj{display:block;margin:0 0 4px;font-size:14.5px}
+.ib-vm{display:flex;align-items:center;gap:10px;margin:4px 0 8px}
+.ib-play{display:grid;place-items:center;width:32px;height:32px;border:0;border-radius:50%;background:var(--teal-deep);color:#fff;cursor:pointer}
+.ib-play svg{width:14px;height:14px;fill:currentColor}
+.ib-wave{flex:1;height:22px;min-width:120px;background:repeating-linear-gradient(90deg,var(--ui-line-2) 0 2px,transparent 2px 5px);-webkit-mask:linear-gradient(0deg,transparent 20%,#000 20% 80%,transparent 80%);mask:radial-gradient(ellipse 100% 60% at 50% 50%,#000 60%,transparent 100%)}
+.ib-vm b{font-size:12.5px;font-variant-numeric:tabular-nums}
+.ib-tr{display:block;margin:0 0 2px;font-size:11.5px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+.ib-sys{align-self:center;display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:99px;background:var(--ui-sunk);font-size:12.5px;color:var(--muted)}
+.ib-sys svg{width:13px;height:13px}
+.ib-sys.out{background:rgba(60,104,105,.08);color:var(--teal-dark)}
+.ib-acts{display:flex;flex-wrap:wrap;gap:8px;padding:8px 24px;border-top:1px solid var(--ui-line)}
+.ib-acts .adm-ghost{min-height:32px;font-size:13px}
+.ib-acts svg{width:14px;height:14px}
+.ib-note{padding:0 24px 8px;font-size:13.5px}
+.ib-note summary{cursor:pointer;color:var(--muted);font-weight:600;padding:4px 0}
+.ib-note textarea{width:100%;margin:4px 0 0;padding:8px 10px;border:1px solid var(--ui-line-2);border-radius:var(--ui-r-sm);font:500 14px/1.45 var(--body)}
+.ib-comp{display:grid;gap:8px;padding:12px 24px 16px;border-top:1px solid var(--ui-line);background:#FCFAF6}
+.ib-ct{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.ib-ct .adm-seg button{display:inline-flex;align-items:center;gap:6px}
+.ib-ct .adm-seg svg{width:14px;height:14px}
+.ib-draft{margin-left:auto;color:var(--teal-dark)}
+.ib-draft svg{width:15px;height:15px}
+.ib-draft[disabled]{opacity:.5;cursor:not-allowed}
+.ib-spin{width:14px;height:14px;border:2px solid var(--ui-line-2);border-top-color:var(--teal-deep);border-radius:50%;animation:bkSp .7s linear infinite}
+@keyframes bkSp{to{transform:rotate(360deg)}}
+.ib-dmeta{display:flex;gap:8px;align-items:flex-start;padding:8px 12px;border-radius:var(--ui-r-sm);background:var(--teal-mist);font-size:13px;line-height:1.45}
+.ib-dmeta svg{width:15px;height:15px;flex:none;margin-top:2px;color:var(--teal-dark)}
+.ib-dmeta b{display:block;font-weight:600}
+.ib-dmeta span{display:block;color:var(--ink)}
+.ib-dmeta .u{color:#7A2E1C;font-weight:600}
+.ib-comp textarea,.ib-subjf input{width:100%;padding:10px 12px;border:1px solid var(--ui-line-2);border-radius:var(--ui-r-sm);background:#fff;font:500 15px/1.5 var(--body);color:var(--ink);resize:vertical}
+.ib-comp textarea:focus,.ib-subjf input:focus,.ib-q input:focus,.ib-nf textarea:focus{outline:none;border-color:var(--teal-deep);box-shadow:var(--ui-ring)}
+.ib-cf{display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:8px}
+.ib-cf>span{margin-right:auto;font-size:12.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+.ib-cf .btn{margin:0}
+.ib-cf .btn svg{width:15px;height:15px}
+.ib-cf .bk-err{flex-basis:100%;margin:0}
+.ib-sim select{min-height:38px;padding:0 8px;border:1px solid var(--ui-line-2);border-radius:var(--ui-r-sm);background:#fff;font:600 14px var(--body);color:var(--ink);max-width:240px}
+/* new message dialog */
+.ib-nf{display:grid;gap:16px}
+.ib-nf fieldset{margin:0;padding:0;border:0;display:grid;gap:12px;min-width:0}
+.ib-nf legend{margin:0 0 8px;font-weight:600;font-size:14px}
+.ib-nf label{display:grid;gap:6px;font-weight:600;font-size:14px}
+.ib-nf .bk-check{display:flex;font-weight:500}
+.ib-row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.ib-nf textarea{width:100%;padding:10px 12px;border:1px solid var(--ui-line-2);border-radius:var(--ui-r-sm);font:500 15px/1.5 var(--body)}
+.ib-rec{display:flex;gap:8px;align-items:flex-start;margin:0;padding:10px 12px;border-radius:var(--ui-r-sm);background:var(--ui-sunk);font-size:13.5px;line-height:1.45}
+.ib-rec svg{width:16px;height:16px;flex:none;margin-top:1px;color:var(--teal-deep)}
+.ib-prev{padding:10px 12px;border:1px dashed var(--ui-line-2);border-radius:var(--ui-r-sm)}
+.ib-prev small{font-size:12px;color:var(--muted);font-weight:600}
+.ib-prev p{margin:4px 0 0;font-size:14px;line-height:1.5}
+.ib-legal{margin:0;font-size:12.5px;color:var(--muted)}
+.ib-new .adm-seg{flex-wrap:wrap}
+@media (max-width:860px){
+ .ib{grid-template-columns:1fr;height:auto;min-height:calc(100vh - 69px);border:0}
+ .ib-side{border-right:0}
+ .ib-list{overflow:visible}
+ body.ib-reading .ib-side{display:none}
+ body:not(.ib-reading) .ib-main{display:none}
+ .ib-backb{display:inline-flex;align-items:center;gap:6px;flex-basis:100%;padding:0;border:0;background:none;font:600 14px var(--body);color:var(--teal-deep);cursor:pointer}
+ .ib-backb svg{width:16px;height:16px}
+ .ib-head,.ib-chips,.ib-thread,.ib-acts,.ib-note,.ib-comp{padding-left:16px;padding-right:16px}
+ .ib-urgent{margin:12px 16px 0}
+ .ib-thread{overflow:visible}
+ .ib-row2{grid-template-columns:1fr}
+ .ib-draft{margin-left:0}
+}
+</style>
+<script>window.HUB_SITE='https://familyhub.aiautomationvic.com/'</script>
+<script src="hub-core.js"></script>
+</head>
+<body class="adm ib-page">
+<header class="adm-top">
+ <a class="adm-brand" href="admin.html"><img alt="" src="https://familyhub.aiautomationvic.com/img/logo-mark.webp" width="40" height="43"><span><small>Surf Coast Family Hub</small><b>Inbox</b></span></a>
+ <span class="adm-demo">Demo · fake data</span>
+ <nav class="adm-nav"><label class="ib-sim"><span class="sr">Pretend a message arrives</span><select id="ibSim"><option value="">Pretend a message arrives…</option><option value="late">Text: client running late</option><option value="move">Text: wants to reschedule</option><option value="cancel">Text: sick, can’t come</option><option value="email">Email: new client</option><option value="form">Website enquiry</option><option value="voicemail">Voicemail</option><option value="call">Missed call</option><option value="risk">Text that needs urgent attention</option></select></label>
+ <button type="button" class="btn btn-primary btn-sm" data-new>New message</button><a class="btn btn-outline btn-sm" href="admin.html">Dashboard</a></nav>
+</header>
+<main class="ib" id="main">
+ <aside class="ib-side" aria-label="Conversations">
+  <div class="ib-tabs" role="tablist" id="ibTabs"></div>
+  <label class="adm-search ib-q"><span class="sr">Search messages</span><input id="ibQ" type="search" placeholder="Search name, number or message" autocomplete="off"></label>
+  <ul class="ib-list" id="ibList"></ul>
+ </aside>
+ <section class="ib-main" id="ibMain" aria-live="polite"></section>
+</main>
+<dialog class="adm-drawer ib-new" id="ibNew" aria-labelledby="ibNewH"><div class="adm-dw" id="ibNewBody"></div></dialog>
+<script>
+/* Shared inbox: texts, emails, voicemail, missed calls and website enquiries, matched to clients.
+   Claude drafts replies on request; staff check and send. Group and custom messages from "New message". */
+(function(){
+var H=window.HUB,P=H.P,F=H.fmt,esc=F.esc,api=H.api;
+var IC={sms:'<path d="M4 5.5h16v10.5H10l-5 4v-4H4z"/>',email:'<rect x="3.5" y="5.5" width="17" height="13" rx="2"/><path d="M4 7l8 6 8-6"/>',voicemail:'<circle cx="7" cy="12" r="3.5"/><circle cx="17" cy="12" r="3.5"/><path d="M7 15.5h10"/>',
+ call:'<path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"/>',form:'<rect x="5.5" y="4.5" width="13" height="16" rx="2"/><path d="M9 9h6M9 12.5h6M9 16h4"/>',
+ spark:'<path d="M12 3l1.8 4.6L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.9z"/>',warn:'<path d="M12 3.5l9 16H3z"/><path d="M12 10v4.5M12 17.5h.01"/>',check:'<path d="M5 12.5l4.5 4.5L19 7.5"/>',
+ x:'<path d="M6 6l12 12M18 6 6 18"/>',send:'<path d="M4 12l16-8-6 16-2.5-6.5z"/>',play:'<path d="M8 5.5v13l10-6.5z"/>',cal:'<rect height="15" rx="2.5" width="17" x="3.5" y="5"/><path d="M8 3v4M16 3v4M3.5 10h17"/>',
+ users:'<circle cx="9" cy="8.5" r="3"/><path d="M3 19c1-3.4 3.3-5.3 6-5.3s5 1.9 6 5.3M15.5 5.6a3 3 0 0 1 0 5.8M17 13.9c2 .6 3.4 2.4 4 5.1"/>',file:'<path d="M14 3.5H7a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8.5z"/><path d="M14 3.5v5h5"/>',
+ back:'<path d="M15 6l-6 6 6 6"/>'};
+function svg(k){return '<svg aria-hidden="true" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" viewBox="0 0 24 24">'+IC[k]+'</svg>'}
+function $(id){return document.getElementById(id)}
+function ago(t){var s=Math.round((H.now()-t)/1000);if(s<60)return 'now';var m=Math.round(s/60);if(m<60)return m+'m';var h=Math.round(m/60);if(h<24)return h+'h';return Math.round(h/24)+'d'}
+function when(t){return F.day(t)+', '+F.time(new Date(t))}
+var CH={sms:'Text',email:'Email',voicemail:'Voicemail',call:'Missed call',form:'Website enquiry'};
+var TAB='open',CUR=null,Q='';
+var DRAFTS={};   // per-thread composer state survives re-renders
+function threads(){return api.state().inbox.slice().sort(function(a,b){return (b.urgent&&b.status!=='done')-(a.urgent&&a.status!=='done')||b.updated-a.updated})}
+function inTab(t){return TAB==='all'||(TAB==='urgent'?t.urgent&&t.status!=='done':t.status===TAB)}
+
+function tabs(){var l=threads(),n=function(f){return l.filter(f).length};
+ var T=[['open','Needs reply',n(function(t){return t.status==='open'})],['urgent','Urgent',n(function(t){return t.urgent&&t.status!=='done'})],['waiting','Waiting on client',n(function(t){return t.status==='waiting'})],['done','Done',0],['all','All',0]];
+ $('ibTabs').innerHTML=T.map(function(x){return '<button type="button" role="tab" data-tab="'+x[0]+'" aria-selected="'+(TAB===x[0])+'"'+(x[0]==='urgent'&&x[2]?' class="u"':'')+'>'+x[1]+(x[2]?' <em>'+x[2]+'</em>':'')+'</button>'}).join('')}
+function list(){var l=threads().filter(inTab).filter(function(t){if(!Q)return true;return (t.name+' '+t.phone+' '+t.email+' '+t.msgs.map(function(m){return m.text}).join(' ')).toLowerCase().indexOf(Q)>=0});
+ $('ibList').innerHTML=l.map(function(t){var m=t.msgs[t.msgs.length-1],last=t.msgs.filter(function(x){return x.dir==='in'}).slice(-1)[0]||m;
+  return '<li><button type="button" class="ib-row'+(t.id===CUR?' on':'')+(t.unread?' unread':'')+(t.urgent&&t.status!=='done'?' urg':'')+'" data-open="'+t.id+'"><span class="ib-ch">'+svg(last.channel)+'</span><div><b>'+esc(t.name)+'</b><span class="ib-pv">'+esc(last.channel==='call'?'Missed call, no message':(last.subject?last.subject+' · ':'')+(last.text||''))+'</span><span class="ib-meta"><i class="ib-topic t-'+t.intent+'">'+esc(t.label)+'</i>'+(t.status==='waiting'?'<i>Replied</i>':'')+(t.assigned?'<i>'+esc(t.assigned==='front'?'Front desk':(P[t.assigned]||{}).first||t.assigned)+'</i>':'')+'</span></div><time>'+ago(t.updated)+'</time></button></li>'}).join('')||
+  '<li class="adm-empty">'+(TAB==='open'?'All caught up. Nothing needs a reply.':'Nothing here.')+'</li>'}
+
+function matchChips(t){return (t.match||[]).map(function(m){
+ if(m.kind==='booking')return '<a class="ib-chip ok" href="manage.html#t='+m.token+'" target="_blank" rel="noopener">'+svg('cal')+'Booked with '+esc(P[m.pid].first)+', '+esc(when(m.start))+(m.mode&&m.mode!=='in'?' ('+m.mode+')':'')+'</a>';
+ if(m.kind==='appt')return '<span class="ib-chip ok">'+svg('cal')+esc(m.name)+' · '+esc(P[m.pid].first)+', '+esc(when(m.start))+' (Halaxy)</span>';
+ if(m.kind==='waitlist')return '<span class="ib-chip">'+svg('users')+'On the waitlist: '+esc(m.need)+' with '+esc(m.pids.map(function(x){return P[x].first}).join(', '))+'</span>';
+ if(m.kind==='referral')return '<span class="ib-chip">'+svg('file')+'Referral from '+esc(m.from)+' · '+esc({new:'not actioned',invited:'booking link sent',booked:'booked'}[m.status]||m.status)+'</span>';
+ return ''}).join('')||'<span class="ib-chip new">New contact</span>'}
+function bubble(m){var by=m.dir==='out'?(m.by==='auto'?'Automatic reply':m.by==='claude'?'Drafted by Claude, checked by staff':'Staff'):'';
+ if(m.channel==='call'&&m.dir==='in')return '<div class="ib-sys">'+svg('call')+'Missed call · '+esc(when(m.at))+'</div>';
+ if(m.channel==='call')return '<div class="ib-sys out">'+svg('call')+'Called back: '+esc(m.text)+' · '+esc(when(m.at))+'</div>';
+ var vm=m.channel==='voicemail'?'<div class="ib-vm"><button type="button" class="ib-play" data-play title="Play (demo)">'+svg('play')+'</button><span class="ib-wave" aria-hidden="true"></span><b>0:'+('0'+m.dur).slice(-2)+'</b></div><small class="ib-tr">Transcript</small>':'';
+ return '<div class="ib-msg '+m.dir+' c-'+m.channel+'"><div class="ib-mh">'+svg(m.channel)+'<span>'+CH[m.channel]+(by?' · '+by:'')+'</span><time>'+esc(when(m.at))+'</time></div>'+(m.subject?'<b class="ib-subj">'+esc(m.subject)+'</b>':'')+vm+'<p>'+esc(m.text).replace(/\n/g,'<br>')+'</p></div>'}
+
+var TPL=[['','Templates…'],
+ ['book','Book online','Hi {first}, thanks for getting in touch. You can see everyone’s next free times and book online here: [BOOK_LINK]. Or call us on 0491 184 788 and we’ll help you choose.'],
+ ['callback','We’ll call you','Hi {first}, thanks for your message. We’ll give you a call today. If there’s a better time, just reply with it.'],
+ ['move','Move a booking','Hi {first}, no problem. You can move it to any free time here: [MANAGE_LINK], or reply with a day and time that suits and we’ll sort it.'],
+ ['cancel','Cancel (sick)','Sorry to hear that, {first}. Get well soon. You can cancel or move it here: [MANAGE_LINK]. Letting us know means someone on the waitlist can have the time.'],
+ ['fees','Fees','Hi {first}, our fees and Medicare rebates for each practitioner are here: [FEES_LINK]. Happy to talk it through on 0491 184 788.'],
+ ['plan','Send the plan','Hi {first}, could you ask your GP to email your Mental Health Treatment Plan to hello@surfcoastfamilyhub.com.au before your first session? You can also upload it from your booking page.'],
+ ['waitlist','Waitlist updated','Thanks {first}, we’ve updated your waitlist details. We’ll text you as soon as a spot opens.']];
+function first(t){var n=(t.name||'').split(' ')[0];return /^0|^\+|@/.test(n)?'there':n}
+function links(t,s){var b=(t.match||[]).filter(function(m){return m.kind==='booking'})[0],r=(t.match||[]).filter(function(m){return m.kind==='referral'})[0],ref=r&&api.state().referrals.filter(function(x){return x.id===r.id})[0];
+ return s.replace(/\[BOOK_LINK\]/g,ref&&ref.status==='invited'?'sfch.au/b/'+ref.tok:'sfch.au/book').replace(/\[MANAGE_LINK\]/g,b?'sfch.au/m/'+b.token:'sfch.au/book').replace(/\[FEES_LINK\]/g,'surfcoastfamilyhub.com.au/fees').replace(/\{first\}/g,first(t)).replace(/\[CLIENT\]/g,first(t))}
+
+function view(){var t=CUR&&api.thread(CUR),el=$('ibMain');document.body.classList.toggle('ib-reading',!!t);
+ if(!t){el.innerHTML='<div class="ib-none">'+svg('sms')+'<p>Pick a conversation.</p><small>Texts, emails, voicemails, missed calls and website enquiries all land here, matched to the client.</small></div>';return}
+ if(t.unread){t.unread=false;api.setThread(t.id,{unread:false});return}
+ var d=DRAFTS[t.id]||(DRAFTS[t.id]={channel:t.email&&!t.phone?'email':'sms',text:'',subject:'',by:'staff',meta:null}),hasB=(t.match||[]).some(function(m){return m.kind==='booking'||m.kind==='appt'});
+ var staff=[['','Unassigned'],['front','Front desk'],['adi','Adi (director)']].concat(H.ORDER.filter(function(x){return P[x].live&&!P[x].leave&&x!=='adi'}).map(function(x){return [x,P[x].first]}));
+ var tel=(t.phone||'').replace(/\s/g,'');
+ el.innerHTML='<div class="ib-head"><button type="button" class="ib-backb" data-close-thread>'+svg('back')+'All messages</button><div class="ib-who"><span class="adm-wa adm-wa-lg">'+esc((t.name||'?')[0])+'</span><div><h1>'+esc(t.name)+'</h1><p>'+(t.name===t.phone||t.name===t.email?'Not in the Hub’s records yet':[t.phone,t.email].filter(Boolean).map(esc).join(' · '))+'</p></div></div>'+
+  '<div class="ib-ctl"><label><span class="sr">Status</span><select data-status>'+[['open','Needs reply'],['waiting','Waiting on client'],['done','Done']].map(function(o){return '<option value="'+o[0]+'"'+(t.status===o[0]?' selected':'')+'>'+o[1]+'</option>'}).join('')+'</select></label>'+
+  '<label><span class="sr">Assigned to</span><select data-assign>'+staff.map(function(o){return '<option value="'+o[0]+'"'+(t.assigned===o[0]?' selected':'')+'>'+o[1]+'</option>'}).join('')+'</select></label></div></div>'+
+  '<div class="ib-chips"><i class="ib-topic t-'+t.intent+'">'+esc(t.label)+'</i>'+matchChips(t)+'</div>'+
+  (t.urgent&&t.status!=='done'?'<div class="ib-urgent">'+svg('warn')+'<div><b>This may be a safety concern. Call '+esc(first(t)==='there'?'them':first(t))+' now.</b><span>An automatic reply with 000 and Lifeline went out straight away. Follow the safety steps in the SOP and tell their practitioner or Adi today. Claude won’t draft replies here.</span></div>'+(tel?'<a class="btn btn-primary btn-sm" href="tel:'+tel+'">'+svg('call')+'Call '+esc(t.phone)+'</a>':'')+'</div>':'')+
+  '<div class="ib-thread">'+t.msgs.map(bubble).join('')+'</div>'+
+  '<div class="ib-acts">'+(tel?'<a class="adm-ghost" href="tel:'+tel+'">'+svg('call')+'Call</a>':'')+'<button type="button" class="adm-ghost" data-logcall>Log a call</button>'+
+   (hasB?'<button type="button" class="adm-ghost" data-cxappt>Cancel their appointment</button>':'')+
+   (t.phone&&!t.urgent&&!(t.match||[]).some(function(m){return m.kind==='waitlist'})?'<button type="button" class="adm-ghost" data-addwl>Add to waitlist</button>':'')+'</div>'+
+  '<details class="ib-note"'+(t.note?' open':'')+'><summary>Staff note</summary><textarea id="ibNote" rows="2" maxlength="500" placeholder="Admin details only, never clinical notes.">'+esc(t.note||'')+'</textarea></details>'+
+  composer(t,d);
+ var th=el.querySelector('.ib-thread');th.scrollTop=th.scrollHeight;
+ var note=$('ibNote'),tm;note.addEventListener('input',function(){clearTimeout(tm);tm=setTimeout(function(){api.setThread(t.id,{note:note.value})},500)});
+ bindComposer(t,d)}
+function composer(t,d){var canS=!!t.phone,canE=!!t.email,urg=t.urgent&&t.status!=='done';
+ return '<form class="ib-comp" id="ibComp"><div class="ib-ct"><div class="adm-seg" role="group" aria-label="Reply by">'+(canS?'<button type="button" data-ch="sms" aria-pressed="'+(d.channel==='sms')+'">'+svg('sms')+'Text</button>':'')+(canE?'<button type="button" data-ch="email" aria-pressed="'+(d.channel==='email')+'">'+svg('email')+'Email</button>':'')+'</div>'+
+  '<label><span class="sr">Template</span><select data-tpl>'+TPL.map(function(x){return '<option value="'+x[0]+'">'+x[1]+'</option>'}).join('')+'</select></label>'+
+  '<button type="button" class="adm-ghost ib-draft" data-draft'+(urg?' disabled title="Write this one yourself"':'')+'>'+svg('spark')+'Draft with Claude</button></div>'+
+  (d.meta?'<div class="ib-dmeta">'+svg('spark')+'<div><b>'+esc(d.meta.summary||'')+'</b>'+(d.meta.staffNote?'<span>Check: '+esc(d.meta.staffNote)+'</span>':'')+(d.meta.urgent?'<span class="u">Claude thinks this may be urgent. Call them.</span>':'')+'</div></div>':'')+
+  (d.channel==='email'?'<label class="ib-subjf"><span class="sr">Subject</span><input id="ibSubj" placeholder="Subject" value="'+esc(d.subject||('Re: '+(t.subject||'Your message to Surf Coast Family Hub')))+'"></label>':'')+
+  '<label><span class="sr">Reply</span><textarea id="ibText" rows="'+(d.channel==='email'?7:3)+'" placeholder="'+(canS||canE?'Write a reply, pick a template, or ask Claude for a draft':'No mobile or email for this person. Call them instead.')+'">'+esc(d.text)+'</textarea></label>'+
+  '<div class="ib-cf"><span id="ibCount"></span><p class="bk-err" role="alert" hidden></p><button type="submit" class="btn btn-outline btn-sm" data-done="0">Send</button><button type="submit" class="btn btn-primary btn-sm" data-done="1">'+svg('send')+'Send and mark done</button></div></form>'}
+function bindComposer(t,d){var f=$('ibComp'),ta=$('ibText');
+ function count(){var n=ta.value.length;$('ibCount').textContent=d.channel==='sms'?n+' characters · '+(n<=160?1:Math.ceil(n/153))+' text'+(n>160?'s':''):n?n+' characters':''}
+ ta.addEventListener('input',function(){d.text=ta.value;if(d.by==='claude'&&!d.edited)d.edited=true;count()});count();
+ var sj=$('ibSubj');if(sj)sj.addEventListener('input',function(){d.subject=sj.value});
+ f.addEventListener('click',function(e){var b=e.target.closest('button');if(!b)return;
+  if(b.dataset.ch){d.channel=b.dataset.ch;view();return}
+  if('draft' in b.dataset){draft(t,d,b);return}});
+ f.querySelector('[data-tpl]').addEventListener('change',function(){var x=TPL.filter(function(r){return r[0]===this.value},this)[0];if(x&&x[2]){d.text=links(t,x[2]);d.by='staff';d.meta=null;view()}});
+ f.addEventListener('submit',function(e){e.preventDefault();var done=e.submitter&&e.submitter.dataset.done==='1',err=f.querySelector('.bk-err');
+  var text=links(t,ta.value.trim());if(!text){err.textContent='Write a reply first.';err.hidden=false;return}
+  delete DRAFTS[t.id];
+  var r=api.reply(t.id,{channel:d.channel,text:text,subject:d.subject||(sj&&sj.value),by:d.by==='claude'?'claude':'staff',done:done});
+  if(!r.ok){DRAFTS[t.id]=d;view();toast('Can’t send: '+r.reason+'.');return}
+  toast(done?'Sent and marked done.':'Sent.')})}
+
+// ---------- Claude drafts ----------
+// What's sent: the conversation with the client's name, numbers and emails taken out, plus public Hub facts
+// (team, fees, next free times, policy). Never the waitlist, other clients, notes or referral reasons.
+var FEES={adi:'$245, Medicare rebate $149.05 with a plan',hannah:'$245, rebate $149.05',melinda:'$235, rebate $149.05',ellie:'$170, rebate $101.55',maddy:'$200, rebate $101.55',
+ 'michelle-ferris':'counselling $215 (rebate $89.50); couples $245 for 60 min, no rebate',laura:'massage $65 for 30 min, $120 for 60 min, health fund rebates, HICAPS',kate:'acupuncture $150 first visit, $110 follow-up',
+ anna:'osteopathy $190 new patient, $140 return',meaghan:'child and teen therapy $180, no Medicare rebate; assessments quoted',jodie:'$120 for 60 min; NDIS',
+ 'michelle-joseph':'art therapy $220 (rebate $89.50)'};
+function hubFacts(t){var free={};H.ORDER.forEach(function(id){var p=P[id];if(p.live&&!p.leave)free[p.first]=[]});
+ return api.slots(H.ORDER.filter(function(id){return P[id].live&&!P[id].leave}),42).then(function(sl){Object.keys(sl).forEach(function(id){free[P[id].first]=sl[id].slice(0,4).map(function(x){return F.day(x,1)+' '+F.time(x)})});
+  var m=(t.match||[]).map(function(x){return x.kind==='booking'||x.kind==='appt'?'Has an appointment with '+P[x.pid].first+', '+when(x.start)+(x.mode&&x.mode!=='in'?' ('+x.mode+')':' (in person)')+(x.kind==='booking'?'. They can change it at [MANAGE_LINK].':'.'):
+   x.kind==='waitlist'?'Is on the waitlist for '+x.need+' with '+x.pids.map(function(p){return P[p].first}).join(', ')+'.':x.kind==='referral'?'Was referred by a health professional'+(x.pids.length?' to '+x.pids.map(function(p){return P[p].first}).join(', '):'')+'; status: '+x.status+'.':''}).filter(Boolean);
+  return {now:when(H.now()),openingHours:'Mon to Fri, 9am to 5pm. Phone 0491 184 788. Not a crisis service.',address:'16 Princes Tce, Jan Juc VIC 3228',
+   team:H.ORDER.filter(function(id){return !P[id].leave}).map(function(id){var p=P[id];return {name:p.name,role:p.role,about:p.why,booking:p.live?'online through the Hub':p.contact?'call the Hub':'their own booking site',fees:FEES[id]||undefined,note:p.note||undefined,
+    usualStartTimes:p.sched?Object.keys(p.sched).map(function(k){return F.DAY[k]+' '+p.sched[k].join(', ')}).join('; '):undefined,bookedOutUntil:p.openFrom||undefined}}),
+   clientName:first(t)==='there'?'unknown, so greet them without a name':'known; write [CLIENT] for their first name',
+   nextFreeTimes:free,medicare:'With a Mental Health Treatment Plan from their regular GP, clients get a rebate for up to 10 psychology sessions a year. Couples sessions have no rebate. Bulk billing is not listed, so do not offer it.',
+   telehealth:'Most psychology and counselling can be by video or phone.',cancellationPolicy:api.policy('adi').text,thisClient:m.length?m:['No booking, waitlist place or referral found for this number.']}})}
+function scrubText(s,t){var n=(t.name||'').trim(),f=n.split(' ')[0];
+ if(n&&!/^0|^\+|@/.test(n)){s=s.split(n).join('[CLIENT]');if(f.length>2)s=s.replace(new RegExp('\\b'+f.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'\\b','g'),'[CLIENT]')}
+ return s.replace(/\b0[2-478](?:[ -]?\d){8}\b/g,'[phone]').replace(/\+61[\d ]{9,12}/g,'[phone]').replace(/[\w.+-]+@[\w-]+\.[\w.]+/g,'[email]')}
+function draft(t,d,btn){btn.disabled=true;btn.innerHTML='<span class="ib-spin"></span>Drafting…';
+ hubFacts(t).then(function(hub){
+  var convo=t.msgs.filter(function(m){return m.text}).map(function(m){return {from:m.dir==='in'?'client':'hub',channel:m.channel,at:when(m.at),text:scrubText((m.subject?'Subject: '+m.subject+'\n':'')+m.text,t)}});
+  return fetch(H.SITE+'api/hub/draft',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({channel:d.channel,conversation:convo,hub:hub})})})
+ .then(function(r){return r.json().then(function(j){if(!r.ok)throw new Error(j.error||'Couldn’t get a draft.');return j})})
+ .then(function(j){d.text=links(t,j.reply||'');d.by='claude';d.edited=false;d.meta={summary:j.topic?j.topic+': '+j.summary:j.summary,staffNote:j.staffNote,urgent:j.urgent};
+  if(j.urgent&&!t.urgent)api.setThread(t.id,{urgent:true});view();var ta=$('ibText');if(ta)ta.focus()})
+ .catch(function(e){btn.disabled=false;btn.innerHTML=svg('spark')+'Draft with Claude';toast(e.message||'Couldn’t get a draft.')})}
+
+// ---------- new and group messages ----------
+var GTPL=[['custom','Write my own',''],
+ ['sick','Practitioner unwell (cancel their day)','Hi {first}, it’s Surf Coast Family Hub. Sorry, {practitioner} is unwell {day}, so your {time} session is cancelled at no cost. Pick a new time here: {link} or reply and we’ll help.'],
+ ['late','Practitioner running late','Hi {first}, {practitioner} is running about 20 minutes behind today. Sorry for the wait. No need to reply.'],
+ ['closure','Hub closed or moved','Hi {first}, a heads-up from Surf Coast Family Hub: {practitioner} will see you by video {day} at {time} instead of at the Hub. We’ll text the link. Reply if that doesn’t work.'],
+ ['wl','Waitlist news','Hi {first}, good news from Surf Coast Family Hub: we’ve opened more times. See them and book here: {link}. Reply STOP to leave the waitlist.']];
+var G={kind:'day',pid:'',date:'',tpl:'custom',text:'',cancel:false,name:'',phone:'',email:''};
+function newMsg(){var dates=[];for(var i=0;i<14;i++){var d=new Date(H.now());d.setHours(0,0,0,0);d.setDate(d.getDate()+i);if(d.getDay()>0)dates.push(d)}
+ if(!G.date)G.date=dates[0].toISOString();if(!G.pid)G.pid='hannah';
+ var live=H.ORDER.filter(function(id){return P[id].live&&!P[id].leave});
+ var g=G.kind==='person'?{kind:'person',name:G.name,phone:G.phone,email:G.email}:{kind:G.kind,pid:G.kind==='week'?'':G.pid,date:G.date};
+ var rec=G.kind==='person'?[]:api.groupList(g);
+ $('ibNewBody').innerHTML='<div class="adm-dwh"><div><h2 id="ibNewH">New message</h2><p>To one person, or everyone affected by a change</p></div><button type="button" class="adm-x" data-x aria-label="Close">'+svg('x')+'</button></div>'+
+  '<form class="ib-nf" id="ibNF"><fieldset><legend>Send to</legend><div class="adm-seg" role="group">'+[['day','Clients on a day'],['week','Everyone booked this week'],['waitlist','The waitlist'],['person','One person']].map(function(o){return '<button type="button" data-gk="'+o[0]+'" aria-pressed="'+(G.kind===o[0])+'">'+o[1]+'</button>'}).join('')+'</div>'+
+  (G.kind==='day'?'<div class="ib-row2"><label>Practitioner<select data-g="pid">'+live.map(function(id){return '<option value="'+id+'"'+(G.pid===id?' selected':'')+'>'+esc(P[id].name)+'</option>'}).join('')+'</select></label><label>Day<select data-g="date">'+dates.map(function(d){return '<option value="'+d.toISOString()+'"'+(G.date===d.toISOString()?' selected':'')+'>'+esc(F.day(d,1))+'</option>'}).join('')+'</select></label></div>':'')+
+  (G.kind==='waitlist'?'<div class="ib-row2"><label>For<select data-g="pid"><option value="">Everyone on the waitlist</option>'+live.map(function(id){return '<option value="'+id+'"'+(G.pid===id?' selected':'')+'>Waiting for '+esc(P[id].first)+'</option>'}).join('')+'</select></label></div>':'')+
+  (G.kind==='person'?'<div class="ib-row2"><label>Name<input data-g="name" value="'+esc(G.name)+'"></label><label>Mobile<input data-g="phone" inputmode="tel" placeholder="04xx xxx xxx" value="'+esc(G.phone)+'"></label></div>':'')+
+  (G.kind!=='person'?'<p class="ib-rec">'+svg('users')+'<span><b>'+rec.length+' '+(rec.length===1?'person':'people')+'</b>'+(rec.length?': '+esc(rec.slice(0,5).map(function(r){return r.name+(r.start?' ('+F.time(r.start)+')':'')}).join(', '))+(rec.length>5?' and '+(rec.length-5)+' more':''):'')+'</span></p>':'')+'</fieldset>'+
+  '<label class="ib-full">Message<select data-gtpl>'+GTPL.filter(function(x){return G.kind==='waitlist'?x[0]!=='sick'&&x[0]!=='late'&&x[0]!=='closure':x[0]!=='wl'}).map(function(x){return '<option value="'+x[0]+'"'+(G.tpl===x[0]?' selected':'')+'>'+x[1]+'</option>'}).join('')+'</select></label>'+
+  '<label class="ib-full"><span class="sr">Text</span><textarea data-g="text" rows="5" placeholder="Type your message. {first}, {practitioner}, {day}, {time} and {link} fill in for each person.">'+esc(G.text)+'</textarea></label>'+
+  (rec[0]&&G.text?'<div class="ib-prev"><small>Preview for '+esc(rec[0].name)+'</small><p>'+esc(G.text.replace(/\{first\}/g,rec[0].name.split(' ')[0]).replace(/\{practitioner\}/g,rec[0].pid?P[rec[0].pid].first:'your practitioner').replace(/\{time\}/g,rec[0].start?F.time(rec[0].start):'').replace(/\{day\}/g,rec[0].start?(F.day(rec[0].start,1)==='Today'?'today':'on '+F.day(rec[0].start,1)):'').replace(/\{link\}/g,'sfch.au/book'))+'</p></div>':'')+
+  (G.kind==='day'?'<label class="bk-check"><input type="checkbox" data-g="cancel"'+(G.cancel?' checked':'')+'><span>Also cancel these appointments and block '+esc(P[G.pid].first)+'’s times that day. They won’t be offered to the waitlist.</span></label>':'')+
+  '<p class="ib-legal">Service messages only (changes to bookings, closures, waitlist news). Promotions and newsletters need people’s consent first and an unsubscribe.</p>'+
+  '<p class="bk-err" role="alert" hidden></p><div class="ib-cf"><button type="submit" class="btn btn-primary">'+svg('send')+'Send'+(G.kind==='person'?'':' to '+rec.length)+'</button></div></form>'}
+function openNew(){var dl=$('ibNew');newMsg();if(!dl.open)dl.showModal()}
+$('ibNew').addEventListener('click',function(e){var b=e.target.closest('button');if(e.target===$('ibNew')||(b&&'x' in b.dataset)){$('ibNew').close();return}
+ if(b&&b.dataset.gk){G.kind=b.dataset.gk;if(G.kind==='waitlist'){G.pid='';if(G.tpl!=='custom'&&G.tpl!=='wl'){G.tpl='custom';G.text=''}}else if(G.tpl==='wl'){G.tpl='custom';G.text=''}if(G.kind!=='waitlist'&&!G.pid)G.pid='hannah';newMsg()}});
+$('ibNew').addEventListener('change',function(e){var x=e.target;if(x.dataset.gtpl!=null){G.tpl=x.value;var tp=GTPL.filter(function(r){return r[0]===x.value})[0];G.text=tp?tp[2]:'';if(G.tpl==='sick')G.cancel=true;newMsg();return}
+ if(x.dataset.g){G[x.dataset.g]=x.type==='checkbox'?x.checked:x.value;if(x.dataset.g!=='text'&&x.dataset.g!=='name'&&x.dataset.g!=='phone')newMsg()}});
+$('ibNew').addEventListener('input',function(e){var x=e.target;if(x.dataset.g==='text'||x.dataset.g==='name'||x.dataset.g==='phone')G[x.dataset.g]=x.value});
+$('ibNew').addEventListener('submit',function(e){e.preventDefault();var err=$('ibNF').querySelector('.bk-err');
+ if(!G.text.trim()){err.textContent='Write a message first.';err.hidden=false;return}
+ if(G.kind==='person'){if(!/^(\+?61|0)4[\d ]{8,11}$/.test(G.phone.replace(/\s/g,''))){err.textContent='Add an Australian mobile.';err.hidden=false;return}
+  var th=api.inbound({channel:'sms',phone:G.phone,name:G.name,text:''});th.msgs.pop();api.reply(th.id,{channel:'sms',text:G.text.replace(/\{first\}/g,(G.name||'there').split(' ')[0]),by:'staff'});
+  $('ibNew').close();CUR=th.id;TAB='waiting';G.text='';all();toast('Sent.');return}
+ var g={kind:G.kind,pid:G.kind==='week'?'':G.pid,date:G.date},n=api.groupList(g).length;if(!n){err.textContent='Nobody to send to.';err.hidden=false;return}
+ if(G.cancel&&G.kind==='day'&&!confirm('Cancel '+n+' appointment'+(n>1?'s':'')+' and block '+P[G.pid].first+'’s day?'))return;
+ var label=(GTPL.filter(function(r){return r[0]===G.tpl})[0]||[0,'Message'])[1].replace(/ \(.*\)$/,'');
+ var r=api.bulk(g,G.text,{label:label,cancel:G.kind==='day'&&G.cancel});$('ibNew').close();G.text='';G.tpl='custom';G.cancel=false;
+ toast('Sent to '+r.sent+(r.sent===1?' person':' people')+(r.cancelled?'. Cancelled '+r.cancelled+' appointment'+(r.cancelled>1?'s':'')+'.':'.'))});
+
+// ---------- events ----------
+document.addEventListener('click',function(e){var b=e.target.closest('button');if(!b||b.closest('#ibNew')||b.closest('#ibComp'))return;var d=b.dataset;
+ if(d.tab){TAB=d.tab;all();return}
+ if(d.open){CUR=d.open;try{history.replaceState(null,'','#t='+CUR)}catch(x){}all();return}
+ if('closeThread' in d){CUR=null;try{history.replaceState(null,'',location.pathname)}catch(x){}all();return}
+ if('new' in d){openNew();return}
+ if('play' in d){toast('Demo: in the live system this plays the recording.');return}
+ if('logcall' in d){var n=prompt('What happened on the call? (admin details only)','Called back, booked in');if(n!==null){api.logCall(CUR,n);toast('Call logged, marked done.')}return}
+ if('cxappt' in d){var t=api.thread(CUR),m=(t.match||[]).filter(function(x){return x.kind==='booking'||x.kind==='appt'})[0];if(!m||!confirm('Cancel '+t.name+'’s appointment with '+P[m.pid].first+', '+when(m.start)+'? The time goes to the waitlist.'))return;
+  if(m.kind==='booking')api.cancel(m.token,'Cancelled by staff (message)');else api.simulateCancel(m.pid,new Date(m.start));setTimeout(function(){api.rematch(CUR);toast('Cancelled. Offering the time to the waitlist.')},450);return}
+ if('addwl' in d){var t2=api.thread(CUR);window.open('book.html','_blank');toast('Opened the booking page: add '+first(t2)+' to the waitlist from there.');return}});
+$('ibMain').addEventListener('change',function(e){var x=e.target;if(x.dataset.status!=null)api.setThread(CUR,{status:x.value,urgent:x.value==='done'?false:api.thread(CUR).urgent});if(x.dataset.assign!=null){api.setThread(CUR,{assigned:x.value});toast(x.value?'Assigned.':'Unassigned.')}});
+$('ibQ').addEventListener('input',function(){Q=this.value.trim().toLowerCase();list()});
+$('ibSim').addEventListener('change',function(){var k=this.value;this.value='';if(!k)return;var th=api.simulate(k);if(th){CUR=th.id;TAB=th.urgent?'urgent':th.status==='done'?'done':'open';all();toast(th.urgent?'Urgent message: safety reply sent automatically.':'New '+(CH[th.msgs[th.msgs.length-1].channel]||'message').toLowerCase()+' from '+th.name+'.')}});
+var tt;function toast(t){var el=$('admToast');if(!el){el=document.createElement('div');el.id='admToast';el.className='adm-toast';el.setAttribute('role','status');document.body.appendChild(el)}el.textContent=t;el.classList.add('on');clearTimeout(tt);tt=setTimeout(function(){el.classList.remove('on')},3600)}
+function all(){tabs();list();var a=document.activeElement;if(a&&(a.id==='ibText'||a.id==='ibNote'||a.id==='ibSubj'))return;view()}
+var h=location.hash.match(/t=(t\w+)/);if(h&&api.thread(h[1]))CUR=h[1];
+api.on(all);all();setInterval(function(){list()},30000);
+})();
+</script>
+</body>
+
+</html>

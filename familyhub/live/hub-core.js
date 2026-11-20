@@ -78,12 +78,12 @@ function uid(n){var a='abcdefghjkmnpqrstuvwxyz23456789',s='';for(var i=0;i<(n||1
 function slotKey(pid,start){return pid+'|'+new Date(start).toISOString()}
 
 // ---------- demo store ----------
-var KEY='scfh-demo-v3', S;
+var KEY='scfh-demo-v4', S;
 var FIRST=['Sarah','Jess','Emma','Kate','Chloe','Mia','Tom','Ben','Lucy','Grace','Olivia','Hannah','Zoe','Ruby','Amy','Georgia','Lily','Sam','Ella','Nina'];
 var LAST=['M.','T.','K.','R.','B.','L.','W.','H.','P.','S.','D.','C.'];
-function defaults(){return {v:3,skew:0,bookings:[],freed:{},taken:{},waitlist:seedWaitlist(),offers:[],sms:[],feed:[],rem:{},referrals:seedReferrals(),pp:{},
+function defaults(){return {v:4,inbox:[],mail:[],blocked:{},bcasts:[],skew:0,bookings:[],freed:{},taken:{},waitlist:seedWaitlist(),offers:[],sms:[],feed:[],rem:{},referrals:seedReferrals(),pp:{},
  settings:{mode:'auto',batch:3,expiry:30,minNotice:2,quiet:true,quietFrom:20,quietTo:8,weekCap:3,
-  remind:true,remindHrs:48,policyHrs:24,lateFee:'full',card:'new',fresh:true,freshDays:30,freshGrace:7,series:true,autoInvite:true,smsCost:0.1},
+  remind:true,remindHrs:48,policyHrs:24,lateFee:'full',card:'new',fresh:true,freshDays:30,freshGrace:7,series:true,autoInvite:true,smsCost:0.1,autoReply:'admin',safetyReply:true,afterHours:true,missedText:true,openFrom:9,openTo:17},
  stats:{filled:0,value:0,mins:[]}}}
 function seedWaitlist(){var t=Date.now(),D=864e5;return [
  {id:'w1',name:'Sarah M.',phone:'0400 000 101',pids:['ellie','hannah','maddy','adi','melinda'],need:'Psychology',days:[1,2,3,4,5],times:['am','pm'],since:t-34*D,offers:[]},
@@ -100,7 +100,7 @@ function seedReferrals(){var t=Date.now(),D=864e5;return [
  {id:'r1',tok:'olv7k2m9qa',at:t-1*D-5e6,source:'Online form',from:{name:'Dr Priya N.',practice:'Torquay Medical Centre',email:'reception@example.com.au'},client:{name:'Olivia S.',dob:'1993-04-12',phone:'0400 000 201',email:''},to:'team',plan:'yes',planIn:true,file:{name:'MHTP-Olivia-S.pdf',size:182000},reason:'Postnatal anxiety, baby 4 months.',status:'new'},
  {id:'r2',tok:'amy3d8p2xw',at:t-5*D,source:'Fax',from:{name:'Dr James K.',practice:'Surf Coast Family Practice'},client:{name:'Amy D.',phone:'0400 000 202',email:''},to:'hannah',plan:'yes',planIn:true,file:{name:'fax-2611.pdf',size:240000},reason:'Birth trauma after first birth.',status:'invited',invitedAt:t-5*D+3e6,pids:['hannah']},
  {id:'r3',tok:'geo5c4n7hz',at:t-9*D,source:'Email',from:{name:'Sam W. (midwife)',practice:'Barwon Health'},client:{name:'Georgia C.',phone:'0400 000 203',email:''},to:'ellie',plan:'no',planIn:false,file:null,reason:'Low mood in pregnancy.',status:'booked',invitedAt:t-9*D+2e6,bookedAt:t-7*D,pids:['ellie']}]}
-function load(){try{S=JSON.parse(localStorage.getItem(KEY))}catch(e){S=null}if(!S||S.v!==3)S=defaults()}
+function load(){try{S=JSON.parse(localStorage.getItem(KEY))}catch(e){S=null}if(!S||S.v!==4)S=defaults()}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}emit()}
 var subs=[];function emit(){subs.forEach(function(f){try{f()}catch(e){console.error(e)}})}
 window.addEventListener('storage',function(e){if(e.key===KEY){load();emit()}});
@@ -112,6 +112,7 @@ function now(){return Date.now()+(S.skew||0)}
 function baseTaken(pid,d){var o=P[pid].openFrom;if(o&&d<new Date(o+'T00:00:00'))return true;return hash(pid+d.toISOString())<0.6}
 function fakeClient(pid,d){var h=hash('c'+pid+d.toISOString());return FIRST[Math.floor(h*FIRST.length)]+' '+LAST[Math.floor(hash('l'+pid+d)*LAST.length)]}
 function slotState(pid,d){var k=slotKey(pid,d);
+ if(S.blocked&&S.blocked[k])return 'blocked';      // practitioner unavailable (sick day)
  if(S.taken[k])return 'booked';                 // booked through the hub (demo client or refilled)
  if(S.freed[k])return 'free';                   // a seeded client cancelled
  return baseTaken(pid,d)?'seeded':'free'}
@@ -255,12 +256,12 @@ function policyText(pid){var s=S.settings,f=lateFee(pid);
  return 'Free to move or cancel up to '+s.policyHrs+' hours before. '+(f?'Later than that, or if you miss the session, '+(s.lateFee==='full'?'the full fee':'half the fee')+' ('+money(f)+') applies. If we fill your time from the waitlist, there’s no fee.':'If you can’t make it after that, please still tell us so someone on the waitlist can have the time.')}
 function isLate(start){return new Date(start).getTime()-now()<S.settings.policyHrs*36e5}
 function isFree(pid,d){return d.getTime()>now()+3*36e5&&slotState(pid,d)==='free'&&!openOfferFor(pid,d)}
-function doCancel(b,reason){
+function doCancel(b,reason,noRefill){
  b.status='cancelled';b.reason=reason;b.cancelledAt=now();delete S.taken[slotKey(b.pid,b.start)];
- var late=isLate(b.start),fee=late?lateFee(b.pid):0;if(fee)b.lateFee=fee;
+ var late=isLate(b.start),fee=late&&!noRefill?lateFee(b.pid):0;if(fee)b.lateFee=fee;
  var r=S.rem[slotKey(b.pid,b.start)];if(r&&r.state==='sent')r.state='cancelled';
  feed('cancel','Cancelled: '+P[b.pid].first+', '+fmtWhen(b.start)+' ('+b.name+(reason?', '+reason:'')+')'+(late?'. Late cancellation, under '+S.settings.policyHrs+' hours'+(fee?' ('+money(fee)+' fee unless refilled)':'')+'.':'.'),{pid:b.pid,late:late});
- slotFreed(b.pid,b.start,'cancelled',b.phone,b.id);return {late:late,fee:fee}}
+ if(!noRefill)slotFreed(b.pid,b.start,'cancelled',b.phone,b.id);return {late:late,fee:noRefill?0:fee}}
 // Recurring: the same weekday and time every 1 or 2 weeks. If that time is taken one week, offer the nearest free time that week.
 function seriesPlan(pid,start,every,count){var out=[],used={},t0=new Date(start);
  for(var i=0;i<count;i++){var d=new Date(t0);d.setDate(t0.getDate()+i*every);
@@ -276,6 +277,95 @@ function makeReferralFromBooking(b,ref){
 function invite(r,pids){r.pids=pids;r.status='invited';r.invitedAt=now();var fn=r.client.name.split(' ')[0];
  sms(r.client.phone,r.client.name,'Hi '+fn+', it’s Surf Coast Family Hub. '+r.from.name+' has referred you to us'+(pids.length===1?' to see '+P[pids[0]].first:'')+'. Book your first session online here: sfch.au/b/'+r.tok+' or call us on 0491 184 788. Reply STOP to opt out.','out',{kind:'invite',tok:r.tok,rid:r.id});
  feed('ref','Sent '+r.client.name+' a booking link for '+pids.map(function(x){return P[x].first}).join(', ')+'.')}
+
+// ---------- inbox: texts, emails, calls, voicemail and website enquiries in one place ----------
+// When live: SMS replies arrive from the SMS provider's webhook, emails from an inbound-email address, calls and
+// voicemail (with transcripts) from the phone provider, and the website form posts here. Everything is matched to the
+// client's booking, waitlist place or referral. Claude can draft replies; a person approves them before they're sent.
+var RISK=/\b(suicid\w*|kill(ing)? (my|him|her)self|end (it all|my life)|don['’]?t want to (be here|live|wake up)|not (feeling )?safe|(don['’]?t|do not) feel safe|can['’]?t cope any ?more|unsafe at home|hurt(ing)? (myself|my baby|the baby|someone)|self[- ]?harm\w*|overdos\w*|can['’]?t (go on|keep going)|no point (in )?(living|going on)|harm (my|the) baby|scared he['’]?ll|he hit me)\b/i;
+var INTENTS=[
+ ['late',/\b(running|be|am|i['’]?m)\s+(about\s+)?(\d+\s*(min|mins|minutes)\s+)?late\b|stuck in traffic|on (my|our) way/i,'Running late'],
+ ['cancel',/\bcancel|can['’]?t (make|come|attend|do)|won['’]?t (be able|make)|\b(sick|unwell|ill)\b/i,'Cancel'],
+ ['move',/\b(move|reschedul\w*|change (my|the) (time|appointment|booking)|different (time|day)|later in the week|another (time|day))\b/i,'Reschedule'],
+ ['waitlist',/\bwait ?list|where (am i|i['’]?m at)\b/i,'Waitlist'],
+ ['fees',/\b(cost|fees?|price|how much|bulk ?bill\w*|rebate|health fund|private health)\b/i,'Fees and rebates'],
+ ['referral',/\breferr\w*|treatment plan|\bmhtp\b/i,'Referral or plan'],
+ ['new',/\b(new client|looking for|who (should|would you)|recommend|first (appointment|session)|start seeing|available|availability|do you (do|offer|have|see)|appointments? (in|for)|for my (son|daughter|child|kid|baby|teen)|year old)\b/i,'New enquiry'],
+ ['callback',/\bcall (me )?back|give me a (call|ring)|ring me\b/i,'Call back'],
+ ['confirm',/^\s*(c|yes|yep|confirm(ed)?|see you( then)?|thanks?|thank you)\W*$/i,'Confirmation']];
+function classify(text){text=String(text||'');if(RISK.test(text))return {intent:'risk',label:'Safety concern',urgent:true};
+ for(var i=0;i<INTENTS.length;i++)if(INTENTS[i][1].test(text))return {intent:INTENTS[i][0],label:INTENTS[i][2]};return {intent:'other',label:'General'}}
+function normPhone(p){return String(p||'').replace(/\s/g,'').replace(/^\+61/,'0')}
+// Who is this? Checks bookings, the waitlist, referrals and (demo) Halaxy clients in the next week.
+function matchContact(phone,email){var ph=normPhone(phone),em=String(email||'').toLowerCase(),out=[];
+ if(ph){S.bookings.forEach(function(b){if(b.status==='booked'&&normPhone(b.phone)===ph&&new Date(b.start).getTime()>now())out.push({kind:'booking',id:b.id,token:b.token,name:b.name,pid:b.pid,start:b.start,mode:b.mode})});
+  S.waitlist.forEach(function(w){if(!w.booked&&!w.removed&&normPhone(w.phone)===ph)out.push({kind:'waitlist',id:w.id,name:w.name,pids:w.pids,need:w.need})});
+  S.referrals.forEach(function(r){if(r.status!=='closed'&&normPhone(r.client.phone)===ph)out.push({kind:'referral',id:r.id,name:r.client.name,status:r.status,pids:r.pids||[],from:r.from.name})});
+  if(!out.some(function(x){return x.kind==='booking'})){var d0=new Date(now());d0.setHours(0,0,0,0);
+   for(var i=0;i<8&&!out.some(function(x){return x.kind==='appt'});i++){var day=new Date(d0);day.setDate(d0.getDate()+i);
+    ORDER.forEach(function(pid){daySlots(pid,day).forEach(function(d){if(d.getTime()>now()-36e5&&slotState(pid,d)==='seeded'&&normPhone(fakePhone(pid,d))===ph)out.push({kind:'appt',key:slotKey(pid,d),name:fakeClient(pid,d),pid:pid,start:d.toISOString(),mode:'in'})})})}}}
+ if(em)S.bookings.forEach(function(b){if(b.status==='booked'&&String(b.email).toLowerCase()===em&&new Date(b.start).getTime()>now()&&!out.some(function(x){return x.id===b.id}))out.push({kind:'booking',id:b.id,token:b.token,name:b.name,pid:b.pid,start:b.start,mode:b.mode})});
+ return out}
+function openHours(t){var d=new Date(t),h=d.getHours(),w=d.getDay();return w>0&&w<6&&h>=S.settings.openFrom&&h<S.settings.openTo}
+function threadOut(th,channel,text,by,subject){
+ var to=channel==='email'?th.email:th.phone;if(!to)return false;
+ if(channel==='email')S.mail.push({id:uid(6),to:to,name:th.name,subject:subject||'Re: '+(th.subject||'Your message'),body:text,at:now(),tid:th.id});
+ else sms(th.phone,th.name,text,'out',{kind:'inbox',tid:th.id});
+ th.msgs.push({id:uid(6),dir:'out',channel:channel,text:text,subject:channel==='email'?(subject||'Re: '+(th.subject||'Your message')):'',by:by||'staff',at:now()});
+ th.updated=now();return true}
+function inbound(d){
+ var at=d.at||now(),ph=d.phone?normPhone(d.phone):'',em=(d.email||'').toLowerCase();
+ var th=S.inbox.filter(function(x){return x.status!=='done'&&((ph&&normPhone(x.phone)===ph)||(em&&String(x.email).toLowerCase()===em))})[0];
+ var c=classify((d.subject||'')+' '+(d.text||''));
+ if(!th){th={id:'t'+uid(7),created:at,name:d.name||'',phone:d.phone||'',email:d.email||'',subject:d.subject||'',msgs:[],status:'open',unread:true,urgent:false,intent:c.intent,label:c.label,assigned:'',note:''};S.inbox.unshift(th)}
+ th.match=matchContact(th.phone,th.email);if(!th.name&&th.match[0])th.name=th.match[0].name;if(!th.name)th.name=th.phone||th.email||'Unknown';
+ th.msgs.push({id:uid(6),dir:'in',channel:d.channel,text:d.text||'',subject:d.subject||'',dur:d.dur||0,at:at});
+ th.updated=at;th.unread=true;if(th.status==='done'||th.status==='waiting')th.status='open';
+ if(c.intent!=='other'&&!(c.intent==='confirm'&&th.intent!=='other'))th.intent=c.intent,th.label=c.label;
+ var fn=(th.name||'').split(' ')[0],m=th.match.filter(function(x){return x.kind==='booking'||x.kind==='appt'})[0],chan=d.channel==='email'||(d.channel==='form'&&!th.phone)?'email':'sms';
+ var src={sms:'Text',email:'Email',voicemail:'Voicemail',call:'Missed call',form:'Website enquiry'}[d.channel];
+ if(c.urgent){th.urgent=true;
+  feed('urgent','Urgent: '+src.toLowerCase()+' from '+th.name+' may be a safety concern. Call them now.',{tid:th.id});
+  if(S.settings.safetyReply&&(th.phone||th.email))threadOut(th,th.phone?'sms':'email','Thanks for reaching out'+(fn&&!/^0/.test(fn)?', '+fn:'')+'. We’ve asked someone from our team to call you as soon as possible. Our messages aren’t monitored around the clock, so if you’re in danger or might hurt yourself, please call 000 now. You can talk to someone any time on Lifeline 13 11 14, or PANDA 1300 726 306 (weekdays and some evenings).','auto');
+  return th}
+ feed('inbox',src+' from '+th.name+(th.match.length?'':' (new contact)')+': '+c.label.toLowerCase()+'.',{tid:th.id});
+ var auto=S.settings.autoReply==='admin';
+ if(d.channel==='call'&&S.settings.missedText&&th.phone){threadOut(th,'sms','Hi, it’s Surf Coast Family Hub. Sorry we missed your call. We’ll call you back '+(openHours(at)?'today':'next business day')+', or reply here if a text is easier.','auto');th.intent='callback';th.label='Call back'}
+ else if(auto&&c.intent==='late'&&m&&sameDay(new Date(m.start),new Date(at))){threadOut(th,'sms','Thanks '+fn+', no problem. We’ve let '+P[m.pid].first+' know you’re on your way.','auto');th.status='done';th.unread=false;
+  feed('none','Told '+P[m.pid].first+': '+th.name+' is running late for '+fmtTime(m.start)+'.')}
+ else if(auto&&c.intent==='confirm'&&th.msgs.length>1){th.status='done';th.unread=false}
+ else if(S.settings.afterHours&&!openHours(at)&&(th.phone||th.email))threadOut(th,chan,'Thanks for your message. The front desk is closed right now; we’ll reply on the next business day (Mon to Fri, '+S.settings.openFrom+'am to '+(S.settings.openTo-12)+'pm). If it’s an emergency, call 000, or Lifeline on 13 11 14.','auto');
+ return th}
+function seedInbox(){var t=now(),M=6e4;
+ inbound({channel:'call',phone:'0400 000 302',at:t-22*M});
+ inbound({channel:'voicemail',phone:'0400 000 202',dur:34,at:t-55*M,text:'Hi, it’s Amy. Dr James referred me to Hannah and I got a text with a link, but I’d rather talk to someone first about whether it’s the right fit for me. Could someone call me back on this number? Thanks.'});
+ inbound({channel:'form',name:'Nina P.',phone:'0400 000 301',at:t-80*M,text:'Looking for someone for my 8 year old who has been really anxious about school. Who would you recommend and how soon could we get in?'});
+ inbound({channel:'email',name:'Rachel T.',email:'rachel.t@example.com',subject:'Fees question',at:t-140*M,text:'Hi there, do you bulk bill for psychology? How much would a session with Ellie be if I have a mental health plan from my GP? Thanks, Rachel'});
+ inbound({channel:'sms',phone:'0400 000 102',at:t-190*M,text:'Hi, just checking where I’m at on the waitlist for Hannah? I can now do mornings any weekday, not just Tue Thu Fri.'});
+ S.inbox.forEach(function(x){x.unread=x.id===S.inbox[0].id||x.id===S.inbox[1].id});S.feed=S.feed.filter(function(f){return f.kind!=='inbox'})}
+var SAMPLES={
+ late:function(a){return {channel:'sms',phone:a.phone,text:'Running about 10 min late sorry! Stuck behind a tractor on the Great Ocean Rd'}},
+ move:function(a){return {channel:'sms',phone:a.phone,text:'Hi, is there any chance I could move my appointment to later in the week? Work has thrown something at me.'}},
+ cancel:function(a){return {channel:'sms',phone:a.phone,text:'So sorry, my little one has gastro so I can’t make it to my appointment. Can we reschedule?'}},
+ email:function(){return {channel:'email',name:'Priya R.',email:'priya.r@example.com',subject:'Appointments for postnatal support',text:'Hello, my baby is 3 months old and I’ve been struggling a bit. My GP suggested I see someone. Do you have anything available in the next couple of weeks, ideally online? Thank you, Priya'}},
+ voicemail:function(){return {channel:'voicemail',phone:'0400 000 303',dur:27,text:'Hi, my name’s Dan, I’m calling about couples counselling for me and my partner. Could someone give me a call back when you get a chance? Thanks, bye.'}},
+ call:function(){return {channel:'call',phone:'0400 000 304'}},
+ form:function(){return {channel:'form',name:'Tess W.',email:'tess.w@example.com',text:'Do you do pregnancy massage on weekends? I’m 30 weeks.'}},
+ risk:function(){return {channel:'sms',phone:'0400 000 305',text:'I’m not coping at all and I don’t feel safe tonight. I don’t know who else to message.'}}};
+function apptPick(){var l=api.upcoming(2).filter(function(a){return a.start.getTime()>now()+36e5});var a=l[Math.floor(Math.random()*Math.min(6,l.length))];
+ if(!a)return {phone:'0400 000 399'};return {phone:a.booking?a.booking.phone:fakePhone(a.pid,a.start)}}
+// recipients for a custom or group message
+function groupList(g){var out=[];
+ if(g.kind==='day'||g.kind==='week'){var d0=new Date(g.kind==='day'?g.date:now());d0.setHours(0,0,0,0);var n=g.kind==='day'?1:7;
+  for(var i=0;i<n;i++){var day=new Date(d0);day.setDate(d0.getDate()+i);
+   ORDER.forEach(function(pid){if(g.pid&&pid!==g.pid)return;daySlots(pid,day).forEach(function(d){if(d.getTime()<now())return;var st=slotState(pid,d),k=slotKey(pid,d);
+    if(st==='seeded')out.push({name:fakeClient(pid,d),phone:fakePhone(pid,d),pid:pid,start:d,key:k});
+    else if(st==='booked'){var b=bookingAt(k);if(b)out.push({name:b.name,phone:b.phone,pid:pid,start:d,key:k,bid:b.id,token:b.token})}})})}}
+ else if(g.kind==='waitlist')S.waitlist.forEach(function(w){if(!w.booked&&!w.removed&&(!g.pid||w.pids.indexOf(g.pid)>=0))out.push({name:w.name,phone:w.phone,wid:w.id})});
+ else if(g.kind==='person')out.push({name:g.name,phone:g.phone,email:g.email});
+ return out}
+function fill(text,r){return text.replace(/\{first\}/g,(r.name||'there').split(' ')[0]).replace(/\{practitioner\}/g,r.pid?P[r.pid].first:'your practitioner').replace(/\{time\}/g,r.start?fmtTime(r.start):'')
+ .replace(/\{day\}/g,r.start?onDay(r.start):'').replace(/\{link\}/g,r.token?'sfch.au/m/'+r.token:'sfch.au/book')}
 
 // ---------- sample history for the report ----------
 // Four weeks of made-up past appointments, seeded so they're stable, so the report has something to show.
@@ -407,6 +497,23 @@ var api={
  prefs:function(pid,patch){if(patch){S.pp[pid]=Object.assign(prefs(pid),patch);feed('none',P[pid].first+' updated their booking preferences.');save()}return prefs(pid)},
  policy:function(pid){return {hrs:S.settings.policyHrs,fee:lateFee(pid),text:policyText(pid),card:S.settings.card,series:S.settings.series&&prefs(pid).series}},
  gap:gapLen,
+ // inbox
+ inbound:function(d){var th=inbound(d);save();return th},
+ simulate:function(kind){var f=SAMPLES[kind];if(!f)return null;var d=f(apptPick());var th=inbound(d);save();return th},
+ thread:function(id){return S.inbox.filter(function(x){return x.id===id})[0]||null},
+ reply:function(id,d){var th=api.thread(id);if(!th||!d.text)return {ok:false};var ok=threadOut(th,d.channel,d.text,d.by,d.subject);if(!ok)return {ok:false,reason:'no '+(d.channel==='email'?'email':'mobile')};
+  th.status=d.done?'done':'waiting';th.unread=false;feed('inbox','Replied to '+th.name+' by '+(d.channel==='email'?'email':'text')+(d.by==='claude'?' (Claude draft, checked by staff)':'')+'.',{tid:id});save();return {ok:true}},
+ logCall:function(id,note){var th=api.thread(id);if(!th)return;th.msgs.push({id:uid(6),dir:'out',channel:'call',text:note||'Called back',by:'staff',at:now()});th.status='done';th.unread=false;th.urgent=false;
+  feed('inbox','Called '+th.name+(note?': '+note:'')+'.',{tid:id});save()},
+ setThread:function(id,patch){var th=api.thread(id);if(!th)return;Object.assign(th,patch);if(patch.status==='done')th.unread=false;save()},
+ rematch:function(id){var th=api.thread(id);if(th){th.match=matchContact(th.phone,th.email);save()}},
+ groupList:groupList,
+ bulk:function(g,text,opts){opts=opts||{};var list=groupList(g),n=0,cx=0;
+  list.forEach(function(r){var body=fill(text,r);if(r.phone){sms(r.phone,r.name,body,'out',{kind:'bulk'});n++}else if(r.email){S.mail.push({id:uid(6),to:r.email,name:r.name,subject:opts.subject||'A message from Surf Coast Family Hub',body:body,at:now()});n++}
+   if(opts.cancel&&r.start){S.blocked[r.key]=1;if(r.bid){var b=bookingById(r.bid);if(b&&b.status==='booked')doCancel(b,'Practitioner unavailable',true)}var rr=S.rem[r.key];if(rr)rr.state='cancelled';cx++}});
+  if(opts.cancel&&g.kind==='day'&&g.pid)daySlots(g.pid,new Date(g.date)).forEach(function(d){if(d.getTime()>now())S.blocked[slotKey(g.pid,d)]=1});
+  S.bcasts.unshift({id:uid(6),at:now(),label:opts.label||'Message',count:n,text:text,cancelled:cx});
+  feed('send','Sent “'+(opts.label||'message')+'” to '+n+' '+(n===1?'person':'people')+(cx?', and cancelled '+cx+' appointment'+(cx>1?'s':'')+' (not offered to the waitlist)':'')+'.');save();return {ok:true,sent:n,cancelled:cx}},
  report:report,
  // what the dashboard needs
  state:function(){return S},
@@ -429,7 +536,7 @@ var api={
   live.sort(function(){return Math.random()-.5});var res=live.map(function(t){return claim(t,'tap')});return res},
  forward:function(mins){S.skew=(S.skew||0)+mins*6e4;feed('clock','Demo clock moved forward '+(mins>=120?Math.round(mins/60)+' hours':mins+' minutes')+'.');save();tick()},
  settings:function(x){Object.assign(S.settings,x);save();tick()},
- reset:function(){S=defaults();try{localStorage.removeItem('scfh-demo-mine')}catch(e){}save();tick()},
+ reset:function(){S=defaults();seedInbox();S.inboxSeeded=1;try{localStorage.removeItem('scfh-demo-mine')}catch(e){}save();tick()},
  removeWaitlist:function(id){var w=S.waitlist.filter(function(x){return x.id===id})[0];if(!w||w.removed)return;w.removed=now();
   feed('none','Removed '+w.name+' from the waitlist.');save()},
  noteWaitlist:function(id,note){var w=S.waitlist.filter(function(x){return x.id===id})[0];if(w){w.note=String(note||'').slice(0,500);save()}},
@@ -468,9 +575,13 @@ var api={
    last4Weeks:{note:'includes made-up sample history',appointments:rp.totals.booked,cancellations:rp.cancellations,refilled:rp.totals.refilled,fillRatePct:rp.fillRate,recovered:rp.totals.recovered,lost:rp.totals.lost,noShows:rp.totals.noshow,
     utilisationPct:rp.utilisation,reminders:{sent:rp.reminders.sent,confirmed:rp.reminders.confirmed,cantMakeIt:rp.reminders.cantMake},texts:rp.texts,lateFeesAllowedUnderPolicy:rp.totals.fees,referrals:rp.referrals,
     waitlistNow:{active:rp.waitlist.active,paused:rp.waitlist.paused,medianDaysWaiting:rp.waitlist.medianDays},byPractitioner:rp.byPract.map(function(r){return {who:r.first,booked:r.booked,lateCancels:r.late,earlyCancels:r.early,noShows:r.noshow,refilled:r.refilled,recovered:r.recovered,video:r.video}})},
+   inbox:{note:'counts only; message text is never included here',open:S.inbox.filter(function(x){return x.status==='open'}).length,urgent:S.inbox.filter(function(x){return x.urgent&&x.status!=='done'}).length,
+    waitingOnClient:S.inbox.filter(function(x){return x.status==='waiting'}).length,threads:S.inbox.slice(0,30).map(function(x){return {from:tok(x.name),channel:x.msgs[x.msgs.length-1].channel,topic:x.label,status:x.status,urgent:x.urgent||undefined,received:loc(x.updated),messages:x.msgs.length}})},
+   groupMessages:S.bcasts.slice(0,10).map(function(b){return {sent:loc(b.at),what:b.label,people:b.count,appointmentsCancelled:b.cancelled||undefined}}),
    activity:S.feed.slice(0,60).map(function(f){return loc(f.at)+' '+scrub(f.text)}),textsSent:S.sms.filter(function(m){return m.dir==='out'}).length};
   return {data:data,names:names,scrub:scrub}},
  on:function(f){subs.push(f)}
 };
+if(!S.inboxSeeded){seedInbox();S.inboxSeeded=1;try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
 window.HUB={P:P,ORDER:ORDER,photo:photo,SITE:SITE,api:api,fmt:{time:fmtTime,day:fmtDay,when:fmtWhen,money:money,esc:esc,DAY:DAY,MON:MON},serviceName:serviceName,lenOf:lenOf,now:now,slotKey:slotKey,VALUE:VALUE};
 })();

@@ -67,3 +67,26 @@ Edited the demo site copy (in the worker) and booking copy to fit Ahpra's advert
 - **Deploy (20 Nov):**
   - The worker had outside edits to the home page scene at 10:43 UTC (`index.html`, cliff and scrub images, `theme.css`), so the deploy was rebuilt on a fresh download of the live modules. Always re-download first.
   - New modules: `hub-refer.html`, `hub-report.html`, `hub-practitioner.html`, `hub-sop.html` and `hub-widget.js.txt`.
+
+### Inbox (20 Nov 2026)
+- **Engine (hub-core.js, store `scfh-demo-v4`):**
+  - `S.inbox` threads collect texts, emails, voicemail (with transcripts), missed calls and website enquiries. `inbound(d)` matches the sender by phone or email to bookings, waitlist, referrals and (demo) Halaxy clients in the next week (`fakePhone`).
+  - `classify` uses keyword rules to set a topic. `RISK` flags safety concerns: the thread is marked urgent and gets an automatic safety reply with 000, Lifeline and PANDA. Apostrophes can be ’ or '.
+  - Automatic replies (setting `autoReply` 'admin'): running late with an appointment today (and tells the practitioner), missed-call text, after-hours reply. Nothing else is sent without a person.
+  - Group messages: `groupList` (practitioner's day, week, waitlist, one person), `api.bulk(g,text,{cancel})`. The "practitioner unwell" option cancels without refill (`doCancel(...,noRefill)`) and blocks the day (`S.blocked`, slot state 'blocked').
+  - Seeded with five threads (`seedInbox`). `api.simulate(kind)` creates demo arrivals.
+  - The snapshot sends Ask Claude inbox counts and topics only, never message text.
+- **inbox.html / inbox.js / inbox.css:**
+  - Two panes (tabs Needs reply, Urgent, Waiting on client, Done, All; search).
+  - Each thread shows match chips and an urgent banner (Claude drafting is disabled on urgent threads), then messages and voicemail cards.
+  - Actions: call, log a call, cancel their appointment, add to waitlist. Staff note.
+  - Composer: text or email, templates with [BOOK_LINK]/[MANAGE_LINK]/[FEES_LINK], "Draft with Claude", SMS segment count, Send or Send and mark done.
+  - The "New message" drawer does group sends with a preview.
+  - The dashboard has an Inbox card, a nav badge and Inbox settings.
+- **Claude drafts:**
+  - `POST /api/hub/draft` lives in `worker/hub-ask.mjs` (same bundle as Ask, `hubDraft`). It uses structured output (`output_config.format` json_schema: topic, summary, urgent, reply, staffNote), effort low, 120 a day per IP.
+  - The client sends the conversation with the name replaced by [CLIENT] and phones and emails replaced by [phone]/[email], plus public facts: team, usual start times, fees, next free times, policy, and what's known about this client.
+  - The prompt treats message text as data (tested against an injection attempt) and never gives clinical advice.
+- **Contact page:** `src/enquiry.js` (worker route `/hub-enquiry.js`, plus hub-core on `contact.html`) sends the enquiry form into the inbox instead of opening the visitor's email app.
+- **Docs:** the privacy page covers messages kept, Claude's two uses, and urgent flagging. SOP section 17 covers the inbox and group messages.
+- **Live needs:** an SMS provider with inbound webhooks and a registered sender ID, an inbound email address, and a phone provider for missed calls and voicemail transcripts (for example forwarding the Hub number). Message storage hosted in Australia.

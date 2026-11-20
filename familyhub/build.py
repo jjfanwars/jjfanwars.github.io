@@ -14,7 +14,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 SRC = os.path.join(HERE, 'src')
 DEMO = 'https://familyhub.aiautomationvic.com/'
 PAGES_URL = 'https://jjfanwars.github.io/familyhub/'
-OWN = ('book.html', 'manage.html', 'admin.html', 'privacy.html', 'refer.html', 'report.html', 'practitioner.html', 'sop.html')
+OWN = ('book.html', 'manage.html', 'admin.html', 'privacy.html', 'refer.html', 'report.html', 'practitioner.html', 'sop.html', 'inbox.html')
 
 
 def read(name):
@@ -85,6 +85,7 @@ def build(live):
         'admin.html': admin_page(site, live),
         'report.html': admin_page(site, live, 'report.html', 'report.js', 'Hub report', 'How the Hub is going: bookings, cancellations, refills, waitlist and referrals.', ('report.css',)),
         'practitioner.html': admin_page(site, live, 'practitioner.html', 'practitioner.js', 'Practitioner view', 'Your own bookings, refills, waitlist, referrals and booking button.', ('report.css',)),
+        'inbox.html': admin_page(site, live, 'inbox.html', 'inbox.js', 'Inbox', 'Texts, emails, calls, voicemail and website enquiries in one place.', ('inbox.css',)),
         'sop.html': admin_page(site, live, 'sop.html', 'sop.js', 'Front desk SOP', 'How the Hub runs bookings, cancellations, the waitlist, referrals and client information.', ('report.css',)),
     }
     for name, html in files.items():
@@ -93,8 +94,9 @@ def build(live):
     if live:
         with open(os.path.join(HERE, 'hub-core.js'), encoding='utf-8') as f, open(os.path.join(outdir, 'hub-core.js'), 'w', encoding='utf-8') as g:
             g.write(f.read())
-    with open(os.path.join(SRC, 'widget.js'), encoding='utf-8') as f, open(os.path.join(outdir, 'widget.js'), 'w', encoding='utf-8') as g:
-        g.write(f.read())
+    for js in ('widget.js', 'enquiry.js'):
+        with open(os.path.join(SRC, js), encoding='utf-8') as f, open(os.path.join(outdir, js), 'w', encoding='utf-8') as g:
+            g.write(f.read())
     print('built', ', '.join(files), 'in', outdir)
 
 

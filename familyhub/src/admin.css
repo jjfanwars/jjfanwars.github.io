@@ -308,4 +308,17 @@ a.adm-cx:hover{background:var(--teal-mist);border-color:var(--teal-deep);color:v
 .adm-reason{margin:0;padding:12px;border-radius:var(--ui-r-sm);background:var(--ui-sunk);font-size:14.5px;line-height:1.5;white-space:pre-wrap}
 .adm-dl dd svg{width:14px;height:14px;vertical-align:-2px}
 @media (max-width:599px){.adm-refa{margin-left:0}}
+
+/* inbox summary */
+.adm-inboxbtn em{display:inline-grid;place-items:center;min-width:20px;height:20px;margin-left:6px;padding:0 5px;border-radius:99px;background:var(--teal-deep);color:#fff;font-style:normal;font-size:12px}
+.adm-inboxbtn em.u{background:#C0663A}
+.adm-ibl{list-style:none;margin:0;padding:0}
+.adm-ibl li+li{border-top:1px solid var(--ui-line)}
+.adm-ibl a{display:block;margin:0 -8px;padding:10px 8px;border-radius:var(--ui-r-sm);color:inherit;text-decoration:none}
+.adm-ibl a:hover{background:var(--ui-sunk)}
+.adm-ibl a.u{box-shadow:inset 3px 0 0 #C0663A}
+.adm-ibl b{font-size:14.5px;font-weight:600}
+.adm-ibl span{display:block;font-size:12.5px;color:var(--muted)}
+.adm-ibl p{margin:4px 0 0;font-size:13.5px;line-height:1.45;color:var(--ink);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.adm-seg button[disabled]{cursor:default}
 </style>

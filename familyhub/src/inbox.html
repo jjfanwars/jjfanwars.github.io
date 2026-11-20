@@ -1,0 +1,17 @@
+<body class="adm ib-page">
+<header class="adm-top">
+ <a class="adm-brand" href="admin.html"><img alt="" src="{{SITE}}img/logo-mark.webp" width="40" height="43"><span><small>Surf Coast Family Hub</small><b>Inbox</b></span></a>
+ <span class="adm-demo">Demo · fake data</span>
+ <nav class="adm-nav"><label class="ib-sim"><span class="sr">Pretend a message arrives</span><select id="ibSim"><option value="">Pretend a message arrives…</option><option value="late">Text: client running late</option><option value="move">Text: wants to reschedule</option><option value="cancel">Text: sick, can’t come</option><option value="email">Email: new client</option><option value="form">Website enquiry</option><option value="voicemail">Voicemail</option><option value="call">Missed call</option><option value="risk">Text that needs urgent attention</option></select></label>
+ <button type="button" class="btn btn-primary btn-sm" data-new>New message</button><a class="btn btn-outline btn-sm" href="admin.html">Dashboard</a></nav>
+</header>
+<main class="ib" id="main">
+ <aside class="ib-side" aria-label="Conversations">
+  <div class="ib-tabs" role="tablist" id="ibTabs"></div>
+  <label class="adm-search ib-q"><span class="sr">Search messages</span><input id="ibQ" type="search" placeholder="Search name, number or message" autocomplete="off"></label>
+  <ul class="ib-list" id="ibList"></ul>
+ </aside>
+ <section class="ib-main" id="ibMain" aria-live="polite"></section>
+</main>
+<dialog class="adm-drawer ib-new" id="ibNew" aria-labelledby="ibNewH"><div class="adm-dw" id="ibNewBody"></div></dialog>
+</body>

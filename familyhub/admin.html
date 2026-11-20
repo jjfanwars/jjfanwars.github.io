@@ -333,6 +333,19 @@ a.adm-cx:hover{background:var(--teal-mist);border-color:var(--teal-deep);color:v
 .adm-reason{margin:0;padding:12px;border-radius:var(--ui-r-sm);background:var(--ui-sunk);font-size:14.5px;line-height:1.5;white-space:pre-wrap}
 .adm-dl dd svg{width:14px;height:14px;vertical-align:-2px}
 @media (max-width:599px){.adm-refa{margin-left:0}}
+
+/* inbox summary */
+.adm-inboxbtn em{display:inline-grid;place-items:center;min-width:20px;height:20px;margin-left:6px;padding:0 5px;border-radius:99px;background:var(--teal-deep);color:#fff;font-style:normal;font-size:12px}
+.adm-inboxbtn em.u{background:#C0663A}
+.adm-ibl{list-style:none;margin:0;padding:0}
+.adm-ibl li+li{border-top:1px solid var(--ui-line)}
+.adm-ibl a{display:block;margin:0 -8px;padding:10px 8px;border-radius:var(--ui-r-sm);color:inherit;text-decoration:none}
+.adm-ibl a:hover{background:var(--ui-sunk)}
+.adm-ibl a.u{box-shadow:inset 3px 0 0 #C0663A}
+.adm-ibl b{font-size:14.5px;font-weight:600}
+.adm-ibl span{display:block;font-size:12.5px;color:var(--muted)}
+.adm-ibl p{margin:4px 0 0;font-size:13.5px;line-height:1.45;color:var(--ink);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.adm-seg button[disabled]{cursor:default}
 </style>
 <script>window.HUB_SITE='https://familyhub.aiautomationvic.com/'</script>
 <script src="hub-core.js"></script>
@@ -341,7 +354,7 @@ a.adm-cx:hover{background:var(--teal-mist);border-color:var(--teal-deep);color:v
 <header class="adm-top">
  <a class="adm-brand" href="https://familyhub.aiautomationvic.com/index.html"><img alt="" src="https://familyhub.aiautomationvic.com/img/logo-mark.webp" width="40" height="43"><span><small>Surf Coast Family Hub</small><b>Hub dashboard</b></span></a>
  <span class="adm-demo">Demo · fake data</span>
- <nav class="adm-nav"><button type="button" class="btn btn-primary btn-sm adm-askbtn" data-ask-open><svg aria-hidden="true" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" viewBox="0 0 24 24"><path d="M12 3l1.8 4.6L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.9z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/></svg>Ask Claude</button><a class="btn btn-outline btn-sm" href="report.html">Report</a><a class="btn btn-outline btn-sm" href="practitioner.html">Practitioner view</a><a class="btn btn-outline btn-sm" href="sop.html">SOP</a><a class="btn btn-outline btn-sm" href="book.html" target="_blank" rel="noopener">Booking page</a><button type="button" class="btn btn-outline btn-sm" id="admReset">Reset demo</button></nav>
+ <nav class="adm-nav"><button type="button" class="btn btn-primary btn-sm adm-askbtn" data-ask-open><svg aria-hidden="true" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" viewBox="0 0 24 24"><path d="M12 3l1.8 4.6L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.9z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/></svg>Ask Claude</button><a class="btn btn-outline btn-sm adm-inboxbtn" href="inbox.html">Inbox<span id="admIbN"></span></a><a class="btn btn-outline btn-sm" href="report.html">Report</a><a class="btn btn-outline btn-sm" href="practitioner.html">Practitioner view</a><a class="btn btn-outline btn-sm" href="sop.html">SOP</a><a class="btn btn-outline btn-sm" href="book.html" target="_blank" rel="noopener">Booking page</a><button type="button" class="btn btn-outline btn-sm" id="admReset">Reset demo</button></nav>
 </header>
 <main class="adm-main" id="main">
  <section class="adm-stats" id="admStats" aria-label="This month"></section>
@@ -355,6 +368,7 @@ a.adm-cx:hover{background:var(--teal-mist);border-color:var(--teal-deep);color:v
    <section class="adm-card"><div class="adm-h"><h2>Coming up</h2><span class="adm-sub">Tap Cancel to pretend a client cancelled</span></div><div id="admUp"></div><div class="adm-ff"><span>Demo clock</span><button type="button" class="adm-ghost" data-ff="60">+1 hour</button><button type="button" class="adm-ghost" data-ff="360">+6 hours</button><button type="button" class="adm-ghost" data-ff="1440">+1 day</button></div></section>
   </div>
   <div class="adm-col">
+   <section class="adm-card" id="admIbCard"><div class="adm-h"><h2>Inbox</h2><span class="adm-sub" id="admIbSub"></span><a class="adm-ghost adm-h-act" href="inbox.html">Open inbox</a></div><div id="admIb"></div></section>
    <section class="adm-card"><div class="adm-h"><h2>Activity</h2></div><ol class="adm-feed" id="admFeed"></ol></section>
    <section class="adm-card" id="admRefCard"><div class="adm-h"><h2>Referrals</h2><span class="adm-sub" id="admRefN"></span><a class="adm-ghost adm-h-act" href="refer.html?staff=1" target="_blank" rel="noopener">Log a referral</a></div><div id="admRef"></div></section>
    <section class="adm-card" id="admWlCard"><div class="adm-h"><h2>Waitlist</h2><span class="adm-sub" id="admWlN"></span></div><div class="adm-tools"><label class="adm-search"><span class="sr">Search the waitlist</span><input id="admWlQ" type="search" placeholder="Search name, phone or service" autocomplete="off"></label><label><span class="sr">Practitioner</span><select id="admWlP"><option value="">Everyone</option></select></label><button type="button" class="adm-ghost" data-csv="waitlist" title="Download as a spreadsheet (CSV)">Export</button></div><div id="admWl"></div></section>
@@ -449,7 +463,7 @@ function upcoming(){var list=api.upcoming(4).slice(0,40),days={};
    (r?(r.state==='confirmed'?' <em class="adm-rs ok" title="Confirmed by text">'+svg('check')+'Confirmed</em>':' <em class="adm-rs" title="Reminder sent, no reply yet">Reminded</em>'):'');
   return '<li><time>'+F.time(a.start)+'</time><img src="'+H.photo(a.pid)+'" alt="" width="30" height="30"><span><b>'+esc(a.name)+'</b> with '+esc(p.first)+chips+'</span><button type="button" class="adm-cx" data-cx="'+a.pid+'|'+a.start.toISOString()+'">Cancel</button></li>'}).join('')+'</ul>'}).join('')||'<p class="adm-empty">No appointments in the next few days.</p>'}
 
-var ICONK={cancel:'x',offer:'send',filled:'check',booked:'check',wait:'users',move:'ff',none:'list',skip:'list',ask:'bolt',queue:'clock',clock:'clock',remind:'bell',confirm:'check',ref:'file'};
+var ICONK={cancel:'x',offer:'send',filled:'check',booked:'check',wait:'users',move:'ff',none:'list',skip:'list',ask:'bolt',queue:'clock',clock:'clock',remind:'bell',confirm:'check',ref:'file',inbox:'send',urgent:'bolt',send:'send'};
 function feed(){var S=api.state();
  $('admFeed').innerHTML=S.feed.slice(0,18).map(function(f){return '<li class="fk-'+f.kind+'"><span class="adm-fi">'+svg(ICONK[f.kind]||'list')+'</span><p>'+esc(f.text)+'<time>'+ago(f.at)+'</time></p></li>'}).join('')||'<li class="adm-empty">Quiet so far.</li>'}
 
@@ -543,6 +557,14 @@ $('admAskQ').addEventListener('input',function(){this.style.height='';this.style
 $('admPerson').addEventListener('close',function(){openPerson=null;openRef=null});
 $('admWlQ').addEventListener('input',waitlist);$('admWlP').addEventListener('change',waitlist);
 
+// ---------- inbox summary ----------
+var CHN={sms:'Text',email:'Email',voicemail:'Voicemail',call:'Missed call',form:'Website enquiry'};
+function inboxCard(){var l=api.state().inbox.filter(function(t){return t.status==='open'}).sort(function(a,b){return (b.urgent-a.urgent)||b.updated-a.updated}),u=l.filter(function(t){return t.urgent}).length;
+ $('admIbN').innerHTML=l.length?'<em'+(u?' class="u"':'')+'>'+l.length+'</em>':'';
+ $('admIbSub').textContent=l.length?l.length+' need'+(l.length===1?'s':'')+' a reply'+(u?', '+u+' urgent':''):'All caught up';
+ $('admIb').innerHTML=l.length?'<ul class="adm-ibl">'+l.slice(0,4).map(function(t){var m=t.msgs.filter(function(x){return x.dir==='in'}).slice(-1)[0]||t.msgs[0];
+  return '<li><a href="inbox.html#t='+t.id+'"'+(t.urgent?' class="u"':'')+'><b>'+esc(t.name)+'</b><span>'+CHN[m.channel]+' · '+esc(t.label)+' · '+ago(t.updated)+'</span><p>'+esc(m.channel==='call'?'Missed call':(m.text||'').slice(0,110))+'</p></a></li>'}).join('')+'</ul>'+(l.length>4?'<p class="adm-muted">And '+(l.length-4)+' more in the inbox.</p>':''):'<p class="adm-empty">Nothing waiting. Texts, emails, voicemails and website enquiries land here.</p>'}
+
 // ---------- reminders ----------
 function reminders(){var S=api.state(),l=remList().sort(function(a,b){return new Date(a.start)-new Date(b.start)});
  var c=l.filter(function(r){return r.state==='confirmed'}).length,w=l.filter(function(r){return r.state==='sent'}),x=l.filter(function(r){return r.state==='cancelled'}).length;
@@ -601,9 +623,14 @@ function settings(){var s=api.state().settings;
   '<h3 class="adm-sh">Waitlist and booking</h3>'+
   row('“Still keen?” check-in','People who don’t reply within a week are paused, not removed.',seg('freshDays',[[0,'Off'],[30,'After 30 days'],[60,'After 60 days']],s.fresh?s.freshDays:0))+
   row('Regular (weekly or fortnightly) booking online','',seg('series',[[true,'On'],[false,'Off']]))+
-  row('Referral to a named practitioner','',seg('autoInvite',[[true,'Text the client a booking link'],[false,'Wait for staff']]))}
+  row('Referral to a named practitioner','',seg('autoInvite',[[true,'Text the client a booking link'],[false,'Wait for staff']]))+
+  '<h3 class="adm-sh">Inbox</h3>'+
+  row('Automatic replies','Admin only: “running late” (and tells the practitioner) and confirmations. Everything else waits for a person.',seg('autoReply',[['admin','Admin only'],['off','Off']]))+
+  row('Missed call text','',seg('missedText',[[true,'On'],[false,'Off']]))+
+  row('After-hours reply','',seg('afterHours',[[true,'On'],[false,'Off']]))+
+  row('Safety reply','Messages that may mean someone is at risk get an instant reply with 000 and Lifeline, and are flagged urgent. Always on.','<div class="adm-seg"><button type="button" aria-pressed="true" disabled>On</button></div>')}
 
-function all(){stats();tryBox();needs();offers();phones();reminders();upcoming();feed();refs();fillPractFilter();waitlist();records();settings();
+function all(){stats();tryBox();needs();offers();phones();reminders();upcoming();inboxCard();feed();refs();fillPractFilter();waitlist();records();settings();
  if($('admPerson').open){if(openPerson&&document.activeElement!==$('admNote'))person(openPerson);else if(openRef)refDrawer(openRef)}}
 api.on(all);all();
 setInterval(function(){stats();offers()},1000);

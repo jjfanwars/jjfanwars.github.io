@@ -66,7 +66,7 @@ function upcoming(){var list=api.upcoming(4).slice(0,40),days={};
    (r?(r.state==='confirmed'?' <em class="adm-rs ok" title="Confirmed by text">'+svg('check')+'Confirmed</em>':' <em class="adm-rs" title="Reminder sent, no reply yet">Reminded</em>'):'');
   return '<li><time>'+F.time(a.start)+'</time><img src="'+H.photo(a.pid)+'" alt="" width="30" height="30"><span><b>'+esc(a.name)+'</b> with '+esc(p.first)+chips+'</span><button type="button" class="adm-cx" data-cx="'+a.pid+'|'+a.start.toISOString()+'">Cancel</button></li>'}).join('')+'</ul>'}).join('')||'<p class="adm-empty">No appointments in the next few days.</p>'}
 
-var ICONK={cancel:'x',offer:'send',filled:'check',booked:'check',wait:'users',move:'ff',none:'list',skip:'list',ask:'bolt',queue:'clock',clock:'clock',remind:'bell',confirm:'check',ref:'file'};
+var ICONK={cancel:'x',offer:'send',filled:'check',booked:'check',wait:'users',move:'ff',none:'list',skip:'list',ask:'bolt',queue:'clock',clock:'clock',remind:'bell',confirm:'check',ref:'file',inbox:'send',urgent:'bolt',send:'send'};
 function feed(){var S=api.state();
  $('admFeed').innerHTML=S.feed.slice(0,18).map(function(f){return '<li class="fk-'+f.kind+'"><span class="adm-fi">'+svg(ICONK[f.kind]||'list')+'</span><p>'+esc(f.text)+'<time>'+ago(f.at)+'</time></p></li>'}).join('')||'<li class="adm-empty">Quiet so far.</li>'}
 
@@ -160,6 +160,14 @@ $('admAskQ').addEventListener('input',function(){this.style.height='';this.style
 $('admPerson').addEventListener('close',function(){openPerson=null;openRef=null});
 $('admWlQ').addEventListener('input',waitlist);$('admWlP').addEventListener('change',waitlist);
 
+// ---------- inbox summary ----------
+var CHN={sms:'Text',email:'Email',voicemail:'Voicemail',call:'Missed call',form:'Website enquiry'};
+function inboxCard(){var l=api.state().inbox.filter(function(t){return t.status==='open'}).sort(function(a,b){return (b.urgent-a.urgent)||b.updated-a.updated}),u=l.filter(function(t){return t.urgent}).length;
+ $('admIbN').innerHTML=l.length?'<em'+(u?' class="u"':'')+'>'+l.length+'</em>':'';
+ $('admIbSub').textContent=l.length?l.length+' need'+(l.length===1?'s':'')+' a reply'+(u?', '+u+' urgent':''):'All caught up';
+ $('admIb').innerHTML=l.length?'<ul class="adm-ibl">'+l.slice(0,4).map(function(t){var m=t.msgs.filter(function(x){return x.dir==='in'}).slice(-1)[0]||t.msgs[0];
+  return '<li><a href="inbox.html#t='+t.id+'"'+(t.urgent?' class="u"':'')+'><b>'+esc(t.name)+'</b><span>'+CHN[m.channel]+' · '+esc(t.label)+' · '+ago(t.updated)+'</span><p>'+esc(m.channel==='call'?'Missed call':(m.text||'').slice(0,110))+'</p></a></li>'}).join('')+'</ul>'+(l.length>4?'<p class="adm-muted">And '+(l.length-4)+' more in the inbox.</p>':''):'<p class="adm-empty">Nothing waiting. Texts, emails, voicemails and website enquiries land here.</p>'}
+
 // ---------- reminders ----------
 function reminders(){var S=api.state(),l=remList().sort(function(a,b){return new Date(a.start)-new Date(b.start)});
  var c=l.filter(function(r){return r.state==='confirmed'}).length,w=l.filter(function(r){return r.state==='sent'}),x=l.filter(function(r){return r.state==='cancelled'}).length;
@@ -218,9 +226,14 @@ function settings(){var s=api.state().settings;
   '<h3 class="adm-sh">Waitlist and booking</h3>'+
   row('“Still keen?” check-in','People who don’t reply within a week are paused, not removed.',seg('freshDays',[[0,'Off'],[30,'After 30 days'],[60,'After 60 days']],s.fresh?s.freshDays:0))+
   row('Regular (weekly or fortnightly) booking online','',seg('series',[[true,'On'],[false,'Off']]))+
-  row('Referral to a named practitioner','',seg('autoInvite',[[true,'Text the client a booking link'],[false,'Wait for staff']]))}
+  row('Referral to a named practitioner','',seg('autoInvite',[[true,'Text the client a booking link'],[false,'Wait for staff']]))+
+  '<h3 class="adm-sh">Inbox</h3>'+
+  row('Automatic replies','Admin only: “running late” (and tells the practitioner) and confirmations. Everything else waits for a person.',seg('autoReply',[['admin','Admin only'],['off','Off']]))+
+  row('Missed call text','',seg('missedText',[[true,'On'],[false,'Off']]))+
+  row('After-hours reply','',seg('afterHours',[[true,'On'],[false,'Off']]))+
+  row('Safety reply','Messages that may mean someone is at risk get an instant reply with 000 and Lifeline, and are flagged urgent. Always on.','<div class="adm-seg"><button type="button" aria-pressed="true" disabled>On</button></div>')}
 
-function all(){stats();tryBox();needs();offers();phones();reminders();upcoming();feed();refs();fillPractFilter();waitlist();records();settings();
+function all(){stats();tryBox();needs();offers();phones();reminders();upcoming();inboxCard();feed();refs();fillPractFilter();waitlist();records();settings();
  if($('admPerson').open){if(openPerson&&document.activeElement!==$('admNote'))person(openPerson);else if(openRef)refDrawer(openRef)}}
 api.on(all);all();
 setInterval(function(){stats();offers()},1000);
