@@ -317,3 +317,45 @@ Still open from the owner's list above (9, the scarier sea monster, 15, the inve
 - v85 small fixes: the decor card table in the big ships' lounge is gone (the poker table replaces it; the slot cabinet stays); wood finish sheen lowered (envMapIntensity .15, normal .3) so plank seams stop catching the sky; the Albatross cabin ribs are ceiling arcs only (they crossed the windows). Still open from the list: real lights in the dressed bridges, a 4-seat poker table for the cutter and subs, poker bot animation, chip/payout animation, a hand log and a chips-to-cash option, the Albatross bulkhead panels near the cockpit.
 - v85 batch 2: **jumping aboard**: stepPlayer's on-boat test keeps `P.ob` (updating `P.bl`) while you are airborne over any boat floor (`floorAtBoat`, within 3 m), so a jump inside a sub (floor below the sea) no longer drops you into the water, and a moving deck carries you mid-jump. **Kraken side ladders** (`nkLadders`): three a side at z 6.2/24/42, rungs and rails following the hull arc (`NUKE.RB`) from -.35 m to the deck edge, yellow grab hoops, each with a 'ladder' INTER (top 'boat', end on the deck strip). **Underwater prewarm**: `pfPrewarm` builds UWX/UW2/KGL (uwxInit, uw2Init, kglBuild), compiles them with everything else, uploads their textures (`RND.initTexture`), then hides them (`PF.uwL`). **F-35 back seats**: the two spine seats sit in a rear tub (sills, consoles, a display and a low wind deflector each, seats with headboxes and straps), seated low (`pseats[i][3] = -.8`, eye about fb + .3); the old pads and grab rails are removed by a last buildBoat step (they are added after f35Cockpit); the front cockpit's aft canopy arch is gone and the frame/seat paints are matte.
 - v85 batch 3: `bfMat` clones keep `onBeforeCompile`/`customProgramCacheKey` (the clone had dropped `subHook`, so sub interiors got full underwater fog and lost their interior light: the "blue inside"); Kraken interior paints warmed (walls 0xccc6b4, the old navy lockers/bunks 0x4e5a44, curtains 0x3a3226). Kraken: the research sub's propeller moves into the pump-jet shroud (z 68.3, x1.55) and the helm camera sits in the helmsman's seat (BHELM -.68, -11.4). Boat motion (end of boatPose core): roll/pitch/heave are low-passed and scaled down by size (`big` = (L - 14) / 40) and for subs (x.5): Kraken roll sd 2.9 -> .5 deg, dive vessel 2.6 -> 1.6; sinking, planes and the balloon are untouched. Waterline hysteresis: `G.uwS` (on below wave - .25, off above wave + .15) and `G.subDS` (dived above 1.2 m, surfaced below .6 m) feed `G.uw` and uw2Frame, so the underwater set and fog stop flickering when a sub runs at the surface.
+
+## Station Nine: Arena (`rig/arena.html`, PvP, 20 Nov 2026)
+A separate page with its own map, linked from the Station Nine menu ("PvP Arena" button). It shares no code with game.js. Six plain scripts in `rig/arena/`, loaded in order and sharing globals:
+- **core.js:** helpers, settings in localStorage `s9a-set`, `Net`, renderer/sky/materials, synthesised `Snd`, input, `WPN`/`LOADOUTS`/`KEYMAP`.
+  - `Net` is the Station Nine relay protocol with rooms tagged `[Arena]`, up to 8 players.
+  - `AV` is the version and must match between host and guests.
+  - `NOW()` = performance.now() + `CLKO`; the test hook advances `CLKO`.
+- **world.js:** the Fort Brine map and its queries.
+  - Terrain: `terrRaw` (island, two arms closing a bay, fort plateau at y 9, dock landings) baked into a 2 m grid `TG`; `groundH` uses the mesh's triangles.
+  - Colliders are axis-aligned `BOX`, cylinder `CIRC` and ladder `LAD`, in an 8 m grid (`near`).
+  - Pieces: `buildFort` (walls with gates and breaches, merlons, corner bastions, four stairs to the wall walk, the keep with a roof hatch and ladder), `buildDocks` (red pier west, blue east, ladders, boathouses, `DOCKS[].moor`), `buildTowers` (watchtowers on the arm tips), `buildBits` (pillbox, wreck, cover, palms, `PICKS`, `SPAWNS`).
+  - Water: a shader plane that takes depth colour from the terrain height texture, with its own fog; `waterY` gives the visual waves.
+  - Queries: `floorStatic`/`ceilStatic`/`pushStatic`/`ladderAt`/`rayStatic`/`losStatic`.
+  - Bot nav: a 3 m grid `NAV` with `navPath` (A*); ground level only.
+- **player.js:** the local soldier `P` and remote players.
+  - Movement: walk, sprint, crouch, jump, fall damage, wading, swimming (rides the waves, C dives, air), climbing out with Space (`tryMantle`), ladders (W up, S down, steps off at the top), riding decks (`P.bi`/`P.bl` in boat coordinates).
+  - Camera with death cam; view model `vmBuild`; `gunModel(k)` is shared by the view model, avatars and pickups.
+  - Firing is client-side: `shootRay` checks the world, boats and the avatars you see, then sends act `hit`/`bh`/`sh` (favour the shooter).
+  - Avatars `AVS`: `Buf` interpolation buffers keyed by the sender's clock, drawn 115 ms behind. The pose array is `myPoseArr` (13 numbers: position, view, bits, weapon, boat index, boat-local position, boat yaw).
+- **boats.js:** four gunboats (`BOATS`, two per dock; team-coloured in boat battle, grey in FFA).
+  - Local boxes `BBOX`; bow at -z, deck .95.
+  - Whoever drives simulates the boat (`simBoat`: throttle/steer, land via `groundH`, piers/posts, other boats, map edge) and sends `bs` in the pose. The host simulates empty boats and sends them in the snapshot.
+  - Seats: helm (E; W/S/A/D; F fires a torpedo, 2 tubes with an 8 s reload) and deck gun (E; mouse aims, click fires shells).
+  - Helpers: `boatFloor`/`pushBoats`/`rayBoats`/`inBoatHull`.
+  - A boat sinks at 0 hull (450), throws the crew in the water (35 damage from the sinker) and respawns at its mooring after 16 s.
+- **match.js:** effects (`fx*`), events and the host's rules.
+  - Projectiles `PJ` (rk rocket, sh shell, tp torpedo, gr grenade): everyone flies them; the host decides the burst (`pjHost` → `boom`: area damage with an LOS cut, self damage x.6, boat damage).
+  - Events go `emit` → `applyEv` (and `G.evq` into the snapshot): dm, kl, sp, seat/unseat, pj, bx, bs/br (boat sunk / back), pku, sh, end, rs, ro, msg, tp.
+  - Host stats live in `HS`. The synced table is `G.pl[id] = [hp, alive, team, kills, deaths, score, loadout]`.
+  - Damage: `damage(id, amt, by, w, head, at)` (no team damage in boat battle, 1.6 s spawn protection, regen after 5 s). `kill` gives +1 (suicide -1); sinking a boat gives +3 in boat battle (team score too) or +2 in FFA.
+  - `checkWin`/`endMatch`; the host restarts with `matchReset` 14 s after the end. `pickSpawn` keeps away from enemies, other players and recently used spawns. Pickups `PK` show respawn timers (weapons 45 s, health/ammo 25 s, grenades 30 s).
+  - Bots (host only, `BOTS`, ids `b0..`):
+    - Targets in view with LOS, reaction time and aim error by skill (`SKILL`).
+    - Strafe and hold range, grenades, reload.
+    - Wander via `navPath` to health when hurt, guns, the last enemy seen or central points.
+    - In boat battle they man a friendly deck gun when near one; as gunners they shoot at crewed enemy boats, else at players.
+  - Network: `sendPose` (20 Hz), `packSnap`/`applySnap` (15 Hz, `ts` = host clock); late joiners get `start` with `late`.
+- **ui.js:** menu (name, host, join, practice vs bots offline, open rooms, settings), lobby (host sets mode, score, time, bots, bot skill; teams in boat battle), HUD (health/air, ammo, grenades, score + timer, kill feed, hit markers, damage arcs, minimap, boat panel, prompts, scoreboard on Tab), death/loadout screen (3 s, then Deploy; 1-4 picks), end screen, input, `simFrame` + `frameRest` + `frame`.
+- **Test hook:** `?test` exposes `window.__A`; `__A.sim(n, dt)` steps the game without rendering. Headless runs at about a fifth of real time, so use it.
+- **Weapons:**
+  - Loadouts: Assault (SMG), Breacher (shotgun), Marksman (rifle with 2.2x zoom), Diver (harpoon that fires under water, fast swim, long breath). Everyone also carries a pistol, grenades (G) and a knife (V).
+  - Map pickups: sniper on each watchtower, rockets on the keep roof and in the pillbox, LMG in the north courtyard, magnums on the beaches, plus health, ammo and grenade crates.
