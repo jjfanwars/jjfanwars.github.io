@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Clay Playground</title>
+<meta name="description" content="Clay: a small, strict programming language built for AI to write. Write code, run it and test it in the browser.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f6f3ef;--panel:#fffdfa;--panel2:#f0ebe4;--ink:#231f1b;--mute:#6f665d;--line:#e0d8cd;
+  --acc:#b8532a;--acc2:#f7e4d9;--good:#2f7d4a;--goodbg:#e6f3ea;--bad:#b42d25;--badbg:#fbe9e7;
+  --c-kw:#9b3d8f;--c-str:#2f7d4a;--c-num:#b8532a;--c-com:#9a9086;--c-bi:#1f62a8;--c-ty:#a36a00;--c-op:#6f665d;--c-int:#7a4b00;
+  --sel:#f1d6c6;--errline:rgba(180,45,37,.12);
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#171412;--panel:#1f1b18;--panel2:#28231f;--ink:#ede6de;--mute:#a1968b;--line:#352e28;
+  --acc:#e0814f;--acc2:#3a2a20;--good:#6fcf8e;--goodbg:#1c2c21;--bad:#ff8a7f;--badbg:#341c1a;
+  --c-kw:#e08fd5;--c-str:#8fd19e;--c-num:#f0a070;--c-com:#7b7067;--c-bi:#7fb6f0;--c-ty:#f0c060;--c-op:#a1968b;--c-int:#f6d28a;
+  --sel:#4a3326;--errline:rgba(255,120,110,.14);
+}}
+:root[data-theme="dark"]{
+  --bg:#171412;--panel:#1f1b18;--panel2:#28231f;--ink:#ede6de;--mute:#a1968b;--line:#352e28;
+  --acc:#e0814f;--acc2:#3a2a20;--good:#6fcf8e;--goodbg:#1c2c21;--bad:#ff8a7f;--badbg:#341c1a;
+  --c-kw:#e08fd5;--c-str:#8fd19e;--c-num:#f0a070;--c-com:#7b7067;--c-bi:#7fb6f0;--c-ty:#f0c060;--c-op:#a1968b;--c-int:#f6d28a;
+  --sel:#4a3326;--errline:rgba(255,120,110,.14);
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{background:var(--bg);color:var(--ink);font:15px/1.5 Inter,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;display:flex;flex-direction:column}
+button,select{font:inherit;color:inherit}
+header{display:flex;align-items:center;gap:14px;padding:10px 16px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.logo{display:flex;align-items:baseline;gap:10px}
+.logo b{font:700 22px/1 "JetBrains Mono",monospace;letter-spacing:-.02em;color:var(--acc)}
+.logo span{color:var(--mute);font-size:13.5px}
+.bar{display:flex;gap:8px;margin-left:auto;flex-wrap:wrap;align-items:center}
+.btn{border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:6px 12px;cursor:pointer;white-space:nowrap}
+.btn:hover{border-color:var(--mute)}
+.btn.pri{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:600}
+.btn.pri:hover{filter:brightness(1.08)}
+.btn kbd{font:11px "JetBrains Mono",monospace;opacity:.75;margin-left:6px}
+select.btn{padding-right:8px}
+main{flex:1;display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);min-height:0}
+.pane{display:flex;flex-direction:column;min-height:0;min-width:0}
+.pane+.pane{border-left:1px solid var(--line)}
+.ptitle{display:flex;align-items:center;gap:4px;padding:0 10px;border-bottom:1px solid var(--line);background:var(--panel2);font-size:13px;color:var(--mute);min-height:38px}
+.ptitle .tab{border:0;background:none;padding:9px 10px;cursor:pointer;color:var(--mute);border-bottom:2px solid transparent;margin-bottom:-1px}
+.ptitle .tab.on{color:var(--ink);border-bottom-color:var(--acc);font-weight:600}
+.ptitle .sp{flex:1}
+.fname{font:13px "JetBrains Mono",monospace;padding:9px 6px;color:var(--ink)}
+/* editor */
+.ed{position:relative;flex:1;min-height:0;background:var(--panel);display:flex;overflow:hidden}
+.gut{flex:none;width:46px;overflow:hidden;background:var(--panel);border-right:1px solid var(--line);user-select:none}
+.gut div{font:13.5px/21px "JetBrains Mono",monospace;color:var(--c-com);text-align:right;padding-right:10px;will-change:transform}
+.gut div i{display:block;font-style:normal}
+.gut div i.err{color:var(--bad);font-weight:600;background:var(--errline)}
+.code{position:relative;flex:1;min-width:0}
+.code pre,.code textarea{position:absolute;inset:0;margin:0;padding:12px 14px 40vh;border:0;font:13.5px/21px "JetBrains Mono",monospace;white-space:pre;tab-size:2;overflow:auto;letter-spacing:0;font-variant-ligatures:none}
+.code pre{pointer-events:none;color:var(--ink);overflow:hidden}
+.code textarea{background:transparent;color:transparent;caret-color:var(--ink);resize:none;outline:none;-webkit-text-fill-color:transparent}
+.code textarea::selection{background:var(--sel);-webkit-text-fill-color:transparent}
+.hl-err{background:var(--errline);display:inline-block;min-width:100%}
+.k{color:var(--c-kw);font-weight:600}.s{color:var(--c-str)}.n{color:var(--c-num)}.c{color:var(--c-com);font-style:italic}.b{color:var(--c-bi)}.t{color:var(--c-ty)}.o{color:var(--c-op)}.ip{color:var(--c-int)}
+/* output */
+.out{flex:1;overflow:auto;padding:14px 16px;background:var(--panel)}
+.out pre{margin:0;font:13.5px/1.55 "JetBrains Mono",monospace;white-space:pre-wrap;word-break:break-word}
+.status{font-size:12.5px;color:var(--mute);margin:0 0 10px}
+.errbox{border:1px solid color-mix(in srgb,var(--bad) 40%,transparent);background:var(--badbg);border-radius:8px;padding:10px 12px;margin:10px 0}
+.errbox pre{color:var(--bad);white-space:pre;overflow-x:auto;word-break:normal;font-variant-ligatures:none}
+.errbox .row{display:flex;justify-content:flex-end;margin-top:8px}
+.tests{list-style:none;margin:10px 0;padding:0}
+.tests li{padding:6px 10px;border-radius:6px;margin:4px 0;font:13px "JetBrains Mono",monospace}
+.tests li.ok{background:var(--goodbg);color:var(--good)}
+.tests li.no{background:var(--badbg);color:var(--bad)}
+.tests li pre{margin-top:6px}
+.empty{color:var(--mute);font-size:14px}
+.spec{flex:1;overflow:auto;padding:16px 18px 40px;background:var(--panel);display:none}
+.spec.on{display:block}.out.off{display:none}
+.spec h3{font-size:15px;margin:18px 0 6px}
+.spec h2{font-size:18px;margin:0 0 6px}
+.spec p,.spec li{color:var(--ink);font-size:14px}
+.spec ul{padding-left:20px;margin:6px 0 12px}
+.spec pre{font:12.5px/1.6 "JetBrains Mono",monospace;white-space:pre-wrap;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin:6px 0}
+.spec .lead{color:var(--mute);margin:0 0 10px}
+.toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%) translateY(20px);background:var(--ink);color:var(--bg);padding:8px 14px;border-radius:8px;font-size:13.5px;opacity:0;transition:.2s;pointer-events:none;z-index:9}
+.toast.on{opacity:1;transform:translateX(-50%)}
+@media (max-width:820px){
+  header{padding:10px 16px}
+  .logo span{display:none}
+  .bar{margin-left:0;width:100%}
+  main{grid-template-columns:1fr;grid-template-rows:minmax(300px,1.2fr) minmax(240px,1fr)}
+  .pane+.pane{border-left:0;border-top:1px solid var(--line)}
+  .btn kbd{display:none}
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo"><b>clay</b><span>a small, strict language built for AI to write</span></div>
+  <div class="bar">
+    <select class="btn" id="ex" aria-label="Examples"></select>
+    <button class="btn pri" id="run" title="Run (Ctrl+Enter)">▶ Run<kbd>Ctrl+↵</kbd></button>
+    <button class="btn" id="test" title="Run tests (Ctrl+Shift+Enter)">Test</button>
+    <button class="btn" id="share" title="Copy a link to this code">Share</button>
+    <button class="btn" id="spec" title="Copy the whole language spec, ready to paste into an AI chat">Copy spec for AI</button>
+  </div>
+</header>
+<main>
+  <section class="pane">
+    <div class="ptitle"><span class="fname">main.clay</span><span class="sp"></span><span id="pos"></span></div>
+    <div class="ed">
+      <div class="gut"><div id="gut"></div></div>
+      <div class="code"><pre id="hl" aria-hidden="true"></pre><textarea id="src" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off" aria-label="Clay code"></textarea></div>
+    </div>
+  </section>
+  <section class="pane">
+    <div class="ptitle"><button class="tab on" data-t="out">Output</button><button class="tab" data-t="spec">Language</button></div>
+    <div class="out" id="out"><p class="empty">Press Run to run your program, or Test to run its tests.</p></div>
+    <div class="spec" id="specv"></div>
+  </section>
+</main>
+<div class="toast" id="toast"></div>
+<script src="clay.js"></script>
+<script>
+(function () {
+'use strict';
+const $ = id => document.getElementById(id);
+const src = $('src'), hl = $('hl'), gut = $('gut'), out = $('out');
+
+const EXAMPLES = {
+'Hello': `# Clay: a small, strict language built for AI to write.
+# Press Run (Ctrl+Enter). Press Test to run the tests at the bottom.
+
+fn greet(name: str) -> str {
+  ret "Hello, {name}!"
+}
+
+let names = ["Ada", "Linus", "Grace"]
+for n in names {
+  print(greet(n))
+}
+
+test "greet adds the name" {
+  assert greet("Clay") == "Hello, Clay!"
+}
+`,
+'FizzBuzz': `fn fizz(n: int) -> str {
+  if n % 15 == 0 { ret "FizzBuzz" }
+  if n % 3 == 0 { ret "Fizz" }
+  if n % 5 == 0 { ret "Buzz" }
+  ret str(n)
+}
+
+for i in 1..21 {
+  print(fizz(i))
+}
+
+test "fizz rules" {
+  assert fizz(3) == "Fizz"
+  assert fizz(10) == "Buzz"
+  assert fizz(30) == "FizzBuzz"
+  assert fizz(7) == "7"
+}
+`,
+'Records': `type Point { x: float, y: float }
+type Shape { name: str, points: list[Point] }
+
+fn dist(a: Point, b: Point) -> float {
+  let dx = b.x - a.x
+  let dy = b.y - a.y
+  ret sqrt(dx * dx + dy * dy)
+}
+
+fn perimeter(s: Shape) -> float {
+  var total = 0.0
+  let n = len(s.points)
+  for i in 0..n {
+    total += dist(s.points[i], s.points[(i + 1) % n])
+  }
+  ret total
+}
+
+let tri = Shape{name: "triangle", points: [Point{x: 0.0, y: 0.0}, Point{x: 3.0, y: 0.0}, Point{x: 0.0, y: 4.0}]}
+print("{tri.name} perimeter: {fixed(perimeter(tri), 2)}")
+
+test "3-4-5 triangle" {
+  assert perimeter(tri) == 12.0
+}
+`,
+'Word count': `fn count_words(text: str) -> map[int] {
+  var counts: map[int] = {}
+  for w in split(lower(text), " ") {
+    if w == "" { continue }
+    counts[w] = get(counts, w, 0) + 1
+  }
+  ret counts
+}
+
+let text = "the cat and the hat and the bat"
+let counts = count_words(text)
+let top = reverse(sort_by(keys(counts), fn(w: str) -> int { ret counts[w] }))
+for w in top {
+  print("{w}: {repeat("#", counts[w])} {counts[w]}")
+}
+
+test "counts repeated words" {
+  let c = count_words("a b a")
+  assert c["a"] == 2
+  assert c["b"] == 1
+  assert not has(c, "z")
+}
+`,
+'Primes': `fn is_prime(n: int) -> bool {
+  if n < 2 { ret false }
+  var d = 2
+  while d * d <= n {
+    if n % d == 0 { ret false }
+    d += 1
+  }
+  ret true
+}
+
+let primes = filter(0..100, is_prime)
+print("{len(primes)} primes under 100:")
+print(join(primes, " "))
+print("sum:", sum(primes))
+print("2^127 - 1 =", pow(2, 127) - 1, "(ints never overflow)")
+
+test "small primes" {
+  assert map([1, 2, 3, 4, 5], is_prime) == [false, true, true, false, true]
+}
+`,
+'Helpful errors': `# Clay's errors say what broke, where, and how to fix it.
+# Run this, read the error, fix it, run again. There are four bugs.
+
+fn average(xs: list[int]) -> float {
+  ret sum(xs) / len(xs)
+}
+
+let scores = [90, 72, 85]
+print("average: " + average(scores))
+print(scores[3])
+let total = 0
+total = total + 1
+`,
+'Closures': `fn make_counter() -> fn {
+  var n = 0
+  ret fn() -> int {
+    n += 1
+    ret n
+  }
+}
+
+let next = make_counter()
+next()
+next()
+print("counter is at", next())
+
+let twice = fn(f: fn, x: int) -> int { ret f(f(x)) }
+print(twice(fn(x: int) -> int { ret x * 3 }, 5))
+
+seed(7)
+let rolls = map(0..10, fn(i: int) -> int { ret rand_int(1, 6) })
+print("dice:", rolls)
+`
+};
+
+// ---------- highlighting ----------
+const KW = new Set(Clay.KEYWORDS), BI = new Set(Clay.BUILTINS);
+const TY = new Set(['int', 'float', 'str', 'bool', 'list', 'map', 'fn', 'any']);
+const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+function hlStr(s) {
+  let o = '', i = 0, buf = '';
+  const flush = () => { if (buf) o += `<span class="s">${esc(buf)}</span>`; buf = ''; };
+  while (i < s.length) {
+    if (s[i] === '\\') { buf += s.slice(i, i + 2); i += 2; continue; }
+    if (s[i] === '{') {
+      let j = i + 1, d = 1;
+      while (j < s.length) { if (s[j] === '"') { j++; while (j < s.length && s[j] !== '"') j++; } else if (s[j] === '{') d++; else if (s[j] === '}' && --d === 0) break; j++; }
+      flush(); o += `<span class="ip">{</span>${hlCode(s.slice(i + 1, j))}<span class="ip">${j < s.length ? '}' : ''}</span>`; i = j + 1; continue;
+    }
+    buf += s[i++];
+  }
+  flush(); return o;
+}
+function hlCode(code) {
+  const re = /(#[^\n]*)|("(?:[^"\\\n{]|\\.|\{(?:[^{}"\n]|"[^"\n]*"|\{[^{}\n]*\})*\}?)*"?)|(\b\d[\d_]*(?:\.\d+)?\b)|([A-Za-z_]\w*)|([^\sA-Za-z0-9_"#]+)|(\s+)/g;
+  let o = '', m;
+  while ((m = re.exec(code))) {
+    if (m[1]) o += `<span class="c">${esc(m[1])}</span>`;
+    else if (m[2]) o += hlStr(m[2]);
+    else if (m[3]) o += `<span class="n">${m[3]}</span>`;
+    else if (m[4]) { const w = m[4]; o += KW.has(w) ? `<span class="k">${w}</span>` : BI.has(w) && code[re.lastIndex] === '(' ? `<span class="b">${w}</span>` : (TY.has(w) || /^[A-Z]/.test(w)) ? `<span class="t">${w}</span>` : w; }
+    else if (m[5]) o += `<span class="o">${esc(m[5])}</span>`;
+    else o += m[6];
+  }
+  return o;
+}
+let errLine = 0;
+function render() {
+  const v = src.value, lines = v.split('\n');
+  let html = hlCode(v);
+  if (errLine && errLine <= lines.length) {
+    const hs = html.split('\n');
+    hs[errLine - 1] = `<span class="hl-err">${hs[errLine - 1] || ' '}</span>`;
+    html = hs.join('\n');
+  }
+  hl.innerHTML = html + '\n';
+  let g = '';
+  for (let i = 1; i <= lines.length; i++) g += i === errLine ? `<i class="err">${i}</i>` : `<i>${i}</i>`;
+  gut.innerHTML = g;
+  sync();
+}
+function sync() { hl.scrollTop = src.scrollTop; hl.scrollLeft = src.scrollLeft; gut.style.transform = `translateY(${12 - src.scrollTop}px)`; }
+function cursorPos() {
+  const b = src.value.slice(0, src.selectionStart).split('\n');
+  $('pos').textContent = `Ln ${b.length}, Col ${b[b.length - 1].length + 1}`;
+}
+
+// ---------- storage / sharing ----------
+const enc = s => btoa(String.fromCharCode(...new TextEncoder().encode(s))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+const dec = s => new TextDecoder().decode(Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0)));
+const store = { get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} } };
+let saveT = 0;
+function save() { clearTimeout(saveT); saveT = setTimeout(() => store.set('clay-src', src.value), 300); }
+
+function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(t._t); t._t = setTimeout(() => t.classList.remove('on'), 1800); }
+async function copy(text, msg) {
+  try { await navigator.clipboard.writeText(text); }
+  catch (e) { const ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); } catch (x) {} ta.remove(); }
+  toast(msg);
+}
+
+// ---------- running ----------
+let worker = null, busy = null;
+function workerURL() {
+  const base = new URL('clay.js', location.href).href;
+  const code = `importScripts(${JSON.stringify(base)});
+onmessage = e => {
+  const { src, test } = e.data, t0 = performance.now();
+  const r = Clay.run(src, { test });
+  const f = x => x ? { text: Clay.format(x, src), line: x.pos ? x.pos.line : 0 } : null;
+  postMessage({ output: r.output, steps: r.steps, ms: performance.now() - t0, error: f(r.error), tests: r.tests.map(t => ({ name: t.name, ok: t.ok, error: f(t.error) })) });
+};`;
+  return URL.createObjectURL(new Blob([code], { type: 'text/javascript' }));
+}
+function getWorker() {
+  if (worker) return worker;
+  try { worker = new Worker(workerURL()); } catch (e) { worker = false; }
+  return worker;
+}
+function runLocal(code, test) {
+  const t0 = performance.now(); const r = Clay.run(code, { test });
+  const f = x => x ? { text: Clay.format(x, code), line: x.pos ? x.pos.line : 0 } : null;
+  return { output: r.output, steps: r.steps, ms: performance.now() - t0, error: f(r.error), tests: r.tests.map(t => ({ name: t.name, ok: t.ok, error: f(t.error) })) };
+}
+function go(test) {
+  showTab('out');
+  const code = src.value;
+  if (busy) { worker.terminate(); worker = null; clearTimeout(busy); busy = null; }
+  out.innerHTML = `<p class="status">${test ? 'Testing' : 'Running'}…</p>`;
+  const w = getWorker();
+  if (!w) { show(runLocal(code, test), test, code); return; }
+  busy = setTimeout(() => { if (worker) worker.terminate(); worker = null; busy = null; show({ output: [], steps: 0, ms: 10000, error: { text: 'error[E501]: stopped after 10 seconds\n  fix: probably an infinite loop', line: 0 }, tests: [] }, test, code); }, 10000);
+  w.onmessage = e => { clearTimeout(busy); busy = null; show(e.data, test, code); };
+  w.onerror = e => { e.preventDefault(); clearTimeout(busy); busy = null; worker = false; show(runLocal(code, test), test, code); };
+  w.postMessage({ src: code, test });
+}
+function errBox(e, code) {
+  const d = document.createElement('div'); d.className = 'errbox';
+  d.innerHTML = `<pre></pre><div class="row"><button class="btn">Copy error for AI</button></div>`;
+  d.querySelector('pre').textContent = e.text;
+  d.querySelector('button').onclick = () => copy(`My Clay program fails with this error:\n\n\`\`\`\n${e.text}\n\`\`\`\n\nProgram:\n\n\`\`\`\n${code}\n\`\`\`\n\nFix the program. Clay spec:\n\n${Clay.SPEC}`, 'Copied the error, code and spec');
+  return d;
+}
+function show(r, test, code) {
+  out.innerHTML = '';
+  const st = document.createElement('p'); st.className = 'status';
+  const passed = r.tests.filter(t => t.ok).length;
+  st.textContent = `${r.error ? 'Stopped with an error' : test ? `${passed} of ${r.tests.length} test${r.tests.length === 1 ? '' : 's'} passed` : 'Finished'} · ${r.ms < 1 ? '<1' : Math.round(r.ms)} ms · ${r.steps.toLocaleString('en')} steps`;
+  out.appendChild(st);
+  if (r.output.length) { const p = document.createElement('pre'); p.textContent = r.output.join('\n'); out.appendChild(p); }
+  else if (!r.error && !test) { const p = document.createElement('p'); p.className = 'empty'; p.textContent = 'No output. Use print(x) to show values.'; out.appendChild(p); }
+  if (r.error) out.appendChild(errBox(r.error, code));
+  if (test) {
+    if (!r.tests.length && !r.error) { const p = document.createElement('p'); p.className = 'empty'; p.textContent = 'No tests found. Add one with test "name" { assert ... }'; out.appendChild(p); }
+    const ul = document.createElement('ul'); ul.className = 'tests';
+    for (const t of r.tests) {
+      const li = document.createElement('li'); li.className = t.ok ? 'ok' : 'no';
+      li.textContent = (t.ok ? '✓ ' : '✗ ') + t.name;
+      if (t.error) li.appendChild(errBox(t.error, code));
+      ul.appendChild(li);
+    }
+    if (r.tests.length) out.appendChild(ul);
+  }
+  const fl = r.error ? r.error.line : (r.tests.find(t => !t.ok) || {}).error;
+  errLine = typeof fl === 'number' ? fl : fl ? fl.line : 0;
+  render();
+}
+
+// ---------- editor keys ----------
+function insert(text, selStart, selEnd) {
+  src.setRangeText(text, selStart, selEnd, 'end');
+  src.dispatchEvent(new Event('input'));
+}
+src.addEventListener('keydown', e => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); go(e.shiftKey); return; }
+  const s = src.selectionStart, en = src.selectionEnd, v = src.value;
+  if (e.key === 'Tab') {
+    e.preventDefault();
+    const ls = v.lastIndexOf('\n', s - 1) + 1;
+    if (s === en && !e.shiftKey) { insert('  ', s, en); return; }
+    const le = v.indexOf('\n', en - (en > s && v[en - 1] === '\n' ? 1 : 0)); const end = le < 0 ? v.length : le;
+    const block = v.slice(ls, end).split('\n').map(l => e.shiftKey ? l.replace(/^ {1,2}/, '') : '  ' + l).join('\n');
+    src.setRangeText(block, ls, end, 'select'); src.dispatchEvent(new Event('input')); return;
+  }
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    const ls = v.lastIndexOf('\n', s - 1) + 1, line = v.slice(ls, s);
+    let ind = (/^ */.exec(line) || [''])[0];
+    if (/\{\s*$/.test(line)) ind += '  ';
+    if (/\{\s*$/.test(line) && v[en] === '}') { insert('\n' + ind + '\n' + ind.slice(2), s, en); src.selectionStart = src.selectionEnd = s + 1 + ind.length; return; }
+    insert('\n' + ind, s, en); return;
+  }
+  if (e.key === '}' && s === en) {
+    const ls = v.lastIndexOf('\n', s - 1) + 1, line = v.slice(ls, s);
+    if (/^ {2,}$/.test(line)) { e.preventDefault(); insert(line.slice(2) + '}', ls, s); }
+  }
+});
+src.addEventListener('input', () => { if (errLine) errLine = 0; render(); save(); cursorPos(); });
+src.addEventListener('scroll', sync);
+['keyup', 'click'].forEach(k => src.addEventListener(k, cursorPos));
+
+// ---------- tabs, spec ----------
+function showTab(t) {
+  document.querySelectorAll('.tab').forEach(b => b.classList.toggle('on', b.dataset.t === t));
+  out.classList.toggle('off', t !== 'out'); $('specv').classList.toggle('on', t === 'spec');
+}
+document.querySelectorAll('.tab').forEach(b => b.onclick = () => showTab(b.dataset.t));
+function buildSpec() {
+  const v = $('specv');
+  v.innerHTML = `<h2>Why Clay</h2><p class="lead">Most languages were designed for people typing code. Clay is designed for an AI writing it, and for you reading what it wrote.</p>
+<ul>
+<li><b>The whole spec fits in one prompt.</b> Paste it into any AI chat with "Copy spec for AI" and it can write Clay straight away.</li>
+<li><b>One way to do each thing.</b> No synonyms, no optional syntax, so there is less to guess and less to get wrong.</li>
+<li><b>Strict by default.</b> Typed function signatures, no null, no truthiness, no int/float mixing, no shadowing. Mistakes fail loudly instead of running wrong.</li>
+<li><b>Errors written to be fixed.</b> Every error has a code, a position and a <code>fix:</code> line, and it knows the habits of other languages (<code>return</code>, <code>.push()</code>, <code>&amp;&amp;</code>, <code>else if</code>).</li>
+<li><b>Tests built in.</b> <code>test</code> blocks and <code>assert</code> that shows both sides when it fails.</li>
+<li><b>Repeatable.</b> Random numbers are seeded, ints never overflow, maps keep their order.</li>
+</ul>
+<h3>Full spec</h3>`;
+  const pre = document.createElement('pre'); pre.textContent = Clay.SPEC; v.appendChild(pre);
+}
+
+// ---------- boot ----------
+const sel = $('ex');
+sel.innerHTML = '<option value="">Examples…</option>' + Object.keys(EXAMPLES).map(k => `<option>${k}</option>`).join('');
+sel.onchange = () => { if (!sel.value) return; src.value = EXAMPLES[sel.value]; errLine = 0; render(); save(); sel.value = ''; out.innerHTML = '<p class="empty">Press Run to run your program, or Test to run its tests.</p>'; src.focus(); src.setSelectionRange(0, 0); src.scrollTop = 0; sync(); cursorPos(); };
+$('run').onclick = () => go(false);
+$('test').onclick = () => go(true);
+$('share').onclick = () => { const u = location.href.split('#')[0] + '#c=' + enc(src.value); history.replaceState(null, '', u); copy(u, 'Link copied'); };
+$('spec').onclick = () => copy(`You are writing code in Clay, a small strict language. Here is the complete spec. Reply with one Clay program in a code block.\n\n${Clay.SPEC}`, 'Spec copied. Paste it into an AI chat');
+let start = null;
+const h = /#c=([\w-]+)/.exec(location.hash);
+if (h) { try { start = dec(h[1]); } catch (e) {} }
+if (start == null) start = store.get('clay-src');
+src.value = start || EXAMPLES['Hello'];
+buildSpec(); render(); cursorPos();
+window.ClayUI = { go, EXAMPLES };
+})();
+</script>
+</body>
+</html>
