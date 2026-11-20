@@ -9,6 +9,7 @@ Saved design plans. Nothing here is built unless it says so. Status last updated
 | **Submarine crew** co-op | Chosen, needs detail | below |
 | **Heist** co-op | Chosen, needs detail | below |
 | **jjdrop**: Siege-style tactical CQB: operators and gadgets, destructible walls, bomb plant/defuse, multi-storey houses, online | Built (11 Nov 2026), see [drop.md](drop.md) | `drop.html` |
+| **YeShip**: co-op rocket builder, orbit, moon, stations | Design agreed 20 Nov 2026 | [yeship.md](yeship.md) |
 | Co-op campaign "Operation Chain" | Idea | below |
 | 1v1 PvP modes | Idea | below |
 | **Station Nine boss fights** (fishing legends, the Maw, Pale Mother, Leviathan, Ghost Carrier) | Plan | [rig-bosses.md](rig-bosses.md) |
@@ -27,6 +28,9 @@ Saved design plans. Nothing here is built unless it says so. Status last updated
 - **Heist (3 to 5 players):** infiltrate a base, steal or destroy an objective, get out. Roles: infiltrator, hacker (opens doors, kills cameras), driver, overwatch sniper. Reuses the spy and heist code (`startHeist`, `heistStep`, `Sim.spySteal`, SPY_GUARDS). Needs: a multi-player heist (the current one is solo), alarm levels and an extraction point.
 
 ## Other co-op ideas (not chosen yet)
+- Snowball fort: build a fort, survive waves of snowball-throwing kids (solo or team fort).
+- Lighthouse keeper: keep the light running through storms, guide ships past rocks, patch leaks (cozy solo, co-op splits jobs).
+- Cave diving: explore underwater caves, manage air, find treasure (tense solo, co-op shares rope and air).
 - Base defence waves: hold one base against escalating bot attacks.
 - Rescue and extraction: bring a downed pilot home with a helicopter and escorts.
 - Armoured train defence: posts on moving carriages.
