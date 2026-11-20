@@ -78,6 +78,8 @@ def build(live):
                                'Find the right practitioner, see their next free times and book online in under a minute.', site, live),
         'manage.html': site_page('manage-main.html', 'book.css', 'manage.js', 'Your booking | Surf Coast Family Hub',
                                  'Move or cancel your appointment.', site, live),
+        'privacy.html': site_page('privacy-main.html', 'book.css', 'privacy.js', 'Privacy | Surf Coast Family Hub',
+                                  'How Surf Coast Family Hub collects, uses and protects your personal and health information.', site, live),
         'admin.html': admin_page(site, live),
     }
     for name, html in files.items():

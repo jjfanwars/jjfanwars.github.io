@@ -254,4 +254,12 @@ html.bk-lock{overflow:hidden}
 
 /* You're already booking here, so the site's sticky Call/Book bar only covers content */
 .action-bar{display:none!important}
+/* privacy page */
+#pv{font-size:16px;line-height:1.65}
+#pv h2{margin:32px 0 8px;font-size:24px;line-height:1.2}
+#pv .pv-meta{margin:0 0 -8px;font-size:13.5px;color:var(--muted)}
+#pv p{margin:0 0 12px;max-width:44em}
+#pv ul{margin:0 0 12px;padding-left:20px;max-width:44em}
+#pv li{margin:0 0 8px}
+.bk-check a{color:var(--teal-deep);font-weight:600}
 </style>

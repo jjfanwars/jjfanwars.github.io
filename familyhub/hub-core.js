@@ -23,7 +23,7 @@ var P={
   sched:{2:['9:00','10:00','11:00','13:00','14:00'],4:['9:00','10:00','11:00','13:00','14:00'],5:['9:00','10:00','11:00','13:00']},
   svc:Object.assign({eating:'Eating Disorder Psychological Treatment'},PSY_SVC),
   why:'Perinatal psychology, infant mental health and trauma. Formerly Senior Clinical Psychologist at the Royal Women’s Hospital.'},
- melinda:{name:'Melinda Sullivan',first:'Melinda',role:'Clinical & Child Psychologist',url:HX+'widget/psychologist/melinda-sullivan/1343231/503631',psych:1,live:1,len:50,
+ melinda:{name:'Melinda Sullivan',first:'Melinda',role:'Clinical Psychologist',url:HX+'widget/psychologist/melinda-sullivan/1343231/503631',psych:1,live:1,len:50,
   sched:{3:['9:00','10:30','11:30','13:30','14:30','16:00'],4:['9:00','10:00','11:00','12:00','13:30','14:30']},svc:PSY_SVC,
   why:'Clinical and perinatal psychologist and family therapist, and a former midwife and maternal and child health nurse.'},
  ellie:{name:'Ellie James',first:'Ellie',role:'Psychologist',url:HX+'widget/psychologist/ellie-james/1026431/503631',psych:1,live:1,len:50,
@@ -50,7 +50,7 @@ var P={
   why:'Remedial, relaxation, pregnancy, postpartum and teen massage. 15+ years’ experience, HICAPS on site.'},
  kate:{name:'Kate Heagney',first:'Kate',role:'Acupuncturist',url:HX+'widget/acupuncturist/kate-heagney/659721/503631',live:1,len:60,
   sched:{3:['9:00','10:00','11:00','12:00','13:00','14:00']},svc:{acu:'Initial acupuncture consultation',acu2:'Follow-up acupuncture consultation'},
-  why:'Gentle Japanese acupuncture for fertility, IVF, pregnancy and birth preparation, plus general health.'},
+  why:'Gentle Japanese acupuncture with a special interest in women’s health, including alongside fertility treatment and IVF, and in pregnancy.'},
  anna:{name:'Dr Anna Morrow',first:'Anna',role:'Osteopath',url:CLINIKO,
   why:'Almost 20 years’ experience, including pregnancy, postpartum, babies and children.'},
  melissa:{name:'Melissa Andrew',first:'Melissa',role:'Osteopath',url:CLINIKO,leave:1,/* on maternity leave: hidden everywhere until this flag is removed */
@@ -124,7 +124,7 @@ function timeBand(d){return new Date(d).getHours()<12?'am':'pm'}
 function weekOffers(w){var wk=now()-7*864e5;return (w.offers||[]).filter(function(t){return t>wk}).length}
 function moveBooking(w){if(!w.moveToken)return null;var b=S.bookings.filter(function(x){return x.token===w.moveToken})[0];return b&&b.status==='booked'?b:null}
 function candidates(o){var d=new Date(o.start),sent=o.sent.map(function(x){return x.wid});
- return S.waitlist.filter(function(w){if(w.booked||w.phone===o.exclude)return false;
+ return S.waitlist.filter(function(w){if(w.booked||w.removed||w.phone===o.exclude)return false;
    if(w.moveToken){var mb=moveBooking(w);if(!mb||new Date(mb.start)<=d)return false}   // only offer an earlier time than they already have
    return w.pids.indexOf(o.pid)>=0&&w.days.indexOf(d.getDay())>=0&&w.times.indexOf(timeBand(d))>=0&&sent.indexOf(w.id)<0&&weekOffers(w)<S.settings.weekCap})
   .sort(function(a,b){return a.since-b.since})}
@@ -235,6 +235,37 @@ var api={
  forward:function(mins){S.skew=(S.skew||0)+mins*6e4;feed('clock','Demo clock moved forward '+mins+' minutes.');save();tick()},
  settings:function(x){Object.assign(S.settings,x);save()},
  reset:function(){S=defaults();try{localStorage.removeItem('scfh-demo-mine')}catch(e){}save()},
+ removeWaitlist:function(id){var w=S.waitlist.filter(function(x){return x.id===id})[0];if(!w||w.removed)return;w.removed=now();
+  feed('none','Removed '+w.name+' from the waitlist.');save()},
+ noteWaitlist:function(id,note){var w=S.waitlist.filter(function(x){return x.id===id})[0];if(w){w.note=String(note||'').slice(0,500);save()}},
+ // Everything the dashboard knows, compact, for the "Ask Claude" panel. When live, the Worker builds this server-side.
+ // Privacy: clients are swapped for stable tokens like [C1a2b] and phones, notes and children's names are left out,
+ // so no client can be identified from what is sent. The dashboard swaps the tokens back to names on screen.
+ snapshot:function(){var DN=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'],names={},byName={};
+  function loc(d){d=new Date(d);return DN[d.getDay()]+' '+d.getDate()+' '+MON[d.getMonth()]+' '+d.getFullYear()+' '+('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2)}
+  function first(id){return P[id]?P[id].first:id}
+  function tok(n){if(!n)return n;if(byName[n])return byName[n];var k='[C'+Math.floor(hash('client:'+n)*46656*36).toString(36)+']';names[k]=n;byName[n]=k;return k}
+  var team=ORDER.map(function(id){var p=P[id];return {id:id,name:p.name,role:p.role,
+    books:p.live?'through the hub':p.contact?'call the Hub':'own booking page',onLeave:!!p.leave,note:p.note||undefined,
+    worksOn:p.sched?Object.keys(p.sched).map(function(d){return DN[d]+' '+p.sched[d].join(',')}).join('; '):undefined,
+    bookedOutUntil:p.openFrom||undefined,sessionMins:p.len||undefined,fee:VALUE[id]||undefined}});
+  var wl=S.waitlist.map(function(w){var offers=[];S.offers.forEach(function(o){o.sent.forEach(function(s){if(s.wid===w.id)offers.push({slot:first(o.pid)+' '+loc(o.start),result:s.state,round:s.round})})});
+   return {client:tok(w.name),status:w.removed?'removed':w.booked?'booked from waitlist':'waiting',wants:w.need,practitioners:w.pids.map(first),
+    days:w.days.map(function(d){return DN[d]}),times:w.times.length>1?'any':w.times[0]==='am'?'mornings':'afternoons',joined:loc(w.since),
+    daysWaiting:Math.max(0,Math.round((now()-w.since)/864e5)),source:w.moveToken?'already booked, wants an earlier time':w.mine?'joined online':'added by staff',hasStaffNote:!!w.note||undefined,offersSent:offers}});
+  var up=api.upcoming(21).map(function(a){return {when:loc(a.start),with:first(a.pid),client:tok(a.name),via:a.booking?(a.booking.source==='refill'?'refilled from waitlist':'booked online'):'Halaxy'}});
+  var free={};ORDER.forEach(function(id){if(P[id].live&&!P[id].leave){var f=freeSlots(id,now(),42);free[first(id)]=f.slice(0,12).map(loc)}});
+  var bk=S.bookings.map(function(b){return {client:tok(b.name),forChild:b.child?true:undefined,with:first(b.pid),when:loc(b.start),service:b.service,status:b.status,via:b.source,
+    booked:loc(b.created),cancelReason:b.reason||undefined,cancelledAt:b.cancelledAt?loc(b.cancelledAt):undefined,moved:b.moved||undefined}});
+  var of=S.offers.map(function(o){var w=o.winner&&S.waitlist.filter(function(x){return x.id===o.winner})[0];
+   return {slot:first(o.pid)+' '+loc(o.start),opened:loc(o.created),status:o.status,round:o.round,peopleTexted:o.sent.length,filledBy:w?tok(w.name):undefined}});
+  var known=Object.keys(byName).sort(function(a,b){return b.length-a.length});
+  function scrub(s){known.forEach(function(n){s=s.split(n).join(byName[n])});return s.replace(/\b04\d{2} ?\d{3} ?\d{3}\b/g,'[phone]')}
+  var data={now:loc(now()),timezone:'Australia/Melbourne',demo:true,team:team,stats:{spotsRefilled:S.stats.filled,incomeRecovered:S.stats.value,
+    avgMinutesToRefill:S.stats.mins.length?Math.round(S.stats.mins.reduce(function(a,b){return a+b},0)/S.stats.mins.length):null},
+   settings:S.settings,waitlist:wl,upcomingAppointments:up,freeTimes:free,onlineBookings:bk,refillOffers:of,
+   activity:S.feed.slice(0,60).map(function(f){return loc(f.at)+' '+scrub(f.text)}),textsSent:S.sms.filter(function(m){return m.dir==='out'}).length};
+  return {data:data,names:names,scrub:scrub}},
  on:function(f){subs.push(f)}
 };
 window.HUB={P:P,ORDER:ORDER,photo:photo,SITE:SITE,api:api,fmt:{time:fmtTime,day:fmtDay,when:fmtWhen,money:money,esc:esc,DAY:DAY,MON:MON},serviceName:serviceName,lenOf:lenOf,now:now,slotKey:slotKey};

@@ -2,7 +2,7 @@
 <header class="adm-top">
  <a class="adm-brand" href="{{SITE}}index.html"><img alt="" src="{{SITE}}img/logo-mark.webp" width="40" height="43"><span><small>Surf Coast Family Hub</small><b>Hub dashboard</b></span></a>
  <span class="adm-demo">Demo · fake data</span>
- <nav class="adm-nav"><a class="btn btn-outline btn-sm" href="book.html" target="_blank" rel="noopener">Booking page</a><button type="button" class="btn btn-outline btn-sm" id="admReset">Reset demo</button></nav>
+ <nav class="adm-nav"><button type="button" class="btn btn-primary btn-sm adm-askbtn" data-ask-open><svg aria-hidden="true" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" viewBox="0 0 24 24"><path d="M12 3l1.8 4.6L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.9z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/></svg>Ask Claude</button><a class="btn btn-outline btn-sm" href="book.html" target="_blank" rel="noopener">Booking page</a><button type="button" class="btn btn-outline btn-sm" id="admReset">Reset demo</button></nav>
 </header>
 <main class="adm-main" id="main">
  <section class="adm-stats" id="admStats" aria-label="This month"></section>
@@ -16,7 +16,10 @@
   </div>
   <div class="adm-col">
    <section class="adm-card"><div class="adm-h"><h2>Activity</h2></div><ol class="adm-feed" id="admFeed"></ol></section>
-   <section class="adm-card"><div class="adm-h"><h2>Waitlist</h2><span class="adm-sub" id="admWlN"></span></div><div id="admWl"></div></section>
+   <section class="adm-card" id="admWlCard"><div class="adm-h"><h2>Waitlist</h2><span class="adm-sub" id="admWlN"></span></div><div class="adm-tools"><label class="adm-search"><span class="sr">Search the waitlist</span><input id="admWlQ" type="search" placeholder="Search name, phone or service" autocomplete="off"></label><label><span class="sr">Practitioner</span><select id="admWlP"><option value="">Everyone</option></select></label><button type="button" class="adm-ghost" data-csv="waitlist" title="Download as a spreadsheet (CSV)">Export</button></div><div id="admWl"></div></section>
+   <section class="adm-card" id="admRec"><div class="adm-h"><h2>Records</h2><span class="adm-sub">Everything the hub has logged</span></div>
+    <div class="adm-tabs" role="tablist"><button type="button" role="tab" data-rec="bookings" aria-selected="true">Online bookings</button><button type="button" role="tab" data-rec="offers" aria-selected="false">Refill offers</button><button type="button" role="tab" data-rec="texts" aria-selected="false">Texts</button><button type="button" class="adm-ghost" data-csv="rec">Export</button></div>
+    <div id="admRecBody"></div></section>
    <section class="adm-card"><div class="adm-h"><h2>Settings</h2></div><div id="admSet"></div></section>
    <section class="adm-card adm-how"><h2>How it works when it’s live</h2><ol>
     <li>A client cancels by text link, on this site, or Adi cancels it in Halaxy.</li>
@@ -28,4 +31,11 @@
   </div>
  </div>
 </main>
+<dialog class="adm-drawer" id="admPerson" aria-labelledby="admPersonH"><div class="adm-dw" id="admPersonBody"></div></dialog>
+<dialog class="adm-drawer adm-ask" id="admAsk" aria-labelledby="admAskH"><div class="adm-dw">
+ <div class="adm-dwh"><div><h2 id="admAskH">Ask Claude</h2><p>About the Hub’s bookings, waitlist, refills and texts</p></div><button type="button" class="adm-x" data-close aria-label="Close"><svg aria-hidden="true" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.8" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+ <div class="adm-chat" id="admChat" aria-live="polite"></div>
+ <form class="adm-askf" id="admAskF"><label class="sr" for="admAskQ">Your question</label><textarea id="admAskQ" rows="1" placeholder="Ask anything about the Hub’s data…" maxlength="2000"></textarea><button type="submit" class="adm-send" aria-label="Send"><svg aria-hidden="true" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24"><path d="M12 19V5M5.5 11.5 12 5l6.5 6.5"/></svg></button></form>
+ <p class="adm-fine">Claude reads the Hub’s current data to answer. It can make mistakes, so check anything important. Demo: it reads the pretend data in this browser.</p>
+</div></dialog>
 </body>

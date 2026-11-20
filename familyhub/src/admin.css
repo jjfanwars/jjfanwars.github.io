@@ -162,4 +162,105 @@ body.adm :focus-visible{outline:2px solid var(--teal-deep);outline-offset:2px}
  .adm-top{gap:8px 12px}
  #admTry .btn{width:100%}
 }
+
+/* ---------- waitlist tools ---------- */
+.adm-tools{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 16px}
+.adm-search{flex:1 1 200px}
+.adm-tools input,.adm-tools select{width:100%;min-height:38px;padding:0 12px;border:1px solid var(--ui-line-2);border-radius:var(--ui-r-sm);background:#fff;font:500 14.5px var(--body);color:var(--ink)}
+.adm-tools select{width:auto;padding-right:28px}
+.adm-tools input:focus,.adm-tools select:focus,.adm-sec textarea:focus,.adm-askf textarea:focus{outline:none;border-color:var(--teal-deep);box-shadow:var(--ui-ring)}
+.adm-ghost{display:inline-flex;align-items:center;gap:6px;min-height:38px;padding:0 12px;border:1px solid var(--ui-line-2);border-radius:var(--ui-r-sm);background:#fff;font:600 14px var(--body);color:var(--ink);text-decoration:none;cursor:pointer;white-space:nowrap;transition:border-color .12s,color .12s,background-color .12s}
+.adm-ghost:hover{border-color:var(--teal-deep);color:var(--teal-dark)}
+.adm-ghost-d{color:#9A3B26}.adm-ghost-d:hover{border-color:#C9765F;background:#FCEEE9;color:#7A2E1C}
+.adm-wl li{padding:0;border-top:1px solid var(--ui-line)}
+.adm-wl li:first-child{padding-top:0}
+.adm-wlrow{display:flex;gap:12px;align-items:center;width:100%;padding:12px 8px;margin:0 -8px;width:calc(100% + 16px);border:0;border-radius:var(--ui-r-sm);background:none;text-align:left;font:inherit;color:inherit;cursor:pointer;transition:background-color .12s}
+.adm-wlrow:hover{background:var(--ui-sunk)}
+.adm-wlrow>em{flex:none;padding:2px 8px;border-radius:6px;background:var(--ui-sunk);font-style:normal;font-size:12.5px;font-weight:600;color:var(--muted)}
+.adm-tag-n{background:rgba(230,188,118,.25)!important;color:#6B4A0E!important}
+
+/* ---------- records ---------- */
+.adm-tabs{display:flex;flex-wrap:wrap;align-items:center;gap:4px;margin:0 0 16px;padding-bottom:12px;border-bottom:1px solid var(--ui-line)}
+.adm-tabs [role=tab]{min-height:34px;padding:0 12px;border:0;border-radius:8px;background:none;font:600 14px var(--body);color:var(--muted);cursor:pointer}
+.adm-tabs [role=tab]:hover{color:var(--ink);background:var(--ui-sunk)}
+.adm-tabs [role=tab][aria-selected=true]{background:var(--teal-mist);color:var(--teal-dark)}
+.adm-tabs .adm-ghost{margin-left:auto;min-height:34px}
+.adm-tbl{overflow-x:auto;border:1px solid var(--ui-line);border-radius:var(--ui-r-sm)}
+.adm-tbl table{width:100%;border-collapse:collapse;font-size:13.5px;background:#fff}
+.adm-tbl th{position:sticky;top:0;padding:8px 12px;background:#FAF7F2;border-bottom:1px solid var(--ui-line);text-align:left;font:600 12px/1.3 var(--body);letter-spacing:.04em;text-transform:uppercase;color:var(--muted);white-space:nowrap}
+.adm-tbl td{padding:10px 12px;border-top:1px solid var(--ui-line);vertical-align:top;line-height:1.45}
+.adm-tbl tr:first-child td{border-top:0}
+.adm-tbl td:first-child{white-space:nowrap;font-weight:600}
+.adm-muted{margin:12px 0 0;font-size:13.5px;color:var(--muted)}
+
+/* ---------- side panels (person, Ask Claude) ---------- */
+html:has(.adm-drawer[open]){overflow:hidden}
+.adm-drawer{position:fixed;inset:0 0 0 auto;width:min(480px,100%);max-width:100%;height:100%;max-height:100%;margin:0;padding:0;border:0;border-left:1px solid var(--ui-line);background:var(--ui-surface);color:var(--ink);box-shadow:-24px 0 60px -30px rgba(40,30,25,.5)}
+.adm-drawer::backdrop{background:rgba(40,34,30,.32);backdrop-filter:blur(2px)}
+.adm-drawer[open]{animation:dwIn .26s cubic-bezier(.2,.8,.2,1)}
+@keyframes dwIn{from{transform:translateX(24px);opacity:0}to{transform:none;opacity:1}}
+@media (prefers-reduced-motion:reduce){.adm-drawer[open]{animation:none}}
+.adm-dw{display:flex;flex-direction:column;min-height:100%;padding:24px}
+.adm-dwh{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin:0 0 24px}
+.adm-dwh h2{margin:0;font-size:24px;line-height:1.15}
+.adm-dwh p{margin:4px 0 0;font-size:14px;color:var(--muted)}
+.adm-x{flex:none;display:grid;place-items:center;width:36px;height:36px;border:0;border-radius:50%;background:var(--ui-sunk);color:var(--ink);cursor:pointer}
+.adm-x:hover{background:rgba(59,50,45,.09)}
+.adm-x svg{width:18px;height:18px}
+.adm-ph{display:flex;align-items:center;gap:12px}
+.adm-wa-lg{width:48px;height:48px;font-size:19px}
+.adm-pact{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 24px}
+.adm-dl{display:grid;gap:0;margin:0 0 24px;border:1px solid var(--ui-line);border-radius:var(--ui-r-sm);overflow:hidden}
+.adm-dl div{display:grid;grid-template-columns:130px 1fr;gap:12px;padding:10px 12px;border-top:1px solid var(--ui-line);background:#fff}
+.adm-dl div:first-child{border-top:0}
+.adm-dl dt{font-size:13.5px;color:var(--muted)}
+.adm-dl dd{margin:0;font-size:14.5px;font-weight:500}
+.adm-sec{margin:0 0 24px}
+.adm-sec h3{margin:0 0 8px;font:600 12.5px/1.3 var(--body);letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+.adm-sec textarea{width:100%;padding:10px 12px;border:1px solid var(--ui-line-2);border-radius:var(--ui-r-sm);background:#fff;font:500 14.5px/1.5 var(--body);color:var(--ink);resize:vertical}
+.adm-saved{min-height:1.2em;margin:4px 0 0;font-size:12.5px;color:var(--teal-dark)}
+.adm-list{list-style:none;margin:0;padding:0;border:1px solid var(--ui-line);border-radius:var(--ui-r-sm);overflow:hidden}
+.adm-list li{display:flex;flex-direction:column;gap:2px;padding:10px 12px;border-top:1px solid var(--ui-line);background:#fff;font-size:14px}
+.adm-list li:first-child{border-top:0}
+.adm-list li span{font-size:13px;color:var(--muted)}
+.adm-texts li span{font-size:14px;color:var(--ink);line-height:1.45}
+.adm-texts li.in{background:#F3F8FF}
+.adm-texts time{font-size:12px;color:var(--muted)}
+.adm-danger{margin-top:auto;padding-top:16px;border-top:1px solid var(--ui-line)}
+
+/* ---------- Ask Claude ---------- */
+.adm-askbtn svg{width:17px;height:17px}
+.adm-nav .adm-askbtn{background:var(--teal-deep);color:#fff;border-color:var(--teal-deep);box-shadow:0 1px 2px rgba(20,40,40,.25)}
+.adm-nav .adm-askbtn:hover{background:var(--teal-dark);border-color:var(--teal-dark);color:#fff}
+.adm-ask{width:min(560px,100%)}
+.adm-ask .adm-dw{height:100%;padding-bottom:16px}
+.adm-ask .adm-dwh{margin-bottom:16px}
+.adm-chat{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:12px;margin:0 -24px;padding:4px 24px 16px}
+.adm-hello{margin:auto 0;text-align:center;padding:24px 8px}
+.adm-hello p{max-width:34em;margin:12px auto 24px;font-size:15px;line-height:1.55;color:var(--muted)}
+.adm-spark{display:inline-grid;place-items:center;width:48px;height:48px;border-radius:14px;background:var(--teal-mist);color:var(--teal-deep)}
+.adm-spark svg{width:24px;height:24px}
+.adm-sugg{display:grid;gap:8px;text-align:left}
+.adm-sugg button{padding:12px 14px;border:1px solid var(--ui-line);border-radius:var(--ui-r-sm);background:#fff;font:500 14.5px/1.4 var(--body);color:var(--ink);text-align:left;cursor:pointer;transition:border-color .12s,background-color .12s}
+.adm-sugg button:hover{border-color:var(--teal-deep);background:#FCFEFD}
+.adm-msg{max-width:92%;font-size:14.5px;line-height:1.55}
+.adm-msg p{margin:0 0 8px}.adm-msg p:last-child{margin-bottom:0}
+.adm-msg ul{margin:0 0 8px;padding-left:20px}.adm-msg li{margin:2px 0}
+.adm-msg.user{align-self:flex-end;padding:10px 14px;border-radius:14px 14px 4px 14px;background:var(--teal-deep);color:#fff}
+.adm-msg.assistant{align-self:flex-start;padding:12px 14px;border:1px solid var(--ui-line);border-radius:14px 14px 14px 4px;background:#fff}
+.adm-typing{display:inline-flex;gap:4px;padding:4px 0}
+.adm-typing i{width:6px;height:6px;border-radius:50%;background:var(--muted);animation:tyB 1s infinite}
+.adm-typing i:nth-child(2){animation-delay:.15s}.adm-typing i:nth-child(3){animation-delay:.3s}
+@keyframes tyB{50%{opacity:.25}}
+.adm-clear{align-self:center;margin-top:4px;padding:6px 10px;border:0;border-radius:8px;background:none;font:600 13px var(--body);color:var(--muted);cursor:pointer}
+.adm-clear:hover{color:var(--teal-deep);background:var(--ui-sunk)}
+.adm-askf{display:flex;align-items:flex-end;gap:8px;padding:8px;border:1px solid var(--ui-line-2);border-radius:16px;background:#fff;box-shadow:var(--ui-sh)}
+.adm-askf:focus-within{border-color:var(--teal-deep);box-shadow:var(--ui-ring)}
+.adm-askf textarea{flex:1;min-height:40px;max-height:160px;padding:9px 8px;border:0;background:none;font:500 15px/1.45 var(--body);color:var(--ink);resize:none}
+.adm-askf textarea:focus{box-shadow:none}
+.adm-send{flex:none;display:grid;place-items:center;width:40px;height:40px;border:0;border-radius:12px;background:var(--teal-deep);color:#fff;cursor:pointer}
+.adm-send:hover{background:var(--teal-dark)}
+.adm-send svg{width:18px;height:18px}
+.adm-fine{margin:8px 0 0;font-size:12px;line-height:1.45;color:var(--muted);text-align:center}
+@media (max-width:599px){.adm-dw{padding:16px}.adm-chat{margin:0 -16px;padding:4px 16px 16px}.adm-dl div{grid-template-columns:1fr;gap:2px}}
 </style>

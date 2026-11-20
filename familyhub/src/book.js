@@ -29,23 +29,23 @@ var NEED={
   fee:{laura:'$65 for 30 minutes or $120 for 60 minutes. Health fund rebates, HICAPS on site.'}},
  acu:{t:'Acupuncture',s:'Gentle Japanese acupuncture',ico:'leaf',wl:'Acupuncture',
   fee:{kate:'$150 first visit (60 min), $110 follow-up (50 min). Concession $130 / $100. Check your health fund.'}},
- osteo:{t:'Osteopathy',s:'Hands-on care for pain, posture, pregnancy and babies',ico:'spine',
+ osteo:{t:'Osteopathy',s:'Hands-on care for all ages, from babies to adults',ico:'spine',
   fee:{anna:'$190 new patient (up to 1 hour), $140 return visit. Concession $170 / $130. Check your health fund.',melissa:'See our fees page or ask us.'}}
 };
 var WHO={
  preg:{t:'Pregnancy or trying to conceive',s:'Fertility, IVF, pregnancy and preparing for birth',ico:'heart',needs:[
   ['conceive',0,0,['maddy','ellie','hannah','melinda','adi']],
   ['parenthood',0,0,['adi']],
-  ['acu','Acupuncture for fertility or pregnancy','IVF support, pregnancy care and birth preparation',['kate']],
+  ['acu','Acupuncture alongside fertility treatment or in pregnancy','Care alongside IVF, during pregnancy and before birth',['kate']],
   ['massage','Pregnancy massage','Nurturing, tailored care for mums-to-be',['laura']],
-  ['osteo','Osteopathy in pregnancy','Ease back, hip and pelvic pain',['anna','melissa']]]},
+  ['osteo','Osteopathy in pregnancy','Back, hip or pelvic pain in pregnancy',['anna','melissa']]]},
  early:{t:'Birth and the early days',s:'Support for you, your baby and your relationship',ico:'moon',needs:[
   ['talk','Someone to talk to','Birth trauma, low mood, anxiety or adjusting to life with a baby',['hannah','ellie','melinda','adi','maddy']],
   ['counsel','Early parenting counselling','Sleep-deprived, overwhelmed or finding your feet',['jodie','michelle-ferris']],
   ['parenthood',0,0,['adi']],
   ['dyadic',0,0,['michelle-joseph']],
   ['massage','Postpartum massage','Rest and recovery after birth',['laura']],
-  ['osteo','Osteopathy for you or your baby','Postpartum recovery, and gentle care for babies',['anna','melissa']]]},
+  ['osteo','Osteopathy for you or your baby','After birth, and for babies',['anna','melissa']]]},
  child:{t:'My child or teen',s:'Therapy, assessments and support for young people',ico:'star',needs:[
   ['child',0,0,['melinda','meaghan']],
   ['assess',0,0,['meaghan']],
@@ -60,14 +60,14 @@ var WHO={
   ['art',0,0,['michelle-joseph']],
   ['ndis',0,0,['jodie','michelle-joseph']],
   ['massage',0,0,['laura']],
-  ['acu',0,'Fertility, women’s health, pain, digestion, stress',['kate']],
+  ['acu',0,'Women’s health, pregnancy and general health',['kate']],
   ['osteo',0,0,['anna','melissa']]]},
  couple:{t:'Us, as a couple',s:'Relationship support, including becoming parents',ico:'couple',needs:[
   ['couples',0,0,['michelle-ferris']],
   ['parenthood',0,0,['adi']]]},
  body:{t:'Body care',s:'Massage, acupuncture or osteopathy',ico:'leaf',hidden:1,needs:[
   ['massage',0,0,['laura']],
-  ['acu',0,'Fertility, pregnancy, pain, digestion, stress',['kate']],
+  ['acu',0,'Women’s health, pregnancy and general health',['kate']],
   ['osteo',0,0,['anna','melissa']]]}
 };
 
@@ -255,7 +255,7 @@ function openBook(pid,t){
     field('bkName',S.who==='couple'||S.need==='parenthood'?'Your name (we’ll ask for your partner’s at the session)':'Full name','text','name','autofocus'))+
    '<div class="bk-row">'+field('bkPhone','Mobile','tel','tel','inputmode="tel" placeholder="04xx xxx xxx"')+field('bkEmail','Email','email','email')+'</div>'+
    '<fieldset class="bk-fs"><legend>Is this your first visit to the Hub?</legend><div class="fd-pills"><button type="button" class="fd-pill" data-first="yes" aria-pressed="false">Yes, first time</button><button type="button" class="fd-pill" data-first="no" aria-pressed="false">I’ve been before</button></div></fieldset>'+
-   '<label class="bk-check"><input type="checkbox" id="bkOk" required><span>I agree to the Hub’s privacy policy. My details go to '+esc(p.first)+'’s practice records so they can see me.</span></label>'+
+   '<label class="bk-check"><input type="checkbox" id="bkOk" required><span>I agree to the Hub’s <a href="privacy.html" target="_blank" rel="noopener">privacy notice</a>. My details go into '+esc(p.first)+'’s practice records so they can see me, and we’ll text and email me about this booking.</span></label>'+
    '<p class="bk-err" role="alert" hidden></p>'+
    '<button type="submit" class="btn btn-primary bk-submit">'+svg('check')+'Confirm booking</button>'+
    '<p class="bk-demo">Demo: no real booking is made.</p></form>');
@@ -266,7 +266,7 @@ function openBook(pid,t){
  form.addEventListener('submit',function(e){e.preventDefault();
   var name=form.bkName.value.trim(),phone=form.bkPhone.value.trim(),email=form.bkEmail.value.trim(),err=form.querySelector('.bk-err');
   var kid=form.bkKid?form.bkKid.value.trim():'';
-  var bad=!name?'Please add your name.':form.bkKid&&!kid?'Please add your child’s first name.':!/^(\+?61|0)4[\d ]{8,11}$/.test(phone.replace(/\s/g,'').replace(/^\+61/,'0').replace(/^61/,'0'))?'Please add an Australian mobile number (04xx xxx xxx).':!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)?'Please check your email address.':!form.bkOk.checked?'Please tick the privacy box so we can book you in.':'';
+  var bad=!name?'Please add your name.':form.bkKid&&!kid?'Please add your child’s first name.':!/^(\+?61|0)4[\d ]{8,11}$/.test(phone.replace(/\s/g,'').replace(/^\+61/,'0').replace(/^61/,'0'))?'Please add an Australian mobile number (04xx xxx xxx).':!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)?'Please check your email address.':!form.bkOk.checked?'Please tick the box to agree to the privacy notice.':'';
   if(bad){err.textContent=bad;err.hidden=false;return}
   var go=form.querySelector('.bk-submit');go.disabled=true;go.innerHTML='<span class="bk-spin"></span>Booking…';
   api.book({pid:pid,need:S.need,start:t.toISOString(),name:name,child:kid,phone:phone,email:email,plan:S.plan,how:S.how==='any'?'in':S.how,firstVisit:first}).then(function(r){
@@ -299,7 +299,7 @@ function openWait(pids){
   (many?'<fieldset class="bk-fs"><legend>Who are you happy to see?</legend><div class="fd-pills">'+pids.map(function(pid){return '<button type="button" class="fd-pill" data-wp="'+pid+'" aria-pressed="true">'+esc(P[pid].first)+'</button>'}).join('')+'</div></fieldset>':'')+
   '<fieldset class="bk-fs"><legend>Which days work?</legend><div class="fd-pills">'+[1,2,3,4,5,6].map(function(d){return '<button type="button" class="fd-pill" data-wd="'+d+'" aria-pressed="'+(d<6)+'">'+F.DAY[d]+'</button>'}).join('')+'</div></fieldset>'+
   '<fieldset class="bk-fs"><legend>Which times?</legend><div class="fd-pills"><button type="button" class="fd-pill" data-wt="am" aria-pressed="true">Mornings</button><button type="button" class="fd-pill" data-wt="pm" aria-pressed="true">Afternoons</button></div></fieldset>'+
-  '<label class="bk-check"><input type="checkbox" id="wlOk" required><span>Text me about spots that open up. I can reply STOP at any time.</span></label>'+
+  '<label class="bk-check"><input type="checkbox" id="wlOk" required><span>Text me about spots that open up. We use these details only to offer you spots, and delete them when you leave the list. Reply STOP at any time. <a href="privacy.html" target="_blank" rel="noopener">Privacy notice</a></span></label>'+
   '<p class="bk-err" role="alert" hidden></p><button type="submit" class="btn btn-primary bk-submit">'+svg('bell')+'Join the waitlist</button><p class="bk-demo">Demo: no real texts are sent.</p></form>');
  var form=sheet.querySelector('form');
  form.addEventListener('click',function(e){var b=e.target.closest('.fd-pill');if(b)b.setAttribute('aria-pressed',b.getAttribute('aria-pressed')!=='true')});
