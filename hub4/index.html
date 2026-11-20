@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&family=Josefin+Sans:wght@600;700&family=Lora:ital,wght@0,500;0,600;1,400&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
-:root{--paper:#f6f0e4;--ink:#2f2a30;--mut:#6c6158;--teal:#2f7479;--teal2:#4f9a9c;--must:#e2a83e;--blush:#efc3b6}
+:root{--paper:#f1e9da;--ink:#2f2a30;--mut:#6c6158;--teal:#2f7479;--teal2:#4f9a9c;--must:#e2a83e;--blush:#efc3b6}
 *{box-sizing:border-box;margin:0;padding:0}
 html{scroll-behavior:smooth}
 body{background:var(--paper);color:var(--ink);font:17px/1.65 Nunito,system-ui,sans-serif;overflow-x:hidden}
@@ -18,7 +18,7 @@ body{background:var(--paper);color:var(--ink);font:17px/1.65 Nunito,system-ui,sa
 
 /* ---------- the drawing ---------- */
 #scene{position:relative;height:620vh}
-#stage{position:sticky;top:0;height:100vh;height:100svh;overflow:hidden;background:var(--paper)}
+#stage{position:sticky;top:0;height:100vh;height:100svh;overflow:hidden;background:linear-gradient(#aeb3c2,#cdbcb4 52%,#d4bf9f)}
 .layer{position:absolute;inset:-4%;will-change:transform}
 .layer svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
 #clouds svg{animation:drift 90s linear infinite alternate}
@@ -154,80 +154,112 @@ const mixHex = (a, b, k) => { const p = (h) => [1, 3, 5].map((i) => parseInt(h.s
    Each layer is its own <svg> so the browser can slide it as one piece (parallax) without repainting it.
    fills: [d, colour, layer, start, end, scribble angle, stroke width]   lines: [d, layer, start, end, width, opacity]
    Times are scroll progress 0..1. */
-const SUN = { x: 1060 };
+const SUN = { x: 1000 };
 const cloud = (cx, cy, w, h) => { seed = Math.round(cx * 7 + cy); const n = 4; const bump = [0.55, 1, 0.75, 0.45]; let d = `M${cx - w / 2} ${cy}`; for (let i = 0; i < n; i++) { const x0 = cx - w / 2 + (w / n) * i, x1 = x0 + w / n, top = cy - h * bump[i] * (0.8 + 0.4 * rnd()), x0b = x0 + (rnd() - 0.5) * 10; d += ` C${x0b - 6} ${top} ${x1 + 6} ${top} ${x1} ${cy - h * 0.12}`; } return d + ` C${cx + w * 0.62} ${cy + h * 0.16} ${cx + w / 3} ${cy + h * 0.1} ${cx} ${cy + h * 0.12} C${cx - w / 3} ${cy + h * 0.14} ${cx - w * 0.62} ${cy + h * 0.1} ${cx - w / 2} ${cy}Z`; };
-const CLOUDS = [[300, 190, 300, 52], [780, 120, 240, 40], [1320, 230, 360, 56], [560, 320, 220, 32], [1520, 110, 200, 34], [980, 300, 160, 24]];
-const CLIFF = 'M-40 296 C60 286 150 294 230 310 C300 326 362 348 412 376 C452 400 482 438 502 480 C516 518 526 558 534 608 C542 658 552 700 566 742 L-40 772 Z';
-const CLIFF_TOP = 'M-40 296 C60 286 150 294 230 310 C300 326 362 348 412 376';
-const STRATA = ['M-40 372 C120 372 270 388 446 418', 'M-40 452 C150 448 310 462 492 494', 'M-40 532 C160 532 340 542 522 560', 'M-40 612 C170 612 350 622 538 634', 'M-40 690 C200 690 380 696 552 702'];
-const BEACH = 'M-40 772 L566 742 C700 716 860 704 1010 712 C1210 724 1410 746 1640 756 L1640 1040 L-40 1040 Z';
-const SHORE = 'M566 742 C700 716 860 704 1010 712 C1210 724 1410 746 1640 756';
-const WET = 'M566 742 C700 716 860 704 1010 712 C1210 724 1410 746 1640 756 L1640 774 C1410 766 1210 744 1010 732 C860 724 700 736 566 760 Z';
-const DUNE_R = 'M700 1040 C800 962 930 908 1080 884 C1240 860 1420 866 1640 834 L1640 1040 Z';
-const DUNE_L = 'M-40 1040 L-40 906 C110 884 240 896 340 936 C396 960 426 992 436 1040 Z';
-const ROCK = 'M604 734 L610 700 L614 676 L626 660 L630 646 L646 640 L662 642 L670 652 L684 656 L690 674 L694 700 L702 736 Z M712 736 L716 712 L726 702 L738 708 L742 736 Z';
-const HEAD = 'M980 564 C1060 548 1150 532 1250 524 C1340 516 1420 520 1500 512 C1560 508 1600 506 1640 506 L1640 564 Z';
-const HEAD2 = 'M760 564 C820 556 880 552 950 558 L960 564 Z';
-const POSTS = [[960, 905], [1060, 889], [1160, 877], [1260, 869], [1360, 866], [1460, 858], [1570, 846]];
-const FAM0 = 780, FAM1 = 1000, FAMY = 812;   // the family walks along the wet sand as you scroll
+const CLOUDS = [[640, 150, 380, 62], [1010, 100, 290, 46], [1390, 200, 400, 62], [840, 300, 250, 34], [1550, 80, 220, 36], [1210, 330, 190, 26], [430, 250, 210, 30]];
+const CLOUD_COL = ['#d9b2a6', '#c4abb0', '#e1c0a8'];
+// a bumpy top edge (bushes, scrub) along a polyline; band() closes it into a strip, mass() down to a floor
+const bumps = (pts, r, sd) => { seed = sd; let d = `M${pts[0][0]} ${pts[0][1]}`; for (let i = 0; i < pts.length - 1; i++) { const [x0, y0] = pts[i], [x1, y1] = pts[i + 1], n = Math.max(1, Math.round(Math.hypot(x1 - x0, y1 - y0) / (r * 1.8))); for (let k = 1; k <= n; k++) { const t = k / n, tp = (k - 0.5) / n, x = x0 + (x1 - x0) * t, y = y0 + (y1 - y0) * t + (k < n ? (rnd() - 0.5) * r * 0.5 : 0), cx = x0 + (x1 - x0) * tp, cy = y0 + (y1 - y0) * tp - r * (0.9 + rnd() * 0.9); d += ` Q${cx.toFixed(1)} ${cy.toFixed(1)} ${x.toFixed(1)} ${y.toFixed(1)}`; } } return d; };
+const band = (pts, r, th, sd) => bumps(pts, r, sd) + ' ' + pts.slice().reverse().map(([x, y]) => `L${x} ${y + th}`).join(' ') + ' Z';
+const mass = (pts, r, floor, sd) => bumps(pts, r, sd) + ` L${pts[pts.length - 1][0]} ${floor} L${pts[0][0]} ${floor} Z`;
+const yOn = (pts, x) => { for (let i = 0; i < pts.length - 1; i++) { const [x0, y0] = pts[i], [x1, y1] = pts[i + 1]; if (x <= x1) return lerp(y0, y1, cl((x - x0) / (x1 - x0))); } return pts[pts.length - 1][1]; };
+
+// Jan Juc from the sand: a red-ochre bluff close on the left, the cliff line running back to a flat-topped headland, the beach curving away to the right
+const POINT = 'M1430 562 L1446 553 C1500 549 1570 547 1640 547 L1640 562 Z';
+const FAR_LINE = 'M560 528 C620 522 700 516 780 512 C820 510 850 512 868 516 C878 528 886 546 896 566';
+const FAR = FAR_LINE + ' L900 620 L560 620 Z';
+const FAR_TOP = [[560, 528], [640, 522], [720, 516], [800, 511], [866, 516]];
+const MID_LINE = 'M180 360 C260 366 340 392 420 428 C490 460 560 488 640 502 C690 510 730 512 780 514';
+const MID = MID_LINE + ' C800 530 812 570 822 606 L600 690 L460 744 L180 790 Z';
+const MID_TOP = [[180, 360], [260, 366], [340, 392], [420, 428], [500, 464], [580, 492], [660, 505], [780, 514]];
+const MID_SLOPE = [[180, 600], [300, 628], [420, 640], [540, 622], [640, 604], [780, 594]];
+const MID_STRATA = ['M180 430 C300 438 400 470 500 510 C580 540 680 552 780 556', 'M180 500 C300 510 420 540 520 572 C600 590 700 590 780 588'];
+const NEAR_LINE = 'M-40 120 C30 110 90 112 150 124 C168 170 182 230 204 300 C226 370 262 440 300 520 C320 570 330 640 340 740';
+const NEAR = NEAR_LINE + ' L340 764 L120 790 L-40 804 Z';
+const NEAR_TOP = [[-40, 122], [40, 112], [100, 114], [150, 126]];
+const NEAR_DRAPE = [[150, 126], [168, 176], [186, 236], [204, 300]];
+const NEAR_SLOPE = [[-40, 596], [80, 606], [180, 636], [260, 664], [340, 700]];
+const NEAR_STRATA = ['M-40 210 C40 206 120 214 186 236', 'M-40 300 C60 300 140 312 214 340', 'M-40 390 C60 392 160 410 250 444', 'M-40 480 C80 484 190 500 280 520'];
+const STAIR = 'M220 470 L272 516 L236 552 L292 606 L262 640 L326 730';
+const FOOT_PTS = [[-40, 780], [120, 768], [250, 752], [340, 740], [460, 718], [600, 664], [760, 612], [900, 592]];
+const FOOT = 'M-40 780 C120 768 250 752 340 740 C460 724 600 664 760 612 C820 598 860 594 900 592';
+const SHORE = 'M900 592 C1040 598 1240 632 1640 706';
+const BEACH = FOOT + ' C1040 598 1240 632 1640 706 L1640 1040 L-40 1040 Z';
+const WET = 'M880 592 C1040 598 1240 632 1640 706 L1640 752 C1240 678 1040 618 860 600 Z';
+const ROCKS = [[40, 0, 12], [78, 0, 9], [130, 0, 15], [176, 0, 8], [360, 0, 13], [400, 0, 9], [452, 0, 11], [520, 0, 14], [560, 0, 8]].map(([x, , r]) => { const y = yOn(FOOT_PTS, x) + 8; return `M${x - r} ${y} C${x - r} ${y - r * 1.1} ${x + r * 0.9} ${y - r * 1.3} ${x + r} ${y} Z`; }).join(' ');
+// pencil bush texture: a second, smaller row of bumps just inside each scrub edge
+const bushTex = (pts, r, sd, dy) => bumps(pts.map(([x, y]) => [x, y + dy]), r * 0.6, sd + 100);
+const BANK_TOP = [[-40, 884], [50, 874], [130, 888], [200, 924], [250, 976], [272, 1040]];
+const BANK = bumps(BANK_TOP, 18, 31) + ' L-40 1040 Z';
+const FAM0 = 760, FAM1 = 980, FAMY = 806;   // the family walks along the beach as you scroll
 
 const FILLS = [
-  // sky, sun, clouds, far headlands
-  ['M-40 -40 H1640 V600 H-40 Z', 'url(#skyG)', 'sky', 0.14, 0.34, -22, 150],
-  [`M${SUN.x - 62} 0 a62 62 0 1 0 124 0 a62 62 0 1 0 -124 0`, '#ffd08a', 'sun', 0.2, 0.26, 30, 40],
-  ...CLOUDS.map(([x, y, w, h], i) => [cloud(x, y, w, h), i % 2 ? '#f4b9a2' : '#f7c8ac', 'clouds', 0.26 + i * 0.025, 0.34 + i * 0.025, -12, 34]),
-  [HEAD2, '#b49ab2', 'sky', 0.32, 0.36, 0, 30],
-  [HEAD, '#9b88aa', 'sky', 0.33, 0.4, -8, 40],
+  // sky, sun, clouds, the far point
+  ['M-40 -40 H1640 V600 H-40 Z', 'url(#skyG)', 'sky', 0, 0.18, -22, 150],
+  [`M${SUN.x - 62} 0 a62 62 0 1 0 124 0 a62 62 0 1 0 -124 0`, '#f6c98a', 'sun', 0.18, 0.24, 30, 40],
+  ...CLOUDS.map(([x, y, w, h], i) => [cloud(x, y, w, h), CLOUD_COL[i % 3], 'clouds', 0.22 + i * 0.022, 0.3 + i * 0.022, -12, 34]),
+  [POINT, '#9a9cae', 'sky', 0.3, 0.34, 0, 24],
+  // the headland at the end of the cliff line
+  [FAR, '#b78e7c', 'far', 0.3, 0.38, -8, 40],
+  [band(FAR_TOP, 7, 12, 41), '#747666', 'far', 0.36, 0.4, 0, 16],
   // sea and the sun's path on it
-  ['M-40 556 H1640 V790 H-40 Z', 'url(#seaG)', 'sea', 0.36, 0.52, 14, 90],
-  [`M${SUN.x - 34} 564 L${SUN.x + 34} 564 L${SUN.x + 150} 760 L${SUN.x - 130} 760 Z`, '#ffe0b0', 'sea', 0.5, 0.56, 80, 26, 'glit'],
-  // cliffs, their layers, the grass on top, houses and a pine, Bird Rock
-  [CLIFF, '#d98d55', 'cliff', 0.42, 0.56, 62, 70],
-  ...STRATA.map((d, i) => [d, ['#c46e3c', '#eab070', '#b35d34', '#e39a5c', '#c06a3a'][i], 'cliff', 0.5 + i * 0.02, 0.56 + i * 0.02, 4, 30, 'band']),
-  ['M-40 296 C60 286 150 294 230 310 C300 326 362 348 412 376 L404 392 C350 364 290 344 226 328 C150 312 70 306 -40 312 Z', '#8fa060', 'cliff', 0.56, 0.6, 10, 24],
-  ['M70 246 h70 v52 h-70 Z M180 262 h56 v48 h-56 Z', '#f4e7d2', 'cliff', 0.58, 0.62, 0, 20],
-  ['M60 250 L105 216 L150 250 Z M172 266 L208 238 L244 266 Z', '#a65a46', 'cliff', 0.6, 0.64, 30, 16],
-  ['M292 300 L322 246 L352 300 Z M286 330 L322 270 L358 330 Z M298 270 L322 226 L346 270 Z', '#41604a', 'cliff', 0.58, 0.63, -30, 16],
-  [ROCK, '#cf7c44', 'cliff', 0.52, 0.57, 70, 24],
-  // beach, wet sand, umbrella, the family
-  [BEACH, '#eed5a8', 'beach', 0.58, 0.72, -6, 80],
-  [WET, '#c8b08c', 'beach', 0.68, 0.73, 0, 16],
-  ['M290 806 Q360 752 430 806 Z', '#e7836a', 'beach', 0.7, 0.74, 70, 14],
-  ['M326 788 Q360 752 394 788 L382 806 Q360 778 338 806 Z', '#f6e3c0', 'beach', 0.72, 0.75, 70, 10],
-  ['M300 880 l100 -10 l10 26 l-100 10 Z', '#4f9a9c', 'beach', 0.72, 0.75, 20, 12],
-  // dunes in front
-  [DUNE_R, '#a6ad74', 'fg', 0.74, 0.86, -18, 70],
-  [DUNE_L, '#97a26a', 'fg', 0.75, 0.86, 22, 60],
+  ['M-40 556 H1640 V800 H-40 Z', 'url(#seaG)', 'sea', 0.32, 0.46, 14, 90],
+  [`M${SUN.x - 34} 564 L${SUN.x + 34} 564 L${SUN.x + 170} 760 L${SUN.x - 140} 760 Z`, '#f3d2a8', 'sea', 0.46, 0.52, 80, 26, 'glit'],
+  // the cliff run: ochre face, scrub on top and spilling down the slope
+  [MID, '#cb7d4e', 'mid', 0.38, 0.48, 50, 60],
+  ...MID_STRATA.map((d, i) => [d, ['#dc9763', '#ad5c36'][i], 'mid', 0.46 + i * 0.02, 0.5 + i * 0.02, 4, 30, 'band', 'midclip']),
+  [band(MID_TOP, 12, 24, 42), '#4b5a3c', 'mid', 0.48, 0.54, 10, 20],
+  [mass(MID_SLOPE, 13, 860, 43), '#5d6b45', 'mid', 0.5, 0.58, -20, 40, 'in', 'midclip'],
+  // the near bluff, its bands, scrub, and the timber stairs down
+  [NEAR, '#c2683b', 'cliff', 0.42, 0.54, 62, 70],
+  ...NEAR_STRATA.map((d, i) => [d, ['#dd9862', '#a5512d', '#d68a55'][i], 'cliff', 0.5 + i * 0.015, 0.54 + i * 0.015, 4, 30, 'band', 'nearclip']),
+  [band(NEAR_TOP, 14, 30, 44), '#45563a', 'cliff', 0.52, 0.56, 0, 20],
+  [band(NEAR_DRAPE, 11, 34, 46), '#52613f', 'cliff', 0.54, 0.58, 60, 20, 'in', 'nearclip'],
+  [mass(NEAR_SLOPE, 16, 860, 45), '#56653f', 'cliff', 0.56, 0.64, -30, 50, 'in', 'nearclip'],
+  [STAIR, '#ab9886', 'cliff', 0.6, 0.65, 40, 22, 'strk'],
+  // the beach, the wet sand at the waterline, rocks at the cliff foot
+  [BEACH, '#dbb784', 'beach', 0.56, 0.7, -6, 80],
+  [WET, '#b49e88', 'beach', 0.66, 0.72, 0, 16],
+  [ROCKS, '#8a6a55', 'beach', 0.68, 0.72, 20, 14],
+  // scrub bank in front
+  [BANK, '#3f4f35', 'fg', 0.72, 0.84, 22, 60],
 ];
-const tuftAt = []; // filled below
 const LINES = [
   ['M-40 562 H1640', 'sky', 0.0, 0.05, 1.6, 0.8],
-  [HEAD.replace(/ L1640 564 Z$/, ''), 'sky', 0.03, 0.08, 1.4, 0.75],
-  [HEAD2.replace(/ L960 564 Z$/, ''), 'sky', 0.05, 0.08, 1.2, 0.6],
+  [POINT.replace(/ L1640 562 Z$/, ''), 'sky', 0.02, 0.06, 1.2, 0.5],
+  [FAR_LINE, 'far', 0.02, 0.08, 1.4, 0.75],
+  [bumps(FAR_TOP, 7, 41), 'far', 0.06, 0.1, 1, 0.45],
   [`M${SUN.x - 62} 0 a62 62 0 1 0 124 0 a62 62 0 1 0 -124 0`, 'sun', 0.05, 0.09, 1.4, 0.7],
-  [CLIFF.replace(/ L-40 772 Z$/, ''), 'cliff', 0.03, 0.12, 2.0, 0.85],
-  ...STRATA.map((d, i) => [d, 'cliff', 0.09 + i * 0.015, 0.14 + i * 0.015, 1.2, 0.6]),
-  ['M-40 312 C70 306 150 312 226 328 C290 344 350 364 404 392', 'cliff', 0.12, 0.16, 1.2, 0.6],
-  ['M70 298 v-52 h70 v52 M60 250 L105 216 L150 250 M180 310 v-48 h56 v48 M172 266 L208 238 L244 266 M84 262 h14 v12 h-14Z M112 262 h14 v12 h-14Z M196 276 h12 v11 h-12Z M216 276 h12 v11 h-12Z', 'cliff', 0.14, 0.2, 1.3, 0.75],
-  ['M322 342 V226 M292 300 L322 246 L352 300 M286 330 L322 270 L358 330 M298 270 L322 226 L346 270', 'cliff', 0.16, 0.21, 1.3, 0.75],
-  [ROCK, 'cliff', 0.1, 0.14, 1.6, 0.8],
-  ['M628 690 C640 686 660 688 690 694 M622 712 C640 708 670 710 698 716', 'cliff', 0.13, 0.16, 1, 0.55],
-  // cliff shading hatches
-  ...Array.from({ length: 9 }, (_, i) => [`M${380 + i * 16} ${420 + i * 30} l-34 46`, 'cliff', 0.18 + i * 0.006, 0.21 + i * 0.006, 1, 0.45]),
+  [MID_LINE, 'mid', 0.03, 0.1, 1.6, 0.8],
+  [bumps(MID_TOP, 12, 42), 'mid', 0.06, 0.12, 1, 0.5],
+  [bumps(MID_SLOPE, 13, 43), 'mid', 0.08, 0.14, 1, 0.55],
+  [bushTex(MID_TOP, 12, 42, 12), 'mid', 0.18, 0.24, 0.9, 0.35],
+  [bushTex(MID_SLOPE, 13, 43, 16), 'mid', 0.19, 0.25, 0.9, 0.35],
+  ...MID_STRATA.map((d, i) => [d, 'mid', 0.11 + i * 0.015, 0.15 + i * 0.015, 1, 0.45]),
+  [NEAR_LINE, 'cliff', 0.03, 0.12, 2.0, 0.85],
+  [bumps(NEAR_TOP, 14, 44), 'cliff', 0.06, 0.1, 1.1, 0.6],
+  [bumps(NEAR_SLOPE, 16, 45), 'cliff', 0.08, 0.15, 1.1, 0.6],
+  [bumps(NEAR_DRAPE, 11, 46), 'cliff', 0.09, 0.14, 1, 0.5],
+  [bushTex(NEAR_TOP, 14, 44, 14), 'cliff', 0.18, 0.24, 0.9, 0.35],
+  [bushTex(NEAR_SLOPE, 16, 45, 18), 'cliff', 0.19, 0.25, 0.9, 0.35],
+  [bushTex(NEAR_SLOPE, 16, 47, 44), 'cliff', 0.2, 0.26, 0.9, 0.3],
+  ...NEAR_STRATA.map((d, i) => [d, 'cliff', 0.1 + i * 0.015, 0.14 + i * 0.015, 1.2, 0.55]),
+  // erosion flutes down the bluff
+  ...Array.from({ length: 10 }, (_, i) => [`M${-24 + i * 20} ${170 + (i % 3) * 16} l${3 + i * 2} ${150 + (i % 4) * 50}`, 'cliff', 0.16 + i * 0.006, 0.19 + i * 0.006, 1, 0.4]),
+  [STAIR, 'cliff', 0.14, 0.19, 1.4, 0.8],
+  [STAIR.replace(/(\d+) (\d+)/g, (m, x, y) => `${x} ${y - 12}`), 'cliff', 0.16, 0.21, 1.1, 0.65],
+  [FOOT, 'beach', 0.06, 0.12, 1.4, 0.7],
   [SHORE, 'beach', 0.07, 0.13, 1.6, 0.8],
-  ['M566 760 C700 736 860 724 1010 732 C1210 744 1410 766 1640 774', 'beach', 0.11, 0.15, 1, 0.5],
+  ['M860 600 C1040 618 1240 678 1640 752', 'beach', 0.11, 0.15, 1, 0.5],
+  [ROCKS, 'beach', 0.16, 0.2, 1.1, 0.6],
   ...CLOUDS.map(([x, y, w, h], i) => [`M${x - w * 0.55} ${y + h * 0.18} q${w * 0.5} ${-h * 0.08} ${w * 1.1} 0 M${x - w * 0.3} ${y + h * 0.32} q${w * 0.35} -4 ${w * 0.7} 2`, 'clouds', 0.14 + i * 0.02, 0.2 + i * 0.02, 1, 0.4]),
-  ['M360 884 V780 M290 806 Q360 752 430 806 Z M326 788 L338 806 M394 788 L382 806 M300 880 l100 -10 l10 26 l-100 10 Z', 'beach', 0.2, 0.25, 1.3, 0.75],
-  [DUNE_R.replace(/ L1640 1040 L700 1040 Z|L1640 1040 Z$/, ''), 'fg', 0.15, 0.22, 2, 0.85],
-  [DUNE_L.replace(/ C396 960 426 992 436 1040 Z$/, ' C396 960 426 992 436 1040'), 'fg', 0.16, 0.22, 2, 0.85],
-  ...POSTS.map(([x, y], i) => [`M${x} ${y + 8} L${x + 2} ${y - 46}`, 'fg', 0.22 + i * 0.008, 0.24 + i * 0.008, 2.4, 0.85]),
-  ['M960 870 ' + POSTS.slice(1).map(([x, y], i) => `Q${(x + POSTS[i][0]) / 2} ${(y + POSTS[i][1]) / 2 - 30} ${x + 2} ${y - 36}`).join(' '), 'fg', 0.25, 0.3, 1.2, 0.7],
+  [bumps(BANK_TOP, 18, 31), 'fg', 0.15, 0.22, 2, 0.85],
 ];
 
 /* ---------- build the layers ---------- */
 const stage = document.getElementById('stage');
-const LAYERS = { sky: 0.04, sun: 0.07, clouds: 0.1, sea: 0.18, waves: 0.18, birds: 0.14, cliff: 0.36, beach: 0.52, fam: 0.52, foam: 0.52, fg: 0.85, grass: 0.85 };
-const ORDER = ['sky', 'sun', 'clouds', 'sea', 'waves', 'birds', 'cliff', 'beach', 'fam', 'foam', 'fg', 'grass'];
+const LAYERS = { sky: 0.04, sun: 0.07, clouds: 0.1, far: 0.12, sea: 0.18, waves: 0.18, birds: 0.14, mid: 0.26, cliff: 0.36, beach: 0.52, fam: 0.52, foam: 0.52, fg: 0.85, grass: 0.85 };
+const ORDER = ['sky', 'sun', 'clouds', 'far', 'sea', 'waves', 'birds', 'mid', 'cliff', 'beach', 'fam', 'foam', 'fg', 'grass'];
 const svgs = {}, wraps = {};
 const isMobile = () => innerWidth / innerHeight < 1;
 for (const name of ORDER) {
@@ -235,7 +267,7 @@ for (const name of ORDER) {
   const svg = document.createElementNS(NS, 'svg'); svg.setAttribute('preserveAspectRatio', 'xMidYMid slice');
   wrap.appendChild(svg); stage.insertBefore(wrap, document.getElementById('title')); svgs[name] = svg; wraps[name] = wrap;
 }
-const setView = () => { const cx = isMobile() ? 790 : 800; for (const s of Object.values(svgs)) s.setAttribute('viewBox', `${cx - 800} 0 1600 1000`); };
+const setView = () => { const cx = isMobile() ? 880 : 800; for (const s of Object.values(svgs)) s.setAttribute('viewBox', `${cx - 800} 0 1600 1000`); };
 setView(); addEventListener('resize', setView);
 
 // shared filters: watercolour (soft wobbly edges, darker rims, pigment granulation) and pencil (grainy graphite)
@@ -262,9 +294,9 @@ const DEFS = `
 <filter id="rough"><feTurbulence type="fractalNoise" baseFrequency=".04" numOctaves="2" seed="9"/><feDisplacementMap in="SourceGraphic" scale="10"/></filter>
 <filter id="soft"><feGaussianBlur stdDeviation="14"/></filter>
 <linearGradient id="skyG" x1="0" y1="0" x2="0" y2="1">
-  <stop id="sk0" offset="0" stop-color="#8ea2c6"/><stop id="sk1" offset=".45" stop-color="#e9b2a2"/><stop id="sk2" offset=".8" stop-color="#f8cfa2"/><stop id="sk3" offset="1" stop-color="#fde2b6"/></linearGradient>
+  <stop id="sk0" offset="0" stop-color="#7f8eab"/><stop id="sk1" offset=".45" stop-color="#c8a6a2"/><stop id="sk2" offset=".8" stop-color="#e2bc9a"/><stop id="sk3" offset="1" stop-color="#ecceaa"/></linearGradient>
 <linearGradient id="seaG" x1="0" y1="0" x2="0" y2="1">
-  <stop offset="0" stop-color="#e9b9a4"/><stop offset=".12" stop-color="#8db4bd"/><stop offset=".7" stop-color="#4f8c9e"/><stop offset="1" stop-color="#6aa9a8"/></linearGradient>
+  <stop offset="0" stop-color="#d6ab9c"/><stop offset=".12" stop-color="#86a5ac"/><stop offset=".7" stop-color="#537e8b"/><stop offset="1" stop-color="#6a9898"/></linearGradient>
 <radialGradient id="glow"><stop offset="0" stop-color="#ffd9a0" stop-opacity=".9"/><stop offset=".45" stop-color="#ffb37a" stop-opacity=".35"/><stop offset="1" stop-color="#ff9a6a" stop-opacity="0"/></radialGradient>`;
 
 // a back-and-forth scribble that covers a box: what the "brush" follows when it colours a shape in
@@ -288,10 +320,14 @@ for (const name of ORDER) parts[name] = { defs: '', fill: '', line: '', top: '' 
 // measure shapes with a hidden svg so scribbles fit them
 const meas = document.createElementNS(NS, 'svg'); meas.style.cssText = 'position:absolute;width:0;height:0;visibility:hidden'; document.body.appendChild(meas);
 const bbox = (d) => { const p = document.createElementNS(NS, 'path'); p.setAttribute('d', d); meas.appendChild(p); const b = p.getBBox(); p.remove(); return b; };
-FILLS.forEach(([d, col, layer, t0, t1, ang, w, kind], i) => {
-  const shape = kind === 'glit' ? `<path d="${d}" fill="${col}" fill-opacity=".55"/>` : kind === 'band' ? `<path d="${d}" fill="none" stroke="${col}" stroke-width="30" stroke-linecap="round" clip-path="url(#cliffclip)"/>` : `<path d="${d}" fill="${col}"/>`;
+FILLS.forEach(([d, col, layer, t0, t1, ang, w, kind, clip], i) => {
+  const shape = kind === 'glit' ? `<path d="${d}" fill="${col}" fill-opacity=".35"/>`
+    : kind === 'band' ? `<path d="${d}" fill="none" stroke="${col}" stroke-width="30" stroke-linecap="round" clip-path="url(#${clip})"/>`
+    : kind === 'in' ? `<path d="${d}" fill="${col}" clip-path="url(#${clip})"/>`
+    : kind === 'strk' ? `<path d="${d}" fill="none" stroke="${col}" stroke-width="12" stroke-linejoin="round" stroke-linecap="round"/>`
+    : `<path d="${d}" fill="${col}"/>`;
   const b = bbox(d);
-  if (kind === 'band') { b.y -= 20; b.height += 40; }
+  if (kind === 'band' || kind === 'strk') { b.x -= 20; b.width += 40; b.y -= 20; b.height += 40; }
   parts[layer].defs += `<mask id="m${i}" maskUnits="userSpaceOnUse" x="-200" y="-200" width="2000" height="1400"><path id="ms${i}" d="${scribble(b, ang, w)}" fill="none" stroke="#fff" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round" pathLength="1" stroke-dasharray="1 1" stroke-dashoffset="1" filter="url(#rough)"/></mask>`;
   parts[layer].fill += `<g mask="url(#m${i})">${shape}</g>`;
   anim.fills.push({ id: 'ms' + i, t0, t1 });
@@ -301,20 +337,29 @@ LINES.forEach(([d, layer, t0, t1, w, op], i) => {
   parts[layer].line += `<path id="l${i}b" d="${d}" fill="none" stroke="#3b3036" stroke-width="${w * 0.6}" stroke-opacity="${op * 0.45}" stroke-linecap="round" pathLength="1" stroke-dasharray="1 1" stroke-dashoffset="1" transform="translate(1.4 -1.1)"/>`;
   anim.lines.push({ id: 'l' + i, t0, t1 }, { id: 'l' + i + 'b', t0: t0 + 0.006, t1: t1 + 0.012 });
 });
-parts.cliff.defs += `<clipPath id="cliffclip"><path d="${CLIFF}"/></clipPath>`;
+parts.cliff.defs += `<clipPath id="nearclip"><path d="${NEAR}"/></clipPath>`;
+parts.mid.defs += `<clipPath id="midclip"><path d="${MID}"/></clipPath>`;
 
 // moving things that sit on top: sun glow, waves, sparkles, wash, birds, the family, grass tufts, lit windows
 parts.sun.top = `<circle id="sunglow" cx="${SUN.x}" cy="0" r="330" fill="url(#glow)" opacity="0" style="mix-blend-mode:screen"/>`;
-parts.cliff.top = `<g id="lights" opacity="0">${[[84, 262, 14, 12], [112, 262, 14, 12], [196, 276, 12, 11], [216, 276, 12, 11]].map(([x, y, w, h]) => `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="#ffd27a"/><circle cx="${x + w / 2}" cy="${y + h / 2}" r="22" fill="url(#glow)"/>`).join('')}</g>`;
+// stair treads, and footprints in the sand: a trail leading to the family plus older ones scattered about
+parts.cliff.top = `<g id="stairT" opacity="0"><path d="${STAIR}" fill="none" stroke="#5e4a3c" stroke-width="10" stroke-dasharray="1.6 5" stroke-linejoin="round" opacity=".7"/></g>`;
+{
+  seed = 77; let f = '';
+  const print = (x, y, s, a) => `<ellipse cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" rx="${(5 * s).toFixed(1)}" ry="${(2.3 * s).toFixed(1)}" transform="rotate(${a.toFixed(0)} ${x.toFixed(1)} ${y.toFixed(1)})"/>`;
+  for (let i = 0; i < 20; i++) { const t = i / 19, s = lerp(1.6, 0.75, t); f += print(lerp(640, FAM0 - 30, t) + (i % 2 ? 8 : -8) * s, lerp(1030, FAMY + 4, t), s, -60 + t * 40); }
+  for (let i = 0; i < 46; i++) { const x = 300 + rnd() * 1300, y = 790 + rnd() * 240, s = (y - 560) / 260; if (x > 600 && x < 820 && y > 800) continue; f += print(x, y, s, (rnd() - 0.5) * 80); }
+  parts.beach.top = `<g id="prints" fill="#a88a62" opacity="0">${f}</g>`;
+}
 {
   seed = 5; let w = '';
-  for (let i = 0; i < 26; i++) { const y = 580 + rnd() * 160, x = rnd() * 1600, len = 30 + (y - 560) * 0.5 * rnd() + 20; w += `<path class="wave${i % 3 ? '' : ' s'}" d="M${x} ${y} q${len / 4} -${3 + (y - 560) / 40} ${len / 2} 0 t${len / 2} 0" fill="none" stroke="#fff6e6" stroke-width="${1.2 + (y - 560) / 120}" stroke-linecap="round" stroke-dasharray="${len * 0.7} ${len * 0.9}" opacity=".75" style="animation-delay:${-rnd() * 6}s"/>`; }
+  for (let i = 0; i < 26; i++) { const y = 580 + rnd() * 160, x = 880 + rnd() * 760, len = 30 + (y - 560) * 0.5 * rnd() + 20; w += `<path class="wave${i % 3 ? '' : ' s'}" d="M${x} ${y} q${len / 4} -${3 + (y - 560) / 40} ${len / 2} 0 t${len / 2} 0" fill="none" stroke="#fff6e6" stroke-width="${1.2 + (y - 560) / 120}" stroke-linecap="round" stroke-dasharray="${len * 0.7} ${len * 0.9}" opacity=".75" style="animation-delay:${-rnd() * 6}s"/>`; }
   for (let i = 0; i < 18; i++) { const y = 570 + rnd() * 170, x = SUN.x - 40 + (rnd() - 0.4) * (y - 540) * 1.1; w += `<path class="spark" d="M${x} ${y} h${8 + rnd() * 18}" stroke="#fff3d0" stroke-width="2.2" stroke-linecap="round" style="animation-delay:${-rnd() * 2.6}s"/>`; }
   // breaking lines near the shore
-  w += `<path class="wave s" d="M560 700 C700 676 860 664 1010 672 C1210 684 1410 706 1640 716" fill="none" stroke="#fffaf0" stroke-width="3" stroke-dasharray="90 60" opacity=".8"/>`;
-  w += `<path class="wave" d="M560 672 C700 648 860 636 1010 644 C1210 656 1410 678 1640 688" fill="none" stroke="#fffaf0" stroke-width="2" stroke-dasharray="60 90" opacity=".55"/>`;
+  w += `<path class="wave s" d="M910 584 C1050 590 1240 620 1640 690" fill="none" stroke="#fffaf0" stroke-width="3" stroke-dasharray="90 60" opacity=".8"/>`;
+  w += `<path class="wave" d="M920 574 C1060 578 1240 602 1640 664" fill="none" stroke="#fffaf0" stroke-width="2" stroke-dasharray="60 90" opacity=".55"/>`;
   parts.waves.top = `<g id="wavesG" opacity="0">${w}</g>`;
-  parts.foam.top = `<g id="foamG" opacity="0"><path class="wash" d="${SHORE}" fill="none" stroke="#fffaf0" stroke-width="4.5" stroke-linecap="round" stroke-dasharray="90 8 26 14 140 10 40 22" opacity=".9" filter="url(#rough)"/><path class="wash b" d="M566 752 C700 728 860 716 1010 724 C1210 736 1410 758 1640 766" fill="none" stroke="#fffaf0" stroke-width="2.6" stroke-dasharray="60 30 14 40 100 26" opacity=".55" filter="url(#rough)"/></g>`;
+  parts.foam.top = `<g id="foamG" opacity="0"><path class="wash" d="${SHORE}" fill="none" stroke="#fffaf0" stroke-width="4.5" stroke-linecap="round" stroke-dasharray="90 8 26 14 140 10 40 22" opacity=".9" filter="url(#rough)"/><path class="wash b" d="M890 600 C1040 608 1240 644 1640 720" fill="none" stroke="#fffaf0" stroke-width="2.6" stroke-dasharray="60 30 14 40 100 26" opacity=".55" filter="url(#rough)"/></g>`;
 }
 // the family: a parent, a child holding their hand, a dog; drawn in pencil, then coloured
 parts.fam.top = `<g id="famG" opacity="0"><g id="famIn">
@@ -332,8 +377,7 @@ parts.fam.top = `<g id="famG" opacity="0"><g id="famIn">
   // grass tufts on the dunes, swaying
   seed = 21; let g = '';
   const tuft = (x, y, s) => { let blades = ''; for (let k = 0; k < 6; k++) { const a = (k - 2.5) * 0.28 + (rnd() - 0.5) * 0.2, h = (26 + rnd() * 26) * s; blades += `M${x} ${y} q${Math.sin(a) * h * 0.3} ${-h * 0.6} ${Math.sin(a) * h} ${-h}`; } return `<path class="tuft" d="${blades}" fill="none" stroke="${rnd() < 0.5 ? '#6f8a4a' : '#55703c'}" stroke-width="${2.2 * s}" stroke-linecap="round" style="animation-delay:${-rnd() * 4}s"/>`; };
-  for (let i = 0; i < 26; i++) { const x = 760 + i * 34 + rnd() * 20, y = 1010 - (x - 700) * 0.12 + rnd() * 40; if (y > 1040) continue; g += tuft(x, Math.max(y, 880 + (1640 - x) * 0.05), 0.9 + rnd() * 0.6); }
-  for (let i = 0; i < 12; i++) { const x = -20 + i * 36 + rnd() * 14, y = 930 + rnd() * 70 + Math.max(0, x - 300) * 0.5; g += tuft(x, y, 0.8 + rnd() * 0.6); }
+  for (let i = 0; i < 16; i++) { const x = -30 + i * 19 + rnd() * 10, top = yOn(BANK_TOP, x); if (top > 1030) continue; g += tuft(x, top + 8 + rnd() * (1040 - top) * 0.6, 0.8 + rnd() * 0.6); }
   parts.grass.top = `<g id="grassG" opacity="0" filter="url(#pencil)">${g}</g>`;
 }
 {
@@ -369,7 +413,7 @@ const scene = $('scene');
 let mx = 0, my = 0, tx = 0, ty = 0, lastP = -1, P = 0, lastT = performance.now();
 addEventListener('pointermove', (e) => { tx = e.clientX / innerWidth - 0.5; ty = e.clientY / innerHeight - 0.5; }, { passive: true });
 const progress = () => cl(-scene.getBoundingClientRect().top / (scene.offsetHeight - innerHeight));
-const SKY0 = ['#8ea2c6', '#e9b2a2', '#f8cfa2', '#fde2b6'], SKY1 = ['#5d5f98', '#d98c8c', '#f4a874', '#fcc98a'];
+const SKY0 = ['#7f8eab', '#c8a6a2', '#e2bc9a', '#ecceaa'], SKY1 = ['#535a86', '#c08289', '#df9a72', '#eebb86'];
 
 function paint(p) {
   for (const f of elsF) f.el.setAttribute('stroke-dashoffset', (1 - ss(f.t0, f.t1, p)).toFixed(4));
@@ -383,7 +427,8 @@ function paint(p) {
   $('foamG').setAttribute('opacity', ss(0.7, 0.76, p));
   $('birdsG').setAttribute('opacity', ss(0.26, 0.34, p));
   $('grassG').setAttribute('opacity', ss(0.22, 0.3, p));
-  $('lights').setAttribute('opacity', ss(0.88, 0.96, p));
+  $('stairT').setAttribute('opacity', ss(0.62, 0.68, p));
+  $('prints').setAttribute('opacity', ss(0.68, 0.76, p));
   $('famG').setAttribute('opacity', ss(0.64, 0.72, p));
   title.classList.toggle('on', p > 0.9);
   hint.style.opacity = p < 0.02 ? 1 : 0;

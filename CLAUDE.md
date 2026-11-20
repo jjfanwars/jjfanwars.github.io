@@ -71,6 +71,7 @@ Browser war game in one file: `index.html` (Three.js r170, inlined: the ESM buil
 - `legal/`: Courtroom Duel, Legal Studies revision game (not jjfanwars). Notes: `docs/notes/legal.md`.
 - `space/`: YeShip, co-op rocket builder (orbit, moon, stations). Notes: `docs/notes/yeship.md`. Design: `docs/plans/yeship.md`.
 - `physics/`: Year 10 physics study hub (electricity & astronomy). Notes: `docs/notes/physics.md`.
+- `hub4/` (also `hub/`, `hub2/`, `hub3/`): Surf Coast Family Hub website (not a game). Notes: `docs/notes/hub.md`.
 
 ## Recently done (Nov 2026)
 - 10 Nov 2026: enclosed Iron Express (replaced the open-deck walkable train), emote wheel with outline poses + third-person camera while emoting + walk while emoting, big-map perf (`Fields.work` time-slices whole-map flow fields when N > 200, cache capped by memory; `terrainChunks` 32-cell chunks sharing one vertex buffer with 3 LODs in `updateLod`), driving fixes in `moveVehicle` (slope speed, vehicle collisions, smoothed z), `separate` sidesteps when blocked, faster opening tax (`income`), `UI.fitSelBar`, death screen hides HUD (`Direct.deadView`).
