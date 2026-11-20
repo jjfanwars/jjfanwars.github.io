@@ -237,7 +237,7 @@ function showSheet(html){sheet.innerHTML=html;if(!dlg.open){dlg.showModal();docu
 function sheetHead(t){return '<div class="bk-head"><h2 tabindex="-1">'+t+'</h2><button type="button" class="bk-x" data-close aria-label="Close">'+svg('x')+'</button></div>'}
 function apptLine(pid,t,len){var p=P[pid],on=S.how==='online';
  return '<div class="bk-appt"><img src="'+H.photo(pid)+'" alt="" width="64" height="64"><div><b>'+esc(p.name)+'</b><span>'+svg('cal')+esc(F.day(t,1))+', '+F.time(t)+' ('+(len||H.lenOf(pid,S.need))+' min)</span>'+
-  '<span>'+svg(on?'video':'pin')+(on?'Video or phone (link sent by text)':'At the Hub, Jan Juc Village, Stuart Ave')+'</span></div></div>'}
+  '<span>'+svg(on?'video':'pin')+(on?'Video or phone (link sent by text)':'At the Hub, 16 Princes Tce, Jan Juc')+'</span></div></div>'}
 function costNote(pid){var f=feeOf(pid);if(!Array.isArray(f))return typeof f==='string'?'<p class="bk-cost">'+esc(f)+'</p>':'';
  if(f[2]&&S.plan==='yes')return '<p class="bk-cost"><b>'+money(f[0])+'</b>, about <b>'+money(Math.round((f[0]-f[2])*100)/100)+'</b> after your Medicare rebate. Bring your Mental Health Treatment Plan, or ask your GP to send it to us.</p>';
  if(f[2]&&S.plan==='unsure')return '<p class="bk-cost"><b>'+money(f[0])+'</b> per session. We’ll book it as private for now. If you get a Mental Health Treatment Plan from your regular GP before your first session, tell us and we’ll switch it to Medicare (about '+money(f[2])+' back).</p>';
@@ -276,12 +276,12 @@ function openBook(pid,t){
 function ics(b){var p=P[b.pid],s=new Date(b.start),e=new Date(s.getTime()+(b.len||p.len)*6e4);
  function z(d){return d.toISOString().replace(/[-:]/g,'').replace(/\.\d+/,'')}
  return 'BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Surf Coast Family Hub//Booking//EN\r\nBEGIN:VEVENT\r\nUID:'+b.id+'@surfcoastfamilyhub\r\nDTSTAMP:'+z(new Date())+'\r\nDTSTART:'+z(s)+'\r\nDTEND:'+z(e)+
-  '\r\nSUMMARY:Appointment with '+p.name+'\r\nLOCATION:Surf Coast Family Hub\\, Jan Juc Village\\, Stuart Ave\\, Jan Juc VIC 3228\r\nDESCRIPTION:Need to change it? Call 0491 184 788.\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n'}
+  '\r\nSUMMARY:Appointment with '+p.name+'\r\nLOCATION:Surf Coast Family Hub\\, 16 Princes Tce\\, Jan Juc VIC 3228\r\nDESCRIPTION:Need to change it? Call 0491 184 788.\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n'}
 function done(b){var p=P[b.pid],t=new Date(b.start);
  var url=URL.createObjectURL(new Blob([ics(b)],{type:'text/calendar'}));
  showSheet(sheetHead('You’re booked')+'<div class="bk-done"><span class="bk-tick">'+svg('check')+'</span><p>We’ve sent a confirmation text to <b>'+esc(b.phone)+'</b>.</p></div>'+apptLine(b.pid,t,b.len)+'<p class="bk-svc">'+svg('check')+'<span>'+esc(b.service)+'</span></p>'+
   '<div class="bk-acts"><a class="btn btn-primary btn-sm" href="'+url+'" download="hub-appointment.ics">'+svg('cal')+'Add to calendar</a><a class="btn btn-outline btn-sm" href="manage.html#t='+b.token+'">Change or cancel</a></div>'+
-  (b.how==='online'?'':'<p class="bk-dir">'+svg('pin')+'<span>Jan Juc Village, Stuart Ave, Jan Juc VIC 3228. <a href="https://www.google.com/maps/search/?api=1&amp;query=Surf+Coast+Family+Hub+Stuart+Avenue+Jan+Juc+VIC+3228" target="_blank" rel="noopener">Get directions</a></span></p>')+
+  (b.how==='online'?'':'<p class="bk-dir">'+svg('pin')+'<span>16 Princes Tce, Jan Juc VIC 3228 (Jan Juc Village). <a href="https://www.google.com/maps/search/?api=1&amp;query=16+Princes+Terrace+Jan+Juc+VIC+3228" target="_blank" rel="noopener">Get directions</a></span></p>')+
   '<div class="bk-sooner"><h3>'+svg('bell')+'Want something sooner?</h3><p>We’ll text you if an earlier spot with '+esc(p.first)+' opens up. Tap to claim it, and we’ll move your booking.</p>'+
   '<button type="button" class="btn btn-outline btn-sm" data-sooner>Yes, text me</button></div>'+
   '<p class="bk-demo">Demo: open the <a href="admin.html" target="_blank" rel="noopener">Hub dashboard</a> to see this booking arrive.</p>');

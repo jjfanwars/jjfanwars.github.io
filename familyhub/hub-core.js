@@ -168,7 +168,7 @@ function claim(tok,via){
  if(mb){old=mb.start;delete S.taken[slotKey(mb.pid,old)];mb.start=new Date(o.start).toISOString();S.taken[slotKey(mb.pid,mb.start)]=mb.id;mb.moved=(mb.moved||0)+1;b=mb;
   sms(w.phone,w.name,'Done! We’ve moved you to '+onDay(o.start)+' at '+fmtTime(o.start)+' with '+p.first+' (was '+fmtWhen(old)+'). Manage your booking: sfch.au/m/'+b.token,'out',{oid:o.id,wid:w.id,kind:'confirm'})}
  else{b=makeBooking({pid:o.pid,start:o.start,name:w.name,phone:w.phone,email:'',source:'refill',service:w.need});
-  sms(w.phone,w.name,'You’re booked '+onDay(o.start)+' at '+fmtTime(o.start)+' with '+p.first+' at Jan Juc Village, Stuart Ave. Need to change it? Manage your booking: sfch.au/m/'+b.token,'out',{oid:o.id,wid:w.id,kind:'confirm'})}
+  sms(w.phone,w.name,'You’re booked '+onDay(o.start)+' at '+fmtTime(o.start)+' with '+p.first+' at 16 Princes Tce, Jan Juc. Need to change it? Manage your booking: sfch.au/m/'+b.token,'out',{oid:o.id,wid:w.id,kind:'confirm'})}
  o.sent.forEach(function(x){if(x!==s&&x.state==='sent'){x.state='lost';var ww=S.waitlist.filter(function(q){return q.id===x.wid})[0];
   sms(ww.phone,ww.name,'Thanks '+ww.name.split(' ')[0]+', that spot’s just been filled. You’re still on our list and we’ll text you next time one comes up.','out',{oid:o.id,wid:ww.id,kind:'taken'})}});
  var mins=Math.max(1,Math.round((now()-o.created)/6e4));
