@@ -296,12 +296,13 @@ function doneTick(){var ch=false;
  S.bookings.forEach(function(b){if(b.status!=='booked'||b.done||b.noShow)return;var end=new Date(b.start).getTime()+(b.len||P[b.pid].len)*6e4;if(now()<end)return;
   b.done=now();b.attended=true;ch=true});
  return ch}
-function seedFees(){var t=now(),H=36e5;
- function past(pid,h,name,phone){var d=new Date(t-h*H);d.setMinutes(0,0,0);var b=makeBooking({pid:pid,start:d.toISOString(),name:name,phone:phone,email:'',service:'Medicare - Face to Face Psychology Appointment',plan:'yes',mode:'in',source:'online',first:'no',len:50});
+function seedFees(){var t=now(),H=36e5,D=864e5;
+ // past sessions at normal times: days ago, at an hour of the day
+ function past(pid,days,hr,name,phone){var d=new Date(t-days*D);d.setHours(hr,0,0,0);var b=makeBooking({pid:pid,start:d.toISOString(),name:name,phone:phone,email:'',service:'Medicare - Face to Face Psychology Appointment',plan:'yes',mode:'in',source:'online',first:'no',len:50});
   delete S.taken[slotKey(pid,b.start)];return b}
- var a=past('hannah',26,'Olivia K.','0400 000 401');a.done=t-25*H;a.attended=true;
- var c=past('maddy',20,'Lena F.','0400 000 403');c.status='cancelled';c.reason='Something came up';c.cancelledAt=t-27*H;c.late=true;c.lateFee=200;
- var d=past('adi',50,'Chris M.','0400 000 404');d.noShow=true;d.done=t-49*H;d.noShowFee=245}
+ var a=past('hannah',1,11,'Olivia K.','0400 000 401');a.done=new Date(a.start).getTime()+50*6e4;a.attended=true;
+ var c=past('maddy',1,10,'Lena F.','0400 000 403');c.status='cancelled';c.reason='Something came up';c.cancelledAt=new Date(c.start).getTime()-6*H;c.late=true;c.lateFee=200;
+ var d=past('adi',2,14,'Chris M.','0400 000 404');d.noShow=true;d.done=new Date(d.start).getTime()+50*6e4;d.noShowFee=245}
 
 // ---------- inbox: texts, emails, calls, voicemail and website enquiries in one place ----------
 // When live: SMS replies arrive from the SMS provider's webhook, emails from an inbound-email address, calls and
