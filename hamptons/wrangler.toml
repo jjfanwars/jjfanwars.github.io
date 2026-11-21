@@ -1,0 +1,14 @@
+name = "hamptons-mockups"
+main = "build/worker.js"
+compatibility_date = "2025-01-01"
+workers_dev = false
+routes = [{ pattern = "hamptons.aiautomationvic.com", custom_domain = true }]
+
+[[rules]]
+type = "Data"
+globs = ["**/*.jpg", "**/*.png"]
+
+[[rules]]
+type = "Text"
+fallthrough = false
+globs = ["**/*.html"]
