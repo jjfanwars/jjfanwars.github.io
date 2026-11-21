@@ -78,12 +78,12 @@ function uid(n){var a='abcdefghjkmnpqrstuvwxyz23456789',s='';for(var i=0;i<(n||1
 function slotKey(pid,start){return pid+'|'+new Date(start).toISOString()}
 
 // ---------- demo store ----------
-var KEY='scfh-demo-v5', S;
+var KEY='scfh-demo-v6', S;
 var FIRST=['Sarah','Jess','Emma','Kate','Chloe','Mia','Tom','Ben','Lucy','Grace','Olivia','Hannah','Zoe','Ruby','Amy','Georgia','Lily','Sam','Ella','Nina'];
 var LAST=['M.','T.','K.','R.','B.','L.','W.','H.','P.','S.','D.','C.'];
-function defaults(){return {v:5,pay:[],cards:{},inbox:[],mail:[],blocked:{},bcasts:[],skew:0,bookings:[],freed:{},taken:{},waitlist:seedWaitlist(),offers:[],sms:[],feed:[],rem:{},referrals:seedReferrals(),pp:{},
+function defaults(){return {v:6,inbox:[],mail:[],blocked:{},bcasts:[],skew:0,bookings:[],freed:{},taken:{},waitlist:seedWaitlist(),offers:[],sms:[],feed:[],rem:{},referrals:seedReferrals(),pp:{},
  settings:{mode:'auto',batch:3,expiry:30,minNotice:2,quiet:true,quietFrom:20,quietTo:8,weekCap:3,
-  remind:true,remindHrs:48,policyHrs:24,lateFee:'full',card:'new',fresh:true,freshDays:30,freshGrace:7,series:true,autoInvite:true,smsCost:0.1,autoReply:'admin',safetyReply:true,afterHours:true,missedText:true,openFrom:9,openTo:17,intake:true,deposit:0,charge:'auto'},
+  remind:true,remindHrs:48,policyHrs:24,lateFee:'full',fresh:true,freshDays:30,freshGrace:7,series:true,autoInvite:true,smsCost:0.1,autoReply:'admin',safetyReply:true,afterHours:true,missedText:true,openFrom:9,openTo:17},
  stats:{filled:0,value:0,mins:[]}}}
 function seedWaitlist(){var t=Date.now(),D=864e5;return [
  {id:'w1',name:'Sarah M.',phone:'0400 000 101',pids:['ellie','hannah','maddy','adi','melinda'],need:'Psychology',days:[1,2,3,4,5],times:['am','pm'],since:t-34*D,offers:[]},
@@ -100,7 +100,7 @@ function seedReferrals(){var t=Date.now(),D=864e5;return [
  {id:'r1',tok:'olv7k2m9qa',at:t-1*D-5e6,source:'Online form',from:{name:'Dr Priya N.',practice:'Torquay Medical Centre',email:'reception@example.com.au'},client:{name:'Olivia S.',dob:'1993-04-12',phone:'0400 000 201',email:''},to:'team',plan:'yes',planIn:true,file:{name:'MHTP-Olivia-S.pdf',size:182000},reason:'Postnatal anxiety, baby 4 months.',status:'new'},
  {id:'r2',tok:'amy3d8p2xw',at:t-5*D,source:'Fax',from:{name:'Dr James K.',practice:'Surf Coast Family Practice'},client:{name:'Amy D.',phone:'0400 000 202',email:''},to:'hannah',plan:'yes',planIn:true,file:{name:'fax-2611.pdf',size:240000},reason:'Birth trauma after first birth.',status:'invited',invitedAt:t-5*D+3e6,pids:['hannah']},
  {id:'r3',tok:'geo5c4n7hz',at:t-9*D,source:'Email',from:{name:'Sam W. (midwife)',practice:'Barwon Health'},client:{name:'Georgia C.',phone:'0400 000 203',email:''},to:'ellie',plan:'no',planIn:false,file:null,reason:'Low mood in pregnancy.',status:'booked',invitedAt:t-9*D+2e6,bookedAt:t-7*D,pids:['ellie']}]}
-function load(){try{S=JSON.parse(localStorage.getItem(KEY))}catch(e){S=null}if(!S||S.v!==5)S=defaults()}
+function load(){try{S=JSON.parse(localStorage.getItem(KEY))}catch(e){S=null}if(!S||S.v!==6)S=defaults()}
 // Keep the demo store well under the browser's ~5 MB storage limit, however long someone plays with it.
 function trim(){if(S.offers.length>300)S.offers.length=300;if(S.inbox&&S.inbox.length>200)S.inbox.length=200;if(S.mail&&S.mail.length>200)S.mail=S.mail.slice(-200);
  if(S.bcasts&&S.bcasts.length>30)S.bcasts.length=30;(S.inbox||[]).forEach(function(th){if(th.msgs.length>100)th.msgs=th.msgs.slice(-100)});
@@ -190,7 +190,7 @@ function remindTick(){if(!S.settings.remind||inQuiet())return false;var n=0,lim=
    if(!b){var h=hash('r'+k);if(h<0.74)r.auto=now()+(10+h*260)*6e4}
    S.rem[k]=r;n++;
    var where=b&&b.mode==='video'?' by video (link: sfch.au/v/'+b.token+')':b&&b.mode==='phone'?' by phone':' at the Hub';
-   sms(phone,name,'Reminder: '+name.split(' ')[0]+', you’re seeing '+P[pid].first+' '+onDay(d)+' at '+fmtTime(d)+where+'. Tap to confirm: sfch.au/r/'+tok+' Can’t make it? Tap sfch.au/x/'+tok+(fu.getTime()>now()?' (free to cancel until '+fmtWhen(fu)+')':'')+' and we’ll offer your time to someone on the waitlist.'+(b&&b.intake&&b.intake.status!=='done'?' Please also fill in your intake form: sfch.au/i/'+b.intake.tok:''),'out',{kind:'remind',tok:tok,key:k})})})}
+   sms(phone,name,'Reminder: '+name.split(' ')[0]+', you’re seeing '+P[pid].first+' '+onDay(d)+' at '+fmtTime(d)+where+'. Tap to confirm: sfch.au/r/'+tok+' Can’t make it? Tap sfch.au/x/'+tok+(fu.getTime()>now()?' (free to cancel until '+fmtWhen(fu)+')':'')+' and we’ll offer your time to someone on the waitlist.','out',{kind:'remind',tok:tok,key:k})})})}
  if(n)feed('remind','Sent '+n+' reminder'+(n>1?'s':'')+' for appointments in the next '+S.settings.remindHrs+' hours.');
  var auto=false;for(var k in S.rem){var r=S.rem[k];if(r.auto&&r.state==='sent'&&now()>=r.auto){r.state='confirmed';r.repAt=r.auto;delete r.auto;sms(r.phone,r.name,'C','in',{kind:'remind',tok:r.tok});auto=true}}
  return n>0||auto}
@@ -218,7 +218,7 @@ function tick(){var changed=false;
    changed=true}});
  if(remindTick())changed=true;
  if(freshTick())changed=true;
- if(billTick())changed=true;
+ if(doneTick())changed=true;
  if(changed)save()}
 setInterval(tick,5000);setTimeout(tick,400);
 
@@ -238,7 +238,6 @@ function claim(tok,via){
  if(mb){old=mb.start;delete S.taken[slotKey(mb.pid,old)];delete S.rem[slotKey(mb.pid,old)];mb.start=new Date(o.start).toISOString();S.taken[slotKey(mb.pid,mb.start)]=mb.id;mb.moved=(mb.moved||0)+1;b=mb;
   sms(w.phone,w.name,'Done! We’ve moved you to '+onDay(o.start)+' at '+fmtTime(o.start)+' with '+p.first+' (was '+fmtWhen(old)+'). Manage your booking: sfch.au/m/'+b.token,'out',{oid:o.id,wid:w.id,kind:'confirm'})}
  else{b=makeBooking({pid:o.pid,start:o.start,name:w.name,phone:w.phone,email:'',source:'refill',service:w.need,len:Math.min(needLen(w),o.len),mode:'in'});
-  if(S.settings.intake&&!S.bookings.some(function(x){return x!==b&&normPhone(x.phone)===normPhone(w.phone)}))startIntake(b);
   sms(w.phone,w.name,'You’re booked '+onDay(o.start)+' at '+fmtTime(o.start)+' with '+p.first+' at 16 Princes Tce, Jan Juc. Need to change it? Manage your booking: sfch.au/m/'+b.token,'out',{oid:o.id,wid:w.id,kind:'confirm'})}
  o.sent.forEach(function(x){if(x!==s&&x.state==='sent'){x.state='lost';var ww=S.waitlist.filter(function(q){return q.id===x.wid})[0];
   sms(ww.phone,ww.name,'Thanks '+ww.name.split(' ')[0]+'. That time has now been filled, so there’s nothing you need to do. You’re still on our waitlist and we’ll text you when another time comes up.','out',{oid:o.id,wid:ww.id,kind:'taken'})}});
@@ -246,9 +245,8 @@ function claim(tok,via){
  S.stats.filled++;S.stats.value+=VALUE[o.pid]||200;S.stats.mins.push(mins);
  feed('filled','Filled: '+p.first+', '+fmtWhen(o.start)+' → '+w.name+(old?' (moved up from '+fmtWhen(old)+')':'')+' (round '+o.round+', '+mins+' min after it opened).',{oid:o.id,pid:o.pid});
  if(o.bid){var cb=bookingById(o.bid);if(cb&&cb.lateFee&&!cb.feeWaived){cb.feeWaived=true;cb.waivedWhy='refilled';
-  if(cb.feeCharged){cb.feeCharged=0;paysFor(cb.id).filter(function(x){return x.kind==='late'&&x.status==='paid'}).forEach(function(x){refundPay(x,'your time was refilled')})}
-  paysFor(cb.id).filter(function(x){return x.kind==='late'&&(x.status==='due'||x.status==='failed')}).forEach(function(x){x.status='void'})
-  feed('none','Late cancellation fee '+(cb.feeCharged===0?'refunded':'waived')+' for '+cb.name+': the spot was refilled.')}}
+  var wasMarked=!!cb.feeCharged;cb.feeCharged=0;
+  feed('none','Late cancellation fee waived for '+cb.name+': the spot was refilled.'+(wasMarked?' Don’t charge it in Halaxy.':''))}}
  if(old)slotFreed(o.pid,old,'moved up',w.phone,mb.id);   // their old time now goes to the next person: a refill chain
  save();return {ok:true,offer:o,booking:b}}
 
@@ -272,9 +270,6 @@ function doCancel(b,reason,noRefill){
  b.status='cancelled';b.reason=reason;b.cancelledAt=now();delete S.taken[slotKey(b.pid,b.start)];
  var late=isLate(b.start),fee=late&&!noRefill?lateFee(b.pid):0;if(fee)b.lateFee=fee;
  var r=S.rem[slotKey(b.pid,b.start)];if(r&&r.state==='sent')r.state='cancelled';
- // a deposit is refunded on an on-time cancellation, and counts towards the fee on a late one
- var dep=paysFor(b.id).filter(function(x){return x.kind==='deposit'&&x.status==='paid'})[0];
- if(dep&&(!late||noRefill))refundPay(dep,noRefill?'appointment cancelled by the Hub':'cancelled in time');
  feed('cancel','Cancelled: '+P[b.pid].first+', '+fmtWhen(b.start)+' ('+b.name+(reason?', '+reason:'')+')'+(late?'. Late cancellation, under '+S.settings.policyHrs+' hours'+(fee?' ('+money(fee)+' fee unless refilled)':'')+'.':'.'),{pid:b.pid,late:late});
  if(!noRefill)slotFreed(b.pid,b.start,'cancelled',b.phone,b.id);return {late:late,fee:noRefill?0:fee}}
 // Recurring: the same weekday and time every 1 or 2 weeks. If that time is taken one week, offer the nearest free time that week.
@@ -293,49 +288,20 @@ function invite(r,pids){r.pids=pids;r.status='invited';r.invitedAt=now();var fn=
  sms(r.client.phone,r.client.name,'Hi '+fn+', it’s Surf Coast Family Hub. '+r.from.name+' has referred you to us'+(pids.length===1?' to see '+P[pids[0]].first:'')+'. Book your first session online here: sfch.au/b/'+r.tok+' or call us on 0491 184 788. Reply STOP to opt out.','out',{kind:'invite',tok:r.tok,rid:r.id});
  feed('ref','Sent '+r.client.name+' a booking link for '+pids.map(function(x){return P[x].first}).join(', ')+'.')}
 
-// ---------- intake forms ----------
-// New clients get a link to an online intake form (details, emergency contact, GP, Medicare, consent). When live, the
-// answers go straight into the practitioner's Halaxy patient record and the signed consent is filed there.
-function needsIntake(b){return b.first==='yes'||b.source==='referral'||b.source==='refill'&&!b.first}
-function startIntake(b){if(b.intake)return;b.intake={tok:uid(10),status:'sent',sentAt:now()};
- sms(b.phone,b.name,'Before your first session with '+P[b.pid].first+', please fill in your intake form (about 5 minutes): sfch.au/i/'+b.intake.tok,'out',{kind:'intake'})}
-function intakeByTok(tok){return S.bookings.filter(function(b){return b.intake&&b.intake.tok===tok})[0]||null}
-
-// ---------- payments ----------
-// Money goes to each practitioner's own merchant account (they're separate businesses); the hub just runs it.
-// Demo: a pretend payment provider. Cards ending 0002 don't go through, so that path can be shown.
-var REBATE={adi:149.05,hannah:149.05,melinda:149.05,ellie:101.55,maddy:101.55,'michelle-ferris':89.50};
-function rebateFor(b){return b.plan==='yes'&&b.mode!=='couples'?REBATE[b.pid]||0:0}
-function cardFor(phone){return S.cards[normPhone(phone)]||null}
-function paysFor(bid){return S.pay.filter(function(x){return x.bid===bid})}
-function paidFor(bid,kind){return paysFor(bid).filter(function(x){return x.status==='paid'&&(!kind||x.kind===kind)}).reduce(function(s,x){return s+x.amount},0)}
-var PAYK={deposit:'Deposit',session:'Session fee',late:'Short-notice cancellation fee',noshow:'Missed appointment fee',refund:'Refund',medicare:'Medicare rebate claim'};
-function payLog(b,kind,amount,status,extra){var x=Object.assign({id:'p'+uid(9),bid:b.id,pid:b.pid,name:b.name,phone:b.phone,kind:kind,amount:Math.round(amount*100)/100,status:status,at:now(),last4:(cardFor(b.phone)||{}).last4||''},extra||{});
- S.pay.unshift(x);if(S.pay.length>400)S.pay.length=400;return x}
-function charge(b,kind,amount,why){if(!(amount>0))return null;var c=cardFor(b.phone),fn=b.name.split(' ')[0],p=P[b.pid];
- if(!c){var due=payLog(b,kind,amount,'due');sms(b.phone,b.name,'Hi '+fn+', your '+PAYK[kind].toLowerCase()+' of '+money(due.amount)+' for '+p.first+' ('+fmtDay(b.start,1)+') is ready to pay whenever suits: sfch.au/p/'+due.id,'out',{kind:'pay'});
-  feed('pay',PAYK[kind]+' of '+money(due.amount)+' for '+b.name+' is due. Payment link sent.');return due}
- if(c.last4==='0002'){var f=payLog(b,kind,amount,'failed',{why:'Payment didn’t go through'});sms(b.phone,b.name,'Hi '+fn+', the payment of '+money(f.amount)+' for your session with '+p.first+' didn’t go through. These things happen. When it suits, you can pay here: sfch.au/p/'+f.id+' or give us a call on 0491 184 788.','out',{kind:'pay'});
-  feed('payfail','Payment didn’t go through: '+money(f.amount)+' from '+b.name+' ('+PAYK[kind].toLowerCase()+'). Payment link sent.');return f}
- var x=payLog(b,kind,amount,'paid',{why:why||''});
- sms(b.phone,b.name,'Paid: '+money(x.amount)+' '+PAYK[kind].toLowerCase()+' to '+p.name+(why?' ('+why+')':'')+', card ending '+c.last4+'. Receipt: sfch.au/p/'+x.id,'out',{kind:'pay'});
- feed('pay','Charged '+b.name+' '+money(x.amount)+' ('+PAYK[kind].toLowerCase()+') to '+p.first+'’s account.');return x}
-function claimMedicare(b){var r=rebateFor(b);if(!r||paysFor(b.id).some(function(x){return x.kind==='medicare'}))return;
- payLog(b,'medicare',r,'claimed',{why:'Paid by Medicare into the client’s bank account'})}
-// After a session ends: charge the card on file (or send a payment link), less any deposit, and lodge the Medicare claim.
-function billTick(){var ch=false;
- S.bookings.forEach(function(b){if(b.status!=='booked'||b.billed||b.noShow)return;var end=new Date(b.start).getTime()+(b.len||P[b.pid].len)*6e4;if(now()<end)return;
-  b.billed=now();b.attended=true;ch=true;if(S.settings.charge==='manual')return;
-  var owe=feeAmt(b.pid)-paidFor(b.id,'deposit');charge(b,'session',owe);if(paysFor(b.id).some(function(x){return x.kind==='session'&&x.status==='paid'}))claimMedicare(b)});
+// ---------- cancellation fees ----------
+// Billing stays in Halaxy (invoices, card payments, Medicare and health fund claims, receipts). The Hub only tracks
+// fees that come from cancellations: waived when the time is refilled, otherwise a "fee to decide" for the front desk,
+// who waive it here or charge it in Halaxy.
+function doneTick(){var ch=false;
+ S.bookings.forEach(function(b){if(b.status!=='booked'||b.done||b.noShow)return;var end=new Date(b.start).getTime()+(b.len||P[b.pid].len)*6e4;if(now()<end)return;
+  b.done=now();b.attended=true;ch=true});
  return ch}
-function seedPay(){var t=now(),H=36e5;
- function past(pid,h,name,phone,plan,card){var d=new Date(t-h*H);d.setMinutes(0,0,0);var b=makeBooking({pid:pid,start:d.toISOString(),name:name,phone:phone,email:'',service:'Medicare - Face to Face Psychology Appointment',plan:plan,mode:'in',source:'online',first:'no',len:50});
-  delete S.taken[slotKey(pid,b.start)];if(card)S.cards[normPhone(phone)]={last4:card,brand:'Visa',exp:'08/28'};return b}
- var a=past('hannah',26,'Olivia K.','0400 000 401','yes','4242');a.billed=t-25*H;a.attended=true;
- var x=payLog(a,'session',245,'paid');x.at=t-25*H;var m=payLog(a,'medicare',149.05,'claimed',{why:'Paid by Medicare into the client’s bank account'});m.at=t-25*H;
- var b=past('ellie',75,'Tara N.','0400 000 402','no','0002');b.billed=t-74*H;b.attended=true;var f=payLog(b,'session',170,'failed',{why:'Payment didn’t go through'});f.at=t-74*H;
- var c=past('maddy',20,'Lena F.','0400 000 403','yes','4242');c.status='cancelled';c.reason='Something came up';c.cancelledAt=t-27*H;c.late=true;c.lateFee=200;
- var d=past('adi',50,'Chris M.','0400 000 404','yes','4242');d.noShow=true;d.billed=t-49*H;d.noShowFee=245}
+function seedFees(){var t=now(),H=36e5;
+ function past(pid,h,name,phone){var d=new Date(t-h*H);d.setMinutes(0,0,0);var b=makeBooking({pid:pid,start:d.toISOString(),name:name,phone:phone,email:'',service:'Medicare - Face to Face Psychology Appointment',plan:'yes',mode:'in',source:'online',first:'no',len:50});
+  delete S.taken[slotKey(pid,b.start)];return b}
+ var a=past('hannah',26,'Olivia K.','0400 000 401');a.done=t-25*H;a.attended=true;
+ var c=past('maddy',20,'Lena F.','0400 000 403');c.status='cancelled';c.reason='Something came up';c.cancelledAt=t-27*H;c.late=true;c.lateFee=200;
+ var d=past('adi',50,'Chris M.','0400 000 404');d.noShow=true;d.done=t-49*H;d.noShowFee=245}
 
 // ---------- inbox: texts, emails, calls, voicemail and website enquiries in one place ----------
 // When live: SMS replies arrive from the SMS provider's webhook, emails from an inbound-email address, calls and
@@ -471,28 +437,19 @@ function report(days){days=days||28;var from=now()-days*864e5,h=history(days),by
    medianDays:median(bookedRefs.map(function(r){return Math.max(0,Math.round((r.bookedAt-r.at)/D))}))},
   series:(function(){var ids={};S.bookings.forEach(function(b){if(b.series)ids[b.series.id]=1});return Object.keys(ids).length})(),
   texts:{count:texts,cost:Math.round(texts*S.settings.smsCost*100)/100},
-  money:(function(){var l=S.pay.filter(function(x){return x.at>=from}),sum=function(f){return Math.round(l.filter(f).reduce(function(s,x){return s+x.amount},0)*100)/100};
-   return {collected:sum(function(x){return (x.status==='paid'||x.status==='refunded')&&x.kind!=='refund'&&x.kind!=='medicare'}),refunded:sum(function(x){return x.kind==='refund'}),
-    outstanding:sum(function(x){return x.status==='due'||x.status==='failed'}),outstandingCount:l.filter(function(x){return x.status==='due'||x.status==='failed'}).length,
-    medicare:sum(function(x){return x.kind==='medicare'}),feesCharged:sum(function(x){return (x.kind==='late'||x.kind==='noshow')&&(x.status==='paid'||x.status==='refunded')}),
-    feesToDecide:api.feesToDecide().length,feesWaived:S.bookings.filter(function(b){return b.feeWaived}).length}})()}}
+  fees:(function(){var bs=S.bookings.filter(function(b){return (b.lateFee||b.noShowFee)&&(b.cancelledAt||b.done||b.created)>=from}),amt=function(b){return b.noShow?b.noShowFee:b.lateFee};
+   var w=bs.filter(function(b){return b.feeWaived}),c=bs.filter(function(b){return b.feeCharged});
+   return {toDecide:api.feesToDecide().length,waived:w.length,waivedRefilled:w.filter(function(b){return b.waivedWhy==='refilled'}).length,waivedAmount:w.reduce(function(s,b){return s+amt(b)},0),
+    toCharge:c.length,toChargeAmount:c.reduce(function(s,b){return s+amt(b)},0)}})()}}
 
 var delay=function(v){return new Promise(function(r){setTimeout(function(){r(v)},180+Math.random()*220)})};
 function bookingSms(b){var p=P[b.pid],fn=b.name.split(' ')[0];
  var how=b.mode==='video'?' by video. Your link: sfch.au/v/'+b.token:b.mode==='phone'?'. '+p.first+' will call you on this number.':' at 16 Princes Tce, Jan Juc.';
  return 'Hi '+fn+', you’re booked with '+p.first+' '+onDay(b.start)+' at '+fmtTime(b.start)+how+' Manage or cancel: sfch.au/m/'+b.token}
-function refundPay(x,why){if(!x||x.status!=='paid'||x.kind==='refund'||x.kind==='medicare')return null;var b=bookingById(x.bid)||{id:x.bid,pid:x.pid,name:x.name,phone:x.phone};
- x.status='refunded';var r=payLog(b,'refund',x.amount,'paid',{of:x.id,why:why||''});
- sms(x.phone,x.name,'Refunded: '+money(x.amount)+' ('+PAYK[x.kind].toLowerCase()+(why?', '+why:'')+') to your card ending '+(x.last4||'on file')+'. It can take 3 to 5 business days to show.','out',{kind:'pay'});
- feed('pay','Refunded '+x.name+' '+money(x.amount)+' ('+PAYK[x.kind].toLowerCase()+').');return r}
-function afterBook(bs,d){var b=bs[0];
- if(d.card&&d.card.last4)S.cards[normPhone(d.phone)]={last4:d.card.last4,brand:d.card.brand||'Visa',exp:d.card.exp||'08/28'};
- var dep=S.settings.deposit,newc=b.first==='yes'||b.source==='referral';
- if(dep&&newc){var amt=dep==='full'?feeAmt(b.pid):+dep;if(cardFor(b.phone))charge(b,'deposit',Math.min(amt,feeAmt(b.pid)),'held against your first session')}
- if(S.settings.intake&&needsIntake(b))startIntake(b)}
+function afterBook(bs,d){}
 function newBooking(d,start,extra){return makeBooking(Object.assign({pid:d.pid,start:start,name:d.name,child:d.child||'',phone:d.phone,email:d.email,
   service:serviceName(d.pid,d.need,d.plan,d.mode||d.how,d.firstVisit),need:d.need,len:lenOf(d.pid,d.need),plan:d.plan,how:d.mode==='in'?'in':'online',mode:d.mode||'in',first:d.firstVisit,
-  source:d.ref?'referral':'online',card:d.card||null,policy:{hrs:S.settings.policyHrs,fee:lateFee(d.pid),agreed:now()}},extra||{}))}
+  source:d.ref?'referral':'online',policy:{hrs:S.settings.policyHrs,fee:lateFee(d.pid),agreed:now()}},extra||{}))}
 function attachReferral(b,d){
  if(d.ref){var r=S.referrals.filter(function(x){return x.tok===d.ref})[0];if(r){r.status='booked';r.bookedAt=now();r.bid=b.id;b.referral={how:'referrer',rid:r.id,planIn:r.planIn,from:r.from.name};
    feed('ref','Referral booked: '+r.client.name+' with '+P[b.pid].first+', '+fmtWhen(b.start)+' (referred by '+r.from.name+').')}}
@@ -568,36 +525,15 @@ var api={
   if(patch.planIn)feed('ref','Marked '+r.client.name+'’s plan as received.');if(patch.status==='closed')feed('ref','Closed the referral for '+r.client.name+'.');save()},
  // practitioner preferences (practitioner view)
  prefs:function(pid,patch){if(patch){S.pp[pid]=Object.assign(prefs(pid),patch);feed('none',P[pid].first+' updated their booking preferences.');save()}return prefs(pid)},
- policy:function(pid){var dep=S.settings.deposit;return {hrs:S.settings.policyHrs,fee:lateFee(pid),text:policyText(pid),card:S.settings.card,series:S.settings.series&&prefs(pid).series,deposit:dep?(dep==='full'?feeAmt(pid):+dep):0,charge:S.settings.charge}},
+ policy:function(pid){return {hrs:S.settings.policyHrs,fee:lateFee(pid),text:policyText(pid),series:S.settings.series&&prefs(pid).series}},
  gap:gapLen,
- // intake forms
- intake:function(tok){var b=intakeByTok(tok);return b?{booking:b,practitioner:P[b.pid].name,data:b.intake.data||{},status:b.intake.status}:null},
- saveIntake:function(tok,data,done){var b=intakeByTok(tok);if(!b)return {ok:false};b.intake.data=data;b.intake.status=done?'done':'started';b.intake.saved=now();
-  if(done){b.intake.doneAt=now();feed('intake',b.name+' completed their intake form for '+P[b.pid].first+'.',{pid:b.pid});
-   if(data.card&&data.card.last4)S.cards[normPhone(b.phone)]=data.card}
-  save();return {ok:true}},
- resendIntake:function(bid){var b=bookingById(bid);if(!b)return;if(!b.intake)startIntake(b);else sms(b.phone,b.name,'Reminder: please fill in your intake form before your session with '+P[b.pid].first+': sfch.au/i/'+b.intake.tok,'out',{kind:'intake'});
-  feed('intake','Sent '+b.name+' their intake form link.');save()},
- // payments
- payments:function(){return S.pay},
- payment:function(id){var x=S.pay.filter(function(p){return p.id===id})[0];return x?{pay:x,booking:bookingById(x.bid)||null}:null},
- cardOf:function(phone){return cardFor(phone)},
- setCard:function(phone,card){S.cards[normPhone(phone)]=card;save()},
- payLink:function(id){var x=S.pay.filter(function(p){return p.id===id})[0];if(!x||(x.status!=='due'&&x.status!=='failed'))return {ok:false};
-  x.status='paid';x.paidAt=now();x.last4='4242';x.via='payment link';var b=bookingById(x.bid);
-  sms(x.phone,x.name,'Paid: '+money(x.amount)+', thank you. Receipt: sfch.au/p/'+x.id,'out',{kind:'pay'});feed('pay',x.name+' paid '+money(x.amount)+' by payment link.');
-  if(b&&x.kind==='session')claimMedicare(b);save();return {ok:true}},
- markPaid:function(id,how){var x=S.pay.filter(function(p){return p.id===id})[0];if(!x||(x.status!=='due'&&x.status!=='failed'))return;x.status='paid';x.paidAt=now();x.via=how||'in person';x.last4='';
-  var b=bookingById(x.bid);if(b&&x.kind==='session')claimMedicare(b);feed('pay','Marked '+money(x.amount)+' from '+x.name+' as paid '+(how||'in person')+'.');save()},
- resendPay:function(id){var x=S.pay.filter(function(p){return p.id===id})[0];if(!x)return;sms(x.phone,x.name,'Hi '+x.name.split(' ')[0]+', just a gentle reminder about the '+money(x.amount)+' for your session with '+P[x.pid].first+'. You can pay here whenever suits: sfch.au/p/'+x.id+' If anything’s making it hard, give us a call and we’ll work it out.','out',{kind:'pay'});feed('pay','Resent the payment link to '+x.name+'.');save()},
- refund:function(id,why){var x=S.pay.filter(function(p){return p.id===id})[0];var r=refundPay(x,why);save();return r},
  feesToDecide:function(pid){return S.bookings.filter(function(b){return (b.lateFee&&b.status==='cancelled'||b.noShow&&b.noShowFee)&&!b.feeWaived&&!b.feeCharged&&(!pid||b.pid===pid)})},
- chargeFee:function(bid){var b=bookingById(bid);if(!b||b.feeCharged||b.feeWaived)return null;var fee=b.noShow?b.noShowFee:b.lateFee,dep=paidFor(b.id,'deposit');b.feeCharged=now();
-  var x=charge(b,b.noShow?'noshow':'late',fee-dep,'under the cancellation policy');save();return x},
- waiveFee:function(bid,why){var b=bookingById(bid);if(!b||b.feeCharged)return;b.feeWaived=true;b.waivedWhy=why||'waived';var dep=paysFor(b.id).filter(function(x){return x.kind==='deposit'&&x.status==='paid'})[0];if(dep)refundPay(dep,'fee waived');
+ // "Charge" means: the front desk will invoice it in Halaxy. Nothing is charged by the Hub.
+ chargeFee:function(bid){var b=bookingById(bid);if(!b||b.feeCharged||b.feeWaived)return null;b.feeCharged=now();
+  feed('none','Marked the '+(b.noShow?'missed session':'late cancellation')+' fee for '+b.name+' ('+money(b.noShow?b.noShowFee:b.lateFee)+') to charge in Halaxy.');save();return b},
+ waiveFee:function(bid,why){var b=bookingById(bid);if(!b||b.feeCharged)return;b.feeWaived=true;b.waivedWhy=why||'waived';
   feed('none','Waived the '+(b.noShow?'missed session':'late cancellation')+' fee for '+b.name+(why?' ('+why+')':'')+'.');save()},
- markNoShow:function(bid){var b=bookingById(bid);if(!b||b.noShow)return;b.noShow=true;b.noShowFee=lateFee(b.pid);b.billed=b.billed||now();
-  var s=paysFor(b.id).filter(function(x){return x.kind==='session'&&x.status==='paid'})[0];if(s)refundPay(s,'session not attended');
+ markNoShow:function(bid){var b=bookingById(bid);if(!b||b.noShow)return;b.noShow=true;b.attended=false;b.noShowFee=lateFee(b.pid);b.done=b.done||now();
   feed('none','Marked '+b.name+' as a no-show with '+P[b.pid].first+', '+fmtWhen(b.start)+'.'+(b.noShowFee?' Fee to decide.':''));save()},
  // inbox
  inbound:function(d){var th=inbound(d);save();return th},
@@ -639,7 +575,7 @@ var api={
   live.sort(function(){return Math.random()-.5});var res=live.map(function(t){return claim(t,'tap')});return res},
  forward:function(mins){S.skew=(S.skew||0)+mins*6e4;feed('clock','Demo clock moved forward '+(mins>=120?Math.round(mins/60)+' hours':mins+' minutes')+'.');save();tick()},
  settings:function(x){Object.assign(S.settings,x);save();tick()},
- reset:function(){S=defaults();seedInbox();seedPay();S.inboxSeeded=1;try{localStorage.removeItem('scfh-demo-mine')}catch(e){}save();tick()},
+ reset:function(){S=defaults();seedInbox();seedFees();S.inboxSeeded=1;try{localStorage.removeItem('scfh-demo-mine')}catch(e){}save();tick()},
  removeWaitlist:function(id){var w=S.waitlist.filter(function(x){return x.id===id})[0];if(!w||w.removed)return;w.removed=now();
   feed('none','Removed '+w.name+' from the waitlist.');save()},
  noteWaitlist:function(id,note){var w=S.waitlist.filter(function(x){return x.id===id})[0];if(w){w.note=String(note||'').slice(0,500);save()}},
@@ -674,11 +610,11 @@ var api={
   var rp=report(28);
   var data={now:loc(now()),timezone:'Australia/Melbourne',demo:true,team:team,stats:{spotsRefilled:S.stats.filled,incomeRecovered:S.stats.value,
     avgMinutesToRefill:S.stats.mins.length?Math.round(S.stats.mins.reduce(function(a,b){return a+b},0)/S.stats.mins.length):null},
-   settings:S.settings,cancellationPolicy:policyText('adi'),waitlist:wl,upcomingAppointments:up,intakeForms:S.bookings.filter(function(b){return b.intake&&b.status==='booked'}).map(function(b){return {client:tok(b.name),with:first(b.pid),appt:loc(b.start),status:b.intake.status}}),freeTimes:free,onlineBookings:bk,refillOffers:of,referrals:refs,reminders:rem,
+   settings:S.settings,cancellationPolicy:policyText('adi'),waitlist:wl,upcomingAppointments:up,freeTimes:free,onlineBookings:bk,refillOffers:of,referrals:refs,reminders:rem,
    last4Weeks:{note:'includes made-up sample history',appointments:rp.totals.booked,cancellations:rp.cancellations,refilled:rp.totals.refilled,fillRatePct:rp.fillRate,recovered:rp.totals.recovered,lost:rp.totals.lost,noShows:rp.totals.noshow,
     utilisationPct:rp.utilisation,reminders:{sent:rp.reminders.sent,confirmed:rp.reminders.confirmed,cantMakeIt:rp.reminders.cantMake},texts:rp.texts,lateFeesAllowedUnderPolicy:rp.totals.fees,referrals:rp.referrals,
     waitlistNow:{active:rp.waitlist.active,paused:rp.waitlist.paused,medianDaysWaiting:rp.waitlist.medianDays},byPractitioner:rp.byPract.map(function(r){return {who:r.first,booked:r.booked,lateCancels:r.late,earlyCancels:r.early,noShows:r.noshow,refilled:r.refilled,recovered:r.recovered,video:r.video}})},
-   payments:(function(){var m=report(28).money;return {last4Weeks:m,note:'amounts only; no card details'}})(),
+   cancellationFees:{last4Weeks:report(28).fees,note:'billing itself is done in Halaxy'},
    inbox:{note:'counts only; message text is never included here',open:S.inbox.filter(function(x){return x.status==='open'}).length,urgent:S.inbox.filter(function(x){return x.urgent&&x.status!=='done'}).length,
     waitingOnClient:S.inbox.filter(function(x){return x.status==='waiting'}).length,threads:S.inbox.slice(0,30).map(function(x){return {from:tok(x.name),channel:x.msgs[x.msgs.length-1].channel,topic:x.label,status:x.status,urgent:x.urgent||undefined,received:loc(x.updated),messages:x.msgs.length}})},
    groupMessages:S.bcasts.slice(0,10).map(function(b){return {sent:loc(b.at),what:b.label,people:b.count,appointmentsCancelled:b.cancelled||undefined}}),
@@ -686,6 +622,6 @@ var api={
   return {data:data,names:names,scrub:scrub}},
  on:function(f){subs.push(f)}
 };
-if(!S.inboxSeeded){seedInbox();seedPay();S.inboxSeeded=1;try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
+if(!S.inboxSeeded){seedInbox();seedFees();S.inboxSeeded=1;try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
 window.HUB={P:P,ORDER:ORDER,photo:photo,SITE:SITE,api:api,fmt:{time:fmtTime,day:fmtDay,when:fmtWhen,money:money,esc:esc,DAY:DAY,MON:MON},serviceName:serviceName,lenOf:lenOf,now:now,slotKey:slotKey,VALUE:VALUE};
 })();

@@ -25,8 +25,8 @@ A website for a family wellbeing hub in Jan Juc (not a game). There are four tak
 - Going live needs: Adi's practitioners in one Halaxy practice group with the API subscription, a Worker (webhook for cancellations, slots via `Appointment/$find`, create appointment, SMS provider), AU-hosted storage for the waitlist, and a privacy notice update.
 
 ### Tour page (21 Nov 2026)
-- `src/tour.html` (copied by build.py with `{{SITE}}` filled in, no shell): a standalone walkthrough for the practice owner. Sections: booking, refills (full-width focal scene), reminders, intake, cancellation fees, inbox, referrals, reports/Ask Claude/widget, privacy, all pages, going live.
-- Billing stays in Halaxy (it does invoices, card payments, Medicare/health fund claims). The tour only claims the Hub handles cancellation fees (waived when refilled, otherwise "fee to decide"). The owner's client already uses Halaxy, so the page doesn't explain Halaxy; it only notes where the Hub plugs in (reminders replace Halaxy's; Halaxy forms can be kept instead of intake).
+- `src/tour.html` (copied by build.py with `{{SITE}}` filled in, no shell): a standalone walkthrough for the practice owner. Sections: booking, refills (full-width focal scene), reminders, cancellation fees, inbox, referrals, reports/Ask Claude/widget, privacy, all pages, going live.
+- Billing stays in Halaxy (it does invoices, card payments, Medicare/health fund claims). The tour only claims the Hub handles cancellation fees (waived when refilled, otherwise "fee to decide"). The owner's client already uses Halaxy, so the page doesn't explain Halaxy; it only notes where the Hub plugs in (reminders replace Halaxy's).
 - Scenes are scripted `async` functions in `SCENES` (cancel by token on Replay). `Phone` is a CSS iPhone (sized by `--pw`, em-based): lock screen with notification stack, in-app banners below the island, Messages (SMS bubbles with tails, composer, keyboard `type`/`send`), Safari with the Hub's pages (`web`/`go`/`fill`, "◀ Messages" breadcrumb, `back`). `tapOn` draws a finger tap. WAAPI with a `linear()` spring; reduced motion keeps fades only. SMS wording matches hub-core.
 
 ### Dashboard data tools and Ask Claude (20 Nov 2026)
@@ -96,7 +96,14 @@ Edited the demo site copy (in the worker) and booking copy to fit Ahpra's advert
 - **Docs:** the privacy page covers messages kept, Claude's two uses, and urgent flagging. SOP section 17 covers the inbox and group messages.
 - **Live needs:** an SMS provider with inbound webhooks and a registered sender ID, an inbound email address, and a phone provider for missed calls and voicemail transcripts (for example forwarding the Hub number). Message storage hosted in Australia.
 
-### Intake forms, payments, and a full test pass (20 Nov 2026)
+### Halaxy does billing and forms (21 Nov 2026)
+The Hub sits on top of Halaxy and doesn't redo what Halaxy already does well, so the payments layer and intake forms were removed (store `scfh-demo-v6`, `S.v` 6):
+- Gone: `S.pay`/`S.cards`, card on file, deposits, charging after the session, Medicare claims, receipts, refunds, payment links, `pay.html` and `intake.html` (src, built and live), the intake text/reminder link, and the card/deposit/intake/charge settings.
+- Kept (Halaxy doesn't do it): cancellation fees. Late cancels set `b.lateFee`, `markNoShow` sets `b.noShowFee`; a refill sets `feeWaived` ('refilled'); otherwise `feesToDecide` → `waiveFee` or `chargeFee`, which now only marks the fee to invoice in Halaxy (`b.feeCharged`). `doneTick` marks finished sessions (`b.done`, `b.attended`). `seedFees` seeds one late cancel and one no-show.
+- UI: dashboard "Cancellation fees" card and Records "Fees" tab; practitioner view "Cancellation fees"; report `r.fees` (waived refilled/by practitioner, marked to charge, to decide); manage page says a charged fee comes as an invoice; SOP section 18 is now Cancellation fees (19 removed); privacy page drops intake, payments and card details.
+- The worker still has the old `pay`/`intake` routes until the next redeploy.
+
+### Intake forms, payments, and a full test pass (20 Nov 2026, payments and intake since removed)
 - **Store and seeding:** store `scfh-demo-v5`. `seedPay` adds four past hub bookings: a paid session with a Medicare claim, a declined card, a late cancel and a no-show (fees to decide).
 - **Intake forms:**
   - New clients (`needsIntake`: first visit, referral, or a new person booked from the waitlist) get `b.intake={tok,status}` and a text with `sfch.au/i/<tok>`. The reminder repeats the link until the form is done.

@@ -490,7 +490,7 @@ body.adm{--rp-a:#00897B;--rp-b:#C0663A}
  </div>
  <section class="adm-card"><div class="adm-h"><h2>By practitioner</h2><span class="adm-sub">Utilisation counts refilled time as booked</span></div><div class="adm-tbl rp-tbl" id="rpPract" tabindex="0" role="region" aria-label="By practitioner table"></div></section>
  <div class="rp-grid3">
-  <section class="adm-card"><div class="adm-h"><h2>Payments</h2></div><div id="rpPay"></div></section>
+  <section class="adm-card"><div class="adm-h"><h2>Cancellation fees</h2></div><div id="rpPay"></div></section>
   <section class="adm-card"><div class="adm-h"><h2>Waitlist</h2></div><div id="rpWl"></div></section>
   <section class="adm-card"><div class="adm-h"><h2>Referrals</h2></div><div id="rpRef"></div></section>
   <section class="adm-card"><div class="adm-h"><h2>Reminders and texts</h2></div><div id="rpTxt"></div></section>
@@ -556,7 +556,7 @@ function side(r){var w=r.waitlist,f=r.referrals,x=r.reminders;
  function dl(rows){return '<dl class="rp-dl">'+rows.map(function(k){return '<div><dt>'+k[0]+'</dt><dd>'+k[1]+'</dd></div>'}).join('')+'</dl>'}
  $('rpWl').innerHTML=dl([['Waiting now',w.active],['Paused (no reply to check-in)',w.paused],['Check-in sent, no reply yet',w.checking],['Median time waiting',(w.medianDays||0)+' days'],['Booked from the waitlist',w.booked]])+
   (w.longest.length?'<h3 class="adm-day">Waiting longest</h3><ol class="rp-ol">'+w.longest.map(function(l){return '<li><b>'+esc(l.name)+'</b> '+l.days+' days · '+esc(l.need)+'</li>'}).join('')+'</ol>':'');
- var M=r.money;$('rpPay').innerHTML=dl([['Collected',m(M.collected)],['Refunded',m(M.refunded)],['Outstanding',m(M.outstanding)+' ('+M.outstandingCount+')'],['Medicare rebates claimed for clients',m(M.medicare)],['Late and missed-session fees charged',m(M.feesCharged)],['Fees waived',M.feesWaived],['Fees still to decide',M.feesToDecide]])+'<p class="adm-muted">Hub bookings only. Paid straight to each practitioner.</p>';
+ var M=r.fees;$('rpPay').innerHTML=dl([['Waived because the time was refilled',M.waivedRefilled],['Waived by the practitioner',M.waived-M.waivedRefilled],['Marked to charge in Halaxy',M.toCharge+' ('+m(M.toChargeAmount)+')'],['Still to decide',M.toDecide]])+'<p class="adm-muted">Late cancellations and missed sessions only. Session fees and Medicare claims are in Halaxy.</p>';
  $('rpRef').innerHTML=dl([['Received',f.received],['Booked',f.booked],['Not booked yet',f.waiting],['Medicare plans still to come',f.plansMissing],['Median days, referral to booking',f.medianDays!=null?f.medianDays:'–']]);
  $('rpTxt').innerHTML=dl([['Reminders sent',x.sent],['Confirmed',x.confirmed+' ('+pct(x.confirmed,x.sent)+'%)'],['Can’t make it (freed early)',x.cantMake],['Texts sent, all kinds',r.texts.count],['Estimated SMS cost',m(r.texts.cost)]])+
   (r.series?'<p class="adm-muted">'+r.series+' regular (weekly or fortnightly) series booked online.</p>':'')}

@@ -805,7 +805,7 @@ function kb(n){return n>1e6?(n/1e6).toFixed(1)+' MB':Math.max(1,Math.round(n/1e3
 
 function openBook(pid,t){
  var p=P[pid],n=NEED[S.need],pol=api.policy(pid),talk=!!n.how;
- var B={mode:S.how==='online'?'video':'in',every:0,count:6,first:'',rf:'',file:null,card:null,plan:null};
+ var B={mode:S.how==='online'?'video':'in',every:0,count:6,first:'',rf:'',file:null,plan:null};
  var modes=talk?[['in','At the Hub'],['video','Video']].concat(p.svc&&p.svc.phone?[['phone','Phone']]:[]):null;
  showSheet(sheetHead('Book with '+esc(p.first))+'<div data-appt>'+apptLine(pid,t,null,B.mode)+'</div>'+
   (modes?'<fieldset class="bk-fs bk-mode"><legend>How would you like to meet?</legend>'+seg('mode',modes,B.mode)+'</fieldset>':'')+
@@ -818,7 +818,7 @@ function openBook(pid,t){
    '<div class="bk-row">'+field('bkPhone','Mobile','tel','tel','inputmode="tel" placeholder="04xx xxx xxx"')+field('bkEmail','Email','email','email')+'</div>'+
    '<fieldset class="bk-fs"><legend>Is this your first visit to the Hub?</legend>'+seg('first',[['yes','Yes, first time'],['no','I’ve been before']],'')+'</fieldset>'+
    (S.plan==='yes'?planBlock():'')+
-   '<div class="bk-box bk-pol"><h3>'+svg('shield')+'Cancellation policy</h3><p>'+esc(pol.text)+'</p><div data-cardbox></div>'+
+   '<div class="bk-box bk-pol"><h3>'+svg('shield')+'Cancellation policy</h3><p>'+esc(pol.text)+'</p>'+
     '<label class="bk-check"><input type="checkbox" id="bkPol" required><span>I agree to the cancellation policy.</span></label></div>'+
    '<label class="bk-check"><input type="checkbox" id="bkOk" required><span>I agree to the Hub’s <a href="privacy.html" target="_blank" rel="noopener">privacy notice</a>. My details go into '+esc(p.first)+'’s practice records so they can see me, and we’ll text and email me about this booking.</span></label>'+
    '<p class="bk-err" role="alert" hidden></p>'+
@@ -826,10 +826,6 @@ function openBook(pid,t){
    '<p class="bk-demo">Demo: no real booking is made.</p></form>');
  var form=sheet.querySelector('form'),root=sheet;
  function svc(){var el=document.getElementById('bkSvc');if(el)el.textContent=H.serviceName(pid,S.need,S.plan,B.mode,B.first||'yes')}
- function cardOn(){return pol.card==='all'||(pol.card==='new'&&B.first==='yes')}
- function cardBox(){var el=root.querySelector('[data-cardbox]');if(!cardOn()){el.innerHTML='';return}
-  el.innerHTML='<div class="bk-card">'+(B.card?'<p class="bk-ok">'+svg('card')+'Visa ending '+B.card.last4+' held for this booking</p>':
-   '<p>'+(pol.deposit?'New clients: we take a '+money(pol.deposit)+' deposit now, which comes off your first session fee and is refunded if you cancel in time. The card stays on file for session fees.':'New clients: we keep a card on file to hold your first booking. It’s used for session fees after each session and under the policy above.')+' Card details go straight to our payment provider; the Hub never sees them.</p><button type="button" class="btn btn-outline btn-sm" data-addcard>'+svg('card')+'Add a card</button><small>Demo: this adds a pretend card. No card details are asked for.</small>')+'</div>'}
  function submitLabel(){var s=root.querySelector('.bk-submit span');if(s)s.textContent=B.every&&B.plan?'Book '+B.plan.filter(function(x){return x.start}).length+' sessions':'Confirm booking'}
  function series(){var box=root.querySelector('.bk-series');if(!box)return;if(!B.every){box.hidden=true;B.plan=null;submitLabel();return}
   box.hidden=false;box.innerHTML='<div class="bk-cnt">'+seg('count',[[4,'4 sessions'],[6,'6'],[10,'10']],B.count)+'</div><p class="bk-hint">Checking times…</p>';
@@ -837,15 +833,15 @@ function openBook(pid,t){
    box.innerHTML='<div class="bk-cnt">'+seg('count',[[4,'4 sessions'],[6,'6'],[10,'10']],B.count)+'</div><ol class="bk-dates">'+pl.map(function(x,i){
     return '<li class="'+(x.ok?'ok':x.start?'alt':'miss')+'"><span>'+(i+1)+'</span><b>'+(x.start?esc(F.day(x.start,1))+', '+F.time(x.start):esc(F.day(x.want,1)))+'</b>'+(x.ok?'':x.start?'<em>'+F.time(x.want)+' is taken that week, so this is the nearest free time</em>':'<em>Nothing free that week. We’ll skip it</em>')+'</li>'}).join('')+'</ol>'+
     '<p class="bk-hint">'+got+' sessions. You can move or cancel any of them later.'+(S.plan==='yes'?' Medicare rebates cover up to 10 sessions a calendar year with a plan.':'')+'</p>';submitLabel()})}
- svc();cardBox();
+ svc();
  root.addEventListener('click',function(e){var b=e.target.closest('button');if(!b||!root.contains(b))return;var d=b.dataset;
   function press(k){[].forEach.call(root.querySelectorAll('[data-'+k+']'),function(x){x.setAttribute('aria-pressed',x===b)})}
   if(d.mode){B.mode=d.mode;press('mode');root.querySelector('[data-appt]').innerHTML=apptLine(pid,t,null,B.mode);svc();return}
   if(d.every!=null&&b.classList.contains('fd-pill')){B.every=+d.every;press('every');series();return}
   if(d.count){B.count=+d.count;series();return}
-  if(d.first){B.first=d.first;press('first');svc();cardBox();return}
+  if(d.first){B.first=d.first;press('first');svc();return}
   if(d.rf){B.rf=d.rf;press('rf');root.querySelector('.bk-up').hidden=d.rf!=='upload';root.querySelector('[data-gp]').hidden=d.rf!=='gp';return}
-  if('addcard' in d){B.card={last4:'4242',brand:'Visa',demo:true};cardBox();return}});
+});
  var fi=root.querySelector('#bkFile');if(fi)fi.addEventListener('change',function(){var f=fi.files[0];var lab=root.querySelector('.bk-file span');
   if(!f){B.file=null;return}if(f.size>10e6){lab.textContent='That file is over 10 MB. Try a photo instead.';B.file=null;return}
   B.file={name:f.name,size:f.size,type:f.type};lab.innerHTML=svg('check')+esc(f.name)+' ('+kb(f.size)+')'});
@@ -854,13 +850,12 @@ function openBook(pid,t){
   var name=form.bkName.value.trim(),phone=form.bkPhone.value.trim(),email=form.bkEmail.value.trim(),err=form.querySelector('.bk-err');
   var kid=form.bkKid?form.bkKid.value.trim():'';
   var bad=!name?'Please add your name.':form.bkKid&&!kid?'Please add your child’s first name.':!/^(\+?61|0)4[\d ]{8,11}$/.test(phone.replace(/\s/g,'').replace(/^\+61/,'0').replace(/^61/,'0'))?'Please add an Australian mobile number (04xx xxx xxx).':!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)?'Please check your email address.':
-   pol.card==='new'&&!B.first?'Please tell us if this is your first visit.':
    S.plan==='yes'&&!REF&&!B.rf?'Please tell us how we’ll get your Mental Health Treatment Plan.':B.rf==='upload'&&!B.file?'Please choose your plan to upload, or pick another option.':
-   cardOn()&&!B.card?'Please add a card to hold your first booking.':B.every&&!B.plan?'One moment, still checking your regular times.':
+   B.every&&!B.plan?'One moment, still checking your regular times.':
    !form.bkPol.checked?'Please tick the box to agree to the cancellation policy.':!form.bkOk.checked?'Please tick the box to agree to the privacy notice.':'';
   if(bad){err.textContent=bad;err.hidden=false;err.scrollIntoView({block:'nearest'});return}
   err.hidden=true;var go=form.querySelector('.bk-submit');go.disabled=true;go.innerHTML='<span class="bk-spin"></span>Booking…';
-  var dt={pid:pid,need:S.need,start:t.toISOString(),name:name,child:kid,phone:phone,email:email,plan:S.plan,mode:B.mode,firstVisit:B.first,card:cardOn()?B.card:null,every:B.every,
+  var dt={pid:pid,need:S.need,start:t.toISOString(),name:name,child:kid,phone:phone,email:email,plan:S.plan,mode:B.mode,firstVisit:B.first,every:B.every,
    ref:REF?REF.tok:'',referral:S.plan==='yes'&&!REF?{how:B.rf,file:B.rf==='upload'?B.file:null,gp:B.rf==='gp'&&form.bkGp?form.bkGp.value.trim():''}:null};
   var call=B.every?api.bookSeries(dt,B.plan.filter(function(x){return x.start}).map(function(x){return x.start.toISOString()})):api.book(dt);
   call.then(function(r){
@@ -905,7 +900,6 @@ function done(bs){var b=bs[0],p=P[b.pid],t=new Date(b.start),many=bs.length>1;
  showSheet(sheetHead(many?'You’re booked for '+bs.length+' sessions':'You’re booked')+'<div class="bk-done"><span class="bk-tick">'+svg('check')+'</span><p>We’ve sent a confirmation text to <b>'+esc(b.phone)+'</b>.</p></div>'+apptLine(b.pid,t,b.len,b.mode)+
   (many?'<ol class="bk-dates bk-dates-done">'+bs.map(function(x,i){return '<li class="ok"><span>'+(i+1)+'</span><b>'+esc(F.day(x.start,1))+', '+F.time(new Date(x.start))+'</b></li>'}).join('')+'</ol>':'')+
   '<p class="bk-svc">'+svg('check')+'<span>'+esc(b.service)+'</span></p>'+tele+plan+
-  (b.intake?'<div class="bk-intake"><div>'+svg('file')+'<p><b>One more thing: your intake form</b><span>About 5 minutes: your details, emergency contact and consent. We’ve texted you the link too.</span></p></div><a class="btn btn-primary btn-sm" href="intake.html#t='+b.intake.tok+'">Fill it in now</a></div>':'')+
   '<p class="bk-dir">'+svg('shield')+'<span>Free to move or cancel up to '+(b.policy?b.policy.hrs:24)+' hours before. We’ll text a reminder 2 days ahead, with a link if you can’t make it.</span></p>'+
   calButtons(bs)+
   '<div class="bk-acts"><a class="btn btn-primary btn-sm" href="manage.html#t='+b.token+'">Manage '+(many?'my sessions':'my booking')+'</a></div>'+

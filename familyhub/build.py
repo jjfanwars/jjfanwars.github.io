@@ -14,7 +14,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 SRC = os.path.join(HERE, 'src')
 DEMO = 'https://familyhub.aiautomationvic.com/'
 PAGES_URL = 'https://jjfanwars.github.io/familyhub/'
-OWN = ('book.html', 'manage.html', 'admin.html', 'privacy.html', 'refer.html', 'report.html', 'practitioner.html', 'sop.html', 'inbox.html', 'intake.html', 'pay.html', 'tour.html')
+OWN = ('book.html', 'manage.html', 'admin.html', 'privacy.html', 'refer.html', 'report.html', 'practitioner.html', 'sop.html', 'inbox.html', 'tour.html')
 
 
 def read(name):
@@ -82,9 +82,6 @@ def build(live):
                                   'How Surf Coast Family Hub collects, uses and protects your personal and health information.', site, live),
         'refer.html': site_page('refer-main.html', 'book.css', 'refer.js', 'Send a referral | Surf Coast Family Hub',
                                 'Refer a patient to Surf Coast Family Hub online. Secure, and the client gets a booking link straight away.', site, live),
-        'intake.html': site_page('intake-main.html', 'book.css', 'intake.js', 'Intake form | Surf Coast Family Hub',
-                                 'Your details and consent before your first session.', site, live),
-        'pay.html': site_page('pay-main.html', 'book.css', 'pay.js', 'Payment | Surf Coast Family Hub', 'Pay or view your receipt.', site, live),
         'admin.html': admin_page(site, live),
         'report.html': admin_page(site, live, 'report.html', 'report.js', 'Hub report', 'How the Hub is going: bookings, cancellations, refills, waitlist and referrals.', ('report.css',)),
         'practitioner.html': admin_page(site, live, 'practitioner.html', 'practitioner.js', 'Practitioner view', 'Your own bookings, refills, waitlist, referrals and booking button.', ('report.css',)),
