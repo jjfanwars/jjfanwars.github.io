@@ -14,7 +14,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 SRC = os.path.join(HERE, 'src')
 DEMO = 'https://familyhub.aiautomationvic.com/'
 PAGES_URL = 'https://jjfanwars.github.io/familyhub/'
-OWN = ('book.html', 'manage.html', 'admin.html', 'privacy.html', 'refer.html', 'report.html', 'practitioner.html', 'sop.html', 'inbox.html', 'intake.html', 'pay.html')
+OWN = ('book.html', 'manage.html', 'admin.html', 'privacy.html', 'refer.html', 'report.html', 'practitioner.html', 'sop.html', 'inbox.html', 'intake.html', 'pay.html', 'tour.html')
 
 
 def read(name):
@@ -91,6 +91,7 @@ def build(live):
         'inbox.html': admin_page(site, live, 'inbox.html', 'inbox.js', 'Inbox', 'Texts, emails, calls, voicemail and website enquiries in one place.', ('inbox.css',)),
         'sop.html': admin_page(site, live, 'sop.html', 'sop.js', 'Front desk SOP', 'How the Hub runs bookings, cancellations, the waitlist, referrals and client information.', ('report.css',)),
     }
+    files['tour.html'] = read('tour.html').replace('{{SITE}}', site)
     for name, html in files.items():
         with open(os.path.join(outdir, name), 'w', encoding='utf-8') as f:
             f.write(html)
