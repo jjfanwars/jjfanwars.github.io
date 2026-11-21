@@ -13,6 +13,7 @@ Saved design plans. Nothing here is built unless it says so. Status last updated
 | Co-op campaign "Operation Chain" | Idea | below |
 | 1v1 PvP modes | Idea | below |
 | **Station Nine boss fights** (fishing legends, the Maw, Pale Mother, Leviathan, Ghost Carrier) | Plan | [rig-bosses.md](rig-bosses.md) |
+| **Firsttap**: cancellation-refill product for allied-health clinics (from the Family Hub) | Site live, backend not built (21 Nov 2026) | [firsttap.md](firsttap.md) |
 
 **Current direction (2026-11-07): see [direction.md](direction.md).** Priority: feel and balance, then Red Star roles, then accounts, aiming for a public launch within a month.
 

@@ -1,4 +1,4 @@
-// Wellbooked marketing site: serves the page and takes "join early access" enquiries.
+// Firsttap marketing site: serves the page and takes "join early access" enquiries.
 // Bindings (set in Cloudflare at deploy, never committed):
 //   LEADS      KV namespace for enquiries and the per-IP limit
 //   LEAD_MAIL  send_email binding (its destination address is configured in Cloudflare)
@@ -43,13 +43,13 @@ async function lead(req, env) {
 
   if (env.LEAD_MAIL && env.LEAD_FROM && env.LEAD_TO) {
     const body = [
-      `New early-access request from the Wellbooked site.`, ``,
+      `New early-access request from the Firsttap site.`, ``,
       `Name: ${L.name}`, `Clinic: ${L.clinic}`, `Email: ${L.email}`, `Phone: ${L.phone || "-"}`,
       `Practice software: ${L.pms || "-"}`, `Practitioners: ${L.size || "-"}`, ``, `Note:`, L.note || "-",
     ].join("\r\n");
     const raw = [
-      `From: Wellbooked <${env.LEAD_FROM}>`, `To: <${env.LEAD_TO}>`, `Reply-To: <${L.email}>`,
-      `Subject: Wellbooked lead: ${L.clinic}`, `Message-ID: <${crypto.randomUUID()}@${env.LEAD_FROM.split("@")[1]}>`,
+      `From: Firsttap <${env.LEAD_FROM}>`, `To: <${env.LEAD_TO}>`, `Reply-To: <${L.email}>`,
+      `Subject: Firsttap lead: ${L.clinic}`, `Message-ID: <${crypto.randomUUID()}@${env.LEAD_FROM.split("@")[1]}>`,
       `Date: ${new Date().toUTCString()}`, `MIME-Version: 1.0`, `Content-Type: text/plain; charset=utf-8`, `Content-Transfer-Encoding: 8bit`, ``, body,
     ].join("\r\n");
     try { await env.LEAD_MAIL.send(new EmailMessage(env.LEAD_FROM, env.LEAD_TO, raw)); }

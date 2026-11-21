@@ -3,10 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Wellbooked · Cancelled appointments, filled again</title>
-<meta name="description" content="Wellbooked texts your waitlist the moment a client cancels. The first to tap gets the time, booked straight into your practice software. Built for Australian allied-health clinics.">
-<meta property="og:title" content="Wellbooked · Cancelled appointments, filled again">
-<meta property="og:description" content="When a client cancels, Wellbooked texts your waitlist. The first to tap gets the time, booked straight into your practice software.">
+<title>Firsttap · Cancelled appointments, filled again</title>
+<meta name="description" content="Firsttap texts your waitlist the moment a client cancels. The first to tap gets the time, booked straight into your practice software. Built for Australian allied-health clinics.">
+<meta property="og:title" content="Firsttap · Cancelled appointments, filled again">
+<meta property="og:description" content="When a client cancels, Firsttap texts your waitlist. The first to tap gets the time, booked straight into your practice software.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='3' y='5' width='26' height='24' rx='7' fill='%230E3B3A'/%3E%3Crect x='3' y='5' width='26' height='8' rx='4' fill='%231F8A70'/%3E%3Cpath d='m11 20 4 4 7-8' fill='none' stroke='%23fff' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -84,6 +84,12 @@ section.s{padding:96px 0;border-top:1px solid var(--line)}
 .sh{max-width:760px;margin:0 0 44px}
 .sh h2{font-size:clamp(32px,4.2vw,50px);margin:0 0 14px}
 .sh p{font-size:19px;color:var(--ink2);margin:0}
+.facts{display:grid;gap:14px;margin:0 0 28px}
+@media (min-width:860px){.facts{grid-template-columns:repeat(3,1fr)}}
+.facts div{padding:20px 22px;border-radius:var(--r);background:var(--acc-ll);border:1px solid rgba(31,138,112,.2);display:grid;gap:6px}
+.facts b{font-size:34px;letter-spacing:-.03em;color:var(--brand);line-height:1}
+.facts span{color:var(--ink2);font-size:15.5px}
+.facts a{font-size:13px;color:var(--muted)}
 .steps{display:grid;gap:18px;counter-reset:st}
 @media (min-width:860px){.steps{grid-template-columns:repeat(3,1fr)}}
 .step{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:26px;counter-increment:st}
@@ -237,7 +243,7 @@ footer .wrap{display:flex;flex-wrap:wrap;gap:16px;justify-content:space-between;
 </head>
 <body>
 <header class="nav"><div class="wrap">
- <a class="mark" href="#top" aria-label="Wellbooked home"><svg viewBox="0 0 32 32" aria-hidden="true"><rect x="3" y="5" width="26" height="24" rx="7" fill="#0E3B3A"/><rect x="3" y="5" width="26" height="8" rx="4" fill="#1F8A70"/><path d="m11 20 4 4 7-8" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>wellbooked</a>
+ <a class="mark" href="#top" aria-label="Firsttap home"><svg viewBox="0 0 32 32" aria-hidden="true"><rect x="3" y="5" width="26" height="24" rx="7" fill="#0E3B3A"/><rect x="3" y="5" width="26" height="8" rx="4" fill="#1F8A70"/><path d="m11 20 4 4 7-8" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>firsttap</a>
  <nav aria-label="Sections"><a href="#how">How it works</a><a href="#savings">Savings</a><a href="#features">Features</a><a href="#pricing">Pricing</a><a href="#faq">FAQ</a></nav>
  <a class="btn btn-p" href="#join">Join early access</a>
 </div></header>
@@ -247,10 +253,10 @@ footer .wrap{display:flex;flex-wrap:wrap;gap:16px;justify-content:space-between;
  <div>
   <span class="pill"><i></i>Early access for Australian allied-health clinics</span>
   <h1>Cancelled appointments, <em>filled again.</em></h1>
-  <p class="lead">When a client cancels, Wellbooked texts the right people on your waitlist. The first to tap gets the time, booked straight into your practice software. Nobody at the desk picks up the phone.</p>
+  <p class="lead">When a client cancels, Firsttap texts the right people on your waitlist. The first to tap gets the time, booked straight into your practice software. Nobody at the desk picks up the phone.</p>
   <div class="ctas"><a class="btn btn-p" href="#join">Join early access</a><a class="btn btn-o" href="#savings">Work out your savings</a></div>
   <ul class="trust">
-   <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>Built on Halaxy first</li>
+   <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>Launching with Halaxy and Cliniko</li>
    <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>Australian-hosted client data</li>
    <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>Billing stays in your software</li>
   </ul>
@@ -271,8 +277,13 @@ footer .wrap{display:flex;flex-wrap:wrap;gap:16px;justify-content:space-between;
 
 <section class="s" id="how"><div class="wrap">
  <div class="sh"><h2>A late cancellation used to be a lost hour</h2><p>Now it's a text to the people who've been waiting for exactly that time.</p></div>
+ <div class="facts">
+  <div><b>8–10%</b><span>of appointments went unattended at two Australian physio clinics, with cancellations on top.</span><a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC12104927" target="_blank" rel="noopener">BMJ Open, 2025</a></div>
+  <div><b>1 in 5</b><span>first mental-health sessions were missed in a Western Sydney study.</span><a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC7592298" target="_blank" rel="noopener">BMJ Open, 2020</a></div>
+  <div><b>7 of 10</b><span>booking and practice systems we checked have no automatic refill at all. Staff still ring around the waitlist.</span><a href="#faq">Our 2026 review</a></div>
+ </div>
  <div class="steps">
-  <div class="step"><h3>Someone cancels</h3><p>In your practice software, by phone, or with the "can't make it" link in their reminder. Wellbooked sees it straight away.</p></div>
+  <div class="step"><h3>Someone cancels</h3><p>In your practice software, by phone, or with the "can't make it" link in their reminder. Firsttap sees it straight away.</p></div>
   <div class="step"><h3>The right people get a text</h3><p>Matched on practitioner, day, morning or afternoon and session length. People who've waited longest hear first, and nobody gets texted too often.</p></div>
   <div class="step"><h3>First tap books it</h3><p>The time goes into your diary like any other booking. Everyone else gets a kind "it's been filled" text and stays on the list.</p></div>
  </div>
@@ -292,7 +303,7 @@ footer .wrap{display:flex;flex-wrap:wrap;gap:16px;justify-content:space-between;
    <small>Income kept each month, roughly</small>
    <div class="big" id="rBig">$0</div>
    <div class="row"><span>Hours refilled a month</span><b id="rH">0</b></div>
-   <div class="row"><span>Wellbooked Refill</span><b id="rCost">$0</b></div>
+   <div class="row"><span>Firsttap Refill</span><b id="rCost">$0</b></div>
    <div class="row"><span>Back for every dollar spent</span><b id="rX">0×</b></div>
    <p class="fine">Assumes 4.3 weeks a month. Refill rates depend on your waitlist and how much notice people give.</p>
   </div>
@@ -304,7 +315,7 @@ footer .wrap{display:flex;flex-wrap:wrap;gap:16px;justify-content:space-between;
  <div class="feat">
   <div class="fc core"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 0 1 13.7-5.6L20 8.5M20 4v4.5h-4.5M20 12a8 8 0 0 1-13.7 5.6L4 15.5M4 20v-4.5h4.5"/></svg></div><h3>Automatic refills</h3><p>Cancelled times go to the best-matched people on your waitlist by text. First tap books it. Quiet hours, "ask me first" mode, and per-practitioner settings.</p></div>
   <div class="fc core"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 16V11a6 6 0 1 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/></svg></div><h3>Reminders with "can't make it"</h3><p>Two days out, clients can confirm or free their time with one tap, while there's still time to refill it. A call list shows who hasn't replied.</p></div>
-  <div class="fc core"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5 4.5 6.5v5c0 4.6 3.2 7.9 7.5 9 4.3-1.1 7.5-4.4 7.5-9v-5z"/><path d="m9 12 2 2 4-4"/></svg></div><h3>Fair cancellation fees</h3><p>If a late cancellation gets refilled, the fee is waived automatically. If not, it's a one-tap decision: waive it, or charge it in your software as usual.</p></div>
+  <div class="fc core"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5 4.5 6.5v5c0 4.6 3.2 7.9 7.5 9 4.3-1.1 7.5-4.4 7.5-9v-5z"/><path d="m9 12 2 2 4-4"/></svg></div><h3>Fair cancellation fees</h3><p>If a late cancellation gets refilled, the client's fee is waived automatically. Nobody pays for an hour you sold again. If not, it's a one-tap decision: waive it, or charge it in your software as usual.</p></div>
   <div class="fc"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2"/></svg></div><h3>Booking that matches <span class="plus">PLUS</span></h3><p>A few quick questions send each new client to the practitioner who suits them, with fees, rebates and real free times.</p></div>
   <div class="fc"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 13.5 6.5 5h11l2.5 8.5V18a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 18z"/><path d="M4 13.5h4.5l1.5 2h4l1.5-2H20"/></svg></div><h3>One inbox <span class="plus">PLUS</span></h3><p>Texts, email, voicemail and missed calls in one place, matched to the client. Worrying messages are flagged straight away. AI drafts routine replies; a person sends them.</p></div>
   <div class="fc"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3.5H7a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-10z"/><path d="M14 3.5v5h5M9 13h6M9 16.5h4"/></svg></div><h3>Referrals that book themselves <span class="plus">PLUS</span></h3><p>GPs refer online, the client gets a booking link straight away, and every referral is tracked until it's booked.</p></div>
@@ -314,8 +325,8 @@ footer .wrap{display:flex;flex-wrap:wrap;gap:16px;justify-content:space-between;
 <section class="s"><div class="wrap two">
  <div class="panel" id="software">
   <h3>Works with your practice software</h3>
-  <p>Wellbooked reads your free times and writes bookings into your diary. Invoices, payments and Medicare claims stay exactly where they are.</p>
-  <ul class="pms"><li>Halaxy <span class="tag g">First</span></li><li>Cliniko <span class="tag">Next</span></li><li>Something else <span class="tag a">Tell us</span></li></ul>
+  <p>Firsttap reads your free times and writes bookings into your diary. Invoices, payments and Medicare claims stay exactly where they are.</p>
+  <ul class="pms"><li>Halaxy <span class="tag g">Launching</span></li><li>Cliniko <span class="tag g">Launching</span></li><li>Nookal, Splose, Coreplus <span class="tag a">Tell us you want it</span></li></ul>
  </div>
  <div class="panel" id="privacy">
   <h3>Built for health information</h3>
@@ -330,26 +341,27 @@ footer .wrap{display:flex;flex-wrap:wrap;gap:16px;justify-content:space-between;
 </div></section>
 
 <section class="s" id="pricing"><div class="wrap">
- <div class="sh"><h2>Simple pricing, per practitioner</h2><p>Founding clinics lock in these prices. Every trial ends with a report showing exactly what was refilled.</p></div>
+ <div class="sh"><h2>Simple pricing, per clinic</h2><p>Founding clinics lock in these prices. Every trial ends with a report showing exactly what was refilled.</p></div>
  <div class="plans">
-  <div class="plan hi"><h3>Refill</h3><p>Fill cancelled times and cut no-shows.</p><div class="pr">$49<small> / practitioner / month</small></div>
-   <ul><li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>Automatic refills from your waitlist</li><li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>Reminders with "can't make it"</li><li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>Fair cancellation fees</li><li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>Monthly report of income kept</li><li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>Texts included up to a fair-use limit</li></ul>
+  <div class="plan hi"><h3>Refill</h3><p>Fill cancelled times and cut no-shows.</p><div class="pr">$129<small> / clinic / month</small></div><p style="margin-top:6px;color:var(--muted);font-size:15px">Up to 8 practitioners, then $12 each. Solo practitioners $39.</p>
+   <ul><li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>Automatic refills from your waitlist</li><li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>Reminders with “can't make it”</li><li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>Fees waived automatically when a time is refilled</li><li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>Monthly report of income kept</li><li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>Texts included up to a fair-use limit</li></ul>
    <a class="btn btn-p" href="#join">Join early access</a></div>
-  <div class="plan"><h3>Plus</h3><p>Everything in Refill, and a lighter front desk.</p><div class="pr">$79<small> / practitioner / month</small></div>
+  <div class="plan"><h3>Plus</h3><p>Everything in Refill, and a lighter front desk.</p><div class="pr">$249<small> / clinic / month</small></div><p style="margin-top:6px;color:var(--muted);font-size:15px">Up to 8 practitioners, then $20 each.</p>
    <ul><li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>Booking page that matches clients to practitioners</li><li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>One inbox with urgent flagging and AI drafts</li><li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>Online GP referrals that turn into bookings</li><li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>Ask questions about your clinic in plain English</li><li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>Booking buttons for each practitioner's website</li></ul>
    <a class="btn btn-o" href="#join">Join early access</a></div>
  </div>
- <p class="note">Prices in AUD, plus GST. 30-day trial with no lock-in. Setup is done with you, usually in under an hour.</p>
+ <p class="note">Prices in AUD, plus GST. 30-day trial with no lock-in. Setup is done with you, usually in under an hour. Halaxy clinics also need Halaxy's API add-on, which Halaxy bills (about $22–33 a month).</p>
 </div></section>
 
 <section class="s" id="faq"><div class="wrap">
  <div class="sh"><h2>Questions clinics ask</h2></div>
  <div class="faq">
-  <details><summary>Does it replace Halaxy or Cliniko?</summary><p>No. Your practice software stays the home for your diary, notes, invoices and Medicare claims. Wellbooked works on top: it reads free times and writes bookings into the same diary.</p></details>
+  <details><summary>Does it replace Halaxy or Cliniko?</summary><p>No. Your practice software stays the home for your diary, notes, invoices and Medicare claims. Firsttap works on top: it reads free times and writes bookings into the same diary.</p></details>
   <details><summary>What stops two people getting the same time?</summary><p>The first tap wins, checked in one step on our side and again by your practice software before the booking is made. Everyone else gets a kind note that the time's gone and stays on the waitlist.</p></details>
   <details><summary>Will clients get too many texts?</summary><p>No. Each person has a weekly limit, quiet hours are respected, and after a month on the list they get a "still keen?" text so offers only go to people who still want a spot. Anyone can opt out at any time.</p></details>
   <details><summary>Does AI decide who gets an appointment?</summary><p>No. Clear rules you can see and change decide who's offered a time: the right practitioner, day, time and session length, longest waiting first. AI is only used in Plus, to draft replies a person checks, with client names removed first.</p></details>
   <details><summary>Where is client data stored?</summary><p>In Australia. We hold the minimum we need to run refills, such as names, mobile numbers and preferred times, not clinical notes.</p></details>
+  <details><summary>Doesn't my practice software already have a waitlist?</summary><p>Most have a list, but staff still have to ring or text people one by one, and book whoever answers. Firsttap does the whole loop: it offers the time to the right people, books the first to tap straight into your diary, and tells everyone else it's gone.</p></details>
   <details><summary>Can each practitioner work their own way?</summary><p>Yes. Each practitioner can choose automatic refills, "ask me first", or no refills, and set their own preferences.</p></details>
  </div>
 </div></section>
@@ -378,7 +390,7 @@ footer .wrap{display:flex;flex-wrap:wrap;gap:16px;justify-content:space-between;
  </form>
 </div></section>
 </main>
-<footer><div class="wrap"><a class="mark" href="#top" style="font-size:17px"><svg viewBox="0 0 32 32" aria-hidden="true" style="width:22px;height:22px"><rect x="3" y="5" width="26" height="24" rx="7" fill="#0E3B3A"/><rect x="3" y="5" width="26" height="8" rx="4" fill="#1F8A70"/><path d="m11 20 4 4 7-8" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>wellbooked</a><span>Made in Victoria for Australian clinics. © 2026 Wellbooked.</span></div></footer>
+<footer><div class="wrap"><a class="mark" href="#top" style="font-size:17px"><svg viewBox="0 0 32 32" aria-hidden="true" style="width:22px;height:22px"><rect x="3" y="5" width="26" height="24" rx="7" fill="#0E3B3A"/><rect x="3" y="5" width="26" height="8" rx="4" fill="#1F8A70"/><path d="m11 20 4 4 7-8" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>firsttap</a><span>Made in Victoria for Australian clinics. © 2026 Firsttap.</span></div></footer>
 
 <script>
 (function(){
@@ -396,7 +408,7 @@ function an(el,kf,d,e){if(!el)return Promise.resolve();if(RM){kf=kf.map(function
 var fmt=new Intl.NumberFormat('en-AU',{style:'currency',currency:'AUD',maximumFractionDigits:0});
 function calc(){var P=+$('cP').value,F=+$('cF').value,C=+$('cC').value,R=+$('cR').value/100;
  $('oP').textContent=P;$('oF').textContent=fmt.format(F);$('oC').textContent=C;$('oR').textContent=Math.round(R*100)+'%';
- var hrs=P*C*R*4.3,kept=hrs*F,cost=P*49;
+ var hrs=P*C*R*4.3,kept=hrs*F,cost=P===1?39:129+Math.max(0,P-8)*12;
  $('rBig').textContent=fmt.format(Math.round(kept/10)*10);$('rH').textContent=Math.round(hrs);$('rCost').textContent=fmt.format(cost)+' a month';
  $('rX').textContent=cost?(kept/cost).toFixed(1)+'×':'–'}
 ['cP','cF','cC','cR'].forEach(function(id){$(id).addEventListener('input',calc)});calc();
@@ -453,7 +465,7 @@ async function play(){var c=mk();running=true;
  host.innerHTML='';var p=new Phone(c);host.appendChild(p.el);
  c.cap('Grace can’t make <b>Wednesday 11:00</b>. She cancels.');
  await c.w(1500);s.classList.add('x');setTag(2,'<span class="tag w">Cancelled</span>');
- await c.w(1500);c.cap('Wellbooked texts the <b>best matches</b> on the waitlist.');setTag(2,'<span class="tag a">Offered to 3</span>');
+ await c.w(1500);c.cap('Firsttap texts the <b>best matches</b> on the waitlist.');setTag(2,'<span class="tag a">Offered to 3</span>');
  await p.text('Hi Mia, a time has come up with Dr Lee on Wednesday at 11:00am. Tap to book: lakeside.clinic/c/7fq2 First to tap gets it.');
  await c.w(1600);c.cap('Mia taps first…');
  await p.tap(p.lastBan);await p.open();await c.w(500);
