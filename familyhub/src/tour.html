@@ -118,7 +118,7 @@ svg.i{width:1em;height:1em;flex:none}
 .draft b svg{width:15px;height:15px;color:var(--teal)}
 .lanes{display:grid;gap:14px}
 @media (min-width:640px){.lanes{grid-template-columns:1fr 1fr}}
-.lane{border-radius:16px;padding:14px;min-height:300px;display:flex;flex-direction:column;gap:8px}
+.lane{border-radius:16px;padding:14px;min-height:250px;display:flex;flex-direction:column;gap:8px}
 .lane.h{background:#F4F1EC}
 .lane.t{background:var(--teal-l)}
 .lane .li{grid-template-columns:minmax(0,1fr)}
@@ -168,9 +168,10 @@ svg.i{width:1em;height:1em;flex:none}
 .ip-scr{position:relative;width:100%;height:100%;border-radius:calc(var(--pw) * .137);overflow:hidden;background:#000;font-family:var(--ios);color:#000;isolation:isolate;letter-spacing:-.01em;-webkit-font-smoothing:antialiased}
 .ip-sb{position:absolute;inset:0 0 auto;height:3.4em;display:flex;align-items:center;justify-content:space-between;padding:.2em 1.75em 0 2.25em;z-index:8;pointer-events:none;color:#000;transition:color .3s,opacity .5s}
 .ip-t{font-weight:600;font-size:1.08em}
-.ip-bc{display:none;align-items:center;gap:.05em;font-size:.78em;font-weight:500}
+.ip-bc{display:none;align-items:center;gap:.05em;font-size:.72em;font-weight:500}
 .ip-bc svg{width:.95em;height:.95em}
 .ip[data-bc] .ip-t{display:none}.ip[data-bc] .ip-bc{display:flex}
+.ip[data-bc] .ip-sb{padding-left:1.3em}
 .ip-isl{position:absolute;left:50%;top:.75em;width:7.6em;height:2.2em;margin-left:-3.8em;border-radius:2em;background:#000}
 .ip-ics{display:flex;gap:.3em;align-items:center}
 .ip-ics svg{height:.9em;width:auto}
