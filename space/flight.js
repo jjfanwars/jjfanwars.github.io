@@ -77,8 +77,8 @@ const PLUME_GEO = new THREE.CylinderGeometry(1, 1, 1, 32, 40, true);
 
 // stage table, bottom to top. Masses in kg, thrust in N (vacuum), Isp in s.
 const STAGES = [
-  {name: 'Booster', dry: 2200, fuel: 15000, thrust: 330000, ispS: 270, ispV: 300, y0: 0, y1: 16.6, exit: .95, hot: 1},
-  {name: 'Upper stage', dry: 900, fuel: 3800, thrust: 80000, ispS: 210, ispV: 345, y0: 14.7, y1: 21.6, exit: .7, hot: 0},
+  {name: 'Booster', dry: 2400, fuel: 20000, thrust: 450000, ispS: 270, ispV: 300, y0: 0, y1: 16.6, exit: .95, hot: 1},
+  {name: 'Upper stage', dry: 1200, fuel: 9000, thrust: 80000, ispS: 210, ispV: 345, y0: 14.7, y1: 21.6, exit: .7, hot: 0},
   {name: 'Capsule', dry: 2200, fuel: 0, y0: 21.6, y1: 26.1, chute: true},
 ];
 function buildStage(i) {
@@ -92,6 +92,12 @@ function buildStage(i) {
   } else if (i === 1) {
     g.add(mesh(bellGeo(.22, .7, 1.35), RM.bell2, 0, 14.75, 0)); g.add(cylY(.28, .28, 16.1, 16.55, RM.grey, 20)); g.add(mesh(new THREE.BoxGeometry(.32, .32, .3), RM.gold, .3, 16.3, 0));
     g.add(cylY(1.25, 1.25, 16.55, 20.4, RM.tank2, 48)); g.add(cylY(1.25, 2.5, 20.4, 21.6, RM.white, 64)); g.add(cylY(1.27, 1.27, 20.4, 20.55, RM.grey, 48)); // flared adapter up to the wide capsule
+    // four landing legs: fold up along the tank, swing out for a landing (R.legs)
+    const legs = [], strut = new THREE.CylinderGeometry(.075, .095, 3.4, 10); strut.translate(0, -1.7, 0); const pad = new THREE.CylinderGeometry(.34, .4, .1, 20), knee = new THREE.CylinderGeometry(.04, .04, 1.9, 8); knee.translate(0, -.95, 0);
+    for (let k = 0; k < 4; k++) { const a = Math.PI / 4 + k * Math.PI / 2, base = new THREE.Group(); base.position.set(Math.cos(a) * 1.32, 17.5, -Math.sin(a) * 1.32); base.rotation.y = a; g.add(base);
+      base.add(mesh(new THREE.BoxGeometry(.22, .34, .3), RM.grey, -.04, 0, 0)); const hinge = new THREE.Group(); base.add(hinge); hinge.add(mesh(strut, RM.grey)); const ft = mesh(pad, RM.black, 0, -3.42, 0); hinge.add(ft);
+      const br = mesh(knee, RM.gold, 0, -1.3, 0); br.rotation.z = -.5; hinge.add(br); legs.push(hinge); }
+    g.userData.legs = legs;
   } else buildCapsule(g);
   if (S.thrust) { // two-layer plume hung below the bell
     const pg = new THREE.Group(); pg.position.y = S.y0 + (i === 1 ? .05 : 0);
@@ -106,7 +112,7 @@ function buildStage(i) {
 const R = {on: false, st: 'pad', body: PLANET, pos: new V3(), vel: new V3(), q: new Q4(), w: new V3(), lp: new V3(), lq: new Q4(),
   thr: 1, sas: 'hold', felt: new V3(0, 9.81, 0), t0: 0, hold: new Q4(), bot: 0, lit: false, fuel: [], chute: 0, chA: 0, comY: 10, F: 0, p: 0, qd: 0, deadT: 0,
   g: new THREE.Group(), inner: new THREE.Group(), sg: [], debris: [],
-  cam: {yaw: 1.65, pitch: .12, dist: 48, ref: new V3()}};
+  legs: 0, legT: 0, warpTo: 0, cam: {yaw: 1.65, pitch: .12, dist: 48, ref: new V3()}};
 R.g.add(R.inner); scene.add(R.g);
 const flameL = new THREE.PointLight(0xffa04a, 0, 0, 2); scene.add(flameL); // always in the scene (adding lights later recompiles every material)
 const _ry = new Q4().setFromAxisAngle(new V3(0, 1, 0), -Math.PI / 2);
@@ -114,12 +120,13 @@ function rocketMass() { let m = 0; for (let i = R.bot; i < STAGES.length; i++) m
 function comOf() { let m = 0, my = 0; for (let i = R.bot; i < STAGES.length; i++) { const S = STAGES[i], mi = S.dry + R.fuel[i]; m += mi; my += mi * (S.y0 + S.y1) / 2; } return my / m; }
 function resetRocket() {
   for (const g of R.sg) R.inner.remove(g); R.sg = STAGES.map((_, i) => buildStage(i)); for (const g of R.sg) R.inner.add(g);
-  R.fuel = STAGES.map(s => s.fuel); R.bot = 0; R.lit = false; R.thr = 1; R.chute = 0; R.chA = 0; R.w.set(0, 0, 0); R.sas = 'hold'; R.st = 'pad'; R.body = PLANET; R.deadT = 0; R.g.visible = true; R.t0 = 0; HIST.length = 0;
+  R.fuel = STAGES.map(s => s.fuel); R.bot = 0; R.lit = false; R.thr = 1; R.chute = 0; R.chA = 0; R.w.set(0, 0, 0); R.sas = 'hold'; R.st = 'pad'; R.body = PLANET; R.deadT = 0; R.legs = R.legT = 0; R.warpTo = 0; R.test = false; R.legManual = false; R.g.visible = true; R.t0 = 0; HIST.length = 0;
   R.comY = comOf(); const pad = site.pads[0]; siteToBody(new V3(pad.x, pad.y + R.comY, pad.z), R.lp); R.lq.copy(site.q).multiply(_ry);
   latch(G.t); R.hold.copy(R.q);
 }
 function latch(t) { const b = R.body; R.pos.copy(R.lp).applyQuaternion(b.q).add(b.c); R.q.copy(b.q).multiply(R.lq); groundVel(b, R.pos, t, R.vel); }
 const _n = new V3(), _a = new V3(), _va = new V3(), _t1 = new V3(), _t2 = new V3(), _qa = new Q4(), _qb = new Q4();
+function botY() { return STAGES[R.bot].y0 - (R.bot === 1 && R.legs > .9 ? .6 : 0); } // lowest point of the stack (rocket coords)
 function nose(out) { return out.set(0, 1, 0).applyQuaternion(R.q); }
 
 // ---------------- staging: launch, drop spent stages, open the parachute
@@ -148,14 +155,14 @@ function rocketStep(h, t) {
   R.F = 0; if (R.lit && S.thrust && R.fuel[R.bot] > 0 && R.thr > 0) { const isp = lerp(S.ispV, S.ispS, p); R.F = S.thrust * R.thr * isp / S.ispV; R.fuel[R.bot] = Math.max(0, R.fuel[R.bot] - R.F / (isp * G0) * h); if (R.fuel[R.bot] === 0) { R.lit = false; showHint('Out of fuel. Space: next stage', 3000); } }
   if (R.st !== 'fly') { // held by the pad clamps, or sitting on the ground
     latch(t); const gl = gravAt(R.pos, t, _a).length(); R.felt.set(0, gl, 0);
-    if (R.F / m > gl * 1.02) { R.st = 'fly'; R.w.set(0, 0, 0); R.hold.copy(R.q); if (!R.t0) R.t0 = t; } else return;
+    if (R.F / m > gl * 1.02) { R.st = 'fly'; R.w.set(0, 0, 0); R.hold.copy(R.q); if (!R.t0) R.t0 = t; } return; // free from the next substep (the latch already put us at time t)
   }
   // air
   groundVel(PLANET, R.pos, t, _va); _va.subVectors(R.vel, _va); const vs = _va.length(); const rho = 1.225 * p; R.qd = .5 * rho * vs * vs;
   // parachute: opens when armed, below 9 km and slower than 280 m/s
   if (R.chute === 1 && p > .07 && vs < 280) { R.chute = 2; sfx('chute'); showHint('Parachute open', 2500); R.sg[R.sg.length - 1].userData.chute.visible = true; }
-  if (R.chute === 2) { const tg = alt > 1000 ? .07 : 1; R.chA += clamp(tg - R.chA, -h, h / 3); } // drogue high up, full canopy below 1 km
-  const cdA = (R.bot < 2 ? 4.5 : 16) + R.chA * 650;
+  if (R.chute === 2) { const tg = alt > 1000 && radarAlt() > 1000 ? .07 : 1; /* main canopy 1 km above the ground (or sea) */ R.chA += clamp(tg - R.chA, -h, h / 3); } // drogue high up, full canopy below 1 km
+  const cdA = (R.bot < 2 ? 4.5 : 16) + R.chA * 1100;
   gravAt(R.pos, t, _a); _a.addScaledVector(nz, R.F / m);
   if (vs > .01 && R.qd > 0) _a.addScaledVector(_va, -R.qd * cdA / (m * vs));
   R.felt.copy(_a).sub(gravAt(R.pos, t, _t1)).applyQuaternion(_qa.copy(R.q).invert()); // what the crew feels (thrust + drag)
@@ -176,19 +183,33 @@ function rocketStep(h, t) {
   const wl = R.w.length(); if (wl > 1e-7) { _qb.setFromAxisAngle(_t2.copy(R.w).multiplyScalar(1 / wl), wl * h); R.q.multiply(_qb).normalize(); }
   // ground contact (bottom of the stack)
   for (const b of BODIES) { const rel = _t2.copy(R.pos).sub(b.c); if (rel.length() - b.R > 12000) continue;
-    const bot = rel.addScaledVector(nose(_n), -(R.comY - STAGES[R.bot].y0)); const bf = bot.clone().applyQuaternion(_qa.copy(b.q).invert()), gr = groundR(b, bf);
+    const bot = rel.addScaledVector(nose(_n), -(R.comY - botY())); const bf = bot.clone().applyQuaternion(_qa.copy(b.q).invert()), gr = groundR(b, bf);
     if (bf.length() >= gr) continue;
-    const vg = groundVel(b, R.pos, t, new V3()), sp = R.vel.distanceTo(vg), up = bf.clone().normalize(), tilt = Math.acos(clamp(new V3(0, 1, 0).applyQuaternion(_qa.copy(b.q).invert().multiply(R.q)).dot(up), -1, 1));
-    if (sp > 12 || (tilt > .55 && sp > 3) || tilt > 1.1) { explode(); return; }
+    const vg = groundVel(b, R.pos, t, new V3()), sp = R.vel.distanceTo(vg), up = bf.clone().normalize();
+    if (_t2.subVectors(R.vel, vg).dot(_t1.copy(up).applyQuaternion(b.q)) > 0 && bf.length() > gr - .5) continue; // lifting off: moving away from the ground
+    const tilt = Math.acos(clamp(new V3(0, 1, 0).applyQuaternion(_qa.copy(b.q).invert().multiply(R.q)).dot(up), -1, 1));
+    const legs = R.bot === 1 && R.legs > .9; if (sp > (legs ? 14 : 12) || (tilt > (legs ? .8 : .55) && sp > 3) || tilt > 1.1) { explode(); return; }
+    R.landV = sp;
     // set down upright
     R.body = b; const lq = _qa.copy(b.q).invert().multiply(R.q), ly = new V3(0, 1, 0).applyQuaternion(lq); lq.premultiply(new Q4().setFromUnitVectors(ly, up));
-    R.lq.copy(lq); R.lp.copy(up).multiplyScalar(gr + R.comY - STAGES[R.bot].y0); R.st = 'landed'; R.w.set(0, 0, 0); latch(t);
+    R.lq.copy(lq); R.lp.copy(up).multiplyScalar(gr + R.comY - botY()); R.st = 'landed'; R.w.set(0, 0, 0); latch(t);
     sfx('thud'); showHint(b === MOON ? 'Landed on the Moon!' : 'Landed. F: get out · Backspace: new rocket', 5000); return; }
 }
 function sasDir(out) { // inertial direction for the SAS modes
   const b = domBody(R.pos), rel = _t1.copy(R.pos).sub(b.c);
   if (R.sas === 'up') return out.copy(rel).normalize();
+  if (R.sas === 'guide') return guideDir(out);
   const v = R.sas === 'pro' || R.sas === 'retro' ? relVel(out) : null; if (!v || v.lengthSq() < 1) return null; v.normalize(); return R.sas === 'retro' ? v.negate() : v; }
+// ascent guide: pitch over gently from straight up to flat by ~45 km, toward the east (or north for a polar orbit)
+const GUIDE = {head: 'east', ap: 80000};
+function guideDir(out) {
+  const b = domBody(R.pos), up = _t1.copy(R.pos).sub(b.c).normalize(), alt = R.pos.distanceTo(b.c) - b.R;
+  const east = new V3(0, 1, 0).cross(up).normalize(), dir = GUIDE.head === 'north' ? new V3(0, 1, 0).addScaledVector(up, -up.y).normalize() : east;
+  const g0 = b === PLANET ? 900 : 150, g1 = b === PLANET ? 44000 : 9000; // the Moon has no air: turn over much sooner
+  if (alt > g1) { const v = relVel(new V3()); v.addScaledVector(up, -v.dot(up)); return v.lengthSq() > 1 ? out.copy(v.normalize()) : out.copy(dir); }
+  const th = Math.PI / 2 * Math.min(1, Math.sqrt(Math.max(0, alt - g0) / (g1 - g0))) * .97;
+  return out.copy(up).multiplyScalar(Math.cos(th)).addScaledVector(dir, Math.sin(th)).normalize(); }
+function guideOn() { if (R.st !== 'fly') return false; const b = domBody(R.pos), o = orbitOf(b), alt = R.pos.distanceTo(b.c) - b.R; return o.pe < (b === PLANET ? PLANET.atmo : 3000) && alt < (b === PLANET ? 60000 : 20000) && (o.ap === Infinity || o.ap > alt - 50); }
 function relVel(out) { // surface velocity low down, orbital velocity higher up
   const b = domBody(R.pos), alt = R.pos.distanceTo(b.c) - b.R;
   if (b === PLANET) return alt < 20000 ? groundVel(PLANET, R.pos, G.t, out).negate().add(R.vel) : out.copy(R.vel);
@@ -212,7 +233,24 @@ function flightStep(dt) {
   if (R.st === 'dead' && (R.deadT -= dt) <= 0) { respawn(); }
   // keep warp safe: no fast warp under thrust, in the air, or near the ground
   if (R.on && R.st === 'fly' && G.wi > 2 && (R.F > 0 || R.p > 0 || altAbove() < 12000)) { G.wi = 2; G.warp = WARPS[2]; }
+  if (R.warpTo) { const left = R.warpTo - G.t; if (left <= 0 || R.st !== 'fly' || R.F > 0) { R.warpTo = 0; G.wi = 0; G.warp = 1; if (left <= 0) showHint('Arrived', 1500); }
+    else { let i = WARPS.length - 1; while (i > 0 && WARPS[i] * .05 * 4 > left) i--; if (i > 2 && (R.p > 0 || altAbove() < 12000)) i = 2; G.wi = i; G.warp = WARPS[i]; } }
 }
+function legsStep(dt) {
+  if (R.bot !== 1) return; const leg = R.sg[1] && R.sg[1].userData.legs; if (!leg) return;
+  if (R.st === 'fly' && R.legT === 0 && !R.legManual) { const ra = radarAlt(); if (ra < 2500 && vertSpeed() < -2) { R.legT = 1; showHint('Landing legs out', 2000); sfx('pop'); } }
+  R.legs = clamp(R.legs + (R.legT - R.legs) * Math.min(1, dt * 1.6) + Math.sign(R.legT - R.legs) * dt * .05, 0, 1);
+  const ang = lerp(Math.PI - .06, .5, sstep(0, 1, R.legs)); for (const h of leg) h.rotation.z = ang; }
+// landing maths: how much height a full retrograde burn needs to stop (it also has to kill the sideways speed)
+function landCalc() { const b = domBody(R.pos), v = relVel(new V3()).length(), vs = vertSpeed(), vd = Math.max(0, -vs), gl = b.GM / R.pos.distanceToSquared(b.c), am = maxAcc() * .9, hs = Math.sqrt(Math.max(0, v * v - vs * vs));
+  // fly the burn forward (thrust against the velocity, flat ground, constant gravity): how far down do we go before we stop?
+  let stop = Infinity; if (am > gl) { let u = hs, w = vs, h = 0, lo = 0; for (let i = 0; i < 3000; i++) { const sp = Math.hypot(u, w); if (sp < 1.5) break; const dt = clamp(sp / am / 60, .01, .5);
+      u -= am * u / sp * dt; w += (-am * w / sp - gl) * dt; h += w * dt; if (h < lo) lo = h; if (w > 0 && u < 1) break; } stop = -lo; }
+  return {ra: radarAlt(), vd, v, hs, stop}; }
+function vertSpeed() { const b = domBody(R.pos), up = _t2.copy(R.pos).sub(b.c).normalize(); return relVel(new V3()).dot(up); }
+let _raT = 0, _raV = 1e9; // radar altitude (height of the bottom of the stack over the ground), cached a little
+function radarAlt() { if (G.t === _raT) return _raV; _raT = G.t; const b = domBody(R.pos), rel = R.pos.clone().sub(b.c), d = rel.length() - b.R; if (d > 60000) return _raV = d;
+  const bf = rel.applyQuaternion(_qa.copy(b.q).invert()); return _raV = bf.length() - groundR(b, bf) - (R.comY - botY()); }
 function altAbove() { const b = domBody(R.pos); return R.pos.distanceTo(b.c) - b.R; }
 
 // ---------------- crash
@@ -263,7 +301,7 @@ function boom(at, k) { const b = domBody(at), up = at.clone().sub(b.c).normalize
     puff(at, vg.clone().addScaledVector(d, s), {life: 1.5 + Math.random() * 1.5, s: 3 * k, gr: 9 * k, heat: 1, hk: .6 + Math.random() * .5, drag: air ? 1.8 : 0, tone: .3}); }
   if (air) for (let i = 0; i < 40 * k; i++) { d.set(Math.random() - .5, Math.random() - .5, Math.random() - .5).normalize().addScaledVector(up, .8); puff(at, vg.clone().addScaledVector(d, (4 + Math.random() * 12) * k), {life: 9 + Math.random() * 8, s: 5 * k, gr: 3 * k, heat: .3, hk: 1.5, drag: 1, tone: .18, rise: 1.5}); }
   G.flash = Math.max(G.flash || 0, k); G.flashP = at.clone(); }
-const _pd = [], _pi = new Uint16Array(PN);
+const _pd = new Float32Array(PN), _pi = new Uint16Array(PN), _pdd = new Float32Array(PN), _pidx = [], _pcmp = (a, b) => _pdd[b] - _pdd[a];
 function stepParticles(dt) {
   if (!PT.n) { pGeo.instanceCount = 0; return; }
   const sim = Math.min(dt * G.warp, .2); let k = 0;
@@ -278,7 +316,7 @@ function stepParticles(dt) {
         const vu = PT.vel[j] * up.x + PT.vel[j + 1] * up.y + PT.vel[j + 2] * up.z; if (vu < 0) for (let c = 0; c < 3; c++) PT.vel[j + c] -= up.getComponent(c) * vu * 1.0; } }
     _pd[k] = (PT.pos[j] - G.O.x) ** 2 + (PT.pos[j + 1] - G.O.y) ** 2 + (PT.pos[j + 2] - G.O.z) ** 2; _pi[k++] = i; }
   // far to near
-  const idx = Array.from(_pi.subarray(0, k)); const dd = new Float32Array(PN); for (let a = 0; a < k; a++) dd[_pi[a]] = _pd[a]; idx.sort((a, b) => dd[b] - dd[a]);
+  const idx = _pidx; idx.length = k; for (let a = 0; a < k; a++) { idx[a] = _pi[a]; _pdd[_pi[a]] = _pd[a]; } idx.sort(_pcmp); // no allocations per frame
   const P3 = pAP.array, D4 = pAD.array;
   for (let a = 0; a < k; a++) { const i = idx[a], j = i * 3, u = PT.age[i] / PT.life[i];
     P3[a * 3] = PT.pos[j] - G.O.x; P3[a * 3 + 1] = PT.pos[j + 1] - G.O.y; P3[a * 3 + 2] = PT.pos[j + 2] - G.O.z;
@@ -339,7 +377,7 @@ function flightCamera(dt) {
   const rel = eye.clone().sub(b.c); if (rel.length() - b.R < 15000) { const bf = rel.clone().applyQuaternion(_qa.copy(b.q).invert()), gr = groundR(b, bf) + 1.5; if (bf.length() < gr) eye.copy(b.c).addScaledVector(rel.normalize(), gr); }
   G.O.copy(eye); _m.lookAt(eye, tgt, up); cam.quaternion.setFromRotationMatrix(_m); cam.position.set(0, 0, 0); cam.updateMatrixWorld();
 }
-addEventListener('wheel', e => { if (!G.on || !R.on) return; e.preventDefault(); R.cam.dist = clamp(R.cam.dist * Math.exp(e.deltaY * .0015), 8, 2000); }, {passive: false});
+addEventListener('wheel', e => { if (!G.on || !R.on || MAPV.on) return; e.preventDefault(); R.cam.dist = clamp(R.cam.dist * Math.exp(e.deltaY * .0015), 8, 2000); }, {passive: false});
 
 // ---------------- boarding
 function canBoard() { if (R.st === 'fly' || R.st === 'dead' || P.body !== R.body) return false; const base = R.lp.clone().addScaledVector(new V3(0, 1, 0).applyQuaternion(R.lq), -(R.comY - STAGES[R.bot].y0));
@@ -359,18 +397,23 @@ addEventListener('keydown', e => {
   if (k === 'KeyV' && pilot()) C.view = C.view === 'in' ? 'out' : 'in';
   if (k === 'Comma' || k === 'BracketLeft') setWarp(G.wi - 1);
   if (k === 'Period' || k === 'BracketRight') setWarp(G.wi + 1);
-  if (!pilot()) { if (R.on && C.in && /^(Digit[1-4]|Numpad[1-4]|KeyT|KeyZ|KeyX)$/.test(k)) showHint('Sit in the middle (Pilot) seat to fly: walk to it and press F', 2500); return; }
+  if (!pilot()) { if (R.on && C.in && /^(Digit[1-5]|Numpad[1-5]|KeyT|KeyZ|KeyX)$/.test(k)) showHint('Sit in the middle (Pilot) seat to fly: walk to it and press F', 2500); return; }
   if (k === 'Space') { e.preventDefault(); stage(); }
   if (k === 'KeyZ') R.thr = 1; if (k === 'KeyX') R.thr = 0;
-  const modes = {Digit1: 'hold', Digit2: 'pro', Digit3: 'retro', Digit4: 'up', Numpad1: 'hold', Numpad2: 'pro', Numpad3: 'retro', Numpad4: 'up', KeyT: R.sas === 'off' ? 'hold' : 'off'}; if (modes[k]) setSas(modes[k]);
+  const modes = {Digit1: 'hold', Digit2: 'pro', Digit3: 'retro', Digit4: 'up', Digit5: 'guide', Numpad1: 'hold', Numpad2: 'pro', Numpad3: 'retro', Numpad4: 'up', Numpad5: 'guide', KeyT: R.sas === 'off' ? 'hold' : 'off'}; if (modes[k]) setSas(modes[k]);
+  if (k === 'KeyG' && R.bot === 1) { R.legT = R.legT ? 0 : 1; R.legManual = true; showHint(R.legT ? 'Landing legs out' : 'Landing legs in', 1500); }
+  if (k === 'KeyN') warpNext();
   if (k === 'Backspace') { e.preventDefault(); if (R.st !== 'fly') { resetRocket(); showHint('New rocket on the pad', 2500); } }
 });
 addEventListener('pointerdown', sndInit);
 function setSas(m) { R.sas = m; R.hold.copy(R.q);
-  const names = {hold: 'Holding direction', pro: 'Pointing prograde (where you are going)', retro: 'Pointing retrograde (backwards, to slow down)', up: 'Pointing up', off: 'Autopilot off'};
+  const names = {guide: 'Following the ascent guide (blue marker): you still stage and throttle', hold: 'Holding direction', pro: 'Pointing prograde (where you are going)', retro: 'Pointing retrograde (backwards, to slow down)', up: 'Pointing up', off: 'Autopilot off'};
   if ((m === 'pro' || m === 'retro') && (R.st !== 'fly' || relVel(new V3()).length() < 3)) showHint((m === 'pro' ? 'Prograde' : 'Retrograde') + ' needs you to be moving: it turns once you are flying', 3000); else showHint(names[m], 1800); }
-function setWarp(i) { let mx = WARPS.length - 1; if (R.on && R.st === 'fly' && (R.F > 0 || R.p > 0 || altAbove() < 12000)) mx = 2; if (!R.on && G.on) mx = 6;
+function setWarp(i) { R.warpTo = 0; let mx = WARPS.length - 1; if (R.on && R.st === 'fly' && (R.F > 0 || R.p > 0 || altAbove() < 12000)) mx = 2; if (!R.on && G.on) mx = 6;
   G.wi = clamp(i, 0, mx); G.warp = WARPS[G.wi]; if (i > mx) showHint(R.on ? 'Faster time needs space, engines off' : 'Max time speed', 2000); }
+function warpNext() { // time warp to the next apoapsis or periapsis, whichever is sooner
+  if (!R.on || R.st !== 'fly') return; const o = orbitEl(domBody(R.pos)); const ts = [o.tAp, o.tPe].filter(x => x > 20); if (R.F > 0) { showHint('Cut the engine first (X)', 2000); return; }
+  if (!ts.length) { showHint('Nothing to warp to', 1500); return; } const dt = Math.min(...ts); R.warpTo = G.t + dt - 15; showHint('Warping to ' + (dt === o.tAp ? 'apoapsis (Ap)' : 'periapsis (Pe)') + ' · any time key stops', 2500); }
 function stepThrottle(dt) { if (!pilot()) return; if (keys.ShiftLeft || keys.ShiftRight) R.thr = Math.min(1, R.thr + dt * .9); if (keys.KeyC) R.thr = Math.max(0, R.thr - dt * .9); }
 
 // ---------------- sound (WebAudio noise, no files)
@@ -395,23 +438,48 @@ const fmtD = m => Math.abs(m) >= 1e6 ? (m / 1e6).toFixed(2) + ' Mm' : Math.abs(m
 function orbitOf(b) { const mu = b.GM, rr = R.pos.clone().sub(b.c), vv = R.vel.clone(); if (b === MOON) vv.sub(moonVel(G.t, new V3()));
   const r = rr.length(), v2 = vv.lengthSq(), E = v2 / 2 - mu / r, h = rr.clone().cross(vv).length(), e = Math.sqrt(Math.max(0, 1 + 2 * E * h * h / (mu * mu)));
   const pe = h * h / mu / (1 + e) - b.R, ap = E < 0 ? -mu / (2 * E) * (1 + e) - b.R : Infinity; return {ap, pe}; }
-let fhT = 0;
+// full orbital elements around body b: e, a, period, true anomaly, time to Ap / Pe (s), inclination to the equator
+function orbitEl(b, pos = R.pos, vel = R.vel, t = G.t) { const mu = b.GM, rr = pos.clone().sub(b === MOON ? moonPos(t, new V3()) : b.c), vv = vel.clone(); if (b === MOON) vv.sub(moonVel(t, new V3()));
+  const r = rr.length(), hv = rr.clone().cross(vv), h = hv.length(), E = vv.lengthSq() / 2 - mu / r, ev = vv.clone().cross(hv).multiplyScalar(1 / mu).sub(rr.clone().multiplyScalar(1 / r)), e = ev.length();
+  const a = -mu / (2 * E), out = {e, a, r, ap: E < 0 ? a * (1 + e) - b.R : Infinity, pe: h * h / mu / (1 + e) - b.R, tAp: Infinity, tPe: Infinity, period: E < 0 ? 2 * Math.PI * Math.sqrt(a * a * a / mu) : Infinity, inc: Math.acos(clamp(hv.y / (h || 1), -1, 1))};
+  let nu = e > 1e-6 ? Math.acos(clamp(ev.dot(rr) / (e * r), -1, 1)) : 0; if (rr.dot(vv) < 0) nu = 2 * Math.PI - nu; out.nu = nu;
+  if (E < 0 && e < 1) { const n = Math.sqrt(mu / (a * a * a)), Ea = 2 * Math.atan(Math.sqrt((1 - e) / (1 + e)) * Math.tan(nu / 2)), M = ((Ea - e * Math.sin(Ea)) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI);
+    out.tPe = (2 * Math.PI - M) / n; out.tAp = ((Math.PI - M) / n + out.period) % out.period; }
+  else if (e > 1 && rr.dot(vv) < 0) { const n = Math.sqrt(mu / Math.pow(-a, 3)), F = 2 * Math.atanh(Math.sqrt((e - 1) / (e + 1)) * Math.tan(nu / 2)), M = e * Math.sinh(F) - F; out.tPe = Math.abs(M) / n; }
+  return out; }
+function stageDv() { const S = STAGES[R.bot]; if (!S.thrust || !R.fuel[R.bot]) return 0; const m = rocketMass(); return lerp(S.ispV, S.ispS, R.p) * G0 * Math.log(m / (m - R.fuel[R.bot])); }
+function maxAcc() { const S = STAGES[R.bot]; return S.thrust && R.fuel[R.bot] > 0 ? S.thrust * lerp(S.ispV, S.ispS, R.p) / S.ispV / rocketMass() : 0; }
+const fmtS = s => s === Infinity || isNaN(s) ? '—' : s >= 3600 ? (s / 3600 | 0) + 'h ' + String((s / 60 | 0) % 60).padStart(2, '0') + 'm' : (s / 60 | 0) + ':' + String(s % 60 | 0).padStart(2, '0');
+const HUDE = {}, setTxt = (id, t) => { const el = HUDE[id] || (HUDE[id] = $(id)); if (el._t !== t) { el._t = t; el.textContent = t; } };
+let sasBtns = null, fhT = 0;
 function flightHud(dt) {
   const fl = $('fl'); fl.classList.remove('hidden'); document.body.classList.add('fly'); if ((fhT -= dt) > 0) return markers(); fhT = .1;
   const b = domBody(R.pos), alt = R.pos.distanceTo(b.c) - b.R, v = relVel(new V3()).length(), o = orbitOf(b), S = STAGES[R.bot];
   const sit = R.st === 'pad' ? 'On the pad' : R.st === 'landed' ? 'Landed' : R.st === 'dead' ? 'Crashed' : o.pe > (b === PLANET ? PLANET.atmo : 2000) ? 'In orbit' : alt < 20000 && b === PLANET ? 'Flying' : 'Suborbital';
-  $('hLoc').textContent = sit + (b === MOON ? ' · Moon' : ''); $('hInfo').textContent = 'Local time ' + localTime() + (G.warp > 1 ? ' · Time ×' + G.warp : '');
-  $('fAlt').textContent = fmtD(alt); $('fSpd').textContent = Math.round(v) + ' m/s';
-  $('fAp').textContent = o.ap === Infinity ? 'escape' : fmtD(o.ap); $('fPe').textContent = o.pe < -b.R * .5 ? '—' : fmtD(o.pe);
-  $('fThr').style.height = (R.thr * 100) + '%'; $('fFuel').style.height = (S.fuel ? R.fuel[R.bot] / S.fuel * 100 : 0) + '%'; $('fStage').textContent = S.name;
+  setTxt('hLoc', sit + (b === MOON ? ' · Moon' : '')); setTxt('hInfo', 'Local time ' + localTime() + (G.warp > 1 ? ' · Time ×' + G.warp : '') + (R.warpTo ? ' (warping)' : ''));
+  setTxt('fAlt', fmtD(alt)); setTxt('fSpd', Math.round(v) + ' m/s');
+  setTxt('fAp', o.ap === Infinity ? 'escape' : fmtD(o.ap)); setTxt('fPe', o.pe < -b.R * .5 ? '—' : fmtD(o.pe));
+  // extra readouts: vertical speed, time to Ap/Pe, stage delta-v, ground radar + "burn now" for landings
+  const el = orbitEl(b), vs = vertSpeed(), ra = radarAlt(), fly = R.st === 'fly'; let x = (vs >= 0 ? '↑ ' : '↓ ') + Math.abs(Math.round(vs)) + ' m/s';
+  if (fly && el.tAp < 1e6 && (vs > 0 || el.tAp < el.tPe)) x += ' · Ap in ' + fmtS(el.tAp); else if (fly && el.tPe < 1e6 && el.pe > 0) x += ' · Pe in ' + fmtS(el.tPe);
+  const dv = stageDv(); if (dv) x += ' · Δv ' + Math.round(dv) + ' m/s'; setTxt('fX', x);
+  let w = '', wc = '';
+  if (fly && ra < 15000) { const L = landCalc(), stop = L.stop, vd = L.vd, hs = L.hs;
+    w = 'Ground ' + fmtD(Math.max(0, ra)); if (vd > 4 && b === MOON || vd > 4 && R.bot < 2 && ra < 4000) { if (stop * 1.25 + 60 > ra) { w += ' · BURN NOW'; wc = 'red'; } else if (stop * 2 + 150 > ra) { w += ' · burn soon'; wc = 'amber'; } }
+    if (ra < 300 && (vd > 8 || hs > 8)) { w += ' · too fast'; wc = 'red'; } }
+  setTxt('fW', w); const fw = HUDE.fW; if (fw._c !== wc) { fw._c = wc; fw.className = wc; }
+  $('fThr').style.height = (R.thr * 100) + '%'; $('fFuel').style.height = (S.fuel ? R.fuel[R.bot] / S.fuel * 100 : 0) + '%'; setTxt('fStage', S.name + (R.bot === 1 ? ' · legs ' + (R.legT ? 'out' : 'in') + ' (G)' : ''));
   const nx = R.st === 'pad' && !R.lit ? 'Launch' : !R.lit && S.thrust && R.fuel[R.bot] > 0 ? 'Ignite' : R.bot < STAGES.length - 1 ? 'Drop ' + S.name.toLowerCase() : R.chute === 0 ? 'Parachute' : '';
-  $('fNext').textContent = nx ? 'Space · ' + nx : ''; for (const el of document.querySelectorAll('#fSas button')) el.classList.toggle('on', el.dataset.m === R.sas);
+  setTxt('fNext', nx ? 'Space · ' + nx : ''); for (const el of sasBtns || (sasBtns = [...document.querySelectorAll('#fSas button')])) el.classList.toggle('on', el.dataset.m === R.sas);
   markers();
 }
-function markers() { // prograde / retrograde markers on screen
-  const v = relVel(new V3()); const show = v.length() > 3 && R.st === 'fly'; for (const [id, s] of [['mPro', 1], ['mRet', -1]]) { const el = $(id); if (!show) { el.classList.add('hidden'); continue; }
-    const p = v.clone().normalize().multiplyScalar(s * 1e4).project(cam); const ok = p.z < 1 && Math.abs(p.x) < 1 && Math.abs(p.y) < 1; el.classList.toggle('hidden', !ok);
-    if (ok) { el.style.left = ((p.x * .5 + .5) * innerWidth) + 'px'; el.style.top = ((-p.y * .5 + .5) * innerHeight) + 'px'; } } }
+const _mk = new V3(), _mv3 = new V3(), MKS = [['mPro', 1], ['mRet', -1], ['mGd', 0]];
+function markers() { // prograde / retrograde / ascent-guide markers on screen
+  const v = relVel(_mv3); const show = v.length() > 3 && R.st === 'fly' && !MAPV.on; v.normalize();
+  const gd = !MAPV.on && (R.sas === 'guide' || guideOn()) ? guideDir(new V3()) : null;
+  for (const [id, s] of MKS) { const el = HUDE[id] || (HUDE[id] = $(id)); const d = s ? (show ? _mk.copy(v).multiplyScalar(s) : null) : gd; if (!d) { el.classList.add('hidden'); continue; }
+    const p = _mk.copy(d).multiplyScalar(1e4).project(cam); const ok = p.z < 1 && Math.abs(p.x) < 1 && Math.abs(p.y) < 1; el.classList.toggle('hidden', !ok);
+    if (ok) { el.style.transform = 'translate(' + ((p.x * .5 + .5) * innerWidth).toFixed(1) + 'px,' + ((-p.y * .5 + .5) * innerHeight).toFixed(1) + 'px)'; } } }
 document.querySelectorAll('#fSas button').forEach(el => el.onclick = e => { e.stopPropagation(); setSas(el.dataset.m); });
 
 // ---------------- capsule: walk-in crew cabin (outer shell with real window holes, padded lining, seats, consoles, lockers, hatch)
@@ -675,7 +743,7 @@ function setHour(h) { G.t += ((h - hourNow()) % 24 + 24) % 24 / 24 * PLANET.day;
 function clearDebris() { for (const d of R.debris) scene.remove(d.g); R.debris = []; }
 function toPilot() { C.in = true; R.on = true; C.seat = 0; C.view = 'in'; C.yaw = 0; C.pitch = -.1; C.pos.copy(SEATS[0].pos); C.vel.set(0, 0, 0); $('cross').classList.add('hidden'); }
 function onFoot() { if (R.st === 'fly' || R.st === 'dead') resetRocket(); if (R.on) { R.on = false; C.in = false; C.seat = -1; cabL.intensity = 0; } $('cross').classList.remove('hidden'); G.wi = 0; G.warp = 1; }
-function flyFrom(drop) { resetRocket(); R.on = true; stage(); for (let i = 0; i < drop; i++) stage(); clearDebris(); R.st = 'fly'; R.thr = 0; R.t0 = G.t; R.w.set(0, 0, 0); }
+function flyFrom(drop) { resetRocket(); R.test = true; R.on = true; stage(); for (let i = 0; i < drop; i++) stage(); clearDebris(); R.st = 'fly'; R.thr = 0; R.t0 = G.t; R.w.set(0, 0, 0); }
 const TESTS = {
   pad() { onFoot(); resetRocket(); board(); toPilot(); showHint('On the pad in the Pilot seat. Space to launch', 4000); },
   cabin() { onFoot(); resetRocket(); board(); },
@@ -687,6 +755,9 @@ const TESTS = {
     R.q.setFromUnitVectors(new V3(0, 1, 0), up); R.hold.copy(R.q); stage(); toPilot(); C.view = 'out'; showHint('Falling with the parachute armed', 4000); },
   moonOrbit() { onFoot(); flyFrom(1); const d = SUN.clone().addScaledVector(MOON.c.clone().normalize(), -1).normalize(), r = MOON.R + 30000, t = new V3(0, 1, 0).cross(d).normalize();
     R.pos.copy(MOON.c).addScaledVector(d, r); R.vel.copy(moonVel(G.t, new V3())).addScaledVector(t, Math.sqrt(MOON.GM / r)); R.q.setFromUnitVectors(new V3(0, 1, 0), t); R.hold.copy(R.q); R.sas = 'pro'; toPilot(); C.view = 'out'; showHint('30 km over the Moon', 4000); },
+  moonLand() { onFoot(); flyFrom(1); const d = SUN.clone().addScaledVector(MOON.c.clone().normalize(), -1).normalize(), r = MOON.R + 9000, t = new V3(0, 1, 0).cross(d).normalize();
+    R.pos.copy(MOON.c).addScaledVector(d, r); R.vel.copy(moonVel(G.t, new V3())).addScaledVector(t, 120).addScaledVector(d, -40); R.q.setFromUnitVectors(new V3(0, 1, 0), d); R.hold.copy(R.q); R.sas = 'retro'; toPilot(); C.view = 'out';
+    R.fuel[1] = 3000; showHint('9 km over the Moon, falling. Keep 3 (retrograde) on and burn when the Ground readout says BURN NOW', 6000); },
   moonWalk() { onFoot(); const d = SUN.clone().applyQuaternion(MOON.q.clone().invert()).add(new V3(.3, .1, .2)).normalize(); P.body = MOON; P.pos.copy(d).multiplyScalar(MOON.R + heightAt(MOON, d.x, d.y, d.z) + 2); P.vel.set(0, 0, 0);
     P.fwd.set(0, 1, 0).addScaledVector(d, -d.y).normalize(); P.pitch = .1; showHint('On the Moon. Space to hop', 4000); },
   mc() { onFoot(); P.body = PLANET; placeAt(-72.25, .1, 79, 0, 0); showHint('Mission control. Stairs on the left wall go up to the deck', 4000); },
@@ -702,13 +773,13 @@ $('testX').onclick = () => testMenu(false);
 addEventListener('keydown', e => { if (e.code === 'Backquote' && G.on) testMenu(); });
 
 // hooks for game.js's frame loop
-const FLIGHT = {step(dt) { stepThrottle(dt); flightStep(dt); if (R.on && C.in) cabinStep(dt); },
+const FLIGHT = {step(dt) { stepThrottle(dt); flightStep(dt); legsStep(dt); if (R.on && C.in) cabinStep(dt); },
   camera(dt) { if (R.st === 'dead' || (C.seat === 0 && C.view === 'out')) { cabL.intensity = 0; flightCamera(dt); } else cabinCamera(); },
   visuals(dt) { flightVisuals(dt); sndUpdate(); updateScreens(dt); moonFar(); },
   hud(dt) { const n = R.st === 'dead' ? null : cabinNear(); $('act').classList.toggle('hidden', !n); if (n) $('act').textContent = n.t; $('cross').classList.toggle('hidden', C.seat >= 0 || C.view === 'out');
-    if (C.seat >= 0 || R.st === 'dead') flightHud(dt); else { $('fl').classList.add('hidden'); $('mPro').classList.add('hidden'); $('mRet').classList.add('hidden'); $('hLoc').textContent = 'In the capsule'; $('hInfo').textContent = R.felt.y > .6 || R.st !== 'fly' ? 'WASD walk · F interact' : 'Weightless · WASD push · Space/Shift up/down'; } },
-  hideHud() { document.body.classList.remove('fly'); $('fl').classList.add('hidden'); $('mPro').classList.add('hidden'); $('mRet').classList.add('hidden'); $('act').classList.add('hidden'); }};
+    if (C.seat >= 0 || R.st === 'dead') flightHud(dt); else { $('fl').classList.add('hidden'); $('mPro').classList.add('hidden'); $('mRet').classList.add('hidden'); $('mGd').classList.add('hidden'); $('hLoc').textContent = 'In the capsule'; $('hInfo').textContent = R.felt.y > .6 || R.st !== 'fly' ? 'WASD walk · F interact' : 'Weightless · WASD push · Space/Shift up/down'; } },
+  hideHud() { document.body.classList.remove('fly'); $('fl').classList.add('hidden'); $('mPro').classList.add('hidden'); $('mRet').classList.add('hidden'); $('mGd').classList.add('hidden'); $('act').classList.add('hidden'); }};
 const _bootOrig = boot;
 boot = function () { _bootOrig(); $('testPlay').onclick = () => { $('play').click(); setTimeout(() => testMenu(true), 50); }; siteToBody(new V3(-82, 0, 70), MC_P); resetRocket(); R.cam.ref.set(1, 0, 0).applyQuaternion(site.q).applyQuaternion(PLANET.q); };
-Object.assign(window.YE, {TESTS, testMenu, MI, moonBake, FLIGHT, C, SEATS, cabinAct, CAB, R, STAGES, stage, board, getOut, resetRocket, setWarp, setSas, rocketStep, flightStep, PT, explode});
-boot();
+Object.assign(window.YE, {landCalc, radarAlt, TESTS, testMenu, MI, moonBake, FLIGHT, C, SEATS, cabinAct, CAB, R, STAGES, stage, board, getOut, resetRocket, setWarp, setSas, rocketStep, flightStep, PT, explode});
+// boot() is called at the end of mission.js

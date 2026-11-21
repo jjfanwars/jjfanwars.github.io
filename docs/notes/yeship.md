@@ -4,13 +4,13 @@ Read `CLAUDE.md` first (shared rules) and the design in `docs/plans/yeship.md`. 
 
 ## Build steps (agreed order; say what was done after each)
 1. Planet + physics, space centre, walking. **Done 20 Nov 2026.**
-2. Rocket + flying (staging, drag, SAS helpers, map view, host warp, re-entry glow, explosions + ragdolls). **First part done 20 Nov 2026** (rocket, physics, staging, SAS, chute, crash, warp, HUD). Still to do: map view, re-entry glow, ragdolls.
+2. Rocket + flying (staging, drag, SAS helpers, map view, host warp, re-entry glow, explosions + ragdolls). **First part done 20 Nov 2026** (rocket, physics, staging, SAS, chute, crash, warp, HUD). Map view and re-entry glow done 21 Nov 2026. Still to do: ragdolls.
 3. Builder (console editor + first-person grabbing from the hangar shelves).
 4. Cabin + crew stations (Pilot, Navigator, Engineer), seat swapping, zero-g.
 5. EVA, moon (craters, secret, fuel), lunar rover.
 6. Multiplayer (5 players, tuned for 2-3; relay like the other games).
 7. Stations, assisted docking, base parts, world save.
-Sandbox only to start. Astronauts are thrown out only when the ship explodes.
+Sandbox plus missions (21 Nov 2026: 15 missions, see below). Astronauts are thrown out only when the ship explodes.
 
 ## Code map (space/game.js)
 - **Frames:** inertial world with the planet centre at 0 and a fixed sun direction `SUN`. Bodies (`PLANET`, `MOON` in `BODIES`) have `c` (centre) and `q` (rotation) from `bodyState(b, t)`. The planet spins about +Y (`PLANET.day` = 3600 s). The moon is on rails (`MOON.orbit` 400 km), tidally locked.
@@ -47,7 +47,7 @@ Sandbox only to start. Astronauts are thrown out only when the ship explodes.
 - **Mission control (walkable, 20 Nov 2026):** in `buildSite`, x -97..-67, z 59..81. Door at the south-east (x -73.5..-71), window band facing the pads (east). Ground floor: carpet, wood wainscot, ceiling light panels, 3 tiers of 6 consoles (2 live monitors + name plate + chairs each), big front screens (`map`, `graph`, `tele`, `net`, `orbit`), lobby (reception, model rocket, plants, mission patches). Stairs up the west wall (20 boxes, rail) to the glass viewing deck (see-through panes with collision, wood floor, pendant lamps, observation desk facing the pads, telescope, meeting table, hanging map screen, planet globe painted by `mapBuild` (`MAPB.tex`), sofas, kitchenette). Indoor lighting via `interiorMat` with `INT_MC` (downstairs) / `INT_DECK` (glass deck).
 - **Player:** `P` (body-fixed pos/vel, `fwd` tangent kept by parallel transport, pitch), `stepPlayer`, `placeCamera`. Time warp keys are in flight.js.
 
-## Flight (space/flight.js, loaded after game.js; shares its globals and calls `boot()` at the end)
+## Flight (space/flight.js, loaded after game.js; shares its globals)
 - **Physics:** `R` = the rocket (inertial `pos`/`vel` of the centre of mass, `q`, local angular rate `w`). States `pad`/`landed` (latched to a body: body-fixed `lp`/`lq`, `latch(t)`), `fly`, `dead`. `rocketStep(h, t)`: point gravity from planet + moon (`gravAt`, moon on rails via `moonPos`/`moonVel`), thrust with Isp blended by pressure (`airAt`, scale height 3.5 km, zero above `atmo`), drag on air-relative velocity (`groundVel` = co-rotating air), parachute (`R.chute` 0/1 armed/2 open, opens below ~9 km and under 280 m/s as a drogue (`chA` .07), full canopy below 1 km, lands at 7 m/s). Substeps .02 s, or .5 s when coasting in vacuum above 15 km. Liftoff when thrust/weight > 1.02.
 - **Rotation:** arcade rates (W/S pitch, A/D yaw, Q/E roll, max .55 rad/s, 1.4 rad/s² accel). SAS `R.sas`: hold / pro / retro / up / off (keys 1-4, T). Fins weathervane the stack into the airflow; a lone capsule flies blunt end first.
 - **Contact:** bottom of the stack vs `groundR`. Over 12 m/s or tipped over: `explode()` (pieces become debris, fireball via `boom`, the wreck point is latched to the ground so the camera turns with the planet, respawn after 4 s at the space centre with a new rocket). Otherwise it sets down upright (`landed`).
@@ -63,3 +63,18 @@ Sandbox only to start. Astronauts are thrown out only when the ship explodes.
 - **Testing:** `YE.board()`, `YE.stage()`, `YE.FLIGHT.step/camera/visuals` to fast-forward synchronously (headless fps is too low for real-time flight).
 - **Testing:** `YE.placeAt(x, y, z, yaw, pitch)` in site coords. Headless Chromium is slow with this renderer: take one screenshot at a time with a long screenshot timeout.
 - Textures: `space/tex/` (CC0 Poly Haven, see `space/THIRD_PARTY.md`).
+
+## Missions, map, flight aids (space/mission.js + flight.js, 21 Nov 2026; owner asked for more goals, better graphics, optimisation, and missions a human can actually fly)
+- **Load order:** game.js, flight.js, mission.js. mission.js calls `boot()` at the end (flight.js no longer does).
+- **Rocket retuned for a Moon round trip:** Booster 450 kN / 20 t fuel / 2.4 t dry, Upper stage 9 t fuel / 1.2 t dry. A scripted human-style flight (guide ascent, phase-angle TLI, capture, suicide-burn landing, guide ascent, Home-window TEI) reaches Home with ~450 kg spare. About 6.5 min to orbit.
+- **Landing legs** on the upper stage (`g.userData.legs`, `R.legs`/`R.legT`, `legsStep`): fold along the tank, auto-deploy under 2.5 km radar altitude while descending, G toggles. `botY()` = lowest point of the stack (feet when deployed); legs widen the tilt/speed tolerance.
+- **Lift-off fix:** when a latched rocket lifts off, `rocketStep` returns after latching (it used to integrate a substep ahead of the bodies, so on rough Moon ground it re-landed forever and burned all its fuel). Set-down is also skipped while moving away from the ground.
+- **Main chute** opens 1 km above the ground (`radarAlt`), not 1 km above sea level (it never opened over high ground).
+- **Flight aids:** SAS `guide` (key 5): ascent pitch program from vertical to flat by 44 km (Moon: 150 m to 9 km), then horizontal prograde; east, or north when the "Over the poles" mission is picked (`GUIDE.head`). Blue `#mGd` marker shows it. N = warp to the next Ap/Pe (`warpNext`, `R.warpTo`). HUD row `#fX` (vertical speed, time to Ap/Pe, stage delta-v) and `#fW` (ground radar, BURN NOW / burn soon / too fast from `landCalc`, which simulates a full retrograde burn forward in time).
+- **Orbit maths:** `orbitEl(b)` = e, a, period, true anomaly, time to Ap/Pe, inclination. `stageDv`, `maxAcc`, `vertSpeed`, `radarAlt` (cached per frame).
+- **Map view (M):** own scene in km (`MAPV`: Home textured from `MAPB`, Moon from `MI` once baked, air halo, stars), drawn instead of the world (`render` is wrapped; the world render is skipped, so the map is cheap). Path, labels, Moon orbit are drawn on a 2D canvas over it. Tab cycles focus (ship / Home / Moon), drag turns, wheel zooms. `#mapInfo` panel: orbit, tilt, Moon phase angle with "burn prograde now" (`moonPhase`, tuned so the burn gives a low Moon pass), encounter time and pass height, return Pe, Home window from Moon orbit (`homeWindow`).
+- **Prediction (`predict`, `PRED`):** leapfrog with Home + Moon gravity, no drag, engine off, up to 6000 points / 5 days / one lap per frame body. Each point remembers its frame (0 Home, 1 Moon); Moon-frame points are drawn around a ghost Moon at the encounter time. Records `enc`, `exit`, `moonPe`, `homePe`, `close`, `air`, `imp`. Runs every 0.6 s in flight (missions and map info use it), every frame in the map at high warp.
+- **Missions (`MISD`, 15):** First hop, Touch space, Safe return, Orbit, Around the world, Come home, Moon flyby, Moon orbit, Moon landing, Moonwalk, There and back again; bonus High flyer, Over the poles, Splashdown, Bullseye. Each has steps with checks on `FLOG` (per-flight log, reset on a new flight in `misPoll`). Saved in localStorage `ye-mis` (`done`, `cur`, `mini`). Card `#mis` top right, list `#misL` (J), toast `#toast` + `chime()`. Menu line `#misSum`.
+- **Re-entry plasma (`HEAT`, `heatStep`):** strength from sqrt(rho)*v^3; bow-shock shell + two plume-shader wake cones along the airflow, sparks, glowing heat shield (`RM.shield` emissive), orange flame light and cabin tint. **Moon dust** (`dustStep`) when the engine fires under 40 m.
+- **Perf:** particle sort no longer allocates per frame; HUD writes text only when it changes (`setTxt`); markers move with transforms; the map skips the world render.
+- Test menu: new "Moon landing" jump (9 km up, falling). `YE.landCalc`, `YE.homeWindow`, `YE.predict`, `YE.PRED`, `YE.misPoll` for scripted tests.
