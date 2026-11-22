@@ -113,6 +113,12 @@ class Car {
     // real: the lock still narrows with speed (as a driver would), but allows 1.6x what the tyres can hold, so you can over-drive it
     const vv = Math.max(4, Math.abs(vF)), maxS = real ? clamp(Math.atan(2.51 * aMax * 1.9 / (vv * vv)) + 0.14, 0.22, 0.62) : sport ? clamp(Math.atan(2.51 * aMax * 2.3 * (CAR.steerK || 1) / (vv * vv)) + 0.14, 0.22, 0.64) : clamp(Math.atan(2.51 * aMax * 1.35 * (CAR.steerK || 1) / (vv * vv)) + 0.11, 0.18, 0.64), st = inp.steer;
     let target = st * maxS + (real ? this.dmg * 0.035 * this.pull : 0); // real: a bent car pulls to one side
+    // sport / real: never steer the fronts past the slip angle where the tyre grips best (measured from the way the front axle
+    // is really travelling), so holding full lock turns the car as hard as it can instead of scrubbing the fronts wide
+    if ((sport || real) && vF > 3) {
+      const angF = Math.atan2(vL + this.w.dot(up) * CAR.wheels[0][2], vF), pk = (real ? lerp(0.19, 0.27, this.offroad) * 1.2 : lerp(0.24, 0.33, this.offroad) * 1.08) * (2 - sstep(3, 9, vF));
+      if (st > 0.02) target = Math.min(target, Math.max(angF + pk, 0.04)); else if (st < -0.02) target = Math.max(target, Math.min(angF - pk, -0.04));
+    }
     // countersteer help: the front wheels lean toward the direction of travel when the tail steps out
     if (!real && vF > 5 && Math.abs(beta) > 0.06) target = clamp(target + clamp(beta * (sport ? 0.3 : 0.45), sport ? -0.15 : -0.22, sport ? 0.15 : 0.22) * sstep(5, 12, vF), -0.65, 0.65);
     const rate = (Math.abs(target) < Math.abs(this.steer) ? 12 : 11) * (real ? 0.75 : sport ? (CAR.steerK || 1) : 1.1 * (CAR.steerK || 1)); // quick, sharp turn-in
@@ -199,7 +205,7 @@ class Car {
       // surface from the road map
       const q = S.near(cp.x, cp.z, 12), onRoad = q && q.d < ROAD_HW + 0.3;
       w.surf = onRoad ? 0 : 1; offSum += w.surf;
-      const BB = S.B || BIOMES.forest, mu = (real ? realMu(BB, onRoad) : sport ? realMu(BB, onRoad) * 1.4 : (onRoad ? BB.grip : BB.off) * (this.easy ? 1.22 : 1.12)) * gk * (onRoad ? wetK : zk ? zk.mu : 1) * (1 - this.dmg * 0.15) * (w.flat ? 0.55 : 1), Fz = Math.min(w.load, 9000), fmax = mu * Fz * (1 - 0.06 * Fz / 4000); // tyre load sensitivity
+      const BB = S.B || BIOMES.forest, mu = (real ? realMu(BB, onRoad) : sport ? realMu(BB, onRoad) * 1.4 : (onRoad ? BB.grip : BB.off) * (this.easy ? 1.22 : 1.12)) * gk * (onRoad ? wetK : zk ? zk.mu : 1) * (1 - this.dmg * 0.15) * (w.flat ? 0.55 : 1), Fz = Math.min(w.load, 9000), fmax = mu * Fz * (1 - 0.06 * Fz / 4000), latK = sport ? 1.25 : real ? 1.12 : 1, fmaxY = fmax * latK; // tyre load sensitivity; sport/real tyres hold more sideways than they brake
       // longitudinal
       let fx = 0, locked = false;
       const split = sport ? Math.min(0.85, CAR.split + 0.15) : CAR.split, share = w.front ? (1 - split) / 2 : split / 2; // sport: more drive to the rear so the throttle steers the tail
@@ -214,23 +220,23 @@ class Car {
       const slipA = Math.atan2(vy, Math.max(Math.abs(vx), 3.5));
       // real: sharper peak and a real drop-off past it (sliding grip ~80% of peak), so a slide has to be caught
       const Bc = real ? (onRoad ? 10 : 7) : sport ? (onRoad ? 11 : 8) : onRoad ? 14 : 9, Cc = real ? 1.45 : sport ? 1.3 : 1.1, curve = Math.sin(Cc * Math.atan(Bc * slipA));
-      let fy = -fmax * curve * (locked ? (sport ? 0.28 : 0.45) : 1) * (sport ? (w.front ? 1.04 : 0.9) : 1); // sport: a slightly loose rear, so the car rotates instead of ploughing on
+      let fy = -fmaxY * curve * (locked ? (sport ? 0.28 : 0.45) : 1) * (sport ? (w.front ? 1.04 : 0.9) : 1); // sport: a slightly loose rear, so the car rotates instead of ploughing on
       // a little wheelspin: when the drive at this tyre nears its grip (low gears, snow, big power) it spins up,
       // pushes slightly less and gives up some side grip (a hint of power oversteer)
       const drv0 = this.gear !== 0 ? Math.abs(driveTotal * share) : 0, spinR = real || sport ? 0 : locked || Math.abs(vx) > 30 ? 0 : clamp((drv0 / Math.max(1, fmax) - 0.45) / 0.5, 0, 1);
       if (spinR > 0) { fx *= 1 - 0.07 * spinR; fy *= 1 - (w.front ? 0.04 : 0.09) * spinR * (1 - sstep(0.15, 0.4, Math.abs(slipA))); }
-      if (Math.abs(vx) < 3) { const lowS = -vy * CAR.m * 0.25 * 8; fy = lerp(lowS, fy, Math.abs(vx) / 3); fy = clamp(fy, -fmax, fmax); }
+      if (Math.abs(vx) < 3) { const lowS = -vy * CAR.m * 0.25 * 8; fy = lerp(lowS, fy, Math.abs(vx) / 3); fy = clamp(fy, -fmaxY, fmaxY); }
       // friction circle (longitudinal first, then whatever grip is left for cornering)
       let realSpin = 0;
       if (real) {
         // no ABS, no traction control: asking for more than the tyre has locks it (brakes) or spins it up (throttle); either way side grip collapses
         if (!locked && bf > fmax * 1.02 && Math.abs(vx) > 1) { locked = true; fx = -Math.sign(vx) * fmax * 0.8; fy *= 0.3; }
         else if (drv0 > fmax * 1.02) { realSpin = clamp((drv0 - fmax) / fmax, 0, 1); fx = Math.sign(fx) * fmax * (0.9 - 0.1 * realSpin); fy *= 0.45 - 0.2 * realSpin; }
-        const mag = Math.hypot(fx, fy); if (mag > fmax) { const kk = fmax / mag; fx *= kk; fy *= kk; }
+        const mag = Math.hypot(fx / fmax, fy / fmaxY); if (mag > 1) { fx /= mag; fy /= mag; }
       } else if (sport) {
         // sport: brakes never lock (ABS), but too much throttle spins the driven wheels up and the tail steps out
         if (!locked && drv0 > fmax * 0.8) { realSpin = clamp((drv0 - fmax * 0.8) / (fmax * 0.6), 0, 1); fx = Math.sign(fx) * Math.min(Math.abs(fx), fmax * 0.95); fy *= 1 - (w.front ? 0.2 : 0.45) * realSpin; }
-        const mag = Math.hypot(fx, fy); if (mag > fmax) { const kk = fmax / mag; fx *= kk; fy *= Math.min(1, kk * 1.12); }
+        const mag = Math.hypot(fx / fmax, fy / fmaxY); if (mag > 1) { const kk = 1 / mag; fx *= kk; fy *= Math.min(1, kk * 1.12); }
       } else { const mag = Math.hypot(fx, fy * 0.85); if (mag > fmax) { const kk = fmax / mag; fx *= kk; fy *= Math.min(1, kk * 1.35); } }
       const tf = new THREE.Vector3().addScaledVector(wf, fx).addScaledVector(wl, fy);
       F.add(tf); T.add(t.b.crossVectors(t.c.subVectors(cp, this.pos).addScaledVector(up, (real ? 0.12 : sport ? 0.22 : 0.32) - (CAR.roll || 0)), tf)); // force applied a little above the patch: lower effective roll centre
