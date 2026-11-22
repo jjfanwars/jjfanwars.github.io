@@ -154,9 +154,9 @@ function mapInfo(dt) { if ((mapInfoT -= dt) > 0) return; mapInfoT = .25; const e
       if (inO && !PRED.enc) { const ph = moonPhase(), d = ((ph.now - ph.want) % 360 + 360) % 360, good = d < 8 || d > 352; L.push('Moon is <b>' + Math.round(ph.now) + '°</b> ahead · go at <b>' + Math.round(ph.want) + '°</b>' + (good ? ' <span class="good">burn prograde now!</span>' : ' · in ' + fmtS(d / 360 * o.period / (1 - o.period / MOON.period)))); } }
     if (PRED.enc && PRED.start === 0) L.push('<span class="good">Moon encounter</span> in <b>' + fmtS(PRED.enc.t - G.t) + '</b> · passes <b>' + (PRED.moonPe < 0 ? 'into the surface' : fmtD(PRED.moonPe) + ' up') + '</b>');
     else if (PRED.close && PRED.start === 0 && PRED.close.d < MOON.orbit * .6) L.push('Misses the Moon by <b>' + fmtD(PRED.close.d - MOON.R) + '</b>');
-    if ((PRED.start === 1 && PRED.exit) || (PRED.enc && PRED.exit)) L.push('Then back to Home: Pe <b>' + (PRED.homePe < 0 ? 'hits the ground' : fmtD(PRED.homePe)) + '</b>' + (PRED.homePe > 3000 && PRED.homePe < 18000 ? ' <span class="good">good re-entry</span>' : PRED.homePe > PLANET.atmo ? ' (misses the air)' : ''));
+    if ((PRED.start === 1 && PRED.exit) || (PRED.enc && PRED.exit)) L.push('Then back to Home: Pe <b>' + (PRED.homePe < 0 ? 'hits the ground' : fmtD(PRED.homePe)) + '</b>' + (PRED.homePe > 10000 && PRED.homePe < 20000 ? ' <span class="good">good re-entry</span>' : PRED.homePe > PLANET.atmo ? ' (misses the air)' : ''));
     if (PRED.start === 1 && !PRED.exit && !inO && !PRED.imp) L.push('Leaving soon? Keep burning to escape the Moon');
-    if (b === MOON && inO && !PRED.exit) { const hw = homeWindow(), now = hw.deg < 4 || hw.deg > 356; L.push('Way home: ' + (now ? '<span class="good">burn prograde now!</span>' : 'burn prograde in <b>' + fmtS(hw.t) + '</b>') + ' · watch for Home Pe 5-20 km'); }
+    if (b === MOON && inO && !PRED.exit) { const hw = homeWindow(), now = hw.deg < 4 || hw.deg > 356; L.push('Way home: ' + (now ? '<span class="good">burn prograde now!</span>' : 'burn prograde in <b>' + fmtS(hw.t) + '</b>') + ' · aim for Home Pe 10-20 km (gentler on the crew)'); }
   }
   L.push('<span style="font-size:12px">View: ' + focus + ' · Tab change · wheel zoom · M close</span>');
   const h = L.join('<br>'); if (el._h !== h) { el._h = h; el.innerHTML = h; } }
@@ -290,11 +290,25 @@ function dustStep(dt) {
   while (dustAcc > 1) { dustAcc--; d.set(Math.random() - .5, Math.random() - .5, Math.random() - .5); d.addScaledVector(up, -d.dot(up)).normalize();
     puff(gp.clone().addScaledVector(d, 1 + Math.random() * 2), vg.clone().addScaledVector(d, 14 + Math.random() * 26).addScaledVector(up, Math.random() * 3), {life: 1.6 + Math.random() * 1.6, s: 1.2, gr: 2.6, heat: 0, drag: 0, tone: .62}); } }
 
+// ---------------- feel: vapour cone through the sound barrier, a little FOV kick under hard thrust in the chase view
+let vapAcc = 0;
+function vaporStep(dt) {
+  const M = R.mach || 0, k = R.st === 'fly' ? sstep(.86, .97, M) * (1 - sstep(1.12, 1.3, M)) * sstep(.2, .45, R.p) : 0; if (k < .02) { vapAcc = 0; return; }
+  const nz = nose(new V3()), d = new V3(); vapAcc += dt * 260 * k * Math.min(1, G.warp);
+  while (vapAcc > 1) { vapAcc--; d.set(Math.random() - .5, Math.random() - .5, Math.random() - .5).addScaledVector(nz, -d.dot(nz)).normalize(); const y = (R.bot === 2 ? 22.4 : 12 + Math.random() * 10) - R.comY;
+    puff(R.pos.clone().addScaledVector(nz, y).addScaledVector(d, (R.bot === 2 ? 2.7 : 1.45) + Math.random() * .5), R.vel.clone().addScaledVector(d, 2), {life: .18 + Math.random() * .2, s: 1.6, gr: 3, heat: 0, drag: 3, tone: 1.15}); } }
+function fovStep(dt) { let tg = 70; if (R.on && R.st === 'fly' && (C.view === 'out' || R.st === 'dead') && C.seat === 0) tg += 7 * clamp((R.felt.length() - 9) / 25, 0, 1) + 3 * clamp(R.qd / 25000, 0, 1);
+  const f = lerp(cam.fov, tg, 1 - Math.exp(-dt * 2)); if (Math.abs(f - cam.fov) > .005) { cam.fov = f; cam.updateProjectionMatrix(); } }
+// compile every shader we may need up front, so re-entry, the map or the far Moon don't stutter the first time they show
+function warmShaders() { try {
+  const tmp = [HEAT.g, MI.mesh]; for (const g of R.sg) { if (g.userData.plume) tmp.push(...g.userData.plume); if (g.userData.chute) tmp.push(g.userData.chute); }
+  const was = tmp.map(o => o.visible); tmp.forEach(o => o.visible = true); RND.compile(scene, cam); tmp.forEach((o, i) => o.visible = was[i]);
+  RND.compile(MAPV.scene, MAPV.cam); } catch (e) { console.warn('warm-up', e); } }
 // ---------------- hooks
 { const vis = FLIGHT.visuals;
-  FLIGHT.visuals = dt => { if (!(R.F === 0 && HEAT.k > .01)) flameL.color.setRGB(1, .627, .29); vis(dt); heatStep(dt); dustStep(dt); misPoll(dt); };
+  FLIGHT.visuals = dt => { if (!(R.F === 0 && HEAT.k > .01)) flameL.color.setRGB(1, .627, .29); vis(dt); heatStep(dt); dustStep(dt); vaporStep(dt); fovStep(dt); misPoll(dt); };
 }
 const _bootM = boot;
-boot = function () { _bootM(); const n = Object.keys(MIS.done).filter(k => MISD.some(x => x.id === k)).length; $('misSum').textContent = n ? 'Missions done: ' + n + ' of ' + MISD.length : 'New here? Follow the mission card (top right). J shows all missions.'; };
+boot = function () { _bootM(); warmShaders(); const n = Object.keys(MIS.done).filter(k => MISD.some(x => x.id === k)).length; $('misSum').textContent = n ? 'Missions done: ' + n + ' of ' + MISD.length : 'New here? Follow the mission card (top right). J shows all missions.'; };
 Object.assign(window.YE, {homeWindow, setHW: v => HW_OFF = v, PRED, predict, MAPV, mapToggle, MISD, MIS, FLOG, misPoll, HEAT, orbitEl, moonPhase});
 boot();

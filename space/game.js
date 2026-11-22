@@ -9,7 +9,8 @@ THREE.ShaderChunk.shadowmap_pars_fragment = THREE.ShaderChunk.shadowmap_pars_fra
   'vec2 shE = abs(shadowCoord.xy - .5); return mix(1.0, mix( 1.0, shadow, shadowIntensity ), 1. - smoothstep(.3, .48, max(shE.x, shE.y)));');
 const SET = Object.assign({gfx: 'high', name: ''}, (() => { try { return JSON.parse(localStorage.getItem('ye-set') || '{}'); } catch (e) { return {}; } })());
 const saveSet = () => { try { localStorage.setItem('ye-set', JSON.stringify(SET)); } catch (e) {} };
-const HI = () => SET.gfx === 'high';
+const HI = () => SET.gfx !== 'low'; // Medium and High share the full renderer; Medium (and High when frames drop) trims the costly passes
+const LITE = () => SET.gfx === 'med' || !!G.lite;
 const clamp = (x, a, b) => x < a ? a : x > b ? b : x, lerp = (a, b, t) => a + (b - a) * t;
 const sstep = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
 
@@ -410,7 +411,7 @@ const fxaaM = new THREE.ShaderMaterial({vertexShader: VS, depthTest: false, unif
     float lb = lum(B); gl_FragColor = vec4(lb < lo || lb > hi ? A : B, 1.); }`});
 const POST = {};
 function setupPost() {
-  const pr = Math.min(devicePixelRatio, HI() ? 1.5 : .75) * (G.rs || 1), w = Math.max(2, innerWidth * pr | 0), h = Math.max(2, innerHeight * pr | 0);
+  const pr = Math.min(devicePixelRatio, SET.gfx === 'high' ? 1.5 : SET.gfx === 'med' ? 1 : .75) * (G.rs || 1), w = Math.max(2, innerWidth * pr | 0), h = Math.max(2, innerHeight * pr | 0);
   RND.setPixelRatio(pr); RND.setSize(innerWidth, innerHeight, false); cam.aspect = innerWidth / innerHeight; cam.updateProjectionMatrix();
   for (const k in POST) POST[k].dispose();
   const HF = {type: THREE.HalfFloatType, depthBuffer: false};
@@ -424,16 +425,16 @@ function setupPost() {
   POST.ldr = new THREE.WebGLRenderTarget(w, h, {depthBuffer: false}); fxaaM.uniforms.px.value.set(1 / w, 1 / h);
   POST.lum = new THREE.WebGLRenderTarget(16, 8, {type: THREE.FloatType, depthBuffer: false});
   POST.ad0 = new THREE.WebGLRenderTarget(1, 1, {type: THREE.FloatType, depthBuffer: false}); POST.ad1 = POST.ad0.clone();
-  atmoM.uniforms.steps.value = HI() ? 14 : 8; atmoM.uniforms.aoOn.value = HI() ? 1 : 0; atmoM.uniforms.aoPx.value.set(1 / POST.ao.width, 1 / POST.ao.height);
+  atmoM.uniforms.steps.value = HI() ? (LITE() ? 10 : 14) : 8; atmoM.uniforms.aoOn.value = HI() && !LITE() ? 1 : 0; cloudM.uniforms.steps.value = LITE() ? 40 : 64; atmoM.uniforms.aoPx.value.set(1 / POST.ao.width, 1 / POST.ao.height);
   ssaoM.uniforms.res.value.set(POST.ao.width, POST.ao.height);
-  RND.shadowMap.enabled = HI(); sunL.castShadow = HI(); sunL.shadow.mapSize.set(HI() ? 4096 : 1024, HI() ? 4096 : 1024); if (sunL.shadow.map) { sunL.shadow.map.dispose(); sunL.shadow.map = null; }
+  RND.shadowMap.enabled = HI(); sunL.castShadow = HI(); const shs = !HI() ? 1024 : LITE() ? 2048 : 4096; sunL.shadow.mapSize.set(shs, shs); if (sunL.shadow.map) { sunL.shadow.map.dispose(); sunL.shadow.map = null; }
 }
 function pass(m, rt) { fsQuad.material = m; RND.setRenderTarget(rt); RND.render(fsScene, fsCam); }
 const _sv4 = new V3();
 function render(dt) {
   RND.shadowMap.autoUpdate = false; RND.shadowMap.needsUpdate = (G.frameN = (G.frameN || 0) + 1) % 2 === 0 || !!G.shadowEvery; // shadows at half rate (matrices update with the map, so no swimming)
   RND.setRenderTarget(POST.main); RND.render(scene, cam);
-  if (HI()) { const s = ssaoM.uniforms; s.tDep.value = POST.main.depthTexture; s.invProj.value.copy(cam.projectionMatrixInverse); s.proj.value.copy(cam.projectionMatrix); pass(ssaoM, POST.ao); }
+  if (HI() && !LITE()) { const s = ssaoM.uniforms; s.tDep.value = POST.main.depthTexture; s.invProj.value.copy(cam.projectionMatrixInverse); s.proj.value.copy(cam.projectionMatrix); pass(ssaoM, POST.ao); }
   if (!WX.done) { WX.done = true; pass(weatherM, WX.rt); }
   const clOn = HI() && G.O.distanceTo(PLANET.c) - PLANET.R < 2e7 ? 1 : 0; atmoM.uniforms.clOn.value = compM.uniforms.clOn.value = clOn;
   if (clOn) { const c = cloudM.uniforms; c.tDep.value = POST.main.depthTexture; c.invProj.value.copy(cam.projectionMatrixInverse); c.camRot.value.setFromMatrix4(cam.matrixWorld); c.camPos.value.copy(G.O).sub(PLANET.c); c.sunDir.value.copy(SUN);
@@ -449,7 +450,7 @@ function render(dt) {
   // sun position on screen + light shafts
   const cu = compM.uniforms; _sv4.copy(SUN).multiplyScalar(1e5).project(cam); const front = SUN.dot(cam.getWorldDirection(new V3())) > 0;
   cu.sunUV.value.set(_sv4.x * .5 + .5, _sv4.y * .5 + .5); const near = front && Math.abs(cu.sunUV.value.x - .5) < 1.4 && Math.abs(cu.sunUV.value.y - .5) < 1.4;
-  cu.rOn.value = near && HI() ? 1 : 0;
+  cu.rOn.value = near && HI() && !LITE() ? 1 : 0;
   if (cu.rOn.value) { const r = raysM.uniforms; r.tCol.value = POST.sky.texture; r.tDep.value = POST.main.depthTexture; r.sunUV.value.copy(cu.sunUV.value); r.aspect.value = cam.aspect;
     const alt = G.O.distanceTo(PLANET.c) - PLANET.R; r.k.value = lerp(1.1, .4, sstep(PLANET.atmo * .5, PLANET.atmo * 1.5, alt)); pass(raysM, POST.r);
     for (let i = 0; i < 2; i++) { blurM.uniforms.t.value = POST.r.texture; blurM.uniforms.d.value.set(1.6 / POST.r.width, 0); pass(blurM, POST.b); blurM.uniforms.t.value = POST.b.texture; blurM.uniforms.d.value.set(0, 1.6 / POST.r.height); pass(blurM, POST.r); } }
@@ -1011,7 +1012,9 @@ function frame(ts) {
   updateLight();
   if (G.on) { if (R.on) FLIGHT.hud(dt); else { FLIGHT.hideHud(); updateHud(dt); } }
   // adaptive resolution: drop a little when frames are slow, climb back when there is room
-  if (G.on && (G.rsT = (G.rsT || 0) + dt) > 3) { G.rsT = 0; const rs = G.rs || 1; let n = rs; if (fps < 42 && rs > .65) n = rs - .1; else if (fps > 57 && rs < 1) n = Math.min(1, rs + .1); if (n !== rs) { G.rs = n; setupPost(); } }
+  if (G.on && !MAPV.on && (G.rsT = (G.rsT || 0) + dt) > 3) { G.rsT = 0; const rs = G.rs || 1; let n = rs, lite = !!G.lite;
+    if (fps < 42) { if (rs > .65) n = rs - .1; else if (SET.gfx === 'high') lite = true; } else if (fps > 57) { if (lite && rs >= .85) lite = false; else if (rs < 1) n = Math.min(1, rs + .1); }
+    if (n !== rs || lite !== !!G.lite) { G.rs = n; G.lite = lite; setupPost(); } }
   render(dt);
 }
 
