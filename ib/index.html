@@ -126,7 +126,21 @@ mark.hl{background:color-mix(in srgb,var(--warn) 30%,transparent);color:inherit;
 .fsheet>div{padding:12px 16px}.fn{display:flex;gap:10px;align-items:baseline;font-weight:600}.fn a{margin-left:auto}.fx{overflow-x:auto;padding:2px 0}.fx .katex-display{margin:.4em 0;text-align:left}
 .ctab{width:100%;border-collapse:collapse;font-size:14px}.ctab td{padding:8px 14px;border-bottom:1px solid var(--line)}.ctab tr:last-child td{border-bottom:none}
 .cases{grid-template-columns:repeat(auto-fill,minmax(300px,1fr))}.case{padding:14px 16px;display:flex;flex-direction:column;gap:4px}.case b{font:600 16.5px/1.3 var(--f-read)}.case p{margin:6px 0;font-size:14px;line-height:1.55}.case .ghost{align-self:flex-start;margin-top:6px;padding:5px 8px;font-size:13px}
-.mmset{margin-bottom:16px}.mmrow{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin-top:8px}
+.mmset{margin-bottom:20px}.mmrow{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px;margin-top:8px}
+.mmint{background:var(--bg);overflow:hidden;position:relative;touch-action:none;cursor:grab}.mmcv{position:absolute;left:0;top:0;transform-origin:0 0}.mmln{position:absolute;left:0;top:0;pointer-events:none}
+.mmn{position:absolute;max-width:270px;padding:7px 11px;background:var(--panel);border:1.5px solid var(--c);border-radius:12px;font-size:14px;line-height:1.35;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.08);transition:box-shadow .15s,opacity .15s}
+.mmn:hover{box-shadow:0 0 0 3px color-mix(in srgb,var(--c) 25%,transparent)}.mmn.sel{box-shadow:0 0 0 4px color-mix(in srgb,var(--c) 45%,transparent)}
+.mmn.d0{max-width:240px;padding:14px 20px;font:700 20px/1.2 var(--f-read);background:var(--ink);color:var(--bg);border-color:var(--ink);text-align:center}
+.mmn.d1{padding:10px 14px;font-weight:700;font-size:15.5px;background:var(--c);color:#fff;border-color:var(--c)}.mmn.d1 .katex{color:#fff}
+.mmn.d3{font-size:13px}.mmtx p{margin:0}.mmtx table{font-size:12px;border-collapse:collapse;margin:2px 0}.mmtx td,.mmtx th{border:1px solid var(--line);padding:1px 6px}.mmtx .katex{font-size:1.05em}
+.mmk{position:absolute;top:50%;right:-13px;transform:translateY(-50%);min-width:24px;height:24px;padding:0 5px;border-radius:12px;font:700 12px/1 var(--f-ui,inherit);background:var(--panel);color:var(--c);border:1.5px solid var(--c);justify-content:center;z-index:1}
+.mmn.L .mmk{right:auto;left:-13px}.mmtt{max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.mmcv.dim .mmn:not(.hit){opacity:.28}.mmn.hit{box-shadow:0 0 0 4px #f5c518}
+.mmact{position:absolute;left:50%;bottom:calc(14px + env(safe-area-inset-bottom));transform:translateX(-50%);width:min(680px,calc(100% - 24px));background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:var(--sh);padding:12px 14px;display:flex;flex-direction:column;gap:10px}
+.mmsel{max-height:120px;overflow:auto;font-size:15px}.mmsel p{margin:0}.mmv .seg button.on,.mmbar button.on{background:var(--ink);color:var(--bg)}
+.mmbar{flex-wrap:wrap}.mmbar select{width:auto;max-width:220px}.mmbar input{width:150px}.mmv{position:fixed}.mmv>.mmsc{position:relative}
+body.mmopen .drawer{z-index:56;top:0}body.mmopen .ask{display:none}
+.mmxm{display:none}
+@media (max-width:700px){.mmtt,.mmw,#mmq{display:none}.mmxm{display:inline-flex;order:0}.mmbar{gap:6px;padding:8px}.mmbar select{flex:1;max-width:none;min-width:0}.mmbar .sp{flex-basis:100%;height:0}.mmbar button{padding:6px 10px}.mmn{max-width:210px;font-size:13px}.mmact{padding:10px}.mmact button{padding:6px 10px;font-size:13px}}
 .mmt{flex-direction:column;align-items:stretch;padding:6px;gap:6px;text-align:left;font-size:13px}.mmt img{width:100%;aspect-ratio:1.414;object-fit:cover;border-radius:5px;background:#fff;border:1px solid var(--line)}
 .mmv{position:fixed;inset:0;z-index:50;background:var(--bg);display:flex;flex-direction:column}.mmbar{display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--line);background:var(--panel)}
 .mmsc{flex:1;overflow:auto;cursor:grab;touch-action:pan-x pan-y pinch-zoom;background:#fff}.mmsc:active{cursor:grabbing}.mmsc img{display:block;max-width:none;user-select:none}
@@ -214,6 +228,17 @@ mark{background:#ffe28a;color:#1c2230;border-radius:3px;padding:0 1px}
 .stat .n{font:600 30px/1.1 var(--f-read);font-variant-numeric:tabular-nums;margin-top:4px}
 .flash{max-width:580px;margin:30px auto;padding:40px 32px;text-align:center;min-height:260px;display:flex;flex-direction:column;justify-content:center;gap:16px;box-shadow:var(--sh)}
 .flash .term{font:600 30px/1.2 var(--f-read)}
+.flash .term.long{font-size:20px;line-height:1.4}.flash .term p{margin:0}
+.gr{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.gr button{flex-direction:column;gap:0;justify-content:center;padding:8px 4px}.gr .meta{font-size:11.5px}.gr .pri .meta{color:inherit;opacity:.85}
+.sbar{padding:10px 14px;margin:10px 0 12px;display:flex;flex-direction:column;gap:6px;font-family:var(--f-ui);font-size:15px;text-align:left}.sprog{height:4px;background:var(--sunk);border-radius:2px;overflow:hidden}.sprog i{display:block;height:100%;background:var(--acc)}
+.ck{display:inline-flex;gap:6px;align-items:center;font-size:14px;cursor:pointer}.ck input{width:auto}
+.fl{font-size:12px;font-weight:600;color:var(--mut);margin:14px 0 6px}
+.rvhero{padding:20px 22px;display:flex;gap:20px;align-items:center;flex-wrap:wrap}.rvhero .big{font:600 44px/1 var(--f-read)}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.modes{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}.mode{padding:14px 16px;display:flex;flex-direction:column;gap:4px;text-align:left;align-items:flex-start;border-radius:var(--r)}
+.ecard{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:start;padding:8px 10px;border-bottom:1px solid var(--line)}.ecard:last-child{border-bottom:none}.ecard textarea{font-size:14.5px}
+.rcg{margin-bottom:10px}.rcg summary{padding:11px 16px;cursor:pointer}.rcg .lst>*{border-top:1px solid var(--line);border-bottom:none}
+@media (max-width:640px){.ecard{grid-template-columns:1fr auto}.ecard textarea:nth-child(2){grid-column:1}.ecard button{grid-row:1;grid-column:2}}
 .flash .def{font-family:var(--f-read);font-size:18px;text-align:left}
 #login{max-width:360px;margin:16vh auto;padding:30px}
 #login h2{margin:0 0 4px;font:600 28px var(--f-read)}#login h2 b{color:var(--red);font-weight:600}
@@ -348,6 +373,7 @@ a.btn{display:inline-flex;padding:7px 12px;border-radius:8px;text-decoration:non
 <symbol id="i-pin" viewBox="0 0 24 24"><path d="M9 4h6l-1 5 3.5 3.5v1.5h-11V12.5L10 9z"/><path d="M12 14v6"/></symbol>
 <symbol id="i-flask" viewBox="0 0 24 24"><path d="M9 3.5h6M10 3.5v6L4.8 18.2A1.5 1.5 0 006.1 20.5h11.8a1.5 1.5 0 001.3-2.3L14 9.5v-6"/><path d="M7.5 14.5h9"/></symbol>
 <symbol id="i-mark" viewBox="0 0 24 24"><path d="M7 4h10v16l-5-3.8L7 20z"/></symbol>
+<symbol id="i-loop" viewBox="0 0 24 24"><path d="M4.5 12a7.5 7.5 0 0112.8-5.3L19.5 9"/><path d="M19.5 4.5V9H15"/><path d="M19.5 12a7.5 7.5 0 01-12.8 5.3L4.5 15"/><path d="M4.5 19.5V15H9"/></symbol>
 <symbol id="i-cap" viewBox="0 0 24 24"><path d="M3 9l9-4 9 4-9 4z"/><path d="M7 11v5c0 1.5 2.5 3 5 3s5-1.5 5-3v-5"/></symbol>
 </svg>
 <div id="login" class="card hide">
@@ -355,7 +381,7 @@ a.btn{display:inline-flex;padding:7px 12px;border-radius:8px;text-decoration:non
   <form id="lf" class="row" style="flex-direction:column;align-items:stretch;gap:12px"><input id="lp" type="password" placeholder="Site password" autocomplete="current-password"><input id="ln" autocomplete="given-name" maxlength="30" placeholder="First name (optional, to sync)"><button class="pri" style="justify-content:center">Continue</button><div id="le" class="meta" style="color:var(--bad)"></div><div id="known"></div></form>
 </div>
 <div id="app" class="hide">
-<nav id="side"><div class="brand" id="home">IB <b>Study</b></div><div class="nv tabs"><button data-tab="home"><svg class="i"><use href="#i-home"/></svg><span>Home</span></button><div class="grp">Study</div><button data-tab="lib"><svg class="i"><use href="#i-book"/></svg><span>Library</span></button><div id="pins"></div><button data-tab="prac"><svg class="i"><use href="#i-pen"/></svg><span>Practice</span></button><button data-tab="terms"><svg class="i"><use href="#i-cards"/></svg><span>Key terms</span></button><button data-tab="ref"><svg class="i"><use href="#i-flask"/></svg><span>Reference</span></button><div class="grp">Organise</div><button data-tab="plan"><svg class="i"><use href="#i-cal"/></svg><span>Planner</span></button><button data-tab="prog"><svg class="i"><use href="#i-chart"/></svg><span>Progress</span></button></div><button class="me" id="me"></button></nav>
+<nav id="side"><div class="brand" id="home">IB <b>Study</b></div><div class="nv tabs"><button data-tab="home"><svg class="i"><use href="#i-home"/></svg><span>Home</span></button><div class="grp">Study</div><button data-tab="rev"><svg class="i"><use href="#i-loop"/></svg><span>Review</span></button><button data-tab="lib"><svg class="i"><use href="#i-book"/></svg><span>Library</span></button><div id="pins"></div><button data-tab="prac"><svg class="i"><use href="#i-pen"/></svg><span>Practice</span></button><button data-tab="terms"><svg class="i"><use href="#i-cards"/></svg><span>Flashcards</span></button><button data-tab="ref"><svg class="i"><use href="#i-flask"/></svg><span>Reference</span></button><div class="grp">Organise</div><button data-tab="plan"><svg class="i"><use href="#i-cal"/></svg><span>Planner</span></button><button data-tab="prog"><svg class="i"><use href="#i-chart"/></svg><span>Progress</span></button></div><button class="me" id="me"></button></nav>
 <div class="col">
 <header>
   <button id="menuBtn" class="ghost hide" aria-label="Contents"><svg class="i"><use href="#i-menu"/></svg></button>
@@ -370,7 +396,7 @@ a.btn{display:inline-flex;padding:7px 12px;border-radius:8px;text-decoration:non
   <main id="main"></main>
 </div>
 </div>
-<nav id="bot" class="tabs"><button data-tab="home"><svg class="i"><use href="#i-home"/></svg><span>Home</span></button><button data-tab="lib"><svg class="i"><use href="#i-book"/></svg><span>Library</span></button><button data-tab="prac"><svg class="i"><use href="#i-pen"/></svg><span>Practice</span></button><button data-tab="terms"><svg class="i"><use href="#i-cards"/></svg><span>Terms</span></button><button data-tab="plan"><svg class="i"><use href="#i-cal"/></svg><span>Planner</span></button><button data-tab="prog"><svg class="i"><use href="#i-chart"/></svg><span>Progress</span></button></nav>
+<nav id="bot" class="tabs"><button data-tab="home"><svg class="i"><use href="#i-home"/></svg><span>Home</span></button><button data-tab="rev"><svg class="i"><use href="#i-loop"/></svg><span>Review</span></button><button data-tab="lib"><svg class="i"><use href="#i-book"/></svg><span>Library</span></button><button data-tab="prac"><svg class="i"><use href="#i-pen"/></svg><span>Practice</span></button><button data-tab="terms"><svg class="i"><use href="#i-cards"/></svg><span>Cards</span></button><button data-tab="plan"><svg class="i"><use href="#i-cal"/></svg><span>Planner</span></button><button data-tab="prog"><svg class="i"><use href="#i-chart"/></svg><span>Progress</span></button></nav>
 </div>
 <div id="drawer" class="drawer hide"><div class="hd"><span id="dTitle">Ask Claude</span><button class="ghost" id="dClose" aria-label="Close"><svg class="i"><use href="#i-x"/></svg></button></div><div class="chat" id="chat"></div><form class="chatin" id="cf"><textarea id="ci" rows="1" placeholder="Message"></textarea><button class="pri">Send</button></form></div>
 <script>
@@ -393,7 +419,7 @@ const S = {books: [], qs: [], book: null, tab: 'home', n: 1, view: LS.get('ib-vi
 function loadLocal() {
   const mig = !LS.get('ib-migrated', 0);
   S.prog = LS.get(LSK('ib-prog'), null) || (mig && LS.get('ib-prog', null)) || {att: {}, terms: {}, last: null};
-  for (const k of ['pins', 'marks', 'hls']) S.prog[k] = S.prog[k] || []; S.prog.lastBy = S.prog.lastBy || {};
+  for (const k of ['pins', 'marks', 'hls']) S.prog[k] = S.prog[k] || []; S.prog.lastBy = S.prog.lastBy || {}; S.prog.decks = S.prog.decks || {}; S.prog.recall = S.prog.recall || {};
   S.plan = LS.get(LSK('ib-plan'), null) || (mig ? LS.get('ib-plan', null) : null);
   if (mig) { LS.set('ib-migrated', 1); LS.set(LSK('ib-prog'), S.prog); if (S.plan) LS.set(LSK('ib-plan'), S.plan); }
 }
@@ -445,7 +471,8 @@ function mergeIn(r) {
     for (const [k, v] of Object.entries(r.terms || {})) if (!S.prog.terms[k] || S.prog.terms[k].t < v.t) S.prog.terms[k] = v;
     if ((r.pt || 0) > (S.prog.pt || 0)) { S.prog.pins = r.pins || []; S.prog.marks = r.marks || []; S.prog.hls = r.hls || []; S.prog.pt = r.pt; }
     const D = S.prog.days = S.prog.days || {}; for (const [d, o] of Object.entries(r.days || {})) { const x = D[d] = D[d] || {}; for (const k of ['m', 'q', 'c', 'p']) x[k] = Math.max(x[k] || 0, o[k] || 0); }
-    for (const k of ['secs', 'rev']) { const L = S.prog[k] = S.prog[k] || {}; for (const [kk, v] of Object.entries(r[k] || {})) if (!L[kk] || (L[kk].t || 0) < (v.t || 0)) L[kk] = v; }
+    { const DK = S.prog.decks = S.prog.decks || {}; for (const [id, d] of Object.entries(r.decks || {})) if (!DK[id] || (DK[id].t || 0) < (d.t || 0)) DK[id] = d; }
+    for (const k of ['secs', 'rev', 'recall']) { const L = S.prog[k] = S.prog[k] || {}; for (const [kk, v] of Object.entries(r[k] || {})) if (!L[kk] || (L[kk].t || 0) < (v.t || 0)) L[kk] = v; }
     const PP = S.prog.pp = S.prog.pp || {}; for (const [k, v] of Object.entries(r.pp || {})) { const ts = new Set((PP[k] || []).map(x => x.t)); PP[k] = [...(PP[k] || []), ...v.filter(x => !ts.has(x.t))]; }
     for (const [k, v] of Object.entries(r.lastBy || {})) if (!S.prog.lastBy[k] || S.prog.lastBy[k].t < v.t) S.prog.lastBy[k] = v;
     if (r.last && (!S.prog.last || (r.last.t || 0) > (S.prog.last.t || 0))) S.prog.last = r.last;
@@ -454,7 +481,7 @@ function mergeIn(r) {
 }
 
 // ---------- shell ----------
-const TABN = {home: 'Home', lib: 'Library', prac: 'Practice', terms: 'Key terms', ref: 'Reference', prog: 'Progress', plan: 'Planner', search: 'Search'};
+const TABN = {home: 'Home', lib: 'Library', prac: 'Practice', terms: 'Flashcards', rev: 'Review', ref: 'Reference', prog: 'Progress', plan: 'Planner', search: 'Search'};
 // back/forward: each screen writes a hash; same-screen changes (page flips) replace instead of push
 function setHash(h) { if (location.hash === h) return; const seg = x => x.split('/').slice(1, x.startsWith('#/lib/') ? 3 : 2).join('/'), a = seg(location.hash), b = seg(h); history[a === b ? 'replaceState' : 'pushState'](null, '', h); }
 function title(parts) { $('#ttl').innerHTML = parts.map((x, i) => i < parts.length - 1 ? `<span class="crumb" data-go="${x[1]}">${esc(x[0])}</span><span class="sep">/</span>` : `<span>${esc(Array.isArray(x) ? x[0] : x)}</span>`).join('');
@@ -466,7 +493,7 @@ function shell(t) { // chrome for a screen: nav highlight, contents panel, title
   document.querySelector('.wrap').style.gridTemplateColumns = rd ? '' : '1fr'; title([TABN[t]]);
   document.querySelectorAll('#pins [data-b]').forEach(x => x.classList.toggle('on', rd && x.dataset.b === S.book.id));
 }
-function tab(t) { shell(t); ({home: renderHome, lib: () => S.reading ? openPage(S.book.id, S.n) : renderShelf(), prac: () => renderPrac(), terms: () => renderTerms(), ref: () => renderRef(), prog: renderProg, plan: () => renderPlan(true)})[t](); }
+function tab(t) { shell(t); ({home: renderHome, lib: () => S.reading ? openPage(S.book.id, S.n) : renderShelf(), prac: () => renderPrac(), terms: () => renderTerms(), ref: () => renderRef(), prog: renderProg, rev: renderReview, plan: () => renderPlan(true)})[t](); }
 function go(t) { if (t === 'lib') S.reading = false; tab(t); }
 function drawPins() { const el = $('#pins'); if (!el || !S.prog) return;
   el.innerHTML = S.prog.pins.map(bookOf).filter(Boolean).map(B => `<button class="sub" data-b="${B.id}"><span class="dot" style="background:${bookC(B)}"></span>${esc(B.subject || B.title)}</button>`).join('');
@@ -498,8 +525,8 @@ async function openPage(b, n, hl) {
     <button id="pv" aria-label="Previous page"><svg class="i"><use href="#i-l"/></svg></button><span class="pgnum" id="pn"></span><button id="nx" aria-label="Next page"><svg class="i"><use href="#i-r"/></svg></button>
     <span class="sp"></span><button id="bmk" class="${mk ? 'on' : ''}" title="Bookmark this page"><svg class="i"><use href="#i-mark"/></svg></button>${B.file ? `<a class="meta" href="${RELAY}/ib/file?b=${b}&t=${encodeURIComponent(PASS)}" download title="Download the whole textbook PDF" style="display:inline-flex;gap:4px;align-items:center;text-decoration:none"><svg class="i"><use href="#i-dl"/></svg>PDF</a>` : ''}<div class="seg"><button data-v="text">Text</button><button data-v="scan">Scan</button></div></div>
     <div id="pg" class="card page"><span class="spin"></span></div><div class="rbar" style="margin-top:12px"><button id="pv2"><svg class="i"><use href="#i-l"/></svg>Previous</button><span class="sp"></span><button id="nx2">Next<svg class="i"><use href="#i-r"/></svg></button></div></div>
-    <div class="ask row"><button id="xback">Explain it back</button><button id="teach"><svg class="i"><use href="#i-cap"/></svg>Teach me</button><button class="pri" id="askP"><svg class="i"><use href="#i-spark"/></svg>Ask</button></div>`;
-  $('#xback').onclick = () => explainBack(B, sec, n);
+    <div class="ask row"><button id="rcall">Free recall</button><button id="xback">Explain it back</button><button id="teach"><svg class="i"><use href="#i-cap"/></svg>Teach me</button><button class="pri" id="askP"><svg class="i"><use href="#i-spark"/></svg>Ask</button></div>`;
+  $('#xback').onclick = () => explainBack(B, sec, n); $('#rcall').onclick = () => { const t = recallSecAt(B, n); if (t) renderRecall(b, t.n); };
   $('#bmk').onclick = () => { const i = S.prog.marks.findIndex(m => m.b === b && m.n === n);
     if (i >= 0) S.prog.marks.splice(i, 1); else S.prog.marks.unshift({b, n, bp: $('#pn').dataset.bp || '', title: sec ? (sec.num ? sec.num + ' ' : '') + sec.title : '', t: Date.now()});
     saveProg(true); $('#bmk').classList.toggle('on', i < 0); renderToc(); markToc(); };
@@ -561,6 +588,7 @@ function drawChat(busy) {
 // where the student is, as one line for Claude; the full question/draft/card is only sent as `screen`, which Claude reads with a tool if it needs it
 function where() {
   const B = S.book;
+  if (S.mm) { const m = S.mm; return {label: 'mind map “' + m.pg.title + '”' + (m.sel ? ' · ' + m.sel : ''), book: 'math', note: `[Location: ${m.M.title} mind map, topic ${m.pg.title}${m.sel ? ', selected bubble: ' + m.sel : ''}]`, screen: 'Mind map outline:\n' + m.outline}; }
   if (S.tab === 'lib' && S.reading && B) { const sec = secOf(B, S.n), bp = ($('#pn') && $('#pn').dataset.bp) || S.n;
     return {label: `${B.subject} p. ${bp}${sec ? ' · ' + (sec.num ? sec.num + ' ' : '') + sec.title : ''}`, book: B.id, n: S.n, note: `[Location: reading the ${B.subject} textbook, p. ${bp}${sec ? ', section ' + (sec.num ? sec.num + ' ' : '') + sec.title : ''}]`}; }
   if (S.tab === 'prac' && S.q) { const q = S.q, ta = $('#ans'), d = ta ? ta.value.trim() : '';
@@ -568,7 +596,7 @@ function where() {
       screen: `Question (${KIND[q.kind] || q.kind}${q.marks ? ', ' + q.marks + ' marks' : ''}, textbook p. ${q.bp || '?'}):\n${q.text}${q.ctx ? '\nContext: ' + q.ctx : ''}\n\nStudent's draft:\n${d || '(empty)'}`}; }
   if (S.tab === 'terms' && S.term) return {label: 'flashcard “' + S.term.k + '”', book: B.id, note: `[Location: Key terms flashcards (${B.subject}), card "${S.term.k}"]`, screen: `${S.term.k}: ${S.term.d}`};
   if (S.tab === 'prog' && B) return {label: 'your progress', book: B.id, note: `[Location: Progress page (${B.subject})]`, screen: progSummary(B)};
-  const n = {ref: 'Reference (' + (B && B.math ? 'formula sheet' : 'case studies') + ')', home: 'Home page', lib: 'Library (book list)', prac: 'Practice question list', terms: 'Key terms list', plan: 'Planner', search: 'search results'}[S.tab];
+  const n = {ref: 'Reference (' + (B && B.math ? 'formula sheet' : 'case studies') + ')', home: 'Home page', lib: 'Library (book list)', prac: S.rc ? 'Free recall (help with understanding only; do not give away the answers while they are recalling)' : 'Practice question list', terms: 'Flashcards', rev: 'Review page', plan: 'Planner', search: 'search results'}[S.tab];
   return n && B ? {label: n, book: B.id, note: `[Location: ${n}${S.tab === 'prac' || S.tab === 'terms' ? ' (' + B.subject + ')' : ''}]`} : null;
 }
 function progSummary(B) {
@@ -632,16 +660,16 @@ function topicName(B, t) { const s = B.toc.find(x => x.num === t); return s ? t 
 function renderPrac(filter) {
   const F = filter || (S.pf = S.pf || {book: S.book.id, kind: '', topic: '', st: ''});
   if (F.book !== S.book.id) { F.book = S.book.id; F.topic = ''; F.kind = ''; }
-  shell('prac'); S.q = null; setHash('#/prac');
+  shell('prac'); S.q = null; S.rc = null; setHash('#/prac');
   const B = bookOf(F.book) || S.book, qs = S.qs.filter(q => q.book === B.id && !front(q) && !q.pp), V = F.view || 'qs', mk = mistakes(B.id);
-  const vseg = `<div class="seg vseg">${[['qs', 'Questions'], ['rev', 'Section reviews' + (reviewsDue().filter(x => x.B === B).length ? ' · ' + reviewsDue().filter(x => x.B === B).length : '')], ['mist', 'Mistakes' + (mk.length ? ' · ' + mk.length : '')], ['papers', 'Past papers']].map(([k, l]) => `<button data-v="${k}" class="${V === k ? 'on' : ''}">${l}</button>`).join('')}</div>`;
+  const vseg = `<div class="seg vseg">${[['qs', 'Questions'], ['rev', 'Section reviews' + (reviewsDue().filter(x => x.B === B).length ? ' · ' + reviewsDue().filter(x => x.B === B).length : '')], ['recall', 'Free recall' + (recallDue().filter(x => x.B === B).length ? ' · ' + recallDue().filter(x => x.B === B).length : '')], ['mist', 'Mistakes' + (mk.length ? ' · ' + mk.length : '')], ['papers', 'Past papers']].map(([k, l]) => `<button data-v="${k}" class="${V === k ? 'on' : ''}">${l}</button>`).join('')}</div>`;
   const vwire = () => document.querySelectorAll('.vseg [data-v]').forEach(x => x.onclick = () => { F.view = x.dataset.v; renderPrac(F); });
   if (V !== 'qs') {
     $('#main').innerHTML = `<div class="prac" style="max-width:1100px"><div class="row"><h2 style="margin:0">Practice</h2>${bookBar(B.id)}</div><div style="margin-top:12px">${vseg}</div>
-      ${V === 'papers' ? '<div id="ppl"><span class="spin"></span></div>' : V === 'rev' ? reviewList(B) : mk.length ? `<div class="card lst mlog">${mk.map(m => `<div data-id="${m.q.id}"><div class="row"><b class="num" style="color:var(--red)">${m.l.score}/${m.l.max}</b><span class="tag">${KIND[m.q.kind] || m.q.kind}</span><span class="meta">${esc(m.q.topic ? topicName(B, m.q.topic) : '')}</span><span class="sp"></span>${m.ready ? '<span class="tag r">Retry now</span>' : `<span class="meta">retry ${fmtD(ymd(new Date(m.due)), {weekday: 'short'})}</span>`}</div>
+      ${V === 'papers' ? '<div id="ppl"><span class="spin"></span></div>' : V === 'rev' ? reviewList(B) : V === 'recall' ? recallList(B) : mk.length ? `<div class="card lst mlog">${mk.map(m => `<div data-id="${m.q.id}"><div class="row"><b class="num" style="color:var(--red)">${m.l.score}/${m.l.max}</b><span class="tag">${KIND[m.q.kind] || m.q.kind}</span><span class="meta">${esc(m.q.topic ? topicName(B, m.q.topic) : '')}</span><span class="sp"></span>${m.ready ? '<span class="tag r">Retry now</span>' : `<span class="meta">retry ${fmtD(ymd(new Date(m.due)), {weekday: 'short'})}</span>`}</div>
         <div style="font-family:var(--f-read);margin:4px 0">${(MATH = !!B.math, mdx(preview(m.q.text), true))}</div>${m.l.fb && m.l.fb.missed && m.l.fb.missed.length ? `<ul class="meta" style="margin:4px 0;padding-left:18px">${m.l.fb.missed.slice(0, 2).map(x => '<li>' + mdx(String(x), true) + '</li>').join('')}</ul>` : ''}</div>`).join('')}</div>`
       : '<div class="card" style="padding:28px;text-align:center"><b>No mistakes to retry</b><div class="meta">Anything you score under 70% on lands here and comes back after 2 days.</div></div>'}</div>`;
-    vwire(); onBookBar(() => renderPrac()); document.querySelectorAll('.mlog [data-id]').forEach(el => el.onclick = () => openQ(el.dataset.id)); document.querySelectorAll('.rvl [data-rk]').forEach(el => el.onclick = () => runReview(el.dataset.rk));
+    vwire(); onBookBar(() => renderPrac()); document.querySelectorAll('.mlog [data-id]').forEach(el => el.onclick = () => openQ(el.dataset.id)); document.querySelectorAll('.rvl [data-rk]').forEach(el => el.onclick = () => runReview(el.dataset.rk)); document.querySelectorAll('[data-rc]').forEach(el => el.onclick = () => renderRecall(B.id, +el.dataset.rc));
     if (V === 'papers') loadPapers().then(() => { if (!$('#ppl')) return; $('#ppl').innerHTML = renderPapers(B); document.querySelectorAll('[data-pp]').forEach(el => el.onclick = () => openPaper(el.dataset.pp)); });
     return;
   }
@@ -649,7 +677,7 @@ function renderPrac(filter) {
   const list = qs.filter(q => (!F.kind || q.kind === F.kind) && (!F.topic || (q.topic || '').startsWith(F.topic)) && (!F.tp || inTopic(q.topic, F.tp)) &&
     (!F.st || (F.st === 'new' ? !attOf(q.id).length : F.st === 'weak' ? (best(q.id) >= 0 && best(q.id) < .6) : best(q.id) >= .6)));
   $('#main').innerHTML = `<div class="prac" style="max-width:1100px">
-    <div class="row" style="justify-content:space-between"><div class="row"><h2 style="margin:0">Practice</h2>${bookBar(B.id)}</div><button class="pri" id="rnd">Random question</button></div>
+    <div class="row" style="justify-content:space-between"><div class="row"><h2 style="margin:0">Practice</h2>${bookBar(B.id)}</div><div class="row"><button id="mix">Mixed set</button><button id="fyP"><svg class="i"><use href="#i-spark"/></svg>For you</button><button class="pri" id="rnd">Random question</button></div></div>
     <div style="margin-top:12px">${vseg}</div>
     <div class="filters">${F.tp ? `<button id="ftp" class="tag" style="padding:6px 10px">${esc(F.tp)} ✕</button>` : ''}<select id="fk"><option value="">All types</option>${[...new Set(qs.map(q => q.kind))].map(k => `<option value="${k}" ${F.kind === k ? 'selected' : ''}>${KIND[k] || k}</option>`).join('')}</select>
     <select id="ft"><option value="">All topics</option>${topics.map(t => `<option value="${t}" ${F.topic === t ? 'selected' : ''}>${esc(topicName(B, t))}</option>`).join('')}</select>
@@ -657,12 +685,12 @@ function renderPrac(filter) {
     <div class="grid">${list.map(q => { const bs = best(q.id); return `<div class="card qc" data-id="${q.id}"><div>${'<span class="tag">' + (KIND[q.kind] || q.kind) + '</span>'}${q.marks ? '<span class="tag">' + q.marks + (q.marks === 1 ? ' mark' : ' marks') + '</span>' : ''}${bs >= 0 ? `<span class="tag ${bs < .6 ? 'w' : 'g'}">best ${Math.round(bs * 100)}%</span>` : ''}</div><div class="qt">${(MATH = !!B.math, mdx(preview(q.text), true))}</div><div class="meta">${esc(q.topic ? topicName(B, q.topic) : '')}${q.bp ? ' · p. ' + q.bp : ''}</div></div>`; }).join('') || '<p>No questions match.</p>'}</div></div>`;
   $('#fk').onchange = e => { F.kind = e.target.value; renderPrac(F); }; $('#ft').onchange = e => { F.topic = e.target.value; renderPrac(F); }; $('#fs').onchange = e => { F.st = e.target.value; renderPrac(F); };
   document.querySelectorAll('.qc').forEach(c => c.onclick = () => openQ(c.dataset.id)); onBookBar(() => renderPrac());
-  vwire(); if ($('#ftp')) $('#ftp').onclick = () => { F.tp = ''; renderPrac(F); }; $('#rnd').onclick = () => { const pool = list.length ? list : qs; if (pool.length) openQ(pool[Math.random() * pool.length | 0].id); };
+  vwire(); if ($('#ftp')) $('#ftp').onclick = () => { F.tp = ''; renderPrac(F); }; $('#mix').onclick = mixedSetup; $('#fyP').onclick = () => { go('rev'); $('#fy') && $('#fy').scrollIntoView({behavior: 'smooth'}); }; $('#rnd').onclick = () => { const pool = list.length ? list : qs; if (pool.length) openQ(pool[Math.random() * pool.length | 0].id); };
 }
 function openQ(id) {
   const q = S.qs.find(x => x.id === id); if (!q) return renderPrac(); const B = bookOf(q.book), draft = LS.get(LSK('ib-d-' + id), ''), prev = attOf(id); MATH = !!B.math;
-  shell('prac'); S.q = q; setHash('#/q/' + id); title([['Practice', 'prac'], (KIND[q.kind] || q.kind) + (q.topic ? ' · ' + q.topic : '')]);
-  $('#main').innerHTML = `<div class="prac"><div class="row" style="margin-bottom:10px"><button id="back"><svg class="i"><use href="#i-l"/></svg>All questions</button><span class="sp" style="flex:1"></span>${q.n ? `<button id="src">Open in textbook (p. ${esc(q.bp)})</button>` : ''}</div>
+  shell('prac'); S.q = q; S.rc = null; setHash('#/q/' + id); title([['Practice', 'prac'], (KIND[q.kind] || q.kind) + (q.topic ? ' · ' + q.topic : '')]);
+  $('#main').innerHTML = `<div class="prac">${sessBar('q', id)}<div class="row" style="margin-bottom:10px"><button id="back"><svg class="i"><use href="#i-l"/></svg>All questions</button><span class="sp" style="flex:1"></span>${q.n ? `<button id="src">Open in textbook (p. ${esc(q.bp)})</button>` : ''}</div>
     <div class="card qbig"><div style="font-family:var(--f-ui);margin-bottom:10px"><span class="tag">${KIND[q.kind] || q.kind}</span>${q.marks ? '<span class="tag">' + q.marks + (q.marks === 1 ? ' mark' : ' marks') + '</span>' : ''}${q.calc === 'no' ? '<span class="tag w">No calculator</span>' : q.calc === 'yes' ? '<span class="tag">Calculator</span>' : ''}<span class="meta">${esc(q.set ? q.set + ' · ' : '')}${esc(q.topic ? topicName(B, q.topic) : '')}</span></div>${mdx(q.text)}${q.ctx ? `<div class="meta" style="font-family:var(--f-ui);margin-top:10px">${esc(q.ctx)}</div>` : ''}</div>
     <div style="margin-top:14px"><textarea id="ans" rows="${q.kind === 'essay' ? 18 : 8}" placeholder="Answer">${esc(draft)}</textarea>
     <div class="row" style="margin-top:8px"><span class="meta" id="wc"></span><span class="meta" id="tm"></span><span style="flex:1"></span><button id="hint">Hint</button><button class="pri" id="mark">Mark with Claude</button></div></div>
@@ -682,8 +710,8 @@ function openQ(id) {
       let fb; try { fb = JSON.parse(r.text.replace(/^```(json)?|```$/g, '').trim()); } catch (e) { fb = {score: 0, max: qMax(q), verdict: '', raw: r.text}; }
       fb.max = fb.max || qMax(q);
       const att = {t: Date.now(), score: +fb.score || 0, max: fb.max, ans, fb, secs: (Date.now() - t0) / 1000 | 0};
-      (S.prog.att[id] = S.prog.att[id] || []).push(att); act('q');
-      $('#fbx').innerHTML = `<div class="card fb">${fbHtml(fb)}<div class="row" style="margin-top:14px"><button class="pri" id="disc">Ask Claude about this feedback</button><button id="again">Try again</button></div></div>`;
+      (S.prog.att[id] = S.prog.att[id] || []).push(att); act('q'); sessMark('q', id, att.max ? att.score / att.max : 0);
+      $('#fbx').innerHTML = `<div class="card fb">${fbHtml(fb)}<div class="row" style="margin-top:14px"><button class="${sessCur('q', id) ? '' : 'pri'}" id="disc">Ask Claude about this feedback</button><button id="again">Try again</button>${sessCur('q', id) ? '<span class="sp"></span><button class="pri" data-sx="next">Next →</button>' : ''}</div></div>`;
       $('#disc').onclick = () => openChat({title: 'Feedback discussion', book: q.book, pages: q.pages, fixed: true, msgs: [{role: 'user', content: user, show: 'My answer to: ' + q.text}, {role: 'assistant', content: fbMd(fb)}]});
       $('#again').onclick = () => { ta.focus(); window.scrollTo({top: 0, behavior: 'smooth'}); };
       $('#fbx').scrollIntoView({behavior: 'smooth'});
@@ -706,28 +734,21 @@ const fbMd = fb => fb.raw || `Score ${fb.score}/${fb.max}${fb.band ? ' (band ' +
 // ---------- key terms (flashcards, Leitner boxes) ----------
 const BOXDAYS = [0, 1, 3, 7, 16, 35];
 function renderTerms(mode) {
-  shell('terms'); setHash('#/terms'); S.term = null;
-  const B = S.book, terms = B.terms || [], now = Date.now();
-  const due = terms.filter(t => { const s = S.prog.terms[B.id + ':' + t.k]; return !s || now >= s.t + BOXDAYS[s.box] * 864e5; });
+  shell('terms'); setHash('#/terms'); S.term = null; S.tv = S.tv || LS.get('ib-tv', 'book');
+  if (S.tv === 'decks') return renderDecks();
+  const B = S.book, terms = B.terms || [];
+  const due = terms.filter(t => { const s = S.prog.terms[B.id + ':' + t.k]; return !s || cardDue(s); });
   const known = terms.filter(t => (S.prog.terms[B.id + ':' + t.k] || {}).box >= 3).length;
   if (mode !== 'study') {
-    $('#main').innerHTML = `<div class="prac"><div class="row" style="justify-content:space-between"><div class="row"><h2 style="margin:0">Key terms</h2>${bookBar(B.id)}</div><button class="pri" id="st" ${due.length ? '' : 'disabled'}>Study ${due.length} due</button></div>
-      <p class="meta">${terms.length} terms · ${known} learned</p>
+    $('#main').innerHTML = `<div class="prac"><div class="row" style="justify-content:space-between"><div class="row"><h2 style="margin:0">Flashcards</h2>${bookBar(B.id)}</div><button class="pri" id="st" ${due.length ? '' : 'disabled'}>Study ${Math.min(20, due.length)} due</button></div>
+      <div style="margin:12px 0 4px">${tvSeg()}</div><p class="meta">${terms.length ? terms.length + ' key terms from the textbook · ' + known + ' learned' : 'This book has no key-term list. Make a deck instead: Claude can write cards from any section.'}</p>
       <input id="tf" placeholder="Filter terms…" style="margin:6px 0 12px"><div class="card" id="tl"></div></div>`;
     const draw = f => { $('#tl').innerHTML = terms.filter(t => !f || (t.k + t.d).toLowerCase().includes(f)).map(t => { const s = S.prog.terms[B.id + ':' + t.k];
       return `<div style="padding:10px 14px;border-bottom:1px solid var(--line)"><div class="row"><b>${esc(t.k)}</b>${s ? `<span class="tag ${s.box >= 3 ? 'g' : 'w'}">box ${s.box}</span>` : ''}<span style="flex:1"></span><a href="#" data-n="${t.n}" class="meta">p. ${esc(t.bp)}</a></div><div style="font-family:var(--f-read)">${esc(t.d)}</div></div>`; }).join('');
       document.querySelectorAll('#tl a').forEach(a => a.onclick = e => { e.preventDefault(); openPage(B.id, +a.dataset.n, a.closest('div').parentNode.querySelector('b').textContent); }); };
-    $('#tf').oninput = e => draw(e.target.value.toLowerCase()); draw(''); $('#st').onclick = () => renderTerms('study'); onBookBar(() => renderTerms()); return;
+    $('#tf').oninput = e => draw(e.target.value.toLowerCase()); draw(''); $('#st').onclick = () => renderTerms('study'); onBookBar(() => renderTerms()); tvWire(); return;
   }
-  const deck = due.sort(() => Math.random() - .5).slice(0, 20); let i = 0, flipped = false;
-  const show = () => {
-    if (i >= deck.length) { $('#main').innerHTML = `<div class="card flash"><div class="term">Done</div><p>${deck.length} cards reviewed.</p><button class="pri" id="bk2">Back</button></div>`; $('#bk2').onclick = () => renderTerms(); return; }
-    const t = deck[i]; S.term = t;
-    $('#main').innerHTML = `<div class="meta" style="text-align:center;margin-top:10px">${i + 1} / ${deck.length}</div><div class="card flash"><div class="term">${esc(t.k)}</div>${flipped ? `<div class="def">${esc(t.d)}</div><div class="row" style="justify-content:center"><button id="no">Didn't know</button><button class="pri" id="yes">Knew it</button></div>` : `<button class="pri" id="flip">Reveal</button>`}</div>`;
-    if (!flipped) $('#flip').onclick = () => { flipped = true; show(); };
-    else { const g = ok => { const k = B.id + ':' + t.k, s = S.prog.terms[k] || {box: 0}; S.prog.terms[k] = {box: ok ? Math.min(5, s.box + 1) : 0, t: Date.now()}; act('c'); i++; flipped = false; show(); }; $('#yes').onclick = () => g(1); $('#no').onclick = () => g(0); }
-  };
-  show();
+  studyCards(due.sort(() => Math.random() - .5).slice(0, 20).map(t => ({key: B.id + ':' + t.k, f: t.k, b: t.d, book: B.id, src: B.subject + ' key term'})), () => renderTerms());
 }
 
 // ---------- progress ----------
@@ -868,7 +889,7 @@ function drawHome() {
   const now = new Date(), h = now.getHours(), t = todayS();
   const last = S.prog.last, LB = last && bookOf(last.b), sec = LB && secOf(LB, last.n);
   const allQ = S.qs.filter(q => !front(q)), tried = allQ.filter(q => attOf(q.id).length);
-  const termsDue = S.books.reduce((n, B) => n + (B.terms || []).filter(x => { const s = S.prog.terms[B.id + ':' + x.k]; return !s || Date.now() >= s.t + BOXDAYS[s.box] * 864e5; }).length, 0);
+  const RQ = reviewQueue();
   const m = dayMap(t, addD(t, 14)), up = [];
   for (const d of Object.keys(m).sort()) for (const it of m[d]) if (it.kind !== 'class') up.push([d, it]);
   const over = (S.plan || []).filter(it => (it.kind === 'homework' || it.kind === 'task') && !it.done && it.date < t);
@@ -880,21 +901,21 @@ function drawHome() {
       ${LB ? `<section class="hsec"><h3>Continue reading</h3><div class="card cont" id="hCont">${spine(LB)}<div style="min-width:0"><div class="meta">${esc(LB.title)}</div><div class="ttl">${sec ? esc(sec.title) : 'Page ' + last.n}</div><div class="meta">${sec && sec.num ? esc(sec.num) + ' · ' : ''}page ${last.n} of ${LB.pages}</div></div></div></section>` : ''}
       <section class="hsec"><div class="acts">
         <button class="card act" id="hPrac"><span class="meta">Practice</span><span class="n">${tried.length}<span class="meta"> / ${allQ.length}</span></span><b>Random question</b></button>
-        <button class="card act" id="hTerms"><span class="meta">Key terms</span><span class="n">${termsDue}</span><b>${termsDue ? 'Review due cards' : 'All caught up'}</b></button>
+        <button class="card act" id="hTerms"><span class="meta">Review</span><span class="n">${RQ.total}</span><b>${RQ.total ? 'Start today’s review' : 'All caught up'}</b></button>
         <button class="card act" id="hTeach"><span class="meta">Lesson</span><span class="n" style="font-size:17px;line-height:1.3">${sec ? esc(sec.title.length > 34 ? sec.title.slice(0, 34) + '…' : sec.title) : 'Current section'}</span><b>Teach me this</b></button>
       </div></section>
       <section class="hsec"><h3>Books<a href="#" id="hLib">Library</a></h3><div class="shelf">${shelfOrder().map(B => `<div class="card bk" data-b="${B.id}">${spine(B)}<div style="min-width:0;flex:1"><b>${esc(B.title)}</b><span class="meta">${B.pages} pages · ${allQ.filter(q => q.book === B.id).length} questions</span>${B.file ? `<div><a class="meta" href="${RELAY}/ib/file?b=${B.id}&t=${encodeURIComponent(PASS)}" download onclick="event.stopPropagation()">Download PDF</a></div>` : ''}</div></div>`).join('')}</div></section>
     </div><div>
       <section class="hsec"><h3>Today</h3><div class="card lst agl">${(() => { const mk = mistakes(), rd = mk.filter(m => m.ready), dt = S.prog.days && S.prog.days[t];
-        return `<div id="hMist"><span class="when">Mistakes</span><span>${rd.length ? `<b>${rd.length}</b> ready to retry` : mk.length ? mk.length + ' waiting, none due yet' : 'None logged'}</span></div><div id="hRev"><span class="when">Reviews</span><span>${reviewsDue().length ? `<b>${reviewsDue().length}</b> sections to check` : 'None due'}</span></div><div id="hTerms2"><span class="when">Cards</span><span>${termsDue ? `<b>${termsDue}</b> due` : 'All caught up'}</span></div><div style="cursor:default"><span class="when">Studied</span><span>${dt ? dt.m : 0} min · ${dt ? dt.q : 0} questions</span></div>`; })()}<div style="cursor:default;padding:10px 12px"><button class="pri" id="hDay" style="width:100%;justify-content:center"><svg class="i"><use href="#i-spark"/></svg>Plan my day</button></div></div></section>
+        return `<div id="hMist"><span class="when">Mistakes</span><span>${rd.length ? `<b>${rd.length}</b> ready to retry` : mk.length ? mk.length + ' waiting, none due yet' : 'None logged'}</span></div><div id="hRev"><span class="when">Reviews</span><span>${reviewsDue().length ? `<b>${reviewsDue().length}</b> sections to check` : 'None due'}</span></div><div id="hTerms2"><span class="when">Cards</span><span>${RQ.due.length + RQ.nw.length ? `<b>${RQ.due.length}</b> due${RQ.nw.length ? ' · ' + RQ.nw.length + ' new' : ''}` : 'All caught up'}</span></div><div style="cursor:default"><span class="when">Studied</span><span>${dt ? dt.m : 0} min · ${dt ? dt.q : 0} questions</span></div>`; })()}<div class="row" style="cursor:default;padding:10px 12px;flex-wrap:nowrap"><button class="pri" id="hDay" style="flex:1;justify-content:center"><svg class="i"><use href="#i-spark"/></svg>Plan my day</button><button id="hFy" style="flex:1;justify-content:center"><svg class="i"><use href="#i-spark"/></svg>Pick for me</button></div></div></section>
       <section class="hsec"><h3>Coming up<a href="#" id="hPlan">Planner</a></h3><div class="card lst agl">${over.map(it => `<div data-id="${it.id}"><span class="when" style="color:var(--red)">Overdue</span><span><span class="dot" style="background:${subjColor(it.subject)}"></span>${esc(it.title)}</span></div>`).join('')}${up.slice(0, 8).map(([d, it]) => `<div data-id="${it.id}"><span class="when">${rel(d)}${it.time ? '<br>' + it.time : ''}</span><span><span class="dot" style="background:${subjColor(it.subject)}"></span>${esc(it.title)}${it.kind === 'exam' ? ' <span class="tag r">Exam</span>' : ''}</span></div>`).join('') || (over.length ? '' : '<div class="meta" style="cursor:default">Nothing in the next two weeks</div>')}</div></section>
       ${recent.length ? `<section class="hsec"><h3>Recent marks<a href="#" id="hProg">Progress</a></h3><div class="card lst agl">${recent.map(({q, a}) => `<div data-q="${q.id}"><span class="when num" style="color:${a.score / a.max < .4 ? 'var(--red)' : a.score / a.max < .7 ? 'var(--warn)' : 'var(--good)'};font-weight:600">${a.score}/${a.max}</span><span>${esc(q.text.replace(/\$[^$]*\$/g, '…').slice(0, 80))}${q.text.length > 80 ? '…' : ''}</span></div>`).join('')}</div></section>` : ''}
     </div></div></div>`;
   $('#hLib').onclick = e => { e.preventDefault(); go('lib'); };
-  $('#hDay').onclick = () => USER ? dayPlan() : signInBox(); $('#hMist').onclick = () => { const m = mistakes(); if (m[0]) S.book = bookOf(m[0].q.book); renderToc(); S.pf = {...(S.pf || {}), view: 'mist'}; renderPrac(); }; $('#hTerms2').onclick = () => $('#hTerms').click(); $('#hRev').onclick = () => { const r = reviewsDue()[0]; if (r) runReview(r.k); else { S.pf = {...(S.pf || {}), view: 'rev'}; renderPrac(); } };
+  $('#hDay').onclick = () => USER ? dayPlan() : signInBox(); $('#hMist').onclick = () => { const m = mistakes(); if (m[0]) S.book = bookOf(m[0].q.book); renderToc(); S.pf = {...(S.pf || {}), view: 'mist'}; renderPrac(); }; $('#hTerms2').onclick = () => go('rev'); $('#hFy').onclick = () => { go('rev'); forYou('short'); }; $('#hRev').onclick = () => { const r = reviewsDue()[0]; if (r) runReview(r.k); else { S.pf = {...(S.pf || {}), view: 'rev'}; renderPrac(); } };
   if ($('#hCont')) $('#hCont').onclick = () => openPage(LB.id, last.n);
   $('#hPrac').onclick = () => { go('prac'); $('#rnd') && $('#rnd').click(); };
-  $('#hTerms').onclick = () => { go('terms'); if (termsDue && $('#st')) $('#st').click(); };
+  $('#hTerms').onclick = () => { if (!RQ.total) return go('rev'); startSess('Daily review', reviewItems(RQ)); };
   $('#hTeach').onclick = () => { openPage(LB ? LB.id : S.book.id, LB ? last.n : S.n); setTimeout(() => $('#teach') && $('#teach').click(), 50); };
   $('#hPlan').onclick = e => { e.preventDefault(); go('plan'); };
   if ($('#hProg')) $('#hProg').onclick = e => { e.preventDefault(); go('prog'); };
@@ -1064,10 +1085,12 @@ function mastery(B, T) {
   const qv = tried.length ? tried.reduce((s, q) => s + best(q.id), 0) / tried.length : null;
   const rv = Object.entries(S.prog.rev || {}).filter(([k]) => { const [b, n] = k.split('|'); return b === B.id && +n >= T.n && +n < T.end; }).map(([, r]) => r.last).filter(x => x != null);
   const rvv = rv.length ? rv.reduce((a, b) => a + b, 0) / rv.length : null;
-  const cs = (B.terms || []).filter(x => x.n >= T.n && x.n < T.end).map(x => S.prog.terms[B.id + ':' + x.k]).filter(Boolean), cv = cs.length ? cs.reduce((s, c) => s + Math.min(c.box, 4) / 4, 0) / cs.length : null;
-  const parts = [[qv, 2 * Math.min(1, tried.length / 3)], [rvv, 1.5], [cv, 1]].filter(([v, w]) => v != null && w > 0);
+  const rc = Object.entries(S.prog.recall || {}).filter(([k]) => { const [b, n] = k.split('|'); return b === B.id && +n >= T.n && +n < T.end; }).map(([, r]) => r.last).filter(x => x != null), rcv = rc.length ? rc.reduce((a, b) => a + b, 0) / rc.length : null;
+  const my = myDecks().flatMap(d => d.cards.filter(c => (c.book || d.book) === B.id && inTopic(c.tp, T.num)).map(c => S.prog.terms['~' + c.id]));
+  const cs = [...(B.terms || []).filter(x => x.n >= T.n && x.n < T.end).map(x => S.prog.terms[B.id + ':' + x.k]), ...my].filter(Boolean), cv = cs.length ? cs.reduce((s, c) => s + Math.min(c.box, 4) / 4, 0) / cs.length : null;
+  const parts = [[qv, 2 * Math.min(1, tried.length / 3)], [rvv, 1.5], [rcv, 1.5], [cv, 1]].filter(([v, w]) => v != null && w > 0);
   const w = parts.reduce((s, [, w]) => s + w, 0), v = w ? parts.reduce((s, [v, w]) => s + v * w, 0) / w : null;
-  return {v, qv, rvv, cv, tried: tried.length, total: qs.length, rev: rv.length, cards: cs.length};
+  return {v, qv, rvv, rcv, cv, tried: tried.length, total: qs.length, rev: rv.length, rc: rc.length, cards: cs.length};
 }
 const mColor = v => v == null ? 'var(--sunk)' : `color-mix(in srgb,var(--acc) ${Math.round(18 + v * 82)}%,var(--panel))`;
 const mInk = v => v != null && v > .55 ? 'var(--acc-ink)' : 'var(--ink)';
@@ -1075,16 +1098,16 @@ function masteryMap(B) {
   const ts = topicsOf(B); if (!ts.length) return '<p class="meta">This book has no numbered topics.</p>';
   const units = [...new Set(ts.map(t => t.unit))];
   return `<div class="mmap">${units.map(u => `<div class="mrow"><div class="mu">${esc(u)}</div><div class="mtiles">${ts.filter(t => t.unit === u).map(t => { const m = mastery(B, t);
-    return `<button class="mt" data-tn="${esc(t.num)}" style="background:${mColor(m.v)};color:${mInk(m.v)}" data-tip="${esc(t.num + ' ' + t.title)}\n${m.v == null ? 'Not tested yet' : Math.round(m.v * 100) + '% mastery'}\n${m.tried}/${m.total} questions · ${m.rev} reviews · ${m.cards} cards"><b>${esc(t.num.replace(/^(Structure|Reactivity)\s+/, (x, w) => w[0]))}</b><span>${esc(t.title)}</span><i>${m.v == null ? '–' : Math.round(m.v * 100) + '%'}</i></button>`; }).join('')}</div></div>`).join('')}
+    return `<button class="mt" data-tn="${esc(t.num)}" style="background:${mColor(m.v)};color:${mInk(m.v)}" data-tip="${esc(t.num + ' ' + t.title)}\n${m.v == null ? 'Not tested yet' : Math.round(m.v * 100) + '% mastery'}\n${m.tried}/${m.total} questions · ${m.rev} reviews · ${m.rc} recalls · ${m.cards} cards"><b>${esc(t.num.replace(/^(Structure|Reactivity)\s+/, (x, w) => w[0]))}</b><span>${esc(t.title)}</span><i>${m.v == null ? '–' : Math.round(m.v * 100) + '%'}</i></button>`; }).join('')}</div></div>`).join('')}
     <div class="mleg meta"><span>Not tested</span><i style="background:var(--sunk)"></i><span style="margin-left:10px">0%</span>${[0, .25, .5, .75, 1].map(v => `<i style="background:${mColor(v)}"></i>`).join('')}<span>100%</span></div></div>`;
 }
 function topicSheet(B, num) {
   const T = topicsOf(B).find(t => t.num === num), m = mastery(B, T), pc = x => x == null ? '–' : Math.round(x * 100) + '%';
   const mo = openModal(`<div class="meta">${esc(T.unit)}</div><h3 style="margin:2px 0 12px;font:600 21px/1.25 var(--f-read)">${esc(T.num + ' ' + T.title)}</h3>
-    <div class="wnums" style="margin:0 0 14px"><div><b>${pc(m.v)}</b><span class="meta">mastery</span></div><div><b>${pc(m.qv)}</b><span class="meta">questions (${m.tried}/${m.total})</span></div><div><b>${pc(m.rvv)}</b><span class="meta">section reviews</span></div><div><b>${pc(m.cv)}</b><span class="meta">key terms</span></div></div>
-    <div class="row"><button class="pri" id="tsP">Practise</button><button id="tsR">Read</button><button id="tsT"><svg class="i"><use href="#i-cap"/></svg>Teach me</button><span class="sp"></span><button id="mClose">Close</button></div>`);
+    <div class="wnums" style="margin:0 0 14px"><div><b>${pc(m.v)}</b><span class="meta">mastery</span></div><div><b>${pc(m.qv)}</b><span class="meta">questions (${m.tried}/${m.total})</span></div><div><b>${pc(m.rvv)}</b><span class="meta">section reviews</span></div><div><b>${pc(m.rcv)}</b><span class="meta">free recall</span></div><div><b>${pc(m.cv)}</b><span class="meta">key terms</span></div></div>
+    <div class="row"><button class="pri" id="tsP">Practise</button><button id="tsR">Read</button><button id="tsC">Free recall</button><button id="tsT"><svg class="i"><use href="#i-cap"/></svg>Teach me</button><span class="sp"></span><button id="mClose">Close</button></div>`);
   $('#tsP').onclick = () => { mo.remove(); S.book = B; renderToc(); S.pf = {book: B.id, kind: '', topic: '', st: '', view: 'qs', tp: num}; renderPrac(); };
-  $('#tsR').onclick = () => { mo.remove(); openPage(B.id, T.n); };
+  $('#tsR').onclick = () => { mo.remove(); openPage(B.id, T.n); }; $('#tsC').onclick = () => { mo.remove(); renderRecall(B.id, (recallTargets(B).find(t => t.n >= T.n && t.n < T.end) || T).n); };
   $('#tsT').onclick = () => { mo.remove(); openPage(B.id, T.n); setTimeout(() => $('#teach') && $('#teach').click(), 60); };
 }
 
@@ -1132,7 +1155,7 @@ async function runReview(k) {
   $('#main').innerHTML = `<div class="prac"><div class="card fb"><span class="spin"></span> Writing your check on ${esc(sec.title)}…</div></div>`;
   let qz; try { qz = await api('quiz', {book: b, title: (sec.num ? sec.num + ' ' : '') + sec.title, pages: Array.from({length: end - sec.n}, (_, i) => sec.n + i), avoid: (r.hist || []).flatMap(h => h.qs || []).join(' | ')}); } catch (e) { $('#main').innerHTML = `<div class="prac"><div class="card fb">Could not make the check: ${esc(e.message)}</div></div>`; return; }
   const got = []; let shown = false;
-  const draw = () => { $('#main').innerHTML = `<div class="prac"><div class="row" style="margin-bottom:10px"><h2 style="margin:0;font-size:22px">${esc((sec.num ? sec.num + ' ' : '') + sec.title)}</h2><span class="sp"></span><span class="meta">Review ${(r.step || 0) + 1} of ${REV_DAYS.length}</span></div>
+  const draw = () => { $('#main').innerHTML = `<div class="prac">${sessBar('rev', k)}<div class="row" style="margin-bottom:10px"><h2 style="margin:0;font-size:22px">${esc((sec.num ? sec.num + ' ' : '') + sec.title)}</h2><span class="sp"></span><span class="meta">Review ${(r.step || 0) + 1} of ${REV_DAYS.length}</span></div>
     ${qz.qs.map((q, i) => `<div class="card qbig" style="margin-bottom:12px"><div>${mdx(q.q)}</div><textarea data-i="${i}" rows="3" placeholder="Answer from memory" style="margin-top:10px;font:15px/1.6 var(--f-ui)" ${shown ? 'readonly' : ''}></textarea>
       ${shown ? `<div class="co worked" style="margin:12px 0 8px"><div class="ct">Model answer</div>${mdx(q.a)}</div><div class="row" style="font-family:var(--f-ui)">${[[1, 'Got it'], [.5, 'Partly'], [0, 'Missed it']].map(([v, l]) => `<button data-g="${i}" data-v="${v}" class="${got[i] === v ? 'pri' : ''}">${l}</button>`).join('')}</div>` : ''}</div>`).join('')}
     <div class="row">${shown ? `<span class="meta">Mark yourself honestly; it sets when this comes back.</span><span class="sp"></span><button class="pri" id="rvDone" ${got.filter(x => x != null).length < qz.qs.length ? 'disabled' : ''}>Done</button>` : `<span class="sp"></span><button class="pri" id="rvShow">Show answers</button>`}</div></div>`;
@@ -1141,10 +1164,389 @@ async function runReview(k) {
     document.querySelectorAll('[data-g]').forEach(x => x.onclick = () => { got[+x.dataset.g] = +x.dataset.v; draw(); });
     if ($('#rvDone')) $('#rvDone').onclick = () => { const sc = got.reduce((a, b) => a + b, 0) / got.length, st = sc >= .67 ? Math.min(REV_DAYS.length, (r.step || 0) + 1) : 0;
       r.hist = [...(r.hist || []), {t: Date.now(), sc, qs: qz.qs.map(q => q.q.slice(0, 120))}].slice(-6); r.last = sc; r.step = st; r.t = Date.now(); r.due = st >= REV_DAYS.length ? 0 : Date.now() + REV_DAYS[st] * 864e5;
-      act('c', 3); saveProg(); const nxt = reviewsDue()[0];
-      $('#main').innerHTML = `<div class="prac"><div class="card flash"><div class="term">${Math.round(sc * 100)}%</div><p>${r.due ? 'Next check ' + fmtD(ymd(new Date(r.due))) : 'Section done: no more checks needed.'}</p><div class="row" style="justify-content:center">${nxt ? '<button class="pri" id="rvNext">Next review</button>' : ''}<button id="rvBack">Back</button></div></div></div>`;
-      if ($('#rvNext')) $('#rvNext').onclick = () => runReview(nxt.k); $('#rvBack').onclick = () => { S.pf = {...(S.pf || {}), view: 'rev'}; renderPrac(); }; };
+      act('c', 3); saveProg(); sessMark('rev', k, sc); const nxt = !sessCur('rev', k) && reviewsDue()[0];
+      $('#main').innerHTML = `<div class="prac"><div class="card flash"><div class="term">${Math.round(sc * 100)}%</div><p>${r.due ? 'Next check ' + fmtD(ymd(new Date(r.due))) : 'Section done: no more checks needed.'}</p><div class="row" style="justify-content:center">${sessCur('rev', k) ? '<button class="pri" data-sx="next">Continue</button>' : `${nxt ? '<button class="pri" id="rvNext">Next review</button>' : ''}<button id="rvBack">Back</button>`}</div></div></div>`;
+      if ($('#rvNext')) $('#rvNext').onclick = () => runReview(nxt.k); if ($('#rvBack')) $('#rvBack').onclick = () => { S.pf = {...(S.pf || {}), view: 'rev'}; renderPrac(); }; };
   }; const ans = {}; draw();
+}
+
+// ---------- flashcards: one scheduler for textbook terms and my own decks ----------
+// state lives in prog.terms[key] = {box 0-5, t: last graded, f: first seen, l: lapses}; textbook keys are "book:term", my cards are "~cardId"
+// prog.decks[id] = {id, name, book, cards: [{id, f, b, book?, tp?}], t, del?}
+const NEW_PER_DAY = 15;
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+const pj = t => { const s = String(t || '').replace(/```(json)?/g, ''), m = s.match(/\{[\s\S]*\}/); return JSON.parse(m ? m[0] : s); };
+const pcCol = pc => pc < .4 ? 'var(--bad)' : pc < .7 ? 'var(--warn)' : 'var(--good)';
+const cardDue = s => !!s && Date.now() >= s.t + BOXDAYS[s.box] * 864e5;
+const nextBox = (s, g) => { const b = s ? s.box : 0; return g === 0 ? 0 : g === 1 ? Math.max(1, b) : Math.min(5, b + (g === 3 ? 2 : 1)); };
+const GRADES = ['Again', 'Hard', 'Good', 'Easy'];
+const ivl = d => d === 0 ? 'now' : d === 1 ? '1 day' : d < 30 ? d + ' days' : Math.round(d / 30) + ' mo';
+function gradeCard(key, g) { const s = S.prog.terms[key], now = Date.now(); S.prog.terms[key] = {box: nextBox(s, g), t: now, f: s ? (s.f || 1) : now, l: ((s && s.l) || 0) + (s && g === 0 ? 1 : 0)}; act('c'); }
+const newToday = () => { const t = todayS(); return Object.values(S.prog.terms).filter(s => s.f > 1 && ymd(new Date(s.f)) === t).length; };
+const myDecks = () => Object.values(S.prog.decks || {}).filter(d => !d.del).sort((a, b) => (b.t || 0) - (a.t || 0));
+const deckCard = (d, c) => ({key: '~' + c.id, f: c.f, b: c.b, md: true, book: c.book || d.book || '', tp: c.tp, deck: d.id, src: d.name});
+function allCards() {
+  const out = [];
+  for (const B of S.books) for (const x of B.terms || []) out.push({key: B.id + ':' + x.k, f: x.k, b: x.d, book: B.id, n: x.n, src: B.subject + ' key term'});
+  for (const d of myDecks()) for (const c of d.cards) out.push(deckCard(d, c));
+  return out;
+}
+function deckStats(d) { let due = 0, nw = 0; for (const c of d.cards) { const s = S.prog.terms['~' + c.id]; if (!s) nw++; else if (cardDue(s)) due++; } return {due, nw}; }
+function saveDeck(d) { d.t = Date.now(); S.prog.decks[d.id] = d; saveProg(); }
+function addCards(name, book, cards) { // into the deck with this name (made if missing); returns the deck
+  let d = myDecks().find(x => x.name === name && (x.book || '') === (book || ''));
+  if (!d) d = {id: uid(), name, book: book || '', cards: []};
+  for (const c of cards) if (c.f && c.b && !d.cards.some(x => x.f === c.f)) d.cards.push({id: uid(), f: String(c.f), b: String(c.b), ...(c.book && c.book !== d.book ? {book: c.book} : {}), ...(c.tp ? {tp: c.tp} : {})});
+  saveDeck(d); return d;
+}
+function cardHtml(c, flipped, head) {
+  MATH = !!(bookOf(c.book) || {}).math;
+  const f = c.md ? mdx(c.f) : esc(c.f), s = S.prog.terms[c.key];
+  return `<div style="max-width:580px;margin:0 auto">${head || ''}</div><div class="card flash"><div class="meta">${esc(c.src || '')}</div><div class="term ${String(c.f).length > 70 ? 'long' : ''}">${f}</div>${flipped
+    ? `<div class="def">${c.md ? mdx(c.b) : esc(c.b)}</div><div class="gr">${GRADES.map((l, g) => `<button data-gr="${g}" class="${g === 2 ? 'pri' : ''}">${l}<span class="meta">${ivl(BOXDAYS[nextBox(s, g)])}</span></button>`).join('')}</div><div class="meta">Keys 1-4</div>`
+    : `<button class="pri" id="flip" style="align-self:center">Reveal</button><div class="meta">Say or think the answer first · space to flip</div>`}</div>`;
+}
+function showCard(c, head, onDone) {
+  let fl = false; S.term = {k: String(c.f).slice(0, 200), d: String(c.b).slice(0, 400)};
+  const draw = () => { $('#main').innerHTML = cardHtml(c, fl, head);
+    if (!fl) $('#flip').onclick = () => { fl = true; draw(); };
+    else document.querySelectorAll('[data-gr]').forEach(x => x.onclick = () => { gradeCard(c.key, +x.dataset.gr); onDone(+x.dataset.gr); }); };
+  draw();
+}
+function studyCards(list, back) {
+  const q = list.slice(), again = new Set(); let i = 0, done = 0;
+  if (!q.length) return back();
+  const nx = () => {
+    if (i >= q.length) { $('#main').innerHTML = `<div class="card flash"><div class="term">Done</div><p>${done} cards reviewed.</p><div><button class="pri" id="bk2">Back</button></div></div>`; $('#bk2').onclick = back; return; }
+    const c = q[i]; showCard(c, `<div class="meta" style="text-align:center;margin-top:10px">${i + 1} / ${q.length}</div>`, g => { done++; if (g === 0 && !again.has(c.key)) { again.add(c.key); q.push(c); } i++; nx(); });
+  };
+  nx();
+}
+const tvSeg = () => `<div class="seg" id="tvs">${[['book', 'Textbook terms'], ['decks', 'My decks' + (myDecks().length ? ' · ' + myDecks().length : '')]].map(([k, l]) => `<button data-v="${k}" class="${(S.tv || 'book') === k ? 'on' : ''}">${l}</button>`).join('')}</div>`;
+const tvWire = () => document.querySelectorAll('#tvs [data-v]').forEach(x => x.onclick = () => { S.tv = x.dataset.v; LS.set('ib-tv', S.tv); renderTerms(); });
+const bookOpts = (sel, none) => (none ? `<option value="">${none}</option>` : '') + S.books.map(B => `<option value="${B.id}" ${B.id === sel ? 'selected' : ''}>${esc(B.subject || B.title)}</option>`).join('');
+
+function renderDecks() {
+  shell('terms'); setHash('#/terms'); S.term = null;
+  const ds = myDecks();
+  $('#main').innerHTML = `<div class="prac"><div class="row" style="justify-content:space-between"><h2 style="margin:0">Flashcards</h2><div class="row"><button id="dkNew">New deck</button><button id="dkImp">Import from Quizlet</button><button class="pri" id="dkAI"><svg class="i"><use href="#i-spark"/></svg>Make with Claude</button></div></div>
+    <div style="margin:12px 0">${tvSeg()}</div>
+    ${ds.length ? `<div class="card lst">${ds.map(d => { const st = deckStats(d), B = bookOf(d.book); return `<div class="row"><div style="min-width:0;flex:1"><b>${esc(d.name)}</b><div class="meta">${B ? esc(B.subject) + ' · ' : ''}${d.cards.length} cards${st.due ? ` · <b style="color:var(--red)">${st.due} due</b>` : ''}${st.nw ? ' · ' + st.nw + ' new' : ''}</div></div><button data-ed="${d.id}">Edit</button><button data-cr="${d.id}" title="Go through every card, ignoring the schedule">Cram</button><button class="pri" data-sd="${d.id}" ${st.due + st.nw ? '' : 'disabled'}>Study${st.due + st.nw ? ' ' + Math.min(40, st.due + st.nw) : ''}</button></div>`; }).join('')}</div>`
+      : `<div class="card" style="padding:28px;text-align:center"><b>No decks yet</b><div class="meta" style="margin-top:4px">Make your own, paste a set from Quizlet, or have Claude write cards from a textbook topic, your notes or your weak spots. Your cards join the daily review automatically.</div></div>`}</div>`;
+  tvWire();
+  $('#dkNew').onclick = () => renderDeckEdit(); $('#dkImp').onclick = () => renderImport(); $('#dkAI').onclick = () => renderMake();
+  document.querySelectorAll('[data-ed]').forEach(x => x.onclick = () => renderDeckEdit(x.dataset.ed));
+  document.querySelectorAll('[data-sd]').forEach(x => x.onclick = () => { const d = S.prog.decks[x.dataset.sd], cs = d.cards.map(c => deckCard(d, c)), due = cs.filter(c => cardDue(S.prog.terms[c.key])), nw = cs.filter(c => !S.prog.terms[c.key]);
+    studyCards([...due.sort(() => Math.random() - .5), ...nw].slice(0, 40), renderDecks); });
+  document.querySelectorAll('[data-cr]').forEach(x => x.onclick = () => { const d = S.prog.decks[x.dataset.cr]; studyCards(d.cards.map(c => deckCard(d, c)).sort(() => Math.random() - .5), renderDecks); });
+}
+function renderDeckEdit(id) {
+  shell('terms'); title([['Flashcards', 'terms'], id ? 'Edit deck' : 'New deck']);
+  const d = id ? JSON.parse(JSON.stringify(S.prog.decks[id])) : {id: uid(), name: '', book: S.book ? S.book.id : '', cards: []};
+  const row = c => `<div class="ecard" data-cid="${c.id}"><textarea rows="2" placeholder="Front (term or question)">${esc(c.f)}</textarea><textarea rows="2" placeholder="Back (definition or answer)">${esc(c.b)}</textarea><button class="ghost" data-del aria-label="Delete card"><svg class="i"><use href="#i-x"/></svg></button></div>`;
+  $('#main').innerHTML = `<div class="prac"><div class="row" style="margin-bottom:12px"><button id="deBack"><svg class="i"><use href="#i-l"/></svg>Decks</button><span class="sp"></span>${id ? '<button id="deX">Copy as text</button><button id="deDel" style="color:var(--red)">Delete deck</button>' : ''}<button class="pri" id="deSave">Save</button></div>
+    <div class="row" style="flex-wrap:nowrap"><input id="deN" placeholder="Deck name" value="${esc(d.name)}" style="flex:2"><select id="deB" style="flex:1">${bookOpts(d.book, 'No subject')}</select></div>
+    <p class="meta">Markdown works, and $...$ for maths or chemistry. Empty rows are dropped when you save.</p>
+    <div class="card" id="deL">${d.cards.map(row).join('')}</div><div class="row" style="margin-top:10px"><button id="deAdd">Add card</button><span class="meta" id="deC"></span></div></div>`;
+  const count = () => { $('#deC').textContent = document.querySelectorAll('#deL .ecard').length + ' cards'; };
+  const add = () => { const c = {id: uid(), f: '', b: ''}; $('#deL').insertAdjacentHTML('beforeend', row(c)); wire(); count(); const r = $('#deL').lastElementChild; r.querySelector('textarea').focus(); };
+  const wire = () => document.querySelectorAll('#deL [data-del]').forEach(x => x.onclick = () => { x.closest('.ecard').remove(); count(); });
+  wire(); count(); if (!d.cards.length) add();
+  $('#deL').addEventListener('keydown', e => { if (e.key === 'Tab' && !e.shiftKey && e.target === $('#deL').lastElementChild?.querySelectorAll('textarea')[1]) { e.preventDefault(); add(); } });
+  $('#deAdd').onclick = add; $('#deBack').onclick = renderDecks;
+  $('#deSave').onclick = () => { const old = new Map(d.cards.map(c => [c.id, c]));
+    d.name = $('#deN').value.trim() || 'Untitled deck'; d.book = $('#deB').value;
+    d.cards = [...document.querySelectorAll('#deL .ecard')].map(r => { const [f, b] = [...r.querySelectorAll('textarea')].map(t => t.value.trim()); return f && b ? {...(old.get(r.dataset.cid) || {}), id: r.dataset.cid, f, b} : null; }).filter(Boolean);
+    saveDeck(d); renderDecks(); };
+  if ($('#deDel')) $('#deDel').onclick = () => { if (!confirm(`Delete “${d.name}” and its ${d.cards.length} cards?`)) return; saveDeck({id: d.id, del: 1, name: d.name, cards: []}); renderDecks(); };
+  if ($('#deX')) $('#deX').onclick = () => { navigator.clipboard.writeText(d.cards.map(c => c.f.replace(/\s+/g, ' ') + '\t' + c.b.replace(/\s+/g, ' ')).join('\n')).then(() => { $('#deX').textContent = 'Copied'; }); };
+}
+
+// Quizlet export: set → ⋯ → Export gives "term<TAB>definition" one per line by default; other separators are configurable there
+function csvRow(r) { const out = []; let cur = '', q = false; for (let i = 0; i < r.length; i++) { const ch = r[i]; if (q) { if (ch === '"' && r[i + 1] === '"') { cur += '"'; i++; } else if (ch === '"') q = false; else cur += ch; } else if (ch === '"' && !cur.trim()) q = true; else if (ch === ',') { out.push(cur); cur = ''; } else cur += ch; } out.push(cur); return out; }
+function parseCards(txt, ts, rs) {
+  const rows = rs === '\n' ? txt.split(/\r?\n/) : txt.split(rs);
+  return rows.map(r => { if (ts === ',') { const m = csvRow(r.trim()); return m.length >= 2 ? [m[0], m.slice(1).join(',')] : null; } const i = r.indexOf(ts); return i < 0 ? null : [r.slice(0, i), r.slice(i + ts.length)]; })
+    .filter(x => x && x[0].trim() && x[1].trim()).map(([f, b]) => ({f: f.trim(), b: b.trim()}));
+}
+function renderImport() {
+  shell('terms'); title([['Flashcards', 'terms'], 'Import']);
+  const st = {ts: '\t', rs: '\n'};
+  $('#main').innerHTML = `<div class="prac"><div class="row" style="margin-bottom:12px"><button id="imBack"><svg class="i"><use href="#i-l"/></svg>Decks</button></div><h2>Import flashcards</h2>
+    <ol class="meta" style="line-height:1.7;padding-left:20px"><li>In Quizlet, open the set and choose <b>⋯ → Export</b>.</li><li>Leave the separators as <b>Tab</b> and <b>New line</b>, then <b>Copy text</b>.</li><li>Paste it below. Anki or spreadsheet exports (CSV or tab-separated) work too.</li></ol>
+    <textarea id="imT" rows="10" placeholder="term&#9;definition&#10;term&#9;definition"></textarea>
+    <div class="row" style="margin-top:8px"><label class="ck"><input type="file" id="imF" accept=".txt,.csv,.tsv" style="display:none"><button id="imFB" type="button">Or choose a file</button></label><span class="sp"></span>
+      <span class="meta">Between term and definition</span><select id="imTS" style="width:auto"><option value="\t">Tab</option><option value=",">Comma</option><option value=" - ">Dash ( - )</option><option value="c">Custom…</option></select>
+      <span class="meta">Between cards</span><select id="imRS" style="width:auto"><option value="\n">New line</option><option value=";">Semicolon</option><option value="c">Custom…</option></select></div>
+    <div class="row hide" id="imCu" style="margin-top:8px"><input id="imTSc" placeholder="Term separator" style="flex:1"><input id="imRSc" placeholder="Card separator" style="flex:1"></div>
+    <div id="imP" style="margin-top:14px"></div>
+    <div class="row" style="margin-top:14px;flex-wrap:nowrap"><input id="imN" placeholder="Deck name" style="flex:2"><select id="imB" style="flex:1">${bookOpts(S.book && S.book.id, 'No subject')}</select><button class="pri" id="imGo" disabled>Import</button></div></div>`;
+  const sep = (sel, inp) => $(sel).value === 'c' ? $(inp).value.replace(/\\t/g, '\t').replace(/\\n/g, '\n') : $(sel).value;
+  let cards = [];
+  const upd = () => { $('#imCu').classList.toggle('hide', $('#imTS').value !== 'c' && $('#imRS').value !== 'c');
+    const ts = sep('#imTS', '#imTSc'), rs = sep('#imRS', '#imRSc'); cards = ts && rs ? parseCards($('#imT').value, ts, rs) : [];
+    $('#imP').innerHTML = !$('#imT').value.trim() ? '' : cards.length ? `<div class="meta" style="margin-bottom:6px"><b style="color:var(--ink)">${cards.length} cards found</b>${cards.length > 6 ? ', first 6 shown' : ''}</div><div class="card lst">${cards.slice(0, 6).map(c => `<div class="row" style="align-items:flex-start;flex-wrap:nowrap"><b style="flex:1">${esc(c.f)}</b><span style="flex:2">${esc(c.b)}</span></div>`).join('')}</div>`
+      : '<div class="meta" style="color:var(--bad)">No cards found. Check the separators match your export.</div>';
+    $('#imGo').disabled = !cards.length; };
+  $('#imT').oninput = () => { const v = $('#imT').value; if (!v.includes('\t') && $('#imTS').value === '\t') $('#imTS').value = /^[^\n]* - /m.test(v) ? ' - ' : ','; upd(); };
+  ['#imTS', '#imRS', '#imTSc', '#imRSc'].forEach(s => $(s).oninput = upd);
+  $('#imFB').onclick = () => $('#imF').click();
+  $('#imF').onchange = async e => { const f = e.target.files[0]; if (!f) return; $('#imT').value = await f.text(); if (!$('#imN').value) $('#imN').value = f.name.replace(/\.\w+$/, ''); $('#imT').oninput(); };
+  $('#imBack').onclick = renderDecks;
+  $('#imGo').onclick = () => { const d = {id: uid(), name: $('#imN').value.trim() || 'Imported deck', book: $('#imB').value, cards: cards.map(c => ({id: uid(), ...c}))}; saveDeck(d); S.tv = 'decks'; LS.set('ib-tv', 'decks'); renderDecks(); };
+}
+
+// ---------- sections: free-recall targets ----------
+const secEnd = (B, sec) => { const nx = B.toc.find(t => t.n > sec.n && t.lvl <= sec.lvl); return Math.min(nx ? nx.n : B.pages + 1, sec.n + 14); };
+const secPages = (B, sec) => Array.from({length: secEnd(B, sec) - sec.n}, (_, i) => sec.n + i);
+const secLabel = sec => (sec.num ? sec.num + ' ' : '') + sec.title;
+function recallTargets(B) { const ok = t => !/^[ivxlc]+$/i.test(t.bp || '') && t.n >= (B.start || 1); const a = B.toc.filter(t => ok(t) && t.lvl >= 2 && t.lvl <= 3); return a.length ? a : B.toc.filter(t => ok(t) && t.lvl <= 1); }
+function recallSecAt(B, n) { const ts = recallTargets(B); let s = null; for (const t of ts) { if (t.n > n) break; s = t; } return s || ts[0]; }
+const RC_DAYS = [1, 3, 7, 21, 60];
+function recallDue() { return Object.entries(S.prog.recall || {}).map(([k, r]) => { const [b, n] = k.split('|'), B = bookOf(b), sec = B && B.toc.find(t => t.n === +n); return sec && r.due && r.due <= Date.now() ? {k, B, sec, r} : null; }).filter(Boolean).sort((a, b) => a.r.due - b.r.due); }
+function recallList(B) {
+  const ts = recallTargets(B), R = S.prog.recall || {}, cur = S.prog.lastBy[B.id] ? S.prog.lastBy[B.id].n : 0, groups = [];
+  for (const t of ts) { const u = B.toc.filter(x => x.lvl === 1 && x.lvl < t.lvl && x.n <= t.n).pop(); const g = u ? secLabel(u) : B.subject; if (!groups.length || groups[groups.length - 1].g !== g) groups.push({g, ts: []}); groups[groups.length - 1].ts.push(t); }
+  const done = Object.keys(R).filter(k => k.startsWith(B.id + '|')).length;
+  return `<p class="meta" style="margin:14px 0">Pick a section, close the book and write down everything you remember. Claude checks it against the textbook, shows you exactly what you left out, and can turn the gaps into flashcards. Sections come back after 1, 3, 7, 21 and 60 days until you recall them well.${done ? ` You've done ${done} so far.` : ''}</p>
+    ${groups.map(g => `<details class="card rcg" ${g.ts.some(t => t.n <= cur && secEnd(B, t) > cur) || groups.length === 1 ? 'open' : ''}><summary><b>${esc(g.g)}</b></summary><div class="lst">${g.ts.map(t => { const r = R[B.id + '|' + t.n]; return `<div class="row" data-rc="${t.n}" style="cursor:pointer;${t.lvl > ts[0].lvl ? 'padding-left:30px' : ''}"><span style="flex:1">${esc(secLabel(t))}</span>${r ? `<span class="num" style="color:${pcCol(r.last)};font-weight:600">${Math.round(r.last * 100)}%</span>${r.due && r.due <= Date.now() ? '<span class="tag r">Due</span>' : r.due ? `<span class="meta">next ${fmtD(ymd(new Date(r.due)), {day: 'numeric', month: 'short'})}</span>` : ''}` : '<span class="meta">not done</span>'}</div>`; }).join('')}</div></details>`).join('')}`;
+}
+const RECALL_SYS = `You are checking a free-recall ("brain dump") exercise. The student closed their IB textbook and wrote down everything they remember about one section. Compare what they wrote with the textbook pages provided for that section. Judge how much of the section's important, examinable content they recalled correctly: main concepts, key terms and definitions, processes and how ideas connect, equations, examples and case studies. Ignore trivia, spelling and style; notes and bullet points are fine. Be honest and specific, and encouraging in tone.
+
+Reply with ONLY a JSON object, no code fence: {"score": integer 0-100 (share of the section's important content recalled correctly), "verdict": "one sentence to the student", "covered": ["important points they recalled, a few words each"], "missed": [{"point": "an important point they left out, stated fully and accurately so they can learn it from this line", "p": textbook page number or null}], "wrong": [{"said": "what they wrote, quoted briefly", "fix": "the correct version"}], "cards": [{"f": "flashcard front: a specific question targeting one missed or wrong point", "b": "short precise answer"}]}. Missed: most important first, at most 8. One card per missed or wrong point, at most 8. Use LaTeX in $...$ for maths and \\ce{} for chemistry where needed.`;
+function renderRecall(b, n) {
+  const B = bookOf(b); if (!B) return go('prac');
+  if (n == null) { S.book = B; renderToc(); S.pf = {...(S.pf || {}), view: 'recall'}; return renderPrac(); }
+  const sec = B.toc.find(t => t.n === +n) || recallSecAt(B, +n), k = B.id + '|' + sec.n, r = (S.prog.recall || {})[k], dk = LSK('ib-rc-' + k), pages = secPages(B, sec);
+  shell('prac'); S.q = null; S.rc = sec; setHash(`#/recall/${b}/${sec.n}`); title([['Practice', 'prac'], 'Free recall']); MATH = !!B.math;
+  $('#main').innerHTML = `<div class="prac">${sessBar('rc', k)}<div class="row" style="margin-bottom:10px">${sessCur('rc', k) ? '' : '<button id="rcBack"><svg class="i"><use href="#i-l"/></svg>Sections</button>'}<span class="sp"></span>${r ? `<span class="meta">last time ${Math.round(r.last * 100)}%</span>` : ''}</div>
+    <div class="meta">${esc(B.subject)} · free recall</div><h2 style="margin:2px 0 10px">${esc(secLabel(sec))}</h2>
+    <div class="co concept" style="margin:0 0 14px"><div class="ct"><b>Close the book</b></div>Write down everything you can remember about this section: the key ideas, terms, definitions, examples and how they link up. Bullet points are fine. Don't look anything up. The gaps are the point.</div>
+    <textarea id="rcA" rows="14" placeholder="Everything you remember…">${esc(LS.get(dk, ''))}</textarea>
+    <div class="row" style="margin-top:8px"><span class="meta" id="rcW"></span><span class="meta" id="rcT"></span><span class="sp"></span><button class="pri" id="rcGo">Check against the textbook</button></div><div id="rcF"></div></div>`;
+  const ta = $('#rcA'), t0 = Date.now(), wc = () => { $('#rcW').textContent = (ta.value.match(/\S+/g) || []).length + ' words'; LS.set(dk, ta.value); }; ta.oninput = wc; wc(); ta.focus();
+  const tick = setInterval(() => { if (!document.body.contains(ta)) return clearInterval(tick); const s = (Date.now() - t0) / 1000 | 0; $('#rcT').textContent = '· ' + (s / 60 | 0) + ':' + String(s % 60).padStart(2, '0'); }, 1000);
+  if ($('#rcBack')) $('#rcBack').onclick = () => renderRecall(b);
+  $('#rcGo').onclick = async () => {
+    const txt = ta.value.trim(); if ((txt.match(/\S+/g) || []).length < 5) { ta.focus(); ta.placeholder = 'Write at least a few points first. Anything you can remember counts.'; return; }
+    $('#rcGo').disabled = true; ta.readOnly = true; $('#rcF').innerHTML = '<div class="card fb"><span class="spin"></span> Checking against the textbook…</div>';
+    const user = `Section: ${secLabel(sec)} (${B.subject}, textbook pages ${sec.bp || sec.n} onwards)\n\nWhat the student recalled from memory:\n"""\n${txt}\n"""`;
+    let fb; try { const res = await api('ask', {mode: 'mark', rubric: RECALL_SYS, book: B.id, pages, messages: [{role: 'user', content: user}]}); fb = pj(res.text); }
+    catch (e) { $('#rcF').innerHTML = `<div class="card fb">Checking failed: ${esc(e.message)}</div>`; $('#rcGo').disabled = false; ta.readOnly = false; return; }
+    const sc = Math.max(0, Math.min(100, +fb.score || 0)) / 100, R = S.prog.recall = S.prog.recall || {}, o = R[k] || {step: 0, hist: []};
+    o.step = sc >= .8 ? Math.min(RC_DAYS.length - 1, (r ? o.step + 1 : 1)) : sc >= .5 ? Math.max(0, Math.min(o.step, 1)) : 0;
+    o.due = Date.now() + RC_DAYS[o.step] * 864e5; o.last = sc; o.t = Date.now();
+    o.hist = [...(o.hist || []), {t: Date.now(), sc, miss: (fb.missed || []).slice(0, 5).map(m => String(m.point || m).slice(0, 140))}].slice(-6); R[k] = o;
+    act('q'); saveProg(); LS.set(dk, ''); sessMark('rc', k, sc);
+    const cards = (fb.cards || []).filter(c => c.f && c.b), T = topicsOf(B).find(t => sec.n >= t.n && sec.n < t.end);
+    $('#rcF').innerHTML = `<div class="card fb"><div class="row" style="gap:16px"><div class="score" style="color:${pcCol(sc)}">${Math.round(sc * 100)}%</div><div>${esc(fb.verdict || '')}<div class="meta">Comes back ${fmtD(ymd(new Date(o.due)))}</div></div></div>
+      ${fb.covered && fb.covered.length ? '<h4>What you remembered</h4><ul>' + li(fb.covered) + '</ul>' : ''}
+      ${fb.missed && fb.missed.length ? '<h4>What you left out</h4><ul>' + fb.missed.map(m => `<li>${mdx(String(m.point || m), true)}${m.p ? ` <a href="#" class="meta" data-bp="${esc(m.p)}">p. ${esc(m.p)}</a>` : ''}</li>`).join('') + '</ul>' : ''}
+      ${fb.wrong && fb.wrong.length ? '<h4>Not quite right</h4><ul>' + fb.wrong.map(w => `<li><s class="meta">${esc(w.said || '')}</s> ${mdx(String(w.fix || ''), true)}</li>`).join('') + '</ul>' : ''}
+      <div class="row" style="margin-top:16px">${cards.length ? `<button class="pri" id="rcC">Make ${cards.length} flashcards from the gaps</button>` : ''}<button id="rcR">Reread the section</button><button id="rcD"><svg class="i"><use href="#i-spark"/></svg>Discuss</button>${sessCur('rc', k) ? '<span class="sp"></span><button class="pri" data-sx="next">Next →</button>' : ''}</div></div>`;
+    document.querySelectorAll('#rcF [data-bp]').forEach(a => a.onclick = e => { e.preventDefault(); goBp(B.id, a.dataset.bp); });
+    if ($('#rcC')) $('#rcC').onclick = () => { addCards('Recall gaps · ' + B.subject, B.id, cards.map(c => ({...c, tp: T && T.num}))); $('#rcC').disabled = true; $('#rcC').textContent = `Added to “Recall gaps · ${B.subject}”`; };
+    $('#rcR').onclick = () => openPage(B.id, sec.n);
+    $('#rcD').onclick = () => openChat({title: 'Free recall: ' + sec.title, book: B.id, pages, fixed: true, msgs: [{role: 'user', content: user, show: 'My free recall of ' + secLabel(sec)}, {role: 'assistant', content: `${Math.round(sc * 100)}%. ${fb.verdict || ''}\n\nLeft out:\n${(fb.missed || []).map(m => '- ' + (m.point || m)).join('\n')}\n\nNot quite right:\n${(fb.wrong || []).map(w => '- "' + w.said + '": ' + w.fix).join('\n')}`}]});
+    $('#rcF').scrollIntoView({behavior: 'smooth'});
+  };
+}
+
+// ---------- Claude makes flashcards: from a topic, my notes, or my weak spots ----------
+const CARD_SYS = `You write excellent IB flashcards for active recall and spaced repetition. Rules: one idea per card; the front is a specific prompt (a term to define, or a precise question using IB command terms like state, define, outline, explain, compare), never vague ("What about X?"); the back is a short, precise answer (one to three sentences or a short list) using the course's key terms and the textbook's wording; cover the most examinable content first; include examples or case studies and equations where they matter; no duplicates or near-duplicates; no cards that just ask for page numbers or trivia. Use LaTeX in $...$ for maths and \\ce{} for chemistry where needed.
+
+Reply with ONLY a JSON object, no code fence: {"cards": [{"f": "front", "b": "back"}]}`;
+function weakSpots(B, n = 3) { return topicsOf(B).map(T => ({T, m: mastery(B, T)})).filter(x => x.m.v != null).sort((a, b) => a.m.v - b.m.v).slice(0, n); }
+function renderMake(pre) {
+  shell('terms'); title([['Flashcards', 'terms'], 'Make with Claude']);
+  const st = {src: (pre && pre.src) || 'topic', book: (pre && pre.book) || (S.book && S.book.id), n: 12, style: 'mix'};
+  const draw = () => { const B = bookOf(st.book), ts = recallTargets(B), cur = (S.prog.lastBy[B.id] || {}).n || 0, ws = weakSpots(B);
+    $('#main').innerHTML = `<div class="prac"><div class="row" style="margin-bottom:12px"><button id="mkBack"><svg class="i"><use href="#i-l"/></svg>Decks</button></div><h2>Make flashcards with Claude</h2>
+      <div class="fl">From</div><div class="seg" id="mkS">${[['topic', 'A textbook section'], ['notes', 'My notes'], ['weak', 'My weak spots']].map(([k, l]) => `<button data-v="${k}" class="${st.src === k ? 'on' : ''}">${l}</button>`).join('')}</div>
+      <div class="fl">Subject</div><select id="mkB">${bookOpts(st.book)}</select>
+      ${st.src === 'topic' ? `<div class="fl">Section</div><select id="mkT">${ts.map(t => `<option value="${t.n}" ${(st.sec ? st.sec === t.n : t.n <= cur && secEnd(B, t) > cur) ? 'selected' : ''}>${t.lvl > ts[0].lvl ? '   ' : ''}${esc(secLabel(t))}</option>`).join('')}</select>`
+        : st.src === 'notes' ? `<div class="fl">Paste your notes</div><textarea id="mkN" rows="10" placeholder="Class notes, a summary, a revision sheet…">${esc(st.notes || '')}</textarea>`
+        : `<div class="meta" style="margin-top:10px">${ws.length ? 'Claude will target your weakest topics: ' + ws.map(x => `<b>${esc(x.T.num + ' ' + x.T.title)}</b> (${Math.round(x.m.v * 100)}%)`).join(', ') + ', plus what you got wrong in marked answers and free recalls.' : 'No marked work in this subject yet, so there are no weak spots to target. Try a few practice questions or a free recall first.'}</div>`}
+      <div class="row" style="margin-top:14px"><div><div class="fl" style="margin-top:0">Cards</div><select id="mkC" style="width:auto">${[8, 12, 20].map(x => `<option ${x === st.n ? 'selected' : ''}>${x}</option>`).join('')}</select></div>
+      <div><div class="fl" style="margin-top:0">Style</div><select id="mkY" style="width:auto">${[['mix', 'Mixed'], ['def', 'Terms and definitions'], ['q', 'Exam-style questions']].map(([k, l]) => `<option value="${k}" ${st.style === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
+      <span class="sp"></span><button class="pri" id="mkGo" ${st.src === 'weak' && !ws.length ? 'disabled' : ''} style="align-self:flex-end"><svg class="i"><use href="#i-spark"/></svg>Write cards</button></div><div id="mkOut"></div></div>`;
+    $('#mkBack').onclick = renderDecks;
+    document.querySelectorAll('#mkS [data-v]').forEach(x => x.onclick = () => { keep(); st.src = x.dataset.v; draw(); });
+    $('#mkB').onchange = e => { keep(); st.book = e.target.value; st.sec = null; draw(); };
+    const keep = () => { if ($('#mkN')) st.notes = $('#mkN').value; if ($('#mkT')) st.sec = +$('#mkT').value; st.n = +$('#mkC').value; st.style = $('#mkY').value; };
+    $('#mkGo').onclick = async () => { keep(); const B = bookOf(st.book); let pages = [], what = '', name = '', tp = null;
+      if (st.src === 'topic') { const sec = B.toc.find(t => t.n === st.sec); pages = secPages(B, sec); what = `the textbook section ${secLabel(sec)} (${B.subject}), using the textbook pages provided`; name = secLabel(sec); const T = topicsOf(B).find(t => sec.n >= t.n && sec.n < t.end); tp = T && T.num; }
+      else if (st.src === 'notes') { if (!(st.notes || '').trim()) return $('#mkN').focus(); what = `these ${B.subject} notes written by the student:\n"""\n${st.notes.slice(0, 12000)}\n"""`; name = B.subject + ' notes ' + fmtD(todayS(), {day: 'numeric', month: 'short'}); }
+      else { const ws = weakSpots(B), ev = [];
+        for (const {T} of ws) pages.push(...Array.from({length: Math.min(4, T.end - T.n)}, (_, i) => T.n + i));
+        for (const m of mistakes(B.id).slice(0, 8)) if (m.l.fb && m.l.fb.missed) ev.push(`Marked answer on ${m.q.topic || '?'} (${m.l.score}/${m.l.max}), missed: ${m.l.fb.missed.slice(0, 2).join('; ')}`);
+        for (const [kk, r] of Object.entries(S.prog.recall || {})) if (kk.startsWith(B.id + '|')) { const h = (r.hist || []).slice(-1)[0]; if (h && h.miss && h.miss.length) ev.push(`Free recall gaps: ${h.miss.join('; ')}`); }
+        what = `the ${B.subject} topics this student is weakest at: ${ws.map(x => `${x.T.num} ${x.T.title} (${Math.round(x.m.v * 100)}% mastery)`).join(', ')}. Target the specific things they keep getting wrong:\n${ev.slice(0, 14).map(x => '- ' + x).join('\n') || '- (no detailed feedback yet; cover the core of these topics)'}\nTextbook pages from these topics are provided.`; name = 'Weak spots · ' + B.subject; }
+      $('#mkGo').disabled = true; $('#mkOut').innerHTML = '<div class="card fb"><span class="spin"></span> Writing cards…</div>';
+      let cards; try { const r = await api('ask', {mode: 'mark', rubric: CARD_SYS, book: B.id, pages: pages.slice(0, 14), messages: [{role: 'user', content: `Write ${st.n} flashcards (${{mix: 'a mix of key terms and short exam-style questions', def: 'key terms and their definitions', q: 'short exam-style questions and model answers'}[st.style]}) covering ${what}`}]}); cards = (pj(r.text).cards || []).filter(c => c.f && c.b); }
+      catch (e) { $('#mkOut').innerHTML = `<div class="card fb">Could not write cards: ${esc(e.message)}</div>`; $('#mkGo').disabled = false; return; }
+      $('#mkGo').disabled = false; MATH = !!B.math;
+      const ds = myDecks();
+      $('#mkOut').innerHTML = `<h3 style="margin:24px 0 8px">${cards.length} cards <span class="meta">untick any you don't want</span></h3><div class="card lst">${cards.map((c, i) => `<label class="row" style="align-items:flex-start;flex-wrap:nowrap;cursor:pointer"><input type="checkbox" data-i="${i}" checked style="width:auto;margin-top:4px"><div style="flex:1;min-width:0"><b>${mdx(c.f, true)}</b><div style="font-family:var(--f-read)">${mdx(c.b, true)}</div></div></label>`).join('')}</div>
+        <div class="row" style="margin-top:12px;flex-wrap:nowrap"><select id="mkD" style="flex:1"><option value="">New deck: ${esc(name)}</option>${ds.map(d => `<option value="${d.id}">Add to ${esc(d.name)}</option>`).join('')}</select><button class="pri" id="mkSave">Save cards</button></div>`;
+      $('#mkSave').onclick = () => { const pick = cards.filter((c, i) => $(`#mkOut [data-i="${i}"]`).checked).map(c => ({...c, ...(tp ? {tp} : {})})); if (!pick.length) return;
+        const did = $('#mkD').value; if (did) { const d = S.prog.decks[did]; for (const c of pick) d.cards.push({id: uid(), f: c.f, b: c.b, ...(c.tp ? {tp: c.tp} : {}), ...(d.book !== B.id ? {book: B.id} : {})}); saveDeck(d); } else addCards(name, B.id, pick);
+        S.tv = 'decks'; LS.set('ib-tv', 'decks'); renderDecks(); };
+    };
+  };
+  draw();
+}
+
+// ---------- study sessions: one runner for mixed practice, daily review and Claude's picks ----------
+// S.sess = {title, items: [{t: 'q'|'c'|'rev'|'rc', id, c?, why?}], i, res: {index: 0-1}, t}
+function startSess(title, items) { if (!items.length) return alert('Nothing to study with those settings.'); S.sess = {title, items, i: 0, res: {}, t: Date.now()}; sessGo(0); }
+const sessCur = (t, id) => { const s = S.sess, it = s && s.items[s.i]; return !!it && it.t === t && it.id === id; };
+const sessMark = (t, id, v) => { if (sessCur(t, id)) S.sess.res[S.sess.i] = v; };
+function sessBar(t, id) {
+  if (!sessCur(t, id)) return ''; const s = S.sess, it = s.items[s.i], n = s.items.length;
+  return `<div class="card sbar"><div class="row"><b>${esc(s.title)}</b><span class="meta">${s.i + 1} of ${n}</span><span class="sp"></span><button data-sx="skip">Skip</button><button data-sx="end">End</button></div><div class="sprog"><i style="width:${s.i / n * 100}%"></i></div>${it.why ? `<div class="meta"><svg class="i" style="width:13px;height:13px;vertical-align:-2px"><use href="#i-spark"/></svg> ${esc(it.why)}</div>` : ''}</div>`;
+}
+function sessGo(i) {
+  const s = S.sess; if (!s) return; s.i = i; if (i >= s.items.length) return sessDone(); const it = s.items[i];
+  if (it.t === 'q') return openQ(it.id);
+  if (it.t === 'rev') return runReview(it.id);
+  if (it.t === 'rc') { const [b, n] = it.id.split('|'); return renderRecall(b, +n); }
+  shell('rev'); setHash('#/rev'); title([['Review', 'rev'], s.title]);
+  showCard(it.c, sessBar('c', it.id), g => { sessMark('c', it.id, g / 3); if (g === 0 && !it.again) s.items.push({...it, again: 1, why: 'Again: you missed this a moment ago'}); sessGo(s.i + 1); });
+}
+function sessDone() {
+  const s = S.sess; if (!s) return; S.sess = null;
+  const v = Object.values(s.res), avg = v.length ? v.reduce((a, b) => a + b, 0) / v.length : null, mins = Math.max(1, Math.round((Date.now() - s.t) / 6e4));
+  shell('rev'); setHash('#/rev'); title([['Review', 'rev'], 'Done']);
+  $('#main').innerHTML = `<div class="card flash"><div class="meta">${esc(s.title)}</div><div class="term">${avg == null ? 'Done' : Math.round(avg * 100) + '%'}</div><p>${v.length} of ${s.items.length} items done in ${mins} min${avg == null ? '' : ', average score'}.</p><div class="row" style="justify-content:center"><button class="pri" id="sdR">Back to Review</button><button id="sdH">Home</button></div></div>`;
+  $('#sdR').onclick = () => go('rev'); $('#sdH').onclick = () => go('home');
+}
+document.addEventListener('click', e => { const x = e.target.closest && e.target.closest('[data-sx]'); if (!x || !S.sess) return; e.preventDefault();
+  if (x.dataset.sx === 'end') sessDone(); else sessGo(S.sess.i + 1); });
+
+// ---------- interleaved practice: questions from different topics back to back ----------
+const tKey = q => q.book + '|' + (q.topic || '?').split('.').slice(0, 2).join('.');
+function spread(a, key) { a = a.slice().sort(() => Math.random() - .5); for (let i = 1; i < a.length; i++) if (key(a[i]) === key(a[i - 1])) { const j = a.findIndex((x, k) => k > i && key(x) !== key(a[i - 1])); if (j > 0) [a[i], a[j]] = [a[j], a[i]]; } return a; }
+const isShort = q => q.kind !== 'essay' && (q.marks || 0) <= 8;
+function buildMixed(books, focus, n, short) {
+  const G = {};
+  for (const q of S.qs) { if (!books.includes(q.book) || front(q) || q.pp || (short && !isShort(q))) continue;
+    const a = attOf(q.id), b = best(q.id), stale = a.length ? Math.min(1, (Date.now() - a[a.length - 1].t) / (14 * 864e5)) : 0;
+    const v = focus === 'new' ? (a.length ? -1 : 1) : focus === 'weak' ? (a.length ? 1 - b : .35) : (a.length ? .6 * (1 - b) + .4 * stale : .7);
+    if (v >= 0) (G[tKey(q)] = G[tKey(q)] || []).push([v + Math.random() * .3, q]); }
+  const groups = Object.values(G).map(g => g.sort((a, b) => b[0] - a[0])).sort((a, b) => b[0][0] - a[0][0]), out = [];
+  while (out.length < n && groups.some(g => g.length)) for (const g of groups) { if (out.length >= n) break; if (g.length) out.push(g.shift()[1]); }
+  return spread(out, tKey);
+}
+function mixedSetup() {
+  const bs = S.books.filter(B => S.qs.some(q => q.book === B.id && !front(q) && !q.pp)), st = {f: 'bal', n: 8};
+  const mo = openModal(`<h3 style="margin:0 0 4px;font:600 21px/1.25 var(--f-read)">Mixed practice</h3><p class="meta" style="margin:0">Questions from different topics back to back. It feels harder than doing one topic at a time, but you learn to spot which method a question needs, and it sticks better in the exam.</p>
+    <div class="fl">Subjects</div><div class="row" id="mxB">${bs.map(B => `<label class="ck"><input type="checkbox" value="${B.id}" ${B === S.book || bs.length === 1 ? 'checked' : ''}>${esc(B.subject)}</label>`).join('')}</div>
+    <div class="fl">Focus</div><div class="seg" id="mxF">${[['bal', 'Balanced'], ['weak', 'Weak spots'], ['new', 'Not tried yet']].map(([k, l]) => `<button data-v="${k}" class="${k === st.f ? 'on' : ''}">${l}</button>`).join('')}</div>
+    <div class="fl">Questions</div><div class="seg" id="mxN">${[5, 8, 12, 20].map(k => `<button data-v="${k}" class="${k === st.n ? 'on' : ''}">${k}</button>`).join('')}</div>
+    <label class="ck" style="margin-top:14px"><input type="checkbox" id="mxS" checked>Short questions only (no essays or long exam questions)</label>
+    <div class="row" style="margin-top:18px"><span class="sp"></span><button id="mClose">Cancel</button><button class="pri" id="mxGo">Start</button></div>`);
+  const segs = (id, k, num) => document.querySelectorAll(id + ' [data-v]').forEach(x => x.onclick = () => { st[k] = num ? +x.dataset.v : x.dataset.v; document.querySelectorAll(id + ' [data-v]').forEach(y => y.classList.toggle('on', y === x)); });
+  segs('#mxF', 'f'); segs('#mxN', 'n', 1);
+  $('#mxGo').onclick = () => { const books = [...document.querySelectorAll('#mxB input:checked')].map(x => x.value); if (!books.length) return;
+    const qs = buildMixed(books, st.f, st.n, $('#mxS').checked); mo.remove(); startSess('Mixed practice', qs.map(q => ({t: 'q', id: q.id}))); };
+}
+
+// ---------- daily review queue: due cards, a few new ones, mistakes, section checks, free recalls ----------
+function reviewQueue() {
+  const read = new Set(); for (const [k, o] of Object.entries(S.prog.secs || {})) { const b = k.split('|')[0]; for (const p of o.p || []) read.add(b + '|' + p); }
+  const due = [], fresh = [];
+  for (const c of allCards()) { const s = S.prog.terms[c.key]; if (s) { if (cardDue(s)) due.push(c); } else if (c.deck || read.has(c.book + '|' + c.n)) fresh.push(c); }
+  const nw = fresh.sort((a, b) => (b.deck ? 1 : 0) - (a.deck ? 1 : 0)).slice(0, Math.max(0, NEW_PER_DAY - newToday()));
+  const mist = mistakes().filter(m => m.ready).slice(0, 6), revs = reviewsDue().slice(0, 4), rc = recallDue().slice(0, 2);
+  const total = due.length + nw.length + mist.length + revs.length + rc.length, mins = Math.round(Math.min(60, due.length) * .3 + nw.length * .5 + mist.length * 4 + revs.length * 3 + rc.length * 7);
+  return {due, nw, mist, revs, rc, total, mins};
+}
+function reviewItems(Q) {
+  const cards = [...Q.due.sort(() => Math.random() - .5).slice(0, 60), ...Q.nw].map(c => ({t: 'c', id: c.key, c}));
+  const other = spread([...Q.mist.map(m => ({t: 'q', id: m.q.id, why: 'From your mistake log: ' + m.l.score + '/' + m.l.max + ' last time'})), ...Q.revs.map(r => ({t: 'rev', id: r.k, why: 'Section check due'})), ...Q.rc.map(r => ({t: 'rc', id: r.k, why: 'Free recall due: ' + Math.round(r.r.last * 100) + '% last time'}))], x => x.t);
+  const out = []; let j = 0; for (let i = 0; i < cards.length; i++) { out.push(cards[i]); if ((i + 1) % 6 === 0 && j < other.length) out.push(other[j++]); }
+  return [...out, ...other.slice(j)];
+}
+function forecast() { const D = Array(7).fill(0), now = Date.now(), t0 = pd(todayS()).getTime() - 12 * 36e5;
+  for (const s of Object.values(S.prog.terms)) { const at = s.t + BOXDAYS[s.box] * 864e5; const d = at <= now ? 0 : Math.floor((at - t0) / 864e5); if (d >= 0 && d < 7) D[d]++; }
+  for (const r of [...Object.values(S.prog.rev || {}), ...Object.values(S.prog.recall || {})]) if (r.due) { const d = r.due <= now ? 0 : Math.floor((r.due - t0) / 864e5); if (d >= 0 && d < 7) D[d]++; }
+  return D; }
+function renderReview() {
+  shell('rev'); setHash('#/rev'); S.term = null;
+  const Q = reviewQueue(), F = forecast(), mx = Math.max(1, ...F);
+  const chip = (n, l, c) => n ? `<span class="tag ${c || ''}">${n} ${l}</span>` : '';
+  $('#main').innerHTML = `<div class="prac"><h2>Review</h2>
+    <div class="card rvhero" style="margin-top:14px"><div><div class="big num">${Q.total}</div><div class="meta">due today${Q.total ? ' · about ' + Math.max(1, Q.mins) + ' min' : ''}</div></div>
+      <div style="flex:1;min-width:200px"><div class="chips">${chip(Q.due.length, 'cards due')}${chip(Q.nw.length, 'new cards')}${chip(Q.mist.length, 'mistakes to retry', 'r')}${chip(Q.revs.length, 'section checks', 'w')}${chip(Q.rc.length, 'free recalls', 'w')}${Q.total ? '' : '<span class="meta">All caught up. Your spaced reviews come back here when they are due.</span>'}</div>
+      <div class="meta" style="margin-top:8px">Cards, retries and checks are mixed together and come back on a spaced schedule: soon if you struggled, later as you get them right.</div></div>
+      <button class="pri" id="rvGo" ${Q.total ? '' : 'disabled'}>Start review</button></div>
+    <section class="hsec" style="margin-top:22px"><h3><svg class="i"><use href="#i-spark"/></svg>For you</h3><div class="card" style="padding:16px 18px" id="fy"></div></section>
+    <section class="hsec"><h3>Other ways to study</h3><div class="modes">
+      <button class="card mode" id="mMix"><b>Mixed practice</b><span class="meta">Questions from different topics back to back</span></button>
+      <button class="card mode" id="mRc"><b>Free recall</b><span class="meta">Write everything you remember, then see the gaps</span></button>
+      <button class="card mode" id="mFc"><b>Flashcards</b><span class="meta">Your decks, Quizlet imports and textbook terms</span></button></div></section>
+    <section class="hsec"><h3>Next 7 days</h3><div class="card wrep"><div class="wbars">${F.map((n, i) => `<div data-tip="${n} items"><i style="height:${Math.round(n / mx * 100)}%"></i><span>${i ? fmtD(addD(todayS(), i), {weekday: 'narrow'}) : 'Now'}</span></div>`).join('')}</div></div></section></div>`;
+  $('#rvGo').onclick = () => startSess('Daily review', reviewItems(Q));
+  $('#mMix').onclick = mixedSetup; $('#mRc').onclick = () => renderRecall(S.book.id); $('#mFc').onclick = () => go('terms');
+  drawFy();
+}
+
+// ---------- For you: Claude picks the session from your strengths, weaknesses, forgetting and exams ----------
+const FY_SYS = `You are an expert IB study coach choosing exactly what one student should study next, using the evidence given: topic mastery, the mistake log and what they got wrong, free-recall gaps, flashcards they keep forgetting (lapses) or that are due, topics not practised for a while, and upcoming exams (subjects with exams soon come first). Build the session like a good tutor: mostly weak or slipping areas, a couple of items from strong areas so they stay fresh, subjects and topics interleaved rather than in blocks, and an easy win first. Prefer short questions in a quick session. Use only ids from the candidate lists. You may also write up to 5 NEW flashcards for important gaps that no listed card covers (for example from mistake feedback or recall gaps).
+
+Reply with ONLY a JSON object, no code fence: {"summary": "2-3 sentences to the student: what they're doing well, what's weak, and what this session targets and why", "strong": ["short topic names"], "weak": ["short topic names"], "items": [{"id": "Q3 or C7", "why": "reason, under 12 words"}], "new": [{"f": "front", "b": "back", "book": "book id", "why": "reason, under 12 words"}]}`;
+function fyProfile() {
+  const t = todayS(), ex = (S.plan || []).filter(it => it.kind === 'exam' && it.date >= t && it.date <= addD(t, 45)).map(it => `${it.title}${it.subject ? ' (' + it.subject + ')' : ''} on ${it.date}`), L = [`Today is ${t}.`, `Upcoming exams and tests: ${ex.join('; ') || 'none in the planner'}.`];
+  for (const B of S.books) {
+    const ts = topicsOf(B).map(T => ({T, m: mastery(B, T)})), tested = ts.filter(x => x.m.v != null).sort((a, b) => a.m.v - b.m.v), mk = mistakes(B.id);
+    const rc = Object.entries(S.prog.recall || {}).filter(([k]) => k.startsWith(B.id + '|')).map(([k, r]) => { const sec = B.toc.find(x => x.n === +k.split('|')[1]), h = (r.hist || []).slice(-1)[0]; return sec ? `${secLabel(sec)} ${Math.round(r.last * 100)}%${h && h.miss && h.miss.length ? ' (left out: ' + h.miss.slice(0, 3).join('; ') + ')' : ''}` : null; }).filter(Boolean);
+    if (!tested.length && !mk.length && !rc.length) { L.push(`\n${B.subject} (book id ${B.id}): nothing practised yet.`); continue; }
+    L.push(`\n${B.subject} (book id ${B.id}):`, `- Topic mastery, weakest first: ${tested.map(x => `${x.T.num} ${x.T.title} ${Math.round(x.m.v * 100)}%`).join('; ')}`,
+      `- Not tested yet: ${ts.filter(x => x.m.v == null && x.m.total).slice(0, 20).map(x => x.T.num + ' ' + x.T.title).join('; ') || 'none'}`,
+      `- Mistake log: ${mk.slice(0, 8).map(m => `${m.q.topic || '?'} ${m.l.score}/${m.l.max}${m.l.fb && m.l.fb.missed && m.l.fb.missed[0] ? ' (missed: ' + String(m.l.fb.missed[0]).slice(0, 100) + ')' : ''}`).join('; ') || 'empty'}`, `- Free recall: ${rc.join('; ') || 'none yet'}`);
+  }
+  L.push('\n' + weekReport().text.split('\n')[0]); return L.join('\n');
+}
+function fyCands(long) {
+  const qs = [], per = {};
+  const sc = q => { const a = attOf(q.id), b = best(q.id); return (a.length ? (1 - b) * .7 + Math.min(1, (Date.now() - a[a.length - 1].t) / (21 * 864e5)) * .3 : .55) + Math.random() * .35; };
+  for (const [, q] of S.qs.filter(q => !front(q) && !q.pp && (long || isShort(q))).map(q => [sc(q), q]).sort((a, b) => b[0] - a[0])) { const k = tKey(q); if ((per[k] = (per[k] || 0) + 1) > 2) continue; qs.push(q); if (qs.length >= 60) break; }
+  const cs = allCards().map(c => ({c, s: S.prog.terms[c.key]})).filter(x => x.s ? cardDue(x.s) || x.s.l || x.s.box <= 1 : x.c.deck)
+    .map(x => ({...x, p: (x.s ? (cardDue(x.s) ? 1 : 0) + (x.s.l || 0) * .5 + (x.s.box <= 1 ? .3 : 0) : .4) + Math.random() * .3})).sort((a, b) => b.p - a.p).slice(0, 40);
+  return {qs, cs};
+}
+function drawFy() {
+  const el = $('#fy'); if (!el) return; const R = S.fy;
+  if (!R || R.busy || R.err) { el.innerHTML = R && R.busy ? '<span class="spin"></span> Claude is looking at your marks, mistakes, cards and exams…' : `${R && R.err ? `<div style="color:var(--bad);margin-bottom:8px">${esc(R.err)}</div>` : ''}<div class="row"><div style="flex:1;min-width:220px">Claude looks at your strengths, weak spots, what you're forgetting and your upcoming exams, then picks the questions and flashcards that will help most right now.</div><div class="seg" id="fyL"><button data-v="short" class="on">Quick · 10 min</button><button data-v="long">Longer · 25 min</button></div><button class="pri" id="fyGo"><svg class="i"><use href="#i-spark"/></svg>Pick my session</button></div>`;
+    if (R && R.busy) return; let len = 'short';
+    document.querySelectorAll('#fyL [data-v]').forEach(x => x.onclick = () => { len = x.dataset.v; document.querySelectorAll('#fyL [data-v]').forEach(y => y.classList.toggle('on', y === x)); });
+    $('#fyGo').onclick = () => forYou(len); return; }
+  const tag = it => it.t === 'q' ? `<span class="tag">${KIND[it.q.kind] || 'Question'}</span>` : it.nw ? '<span class="tag g">New card</span>' : '<span class="tag w">Card</span>';
+  el.innerHTML = `<div style="font-family:var(--f-read);font-size:16.5px;line-height:1.55">${mdx(R.summary || '', true)}</div>
+    <div class="chips" style="margin:10px 0 14px">${(R.strong || []).map(x => `<span class="tag g">${esc(x)}</span>`).join('')}${(R.weak || []).map(x => `<span class="tag r">${esc(x)}</span>`).join('')}</div>
+    <div class="card lst" style="box-shadow:none">${R.items.map(it => { const B = bookOf(it.t === 'q' ? it.q.book : it.c.book); MATH = !!(B && B.math); return `<div><div class="row">${tag(it)}<span class="meta">${esc(B ? B.subject : it.c.src || '')}</span></div><div style="margin:3px 0">${it.t === 'q' ? mdx(preview(it.q.text).slice(0, 200), true) : it.c.md ? mdx(it.c.f, true) : esc(it.c.f)}</div>${it.why ? `<div class="meta">${esc(it.why)}</div>` : ''}</div>`; }).join('')}</div>
+    <div class="row" style="margin-top:12px"><button class="pri" id="fyStart">Start · ${R.items.length} items</button><button id="fyRe">Pick again</button></div>`;
+  $('#fyRe').onclick = () => { S.fy = null; drawFy(); };
+  $('#fyStart').onclick = () => { const nw = R.items.filter(it => it.nw);
+    if (nw.length) { const by = {}; for (const it of nw) (by[it.c.book] = by[it.c.book] || []).push(it);
+      for (const [b, list] of Object.entries(by)) { const d = addCards("Claude's picks" + (bookOf(b) ? ' · ' + bookOf(b).subject : ''), b, list.map(it => ({f: it.c.f, b: it.c.b}))); for (const it of list) { const c = d.cards.find(x => x.f === it.c.f); if (c) { it.c = deckCard(d, c); it.id = it.c.key; } } } }
+    startSess('For you', R.items.map(({t, id, c, why}) => ({t, id, c, why}))); };
+}
+async function forYou(len) {
+  const long = len === 'long', C = fyCands(long); S.fy = {busy: 1}; drawFy();
+  const ql = C.qs.map((q, i) => { const a = attOf(q.id), B = bookOf(q.book); return `Q${i + 1} | ${B.subject} | ${q.topic ? topicName(B, q.topic) : '?'} | ${KIND[q.kind] || q.kind} | ${q.marks || '?'} marks | ${a.length ? `best ${Math.round(best(q.id) * 100)}%, ${a.length} attempts, last ${Math.round((Date.now() - a[a.length - 1].t) / 864e5)} days ago` : 'not tried'} | ${q.text.replace(/\$[^$]*\$/g, '[math]').replace(/\s+/g, ' ').slice(0, 110)}`; });
+  const cl = C.cs.map((x, i) => `C${i + 1} | ${x.c.src} | ${x.s ? `box ${x.s.box}/5, forgotten ${x.s.l || 0}x${cardDue(x.s) ? ', due now' : ''}` : 'new'} | ${String(x.c.f).replace(/\s+/g, ' ').slice(0, 90)}`);
+  const msg = `STUDENT PROFILE\n${fyProfile()}\n\nCANDIDATE QUESTIONS (id | subject | topic | type | marks | history | start of question)\n${ql.join('\n') || '(none)'}\n\nCANDIDATE FLASHCARDS (id | deck | state | front)\n${cl.join('\n') || '(none)'}\n\nPick a ${long ? '25-minute session of about 14 items (questions take 3-6 minutes, cards about 20 seconds)' : '10-minute session of about 8 items (questions take 3-6 minutes, cards about 20 seconds)'}.`;
+  try {
+    const r = await api('ask', {mode: 'mark', rubric: FY_SYS, book: S.book.id, pages: [], messages: [{role: 'user', content: msg}]}), j = pj(r.text), seen = new Set(), items = [];
+    for (const it of j.items || []) { const m = String(it.id || '').match(/^([QC])(\d+)$/i); if (!m || seen.has(m[0].toUpperCase())) continue; seen.add(m[0].toUpperCase());
+      if (m[1].toUpperCase() === 'Q') { const q = C.qs[+m[2] - 1]; if (q) items.push({t: 'q', id: q.id, q, why: it.why}); } else { const x = C.cs[+m[2] - 1]; if (x) items.push({t: 'c', id: x.c.key, c: x.c, why: it.why}); } }
+    for (const c of (j.new || []).slice(0, 5)) if (c.f && c.b) { const b = bookOf(c.book) ? c.book : S.book.id; items.splice(Math.min(items.length, 1 + (Math.random() * items.length | 0)), 0, {t: 'c', id: 'new:' + uid(), nw: 1, c: {key: '', f: c.f, b: c.b, md: true, book: b, src: "Claude's picks"}, why: c.why}); }
+    if (!items.length) throw new Error('Claude did not pick anything. Try again.');
+    S.fy = {summary: j.summary, strong: j.strong, weak: j.weak, items};
+  } catch (e) { S.fy = {err: 'Could not pick a session: ' + e.message}; }
+  drawFy();
 }
 
 // ---------- reference: formula & data sheet, case-study bank ----------
@@ -1160,7 +1562,7 @@ async function renderRef(F) {
   const draw = () => {
     const q = F.q.toLowerCase(), hit = o => !q || JSON.stringify(o).toLowerCase().includes(q), ts = topicsOf(B), tname = n => { const t = ts.find(x => inTopic(n, x.num) || x.num === n) || B.toc.find(x => x.num === n); return t ? t.num + ' ' + t.title : n; };
     let h = (R.maps || []).length && !F.q ? `<h3 style="margin-top:0">Mind maps</h3>${R.maps.map(M => `<div class="mmset"><div class="row"><b>${esc(M.title)}</b><span class="sp"></span><a class="meta" href="${RELAY}/ib/file?b=${M.id}" download>PDF</a></div>
-      <div class="mmrow">${M.pages.map(pg => `<button class="mmt" data-mm="${M.id}" data-n="${pg.n}"><img loading="lazy" alt="" src="${RELAY}/ib/img?b=${M.id}&n=${pg.n}"><span>${esc(pg.title)}</span></button>`).join('')}</div></div>`).join('')}` : '';
+      <div class="mmrow">${M.pages.map(pg => `<button class="mmt" data-mm="${M.id}" data-n="${pg.n}"><img loading="lazy" alt="" src="${RELAY}/ib/img?b=${M.id}&n=${pg.n}"><span>${esc(pg.title)}${pg.tree ? ' <span class="tag">interactive</span>' : ''}</span></button>`).join('')}</div></div>`).join('')}` : '';
     h += `<div class="filters"><input id="rfq" placeholder="${(R.cases || []).length ? (B.subject.startsWith('TOK') ? 'Search examples, thinkers, topics…' : 'Search cases, actors, places…') : 'Search formulas…'}" value="${esc(F.q)}" style="max-width:340px">`;
     if ((R.cases || []).length) { const cs = {}; for (const c of R.cases) for (const k of c.concepts || []) cs[k] = (cs[k] || 0) + 1;
       h += `<select id="rfc" style="width:auto"><option value="">All concepts</option>${Object.entries(cs).sort((a, b) => b[1] - a[1]).map(([k, n]) => `<option value="${esc(k)}" ${F.c === k ? 'selected' : ''}>${esc(k)} (${n})</option>`).join('')}</select>`; }
@@ -1181,25 +1583,128 @@ async function renderRef(F) {
   }; draw();
 }
 
-// full-screen mind-map viewer: fit to width, zoom with buttons / ctrl+wheel / pinch (native), drag to pan, arrows for next page
+// full-screen mind maps. Pages with a tree (ib/mindmap.py) open as an interactive map: branches fold/unfold, tap a bubble for
+// Explain / Quiz me / Flashcards / Find in textbook, recall mode hides everything below the hubs. "Original" shows the drawn page (zoom + drag).
+const MMC = ['#c0392b', '#1f7a8c', '#7b4fb0', '#b9770e', '#2e8b57', '#c2185b', '#3d5a99', '#6d7f12'];
+const mmPlain = t => String(t || '').replace(/\$([^$]*)\$/g, (_, m) => m.replace(/\\(frac|dfrac)\{([^}]*)\}\{([^}]*)\}/g, '($2)/($3)').replace(/\\[a-zA-Z]+/g, ' ').replace(/[{}^_]/g, '')).replace(/\s+/g, ' ').trim();
 function mapView(maps, id, n) {
-  const M = maps.find(x => x.id === id); let z = 1;
-  const ov = document.createElement('div'); ov.className = 'mmv'; document.body.appendChild(ov);
-  const draw = () => { const pg = M.pages.find(x => x.n === n);
-    ov.innerHTML = `<div class="mmbar"><b>${esc(M.title)}</b><span class="meta">${esc(pg.title)}</span><span class="sp"></span><button data-a="prev" ${n <= 1 ? 'disabled' : ''} aria-label="Previous"><svg class="i"><use href="#i-l"/></svg></button><button data-a="next" ${n >= M.pages.length ? 'disabled' : ''} aria-label="Next"><svg class="i"><use href="#i-r"/></svg></button><button data-a="out">−</button><span class="meta num" style="width:44px;text-align:center">${Math.round(z * 100)}%</span><button data-a="in">+</button><button data-a="x" aria-label="Close"><svg class="i"><use href="#i-x"/></svg></button></div>
-      <div class="mmsc"><img src="${RELAY}/ib/img?b=${M.id}&n=${n}" alt="${esc(pg.title)}" style="width:${z * 100}%" draggable="false"></div>`;
-    const sc = ov.querySelector('.mmsc'); let drag = null;
+  const M = maps.find(x => x.id === id); let mode = 'map', z = 1, view = null, sel = null, recall = false, q = '';
+  const ov = document.createElement('div'); ov.className = 'mmv'; document.body.appendChild(ov); document.body.classList.add('mmopen');
+  let nodes = [], root = null;
+  const build = () => { // flatten the tree with ids, depth, branch colour; everything starts open (recall mode starts folded)
+    nodes = []; const pg = M.pages.find(x => x.n === n);
+    const walk = (t, d, par, br) => { const o = {i: nodes.length, t: t.t, d, par, br, kids: [], open: d === 0 || !recall}; nodes.push(o);
+      (t.c || []).forEach((c, k) => o.kids.push(walk(c, d + 1, o, d === 0 ? k : br))); return o; };
+    root = pg.tree ? walk(pg.tree, 0, null, 0) : null; sel = null; view = null; };
+  const label = o => (() => { try { return mdx(o.t, !o.t.includes('\n|')); } catch (e) { return esc(o.t); } })();
+  const path = o => { const a = []; for (let x = o; x; x = x.par) a.unshift(mmPlain(x.t)); return a.join(' › '); };
+  const outline = (o, ind = '') => ind + '- ' + o.t + '\n' + o.kids.map(k => outline(k, ind + '  ')).join('');
+  const nhid = o => o.kids.length - 0;
+  const draw = () => {
+    const pg = M.pages.find(x => x.n === n), tree = !!pg.tree; if (!tree) mode = 'img';
+    S.mm = {M, pg, sel: null, outline: root ? outline(root) : ''};
+    ov.innerHTML = `<div class="mmbar"><b class="mmtt">${esc(M.title)}</b><select id="mmpg" aria-label="Topic">${M.pages.map(x => `<option value="${x.n}" ${x.n === n ? 'selected' : ''}>${esc(x.title)}</option>`).join('')}</select>
+      <button data-a="prev" ${n <= 1 ? 'disabled' : ''} aria-label="Previous topic"><svg class="i"><use href="#i-l"/></svg></button><button data-a="next" ${n >= M.pages.length ? 'disabled' : ''} aria-label="Next topic"><svg class="i"><use href="#i-r"/></svg></button>
+      <button data-a="x" aria-label="Close" class="mmxm"><svg class="i"><use href="#i-x"/></svg></button><span class="sp"></span>${tree ? `<div class="seg"><button data-a="map" class="${mode === 'map' ? 'on' : ''}">Interactive</button><button data-a="img" class="${mode === 'img' ? 'on' : ''}">Original</button></div>` : ''}
+      ${mode === 'map' ? `<input id="mmq" placeholder="Find on map…" value="${esc(q)}"><button data-a="recall" class="${recall ? 'on' : ''}" title="Fold everything below the main branches, then open them one level at a time to test yourself">Recall mode</button><button data-a="all" class="mmw">Open all</button>` : ''}
+      <button data-a="out" aria-label="Zoom out" class="mmw">−</button><button data-a="fit" class="num" title="Fit to screen" style="min-width:58px">${Math.round(z * 100)}%</button><button data-a="in" aria-label="Zoom in" class="mmw">+</button>
+      <button data-a="x" aria-label="Close" class="mmw"><svg class="i"><use href="#i-x"/></svg></button></div>
+      ${mode === 'map' ? `<div class="mmsc mmint"><div class="mmcv"><svg class="mmln"></svg></div></div><div class="mmact hide"></div>` : `<div class="mmsc"><img src="${RELAY}/ib/img?b=${M.id}&n=${n}" alt="${esc(pg.title)}" style="width:${z * 100}%" draggable="false"></div>`}`;
+    ov.querySelector('#mmpg').onchange = e => go(+e.target.value);
+    ov.querySelectorAll('.mmbar [data-a]').forEach(b => b.onclick = () => ({prev: () => go(n - 1), next: () => go(n + 1), in: () => zoom(1.3), out: () => zoom(1 / 1.3), x: close, fit: () => mode === 'map' ? fit() : (z = 1, draw()),
+      map: () => { mode = 'map'; z = 1; draw(); }, img: () => { mode = 'img'; z = 1; draw(); }, recall: () => { recall = !recall; build(); draw(); }, all: () => { recall = false; nodes.forEach(o => o.open = true); draw(); }})[b.dataset.a]());
+    if (mode === 'map') { const qi = ov.querySelector('#mmq'); qi.oninput = () => { q = qi.value; find(); }; qi.onkeydown = e => e.stopPropagation(); paint(); } else imgWire();
+  };
+  const go = k => { n = Math.max(1, Math.min(M.pages.length, k)); z = 1; q = ''; build(); draw(); };
+  // ---- interactive map
+  const vis = o => { for (let x = o.par; x; x = x.par) if (!x.open) return false; return true; };
+  const paint = () => {
+    const cv = ov.querySelector('.mmcv'), sc = ov.querySelector('.mmsc');
+    cv.querySelectorAll('.mmn').forEach(x => x.remove());
+    for (const o of nodes) if (vis(o)) { const el = document.createElement('div'); el.className = 'mmn d' + Math.min(o.d, 3) + (o === sel ? ' sel' : ''); el.dataset.i = o.i; el.style.setProperty('--c', MMC[o.br % MMC.length]);
+      el.innerHTML = `<div class="mmtx">${label(o)}</div>${o.kids.length && o.d ? `<button class="mmk" data-k="${o.i}" aria-label="${o.open ? 'Fold' : 'Open'} branch">${o.open ? '−' : '+' + o.kids.length}</button>` : ''}`; cv.appendChild(el); o.el = el; } else o.el = null;
+    cv.style.width = cv.style.height = '20000px'; // room to measure at natural width, then lock the width
+    for (const o of nodes) if (o.el) { o.w = Math.ceil(o.el.getBoundingClientRect().width / (view ? view.s : 1)) + 1; o.el.style.width = o.w + 'px'; o.h = o.el.offsetHeight; o.w = o.el.offsetWidth; }
+    // layout: hubs split left/right by size, each side a tidy tree growing outwards
+    const GX = 46, GY = 12, sz = o => o.sz = Math.max(o.h, o.open && o.kids.length ? o.kids.reduce((s, k) => s + sz(k) + GY, -GY) : 0);
+    sz(root); root.x = 0; root.y = 0;
+    const hubs = root.open ? root.kids : [], tot = hubs.reduce((s, k) => s + k.sz, 0); let cut = 0, best = 1e9, acc = 0;
+    for (let i = 0; i <= hubs.length; i++) { const d = Math.abs(2 * acc - tot); if (i && d < best) { best = d; cut = i; } if (i < hubs.length) acc += hubs[i].sz; }
+    if (hubs.length === 1) cut = 1; const R = hubs.slice(0, cut), L = hubs.slice(cut).reverse();
+    const place = (list, side, px, cy) => { let y = cy - (list.reduce((s, k) => s + k.sz + GY, -GY)) / 2;
+      for (const k of list) { k.side = side; k.x = px + side * (GX + k.w / 2); k.y = y + k.sz / 2; y += k.sz + GY;
+        if (k.open && k.kids.length) place(k.kids, side, k.x + side * k.w / 2, k.y); } };
+    place(R, 1, root.w / 2, 0); place(L, -1, -root.w / 2, 0);
+    let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+    for (const o of nodes) if (o.el) { x0 = Math.min(x0, o.x - o.w / 2); x1 = Math.max(x1, o.x + o.w / 2); y0 = Math.min(y0, o.y - o.h / 2); y1 = Math.max(y1, o.y + o.h / 2); }
+    const P = 40, W = x1 - x0 + 2 * P, H = y1 - y0 + 2 * P, ox = P - x0, oy = P - y0;
+    cv.style.width = W + 'px'; cv.style.height = H + 'px';
+    for (const o of nodes) if (o.el) { o.el.style.left = (o.x + ox - o.w / 2) + 'px'; o.el.style.top = (o.y + oy - o.h / 2) + 'px'; }
+    const svg = cv.querySelector('.mmln'); svg.setAttribute('width', W); svg.setAttribute('height', H);
+    svg.innerHTML = nodes.filter(o => o.el && o.par).map(o => { const p = o.par, s = o.side, ax = p.x + ox + s * p.w / 2, ay = p.y + oy, bx = o.x + ox - s * o.w / 2, by = o.y + oy, m = (ax + bx) / 2;
+      return `<path d="M${ax},${ay} C${m},${ay} ${m},${by} ${bx},${by}" stroke="${MMC[o.br % MMC.length]}" stroke-width="${o.d === 1 ? 3.5 : 2}" fill="none" opacity=".75"/>`; }).join('');
+    const nb = {W, H, cx: root.x + ox, cy: root.y + oy};
+    for (const o of nodes) if (o.el) o.el.classList.toggle('L', o.side === -1);
+    if (!view) { view = {}; mmFitTo(nb); }
+    view.ox = ox; view.oy = oy; view.nb = nb; apply();
+    cv.querySelectorAll('.mmk').forEach(b => b.onclick = e => { e.stopPropagation(); toggle(nodes[+b.dataset.k]); });
+    cv.querySelectorAll('.mmn').forEach(el => el.onclick = e => { if (sc.dataset.moved) return; const o = nodes[+el.dataset.i]; select(o === sel ? null : o); });
+    find(true); wire(sc);
+  };
+  const toggle = o => { const ax = o.x + view.ox, ay = o.y + view.oy;
+    o.open = !o.open; if (!o.open) (function f(k) { for (const c of k.kids) { if (sel === c) sel = null; f(c); } })(o);
+    paint(); const nx = o.x + view.ox, ny = o.y + view.oy; view.x -= (nx - ax) * view.s; view.y -= (ny - ay) * view.s; apply(); if (sel) select(sel); };
+  const mmFitTo = (nb, any) => { const sc = ov.querySelector('.mmsc'), f = Math.min((sc.clientWidth - 20) / nb.W, (sc.clientHeight - 20) / nb.H), s = Math.min(1.25, Math.max(any ? .1 : .55, f));
+    view.s = s; if (s > f) { view.x = sc.clientWidth / 2 - nb.cx * s; view.y = sc.clientHeight / 2 - nb.cy * s; } // too big to fit readably: start on the centre topic
+    else { view.x = (sc.clientWidth - nb.W * s) / 2; view.y = (sc.clientHeight - nb.H * s) / 2; } };
+  const fit = () => { mmFitTo(view.nb, true); apply(); };
+  const apply = () => { const cv = ov.querySelector('.mmcv'); if (!cv) return; cv.style.transform = `translate(${view.x}px,${view.y}px) scale(${view.s})`; z = view.s; const f = ov.querySelector('[data-a="fit"]'); if (f) f.textContent = Math.round(view.s * 100) + '%'; };
+  const zoomAt = (f, cx, cy) => { const s = Math.min(3, Math.max(.15, view.s * f)); view.x = cx - (cx - view.x) * s / view.s; view.y = cy - (cy - view.y) * s / view.s; view.s = s; apply(); };
+  const wire = sc => { if (sc.dataset.w) return; sc.dataset.w = 1; const pts = new Map(); let pinch = null, drag = null;
+    sc.onpointerdown = e => { if (e.target.closest('.mmk')) return; pts.set(e.pointerId, {x: e.clientX, y: e.clientY}); sc.setPointerCapture(e.pointerId); delete sc.dataset.moved;
+      if (pts.size === 1) drag = {x: e.clientX, y: e.clientY, vx: view.x, vy: view.y}; else { const [a, b] = [...pts.values()]; pinch = {d: Math.hypot(a.x - b.x, a.y - b.y), s: view.s}; drag = null; } };
+    sc.onpointermove = e => { if (!pts.has(e.pointerId)) return; pts.set(e.pointerId, {x: e.clientX, y: e.clientY});
+      if (pinch && pts.size === 2) { const [a, b] = [...pts.values()], r = sc.getBoundingClientRect(); zoomAt(pinch.s * Math.hypot(a.x - b.x, a.y - b.y) / pinch.d / view.s, (a.x + b.x) / 2 - r.left, (a.y + b.y) / 2 - r.top); sc.dataset.moved = 1; }
+      else if (drag) { const dx = e.clientX - drag.x, dy = e.clientY - drag.y; if (Math.abs(dx) + Math.abs(dy) > 5) sc.dataset.moved = 1; view.x = drag.vx + dx; view.y = drag.vy + dy; apply(); } };
+    sc.onpointerup = sc.onpointercancel = e => { pts.delete(e.pointerId); if (pts.size < 2) pinch = null; if (!pts.size) { drag = null; setTimeout(() => delete sc.dataset.moved, 0); } };
+    sc.onwheel = e => { e.preventDefault(); const r = sc.getBoundingClientRect(); if (e.ctrlKey || !e.shiftKey && Math.abs(e.deltaY) > Math.abs(e.deltaX) && !e.deltaMode && Math.abs(e.deltaY) >= 50) zoomAt(Math.exp(-e.deltaY * (e.ctrlKey ? .01 : .0015)), e.clientX - r.left, e.clientY - r.top); else { view.x -= e.deltaX; view.y -= e.deltaY; apply(); } };
+    sc.onclick = e => { if (!e.target.closest('.mmn') && !sc.dataset.moved) select(null); }; };
+  const find = keep => { const t = q.trim().toLowerCase(); ov.querySelector('.mmcv').classList.toggle('dim', !!t); if (!t) return;
+    const hit = nodes.filter(o => mmPlain(o.t).toLowerCase().includes(t) || o.t.toLowerCase().includes(t));
+    if (!keep) { let ch = false; for (const o of hit) for (let x = o.par; x; x = x.par) if (!x.open) { x.open = true; ch = true; } if (ch) return paint(); }
+    for (const o of nodes) if (o.el) o.el.classList.toggle('hit', hit.includes(o)); };
+  const select = o => { sel = o; S.mm && (S.mm.sel = o ? path(o) : null); ov.querySelectorAll('.mmn').forEach(el => el.classList.toggle('sel', !!o && +el.dataset.i === o.i));
+    const bar = ov.querySelector('.mmact'); if (!o) return bar.classList.add('hide');
+    const pg = M.pages.find(x => x.n === n), withKids = []; (function f(k) { if (k.kids.length) withKids.push(k); k.kids.forEach(f); })(o);
+    bar.innerHTML = `<div class="mmsel">${label(o)}</div><div class="row" style="gap:6px;flex-wrap:wrap">
+      <button class="pri" data-x="exp"><svg class="i"><use href="#i-spark"/></svg>Explain</button><button data-x="quiz">Quiz me</button>
+      ${withKids.length ? `<button data-x="cards"><svg class="i"><use href="#i-cards"/></svg>Flashcards (${withKids.length})</button>` : ''}<button data-x="find"><svg class="i"><use href="#i-search"/></svg>Find in textbook</button>
+      ${o.kids.length ? `<button data-x="fold">${o.open ? 'Fold branch' : 'Open branch'}</button>` : ''}<span class="meta" id="mmmsg"></span></div>`;
+    bar.classList.remove('hide');
+    const ctx = `my ${M.title} mind map, topic "${pg.title}", the bubble ${path(o)}` + (o.kids.length ? `. Its branches:\n${o.kids.map(k => outline(k)).join('')}` : '');
+    bar.querySelectorAll('[data-x]').forEach(b => b.onclick = () => ({
+      exp: () => { openChat({title: 'Mind map: ' + mmPlain(o.t).slice(0, 40), book: 'math', pages: [], intro: ''}); sendChat(`Explain this part of ${ctx}\nTeach it intuitively: why it works, a worked example, and the common mistakes. Keep it short.`); },
+      quiz: () => { openChat({title: 'Quiz: ' + mmPlain(o.t).slice(0, 40), book: 'math', pages: [], intro: ''}); sendChat(`Quiz me on ${ctx}\nAsk me one exam-style question at a time (no answers yet), wait for my reply, mark it, then ask the next. Start easy and get harder.`); },
+      cards: () => { const cards = withKids.map(k => ({f: (k.par ? mmPlain(k.par.t) + ' › ' : '') + k.t, b: k.kids.map(c => '- ' + c.t).join('\n'), book: 'math'})), d = addCards('Mind map: ' + pg.title, 'math', cards);
+        bar.querySelector('#mmmsg').textContent = `Added to deck “${d.name}” (${d.cards.length} cards) in Flashcards → My decks`; },
+      find: () => { let t = ''; for (let x = o; x && t.length < 4; x = x.par) t = mmPlain(x.t).replace(/[^A-Za-z ]+/g, ' ').replace(/\s+/g, ' ').trim(); close(); search(t || pg.title); },
+      fold: () => { toggle(o); select(o); }})[b.dataset.x]()); };
+  // ---- original image
+  const imgWire = () => { const sc = ov.querySelector('.mmsc'); let drag = null;
     sc.onpointerdown = e => { drag = {x: e.clientX, y: e.clientY, l: sc.scrollLeft, t: sc.scrollTop}; sc.setPointerCapture(e.pointerId); };
     sc.onpointermove = e => { if (drag) { sc.scrollLeft = drag.l - (e.clientX - drag.x); sc.scrollTop = drag.t - (e.clientY - drag.y); } };
     sc.onpointerup = () => drag = null;
-    sc.onwheel = e => { if (e.ctrlKey) { e.preventDefault(); zoom(e.deltaY < 0 ? 1.15 : 1 / 1.15); } };
-    ov.querySelectorAll('[data-a]').forEach(b => b.onclick = () => ({prev: () => { n--; z = 1; draw(); }, next: () => { n++; z = 1; draw(); }, in: () => zoom(1.4), out: () => zoom(1 / 1.4), x: close})[b.dataset.a]()); };
-  const zoom = f => { const sc = ov.querySelector('.mmsc'), cx = (sc.scrollLeft + sc.clientWidth / 2) / sc.scrollWidth, cy = (sc.scrollTop + sc.clientHeight / 2) / sc.scrollHeight;
-    z = Math.min(5, Math.max(1, z * f)); ov.querySelector('.mmsc img').style.width = z * 100 + '%'; ov.querySelector('.mmbar .num').textContent = Math.round(z * 100) + '%';
+    sc.onwheel = e => { if (e.ctrlKey) { e.preventDefault(); zoom(e.deltaY < 0 ? 1.15 : 1 / 1.15); } }; };
+  const zoom = f => { if (mode === 'map') { const sc = ov.querySelector('.mmsc'); return zoomAt(f, sc.clientWidth / 2, sc.clientHeight / 2); }
+    const sc = ov.querySelector('.mmsc'), cx = (sc.scrollLeft + sc.clientWidth / 2) / sc.scrollWidth, cy = (sc.scrollTop + sc.clientHeight / 2) / sc.scrollHeight;
+    z = Math.min(5, Math.max(1, z * f)); ov.querySelector('.mmsc img').style.width = z * 100 + '%'; ov.querySelector('[data-a="fit"]').textContent = Math.round(z * 100) + '%';
     sc.scrollLeft = cx * sc.scrollWidth - sc.clientWidth / 2; sc.scrollTop = cy * sc.scrollHeight - sc.clientHeight / 2; };
-  const key = e => { if (e.key === 'Escape') close(); if (e.key === 'ArrowRight' && n < M.pages.length) { n++; z = 1; draw(); } if (e.key === 'ArrowLeft' && n > 1) { n--; z = 1; draw(); } if (e.key === '+' || e.key === '=') zoom(1.4); if (e.key === '-') zoom(1 / 1.4); };
-  const close = () => { ov.remove(); document.removeEventListener('keydown', key, true); };
-  document.addEventListener('keydown', key, true); draw();
+  const key = e => { if (/INPUT|TEXTAREA|SELECT/.test(e.target.tagName) || !$('#drawer').classList.contains('hide') && e.target.closest('#drawer')) return;
+    if (e.key === 'Escape') { if (!$('#drawer').classList.contains('hide')) return; if (sel) return select(null); close(); }
+    if (e.key === 'ArrowRight' && n < M.pages.length) go(n + 1); if (e.key === 'ArrowLeft' && n > 1) go(n - 1); if (e.key === '+' || e.key === '=') zoom(1.3); if (e.key === '-') zoom(1 / 1.3); };
+  const onResize = () => mode === 'map' && view && (mmFitTo(view.nb), apply());
+  const close = () => { ov.remove(); S.mm = null; document.body.classList.remove('mmopen'); document.removeEventListener('keydown', key, true); removeEventListener('resize', onResize); };
+  document.addEventListener('keydown', key, true); addEventListener('resize', onResize); build(); draw();
 }
 
 // ---------- library shelf ----------
@@ -1262,6 +1767,7 @@ function route() {
   if (a === 'lib' && b && bookOf(b)) return openPage(b, +c || 1);
   if (a === 'lib') return go('lib');
   if (a === 'q' && b) return openQ(b);
+  if (a === 'recall' && b && bookOf(b)) return renderRecall(b, c ? +c : undefined);
   if (a === 'ref') return go('ref');
   if (a === 'paper' && b) return loadPapers().then(() => openPaper(b));
   if (a === 'search' && b) { $('#q').value = b; return search(b); }
@@ -1304,6 +1810,7 @@ document.addEventListener('keydown', e => {
   if (S.tab === 'lib' && e.key === 'ArrowRight') openPage(S.book.id, S.n + 1);
   if (S.tab === 'lib' && e.key === 'ArrowLeft') openPage(S.book.id, S.n - 1);
   if (e.key === ' ' && $('#flip')) { e.preventDefault(); $('#flip').click(); }
+  if (/^[1-4]$/.test(e.key) && $(`[data-gr="${e.key - 1}"]`)) $(`[data-gr="${e.key - 1}"]`).click();
   if (e.key === '/') { e.preventDefault(); $('#q').focus(); }
 });
 // sign in: first name (+ the site password when the relay isn't in open mode)
