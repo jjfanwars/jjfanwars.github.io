@@ -26,7 +26,7 @@ button:focus-visible,summary:focus-visible{outline:2px solid var(--gold2);outlin
 .wc{display:flex;justify-content:space-between;gap:8px;margin-top:4px;font-size:12px;color:var(--mut)}
 .wc .err{color:var(--bad);font-weight:600}
 #tmr.low{color:var(--bad);font-weight:800;animation:bl .8s infinite}
-@media(prefers-reduced-motion:reduce){.sl{animation:slam .3s ease-out both}.sl.out{animation:out .2s ease-in forwards}#box .nx,#tmr.low{animation:none}.fl{animation-duration:2s}}
+@media(prefers-reduced-motion:reduce){.sl{animation:slam .3s ease-out both}.sl.out{animation:out .2s ease-in forwards}#box .nx,#tmr.low,.hp.low{animation:none}.hp.low{border-color:#ff6b6b}.fl{animation-duration:2s}}
 .ov{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;padding:16px;z-index:20}
 /* menu */
 #menu{background:radial-gradient(ellipse at 50% 20%,rgba(20,14,8,.35),rgba(5,4,3,.82));overflow:auto;align-items:flex-start}
@@ -124,6 +124,16 @@ body.cine .bars{height:9vh}
 #qte .q{font-family:Bangers,sans-serif;font-size:34px;letter-spacing:2px;margin-top:22px;-webkit-text-stroke:2px #000;paint-order:stroke fill;text-shadow:0 3px 0 #000}
 #duel{position:fixed;inset:0;z-index:17;display:flex;align-items:center;justify-content:center;cursor:crosshair;touch-action:manipulation}
 #duel .dw{font-family:Bangers,sans-serif;font-size:clamp(30px,6vw,56px);letter-spacing:3px;color:#ffe7a3;-webkit-text-stroke:2px #000;paint-order:stroke fill;text-shadow:0 3px 0 #000;margin-top:34vh;text-align:center}
+#verdict{overflow:auto;align-items:flex-start}.vc{margin:auto}
+.vl{text-align:left;margin:10px 0 4px;max-height:36vh;overflow:auto;border-top:1px solid var(--line)}
+.vl details{border-bottom:1px solid var(--line);padding:6px 2px}
+.vl summary{margin:0;color:var(--ink);font-size:13.5px}
+.vl summary b{display:inline-block;min-width:44px;font-family:Bangers,sans-serif;font-size:19px;letter-spacing:1px;font-weight:400}
+.vl .modelA{font-size:13px}
+.yourA{border-color:rgba(74,168,255,.45)}
+.pb{color:#ffd84a;font-weight:800}
+.hp.low{animation:hpl 1s infinite}
+@keyframes hpl{50%{border-color:#ff6b6b;box-shadow:0 0 18px rgba(255,60,60,.9)}}
 #load{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:30;background:#0b0907;font-family:Cinzel,serif;color:var(--gold);letter-spacing:3px;transition:opacity .6s}
 </style>
 </head>
@@ -142,6 +152,7 @@ body.cine .bars{height:9vh}
         <div class="rn" id="rankName">Law Student</div>
         <div class="small" id="rankTxt">0 aura</div>
         <div class="bar"><i id="rankBar" style="width:0"></i></div>
+        <div class="small" id="mastTxt" style="margin-top:6px"></div>
       </div>
     </div>
     <div class="cases" id="cases"></div>
@@ -174,7 +185,7 @@ body.cine .bars{height:9vh}
 <div id="hudBtns" class="hide"><button id="bMute">🔊</button><button id="bQuit">Leave court</button></div>
 
 <div id="qp" class="hide">
-  <div><span class="tag" id="qTag"></span><span class="tag" id="qMarks"></span><span class="tag" id="qWord"></span></div>
+  <div><span class="tag" id="qTag"></span><span class="tag" id="qMarks"></span><span class="tag" id="qWord"></span><span class="tag" id="qBest"></span></div>
   <div class="qt" id="qText"></div>
   <div class="ctx" id="qCtx"></div>
   <div class="brief hide" id="qBrief"></div>
@@ -194,7 +205,7 @@ body.cine .bars{height:9vh}
 <div id="flash"></div>
 <div id="duel" class="hide"><div class="dw" id="duelT"></div></div>
 <div id="qte" class="hide"><div class="rg"><div class="t"></div><div class="s" id="qteS"></div></div><div class="q">TAP / SPACE TO OVERRULE!</div></div>
-<div id="verdict" class="ov hide"><div class="vc" id="vc"></div></div>
+<div id="verdict" class="ov hide" role="dialog" aria-modal="true" aria-label="Verdict"><div class="vc" id="vc"></div></div>
 
 <script src="../three-r170.js"></script>
 <script>
@@ -270,6 +281,7 @@ const CASES = [
  {id:'c4',name:'Leonard v Atileo',sub:'Damages & the jury',foe:'Dr Hollowmere',foeT:'Barrister',qs:['B3a','B3b','B3c','A7','A8'],robe:0x181818,aura:0x2dd4ff,glasses:1,skin:0x8d5a3b},
  {id:'c5',name:'The Rights Trial',sub:'Boss case · High Court',foe:'Dame Ironwig KC',foeT:'King’s Counsel',qs:['A6','B2a','B2b','A5','A3'],robe:0x0e0e14,aura:0xff1a1a,glasses:1,skin:0xf3d2b8,boss:1},
  {id:'qt',name:'Quick Trial',sub:'6 random questions',foe:'Ms Random',foeT:'Duty Counsel',qs:null,robe:0x2b2b38,aura:0xffd21a,glasses:0,skin:0xd9a37e,free:1},
+ {id:'rv',name:'Revision Hearing',sub:'Your weakest arguments',foe:'Mr Recall',foeT:'Appeals Counsel',qs:null,robe:0x23303a,aura:0x3cffb4,glasses:1,skin:0xb5835a,free:1,rev:1},
 ];
 const RANKS = [[0,'Law Student'],[2500,'Paralegal'],[6000,'Solicitor'],[11000,'Barrister'],[18000,'Senior Counsel'],[28000,'Magistrate'],[40000,'Judge'],[60000,'High Court Justice']];
 const JABS = ['Objection, Your Honour! My learned friend has skipped half the marking guide.','Is that an answer or a rough draft?','My learned friend appears to have mistaken vibes for legal reasoning.','Not a single piece of legal terminology. Bold strategy.','The examiner called, Your Honour. They want their marks back.','With respect, that answer has less substance than an unsigned Terms of Settlement.','I object! The task word was right there in the question.'];
@@ -284,8 +296,19 @@ const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;
 const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
 const lerp = (a, b, k) => a + (b - a) * k;
 const ease = t => t < .5 ? 4*t*t*t : 1 - Math.pow(-2*t + 2, 3) / 2;
-let SAVE = {aura:0, grades:{}, played:0}; try { Object.assign(SAVE, JSON.parse(ls('cd-save') || '{}')); } catch (e) {}
+let SAVE = {aura:0, grades:{}, played:0, q:{}}; try { Object.assign(SAVE, JSON.parse(ls('cd-save') || '{}')); } catch (e) {}
 const persist = () => ls('cd-save', JSON.stringify(SAVE));
+if (!SAVE.q || typeof SAVE.q !== 'object') SAVE.q = {};
+// per-argument history: b = best fraction, l = last fraction, n = attempts, t = last time. "Mastered" = last attempt 75%+.
+const mastered = id => SAVE.q[id] && SAVE.q[id].l >= .75;
+function noteQ(id, f) { const s = SAVE.q[id], pb = !!s && f > s.b; SAVE.q[id] = {b:Math.max(s ? s.b : 0, f), l:f, n:(s ? s.n : 0) + 1, t:Date.now()}; persist(); return pb; }
+// Revision Hearing: arguments you missed last time (worst first), then ones you've never tried, then the stalest mastered ones
+function weakQs(n = 5) {
+  const k = Object.keys(Q), S = SAVE.q, seen = k.filter(id => S[id]);
+  const weak = seen.filter(id => S[id].l < .75).sort((a, b) => S[a].l - S[b].l || S[a].t - S[b].t);
+  const old = seen.filter(id => S[id].l >= .75).sort((a, b) => S[a].t - S[b].t);
+  return [...weak, ...k.filter(id => !S[id]), ...old].slice(0, n);
+}
 const OPT = {hi: ls('cd-hi') !== '0', snd: ls('cd-snd') !== '0', timer: ls('cd-timer') === '1'};
 
 /* ================= AUDIO ================= */
@@ -978,14 +1001,19 @@ function menu() {
   $('rankBar').style.width = (nx ? (SAVE.aura - RANKS[ri][0]) / (nx[0] - RANKS[ri][0]) * 100 : 100) + '%';
   $('cases').innerHTML = CASES.map((c, i) => {
     const gr = SAVE.grades[c.id], lock = !c.free && i > 0 && !SAVE.grades[CASES[i - 1].id];
+    const nWeak = Object.keys(SAVE.q).filter(id => Q[id] && !mastered(id)).length, rvOff = c.rev && !Object.keys(SAVE.q).length;
+    const info = c.rev ? (rvOff ? '🔒 Argue any case first' : nWeak ? `${nWeak} argument${nWeak === 1 ? '' : 's'} to revise` : 'Nothing weak: mixes in new and old arguments')
+      : lock ? '🔒 Win the previous case to unlock' : (c.qs ? c.qs.length : 6) + ' arguments' + (c.qs && gr ? ` · ${c.qs.filter(mastered).length}/${c.qs.length} mastered` : gr ? '' : ' · new');
     const gc = gr ? ({S:'#ffd84a', A:'#5ee08a', B:'#7cc8ff', C:'#ffc04a', D:'#ff7a7a'}[gr]) : '';
-    return `<button class="case" data-c="${i}" ${lock ? 'disabled' : ''}>
-      ${gr ? `<span class="cg" style="color:${gc}">${gr}</span>` : ''}
+    return `<button class="case" data-c="${i}" ${lock || rvOff ? 'disabled' : ''}>
+      ${gr && !c.rev ? `<span class="cg" style="color:${gc}">${gr}</span>` : ''}
       <span class="small" style="text-transform:uppercase;letter-spacing:1px">${c.boss ? '👑 ' : ''}${esc(c.sub)}</span>
       <span class="cn">${esc(c.name)}</span>
       <span class="co">vs ${esc(c.foe)} · ${esc(c.foeT)}</span>
-      <span class="cl">${lock ? '🔒 Win the previous case to unlock' : (c.qs ? c.qs.length : 6) + ' arguments' + (gr ? '' : ' · new')}</span></button>`;
+      <span class="cl">${info}</span></button>`;
   }).join('');
+  const nQ = Object.keys(Q).length, nM = Object.keys(Q).filter(mastered).length, nT = Object.keys(Q).filter(id => SAVE.q[id]).length;
+  $('mastTxt').textContent = nT ? `📚 ${nM}/${nQ} arguments mastered · ${nT}/${nQ} attempted` : `📚 ${nQ} arguments in the question bank. Score 75%+ on one to master it.`;
   $('keyState').textContent = ls('cd-pass') ? '✅ Court unlocked. Claude Haiku will judge your answers.' : '⚠️ Locked: enter the court password so Claude can judge. Without it you mark yourself against the model answer.';
   fromFP(); FX.auT = 0; C.drift = 1; C.orbit = .05; go([new V3(5.5, 3.4, 8), new V3(0, 1.8, -5), 46], 2.5);
   CH.you.userData.auraT = 0; CH.foe.userData.auraT = 0;
@@ -1017,7 +1045,7 @@ $('optHi').onchange = () => { OPT.hi = $('optHi').checked; ls('cd-hi', OPT.hi ? 
 $('optSnd').onchange = () => { OPT.snd = $('optSnd').checked; ls('cd-snd', OPT.snd ? '1' : '0'); if (A.out) A.out.gain.value = OPT.snd ? .55 : 0; $('bMute').textContent = OPT.snd ? '🔊' : '🔇'; };
 $('optTimer').onchange = () => { OPT.timer = $('optTimer').checked; ls('cd-timer', OPT.timer ? '1' : '0'); };
 $('bMute').onclick = () => { $('optSnd').checked = !OPT.snd; $('optSnd').onchange(); };
-function leaveCourt() { if (confirm('Leave court? This case will not be saved.')) { G.abort = true; skipAll(); menu(); } }
+function leaveCourt() { if (confirm('Leave court? The case result will not be saved (scores for arguments already ruled on are kept).')) { G.abort = true; skipAll(); menu(); } }
 // keyboard users land on the main button, after a short delay so mashing Space/Enter through dialogue can't skip the feedback
 function focusSoon(b, ms = 700) { if (matchMedia('(pointer:coarse)').matches) return; setTimeout(() => { if (b && b.isConnected && b.offsetParent) b.focus({preventScroll:true}); }, ms); }
 const pname = () => ($('pname').value.trim() || 'You');
@@ -1054,13 +1082,14 @@ function hud() {
   setTimeout(() => { $('lagY').style.width = G.hpY + '%'; $('lagF').style.width = G.hpF + '%'; }, 50);
   $('auY').textContent = G.auY.toLocaleString() + ' AURA'; $('auF').textContent = G.auF.toLocaleString() + ' AURA';
   $('qn').textContent = Math.min(G.i + 1, G.qs.length) + '/' + G.qs.length;
+  $('hpY').parentNode.classList.toggle('low', G.hpY > 0 && G.hpY <= 30); $('hpF').parentNode.classList.toggle('low', G.hpF > 0 && G.hpF <= 30);
   $('combo').textContent = G.combo >= 2 ? `🔥 AURA COMBO x${G.combo}` : '';
 }
 
 async function startCase(ci) {
   const cs = CASES[ci], run = ++G.run; G.abort = false; G.busy = false;
   G.case = cs; G.ci = ci; G.i = 0; G.hpY = 100; G.hpF = 100; G.auY = 0; G.auF = 0; G.combo = 0; G.results = [];
-  if (cs.qs) G.qs = cs.qs.slice(); else { const k = Object.keys(Q); for (let i = k.length - 1; i > 0; i--) { const j = Math.random() * (i + 1) | 0; [k[i], k[j]] = [k[j], k[i]]; } G.qs = k.slice(0, 6); }
+  if (cs.rev) G.qs = weakQs(5); else if (cs.qs) G.qs = cs.qs.slice(); else { const k = Object.keys(Q); for (let i = k.length - 1; i > 0; i--) { const j = Math.random() * (i + 1) | 0; [k[i], k[j]] = [k[j], k[i]]; } G.qs = k.slice(0, 6); }
   makeFoe(cs);
   $('menu').classList.add('hide'); $('hud').classList.remove('hide'); $('hudBtns').classList.remove('hide');
   $('nmY').textContent = pname(); $('nmF').textContent = cs.foe; $('bQuit').textContent = 'Leave court'; $('bQuit').onclick = leaveCourt; G.skipV = false; $('bMute').textContent = OPT.snd ? '🔊' : '🔇';
@@ -1096,6 +1125,7 @@ function nextQ() {
   const tw = TASKW.find(w => q.q.startsWith(w)) || '';
   $('qTag').textContent = 'Argument ' + (G.i + 1); $('qMarks').textContent = q.m + ' marks'; $('qWord').textContent = tw ? 'Task word: ' + tw : '';
   $('qWord').classList.toggle('hide', !tw);
+  const qs = SAVE.q[id]; $('qBest').textContent = qs ? `Best ${Math.round(qs.b * q.m)}/${q.m}${qs.l >= .75 ? ' ✓' : ''}` : 'New'; $('qBest').title = qs ? `Attempted ${qs.n}×, last score ${Math.round(qs.l * q.m)}/${q.m}` : 'First time on this argument';
   $('qText').textContent = q.q; $('qCtx').textContent = q.ctx || '';
   $('qBrief').classList.add('hide'); $('qBrief').innerHTML = '<b>Brief — marking points</b><ul>' + q.k.map(x => '<li>' + esc(x) + '</li>').join('') + '</ul>';
   $('ans').value = ls('cd-draft-' + id) || ''; wc();
@@ -1133,7 +1163,7 @@ $('bArgue').onclick = async () => {
     if (!res) { await say('Court Associate', 'The marking service could not be reached (' + (G.err || 'error') + '). You will mark this one yourself.'); }
   }
   if (!live(run)) return;
-  if (!res) res = await selfMark(q);
+  if (!res) res = await selfMark(q, ans);
   if (!live(run)) return;
   hideBox();
   res.speed = speed;
@@ -1150,11 +1180,11 @@ async function grade(q, ans) {
   const g = JSON.parse(txt.slice(txt.indexOf('{'), txt.lastIndexOf('}') + 1));
   g.score = clamp(Math.round(+g.score || 0), 0, q.m); g.ai = true; return g;
 }
-function selfMark(q) {
+function selfMark(q, ans) {
   return new Promise(res => {
     const r = $('ruling'); r.classList.remove('hide');
     r.innerHTML = `<div class="qt" style="margin-top:0">Mark yourself</div><div class="small">Compare your argument with the model answer, then award your marks honestly (tap a score or press its number key). The court is watching.</div>
-      <div class="modelA">${esc(q.a)}</div><div class="brief" style="margin-top:8px"><b>Marking points</b><ul>${q.k.map(x => '<li>' + esc(x) + '</li>').join('')}</ul></div>
+      <div class="cols"><div><h4>Your argument</h4><div class="modelA yourA">${esc(ans)}</div></div><div><h4>Model answer</h4><div class="modelA">${esc(q.a)}</div></div></div><div class="brief" style="margin-top:8px"><b>Marking points</b><ul>${q.k.map(x => '<li>' + esc(x) + '</li>').join('')}</ul></div>
       <div class="row">${[...Array(q.m + 1).keys()].map(n => `<button data-s="${n}" ${n === q.m ? 'class="pri"' : ''}>${n}/${q.m}</button>`).join('')}</div>`;
     const pick = n => { r.onclick = null; removeEventListener('keydown', kd); r.classList.add('hide'); res({score:n, got:[], missed:[], self:true}); };
     const kd = e => { if (r.classList.contains('hide')) return removeEventListener('keydown', kd); const n = +e.key; if (/^[0-9]$/.test(e.key) && n <= q.m) { e.preventDefault(); pick(n); } };
@@ -1171,7 +1201,7 @@ async function turn(q, res, ans) {
   const dmg = Math.round(135 / n * f * mult + (tier === 'mog' ? 6 : 0));
   let back = f < .85 ? Math.round(125 / n * (1 - f) * (boss ? 1.15 : 1)) : 0;
   let gain = Math.round(f * 1000 * (1 + Math.min(prevCombo, 3) * .25)) - (G.peek ? 200 : 0) + (res.speed ? 150 : 0); if (tier === 'weak') gain -= 300;
-  G.results.push({id:G.qs[G.i], f, score:res.score, m:q.m});
+  G.results.push({id:G.qs[G.i], f, score:res.score, m:q.m}); res.pb = noteQ(G.qs[G.i], f);
   const fBase = boss ? 1.08 : 1, run = G.run, dead = () => !live(run);
   document.body.classList.add('cine'); C.orbit = 0;
   if (!FPV.on) await toFP(.4);
@@ -1265,22 +1295,23 @@ async function turn(q, res, ans) {
   if (dead()) return;
   fu.posT = fu.base.clone();
   ls('cd-draft-' + G.qs[G.i], '');
-  await showRuling(q, res, f, dmg, back, gain);
+  await showRuling(q, res, f, dmg, back, gain, ans);
   if (dead()) return;
   G.i++;
   if (G.hpF <= 0 || G.hpY <= 0 || G.i >= G.qs.length) return verdict();
   nextQ();
 }
-function showRuling(q, res, f, dmg, back, gain) {
+function showRuling(q, res, f, dmg, back, gain, ans) {
   return new Promise(done => {
     const cls = f >= .75 ? 'ok' : f >= .5 ? 'md' : 'bd', r = $('ruling');
     const li = a => (a && a.length) ? '<ul>' + a.map(x => '<li>' + esc(x) + '</li>').join('') + '</ul>' : '<div class="small">—</div>';
     r.innerHTML = `<div class="row" style="justify-content:space-between"><div><div class="small" style="text-transform:uppercase;letter-spacing:1px">Judge's ruling${res.self ? ' (self-marked)' : ''}</div><div class="sc ${cls}">${res.score} / ${q.m}</div></div>
-      <div class="small" style="text-align:right">Damage dealt <b style="color:#ff8a8a">${dmg}</b> · taken <b style="color:#8ac8ff">${back}</b><br>${gain >= 0 ? '+' : ''}${gain} aura${res.duel ? ' · quick draw ' + res.duel : ''}${G.peek ? ' · brief peeked' : ''}${res.speed ? ' · speed bonus' : ''}</div></div>
+      <div class="small" style="text-align:right">Damage dealt <b style="color:#ff8a8a">${dmg}</b> · taken <b style="color:#8ac8ff">${back}</b><br>${gain >= 0 ? '+' : ''}${gain} aura${res.duel ? ' · quick draw ' + res.duel : ''}${G.peek ? ' · brief peeked' : ''}${res.speed ? ' · speed bonus' : ''}${res.pb ? '<br><span class="pb">⭐ New personal best</span>' : ''}</div></div>
       ${res.self ? '' : `<div class="cols"><div><h4>✅ What earned marks</h4>${li(res.got)}</div><div><h4>❌ What was missing</h4>${li(res.missed)}</div></div>
       ${res.tip ? `<div style="margin-top:10px"><b>💡 Tip:</b> ${esc(res.tip)}</div>` : ''}
       ${res.better ? `<details><summary>Improved version of your answer</summary><div class="modelA">${esc(res.better)}</div></details>` : ''}`}
-      <details ${res.self ? '' : ''}><summary>Model answer & marking points</summary><div class="modelA">${esc(q.a)}\n\nKey marking points:\n- ${q.k.map(esc).join('\n- ')}</div></details>
+      ${res.self ? '' : `<details><summary>Your argument</summary><div class="modelA yourA">${esc(ans)}</div></details>`}
+      <details><summary>Model answer & marking points</summary><div class="modelA">${esc(q.a)}\n\nKey marking points:\n- ${q.k.map(esc).join('\n- ')}</div></details>
       <div class="row" style="margin-top:12px"><button class="pri" id="bCont">${G.hpF <= 0 || G.hpY <= 0 || G.i + 1 >= G.qs.length ? 'Hear the verdict ⚖️' : 'Next argument ⚔️'}</button></div>`;
     r.classList.remove('hide'); r.scrollTop = 0;
     fpLook(headOf(CH.judge).lerp(headOf(CH.foe), .5).add(new V3(0, -.45, 0)));
@@ -1298,7 +1329,7 @@ async function verdict() {
   // save straight away: the case is over, so skipping the verdict cutscene must not lose it
   let bonus = win ? 500 + Math.round(G.hpY * 10) : 0;
   const before = SAVE.aura; SAVE.aura = Math.max(0, SAVE.aura + G.auY + bonus); SAVE.played++;
-  const order = 'SABCD'; if (win && (!SAVE.grades[G.case.id] || order.indexOf(grade) < order.indexOf(SAVE.grades[G.case.id]))) SAVE.grades[G.case.id] = grade;
+  const order = 'SABCD'; if (win && !G.case.rev && (!SAVE.grades[G.case.id] || order.indexOf(grade) < order.indexOf(SAVE.grades[G.case.id]))) SAVE.grades[G.case.id] = grade;
   persist();
   // the Leave button becomes Skip: the rest of the cutscene then runs instantly
   let skipR; const skipP = new Promise(r => skipR = r), W8 = p => Promise.race([p, skipP]);
@@ -1319,7 +1350,7 @@ async function verdict() {
   Lz.userData.pose = 'sad'; Lz.userData.brow = 'sad'; Lz.userData.scaleT = .9; FX.tint.copy(W.userData.col);
   go(lowShot(W), 1.8); FX.linesT = .6; crowdReact = 1.5; SFX.ooh(); win ? SFX.win() : SFX.lose();
   const r0 = rankOf(before), r1 = rankOf(SAVE.aura);
-  const weak = G.results.slice().sort((a, b) => a.f - b.f)[0];
+  const anyWeak = G.results.some(r => r.f < .75), rvI = CASES.findIndex(c => c.rev), nx = CASES[G.ci + 1];
   await W8(sleep(1200)); FX.linesT = 0; G.skipV = false;
   if (dead()) return;
   $('hudBtns').classList.add('hide');
@@ -1329,19 +1360,22 @@ async function verdict() {
     <div class="vg" style="color:${gc}">${grade}</div>
     <div class="vs"><div><b>${Math.round(avg * 100)}%</b>average</div><div><b>${G.results.reduce((a, r) => a + r.score, 0)}/${G.results.reduce((a, r) => a + r.m, 0)}</b>marks</div><div><b>+${(G.auY + bonus).toLocaleString()}</b>aura</div></div>
     ${r1 > r0 ? `<div class="slam-up" style="font-family:Bangers;font-size:30px;color:#ffd84a;margin:6px 0">⬆ PROMOTED: ${RANKS[r1][1].toUpperCase()}</div>` : ''}
-    ${weak && weak.f < .75 ? `<div class="small" style="margin:8px 0">Revise next: <b style="color:var(--ink)">${esc(Q[weak.id].q)}</b> (${weak.score}/${weak.m})</div>` : ''}
+    <div class="vl">${G.results.map(r => `<details><summary><b class="${r.f >= .75 ? 'ok' : r.f >= .5 ? 'md' : 'bd'}">${r.score}/${r.m}</b> ${esc(Q[r.id].q)}</summary><div class="modelA">${esc(Q[r.id].a)}</div></details>`).join('')}</div>
+    <div class="small">${G.results.length ? 'Open an argument to see its model answer.' : ''}${anyWeak ? ' Red and amber ones go into your Revision Hearing.' : ''}</div>
     <div class="row" style="justify-content:center;margin-top:12px">
-      ${win && G.ci + 1 < CASES.length - 1 ? `<button class="pri" id="vNext">Next case ⚖️</button>` : ''}
+      ${win && nx && !nx.free ? `<button class="pri" id="vNext">Next case ⚖️</button>` : ''}
+      ${anyWeak && !G.case.rev ? `<button id="vRev">Revise weak spots 📚</button>` : ''}
       <button ${win ? '' : 'class="pri"'} id="vRetry">${win ? 'Replay' : 'Appeal (retry)'}</button><button id="vMenu">Case list</button></div>`;
   $('verdict').classList.remove('hide');
   $('vRetry').onclick = () => { $('verdict').classList.add('hide'); startCase(G.ci); };
   $('vMenu').onclick = () => { $('verdict').classList.add('hide'); menu(); };
+  if ($('vRev')) $('vRev').onclick = () => { $('verdict').classList.add('hide'); startCase(rvI); };
   if ($('vNext')) $('vNext').onclick = () => { $('verdict').classList.add('hide'); startCase(G.ci + 1); };
   focusSoon($('vNext') || $('vRetry'));
 }
 
 addEventListener('keydown', e => { if ((e.key === ' ' || e.key === 'Enter') && !$('box').classList.contains('hide') && document.activeElement.tagName !== 'TEXTAREA') { e.preventDefault(); skipAll(); } });
-window.__CD = {G, CH, C, Q, CASES, startCase, turn, verdict, menu, FX};
+window.__CD = {G, CH, C, Q, CASES, SAVE, startCase, turn, verdict, menu, FX, weakQs, noteQ, selfMark, showRuling};
 menu(); requestAnimationFrame(t => { last = t; frame(t); });
 setTimeout(() => { $('load').style.opacity = 0; setTimeout(() => $('load').remove(), 700); }, 150);
 </script>

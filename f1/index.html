@@ -46,18 +46,18 @@ button.go { background:var(--acc); color:#fff; font-size:18px; font-style:italic
 #secs { display:flex; gap:4px; justify-content:center; margin-top:4px; } #secs i { width:56px; height:5px; border-radius:3px; background:rgba(255,255,255,.18); } #secs i.g { background:var(--good); } #secs i.y { background:var(--acc2); } #secs i.p { background:var(--pb); }
 #bestL { font-size:12px; color:var(--dim); margin-top:3px; }
 #gaps { display:flex; gap:12px; justify-content:center; font-size:12px; color:var(--dim); margin-top:2px; } #gaps:empty { display:none; } #gaps b { color:var(--ink); }
-#tower { position:absolute; right:14px; top:14px; width:210px; font-size:13px; padding:4px 0; } #tower div { display:flex; padding:2px 10px; gap:8px; } #tower div.me { background:rgba(225,6,0,.35); } #tower b { width:18px; text-align:right; } #tower i { width:4px; border-radius:2px; } #tower span { flex:1; overflow:hidden; white-space:nowrap; } #tower em { font-style:normal; color:var(--dim); }
+#tower { position:absolute; right:14px; top:14px; width:210px; font-size:13px; padding:4px 0; } #tower div { display:flex; padding:2px 10px; gap:8px; } #tower div.me { background:rgba(225,6,0,.35); } #tower b { width:18px; text-align:right; } #tower i { width:4px; border-radius:2px; } #tower span { flex:1; overflow:hidden; white-space:nowrap; } #tower em { font-style:normal; color:var(--dim); } #tower u { text-decoration:none; font-weight:800; min-width:14px; text-align:center; } #tower u.pit { color:#111; background:var(--acc2); border-radius:3px; padding:0 3px; font-size:11px; }
 #br { position:absolute; right:14px; bottom:14px; display:flex; flex-direction:column; align-items:flex-end; gap:6px; }
 #spdBox { text-align:right; } #spd { font:900 40px system-ui,sans-serif; line-height:1; } #spd small { font-size:13px; color:var(--dim); } #gear { font:900 40px system-ui,sans-serif; color:var(--acc2); margin-left:14px; }
 #bars { width:230px; font-size:10px; letter-spacing:.08em; color:var(--dim); } #bars u { display:block; height:6px; background:rgba(255,255,255,.14); border-radius:3px; overflow:hidden; margin:2px 0 5px; } #bars u i { display:block; height:100%; }
 #ersB { background:#ffd23c; } #thrB { background:var(--good); } #brkB { background:#ff3b3b; }
 #flags { display:flex; gap:6px; } #flags span { padding:3px 8px; border-radius:4px; font:800 12px system-ui; background:#222; color:#777; } #flags span.on { background:var(--good); color:#06240f; } #flags span.av { background:#2c6; color:#000; opacity:.6; } #flags span.bad { background:#ff3b3b; color:#fff; }
-#tyres { display:grid; grid-template-columns:repeat(2,22px); gap:4px 26px; padding:8px 12px; position:relative; } #tyres i { width:22px; height:30px; border-radius:5px; display:block; border:2px solid #000; } #tyres b { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); font-size:11px; color:var(--dim); }
+#tyres { display:grid; grid-template-columns:repeat(2,22px); gap:4px 26px; padding:8px 12px; position:relative; } #tyres i { width:22px; height:30px; border-radius:5px; display:block; border:2px solid #000; } #tyres.cliff i { border-color:#ff3b3b; } #tyres b { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); font-size:11px; color:var(--dim); }
 #mini { position:absolute; left:14px; bottom:14px; width:190px; height:190px; }
 #toast { position:absolute; left:50%; top:24%; transform:translateX(-50%); font:900 italic 26px system-ui,sans-serif; text-shadow:0 2px 8px #000; text-align:center; opacity:0; transition:opacity .25s; white-space:nowrap; } #toast small { display:block; font-size:15px; font-weight:600; font-style:normal; color:var(--dim); }
 #lights { position:absolute; left:50%; top:14%; transform:translateX(-50%); display:flex; gap:12px; background:#0b0b0d; padding:12px 16px; border-radius:10px; box-shadow:0 8px 30px rgba(0,0,0,.6); }
 #lights i { width:34px; height:34px; border-radius:50%; background:#2a0606; box-shadow:inset 0 0 8px #000; } #lights i.on { background:radial-gradient(circle at 40% 35%,#ff8a7a,#ff1500 45%,#a00000); box-shadow:0 0 22px #ff2200; }
-#warn { position:absolute; left:50%; bottom:18%; transform:translateX(-50%); font:800 15px system-ui; color:#ffcc33; text-shadow:0 1px 4px #000; }
+#warn { position:absolute; left:50%; bottom:18%; transform:translateX(-50%); font:800 15px system-ui; color:#ffcc33; text-shadow:0 1px 4px #000; } #warn.blue { color:#fff; background:#1d5bd8; padding:4px 12px; border-radius:5px; }
 #radio { position:absolute; left:14px; top:96px; max-width:340px; background:linear-gradient(90deg,rgba(10,12,18,.88),rgba(10,12,18,.6)); border-left:4px solid var(--acc2); padding:8px 12px; border-radius:0 8px 8px 0; font:600 14px system-ui; opacity:0; transition:opacity .3s; } #radio b { display:block; font-size:10px; letter-spacing:.14em; color:var(--acc2); margin-bottom:2px; }
 #pitInfo { position:absolute; left:50%; top:30%; transform:translateX(-50%); text-align:center; font:800 15px system-ui; text-shadow:0 1px 4px #000; } #pitInfo:empty { display:none; } #pitInfo big { display:block; font:900 italic 46px system-ui; color:#fff; } #pitInfo kbd { display:inline-block; padding:1px 7px; border-radius:4px; background:#fff; color:#111; font-size:12px; margin:0 2px; } #pitInfo .on { color:var(--acc2); }
 #gm { position:absolute; left:214px; bottom:14px; width:96px; height:96px; }
@@ -149,8 +149,8 @@ table { width:100%; border-collapse:collapse; font:14px ui-monospace,monospace; 
 <script src="../three-r170.js"></script>
 <script src="../rally/js/util.js?v=1"></script>
 <script src="../rally/js/f1track.js?v=3"></script>
-<script src="../rally/js/f1car.js?v=3"></script>
+<script src="../rally/js/f1car.js?v=4"></script>
 <script src="../rally/js/f1gfx.js?v=3"></script>
-<script src="../rally/js/f1.js?v=6"></script>
+<script src="../rally/js/f1.js?v=7"></script>
 </body>
 </html>

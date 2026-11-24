@@ -104,6 +104,8 @@ button.big.go { border-color:transparent; box-shadow:0 10px 30px rgba(242,182,50
 #prog .sp { position:absolute; top:-3px; width:2px; height:12px; background:rgba(255,255,255,.55); }
 #prog span { position:absolute; top:9px; font:700 9px system-ui; letter-spacing:.14em; color:var(--dim); text-shadow:0 1px 3px #000; } #prog .pl { left:0; } #prog .pr { right:0; }
 #progDots i { position:absolute; top:-4px; width:14px; height:14px; margin-left:-7px; border-radius:50%; border:2px solid #000; background:var(--c); box-shadow:0 1px 4px rgba(0,0,0,.6); }
+#progBest { position:absolute; top:-6px; width:4px; height:18px; margin-left:-2px; border-radius:2px; background:#f2c94c; box-shadow:0 0 0 1px rgba(0,0,0,.6),0 0 8px rgba(242,201,76,.8); display:none; }
+#finTab .dn { color:var(--green); } #finTab .up { color:#ff8a7a; } #finTab small { font:700 12px ui-monospace,monospace; margin-left:8px; }
 #progDots i.me { width:16px; height:16px; margin-left:-8px; top:-5px; border-color:#fff; }
 #split { position:absolute; top:100px; left:50%; transform:translateX(-50%); font:700 15px ui-monospace,monospace; color:var(--ink); background:rgba(8,10,9,.62); border-radius:7px; padding:3px 10px; }
 #split:empty { display:none; } #split .up { color:#ff8a7a; } #split .dn { color:var(--green); }
@@ -266,7 +268,7 @@ i.md { display:inline-block; width:10px; height:10px; border-radius:50%; backgro
 <div id="hud" class="hidden">
   <div id="role"></div><div id="net"></div>
   <div id="top"><div id="pos"></div><div id="tbox"><div id="tm">0:00.0</div><div id="dl"></div></div><div id="trip"></div></div>
-  <div id="prog"><i id="progF"></i><b class="sp" style="left:33.3%"></b><b class="sp" style="left:66.6%"></b><div id="progDots"></div><span class="pl">START</span><span class="pr">FINISH</span></div>
+  <div id="prog"><i id="progF"></i><b class="sp" style="left:33.3%"></b><b class="sp" style="left:66.6%"></b><i id="progBest" title="your best run"></i><div id="progDots"></div><span class="pl">START</span><span class="pr">FINISH</span></div>
   <div id="split"></div>
   <div id="style"></div>
   <div id="call"><span id="callA"></span><span id="callT"></span></div><div id="big"></div>
@@ -283,17 +285,17 @@ i.md { display:inline-block; width:10px; height:10px; border-radius:50%; backgro
 </div></div>
 
 <script src="../three-r170.js"></script>
-<script src="js/util.js?v=36"></script>
-<script src="js/stage.js?v=36"></script>
-<script src="js/tex.js?v=36"></script>
-<script src="js/world.js?v=36"></script>
-<script src="js/car.js?v=36"></script>
-<script src="js/cockpit.js?v=36"></script>
-<script src="js/audio.js?v=36"></script>
-<script src="js/notes.js?v=36"></script>
-<script src="js/net.js?v=36"></script>
-<script src="js/garage3d.js?v=36"></script>
-<script src="js/bots.js?v=36"></script>
-<script src="js/main.js?v=36"></script>
+<script src="js/util.js?v=37"></script>
+<script src="js/stage.js?v=37"></script>
+<script src="js/tex.js?v=37"></script>
+<script src="js/world.js?v=37"></script>
+<script src="js/car.js?v=37"></script>
+<script src="js/cockpit.js?v=37"></script>
+<script src="js/audio.js?v=37"></script>
+<script src="js/notes.js?v=37"></script>
+<script src="js/net.js?v=37"></script>
+<script src="js/garage3d.js?v=37"></script>
+<script src="js/bots.js?v=37"></script>
+<script src="js/main.js?v=37"></script>
 </body>
 </html>

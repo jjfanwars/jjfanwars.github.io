@@ -185,7 +185,7 @@ function startStage(cfg, role, solo, myCar, seats) {
     $('tip').innerHTML = role === 'drv' ? 'W/S throttle · brake, A/D steer, Space handbrake, R recover (+' + (PHYS.easy ? 3 : 5) + ' s)' + (PHYS.mouseSteer ? ', MOUSE turns the wheel, hold right mouse to look around' : '') + (PHYS.manual ? ', E/Q shift up/down' : '') + ', V chase cam, G ghost, Esc pause · 1-6 or click dash switches · T horn' + (CARS[mdl(myCar)].nitro ? ' · Shift nitro' : '') + (PHYS.mouseSteer ? '' : ' · mouse looks') : 'Hold <b>right mouse</b> or <b>Tab</b> for the map · callouts: A/D + 1-6, J jump, C crest, L log, K keep middle, F flat, B brake';
     $('spd').style.display = role === 'drv' ? '' : 'none'; $('dmg').style.display = role === 'drv' ? '' : 'none'; $('call').classList.remove('on');
     bigMsg(''); $('big').classList.remove('fin'); msg('split', ''); $('fade').style.opacity = 0; $('lockmsg').classList.toggle('hidden', !!document.pointerLockElement); $('tip').style.opacity = 1;
-    G.bestRec = bestOf(); buildProg(); ghostSetup(); CH.init = false; $('style').innerHTML = ''; $('cross').style.display = G.chase && G.role === 'drv' ? 'none' : '';
+    G.bestRec = bestOf(); G.bpK = 0; G.bpOn = null; buildProg(); ghostSetup(); CH.init = false; $('style').innerHTML = ''; $('cross').style.display = G.chase && G.role === 'drv' ? 'none' : '';
     G.lastFrame = performance.now(); G.acc = 0;
     setTimeout(() => $('tip').style.opacity = 0.5, 9000);
   }, 30);
@@ -344,7 +344,7 @@ function stagePhase(dt) {
     if (G.t >= 0) { G.phase = 'run'; G.t = 0; Sfx.beep(true); bigMsg('GO'); setTimeout(() => G.phase === 'run' && msg('big', ''), 900); setTimeout(() => { if (G.on && G.role === 'drv') $('tip').style.opacity = 0; }, 7000); if (G.autoNav) Notes.auto(G.auto, G.notes, G.car.prog, 0, (t, w) => say(t, w)); }
   } else if (G.phase === 'run') {
     G.t += dt; const c = G.car;
-    if (G.nextSplit < 2 && c.prog >= G.splitS[G.nextSplit]) { G.splits.push(G.t + G.pen); const best = bestOf(); const ref = best && best.splits ? best.splits[G.nextSplit] : null; { const d = ref ? G.t + G.pen - ref : null; $('split').innerHTML = 'SPLIT ' + (G.nextSplit + 1) + ' &nbsp;' + fmtT(G.t + G.pen) + (d !== null ? ' &nbsp;<span class="' + (d >= 0 ? 'up' : 'dn') + '">' + (d >= 0 ? '+' : '\u2212') + Math.abs(d).toFixed(1) + '</span>' : ''); } setTimeout(() => msg('split', ''), 4000); G.nextSplit++; }
+    if (G.nextSplit < 2 && c.prog >= G.splitS[G.nextSplit]) { G.splits.push(G.t + G.pen); const best = bestOf(); const ref = best && best.splits ? best.splits[G.nextSplit] : null; { const d = ref ? G.t + G.pen - ref : null; $('split').innerHTML = 'SPLIT ' + (G.nextSplit + 1) + ' &nbsp;' + fmtT(G.t + G.pen) + (d !== null ? ' &nbsp;<span class="' + (d >= 0 ? 'up' : 'dn') + '">' + (d >= 0 ? '+' : '\u2212') + Math.abs(d).toFixed(1) + '</span>' : ''); if (d !== null) splitTone(d < 0); } setTimeout(() => msg('split', ''), 4000); G.nextSplit++; }
     if (G.autoNav && !G.finCall && G.finishS - c.prog < Math.max(55, c.speed * 3)) { G.finCall = 1; say('FINISH  ›  FLAT', 'flat over the finish', 2400); }
     if (c.prog >= G.finishS) { G.phase = 'fin'; G.finT = 0; G.final = G.t + G.pen; msg('big', fmtT2(G.final)); $('big').classList.add('fin'); Sfx.beep(true); finishRecord(); tvSetup(c); }
     if (G.autoNav) Notes.auto(G.auto, G.notes, c.prog, c.speed, (t, w) => say(t, w));
@@ -352,6 +352,8 @@ function stagePhase(dt) {
     G.finT += dt; if (G.finT > 3.2 && !G.finShown) { G.finShown = true; showFinish(); }
   }
 }
+// two quick notes at a split: rising when you are up on your best, falling when you are down
+function splitTone(up) { if (!Sfx.on || Sfx.off || !Sfx.ctx) return; const t = Sfx.ctx.currentTime; (up ? [660, 990] : [523, 392]).forEach((f, i) => Sfx.tone(f, t + i * 0.13, 0.18, 'sine', 0.1)); }
 const bestKey = () => 'pn-best-' + G.cfg.stage + '-' + G.cfg.fog;
 function bestOf() { try { return JSON.parse(localStorage.getItem(bestKey()) || 'null'); } catch (e) { return null; } }
 function finishRecord() {
@@ -361,6 +363,7 @@ function showFinish() { $('call').classList.remove('on'); clearTimeout(G.callHid
   try { document.exitPointerLock(); } catch (e) {}
   const st = STAGES[G.cfg.stage], rows = [['Stage', st.name + ' (' + (G.S.L / 1000).toFixed(2) + ' km)'], ['Time', fmtT2(G.final)], ['Penalties', '+' + G.pen + ' s'], ['Average', (G.S.L / Math.max(1, G.final) * 3.6).toFixed(1) + ' km/h'], ['Damage', Math.round((G.dmg || 0) * 100) + '%'], ['Best', G.wasBest || !G.prevBest ? 'NEW BEST' : fmtT2(G.prevBest.t)]];
   rows.splice(1, 1); rows.splice(4, 1);
+  { const ps = G.prevBest && G.prevBest.splits; (G.splits || []).slice(0, 2).forEach((v, i) => { const r = ps && ps[i], d = r ? v - r : null; rows.splice(1 + i, 0, ['Split ' + (i + 1), fmtT2(v) + (d !== null ? '<small class="' + (d < 0 ? 'dn' : 'up') + '">' + (d < 0 ? '\u2212' : '+') + Math.abs(d).toFixed(2) + '</small>' : '')]); }); }
   const st2 = G.style || {}; if (G.role === 'drv') { rows.push(['Style', (st2.pts || 0) + ' pts']); if (st2.drift) rows.push(['Longest drift', st2.drift.toFixed(1) + ' s']); if (st2.air) rows.push(['Biggest air', st2.air.toFixed(1) + ' s']); }
   const mk = medalOf(G.cfg.stage, G.final), nx = mk === 0 ? null : mk < 0 ? 2 : mk - 1;
   rows.push(['Medal', mk >= 0 ? medalDot(mk) + MEDALS[mk][0] : 'none'], ...(nx !== null ? [[MEDALS[nx][0].charAt(0) + MEDALS[nx][0].slice(1).toLowerCase() + ' time', fmtT2(medalT(G.cfg.stage, nx))]] : []));
@@ -534,6 +537,10 @@ function hud(st) {
     else { dl.textContent = G.bestRec ? 'BEST ' + fmtT(G.bestRec.t) : ''; dl.className = ''; } }
   // car dots on the progress bar (rivals in a race)
   if (G.progDots) for (const [c, el] of G.progDots) { const p = typeof c === 'string' ? G.bots[+c.slice(1)].car.prog : c === G.myCar ? st.prog : ((G.bufs[c] || []).slice(-1)[0] || { pr: G.startS }).pr; el.style.left = clamp((p - G.startS) / len, 0, 1) * 100 + '%'; }
+  // where your best run was at this time on the clock: a gold tick on the progress bar
+  { const tr = G.bestRec && G.bestRec.tr; let on = false;
+    if (tr && G.phase === 'run') { let k = G.bpK || 0; while (tr[k + 1] != null && tr[k + 1] <= clk) k++; G.bpK = k; const a = tr[k], b = tr[k + 1]; if (a != null) { on = true; $('progBest').style.left = (clamp((k + (b != null && b > a ? clamp((clk - a) / (b - a), 0, 1) : 0)) * 50 / len, 0, 1) * 100).toFixed(2) + '%'; } }
+    if (on !== G.bpOn) { G.bpOn = on; $('progBest').style.display = on ? 'block' : 'none'; } }
   if (G.role === 'drv') {
     hTxt('spdB', String(Math.round(st.speed * 3.6))); hTxt('gear', String(st.gear < 0 ? 'R' : st.gear || 'N'));
     drawRev(st.rpm);
@@ -560,6 +567,9 @@ function drawRev(rpm) {
   const hot = rpm > red - 400, g = x.createLinearGradient(0, 200, 200, 0); g.addColorStop(0, '#f2b632'); g.addColorStop(1, hot ? '#ff4a3a' : '#ffd36a');
   x.beginPath(); x.arc(cx, cy, R0 - 2, a0, a0 + span * f); x.strokeStyle = g; x.stroke();
   x.lineWidth = 2; x.strokeStyle = 'rgba(255,255,255,.5)';
+  // shift lights in the gap at the bottom of the ring: they fill up over the last 1500 rpm before the red line
+  { const n = clamp(Math.floor((rpm - (red - 1500)) / 300) + 1, 0, 5), col = ['#4cd07a', '#4cd07a', '#f2d23a', '#ff5a3a', '#ff5a3a'];
+    for (let i = 0; i < 5; i++) { x.beginPath(); x.arc(cx - 28 + i * 14, cy + 82, 4.2, 0, Math.PI * 2); x.fillStyle = i < n ? (n === 5 ? '#ff3a2a' : col[i]) : 'rgba(255,255,255,.13)'; x.fill(); } }
   for (let i = 0; i <= 8; i++) { const a = a0 + span * i / 8; x.beginPath(); x.moveTo(cx + Math.cos(a) * (R0 - 9), cy + Math.sin(a) * (R0 - 9)); x.lineTo(cx + Math.cos(a) * (R0 - 15), cy + Math.sin(a) * (R0 - 15)); x.stroke(); }
 }
 // ---------- championships: a run of stages against AI rivals, total time decides ----------

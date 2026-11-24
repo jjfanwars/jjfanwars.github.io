@@ -171,9 +171,15 @@ const F1 = (() => {
     const T = c.T, N = T.N, v = c.v, i = c.idx;
     if (!c.V) c.V = T.profile(0.9 + 0.08 * c.skill); if (!(c.ofs >= -99)) c.ofs = 0;
     // avoid cars ahead: pick a side, or follow
-    let cap = 99, want = null; const myD = c.q.d, lim = T.hw - 1.3;
+    let cap = 99, want = null, blue = null, close = false, def = false; const myD = c.q.d, lim = T.hw - 1.3, Ln = T.len;
     for (const o of cars) {
-      if (o === c || o.pit) continue; const gap = o.dist - c.dist; if (gap < -6 || gap > 30) continue;
+      if (o === c || o.pit) continue;
+      // road gap, wrapped by the lap length so lapped and lapping cars are seen where they really are
+      const race = o.dist - c.dist, gap = race - Math.round(race / Ln) * Ln;
+      if (race > Ln / 2 && gap < -5 && gap > -70) blue = o; // blue flag: a car a lap up is closing from behind
+      if (gap < -2 && gap > -14 && race < Ln / 2) def = true;
+      if (gap > 4 && gap < 32 && race < Ln / 2) close = true;
+      if (gap < -6 || gap > 30) continue;
       const dl = o.q.d - myD;
       if (gap > 5 && Math.abs(dl) < 2.6 && v > o.v - 1) { // catching a car: go round it if there is room, else follow
         const left = o.q.d - 3, right = o.q.d + 3, canL = left > -lim, canR = right < lim;
@@ -183,6 +189,11 @@ const F1 = (() => {
         if (gap < 16 && !(str && tgt !== null)) cap = Math.min(cap, o.v - 0.5 + (gap - 8) * 0.4);
       } else if (Math.abs(gap) <= 5 && Math.abs(dl) < 2.7) { want = clamp(o.q.d + (dl > 0 ? -2.8 : 2.8), -lim, lim) - T.L[i]; if (gap > 0) cap = Math.min(cap, o.v + (T.KS[i] > 1 / 600 ? -1.5 : 1)); }
     }
+    // blue flag: on a straight, move to the side away from the faster car and lift a little
+    const strHere = T.KS[i] < 1 / 600 && T.KS[T.wi(i + 25)] < 1 / 600; c.blue = !!blue;
+    if (blue && want === null && strHere) { const side = blue.q.d > myD ? -1 : 1; want = clamp(side * (lim - 0.6), -lim, lim) - T.L[i]; cap = Math.min(cap, c.V[i] * 0.95); }
+    // ERS: overtake mode when chasing or defending on a straight, harvest when the battery is low
+    c.ersMode = c.ers < 6e5 ? 0 : c.ers > 1.2e6 && strHere && (close || def) ? 2 : c.ersMode === 0 && c.ers < 1.2e6 ? 0 : 1;
     if (want !== null) c.ofs += clamp(want - c.ofs, -2.5 * dt, 2.5 * dt); else c.ofs -= Math.sign(c.ofs) * Math.min(Math.abs(c.ofs), 0.9 * dt);
     c.ofs = clamp(c.ofs, -lim - T.L[i], lim - T.L[i]);
     // steering: pure pursuit on the line

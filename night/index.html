@@ -36,6 +36,9 @@ canvas#gl { position:fixed; inset:0; width:100%; height:100%; display:block; }
 #stam { position:absolute; left:50%; bottom:28px; transform:translateX(-50%); width:180px; height:2px; background:rgba(255,255,255,.08); opacity:0; transition:opacity .5s; } #stam i { display:block; height:100%; background:rgba(220,214,200,.6); }
 #breath { position:absolute; left:50%; top:66%; transform:translateX(-50%); text-align:center; font:12px ui-monospace,monospace; color:var(--dim); letter-spacing:.15em; }
 #breath div { width:200px; height:3px; background:rgba(255,255,255,.1); margin:6px auto 0; } #breath i { display:block; height:100%; background:#8fb0d8; }
+#breath.warn { color:#e0503a; animation:bwarn .7s ease-in-out infinite alternate; } #breath.hold { color:#8fb0d8; } #breath.gasp { color:#e0503a; } #breath.gasp i { background:#e0503a; }
+@keyframes bwarn { from { opacity:1; } to { opacity:.45; } }
+#endTip { font-style:italic; font-size:14px; border-top:1px solid rgba(255,255,255,.12); padding-top:10px; margin-top:12px; }
 #map { position:fixed; left:50%; top:50%; transform:translate(-50%,-50%); width:min(86vmin,760px); height:min(86vmin,760px); z-index:8; box-shadow:0 20px 80px #000; }
 .scr { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; padding:16px; z-index:10; overflow:auto; background:rgba(0,0,0,.82); }
 #menu { background:radial-gradient(900px 500px at 50% 110%,rgba(120,20,10,.25),transparent 70%),linear-gradient(180deg,#05070b,#000); }
@@ -72,7 +75,7 @@ button.go { background:#5a1810; color:#f3e9d8; font-size:19px; letter-spacing:.2
   <div id="prompt"><span id="pTxt"></span><div id="pBar"><i></i></div></div>
   <div id="dot"></div>
   <div id="stam"><i></i></div>
-  <div id="breath" class="hidden">HOLD BREATH · RIGHT MOUSE / SPACE<div><i></i></div></div>
+  <div id="breath" class="hidden"><span id="bTxt">HOLD BREATH · RIGHT MOUSE / SPACE</span><div><i></i></div></div>
   <div id="br">
     <div><span id="bat"><i></i><i></i><i></i><i></i></span>LIGHT</div>
     <div><b id="nFlare">0</b>FLARES</div>
@@ -121,13 +124,13 @@ button.go { background:#5a1810; color:#f3e9d8; font-size:19px; letter-spacing:.2
 </div></div>
 
 <div id="end" class="scr hidden"><div class="card" style="width:min(520px,100%);text-align:center">
-  <h2 id="endT"></h2><p id="endS"></p>
+  <h2 id="endT"></h2><p id="endS"></p><p id="endTip"></p>
   <button class="go" id="again">Try again</button>
   <button id="endMenu" style="width:100%;margin-top:8px">Menu</button>
 </div></div>
 
 <div id="load">Loading…</div>
 <script src="../three-r170.js"></script>
-<script src="game.js?v=2"></script>
+<script src="game.js?v=3"></script>
 </body>
 </html>

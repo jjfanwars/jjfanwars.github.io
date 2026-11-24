@@ -44,7 +44,7 @@ Net.on('start', m => { G.crew = m.crew || []; if (!G.on) startGame(); });
 Net.on('crew', m => { G.crew = m.crew || G.crew; });
 async function rooms() { if ($('menu').classList.contains('hidden')) return; const r = await Net.rooms(), b = $('rooms'); b.innerHTML = ''; for (const x of r) { const e = document.createElement('button'); e.innerHTML = '<span>' + x.name.replace(/^\[?Camper\]? /, '').replace(/[<>&]/g, '') + '</span><span>' + x.n + '/8</span>'; e.onclick = () => joinRoom(x.code); b.appendChild(e); } clearTimeout(G.rt); G.rt = setTimeout(rooms, 4000); }
 if (!/^(localhost|127\.0\.0\.1)$/.test(location.hostname) || Q.has('relay')) rooms();
-function endToMenu(why) { G.on = false; Net.close(); $('hud').classList.add('hidden'); show('menu'); msg('msg', why || ''); try { document.exitPointerLock(); } catch (e) {} Radio.stop(); Sfx.idle(); Winch.update(false, 0); G.paused = false; Sfx.mute(true); setTimeout(() => Sfx.mute(false), 50); rooms(); }
+function endToMenu(why) { G.on = false; Net.close(); $('hud').classList.add('hidden'); show('menu'); msg('msg', why || ''); try { document.exitPointerLock(); } catch (e) {} Radio.stop(); Sfx.idle(); Winch.update(false, 0); G.paused = false; Sfx.mute(true); setTimeout(() => Sfx.mute(false), 50); rooms(); bestLine(); }
 // ---------- start ----------
 let MAPC = null;
 function startGame() {
@@ -73,7 +73,7 @@ function startGame() {
     }
     const k = Math.max(0, G.crew.findIndex(c => c.id === myId()));
     Object.assign(ME, { mode: 'in', seat: -1, p: new V3(k % 2 ? -0.2 : 0.25, FL, 1.9 - (k >> 1) * 1.1), v: new V3(), yaw: 0, pitch: -0.05, held: '', hold: '', holdT: 0, tumble: 0 });
-    G.t = 0; G.tm = 0; G.on = true; G.paused = false; G.objTxt = ''; G.wasLocked = false; G.ev = []; G.lastFrame = performance.now(); G.acc = 0; G.sendT = 0; G.poseT = 0; G.seen = {}; G.fin = false; G.statsMe = { walk: 0, roof: 0 };
+    G.t = 0; G.tm = 0; G.on = true; G.paused = false; G.objTxt = ''; G.wasLocked = false; G.ev = []; G.lastFrame = performance.now(); G.acc = 0; G.sendT = 0; G.poseT = 0; G.seen = {}; G.fin = false; G.statsMe = { walk: 0, roof: 0 }; G.legs = null; G.wpOn = true; G.wpTx = ''; progTicks();
     $('load').classList.add('hidden'); $('fin').classList.add('hidden'); $('lockmsg').classList.remove('hidden');
     toast("GRANDMA'S CAMPER", 'Get everyone to Lakeside Camp. Someone take the wheel (E at the driver seat).', 6000);
   }, 40);
@@ -558,6 +558,47 @@ function objective() {
   if (W.wait) return 'Almost there! Waiting for: ' + W.wait;
   return 'Lakeside Camp is just ahead!';
 }
+// where the current job is, so nobody has to hunt for the crank or the crate: a diamond on screen with the distance
+function goalPos() {
+  const S = G.S, A = S.sAll, s = Math.max(W.prog, RV.prog), it = heldBy(myId()), H = W.hook, me = myWorld(new V3());
+  if (W.ph === 'fin' || RV.up < 0.5) return null;
+  const itemAt = x => x.f === 'r' ? toW(lv(x.p), new V3()) : new V3(x.p[0], x.p[1], x.p[2]);
+  const nearItem = k => { let b = null, bd = 1e9; for (const x of G.items.values()) if (x.k === k && !x.h && !x.lit) { const p = itemAt(x), d = p.distanceTo(me); if (d < bd) { bd = d; b = p; } } return b; };
+  const hook = lbl => H.st === 'set' ? null : H.st === 'held' ? (H.by === myId() ? lbl() : null) : H.st === 'stow' ? [toW(lv(RVL.bumper), new V3()), 'winch hook'] : [hookPos(new V3()), 'winch hook'];
+  if (W.flat.some(f => f)) { if (it && it.k === 'tyre') { const i = W.flat.findIndex(f => f); return [toW(lv(CAR.wheels[i]), new V3()), 'flat wheel']; } const p = nearItem('tyre'); return p && [p, 'spare wheel']; }
+  if (W.fuel < 0.1 || (W.fuel < 0.5 && s >= A.gas - 40 && s < A.gas + 40)) { if (it && it.k === 'can') return [toW(lv(RVL.cap), new V3()), 'filler cap']; const p = nearItem('can'); return p && [p, 'jerry can']; }
+  if (!W.logGone && s >= A.log - 70 && s < A.log + 4) return hook(() => { const L = S.log, x = (L.ax + L.bx) / 2, z = (L.az + L.bz) / 2; return [new V3(x, S.terrainAt(x, z) + 1, z), 'fallen tree']; });
+  if (s >= A.mud0 - 30 && s < A.mud1 + 4) return hook(() => { const f = T1.set(0, 0, 1).applyQuaternion(RV.q); let b = null, bd = 1e9; for (const p of S.posts) { const dx = p.x - RV.pos.x, dz = p.z - RV.pos.z, d = Math.hypot(dx, dz); if (dx * f.x + dz * f.z > 2 && d < bd) { bd = d; b = p; } } return b && [new V3(b.x, b.y + 1.4, b.z), 'winch post']; });
+  if (W.br.c < 1 && s >= A.br - 40 && s < A.br + 12) return [new V3(G.set.crank.x, G.set.crank.y, G.set.crank.z), 'bridge crank'];
+  if (S.boulders.some(b => b.on) && s >= A.rk - 160 && s < A.rk + 8) { if (it && it.k === 'dyn') { const b = S.boulders.find(b => b.on); return [new V3(b.x, b.y + b.r, b.z), 'rocks']; } return W.dyn > 0 ? [new V3(G.set.crate.x, G.set.crate.y + 0.6, G.set.crate.z), 'dynamite'] : null; }
+  if (W.fe.p < 0.98 && s >= A.dock0 - 30 && s < A.dock1) { const f = raftFrame(); return [new V3(f.x + Math.cos(f.h) * (S.HW - 0.2), S.ferryY + 1.1, f.z - Math.sin(f.h) * (S.HW - 0.2)), 'ferry wheel']; }
+  if (s > A.dock1) { const p = S.at(A.camp); return [new V3(p.x, S.heightAt(p.x, p.z) + 2, p.z), 'camp']; }
+  return null;
+}
+const WPV = new V3();
+function drawGoal() {
+  const el = $('wp'), g = G.on && !G.fin && $('fin').classList.contains('hidden') ? goalPos() : null, d = g ? g[0].distanceTo(eyeWorld(T2)) : 0;
+  if (!g || d < 3.5) { if (G.wpOn) { G.wpOn = false; el.style.display = 'none'; } return; }
+  if (!G.wpOn) { G.wpOn = true; el.style.display = ''; }
+  const v = WPV.copy(g[0]).project(World.cam); let x = v.x, y = v.y; const behind = v.z > 1; if (behind) { x = -x; y = -y; }
+  const m = Math.max(Math.abs(x) / 0.9, Math.abs(y) / 0.8), off = behind || m > 1; if (off) { const k = 1 / Math.max(m, 1e-3); x *= k; y *= k; if (behind && m < 1) y = -0.8; }
+  el.style.transform = 'translate(' + ((x + 1) / 2 * innerWidth).toFixed(0) + 'px,' + ((1 - y) / 2 * innerHeight).toFixed(0) + 'px) translate(-50%,-50%)'; el.classList.toggle('off', off);
+  const tx = g[1] + '|' + Math.round(d); if (tx !== G.wpTx) { G.wpTx = tx; el.children[1].textContent = g[1]; el.children[2].textContent = Math.round(d) + ' m'; }
+}
+// leg times: when each obstacle was cleared (seen from the synced state, so guests track them too)
+const LEGS = [['Fallen tree', () => !!W.logGone], ['Mud hill', A => Math.max(W.prog, RV.prog) > A.mud1 + 4], ['Bridge', () => W.br.c >= 1], ['Rockslide', () => G.S.boulders.every(b => !b.on)], ['Ferry', A => W.fe.p >= 0.98 && Math.max(W.prog, RV.prog) > A.dock1 - 20]];
+function legStep() {
+  const A = G.S.sAll, t = W.tm + W.pen;
+  if (!G.legs) { G.legs = LEGS.map(l => l[1](A) ? -1 : 0); G.legs.forEach((v, i) => { const tk = $('prog').querySelector('.tk[data-i="' + i + '"]'); if (tk) tk.classList.toggle('done', v < 0); }); } // already done when we joined: no time for it
+  LEGS.forEach((l, i) => { if (!G.legs[i] && l[1](A)) { G.legs[i] = Math.max(0.1, t); const tk = $('prog').querySelector('.tk[data-i="' + i + '"]'); if (tk) tk.classList.add('done'); } });
+}
+function progTicks() {
+  const A = G.S.sAll, len = A.camp - A.start, at = s => clamp((s - A.start) / len, 0, 1) * 100 + '%';
+  $('prog').querySelectorAll('.tk').forEach(e => e.remove());
+  [[A.log, 0], [(A.mud0 + A.mud1) / 2, 1], [A.gas, 'g'], [A.br, 2], [A.rk, 3], [A.dock0, 4]].forEach(([s, i]) => { const e = document.createElement('i'); e.className = 'tk' + (i === 'g' ? ' gas' : ''); if (i !== 'g') e.dataset.i = i; e.style.left = at(s); e.title = i === 'g' ? "Pete's Gas" : LEGS[i][0]; $('prog').appendChild(e); });
+}
+function bestLine() { let b = 0; try { b = +localStorage.getItem('cc-best') || 0; } catch (e) {} $('bestT').innerHTML = b ? 'Best trip <b>' + fmtT(b) + '</b>' : ''; }
+bestLine();
 function hud(dt) {
   const t = G.tgt, it = heldBy(myId()), H = W.hook;
   let pr = ''; if (t) { pr = '<kbd>E</kbd> ' + (t.hold ? 'hold: ' : '') + t.label; const hp = t.hold ? (t.hold === 'crank' ? W.br.c : W.hp[t.hold]) : 0; if (t.hold && hp > 0) pr += ' <u><i style="width:' + Math.round(hp * 100) + '%"></i></u>'; }
@@ -572,6 +613,7 @@ function hud(dt) {
   const A = G.S.sAll, len = A.camp - A.start; $('progF').style.width = clamp((Math.max(W.prog, RV.prog) - A.start) / len, 0, 1) * 100 + '%';
   // crew list
   if ((G.crT = (G.crT || 0) - dt) <= 0) { G.crT = 0.3; $('crew').innerHTML = G.crew.map(c => { const p = c.id === myId() ? { m: ME.mode, s: ME.seat } : G.poses[c.id] || {}; const st = W.seats[0] === c.id ? 'driving' : W.seats[1] === c.id ? 'riding shotgun' : p.m === 'roof' ? 'on the roof' : p.m === 'in' ? 'in the camper' : p.m === 'out' ? 'outside' : '...'; return '<div><i style="background:#' + CREW_COL[c.c % 8].toString(16).padStart(6, '0') + '"></i>' + c.name.replace(/[<>&]/g, '') + ' <small>' + st + '</small></div>'; }).join(''); }
+  legStep(); drawGoal();
   $('flash').style.opacity = G.flash || 0; G.flash = Math.max(0, (G.flash || 0) - dt * 1.5);
   if ((G.mapT = (G.mapT || 0) - dt) <= 0 && $('mapBox').classList.contains('on')) { G.mapT = 0.25; drawMap(); }
 }
@@ -589,8 +631,11 @@ function drawMap() {
 function showFinish() {
   if (G.fin) return; G.fin = true; try { document.exitPointerLock(); } catch (e) {}
   const s = W.stats, rows = [['Trip time', fmtT(W.tm + W.pen)], ['Tow trucks', W.tows], ['Dynamite lit', s.boom], ['Jerry cans poured', s.cans], ['Flat tyres', s.flats], ['Cables slipped', s.snap], ['You walked', Math.round(G.statsMe.walk) + ' m'], ['You rode the roof', Math.round(G.statsMe.roof) + ' s'], ['You fell off', W2.fell + ' times']];
+  let best = 0, bl = null; try { best = +localStorage.getItem('cc-best') || 0; bl = JSON.parse(localStorage.getItem('cc-legs') || 'null'); } catch (e) {} const t = W.tm + W.pen;
+  // when each obstacle was cleared, and the gap to the same point on your best trip
+  if (G.legs) { legStep(); const dl = (v, i) => bl && bl[i] > 0 && v > 0 ? ' <small class="' + (v <= bl[i] ? 'dn' : 'up') + '">' + (v <= bl[i] ? '\u2212' : '+') + fmtT(Math.abs(v - bl[i])) + '</small>' : ''; rows.splice(1, 0, ...LEGS.map((l, i) => [l[0] + ' cleared', G.legs[i] > 0 ? fmtT(G.legs[i]) + dl(G.legs[i], i) : '\u2014'])); }
   $('finT').innerHTML = rows.map(r => '<div><span>' + r[0] + '</span><b>' + r[1] + '</b></div>').join('');
-  let best = 0; try { best = +localStorage.getItem('cc-best') || 0; } catch (e) {} const t = W.tm + W.pen; if (!best || t < best) { try { localStorage.setItem('cc-best', t); } catch (e) {} $('finB').textContent = 'New best trip!'; } else $('finB').textContent = 'Best trip: ' + fmtT(best);
+  if (!best || t < best) { try { localStorage.setItem('cc-best', t); if (G.legs && G.legs.every(v => v > 0)) localStorage.setItem('cc-legs', JSON.stringify(G.legs)); } catch (e) {} $('finB').textContent = best ? 'New best trip! ' + fmtT(best - t) + ' faster' : 'New best trip!'; } else $('finB').textContent = 'Best trip: ' + fmtT(best) + ' (+' + fmtT(t - best) + ')';
   $('bAgain').classList.toggle('hidden', Net.role === 'guest'); show('fin');
 }
 // ---------- frame ----------

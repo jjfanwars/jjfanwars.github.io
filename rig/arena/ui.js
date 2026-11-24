@@ -5,6 +5,13 @@ const show = id => { for (const s of ['menu', 'lobby', 'pause', 'dead', 'end']) 
 function showMsg(t, dur = 2.5) { const e = $('msg'); e.innerHTML = t; e.style.opacity = 1; clearTimeout(showMsg.T); showMsg.T = setTimeout(() => e.style.opacity = 0, dur * 1000); }
 function hitMark(k) { const e = $('hm'); e.className = k || ''; e.style.opacity = 1; clearTimeout(hitMark.T); hitMark.T = setTimeout(() => e.style.opacity = 0, k === 'k' ? 380 : 160); if (k !== 'k') Snd.hit(k === 'h'); }
 function dmgDir(x, z) { if (!x && !z) return; const a = Math.atan2(-(x - P.x), -(z - P.z)), rel = angD(P.yaw, a), d = document.createElement('div'); d.style.transform = `rotate(${(-rel * 180 / PI).toFixed(0)}deg)`; $('dmgDir').appendChild(d); requestAnimationFrame(() => { d.style.opacity = 1; setTimeout(() => { d.style.opacity = 0; setTimeout(() => d.remove(), 700); }, 500); }); }
+// death card detail: how far away the killer was and how much health they had left (kh comes from the host)
+function killInfo(e) { const a = AVS.get(e.by), bits = []; if (a && a.rp && P) { const d = Math.hypot(a.rp[0] - P.x, a.rp[1] - P.y, a.rp[2] - P.z); if (d > 1.5) bits.push(Math.round(d) + ' m away'); } if (e.kh) bits.push(`they had <b style="color:${e.kh <= 30 ? '#ff7a5a' : '#f0d080'}">${e.kh} HP</b> left`); return bits.length ? `<small style="display:block;font-size:14px;color:var(--dim);margin-top:4px">${bits.join(' · ')}</small>` : ''; }
+// kills in quick succession (within 4.5 s) and in one life get a callout and a rising chime
+function killStreak(vic, e) { const t = G.t; G.streak = (G.streak || 0) + 1; G.multi = t - (G.multiT || -99) < 4.5 ? (G.multi || 1) + 1 : 1; G.multiT = t;
+  const m = ['', '', 'Double kill', 'Triple kill', 'Quad kill'][Math.min(4, G.multi)] || 'Rampage', s = G.streak >= 3 && G.streak % 2 === 1 ? G.streak + ' in a row' : '';
+  showMsg(`You took out ${esc(vic)}${e.hd ? ' · <b style="color:#ffd060">headshot</b>' : ''}${G.multi > 1 || s ? `<br><b style="color:var(--acc);font-size:1.25em;letter-spacing:.08em">${[G.multi > 1 ? m : '', s].filter(Boolean).join(' · ').toUpperCase()}</b>` : ''}`, G.multi > 1 || s ? 2.6 : 2);
+  if (G.multi > 1 || s) Snd.streak(Math.max(G.multi, s ? 2 : 0)); }
 const FEED = [];
 function feed(e) { const el = document.createElement('div'), me = myId(), nm = id => { const t = teamMode() ? TEAM_CSS[teamOf(id)] : '#fff'; return `<span style="color:${t}">${esc(nameOf(id))}</span>`; };
   if (e.k === 'bs') el.innerHTML = `${e.by ? nm(e.by) + ' sank ' : ''}<b>${BOATS[e.b] && BOATS[e.b].team != null ? TEAM_N[BOATS[e.b].team] + ' ' : ''}gunboat</b> ⚓`;
@@ -35,12 +42,15 @@ function miniFrame() { const c = $('mini'), g = c.getContext('2d'), W = 300; g.c
   for (const a of AVS.values()) { if (!a.vis || !a.alive || !a.rp) continue; const en = isEnemy(a.id); if (en && !(a.flT > -1.5 && a.shT > G.t)) continue; g.fillStyle = en ? '#ff5040' : '#7fd0ff'; g.beginPath(); g.arc(px(a.rp[0]), pz(a.rp[2]), 4, 0, TAU); g.fill(); }
   PICKS.forEach((q, i) => { if (PK[i] || !WPN[q.k]) return; g.fillStyle = '#f0b040'; g.fillRect(px(q.x) - 2.5, pz(q.z) - 2.5, 5, 5); });
   if (P.alive) { g.save(); g.translate(px(P.x), pz(P.z)); g.rotate(-P.yaw); g.fillStyle = '#fff'; g.beginPath(); g.moveTo(0, -8); g.lineTo(5, 6); g.lineTo(-5, 6); g.fill(); g.restore(); } }
+// reload progress under the ammo count, and what to do when the magazine is empty
+function ammoExtra(W, a) { const r = $('relBar'), on = !P.seat && P.alive && P.relT > 0; r.classList.toggle('hidden', !on); if (on) r.firstChild.style.width = clamp(1 - P.relT / (W.rel || 1), 0, 1) * 100 + '%';
+  setT('ammoH', P.seat || !P.alive || on ? '' : a[0] <= 0 && a[1] <= 0 ? 'OUT OF AMMO · Q switch weapon' : a[0] <= 0 ? 'R reload' : a[0] <= Math.ceil(W.mag * .25) && a[1] > 0 && W.mag > 2 ? 'Low · R reload' : ''); }
 const fmtT = s => Math.floor(s / 60) + ':' + String(Math.floor(s % 60)).padStart(2, '0');
 function hud(dt) {
   const k = wNow(), W = WPN[k], a = P.ammo[k] || [0, 0];
   setT('hpN', Math.max(0, Math.ceil(P.alive ? P.hp : 0)) + '<small>' + (P.alive && (HS.get(P.id) || {}).prot > G.t ? 'PROTECTED' : '') + '</small>'); $('hpBar').firstChild.style.width = clamp(P.hp, 0, 100) + '%';
   $('airBar').classList.toggle('hidden', !(P.uw || P.air < 1)); $('airBar').firstChild.style.width = P.air * 100 + '%';
-  setT('wName', P.seat ? (P.seat.r === 'd' ? 'Helm' : 'Deck gun') : W.n + (P.relT > 0 ? ' · reloading' : '')); setT('ammoN', P.seat ? '' : `${a[0]}<small> / ${a[1]}</small>`); setT('nades', P.seat ? '' : '● '.repeat(P.nades) + '<small style="color:#999"> grenades (G)</small>');
+  setT('wName', P.seat ? (P.seat.r === 'd' ? 'Helm' : 'Deck gun') : W.n + (P.relT > 0 ? ' · reloading' : '')); setT('ammoN', P.seat ? '' : `<span style="color:${a[0] <= 0 ? '#ff5a4a' : a[0] <= Math.max(1, Math.ceil(W.mag * .25)) ? '#ffb040' : 'inherit'}">${a[0]}</span><small> / ${a[1]}</small>`); ammoExtra(W, a); setT('nades', P.seat ? '' : '● '.repeat(P.nades) + '<small style="color:#999"> grenades (G)</small>');
   const tl = G.set.time ? fmtT(Math.max(0, G.tl)) : '';
   if (teamMode()) setT('score', `<span style="color:${TEAM_CSS[0]}">RED ${G.ts[0]}</span> &nbsp;—&nbsp; <span style="color:${TEAM_CSS[1]}">${G.ts[1]} BLUE</span><small>${G.set.goal ? 'FIRST TO ' + G.set.goal : 'NO LIMIT'}${tl ? ' · ' + tl : ''}</small>`);
   else { const L = Object.entries(G.pl).sort((x, y) => y[1][5] - x[1][5]), mine = (G.pl[myId()] || [])[5] || 0, top = L[0]; setT('score', `YOU ${mine} &nbsp;·&nbsp; ${top && top[0] !== myId() ? esc(nameOf(top[0])) + ' ' + top[1][5] : (L[1] ? 'NEXT ' + L[1][1][5] : 'LEADING')}<small>${G.set.goal ? 'FIRST TO ' + G.set.goal : 'NO LIMIT'}${tl ? ' · ' + tl : ''}</small>`); }
@@ -52,6 +62,7 @@ function hud(dt) {
   if (P.alive && P.seat) pr = ''; $('prompt').classList.toggle('hidden', !pr || !P.alive); setT('prompt', pr);
   // crosshair
   const xs = clamp(((W.spr || .01) * P.spr) * 900, 4, 60), xh = $('xh'); xh.style.display = P.alive && !(P.ads && W.zoom >= 4 && !P.seat) && !G.deadOpen ? '' : 'none'; if (xh._s !== Math.round(xs)) { xh._s = Math.round(xs); const L = xh.children; L[0].style.top = (-xs - 8) + 'px'; L[1].style.top = xs + 'px'; L[2].style.left = (-xs - 8) + 'px'; L[3].style.left = xs + 'px'; }
+  if (P.alive && P.hp < 30 && !G.pausedAt && (G.hbT = (G.hbT || 0) - dt) <= 0) { G.hbT = .55 + P.hp / 30 * .5; Snd.heart(1 - P.hp / 40); }
   G.hurt = Math.max(0, (G.hurt || 0) - dt * 2); $('vigD').style.opacity = Math.max(G.hurt * .8, P.alive ? clamp((45 - P.hp) / 45, 0, 1) * .6 : 0);
   $('board').classList.toggle('hidden', !(K.Tab && G.on)); if (K.Tab && (G.bT = (G.bT || 0) - dt) <= 0) { G.bT = .3; setT('boardT', boardHTML()); }
   if (G.over && G.endShown != null) setT('endS', isHost() ? `Next match in ${Math.max(0, Math.ceil(14 - (G.t - G.endT)))} s` : 'Next match starts soon');
@@ -78,7 +89,7 @@ function buildRoster(set, crew) { const R = crew.map((c, i) => ({id: c.id, name:
   for (let i = 0; i < set.bots; i++) { const team = set.mode === 'boat' ? (red <= blue ? 0 : 1) : 0; if (team) blue++; else red++; R.push({id: 'b' + i, name: BOT_NAMES[i % BOT_NAMES.length] + ' (bot)', c: R.length, team, bot: 1}); } return R; }
 function hostStart() { const set = lobbySet(), roster = buildRoster(set, lobbyCrew()); Net.meta(Net.peers.size < MAXP - 1); Net.send({t: 'start', v: AV, set, roster}); matchStart(set, roster); }
 function practice() { Net.close(); const set = lobbySet(); if (!set.bots) set.bots = 4; const roster = buildRoster(set, [{id: 'H', name: myName() || 'You', team: 0}]); matchStart(set, roster); }
-function toMenu(msg) { Net.close(); G.on = false; G.over = false; G.deadOpen = false; P.alive = false; P.seat = null; for (const id of [...AVS.keys()]) dropAvatar(id); for (const p of [...PJ.values()]) pjDrop(p); $('hud').classList.add('hidden'); $('scope').classList.add('hidden'); show('menu'); $('err').textContent = msg || ''; try { document.exitPointerLock(); } catch (e) {} buildBoats('ffa'); refreshRooms(); }
+function toMenu(msg) { setPause(false); Net.close(); G.on = false; G.over = false; G.deadOpen = false; P.alive = false; P.seat = null; for (const id of [...AVS.keys()]) dropAvatar(id); for (const p of [...PJ.values()]) pjDrop(p); $('hud').classList.add('hidden'); $('scope').classList.add('hidden'); show('menu'); $('err').textContent = msg || ''; try { document.exitPointerLock(); } catch (e) {} buildBoats('ffa'); refreshRooms(); }
 async function refreshRooms() { if (G.on || $('menu').classList.contains('hidden')) return; const L = await Net.rooms(); const el = $('rooms'); el.innerHTML = L.length ? '' : '<small style="color:var(--dim)">None open right now. Host one!</small>'; for (const r of L) { const b = document.createElement('button'); b.textContent = r.name.replace(/^\[?Arena\]? /, '') + ' · ' + (r.n || 1) + ' in'; b.onclick = () => joinCode(r.code); el.appendChild(b); } }
 function needName() { const n = myName(); if (!n) { $('err').textContent = 'Type a name first.'; $('name').focus(); return null; } SET.name = n; saveSet(); return n; }
 function joinCode(code) { const n = needName(); if (!n) return; aInit(); code = String(code || '').toUpperCase().trim(); if (code.length !== 5) { $('err').textContent = 'Codes are 5 letters.'; return; } $('code').textContent = code; show('lobby'); $('bGo').classList.add('hidden'); $('lset').style.pointerEvents = 'none'; $('lmsg').textContent = 'Connecting…'; $('crew').innerHTML = ''; Net.join(code, n, why => { if (!G.on) { show('menu'); $('err').textContent = why; } else toMenu(why); }); }
@@ -99,11 +110,15 @@ function menuInit() {
   $('bGo').onclick = () => { aInit(); hostStart(); }; $('bLeave').onclick = () => toMenu();
   $('tRed').onclick = () => { if (Net.role === 'host') { LOB.team.H = 0; sendLobby(); } else Net.send({t: 'team', team: 0}); };
   $('tBlue').onclick = () => { if (Net.role === 'host') { LOB.team.H = 1; sendLobby(); } else Net.send({t: 'team', team: 1}); };
-  $('deploy').onclick = deploy; $('resume').onclick = () => { $('pause').classList.add('hidden'); G.paused = false; lockMouse(); };
+  $('deploy').onclick = deploy; $('resume').onclick = () => { setPause(false); lockMouse(); };
   $('quit').onclick = () => { if (Net.role === 'host' && Net.peers.size && !confirm('Leave? The match ends for everyone.')) return; toMenu(); }; $('endLeave').onclick = () => toMenu();
   setInterval(refreshRooms, 5000); refreshRooms();
 }
 
+// ---------------- pause: offline practice really stops (sim, clock and sound); online matches keep running
+function setPause(on) { $('pause').classList.toggle('hidden', !on);
+  if (on) { clearKeys(); const solo = Net.role === 'solo'; $('pauseN').textContent = solo ? 'Practice is paused.' : 'The match keeps running.'; if (solo && !G.pausedAt) { G.paused = true; G.pausedAt = performance.now(); try { A.ctx && A.ctx.suspend(); } catch (e) {} } }
+  else if (G.pausedAt) { CLKO -= performance.now() - G.pausedAt; G.pausedAt = 0; G.paused = false; mdx = mdy = 0; try { A.ctx && A.ctx.resume(); } catch (e) {} } }
 // ---------------- input
 addEventListener('keydown', e => {
   if (document.activeElement && document.activeElement.tagName === 'INPUT') return;
@@ -119,15 +134,15 @@ addEventListener('keyup', e => { K[e.code] = false; });
 canvas.addEventListener('mousedown', e => { aInit(); if (!G.on) return; if (!locked() && !TEST && !G.deadOpen && !G.over) { lockMouse(); return; } if (e.button === 0) mouseL = true; if (e.button === 2) mouseR = true; });
 addEventListener('mouseup', e => { if (e.button === 0) mouseL = false; if (e.button === 2) mouseR = false; });
 addEventListener('contextmenu', e => { if (G.on) e.preventDefault(); });
-addEventListener('wheel', e => { if (G.on && P.alive && locked()) swapSlot(1 - P.slot); }, {passive: true});
-document.addEventListener('pointerlockchange', () => { if (!G.on) return; if (!locked() && P.alive && !G.deadOpen && !G.over) { $('pause').classList.remove('hidden'); clearKeys(); } else if (locked()) $('pause').classList.add('hidden'); });
+addEventListener('wheel', e => { if (!G.on || !P.alive || !locked()) return; const d = e.deltaY * (e.deltaMode === 1 ? 33 : e.deltaMode === 2 ? 400 : 1), n = performance.now(); if (!d) return; if (Math.sign(d) !== Math.sign(G.whA || 0)) G.whA = 0; G.whA += d; if (Math.abs(G.whA) < 40 || n - (G.whN || 0) < 150) return; G.whA = 0; G.whN = n; swapSlot(1 - P.slot); }, {passive: true});
+document.addEventListener('pointerlockchange', () => { if (!G.on) return; if (!locked() && P.alive && !G.deadOpen && !G.over) setPause(true); else if (locked()) setPause(false); });
 addEventListener('blur', clearKeys);
 
 // ---------------- main loop
 let last = performance.now();
 function frame(t) {
   const dt = Math.min(.05, Math.max(0, (t - last) / 1000)); last = t;
-  if (G.on) simFrame(dt);
+  if (G.on && !G.pausedAt) simFrame(dt);
   else { G.t += dt; const a = t / 1000 * .05; cam.position.set(Math.sin(a) * 120, 34, -20 + Math.cos(a) * 120); cam.lookAt(0, 2, -15); waterFrame(dt); boatsFrame(dt); fxFrame(dt); sun.position.set(SUNDIR.x * 160, SUNDIR.y * 160, SUNDIR.z * 160); sun.target.position.set(0, 0, 0); }
   frameRest(); RND.render(scene, cam); requestAnimationFrame(frame);
 }

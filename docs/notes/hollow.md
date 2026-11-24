@@ -12,3 +12,10 @@ Read `CLAUDE.md` first (shared rules). Split out of it on 17 Nov 2026; keep this
 - Helicopter is heard approaching during the last 30 s of phase 1 (rotor panner flies in toward `HELI`, one-time message `G.heliHeard`).
 - Hiding muffles the world (master lowpass `A.lp`, deeper while holding breath); distant creature wails `Snd.call` (local per client, `Math.random`, not `CR`, so host determinism is untouched).
 - Solo: downed text no longer tells you to crawl to your group. `hud(dt)` objective fade is frame-rate independent.
+
+## Polish pass (24 Nov 2026, second pass)
+- The creature model was turned backwards (same bug as Whisperpine): `MON.rotation.y = M.yaw + PI` now, so it faces where it walks and looks at its target.
+- Eyeshine: glow sprites on the pupils (`MJ.eyes`, `MJ.eyeK`) flare when your own beam is on its face, faint burn while it chases (local per client, no net traffic).
+- Off-screen markers: downed or whistling teammates that are off screen get an arrow tag clamped to the screen edge (`.tag.edge`, camera-space direction in `updateRemotes`).
+- Hiding: breath label warns "IT'S RIGHT OUTSIDE" when the (synced) creature is searching/investigating/chasing within 8 m (`#bTxt`, `P.breathS`).
+- Flashlight: F with dead batteries clicks and says so; one-time "getting dim" warning at 20% (`P.batWarned`).

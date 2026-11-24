@@ -499,7 +499,9 @@ function buildCreature() {
   neck.add(mesh(cap(.05, .22).translate(0, .3, 0), skin));
   const head = new THREE.Group(); head.position.set(0, .3, .03); neck.add(head); MJ.head = head;
   const hg = new THREE.SphereGeometry(.15, 16, 12); hg.scale(.85, 1.45, .95); hg.translate(0, .12, 0); head.add(mesh(hg, pale));
-  for (const s of [-1, 1]) { const e = new THREE.Mesh(new THREE.SphereGeometry(.04, 8, 6), hole); e.scale.set(1, 1.4, .5); e.position.set(s * .052, .18, .125); head.add(e); const p = new THREE.Mesh(new THREE.SphereGeometry(.009, 6, 4), eye); p.position.set(s * .052, .175, .138); head.add(p); }
+  for (const s of [-1, 1]) { const e = new THREE.Mesh(new THREE.SphereGeometry(.04, 8, 6), hole); e.scale.set(1, 1.4, .5); e.position.set(s * .052, .18, .125); head.add(e); const p = new THREE.Mesh(new THREE.SphereGeometry(.009, 6, 4), eye); p.position.set(s * .052, .175, .138); head.add(p);
+    // eyeshine: the pupils catch the flashlight like an animal's
+    const gl = new THREE.Sprite(new THREE.SpriteMaterial({map: TX.glow, color: 0xff3a1c, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0, fog: false})); gl.position.set(s * .052, .175, .21); gl.scale.setScalar(.2); head.add(gl); (MJ.eyes = MJ.eyes || []).push(gl); }
   const mo = new THREE.Mesh(new THREE.SphereGeometry(.05, 10, 6), hole); mo.scale.set(.6, 1.7, .4); mo.position.set(0, -.02, .125); head.add(mo); MJ.mouth = mo;
   for (const s of [-1, 1]) {
     const sh = new THREE.Group(); sh.position.set(s * .25, .9, 0); torso.add(sh); MJ['sh' + s] = sh;
@@ -536,7 +538,14 @@ function animCreature(dt) {
   MJ.head.rotation.z = mix(MJ.head.rotation.z, M.jr, dt * 18);
   MJ.neck.rotation.x = -.35 - k * .1 + (M.look || 0);
   MJ.mouth.scale.y = 1.7 + (ch ? 1.6 + Math.sin(G.t * 30) * .3 : 0);
-  MON.position.set(M.x, M.y, M.z); MON.rotation.y = M.yaw;
+  MON.position.set(M.x, M.y, M.z); MON.rotation.y = M.yaw + PI; // the model faces local +z, M.yaw points along (-sin, -cos) like the player's view
+  // eyeshine: bright when your beam is on its face, a faint burn while it hunts you
+  const ex = cam.position.x - M.x, ez = cam.position.z - M.z, ed = Math.hypot(ex, ez) || 1;
+  const face = clamp(-(Math.sin(M.yaw) * ex + Math.cos(M.yaw) * ez) / ed * 1.6 - .3, 0, 1);
+  const lit = P.light && !P.hidden && ed < 55 && beamHits(M.x, M.y + 2.3, M.z) ? 1 : 0;
+  const want = face * Math.max(lit * (.55 + .45 * Math.min(1, P.bat * 3)), M.state === 'chase' || M.state === 'kill' ? .35 : 0);
+  MJ.eyeK = mix(MJ.eyeK || 0, want, Math.min(1, dt * 10));
+  for (const e of MJ.eyes) { e.material.opacity = MJ.eyeK * (.85 + Math.random() * .15); e.scale.setScalar(.24 + Math.min(ed, 60) * .01); e.visible = MJ.eyeK > .01; }
 }
 
 // ---------------- state
@@ -716,7 +725,7 @@ const Snd = {
 };
 function quietLoops(sec) { if (!A.on) return; const t = A.ctx.currentTime; for (const g of [A.drone, A.mGrowl, A.mBreath.g, A.genG, A.truckG, A.stat.g]) { g.gain.cancelScheduledValues(t); g.gain.setTargetAtTime(0, t, sec); } }
 let VOICE = null;
-function hush() { if (window.speechSynthesis) try { speechSynthesis.cancel(); } catch (e) {} }
+function hush() { if (window.speechSynthesis) try { speechSynthesis.cancel(); speechSynthesis.resume(); } catch (e) {} } // resume: a cancel while paused leaves Chrome's queue paused
 function say(txt, who) {
   showMsg(txt, who, 4 + txt.length * .045);
   if (SET.voice === '1' && window.speechSynthesis && !TEST) { try { const u = new SpeechSynthesisUtterance(txt); u.rate = 1.02; u.pitch = .8; u.volume = .9; speechSynthesis.speak(u); } catch (e) {} }
@@ -775,7 +784,7 @@ function buildWorld() {
 function reset() {
   D = DIFF[SET.diff] || DIFF.normal; WR = mulberry((Date.now() ^ (Math.random() * 1e9)) >>> 0);
   hush(); G.run = (G.run || 0) + 1;
-  Object.assign(G, {radioQ: [], stingAt: 0, over: false, paused: false, t: 0, obj: 'radio0', power: false, inserted: 0, timer: 0, truck: null, noteOpen: false, map: false, radioDone: false, holdT: null, hold: 0, ending: 0, deathT: 0, objT: 10, flares: [], endShown: false, won: false, deathHow: null});
+  Object.assign(G, {radioQ: [], stingAt: 0, over: false, paused: false, t: 0, obj: 'radio0', power: false, inserted: 0, timer: 0, truck: null, noteOpen: false, map: false, radioDone: false, holdT: null, hold: 0, ending: 0, deathT: 0, objT: 10, flares: [], endShown: false, won: false, deathHow: null, deathTip: ''});
   Object.assign(P, {x: .6, z: -147, yaw: PI - .05, pitch: -.02, vx: 0, vz: 0, crouch: false, stam: 1, bat: 1, light: true, flares: 0, fuses: 0, hidden: null, breath: 1, holdBreath: false, holdBreathK: false, tired: false, batWarned: false, gasp: 0, bob: 0, stepD: 0, fear: 0});
   Object.assign(M, {x: -10, z: 120, yaw: 0, state: 'roam', path: [], idle: 2, aware: 0, lostT: 0, flee: 0, sawHide: null, far: 0, stalkT: 45 + WR() * 30, stuck: 0, screamT: 0, hintT: 20, spd: 0, look: 0, callT: 35 + WR() * 30});
   M.y = gH(M.x, M.z);
@@ -803,8 +812,15 @@ function start() {
   it.classList.remove('hidden'); it.style.opacity = 1; setTimeout(() => it.style.opacity = 0, TEST ? 0 : 4200); setTimeout(() => it.classList.add('hidden'), TEST ? 0 : 6400);
 }
 function lockMouse() { if (!TEST && canvas.requestPointerLock) try { const r = canvas.requestPointerLock(); if (r && r.catch) r.catch(() => {}); } catch (e) {} }
+function deathTip(how) {
+  if (how === 'pulled') return M.state === 'chase' ? 'It watched you climb in. Break its line of sight before you hide.' : 'It heard you breathing. When it comes close, hold your breath (right mouse or Space).';
+  if (M.state !== 'chase') return 'It was standing in the dark. Stop and listen for its footsteps and breathing before you move on.';
+  if (P.flares > 0) return 'You still had a road flare. Throw it (G) when it chases you: it cannot stand the light.';
+  if (P.light) return 'Your flashlight led it to you. Switch it off (F), break line of sight and hide.';
+  return 'Running is loud. Turn corners, get out of its sight, then hide in a wardrobe or locker.';
+}
 function die(how) {
-  if (G.over) return; G.over = true; G.deathT = 0; G.deathHow = how;
+  if (G.over) return; G.deathTip = deathTip(how); G.over = true; G.deathT = 0; G.deathHow = how;
   P.hidden = null; $('slats').classList.add('hidden'); $('breath').classList.add('hidden');
   if (A.on) { A.lp.frequency.cancelScheduledValues(A.ctx.currentTime); A.lp.frequency.value = 20000; } // the door is torn open
   Snd.scream(); M.state = 'kill'; hush(); G.radioQ = [];
@@ -821,6 +837,7 @@ function endScreen(won) {
   $('endT').textContent = won ? 'You got out' : 'You were taken';
   let best = ''; if (won) { const k = 'wp-best-' + SET.diff, b = +localStorage.getItem(k) || 0; if (!b || t < b) { try { localStorage.setItem(k, t); } catch (e) {} best = ' · new best'; } }
   $('endS').textContent = won ? `Escaped Whisperpine in ${mm}:${ss} on ${SET.diff}${best}.` : `Survived ${mm}:${ss}. ${G.inserted}/3 fuses in, ${G.power ? 'power on' : 'no power'}${G.radioDone ? ', help was coming' : ''}.`;
+  $('endTip').textContent = won ? '' : G.deathTip || ''; $('endTip').style.display = won || !G.deathTip ? 'none' : '';
   $('hud').classList.add('hidden'); G.on = false; quietLoops(.6);
 }
 
@@ -850,7 +867,7 @@ addEventListener('mouseup', e => { if (e.button === 2) mouseR = false; });
 addEventListener('contextmenu', e => e.preventDefault());
 document.addEventListener('pointerlockchange', () => { if (document.pointerLockElement !== canvas && G.on && !G.over && !TEST) pause(true); });
 addEventListener('blur', () => { for (const k in K) K[k] = false; eDown = false; mouseR = false; });
-function pause(p) { G.paused = p; $('pause').classList.toggle('hidden', !p); if (A.ctx) p ? A.ctx.suspend() : A.ctx.resume(); if (!p) lockMouse(); }
+function pause(p) { G.paused = p; $('pause').classList.toggle('hidden', !p); if (A.ctx) p ? A.ctx.suspend() : A.ctx.resume(); if (window.speechSynthesis) try { p ? speechSynthesis.pause() : speechSynthesis.resume(); } catch (e) {} if (!p) lockMouse(); }
 function closeNote() { G.noteOpen = false; $('note').classList.add('hidden'); }
 
 function throwFlare() {
@@ -874,6 +891,10 @@ function stepPlayer(dt) {
     else { P.holdBreath = false; P.breath = Math.min(1, P.breath + dt / 6); }
     P.gasp -= dt;
     $('breath').querySelector('i').style.width = P.breath * 100 + '%';
+    // warn when it is close enough to hear you breathe
+    const close = (M.state === 'search' || M.state === 'inv' || M.state === 'chase') && Math.hypot(M.x - P.x, M.z - P.z) < 8;
+    const bs = P.gasp > 0 ? 'gasp' : P.holdBreath ? 'hold' : close ? 'warn' : '';
+    if (bs !== P.breathS) { P.breathS = bs; $('breath').className = bs; $('bTxt').textContent = bs === 'gasp' ? 'GASPING FOR AIR' : bs === 'hold' ? 'HOLDING YOUR BREATH' : bs === 'warn' ? "IT'S RIGHT OUTSIDE · HOLD YOUR BREATH (RMB / SPACE)" : 'HOLD BREATH · RIGHT MOUSE / SPACE'; }
     return;
   }
   const fw = (K.KeyW ? 1 : 0) - (K.KeyS ? 1 : 0), st = (K.KeyD ? 1 : 0) - (K.KeyA ? 1 : 0);
@@ -916,7 +937,7 @@ function targetInter() {
 }
 function stepInteract(dt) {
   const it = targetInter(); const pr = $('prompt');
-  if (!it) { pr.style.opacity = 0; G.hold = 0; G.holdT = null; ePress = false; return; }
+  if (!it) { pr.style.opacity = 0; G.hold = 0; G.holdT = null; ePress = false; if (A.on) A.stat.g.gain.value = 0; return; }
   const hold = it.hold ? it.hold() : 0;
   $('pTxt').innerHTML = `<kbd>E</kbd>${it.label()}`; pr.style.opacity = 1;
   $('pBar').style.display = hold ? 'block' : 'none';
@@ -948,7 +969,7 @@ function use(it) {
     if (P.hidden) { const h = P.hidden; P.hidden = null; P.x = h.ex; P.z = h.ez; P.light = P.lightWas && P.bat > 0; $('slats').classList.add('hidden'); $('breath').classList.add('hidden'); Snd.creak(); noise(P.x, P.z, 5, h.b); }
     else {
       const h = it.h; P.hidden = h; P.lightWas = P.light; P.light = false; P.yaw = h.yaw; P.pitch = 0; P.crouch = false;
-      $('slats').classList.remove('hidden'); $('breath').classList.remove('hidden'); Snd.creak();
+      $('slats').classList.remove('hidden'); $('breath').classList.remove('hidden'); P.breathS = null; Snd.creak();
       // did it see you get in?
       if (M.state === 'chase' && G.t - M.seenAt < 1.2) M.sawHide = h; else noise(P.x, P.z, 4, h.b);
     }

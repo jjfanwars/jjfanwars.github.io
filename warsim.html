@@ -80,10 +80,10 @@ body.camp #powers,body.camp #bDeploy,body.camp #cards,body.direct-mode #campHud{
 .nat b{color:var(--c);font-size:15px}
 .nat small{display:block;color:var(--dim);font-size:11px;margin-bottom:3px}
 .nat p{margin:0;font-size:12px;color:#c6d0d6}
-.slot{display:flex;align-items:center;gap:6px;padding:6px 8px;background:rgba(255,255,255,.05);border-radius:6px;margin-bottom:5px}
+.slot{display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:6px 8px;background:rgba(255,255,255,.05);border-radius:6px;margin-bottom:5px}
 .slot .dot{width:12px;height:12px;border-radius:50%;flex:none}
 .slot .nm{flex:0 1 auto;min-width:24px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.slot select{padding:2px 4px;font-size:12px}.slot button{padding:1px 7px}
+.slot select{padding:2px 2px;font-size:12px;flex:none}.slot button{padding:1px 7px;flex:none;margin-left:auto}
 /* HUD */
 #hud{position:fixed;inset:0;pointer-events:none;z-index:10}
 #hud button,#hud #mmwrap,#hud #cards,#hud #selpanel,#hud #powers,#hud .slotbtn{pointer-events:auto}
@@ -98,6 +98,7 @@ body.camp #powers,body.camp #bDeploy,body.camp #cards,body.direct-mode #campHud{
 .sc.dead{opacity:.4;text-decoration:line-through}
 #alerts{position:absolute;left:12px;top:48px;width:330px;display:flex;flex-direction:column;gap:3px}
 .al{padding:4px 10px;background:rgba(6,10,14,.72);border-left:3px solid #8aa;border-radius:3px;font-size:13px;animation:alin .18s ease-out}
+.al.anew{animation:alpop .3s ease-out}@keyframes alpop{0%{filter:brightness(1.9);transform:translateX(4px)}100%{filter:none;transform:none}}
 .al.bad{border-color:var(--red)}.al.good{border-color:var(--acc)}.al.gold{border-color:#ffd60a;color:#ffe680}
 @keyframes alin{from{transform:translateX(-14px);opacity:0}}
 #nukeBanner{position:absolute;top:58px;left:50%;transform:translateX(-50%);padding:10px 26px;background:rgba(150,10,5,.9);border:2px solid #ffb0a0;border-radius:6px;font-size:20px;font-weight:800;letter-spacing:.05em;animation:blink .7s infinite alternate;z-index:12}
@@ -341,9 +342,9 @@ body.cbDeut #ov,body.cbDeut #mm,body.cbDeut #cards img,body.cbDeut #selpanel img
 
 <!-- main menu -->
 <div id="menu" class="screen"><div id="codeBox"><input id="codeIn" placeholder="Enter code" maxlength="24" autocomplete="off"><button id="codeGo">OK</button></div>
-  <div class="brand"><h1>jjfanwars</h1><p>Six nations. One island. Command the war, or jump into the fight yourself.</p>
+  <div class="brand"><h1>jjfanwars</h1><p>Eight nations. One island. Command the war, or jump into the fight yourself.</p>
     <div class="natstrip">
-      <span style="--c:#ff6b3d">The Licases</span><span style="--c:#4a90ff">The Dhruvs</span><span style="--c:#3fbf6f">The Valentinos</span><span style="--c:#e8283c">The Jethroes</span><span style="--c:#19c8b9">The Toms</span><span style="--c:#2fa84f">The Charlies</span>
+      <span style="--c:#ff6b3d">The Licases</span><span style="--c:#4a90ff">The Dhruvs</span><span style="--c:#3fbf6f">The Valentinos</span><span style="--c:#e8283c">The Jethroes</span><span style="--c:#19c8b9">The Toms</span><span style="--c:#2fa84f">The Charlies</span><span style="--c:#2f6fe8">The Yahus</span><span style="--c:#d0242b">The Shauns</span>
     </div>
   </div>
   <div class="mcard" id="mhome">
@@ -581,7 +582,7 @@ body.cbDeut #ov,body.cbDeut #mm,body.cbDeut #cards img,body.cbDeut #selpanel img
   <p id="fbMsg" class="small" style="margin:0;color:#9fe0b0"></p>
 </div></div>
 <div id="logScr" class="screen hidden"><div class="mcard wide"><h2 style="margin:0">What's new</h2><p class="small" style="margin:0">Newest first. Hard refresh (Ctrl+Shift+R) if you don't see the latest.</p><div id="logList"></div><button class="big" id="logBack">Back</button></div></div>
-<div id="over" class="screen hidden"><div class="mcard wide"><h1 id="oTitle"></h1><p id="oSub"></p><button class="big primary hidden" id="bNext">Next level</button><button class="big" id="bAgain">Back to menu</button><button class="big" id="bWatch">Keep watching</button><div id="oStats"></div></div></div>
+<div id="over" class="screen hidden"><div class="mcard wide"><h1 id="oTitle"></h1><p id="oSub"></p><button class="big primary hidden" id="bNext">Next level</button><button class="big primary hidden" id="bRematch">Play again</button><button class="big" id="bAgain">Back to menu</button><button class="big" id="bWatch">Keep watching</button><div id="oStats"></div></div></div>
 
 <script>/**
  * @license
@@ -12701,7 +12702,10 @@ const Direct = {
     if (S && W) {
       c.textAlign = 'right'; c.font = '800 30px system-ui'; c.fillStyle = 'rgba(255,255,255,.95)'; c.shadowColor = 'rgba(0,0,0,.7)'; c.shadowBlur = 4;
       const am = S.msl !== undefined ? S.msl + ' / ' + MSL_LOAD + ' missiles' : W.vs === 'shell' && this.mode === 'vehicle' ? (this.he ? 'HE' : 'AP') + (S.rl > 0 ? ' · RELOADING' : '') + '  (' + Settings.keyName(Settings.binds.ammo || 'KeyN') + ')' : !W.mag ? '' : S.rl > 0 ? 'RELOADING' : S.ammo + ' / ' + W.mag;
-      c.fillText(am, w - 24, h - 54);
+      { const low = W.mag > 3 && S.msl === undefined && !(W.vs === 'shell' && this.mode === 'vehicle') && !(S.rl > 0) && S.ammo <= Math.ceil(W.mag * .25); // last quarter of the magazine: amber, last round red
+        if (low) c.fillStyle = S.ammo <= 1 ? 'rgba(255,90,70,.98)' : 'rgba(255,196,70,.98)';
+        c.fillText(am, w - 24, h - 54); c.fillStyle = 'rgba(255,255,255,.95)';
+        if (low) { c.font = '700 12px system-ui'; c.fillText('LOW AMMO' + ((this.mode === 'plane' || this.mode === 'heli' || this.mode === 'vehicle') && this.W[2] || this.isTouch() ? '' : ' · ' + Settings.keyName(Settings.binds.reload) + ' to reload'), w - 24, h - 92); } }
       c.font = '600 13px system-ui'; const o = this.W[this.slot === 0 ? 1 : 0];
       c.fillText(W.n + (o ? '   ·   ' + Settings.keyName(Settings.binds.alt) + ': ' + o.w.n + (o.cd > 0 && !o.w.mag ? ' (' + o.cd.toFixed(1) + 's)' : o.w.mag > 1 && this.mode !== 'soldier' ? ' ' + o.ammo : '') : ''), w - 24, h - 32);
       if (S.rl > 0) { c.fillStyle = 'rgba(255,255,255,.2)'; c.fillRect(w - 224, h - 90, 200, 4); c.fillStyle = '#fff'; c.fillRect(w - 224, h - 90, 200 * (1 - S.rl / W.rl), 4); }
@@ -12715,7 +12719,7 @@ const Direct = {
       c.font = '700 13px system-ui'; c.textAlign = 'right'; c.fillStyle = n ? '#dfe7ec' : '#ff6a5a';
       c.fillText('CHAFF ' + '▮'.repeat(n) + '▯'.repeat(CHAFF_N - n) + '  [' + Settings.keyName(Settings.binds.chaff) + ']', w - 24, h - 126);
       if (W3) { c.fillStyle = '#dfe7ec'; c.fillText(Settings.keyName(Settings.binds.reload) + ': ' + W3.w.n + (this.W[2].cd > 0 ? ' (' + this.W[2].cd.toFixed(1) + 's)' : ''), w - 24, h - 108); }
-      if (this.W[3]) { c.fillText(Settings.keyName(Settings.binds.w4 || 'KeyY') + ': ' + this.W[3].w.n + (this.W[3].cd > 0 ? ' (' + this.W[3].cd.toFixed(1) + 's)' : ''), w - 24, h - 126); }
+      if (this.W[3]) { c.fillText(Settings.keyName(Settings.binds.w4 || 'KeyY') + ': ' + this.W[3].w.n + (this.W[3].cd > 0 ? ' (' + this.W[3].cd.toFixed(1) + 's)' : ''), w - 24, h - 144); } // one line above the chaff count (both used to sit on h - 126)
       c.textAlign = 'left';
       if ((this.warnT || 0) > performance.now()) {
         const blink = Math.floor(performance.now() / 160) % 2;
@@ -14001,6 +14005,19 @@ const UI = {
       this.pushLobby();
     };
     $('bResume').onclick = () => $('pause').classList.add('hidden');
+    { // a solo game pauses while the menu (or settings opened from it) is up; online games keep running
+      const sync = () => {
+        const g = this.g;
+        if (!g || this.demo || g.mode === 'client') { this.menuPaused = 0; return; }
+        const solo = !this.link || !this.link.peers || !this.link.peers.size, menu = !$('pause').classList.contains('hidden');
+        const up = menu || (!!this.menuPaused && !$('settings').classList.contains('hidden'));
+        if (menu) { $('pause').querySelector('.msg').textContent = solo ? 'Game paused.' : 'Online game: the war keeps running.'; $('bQuit').textContent = 'Quit to menu'; this.quitArm = 0; }
+        if (up && solo && !this.menuPaused && g.speed > 0) { this.menuPaused = g.speed; this.setSpeed(0); }
+        else if (!up && this.menuPaused) { const sp = this.menuPaused; this.menuPaused = 0; if (g.speed === 0) this.setSpeed(sp); }
+      };
+      const mo = new MutationObserver(sync);
+      for (const id of ['pause', 'settings']) mo.observe($(id), {attributes: true, attributeFilter: ['class']});
+    }
     try { const q = localStorage.getItem('warsim-gfx'); if (q) $('optQ').value = q; } catch (e) {}
     $('optQ').onchange = () => { const q = $('optQ').value; try { localStorage.setItem('warsim-gfx', q); } catch (e) {} this.gfxAuto = q === 'auto'; this.R.setQuality(q === 'auto' ? 'high' : q); };
     this.gfxAuto = $('optQ').value === 'auto';
@@ -14047,7 +14064,10 @@ const UI = {
     $('hmVol').value = Math.round(Sfx.vol / .6 * 100);
     $('hmVol').oninput = () => { Sfx.vol = $('hmVol').value / 100 * .6; if (Sfx.master) Sfx.master.gain.value = Sfx.vol; try { localStorage.setItem('warsim-vol', Sfx.vol); } catch (e) {} };
     if (!(new URLSearchParams(location.search)).get('q')) this.R.setQuality(this.gfxAuto ? (Direct.isTouch() ? 'medium' : 'high') : $('optQ').value);
-    $('bQuit').onclick = () => this.quit();
+    $('bQuit').onclick = () => { // ask once: a stray click should not throw a battle away
+      if (this.g && !this.demo && !this.overShown && !(this.quitArm && performance.now() - this.quitArm < 4000)) { this.quitArm = performance.now(); $('bQuit').textContent = 'Click again to quit (this battle ends)'; setTimeout(() => { if (this.quitArm && performance.now() - this.quitArm >= 3900) { this.quitArm = 0; $('bQuit').textContent = 'Quit to menu'; } }, 4000); return; }
+      this.quitArm = 0; $('bQuit').textContent = 'Quit to menu'; this.quit();
+    };
     $('bMenu').onclick = () => $('pause').classList.remove('hidden');
     $('bDeploy').onclick = () => this.openDeploy();
     document.querySelectorAll('#selBar button[data-g]').forEach(b => b.onclick = () => this.selCat(b.dataset.g));
@@ -14073,6 +14093,7 @@ const UI = {
     $('chClear').onclick = () => this.campClear();
     $('chStart').onclick = () => this.campStart();
     $('chQuit').onclick = () => { this.quit(); this.openCamp(); };
+    $('bRematch').onclick = () => { const a = this.again; if (!a || !this.overShown) return; this.quit(true); a(); };
     $('bWatch').onclick = () => { $('over').classList.add('hidden'); this.R.spectate = true; };
   },
   redoFaces() { const i = NATIONS.findIndex(n => n.look === 'yahu'), im = document.querySelectorAll('#nations .nat .pic img')[i]; if (im) im.src = Thumbs.get('rifle', i); },
@@ -14360,7 +14381,12 @@ const UI = {
     if (this.rail) { for (const p of players) p.nation = players[0].nation; players.push({nation: (players[0].nation + 3) % NATIONS.length, team: 1, name: 'Raiders', bot: null, open: false, eco: null}); }
     if (this.link && this.link.setMeta) this.link.setMeta({open: false});
     if (this.net === 'host') for (const id of this.link.peers.keys()) this.link.send(id, {start: {seed, size, players, you: this.playersIds.indexOf(id), sandbox: sb && !this.redstar && !this.rail ? 1 : 0, redstar: this.redstar ? 1 : 0, rail: this.rail ? 1 : 0, rso: this.rsOpts()}});
-    this.launch({mode: 'host', size, seed, players, me: this.mySlot, link: this.net === 'host' ? this.link : null, sandbox: sb && !this.redstar && !this.rail, redstar: !!this.redstar, rail: !!this.rail, rso: this.rsOpts(), tut: !sb && $('optTut').checked && this.net !== 'host' && !this.quick, quick: this.quick, xav: $('optXav').checked && this.net !== 'host', peace: !$('optRaid').checked && this.net !== 'host' && !this.quick});
+    const cfg = {mode: 'host', size, seed, players, me: this.mySlot, link: this.net === 'host' ? this.link : null, sandbox: sb && !this.redstar && !this.rail, redstar: !!this.redstar, rail: !!this.rail, rso: this.rsOpts(), tut: !sb && $('optTut').checked && this.net !== 'host' && !this.quick, quick: this.quick, xav: $('optXav').checked && this.net !== 'host', peace: !$('optRaid').checked && this.net !== 'host' && !this.quick};
+    this.launch(cfg);
+    if (this.net !== 'host' && !sb && !this.redstar && !this.rail) { // solo skirmish: Play again on the end screen starts a fresh island of the same map type with the same bots
+      const again = () => { this.launch(Object.assign({}, cfg, {seed: Math.floor(cfg.seed / 1e7) * 1e7 + ((Math.random() * 1e6) | 0), tut: false, quick: false})); this.again = again; };
+      this.again = again;
+    }
   },
   setSpeed(v) { // time control: host-side only, so a friend's game stays in sync with the host's clock
     if (!this.g || this.g.mode === 'client') { this.addAlert('Only the host can change game speed', 'bad'); return; }
@@ -14409,7 +14435,7 @@ const UI = {
     if (foe === me) foe = (me + 1) % NATIONS.length;
     $('batScr').classList.add('hidden');
     this.launch({mode: 'host', size: B.size, seed: B.map * 1e7 + B.seed, players: [{nation: me, name: 'You'}, {nation: foe, name: NATIONS[foe].name}], me: 0, link: null, tut: false, quick: false, scen: B});
-    this.scen = {i, B, cls: 'rifle'}; document.body.classList.add('scen');
+    this.scen = {i, B, cls: 'rifle'}; document.body.classList.add('scen'); this.again = () => this.batLaunch(i);
     const L = this.g.sim.scen.land[2] || this.g.sim.scen.land[0] || this.g.sim.scen.fwd;
     this.jump(L.x, L.y + 8);
     this.scen.cls = batClasses(B)[0];
@@ -14493,13 +14519,14 @@ const UI = {
   launch(o) {
     Sfx.init(); window.TOON = !!(o.scen && o.scen.harbor);
     if (this.g) this.g.stop();
+    this.again = null; // startGame/batLaunch set it again after launching a solo game
     this.demo = false; Sfx.mute = false;
     Track.start(o);
     o.R = this.R;
     this.g = new Game(o);
     $('timeCtl').classList.toggle('hidden', o.mode === 'client'); if (o.mode !== 'client') this.setSpeed(1);
     this.g.onEvent = ev => this.onEvent(ev);
-    this.sel = this.R.sel = new Set(); this.groups = {}; this.mode = null; this.page = 1; this.alerts = []; this.nukes = []; this.lastAlert = null; this.overShown = false;
+    this.sel = this.R.sel = new Set(); this.groups = {}; this.mode = null; this.page = 1; this.alerts = []; this.nukes = []; this.lastAlert = null; this.overShown = false; this.menuPaused = 0;
     $('alerts').innerHTML = '';
     const v = this.g.view, me = v.players[o.me], s = me.spawn;
     this.cam.tx = this.cam.x = s.x; this.cam.tz = this.cam.z = s.y; this.cam.tdist = this.cam.dist = 40; this.cam.pitch = .92;
@@ -14535,8 +14562,9 @@ const UI = {
       let tries = 0; const go = () => { const g = this.g; if (!g || g !== this.g) return; const u = [...g.view.ents.values()].find(e => e.o === o.me && !e.b && e.d.cat === 'inf'); if (u && !Direct.on) { Direct.enter(this, u); return; } if (!u && ++tries < 40) setTimeout(go, 250); }; setTimeout(go, 400);
     }
   },
-  quit() {
+  quit(noDemo) { // noDemo: a new game starts right after (Play again), so skip loading the menu's demo battle
     if (Direct.on) Direct.exit();
+    this.again = null;
     this.tutEnd(true); $('statsScr').classList.add('hidden'); $('techScr').classList.add('hidden');
     this.camp = null; $('campHud').classList.add('hidden'); document.body.classList.remove('camp');
     this.scen = null; document.body.classList.remove('scen'); $('scenSpawn').classList.add('hidden');
@@ -14544,7 +14572,7 @@ const UI = {
     this.net = 'off';
     $('hud').classList.add('hidden'); $('over').classList.add('hidden'); $('pause').classList.add('hidden'); $('menu').classList.remove('hidden');
     $('nukeBanner').classList.add('hidden');
-    this.startDemo();
+    if (!noDemo) this.startDemo();
   },
   count(f) { let n = 0; for (const e of this.g.view.ents.values()) if (e.o === this.g.me && f(e)) n++; return n; },
   selCat(g) {
@@ -14626,11 +14654,22 @@ const UI = {
   // ---------- events ----------
   addAlert(text, kind, x, y) {
     if (this.g && this.g.redstar && kind !== 'rs') return; // Operation Red Star: only mission messages, no battle popups
-    const d = document.createElement('div'); d.className = 'al ' + (kind === 'rs' ? 'gold' : kind || ''); d.textContent = text;
-    if (x !== undefined && kind === 'bad') { d.textContent += '  · click or Space: go there'; d.style.cursor = 'pointer'; d.style.pointerEvents = 'auto'; d.onclick = () => { if (Direct.on) Direct.exit(); this.jump(x, y); }; }
-    $('alerts').appendChild(d);
-    if ($('alerts').children.length > 6) $('alerts').firstChild.remove();
-    setTimeout(() => d.remove(), 7000);
+    const box = $('alerts'), cls = 'al ' + (kind === 'rs' ? 'gold' : kind || ''), go = x !== undefined && kind === 'bad';
+    // the same message again while it is still showing: count it up (x3) instead of flooding the list
+    const dup = [...box.children].find(q => q._t === text && q._k === cls);
+    if (dup) {
+      dup._n = (dup._n || 1) + 1; dup._txt.textContent = text + '  ×' + dup._n; if (go) dup._x = {x, y};
+      clearTimeout(dup._rm); dup._rm = setTimeout(() => dup.remove(), 7000);
+      box.appendChild(dup); dup.classList.remove('anew'); void dup.offsetWidth; dup.classList.add('anew');
+      if (x !== undefined) this.lastAlert = {x, y};
+      return;
+    }
+    const d = document.createElement('div'); d.className = cls; d._t = text; d._k = cls;
+    d._txt = document.createElement('span'); d._txt.textContent = text; d.appendChild(d._txt);
+    if (go) { d._x = {x, y}; d.appendChild(document.createTextNode('  · click or Space: go there')); d.style.cursor = 'pointer'; d.style.pointerEvents = 'auto'; d.onclick = () => { if (Direct.on) Direct.exit(); this.jump(d._x.x, d._x.y); }; }
+    box.appendChild(d);
+    if (box.children.length > 6) box.firstChild.remove();
+    d._rm = setTimeout(() => d.remove(), 7000);
     if (x !== undefined) this.lastAlert = {x, y};
   },
   onEvent(ev) {
@@ -14859,7 +14898,7 @@ const UI = {
     $('oTitle').style.color = won ? '#6dff9a' : '#ff5a4a';
     $('oSub').textContent = won ? 'The island is yours.' : 'Your capital has fallen.';
     $('bAgain').textContent = this.camp ? 'Back to campaign' : 'Back to menu';
-    { const nx = this.camp && won && CAMPAIGN[this.camp.i + 1]; $('bNext').classList.toggle('hidden', !nx); if (nx) $('bNext').textContent = 'Next level: ' + (this.camp.i + 2) + '. ' + nx.n; $('bAgain').classList.toggle('primary', !nx); }
+    { const nx = this.camp && won && CAMPAIGN[this.camp.i + 1]; $('bNext').classList.toggle('hidden', !nx); if (nx) $('bNext').textContent = 'Next level: ' + (this.camp.i + 2) + '. ' + nx.n; $('bAgain').classList.toggle('primary', !nx); $('bRematch').classList.toggle('hidden', !this.again || !!this.camp); if (this.again && !this.camp) $('bAgain').classList.remove('primary'); }
     if (this.scen) { $('oSub').textContent = this.scen.B.arc ? (won ? 'The enemy ran out of tickets. Victory!' : 'Your team ran out of tickets.') : this.scen.B.tdm ? (won ? 'Your team hit the kill limit first!' : 'The enemy team reached the kill limit.') : won ? 'Every objective taken. The landing succeeded!' : 'The assault failed: you ran out of reinforcements.'; $('scenSpawn').classList.add('hidden'); }
     if (this.camp) {
       const c = this.camp, next = CAMPAIGN[c.i + 1];
@@ -15043,7 +15082,9 @@ const UI = {
     addEventListener('keydown', e => this.keyDown(e));
     addEventListener('keyup', e => { if (WarRoom.on) WarRoom.onKey(e, false); this.keys[e.code] = false; if (e.key === 'Alt') e.preventDefault(); if (Direct.on) Direct.onKey(e, false); });
     addEventListener('blur', () => { this.keys = {}; Direct.onBlur(); this.edgeOk = false; this.mouse.down = false; });
-    document.addEventListener('visibilitychange', () => { if (document.hidden) { this.keys = {}; Direct.onBlur(); } });
+    document.addEventListener('visibilitychange', () => { if (document.hidden) { this.keys = {}; Direct.onBlur();
+      // switching tabs mid-battle opens the menu, which pauses a solo game (the sim timer keeps ticking in a hidden tab, so bots would carry on without you)
+      const g = this.g; if (g && !this.demo && g.mode !== 'client' && !this.overShown && (!this.link || !this.link.peers || !this.link.peers.size) && !$('hud').classList.contains('hidden')) $('pause').classList.remove('hidden'); } });
     document.addEventListener('mouseleave', () => this.edgeOk = false);
     const mm = $('mm');
     $('mmBig').onclick = () => this.toggleBigMap();
@@ -15061,7 +15102,7 @@ const UI = {
     addEventListener('mouseup', () => mmDrag = false);
   },
   keyDown(e) {
-    if (e.target && e.target.tagName === 'INPUT') return;
+    if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable)) return; // typing in a box never fires game keys
     if (e.key === 'Alt') e.preventDefault(); // keep the browser menu bar from taking focus
     if (WarRoom.on) { WarRoom.onKey(e, true); return; }
     if (Direct.on) { Direct.onKey(e, true); return; }
@@ -15077,11 +15118,13 @@ const UI = {
     if (this.scen && c.startsWith('Digit') && !$('scenSpawn').classList.contains('hidden')) { const S = this.g.sim.scen, k = (this.ssList || batClasses(S && S.B).concat(S && S.arc === 'ground' && (S.strike[this.g.me] || 0) > 0 ? ['a10'] : []))[+c.slice(5) - 1]; if (k) this.scenPick(k); return; }
     if (c.startsWith('Digit') && c !== 'Digit0') {
       const n = c.slice(5);
+      if (e.ctrlKey && !this.sel.size && !e.shiftKey) { e.preventDefault(); if (this.groups[n]) { delete this.groups[n]; this.groupBar(); this.addAlert('Group ' + n + ' cleared'); } else this.addAlert('Select units first, then press Ctrl+' + n, 'bad'); return; }
       if (e.ctrlKey) { this.groups[n] = e.shiftKey && this.groups[n] ? [...new Set(this.groups[n].concat([...this.sel]))] : [...this.sel]; this.addAlert('Group ' + n + ' set: ' + this.groups[n].length + ' units (press ' + n + ' to select, twice to jump)'); this.groupBar(); e.preventDefault(); return; }
       if (this.groups[n] && this.groups[n].length) {
-        const now = performance.now();
-        this.sel.clear(); for (const id of this.groups[n]) if (this.g.view.ents.has(id)) this.sel.add(id);
-        if (now - (this.lastTap[n] || 0) < 350 && this.sel.size) { const f = this.g.view.ents.get([...this.sel][0]); this.jump(f.x, f.y); }
+        const now = performance.now(), V = this.g.view, live = this.groups[n].filter(id => V.ents.has(id));
+        if (!live.length) { delete this.groups[n]; this.groupBar(); this.addAlert('Group ' + n + ' has no units left', 'bad'); return; } // keep the current selection instead of silently emptying it
+        this.groups[n] = live; this.sel.clear(); for (const id of live) this.sel.add(id);
+        if (now - (this.lastTap[n] || 0) < 350) { let x = 0, y = 0; for (const id of live) { const f = V.ents.get(id); x += f.x; y += f.y; } this.jump(x / live.length, y / live.length); } // double tap: centre on the whole group, not its first unit
         this.lastTap[n] = now; this.page = 1; this.refreshHud(true);
         return;
       }
@@ -15179,7 +15222,7 @@ const UI = {
   },
   selGroup(n, jump) {
     const v = this.g.view; this.sel.clear(); for (const id of this.groups[n] || []) if (v.ents.has(id)) this.sel.add(id);
-    if (jump && this.sel.size) { const f = v.ents.get([...this.sel][0]); this.jump(f.x, f.y); }
+    if (jump && this.sel.size) { let x = 0, y = 0; for (const id of this.sel) { const f = v.ents.get(id); x += f.x; y += f.y; } this.jump(x / this.sel.size, y / this.sel.size); }
     this.page = 1; this.refreshHud(true);
   },
   rightClick(mx, my, shift) {
@@ -15307,8 +15350,8 @@ const UI = {
         S.push({hk: 'X', name: 'Road', gl: '⛙', desc: 'Lay a paved road between two points (2 steel per tile). Across a river it becomes a bridge (8 steel per section). Units move 50% faster on roads.', act: () => this.setMode({t: 'road'}, 'Click the start of the road')});
         { const nb = p.builders === undefined ? 2 : p.builders, nw = v.players && [...v.ents.values()].filter(e => e.o === G.me && e.k === 'worker').length, nbx = Math.min(nb, nw);
           const tip = 'Builders build and repair on their own, and mine when there is nothing to do. Everyone else mines. Idle workers always go back to mining. Now: ' + nbx + ' builders, ' + Math.max(0, nw - nbx) + ' miners.';
-          S.push({hk: '', name: 'Builders ' + nbx + ' / Miners ' + Math.max(0, nw - nbx) + '  (−)', gl: '⛏', desc: 'One fewer builder. ' + tip, off: nb <= 0, why: 'No builders', act: () => G.issue({c: 'builders', n: Math.min(nb, nw) - 1})});
-          S.push({hk: '', name: 'More builders (+)', gl: '🔨', desc: 'One more builder. ' + tip, off: nb >= nw, why: 'Every worker is a builder', act: () => G.issue({c: 'builders', n: Math.min(nb, nw) + 1})}); }
+          S.push({hk: '', name: 'Fewer builders (' + nbx + ' of ' + nw + ')', gl: '⛏', desc: 'One fewer builder, one more miner. ' + tip, off: nb <= 0, why: 'No builders', act: () => G.issue({c: 'builders', n: Math.min(nb, nw) - 1})});
+          S.push({hk: '', name: 'More builders (+)', gl: '🔨', desc: 'One more builder, one fewer miner. ' + tip, off: nb >= nw, why: 'Every worker is a builder', act: () => G.issue({c: 'builders', n: Math.min(nb, nw) + 1})}); }
         const ah = p.autoHouse || p.autoEco;
         S.push({hk: '', name: ah ? 'Auto housing: ON' : 'Auto housing: OFF', gl: '⌂', active: ah, desc: p.autoEco ? 'Auto economy is on, so housing is already handled. Turn auto economy off (at the Capital) to control this on its own.' : 'Workers build a new Housing block by themselves whenever you are close to the population cap (140 steel each). Turn it off to choose where housing goes.', act: () => { if (!p.autoEco) G.issue({c: 'autohouse', on: !p.autoHouse}); setTimeout(() => this.refreshHud(true), 150); }});
         if (!autoB) S.push({hk: 'C', name: 'Stop', gl: '■', desc: 'Stop what they are doing.', act: () => G.issue({c: 'stop', ids})});
@@ -15804,7 +15847,7 @@ const UI = {
     }
     const G = this.g;
     if (!G) return;
-    if (Direct.on) Direct.update(dt, G);
+    if (Direct.on && !this.menuPaused) Direct.update(dt, G); // a solo game paused by the menu freezes your own unit too
     if (WarRoom.on) WarRoom.frame(dt);
     { const fp = !(Direct.on && (Direct.look === 'free')); if (fp !== this._fpH) { this._fpH = fp; $('freePanel').classList.toggle('hidden', fp); } }
     if (!Direct.on) this.updateCam(dt);
@@ -15899,6 +15942,10 @@ addEventListener('keydown', () => { if (typeof Direct !== 'undefined' && window.
   };
   // ---- changelog: add a new entry at the TOP of this list whenever something changes
   const CHANGELOG = [
+    {d: '24 Nov 2026', items: [
+      'More polish: a Play again button on the end screen of solo skirmishes and arcade battles, switching tabs now pauses a solo game (the bots used to keep attacking while you were away), the ammo counter turns amber then red near the end of a magazine with a LOW AMMO hint, a double tap on a control group centres on the whole group, recalling a group whose units all died keeps your selection and says so (Ctrl+number with nothing selected clears a group), and a plane\'s fourth weapon no longer prints over the chaff count',
+      'Polish: the menu now pauses solo games (online games keep running), Quit to menu asks you to click twice so a stray click cannot end a battle, repeated alerts stack as ×2, ×3 instead of flooding the screen, the bot rows in the skirmish lobby no longer spill off the side, the builders/miners buttons are clearer, and the main menu lists all eight nations',
+    ]},
     {d: '22 Nov 2026', items: [
       'Rally: cars turn in much better on Sport and Realistic: holding left or right no longer scrubs the front tyres wide, there is more side grip, and keyboard steering reacts faster',
     ]},

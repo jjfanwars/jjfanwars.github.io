@@ -30,8 +30,8 @@ function applyEv(e) {
   const me = myId();
   switch (e.k) {
     case 'dm': if (e.id === me) { G.hurt = 1; Snd.hurt(); dmgDir(e.x, e.z); } if (e.by === me && e.id !== me) hitMark(e.hd ? 'h' : ''); break;
-    case 'kl': { const vic = nameOf(e.id), kil = nameOf(e.by); feed(e); if (e.id === me) { P.alive = false; P.seat = null; G.killer = e.by !== me ? e.by : null; G.killCam = {t: 0, x: P.x, y: P.y, z: P.z}; G.deadT = G.t; G.deadMsg = e.by === me || !e.by ? (e.w === 'drown' ? 'You drowned.' : e.w === 'fall' ? 'You fell.' : e.w === 'oob' ? 'You left the arena.' : 'You blew yourself up.') : `<b>${esc(kil)}</b> got you${e.w ? ' with the ' + (WPN[e.w] ? (e.w === 'smg' || e.w === 'lmg' ? WPN[e.w].n : WPN[e.w].n.toLowerCase()) : e.w === 'knife' ? 'knife' : e.w === 'boat' ? 'sinking boat' : e.w) : ''}${e.hd ? ' (headshot)' : ''}.`; setTimeout(() => { if (!P.alive && G.on && !G.over) showDead(); }, 1600); }
-      if (e.by === me && e.id !== me) { hitMark('k'); Snd.kill(); showMsg(`You took out ${esc(vic)}`, 2); } break; }
+    case 'kl': { const vic = nameOf(e.id), kil = nameOf(e.by); feed(e); if (e.id === me) { P.alive = false; P.seat = null; G.killer = e.by !== me ? e.by : null; G.killCam = {t: 0, x: P.x, y: P.y, z: P.z}; G.deadT = G.t; G.deadMsg = e.by === me || !e.by ? (e.w === 'drown' ? 'You drowned.' : e.w === 'fall' ? 'You fell.' : e.w === 'oob' ? 'You left the arena.' : 'You blew yourself up.') : `<b>${esc(kil)}</b> got you${e.w ? ' with the ' + (WPN[e.w] ? (e.w === 'smg' || e.w === 'lmg' ? WPN[e.w].n : WPN[e.w].n.toLowerCase()) : e.w === 'knife' ? 'knife' : e.w === 'boat' ? 'sinking boat' : e.w) : ''}${e.hd ? ' (headshot)' : ''}.${killInfo(e)}`; setTimeout(() => { if (!P.alive && G.on && !G.over) showDead(); }, 1600); }
+      if (e.by === me && e.id !== me) { hitMark('k'); Snd.kill(); killStreak(vic, e); } if (e.id === me) G.streak = 0; break; }
     case 'sp': if (e.id === me) { placePlayer(e); P.spT = G.t; hideDead(); } else { const a = AVS.get(e.id); if (a) { a.buf = new Buf(); a.dT = 0; } } break;
     case 'seat': { const b = BOATS[e.b]; if (!b) break; if (e.r === 'd') { if (b.drv !== e.id) b.buf = new Buf(); b.drv = e.id; } else b.gun = e.id; if (e.id === me) { P.seat = {b: e.b, r: e.r}; P.lastBY = b.ryaw; showMsg(e.r === 'd' ? 'W/S throttle · A/D steer · F torpedo · E get up' : 'Mouse aims · click fires · E get up', 3); } break; }
     case 'unseat': { const b = BOATS[e.b]; if (!b) break; if (e.r === 'd' && b.drv === e.id) { b.drv = ''; b.buf = new Buf(); } if (e.r === 'g' && b.gun === e.id) b.gun = ''; if (e.id === me && P.seat) { P.seat = null; P.bl = [e.r === 'd' ? .9 : .9, BT.DECK, e.r === 'd' ? 1.4 : -1.6]; } break; }
@@ -99,7 +99,7 @@ function damage(id, amt, by, w, head, at) {
 function kill(id, by, w, head) {
   const s = HS.get(id); s.alive = false; s.hp = 0; s.d++; s.deadT = G.t; for (const b of BOATS) { if (b.drv === id) { b.drv = ''; emit({k: 'unseat', b: b.i, r: 'd', id}); } if (b.gun === id) { b.gun = ''; emit({k: 'unseat', b: b.i, r: 'g', id}); } }
   const k = HS.get(by); if (k && by !== id) { k.k++; k.s++; if (teamMode()) G.ts[teamOf(by)]++; } else if (by === id || !by) s.s = Math.max(0, s.s - 1);
-  emit({k: 'kl', id, by, w, hd: head ? 1 : 0}); checkWin();
+  emit({k: 'kl', id, by, w, hd: head ? 1 : 0, kh: k && by !== id ? Math.max(1, Math.ceil(k.hp)) : 0}); checkWin();
 }
 function boatDmg(b, d, by) {
   if (b.sunk || G.over || d <= 0) return; if (teamMode() && b.team != null && teamOf(by) === b.team) return; b.hp -= d; b.lastBy = by;
@@ -232,7 +232,7 @@ function botShoot(bt, W, eye, yw, pt) {
 
 // ---------------- start / roster / network
 function matchStart(set, roster) {
-  G.set = set; G.roster = roster; G.on = true; G.over = false; G.t = 0; G.ts = [0, 0]; G.tl = (set.time || 0) * 60; G.evq = []; G.pl = {};
+  G.set = set; G.roster = roster; G.on = true; G.over = false; G.t = 0; G.ts = [0, 0]; G.tl = (set.time || 0) * 60; G.evq = []; G.pl = {}; G.streak = G.multi = 0; G.multiT = -99;
   for (const id of [...AVS.keys()]) dropAvatar(id); buildBoats(set.mode); PK.length = PICKS.length; PK.fill(0); for (const p of [...PJ.values()]) pjDrop(p);
   P.id = myId(); P.alive = false; HS.clear(); BOTS.clear();
   if (isHost()) { for (const r of roster) { HS.set(r.id, {hp: 100, alive: false, k: 0, d: 0, s: 0, deadT: -99, lo: 0}); if (r.bot) BOTS.set(r.id, Object.assign(makeBot(+r.id.slice(1), r.team), {name: r.name})); } }

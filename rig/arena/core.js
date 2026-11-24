@@ -73,7 +73,7 @@ const Net = {
   close() { clearInterval(this.pingT); if (this.ws) { const w = this.ws; this.ws = null; w.onclose = null; try { w.close(); } catch (e) {} } this.role = 'solo'; this.peers = new Map(); },
   async rooms() { try { const r = await (await fetch(this.relay().replace(/^ws/, 'http') + '/rooms')).json(), bare = this.tag.replace(/[\[\]]/g, ''); return r.filter(x => x.open && (x.name.startsWith(this.tag + ' ') || x.name.startsWith(bare + ' '))); } catch (e) { return []; } },
 };
-let CLKO = 0; const NOW = () => performance.now() + CLKO;
+let CLKO = 0; const NOW = () => (G.pausedAt || performance.now()) + CLKO; // G.pausedAt freezes the clock while offline practice is paused
 const isHost = () => Net.role !== 'guest';
 const myId = () => Net.role === 'guest' ? Net.id : 'H';
 
@@ -157,7 +157,7 @@ function boxUV(g, sx, sy, sz, t = 1.5) { const uv = g.attributes.uv, d = [[sz, s
 // ---------------- sound (synthesised, positional)
 const A = {ctx: null, on: false, master: null, noise: null};
 function aInit() {
-  if (A.ctx) { if (A.ctx.state === 'suspended') A.ctx.resume(); return; }
+  if (A.ctx) { if (A.ctx.state === 'suspended' && !G.pausedAt) A.ctx.resume(); return; }
   try { A.ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return; }
   const c = A.ctx; A.master = c.createGain(); A.master.gain.value = .8 * SET.vol; const comp = c.createDynamicsCompressor(); A.master.connect(comp); comp.connect(c.destination);
   const nb = c.createBuffer(1, c.sampleRate * 2, c.sampleRate), d = nb.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; A.noise = nb; A.on = true;
@@ -178,6 +178,8 @@ const Snd = {
   step(p, wet) { burst(wet ? 900 : 700, 1, wet ? .12 : .08, .07, 'bandpass', p); },
   whiz() { burst(3500, 2, .12, .12, 'bandpass'); },
   ping() { tone(1200, .15, .3, 'sine'); },
+  heart(k) { k = clamp(k, .25, 1); tone(62, .5 * k, .14, 'sine', null, 40); tone(55, .38 * k, .16, 'sine', null, 36, .19); },
+  streak(n) { const b = 660 * Math.pow(1.12, Math.min(5, n)); [0, 1, 2].forEach(i => tone(b * [1, 1.26, 1.5][i], .2, .22, 'triangle', null, null, .11 + i * .07)); },
 };
 // engine hum per boat: one oscillator + filtered noise into a panner, gain follows throttle
 function engineVoice() { if (!A.on) return null; const c = A.ctx, p = aPan(0, 0, 0, 6), o = c.createOscillator(), g = c.createGain(), f = c.createBiquadFilter(); o.type = 'sawtooth'; o.frequency.value = 50; f.type = 'lowpass'; f.frequency.value = 400; g.gain.value = 0; o.connect(f); f.connect(g); g.connect(p); o.start(); return {p, o, g, f}; }
