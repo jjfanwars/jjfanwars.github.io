@@ -501,12 +501,12 @@ async function ibRoute(req, env, CORS, u) {
   if (b.mode === 'mark') sys.push({type: 'text', text: String(b.rubric || '').slice(0, 6000)});
   if (ctx) sys.push({type: 'text', text: 'Textbook extracts:\n' + ctx});
   sys[sys.length - 1].cache_control = {type: 'ephemeral'};
+  if (b.stream && b.mode !== 'mark') { sys[0].text += "\n\nTools: messages may start with a one-line [Location: ...] note saying where the student is in the app. You are NOT shown the page or their work automatically: call read_page, search_book or read_screen only when the question actually needs it (one or two calls is usually enough), then answer.";
+    return tutorStream({b, sys, msgs, KEY, db, CORS, refs}); }
   const r = await fetch('https://api.anthropic.com/v1/messages', {method: 'POST',
     headers: {'content-type': 'application/json', 'x-api-key': KEY, 'anthropic-version': '2023-06-01', 'anthropic-beta': 'server-side-fallback-2026-07-01'},
-    body: JSON.stringify({model: 'claude-sonnet-5-5', max_tokens: 8000, fallbacks: 'default', cache_control: {type: 'ephemeral'}, system: sys, messages: msgs, stream: !!b.stream,
+    body: JSON.stringify({model: 'claude-sonnet-5-5', max_tokens: 8000, fallbacks: 'default', cache_control: {type: 'ephemeral'}, system: sys, messages: msgs,
       output_config: b.mode === 'mark' ? {effort: 'medium', format: {type: 'json_schema', schema: MARK_SCHEMA}} : {effort: 'low'}})});
-  // stream: pass Anthropic's SSE straight through so text shows as it's written; the page list rides in a header
-  if (b.stream && r.ok) return new Response(r.body, {headers: {...CORS, 'content-type': 'text/event-stream', 'cache-control': 'no-store', 'x-ib-pages': JSON.stringify(refs), 'access-control-expose-headers': 'x-ib-pages'}});
   const j = await r.json().catch(() => ({}));
   if (!r.ok) return J({err: (j.error && j.error.message) || 'Anthropic HTTP ' + r.status}, 502);
   if (j.stop_reason === 'refusal') return J({err: 'Claude declined to answer that one.'}, 200);
@@ -546,6 +546,7 @@ export class IB {
       case 'kvset': if (o.v.length > 2e6) return J({err: 'too big'}); this.kv(o.k, o.v); return J({ok: true});
       case 'qs': return new Response(this.kv('qs') || '[]');
       case 'page': { const r = all('SELECT n, bp, md FROM page WHERE b = ? AND n = ?', o.b, o.n)[0]; return J(r || {err: 'missing'}); }
+      case 'pagebp': { const r = all('SELECT n, bp, md FROM page WHERE b = ? AND bp = ? ORDER BY n LIMIT 1', o.b, String(o.bp))[0]; return J(r || {err: 'missing'}); }
       case 'pages': return J({pages: all(`SELECT n, bp, md FROM page WHERE b = ? AND n IN (${o.ns.map(() => '?').join(',') || 'NULL'}) ORDER BY n`, o.b, ...o.ns.map(Number))});
       case 'find': { // keyword (tf-idf) page ranking for the tutor; page text is kept in memory per book
         this.idx = this.idx || {};
@@ -603,6 +604,54 @@ function planList(items, from, to, q, today) {
   rows.sort((a, b) => a[0] < b[0] ? -1 : 1);
   const over = items.filter(it => (it.kind === 'homework' || it.kind === 'task') && !it.done && it.date < today && (!q || it.title.toLowerCase().includes(q)));
   return (rows.map(r => r[1]).join('\n') || 'nothing in that range') + (over.length ? '\n\nOverdue and not done:\n' + over.map(it => planLine(it)).join('\n') : '');
+}
+// streamed tutor chat with tools: Claude only reads pages / the student's screen when it decides it needs to.
+// Output to the browser is our own small SSE: data: {"t": text} | {"tool": name, "arg": ...} | {"err": msg} | {"done": 1}
+const TUTOR_TOOLS = [
+  {name: 'read_page', description: "Read one page of the student's textbook (Markdown). Use the printed page number (as in the contents and in the student's location note). Read only what you need; don't read pages just in case.",
+    input_schema: {type: 'object', properties: {page: {type: 'string', description: 'printed page number, e.g. "143" or "xii"'}}, required: ['page']}},
+  {name: 'search_book', description: "Find which pages of the student's textbook mention a word or phrase. Returns page numbers with short snippets.",
+    input_schema: {type: 'object', properties: {query: {type: 'string'}}, required: ['query']}},
+  {name: 'read_screen', description: "See what the student has open right now beyond the one-line location note: the full practice question and their current draft answer, or the flashcard. Use when they refer to 'this question', 'my answer', etc.",
+    input_schema: {type: 'object', properties: {}}}];
+function tutorStream({b, sys, msgs, KEY, db, CORS, refs}) {
+  const {readable, writable} = new TransformStream(), w = writable.getWriter(), enc = new TextEncoder();
+  const send = o => w.write(enc.encode('data: ' + JSON.stringify(o) + '\n\n'));
+  const run = async (name, a) => {
+    if (name === 'read_page') { let r = await (await db('pagebp', {b: b.book, bp: String(a.page || '')})).json(); if (r.err && /^\d+$/.test(a.page)) r = await (await db('page', {b: b.book, n: +a.page})).json(); return r.err ? 'No page ' + a.page + ' in this book.' : `<page number="${r.bp}">\n${r.md}\n</page>`; }
+    if (name === 'search_book') { const r = await (await db('search', {q: String(a.query || '')})).json(); const h = (r.hits || []).filter(x => x.b === b.book).sort((x, y) => y.k - x.k).slice(0, 10); return h.length ? h.map(x => `p. ${x.bp}: …${x.s}…`).join('\n') : 'No matches.'; }
+    if (name === 'read_screen') return String(b.screen || 'Nothing open beyond the location note.').slice(0, 10000);
+    return 'unknown tool';
+  };
+  (async () => {
+    try {
+      for (let step = 0; step < 5; step++) {
+        const r = await fetch('https://api.anthropic.com/v1/messages', {method: 'POST',
+          headers: {'content-type': 'application/json', 'x-api-key': KEY, 'anthropic-version': '2023-06-01', 'anthropic-beta': 'server-side-fallback-2026-07-01'},
+          body: JSON.stringify({model: 'claude-sonnet-5-5', max_tokens: 8000, fallbacks: 'default', cache_control: {type: 'ephemeral'}, system: sys, tools: TUTOR_TOOLS, messages: msgs, stream: true, output_config: {effort: 'low'}})});
+        if (!r.ok) { const j = await r.json().catch(() => ({})); await send({err: (j.error && j.error.message) || 'Anthropic HTTP ' + r.status}); break; }
+        const rd = r.body.getReader(), dec = new TextDecoder(), blocks = []; let buf = '', stop = '';
+        for (;;) { const {done, value} = await rd.read(); if (done) break; buf += dec.decode(value, {stream: true}); let i;
+          while ((i = buf.indexOf('\n')) >= 0) { const line = buf.slice(0, i).trim(); buf = buf.slice(i + 1); if (!line.startsWith('data:')) continue;
+            let ev; try { ev = JSON.parse(line.slice(5)); } catch (e) { continue; }
+            if (ev.type === 'content_block_start') blocks[ev.index] = {...ev.content_block, _j: ''};
+            else if (ev.type === 'content_block_delta') { const bl = blocks[ev.index], d = ev.delta;
+              if (d.type === 'text_delta') { bl.text += d.text; await send({t: d.text}); }
+              else if (d.type === 'input_json_delta') bl._j += d.partial_json;
+              else if (d.type === 'thinking_delta') bl.thinking += d.thinking;
+              else if (d.type === 'signature_delta') bl.signature = (bl.signature || '') + d.signature; }
+            else if (ev.type === 'message_delta' && ev.delta.stop_reason) stop = ev.delta.stop_reason;
+            else if (ev.type === 'error') await send({err: ev.error.message}); } }
+        const content = blocks.filter(Boolean).map(bl => { const {_j, ...c} = bl; if (c.type === 'tool_use') { try { c.input = _j ? JSON.parse(_j) : {}; } catch (e) { c.input = {}; } } if (c.type === 'text' && !c.text) return null; return c; }).filter(Boolean);
+        if (stop !== 'tool_use') break;
+        msgs.push({role: 'assistant', content}); const res = [];
+        for (const c of content.filter(c => c.type === 'tool_use')) { await send({tool: c.name, arg: c.input.page || c.input.query || ''}); res.push({type: 'tool_result', tool_use_id: c.id, content: await run(c.name, c.input)}); }
+        msgs.push({role: 'user', content: res});
+      }
+    } catch (e) { await send({err: String(e.message || e)}); }
+    await send({done: 1, pages: refs}); await w.close();
+  })();
+  return new Response(readable, {headers: {...CORS, 'content-type': 'text/event-stream', 'cache-control': 'no-store'}});
 }
 async function planAgent(b, env, db, J, uk) {
   const KEY = await ibKey(env, db); if (!KEY) return J({err: 'no API key on the relay'}, 503);

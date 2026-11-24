@@ -467,9 +467,9 @@ async function openPage(b, n, hl) {
     saveProg(true); $('#bmk').classList.toggle('on', i < 0); renderToc(); markToc(); };
   $('#pv').onclick = $('#pv2').onclick = () => openPage(b, n - 1); $('#nx').onclick = $('#nx2').onclick = () => openPage(b, n + 1);
   document.querySelectorAll('.seg button').forEach(x => { x.classList.toggle('on', x.dataset.v === S.view); x.onclick = () => { S.view = x.dataset.v; LS.set('ib-view', S.view); openPage(b, n, hl); }; });
-  $('#askP').onclick = () => openChat({title: 'Ask about p. ' + ($('#pn').dataset.bp || n), book: b, pages: [n - 1, n, n + 1].filter(x => x >= 1 && x <= B.pages), intro: `I'm reading page ${$('#pn').dataset.bp || n}${sec ? ' (' + (sec.num ? sec.num + ' ' : '') + sec.title + ')' : ''}. `});
+  $('#askP').onclick = () => openChat({title: 'Ask about p. ' + ($('#pn').dataset.bp || n), book: b, pages: [], intro: ''});
   $('#teach').onclick = () => { const secN = sec ? sec.n : n, nxt = B.toc.find(t => t.n > secN && t.lvl <= (sec ? sec.lvl : 3)), endN = nxt ? Math.min(nxt.n, secN + 8) : secN + 3, ps = []; for (let i = secN; i <= endN && i <= B.pages; i++) ps.push(i);
-    openChat({title: 'Lesson: ' + (sec ? (sec.num ? sec.num + ' ' : '') + sec.title : 'p. ' + n), book: b, pages: ps, fixed: true, intro: ''}); sendChat(`Teach me ${sec ? (sec.num ? sec.num + ' ' : '') + sec.title : 'this page'} from my textbook, step by step. Start with the big idea and an analogy, then go through it in small chunks and check my understanding as we go. Don't dump everything at once.`); };
+    openChat({title: 'Lesson: ' + (sec ? (sec.num ? sec.num + ' ' : '') + sec.title : 'p. ' + n), book: b, pages: [], intro: ''}); sendChat(`Teach me ${sec ? (sec.num ? sec.num + ' ' : '') + sec.title : 'this page'} from my textbook (it starts on p. ${(sec && sec.bp) || $('#pn').dataset.bp || n}; read the pages as you go rather than all at once), step by step. Start with the big idea and an analogy, then go through it in small chunks and check my understanding as we go. Don't dump everything at once.`); };
   markToc(); window.scrollTo(0, 0); $('#toc').classList.remove('open');
   try {
     const p = await getPage(b, n); if (S.n !== n) return;
@@ -517,18 +517,21 @@ function closeDrawer() { $('#drawer').classList.add('hide'); CH = null; }
 function drawChat(busy) {
   const c = $('#chat'), atEnd = c.scrollHeight - c.scrollTop - c.clientHeight < 80, w = where();
   c.innerHTML = (w && !CH.agent ? `<div class="ctx">Claude can see: ${esc(w.label)}</div>` : '') +
-    CH.msgs.filter(m => !m.hidden).map(m => `<div class="msg ${m.role === 'user' ? 'u' : 'a'}">${m.role === 'user' ? esc(m.show || m.content).replace(/\n/g, '<br>') : mdx(m.content)}</div>`).join('') + (busy ? '<div class="msg a"><span class="spin"></span> Thinking…</div>' : '');
+    CH.msgs.filter(m => !m.hidden).map(m => `<div class="msg ${m.role === 'user' ? 'u' : 'a'}">${m.role === 'user' ? esc(m.show || m.content).replace(/\n/g, '<br>') : mdx(m.content)}</div>`).join('') + (busy || (CH.busy && (CH.status || !(CH.msgs[CH.msgs.length - 1] || {}).content)) ? `<div class="msg a meta"><span class="spin"></span> ${esc(CH.status || 'Thinking…')}</div>` : '');
   if (atEnd || busy) c.scrollTop = 1e9;
 }
-// what the student is looking at right now, so Claude knows without being told
+// where the student is, as one line for Claude; the full question/draft/card is only sent as `screen`, which Claude reads with a tool if it needs it
 function where() {
-  if (S.tab === 'lib' && S.reading && S.book) { const B = S.book, sec = secOf(B, S.n), bp = ($('#pn') && $('#pn').dataset.bp) || S.n;
-    return {label: `${B.subject} p. ${bp}${sec ? ' · ' + (sec.num ? sec.num + ' ' : '') + sec.title : ''}`, book: B.id, n: S.n, note: `[I'm reading ${B.title}, page ${bp}${sec ? ', section ' + (sec.num ? sec.num + ' ' : '') + sec.title : ''}.]`}; }
+  const B = S.book;
+  if (S.tab === 'lib' && S.reading && B) { const sec = secOf(B, S.n), bp = ($('#pn') && $('#pn').dataset.bp) || S.n;
+    return {label: `${B.subject} p. ${bp}${sec ? ' · ' + (sec.num ? sec.num + ' ' : '') + sec.title : ''}`, book: B.id, n: S.n, note: `[Location: reading the ${B.subject} textbook, p. ${bp}${sec ? ', section ' + (sec.num ? sec.num + ' ' : '') + sec.title : ''}]`}; }
   if (S.tab === 'prac' && S.q) { const q = S.q, ta = $('#ans'), d = ta ? ta.value.trim() : '';
-    return {label: 'the practice question you have open' + (d ? ' and your draft' : ''), book: q.book, n: q.n, note: `[I'm working on this practice question (${KIND[q.kind] || q.kind}${q.marks ? ', ' + q.marks + ' marks' : ''}): ${q.text}${d ? '\nMy draft so far:\n' + d.slice(0, 6000) : ''}]`}; }
-  if (S.tab === 'terms' && S.term) return {label: 'flashcard “' + S.term.k + '”', book: S.book.id, note: `[I'm revising the key term "${S.term.k}": ${S.term.d}]`};
-  if (S.tab === 'prog' && S.book) return {label: 'your progress', book: S.book.id, note: '[I am looking at my progress. ' + progSummary(S.book) + ']'};
-  return null;
+    return {label: 'the question you have open', book: q.book, note: `[Location: Practice, answering a ${bookOf(q.book).subject} ${KIND[q.kind] || q.kind} question${q.topic ? ' on ' + q.topic : ''}${d ? ', draft started' : ''}]`,
+      screen: `Question (${KIND[q.kind] || q.kind}${q.marks ? ', ' + q.marks + ' marks' : ''}, textbook p. ${q.bp || '?'}):\n${q.text}${q.ctx ? '\nContext: ' + q.ctx : ''}\n\nStudent's draft:\n${d || '(empty)'}`}; }
+  if (S.tab === 'terms' && S.term) return {label: 'flashcard “' + S.term.k + '”', book: B.id, note: `[Location: Key terms flashcards (${B.subject}), card "${S.term.k}"]`, screen: `${S.term.k}: ${S.term.d}`};
+  if (S.tab === 'prog' && B) return {label: 'your progress', book: B.id, note: `[Location: Progress page (${B.subject})]`, screen: progSummary(B)};
+  const n = {home: 'Home page', lib: 'Library (book list)', prac: 'Practice question list', terms: 'Key terms list', plan: 'Planner', search: 'search results'}[S.tab];
+  return n && B ? {label: n, book: B.id, note: `[Location: ${n}${S.tab === 'prac' || S.tab === 'terms' ? ' (' + B.subject + ')' : ''}]`} : null;
 }
 function progSummary(B) {
   const qs = S.qs.filter(q => q.book === B.id && attOf(q.id).length), by = {};
@@ -539,11 +542,9 @@ function progSummary(B) {
 async function sendChat(text) {
   if (!CH || !text.trim() || CH.busy) return;
   const first = !CH.msgs.some(m => m.role === 'user'), w = CH.agent ? null : where();
-  // tell Claude where the student is now (only when it changed); a page it hasn't seen yet goes into the message itself
+  // one line saying where the student is (only when it changed); Claude fetches pages / the open question itself with tools
   let note = '';
-  if (w && w.note !== CH.lastNote && !(first && CH.intro)) { note = w.note + '\n'; CH.lastNote = w.note;
-    if (w.n && w.book === CH.book && !(CH.pages || []).includes(w.n) && !(CH.seen = CH.seen || []).includes(w.n)) { CH.seen.push(w.n); if (!CH.fixed) CH.pages = [...(CH.pages || []), w.n];
-      else try { const p = await getPage(w.book, w.n); note = `${w.note}\n<page>\n${(p.md || '').slice(0, 9000)}\n</page>\n`; } catch (e) {} } }
+  if (w && w.note !== CH.lastNote) { note = w.note + '\n'; CH.lastNote = w.note; }
   CH.msgs.push({role: 'user', content: note + (first && CH.intro ? CH.intro : '') + text, show: text}); CH.busy = true; drawChat(true);
   if (CH.agent) {
     try {
@@ -554,14 +555,14 @@ async function sendChat(text) {
   }
   const me = CH, out = {role: 'assistant', content: ''};
   try { // streamed: text appears as Claude writes it
-    const r = await fetch(RELAY + '/ib/ask', {method: 'POST', body: JSON.stringify({mode: 'chat', stream: true, book: me.book, pages: me.pages, find: !me.fixed, messages: me.msgs.map(m => ({role: m.role, content: m.content})), pass: PASS, user: UK()})});
+    const r = await fetch(RELAY + '/ib/ask', {method: 'POST', body: JSON.stringify({mode: 'chat', stream: true, book: me.book, pages: me.pages, find: false, screen: w && w.screen, messages: me.msgs.map(m => ({role: m.role, content: m.content})), pass: PASS, user: UK()})});
     if (!r.ok || !(r.headers.get('content-type') || '').includes('event-stream')) { const j = await r.json().catch(() => ({})); throw new Error(j.err || 'HTTP ' + r.status); }
-    try { me.pages = JSON.parse(r.headers.get('x-ib-pages')); me.fixed = true; } catch (e) {} // same pages for the rest of the chat so the prompt cache hits
-    me.msgs.push(out); const rd = r.body.getReader(), dec = new TextDecoder(); let buf = '', t0 = 0;
+    me.fixed = true; me.msgs.push(out); const rd = r.body.getReader(), dec = new TextDecoder(); let buf = '', t0 = 0;
     for (;;) { const {done, value} = await rd.read(); if (done) break; buf += dec.decode(value, {stream: true});
       let i; while ((i = buf.indexOf('\n')) >= 0) { const line = buf.slice(0, i).trim(); buf = buf.slice(i + 1); if (!line.startsWith('data:')) continue;
-        try { const ev = JSON.parse(line.slice(5)); if (ev.type === 'content_block_delta' && ev.delta.type === 'text_delta') out.content += ev.delta.text; if (ev.type === 'error') out.content += '\n\n**Error:** ' + ev.error.message; } catch (e) {} }
+        try { const ev = JSON.parse(line.slice(5)); if (ev.t) { out.content += ev.t; me.status = ''; } if (ev.tool) me.status = ev.tool === 'read_page' ? 'Reading p. ' + ev.arg : ev.tool === 'search_book' ? 'Searching for “' + ev.arg + '”' : 'Looking at your screen'; if (ev.err) out.content += '\n\n**Error:** ' + ev.err; } catch (e) {} }
       if (CH === me && Date.now() - t0 > 60) { t0 = Date.now(); drawChat(); } }
+    me.status = '';
     if (!out.content) out.content = '(no reply)';
     if (me.onMsg) me.onMsg(me.msgs);
   } catch (e) { if (!me.msgs.includes(out)) me.msgs.push(out); out.content += '**Error:** ' + e.message; }
@@ -919,7 +920,7 @@ $('#dClose').onclick = closeDrawer;
 $('#home').onclick = () => go('home');
 $('#tutor').onclick = () => { if (S.tab === 'plan') return openChat({title: 'Planner assistant', agent: true, msgs: S.planChat || []});
   const w = where(), B = w && w.book ? bookOf(w.book) : S.book;
-  openChat({title: 'Claude tutor · ' + B.subject, book: B.id, pages: w && w.n ? [w.n - 1, w.n, w.n + 1].filter(x => x >= 1 && x <= B.pages) : [], intro: ''}); };
+  openChat({title: 'Claude tutor · ' + B.subject, book: B.id, pages: [], intro: ''}); };
 $('#cf').onsubmit = e => { e.preventDefault(); const v = $('#ci').value; $('#ci').value = ''; sendChat(v); };
 $('#ci').onkeydown = e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); $('#cf').requestSubmit(); } };
 document.addEventListener('keydown', e => {
