@@ -26,14 +26,15 @@ export class HUD {
   }
   matchEnd(won) { $('again').style.display = 'block'; }
 
-  mark(i, label, x, y, z, cls) {
+  mark(i, label, x, y, z, cls) { // on screen: over the spot; off screen or behind you: pinned to the nearest screen edge
     const m = this.markers[i];
-    _v.set(x, y, z).project(this.cam);
-    if (_v.z > 1 || Math.abs(_v.x) > 1.1 || Math.abs(_v.y) > 1.1) { m.style.display = 'none'; return; }
-    const d = Math.round(this.cam.position.distanceTo(_v.set(x, y, z)));
+    _v.set(x, y, z); const d = Math.round(this.cam.position.distanceTo(_v));
     _v.project(this.cam);
-    m.style.display = 'block'; m.className = 'marker ' + cls;
-    m.style.left = ((_v.x + 1) / 2 * innerWidth) + 'px'; m.style.top = ((1 - _v.y) / 2 * innerHeight) + 'px';
+    let px = _v.x, py = _v.y; const behind = _v.z > 1; if (behind) { px = -px; py = -py; }
+    const off = behind || Math.abs(px) > 0.92 || Math.abs(py) > 0.86;
+    if (off) { const k = Math.max(Math.abs(px) / 0.92, Math.abs(py) / 0.86) || 1; px /= k; py /= k; if (behind && Math.abs(py) < 0.86 && Math.abs(px) < 0.92) py = -0.86; }
+    m.style.display = 'block'; m.className = 'marker ' + cls + (off ? ' off' : '');
+    m.style.left = ((px + 1) / 2 * innerWidth) + 'px'; m.style.top = ((1 - py) / 2 * innerHeight) + 'px';
     m.innerHTML = `<i>${label}</i><small>${d}m</small>`;
   }
 

@@ -47,7 +47,7 @@ html,body{margin:0;height:100%;background:#0b0d0f;overflow:hidden;font-family:"S
 #feed .fr{color:var(--blue)}#feed .en{color:var(--orange)}#feed span{opacity:.7;margin:0 5px}
 .marker{position:absolute;transform:translate(-50%,-50%);text-align:center;display:none}
 .marker i{display:block;font-style:normal;font-weight:800;font-size:15px;width:26px;height:26px;line-height:24px;border:2px solid #fff;border-radius:50%;background:#0006;margin:auto}
-.marker.bomb i{border-color:#ff5540;color:#ff5540}.marker small{font-size:10px;opacity:.8}
+.marker.bomb i{border-color:#ff5540;color:#ff5540}.marker.off{opacity:.7}.marker.off i{transform:scale(.85)}.marker small{font-size:10px;opacity:.8}
 #board{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);background:#0d1013ee;padding:18px 24px;display:none;min-width:420px}
 #board table{width:100%;border-collapse:collapse;margin-bottom:12px;font-size:14px}#board th{text-align:left;font-size:11px;letter-spacing:.14em;text-transform:uppercase;opacity:.7;padding:4px 8px;border-bottom:1px solid #fff3}
 #board td{padding:4px 8px}#board tr.dead td{opacity:.4}#board tr.me td{color:var(--blue)}#board td:nth-child(n+2),#board th:nth-child(n+2){text-align:center;width:44px}
