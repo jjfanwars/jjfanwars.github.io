@@ -36,10 +36,10 @@ def build(book, title, subject, pages):
             h = re.match(r'(#{1,3})\s+(.+)', line)
             if h:
                 t = re.sub(r'[*_]', '', h.group(2)).strip()
-                num = re.match(r'(\d+(?:\.\d+)*)\.?\s+(.*)', t)
+                num = re.match(r'((?:(?:Structure|Reactivity|Tools?)\s+)?\d+(?:\.\d+)*)\.?\s*[–-]?\s+(.*)', t)
                 lvl = len(h.group(1))
                 if num:
-                    lvl = min(3, num.group(1).count('.') + 1)
+                    lvl = min(3, re.sub(r'^\D+', '', num.group(1)).count('.') + 1)
                     toc.append({'lvl': lvl, 'num': num.group(1), 'title': num.group(2), 'n': p['n'], 'bp': p['bp']})
                 elif lvl == 1:
                     toc.append({'lvl': 1, 'num': '', 'title': t, 'n': p['n'], 'bp': p['bp']})
@@ -125,7 +125,26 @@ def build(book, title, subject, pages):
             kind = 'activity' if m.group(1) == 'activity' else 'short'
             qs.append({'id': f'{book}-{kind}-{p["n"]}-{m.start()}', 'book': book, 'kind': kind, 'text': plain(body), 'ctx': plain(m.group(2)) if m.group(2).strip() not in ('Activity', '') else '',
                        'topic': topic_at(p['n']), 'n': p['n'], 'bp': p['bp'], 'pages': related(body, p['n'])})
+        # science books: exercises, challenge boxes and end-of-chapter practice questions, one item per numbered question
+        for m in re.finditer(r'^> \[!(exercise|challenge|practice)\]\s*(.*)\n((?:>.*\n?)+)', md, re.M):
+            body = re.sub(r'^>\s?', '', m.group(3), flags=re.M).strip()
+            items = re.split(r'(?m)^(?=\*{0,2}\d{1,3}\.\*{0,2}\s)', body)
+            for it in items:
+                mq = re.match(r'\*{0,2}(\d{1,3})\.\*{0,2}\s+([\s\S]+)', it.strip())
+                if not mq or len(mq.group(2)) < 15:
+                    continue
+                text = mq.group(2).strip()
+                marks = sum(int(x) for x in re.findall(r'\[(\d{1,2})\]', text)) or None
+                kind = 'mcq' if re.search(r'(?m)^\s*(?:- )?\**A\.?\**[ .)]', text) and re.search(r'(?m)^\s*(?:- )?\**D\.?\**[ .)]', text) else {'exercise': 'exercise', 'challenge': 'challenge', 'practice': 'structured'}[m.group(1)]
+                if kind == 'mcq':
+                    marks = 1
+                qs.append({'id': f'{book}-{m.group(1)}-{p["n"]}-{mq.group(1)}', 'book': book, 'kind': kind, 'marks': marks, 'text': text, 'ctx': '',
+                           'topic': topic_at(p['n']), 'n': p['n'], 'bp': p['bp'], 'pages': related(text, p['n'], 4)})
     meta = {'id': book, 'title': title, 'subject': subject, 'pages': max(p['n'] for p in pages), 'toc': toc, 'terms': sorted(terms, key=lambda t: t['k'].lower())}
+    if os.environ.get('IB_MATH'):
+        meta['math'] = True
+    if os.environ.get('IB_FILE'):
+        meta['file'] = True
     start = next((t['n'] for t in toc if t['num']), 1)
     meta['start'] = start
     return meta, qs
@@ -158,7 +177,7 @@ def main():
     for p in pages:
         put(f't=page&b={book}&n={p["n"]}&bp={quote(p["bp"])}', p['md'].encode(), 'text/plain')
         if img_dir:
-            f = os.path.join(img_dir, 'p-%03d.jpg' % p['n'])
+            f = next((x for x in (os.path.join(img_dir, 'p-%03d.jpg' % p['n']), os.path.join(img_dir, 'p-%04d.jpg' % p['n'])) if os.path.exists(x)), '')
             if os.path.exists(f) and '--imgs' in sys.argv:
                 put(f't=img&b={book}&n={p["n"]}', open(f, 'rb').read(), 'image/jpeg')
     # merge into the shared book list and question bank (other books stay)

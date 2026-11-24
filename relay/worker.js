@@ -388,7 +388,12 @@ How you teach:
 - Keep replies focused and readable: short paragraphs, bold key terms, under about 250 words unless the student asks for more or you are giving exam feedback.
 
 Accuracy: ground course content in the textbook extracts provided and cite them as "p. N" (printed page numbers). Say clearly when you go beyond the textbook. Never invent facts, statistics or quotes; if unsure, say so.
-When marking, act as a strict but fair IB examiner who also wants the student to improve.`;
+When marking, act as a strict but fair IB examiner who also wants the student to improve.
+Notation: for maths and science, write formulas and equations in LaTeX between $...$ (display: $$...$$) and chemical species and reactions with mhchem, e.g. $\\ce{2H2 + O2 -> 2H2O}$. Do not use $ for anything else in science subjects (write "dollars").`;
+const MARK_SCHEMA = {type: 'object', additionalProperties: false, required: ['score', 'max', 'band', 'verdict', 'good', 'missed', 'fix', 'plan', 'terms'], properties: {
+  score: {type: 'integer'}, max: {type: 'integer'}, band: {type: 'string'}, verdict: {type: 'string'},
+  good: {type: 'array', items: {type: 'string'}}, missed: {type: 'array', items: {type: 'string'}}, fix: {type: 'array', items: {type: 'string'}},
+  plan: {type: 'string'}, terms: {type: 'array', items: {type: 'string'}}}};
 async function ibRoute(req, env, CORS, u) {
   const H = {...CORS, 'content-type': 'application/json', 'cache-control': 'no-store'};
   const J = (o, s = 200) => new Response(JSON.stringify(o), {status: s, headers: H});
@@ -400,6 +405,14 @@ async function ibRoute(req, env, CORS, u) {
     const items = JSON.parse(await (await db('kvget', {k: 'plan'})).text() || '[]');
     return new Response(toIcs(items), {headers: {'content-type': 'text/calendar; charset=utf-8', 'cache-control': 'no-store'}});
   }
+  if (u.pathname === '/ib/file') { // whole textbook PDF, stored in ~1.9 MB chunks, streamed back as one download
+    if (u.searchParams.get('t') !== PASS) return new Response('no', {status: 403, headers: CORS});
+    const b0 = u.searchParams.get('b'), meta = await (await db('fmeta', {b: b0})).json();
+    if (!meta.n) return new Response('no file', {status: 404, headers: CORS});
+    const {readable, writable} = new FixedLengthStream(meta.size);
+    (async () => { const w = writable.getWriter(); for (let i = 0; i < meta.n; i++) { const r = await db('fchunk', {b: b0, i}); await w.write(new Uint8Array(await r.arrayBuffer())); } await w.close(); })();
+    return new Response(readable, {headers: {...CORS, 'content-type': 'application/pdf', 'content-length': String(meta.size), 'content-disposition': `attachment; filename="${(meta.name || b0 + '.pdf').replace(/"/g, '')}"`}});
+  }
   if (u.pathname === '/ib/img') {
     if (u.searchParams.get('t') !== PASS) return new Response('no', {status: 403, headers: CORS});
     const r = await db('img', {b: u.searchParams.get('b'), n: +u.searchParams.get('n')});
@@ -407,6 +420,18 @@ async function ibRoute(req, env, CORS, u) {
   }
   if (req.method === 'OPTIONS') return new Response(null, {headers: {...CORS, 'access-control-allow-methods': 'POST, OPTIONS', 'access-control-allow-headers': 'content-type'}});
   if (req.method !== 'POST') return J({err: 'expected POST'}, 405);
+  if (u.pathname === '/ib/ocr') { // admin: transcribe one page image with Claude Haiku (book import)
+    if (!env.IB_ADMIN || req.headers.get('x-ib-admin') !== env.IB_ADMIN) return J({err: 'no'}, 403);
+    const lg = await (await env.LEGAL.get(env.LEGAL.idFromName('main')).fetch('https://l/', {method: 'POST', body: '{"op":"get"}'})).json();
+    const o = await req.json();
+    const r = await fetch('https://api.anthropic.com/v1/messages', {method: 'POST',
+      headers: {'content-type': 'application/json', 'x-api-key': env.ANTHROPIC_KEY || lg.key, 'anthropic-version': '2023-06-01'},
+      body: JSON.stringify({model: o.model || 'claude-haiku-5-5', max_tokens: 8000, output_config: {effort: 'low'}, system: [{type: 'text', text: o.sys, cache_control: {type: 'ephemeral'}}],
+        messages: [{role: 'user', content: [{type: 'image', source: {type: 'base64', media_type: 'image/jpeg', data: o.img}}, {type: 'text', text: o.hint || 'Transcribe this page.'}]}]})});
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) return J({err: (j.error && j.error.message) || 'HTTP ' + r.status}, 502);
+    return J({text: (j.content || []).filter(c => c.type === 'text').map(c => c.text).join(''), stop: j.stop_reason, usage: j.usage});
+  }
   if (u.pathname === '/ib/put') { // uploads from the build script: admin key only
     if (!env.IB_ADMIN || req.headers.get('x-ib-admin') !== env.IB_ADMIN) return J({err: 'no'}, 403);
     const r = await ib.fetch('https://i/put' + u.search, {method: 'POST', body: req.body});
@@ -447,7 +472,7 @@ async function ibRoute(req, env, CORS, u) {
   const r = await fetch('https://api.anthropic.com/v1/messages', {method: 'POST',
     headers: {'content-type': 'application/json', 'x-api-key': KEY, 'anthropic-version': '2023-06-01', 'anthropic-beta': 'server-side-fallback-2026-07-01'},
     body: JSON.stringify({model: 'claude-sonnet-5-5', max_tokens: 8000, fallbacks: 'default', cache_control: {type: 'ephemeral'}, system: sys, messages: msgs,
-      output_config: {effort: b.mode === 'mark' ? 'medium' : 'low'}})});
+      output_config: b.mode === 'mark' ? {effort: 'medium', format: {type: 'json_schema', schema: MARK_SCHEMA}} : {effort: 'low'}})});
   const j = await r.json().catch(() => ({}));
   if (!r.ok) return J({err: (j.error && j.error.message) || 'Anthropic HTTP ' + r.status}, 502);
   if (j.stop_reason === 'refusal') return J({err: 'Claude declined to answer that one.'}, 200);
@@ -461,7 +486,8 @@ export class IB {
     this.sql.exec(`CREATE TABLE IF NOT EXISTS page (b TEXT, n INTEGER, bp TEXT, md TEXT, PRIMARY KEY (b, n));
       CREATE TABLE IF NOT EXISTS img (b TEXT, n INTEGER, data BLOB, PRIMARY KEY (b, n));
       CREATE TABLE IF NOT EXISTS kv (k TEXT PRIMARY KEY, v TEXT);
-      CREATE TABLE IF NOT EXISTS spend (d TEXT PRIMARY KEY, n INTEGER);`);
+      CREATE TABLE IF NOT EXISTS spend (d TEXT PRIMARY KEY, n INTEGER);
+      CREATE TABLE IF NOT EXISTS fchunk (b TEXT, i INTEGER, data BLOB, PRIMARY KEY (b, i));`);
   }
   kv(k, v) { if (v === undefined) { const r = this.sql.exec('SELECT v FROM kv WHERE k = ?', k).toArray()[0]; return r ? r.v : null; } this.sql.exec('INSERT OR REPLACE INTO kv VALUES (?, ?)', k, v); }
   async fetch(req) {
@@ -471,6 +497,8 @@ export class IB {
       if (t === 'page') { this.idx = null; this.sql.exec('INSERT OR REPLACE INTO page VALUES (?, ?, ?, ?)', b, n, u.searchParams.get('bp') || '', await req.text()); }
       else if (t === 'img') this.sql.exec('INSERT OR REPLACE INTO img VALUES (?, ?, ?)', b, n, await req.arrayBuffer());
       else if (t === 'kv') this.kv(u.searchParams.get('k'), await req.text());
+      else if (t === 'fchunk') this.sql.exec('INSERT OR REPLACE INTO fchunk VALUES (?, ?, ?)', b, n, await req.arrayBuffer());
+      else if (t === 'fmeta') this.kv('file:' + b, await req.text());
       else return Response.json({err: 'bad type'}, {status: 400});
       return J({ok: true});
     }
@@ -478,6 +506,8 @@ export class IB {
     switch (o.op) {
       case 'img': { const r = all('SELECT data FROM img WHERE b = ? AND n = ?', o.b, o.n)[0]; return r ? new Response(r.data) : new Response('missing', {status: 404}); }
       case 'books': return new Response(this.kv('books') || '[]');
+      case 'fmeta': return new Response(this.kv('file:' + o.b) || '{}');
+      case 'fchunk': { const r = all('SELECT data FROM fchunk WHERE b = ? AND i = ?', o.b, o.i)[0]; return new Response(r ? r.data : new ArrayBuffer(0)); }
       case 'kvget': return new Response(this.kv(o.k) || '[]');
       case 'kvset': if (o.v.length > 2e6) return J({err: 'too big'}); this.kv(o.k, o.v); return J({ok: true});
       case 'qs': return new Response(this.kv('qs') || '[]');

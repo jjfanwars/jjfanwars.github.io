@@ -8,6 +8,9 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/contrib/mhchem.min.js"></script>
 <style>
 :root{--bg:#f7f6f2;--panel:#fff;--ink:#1d1f24;--mut:#666b75;--line:#e4e2db;--acc:#1f6f5c;--acc2:#e7f2ee;--warn:#b5591b;--bad:#b3261e;--good:#1f7a3a;--kt:#fff4dc;--ktb:#f0b54a;--cs:#eef1fb;--csb:#6b7fd6;--sh:0 1px 2px rgba(0,0,0,.05),0 4px 16px rgba(0,0,0,.04)}
 @media (prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#15171b;--panel:#1d2026;--ink:#e7e7ea;--mut:#9aa0ab;--line:#2d3139;--acc:#5cc8a6;--acc2:#1b2e29;--warn:#e89150;--bad:#f2867c;--good:#6fd38e;--kt:#2d2716;--ktb:#a7802f;--cs:#1e2333;--csb:#6b7fd6;--sh:none}}
@@ -205,9 +208,20 @@ const S = {books: [], qs: [], book: null, tab: 'lib', n: 1, view: LS.get('ib-vie
 
 // ---------- markdown ----------
 const CO = {keyterm: 'Key term', concept: 'Concept', case: 'Case study', activity: 'Activity', tok: 'TOK', atl: 'ATL skills', tip: 'Assessment tip', questions: 'Questions', box: ''};
+// maths: books flagged math (and their chats) render $...$ / $$...$$ with KaTeX + mhchem; other books keep $ as money
+let MATH = false;
+function mathOut(src) {
+  if (!MATH || !window.katex) return {src, put: h => h};
+  const M = [], hold = (tex, disp) => { M.push([tex, disp]); return '\u0000' + (M.length - 1) + '\u0000'; };
+  src = src.replace(/\$\$([\s\S]+?)\$\$/g, (m, t) => hold(t, true)).replace(/\\\[([\s\S]+?)\\\]/g, (m, t) => hold(t, true))
+    .replace(/\$([^\s$](?:[^$\n]*?[^\s$])?)\$/g, (m, t) => hold(t, false)).replace(/\\\(([\s\S]+?)\\\)/g, (m, t) => hold(t, false));
+  return {src, put: h => h.replace(/\u0000(\d+)\u0000/g, (m, i) => { const [t, d] = M[+i]; try { return katex.renderToString(t, {displayMode: d, throwOnError: false}); } catch (e) { return esc(t); } })};
+}
+const mdx = (src, inline) => { const m = mathOut(src); return m.put(inline ? marked.parseInline(m.src) : marked.parse(m.src)); };
 function md(src) {
   src = src.replace(/^<!--.*?-->\s*/s, '').replace(/^\*\[(.+?)\]\*\s*$/gm, (m, t) => '<em class="fig">' + esc(t) + '</em>');
-  let html = marked.parse(src, {gfm: true, breaks: false});
+  const mo = mathOut(src); src = mo.src;
+  let html = mo.put(marked.parse(src, {gfm: true, breaks: false}));
   html = html.replace(/<blockquote>\s*<p>\[!(\w+)\]\s*([^\n<]*)\n?([\s\S]*?)<\/blockquote>/g, (m, type, title, rest) => {
     type = type.toLowerCase(); const lab = CO[type] ?? type;
     return `<div class="co ${type}"><div class="ct">${lab}${title ? '<b>' + title + '</b>' : ''}</div><p>${rest}</div>`;
@@ -259,13 +273,13 @@ function markToc() {
 
 // ---------- library ----------
 async function openPage(b, n, hl) {
-  const B = bookOf(b); n = Math.max(1, Math.min(B.pages, n)); S.n = n; S.hl = hl || '';
+  const B = bookOf(b); MATH = !!B.math; n = Math.max(1, Math.min(B.pages, n)); S.n = n; S.hl = hl || '';
   S.prog.last = {b, n}; LS.set('ib-prog', S.prog);
   if (S.tab !== 'lib') { S.tab = 'lib'; tab('lib'); return; }
   const sec = secOf(B, n);
   $('#main').innerHTML = `<div class="reader"><div class="rbar">
     <button id="pv">‹</button><span class="pgnum" id="pn"></span><button id="nx">›</button>
-    <span class="sp"></span><div class="seg"><button data-v="text">Text</button><button data-v="scan">Scan</button></div></div>
+    <span class="sp"></span>${B.file ? `<a class="meta" href="${RELAY}/ib/file?b=${b}&t=${encodeURIComponent(PASS)}" download title="Download the whole textbook PDF">⤓ PDF</a>` : ''}<div class="seg"><button data-v="text">Text</button><button data-v="scan">Scan</button></div></div>
     <div id="pg" class="card page"><span class="spin"></span></div><div class="rbar" style="margin-top:12px"><button id="pv2">‹ Previous page</button><span class="sp"></span><button id="nx2">Next page ›</button></div></div>
     <div class="ask row"><button id="teach">🎓 Teach me this section</button><button class="pri" id="askP">Ask about this page</button></div>`;
   $('#pv').onclick = $('#pv2').onclick = () => openPage(b, n - 1); $('#nx').onclick = $('#nx2').onclick = () => openPage(b, n + 1);
@@ -298,12 +312,13 @@ async function search(q) {
 // ---------- Claude chat drawer ----------
 let CH = null;
 function openChat(o) {
+  MATH = !!(o.book && (bookOf(o.book) || {}).math);
   CH = {...o, msgs: o.msgs || []}; $('#dTitle').textContent = o.title || 'Ask Claude'; $('#drawer').classList.remove('hide'); drawChat(); $('#ci').focus();
 }
 function closeDrawer() { $('#drawer').classList.add('hide'); CH = null; }
 function drawChat(busy) {
   $('#chat').innerHTML = (CH.msgs.length ? '' : CH.agent ? `<p class="meta">Tell me about homework, tests and events and I'll put them in your calendar. Try: “maths test next Thursday period 2”, “I have soccer every Wednesday 4–5:30”, “what's due this week?”, “move the history essay to Monday”, “I finished the TOK reflection”.</p>` : `<p class="meta">Ask anything: explain a concept, quiz me on a section, plan an essay, find case studies, check my understanding. Claude finds the matching textbook pages and cites them.</p>`) +
-    CH.msgs.filter(m => !m.hidden).map(m => `<div class="msg ${m.role === 'user' ? 'u' : 'a'}">${m.role === 'user' ? esc(m.show || m.content).replace(/\n/g, '<br>') : marked.parse(m.content)}</div>`).join('') + (busy ? '<div class="msg a"><span class="spin"></span> Thinking…</div>' : '');
+    CH.msgs.filter(m => !m.hidden).map(m => `<div class="msg ${m.role === 'user' ? 'u' : 'a'}">${m.role === 'user' ? esc(m.show || m.content).replace(/\n/g, '<br>') : mdx(m.content)}</div>`).join('') + (busy ? '<div class="msg a"><span class="spin"></span> Thinking…</div>' : '');
   $('#chat').scrollTop = 1e9;
 }
 async function sendChat(text) {
@@ -327,15 +342,17 @@ async function sendChat(text) {
 }
 
 // ---------- practice ----------
-const KIND = {essay: 'Paper 2 essay', p1: 'Paper 1', short: 'Short answer', activity: 'Activity', discuss: 'Discussion'};
+const KIND = {essay: 'Paper 2 essay', p1: 'Paper 1', short: 'Short answer', activity: 'Activity', discuss: 'Discussion', mcq: 'Multiple choice', exercise: 'Exercise', challenge: 'Challenge', structured: 'Exam question'};
 const RUBRIC = {
   essay: `You are marking an IB Global Politics Paper 2 essay (15 marks) using the IB markbands: 0 = does not reach a standard; 1-3 = little understanding of the demands, little relevant knowledge, few or no examples, no or minimal argument or evaluation; 4-6 = some understanding, some relevant knowledge and examples but mostly descriptive, limited argument, few perspectives; 7-9 = mostly understands the demands, mostly accurate relevant knowledge with some appropriate examples, attempts structure and some analysis, some awareness of different perspectives, partial evaluation; 10-12 = understands the demands, accurate relevant knowledge, appropriate examples well used, clear structure, analysis with some evaluation, different perspectives considered; 13-15 = in-depth understanding, accurate and detailed knowledge, effective, varied and specific examples, a well-structured argument that is analytical and consistently evaluative, different perspectives explored and a well-supported conclusion. Judge the essay against the exact command term (to what extent, evaluate, compare and contrast, discuss, examine). If the answer is a plan or notes rather than a full essay, mark it as a plan and say what mark the essay it describes could reach.`,
   p1: `You are marking an IB Global Politics Paper 1 (source-based) answer. Mark strictly against the command term and the marks given for the question.`,
   short: `You are marking a short IB Global Politics answer. Award marks out of the stated total for accurate, relevant points and correct use of key terms; if no total is given, mark out of 10 for accuracy, depth, use of key terms and use of examples.`,
 };
 RUBRIC.activity = RUBRIC.discuss = RUBRIC.short;
+RUBRIC.mcq = `You are checking an IB Chemistry multiple-choice answer (1 mark). Work out the correct option yourself carefully first. Award 1 if the student's letter is correct, else 0. Explain why the right answer is right and why the student's choice (if wrong) is a tempting mistake. If the student gave reasoning, comment on it.`;
+RUBRIC.exercise = RUBRIC.challenge = RUBRIC.structured = `You are marking an IB Chemistry HL answer like an IB examiner using a markscheme you write yourself: first solve the question fully and decide the marking points (one mark per correct step, value with correct units and significant figures, correct equation with state symbols where needed, correct explanation point). Award marks out of the total given (if none is given, out of the number of marking points you decided, max 10). Apply error carried forward (ECF) for later steps that correctly use an earlier wrong value. Show the full worked solution in "plan". Use LaTeX in $...$ and mhchem \\ce{} for chemistry.`;
 const MARK_FMT = `\n\nReply with ONLY a JSON object, no code fence: {"score": integer, "max": integer, "band": "markband or level, e.g. 7-9", "verdict": "one sentence overall judgement", "good": ["specific things that earned marks"], "missed": ["specific things that were missing, wrong or weak, most important first"], "fix": ["concrete actions to lift the mark next time"], "plan": "a short model answer outline as markdown bullets (for essays: thesis, 3-4 paragraph points with an example each, conclusion)", "terms": ["key terms from the course the answer should have used"]}. Quote the student's own words when pointing out a weakness. Cite textbook pages as p. N where useful.`;
-const qMax = q => q.marks || (q.kind === 'essay' ? 15 : 10);
+const qMax = q => q.marks || (q.kind === 'essay' ? 15 : q.kind === 'mcq' ? 1 : 10);
 const attOf = id => S.prog.att[id] || [];
 const best = id => attOf(id).reduce((m, a) => a.max ? Math.max(m, a.score / a.max) : m, -1);
 function topicName(B, t) { const s = B.toc.find(x => x.num === t); return s ? t + ' ' + s.title : t; }
@@ -351,15 +368,15 @@ function renderPrac(filter) {
     <div class="filters"><select id="fk"><option value="">All types</option>${[...new Set(qs.map(q => q.kind))].map(k => `<option value="${k}" ${F.kind === k ? 'selected' : ''}>${KIND[k] || k}</option>`).join('')}</select>
     <select id="ft"><option value="">All topics</option>${topics.map(t => `<option value="${t}" ${F.topic === t ? 'selected' : ''}>${esc(topicName(B, t))}</option>`).join('')}</select>
     <select id="fs"><option value="">Any status</option><option value="new" ${F.st === 'new' ? 'selected' : ''}>Not tried</option><option value="weak" ${F.st === 'weak' ? 'selected' : ''}>Weak (under 60%)</option><option value="good" ${F.st === 'good' ? 'selected' : ''}>Done well</option></select></div>
-    <div class="grid">${list.map(q => { const bs = best(q.id); return `<div class="card qc" data-id="${q.id}"><div>${'<span class="tag">' + (KIND[q.kind] || q.kind) + '</span>'}${q.marks ? '<span class="tag">' + q.marks + ' marks</span>' : ''}${bs >= 0 ? `<span class="tag ${bs < .6 ? 'w' : 'g'}">best ${Math.round(bs * 100)}%</span>` : ''}</div><div class="qt">${esc(q.text.length > 220 ? q.text.slice(0, 220) + '…' : q.text)}</div><div class="meta">${esc(q.topic ? topicName(B, q.topic) : '')}${q.bp ? ' · p. ' + q.bp : ''}</div></div>`; }).join('') || '<p>No questions match.</p>'}</div></div>`;
+    <div class="grid">${list.map(q => { const bs = best(q.id); return `<div class="card qc" data-id="${q.id}"><div>${'<span class="tag">' + (KIND[q.kind] || q.kind) + '</span>'}${q.marks ? '<span class="tag">' + q.marks + ' marks</span>' : ''}${bs >= 0 ? `<span class="tag ${bs < .6 ? 'w' : 'g'}">best ${Math.round(bs * 100)}%</span>` : ''}</div><div class="qt">${(MATH = !!B.math, mdx(q.text.length > 260 ? q.text.slice(0, 260) + '…' : q.text, true))}</div><div class="meta">${esc(q.topic ? topicName(B, q.topic) : '')}${q.bp ? ' · p. ' + q.bp : ''}</div></div>`; }).join('') || '<p>No questions match.</p>'}</div></div>`;
   $('#fk').onchange = e => { F.kind = e.target.value; renderPrac(F); }; $('#ft').onchange = e => { F.topic = e.target.value; renderPrac(F); }; $('#fs').onchange = e => { F.st = e.target.value; renderPrac(F); };
   document.querySelectorAll('.qc').forEach(c => c.onclick = () => openQ(c.dataset.id));
   $('#rnd').onclick = () => { const pool = list.length ? list : qs; if (pool.length) openQ(pool[Math.random() * pool.length | 0].id); };
 }
 function openQ(id) {
-  const q = S.qs.find(x => x.id === id), B = bookOf(q.book), draft = LS.get('ib-d-' + id, ''), prev = attOf(id);
+  const q = S.qs.find(x => x.id === id), B = bookOf(q.book), draft = LS.get('ib-d-' + id, ''), prev = attOf(id); MATH = !!B.math;
   $('#main').innerHTML = `<div class="prac"><div class="row" style="margin-bottom:10px"><button id="back">‹ All questions</button><span class="sp" style="flex:1"></span>${q.n ? `<button id="src">Open in textbook (p. ${esc(q.bp)})</button>` : ''}</div>
-    <div class="card qbig"><div style="font-family:Inter;margin-bottom:8px"><span class="tag">${KIND[q.kind] || q.kind}</span>${q.marks ? '<span class="tag">' + q.marks + ' marks</span>' : ''}<span class="meta">${esc(q.topic ? topicName(B, q.topic) : '')}</span></div>${esc(q.text).replace(/\n/g, '<br>')}${q.ctx ? `<div class="meta" style="font-family:Inter;margin-top:10px">${esc(q.ctx)}</div>` : ''}</div>
+    <div class="card qbig"><div style="font-family:Inter;margin-bottom:8px"><span class="tag">${KIND[q.kind] || q.kind}</span>${q.marks ? '<span class="tag">' + q.marks + ' marks</span>' : ''}<span class="meta">${esc(q.topic ? topicName(B, q.topic) : '')}</span></div>${mdx(q.text)}${q.ctx ? `<div class="meta" style="font-family:Inter;margin-top:10px">${esc(q.ctx)}</div>` : ''}</div>
     <div style="margin-top:14px"><textarea id="ans" rows="${q.kind === 'essay' ? 18 : 8}" placeholder="${q.kind === 'essay' ? 'Write your essay (or a detailed plan). Aim for an argument that answers the command term, with specific examples.' : 'Your answer…'}">${esc(draft)}</textarea>
     <div class="row" style="margin-top:8px"><span class="meta" id="wc"></span><span class="meta" id="tm"></span><span style="flex:1"></span><button id="hint">Hint</button><button class="pri" id="mark">Mark with Claude</button></div></div>
     <div id="fbx"></div>
@@ -387,15 +404,15 @@ function openQ(id) {
     $('#mark').disabled = false;
   };
 }
-const li = a => (a || []).map(x => '<li>' + marked.parseInline(String(x)) + '</li>').join('');
+const li = a => (a || []).map(x => '<li>' + mdx(String(x), true) + '</li>').join('');
 function fbHtml(fb) {
   if (!fb) return '';
-  if (fb.raw) return marked.parse(fb.raw);
+  if (fb.raw) return mdx(fb.raw);
   const pc = fb.max ? fb.score / fb.max : 0;
   return `<div class="row" style="gap:16px"><div class="score" style="color:${pc < .4 ? 'var(--bad)' : pc < .7 ? 'var(--warn)' : 'var(--good)'}">${fb.score}/${fb.max}</div><div>${fb.band ? '<span class="tag">band ' + esc(fb.band) + '</span>' : ''}<div>${esc(fb.verdict)}</div></div></div>
     ${fb.good && fb.good.length ? '<h4>What earned marks</h4><ul>' + li(fb.good) + '</ul>' : ''}${fb.missed && fb.missed.length ? '<h4>What you missed</h4><ul>' + li(fb.missed) + '</ul>' : ''}
     ${fb.fix && fb.fix.length ? '<h4>How to lift it</h4><ul>' + li(fb.fix) + '</ul>' : ''}${fb.terms && fb.terms.length ? '<h4>Key terms to use</h4><div>' + fb.terms.map(t => '<span class="tag">' + esc(t) + '</span>').join(' ') + '</div>' : ''}
-    ${fb.plan ? '<details style="margin-top:12px"><summary><b>Model answer outline</b></summary>' + marked.parse(fb.plan) + '</details>' : ''}`;
+    ${fb.plan ? '<details style="margin-top:12px"><summary><b>Model answer outline</b></summary>' + mdx(fb.plan) + '</details>' : ''}`;
 }
 const fbMd = fb => fb.raw || `Score ${fb.score}/${fb.max}${fb.band ? ' (band ' + fb.band + ')' : ''}. ${fb.verdict}\n\nEarned marks:\n${(fb.good || []).map(x => '- ' + x).join('\n')}\n\nMissed:\n${(fb.missed || []).map(x => '- ' + x).join('\n')}\n\nTo improve:\n${(fb.fix || []).map(x => '- ' + x).join('\n')}\n\nOutline:\n${fb.plan || ''}`;
 
