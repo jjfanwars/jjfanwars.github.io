@@ -78,7 +78,7 @@ function buildRoster(set, crew) { const R = crew.map((c, i) => ({id: c.id, name:
   for (let i = 0; i < set.bots; i++) { const team = set.mode === 'boat' ? (red <= blue ? 0 : 1) : 0; if (team) blue++; else red++; R.push({id: 'b' + i, name: BOT_NAMES[i % BOT_NAMES.length] + ' (bot)', c: R.length, team, bot: 1}); } return R; }
 function hostStart() { const set = lobbySet(), roster = buildRoster(set, lobbyCrew()); Net.meta(Net.peers.size < MAXP - 1); Net.send({t: 'start', v: AV, set, roster}); matchStart(set, roster); }
 function practice() { Net.close(); const set = lobbySet(); if (!set.bots) set.bots = 4; const roster = buildRoster(set, [{id: 'H', name: myName() || 'You', team: 0}]); matchStart(set, roster); }
-function toMenu(msg) { Net.close(); G.on = false; G.over = false; G.deadOpen = false; P.alive = false; P.seat = null; for (const id of [...AVS.keys()]) dropAvatar(id); for (const p of [...PJ.values()]) pjDrop(p); $('hud').classList.add('hidden'); $('scope').classList.add('hidden'); show('menu'); $('err').textContent = msg || ''; try { document.exitPointerLock(); } catch (e) {} buildBoats('ffa'); refreshRooms(); }
+function toMenu(msg) { setPause(false); Net.close(); G.on = false; G.over = false; G.deadOpen = false; P.alive = false; P.seat = null; for (const id of [...AVS.keys()]) dropAvatar(id); for (const p of [...PJ.values()]) pjDrop(p); $('hud').classList.add('hidden'); $('scope').classList.add('hidden'); show('menu'); $('err').textContent = msg || ''; try { document.exitPointerLock(); } catch (e) {} buildBoats('ffa'); refreshRooms(); }
 async function refreshRooms() { if (G.on || $('menu').classList.contains('hidden')) return; const L = await Net.rooms(); const el = $('rooms'); el.innerHTML = L.length ? '' : '<small style="color:var(--dim)">None open right now. Host one!</small>'; for (const r of L) { const b = document.createElement('button'); b.textContent = r.name.replace(/^\[?Arena\]? /, '') + ' · ' + (r.n || 1) + ' in'; b.onclick = () => joinCode(r.code); el.appendChild(b); } }
 function needName() { const n = myName(); if (!n) { $('err').textContent = 'Type a name first.'; $('name').focus(); return null; } SET.name = n; saveSet(); return n; }
 function joinCode(code) { const n = needName(); if (!n) return; aInit(); code = String(code || '').toUpperCase().trim(); if (code.length !== 5) { $('err').textContent = 'Codes are 5 letters.'; return; } $('code').textContent = code; show('lobby'); $('bGo').classList.add('hidden'); $('lset').style.pointerEvents = 'none'; $('lmsg').textContent = 'Connecting…'; $('crew').innerHTML = ''; Net.join(code, n, why => { if (!G.on) { show('menu'); $('err').textContent = why; } else toMenu(why); }); }
@@ -99,11 +99,15 @@ function menuInit() {
   $('bGo').onclick = () => { aInit(); hostStart(); }; $('bLeave').onclick = () => toMenu();
   $('tRed').onclick = () => { if (Net.role === 'host') { LOB.team.H = 0; sendLobby(); } else Net.send({t: 'team', team: 0}); };
   $('tBlue').onclick = () => { if (Net.role === 'host') { LOB.team.H = 1; sendLobby(); } else Net.send({t: 'team', team: 1}); };
-  $('deploy').onclick = deploy; $('resume').onclick = () => { $('pause').classList.add('hidden'); G.paused = false; lockMouse(); };
+  $('deploy').onclick = deploy; $('resume').onclick = () => { setPause(false); lockMouse(); };
   $('quit').onclick = () => { if (Net.role === 'host' && Net.peers.size && !confirm('Leave? The match ends for everyone.')) return; toMenu(); }; $('endLeave').onclick = () => toMenu();
   setInterval(refreshRooms, 5000); refreshRooms();
 }
 
+// ---------------- pause: offline practice really stops (sim, clock and sound); online matches keep running
+function setPause(on) { $('pause').classList.toggle('hidden', !on);
+  if (on) { clearKeys(); const solo = Net.role === 'solo'; $('pauseN').textContent = solo ? 'Practice is paused.' : 'The match keeps running.'; if (solo && !G.pausedAt) { G.paused = true; G.pausedAt = performance.now(); try { A.ctx && A.ctx.suspend(); } catch (e) {} } }
+  else if (G.pausedAt) { CLKO -= performance.now() - G.pausedAt; G.pausedAt = 0; G.paused = false; mdx = mdy = 0; try { A.ctx && A.ctx.resume(); } catch (e) {} } }
 // ---------------- input
 addEventListener('keydown', e => {
   if (document.activeElement && document.activeElement.tagName === 'INPUT') return;
@@ -119,15 +123,15 @@ addEventListener('keyup', e => { K[e.code] = false; });
 canvas.addEventListener('mousedown', e => { aInit(); if (!G.on) return; if (!locked() && !TEST && !G.deadOpen && !G.over) { lockMouse(); return; } if (e.button === 0) mouseL = true; if (e.button === 2) mouseR = true; });
 addEventListener('mouseup', e => { if (e.button === 0) mouseL = false; if (e.button === 2) mouseR = false; });
 addEventListener('contextmenu', e => { if (G.on) e.preventDefault(); });
-addEventListener('wheel', e => { if (G.on && P.alive && locked()) swapSlot(1 - P.slot); }, {passive: true});
-document.addEventListener('pointerlockchange', () => { if (!G.on) return; if (!locked() && P.alive && !G.deadOpen && !G.over) { $('pause').classList.remove('hidden'); clearKeys(); } else if (locked()) $('pause').classList.add('hidden'); });
+addEventListener('wheel', e => { if (!G.on || !P.alive || !locked()) return; const d = e.deltaY * (e.deltaMode === 1 ? 33 : e.deltaMode === 2 ? 400 : 1), n = performance.now(); if (!d) return; if (Math.sign(d) !== Math.sign(G.whA || 0)) G.whA = 0; G.whA += d; if (Math.abs(G.whA) < 40 || n - (G.whN || 0) < 150) return; G.whA = 0; G.whN = n; swapSlot(1 - P.slot); }, {passive: true});
+document.addEventListener('pointerlockchange', () => { if (!G.on) return; if (!locked() && P.alive && !G.deadOpen && !G.over) setPause(true); else if (locked()) setPause(false); });
 addEventListener('blur', clearKeys);
 
 // ---------------- main loop
 let last = performance.now();
 function frame(t) {
   const dt = Math.min(.05, Math.max(0, (t - last) / 1000)); last = t;
-  if (G.on) simFrame(dt);
+  if (G.on && !G.pausedAt) simFrame(dt);
   else { G.t += dt; const a = t / 1000 * .05; cam.position.set(Math.sin(a) * 120, 34, -20 + Math.cos(a) * 120); cam.lookAt(0, 2, -15); waterFrame(dt); boatsFrame(dt); fxFrame(dt); sun.position.set(SUNDIR.x * 160, SUNDIR.y * 160, SUNDIR.z * 160); sun.target.position.set(0, 0, 0); }
   frameRest(); RND.render(scene, cam); requestAnimationFrame(frame);
 }

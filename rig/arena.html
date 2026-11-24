@@ -22,7 +22,8 @@ h2 { margin:0 0 10px; }
 .sub { color:var(--dim); margin-bottom:14px; }
 label { display:block; font-size:11px; letter-spacing:.18em; text-transform:uppercase; color:var(--dim); margin:12px 0 5px; }
 input[type=text] { width:100%; padding:9px 11px; background:#0a0b0e; color:var(--ink); border:1px solid var(--line); border-radius:6px; font:inherit; }
-input[type=range] { width:100%; }
+input[type=range] { width:100%; accent-color:var(--acc); cursor:pointer; }
+label .rv { float:right; letter-spacing:0; text-transform:none; color:var(--ink); font:12px ui-monospace,monospace; opacity:.8; }
 button { padding:9px 14px; background:#20242c; color:var(--ink); border:1px solid var(--line); border-radius:6px; font:inherit; cursor:pointer; }
 button:hover { background:#2a303a; } button:disabled { opacity:.45; cursor:default; }
 button.go { width:100%; background:var(--acc); color:#1a1200; font-weight:700; border:0; margin-top:10px; } button.go:hover { filter:brightness(1.1); }
@@ -33,6 +34,7 @@ button.go { width:100%; background:var(--acc); color:#1a1200; font-weight:700; b
 .err { color:#ff8060; min-height:1.2em; font-size:13px; margin-top:6px; }
 .back { color:var(--dim); text-decoration:none; font-size:13px; } .back:hover { color:var(--ink); }
 .keys { font-size:13px; color:var(--dim); } .keys b { color:var(--ink); display:inline-block; min-width:92px; font-weight:600; }
+.modes { display:grid; grid-template-columns:auto 1fr; gap:4px 14px; } .modes b { min-width:0 !important; }
 #rooms button { display:block; width:100%; text-align:left; margin-bottom:4px; font-size:13px; }
 #code { font:700 40px ui-monospace,monospace; letter-spacing:.2em; color:var(--acc); text-align:center; }
 #crew .pl { display:flex; align-items:center; gap:8px; padding:5px 8px; border-radius:5px; background:rgba(255,255,255,.04); margin-bottom:4px; }
@@ -122,8 +124,7 @@ button.go { width:100%; background:var(--acc); color:#1a1200; font-weight:700; b
         <label>Controls</label>
         <div id="mKeys"></div>
         <label>Modes</label>
-        <b>Free-for-all</b> everyone for themselves, first to the kill target.<br>
-        <b>Boat battle</b> Red vs Blue. A kill is 1 point, sinking a boat is 3.
+        <div class="modes"><b>Free-for-all</b><span>Everyone for themselves, first to the kill target.</span><b>Boat battle</b><span>Red vs Blue. A kill is 1 point, sinking a boat is 3.</span></div>
       </div>
     </div>
   </div>
@@ -157,7 +158,7 @@ button.go { width:100%; background:var(--acc); color:#1a1200; font-weight:700; b
 <div id="end" class="scr hidden"><div class="card" style="width:min(640px,100%)"><h2 id="endT"></h2><div id="endB"></div><p id="endS" style="text-align:center;color:var(--dim)"></p><button id="endLeave" style="width:100%">Leave</button></div></div>
 
 <div id="pause" class="scr hidden"><div class="card" style="width:min(420px,100%);text-align:center">
-  <h2>Paused</h2><p style="color:var(--dim);font-size:13px">The match keeps running.</p>
+  <h2>Paused</h2><p style="color:var(--dim);font-size:13px" id="pauseN">The match keeps running.</p>
   <div style="text-align:left"><label>Mouse sensitivity</label><input type="range" id="pSens" min="0.3" max="2.5" step="0.05"><label>Volume</label><input type="range" id="pVol" min="0" max="1.5" step="0.05"></div>
   <button class="go" id="resume">Resume</button>
   <button id="quit" style="width:100%;margin-top:8px">Leave match</button>
@@ -171,5 +172,11 @@ button.go { width:100%; background:var(--acc); color:#1a1200; font-weight:700; b
 <script src="arena/boats.js?v=1"></script>
 <script src="arena/match.js?v=1"></script>
 <script src="arena/ui.js?v=1"></script>
+<script>
+// slider readouts: each range input shows its value in its label (polled, since the games also set values from code)
+(function () { const fmt = e => { const v = +e.value; return /fov/i.test(e.id) ? Math.round(v) + '°' : /sens/i.test(e.id) ? v.toFixed(2) + 'x' : Math.round(v * 100) + '%'; };
+  const tick = () => { for (const e of document.querySelectorAll('input[type=range]')) { const l = e.previousElementSibling; if (!l || l.tagName !== 'LABEL') continue; let s = l.querySelector('.rv'); if (!s) { s = document.createElement('span'); s.className = 'rv'; l.appendChild(s); } const t = fmt(e); if (s.textContent !== t) s.textContent = t; } };
+  document.addEventListener('input', e => { if (e.target.type === 'range') tick(); }); setInterval(tick, 400); tick(); })();
+</script>
 </body>
 </html>
