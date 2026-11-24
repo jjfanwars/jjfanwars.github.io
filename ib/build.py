@@ -45,8 +45,8 @@ def build(book, title, subject, pages):
                 t = re.sub(r'[*_]', '', h.group(2)).strip()
                 num = re.match(r'((?:(?:Structure|Reactivity|Tools?)\s+)?\d+(?:\.\d+)*)\.?\s*[–-]?\s+(.*)', t)
                 lvl = len(h.group(1))
-                th = re.match(r'Theme\s+([A-E])\b[\s:.–-]*(.*)', t)  # physics: "Theme A Space, time and motion"
-                tp = re.match(r'([A-E]\.\d+)\s+(.*)', t)  # physics topics: "A.2 Forces and momentum"
+                th = re.match(r'Theme\s+([A-ETX])\b[\s:.–-]*(.*)', t)  # physics: "Theme A Space, time and motion"
+                tp = re.match(r'([A-ET]\.\d+)\s+(.*)', t)  # physics topics: "A.2 Forces and momentum"
                 if th and lvl == 1:
                     if '...' not in t: cand.append((1, th.group(1), th.group(2) or t, p['n'], p['bp'], len(toc)))
                 elif tp and lvl == 1:
