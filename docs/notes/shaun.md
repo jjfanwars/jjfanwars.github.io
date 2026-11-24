@@ -83,6 +83,13 @@ The owner's design brief is **brain-off**: no skill needed beyond sweeping the g
 - **Scores:** menu shows best hold kills and best survival nights under the start buttons (`#best`, refreshed on returning to the menu). The horde end card adds threat reached and titans felled (`G.titansDown`, counted in `titanDown` on every client); "Best: 0 kills" is no longer shown.
 - `T` (flashlight toast) only does anything in survival.
 
+## Second polish pass (24 Nov 2026)
+- **Damage arcs point at the real attacker:** the arc now comes from the nearest bug clawing at you by true distance (was nearest in x only, so on foot in survival it could point at a bug behind you), throttled to one every 0.3 s (`G.dirT`), spitters excluded (their globs already add an arc). Guests use the synced attack state (`st` 1) instead of a random arc.
+- **Off-screen pointers:** `edgeMark` draws a chevron + label at the left/right edge (stacked per side, `EDGE`) for supply canisters and the hive titan when they are out of view, so you know which way to sweep.
+- **Hit/kill feedback:** a small HP bar under the target brackets for anything tougher than a warrior (`hp0 > 2`, not the titan). The titan bar keeps the chunk you just took off as a pale trail for 0.45 s, then drains (`G.tTr`/`tTrK`/`tTrH`), and its outline flashes on hits (`b.flash`). Killing a brute, spitter or burrower shows a tag under the crosshair (`KTAG`, `G.tag`/`tagT`, "BRUTE DOWN" bigger and amber) with a two-tone `conf` blip (`myKill(b)` now gets the bug, host and guests).
+- **Threat rises:** each new threat level (not 1, not titan levels) flashes the HUD line amber with "RISING" for 3 s (`G.thrT`) and plays a quiet far-off siren (low-passed horn).
+- **Big-horde perf:** the separation grid and corpse grid reuse pooled cell arrays (`cellPool`, `GP`/`CP`) instead of allocating hundreds of arrays per frame; contacts are counted in the radar loop (no `bugs.filter` per frame); damage arcs are compacted in place; a dead per-frame `#dmg` style write is gone.
+
 ## Code map (`shaun/game.js`; UI in `shaun/index.html`)
 - **Renderer:** own post chain (`render`). The scene goes to a HalfFloat MSAA RT, then a bright pass, two blur levels, and the composite `compM`, which does ACES, gamma, vignette, grain, chromatic aberration and the damage tint. The renderer itself has `NoToneMapping`. Low quality (`SET.gfx`) lowers the pixel ratio and turns off shadows and MSAA.
 - **World:**
@@ -137,6 +144,7 @@ The owner's design brief is **brain-off**: no skill needed beyond sweeping the g
 - Headless Chromium needs `--use-angle=swiftshader --enable-unsafe-swiftshader`. It is very slow at this scene size, so keep the step counts small.
 
 ## Changelog
+- 24 Nov 2026, second polish: damage arcs point at the bug actually hitting you (guests too, 360 on foot), off-screen pointers for canisters and the titan, HP bar on tough targets, titan bar damage trail + hit flash, BRUTE/SPITTER/BURROWER DOWN kill tags with a confirm blip, THREAT RISING cue, less garbage per frame with big hordes.
 - 24 Nov 2026, polish: gun no longer keeps roaring after pause/quit, no stuck keys after alt-tab, crosshair bloom fixed, shield-down/up sounds + heartbeat at low armour, 360 motion tracker on foot in survival, best scores on the menu, threat + titans on the end card.
 - 19 Nov 2026: hive raids in survival days: go down a hive mound into dark winding tunnels, fight in chambers, loot crates, kill the brood core and escape the collapse for fewer bugs that night and a bonus perk.
 - 19 Nov 2026: Survival is multi-night: 3-wave nights, dawn with perks and a 90 s scavenging day, dark nights with a flashlight, best = nights survived.
