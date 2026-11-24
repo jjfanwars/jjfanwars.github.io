@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Courtroom Duel</title>
 <!-- Courtroom Duel: Legal Studies revision game. Answers are marked by Claude Haiku with the player's own API key (kept in localStorage only). -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -21,6 +21,12 @@ button:disabled{opacity:.45;cursor:default}
 input,textarea,select{font:inherit;color:var(--ink);background:rgba(0,0,0,.35);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
 textarea{width:100%;resize:vertical;min-height:120px;line-height:1.5}
 textarea:focus,input:focus{outline:2px solid rgba(242,195,91,.55)}
+button:focus-visible,summary:focus-visible{outline:2px solid var(--gold2);outline-offset:2px}
+@media(max-width:700px){input,textarea,select{font-size:16px}}
+.wc{display:flex;justify-content:space-between;gap:8px;margin-top:4px;font-size:12px;color:var(--mut)}
+.wc .err{color:var(--bad);font-weight:600}
+#tmr.low{color:var(--bad);font-weight:800;animation:bl .8s infinite}
+@media(prefers-reduced-motion:reduce){.sl{animation:slam .3s ease-out both}.sl.out{animation:out .2s ease-in forwards}#box .nx,#tmr.low{animation:none}.fl{animation-duration:2s}}
 .ov{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;padding:16px;z-index:20}
 /* menu */
 #menu{background:radial-gradient(ellipse at 50% 20%,rgba(20,14,8,.35),rgba(5,4,3,.82));overflow:auto;align-items:flex-start}
@@ -59,6 +65,7 @@ textarea:focus,input:focus{outline:2px solid rgba(242,195,91,.55)}
 .combo{font-family:Bangers,sans-serif;font-size:18px;color:#ffd35a;text-shadow:0 0 12px #ff9b1a,0 2px 0 #000}
 #hudBtns{position:fixed;right:12px;bottom:12px;z-index:11;display:flex;gap:6px}
 #hudBtns button{padding:6px 10px;font-size:13px;background:rgba(0,0,0,.5)}
+@media(max-width:1100px){#hudBtns{bottom:auto;top:88px}} /* keep Leave/mute clear of the question panel */
 /* question panel */
 #qp{position:fixed;left:50%;bottom:14px;transform:translateX(-50%);width:min(820px,calc(100% - 24px));max-height:62vh;overflow:auto;z-index:12;background:linear-gradient(180deg,rgba(28,20,12,.94),rgba(12,9,6,.95));border:1px solid var(--line);border-radius:18px;padding:16px;box-shadow:0 18px 60px rgba(0,0,0,.6);animation:up .45s cubic-bezier(.2,.9,.2,1)}
 @keyframes up{from{transform:translate(-50%,40px);opacity:0}}
@@ -171,10 +178,11 @@ body.cine .bars{height:9vh}
   <div class="qt" id="qText"></div>
   <div class="ctx" id="qCtx"></div>
   <div class="brief hide" id="qBrief"></div>
-  <textarea id="ans" placeholder="Make your argument… (write it like the exam)"></textarea>
+  <textarea id="ans" aria-label="Your answer" placeholder="Make your argument… (write it like the exam)"></textarea>
+  <div class="wc"><span id="wcN">0 words</span><span id="wcK">Ctrl+Enter to present</span></div>
   <div class="row" style="margin-top:10px">
     <button class="pri" id="bArgue">⚔️ Present argument</button>
-    <button id="bPeek">📜 Peek at brief (−25% dmg)</button>
+    <button id="bPeek" title="Shows the marking points. Costs 25% of your damage and 200 aura.">📜 Peek at brief (−25% dmg)</button>
     <span class="small" id="selfNote"></span>
   </div>
 </div>
@@ -804,11 +812,12 @@ function updCam(dt, t) {
   }
   if (C.orbit) { const o = C.pos.clone().sub(C.tgt); o.applyAxisAngle(new V3(0, 1, 0), C.orbit * dt); C.pos.copy(C.tgt).add(o); }
   C.shake *= Math.exp(-dt * 5); C.punch *= Math.exp(-dt * 4);
-  const s = C.shake, dr = C.drift;
+  const s = C.shake * RM, dr = C.drift;
   cam.position.set(C.pos.x + Math.sin(t * .7) * .04 * dr + (Math.random() - .5) * s * .25, C.pos.y + Math.sin(t * .9) * .03 * dr + (Math.random() - .5) * s * .2, C.pos.z + Math.cos(t * .5) * .04 * dr);
   cam.lookAt(C.tgt.x + (Math.random() - .5) * s * .08, C.tgt.y + (Math.random() - .5) * s * .08, C.tgt.z);
   let fv = C.fov - C.punch * 8; if (cam.aspect < 1.25) fv = Math.min(88, 2 * Math.atan(Math.tan(fv * Math.PI / 360) * 1.25 / cam.aspect) * 180 / Math.PI); cam.fov = fv; cam.updateProjectionMatrix();
 }
+const RM = matchMedia('(prefers-reduced-motion: reduce)').matches ? .3 : 1; // softer shake/flash for players who ask for less motion
 const FX = {ca:0, flash:0, sat:1, lines:0, satT:1, linesT:0, tint:new T.Color(1, .7, .3), au:0, auT:0, auC:new T.Color(.2, .6, 1), hurt:0};
 // ---- first person (you are the barrister on the left)
 const FPV = {on:false, look:new V3(0, 1.9, -6), lookT:new V3(0, 1.9, -6), mx:0, my:0, dip:0, fov:64};
@@ -889,7 +898,7 @@ function quickDraw() {
       setTimeout(() => { el.classList.add('hide'); VMA.gun.visible = false; fu.gun.visible = false; FX.satT = 1; FPV.fov = 64; res(win); }, 1500);
     };
     const press = () => { if (state === 'wait') end(false, 'TOO EARLY! Foul.'); else if (state === 'go') { const ms = Math.round(performance.now() - t0); end(true, ms < 250 ? 'LIGHTNING DRAW!' : 'You were faster!', ms); } };
-    const kd = e => { if (e.code === 'Space' || e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); press(); } };
+    const kd = e => { if (G.abort) return; if (e.code === 'Space' || e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); press(); } };
     addEventListener('keydown', kd, true); el.onpointerdown = e => { e.preventDefault(); press(); };
     await sleep(1200 + Math.random() * 2200); if (done) return;
     state = 'go'; t0 = performance.now(); tx.textContent = ''; slam('DRAW!', 'g', '#ff3b3b', 500); SFX.tick();
@@ -908,7 +917,7 @@ function qte(dur = 1.15) {
     const fin = hit => { if (done) return; done = true; el.classList.add('hide'); removeEventListener('keydown', kd, true); el.onpointerdown = null; res(hit); };
     const step = () => { if (done) return; const k = sc(); sE.style.transform = `scale(${Math.max(0, k)})`; sE.style.borderColor = Math.abs(k - 1) < .26 ? '#ffd84a' : '#fff'; if (k < .3) return fin(false); requestAnimationFrame(step); };
     const press = () => fin(Math.abs(sc() - 1) < .26);
-    const kd = e => { if (e.code === 'Space' || e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); press(); } };
+    const kd = e => { if (G.abort) return; if (e.code === 'Space' || e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); press(); } };
     addEventListener('keydown', kd, true); el.onpointerdown = e => { e.preventDefault(); press(); };
     SFX.tick(); step();
   });
@@ -946,20 +955,23 @@ function frame(now) {
   L.shaft.uniforms.uT.value = t; L.dust.uniforms.uT.value = t;
   FX.ca *= Math.exp(-dt * 4); FX.flash *= Math.exp(-dt * 6);
   FX.sat = lerp(FX.sat, FX.satT, 1 - Math.exp(-dt * 5)); FX.lines = lerp(FX.lines, FX.linesT, 1 - Math.exp(-dt * 8));
-  const cu = PP.comp.uniforms; cu.uCA.value = FX.ca; cu.uF.value = FX.flash; cu.uSat.value = FX.sat; cu.uLn.value = FX.lines; cu.uT.value = t; cu.uTint.value.copy(FX.tint); cu.uB.value = OPT.hi ? .95 : .6;
+  const cu = PP.comp.uniforms; cu.uCA.value = FX.ca; cu.uF.value = FX.flash * RM; cu.uSat.value = FX.sat; cu.uLn.value = FX.lines; cu.uT.value = t; cu.uTint.value.copy(FX.tint); cu.uB.value = OPT.hi ? .95 : .6;
   FX.au = lerp(FX.au, FX.auT, 1 - Math.exp(-dt * 4)); FX.hurt *= Math.exp(-dt * 1.6); cu.uAu.value.copy(FX.auC).multiplyScalar(FX.au); cu.uHurt.value = FX.hurt;
-  if (G.timer && G.tLeft > 0) { G.tLeft -= dt; $('tmr').textContent = '⏱ ' + Math.ceil(G.tLeft) + 's speed bonus'; if (G.tLeft <= 0) $('tmr').textContent = ''; }
+  if (G.timer && G.tLeft > 0) { G.tLeft -= dt; const tm = $('tmr'), s = Math.ceil(G.tLeft), txt = G.tLeft > 0 ? '⏱ ' + s + 's speed bonus' : 'Speed bonus gone'; if (tm.textContent !== txt) tm.textContent = txt; tm.classList.toggle('low', G.tLeft > 0 && s <= 10); }
   render();
   requestAnimationFrame(frame);
 }
 
 /* ================= UI / GAME ================= */
-const G = {case:null, qs:[], i:0, hpY:100, hpF:100, auY:0, auF:0, combo:0, peek:false, results:[], timer:false, tLeft:0, busy:false};
+const G = {case:null, qs:[], i:0, hpY:100, hpF:100, auY:0, auF:0, combo:0, peek:false, results:[], timer:false, tLeft:0, busy:false, run:0};
+const live = run => !G.abort && run === G.run; // false once you leave court or a newer case starts
 function rankOf(a) { let i = 0; while (i + 1 < RANKS.length && a >= RANKS[i + 1][0]) i++; return i; }
 function menu() {
   document.body.classList.remove('cine');
   $('menu').classList.remove('hide'); $('hud').classList.add('hide'); $('hudBtns').classList.add('hide');
-  ['qp', 'box', 'ruling', 'verdict'].forEach(id => $(id).classList.add('hide'));
+  ['qp', 'box', 'ruling', 'verdict', 'duel', 'qte'].forEach(id => $(id).classList.add('hide'));
+  G.timer = false; $('tmr').textContent = ''; FX.satT = 1; FX.linesT = 0; FX.hurt = 0; FPV.fov = 64;
+  if (VMA.gun) VMA.gun.visible = false; if (CH.foe && CH.foe.userData.gun) CH.foe.userData.gun.visible = false;
   const ri = rankOf(SAVE.aura), nx = RANKS[ri + 1];
   $('rankName').textContent = RANKS[ri][1];
   $('rankTxt').textContent = SAVE.aura.toLocaleString() + ' aura' + (nx ? ` · ${(nx[0] - SAVE.aura).toLocaleString()} to ${nx[1]}` : ' · max rank');
@@ -993,6 +1005,8 @@ $('suGo').onclick = async () => {
   try { await relay({pass, key}, '/legal/setup'); ls('cd-pass', pass); $('suKey').value = ''; $('key').value = ''; menu(); $('suMsg').textContent = '✅ Key saved on the relay. Claude will judge your answers.'; }
   catch (e) { $('suMsg').textContent = '❌ ' + e.message; }
 };
+$('key').onkeydown = e => { if (e.key === 'Enter') $('saveKey').click(); };
+$('suKey').onkeydown = e => { if (e.key === 'Enter') $('suGo').click(); };
 $('saveKey').onclick = async () => {
   const v = $('key').value.trim(); if (!v) return; $('keyState').textContent = 'Checking password…';
   try { const r = await relay({pass:v, check:1}); ls('cd-pass', v); $('key').value = ''; menu(); if (!r.key) $('keyState').textContent = '✅ Password OK, but no API key is saved yet: open "Owner: save the Anthropic API key" below.'; }
@@ -1003,18 +1017,21 @@ $('optHi').onchange = () => { OPT.hi = $('optHi').checked; ls('cd-hi', OPT.hi ? 
 $('optSnd').onchange = () => { OPT.snd = $('optSnd').checked; ls('cd-snd', OPT.snd ? '1' : '0'); if (A.out) A.out.gain.value = OPT.snd ? .55 : 0; $('bMute').textContent = OPT.snd ? '🔊' : '🔇'; };
 $('optTimer').onchange = () => { OPT.timer = $('optTimer').checked; ls('cd-timer', OPT.timer ? '1' : '0'); };
 $('bMute').onclick = () => { $('optSnd').checked = !OPT.snd; $('optSnd').onchange(); };
-$('bQuit').onclick = () => { if (confirm('Leave court? This case will not be saved.')) { G.abort = true; skipAll(); menu(); } };
+function leaveCourt() { if (confirm('Leave court? This case will not be saved.')) { G.abort = true; skipAll(); menu(); } }
+// keyboard users land on the main button, after a short delay so mashing Space/Enter through dialogue can't skip the feedback
+function focusSoon(b, ms = 700) { if (matchMedia('(pointer:coarse)').matches) return; setTimeout(() => { if (b && b.isConnected && b.offsetParent) b.focus({preventScroll:true}); }, ms); }
 const pname = () => ($('pname').value.trim() || 'You');
 
 // ---- dialogue
 let boxSkip = null, sayId = 0;
 function say(who, text, cls = '', hold = 1) {
   return new Promise(res => {
+    if (G.abort || G.skipV) return res();
     const id = ++sayId, box = $('box'); box.className = cls; const ch = who === 'Her Honour' ? CH.judge : G.case && who === G.case.foe ? CH.foe : null; if (ch) ch.userData.talk = 1; $('boxN').textContent = who; const el = $('boxT'); el.textContent = '';
     let i = 0, done = false, ended = false; const full = String(text);
     const end = () => { if (ch) ch.userData.talk = 0; if (ended) return; ended = true; if (id === sayId) boxSkip = null; res(); };
     const fin = () => { if (ch) ch.userData.talk = 0; if (done) return; done = true; el.textContent = full; clearInterval(iv); if (id === sayId) boxSkip = end; setTimeout(end, 1200 * hold + full.length * 22); };
-    const iv = setInterval(() => { if (G.abort) { clearInterval(iv); return end(); } i += 2; el.textContent = full.slice(0, i); if (i % 6 === 0) SFX.blip(); if (i >= full.length) fin(); }, 28);
+    const iv = setInterval(() => { if (G.abort || G.skipV || id !== sayId) { clearInterval(iv); return end(); } i += 2; el.textContent = full.slice(0, i); if (i % 6 === 0) SFX.blip(); if (i >= full.length) fin(); }, 28);
     boxSkip = fin;
   });
 }
@@ -1041,12 +1058,12 @@ function hud() {
 }
 
 async function startCase(ci) {
-  const cs = CASES[ci]; G.abort = false;
+  const cs = CASES[ci], run = ++G.run; G.abort = false; G.busy = false;
   G.case = cs; G.ci = ci; G.i = 0; G.hpY = 100; G.hpF = 100; G.auY = 0; G.auF = 0; G.combo = 0; G.results = [];
-  G.qs = cs.qs ? cs.qs.slice() : Object.keys(Q).sort(() => Math.random() - .5).slice(0, 6);
+  if (cs.qs) G.qs = cs.qs.slice(); else { const k = Object.keys(Q); for (let i = k.length - 1; i > 0; i--) { const j = Math.random() * (i + 1) | 0; [k[i], k[j]] = [k[j], k[i]]; } G.qs = k.slice(0, 6); }
   makeFoe(cs);
   $('menu').classList.add('hide'); $('hud').classList.remove('hide'); $('hudBtns').classList.remove('hide');
-  $('nmY').textContent = pname(); $('nmF').textContent = cs.foe; $('bMute').textContent = OPT.snd ? '🔊' : '🔇';
+  $('nmY').textContent = pname(); $('nmF').textContent = cs.foe; $('bQuit').textContent = 'Leave court'; $('bQuit').onclick = leaveCourt; G.skipV = false; $('bMute').textContent = OPT.snd ? '🔊' : '🔇';
   ['lagY', 'lagF', 'hpY', 'hpF'].forEach(id => { $(id).style.transition = 'none'; $(id).style.width = '100%'; void $(id).offsetWidth; $(id).style.transition = ''; });
   hud();
   document.body.classList.add('cine'); C.orbit = 0;
@@ -1054,15 +1071,15 @@ async function startCase(ci) {
   await shot(new V3(0, 5.6, 11.5), new V3(0, 2.2, -4), 52, 0);
   go([new V3(0, 2.6, -1), new V3(0, 2.6, -8.4), 40], 3.2);
   await say('Court Associate', `All rise. ${cs.name}. ${pname()} versus ${cs.foe}.`);
-  if (G.abort) return;
-  await go(JUDGE(), .9);
+  if (!live(run)) return;
+  await go(JUDGE(), .9); if (!live(run)) return;
   CH.judge.userData.pose = 'gUp'; CH.judge.userData.snap = 14; await sleep(260);
   CH.judge.userData.pose = 'gDn'; SFX.gavel(); C.shake = .6; await sleep(200); CH.judge.userData.pose = 'sit';
   await say('Her Honour', cs.boss ? 'This is the High Court. Make it count, counsel. Dame Ironwig has never lost here.' : 'Court is in session. Counsel, persuade me with the law, not with theatrics.', '', .8);
-  if (G.abort) return;
+  if (!live(run)) return;
   go(closeShot(CH.foe, 1.9, -.4), 1.0); faceTo(CH.foe, CH.you.position.x, CH.you.position.z); CH.foe.userData.brow = 'smug'; CH.foe.userData.pose = 'cross';
   await say(cs.foe, cs.boss ? 'I have argued before this court for thirty years. You have argued with your group chat.' : ['Let’s see if you did the reading.', 'I hope you brought your notes. You’ll need them.', 'This will be quick.', 'Your Honour, I almost feel sorry for my learned friend.', 'Ready when you are. Not that it will help.'][ci % 5], 'foe');
-  if (G.abort) return;
+  if (!live(run)) return;
   hideBox(); document.body.classList.remove('cine');
   nextQ();
 }
@@ -1081,7 +1098,7 @@ function nextQ() {
   $('qWord').classList.toggle('hide', !tw);
   $('qText').textContent = q.q; $('qCtx').textContent = q.ctx || '';
   $('qBrief').classList.add('hide'); $('qBrief').innerHTML = '<b>Brief — marking points</b><ul>' + q.k.map(x => '<li>' + esc(x) + '</li>').join('') + '</ul>';
-  $('ans').value = ls('cd-draft-' + id) || '';
+  $('ans').value = ls('cd-draft-' + id) || ''; wc();
   $('bPeek').disabled = false;
   $('selfNote').textContent = ls('cd-pass') ? '' : 'Court locked: you will self-mark';
   $('qp').classList.remove('hide'); hideBox(); $('ruling').classList.add('hide');
@@ -1089,16 +1106,21 @@ function nextQ() {
   hud();
   setTimeout(() => { if (innerWidth > 700) $('ans').focus(); }, 300);
 }
-$('ans').oninput = () => ls('cd-draft-' + G.qs[G.i], $('ans').value);
+function wc() {
+  const n = ($('ans').value.trim().match(/\S+/g) || []).length; $('wcN').textContent = n + (n === 1 ? ' word' : ' words'); $('wcN').className = '';
+}
+$('wcK').classList.toggle('hide', matchMedia('(pointer:coarse)').matches);
+if (/Mac|iP/.test(navigator.platform || '')) $('wcK').textContent = '⌘+Enter to present';
+$('ans').oninput = () => { ls('cd-draft-' + G.qs[G.i], $('ans').value); wc(); };
 $('ans').onkeydown = e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) $('bArgue').click(); };
 $('bPeek').onclick = () => { G.peek = true; $('qBrief').classList.remove('hide'); $('bPeek').disabled = true; CH.foe.userData.brow = 'smug'; };
 
 $('bArgue').onclick = async () => {
   au();
   const id = G.qs[G.i], q = Q[id], ans = $('ans').value.trim();
-  if (!ans) { $('ans').focus(); $('ans').style.outline = '2px solid #ff5d5d'; setTimeout(() => $('ans').style.outline = '', 600); return; }
-  if (G.busy) return; G.busy = true;
-  const speed = G.timer && G.tLeft > 0; G.timer = false; $('tmr').textContent = '';
+  if (!ans) { $('ans').focus(); $('ans').style.outline = '2px solid #ff5d5d'; setTimeout(() => $('ans').style.outline = '', 900); $('wcN').textContent = 'Write your argument first'; $('wcN').className = 'err'; return; }
+  if (G.busy) return; G.busy = true; const run = G.run;
+  const speed = G.timer && G.tLeft > 0; G.timer = false; $('tmr').textContent = ''; $('tmr').classList.remove('low');
   $('qp').classList.add('hide');
   let res;
   if (ls('cd-pass')) {
@@ -1107,14 +1129,16 @@ $('bArgue').onclick = async () => {
     try { res = await grade(q, ans); } catch (e) { res = null; G.err = e.message; }
     CH.judge.userData.pose = 'sit'; skipAll(); skipAll();
     await thinking;
+    if (!live(run)) return;
     if (!res) { await say('Court Associate', 'The marking service could not be reached (' + (G.err || 'error') + '). You will mark this one yourself.'); }
   }
+  if (!live(run)) return;
   if (!res) res = await selfMark(q);
+  if (!live(run)) return;
   hideBox();
-  if (G.abort) { G.busy = false; return; }
   res.speed = speed;
   await turn(q, res, ans);
-  G.busy = false;
+  if (run === G.run) G.busy = false;
 };
 
 async function grade(q, ans) {
@@ -1129,10 +1153,13 @@ async function grade(q, ans) {
 function selfMark(q) {
   return new Promise(res => {
     const r = $('ruling'); r.classList.remove('hide');
-    r.innerHTML = `<div class="qt" style="margin-top:0">Mark yourself</div><div class="small">Compare your argument with the model answer, then award your marks honestly. The court is watching.</div>
+    r.innerHTML = `<div class="qt" style="margin-top:0">Mark yourself</div><div class="small">Compare your argument with the model answer, then award your marks honestly (tap a score or press its number key). The court is watching.</div>
       <div class="modelA">${esc(q.a)}</div><div class="brief" style="margin-top:8px"><b>Marking points</b><ul>${q.k.map(x => '<li>' + esc(x) + '</li>').join('')}</ul></div>
       <div class="row">${[...Array(q.m + 1).keys()].map(n => `<button data-s="${n}" ${n === q.m ? 'class="pri"' : ''}>${n}/${q.m}</button>`).join('')}</div>`;
-    r.onclick = e => { const b = e.target.closest('[data-s]'); if (!b) return; r.onclick = null; r.classList.add('hide'); res({score:+b.dataset.s, got:[], missed:[], self:true}); };
+    const pick = n => { r.onclick = null; removeEventListener('keydown', kd); r.classList.add('hide'); res({score:n, got:[], missed:[], self:true}); };
+    const kd = e => { if (r.classList.contains('hide')) return removeEventListener('keydown', kd); const n = +e.key; if (/^[0-9]$/.test(e.key) && n <= q.m) { e.preventDefault(); pick(n); } };
+    addEventListener('keydown', kd);
+    r.onclick = e => { const b = e.target.closest('[data-s]'); if (b) pick(+b.dataset.s); };
   });
 }
 
@@ -1145,7 +1172,7 @@ async function turn(q, res, ans) {
   let back = f < .85 ? Math.round(125 / n * (1 - f) * (boss ? 1.15 : 1)) : 0;
   let gain = Math.round(f * 1000 * (1 + Math.min(prevCombo, 3) * .25)) - (G.peek ? 200 : 0) + (res.speed ? 150 : 0); if (tier === 'weak') gain -= 300;
   G.results.push({id:G.qs[G.i], f, score:res.score, m:q.m});
-  const fBase = boss ? 1.08 : 1, dead = () => G.abort;
+  const fBase = boss ? 1.08 : 1, run = G.run, dead = () => !live(run);
   document.body.classList.add('cine'); C.orbit = 0;
   if (!FPV.on) await toFP(.4);
   faceTo(Y, F.position.x, F.position.z); faceTo(F, Y.position.x, Y.position.z);
@@ -1258,35 +1285,44 @@ function showRuling(q, res, f, dmg, back, gain) {
     r.classList.remove('hide'); r.scrollTop = 0;
     fpLook(headOf(CH.judge).lerp(headOf(CH.foe), .5).add(new V3(0, -.45, 0)));
     $('bCont').onclick = () => { r.classList.add('hide'); done(); };
+    focusSoon($('bCont'), 900);
   });
 }
 
 async function verdict() {
   const Y = CH.you, F = CH.foe, yu = Y.userData, fu = F.userData;
   const avg = G.results.reduce((a, r) => a + r.f, 0) / Math.max(1, G.results.length);
-  const win = G.hpY > 0 && (G.hpF <= 0 || G.hpF / 1 < G.hpY / 1);
+  const win = G.hpY > 0 && (G.hpF <= 0 || G.hpF < G.hpY || (G.hpF === G.hpY && avg >= .5));
   const grade = avg >= .9 ? 'S' : avg >= .75 ? 'A' : avg >= .6 ? 'B' : avg >= .45 ? 'C' : 'D';
+  const run = G.run, dead = () => !live(run);
+  // save straight away: the case is over, so skipping the verdict cutscene must not lose it
+  let bonus = win ? 500 + Math.round(G.hpY * 10) : 0;
+  const before = SAVE.aura; SAVE.aura = Math.max(0, SAVE.aura + G.auY + bonus); SAVE.played++;
+  const order = 'SABCD'; if (win && (!SAVE.grades[G.case.id] || order.indexOf(grade) < order.indexOf(SAVE.grades[G.case.id]))) SAVE.grades[G.case.id] = grade;
+  persist();
+  // the Leave button becomes Skip: the rest of the cutscene then runs instantly
+  let skipR; const skipP = new Promise(r => skipR = r), W8 = p => Promise.race([p, skipP]);
+  G.skipV = false; $('bQuit').textContent = 'Skip ⏭'; $('bQuit').onclick = () => { G.skipV = true; skipR(); skipAll(); };
   document.body.classList.add('cine'); C.orbit = 0; FX.auT = 0;
   fromFP(); C.pos.copy(cam.position);
-  if (G.hpF <= 0) { await go(closeShot(F, 2, -.3), .5); slam('K.O.', 'g', '#ff3b3b', 1300); SFX.impact(1.4); flash(1); C.shake = 2; fu.pose = 'sad'; fu.scaleT = .85; await sleep(1500); }
-  else if (G.hpY <= 0) { await go(closeShot(Y, 2, .3), .5); slam('K.O.', '', '#ff3b3b', 1300); SFX.impact(1.4); flash(1); C.shake = 2; yu.pose = 'sad'; await sleep(1500); }
-  await go(JUDGE(), .8);
-  for (let i = 0; i < 2; i++) { CH.judge.userData.pose = 'gUp'; await sleep(230); CH.judge.userData.pose = 'gDn'; SFX.gavel(); C.shake = .7; await sleep(260); }
+  if (G.hpF <= 0) { await W8(go(closeShot(F, 2, -.3), .5)); slam('K.O.', 'g', '#ff3b3b', 1300); SFX.impact(1.4); flash(1); C.shake = 2; fu.pose = 'sad'; fu.scaleT = .85; await W8(sleep(1500)); }
+  else if (G.hpY <= 0) { await W8(go(closeShot(Y, 2, .3), .5)); slam('K.O.', '', '#ff3b3b', 1300); SFX.impact(1.4); flash(1); C.shake = 2; yu.pose = 'sad'; await W8(sleep(1500)); }
+  if (dead()) return;
+  await W8(go(JUDGE(), .8));
+  for (let i = 0; i < 2 && !G.skipV; i++) { CH.judge.userData.pose = 'gUp'; await W8(sleep(230)); CH.judge.userData.pose = 'gDn'; SFX.gavel(); C.shake = .7; await W8(sleep(260)); }
   CH.judge.userData.pose = 'sit';
-  await say('Her Honour', win ? `The court finds in favour of ${pname()}. A fine performance, counsel.` : `The court finds in favour of ${G.case.foe}. Go back to your notes, counsel.`, '', .7);
+  if (dead()) return;
+  if (!G.skipV) await say('Her Honour', win ? `The court finds in favour of ${pname()}. A fine performance, counsel.` : `The court finds in favour of ${G.case.foe}. Go back to your notes, counsel.`, '', .7);
   hideBox();
   const W = win ? Y : F, Lz = win ? F : Y;
   faceTo(W, 0, 6); W.userData.pose = 'power'; W.userData.auraT = 1.3; W.userData.brow = 'smug'; W.userData.scaleT = 1.15;
   Lz.userData.pose = 'sad'; Lz.userData.brow = 'sad'; Lz.userData.scaleT = .9; FX.tint.copy(W.userData.col);
   go(lowShot(W), 1.8); FX.linesT = .6; crowdReact = 1.5; SFX.ooh(); win ? SFX.win() : SFX.lose();
-  // save
-  let bonus = win ? 500 + Math.round(G.hpY * 10) : 0;
-  const before = SAVE.aura; SAVE.aura = Math.max(0, SAVE.aura + G.auY + bonus); SAVE.played++;
-  const order = 'SABCD'; if (win && (!SAVE.grades[G.case.id] || order.indexOf(grade) < order.indexOf(SAVE.grades[G.case.id]))) SAVE.grades[G.case.id] = grade;
-  persist();
   const r0 = rankOf(before), r1 = rankOf(SAVE.aura);
   const weak = G.results.slice().sort((a, b) => a.f - b.f)[0];
-  await sleep(1200); FX.linesT = 0;
+  await W8(sleep(1200)); FX.linesT = 0; G.skipV = false;
+  if (dead()) return;
+  $('hudBtns').classList.add('hide');
   const gc = {S:'#ffd84a', A:'#5ee08a', B:'#7cc8ff', C:'#ffc04a', D:'#ff7a7a'}[grade];
   $('vc').innerHTML = `<div class="vt" style="color:${win ? '#ffd84a' : '#ff6b6b'}">${win ? 'CASE WON' : 'CASE LOST'}</div>
     <div class="small">${esc(G.case.name)} · vs ${esc(G.case.foe)}</div>
@@ -1301,6 +1337,7 @@ async function verdict() {
   $('vRetry').onclick = () => { $('verdict').classList.add('hide'); startCase(G.ci); };
   $('vMenu').onclick = () => { $('verdict').classList.add('hide'); menu(); };
   if ($('vNext')) $('vNext').onclick = () => { $('verdict').classList.add('hide'); startCase(G.ci + 1); };
+  focusSoon($('vNext') || $('vRetry'));
 }
 
 addEventListener('keydown', e => { if ((e.key === ' ' || e.key === 'Enter') && !$('box').classList.contains('hide') && document.activeElement.tagName !== 'TEXTAREA') { e.preventDefault(); skipAll(); } });
