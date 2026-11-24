@@ -41,6 +41,8 @@ button.ghost{border-color:transparent;background:none}
 button.ghost:hover{background:var(--sunk)}
 button:disabled{opacity:.5;cursor:default}
 svg.i{width:16px;height:16px;flex:none;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+select{max-width:100%;text-overflow:ellipsis}
+.katex-display{overflow-x:auto;overflow-y:hidden;padding:2px 0}#main{overflow-x:clip;min-width:0}.card:has(>.ctab){overflow-x:auto;position:relative}.fx,.katex-display{position:relative}.katex .katex-mathml{width:1px;height:1px;overflow:hidden}
 input,textarea,select{background:var(--panel);border:1px solid var(--line2);border-radius:8px;padding:8px 10px;width:100%}
 input::placeholder,textarea::placeholder{color:var(--mut)}
 textarea{resize:vertical;line-height:1.6}
@@ -106,13 +108,13 @@ header h1 .sep{color:var(--line2)}
 .wkst .half{background:color-mix(in srgb,var(--red) 22%,var(--panel));border-color:transparent}.wkst .on{background:var(--red);color:#fff;border-color:var(--red)}.wkst .td{outline:1.5px solid var(--ink2);outline-offset:1px}
 .strk{display:flex;align-items:center;gap:12px}.strk b{font:600 22px/1 var(--f-read)}
 .wrep{padding:18px 20px}.wbars{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;height:110px;align-items:end}
-.wbars div{display:flex;flex-direction:column;align-items:center;gap:4px;height:100%;justify-content:flex-end}.wbars i{display:block;width:100%;max-width:34px;background:var(--acc);border-radius:4px 4px 0 0;min-height:2px}.wbars span{font-size:11px;color:var(--mut)}
+.wbars div{display:flex;flex-direction:column;align-items:center;gap:4px;height:100%;justify-content:flex-end}.wbars i{display:block;width:100%;max-width:34px;background:var(--acc);border-radius:4px 4px 0 0;min-height:2px}.wbars span{font-size:11px;color:var(--mut)}.wbars i[style*="height:0%"]{background:var(--line2)}
 .wnums{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:12px;margin-top:16px}.wnums>div{display:flex;flex-direction:column}.wnums b{font:600 24px/1.1 var(--f-read)}
 .ppbar{position:sticky;top:64px;z-index:4;display:flex;align-items:center;gap:10px;padding:10px 14px;box-shadow:var(--sh)}#ppT{font:600 20px var(--f-read);min-width:80px;text-align:right}
 .opt{display:inline-flex;gap:6px;align-items:center;padding:6px 12px;border:1px solid var(--line2);border-radius:8px;cursor:pointer}.opt input{width:auto}
 .selbar{position:absolute;z-index:40;display:flex;gap:2px;padding:3px;box-shadow:var(--sh)}.selbar button{border:none;padding:6px 10px;font-size:13px}
 mark.hl{background:color-mix(in srgb,var(--warn) 30%,transparent);color:inherit;border-radius:2px;cursor:pointer;padding:0}mark.hl.nt{text-decoration:underline dotted var(--warn);text-decoration-thickness:2px;text-underline-offset:3px}
-.vseg{margin:4px 0 14px}
+.vseg{margin:4px 0 14px;display:flex;width:max-content;max-width:100%;overflow-x:auto;scrollbar-width:none}.vseg button{white-space:nowrap;flex:none}
 .mmap{display:flex;flex-direction:column;gap:14px}.mu{font-size:12.5px;font-weight:600;color:var(--mut);margin-bottom:6px}
 .mtiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px}
 .mt{flex-direction:column;align-items:flex-start;gap:2px;padding:9px 11px;border:none;border-radius:8px;text-align:left;min-height:78px;transition:transform .12s,box-shadow .12s}
@@ -158,7 +160,7 @@ body.mmopen #modal{z-index:57}
 .ctx{font-size:12px;color:var(--mut);padding:8px 16px;border-bottom:1px solid var(--line);background:var(--sunk)}
 .srch svg{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--mut)}
 #q{padding-left:32px;background:var(--panel)}
-.wrap{display:grid;grid-template-columns:270px 1fr;min-height:calc(100vh - 56px)}
+.wrap{display:grid;grid-template-columns:270px minmax(0,1fr);min-height:calc(100vh - 56px)}
 aside{border-right:1px solid var(--line);overflow:auto;max-height:calc(100vh - 56px);position:sticky;top:56px;padding:14px 8px 40px}
 aside .t{display:flex;width:100%;text-align:left;border:none;background:none;padding:5px 10px;border-radius:6px;color:var(--ink2);font-size:13.5px;line-height:1.35;gap:8px}
 aside .t span:first-child{flex:1}
@@ -214,7 +216,7 @@ mark{background:#ffe28a;color:#1c2230;border-radius:3px;padding:0 1px}
 .chatin{display:flex;gap:8px;padding:12px;border-top:1px solid var(--line)}
 .chatin textarea{min-height:44px;max-height:160px}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:12px}
-.qc{padding:14px 16px;cursor:pointer;display:flex;flex-direction:column;gap:8px;transition:border-color .15s,transform .15s}
+.qc{padding:14px 16px;cursor:pointer;overflow:hidden;min-width:0;display:flex;flex-direction:column;gap:8px;transition:border-color .15s,transform .15s}
 .qc:hover{border-color:var(--ink2)}
 .qc .qt{font-family:var(--f-read);font-size:16.5px;line-height:1.45}
 .tag{display:inline-flex;align-items:center;font-size:11.5px;padding:2px 8px;border-radius:99px;background:var(--sunk);color:var(--ink2);font-weight:600;margin-right:4px;white-space:nowrap}
@@ -226,7 +228,7 @@ mark{background:#ffe28a;color:#1c2230;border-radius:3px;padding:0 1px}
 .filters select{width:auto}
 .prac{max-width:880px;margin:0 auto}
 .prac h2,.home h2{font:600 26px/1.2 var(--f-read);letter-spacing:-.015em;margin:0}
-.qbig{padding:22px 26px;font-family:var(--f-read);font-size:19px;line-height:1.55}
+.qbig{overflow-x:auto;padding:22px 26px;font-family:var(--f-read);font-size:19px;line-height:1.55}
 .meta{color:var(--mut);font-size:13px}
 .fb{padding:20px 24px;margin-top:14px}
 .score{font:600 40px/1 var(--f-read);letter-spacing:-.02em;font-variant-numeric:tabular-nums;color:var(--red)}
@@ -314,6 +316,13 @@ mark{background:#ffe28a;color:#1c2230;border-radius:3px;padding:0 1px}
 .wcol.today{background:color-mix(in srgb,var(--acc2) 50%,transparent)}
 .hl{border-top:1px solid var(--line)}
 .ev{position:absolute;left:3px;right:3px;white-space:normal;overflow:hidden;z-index:1;display:block}
+.chip.k-ext{background:transparent;border:1px solid color-mix(in srgb,var(--c) 45%,transparent);color:var(--mut)}.ev.x{background:color-mix(in srgb,var(--c) 9%,var(--panel));border:1px solid color-mix(in srgb,var(--c) 40%,transparent);border-left:3px solid var(--c);color:var(--ink)}
+.chip[draggable]{cursor:grab}.chip.dragging{opacity:.4}.dropon{background:color-mix(in srgb,var(--acc) 12%,var(--panel))!important;outline:2px dashed color-mix(in srgb,var(--acc) 50%,transparent);outline-offset:-2px}
+.mc.sel{box-shadow:inset 0 0 0 2px var(--acc)}.dayp{margin-top:12px;padding:12px 14px}.dayp .agi{cursor:pointer}
+.cals .due{align-items:center}.cals .dot{margin-right:0}
+.lk{border-top:1px solid var(--line);padding:16px 0 4px;margin-top:14px}.lk>b{font-size:15px}.lk p{margin:6px 0 10px}.lk details{margin-top:10px}.lk summary{cursor:pointer;color:var(--acc);font-size:14px}
+.lkb{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}.lkb .btn{display:inline-flex;align-items:center;gap:8px;background:var(--panel);color:var(--ink);border:1px solid var(--line2);font-weight:500}.lkr{padding:6px 0;border-bottom:1px solid var(--line);flex-wrap:nowrap}
+.gl{width:10px;height:10px;border-radius:3px;flex:none}.gl.g{background:conic-gradient(#ea4335 0 25%,#fbbc05 0 50%,#34a853 0 75%,#4285f4 0)}.gl.o{background:#0f6cbd}.gl.a{background:#8e8e93}
 .ev::before{display:none}
 .now{position:absolute;left:0;right:0;height:2px;background:var(--red);z-index:2}
 .ag{display:flex;gap:16px;padding:12px 16px;border-bottom:1px solid var(--line)}
@@ -329,16 +338,16 @@ mark{background:#ffe28a;color:#1c2230;border-radius:3px;padding:0 1px}
 .ef .seg{flex-wrap:wrap}
 a.btn{display:inline-flex;padding:7px 12px;border-radius:8px;text-decoration:none;background:var(--acc);color:var(--acc-ink);font-weight:600}
 @media (max-width:900px){
-  .hgrid{grid-template-columns:1fr}
+  .hgrid{display:flex;flex-direction:column;gap:0}.hgrid>div{display:contents}.hgrid>div:first-child>.hsec{order:1}.hgrid>div:last-child>.hsec{order:2}.hgrid>div>.hsec.bks{order:3}
   .acts{grid-template-columns:repeat(3,1fr)}
   .plan{grid-template-columns:1fr}.pside{order:2}
-  .mc{min-height:70px}.chip{font-size:10.5px;padding:1px 4px}.chip::before{display:none}
+  .mc{min-height:58px}.chip{font-size:10.5px;padding:1px 4px}.chip::before{display:none}.mgrid .chip{font-size:0;height:5px;padding:0;margin:3px 1px;border-radius:3px;background:var(--c)}.mgrid .chip.k-ext{background:color-mix(in srgb,var(--c) 45%,transparent);border:none}.mgrid .more{font-size:10px}.pl2 span{display:none}
   .wh,.wb{grid-template-columns:36px repeat(7,minmax(0,1fr))}
-  .wrap{grid-template-columns:1fr}
+  .wrap{grid-template-columns:minmax(0,1fr)}
   #app{grid-template-columns:1fr}
   #side{display:none}
-  #bot{display:grid;grid-template-columns:repeat(7,1fr);position:fixed;left:0;right:0;bottom:0;z-index:12;background:var(--panel);border-top:1px solid var(--line);padding:4px 2px calc(4px + env(safe-area-inset-bottom))}
-  #bot button{border:none;background:none;flex-direction:column;gap:2px;font-size:10.5px;padding:5px 0;color:var(--mut);border-radius:6px}
+  #bot{display:grid;grid-template-columns:repeat(8,1fr);position:fixed;left:0;right:0;bottom:0;z-index:12;background:var(--panel);border-top:1px solid var(--line);padding:4px 2px calc(4px + env(safe-area-inset-bottom))}
+  #bot button{border:none;background:none;flex-direction:column;gap:2px;font-size:10px;min-width:0;padding:5px 0;color:var(--mut);border-radius:6px}
   #bot button.on{color:var(--acc);font-weight:600}
   #bot svg.i{width:20px;height:20px}
   .drawer{bottom:58px}
@@ -407,7 +416,7 @@ a.btn{display:inline-flex;padding:7px 12px;border-radius:8px;text-decoration:non
   <main id="main"></main>
 </div>
 </div>
-<nav id="bot" class="tabs"><button data-tab="home"><svg class="i"><use href="#i-home"/></svg><span>Home</span></button><button data-tab="rev"><svg class="i"><use href="#i-loop"/></svg><span>Review</span></button><button data-tab="lib"><svg class="i"><use href="#i-book"/></svg><span>Library</span></button><button data-tab="prac"><svg class="i"><use href="#i-pen"/></svg><span>Practice</span></button><button data-tab="terms"><svg class="i"><use href="#i-cards"/></svg><span>Cards</span></button><button data-tab="plan"><svg class="i"><use href="#i-cal"/></svg><span>Planner</span></button><button data-tab="prog"><svg class="i"><use href="#i-chart"/></svg><span>Progress</span></button></nav>
+<nav id="bot" class="tabs"><button data-tab="home"><svg class="i"><use href="#i-home"/></svg><span>Home</span></button><button data-tab="rev"><svg class="i"><use href="#i-loop"/></svg><span>Review</span></button><button data-tab="lib"><svg class="i"><use href="#i-book"/></svg><span>Library</span></button><button data-tab="prac"><svg class="i"><use href="#i-pen"/></svg><span>Practice</span></button><button data-tab="terms"><svg class="i"><use href="#i-cards"/></svg><span>Cards</span></button><button data-tab="ref"><svg class="i"><use href="#i-flask"/></svg><span>Ref</span></button><button data-tab="plan"><svg class="i"><use href="#i-cal"/></svg><span>Planner</span></button><button data-tab="prog"><svg class="i"><use href="#i-chart"/></svg><span>Progress</span></button></nav>
 </div>
 <div id="drawer" class="drawer hide"><div class="hd"><span id="dTitle">Ask Claude</span><button class="ghost" id="dClose" aria-label="Close"><svg class="i"><use href="#i-x"/></svg></button></div><div class="chat" id="chat"></div><form class="chatin" id="cf"><textarea id="ci" rows="1" placeholder="Message"></textarea><button class="pri">Send</button></form></div>
 <script>
@@ -483,6 +492,7 @@ function mergeIn(r) {
     for (const [k, v] of Object.entries(r.terms || {})) if (!S.prog.terms[k] || S.prog.terms[k].t < v.t) S.prog.terms[k] = v;
     if ((r.pt || 0) > (S.prog.pt || 0)) { S.prog.pins = r.pins || []; S.prog.marks = r.marks || []; S.prog.hls = r.hls || []; S.prog.pt = r.pt; }
     const D = S.prog.days = S.prog.days || {}; for (const [d, o] of Object.entries(r.days || {})) { const x = D[d] = D[d] || {}; for (const k of ['m', 'q', 'c', 'p']) x[k] = Math.max(x[k] || 0, o[k] || 0); }
+    if ((r.calt || 0) > (S.prog.calt || 0)) { S.prog.cals = r.cals || []; S.prog.calt = r.calt; setTimeout(loadExt, 0); }
     for (const f of ['decks', 'maps']) { const DK = S.prog[f] = S.prog[f] || {}; for (const [id, d] of Object.entries(r[f] || {})) if (!DK[id] || (DK[id].t || 0) < (d.t || 0)) DK[id] = d; }
     for (const k of ['secs', 'rev', 'recall']) { const L = S.prog[k] = S.prog[k] || {}; for (const [kk, v] of Object.entries(r[k] || {})) if (!L[kk] || (L[kk].t || 0) < (v.t || 0)) L[kk] = v; }
     const PP = S.prog.pp = S.prog.pp || {}; for (const [k, v] of Object.entries(r.pp || {})) { const ts = new Set((PP[k] || []).map(x => x.t)); PP[k] = [...(PP[k] || []), ...v.filter(x => !ts.has(x.t))]; }
@@ -502,7 +512,7 @@ function shell(t) { // chrome for a screen: nav highlight, contents panel, title
   if (S.tab !== t) closeDrawer();
   S.tab = t; document.querySelectorAll('.tabs [data-tab]').forEach(b => b.classList.toggle('on', b.dataset.tab === t));
   const rd = t === 'lib' && S.reading; $('#toc').classList.toggle('hide', !rd); $('#menuBtn').classList.toggle('hide', !rd);
-  document.querySelector('.wrap').style.gridTemplateColumns = rd ? '' : '1fr'; title([TABN[t]]);
+  document.querySelector('.wrap').style.gridTemplateColumns = rd ? '' : 'minmax(0,1fr)'; title([TABN[t]]);
   document.querySelectorAll('#pins [data-b]').forEach(x => x.classList.toggle('on', rd && x.dataset.b === S.book.id));
 }
 function tab(t) { shell(t); ({home: renderHome, lib: () => S.reading ? openPage(S.book.id, S.n) : renderShelf(), prac: () => renderPrac(), terms: () => renderTerms(), ref: () => renderRef(), prog: renderProg, rev: renderReview, plan: () => renderPlan(true)})[t](); }
@@ -627,7 +637,7 @@ async function sendChat(text) {
   if (CH.agent) {
     if (!USER) { CH.msgs.push({role: 'assistant', content: 'Sign in (top right) to use the planner assistant. It saves to your account.'}); CH.busy = false; drawChat(); return; }
     try {
-      const n = new Date(), r = await api('agent', {today: ymd(n), dow: n.toLocaleDateString('en', {weekday: 'long'}), now: n.toTimeString().slice(0, 5), tz: Intl.DateTimeFormat().resolvedOptions().timeZone, messages: CH.msgs.map(m => ({role: m.role, content: m.content}))});
+      const n = new Date(), r = await api('agent', {today: ymd(n), dow: n.toLocaleDateString('en', {weekday: 'long'}), now: n.toTimeString().slice(0, 5), tz: Intl.DateTimeFormat().resolvedOptions().timeZone, ext: extText(), messages: CH.msgs.map(m => ({role: m.role, content: m.content}))});
       CH.msgs.push({role: 'assistant', content: r.text || '(no reply)'}); if (r.items) { S.plan = r.items; LS.set(LSK('ib-plan'), S.plan); drawPlan(); }
     } catch (e) { CH.msgs.push({role: 'assistant', content: '**Error:** ' + e.message}); }
     S.planChat = CH.msgs; CH.busy = false; drawChat(); return;
@@ -797,47 +807,123 @@ const todayS = () => ymd(new Date());
 const fmtD = (s, o = {weekday: 'short', day: 'numeric', month: 'short'}) => pd(s).toLocaleDateString(undefined, o);
 const PAL = ['#2f7d6d', '#3b6fd8', '#c2410c', '#9333ea', '#be185d', '#0e7490', '#a16207', '#4d7c0f', '#b91c1c', '#475569'];
 function subjColor(s) { if (!s) return '#6b7280'; let h = 0; for (const c of s.toLowerCase()) h = (h * 31 + c.charCodeAt(0)) >>> 0; return PAL[h % PAL.length]; }
+const REP = {daily: 'Every day', weekly: 'Every week', fortnightly: 'Every 2 weeks', monthly: 'Every month'};
 function occurs(it, from, to) {
-  if (it.rep !== 'weekly') return it.date >= from && it.date <= to ? [it.date] : [];
-  const out = []; let d = it.date; const end = it.until && it.until < to ? it.until : to;
-  if (d < from) { const k = Math.floor((pd(from) - pd(d)) / 864e5 / 7); d = addD(d, 7 * k); if (d < from) d = addD(d, 7); }
-  for (; d <= end && out.length < 400; d = addD(d, 7)) out.push(d);
+  const end = it.until && it.until < to ? it.until : to, out = [], skip = new Set(it.skip || []);
+  if (it.rep === 'monthly') { const d0 = pd(it.date); for (let k = 0; k < 600 && out.length < 400; k++) { const x = new Date(d0.getFullYear(), d0.getMonth() + k, d0.getDate(), 12); if (x.getDate() !== d0.getDate()) continue; const s = ymd(x); if (s > end) break; if (s >= from && !skip.has(s)) out.push(s); } return out; }
+  const st = {daily: 1, weekly: 7, fortnightly: 14}[it.rep];
+  if (!st) return it.date >= from && it.date <= to ? [it.date] : [];
+  let d = it.date;
+  if (d < from) { const k = Math.floor((pd(from) - pd(d)) / 864e5 / st); d = addD(d, st * k); if (d < from) d = addD(d, st); }
+  for (; d <= end && out.length < 400; d = addD(d, st)) if (!skip.has(d)) out.push(d);
   return out;
 }
-function dayMap(from, to) { const m = {}; for (const it of S.plan || []) for (const d of occurs(it, from, to)) (m[d] = m[d] || []).push(it); for (const k in m) m[k].sort((a, b) => (a.time || '99') < (b.time || '99') ? -1 : 1); return m; }
+function dayMap(from, to, noExt) { const m = {}; for (const it of S.plan || []) for (const d of occurs(it, from, to)) (m[d] = m[d] || []).push(it);
+  if (!noExt) for (const [it, d] of extIn(from, to)) (m[d] = m[d] || []).push(it);
+  for (const k in m) m[k].sort((a, b) => (a.time || '') < (b.time || '') ? -1 : 1); return m; }
+
+// ---------- linked calendars (Google / Outlook / school): their secret iCal link is fetched by the relay and parsed here; read-only.
+// S.prog.cals = [{id, name, url, c, off}], synced with the account (calt = last change)
+const EXT = {}, EXTI = new Map(); let extBusy = null;
+const CALC = ['#2563eb', '#16a34a', '#db2777', '#ea580c', '#7c3aed', '#0891b2', '#ca8a04'];
+const icsUn = v => v.replace(/\\n/gi, '\n').replace(/\\([,;\\])/g, '$1');
+function tzShift(dt, tz) { // wall time in an IANA zone -> this device's local time (Outlook's Windows zone names fall back to as-is)
+  try { const g = Date.UTC(dt.getFullYear(), dt.getMonth(), dt.getDate(), dt.getHours(), dt.getMinutes());
+    const p = Object.fromEntries(new Intl.DateTimeFormat('en-US', {timeZone: tz, hourCycle: 'h23', year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric'}).formatToParts(new Date(g)).map(x => [x.type, x.value]));
+    return new Date(g - (Date.UTC(+p.year, p.month - 1, +p.day, +p.hour, +p.minute) - g)); } catch (e) { return dt; } }
+function icsDt(v, pr = '') {
+  const m = v.match(/^(\d{4})(\d\d)(\d\d)(?:T(\d\d)(\d\d)(\d\d)?(Z)?)?/); if (!m) return {d: '', t: ''};
+  if (!m[4]) return {d: `${m[1]}-${m[2]}-${m[3]}`, t: '', ad: 1};
+  let dt; if (m[7]) dt = new Date(Date.UTC(+m[1], m[2] - 1, +m[3], +m[4], +m[5]));
+  else { dt = new Date(+m[1], m[2] - 1, +m[3], +m[4], +m[5]); const tz = (pr.match(/TZID=([^;:]+)/) || [])[1]; if (tz) dt = tzShift(dt, tz.replace(/"/g, '')); }
+  return {d: ymd(dt), t: String(dt.getHours()).padStart(2, '0') + ':' + String(dt.getMinutes()).padStart(2, '0')};
+}
+function icsParse(txt) {
+  const out = []; let e = null;
+  for (const l of txt.replace(/\r?\n[ \t]/g, '').split(/\r?\n/)) {
+    if (l === 'BEGIN:VEVENT') e = {ex: []}; else if (l === 'END:VEVENT') { if (e && e.s && e.s.d && e.st !== 'CANCELLED') out.push(e); e = null; }
+    else if (e) { const m = l.match(/^([A-Z-]+)((?:;[^:]*)?):(.*)$/); if (!m) continue; const [, k, pr, v] = m;
+      if (k === 'SUMMARY') e.title = icsUn(v); else if (k === 'LOCATION') e.loc = icsUn(v); else if (k === 'DESCRIPTION') e.desc = icsUn(v).slice(0, 600); else if (k === 'UID') e.uid = v;
+      else if (k === 'DTSTART') e.s = icsDt(v, pr); else if (k === 'DTEND') e.e = icsDt(v, pr); else if (k === 'DURATION') e.dur = v; else if (k === 'STATUS') e.st = v;
+      else if (k === 'RRULE') e.rr = Object.fromEntries(v.split(';').map(x => x.split('=')));
+      else if (k === 'EXDATE') for (const x of v.split(',')) e.ex.push(icsDt(x, pr).d); else if (k === 'RECURRENCE-ID') e.rid = icsDt(v, pr).d; }
+  }
+  const byU = {}; for (const x of out) if (!x.rid && x.uid) byU[x.uid] = x;
+  for (const x of out) if (x.rid && byU[x.uid]) byU[x.uid].ex.push(x.rid); // moved/edited single instances replace that date of the series
+  for (const x of out) { if (!x.e && x.dur && x.s.t) { const m = x.dur.match(/PT?(?:(\d+)H)?(?:(\d+)M)?/) || []; const [h, mi] = x.s.t.split(':').map(Number), t = h * 60 + mi + (+m[1] || 0) * 60 + (+m[2] || 0); if (t < 1440) x.e = {d: x.s.d, t: String(Math.floor(t / 60)).padStart(2, '0') + ':' + String(t % 60).padStart(2, '0')}; } }
+  return out;
+}
+function extOcc(e, from, to) { // dates (inside [from, to]) an event covers, with its repeats
+  const out = [], span = e.s.ad && e.e && e.e.d > e.s.d ? Math.min(60, Math.round((pd(e.e.d) - pd(e.s.d)) / 864e5)) : 1;
+  const push = d => { if (e.ex.includes(d)) return; for (let k = 0; k < span; k++) { const x = addD(d, k); if (x >= from && x <= to) out.push(x); } };
+  const r = e.rr; if (!r) { push(e.s.d); return out; }
+  const iv = Math.max(1, +(r.INTERVAL || 1)), until = r.UNTIL ? icsDt(r.UNTIL).d : '9999', cnt = r.COUNT ? +r.COUNT : 1e9, lo = addD(from, -span); let n = 0;
+  if (r.FREQ === 'WEEKLY') { const days = r.BYDAY ? r.BYDAY.split(',').map(x => ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA'].indexOf(x.slice(-2))).filter(x => x >= 0).sort() : [pd(e.s.d).getDay()];
+    let wk = addD(e.s.d, -pd(e.s.d).getDay());
+    if (!r.COUNT && wk < lo) { const k = Math.floor((pd(lo) - pd(wk)) / 864e5 / 7 / iv) - 1; if (k > 0) wk = addD(wk, 7 * iv * k); }
+    for (let i = 0; i < 1500; i++, wk = addD(wk, 7 * iv)) for (const dw of days) { const d = addD(wk, dw); if (d < e.s.d) continue; if (d > until || d > to || n >= cnt) return out; n++; if (d >= lo) push(d); }
+    return out; }
+  const b = pd(e.s.d); let i = 0;
+  if (!r.COUNT && r.FREQ === 'DAILY' && e.s.d < lo) i = Math.max(0, Math.floor((pd(lo) - b) / 864e5 / iv) - 1);
+  for (let g = 0; g < 1500; g++, i++) { const d = r.FREQ === 'DAILY' ? addD(e.s.d, i * iv) : r.FREQ === 'MONTHLY' ? ymd(new Date(b.getFullYear(), b.getMonth() + i * iv, b.getDate(), 12)) : r.FREQ === 'YEARLY' ? ymd(new Date(b.getFullYear() + i * iv, b.getMonth(), b.getDate(), 12)) : null;
+    if (!d) { push(e.s.d); break; } if (d > until || d > to || n >= cnt) break; n++; if (d >= lo) push(d); }
+  return out;
+}
+const myCals = () => (S.prog && S.prog.cals) || [];
+function extIn(from, to) {
+  const out = [];
+  for (const c of myCals()) { const X = EXT[c.id]; if (c.off || !X || !X.ev) continue;
+    X.ev.forEach((e, i) => { const ds = extOcc(e, from, to); if (!ds.length) return; const id = 'x' + c.id + '_' + i;
+      let it = EXTI.get(id); if (!it || it.src !== e) { it = {id, src: e, ext: c, kind: 'ext', title: e.title || '(busy)', time: e.s.t || '', end: e.e && e.e.d === e.s.d ? e.e.t : '', loc: e.loc, desc: e.desc, date: e.s.d, rep: e.rr ? 1 : 0}; EXTI.set(id, it); }
+      for (const d of ds) out.push([it, d]); }); }
+  return out;
+}
+async function loadExt(force) { // fetch linked calendars (cached 10 min), then redraw whatever is showing
+  const due = myCals().filter(c => !c.off && (force || !EXT[c.id] || Date.now() - EXT[c.id].t > 6e5)); if (!due.length) return;
+  if (extBusy && !force) return extBusy;
+  extBusy = Promise.all(due.map(async c => { try { const r = await api('calfetch', {url: c.url}); EXT[c.id] = {t: Date.now(), ev: icsParse(r.ics)}; } catch (e) { EXT[c.id] = {t: Date.now(), err: e.message, ev: (EXT[c.id] || {}).ev}; } }));
+  await extBusy; extBusy = null;
+  if (S.tab === 'plan') drawPlan(); else if (S.tab === 'home') drawHome();
+}
+const itColor = it => it.ext ? it.ext.c : subjColor(it.subject);
+function saveCals(L) { S.prog.cals = L; S.prog.calt = Date.now(); saveProg(); }
+const extText = () => { const t = todayS(), m = {}; for (const [it, d] of extIn(t, addD(t, 21))) (m[d] = m[d] || []).push(it);
+  return Object.keys(m).sort().map(d => m[d].map(it => `${d}${it.time ? ' ' + it.time + (it.end ? '-' + it.end : '') : ''} ${it.title}${it.loc ? ' @ ' + it.loc : ''} (${it.ext.name})`).join('\n')).join('\n').slice(0, 7000); };
 async function loadPlan() { if (!USER) { S.plan = LS.get(LSK('ib-plan'), S.plan || []); return; } try { S.plan = await api('plan'); if (!Array.isArray(S.plan)) S.plan = []; } catch (e) { S.plan = S.plan || []; } }
 let planSaveT = 0;
 function savePlan() { LS.set(LSK('ib-plan'), S.plan); if (!USER) return; clearTimeout(planSaveT); planSaveT = setTimeout(() => api('plan', {data: S.plan}).catch(e => alert('Could not save: ' + e.message)), 400); }
 function chip(it, d) {
-  const c = subjColor(it.subject), past = (it.kind === 'homework' || it.kind === 'task') && !it.done && d < todayS();
-  return `<div class="chip ${it.done ? 'dn' : ''} k-${it.kind}" data-id="${it.id}" style="--c:${c}" title="${esc(PK[it.kind] + ': ' + it.title)}">${it.time ? '<b>' + it.time + '</b> ' : ''}${esc(it.title)}${past ? ' <span style="color:var(--bad)">!</span>' : ''}</div>`;
+  const c = itColor(it), past = (it.kind === 'homework' || it.kind === 'task') && !it.done && d < todayS();
+  return `<div class="chip ${it.done ? 'dn' : ''} k-${it.kind}" data-id="${it.id}" data-d="${d}" style="--c:${c}" ${it.ext ? '' : 'draggable="true"'} title="${esc((it.ext ? it.ext.name : PK[it.kind]) + ': ' + it.title)}">${it.time ? '<b>' + it.time + '</b> ' : ''}${esc(it.title)}${past ? ' <span style="color:var(--bad)">!</span>' : ''}</div>`;
 }
 async function renderPlan(first) {
   shell('plan'); setHash('#/plan');
-  if (first || !S.plan) { S.plan = S.plan || LS.get(LSK('ib-plan'), []); S.pv = S.pv || LS.get('ib-pv', 'month'); S.pdate = S.pdate || todayS(); drawPlan(); await loadPlan(); LS.set(LSK('ib-plan'), S.plan); }
+  if (first || !S.plan) { S.plan = S.plan || LS.get(LSK('ib-plan'), []); S.pv = S.pv || LS.get('ib-pv', 'month'); S.pdate = S.pdate || todayS(); drawPlan(); loadExt(); await loadPlan(); LS.set(LSK('ib-plan'), S.plan); }
   drawPlan();
 }
 function drawPlan() {
   if (S.tab !== 'plan') return;
   const t = todayS(), v = S.pv, cur = pd(S.pdate);
   let title, body;
+  const narrow = matchMedia('(max-width:700px)').matches, sel = S.psel && S.psel.slice(0, 7) === S.pdate.slice(0, 7) ? S.psel : S.pdate.slice(0, 7) === t.slice(0, 7) ? t : S.pdate.slice(0, 8) + '01';
   if (v === 'month') {
     const first = new Date(cur.getFullYear(), cur.getMonth(), 1), start = addD(ymd(first), -((first.getDay() + 6) % 7)), end = addD(start, 41), m = dayMap(start, end);
     title = cur.toLocaleDateString(undefined, {month: 'long', year: 'numeric'});
     body = `<div class="mgrid">${['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(d => `<div class="mh">${d}</div>`).join('')}${Array.from({length: 42}, (_, i) => { const d = addD(start, i), its = m[d] || [], out = pd(d).getMonth() !== cur.getMonth();
-      return `<div class="mc ${out ? 'out' : ''} ${d === t ? 'today' : ''}" data-d="${d}"><div class="mn">${pd(d).getDate()}</div>${its.slice(0, 4).map(it => chip(it, d)).join('')}${its.length > 4 ? `<div class="more">+${its.length - 4} more</div>` : ''}</div>`; }).join('')}</div>`;
+      return `<div class="mc ${out ? 'out' : ''} ${d === t ? 'today' : ''} ${narrow && d === sel ? 'sel' : ''}" data-d="${d}"><div class="mn">${pd(d).getDate()}</div>${its.slice(0, 4).map(it => chip(it, d)).join('')}${its.length > 4 ? `<div class="more">+${its.length - 4} more</div>` : ''}</div>`; }).join('')}</div>`;
+    if (narrow) { const its = m[sel] || []; body += `<div class="card dayp"><div class="row"><b>${fmtD(sel, {weekday: 'long', day: 'numeric', month: 'long'})}</b><span class="sp"></span><button class="ghost" id="pAddD">+ Add</button></div>${its.map(it => `<div class="agi" data-id="${it.id}"><span class="dot" style="background:${itColor(it)}"></span><span class="meta" style="width:84px">${it.time ? it.time + (it.end ? '–' + it.end : '') : it.ext ? 'All day' : PK[it.kind]}</span><span class="${it.done ? 'dnt' : ''}" style="flex:1;min-width:0">${esc(it.title)}${it.ext ? ` <span class="meta">· ${esc(it.ext.name)}</span>` : it.subject ? ` <span class="meta">· ${esc(it.subject)}</span>` : ''}</span></div>`).join('') || '<p class="meta" style="margin:6px 0 2px">Nothing on this day</p>'}</div>`; }
   } else if (v === 'week') {
     const start = addD(S.pdate, -((cur.getDay() + 6) % 7)), m = dayMap(start, addD(start, 6)), H0 = 7, H1 = 22, PX = 44;
     title = fmtD(start, {day: 'numeric', month: 'short'}) + ' – ' + fmtD(addD(start, 6), {day: 'numeric', month: 'short', year: 'numeric'});
     const days = Array.from({length: 7}, (_, i) => addD(start, i));
     body = `<div class="wk"><div class="wh"><div></div>${days.map(d => `<div class="${d === t ? 'today' : ''}" data-d="${d}">${fmtD(d, {weekday: 'short'})} <b>${pd(d).getDate()}</b></div>`).join('')}</div>
       <div class="wh wad"><div class="meta">all day</div>${days.map(d => `<div class="mc" data-d="${d}">${(m[d] || []).filter(it => !it.time).map(it => chip(it, d)).join('')}</div>`).join('')}</div>
-      <div class="wb" style="height:${(H1 - H0) * PX}px"><div class="wt">${Array.from({length: H1 - H0}, (_, i) => `<div style="height:${PX}px">${String(H0 + i).padStart(2, '0')}:00</div>`).join('')}</div>${days.map(d => `<div class="wcol ${d === t ? 'today' : ''}" data-d="${d}">${Array.from({length: H1 - H0}, () => `<div class="hl" style="height:${PX}px"></div>`).join('')}${(m[d] || []).filter(it => it.time).map(it => {
-        const [h, mi] = it.time.split(':').map(Number), [eh, em] = (it.end || '').split(':').map(Number), top = Math.max(0, (h + mi / 60 - H0) * PX), len = it.end ? Math.max(.5, eh + em / 60 - h - mi / 60) : 1;
-        return `<div class="ev chip k-${it.kind} ${it.done ? 'dn' : ''}" data-id="${it.id}" style="--c:${subjColor(it.subject)};top:${top}px;height:${len * PX - 2}px"><b>${it.time}${it.end ? '–' + it.end : ''}</b><br>${esc(it.title)}</div>`; }).join('')}${d === t ? `<div class="now" style="top:${(new Date().getHours() + new Date().getMinutes() / 60 - H0) * PX}px"></div>` : ''}</div>`).join('')}</div></div>`;
+      <div class="wb" style="height:${(H1 - H0) * PX}px"><div class="wt">${Array.from({length: H1 - H0}, (_, i) => `<div style="height:${PX}px">${String(H0 + i).padStart(2, '0')}:00</div>`).join('')}</div>${days.map(d => `<div class="wcol ${d === t ? 'today' : ''}" data-d="${d}">${Array.from({length: H1 - H0}, () => `<div class="hl" style="height:${PX}px"></div>`).join('')}${lanes((m[d] || []).filter(it => it.time)).map(({it, a, b, ln, n}) => {
+        const top = Math.max(0, (a / 60 - H0) * PX), len = Math.max(.5, (b - a) / 60);
+        return `<div class="ev chip k-${it.kind} ${it.done ? 'dn' : ''} ${it.ext ? 'x' : ''}" data-id="${it.id}" data-d="${d}" ${it.ext ? '' : 'draggable="true"'} style="--c:${itColor(it)};top:${top}px;height:${len * PX - 2}px;left:calc(${ln / n * 100}% + 2px);width:calc(${100 / n}% - 4px)"><b>${it.time}${it.end ? '–' + it.end : ''}</b><br>${esc(it.title)}</div>`; }).join('')}${d === t ? `<div class="now" style="top:${(new Date().getHours() + new Date().getMinutes() / 60 - H0) * PX}px"></div>` : ''}</div>`).join('')}</div></div>`;
   } else {
     const m = dayMap(t, addD(t, 60)); title = 'Next 60 days';
-    body = `<div class="card">${Object.keys(m).sort().map(d => `<div class="ag"><div class="agd ${d === t ? 'today' : ''}">${fmtD(d)}<div class="meta">${d === t ? 'today' : Math.round((pd(d) - pd(t)) / 864e5) + ' days'}</div></div><div style="flex:1">${m[d].map(it => `<div class="agi" data-id="${it.id}"><span class="dot" style="background:${subjColor(it.subject)}"></span><span class="meta" style="width:88px">${it.time ? it.time + (it.end ? '–' + it.end : '') : PK[it.kind]}</span><span class="${it.done ? 'dnt' : ''}">${esc(it.title)}</span>${it.subject ? `<span class="meta">· ${esc(it.subject)}</span>` : ''}</div>`).join('')}</div></div>`).join('') || '<p style="padding:14px" class="meta">Nothing planned.</p>'}</div>`;
+    body = `<div class="card">${Object.keys(m).sort().map(d => `<div class="ag"><div class="agd ${d === t ? 'today' : ''}">${fmtD(d)}<div class="meta">${d === t ? 'today' : Math.round((pd(d) - pd(t)) / 864e5) + ' days'}</div></div><div style="flex:1">${m[d].map(it => `<div class="agi" data-id="${it.id}"><span class="dot" style="background:${itColor(it)}"></span><span class="meta" style="width:88px">${it.time ? it.time + (it.end ? '–' + it.end : '') : it.ext ? 'All day' : PK[it.kind]}</span><span class="${it.done ? 'dnt' : ''}">${esc(it.title)}</span>${it.ext ? `<span class="meta">· ${esc(it.ext.name)}</span>` : it.subject ? `<span class="meta">· ${esc(it.subject)}</span>` : ''}</div>`).join('')}</div></div>`).join('') || '<p style="padding:14px" class="meta">Nothing planned.</p>'}</div>`;
   }
   const due = S.plan.filter(it => (it.kind === 'homework' || it.kind === 'task') && !it.done).sort((a, b) => a.date < b.date ? -1 : 1);
   const exams = S.plan.filter(it => it.kind === 'exam' && it.date >= t).sort((a, b) => a.date < b.date ? -1 : 1).slice(0, 6);
@@ -846,22 +932,85 @@ function drawPlan() {
       <button class="pri" id="pAsk" style="width:100%;justify-content:center"><svg class="i"><use href="#i-spark"/></svg>Ask planner</button>
       <h3>Due</h3><div class="card">${due.map(it => `<label class="due"><input type="checkbox" data-done="${it.id}"><span style="flex:1"><span class="dot" style="background:${subjColor(it.subject)}"></span>${esc(it.title)}<br><span class="meta">${fmtD(it.date)} · ${dl(it.date)}</span></span></label>`).join('') || '<p class="meta" style="padding:10px 12px;margin:0">None</p>'}</div>
       <h3>Exams</h3><div class="card">${exams.map(it => `<div class="due" data-id="${it.id}" style="cursor:pointer"><span style="flex:1">${esc(it.title)}<br><span class="meta">${fmtD(it.date)}${it.time ? ' ' + it.time : ''} · ${dl(it.date)}</span></span></div>`).join('') || '<p class="meta" style="padding:10px 12px;margin:0">None</p>'}</div>
-      ${USER ? `<p class="meta" style="margin-top:14px"><a href="#" id="pIcs">Add to your phone's calendar</a></p>` : ''}</div>
+      <h3>Calendars</h3><div class="card cals"><label class="due"><span class="dot" style="background:var(--acc)"></span><span style="flex:1">My planner</span></label>${myCals().map(c => { const X = EXT[c.id]; return `<label class="due"><input type="checkbox" data-cal="${c.id}" ${c.off ? '' : 'checked'} style="accent-color:${c.c}"><span style="flex:1;min-width:0">${esc(c.name)}${X && X.err ? `<br><span class="meta" style="color:var(--bad)">${esc(X.err)}</span>` : !c.off && !X ? '<br><span class="meta">Loading…</span>' : ''}</span></label>`; }).join('')}
+        <button class="ghost" id="pLink" style="width:100%;justify-content:flex-start;padding:10px 12px"><svg class="i"><use href="#i-cal"/></svg>Link Google / Outlook</button></div></div>
     <div class="pmain"><div class="rbar"><button id="pPrev" aria-label="Previous"><svg class="i"><use href="#i-l"/></svg></button><button id="pToday">Today</button><button id="pNext" aria-label="Next"><svg class="i"><use href="#i-r"/></svg></button><h2 style="margin:0 8px;font-size:20px">${esc(title)}</h2><span class="sp"></span>
-      <div class="seg">${['month', 'week', 'agenda'].map(x => `<button data-pv="${x}" class="${x === v ? 'on' : ''}">${x[0].toUpperCase() + x.slice(1)}</button>`).join('')}</div><button class="pri" id="pAdd">+ Add</button></div>${body}</div></div>`;
+      <div class="seg">${['month', 'week', 'agenda'].map(x => `<button data-pv="${x}" class="${x === v ? 'on' : ''}">${x[0].toUpperCase() + x.slice(1)}</button>`).join('')}</div><button id="pLink2" class="pl2" title="Link Google Calendar or Outlook"><svg class="i"><use href="#i-cal"/></svg><span>Link calendar</span></button><button class="pri" id="pAdd">+ Add</button></div>${body}</div></div>`;
   const step = v === 'month' ? null : v === 'week' ? 7 : 60;
   const mv = dir => { if (v === 'month') { const d = pd(S.pdate); d.setDate(1); d.setMonth(d.getMonth() + dir); S.pdate = ymd(d); } else S.pdate = addD(S.pdate, dir * step); drawPlan(); };
   $('#pPrev').onclick = () => mv(-1); $('#pNext').onclick = () => mv(1); $('#pToday').onclick = () => { S.pdate = todayS(); drawPlan(); };
   document.querySelectorAll('[data-pv]').forEach(b => b.onclick = () => { S.pv = b.dataset.pv; LS.set('ib-pv', S.pv); drawPlan(); });
   $('#pAdd').onclick = () => editItem(null, v === 'month' ? (S.pdate.slice(0, 7) === t.slice(0, 7) ? t : S.pdate) : t);
-  document.querySelectorAll('.plan [data-id]').forEach(el => el.onclick = e => { e.stopPropagation(); editItem(S.plan.find(x => x.id === el.dataset.id)); });
-  document.querySelectorAll('.mc[data-d], .wcol[data-d]').forEach(el => el.onclick = e => { let time = ''; if (el.classList.contains('wcol')) { const r = el.getBoundingClientRect(), h = 7 + Math.floor((e.clientY - r.top) / 44); time = String(h).padStart(2, '0') + ':00'; } editItem(null, el.dataset.d, time); });
+  document.querySelectorAll('.plan [data-id]').forEach(el => el.onclick = e => { e.stopPropagation(); if (narrow && v === 'month' && el.closest('.mc')) { S.psel = el.dataset.d; return drawPlan(); } openItem(el.dataset.id); });
+  document.querySelectorAll('.mc[data-d], .wcol[data-d]').forEach(el => el.onclick = e => { if (narrow && v === 'month' && el.closest('.mgrid')) { S.psel = el.dataset.d; return drawPlan(); } let time = ''; if (el.classList.contains('wcol')) { const r = el.getBoundingClientRect(), h = 7 + Math.floor((e.clientY - r.top) / 44); time = String(h).padStart(2, '0') + ':00'; } editItem(null, el.dataset.d, time); });
+  if ($('#pAddD')) $('#pAddD').onclick = () => editItem(null, sel);
+  // drag an item to another day (month) or day + time (week, 15-min steps); repeating items move the whole series
+  let drag = null;
+  document.querySelectorAll('.plan [draggable]').forEach(el => { el.ondragstart = e => { drag = {id: el.dataset.id, from: el.dataset.d, dy: e.clientY - el.getBoundingClientRect().top}; e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', el.dataset.id); el.classList.add('dragging'); }; el.ondragend = () => { el.classList.remove('dragging'); document.querySelectorAll('.dropon').forEach(x => x.classList.remove('dropon')); }; });
+  document.querySelectorAll('.mc[data-d], .wcol[data-d]').forEach(el => { el.ondragover = e => { if (!drag) return; e.preventDefault(); el.classList.add('dropon'); }; el.ondragleave = () => el.classList.remove('dropon');
+    el.ondrop = e => { e.preventDefault(); el.classList.remove('dropon'); if (!drag) return; const it = S.plan.find(x => x.id === drag.id); if (!it) return; const shift = Math.round((pd(el.dataset.d) - pd(drag.from)) / 864e5);
+      it.date = addD(it.date, shift); if (it.until && shift > 0) it.until = addD(it.until, shift);
+      if (el.classList.contains('wcol')) { const r = el.getBoundingClientRect(), mins = Math.max(0, Math.min(23 * 60 + 45, Math.round(((e.clientY - drag.dy - r.top) / 44 + 7) * 4) * 15)), hm = x => String(Math.floor(x / 60)).padStart(2, '0') + ':' + String(x % 60).padStart(2, '0');
+        const dur = it.time && it.end ? toMin(it.end) - toMin(it.time) : 60; it.time = hm(mins); if (it.end || dur !== 60) it.end = hm(Math.min(1439, mins + dur)); }
+      else if (el.closest('.wad')) { delete it.time; delete it.end; }
+      drag = null; savePlan(); drawPlan(); }; });
+  document.querySelectorAll('[data-cal]').forEach(cb => cb.onchange = () => { const L = myCals().map(c => c.id === cb.dataset.cal ? {...c, off: !cb.checked} : c); saveCals(L); drawPlan(); loadExt(); });
+  $('#pLink').onclick = $('#pLink2').onclick = () => calLink();
   document.querySelectorAll('[data-done]').forEach(cb => cb.onchange = () => { const it = S.plan.find(x => x.id === cb.dataset.done); it.done = true; savePlan(); setTimeout(drawPlan, 250); });
   $('#pAsk').onclick = () => openChat({title: 'Planner assistant', agent: true, msgs: S.planChat || []});
-  if ($('#pIcs')) $('#pIcs').onclick = e => { e.preventDefault(); icsModal(); };
 }
-function icsModal() { { const url = RELAY.replace(/^http/, 'webcal') + '/ib/cal.ics?k=' + USER.tok;
-    openModal(`<h3 style="margin-top:0">Calendar feed</h3><input readonly value="${esc(url)}" onclick="this.select()"><p class="meta">Your planner, live in Apple or Google Calendar. Google: Other calendars → From URL (use https://).</p><div class="row"><a class="btn pri" href="${esc(url)}">Open in calendar app</a><button id="mClose">Close</button></div>`); }
+const toMin = s => { const [h, m] = String(s || '0:0').split(':').map(Number); return h * 60 + (m || 0); };
+function lanes(its) { // side-by-side columns for overlapping timed events in the week view
+  const L = its.map(it => { const a = toMin(it.time), b = it.end && toMin(it.end) > a ? toMin(it.end) : a + 60; return {it, a, b}; }).sort((x, y) => x.a - y.a || y.b - x.b);
+  let grp = [], ends = [], mx = -1; const fin = () => { for (const g of grp) g.n = ends.length; grp = []; ends = []; };
+  for (const o of L) { if (o.a >= mx) { fin(); mx = -1; } let k = ends.findIndex(e => e <= o.a); if (k < 0) { k = ends.length; ends.push(0); } ends[k] = o.b; o.ln = k; grp.push(o); mx = Math.max(mx, o.b); }
+  fin(); return L;
+}
+function openItem(id) {
+  const it = EXTI.get(id); if (!it) return editItem(S.plan.find(x => x.id === id));
+  const m = openModal(`<div class="row" style="align-items:flex-start"><span class="dot" style="background:${it.ext.c};margin-top:9px"></span><div style="flex:1"><h3 style="margin:0">${esc(it.title)}</h3><p class="meta" style="margin:4px 0 0">${it.time ? it.time + (it.end ? '–' + it.end : '') + ' · ' : 'All day · '}${esc(it.ext.name)}${it.rep ? ' · repeats' : ''}</p></div></div>
+    ${it.loc ? `<p style="margin:12px 0 0">📍 ${esc(it.loc)}</p>` : ''}${it.desc ? `<p class="meta" style="white-space:pre-wrap;margin:10px 0 0;max-height:180px;overflow:auto">${esc(it.desc)}</p>` : ''}
+    <p class="meta" style="margin:14px 0 0">From your linked calendar, so it's read-only here. Change it in Google or Outlook.</p>
+    <div class="row" style="margin-top:12px"><button id="xCopy">Copy into my planner</button><span class="sp"></span><button id="mClose" class="pri">Done</button></div>`);
+  $('#xCopy').onclick = () => { m.remove(); editItem(null, it.date, it.time); setTimeout(() => { const f = $('#ef'); if (!f) return; f.title.value = it.title; if (it.end) f.end.value = it.end; if (it.loc) f.notes.value = it.loc; f.querySelector('[data-k="event"]').click(); }, 0); };
+}
+// link Google Calendar / Outlook / Apple: (1) subscribe to the planner's feed there, (2) show their calendars here via the secret iCal link, (3) one-off .ics import
+function calLink() {
+  const https = USER ? RELAY + '/ib/cal.ics?k=' + USER.tok : '', wc = https.replace(/^https?/, 'webcal'), name = encodeURIComponent('IB Planner');
+  const m = openModal(`<div class="row"><h3 style="margin:0">Link your calendars</h3><span class="sp"></span><button id="mClose" class="ghost" aria-label="Close"><svg class="i"><use href="#i-x"/></svg></button></div>
+    <div class="lk"><b>1 · Put your planner in Google, Outlook or your phone</b>
+      ${USER ? `<p class="meta">Homework, exams, classes and to-dos show up there and stay in sync, with reminders the evening before things are due.</p>
+      <div class="lkb"><a class="btn" target="_blank" rel="noopener" href="https://calendar.google.com/calendar/r?cid=${encodeURIComponent(wc)}"><span class="gl g"></span>Google Calendar</a><a class="btn" target="_blank" rel="noopener" href="https://outlook.live.com/calendar/0/addfromweb?url=${encodeURIComponent(https)}&name=${name}"><span class="gl o"></span>Outlook.com</a><a class="btn" target="_blank" rel="noopener" href="https://outlook.office.com/calendar/0/addfromweb?url=${encodeURIComponent(https)}&name=${name}"><span class="gl o"></span>Outlook (school/work)</a><a class="btn" href="${esc(wc)}"><span class="gl a"></span>iPhone / Mac</a></div>
+      <div class="row" style="flex-wrap:nowrap"><input readonly id="lkU" value="${esc(https)}" onclick="this.select()"><button id="lkC">Copy</button></div>
+      <p class="meta" style="font-size:12.5px">Google and Outlook check for changes every few hours. Keep this link private: anyone with it can see your planner.</p>`
+      : `<p class="meta">Sign in first, so your planner has its own private calendar link.</p><button class="pri" id="lkIn">Sign in</button>`}</div>
+    <div class="lk"><b>2 · Show your Google or Outlook calendar in the planner</b>
+      <p class="meta">Paste your calendar's private iCal link. Its events show next to your study plan (read-only), and the planner assistant plans around them.</p>
+      <div id="lkL">${myCals().map(c => `<div class="row lkr"><span class="dot" style="background:${c.c}"></span><span style="flex:1;min-width:0"><b style="font-weight:600">${esc(c.name)}</b><br><span class="meta" style="font-size:12px;word-break:break-all">${esc(c.url.replace(/^(https?|webcal):\/\//, '').slice(0, 48))}…</span></span><button class="ghost" data-rm="${c.id}">Remove</button></div>`).join('')}</div>
+      <form id="lkF" class="row" style="flex-wrap:wrap"><input name="n" placeholder="Name, e.g. Google" style="flex:1;min-width:120px;width:auto" required><input name="u" placeholder="https://calendar.google.com/calendar/ical/…/basic.ics" style="flex:3;min-width:220px;width:auto" required><button class="pri">Add</button></form><p class="meta" id="lkE" style="color:var(--bad);margin:4px 0 0"></p>
+      <details><summary>Where do I find the link?</summary><div class="meta" style="line-height:1.6">
+        <p><b>Google Calendar</b> (on a computer): Settings (cog) → click your calendar on the left under <i>Settings for my calendars</i> → scroll to <i>Integrate calendar</i> → copy <b>Secret address in iCal format</b>.</p>
+        <p><b>Outlook.com / Outlook (school or work)</b>: Settings → Calendar → <i>Shared calendars</i> → <i>Publish a calendar</i> → pick a calendar and <i>Can view all details</i> → Publish → copy the <b>ICS</b> link. (Some schools turn publishing off.)</p>
+        <p><b>School systems</b> (Compass, SEQTA, ManageBac, Canvas, Schoolbox…): look for <i>Subscribe</i>, <i>iCal</i> or <i>Calendar feed</i> and copy that link.</p></div></details></div>
+    <div class="lk"><b>3 · Import a calendar file</b><p class="meta">Got a timetable or term dates as a .ics file? Copy its events into your planner, where you can edit them.</p><input type="file" id="lkFile" accept=".ics,text/calendar"><p class="meta" id="lkFi" style="margin:4px 0 0"></p></div>`);
+  m.querySelector('.mbox').classList.add('wide');
+  if ($('#lkIn')) $('#lkIn').onclick = () => { m.remove(); signInBox(); };
+  if ($('#lkC')) $('#lkC').onclick = () => { navigator.clipboard && navigator.clipboard.writeText(https); $('#lkC').textContent = 'Copied'; };
+  m.querySelectorAll('[data-rm]').forEach(b => b.onclick = () => { saveCals(myCals().filter(c => c.id !== b.dataset.rm)); delete EXT[b.dataset.rm]; calLink(); if (S.tab === 'plan') drawPlan(); });
+  $('#lkF').onsubmit = async e => { e.preventDefault(); const f = new FormData(e.target), url = String(f.get('u')).trim(), btn = e.target.querySelector('button'); btn.disabled = true; btn.innerHTML = '<span class="spin"></span>'; $('#lkE').textContent = '';
+    try { const r = await api('calfetch', {url}), ev = icsParse(r.ics), used = myCals().map(c => c.c), c = {id: Math.random().toString(36).slice(2, 8), name: String(f.get('n')).trim().slice(0, 40), url, c: CALC.find(x => !used.includes(x)) || CALC[myCals().length % CALC.length]};
+      EXT[c.id] = {t: Date.now(), ev}; saveCals([...myCals(), c]); calLink(); $('#lkE').style.color = 'var(--good)'; $('#lkE').textContent = `Linked: ${ev.length} events found.`; if (S.tab === 'plan') drawPlan(); }
+    catch (er) { $('#lkE').textContent = er.message; btn.disabled = false; btn.textContent = 'Add'; } };
+  $('#lkFile').onchange = async e => { const fl = e.target.files[0]; if (!fl) return; const ev = icsParse(await fl.text()), t = todayS(), add = [], RR = {DAILY: 'daily', MONTHLY: 'monthly'};
+    for (const x of ev) { if (x.rid) continue; const rep = x.rr ? (x.rr.FREQ === 'WEEKLY' ? (+(x.rr.INTERVAL || 1) === 2 ? 'fortnightly' : 'weekly') : RR[x.rr.FREQ]) : null, until = x.rr && x.rr.UNTIL ? icsDt(x.rr.UNTIL).d : '';
+      if (x.rr && !rep) continue; if ((rep ? until && until < t : x.s.d < addD(t, -30))) continue;
+      const days = x.rr && x.rr.FREQ === 'WEEKLY' && x.rr.BYDAY ? x.rr.BYDAY.split(',') : [null];
+      for (const bd of days) { let d = x.s.d; if (bd) { const w = ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA'].indexOf(bd.slice(-2)); while (pd(d).getDay() !== w) d = addD(d, 1); }
+        const o = {id: Math.random().toString(36).slice(2, 8), kind: rep ? 'class' : 'event', title: (x.title || 'Event').slice(0, 200), date: d}; if (x.s.t) o.time = x.s.t; if (x.e && x.e.d === x.s.d && x.e.t) o.end = x.e.t; if (rep) o.rep = rep; if (until) o.until = until; if (x.loc) o.notes = x.loc; if (x.ex.length) o.skip = x.ex;
+        add.push(o); } }
+    if (!add.length) { $('#lkFi').textContent = 'No current or upcoming events in that file.'; return; }
+    if (!confirm(`Add ${add.length} event${add.length > 1 ? 's' : ''} to your planner?`)) return;
+    S.plan.push(...add.slice(0, 800)); savePlan(); $('#lkFi').textContent = `Added ${Math.min(800, add.length)} events.`; if (S.tab === 'plan') drawPlan(); };
 }
 function openModal(html) {
   let m = $('#modal'); if (!m) { m = document.createElement('div'); m.id = 'modal'; document.body.appendChild(m); m.onclick = e => { if (e.target === m) m.remove(); }; }
@@ -876,7 +1025,7 @@ function editItem(it, date, time) {
     <input name="title" placeholder="What is it?" value="${esc(it.title)}" required autofocus>
     <input name="subject" list="subs" placeholder="Subject (optional)" value="${esc(it.subject || '')}"><datalist id="subs">${subs.map(s => `<option value="${esc(s)}">`).join('')}</datalist>
     <div class="row"><label>Date<input type="date" name="date" value="${it.date}" required></label><label>Start<input type="time" name="time" value="${it.time || ''}"></label><label>End<input type="time" name="end" value="${it.end || ''}"></label></div>
-    <div class="row"><label class="rowl"><input type="checkbox" name="rep" ${it.rep === 'weekly' ? 'checked' : ''}> Repeats weekly</label><label>until<input type="date" name="until" value="${it.until || ''}"></label></div>
+    <div class="row"><label>Repeats<select name="rep"><option value="">Doesn't repeat</option>${Object.entries(REP).map(([k, l]) => `<option value="${k}" ${it.rep === k ? 'selected' : ''}>${l}</option>`).join('')}</select></label><label>Until<input type="date" name="until" value="${it.until || ''}"></label></div>
     <textarea name="notes" rows="3" placeholder="Notes">${esc(it.notes || '')}</textarea>
     ${isNew ? '' : `<label class="rowl"><input type="checkbox" name="done" ${it.done ? 'checked' : ''}> Done</label>`}
     <div class="row" style="margin-top:6px">${isNew ? '' : '<button type="button" id="eDel" style="color:var(--bad)">Delete</button>'}<span style="flex:1"></span><button type="button" id="mClose">Cancel</button><button class="pri">Save</button></div></form>`);
@@ -884,7 +1033,7 @@ function editItem(it, date, time) {
   m.querySelectorAll('[data-k]').forEach(b => b.onclick = () => { kind = b.dataset.k; m.querySelectorAll('[data-k]').forEach(x => x.classList.toggle('on', x === b)); });
   $('#ef').onsubmit = e => { e.preventDefault(); const f = new FormData(e.target), o = isNew ? {id: Math.random().toString(36).slice(2, 8)} : it;
     o.kind = kind; for (const k of ['title', 'subject', 'date', 'time', 'end', 'until', 'notes']) { const v = (f.get(k) || '').trim(); if (v) o[k] = v; else delete o[k]; }
-    if (f.get('rep')) o.rep = 'weekly'; else { delete o.rep; delete o.until; } if (f.get('done')) o.done = true; else delete o.done;
+    if (f.get('rep')) o.rep = f.get('rep'); else { delete o.rep; delete o.until; delete o.skip; } if (f.get('done')) o.done = true; else delete o.done;
     if (isNew) S.plan.push(o); savePlan(); m.remove(); drawPlan(); };
   if ($('#eDel')) $('#eDel').onclick = () => { if (!confirm('Delete "' + it.title + '"?')) return; S.plan = S.plan.filter(x => x !== it); savePlan(); m.remove(); drawPlan(); };
 }
@@ -892,11 +1041,12 @@ function editItem(it, date, time) {
 // ---------- home ----------
 const BOOKC = {glopo: '#7a2e2e', chem: '#1f5f5b', phys: '#3b3f86', math: '#8a5a12', tokc: '#4a5a2a', tokp: '#6b3d6b'};
 const bookC = b => BOOKC[b.id] || subjColor(b.subject);
-const spine = b => `<div class="spine" style="--bk:${bookC(b)}">${esc((b.subject || b.title).split(' ').map(w => w[0]).join('').slice(0, 3))}</div>`;
+const spineTx = b => { const w = (b.subject || b.title).replace(/[^\w\s]/g, ' ').split(/\s+/).filter(Boolean); return /^[A-Z]{2,4}$/.test(w[0]) ? w[0] : w.filter(x => /^[A-Z]/.test(x)).map(x => x[0]).join('').slice(0, 3); };
+const spine = b => `<div class="spine" style="--bk:${bookC(b)}">${esc(spineTx(b))}</div>`;
 async function renderHome() {
   shell('home'); setHash('#/home');
   if (!S.planLoaded) { S.planLoaded = 1; S.plan = S.plan || []; loadPlan().then(() => { LS.set(LSK('ib-plan'), S.plan); if (S.tab === 'home') drawHome(); }); }
-  drawHome();
+  drawHome(); loadExt();
 }
 function drawHome() {
   const now = new Date(), h = now.getHours(), t = todayS();
@@ -915,13 +1065,13 @@ function drawHome() {
       <section class="hsec"><div class="acts">
         <button class="card act" id="hPrac"><span class="meta">Practice</span><span class="n">${tried.length}<span class="meta"> / ${allQ.length}</span></span><b>Random question</b></button>
         <button class="card act" id="hTerms"><span class="meta">Review</span><span class="n">${RQ.total}</span><b>${RQ.total ? 'Start today’s review' : 'All caught up'}</b></button>
-        <button class="card act" id="hTeach"><span class="meta">Lesson</span><span class="n" style="font-size:17px;line-height:1.3">${sec ? esc(sec.title.length > 34 ? sec.title.slice(0, 34) + '…' : sec.title) : 'Current section'}</span><b>Teach me this</b></button>
+        <button class="card act" id="hTeach"><span class="meta">Lesson</span><span class="n" style="font-size:17px;line-height:1.3">${sec ? esc(sec.title.length > 34 ? sec.title.slice(0, 34) + '…' : sec.title) : esc(S.book.subject || S.book.title)}</span><b>Teach me this</b></button>
       </div></section>
-      <section class="hsec"><h3>Books<a href="#" id="hLib">Library</a></h3><div class="shelf">${shelfOrder().map(B => `<div class="card bk" data-b="${B.id}">${spine(B)}<div style="min-width:0;flex:1"><b>${esc(B.title)}</b><span class="meta">${B.pages} pages · ${allQ.filter(q => q.book === B.id).length} questions</span>${B.file ? `<div><a class="meta" href="${RELAY}/ib/file?b=${B.id}&t=${encodeURIComponent(PASS)}" download onclick="event.stopPropagation()">Download PDF</a></div>` : ''}</div></div>`).join('')}</div></section>
+      <section class="hsec bks"><h3>Books<a href="#" id="hLib">Library</a></h3><div class="shelf">${shelfOrder().map(B => `<div class="card bk" data-b="${B.id}">${spine(B)}<div style="min-width:0;flex:1"><b>${esc(B.title)}</b><span class="meta">${B.pages} pages · ${allQ.filter(q => q.book === B.id).length} questions</span>${B.file ? `<div><a class="meta" href="${RELAY}/ib/file?b=${B.id}&t=${encodeURIComponent(PASS)}" download onclick="event.stopPropagation()">Download PDF</a></div>` : ''}</div></div>`).join('')}</div></section>
     </div><div>
       <section class="hsec"><h3>Today</h3><div class="card lst agl">${(() => { const mk = mistakes(), rd = mk.filter(m => m.ready), dt = S.prog.days && S.prog.days[t];
         return `<div id="hMist"><span class="when">Mistakes</span><span>${rd.length ? `<b>${rd.length}</b> ready to retry` : mk.length ? mk.length + ' waiting, none due yet' : 'None logged'}</span></div><div id="hRev"><span class="when">Reviews</span><span>${reviewsDue().length ? `<b>${reviewsDue().length}</b> sections to check` : 'None due'}</span></div><div id="hTerms2"><span class="when">Cards</span><span>${RQ.due.length + RQ.nw.length ? `<b>${RQ.due.length}</b> due${RQ.nw.length ? ' · ' + RQ.nw.length + ' new' : ''}` : 'All caught up'}</span></div><div style="cursor:default"><span class="when">Studied</span><span>${dt ? dt.m : 0} min · ${dt ? dt.q : 0} questions</span></div>`; })()}<div class="row" style="cursor:default;padding:10px 12px;flex-wrap:nowrap"><button class="pri" id="hDay" style="flex:1;justify-content:center"><svg class="i"><use href="#i-spark"/></svg>Plan my day</button><button id="hFy" style="flex:1;justify-content:center"><svg class="i"><use href="#i-spark"/></svg>Pick for me</button></div></div></section>
-      <section class="hsec"><h3>Coming up<a href="#" id="hPlan">Planner</a></h3><div class="card lst agl">${over.map(it => `<div data-id="${it.id}"><span class="when" style="color:var(--red)">Overdue</span><span><span class="dot" style="background:${subjColor(it.subject)}"></span>${esc(it.title)}</span></div>`).join('')}${up.slice(0, 8).map(([d, it]) => `<div data-id="${it.id}"><span class="when">${rel(d)}${it.time ? '<br>' + it.time : ''}</span><span><span class="dot" style="background:${subjColor(it.subject)}"></span>${esc(it.title)}${it.kind === 'exam' ? ' <span class="tag r">Exam</span>' : ''}</span></div>`).join('') || (over.length ? '' : '<div class="meta" style="cursor:default">Nothing in the next two weeks</div>')}</div></section>
+      <section class="hsec"><h3>Coming up<a href="#" id="hPlan">Planner</a></h3><div class="card lst agl">${over.map(it => `<div data-id="${it.id}"><span class="when" style="color:var(--red)">Overdue</span><span><span class="dot" style="background:${itColor(it)}"></span>${esc(it.title)}</span></div>`).join('')}${up.slice(0, 8).map(([d, it]) => `<div data-id="${it.id}"><span class="when">${rel(d)}${it.time ? '<br>' + it.time : ''}</span><span><span class="dot" style="background:${itColor(it)}"></span>${esc(it.title)}${it.kind === 'exam' ? ' <span class="tag r">Exam</span>' : ''}</span></div>`).join('') || (over.length ? '' : '<div class="meta" style="cursor:default">Nothing in the next two weeks</div>')}</div></section>
       ${recent.length ? `<section class="hsec"><h3>Recent marks<a href="#" id="hProg">Progress</a></h3><div class="card lst agl">${recent.map(({q, a}) => `<div data-q="${q.id}"><span class="when num" style="color:${a.score / a.max < .4 ? 'var(--red)' : a.score / a.max < .7 ? 'var(--warn)' : 'var(--good)'};font-weight:600">${a.score}/${a.max}</span><span>${esc(q.text.replace(/\$[^$]*\$/g, '…').slice(0, 80))}${q.text.length > 80 ? '…' : ''}</span></div>`).join('')}</div></section>` : ''}
     </div></div></div>`;
   $('#hLib').onclick = e => { e.preventDefault(); go('lib'); };
@@ -933,7 +1083,7 @@ function drawHome() {
   $('#hPlan').onclick = e => { e.preventDefault(); go('plan'); };
   if ($('#hProg')) $('#hProg').onclick = e => { e.preventDefault(); go('prog'); };
   document.querySelectorAll('.bk').forEach(el => el.onclick = () => openBook(el.dataset.b));
-  document.querySelectorAll('.agl [data-id]').forEach(el => el.onclick = () => { go('plan'); setTimeout(() => editItem(S.plan.find(x => x.id === el.dataset.id)), 30); });
+  document.querySelectorAll('.agl [data-id]').forEach(el => el.onclick = () => { go('plan'); setTimeout(() => openItem(el.dataset.id), 30); });
   document.querySelectorAll('.agl [data-q]').forEach(el => el.onclick = () => { go('prac'); openQ(el.dataset.q); });
 }
 
@@ -1583,8 +1733,8 @@ async function renderRef(F) {
     if ((R.cases || []).length) { const cs = {}; for (const c of R.cases) for (const k of c.concepts || []) cs[k] = (cs[k] || 0) + 1;
       h += `<select id="rfc" style="width:auto"><option value="">All concepts</option>${Object.entries(cs).sort((a, b) => b[1] - a[1]).map(([k, n]) => `<option value="${esc(k)}" ${F.c === k ? 'selected' : ''}>${esc(k)} (${n})</option>`).join('')}</select>`; }
     h += '</div>';
-    if ((R.formulas || []).length) { const fs = R.formulas.filter(f => hit(f) && !/^[ivxlc]+$/i.test(f.page || '')), groups = {}; for (const f of fs) (groups[f.topic] = groups[f.topic] || []).push(f);
-      h += Object.entries(groups).map(([tp, l]) => `<h3>${esc(tname(tp))}</h3><div class="card lst fsheet">${l.map(f => `<div><div class="fn">${esc(f.name)}<a href="#" class="meta" data-bp="${esc(f.page)}">p. ${esc(f.page)}</a></div><div class="fx">${(() => { try { return katex.renderToString(f.latex, {displayMode: true, throwOnError: false}); } catch (e) { return esc(f.latex); } })()}</div>${f.where ? `<div class="meta">${mdx(f.where, true)}</div>` : ''}${f.note ? `<div class="meta">${mdx(f.note, true)}</div>` : ''}</div>`).join('')}</div>`).join('') || '<p class="meta">No matches.</p>';
+    if ((R.formulas || []).length) { const fs = R.formulas.filter(f => hit(f) && !/^[ivxlc]+$/i.test(f.page || '')), groups = {}; for (const f of fs) (groups[f.topic] = groups[f.topic] || []).push(f); const pgn = l => Math.min(...l.map(f => parseInt(f.page) || 1e4));
+      h += Object.entries(groups).sort((a, b) => pgn(a[1]) - pgn(b[1])).map(([tp, l]) => `<h3>${esc(tname(tp))}</h3><div class="card lst fsheet">${l.map(f => `<div><div class="fn">${esc(f.name)}<a href="#" class="meta" data-bp="${esc(f.page)}">p. ${esc(f.page)}</a></div><div class="fx">${(() => { try { return katex.renderToString(f.latex, {displayMode: true, throwOnError: false}); } catch (e) { return esc(f.latex); } })()}</div>${f.where ? `<div class="meta">${mdx(f.where, true)}</div>` : ''}${f.note ? `<div class="meta">${mdx(f.note, true)}</div>` : ''}</div>`).join('')}</div>`).join('') || '<p class="meta">No matches.</p>';
       const cn = (R.constants || []).filter(hit); if (cn.length) h += `<h3>Constants and data</h3><div class="card"><table class="ctab"><tbody>${cn.map(c => `<tr><td>${esc(c.name)}</td><td>${mdx('$' + c.symbol + '$', true)}</td><td class="num">${mdx('$' + c.value + '$', true)}</td><td><a href="#" class="meta" data-bp="${esc(c.page)}">p. ${esc(c.page)}</a></td></tr>`).join('')}</tbody></table></div>`; }
     if ((R.cases || []).length) { const cs = R.cases.filter(c => hit(c) && (!F.c || (c.concepts || []).includes(F.c)));
       h += `<p class="meta">${cs.length} ${B.subject.startsWith('TOK') ? 'real-life examples' : 'case studies'}</p><div class="grid cases">${cs.map((c, i) => `<div class="card case"><div class="row" style="gap:6px;align-items:baseline"><b>${esc(c.title)}</b><span class="sp"></span><a href="#" class="meta" data-bp="${esc(c.page)}">p. ${esc(c.page)}</a></div><div class="meta">${esc([c.region, c.years].filter(Boolean).join(' · '))}</div><p>${esc(c.summary)}</p><div>${(c.concepts || []).map(k => `<span class="tag">${esc(k)}</span>`).join('')}</div><button class="ghost" data-use="${R.cases.indexOf(c)}"><svg class="i"><use href="#i-spark"/></svg>${B.subject.startsWith('TOK') ? 'Use in essay / exhibition' : 'Use in an essay'}</button></div>`).join('')}</div>`; }

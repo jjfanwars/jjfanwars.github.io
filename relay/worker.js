@@ -511,6 +511,15 @@ async function ibRoute(req, env, CORS, u) {
     const r = await db('kvget', {k: 'plan:' + uk}); return new Response(r.body, {headers: H});
   }
   if (op === 'agent') return planAgent(b, env, db, J, uk, who);
+  if (op === 'calfetch') { // linked Google/Outlook/school calendars: fetch their secret .ics link server-side (no CORS in the browser); parsed in the app
+    let url = String(b.url || '').trim().replace(/^webcals?:\/\//i, 'https://'); let U; try { U = new URL(url); } catch (e) { return J({err: 'That is not a link'}, 400); }
+    if (U.protocol !== 'https:' && U.protocol !== 'http:') return J({err: 'Use the https:// or webcal:// link'}, 400);
+    try { const r = await fetch(U.toString(), {headers: {'user-agent': 'IB-Study-Calendar/1.0', accept: 'text/calendar,*/*'}, cf: {cacheTtl: 300}, redirect: 'follow'});
+      if (!r.ok) return J({err: 'The calendar link returned HTTP ' + r.status + (r.status === 404 || r.status === 403 ? ' (check it is the secret/published iCal link)' : '')}, 502);
+      const t = await r.text(); if (!/BEGIN:VCALENDAR/i.test(t.slice(0, 2000))) return J({err: 'That link is not an iCal (.ics) calendar'}, 400);
+      return J({ics: t.slice(0, 3e6)});
+    } catch (e) { return J({err: 'Could not reach that calendar'}, 502); }
+  }
   // sharing between accounts by first name: decks, notes/ideas, mind maps, questions, pages land in the friend's inbox
   if (['send', 'inbox', 'inboxdel', 'chatsend', 'chats', 'chat'].includes(op) && !uk) return J({err: 'sign in first'}, 401);
   // chat between friends: thread 'chat:a|b' (sorted keys), each person's thread list 'chats:<key>' = {otherKey: {name, t, last, me}}
@@ -671,12 +680,12 @@ export class IB {
 }
 
 // Planner agent: Claude Sonnet with tools over the planner list (list/add/update/delete), looping server-side until it answers.
-// Items: {id, kind: class|homework|exam|event|task, title, subject, date: YYYY-MM-DD, time?: HH:MM, end?: HH:MM, rep?: 'weekly', until?, done?, notes?}
+// Items: {id, kind: class|homework|exam|event|task, title, subject, date: YYYY-MM-DD, time?: HH:MM, end?: HH:MM, rep?: daily|weekly|fortnightly|monthly, until?, done?, notes?}
 const PLAN_TOOLS = [
   {name: 'list_items', description: 'List planner items whose date (or a weekly repeat) falls between from and to inclusive (YYYY-MM-DD). Also returns undone homework/tasks that are overdue. Use it before answering questions about specific dates beyond the snapshot.',
     input_schema: {type: 'object', properties: {from: {type: 'string'}, to: {type: 'string'}, query: {type: 'string', description: 'optional text filter on title/subject/notes'}}, required: ['from', 'to'], additionalProperties: false}},
   {name: 'add_item', description: 'Add one planner item. Use kind "homework" for things due (date = due date), "exam" for tests and exams, "class" for timetable lessons (usually rep weekly), "event" for anything else with a time, "task" for to-dos.',
-    input_schema: {type: 'object', properties: {kind: {type: 'string', enum: ['class', 'homework', 'exam', 'event', 'task']}, title: {type: 'string'}, subject: {type: 'string'}, date: {type: 'string', description: 'YYYY-MM-DD'}, time: {type: 'string', description: 'HH:MM 24h, optional'}, end: {type: 'string', description: 'HH:MM 24h, optional'}, rep: {type: 'string', enum: ['none', 'weekly']}, until: {type: 'string', description: 'last date of a weekly repeat, optional'}, notes: {type: 'string'}}, required: ['kind', 'title', 'date'], additionalProperties: false}},
+    input_schema: {type: 'object', properties: {kind: {type: 'string', enum: ['class', 'homework', 'exam', 'event', 'task']}, title: {type: 'string'}, subject: {type: 'string'}, date: {type: 'string', description: 'YYYY-MM-DD'}, time: {type: 'string', description: 'HH:MM 24h, optional'}, end: {type: 'string', description: 'HH:MM 24h, optional'}, rep: {type: 'string', enum: ['none', 'daily', 'weekly', 'fortnightly', 'monthly']}, until: {type: 'string', description: 'last date of a repeat, optional'}, notes: {type: 'string'}}, required: ['kind', 'title', 'date'], additionalProperties: false}},
   {name: 'update_item', description: 'Change fields of an existing item by id (e.g. move the date, mark done: true, edit notes). Only the given fields change.',
     input_schema: {type: 'object', properties: {id: {type: 'string'}, changes: {type: 'object', description: 'fields to set: kind,title,subject,date,time,end,rep,until,notes,done'}}, required: ['id', 'changes'], additionalProperties: false}},
   {name: 'delete_item', description: 'Delete an item by id. Only when the student clearly asks to remove it.',
@@ -684,13 +693,16 @@ const PLAN_TOOLS = [
 ];
 const dAdd = (d, n) => { const x = new Date(d + 'T12:00:00Z'); x.setUTCDate(x.getUTCDate() + n); return x.toISOString().slice(0, 10); };
 function planOccurs(it, from, to) { // dates of an item inside [from, to]
-  if (it.rep !== 'weekly') return it.date >= from && it.date <= to ? [it.date] : [];
-  const out = []; let d = it.date; const end = it.until && it.until < to ? it.until : to;
-  if (d < from) { const k = Math.floor((Date.parse(from) - Date.parse(d)) / 864e5 / 7); d = dAdd(d, 7 * k); if (d < from) d = dAdd(d, 7); }
-  for (; d <= end && out.length < 60; d = dAdd(d, 7)) out.push(d);
+  const end = it.until && it.until < to ? it.until : to, out = [];
+  if (it.rep === 'monthly') { const [y, m, dd] = it.date.split('-').map(Number); for (let k = 0; k < 600 && out.length < 60; k++) { const x = new Date(Date.UTC(y, m - 1 + k, dd)); if (x.getUTCDate() !== dd) continue; const s = x.toISOString().slice(0, 10); if (s > end) break; if (s >= from) out.push(s); } return out; }
+  const st = {daily: 1, weekly: 7, fortnightly: 14}[it.rep];
+  if (!st) return it.date >= from && it.date <= to ? [it.date] : [];
+  let d = it.date;
+  if (d < from) { const k = Math.floor((Date.parse(from) - Date.parse(d)) / 864e5 / st); d = dAdd(d, st * k); if (d < from) d = dAdd(d, st); }
+  for (; d <= end && out.length < 60; d = dAdd(d, st)) out.push(d);
   return out;
 }
-const planLine = (it, d) => `[${it.id}] ${d || it.date}${it.time ? ' ' + it.time + (it.end ? '-' + it.end : '') : ''} ${it.kind}${it.subject ? ' (' + it.subject + ')' : ''}: ${it.title}${it.rep === 'weekly' ? ' [weekly' + (it.until ? ' until ' + it.until : '') + ']' : ''}${it.done ? ' [done]' : ''}${it.notes ? ' - ' + it.notes : ''}`;
+const planLine = (it, d) => `[${it.id}] ${d || it.date}${it.time ? ' ' + it.time + (it.end ? '-' + it.end : '') : ''} ${it.kind}${it.subject ? ' (' + it.subject + ')' : ''}: ${it.title}${it.rep ? ' [' + it.rep + (it.until ? ' until ' + it.until : '') + ']' : ''}${it.done ? ' [done]' : ''}${it.notes ? ' - ' + it.notes : ''}`;
 function planList(items, from, to, q, today) {
   q = (q || '').toLowerCase(); const rows = [];
   for (const it of items) { if (q && !(it.title + ' ' + (it.subject || '') + ' ' + (it.notes || '')).toLowerCase().includes(q)) continue;
@@ -759,7 +771,8 @@ async function planAgent(b, env, db, J, uk, who) {
   const snap = () => 'Planner snapshot (next 21 days, plus overdue):\n' + planList(items, today, dAdd(today, 21), '', today);
   const msgs = (b.messages || []).slice(-20).map(m => ({role: m.role === 'assistant' ? 'assistant' : 'user', content: String(m.content || '').slice(0, 8000)}));
   if (!msgs.length || msgs[msgs.length - 1].role !== 'user') return J({err: 'empty message'}, 400);
-  const last = msgs[msgs.length - 1]; last.content = snap() + '\n\n---\n' + last.content;
+  const ext = String(b.ext || '').slice(0, 8000); // events from the student's linked Google/Outlook calendars (read-only)
+  const last = msgs[msgs.length - 1]; last.content = snap() + (ext ? '\n\nFrom their linked calendars (read-only, you cannot change these; plan around them):\n' + ext : '') + '\n\n---\n' + last.content;
   let text = '';
   for (let step = 0; step < 8; step++) {
     const r = await fetch('https://api.anthropic.com/v1/messages', {method: 'POST',
@@ -783,7 +796,7 @@ async function planAgent(b, env, db, J, uk, who) {
           if (!/^\d{4}-\d\d-\d\d$/.test(a.date || '')) throw new Error('date must be YYYY-MM-DD');
           const it = {id: Math.random().toString(36).slice(2, 8), kind: a.kind, title: String(a.title).slice(0, 200), date: a.date};
           for (const k of ['subject', 'time', 'end', 'until', 'notes']) if (a[k]) it[k] = String(a[k]).slice(0, 1000);
-          if (a.rep === 'weekly') it.rep = 'weekly';
+          if (['daily', 'weekly', 'fortnightly', 'monthly'].includes(a.rep)) it.rep = a.rep;
           items.push(it); changed++; out = 'added ' + planLine(it);
         } else if (c.name === 'update_item') {
           const it = items.find(x => x.id === a.id); if (!it) throw new Error('no item with id ' + a.id);
@@ -804,7 +817,7 @@ async function planAgent(b, env, db, J, uk, who) {
 function toIcs(items) {
   const esc = s => String(s || '').replace(/[\;,]/g, m => '\\' + m).replace(/\n/g, '\\n');
   const dt = (d, t) => d.replace(/-/g, '') + (t ? 'T' + t.replace(':', '') + '00' : '');
-  const L = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//IB Study//Planner//EN', 'X-WR-CALNAME:IB Planner', 'CALSCALE:GREGORIAN'];
+  const L = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//IB Study//Planner//EN', 'X-WR-CALNAME:IB Planner', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH', 'REFRESH-INTERVAL;VALUE=DURATION:PT1H', 'X-PUBLISHED-TTL:PT1H'];
   const stamp = new Date().toISOString().replace(/[-:]/g, '').slice(0, 15) + 'Z';
   for (const it of items) {
     if (!/^\d{4}-\d\d-\d\d$/.test(it.date || '')) continue;
@@ -812,7 +825,12 @@ function toIcs(items) {
     L.push('BEGIN:VEVENT', 'UID:' + it.id + '@ibstudy', 'DTSTAMP:' + stamp, 'SUMMARY:' + esc((it.done ? '✓ ' : '') + pre + it.title + (it.subject ? ' (' + it.subject + ')' : '')));
     if (it.time) { L.push('DTSTART:' + dt(it.date, it.time)); L.push('DTEND:' + dt(it.date, it.end || (String(Math.min(23, +it.time.slice(0, 2) + 1)).padStart(2, '0') + it.time.slice(2)))); }
     else { L.push('DTSTART;VALUE=DATE:' + dt(it.date)); L.push('DTEND;VALUE=DATE:' + dt(dAdd(it.date, 1))); }
-    if (it.rep === 'weekly') L.push('RRULE:FREQ=WEEKLY' + (it.until ? ';UNTIL=' + dt(it.until) + (it.time ? 'T235959' : '') : ''));
+    const rr = {daily: 'FREQ=DAILY', weekly: 'FREQ=WEEKLY', fortnightly: 'FREQ=WEEKLY;INTERVAL=2', monthly: 'FREQ=MONTHLY'}[it.rep];
+    if (rr) L.push('RRULE:' + rr + (it.until ? ';UNTIL=' + dt(it.until) + (it.time ? 'T235959' : '') : ''));
+    // phone reminders: exams the evening before + an hour before, homework/to-dos the evening before (all-day events start at midnight)
+    const al = (tr, what) => L.push('BEGIN:VALARM', 'ACTION:DISPLAY', 'DESCRIPTION:' + esc(what), 'TRIGGER:' + tr, 'END:VALARM');
+    if (!it.done && it.kind === 'exam') { al(it.time ? '-PT14H' : '-PT5H', 'Exam tomorrow: ' + it.title); if (it.time) al('-PT1H', 'Exam in 1 hour: ' + it.title); }
+    else if (!it.done && (it.kind === 'homework' || it.kind === 'task')) al(it.time ? '-PT14H' : '-PT5H', (it.kind === 'homework' ? 'Due tomorrow: ' : 'To do tomorrow: ') + it.title);
     if (it.notes) L.push('DESCRIPTION:' + esc(it.notes));
     L.push('END:VEVENT');
   }
