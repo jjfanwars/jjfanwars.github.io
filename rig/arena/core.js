@@ -178,6 +178,8 @@ const Snd = {
   step(p, wet) { burst(wet ? 900 : 700, 1, wet ? .12 : .08, .07, 'bandpass', p); },
   whiz() { burst(3500, 2, .12, .12, 'bandpass'); },
   ping() { tone(1200, .15, .3, 'sine'); },
+  heart(k) { k = clamp(k, .25, 1); tone(62, .5 * k, .14, 'sine', null, 40); tone(55, .38 * k, .16, 'sine', null, 36, .19); },
+  streak(n) { const b = 660 * Math.pow(1.12, Math.min(5, n)); [0, 1, 2].forEach(i => tone(b * [1, 1.26, 1.5][i], .2, .22, 'triangle', null, null, .11 + i * .07)); },
 };
 // engine hum per boat: one oscillator + filtered noise into a panner, gain follows throttle
 function engineVoice() { if (!A.on) return null; const c = A.ctx, p = aPan(0, 0, 0, 6), o = c.createOscillator(), g = c.createGain(), f = c.createBiquadFilter(); o.type = 'sawtooth'; o.frequency.value = 50; f.type = 'lowpass'; f.frequency.value = 400; g.gain.value = 0; o.connect(f); f.connect(g); g.connect(p); o.start(); return {p, o, g, f}; }

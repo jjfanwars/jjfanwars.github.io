@@ -5,6 +5,13 @@ const show = id => { for (const s of ['menu', 'lobby', 'pause', 'dead', 'end']) 
 function showMsg(t, dur = 2.5) { const e = $('msg'); e.innerHTML = t; e.style.opacity = 1; clearTimeout(showMsg.T); showMsg.T = setTimeout(() => e.style.opacity = 0, dur * 1000); }
 function hitMark(k) { const e = $('hm'); e.className = k || ''; e.style.opacity = 1; clearTimeout(hitMark.T); hitMark.T = setTimeout(() => e.style.opacity = 0, k === 'k' ? 380 : 160); if (k !== 'k') Snd.hit(k === 'h'); }
 function dmgDir(x, z) { if (!x && !z) return; const a = Math.atan2(-(x - P.x), -(z - P.z)), rel = angD(P.yaw, a), d = document.createElement('div'); d.style.transform = `rotate(${(-rel * 180 / PI).toFixed(0)}deg)`; $('dmgDir').appendChild(d); requestAnimationFrame(() => { d.style.opacity = 1; setTimeout(() => { d.style.opacity = 0; setTimeout(() => d.remove(), 700); }, 500); }); }
+// death card detail: how far away the killer was and how much health they had left (kh comes from the host)
+function killInfo(e) { const a = AVS.get(e.by), bits = []; if (a && a.rp && P) { const d = Math.hypot(a.rp[0] - P.x, a.rp[1] - P.y, a.rp[2] - P.z); if (d > 1.5) bits.push(Math.round(d) + ' m away'); } if (e.kh) bits.push(`they had <b style="color:${e.kh <= 30 ? '#ff7a5a' : '#f0d080'}">${e.kh} HP</b> left`); return bits.length ? `<small style="display:block;font-size:14px;color:var(--dim);margin-top:4px">${bits.join(' · ')}</small>` : ''; }
+// kills in quick succession (within 4.5 s) and in one life get a callout and a rising chime
+function killStreak(vic, e) { const t = G.t; G.streak = (G.streak || 0) + 1; G.multi = t - (G.multiT || -99) < 4.5 ? (G.multi || 1) + 1 : 1; G.multiT = t;
+  const m = ['', '', 'Double kill', 'Triple kill', 'Quad kill'][Math.min(4, G.multi)] || 'Rampage', s = G.streak >= 3 && G.streak % 2 === 1 ? G.streak + ' in a row' : '';
+  showMsg(`You took out ${esc(vic)}${e.hd ? ' · <b style="color:#ffd060">headshot</b>' : ''}${G.multi > 1 || s ? `<br><b style="color:var(--acc);font-size:1.25em;letter-spacing:.08em">${[G.multi > 1 ? m : '', s].filter(Boolean).join(' · ').toUpperCase()}</b>` : ''}`, G.multi > 1 || s ? 2.6 : 2);
+  if (G.multi > 1 || s) Snd.streak(Math.max(G.multi, s ? 2 : 0)); }
 const FEED = [];
 function feed(e) { const el = document.createElement('div'), me = myId(), nm = id => { const t = teamMode() ? TEAM_CSS[teamOf(id)] : '#fff'; return `<span style="color:${t}">${esc(nameOf(id))}</span>`; };
   if (e.k === 'bs') el.innerHTML = `${e.by ? nm(e.by) + ' sank ' : ''}<b>${BOATS[e.b] && BOATS[e.b].team != null ? TEAM_N[BOATS[e.b].team] + ' ' : ''}gunboat</b> ⚓`;
@@ -35,12 +42,15 @@ function miniFrame() { const c = $('mini'), g = c.getContext('2d'), W = 300; g.c
   for (const a of AVS.values()) { if (!a.vis || !a.alive || !a.rp) continue; const en = isEnemy(a.id); if (en && !(a.flT > -1.5 && a.shT > G.t)) continue; g.fillStyle = en ? '#ff5040' : '#7fd0ff'; g.beginPath(); g.arc(px(a.rp[0]), pz(a.rp[2]), 4, 0, TAU); g.fill(); }
   PICKS.forEach((q, i) => { if (PK[i] || !WPN[q.k]) return; g.fillStyle = '#f0b040'; g.fillRect(px(q.x) - 2.5, pz(q.z) - 2.5, 5, 5); });
   if (P.alive) { g.save(); g.translate(px(P.x), pz(P.z)); g.rotate(-P.yaw); g.fillStyle = '#fff'; g.beginPath(); g.moveTo(0, -8); g.lineTo(5, 6); g.lineTo(-5, 6); g.fill(); g.restore(); } }
+// reload progress under the ammo count, and what to do when the magazine is empty
+function ammoExtra(W, a) { const r = $('relBar'), on = !P.seat && P.alive && P.relT > 0; r.classList.toggle('hidden', !on); if (on) r.firstChild.style.width = clamp(1 - P.relT / (W.rel || 1), 0, 1) * 100 + '%';
+  setT('ammoH', P.seat || !P.alive || on ? '' : a[0] <= 0 && a[1] <= 0 ? 'OUT OF AMMO · Q switch weapon' : a[0] <= 0 ? 'R reload' : a[0] <= Math.ceil(W.mag * .25) && a[1] > 0 && W.mag > 2 ? 'Low · R reload' : ''); }
 const fmtT = s => Math.floor(s / 60) + ':' + String(Math.floor(s % 60)).padStart(2, '0');
 function hud(dt) {
   const k = wNow(), W = WPN[k], a = P.ammo[k] || [0, 0];
   setT('hpN', Math.max(0, Math.ceil(P.alive ? P.hp : 0)) + '<small>' + (P.alive && (HS.get(P.id) || {}).prot > G.t ? 'PROTECTED' : '') + '</small>'); $('hpBar').firstChild.style.width = clamp(P.hp, 0, 100) + '%';
   $('airBar').classList.toggle('hidden', !(P.uw || P.air < 1)); $('airBar').firstChild.style.width = P.air * 100 + '%';
-  setT('wName', P.seat ? (P.seat.r === 'd' ? 'Helm' : 'Deck gun') : W.n + (P.relT > 0 ? ' · reloading' : '')); setT('ammoN', P.seat ? '' : `${a[0]}<small> / ${a[1]}</small>`); setT('nades', P.seat ? '' : '● '.repeat(P.nades) + '<small style="color:#999"> grenades (G)</small>');
+  setT('wName', P.seat ? (P.seat.r === 'd' ? 'Helm' : 'Deck gun') : W.n + (P.relT > 0 ? ' · reloading' : '')); setT('ammoN', P.seat ? '' : `<span style="color:${a[0] <= 0 ? '#ff5a4a' : a[0] <= Math.max(1, Math.ceil(W.mag * .25)) ? '#ffb040' : 'inherit'}">${a[0]}</span><small> / ${a[1]}</small>`); ammoExtra(W, a); setT('nades', P.seat ? '' : '● '.repeat(P.nades) + '<small style="color:#999"> grenades (G)</small>');
   const tl = G.set.time ? fmtT(Math.max(0, G.tl)) : '';
   if (teamMode()) setT('score', `<span style="color:${TEAM_CSS[0]}">RED ${G.ts[0]}</span> &nbsp;—&nbsp; <span style="color:${TEAM_CSS[1]}">${G.ts[1]} BLUE</span><small>${G.set.goal ? 'FIRST TO ' + G.set.goal : 'NO LIMIT'}${tl ? ' · ' + tl : ''}</small>`);
   else { const L = Object.entries(G.pl).sort((x, y) => y[1][5] - x[1][5]), mine = (G.pl[myId()] || [])[5] || 0, top = L[0]; setT('score', `YOU ${mine} &nbsp;·&nbsp; ${top && top[0] !== myId() ? esc(nameOf(top[0])) + ' ' + top[1][5] : (L[1] ? 'NEXT ' + L[1][1][5] : 'LEADING')}<small>${G.set.goal ? 'FIRST TO ' + G.set.goal : 'NO LIMIT'}${tl ? ' · ' + tl : ''}</small>`); }
@@ -52,6 +62,7 @@ function hud(dt) {
   if (P.alive && P.seat) pr = ''; $('prompt').classList.toggle('hidden', !pr || !P.alive); setT('prompt', pr);
   // crosshair
   const xs = clamp(((W.spr || .01) * P.spr) * 900, 4, 60), xh = $('xh'); xh.style.display = P.alive && !(P.ads && W.zoom >= 4 && !P.seat) && !G.deadOpen ? '' : 'none'; if (xh._s !== Math.round(xs)) { xh._s = Math.round(xs); const L = xh.children; L[0].style.top = (-xs - 8) + 'px'; L[1].style.top = xs + 'px'; L[2].style.left = (-xs - 8) + 'px'; L[3].style.left = xs + 'px'; }
+  if (P.alive && P.hp < 30 && !G.pausedAt && (G.hbT = (G.hbT || 0) - dt) <= 0) { G.hbT = .55 + P.hp / 30 * .5; Snd.heart(1 - P.hp / 40); }
   G.hurt = Math.max(0, (G.hurt || 0) - dt * 2); $('vigD').style.opacity = Math.max(G.hurt * .8, P.alive ? clamp((45 - P.hp) / 45, 0, 1) * .6 : 0);
   $('board').classList.toggle('hidden', !(K.Tab && G.on)); if (K.Tab && (G.bT = (G.bT || 0) - dt) <= 0) { G.bT = .3; setT('boardT', boardHTML()); }
   if (G.over && G.endShown != null) setT('endS', isHost() ? `Next match in ${Math.max(0, Math.ceil(14 - (G.t - G.endT)))} s` : 'Next match starts soon');

@@ -2947,7 +2947,7 @@ function stepPlayer(dt) {
     P.deep = 0;
     if (stand && P.y - f.y < .6 && !(P.vy > 0)) { const iv = -(P.vy || 0); P.y = Math.max(f.y - .2, mix(P.y, f.y, Math.min(1, dt * 14))); P.vy = 0; if (iv > 3.5) landed(iv);
       if (K.Space && !P.down && !P.cr && P.hd < 0 && !P.seat && !(G.jumpT > G.t) && sackUsed(P.sack) < 9) { P.vy = 5.6; P.y += .02; G.jumpT = G.t + .45; } }
-    else { P.vy = (P.vy || 0) - 20 * dt; P.y += P.vy * dt; if (stand && P.y < f.y) { const iv = -P.vy; P.y = f.y; P.vy = 0; if (iv > 3.5) landed(iv); } if (!stand && P.y < .1) { P.sw = 1; P.cr = 0; P.y = 0; P.vy = 0; P.ob = 0; Snd.splash(); showMsg('You are in the water! Swim to land or a ladder (E). Do not stay out in deep water.', '', 3); } }
+    else { P.vy = (P.vy || 0) - 20 * dt; P.y += P.vy * dt; if (stand && P.y < f.y) { const iv = -P.vy; P.y = f.y; P.vy = 0; if (iv > 3.5) landed(iv); } if (!stand && P.y < .1) { P.sw = 1; P.cr = 0; P.y = 0; P.vy = 0; P.ob = 0; Snd.splash(); splashMsg(); } }
   }
   if (!P.sw && f && f.s.k === 'boat' && Math.abs(P.y - f.y) < .3) { P.ob = 1; P.bl = bW2L(P.x, P.z); }
   else if (!P.sw && P.ob && BOAT && !(B.sink > 0)) { const l = bW2L(P.x, P.z), fy = floorAtBoat(l[0], l[1], P.y + .05); if (fy > -1e8 && P.y - fy < 3) P.bl = l; else P.ob = 0; } // mid-jump over boat floor you stay aboard (a sub's floor is below the sea; a moving deck carries you)
@@ -11345,3 +11345,30 @@ function nkLadders() { const H = HC(); if (!H.nuke || !BOAT) return; const R = N
   for (const o of kill) { o.parent.remove(o); o.geometry.dispose(); } }); }
 // the Kraken's screw: the research sub's propeller sat at its own stern (z 10.45), mid-hull inside the Kraken; it goes into the pump-jet shroud
 { buildBoat = after(buildBoat, function (r) { const H = HC(); if (!H.nuke || !BOAT || !BOAT.userData.prop) return; const p = BOAT.userData.prop; p.position.set(0, SUB.CAS - .05 - NUKE.RB, 68.3); p.scale.setScalar(1.55); BHELM[0] = -.68; BHELM[1] = -11.4; }); } // and the helm camera sits in the helmsman's seat (it sat behind both seat backs)
+
+// ---------------- water and hull feedback (24 Nov 2026, second polish pass)
+// falling in: the full advice the first two times, then only a short reminder in deep water at most every 45 s
+function splashMsg() { G.splashN = (G.splashN || 0) + 1; wetLens(5);
+  if (G.splashN <= 2) showMsg('You are in the water! Swim to land or a ladder (E). Do not stay out in deep water.', '', 3);
+  else if (!((P.own && P.own.suit) || 0) && seaBed(P.x, P.z) < -3 && !(G.splashMT > G.t)) { G.splashMT = G.t + 45; showMsg('Deep water. Swim for land or a ladder.', '', 2); } }
+// water running down the lens when you break the surface or climb out (uses the rain's lens drops)
+function wetLens(n) { const c = $('drops'); if (!c || !c.width) return; for (let i = 0; i < n; i++) DROPS.push({x: Math.random() * c.width, y: Math.random() * c.height * .75, r: 3 + Math.random() * 7, t: Math.random() * .3, run: Math.random() < .7, v: Math.random() * 20}); if (DROPS.length > 60) DROPS.splice(0, DROPS.length - 60); }
+const WF = {dv: 0 /* deepest point of this dive */, sw: 0, min: 1, warn: 0, hbT: 0, hull: 0};
+{ stepPlayer = after(stepPlayer, function (r, dt) { if (!alivePlay()) { WF.min = 1; WF.warn = 0; WF.dv = 0; WF.sw = 0; return; } waterFeel(dt); }); }
+function waterFeel(dt) {
+  const dv = P.sw ? P.dv || 0 : 0, air = P.air ?? 1, su = (P.own && P.own.suit) || 0, low = dv > .4 && air < .25;
+  if (dv > .5 && DROPS.length) DROPS.length = 0; // no lens drops under water
+  if (dv > .4) { WF.min = Math.min(WF.min, air);
+    if (low && (WF.hbT -= dt) <= 0) { WF.hbT = .6 + air * 2; if (A.on && Snd.heart && !((P.fear || 0) > .2)) Snd.heart(.5 + (.25 - air) * 2); }
+    if (low && !WF.warn) { WF.warn = 1; showMsg(su ? 'Air low. Head up: hold Space.' : 'Your lungs are burning. Surface now: hold Space.', '', 2.5); } }
+  // surfacing: a gasp if you cut it close, water off the mask
+  WF.dv = Math.max(WF.dv, dv); if (WF.dv > .6 && dv < .15 && P.sw) { if (WF.min < .45 && A.on && Snd.gasp) Snd.gasp(); wetLens(WF.dv > 3 ? 16 : 9); WF.min = 1; WF.warn = 0; WF.dv = 0; } else if (dv < .15) WF.dv = 0;
+  if (WF.sw && !P.sw) wetLens(7); // climbed or waded out
+  WF.sw = P.sw ? 1 : 0;
+  { const d = $('dive'); if (d && d.classList.contains('low') !== low) d.classList.toggle('low', low); }
+  // hull below a quarter while aboard: say what to do about it, once per drop
+  if (P.ob && BOAT && !(B.sink > 0)) { const f = B.hull / Math.max(1, hullMax());
+    if (f < .25 && !WF.hull) { WF.hull = 1; const o = P.own || {}, has = (P.sack || []).includes('patch') || (B.hold || []).includes('patch');
+      showMsg(o.kits ? 'Hull critical! Press N to use a repair kit.' : has ? 'Hull critical! Patch her at the patch box on deck.' : 'Hull critical! Make for the jetty or a port: repairs there are free.', '', 4); }
+    else if (f > .4) WF.hull = 0; } }
+if (TEST && window.__S) Object.assign(window.__S, {WF, wetLens, splashMsg, DROPS});
