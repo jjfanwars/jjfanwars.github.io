@@ -228,8 +228,8 @@ mark{background:#ffe28a;color:#1c2230;border-radius:3px;padding:0 1px}
 .tag.g{background:var(--good2);color:var(--good)}
 .tag.r{background:var(--red2);color:var(--red)}
 .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-.filters{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 16px}
-.filters select{width:auto}
+.filters{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin:0 0 16px}
+.filters select{width:100%;min-width:0}.filters #ft{grid-column:span 2;order:-1}.filters .fcount{grid-column:1/-1}
 .prac{max-width:880px;margin:0 auto}
 .prac h2,.home h2{font:600 26px/1.2 var(--f-read);letter-spacing:-.015em;margin:0}
 .qbig{overflow-x:auto;padding:22px 26px;font-family:var(--f-read);font-size:19px;line-height:1.55}
@@ -353,7 +353,7 @@ mark{background:#ffe28a;color:#1c2230;border-radius:3px;padding:0 1px}
 .ef .seg{flex-wrap:wrap}
 a.btn{display:inline-flex;padding:7px 12px;border-radius:8px;text-decoration:none;background:var(--acc);color:var(--acc-ink);font-weight:600}
 @media (max-width:900px){
-  .hgrid{display:flex;flex-direction:column;gap:0}.hgrid>div{display:contents}.hgrid>div:first-child>.hsec{order:1}.hgrid>div:last-child>.hsec{order:2}.hgrid>div>.hsec.bks{order:3}
+  .hgrid{display:flex;flex-direction:column;gap:0;align-items:stretch}.hgrid>div{display:contents}.hgrid>div:first-child>.hsec{order:1}.hgrid>div:last-child>.hsec{order:2}.hgrid>div>.hsec.bks{order:3}
   .acts{grid-template-columns:repeat(3,1fr)}
   .plan{grid-template-columns:1fr}.pside{order:2}
   .mc{min-height:58px}.chip{font-size:10.5px;padding:1px 4px}.chip::before{display:none}.mgrid .chip{font-size:0;height:5px;padding:0;margin:3px 1px;border-radius:3px;background:var(--c)}.mgrid .chip.k-ext{background:color-mix(in srgb,var(--c) 45%,transparent);border:none}.mgrid .more{font-size:10px}.pl2 span{display:none}
@@ -361,9 +361,11 @@ a.btn{display:inline-flex;padding:7px 12px;border-radius:8px;text-decoration:non
   .wrap{grid-template-columns:minmax(0,1fr)}
   #app{grid-template-columns:1fr}
   #side{display:none}
-  #bot{display:grid;grid-template-columns:repeat(8,1fr);position:fixed;left:0;right:0;bottom:0;z-index:12;background:var(--panel);border-top:1px solid var(--line);padding:4px 2px calc(4px + env(safe-area-inset-bottom))}
+  #bot{display:grid;grid-template-columns:repeat(6,1fr);position:fixed;left:0;right:0;bottom:0;z-index:12;background:var(--panel);border-top:1px solid var(--line);padding:4px 2px calc(4px + env(safe-area-inset-bottom))}
   #bot button{border:none;background:none;flex-direction:column;gap:2px;font-size:10px;min-width:0;padding:5px 0;color:var(--mut);border-radius:6px}
   #bot button.on{color:var(--acc);font-weight:600}
+  #modal.sheet{align-items:flex-end;padding:0}#modal.sheet .mbox{width:100%;border-radius:16px 16px 0 0;padding:14px 16px calc(14px + env(safe-area-inset-bottom))}
+  .mgo{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}.mgo button{justify-content:flex-start;padding:12px;font-size:15px}.mgo button.on{border-color:var(--acc);color:var(--acc)}
   #bot svg.i{width:20px;height:20px}
   .drawer{bottom:58px}
   .ask{bottom:76px}
@@ -408,6 +410,7 @@ a.btn{display:inline-flex;padding:7px 12px;border-radius:8px;text-decoration:non
 <symbol id="i-full" viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></symbol><symbol id="i-flask" viewBox="0 0 24 24"><path d="M9 3.5h6M10 3.5v6L4.8 18.2A1.5 1.5 0 006.1 20.5h11.8a1.5 1.5 0 001.3-2.3L14 9.5v-6"/><path d="M7.5 14.5h9"/></symbol>
 <symbol id="i-mark" viewBox="0 0 24 24"><path d="M7 4h10v16l-5-3.8L7 20z"/></symbol>
 <symbol id="i-loop" viewBox="0 0 24 24"><path d="M4.5 12a7.5 7.5 0 0112.8-5.3L19.5 9"/><path d="M19.5 4.5V9H15"/><path d="M19.5 12a7.5 7.5 0 01-12.8 5.3L4.5 15"/><path d="M4.5 19.5V15H9"/></symbol>
+<symbol id="i-more" viewBox="0 0 24 24"><circle cx="5.5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="18.5" cy="12" r="1.3"/></symbol>
 <symbol id="i-cap" viewBox="0 0 24 24"><path d="M3 9l9-4 9 4-9 4z"/><path d="M7 11v5c0 1.5 2.5 3 5 3s5-1.5 5-3v-5"/></symbol>
 </svg>
 <div id="login" class="card hide">
@@ -431,7 +434,7 @@ a.btn{display:inline-flex;padding:7px 12px;border-radius:8px;text-decoration:non
   <main id="main"></main>
 </div>
 </div>
-<nav id="bot" class="tabs"><button data-tab="home"><svg class="i"><use href="#i-home"/></svg><span>Home</span></button><button data-tab="rev"><svg class="i"><use href="#i-loop"/></svg><span>Review</span></button><button data-tab="lib"><svg class="i"><use href="#i-book"/></svg><span>Library</span></button><button data-tab="prac"><svg class="i"><use href="#i-pen"/></svg><span>Practice</span></button><button data-tab="terms"><svg class="i"><use href="#i-cards"/></svg><span>Cards</span></button><button data-tab="ref"><svg class="i"><use href="#i-flask"/></svg><span>Ref</span></button><button data-tab="plan"><svg class="i"><use href="#i-cal"/></svg><span>Planner</span></button><button data-tab="prog"><svg class="i"><use href="#i-chart"/></svg><span>Progress</span></button></nav>
+<nav id="bot" class="tabs"><button data-tab="home"><svg class="i"><use href="#i-home"/></svg><span>Home</span></button><button data-tab="rev"><svg class="i"><use href="#i-loop"/></svg><span>Review</span></button><button data-tab="lib"><svg class="i"><use href="#i-book"/></svg><span>Library</span></button><button data-tab="prac"><svg class="i"><use href="#i-pen"/></svg><span>Practice</span></button><button data-tab="plan"><svg class="i"><use href="#i-cal"/></svg><span>Planner</span></button><button id="moreB"><svg class="i"><use href="#i-more"/></svg><span>More</span></button></nav>
 </div>
 <div id="drawer" class="drawer hide"><div class="hd"><span id="dTitle">Ask Claude</span><button class="ghost" id="dClose" aria-label="Close"><svg class="i"><use href="#i-x"/></svg></button></div><div class="chat" id="chat"></div><form class="chatin" id="cf"><textarea id="ci" rows="1" placeholder="Message"></textarea><button class="pri">Send</button></form></div>
 <script>
@@ -440,6 +443,9 @@ const RELAY = (new URLSearchParams(location.search).get('relay') || 'https://jjf
 const $ = s => document.querySelector(s), esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
 const LS = {get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } }, set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }};
 let PASS = LS.get('ib-pass', ''), USER = LS.get('ib-user', null); // USER = {key, name, tok}
+// "finn" / "FINN" -> "Finn" (mixed case is kept as typed); matches the relay's nice()
+const niceName = n => { n = String(n || '').trim().replace(/\s+/g, ' ').slice(0, 30); return n === n.toLowerCase() || n === n.toUpperCase() ? n.toLowerCase().replace(/(^|[\s'-])(\p{L})/gu, (m, a, c) => a + c.toUpperCase()) : n; };
+if (USER && USER.name !== niceName(USER.name)) { USER.name = niceName(USER.name); LS.set('ib-user', USER); }
 const UID = LS.get('ib-uid', null) || (() => { const u = Math.random().toString(36).slice(2, 12); LS.set('ib-uid', u); return u; })(); // anonymous browser id for usage stats
 const UK = () => USER ? USER.key : '', LSK = k => k + ':' + (UK() || 'guest'); // no account = guest: everything stays in this browser
 async function api(op, body = {}) {
@@ -530,7 +536,7 @@ function title(parts) { $('#ttl').innerHTML = parts.map((x, i) => i < parts.leng
   $('#ttl').querySelectorAll('[data-go]').forEach(c => c.onclick = () => go(c.dataset.go)); }
 function shell(t) { // chrome for a screen: nav highlight, contents panel, title
   if (S.tab !== t) closeDrawer();
-  S.tab = t; document.querySelectorAll('.tabs [data-tab]').forEach(b => b.classList.toggle('on', b.dataset.tab === t));
+  S.tab = t; document.querySelectorAll('.tabs [data-tab]').forEach(b => b.classList.toggle('on', b.dataset.tab === t)); $('#moreB').classList.toggle('on', MORE.some(x => x[0] === t));
   const rd = t === 'lib' && S.reading; $('#toc').classList.toggle('hide', !rd); $('#menuBtn').classList.toggle('hide', !rd);
   document.querySelector('.wrap').style.gridTemplateColumns = rd ? '' : 'minmax(0,1fr)'; title([TABN[t]]);
   document.querySelectorAll('#pins [data-b]').forEach(x => x.classList.toggle('on', rd && x.dataset.b === S.book.id));
@@ -764,7 +770,7 @@ function renderPrac(filter) {
     ${has('diff') ? `<select id="fd"><option value="">Any difficulty</option>${[1, 2, 3].map(d => `<option value="${d}" ${+F.diff === d ? 'selected' : ''}>${DIFFN[d]}</option>`).join('')}</select>` : ''}
     ${papers.length ? `<select id="fpp"><option value="">Any paper</option>${papers.map(x => `<option value="${x}" ${F.paper === x ? 'selected' : ''}>Paper ${x}</option>`).join('')}</select>` : ''}
     ${has('lvl') ? `<select id="flv"><option value="">SL + HL</option><option value="SL" ${F.lvl === 'SL' ? 'selected' : ''}>SL only</option><option value="HL" ${F.lvl === 'HL' ? 'selected' : ''}>HL only</option></select>` : ''}
-    ${has('src') ? `<select id="fsr"><option value="">All sources</option><option value="bank" ${F.src === 'bank' ? 'selected' : ''}>Question bank</option><option value="book" ${F.src === 'book' ? 'selected' : ''}>Textbook</option></select>` : ''}<span class="meta">${list.length} question${list.length === 1 ? '' : 's'}</span></div>
+    ${has('src') ? `<select id="fsr"><option value="">All sources</option><option value="bank" ${F.src === 'bank' ? 'selected' : ''}>Question bank</option><option value="book" ${F.src === 'book' ? 'selected' : ''}>Textbook</option></select>` : ''}<span class="meta fcount">${list.length} question${list.length === 1 ? '' : 's'}</span></div>
     <div class="grid">${list.map(q => { const bs = best(q.id); return `<div class="card qc" data-id="${q.id}"><div>${'<span class="tag">' + (KIND[q.kind] || q.kind) + '</span>'}${qTags(q)}${q.marks ? '<span class="tag">' + q.marks + (q.marks === 1 ? ' mark' : ' marks') + '</span>' : ''}${bs >= 0 ? `<span class="tag ${bs < .6 ? 'w' : 'g'}">best ${Math.round(bs * 100)}%</span>` : ''}</div><div class="qt">${(MATH = !!B.math, mdx(preview(q.text), true))}</div><div class="meta">${esc(q.topic ? topicName(B, q.topic) : '')}${q.bp ? ' · p. ' + q.bp : ''}</div></div>`; }).join('') || '<p>No questions match.</p>'}</div></div>`;
   for (const [i, k] of [['fd', 'diff'], ['fpp', 'paper'], ['flv', 'lvl'], ['fsr', 'src']]) if ($('#' + i)) $('#' + i).onchange = e => { F[k] = e.target.value; renderPrac(F); };
   $('#fk').onchange = e => { F.kind = e.target.value; renderPrac(F); }; $('#ft').onchange = e => { F.topic = e.target.value; renderPrac(F); }; $('#fs').onchange = e => { F.st = e.target.value; renderPrac(F); };
@@ -1076,7 +1082,7 @@ function calLink() {
 }
 function openModal(html) {
   let m = $('#modal'); if (!m) { m = document.createElement('div'); m.id = 'modal'; document.body.appendChild(m); m.onclick = e => { if (e.target === m) m.remove(); }; }
-  m.innerHTML = `<div class="card mbox">${html}</div>`; const c = $('#mClose'); if (c) c.onclick = () => m.remove(); return m;
+  m.classList.remove('sheet'); m.innerHTML = `<div class="card mbox">${html}</div>`; const c = $('#mClose'); if (c) c.onclick = () => m.remove(); return m;
 }
 function editItem(it, date, time) {
   const isNew = !it; it = it || {kind: 'homework', title: '', date: date || todayS(), time: time || ''};
@@ -2145,7 +2151,7 @@ function shareBox(it, to) {
     if (!name) return $('#shE').textContent = 'Who to? Type their first name.'; if (isNote && !note) return $('#shE').textContent = 'Write the note first.';
     $('#shGo').disabled = true; $('#shE').innerHTML = '<span class="spin"></span> Sending…';
     try { const r = await api('send', {to: name, kind: it.kind, title: isNote ? (it.title || note.split('\n')[0].slice(0, 80)) : it.title, note, data: it.data || null}); if (r.err) throw new Error(r.err);
-      LS.set(LSK('ib-friends'), [r.to, ...fr.filter(x => x.toLowerCase() !== r.to.toLowerCase())].slice(0, 8));
+      LS.set(LSK('ib-friends'), [r.to, ...fr.filter(x => ukey(x) !== ukey(r.to))].slice(0, 8));
       $('#shE').innerHTML = `<b style="color:var(--good)">Sent to ${esc(r.to)}</b>`; setTimeout(() => m.remove(), 1100);
     } catch (err) { $('#shGo').disabled = false; $('#shE').innerHTML = `<span style="color:var(--bad)">${esc(err.message)}</span>`; } };
 }
@@ -2176,7 +2182,7 @@ function inboxBox(tab, thr) {
     const m = open(`<form id="ncf" class="row" style="flex-wrap:nowrap;margin-bottom:10px"><input id="ncN" placeholder="Start a chat: friend's first name" maxlength="30" autocomplete="off"><button class="pri">Chat</button></form>
       ${L.length ? `<div class="card lst chl">${L.map(([k, c]) => `<div class="row chr" data-ck="${esc(k)}" data-cn="${esc(c.name)}"><span class="av">${esc(c.name[0].toUpperCase())}</span><div style="flex:1;min-width:0"><b>${esc(c.name)}</b><div class="meta" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.me ? 'You: ' : ''}${esc(c.last)}</div></div><span class="meta">${esc(ago(c.t))}</span>${!c.me && c.t > (sn[k] || 0) ? '<span class="dot"></span>' : ''}</div>`).join('')}</div>`
         : `<p class="meta" style="text-align:center;padding:18px 0">No chats yet. Type a friend's first name above (they need to have signed in once with it).</p>`}`);
-    $('#ncN').focus(); $('#ncf').onsubmit = e => { e.preventDefault(); const n = $('#ncN').value.trim(); if (n) { thr = {k: n.toLowerCase(), name: n, fresh: 1}; draw(); } };
+    $('#ncN').focus(); $('#ncf').onsubmit = e => { e.preventDefault(); const n = $('#ncN').value.trim(); if (n) { thr = {k: ukey(n), name: n, fresh: 1}; draw(); } };
     m.querySelectorAll('[data-ck]').forEach(r => r.onclick = () => { thr = {k: r.dataset.ck, name: r.dataset.cn}; draw(); });
   };
   const drawThread = () => {
@@ -2210,7 +2216,7 @@ function inboxBox(tab, thr) {
         : `<div style="padding:24px 0;text-align:center"><b>Nothing yet</b><p class="meta">When friends send you decks, mind maps, notes or questions they show up here. Send things with the Send buttons on decks, mind maps, highlights and questions.</p></div>`}`);
     const X = id => INBOX.find(x => x.id === id), msg = (id, t) => { const e = m.querySelector(`[data-im="${id}"]`); if (e) e.innerHTML = t; };
     $('#inNote').onclick = () => shareBox({kind: 'note'});
-    m.querySelectorAll('[data-ir]').forEach(b => b.onclick = () => { const x = X(b.dataset.ir); tab = 'chat'; thr = {k: x.from.toLowerCase(), name: x.from}; draw(); setTimeout(() => { const t = $('#chT'); if (t && x.kind !== 'note') t.value = `Re: ${x.title} — `; }, 50); });
+    m.querySelectorAll('[data-ir]').forEach(b => b.onclick = () => { const x = X(b.dataset.ir); tab = 'chat'; thr = {k: ukey(x.from), name: x.from}; draw(); setTimeout(() => { const t = $('#chT'); if (t && x.kind !== 'note') t.value = `Re: ${x.title} — `; }, 50); });
     m.querySelectorAll('[data-id]').forEach(b => b.onclick = async () => { const id = b.dataset.id; INBOX = INBOX.filter(x => x.id !== id); draw(); api('inboxdel', {ids: [id]}).catch(() => {}); });
     m.querySelectorAll('[data-is]').forEach(b => b.onclick = () => { const x = X(b.dataset.is), mp = {id: uid(), title: mmPlain(x.data.tree.t) || x.title, book: x.data.book || '', tree: mmClean(x.data.tree), from: x.from}; saveMap(mp); msg(x.id, `Saved to your mind maps (Reference → ${esc((bookOf(mp.book) || {}).subject || 'that subject')})`); b.disabled = true; });
     m.querySelectorAll('[data-ia]').forEach(b => b.onclick = () => { const x = X(b.dataset.ia), d = x.data || {};
@@ -2258,6 +2264,18 @@ function meMenu() { if (!USER) return signInBox();
   m.querySelectorAll('[data-th]').forEach(b => b.onclick = () => { setTheme(b.dataset.th); m.querySelectorAll('[data-th]').forEach(x => x.classList.toggle('on', x === b)); });
   $('#mIcs').onclick = icsModal; $('#mOut').onclick = () => { LS.set('ib-user', null); location.hash = ''; location.reload(); };
 }
+// phones: the bottom bar holds the main tabs, the rest live in this sheet
+const MORE = [['terms', 'Flashcards', 'cards'], ['ref', 'Reference', 'flask'], ['prog', 'Progress', 'chart']];
+function moreSheet() {
+  const th = LS.get('ib-theme', 'auto');
+  const m = openModal(`<div class="mgo">${MORE.map(([k, l, i]) => `<button data-mt="${k}" class="${S.tab === k ? 'on' : ''}"><svg class="i"><use href="#i-${i}"/></svg>${l}</button>`).join('')}<button id="moIn"><svg class="i"><use href="#i-inbox"/></svg>Messages</button></div>
+    <div class="meta" style="margin-bottom:6px">Appearance</div><div class="seg" style="margin-bottom:14px">${[['light', 'Light'], ['dark', 'Dark'], ['auto', 'System']].map(([k, l]) => `<button data-th="${k}" class="${th === k ? 'on' : ''}">${l}</button>`).join('')}</div>
+    <div class="row"><button id="moMe">${USER ? 'Account · ' + esc(USER.name) : 'Sign in'}</button><span class="sp"></span><button id="mClose">Close</button></div>`);
+  m.classList.add('sheet');
+  m.querySelectorAll('[data-mt]').forEach(b => b.onclick = () => { m.remove(); go(b.dataset.mt); });
+  m.querySelectorAll('[data-th]').forEach(b => b.onclick = () => { setTheme(b.dataset.th); m.querySelectorAll('[data-th]').forEach(x => x.classList.toggle('on', x === b)); });
+  $('#moIn').onclick = () => { m.remove(); USER ? inboxBox() : signInBox(); }; $('#moMe').onclick = () => { m.remove(); meMenu(); };
+}
 function setTheme(t) { LS.set('ib-theme', t); applyTheme(); }
 function applyTheme() { const t = LS.get('ib-theme', 'auto'), r = document.documentElement; if (t === 'auto') r.removeAttribute('data-theme'); else r.dataset.theme = t;
   const dark = t === 'dark' || (t === 'auto' && matchMedia('(prefers-color-scheme: dark)').matches); const u = $('#thm use'); if (u) u.setAttribute('href', dark ? '#i-sun' : '#i-moon'); }
@@ -2267,7 +2285,7 @@ function drawMe() { pollInbox(); if (!USER) { $('#me').innerHTML = '<span class=
   const a = `<span class="av">${esc(USER.name[0].toUpperCase())}</span>`; $('#me').innerHTML = a + `<span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis">${esc(USER.name)}</span>`; $('#meH').innerHTML = a; }
 // sign in from the top-right button; what you did as a guest moves into the account
 function signInBox() {
-  const kn = LS.get('ib-known', []);
+  const kn = knownNames();
   const m = openModal(`<h3 style="margin:0 0 4px;font:600 22px var(--f-read)">Sign in</h3><p class="meta" style="margin:0 0 14px">Saves your planner, marks, notes and streak under your name, on any device.</p>
     <form id="sf" class="ef"><input id="sn" placeholder="First name" autocomplete="given-name" maxlength="30"><div id="se" class="meta" style="color:var(--bad)"></div>
     ${kn.length ? `<div class="row">${kn.map(n => `<button type="button" data-n="${esc(n)}"><span class="av" style="width:22px;height:22px;font-size:11px">${esc(n[0].toUpperCase())}</span>${esc(n)}</button>`).join('')}</div>` : ''}
@@ -2275,7 +2293,8 @@ function signInBox() {
   $('#sn').focus(); const go2 = n => signIn(n).then(() => m.remove(), e => { $('#se').textContent = e.message; });
   $('#sf').onsubmit = e => { e.preventDefault(); const v = $('#sn').value.trim(); if (v) go2(v); }; m.querySelectorAll('[data-n]').forEach(b => b.onclick = () => go2(b.dataset.n));
 }
-$('#me').onclick = $('#meH').onclick = meMenu; $('#inbx').onclick = inboxBox;
+$('#me').onclick = $('#meH').onclick = meMenu; $('#inbx').onclick = inboxBox; $('#moreB').onclick = moreSheet;
+if (matchMedia('(pointer: coarse)').matches) $('#q').placeholder = 'Search';
 
 // ---------- routing ----------
 function route() {
@@ -2332,9 +2351,12 @@ document.addEventListener('keydown', e => {
   if (e.key === '/') { e.preventDefault(); $('#q').focus(); }
 });
 // sign in: first name (+ the site password when the relay isn't in open mode)
+// same key the relay uses, so "Finn", "finn" and "FINN" are one person
+const ukey = n => String(n || '').trim().toLowerCase().normalize('NFKD').replace(/[^a-z0-9]/g, '').slice(0, 24);
+function knownNames() { const seen = new Set(); return LS.get('ib-known', []).map(niceName).filter(n => { const k = ukey(n); if (!k || seen.has(k)) return false; seen.add(k); return true; }); }
 async function signIn(name) {
   const u = await api('user', {name}); USER = {key: u.key, name: u.name, tok: u.tok}; LS.set('ib-user', USER);
-  const kn = LS.get('ib-known', []).filter(x => x !== u.name); kn.unshift(u.name); LS.set('ib-known', kn.slice(0, 6));
+  const kn = knownNames().filter(x => ukey(x) !== u.key); kn.unshift(u.name); LS.set('ib-known', kn.slice(0, 6));
   const gp = LS.get('ib-prog:guest', null), gl = LS.get('ib-plan:guest', null) || [];
   loadLocal(); if (S.books.length) await pullProg();
   if (gp) { mergeIn({pins: [], marks: [], hls: [], ...gp, pt: 0}); for (const k of ['pins', 'marks', 'hls']) for (const x of gp[k] || []) if (!S.prog[k].some(y => JSON.stringify(y) === JSON.stringify(x))) S.prog[k].push(x); }
@@ -2347,7 +2369,7 @@ $('#lf').onsubmit = async e => { e.preventDefault(); $('#le').textContent = '';
   try { PASS = $('#lp').value.trim(); await api('login'); LS.set('ib-pass', PASS); const v = $('#ln').value.trim(); if (v) await signIn(v); else { loadLocal(); boot(); } } catch (err) { $('#le').textContent = err.message; } };
 function showLogin(needPass) {
   $('#lp').classList.toggle('hide', !needPass); $('#login').classList.remove('hide');
-  const kn = LS.get('ib-known', []); $('#known').innerHTML = kn.length ? '<div class="meta" style="width:100%">On this device</div>' + kn.map(n => `<button type="button" data-n="${esc(n)}"><span class="av" style="width:22px;height:22px;font-size:11px">${esc(n[0].toUpperCase())}</span>${esc(n)}</button>`).join('') : '';
+  const kn = knownNames(); $('#known').innerHTML = kn.length ? '<div class="meta" style="width:100%">On this device</div>' + kn.map(n => `<button type="button" data-n="${esc(n)}"><span class="av" style="width:22px;height:22px;font-size:11px">${esc(n[0].toUpperCase())}</span>${esc(n)}</button>`).join('') : '';
   $('#known').querySelectorAll('[data-n]').forEach(b => b.onclick = () => signIn(b.dataset.n)); $('#ln').focus();
 }
 // open mode: the relay lets requests without a password through; ?login shows the password box

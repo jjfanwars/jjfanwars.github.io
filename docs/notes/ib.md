@@ -69,3 +69,7 @@ Private study app for the owner's IB textbooks (not a game). Live at /ib/ (noind
 
 ## Backlog
 - Feature ideas offered (not picked yet): friend challenges + leaderboard, group study rooms, voice tutor (oral practice), installable offline app.
+
+## Names + phone menu (24 Nov 2026)
+- Names ignore case: the account key was already case-folded (`ukey`); now display names are tidied too (`nice` in the relay, `niceName` in the app: "finn"/"FINN" -> "Finn", mixed case kept). Old lowercase names are fixed on next sign-in; `knownNames()` dedupes the device list by key; chat thread keys use the same `ukey` as the relay.
+- Phone bottom bar = Home, Review, Library, Practice, Planner, More. More (`moreSheet`, `MORE` list) is a bottom sheet with Flashcards, Reference, Progress, Messages, theme and account. Home cards now fill the width on phones; Practice filters are a tidy grid with the count on its own line; search placeholder drops "(press /)" on touch.
