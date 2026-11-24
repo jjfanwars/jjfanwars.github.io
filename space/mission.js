@@ -34,6 +34,8 @@ function predict() {
     _pv.addScaledVector(_pa, h / 2); _pp.addScaledVector(_pv, h); t += h; gravAt(_pp, t, _pa); _pv.addScaledVector(_pa, h / 2);
   }
 }
+// seconds of full-throttle burn on the current stage for a speed change dv
+function burnTime(dv) { const S = STAGES[R.bot]; if (!S.thrust) return Infinity; const ve = S.ispV * G0, m = rocketMass(); return m * ve / S.thrust * (1 - Math.exp(-dv / ve)); }
 // phase angle of the Moon ahead of us (degrees, 0..360 in the direction we orbit) and the one a direct transfer wants
 function moonPhase() { const r = R.pos, v = R.vel, m = moonPos(G.t, new V3()), h = r.clone().cross(v).normalize(), ang = Math.atan2(r.clone().cross(m).dot(h), r.dot(m)) * 180 / Math.PI;
   const a = (r.length() + MOON.orbit) / 2, tt = Math.PI * Math.sqrt(a * a * a / PLANET.GM); return {now: (ang + 360) % 360, want: 186 - tt / MOON.period * 360}; }
@@ -152,6 +154,8 @@ function mapInfo(dt) { if ((mapInfoT -= dt) > 0) return; mapInfoT = .25; const e
     L.push('Ap <b>' + (o.ap === Infinity ? 'escape' : fmtD(o.ap)) + '</b> · Pe <b>' + fmtD(o.pe) + '</b>' + (inO ? ' · lap <b>' + fmtS(o.period) + '</b>' : ''));
     if (b === PLANET) { L.push('Tilt to the equator <b>' + Math.round(o.inc * 180 / Math.PI) + '°</b>');
       if (inO && !PRED.enc) { const ph = moonPhase(), d = ((ph.now - ph.want) % 360 + 360) % 360, good = d < 8 || d > 352; L.push('Moon is <b>' + Math.round(ph.now) + '°</b> ahead · go at <b>' + Math.round(ph.want) + '°</b>' + (good ? ' <span class="good">burn prograde now!</span>' : ' · in ' + fmtS(d / 360 * o.period / (1 - o.period / MOON.period)))); } }
+    if (b === PLANET && inO && !PRED.enc && o.ap < 1e6) { const r = R.pos.length(), dv = Math.sqrt(PLANET.GM * (2 / r - 2 / (r + MOON.orbit))) - R.vel.length(); if (dv > 0) L.push('Moon burn ≈ <b>' + Math.round(dv) + ' m/s</b> · about <b>' + fmtS(burnTime(dv)) + '</b> at full throttle'); }
+    if (b === MOON && !inO && o.tPe < 1e7 && o.pe > 0) { const rp = o.pe + MOON.R, vp = Math.sqrt(MOON.GM * (2 / rp - 1 / o.a)), dv = vp - Math.sqrt(MOON.GM / rp); L.push('Capture burn ≈ <b>' + Math.round(dv) + ' m/s</b> (' + fmtS(burnTime(dv)) + ') · start it about <b>' + fmtS(burnTime(dv) / 2) + '</b> before Pe'); }
     if (PRED.enc && PRED.start === 0) L.push('<span class="good">Moon encounter</span> in <b>' + fmtS(PRED.enc.t - G.t) + '</b> · passes <b>' + (PRED.moonPe < 0 ? 'into the surface' : fmtD(PRED.moonPe) + ' up') + '</b>');
     else if (PRED.close && PRED.start === 0 && PRED.close.d < MOON.orbit * .6) L.push('Misses the Moon by <b>' + fmtD(PRED.close.d - MOON.R) + '</b>');
     if ((PRED.start === 1 && PRED.exit) || (PRED.enc && PRED.exit)) L.push('Then back to Home: Pe <b>' + (PRED.homePe < 0 ? 'hits the ground' : fmtD(PRED.homePe)) + '</b>' + (PRED.homePe > 10000 && PRED.homePe < 20000 ? ' <span class="good">good re-entry</span>' : PRED.homePe > PLANET.atmo ? ' (misses the air)' : ''));
@@ -311,4 +315,4 @@ function warmShaders() { try {
 const _bootM = boot;
 boot = function () { _bootM(); warmShaders(); const n = Object.keys(MIS.done).filter(k => MISD.some(x => x.id === k)).length; $('misSum').textContent = n ? 'Missions done: ' + n + ' of ' + MISD.length : 'New here? Follow the mission card (top right). J shows all missions.'; };
 Object.assign(window.YE, {homeWindow, setHW: v => HW_OFF = v, PRED, predict, MAPV, mapToggle, MISD, MIS, FLOG, misPoll, HEAT, orbitEl, moonPhase});
-boot();
+// boot() is called at the end of extras.js
