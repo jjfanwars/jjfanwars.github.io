@@ -116,6 +116,11 @@ button.alt{background:#242e3d;color:#dfe6ee}button.alt:hover{background:#2f3b4e}
 #over .ostats{color:#dfe6ee;font-size:15px;text-align:center}#over .ostats b{color:var(--accent2)}
 #over .otop{display:grid;grid-template-columns:auto 1fr auto;gap:2px 12px;font-size:13px;color:#b7c2d0;font-variant-numeric:tabular-nums;margin:4px 0 8px}#over .otop .me{color:var(--accent2);font-weight:700}
 #over .orow{display:flex;gap:8px}
+#coach{display:flex;gap:8px;align-items:center;max-width:min(520px,100%);padding:7px 10px;border-radius:10px;font-size:12px;line-height:1.4;background:var(--panel);border:1px solid var(--accent);box-shadow:0 6px 22px rgba(0,0,0,.35);animation:coachIn .25s ease-out}
+#coach b{color:var(--accent2)}#coach button{padding:3px 9px;font-size:11px;flex:none}#coach button.alt{background:#242e3d;color:#9fb0c3}
+@keyframes coachIn{from{opacity:0;transform:translateY(6px)}}
+#paused{position:absolute;top:42%;left:50%;transform:translate(-50%,-50%);padding:10px 22px;border-radius:12px;font-size:22px;font-weight:800;letter-spacing:2px;background:var(--panel);border:1px solid var(--line);pointer-events:none!important;text-align:center}#paused small{display:block;font-size:11px;font-weight:500;letter-spacing:0;color:#9aa6b6}
+#topR #spdBtn{min-width:40px;font-variant-numeric:tabular-nums}
 @media(max-width:1100px){#bar{bottom:150px;left:8px;right:8px;transform:none;max-width:none}#stat{width:min(290px,calc(50% - 12px))}}
 @media(max-width:700px){#mini{display:none}#topR .tx{display:none}#lb{top:96px;max-height:30vh}#hint{font-size:10px;max-width:100%}#lb .r{grid-template-columns:20px 1fr 44px 50px 50px 64px;font-size:11px}#bld button{width:48px;height:48px}}
 </style></head><body>
@@ -150,8 +155,8 @@ button.alt{background:#242e3d;color:#dfe6ee}button.alt:hover{background:#2f3b4e}
 
 <div id="hud" class="hidden">
   <div id="lb"></div>
-  <div id="topR"><div class="ic"><button id="sfxBtn" title="Sound on/off">🔊</button><button id="chatBtn" title="Chat (Enter)">💬</button><button id="dropBtn" title="Urban combat in 3D (jjdrop). Your army size sets your squad.">🎥<span class="tx"> Urban raid</span></button><button id="menuBtn" title="Leave the game">⏏<span class="tx"> Leave</span></button></div><div id="top"></div><canvas id="mini" width="170" height="110"></canvas></div>
-  <div id="alert" class="hidden"></div><div id="reqs"></div><div id="tip" class="hidden"></div>
+  <div id="topR"><div class="ic"><button id="pauseBtn" class="hidden" title="Pause (P)">⏸️</button><button id="spdBtn" class="hidden" title="Game speed ([ and ])">1x</button><button id="sfxBtn" title="Sound on/off">🔊</button><button id="chatBtn" title="Chat (Enter)">💬</button><button id="dropBtn" title="Urban combat in 3D (jjdrop). Your army size sets your squad.">🎥<span class="tx"> Urban raid</span></button><button id="menuBtn" title="Leave the game">⏏<span class="tx"> Leave</span></button></div><div id="top"></div><canvas id="mini" width="170" height="110"></canvas></div>
+  <div id="alert" class="hidden"></div><div id="paused" class="hidden">PAUSED<small>P or ▶ to resume</small></div><div id="reqs"></div><div id="tip" class="hidden"></div>
   <div id="stat">
     <div class="srow"><span>Troops</span><b id="trp"></b></div>
     <div id="tbar"><i></i><span></span></div>
@@ -159,7 +164,7 @@ button.alt{background:#242e3d;color:#dfe6ee}button.alt:hover{background:#2f3b4e}
     <div class="srow"><span>Attack Ratio</span><b id="rv">30%</b></div>
     <div id="rrow"><input id="ratio" type="range" min="5" max="100" value="30"><button id="boatBtn" class="alt" title="Send troops by boat (B / Shift+click)">⛵</button></div>
   </div>
-  <div id="bar"><div id="hint"></div><div id="bld"></div></div>
+  <div id="bar"><div id="coach" class="hidden"><span></span><button id="coachOk">Got it</button><button id="coachOff" class="alt" title="Turn tips off">No tips</button></div><div id="hint"></div><div id="bld"></div></div>
   <div id="evp"><div class="eh"><span>Events</span><button id="evHide">Hide</button></div><div id="atks"></div><div id="feed"></div><input id="chat" class="hidden" maxlength="80" placeholder="Say something (Enter to send)" autocomplete="off"></div>
 </div>
 
@@ -434,6 +439,12 @@ class Sim {
       const nat = p.kind === 'nation'; if ((T / 10 + p.id) % (nat ? 1 : 3)) continue;
       if (nat) { this.botBuild(p); this.botNuke(p); this.botDiplo(p); this.botBoat(p); this.botNavy(p); }
       const mx = this.cap(p), ct = this.ct[p.id - 1];
+      if (nat && p.troops >= mx * 0.1) { // under attack: answer the weakest attacker (facing armies cancel out first, so this also blunts their push)
+        let foe = 0, fs = 1e18, inc = 0;
+        for (const a of this.atks) if (!a.done && a.t === p.id && a.p && !p.allies.includes(a.p) && ct.has(a.p)) { const q = this.P[a.p - 1]; if (q.alive && q.troops < p.troops * 1.2 && q.troops < fs) { fs = q.troops; foe = a.p; inc = a.troops; } }
+        const mine = foe ? this.atks.find(b => !b.done && b.p === p.id && b.t === foe) : null;
+        if (foe && (!mine || mine.troops < inc) && this.launch(p, foe, 45)) continue;
+      }
       if (p.troops < mx * (nat ? 0.33 : 0.3)) continue;
       let t = -1;
       if ((ct.get(0) || 0) >= 3 && r() < (nat ? 0.85 : 0.7)) t = 0;
@@ -751,8 +762,9 @@ const msg = (el, t) => { $(el).textContent = t || ''; };
 const G = { role: null, sim: null, me: -1, n: 0, pend: [], ws: null, peers: new Map(), myId: '', code: '', timer: 0, acc: 0, last: 0, cfg: null, tool: 0, desync: false, mine: {}, theirs: {}, feedAt: 0, started: false, ended: false, retry: 0, keys: new Set(), raf: 0 };
 try { $('nm').value = localStorage.getItem('jjf-front-name') || ''; } catch (e) {}
 const myName = () => { const n = cleanName($('nm').value) || 'Player' + (1 + (Math.random() * 99 | 0)); try { localStorage.setItem('jjf-front-name', n); } catch (e) {} return n; };
-const readCfg = () => { const v = $('mter').value, mp = MAPS[v], [w, h] = mp ? [mp.w, mp.h] : (SIZES[+$('msz').value | 0] || SIZES[1]); return { w, h, isl: v === '1' ? 1 : 0, map: mp ? v : null, nat: Math.max(0, Math.min(30, +$('nNat').value | 0)), tri: Math.max(0, Math.min(80, +$('nTri').value | 0)) }; };
-{ const sel = $('mter'), og = document.createElement('optgroup'); og.label = 'Real maps'; for (const k of Object.keys(MAPS)) { const o = document.createElement('option'); o.value = k; o.textContent = MAPS[k].n; og.appendChild(o); } sel.appendChild(og); sel.onchange = () => { $('msz').disabled = !!MAPS[sel.value]; }; }
+const readCfg = () => { const v = $('mter').value, mp = MAPS[v], [w, h] = mp ? [mp.w, mp.h] : (SIZES[+$('msz').value | 0] || SIZES[1]); try { localStorage.setItem('jjf-front-cfg', JSON.stringify({ nat: $('nNat').value, tri: $('nTri').value, ter: v, sz: $('msz').value })); } catch (e) {} return { w, h, isl: v === '1' ? 1 : 0, map: mp ? v : null, nat: Math.max(0, Math.min(30, +$('nNat').value | 0)), tri: Math.max(0, Math.min(80, +$('nTri').value | 0)) }; };
+{ const sel = $('mter'), og = document.createElement('optgroup'); og.label = 'Real maps'; for (const k of Object.keys(MAPS)) { const o = document.createElement('option'); o.value = k; o.textContent = MAPS[k].n; og.appendChild(o); } sel.appendChild(og); sel.onchange = () => { $('msz').disabled = !!MAPS[sel.value]; };
+  try { const c = JSON.parse(localStorage.getItem('jjf-front-cfg') || 'null'); if (c) { if (c.nat !== undefined) $('nNat').value = Math.max(0, Math.min(30, c.nat | 0)); if (c.tri !== undefined) $('nTri').value = Math.max(0, Math.min(80, c.tri | 0)); if ([...sel.options].some(o => o.value === c.ter)) sel.value = c.ter; if (['0', '1', '2'].includes(c.sz)) $('msz').value = c.sz; sel.onchange(); } } catch (e) {} } // remember the last menu settings
 
 function makeRoster(humans, c) { // humans: [{name,id}]
   const r = humans.map(h => ({ name: h.name, human: true, id: h.id || null }));
@@ -778,6 +790,7 @@ function sendIntent(it) { if (G.role === 'guest') send(G.ws, { t: 'int', it }); 
 
 function beginGame(cfg, roster, me) {
   G.cfg = cfg; G.sim = new Sim(cfg, roster); G.me = me; G.n = 0; G.pend = []; G.mine = {}; G.theirs = {}; G.desync = false; G.started = true; G.ended = false; G.feedAt = 0; G.tool = 0; G.roadA = -1;
+  G.pause = false; G.spd = G.spd || 1; G.front = new WeakMap(); G.tipNow = null; $('coach').classList.add('hidden'); for (const id of ['pauseBtn', 'spdBtn']) $(id).classList.toggle('hidden', G.role !== 'solo'); setSpeed();
   G.boat = false; $('boatBtn').classList.remove('on'); G.wasAlive = false; G.peak = 0; G.place = 0; G.diedAt = 0; G.lostSnd = false; G.seenAtk = new WeakSet(); G.warnAt = 0; G.alarmFor = null; G.hover = null; G.keys.clear();
   for (const id of ['feed', 'atks', 'reqs']) { $(id).innerHTML = ''; $(id)._h = ''; } $('alert').classList.add('hidden'); $('tip').classList.add('hidden');
   ['menu', 'lobby', 'over'].forEach(i => $(i).classList.add('hidden')); $('hud').classList.remove('hidden');
@@ -785,7 +798,8 @@ function beginGame(cfg, roster, me) {
   if (G.role !== 'guest') {
     G.acc = 0; G.last = performance.now(); clearInterval(G.timer);
     G.timer = setInterval(() => { // catch-up loop so a throttled background tab does not slow the game
-      const now = performance.now(); G.acc += now - G.last; G.last = now; let k = 0;
+      const now = performance.now(), solo = G.role === 'solo'; if (solo && (G.pause || document.hidden)) { G.last = now; return; } // solo: P pauses, a hidden tab pauses too
+      G.acc += (now - G.last) * (solo ? G.spd : 1); G.last = now; let k = 0;
       while (G.acc >= 100 && k++ < 30) { G.acc -= 100; hostTurn(); }
       if (G.acc > 3000) G.acc = 0;
     }, 25);
@@ -950,8 +964,9 @@ function frame() {
   if (S.tick <= SP) { // spawn markers
     for (const p of S.P) if (p.spawn >= 0) { const x = view.ox + (p.spawn % W + 0.5) * s, y = view.oy + (((p.spawn / W) | 0) + 0.5) * s, mine = p === S.P[G.me], r = 5 * s * (1 + 0.04 * Math.sin(performance.now() / 180)); ctx.fillStyle = mine ? 'rgba(243,156,31,.55)' : 'rgba(' + p.col + ',.45)'; ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill(); ctx.stroke(); if (!mine) { ctx.fillStyle = 'rgba(255,255,255,.9)'; ctx.font = '12px system-ui'; ctx.textAlign = 'center'; ctx.fillText(p.name, x, y - r - 6); } }
   } else {
-    if (s >= 2) for (let i = 0; i < S.n; i++) { const b = S.bld[i]; if (b) icon(b, view.ox + ((i % W) + 0.5) * s, view.oy + (((i / W) | 0) + 0.5) * s, Math.max(3.5, s * 0.8), S.P[S.own[i] - 1]); if (b && S.lvl[i] > 1 && s >= 3) { ctx.fillStyle = '#ffd35c'; ctx.font = 'bold ' + Math.max(8, s * 0.8) + 'px system-ui'; ctx.textAlign = 'left'; ctx.fillText(S.lvl[i], view.ox + ((i % W) + 0.5) * s + s * 0.5, view.oy + (((i / W) | 0) + 0.5) * s - s * 0.4); } }
-    drawTrains(S, s); drawBoats(S, s); drawShips(S, s); drawNukes(S, s);
+    const cx0 = Math.max(0, Math.floor(-view.ox / s) - 1), cx1 = Math.min(W - 1, Math.ceil((innerWidth - view.ox) / s) + 1), cy0 = Math.max(0, Math.floor(-view.oy / s) - 1), cy1 = Math.min(S.H - 1, Math.ceil((innerHeight - view.oy) / s) + 1);
+    if (s >= 2) for (let yy = cy0; yy <= cy1; yy++) for (let i = yy * W + cx0, ie = yy * W + cx1; i <= ie; i++) { const b = S.bld[i]; if (b) icon(b, view.ox + ((i % W) + 0.5) * s, view.oy + (((i / W) | 0) + 0.5) * s, Math.max(3.5, s * 0.8), S.P[S.own[i] - 1]); if (b && S.lvl[i] > 1 && s >= 3) { ctx.fillStyle = '#ffd35c'; ctx.font = 'bold ' + Math.max(8, s * 0.8) + 'px system-ui'; ctx.textAlign = 'left'; ctx.fillText(S.lvl[i], view.ox + ((i % W) + 0.5) * s + s * 0.5, view.oy + (((i / W) | 0) + 0.5) * s - s * 0.4); } }
+    drawTrains(S, s); drawBoats(S, s); drawShips(S, s); drawNukes(S, s); drawFronts(S, s, dt);
     if (G.roadA >= 0) { const x = view.ox + ((G.roadA % W) + 0.5) * s, y = view.oy + (((G.roadA / W) | 0) + 0.5) * s; ctx.strokeStyle = '#ffd35c'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, y, Math.max(5, s), 0, 7); ctx.stroke(); }
     ctx.textAlign = 'center'; ctx.lineJoin = 'round';
     for (const p of S.P) {
@@ -1004,6 +1019,20 @@ function drawShips(S, s) {
     ctx.fillStyle = '#34414f'; ctx.beginPath(); ctx.arc(x, y - r * 0.15, r * 0.4, 0, 7); ctx.fill(); ctx.strokeStyle = '#34414f'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x, y - r * 0.15); ctx.lineTo(x + r * 0.9, y - r * 0.45); ctx.stroke();
     if (sh.hp < 100) { ctx.fillStyle = 'rgba(0,0,0,.6)'; ctx.fillRect(x - r * 1.2, y - r * 1.2, r * 2.4, 3); ctx.fillStyle = sh.hp > 50 ? '#58c786' : '#e0452b'; ctx.fillRect(x - r * 1.2, y - r * 1.2, r * 2.4 * sh.hp / 100, 3); }
   }
+}
+function drawFronts(S, s, dt) { // troop badge at the front of your attacks (and of attacks on you, red ring)
+  const W = S.W, me = S.P[G.me].id; let n = 0;
+  ctx.font = '600 11px system-ui'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  for (const a of S.atks) {
+    if (a.done || a.troops < 1 || (a.p !== me && a.t !== me) || n >= 12) continue;
+    let sx = 0, sy = 0, c = 0; for (let k = a.h; k < a.q.length && c < 16; k++) { const i = a.q[k]; if (S.own[i] !== a.t) continue; sx += i % W; sy += (i / W) | 0; c++; }
+    if (!c) continue; n++; const tx = sx / c + 0.5, ty = sy / c + 0.5; let f = G.front.get(a); if (!f) { f = { x: tx, y: ty }; G.front.set(a, f); } else { const k = Math.min(1, dt * 4); f.x += (tx - f.x) * k; f.y += (ty - f.y) * k; }
+    const x = view.ox + f.x * s, y = view.oy + f.y * s, txt = '⚔ ' + fmt(a.troops), w = ctx.measureText(txt).width + 12, inc = a.t === me;
+    ctx.fillStyle = 'rgba(' + S.P[a.p - 1].col + ',.92)'; ctx.strokeStyle = inc ? '#ff4a30' : '#fff'; ctx.lineWidth = inc ? 2 : 1.2;
+    ctx.beginPath(); ctx.roundRect ? ctx.roundRect(x - w / 2, y - 9, w, 18, 9) : ctx.rect(x - w / 2, y - 9, w, 18); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#fff'; ctx.lineWidth = 2.5; ctx.strokeStyle = 'rgba(0,0,0,.55)'; ctx.strokeText(txt, x, y + 0.5); ctx.fillText(txt, x, y + 0.5);
+  }
+  ctx.textBaseline = 'alphabetic';
 }
 function drawNukes(S, s) {
   const W = S.W, t = performance.now(), T = S.tick;
@@ -1063,7 +1092,12 @@ function buildBar() {
   $('bld').innerHTML = '';
   TOOLS.forEach((t, k) => { if (t.hide) return; const b = document.createElement('button'); b.dataset.k = k + 1; if (t.nuke) b.className = 'nuke'; b.onclick = () => { G.tool = G.tool === k + 1 ? 0 : k + 1; updateHud(); }; $('bld').appendChild(b); });
 }
-$('ratio').oninput = () => { $('rv').textContent = $('ratio').value + '%'; };
+$('ratio').oninput = () => { $('rv').textContent = $('ratio').value + '%'; try { localStorage.setItem('jjf-front-ratio', $('ratio').value); } catch (e) {} };
+try { const r = +localStorage.getItem('jjf-front-ratio'); if (r >= 5 && r <= 100) $('ratio').value = r; } catch (e) {} // keep your attack ratio between games
+function setSpeed() { $('spdBtn').textContent = G.spd + 'x'; $('pauseBtn').textContent = G.pause ? '▶\uFE0F' : '⏸\uFE0F'; $('paused').classList.toggle('hidden', !G.pause || !G.sim || !!G.sim.over); }
+function togglePause() { if (G.role !== 'solo' || !G.sim || G.sim.over) return; G.pause = !G.pause; setSpeed(); Sfx.play('click'); }
+function stepSpeed(d) { if (G.role !== 'solo') return; G.spd = Math.max(1, Math.min(3, G.spd + d)); setSpeed(); Sfx.play('click'); }
+$('pauseBtn').onclick = togglePause; $('spdBtn').onclick = () => { G.spd = G.spd % 3 + 1; setSpeed(); Sfx.play('click'); };
 $('evHide').onclick = () => { const e = $('evp').classList.toggle('hid'); $('evHide').textContent = e ? 'Show' : 'Hide'; };
 const PAN = ['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
 addEventListener('keydown', e => {
@@ -1074,6 +1108,8 @@ addEventListener('keydown', e => {
   else if (k === 'Escape') { G.tool = 0; G.roadA = -1; }
   else if (k === 'f' || k === 'F') G.tool = G.tool === 11 ? 0 : 11;
   else if (k === 'c' || k === 'C' || k === 'Home') goHome();
+  else if (k === 'p' || k === 'P' || k === 'Pause') togglePause();
+  else if (k === ']' || k === '[') stepSpeed(k === ']' ? 1 : -1);
   else if (k === '+' || k === '=' || k === '-' || k === '_') zoomAt(innerWidth / 2, innerHeight / 2, k === '-' || k === '_' ? 1 / 1.25 : 1.25);
   else if (k === 'q' || k === 'Q' || k === 'e' || k === 'E') { const r = $('ratio'); r.value = Math.max(5, Math.min(100, +r.value + (k === 'e' || k === 'E' ? 5 : -5))); r.oninput(); }
   else if (/^[0-9]$/.test(k)) { const n = k === '0' ? 10 : +k; G.tool = G.tool === n ? 0 : n; }
@@ -1087,7 +1123,7 @@ function updateHud() {
   const S = G.sim; if (!S) return; const me = S.P[G.me];
   if (me.alive && me.spawned) { G.wasAlive = true; G.peak = Math.max(G.peak, me.tiles / S.land); }
   const left = S.tick <= SP ? Math.ceil((SP - S.tick) / 10) : 0;
-  setH($('top'), G.desync === 'host' ? 'Host disconnected' : G.desync ? 'Out of sync' : left ? 'Spawn ' + left + 's' : me.alive ? clock(S.tick - SP) + '<small>win at ' + WIN_SHARE * 100 + '% land</small>' : 'Eliminated');
+  setH($('top'), G.desync === 'host' ? 'Host disconnected' : G.desync ? 'Out of sync' : left ? 'Spawn ' + left + 's' : me.alive ? clock(S.tick - SP) + '<small>' + (G.pause ? 'paused' : G.spd > 1 && G.role === 'solo' ? G.spd + 'x speed' : 'win at ' + WIN_SHARE * 100 + '% land') + '</small>' : 'Eliminated');
   const alive = S.P.filter(p => p.alive && p.tiles > 0).sort((a, b) => b.tiles - a.tiles), top = alive.slice(0, 8);
   if (!top.includes(me) && me.alive) top.push(me);
   const rows = G.lbAll ? alive : top;
@@ -1125,7 +1161,29 @@ function updateHud() {
   if (G.wasAlive && !me.alive && !G.place) { G.place = S.P.filter(p => p.alive).length + 1; G.diedAt = S.tick; if (!S.over) { Sfx.play('lose'); G.lostSnd = true; showOver(S, me, false); } }
   if (S.over && !G.ended) { G.ended = true; const w = S.over.win ? S.P[S.over.win - 1] : null, tm = S.over.team; const won = w === me || (tm && tm.includes(me.id)); if (won || !G.lostSnd) Sfx.play(won ? 'win' : 'lose'); showOver(S, me, true); }
   if (G.hover) showTip();
+  coach(S, me);
 }
+// first-game coach tips: one at a time, each shown once per browser (jjf-front-tips), "No tips" turns them off
+const TIPS = [
+  ['expand', (S, me) => S.tick > SP + 5, 'Grey land is <b>unclaimed</b>. Click next to your border to expand. Each click sends your <b>Attack Ratio</b> share of troops (slider, or Q/E).'],
+  ['grow', (S, me) => S.tick > SP + 300, 'Troops regrow by themselves, fastest at around <b>40% of your cap</b>. Do not spend down to zero: a thin army gets eaten.'],
+  ['city', (S, me) => me.gold >= S.buildCost(me, 1), 'You can afford a <b>City</b> (key 1): +250K troop cap. Pick it, then click your own land.'],
+  ['border', (S, me) => { const ct = S.ct && S.ct[me.id - 1]; return !!ct && [...ct.keys()].some(k => k > 0 && S.P[k - 1].kind !== 'tribe'); }, 'You now border another nation. Hover their land to compare troops first. <b>Defense posts</b> make land near them cost 3x.'],
+  ['hit', (S, me) => S.atks.some(a => !a.done && a.t === me.id && a.p), '<b>You are under attack</b> (red, bottom right). Attack them back: armies that meet cancel out, so it also stops their push.'],
+  ['factory', (S, me) => me.cities > 0 && me.gold >= S.buildCost(me, 7), 'A <b>Factory</b> (key 2) sends trains that pay gold at nearby cities, ports and factories, yours and other players\'.'],
+  ['sea', (S, me) => S.tick > SP + 900 && S.ct && !S.ct[me.id - 1].get(0), 'No unclaimed land left near you? <b>Shift+click</b> (or ⛵) a far coast to land troops by boat.'],
+];
+function tipSeen() { try { return JSON.parse(localStorage.getItem('jjf-front-tips') || '[]'); } catch (e) { return []; } }
+function tipMark(id) { const s = tipSeen(); if (!s.includes(id)) s.push(id); try { localStorage.setItem('jjf-front-tips', JSON.stringify(s)); } catch (e) {} }
+function coach(S, me) {
+  const box = $('coach'), now = performance.now();
+  if (G.tipNow) { if (now - G.tipAt > 16000 || !me.alive || S.over) { tipMark(G.tipNow); G.tipNow = null; box.classList.add('hidden'); } return; }
+  if (!me.alive || S.over || S.tick <= SP || (G.tipDone && now - G.tipDone < 6000)) return; let seen; try { if (localStorage.getItem('jjf-front-tips-off') === '1') return; } catch (e) {}
+  seen = tipSeen(); const t = TIPS.find(t => !seen.includes(t[0]) && t[1](S, me)); if (!t) return;
+  G.tipNow = t[0]; G.tipAt = now; box.firstChild.innerHTML = '💡 ' + t[2]; box.classList.remove('hidden');
+}
+$('coachOk').onclick = () => { if (G.tipNow) tipMark(G.tipNow); G.tipNow = null; G.tipDone = performance.now(); $('coach').classList.add('hidden'); };
+$('coachOff').onclick = () => { try { localStorage.setItem('jjf-front-tips-off', '1'); } catch (e) {} $('coachOk').onclick(); };
 function showOver(S, me, done) {
   const w = S.over && S.over.win ? S.P[S.over.win - 1] : null, tm = S.over && S.over.team, won = done && (w === me || (tm && tm.includes(me.id)));
   const alive = S.P.filter(p => p.alive && p.tiles > 0).sort((a, b) => b.tiles - a.tiles), killer = me.by ? S.P[me.by - 1] : null, place = me.alive ? alive.indexOf(me) + 1 : G.place, field = S.P.filter(p => p.spawned).length;
