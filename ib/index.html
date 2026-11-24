@@ -134,12 +134,22 @@ mark.hl{background:color-mix(in srgb,var(--warn) 30%,transparent);color:inherit;
 .mmn.d1{padding:10px 14px;font-weight:700;font-size:15.5px;background:var(--c);color:#fff;border-color:var(--c)}.mmn.d1 .katex{color:#fff}
 .mmn.d3{font-size:13px}.mmtx p{margin:0}.mmtx table{font-size:12px;border-collapse:collapse;margin:2px 0}.mmtx td,.mmtx th{border:1px solid var(--line);padding:1px 6px}.mmtx .katex{font-size:1.05em}
 .mmk{position:absolute;top:50%;right:-13px;transform:translateY(-50%);min-width:24px;height:24px;padding:0 5px;border-radius:12px;font:700 12px/1 var(--f-ui,inherit);background:var(--panel);color:var(--c);border:1.5px solid var(--c);justify-content:center;z-index:1}
-.mmn.L .mmk{right:auto;left:-13px}.mmtt{max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.mmcv.dim .mmn:not(.hit){opacity:.28}.mmn.hit{box-shadow:0 0 0 4px #f5c518}
+.mmn.L .mmk{right:auto;left:-13px}.mmtt{max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.mmcv.dim .mmn:not(.hit){opacity:.28}.mmn.hit{box-shadow:0 0 0 4px #f5c518}
 .mmact{position:absolute;left:50%;bottom:calc(14px + env(safe-area-inset-bottom));transform:translateX(-50%);width:min(680px,calc(100% - 24px));background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:var(--sh);padding:12px 14px;display:flex;flex-direction:column;gap:10px}
 .mmsel{max-height:120px;overflow:auto;font-size:15px}.mmsel p{margin:0}.mmv .seg button.on,.mmbar button.on{background:var(--ink);color:var(--bg)}
 .mmbar{flex-wrap:wrap}.mmbar select{width:auto;max-width:220px}.mmbar input{width:150px}.mmv{position:fixed}.mmv>.mmsc{position:relative}
 body.mmopen .drawer{z-index:56;top:0}body.mmopen .ask{display:none}
 .mmxm{display:none}
+.mmown{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px;margin:8px 0 20px}.mmo{display:flex;flex-direction:column;gap:2px;padding:12px 14px;cursor:pointer}.mmo:hover{border-color:var(--line2)}
+#inbx{position:relative}.bdg{position:absolute;top:2px;right:0;min-width:17px;height:17px;padding:0 4px;border-radius:9px;background:var(--red);color:#fff;font:700 11px/17px var(--f-ui,inherit);text-align:center}
+.mbox.wide{width:min(620px,100%);max-height:84vh;overflow:auto}.inl{display:flex;flex-direction:column;gap:10px}.inb{border:1px solid var(--line);border-radius:10px;padding:12px}.int{font-weight:600;margin-top:6px}
+.ibq{margin:6px 0;font-family:var(--f-read);border-left:3px solid var(--line2);padding-left:10px}.innote{margin-top:6px;background:var(--sunk);border-radius:8px;padding:8px 10px}.innote p{margin:0 0 4px}
+.chr{gap:10px;padding:10px 12px;cursor:pointer}.chr:hover{background:var(--sunk)}.dot{width:9px;height:9px;border-radius:50%;background:var(--red)}
+.chm{height:min(52vh,460px);overflow:auto;display:flex;flex-direction:column;gap:6px;padding:8px;background:var(--sunk);border-radius:10px}
+.cb{align-self:flex-start;max-width:80%;padding:7px 11px 5px;border-radius:14px 14px 14px 4px;background:var(--panel);border:1px solid var(--line);overflow-wrap:anywhere}.cb p{margin:0 0 3px}
+.cb.mine{align-self:flex-end;border-radius:14px 14px 4px 14px;background:var(--ink);color:var(--bg);border-color:var(--ink)}.ct{display:block;font-size:10.5px;opacity:.6;text-align:right}.chd{align-self:center;font-size:11.5px;color:var(--mut);margin:6px 0 2px}
+.chf{flex-wrap:nowrap;margin-top:8px;align-items:flex-end}.chf textarea{resize:none;min-height:40px;flex:1;width:auto}
+body.mmopen #modal{z-index:57}
 @media (max-width:700px){.mmtt,.mmw,#mmq{display:none}.mmxm{display:inline-flex;order:0}.mmbar{gap:6px;padding:8px}.mmbar select{flex:1;max-width:none;min-width:0}.mmbar .sp{flex-basis:100%;height:0}.mmbar button{padding:6px 10px}.mmn{max-width:210px;font-size:13px}.mmact{padding:10px}.mmact button{padding:6px 10px;font-size:13px}}
 .mmt{flex-direction:column;align-items:stretch;padding:6px;gap:6px;text-align:left;font-size:13px}.mmt img{width:100%;aspect-ratio:1.414;object-fit:cover;border-radius:5px;background:#fff;border:1px solid var(--line)}
 .mmv{position:fixed;inset:0;z-index:50;background:var(--bg);display:flex;flex-direction:column}.mmbar{display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--line);background:var(--panel)}
@@ -365,7 +375,7 @@ a.btn{display:inline-flex;padding:7px 12px;border-radius:8px;text-decoration:non
 <symbol id="i-home" viewBox="0 0 24 24"><path d="M4 11l8-6.5 8 6.5"/><path d="M6 9.5V19h12V9.5"/><path d="M10 19v-5h4v5"/></symbol>
 <symbol id="i-book" viewBox="0 0 24 24"><path d="M4 5.5c2.5-1 5.5-1 8 .8 2.5-1.8 5.5-1.8 8-.8V19c-2.5-1-5.5-1-8 .8-2.5-1.8-5.5-1.8-8-.8z"/><path d="M12 6.3v13.5"/></symbol>
 <symbol id="i-pen" viewBox="0 0 24 24"><path d="M4 20l1-4L15.5 5.5a2.1 2.1 0 013 3L8 19z"/><path d="M13.5 7.5l3 3"/></symbol>
-<symbol id="i-cards" viewBox="0 0 24 24"><rect x="3.5" y="7" width="13" height="12" rx="2"/><path d="M7.5 7V5.5a1.5 1.5 0 011.5-1.5h10a1.5 1.5 0 011.5 1.5V15a1.5 1.5 0 01-1.5 1.5h-2.5"/></symbol>
+<symbol id="i-inbox" viewBox="0 0 24 24"><path d="M3.5 13.5l2.2-7.4A1.5 1.5 0 017.1 5h9.8a1.5 1.5 0 011.4 1.1l2.2 7.4V18a1.5 1.5 0 01-1.5 1.5H5A1.5 1.5 0 013.5 18z"/><path d="M3.5 13.5h4.5l1.5 2.5h5l1.5-2.5h4.5"/></symbol><symbol id="i-cards" viewBox="0 0 24 24"><rect x="3.5" y="7" width="13" height="12" rx="2"/><path d="M7.5 7V5.5a1.5 1.5 0 011.5-1.5h10a1.5 1.5 0 011.5 1.5V15a1.5 1.5 0 01-1.5 1.5h-2.5"/></symbol>
 <symbol id="i-cal" viewBox="0 0 24 24"><rect x="4" y="5.5" width="16" height="14.5" rx="2"/><path d="M4 10h16M8.5 3.5v4M15.5 3.5v4"/></symbol>
 <symbol id="i-chart" viewBox="0 0 24 24"><path d="M4 20h16"/><path d="M7 16v-4M12 16V7M17 16v-6"/></symbol>
 <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/></symbol>
@@ -387,6 +397,7 @@ a.btn{display:inline-flex;padding:7px 12px;border-radius:8px;text-decoration:non
   <button id="menuBtn" class="ghost hide" aria-label="Contents"><svg class="i"><use href="#i-menu"/></svg></button>
   <h1 id="ttl"></h1>
   <div class="srch"><svg class="i"><use href="#i-search"/></svg><input id="q" type="search" placeholder="Search  (press /)" autocomplete="off"><div id="sugg" class="card sugg hide"></div></div>
+  <button class="ghost hide" id="inbx" aria-label="Inbox" title="Inbox: things friends sent you"><svg class="i"><use href="#i-inbox"/></svg><span class="bdg hide"></span></button>
   <button class="ghost" id="thm" aria-label="Toggle dark mode"><svg class="i"><use href="#i-moon"/></svg></button>
   <button class="pri" id="tutor"><svg class="i"><use href="#i-spark"/></svg><span class="lbl">Ask Claude</span></button>
   <button id="meH" aria-label="Account"></button>
@@ -419,7 +430,7 @@ const S = {books: [], qs: [], book: null, tab: 'home', n: 1, view: LS.get('ib-vi
 function loadLocal() {
   const mig = !LS.get('ib-migrated', 0);
   S.prog = LS.get(LSK('ib-prog'), null) || (mig && LS.get('ib-prog', null)) || {att: {}, terms: {}, last: null};
-  for (const k of ['pins', 'marks', 'hls']) S.prog[k] = S.prog[k] || []; S.prog.lastBy = S.prog.lastBy || {}; S.prog.decks = S.prog.decks || {}; S.prog.recall = S.prog.recall || {};
+  for (const k of ['pins', 'marks', 'hls']) S.prog[k] = S.prog[k] || []; S.prog.lastBy = S.prog.lastBy || {}; S.prog.decks = S.prog.decks || {}; S.prog.maps = S.prog.maps || {}; S.prog.recall = S.prog.recall || {};
   S.plan = LS.get(LSK('ib-plan'), null) || (mig ? LS.get('ib-plan', null) : null);
   if (mig) { LS.set('ib-migrated', 1); LS.set(LSK('ib-prog'), S.prog); if (S.plan) LS.set(LSK('ib-plan'), S.plan); }
 }
@@ -428,6 +439,7 @@ function loadLocal() {
 const CO = {keyterm: 'Key term', concept: 'Concept', case: 'Case study', activity: 'Activity', tok: 'TOK', atl: 'ATL skills', tip: 'Assessment tip', questions: 'Questions', box: ''};
 // maths: books flagged math (and their chats) render $...$ / $$...$$ with KaTeX + mhchem; other books keep $ as money
 let MATH = false;
+const mdm = (src, inline) => { const o = MATH; MATH = true; try { return mdx(src, inline); } finally { MATH = o; } }; // always render $maths$ (chat, mind maps)
 function mathOut(src) {
   if (!MATH || !window.katex) return {src, put: h => h};
   const M = [], hold = (tex, disp) => { M.push([tex, disp]); return '\u0000' + (M.length - 1) + '\u0000'; };
@@ -471,7 +483,7 @@ function mergeIn(r) {
     for (const [k, v] of Object.entries(r.terms || {})) if (!S.prog.terms[k] || S.prog.terms[k].t < v.t) S.prog.terms[k] = v;
     if ((r.pt || 0) > (S.prog.pt || 0)) { S.prog.pins = r.pins || []; S.prog.marks = r.marks || []; S.prog.hls = r.hls || []; S.prog.pt = r.pt; }
     const D = S.prog.days = S.prog.days || {}; for (const [d, o] of Object.entries(r.days || {})) { const x = D[d] = D[d] || {}; for (const k of ['m', 'q', 'c', 'p']) x[k] = Math.max(x[k] || 0, o[k] || 0); }
-    { const DK = S.prog.decks = S.prog.decks || {}; for (const [id, d] of Object.entries(r.decks || {})) if (!DK[id] || (DK[id].t || 0) < (d.t || 0)) DK[id] = d; }
+    for (const f of ['decks', 'maps']) { const DK = S.prog[f] = S.prog[f] || {}; for (const [id, d] of Object.entries(r[f] || {})) if (!DK[id] || (DK[id].t || 0) < (d.t || 0)) DK[id] = d; }
     for (const k of ['secs', 'rev', 'recall']) { const L = S.prog[k] = S.prog[k] || {}; for (const [kk, v] of Object.entries(r[k] || {})) if (!L[kk] || (L[kk].t || 0) < (v.t || 0)) L[kk] = v; }
     const PP = S.prog.pp = S.prog.pp || {}; for (const [k, v] of Object.entries(r.pp || {})) { const ts = new Set((PP[k] || []).map(x => x.t)); PP[k] = [...(PP[k] || []), ...v.filter(x => !ts.has(x.t))]; }
     for (const [k, v] of Object.entries(r.lastBy || {})) if (!S.prog.lastBy[k] || S.prog.lastBy[k].t < v.t) S.prog.lastBy[k] = v;
@@ -588,7 +600,7 @@ function drawChat(busy) {
 // where the student is, as one line for Claude; the full question/draft/card is only sent as `screen`, which Claude reads with a tool if it needs it
 function where() {
   const B = S.book;
-  if (S.mm) { const m = S.mm; return {label: 'mind map “' + m.pg.title + '”' + (m.sel ? ' · ' + m.sel : ''), book: 'math', note: `[Location: ${m.M.title} mind map, topic ${m.pg.title}${m.sel ? ', selected bubble: ' + m.sel : ''}]`, screen: 'Mind map outline:\n' + m.outline}; }
+  if (S.mm) { const m = S.mm; return {label: 'mind map “' + m.pg.title + '”' + (m.sel ? ' · ' + m.sel : ''), book: m.M.book || 'math', note: `[Location: ${m.M.title} mind map, topic ${m.pg.title}${m.sel ? ', selected bubble: ' + m.sel : ''}]`, screen: 'Mind map outline:\n' + m.outline}; }
   if (S.tab === 'lib' && S.reading && B) { const sec = secOf(B, S.n), bp = ($('#pn') && $('#pn').dataset.bp) || S.n;
     return {label: `${B.subject} p. ${bp}${sec ? ' · ' + (sec.num ? sec.num + ' ' : '') + sec.title : ''}`, book: B.id, n: S.n, note: `[Location: reading the ${B.subject} textbook, p. ${bp}${sec ? ', section ' + (sec.num ? sec.num + ' ' : '') + sec.title : ''}]`}; }
   if (S.tab === 'prac' && S.q) { const q = S.q, ta = $('#ans'), d = ta ? ta.value.trim() : '';
@@ -690,7 +702,7 @@ function renderPrac(filter) {
 function openQ(id) {
   const q = S.qs.find(x => x.id === id); if (!q) return renderPrac(); const B = bookOf(q.book), draft = LS.get(LSK('ib-d-' + id), ''), prev = attOf(id); MATH = !!B.math;
   shell('prac'); S.q = q; S.rc = null; setHash('#/q/' + id); title([['Practice', 'prac'], (KIND[q.kind] || q.kind) + (q.topic ? ' · ' + q.topic : '')]);
-  $('#main').innerHTML = `<div class="prac">${sessBar('q', id)}<div class="row" style="margin-bottom:10px"><button id="back"><svg class="i"><use href="#i-l"/></svg>All questions</button><span class="sp" style="flex:1"></span>${q.n ? `<button id="src">Open in textbook (p. ${esc(q.bp)})</button>` : ''}</div>
+  $('#main').innerHTML = `<div class="prac">${sessBar('q', id)}<div class="row" style="margin-bottom:10px"><button id="back"><svg class="i"><use href="#i-l"/></svg>All questions</button><span class="sp" style="flex:1"></span><button id="qSend" title="Send this question to a friend">Send</button>${q.n ? `<button id="src">Open in textbook (p. ${esc(q.bp)})</button>` : ''}</div>
     <div class="card qbig"><div style="font-family:var(--f-ui);margin-bottom:10px"><span class="tag">${KIND[q.kind] || q.kind}</span>${q.marks ? '<span class="tag">' + q.marks + (q.marks === 1 ? ' mark' : ' marks') + '</span>' : ''}${q.calc === 'no' ? '<span class="tag w">No calculator</span>' : q.calc === 'yes' ? '<span class="tag">Calculator</span>' : ''}<span class="meta">${esc(q.set ? q.set + ' · ' : '')}${esc(q.topic ? topicName(B, q.topic) : '')}</span></div>${mdx(q.text)}${q.ctx ? `<div class="meta" style="font-family:var(--f-ui);margin-top:10px">${esc(q.ctx)}</div>` : ''}</div>
     <div style="margin-top:14px"><textarea id="ans" rows="${q.kind === 'essay' ? 18 : 8}" placeholder="Answer">${esc(draft)}</textarea>
     <div class="row" style="margin-top:8px"><span class="meta" id="wc"></span><span class="meta" id="tm"></span><span style="flex:1"></span><button id="hint">Hint</button><button class="pri" id="mark">Mark with Claude</button></div></div>
@@ -699,6 +711,7 @@ function openQ(id) {
   const ta = $('#ans'), t0 = Date.now();
   const wc = () => { const n = (ta.value.match(/\S+/g) || []).length; $('#wc').textContent = n + ' words'; LS.set(LSK('ib-d-' + id), ta.value); }; ta.oninput = wc; wc();
   const tick = setInterval(() => { if (!document.body.contains(ta)) return clearInterval(tick); const s = (Date.now() - t0) / 1000 | 0; $('#tm').textContent = '· ' + (s / 60 | 0) + ':' + String(s % 60).padStart(2, '0'); }, 1000);
+  $('#qSend').onclick = () => shareBox({kind: 'q', title: `${bookOf(q.book).subject} · ${KIND[q.kind] || q.kind}${q.marks ? ' · ' + q.marks + ' marks' : ''}`, data: {id: q.id}});
   $('#back').onclick = () => { if (q.pp) S.pf = {...(S.pf || {}), view: 'papers'}; renderPrac(); }; if ($('#src')) $('#src').onclick = () => openPage(B.id, q.n);
   $('#hint').onclick = () => openChat({title: 'Hint', book: q.book, pages: q.pages, intro: `Question (${KIND[q.kind]}${q.marks ? ', ' + q.marks + ' marks' : ''}): "${q.text}"\nGive me a hint to get started WITHOUT writing the answer for me: what the command term wants, 2-3 angles or concepts to consider, and which examples or textbook pages could help. `, msgs: []}) || sendChat('Give me a hint.');
   $('#mark').onclick = async () => {
@@ -791,7 +804,7 @@ function occurs(it, from, to) {
   for (; d <= end && out.length < 400; d = addD(d, 7)) out.push(d);
   return out;
 }
-function dayMap(from, to) { const m = {}; for (const it of S.plan) for (const d of occurs(it, from, to)) (m[d] = m[d] || []).push(it); for (const k in m) m[k].sort((a, b) => (a.time || '99') < (b.time || '99') ? -1 : 1); return m; }
+function dayMap(from, to) { const m = {}; for (const it of S.plan || []) for (const d of occurs(it, from, to)) (m[d] = m[d] || []).push(it); for (const k in m) m[k].sort((a, b) => (a.time || '99') < (b.time || '99') ? -1 : 1); return m; }
 async function loadPlan() { if (!USER) { S.plan = LS.get(LSK('ib-plan'), S.plan || []); return; } try { S.plan = await api('plan'); if (!Array.isArray(S.plan)) S.plan = []; } catch (e) { S.plan = S.plan || []; } }
 let planSaveT = 0;
 function savePlan() { LS.set(LSK('ib-plan'), S.plan); if (!USER) return; clearTimeout(planSaveT); planSaveT = setTimeout(() => api('plan', {data: S.plan}).catch(e => alert('Could not save: ' + e.message)), 400); }
@@ -1035,10 +1048,11 @@ function selBar() {
   if (!pg || !sel.rangeCount || sel.isCollapsed || !pg.contains(sel.anchorNode) || !pg.classList.contains('page')) { if (bar) bar.remove(); return; }
   const x = sel.toString().trim(); if (x.length < 2) return; const rc = sel.getRangeAt(0).getBoundingClientRect();
   if (!bar) { bar = document.createElement('div'); bar.id = 'selbar'; bar.className = 'card selbar'; document.body.appendChild(bar); }
-  bar.innerHTML = '<button data-a="hl">Highlight</button><button data-a="note">Note</button><button data-a="ask"><svg class="i"><use href="#i-spark"/></svg>Explain</button>';
+  bar.innerHTML = '<button data-a="hl">Highlight</button><button data-a="note">Note</button><button data-a="ask"><svg class="i"><use href="#i-spark"/></svg>Explain</button><button data-a="send">Send</button>';
   bar.style.left = Math.max(8, Math.min(innerWidth - 260, rc.left + rc.width / 2 - 120)) + 'px'; bar.style.top = (rc.top + scrollY - 46) + 'px';
   bar.onmousedown = e => e.preventDefault();
   bar.querySelectorAll('[data-a]').forEach(btn => btn.onclick = () => { const a = btn.dataset.a; bar.remove(); sel.removeAllRanges();
+    if (a === 'send') return shareBox({kind: 'quote', title: S.book.subject + ' p. ' + ($('#pn').dataset.bp || S.n), data: {b: S.book.id, n: S.n, bp: $('#pn').dataset.bp || '', x: x.slice(0, 1500)}});
     if (a === 'ask') { openChat({title: 'Explain', book: S.book.id, pages: [], intro: ''}); return sendChat(`Explain this bit from p. ${$('#pn').dataset.bp || S.n} simply: "${x.slice(0, 1500)}"`); }
     const h = {id: Math.random().toString(36).slice(2, 9), b: S.book.id, n: S.n, bp: $('#pn').dataset.bp || '', x: x.slice(0, 600), note: '', t: Date.now()};
     (S.prog.hls = S.prog.hls || []).push(h); saveProg(true); paintHls($('#pg'), h.b, h.n); if (a === 'note') { const m = document.querySelector(`mark.hl[data-h="${h.id}"]`); if (m) hlPop(h.id, m); } });
@@ -1047,8 +1061,9 @@ document.addEventListener('mouseup', () => setTimeout(selBar, 10)); document.add
 function hlPop(id, el) {
   const h = (S.prog.hls || []).find(x => x.id === id); if (!h) return;
   const m = openModal(`<div class="meta">p. ${esc(h.bp || h.n)}</div><blockquote style="margin:8px 0 12px;font-family:var(--f-read)">${esc(h.x)}</blockquote><textarea id="hlN" rows="4" placeholder="Note">${esc(h.note || '')}</textarea>
-    <div class="row" style="margin-top:10px"><button id="hlDel" style="color:var(--bad)">Remove highlight</button><span class="sp"></span><button id="mClose">Close</button><button class="pri" id="hlSave">Save</button></div>`);
+    <div class="row" style="margin-top:10px"><button id="hlDel" style="color:var(--bad)">Remove highlight</button><button id="hlSend">Send</button><span class="sp"></span><button id="mClose">Close</button><button class="pri" id="hlSave">Save</button></div>`);
   $('#hlN').focus(); $('#hlSave').onclick = () => { h.note = $('#hlN').value.trim(); saveProg(true); m.remove(); refreshPage(); };
+  $('#hlSend').onclick = () => { m.remove(); shareBox({kind: 'quote', title: (bookOf(h.b) || {subject: ''}).subject + ' p. ' + (h.bp || h.n), data: {b: h.b, n: h.n, bp: h.bp, x: h.x}}); if (h.note) setTimeout(() => { const n = $('#shN'); if (n) n.value = h.note; }, 0); };
   $('#hlDel').onclick = () => { S.prog.hls = S.prog.hls.filter(x => x !== h); saveProg(true); m.remove(); refreshPage(); };
 }
 function refreshPage() { if (S.tab === 'lib' && S.reading) openPage(S.book.id, S.n, S.hl); else if (S.tab === 'lib') renderShelf(); }
@@ -1231,9 +1246,10 @@ function renderDecks() {
   const ds = myDecks();
   $('#main').innerHTML = `<div class="prac"><div class="row" style="justify-content:space-between"><h2 style="margin:0">Flashcards</h2><div class="row"><button id="dkNew">New deck</button><button id="dkImp">Import from Quizlet</button><button class="pri" id="dkAI"><svg class="i"><use href="#i-spark"/></svg>Make with Claude</button></div></div>
     <div style="margin:12px 0">${tvSeg()}</div>
-    ${ds.length ? `<div class="card lst">${ds.map(d => { const st = deckStats(d), B = bookOf(d.book); return `<div class="row"><div style="min-width:0;flex:1"><b>${esc(d.name)}</b><div class="meta">${B ? esc(B.subject) + ' · ' : ''}${d.cards.length} cards${st.due ? ` · <b style="color:var(--red)">${st.due} due</b>` : ''}${st.nw ? ' · ' + st.nw + ' new' : ''}</div></div><button data-ed="${d.id}">Edit</button><button data-cr="${d.id}" title="Go through every card, ignoring the schedule">Cram</button><button class="pri" data-sd="${d.id}" ${st.due + st.nw ? '' : 'disabled'}>Study${st.due + st.nw ? ' ' + Math.min(40, st.due + st.nw) : ''}</button></div>`; }).join('')}</div>`
+    ${ds.length ? `<div class="card lst">${ds.map(d => { const st = deckStats(d), B = bookOf(d.book); return `<div class="row"><div style="min-width:0;flex:1"><b>${esc(d.name)}</b><div class="meta">${B ? esc(B.subject) + ' · ' : ''}${d.cards.length} cards${st.due ? ` · <b style="color:var(--red)">${st.due} due</b>` : ''}${st.nw ? ' · ' + st.nw + ' new' : ''}</div></div><button data-ed="${d.id}">Edit</button><button data-dsh="${d.id}">Send</button><button data-cr="${d.id}" title="Go through every card, ignoring the schedule">Cram</button><button class="pri" data-sd="${d.id}" ${st.due + st.nw ? '' : 'disabled'}>Study${st.due + st.nw ? ' ' + Math.min(40, st.due + st.nw) : ''}</button></div>`; }).join('')}</div>`
       : `<div class="card" style="padding:28px;text-align:center"><b>No decks yet</b><div class="meta" style="margin-top:4px">Make your own, paste a set from Quizlet, or have Claude write cards from a textbook topic, your notes or your weak spots. Your cards join the daily review automatically.</div></div>`}</div>`;
   tvWire();
+  document.querySelectorAll('[data-dsh]').forEach(x => x.onclick = () => { const d = S.prog.decks[x.dataset.dsh]; shareBox({kind: 'deck', title: d.name, data: {book: d.book, cards: d.cards.map(c => ({f: c.f, b: c.b, ...(c.tp ? {tp: c.tp} : {}), ...(c.book ? {book: c.book} : {})}))}}); });
   $('#dkNew').onclick = () => renderDeckEdit(); $('#dkImp').onclick = () => renderImport(); $('#dkAI').onclick = () => renderMake();
   document.querySelectorAll('[data-ed]').forEach(x => x.onclick = () => renderDeckEdit(x.dataset.ed));
   document.querySelectorAll('[data-sd]').forEach(x => x.onclick = () => { const d = S.prog.decks[x.dataset.sd], cs = d.cards.map(c => deckCard(d, c)), due = cs.filter(c => cardDue(S.prog.terms[c.key])), nw = cs.filter(c => !S.prog.terms[c.key]);
@@ -1558,11 +1574,11 @@ async function renderRef(F) {
   $('#main').innerHTML = `<div class="prac" style="max-width:1100px"><div class="row"><h2 style="margin:0">${B.math ? 'Formula & data sheet' : 'Reference'}</h2>${bookBar(B.id)}</div><div id="rfb" style="margin-top:14px"><span class="spin"></span></div></div>`;
   onBookBar(() => renderRef()); const R = await getRef(B.id); if (S.tab !== 'ref' || S.book !== B) return;
   const has = (R.formulas || []).length || (R.cases || []).length || (R.maps || []).length;
-  if (!has) { $('#rfb').innerHTML = `<div class="card" style="padding:28px;text-align:center"><b>Nothing here for ${esc(B.subject)} yet</b></div>`; return; }
+  if (!has) { $('#rfb').innerHTML = myMapsHtml(B) + `<div class="card" style="padding:28px;text-align:center;margin-top:18px"><b>No formula sheet or case bank for ${esc(B.subject)} yet</b></div>`; wireMyMaps(B, () => renderRef(F)); return; }
   const draw = () => {
     const q = F.q.toLowerCase(), hit = o => !q || JSON.stringify(o).toLowerCase().includes(q), ts = topicsOf(B), tname = n => { const t = ts.find(x => inTopic(n, x.num) || x.num === n) || B.toc.find(x => x.num === n); return t ? t.num + ' ' + t.title : n; };
-    let h = (R.maps || []).length && !F.q ? `<h3 style="margin-top:0">Mind maps</h3>${R.maps.map(M => `<div class="mmset"><div class="row"><b>${esc(M.title)}</b><span class="sp"></span><a class="meta" href="${RELAY}/ib/file?b=${M.id}" download>PDF</a></div>
-      <div class="mmrow">${M.pages.map(pg => `<button class="mmt" data-mm="${M.id}" data-n="${pg.n}"><img loading="lazy" alt="" src="${RELAY}/ib/img?b=${M.id}&n=${pg.n}"><span>${esc(pg.title)}${pg.tree ? ' <span class="tag">interactive</span>' : ''}</span></button>`).join('')}</div></div>`).join('')}` : '';
+    let h = (F.q ? '' : myMapsHtml(B)) + ((R.maps || []).length && !F.q ? `<h3>Official IB mind maps</h3>${R.maps.map(M => `<div class="mmset"><div class="row"><b>${esc(M.title)}</b><span class="sp"></span><a class="meta" href="${RELAY}/ib/file?b=${M.id}" download>PDF</a></div>
+      <div class="mmrow">${M.pages.map(pg => `<button class="mmt" data-mm="${M.id}" data-n="${pg.n}"><img loading="lazy" alt="" src="${RELAY}/ib/img?b=${M.id}&n=${pg.n}"><span>${esc(pg.title)}${pg.tree ? ' <span class="tag">interactive</span>' : ''}</span></button>`).join('')}</div></div>`).join('')}` : '');
     h += `<div class="filters"><input id="rfq" placeholder="${(R.cases || []).length ? (B.subject.startsWith('TOK') ? 'Search examples, thinkers, topics…' : 'Search cases, actors, places…') : 'Search formulas…'}" value="${esc(F.q)}" style="max-width:340px">`;
     if ((R.cases || []).length) { const cs = {}; for (const c of R.cases) for (const k of c.concepts || []) cs[k] = (cs[k] || 0) + 1;
       h += `<select id="rfc" style="width:auto"><option value="">All concepts</option>${Object.entries(cs).sort((a, b) => b[1] - a[1]).map(([k, n]) => `<option value="${esc(k)}" ${F.c === k ? 'selected' : ''}>${esc(k)} (${n})</option>`).join('')}</select>`; }
@@ -1575,7 +1591,7 @@ async function renderRef(F) {
     $('#rfb').innerHTML = h;
     $('#rfq').oninput = e => { F.q = e.target.value; const p = e.target.selectionStart; draw(); $('#rfq').focus(); $('#rfq').setSelectionRange(p, p); };
     if ($('#rfc')) $('#rfc').onchange = e => { F.c = e.target.value; draw(); };
-    document.querySelectorAll('.mmt').forEach(x => x.onclick = () => mapView(R.maps, x.dataset.mm, +x.dataset.n));
+    document.querySelectorAll('.mmt').forEach(x => x.onclick = () => mapView(R.maps, x.dataset.mm, +x.dataset.n)); wireMyMaps(B, draw);
     document.querySelectorAll('#rfb [data-bp]').forEach(a => a.onclick = e => { e.preventDefault(); goBp(B.id, a.dataset.bp); });
     document.querySelectorAll('[data-use]').forEach(x => x.onclick = () => { const c = R.cases[+x.dataset.use]; openChat({title: 'Using: ' + c.title, book: B.id, pages: [], intro: ''});
       sendChat(B.subject.startsWith('TOK') ? `Help me use this example in my TOK essay or exhibition: ${c.title}: ${c.summary} (textbook p. ${c.page}). Which prescribed-title style questions, areas of knowledge and TOK concepts does it fit, what knowledge claim does it support, what counterclaim does it raise, and write a model essay paragraph using it.`
@@ -1588,15 +1604,15 @@ async function renderRef(F) {
 const MMC = ['#c0392b', '#1f7a8c', '#7b4fb0', '#b9770e', '#2e8b57', '#c2185b', '#3d5a99', '#6d7f12'];
 const mmPlain = t => String(t || '').replace(/\$([^$]*)\$/g, (_, m) => m.replace(/\\(frac|dfrac)\{([^}]*)\}\{([^}]*)\}/g, '($2)/($3)').replace(/\\[a-zA-Z]+/g, ' ').replace(/[{}^_]/g, '')).replace(/\s+/g, ' ').trim();
 function mapView(maps, id, n) {
-  const M = maps.find(x => x.id === id); let mode = 'map', z = 1, view = null, sel = null, recall = false, q = '';
+  const M = maps.find(x => x.id === id), BK = M.book || 'math'; let mode = 'map', z = 1, view = null, sel = null, recall = false, q = '', OPEN = new WeakMap();
   const ov = document.createElement('div'); ov.className = 'mmv'; document.body.appendChild(ov); document.body.classList.add('mmopen');
   let nodes = [], root = null;
-  const build = () => { // flatten the tree with ids, depth, branch colour; everything starts open (recall mode starts folded)
-    nodes = []; const pg = M.pages.find(x => x.n === n);
-    const walk = (t, d, par, br) => { const o = {i: nodes.length, t: t.t, d, par, br, kids: [], open: d === 0 || !recall}; nodes.push(o);
+  const build = keep => { // flatten the tree with ids, depth, branch colour; everything starts open (recall mode starts folded); keep = after an edit
+    const sv = keep && sel ? sel.src : null; nodes = []; const pg = M.pages.find(x => x.n === n);
+    const walk = (t, d, par, br) => { const o = {i: nodes.length, src: t, t: t.t, d, par, br, kids: [], open: d === 0 || (OPEN.has(t) ? OPEN.get(t) : !recall)}; nodes.push(o);
       (t.c || []).forEach((c, k) => o.kids.push(walk(c, d + 1, o, d === 0 ? k : br))); return o; };
-    root = pg.tree ? walk(pg.tree, 0, null, 0) : null; sel = null; view = null; };
-  const label = o => (() => { try { return mdx(o.t, !o.t.includes('\n|')); } catch (e) { return esc(o.t); } })();
+    root = pg.tree ? walk(pg.tree, 0, null, 0) : null; sel = sv && nodes.find(o => o.src === sv) || null; if (!keep) view = null; };
+  const label = o => (() => { try { return mdm(o.t, !o.t.includes('\n|')); } catch (e) { return esc(o.t); } })();
   const path = o => { const a = []; for (let x = o; x; x = x.par) a.unshift(mmPlain(x.t)); return a.join(' › '); };
   const outline = (o, ind = '') => ind + '- ' + o.t + '\n' + o.kids.map(k => outline(k, ind + '  ')).join('');
   const nhid = o => o.kids.length - 0;
@@ -1606,14 +1622,16 @@ function mapView(maps, id, n) {
     ov.innerHTML = `<div class="mmbar"><b class="mmtt">${esc(M.title)}</b><select id="mmpg" aria-label="Topic">${M.pages.map(x => `<option value="${x.n}" ${x.n === n ? 'selected' : ''}>${esc(x.title)}</option>`).join('')}</select>
       <button data-a="prev" ${n <= 1 ? 'disabled' : ''} aria-label="Previous topic"><svg class="i"><use href="#i-l"/></svg></button><button data-a="next" ${n >= M.pages.length ? 'disabled' : ''} aria-label="Next topic"><svg class="i"><use href="#i-r"/></svg></button>
       <button data-a="x" aria-label="Close" class="mmxm"><svg class="i"><use href="#i-x"/></svg></button><span class="sp"></span>${tree ? `<div class="seg"><button data-a="map" class="${mode === 'map' ? 'on' : ''}">Interactive</button><button data-a="img" class="${mode === 'img' ? 'on' : ''}">Original</button></div>` : ''}
-      ${mode === 'map' ? `<input id="mmq" placeholder="Find on map…" value="${esc(q)}"><button data-a="recall" class="${recall ? 'on' : ''}" title="Fold everything below the main branches, then open them one level at a time to test yourself">Recall mode</button><button data-a="all" class="mmw">Open all</button>` : ''}
+      ${mode === 'map' ? `<input id="mmq" placeholder="Find on map…" value="${esc(q)}"><button data-a="recall" class="${recall ? 'on' : ''}" title="Fold everything below the main branches, then open them one level at a time to test yourself">Recall mode</button><button data-a="all" class="mmw">Open all</button>` : ''}${tree ? `<button data-a="send" title="Send this map to a friend">Send</button>${M.own ? '' : '<button data-a="copy" class="mmw" title="Make an editable copy in your own mind maps">Copy to my maps</button>'}` : ''}
       <button data-a="out" aria-label="Zoom out" class="mmw">−</button><button data-a="fit" class="num" title="Fit to screen" style="min-width:58px">${Math.round(z * 100)}%</button><button data-a="in" aria-label="Zoom in" class="mmw">+</button>
       <button data-a="x" aria-label="Close" class="mmw"><svg class="i"><use href="#i-x"/></svg></button></div>
       ${mode === 'map' ? `<div class="mmsc mmint"><div class="mmcv"><svg class="mmln"></svg></div></div><div class="mmact hide"></div>` : `<div class="mmsc"><img src="${RELAY}/ib/img?b=${M.id}&n=${n}" alt="${esc(pg.title)}" style="width:${z * 100}%" draggable="false"></div>`}`;
     ov.querySelector('#mmpg').onchange = e => go(+e.target.value);
     ov.querySelectorAll('.mmbar [data-a]').forEach(b => b.onclick = () => ({prev: () => go(n - 1), next: () => go(n + 1), in: () => zoom(1.3), out: () => zoom(1 / 1.3), x: close, fit: () => mode === 'map' ? fit() : (z = 1, draw()),
-      map: () => { mode = 'map'; z = 1; draw(); }, img: () => { mode = 'img'; z = 1; draw(); }, recall: () => { recall = !recall; build(); draw(); }, all: () => { recall = false; nodes.forEach(o => o.open = true); draw(); }})[b.dataset.a]());
-    if (mode === 'map') { const qi = ov.querySelector('#mmq'); qi.oninput = () => { q = qi.value; find(); }; qi.onkeydown = e => e.stopPropagation(); paint(); } else imgWire();
+      map: () => { mode = 'map'; z = 1; draw(); }, img: () => { mode = 'img'; z = 1; draw(); }, recall: () => { recall = !recall; OPEN = new WeakMap(); build(); draw(); }, all: () => { recall = false; nodes.forEach(o => { o.open = true; OPEN.set(o.src, true); }); draw(); },
+      send: () => { const pg = M.pages.find(x => x.n === n); shareBox({kind: 'map', title: M.own ? M.title : M.title + ': ' + pg.title, data: {book: BK, tree: mmClean(pg.tree)}}); },
+      copy: () => { const pg = M.pages.find(x => x.n === n), m = {id: uid(), title: mmPlain(pg.tree.t), book: BK, tree: mmClean(pg.tree)}; saveMap(m); close(); openMyMap(m.id); }})[b.dataset.a]());
+    if (mode === 'map') { const qi = ov.querySelector('#mmq'); qi.oninput = () => { q = qi.value; find(); }; qi.onkeydown = e => e.stopPropagation(); paint(); if (M.own && !root.kids.length) select(root); } else imgWire();
   };
   const go = k => { n = Math.max(1, Math.min(M.pages.length, k)); z = 1; q = ''; build(); draw(); };
   // ---- interactive map
@@ -1652,8 +1670,17 @@ function mapView(maps, id, n) {
     find(true); wire(sc);
   };
   const toggle = o => { const ax = o.x + view.ox, ay = o.y + view.oy;
-    o.open = !o.open; if (!o.open) (function f(k) { for (const c of k.kids) { if (sel === c) sel = null; f(c); } })(o);
+    o.open = !o.open; OPEN.set(o.src, o.open); if (!o.open) (function f(k) { for (const c of k.kids) { if (sel === c) sel = null; f(c); } })(o);
     paint(); const nx = o.x + view.ox, ny = o.y + view.oy; view.x -= (nx - ax) * view.s; view.y -= (ny - ay) * view.s; apply(); if (sel) select(sel); };
+  const commit = foc => { // own maps: save the edited tree, rebuild, keep the focused bubble still on screen
+    const pg = M.pages[0], m = S.prog.maps[M.id], a = nodes.find(o => o.src === foc), ax = a && a.x + view.ox, ay = a && a.y + view.oy;
+    m.tree = mmClean(pg.tree); m.title = M.title = pg.title = mmPlain(pg.tree.t) || 'Mind map'; saveMap(m); const t = ov.querySelector('.mmtt'); if (t) t.textContent = M.title;
+    build(true); sel = nodes.find(o => o.src === foc) || null; paint(); const b = sel;
+    if (b && a) { view.x -= (b.x + view.ox - ax) * view.s; view.y -= (b.y + view.oy - ay) * view.s; apply(); } select(sel); };
+  const edit = o => { const box = ov.querySelector('.mmact .mmsel'); box.innerHTML = `<textarea id="mmed" rows="2" placeholder="Idea, fact or $maths$">${esc(o.src.t)}</textarea><div class="meta">Enter to save · Markdown and $...$ maths work</div>`;
+    const ta = box.querySelector('textarea'); ta.focus(); ta.select(); let done = false;
+    const save = () => { if (done) return; done = true; const v = ta.value.trim(); if (v && v !== o.src.t) { o.src.t = v; commit(o.src); } else select(o); };
+    ta.onkeydown = e => { e.stopPropagation(); if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); save(); } if (e.key === 'Escape') { done = true; select(o); } }; ta.onblur = save; };
   const mmFitTo = (nb, any) => { const sc = ov.querySelector('.mmsc'), f = Math.min((sc.clientWidth - 20) / nb.W, (sc.clientHeight - 20) / nb.H), s = Math.min(1.25, Math.max(any ? .1 : .55, f));
     view.s = s; if (s > f) { view.x = sc.clientWidth / 2 - nb.cx * s; view.y = sc.clientHeight / 2 - nb.cy * s; } // too big to fit readably: start on the centre topic
     else { view.x = (sc.clientWidth - nb.W * s) / 2; view.y = (sc.clientHeight - nb.H * s) / 2; } };
@@ -1671,7 +1698,7 @@ function mapView(maps, id, n) {
     sc.onclick = e => { if (!e.target.closest('.mmn') && !sc.dataset.moved) select(null); }; };
   const find = keep => { const t = q.trim().toLowerCase(); ov.querySelector('.mmcv').classList.toggle('dim', !!t); if (!t) return;
     const hit = nodes.filter(o => mmPlain(o.t).toLowerCase().includes(t) || o.t.toLowerCase().includes(t));
-    if (!keep) { let ch = false; for (const o of hit) for (let x = o.par; x; x = x.par) if (!x.open) { x.open = true; ch = true; } if (ch) return paint(); }
+    if (!keep) { let ch = false; for (const o of hit) for (let x = o.par; x; x = x.par) if (!x.open) { x.open = true; OPEN.set(x.src, true); ch = true; } if (ch) return paint(); }
     for (const o of nodes) if (o.el) o.el.classList.toggle('hit', hit.includes(o)); };
   const select = o => { sel = o; S.mm && (S.mm.sel = o ? path(o) : null); ov.querySelectorAll('.mmn').forEach(el => el.classList.toggle('sel', !!o && +el.dataset.i === o.i));
     const bar = ov.querySelector('.mmact'); if (!o) return bar.classList.add('hide');
@@ -1679,16 +1706,21 @@ function mapView(maps, id, n) {
     bar.innerHTML = `<div class="mmsel">${label(o)}</div><div class="row" style="gap:6px;flex-wrap:wrap">
       <button class="pri" data-x="exp"><svg class="i"><use href="#i-spark"/></svg>Explain</button><button data-x="quiz">Quiz me</button>
       ${withKids.length ? `<button data-x="cards"><svg class="i"><use href="#i-cards"/></svg>Flashcards (${withKids.length})</button>` : ''}<button data-x="find"><svg class="i"><use href="#i-search"/></svg>Find in textbook</button>
-      ${o.kids.length ? `<button data-x="fold">${o.open ? 'Fold branch' : 'Open branch'}</button>` : ''}<span class="meta" id="mmmsg"></span></div>`;
+      ${o.kids.length ? `<button data-x="fold">${o.open ? 'Fold branch' : 'Open branch'}</button>` : ''}${o.d && o.kids.length ? '<button data-x="send">Send branch</button>' : ''}
+      ${M.own ? `<span class="sp"></span><button data-x="add">+ Add bubble</button><button data-x="edit"><svg class="i"><use href="#i-pen"/></svg>Edit</button>${o.d ? '<button data-x="del" style="color:var(--bad)">Delete</button>' : ''}` : ''}<span class="meta" id="mmmsg"></span></div>`;
     bar.classList.remove('hide');
     const ctx = `my ${M.title} mind map, topic "${pg.title}", the bubble ${path(o)}` + (o.kids.length ? `. Its branches:\n${o.kids.map(k => outline(k)).join('')}` : '');
     bar.querySelectorAll('[data-x]').forEach(b => b.onclick = () => ({
-      exp: () => { openChat({title: 'Mind map: ' + mmPlain(o.t).slice(0, 40), book: 'math', pages: [], intro: ''}); sendChat(`Explain this part of ${ctx}\nTeach it intuitively: why it works, a worked example, and the common mistakes. Keep it short.`); },
-      quiz: () => { openChat({title: 'Quiz: ' + mmPlain(o.t).slice(0, 40), book: 'math', pages: [], intro: ''}); sendChat(`Quiz me on ${ctx}\nAsk me one exam-style question at a time (no answers yet), wait for my reply, mark it, then ask the next. Start easy and get harder.`); },
-      cards: () => { const cards = withKids.map(k => ({f: (k.par ? mmPlain(k.par.t) + ' › ' : '') + k.t, b: k.kids.map(c => '- ' + c.t).join('\n'), book: 'math'})), d = addCards('Mind map: ' + pg.title, 'math', cards);
+      exp: () => { openChat({title: 'Mind map: ' + mmPlain(o.t).slice(0, 40), book: BK, pages: [], intro: ''}); sendChat(`Explain this part of ${ctx}\nTeach it intuitively: why it works, a worked example, and the common mistakes. Keep it short.`); },
+      quiz: () => { openChat({title: 'Quiz: ' + mmPlain(o.t).slice(0, 40), book: BK, pages: [], intro: ''}); sendChat(`Quiz me on ${ctx}\nAsk me one exam-style question at a time (no answers yet), wait for my reply, mark it, then ask the next. Start easy and get harder.`); },
+      cards: () => { const cards = withKids.map(k => ({f: (k.par ? mmPlain(k.par.t) + ' › ' : '') + k.t, b: k.kids.map(c => '- ' + c.t).join('\n'), book: BK})), d = addCards('Mind map: ' + pg.title, BK, cards);
         bar.querySelector('#mmmsg').textContent = `Added to deck “${d.name}” (${d.cards.length} cards) in Flashcards → My decks`; },
       find: () => { let t = ''; for (let x = o; x && t.length < 4; x = x.par) t = mmPlain(x.t).replace(/[^A-Za-z ]+/g, ' ').replace(/\s+/g, ' ').trim(); close(); search(t || pg.title); },
-      fold: () => { toggle(o); select(o); }})[b.dataset.x]()); };
+      fold: () => { toggle(o); select(o); },
+      send: () => shareBox({kind: 'map', title: mmPlain(o.t).slice(0, 80) + ' (from ' + pg.title + ')', data: {book: BK, tree: mmClean(o.src)}}),
+      add: () => { const nw = {t: 'New idea', c: []}; (o.src.c = o.src.c || []).push(nw); OPEN.set(o.src, true); commit(nw); edit(sel); },
+      edit: () => edit(o),
+      del: () => { if (o.kids.length && !confirm(`Delete “${mmPlain(o.t).slice(0, 40)}” and its ${o.kids.length} branches?`)) return; o.par.src.c = o.par.src.c.filter(x => x !== o.src); commit(o.par.src); }})[b.dataset.x]()); };
   // ---- original image
   const imgWire = () => { const sc = ov.querySelector('.mmsc'); let drag = null;
     sc.onpointerdown = e => { drag = {x: e.clientX, y: e.clientY, l: sc.scrollLeft, t: sc.scrollTop}; sc.setPointerCapture(e.pointerId); };
@@ -1705,6 +1737,133 @@ function mapView(maps, id, n) {
   const onResize = () => mode === 'map' && view && (mmFitTo(view.nb), apply());
   const close = () => { ov.remove(); S.mm = null; document.body.classList.remove('mmopen'); document.removeEventListener('keydown', key, true); removeEventListener('resize', onResize); };
   document.addEventListener('keydown', key, true); addEventListener('resize', onResize); build(); draw();
+}
+
+// ---------- my mind maps: blank or made by Claude from a chapter; edited in mapView ----------
+const mmClean = t => ({t: String(t.t || ''), c: (t.c || []).map(mmClean)});
+const mmCount = t => 1 + (t.c || []).reduce((a, c) => a + mmCount(c), 0);
+const myMaps = b => Object.values(S.prog.maps || {}).filter(m => !m.del && (!b || m.book === b)).sort((a, b) => (b.t || 0) - (a.t || 0));
+function saveMap(m) { m.t = Date.now(); (S.prog.maps = S.prog.maps || {})[m.id] = m; saveProg(); }
+function openMyMap(id) { const m = S.prog.maps[id]; mapView([{id: m.id, title: m.title, book: m.book, own: true, pages: [{n: 1, title: m.title, tree: m.tree}]}], m.id, 1); }
+const myMapsHtml = B => { const ms = myMaps(B.id); return `<div class="row" style="align-items:baseline"><h3 style="margin:0">My mind maps</h3><span class="sp"></span><button data-mm="new"><svg class="i"><use href="#i-pen"/></svg>New mind map</button><button class="pri" data-mm="ai"><svg class="i"><use href="#i-spark"/></svg>Make one from a chapter</button></div>
+  ${ms.length ? `<div class="mmown">${ms.map(m => `<div class="card mmo" data-om="${m.id}"><b>${esc(m.title)}</b><span class="meta">${mmCount(m.tree)} bubbles · edited ${esc(ago(m.t))}${m.from ? ' · from ' + esc(m.from) : ''}</span><span class="row" style="gap:4px;margin-top:6px"><button class="ghost" data-mms="${m.id}">Send</button><button class="ghost" data-mmd="${m.id}" style="color:var(--bad)">Delete</button></span></div>`).join('')}</div>`
+    : `<p class="meta" style="margin:6px 0 18px">Build your own map bubble by bubble, or let Claude draft one from a ${esc(B.subject)} chapter and edit it. You can send maps to friends.</p>`}`; };
+function wireMyMaps(B, redraw) {
+  document.querySelectorAll('[data-mm="new"]').forEach(x => x.onclick = () => { const m = openModal(`<h3 style="margin-top:0">New mind map</h3><form id="nmf" class="ef"><input id="nmt" placeholder="Centre topic, e.g. Acids and bases" maxlength="80"><div class="row"><span class="sp"></span><button type="button" id="mClose">Cancel</button><button class="pri">Create</button></div></form>`);
+    $('#nmt').focus(); $('#nmf').onsubmit = e => { e.preventDefault(); const t = $('#nmt').value.trim(); if (!t) return; const mp = {id: uid(), title: t, book: B.id, tree: {t, c: []}}; saveMap(mp); m.remove(); redraw(); openMyMap(mp.id); }; });
+  document.querySelectorAll('[data-mm="ai"]').forEach(x => x.onclick = () => aiMapBox(B, redraw));
+  document.querySelectorAll('[data-om]').forEach(x => x.onclick = e => { if (!e.target.closest('button')) openMyMap(x.dataset.om); });
+  document.querySelectorAll('[data-mms]').forEach(x => x.onclick = () => { const m = S.prog.maps[x.dataset.mms]; shareBox({kind: 'map', title: m.title, data: {book: m.book, tree: m.tree}}); });
+  document.querySelectorAll('[data-mmd]').forEach(x => x.onclick = () => { const m = S.prog.maps[x.dataset.mmd]; if (!confirm(`Delete the mind map “${m.title}”?`)) return; m.del = 1; saveMap(m); redraw(); });
+}
+function aiMapBox(B, redraw) {
+  const ok = t => t.n >= (B.start || 1) && !/^[ivxlc]+$/i.test(t.bp || ''), endOf = t => { const nx = B.toc.find(x => x.n > t.n && x.lvl <= t.lvl); return nx ? nx.n : B.pages + 1; };
+  const ch = B.toc.filter(t => ok(t) && t.lvl <= 2 && endOf(t) - t.n >= 2 && endOf(t) - t.n <= 60); // chapters and sections, not whole themes or one-page stubs
+  if (!B.pages || !ch.length) return alert('This subject has no textbook to build a map from yet.');
+  const cur = S.book === B && S.reading ? [...ch].reverse().find(t => t.n <= S.n) : null;
+  const m = openModal(`<h3 style="margin-top:0">Make a mind map with Claude</h3><p class="meta" style="margin-top:0">Claude reads the chapter and drafts a map of its big ideas, definitions and examples. You can edit every bubble after.</p>
+    <form id="amf" class="ef"><select id="amc">${ch.map((t, i) => `<option value="${i}" ${cur && cur.n === t.n ? 'selected' : ''}>${'  '.repeat(t.lvl - 1)}${esc((t.num ? t.num + ' ' : '') + t.title)}</option>`).join('')}</select><div id="ame" class="meta"></div>
+    <div class="row"><span class="sp"></span><button type="button" id="mClose">Cancel</button><button class="pri" id="amGo"><svg class="i"><use href="#i-spark"/></svg>Make map</button></div></form>`);
+  $('#amf').onsubmit = async e => { e.preventDefault(); const t = ch[+$('#amc').value], end = Math.min(endOf(t), t.n + 30);
+    $('#amGo').disabled = true; $('#ame').innerHTML = '<span class="spin"></span> Reading ' + (end - t.n) + ' pages… (about 10 seconds)';
+    try { const r = await api('mapgen', {book: B.id, title: (t.num ? t.num + ' ' : '') + t.title, pages: Array.from({length: end - t.n}, (_, i) => t.n + i)}); if (!r.tree) throw new Error(r.err || 'no map');
+      const mp = {id: uid(), title: mmPlain(r.tree.t), book: B.id, tree: mmClean(r.tree)}; saveMap(mp); m.remove(); if (redraw) redraw(); openMyMap(mp.id);
+    } catch (err) { $('#amGo').disabled = false; $('#ame').textContent = 'Could not make the map: ' + err.message; } };
+}
+
+// ---------- sharing with friends by first name: decks, mind maps, notes/ideas, textbook bits, questions → their inbox ----------
+const SHK = {deck: 'Flashcard deck', map: 'Mind map', note: 'Note', quote: 'From the textbook', q: 'Practice question'};
+const ago = t => { const m = (Date.now() - t) / 6e4; return m < 1 ? 'just now' : m < 60 ? Math.round(m) + ' min ago' : m < 1440 ? Math.round(m / 60) + ' h ago' : m < 2880 ? 'yesterday' : Math.round(m / 1440) + ' days ago'; };
+function shareBox(it, to) {
+  if (!USER) return signInBox();
+  const fr = LS.get(LSK('ib-friends'), []), isNote = it.kind === 'note';
+  const m = openModal(`<h3 style="margin:0 0 4px">${isNote ? 'Send a note or idea' : 'Send to a friend'}</h3>${isNote ? '' : `<div class="meta" style="margin-bottom:12px">${SHK[it.kind]} · <b>${esc(it.title)}</b></div>`}
+    <form id="shf" class="ef"><input id="shTo" placeholder="Friend's first name" maxlength="30" autocomplete="off" value="${esc(to || '')}">
+    ${fr.length ? `<div class="row" style="gap:6px">${fr.map(n => `<button type="button" data-fr="${esc(n)}"><span class="av" style="width:20px;height:20px;font-size:10px">${esc(n[0].toUpperCase())}</span>${esc(n)}</button>`).join('')}</div>` : ''}
+    <textarea id="shN" rows="${isNote ? 5 : 2}" placeholder="${isNote ? 'Your note, idea or study tip (Markdown and $maths$ work)' : 'Message (optional)'}"></textarea>
+    <div id="shE" class="meta"></div><div class="row"><span class="meta">They'll see it in their inbox when they sign in as that name.</span><span class="sp"></span><button type="button" id="mClose">Cancel</button><button class="pri" id="shGo">Send</button></div></form>`);
+  $(to ? '#shN' : '#shTo').focus();
+  m.querySelectorAll('[data-fr]').forEach(b => b.onclick = () => { $('#shTo').value = b.dataset.fr; $('#shN').focus(); });
+  $('#shf').onsubmit = async e => { e.preventDefault(); const name = $('#shTo').value.trim(), note = $('#shN').value.trim();
+    if (!name) return $('#shE').textContent = 'Who to? Type their first name.'; if (isNote && !note) return $('#shE').textContent = 'Write the note first.';
+    $('#shGo').disabled = true; $('#shE').innerHTML = '<span class="spin"></span> Sending…';
+    try { const r = await api('send', {to: name, kind: it.kind, title: isNote ? (it.title || note.split('\n')[0].slice(0, 80)) : it.title, note, data: it.data || null}); if (r.err) throw new Error(r.err);
+      LS.set(LSK('ib-friends'), [r.to, ...fr.filter(x => x.toLowerCase() !== r.to.toLowerCase())].slice(0, 8));
+      $('#shE').innerHTML = `<b style="color:var(--good)">Sent to ${esc(r.to)}</b>`; setTimeout(() => m.remove(), 1100);
+    } catch (err) { $('#shGo').disabled = false; $('#shE').innerHTML = `<span style="color:var(--bad)">${esc(err.message)}</span>`; } };
+}
+let INBOX = [], CHATS = {}, inT = 0;
+const chatSeen = () => LS.get(LSK('ib-chatseen'), {}), unreadChats = () => { const sn = chatSeen(); return Object.entries(CHATS).filter(([k, c]) => !c.me && c.t > (sn[k] || 0)).length; };
+async function pollInbox(force) { if (!USER) { INBOX = []; CHATS = {}; return inBadge(); } if (!force && Date.now() - inT < 20000) return; inT = Date.now();
+  try { const [r, c] = await Promise.all([api('inbox'), api('chats')]); INBOX = Array.isArray(r) ? r : []; CHATS = c && !Array.isArray(c) && !c.err ? c : {}; } catch (e) {} inBadge(); }
+function inBadge() { const b = $('#inbx'); if (!b) return; b.classList.toggle('hide', !USER); const seen = LS.get(LSK('ib-inseen'), 0), n = INBOX.filter(x => x.t > seen).length + unreadChats(), d = b.querySelector('.bdg'); d.textContent = n; d.classList.toggle('hide', !n); }
+setInterval(() => document.visibilityState === 'visible' && pollInbox(), 60000);
+// Messages: chats with friends + things they shared (decks, maps, notes, textbook bits, questions)
+function inboxBox(tab, thr) {
+  if (!USER) return signInBox();
+  tab = tab || (unreadChats() || !INBOX.length ? 'chat' : 'shared'); let poll = null;
+  const prev = x => { const d = x.data || {};
+    if (x.kind === 'deck') return `<div class="meta">${(d.cards || []).length} cards${bookOf(d.book) ? ' · ' + esc(bookOf(d.book).subject) : ''}</div>`;
+    if (x.kind === 'map' && d.tree) return `<div class="meta">${mmCount(d.tree)} bubbles${bookOf(d.book) ? ' · ' + esc(bookOf(d.book).subject) : ''}</div>`;
+    if (x.kind === 'quote') return `<blockquote class="ibq">${esc(d.x || '')}</blockquote><div class="meta">${esc((bookOf(d.b) || {}).subject || '')} p. ${esc(d.bp || d.n)}</div>`;
+    if (x.kind === 'q') { const q = S.qs.find(y => y.id === d.id); return q ? `<div class="meta ibq">${esc(q.text.slice(0, 220))}${q.text.length > 220 ? '…' : ''}</div>` : ''; }
+    return ''; };
+  const act = x => ({deck: 'Add to my decks', map: 'Open map', quote: 'Open page', q: 'Try it'})[x.kind];
+  const head = () => `<div class="row" style="margin-bottom:10px"><h3 style="margin:0">Messages</h3><div class="seg" style="margin-left:8px"><button data-tb="chat" class="${tab === 'chat' ? 'on' : ''}">Chats${unreadChats() ? ' · ' + unreadChats() : ''}</button><button data-tb="shared" class="${tab === 'shared' ? 'on' : ''}">Shared with you${INBOX.length ? ' · ' + INBOX.length : ''}</button></div><span class="sp"></span><button id="mClose" class="ghost" aria-label="Close"><svg class="i"><use href="#i-x"/></svg></button></div>`;
+  const open = html => { const m = openModal(head() + html); m.querySelector('.mbox').classList.add('wide');
+    const stop = () => { clearInterval(poll); poll = null; }; m.querySelectorAll('[data-tb]').forEach(b => b.onclick = () => { stop(); tab = b.dataset.tb; thr = null; draw(); });
+    const c = $('#mClose'); if (c) c.onclick = () => { stop(); m.remove(); }; const oc = m.onclick; m.onclick = e => { if (e.target === m) stop(); oc && oc(e); }; return m; };
+  const draw = () => tab === 'shared' ? drawShared() : thr ? drawThread() : drawChats();
+  const drawChats = () => {
+    const L = Object.entries(CHATS).sort((a, b) => b[1].t - a[1].t), sn = chatSeen();
+    const m = open(`<form id="ncf" class="row" style="flex-wrap:nowrap;margin-bottom:10px"><input id="ncN" placeholder="Start a chat: friend's first name" maxlength="30" autocomplete="off"><button class="pri">Chat</button></form>
+      ${L.length ? `<div class="card lst chl">${L.map(([k, c]) => `<div class="row chr" data-ck="${esc(k)}" data-cn="${esc(c.name)}"><span class="av">${esc(c.name[0].toUpperCase())}</span><div style="flex:1;min-width:0"><b>${esc(c.name)}</b><div class="meta" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.me ? 'You: ' : ''}${esc(c.last)}</div></div><span class="meta">${esc(ago(c.t))}</span>${!c.me && c.t > (sn[k] || 0) ? '<span class="dot"></span>' : ''}</div>`).join('')}</div>`
+        : `<p class="meta" style="text-align:center;padding:18px 0">No chats yet. Type a friend's first name above (they need to have signed in once with it).</p>`}`);
+    $('#ncN').focus(); $('#ncf').onsubmit = e => { e.preventDefault(); const n = $('#ncN').value.trim(); if (n) { thr = {k: n.toLowerCase(), name: n, fresh: 1}; draw(); } };
+    m.querySelectorAll('[data-ck]').forEach(r => r.onclick = () => { thr = {k: r.dataset.ck, name: r.dataset.cn}; draw(); });
+  };
+  const drawThread = () => {
+    let msgs = [], last = 0;
+    const m = open(`<div class="row" style="margin-bottom:8px"><button id="chB" class="ghost"><svg class="i"><use href="#i-l"/></svg>Chats</button><span class="av">${esc(thr.name[0].toUpperCase())}</span><b>${esc(thr.name)}</b></div>
+      <div id="chM" class="chm"><p class="meta" style="text-align:center"><span class="spin"></span></p></div>
+      <form id="chF" class="row chf"><textarea id="chT" rows="1" placeholder="Message ${esc(thr.name)}…" maxlength="2000"></textarea><button class="pri" id="chS">Send</button></form><div id="chE" class="meta" style="color:var(--bad)"></div>`);
+    $('#chB').onclick = () => { clearInterval(poll); poll = null; thr = null; pollInbox(true).then(draw); };
+    const paintM = () => { const box = $('#chM'); if (!box) return; const atEnd = box.scrollHeight - box.scrollTop - box.clientHeight < 60;
+      box.innerHTML = msgs.length ? msgs.map((x, i) => { const day = new Date(x.t).toDateString(), nd = !i || new Date(msgs[i - 1].t).toDateString() !== day;
+        return `${nd ? `<div class="chd">${esc(day === new Date().toDateString() ? 'Today' : new Date(x.t).toLocaleDateString(undefined, {weekday: 'short', day: 'numeric', month: 'short'}))}</div>` : ''}<div class="cb ${x.f === UK() ? 'mine' : ''}" title="${esc(new Date(x.t).toLocaleString())}">${mdm(x.x)}<span class="ct">${new Date(x.t).toLocaleTimeString([], {hour: 'numeric', minute: '2-digit'})}</span></div>`; }).join('')
+        : `<p class="meta" style="text-align:center;padding:20px 0">Say hi to ${esc(thr.name)}.</p>`;
+      if (atEnd || !last) box.scrollTop = 1e9; };
+    const fetchM = async () => { try { const r = await api('chat', {with: thr.k, after: last}); if (Array.isArray(r) && r.length) { const ids = new Set(msgs.map(x => x.id)); msgs.push(...r.filter(x => !ids.has(x.id))); }
+      const was = last; last = msgs.length ? msgs[msgs.length - 1].t : 0; if (!was || last !== was) paintM(); const sn = chatSeen(); sn[thr.k] = Date.now(); LS.set(LSK('ib-chatseen'), sn); inBadge(); } catch (e) {} };
+    const send = async () => { const t = $('#chT').value.trim(); if (!t) return; $('#chS').disabled = true; $('#chE').textContent = '';
+      try { const r = await api('chatsend', {to: thr.name, text: t}); if (r.err) throw new Error(r.err); $('#chT').value = ''; $('#chT').style.height = ''; thr.k = r.tk; thr.name = r.to; msgs.push(r.m); last = r.m.t; paintM(); $('#chM').scrollTop = 1e9;
+        CHATS[r.tk] = {name: r.to, t: r.m.t, last: t.slice(0, 90), me: 1};
+      } catch (err) { $('#chE').textContent = err.message; } $('#chS').disabled = false; $('#chT').focus(); };
+    $('#chF').onsubmit = e => { e.preventDefault(); send(); };
+    $('#chT').onkeydown = e => { e.stopPropagation(); if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } };
+    $('#chT').oninput = e => { e.target.style.height = ''; e.target.style.height = Math.min(140, e.target.scrollHeight) + 'px'; };
+    $('#chT').focus(); fetchM(); clearInterval(poll); poll = setInterval(() => { if (!$('#chM')) { clearInterval(poll); poll = null; return; } if (document.visibilityState === 'visible') fetchM(); }, 4000);
+  };
+  const drawShared = () => {
+    LS.set(LSK('ib-inseen'), Date.now()); inBadge();
+    const m = open(`<div class="row" style="margin-bottom:10px"><span class="meta">Decks, mind maps, notes and questions friends sent you.</span><span class="sp"></span><button id="inNote"><svg class="i"><use href="#i-pen"/></svg>Send a note</button></div>
+      ${INBOX.length ? `<div class="inl">${[...INBOX].reverse().map(x => `<div class="inb"><div class="row" style="gap:8px"><span class="av">${esc(x.from[0].toUpperCase())}</span><div style="flex:1;min-width:0"><b>${esc(x.from)}</b> <span class="meta">sent ${x.kind === 'note' ? 'a note' : 'a ' + esc(SHK[x.kind] || x.kind).toLowerCase()} · ${esc(ago(x.t))}</span></div></div>
+        ${x.kind !== 'note' ? `<div class="int">${esc(x.title)}</div>` : ''}${prev(x)}${x.note ? `<div class="innote">${mdm(x.note)}</div>` : ''}
+        <div class="row" style="gap:6px;margin-top:8px">${act(x) ? `<button class="pri" data-ia="${x.id}">${act(x)}</button>` : ''}${x.kind === 'map' ? `<button data-is="${x.id}">Save to my maps</button>` : ''}<button data-ir="${x.id}">Reply</button><span class="sp"></span><button class="ghost" data-id="${x.id}" style="color:var(--mut)">Delete</button></div><div class="meta" data-im="${x.id}"></div></div>`).join('')}</div>`
+        : `<div style="padding:24px 0;text-align:center"><b>Nothing yet</b><p class="meta">When friends send you decks, mind maps, notes or questions they show up here. Send things with the Send buttons on decks, mind maps, highlights and questions.</p></div>`}`);
+    const X = id => INBOX.find(x => x.id === id), msg = (id, t) => { const e = m.querySelector(`[data-im="${id}"]`); if (e) e.innerHTML = t; };
+    $('#inNote').onclick = () => shareBox({kind: 'note'});
+    m.querySelectorAll('[data-ir]').forEach(b => b.onclick = () => { const x = X(b.dataset.ir); tab = 'chat'; thr = {k: x.from.toLowerCase(), name: x.from}; draw(); setTimeout(() => { const t = $('#chT'); if (t && x.kind !== 'note') t.value = `Re: ${x.title} — `; }, 50); });
+    m.querySelectorAll('[data-id]').forEach(b => b.onclick = async () => { const id = b.dataset.id; INBOX = INBOX.filter(x => x.id !== id); draw(); api('inboxdel', {ids: [id]}).catch(() => {}); });
+    m.querySelectorAll('[data-is]').forEach(b => b.onclick = () => { const x = X(b.dataset.is), mp = {id: uid(), title: mmPlain(x.data.tree.t) || x.title, book: x.data.book || '', tree: mmClean(x.data.tree), from: x.from}; saveMap(mp); msg(x.id, `Saved to your mind maps (Reference → ${esc((bookOf(mp.book) || {}).subject || 'that subject')})`); b.disabled = true; });
+    m.querySelectorAll('[data-ia]').forEach(b => b.onclick = () => { const x = X(b.dataset.ia), d = x.data || {};
+      if (x.kind === 'deck') { const dk = {id: uid(), name: x.title + (myDecks().some(y => y.name === x.title) ? ' (from ' + x.from + ')' : ''), book: d.book || '', cards: (d.cards || []).map(c => ({...c, id: uid()}))}; saveDeck(dk); msg(x.id, 'Added to Flashcards → My decks. It joins your daily review.'); b.disabled = true; return; }
+      m.remove();
+      if (x.kind === 'map') mapView([{id: 'in' + x.id, title: x.title, book: d.book, pages: [{n: 1, title: x.title, tree: d.tree}]}], 'in' + x.id, 1);
+      if (x.kind === 'quote' && bookOf(d.b)) openPage(d.b, d.n);
+      if (x.kind === 'q') { if (S.qs.some(q => q.id === d.id)) openQ(d.id); else alert('That question is not in your question bank.'); } });
+  };
+  draw(); if (!thr) pollInbox(true).then(() => { if ($('#modal .mbox.wide') && !thr) draw(); });
 }
 
 // ---------- library shelf ----------
@@ -1747,7 +1906,7 @@ function applyTheme() { const t = LS.get('ib-theme', 'auto'), r = document.docum
   const dark = t === 'dark' || (t === 'auto' && matchMedia('(prefers-color-scheme: dark)').matches); const u = $('#thm use'); if (u) u.setAttribute('href', dark ? '#i-sun' : '#i-moon'); }
 applyTheme(); matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyTheme);
 $('#thm').onclick = () => { const r = document.documentElement, dark = r.dataset.theme === 'dark' || (!r.dataset.theme && matchMedia('(prefers-color-scheme: dark)').matches); setTheme(dark ? 'light' : 'dark'); };
-function drawMe() { if (!USER) { $('#me').innerHTML = '<span class="av" style="background:var(--sunk);color:var(--mut);border:1px solid var(--line2)">?</span><span>Sign in to sync</span>'; $('#meH').innerHTML = '<span class="sib">Sign in</span>'; return; }
+function drawMe() { pollInbox(); if (!USER) { $('#me').innerHTML = '<span class="av" style="background:var(--sunk);color:var(--mut);border:1px solid var(--line2)">?</span><span>Sign in to sync</span>'; $('#meH').innerHTML = '<span class="sib">Sign in</span>'; return; }
   const a = `<span class="av">${esc(USER.name[0].toUpperCase())}</span>`; $('#me').innerHTML = a + `<span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis">${esc(USER.name)}</span>`; $('#meH').innerHTML = a; }
 // sign in from the top-right button; what you did as a guest moves into the account
 function signInBox() {
@@ -1759,7 +1918,7 @@ function signInBox() {
   $('#sn').focus(); const go2 = n => signIn(n).then(() => m.remove(), e => { $('#se').textContent = e.message; });
   $('#sf').onsubmit = e => { e.preventDefault(); const v = $('#sn').value.trim(); if (v) go2(v); }; m.querySelectorAll('[data-n]').forEach(b => b.onclick = () => go2(b.dataset.n));
 }
-$('#me').onclick = $('#meH').onclick = meMenu;
+$('#me').onclick = $('#meH').onclick = meMenu; $('#inbx').onclick = inboxBox;
 
 // ---------- routing ----------
 function route() {

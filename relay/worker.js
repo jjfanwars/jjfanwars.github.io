@@ -474,6 +474,15 @@ async function ibRoute(req, env, CORS, u) {
     await ibUse(db, 'build', o.model || 'claude-haiku-5-5', j.usage);
     return J({text: (j.content || []).filter(c => c.type === 'text').map(c => c.text).join(''), stop: j.stop_reason, usage: j.usage});
   }
+  if (u.pathname === '/ib/deluser') { // admin: remove an account and its data (planner, progress, inbox, chats)
+    if (!env.IB_ADMIN || req.headers.get('x-ib-admin') !== env.IB_ADMIN) return J({err: 'no'}, 403);
+    const k = ukey((await req.json()).name), all = await users(); if (!k || !all[k]) return J({err: 'no such account'}, 404);
+    const idx = JSON.parse(await (await db('kvget', {k: 'chats:' + k})).text() || '{}') || {};
+    for (const o of Object.keys(Array.isArray(idx) ? {} : idx)) { await db('kvset', {k: 'chat:' + [k, o].sort().join('|'), v: '[]'});
+      const oi = JSON.parse(await (await db('kvget', {k: 'chats:' + o})).text() || '{}'); if (oi && !Array.isArray(oi)) { delete oi[k]; await db('kvset', {k: 'chats:' + o, v: JSON.stringify(oi)}); } }
+    for (const p of ['plan:', 'prog:', 'inbox:', 'chats:']) await db('kvset', {k: p + k, v: p === 'chats:' || p === 'prog:' ? '{}' : '[]'});
+    delete all[k]; await db('kvset', {k: 'users', v: JSON.stringify(all)}); return J({ok: true, left: Object.keys(all).length});
+  }
   if (u.pathname === '/ib/put') { // uploads from the build script: admin key only
     if (!env.IB_ADMIN || req.headers.get('x-ib-admin') !== env.IB_ADMIN) return J({err: 'no'}, 403);
     const r = await ib.fetch('https://i/put' + u.search, {method: 'POST', body: req.body});
@@ -502,6 +511,39 @@ async function ibRoute(req, env, CORS, u) {
     const r = await db('kvget', {k: 'plan:' + uk}); return new Response(r.body, {headers: H});
   }
   if (op === 'agent') return planAgent(b, env, db, J, uk, who);
+  // sharing between accounts by first name: decks, notes/ideas, mind maps, questions, pages land in the friend's inbox
+  if (['send', 'inbox', 'inboxdel', 'chatsend', 'chats', 'chat'].includes(op) && !uk) return J({err: 'sign in first'}, 401);
+  // chat between friends: thread 'chat:a|b' (sorted keys), each person's thread list 'chats:<key>' = {otherKey: {name, t, last, me}}
+  if (op === 'chatsend') {
+    const all = await users(), to = ukey(b.to), x = String(b.text || '').trim().slice(0, 2000); if (!to || !all[to]) return J({err: `No one called ${String(b.to || '').slice(0, 30)} has an account yet`}, 404);
+    if (!x) return J({err: 'empty'}, 400); const me = (all[uk] || {}).name || uk, t = Date.now(), m = {id: crypto.randomUUID().slice(0, 10), f: uk, x, t};
+    await db('push', {k: 'chat:' + [uk, to].sort().join('|'), v: m, cap: 500});
+    await db('mset', {k: 'chats:' + uk, f: to, v: {name: all[to].name, t, last: x.slice(0, 90), me: 1}});
+    if (to !== uk) await db('mset', {k: 'chats:' + to, f: uk, v: {name: me, t, last: x.slice(0, 90), me: 0}});
+    return J({ok: true, m, to: all[to].name, tk: to});
+  }
+  if (op === 'chats') { const r = await (await db('kvget', {k: 'chats:' + uk})).text(); return new Response(r === '[]' ? '{}' : r, {headers: H}); }
+  if (op === 'chat') { const w = ukey(b.with); if (!w) return J([]); const L = JSON.parse(await (await db('kvget', {k: 'chat:' + [uk, w].sort().join('|')})).text() || '[]'); return J(L.filter(m => m.t > (+b.after || 0))); }
+  if (op === 'send') {
+    const all = await users(), to = ukey(b.to); if (!to || !all[to]) return J({err: `No one called ${String(b.to || '').slice(0, 30)} has an account yet`}, 404);
+    const it = {id: crypto.randomUUID().slice(0, 12), from: (all[uk] || {}).name || uk, kind: String(b.kind || 'note').slice(0, 10), title: String(b.title || '').slice(0, 120), note: String(b.note || '').slice(0, 2000), data: b.data || null, t: Date.now()};
+    if (JSON.stringify(it).length > 400000) return J({err: 'too big to send'}, 413);
+    await db('push', {k: 'inbox:' + to, v: it, cap: 80}); return J({ok: true, to: all[to].name});
+  }
+  if (op === 'inbox') { const r = await db('kvget', {k: 'inbox:' + uk}); return new Response(r.body, {headers: H}); }
+  if (op === 'inboxdel') { await db('pull', {k: 'inbox:' + uk, ids: (b.ids || []).map(String)}); return J({ok: true}); }
+  if (op === 'mapgen') { // mind map of a textbook chapter (Haiku, structured, 4 levels)
+    const KEY = await ibKey(env, db); const cap = +(env.IB_CAP || 300), used = await (await db('spend', {cap})).json(); if (used.over) return J({err: 'daily Claude limit reached'}, 429);
+    const ns = (b.pages || []).map(Number).filter(n => n > 0).slice(0, 30), pg = await (await db('pages', {b: b.book, ns})).json();
+    const N = d => ({type: 'object', additionalProperties: false, required: d ? ['t', 'c'] : ['t'], properties: d ? {t: {type: 'string'}, c: {type: 'array', items: N(d - 1)}} : {t: {type: 'string'}}});
+    const r = await fetch('https://api.anthropic.com/v1/messages', {method: 'POST', headers: {'content-type': 'application/json', 'x-api-key': KEY, 'anthropic-version': '2023-06-01'},
+      body: JSON.stringify({model: 'claude-haiku-5-5', max_tokens: 6000, output_config: {effort: 'low', format: {type: 'json_schema', schema: N(4)}},
+        system: 'You make a revision mind map of an IB textbook chapter for a student. Root t = the chapter title. 4 to 7 main branches (the big ideas), each with the key sub-ideas, and under those the definitions, equations, examples, case studies and exam tips a student must remember. Labels are short (under 15 words), precise and in the book\'s own terms; maths/chemistry in LaTeX inside $...$. 40 to 80 nodes in total. Leaves have no c.',
+        messages: [{role: 'user', content: `Chapter: ${String(b.title || '').slice(0, 200)}\n\n` + pg.pages.map(p => `<page ${p.bp}>\n${p.md}\n</page>`).join('\n')}]})});
+    const j = await r.json().catch(() => ({})); if (!r.ok) return J({err: (j.error && j.error.message) || 'HTTP ' + r.status}, 502);
+    await ibUse(db, who, 'claude-haiku-5-5', j.usage);
+    try { return J({tree: JSON.parse(j.content.find(c => c.type === 'text').text)}); } catch (e) { return J({err: 'bad map'}, 502); }
+  }
   if (op === 'ref') { const r = await db('kvget', {k: 'ref:' + String(b.book || '').replace(/[^a-z0-9]/g, '')}); return new Response(r.body, {headers: H}); } // formula sheet / case bank for a book
   if (op === 'quiz') { // spaced section review: 3 short questions + model answers from the section's pages (Haiku, cheap)
     const KEY = await ibKey(env, db); const cap = +(env.IB_CAP || 300), used = await (await db('spend', {cap})).json(); if (used.over) return J({err: 'daily Claude limit reached'}, 429);
@@ -583,6 +625,9 @@ export class IB {
       case 'fchunk': { const r = all('SELECT data FROM fchunk WHERE b = ? AND i = ?', o.b, o.i)[0]; return new Response(r ? r.data : new ArrayBuffer(0)); }
       case 'kvget': return new Response(this.kv(o.k) || '[]');
       case 'kvset': if (o.v.length > 2e6) return J({err: 'too big'}); this.kv(o.k, o.v); return J({ok: true});
+      case 'push': { const L = JSON.parse(this.kv(o.k) || '[]'); L.push(o.v); while (L.length > (o.cap || 60)) L.shift(); this.kv(o.k, JSON.stringify(L)); return J({ok: true}); } // atomic append (inboxes)
+      case 'mset': { const O = JSON.parse(this.kv(o.k) || '{}'); O[o.f] = o.v; this.kv(o.k, JSON.stringify(O)); return J({ok: true}); } // atomic field set (chat index)
+      case 'pull': { const ids = new Set(o.ids || []), L = JSON.parse(this.kv(o.k) || '[]').filter(x => !ids.has(x.id)); this.kv(o.k, JSON.stringify(L)); return J({ok: true}); }
       case 'qs': return new Response(this.kv('qs') || '[]');
       case 'page': { const r = all('SELECT n, bp, md FROM page WHERE b = ? AND n = ?', o.b, o.n)[0]; return J(r || {err: 'missing'}); }
       case 'pagebp': { const r = all('SELECT n, bp, md FROM page WHERE b = ? AND bp = ? ORDER BY n LIMIT 1', o.b, String(o.bp))[0]; return J(r || {err: 'missing'}); }
