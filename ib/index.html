@@ -126,6 +126,10 @@ mark.hl{background:color-mix(in srgb,var(--warn) 30%,transparent);color:inherit;
 .fsheet>div{padding:12px 16px}.fn{display:flex;gap:10px;align-items:baseline;font-weight:600}.fn a{margin-left:auto}.fx{overflow-x:auto;padding:2px 0}.fx .katex-display{margin:.4em 0;text-align:left}
 .ctab{width:100%;border-collapse:collapse;font-size:14px}.ctab td{padding:8px 14px;border-bottom:1px solid var(--line)}.ctab tr:last-child td{border-bottom:none}
 .cases{grid-template-columns:repeat(auto-fill,minmax(300px,1fr))}.case{padding:14px 16px;display:flex;flex-direction:column;gap:4px}.case b{font:600 16.5px/1.3 var(--f-read)}.case p{margin:6px 0;font-size:14px;line-height:1.55}.case .ghost{align-self:flex-start;margin-top:6px;padding:5px 8px;font-size:13px}
+.mmset{margin-bottom:16px}.mmrow{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin-top:8px}
+.mmt{flex-direction:column;align-items:stretch;padding:6px;gap:6px;text-align:left;font-size:13px}.mmt img{width:100%;aspect-ratio:1.414;object-fit:cover;border-radius:5px;background:#fff;border:1px solid var(--line)}
+.mmv{position:fixed;inset:0;z-index:50;background:var(--bg);display:flex;flex-direction:column}.mmbar{display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--line);background:var(--panel)}
+.mmsc{flex:1;overflow:auto;cursor:grab;touch-action:pan-x pan-y pinch-zoom;background:#fff}.mmsc:active{cursor:grabbing}.mmsc img{display:block;max-width:none;user-select:none}
 .rvl>div{cursor:pointer}.rvl>div:hover{background:var(--sunk)}
 .ctx{font-size:12px;color:var(--mut);padding:8px 16px;border-bottom:1px solid var(--line);background:var(--sunk)}
 .srch svg{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--mut)}
@@ -1148,11 +1152,13 @@ async function renderRef(F) {
   shell('ref'); setHash('#/ref'); const B = S.book; MATH = !!B.math; F = F || (S.rf = S.rf && S.rf.b === B.id ? S.rf : {b: B.id, q: '', c: ''});
   $('#main').innerHTML = `<div class="prac" style="max-width:1100px"><div class="row"><h2 style="margin:0">${B.math ? 'Formula & data sheet' : 'Reference'}</h2>${bookBar(B.id)}</div><div id="rfb" style="margin-top:14px"><span class="spin"></span></div></div>`;
   onBookBar(() => renderRef()); const R = await getRef(B.id); if (S.tab !== 'ref' || S.book !== B) return;
-  const has = (R.formulas || []).length || (R.cases || []).length;
+  const has = (R.formulas || []).length || (R.cases || []).length || (R.maps || []).length;
   if (!has) { $('#rfb').innerHTML = `<div class="card" style="padding:28px;text-align:center"><b>Nothing here for ${esc(B.subject)} yet</b></div>`; return; }
   const draw = () => {
     const q = F.q.toLowerCase(), hit = o => !q || JSON.stringify(o).toLowerCase().includes(q), ts = topicsOf(B), tname = n => { const t = ts.find(x => inTopic(n, x.num) || x.num === n) || B.toc.find(x => x.num === n); return t ? t.num + ' ' + t.title : n; };
-    let h = `<div class="filters"><input id="rfq" placeholder="${(R.cases || []).length ? 'Search cases, actors, places…' : 'Search formulas…'}" value="${esc(F.q)}" style="max-width:340px">`;
+    let h = (R.maps || []).length && !F.q ? `<h3 style="margin-top:0">Mind maps</h3>${R.maps.map(M => `<div class="mmset"><div class="row"><b>${esc(M.title)}</b><span class="sp"></span><a class="meta" href="${RELAY}/ib/file?b=${M.id}" download>PDF</a></div>
+      <div class="mmrow">${M.pages.map(pg => `<button class="mmt" data-mm="${M.id}" data-n="${pg.n}"><img loading="lazy" alt="" src="${RELAY}/ib/img?b=${M.id}&n=${pg.n}"><span>${esc(pg.title)}</span></button>`).join('')}</div></div>`).join('')}` : '';
+    h += `<div class="filters"><input id="rfq" placeholder="${(R.cases || []).length ? 'Search cases, actors, places…' : 'Search formulas…'}" value="${esc(F.q)}" style="max-width:340px">`;
     if ((R.cases || []).length) { const cs = {}; for (const c of R.cases) for (const k of c.concepts || []) cs[k] = (cs[k] || 0) + 1;
       h += `<select id="rfc" style="width:auto"><option value="">All concepts</option>${Object.entries(cs).sort((a, b) => b[1] - a[1]).map(([k, n]) => `<option value="${esc(k)}" ${F.c === k ? 'selected' : ''}>${esc(k)} (${n})</option>`).join('')}</select>`; }
     h += '</div>';
@@ -1164,10 +1170,32 @@ async function renderRef(F) {
     $('#rfb').innerHTML = h;
     $('#rfq').oninput = e => { F.q = e.target.value; const p = e.target.selectionStart; draw(); $('#rfq').focus(); $('#rfq').setSelectionRange(p, p); };
     if ($('#rfc')) $('#rfc').onchange = e => { F.c = e.target.value; draw(); };
+    document.querySelectorAll('.mmt').forEach(x => x.onclick = () => mapView(R.maps, x.dataset.mm, +x.dataset.n));
     document.querySelectorAll('#rfb [data-bp]').forEach(a => a.onclick = e => { e.preventDefault(); goBp(B.id, a.dataset.bp); });
     document.querySelectorAll('[data-use]').forEach(x => x.onclick = () => { const c = R.cases[+x.dataset.use]; openChat({title: 'Using: ' + c.title, book: B.id, pages: [], intro: ''});
       sendChat(`Help me use this case study in a Paper 2 essay: ${c.title} (${c.years || ''}, ${c.region || ''}): ${c.summary} (textbook p. ${c.page}). Which kinds of questions and concepts does it fit, what's the strongest analytical point it supports, what's a counter-argument it raises, and give me a model paragraph using it.`); });
   }; draw();
+}
+
+// full-screen mind-map viewer: fit to width, zoom with buttons / ctrl+wheel / pinch (native), drag to pan, arrows for next page
+function mapView(maps, id, n) {
+  const M = maps.find(x => x.id === id); let z = 1;
+  const ov = document.createElement('div'); ov.className = 'mmv'; document.body.appendChild(ov);
+  const draw = () => { const pg = M.pages.find(x => x.n === n);
+    ov.innerHTML = `<div class="mmbar"><b>${esc(M.title)}</b><span class="meta">${esc(pg.title)}</span><span class="sp"></span><button data-a="prev" ${n <= 1 ? 'disabled' : ''} aria-label="Previous"><svg class="i"><use href="#i-l"/></svg></button><button data-a="next" ${n >= M.pages.length ? 'disabled' : ''} aria-label="Next"><svg class="i"><use href="#i-r"/></svg></button><button data-a="out">−</button><span class="meta num" style="width:44px;text-align:center">${Math.round(z * 100)}%</span><button data-a="in">+</button><button data-a="x" aria-label="Close"><svg class="i"><use href="#i-x"/></svg></button></div>
+      <div class="mmsc"><img src="${RELAY}/ib/img?b=${M.id}&n=${n}" alt="${esc(pg.title)}" style="width:${z * 100}%" draggable="false"></div>`;
+    const sc = ov.querySelector('.mmsc'); let drag = null;
+    sc.onpointerdown = e => { drag = {x: e.clientX, y: e.clientY, l: sc.scrollLeft, t: sc.scrollTop}; sc.setPointerCapture(e.pointerId); };
+    sc.onpointermove = e => { if (drag) { sc.scrollLeft = drag.l - (e.clientX - drag.x); sc.scrollTop = drag.t - (e.clientY - drag.y); } };
+    sc.onpointerup = () => drag = null;
+    sc.onwheel = e => { if (e.ctrlKey) { e.preventDefault(); zoom(e.deltaY < 0 ? 1.15 : 1 / 1.15); } };
+    ov.querySelectorAll('[data-a]').forEach(b => b.onclick = () => ({prev: () => { n--; z = 1; draw(); }, next: () => { n++; z = 1; draw(); }, in: () => zoom(1.4), out: () => zoom(1 / 1.4), x: close})[b.dataset.a]()); };
+  const zoom = f => { const sc = ov.querySelector('.mmsc'), cx = (sc.scrollLeft + sc.clientWidth / 2) / sc.scrollWidth, cy = (sc.scrollTop + sc.clientHeight / 2) / sc.scrollHeight;
+    z = Math.min(5, Math.max(1, z * f)); ov.querySelector('.mmsc img').style.width = z * 100 + '%'; ov.querySelector('.mmbar .num').textContent = Math.round(z * 100) + '%';
+    sc.scrollLeft = cx * sc.scrollWidth - sc.clientWidth / 2; sc.scrollTop = cy * sc.scrollHeight - sc.clientHeight / 2; };
+  const key = e => { if (e.key === 'Escape') close(); if (e.key === 'ArrowRight' && n < M.pages.length) { n++; z = 1; draw(); } if (e.key === 'ArrowLeft' && n > 1) { n--; z = 1; draw(); } if (e.key === '+' || e.key === '=') zoom(1.4); if (e.key === '-') zoom(1 / 1.4); };
+  const close = () => { ov.remove(); document.removeEventListener('keydown', key, true); };
+  document.addEventListener('keydown', key, true); draw();
 }
 
 // ---------- library shelf ----------
