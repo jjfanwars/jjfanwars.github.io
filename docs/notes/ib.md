@@ -53,3 +53,7 @@ Private study app for the owner's IB textbooks (not a game). Live at /ib/ (noind
 - The planner agent gets the next 21 days of linked-calendar events as `ext` text.
 - Planner: drag items between days (month) or to a day + 15-min slot (week); overlapping timed events sit side by side (`lanes`); repeat select (`REP`); mobile month shows colour bars + a day list (`S.psel`).
 - Polish pass: no sideways scroll anywhere (`.wrap` columns `minmax(0,1fr)`, `#main` clip, KaTeX display scroll), Reference in the mobile tab bar, spine initials (`spineTx`), mobile home order (actions, Today, Books), formula groups sorted by page.
+
+## Backlog
+- **MP3 player** (requested by the owner): a study-music player built into the app. Upload or link MP3s, playlist, play/pause/skip/volume, keeps playing across pages (mini player in the header/sidebar), optional focus timer tie-in.
+- Feature ideas offered (not picked yet): exam mode with a 1–7 estimate, tagged question bank, study blocks in free calendar gaps, exam countdown/readiness on Home, friend challenges + leaderboard, group study rooms, voice tutor (oral practice), installable offline app.
