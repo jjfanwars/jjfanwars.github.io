@@ -415,6 +415,8 @@ async function ibRoute(req, env, CORS, u) {
   // and a random token for its calendar feed. The first account created inherits the data from before accounts existed.
   const users = async () => JSON.parse(await (await db('kvget', {k: 'users'})).text() || '{}') || {};
   const ukey = n => String(n || '').trim().toLowerCase().normalize('NFKD').replace(/[^a-z0-9]/g, '').slice(0, 24);
+  // display name: "finn" / "FINN" -> "Finn" (names that already mix case are kept as typed)
+  const nice = n => { n = String(n || '').trim().replace(/\s+/g, ' ').slice(0, 30); return n === n.toLowerCase() || n === n.toUpperCase() ? n.toLowerCase().replace(/(^|[\s'-])(\p{L})/gu, (m, a, c) => a + c.toUpperCase()) : n; };
   if (u.pathname === '/ib/cal.ics') { // calendar feed for phone/Google/Apple calendar subscriptions
     const k = u.searchParams.get('k'), U = k && Object.entries(await users()).find(([, v]) => v.tok === k);
     if (!U && u.searchParams.get('t') !== PASS) return new Response('no', {status: 403});
@@ -497,10 +499,11 @@ async function ibRoute(req, env, CORS, u) {
     const all = await users(); let isNew = false;
     if (!all[key]) {
       isNew = true; const first = !Object.keys(all).length;
-      all[key] = {name: String(b.name).trim().slice(0, 30), tok: crypto.randomUUID().replace(/-/g, ''), t: Date.now()};
+      all[key] = {name: nice(b.name), tok: crypto.randomUUID().replace(/-/g, ''), t: Date.now()};
       await db('kvset', {k: 'users', v: JSON.stringify(all)});
       if (first) for (const k of ['plan', 'prog']) { const v = await (await db('kvget', {k})).text(); if (v && v !== '[]' && v !== '{}') await db('kvset', {k: k + ':' + key, v}); }
     }
+    else if (nice(all[key].name) !== all[key].name) { all[key].name = nice(all[key].name); await db('kvset', {k: 'users', v: JSON.stringify(all)}); } // fix old all-lowercase names
     return J({key, name: all[key].name, tok: all[key].tok, isNew});
   }
   const uk = ukey(b.user), who = uk ? 'u:' + uk : b.uid ? 'g:' + String(b.uid).replace(/[^\w-]/g, '').slice(0, 16) : 'anon';
