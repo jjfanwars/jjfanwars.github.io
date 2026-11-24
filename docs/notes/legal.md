@@ -12,3 +12,11 @@ Read `CLAUDE.md` first (shared rules). Split out of it on 17 Nov 2026; keep this
 - **Timer:** turns red and blinks under 10 s, then says "Speed bonus gone".
 - **Accessibility/mobile:** Leave/mute buttons move to the top right under 1100px (they were hidden under the question panel on phones), pinch zoom allowed (no `maximum-scale`), 16px fields on phones (no iOS focus zoom), `prefers-reduced-motion` softens shake/flash (`RM`) and the slam text wobble.
 - Quick Trial uses a proper shuffle.
+
+## 24 Nov 2026 (second pass)
+- **Per-argument history:** `SAVE.q[id] = {b, l, n, t}` (best and last score as a fraction, attempts, time), written by `noteQ` as soon as an answer is ruled on (so it survives leaving mid-case). "Mastered" (`mastered`) = last attempt 75%+. The menu shows "X/20 mastered · Y attempted" (`#mastTxt`), won cases show "n/N mastered", and the question panel has a "Best x/m" / "New" tag (`#qBest`).
+- **Revision Hearing** (`CASES` id `rv`, `rev:1`, `free:1`): 5 arguments from `weakQs` (last attempt under 75%, worst first, then never tried, then the stalest mastered). Locked until any argument has been tried; never saves a case grade. The verdict offers "Revise weak spots" when any argument scored under 75%. "Next case" now skips free cases (`nx.free`) instead of relying on Quick Trial being last.
+- **Verdict breakdown:** every argument listed with its colour-coded score; each opens its model answer (`.vl`). Replaces the single "Revise next" line. The verdict overlay scrolls on short phones and is a labelled dialog.
+- **Your own answer:** self-marking shows your argument beside the model answer (it was hidden before, so you had nothing to compare); Claude-marked rulings have a "Your argument" fold and a "New personal best" line (`res.pb`).
+- **Low credibility warning:** an HP bar at 30% or less pulses red (`.hp.low`; static red border with reduced motion).
+- Leave-court confirm says argument scores are kept. `__CD` also exposes `SAVE`, `weakQs`, `noteQ`, `selfMark`, `showRuling` for tests.
