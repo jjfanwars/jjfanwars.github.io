@@ -61,6 +61,7 @@ button:hover { filter:brightness(1.25); }
 button.go { background:#6a3410; color:#f3e9d8; font-size:17px; letter-spacing:.2em; text-transform:uppercase; width:100%; padding:12px; margin-top:10px; }
 .row { display:flex; gap:8px; margin-top:8px; } .row > * { flex:1; }
 .keys { color:var(--dim); font-size:13px; line-height:1.7; } .keys b { color:var(--ink); font:12px ui-monospace,monospace; border:1px solid #444; padding:0 5px; border-radius:3px; }
+.best { font:12px ui-monospace,monospace; color:var(--acc); margin-top:8px; min-height:16px; }
 .err { color:#e07050; min-height:18px; font-size:13px; margin-top:6px; }
 .back { color:var(--dim); font-size:13px; text-decoration:none; } .back:hover { color:var(--acc); }
 #rooms div { padding:6px 8px; background:#141416; margin-top:4px; cursor:pointer; font-size:13px; } #rooms div:hover { background:#241a10; }
@@ -112,6 +113,7 @@ button.go { background:#6a3410; color:#f3e9d8; font-size:17px; letter-spacing:.2
         <div class="err" id="err"></div>
         <label>Open groups</label><div id="rooms"><small style="color:var(--dim)">Looking…</small></div>
         <label>Difficulty (host decides)</label><div class="seg" data-k="diff"><button data-v="easy">Easy</button><button data-v="normal">Normal</button><button data-v="nightmare">Nightmare</button></div>
+        <div class="best" id="best"></div>
         <label>Mouse sensitivity</label><input type="range" id="sens" min="0.3" max="2.5" step="0.05">
         <label>Brightness</label><input type="range" id="bright" min="0.7" max="1.6" step="0.05">
         <label>Graphics</label><div class="seg" data-k="gfx"><button data-v="low">Low</button><button data-v="high">High (shadows)</button></div>
@@ -155,6 +157,6 @@ button.go { background:#6a3410; color:#f3e9d8; font-size:17px; letter-spacing:.2
 
 <div id="load">Loading…</div>
 <script src="../three-r170.js"></script>
-<script src="game.js?v=2"></script>
+<script src="game.js?v=3"></script>
 </body>
 </html>

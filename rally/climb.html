@@ -76,7 +76,9 @@ h2 { margin:18px 0 8px; font-size:12px; letter-spacing:.16em; text-transform:upp
 .bar .b { width:min(200px,38vw); height:16px; border-radius:9px; background:rgba(0,0,0,.5); border:1px solid rgba(255,255,255,.25); overflow:hidden; }
 .bar .b i { display:block; height:100%; width:100%; border-radius:9px; transition:width .1s linear; }
 #fuel i { background:linear-gradient(90deg,#e0483a,#f2b632 45%,#4cc38a); background-size:min(200px,38vw) 100%; }
-#fuelW.low { animation:blink .5s steps(2) infinite; }
+#fuelW.low .b { animation:blink .5s steps(2) infinite; }
+#fuelW { position:relative; } #canD { position:absolute; left:100%; margin-left:8px; font:800 12px system-ui; letter-spacing:.04em; color:#ffd0c9; white-space:nowrap; } #canD::before { content:""; display:inline-block; width:8px; height:10px; margin-right:5px; border-radius:2px; background:#d8281f; box-shadow:inset 0 3px 0 #ffd15e; vertical-align:-1px; } #canD:empty { display:none; }
+#fuelW.low #canD { color:#ffd15e; }
 @keyframes blink { 50% { opacity:.35; } }
 #boost i { background:linear-gradient(90deg,#ff7a1a,#ffd15e); }
 #hud .tr { position:absolute; right:14px; top:12px; display:flex; gap:10px; align-items:center; }
@@ -119,7 +121,7 @@ h2 { margin:18px 0 8px; font-size:12px; letter-spacing:.16em; text-transform:upp
 <div id="hud" class="hidden">
   <div class="tl"><div id="dist">0<small> m</small></div><div id="bestL"></div></div>
   <div class="tc">
-    <div class="bar" id="fuelW">FUEL<div class="b" id="fuel"><i></i></div></div>
+    <div class="bar" id="fuelW">FUEL<div class="b" id="fuel"><i></i></div><span id="canD"></span></div>
     <div class="bar hidden" id="boostW">BOOST<div class="b" id="boost"><i></i></div></div>
   </div>
   <div class="tr"><div id="coinL"><i class="cn"></i>0</div><button id="bPause" aria-label="Pause">❚❚</button></div>
@@ -161,7 +163,7 @@ h2 { margin:18px 0 8px; font-size:12px; letter-spacing:.16em; text-transform:upp
 
 <div id="pause" class="scr hidden">
   <div class="card over">
-    <h1>PAUSED</h1>
+    <h1>PAUSED</h1><p class="why" id="pInfo"></p>
     <div class="btns" style="flex-direction:column"><button class="go" id="bResume">Resume</button><button id="bRestart">Restart</button><button id="bSnd2">Sound: on</button><button id="bQuit">Garage</button></div>
   </div>
 </div>
@@ -563,7 +565,7 @@ addEventListener('keydown', e => {
   else if (mode === 'pause' && e.code === 'Escape') resume();
   if (e.code === 'KeyR' && (mode === 'play' || mode === 'over' || mode === 'pause')) startRun();
   if ((e.code === 'Enter' || e.code === 'Space') && mode === 'over' && overReady) startRun();
-  if (e.code === 'Enter' && mode === 'menu') startRun();
+  if (e.code === 'Enter' && mode === 'menu' && !(document.activeElement && document.activeElement.tagName === 'BUTTON')) startRun(); // Enter on a focused card just picks it
 });
 addEventListener('keyup', e => KEY.delete(e.code));
 addEventListener('blur', () => { KEY.clear(); PED.gas = PED.brk = PED.boost = 0; if (mode === 'play') pauseOpen(); });
@@ -574,6 +576,7 @@ function pedal(el, k) {
   const up = () => { PED[k] = 0; };
   el.addEventListener('pointerdown', dn); el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up); el.addEventListener('lostpointercapture', up);
 }
+if (touch) $('bRetry').textContent = 'Retry';
 pedal($('pGas'), 'gas'); pedal($('pBrake'), 'brk'); pedal($('pBoost'), 'boost');
 function readInput() {
   let gas = GAS_K.some(k => KEY.has(k)) || PED.gas, brk = BRK_K.some(k => KEY.has(k)) || PED.brk, boost = BST_K.some(k => KEY.has(k)) || PED.boost;
@@ -589,7 +592,7 @@ function readInput() {
 let mode = 'menu', paused = false, run = null, preview = null, overReady = false, overT = 0, combo = 0, comboT = 0, lowT = 0, shake = 0, hintT = 0, scrapeT = 0, misT = 0, gearK = 0, lastGear = 0;
 const parts = [];
 function startRun() {
-  Snd.init(); $('menu').classList.add('hidden'); $('over').classList.add('hidden'); $('pause').classList.add('hidden');
+  Snd.init(); if (run && !run.settled && run.dist > 0) settle(run); $('menu').classList.add('hidden'); $('over').classList.add('hidden'); $('pause').classList.add('hidden');
   for (const m of SV.mis) { m.done = false; } // progress counts within this run (total distance carries over)
   run = new Run(SV.s, SV.v, SV.up[SV.v], SV.best[SV.s]); run.misRew = 0; run.hb = { x: 0, y: 0, vx: 0, vy: 0, pvx: 0, pvy: 0 };
   mode = 'play'; paused = false; parts.length = 0; cam.init = false; combo = 0; overT = 0; overReady = false; $('pops').innerHTML = '';
@@ -597,9 +600,10 @@ function startRun() {
   const h = $('hint'); h.textContent = touch ? 'Hold GAS to climb · BRAKE to stop and reverse · in the air, GAS tilts back and BRAKE tilts forward' : '→ / D gas · ← / A brake + reverse · in the air → tilts back, ← tilts forward' + (run.S.boost ? ' · Space boost' : ''); h.style.opacity = 1; hintT = SV.runs < 3 ? 9 : 4;
   SV.runs++; save();
 }
-function pauseOpen() { if (mode !== 'play') return; paused = true; mode = 'pause'; $('pause').classList.remove('hidden'); Snd.off(); }
+function pauseOpen() { if (mode !== 'play') return; paused = true; mode = 'pause'; $('pause').classList.remove('hidden'); Snd.off();
+  const R = run, c = R.got + R.bonus + R.misRew; $('pInfo').innerHTML = fmt(R.dist) + ' m · ' + coinH(c) + (c ? '<br><small>Restart or Garage keeps the coins from this run</small>' : ''); }
 function resume() { paused = false; mode = 'play'; $('pause').classList.add('hidden'); }
-function toMenu() { mode = 'menu'; paused = false; $('over').classList.add('hidden'); $('pause').classList.add('hidden'); $('hud').classList.add('hidden'); $('pedals').classList.add('hidden'); $('menu').classList.remove('hidden'); Snd.off(); renderMenu(); makePreview(); }
+function toMenu() { if (run && !run.settled && run.dist > 0) settle(run); mode = 'menu'; paused = false; $('over').classList.add('hidden'); $('pause').classList.add('hidden'); $('hud').classList.add('hidden'); $('pedals').classList.add('hidden'); $('menu').classList.remove('hidden'); Snd.off(); renderMenu(); makePreview(); }
 $('bGo').onclick = startRun; $('bRetry').onclick = startRun; $('bGarage').onclick = toMenu; $('bResume').onclick = resume; $('bRestart').onclick = startRun; $('bQuit').onclick = toMenu; $('bPause').onclick = () => { Snd.init(); pauseOpen(); };
 $('code').onkeydown = e => { e.stopPropagation(); if (e.key !== 'Enter') return; const v = $('code').value.trim().toLowerCase(), el = $('code');
   if (v === 'race67') { SV.own = VEH.map(() => 1); SV.st = STAGES.map(() => 1); SV.up = VEH.map(() => [UP_MAX, UP_MAX, UP_MAX, UP_MAX]); save(); Snd.init(); Snd.buy(); el.value = ''; el.placeholder = 'Unlocked!'; el.classList.add('ok'); renderMenu(); makePreview(); }
@@ -628,11 +632,17 @@ function handleEvents(R) {
   }
   R.ev.length = 0;
 }
-function showOver(R) {
-  checkMissions(R);
+// pay out a run once: coins, tricks, missions, distance and best. Called by the game over card, and when you restart or quit
+// mid-run (so pressing R or Garage no longer throws away the coins you picked up)
+function settle(R) {
+  if (!R || R.settled) return null; R.settled = true; checkMissions(R);
   const earned = R.got + R.bonus + R.misRew, nb = R.dist > SV.best[R.si];
   SV.coins += earned; SV.total += R.dist; if (nb) SV.best[R.si] = R.dist;
   for (const m of SV.mis) if (m.done) m.claimed = true; fillMissions(); save();
+  return { earned, nb };
+}
+function showOver(R) {
+  const { earned, nb } = settle(R) || { earned: R.got + R.bonus + R.misRew, nb: false };
   $('oT').textContent = R.reason; $('oW').textContent = R.why;
   $('oD').innerHTML = fmt(R.dist) + ' m' + (nb ? '<span class="newb">NEW BEST</span>' : ''); $('oB').textContent = fmt(SV.best[R.si]) + ' m'; $('oF').textContent = R.tricks;
   const row = (a, b) => b ? '<div><span>' + a + '</span>' + coinH(b) + '</div>' : '';
@@ -903,7 +913,8 @@ const setTxt = (id, v) => { if (hudCache[id] !== v) { hudCache[id] = v; $(id).in
 function hud(R, dt) {
   setTxt('dist', fmt(R.dist) + '<small> m</small>'); setTxt('coinL', coinH(R.got + R.bonus + R.misRew));
   setTxt('bestL', SV.best[R.si] ? (R.dist < SV.best[R.si] ? 'Best ' + fmt(SV.best[R.si]) + ' m · ' + fmt(SV.best[R.si] - R.dist) + ' to go' : 'NEW BEST!') : 'First run on this stage');
-  $('fuel').firstChild.style.width = (R.fuel * 100).toFixed(1) + '%'; $('fuelW').classList.toggle('low', R.fuel < 0.2 && R.fuel > 0);
+  $('fuel').firstChild.style.width = (R.fuel * 100).toFixed(1) + '%';
+  { let nx = 1e9; for (const f of R.cans) if (!f.got && f.x > R.car.x - 1 && f.x < nx) nx = f.x; const d = Math.round(nx - R.car.x); setTxt('canD', nx < 1e8 && d < 400 && !R.over ? Math.max(0, d) + ' m' : ''); } $('fuelW').classList.toggle('low', R.fuel < 0.2 && R.fuel > 0);
   if (R.S.boost) $('boost').firstChild.style.width = (R.car.boostE * 100).toFixed(0) + '%';
   if (R.fuel < 0.2 && R.fuel > 0 && !R.over) { if ((lowT -= dt) <= 0) { lowT = 0.9; Snd.low(); } } else lowT = 0;
   if (hintT > 0) { hintT -= dt; if (hintT <= 0) $('hint').style.opacity = 0; }
@@ -928,7 +939,7 @@ function renderMenu() {
   const dl = $('daily'); dl.classList.toggle('hidden', !dailyMsg); dl.innerHTML = dailyMsg;
   $('mis').innerHTML = misHTML(null);
   const sb = $('stages'); sb.innerHTML = '';
-  STAGES.forEach((st, i) => {
+  STAGES.map((st, i) => [st, i]).sort((a, b) => a[0].cost - b[0].cost).forEach(([st, i]) => {
     const b = document.createElement('button'), open = SV.st[i]; b.className = 'sc' + (SV.s === i ? ' on' : '') + (open ? '' : ' locked');
     b.innerHTML = '<div class="th"><canvas></canvas></div><div class="tx"><div class="nm">' + st.name + '</div><div class="mt">' + (open ? (SV.best[i] ? 'Best ' + fmt(SV.best[i]) + ' m' : st.desc) : '<span class="lock">' + coinH(st.cost) + '</span> · ' + (SV.coins >= st.cost ? 'tap to unlock' : 'locked')) + '</div></div>';
     thumb(b.querySelector('canvas'), st);
@@ -936,7 +947,7 @@ function renderMenu() {
     sb.appendChild(b);
   });
   const vb = $('vehs'); vb.innerHTML = '';
-  VEH.forEach((v, i) => {
+  VEH.map((v, i) => [v, i]).sort((a, b) => a[0].cost - b[0].cost).forEach(([v, i]) => {
     const b = document.createElement('button'), own = SV.own[i]; b.className = 'sc' + (SV.v === i ? ' on' : '') + (own ? '' : ' locked');
     b.innerHTML = '<div class="th"><canvas></canvas></div><div class="tx"><div class="nm">' + v.name + '</div><div class="mt">' + (own ? 'Upgrades ' + SV.up[i].reduce((a, b) => a + b, 0) + ' / ' + UP_MAX * 4 : '<span class="lock">' + coinH(v.cost) + '</span> · ' + (SV.coins >= v.cost ? 'tap to buy' : 'locked')) + '</div></div>';
     carThumb(b.querySelector('canvas'), i);

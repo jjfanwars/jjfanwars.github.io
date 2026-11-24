@@ -22,7 +22,8 @@ const nameOf = id => (G.crew.find(c => c.id === id) || {}).name || 'Someone';
 const colOf = id => CREW_COL[((G.crew.find(c => c.id === id) || {}).c || 0) % CREW_COL.length];
 // ---------- menu ----------
 function myName() { const n = ($('nm').value || '').replace(/[^A-Za-z0-9 ._-]/g, '').slice(0, 14) || 'Camper'; try { localStorage.setItem('cc-name', n); } catch (e) {} return n; }
-try { $('nm').value = localStorage.getItem('cc-name') || ''; } catch (e) {}
+try { $('nm').value = localStorage.getItem('cc-name') || ''; for (const k of ['sGfx', 'sSens']) { const v = localStorage.getItem('cc-' + k); if (v !== null && [...$(k).options].some(o => o.value === v)) $(k).value = v; } } catch (e) {}
+for (const k of ['sGfx', 'sSens']) $(k).addEventListener('change', () => { try { localStorage.setItem('cc-' + k, $(k).value); } catch (e) {} });
 const show = id => { for (const s of ['menu', 'lobby', 'fin', 'pause']) $(s).classList.toggle('hidden', s !== id); };
 const msg = (id, t) => { $(id).textContent = t; };
 Net.tag = '[Camper]'; Net.late = true; Net.relayT = { pose: 1 };
@@ -43,13 +44,14 @@ Net.on('start', m => { G.crew = m.crew || []; if (!G.on) startGame(); });
 Net.on('crew', m => { G.crew = m.crew || G.crew; });
 async function rooms() { if ($('menu').classList.contains('hidden')) return; const r = await Net.rooms(), b = $('rooms'); b.innerHTML = ''; for (const x of r) { const e = document.createElement('button'); e.innerHTML = '<span>' + x.name.replace(/^\[?Camper\]? /, '').replace(/[<>&]/g, '') + '</span><span>' + x.n + '/8</span>'; e.onclick = () => joinRoom(x.code); b.appendChild(e); } clearTimeout(G.rt); G.rt = setTimeout(rooms, 4000); }
 if (!/^(localhost|127\.0\.0\.1)$/.test(location.hostname) || Q.has('relay')) rooms();
-function endToMenu(why) { G.on = false; Net.close(); $('hud').classList.add('hidden'); show('menu'); msg('msg', why || ''); try { document.exitPointerLock(); } catch (e) {} Radio.stop(); Sfx.mute(true); setTimeout(() => Sfx.mute(false), 50); rooms(); }
+function endToMenu(why) { G.on = false; Net.close(); $('hud').classList.add('hidden'); show('menu'); msg('msg', why || ''); try { document.exitPointerLock(); } catch (e) {} Radio.stop(); Sfx.idle(); Winch.update(false, 0); G.paused = false; Sfx.mute(true); setTimeout(() => Sfx.mute(false), 50); rooms(); }
 // ---------- start ----------
 let MAPC = null;
 function startGame() {
   show(null); $('menu').classList.add('hidden'); $('hud').classList.remove('hidden'); $('load').classList.remove('hidden');
   setTimeout(async () => {
     const gfx = $('sGfx').value; if (!World.R) World.init($('gl'), gfx);
+    else if (World.gfx !== gfx) { World.gfx = gfx; World.R.shadowMap.enabled = gfx !== 'low'; World.R.setPixelRatio(Math.min(devicePixelRatio || 1, gfx === 'high' ? 2 : gfx === 'med' ? 1.5 : 1)); World.resize(); }
     const S = MAPC || (MAPC = RVMAP.build()); G.S = S;
     await World.photos(S.B);
     const bp = World.buildProps; World.buildProps = () => {}; S.decks.length = 0; World.build(S, 0); World.buildProps = bp;
@@ -71,7 +73,7 @@ function startGame() {
     }
     const k = Math.max(0, G.crew.findIndex(c => c.id === myId()));
     Object.assign(ME, { mode: 'in', seat: -1, p: new V3(k % 2 ? -0.2 : 0.25, FL, 1.9 - (k >> 1) * 1.1), v: new V3(), yaw: 0, pitch: -0.05, held: '', hold: '', holdT: 0, tumble: 0 });
-    G.t = 0; G.tm = 0; G.on = true; G.ev = []; G.lastFrame = performance.now(); G.acc = 0; G.sendT = 0; G.poseT = 0; G.seen = {}; G.fin = false; G.statsMe = { walk: 0, roof: 0 };
+    G.t = 0; G.tm = 0; G.on = true; G.paused = false; G.objTxt = ''; G.wasLocked = false; G.ev = []; G.lastFrame = performance.now(); G.acc = 0; G.sendT = 0; G.poseT = 0; G.seen = {}; G.fin = false; G.statsMe = { walk: 0, roof: 0 };
     $('load').classList.add('hidden'); $('fin').classList.add('hidden'); $('lockmsg').classList.remove('hidden');
     toast("GRANDMA'S CAMPER", 'Get everyone to Lakeside Camp. Someone take the wheel (E at the driver seat).', 6000);
   }, 40);
@@ -83,7 +85,7 @@ const cvs = $('gl');
 addEventListener('keydown', e => {
   if (!G.on) return; if (e.code === 'Tab') e.preventDefault(); KEYS.add(e.code); Sfx.start();
   if (e.repeat) return;
-  if (e.code === 'Escape') { pauseOpen(); return; }
+  if (e.code === 'Escape') { if (!$('pause').classList.contains('hidden')) pauseClose(); else pauseOpen(); return; }
   if (e.code === 'KeyQ') dropHeld();
   if (e.code === 'KeyH' || (e.code === 'KeyT')) { if (ME.mode === 'seat' && ME.seat === 0) act({ k: 'horn' }); }
   if (e.code === 'KeyC') ME.crouch = !ME.crouch;
@@ -95,9 +97,11 @@ cvs.addEventListener('mousedown', e => { if (!G.on) return; Sfx.start(); if (!do
 addEventListener('mouseup', e => { MB[e.button] = false; });
 cvs.addEventListener('contextmenu', e => e.preventDefault());
 addEventListener('mousemove', e => { if (!G.on || document.pointerLockElement !== cvs) return; const k = 0.0023 * (+$('sSens').value || 1); ME.yaw -= e.movementX * k; ME.pitch = clamp(ME.pitch - e.movementY * k, -1.45, 1.45); });
-document.addEventListener('pointerlockchange', () => { $('lockmsg').classList.toggle('hidden', !!document.pointerLockElement || !G.on); });
-function pauseOpen() { if (!G.on) return; $('pause').classList.remove('hidden'); try { document.exitPointerLock(); } catch (e) {} }
-$('bResume').onclick = () => { $('pause').classList.add('hidden'); try { cvs.requestPointerLock(); } catch (e) {} };
+document.addEventListener('pointerlockchange', () => { const l = !!document.pointerLockElement; if (l) G.wasLocked = true; $('lockmsg').classList.toggle('hidden', l || !G.on);
+  if (!l && G.on && G.wasLocked && !G.fin && $('pause').classList.contains('hidden')) pauseOpen(); }); // Esc while the mouse is locked only releases it: open the pause card too
+function pauseOpen() { if (!G.on || G.fin) return; G.paused = Net.role === 'solo'; $('pSub').textContent = G.paused ? 'The trip is on hold.' : 'The trip carries on for everyone else.'; if (G.paused) { Sfx.idle(); Winch.update(false, 0); Radio.update(0, 0); } $('pause').classList.remove('hidden'); try { document.exitPointerLock(); } catch (e) {} }
+function pauseClose() { $('pause').classList.add('hidden'); G.paused = false; G.lastFrame = performance.now(); try { const r = cvs.requestPointerLock(); if (r && r.catch) r.catch(() => {}); } catch (e) {} } // Esc is no user gesture: the lock can be refused (click to look again)
+$('bResume').onclick = pauseClose; $('pause').onclick = e => { if (e.target.id === 'pause') pauseClose(); };
 $('bQuit').onclick = () => { $('pause').classList.add('hidden'); endToMenu(''); };
 $('bAgain').onclick = () => { $('fin').classList.add('hidden'); if (Net.role === 'host') Net.send({ t: 'restart' }); startGame(); };
 $('bMenu').onclick = () => endToMenu('');
@@ -463,6 +467,8 @@ function stepInteract(dt) {
   if (KEYS.has('KeyR')) { ME.rT += dt; if (ME.rT > 1.4) { ME.rT = -99; if (ME.mode === 'out' && myWorld(T1).distanceTo(RV.pos) > 25) { toLocal('in', T2.set(0, FL, 0.5)); toast('BACK AT THE CAMPER', '', 1500); } else act({ k: 'tow' }); } } else ME.rT = 0;
 }
 // ---------- audio extras: winch motor, quack, radio ----------
+// soft two-note chime when the objective changes
+function chime() { if (!Sfx.on) return; const C = Sfx.ctx, t = C.currentTime; [[784, 0], [1175, 0.11]].forEach(([f, d]) => { const o = C.createOscillator(), g = C.createGain(); o.type = 'triangle'; o.frequency.value = f; g.gain.setValueAtTime(0.0001, t + d); g.gain.exponentialRampToValueAtTime(0.09, t + d + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t + d + 0.5); o.connect(g); g.connect(Sfx.out); o.start(t + d); o.stop(t + d + 0.55); }); }
 const RADIO_NAMES = ['off', 'Country Roads FM', 'Lo-fi Trucker', 'Polka Power'];
 function quack(p) { if (!Sfx.on) return; const C = Sfx.ctx, t = C.currentTime, d = p ? myWorld(T1).distanceTo(T2.set(p[0], p[1], p[2])) : 0, v = clamp(1 - d / 40, 0.05, 1); for (const [f, dt] of [[620, 0], [560, 0.09]]) { const o = C.createOscillator(), g = C.createGain(), bp = C.createBiquadFilter(); o.type = 'sawtooth'; o.frequency.setValueAtTime(f, t + dt); o.frequency.exponentialRampToValueAtTime(f * 0.6, t + dt + 0.12); bp.type = 'bandpass'; bp.frequency.value = 1400; bp.Q.value = 3; g.gain.setValueAtTime(0.0001, t + dt); g.gain.exponentialRampToValueAtTime(0.25 * v, t + dt + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t + dt + 0.14); o.connect(bp); bp.connect(g); g.connect(Sfx.out); o.start(t + dt); o.stop(t + dt + 0.2); } }
 const Winch = { g: null, o: null, update(on, ten) { if (!Sfx.on) return; const C = Sfx.ctx; if (!this.o) { this.o = C.createOscillator(); this.o.type = 'sawtooth'; const lp = C.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 900; this.g = C.createGain(); this.g.gain.value = 0; this.o.connect(lp); lp.connect(this.g); this.g.connect(Sfx.out); this.o.start(); } this.g.gain.setTargetAtTime(on ? 0.05 + ten * 0.05 : 0, C.currentTime, 0.05); this.o.frequency.setTargetAtTime(110 - ten * 40, C.currentTime, 0.05); } };
@@ -558,11 +564,11 @@ function hud(dt) {
   if ($('prompt').innerHTML !== pr) $('prompt').innerHTML = pr;
   let hd = ''; if (it) hd = '<b>' + ITEM_NAME[it.k] + '</b> ' + (it.k === 'remote' ? 'hold <kbd>LMB</kbd> reel in · <kbd>RMB</kbd> let out' : it.k === 'dyn' ? '<kbd>LMB</kbd> light and throw' : it.k === 'duck' ? '<kbd>LMB</kbd> squeeze' : '<kbd>LMB</kbd> throw') + ' · <kbd>Q</kbd> drop'; else if (H.st === 'held' && H.by === myId()) hd = '<b>winch hook</b> E on a tree, post or the fallen tree · <kbd>Q</kbd> drop';
   if ($('held').innerHTML !== hd) $('held').innerHTML = hd;
-  $('obj').textContent = objective();
+  { const o = objective(); if (o !== G.objTxt) { const first = !G.objTxt; G.objTxt = o; const el = $('obj'); el.textContent = o; if (!first && performance.now() - (G.chT || 0) > 4000) { G.chT = performance.now(); el.classList.remove('new'); void el.offsetWidth; el.classList.add('new'); chime(); } } } // rate-limited so a flapping hint can't spam
   const drv = ME.mode === 'seat' && ME.seat === 0; $('spd').style.display = drv ? '' : 'none'; if (drv) $('spd').firstChild.textContent = Math.round(RV.speed * 3.6);
   $('fuelB').style.width = Math.round(W.fuel * 100) + '%'; $('fuel').classList.toggle('low', W.fuel < 0.12);
   const wn = H.st === 'set'; $('winch').style.display = wn ? '' : 'none'; if (wn) { $('winchT').style.width = Math.round(W.ten * 100) + '%'; $('winchL').textContent = H.L.toFixed(1) + ' m'; }
-  $('tm').textContent = fmtT(W.tm + W.pen) + (W.pen ? '  (+' + W.pen + ' s tows)' : '');
+  { const tt = fmtT(W.tm + W.pen) + (W.pen ? '  (+' + W.pen + ' s tows)' : ''); if (tt !== G.tmTxt) { G.tmTxt = tt; $('tm').textContent = tt; } }
   const A = G.S.sAll, len = A.camp - A.start; $('progF').style.width = clamp((Math.max(W.prog, RV.prog) - A.start) / len, 0, 1) * 100 + '%';
   // crew list
   if ((G.crT = (G.crT || 0) - dt) <= 0) { G.crT = 0.3; $('crew').innerHTML = G.crew.map(c => { const p = c.id === myId() ? { m: ME.mode, s: ME.seat } : G.poses[c.id] || {}; const st = W.seats[0] === c.id ? 'driving' : W.seats[1] === c.id ? 'riding shotgun' : p.m === 'roof' ? 'on the roof' : p.m === 'in' ? 'in the camper' : p.m === 'out' ? 'outside' : '...'; return '<div><i style="background:#' + CREW_COL[c.c % 8].toString(16).padStart(6, '0') + '"></i>' + c.name.replace(/[<>&]/g, '') + ' <small>' + st + '</small></div>'; }).join(''); }
@@ -589,7 +595,7 @@ function showFinish() {
 }
 // ---------- frame ----------
 function frame(now) {
-  requestAnimationFrame(frame); if (!G.on) return;
+  requestAnimationFrame(frame); if (!G.on) return; if (G.paused) { G.lastFrame = now; return; }
   const dt = clamp((now - G.lastFrame) / 1000, 0, 0.05); G.lastFrame = now; if (dt <= 0) return; G.t += dt;
   const lastV = RV.vel.clone(); ME.inp = driveInput(dt);
   if (isHost()) { if (car) hostStep(dt); } else interpRV();

@@ -845,6 +845,10 @@ const Sfx = {
     this.B.radio = (() => { let a = 0, b = 0, env = 0, tgt = 0, nx = 0; return buf(2.4, (t, i) => { const n = Math.random() * 2 - 1; a += (n - a) * .35; b += (a - b) * .06; if (t > nx) { nx = t + rnd(.06, .16); tgt = Math.random() < .25 ? .1 : rnd(.5, 1); } env += (tgt - env) * .004;
       const click = t < .012 ? (Math.random() * 2 - 1) * 1.2 : 0, beep = t < .09 ? Math.sin(TAU * 1250 * t) * .25 : 0; return (a - b) * 2.4 * env * (t > .1 && t < 2.2 ? 1 : 0) * (1 - Math.max(0, t - 2) * 5) + click + beep; }); })();
     this.B.flyby = (() => { let lp = 0, lp2 = 0; return buf(5, t => { const n = Math.random() * 2 - 1; lp += (n - lp) * .08; lp2 += (lp - lp2) * .3; const e = Math.exp(-Math.pow((t - 2) / .9, 2)) + .15 * Math.exp(-Math.pow((t - 2) / 2, 2)); return (lp2 * 3 + Math.sin(TAU * (90 - t * 6) * t) * .2) * e; }); })();
+    // low armour heartbeat (lub-dub) and the shield collapsing (a falling electric crackle)
+    this.B.heart = (() => { let ph = 0; return buf(.5, t => { const k = t < .2 ? t : t - .22, a = t < .2 ? 1 : .7; ph += TAU * (46 + 30 * Math.exp(-k * 30)) / sr; return Math.sin(ph) * a * Math.exp(-k * 26) * Math.min(1, k * 600) * (t > .2 && t < .22 ? 0 : 1); }); })();
+    this.B.shbrk = (() => { let ph = 0, y = 0; return buf(.7, t => { ph += TAU * (900 * Math.exp(-t * 5) + 70) / sr; if (Math.random() < .2) y = Math.random() * 2 - 1; return ((Math.sin(ph) > 0 ? .35 : -.35) * Math.exp(-t * 6) + y * .5 * Math.exp(-t * 9)) * Math.min(1, t * 300); }); })();
+    this.B.shup = buf(.6, t => { const k = t < .12 ? t : t - .12; return Math.sin(TAU * (t < .12 ? 660 : 990) * t) * .22 * Math.exp(-k * 9) * Math.min(1, k * 400); }); // shield back to full
     const noise = buf(2, () => Math.random() * 2 - 1);
     const loop = (filtType, f, q, g) => { const s = C.createBufferSource(); s.buffer = noise; s.loop = true; const fl = C.createBiquadFilter(); fl.type = filtType; fl.frequency.value = f; fl.Q.value = q; const gn = C.createGain(); gn.gain.value = g; s.connect(fl); fl.connect(gn); gn.connect(this.master); s.start(); return {fl, gn}; };
     this.wind = loop('lowpass', 380, .7, .14); this.roar = loop('bandpass', 240, .9, 0); this.hiss = loop('highpass', 2600, .7, 0); this.rattle = loop('bandpass', 1400, 2, 0);
@@ -977,7 +981,8 @@ function shotTail(g, idx, local) {
     P.kickV += 1.5; P.gpV += 2.6; P.cpV += .45 + P.heat * .2; P.cyV += rnd(-.4, .4);
     // real recoil: the muzzle climbs and wanders, you hold it down
     P.pitch = clamp(P.pitch + .0008 * (1 - P.ads * .5), -.55, .4); P.yaw = clamp(P.yaw + rnd(-.0007, .0007), -1.5, 1.5);
-    if (Math.random() < .35) { _v2.set(P.x + rnd(-.6, .6), 1.05, P.z - 1.1); PS.add(_v2.x, _v2.y, _v2.z, rnd(-.6, .6), rnd(.2, .9), rnd(-2.5, -.8), rnd(.8, 1.5), .15, .9, .6, .48, .36, .22, -.1, 1.2); } // muzzle blast lifts dust off the sandbags P.trauma = Math.min(.6, P.trauma + .008); P.bloom = Math.min(1, P.bloom + .06);
+    if (Math.random() < .35) { _v2.set(P.x + rnd(-.6, .6), 1.05, P.z - 1.1); PS.add(_v2.x, _v2.y, _v2.z, rnd(-.6, .6), rnd(.2, .9), rnd(-2.5, -.8), rnd(.8, 1.5), .15, .9, .6, .48, .36, .22, -.1, 1.2); } // muzzle blast lifts dust off the sandbags
+    P.trauma = Math.min(.6, P.trauma + .008); P.bloom = Math.min((.35 + P.heat * .65) * (1 - P.ads * .6), P.bloom + .05); // crosshair opens with sustained fire and heat (the spread does too)
     FPG.userData.eject.getWorldPosition(_v2); dirV.set(1, 0, 0).applyQuaternion(cam.quaternion); addCase(_v2, {x: dirV.x * rnd(2, 3.5) + rnd(-.3, .3), y: rnd(1.8, 3), z: dirV.z * rnd(2, 3.5) + rnd(.2, .8)});
     if (Math.random() < .3) PS.add(mz.x, mz.y, mz.z, rnd(-.3, .3), rnd(.3, .9), rnd(-.3, .3), rnd(1, 2), .1, .6, .5, .45, .42, .18, -.2, .5);
   } else if (idx % 2 === 0) { const a = Sfx.at(mz.x, mz.z); Sfx.play('shot', {vol: .16 * a.vol, pan: a.pan, vr: .1, lp: 3000}); }
@@ -1128,7 +1133,7 @@ function spawnTitan(n) {
 }
 function titanWarn() { setTimeout(() => { if (!G.on || G.over) return; radio('titan'); callout('HIVE TITAN', 'SOMETHING HUGE // POUR IT ON'); Sfx.play('horn', {vol: .6, rate: .5, vr: 0}); }, 1800); }
 function titanDown(b) {
-  G.titan = null; G.slow = 1.8; G.shock = {x: b.x, z: b.z, r: 0};
+  G.titan = null; G.titansDown = (G.titansDown || 0) + 1; G.slow = 1.8; G.shock = {x: b.x, z: b.z, r: 0};
   for (let i = 0; i < (HI() ? 160 : 70); i++) { const a = rnd(0, TAU), sp = rnd(4, 26); PA.add(b.x, b.y + rnd(1, 6), b.z, Math.cos(a) * sp, rnd(3, 22), Math.sin(a) * sp, rnd(.6, 1.6), rnd(1, 3), 4, 3, 1.4, .4, 1, 8, 1); }
   for (let i = 0; i < 40; i++) PS.add(b.x + rnd(-4, 4), b.y + rnd(0, 6), b.z + rnd(-4, 4), rnd(-3, 3), rnd(3, 12), rnd(-3, 3), rnd(4, 8), 3, rnd(10, 18), .2, .12, .08, .7, -.4, .5);
   for (let i = 0; i < 30; i++) addChunk(b.x, b.y + 4, b.z, rnd(.3, .9), 14);
@@ -1668,25 +1673,29 @@ function drawHud(dt, time) {
   for (const d of G.dmgDirs) { const a = angD(P.yaw, d.a); c.strokeStyle = `rgba(255,60,40,${d.t})`; c.lineWidth = 6; c.beginPath(); c.arc(cx, cy, 150, -PI / 2 - a - .25, -PI / 2 - a + .25); c.stroke(); }
   c.lineWidth = 1.5;
   // radar
-  const rx = 120, ry = h - 120, R = 95;
-  c.fillStyle = 'rgba(2,20,22,.45)'; c.beginPath(); c.moveTo(rx, ry); c.arc(rx, ry, R, -PI / 2 - 1.3, -PI / 2 + 1.3); c.closePath(); c.fill();
-  c.strokeStyle = CY + '.5)'; c.stroke(); for (const r of [R / 3, R * 2 / 3]) { c.beginPath(); c.arc(rx, ry, r, -PI / 2 - 1.3, -PI / 2 + 1.3); c.strokeStyle = CY + '.18)'; c.stroke(); }
-  const sw = (time * 1.6) % 2.6 - 1.3; c.strokeStyle = CY + '.6)'; c.beginPath(); c.moveTo(rx, ry); c.lineTo(rx + Math.sin(sw) * R, ry - Math.cos(sw) * R); c.stroke();
-  for (const b of bugs) { if (b.dead) continue; const dx = b.x - P.x, dz = b.z - P.z, d = Math.hypot(dx, dz); if (d > 200) continue; const a = angD(P.yaw, Math.atan2(-dx, -dz)); if (Math.abs(a) > 1.3) continue;
-    const rr = d / 200 * R, px = rx - Math.sin(a) * rr, py = ry - Math.cos(a) * rr, near = Math.abs(angD(-a, sw)) < .3;
+  const full = SURV() && P.foot, ARC = full ? PI : 1.3, R = full ? 78 : 95, rx = full ? 104 : 120, ry = full ? h - 150 : h - 120, RNG = full ? 150 : 200;
+  c.fillStyle = 'rgba(2,20,22,.45)'; c.beginPath(); c.moveTo(rx, ry); c.arc(rx, ry, R, -PI / 2 - ARC, -PI / 2 + ARC); c.closePath(); c.fill();
+  c.strokeStyle = CY + '.5)'; c.stroke(); for (const r of [R / 3, R * 2 / 3]) { c.beginPath(); c.arc(rx, ry, r, -PI / 2 - ARC, -PI / 2 + ARC); c.strokeStyle = CY + '.18)'; c.stroke(); }
+  if (full) { c.fillStyle = CY + '.9)'; c.beginPath(); c.moveTo(rx, ry - 6); c.lineTo(rx + 4, ry + 4); c.lineTo(rx - 4, ry + 4); c.closePath(); c.fill(); } // you, facing up
+  const sw = full ? (time * 1.6) % TAU - PI : (time * 1.6) % 2.6 - 1.3; c.strokeStyle = CY + '.6)'; c.beginPath(); c.moveTo(rx, ry); c.lineTo(rx + Math.sin(sw) * R, ry - Math.cos(sw) * R); c.stroke();
+  for (const b of bugs) { if (b.dead) continue; const dx = b.x - P.x, dz = b.z - P.z, d = Math.hypot(dx, dz); if (d > RNG) continue; const a = angD(P.yaw, Math.atan2(-dx, -dz)); if (Math.abs(a) > ARC) continue;
+    const rr = d / RNG * R, px = rx - Math.sin(a) * rr, py = ry - Math.cos(a) * rr, near = Math.abs(angD(-a, sw)) < .3;
     const big = b.T.titan ? 9 : b.type === 2 ? 5 : 3; c.fillStyle = b.T.titan ? 'rgba(255,60,90,1)' : b.type === 2 ? 'rgba(255,150,60,.95)' : b.type === 3 ? 'rgba(150,255,80,.9)' : b.st === 3 ? 'rgba(220,170,120,.5)' : `rgba(255,${near ? 230 : 90},70,${near ? 1 : .7})`;
     if (b.st === 3) { c.beginPath(); c.arc(px, py, 3, 0, TAU); c.fill(); } else c.fillRect(px - big / 2, py - big / 2, big, big); }
-  c.fillStyle = CY + '.8)'; c.fillText('MOTION TRACKER', rx - 52, ry + 22); c.fillText(bugs.filter(b => !b.dead).length.toString().padStart(3, '0') + ' CONTACTS', rx - 44, ry + 38);
+  c.fillStyle = CY + '.8)'; c.fillText('MOTION TRACKER', rx - 52, ry + (full ? R + 20 : 22)); c.fillText(bugs.filter(b => !b.dead).length.toString().padStart(3, '0') + ' CONTACTS', rx - 44, ry + (full ? R + 36 : 38));
   // right panel: shield, armour, heat
   const bx = w - 300, by = h - 120;
-  c.fillStyle = CY + '.8)'; c.fillText('SHIELD', bx, by); c.fillText((G.shield | 0) + '%', bx + 240, by);
-  c.fillStyle = 'rgba(2,20,22,.5)'; c.fillRect(bx, by + 6, 270, 10); c.fillStyle = G.shield < 30 ? 'rgba(255,90,60,.9)' : CY + '.85)'; c.fillRect(bx, by + 6, 270 * G.shield / 100, 10);
+  const shDown = G.shBroke && G.shield < 99.5, blink = shDown && (time * 4 | 0) % 2 === 0;
+  c.fillStyle = shDown ? (blink ? 'rgba(255,110,80,.95)' : 'rgba(255,110,80,.6)') : CY + '.8)'; c.fillText(shDown ? 'SHIELD DOWN' : 'SHIELD', bx, by); c.fillText((G.shield | 0) + '%', bx + 240, by);
+  c.fillStyle = 'rgba(2,20,22,.5)'; c.fillRect(bx, by + 6, 270, 10);
+  if (G.shFlash > 0) { c.strokeStyle = `rgba(255,90,60,${G.shFlash})`; c.lineWidth = 2; c.strokeRect(bx - 3, by + 3, 276, 16); c.lineWidth = 1.5; } c.fillStyle = G.shield < 30 ? 'rgba(255,90,60,.9)' : CY + '.85)'; c.fillRect(bx, by + 6, 270 * G.shield / 100, 10);
   c.fillStyle = CY + '.8)'; c.fillText('ARMOUR', bx, by + 36);
   for (let i = 0; i < 10; i++) { c.fillStyle = G.hp > i * 10 + 5 ? (G.hp < 35 ? 'rgba(255,90,60,.9)' : 'rgba(200,255,250,.85)') : 'rgba(255,255,255,.1)'; c.fillRect(bx + i * 27, by + 42, 23, 8); }
+  if (!(SURV() && P.foot)) { // cannon readouts (hidden while you carry the rifle)
   const heat = P.heat; c.fillStyle = CY + '.8)'; c.fillText(P.vent > 0 ? 'VENTING' : 'BARREL TEMP', bx, by + 70); c.fillText(((P.spin * 2200) | 0) + ' RPM', bx + 190, by + 70);
   c.fillStyle = 'rgba(2,20,22,.5)'; c.fillRect(bx, by + 76, 270, 8);
   const hg = c.createLinearGradient(bx, 0, bx + 270, 0); hg.addColorStop(0, '#ff8a2a'); hg.addColorStop(.7, '#ffd27a'); hg.addColorStop(1, '#ffffff'); c.fillStyle = hg; c.fillRect(bx, by + 76, 270 * heat, 8);
-  c.fillStyle = CY + '.55)'; c.fillText('AUTO-FIRE ' + (SET.auto ? 'ON' : 'OFF') + '  [F]   AIM [Q]' + (G.ff ? '   FF ON' : ''), bx, by + 100);
+  c.fillStyle = CY + '.55)'; c.fillText('AUTO-FIRE ' + (SET.auto ? 'ON' : 'OFF') + '  [F]   AIM [Q]' + (G.ff ? '   FF ON' : ''), bx, by + 100); }
   if (SURV()) { c.font = '700 22px Rajdhani,sans-serif'; c.fillStyle = (P.foot ? SV.mag === 0 : SV.belt <= 0) ? 'rgba(255,90,60,.95)' : '#fff';
     c.fillText(P.foot ? (SV.rel > 0 ? 'RELOADING' : SV.mag + ' / ' + SV.res) : 'BELT ' + SV.belt, bx, by - 34); c.font = '12px "Share Tech Mono",monospace'; c.fillStyle = CY + '.7)'; c.fillText(P.foot ? 'RIFLE  [R] RELOAD  [E] GUN' : 'CANNON  [E] GET OFF', bx, by - 18); c.font = '13px "Share Tech Mono",monospace';
     { const nearHole = HOLE && !TUN && SV.day > 0 && Math.hypot(P.x - HOLE.x, P.z - HOLE.z) < 4, nearExit = TUN && Math.hypot(P.x - TUN.N[0][0], P.z - TUN.N[0][1]) < 4; if (P.foot && (nearHole || nearExit)) { c.font = '700 18px Rajdhani,sans-serif'; c.fillStyle = '#fff'; const tx = nearHole ? '[E] GO DOWN INTO THE HIVE' : '[E] CLIMB OUT'; c.fillText(tx, w / 2 - c.measureText(tx).width / 2, h * .62); c.font = '13px "Share Tech Mono",monospace'; } }
@@ -1856,10 +1865,10 @@ function stepFeel(dt, time) {
 function resetWorld() {
   RAD = null; radT = 2.5; fly = null; FLY.visible = false; G.hs = 0;
   for (const b of bugs.slice()) freeBug(b); nextId = 1;
-  Object.assign(G, {wave: 0, quota: 0, spawnAcc: 0, gap: 1.5, kills: 0, shield: 100, hp: 100, hurtT: 9, over: false, evq: [], dmgDirs: [], attackers: 0, runT: 0, combo: 0, comboT: 0, comboBest: 0, cleared: false, bruteSeen: false, lowWarn: false, lost: false});
+  Object.assign(G, {wave: 0, quota: 0, spawnAcc: 0, gap: 1.5, kills: 0, shield: 100, hp: 100, hurtT: 9, over: false, evq: [], dmgDirs: [], attackers: 0, runT: 0, combo: 0, comboT: 0, comboBest: 0, cleared: false, bruteSeen: false, lowWarn: false, lost: false, shBroke: false, shFlash: 0, beatT: 0, titansDown: 0});
   resetSpecials();
-  for (const g of G.gunners.values()) g.kills = 0;
-  P.heat = 0; P.spin = 0; P.vent = 0;
+  for (const g of G.gunners.values()) { g.kills = 0; g.spin = 0; g.heat = 0; g.acc = 0; g.fire = 0; }
+  P.heat = 0; P.spin = 0; P.vent = 0; P.firing = false; P.fireT = 0; P.burst = 0; P.bloom = 0;
 }
 function beginGame(fresh) {
   Sfx.init(); resetWorld(); if (TUN) { if (!HOLE) HOLE = {x: 0, z: 0, m: new THREE.Group()}; TUN.dead = false; exitHive(); } dropHole(); P.ug = false; if (Net.role !== 'solo') G.mode = 'horde';
@@ -1883,7 +1892,7 @@ function overrun(m) {
   const prev = G.best; if (k > G.best) { G.best = k; try { localStorage.setItem('ls-bestk', k); } catch (e) {} }
   if (Net.role === 'host') Net.send({t: 'over', w, k, rt: Math.round(t)});
   callout('OVERRUN', 'THE LINE HAS FALLEN');
-  setTimeout(() => { if (G.over) showEnd('OVERRUN', 'The hive took Kestrel-9', w, k, t, k > prev && prev > 0 ? 'NEW BEST: ' + k + ' kills (was ' + prev + ')' : 'Best: ' + G.best + ' kills'); }, 1600);
+  setTimeout(() => { if (G.over) showEnd('OVERRUN', 'The hive took Kestrel-9', w, k, t, k > prev && prev > 0 ? 'NEW BEST: ' + k + ' kills (was ' + prev + ')' : G.best ? 'Best: ' + G.best + ' kills' : ''); }, 1600);
   Sfx.play('horn', {rate: .6, vol: .7});
 }
 function fmtT(t) { t = Math.max(0, t | 0); return (t / 60 | 0) + ':' + String(t % 60).padStart(2, '0'); }
@@ -1891,7 +1900,9 @@ function showEnd(title, sub, w, k, t, best) {
   const lg = localGunner(), you = lg && Net.role !== 'solo' ? lg.kills : null;
   $('call').style.opacity = 0; callT = 0;
   $('endH').textContent = title; $('endSub').textContent = sub;
-  $('endS').innerHTML = `<div><b>${G.comboBest || 0}x</b><small>Best streak</small></div><div><b>${k}</b><small>${you !== null ? 'Squad kills' : 'Kills'}</small></div><div><b>${fmtT(t)}</b><small>Held</small></div>` + (you !== null ? `<div style="grid-column:1/-1"><small>Your kills</small> <b style="display:inline;font-size:22px">${you}</b></div>` : '');
+  const it = (l, v) => `<span style="margin:0 10px;white-space:nowrap"><small>${l}</small> <b style="display:inline;font-size:22px">${v}</b></span>`;
+  const more = (SURV() ? '' : it('Threat reached', w)) + (G.titansDown || !SURV() ? it('Titans felled', G.titansDown || 0) : '') + (you !== null ? it('Your kills', you) : '');
+  $('endS').innerHTML = `<div><b>${G.comboBest || 0}x</b><small>Best streak</small></div><div><b>${k}</b><small>${you !== null ? 'Squad kills' : 'Kills'}</small></div><div><b>${fmtT(t)}</b><small>Held</small></div>` + (more ? `<div style="grid-column:1/-1">${more}</div>` : '');
   $('endB').textContent = best || '';
   const guest = Net.role === 'guest' && !G.lost;
   $('bAgain').textContent = G.lost ? 'Back to menu' : guest ? 'Waiting for the host to restart' : 'Hold the line again';
@@ -1922,6 +1933,10 @@ function step(dt) {
     for (const g of G.gunners.values()) stepGunner(g, dt, g.id === myId());
     G.hurtT += dt; if (G.hurtT > (SURV() ? 3 : 1.2) && isHost()) G.shield = Math.min(100, G.shield + dt * (SURV() ? 18 : 45));
     survStep(dt); hiveStep(dt);
+    // shield collapse + recharge cues and a heartbeat at low armour (guests too: shield and hull come from snapshots)
+    if (!G.over) { if (G.shield <= .5 && !G.shBroke) { G.shBroke = true; G.shFlash = 1; if (Sfx.ctx && Sfx.lim('shb', 1500)) Sfx.play('shbrk', {vol: .5, vr: .05}); }
+      else if (G.shBroke && G.shield >= 99.5) { G.shBroke = false; if (Sfx.ctx && Sfx.lim('shu', 1500)) Sfx.play('shup', {vol: .3, vr: 0}); }
+      if (G.hp < 30 && (G.beatT = (G.beatT || 0) - dt) <= 0) { G.beatT = .55 + G.hp / 30 * .45; Sfx.play('heart', {vol: .55, vr: 0}); } }
     if (G.hurtT < .1 && isHost()) { // direction indicator from nearest attacker
       let nb = null, nd = 1e9; for (const b of bugs) if (b.st === 1 && !b.dead) { const d = Math.abs(b.x - P.x); if (d < nd) { nd = d; nb = b; } }
       if (nb && Math.random() < .1) G.dmgDirs.push({a: Math.atan2(-(nb.x - P.x), -(nb.z - P.z)), t: 1}); }
@@ -1930,6 +1945,7 @@ function step(dt) {
     if (Net.role === 'host' && G.migT > 0 && (G.migT -= dt) <= 0) { for (const id of [...G.gunners.keys()]) if (id !== 'H' && id[0] !== 'S' && !Net.peers.has(id)) removeGunner(id); Net.send(crewMsg()); }
     if (Net.role === 'guest' && (G.sendT -= dt) <= 0) { G.sendT = 1 / 15; Net.send({t: 'aim', y: Math.round(P.yaw * 1000) / 1000, p: Math.round(P.pitch * 1000) / 1000, f: wantFire() && P.vent <= 0 ? 1 : 0, a: P.ads > .5 ? 1 : 0}); }
   }
+  else { P.firing = false; P.fireT = 0; }
   if (Net.role !== 'host') G.evq = [];
   stepBugsCommon(dt, time);
   drawBegin(); for (const b of bugs) drawBug(b, time); drawEnd();
@@ -1938,11 +1954,11 @@ function step(dt) {
   survLight(dt); stepFeel(dt, time);
   updateGunVisual(FPG, P.spin, P.heat, P.firing, time, dt);
   for (const g of G.gunners.values()) if (g.model) { g.model.rotation.y = g.yaw; const gun = g.model.userData.gun; gun.rotation.x = g.pitch; updateGunVisual(gun, g.spin, g.heat, g.spin > .97 && g.fire, time, dt); }
-  Sfx.gun(P.spin, P.heat, P.vent > 0, P.firing);
+  Sfx.gun(live ? P.spin : 0, P.heat, live && P.vent > 0, P.firing);
   if (P.firing) P.burst = (P.burst || 0) + dt; else { if (P.burst > .35 && Sfx.ctx) Sfx.play('tail', {vol: Math.min(.5, .2 + P.burst * .08), vr: .05, lp: 900}); P.burst = 0; }
   PA.step(dt); PS.step(dt); PG.step(dt); stepDecals(dt); stepChunks(chunks, CHK, 300, dt); stepChunks(legsD, LGD, 80, dt, true); stepTracers(dt); stepCases(dt);
   stepWorldFx(dt, time);
-  G.dmgFlash = Math.max(0, G.dmgFlash - dt * 1.5); G.hitT -= dt; G.killT -= dt; if ((G.comboT -= dt) <= 0) G.combo = 0; G.comboPop = Math.max(0, (G.comboPop || 0) - dt); G.comboFlash = Math.max(0, (G.comboFlash || 0) - dt * 1.2); for (const d of G.dmgDirs) d.t -= dt; G.dmgDirs = G.dmgDirs.filter(d => d.t > 0);
+  G.dmgFlash = Math.max(0, G.dmgFlash - dt * 1.5); G.shFlash = Math.max(0, (G.shFlash || 0) - dt * .8); G.hitT -= dt; G.killT -= dt; if ((G.comboT -= dt) <= 0) G.combo = 0; G.comboPop = Math.max(0, (G.comboPop || 0) - dt); G.comboFlash = Math.max(0, (G.comboFlash || 0) - dt * 1.2); for (const d of G.dmgDirs) d.t -= dt; G.dmgDirs = G.dmgDirs.filter(d => d.t > 0);
   compM.uniforms.dmg.value = G.dmgFlash * .4 + (G.hp < 30 ? (.15 + Math.sin(time * 3) * .05) : 0); compM.uniforms.time.value = time;
   $('dmg').style.opacity = 0;
   if (callT > 0 && (callT -= dt) <= 0) $('call').style.opacity = 0;
@@ -1960,7 +1976,7 @@ addEventListener('mouseup', e => { if (e.button === 0) mouseDown = false; });
 addEventListener('contextmenu', e => e.preventDefault());
 addEventListener('keydown', e => { keys[e.code] = true; if (!G.on) return;
   if (G.over) { if ((e.code === 'Space' || e.code === 'Enter') && !$('end').classList.contains('hidden') && !$('bAgain').disabled) { e.preventDefault(); $('bAgain').click(); } return; }
-  if (e.code === 'Escape' && document.pointerLockElement !== canvas && performance.now() - plT > 400) { pause(!G.paused); return; } if (e.code === 'KeyF') { SET.auto = !SET.auto; saveSet(); syncUI(); toast('Auto-fire ' + (SET.auto ? 'on' : 'off')); } if (e.code === 'KeyE') toggleMount(); if (SURV() && SV.offer && SV.offer.length && /^Digit[123]$/.test(e.code)) pickPerk(+e.code[5] - 1); if (SURV() && e.code === 'KeyN' && SV.day > 0) { SV.day = Math.min(SV.day, .01); } if (e.code === 'KeyT') { P.torch = P.torch === false; toast('Flashlight ' + (P.torch === false ? 'off' : 'on')); } if (e.code === 'KeyR') { if (SURV() && P.foot) reload(); else if (P.vent <= 0 && P.heat > .2) { P.vent = .5; vent(); } } if (e.code === 'KeyP') pause(true); });
+  if (e.code === 'Escape' && document.pointerLockElement !== canvas && performance.now() - plT > 400) { pause(!G.paused); return; } if (e.code === 'KeyF') { SET.auto = !SET.auto; saveSet(); syncUI(); toast('Auto-fire ' + (SET.auto ? 'on' : 'off')); } if (e.code === 'KeyE') toggleMount(); if (SURV() && SV.offer && SV.offer.length && /^Digit[123]$/.test(e.code)) pickPerk(+e.code[5] - 1); if (SURV() && e.code === 'KeyN' && SV.day > 0) { SV.day = Math.min(SV.day, .01); } if (e.code === 'KeyT' && SURV()) { P.torch = P.torch === false; toast('Flashlight ' + (P.torch === false ? 'off' : 'on')); } if (e.code === 'KeyR') { if (SURV() && P.foot) reload(); else if (P.vent <= 0 && P.heat > .2) { P.vent = .5; vent(); } } if (e.code === 'KeyP') pause(true); });
 addEventListener('keyup', e => { keys[e.code] = false; });
 let isTouch = false, tX = null, tY = null, tId = null, mId = null, mX = 0, mY = 0;
 addEventListener('touchstart', e => { isTouch = true; Sfx.init(); if (G.on && !G.over) { $('bPauseT').classList.remove('hidden'); $('bAimT').classList.remove('hidden'); $('bFireT').classList.remove('hidden'); if (SURV()) $('bUseT').classList.remove('hidden'); } const t = e.changedTouches[0]; if (G.on && SURV() && P.foot && mId === null && t.clientX < innerWidth * .4 && !(t.target.closest && t.target.closest('button'))) { mId = t.identifier; mX = t.clientX; mY = t.clientY; return; } if (G.on && tId === null && !(t.target.closest && t.target.closest('button'))) { tId = t.identifier; tX = t.clientX; tY = t.clientY; } }, {passive: true});
@@ -1968,7 +1984,10 @@ addEventListener('touchmove', e => { if (G.on && mId !== null) { const m = [...e
 const tEnd = e => { for (const t of e.changedTouches) { if (t.identifier === tId) { tId = null; tX = null; } if (t.identifier === mId) { mId = null; P.mvX = P.mvY = 0; } } }; addEventListener('touchend', tEnd); addEventListener('touchcancel', tEnd);
 let plT = 0;
 document.addEventListener('pointerlockchange', () => { plT = performance.now(); const on = document.pointerLockElement === canvas; $('hint').classList.toggle('hidden', on || !G.on || G.over || isTouch || TEST); if (!on && G.on && !G.over && !TEST && !isTouch) pause(true); });
-function pause(p) { G.paused = p; $('pause').classList.toggle('hidden', !p); if (!p && !isTouch) lockPtr(); }
+function clearInput() { for (const k in keys) keys[k] = false; mouseDown = false; fireTouch = false; aimTouch = false; for (const id of ['bFireT', 'bAimT']) $(id).classList.remove('on'); }
+addEventListener('blur', clearInput);
+document.addEventListener('visibilitychange', () => { if (!Sfx.ctx) return; if (document.hidden) { clearInput(); Sfx.ctx.suspend(); } else Sfx.ctx.resume(); });
+function pause(p) { if (p) clearInput(); G.paused = p; $('pause').classList.toggle('hidden', !p); if (!p && !isTouch) lockPtr(); }
 $('bPauseT').onclick = () => pause(true);
 
 // ---------------- menus
@@ -1978,7 +1997,7 @@ function syncUI() {
   for (const id of ['auto', 'auto2']) if ($(id)) $(id).checked = SET.auto;
   for (const id of ['ff', 'ff2']) if ($(id)) { $(id).checked = SET.ff; $(id).disabled = Net.role === 'guest'; }
   if ($('name')) $('name').value = SET.name;
-  $('best').textContent = G.best ? 'Best: ' + G.best + ' kills' : '';
+  $('best').textContent = [G.best ? 'Best hold: ' + G.best + ' kills' : '', G.bestS ? 'Survival: ' + G.bestS + (G.bestS === 1 ? ' night' : ' nights') : ''].filter(Boolean).join('   //   ');
 }
 for (const id of ['sens', 'sens2']) $(id).oninput = e => { SET.sens = +e.target.value; saveSet(); syncUI(); };
 for (const id of ['vol', 'vol2']) $(id).oninput = e => { SET.vol = +e.target.value; saveSet(); if (Sfx.master) Sfx.master.gain.value = SET.vol; syncUI(); };
@@ -2006,7 +2025,7 @@ if ($('bJoin')) $('bJoin').onclick = () => {
   for (const id of [...G.gunners.keys()]) removeGunner(id);
 };
 $('bResume').onclick = () => pause(false);
-$('bQuit').onclick = () => { hidePerks(); hostBye(); Net.close(); clearTimeout(G.goneT); $('bPauseT').classList.add('hidden'); $('bAimT').classList.add('hidden'); $('bFireT').classList.add('hidden'); $('bUseT').classList.add('hidden'); aimTouch = fireTouch = false; G.on = false; G.paused = false; resetWorld(); ['pause', 'end'].forEach(i => $(i).classList.add('hidden')); $('menu').classList.remove('hidden'); $('hud').classList.add('hidden'); $('visor').classList.add('hidden'); };
+$('bQuit').onclick = () => { hidePerks(); hostBye(); Net.close(); clearTimeout(G.goneT); $('bPauseT').classList.add('hidden'); $('bAimT').classList.add('hidden'); $('bFireT').classList.add('hidden'); $('bUseT').classList.add('hidden'); aimTouch = fireTouch = false; G.on = false; G.paused = false; resetWorld(); ['pause', 'end'].forEach(i => $(i).classList.add('hidden')); $('menu').classList.remove('hidden'); $('hud').classList.add('hidden'); $('visor').classList.add('hidden'); syncUI(); };
 $('bMenu').onclick = $('bQuit').onclick;
 $('bAgain').onclick = () => { if (G.lost) { $('bQuit').onclick(); return; } if (Net.role === 'guest') return; if (Net.role === 'host') Net.send({t: 'restart'}); beginGame(false); };
 const openReq = () => { $('reqF').src = 'requests.html?embed'; $('reqBox').classList.remove('hidden'); document.exitPointerLock && document.exitPointerLock(); };

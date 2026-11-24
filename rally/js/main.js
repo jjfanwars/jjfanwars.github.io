@@ -28,7 +28,7 @@ function renderStages() {
     let best = null; try { best = JSON.parse(localStorage.getItem('pn-best-' + i + '-' + fog) || 'null'); } catch (e) {}
     const b = document.createElement('button'); b.className = 'stc' + (i === cur ? ' sel' : ''); b.setAttribute('role', 'option'); b.setAttribute('aria-selected', i === cur);
     b.style.setProperty('--b', BIO_COL[s.biome] || '#777');
-    const B0 = BIOMES[s.biome], tag = s.fogBank ? ' · fog' : s.sunrise ? ' · sunrise' : s.bridges ? ' · bridges' : s.downhill ? ' · downhill' : s.gaps ? ' · gap jumps' : s.gw ? ' · hairpins' : s.railx ? ' · trains' : s.race ? ' · race' : s.ice ? ' · ice' : s.fords ? ' · fords' : s.ridges ? ' · ridge' : (s.tunnels || B0.tunnels) ? ' · tunnels' : (s.cliffs || B0.cliffs) ? ' · cliffs' : ''; b.innerHTML = (s.berms && !s.race ? '<em>JUMPS</em>' : '') + '<b>' + s.name + '</b><small>' + BIOMES[s.biome].name + ' · ' + todName(s.tod) + ' · ' + (s.len / 1000).toFixed(1) + ' km' + tag + '</small>' + '<small class="bt">' + (best ? medalDot(medalOf(i, best.t)) + 'Best ' + fmtT2(best.t) : 'Gold ' + fmtT(medalT(i, 0))) + '</small>';
+    const B0 = BIOMES[s.biome], tag = s.fogBank ? ' · fog' : s.sunrise ? ' · sunrise' : s.bridges ? ' · bridges' : s.downhill ? ' · downhill' : s.gaps ? ' · gap jumps' : s.gw ? ' · hairpins' : s.railx ? ' · trains' : s.race ? ' · race' : s.ice ? ' · ice' : s.fords ? ' · fords' : s.ridges ? ' · ridge' : (s.tunnels || B0.tunnels) ? ' · tunnels' : (s.cliffs || B0.cliffs) ? ' · cliffs' : ''; b.innerHTML = (s.berms && !s.race ? '<em>JUMPS</em>' : '') + '<b>' + s.name + '</b><small>' + BIOMES[s.biome].name + ' · ' + todName(s.tod) + ' · ' + (s.len / 1000).toFixed(1) + ' km' + tag + '</small>' + '<small class="bt">' + (best ? medalDot(medalOf(i, best.t)) + 'Best ' + fmtT2(best.t) : 'Gold target ' + fmtT(medalT(i, 0))) + '</small>';
     b.onclick = () => { $('sStage').value = i; $('sStage').onchange(); renderStages(); };
     box.appendChild(b);
   });
@@ -199,8 +199,14 @@ $('bAgain').onclick = restart;
 $('bNext').onclick = () => { if (Champ.run) { $('fin').classList.add('hidden'); if (Champ.run.done) { Champ.run = null; endToMenu(''); renderChamps(); show('champ'); } else { Champ.run.i++; champStage(); } return; }
   G.cfg = Object.assign({}, G.cfg, { stage: (G.cfg.stage + 1) % STAGES.length }); $('sStage').value = G.cfg.stage; renderStages(); restart(); };
 // ---- pause (Esc releases the mouse; solo practice actually stops the clock) ----
-function pauseOpen() { if (!G.on || G.phase === 'fin' || !$('fin').classList.contains('hidden')) return; G.paused = G.solo; $('pSub').textContent = G.solo ? 'The clock is stopped.' : 'Online: the stage keeps running.'; $('pause').classList.remove('hidden'); $('bRestart').classList.toggle('hidden', !!Champ.run || !(G.solo || Net.role === 'host')); }
-function pauseClose() { $('pause').classList.add('hidden'); G.paused = false; G.lastFrame = performance.now(); G.acc = 0; try { cvs.requestPointerLock(); } catch (x) {} }
+function pauseOpen() { if (!G.on || G.phase === 'fin' || !$('fin').classList.contains('hidden')) return; G.paused = G.solo; if (G.paused) Sfx.idle(); pauseBtns(); $('bCam').classList.toggle('hidden', G.role !== 'drv'); $('pSub').textContent = G.solo ? 'The clock is stopped.' : 'Online: the stage keeps running.'; $('pause').classList.remove('hidden'); $('bRestart').classList.toggle('hidden', !!Champ.run || !(G.solo || Net.role === 'host')); }
+function pauseClose() { $('pause').classList.add('hidden'); G.paused = false; G.lastFrame = performance.now(); G.acc = 0; try { const r = cvs.requestPointerLock(); if (r && r.catch) r.catch(() => {}); } catch (x) {} } // Esc / pad Start aren't user gestures: a refused lock is fine, a click locks again
+// sound on/off (saved, also silences the spoken calls) and the camera, from the pause card
+const sndOff = () => { try { return localStorage.getItem('pn-snd') === '0'; } catch (e) { return false; } };
+Sfx.setOff(sndOff());
+function pauseBtns() { $('bSnd').textContent = 'Sound: ' + (Sfx.off ? 'off' : 'on'); $('bCam').textContent = 'Camera: ' + (G.chase ? 'chase' : 'cockpit') + ' (V)'; }
+$('bSnd').onclick = () => { Sfx.setOff(!Sfx.off); try { localStorage.setItem('pn-snd', Sfx.off ? '0' : '1'); } catch (e) {} pauseBtns(); };
+$('bCam').onclick = () => { toggleChase(); pauseBtns(); };
 $('bResume').onclick = pauseClose; $('pause').onclick = e => { if (e.target.id === 'pause') pauseClose(); };
 $('bRestart').onclick = () => { $('pause').classList.add('hidden'); G.paused = false; restart(); };
 $('bQuit').onclick = () => { Champ.run = null; $('pause').classList.add('hidden'); G.paused = false; endToMenu(''); };
@@ -365,7 +371,9 @@ function showFinish() { $('call').classList.remove('on'); clearTimeout(G.callHid
   fd.textContent = d === null ? 'First run on this stage' : (d < 0 ? 'NEW BEST  \u2212' : '+') + Math.abs(d).toFixed(2) + (d < 0 ? '' : '  vs best ' + fmtT2(G.prevBest.t));
   $('finK').textContent = G.race ? 'RACE RESULTS' : G.wasBest ? 'NEW BEST TIME' : 'STAGE COMPLETE';
   if (G.race) G.resT = 0;
-  $('finUnlock').classList.toggle('hidden', !G.unlockMsg); $('finUnlock').textContent = G.unlockMsg ? '\u2605 ' + G.unlockMsg : '';
+  const pm = G.prevBest ? medalOf(G.cfg.stage, G.prevBest.t) : -1, newMedal = G.role === 'drv' && mk >= 0 && (pm < 0 || mk < pm) ? 'NEW ' + MEDALS[mk][0] + ' MEDAL' : ''; // first medal on this stage, or a better one
+  const pill = [newMedal, G.unlockMsg].filter(Boolean).join('  \u00B7  ');
+  $('finUnlock').classList.toggle('hidden', !pill); $('finUnlock').textContent = pill ? '\u2605 ' + pill : '';
   const ctl = G.solo || Net.role === 'host'; $('bAgain').classList.toggle('hidden', !ctl); $('bNext').classList.toggle('hidden', !ctl);
   msg('finMsg', ctl ? '' : 'Waiting for the host to restart...');
   $('bNext').textContent = 'Next stage'; $('bMenu').textContent = 'Menu';
@@ -510,12 +518,14 @@ function skids(c) {
     L.copy(p);
   }
 }
+// HUD text and widths only touch the DOM when they change (they were rewritten every frame)
+const HC = {}, hTxt = (key, v, w) => { if (HC[key] === v) return; HC[key] = v; const el = key === 'spdB' ? $('spd').querySelector('b') : key === 'dmgU' ? $('dmg').querySelector('u') : $(key); if (w) el.style.width = v; else el.textContent = v; };
 function hud(st) {
   if ((G.hovT = (G.hovT || 0) - 1) <= 0) { G.hovT = 6; const k = document.pointerLockElement ? aimedSwitch() : freeSw, sw = st.sw || G.sw || []; G.view.hoverSw = k; $('hov').textContent = k >= 0 ? SWITCH_NAMES[k] + (sw[k] ? ' · ON' : ' · OFF') + '  (click)' : ''; }
   const done = Math.max(0, st.prog - World.startS), len = Math.max(1, G.finishS - G.startS), clk = G.phase === 'count' ? 0 : (G.phase === 'fin' ? G.final - G.pen : G.t) + G.pen;
-  $('trip').textContent = (Math.min(done, len) / 1000).toFixed(2) + ' / ' + (len / 1000).toFixed(2) + ' km';
-  $('tm').textContent = fmtT(clk);
-  $('progF').style.width = clamp(done / len, 0, 1) * 100 + '%';
+  hTxt('trip', (Math.min(done, len) / 1000).toFixed(2) + ' / ' + (len / 1000).toFixed(2) + ' km');
+  hTxt('tm', fmtT(clk));
+  hTxt('progF', (clamp(done / len, 0, 1) * 100).toFixed(1) + '%', 1);
   // live delta against the best run, sampled every 50 m
   const k = Math.floor(done / 50);
   if (G.phase === 'run' && G.trace[k] === undefined) G.trace[k] = Math.round(clk * 100) / 100;
@@ -525,12 +535,12 @@ function hud(st) {
   // car dots on the progress bar (rivals in a race)
   if (G.progDots) for (const [c, el] of G.progDots) { const p = typeof c === 'string' ? G.bots[+c.slice(1)].car.prog : c === G.myCar ? st.prog : ((G.bufs[c] || []).slice(-1)[0] || { pr: G.startS }).pr; el.style.left = clamp((p - G.startS) / len, 0, 1) * 100 + '%'; }
   if (G.role === 'drv') {
-    $('spd').querySelector('b').textContent = Math.round(st.speed * 3.6); $('gear').textContent = st.gear < 0 ? 'R' : st.gear || 'N';
+    hTxt('spdB', String(Math.round(st.speed * 3.6))); hTxt('gear', String(st.gear < 0 ? 'R' : st.gear || 'N'));
     drawRev(st.rpm);
     { const on = PHYS.mouseSteer && G.phase !== 'fin'; if (on !== G.wheelOn) { G.wheelOn = on; $('wheelI').classList.toggle('hidden', !on); } if (on) $('wheelI').firstChild.style.left = (50 - (inp.wheel || 0) * 50).toFixed(1) + '%'; }
-    const dm = Math.round((G.dmg || 0) * 100); $('dmg').querySelector('u').style.width = dm + '%'; $('dmgP').textContent = dm + '%' + (st.flat ? ' · FLAT' : ''); $('dmg').classList.toggle('hi', dm >= 50);
+    const dm = Math.round((G.dmg || 0) * 100); hTxt('dmgU', dm + '%', 1); hTxt('dmgP', dm + '%' + (st.flat ? ' · FLAT' : '')); $('dmg').classList.toggle('hi', dm >= 50);
   }
-  $('net').textContent = G.solo ? '' : (Net.role === 'host' ? 'ping ' + Math.round(Net.ping) + ' ms' : (performance.now() - Net.lastRx > 2500 ? 'NO SIGNAL' : 'online'));
+  hTxt('net', G.solo ? '' : (Net.role === 'host' ? 'ping ' + Math.round(Net.ping) + ' ms' : (performance.now() - Net.lastRx > 2500 ? 'NO SIGNAL' : 'online')));
 }
 function buildProg() {
   const box = $('progDots'); box.innerHTML = ''; G.progDots = [];
