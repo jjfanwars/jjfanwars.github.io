@@ -394,6 +394,12 @@ const MARK_SCHEMA = {type: 'object', additionalProperties: false, required: ['sc
   score: {type: 'integer'}, max: {type: 'integer'}, band: {type: 'string'}, verdict: {type: 'string'},
   good: {type: 'array', items: {type: 'string'}}, missed: {type: 'array', items: {type: 'string'}}, fix: {type: 'array', items: {type: 'string'}},
   plan: {type: 'string'}, terms: {type: 'array', items: {type: 'string'}}}};
+// usage tracking: $ per million tokens [input, output, cache read, cache write]
+const PRICE = {'claude-sonnet-5-5': [2, 10, .1, 2.5], 'claude-haiku-5-5': [.1, .5, .01, .125]};
+function ibUse(db, who, model, us) {
+  if (!us) return; const P = PRICE[model] || PRICE['claude-sonnet-5-5'], tin = us.input_tokens || 0, tout = us.output_tokens || 0, tcr = us.cache_read_input_tokens || 0, tcw = us.cache_creation_input_tokens || 0;
+  return db('use', {u: who, tin, tout, tcr, tcw, cost: (tin * P[0] + tout * P[1] + tcr * P[2] + tcw * P[3]) / 1e6});
+}
 async function ibKey(env, db) {
   const v = await (await db('kvget', {k: 'apikey'})).text(); if (v && v.startsWith('sk-')) return v;
   const lg = await (await env.LEGAL.get(env.LEGAL.idFromName('main')).fetch('https://l/', {method: 'POST', body: '{"op":"get"}'})).json();
@@ -438,6 +444,12 @@ async function ibRoute(req, env, CORS, u) {
     const r = await db('img', {b: u.searchParams.get('b'), n: +u.searchParams.get('n')});
     return new Response(r.body, {status: r.status, headers: {...CORS, 'content-type': 'image/jpeg', 'cache-control': 'private, max-age=604800'}});
   }
+  if (u.pathname === '/ib/stats') { // owner-only usage dashboard: /ib/stats?k=<IB_STATS>
+    if (!env.IB_STATS || u.searchParams.get('k') !== env.IB_STATS) return new Response('no', {status: 403});
+    const d = await (await db('stats', {days: Math.min(365, +u.searchParams.get('days') || 30)})).json();
+    if (!d.days) return new Response('stats error', {status: 500});
+    return new Response(statsPage(d, u.searchParams.get('days') || 30, env.IB_STATS), {headers: {'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store'}});
+  }
   if (req.method === 'OPTIONS') return new Response(null, {headers: {...CORS, 'access-control-allow-methods': 'POST, OPTIONS', 'access-control-allow-headers': 'content-type'}});
   if (req.method !== 'POST') return J({err: 'expected POST'}, 405);
   if (u.pathname === '/ib/ocr') { // admin: transcribe one page image with Claude Haiku (book import)
@@ -449,6 +461,7 @@ async function ibRoute(req, env, CORS, u) {
         messages: [{role: 'user', content: [{type: 'image', source: {type: 'base64', media_type: 'image/jpeg', data: o.img}}, {type: 'text', text: o.hint || 'Transcribe this page.'}]}]})});
     const j = await r.json().catch(() => ({}));
     if (!r.ok) return J({err: (j.error && j.error.message) || 'HTTP ' + r.status}, 502);
+    await ibUse(db, 'build', o.model || 'claude-haiku-5-5', j.usage);
     return J({text: (j.content || []).filter(c => c.type === 'text').map(c => c.text).join(''), stop: j.stop_reason, usage: j.usage});
   }
   if (u.pathname === '/ib/gen') { // admin: one structured-output call over text (build-time extraction of formulas, case studies)
@@ -458,6 +471,7 @@ async function ibRoute(req, env, CORS, u) {
       body: JSON.stringify({model: o.model || 'claude-haiku-5-5', max_tokens: 16000, output_config: {effort: 'low', format: {type: 'json_schema', schema: o.schema}}, system: [{type: 'text', text: o.sys, cache_control: {type: 'ephemeral'}}], messages: [{role: 'user', content: o.text}]})});
     const j = await r.json().catch(() => ({}));
     if (!r.ok) return J({err: (j.error && j.error.message) || 'HTTP ' + r.status}, 502);
+    await ibUse(db, 'build', o.model || 'claude-haiku-5-5', j.usage);
     return J({text: (j.content || []).filter(c => c.type === 'text').map(c => c.text).join(''), stop: j.stop_reason, usage: j.usage});
   }
   if (u.pathname === '/ib/put') { // uploads from the build script: admin key only
@@ -480,13 +494,14 @@ async function ibRoute(req, env, CORS, u) {
     }
     return J({key, name: all[key].name, tok: all[key].tok, isNew});
   }
-  const uk = ukey(b.user);
+  const uk = ukey(b.user), who = uk ? 'u:' + uk : b.uid ? 'g:' + String(b.uid).replace(/[^\w-]/g, '').slice(0, 16) : 'anon';
+  if (op === 'beat') { await db('beat', {u: who, name: uk ? String(b.name || uk).slice(0, 30) : '', dev: String(b.dev || '').slice(0, 40)}); return J({ok: true}); }
   if (['plan', 'sync', 'agent'].includes(op) && !uk) return J({err: 'sign in first'}, 401);
   if (op === 'plan') { // planner items: {data} replaces the list, else returns it
     if (b.data) { await db('kvset', {k: 'plan:' + uk, v: JSON.stringify(b.data)}); return J({ok: true}); }
     const r = await db('kvget', {k: 'plan:' + uk}); return new Response(r.body, {headers: H});
   }
-  if (op === 'agent') return planAgent(b, env, db, J, uk);
+  if (op === 'agent') return planAgent(b, env, db, J, uk, who);
   if (op === 'ref') { const r = await db('kvget', {k: 'ref:' + String(b.book || '').replace(/[^a-z0-9]/g, '')}); return new Response(r.body, {headers: H}); } // formula sheet / case bank for a book
   if (op === 'quiz') { // spaced section review: 3 short questions + model answers from the section's pages (Haiku, cheap)
     const KEY = await ibKey(env, db); const cap = +(env.IB_CAP || 300), used = await (await db('spend', {cap})).json(); if (used.over) return J({err: 'daily Claude limit reached'}, 429);
@@ -496,6 +511,7 @@ async function ibRoute(req, env, CORS, u) {
         system: 'You write quick retrieval-practice checks for an IB student from their textbook section. Write exactly 3 short questions that test understanding of the most important ideas (not trivia, not page layout): one recall, one explain-why, one apply. Each model answer is 1-3 sentences, the way an examiner would accept it. For maths/science use LaTeX in $...$ and mhchem \\ce{}. Avoid repeating these earlier questions: ' + String(b.avoid || '').slice(0, 1500),
         messages: [{role: 'user', content: `Section: ${String(b.title || '').slice(0, 200)}\n\n` + pg.pages.map(p => `<page ${p.bp}>\n${p.md}\n</page>`).join('\n')}]})});
     const j = await r.json().catch(() => ({})); if (!r.ok) return J({err: (j.error && j.error.message) || 'HTTP ' + r.status}, 502);
+    await ibUse(db, who, 'claude-haiku-5-5', j.usage);
     try { return J(JSON.parse(j.content.find(c => c.type === 'text').text)); } catch (e) { return J({err: 'bad quiz'}, 502); }
   }
   if (op === 'papers') { const r = await db('kvget', {k: 'papers'}); return new Response(r.body, {headers: H}); } // past papers (uploaded by the owner as kv 'papers')
@@ -523,7 +539,7 @@ async function ibRoute(req, env, CORS, u) {
   if (ctx) sys.push({type: 'text', text: 'Textbook extracts:\n' + ctx});
   sys[sys.length - 1].cache_control = {type: 'ephemeral'};
   if (b.stream && b.mode !== 'mark') { sys[0].text += "\n\nTools: messages may start with a one-line [Location: ...] note saying where the student is in the app. You are NOT shown the page or their work automatically: call read_page, search_book or read_screen only when the question actually needs it (one or two calls is usually enough), then answer.";
-    return tutorStream({b, sys, msgs, KEY, db, CORS, refs}); }
+    return tutorStream({b, sys, msgs, KEY, db, CORS, refs, who}); }
   const r = await fetch('https://api.anthropic.com/v1/messages', {method: 'POST',
     headers: {'content-type': 'application/json', 'x-api-key': KEY, 'anthropic-version': '2023-06-01', 'anthropic-beta': 'server-side-fallback-2026-07-01'},
     body: JSON.stringify({model: 'claude-sonnet-5-5', max_tokens: 8000, fallbacks: 'default', cache_control: {type: 'ephemeral'}, system: sys, messages: msgs,
@@ -531,7 +547,7 @@ async function ibRoute(req, env, CORS, u) {
   const j = await r.json().catch(() => ({}));
   if (!r.ok) return J({err: (j.error && j.error.message) || 'Anthropic HTTP ' + r.status}, 502);
   if (j.stop_reason === 'refusal') return J({err: 'Claude declined to answer that one.'}, 200);
-  const us = j.usage || {};
+  const us = j.usage || {}; await ibUse(db, who, 'claude-sonnet-5-5', j.usage);
   return J({text: (j.content || []).filter(c => c.type === 'text').map(c => c.text).join(''), left: cap - used.n, pages: refs,
     usage: {in: us.input_tokens, cached: us.cache_read_input_tokens, wrote: us.cache_creation_input_tokens, out: us.output_tokens}});
 }
@@ -542,7 +558,9 @@ export class IB {
       CREATE TABLE IF NOT EXISTS img (b TEXT, n INTEGER, data BLOB, PRIMARY KEY (b, n));
       CREATE TABLE IF NOT EXISTS kv (k TEXT PRIMARY KEY, v TEXT);
       CREATE TABLE IF NOT EXISTS spend (d TEXT PRIMARY KEY, n INTEGER);
-      CREATE TABLE IF NOT EXISTS fchunk (b TEXT, i INTEGER, data BLOB, PRIMARY KEY (b, i));`);
+      CREATE TABLE IF NOT EXISTS fchunk (b TEXT, i INTEGER, data BLOB, PRIMARY KEY (b, i));
+      CREATE TABLE IF NOT EXISTS use (d TEXT, u TEXT, mins INTEGER DEFAULT 0, calls INTEGER DEFAULT 0, tin INTEGER DEFAULT 0, tout INTEGER DEFAULT 0, tcr INTEGER DEFAULT 0, tcw INTEGER DEFAULT 0, cost REAL DEFAULT 0, PRIMARY KEY (d, u));
+      CREATE TABLE IF NOT EXISTS who (u TEXT PRIMARY KEY, name TEXT, first INTEGER, last INTEGER, dev TEXT);`);
   }
   kv(k, v) { if (v === undefined) { const r = this.sql.exec('SELECT v FROM kv WHERE k = ?', k).toArray()[0]; return r ? r.v : null; } this.sql.exec('INSERT OR REPLACE INTO kv VALUES (?, ?)', k, v); }
   async fetch(req) {
@@ -590,10 +608,20 @@ export class IB {
         return J({hits});
       }
       case 'sync': { if (o.data) { const s = JSON.stringify(o.data); if (s.length > 2e6) return J({err: 'too big'}); this.kv(o.k || 'prog', s); return J({ok: true}); } return new Response(this.kv(o.k || 'prog') || '{}'); }
+      case 'beat': { const d = new Date().toISOString().slice(0, 10), t = Date.now();
+        this.sql.exec('INSERT INTO use (d, u, mins) VALUES (?, ?, 1) ON CONFLICT (d, u) DO UPDATE SET mins = mins + 1', d, o.u);
+        this.sql.exec('INSERT INTO who (u, name, first, last, dev) VALUES (?, ?, ?, ?, ?) ON CONFLICT (u) DO UPDATE SET last = excluded.last, dev = excluded.dev, name = COALESCE(NULLIF(excluded.name, \'\'), name)', o.u, o.name || '', t, t, o.dev || '');
+        return J({ok: true}); }
+      case 'use': { const d = new Date().toISOString().slice(0, 10);
+        this.sql.exec('INSERT INTO use (d, u, calls, tin, tout, tcr, tcw, cost) VALUES (?, ?, 1, ?, ?, ?, ?, ?) ON CONFLICT (d, u) DO UPDATE SET calls = calls + 1, tin = tin + excluded.tin, tout = tout + excluded.tout, tcr = tcr + excluded.tcr, tcw = tcw + excluded.tcw, cost = cost + excluded.cost', d, o.u, o.tin, o.tout, o.tcr, o.tcw, o.cost);
+        return J({ok: true}); }
+      case 'stats': { const from = new Date(Date.now() - (o.days - 1) * 864e5).toISOString().slice(0, 10);
+        return J({days: all('SELECT d, COUNT(CASE WHEN mins > 0 THEN 1 END) users, SUM(mins) mins, SUM(calls) calls, SUM(cost) cost, SUM(tin + tcr + tcw) tin, SUM(tout) tout FROM use WHERE d >= ? AND u != \'build\' GROUP BY d ORDER BY d', from),
+          people: all('SELECT u.u, w.name, w.first, w.last, w.dev, COUNT(CASE WHEN u.mins > 0 THEN 1 END) days, SUM(u.mins) mins, SUM(u.calls) calls, SUM(u.tin + u.tcr + u.tcw) tin, SUM(u.tout) tout, SUM(u.cost) cost FROM use u LEFT JOIN who w ON w.u = u.u WHERE u.d >= ? GROUP BY u.u ORDER BY mins DESC, cost DESC', from)}); }
       case 'spend': { const d = new Date().toISOString().slice(0, 10), r = all('SELECT n FROM spend WHERE d = ?', d)[0], n = r ? r.n : 0;
         if (n >= o.cap) return J({over: true, n}); this.sql.exec('INSERT OR REPLACE INTO spend VALUES (?, ?)', d, n + 1); return J({n: n + 1}); }
     }
-    return Response.json({err: 'bad op'}, {status: 400});
+    return Response.json({err: 'bad op', op: o.op}, {status: 400});
   }
 }
 
@@ -635,7 +663,7 @@ const TUTOR_TOOLS = [
     input_schema: {type: 'object', properties: {query: {type: 'string'}}, required: ['query']}},
   {name: 'read_screen', description: "See what the student has open right now beyond the one-line location note: the full practice question and their current draft answer, or the flashcard. Use when they refer to 'this question', 'my answer', etc.",
     input_schema: {type: 'object', properties: {}}}];
-function tutorStream({b, sys, msgs, KEY, db, CORS, refs}) {
+function tutorStream({b, sys, msgs, KEY, db, CORS, refs, who}) {
   const {readable, writable} = new TransformStream(), w = writable.getWriter(), enc = new TextEncoder();
   const send = o => w.write(enc.encode('data: ' + JSON.stringify(o) + '\n\n'));
   const run = async (name, a) => {
@@ -651,18 +679,20 @@ function tutorStream({b, sys, msgs, KEY, db, CORS, refs}) {
           headers: {'content-type': 'application/json', 'x-api-key': KEY, 'anthropic-version': '2023-06-01', 'anthropic-beta': 'server-side-fallback-2026-07-01'},
           body: JSON.stringify({model: 'claude-sonnet-5-5', max_tokens: 8000, fallbacks: 'default', cache_control: {type: 'ephemeral'}, system: sys, tools: TUTOR_TOOLS, messages: msgs, stream: true, output_config: {effort: 'low'}})});
         if (!r.ok) { const j = await r.json().catch(() => ({})); await send({err: (j.error && j.error.message) || 'Anthropic HTTP ' + r.status}); break; }
-        const rd = r.body.getReader(), dec = new TextDecoder(), blocks = []; let buf = '', stop = '';
+        const rd = r.body.getReader(), dec = new TextDecoder(), blocks = [], us = {}; let buf = '', stop = '';
         for (;;) { const {done, value} = await rd.read(); if (done) break; buf += dec.decode(value, {stream: true}); let i;
           while ((i = buf.indexOf('\n')) >= 0) { const line = buf.slice(0, i).trim(); buf = buf.slice(i + 1); if (!line.startsWith('data:')) continue;
             let ev; try { ev = JSON.parse(line.slice(5)); } catch (e) { continue; }
-            if (ev.type === 'content_block_start') blocks[ev.index] = {...ev.content_block, _j: ''};
+            if (ev.type === 'message_start') Object.assign(us, ev.message.usage || {});
+            else if (ev.type === 'content_block_start') blocks[ev.index] = {...ev.content_block, _j: ''};
             else if (ev.type === 'content_block_delta') { const bl = blocks[ev.index], d = ev.delta;
               if (d.type === 'text_delta') { bl.text += d.text; await send({t: d.text}); }
               else if (d.type === 'input_json_delta') bl._j += d.partial_json;
               else if (d.type === 'thinking_delta') bl.thinking += d.thinking;
               else if (d.type === 'signature_delta') bl.signature = (bl.signature || '') + d.signature; }
-            else if (ev.type === 'message_delta' && ev.delta.stop_reason) stop = ev.delta.stop_reason;
+            else if (ev.type === 'message_delta') { if (ev.usage) Object.assign(us, ev.usage); if (ev.delta.stop_reason) stop = ev.delta.stop_reason; }
             else if (ev.type === 'error') await send({err: ev.error.message}); } }
+        await ibUse(db, who, 'claude-sonnet-5-5', us);
         const content = blocks.filter(Boolean).map(bl => { const {_j, ...c} = bl; if (c.type === 'tool_use') { try { c.input = _j ? JSON.parse(_j) : {}; } catch (e) { c.input = {}; } } if (c.type === 'text' && !c.text) return null; return c; }).filter(Boolean);
         if (stop !== 'tool_use') break;
         msgs.push({role: 'assistant', content}); const res = [];
@@ -674,7 +704,7 @@ function tutorStream({b, sys, msgs, KEY, db, CORS, refs}) {
   })();
   return new Response(readable, {headers: {...CORS, 'content-type': 'text/event-stream', 'cache-control': 'no-store'}});
 }
-async function planAgent(b, env, db, J, uk) {
+async function planAgent(b, env, db, J, uk, who) {
   const KEY = await ibKey(env, db); if (!KEY) return J({err: 'no API key on the relay'}, 503);
   const cap = +(env.IB_CAP || 300), used = await (await db('spend', {cap})).json();
   if (used.over) return J({err: 'daily Claude limit reached'}, 429);
@@ -693,6 +723,7 @@ async function planAgent(b, env, db, J, uk) {
         system: [{type: 'text', text: sys}], tools: PLAN_TOOLS, messages: msgs})});
     const j = await r.json().catch(() => ({}));
     if (!r.ok) return J({err: (j.error && j.error.message) || 'Anthropic HTTP ' + r.status}, 502);
+    await ibUse(db, who, 'claude-sonnet-5-5', j.usage);
     if (j.stop_reason === 'refusal') return J({err: 'Claude declined that one.'});
     msgs.push({role: 'assistant', content: j.content});
     text = (j.content || []).filter(c => c.type === 'text').map(c => c.text).join('');
@@ -742,4 +773,23 @@ function toIcs(items) {
   }
   L.push('END:VCALENDAR');
   return L.join('\r\n');
+}
+
+function statsPage(d, days, k) {
+  const e = x => String(x ?? '').replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
+  const tot = d.days.reduce((a, x) => ({mins: a.mins + x.mins, calls: a.calls + x.calls, cost: a.cost + x.cost}), {mins: 0, calls: 0, cost: 0});
+  const ppl = d.people.filter(p => p.u !== 'build'), build = d.people.find(p => p.u === 'build'), mx = Math.max(1, ...d.days.map(x => x.mins));
+  const h = m => m >= 60 ? Math.floor(m / 60) + 'h ' + (m % 60) + 'm' : m + 'm', $ = c => '$' + (c || 0).toFixed(c < 1 ? 3 : 2), ago = t => { const s = (Date.now() - t) / 1000; return s < 3600 ? Math.round(s / 60) + ' min ago' : s < 86400 ? Math.round(s / 3600) + ' h ago' : Math.round(s / 86400) + ' d ago'; };
+  return `<!doctype html><meta name=viewport content="width=device-width,initial-scale=1"><title>IB Study usage</title><style>
+  body{font:15px/1.5 system-ui,sans-serif;background:#f3f0e8;color:#1c2230;margin:0;padding:24px 16px}main{max-width:980px;margin:0 auto}h1{font:600 26px Georgia,serif;margin:0 0 4px}
+  .k{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin:18px 0}.k div{background:#fbfaf6;border:1px solid #ddd7c9;border-radius:10px;padding:12px 14px}.k b{display:block;font:600 24px Georgia,serif}
+  .m{color:#646b78;font-size:13px}table{width:100%;border-collapse:collapse;background:#fbfaf6;border:1px solid #ddd7c9;border-radius:10px;overflow:hidden;font-variant-numeric:tabular-nums}td,th{padding:8px 10px;border-bottom:1px solid #ddd7c9;text-align:left;font-size:14px}th{font-size:12px;color:#646b78}
+  .bars{display:flex;gap:3px;align-items:flex-end;height:120px;background:#fbfaf6;border:1px solid #ddd7c9;border-radius:10px;padding:12px}.bars i{flex:1;background:#24408e;border-radius:3px 3px 0 0;min-height:2px}
+  @media(prefers-color-scheme:dark){body{background:#15171c;color:#ebe7dd}.k div,table,.bars{background:#1c1f26;border-color:#2c3039}td,th{border-color:#2c3039}.bars i{background:#9db1ff}}</style><main>
+  <h1>IB Study usage</h1><div class=m>Last ${e(days)} days · show ${[1, 7, 30, 90, 365].map(n => `<a href="?k=${e(k)}&days=${n}">${n}</a>`).join(' · ')} days</div>
+  <div class=k><div><b>${ppl.length}</b><span class=m>people</span></div><div><b>${h(tot.mins)}</b><span class=m>time on site</span></div><div><b>${tot.calls}</b><span class=m>Claude calls</span></div><div><b>${$(tot.cost)}</b><span class=m>Claude cost (students)</span></div>${build ? `<div><b>${$(build.cost)}</b><span class=m>book imports</span></div>` : ''}</div>
+  <h3>Minutes per day</h3><div class=bars>${d.days.map(x => `<i style="height:${Math.round(x.mins / mx * 100)}%" title="${e(x.d)}: ${x.users} people, ${h(x.mins)}, ${x.calls} Claude calls, ${$(x.cost)}"></i>`).join('')}</div>
+  <h3>People</h3><table><tr><th>Who</th><th>Days</th><th>Time</th><th>Claude calls</th><th>Tokens in / out</th><th>Cost</th><th>Last seen</th></tr>
+  ${ppl.map(p => `<tr><td>${p.u.startsWith('u:') ? '<b>' + e(p.name || p.u.slice(2)) + '</b>' : 'Guest <span class=m>' + e(p.u.slice(2, 8)) + '</span>'}<div class=m>${e(p.dev || '')}</div></td><td>${p.days}</td><td>${h(p.mins || 0)}</td><td>${p.calls || 0}</td><td>${Math.round((p.tin || 0) / 1000)}k / ${Math.round((p.tout || 0) / 1000)}k</td><td>${$(p.cost)}</td><td>${p.last ? ago(p.last) : ''}</td></tr>`).join('') || '<tr><td colspan=7 class=m>No visits yet</td></tr>'}</table>
+  <p class=m>Time counts minutes with the page open and in use. Costs are estimates from token counts (Sonnet 5.5 $2/$10, Haiku 5.5 $0.10/$0.50 per million tokens in/out).</p></main>`;
 }
