@@ -93,7 +93,9 @@ function start() {
   if (auto) pc.fake = true; else canvas.requestPointerLock();
 }
 $('play').onclick = start;
-$('again').onclick = () => { document.exitPointerLock(); game.phase = 'menu'; hud.show(false); $('menu').style.display = 'flex'; $('again').style.display = 'none'; $('banner').style.opacity = 0; };
+const toMenu = () => { document.exitPointerLock(); game.phase = 'menu'; paused = false; hud.show(false); $('menu').style.display = 'flex'; $('again').style.display = 'none'; $('pause').style.display = 'none'; $('banner').style.opacity = 0; };
+$('again').onclick = toMenu;
+$('quit').onclick = e => { e.stopPropagation(); audio.play('ui_click'); toMenu(); };
 $('pause').onclick = () => canvas.requestPointerLock();
 canvas.onclick = () => { if (game.phase !== 'menu' && !pc.locked()) canvas.requestPointerLock(); };
 document.addEventListener('pointerlockchange', () => {
@@ -101,8 +103,15 @@ document.addEventListener('pointerlockchange', () => {
   paused = !locked && game.phase !== 'menu' && game.phase !== 'matchEnd' && !auto;
   $('pause').style.display = paused ? 'flex' : 'none';
 });
-$('sens').oninput = e => { pc.sens = 0.0022 * e.target.value; };
-$('vol').oninput = e => audio.setVolume(+e.target.value);
+// sensitivity and volume are remembered between visits
+const store = (k, v) => { try { localStorage.setItem(k, String(v)); } catch (e) { /* private mode */ } };
+$('sens').oninput = e => { pc.sens = 0.0022 * e.target.value; store('bl-sens', e.target.value); };
+$('vol').oninput = e => { audio.setVolume(+e.target.value); store('bl-vol', e.target.value); };
+try {
+  const s = parseFloat(localStorage.getItem('bl-sens')), v = parseFloat(localStorage.getItem('bl-vol'));
+  if (s >= 0.3 && s <= 2.5) { $('sens').value = s; pc.sens = 0.0022 * s; }
+  if (v >= 0 && v <= 1) { $('vol').value = v; audio.setVolume(v); }
+} catch (e) { /* ignore */ }
 if (auto) { team = +(qs.get('team') || 0); start(); }
 
 // menu backdrop camera
