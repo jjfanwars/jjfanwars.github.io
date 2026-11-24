@@ -11,3 +11,10 @@ Read `CLAUDE.md` first (shared rules). Split out of it on 17 Nov 2026; keep this
 - Hiding muffles the world: master lowpass `A.lp` (1 kHz hidden, 480 Hz holding breath); it snaps open when you're pulled out.
 - Distant calls: `Snd.call` (positional wail) from the creature every 50-100 s while it roams/investigates 45-140 m away (`M.callT`).
 - Flashlight: F with dead batteries clicks and says so; one-time "getting dim" warning at 20% (`P.batWarned`).
+
+## Polish pass (24 Nov 2026, second pass)
+- The creature model was turned backwards: it faces local +z, but `M.yaw` points along (-sin, -cos) like the player's view, so it walked and stared away from you with the back of its head (the kill cam showed the back of its skull). `animCreature` now sets `MON.rotation.y = M.yaw + PI`. Keep that offset if you touch the model.
+- Eyeshine: two additive glow sprites on the pupils (`MJ.eyes`, `MJ.eyeK`, `fog: false`) light up when your beam is on its face (only when it faces you), with a faint burn while it chases; size grows with distance so it reads at 40 m.
+- Death screen tip (`deathTip(how)` -> `G.deathTip`, `#endTip`): seen climbing in, heard breathing, bumped into it in the dark, unused flare, flashlight on, or running.
+- Hiding: the breath label (`#bTxt`, `#breath.warn/hold/gasp`, state in `P.breathS`) pulses "IT'S RIGHT OUTSIDE" when it is searching/investigating/chasing within 8 m and you are not holding your breath.
+- Fixes: looking away mid-hold on the radio left the static loop on; pausing now pauses speech too (`speechSynthesis.pause/resume`), and `hush()` resumes after cancel so a quit while paused doesn't leave Chrome's speech queue stuck.
