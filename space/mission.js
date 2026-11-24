@@ -83,8 +83,10 @@ void main(){
   MAPV.plTex = null; MAPV.c = document.createElement('canvas'); MAPV.c.style.cssText = 'position:absolute;inset:0;width:100%;height:100%'; $('mapUI').prepend(MAPV.c); MAPV.x = MAPV.c.getContext('2d');
 }
 function mapToggle(on) { MAPV.on = on ?? !MAPV.on; $('mapUI').classList.toggle('hidden', !MAPV.on); if (MAPV.on) { MAPV.fitted = false; MAPV.focus = 0; predict(); showHint('Map · drag to turn · wheel to zoom · Tab: change focus · M: back', 3500); } }
-addEventListener('keydown', e => { if (!G.on || e.repeat) return; if (e.code === 'KeyM') mapToggle(); if (e.code === 'Tab' && MAPV.on) { e.preventDefault(); MAPV.focus = (MAPV.focus + 1) % 3; MAPV.fitted = false; }
-  if (e.code === 'Escape' && MAPV.on) mapToggle(false); if (e.code === 'KeyJ') misList(); });
+addEventListener('keydown', e => { if (!G.on || e.repeat) return; const k = e.code;
+  // Esc / P: close the top overlay first, else pause or resume (Esc while the mouse is grabbed only frees it; that pauses too)
+  if (k === 'Escape' || k === 'KeyP') { if (!$('test').classList.contains('hidden')) testMenu(false); else if (!$('misL').classList.contains('hidden')) misList(false); else if (k === 'Escape' && MAPV.on) mapToggle(false); else if (!(G.paused && performance.now() - G.pauseAt < 400)) setPause(!G.paused); return; } // (the same Esc may also have freed the mouse and paused)
+  if (G.paused) return; if (k === 'KeyM') mapToggle(); if (k === 'Tab' && MAPV.on) { e.preventDefault(); MAPV.focus = (MAPV.focus + 1) % 3; MAPV.fitted = false; } if (k === 'KeyJ') misList(); });
 addEventListener('mousemove', e => { if (!MAPV.on) return; if (document.pointerLockElement === canvas) { look.dx -= e.movementX; look.dy -= e.movementY; MAPV.dx += e.movementX; MAPV.dy += e.movementY; } else if (e.buttons) { MAPV.dx += e.movementX; MAPV.dy += e.movementY; } });
 addEventListener('wheel', e => { if (!MAPV.on) return; e.preventDefault(); MAPV.dist = clamp(MAPV.dist * Math.exp(e.deltaY * .0015), 260, 60000); }, {passive: false});
 const _mc = new V3(), _mq = new V3();
@@ -239,7 +241,7 @@ function misCard() { const el = $('mis'), m = MISD.find(x => x.id === MIS.cur); 
   const n = Object.keys(MIS.done).filter(k => MISD.some(x => x.id === k)).length;
   const h = '<div class="mt"><b>' + m.name + (MIS.done[m.id] ? ' ✓' : '') + '</b><span>' + n + '/' + MISD.length + ' · J all missions</span></div><div class="md">' + (FLOG.test ? '<i>Test-menu flight: missions do not count.</i> ' : '') + m.d + '</div><ol>' + items.join('') + '</ol>';
   el.classList.toggle('mini', MIS.mini); if (el._h !== h) { el._h = h; el.innerHTML = h; } }
-function misList(show) { const L = $('misL'); show = show ?? L.classList.contains('hidden'); L.classList.toggle('hidden', !show); if (!show) return; if (document.pointerLockElement) document.exitPointerLock();
+function misList(show) { const L = $('misL'); show = show ?? L.classList.contains('hidden'); L.classList.toggle('hidden', !show); if (!show) { lockPointer(); return; } if (document.pointerLockElement) document.exitPointerLock();
   const g = $('misG'); g.innerHTML = ''; for (const m of MISD) { const b = document.createElement('button'); b.className = (MIS.done[m.id] ? 'done ' : '') + (MIS.cur === m.id ? 'cur ' : '') + (m.bonus ? 'bonus' : ''); b.innerHTML = '<b>' + m.name + '</b><small>' + m.d + '</small>';
     b.onclick = e => { e.stopPropagation(); MIS.cur = m.id; misSave(); misCard(); misList(false); }; g.appendChild(b); }
   const hb = document.createElement('button'); hb.innerHTML = '<b>' + (MIS.mini ? 'Show' : 'Hide') + ' mission steps</b><small>Keep just the mission name on screen</small>'; hb.onclick = e => { e.stopPropagation(); MIS.mini = !MIS.mini; misSave(); misCard(); misList(false); }; g.appendChild(hb); }
@@ -304,6 +306,15 @@ function warmShaders() { try {
   const tmp = [HEAT.g, MI.mesh]; for (const g of R.sg) { if (g.userData.plume) tmp.push(...g.userData.plume); if (g.userData.chute) tmp.push(g.userData.chute); }
   const was = tmp.map(o => o.visible); tmp.forEach(o => o.visible = true); RND.compile(scene, cam); tmp.forEach((o, i) => o.visible = was[i]);
   RND.compile(MAPV.scene, MAPV.cam); } catch (e) { console.warn('warm-up', e); } }
+// ---------------- pause menu (Esc / P): time stops, sound stops, controls + graphics on one card
+function setPause(on, relock = true) { on = !!on && G.on; if (!!G.paused === on) return; G.paused = on; $('pause').classList.toggle('hidden', !on); for (const k in keys) keys[k] = false;
+  if (SND.c) { try { on ? SND.c.suspend() : SND.c.resume(); } catch (e) {} }
+  if (on) { G.pauseAt = performance.now(); markGfx(); if (document.pointerLockElement) document.exitPointerLock(); }
+  else if (relock) { lockPointer(); setTimeout(() => { if (G.on && !G.paused && !document.pointerLockElement && !MAPV.on) showHint('Click to look around', 2500); }, 400); } }
+const overlayOpen = () => !$('misL').classList.contains('hidden') || !$('test').classList.contains('hidden');
+document.addEventListener('pointerlockchange', () => { if (!document.pointerLockElement && G.on && !G.paused && !MAPV.on && !overlayOpen()) setPause(true); });
+$('resume').onclick = () => setPause(false); $('pMis').onclick = () => { setPause(false, false); misList(true); };
+document.querySelectorAll('#pause [data-gfx] button').forEach(b => b.onclick = () => setGfx(b.dataset.v)); window.YE.setPause = setPause;
 // ---------------- hooks
 { const vis = FLIGHT.visuals;
   FLIGHT.visuals = dt => { if (!(R.F === 0 && HEAT.k > .01)) flameL.color.setRGB(1, .627, .29); vis(dt); heatStep(dt); dustStep(dt); vaporStep(dt); fovStep(dt); misPoll(dt); };

@@ -901,7 +901,9 @@ const keys = {}; let look = {dx: 0, dy: 0};
 addEventListener('keydown', e => { keys[e.code] = true; if (e.code === 'Space' && G.on) e.preventDefault(); });
 addEventListener('keyup', e => { keys[e.code] = false; });
 addEventListener('mousemove', e => { if (document.pointerLockElement === canvas) { look.dx += e.movementX; look.dy += e.movementY; } });
-canvas.addEventListener('click', () => { if (G.on && document.pointerLockElement !== canvas) canvas.requestPointerLock(); });
+function lockPointer() { if (!G.on || document.pointerLockElement === canvas || !canvas.requestPointerLock) return; try { const p = canvas.requestPointerLock(); if (p && p.catch) p.catch(() => {}); } catch (e) {} } // can fail right after Esc (browser cooldown): the next click tries again
+canvas.addEventListener('click', lockPointer);
+addEventListener('blur', () => { for (const k in keys) keys[k] = false; }); // keys released while the tab was in the background no longer stick
 const _up = new V3(), _rt = new V3(), _w = new V3(), _sp = new V3();
 function stepPlayer(dt) {
   const b = P.body, up = _up.copy(P.pos).normalize();
@@ -999,7 +1001,8 @@ G.O = new V3();
 let last = 0, fps = 60;
 function frame(ts) {
   requestAnimationFrame(frame);
-  let dt = Math.min(.05, Math.max(0, (ts - last) / 1000)); last = ts; G.dt = dt; fps = lerp(fps, 1 / Math.max(dt, 1e-3), .05);
+  const rdt = Math.min(.05, Math.max(0, (ts - last) / 1000)); last = ts; fps = lerp(fps, 1 / Math.max(rdt, 1e-3), .05);
+  const dt = G.paused ? 0 : rdt; G.dt = dt; // paused (Esc): the world freezes, the screen still draws
   G.t += dt * (G.on ? G.warp : 1);
   for (const b of BODIES) bodyState(b, G.t);
   if (G.on && !G.noGrav && !R.on) { const n = Math.ceil(dt / .02); for (let i = 0; i < n; i++) stepPlayer(dt / n); } // noGrav: test hook, freezes the player
@@ -1015,7 +1018,7 @@ function frame(ts) {
   if (G.on && !MAPV.on && (G.rsT = (G.rsT || 0) + dt) > 3) { G.rsT = 0; const rs = G.rs || 1; let n = rs, lite = !!G.lite;
     if (fps < 42) { if (rs > .65) n = rs - .1; else if (SET.gfx === 'high') lite = true; } else if (fps > 57) { if (lite && rs >= .85) lite = false; else if (rs < 1) n = Math.min(1, rs + .1); }
     if (n !== rs || lite !== !!G.lite) { G.rs = n; G.lite = lite; setupPost(); } }
-  render(dt);
+  render(rdt);
 }
 
 // ---------------- boot
@@ -1026,15 +1029,17 @@ function boot() {
   placeCamera(); for (const b of BODIES) { b.group.position.copy(b.c).sub(G.O); b.group.quaternion.copy(b.q); }
   const t0 = performance.now(); while (updateTerrain(50) > 0 && performance.now() - t0 < 6000);
   $('load').classList.add('hidden'); $('menu').classList.remove('hidden');
-  $('name').value = SET.name || '';
-  const segs = [...$('gfx').children]; const mark = () => segs.forEach(b => b.classList.toggle('on', b.dataset.v === SET.gfx)); mark();
-  segs.forEach(b => b.onclick = () => { SET.gfx = b.dataset.v; saveSet(); mark(); setupPost(); });
+  $('name').value = SET.name || ''; $('name').onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); $('play').click(); } };
+  const segs = [...$('gfx').children]; markGfx();
+  segs.forEach(b => b.onclick = () => setGfx(b.dataset.v));
   $('play').onclick = () => { SET.name = $('name').value.trim().slice(0, 14); saveSet(); $('menu').classList.add('hidden'); G.on = true;
-    $('hud').classList.remove('hidden'); $('cross').classList.remove('hidden'); canvas.requestPointerLock && canvas.requestPointerLock();
+    $('hud').classList.remove('hidden'); $('cross').classList.remove('hidden'); lockPointer();
     showHint('WASD walk · Shift run · Space jump · click to look · the rocket is on the pad to the east'); };
   addEventListener('resize', setupPost);
   requestAnimationFrame(frame);
 }
+const markGfx = () => document.querySelectorAll('#gfx button, [data-gfx] button').forEach(b => b.classList.toggle('on', b.dataset.v === SET.gfx)); // main menu + pause menu
+function setGfx(v) { SET.gfx = v; saveSet(); G.lite = false; G.rs = 1; setupPost(); markGfx(); }
 function placeAt(x, y, z, yaw, pitch) { siteToBody(new V3(x, y, z), P.pos); const up = P.pos.clone().normalize(); P.fwd.set(Math.sin(yaw), 0, -Math.cos(yaw)).applyQuaternion(site.q); P.fwd.addScaledVector(up, -P.fwd.dot(up)).normalize(); P.pitch = pitch || 0; P.vel.set(0, 0, 0); }
 window.YE = {bench(n = 5) { const gl = RND.getContext(), px = new Uint8Array(4); render(.016); gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px); const t0 = performance.now(); for (let i = 0; i < n; i++) render(.016); gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px); return (performance.now() - t0) / n; }, cloudM, ssaoM, CLOUD3D, CL, WX, weatherM, prebuild: (ms = 20000) => { placeCamera(); for (const b of BODIES) { b.group.position.copy(b.c).sub(G.O); b.group.quaternion.copy(b.q); } const t0 = performance.now(); while (updateTerrain(200) > 0 && performance.now() - t0 < ms); }, placeAt, G, P, PLANET, MOON, site, TERR, heightAt, spawnPlayer, SET, setupPost, atmoM, POST, RND, SUN, cam, waterMat, terrMat, scene, compM, raysM};
 // boot() is called at the end of flight.js
