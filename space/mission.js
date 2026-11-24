@@ -124,7 +124,15 @@ function mapRender(dt) {
       const ox = c.x - camP.x, oy = c.y - camP.y, oz = c.z - camP.z, tc = ox * ux + oy * uy + oz * uz; if (tc < 0 || tc > L) continue; const d2 = ox * ox + oy * oy + oz * oz - tc * tc; if (d2 < r * r && tc - Math.sqrt(r * r - d2) < L - .5) return true; } return false; };
   // the Moon's orbit
   x.strokeStyle = 'rgba(160,180,210,.22)'; x.lineWidth = 1; x.beginPath(); for (let i = 0; i <= 128; i++) { const q = prj(toMap(moonPos(i / 128 * MOON.period, _pm), _pa)); i ? x.lineTo(q.x, q.y) : x.moveTo(q.x, q.y); } x.stroke();
-  // Home's air line + Moon's sphere of influence (only near)
+  // Home's air line + Moon's sphere of influence (dashed rings), and a distance scale bar
+  { const rgt = _mr.setFromMatrixColumn(cam2.matrixWorld, 0), pxR = (c3, r) => { const a = prj(c3), ax = a.x, ay = a.y, ok = a.ok, e = prj(_me.copy(c3).addScaledVector(rgt, r)); return ok ? {x: ax, y: ay, r: Math.hypot(e.x - ax, e.y - ay)} : null; };
+    const ring = (c, col, txt) => { if (!c || c.r < 8 || c.r > 3 * Math.max(W, H)) return; x.save(); x.setLineDash([5, 6]); x.strokeStyle = col; x.lineWidth = 1.2; x.beginPath(); x.arc(c.x, c.y, c.r, 0, 7); x.stroke(); x.restore();
+      if (txt && c.y - c.r > 30) { x.font = '600 11px Fredoka, sans-serif'; x.fillStyle = col; x.textAlign = 'center'; x.fillText(txt, c.x, c.y - c.r - 5); x.textAlign = 'left'; } };
+    const pl = pxR(_pz, PLANET.R / 1000), air = pxR(_pz, (PLANET.R + PLANET.atmo) / 1000); if (pl && air && air.r - pl.r > 3) ring(air, 'rgba(120,190,255,.45)', air.r - pl.r > 14 ? 'Edge of the air' : '');
+    ring(pxR(M.mo.position, SOI_M / 1000), 'rgba(90,209,255,.38)', "Moon's pull");
+    const f1 = pxR(fc, 1); if (f1 && f1.r > 0) { const nice = [10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000, 50000]; let km = nice[0]; for (const n of nice) if (n * f1.r <= 150) km = n; const L = km * f1.r;
+      if (L > 20) { const y0 = H - 22; x.strokeStyle = 'rgba(207,227,247,.75)'; x.lineWidth = 2; x.beginPath(); x.moveTo(16, y0 - 5); x.lineTo(16, y0); x.lineTo(16 + L, y0); x.lineTo(16 + L, y0 - 5); x.stroke();
+        x.font = '600 12px Fredoka, sans-serif'; x.fillStyle = 'rgba(207,227,247,.9)'; x.fillText(km.toLocaleString('en') + ' km', 16, y0 - 9); } } }
   // predicted path: colour per segment, dim where hidden behind a body
   const P_ = PRED, cols = ['#c8f25a', '#5ad1ff'], pt = new V3(), q = {}; let prev = null, pf = -1, ph = null;
   for (let i = 0; i < P_.n; i++) { drawPoint(i, pt); prj(pt, q); const h = hid(pt), f = P_.exit && i >= P_.exit.i ? 2 : P_.f[i];
@@ -146,7 +154,7 @@ function mapRender(dt) {
   if (R.st === 'fly' || R.on) { const sp = prj(toMap(R.pos, pt)); if (sp.ok) { x.fillStyle = '#ffcf4a'; x.strokeStyle = '#000'; x.lineWidth = 2; x.beginPath(); x.moveTo(sp.x, sp.y - 8); x.lineTo(sp.x + 6, sp.y + 6); x.lineTo(sp.x - 6, sp.y + 6); x.closePath(); x.stroke(); x.fill(); } }
   mapInfo(dt); $('act').classList.add('hidden');
 }
-const _pz = new V3();
+const _pz = new V3(), _mr = new V3(), _me = new V3();
 let mapInfoT = 0;
 function mapInfo(dt) { if ((mapInfoT -= dt) > 0) return; mapInfoT = .25; const el = $('mapInfo'), L = [];
   const focus = ['Following your ship', 'Home', 'Moon'][MAPV.focus];
@@ -240,8 +248,15 @@ function misComplete(m) { MIS.done[m.id] = true; const was = MIS.cur === m.id; i
   t.classList.add('on'); clearTimeout(misComplete.t); misComplete.t = setTimeout(() => t.classList.remove('on'), 5000); chime(); }
 function chime() { const c = SND.c; if (!c) return; const t = c.currentTime; [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => { const o = c.createOscillator(), g = c.createGain(); o.type = 'triangle'; o.frequency.value = f; o.connect(g); g.connect(SND.out);
   g.gain.setValueAtTime(0, t + i * .11); g.gain.linearRampToValueAtTime(.16, t + i * .11 + .02); g.gain.exponentialRampToValueAtTime(.001, t + i * .11 + 1.1); o.start(t + i * .11); o.stop(t + i * .11 + 1.2); }); }
+// a step ticked off: soft two-note blip, and the step flashes green for a moment
+function stepTick() { const c = SND.c; if (!c || G.paused) return; const t = c.currentTime; [880, 1318.5].forEach((f, i) => { const o = c.createOscillator(), g = c.createGain(), t0 = t + i * .08; o.type = 'sine'; o.frequency.value = f; o.connect(g); g.connect(SND.out);
+  g.gain.setValueAtTime(0, t0); g.gain.linearRampToValueAtTime(.09, t0 + .01); g.gain.exponentialRampToValueAtTime(.001, t0 + .35); o.start(t0); o.stop(t0 + .4); }); }
+const STEPS = {id: '', done: [], just: []};
 function misCard() { const el = $('mis'), m = MISD.find(x => x.id === MIS.cur); if (!m) { el.classList.add('hidden'); return; } el.classList.remove('hidden');
-  let now = -1; const items = m.steps.map(([t, ok], i) => { const d = MIS.done[m.id] || ok(FLOG); if (!d && now < 0) now = i; return '<li class="' + (d ? 'ok' : now === i ? 'now' : '') + '">' + (typeof t === 'function' ? t(FLOG) : t) + '</li>'; });
+  const dn = m.steps.map(([, ok]) => !!(MIS.done[m.id] || ok(FLOG))), nowMs = performance.now();
+  if (STEPS.id !== m.id) { STEPS.id = m.id; STEPS.just = []; } else if (G.on && !FLOG.test) { let any = false; dn.forEach((d, i) => { if (d && !STEPS.done[i]) { STEPS.just[i] = nowMs + 1600; any = true; } }); if (any && !MIS.done[m.id]) stepTick(); }
+  STEPS.done = dn;
+  let now = -1; const items = m.steps.map(([t], i) => { const d = dn[i]; if (!d && now < 0) now = i; return '<li class="' + (d ? 'ok' + (STEPS.just[i] > nowMs ? ' just' : '') : now === i ? 'now' : '') + '">' + (typeof t === 'function' ? t(FLOG) : t) + '</li>'; });
   const n = Object.keys(MIS.done).filter(k => MISD.some(x => x.id === k)).length;
   const h = '<div class="mt"><b>' + m.name + (MIS.done[m.id] ? ' ✓' : '') + '</b><span>' + n + '/' + MISD.length + ' · J all missions</span></div><div class="md">' + (FLOG.test ? '<i>Test-menu flight: missions do not count.</i> ' : '') + m.d + '</div><ol>' + items.join('') + '</ol>';
   el.classList.toggle('mini', MIS.mini); if (el._h !== h) { el._h = h; el.innerHTML = h; } }
@@ -326,4 +341,4 @@ document.querySelectorAll('#pause [data-gfx] button').forEach(b => b.onclick = (
 const _bootM = boot;
 boot = function () { _bootM(); warmShaders(); const n = Object.keys(MIS.done).filter(k => MISD.some(x => x.id === k)).length; $('misSum').textContent = n ? 'Missions done: ' + n + ' of ' + MISD.length : 'New here? Follow the mission card (top right). J shows all missions.'; };
 Object.assign(window.YE, {homeWindow, setHW: v => HW_OFF = v, PRED, predict, MAPV, mapToggle, MISD, MIS, FLOG, misPoll, HEAT, orbitEl, moonPhase});
-// boot() is called at the end of extras.js
+// boot() is called at the end of polish.js
