@@ -38,6 +38,7 @@ button.go { background:var(--acc); color:#1f1406; }
 .code { font:900 40px ui-monospace,monospace; letter-spacing:.2em; color:var(--acc2); }
 /* HUD */
 #hud { position:fixed; inset:0; pointer-events:none; z-index:5; }
+#obj.new { animation:objIn 1.6s ease-out; } @keyframes objIn { 0% { background:rgba(240,166,58,.55); transform:translateX(-8px); } 25% { transform:none; } 100% { background:rgba(0,0,0,.45); } }
 #obj { position:absolute; left:18px; top:16px; max-width:min(520px,60vw); background:rgba(0,0,0,.45); border-left:4px solid var(--acc); padding:9px 13px; border-radius:0 8px 8px 0; font-weight:600; text-shadow:0 1px 2px #000; }
 #crew { position:absolute; right:18px; top:16px; background:rgba(0,0,0,.42); padding:8px 12px; border-radius:8px; font-size:13px; min-width:170px; }
 #top { position:absolute; left:50%; top:14px; transform:translateX(-50%); text-align:center; }
@@ -102,7 +103,7 @@ kbd { display:inline-block; min-width:22px; padding:1px 6px; border-radius:5px; 
 </div>
 <div id="pause" class="scr hidden">
   <div class="card" style="width:min(380px,100%)">
-    <h1 style="font-size:36px">PAUSED</h1><p class="sub">The trip carries on for everyone else.</p>
+    <h1 style="font-size:36px">PAUSED</h1><p class="sub" id="pSub">The trip carries on for everyone else.</p>
     <div class="row"><button class="go" id="bResume">Resume</button><button id="bQuit">Quit to menu</button></div>
   </div>
 </div>
@@ -122,15 +123,15 @@ kbd { display:inline-block; min-width:22px; padding:1px 6px; border-radius:5px; 
 <div id="load" class="hidden">Packing the camper...</div>
 <div id="fade"></div><div id="flash"></div>
 <script src="../three-r170.js"></script>
-<script src="js/util.js?v=32"></script>
-<script src="js/stage.js?v=32"></script>
-<script src="js/tex.js?v=32"></script>
-<script src="js/world.js?v=32"></script>
-<script src="js/car.js?v=32"></script>
-<script src="js/audio.js?v=32"></script>
-<script src="js/net.js?v=32"></script>
-<script src="js/rvmap.js?v=32"></script>
-<script src="js/rvbuild.js?v=32"></script>
-<script src="js/rv.js?v=32"></script>
+<script src="js/util.js?v=33"></script>
+<script src="js/stage.js?v=33"></script>
+<script src="js/tex.js?v=33"></script>
+<script src="js/world.js?v=33"></script>
+<script src="js/car.js?v=33"></script>
+<script src="js/audio.js?v=33"></script>
+<script src="js/net.js?v=33"></script>
+<script src="js/rvmap.js?v=33"></script>
+<script src="js/rvbuild.js?v=33"></script>
+<script src="js/rv.js?v=33"></script>
 </body>
 </html>
