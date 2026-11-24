@@ -375,13 +375,31 @@ async function legalGrade(req, env, CORS, path) {
 // (Markdown + page images) and questions live in the IB Durable Object's SQLite, so no copyrighted text is in the
 // public repo. Secrets: IB_PASS (the app password), IB_ADMIN (uploads), ANTHROPIC_KEY (or the key saved for /legal).
 // Requests are text/plain JSON {pass, ...}; images are GET /ib/img?b=&n=&t=<pass>. IB_CAP = Claude calls per day (default 300).
-const IB_SYS = 'You are an expert IB Diploma tutor and examiner, helping one student revise. You know the IB assessment criteria, command terms and markbands well. Be direct, specific and encouraging without flattery. Ground what you say in the textbook extracts provided (cite them as "p. N" using the printed page numbers) and say clearly when you go beyond them. Use short paragraphs and bullet points; no long preambles.';
+const IB_SYS = `You are a brilliant, warm IB Diploma teacher and examiner working one-to-one with a student. You teach for real understanding, not memorisation.
+
+How you teach:
+- Start from intuition. Before definitions, give the core idea in one plain sentence, then a vivid analogy or everyday example (school, sport, friends, games, the news) that makes it click. Then connect it to the precise course terms.
+- Build up in small steps, from the simple case to the full idea. Use concrete, real-world case studies (prefer the textbook's) and say what each example shows.
+- Show structure visually when it helps: a short comparison table, a quick flow (cause -> effect), or a 3-point summary.
+- Check understanding instead of lecturing: after a chunk, ask one short question that makes the student apply the idea (not repeat it), then build on their answer. When they are wrong, find the useful part of what they said and fix the misconception kindly and clearly.
+- Link ideas: show how this concept connects to others in the course and how it turns up in exam questions (command terms, Paper 1/2 use).
+- Give memory hooks where useful (a mnemonic, a contrast pair, a one-line takeaway).
+- Adapt: if the student seems lost, go simpler with a new analogy; if they are confident, push them with a harder "what if" or counter-argument.
+- Keep replies focused and readable: short paragraphs, bold key terms, under about 250 words unless the student asks for more or you are giving exam feedback.
+
+Accuracy: ground course content in the textbook extracts provided and cite them as "p. N" (printed page numbers). Say clearly when you go beyond the textbook. Never invent facts, statistics or quotes; if unsure, say so.
+When marking, act as a strict but fair IB examiner who also wants the student to improve.`;
 async function ibRoute(req, env, CORS, u) {
   const H = {...CORS, 'content-type': 'application/json', 'cache-control': 'no-store'};
   const J = (o, s = 200) => new Response(JSON.stringify(o), {status: s, headers: H});
   const ib = env.IB.get(env.IB.idFromName('main')), db = (op, o = {}) => ib.fetch('https://i/', {method: 'POST', body: JSON.stringify({...o, op})});
   const PASS = env.IB_PASS;
   if (!PASS) return J({err: 'IB app is not set up on the relay yet'}, 503);
+  if (u.pathname === '/ib/cal.ics') { // calendar feed for phone/Google/Apple calendar subscriptions
+    if (u.searchParams.get('t') !== PASS) return new Response('no', {status: 403});
+    const items = JSON.parse(await (await db('kvget', {k: 'plan'})).text() || '[]');
+    return new Response(toIcs(items), {headers: {'content-type': 'text/calendar; charset=utf-8', 'cache-control': 'no-store'}});
+  }
   if (u.pathname === '/ib/img') {
     if (u.searchParams.get('t') !== PASS) return new Response('no', {status: 403, headers: CORS});
     const r = await db('img', {b: u.searchParams.get('b'), n: +u.searchParams.get('n')});
@@ -398,6 +416,11 @@ async function ibRoute(req, env, CORS, u) {
   if (b.pass !== PASS) return J({err: 'wrong password'}, 403);
   const op = u.pathname.slice(4);
   if (op === 'login') return J({ok: true});
+  if (op === 'plan') { // planner items: {data} replaces the list, else returns it
+    if (b.data) { await db('kvset', {k: 'plan', v: JSON.stringify(b.data)}); return J({ok: true}); }
+    const r = await db('kvget', {k: 'plan'}); return new Response(r.body, {headers: H});
+  }
+  if (op === 'agent') return planAgent(b, env, db, J);
   if (['books', 'page', 'pages', 'search', 'qs', 'sync'].includes(op)) { const r = await db(op, b); return new Response(r.body, {status: r.status, headers: H}); }
   if (op !== 'ask') return J({err: 'not found'}, 404);
   const lg = await (await env.LEGAL.get(env.LEGAL.idFromName('main')).fetch('https://l/', {method: 'POST', body: '{"op":"get"}'})).json();
@@ -455,6 +478,8 @@ export class IB {
     switch (o.op) {
       case 'img': { const r = all('SELECT data FROM img WHERE b = ? AND n = ?', o.b, o.n)[0]; return r ? new Response(r.data) : new Response('missing', {status: 404}); }
       case 'books': return new Response(this.kv('books') || '[]');
+      case 'kvget': return new Response(this.kv(o.k) || '[]');
+      case 'kvset': if (o.v.length > 2e6) return J({err: 'too big'}); this.kv(o.k, o.v); return J({ok: true});
       case 'qs': return new Response(this.kv('qs') || '[]');
       case 'page': { const r = all('SELECT n, bp, md FROM page WHERE b = ? AND n = ?', o.b, o.n)[0]; return J(r || {err: 'missing'}); }
       case 'pages': return J({pages: all(`SELECT n, bp, md FROM page WHERE b = ? AND n IN (${o.ns.map(() => '?').join(',') || 'NULL'}) ORDER BY n`, o.b, ...o.ns.map(Number))});
@@ -484,4 +509,104 @@ export class IB {
     }
     return Response.json({err: 'bad op'}, {status: 400});
   }
+}
+
+// Planner agent: Claude Sonnet with tools over the planner list (list/add/update/delete), looping server-side until it answers.
+// Items: {id, kind: class|homework|exam|event|task, title, subject, date: YYYY-MM-DD, time?: HH:MM, end?: HH:MM, rep?: 'weekly', until?, done?, notes?}
+const PLAN_TOOLS = [
+  {name: 'list_items', description: 'List planner items whose date (or a weekly repeat) falls between from and to inclusive (YYYY-MM-DD). Also returns undone homework/tasks that are overdue. Use it before answering questions about specific dates beyond the snapshot.',
+    input_schema: {type: 'object', properties: {from: {type: 'string'}, to: {type: 'string'}, query: {type: 'string', description: 'optional text filter on title/subject/notes'}}, required: ['from', 'to'], additionalProperties: false}},
+  {name: 'add_item', description: 'Add one planner item. Use kind "homework" for things due (date = due date), "exam" for tests and exams, "class" for timetable lessons (usually rep weekly), "event" for anything else with a time, "task" for to-dos.',
+    input_schema: {type: 'object', properties: {kind: {type: 'string', enum: ['class', 'homework', 'exam', 'event', 'task']}, title: {type: 'string'}, subject: {type: 'string'}, date: {type: 'string', description: 'YYYY-MM-DD'}, time: {type: 'string', description: 'HH:MM 24h, optional'}, end: {type: 'string', description: 'HH:MM 24h, optional'}, rep: {type: 'string', enum: ['none', 'weekly']}, until: {type: 'string', description: 'last date of a weekly repeat, optional'}, notes: {type: 'string'}}, required: ['kind', 'title', 'date'], additionalProperties: false}},
+  {name: 'update_item', description: 'Change fields of an existing item by id (e.g. move the date, mark done: true, edit notes). Only the given fields change.',
+    input_schema: {type: 'object', properties: {id: {type: 'string'}, changes: {type: 'object', description: 'fields to set: kind,title,subject,date,time,end,rep,until,notes,done'}}, required: ['id', 'changes'], additionalProperties: false}},
+  {name: 'delete_item', description: 'Delete an item by id. Only when the student clearly asks to remove it.',
+    input_schema: {type: 'object', properties: {id: {type: 'string'}}, required: ['id'], additionalProperties: false}},
+];
+const dAdd = (d, n) => { const x = new Date(d + 'T12:00:00Z'); x.setUTCDate(x.getUTCDate() + n); return x.toISOString().slice(0, 10); };
+function planOccurs(it, from, to) { // dates of an item inside [from, to]
+  if (it.rep !== 'weekly') return it.date >= from && it.date <= to ? [it.date] : [];
+  const out = []; let d = it.date; const end = it.until && it.until < to ? it.until : to;
+  if (d < from) { const k = Math.floor((Date.parse(from) - Date.parse(d)) / 864e5 / 7); d = dAdd(d, 7 * k); if (d < from) d = dAdd(d, 7); }
+  for (; d <= end && out.length < 60; d = dAdd(d, 7)) out.push(d);
+  return out;
+}
+const planLine = (it, d) => `[${it.id}] ${d || it.date}${it.time ? ' ' + it.time + (it.end ? '-' + it.end : '') : ''} ${it.kind}${it.subject ? ' (' + it.subject + ')' : ''}: ${it.title}${it.rep === 'weekly' ? ' [weekly' + (it.until ? ' until ' + it.until : '') + ']' : ''}${it.done ? ' [done]' : ''}${it.notes ? ' - ' + it.notes : ''}`;
+function planList(items, from, to, q, today) {
+  q = (q || '').toLowerCase(); const rows = [];
+  for (const it of items) { if (q && !(it.title + ' ' + (it.subject || '') + ' ' + (it.notes || '')).toLowerCase().includes(q)) continue;
+    for (const d of planOccurs(it, from, to)) rows.push([d + (it.time || ''), planLine(it, d)]); }
+  rows.sort((a, b) => a[0] < b[0] ? -1 : 1);
+  const over = items.filter(it => (it.kind === 'homework' || it.kind === 'task') && !it.done && it.date < today && (!q || it.title.toLowerCase().includes(q)));
+  return (rows.map(r => r[1]).join('\n') || 'nothing in that range') + (over.length ? '\n\nOverdue and not done:\n' + over.map(it => planLine(it)).join('\n') : '');
+}
+async function planAgent(b, env, db, J) {
+  const lg = await (await env.LEGAL.get(env.LEGAL.idFromName('main')).fetch('https://l/', {method: 'POST', body: '{"op":"get"}'})).json();
+  const KEY = env.ANTHROPIC_KEY || lg.key; if (!KEY) return J({err: 'no API key on the relay'}, 503);
+  const cap = +(env.IB_CAP || 300), used = await (await db('spend', {cap})).json();
+  if (used.over) return J({err: 'daily Claude limit reached'}, 429);
+  let items = JSON.parse(await (await db('kvget', {k: 'plan'})).text() || '[]'); let changed = 0;
+  const today = /^\d{4}-\d\d-\d\d$/.test(b.today) ? b.today : new Date().toISOString().slice(0, 10);
+  const sys = `You are the student's personal planner assistant inside their IB study app. You manage their calendar: classes, homework, exams, events and to-dos. Today is ${b.dow || ''} ${today}, local time ${String(b.now || '').slice(0, 5)} (${String(b.tz || '').slice(0, 40)}). Resolve relative dates ("next Friday", "in two weeks", "tomorrow arvo") against today yourself and use exact YYYY-MM-DD dates. When the student tells you about something, add it straight away with sensible defaults (kind, subject guessed from context) and confirm briefly with the date written as e.g. "Fri 5 Dec". Only ask a question when a date is truly ambiguous. When asked what's coming up, give a short, prioritised answer: due soonest first, flag clashes and heavy days, and suggest when to start bigger tasks. Be brief and friendly; no long preambles.`;
+  const snap = () => 'Planner snapshot (next 21 days, plus overdue):\n' + planList(items, today, dAdd(today, 21), '', today);
+  const msgs = (b.messages || []).slice(-20).map(m => ({role: m.role === 'assistant' ? 'assistant' : 'user', content: String(m.content || '').slice(0, 8000)}));
+  if (!msgs.length || msgs[msgs.length - 1].role !== 'user') return J({err: 'empty message'}, 400);
+  const last = msgs[msgs.length - 1]; last.content = snap() + '\n\n---\n' + last.content;
+  let text = '';
+  for (let step = 0; step < 8; step++) {
+    const r = await fetch('https://api.anthropic.com/v1/messages', {method: 'POST',
+      headers: {'content-type': 'application/json', 'x-api-key': KEY, 'anthropic-version': '2023-06-01', 'anthropic-beta': 'server-side-fallback-2026-07-01'},
+      body: JSON.stringify({model: 'claude-sonnet-5-5', max_tokens: 4000, fallbacks: 'default', output_config: {effort: 'low'}, cache_control: {type: 'ephemeral'},
+        system: [{type: 'text', text: sys}], tools: PLAN_TOOLS, messages: msgs})});
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) return J({err: (j.error && j.error.message) || 'Anthropic HTTP ' + r.status}, 502);
+    if (j.stop_reason === 'refusal') return J({err: 'Claude declined that one.'});
+    msgs.push({role: 'assistant', content: j.content});
+    text = (j.content || []).filter(c => c.type === 'text').map(c => c.text).join('');
+    const calls = (j.content || []).filter(c => c.type === 'tool_use');
+    if (j.stop_reason !== 'tool_use' || !calls.length) break;
+    const res = [];
+    for (const c of calls) {
+      const a = c.input || {}; let out;
+      try {
+        if (c.name === 'list_items') out = planList(items, a.from, a.to, a.query, today);
+        else if (c.name === 'add_item') {
+          if (!/^\d{4}-\d\d-\d\d$/.test(a.date || '')) throw new Error('date must be YYYY-MM-DD');
+          const it = {id: Math.random().toString(36).slice(2, 8), kind: a.kind, title: String(a.title).slice(0, 200), date: a.date};
+          for (const k of ['subject', 'time', 'end', 'until', 'notes']) if (a[k]) it[k] = String(a[k]).slice(0, 1000);
+          if (a.rep === 'weekly') it.rep = 'weekly';
+          items.push(it); changed++; out = 'added ' + planLine(it);
+        } else if (c.name === 'update_item') {
+          const it = items.find(x => x.id === a.id); if (!it) throw new Error('no item with id ' + a.id);
+          for (const [k, v] of Object.entries(a.changes || {})) if (['kind', 'title', 'subject', 'date', 'time', 'end', 'rep', 'until', 'notes', 'done'].includes(k)) { if (v === null || v === '' || v === 'none') delete it[k]; else it[k] = k === 'done' ? !!v : String(v).slice(0, 1000); }
+          changed++; out = 'updated ' + planLine(it);
+        } else if (c.name === 'delete_item') {
+          const i = items.findIndex(x => x.id === a.id); if (i < 0) throw new Error('no item with id ' + a.id);
+          out = 'deleted ' + planLine(items[i]); items.splice(i, 1); changed++;
+        } else throw new Error('unknown tool');
+        res.push({type: 'tool_result', tool_use_id: c.id, content: out});
+      } catch (e) { res.push({type: 'tool_result', tool_use_id: c.id, content: String(e.message), is_error: true}); }
+    }
+    msgs.push({role: 'user', content: res});
+  }
+  if (changed) await db('kvset', {k: 'plan', v: JSON.stringify(items)});
+  return J({text: text || 'Done.', changed, items});
+}
+function toIcs(items) {
+  const esc = s => String(s || '').replace(/[\;,]/g, m => '\\' + m).replace(/\n/g, '\\n');
+  const dt = (d, t) => d.replace(/-/g, '') + (t ? 'T' + t.replace(':', '') + '00' : '');
+  const L = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//IB Study//Planner//EN', 'X-WR-CALNAME:IB Planner', 'CALSCALE:GREGORIAN'];
+  const stamp = new Date().toISOString().replace(/[-:]/g, '').slice(0, 15) + 'Z';
+  for (const it of items) {
+    if (!/^\d{4}-\d\d-\d\d$/.test(it.date || '')) continue;
+    const pre = {homework: 'Due: ', exam: 'Exam: ', task: 'To do: '}[it.kind] || '';
+    L.push('BEGIN:VEVENT', 'UID:' + it.id + '@ibstudy', 'DTSTAMP:' + stamp, 'SUMMARY:' + esc((it.done ? '✓ ' : '') + pre + it.title + (it.subject ? ' (' + it.subject + ')' : '')));
+    if (it.time) { L.push('DTSTART:' + dt(it.date, it.time)); L.push('DTEND:' + dt(it.date, it.end || (String(Math.min(23, +it.time.slice(0, 2) + 1)).padStart(2, '0') + it.time.slice(2)))); }
+    else { L.push('DTSTART;VALUE=DATE:' + dt(it.date)); L.push('DTEND;VALUE=DATE:' + dt(dAdd(it.date, 1))); }
+    if (it.rep === 'weekly') L.push('RRULE:FREQ=WEEKLY' + (it.until ? ';UNTIL=' + dt(it.until) + (it.time ? 'T235959' : '') : ''));
+    if (it.notes) L.push('DESCRIPTION:' + esc(it.notes));
+    L.push('END:VEVENT');
+  }
+  L.push('END:VCALENDAR');
+  return L.join('\r\n');
 }

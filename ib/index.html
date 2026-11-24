@@ -110,6 +110,51 @@ mark{background:#ffe48a;color:#000;border-radius:3px}
 .hits .h{padding:10px 14px;border-bottom:1px solid var(--line);cursor:pointer}
 .hits .h:hover{background:var(--acc2)}
 #menuBtn{display:none}
+.plan{display:grid;grid-template-columns:250px 1fr;gap:20px;max-width:1400px;margin:0 auto}
+.pside h3{font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:var(--mut);margin:16px 0 6px}
+.due{display:flex;gap:10px;align-items:flex-start;padding:9px 12px;border-bottom:1px solid var(--line);font-size:14px}
+.due input{width:auto;margin-top:3px}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;vertical-align:1px}
+.mgrid{display:grid;grid-template-columns:repeat(7,1fr);border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--panel)}
+.mh{padding:6px 8px;font-size:12px;font-weight:600;color:var(--mut);border-bottom:1px solid var(--line);text-transform:uppercase;letter-spacing:.04em}
+.mc{min-height:112px;padding:4px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);cursor:pointer;min-width:0}
+.mc:nth-child(7n){border-right:none}
+.mc:hover{background:var(--bg)}
+.mc.out{background:var(--bg)}.mc.out .mn{opacity:.45}
+.mn{font-size:12px;font-weight:600;padding:2px 4px;width:max-content;border-radius:99px}
+.today .mn,.wh .today b{background:var(--acc);color:var(--panel);padding:2px 7px}
+.chip{font-size:12px;line-height:1.3;padding:2px 6px;margin:2px 0;border-radius:5px;background:color-mix(in srgb,var(--c) 14%,var(--panel));border-left:3px solid var(--c);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
+.chip.k-exam{background:var(--c);color:#fff;font-weight:600}
+.chip.dn{opacity:.45;text-decoration:line-through}
+.more{font-size:11px;color:var(--mut);padding:0 6px}
+.wk{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--panel)}
+.wh{display:grid;grid-template-columns:52px repeat(7,1fr);border-bottom:1px solid var(--line);font-size:13px}
+.wh>div{padding:6px 8px;min-width:0}
+.wad .mc{min-height:34px;border-bottom:none}
+.wb{display:grid;grid-template-columns:52px repeat(7,1fr);position:relative;overflow:hidden}
+.wt div{font-size:11px;color:var(--mut);text-align:right;padding-right:6px;transform:translateY(-6px)}
+.wcol{position:relative;border-left:1px solid var(--line);cursor:pointer}
+.wcol.today{background:var(--acc2)}
+.hl{border-top:1px solid var(--line)}
+.ev{position:absolute;left:3px;right:3px;white-space:normal;overflow:hidden;z-index:1}
+.now{position:absolute;left:0;right:0;height:2px;background:var(--bad);z-index:2}
+.ag{display:flex;gap:16px;padding:12px 16px;border-bottom:1px solid var(--line)}
+.agd{width:110px;font-weight:600}.agd.today{color:var(--acc)}
+.agi{display:flex;gap:8px;align-items:center;padding:3px 0;cursor:pointer}
+.dnt{text-decoration:line-through;opacity:.5}
+#modal{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:20;display:flex;align-items:flex-start;justify-content:center;padding:8vh 16px}
+.mbox{width:min(520px,100%);padding:20px 22px}
+.ef{display:flex;flex-direction:column;gap:10px}
+.ef label{font-size:12px;color:var(--mut);flex:1}
+.ef .rowl{display:flex;gap:8px;align-items:center;font-size:14px;color:var(--ink)}
+.ef .rowl input{width:auto}
+.ef .seg{flex-wrap:wrap}
+a.btn{display:inline-block;padding:7px 12px;border-radius:8px;text-decoration:none;background:var(--acc);color:var(--panel);font-weight:600}
+@media (max-width:860px){
+  .plan{grid-template-columns:1fr}.pside{order:2}
+  .mc{min-height:70px}.chip{font-size:10.5px;padding:1px 4px}
+  .wh,.wb{grid-template-columns:36px repeat(7,minmax(0,1fr))}
+}
 @media (max-width:860px){
   .wrap{grid-template-columns:1fr}
   aside{position:fixed;left:0;top:55px;bottom:0;width:86%;max-width:320px;z-index:7;transform:translateX(-105%);transition:transform .2s;max-height:none;box-shadow:8px 0 30px rgba(0,0,0,.15)}
@@ -133,7 +178,7 @@ mark{background:#ffe48a;color:#000;border-radius:3px}
 <header>
   <button id="menuBtn" class="ghost" aria-label="Contents">☰</button>
   <h1>IB <b>Study</b></h1>
-  <nav class="tabs"><button data-tab="lib" class="on">Library</button><button data-tab="prac">Practice</button><button data-tab="terms">Key terms</button><button data-tab="prog">Progress</button></nav>
+  <nav class="tabs"><button data-tab="lib" class="on">Library</button><button data-tab="prac">Practice</button><button data-tab="terms">Key terms</button><button data-tab="prog">Progress</button><button data-tab="plan">Planner</button></nav>
   <button class="pri" id="tutor" style="margin-left:auto">Ask Claude</button>
   <div class="srch" style="flex:0 1 300px"><input id="q" type="search" placeholder="Search the textbook…"></div>
 </header>
@@ -199,7 +244,7 @@ async function pullProg() {
 function tab(t) {
   S.tab = t; document.querySelectorAll('nav.tabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === t));
   $('#toc').classList.toggle('hide', t !== 'lib'); document.querySelector('.wrap').style.gridTemplateColumns = t === 'lib' ? '' : '1fr';
-  closeDrawer(); ({lib: () => openPage(S.book.id, S.n), prac: renderPrac, terms: renderTerms, prog: renderProg})[t]();
+  closeDrawer(); ({lib: () => openPage(S.book.id, S.n), prac: renderPrac, terms: renderTerms, prog: renderProg, plan: () => renderPlan(true)})[t]();
 }
 function renderToc() {
   const b = S.book;
@@ -222,10 +267,12 @@ async function openPage(b, n, hl) {
     <button id="pv">‹</button><span class="pgnum" id="pn"></span><button id="nx">›</button>
     <span class="sp"></span><div class="seg"><button data-v="text">Text</button><button data-v="scan">Scan</button></div></div>
     <div id="pg" class="card page"><span class="spin"></span></div><div class="rbar" style="margin-top:12px"><button id="pv2">‹ Previous page</button><span class="sp"></span><button id="nx2">Next page ›</button></div></div>
-    <button class="pri ask" id="askP">Ask Claude about this page</button>`;
+    <div class="ask row"><button id="teach">🎓 Teach me this section</button><button class="pri" id="askP">Ask about this page</button></div>`;
   $('#pv').onclick = $('#pv2').onclick = () => openPage(b, n - 1); $('#nx').onclick = $('#nx2').onclick = () => openPage(b, n + 1);
   document.querySelectorAll('.seg button').forEach(x => { x.classList.toggle('on', x.dataset.v === S.view); x.onclick = () => { S.view = x.dataset.v; LS.set('ib-view', S.view); openPage(b, n, hl); }; });
   $('#askP').onclick = () => openChat({title: 'Ask about p. ' + ($('#pn').dataset.bp || n), book: b, pages: [n - 1, n, n + 1].filter(x => x >= 1 && x <= B.pages), intro: `I'm reading page ${$('#pn').dataset.bp || n}${sec ? ' (' + (sec.num ? sec.num + ' ' : '') + sec.title + ')' : ''}. `});
+  $('#teach').onclick = () => { const secN = sec ? sec.n : n, nxt = B.toc.find(t => t.n > secN && t.lvl <= (sec ? sec.lvl : 3)), endN = nxt ? Math.min(nxt.n, secN + 8) : secN + 3, ps = []; for (let i = secN; i <= endN && i <= B.pages; i++) ps.push(i);
+    openChat({title: 'Lesson: ' + (sec ? (sec.num ? sec.num + ' ' : '') + sec.title : 'p. ' + n), book: b, pages: ps, fixed: true, intro: ''}); sendChat(`Teach me ${sec ? (sec.num ? sec.num + ' ' : '') + sec.title : 'this page'} from my textbook, step by step. Start with the big idea and an analogy, then go through it in small chunks and check my understanding as we go. Don't dump everything at once.`); };
   markToc(); window.scrollTo(0, 0); $('#toc').classList.remove('open');
   try {
     const p = await getPage(b, n); if (S.n !== n) return;
@@ -255,7 +302,7 @@ function openChat(o) {
 }
 function closeDrawer() { $('#drawer').classList.add('hide'); CH = null; }
 function drawChat(busy) {
-  $('#chat').innerHTML = (CH.msgs.length ? '' : `<p class="meta">Ask anything: explain a concept, quiz me on a section, plan an essay, find case studies, check my understanding. Claude finds the matching textbook pages and cites them.</p>`) +
+  $('#chat').innerHTML = (CH.msgs.length ? '' : CH.agent ? `<p class="meta">Tell me about homework, tests and events and I'll put them in your calendar. Try: “maths test next Thursday period 2”, “I have soccer every Wednesday 4–5:30”, “what's due this week?”, “move the history essay to Monday”, “I finished the TOK reflection”.</p>` : `<p class="meta">Ask anything: explain a concept, quiz me on a section, plan an essay, find case studies, check my understanding. Claude finds the matching textbook pages and cites them.</p>`) +
     CH.msgs.filter(m => !m.hidden).map(m => `<div class="msg ${m.role === 'user' ? 'u' : 'a'}">${m.role === 'user' ? esc(m.show || m.content).replace(/\n/g, '<br>') : marked.parse(m.content)}</div>`).join('') + (busy ? '<div class="msg a"><span class="spin"></span> Thinking…</div>' : '');
   $('#chat').scrollTop = 1e9;
 }
@@ -263,6 +310,13 @@ async function sendChat(text) {
   if (!CH || !text.trim()) return;
   const first = !CH.msgs.some(m => m.role === 'user');
   CH.msgs.push({role: 'user', content: (first && CH.intro ? CH.intro : '') + text, show: text}); drawChat(true);
+  if (CH.agent) {
+    try {
+      const n = new Date(), r = await api('agent', {today: ymd(n), dow: n.toLocaleDateString('en', {weekday: 'long'}), now: n.toTimeString().slice(0, 5), tz: Intl.DateTimeFormat().resolvedOptions().timeZone, messages: CH.msgs.map(m => ({role: m.role, content: m.content}))});
+      CH.msgs.push({role: 'assistant', content: r.text || '(no reply)'}); if (r.items) { S.plan = r.items; LS.set('ib-plan', S.plan); drawPlan(); }
+    } catch (e) { CH.msgs.push({role: 'assistant', content: '**Error:** ' + e.message}); }
+    S.planChat = CH.msgs; drawChat(); return;
+  }
   try {
     const r = await api('ask', {mode: 'chat', book: CH.book, pages: CH.pages, find: !CH.fixed, messages: CH.msgs.map(m => ({role: m.role, content: m.content}))});
     if (r.pages) { CH.pages = r.pages; CH.fixed = true; } // keep the same pages for the rest of the chat so the prompt cache hits
@@ -385,6 +439,104 @@ function renderProg() {
     ${recent.length ? `<h3>Recent</h3><div class="card">${recent.map(({q, a}) => `<div class="h" style="padding:10px 14px;border-bottom:1px solid var(--line);cursor:pointer" data-id="${q.id}"><b>${a.score}/${a.max}</b> <span class="meta">${new Date(a.t).toLocaleDateString()}</span><div>${esc(q.text.slice(0, 140))}</div></div>`).join('')}</div>` : ''}</div>`;
   document.querySelectorAll('[data-t]').forEach(b => b.onclick = () => { S.pf = {book: B.id, kind: '', topic: b.dataset.t, st: ''}; S.tab = 'prac'; document.querySelectorAll('nav.tabs button').forEach(x => x.classList.toggle('on', x.dataset.tab === 'prac')); renderPrac(); });
   document.querySelectorAll('[data-id]').forEach(b => b.onclick = () => { S.tab = 'prac'; document.querySelectorAll('nav.tabs button').forEach(x => x.classList.toggle('on', x.dataset.tab === 'prac')); openQ(b.dataset.id); });
+}
+
+// ---------- planner ----------
+const PK = {class: 'Class', homework: 'Homework', exam: 'Exam', event: 'Event', task: 'To do'};
+const ymd = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+const pd = s => new Date(s + 'T12:00:00');
+const addD = (s, n) => { const d = pd(s); d.setDate(d.getDate() + n); return ymd(d); };
+const todayS = () => ymd(new Date());
+const fmtD = (s, o = {weekday: 'short', day: 'numeric', month: 'short'}) => pd(s).toLocaleDateString(undefined, o);
+const PAL = ['#2f7d6d', '#3b6fd8', '#c2410c', '#9333ea', '#be185d', '#0e7490', '#a16207', '#4d7c0f', '#b91c1c', '#475569'];
+function subjColor(s) { if (!s) return '#6b7280'; let h = 0; for (const c of s.toLowerCase()) h = (h * 31 + c.charCodeAt(0)) >>> 0; return PAL[h % PAL.length]; }
+function occurs(it, from, to) {
+  if (it.rep !== 'weekly') return it.date >= from && it.date <= to ? [it.date] : [];
+  const out = []; let d = it.date; const end = it.until && it.until < to ? it.until : to;
+  if (d < from) { const k = Math.floor((pd(from) - pd(d)) / 864e5 / 7); d = addD(d, 7 * k); if (d < from) d = addD(d, 7); }
+  for (; d <= end && out.length < 400; d = addD(d, 7)) out.push(d);
+  return out;
+}
+function dayMap(from, to) { const m = {}; for (const it of S.plan) for (const d of occurs(it, from, to)) (m[d] = m[d] || []).push(it); for (const k in m) m[k].sort((a, b) => (a.time || '99') < (b.time || '99') ? -1 : 1); return m; }
+async function loadPlan() { try { S.plan = await api('plan'); if (!Array.isArray(S.plan)) S.plan = []; } catch (e) { S.plan = S.plan || []; } }
+let planSaveT = 0;
+function savePlan() { LS.set('ib-plan', S.plan); clearTimeout(planSaveT); planSaveT = setTimeout(() => api('plan', {data: S.plan}).catch(e => alert('Could not save: ' + e.message)), 400); }
+function chip(it, d) {
+  const c = subjColor(it.subject), past = (it.kind === 'homework' || it.kind === 'task') && !it.done && d < todayS();
+  return `<div class="chip ${it.done ? 'dn' : ''} k-${it.kind}" data-id="${it.id}" style="--c:${c}" title="${esc(PK[it.kind] + ': ' + it.title)}">${it.time ? '<b>' + it.time + '</b> ' : ''}${it.kind === 'exam' ? '★ ' : it.kind === 'homework' ? '✎ ' : ''}${esc(it.title)}${past ? ' <span style="color:var(--bad)">!</span>' : ''}</div>`;
+}
+async function renderPlan(first) {
+  if (first || !S.plan) { S.plan = LS.get('ib-plan', []); S.pv = S.pv || LS.get('ib-pv', 'month'); S.pdate = S.pdate || todayS(); drawPlan(); await loadPlan(); LS.set('ib-plan', S.plan); }
+  drawPlan();
+}
+function drawPlan() {
+  if (S.tab !== 'plan') return;
+  const t = todayS(), v = S.pv, cur = pd(S.pdate);
+  let title, body;
+  if (v === 'month') {
+    const first = new Date(cur.getFullYear(), cur.getMonth(), 1), start = addD(ymd(first), -((first.getDay() + 6) % 7)), end = addD(start, 41), m = dayMap(start, end);
+    title = cur.toLocaleDateString(undefined, {month: 'long', year: 'numeric'});
+    body = `<div class="mgrid">${['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(d => `<div class="mh">${d}</div>`).join('')}${Array.from({length: 42}, (_, i) => { const d = addD(start, i), its = m[d] || [], out = pd(d).getMonth() !== cur.getMonth();
+      return `<div class="mc ${out ? 'out' : ''} ${d === t ? 'today' : ''}" data-d="${d}"><div class="mn">${pd(d).getDate()}</div>${its.slice(0, 4).map(it => chip(it, d)).join('')}${its.length > 4 ? `<div class="more">+${its.length - 4} more</div>` : ''}</div>`; }).join('')}</div>`;
+  } else if (v === 'week') {
+    const start = addD(S.pdate, -((cur.getDay() + 6) % 7)), m = dayMap(start, addD(start, 6)), H0 = 7, H1 = 22, PX = 44;
+    title = fmtD(start, {day: 'numeric', month: 'short'}) + ' – ' + fmtD(addD(start, 6), {day: 'numeric', month: 'short', year: 'numeric'});
+    const days = Array.from({length: 7}, (_, i) => addD(start, i));
+    body = `<div class="wk"><div class="wh"><div></div>${days.map(d => `<div class="${d === t ? 'today' : ''}" data-d="${d}">${fmtD(d, {weekday: 'short'})} <b>${pd(d).getDate()}</b></div>`).join('')}</div>
+      <div class="wh wad"><div class="meta">all day</div>${days.map(d => `<div class="mc" data-d="${d}">${(m[d] || []).filter(it => !it.time).map(it => chip(it, d)).join('')}</div>`).join('')}</div>
+      <div class="wb" style="height:${(H1 - H0) * PX}px"><div class="wt">${Array.from({length: H1 - H0}, (_, i) => `<div style="height:${PX}px">${String(H0 + i).padStart(2, '0')}:00</div>`).join('')}</div>${days.map(d => `<div class="wcol ${d === t ? 'today' : ''}" data-d="${d}">${Array.from({length: H1 - H0}, () => `<div class="hl" style="height:${PX}px"></div>`).join('')}${(m[d] || []).filter(it => it.time).map(it => {
+        const [h, mi] = it.time.split(':').map(Number), [eh, em] = (it.end || '').split(':').map(Number), top = Math.max(0, (h + mi / 60 - H0) * PX), len = it.end ? Math.max(.5, eh + em / 60 - h - mi / 60) : 1;
+        return `<div class="ev chip k-${it.kind} ${it.done ? 'dn' : ''}" data-id="${it.id}" style="--c:${subjColor(it.subject)};top:${top}px;height:${len * PX - 2}px"><b>${it.time}${it.end ? '–' + it.end : ''}</b><br>${esc(it.title)}</div>`; }).join('')}${d === t ? `<div class="now" style="top:${(new Date().getHours() + new Date().getMinutes() / 60 - H0) * PX}px"></div>` : ''}</div>`).join('')}</div></div>`;
+  } else {
+    const m = dayMap(t, addD(t, 60)); title = 'Next 60 days';
+    body = `<div class="card">${Object.keys(m).sort().map(d => `<div class="ag"><div class="agd ${d === t ? 'today' : ''}">${fmtD(d)}<div class="meta">${d === t ? 'today' : Math.round((pd(d) - pd(t)) / 864e5) + ' days'}</div></div><div style="flex:1">${m[d].map(it => `<div class="agi" data-id="${it.id}"><span class="dot" style="background:${subjColor(it.subject)}"></span><span class="meta" style="width:88px">${it.time ? it.time + (it.end ? '–' + it.end : '') : PK[it.kind]}</span><span class="${it.done ? 'dnt' : ''}">${esc(it.title)}</span>${it.subject ? `<span class="meta">· ${esc(it.subject)}</span>` : ''}</div>`).join('')}</div></div>`).join('') || '<p style="padding:14px">Nothing planned. Add something or ask the planner.</p>'}</div>`;
+  }
+  const due = S.plan.filter(it => (it.kind === 'homework' || it.kind === 'task') && !it.done).sort((a, b) => a.date < b.date ? -1 : 1);
+  const exams = S.plan.filter(it => it.kind === 'exam' && it.date >= t).sort((a, b) => a.date < b.date ? -1 : 1).slice(0, 6);
+  const dl = d => { const n = Math.round((pd(d) - pd(t)) / 864e5); return n < 0 ? `<span style="color:var(--bad)">${-n}d overdue</span>` : n === 0 ? '<b>today</b>' : n === 1 ? 'tomorrow' : n + ' days'; };
+  $('#main').innerHTML = `<div class="plan"><div class="pside">
+      <button class="pri" id="pAsk" style="width:100%;margin-bottom:12px">✦ Ask the planner</button>
+      <h3>Due</h3><div class="card">${due.map(it => `<label class="due"><input type="checkbox" data-done="${it.id}"><span style="flex:1"><span class="dot" style="background:${subjColor(it.subject)}"></span>${esc(it.title)}<br><span class="meta">${fmtD(it.date)} · ${dl(it.date)}</span></span></label>`).join('') || '<p class="meta" style="padding:10px 12px;margin:0">All clear.</p>'}</div>
+      <h3>Exams</h3><div class="card">${exams.map(it => `<div class="due" data-id="${it.id}" style="cursor:pointer"><span style="flex:1">★ ${esc(it.title)}<br><span class="meta">${fmtD(it.date)}${it.time ? ' ' + it.time : ''} · ${dl(it.date)}</span></span></div>`).join('') || '<p class="meta" style="padding:10px 12px;margin:0">None coming up.</p>'}</div>
+      <p class="meta" style="margin-top:14px"><a href="#" id="pIcs">Show in my phone's calendar</a></p></div>
+    <div class="pmain"><div class="rbar"><button id="pPrev">‹</button><button id="pToday">Today</button><button id="pNext">›</button><h2 style="margin:0 8px;font-size:20px">${esc(title)}</h2><span class="sp"></span>
+      <div class="seg">${['month', 'week', 'agenda'].map(x => `<button data-pv="${x}" class="${x === v ? 'on' : ''}">${x[0].toUpperCase() + x.slice(1)}</button>`).join('')}</div><button class="pri" id="pAdd">+ Add</button></div>${body}</div></div>`;
+  const step = v === 'month' ? null : v === 'week' ? 7 : 60;
+  const mv = dir => { if (v === 'month') { const d = pd(S.pdate); d.setDate(1); d.setMonth(d.getMonth() + dir); S.pdate = ymd(d); } else S.pdate = addD(S.pdate, dir * step); drawPlan(); };
+  $('#pPrev').onclick = () => mv(-1); $('#pNext').onclick = () => mv(1); $('#pToday').onclick = () => { S.pdate = todayS(); drawPlan(); };
+  document.querySelectorAll('[data-pv]').forEach(b => b.onclick = () => { S.pv = b.dataset.pv; LS.set('ib-pv', S.pv); drawPlan(); });
+  $('#pAdd').onclick = () => editItem(null, v === 'month' ? (S.pdate.slice(0, 7) === t.slice(0, 7) ? t : S.pdate) : t);
+  document.querySelectorAll('.plan [data-id]').forEach(el => el.onclick = e => { e.stopPropagation(); editItem(S.plan.find(x => x.id === el.dataset.id)); });
+  document.querySelectorAll('.mc[data-d], .wcol[data-d]').forEach(el => el.onclick = e => { let time = ''; if (el.classList.contains('wcol')) { const r = el.getBoundingClientRect(), h = 7 + Math.floor((e.clientY - r.top) / 44); time = String(h).padStart(2, '0') + ':00'; } editItem(null, el.dataset.d, time); });
+  document.querySelectorAll('[data-done]').forEach(cb => cb.onchange = () => { const it = S.plan.find(x => x.id === cb.dataset.done); it.done = true; savePlan(); setTimeout(drawPlan, 250); });
+  $('#pAsk').onclick = () => openChat({title: 'Planner assistant', agent: true, msgs: S.planChat || []});
+  $('#pIcs').onclick = e => { e.preventDefault(); const url = RELAY.replace(/^http/, 'webcal') + '/ib/cal.ics?t=' + encodeURIComponent(PASS);
+    openModal(`<h3 style="margin-top:0">Sync to your phone</h3><p>Subscribe to this calendar link and your planner shows up in Apple Calendar, Google Calendar or Outlook, updating by itself (every few hours).</p><input readonly value="${esc(url)}" onclick="this.select()"><p class="meta">iPhone: tap the link below. Google Calendar (on a computer): Other calendars → + → From URL, paste the link with https:// instead of webcal://. Keep this link private; it contains your password.</p><div class="row"><a class="btn pri" href="${esc(url)}">Open in calendar app</a><button id="mClose">Close</button></div>`); };
+}
+function openModal(html) {
+  let m = $('#modal'); if (!m) { m = document.createElement('div'); m.id = 'modal'; document.body.appendChild(m); m.onclick = e => { if (e.target === m) m.remove(); }; }
+  m.innerHTML = `<div class="card mbox">${html}</div>`; const c = $('#mClose'); if (c) c.onclick = () => m.remove(); return m;
+}
+function editItem(it, date, time) {
+  const isNew = !it; it = it || {kind: 'homework', title: '', date: date || todayS(), time: time || ''};
+  if (isNew && time) it.kind = 'event';
+  const subs = [...new Set(S.plan.map(x => x.subject).filter(Boolean))];
+  const m = openModal(`<h3 style="margin-top:0">${isNew ? 'Add' : 'Edit'}</h3><form id="ef" class="ef">
+    <div class="seg" style="margin-bottom:10px">${Object.entries(PK).map(([k, l]) => `<button type="button" data-k="${k}" class="${it.kind === k ? 'on' : ''}">${l}</button>`).join('')}</div>
+    <input name="title" placeholder="What is it?" value="${esc(it.title)}" required autofocus>
+    <input name="subject" list="subs" placeholder="Subject (optional)" value="${esc(it.subject || '')}"><datalist id="subs">${subs.map(s => `<option value="${esc(s)}">`).join('')}</datalist>
+    <div class="row"><label>Date<input type="date" name="date" value="${it.date}" required></label><label>Start<input type="time" name="time" value="${it.time || ''}"></label><label>End<input type="time" name="end" value="${it.end || ''}"></label></div>
+    <div class="row"><label class="rowl"><input type="checkbox" name="rep" ${it.rep === 'weekly' ? 'checked' : ''}> Repeats weekly</label><label>until<input type="date" name="until" value="${it.until || ''}"></label></div>
+    <textarea name="notes" rows="3" placeholder="Notes">${esc(it.notes || '')}</textarea>
+    ${isNew ? '' : `<label class="rowl"><input type="checkbox" name="done" ${it.done ? 'checked' : ''}> Done</label>`}
+    <div class="row" style="margin-top:6px">${isNew ? '' : '<button type="button" id="eDel" style="color:var(--bad)">Delete</button>'}<span style="flex:1"></span><button type="button" id="mClose">Cancel</button><button class="pri">Save</button></div></form>`);
+  let kind = it.kind;
+  m.querySelectorAll('[data-k]').forEach(b => b.onclick = () => { kind = b.dataset.k; m.querySelectorAll('[data-k]').forEach(x => x.classList.toggle('on', x === b)); });
+  $('#ef').onsubmit = e => { e.preventDefault(); const f = new FormData(e.target), o = isNew ? {id: Math.random().toString(36).slice(2, 8)} : it;
+    o.kind = kind; for (const k of ['title', 'subject', 'date', 'time', 'end', 'until', 'notes']) { const v = (f.get(k) || '').trim(); if (v) o[k] = v; else delete o[k]; }
+    if (f.get('rep')) o.rep = 'weekly'; else { delete o.rep; delete o.until; } if (f.get('done')) o.done = true; else delete o.done;
+    if (isNew) S.plan.push(o); savePlan(); m.remove(); drawPlan(); };
+  if ($('#eDel')) $('#eDel').onclick = () => { if (!confirm('Delete "' + it.title + '"?')) return; S.plan = S.plan.filter(x => x !== it); savePlan(); m.remove(); drawPlan(); };
 }
 
 // ---------- boot ----------
