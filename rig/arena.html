@@ -54,6 +54,8 @@ button.go { width:100%; background:var(--acc); color:#1a1200; font-weight:700; b
 #hpN { font:700 30px ui-monospace,monospace; } #hpN small { font-size:13px; color:var(--dim); margin-left:6px; }
 #airBar { height:5px; margin-top:5px; background:rgba(0,0,0,.5); border-radius:3px; overflow:hidden; } #airBar i { display:block; height:100%; background:#7fd0ff; }
 #ammo { position:absolute; right:24px; bottom:22px; text-align:right; } #ammoN { font:700 34px ui-monospace,monospace; } #ammoN small { font-size:16px; color:var(--dim); }
+#relBar { width:120px; height:4px; margin:4px 0 2px auto; background:rgba(0,0,0,.5); border-radius:2px; overflow:hidden; } #relBar i { display:block; height:100%; width:0; background:var(--acc); }
+#ammoH { font-size:12px; font-weight:700; letter-spacing:.12em; color:#ffb040; min-height:0; animation:ahP 1s ease-in-out infinite; } #ammoH:empty { animation:none; } @keyframes ahP { 50% { opacity:.45; } }
 #wName { font-size:13px; letter-spacing:.15em; text-transform:uppercase; color:var(--dim); } #nades { font-size:13px; margin-top:3px; }
 #score { position:absolute; left:50%; top:12px; transform:translateX(-50%); text-align:center; font:700 18px ui-monospace,monospace; background:rgba(0,0,0,.35); padding:5px 16px; border-radius:6px; }
 #score small { display:block; font-size:11px; font-weight:400; color:var(--dim); letter-spacing:.12em; }
@@ -98,7 +100,7 @@ button.go { width:100%; background:var(--acc); color:#1a1200; font-weight:700; b
   <div id="hm"></div>
   <div id="dmgDir"></div>
   <div id="hpBox"><div id="hpN">100<small id="hpT"></small></div><div id="hpBar"><i></i></div><div id="airBar" class="hidden"><i></i></div></div>
-  <div id="ammo"><div id="wName"></div><div id="ammoN"></div><div id="nades"></div></div>
+  <div id="ammo"><div id="wName"></div><div id="ammoN"></div><div id="relBar" class="hidden"><i></i></div><div id="ammoH"></div><div id="nades"></div></div>
   <div id="boatHud" class="hidden"></div>
 </div>
 
@@ -166,12 +168,12 @@ button.go { width:100%; background:var(--acc); color:#1a1200; font-weight:700; b
 
 <div id="load">Loading…</div>
 <script src="../three-r170.js"></script>
-<script src="arena/core.js?v=1"></script>
+<script src="arena/core.js?v=2"></script>
 <script src="arena/world.js?v=1"></script>
 <script src="arena/player.js?v=1"></script>
 <script src="arena/boats.js?v=1"></script>
-<script src="arena/match.js?v=1"></script>
-<script src="arena/ui.js?v=1"></script>
+<script src="arena/match.js?v=2"></script>
+<script src="arena/ui.js?v=2"></script>
 <script>
 // slider readouts: each range input shows its value in its label (polled, since the games also set values from code)
 (function () { const fmt = e => { const v = +e.value; return /fov/i.test(e.id) ? Math.round(v) + '°' : /sens/i.test(e.id) ? v.toFixed(2) + 'x' : Math.round(v * 100) + '%'; };
