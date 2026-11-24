@@ -189,16 +189,20 @@ main{padding:24px 28px 80px;min-width:0}
 .page th,.page td{border-bottom:1px solid var(--line);padding:7px 10px;text-align:left;vertical-align:top}
 .page th{font-weight:600;border-bottom:1.5px solid var(--ink2)}
 .page blockquote{margin:16px 0;padding:12px 16px;background:var(--sunk);border-radius:8px;font:15px/1.55 var(--f-ui)}
-.co{margin:20px 0;border-radius:var(--r);padding:12px 16px 12px;font:15px/1.55 var(--f-ui);background:var(--sunk);border:1px solid var(--line)}
-.co .ct{font-size:12px;font-weight:600;color:var(--mut);margin-bottom:4px;display:flex;gap:6px;align-items:baseline}
-.co .ct b{font-size:15px;color:var(--ink);font-weight:600}
+.co{margin:22px 0 18px;padding:0;font:inherit}
+.co .ct{font:600 11.5px/1.3 var(--f-ui);letter-spacing:.07em;text-transform:uppercase;color:var(--mut);margin-bottom:4px;display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
+.co .ct b{font:600 1.02em/1.3 var(--f-ui);text-transform:none;letter-spacing:0;color:var(--ink)}.co.ahl .ct{color:var(--red)}.co.ahl{margin:14px 0 6px}
 .co p{margin:.3em 0}
-.co.keyterm{background:var(--kt);border-color:color-mix(in srgb,var(--warn) 25%,var(--line))}
+.co.keyterm,.co.case,.co.concept,.co.nos,.co.link,.co.questions,.co.activity,.co.exercise,.co.challenge,.co.practice,.co.worked,.co.tip{background:none!important;border:none!important}.x-old-co{background:var(--kt);border-color:color-mix(in srgb,var(--warn) 25%,var(--line))}
 .co.case,.co.concept,.co.nos,.co.link{background:var(--cs);border-color:color-mix(in srgb,var(--acc) 22%,var(--line))}
 .co.questions,.co.activity,.co.exercise,.co.challenge,.co.practice{background:var(--panel);border-color:var(--line2)}
 .co.worked{background:var(--good2);border-color:color-mix(in srgb,var(--good) 25%,var(--line))}
 .co.tip{background:var(--red2);border-color:color-mix(in srgb,var(--red) 22%,var(--line))}
-.page em.fig{display:block;color:var(--mut);font:italic 14px/1.45 var(--f-ui);padding:10px 14px;background:var(--sunk);border-radius:8px;margin:14px 0}
+.page em.fig{display:block;color:var(--mut);font:italic 13.5px/1.45 var(--f-ui);margin:10px 0}
+.page{font-size:var(--rfs,18px)}.fimg{margin:20px 0;text-align:center}.fimg img{max-width:100%;height:auto;border-radius:6px;background:#fff;display:inline-block}
+.pgs{display:flex;flex-direction:column;gap:18px}.pgx{position:relative}.pgh{font:500 12px var(--f-ui);color:var(--mut);margin:-18px 0 10px;text-align:right}.scanx .pgh{margin:0 0 6px}
+.ic2{min-width:36px;justify-content:center;padding:6px 8px;font-weight:600}
+body.focus #side,body.focus header,body.focus #toc,body.focus #bot,body.focus .ask{display:none!important}body.focus #app,body.focus .wrap{display:block!important}body.focus .reader{max-width:900px;padding-top:14px}body.focus #main{padding-top:0}
 .scan{width:100%;display:block;border-radius:var(--r);border:1px solid var(--line);background:#fff;box-shadow:var(--sh)}
 mark{background:#ffe28a;color:#1c2230;border-radius:3px;padding:0 1px}
 .pgnum{color:var(--mut);font-size:13px;font-variant-numeric:tabular-nums}
@@ -401,7 +405,7 @@ a.btn{display:inline-flex;padding:7px 12px;border-radius:8px;text-decoration:non
 <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/></symbol>
 <symbol id="i-moon" viewBox="0 0 24 24"><path d="M19.5 14.5A8 8 0 019.5 4.5a8 8 0 1010 10z"/></symbol>
 <symbol id="i-pin" viewBox="0 0 24 24"><path d="M9 4h6l-1 5 3.5 3.5v1.5h-11V12.5L10 9z"/><path d="M12 14v6"/></symbol>
-<symbol id="i-flask" viewBox="0 0 24 24"><path d="M9 3.5h6M10 3.5v6L4.8 18.2A1.5 1.5 0 006.1 20.5h11.8a1.5 1.5 0 001.3-2.3L14 9.5v-6"/><path d="M7.5 14.5h9"/></symbol>
+<symbol id="i-full" viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></symbol><symbol id="i-flask" viewBox="0 0 24 24"><path d="M9 3.5h6M10 3.5v6L4.8 18.2A1.5 1.5 0 006.1 20.5h11.8a1.5 1.5 0 001.3-2.3L14 9.5v-6"/><path d="M7.5 14.5h9"/></symbol>
 <symbol id="i-mark" viewBox="0 0 24 24"><path d="M7 4h10v16l-5-3.8L7 20z"/></symbol>
 <symbol id="i-loop" viewBox="0 0 24 24"><path d="M4.5 12a7.5 7.5 0 0112.8-5.3L19.5 9"/><path d="M19.5 4.5V9H15"/><path d="M19.5 12a7.5 7.5 0 01-12.8 5.3L4.5 15"/><path d="M4.5 19.5V15H9"/></symbol>
 <symbol id="i-cap" viewBox="0 0 24 24"><path d="M3 9l9-4 9 4-9 4z"/><path d="M7 11v5c0 1.5 2.5 3 5 3s5-1.5 5-3v-5"/></symbol>
@@ -445,7 +449,7 @@ async function api(op, body = {}) {
   if (j && j.err) throw new Error(j.err);
   return j;
 }
-const S = {books: [], qs: [], book: null, tab: 'home', n: 1, view: LS.get('ib-view', 'text'), cache: new Map(), hl: '', prog: null, reading: false};
+const S = {books: [], qs: [], book: null, tab: 'home', n: 1, view: LS.get('ib-view', 'text'), mode: LS.get('ib-mode', 'page'), rfs: LS.get('ib-rfs', 18), cache: new Map(), hl: '', prog: null, reading: false};
 // per-account local copies; the first account on this device inherits the data saved before accounts existed
 function loadLocal() {
   const mig = !LS.get('ib-migrated', 0);
@@ -456,7 +460,7 @@ function loadLocal() {
 }
 
 // ---------- markdown ----------
-const CO = {keyterm: 'Key term', concept: 'Concept', case: 'Case study', activity: 'Activity', tok: 'TOK', atl: 'ATL skills', tip: 'Assessment tip', questions: 'Questions', box: ''};
+const CO = {ahl: 'Higher level only', worked: 'Worked example', exercise: 'Practice questions', practice: 'Practice questions', guiding: 'Guiding questions', link: 'Linking', nos: 'Nature of science', atl: 'ATL', tool: 'Tools and inquiry', challenge: 'Challenge', keyterm: 'Key term', concept: 'Concept', case: 'Case study', activity: 'Activity', tok: 'TOK', atl: 'ATL skills', tip: 'Assessment tip', questions: 'Questions', box: ''};
 // maths: books flagged math (and their chats) render $...$ / $$...$$ with KaTeX + mhchem; other books keep $ as money
 let MATH = false;
 const mdm = (src, inline) => { const o = MATH; MATH = true; try { return mdx(src, inline); } finally { MATH = o; } }; // always render $maths$ (chat, mind maps)
@@ -468,8 +472,13 @@ function mathOut(src) {
   return {src, put: h => h.replace(/\u0000(\d+)\u0000/g, (m, i) => { const [t, d] = M[+i]; try { return katex.renderToString(t, {displayMode: d, throwOnError: false}); } catch (e) { return esc(t); } })};
 }
 const mdx = (src, inline) => { const m = mathOut(src); return m.put(inline ? marked.parseInline(m.src) : marked.parse(m.src)); };
-function md(src) {
-  src = src.replace(/^<!--.*?-->\s*/s, '').replace(/^\*\[(.+?)\]\*\s*$/gm, (m, t) => '<em class="fig">' + esc(t) + '</em>');
+const FIGS = {};
+async function getFigs(b) { if (!FIGS[b]) FIGS[b] = api('figs', {book: b}).catch(() => ({})); return FIGS[b]; }
+function md(src, fig) {
+  src = src.replace(/^<!--.*?-->\s*/s, '');
+  if (fig && fig.ks && fig.ks.length) { let k = -1; // same matching as ib/figs.py: k = index of the figure line on the page
+    src = src.replace(/^\s*\*\[(Figure[^\n]*?)\]\*\s*$/gm, (m, t) => { k++; return fig.ks.includes(k) ? `\n\n<figure class="fimg"><img loading="lazy" src="${imgUrl(fig.b + '~f', fig.n * 100 + k)}" alt="${esc(t)}" title="${esc(t)}"></figure>\n\n` : m; }); }
+  src = src.replace(/^\*\[(.+?)\]\*\s*$/gm, (m, t) => '<em class="fig">' + esc(t) + '</em>');
   const mo = mathOut(src); src = mo.src;
   let html = mo.put(marked.parse(src, {gfm: true, breaks: false}));
   html = html.replace(/<blockquote>\s*<p>\[!(\w+)\]\s*([^\n<]*)\n?([\s\S]*?)<\/blockquote>/g, (m, type, title, rest) => {
@@ -546,6 +555,33 @@ function markToc() {
 }
 
 // ---------- library ----------
+// scroll mode: pages stack as you read; the page in view becomes the current page (progress, hash, contents highlight, Ask/Teach context)
+async function readScroll(B, n0) {
+  const b = B.id, el = $('#pg'), F = await getFigs(b); let lo = n0, hi = n0 - 1, busy = false;
+  const pageEl = async k => { const p = await getPage(b, k), bp = p.bp && p.bp !== '-' ? p.bp : '', s = document.createElement('section');
+    s.className = S.view === 'scan' ? 'pgx scanx' : 'card page pgx'; s.dataset.n = k; s.dataset.bp = bp;
+    s.innerHTML = `<div class="pgh">${bp ? 'p. ' + esc(bp) + ' · ' : ''}${k}</div>` + (S.view === 'scan' ? `<img class="scan" loading="lazy" alt="Page ${esc(bp)}" src="${imgUrl(b, k)}">` : md(p.md || '*(empty page)*', {b, n: k, ks: F[k] || []}));
+    if (S.view !== 'scan') paintHls(s, b, k); return s; };
+  const down = async () => { if (busy || hi >= B.pages || !document.body.contains(el)) return; busy = true;
+    try { const s = await pageEl(hi + 1); if (!document.body.contains(el)) return; if (hi < lo) el.innerHTML = ''; hi++; el.append(s); } catch (e) {} busy = false;
+    const end = $('#pgEnd'); if (end && end.getBoundingClientRect().top < innerHeight + 1600) down(); };
+  const up = async () => { if (busy || lo <= 1) return; busy = true; const h0 = document.documentElement.scrollHeight;
+    for (let i = 0; i < 3 && lo > 1; i++) { const s = await pageEl(lo - 1); lo--; el.prepend(s); }
+    window.scrollBy(0, document.documentElement.scrollHeight - h0); busy = false; if (lo <= 1 && $('#pgUp')) $('#pgUp').remove(); };
+  if ($('#pgUp')) $('#pgUp').onclick = up;
+  await down(); if (S.hl) highlight(el, S.hl);
+  const io = new IntersectionObserver(es => { if (es.some(x => x.isIntersecting)) down(); }, {rootMargin: '1600px'}); io.observe($('#pgEnd'));
+  let raf = 0; const onScroll = () => { if (!document.body.contains(el)) { removeEventListener('scroll', onScroll); io.disconnect(); return; } if (raf) return; raf = requestAnimationFrame(() => { raf = 0;
+    const y = Math.min(innerHeight * .35, 220), cur = [...el.children].find(s => { const r = s.getBoundingClientRect(); return r.top <= y && r.bottom > y; }); if (!cur) return;
+    const k = +cur.dataset.n; $('#pn').textContent = (cur.dataset.bp ? 'p. ' + cur.dataset.bp + ' · ' : '') + `${k} / ${B.pages}`; $('#pn').dataset.bp = cur.dataset.bp;
+    if (k === S.n) return; S.n = k; const t = Date.now(); S.prog.last = {b, n: k, t}; S.prog.lastBy[b] = {n: k, t}; trackSec(B, k); act('p'); history.replaceState(null, '', `#/lib/${b}/${k}`); markToc(); }); };
+  if (S.rdScroll) removeEventListener('scroll', S.rdScroll); S.rdScroll = onScroll; addEventListener('scroll', onScroll, {passive: true}); onScroll();
+}
+function toggleFocus() { // full screen reading: hides the app chrome; Esc or the button leaves
+  const on = !document.body.classList.contains('focus'); document.body.classList.toggle('focus', on);
+  try { if (on && document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(() => {}); else if (!on && document.fullscreenElement) document.exitFullscreen(); } catch (e) {}
+}
+document.addEventListener('fullscreenchange', () => { if (!document.fullscreenElement) document.body.classList.remove('focus'); });
 async function openPage(b, n, hl) {
   const B = bookOf(b); if (!B.pages) return openBook(b); MATH = !!B.math; n = Math.max(1, Math.min(B.pages, n)); S.n = n; S.hl = hl || '';
   if (S.book !== B) { S.book = B; renderToc(); }
@@ -556,25 +592,32 @@ async function openPage(b, n, hl) {
   title([['Library', 'lib'], [B.subject || B.title], sec ? (sec.num ? sec.num.replace(/^(Structure|Reactivity)\s+/, (m, w) => w[0]) + ' ' : '') + sec.title : 'Page ' + n]);
   $('#main').innerHTML = `<div class="reader"><div class="rbar">
     <button id="pv" aria-label="Previous page"><svg class="i"><use href="#i-l"/></svg></button><span class="pgnum" id="pn"></span><button id="nx" aria-label="Next page"><svg class="i"><use href="#i-r"/></svg></button>
-    <span class="sp"></span><button id="bmk" class="${mk ? 'on' : ''}" title="Bookmark this page"><svg class="i"><use href="#i-mark"/></svg></button>${B.file ? `<a class="meta" href="${RELAY}/ib/file?b=${b}&t=${encodeURIComponent(PASS)}" download title="Download the whole textbook PDF" style="display:inline-flex;gap:4px;align-items:center;text-decoration:none"><svg class="i"><use href="#i-dl"/></svg>PDF</a>` : ''}<div class="seg"><button data-v="text">Text</button><button data-v="scan">Scan</button></div></div>
-    <div id="pg" class="card page"><span class="spin"></span></div><div class="rbar" style="margin-top:12px"><button id="pv2"><svg class="i"><use href="#i-l"/></svg>Previous</button><span class="sp"></span><button id="nx2">Next<svg class="i"><use href="#i-r"/></svg></button></div></div>
+    <span class="sp"></span><button id="bmk" class="${mk ? 'on' : ''}" title="Bookmark this page"><svg class="i"><use href="#i-mark"/></svg></button>${B.file ? `<a class="meta" href="${RELAY}/ib/file?b=${b}&t=${encodeURIComponent(PASS)}" download title="Download the whole textbook PDF" style="display:inline-flex;gap:4px;align-items:center;text-decoration:none"><svg class="i"><use href="#i-dl"/></svg>PDF</a>` : ''}<div class="seg rdv"><button data-v="text">Text</button><button data-v="scan">Scan</button></div><div class="seg rdm"><button data-m="page" title="One page at a time">Page</button><button data-m="scroll" title="Scroll through the book">Scroll</button></div>
+    <button id="fsDn" class="ic2" title="Smaller text" aria-label="Smaller text">A−</button><button id="fsUp" class="ic2" title="Bigger text" aria-label="Bigger text">A+</button><button id="fsc" class="ic2" title="Full screen (F)" aria-label="Full screen"><svg class="i"><use href="#i-full"/></svg></button></div>
+    ${S.mode === 'scroll' ? `<div class="row" style="justify-content:center;margin-bottom:10px">${n > 1 ? '<button id="pgUp" class="ghost">↑ Earlier pages</button>' : ''}</div><div id="pg" class="pgs"><span class="spin"></span></div><div id="pgEnd" style="height:1px"></div>`
+      : `<div id="pg" class="card page"><span class="spin"></span></div><div class="rbar" style="margin-top:12px"><button id="pv2"><svg class="i"><use href="#i-l"/></svg>Previous</button><span class="sp"></span><button id="nx2">Next<svg class="i"><use href="#i-r"/></svg></button></div>`}</div>
     <div class="ask row"><button id="rcall">Free recall</button><button id="xback">Explain it back</button><button id="teach"><svg class="i"><use href="#i-cap"/></svg>Teach me</button><button class="pri" id="askP"><svg class="i"><use href="#i-spark"/></svg>Ask</button></div>`;
   $('#xback').onclick = () => explainBack(B, sec, n); $('#rcall').onclick = () => { const t = recallSecAt(B, n); if (t) renderRecall(b, t.n); };
   $('#bmk').onclick = () => { const i = S.prog.marks.findIndex(m => m.b === b && m.n === n);
     if (i >= 0) S.prog.marks.splice(i, 1); else S.prog.marks.unshift({b, n, bp: $('#pn').dataset.bp || '', title: sec ? (sec.num ? sec.num + ' ' : '') + sec.title : '', t: Date.now()});
     saveProg(true); $('#bmk').classList.toggle('on', i < 0); renderToc(); markToc(); };
-  $('#pv').onclick = $('#pv2').onclick = () => openPage(b, n - 1); $('#nx').onclick = $('#nx2').onclick = () => openPage(b, n + 1);
-  document.querySelectorAll('.seg button').forEach(x => { x.classList.toggle('on', x.dataset.v === S.view); x.onclick = () => { S.view = x.dataset.v; LS.set('ib-view', S.view); openPage(b, n, hl); }; });
+  const jump = d => { const t = S.n + d, sec = document.querySelector(`.pgx[data-n="${t}"]`); if (S.mode === 'scroll' && sec) sec.scrollIntoView({behavior: 'smooth'}); else openPage(b, t); };
+  $('#pv').onclick = () => jump(-1); $('#nx').onclick = () => jump(1); if ($('#pv2')) { $('#pv2').onclick = () => openPage(b, n - 1); $('#nx2').onclick = () => openPage(b, n + 1); }
+  document.querySelectorAll('.rdv button').forEach(x => { x.classList.toggle('on', x.dataset.v === S.view); x.onclick = () => { S.view = x.dataset.v; LS.set('ib-view', S.view); openPage(b, S.n, hl); }; });
+  document.querySelectorAll('.rdm button').forEach(x => { x.classList.toggle('on', x.dataset.m === S.mode); x.onclick = () => { S.mode = x.dataset.m; LS.set('ib-mode', S.mode); openPage(b, S.n); }; });
+  const fs = d => { S.rfs = Math.max(14, Math.min(26, (S.rfs || 18) + d)); LS.set('ib-rfs', S.rfs); document.querySelector('.reader').style.setProperty('--rfs', S.rfs + 'px'); };
+  $('#fsDn').onclick = () => fs(-1); $('#fsUp').onclick = () => fs(1); fs(0); $('#fsc').onclick = toggleFocus;
   $('#askP').onclick = () => openChat({title: 'Ask about p. ' + ($('#pn').dataset.bp || n), book: b, pages: [], intro: ''});
   $('#teach').onclick = () => { const secN = sec ? sec.n : n, nxt = B.toc.find(t => t.n > secN && t.lvl <= (sec ? sec.lvl : 3)), endN = nxt ? Math.min(nxt.n, secN + 8) : secN + 3, ps = []; for (let i = secN; i <= endN && i <= B.pages; i++) ps.push(i);
     openChat({title: 'Lesson: ' + (sec ? (sec.num ? sec.num + ' ' : '') + sec.title : 'p. ' + n), book: b, pages: [], intro: ''}); sendChat(`Teach me ${sec ? (sec.num ? sec.num + ' ' : '') + sec.title : 'this page'} from my textbook (it starts on p. ${(sec && sec.bp) || $('#pn').dataset.bp || n}; read the pages as you go rather than all at once), step by step. Start with the big idea and an analogy, then go through it in small chunks and check my understanding as we go. Don't dump everything at once.`); };
   markToc(); window.scrollTo(0, 0); $('#toc').classList.remove('open');
   try {
-    const p = await getPage(b, n); if (S.n !== n) return;
+    if (S.mode === 'scroll') return readScroll(B, n);
+    const [p, F] = await Promise.all([getPage(b, n), getFigs(b)]); if (S.n !== n) return;
     const bp = p.bp && p.bp !== '-' ? p.bp : ''; $('#pn').textContent = (bp ? 'p. ' + bp + ' · ' : '') + `${n} / ${B.pages}`; $('#pn').dataset.bp = bp;
     const el = $('#pg');
     if (S.view === 'scan') { el.className = ''; el.innerHTML = `<img class="scan" alt="Page ${esc(bp)}" src="${imgUrl(b, n)}">`; }
-    else { el.className = 'card page'; el.innerHTML = md(p.md || '*(empty page)*'); paintHls(el, b, n); highlight(el, S.hl); }
+    else { el.className = 'card page'; el.innerHTML = md(p.md || '*(empty page)*', {b, n, ks: F[n] || []}); paintHls(el, b, n); highlight(el, S.hl); }
     if (n < B.pages) getPage(b, n + 1).catch(() => {});
   } catch (e) { $('#pg').innerHTML = '<p>Could not load: ' + esc(e.message) + '</p>'; }
 }
@@ -2280,8 +2323,10 @@ $('#cf').onsubmit = e => { e.preventDefault(); const v = $('#ci').value; $('#ci'
 $('#ci').onkeydown = e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); $('#cf').requestSubmit(); } };
 document.addEventListener('keydown', e => {
   if (/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) return;
-  if (S.tab === 'lib' && e.key === 'ArrowRight') openPage(S.book.id, S.n + 1);
-  if (S.tab === 'lib' && e.key === 'ArrowLeft') openPage(S.book.id, S.n - 1);
+  if (S.tab === 'lib' && S.reading && S.mode !== 'scroll' && e.key === 'ArrowRight') openPage(S.book.id, S.n + 1);
+  if (S.tab === 'lib' && S.reading && S.mode !== 'scroll' && e.key === 'ArrowLeft') openPage(S.book.id, S.n - 1);
+  if (S.tab === 'lib' && S.reading && (e.key === 'f' || e.key === 'F') && !e.metaKey && !e.ctrlKey) toggleFocus();
+  if (e.key === 'Escape' && document.body.classList.contains('focus') && !document.fullscreenElement) document.body.classList.remove('focus');
   if (e.key === ' ' && $('#flip')) { e.preventDefault(); $('#flip').click(); }
   if (/^[1-4]$/.test(e.key) && $(`[data-gr="${e.key - 1}"]`)) $(`[data-gr="${e.key - 1}"]`).click();
   if (e.key === '/') { e.preventDefault(); $('#q').focus(); }

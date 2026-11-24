@@ -565,6 +565,7 @@ async function ibRoute(req, env, CORS, u) {
     await ibUse(db, who, 'claude-haiku-5-5', j.usage);
     try { return J(JSON.parse(j.content.find(c => c.type === 'text').text)); } catch (e) { return J({err: 'bad quiz'}, 502); }
   }
+  if (op === 'figs') { const r = await (await db('kvget', {k: 'figs:' + String(b.book || '').replace(/[^\w-]/g, '')})).text(); return new Response(r && r !== '[]' ? r : '{}', {headers: H}); } // which figure lines have a cropped picture (ib/figs.py)
   if (op === 'papers') { const r = await db('kvget', {k: 'papers'}); return new Response(r.body, {headers: H}); } // past papers (uploaded by the owner as kv 'papers')
   if (op === 'sync') { const r = await db('sync', {...b, k: 'prog:' + uk}); return new Response(r.body, {status: r.status, headers: H}); }
   if (['books', 'page', 'pagebp', 'pages', 'search', 'qs'].includes(op)) { const r = await db(op, b); return new Response(r.body, {status: r.status, headers: H}); }
