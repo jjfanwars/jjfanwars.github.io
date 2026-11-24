@@ -32,8 +32,14 @@ def load(md_dir):
 def build(book, title, subject, pages):
     toc, terms, qs = [], [], []
     cand = []  # physics-style "A.2 Title" / "Theme A" headings repeat as running headers: resolved after the scan
+    skip, after = set(), False  # contents pages list every chapter as a heading: ignore their headings
     for p in pages:
-        for line in p['md'].splitlines():
+        nh = len(re.findall(r'(?m)^#{1,2} ', p['md']))
+        if re.search(r'(?m)^#{1,2}\s*Contents\b', p['md'], re.I) or len(re.findall(r'(?m)^[-* ]*[A-Za-z].{2,80}\s\d{1,3}\s*$', p['md'])) >= 5: skip.add(p['n']); after = True
+        elif after and nh >= 5: skip.add(p['n'])
+        else: after = False
+    for p in pages:
+        for line in (p['md'].splitlines() if p['n'] not in skip else []):
             h = re.match(r'(#{1,3})\s+(.+)', line)
             if h:
                 t = re.sub(r'[*_]', '', h.group(2)).strip()
@@ -136,7 +142,7 @@ def build(book, title, subject, pages):
                     qs.append({'id': f'{book}-p2-{p["n"]}-{sec}{mq.group(1)}', 'book': book, 'kind': 'essay', 'marks': 15, 'text': text,
                                'ctx': f'Paper 2, section {sec}', 'topic': ch, 'n': p['n'], 'bp': p['bp'], 'pages': related(text)})
         # activities and question boxes: one practice item per box that asks something
-        for m in re.finditer(r'^> \[!(activity|questions)\]\s*(.*)\n((?:>.*\n?)+)', md, re.M):
+        for m in re.finditer(r'^> \[!(activity|questions|reflect|kq)\]\s*(.*)\n((?:>.*\n?)+)', md, re.M):
             body = re.sub(r'^>\s?', '', m.group(3), flags=re.M).strip()
             body = re.sub(r'^>\s?', '', body, flags=re.M)
             if '?' not in body and not re.search(r'^\s*\d+\.', body, re.M):
@@ -149,7 +155,7 @@ def build(book, title, subject, pages):
                     qs.append({'id': f'{book}-p1-{p["n"]}-{i}', 'book': book, 'kind': 'p1', 'marks': [3, 4, 8, 10][min(i, 4) - 1], 'text': plain(mq.group(2)),
                                'ctx': 'Paper 1 practice: the sources are on the textbook pages shown (open in textbook).', 'topic': topic_at(p['n']), 'n': p['n'] - 1, 'bp': str(int(p['bp']) - 1) if p['bp'].isdigit() else p['bp'], 'pages': [p['n'] - 1, p['n']]})
                 continue
-            kind = 'activity' if m.group(1) == 'activity' else 'short'
+            kind = {'activity': 'activity', 'reflect': 'activity', 'kq': 'discuss'}.get(m.group(1), 'short')
             qs.append({'id': f'{book}-{kind}-{p["n"]}-{m.start()}', 'book': book, 'kind': kind, 'text': plain(body), 'ctx': plain(m.group(2)) if m.group(2).strip() not in ('Activity', '') else '',
                        'topic': topic_at(p['n']), 'n': p['n'], 'bp': p['bp'], 'pages': related(body, p['n'])})
         # science books: exercises, challenge boxes and end-of-chapter practice questions, one item per numbered question
