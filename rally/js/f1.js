@@ -263,6 +263,8 @@
       this.set(this.wl.frequency, 300 + v * 9, 0.1); this.set(this.wg.gain, Math.min(0.5, (v / 90) ** 2 * 0.35) * (inCk ? 1 : 0.5), 0.1);
       this.set(this.kb.frequency, Math.max(4, v / 1.25), 0.02); this.set(this.kbg.gain, c.kerb && v > 5 ? 0.35 : 0, 0.02);
       this.set(this.gvg.gain, c.off && v > 2 ? Math.min(0.35, v / 40) : 0, 0.05);
+      // overrun crackle: a sharp lift from full throttle at high revs
+      { const now = this.C.currentTime; if (thr > 0.85) { this.hiT = now; this.crk = false; } else if (thr < 0.2 && !this.crk && now - (this.hiT || -9) < 0.35 && c.rpm > 8500 && v > 25 && c.gear >= 1 && !c.pit) { this.crk = true; this.crackle(inCk ? 1 : 0.7); } }
       // rivals: distance, doppler, pan
       const near = others.filter(o => o !== c).map(o => ({ o, d: Math.hypot(o.x - camPos.x, o.z - camPos.z) })).sort((a, b) => a.d - b.d).slice(0, 2);
       this.ov.forEach((vo, k) => {
@@ -278,6 +280,10 @@
     mute() { if (this.C) { this.set(this.eg.gain, 0, 0.05); this.set(this.eng.gain, 0, 0.05); this.set(this.wg.gain, 0, 0.05); this.set(this.sqg.gain, 0, 0.05); this.set(this.kbg.gain, 0, 0.05); this.set(this.gvg.gain, 0, 0.05); this.set(this.twg.gain, 0, 0.05); this.set(this.kwg.gain, 0, 0.05); for (const v of this.ov) this.set(v.g.gain, 0, 0.05); } },
     hit(m) { if (!this.C) return; const C = this.C, s = C.createBufferSource(); s.buffer = this.nb; const l = C.createBiquadFilter(); l.type = 'lowpass'; l.frequency.value = 500 + m * 60; const g = C.createGain(); g.gain.setValueAtTime(Math.min(0.9, m * 0.06), C.currentTime); g.gain.exponentialRampToValueAtTime(0.001, C.currentTime + 0.35); s.connect(l); l.connect(g); g.connect(this.out); s.start(); s.stop(C.currentTime + 0.4); },
     beep(f, d) { if (!this.C) return; const C = this.C, o = C.createOscillator(), g = C.createGain(); o.frequency.value = f; g.gain.setValueAtTime(0.12, C.currentTime); g.gain.exponentialRampToValueAtTime(0.001, C.currentTime + (d || 0.15)); o.connect(g); g.connect(this.out); o.start(); o.stop(C.currentTime + (d || 0.15) + 0.02); },
+    crackle(m) {
+      const C = this.C, n = 3 + (Math.random() * 4 | 0); let t = C.currentTime + 0.03;
+      for (let k = 0; k < n; k++) { t += 0.025 + Math.random() * 0.07; const s = C.createBufferSource(); s.buffer = this.nb; const b = C.createBiquadFilter(); b.type = 'bandpass'; b.frequency.value = 500 + Math.random() * 1500; b.Q.value = 1.4; const g = C.createGain(), a = (0.08 + Math.random() * 0.14) * m, d = 0.025 + Math.random() * 0.04; g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(a, t + 0.003); g.gain.exponentialRampToValueAtTime(0.001, t + d); s.connect(b); b.connect(g); g.connect(this.out); s.start(t, Math.random() * 1.5); s.stop(t + d + 0.02); }
+    },
     pop() { if (!this.C) return; const C = this.C, s = C.createBufferSource(); s.buffer = this.nb; const b = C.createBiquadFilter(); b.type = 'bandpass'; b.frequency.value = 400; b.Q.value = 0.8; const g = C.createGain(); g.gain.setValueAtTime(0.25, C.currentTime); g.gain.exponentialRampToValueAtTime(0.001, C.currentTime + 0.09); s.connect(b); b.connect(g); g.connect(this.out); s.start(); s.stop(C.currentTime + 0.1); },
   };
 
@@ -361,7 +367,7 @@
     setTimeout(() => {
       const ci = +SET.circuit; if (!T || T.C !== F1T.CIRCUITS[ci]) buildWorld(ci);
       for (const c of G.cars) scene.remove(c.mesh); if (CK) { CK.rt.dispose(); CK = null; }
-      G.mode = 'run'; G.mode2 = SET.mode; G.gen = (G.gen || 0) + 1; G.limMin = 9; ctl.st = ctl.raw = ctl.held = 0; for (const k in CREW) { world.remove(CREW[k].g); delete CREW[k]; } G.cars = []; G.t = 0; G.jump = G.jumpTold = false; G.lightsN = 0; G.chaseInit = false; G.resultsOn = false; G.trace = null; G.traceT = 0; G.paused = false; G.fin = null; G.over = false; G.pen = 0; G.warn = 0; G.limT = 0; G.results = null;
+      G.mode = 'run'; G.mode2 = SET.mode; G.gen = (G.gen || 0) + 1; G.limMin = 9; ctl.st = ctl.raw = ctl.held = 0; for (const k in CREW) { world.remove(CREW[k].g); delete CREW[k]; } G.cars = []; G.t = 0; G.jump = G.jumpTold = false; G.lightsN = 0; G.chaseInit = false; G.resultsOn = false; G.trace = null; G.traceT = 0; G.paused = false; G.fin = null; G.over = false; G.pen = 0; G.warn = 0; G.limT = 0; G.results = null; G.react = undefined; G.blueTold = null;
       const name = (SET.name || '').trim() || 'James';
       const roster = []; TEAMS.forEach((tm, ti) => tm.drivers.forEach((dn, k) => roster.push({ team: tm, name: dn || name, me: ti === 0 && k === 0, num: [7, 22, 16, 55, 3, 11, 31, 4, 28, 63][roster.length] })));
       if (G.mode2 === 'tt') {
@@ -377,7 +383,7 @@
       }
       const mk = G.cars.length * Math.ceil(((G.laps || 50) + 2) * T.len / 20);
       G.mandatory = G.mode2 === 'race' && G.laps >= 10; G.fastest = null; G.noStop = false;
-      for (const c of G.cars) { c.compsUsed = new Set([c.comp]); c.wantPit = false; c.pit = null; if (c.ai && G.mandatory) { c.plan = Math.round(G.laps * (0.35 + Math.random() * 0.3)); } c.lastP = 0; }
+      for (const c of G.cars) { c.compsUsed = new Set([c.comp]); c.stints = [c.comp]; c.wantPit = false; c.pit = null; if (c.ai && G.mandatory) { c.plan = Math.round(G.laps * (0.35 + Math.random() * 0.3)); } c.lastP = 0; }
       buildCrews();
       for (const c of G.cars) { c.mesh = makeCar(c.p.team, c.p.num, c.comp, c === G.me); scene.add(c.mesh); c.marks = new Float32Array(Math.ceil(((G.laps || 200) + 2) * T.len / 20) + 10).fill(-1); c.best = 0; c.last = 0; c.lapT0 = 0; c.secT = [0, 0, 0]; c.sec = 0; c.fin = 0; c.lapValid = true; }
       buildCockpit(G.me.mesh, G.me.p.team, G.me.name); G.me.mesh.add(cam);
@@ -418,6 +424,8 @@
         if (c.wantReset) { c.wantReset = false; F1.reset(c); }
       } else {
         inp = { thr: ctl.thr, brk: ctl.brk, steer: ctl.st, drs: ctl.drs };
+        // reaction time off the line: lights out to throttle down with the brake released
+        if (G.state === 'race' && G.react === undefined && G.mode2 === 'race') { if (G.jump) G.react = -1; else if (inp.thr > 0.5 && inp.brk < 0.2) { G.react = G.t - G.start; toast('LIGHTS OUT', 'reaction ' + G.react.toFixed(3) + ' s' + (G.react < 0.25 ? ' · great launch' : G.react > 0.6 ? ' · slow away' : ''), 1.8); } }
         if (G.state === 'lights') { if (inp.thr > 0.1 && !G.jump && c.v > 0.5) { G.jump = true; } inp = Object.assign({}, inp, { brk: Math.max(inp.brk, G.jump ? 0 : 0.0) }); }
       }
       if (G.state === 'lights' && c.ai) inp = { thr: 0, brk: 1, steer: 0 };
@@ -466,14 +474,14 @@
     const P = c.pit, L = pitLen();
     if (P.ph === 'stop') {
       P.t += h; const crew = CREW[P.team]; const k = P.t / P.dur;
-      if (!P.swapped && k > 0.45) { P.swapped = true; c.comp = P.comp; c.wear = 0; c.tf = c.tr = 72; if (P.wing) { c.wing = 0; c.dmg = 0; } c.compsUsed.add(c.comp); setTyreLook(c); }
+      if (!P.swapped && k > 0.45) { P.swapped = true; c.comp = P.comp; c.wear = 0; c.tf = c.tr = 72; if (P.wing) { c.wing = 0; c.dmg = 0; } c.compsUsed.add(c.comp); c.stints.push(c.comp); setTyreLook(c); }
       if (P.t >= P.dur) { P.ph = 'out'; P.v = 0; if (c === G.me) { const st = P.dur; toast(st.toFixed(1) + ' s', 'pit stop', 2); radio(st < 3 ? 'Great stop, ' + st.toFixed(1) + ' seconds. Tyres are cold, careful.' : 'Slow stop, sorry. ' + st.toFixed(1) + ' seconds. Push now.'); } }
     } else {
       const toBox = P.box - P.u, outLim = P.ph === 'out' && P.u > L - 100;
       let vt = outLim ? 75 : PIT_LIM; if (P.ph === 'in') vt = Math.min(vt, Math.sqrt(Math.max(0, 2 * 7 * (toBox - 0.2))));
       P.v += clamp(vt - P.v, -32 * h, (outLim ? 11 : 9) * h); P.u += P.v * h; c.dist += P.v * h;
       if (P.ph === 'in' && toBox < 0.4 && P.v < 0.6) { P.ph = 'stop'; P.v = 0; P.t = 0; P.team = c.p.team.name; P.wing = c.wing > 0.05; P.dur = (2.1 + Math.random() * 0.7 + (Math.random() < 0.08 ? 2 + Math.random() * 3 : 0) + (P.wing ? 4.5 : 0)); }
-      if (P.ph === 'out' && P.u >= L) { c.pit = null; c.vx = P.v; c.vy = 0; c.r = 0; c.gear = 3; T.query(c.x, c.z, c.idx, c.q); c.idx = c.q.i; c.lastPos = lapPos(c); c.ofs = 0; c.stuck = 0; c.limiter = false; return; }
+      if (P.ph === 'out' && P.u >= L) { if (c === G.me) c.coldUntil = G.t + 35; c.pit = null; c.vx = P.v; c.vy = 0; c.r = 0; c.gear = 3; T.query(c.x, c.z, c.idx, c.q); c.idx = c.q.i; c.lastPos = lapPos(c); c.ofs = 0; c.stuck = 0; c.limiter = false; return; }
     }
     pitPose(c, P); c.vx = P.v; c.vy = 0; c.r = 0; c.ax = 0; c.ay = 0; c.drs = false; c.lim = 0; c.off = 0; c.kerb = 0; c.lockF = c.lockR = c.spinR = 0;
     c.limiter = P.ph !== 'stop' && !(P.ph === 'out' && P.u > L - 100);
@@ -614,10 +622,10 @@
     const o = classify(), lead = o[0], me = G.me, myP = o.indexOf(me) + 1, pen = G.pen, road = order().indexOf(me) + 1, tt = c => c.fin + (c === me ? pen : 0);
     $('finH').textContent = myP === 1 ? 'You win!' : 'P' + myP + ' at the flag';
     $('finS').textContent = F1T.CIRCUITS[+SET.circuit].name + ' · ' + G.laps + ' laps' + (pen ? ' · your time includes ' + pen + ' s of penalties' + (G.noStop ? ' (20 s for skipping the mandatory stop)' : '') + (road !== myP ? ', P' + road + ' on the road' : '') : '') + (G.fastest ? ' · fastest lap ' + G.fastest.c.name + ' ' + fmtL(G.fastest.t) : '');
-    let h = '<tr><td></td><td>Driver</td><td>Team</td><td class="n">Time</td><td class="n">Best lap</td></tr>';
+    let h = '<tr><td></td><td>Driver</td><td>Team</td><td class="n">Time</td><td class="n">Tyres</td><td class="n">Best lap</td></tr>';
     o.forEach((c, k) => {
       const tm = c.fin ? (c === lead ? fmtL(tt(c)) : c.finLaps < lead.finLaps ? '+' + (lead.finLaps - c.finLaps) + ' lap' : '+' + (tt(c) - tt(lead)).toFixed(3)) : 'running';
-      h += '<tr class="' + (c === me ? 'me' : '') + '"><td>' + (k + 1) + '</td><td>' + c.name + (c === me && pen ? ' <small style="color:var(--acc2)">+' + pen + ' s</small>' : '') + '</td><td>' + c.p.team.name + '</td><td class="n">' + tm + '</td><td class="n"' + (G.fastest && G.fastest.c === c ? ' style="color:var(--pb)"' : '') + '>' + fmtL(c.best) + '</td></tr>';
+      h += '<tr class="' + (c === me ? 'me' : '') + '"><td>' + (k + 1) + '</td><td>' + c.name + (c === me && pen ? ' <small style="color:var(--acc2)">+' + pen + ' s</small>' : '') + '</td><td>' + c.p.team.name + '</td><td class="n">' + tm + '</td><td class="n">' + (c.stints || [c.comp]).map(k => '<span style="color:' + F1.COMP[k].col + '">' + k + '</span>').join(' ') + '</td><td class="n"' + (G.fastest && G.fastest.c === c ? ' style="color:var(--pb)"' : '') + '>' + fmtL(c.best) + '</td></tr>';
     });
     $('finT').innerHTML = h;
   }
@@ -741,17 +749,23 @@
     if (G.mode2 === 'race') {
       const lead = o[0]; let h = '';
       o.forEach((c, k) => { const g = k === 0 ? (G.state === 'lights' ? '' : 'Leader') : c.fin && lead.fin ? (c.finLaps < lead.finLaps ? '+1L' : '+' + (c.fin - lead.fin).toFixed(1)) : lead.dist - c.dist > T.len ? '+' + Math.floor((lead.dist - c.dist) / T.len) + 'L' : '+' + gapTo(lead, c).toFixed(1);
-        h += '<div class="' + (c === me ? 'me' : '') + '"><b>' + (k + 1) + '</b><i style="background:#' + c.p.team.c.toString(16).padStart(6, '0') + '"></i><span>' + c.name.split(' ').pop().slice(0, 10).toUpperCase() + (c.fin ? ' 🏁' : '') + '</span><em>' + g + '</em></div>'; });
+        h += '<div class="' + (c === me ? 'me' : '') + '"><b>' + (k + 1) + '</b><i style="background:#' + c.p.team.c.toString(16).padStart(6, '0') + '"></i><span>' + c.name.split(' ').pop().slice(0, 10).toUpperCase() + (c.fin ? ' 🏁' : '') + '</span>' + (c.pit ? '<u class="pit">PIT</u>' : '<u style="color:' + F1.COMP[c.comp].col + '">' + c.comp + '</u>') + '<em>' + g + '</em></div>'; });
       $('tower').innerHTML = h;
     }
-    const ty = [me.tf, me.tf, me.tr, me.tr]; for (let k = 0; k < 4; k++) $('ty' + k).style.background = tcol(ty[k] + (k % 2 ? 1 : -1));
-    $('tyC').textContent = me.comp + ' ' + Math.round((1 - me.wear) * 100) + '%'; $('tyC').style.color = F1.COMP[me.comp].col;
+    const ty = [me.tf, me.tf, me.tr, me.tr], tread = Math.round(clamp(1 - me.wear, 0, 1) * 100);
+    for (let k = 0; k < 4; k++) { const col = tcol(ty[k] + (k % 2 ? 1 : -1)); $('ty' + k).style.background = 'linear-gradient(to top,' + col + ' ' + tread + '%,rgba(255,255,255,.07) ' + tread + '%)'; }
+    $('tyC').textContent = me.comp + ' ' + tread + '%'; $('tyC').style.color = me.wear > 0.7 ? '#ff3b3b' : F1.COMP[me.comp].col; $('tyres').classList.toggle('cliff', me.wear > 0.7);
     $('fERS').textContent = ['HARVEST', 'BALANCED', 'OVERTAKE'][me.ersMode];
     $('fDRS').className = me.drs ? 'on' : me.drsOK && (me.inDRS || G.mode2 === 'tt') ? 'av' : '';
     $('fTL').textContent = G.mode2 === 'race' ? 'TL ' + Math.min(G.warn, 3) + '/3' : me.lapValid ? 'VALID' : 'INVALID'; $('fTL').className = (G.mode2 === 'tt' ? !me.lapValid : G.warn >= 3) ? 'bad' : '';
     $('ersT').textContent = Math.round(me.ers / 4e6 * 100) + '%';
-    let w = ''; if (me.wing > 0.05) w = 'Front wing damage ' + Math.round(me.wing * 100) + '%'; if (me.lockF > 0.5 && ctl.brk > 0.5) w = 'Front lock-up'; if (G.state === 'lights' && G.lt < 3) w = 'Hold the brake · go when the lights go out';
-    $('warn').textContent = w;
+    let w = '', blue = null;
+    if (G.state !== 'lights' && !me.pit && me.v > 12) { const tm = Math.max(me.tf, me.tr); if (me.coldUntil > G.t && (me.tf + me.tr) / 2 < 80) w = 'Cold tyres · grip builds as they warm up'; else if (tm > 126) w = 'Tyres overheating · ease off the slides'; else if (me.wear > 0.7) w = 'Tyres past the cliff · grip is dropping'; }
+    if (me.wing > 0.05) w = 'Front wing damage ' + Math.round(me.wing * 100) + '%';
+    // blue flag: a car a lap up is right behind you
+    if (G.mode2 === 'race' && G.state === 'race' && !me.fin && !me.pit) for (const o of G.cars) { const race = o.dist - me.dist, gap = race - Math.round(race / T.len) * T.len; if (o !== me && !o.pit && race > T.len / 2 && gap < -3 && gap > -80) blue = o; }
+    if (blue) { w = 'BLUE FLAG · let ' + blue.name.split(' ').pop() + ' through'; if (G.blueTold !== blue) { G.blueTold = blue; radio('Blue flags. ' + blue.name.split(' ').pop() + ' is lapping you, let them by.'); } } if (me.lockF > 0.5 && ctl.brk > 0.5) w = 'Front lock-up'; if (G.state === 'lights' && G.lt < 3) w = 'Hold the brake · go when the lights go out';
+    $('warn').textContent = w; $('warn').classList.toggle('blue', !!blue && w.startsWith('BLUE'));
   }
   function hudFast() {
     const me = G.me;
