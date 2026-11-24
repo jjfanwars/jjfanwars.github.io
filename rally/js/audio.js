@@ -5,7 +5,7 @@ const Sfx = {
   start() {
     if (this.ctx) { if (this.ctx.state === 'suspended') this.ctx.resume(); return; }
     let C; try { C = this.ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return; }
-    const master = this.master = C.createGain(); master.gain.value = 0.7; master.connect(C.destination);
+    const master = this.master = C.createGain(); master.gain.value = this.off ? 0 : 0.7; master.connect(C.destination);
     const comp = C.createDynamicsCompressor(); comp.threshold.value = -16; comp.ratio.value = 4; comp.connect(master); this.out = comp;
     const noiseBuf = C.createBuffer(1, C.sampleRate * 2, C.sampleRate), d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; this.noiseBuf = noiseBuf;
     const noise = () => { const s = C.createBufferSource(); s.buffer = noiseBuf; s.loop = true; s.start(); return s; };
@@ -80,13 +80,15 @@ const Sfx = {
   beep(hi) { if (!this.on) return; const C = this.ctx, t = C.currentTime, o = C.createOscillator(), g = C.createGain(); o.frequency.value = hi ? 1320 : 660; g.gain.setValueAtTime(0.25, t); g.gain.exponentialRampToValueAtTime(0.001, t + (hi ? 0.6 : 0.25)); o.connect(g); g.connect(this.out); o.start(t); o.stop(t + 0.7); },
   say(words) {
     try {
-      if (!window.speechSynthesis) return; speechSynthesis.cancel();
+      if (!window.speechSynthesis || this.off) return; speechSynthesis.cancel();
       const u = new SpeechSynthesisUtterance(words); u.rate = 1.3; u.pitch = 1.0; u.volume = 1;
       const v = speechSynthesis.getVoices().find(v => /en-GB/i.test(v.lang)) || speechSynthesis.getVoices().find(v => /^en/i.test(v.lang)); if (v) u.voice = v;
       speechSynthesis.speak(u);
     } catch (e) {}
   },
   // silence the looping engine, turbo, gravel, rumble, wind and EV voices (the frame loop stops updating them in the menu)
-  idle() { if (!this.on) return; const t = this.ctx.currentTime; for (const k of ['eg', 'tg', 'gg', 'rg', 'wg', 'ewg']) if (this[k]) this[k].gain.setTargetAtTime(0, t, 0.05); if (this.pops) this.pops.length = 0; },
-  mute(m) { if (this.master) this.master.gain.value = m ? 0 : 0.7; },
+  idle() { if (!this.on) return; const t = this.ctx.currentTime; for (const k of ['eg', 'tg', 'gg', 'rg', 'wg', 'ewg']) if (this[k]) this[k].gain.setTargetAtTime(0, t, 0.05); this.pops = 0; }, // pops is a timer (a number): it used to be cleared with .length = 0, which threw in strict mode
+  mute(m) { if (this.master) this.master.gain.value = m || this.off ? 0 : 0.7; },
+  // player sound setting (Rally pause menu): off keeps the master at 0 and silences the spoken calls; games that never set it are unchanged
+  setOff(v) { this.off = !!v; this.mute(false); if (v && window.speechSynthesis) try { speechSynthesis.cancel(); } catch (e) {} },
 };
