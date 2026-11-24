@@ -254,7 +254,7 @@
       if (!this.C || !this.on) return;
       const f = c.rpm / 60 * 3, thr = c.thr, v = c.v, inCk = view < 2;
       for (const e of this.eo) this.set(e.o.frequency, f * e.m, 0.012);
-      this.set(this.elp.frequency, 900 + thr * 5200 + c.rpm * 0.2, 0.03); this.set(this.eg.gain, (0.16 + thr * 0.5) * (inCk ? 1 : 0.75), 0.03);
+      this.set(this.elp.frequency, 900 + thr * 5200 + c.rpm * 0.2, 0.03); const cut = c.shiftT > 0.05 ? 0.3 : 1; this.set(this.eg.gain, (0.16 + thr * 0.5) * (inCk ? 1 : 0.75) * cut, cut < 1 ? 0.006 : 0.02);
       this.set(this.ebp.frequency, f * 2.2, 0.02); this.set(this.eng.gain, 0.05 + thr * 0.16, 0.04);
       this.set(this.tw.frequency, 2400 + c.rpm * 0.42, 0.05); this.set(this.twg.gain, thr * 0.012 + (c.rpm > 9000 ? 0.006 : 0), 0.1);
       this.set(this.kw.frequency, 60 + v * 14, 0.05); this.set(this.kwg.gain, c.deploying ? 0.03 : c.brk > 0.3 && v > 10 ? 0.02 : 0, 0.08);
@@ -283,21 +283,31 @@
 
   // ================= input =================
   const K = {}; let padPrev = {};
-  addEventListener('keydown', e => { K[e.code] = true; Snd.init(); if (G.mode !== 'run') return; if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Tab'].includes(e.code)) e.preventDefault(); if (e.repeat) return; onKey(e.code); });
+  addEventListener('keydown', e => { K[e.code] = true; Snd.init();
+    if ((e.code === 'Enter' || e.code === 'NumpadEnter') && !e.repeat) { if (G.mode === 'menu' && !$('menu').classList.contains('hidden')) { e.preventDefault(); return start(); } if (G.mode === 'run' && G.resultsOn) { e.preventDefault(); return start(); } }
+    if (G.mode !== 'run') return; if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Tab'].includes(e.code)) e.preventDefault(); if (e.repeat) return; onKey(e.code); });
   addEventListener('keyup', e => { K[e.code] = false; });
-  addEventListener('blur', () => { for (const k in K) K[k] = false; });
+  const autoPause = () => { MS.l = MS.r = false; if (G.mode === 'run' && !G.paused && G.state !== 'done') pause(true); };
+  addEventListener('blur', () => { for (const k in K) K[k] = false; autoPause(); });
+  document.addEventListener('visibilitychange', () => { if (document.hidden) autoPause(); });
   function onKey(c) {
     const me = G.me; if (!me) return;
-    if (c === 'Escape') return pause(!G.paused);
+    if (c === 'Escape') return G.resultsOn ? toMenu() : pause(!G.paused);
     if (G.paused) return;
     if (c === 'KeyE' || c === 'ShiftLeft' || c === 'ShiftRight') { if (!me.auto) me.gearUp(); }
     if (c === 'KeyQ' || c === 'ControlLeft' || c === 'ControlRight') { if (!me.auto) me.gearDown(); }
     if (c === 'KeyV') G.view = (G.view + 1) % 3;
     if (c === 'KeyX') { me.ersMode = (me.ersMode + 1) % 3; toast(['HARVEST', 'BALANCED', 'OVERTAKE'][me.ersMode], 'ERS mode', 1.2); }
-    if (c === 'KeyR' && G.state !== 'lights') { F1.reset(me); if (G.mode2 === 'tt') me.lapValid = false; toast('BACK ON TRACK', G.mode2 === 'tt' ? 'lap invalidated' : '', 1.4); }
-    if (c === 'KeyM') { Snd.on = !Snd.on; if (!Snd.on) Snd.mute(); }
+    if (c === 'KeyR' && G.state !== 'lights' && !me.pit) { F1.reset(me); if (G.mode2 === 'tt') me.lapValid = false; toast('BACK ON TRACK', G.mode2 === 'tt' ? 'lap invalidated' : '', 1.4); }
+    if (c === 'KeyM') { Snd.on = !Snd.on; if (!Snd.on) Snd.mute(); toast(Snd.on ? 'SOUND ON' : 'SOUND OFF', 'M to toggle', 1); }
     if (c === 'KeyB' && G.mode2 === 'race' && G.state === 'race' && !me.pit) { me.wantPit = !me.wantPit; if (me.wantPit) { me.nextComp = me.nextComp && me.nextComp !== me.comp ? me.nextComp : (me.comp === 'H' ? 'M' : me.comp === 'M' ? 'H' : 'M'); radio('Copy, box this lap. ' + F1.COMP[me.nextComp].name + ' tyres ready.'); } else radio('Okay, stay out, stay out.'); }
     if ((c === 'Digit1' || c === 'Digit2' || c === 'Digit3') && me.wantPit) { me.nextComp = ['S', 'M', 'H'][+c.slice(-1) - 1]; toast(F1.COMP[me.nextComp].name.toUpperCase() + ' TYRES', 'ready in the box', 1.2); }
+  }
+  // while paused readInput doesn't run, so the pad is polled here: Start or A resumes
+  function padPause() {
+    const pads = navigator.getGamepads ? navigator.getGamepads() : []; let gp = null; for (const p of pads) if (p && p.connected) { gp = p; break; } if (!gp) return;
+    const btn = i => gp.buttons[i] && gp.buttons[i].pressed; if ((btn(9) && !padPrev[9]) || (btn(0) && !padPrev[0])) pause(false);
+    padPrev = {}; gp.buttons.forEach((b, i) => padPrev[i] = b.pressed);
   }
   const ctl = { st: 0, thr: 0, brk: 0, drs: false };
   const MS = { x: 0.5, seen: false, l: false, r: false };
@@ -316,6 +326,8 @@
       if ((edge(5) || edge(0)) && !me.auto) me.gearUp(); if ((edge(4) || edge(2)) && !me.auto) me.gearDown();
       if (btn(3)) drs = true; if (edge(1)) G.view = (G.view + 1) % 3; if (edge(9)) pause(!G.paused);
       if (edge(12)) { me.ersMode = (me.ersMode + 1) % 3; toast(['HARVEST', 'BALANCED', 'OVERTAKE'][me.ersMode], 'ERS mode', 1.2); }
+      if (edge(13)) onKey('KeyB'); if (edge(8)) onKey('KeyR');
+      if ((edge(14) || edge(15)) && me.wantPit) { const i = (['S', 'M', 'H'].indexOf(me.nextComp) + (edge(15) ? 1 : 2)) % 3; onKey('Digit' + (i + 1)); }
       padPrev = {}; gp.buttons.forEach((b, i) => padPrev[i] = b.pressed);
     }
     // Steering help: at speed the full input only asks for the lock the tyres can use (keyboard, mouse and pad alike)
@@ -349,7 +361,7 @@
     setTimeout(() => {
       const ci = +SET.circuit; if (!T || T.C !== F1T.CIRCUITS[ci]) buildWorld(ci);
       for (const c of G.cars) scene.remove(c.mesh); if (CK) { CK.rt.dispose(); CK = null; }
-      G.mode = 'run'; G.mode2 = SET.mode; ctl.st = ctl.raw = ctl.held = 0; for (const k in CREW) { world.remove(CREW[k].g); delete CREW[k]; } G.cars = []; G.t = 0; G.jump = G.jumpTold = false; G.lightsN = 0; G.chaseInit = false; G.resultsOn = false; G.trace = null; G.traceT = 0; G.paused = false; G.fin = null; G.over = false; G.pen = 0; G.warn = 0; G.limT = 0; G.results = null;
+      G.mode = 'run'; G.mode2 = SET.mode; G.gen = (G.gen || 0) + 1; G.limMin = 9; ctl.st = ctl.raw = ctl.held = 0; for (const k in CREW) { world.remove(CREW[k].g); delete CREW[k]; } G.cars = []; G.t = 0; G.jump = G.jumpTold = false; G.lightsN = 0; G.chaseInit = false; G.resultsOn = false; G.trace = null; G.traceT = 0; G.paused = false; G.fin = null; G.over = false; G.pen = 0; G.warn = 0; G.limT = 0; G.results = null;
       const name = (SET.name || '').trim() || 'James';
       const roster = []; TEAMS.forEach((tm, ti) => tm.drivers.forEach((dn, k) => roster.push({ team: tm, name: dn || name, me: ti === 0 && k === 0, num: [7, 22, 16, 55, 3, 11, 31, 4, 28, 63][roster.length] })));
       if (G.mode2 === 'tt') {
@@ -381,7 +393,9 @@
     if (G.mode !== 'run' || G.state === 'done') return; G.paused = p; $('pause').classList.toggle('hidden', !p); if (p) Snd.mute();
     $('pauseInfo').textContent = G.mode2 === 'tt' ? 'Best lap ' + fmtL(G.me.best || G.bestEver) : 'Lap ' + Math.max(1, G.me.lapN + 1) + ' of ' + G.laps;
   }
-  function toMenu() { G.mode = 'menu'; G.paused = false; Snd.mute(); $('hud').classList.add('hidden'); $('pause').classList.add('hidden'); $('fin').classList.add('hidden'); $('menu').classList.remove('hidden'); menuSync(); }
+  function toMenu() { G.gen = (G.gen || 0) + 1; try { if (window.speechSynthesis) speechSynthesis.cancel(); } catch (e) { } G.mode = 'menu'; G.paused = false; Snd.mute(); $('hud').classList.add('hidden'); $('pause').classList.add('hidden'); $('fin').classList.add('hidden'); $('menu').classList.remove('hidden'); menuSync(); }
+  // timeouts tied to one race: dropped after a restart or a return to the menu
+  const later = (fn, ms) => { const g = G.gen; setTimeout(() => { if (G.gen === g && G.mode === 'run') fn(); }, ms); };
   let toastT = 0; function toast(a, b, d) { const el = $('toast'); el.innerHTML = a + (b ? '<small>' + b + '</small>' : ''); el.style.opacity = 1; toastT = d || 2; }
 
   // fixed-step simulation
@@ -413,7 +427,8 @@
     F1.collide(G.cars); G.wk = (G.wk || 0) + 1; if (G.wk % 6 === 0) F1.wakes(G.cars);
     // track limits for the player: all four wheels past the white line
     if (G.state !== 'done' && G.state !== 'lights') {
-      if (me.lim === 4 && !me.pit) G.limT += h; else { if (G.limT > 0.3) limits(); G.limT = 0; }
+      if (me.lim === 4 && !me.pit) { G.limT += h; G.limMin = Math.min(G.limMin, me.v / Math.max(15, T.V[me.idx])); }
+      else { if (G.limT > 0.3 && (G.mode2 === 'tt' || G.limMin > 0.6)) limits(); G.limT = 0; G.limMin = 9; }
     }
     if (G.state === 'lights' && G.jump && !G.jumpTold && me.v > 1) { G.jumpTold = true; G.pen += 5; toast('JUMP START', '+5 s penalty', 2.5); }
     // events: crashes, bumps, shifts
@@ -511,7 +526,7 @@
   // ================= team radio =================
   let radioT = 0;
   function radio(msg) {
-    const el = $('radio'); el.innerHTML = '<b>' + (G.me ? G.me.p.team.name.toUpperCase() : 'TEAM') + ' RADIO</b>' + msg; el.style.opacity = 1; radioT = 4.5; Snd.beep(1200, 0.05); setTimeout(() => Snd.beep(900, 0.05), 70);
+    const el = $('radio'); el.innerHTML = '<b>' + (G.me ? G.me.p.team.name.toUpperCase() : 'TEAM') + ' RADIO</b>' + msg; el.style.opacity = 1; radioT = 4.5; Snd.beep(1200, 0.05); later(() => Snd.beep(900, 0.05), 70);
     if (SET.voice === '1' && window.speechSynthesis) { try { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(msg.replace(/<[^>]+>/g, '')); u.rate = 1.12; u.pitch = 0.9; u.volume = 0.8; speechSynthesis.speak(u); } catch (e) { } }
   }
 
@@ -530,14 +545,14 @@
         // sector 3
         secDone(c, 2, G.t - c.secT0); c.sec = 0; c.secT0 = G.t;
         if (c === G.me) lapMsg(c, lt);
-        if (G.mode2 === 'race' && (!G.fastest || lt < G.fastest.t)) { const was = G.fastest; G.fastest = { t: lt, c }; if (was && c === G.me) setTimeout(() => radio('That is purple. Fastest lap of the race.'), 2500); }
+        if (G.mode2 === 'race' && (!G.fastest || lt < G.fastest.t)) { const was = G.fastest; G.fastest = { t: lt, c }; if (was && c === G.me) later(() => radio('That is purple. Fastest lap of the race.'), 2500); }
         if (c === G.me && G.mode2 === 'race' && !c.fin) lapRadio(c);
         if (!(G.mode2 === 'tt' && !c.lapValid) && (!c.best || lt < c.best)) c.best = lt;
         c.lapValid = true;
         if (G.mode2 === 'race') {
           const leaderDone = G.cars.some(o => o.fin);
           if (!c.fin && (c.lapN >= G.laps || leaderDone)) { c.fin = G.t - G.start; c.finLaps = c.lapN; c.finOrd = G.cars.filter(o => o.fin).length; if (c === G.me) finish(); }
-          if (c === G.me && c.lapN === G.laps - 1 && !c.fin) setTimeout(() => { if (G.state === 'race') toast('FINAL LAP', '', 1.6); }, 1800);
+          if (c === G.me && c.lapN === G.laps - 1 && !c.fin) later(() => { if (G.state === 'race') toast('FINAL LAP', '', 1.6); }, 1800);
         }
       }
     }
@@ -555,14 +570,13 @@
     c.lastIdx = c.idx;
   }
   function lapRadio(c) {
-    const o = order(), p = o.indexOf(c) + 1, ahead = o[p - 2], left = G.laps - c.lapN;
-    if (left === 1) return setTimeout(() => radio('Last lap. Bring it home.'), 2600);
-    if (c.wear > 0.62 && !c.wantPit) return setTimeout(() => radio('Tyres are going off. Box this lap? Press B.'), 2600);
-    if (c.wing > 0.2 && !c.wantPit) return setTimeout(() => radio('We see front wing damage. Box when you can, press B.'), 2600);
-    if (G.mandatory && c.compsUsed.size < 2 && left <= 4 && !c.wantPit) return setTimeout(() => radio('Reminder: you still need your mandatory pit stop.'), 2600);
-    if (p !== c.lastP && c.lastP) setTimeout(() => radio(p < c.lastP ? 'Nice move. P' + p + '.' : 'You are P' + p + ' now. Keep pushing.'), 2600);
-    else if (ahead && Math.random() < 0.5) setTimeout(() => radio('P' + p + '. Gap to ' + ahead.name.split(' ').pop() + ' is ' + gapTo(ahead, c).toFixed(1) + '.'), 2600);
-    c.lastP = p;
+    const o = order(), p = o.indexOf(c) + 1, ahead = o[p - 2], left = G.laps - c.lapN, prevP = c.lastP; c.lastP = p;
+    if (left === 1) return later(() => radio('Last lap. Bring it home.'), 2600);
+    if (c.wear > 0.62 && !c.wantPit) return later(() => radio('Tyres are going off. Box this lap? Press B.'), 2600);
+    if (c.wing > 0.2 && !c.wantPit) return later(() => radio('We see front wing damage. Box when you can, press B.'), 2600);
+    if (G.mandatory && c.compsUsed.size < 2 && left <= 4 && !c.wantPit) return later(() => radio('Reminder: you still need your mandatory pit stop.'), 2600);
+    if (p !== prevP && prevP) later(() => radio(p < prevP ? 'Nice move. P' + p + '.' : 'You are P' + p + ' now. Keep pushing.'), 2600);
+    else if (ahead && Math.random() < 0.5) later(() => radio('P' + p + '. Gap to ' + ahead.name.split(' ').pop() + ' is ' + gapTo(ahead, c).toFixed(1) + '.'), 2600);
   }
   function secDone(c, k, t) {
     c.secT[k] = t; if (c !== G.me) return;
@@ -574,7 +588,7 @@
       if (!G.bestEver || lt < G.bestEver) { G.bestEver = lt; try { localStorage.setItem(bestKey(+SET.circuit), lt.toFixed(3)); } catch (e) { } toast(fmtL(lt), 'PERSONAL BEST', 3); }
       else toast(fmtL(lt), '+' + (lt - G.bestEver).toFixed(3) + ' to your best', 2.5);
     } else toast(fmtL(lt), 'Lap ' + c.lapN + (c.best && lt <= c.best ? ' · personal best' : ''), 2);
-    if (c.secCol) setTimeout(() => { c.secCol = []; }, 3000);
+    if (c.secCol) later(() => { c.secCol = []; }, 3000);
   }
   function order() {
     const sc = c => c.fin ? c.finLaps * T.len + (100 - c.finOrd) * 0.01 : c.dist;
@@ -584,21 +598,26 @@
   function finish() {
     G.state = 'done'; G.me.V = T.profile(0.85); G.me.ofs = 0; G.me.hold = false; G.me.wantPit = false;
     if (G.mandatory && G.me.compsUsed.size < 2) { G.pen += 20; G.noStop = true; }
-    { const p = order().indexOf(G.me) + 1; setTimeout(() => radio(p === 1 ? 'Get in there! You have won it! Fantastic drive.' : p <= 3 ? 'P' + p + ', that is a podium! Great job.' : 'P' + p + '. Good effort, we go again.'), 1200); }
-    toast('CHEQUERED FLAG', 'P' + (order().indexOf(G.me) + 1), 3);
-    setTimeout(showResults, 3500);
+    { const p = order().indexOf(G.me) + 1; later(() => radio(p === 1 ? 'Get in there! You have won it! Fantastic drive.' : p <= 3 ? 'P' + p + ', that is a podium! Great job.' : 'P' + p + '. Good effort, we go again.'), 1200); }
+    toast('CHEQUERED FLAG', 'P' + (order().indexOf(G.me) + 1) + (G.pen ? ' on the road · +' + G.pen + ' s penalty to come' : ''), 3);
+    later(showResults, 3500);
   }
   function showResults() {
     if (G.mode !== 'run') return; $('fin').classList.remove('hidden'); G.resultsOn = true; renderResults();
   }
+  // final classification: finished cars by laps, then race time with time penalties added (so a penalty can cost places)
+  function classify() {
+    const o = order(), tt = c => c.fin + (c === G.me ? G.pen : 0);
+    return o.filter(c => c.fin).sort((a, b) => b.finLaps - a.finLaps || tt(a) - tt(b)).concat(o.filter(c => !c.fin));
+  }
   function renderResults() {
-    const o = order(), lead = o[0], me = G.me, myP = o.indexOf(me) + 1, pen = G.pen;
+    const o = classify(), lead = o[0], me = G.me, myP = o.indexOf(me) + 1, pen = G.pen, road = order().indexOf(me) + 1, tt = c => c.fin + (c === me ? pen : 0);
     $('finH').textContent = myP === 1 ? 'You win!' : 'P' + myP + ' at the flag';
-    $('finS').textContent = F1T.CIRCUITS[+SET.circuit].name + ' · ' + G.laps + ' laps' + (pen ? ' · your time includes ' + pen + ' s of penalties' + (G.noStop ? ' (20 s for skipping the mandatory stop)' : '') : '');
+    $('finS').textContent = F1T.CIRCUITS[+SET.circuit].name + ' · ' + G.laps + ' laps' + (pen ? ' · your time includes ' + pen + ' s of penalties' + (G.noStop ? ' (20 s for skipping the mandatory stop)' : '') + (road !== myP ? ', P' + road + ' on the road' : '') : '') + (G.fastest ? ' · fastest lap ' + G.fastest.c.name + ' ' + fmtL(G.fastest.t) : '');
     let h = '<tr><td></td><td>Driver</td><td>Team</td><td class="n">Time</td><td class="n">Best lap</td></tr>';
     o.forEach((c, k) => {
-      const tm = c.fin ? (c === lead ? fmtL(c.fin + (c === me ? pen : 0)) : c.finLaps < lead.finLaps ? '+' + (lead.finLaps - c.finLaps) + ' lap' : '+' + (c.fin + (c === me ? pen : 0) - lead.fin).toFixed(3)) : 'running';
-      h += '<tr class="' + (c === me ? 'me' : '') + '"><td>' + (k + 1) + '</td><td>' + c.name + '</td><td>' + c.p.team.name + '</td><td class="n">' + tm + '</td><td class="n">' + fmtL(c.best) + '</td></tr>';
+      const tm = c.fin ? (c === lead ? fmtL(tt(c)) : c.finLaps < lead.finLaps ? '+' + (lead.finLaps - c.finLaps) + ' lap' : '+' + (tt(c) - tt(lead)).toFixed(3)) : 'running';
+      h += '<tr class="' + (c === me ? 'me' : '') + '"><td>' + (k + 1) + '</td><td>' + c.name + (c === me && pen ? ' <small style="color:var(--acc2)">+' + pen + ' s</small>' : '') + '</td><td>' + c.p.team.name + '</td><td class="n">' + tm + '</td><td class="n"' + (G.fastest && G.fastest.c === c ? ' style="color:var(--pb)"' : '') + '>' + fmtL(c.best) + '</td></tr>';
     });
     $('finT').innerHTML = h;
   }
@@ -668,7 +687,7 @@
       if (G.view === 0) { CK.fr = (CK.fr || 0) + 1; if (CK.fr % 2 === 0) { const vis = me.mesh.visible; R.setRenderTarget(CK.rt); R.render(scene, CK.mcam); R.setRenderTarget(null); } }
     }
     draw(camA, G.view < 2 ? clamp((v - 45) / 60, 0, 1) * 0.03 : clamp((v - 45) / 60, 0, 1) * 0.015);
-    Snd.frame(me, G.cars, tmpV, camA.getWorldQuaternion(new THREE.Quaternion()), G.view);
+    if (!G.paused) Snd.frame(me, G.cars, tmpV, camA.getWorldQuaternion(new THREE.Quaternion()), G.view); else padPause();
     hudT += dt; if (hudT > 0.1) { hudT = 0; hud(); }
     hudFast(); mini();
     if (toastT > 0) { toastT -= dt; if (toastT <= 0) $('toast').style.opacity = 0; }
@@ -716,6 +735,9 @@
     const bestRef = G.mode2 === 'tt' ? G.bestEver : me.best;
     $('bestL').textContent = (G.mode2 === 'tt' ? 'Best ' : 'Best ') + fmtL(bestRef) + (me.last ? '  ·  Last ' + fmtL(me.last) : '') + (G.pen ? '  ·  +' + G.pen + ' s' : '');
     const secs = $('secs').children; for (let k = 0; k < 3; k++) secs[k].className = (me.secCol && me.secCol[k]) || '';
+    { let g = ''; if (G.mode2 === 'race' && G.state === 'race' && !me.fin && me.lapN >= 0) { const a = o[pos - 2], b = o[pos], nm = c => c.name.split(' ').pop().slice(0, 10).toUpperCase(), gt = (l, c) => l.dist - c.dist > T.len ? '+1L' : gapTo(l, c).toFixed(1);
+        if (a && !a.fin) g += '<span>▲ ' + nm(a) + ' <b>' + gt(a, me) + '</b></span>'; if (b && !b.pit) g += '<span>▼ ' + nm(b) + ' <b>' + gt(me, b) + '</b></span>'; }
+      if ($('gaps').dataset.h !== g) { $('gaps').innerHTML = g; $('gaps').dataset.h = g; } }
     if (G.mode2 === 'race') {
       const lead = o[0]; let h = '';
       o.forEach((c, k) => { const g = k === 0 ? (G.state === 'lights' ? '' : 'Leader') : c.fin && lead.fin ? (c.finLaps < lead.finLaps ? '+1L' : '+' + (c.fin - lead.fin).toFixed(1)) : lead.dist - c.dist > T.len ? '+' + Math.floor((lead.dist - c.dist) / T.len) + 'L' : '+' + gapTo(lead, c).toFixed(1);
@@ -726,7 +748,7 @@
     $('tyC').textContent = me.comp + ' ' + Math.round((1 - me.wear) * 100) + '%'; $('tyC').style.color = F1.COMP[me.comp].col;
     $('fERS').textContent = ['HARVEST', 'BALANCED', 'OVERTAKE'][me.ersMode];
     $('fDRS').className = me.drs ? 'on' : me.drsOK && (me.inDRS || G.mode2 === 'tt') ? 'av' : '';
-    $('fTL').textContent = G.mode2 === 'race' ? 'TL ' + Math.min(G.warn, 3) + '/3' : me.lapValid ? 'VALID' : 'INVALID'; $('fTL').className = G.mode2 === 'tt' && !me.lapValid ? '' : '';
+    $('fTL').textContent = G.mode2 === 'race' ? 'TL ' + Math.min(G.warn, 3) + '/3' : me.lapValid ? 'VALID' : 'INVALID'; $('fTL').className = (G.mode2 === 'tt' ? !me.lapValid : G.warn >= 3) ? 'bad' : '';
     $('ersT').textContent = Math.round(me.ers / 4e6 * 100) + '%';
     let w = ''; if (me.wing > 0.05) w = 'Front wing damage ' + Math.round(me.wing * 100) + '%'; if (me.lockF > 0.5 && ctl.brk > 0.5) w = 'Front lock-up'; if (G.state === 'lights' && G.lt < 3) w = 'Hold the brake · go when the lights go out';
     $('warn').textContent = w;
@@ -770,5 +792,5 @@
   menuSync(); resize();
   buildWorld(+SET.circuit);
   requestAnimationFrame(frame);
-  if (/[?&]test/.test(location.search)) window.__JR = { G, SET, start, tick, readInput, get T() { return T; }, ctl, K, R, scene, cam, buildWorld };
+  if (/[?&]test/.test(location.search)) window.__JR = { G, SET, start, tick, readInput, renderResults, classify, get T() { return T; }, ctl, K, R, scene, cam, buildWorld };
 })();
