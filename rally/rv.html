@@ -43,7 +43,10 @@ button.go { background:var(--acc); color:#1f1406; }
 #crew { position:absolute; right:18px; top:16px; background:rgba(0,0,0,.42); padding:8px 12px; border-radius:8px; font-size:13px; min-width:170px; }
 #top { position:absolute; left:50%; top:14px; transform:translateX(-50%); text-align:center; }
 #tm { font:800 20px ui-monospace,monospace; text-shadow:0 1px 3px #000; }
-#prog { width:260px; height:6px; border-radius:3px; background:rgba(255,255,255,.18); margin:6px auto 0; overflow:hidden; } #progF { height:100%; width:0; background:linear-gradient(90deg,var(--acc),var(--acc2)); }
+#prog { position:relative; width:260px; height:6px; border-radius:3px; background:rgba(255,255,255,.18); margin:6px auto 0; } #progF { height:100%; width:0; border-radius:3px; background:linear-gradient(90deg,var(--acc),var(--acc2)); }
+#prog .tk { position:absolute; top:-3px; width:4px; height:12px; margin-left:-2px; border-radius:2px; background:#e0483a; box-shadow:0 0 0 1px rgba(0,0,0,.5); } #prog .tk.gas { background:#f0a63a; } #prog .tk.done { background:#5cc36a; }
+#wp { position:absolute; left:0; top:0; pointer-events:none; text-align:center; font:800 12px system-ui; text-shadow:0 1px 3px #000; white-space:nowrap; transform:translate(-50%,-50%); } #wp i { display:block; width:14px; height:14px; margin:0 auto 3px; border:3px solid var(--acc2); transform:rotate(45deg); border-radius:3px; background:rgba(240,166,58,.25); } #wp.off i { background:var(--acc2); } #wp span { color:var(--dim); margin-left:5px; }
+#bestT { text-align:center; font-size:13px; color:var(--dim); margin-top:8px; } #bestT b { color:var(--acc2); }
 #cross { position:absolute; left:50%; top:50%; width:6px; height:6px; margin:-3px 0 0 -3px; border-radius:50%; background:rgba(255,255,255,.75); box-shadow:0 0 3px #000; }
 #prompt { position:absolute; left:50%; top:calc(50% + 26px); transform:translateX(-50%); font-weight:700; text-shadow:0 1px 3px #000; white-space:nowrap; }
 #prompt u { display:inline-block; vertical-align:middle; width:90px; height:8px; border-radius:4px; background:rgba(255,255,255,.2); overflow:hidden; margin-left:8px; } #prompt u i { display:block; height:100%; background:var(--acc); }
@@ -61,6 +64,7 @@ kbd { display:inline-block; min-width:22px; padding:1px 6px; border-radius:5px; 
 #load { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; background:#0e0c0a; z-index:8; font:800 italic 26px system-ui; color:var(--acc2); }
 #mapBox { position:absolute; right:18px; top:50%; transform:translateY(-50%); display:none; border-radius:12px; overflow:hidden; box-shadow:0 10px 40px rgba(0,0,0,.6); } #mapBox.on { display:block; }
 #help { position:absolute; left:18px; bottom:18px; font-size:12px; color:rgba(255,255,255,.7); text-shadow:0 1px 2px #000; max-width:420px; }
+.stats small { font-size:12px; margin-left:6px; } .stats small.dn { color:#5cc36a; } .stats small.up { color:#e0483a; }
 .stats div { display:flex; justify-content:space-between; padding:4px 0; border-bottom:1px solid var(--line); } .stats b { color:var(--acc2); }
 @media (max-width:700px) { h1 { font-size:40px; } #crew { display:none; } }
 </style>
@@ -74,6 +78,7 @@ kbd { display:inline-block; min-width:22px; padding:1px 6px; border-radius:5px; 
     <p class="sub">Grandma lent you her camper. Get it, and everyone in it, to Lakeside Camp. Fallen trees, mud, dead pumps, a raised bridge, a rockslide and a hand-cranked ferry stand in the way.</p>
     <label for="nm">Your name</label><input id="nm" maxlength="14" placeholder="Camper" autocomplete="off">
     <button class="go big" id="bSolo"><span>Solo trip</span><small>Do it all yourself (it's harder)</small></button>
+    <div id="bestT"></div>
     <button class="big" id="bHost"><span>Host a trip</span><small>Up to 8 campers online · friends can join late</small></button>
     <label for="jc">Join with a code</label>
     <div class="row"><input id="jc" maxlength="5" placeholder="ABCDE" style="text-transform:uppercase" autocomplete="off"><button id="bJoin" style="flex:0 0 96px">Join</button></div>
@@ -112,6 +117,7 @@ kbd { display:inline-block; min-width:22px; padding:1px 6px; border-radius:5px; 
   <div id="top"><div id="tm">0:00.0</div><div id="prog"><div id="progF"></div></div></div>
   <div id="crew"></div>
   <div id="cross"></div>
+  <div id="wp" style="display:none"><i></i><b></b><span></span></div>
   <div id="prompt"></div>
   <div id="held"></div>
   <div id="toast"></div>
@@ -123,15 +129,15 @@ kbd { display:inline-block; min-width:22px; padding:1px 6px; border-radius:5px; 
 <div id="load" class="hidden">Packing the camper...</div>
 <div id="fade"></div><div id="flash"></div>
 <script src="../three-r170.js"></script>
-<script src="js/util.js?v=33"></script>
-<script src="js/stage.js?v=33"></script>
-<script src="js/tex.js?v=33"></script>
-<script src="js/world.js?v=33"></script>
-<script src="js/car.js?v=33"></script>
-<script src="js/audio.js?v=33"></script>
-<script src="js/net.js?v=33"></script>
-<script src="js/rvmap.js?v=33"></script>
-<script src="js/rvbuild.js?v=33"></script>
-<script src="js/rv.js?v=33"></script>
+<script src="js/util.js?v=34"></script>
+<script src="js/stage.js?v=34"></script>
+<script src="js/tex.js?v=34"></script>
+<script src="js/world.js?v=34"></script>
+<script src="js/car.js?v=34"></script>
+<script src="js/audio.js?v=34"></script>
+<script src="js/net.js?v=34"></script>
+<script src="js/rvmap.js?v=34"></script>
+<script src="js/rvbuild.js?v=34"></script>
+<script src="js/rv.js?v=34"></script>
 </body>
 </html>

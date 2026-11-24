@@ -480,10 +480,10 @@ const fmt = n => Math.round(n).toLocaleString('en-US');
 const coinH = n => '<i class="cn"></i>' + fmt(n);
 
 // ---------- save ----------
-const SV = { coins: 0, own: [1], up: [], st: [1], best: [], s: 0, v: 0, runs: 0, mis: [], misN: 0, total: 0, day: '', streak: 0, snd: 1 };
+const SV = { coins: 0, own: [1], up: [], st: [1], best: [], s: 0, v: 0, runs: 0, mis: [], misN: 0, total: 0, day: '', streak: 0, snd: 1, last: [] };
 try { const d = JSON.parse(localStorage.getItem('rr-save1') || 'null'); if (d) for (const k in SV) if (d[k] !== undefined) SV[k] = d[k]; } catch (e) {}
 for (const k of ['own', 'up']) while (SV[k].length < VEH.length) SV[k].push(k === 'up' ? [0, 0, 0, 0] : 0);
-for (const k of ['st', 'best']) while (SV[k].length < STAGES.length) SV[k].push(0);
+for (const k of ['st', 'best', 'last']) while (SV[k].length < STAGES.length) SV[k].push(0);
 SV.own[0] = 1; SV.st[0] = 1; if (!SV.own[SV.v]) SV.v = 0; if (!SV.st[SV.s]) SV.s = 0;
 const save = () => { try { localStorage.setItem('rr-save1', JSON.stringify(SV)); } catch (e) {} };
 
@@ -594,7 +594,7 @@ const parts = [];
 function startRun() {
   Snd.init(); if (run && !run.settled && run.dist > 0) settle(run); $('menu').classList.add('hidden'); $('over').classList.add('hidden'); $('pause').classList.add('hidden');
   for (const m of SV.mis) { m.done = false; } // progress counts within this run (total distance carries over)
-  run = new Run(SV.s, SV.v, SV.up[SV.v], SV.best[SV.s]); run.misRew = 0; run.hb = { x: 0, y: 0, vx: 0, vy: 0, pvx: 0, pvy: 0 };
+  run = new Run(SV.s, SV.v, SV.up[SV.v], SV.best[SV.s]); run.last = SV.last[SV.s] || 0; run.misRew = 0; run.hb = { x: 0, y: 0, vx: 0, vy: 0, pvx: 0, pvy: 0 };
   mode = 'play'; paused = false; parts.length = 0; cam.init = false; combo = 0; overT = 0; overReady = false; $('pops').innerHTML = '';
   $('hud').classList.remove('hidden'); $('pedals').classList.remove('hidden'); $('pBoost').classList.toggle('hidden', !run.S.boost); $('boostW').classList.toggle('hidden', !run.S.boost);
   const h = $('hint'); h.textContent = touch ? 'Hold GAS to climb · BRAKE to stop and reverse · in the air, GAS tilts back and BRAKE tilts forward' : '→ / D gas · ← / A brake + reverse · in the air → tilts back, ← tilts forward' + (run.S.boost ? ' · Space boost' : ''); h.style.opacity = 1; hintT = SV.runs < 3 ? 9 : 4;
@@ -637,7 +637,7 @@ function handleEvents(R) {
 function settle(R) {
   if (!R || R.settled) return null; R.settled = true; checkMissions(R);
   const earned = R.got + R.bonus + R.misRew, nb = R.dist > SV.best[R.si];
-  SV.coins += earned; SV.total += R.dist; if (nb) SV.best[R.si] = R.dist;
+  SV.coins += earned; SV.total += R.dist; if (nb) SV.best[R.si] = R.dist; SV.last[R.si] = R.dist;
   for (const m of SV.mis) if (m.done) m.claimed = true; fillMissions(); save();
   return { earned, nb };
 }
@@ -743,6 +743,7 @@ function drawDecor(R, t) {
   for (let m = Math.ceil((x0 - R.x0) / 50) * 50; m <= x1 - R.x0; m += 50) { if (m <= 0) continue; const x = R.x0 + m, y = T.at(x); ctx.fillStyle = '#ddd'; ctx.fillRect(x - 0.05, y, 0.1, 1.3); ctx.fillStyle = m % 100 ? '#2d3a33' : '#f2b632'; ctx.fillRect(x - 0.55, y + 1.25, 1.1, 0.5); lab.push([x, y + 1.5, m + '', m % 100 ? '#fff' : '#1a1408']); }
   if (st.jumps) for (let ci = Math.max(0, Math.floor((x0 - JUMP0) / JUMP_P)); JUMP0 + ci * JUMP_P - 14 < x1; ci++) { const x = JUMP0 + ci * JUMP_P - 14, y = T.at(x); if (x < x0) continue; ctx.fillStyle = '#ddd'; ctx.fillRect(x - 0.05, y, 0.1, 1.6); ctx.fillStyle = '#ffd15e'; ctx.beginPath(); ctx.moveTo(x - 0.5, y + 1.4); ctx.lineTo(x + 0.5, y + 1.4); ctx.lineTo(x, y + 2.25); ctx.fill(); lab.push([x, y + 1.68, '!', '#1a1408']); }
   if (R.best > 0) { const x = R.x0 + R.best, y = T.at(x); if (x > x0 && x < x1) { ctx.fillStyle = '#eee'; ctx.fillRect(x - 0.05, y, 0.1, 2.6); ctx.fillStyle = '#e0483a'; ctx.beginPath(); ctx.moveTo(x + 0.05, y + 2.6); ctx.lineTo(x + 1.3, y + 2.3 + Math.sin(t * 6) * 0.08); ctx.lineTo(x + 0.05, y + 2.0); ctx.fill(); lab.push([x + 0.6, y + 2.95, 'BEST', '#fff']); } }
+  if (R.last > 0 && Math.abs(R.last - R.best) > 6) { const x = R.x0 + R.last, y = T.at(x); if (x > x0 && x < x1) { ctx.fillStyle = '#eee'; ctx.fillRect(x - 0.04, y, 0.08, 2.1); ctx.fillStyle = '#5fb4ff'; ctx.beginPath(); ctx.moveTo(x + 0.04, y + 2.1); ctx.lineTo(x + 1.0, y + 1.85 + Math.sin(t * 5 + 1) * 0.06); ctx.lineTo(x + 0.04, y + 1.6); ctx.fill(); lab.push([x + 0.5, y + 2.42, 'LAST', '#cfe6ff']); } }
   if (R.x0 > x0 - 3) { const x = R.x0 + 4, y = T.at(x); ctx.fillStyle = '#eee'; ctx.fillRect(x - 1.6, y, 0.12, 3); ctx.fillRect(x + 1.5, y, 0.12, 3); for (let k = 0; k < 8; k++) { ctx.fillStyle = k % 2 ? '#111' : '#fff'; ctx.fillRect(x - 1.6 + k * 0.4, y + 2.6, 0.4, 0.4); } lab.push([x, y + 3.35, 'START', '#fff']); }
   screenT(); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   for (const [x, y, s, col] of lab) { ctx.font = '900 ' + Math.max(9, SC * 0.32) + 'px system-ui'; ctx.fillStyle = col; ctx.fillText(s, toSX(x) + shX, toSY(y) + shY); }
@@ -904,7 +905,33 @@ function render(R, t) {
   drawBack(R, t); drawDecor(R, t); drawGround(R, t); drawItems(R, t); drawCar(R, t); drawParts();
   if (R.st.night) { drawNight(R); drawItems(R, t); }
   if (R === run && R.fuel < 0.2 && mode === 'play') { screenT(); ctx.fillStyle = 'rgba(224,72,58,' + (0.08 + 0.06 * Math.sin(t * 8)) + ')'; ctx.fillRect(0, 0, W, H); }
-  if (R === run && mode === 'play') drawGauges(R, gearK);
+  if (R === run && mode === 'play') { drawGauges(R, gearK); drawAir(R); drawEnd(R, t); }
+}
+
+// trick meter beside the car while airborne: air time, plus a ring that fills through each turn (gold once a flip will count)
+function drawAir(R) {
+  const C = R.car; if (R.airT < 0.3 || C.crashed || R.over) return;
+  const a = Math.abs(R.airRot) + 0.7, n = Math.floor(a / (2 * Math.PI)), f = (a % (2 * Math.PI)) / (2 * Math.PI), turning = Math.abs(R.airRot) > 0.6;
+  screenT(); const x = toSX(C.x) + shX + Math.max(46, R.S.L * SC * 0.55), y = toSY(C.y) + shY - Math.max(40, R.S.L * SC * 0.5), r = 17;
+  ctx.globalAlpha = Math.min(1, (R.airT - 0.3) * 5);
+  ctx.fillStyle = 'rgba(10,14,12,.55)'; ctx.beginPath(); ctx.arc(x, y, r + 5, 0, 7); ctx.fill();
+  if (turning) { ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(255,255,255,.18)'; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.stroke();
+    ctx.strokeStyle = n ? '#f2b632' : '#5fb4ff'; ctx.beginPath(); const s0 = -Math.PI / 2, dir = R.airRot > 0 ? -1 : 1; ctx.arc(x, y, r, s0, s0 + dir * f * 2 * Math.PI, dir < 0); ctx.stroke(); }
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#fff'; ctx.font = '900 12px system-ui'; ctx.fillText(R.airT.toFixed(1) + 's', x, y + (n ? 5 : 0));
+  if (n) { ctx.fillStyle = '#f2b632'; ctx.font = '900 11px system-ui'; ctx.fillText(n + 'x', x, y - 7); }
+  ctx.globalAlpha = 1;
+}
+// the run is about to end on its own (dry tank, stuck, on its side): say so, with a shrinking bar, so it never feels random
+function drawEnd(R, t) {
+  const C = R.car; if (C.crashed || R.over) return; let title = '', sub = '', f = -1;
+  if (R.fuel <= 0) { title = 'OUT OF FUEL'; if (R.stillT > 0.15) f = 1 - R.stillT / 1.8, sub = 'run ends when you stop'; else sub = 'coasting... roll on to a red can!'; }
+  else if (R.flipT > 0.6) { title = 'ON ITS SIDE'; sub = 'rock it with gas and brake'; f = 1 - R.flipT / 3; }
+  else if (R.slowT > 3) { title = 'STUCK'; sub = 'back up and try another line'; f = 1 - R.slowT / 8; }
+  if (!title) return;
+  screenT(); const x = W / 2, y = H * 0.4; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.globalAlpha = 0.85 + 0.15 * Math.sin(t * 8); ctx.font = '900 italic ' + Math.round(Math.min(34, W / 14)) + 'px system-ui'; ctx.lineWidth = 5; ctx.strokeStyle = 'rgba(0,0,0,.55)'; ctx.strokeText(title, x, y); ctx.fillStyle = '#ff6a5a'; ctx.fillText(title, x, y);
+  ctx.globalAlpha = 1; ctx.font = '700 13px system-ui'; ctx.lineWidth = 3; ctx.strokeText(sub, x, y + 24); ctx.fillStyle = '#fff'; ctx.fillText(sub, x, y + 24);
+  if (f >= 0) { const w = 160; ctx.fillStyle = 'rgba(0,0,0,.5)'; ctx.fillRect(x - w / 2, y + 38, w, 5); ctx.fillStyle = '#ff6a5a'; ctx.fillRect(x - w / 2, y + 38, w * clamp(f, 0, 1), 5); }
 }
 
 // ---------- HUD ----------
@@ -974,7 +1001,7 @@ function carThumb(cv, vi) {
   const real = ctx; ctx = x; try { drawCar(R, 0); } finally { ctx = real; }
   [cam.x, cam.y, SC, W, H, DPR, shX, shY] = save0;
 }
-function makePreview() { preview = new Run(SV.s, SV.v, SV.up[SV.v], SV.best[SV.s]); cam.init = false; }
+function makePreview() { preview = new Run(SV.s, SV.v, SV.up[SV.v], SV.best[SV.s]); preview.last = SV.last[SV.s] || 0; cam.init = false; }
 
 // ---------- loop ----------
 let last = performance.now(), T0 = 0;
