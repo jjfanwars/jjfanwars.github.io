@@ -39,11 +39,14 @@ canvas#gl { position:fixed; inset:0; width:100%; height:100%; display:block; }
 #stam { position:absolute; left:50%; bottom:28px; transform:translateX(-50%); width:180px; height:2px; background:rgba(255,255,255,.08); opacity:0; transition:opacity .5s; } #stam i { display:block; height:100%; background:rgba(220,214,200,.6); }
 #breath { position:absolute; left:50%; top:66%; transform:translateX(-50%); text-align:center; font:12px ui-monospace,monospace; color:var(--dim); letter-spacing:.15em; }
 #breath div { width:200px; height:3px; background:rgba(255,255,255,.1); margin:6px auto 0; } #breath i { display:block; height:100%; background:#8fb0d8; }
+#breath.warn { color:#e0503a; animation:bwarn .7s ease-in-out infinite alternate; } #breath.hold { color:#8fb0d8; } #breath.gasp { color:#e0503a; } #breath.gasp i { background:#e0503a; }
+@keyframes bwarn { from { opacity:1; } to { opacity:.45; } }
 #state { position:absolute; left:50%; top:40%; transform:translateX(-50%); text-align:center; font-size:20px; text-shadow:0 2px 8px #000; }
 #state small { display:block; font-size:13px; color:var(--dim); }
 #tags { position:absolute; inset:0; overflow:hidden; }
 .tag { position:absolute; transform:translate(-50%,-100%); font:12px ui-monospace,monospace; color:#e8e0cc; text-shadow:0 1px 3px #000; white-space:nowrap; text-align:center; }
 .tag.down { color:#ff7050; font-weight:bold; } .tag.ping { color:#ffd080; }
+.tag.edge { transform:translate(-50%,-50%); background:rgba(0,0,0,.45); padding:2px 7px; border-radius:3px; }
 #map { position:fixed; left:50%; top:50%; transform:translate(-50%,-50%); width:min(86vmin,760px); height:min(86vmin,760px); z-index:8; box-shadow:0 20px 80px #000; }
 .scr { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; padding:16px; z-index:10; overflow:auto; background:rgba(0,0,0,.82); }
 #menu, #lobby { background:radial-gradient(900px 500px at 50% 110%,rgba(150,70,10,.22),transparent 70%),linear-gradient(180deg,#05070b,#000); }
@@ -88,7 +91,7 @@ button.go { background:#6a3410; color:#f3e9d8; font-size:17px; letter-spacing:.2
   <div id="prompt"><span id="pTxt"></span><div id="pBar"><i></i></div></div>
   <div id="dot"></div>
   <div id="stam"><i></i></div>
-  <div id="breath" class="hidden">HOLD BREATH · RIGHT MOUSE / SPACE<div><i></i></div></div>
+  <div id="breath" class="hidden"><span id="bTxt">HOLD BREATH · RIGHT MOUSE / SPACE</span><div><i></i></div></div>
   <div id="br">
     <div><span id="bat"><i></i><i></i><i></i><i></i></span>LIGHT</div>
     <div><b id="nFlare">0</b>FLARES</div>
@@ -157,6 +160,6 @@ button.go { background:#6a3410; color:#f3e9d8; font-size:17px; letter-spacing:.2
 
 <div id="load">Loading…</div>
 <script src="../three-r170.js"></script>
-<script src="game.js?v=3"></script>
+<script src="game.js?v=4"></script>
 </body>
 </html>

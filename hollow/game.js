@@ -488,7 +488,9 @@ function buildCreature() {
   neck.add(mesh(cap(.045, .3).translate(0, .38, 0), skin));
   const head = new THREE.Group(); head.position.set(0, .38, .02); neck.add(head); MJ.head = head;
   const hg = new THREE.SphereGeometry(.14, 16, 12); hg.scale(.75, 1.7, .9); hg.translate(0, .14, .02); head.add(mesh(hg, pale));
-  for (const s of [-1, 1]) { const e = new THREE.Mesh(new THREE.SphereGeometry(.036, 8, 6), hole); e.scale.set(1, 1.3, .5); e.position.set(s * .045, .22, .115); head.add(e); const p = new THREE.Mesh(new THREE.SphereGeometry(.008, 6, 4), eye); p.position.set(s * .045, .215, .128); head.add(p); }
+  for (const s of [-1, 1]) { const e = new THREE.Mesh(new THREE.SphereGeometry(.036, 8, 6), hole); e.scale.set(1, 1.3, .5); e.position.set(s * .045, .22, .115); head.add(e); const p = new THREE.Mesh(new THREE.SphereGeometry(.008, 6, 4), eye); p.position.set(s * .045, .215, .128); head.add(p);
+    // eyeshine: the pupils catch a flashlight like an animal's
+    const gl = new THREE.Sprite(new THREE.SpriteMaterial({map: TX.glow, color: 0xffb050, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0, fog: false})); gl.position.set(s * .045, .215, .2); gl.scale.setScalar(.2); head.add(gl); (MJ.eyes = MJ.eyes || []).push(gl); }
   const mo = new THREE.Mesh(new THREE.SphereGeometry(.045, 10, 6), hole); mo.scale.set(.5, 2.2, .4); mo.position.set(0, -.02, .118); head.add(mo); MJ.mouth = mo;
   for (const s of [-1, 1]) {
     const sh = new THREE.Group(); sh.position.set(s * .24, .98, 0); torso.add(sh); MJ['sh' + s] = sh;
@@ -523,7 +525,13 @@ function animCreature(dt, st, spd) {
   MJ.head.rotation.z = mix(MJ.head.rotation.z, M.jr, dt * 18);
   MJ.neck.rotation.x = mix(-.3 - k * .1 + (M.look || 0), -1.15, q);
   MJ.mouth.scale.y = 2.2 + (st === 'chase' ? 1.6 + Math.sin(performance.now() / 33) * .3 : 0);
-  MON.position.set(M.x, M.y, M.z); MON.rotation.y = M.yaw;
+  MON.position.set(M.x, M.y, M.z); MON.rotation.y = M.yaw + PI; // the model faces local +z, M.yaw points along (-sin, -cos) like the player's view
+  // eyeshine: bright in your own beam, a faint burn while it hunts
+  const ex = cam.position.x - M.x, ez = cam.position.z - M.z, ed = Math.hypot(ex, ez) || 1;
+  const face = clamp(-(Math.sin(M.yaw) * ex + Math.cos(M.yaw) * ez) / ed * 1.6 - .3, 0, 1);
+  let lit = 0; if (P && alivePlay() && P.l && P.hd < 0 && ed < 55) { cam.getWorldDirection(_fw); const dy = M.y + (M.four > .5 ? 1.3 : 2.3) - cam.position.y, dd = Math.hypot(ex, dy, ez); if ((-ex * _fw.x + dy * _fw.y - ez * _fw.z) / dd > Math.cos(.4)) lit = .55 + .45 * Math.min(1, P.bat * 3); }
+  MJ.eyeK = mix(MJ.eyeK || 0, face * Math.max(lit, st === 'chase' ? .35 : 0), Math.min(1, dt * 10));
+  for (const e of MJ.eyes) { e.material.opacity = MJ.eyeK * (.85 + Math.random() * .15); e.scale.setScalar(.24 + Math.min(ed, 60) * .01); e.visible = MJ.eyeK > .01; }
 }
 
 // ---------------- hikers
@@ -1045,6 +1053,10 @@ function stepPlayer(dt) {
     if (want && P.breath > 0) { P.hb = 1; P.breath -= dt / 10; if (P.breath <= 0) { P.breath = 0; P.hb = 0; P.gasp = 2.2; Snd.gasp(); if (isHost()) noise(P.x, P.z, 9, h.b); else P.gaspN = true; } }
     else { P.hb = 0; P.breath = Math.min(1, P.breath + dt / 6); }
     P.gasp -= dt; $('breath').querySelector('i').style.width = P.breath * 100 + '%';
+    // warn when it is close enough to hear you breathe (guests use the synced creature)
+    const close = (M.state === 'search' || M.state === 'inv' || M.state === 'chase') && Math.hypot(M.x - P.x, M.z - P.z) < 8;
+    const bs = P.gasp > 0 ? 'gasp' : P.hb ? 'hold' : close ? 'warn' : '';
+    if (bs !== P.breathS) { P.breathS = bs; $('breath').className = bs; $('bTxt').textContent = bs === 'gasp' ? 'GASPING FOR AIR' : bs === 'hold' ? 'HOLDING YOUR BREATH' : bs === 'warn' ? "IT'S RIGHT OUTSIDE · HOLD YOUR BREATH (RMB / SPACE)" : 'HOLD BREATH · RIGHT MOUSE / SPACE'; }
     return;
   }
   const fw = (K.KeyW ? 1 : 0) - (K.KeyS ? 1 : 0), st = (K.KeyD ? 1 : 0) - (K.KeyA ? 1 : 0), mag = Math.hypot(fw, st) || 1;
@@ -1064,7 +1076,8 @@ function stepPlayer(dt) {
   P.eye = mix(P.eye, P.down ? .45 : P.cr ? 1.0 : 1.62, Math.min(1, dt * 8));
   P.stepD += moved; const stride = run ? 1.0 : P.cr ? .55 : .75; P.bob += moved * (run ? 1.25 : 1.6);
   if (P.stepD > stride) { P.stepD = 0; const wood = P.zone >= 0 || bridgeY(P.x, P.z) > -1e8, k = run ? 1.4 : P.cr ? .35 : .8; Snd.step(wood, k, wet > .2); if (isHost()) { noise(P.x, P.z, (run ? 24 : P.cr ? 2.2 : 8.5) * (wet > .2 ? 1.8 : 1) * (wood ? 1.35 : 1), P.zone); if (run || wet > .2) P.heat += .02; } }
-  if (P.l) { P.bat -= dt / 280; if (P.bat <= 0) { P.bat = 0; P.l = 0; showMsg('Your flashlight died.', '', 3); } }
+  if (P.l) { P.bat -= dt / 280; if (P.bat <= 0) { P.bat = 0; P.l = 0; showMsg('Your flashlight died. Look for batteries around the valley.', '', 3.5); } else if (P.bat < .2 && !P.batWarned) { P.batWarned = true; showMsg('Your flashlight is getting dim. Turn it off (F) when you can.', '', 3.5); } }
+  if (P.bat > .3) P.batWarned = false;
   $('stam').style.opacity = P.stam < .99 ? 1 : 0; $('stam').firstChild.style.width = P.stam * 100 + '%';
 }
 // interaction targets built per frame
@@ -1100,7 +1113,7 @@ function stepInteract(dt) {
 }
 function toggleHide(h) {
   if (P.hd >= 0) { P.hd = -1; P.x = h.ex; P.z = h.ez; P.l = P.lightWas && P.bat > 0 ? 1 : 0; $('slats').classList.add('hidden'); $('breath').classList.add('hidden'); Snd.creak(); if (isHost()) noise(P.x, P.z, 5, h.b); }
-  else { P.hd = h.i; P.lightWas = P.l; P.l = 0; P.yaw = h.yaw; P.pitch = 0; P.cr = 0; $('slats').classList.remove('hidden'); $('breath').classList.remove('hidden'); Snd.creak(); if (isHost()) { if (M.state === 'chase' && M.tgt === P.id && G.t - M.seenAt < 1.2) M.sawHide = h.i; else noise(P.x, P.z, 4, h.b); } }
+  else { P.hd = h.i; P.lightWas = P.l; P.l = 0; P.yaw = h.yaw; P.pitch = 0; P.cr = 0; $('slats').classList.remove('hidden'); $('breath').classList.remove('hidden'); P.breathS = null; Snd.creak(); if (isHost()) { if (M.state === 'chase' && M.tgt === P.id && G.t - M.seenAt < 1.2) M.sawHide = h.i; else noise(P.x, P.z, 4, h.b); } }
 }
 function openNote(t) { G.noteOpen = true; $('noteT').textContent = t; $('note').classList.remove('hidden'); }
 function closeNote() { G.noteOpen = false; $('note').classList.add('hidden'); }
@@ -1114,7 +1127,7 @@ addEventListener('keydown', e => {
   if (e.repeat) return;
   if (e.code === 'KeyE') { eDown = true; ePress = true; }
   if (!alivePlay()) return;
-  if (e.code === 'KeyF' && P.hd < 0 && P.bat > 0) { P.l = P.l ? 0 : 1; Snd.click(); }
+  if (e.code === 'KeyF' && P.hd < 0) { Snd.click(); if (P.bat > 0) P.l = P.l ? 0 : 1; else showMsg('Click. Nothing. The batteries are dead.', '', 2.5); }
   if (e.code === 'KeyC' && !P.down) P.cr = P.cr ? 0 : 1;
   if (e.code === 'KeyG') throwFlare();
   if (e.code === 'KeyX' && carrierOf(P.id) >= 0) { act({a: 'drop'}); Snd.drop(); showMsg('You set the fuel can down.', '', 2); }
@@ -1226,9 +1239,15 @@ function updateRemotes(dt) {
     p.pingT = Math.max(0, (p.pingT || 0) - dt);
     // name tag
     const t = p.tag, d = Math.hypot(p.rx - cp.x, p.rz - cp.z); let show = !p.dead && !p.esc && (d < 30 || p.down || p.pingT > 0);
-    if (show) { _v.set(p.rx, p.ry + (p.down ? .8 : 2.15), p.rz).project(cam); if (_v.z > 1 || Math.abs(_v.x) > 1.1 || Math.abs(_v.y) > 1.1) show = false; }
+    let edge = '';
+    if (show) { _v.set(p.rx, p.ry + (p.down ? .8 : 2.15), p.rz).project(cam); if (_v.z > 1 || Math.abs(_v.x) > 1.1 || Math.abs(_v.y) > 1.1) {
+      show = false;
+      // off screen: downed or whistling teammates get an arrow on the screen edge pointing at them
+      if ((p.down || p.pingT > 0) && alivePlay()) { _v.set(p.rx, p.ry + 1, p.rz).applyMatrix4(cam.matrixWorldInverse); let ax = _v.x, ay = _v.y; if (Math.hypot(ax, ay) < .01) ay = -1;
+        const a = Math.atan2(ay, ax), m = Math.max(Math.abs(ax) / (innerWidth / 2 - 120), Math.abs(ay) / (innerHeight / 2 - 40)); edge = '→↗↑↖←↙↓↘'[((Math.round(a / (PI / 4)) % 8) + 8) % 8];
+        show = true; t.style.left = (innerWidth / 2 + ax / m) + 'px'; t.style.top = (innerHeight / 2 - ay / m) + 'px'; } } }
     t.style.display = show ? 'block' : 'none';
-    if (show) { t.style.left = ((_v.x + 1) / 2 * innerWidth) + 'px'; t.style.top = ((1 - _v.y) / 2 * innerHeight) + 'px'; t.className = 'tag' + (p.down ? ' down' : p.pingT > 0 ? ' ping' : ''); t.textContent = p.down ? `${p.name} DOWN ${Math.max(0, p.bleed | 0)}s · ${d | 0}m` : p.pingT > 0 ? `${p.name} · ${d | 0}m` : p.name; t.style.opacity = p.down || p.pingT > 0 ? 1 : clamp(1.4 - d / 30, .2, .9); }
+    if (show) { if (!edge) { t.style.left = ((_v.x + 1) / 2 * innerWidth) + 'px'; t.style.top = ((1 - _v.y) / 2 * innerHeight) + 'px'; } t.className = 'tag' + (p.down ? ' down' : p.pingT > 0 ? ' ping' : '') + (edge ? ' edge' : ''); t.textContent = (edge ? edge + ' ' : '') + (p.down ? `${p.name} DOWN ${Math.max(0, p.bleed | 0)}s · ${d | 0}m` : p.pingT > 0 ? `${p.name} · ${d | 0}m` : p.name); t.style.opacity = p.down || p.pingT > 0 ? 1 : clamp(1.4 - d / 30, .2, .9); }
   }
   // remote flashlights
   for (const p of L) { if (si >= RSPOT.length) break; if (!p.l || p.down || p.dead || p.esc || p.hd >= 0) continue; const l = RSPOT[si++], f = eyeDir({yaw: p.ryaw, pitch: p.rpitch}); l.position.set(p.rx + f[0] * .4, p.ry + 1.35, p.rz + f[2] * .4); l.target.position.set(l.position.x + f[0] * 10, l.position.y + f[1] * 10, l.position.z + f[2] * 10); l.intensity = 55; }
