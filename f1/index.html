@@ -45,12 +45,13 @@ button.go { background:var(--acc); color:#fff; font-size:18px; font-style:italic
 #delta { font-size:16px; font-weight:800; } #delta.g { color:var(--good); } #delta.r { color:#ff4b4b; }
 #secs { display:flex; gap:4px; justify-content:center; margin-top:4px; } #secs i { width:56px; height:5px; border-radius:3px; background:rgba(255,255,255,.18); } #secs i.g { background:var(--good); } #secs i.y { background:var(--acc2); } #secs i.p { background:var(--pb); }
 #bestL { font-size:12px; color:var(--dim); margin-top:3px; }
+#gaps { display:flex; gap:12px; justify-content:center; font-size:12px; color:var(--dim); margin-top:2px; } #gaps:empty { display:none; } #gaps b { color:var(--ink); }
 #tower { position:absolute; right:14px; top:14px; width:210px; font-size:13px; padding:4px 0; } #tower div { display:flex; padding:2px 10px; gap:8px; } #tower div.me { background:rgba(225,6,0,.35); } #tower b { width:18px; text-align:right; } #tower i { width:4px; border-radius:2px; } #tower span { flex:1; overflow:hidden; white-space:nowrap; } #tower em { font-style:normal; color:var(--dim); }
 #br { position:absolute; right:14px; bottom:14px; display:flex; flex-direction:column; align-items:flex-end; gap:6px; }
 #spdBox { text-align:right; } #spd { font:900 40px system-ui,sans-serif; line-height:1; } #spd small { font-size:13px; color:var(--dim); } #gear { font:900 40px system-ui,sans-serif; color:var(--acc2); margin-left:14px; }
 #bars { width:230px; font-size:10px; letter-spacing:.08em; color:var(--dim); } #bars u { display:block; height:6px; background:rgba(255,255,255,.14); border-radius:3px; overflow:hidden; margin:2px 0 5px; } #bars u i { display:block; height:100%; }
 #ersB { background:#ffd23c; } #thrB { background:var(--good); } #brkB { background:#ff3b3b; }
-#flags { display:flex; gap:6px; } #flags span { padding:3px 8px; border-radius:4px; font:800 12px system-ui; background:#222; color:#777; } #flags span.on { background:var(--good); color:#06240f; } #flags span.av { background:#2c6; color:#000; opacity:.6; }
+#flags { display:flex; gap:6px; } #flags span { padding:3px 8px; border-radius:4px; font:800 12px system-ui; background:#222; color:#777; } #flags span.on { background:var(--good); color:#06240f; } #flags span.av { background:#2c6; color:#000; opacity:.6; } #flags span.bad { background:#ff3b3b; color:#fff; }
 #tyres { display:grid; grid-template-columns:repeat(2,22px); gap:4px 26px; padding:8px 12px; position:relative; } #tyres i { width:22px; height:30px; border-radius:5px; display:block; border:2px solid #000; } #tyres b { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); font-size:11px; color:var(--dim); }
 #mini { position:absolute; left:14px; bottom:14px; width:190px; height:190px; }
 #toast { position:absolute; left:50%; top:24%; transform:translateX(-50%); font:900 italic 26px system-ui,sans-serif; text-shadow:0 2px 8px #000; text-align:center; opacity:0; transition:opacity .25s; white-space:nowrap; } #toast small { display:block; font-size:15px; font-weight:600; font-style:normal; color:var(--dim); }
@@ -104,11 +105,11 @@ table { width:100%; border-collapse:collapse; font:14px ui-monospace,monospace; 
     </div>
     <button class="go" id="bGo">Go racing</button>
     <details class="keys"><summary>Controls</summary>
-      <p><b>W / ↑</b> throttle · <b>S / ↓</b> brake (hold at a stop for reverse) · <b>A D / ← →</b> steer · <b>E / Shift</b> gear up · <b>Q / Ctrl</b> gear down · <b>Space</b> DRS · <b>X</b> ERS mode (balanced / overtake / harvest) · <b>B</b> box this lap (then <b>1 2 3</b> pick soft / medium / hard) · <b>V</b> camera · <b>R</b> back on track · <b>Esc</b> pause</p>
+      <p><b>W / ↑</b> throttle · <b>S / ↓</b> brake (hold at a stop for reverse) · <b>A D / ← →</b> steer · <b>E / Shift</b> gear up · <b>Q / Ctrl</b> gear down · <b>Space</b> DRS · <b>X</b> ERS mode (balanced / overtake / harvest) · <b>B</b> box this lap (then <b>1 2 3</b> pick soft / medium / hard) · <b>V</b> camera · <b>R</b> back on track · <b>M</b> sound on / off · <b>Esc</b> pause · <b>Enter</b> go racing / race again</p>
       <p>Mouse steering: move the mouse left and right across the screen to steer, left button throttle, right button brake (keys still work).</p>
       <p>Pit stops: press B in a race and the car pulls into the pit lane at the entry before the last corner. The 80 km/h limiter is automatic, your crew changes the tyres and fixes the front wing, and fresh tyres are cold for a lap. Races of 10+ laps need one stop and two tyre types, or you get 20 s added.</p>
-      <p>Gamepad: left stick steers, right trigger throttle, left trigger brake, RB / A up, LB / X down, Y DRS, B camera. Wheels that show up as a gamepad work too.</p>
-      <p>DRS opens in the zone on the main straight: in a race only from lap 3, and only when you were within a second of the car ahead at the detection line. Tyres grip best around 100 °C. Brakes can lock with ABS off. Four wheels over the white line is a track-limits warning (three, then 5 s penalties).</p>
+      <p>Gamepad: left stick steers, right trigger throttle, left trigger brake, RB / A up, LB / X down, Y DRS, B camera, d-pad up ERS mode, d-pad down box this lap (d-pad left / right picks the tyre), Back back on track, Start pause. Wheels that show up as a gamepad work too.</p>
+      <p>DRS opens in the zone on the main straight: in a race only from lap 3, and only when you were within a second of the car ahead at the detection line. Tyres grip best around 100 °C. Brakes can lock with ABS off. Four wheels over the white line without losing speed is a track-limits warning (three, then 5 s penalties); time penalties are added at the flag and can cost you places. The race pauses if you switch tabs.</p>
     </details>
   </div>
 </div>
@@ -126,7 +127,7 @@ table { width:100%; border-collapse:collapse; font:14px ui-monospace,monospace; 
 <div id="visor" class="hidden"></div>
 <div id="hud" class="hidden">
   <div id="tl"><div class="box" id="pos">P1<small>/10</small></div><div class="box" id="lap"><small>LAP</small>1/5</div></div>
-  <div id="times" class="box"><div id="cur">0:00.000</div><div id="delta"></div><div id="secs"><i></i><i></i><i></i></div><div id="bestL"></div></div>
+  <div id="times" class="box"><div id="cur">0:00.000</div><div id="delta"></div><div id="secs"><i></i><i></i><i></i></div><div id="bestL"></div><div id="gaps"></div></div>
   <div id="tower" class="box"></div>
   <canvas id="mini" width="380" height="380"></canvas>
   <div id="br">
@@ -142,7 +143,7 @@ table { width:100%; border-collapse:collapse; font:14px ui-monospace,monospace; 
   <canvas id="gm" width="192" height="192"></canvas>
   <div id="steerBar" class="hidden"><i id="steerI"></i></div>
   <div id="warn"></div>
-  <div id="help">B box · V camera · Space DRS · X ERS · R back on track · Esc pause</div>
+  <div id="help">B box · V camera · Space DRS · X ERS · R back on track · M sound · Esc pause</div>
 </div>
 <div id="load" class="hidden">Building the circuit…</div>
 <script src="../three-r170.js"></script>
@@ -150,6 +151,6 @@ table { width:100%; border-collapse:collapse; font:14px ui-monospace,monospace; 
 <script src="../rally/js/f1track.js?v=3"></script>
 <script src="../rally/js/f1car.js?v=3"></script>
 <script src="../rally/js/f1gfx.js?v=3"></script>
-<script src="../rally/js/f1.js?v=5"></script>
+<script src="../rally/js/f1.js?v=6"></script>
 </body>
 </html>
