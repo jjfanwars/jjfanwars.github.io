@@ -55,5 +55,4 @@ Private study app for the owner's IB textbooks (not a game). Live at /ib/ (noind
 - Polish pass: no sideways scroll anywhere (`.wrap` columns `minmax(0,1fr)`, `#main` clip, KaTeX display scroll), Reference in the mobile tab bar, spine initials (`spineTx`), mobile home order (actions, Today, Books), formula groups sorted by page.
 
 ## Backlog
-- **MP3 player** (requested by the owner): a study-music player built into the app. Upload or link MP3s, playlist, play/pause/skip/volume, keeps playing across pages (mini player in the header/sidebar), optional focus timer tie-in.
 - Feature ideas offered (not picked yet): exam mode with a 1–7 estimate, tagged question bank, study blocks in free calendar gaps, exam countdown/readiness on Home, friend challenges + leaderboard, group study rooms, voice tutor (oral practice), installable offline app.
