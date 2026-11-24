@@ -394,6 +394,12 @@ const MARK_SCHEMA = {type: 'object', additionalProperties: false, required: ['sc
   score: {type: 'integer'}, max: {type: 'integer'}, band: {type: 'string'}, verdict: {type: 'string'},
   good: {type: 'array', items: {type: 'string'}}, missed: {type: 'array', items: {type: 'string'}}, fix: {type: 'array', items: {type: 'string'}},
   plan: {type: 'string'}, terms: {type: 'array', items: {type: 'string'}}}};
+// usage tracking: $ per million tokens [input, output, cache read, cache write]
+const PRICE = {'claude-sonnet-5-5': [2, 10, .1, 2.5], 'claude-haiku-5-5': [.1, .5, .01, .125]};
+function ibUse(db, who, model, us) {
+  if (!us) return; const P = PRICE[model] || PRICE['claude-sonnet-5-5'], tin = us.input_tokens || 0, tout = us.output_tokens || 0, tcr = us.cache_read_input_tokens || 0, tcw = us.cache_creation_input_tokens || 0;
+  return db('use', {u: who, tin, tout, tcr, tcw, cost: (tin * P[0] + tout * P[1] + tcr * P[2] + tcw * P[3]) / 1e6});
+}
 async function ibKey(env, db) {
   const v = await (await db('kvget', {k: 'apikey'})).text(); if (v && v.startsWith('sk-')) return v;
   const lg = await (await env.LEGAL.get(env.LEGAL.idFromName('main')).fetch('https://l/', {method: 'POST', body: '{"op":"get"}'})).json();
@@ -438,6 +444,12 @@ async function ibRoute(req, env, CORS, u) {
     const r = await db('img', {b: u.searchParams.get('b'), n: +u.searchParams.get('n')});
     return new Response(r.body, {status: r.status, headers: {...CORS, 'content-type': 'image/jpeg', 'cache-control': 'private, max-age=604800'}});
   }
+  if (u.pathname === '/ib/stats') { // owner-only usage dashboard: /ib/stats?k=<IB_STATS>
+    if (!env.IB_STATS || u.searchParams.get('k') !== env.IB_STATS) return new Response('no', {status: 403});
+    const d = await (await db('stats', {days: Math.min(365, +u.searchParams.get('days') || 30)})).json();
+    if (!d.days) return new Response('stats error', {status: 500});
+    return new Response(statsPage(d, u.searchParams.get('days') || 30, env.IB_STATS), {headers: {'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store'}});
+  }
   if (req.method === 'OPTIONS') return new Response(null, {headers: {...CORS, 'access-control-allow-methods': 'POST, OPTIONS', 'access-control-allow-headers': 'content-type'}});
   if (req.method !== 'POST') return J({err: 'expected POST'}, 405);
   if (u.pathname === '/ib/ocr') { // admin: transcribe one page image with Claude Haiku (book import)
@@ -449,6 +461,7 @@ async function ibRoute(req, env, CORS, u) {
         messages: [{role: 'user', content: [{type: 'image', source: {type: 'base64', media_type: 'image/jpeg', data: o.img}}, {type: 'text', text: o.hint || 'Transcribe this page.'}]}]})});
     const j = await r.json().catch(() => ({}));
     if (!r.ok) return J({err: (j.error && j.error.message) || 'HTTP ' + r.status}, 502);
+    await ibUse(db, 'build', o.model || 'claude-haiku-5-5', j.usage);
     return J({text: (j.content || []).filter(c => c.type === 'text').map(c => c.text).join(''), stop: j.stop_reason, usage: j.usage});
   }
   if (u.pathname === '/ib/gen') { // admin: one structured-output call over text (build-time extraction of formulas, case studies)
@@ -458,7 +471,17 @@ async function ibRoute(req, env, CORS, u) {
       body: JSON.stringify({model: o.model || 'claude-haiku-5-5', max_tokens: 16000, output_config: {effort: 'low', format: {type: 'json_schema', schema: o.schema}}, system: [{type: 'text', text: o.sys, cache_control: {type: 'ephemeral'}}], messages: [{role: 'user', content: o.text}]})});
     const j = await r.json().catch(() => ({}));
     if (!r.ok) return J({err: (j.error && j.error.message) || 'HTTP ' + r.status}, 502);
+    await ibUse(db, 'build', o.model || 'claude-haiku-5-5', j.usage);
     return J({text: (j.content || []).filter(c => c.type === 'text').map(c => c.text).join(''), stop: j.stop_reason, usage: j.usage});
+  }
+  if (u.pathname === '/ib/deluser') { // admin: remove an account and its data (planner, progress, inbox, chats)
+    if (!env.IB_ADMIN || req.headers.get('x-ib-admin') !== env.IB_ADMIN) return J({err: 'no'}, 403);
+    const k = ukey((await req.json()).name), all = await users(); if (!k || !all[k]) return J({err: 'no such account'}, 404);
+    const idx = JSON.parse(await (await db('kvget', {k: 'chats:' + k})).text() || '{}') || {};
+    for (const o of Object.keys(Array.isArray(idx) ? {} : idx)) { await db('kvset', {k: 'chat:' + [k, o].sort().join('|'), v: '[]'});
+      const oi = JSON.parse(await (await db('kvget', {k: 'chats:' + o})).text() || '{}'); if (oi && !Array.isArray(oi)) { delete oi[k]; await db('kvset', {k: 'chats:' + o, v: JSON.stringify(oi)}); } }
+    for (const p of ['plan:', 'prog:', 'inbox:', 'chats:']) await db('kvset', {k: p + k, v: p === 'chats:' || p === 'prog:' ? '{}' : '[]'});
+    delete all[k]; await db('kvset', {k: 'users', v: JSON.stringify(all)}); return J({ok: true, left: Object.keys(all).length});
   }
   if (u.pathname === '/ib/put') { // uploads from the build script: admin key only
     if (!env.IB_ADMIN || req.headers.get('x-ib-admin') !== env.IB_ADMIN) return J({err: 'no'}, 403);
@@ -480,13 +503,56 @@ async function ibRoute(req, env, CORS, u) {
     }
     return J({key, name: all[key].name, tok: all[key].tok, isNew});
   }
-  const uk = ukey(b.user);
+  const uk = ukey(b.user), who = uk ? 'u:' + uk : b.uid ? 'g:' + String(b.uid).replace(/[^\w-]/g, '').slice(0, 16) : 'anon';
+  if (op === 'beat') { await db('beat', {u: who, name: uk ? String(b.name || uk).slice(0, 30) : '', dev: String(b.dev || '').slice(0, 40)}); return J({ok: true}); }
   if (['plan', 'sync', 'agent'].includes(op) && !uk) return J({err: 'sign in first'}, 401);
   if (op === 'plan') { // planner items: {data} replaces the list, else returns it
     if (b.data) { await db('kvset', {k: 'plan:' + uk, v: JSON.stringify(b.data)}); return J({ok: true}); }
     const r = await db('kvget', {k: 'plan:' + uk}); return new Response(r.body, {headers: H});
   }
-  if (op === 'agent') return planAgent(b, env, db, J, uk);
+  if (op === 'agent') return planAgent(b, env, db, J, uk, who);
+  if (op === 'calfetch') { // linked Google/Outlook/school calendars: fetch their secret .ics link server-side (no CORS in the browser); parsed in the app
+    let url = String(b.url || '').trim().replace(/^webcals?:\/\//i, 'https://'); let U; try { U = new URL(url); } catch (e) { return J({err: 'That is not a link'}, 400); }
+    if (U.protocol !== 'https:' && U.protocol !== 'http:') return J({err: 'Use the https:// or webcal:// link'}, 400);
+    try { const r = await fetch(U.toString(), {headers: {'user-agent': 'IB-Study-Calendar/1.0', accept: 'text/calendar,*/*'}, cf: {cacheTtl: 300}, redirect: 'follow'});
+      if (!r.ok) return J({err: 'The calendar link returned HTTP ' + r.status + (r.status === 404 || r.status === 403 ? ' (check it is the secret/published iCal link)' : '')}, 502);
+      const t = await r.text(); if (!/BEGIN:VCALENDAR/i.test(t.slice(0, 2000))) return J({err: 'That link is not an iCal (.ics) calendar'}, 400);
+      return J({ics: t.slice(0, 3e6)});
+    } catch (e) { return J({err: 'Could not reach that calendar'}, 502); }
+  }
+  // sharing between accounts by first name: decks, notes/ideas, mind maps, questions, pages land in the friend's inbox
+  if (['send', 'inbox', 'inboxdel', 'chatsend', 'chats', 'chat'].includes(op) && !uk) return J({err: 'sign in first'}, 401);
+  // chat between friends: thread 'chat:a|b' (sorted keys), each person's thread list 'chats:<key>' = {otherKey: {name, t, last, me}}
+  if (op === 'chatsend') {
+    const all = await users(), to = ukey(b.to), x = String(b.text || '').trim().slice(0, 2000); if (!to || !all[to]) return J({err: `No one called ${String(b.to || '').slice(0, 30)} has an account yet`}, 404);
+    if (!x) return J({err: 'empty'}, 400); const me = (all[uk] || {}).name || uk, t = Date.now(), m = {id: crypto.randomUUID().slice(0, 10), f: uk, x, t};
+    await db('push', {k: 'chat:' + [uk, to].sort().join('|'), v: m, cap: 500});
+    await db('mset', {k: 'chats:' + uk, f: to, v: {name: all[to].name, t, last: x.slice(0, 90), me: 1}});
+    if (to !== uk) await db('mset', {k: 'chats:' + to, f: uk, v: {name: me, t, last: x.slice(0, 90), me: 0}});
+    return J({ok: true, m, to: all[to].name, tk: to});
+  }
+  if (op === 'chats') { const r = await (await db('kvget', {k: 'chats:' + uk})).text(); return new Response(r === '[]' ? '{}' : r, {headers: H}); }
+  if (op === 'chat') { const w = ukey(b.with); if (!w) return J([]); const L = JSON.parse(await (await db('kvget', {k: 'chat:' + [uk, w].sort().join('|')})).text() || '[]'); return J(L.filter(m => m.t > (+b.after || 0))); }
+  if (op === 'send') {
+    const all = await users(), to = ukey(b.to); if (!to || !all[to]) return J({err: `No one called ${String(b.to || '').slice(0, 30)} has an account yet`}, 404);
+    const it = {id: crypto.randomUUID().slice(0, 12), from: (all[uk] || {}).name || uk, kind: String(b.kind || 'note').slice(0, 10), title: String(b.title || '').slice(0, 120), note: String(b.note || '').slice(0, 2000), data: b.data || null, t: Date.now()};
+    if (JSON.stringify(it).length > 400000) return J({err: 'too big to send'}, 413);
+    await db('push', {k: 'inbox:' + to, v: it, cap: 80}); return J({ok: true, to: all[to].name});
+  }
+  if (op === 'inbox') { const r = await db('kvget', {k: 'inbox:' + uk}); return new Response(r.body, {headers: H}); }
+  if (op === 'inboxdel') { await db('pull', {k: 'inbox:' + uk, ids: (b.ids || []).map(String)}); return J({ok: true}); }
+  if (op === 'mapgen') { // mind map of a textbook chapter (Haiku, structured, 4 levels)
+    const KEY = await ibKey(env, db); const cap = +(env.IB_CAP || 300), used = await (await db('spend', {cap})).json(); if (used.over) return J({err: 'daily Claude limit reached'}, 429);
+    const ns = (b.pages || []).map(Number).filter(n => n > 0).slice(0, 30), pg = await (await db('pages', {b: b.book, ns})).json();
+    const N = d => ({type: 'object', additionalProperties: false, required: d ? ['t', 'c'] : ['t'], properties: d ? {t: {type: 'string'}, c: {type: 'array', items: N(d - 1)}} : {t: {type: 'string'}}});
+    const r = await fetch('https://api.anthropic.com/v1/messages', {method: 'POST', headers: {'content-type': 'application/json', 'x-api-key': KEY, 'anthropic-version': '2023-06-01'},
+      body: JSON.stringify({model: 'claude-haiku-5-5', max_tokens: 6000, output_config: {effort: 'low', format: {type: 'json_schema', schema: N(4)}},
+        system: 'You make a revision mind map of an IB textbook chapter for a student. Root t = the chapter title. 4 to 7 main branches (the big ideas), each with the key sub-ideas, and under those the definitions, equations, examples, case studies and exam tips a student must remember. Labels are short (under 15 words), precise and in the book\'s own terms; maths/chemistry in LaTeX inside $...$. 40 to 80 nodes in total. Leaves have no c.',
+        messages: [{role: 'user', content: `Chapter: ${String(b.title || '').slice(0, 200)}\n\n` + pg.pages.map(p => `<page ${p.bp}>\n${p.md}\n</page>`).join('\n')}]})});
+    const j = await r.json().catch(() => ({})); if (!r.ok) return J({err: (j.error && j.error.message) || 'HTTP ' + r.status}, 502);
+    await ibUse(db, who, 'claude-haiku-5-5', j.usage);
+    try { return J({tree: JSON.parse(j.content.find(c => c.type === 'text').text)}); } catch (e) { return J({err: 'bad map'}, 502); }
+  }
   if (op === 'ref') { const r = await db('kvget', {k: 'ref:' + String(b.book || '').replace(/[^a-z0-9]/g, '')}); return new Response(r.body, {headers: H}); } // formula sheet / case bank for a book
   if (op === 'quiz') { // spaced section review: 3 short questions + model answers from the section's pages (Haiku, cheap)
     const KEY = await ibKey(env, db); const cap = +(env.IB_CAP || 300), used = await (await db('spend', {cap})).json(); if (used.over) return J({err: 'daily Claude limit reached'}, 429);
@@ -496,6 +562,7 @@ async function ibRoute(req, env, CORS, u) {
         system: 'You write quick retrieval-practice checks for an IB student from their textbook section. Write exactly 3 short questions that test understanding of the most important ideas (not trivia, not page layout): one recall, one explain-why, one apply. Each model answer is 1-3 sentences, the way an examiner would accept it. For maths/science use LaTeX in $...$ and mhchem \\ce{}. Avoid repeating these earlier questions: ' + String(b.avoid || '').slice(0, 1500),
         messages: [{role: 'user', content: `Section: ${String(b.title || '').slice(0, 200)}\n\n` + pg.pages.map(p => `<page ${p.bp}>\n${p.md}\n</page>`).join('\n')}]})});
     const j = await r.json().catch(() => ({})); if (!r.ok) return J({err: (j.error && j.error.message) || 'HTTP ' + r.status}, 502);
+    await ibUse(db, who, 'claude-haiku-5-5', j.usage);
     try { return J(JSON.parse(j.content.find(c => c.type === 'text').text)); } catch (e) { return J({err: 'bad quiz'}, 502); }
   }
   if (op === 'papers') { const r = await db('kvget', {k: 'papers'}); return new Response(r.body, {headers: H}); } // past papers (uploaded by the owner as kv 'papers')
@@ -523,7 +590,7 @@ async function ibRoute(req, env, CORS, u) {
   if (ctx) sys.push({type: 'text', text: 'Textbook extracts:\n' + ctx});
   sys[sys.length - 1].cache_control = {type: 'ephemeral'};
   if (b.stream && b.mode !== 'mark') { sys[0].text += "\n\nTools: messages may start with a one-line [Location: ...] note saying where the student is in the app. You are NOT shown the page or their work automatically: call read_page, search_book or read_screen only when the question actually needs it (one or two calls is usually enough), then answer.";
-    return tutorStream({b, sys, msgs, KEY, db, CORS, refs}); }
+    return tutorStream({b, sys, msgs, KEY, db, CORS, refs, who}); }
   const r = await fetch('https://api.anthropic.com/v1/messages', {method: 'POST',
     headers: {'content-type': 'application/json', 'x-api-key': KEY, 'anthropic-version': '2023-06-01', 'anthropic-beta': 'server-side-fallback-2026-07-01'},
     body: JSON.stringify({model: 'claude-sonnet-5-5', max_tokens: 8000, fallbacks: 'default', cache_control: {type: 'ephemeral'}, system: sys, messages: msgs,
@@ -531,7 +598,7 @@ async function ibRoute(req, env, CORS, u) {
   const j = await r.json().catch(() => ({}));
   if (!r.ok) return J({err: (j.error && j.error.message) || 'Anthropic HTTP ' + r.status}, 502);
   if (j.stop_reason === 'refusal') return J({err: 'Claude declined to answer that one.'}, 200);
-  const us = j.usage || {};
+  const us = j.usage || {}; await ibUse(db, who, 'claude-sonnet-5-5', j.usage);
   return J({text: (j.content || []).filter(c => c.type === 'text').map(c => c.text).join(''), left: cap - used.n, pages: refs,
     usage: {in: us.input_tokens, cached: us.cache_read_input_tokens, wrote: us.cache_creation_input_tokens, out: us.output_tokens}});
 }
@@ -542,7 +609,9 @@ export class IB {
       CREATE TABLE IF NOT EXISTS img (b TEXT, n INTEGER, data BLOB, PRIMARY KEY (b, n));
       CREATE TABLE IF NOT EXISTS kv (k TEXT PRIMARY KEY, v TEXT);
       CREATE TABLE IF NOT EXISTS spend (d TEXT PRIMARY KEY, n INTEGER);
-      CREATE TABLE IF NOT EXISTS fchunk (b TEXT, i INTEGER, data BLOB, PRIMARY KEY (b, i));`);
+      CREATE TABLE IF NOT EXISTS fchunk (b TEXT, i INTEGER, data BLOB, PRIMARY KEY (b, i));
+      CREATE TABLE IF NOT EXISTS use (d TEXT, u TEXT, mins INTEGER DEFAULT 0, calls INTEGER DEFAULT 0, tin INTEGER DEFAULT 0, tout INTEGER DEFAULT 0, tcr INTEGER DEFAULT 0, tcw INTEGER DEFAULT 0, cost REAL DEFAULT 0, PRIMARY KEY (d, u));
+      CREATE TABLE IF NOT EXISTS who (u TEXT PRIMARY KEY, name TEXT, first INTEGER, last INTEGER, dev TEXT);`);
   }
   kv(k, v) { if (v === undefined) { const r = this.sql.exec('SELECT v FROM kv WHERE k = ?', k).toArray()[0]; return r ? r.v : null; } this.sql.exec('INSERT OR REPLACE INTO kv VALUES (?, ?)', k, v); }
   async fetch(req) {
@@ -565,6 +634,9 @@ export class IB {
       case 'fchunk': { const r = all('SELECT data FROM fchunk WHERE b = ? AND i = ?', o.b, o.i)[0]; return new Response(r ? r.data : new ArrayBuffer(0)); }
       case 'kvget': return new Response(this.kv(o.k) || '[]');
       case 'kvset': if (o.v.length > 2e6) return J({err: 'too big'}); this.kv(o.k, o.v); return J({ok: true});
+      case 'push': { const L = JSON.parse(this.kv(o.k) || '[]'); L.push(o.v); while (L.length > (o.cap || 60)) L.shift(); this.kv(o.k, JSON.stringify(L)); return J({ok: true}); } // atomic append (inboxes)
+      case 'mset': { const O = JSON.parse(this.kv(o.k) || '{}'); O[o.f] = o.v; this.kv(o.k, JSON.stringify(O)); return J({ok: true}); } // atomic field set (chat index)
+      case 'pull': { const ids = new Set(o.ids || []), L = JSON.parse(this.kv(o.k) || '[]').filter(x => !ids.has(x.id)); this.kv(o.k, JSON.stringify(L)); return J({ok: true}); }
       case 'qs': return new Response(this.kv('qs') || '[]');
       case 'page': { const r = all('SELECT n, bp, md FROM page WHERE b = ? AND n = ?', o.b, o.n)[0]; return J(r || {err: 'missing'}); }
       case 'pagebp': { const r = all('SELECT n, bp, md FROM page WHERE b = ? AND bp = ? ORDER BY n LIMIT 1', o.b, String(o.bp))[0]; return J(r || {err: 'missing'}); }
@@ -590,20 +662,30 @@ export class IB {
         return J({hits});
       }
       case 'sync': { if (o.data) { const s = JSON.stringify(o.data); if (s.length > 2e6) return J({err: 'too big'}); this.kv(o.k || 'prog', s); return J({ok: true}); } return new Response(this.kv(o.k || 'prog') || '{}'); }
+      case 'beat': { const d = new Date().toISOString().slice(0, 10), t = Date.now();
+        this.sql.exec('INSERT INTO use (d, u, mins) VALUES (?, ?, 1) ON CONFLICT (d, u) DO UPDATE SET mins = mins + 1', d, o.u);
+        this.sql.exec('INSERT INTO who (u, name, first, last, dev) VALUES (?, ?, ?, ?, ?) ON CONFLICT (u) DO UPDATE SET last = excluded.last, dev = excluded.dev, name = COALESCE(NULLIF(excluded.name, \'\'), name)', o.u, o.name || '', t, t, o.dev || '');
+        return J({ok: true}); }
+      case 'use': { const d = new Date().toISOString().slice(0, 10);
+        this.sql.exec('INSERT INTO use (d, u, calls, tin, tout, tcr, tcw, cost) VALUES (?, ?, 1, ?, ?, ?, ?, ?) ON CONFLICT (d, u) DO UPDATE SET calls = calls + 1, tin = tin + excluded.tin, tout = tout + excluded.tout, tcr = tcr + excluded.tcr, tcw = tcw + excluded.tcw, cost = cost + excluded.cost', d, o.u, o.tin, o.tout, o.tcr, o.tcw, o.cost);
+        return J({ok: true}); }
+      case 'stats': { const from = new Date(Date.now() - (o.days - 1) * 864e5).toISOString().slice(0, 10);
+        return J({days: all('SELECT d, COUNT(CASE WHEN mins > 0 THEN 1 END) users, SUM(mins) mins, SUM(calls) calls, SUM(cost) cost, SUM(tin + tcr + tcw) tin, SUM(tout) tout FROM use WHERE d >= ? AND u != \'build\' GROUP BY d ORDER BY d', from),
+          people: all('SELECT u.u, w.name, w.first, w.last, w.dev, COUNT(CASE WHEN u.mins > 0 THEN 1 END) days, SUM(u.mins) mins, SUM(u.calls) calls, SUM(u.tin + u.tcr + u.tcw) tin, SUM(u.tout) tout, SUM(u.cost) cost FROM use u LEFT JOIN who w ON w.u = u.u WHERE u.d >= ? GROUP BY u.u ORDER BY mins DESC, cost DESC', from)}); }
       case 'spend': { const d = new Date().toISOString().slice(0, 10), r = all('SELECT n FROM spend WHERE d = ?', d)[0], n = r ? r.n : 0;
         if (n >= o.cap) return J({over: true, n}); this.sql.exec('INSERT OR REPLACE INTO spend VALUES (?, ?)', d, n + 1); return J({n: n + 1}); }
     }
-    return Response.json({err: 'bad op'}, {status: 400});
+    return Response.json({err: 'bad op', op: o.op}, {status: 400});
   }
 }
 
 // Planner agent: Claude Sonnet with tools over the planner list (list/add/update/delete), looping server-side until it answers.
-// Items: {id, kind: class|homework|exam|event|task, title, subject, date: YYYY-MM-DD, time?: HH:MM, end?: HH:MM, rep?: 'weekly', until?, done?, notes?}
+// Items: {id, kind: class|homework|exam|event|task, title, subject, date: YYYY-MM-DD, time?: HH:MM, end?: HH:MM, rep?: daily|weekly|fortnightly|monthly, until?, done?, notes?}
 const PLAN_TOOLS = [
   {name: 'list_items', description: 'List planner items whose date (or a weekly repeat) falls between from and to inclusive (YYYY-MM-DD). Also returns undone homework/tasks that are overdue. Use it before answering questions about specific dates beyond the snapshot.',
     input_schema: {type: 'object', properties: {from: {type: 'string'}, to: {type: 'string'}, query: {type: 'string', description: 'optional text filter on title/subject/notes'}}, required: ['from', 'to'], additionalProperties: false}},
   {name: 'add_item', description: 'Add one planner item. Use kind "homework" for things due (date = due date), "exam" for tests and exams, "class" for timetable lessons (usually rep weekly), "event" for anything else with a time, "task" for to-dos.',
-    input_schema: {type: 'object', properties: {kind: {type: 'string', enum: ['class', 'homework', 'exam', 'event', 'task']}, title: {type: 'string'}, subject: {type: 'string'}, date: {type: 'string', description: 'YYYY-MM-DD'}, time: {type: 'string', description: 'HH:MM 24h, optional'}, end: {type: 'string', description: 'HH:MM 24h, optional'}, rep: {type: 'string', enum: ['none', 'weekly']}, until: {type: 'string', description: 'last date of a weekly repeat, optional'}, notes: {type: 'string'}}, required: ['kind', 'title', 'date'], additionalProperties: false}},
+    input_schema: {type: 'object', properties: {kind: {type: 'string', enum: ['class', 'homework', 'exam', 'event', 'task', 'study']}, title: {type: 'string'}, subject: {type: 'string'}, date: {type: 'string', description: 'YYYY-MM-DD'}, time: {type: 'string', description: 'HH:MM 24h, optional'}, end: {type: 'string', description: 'HH:MM 24h, optional'}, rep: {type: 'string', enum: ['none', 'daily', 'weekly', 'fortnightly', 'monthly']}, until: {type: 'string', description: 'last date of a repeat, optional'}, notes: {type: 'string'}}, required: ['kind', 'title', 'date'], additionalProperties: false}},
   {name: 'update_item', description: 'Change fields of an existing item by id (e.g. move the date, mark done: true, edit notes). Only the given fields change.',
     input_schema: {type: 'object', properties: {id: {type: 'string'}, changes: {type: 'object', description: 'fields to set: kind,title,subject,date,time,end,rep,until,notes,done'}}, required: ['id', 'changes'], additionalProperties: false}},
   {name: 'delete_item', description: 'Delete an item by id. Only when the student clearly asks to remove it.',
@@ -611,13 +693,16 @@ const PLAN_TOOLS = [
 ];
 const dAdd = (d, n) => { const x = new Date(d + 'T12:00:00Z'); x.setUTCDate(x.getUTCDate() + n); return x.toISOString().slice(0, 10); };
 function planOccurs(it, from, to) { // dates of an item inside [from, to]
-  if (it.rep !== 'weekly') return it.date >= from && it.date <= to ? [it.date] : [];
-  const out = []; let d = it.date; const end = it.until && it.until < to ? it.until : to;
-  if (d < from) { const k = Math.floor((Date.parse(from) - Date.parse(d)) / 864e5 / 7); d = dAdd(d, 7 * k); if (d < from) d = dAdd(d, 7); }
-  for (; d <= end && out.length < 60; d = dAdd(d, 7)) out.push(d);
+  const end = it.until && it.until < to ? it.until : to, out = [];
+  if (it.rep === 'monthly') { const [y, m, dd] = it.date.split('-').map(Number); for (let k = 0; k < 600 && out.length < 60; k++) { const x = new Date(Date.UTC(y, m - 1 + k, dd)); if (x.getUTCDate() !== dd) continue; const s = x.toISOString().slice(0, 10); if (s > end) break; if (s >= from) out.push(s); } return out; }
+  const st = {daily: 1, weekly: 7, fortnightly: 14}[it.rep];
+  if (!st) return it.date >= from && it.date <= to ? [it.date] : [];
+  let d = it.date;
+  if (d < from) { const k = Math.floor((Date.parse(from) - Date.parse(d)) / 864e5 / st); d = dAdd(d, st * k); if (d < from) d = dAdd(d, st); }
+  for (; d <= end && out.length < 60; d = dAdd(d, st)) out.push(d);
   return out;
 }
-const planLine = (it, d) => `[${it.id}] ${d || it.date}${it.time ? ' ' + it.time + (it.end ? '-' + it.end : '') : ''} ${it.kind}${it.subject ? ' (' + it.subject + ')' : ''}: ${it.title}${it.rep === 'weekly' ? ' [weekly' + (it.until ? ' until ' + it.until : '') + ']' : ''}${it.done ? ' [done]' : ''}${it.notes ? ' - ' + it.notes : ''}`;
+const planLine = (it, d) => `[${it.id}] ${d || it.date}${it.time ? ' ' + it.time + (it.end ? '-' + it.end : '') : ''} ${it.kind}${it.subject ? ' (' + it.subject + ')' : ''}: ${it.title}${it.rep ? ' [' + it.rep + (it.until ? ' until ' + it.until : '') + ']' : ''}${it.done ? ' [done]' : ''}${it.notes ? ' - ' + it.notes : ''}`;
 function planList(items, from, to, q, today) {
   q = (q || '').toLowerCase(); const rows = [];
   for (const it of items) { if (q && !(it.title + ' ' + (it.subject || '') + ' ' + (it.notes || '')).toLowerCase().includes(q)) continue;
@@ -635,7 +720,7 @@ const TUTOR_TOOLS = [
     input_schema: {type: 'object', properties: {query: {type: 'string'}}, required: ['query']}},
   {name: 'read_screen', description: "See what the student has open right now beyond the one-line location note: the full practice question and their current draft answer, or the flashcard. Use when they refer to 'this question', 'my answer', etc.",
     input_schema: {type: 'object', properties: {}}}];
-function tutorStream({b, sys, msgs, KEY, db, CORS, refs}) {
+function tutorStream({b, sys, msgs, KEY, db, CORS, refs, who}) {
   const {readable, writable} = new TransformStream(), w = writable.getWriter(), enc = new TextEncoder();
   const send = o => w.write(enc.encode('data: ' + JSON.stringify(o) + '\n\n'));
   const run = async (name, a) => {
@@ -651,18 +736,20 @@ function tutorStream({b, sys, msgs, KEY, db, CORS, refs}) {
           headers: {'content-type': 'application/json', 'x-api-key': KEY, 'anthropic-version': '2023-06-01', 'anthropic-beta': 'server-side-fallback-2026-07-01'},
           body: JSON.stringify({model: 'claude-sonnet-5-5', max_tokens: 8000, fallbacks: 'default', cache_control: {type: 'ephemeral'}, system: sys, tools: TUTOR_TOOLS, messages: msgs, stream: true, output_config: {effort: 'low'}})});
         if (!r.ok) { const j = await r.json().catch(() => ({})); await send({err: (j.error && j.error.message) || 'Anthropic HTTP ' + r.status}); break; }
-        const rd = r.body.getReader(), dec = new TextDecoder(), blocks = []; let buf = '', stop = '';
+        const rd = r.body.getReader(), dec = new TextDecoder(), blocks = [], us = {}; let buf = '', stop = '';
         for (;;) { const {done, value} = await rd.read(); if (done) break; buf += dec.decode(value, {stream: true}); let i;
           while ((i = buf.indexOf('\n')) >= 0) { const line = buf.slice(0, i).trim(); buf = buf.slice(i + 1); if (!line.startsWith('data:')) continue;
             let ev; try { ev = JSON.parse(line.slice(5)); } catch (e) { continue; }
-            if (ev.type === 'content_block_start') blocks[ev.index] = {...ev.content_block, _j: ''};
+            if (ev.type === 'message_start') Object.assign(us, ev.message.usage || {});
+            else if (ev.type === 'content_block_start') blocks[ev.index] = {...ev.content_block, _j: ''};
             else if (ev.type === 'content_block_delta') { const bl = blocks[ev.index], d = ev.delta;
               if (d.type === 'text_delta') { bl.text += d.text; await send({t: d.text}); }
               else if (d.type === 'input_json_delta') bl._j += d.partial_json;
               else if (d.type === 'thinking_delta') bl.thinking += d.thinking;
               else if (d.type === 'signature_delta') bl.signature = (bl.signature || '') + d.signature; }
-            else if (ev.type === 'message_delta' && ev.delta.stop_reason) stop = ev.delta.stop_reason;
+            else if (ev.type === 'message_delta') { if (ev.usage) Object.assign(us, ev.usage); if (ev.delta.stop_reason) stop = ev.delta.stop_reason; }
             else if (ev.type === 'error') await send({err: ev.error.message}); } }
+        await ibUse(db, who, 'claude-sonnet-5-5', us);
         const content = blocks.filter(Boolean).map(bl => { const {_j, ...c} = bl; if (c.type === 'tool_use') { try { c.input = _j ? JSON.parse(_j) : {}; } catch (e) { c.input = {}; } } if (c.type === 'text' && !c.text) return null; return c; }).filter(Boolean);
         if (stop !== 'tool_use') break;
         msgs.push({role: 'assistant', content}); const res = [];
@@ -674,7 +761,7 @@ function tutorStream({b, sys, msgs, KEY, db, CORS, refs}) {
   })();
   return new Response(readable, {headers: {...CORS, 'content-type': 'text/event-stream', 'cache-control': 'no-store'}});
 }
-async function planAgent(b, env, db, J, uk) {
+async function planAgent(b, env, db, J, uk, who) {
   const KEY = await ibKey(env, db); if (!KEY) return J({err: 'no API key on the relay'}, 503);
   const cap = +(env.IB_CAP || 300), used = await (await db('spend', {cap})).json();
   if (used.over) return J({err: 'daily Claude limit reached'}, 429);
@@ -684,7 +771,8 @@ async function planAgent(b, env, db, J, uk) {
   const snap = () => 'Planner snapshot (next 21 days, plus overdue):\n' + planList(items, today, dAdd(today, 21), '', today);
   const msgs = (b.messages || []).slice(-20).map(m => ({role: m.role === 'assistant' ? 'assistant' : 'user', content: String(m.content || '').slice(0, 8000)}));
   if (!msgs.length || msgs[msgs.length - 1].role !== 'user') return J({err: 'empty message'}, 400);
-  const last = msgs[msgs.length - 1]; last.content = snap() + '\n\n---\n' + last.content;
+  const ext = String(b.ext || '').slice(0, 8000); // events from the student's linked Google/Outlook calendars (read-only)
+  const last = msgs[msgs.length - 1]; last.content = snap() + (ext ? '\n\nFrom their linked calendars (read-only, you cannot change these; plan around them):\n' + ext : '') + '\n\n---\n' + last.content;
   let text = '';
   for (let step = 0; step < 8; step++) {
     const r = await fetch('https://api.anthropic.com/v1/messages', {method: 'POST',
@@ -693,6 +781,7 @@ async function planAgent(b, env, db, J, uk) {
         system: [{type: 'text', text: sys}], tools: PLAN_TOOLS, messages: msgs})});
     const j = await r.json().catch(() => ({}));
     if (!r.ok) return J({err: (j.error && j.error.message) || 'Anthropic HTTP ' + r.status}, 502);
+    await ibUse(db, who, 'claude-sonnet-5-5', j.usage);
     if (j.stop_reason === 'refusal') return J({err: 'Claude declined that one.'});
     msgs.push({role: 'assistant', content: j.content});
     text = (j.content || []).filter(c => c.type === 'text').map(c => c.text).join('');
@@ -707,7 +796,7 @@ async function planAgent(b, env, db, J, uk) {
           if (!/^\d{4}-\d\d-\d\d$/.test(a.date || '')) throw new Error('date must be YYYY-MM-DD');
           const it = {id: Math.random().toString(36).slice(2, 8), kind: a.kind, title: String(a.title).slice(0, 200), date: a.date};
           for (const k of ['subject', 'time', 'end', 'until', 'notes']) if (a[k]) it[k] = String(a[k]).slice(0, 1000);
-          if (a.rep === 'weekly') it.rep = 'weekly';
+          if (['daily', 'weekly', 'fortnightly', 'monthly'].includes(a.rep)) it.rep = a.rep;
           items.push(it); changed++; out = 'added ' + planLine(it);
         } else if (c.name === 'update_item') {
           const it = items.find(x => x.id === a.id); if (!it) throw new Error('no item with id ' + a.id);
@@ -728,7 +817,7 @@ async function planAgent(b, env, db, J, uk) {
 function toIcs(items) {
   const esc = s => String(s || '').replace(/[\;,]/g, m => '\\' + m).replace(/\n/g, '\\n');
   const dt = (d, t) => d.replace(/-/g, '') + (t ? 'T' + t.replace(':', '') + '00' : '');
-  const L = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//IB Study//Planner//EN', 'X-WR-CALNAME:IB Planner', 'CALSCALE:GREGORIAN'];
+  const L = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//IB Study//Planner//EN', 'X-WR-CALNAME:IB Planner', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH', 'REFRESH-INTERVAL;VALUE=DURATION:PT1H', 'X-PUBLISHED-TTL:PT1H'];
   const stamp = new Date().toISOString().replace(/[-:]/g, '').slice(0, 15) + 'Z';
   for (const it of items) {
     if (!/^\d{4}-\d\d-\d\d$/.test(it.date || '')) continue;
@@ -736,10 +825,34 @@ function toIcs(items) {
     L.push('BEGIN:VEVENT', 'UID:' + it.id + '@ibstudy', 'DTSTAMP:' + stamp, 'SUMMARY:' + esc((it.done ? '✓ ' : '') + pre + it.title + (it.subject ? ' (' + it.subject + ')' : '')));
     if (it.time) { L.push('DTSTART:' + dt(it.date, it.time)); L.push('DTEND:' + dt(it.date, it.end || (String(Math.min(23, +it.time.slice(0, 2) + 1)).padStart(2, '0') + it.time.slice(2)))); }
     else { L.push('DTSTART;VALUE=DATE:' + dt(it.date)); L.push('DTEND;VALUE=DATE:' + dt(dAdd(it.date, 1))); }
-    if (it.rep === 'weekly') L.push('RRULE:FREQ=WEEKLY' + (it.until ? ';UNTIL=' + dt(it.until) + (it.time ? 'T235959' : '') : ''));
+    const rr = {daily: 'FREQ=DAILY', weekly: 'FREQ=WEEKLY', fortnightly: 'FREQ=WEEKLY;INTERVAL=2', monthly: 'FREQ=MONTHLY'}[it.rep];
+    if (rr) L.push('RRULE:' + rr + (it.until ? ';UNTIL=' + dt(it.until) + (it.time ? 'T235959' : '') : ''));
+    // phone reminders: exams the evening before + an hour before, homework/to-dos the evening before (all-day events start at midnight)
+    const al = (tr, what) => L.push('BEGIN:VALARM', 'ACTION:DISPLAY', 'DESCRIPTION:' + esc(what), 'TRIGGER:' + tr, 'END:VALARM');
+    if (!it.done && it.kind === 'exam') { al(it.time ? '-PT14H' : '-PT5H', 'Exam tomorrow: ' + it.title); if (it.time) al('-PT1H', 'Exam in 1 hour: ' + it.title); }
+    else if (!it.done && (it.kind === 'homework' || it.kind === 'task')) al(it.time ? '-PT14H' : '-PT5H', (it.kind === 'homework' ? 'Due tomorrow: ' : 'To do tomorrow: ') + it.title);
     if (it.notes) L.push('DESCRIPTION:' + esc(it.notes));
     L.push('END:VEVENT');
   }
   L.push('END:VCALENDAR');
   return L.join('\r\n');
+}
+
+function statsPage(d, days, k) {
+  const e = x => String(x ?? '').replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
+  const tot = d.days.reduce((a, x) => ({mins: a.mins + x.mins, calls: a.calls + x.calls, cost: a.cost + x.cost}), {mins: 0, calls: 0, cost: 0});
+  const ppl = d.people.filter(p => p.u !== 'build'), build = d.people.find(p => p.u === 'build'), mx = Math.max(1, ...d.days.map(x => x.mins));
+  const h = m => m >= 60 ? Math.floor(m / 60) + 'h ' + (m % 60) + 'm' : m + 'm', $ = c => '$' + (c || 0).toFixed(c < 1 ? 3 : 2), ago = t => { const s = (Date.now() - t) / 1000; return s < 3600 ? Math.round(s / 60) + ' min ago' : s < 86400 ? Math.round(s / 3600) + ' h ago' : Math.round(s / 86400) + ' d ago'; };
+  return `<!doctype html><meta name=viewport content="width=device-width,initial-scale=1"><title>IB Study usage</title><style>
+  body{font:15px/1.5 system-ui,sans-serif;background:#f3f0e8;color:#1c2230;margin:0;padding:24px 16px}main{max-width:980px;margin:0 auto}h1{font:600 26px Georgia,serif;margin:0 0 4px}
+  .k{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin:18px 0}.k div{background:#fbfaf6;border:1px solid #ddd7c9;border-radius:10px;padding:12px 14px}.k b{display:block;font:600 24px Georgia,serif}
+  .m{color:#646b78;font-size:13px}table{width:100%;border-collapse:collapse;background:#fbfaf6;border:1px solid #ddd7c9;border-radius:10px;overflow:hidden;font-variant-numeric:tabular-nums}td,th{padding:8px 10px;border-bottom:1px solid #ddd7c9;text-align:left;font-size:14px}th{font-size:12px;color:#646b78}
+  .bars{display:flex;gap:3px;align-items:flex-end;height:120px;background:#fbfaf6;border:1px solid #ddd7c9;border-radius:10px;padding:12px}.bars i{flex:1;background:#24408e;border-radius:3px 3px 0 0;min-height:2px}
+  @media(prefers-color-scheme:dark){body{background:#15171c;color:#ebe7dd}.k div,table,.bars{background:#1c1f26;border-color:#2c3039}td,th{border-color:#2c3039}.bars i{background:#9db1ff}}</style><main>
+  <h1>IB Study usage</h1><div class=m>Last ${e(days)} days · show ${[1, 7, 30, 90, 365].map(n => `<a href="?k=${e(k)}&days=${n}">${n}</a>`).join(' · ')} days</div>
+  <div class=k><div><b>${ppl.length}</b><span class=m>people</span></div><div><b>${h(tot.mins)}</b><span class=m>time on site</span></div><div><b>${tot.calls}</b><span class=m>Claude calls</span></div><div><b>${$(tot.cost)}</b><span class=m>Claude cost (students)</span></div>${build ? `<div><b>${$(build.cost)}</b><span class=m>book imports</span></div>` : ''}</div>
+  <h3>Minutes per day</h3><div class=bars>${d.days.map(x => `<i style="height:${Math.round(x.mins / mx * 100)}%" title="${e(x.d)}: ${x.users} people, ${h(x.mins)}, ${x.calls} Claude calls, ${$(x.cost)}"></i>`).join('')}</div>
+  <h3>People</h3><table><tr><th>Who</th><th>Days</th><th>Time</th><th>Claude calls</th><th>Tokens in / out</th><th>Cost</th><th>Last seen</th></tr>
+  ${ppl.map(p => `<tr><td>${p.u.startsWith('u:') ? '<b>' + e(p.name || p.u.slice(2)) + '</b>' : 'Guest <span class=m>' + e(p.u.slice(2, 8)) + '</span>'}<div class=m>${e(p.dev || '')}</div></td><td>${p.days}</td><td>${h(p.mins || 0)}</td><td>${p.calls || 0}</td><td>${Math.round((p.tin || 0) / 1000)}k / ${Math.round((p.tout || 0) / 1000)}k</td><td>${$(p.cost)}</td><td>${p.last ? ago(p.last) : ''}</td></tr>`).join('') || '<tr><td colspan=7 class=m>No visits yet</td></tr>'}</table>
+  <p class=m>Time counts minutes with the page open and in use. Costs are estimates from token counts (Sonnet 5.5 $2/$10, Haiku 5.5 $0.10/$0.50 per million tokens in/out).</p></main>`;
 }

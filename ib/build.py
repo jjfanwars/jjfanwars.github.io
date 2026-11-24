@@ -31,14 +31,29 @@ def load(md_dir):
 
 def build(book, title, subject, pages):
     toc, terms, qs = [], [], []
+    cand = []  # physics-style "A.2 Title" / "Theme A" headings repeat as running headers: resolved after the scan
+    skip, after = set(), False  # contents pages list every chapter as a heading: ignore their headings
     for p in pages:
-        for line in p['md'].splitlines():
+        nh = len(re.findall(r'(?m)^#{1,2} ', p['md']))
+        if re.search(r'(?m)^#{1,2}\s*Contents\b', p['md'], re.I) or len(re.findall(r'(?m)^[-* ]*[A-Za-z].{2,80}\s\d{1,3}\s*$', p['md'])) >= 5: skip.add(p['n']); after = True
+        elif after and nh >= 5: skip.add(p['n'])
+        else: after = False
+    for p in pages:
+        for line in (p['md'].splitlines() if p['n'] not in skip else []):
             h = re.match(r'(#{1,3})\s+(.+)', line)
             if h:
                 t = re.sub(r'[*_]', '', h.group(2)).strip()
                 num = re.match(r'((?:(?:Structure|Reactivity|Tools?)\s+)?\d+(?:\.\d+)*)\.?\s*[–-]?\s+(.*)', t)
                 lvl = len(h.group(1))
-                if num:
+                th = re.match(r'Theme\s+([A-E])\b[\s:.–-]*(.*)', t)  # physics: "Theme A Space, time and motion"
+                tp = re.match(r'([A-E]\.\d+)\s+(.*)', t)  # physics topics: "A.2 Forces and momentum"
+                if th and lvl == 1:
+                    if '...' not in t: cand.append((1, th.group(1), th.group(2) or t, p['n'], p['bp'], len(toc)))
+                elif tp and lvl == 1:
+                    if '...' not in t: cand.append((2, tp.group(1), tp.group(2), p['n'], p['bp'], len(toc)))
+                elif os.environ.get('IB_SUBS') and lvl == 2 and not num and len(t) < 70 and not re.match(r'(Exercises?|Practice questions|Challenge|Worked example|Guiding questions|Understandings|Solutions?|Examples?|Answers?|Notes?|Hint|Red|Blue|Summary|Video|[A-E]\.\d+ Figure|Figure)\b', t, re.I) and len(t) > 3:
+                    toc.append({'lvl': 3, 'num': '', 'title': t, 'n': p['n'], 'bp': p['bp']})
+                elif num:
                     lvl = min(3, re.sub(r'^\D+', '', num.group(1)).count('.') + 1)
                     toc.append({'lvl': lvl, 'num': num.group(1), 'title': num.group(2), 'n': p['n'], 'bp': p['bp']})
                 elif lvl == 1:
@@ -59,6 +74,24 @@ def build(book, title, subject, pages):
         toc2.append(t)
     toc = toc2
 
+    if cand:  # most frequent title per number; start page = first page showing that title; merged into toc in page order
+
+        best = {}
+        for lv, num, ttl, n, bp, at in cand:
+            best.setdefault((lv, num), Counter())[ttl] += 1
+        add = []
+        for (lv, num), c in best.items():
+            ttl = c.most_common(1)[0][0]
+            n, bp = next((x[3], x[4]) for x in cand if x[0] == lv and x[1] == num and x[2] == ttl)
+            add.append({'lvl': lv, 'num': num, 'title': ttl, 'n': n, 'bp': bp})
+        rest = [t for t in toc if not t['num'] and t['lvl'] == 3]  # in this mode only the lettered topics count; drop stray numbered/unnumbered headings
+        toc[:] = sorted(rest + add, key=lambda t: (t['n'], t['lvl']))
+        seen, out = set(), []
+        for t in toc:  # repeated sub-section headings: keep the first per topic
+            k = (t['lvl'], t['title'].lower(), next((x['num'] for x in reversed(out) if x['lvl'] == 2), ''))
+            if t['lvl'] == 3 and k in seen: continue
+            seen.add(k); out.append(t)
+        toc[:] = out
     def topic_at(n):
         s = ''
         for t in toc:
@@ -109,7 +142,7 @@ def build(book, title, subject, pages):
                     qs.append({'id': f'{book}-p2-{p["n"]}-{sec}{mq.group(1)}', 'book': book, 'kind': 'essay', 'marks': 15, 'text': text,
                                'ctx': f'Paper 2, section {sec}', 'topic': ch, 'n': p['n'], 'bp': p['bp'], 'pages': related(text)})
         # activities and question boxes: one practice item per box that asks something
-        for m in re.finditer(r'^> \[!(activity|questions)\]\s*(.*)\n((?:>.*\n?)+)', md, re.M):
+        for m in re.finditer(r'^> \[!(activity|questions|reflect|kq)\]\s*(.*)\n((?:>.*\n?)+)', md, re.M):
             body = re.sub(r'^>\s?', '', m.group(3), flags=re.M).strip()
             body = re.sub(r'^>\s?', '', body, flags=re.M)
             if '?' not in body and not re.search(r'^\s*\d+\.', body, re.M):
@@ -122,7 +155,7 @@ def build(book, title, subject, pages):
                     qs.append({'id': f'{book}-p1-{p["n"]}-{i}', 'book': book, 'kind': 'p1', 'marks': [3, 4, 8, 10][min(i, 4) - 1], 'text': plain(mq.group(2)),
                                'ctx': 'Paper 1 practice: the sources are on the textbook pages shown (open in textbook).', 'topic': topic_at(p['n']), 'n': p['n'] - 1, 'bp': str(int(p['bp']) - 1) if p['bp'].isdigit() else p['bp'], 'pages': [p['n'] - 1, p['n']]})
                 continue
-            kind = 'activity' if m.group(1) == 'activity' else 'short'
+            kind = {'activity': 'activity', 'reflect': 'activity', 'kq': 'discuss'}.get(m.group(1), 'short')
             qs.append({'id': f'{book}-{kind}-{p["n"]}-{m.start()}', 'book': book, 'kind': kind, 'text': plain(body), 'ctx': plain(m.group(2)) if m.group(2).strip() not in ('Activity', '') else '',
                        'topic': topic_at(p['n']), 'n': p['n'], 'bp': p['bp'], 'pages': related(body, p['n'])})
         # science books: exercises, challenge boxes and end-of-chapter practice questions, one item per numbered question
@@ -169,13 +202,15 @@ def build(book, title, subject, pages):
         n = re.sub(r'^\D+', '', t['num'])
         if t['lvl'] == 2:
             cur2 = n
-        if t['lvl'] == 3 and cur2 and not n.startswith(cur2 + '.') or len(t['title']) > 75:
+        if t['lvl'] == 3 and t['num'] and cur2 and not n.startswith(cur2 + '.') or len(t['title']) > 75:
             continue
         keep.append(t)
     meta_toc = keep
     meta = {'id': book, 'title': title, 'subject': subject, 'pages': max(p['n'] for p in pages), 'toc': meta_toc, 'terms': sorted(terms, key=lambda t: t['k'].lower())}
     if os.environ.get('IB_MATH'):
         meta['math'] = True
+    if os.environ.get('IB_SUBS'):
+        meta['subs'] = True
     if os.environ.get('IB_FILE'):
         meta['file'] = True
     start = next((t['n'] for t in toc if t['num']), 1)
@@ -218,7 +253,7 @@ def main():
         req = urllib.request.Request(RELAY + '/ib/' + op, data=json.dumps({'pass': os.environ['IB_PASS']}).encode(), method='POST', headers={'user-agent': 'ib-build'})
         return json.loads(urllib.request.urlopen(req, timeout=60).read())
     books = [b for b in get('books') if b['id'] != book] + [meta]
-    allq = [q for q in get('qs') if q['book'] != book and not q.get('auto')] + qs + [q for q in get('qs') if q['book'] != book and q.get('auto')]
+    allq = [q for q in get('qs') if q['book'] != book or q.get('set')] + qs  # sets added by addq.py (tests, review, papers) survive a rebuild
     put('t=kv&k=books', json.dumps(books).encode(), 'application/json')
     put('t=kv&k=qs', json.dumps(allq).encode(), 'application/json')
     print('uploaded')

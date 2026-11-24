@@ -34,6 +34,15 @@ KINDS = {
     "non-state actors, international law, theory; the main actors; region; years; and 'page' = printed page number from the <page> tag. "
     "Merge mentions of the same case within the section.",
     S(cases=ARR(S(title=STR, summary=STR, concepts=ARR(STR), actors=ARR(STR), region=STR, years=STR, page=STR)))),
+  'tokex': (
+    "You build a bank of real-life examples for IB Theory of Knowledge essays and exhibitions from a TOK textbook section. List every specific "
+    "real-world example, case, experiment, discovery, artwork, event, controversy, thinker's argument or quotation the text uses to illustrate a point about knowledge "
+    "(not the book's generic exercises). For each: a short title; a 2-3 sentence summary with the concrete facts AND the knowledge point it makes; "
+    "'concepts' = the areas of knowledge, themes and TOK concepts it fits, chosen from: knower, history, the arts, mathematics, natural sciences, human sciences, "
+    "technology, language, politics, religion, indigenous societies, evidence, certainty, truth, interpretation, power, justification, explanation, objectivity, "
+    "perspective, culture, values, responsibility, ethics, bias, experts, memory, emotion, intuition; 'actors' = people or groups involved; region; years; "
+    "'page' = printed page number from the <page> tag. Merge mentions of the same example within the section.",
+    S(cases=ARR(S(title=STR, summary=STR, concepts=ARR(STR), actors=ARR(STR), region=STR, years=STR, page=STR)))),
 }
 
 def post(path, body):
