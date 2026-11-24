@@ -15,3 +15,11 @@ Read `CLAUDE.md` first (shared rules). Split out of it on 17 Nov 2026; keep this
 - **End screen** `showOver(S, me, done)`: "You win / Eliminated / X wins", who knocked you out (`p.by` set in `kill`), place of N, best land share (`G.peak`), time survived, top 5. Solo gets **Play again** (same menu settings); online players knocked out early get **Keep watching**. Win/lose jingles. Leave asks to confirm while you are still alive.
 - **Restart hygiene:** `beginGame` clears the feed, attack/request lists, alert, boat mode and the hover card, and cancels the old `requestAnimationFrame` loop (`G.raf`) so two loops never run.
 - **Phone layout:** at <=1100 px the hotbar row spans the full width (it was shrink-wrapped into a 3-wide column by `left:50%`); at <=700 px the top-right buttons are icon-only (`.tx` labels) and the leaderboard starts below them.
+
+## 24 Nov 2026 (second pass)
+- **Solo pause and speed:** `#pauseBtn` / P pauses, `#spdBtn` or `[` `]` sets 1x-3x (`G.pause`, `G.spd`, `togglePause`, `stepSpeed`, `setSpeed`). The host loop in `beginGame` skips turns while paused or while the tab is hidden (solo only; online games never pause) and scales the turn accumulator by `G.spd`. `#paused` banner; `#top` shows "paused" / "3x speed". Buttons are hidden in online games.
+- **Coach tips** (`TIPS`, `coach()` called from `updateHud`, `#coach` above the hint line): one context tip at a time (expand, regrowth, first city, first nation border, first attack on you, factory, boats), each shown once per browser (`jjf-front-tips`), auto-hides after 16 s, "No tips" sets `jjf-front-tips-off`.
+- **Front badges** (`drawFronts`): a "⚔ troops" pill at the front of your attacks (attacker colour) and of attacks on you (red ring), placed on the mean of the next 16 frontier tiles in `a.q` and eased per attack (`G.front` WeakMap). Max 12.
+- **AI nations hit back** (`bots`): when attacked by a non-ally neighbour weaker than 1.2x their troops and they hold at least 10% of their cap, they launch 45% at the weakest attacker (facing armies cancel first), unless their own attack on it already outweighs the incoming one.
+- **Perf:** building icons only loop over the tiles on screen (was every tile every frame).
+- **Remembered settings:** menu AI nations / tribes / terrain / size (`jjf-front-cfg`, saved in `readCfg`) and the attack ratio (`jjf-front-ratio`).
