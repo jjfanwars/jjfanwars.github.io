@@ -478,6 +478,7 @@ async function ibRoute(req, env, CORS, u) {
     const r = await db('kvget', {k: 'plan:' + uk}); return new Response(r.body, {headers: H});
   }
   if (op === 'agent') return planAgent(b, env, db, J, uk);
+  if (op === 'papers') { const r = await db('kvget', {k: 'papers'}); return new Response(r.body, {headers: H}); } // past papers (uploaded by the owner as kv 'papers')
   if (op === 'sync') { const r = await db('sync', {...b, k: 'prog:' + uk}); return new Response(r.body, {status: r.status, headers: H}); }
   if (['books', 'page', 'pages', 'search', 'qs'].includes(op)) { const r = await db(op, b); return new Response(r.body, {status: r.status, headers: H}); }
   if (op !== 'ask') return J({err: 'not found'}, 404);

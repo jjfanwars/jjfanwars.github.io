@@ -69,7 +69,8 @@ header h1 .crumb{color:var(--mut);font-weight:500;cursor:pointer}
 header h1 .crumb:hover{color:var(--ink)}
 header h1 .sep{color:var(--line2)}
 #bot{display:none}
-#meH{display:none;padding:2px;border:none;background:none}
+#meH{padding:2px;border:none;background:none}
+.sib{padding:5px 12px;border:1px solid var(--line2);border-radius:8px;font-weight:600;background:var(--panel)}
 .srch{margin-left:auto;flex:0 1 300px;position:relative}
 .sugg{position:absolute;top:calc(100% + 6px);left:0;right:0;z-index:30;padding:4px;box-shadow:var(--sh);max-height:70vh;overflow:auto;min-width:300px}
 .sugg>div{padding:7px 10px;border-radius:6px;cursor:pointer;display:flex;gap:8px;align-items:baseline;font-size:14px}
@@ -101,6 +102,17 @@ header h1 .sep{color:var(--line2)}
 .tochd{display:flex;gap:6px;align-items:center;padding:0 6px 10px}
 .tochd select{flex:1;min-width:0}
 .bsel{width:auto;max-width:260px;font-weight:500}
+.wkst{display:flex;gap:4px}.wkst span{width:22px;height:22px;border-radius:6px;background:var(--sunk);border:1px solid var(--line);font-size:10.5px;font-weight:600;color:var(--mut);display:inline-flex;align-items:center;justify-content:center}
+.wkst .half{background:color-mix(in srgb,var(--red) 22%,var(--panel));border-color:transparent}.wkst .on{background:var(--red);color:#fff;border-color:var(--red)}.wkst .td{outline:1.5px solid var(--ink2);outline-offset:1px}
+.strk{display:flex;align-items:center;gap:12px}.strk b{font:600 22px/1 var(--f-read)}
+.wrep{padding:18px 20px}.wbars{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;height:110px;align-items:end}
+.wbars div{display:flex;flex-direction:column;align-items:center;gap:4px;height:100%;justify-content:flex-end}.wbars i{display:block;width:100%;max-width:34px;background:var(--acc);border-radius:4px 4px 0 0;min-height:2px}.wbars span{font-size:11px;color:var(--mut)}
+.wnums{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:12px;margin-top:16px}.wnums>div{display:flex;flex-direction:column}.wnums b{font:600 24px/1.1 var(--f-read)}
+.ppbar{position:sticky;top:64px;z-index:4;display:flex;align-items:center;gap:10px;padding:10px 14px;box-shadow:var(--sh)}#ppT{font:600 20px var(--f-read);min-width:80px;text-align:right}
+.opt{display:inline-flex;gap:6px;align-items:center;padding:6px 12px;border:1px solid var(--line2);border-radius:8px;cursor:pointer}.opt input{width:auto}
+.selbar{position:absolute;z-index:40;display:flex;gap:2px;padding:3px;box-shadow:var(--sh)}.selbar button{border:none;padding:6px 10px;font-size:13px}
+mark.hl{background:color-mix(in srgb,var(--warn) 30%,transparent);color:inherit;border-radius:2px;cursor:pointer;padding:0}mark.hl.nt{text-decoration:underline dotted var(--warn);text-decoration-thickness:2px;text-underline-offset:3px}
+.vseg{margin:4px 0 14px}
 .ctx{font-size:12px;color:var(--mut);padding:8px 16px;border-bottom:1px solid var(--line);background:var(--sunk)}
 .srch svg{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--mut)}
 #q{padding-left:32px;background:var(--panel)}
@@ -272,7 +284,6 @@ a.btn{display:inline-flex;padding:7px 12px;border-radius:8px;text-decoration:non
   .wrap{grid-template-columns:1fr}
   #app{grid-template-columns:1fr}
   #side{display:none}
-  #meH{display:inline-flex}
   #bot{display:grid;grid-template-columns:repeat(6,1fr);position:fixed;left:0;right:0;bottom:0;z-index:12;background:var(--panel);border-top:1px solid var(--line);padding:4px 2px calc(4px + env(safe-area-inset-bottom))}
   #bot button{border:none;background:none;flex-direction:column;gap:2px;font-size:10.5px;padding:5px 0;color:var(--mut);border-radius:6px}
   #bot button.on{color:var(--acc);font-weight:600}
@@ -319,8 +330,8 @@ a.btn{display:inline-flex;padding:7px 12px;border-radius:8px;text-decoration:non
 <symbol id="i-cap" viewBox="0 0 24 24"><path d="M3 9l9-4 9 4-9 4z"/><path d="M7 11v5c0 1.5 2.5 3 5 3s5-1.5 5-3v-5"/></symbol>
 </svg>
 <div id="login" class="card hide">
-  <h2>IB <b>Study</b></h2><p class="meta" style="margin:0 0 18px">Your planner, marks and progress are saved under your name.</p>
-  <form id="lf" class="row" style="flex-direction:column;align-items:stretch;gap:12px"><label>First name<input id="ln" autocomplete="given-name" maxlength="30"></label><input id="lp" type="password" placeholder="Site password" autocomplete="current-password" class="hide"><button class="pri" style="justify-content:center">Continue</button><div id="le" class="meta" style="color:var(--bad)"></div><div id="known"></div></form>
+  <h2>IB <b>Study</b></h2>
+  <form id="lf" class="row" style="flex-direction:column;align-items:stretch;gap:12px"><input id="lp" type="password" placeholder="Site password" autocomplete="current-password"><input id="ln" autocomplete="given-name" maxlength="30" placeholder="First name (optional, to sync)"><button class="pri" style="justify-content:center">Continue</button><div id="le" class="meta" style="color:var(--bad)"></div><div id="known"></div></form>
 </div>
 <div id="app" class="hide">
 <nav id="side"><div class="brand" id="home">IB <b>Study</b></div><div class="nv tabs"><button data-tab="home"><svg class="i"><use href="#i-home"/></svg><span>Home</span></button><div class="grp">Study</div><button data-tab="lib"><svg class="i"><use href="#i-book"/></svg><span>Library</span></button><div id="pins"></div><button data-tab="prac"><svg class="i"><use href="#i-pen"/></svg><span>Practice</span></button><button data-tab="terms"><svg class="i"><use href="#i-cards"/></svg><span>Key terms</span></button><div class="grp">Organise</div><button data-tab="plan"><svg class="i"><use href="#i-cal"/></svg><span>Planner</span></button><button data-tab="prog"><svg class="i"><use href="#i-chart"/></svg><span>Progress</span></button></div><button class="me" id="me"></button></nav>
@@ -347,7 +358,7 @@ const RELAY = (new URLSearchParams(location.search).get('relay') || 'https://jjf
 const $ = s => document.querySelector(s), esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
 const LS = {get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } }, set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }};
 let PASS = LS.get('ib-pass', ''), USER = LS.get('ib-user', null); // USER = {key, name, tok}
-const UK = () => USER ? USER.key : '', LSK = k => k + ':' + UK();
+const UK = () => USER ? USER.key : '', LSK = k => k + ':' + (UK() || 'guest'); // no account = guest: everything stays in this browser
 async function api(op, body = {}) {
   const r = await fetch(RELAY + '/ib/' + op, {method: 'POST', body: JSON.stringify({pass: PASS, user: UK(), name: USER ? USER.name : '', ...body})});
   const j = await r.json().catch(() => ({err: 'HTTP ' + r.status}));
@@ -360,7 +371,7 @@ const S = {books: [], qs: [], book: null, tab: 'home', n: 1, view: LS.get('ib-vi
 function loadLocal() {
   const mig = !LS.get('ib-migrated', 0);
   S.prog = LS.get(LSK('ib-prog'), null) || (mig && LS.get('ib-prog', null)) || {att: {}, terms: {}, last: null};
-  for (const k of ['pins', 'marks']) S.prog[k] = S.prog[k] || []; S.prog.lastBy = S.prog.lastBy || {};
+  for (const k of ['pins', 'marks', 'hls']) S.prog[k] = S.prog[k] || []; S.prog.lastBy = S.prog.lastBy || {};
   S.plan = LS.get(LSK('ib-plan'), null) || (mig ? LS.get('ib-plan', null) : null);
   if (mig) { LS.set('ib-migrated', 1); LS.set(LSK('ib-prog'), S.prog); if (S.plan) LS.set(LSK('ib-plan'), S.plan); }
 }
@@ -404,16 +415,19 @@ const imgUrl = (b, n) => `${RELAY}/ib/img?b=${b}&n=${n}&t=${encodeURIComponent(P
 const bookOf = id => S.books.find(b => b.id === id);
 const secOf = (b, n) => { let s = null; for (const t of b.toc) { if (t.n > n) break; if (t.lvl <= 3) s = t; } return s; };
 let syncT = 0;
-function saveProg(pref) { if (pref) S.prog.pt = Date.now(); LS.set(LSK('ib-prog'), S.prog); clearTimeout(syncT); syncT = setTimeout(() => api('sync', {data: S.prog}).catch(() => {}), 1500); }
-async function pullProg() {
-  try { const r = await api('sync'); if (!r || !r.att) return;
+function saveProg(pref) { if (pref) S.prog.pt = Date.now(); LS.set(LSK('ib-prog'), S.prog); if (!USER) return; clearTimeout(syncT); syncT = setTimeout(() => api('sync', {data: S.prog}).catch(() => {}), 1500); }
+async function pullProg() { if (!USER) return; try { const r = await api('sync'); if (r && r.att) mergeIn(r); } catch (e) {} }
+function mergeIn(r) {
+  { if (!r || !r.att) return;
     for (const [k, v] of Object.entries(r.att)) if (!S.prog.att[k]) S.prog.att[k] = v; else { const ids = new Set(S.prog.att[k].map(a => a.t)); for (const a of v) if (!ids.has(a.t)) S.prog.att[k].push(a); }
     for (const [k, v] of Object.entries(r.terms || {})) if (!S.prog.terms[k] || S.prog.terms[k].t < v.t) S.prog.terms[k] = v;
-    if ((r.pt || 0) > (S.prog.pt || 0)) { S.prog.pins = r.pins || []; S.prog.marks = r.marks || []; S.prog.pt = r.pt; }
+    if ((r.pt || 0) > (S.prog.pt || 0)) { S.prog.pins = r.pins || []; S.prog.marks = r.marks || []; S.prog.hls = r.hls || []; S.prog.pt = r.pt; }
+    const D = S.prog.days = S.prog.days || {}; for (const [d, o] of Object.entries(r.days || {})) { const x = D[d] = D[d] || {}; for (const k of ['m', 'q', 'c', 'p']) x[k] = Math.max(x[k] || 0, o[k] || 0); }
+    const PP = S.prog.pp = S.prog.pp || {}; for (const [k, v] of Object.entries(r.pp || {})) { const ts = new Set((PP[k] || []).map(x => x.t)); PP[k] = [...(PP[k] || []), ...v.filter(x => !ts.has(x.t))]; }
     for (const [k, v] of Object.entries(r.lastBy || {})) if (!S.prog.lastBy[k] || S.prog.lastBy[k].t < v.t) S.prog.lastBy[k] = v;
     if (r.last && (!S.prog.last || (r.last.t || 0) > (S.prog.last.t || 0))) S.prog.last = r.last;
     LS.set(LSK('ib-prog'), S.prog); drawPins(); if (S.tab === 'home') drawHome(); if (S.tab === 'lib' && !S.reading) renderShelf();
-  } catch (e) {}
+  }
 }
 
 // ---------- shell ----------
@@ -452,7 +466,7 @@ function markToc() {
 async function openPage(b, n, hl) {
   const B = bookOf(b); MATH = !!B.math; n = Math.max(1, Math.min(B.pages, n)); S.n = n; S.hl = hl || '';
   if (S.book !== B) { S.book = B; renderToc(); }
-  const now = Date.now(); S.prog.last = {b, n, t: now}; S.prog.lastBy[b] = {n, t: now}; saveProg();
+  const now = Date.now(); S.prog.last = {b, n, t: now}; S.prog.lastBy[b] = {n, t: now}; act('p');
   S.reading = true; if (S.tab !== 'lib' || $('#toc').classList.contains('hide')) shell('lib');
   setHash(`#/lib/${b}/${n}`);
   const sec = secOf(B, n), mk = S.prog.marks.find(m => m.b === b && m.n === n);
@@ -461,7 +475,8 @@ async function openPage(b, n, hl) {
     <button id="pv" aria-label="Previous page"><svg class="i"><use href="#i-l"/></svg></button><span class="pgnum" id="pn"></span><button id="nx" aria-label="Next page"><svg class="i"><use href="#i-r"/></svg></button>
     <span class="sp"></span><button id="bmk" class="${mk ? 'on' : ''}" title="Bookmark this page"><svg class="i"><use href="#i-mark"/></svg></button>${B.file ? `<a class="meta" href="${RELAY}/ib/file?b=${b}&t=${encodeURIComponent(PASS)}" download title="Download the whole textbook PDF" style="display:inline-flex;gap:4px;align-items:center;text-decoration:none"><svg class="i"><use href="#i-dl"/></svg>PDF</a>` : ''}<div class="seg"><button data-v="text">Text</button><button data-v="scan">Scan</button></div></div>
     <div id="pg" class="card page"><span class="spin"></span></div><div class="rbar" style="margin-top:12px"><button id="pv2"><svg class="i"><use href="#i-l"/></svg>Previous</button><span class="sp"></span><button id="nx2">Next<svg class="i"><use href="#i-r"/></svg></button></div></div>
-    <div class="ask row"><button id="teach"><svg class="i"><use href="#i-cap"/></svg>Teach me</button><button class="pri" id="askP"><svg class="i"><use href="#i-spark"/></svg>Ask</button></div>`;
+    <div class="ask row"><button id="xback">Explain it back</button><button id="teach"><svg class="i"><use href="#i-cap"/></svg>Teach me</button><button class="pri" id="askP"><svg class="i"><use href="#i-spark"/></svg>Ask</button></div>`;
+  $('#xback').onclick = () => explainBack(B, sec, n);
   $('#bmk').onclick = () => { const i = S.prog.marks.findIndex(m => m.b === b && m.n === n);
     if (i >= 0) S.prog.marks.splice(i, 1); else S.prog.marks.unshift({b, n, bp: $('#pn').dataset.bp || '', title: sec ? (sec.num ? sec.num + ' ' : '') + sec.title : '', t: Date.now()});
     saveProg(true); $('#bmk').classList.toggle('on', i < 0); renderToc(); markToc(); };
@@ -476,7 +491,7 @@ async function openPage(b, n, hl) {
     const bp = p.bp && p.bp !== '-' ? p.bp : ''; $('#pn').textContent = (bp ? 'p. ' + bp + ' · ' : '') + `${n} / ${B.pages}`; $('#pn').dataset.bp = bp;
     const el = $('#pg');
     if (S.view === 'scan') { el.className = ''; el.innerHTML = `<img class="scan" alt="Page ${esc(bp)}" src="${imgUrl(b, n)}">`; }
-    else { el.className = 'card page'; el.innerHTML = md(p.md || '*(empty page)*') + ``; highlight(el, S.hl); }
+    else { el.className = 'card page'; el.innerHTML = md(p.md || '*(empty page)*'); paintHls(el, b, n); highlight(el, S.hl); }
     if (n < B.pages) getPage(b, n + 1).catch(() => {});
   } catch (e) { $('#pg').innerHTML = '<p>Could not load: ' + esc(e.message) + '</p>'; }
 }
@@ -547,6 +562,7 @@ async function sendChat(text) {
   if (w && w.note !== CH.lastNote) { note = w.note + '\n'; CH.lastNote = w.note; }
   CH.msgs.push({role: 'user', content: note + (first && CH.intro ? CH.intro : '') + text, show: text}); CH.busy = true; drawChat(true);
   if (CH.agent) {
+    if (!USER) { CH.msgs.push({role: 'assistant', content: 'Sign in (top right) to use the planner assistant. It saves to your account.'}); CH.busy = false; drawChat(); return; }
     try {
       const n = new Date(), r = await api('agent', {today: ymd(n), dow: n.toLocaleDateString('en', {weekday: 'long'}), now: n.toTimeString().slice(0, 5), tz: Intl.DateTimeFormat().resolvedOptions().timeZone, messages: CH.msgs.map(m => ({role: m.role, content: m.content}))});
       CH.msgs.push({role: 'assistant', content: r.text || '(no reply)'}); if (r.items) { S.plan = r.items; LS.set(LSK('ib-plan'), S.plan); drawPlan(); }
@@ -590,20 +606,31 @@ function renderPrac(filter) {
   const F = filter || (S.pf = S.pf || {book: S.book.id, kind: '', topic: '', st: ''});
   if (F.book !== S.book.id) { F.book = S.book.id; F.topic = ''; F.kind = ''; }
   shell('prac'); S.q = null; setHash('#/prac');
-  const B = bookOf(F.book) || S.book, qs = S.qs.filter(q => q.book === B.id && !front(q));
+  const B = bookOf(F.book) || S.book, qs = S.qs.filter(q => q.book === B.id && !front(q) && !q.pp), V = F.view || 'qs', mk = mistakes(B.id);
+  const vseg = `<div class="seg vseg">${[['qs', 'Questions'], ['mist', 'Mistakes' + (mk.length ? ' · ' + mk.length : '')], ['papers', 'Past papers']].map(([k, l]) => `<button data-v="${k}" class="${V === k ? 'on' : ''}">${l}</button>`).join('')}</div>`;
+  const vwire = () => document.querySelectorAll('.vseg [data-v]').forEach(x => x.onclick = () => { F.view = x.dataset.v; renderPrac(F); });
+  if (V !== 'qs') {
+    $('#main').innerHTML = `<div class="prac" style="max-width:1100px"><div class="row"><h2 style="margin:0">Practice</h2>${bookBar(B.id)}</div><div style="margin-top:12px">${vseg}</div>
+      ${V === 'papers' ? '<div id="ppl"><span class="spin"></span></div>' : mk.length ? `<div class="card lst mlog">${mk.map(m => `<div data-id="${m.q.id}"><div class="row"><b class="num" style="color:var(--red)">${m.l.score}/${m.l.max}</b><span class="tag">${KIND[m.q.kind] || m.q.kind}</span><span class="meta">${esc(m.q.topic ? topicName(B, m.q.topic) : '')}</span><span class="sp"></span>${m.ready ? '<span class="tag r">Retry now</span>' : `<span class="meta">retry ${fmtD(ymd(new Date(m.due)), {weekday: 'short'})}</span>`}</div>
+        <div style="font-family:var(--f-read);margin:4px 0">${(MATH = !!B.math, mdx(preview(m.q.text), true))}</div>${m.l.fb && m.l.fb.missed && m.l.fb.missed.length ? `<ul class="meta" style="margin:4px 0;padding-left:18px">${m.l.fb.missed.slice(0, 2).map(x => '<li>' + mdx(String(x), true) + '</li>').join('')}</ul>` : ''}</div>`).join('')}</div>`
+      : '<div class="card" style="padding:28px;text-align:center"><b>No mistakes to retry</b><div class="meta">Anything you score under 70% on lands here and comes back after 2 days.</div></div>'}</div>`;
+    vwire(); onBookBar(() => renderPrac()); document.querySelectorAll('.mlog [data-id]').forEach(el => el.onclick = () => openQ(el.dataset.id));
+    if (V === 'papers') loadPapers().then(() => { if (!$('#ppl')) return; $('#ppl').innerHTML = renderPapers(B); document.querySelectorAll('[data-pp]').forEach(el => el.onclick = () => openPaper(el.dataset.pp)); });
+    return;
+  }
   const topics = [...new Set(qs.map(q => q.topic).filter(Boolean))].sort((a, b) => a.localeCompare(b, undefined, {numeric: true}));
   const list = qs.filter(q => (!F.kind || q.kind === F.kind) && (!F.topic || (q.topic || '').startsWith(F.topic)) &&
     (!F.st || (F.st === 'new' ? !attOf(q.id).length : F.st === 'weak' ? (best(q.id) >= 0 && best(q.id) < .6) : best(q.id) >= .6)));
   $('#main').innerHTML = `<div class="prac" style="max-width:1100px">
     <div class="row" style="justify-content:space-between"><div class="row"><h2 style="margin:0">Practice</h2>${bookBar(B.id)}</div><button class="pri" id="rnd">Random question</button></div>
-    <p class="meta">${qs.length} questions</p>
+    <div style="margin-top:12px">${vseg}</div>
     <div class="filters"><select id="fk"><option value="">All types</option>${[...new Set(qs.map(q => q.kind))].map(k => `<option value="${k}" ${F.kind === k ? 'selected' : ''}>${KIND[k] || k}</option>`).join('')}</select>
     <select id="ft"><option value="">All topics</option>${topics.map(t => `<option value="${t}" ${F.topic === t ? 'selected' : ''}>${esc(topicName(B, t))}</option>`).join('')}</select>
     <select id="fs"><option value="">Any status</option><option value="new" ${F.st === 'new' ? 'selected' : ''}>Not tried</option><option value="weak" ${F.st === 'weak' ? 'selected' : ''}>Weak (under 60%)</option><option value="good" ${F.st === 'good' ? 'selected' : ''}>Done well</option></select></div>
     <div class="grid">${list.map(q => { const bs = best(q.id); return `<div class="card qc" data-id="${q.id}"><div>${'<span class="tag">' + (KIND[q.kind] || q.kind) + '</span>'}${q.marks ? '<span class="tag">' + q.marks + (q.marks === 1 ? ' mark' : ' marks') + '</span>' : ''}${bs >= 0 ? `<span class="tag ${bs < .6 ? 'w' : 'g'}">best ${Math.round(bs * 100)}%</span>` : ''}</div><div class="qt">${(MATH = !!B.math, mdx(preview(q.text), true))}</div><div class="meta">${esc(q.topic ? topicName(B, q.topic) : '')}${q.bp ? ' · p. ' + q.bp : ''}</div></div>`; }).join('') || '<p>No questions match.</p>'}</div></div>`;
   $('#fk').onchange = e => { F.kind = e.target.value; renderPrac(F); }; $('#ft').onchange = e => { F.topic = e.target.value; renderPrac(F); }; $('#fs').onchange = e => { F.st = e.target.value; renderPrac(F); };
   document.querySelectorAll('.qc').forEach(c => c.onclick = () => openQ(c.dataset.id)); onBookBar(() => renderPrac());
-  $('#rnd').onclick = () => { const pool = list.length ? list : qs; if (pool.length) openQ(pool[Math.random() * pool.length | 0].id); };
+  vwire(); $('#rnd').onclick = () => { const pool = list.length ? list : qs; if (pool.length) openQ(pool[Math.random() * pool.length | 0].id); };
 }
 function openQ(id) {
   const q = S.qs.find(x => x.id === id); if (!q) return renderPrac(); const B = bookOf(q.book), draft = LS.get(LSK('ib-d-' + id), ''), prev = attOf(id); MATH = !!B.math;
@@ -617,18 +644,18 @@ function openQ(id) {
   const ta = $('#ans'), t0 = Date.now();
   const wc = () => { const n = (ta.value.match(/\S+/g) || []).length; $('#wc').textContent = n + ' words'; LS.set(LSK('ib-d-' + id), ta.value); }; ta.oninput = wc; wc();
   const tick = setInterval(() => { if (!document.body.contains(ta)) return clearInterval(tick); const s = (Date.now() - t0) / 1000 | 0; $('#tm').textContent = '· ' + (s / 60 | 0) + ':' + String(s % 60).padStart(2, '0'); }, 1000);
-  $('#back').onclick = () => renderPrac(); if ($('#src')) $('#src').onclick = () => openPage(B.id, q.n);
+  $('#back').onclick = () => { if (q.pp) S.pf = {...(S.pf || {}), view: 'papers'}; renderPrac(); }; if ($('#src')) $('#src').onclick = () => openPage(B.id, q.n);
   $('#hint').onclick = () => openChat({title: 'Hint', book: q.book, pages: q.pages, intro: `Question (${KIND[q.kind]}${q.marks ? ', ' + q.marks + ' marks' : ''}): "${q.text}"\nGive me a hint to get started WITHOUT writing the answer for me: what the command term wants, 2-3 angles or concepts to consider, and which examples or textbook pages could help. `, msgs: []}) || sendChat('Give me a hint.');
   $('#mark').onclick = async () => {
     const ans = ta.value.trim(); if ((ans.match(/\S+/g) || []).length < 8) { return; }
     $('#mark').disabled = true; $('#fbx').innerHTML = '<div class="card fb"><span class="spin"></span> Marking…</div>';
     const user = `Question (${KIND[q.kind] || q.kind}${q.marks ? ', ' + q.marks + ' marks' : ''}): ${q.text}${q.ctx ? '\nContext: ' + q.ctx : ''}\n\nStudent answer:\n"""\n${ans}\n"""`;
     try {
-      const r = await api('ask', {mode: 'mark', rubric: (RUBRIC[q.kind] || RUBRIC.short) + MARK_FMT, book: q.book, pages: q.pages, messages: [{role: 'user', content: user}]});
+      const r = await api('ask', {mode: 'mark', rubric: (RUBRIC[q.kind] || RUBRIC.short) + (q.ms ? '\n\nOfficial markscheme (follow it):\n' + q.ms : '') + MARK_FMT, book: q.book, pages: q.pages, messages: [{role: 'user', content: user}]});
       let fb; try { fb = JSON.parse(r.text.replace(/^```(json)?|```$/g, '').trim()); } catch (e) { fb = {score: 0, max: qMax(q), verdict: '', raw: r.text}; }
       fb.max = fb.max || qMax(q);
       const att = {t: Date.now(), score: +fb.score || 0, max: fb.max, ans, fb, secs: (Date.now() - t0) / 1000 | 0};
-      (S.prog.att[id] = S.prog.att[id] || []).push(att); saveProg();
+      (S.prog.att[id] = S.prog.att[id] || []).push(att); act('q');
       $('#fbx').innerHTML = `<div class="card fb">${fbHtml(fb)}<div class="row" style="margin-top:14px"><button class="pri" id="disc">Ask Claude about this feedback</button><button id="again">Try again</button></div></div>`;
       $('#disc').onclick = () => openChat({title: 'Feedback discussion', book: q.book, pages: q.pages, fixed: true, msgs: [{role: 'user', content: user, show: 'My answer to: ' + q.text}, {role: 'assistant', content: fbMd(fb)}]});
       $('#again').onclick = () => { ta.focus(); window.scrollTo({top: 0, behavior: 'smooth'}); };
@@ -671,7 +698,7 @@ function renderTerms(mode) {
     const t = deck[i]; S.term = t;
     $('#main').innerHTML = `<div class="meta" style="text-align:center;margin-top:10px">${i + 1} / ${deck.length}</div><div class="card flash"><div class="term">${esc(t.k)}</div>${flipped ? `<div class="def">${esc(t.d)}</div><div class="row" style="justify-content:center"><button id="no">Didn't know</button><button class="pri" id="yes">Knew it</button></div>` : `<button class="pri" id="flip">Reveal</button>`}</div>`;
     if (!flipped) $('#flip').onclick = () => { flipped = true; show(); };
-    else { const g = ok => { const k = B.id + ':' + t.k, s = S.prog.terms[k] || {box: 0}; S.prog.terms[k] = {box: ok ? Math.min(5, s.box + 1) : 0, t: Date.now()}; saveProg(); i++; flipped = false; show(); }; $('#yes').onclick = () => g(1); $('#no').onclick = () => g(0); }
+    else { const g = ok => { const k = B.id + ':' + t.k, s = S.prog.terms[k] || {box: 0}; S.prog.terms[k] = {box: ok ? Math.min(5, s.box + 1) : 0, t: Date.now()}; act('c'); i++; flipped = false; show(); }; $('#yes').onclick = () => g(1); $('#no').onclick = () => g(0); }
   };
   show();
 }
@@ -685,10 +712,15 @@ function renderProg() {
   const rows = Object.entries(byTopic).map(([t, a]) => ({t, v: a.reduce((s, x) => s + x, 0) / a.length, n: a.length})).sort((a, b) => a.v - b.v);
   const terms = B.terms || [], known = terms.filter(t => (S.prog.terms[B.id + ':' + t.k] || {}).box >= 3).length;
   const recent = qs.flatMap(q => attOf(q.id).map(a => ({q, a}))).sort((x, y) => y.a.t - x.a.t).slice(0, 8);
-  $('#main').innerHTML = `<div class="prac"><div class="row" style="margin-bottom:14px"><h2 style="margin:0">Progress</h2>${bookBar(B.id)}</div>
+  const wr = weekReport(), hls = (S.prog.hls || []).filter(h => h.b === B.id);
+  $('#main').innerHTML = `<div class="prac"><div class="row" style="margin-bottom:14px"><h2 style="margin:0">Progress</h2></div>
+    <h3 style="margin-top:0">This week</h3>${wr.html}
+    <div class="row" style="margin:28px 0 12px"><h3 style="margin:0">By subject</h3>${bookBar(B.id)}</div>
     <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(180px,1fr))"><div class="card stat"><div class="meta">Questions tried</div><div class="n">${tried.length}<span class="meta"> / ${qs.length}</span></div></div><div class="card stat"><div class="meta">Average mark</div><div class="n">${avg}%</div></div><div class="card stat"><div class="meta">Attempts</div><div class="n">${all.length}</div></div><div class="card stat"><div class="meta">Key terms learned</div><div class="n">${known}<span class="meta"> / ${terms.length}</span></div></div></div>
     <h3>Topics, weakest first</h3>${rows.length ? `<div class="card" style="padding:6px 14px">${rows.map(r => `<div style="padding:8px 0"><div class="row"><span>${esc(topicName(B, r.t))}</span><span style="flex:1"></span><span class="meta">${Math.round(r.v * 100)}% · ${r.n} q</span><button class="ghost" data-t="${r.t}">Practise</button></div><div class="bar"><i style="width:${Math.round(r.v * 100)}%;background:${r.v < .5 ? 'var(--bad)' : r.v < .7 ? 'var(--warn)' : 'var(--good)'}"></i></div></div>`).join('')}</div>` : '<p class="meta">No attempts yet.</p>'}
-    ${recent.length ? `<h3>Recent</h3><div class="card">${recent.map(({q, a}) => `<div class="h" style="padding:10px 14px;border-bottom:1px solid var(--line);cursor:pointer" data-id="${q.id}"><b>${a.score}/${a.max}</b> <span class="meta">${new Date(a.t).toLocaleDateString()}</span><div>${esc(q.text.slice(0, 140))}</div></div>`).join('')}</div>` : ''}</div>`;
+    ${recent.length ? `<h3>Recent</h3><div class="card">${recent.map(({q, a}) => `<div class="h" style="padding:10px 14px;border-bottom:1px solid var(--line);cursor:pointer" data-id="${q.id}"><b>${a.score}/${a.max}</b> <span class="meta">${new Date(a.t).toLocaleDateString()}</span><div>${esc(q.text.slice(0, 140))}</div></div>`).join('')}</div>` : ''}
+    ${hls.length ? `<div class="row" style="margin:24px 0 10px"><h3 style="margin:0">Highlights and notes</h3><span class="sp"></span><button id="hlQ"><svg class="i"><use href="#i-spark"/></svg>Quiz me on these</button></div><div class="card lst hlist">${hls.slice().reverse().map(h => `<div data-hn="${h.n}" style="cursor:pointer"><span class="meta">p. ${esc(h.bp || h.n)}</span> <span style="font-family:var(--f-read)">${esc(h.x.slice(0, 200))}</span>${h.note ? `<div class="meta" style="margin-top:3px">${esc(h.note)}</div>` : ''}</div>`).join('')}</div>` : ''}</div>`;
+  $('#wRev').onclick = weeklyReview; if ($('#hlQ')) $('#hlQ').onclick = () => hlQuiz(hls); document.querySelectorAll('[data-hn]').forEach(el => el.onclick = () => openPage(B.id, +el.dataset.hn));
   document.querySelectorAll('#main [data-t]').forEach(b => b.onclick = () => { S.pf = {book: B.id, kind: '', topic: b.dataset.t, st: ''}; renderPrac(); });
   document.querySelectorAll('#main [data-id]').forEach(b => b.onclick = () => openQ(b.dataset.id)); onBookBar(renderProg);
 }
@@ -710,9 +742,9 @@ function occurs(it, from, to) {
   return out;
 }
 function dayMap(from, to) { const m = {}; for (const it of S.plan) for (const d of occurs(it, from, to)) (m[d] = m[d] || []).push(it); for (const k in m) m[k].sort((a, b) => (a.time || '99') < (b.time || '99') ? -1 : 1); return m; }
-async function loadPlan() { try { S.plan = await api('plan'); if (!Array.isArray(S.plan)) S.plan = []; } catch (e) { S.plan = S.plan || []; } }
+async function loadPlan() { if (!USER) { S.plan = LS.get(LSK('ib-plan'), S.plan || []); return; } try { S.plan = await api('plan'); if (!Array.isArray(S.plan)) S.plan = []; } catch (e) { S.plan = S.plan || []; } }
 let planSaveT = 0;
-function savePlan() { LS.set(LSK('ib-plan'), S.plan); clearTimeout(planSaveT); planSaveT = setTimeout(() => api('plan', {data: S.plan}).catch(e => alert('Could not save: ' + e.message)), 400); }
+function savePlan() { LS.set(LSK('ib-plan'), S.plan); if (!USER) return; clearTimeout(planSaveT); planSaveT = setTimeout(() => api('plan', {data: S.plan}).catch(e => alert('Could not save: ' + e.message)), 400); }
 function chip(it, d) {
   const c = subjColor(it.subject), past = (it.kind === 'homework' || it.kind === 'task') && !it.done && d < todayS();
   return `<div class="chip ${it.done ? 'dn' : ''} k-${it.kind}" data-id="${it.id}" style="--c:${c}" title="${esc(PK[it.kind] + ': ' + it.title)}">${it.time ? '<b>' + it.time + '</b> ' : ''}${esc(it.title)}${past ? ' <span style="color:var(--bad)">!</span>' : ''}</div>`;
@@ -751,7 +783,7 @@ function drawPlan() {
       <button class="pri" id="pAsk" style="width:100%;justify-content:center"><svg class="i"><use href="#i-spark"/></svg>Ask planner</button>
       <h3>Due</h3><div class="card">${due.map(it => `<label class="due"><input type="checkbox" data-done="${it.id}"><span style="flex:1"><span class="dot" style="background:${subjColor(it.subject)}"></span>${esc(it.title)}<br><span class="meta">${fmtD(it.date)} · ${dl(it.date)}</span></span></label>`).join('') || '<p class="meta" style="padding:10px 12px;margin:0">None</p>'}</div>
       <h3>Exams</h3><div class="card">${exams.map(it => `<div class="due" data-id="${it.id}" style="cursor:pointer"><span style="flex:1">${esc(it.title)}<br><span class="meta">${fmtD(it.date)}${it.time ? ' ' + it.time : ''} · ${dl(it.date)}</span></span></div>`).join('') || '<p class="meta" style="padding:10px 12px;margin:0">None</p>'}</div>
-      <p class="meta" style="margin-top:14px"><a href="#" id="pIcs">Add to your phone's calendar</a></p></div>
+      ${USER ? `<p class="meta" style="margin-top:14px"><a href="#" id="pIcs">Add to your phone's calendar</a></p>` : ''}</div>
     <div class="pmain"><div class="rbar"><button id="pPrev" aria-label="Previous"><svg class="i"><use href="#i-l"/></svg></button><button id="pToday">Today</button><button id="pNext" aria-label="Next"><svg class="i"><use href="#i-r"/></svg></button><h2 style="margin:0 8px;font-size:20px">${esc(title)}</h2><span class="sp"></span>
       <div class="seg">${['month', 'week', 'agenda'].map(x => `<button data-pv="${x}" class="${x === v ? 'on' : ''}">${x[0].toUpperCase() + x.slice(1)}</button>`).join('')}</div><button class="pri" id="pAdd">+ Add</button></div>${body}</div></div>`;
   const step = v === 'month' ? null : v === 'week' ? 7 : 60;
@@ -763,7 +795,7 @@ function drawPlan() {
   document.querySelectorAll('.mc[data-d], .wcol[data-d]').forEach(el => el.onclick = e => { let time = ''; if (el.classList.contains('wcol')) { const r = el.getBoundingClientRect(), h = 7 + Math.floor((e.clientY - r.top) / 44); time = String(h).padStart(2, '0') + ':00'; } editItem(null, el.dataset.d, time); });
   document.querySelectorAll('[data-done]').forEach(cb => cb.onchange = () => { const it = S.plan.find(x => x.id === cb.dataset.done); it.done = true; savePlan(); setTimeout(drawPlan, 250); });
   $('#pAsk').onclick = () => openChat({title: 'Planner assistant', agent: true, msgs: S.planChat || []});
-  $('#pIcs').onclick = e => { e.preventDefault(); icsModal(); };
+  if ($('#pIcs')) $('#pIcs').onclick = e => { e.preventDefault(); icsModal(); };
 }
 function icsModal() { { const url = RELAY.replace(/^http/, 'webcal') + '/ib/cal.ics?k=' + USER.tok;
     openModal(`<h3 style="margin-top:0">Calendar feed</h3><input readonly value="${esc(url)}" onclick="this.select()"><p class="meta">Your planner, live in Apple or Google Calendar. Google: Other calendars → From URL (use https://).</p><div class="row"><a class="btn pri" href="${esc(url)}">Open in calendar app</a><button id="mClose">Close</button></div>`); }
@@ -814,7 +846,7 @@ function drawHome() {
   const rel = d => { const n = Math.round((pd(d) - pd(t)) / 864e5); return n === 0 ? 'Today' : n === 1 ? 'Tomorrow' : n < 7 ? fmtD(d, {weekday: 'short'}) : fmtD(d, {day: 'numeric', month: 'short'}); };
   const recent = allQ.flatMap(q => attOf(q.id).map(a => ({q, a}))).sort((x, y) => y.a.t - x.a.t).slice(0, 4);
   $('#main').innerHTML = `<div class="home">
-    <div class="hhead"><h2>${h < 12 ? 'Morning' : h < 18 ? 'Afternoon' : 'Evening'}, ${esc(USER.name)}</h2><span class="meta">${now.toLocaleDateString(undefined, {weekday: 'long', day: 'numeric', month: 'long'})}</span></div>
+    <div class="hhead"><h2>${h < 12 ? 'Morning' : h < 18 ? 'Afternoon' : 'Evening'}${USER ? ', ' + esc(USER.name) : ''}</h2><div class="strk">${weekStrip()}<div><b class="num">${streak()}</b> <span class="meta">day streak</span></div></div></div>
     <div class="hgrid"><div>
       ${LB ? `<section class="hsec"><h3>Continue reading</h3><div class="card cont" id="hCont">${spine(LB)}<div style="min-width:0"><div class="meta">${esc(LB.title)}</div><div class="ttl">${sec ? esc(sec.title) : 'Page ' + last.n}</div><div class="meta">${sec && sec.num ? esc(sec.num) + ' · ' : ''}page ${last.n} of ${LB.pages}</div></div></div></section>` : ''}
       <section class="hsec"><div class="acts">
@@ -824,10 +856,13 @@ function drawHome() {
       </div></section>
       <section class="hsec"><h3>Books<a href="#" id="hLib">Library</a></h3><div class="shelf">${shelfOrder().map(B => `<div class="card bk" data-b="${B.id}">${spine(B)}<div style="min-width:0;flex:1"><b>${esc(B.title)}</b><span class="meta">${B.pages} pages · ${allQ.filter(q => q.book === B.id).length} questions</span>${B.file ? `<div><a class="meta" href="${RELAY}/ib/file?b=${B.id}&t=${encodeURIComponent(PASS)}" download onclick="event.stopPropagation()">Download PDF</a></div>` : ''}</div></div>`).join('')}</div></section>
     </div><div>
+      <section class="hsec"><h3>Today</h3><div class="card lst agl">${(() => { const mk = mistakes(), rd = mk.filter(m => m.ready), dt = S.prog.days && S.prog.days[t];
+        return `<div id="hMist"><span class="when">Mistakes</span><span>${rd.length ? `<b>${rd.length}</b> ready to retry` : mk.length ? mk.length + ' waiting, none due yet' : 'None logged'}</span></div><div id="hTerms2"><span class="when">Cards</span><span>${termsDue ? `<b>${termsDue}</b> due` : 'All caught up'}</span></div><div style="cursor:default"><span class="when">Studied</span><span>${dt ? dt.m : 0} min · ${dt ? dt.q : 0} questions</span></div>`; })()}<div style="cursor:default;padding:10px 12px"><button class="pri" id="hDay" style="width:100%;justify-content:center"><svg class="i"><use href="#i-spark"/></svg>Plan my day</button></div></div></section>
       <section class="hsec"><h3>Coming up<a href="#" id="hPlan">Planner</a></h3><div class="card lst agl">${over.map(it => `<div data-id="${it.id}"><span class="when" style="color:var(--red)">Overdue</span><span><span class="dot" style="background:${subjColor(it.subject)}"></span>${esc(it.title)}</span></div>`).join('')}${up.slice(0, 8).map(([d, it]) => `<div data-id="${it.id}"><span class="when">${rel(d)}${it.time ? '<br>' + it.time : ''}</span><span><span class="dot" style="background:${subjColor(it.subject)}"></span>${esc(it.title)}${it.kind === 'exam' ? ' <span class="tag r">Exam</span>' : ''}</span></div>`).join('') || (over.length ? '' : '<div class="meta" style="cursor:default">Nothing in the next two weeks</div>')}</div></section>
       ${recent.length ? `<section class="hsec"><h3>Recent marks<a href="#" id="hProg">Progress</a></h3><div class="card lst agl">${recent.map(({q, a}) => `<div data-q="${q.id}"><span class="when num" style="color:${a.score / a.max < .4 ? 'var(--red)' : a.score / a.max < .7 ? 'var(--warn)' : 'var(--good)'};font-weight:600">${a.score}/${a.max}</span><span>${esc(q.text.replace(/\$[^$]*\$/g, '…').slice(0, 80))}${q.text.length > 80 ? '…' : ''}</span></div>`).join('')}</div></section>` : ''}
     </div></div></div>`;
   $('#hLib').onclick = e => { e.preventDefault(); go('lib'); };
+  $('#hDay').onclick = () => USER ? dayPlan() : signInBox(); $('#hMist').onclick = () => { const m = mistakes(); if (m[0]) S.book = bookOf(m[0].q.book); renderToc(); S.pf = {...(S.pf || {}), view: 'mist'}; renderPrac(); }; $('#hTerms2').onclick = () => $('#hTerms').click();
   if ($('#hCont')) $('#hCont').onclick = () => openPage(LB.id, last.n);
   $('#hPrac').onclick = () => { go('prac'); $('#rnd') && $('#rnd').click(); };
   $('#hTerms').onclick = () => { go('terms'); if (termsDue && $('#st')) $('#st').click(); };
@@ -837,6 +872,149 @@ function drawHome() {
   document.querySelectorAll('.bk').forEach(el => el.onclick = () => openBook(el.dataset.b));
   document.querySelectorAll('.agl [data-id]').forEach(el => el.onclick = () => { go('plan'); setTimeout(() => editItem(S.plan.find(x => x.id === el.dataset.id)), 30); });
   document.querySelectorAll('.agl [data-q]').forEach(el => el.onclick = () => { go('prac'); openQ(el.dataset.q); });
+}
+
+// ---------- activity, streaks, weekly report ----------
+// days[YYYY-MM-DD] = {m: active minutes, q: questions marked, c: cards reviewed, p: pages opened}
+function act(k, n = 1) { if (!S.prog) return; const D = S.prog.days = S.prog.days || {}, d = todayS(), o = D[d] = D[d] || {m: 0, q: 0, c: 0, p: 0}; o[k] = (o[k] || 0) + n; saveProg(); }
+let lastInput = Date.now(); for (const ev of ['keydown', 'pointerdown', 'scroll', 'mousemove']) addEventListener(ev, () => { lastInput = Date.now(); }, {passive: true, capture: true});
+setInterval(() => { if (USER && S.prog && document.visibilityState === 'visible' && Date.now() - lastInput < 120000) act('m'); }, 60000);
+const activeDay = o => o && (o.m >= 10 || o.q >= 1 || o.c >= 10);
+function streak() { const D = S.prog.days || {}; let d = todayS(), n = 0; if (!activeDay(D[d])) d = addD(d, -1); while (activeDay(D[d])) { n++; d = addD(d, -1); } return n; }
+function weekStrip() { const D = S.prog.days || {}, t = todayS(), mon = addD(t, -((pd(t).getDay() + 6) % 7));
+  return `<div class="wkst">${Array.from({length: 7}, (_, i) => { const d = addD(mon, i), o = D[d]; return `<span class="${activeDay(o) ? 'on' : o && o.m ? 'half' : ''} ${d === t ? 'td' : ''}" title="${fmtD(d)}${o ? ' · ' + o.m + ' min' : ''}">${'MTWTFSS'[i]}</span>`; }).join('')}</div>`; }
+function weekStats(off = 0) { // off = 0 this week (last 7 days), 1 the week before
+  const D = S.prog.days || {}, t = todayS(), days = Array.from({length: 7}, (_, i) => addD(t, -6 + i - off * 7)), s = {m: 0, q: 0, c: 0, days};
+  for (const d of days) { const o = D[d]; if (o) { s.m += o.m || 0; s.q += o.q || 0; s.c += o.c || 0; } }
+  const from = pd(days[0]).getTime() - 12 * 36e5, to = pd(days[6]).getTime() + 12 * 36e5, at = Object.values(S.prog.att).flat().filter(a => a.t >= from && a.t < to && a.max);
+  s.avg = at.length ? at.reduce((x, a) => x + a.score / a.max, 0) / at.length : null; s.n = at.length; return s; }
+function weekReport() {
+  const w = weekStats(0), p = weekStats(1), D = S.prog.days || {}, mx = Math.max(30, ...w.days.map(d => (D[d] || {}).m || 0));
+  const slip = []; for (const q of S.qs) { const a = attOf(q.id); if (a.length >= 2) { const l = a[a.length - 1]; if (Date.now() - l.t < 7 * 864e5 && l.score / l.max < best(q.id) - .15) slip.push(q.topic || '?'); } }
+  const dl = (a, b, f) => b == null || a == null ? '' : `<span class="meta" style="color:${a >= b ? 'var(--good)' : 'var(--red)'}">${a >= b ? '+' : ''}${f(a - b)} vs last week</span>`;
+  return {html: `<div class="card wrep"><div class="wbars">${w.days.map(d => { const o = D[d] || {}; return `<div><i style="height:${Math.round((o.m || 0) / mx * 100)}%"></i><span>${fmtD(d, {weekday: 'narrow'})}</span></div>`; }).join('')}</div>
+    <div class="wnums"><div><b class="num">${Math.round(w.m / 6) / 10}h</b><span class="meta">studied</span>${dl(w.m / 60, p.m / 60, x => Math.round(x * 10) / 10 + 'h')}</div><div><b class="num">${w.q}</b><span class="meta">questions marked</span></div><div><b class="num">${w.avg == null ? '–' : Math.round(w.avg * 100) + '%'}</b><span class="meta">average mark</span>${dl(w.avg, p.avg, x => Math.round(x * 100) + '%')}</div><div><b class="num">${w.c}</b><span class="meta">cards reviewed</span></div><div><b class="num">${streak()}</b><span class="meta">day streak</span></div></div>
+    ${slip.length ? `<div class="meta" style="margin-top:10px">Slipping: ${[...new Set(slip)].slice(0, 5).map(esc).join(', ')}</div>` : ''}<div class="row" style="margin-top:12px"><button id="wRev"><svg class="i"><use href="#i-spark"/></svg>Weekly review with Claude</button></div></div>`,
+    text: `Last 7 days: ${Math.round(w.m)} min studied (week before: ${Math.round(p.m)}), ${w.q} questions marked, average mark ${w.avg == null ? 'n/a' : Math.round(w.avg * 100) + '%'} (week before: ${p.avg == null ? 'n/a' : Math.round(p.avg * 100) + '%'}), ${w.c} flashcards, streak ${streak()} days. Daily minutes: ${w.days.map(d => fmtD(d, {weekday: 'short'}) + ' ' + ((D[d] || {}).m || 0)).join(', ')}. Slipping topics: ${[...new Set(slip)].join(', ') || 'none'}.\n` + S.books.map(progSummary).join('\n') + '\nMistakes waiting: ' + mistakes().length};
+}
+function weeklyReview() { const r = weekReport(); openChat({title: 'Weekly review', book: S.book.id, pages: [], intro: ''}); CH.lastNote = '-'; sendChat(`Give me my weekly review. Here are my stats:\n${r.text}\n\nKeep it short: what went well, what's slipping, and my 3 priorities for next week.`); CH.msgs[0].show = 'Weekly review'; drawChat(true); }
+
+// ---------- mistake log: questions whose latest attempt was under 70% ----------
+function mistakes(book) {
+  return S.qs.filter(q => (!book || q.book === book)).map(q => { const a = attOf(q.id); if (!a.length) return null; const l = a[a.length - 1]; if (!l.max || l.score / l.max >= .7) return null;
+    const lows = a.filter(x => x.max && x.score / x.max < .7).length, due = l.t + (lows > 1 ? 4 : 2) * 864e5;
+    return {q, l, due, ready: Date.now() >= due}; }).filter(Boolean).sort((a, b) => a.due - b.due);
+}
+
+// ---------- past papers (PPP mode) ----------
+// kv 'papers': [{id, book, title, session, paper, mins, total?, bounds?: [[7, pct], [6, pct], ...], instr?, qs: [{n, text, marks, kind?, ms?, ans?, opts?}]}]
+const DEF_BOUNDS = [[7, 70], [6, 58], [5, 47], [4, 36], [3, 25], [2, 14], [1, 0]];
+const ppQ = (P, q) => ({id: 'pp:' + P.id + ':' + q.n, book: P.book, kind: q.kind || (q.opts || q.ans ? 'mcq' : 'structured'), marks: q.marks, text: q.text, ms: q.ms, ans: q.ans, topic: q.topic, pp: P.id, ppn: q.n, bp: '', pages: []});
+async function loadPapers() { if (S.papers) return S.papers; try { S.papers = await api('papers'); if (!Array.isArray(S.papers)) S.papers = []; } catch (e) { S.papers = []; }
+  for (const P of S.papers) for (const q of P.qs || []) { const x = ppQ(P, q); if (!S.qs.some(y => y.id === x.id)) S.qs.push(x); } return S.papers; }
+const gradeOf = (P, pc) => ((P.bounds || DEF_BOUNDS).find(([, m]) => pc * 100 >= m) || [1])[0];
+function renderPapers(B) {
+  const ps = (S.papers || []).filter(P => P.book === B.id), res = S.prog.pp || {};
+  return ps.length ? `<div class="grid">${ps.map(P => { const r = (res[P.id] || []).slice(-1)[0]; return `<div class="card qc" data-pp="${P.id}"><div><span class="tag">${esc(P.paper || 'Paper')}</span>${P.mins ? `<span class="tag">${P.mins} min</span>` : ''}${r ? `<span class="tag ${r.grade >= 6 ? 'g' : r.grade >= 4 ? 'w' : 'r'}">${r.score}/${r.max} · ${r.grade}</span>` : ''}</div><div class="qt">${esc(P.title)}</div><div class="meta">${esc(P.session || '')} · ${(P.qs || []).length} questions</div></div>`; }).join('')}</div>`
+    : `<div class="card" style="padding:28px;text-align:center"><b>No past papers for ${esc(B.subject)} yet</b></div>`;
+}
+function openPaper(id) {
+  const P = S.papers.find(x => x.id === id); if (!P) return renderPrac();
+  shell('prac'); setHash('#/paper/' + id); title([['Practice', 'prac'], P.title]); S.q = null;
+  const B = bookOf(P.book), K = LSK('ib-pp-' + id), st = LS.get(K, {ans: {}, start: 0}), res = (S.prog.pp || {})[id] || []; MATH = !!(B && B.math);
+  if (!st.start) { // cover page
+    $('#main').innerHTML = `<div class="prac"><div class="card qbig" style="text-align:center;padding:40px 28px"><div class="meta" style="font-family:var(--f-ui)">${esc(B ? B.subject : '')} · ${esc(P.session || '')}</div><h2 style="margin:8px 0 6px">${esc(P.title)}</h2><p class="meta" style="font-family:var(--f-ui)">${P.mins ? P.mins + ' minutes · ' : ''}${(P.qs || []).length} questions · ${P.total || P.qs.reduce((s, q) => s + (q.marks || 0), 0)} marks</p>
+      ${P.instr ? `<div style="text-align:left;font-size:16px">${mdx(P.instr)}</div>` : ''}<p class="meta" style="font-family:var(--f-ui)">Exam conditions: timer on, no Claude until you submit.</p><button class="pri" id="ppGo" style="margin-top:6px">Start paper</button></div>
+      ${res.length ? `<h3>Past attempts</h3><div class="card lst">${res.slice().reverse().map(r => `<div class="row"><b class="num">${r.score}/${r.max}</b><span class="tag">${r.grade}</span><span class="meta">${new Date(r.t).toLocaleDateString()} · ${Math.round(r.secs / 60)} min</span></div>`).join('')}</div>` : ''}</div>`;
+    $('#ppGo').onclick = () => { st.start = Date.now(); LS.set(K, st); openPaper(id); }; return;
+  }
+  const lim = P.mins ? P.mins * 60e3 : 0;
+  $('#main').innerHTML = `<div class="prac"><div class="ppbar card"><b>${esc(P.title)}</b><span class="sp"></span><span class="num" id="ppT"></span><button id="ppQuit">Abandon</button><button class="pri" id="ppSub">Submit</button></div>
+    ${P.qs.map(q => { const x = ppQ(P, q); return `<div class="card qbig" style="margin-top:14px"><div style="font-family:var(--f-ui);margin-bottom:8px"><b>${esc(q.n)}.</b> ${q.marks ? '<span class="tag">' + q.marks + (q.marks === 1 ? ' mark' : ' marks') + '</span>' : ''}</div>${mdx(q.text)}
+      ${x.kind === 'mcq' ? `<div class="row" style="font-family:var(--f-ui);margin-top:10px">${['A', 'B', 'C', 'D'].map(L => `<label class="opt"><input type="radio" name="o${esc(q.n)}" value="${L}" ${st.ans[q.n] === L ? 'checked' : ''} data-n="${esc(q.n)}"> ${L}</label>`).join('')}</div>`
+      : `<textarea data-n="${esc(q.n)}" rows="${(q.marks || 4) > 6 ? 12 : 5}" style="margin-top:10px;font:15px/1.6 var(--f-ui)" placeholder="Answer">${esc(st.ans[q.n] || '')}</textarea>`}</div>`; }).join('')}
+    <div class="row" style="margin:18px 0"><span class="sp"></span><button class="pri" id="ppSub2">Submit paper</button></div></div>`;
+  $('#tutor').classList.add('hide');
+  document.querySelectorAll('#main [data-n]').forEach(el => el.oninput = el.onchange = () => { if (el.type !== 'radio' || el.checked) st.ans[el.dataset.n] = el.value; LS.set(K, st); });
+  const tick = setInterval(() => { const el = $('#ppT'); if (!el) { clearInterval(tick); $('#tutor').classList.remove('hide'); return; } const s = (Date.now() - st.start) / 1000 | 0, left = lim ? Math.round(lim / 1000) - s : s, a = Math.abs(left);
+    el.textContent = (left < 0 ? 'Over by ' : lim ? '' : 'Elapsed ') + (a / 3600 | 0 ? (a / 3600 | 0) + ':' : '') + String((a / 60 | 0) % 60).padStart(2, '0') + ':' + String(a % 60).padStart(2, '0'); el.style.color = lim && left < 300 ? 'var(--red)' : ''; }, 500);
+  $('#ppQuit').onclick = () => { if (!confirm('Abandon this attempt? Your answers are cleared.')) return; LS.set(K, {ans: {}, start: 0}); openPaper(id); };
+  $('#ppSub').onclick = $('#ppSub2').onclick = () => { if (confirm('Submit for marking?')) submitPaper(P, st, K); };
+}
+async function submitPaper(P, st, K) {
+  const secs = (Date.now() - st.start) / 1000 | 0, out = []; $('#tutor').classList.remove('hide');
+  $('#main').innerHTML = `<div class="prac"><div class="card fb"><span class="spin"></span> Marking <span id="ppN">0</span> / ${P.qs.length}…</div></div>`;
+  let done = 0; const tick = () => { done++; const e = $('#ppN'); if (e) e.textContent = done; };
+  const one = async q => { const x = ppQ(P, q), a = (st.ans[q.n] || '').trim(), max = q.marks || (x.kind === 'mcq' ? 1 : 4);
+    if (!a) { tick(); return {q, x, a, fb: {score: 0, max, verdict: 'Not answered.', good: [], missed: [], fix: [], plan: '', terms: []}}; }
+    if (x.kind === 'mcq' && q.ans) { tick(); const ok = a.toUpperCase() === String(q.ans).toUpperCase(); return {q, x, a, fb: {score: ok ? max : 0, max, verdict: ok ? 'Correct.' : 'Answer: ' + q.ans, good: [], missed: [], fix: [], plan: '', terms: []}}; }
+    try { const r = await api('ask', {mode: 'mark', rubric: (RUBRIC[x.kind] || RUBRIC.structured) + (q.ms ? '\n\nOfficial markscheme (follow it):\n' + q.ms : '') + MARK_FMT, book: P.book, pages: [], messages: [{role: 'user', content: `Question ${q.n} (${max} marks): ${q.text}\n\nStudent answer:\n"""\n${a}\n"""`}]});
+      const fb = JSON.parse(r.text); fb.max = max; fb.score = Math.min(max, +fb.score || 0); tick(); return {q, x, a, fb}; } catch (e) { tick(); return {q, x, a, fb: {score: 0, max, verdict: 'Marking failed: ' + e.message, good: [], missed: [], fix: [], plan: '', terms: []}}; } };
+  const qs = [...P.qs]; const work = async () => { while (qs.length) { const q = qs.shift(); out.push(await one(q)); } }; await Promise.all([work(), work(), work()]);
+  out.sort((a, b) => P.qs.indexOf(a.q) - P.qs.indexOf(b.q));
+  const score = out.reduce((s, o) => s + o.fb.score, 0), max = out.reduce((s, o) => s + o.fb.max, 0), grade = gradeOf(P, max ? score / max : 0), t = Date.now();
+  for (const o of out) if (o.a) (S.prog.att[o.x.id] = S.prog.att[o.x.id] || []).push({t, score: o.fb.score, max: o.fb.max, ans: o.a, fb: o.fb});
+  (S.prog.pp = S.prog.pp || {})[P.id] = [...(S.prog.pp[P.id] || []), {t, score, max, grade, secs}]; act('q', out.filter(o => o.a).length); LS.set(K, {ans: {}, start: 0});
+  $('#main').innerHTML = `<div class="prac"><div class="card fb" style="text-align:center"><div class="meta">${esc(P.title)}</div><div class="score" style="font-size:54px;margin:8px 0">${score}/${max}</div><div style="font:600 20px var(--f-read)">Grade ${grade} <span class="meta">(${Math.round(score / max * 100)}%, ${Math.round(secs / 60)} min${P.bounds ? '' : ', approximate boundaries'})</span></div>
+    <div class="row" style="justify-content:center;margin-top:14px"><button class="pri" id="ppRev"><svg class="i"><use href="#i-spark"/></svg>Go through it with Claude</button><button id="ppBack">Back to papers</button></div></div>
+    ${out.map(o => `<details class="card" style="padding:12px 16px;margin-top:10px"><summary><b class="num">${o.fb.score}/${o.fb.max}</b> &nbsp;Question ${esc(o.q.n)}</summary><div class="fb" style="padding:8px 0 0">${mdx(o.q.text)}<h4>Your answer</h4><div class="meta" style="white-space:pre-wrap">${esc(o.a || '(blank)')}</div>${fbHtml(o.fb)}</div></details>`).join('')}</div>`;
+  $('#ppBack').onclick = () => { S.pf = {...(S.pf || {}), view: 'papers'}; renderPrac(); };
+  $('#ppRev').onclick = () => { openChat({title: 'Paper review', book: P.book, pages: [], intro: ''}); CH.lastNote = '-';
+    sendChat(`I just sat ${P.title} and got ${score}/${max} (grade ${grade}). Per question:\n${out.map(o => `Q${o.q.n} ${o.fb.score}/${o.fb.max}: ${o.fb.verdict}${o.fb.missed && o.fb.missed.length ? ' Missed: ' + o.fb.missed.slice(0, 3).join('; ') : ''}`).join('\n')}\n\nWhat are the patterns in what I lost marks on, and what should I fix first? Be concise.`); CH.msgs[0].show = 'Review my paper'; drawChat(true); };
+  saveProg();
+}
+
+// ---------- highlights and notes ----------
+// prog.hls = [{id, b, n, x: highlighted text, note, t}]
+function paintHls(el, b, n) {
+  const hs = (S.prog.hls || []).filter(h => h.b === b && h.n === n); if (!hs.length) return;
+  for (const h of hs) {
+    const nodes = [], w = document.createTreeWalker(el, NodeFilter.SHOW_TEXT); let all = '';
+    while (w.nextNode()) { if (w.currentNode.parentNode.closest('.katex')) continue; nodes.push([w.currentNode, all.length]); all += w.currentNode.data; }
+    const norm = s => s.replace(/\s+/g, ' '), key = norm(h.x).trim(); let flat = '', map = [];
+    for (let i = 0; i < all.length; i++) { const c = /\s/.test(all[i]) ? ' ' : all[i]; if (c === ' ' && flat.endsWith(' ')) continue; flat += c; map.push(i); }
+    const at = flat.indexOf(key); if (at < 0) continue; const s0 = map[at], s1 = map[at + key.length - 1] + 1;
+    for (const [node, off] of nodes) { const a = Math.max(s0, off), z = Math.min(s1, off + node.data.length); if (a >= z) continue;
+      const r = document.createRange(); r.setStart(node, a - off); r.setEnd(node, z - off); const m = document.createElement('mark'); m.className = 'hl' + (h.note ? ' nt' : ''); m.dataset.h = h.id; r.surroundContents(m); }
+  }
+  el.querySelectorAll('mark.hl').forEach(m => m.onclick = e => { e.stopPropagation(); hlPop(m.dataset.h, m); });
+}
+function selBar() {
+  let bar = $('#selbar'); const sel = getSelection(), pg = $('#pg');
+  if (!pg || !sel.rangeCount || sel.isCollapsed || !pg.contains(sel.anchorNode) || !pg.classList.contains('page')) { if (bar) bar.remove(); return; }
+  const x = sel.toString().trim(); if (x.length < 2) return; const rc = sel.getRangeAt(0).getBoundingClientRect();
+  if (!bar) { bar = document.createElement('div'); bar.id = 'selbar'; bar.className = 'card selbar'; document.body.appendChild(bar); }
+  bar.innerHTML = '<button data-a="hl">Highlight</button><button data-a="note">Note</button><button data-a="ask"><svg class="i"><use href="#i-spark"/></svg>Explain</button>';
+  bar.style.left = Math.max(8, Math.min(innerWidth - 260, rc.left + rc.width / 2 - 120)) + 'px'; bar.style.top = (rc.top + scrollY - 46) + 'px';
+  bar.onmousedown = e => e.preventDefault();
+  bar.querySelectorAll('[data-a]').forEach(btn => btn.onclick = () => { const a = btn.dataset.a; bar.remove(); sel.removeAllRanges();
+    if (a === 'ask') { openChat({title: 'Explain', book: S.book.id, pages: [], intro: ''}); return sendChat(`Explain this bit from p. ${$('#pn').dataset.bp || S.n} simply: "${x.slice(0, 1500)}"`); }
+    const h = {id: Math.random().toString(36).slice(2, 9), b: S.book.id, n: S.n, bp: $('#pn').dataset.bp || '', x: x.slice(0, 600), note: '', t: Date.now()};
+    (S.prog.hls = S.prog.hls || []).push(h); saveProg(true); paintHls($('#pg'), h.b, h.n); if (a === 'note') { const m = document.querySelector(`mark.hl[data-h="${h.id}"]`); if (m) hlPop(h.id, m); } });
+}
+document.addEventListener('mouseup', () => setTimeout(selBar, 10)); document.addEventListener('touchend', () => setTimeout(selBar, 300));
+function hlPop(id, el) {
+  const h = (S.prog.hls || []).find(x => x.id === id); if (!h) return;
+  const m = openModal(`<div class="meta">p. ${esc(h.bp || h.n)}</div><blockquote style="margin:8px 0 12px;font-family:var(--f-read)">${esc(h.x)}</blockquote><textarea id="hlN" rows="4" placeholder="Note">${esc(h.note || '')}</textarea>
+    <div class="row" style="margin-top:10px"><button id="hlDel" style="color:var(--bad)">Remove highlight</button><span class="sp"></span><button id="mClose">Close</button><button class="pri" id="hlSave">Save</button></div>`);
+  $('#hlN').focus(); $('#hlSave').onclick = () => { h.note = $('#hlN').value.trim(); saveProg(true); m.remove(); refreshPage(); };
+  $('#hlDel').onclick = () => { S.prog.hls = S.prog.hls.filter(x => x !== h); saveProg(true); m.remove(); refreshPage(); };
+}
+function refreshPage() { if (S.tab === 'lib' && S.reading) openPage(S.book.id, S.n, S.hl); else if (S.tab === 'lib') renderShelf(); }
+function hlQuiz(list) { const B = bookOf(list[0].b); openChat({title: 'Quiz on my highlights', book: B.id, pages: [], intro: ''}); CH.lastNote = '-';
+  sendChat(`Quiz me on what I highlighted, one question at a time, and wait for my answer each time:\n${list.slice(-30).map(h => `- p. ${h.bp || h.n}: "${h.x}"${h.note ? ' (my note: ' + h.note + ')' : ''}`).join('\n')}`); CH.msgs[0].show = 'Quiz me on my highlights'; drawChat(true); }
+
+// ---------- explain it back ----------
+function explainBack(B, sec, n) { openChat({title: 'Explain it back', book: B.id, pages: [], intro: ''});
+  sendChat(`I want to explain ${sec ? (sec.num ? sec.num + ' ' : '') + sec.title : 'page ' + n} back to you to test my understanding (it starts on p. ${(sec && sec.bp) || n}). Don't explain it yourself. Ask me to explain the key idea in my own words, then check what I say against the textbook (read the pages), tell me exactly what I got right, what's missing or wrong, and ask a follow-up that probes the gap. One step at a time.`); }
+
+// ---------- daily plan ----------
+function dayPlan() {
+  const due = S.books.reduce((n, B) => n + (B.terms || []).filter(x => { const s = S.prog.terms[B.id + ':' + x.k]; return !s || Date.now() >= s.t + BOXDAYS[s.box] * 864e5; }).length, 0);
+  const mk = mistakes(), weak = S.books.map(progSummary).join(' ');
+  openChat({title: 'Plan my day', agent: true, msgs: S.planChat || []});
+  sendChat(`Plan my study for today. Add 2-4 realistic study blocks to my planner for today (kind "task", with start and end times after now, fitting around anything already on today), and tell me the plan in a short list. Prioritise anything due or exams coming up, then my weak spots. Context: ${due} key-term flashcards due; ${mk.length} questions in my mistake log${mk.length ? ' (' + [...new Set(mk.map(m => m.q.topic).filter(Boolean))].slice(0, 6).join(', ') + ')' : ''}; ${weak}`);
+  CH.msgs[CH.msgs.length - 1].show = 'Plan my day'; drawChat(true);
 }
 
 // ---------- library shelf ----------
@@ -866,7 +1044,7 @@ function renderShelf() {
 }
 
 // ---------- account, theme ----------
-function meMenu() {
+function meMenu() { if (!USER) return signInBox();
   const th = LS.get('ib-theme', 'auto');
   const m = openModal(`<div class="row" style="gap:12px;margin-bottom:16px"><span class="av" style="width:40px;height:40px;font-size:17px">${esc(USER.name[0].toUpperCase())}</span><div><b style="font-size:17px">${esc(USER.name)}</b><div class="meta">Planner, marks, bookmarks and pins sync to this name</div></div></div>
     <div class="meta" style="margin-bottom:6px">Appearance</div><div class="seg" style="margin-bottom:16px">${[['light', 'Light'], ['dark', 'Dark'], ['auto', 'System']].map(([k, l]) => `<button data-th="${k}" class="${th === k ? 'on' : ''}">${l}</button>`).join('')}</div>
@@ -879,7 +1057,18 @@ function applyTheme() { const t = LS.get('ib-theme', 'auto'), r = document.docum
   const dark = t === 'dark' || (t === 'auto' && matchMedia('(prefers-color-scheme: dark)').matches); const u = $('#thm use'); if (u) u.setAttribute('href', dark ? '#i-sun' : '#i-moon'); }
 applyTheme(); matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyTheme);
 $('#thm').onclick = () => { const r = document.documentElement, dark = r.dataset.theme === 'dark' || (!r.dataset.theme && matchMedia('(prefers-color-scheme: dark)').matches); setTheme(dark ? 'light' : 'dark'); };
-function drawMe() { const a = `<span class="av">${esc(USER.name[0].toUpperCase())}</span>`; $('#me').innerHTML = a + `<span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis">${esc(USER.name)}</span>`; $('#meH').innerHTML = a; }
+function drawMe() { if (!USER) { $('#me').innerHTML = '<span class="av" style="background:var(--sunk);color:var(--mut);border:1px solid var(--line2)">?</span><span>Sign in to sync</span>'; $('#meH').innerHTML = '<span class="sib">Sign in</span>'; return; }
+  const a = `<span class="av">${esc(USER.name[0].toUpperCase())}</span>`; $('#me').innerHTML = a + `<span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis">${esc(USER.name)}</span>`; $('#meH').innerHTML = a; }
+// sign in from the top-right button; what you did as a guest moves into the account
+function signInBox() {
+  const kn = LS.get('ib-known', []);
+  const m = openModal(`<h3 style="margin:0 0 4px;font:600 22px var(--f-read)">Sign in</h3><p class="meta" style="margin:0 0 14px">Saves your planner, marks, notes and streak under your name, on any device.</p>
+    <form id="sf" class="ef"><input id="sn" placeholder="First name" autocomplete="given-name" maxlength="30"><div id="se" class="meta" style="color:var(--bad)"></div>
+    ${kn.length ? `<div class="row">${kn.map(n => `<button type="button" data-n="${esc(n)}"><span class="av" style="width:22px;height:22px;font-size:11px">${esc(n[0].toUpperCase())}</span>${esc(n)}</button>`).join('')}</div>` : ''}
+    <div class="row"><span class="sp"></span><button type="button" id="mClose">Cancel</button><button class="pri">Sign in</button></div></form>`);
+  $('#sn').focus(); const go2 = n => signIn(n).then(() => m.remove(), e => { $('#se').textContent = e.message; });
+  $('#sf').onsubmit = e => { e.preventDefault(); const v = $('#sn').value.trim(); if (v) go2(v); }; m.querySelectorAll('[data-n]').forEach(b => b.onclick = () => go2(b.dataset.n));
+}
 $('#me').onclick = $('#meH').onclick = meMenu;
 
 // ---------- routing ----------
@@ -888,6 +1077,7 @@ function route() {
   if (a === 'lib' && b && bookOf(b)) return openPage(b, +c || 1);
   if (a === 'lib') return go('lib');
   if (a === 'q' && b) return openQ(b);
+  if (a === 'paper' && b) return loadPapers().then(() => openPaper(b));
   if (a === 'search' && b) { $('#q').value = b; return search(b); }
   if (TABN[a] && a !== 'search') return go(a);
   go('home');
@@ -899,7 +1089,7 @@ async function boot() {
   $('#login').classList.add('hide'); $('#app').classList.remove('hide');
   $('#main').innerHTML = '<p><span class="spin"></span> Loading…</p>';
   try { [S.books, S.qs] = await Promise.all([api('books'), api('qs')]); } catch (e) { $('#main').innerHTML = '<p>Could not load: ' + esc(e.message) + '</p>'; return; }
-  drawMe(); drawPins(); pullProg();
+  drawMe(); drawPins(); pullProg(); loadPapers();
   const last = S.prog.last; S.book = (last && bookOf(last.b)) || S.books[0];
   if (!S.book) { $('#main').innerHTML = '<p>No books uploaded yet.</p>'; return; }
   S.n = last && last.b === S.book.id ? last.n : (S.book.start || 1); renderToc(); route();
@@ -932,15 +1122,18 @@ document.addEventListener('keydown', e => {
 });
 // sign in: first name (+ the site password when the relay isn't in open mode)
 async function signIn(name) {
-  $('#le').textContent = '';
-  try {
-    if (!$('#lp').classList.contains('hide')) { PASS = $('#lp').value.trim(); await api('login'); LS.set('ib-pass', PASS); }
-    const u = await api('user', {name}); USER = {key: u.key, name: u.name, tok: u.tok}; LS.set('ib-user', USER);
-    const kn = LS.get('ib-known', []).filter(x => x !== u.name); kn.unshift(u.name); LS.set('ib-known', kn.slice(0, 6));
-    loadLocal(); boot();
-  } catch (err) { $('#le').textContent = err.message; }
+  const u = await api('user', {name}); USER = {key: u.key, name: u.name, tok: u.tok}; LS.set('ib-user', USER);
+  const kn = LS.get('ib-known', []).filter(x => x !== u.name); kn.unshift(u.name); LS.set('ib-known', kn.slice(0, 6));
+  const gp = LS.get('ib-prog:guest', null), gl = LS.get('ib-plan:guest', null) || [];
+  loadLocal(); if (S.books.length) await pullProg();
+  if (gp) { mergeIn({pins: [], marks: [], hls: [], ...gp, pt: 0}); for (const k of ['pins', 'marks', 'hls']) for (const x of gp[k] || []) if (!S.prog[k].some(y => JSON.stringify(y) === JSON.stringify(x))) S.prog[k].push(x); }
+  if (gl.length) { let sp = []; try { sp = await api('plan'); } catch (e) {} S.plan = [...(Array.isArray(sp) ? sp : []), ...gl.filter(x => !(sp || []).some(y => y.id === x.id))]; LS.set(LSK('ib-plan'), S.plan); await api('plan', {data: S.plan}).catch(() => {}); }
+  else S.planLoaded = 0;
+  LS.set('ib-prog:guest', null); LS.set('ib-plan:guest', null); saveProg(true);
+  if (S.books.length) { drawMe(); drawPins(); route(); } else boot();
 }
-$('#lf').onsubmit = e => { e.preventDefault(); const v = $('#ln').value.trim(); if (v) signIn(v); else $('#ln').focus(); };
+$('#lf').onsubmit = async e => { e.preventDefault(); $('#le').textContent = '';
+  try { PASS = $('#lp').value.trim(); await api('login'); LS.set('ib-pass', PASS); const v = $('#ln').value.trim(); if (v) await signIn(v); else { loadLocal(); boot(); } } catch (err) { $('#le').textContent = err.message; } };
 function showLogin(needPass) {
   $('#lp').classList.toggle('hide', !needPass); $('#login').classList.remove('hide');
   const kn = LS.get('ib-known', []); $('#known').innerHTML = kn.length ? '<div class="meta" style="width:100%">On this device</div>' + kn.map(n => `<button type="button" data-n="${esc(n)}"><span class="av" style="width:22px;height:22px;font-size:11px">${esc(n[0].toUpperCase())}</span>${esc(n)}</button>`).join('') : '';
@@ -951,8 +1144,7 @@ function showLogin(needPass) {
   let open = false;
   if (!PASS && !new URLSearchParams(location.search).has('login')) try { const r = await fetch(RELAY + '/ib/books', {method: 'POST', body: '{}'}); open = r.ok; } catch (e) {}
   if (!PASS && !open) return showLogin(true);
-  if (USER) { loadLocal(); return boot(); }
-  showLogin(false);
+  loadLocal(); boot();
 })();
 </script>
 </body>
