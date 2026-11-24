@@ -316,6 +316,17 @@ mark{background:#ffe28a;color:#1c2230;border-radius:3px;padding:0 1px}
 .wcol.today{background:color-mix(in srgb,var(--acc2) 50%,transparent)}
 .hl{border-top:1px solid var(--line)}
 .ev{position:absolute;left:3px;right:3px;white-space:normal;overflow:hidden;z-index:1;display:block}
+.pl2.ic span{display:none}
+.chip.k-study{background:repeating-linear-gradient(135deg,color-mix(in srgb,var(--c) 12%,var(--panel)) 0 6px,color-mix(in srgb,var(--c) 20%,var(--panel)) 6px 12px)}.ev.k-study{border-left:3px solid var(--c)}
+.tag.d1{background:color-mix(in srgb,var(--good) 16%,var(--panel));color:var(--good)}.tag.d2{background:color-mix(in srgb,var(--warn) 18%,var(--panel));color:color-mix(in srgb,var(--warn) 70%,var(--ink))}.tag.d3{background:color-mix(in srgb,var(--bad) 14%,var(--panel));color:var(--bad)}
+.exb{padding:18px 20px;margin-bottom:8px}.exg{display:grid;grid-template-columns:auto 1fr;gap:10px 14px;align-items:center;margin-top:14px}.exg .fl{margin:0;font-size:13px;color:var(--mut)}.exg .seg{justify-self:start;max-width:100%;overflow-x:auto}.exg .seg button{white-space:nowrap}
+.exts{margin-top:10px}.exts button{font-size:13px;padding:5px 9px}.exts button.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.bdn{padding:12px 16px}.bdn>.row{flex-wrap:nowrap;padding:5px 0;font-size:14px}
+.cdns{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}.cdn{display:flex;gap:14px;padding:14px 16px;border-left:4px solid var(--c)}.cdd{display:flex;flex-direction:column;align-items:center;min-width:46px}.cdd b{font:600 30px/1 var(--f-read)}.cdd span{font-size:11px;color:var(--mut)}
+.cdb{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}.cdb>b{font-weight:600}.rdy{margin-top:6px}.rdy .bar i{background:var(--c)}.rdy .meta{font-size:12.5px}.cdx{margin-top:8px;gap:6px;flex-wrap:nowrap}.cdx button{font-size:12.5px;padding:5px 9px}
+.cdn0{display:flex;gap:12px;align-items:center;padding:12px 16px;flex-wrap:wrap}.cdn0 span{flex:1;min-width:200px;color:var(--mut);font-size:14px}
+.sbx{display:flex;flex-direction:column;gap:4px;margin:10px 0}.sbx label,.sbo{display:flex!important;flex-direction:row!important;gap:8px;align-items:center;width:auto}.sbx input,.sbo input{width:auto;flex:none}.sbg{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;margin:8px 0}.sbg label{font-size:13px;color:var(--mut);display:flex;flex-direction:column;gap:3px}
+.sbp{max-height:260px;overflow:auto;border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin-top:8px}.sbd{display:grid;grid-template-columns:110px 1fr;gap:8px;padding:3px 0}.sbd .chip{display:inline-flex;margin:1px 4px 1px 0;max-width:100%}
 .chip.k-ext{background:transparent;border:1px solid color-mix(in srgb,var(--c) 45%,transparent);color:var(--mut)}.ev.x{background:color-mix(in srgb,var(--c) 9%,var(--panel));border:1px solid color-mix(in srgb,var(--c) 40%,transparent);border-left:3px solid var(--c);color:var(--ink)}
 .chip[draggable]{cursor:grab}.chip.dragging{opacity:.4}.dropon{background:color-mix(in srgb,var(--acc) 12%,var(--panel))!important;outline:2px dashed color-mix(in srgb,var(--acc) 50%,transparent);outline-offset:-2px}
 .mc.sel{box-shadow:inset 0 0 0 2px var(--acc)}.dayp{margin-top:12px;padding:12px 14px}.dayp .agi{cursor:pointer}
@@ -675,6 +686,8 @@ RUBRIC.mtest = RUBRIC.mreview = RUBRIC.mexam = RUBRIC.mex = `You are marking an 
 const MARK_FMT = `\n\nReply with ONLY a JSON object, no code fence: {"score": integer, "max": integer, "band": "markband or level, e.g. 7-9", "verdict": "one sentence overall judgement", "good": ["specific things that earned marks"], "missed": ["specific things that were missing, wrong or weak, most important first"], "fix": ["concrete actions to lift the mark next time"], "plan": "a short model answer outline as markdown bullets (for essays: thesis, 3-4 paragraph points with an example each, conclusion)", "terms": ["key terms from the course the answer should have used"]}. Quote the student's own words when pointing out a weakness. Cite textbook pages as p. N where useful.`;
 const front = q => /^[ivxlc]+$/i.test(q.bp || '');
 const preview = t => { const cut = t.split(/\n\s*\n|\n\s*\||\n\s*(?:- )?\**[A-D]\.\s/)[0]; if (cut.length <= 240) return cut + (cut.length < t.length ? ' …' : ''); let c = cut.slice(0, 240); if ((c.match(/\$/g) || []).length % 2) c = c.slice(0, c.lastIndexOf('$')); return c.replace(/\s+\S*$/, '') + '…'; };
+const DIFFN = {1: 'Easy', 2: 'Medium', 3: 'Hard'};
+const qTags = q => (q.diff ? `<span class="tag d${q.diff}">${DIFFN[q.diff]}</span>` : '') + (q.paper ? `<span class="tag">Paper ${esc(q.paper)}</span>` : '') + (q.lvl === 'HL' ? '<span class="tag">HL</span>' : '') + (q.src === 'bank' ? '<span class="tag">Bank</span>' : '');
 const qMax = q => q.marks || (q.kind === 'essay' ? 15 : q.kind === 'mcq' ? 1 : 10);
 const attOf = id => S.prog.att[id] || [];
 const best = id => attOf(id).reduce((m, a) => a.max ? Math.max(m, a.score / a.max) : m, -1);
@@ -684,7 +697,7 @@ function renderPrac(filter) {
   if (F.book !== S.book.id) { F.book = S.book.id; F.topic = ''; F.kind = ''; }
   shell('prac'); S.q = null; S.rc = null; setHash('#/prac');
   const B = bookOf(F.book) || S.book, qs = S.qs.filter(q => q.book === B.id && !front(q) && !q.pp), V = F.view || 'qs', mk = mistakes(B.id);
-  const vseg = `<div class="seg vseg">${[['qs', 'Questions'], ['rev', 'Section reviews' + (reviewsDue().filter(x => x.B === B).length ? ' · ' + reviewsDue().filter(x => x.B === B).length : '')], ['recall', 'Free recall' + (recallDue().filter(x => x.B === B).length ? ' · ' + recallDue().filter(x => x.B === B).length : '')], ['mist', 'Mistakes' + (mk.length ? ' · ' + mk.length : '')], ['papers', 'Past papers']].map(([k, l]) => `<button data-v="${k}" class="${V === k ? 'on' : ''}">${l}</button>`).join('')}</div>`;
+  const vseg = `<div class="seg vseg">${[['qs', 'Questions'], ['rev', 'Section reviews' + (reviewsDue().filter(x => x.B === B).length ? ' · ' + reviewsDue().filter(x => x.B === B).length : '')], ['recall', 'Free recall' + (recallDue().filter(x => x.B === B).length ? ' · ' + recallDue().filter(x => x.B === B).length : '')], ['mist', 'Mistakes' + (mk.length ? ' · ' + mk.length : '')], ['papers', 'Exam mode']].map(([k, l]) => `<button data-v="${k}" class="${V === k ? 'on' : ''}">${l}</button>`).join('')}</div>`;
   const vwire = () => document.querySelectorAll('.vseg [data-v]').forEach(x => x.onclick = () => { F.view = x.dataset.v; renderPrac(F); });
   if (V !== 'qs') {
     $('#main').innerHTML = `<div class="prac" style="max-width:1100px"><div class="row"><h2 style="margin:0">Practice</h2>${bookBar(B.id)}</div><div style="margin-top:12px">${vseg}</div>
@@ -692,19 +705,25 @@ function renderPrac(filter) {
         <div style="font-family:var(--f-read);margin:4px 0">${(MATH = !!B.math, mdx(preview(m.q.text), true))}</div>${m.l.fb && m.l.fb.missed && m.l.fb.missed.length ? `<ul class="meta" style="margin:4px 0;padding-left:18px">${m.l.fb.missed.slice(0, 2).map(x => '<li>' + mdx(String(x), true) + '</li>').join('')}</ul>` : ''}</div>`).join('')}</div>`
       : '<div class="card" style="padding:28px;text-align:center"><b>No mistakes to retry</b><div class="meta">Anything you score under 70% on lands here and comes back after 2 days.</div></div>'}</div>`;
     vwire(); onBookBar(() => renderPrac()); document.querySelectorAll('.mlog [data-id]').forEach(el => el.onclick = () => openQ(el.dataset.id)); document.querySelectorAll('.rvl [data-rk]').forEach(el => el.onclick = () => runReview(el.dataset.rk)); document.querySelectorAll('[data-rc]').forEach(el => el.onclick = () => renderRecall(B.id, +el.dataset.rc));
-    if (V === 'papers') loadPapers().then(() => { if (!$('#ppl')) return; $('#ppl').innerHTML = renderPapers(B); document.querySelectorAll('[data-pp]').forEach(el => el.onclick = () => openPaper(el.dataset.pp)); });
+    if (V === 'papers') loadPapers().then(() => { if (!$('#ppl')) return; $('#ppl').innerHTML = examHtml(B) + '<h3>Past papers</h3>' + renderPapers(B); wireExam(B); document.querySelectorAll('[data-pp]').forEach(el => el.onclick = () => openPaper(el.dataset.pp)); });
     return;
   }
   const topics = [...new Set(qs.map(q => q.topic).filter(Boolean))].sort((a, b) => a.localeCompare(b, undefined, {numeric: true}));
-  const list = qs.filter(q => (!F.kind || q.kind === F.kind) && (!F.topic || (q.topic || '').startsWith(F.topic)) && (!F.tp || inTopic(q.topic, F.tp)) &&
+  const has = k => qs.some(q => q[k]), papers = [...new Set(qs.map(q => q.paper).filter(Boolean))].sort();
+  const list = qs.filter(q => (!F.kind || q.kind === F.kind) && (!F.topic || (q.topic || '').startsWith(F.topic)) && (!F.tp || inTopic(q.topic, F.tp)) && (!F.diff || q.diff === +F.diff) && (!F.paper || q.paper === F.paper) && (!F.lvl || (F.lvl === 'SL' ? q.lvl !== 'HL' : q.lvl === 'HL')) && (!F.src || (F.src === 'bank') === (q.src === 'bank')) &&
     (!F.st || (F.st === 'new' ? !attOf(q.id).length : F.st === 'weak' ? (best(q.id) >= 0 && best(q.id) < .6) : best(q.id) >= .6)));
   $('#main').innerHTML = `<div class="prac" style="max-width:1100px">
     <div class="row" style="justify-content:space-between"><div class="row"><h2 style="margin:0">Practice</h2>${bookBar(B.id)}</div><div class="row"><button id="mix">Mixed set</button><button id="fyP"><svg class="i"><use href="#i-spark"/></svg>For you</button><button class="pri" id="rnd">Random question</button></div></div>
     <div style="margin-top:12px">${vseg}</div>
     <div class="filters">${F.tp ? `<button id="ftp" class="tag" style="padding:6px 10px">${esc(F.tp)} ✕</button>` : ''}<select id="fk"><option value="">All types</option>${[...new Set(qs.map(q => q.kind))].map(k => `<option value="${k}" ${F.kind === k ? 'selected' : ''}>${KIND[k] || k}</option>`).join('')}</select>
     <select id="ft"><option value="">All topics</option>${topics.map(t => `<option value="${t}" ${F.topic === t ? 'selected' : ''}>${esc(topicName(B, t))}</option>`).join('')}</select>
-    <select id="fs"><option value="">Any status</option><option value="new" ${F.st === 'new' ? 'selected' : ''}>Not tried</option><option value="weak" ${F.st === 'weak' ? 'selected' : ''}>Weak (under 60%)</option><option value="good" ${F.st === 'good' ? 'selected' : ''}>Done well</option></select></div>
-    <div class="grid">${list.map(q => { const bs = best(q.id); return `<div class="card qc" data-id="${q.id}"><div>${'<span class="tag">' + (KIND[q.kind] || q.kind) + '</span>'}${q.marks ? '<span class="tag">' + q.marks + (q.marks === 1 ? ' mark' : ' marks') + '</span>' : ''}${bs >= 0 ? `<span class="tag ${bs < .6 ? 'w' : 'g'}">best ${Math.round(bs * 100)}%</span>` : ''}</div><div class="qt">${(MATH = !!B.math, mdx(preview(q.text), true))}</div><div class="meta">${esc(q.topic ? topicName(B, q.topic) : '')}${q.bp ? ' · p. ' + q.bp : ''}</div></div>`; }).join('') || '<p>No questions match.</p>'}</div></div>`;
+    <select id="fs"><option value="">Any status</option><option value="new" ${F.st === 'new' ? 'selected' : ''}>Not tried</option><option value="weak" ${F.st === 'weak' ? 'selected' : ''}>Weak (under 60%)</option><option value="good" ${F.st === 'good' ? 'selected' : ''}>Done well</option></select>
+    ${has('diff') ? `<select id="fd"><option value="">Any difficulty</option>${[1, 2, 3].map(d => `<option value="${d}" ${+F.diff === d ? 'selected' : ''}>${DIFFN[d]}</option>`).join('')}</select>` : ''}
+    ${papers.length ? `<select id="fpp"><option value="">Any paper</option>${papers.map(x => `<option value="${x}" ${F.paper === x ? 'selected' : ''}>Paper ${x}</option>`).join('')}</select>` : ''}
+    ${has('lvl') ? `<select id="flv"><option value="">SL + HL</option><option value="SL" ${F.lvl === 'SL' ? 'selected' : ''}>SL only</option><option value="HL" ${F.lvl === 'HL' ? 'selected' : ''}>HL only</option></select>` : ''}
+    ${has('src') ? `<select id="fsr"><option value="">All sources</option><option value="bank" ${F.src === 'bank' ? 'selected' : ''}>Question bank</option><option value="book" ${F.src === 'book' ? 'selected' : ''}>Textbook</option></select>` : ''}<span class="meta">${list.length} question${list.length === 1 ? '' : 's'}</span></div>
+    <div class="grid">${list.map(q => { const bs = best(q.id); return `<div class="card qc" data-id="${q.id}"><div>${'<span class="tag">' + (KIND[q.kind] || q.kind) + '</span>'}${qTags(q)}${q.marks ? '<span class="tag">' + q.marks + (q.marks === 1 ? ' mark' : ' marks') + '</span>' : ''}${bs >= 0 ? `<span class="tag ${bs < .6 ? 'w' : 'g'}">best ${Math.round(bs * 100)}%</span>` : ''}</div><div class="qt">${(MATH = !!B.math, mdx(preview(q.text), true))}</div><div class="meta">${esc(q.topic ? topicName(B, q.topic) : '')}${q.bp ? ' · p. ' + q.bp : ''}</div></div>`; }).join('') || '<p>No questions match.</p>'}</div></div>`;
+  for (const [i, k] of [['fd', 'diff'], ['fpp', 'paper'], ['flv', 'lvl'], ['fsr', 'src']]) if ($('#' + i)) $('#' + i).onchange = e => { F[k] = e.target.value; renderPrac(F); };
   $('#fk').onchange = e => { F.kind = e.target.value; renderPrac(F); }; $('#ft').onchange = e => { F.topic = e.target.value; renderPrac(F); }; $('#fs').onchange = e => { F.st = e.target.value; renderPrac(F); };
   document.querySelectorAll('.qc').forEach(c => c.onclick = () => openQ(c.dataset.id)); onBookBar(() => renderPrac());
   vwire(); if ($('#ftp')) $('#ftp').onclick = () => { F.tp = ''; renderPrac(F); }; $('#mix').onclick = mixedSetup; $('#fyP').onclick = () => { go('rev'); $('#fy') && $('#fy').scrollIntoView({behavior: 'smooth'}); }; $('#rnd').onclick = () => { const pool = list.length ? list : qs; if (pool.length) openQ(pool[Math.random() * pool.length | 0].id); };
@@ -713,7 +732,7 @@ function openQ(id) {
   const q = S.qs.find(x => x.id === id); if (!q) return renderPrac(); const B = bookOf(q.book), draft = LS.get(LSK('ib-d-' + id), ''), prev = attOf(id); MATH = !!B.math;
   shell('prac'); S.q = q; S.rc = null; setHash('#/q/' + id); title([['Practice', 'prac'], (KIND[q.kind] || q.kind) + (q.topic ? ' · ' + q.topic : '')]);
   $('#main').innerHTML = `<div class="prac">${sessBar('q', id)}<div class="row" style="margin-bottom:10px"><button id="back"><svg class="i"><use href="#i-l"/></svg>All questions</button><span class="sp" style="flex:1"></span><button id="qSend" title="Send this question to a friend">Send</button>${q.n ? `<button id="src">Open in textbook (p. ${esc(q.bp)})</button>` : ''}</div>
-    <div class="card qbig"><div style="font-family:var(--f-ui);margin-bottom:10px"><span class="tag">${KIND[q.kind] || q.kind}</span>${q.marks ? '<span class="tag">' + q.marks + (q.marks === 1 ? ' mark' : ' marks') + '</span>' : ''}${q.calc === 'no' ? '<span class="tag w">No calculator</span>' : q.calc === 'yes' ? '<span class="tag">Calculator</span>' : ''}<span class="meta">${esc(q.set ? q.set + ' · ' : '')}${esc(q.topic ? topicName(B, q.topic) : '')}</span></div>${mdx(q.text)}${q.ctx ? `<div class="meta" style="font-family:var(--f-ui);margin-top:10px">${esc(q.ctx)}</div>` : ''}</div>
+    <div class="card qbig"><div style="font-family:var(--f-ui);margin-bottom:10px"><span class="tag">${KIND[q.kind] || q.kind}</span>${qTags(q)}${q.marks ? '<span class="tag">' + q.marks + (q.marks === 1 ? ' mark' : ' marks') + '</span>' : ''}${q.calc === 'no' ? '<span class="tag w">No calculator</span>' : q.calc === 'yes' ? '<span class="tag">Calculator</span>' : ''}<span class="meta">${esc(q.set ? q.set + ' · ' : '')}${esc(q.topic ? topicName(B, q.topic) : '')}</span></div>${mdx(q.text)}${q.ctx ? `<div class="meta" style="font-family:var(--f-ui);margin-top:10px">${esc(q.ctx)}</div>` : ''}</div>
     <div style="margin-top:14px"><textarea id="ans" rows="${q.kind === 'essay' ? 18 : 8}" placeholder="Answer">${esc(draft)}</textarea>
     <div class="row" style="margin-top:8px"><span class="meta" id="wc"></span><span class="meta" id="tm"></span><span style="flex:1"></span><button id="hint">Hint</button><button class="pri" id="mark">Mark with Claude</button></div></div>
     <div id="fbx"></div>${q.ms ? `<details class="card" style="padding:12px 16px;margin-top:14px"><summary><b>Official answer</b> <span class="meta">(try it first)</span></summary><div style="margin-top:8px">${mdx(q.ms)}</div></details>` : ''}
@@ -799,7 +818,7 @@ function renderProg() {
 }
 
 // ---------- planner ----------
-const PK = {class: 'Class', homework: 'Homework', exam: 'Exam', event: 'Event', task: 'To do'};
+const PK = {class: 'Class', homework: 'Homework', exam: 'Exam', event: 'Event', task: 'To do', study: 'Study'};
 const ymd = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 const pd = s => new Date(s + 'T12:00:00');
 const addD = (s, n) => { const d = pd(s); d.setDate(d.getDate() + n); return ymd(d); };
@@ -935,7 +954,7 @@ function drawPlan() {
       <h3>Calendars</h3><div class="card cals"><label class="due"><span class="dot" style="background:var(--acc)"></span><span style="flex:1">My planner</span></label>${myCals().map(c => { const X = EXT[c.id]; return `<label class="due"><input type="checkbox" data-cal="${c.id}" ${c.off ? '' : 'checked'} style="accent-color:${c.c}"><span style="flex:1;min-width:0">${esc(c.name)}${X && X.err ? `<br><span class="meta" style="color:var(--bad)">${esc(X.err)}</span>` : !c.off && !X ? '<br><span class="meta">Loading…</span>' : ''}</span></label>`; }).join('')}
         <button class="ghost" id="pLink" style="width:100%;justify-content:flex-start;padding:10px 12px"><svg class="i"><use href="#i-cal"/></svg>Link Google / Outlook</button></div></div>
     <div class="pmain"><div class="rbar"><button id="pPrev" aria-label="Previous"><svg class="i"><use href="#i-l"/></svg></button><button id="pToday">Today</button><button id="pNext" aria-label="Next"><svg class="i"><use href="#i-r"/></svg></button><h2 style="margin:0 8px;font-size:20px">${esc(title)}</h2><span class="sp"></span>
-      <div class="seg">${['month', 'week', 'agenda'].map(x => `<button data-pv="${x}" class="${x === v ? 'on' : ''}">${x[0].toUpperCase() + x.slice(1)}</button>`).join('')}</div><button id="pLink2" class="pl2" title="Link Google Calendar or Outlook"><svg class="i"><use href="#i-cal"/></svg><span>Link calendar</span></button><button class="pri" id="pAdd">+ Add</button></div>${body}</div></div>`;
+      <div class="seg">${['month', 'week', 'agenda'].map(x => `<button data-pv="${x}" class="${x === v ? 'on' : ''}">${x[0].toUpperCase() + x.slice(1)}</button>`).join('')}</div><button id="pSb" class="pl2" title="Fill free time before exams with revision"><svg class="i"><use href="#i-spark"/></svg><span>Study blocks</span></button><button id="pLink2" class="pl2 ic" title="Link Google Calendar or Outlook" aria-label="Link Google Calendar or Outlook"><svg class="i"><use href="#i-cal"/></svg><span>Link calendar</span></button><button class="pri" id="pAdd">+ Add</button></div>${body}</div></div>`;
   const step = v === 'month' ? null : v === 'week' ? 7 : 60;
   const mv = dir => { if (v === 'month') { const d = pd(S.pdate); d.setDate(1); d.setMonth(d.getMonth() + dir); S.pdate = ymd(d); } else S.pdate = addD(S.pdate, dir * step); drawPlan(); };
   $('#pPrev').onclick = () => mv(-1); $('#pNext').onclick = () => mv(1); $('#pToday').onclick = () => { S.pdate = todayS(); drawPlan(); };
@@ -955,7 +974,7 @@ function drawPlan() {
       else if (el.closest('.wad')) { delete it.time; delete it.end; }
       drag = null; savePlan(); drawPlan(); }; });
   document.querySelectorAll('[data-cal]').forEach(cb => cb.onchange = () => { const L = myCals().map(c => c.id === cb.dataset.cal ? {...c, off: !cb.checked} : c); saveCals(L); drawPlan(); loadExt(); });
-  $('#pLink').onclick = $('#pLink2').onclick = () => calLink();
+  $('#pLink').onclick = $('#pLink2').onclick = () => calLink(); $('#pSb').onclick = studyBlocks;
   document.querySelectorAll('[data-done]').forEach(cb => cb.onchange = () => { const it = S.plan.find(x => x.id === cb.dataset.done); it.done = true; savePlan(); setTimeout(drawPlan, 250); });
   $('#pAsk').onclick = () => openChat({title: 'Planner assistant', agent: true, msgs: S.planChat || []});
 }
@@ -967,7 +986,7 @@ function lanes(its) { // side-by-side columns for overlapping timed events in th
   fin(); return L;
 }
 function openItem(id) {
-  const it = EXTI.get(id); if (!it) return editItem(S.plan.find(x => x.id === id));
+  const it = EXTI.get(id); if (!it) { const p = S.plan.find(x => x.id === id); return p && p.kind === 'study' && p.sb ? openStudy(p) : editItem(p); }
   const m = openModal(`<div class="row" style="align-items:flex-start"><span class="dot" style="background:${it.ext.c};margin-top:9px"></span><div style="flex:1"><h3 style="margin:0">${esc(it.title)}</h3><p class="meta" style="margin:4px 0 0">${it.time ? it.time + (it.end ? '–' + it.end : '') + ' · ' : 'All day · '}${esc(it.ext.name)}${it.rep ? ' · repeats' : ''}</p></div></div>
     ${it.loc ? `<p style="margin:12px 0 0">📍 ${esc(it.loc)}</p>` : ''}${it.desc ? `<p class="meta" style="white-space:pre-wrap;margin:10px 0 0;max-height:180px;overflow:auto">${esc(it.desc)}</p>` : ''}
     <p class="meta" style="margin:14px 0 0">From your linked calendar, so it's read-only here. Change it in Google or Outlook.</p>
@@ -1054,12 +1073,13 @@ function drawHome() {
   const allQ = S.qs.filter(q => !front(q)), tried = allQ.filter(q => attOf(q.id).length);
   const RQ = reviewQueue();
   const m = dayMap(t, addD(t, 14)), up = [];
-  for (const d of Object.keys(m).sort()) for (const it of m[d]) if (it.kind !== 'class') up.push([d, it]);
+  for (const d of Object.keys(m).sort()) for (const it of m[d]) if (it.kind !== 'class' && it.kind !== 'study') up.push([d, it]);
   const over = (S.plan || []).filter(it => (it.kind === 'homework' || it.kind === 'task') && !it.done && it.date < t);
   const rel = d => { const n = Math.round((pd(d) - pd(t)) / 864e5); return n === 0 ? 'Today' : n === 1 ? 'Tomorrow' : n < 7 ? fmtD(d, {weekday: 'short'}) : fmtD(d, {day: 'numeric', month: 'short'}); };
   const recent = allQ.flatMap(q => attOf(q.id).map(a => ({q, a}))).sort((x, y) => y.a.t - x.a.t).slice(0, 4);
   $('#main').innerHTML = `<div class="home">
     <div class="hhead"><h2>${h < 12 ? 'Morning' : h < 18 ? 'Afternoon' : 'Evening'}${USER ? ', ' + esc(USER.name) : ''}</h2><div class="strk">${weekStrip()}<div><b class="num">${streak()}</b> <span class="meta">day streak</span></div></div></div>
+    ${countdownHtml()}
     <div class="hgrid"><div>
       ${LB ? `<section class="hsec"><h3>Continue reading</h3><div class="card cont" id="hCont">${spine(LB)}<div style="min-width:0"><div class="meta">${esc(LB.title)}</div><div class="ttl">${sec ? esc(sec.title) : 'Page ' + last.n}</div><div class="meta">${sec && sec.num ? esc(sec.num) + ' · ' : ''}page ${last.n} of ${LB.pages}</div></div></div></section>` : ''}
       <section class="hsec"><div class="acts">
@@ -1074,7 +1094,7 @@ function drawHome() {
       <section class="hsec"><h3>Coming up<a href="#" id="hPlan">Planner</a></h3><div class="card lst agl">${over.map(it => `<div data-id="${it.id}"><span class="when" style="color:var(--red)">Overdue</span><span><span class="dot" style="background:${itColor(it)}"></span>${esc(it.title)}</span></div>`).join('')}${up.slice(0, 8).map(([d, it]) => `<div data-id="${it.id}"><span class="when">${rel(d)}${it.time ? '<br>' + it.time : ''}</span><span><span class="dot" style="background:${itColor(it)}"></span>${esc(it.title)}${it.kind === 'exam' ? ' <span class="tag r">Exam</span>' : ''}</span></div>`).join('') || (over.length ? '' : '<div class="meta" style="cursor:default">Nothing in the next two weeks</div>')}</div></section>
       ${recent.length ? `<section class="hsec"><h3>Recent marks<a href="#" id="hProg">Progress</a></h3><div class="card lst agl">${recent.map(({q, a}) => `<div data-q="${q.id}"><span class="when num" style="color:${a.score / a.max < .4 ? 'var(--red)' : a.score / a.max < .7 ? 'var(--warn)' : 'var(--good)'};font-weight:600">${a.score}/${a.max}</span><span>${esc(q.text.replace(/\$[^$]*\$/g, '…').slice(0, 80))}${q.text.length > 80 ? '…' : ''}</span></div>`).join('')}</div></section>` : ''}
     </div></div></div>`;
-  $('#hLib').onclick = e => { e.preventDefault(); go('lib'); };
+  $('#hLib').onclick = e => { e.preventDefault(); go('lib'); }; wireCountdown();
   $('#hDay').onclick = () => USER ? dayPlan() : signInBox(); $('#hMist').onclick = () => { const m = mistakes(); if (m[0]) S.book = bookOf(m[0].q.book); renderToc(); S.pf = {...(S.pf || {}), view: 'mist'}; renderPrac(); }; $('#hTerms2').onclick = () => go('rev'); $('#hFy').onclick = () => { go('rev'); forYou('short'); }; $('#hRev').onclick = () => { const r = reviewsDue()[0]; if (r) runReview(r.k); else { S.pf = {...(S.pf || {}), view: 'rev'}; renderPrac(); } };
   if ($('#hCont')) $('#hCont').onclick = () => openPage(LB.id, last.n);
   $('#hPrac').onclick = () => { go('prac'); $('#rnd') && $('#rnd').click(); };
@@ -1123,7 +1143,7 @@ function mistakes(book) {
 // ---------- past papers (PPP mode) ----------
 // kv 'papers': [{id, book, title, session, paper, mins, total?, bounds?: [[7, pct], [6, pct], ...], instr?, qs: [{n, text, marks, kind?, ms?, ans?, opts?}]}]
 const DEF_BOUNDS = [[7, 70], [6, 58], [5, 47], [4, 36], [3, 25], [2, 14], [1, 0]];
-const ppQ = (P, q) => ({id: 'pp:' + P.id + ':' + q.n, book: P.book, kind: q.kind || (q.opts || q.ans ? 'mcq' : 'structured'), marks: q.marks, text: q.text, ms: q.ms, ans: q.ans, topic: q.topic, pp: P.id, ppn: q.n, bp: '', pages: []});
+const ppQ = (P, q) => q.qid ? {...(S.qs.find(x => x.id === q.qid) || {}), id: q.qid, kind: q.kind, marks: q.marks} : ({id: 'pp:' + P.id + ':' + q.n, book: P.book, kind: q.kind || (q.opts || q.ans ? 'mcq' : 'structured'), marks: q.marks, text: q.text, ms: q.ms, ans: q.ans, topic: q.topic, pp: P.id, ppn: q.n, bp: '', pages: []});
 async function loadPapers() { if (S.papers) return S.papers; try { S.papers = await api('papers'); if (!Array.isArray(S.papers)) S.papers = []; } catch (e) { S.papers = []; }
   for (const P of S.papers) for (const q of P.qs || []) { const x = ppQ(P, q); if (!S.qs.some(y => y.id === x.id)) S.qs.push(x); } return S.papers; }
 const gradeOf = (P, pc) => ((P.bounds || DEF_BOUNDS).find(([, m]) => pc * 100 >= m) || [1])[0];
@@ -1133,7 +1153,7 @@ function renderPapers(B) {
     : `<div class="card" style="padding:28px;text-align:center"><b>No past papers for ${esc(B.subject)} yet</b></div>`;
 }
 function openPaper(id) {
-  const P = S.papers.find(x => x.id === id); if (!P) return renderPrac();
+  const P = (S.papers || []).find(x => x.id === id) || mocks().find(x => x.id === id); if (!P) return renderPrac();
   shell('prac'); setHash('#/paper/' + id); title([['Practice', 'prac'], P.title]); S.q = null;
   const B = bookOf(P.book), K = LSK('ib-pp-' + id), st = LS.get(K, {ans: {}, start: 0}), res = (S.prog.pp || {})[id] || []; MATH = !!(B && B.math);
   if (!st.start) { // cover page
@@ -1168,14 +1188,158 @@ async function submitPaper(P, st, K) {
   out.sort((a, b) => P.qs.indexOf(a.q) - P.qs.indexOf(b.q));
   const score = out.reduce((s, o) => s + o.fb.score, 0), max = out.reduce((s, o) => s + o.fb.max, 0), grade = gradeOf(P, max ? score / max : 0), t = Date.now();
   for (const o of out) if (o.a) (S.prog.att[o.x.id] = S.prog.att[o.x.id] || []).push({t, score: o.fb.score, max: o.fb.max, ans: o.a, fb: o.fb});
-  (S.prog.pp = S.prog.pp || {})[P.id] = [...(S.prog.pp[P.id] || []), {t, score, max, grade, secs}]; act('q', out.filter(o => o.a).length); LS.set(K, {ans: {}, start: 0});
+  (S.prog.pp = S.prog.pp || {})[P.id] = [...(S.prog.pp[P.id] || []), {t, score, max, grade, secs, book: P.book, mock: P.mock ? 1 : 0}]; act('q', out.filter(o => o.a).length); LS.set(K, {ans: {}, start: 0});
   $('#main').innerHTML = `<div class="prac"><div class="card fb" style="text-align:center"><div class="meta">${esc(P.title)}</div><div class="score" style="font-size:54px;margin:8px 0">${score}/${max}</div><div style="font:600 20px var(--f-read)">Grade ${grade} <span class="meta">(${Math.round(score / max * 100)}%, ${Math.round(secs / 60)} min${P.bounds ? '' : ', approximate boundaries'})</span></div>
-    <div class="row" style="justify-content:center;margin-top:14px"><button class="pri" id="ppRev"><svg class="i"><use href="#i-spark"/></svg>Go through it with Claude</button><button id="ppBack">Back to papers</button></div></div>
+    <div class="row" style="justify-content:center;margin-top:14px"><button class="pri" id="ppRev"><svg class="i"><use href="#i-spark"/></svg>Go through it with Claude</button><button id="ppBack">Back to exam mode</button></div></div>
+    ${breakdown(P, out)}<h3>Question by question</h3>
     ${out.map(o => `<details class="card" style="padding:12px 16px;margin-top:10px"><summary><b class="num">${o.fb.score}/${o.fb.max}</b> &nbsp;Question ${esc(o.q.n)}</summary><div class="fb" style="padding:8px 0 0">${mdx(o.q.text)}<h4>Your answer</h4><div class="meta" style="white-space:pre-wrap">${esc(o.a || '(blank)')}</div>${fbHtml(o.fb)}</div></details>`).join('')}</div>`;
   $('#ppBack').onclick = () => { S.pf = {...(S.pf || {}), view: 'papers'}; renderPrac(); };
+  document.querySelectorAll('[data-btp]').forEach(b => b.onclick = () => { S.book = bookOf(P.book); renderToc(); S.pf = {book: P.book, view: 'qs', tp: b.dataset.btp}; renderPrac(S.pf); });
   $('#ppRev').onclick = () => { openChat({title: 'Paper review', book: P.book, pages: [], intro: ''}); CH.lastNote = '-';
     sendChat(`I just sat ${P.title} and got ${score}/${max} (grade ${grade}). Per question:\n${out.map(o => `Q${o.q.n} ${o.fb.score}/${o.fb.max}: ${o.fb.verdict}${o.fb.missed && o.fb.missed.length ? ' Missed: ' + o.fb.missed.slice(0, 3).join('; ') : ''}`).join('\n')}\n\nWhat are the patterns in what I lost marks on, and what should I fix first? Be concise.`); CH.msgs[0].show = 'Review my paper'; drawChat(true); };
   saveProg();
+}
+
+// ---------- exam mode: timed mock papers built from the tagged question bank (no Claude until you submit) ----------
+const mocks = () => LS.get(LSK('ib-mocks'), []);
+const mkOf = q => q.marks || (q.kind === 'mcq' ? 1 : q.kind === 'essay' ? 15 : 4);
+const EXAMOK = q => !front(q) && !q.pp && q.text && !['activity', 'discuss'].includes(q.kind) && mkOf(q) <= 25;
+function mockPool(B, o) {
+  return S.qs.filter(q => q.book === B.id && EXAMOK(q) && (!o.diff || q.diff === +o.diff) && (!o.paper || q.paper === o.paper) && (o.lvl !== 'SL' || q.lvl !== 'HL')
+    && (!o.tps || !o.tps.length || o.tps.some(t => inTopic(q.topic, t))) && (!o.bank || q.src === 'bank'));
+}
+function weakTopics(B, n) { return topicsOf(B).map(T => ({T, v: (mastery(B, T).v ?? -1)})).filter(x => S.qs.some(q => q.book === B.id && EXAMOK(q) && inTopic(q.topic, x.T.num))).sort((a, b) => a.v - b.v).slice(0, n).map(x => x.T.num); }
+function buildMock(B, o) { // fill ~0.9 marks a minute (IB papers run close to that), favouring questions with markschemes, untried ones and weak topics
+  const pool = mockPool(B, o), target = Math.max(4, Math.round(o.mins * .9)), now = Date.now(), mv = {};
+  for (const T of topicsOf(B)) mv[T.num] = mastery(B, T).v;
+  const tv = q => { const T = topicsOf(B).find(t => inTopic(q.topic, t.num)); return T ? mv[T.num] : null; };
+  const sc = q => Math.random() + (q.ms || q.ans ? 1.2 : 0) + (q.src === 'bank' ? .8 : 0) + (attOf(q.id).length ? 0 : 1) + (1 - (tv(q) ?? .5)) - (attOf(q.id).some(a => now - a.t < 7 * 864e5) ? 2 : 0);
+  const picks = [], used = new Set(); let tot = 0;
+  for (const q of pool.map(q => [sc(q), q]).sort((a, b) => b[0] - a[0]).map(x => x[1])) {
+    if (tot >= target) break; const m = mkOf(q); if (tot + m > target * 1.15 && picks.length) continue;
+    const k = q.text.slice(0, 80); if (used.has(k)) continue; used.add(k); picks.push(q); tot += m; }
+  if (!picks.length) return null;
+  picks.sort((a, b) => (a.kind === 'mcq' ? 0 : 1) - (b.kind === 'mcq' ? 0 : 1) || (a.diff || 2) - (b.diff || 2) || mkOf(a) - mkOf(b));
+  const P = {id: 'mock-' + Math.random().toString(36).slice(2, 8), mock: 1, book: B.id, mins: o.mins, title: `${B.subject} mock${o.paper ? ' · Paper ' + o.paper : ''}`, session: fmtD(todayS(), {day: 'numeric', month: 'short', year: 'numeric'}) + ` · ${o.mins} min`,
+    instr: `${picks.length} questions, ${tot} marks. Answer all of them. ${o.calc === 'no' ? 'No calculator.' : ''} Your mark and an estimated IB grade come at the end, with a breakdown by topic.`,
+    qs: picks.map((q, i) => ({n: String(i + 1), qid: q.id, text: q.text, marks: mkOf(q), kind: q.kind === 'mcq' ? 'mcq' : q.kind === 'essay' ? 'essay' : 'structured', ms: q.ms, ans: q.ans, topic: q.topic}))};
+  LS.set(LSK('ib-mocks'), [P, ...mocks()].slice(0, 25)); return P;
+}
+function examHtml(B) {
+  const o = S.mo = S.mo && S.mo.b === B.id ? S.mo : {b: B.id, mins: 45, diff: '', paper: '', lvl: LS.get('ib-lvl:' + B.id, /HL/.test(B.title) ? 'HL' : 'SL'), tf: 'all', tps: []};
+  const all = S.qs.filter(q => q.book === B.id && EXAMOK(q)), papers = [...new Set(all.map(q => q.paper).filter(Boolean))].sort(), ts = topicsOf(B).filter(T => all.some(q => inTopic(q.topic, T.num)));
+  o.tps = o.tf === 'weak' ? weakTopics(B, 4) : o.tf === 'pick' ? o.tps : []; const n = mockPool(B, o).length;
+  const hist = Object.entries(S.prog.pp || {}).flatMap(([id, L]) => L.filter(r => r.book === B.id).map(r => ({...r, id}))).sort((a, b) => b.t - a.t).slice(0, 6);
+  const seg = (k, opts) => `<div class="seg">${opts.map(([v, l]) => `<button data-mo="${k}" data-v="${v}" class="${String(o[k]) === String(v) ? 'on' : ''}">${l}</button>`).join('')}</div>`;
+  return `<div class="card exb"><div class="row"><div><h3 style="margin:0">Mock exam</h3><p class="meta" style="margin:4px 0 0">Timed, exam conditions, no Claude until you hand it in. Then you get a mark, an estimated grade and where you lost marks.</p></div></div>
+    <div class="exg"><span class="fl">Length</span>${seg('mins', [[20, '20 min'], [45, '45 min'], [60, '1 hour'], [90, '1.5 hours'], [120, '2 hours']])}
+    ${papers.length ? `<span class="fl">Paper</span>${seg('paper', [['', 'Any'], ...papers.map(x => [x, 'Paper ' + x])])}` : ''}
+    <span class="fl">Level</span>${seg('lvl', [['SL', 'SL'], ['HL', 'HL']])}
+    <span class="fl">Difficulty</span>${seg('diff', [['', 'Mixed'], [1, 'Easy'], [2, 'Medium'], [3, 'Hard']])}
+    <span class="fl">Topics</span>${seg('tf', [['all', 'Everything'], ['weak', 'My weakest'], ['pick', 'Choose']])}</div>
+    ${o.tf === 'pick' ? `<div class="chips exts">${ts.map(T => `<button data-tp="${esc(T.num)}" class="${o.tps.includes(T.num) ? 'on' : ''}">${esc(T.num)} ${esc(T.title.length > 28 ? T.title.slice(0, 28) + '…' : T.title)}</button>`).join('')}</div>` : o.tf === 'weak' && o.tps.length ? `<p class="meta" style="margin:8px 0 0">Focusing on ${o.tps.map(t => esc(topicName(B, t))).join(', ')}</p>` : ''}
+    <div class="row" style="margin-top:14px"><span class="meta">${n} questions to draw from</span><span class="sp"></span><button class="pri" id="exGo" ${n ? '' : 'disabled'}>Start mock exam</button></div></div>
+    ${hist.length ? `<h3>Your results</h3><div class="card lst">${hist.map(r => `<div class="row"><b class="num" style="min-width:64px">${r.score}/${r.max}</b><span class="tag ${r.grade >= 6 ? 'g' : r.grade >= 4 ? 'w' : 'r'}">Grade ${r.grade}</span><span class="meta">${r.mock ? 'Mock' : 'Past paper'} · ${new Date(r.t).toLocaleDateString()} · ${Math.round(r.secs / 60)} min</span></div>`).join('')}</div>` : ''}`;
+}
+function wireExam(B) {
+  const o = S.mo, re = () => { $('#ppl').innerHTML = examHtml(B) + '<h3>Past papers</h3>' + renderPapers(B); wireExam(B); document.querySelectorAll('[data-pp]').forEach(el => el.onclick = () => openPaper(el.dataset.pp)); };
+  document.querySelectorAll('[data-mo]').forEach(b => b.onclick = () => { const k = b.dataset.mo; o[k] = k === 'mins' ? +b.dataset.v : b.dataset.v; if (k === 'lvl') LS.set('ib-lvl:' + B.id, o.lvl); re(); });
+  document.querySelectorAll('.exts [data-tp]').forEach(b => b.onclick = () => { const t = b.dataset.tp; o.tps = o.tps.includes(t) ? o.tps.filter(x => x !== t) : [...o.tps, t]; re(); });
+  $('#exGo').onclick = () => { const P = buildMock(B, o); if (!P) return alert('No questions match those settings.'); openPaper(P.id); };
+}
+function breakdown(P, out) { // marks lost by topic and difficulty after a paper
+  const B = bookOf(P.book); if (!B) return ''; const by = {}, bd = {};
+  for (const o of out) { const T = topicsOf(B).find(t => inTopic(o.x.topic, t.num)), k = T ? T.num : ''; const r = by[k] = by[k] || {T, s: 0, m: 0}; r.s += o.fb.score; r.m += o.fb.max;
+    const d = o.x.diff || 0, q = bd[d] = bd[d] || {s: 0, m: 0}; q.s += o.fb.score; q.m += o.fb.max; }
+  const rows = Object.values(by).sort((a, b) => a.s / a.m - b.s / b.m), bar = (s, m) => { const v = m ? s / m : 0; return `<div class="bar" style="flex:1"><i style="width:${Math.round(v * 100)}%;background:${v < .5 ? 'var(--bad)' : v < .7 ? 'var(--warn)' : 'var(--good)'}"></i></div>`; };
+  return `<h3>Where the marks went</h3><div class="card bdn">${rows.map(r => `<div class="row"><span style="width:38%;min-width:0">${r.T ? esc(r.T.num + ' ' + r.T.title) : 'Other'}</span>${bar(r.s, r.m)}<b class="num" style="width:56px;text-align:right">${r.s}/${r.m}</b>${r.T && r.s / r.m < .7 ? `<button class="ghost" data-btp="${esc(r.T.num)}">Practise</button>` : '<span style="width:76px"></span>'}</div>`).join('')}
+    ${Object.keys(bd).filter(d => +d).length > 1 ? `<div class="row meta" style="margin-top:10px;gap:16px">${[1, 2, 3].filter(d => bd[d]).map(d => `<span>${DIFFN[d]}: <b class="num">${Math.round(bd[d].s / bd[d].m * 100)}%</b></span>`).join('')}</div>` : ''}</div>`;
+}
+
+// ---------- exam countdowns + readiness: planner exams matched to a subject; readiness = topic mastery (untested counts as 0) blended with recent mock/past-paper marks
+function examBook(it) {
+  const s = ((it.subject || '') + ' ' + it.title).toLowerCase(), A = {glopo: ['glopo', 'global pol', 'politics'], tokc: ['tok', 'theory of knowledge'], math: ['math'], chem: ['chem'], phys: ['physic']};
+  return S.books.find(B => (A[B.id] || [(B.subject || B.title).toLowerCase().split(/[\s:(]/)[0].slice(0, 5)]).some(w => s.includes(w)) && topicsOf(B).length);
+}
+function readiness(B) {
+  const ts = topicsOf(B); if (!ts.length) return null; let sum = 0, tested = 0;
+  for (const T of ts) { const v = mastery(B, T).v; if (v != null) { sum += v; tested++; } }
+  const cov = sum / ts.length, rs = Object.values(S.prog.pp || {}).flat().filter(r => r.book === B.id && Date.now() - r.t < 60 * 864e5).sort((a, b) => b.t - a.t).slice(0, 3);
+  const mk = rs.length ? rs.reduce((s, r) => s + r.score / r.max, 0) / rs.length : null, pct = mk == null ? cov : .5 * cov + .5 * mk;
+  return {pct, tested, total: ts.length, mocks: rs.length, grade: tested >= 3 || rs.length ? ((DEF_BOUNDS.find(([, m]) => pct * 100 >= m) || [1])[0]) : null};
+}
+function upcomingExams(days = 60) { const t = todayS(), m = dayMap(t, addD(t, days), true), out = [];
+  for (const d of Object.keys(m).sort()) for (const it of m[d]) if (it.kind === 'exam' && !it.done) out.push({it, d, n: Math.round((pd(d) - pd(t)) / 864e5), B: examBook(it)}); return out; }
+function countdownHtml() {
+  const ex = upcomingExams().slice(0, 4);
+  if (!ex.length) return `<section class="hsec"><div class="card cdn0"><span>Add your exam dates to get countdowns, a readiness score and study blocks planned around your week.</span><button id="cdAdd">Add an exam</button></div></section>`;
+  return `<section class="hsec"><h3>Exams<a href="#" id="cdSb">Plan study blocks</a></h3><div class="cdns">${ex.map(({it, d, n, B}) => { const r = B && readiness(B), c = itColor(it);
+    return `<div class="card cdn" style="--c:${c}"><div class="cdd"><b class="num">${n}</b><span>${n === 1 ? 'day' : 'days'}</span></div><div class="cdb"><b>${esc(it.title)}</b><span class="meta">${fmtD(d)}${it.time ? ' · ' + it.time : ''}</span>
+      ${r ? `<div class="rdy"><div class="bar"><i style="width:${Math.max(3, Math.round(r.pct * 100))}%"></i></div><span class="meta">${r.tested || r.mocks ? Math.round(r.pct * 100) + '% ready' + (r.grade ? ' · ≈ grade ' + r.grade : '') : 'Not started: try a mock to see where you are'}</span></div>` : ''}
+      ${B ? `<div class="row cdx"><button data-cmock="${B.id}">Mock exam</button><button data-cweak="${B.id}">Weakest topic</button></div>` : ''}</div></div>`; }).join('')}</div></section>`;
+}
+function wireCountdown() {
+  if ($('#cdAdd')) $('#cdAdd').onclick = () => { go('plan'); setTimeout(() => { editItem(null, addD(todayS(), 14)); const b = document.querySelector('#ef [data-k="exam"]'); b && b.click(); }, 30); };
+  if ($('#cdSb')) $('#cdSb').onclick = e => { e.preventDefault(); studyBlocks(); };
+  document.querySelectorAll('[data-cmock]').forEach(b => b.onclick = () => { S.book = bookOf(b.dataset.cmock); renderToc(); S.pf = {book: S.book.id, view: 'papers'}; renderPrac(S.pf); });
+  document.querySelectorAll('[data-cweak]').forEach(b => b.onclick = () => { const B = bookOf(b.dataset.cweak), w = weakTopics(B, 1)[0]; S.book = B; renderToc(); S.pf = {book: B.id, view: 'qs', tp: w || ''}; renderPrac(S.pf); });
+}
+
+// ---------- study blocks: fill free time before upcoming exams with revision sessions on the weakest topics (planner kind 'study', gen 'sb'; re-running replaces future ones)
+function busyOn(d) { const L = []; for (const it of (dayMap(d, d)[d] || [])) if (it.time && it.gen !== 'sb') { const a = toMin(it.time); L.push([a, it.end && toMin(it.end) > a ? toMin(it.end) : a + 60]); } return L.sort((a, b) => a[0] - b[0]); }
+function planBlocks(o) {
+  const ex = upcomingExams(90).filter(e => e.B && o.ex.includes(e.it.id + e.d)); if (!ex.length) return [];
+  const last = ex.reduce((m, e) => e.d > m ? e.d : m, ''), out = [], hm = x => String(Math.floor(x / 60)).padStart(2, '0') + ':' + String(x % 60).padStart(2, '0'), cnt = {}, tq = {};
+  for (const e of ex) { const r = readiness(e.B); e.need = Math.max(.15, 1 - (r ? r.pct : 0)); tq[e.B.id] = tq[e.B.id] || weakTopics(e.B, 99); }
+  for (let d = addD(todayS(), o.today ? 0 : 1); d < last; d = addD(d, 1)) {
+    const we = [0, 6].includes(pd(d).getDay()), [w0, w1] = we ? [toMin(o.we0), toMin(o.we1)] : [toMin(o.wd0), toMin(o.wd1)], busy = busyOn(d); let t = Math.max(w0, d === todayS() ? toMin(new Date().toTimeString().slice(0, 5)) + 15 : 0), k = 0;
+    while (k < o.per && t + o.len <= w1) { const hit = busy.find(([a, b]) => a < t + o.len && b > t); if (hit) { t = hit[1] + 10; continue; }
+      const cand = ex.filter(e => e.d > d); if (!cand.length) break;
+      const e = cand.map(e => [e.need / (1 + (cnt[e.it.id + e.d] || 0)) / Math.sqrt(Math.max(1, (pd(e.d) - pd(d)) / 864e5)), e]).sort((a, b) => b[0] - a[0])[0][1];
+      const key = e.it.id + e.d; cnt[key] = (cnt[key] || 0) + 1; const left = Math.round((pd(e.d) - pd(d)) / 864e5), B = e.B;
+      let title, sb;
+      if (left <= 2 && o.len >= 40 && !out.some(x => x.sb.mock && x.sb.ex === key)) { title = `Mock: ${B.subject}`; sb = {b: B.id, mock: 1, ex: key}; }
+      else { const L = tq[B.id], tp = L.length ? L[(cnt[key] - 1) % L.length] : ''; const T = tp && topicsOf(B).find(x => x.num === tp); title = `${B.subject}${T ? ': ' + T.title : ' revision'}`; sb = {b: B.id, tp, ex: key}; }
+      out.push({id: Math.random().toString(36).slice(2, 8), kind: 'study', gen: 'sb', title, subject: e.it.subject || B.subject, date: d, time: hm(t), end: hm(t + o.len), notes: `Study block for ${e.it.title} (${fmtD(e.d)})`, sb});
+      t += o.len + 15; k++; }
+  }
+  return out;
+}
+function studyBlocks() {
+  const ex = upcomingExams(90).filter(e => e.B), o = S.sbo = S.sbo || LS.get('ib-sbo', {wd0: '16:30', wd1: '21:00', we0: '10:00', we1: '17:00', len: 45, per: 2, today: false});
+  o.ex = ex.map(e => e.it.id + e.d);
+  if (!ex.length) return openModal(`<h3 style="margin-top:0">Plan study blocks</h3><p>Add your exams to the planner first (kind <b>Exam</b>, with the subject), then I'll fill your free time before them with revision on your weakest topics.</p><div class="row"><span class="sp"></span><button id="mClose">OK</button></div>`);
+  const m = openModal(`<div class="row"><h3 style="margin:0">Plan study blocks</h3><span class="sp"></span><button id="mClose" class="ghost" aria-label="Close"><svg class="i"><use href="#i-x"/></svg></button></div>
+    <p class="meta">Revision sessions go into your free time before each exam, around your classes, plans and linked calendars. Subjects you're least ready for get more blocks, each on one of your weakest topics, with a mock exam two days before.</p>
+    <div class="sbx"><b>Exams</b>${ex.map(e => `<label class="rowl"><input type="checkbox" data-sx="${esc(e.it.id + e.d)}" checked> ${esc(e.it.title)} <span class="meta">· ${fmtD(e.d)} · ${e.n} days</span></label>`).join('')}</div>
+    <div class="sbg"><label>Weekdays from<input type="time" name="wd0" value="${o.wd0}"></label><label>to<input type="time" name="wd1" value="${o.wd1}"></label><label>Weekends from<input type="time" name="we0" value="${o.we0}"></label><label>to<input type="time" name="we1" value="${o.we1}"></label>
+      <label>Block length<select name="len">${[30, 45, 60, 90].map(x => `<option ${x === o.len ? 'selected' : ''} value="${x}">${x} min</option>`).join('')}</select></label><label>Most per day<select name="per">${[1, 2, 3, 4].map(x => `<option ${x === o.per ? 'selected' : ''}>${x}</option>`).join('')}</select></label></div>
+    <label class="sbo"><input type="checkbox" name="today" ${o.today ? 'checked' : ''}> Start today</label>
+    <div id="sbP" class="sbp"></div>
+    <div class="row" style="margin-top:12px">${S.plan.some(x => x.gen === 'sb' && x.date >= todayS()) ? '<button id="sbClr" style="color:var(--bad)">Remove planned blocks</button>' : ''}<span class="sp"></span><button class="pri" id="sbAdd">Add to planner</button></div>`);
+  m.querySelector('.mbox').classList.add('wide');
+  let plan = [];
+  const read = () => { for (const k of ['wd0', 'wd1', 'we0', 'we1']) o[k] = m.querySelector(`[name=${k}]`).value || o[k]; o.len = +m.querySelector('[name=len]').value; o.per = +m.querySelector('[name=per]').value; o.today = m.querySelector('[name=today]').checked;
+    o.ex = [...m.querySelectorAll('[data-sx]')].filter(x => x.checked).map(x => x.dataset.sx); LS.set('ib-sbo', {...o, ex: undefined}); };
+  const prev = () => { read(); const keep = S.plan; S.plan = S.plan.filter(x => !(x.gen === 'sb' && x.date >= todayS())); plan = planBlocks(o); S.plan = keep;
+    const by = {}; for (const b of plan) (by[b.date] = by[b.date] || []).push(b); const per = {}; for (const b of plan) per[b.subject] = (per[b.subject] || 0) + 1;
+    $('#sbP').innerHTML = plan.length ? `<div class="meta" style="margin-bottom:6px"><b style="color:var(--ink)">${plan.length} blocks</b> · ${Object.entries(per).map(([k, v]) => `${esc(k)} ${v}`).join(' · ')}</div>${Object.keys(by).slice(0, 14).map(d => `<div class="sbd"><span class="meta">${fmtD(d)}</span><span>${by[d].map(b => `<span class="chip k-study" style="--c:${subjColor(b.subject)}"><b>${b.time}</b> ${esc(b.title)}</span>`).join('')}</span></div>`).join('')}${Object.keys(by).length > 14 ? `<p class="meta">…and ${Object.keys(by).length - 14} more days</p>` : ''}` : '<p class="meta">No free time found in those hours. Try a longer window.</p>';
+    $('#sbAdd').disabled = !plan.length; $('#sbAdd').textContent = plan.length ? `Add ${plan.length} blocks to planner` : 'Add to planner'; };
+  m.querySelectorAll('input,select').forEach(x => x.onchange = prev); prev();
+  $('#sbAdd').onclick = () => { S.plan = S.plan.filter(x => !(x.gen === 'sb' && x.date >= todayS() && !x.done)).concat(plan); savePlan(); m.remove(); if (S.tab === 'plan') drawPlan(); else { S.pv = 'week'; go('plan'); } };
+  if ($('#sbClr')) $('#sbClr').onclick = () => { S.plan = S.plan.filter(x => !(x.gen === 'sb' && x.date >= todayS() && !x.done)); savePlan(); m.remove(); if (S.tab === 'plan') drawPlan(); else drawHome(); };
+}
+function openStudy(it) {
+  const B = bookOf(it.sb.b), m = openModal(`<div class="row" style="align-items:flex-start"><span class="dot" style="background:${subjColor(it.subject)};margin-top:9px"></span><div style="flex:1"><h3 style="margin:0">${esc(it.title)}</h3><p class="meta" style="margin:4px 0 0">${fmtD(it.date)} · ${it.time}–${it.end}${it.notes ? ' · ' + esc(it.notes) : ''}</p></div></div>
+    <div class="row" style="margin-top:16px;flex-wrap:wrap">${it.sb.mock ? '<button class="pri" id="stGo">Start mock exam</button>' : `<button class="pri" id="stGo">Practise this topic</button><button id="stRd">Read it</button><button id="stTeach"><svg class="i"><use href="#i-spark"/></svg>Teach me</button>`}
+      <label class="rowl" style="margin-left:auto"><input type="checkbox" id="stDone" ${it.done ? 'checked' : ''}> Done</label></div>
+    <div class="row" style="margin-top:10px"><button id="stEd" class="ghost">Edit or move</button><span class="sp"></span><button id="mClose">Close</button></div>`);
+  const T = B && it.sb.tp && topicsOf(B).find(t => t.num === it.sb.tp);
+  $('#stGo').onclick = () => { m.remove(); S.book = B; renderToc(); S.pf = it.sb.mock ? {book: B.id, view: 'papers'} : {book: B.id, view: 'qs', tp: it.sb.tp}; renderPrac(S.pf); };
+  if ($('#stRd')) $('#stRd').onclick = () => { m.remove(); openPage(B.id, T ? T.n : 1); };
+  if ($('#stTeach')) $('#stTeach').onclick = () => { m.remove(); openPage(B.id, T ? T.n : 1); setTimeout(() => $('#teach') && $('#teach').click(), 60); };
+  $('#stDone').onchange = e => { it.done = e.target.checked; if (it.done) act('m', 0); savePlan(); if (S.tab === 'plan') drawPlan(); };
+  $('#stEd').onclick = () => { m.remove(); editItem(it); };
 }
 
 // ---------- highlights and notes ----------
