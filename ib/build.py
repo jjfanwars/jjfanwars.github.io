@@ -48,11 +48,11 @@ def build(book, title, subject, pages):
             k = m.group(1).strip().rstrip(':')
             if k and d and not any(t['k'].lower() == k.lower() for t in terms):
                 terms.append({'k': k, 'd': d, 'n': p['n'], 'bp': p['bp']})
-    toc = [t for t in toc if not re.search(r',\s*\d+$', t['title']) and t['n'] > 4]
+    toc = [t for t in toc if not re.search(r'(,|\s)\s*\d+$', t['title']) and t['n'] > 4 and t['title'].lower() not in ('contents', 'chemistry')]
     # drop duplicated toc entries (a heading repeated on the next page)
     seen, toc2 = set(), []
     for t in toc:
-        key = (t['num'], t['title'].lower())
+        key = t['num'] or t['title'].lower()
         if key in seen:
             continue
         seen.add(key)
@@ -128,19 +128,52 @@ def build(book, title, subject, pages):
         # science books: exercises, challenge boxes and end-of-chapter practice questions, one item per numbered question
         for m in re.finditer(r'^> \[!(exercise|challenge|practice)\]\s*(.*)\n((?:>.*\n?)+)', md, re.M):
             body = re.sub(r'^>\s?', '', m.group(3), flags=re.M).strip()
-            items = re.split(r'(?m)^(?=\*{0,2}\d{1,3}\.\*{0,2}\s)', body)
+            items = re.split(r'(?m)^(?=\*{0,2}Q?\d{1,3}\.\*{0,2}\s)', body)
             for it in items:
-                mq = re.match(r'\*{0,2}(\d{1,3})\.\*{0,2}\s+([\s\S]+)', it.strip())
+                mq = re.match(r'\*{0,2}Q?(\d{1,3})\.\*{0,2}\s+([\s\S]+)', it.strip())
                 if not mq or len(mq.group(2)) < 15:
                     continue
                 text = mq.group(2).strip()
-                marks = sum(int(x) for x in re.findall(r'\[(\d{1,2})\]', text)) or None
+                marks = sum(int(x) for x in re.findall(r'(?:\[(\d{1,2})\]|\((\d{1,2})\)\s*$)', text, re.M) for x in x if x) or None
                 kind = 'mcq' if re.search(r'(?m)^\s*(?:- )?\**A\.?\**[ .)]', text) and re.search(r'(?m)^\s*(?:- )?\**D\.?\**[ .)]', text) else {'exercise': 'exercise', 'challenge': 'challenge', 'practice': 'structured'}[m.group(1)]
                 if kind == 'mcq':
                     marks = 1
                 qs.append({'id': f'{book}-{m.group(1)}-{p["n"]}-{mq.group(1)}', 'book': book, 'kind': kind, 'marks': marks, 'text': text, 'ctx': '',
                            'topic': topic_at(p['n']), 'n': p['n'], 'bp': p['bp'], 'pages': related(text, p['n'], 4)})
-    meta = {'id': book, 'title': title, 'subject': subject, 'pages': max(p['n'] for p in pages), 'toc': toc, 'terms': sorted(terms, key=lambda t: t['k'].lower())}
+    # end-of-chapter "Practice questions" written as plain numbered lists that run over several pages
+    buf, start = None, None
+    def flush():
+        if not buf:
+            return
+        for it in re.split(r'(?m)^(?=\*{0,2}\d{1,2}\.\*{0,2}\s)', buf):
+            mq = re.match(r'\*{0,2}(\d{1,2})\.\*{0,2}\s+([\s\S]+)', it.strip())
+            if not mq or len(mq.group(2)) < 15:
+                continue
+            text = re.sub(r'\n{3,}', '\n\n', mq.group(2).strip())
+            marks = sum(int(x) for x in re.findall(r'(?:\[(\d{1,2})\]|\((\d{1,2})\)\s*$)', text, re.M) for x in x if x) or None
+            mcq = bool(re.search(r'(?m)^\s*(?:- )?\**A\.?\**[ .)]', text) and re.search(r'(?m)^\s*(?:- )?\**D\.?\**[ .)]', text))
+            qs.append({'id': f'{book}-pq-{start[0]}-{mq.group(1)}', 'book': book, 'kind': 'mcq' if mcq else 'structured', 'marks': 1 if mcq else marks, 'text': text, 'ctx': 'End-of-chapter practice question',
+                       'topic': topic_at(start[0]), 'n': start[0], 'bp': start[1], 'pages': related(text, start[0], 4)})
+    for p in pages:
+        for line in p['md'].splitlines()[1:]:
+            if re.match(r'#{1,3}\s+\**Practice questions', line, re.I):
+                flush(); buf, start = '', (p['n'], p['bp']); continue
+            if buf is not None and re.match(r'#{1,2}\s', line):
+                flush(); buf = None; continue
+            if buf is not None and not line.startswith('*[Figure') or (buf is not None and line.startswith('*[Figure')):
+                buf += line + '\n'
+    flush()
+    # science toc clean-up: drop learning-outcome lines mis-read as subsection headings
+    cur2, keep = '', []
+    for t in toc:
+        n = re.sub(r'^\D+', '', t['num'])
+        if t['lvl'] == 2:
+            cur2 = n
+        if t['lvl'] == 3 and cur2 and not n.startswith(cur2 + '.') or len(t['title']) > 75:
+            continue
+        keep.append(t)
+    meta_toc = keep
+    meta = {'id': book, 'title': title, 'subject': subject, 'pages': max(p['n'] for p in pages), 'toc': meta_toc, 'terms': sorted(terms, key=lambda t: t['k'].lower())}
     if os.environ.get('IB_MATH'):
         meta['math'] = True
     if os.environ.get('IB_FILE'):

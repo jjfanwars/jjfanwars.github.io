@@ -398,7 +398,7 @@ async function ibRoute(req, env, CORS, u) {
   const H = {...CORS, 'content-type': 'application/json', 'cache-control': 'no-store'};
   const J = (o, s = 200) => new Response(JSON.stringify(o), {status: s, headers: H});
   const ib = env.IB.get(env.IB.idFromName('main')), db = (op, o = {}) => ib.fetch('https://i/', {method: 'POST', body: JSON.stringify({...o, op})});
-  const PASS = env.IB_PASS;
+  const PASS = env.IB_PASS, OPEN = env.IB_OPEN === '1'; // IB_OPEN=1: no password for the app or PDF downloads (the calendar feed still needs it)
   if (!PASS) return J({err: 'IB app is not set up on the relay yet'}, 503);
   if (u.pathname === '/ib/cal.ics') { // calendar feed for phone/Google/Apple calendar subscriptions
     if (u.searchParams.get('t') !== PASS) return new Response('no', {status: 403});
@@ -406,7 +406,7 @@ async function ibRoute(req, env, CORS, u) {
     return new Response(toIcs(items), {headers: {'content-type': 'text/calendar; charset=utf-8', 'cache-control': 'no-store'}});
   }
   if (u.pathname === '/ib/file') { // whole textbook PDF, stored in ~1.9 MB chunks, streamed back as one download
-    if (u.searchParams.get('t') !== PASS) return new Response('no', {status: 403, headers: CORS});
+    if (!OPEN && u.searchParams.get('t') !== PASS) return new Response('no', {status: 403, headers: CORS});
     const b0 = u.searchParams.get('b'), meta = await (await db('fmeta', {b: b0})).json();
     if (!meta.n) return new Response('no file', {status: 404, headers: CORS});
     const {readable, writable} = new FixedLengthStream(meta.size);
@@ -414,7 +414,7 @@ async function ibRoute(req, env, CORS, u) {
     return new Response(readable, {headers: {...CORS, 'content-type': 'application/pdf', 'content-length': String(meta.size), 'content-disposition': `attachment; filename="${(meta.name || b0 + '.pdf').replace(/"/g, '')}"`}});
   }
   if (u.pathname === '/ib/img') {
-    if (u.searchParams.get('t') !== PASS) return new Response('no', {status: 403, headers: CORS});
+    if (!OPEN && u.searchParams.get('t') !== PASS) return new Response('no', {status: 403, headers: CORS});
     const r = await db('img', {b: u.searchParams.get('b'), n: +u.searchParams.get('n')});
     return new Response(r.body, {status: r.status, headers: {...CORS, 'content-type': 'image/jpeg', 'cache-control': 'private, max-age=604800'}});
   }
@@ -438,8 +438,8 @@ async function ibRoute(req, env, CORS, u) {
     return new Response(r.body, {status: r.status, headers: H});
   }
   let b; try { b = JSON.parse(await req.text()); } catch (e) { return J({err: 'bad request'}, 400); }
-  if (b.pass !== PASS) return J({err: 'wrong password'}, 403);
   const op = u.pathname.slice(4);
+  if (b.pass !== PASS && !(OPEN && op !== 'login')) return J({err: 'wrong password'}, 403);
   if (op === 'login') return J({ok: true});
   if (op === 'plan') { // planner items: {data} replaces the list, else returns it
     if (b.data) { await db('kvset', {k: 'plan', v: JSON.stringify(b.data)}); return J({ok: true}); }
