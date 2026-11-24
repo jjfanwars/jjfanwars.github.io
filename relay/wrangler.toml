@@ -22,6 +22,10 @@ class_name = "Track"
 name = "LEGAL"
 class_name = "Legal"
 
+[[durable_objects.bindings]]
+name = "IB"
+class_name = "IB"
+
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["Room"]
@@ -41,6 +45,10 @@ new_sqlite_classes = ["Track"]
 [[migrations]]
 tag = "v5"
 new_sqlite_classes = ["Legal"]
+
+[[migrations]]
+tag = "v6"
+new_sqlite_classes = ["IB"]
 
 # Accounts admin (ban, history, rollback): run `npx wrangler@3 secret put ADMIN_KEY` once
 

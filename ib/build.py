@@ -1,0 +1,176 @@
+#!/usr/bin/env python3
+"""Build and upload one IB Study textbook to the relay.
+
+Usage: python3 build.py BOOK_ID "Title" SUBJECT MD_DIR [IMG_DIR] [--upload]
+  MD_DIR holds NNN.md page files (first line <!-- p:BOOKPAGE -->), IMG_DIR holds p-NNN.jpg scans.
+Uploads need IB_ADMIN in the environment (the relay secret). Book text never goes in this repo.
+Writes <MD_DIR>/../BOOK_ID.json (toc, terms, questions) for checking.
+"""
+import json, math, os, re, sys, urllib.request
+from collections import Counter
+
+RELAY = os.environ.get('IB_RELAY', 'https://jjfanwars-relay.businessautomationvic.workers.dev')
+STOP = set('the of and to in a is that for as on are be by with this or it from an their can was have which not they has its at more these also there other such than how what were been may but who into about would between when some all them one most many states state political global politics example examples does do used use your you see'.split())
+
+
+def words(s):
+    return [w for w in re.findall(r"[a-z][a-z'-]{2,}", s.lower()) if w not in STOP]
+
+
+def load(md_dir):
+    pages = []
+    for f in sorted(os.listdir(md_dir)):
+        m = re.match(r'(\d+)\.md$', f)
+        if not m:
+            continue
+        src = open(os.path.join(md_dir, f), encoding='utf-8').read()
+        bp = re.match(r'<!--\s*p:\s*([^ ]*)\s*-->', src)
+        pages.append({'n': int(m.group(1)), 'bp': bp.group(1) if bp else '-', 'md': src})
+    return pages
+
+
+def build(book, title, subject, pages):
+    toc, terms, qs = [], [], []
+    for p in pages:
+        for line in p['md'].splitlines():
+            h = re.match(r'(#{1,3})\s+(.+)', line)
+            if h:
+                t = re.sub(r'[*_]', '', h.group(2)).strip()
+                num = re.match(r'(\d+(?:\.\d+)*)\.?\s+(.*)', t)
+                lvl = len(h.group(1))
+                if num:
+                    lvl = min(3, num.group(1).count('.') + 1)
+                    toc.append({'lvl': lvl, 'num': num.group(1), 'title': num.group(2), 'n': p['n'], 'bp': p['bp']})
+                elif lvl == 1:
+                    toc.append({'lvl': 1, 'num': '', 'title': t, 'n': p['n'], 'bp': p['bp']})
+        for m in re.finditer(r'^> \[!keyterm\]\s*(.+)\n((?:>.*\n?)+)', p['md'], re.M):
+            d = re.sub(r'^>\s?', '', m.group(2), flags=re.M).strip()
+            k = m.group(1).strip().rstrip(':')
+            if k and d and not any(t['k'].lower() == k.lower() for t in terms):
+                terms.append({'k': k, 'd': d, 'n': p['n'], 'bp': p['bp']})
+    toc = [t for t in toc if not re.search(r',\s*\d+$', t['title']) and t['n'] > 4]
+    # drop duplicated toc entries (a heading repeated on the next page)
+    seen, toc2 = set(), []
+    for t in toc:
+        key = (t['num'], t['title'].lower())
+        if key in seen:
+            continue
+        seen.add(key)
+        toc2.append(t)
+    toc = toc2
+
+    def topic_at(n):
+        s = ''
+        for t in toc:
+            if t['n'] > n:
+                break
+            if t['num']:
+                s = t['num']
+        return s
+
+    # tf-idf over pages to attach the most relevant pages to each question
+    df, tf = Counter(), {}
+    for p in pages:
+        c = Counter(words(re.sub(r'^> \[!\w+\]', '', p['md'], flags=re.M)))
+        tf[p['n']] = c
+        df.update(c.keys())
+    N = len(pages)
+
+    def related(text, near=None, k=6):
+        q = Counter(words(text))
+        sc = []
+        for n, c in tf.items():
+            tot = sum(c.values()) or 1
+            s = sum((c[w] / tot) * math.log(N / (1 + df[w])) * qc for w, qc in q.items() if c[w])
+            if near and abs(n - near) <= 1:
+                s *= 1.5
+            sc.append((s, n))
+        out = [n for s, n in sorted(sc, reverse=True)[:k] if s > 0]
+        if near and near not in out:
+            out = [near] + out[:k - 1]
+        return sorted(out)
+
+    plain = lambda s: re.sub(r'\*\*|__', '', s).strip()
+    for p in pages:
+        md = p['md']
+        # Paper 2 exam-style lists
+        if re.search(r'Paper 2,? section', md, re.I):
+            sec = 'A'
+            for line in md.splitlines():
+                line = re.sub(r'^>\s?', '', line)
+                ms = re.match(r'\**Paper 2,? section (\w)', line.strip(), re.I)
+                if ms:
+                    sec = ms.group(1).upper()
+                    continue
+                mq = re.match(r'(\d+)\.\s+(.+)', line.strip())
+                if mq and len(mq.group(2)) > 25:
+                    text = plain(mq.group(2))
+                    ch = topic_at(p['n']).split('.')[0]
+                    qs.append({'id': f'{book}-p2-{p["n"]}-{sec}{mq.group(1)}', 'book': book, 'kind': 'essay', 'marks': 15, 'text': text,
+                               'ctx': f'Paper 2, section {sec}', 'topic': ch, 'n': p['n'], 'bp': p['bp'], 'pages': related(text)})
+        # activities and question boxes: one practice item per box that asks something
+        for m in re.finditer(r'^> \[!(activity|questions)\]\s*(.*)\n((?:>.*\n?)+)', md, re.M):
+            body = re.sub(r'^>\s?', '', m.group(3), flags=re.M).strip()
+            body = re.sub(r'^>\s?', '', body, flags=re.M)
+            if '?' not in body and not re.search(r'^\s*\d+\.', body, re.M):
+                continue
+            if 'give you an opportunity' in body or 'paper 2-style' in body:
+                continue
+            if re.search(r'\bSource [A-D]\b', body):  # Paper 1 practice set: one item per sub-question, IB marks 3/4/8/10
+                for mq in re.finditer(r'^(\d)\.\s+(.+)$', body, re.M):
+                    i = int(mq.group(1))
+                    qs.append({'id': f'{book}-p1-{p["n"]}-{i}', 'book': book, 'kind': 'p1', 'marks': [3, 4, 8, 10][min(i, 4) - 1], 'text': plain(mq.group(2)),
+                               'ctx': 'Paper 1 practice: the sources are on the textbook pages shown (open in textbook).', 'topic': topic_at(p['n']), 'n': p['n'] - 1, 'bp': str(int(p['bp']) - 1) if p['bp'].isdigit() else p['bp'], 'pages': [p['n'] - 1, p['n']]})
+                continue
+            kind = 'activity' if m.group(1) == 'activity' else 'short'
+            qs.append({'id': f'{book}-{kind}-{p["n"]}-{m.start()}', 'book': book, 'kind': kind, 'text': plain(body), 'ctx': plain(m.group(2)) if m.group(2).strip() not in ('Activity', '') else '',
+                       'topic': topic_at(p['n']), 'n': p['n'], 'bp': p['bp'], 'pages': related(body, p['n'])})
+    meta = {'id': book, 'title': title, 'subject': subject, 'pages': max(p['n'] for p in pages), 'toc': toc, 'terms': sorted(terms, key=lambda t: t['k'].lower())}
+    start = next((t['n'] for t in toc if t['num']), 1)
+    meta['start'] = start
+    return meta, qs
+
+
+def put(q, body, ctype):
+    req = urllib.request.Request(RELAY + '/ib/put?' + q, data=body, method='POST', headers={'x-ib-admin': os.environ['IB_ADMIN'], 'content-type': ctype, 'user-agent': 'ib-build'})
+    for i in range(4):
+        try:
+            r = urllib.request.urlopen(req, timeout=60).read().decode()
+            if '"ok"' in r:
+                return
+        except Exception as e:
+            r = str(e)
+    raise SystemExit('upload failed: ' + q + ' ' + r)
+
+
+def main():
+    a = [x for x in sys.argv[1:] if not x.startswith('--')]
+    book, title, subject, md_dir = a[:4]
+    img_dir = a[4] if len(a) > 4 else None
+    pages = load(md_dir)
+    meta, qs = build(book, title, subject, pages)
+    out = os.path.join(os.path.dirname(os.path.abspath(md_dir)), book + '.json')
+    json.dump({'meta': meta, 'qs': qs}, open(out, 'w'), indent=1)
+    print(f'{len(pages)} pages, {len(meta["toc"])} toc, {len(meta["terms"])} terms, {len(qs)} questions -> {out}')
+    if '--upload' not in sys.argv:
+        return
+    from urllib.parse import quote
+    for p in pages:
+        put(f't=page&b={book}&n={p["n"]}&bp={quote(p["bp"])}', p['md'].encode(), 'text/plain')
+        if img_dir:
+            f = os.path.join(img_dir, 'p-%03d.jpg' % p['n'])
+            if os.path.exists(f) and '--imgs' in sys.argv:
+                put(f't=img&b={book}&n={p["n"]}', open(f, 'rb').read(), 'image/jpeg')
+    # merge into the shared book list and question bank (other books stay)
+    def get(op):
+        req = urllib.request.Request(RELAY + '/ib/' + op, data=json.dumps({'pass': os.environ['IB_PASS']}).encode(), method='POST', headers={'user-agent': 'ib-build'})
+        return json.loads(urllib.request.urlopen(req, timeout=60).read())
+    books = [b for b in get('books') if b['id'] != book] + [meta]
+    allq = [q for q in get('qs') if q['book'] != book and not q.get('auto')] + qs + [q for q in get('qs') if q['book'] != book and q.get('auto')]
+    put('t=kv&k=books', json.dumps(books).encode(), 'application/json')
+    put('t=kv&k=qs', json.dumps(allq).encode(), 'application/json')
+    print('uploaded')
+
+
+if __name__ == '__main__':
+    main()

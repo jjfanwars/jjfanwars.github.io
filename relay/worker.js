@@ -30,6 +30,7 @@ export default {
       const r = await env.ACCTS.get(env.ACCTS.idFromName('main')).fetch('https://a' + u.pathname, {method: 'POST', body: await req.text()});
       return new Response(r.body, {status: r.status, headers: {...CORS, 'content-type': 'application/json', 'cache-control': 'no-store'}});
     }
+    if (u.pathname.startsWith('/ib/')) return ibRoute(req, env, CORS, u);
     if (u.pathname === '/legal/grade' || u.pathname === '/legal/setup') return legalGrade(req, env, CORS, u.pathname);
     if (!m) return new Response('not found', {status: 404});
     if (req.headers.get('Upgrade') !== 'websocket') return new Response('expected websocket', {status: 426});
@@ -368,4 +369,119 @@ async function legalGrade(req, env, CORS, path) {
   const j = await r.json().catch(() => ({}));
   if (!r.ok) return J({err: (j.error && j.error.message) || 'Anthropic HTTP ' + r.status}, 502);
   return J({text: (j.content || []).map(c => c.text || '').join('')});
+}
+
+// IB Study (ib/index.html): textbooks, practice questions and Claude Sonnet tutoring behind a password. Book pages
+// (Markdown + page images) and questions live in the IB Durable Object's SQLite, so no copyrighted text is in the
+// public repo. Secrets: IB_PASS (the app password), IB_ADMIN (uploads), ANTHROPIC_KEY (or the key saved for /legal).
+// Requests are text/plain JSON {pass, ...}; images are GET /ib/img?b=&n=&t=<pass>. IB_CAP = Claude calls per day (default 300).
+const IB_SYS = 'You are an expert IB Diploma tutor and examiner, helping one student revise. You know the IB assessment criteria, command terms and markbands well. Be direct, specific and encouraging without flattery. Ground what you say in the textbook extracts provided (cite them as "p. N" using the printed page numbers) and say clearly when you go beyond them. Use short paragraphs and bullet points; no long preambles.';
+async function ibRoute(req, env, CORS, u) {
+  const H = {...CORS, 'content-type': 'application/json', 'cache-control': 'no-store'};
+  const J = (o, s = 200) => new Response(JSON.stringify(o), {status: s, headers: H});
+  const ib = env.IB.get(env.IB.idFromName('main')), db = (op, o = {}) => ib.fetch('https://i/', {method: 'POST', body: JSON.stringify({...o, op})});
+  const PASS = env.IB_PASS;
+  if (!PASS) return J({err: 'IB app is not set up on the relay yet'}, 503);
+  if (u.pathname === '/ib/img') {
+    if (u.searchParams.get('t') !== PASS) return new Response('no', {status: 403, headers: CORS});
+    const r = await db('img', {b: u.searchParams.get('b'), n: +u.searchParams.get('n')});
+    return new Response(r.body, {status: r.status, headers: {...CORS, 'content-type': 'image/jpeg', 'cache-control': 'private, max-age=604800'}});
+  }
+  if (req.method === 'OPTIONS') return new Response(null, {headers: {...CORS, 'access-control-allow-methods': 'POST, OPTIONS', 'access-control-allow-headers': 'content-type'}});
+  if (req.method !== 'POST') return J({err: 'expected POST'}, 405);
+  if (u.pathname === '/ib/put') { // uploads from the build script: admin key only
+    if (!env.IB_ADMIN || req.headers.get('x-ib-admin') !== env.IB_ADMIN) return J({err: 'no'}, 403);
+    const r = await ib.fetch('https://i/put' + u.search, {method: 'POST', body: req.body});
+    return new Response(r.body, {status: r.status, headers: H});
+  }
+  let b; try { b = JSON.parse(await req.text()); } catch (e) { return J({err: 'bad request'}, 400); }
+  if (b.pass !== PASS) return J({err: 'wrong password'}, 403);
+  const op = u.pathname.slice(4);
+  if (op === 'login') return J({ok: true});
+  if (['books', 'page', 'pages', 'search', 'qs', 'sync'].includes(op)) { const r = await db(op, b); return new Response(r.body, {status: r.status, headers: H}); }
+  if (op !== 'ask') return J({err: 'not found'}, 404);
+  const lg = await (await env.LEGAL.get(env.LEGAL.idFromName('main')).fetch('https://l/', {method: 'POST', body: '{"op":"get"}'})).json();
+  const KEY = env.ANTHROPIC_KEY || lg.key;
+  if (!KEY) return J({err: 'no API key on the relay'}, 503);
+  const cap = +(env.IB_CAP || 300), used = await (await db('spend', {cap})).json();
+  if (used.over) return J({err: `daily limit of ${cap} Claude replies reached, back tomorrow`}, 429);
+  // context: the textbook pages the client points at (max 10), pulled from storage so the client can't inject a huge prompt
+  const msgs = (b.messages || []).slice(-24).map(m => ({role: m.role === 'assistant' ? 'assistant' : 'user', content: String(m.content || '').slice(0, 12000)}));
+  if (!msgs.length || msgs[msgs.length - 1].role !== 'user') return J({err: 'empty question'}, 400);
+  // pages: the ones the client names, plus (when find is set, i.e. the first turn of a chat) the best keyword matches for the question.
+  // The client sends the returned page list back on later turns, so the system prompt stays identical and the cache keeps hitting.
+  let refs = (b.pages || []).map(Number).filter(n => n > 0).slice(0, 10);
+  if (b.find && b.book) refs = [...new Set([...refs, ...(await (await db('find', {b: b.book, q: msgs[msgs.length - 1].content, k: 5})).json()).ns])].slice(0, 10);
+  const pg = refs.length ? await (await db('pages', {b: b.book, ns: refs})).json() : {pages: []};
+  const ctx = pg.pages.map(p => `<extract page="${p.bp}">\n${p.md}\n</extract>`).join('\n');
+  const books = JSON.parse(await (await db('books')).text()), bk = books.find(x => x.id === b.book);
+  const toc = bk ? `The student's textbook: ${bk.title}. Contents (section, printed page):\n` + bk.toc.map(t => `${t.num || '-'} ${t.title} (p. ${t.bp})`).join('\n') : '';
+  // cache layout: [fixed tutor prompt + book contents] [rubric] [extracts] then the conversation (top-level automatic caching)
+  const sys = [{type: 'text', text: IB_SYS + (toc ? '\n\n' + toc : '')}];
+  if (b.mode === 'mark') sys.push({type: 'text', text: String(b.rubric || '').slice(0, 6000)});
+  if (ctx) sys.push({type: 'text', text: 'Textbook extracts:\n' + ctx});
+  sys[sys.length - 1].cache_control = {type: 'ephemeral'};
+  const r = await fetch('https://api.anthropic.com/v1/messages', {method: 'POST',
+    headers: {'content-type': 'application/json', 'x-api-key': KEY, 'anthropic-version': '2023-06-01', 'anthropic-beta': 'server-side-fallback-2026-07-01'},
+    body: JSON.stringify({model: 'claude-sonnet-5-5', max_tokens: 8000, fallbacks: 'default', cache_control: {type: 'ephemeral'}, system: sys, messages: msgs,
+      output_config: {effort: b.mode === 'mark' ? 'medium' : 'low'}})});
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) return J({err: (j.error && j.error.message) || 'Anthropic HTTP ' + r.status}, 502);
+  if (j.stop_reason === 'refusal') return J({err: 'Claude declined to answer that one.'}, 200);
+  const us = j.usage || {};
+  return J({text: (j.content || []).filter(c => c.type === 'text').map(c => c.text).join(''), left: cap - used.n, pages: refs,
+    usage: {in: us.input_tokens, cached: us.cache_read_input_tokens, wrote: us.cache_creation_input_tokens, out: us.output_tokens}});
+}
+export class IB {
+  constructor(state) {
+    this.sql = state.storage.sql;
+    this.sql.exec(`CREATE TABLE IF NOT EXISTS page (b TEXT, n INTEGER, bp TEXT, md TEXT, PRIMARY KEY (b, n));
+      CREATE TABLE IF NOT EXISTS img (b TEXT, n INTEGER, data BLOB, PRIMARY KEY (b, n));
+      CREATE TABLE IF NOT EXISTS kv (k TEXT PRIMARY KEY, v TEXT);
+      CREATE TABLE IF NOT EXISTS spend (d TEXT PRIMARY KEY, n INTEGER);`);
+  }
+  kv(k, v) { if (v === undefined) { const r = this.sql.exec('SELECT v FROM kv WHERE k = ?', k).toArray()[0]; return r ? r.v : null; } this.sql.exec('INSERT OR REPLACE INTO kv VALUES (?, ?)', k, v); }
+  async fetch(req) {
+    const u = new URL(req.url), J = o => Response.json(o);
+    if (u.pathname === '/put') { // ?t=page&b=&n=&bp= (body md) | ?t=img&b=&n= (body jpeg) | ?t=kv&k= (body json)
+      const t = u.searchParams.get('t'), b = u.searchParams.get('b'), n = +u.searchParams.get('n');
+      if (t === 'page') { this.idx = null; this.sql.exec('INSERT OR REPLACE INTO page VALUES (?, ?, ?, ?)', b, n, u.searchParams.get('bp') || '', await req.text()); }
+      else if (t === 'img') this.sql.exec('INSERT OR REPLACE INTO img VALUES (?, ?, ?)', b, n, await req.arrayBuffer());
+      else if (t === 'kv') this.kv(u.searchParams.get('k'), await req.text());
+      else return Response.json({err: 'bad type'}, {status: 400});
+      return J({ok: true});
+    }
+    const o = await req.json(), all = (q, ...a) => this.sql.exec(q, ...a).toArray();
+    switch (o.op) {
+      case 'img': { const r = all('SELECT data FROM img WHERE b = ? AND n = ?', o.b, o.n)[0]; return r ? new Response(r.data) : new Response('missing', {status: 404}); }
+      case 'books': return new Response(this.kv('books') || '[]');
+      case 'qs': return new Response(this.kv('qs') || '[]');
+      case 'page': { const r = all('SELECT n, bp, md FROM page WHERE b = ? AND n = ?', o.b, o.n)[0]; return J(r || {err: 'missing'}); }
+      case 'pages': return J({pages: all(`SELECT n, bp, md FROM page WHERE b = ? AND n IN (${o.ns.map(() => '?').join(',') || 'NULL'}) ORDER BY n`, o.b, ...o.ns.map(Number))});
+      case 'find': { // keyword (tf-idf) page ranking for the tutor; page text is kept in memory per book
+        this.idx = this.idx || {};
+        let ix = this.idx[o.b];
+        if (!ix) {
+          const docs = all('SELECT n, md FROM page WHERE b = ?', o.b).map(r => ({n: r.n, w: (r.md.toLowerCase().match(/[a-z][a-z'-]{3,}/g) || [])}));
+          const df = {}; for (const d of docs) { d.tf = {}; for (const w of d.w) d.tf[w] = (d.tf[w] || 0) + 1; for (const w in d.tf) df[w] = (df[w] || 0) + 1; d.len = d.w.length || 1; delete d.w; }
+          ix = this.idx[o.b] = {docs, df, N: docs.length};
+        }
+        const q = [...new Set(String(o.q || '').toLowerCase().match(/[a-z][a-z'-]{3,}/g) || [])];
+        const sc = ix.docs.map(d => [q.reduce((s, w) => s + (d.tf[w] ? d.tf[w] / d.len * Math.log(ix.N / (1 + ix.df[w])) : 0), 0), d.n]).filter(x => x[0] > 0).sort((a, b) => b[0] - a[0]);
+        return J({ns: sc.slice(0, o.k || 5).map(x => x[1])});
+      }
+      case 'search': {
+        const q = String(o.q || '').trim().toLowerCase().slice(0, 80); if (q.length < 2) return J({hits: []});
+        const hits = all("SELECT b, n, bp, md FROM page WHERE instr(lower(md), ?) > 0 ORDER BY b, n LIMIT 60", q).map(r => {
+          const i = r.md.toLowerCase().indexOf(q), s = r.md.slice(Math.max(0, i - 70), i + q.length + 90).replace(/\s+/g, ' ');
+          return {b: r.b, n: r.n, bp: r.bp, s, k: (r.md.toLowerCase().split(q).length - 1)};
+        });
+        return J({hits});
+      }
+      case 'sync': { if (o.data) { const s = JSON.stringify(o.data); if (s.length > 2e6) return J({err: 'too big'}); this.kv('prog', s); return J({ok: true}); } return new Response(this.kv('prog') || '{}'); }
+      case 'spend': { const d = new Date().toISOString().slice(0, 10), r = all('SELECT n FROM spend WHERE d = ?', d)[0], n = r ? r.n : 0;
+        if (n >= o.cap) return J({over: true, n}); this.sql.exec('INSERT OR REPLACE INTO spend VALUES (?, ?)', d, n + 1); return J({n: n + 1}); }
+    }
+    return Response.json({err: 'bad op'}, {status: 400});
+  }
 }
