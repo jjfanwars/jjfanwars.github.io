@@ -74,6 +74,15 @@ The owner's design brief is **brain-off**: no skill needed beyond sweeping the g
 - Inside: sky hidden, dark fog, sun/hemi off, flashlight on, no god rays, wind muffled. Player and bugs are kept inside by `tunClamp` (segments + chambers). 8 + 4 x night bugs at the start (a brute guard from night 2), plus a trickle out of the walls (`tunSpawn`, faster once night is due). Rifle rays test the core sphere first (`coreHit`); misses hit floor/ceiling within 30 m.
 - Core down: collapse (`TUN.col` 30 s, shake, falling dust, rumbles; after that the hull drains 12/s). `[E]` at the entrance light -> `exitHive` (frees tunnel bugs/crates, restores the surface). A killed core removes the mound, adds `SV.hives` (each cuts night quotas by 15%, floor 55%) and offers a bonus perk. Night can't fall while you are underground (`SV.day` holds at 0.01 with warnings).
 
+## Polish pass (24 Nov 2026)
+- **Gun stops when the game does:** `step` sets `P.firing = false` while not live (solo pause, menu), `Sfx.gun` gets spin 0 then, and `resetWorld` zeroes every gunner's spin/heat/fire plus `P.burst`. Before, pausing or quitting mid-burst left the roar loop, motor whine and muzzle flash running in the pause screen and the menu. The audio context suspends while the tab is hidden (`visibilitychange`).
+- **Stuck input:** `clearInput` (keys, LMB, touch FIRE/AIM) runs on window `blur`, tab hide and `pause(true)`, so alt-tab no longer leaves you turning or firing.
+- **Crosshair bloom works:** the per-round `P.trauma`/`P.bloom` bump in `shotTail` had been swallowed by a `//` comment on the same line. Bloom now grows per round up to `.35 + .65 x heat` (less in ADS), matching the real spread.
+- **Shield cues:** `G.shBroke` (host and guests, from the shield value): collapse plays `shbrk` and flashes the shield bar (`G.shFlash`, label SHIELD DOWN); back to full plays `shup`. Hull under 30 plays a `heart` beat that speeds up as it drops (`G.beatT`).
+- **Survival tracker:** on foot the motion tracker is a full 360 circle (150 m, you as an arrow); on the cannon it stays the 200 m front arc. Cannon heat/RPM/auto-fire readouts are hidden while you carry the rifle.
+- **Scores:** menu shows best hold kills and best survival nights under the start buttons (`#best`, refreshed on returning to the menu). The horde end card adds threat reached and titans felled (`G.titansDown`, counted in `titanDown` on every client); "Best: 0 kills" is no longer shown.
+- `T` (flashlight toast) only does anything in survival.
+
 ## Code map (`shaun/game.js`; UI in `shaun/index.html`)
 - **Renderer:** own post chain (`render`). The scene goes to a HalfFloat MSAA RT, then a bright pass, two blur levels, and the composite `compM`, which does ACES, gamma, vignette, grain, chromatic aberration and the damage tint. The renderer itself has `NoToneMapping`. Low quality (`SET.gfx`) lowers the pixel ratio and turns off shadows and MSAA.
 - **World:**
@@ -128,6 +137,7 @@ The owner's design brief is **brain-off**: no skill needed beyond sweeping the g
 - Headless Chromium needs `--use-angle=swiftshader --enable-unsafe-swiftshader`. It is very slow at this scene size, so keep the step counts small.
 
 ## Changelog
+- 24 Nov 2026, polish: gun no longer keeps roaring after pause/quit, no stuck keys after alt-tab, crosshair bloom fixed, shield-down/up sounds + heartbeat at low armour, 360 motion tracker on foot in survival, best scores on the menu, threat + titans on the end card.
 - 19 Nov 2026: hive raids in survival days: go down a hive mound into dark winding tunnels, fight in chambers, loot crates, kill the brood core and escape the collapse for fewer bugs that night and a bonus perk.
 - 19 Nov 2026: Survival is multi-night: 3-wave nights, dawn with perks and a 90 s scavenging day, dark nights with a flashlight, best = nights survived.
 - 19 Nov 2026: Survival mode (solo): get off the cannon, rifle on foot, scavenge crates between waves, bugs come for you from every side, finite cannon belt.
