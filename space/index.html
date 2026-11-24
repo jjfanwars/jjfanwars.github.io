@@ -67,6 +67,8 @@ button.on { border-color:var(--acc); background:rgba(255,207,74,.15); }
 #mapUI .lb.ap { color:#7fd4ff; } #mapUI .lb.pe { color:#ffb347; } #mapUI .lb.enc { color:#5ad1ff; } #mapUI .lb.imp { color:#ff5a4a; } #mapUI .lb.ship { color:var(--acc); } #mapUI .lb.body { color:#9fb6cc; background:none; }
 #mapInfo { position:absolute; left:14px; top:64px; width:290px; padding:10px 13px; border-radius:14px; background:rgba(6,12,22,.62); border:1px solid var(--line); font-size:13px; color:var(--dim); line-height:1.55; }
 #mapInfo b { color:var(--ink); font-weight:600; } #mapInfo .h { color:var(--acc); font-size:15px; font-weight:600; margin-bottom:2px; } #mapInfo .good { color:#5fd38a; }
+#mTgt { position:fixed; left:0; top:0; z-index:4; pointer-events:none; margin:-9px 0 0 -9px; padding-left:24px; color:#ff7ad9; font-size:13px; font-weight:600; white-space:nowrap; text-shadow:0 1px 3px #000; line-height:18px; }
+#mTgt::before { content:''; position:absolute; left:2px; top:2px; width:12px; height:12px; border:2px solid #ff7ad9; transform:rotate(45deg); }
 #act { position:fixed; left:50%; top:58%; transform:translateX(-50%); z-index:5; pointer-events:none; padding:5px 14px; border-radius:14px; background:rgba(0,0,0,.45); color:var(--acc); font-size:15px; font-weight:600; }
 body.fly #hint { bottom:200px; } body.fly #act { top:auto; bottom:180px; }
 #rTag { position:fixed; z-index:4; pointer-events:none; transform:translate(-50%,-100%); padding:3px 10px; border-radius:12px; background:rgba(0,0,0,.45); color:var(--acc); font-size:14px; font-weight:600; white-space:nowrap; }
@@ -137,11 +139,13 @@ button:focus-visible { outline:2px solid var(--acc); outline-offset:2px; }
   <label>Graphics</label><div class="seg" id="gfx"><button data-v="low">Low</button><button data-v="med">Medium</button><button data-v="high">High</button></div>
   <div class="sub" id="misSum" style="margin:14px 0 0"></div>
   <button id="play">Play</button>
+  <button id="cont" class="hidden" style="width:100%;margin-top:8px;border-color:var(--acc)"></button>
   <button id="testPlay" style="width:100%;margin-top:8px">Test mode</button>
 </div></div>
 <script src="../three-r170.js"></script>
 <script src="game.js"></script>
 <script src="flight.js"></script>
 <script src="mission.js"></script>
+<script src="extras.js"></script>
 </body>
 </html>
