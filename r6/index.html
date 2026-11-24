@@ -65,7 +65,7 @@ button.big:hover{background:#fff}
 #keys{margin-top:26px;font-size:12.5px;line-height:1.75;opacity:.85;display:grid;grid-template-columns:auto auto;gap:0 26px}
 #keys b{color:#fff}#keys b:first-child{display:inline-block;min-width:74px}
 .opts{margin-top:16px;font-size:12px;opacity:.85;display:flex;gap:22px;align-items:center}
-#pause{display:none;background:#000a;cursor:pointer;font-size:22px;letter-spacing:.2em}
+#pause{display:none;background:#000a;cursor:pointer;font-size:22px;letter-spacing:.2em;gap:14px}#pause small{font-size:13px;opacity:.7}#pause #quit{margin-top:18px;font-size:13px;letter-spacing:.16em;padding:10px 22px;background:#fff1;color:#fff;border:1px solid #fff4;cursor:pointer}#pause #quit:hover{background:#fff3}
 #again{position:fixed;left:50%;bottom:16%;transform:translateX(-50%);display:none;pointer-events:auto}
 </style>
 </head>
@@ -106,7 +106,7 @@ button.big:hover{background:#fff}
   </div>
   <div class="opts"><label>Sensitivity <input id="sens" type="range" min="0.3" max="2.5" step="0.05" value="1"></label><label>Volume <input id="vol" type="range" min="0" max="1" step="0.05" value="0.8"></label></div>
 </div>
-<div id="pause" class="ov">PAUSED — CLICK TO RESUME</div>
+<div id="pause" class="ov"><b>PAUSED</b><small>CLICK TO RESUME</small><button id="quit">LEAVE MATCH</button></div>
 <button id="again" class="big">BACK TO MENU</button>
 <script type="module" src="./js/main.js"></script>
 </body>
