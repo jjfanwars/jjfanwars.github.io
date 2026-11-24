@@ -394,16 +394,36 @@ const MARK_SCHEMA = {type: 'object', additionalProperties: false, required: ['sc
   score: {type: 'integer'}, max: {type: 'integer'}, band: {type: 'string'}, verdict: {type: 'string'},
   good: {type: 'array', items: {type: 'string'}}, missed: {type: 'array', items: {type: 'string'}}, fix: {type: 'array', items: {type: 'string'}},
   plan: {type: 'string'}, terms: {type: 'array', items: {type: 'string'}}}};
+async function ibKey(env, db) {
+  const v = await (await db('kvget', {k: 'apikey'})).text(); if (v && v.startsWith('sk-')) return v;
+  const lg = await (await env.LEGAL.get(env.LEGAL.idFromName('main')).fetch('https://l/', {method: 'POST', body: '{"op":"get"}'})).json();
+  return env.ANTHROPIC_KEY || lg.key;
+}
 async function ibRoute(req, env, CORS, u) {
   const H = {...CORS, 'content-type': 'application/json', 'cache-control': 'no-store'};
   const J = (o, s = 200) => new Response(JSON.stringify(o), {status: s, headers: H});
   const ib = env.IB.get(env.IB.idFromName('main')), db = (op, o = {}) => ib.fetch('https://i/', {method: 'POST', body: JSON.stringify({...o, op})});
   const PASS = env.IB_PASS, OPEN = env.IB_OPEN === '1'; // IB_OPEN=1: no password for the app or PDF downloads (the calendar feed still needs it)
   if (!PASS) return J({err: 'IB app is not set up on the relay yet'}, 503);
+  // accounts: first name only (the site itself is private). Each account has its own planner + progress (kv plan:<key>, prog:<key>)
+  // and a random token for its calendar feed. The first account created inherits the data from before accounts existed.
+  const users = async () => JSON.parse(await (await db('kvget', {k: 'users'})).text() || '{}') || {};
+  const ukey = n => String(n || '').trim().toLowerCase().normalize('NFKD').replace(/[^a-z0-9]/g, '').slice(0, 24);
   if (u.pathname === '/ib/cal.ics') { // calendar feed for phone/Google/Apple calendar subscriptions
-    if (u.searchParams.get('t') !== PASS) return new Response('no', {status: 403});
-    const items = JSON.parse(await (await db('kvget', {k: 'plan'})).text() || '[]');
+    const k = u.searchParams.get('k'), U = k && Object.entries(await users()).find(([, v]) => v.tok === k);
+    if (!U && u.searchParams.get('t') !== PASS) return new Response('no', {status: 403});
+    const items = JSON.parse(await (await db('kvget', {k: U ? 'plan:' + U[0] : 'plan'})).text() || '[]');
     return new Response(toIcs(items), {headers: {'content-type': 'text/calendar; charset=utf-8', 'cache-control': 'no-store'}});
+  }
+  if (u.pathname === '/ib/key') { // owner pastes a new Anthropic key here (link holds the IB_KEYTOK secret); checked against the API before saving
+    const tok = env.IB_KEYTOK; if (!tok) return new Response('off', {status: 404});
+    if (req.method === 'GET') return new Response(u.searchParams.get('t') !== tok ? 'no' : `<!doctype html><meta name=viewport content="width=device-width"><title>API key</title><body style="font:16px system-ui;max-width:420px;margin:15vh auto;padding:0 16px"><h2>IB Study: Anthropic API key</h2><form method=post><input type=hidden name=t value="${tok}"><input name=key type=password placeholder="sk-ant-..." style="width:100%;padding:10px;font:inherit" autofocus><p><button style="padding:10px 16px;font:inherit">Save</button></p></form>`, {status: u.searchParams.get('t') !== tok ? 403 : 200, headers: {'content-type': 'text/html; charset=utf-8'}});
+    const f = await req.formData(), key = String(f.get('key') || '').trim(), page = m => new Response(`<!doctype html><meta name=viewport content="width=device-width"><body style="font:16px system-ui;max-width:420px;margin:15vh auto;padding:0 16px"><h2>${m}</h2>`, {headers: {'content-type': 'text/html; charset=utf-8'}});
+    if (f.get('t') !== tok) return page('Wrong link');
+    if (!/^sk-ant-[\w-]{20,}$/.test(key)) return page('That doesn\'t look like an Anthropic key (sk-ant-...)');
+    const t = await fetch('https://api.anthropic.com/v1/models?limit=1', {headers: {'x-api-key': key, 'anthropic-version': '2023-06-01'}});
+    if (!t.ok) return page('Anthropic rejected that key (HTTP ' + t.status + '). Nothing changed.');
+    await db('kvset', {k: 'apikey', v: key}); return page('Saved. IB Study now uses the new key.');
   }
   if (u.pathname === '/ib/file') { // whole textbook PDF, stored in ~1.9 MB chunks, streamed back as one download
     if (!OPEN && u.searchParams.get('t') !== PASS) return new Response('no', {status: 403, headers: CORS});
@@ -422,10 +442,9 @@ async function ibRoute(req, env, CORS, u) {
   if (req.method !== 'POST') return J({err: 'expected POST'}, 405);
   if (u.pathname === '/ib/ocr') { // admin: transcribe one page image with Claude Haiku (book import)
     if (!env.IB_ADMIN || req.headers.get('x-ib-admin') !== env.IB_ADMIN) return J({err: 'no'}, 403);
-    const lg = await (await env.LEGAL.get(env.LEGAL.idFromName('main')).fetch('https://l/', {method: 'POST', body: '{"op":"get"}'})).json();
     const o = await req.json();
     const r = await fetch('https://api.anthropic.com/v1/messages', {method: 'POST',
-      headers: {'content-type': 'application/json', 'x-api-key': env.ANTHROPIC_KEY || lg.key, 'anthropic-version': '2023-06-01'},
+      headers: {'content-type': 'application/json', 'x-api-key': await ibKey(env, db), 'anthropic-version': '2023-06-01'},
       body: JSON.stringify({model: o.model || 'claude-haiku-5-5', max_tokens: 8000, output_config: {effort: 'low'}, system: [{type: 'text', text: o.sys, cache_control: {type: 'ephemeral'}}],
         messages: [{role: 'user', content: [{type: 'image', source: {type: 'base64', media_type: 'image/jpeg', data: o.img}}, {type: 'text', text: o.hint || 'Transcribe this page.'}]}]})});
     const j = await r.json().catch(() => ({}));
@@ -441,15 +460,28 @@ async function ibRoute(req, env, CORS, u) {
   const op = u.pathname.slice(4);
   if (b.pass !== PASS && !(OPEN && op !== 'login')) return J({err: 'wrong password'}, 403);
   if (op === 'login') return J({ok: true});
-  if (op === 'plan') { // planner items: {data} replaces the list, else returns it
-    if (b.data) { await db('kvset', {k: 'plan', v: JSON.stringify(b.data)}); return J({ok: true}); }
-    const r = await db('kvget', {k: 'plan'}); return new Response(r.body, {headers: H});
+  if (op === 'user') { // sign in or create: {name}
+    const key = ukey(b.name); if (!key) return J({err: 'enter your first name'}, 400);
+    const all = await users(); let isNew = false;
+    if (!all[key]) {
+      isNew = true; const first = !Object.keys(all).length;
+      all[key] = {name: String(b.name).trim().slice(0, 30), tok: crypto.randomUUID().replace(/-/g, ''), t: Date.now()};
+      await db('kvset', {k: 'users', v: JSON.stringify(all)});
+      if (first) for (const k of ['plan', 'prog']) { const v = await (await db('kvget', {k})).text(); if (v && v !== '[]' && v !== '{}') await db('kvset', {k: k + ':' + key, v}); }
+    }
+    return J({key, name: all[key].name, tok: all[key].tok, isNew});
   }
-  if (op === 'agent') return planAgent(b, env, db, J);
-  if (['books', 'page', 'pages', 'search', 'qs', 'sync'].includes(op)) { const r = await db(op, b); return new Response(r.body, {status: r.status, headers: H}); }
+  const uk = ukey(b.user);
+  if (['plan', 'sync', 'agent'].includes(op) && !uk) return J({err: 'sign in first'}, 401);
+  if (op === 'plan') { // planner items: {data} replaces the list, else returns it
+    if (b.data) { await db('kvset', {k: 'plan:' + uk, v: JSON.stringify(b.data)}); return J({ok: true}); }
+    const r = await db('kvget', {k: 'plan:' + uk}); return new Response(r.body, {headers: H});
+  }
+  if (op === 'agent') return planAgent(b, env, db, J, uk);
+  if (op === 'sync') { const r = await db('sync', {...b, k: 'prog:' + uk}); return new Response(r.body, {status: r.status, headers: H}); }
+  if (['books', 'page', 'pages', 'search', 'qs'].includes(op)) { const r = await db(op, b); return new Response(r.body, {status: r.status, headers: H}); }
   if (op !== 'ask') return J({err: 'not found'}, 404);
-  const lg = await (await env.LEGAL.get(env.LEGAL.idFromName('main')).fetch('https://l/', {method: 'POST', body: '{"op":"get"}'})).json();
-  const KEY = env.ANTHROPIC_KEY || lg.key;
+  const KEY = await ibKey(env, db);
   if (!KEY) return J({err: 'no API key on the relay'}, 503);
   const cap = +(env.IB_CAP || 300), used = await (await db('spend', {cap})).json();
   if (used.over) return J({err: `daily limit of ${cap} Claude replies reached, back tomorrow`}, 429);
@@ -471,8 +503,10 @@ async function ibRoute(req, env, CORS, u) {
   sys[sys.length - 1].cache_control = {type: 'ephemeral'};
   const r = await fetch('https://api.anthropic.com/v1/messages', {method: 'POST',
     headers: {'content-type': 'application/json', 'x-api-key': KEY, 'anthropic-version': '2023-06-01', 'anthropic-beta': 'server-side-fallback-2026-07-01'},
-    body: JSON.stringify({model: 'claude-sonnet-5-5', max_tokens: 8000, fallbacks: 'default', cache_control: {type: 'ephemeral'}, system: sys, messages: msgs,
+    body: JSON.stringify({model: 'claude-sonnet-5-5', max_tokens: 8000, fallbacks: 'default', cache_control: {type: 'ephemeral'}, system: sys, messages: msgs, stream: !!b.stream,
       output_config: b.mode === 'mark' ? {effort: 'medium', format: {type: 'json_schema', schema: MARK_SCHEMA}} : {effort: 'low'}})});
+  // stream: pass Anthropic's SSE straight through so text shows as it's written; the page list rides in a header
+  if (b.stream && r.ok) return new Response(r.body, {headers: {...CORS, 'content-type': 'text/event-stream', 'cache-control': 'no-store', 'x-ib-pages': JSON.stringify(refs), 'access-control-expose-headers': 'x-ib-pages'}});
   const j = await r.json().catch(() => ({}));
   if (!r.ok) return J({err: (j.error && j.error.message) || 'Anthropic HTTP ' + r.status}, 502);
   if (j.stop_reason === 'refusal') return J({err: 'Claude declined to answer that one.'}, 200);
@@ -533,7 +567,7 @@ export class IB {
         });
         return J({hits});
       }
-      case 'sync': { if (o.data) { const s = JSON.stringify(o.data); if (s.length > 2e6) return J({err: 'too big'}); this.kv('prog', s); return J({ok: true}); } return new Response(this.kv('prog') || '{}'); }
+      case 'sync': { if (o.data) { const s = JSON.stringify(o.data); if (s.length > 2e6) return J({err: 'too big'}); this.kv(o.k || 'prog', s); return J({ok: true}); } return new Response(this.kv(o.k || 'prog') || '{}'); }
       case 'spend': { const d = new Date().toISOString().slice(0, 10), r = all('SELECT n FROM spend WHERE d = ?', d)[0], n = r ? r.n : 0;
         if (n >= o.cap) return J({over: true, n}); this.sql.exec('INSERT OR REPLACE INTO spend VALUES (?, ?)', d, n + 1); return J({n: n + 1}); }
     }
@@ -570,14 +604,13 @@ function planList(items, from, to, q, today) {
   const over = items.filter(it => (it.kind === 'homework' || it.kind === 'task') && !it.done && it.date < today && (!q || it.title.toLowerCase().includes(q)));
   return (rows.map(r => r[1]).join('\n') || 'nothing in that range') + (over.length ? '\n\nOverdue and not done:\n' + over.map(it => planLine(it)).join('\n') : '');
 }
-async function planAgent(b, env, db, J) {
-  const lg = await (await env.LEGAL.get(env.LEGAL.idFromName('main')).fetch('https://l/', {method: 'POST', body: '{"op":"get"}'})).json();
-  const KEY = env.ANTHROPIC_KEY || lg.key; if (!KEY) return J({err: 'no API key on the relay'}, 503);
+async function planAgent(b, env, db, J, uk) {
+  const KEY = await ibKey(env, db); if (!KEY) return J({err: 'no API key on the relay'}, 503);
   const cap = +(env.IB_CAP || 300), used = await (await db('spend', {cap})).json();
   if (used.over) return J({err: 'daily Claude limit reached'}, 429);
-  let items = JSON.parse(await (await db('kvget', {k: 'plan'})).text() || '[]'); let changed = 0;
+  let items = JSON.parse(await (await db('kvget', {k: 'plan:' + uk})).text() || '[]'); let changed = 0;
   const today = /^\d{4}-\d\d-\d\d$/.test(b.today) ? b.today : new Date().toISOString().slice(0, 10);
-  const sys = `You are the student's personal planner assistant inside their IB study app. You manage their calendar: classes, homework, exams, events and to-dos. Today is ${b.dow || ''} ${today}, local time ${String(b.now || '').slice(0, 5)} (${String(b.tz || '').slice(0, 40)}). Resolve relative dates ("next Friday", "in two weeks", "tomorrow arvo") against today yourself and use exact YYYY-MM-DD dates. When the student tells you about something, add it straight away with sensible defaults (kind, subject guessed from context) and confirm briefly with the date written as e.g. "Fri 5 Dec". Only ask a question when a date is truly ambiguous. When asked what's coming up, give a short, prioritised answer: due soonest first, flag clashes and heavy days, and suggest when to start bigger tasks. Be brief and friendly; no long preambles.`;
+  const sys = `You are ${String(b.name || 'the student').slice(0, 30)}'s personal planner assistant inside their IB study app. You manage their calendar: classes, homework, exams, events and to-dos. Today is ${b.dow || ''} ${today}, local time ${String(b.now || '').slice(0, 5)} (${String(b.tz || '').slice(0, 40)}). Resolve relative dates ("next Friday", "in two weeks", "tomorrow arvo") against today yourself and use exact YYYY-MM-DD dates. When the student tells you about something, add it straight away with sensible defaults (kind, subject guessed from context) and confirm briefly with the date written as e.g. "Fri 5 Dec". Only ask a question when a date is truly ambiguous. When asked what's coming up, give a short, prioritised answer: due soonest first, flag clashes and heavy days, and suggest when to start bigger tasks. Be brief and friendly; no long preambles.`;
   const snap = () => 'Planner snapshot (next 21 days, plus overdue):\n' + planList(items, today, dAdd(today, 21), '', today);
   const msgs = (b.messages || []).slice(-20).map(m => ({role: m.role === 'assistant' ? 'assistant' : 'user', content: String(m.content || '').slice(0, 8000)}));
   if (!msgs.length || msgs[msgs.length - 1].role !== 'user') return J({err: 'empty message'}, 400);
@@ -619,7 +652,7 @@ async function planAgent(b, env, db, J) {
     }
     msgs.push({role: 'user', content: res});
   }
-  if (changed) await db('kvset', {k: 'plan', v: JSON.stringify(items)});
+  if (changed) await db('kvset', {k: 'plan:' + uk, v: JSON.stringify(items)});
   return J({text: text || 'Done.', changed, items});
 }
 function toIcs(items) {

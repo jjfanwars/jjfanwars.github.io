@@ -26,6 +26,7 @@
 :root[data-theme=dark]{--bg:#15171c;--panel:#1c1f26;--sunk:#121418;--ink:#ebe7dd;--ink2:#cfcabe;--mut:#9a9fa9;--line:#2c3039;--line2:#3a3f4a;
   --acc:#9db1ff;--acc-ink:#111526;--acc2:#252d45;--red:#ff8a6b;--red2:#3a221d;--good:#86d39a;--good2:#1d3123;--warn:#f0b35a;--warn2:#33281a;
   --kt:#2c2819;--cs:#20263a;--sh:0 1px 2px rgba(0,0,0,.3),0 8px 24px -10px rgba(0,0,0,.5)}
+:root{--bad:var(--red);--side:224px}
 *{box-sizing:border-box}
 html,body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 var(--f-ui);-webkit-font-smoothing:antialiased;caret-color:var(--acc)}
 ::selection{background:color-mix(in srgb,var(--acc) 28%,transparent)}
@@ -46,17 +47,64 @@ textarea{resize:vertical;line-height:1.6}
 a{color:var(--acc);text-underline-offset:3px}
 .hide{display:none!important}
 .num{font-variant-numeric:tabular-nums}
-header{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:6px;padding:0 20px;height:56px;background:color-mix(in srgb,var(--bg) 92%,transparent);backdrop-filter:saturate(1.4) blur(8px);border-bottom:1px solid var(--line)}
-header h1{font:600 18px/1 var(--f-read);margin:0 14px 0 0;letter-spacing:-.01em;cursor:pointer;white-space:nowrap}
-header h1 b{color:var(--red);font-weight:600}
-nav.tabs{display:flex;gap:2px;height:100%}
-nav.tabs button{border:none;background:none;color:var(--mut);font-weight:500;border-radius:0;padding:0 12px;height:100%;box-shadow:inset 0 -2px 0 transparent}
-nav.tabs button:hover{color:var(--ink)}
-nav.tabs button.on{color:var(--ink);box-shadow:inset 0 -2px 0 var(--ink)}
-.srch{margin-left:auto;flex:0 1 280px;position:relative}
+#app{display:grid;grid-template-columns:var(--side) minmax(0,1fr);min-height:100vh}
+#side{position:sticky;top:0;height:100vh;display:flex;flex-direction:column;border-right:1px solid var(--line);background:var(--sunk);padding:14px 10px}
+.brand{font:600 20px/1 var(--f-read);letter-spacing:-.01em;padding:6px 10px 18px;cursor:pointer;white-space:nowrap}
+.brand b{color:var(--red);font-weight:600}
+.nv{display:flex;flex-direction:column;gap:1px}
+.nv button{border:none;background:none;justify-content:flex-start;gap:10px;padding:8px 10px;color:var(--ink2);font-weight:500;border-radius:7px;width:100%;text-align:left}
+.nv button:hover{background:color-mix(in srgb,var(--ink) 6%,transparent);color:var(--ink)}
+.nv button.on{background:var(--panel);color:var(--ink);font-weight:600;box-shadow:0 1px 2px rgba(0,0,0,.06);border:1px solid var(--line)}
+.nv button.on svg{color:var(--acc)}
+.nv .grp{font-size:11.5px;font-weight:600;color:var(--mut);padding:16px 10px 5px;letter-spacing:.02em}
+.nv .sub{padding:5px 10px 5px 36px;font-size:13px;font-weight:400;color:var(--mut)}
+.nv .sub .dot{margin-right:2px}
+.me{margin-top:auto;display:flex;align-items:center;gap:10px;border:none;background:none;padding:8px 10px;border-radius:8px;width:100%;text-align:left}
+.me:hover{background:color-mix(in srgb,var(--ink) 6%,transparent)}
+.av{width:28px;height:28px;border-radius:50%;background:var(--acc);color:var(--acc-ink);display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex:none}
+.col{min-width:0}
+header{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:8px;padding:0 20px;height:56px;background:color-mix(in srgb,var(--bg) 92%,transparent);backdrop-filter:saturate(1.4) blur(8px);border-bottom:1px solid var(--line)}
+header h1{font:600 16px/1.2 var(--f-ui);margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;display:flex;gap:6px;align-items:center}
+header h1 .crumb{color:var(--mut);font-weight:500;cursor:pointer}
+header h1 .crumb:hover{color:var(--ink)}
+header h1 .sep{color:var(--line2)}
+#bot{display:none}
+#meH{display:none;padding:2px;border:none;background:none}
+.srch{margin-left:auto;flex:0 1 300px;position:relative}
+.sugg{position:absolute;top:calc(100% + 6px);left:0;right:0;z-index:30;padding:4px;box-shadow:var(--sh);max-height:70vh;overflow:auto;min-width:300px}
+.sugg>div{padding:7px 10px;border-radius:6px;cursor:pointer;display:flex;gap:8px;align-items:baseline;font-size:14px}
+.sugg>div.on,.sugg>div:hover{background:var(--acc2)}
+.sugg .k{font-size:11.5px;color:var(--mut);width:58px;flex:none}
+.sugg .s{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* library shelf */
+.lib{max-width:1040px;margin:0 auto}
+.lib h2{font:600 30px/1.2 var(--f-read);letter-spacing:-.015em;margin:4px 0 4px}
+.lib h3{font:600 15px/1.3 var(--f-ui);margin:26px 0 10px}
+.books{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
+.book{display:flex;gap:18px;padding:18px;align-items:stretch;cursor:pointer;position:relative;transition:border-color .15s}
+.book:hover{border-color:var(--ink2)}
+.cover{width:84px;height:116px;border-radius:3px 7px 7px 3px;flex:none;background:var(--bk);background-image:linear-gradient(90deg,rgba(0,0,0,.2),rgba(0,0,0,0) 14%,rgba(255,255,255,.06) 16%,rgba(0,0,0,0) 30%);color:#fff;padding:10px 9px;display:flex;flex-direction:column;justify-content:space-between;box-shadow:0 3px 10px -2px rgba(0,0,0,.25)}
+.cover b{font:600 13px/1.15 var(--f-read)}
+.cover span{font-size:10px;opacity:.8;font-weight:600;letter-spacing:.04em}
+.book .bi{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
+.book .bt{font:600 18px/1.25 var(--f-read);text-wrap:balance;padding-right:30px}
+.book .bar{margin-top:auto}
+.book .pin{position:absolute;top:10px;right:10px;padding:6px;border:none;background:none;color:var(--mut)}
+.book .pin:hover{color:var(--ink);background:var(--sunk)}
+.book .pin.on{color:var(--red)}
+.book .pin.on svg{fill:currentColor}
+.bms>div{display:flex;gap:12px;align-items:baseline;cursor:pointer}
+.bms>div:hover{background:var(--sunk)}
+.bms .x{margin-left:auto;padding:2px 6px;border:none;background:none;color:var(--mut)}
+#bmk.on{color:var(--red);border-color:color-mix(in srgb,var(--red) 40%,var(--line2))}
+#bmk.on svg{fill:currentColor}
+.tochd{display:flex;gap:6px;align-items:center;padding:0 6px 10px}
+.tochd select{flex:1;min-width:0}
+.bsel{width:auto;max-width:260px;font-weight:500}
+.ctx{font-size:12px;color:var(--mut);padding:8px 16px;border-bottom:1px solid var(--line);background:var(--sunk)}
 .srch svg{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--mut)}
 #q{padding-left:32px;background:var(--panel)}
-.wrap{display:grid;grid-template-columns:280px 1fr;min-height:calc(100vh - 56px)}
+.wrap{display:grid;grid-template-columns:270px 1fr;min-height:calc(100vh - 56px)}
 aside{border-right:1px solid var(--line);overflow:auto;max-height:calc(100vh - 56px);position:sticky;top:56px;padding:14px 8px 40px}
 aside .t{display:flex;width:100%;text-align:left;border:none;background:none;padding:5px 10px;border-radius:6px;color:var(--ink2);font-size:13.5px;line-height:1.35;gap:8px}
 aside .t span:first-child{flex:1}
@@ -137,8 +185,10 @@ mark{background:#ffe28a;color:#1c2230;border-radius:3px;padding:0 1px}
 .flash{max-width:580px;margin:30px auto;padding:40px 32px;text-align:center;min-height:260px;display:flex;flex-direction:column;justify-content:center;gap:16px;box-shadow:var(--sh)}
 .flash .term{font:600 30px/1.2 var(--f-read)}
 .flash .def{font-family:var(--f-read);font-size:18px;text-align:left}
-#login{max-width:340px;margin:16vh auto;padding:28px}
-#login h2{margin:0 0 14px;font:600 26px var(--f-read)}
+#login{max-width:360px;margin:16vh auto;padding:30px}
+#login h2{margin:0 0 4px;font:600 28px var(--f-read)}#login h2 b{color:var(--red);font-weight:600}
+#login label{font-size:13px;font-weight:600;display:flex;flex-direction:column;gap:6px}
+#known{display:flex;flex-wrap:wrap;gap:6px}
 .spin{display:inline-block;width:14px;height:14px;border:2px solid var(--line2);border-top-color:var(--acc);border-radius:50%;animation:sp 1s linear infinite;vertical-align:-2px}
 @keyframes sp{to{transform:rotate(360deg)}}
 .hits .h{padding:12px 16px;border-bottom:1px solid var(--line);cursor:pointer}
@@ -220,15 +270,26 @@ a.btn{display:inline-flex;padding:7px 12px;border-radius:8px;text-decoration:non
   .mc{min-height:70px}.chip{font-size:10.5px;padding:1px 4px}.chip::before{display:none}
   .wh,.wb{grid-template-columns:36px repeat(7,minmax(0,1fr))}
   .wrap{grid-template-columns:1fr}
+  #app{grid-template-columns:1fr}
+  #side{display:none}
+  #meH{display:inline-flex}
+  #bot{display:grid;grid-template-columns:repeat(6,1fr);position:fixed;left:0;right:0;bottom:0;z-index:12;background:var(--panel);border-top:1px solid var(--line);padding:4px 2px calc(4px + env(safe-area-inset-bottom))}
+  #bot button{border:none;background:none;flex-direction:column;gap:2px;font-size:10.5px;padding:5px 0;color:var(--mut);border-radius:6px}
+  #bot button.on{color:var(--acc);font-weight:600}
+  #bot svg.i{width:20px;height:20px}
+  .drawer{bottom:58px}
+  .ask{bottom:76px}
   aside{position:fixed;left:0;top:56px;bottom:0;width:86%;max-width:320px;z-index:7;transform:translateX(-105%);transition:transform .2s;max-height:none;background:var(--panel);box-shadow:8px 0 30px rgba(0,0,0,.15)}
   aside.open{transform:none}
   #menuBtn{display:inline-flex}
   main{padding:16px 16px 90px}
   .page{padding:22px 18px;font-size:17px}
-  header{flex-wrap:wrap;height:auto;padding:8px 12px;row-gap:6px}
-  nav.tabs{order:9;width:100%;overflow-x:auto;height:38px}
-  nav.tabs button{white-space:nowrap}
-  .srch{flex:1 1 140px}
+  header{padding:0 10px;gap:4px}
+  header h1{display:none}
+  .srch{flex:1 1 120px}
+  .sugg{min-width:0;left:-60px;right:-90px}
+  #thm{display:none}
+  .books{grid-template-columns:1fr}
   .acts{grid-template-columns:1fr}
   .act{flex-direction:row;align-items:baseline;gap:10px}.act .meta{width:72px}.act b{margin-left:auto}
   #tutor .lbl{display:none}
@@ -245,25 +306,39 @@ a.btn{display:inline-flex;padding:7px 12px;border-radius:8px;text-decoration:non
 <symbol id="i-dl" viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></symbol>
 <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4 4"/></symbol>
 <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/></symbol>
+<symbol id="i-home" viewBox="0 0 24 24"><path d="M4 11l8-6.5 8 6.5"/><path d="M6 9.5V19h12V9.5"/><path d="M10 19v-5h4v5"/></symbol>
+<symbol id="i-book" viewBox="0 0 24 24"><path d="M4 5.5c2.5-1 5.5-1 8 .8 2.5-1.8 5.5-1.8 8-.8V19c-2.5-1-5.5-1-8 .8-2.5-1.8-5.5-1.8-8-.8z"/><path d="M12 6.3v13.5"/></symbol>
+<symbol id="i-pen" viewBox="0 0 24 24"><path d="M4 20l1-4L15.5 5.5a2.1 2.1 0 013 3L8 19z"/><path d="M13.5 7.5l3 3"/></symbol>
+<symbol id="i-cards" viewBox="0 0 24 24"><rect x="3.5" y="7" width="13" height="12" rx="2"/><path d="M7.5 7V5.5a1.5 1.5 0 011.5-1.5h10a1.5 1.5 0 011.5 1.5V15a1.5 1.5 0 01-1.5 1.5h-2.5"/></symbol>
+<symbol id="i-cal" viewBox="0 0 24 24"><rect x="4" y="5.5" width="16" height="14.5" rx="2"/><path d="M4 10h16M8.5 3.5v4M15.5 3.5v4"/></symbol>
+<symbol id="i-chart" viewBox="0 0 24 24"><path d="M4 20h16"/><path d="M7 16v-4M12 16V7M17 16v-6"/></symbol>
+<symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/></symbol>
+<symbol id="i-moon" viewBox="0 0 24 24"><path d="M19.5 14.5A8 8 0 019.5 4.5a8 8 0 1010 10z"/></symbol>
+<symbol id="i-pin" viewBox="0 0 24 24"><path d="M9 4h6l-1 5 3.5 3.5v1.5h-11V12.5L10 9z"/><path d="M12 14v6"/></symbol>
+<symbol id="i-mark" viewBox="0 0 24 24"><path d="M7 4h10v16l-5-3.8L7 20z"/></symbol>
 <symbol id="i-cap" viewBox="0 0 24 24"><path d="M3 9l9-4 9 4-9 4z"/><path d="M7 11v5c0 1.5 2.5 3 5 3s5-1.5 5-3v-5"/></symbol>
 </svg>
 <div id="login" class="card hide">
-  <h2>IB Study</h2>
-  
-  <form id="lf" class="row" style="flex-direction:column;align-items:stretch"><input id="lp" type="password" placeholder="Password" autocomplete="current-password"><button class="pri">Open</button><div id="le" class="meta" style="color:var(--bad)"></div></form>
+  <h2>IB <b>Study</b></h2><p class="meta" style="margin:0 0 18px">Your planner, marks and progress are saved under your name.</p>
+  <form id="lf" class="row" style="flex-direction:column;align-items:stretch;gap:12px"><label>First name<input id="ln" autocomplete="given-name" maxlength="30"></label><input id="lp" type="password" placeholder="Site password" autocomplete="current-password" class="hide"><button class="pri" style="justify-content:center">Continue</button><div id="le" class="meta" style="color:var(--bad)"></div><div id="known"></div></form>
 </div>
 <div id="app" class="hide">
+<nav id="side"><div class="brand" id="home">IB <b>Study</b></div><div class="nv tabs"><button data-tab="home"><svg class="i"><use href="#i-home"/></svg><span>Home</span></button><div class="grp">Study</div><button data-tab="lib"><svg class="i"><use href="#i-book"/></svg><span>Library</span></button><div id="pins"></div><button data-tab="prac"><svg class="i"><use href="#i-pen"/></svg><span>Practice</span></button><button data-tab="terms"><svg class="i"><use href="#i-cards"/></svg><span>Key terms</span></button><div class="grp">Organise</div><button data-tab="plan"><svg class="i"><use href="#i-cal"/></svg><span>Planner</span></button><button data-tab="prog"><svg class="i"><use href="#i-chart"/></svg><span>Progress</span></button></div><button class="me" id="me"></button></nav>
+<div class="col">
 <header>
-  <button id="menuBtn" class="ghost" aria-label="Contents"><svg class="i"><use href="#i-menu"/></svg></button>
-  <h1 id="home">IB <b>Study</b></h1>
-  <nav class="tabs"><button data-tab="home" class="on">Home</button><button data-tab="lib">Library</button><button data-tab="prac">Practice</button><button data-tab="terms">Key terms</button><button data-tab="prog">Progress</button><button data-tab="plan">Planner</button></nav>
-  <div class="srch"><svg class="i"><use href="#i-search"/></svg><input id="q" type="search" placeholder="Search books"></div>
+  <button id="menuBtn" class="ghost hide" aria-label="Contents"><svg class="i"><use href="#i-menu"/></svg></button>
+  <h1 id="ttl"></h1>
+  <div class="srch"><svg class="i"><use href="#i-search"/></svg><input id="q" type="search" placeholder="Search  (press /)" autocomplete="off"><div id="sugg" class="card sugg hide"></div></div>
+  <button class="ghost" id="thm" aria-label="Toggle dark mode"><svg class="i"><use href="#i-moon"/></svg></button>
   <button class="pri" id="tutor"><svg class="i"><use href="#i-spark"/></svg><span class="lbl">Ask Claude</span></button>
+  <button id="meH" aria-label="Account"></button>
 </header>
 <div class="wrap">
   <aside id="toc"></aside>
   <main id="main"></main>
 </div>
+</div>
+<nav id="bot" class="tabs"><button data-tab="home"><svg class="i"><use href="#i-home"/></svg><span>Home</span></button><button data-tab="lib"><svg class="i"><use href="#i-book"/></svg><span>Library</span></button><button data-tab="prac"><svg class="i"><use href="#i-pen"/></svg><span>Practice</span></button><button data-tab="terms"><svg class="i"><use href="#i-cards"/></svg><span>Terms</span></button><button data-tab="plan"><svg class="i"><use href="#i-cal"/></svg><span>Planner</span></button><button data-tab="prog"><svg class="i"><use href="#i-chart"/></svg><span>Progress</span></button></nav>
 </div>
 <div id="drawer" class="drawer hide"><div class="hd"><span id="dTitle">Ask Claude</span><button class="ghost" id="dClose" aria-label="Close"><svg class="i"><use href="#i-x"/></svg></button></div><div class="chat" id="chat"></div><form class="chatin" id="cf"><textarea id="ci" rows="1" placeholder="Message"></textarea><button class="pri">Send</button></form></div>
 <script>
@@ -271,15 +346,24 @@ a.btn{display:inline-flex;padding:7px 12px;border-radius:8px;text-decoration:non
 const RELAY = (new URLSearchParams(location.search).get('relay') || 'https://jjfanwars-relay.businessautomationvic.workers.dev').replace(/^ws/, 'http');
 const $ = s => document.querySelector(s), esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
 const LS = {get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } }, set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }};
-let PASS = LS.get('ib-pass', '');
+let PASS = LS.get('ib-pass', ''), USER = LS.get('ib-user', null); // USER = {key, name, tok}
+const UK = () => USER ? USER.key : '', LSK = k => k + ':' + UK();
 async function api(op, body = {}) {
-  const r = await fetch(RELAY + '/ib/' + op, {method: 'POST', body: JSON.stringify({...body, pass: PASS})});
+  const r = await fetch(RELAY + '/ib/' + op, {method: 'POST', body: JSON.stringify({pass: PASS, user: UK(), name: USER ? USER.name : '', ...body})});
   const j = await r.json().catch(() => ({err: 'HTTP ' + r.status}));
   if (r.status === 403 && op !== 'login' && PASS) { LS.set('ib-pass', ''); PASS = ''; location.reload(); }
   if (j && j.err) throw new Error(j.err);
   return j;
 }
-const S = {books: [], qs: [], book: null, tab: 'lib', n: 1, view: LS.get('ib-view', 'text'), cache: new Map(), hl: '', prog: LS.get('ib-prog', {att: {}, terms: {}, last: null})};
+const S = {books: [], qs: [], book: null, tab: 'home', n: 1, view: LS.get('ib-view', 'text'), cache: new Map(), hl: '', prog: null, reading: false};
+// per-account local copies; the first account on this device inherits the data saved before accounts existed
+function loadLocal() {
+  const mig = !LS.get('ib-migrated', 0);
+  S.prog = LS.get(LSK('ib-prog'), null) || (mig && LS.get('ib-prog', null)) || {att: {}, terms: {}, last: null};
+  for (const k of ['pins', 'marks']) S.prog[k] = S.prog[k] || []; S.prog.lastBy = S.prog.lastBy || {};
+  S.plan = LS.get(LSK('ib-plan'), null) || (mig ? LS.get('ib-plan', null) : null);
+  if (mig) { LS.set('ib-migrated', 1); LS.set(LSK('ib-prog'), S.prog); if (S.plan) LS.set(LSK('ib-plan'), S.plan); }
+}
 
 // ---------- markdown ----------
 const CO = {keyterm: 'Key term', concept: 'Concept', case: 'Case study', activity: 'Activity', tok: 'TOK', atl: 'ATL skills', tip: 'Assessment tip', questions: 'Questions', box: ''};
@@ -320,43 +404,67 @@ const imgUrl = (b, n) => `${RELAY}/ib/img?b=${b}&n=${n}&t=${encodeURIComponent(P
 const bookOf = id => S.books.find(b => b.id === id);
 const secOf = (b, n) => { let s = null; for (const t of b.toc) { if (t.n > n) break; if (t.lvl <= 3) s = t; } return s; };
 let syncT = 0;
-function saveProg() { LS.set('ib-prog', S.prog); clearTimeout(syncT); syncT = setTimeout(() => api('sync', {data: S.prog}).catch(() => {}), 1500); }
+function saveProg(pref) { if (pref) S.prog.pt = Date.now(); LS.set(LSK('ib-prog'), S.prog); clearTimeout(syncT); syncT = setTimeout(() => api('sync', {data: S.prog}).catch(() => {}), 1500); }
 async function pullProg() {
   try { const r = await api('sync'); if (!r || !r.att) return;
     for (const [k, v] of Object.entries(r.att)) if (!S.prog.att[k]) S.prog.att[k] = v; else { const ids = new Set(S.prog.att[k].map(a => a.t)); for (const a of v) if (!ids.has(a.t)) S.prog.att[k].push(a); }
     for (const [k, v] of Object.entries(r.terms || {})) if (!S.prog.terms[k] || S.prog.terms[k].t < v.t) S.prog.terms[k] = v;
-    LS.set('ib-prog', S.prog);
+    if ((r.pt || 0) > (S.prog.pt || 0)) { S.prog.pins = r.pins || []; S.prog.marks = r.marks || []; S.prog.pt = r.pt; }
+    for (const [k, v] of Object.entries(r.lastBy || {})) if (!S.prog.lastBy[k] || S.prog.lastBy[k].t < v.t) S.prog.lastBy[k] = v;
+    if (r.last && (!S.prog.last || (r.last.t || 0) > (S.prog.last.t || 0))) S.prog.last = r.last;
+    LS.set(LSK('ib-prog'), S.prog); drawPins(); if (S.tab === 'home') drawHome(); if (S.tab === 'lib' && !S.reading) renderShelf();
   } catch (e) {}
 }
 
 // ---------- shell ----------
-function tab(t) {
-  S.tab = t; document.querySelectorAll('nav.tabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === t));
-  $('#toc').classList.toggle('hide', t !== 'lib'); document.querySelector('.wrap').style.gridTemplateColumns = t === 'lib' ? '' : '1fr';
-  closeDrawer(); ({home: renderHome, lib: () => openPage(S.book.id, S.n), prac: renderPrac, terms: renderTerms, prog: renderProg, plan: () => renderPlan(true)})[t]();
+const TABN = {home: 'Home', lib: 'Library', prac: 'Practice', terms: 'Key terms', prog: 'Progress', plan: 'Planner', search: 'Search'};
+// back/forward: each screen writes a hash; same-screen changes (page flips) replace instead of push
+function setHash(h) { if (location.hash === h) return; const seg = x => x.split('/').slice(1, x.startsWith('#/lib/') ? 3 : 2).join('/'), a = seg(location.hash), b = seg(h); history[a === b ? 'replaceState' : 'pushState'](null, '', h); }
+function title(parts) { $('#ttl').innerHTML = parts.map((x, i) => i < parts.length - 1 ? `<span class="crumb" data-go="${x[1]}">${esc(x[0])}</span><span class="sep">/</span>` : `<span>${esc(Array.isArray(x) ? x[0] : x)}</span>`).join('');
+  $('#ttl').querySelectorAll('[data-go]').forEach(c => c.onclick = () => go(c.dataset.go)); }
+function shell(t) { // chrome for a screen: nav highlight, contents panel, title
+  if (S.tab !== t) closeDrawer();
+  S.tab = t; document.querySelectorAll('.tabs [data-tab]').forEach(b => b.classList.toggle('on', b.dataset.tab === t));
+  const rd = t === 'lib' && S.reading; $('#toc').classList.toggle('hide', !rd); $('#menuBtn').classList.toggle('hide', !rd);
+  document.querySelector('.wrap').style.gridTemplateColumns = rd ? '' : '1fr'; title([TABN[t]]);
+  document.querySelectorAll('#pins [data-b]').forEach(x => x.classList.toggle('on', rd && x.dataset.b === S.book.id));
 }
+function tab(t) { shell(t); ({home: renderHome, lib: () => S.reading ? openPage(S.book.id, S.n) : renderShelf(), prac: () => renderPrac(), terms: () => renderTerms(), prog: renderProg, plan: () => renderPlan(true)})[t](); }
+function go(t) { if (t === 'lib') S.reading = false; tab(t); }
+function drawPins() { const el = $('#pins'); if (!el || !S.prog) return;
+  el.innerHTML = S.prog.pins.map(bookOf).filter(Boolean).map(B => `<button class="sub" data-b="${B.id}"><span class="dot" style="background:${bookC(B)}"></span>${esc(B.subject || B.title)}</button>`).join('');
+  el.querySelectorAll('[data-b]').forEach(x => x.onclick = () => openBook(x.dataset.b)); }
+const bookBar = cur => S.books.length < 2 ? '' : `<select class="bsel" id="bsel">${S.books.map(x => `<option value="${x.id}" ${x.id === cur ? 'selected' : ''}>${esc(x.subject || x.title)}</option>`).join('')}</select>`;
+function onBookBar(fn) { const el = $('#bsel'); if (el) el.onchange = () => { S.book = bookOf(el.value); renderToc(); fn(S.book); }; }
 function renderToc() {
   const b = S.book;
-  $('#toc').innerHTML = `<div style="padding:4px 10px 8px"><select id="bk">${S.books.map(x => `<option value="${x.id}" ${x.id === b.id ? 'selected' : ''}>${esc(x.title)}</option>`).join('')}</select></div>` +
+  $('#toc').innerHTML = `<div class="tochd"><button class="ghost" id="toLib" aria-label="All books" title="All books"><svg class="i"><use href="#i-l"/></svg></button><select id="bk">${S.books.map(x => `<option value="${x.id}" ${x.id === b.id ? 'selected' : ''}>${esc(x.title)}</option>`).join('')}</select></div>` +
+    (S.prog.marks.some(m => m.b === b.id) ? `<div class="pg" style="padding:6px 10px 2px;font-weight:600">Bookmarks</div><div class="bmkl">` + S.prog.marks.filter(m => m.b === b.id).map(m => `<button class="t l2" data-n="${m.n}"><span>${esc(m.title || 'Page ' + m.n)}</span><span class="pg">${esc(m.bp || '')}</span></button>`).join('') + '</div><div class="pg" style="padding:12px 10px 2px;font-weight:600">Contents</div>' : '') +
     b.toc.filter(t => (t.lvl <= 2 || (t.lvl === 3 && t.num)) && !(b.math && /^[ivxlc]+$/i.test(t.bp)) && !/^Exercises?$/i.test(t.title)).map(t => `<button class="t l${t.lvl}" data-n="${t.n}"><span>${t.num ? esc(t.num.replace(/^(Structure|Reactivity)\s+/, (m, w) => w[0])) + ' ' : ''}${esc(t.title)}</span><span class="pg">${t.bp && t.bp !== '-' ? esc(t.bp) : ''}</span></button>`).join('');
-  $('#bk').onchange = e => { S.book = bookOf(e.target.value); renderToc(); openPage(S.book.id, S.book.start || 1); };
+  $('#bk').onchange = e => openBook(e.target.value); $('#toLib').onclick = () => go('lib');
 }
 function markToc() {
-  let on = null; for (const el of document.querySelectorAll('#toc .t')) { el.classList.remove('on'); if (+el.dataset.n <= S.n) on = el; }
+  let on = null; for (const el of document.querySelectorAll('#toc .t')) { el.classList.remove('on'); if (+el.dataset.n <= S.n && !el.closest('.bmkl')) on = el; }
   if (on) { on.classList.add('on'); if (S.tab === 'lib') on.scrollIntoView({block: 'nearest'}); }
 }
 
 // ---------- library ----------
 async function openPage(b, n, hl) {
   const B = bookOf(b); MATH = !!B.math; n = Math.max(1, Math.min(B.pages, n)); S.n = n; S.hl = hl || '';
-  S.prog.last = {b, n}; LS.set('ib-prog', S.prog);
-  if (S.tab !== 'lib') { S.tab = 'lib'; tab('lib'); return; }
-  const sec = secOf(B, n);
+  if (S.book !== B) { S.book = B; renderToc(); }
+  const now = Date.now(); S.prog.last = {b, n, t: now}; S.prog.lastBy[b] = {n, t: now}; saveProg();
+  S.reading = true; if (S.tab !== 'lib' || $('#toc').classList.contains('hide')) shell('lib');
+  setHash(`#/lib/${b}/${n}`);
+  const sec = secOf(B, n), mk = S.prog.marks.find(m => m.b === b && m.n === n);
+  title([['Library', 'lib'], [B.subject || B.title], sec ? (sec.num ? sec.num.replace(/^(Structure|Reactivity)\s+/, (m, w) => w[0]) + ' ' : '') + sec.title : 'Page ' + n]);
   $('#main').innerHTML = `<div class="reader"><div class="rbar">
     <button id="pv" aria-label="Previous page"><svg class="i"><use href="#i-l"/></svg></button><span class="pgnum" id="pn"></span><button id="nx" aria-label="Next page"><svg class="i"><use href="#i-r"/></svg></button>
-    <span class="sp"></span>${B.file ? `<a class="meta" href="${RELAY}/ib/file?b=${b}&t=${encodeURIComponent(PASS)}" download title="Download the whole textbook PDF" style="display:inline-flex;gap:4px;align-items:center;text-decoration:none"><svg class="i"><use href="#i-dl"/></svg>PDF</a>` : ''}<div class="seg"><button data-v="text">Text</button><button data-v="scan">Scan</button></div></div>
+    <span class="sp"></span><button id="bmk" class="${mk ? 'on' : ''}" title="Bookmark this page"><svg class="i"><use href="#i-mark"/></svg></button>${B.file ? `<a class="meta" href="${RELAY}/ib/file?b=${b}&t=${encodeURIComponent(PASS)}" download title="Download the whole textbook PDF" style="display:inline-flex;gap:4px;align-items:center;text-decoration:none"><svg class="i"><use href="#i-dl"/></svg>PDF</a>` : ''}<div class="seg"><button data-v="text">Text</button><button data-v="scan">Scan</button></div></div>
     <div id="pg" class="card page"><span class="spin"></span></div><div class="rbar" style="margin-top:12px"><button id="pv2"><svg class="i"><use href="#i-l"/></svg>Previous</button><span class="sp"></span><button id="nx2">Next<svg class="i"><use href="#i-r"/></svg></button></div></div>
     <div class="ask row"><button id="teach"><svg class="i"><use href="#i-cap"/></svg>Teach me</button><button class="pri" id="askP"><svg class="i"><use href="#i-spark"/></svg>Ask</button></div>`;
+  $('#bmk').onclick = () => { const i = S.prog.marks.findIndex(m => m.b === b && m.n === n);
+    if (i >= 0) S.prog.marks.splice(i, 1); else S.prog.marks.unshift({b, n, bp: $('#pn').dataset.bp || '', title: sec ? (sec.num ? sec.num + ' ' : '') + sec.title : '', t: Date.now()});
+    saveProg(true); $('#bmk').classList.toggle('on', i < 0); renderToc(); markToc(); };
   $('#pv').onclick = $('#pv2').onclick = () => openPage(b, n - 1); $('#nx').onclick = $('#nx2').onclick = () => openPage(b, n + 1);
   document.querySelectorAll('.seg button').forEach(x => { x.classList.toggle('on', x.dataset.v === S.view); x.onclick = () => { S.view = x.dataset.v; LS.set('ib-view', S.view); openPage(b, n, hl); }; });
   $('#askP').onclick = () => openChat({title: 'Ask about p. ' + ($('#pn').dataset.bp || n), book: b, pages: [n - 1, n, n + 1].filter(x => x >= 1 && x <= B.pages), intro: `I'm reading page ${$('#pn').dataset.bp || n}${sec ? ' (' + (sec.num ? sec.num + ' ' : '') + sec.title + ')' : ''}. `});
@@ -373,15 +481,30 @@ async function openPage(b, n, hl) {
   } catch (e) { $('#pg').innerHTML = '<p>Could not load: ' + esc(e.message) + '</p>'; }
 }
 let searchT = 0;
+// typing shows quick jumps (screens, sections, key terms, questions); Enter on nothing selected searches every page
+let SG = {i: -1, list: []};
+function suggest(q) {
+  const box = $('#sugg'), v = q.trim().toLowerCase(); if (v.length < 2) { box.classList.add('hide'); return; }
+  const out = [], has = t => String(t).toLowerCase().includes(v);
+  for (const [k, n] of Object.entries(TABN)) if (k !== 'search' && has(n)) out.push({k: 'Go to', s: n, f: () => go(k)});
+  const pm = v.match(/^p(?:age|\.)?\s*(\d+)$/); if (pm && S.book) { const pg = S.book.pages; out.push({k: 'Page', s: S.book.subject + ' page ' + pm[1], f: () => openPage(S.book.id, Math.min(pg, +pm[1]))}); }
+  for (const B of S.books) for (const t of B.toc) if (out.length < 30 && t.lvl <= 3 && (has(t.title) || (t.num && has(t.num)))) out.push({k: B.subject.split(' ')[0], s: (t.num ? t.num + ' ' : '') + t.title, f: () => openPage(B.id, t.n)});
+  for (const B of S.books) for (const t of B.terms || []) if (out.length < 40 && has(t.k)) out.push({k: 'Term', s: t.k + ' — ' + t.d, f: () => openPage(B.id, t.n, t.k)});
+  out.splice(14); out.push({k: 'Search', s: `All pages for “${q.trim()}”`, f: () => search(q)});
+  SG = {i: -1, list: out};
+  box.innerHTML = out.map((o, i) => `<div data-i="${i}"><span class="k">${esc(o.k)}</span><span class="s">${esc(o.s)}</span></div>`).join(''); box.classList.remove('hide');
+  box.querySelectorAll('[data-i]').forEach(el => el.onmousedown = e => { e.preventDefault(); pickSugg(+el.dataset.i); });
+}
+function pickSugg(i) { const o = SG.list[i]; $('#sugg').classList.add('hide'); if (!o) return; $('#q').blur(); if (o.k !== 'Search') $('#q').value = ''; o.f(); }
 async function search(q) {
   if (q.trim().length < 2) return;
-  S.tab = 'search'; document.querySelectorAll('nav.tabs button').forEach(b => b.classList.remove('on')); $('#toc').classList.add('hide'); document.querySelector('.wrap').style.gridTemplateColumns = '1fr';
+  shell('search'); setHash('#/search/' + encodeURIComponent(q));
   $('#main').innerHTML = '<div class="reader"><p><span class="spin"></span> Searching…</p></div>';
   const {hits} = await api('search', {q});
-  if ($('#q').value !== q) return;
+  if (S.tab !== 'search') return;
   $('#main').innerHTML = `<div class="reader"><h2 style="margin-top:0">${hits.length}${hits.length === 60 ? '+' : ''} pages mention “${esc(q)}”</h2><div class="card hits">${hits.map(h => { const B = bookOf(h.b), s = B && secOf(B, h.n);
     return `<div class="h" data-b="${h.b}" data-n="${h.n}"><div class="row"><b>p. ${esc(h.bp)}</b><span class="meta">${s ? esc((s.num ? s.num + ' ' : '') + s.title) : ''}</span></div><div class="meta">…${esc(h.s).replace(new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'), m => '<mark>' + m + '</mark>')}…</div></div>`; }).join('') || '<p style="padding:14px">Nothing found.</p>'}</div></div>`;
-  document.querySelectorAll('.hits .h').forEach(h => h.onclick = () => { S.view = 'text'; S.tab = 'lib'; tab('lib'); openPage(h.dataset.b, +h.dataset.n, q); });
+  document.querySelectorAll('.hits .h').forEach(h => h.onclick = () => { S.view = 'text'; openPage(h.dataset.b, +h.dataset.n, q); });
 }
 
 // ---------- Claude chat drawer ----------
@@ -392,28 +515,57 @@ function openChat(o) {
 }
 function closeDrawer() { $('#drawer').classList.add('hide'); CH = null; }
 function drawChat(busy) {
-  $('#chat').innerHTML = '' +
+  const c = $('#chat'), atEnd = c.scrollHeight - c.scrollTop - c.clientHeight < 80, w = where();
+  c.innerHTML = (w && !CH.agent ? `<div class="ctx">Claude can see: ${esc(w.label)}</div>` : '') +
     CH.msgs.filter(m => !m.hidden).map(m => `<div class="msg ${m.role === 'user' ? 'u' : 'a'}">${m.role === 'user' ? esc(m.show || m.content).replace(/\n/g, '<br>') : mdx(m.content)}</div>`).join('') + (busy ? '<div class="msg a"><span class="spin"></span> Thinking…</div>' : '');
-  $('#chat').scrollTop = 1e9;
+  if (atEnd || busy) c.scrollTop = 1e9;
+}
+// what the student is looking at right now, so Claude knows without being told
+function where() {
+  if (S.tab === 'lib' && S.reading && S.book) { const B = S.book, sec = secOf(B, S.n), bp = ($('#pn') && $('#pn').dataset.bp) || S.n;
+    return {label: `${B.subject} p. ${bp}${sec ? ' · ' + (sec.num ? sec.num + ' ' : '') + sec.title : ''}`, book: B.id, n: S.n, note: `[I'm reading ${B.title}, page ${bp}${sec ? ', section ' + (sec.num ? sec.num + ' ' : '') + sec.title : ''}.]`}; }
+  if (S.tab === 'prac' && S.q) { const q = S.q, ta = $('#ans'), d = ta ? ta.value.trim() : '';
+    return {label: 'the practice question you have open' + (d ? ' and your draft' : ''), book: q.book, n: q.n, note: `[I'm working on this practice question (${KIND[q.kind] || q.kind}${q.marks ? ', ' + q.marks + ' marks' : ''}): ${q.text}${d ? '\nMy draft so far:\n' + d.slice(0, 6000) : ''}]`}; }
+  if (S.tab === 'terms' && S.term) return {label: 'flashcard “' + S.term.k + '”', book: S.book.id, note: `[I'm revising the key term "${S.term.k}": ${S.term.d}]`};
+  if (S.tab === 'prog' && S.book) return {label: 'your progress', book: S.book.id, note: '[I am looking at my progress. ' + progSummary(S.book) + ']'};
+  return null;
+}
+function progSummary(B) {
+  const qs = S.qs.filter(q => q.book === B.id && attOf(q.id).length), by = {};
+  for (const q of qs) { const t = q.topic || '?'; (by[t] = by[t] || []).push(best(q.id)); }
+  const rows = Object.entries(by).map(([t, a]) => topicName(B, t) + ' ' + Math.round(a.reduce((s, x) => s + x, 0) / a.length * 100) + '%');
+  return `${B.subject}: ${qs.length} questions tried. Best mark by topic: ${rows.join('; ') || 'none yet'}.`;
 }
 async function sendChat(text) {
-  if (!CH || !text.trim()) return;
-  const first = !CH.msgs.some(m => m.role === 'user');
-  CH.msgs.push({role: 'user', content: (first && CH.intro ? CH.intro : '') + text, show: text}); drawChat(true);
+  if (!CH || !text.trim() || CH.busy) return;
+  const first = !CH.msgs.some(m => m.role === 'user'), w = CH.agent ? null : where();
+  // tell Claude where the student is now (only when it changed); a page it hasn't seen yet goes into the message itself
+  let note = '';
+  if (w && w.note !== CH.lastNote && !(first && CH.intro)) { note = w.note + '\n'; CH.lastNote = w.note;
+    if (w.n && w.book === CH.book && !(CH.pages || []).includes(w.n) && !(CH.seen = CH.seen || []).includes(w.n)) { CH.seen.push(w.n); if (!CH.fixed) CH.pages = [...(CH.pages || []), w.n];
+      else try { const p = await getPage(w.book, w.n); note = `${w.note}\n<page>\n${(p.md || '').slice(0, 9000)}\n</page>\n`; } catch (e) {} } }
+  CH.msgs.push({role: 'user', content: note + (first && CH.intro ? CH.intro : '') + text, show: text}); CH.busy = true; drawChat(true);
   if (CH.agent) {
     try {
       const n = new Date(), r = await api('agent', {today: ymd(n), dow: n.toLocaleDateString('en', {weekday: 'long'}), now: n.toTimeString().slice(0, 5), tz: Intl.DateTimeFormat().resolvedOptions().timeZone, messages: CH.msgs.map(m => ({role: m.role, content: m.content}))});
-      CH.msgs.push({role: 'assistant', content: r.text || '(no reply)'}); if (r.items) { S.plan = r.items; LS.set('ib-plan', S.plan); drawPlan(); }
+      CH.msgs.push({role: 'assistant', content: r.text || '(no reply)'}); if (r.items) { S.plan = r.items; LS.set(LSK('ib-plan'), S.plan); drawPlan(); }
     } catch (e) { CH.msgs.push({role: 'assistant', content: '**Error:** ' + e.message}); }
-    S.planChat = CH.msgs; drawChat(); return;
+    S.planChat = CH.msgs; CH.busy = false; drawChat(); return;
   }
-  try {
-    const r = await api('ask', {mode: 'chat', book: CH.book, pages: CH.pages, find: !CH.fixed, messages: CH.msgs.map(m => ({role: m.role, content: m.content}))});
-    if (r.pages) { CH.pages = r.pages; CH.fixed = true; } // keep the same pages for the rest of the chat so the prompt cache hits
-    CH.msgs.push({role: 'assistant', content: r.text || r.err || '(no reply)'});
-    if (CH.onMsg) CH.onMsg(CH.msgs);
-  } catch (e) { CH.msgs.push({role: 'assistant', content: '**Error:** ' + e.message}); }
-  drawChat();
+  const me = CH, out = {role: 'assistant', content: ''};
+  try { // streamed: text appears as Claude writes it
+    const r = await fetch(RELAY + '/ib/ask', {method: 'POST', body: JSON.stringify({mode: 'chat', stream: true, book: me.book, pages: me.pages, find: !me.fixed, messages: me.msgs.map(m => ({role: m.role, content: m.content})), pass: PASS, user: UK()})});
+    if (!r.ok || !(r.headers.get('content-type') || '').includes('event-stream')) { const j = await r.json().catch(() => ({})); throw new Error(j.err || 'HTTP ' + r.status); }
+    try { me.pages = JSON.parse(r.headers.get('x-ib-pages')); me.fixed = true; } catch (e) {} // same pages for the rest of the chat so the prompt cache hits
+    me.msgs.push(out); const rd = r.body.getReader(), dec = new TextDecoder(); let buf = '', t0 = 0;
+    for (;;) { const {done, value} = await rd.read(); if (done) break; buf += dec.decode(value, {stream: true});
+      let i; while ((i = buf.indexOf('\n')) >= 0) { const line = buf.slice(0, i).trim(); buf = buf.slice(i + 1); if (!line.startsWith('data:')) continue;
+        try { const ev = JSON.parse(line.slice(5)); if (ev.type === 'content_block_delta' && ev.delta.type === 'text_delta') out.content += ev.delta.text; if (ev.type === 'error') out.content += '\n\n**Error:** ' + ev.error.message; } catch (e) {} }
+      if (CH === me && Date.now() - t0 > 60) { t0 = Date.now(); drawChat(); } }
+    if (!out.content) out.content = '(no reply)';
+    if (me.onMsg) me.onMsg(me.msgs);
+  } catch (e) { if (!me.msgs.includes(out)) me.msgs.push(out); out.content += '**Error:** ' + e.message; }
+  me.busy = false; if (CH === me) drawChat();
 }
 
 // ---------- practice ----------
@@ -435,23 +587,26 @@ const best = id => attOf(id).reduce((m, a) => a.max ? Math.max(m, a.score / a.ma
 function topicName(B, t) { const s = B.toc.find(x => x.num === t); return s ? t + ' ' + s.title : t; }
 function renderPrac(filter) {
   const F = filter || (S.pf = S.pf || {book: S.book.id, kind: '', topic: '', st: ''});
+  if (F.book !== S.book.id) { F.book = S.book.id; F.topic = ''; F.kind = ''; }
+  shell('prac'); S.q = null; setHash('#/prac');
   const B = bookOf(F.book) || S.book, qs = S.qs.filter(q => q.book === B.id && !front(q));
   const topics = [...new Set(qs.map(q => q.topic).filter(Boolean))].sort((a, b) => a.localeCompare(b, undefined, {numeric: true}));
   const list = qs.filter(q => (!F.kind || q.kind === F.kind) && (!F.topic || (q.topic || '').startsWith(F.topic)) &&
     (!F.st || (F.st === 'new' ? !attOf(q.id).length : F.st === 'weak' ? (best(q.id) >= 0 && best(q.id) < .6) : best(q.id) >= .6)));
   $('#main').innerHTML = `<div class="prac" style="max-width:1100px">
-    <div class="row" style="justify-content:space-between"><h2 style="margin:0">Practice</h2><button class="pri" id="rnd">Random question</button></div>
+    <div class="row" style="justify-content:space-between"><div class="row"><h2 style="margin:0">Practice</h2>${bookBar(B.id)}</div><button class="pri" id="rnd">Random question</button></div>
     <p class="meta">${qs.length} questions</p>
     <div class="filters"><select id="fk"><option value="">All types</option>${[...new Set(qs.map(q => q.kind))].map(k => `<option value="${k}" ${F.kind === k ? 'selected' : ''}>${KIND[k] || k}</option>`).join('')}</select>
     <select id="ft"><option value="">All topics</option>${topics.map(t => `<option value="${t}" ${F.topic === t ? 'selected' : ''}>${esc(topicName(B, t))}</option>`).join('')}</select>
     <select id="fs"><option value="">Any status</option><option value="new" ${F.st === 'new' ? 'selected' : ''}>Not tried</option><option value="weak" ${F.st === 'weak' ? 'selected' : ''}>Weak (under 60%)</option><option value="good" ${F.st === 'good' ? 'selected' : ''}>Done well</option></select></div>
     <div class="grid">${list.map(q => { const bs = best(q.id); return `<div class="card qc" data-id="${q.id}"><div>${'<span class="tag">' + (KIND[q.kind] || q.kind) + '</span>'}${q.marks ? '<span class="tag">' + q.marks + (q.marks === 1 ? ' mark' : ' marks') + '</span>' : ''}${bs >= 0 ? `<span class="tag ${bs < .6 ? 'w' : 'g'}">best ${Math.round(bs * 100)}%</span>` : ''}</div><div class="qt">${(MATH = !!B.math, mdx(preview(q.text), true))}</div><div class="meta">${esc(q.topic ? topicName(B, q.topic) : '')}${q.bp ? ' · p. ' + q.bp : ''}</div></div>`; }).join('') || '<p>No questions match.</p>'}</div></div>`;
   $('#fk').onchange = e => { F.kind = e.target.value; renderPrac(F); }; $('#ft').onchange = e => { F.topic = e.target.value; renderPrac(F); }; $('#fs').onchange = e => { F.st = e.target.value; renderPrac(F); };
-  document.querySelectorAll('.qc').forEach(c => c.onclick = () => openQ(c.dataset.id));
+  document.querySelectorAll('.qc').forEach(c => c.onclick = () => openQ(c.dataset.id)); onBookBar(() => renderPrac());
   $('#rnd').onclick = () => { const pool = list.length ? list : qs; if (pool.length) openQ(pool[Math.random() * pool.length | 0].id); };
 }
 function openQ(id) {
-  const q = S.qs.find(x => x.id === id), B = bookOf(q.book), draft = LS.get('ib-d-' + id, ''), prev = attOf(id); MATH = !!B.math;
+  const q = S.qs.find(x => x.id === id); if (!q) return renderPrac(); const B = bookOf(q.book), draft = LS.get(LSK('ib-d-' + id), ''), prev = attOf(id); MATH = !!B.math;
+  shell('prac'); S.q = q; setHash('#/q/' + id); title([['Practice', 'prac'], (KIND[q.kind] || q.kind) + (q.topic ? ' · ' + q.topic : '')]);
   $('#main').innerHTML = `<div class="prac"><div class="row" style="margin-bottom:10px"><button id="back"><svg class="i"><use href="#i-l"/></svg>All questions</button><span class="sp" style="flex:1"></span>${q.n ? `<button id="src">Open in textbook (p. ${esc(q.bp)})</button>` : ''}</div>
     <div class="card qbig"><div style="font-family:var(--f-ui);margin-bottom:10px"><span class="tag">${KIND[q.kind] || q.kind}</span>${q.marks ? '<span class="tag">' + q.marks + (q.marks === 1 ? ' mark' : ' marks') + '</span>' : ''}<span class="meta">${esc(q.topic ? topicName(B, q.topic) : '')}</span></div>${mdx(q.text)}${q.ctx ? `<div class="meta" style="font-family:var(--f-ui);margin-top:10px">${esc(q.ctx)}</div>` : ''}</div>
     <div style="margin-top:14px"><textarea id="ans" rows="${q.kind === 'essay' ? 18 : 8}" placeholder="Answer">${esc(draft)}</textarea>
@@ -459,9 +614,9 @@ function openQ(id) {
     <div id="fbx"></div>
     ${prev.length ? `<h3 style="margin-top:28px">Past attempts</h3>${prev.slice().reverse().map((a, i) => `<details class="card" style="padding:10px 14px;margin-bottom:8px"><summary><b>${a.score}/${a.max}</b> <span class="meta">${new Date(a.t).toLocaleString()}</span></summary><div class="fb" style="padding:6px 0 0">${fbHtml(a.fb)}<h4>Your answer</h4><div class="meta" style="white-space:pre-wrap">${esc(a.ans)}</div></div></details>`).join('')}` : ''}</div>`;
   const ta = $('#ans'), t0 = Date.now();
-  const wc = () => { const n = (ta.value.match(/\S+/g) || []).length; $('#wc').textContent = n + ' words'; LS.set('ib-d-' + id, ta.value); }; ta.oninput = wc; wc();
+  const wc = () => { const n = (ta.value.match(/\S+/g) || []).length; $('#wc').textContent = n + ' words'; LS.set(LSK('ib-d-' + id), ta.value); }; ta.oninput = wc; wc();
   const tick = setInterval(() => { if (!document.body.contains(ta)) return clearInterval(tick); const s = (Date.now() - t0) / 1000 | 0; $('#tm').textContent = '· ' + (s / 60 | 0) + ':' + String(s % 60).padStart(2, '0'); }, 1000);
-  $('#back').onclick = () => renderPrac(); if ($('#src')) $('#src').onclick = () => { S.book = B; renderToc(); S.tab = 'lib'; tab('lib'); openPage(B.id, q.n); };
+  $('#back').onclick = () => renderPrac(); if ($('#src')) $('#src').onclick = () => openPage(B.id, q.n);
   $('#hint').onclick = () => openChat({title: 'Hint', book: q.book, pages: q.pages, intro: `Question (${KIND[q.kind]}${q.marks ? ', ' + q.marks + ' marks' : ''}): "${q.text}"\nGive me a hint to get started WITHOUT writing the answer for me: what the command term wants, 2-3 angles or concepts to consider, and which examples or textbook pages could help. `, msgs: []}) || sendChat('Give me a hint.');
   $('#mark').onclick = async () => {
     const ans = ta.value.trim(); if ((ans.match(/\S+/g) || []).length < 8) { return; }
@@ -496,22 +651,23 @@ const fbMd = fb => fb.raw || `Score ${fb.score}/${fb.max}${fb.band ? ' (band ' +
 // ---------- key terms (flashcards, Leitner boxes) ----------
 const BOXDAYS = [0, 1, 3, 7, 16, 35];
 function renderTerms(mode) {
+  shell('terms'); setHash('#/terms'); S.term = null;
   const B = S.book, terms = B.terms || [], now = Date.now();
   const due = terms.filter(t => { const s = S.prog.terms[B.id + ':' + t.k]; return !s || now >= s.t + BOXDAYS[s.box] * 864e5; });
   const known = terms.filter(t => (S.prog.terms[B.id + ':' + t.k] || {}).box >= 3).length;
   if (mode !== 'study') {
-    $('#main').innerHTML = `<div class="prac"><div class="row" style="justify-content:space-between"><h2 style="margin:0">Key terms</h2><button class="pri" id="st" ${due.length ? '' : 'disabled'}>Study ${due.length} due</button></div>
+    $('#main').innerHTML = `<div class="prac"><div class="row" style="justify-content:space-between"><div class="row"><h2 style="margin:0">Key terms</h2>${bookBar(B.id)}</div><button class="pri" id="st" ${due.length ? '' : 'disabled'}>Study ${due.length} due</button></div>
       <p class="meta">${terms.length} terms · ${known} learned</p>
       <input id="tf" placeholder="Filter terms…" style="margin:6px 0 12px"><div class="card" id="tl"></div></div>`;
     const draw = f => { $('#tl').innerHTML = terms.filter(t => !f || (t.k + t.d).toLowerCase().includes(f)).map(t => { const s = S.prog.terms[B.id + ':' + t.k];
       return `<div style="padding:10px 14px;border-bottom:1px solid var(--line)"><div class="row"><b>${esc(t.k)}</b>${s ? `<span class="tag ${s.box >= 3 ? 'g' : 'w'}">box ${s.box}</span>` : ''}<span style="flex:1"></span><a href="#" data-n="${t.n}" class="meta">p. ${esc(t.bp)}</a></div><div style="font-family:var(--f-read)">${esc(t.d)}</div></div>`; }).join('');
-      document.querySelectorAll('#tl a').forEach(a => a.onclick = e => { e.preventDefault(); S.tab = 'lib'; tab('lib'); openPage(B.id, +a.dataset.n, ''); }); };
-    $('#tf').oninput = e => draw(e.target.value.toLowerCase()); draw(''); $('#st').onclick = () => renderTerms('study'); return;
+      document.querySelectorAll('#tl a').forEach(a => a.onclick = e => { e.preventDefault(); openPage(B.id, +a.dataset.n, a.closest('div').parentNode.querySelector('b').textContent); }); };
+    $('#tf').oninput = e => draw(e.target.value.toLowerCase()); draw(''); $('#st').onclick = () => renderTerms('study'); onBookBar(() => renderTerms()); return;
   }
   const deck = due.sort(() => Math.random() - .5).slice(0, 20); let i = 0, flipped = false;
   const show = () => {
     if (i >= deck.length) { $('#main').innerHTML = `<div class="card flash"><div class="term">Done</div><p>${deck.length} cards reviewed.</p><button class="pri" id="bk2">Back</button></div>`; $('#bk2').onclick = () => renderTerms(); return; }
-    const t = deck[i];
+    const t = deck[i]; S.term = t;
     $('#main').innerHTML = `<div class="meta" style="text-align:center;margin-top:10px">${i + 1} / ${deck.length}</div><div class="card flash"><div class="term">${esc(t.k)}</div>${flipped ? `<div class="def">${esc(t.d)}</div><div class="row" style="justify-content:center"><button id="no">Didn't know</button><button class="pri" id="yes">Knew it</button></div>` : `<button class="pri" id="flip">Reveal</button>`}</div>`;
     if (!flipped) $('#flip').onclick = () => { flipped = true; show(); };
     else { const g = ok => { const k = B.id + ':' + t.k, s = S.prog.terms[k] || {box: 0}; S.prog.terms[k] = {box: ok ? Math.min(5, s.box + 1) : 0, t: Date.now()}; saveProg(); i++; flipped = false; show(); }; $('#yes').onclick = () => g(1); $('#no').onclick = () => g(0); }
@@ -521,18 +677,19 @@ function renderTerms(mode) {
 
 // ---------- progress ----------
 function renderProg() {
+  shell('prog'); setHash('#/prog');
   const B = S.book, qs = S.qs.filter(q => q.book === B.id), tried = qs.filter(q => attOf(q.id).length), all = tried.flatMap(q => attOf(q.id));
   const avg = all.length ? Math.round(all.reduce((s, a) => s + a.score / a.max, 0) / all.length * 100) : 0;
   const byTopic = {}; for (const q of tried) { const t = (q.topic || '?').split('.').slice(0, 2).join('.'); const b = best(q.id); (byTopic[t] = byTopic[t] || []).push(b); }
   const rows = Object.entries(byTopic).map(([t, a]) => ({t, v: a.reduce((s, x) => s + x, 0) / a.length, n: a.length})).sort((a, b) => a.v - b.v);
   const terms = B.terms || [], known = terms.filter(t => (S.prog.terms[B.id + ':' + t.k] || {}).box >= 3).length;
   const recent = qs.flatMap(q => attOf(q.id).map(a => ({q, a}))).sort((x, y) => y.a.t - x.a.t).slice(0, 8);
-  $('#main').innerHTML = `<div class="prac"><h2 style="margin-top:0">Progress</h2>
+  $('#main').innerHTML = `<div class="prac"><div class="row" style="margin-bottom:14px"><h2 style="margin:0">Progress</h2>${bookBar(B.id)}</div>
     <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(180px,1fr))"><div class="card stat"><div class="meta">Questions tried</div><div class="n">${tried.length}<span class="meta"> / ${qs.length}</span></div></div><div class="card stat"><div class="meta">Average mark</div><div class="n">${avg}%</div></div><div class="card stat"><div class="meta">Attempts</div><div class="n">${all.length}</div></div><div class="card stat"><div class="meta">Key terms learned</div><div class="n">${known}<span class="meta"> / ${terms.length}</span></div></div></div>
     <h3>Topics, weakest first</h3>${rows.length ? `<div class="card" style="padding:6px 14px">${rows.map(r => `<div style="padding:8px 0"><div class="row"><span>${esc(topicName(B, r.t))}</span><span style="flex:1"></span><span class="meta">${Math.round(r.v * 100)}% · ${r.n} q</span><button class="ghost" data-t="${r.t}">Practise</button></div><div class="bar"><i style="width:${Math.round(r.v * 100)}%;background:${r.v < .5 ? 'var(--bad)' : r.v < .7 ? 'var(--warn)' : 'var(--good)'}"></i></div></div>`).join('')}</div>` : '<p class="meta">No attempts yet.</p>'}
     ${recent.length ? `<h3>Recent</h3><div class="card">${recent.map(({q, a}) => `<div class="h" style="padding:10px 14px;border-bottom:1px solid var(--line);cursor:pointer" data-id="${q.id}"><b>${a.score}/${a.max}</b> <span class="meta">${new Date(a.t).toLocaleDateString()}</span><div>${esc(q.text.slice(0, 140))}</div></div>`).join('')}</div>` : ''}</div>`;
-  document.querySelectorAll('[data-t]').forEach(b => b.onclick = () => { S.pf = {book: B.id, kind: '', topic: b.dataset.t, st: ''}; S.tab = 'prac'; document.querySelectorAll('nav.tabs button').forEach(x => x.classList.toggle('on', x.dataset.tab === 'prac')); renderPrac(); });
-  document.querySelectorAll('[data-id]').forEach(b => b.onclick = () => { S.tab = 'prac'; document.querySelectorAll('nav.tabs button').forEach(x => x.classList.toggle('on', x.dataset.tab === 'prac')); openQ(b.dataset.id); });
+  document.querySelectorAll('#main [data-t]').forEach(b => b.onclick = () => { S.pf = {book: B.id, kind: '', topic: b.dataset.t, st: ''}; renderPrac(); });
+  document.querySelectorAll('#main [data-id]').forEach(b => b.onclick = () => openQ(b.dataset.id)); onBookBar(renderProg);
 }
 
 // ---------- planner ----------
@@ -554,13 +711,14 @@ function occurs(it, from, to) {
 function dayMap(from, to) { const m = {}; for (const it of S.plan) for (const d of occurs(it, from, to)) (m[d] = m[d] || []).push(it); for (const k in m) m[k].sort((a, b) => (a.time || '99') < (b.time || '99') ? -1 : 1); return m; }
 async function loadPlan() { try { S.plan = await api('plan'); if (!Array.isArray(S.plan)) S.plan = []; } catch (e) { S.plan = S.plan || []; } }
 let planSaveT = 0;
-function savePlan() { LS.set('ib-plan', S.plan); clearTimeout(planSaveT); planSaveT = setTimeout(() => api('plan', {data: S.plan}).catch(e => alert('Could not save: ' + e.message)), 400); }
+function savePlan() { LS.set(LSK('ib-plan'), S.plan); clearTimeout(planSaveT); planSaveT = setTimeout(() => api('plan', {data: S.plan}).catch(e => alert('Could not save: ' + e.message)), 400); }
 function chip(it, d) {
   const c = subjColor(it.subject), past = (it.kind === 'homework' || it.kind === 'task') && !it.done && d < todayS();
   return `<div class="chip ${it.done ? 'dn' : ''} k-${it.kind}" data-id="${it.id}" style="--c:${c}" title="${esc(PK[it.kind] + ': ' + it.title)}">${it.time ? '<b>' + it.time + '</b> ' : ''}${esc(it.title)}${past ? ' <span style="color:var(--bad)">!</span>' : ''}</div>`;
 }
 async function renderPlan(first) {
-  if (first || !S.plan) { S.plan = LS.get('ib-plan', []); S.pv = S.pv || LS.get('ib-pv', 'month'); S.pdate = S.pdate || todayS(); drawPlan(); await loadPlan(); LS.set('ib-plan', S.plan); }
+  shell('plan'); setHash('#/plan');
+  if (first || !S.plan) { S.plan = S.plan || LS.get(LSK('ib-plan'), []); S.pv = S.pv || LS.get('ib-pv', 'month'); S.pdate = S.pdate || todayS(); drawPlan(); await loadPlan(); LS.set(LSK('ib-plan'), S.plan); }
   drawPlan();
 }
 function drawPlan() {
@@ -592,7 +750,7 @@ function drawPlan() {
       <button class="pri" id="pAsk" style="width:100%;justify-content:center"><svg class="i"><use href="#i-spark"/></svg>Ask planner</button>
       <h3>Due</h3><div class="card">${due.map(it => `<label class="due"><input type="checkbox" data-done="${it.id}"><span style="flex:1"><span class="dot" style="background:${subjColor(it.subject)}"></span>${esc(it.title)}<br><span class="meta">${fmtD(it.date)} · ${dl(it.date)}</span></span></label>`).join('') || '<p class="meta" style="padding:10px 12px;margin:0">None</p>'}</div>
       <h3>Exams</h3><div class="card">${exams.map(it => `<div class="due" data-id="${it.id}" style="cursor:pointer"><span style="flex:1">${esc(it.title)}<br><span class="meta">${fmtD(it.date)}${it.time ? ' ' + it.time : ''} · ${dl(it.date)}</span></span></div>`).join('') || '<p class="meta" style="padding:10px 12px;margin:0">None</p>'}</div>
-      ${PASS ? `<p class="meta" style="margin-top:14px"><a href="#" id="pIcs">Calendar feed</a></p>` : ''}</div>
+      <p class="meta" style="margin-top:14px"><a href="#" id="pIcs">Add to your phone's calendar</a></p></div>
     <div class="pmain"><div class="rbar"><button id="pPrev" aria-label="Previous"><svg class="i"><use href="#i-l"/></svg></button><button id="pToday">Today</button><button id="pNext" aria-label="Next"><svg class="i"><use href="#i-r"/></svg></button><h2 style="margin:0 8px;font-size:20px">${esc(title)}</h2><span class="sp"></span>
       <div class="seg">${['month', 'week', 'agenda'].map(x => `<button data-pv="${x}" class="${x === v ? 'on' : ''}">${x[0].toUpperCase() + x.slice(1)}</button>`).join('')}</div><button class="pri" id="pAdd">+ Add</button></div>${body}</div></div>`;
   const step = v === 'month' ? null : v === 'week' ? 7 : 60;
@@ -604,8 +762,10 @@ function drawPlan() {
   document.querySelectorAll('.mc[data-d], .wcol[data-d]').forEach(el => el.onclick = e => { let time = ''; if (el.classList.contains('wcol')) { const r = el.getBoundingClientRect(), h = 7 + Math.floor((e.clientY - r.top) / 44); time = String(h).padStart(2, '0') + ':00'; } editItem(null, el.dataset.d, time); });
   document.querySelectorAll('[data-done]').forEach(cb => cb.onchange = () => { const it = S.plan.find(x => x.id === cb.dataset.done); it.done = true; savePlan(); setTimeout(drawPlan, 250); });
   $('#pAsk').onclick = () => openChat({title: 'Planner assistant', agent: true, msgs: S.planChat || []});
-  if ($('#pIcs')) $('#pIcs').onclick = e => { e.preventDefault(); const url = RELAY.replace(/^http/, 'webcal') + '/ib/cal.ics?t=' + encodeURIComponent(PASS);
-    openModal(`<h3 style="margin-top:0">Calendar feed</h3><input readonly value="${esc(url)}" onclick="this.select()"><p class="meta">Google Calendar: Other calendars → From URL (use https://).</p><div class="row"><a class="btn pri" href="${esc(url)}">Open in calendar app</a><button id="mClose">Close</button></div>`); };
+  $('#pIcs').onclick = e => { e.preventDefault(); icsModal(); };
+}
+function icsModal() { { const url = RELAY.replace(/^http/, 'webcal') + '/ib/cal.ics?k=' + USER.tok;
+    openModal(`<h3 style="margin-top:0">Calendar feed</h3><input readonly value="${esc(url)}" onclick="this.select()"><p class="meta">Your planner, live in Apple or Google Calendar. Google: Other calendars → From URL (use https://).</p><div class="row"><a class="btn pri" href="${esc(url)}">Open in calendar app</a><button id="mClose">Close</button></div>`); }
 }
 function openModal(html) {
   let m = $('#modal'); if (!m) { m = document.createElement('div'); m.id = 'modal'; document.body.appendChild(m); m.onclick = e => { if (e.target === m) m.remove(); }; }
@@ -638,13 +798,14 @@ const BOOKC = {glopo: '#7a2e2e', chem: '#1f5f5b'};
 const bookC = b => BOOKC[b.id] || subjColor(b.subject);
 const spine = b => `<div class="spine" style="--bk:${bookC(b)}">${esc((b.subject || b.title).split(' ').map(w => w[0]).join('').slice(0, 3))}</div>`;
 async function renderHome() {
-  if (!S.plan) { S.plan = LS.get('ib-plan', []); loadPlan().then(() => { LS.set('ib-plan', S.plan); if (S.tab === 'home') drawHome(); }); }
+  shell('home'); setHash('#/home');
+  if (!S.planLoaded) { S.planLoaded = 1; S.plan = S.plan || []; loadPlan().then(() => { LS.set(LSK('ib-plan'), S.plan); if (S.tab === 'home') drawHome(); }); }
   drawHome();
 }
 function drawHome() {
   const now = new Date(), h = now.getHours(), t = todayS();
   const last = S.prog.last, LB = last && bookOf(last.b), sec = LB && secOf(LB, last.n);
-  const allQ = S.qs, tried = allQ.filter(q => attOf(q.id).length);
+  const allQ = S.qs.filter(q => !front(q)), tried = allQ.filter(q => attOf(q.id).length);
   const termsDue = S.books.reduce((n, B) => n + (B.terms || []).filter(x => { const s = S.prog.terms[B.id + ':' + x.k]; return !s || Date.now() >= s.t + BOXDAYS[s.box] * 864e5; }).length, 0);
   const m = dayMap(t, addD(t, 14)), up = [];
   for (const d of Object.keys(m).sort()) for (const it of m[d]) if (it.kind !== 'class') up.push([d, it]);
@@ -652,7 +813,7 @@ function drawHome() {
   const rel = d => { const n = Math.round((pd(d) - pd(t)) / 864e5); return n === 0 ? 'Today' : n === 1 ? 'Tomorrow' : n < 7 ? fmtD(d, {weekday: 'short'}) : fmtD(d, {day: 'numeric', month: 'short'}); };
   const recent = allQ.flatMap(q => attOf(q.id).map(a => ({q, a}))).sort((x, y) => y.a.t - x.a.t).slice(0, 4);
   $('#main').innerHTML = `<div class="home">
-    <div class="hhead"><h2>${h < 12 ? 'Morning' : h < 18 ? 'Afternoon' : 'Evening'}</h2><span class="meta">${now.toLocaleDateString(undefined, {weekday: 'long', day: 'numeric', month: 'long'})}</span></div>
+    <div class="hhead"><h2>${h < 12 ? 'Morning' : h < 18 ? 'Afternoon' : 'Evening'}, ${esc(USER.name)}</h2><span class="meta">${now.toLocaleDateString(undefined, {weekday: 'long', day: 'numeric', month: 'long'})}</span></div>
     <div class="hgrid"><div>
       ${LB ? `<section class="hsec"><h3>Continue reading</h3><div class="card cont" id="hCont">${spine(LB)}<div style="min-width:0"><div class="meta">${esc(LB.title)}</div><div class="ttl">${sec ? esc(sec.title) : 'Page ' + last.n}</div><div class="meta">${sec && sec.num ? esc(sec.num) + ' · ' : ''}page ${last.n} of ${LB.pages}</div></div></div></section>` : ''}
       <section class="hsec"><div class="acts">
@@ -660,41 +821,105 @@ function drawHome() {
         <button class="card act" id="hTerms"><span class="meta">Key terms</span><span class="n">${termsDue}</span><b>${termsDue ? 'Review due cards' : 'All caught up'}</b></button>
         <button class="card act" id="hTeach"><span class="meta">Lesson</span><span class="n" style="font-size:17px;line-height:1.3">${sec ? esc(sec.title.length > 34 ? sec.title.slice(0, 34) + '…' : sec.title) : 'Current section'}</span><b>Teach me this</b></button>
       </div></section>
-      <section class="hsec"><h3>Books</h3><div class="shelf">${S.books.map(B => `<div class="card bk" data-b="${B.id}">${spine(B)}<div style="min-width:0;flex:1"><b>${esc(B.title)}</b><span class="meta">${B.pages} pages · ${S.qs.filter(q => q.book === B.id).length} questions</span>${B.file ? `<div><a class="meta" href="${RELAY}/ib/file?b=${B.id}&t=${encodeURIComponent(PASS)}" download onclick="event.stopPropagation()">Download PDF</a></div>` : ''}</div></div>`).join('')}</div></section>
+      <section class="hsec"><h3>Books<a href="#" id="hLib">Library</a></h3><div class="shelf">${shelfOrder().map(B => `<div class="card bk" data-b="${B.id}">${spine(B)}<div style="min-width:0;flex:1"><b>${esc(B.title)}</b><span class="meta">${B.pages} pages · ${allQ.filter(q => q.book === B.id).length} questions</span>${B.file ? `<div><a class="meta" href="${RELAY}/ib/file?b=${B.id}&t=${encodeURIComponent(PASS)}" download onclick="event.stopPropagation()">Download PDF</a></div>` : ''}</div></div>`).join('')}</div></section>
     </div><div>
       <section class="hsec"><h3>Coming up<a href="#" id="hPlan">Planner</a></h3><div class="card lst agl">${over.map(it => `<div data-id="${it.id}"><span class="when" style="color:var(--red)">Overdue</span><span><span class="dot" style="background:${subjColor(it.subject)}"></span>${esc(it.title)}</span></div>`).join('')}${up.slice(0, 8).map(([d, it]) => `<div data-id="${it.id}"><span class="when">${rel(d)}${it.time ? '<br>' + it.time : ''}</span><span><span class="dot" style="background:${subjColor(it.subject)}"></span>${esc(it.title)}${it.kind === 'exam' ? ' <span class="tag r">Exam</span>' : ''}</span></div>`).join('') || (over.length ? '' : '<div class="meta" style="cursor:default">Nothing in the next two weeks</div>')}</div></section>
       ${recent.length ? `<section class="hsec"><h3>Recent marks<a href="#" id="hProg">Progress</a></h3><div class="card lst agl">${recent.map(({q, a}) => `<div data-q="${q.id}"><span class="when num" style="color:${a.score / a.max < .4 ? 'var(--red)' : a.score / a.max < .7 ? 'var(--warn)' : 'var(--good)'};font-weight:600">${a.score}/${a.max}</span><span>${esc(q.text.replace(/\$[^$]*\$/g, '…').slice(0, 80))}${q.text.length > 80 ? '…' : ''}</span></div>`).join('')}</div></section>` : ''}
     </div></div></div>`;
-  const go = t2 => { S.tab = t2; tab(t2); };
-  if ($('#hCont')) $('#hCont').onclick = () => { S.book = LB; renderToc(); S.tab = 'lib'; tab('lib'); openPage(LB.id, last.n); };
+  $('#hLib').onclick = e => { e.preventDefault(); go('lib'); };
+  if ($('#hCont')) $('#hCont').onclick = () => openPage(LB.id, last.n);
   $('#hPrac').onclick = () => { go('prac'); $('#rnd') && $('#rnd').click(); };
   $('#hTerms').onclick = () => { go('terms'); if (termsDue && $('#st')) $('#st').click(); };
-  $('#hTeach').onclick = () => { if (LB) { S.book = LB; renderToc(); } go('lib'); setTimeout(() => $('#teach') && $('#teach').click(), 50); };
+  $('#hTeach').onclick = () => { openPage(LB ? LB.id : S.book.id, LB ? last.n : S.n); setTimeout(() => $('#teach') && $('#teach').click(), 50); };
   $('#hPlan').onclick = e => { e.preventDefault(); go('plan'); };
   if ($('#hProg')) $('#hProg').onclick = e => { e.preventDefault(); go('prog'); };
-  document.querySelectorAll('.bk').forEach(el => el.onclick = () => { const B = bookOf(el.dataset.b); S.book = B; renderToc(); const n = S.prog.last && S.prog.last.b === B.id ? S.prog.last.n : (B.start || 1); S.n = n; go('lib'); openPage(B.id, n); });
+  document.querySelectorAll('.bk').forEach(el => el.onclick = () => openBook(el.dataset.b));
   document.querySelectorAll('.agl [data-id]').forEach(el => el.onclick = () => { go('plan'); setTimeout(() => editItem(S.plan.find(x => x.id === el.dataset.id)), 30); });
   document.querySelectorAll('.agl [data-q]').forEach(el => el.onclick = () => { go('prac'); openQ(el.dataset.q); });
 }
+
+// ---------- library shelf ----------
+const shelfOrder = () => [...S.books].sort((a, b) => { const pa = S.prog.pins.indexOf(a.id), pb = S.prog.pins.indexOf(b.id); return (pa < 0 ? 99 : pa) - (pb < 0 ? 99 : pb) || ((S.prog.lastBy[b.id] || {}).t || 0) - ((S.prog.lastBy[a.id] || {}).t || 0); });
+function openBook(id) { const B = bookOf(id), lb = S.prog.lastBy[id]; openPage(id, lb ? lb.n : (B.start || 1)); }
+function renderShelf() {
+  S.reading = false; shell('lib'); setHash('#/lib');
+  const card = B => { const lb = S.prog.lastBy[B.id], pinned = S.prog.pins.includes(B.id), sec = lb && secOf(B, lb.n), nq = S.qs.filter(q => q.book === B.id && !front(q)), tried = nq.filter(q => attOf(q.id).length).length;
+    return `<div class="card book" data-b="${B.id}"><div class="cover" style="--bk:${bookC(B)}"><b>${esc(B.subject || B.title)}</b><span>IB DP</span></div>
+      <div class="bi"><div class="bt">${esc(B.title)}</div><div class="meta">${B.pages} pages · ${nq.length} questions${tried ? ' · ' + tried + ' tried' : ''} · ${(B.terms || []).length} key terms</div>
+      <div style="font-size:14px;margin-top:4px">${lb ? `Continue · <span class="meta">${sec ? esc((sec.num ? sec.num + ' ' : '') + sec.title) : 'page ' + lb.n}</span>` : 'Start reading'}</div>
+      <div class="bar"><i style="width:${lb ? Math.max(2, Math.round(lb.n / B.pages * 100)) : 0}%"></i></div>
+      <div class="row" style="margin-top:6px"><a href="#" class="meta" data-pq="${B.id}">Practice</a><a href="#" class="meta" data-pt="${B.id}">Key terms</a>${B.file ? `<a class="meta" href="${RELAY}/ib/file?b=${B.id}&t=${encodeURIComponent(PASS)}" download data-dl>Download PDF</a>` : ''}</div></div>
+      <button class="pin ${pinned ? 'on' : ''}" data-pin="${B.id}" title="${pinned ? 'Unpin' : 'Pin to sidebar'}" aria-label="${pinned ? 'Unpin' : 'Pin'}"><svg class="i"><use href="#i-pin"/></svg></button></div>`; };
+  const pins = shelfOrder().filter(B => S.prog.pins.includes(B.id)), rest = shelfOrder().filter(B => !S.prog.pins.includes(B.id));
+  const marks = S.prog.marks.filter(m => bookOf(m.b));
+  $('#main').innerHTML = `<div class="lib"><h2>Library</h2><p class="meta" style="margin:0">${S.books.length} books</p>
+    ${pins.length ? `<h3>Pinned</h3><div class="books">${pins.map(card).join('')}</div>` : ''}
+    <h3>${pins.length ? 'Other books' : 'Books'}</h3><div class="books">${rest.map(card).join('') || '<p class="meta">All your books are pinned.</p>'}</div>
+    ${marks.length ? `<h3>Bookmarks</h3><div class="card lst bms">${marks.map((m, i) => { const B = bookOf(m.b); return `<div data-m="${i}"><span class="dot" style="background:${bookC(B)}"></span><span>${esc(m.title || 'Page ' + m.n)}</span><span class="meta">${esc(B.subject)} · p. ${esc(m.bp || m.n)}</span><button class="x" data-rm="${i}" aria-label="Remove bookmark"><svg class="i"><use href="#i-x"/></svg></button></div>`; }).join('')}</div>` : ''}</div>`;
+  document.querySelectorAll('.book').forEach(el => el.onclick = e => { if (e.target.closest('[data-dl]')) return; openBook(el.dataset.b); });
+  document.querySelectorAll('[data-pin]').forEach(b => b.onclick = e => { e.stopPropagation(); const id = b.dataset.pin, i = S.prog.pins.indexOf(id); if (i >= 0) S.prog.pins.splice(i, 1); else S.prog.pins.push(id); saveProg(true); drawPins(); renderShelf(); });
+  document.querySelectorAll('[data-pq]').forEach(a => a.onclick = e => { e.preventDefault(); e.stopPropagation(); S.book = bookOf(a.dataset.pq); renderToc(); renderPrac(); });
+  document.querySelectorAll('[data-pt]').forEach(a => a.onclick = e => { e.preventDefault(); e.stopPropagation(); S.book = bookOf(a.dataset.pt); renderToc(); renderTerms(); });
+  document.querySelectorAll('[data-dl]').forEach(a => a.onclick = e => e.stopPropagation());
+  document.querySelectorAll('[data-m]').forEach(el => el.onclick = e => { const m = marks[+el.dataset.m]; if (e.target.closest('[data-rm]')) { S.prog.marks.splice(S.prog.marks.indexOf(m), 1); saveProg(true); renderShelf(); return; } openPage(m.b, m.n); });
+}
+
+// ---------- account, theme ----------
+function meMenu() {
+  const th = LS.get('ib-theme', 'auto');
+  const m = openModal(`<div class="row" style="gap:12px;margin-bottom:16px"><span class="av" style="width:40px;height:40px;font-size:17px">${esc(USER.name[0].toUpperCase())}</span><div><b style="font-size:17px">${esc(USER.name)}</b><div class="meta">Planner, marks, bookmarks and pins sync to this name</div></div></div>
+    <div class="meta" style="margin-bottom:6px">Appearance</div><div class="seg" style="margin-bottom:16px">${[['light', 'Light'], ['dark', 'Dark'], ['auto', 'System']].map(([k, l]) => `<button data-th="${k}" class="${th === k ? 'on' : ''}">${l}</button>`).join('')}</div>
+    <div class="row"><button id="mIcs"><svg class="i"><use href="#i-cal"/></svg>Calendar feed</button><span class="sp"></span><button id="mOut">Switch account</button><button id="mClose">Close</button></div>`);
+  m.querySelectorAll('[data-th]').forEach(b => b.onclick = () => { setTheme(b.dataset.th); m.querySelectorAll('[data-th]').forEach(x => x.classList.toggle('on', x === b)); });
+  $('#mIcs').onclick = icsModal; $('#mOut').onclick = () => { LS.set('ib-user', null); location.hash = ''; location.reload(); };
+}
+function setTheme(t) { LS.set('ib-theme', t); applyTheme(); }
+function applyTheme() { const t = LS.get('ib-theme', 'auto'), r = document.documentElement; if (t === 'auto') r.removeAttribute('data-theme'); else r.dataset.theme = t;
+  const dark = t === 'dark' || (t === 'auto' && matchMedia('(prefers-color-scheme: dark)').matches); const u = $('#thm use'); if (u) u.setAttribute('href', dark ? '#i-sun' : '#i-moon'); }
+applyTheme(); matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyTheme);
+$('#thm').onclick = () => { const r = document.documentElement, dark = r.dataset.theme === 'dark' || (!r.dataset.theme && matchMedia('(prefers-color-scheme: dark)').matches); setTheme(dark ? 'light' : 'dark'); };
+function drawMe() { const a = `<span class="av">${esc(USER.name[0].toUpperCase())}</span>`; $('#me').innerHTML = a + `<span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis">${esc(USER.name)}</span>`; $('#meH').innerHTML = a; }
+$('#me').onclick = $('#meH').onclick = meMenu;
+
+// ---------- routing ----------
+function route() {
+  const [, a, b, c] = decodeURIComponent(location.hash).split('/');
+  if (a === 'lib' && b && bookOf(b)) return openPage(b, +c || 1);
+  if (a === 'lib') return go('lib');
+  if (a === 'q' && b) return openQ(b);
+  if (a === 'search' && b) { $('#q').value = b; return search(b); }
+  if (TABN[a] && a !== 'search') return go(a);
+  go('home');
+}
+addEventListener('popstate', () => { if (S.books.length) { $('#modal') && $('#modal').remove(); route(); } });
 
 // ---------- boot ----------
 async function boot() {
   $('#login').classList.add('hide'); $('#app').classList.remove('hide');
   $('#main').innerHTML = '<p><span class="spin"></span> Loading…</p>';
   try { [S.books, S.qs] = await Promise.all([api('books'), api('qs')]); } catch (e) { $('#main').innerHTML = '<p>Could not load: ' + esc(e.message) + '</p>'; return; }
-  pullProg();
+  drawMe(); drawPins(); pullProg();
   const last = S.prog.last; S.book = (last && bookOf(last.b)) || S.books[0];
   if (!S.book) { $('#main').innerHTML = '<p>No books uploaded yet.</p>'; return; }
-  S.n = last && last.b === S.book.id ? last.n : (S.book.start || 1); renderToc(); tab('home');
+  S.n = last && last.b === S.book.id ? last.n : (S.book.start || 1); renderToc(); route();
 }
-document.querySelectorAll('nav.tabs button').forEach(b => b.onclick = () => tab(b.dataset.tab));
-$('#menuBtn').onclick = () => { if (S.tab !== 'lib') tab('lib'); $('#toc').classList.toggle('open'); };
+document.querySelectorAll('.tabs [data-tab]').forEach(b => b.onclick = () => go(b.dataset.tab));
+$('#menuBtn').onclick = () => $('#toc').classList.toggle('open');
 $('#toc').onclick = e => { const t = e.target.closest('.t'); if (t) openPage(S.book.id, +t.dataset.n); };
-$('#q').oninput = e => { clearTimeout(searchT); const v = e.target.value; searchT = setTimeout(() => search(v), 350); };
-$('#q').onkeydown = e => { if (e.key === 'Enter') { clearTimeout(searchT); search(e.target.value); } };
+$('#q').oninput = e => suggest(e.target.value);
+$('#q').onfocus = e => suggest(e.target.value);
+$('#q').onblur = () => setTimeout(() => $('#sugg').classList.add('hide'), 120);
+$('#q').onkeydown = e => {
+  const n = SG.list.length, box = $('#sugg');
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); SG.i = (SG.i + (e.key === 'ArrowDown' ? 1 : -1) + n) % n; box.querySelectorAll('[data-i]').forEach(x => x.classList.toggle('on', +x.dataset.i === SG.i)); }
+  else if (e.key === 'Enter') { e.preventDefault(); if (SG.i >= 0 && !box.classList.contains('hide')) pickSugg(SG.i); else { box.classList.add('hide'); search(e.target.value); } }
+  else if (e.key === 'Escape') { box.classList.add('hide'); e.target.blur(); }
+};
 $('#dClose').onclick = closeDrawer;
-$('#home').onclick = () => tab('home');
-$('#tutor').onclick = () => openChat({title: 'Claude tutor · ' + S.book.subject, book: S.book.id, pages: [], intro: ''});
+$('#home').onclick = () => go('home');
+$('#tutor').onclick = () => { if (S.tab === 'plan') return openChat({title: 'Planner assistant', agent: true, msgs: S.planChat || []});
+  const w = where(), B = w && w.book ? bookOf(w.book) : S.book;
+  openChat({title: 'Claude tutor · ' + B.subject, book: B.id, pages: w && w.n ? [w.n - 1, w.n, w.n + 1].filter(x => x >= 1 && x <= B.pages) : [], intro: ''}); };
 $('#cf').onsubmit = e => { e.preventDefault(); const v = $('#ci').value; $('#ci').value = ''; sendChat(v); };
 $('#ci').onkeydown = e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); $('#cf').requestSubmit(); } };
 document.addEventListener('keydown', e => {
@@ -704,15 +929,29 @@ document.addEventListener('keydown', e => {
   if (e.key === ' ' && $('#flip')) { e.preventDefault(); $('#flip').click(); }
   if (e.key === '/') { e.preventDefault(); $('#q').focus(); }
 });
-$('#lf').onsubmit = async e => {
-  e.preventDefault(); PASS = $('#lp').value.trim(); $('#le').textContent = '';
-  try { await api('login'); LS.set('ib-pass', PASS); boot(); } catch (err) { $('#le').textContent = err.message; }
-};
-// open mode: the relay lets requests without a password through (except PDF downloads); ?login shows the password box
+// sign in: first name (+ the site password when the relay isn't in open mode)
+async function signIn(name) {
+  $('#le').textContent = '';
+  try {
+    if (!$('#lp').classList.contains('hide')) { PASS = $('#lp').value.trim(); await api('login'); LS.set('ib-pass', PASS); }
+    const u = await api('user', {name}); USER = {key: u.key, name: u.name, tok: u.tok}; LS.set('ib-user', USER);
+    const kn = LS.get('ib-known', []).filter(x => x !== u.name); kn.unshift(u.name); LS.set('ib-known', kn.slice(0, 6));
+    loadLocal(); boot();
+  } catch (err) { $('#le').textContent = err.message; }
+}
+$('#lf').onsubmit = e => { e.preventDefault(); const v = $('#ln').value.trim(); if (v) signIn(v); else $('#ln').focus(); };
+function showLogin(needPass) {
+  $('#lp').classList.toggle('hide', !needPass); $('#login').classList.remove('hide');
+  const kn = LS.get('ib-known', []); $('#known').innerHTML = kn.length ? '<div class="meta" style="width:100%">On this device</div>' + kn.map(n => `<button type="button" data-n="${esc(n)}"><span class="av" style="width:22px;height:22px;font-size:11px">${esc(n[0].toUpperCase())}</span>${esc(n)}</button>`).join('') : '';
+  $('#known').querySelectorAll('[data-n]').forEach(b => b.onclick = () => signIn(b.dataset.n)); $('#ln').focus();
+}
+// open mode: the relay lets requests without a password through; ?login shows the password box
 (async () => {
-  if (PASS || new URLSearchParams(location.search).has('login')) { if (PASS) boot(); else $('#login').classList.remove('hide'); return; }
-  try { const r = await fetch(RELAY + '/ib/books', {method: 'POST', body: '{}'}); if (r.ok) return boot(); } catch (e) {}
-  $('#login').classList.remove('hide');
+  let open = false;
+  if (!PASS && !new URLSearchParams(location.search).has('login')) try { const r = await fetch(RELAY + '/ib/books', {method: 'POST', body: '{}'}); open = r.ok; } catch (e) {}
+  if (!PASS && !open) return showLogin(true);
+  if (USER) { loadLocal(); return boot(); }
+  showLogin(false);
 })();
 </script>
 </body>
