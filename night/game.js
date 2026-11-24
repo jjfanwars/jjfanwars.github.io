@@ -540,7 +540,7 @@ function animCreature(dt) {
 }
 
 // ---------------- state
-const G = {on: false, paused: false, over: false, t: 0, obj: 'radio0', phase: 0, power: false, inserted: 0, timer: 0, truck: null, fuseTot: 3, noteOpen: false, map: false, msgT: 0, hold: 0, holdT: null, items: [], flares: [], radioDone: false};
+const G = {on: false, paused: false, over: false, t: 0, obj: 'radio0', phase: 0, power: false, inserted: 0, timer: 0, truck: null, fuseTot: 3, noteOpen: false, map: false, msgT: 0, hold: 0, holdT: null, items: [], flares: [], radioDone: false, radioQ: [], run: 0};
 const P = {x: 0, z: 0, y: 0, yaw: PI, pitch: 0, vx: 0, vz: 0, crouch: false, stam: 1, bat: 1, light: true, flares: 0, fuses: 0, hidden: null, breath: 1, holdBreath: false, gasp: 0, bob: 0, stepD: 0, zone: -1, eye: 1.62, lastNoise: 0, fear: 0, moved: 0};
 const M = {x: 0, z: 0, y: 0, yaw: 0, state: 'roam', path: [], rep: 0, goal: null, spd: 0, ph: 0, jit: 0, jr: 0, aware: 0, lostT: 0, lx: 0, lz: 0, idle: 0, flee: 0, zone: -1, sawHide: null, far: 0, chk: [], chkT: 0, stalkT: 40, stuck: 0, sx: 0, sz: 0, screamT: 0, stalkSeen: 0, hintT: 10, look: 0, seenAt: -99};
 
@@ -659,7 +659,8 @@ function placeItems() {
 const A = {ctx: null, on: false};
 function aInit() {
   if (A.ctx) return; const C = window.AudioContext || window.webkitAudioContext; if (!C) return;
-  const c = A.ctx = new C(); A.out = c.createGain(); A.out.gain.value = .9; const comp = c.createDynamicsCompressor(); A.out.connect(comp); comp.connect(c.destination);
+  const c = A.ctx = new C(); A.out = c.createGain(); A.out.gain.value = .9; const comp = c.createDynamicsCompressor();
+  A.lp = c.createBiquadFilter(); A.lp.type = 'lowpass'; A.lp.frequency.value = 20000; A.lp.Q.value = .5; A.out.connect(A.lp); A.lp.connect(comp); comp.connect(c.destination); // muffles the world while you hide
   const nb = c.createBuffer(1, c.sampleRate * 2, c.sampleRate), d = nb.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; A.noise = nb;
   const loop = (f, q, g0, type = 'bandpass') => { const s = c.createBufferSource(); s.buffer = nb; s.loop = true; const fl = c.createBiquadFilter(); fl.type = type; fl.frequency.value = f; fl.Q.value = q; const g = c.createGain(); g.gain.value = g0; s.connect(fl); fl.connect(g); s.start(); return {s, f: fl, g}; };
   A.wind = loop(380, .6, .05); A.wind.g.connect(A.out);
@@ -704,8 +705,18 @@ const Snd = {
   pull() { burst(400, 1, .25, .35, 'bandpass', null, .6); },
   horn() { tone(300, .2, 1.1, 'square'); tone(377, .16, 1.1, 'square'); },
   staticHit() { burst(2400, .6, .2, .5); },
+  call(x, y, z) { // a long wail far off in the woods, from wherever it is
+    if (!A.on) return; const c = A.ctx, t = c.currentTime, p = c.createPanner(); Object.assign(p, {panningModel: 'HRTF', distanceModel: 'inverse', refDistance: 30, rolloffFactor: 1}); setPan(p, x, y, z);
+    const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 1100; lp.connect(p); p.connect(A.out);
+    const f0 = 280 + Math.random() * 120;
+    for (const [f, a] of [[f0, .16], [f0 * 1.49, .07], [f0 * 1.007, .1]]) { const o = c.createOscillator(), g = c.createGain(); o.type = 'sawtooth'; o.frequency.setValueAtTime(f, t); o.frequency.linearRampToValueAtTime(f * 1.12, t + .9); o.frequency.exponentialRampToValueAtTime(f * .42, t + 3.2);
+      g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(a, t + .7); g.gain.exponentialRampToValueAtTime(.0001, t + 3.4); o.connect(g); g.connect(lp); o.start(t); o.stop(t + 3.5); }
+    burst(600, 2, .1, 2.4, 'bandpass', lp, .5); setTimeout(() => { p.disconnect(); lp.disconnect(); }, 4500);
+  },
 };
+function quietLoops(sec) { if (!A.on) return; const t = A.ctx.currentTime; for (const g of [A.drone, A.mGrowl, A.mBreath.g, A.genG, A.truckG, A.stat.g]) { g.gain.cancelScheduledValues(t); g.gain.setTargetAtTime(0, t, sec); } }
 let VOICE = null;
+function hush() { if (window.speechSynthesis) try { speechSynthesis.cancel(); } catch (e) {} }
 function say(txt, who) {
   showMsg(txt, who, 4 + txt.length * .045);
   if (SET.voice === '1' && window.speechSynthesis && !TEST) { try { const u = new SpeechSynthesisUtterance(txt); u.rate = 1.02; u.pitch = .8; u.volume = .9; speechSynthesis.speak(u); } catch (e) {} }
@@ -763,9 +774,10 @@ function buildWorld() {
 }
 function reset() {
   D = DIFF[SET.diff] || DIFF.normal; WR = mulberry((Date.now() ^ (Math.random() * 1e9)) >>> 0);
-  Object.assign(G, {over: false, paused: false, t: 0, obj: 'radio0', power: false, inserted: 0, timer: 0, truck: null, noteOpen: false, map: false, radioDone: false, holdT: null, hold: 0, ending: 0, deathT: 0, objT: 10, flares: [], endShown: false, won: false, deathHow: null});
-  Object.assign(P, {x: .6, z: -147, yaw: PI - .05, pitch: -.02, vx: 0, vz: 0, crouch: false, stam: 1, bat: 1, light: true, flares: 0, fuses: 0, hidden: null, breath: 1, holdBreath: false, gasp: 0, bob: 0, stepD: 0, fear: 0});
-  Object.assign(M, {x: -10, z: 120, yaw: 0, state: 'roam', path: [], idle: 2, aware: 0, lostT: 0, flee: 0, sawHide: null, far: 0, stalkT: 45 + WR() * 30, stuck: 0, screamT: 0, hintT: 20, spd: 0, look: 0});
+  hush(); G.run = (G.run || 0) + 1;
+  Object.assign(G, {radioQ: [], stingAt: 0, over: false, paused: false, t: 0, obj: 'radio0', power: false, inserted: 0, timer: 0, truck: null, noteOpen: false, map: false, radioDone: false, holdT: null, hold: 0, ending: 0, deathT: 0, objT: 10, flares: [], endShown: false, won: false, deathHow: null});
+  Object.assign(P, {x: .6, z: -147, yaw: PI - .05, pitch: -.02, vx: 0, vz: 0, crouch: false, stam: 1, bat: 1, light: true, flares: 0, fuses: 0, hidden: null, breath: 1, holdBreath: false, holdBreathK: false, tired: false, batWarned: false, gasp: 0, bob: 0, stepD: 0, fear: 0});
+  Object.assign(M, {x: -10, z: 120, yaw: 0, state: 'roam', path: [], idle: 2, aware: 0, lostT: 0, flee: 0, sawHide: null, far: 0, stalkT: 45 + WR() * 30, stuck: 0, screamT: 0, hintT: 20, spd: 0, look: 0, callT: 35 + WR() * 30});
   M.y = gH(M.x, M.z);
   for (const l of FLL) l.intensity = 0; for (const f of G.flaresM || []) scene.remove(f); G.flaresM = [];
   G.slots.forEach(s => s.visible = false);
@@ -776,7 +788,7 @@ function reset() {
   ['slats', 'breath', 'map', 'note', 'end', 'pause'].forEach(id => $(id).classList.add('hidden'));
   $('black').style.opacity = 0; $('flash').style.opacity = 0;
   moon.shadow.needsUpdate = true; G.shadowAt = [P.x, P.z];
-  if (A.on) { A.genG.gain.value = 0; A.truckG.gain.value = 0; A.stat.g.gain.value = 0; }
+  if (A.on) { const t = A.ctx.currentTime; for (const g of [A.genG, A.truckG, A.stat.g, A.drone, A.mGrowl]) { g.gain.cancelScheduledValues(t); g.gain.value = 0; } A.lp.frequency.value = 20000; }
 }
 function start() {
   aInit(); if (A.ctx && A.ctx.state === 'suspended') A.ctx.resume();
@@ -794,13 +806,14 @@ function lockMouse() { if (!TEST && canvas.requestPointerLock) try { const r = c
 function die(how) {
   if (G.over) return; G.over = true; G.deathT = 0; G.deathHow = how;
   P.hidden = null; $('slats').classList.add('hidden'); $('breath').classList.add('hidden');
-  Snd.scream(); M.state = 'kill';
+  if (A.on) { A.lp.frequency.cancelScheduledValues(A.ctx.currentTime); A.lp.frequency.value = 20000; } // the door is torn open
+  Snd.scream(); M.state = 'kill'; hush(); G.radioQ = [];
   // put it right in your face
   const fx = -Math.sin(P.yaw), fz = -Math.cos(P.yaw);
   if (how !== 'pulled') { M.x = P.x + fx * .75; M.z = P.z + fz * .75; } else { M.x = P.x + fx * .7; M.z = P.z + fz * .7; }
   M.yaw = Math.atan2(fx, fz); M.spd = 0;
 }
-function win() { if (G.over) return; G.over = true; G.won = true; $('black').style.opacity = 1; setTimeout(() => endScreen(true), 1400); }
+function win() { if (G.over) return; G.over = true; G.won = true; hush(); G.radioQ = []; $('black').style.opacity = 1; const run = G.run; setTimeout(() => { if (run === G.run && G.over) endScreen(true); }, 1400); }
 function endScreen(won) {
   try { document.exitPointerLock(); } catch (e) {}
   const t = G.t, mm = Math.floor(t / 60), ss = Math.floor(t % 60).toString().padStart(2, '0');
@@ -808,7 +821,7 @@ function endScreen(won) {
   $('endT').textContent = won ? 'You got out' : 'You were taken';
   let best = ''; if (won) { const k = 'wp-best-' + SET.diff, b = +localStorage.getItem(k) || 0; if (!b || t < b) { try { localStorage.setItem(k, t); } catch (e) {} best = ' · new best'; } }
   $('endS').textContent = won ? `Escaped Whisperpine in ${mm}:${ss} on ${SET.diff}${best}.` : `Survived ${mm}:${ss}. ${G.inserted}/3 fuses in, ${G.power ? 'power on' : 'no power'}${G.radioDone ? ', help was coming' : ''}.`;
-  $('hud').classList.add('hidden'); G.on = false;
+  $('hud').classList.add('hidden'); G.on = false; quietLoops(.6);
 }
 
 // ---------------- input
@@ -820,7 +833,7 @@ addEventListener('keydown', e => {
   K[e.code] = true;
   if (G.noteOpen) { if (e.code === 'KeyE' || e.code === 'Escape') closeNote(); return; }
   if (e.code === 'KeyE' && !e.repeat) { eDown = true; ePress = true; }
-  if (e.code === 'KeyF' && !P.hidden && !e.repeat) { if (P.bat > 0) { P.light = !P.light; Snd.click(); } }
+  if (e.code === 'KeyF' && !P.hidden && !e.repeat) { Snd.click(); if (P.bat > 0) P.light = !P.light; else showMsg('Click. Nothing. The batteries are dead.', '', 2.5); }
   if (e.code === 'KeyC' && !e.repeat) P.crouch = !P.crouch;
   if (e.code === 'KeyG' && !e.repeat) throwFlare();
   if (e.code === 'Tab') { G.map = true; $('map').classList.remove('hidden'); drawMap(); }
@@ -883,7 +896,8 @@ function stepPlayer(dt) {
   P.bob += moved * (run ? 1.25 : 1.6);
   if (P.stepD > stride) { P.stepD = 0; const wood = P.zone >= 0; const k = run ? 1.4 : P.crouch ? .35 : .8; Snd.step(wood, k); noise(P.x, P.z, (run ? 24 : P.crouch ? 2.2 : 8.5) * (wood ? 1.35 : 1), P.zone); }
   // flashlight battery
-  if (P.light) { P.bat -= dt / 260; if (P.bat <= 0) { P.bat = 0; P.light = false; showMsg('The flashlight died.', '', 3); } }
+  if (P.light) { P.bat -= dt / 260; if (P.bat <= 0) { P.bat = 0; P.light = false; showMsg('The flashlight died. Find batteries.', '', 3); } else if (P.bat < .2 && !P.batWarned) { P.batWarned = true; showMsg('The flashlight is getting dim. Turn it off (F) when you can.', '', 3.5); } }
+  if (P.bat > .3) P.batWarned = false;
   $('stam').style.opacity = P.stam < .99 ? 1 : 0; $('stam').firstChild.style.width = P.stam * 100 + '%';
 }
 
@@ -961,14 +975,14 @@ function startPower() {
   showMsg('The generator coughs, then roars. Lights flicker on across the camp.');
   if (A.on) { A.genG.gain.value = .5; }
   noise(P.x, P.z, 90, P.zone);
-  setTimeout(() => { if (!G.over) Snd.stinger(); }, 1800);
+  G.stingAt = G.t + 1.8;
   // it comes for the noise, fast
   M.hintT = 4;
 }
 function callRadio() {
   G.radioDone = true; if (A.on) A.stat.g.gain.value = 0;
   const lines = ['This is County Dispatch. Who is on this channel?', 'Whisperpine? Nobody is supposed to be up there. That place has been shut since eighty nine.', 'Okay. Okay, hold on. I am sending a truck up the county road. Get to the main gate.', 'And keep quiet out there. Whatever you do, do not let it hear you.'];
-  lines.forEach((l, i) => setTimeout(() => { if (!G.over) { Snd.staticHit(); say(l, 'RADIO'); } }, i * 5200));
+  G.radioQ = lines.map((l, i) => [G.t + i * 5.2, l]);
   G.timer = D.escape; setObj('escape');
   noise(P.x, P.z, 40, P.zone);
 }
@@ -1124,6 +1138,11 @@ function finish(dt) {
 // ---------------- world step
 function stepWorld(dt) {
   G.t += dt;
+  // radio lines and the power-on stinger run on game time (they pause with the game and never leak into the next run)
+  while (G.radioQ.length && G.t >= G.radioQ[0][0]) { Snd.staticHit(); say(G.radioQ.shift()[1], 'RADIO'); }
+  if (G.stingAt && G.t >= G.stingAt) { G.stingAt = 0; Snd.stinger(); }
+  // it calls out from far away now and then: you hear roughly where it is
+  M.callT -= dt; if (M.callT <= 0) { M.callT = 50 + WR() * 50; const d = Math.hypot(P.x - M.x, P.z - M.z); if ((M.state === 'roam' || M.state === 'inv') && d > 45 && d < 140) Snd.call(M.x, M.y + 2.5, M.z); else M.callT = 12; }
   // flares
   for (let i = 0; i < G.flares.length; i++) {
     const f = G.flares[i];
@@ -1183,6 +1202,7 @@ function stepFear(dt) {
     const L = c.listener, ey = P.y + P.eye; cam.getWorldDirection(_fw);
     if (L.positionX) { L.positionX.value = P.x; L.positionY.value = ey; L.positionZ.value = P.z; L.forwardX.value = _fw.x; L.forwardY.value = _fw.y; L.forwardZ.value = _fw.z; L.upX.value = 0; L.upY.value = 1; L.upZ.value = 0; }
     else { L.setPosition(P.x, ey, P.z); L.setOrientation(_fw.x, _fw.y, _fw.z, 0, 1, 0); }
+    A.lp.frequency.setTargetAtTime(P.hidden ? (P.holdBreath ? 480 : 1000) : 20000, t, P.hidden ? .12 : .25);
     A.wind.f.frequency.value = 340 + Math.sin(G.t * .21) * 120; A.wind.g.gain.value = (P.zone >= 0 || P.hidden ? .02 : .05) + Math.sin(G.t * .13) * .02;
   }
 }
@@ -1282,7 +1302,9 @@ function drawMap() {
   lab('Gate', GATE.x - 14, GATE.z); lab('Lake', LAKE.x, LAKE.z); lab('Old bus', 62, -50); lab('Tent site', -62, -60); lab('Watchtower', -72, 64); lab('Archery', 44, -16); lab('Well', -28, 65); lab('Fire pit', 0, 8);
   g.font = 'italic 22px Georgia'; g.fillText('CAMP WHISPERPINE', W / 2, 34); g.font = '12px Georgia'; g.fillText('Tab: close', W / 2, W - 14);
   // you
-  g.save(); g.translate(X(P.x), Z(P.z)); g.rotate(-P.yaw + PI); g.fillStyle = '#8a1a10'; g.beginPath(); g.moveTo(0, -9); g.lineTo(6, 7); g.lineTo(-6, 7); g.closePath(); g.fill(); g.restore();
+  const tg = {radio0: G.rng.dout, call: G.rng.dout, gen: G.shed.dout, fuse: P.fuses ? G.shed.dout : null, start: G.shed.dout, escape: [GATE.x, GATE.z]}[G.obj];
+  if (tg) { const pu = 1 + Math.sin(performance.now() / 260) * .18; g.strokeStyle = '#8a1a10'; g.lineWidth = 2.5; g.beginPath(); g.arc(X(tg[0]), Z(tg[1]), 15 * pu, 0, TAU); g.stroke(); g.fillStyle = '#8a1a10'; g.font = 'italic 12px Georgia'; g.fillText('objective', X(tg[0]), Z(tg[1]) + 30); }
+  g.save(); g.translate(X(P.x), Z(P.z)); g.rotate(P.yaw + PI); g.fillStyle = '#8a1a10'; g.beginPath(); g.moveTo(0, -9); g.lineTo(6, 7); g.lineTo(-6, 7); g.closePath(); g.fill(); g.restore();
 }
 
 // ---------------- menu
@@ -1301,7 +1323,7 @@ function menuInit() {
   bestLine();
 }
 function bestLine() { const b = +localStorage.getItem('wp-best-' + SET.diff) || 0; $('best').textContent = b ? `Best escape on ${SET.diff}: ${Math.floor(b / 60)}:${String(Math.floor(b % 60)).padStart(2, '0')}` : ''; }
-function toMenu() { G.on = false; G.paused = false; G.over = false; $('pause').classList.add('hidden'); $('end').classList.add('hidden'); $('hud').classList.add('hidden'); $('menu').classList.remove('hidden'); $('slats').classList.add('hidden'); $('fearV').style.opacity = 0; if (A.ctx) { A.ctx.resume(); A.drone.gain.value = 0; A.mGrowl.gain.value = 0; A.mBreath.g.gain.value = 0; A.genG.gain.value = 0; A.truckG.gain.value = 0; } if (window.speechSynthesis) speechSynthesis.cancel(); try { document.exitPointerLock(); } catch (e) {} bestLine(); }
+function toMenu() { G.run = (G.run || 0) + 1; G.radioQ = []; G.on = false; G.paused = false; G.over = false; $('pause').classList.add('hidden'); $('end').classList.add('hidden'); $('hud').classList.add('hidden'); $('menu').classList.remove('hidden'); $('slats').classList.add('hidden'); $('fearV').style.opacity = 0; if (A.ctx) { A.ctx.resume(); A.drone.gain.value = 0; A.mGrowl.gain.value = 0; A.mBreath.g.gain.value = 0; A.genG.gain.value = 0; A.truckG.gain.value = 0; } hush(); try { document.exitPointerLock(); } catch (e) {} bestLine(); }
 
 menuInit();
 setTimeout(() => { buildWorld(); requestAnimationFrame(frame); }, 30);

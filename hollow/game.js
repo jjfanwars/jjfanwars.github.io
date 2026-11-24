@@ -699,7 +699,8 @@ function hideTaken(h) { for (const p of PL.values()) if (p.hd === h.i && p !== P
 const A = {ctx: null, on: false};
 function aInit() {
   if (A.ctx) return; const C = window.AudioContext || window.webkitAudioContext; if (!C) return;
-  const c = A.ctx = new C(); A.out = c.createGain(); A.out.gain.value = .9; const comp = c.createDynamicsCompressor(); A.out.connect(comp); comp.connect(c.destination);
+  const c = A.ctx = new C(); A.out = c.createGain(); A.out.gain.value = .9; const comp = c.createDynamicsCompressor();
+  A.lp = c.createBiquadFilter(); A.lp.type = 'lowpass'; A.lp.frequency.value = 20000; A.lp.Q.value = .5; A.out.connect(A.lp); A.lp.connect(comp); comp.connect(c.destination); // muffles the world while you hide
   const nb = c.createBuffer(1, c.sampleRate * 2, c.sampleRate), d = nb.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; A.noise = nb;
   const loop = (f, q, g0, type = 'bandpass') => { const s = c.createBufferSource(); s.buffer = nb; s.loop = true; const fl = c.createBiquadFilter(); fl.type = type; fl.frequency.value = f; fl.Q.value = q; const g = c.createGain(); g.gain.value = g0; s.connect(fl); fl.connect(g); s.start(); return {s, f: fl, g}; };
   const pan = (ref, roll) => { const p = c.createPanner(); Object.assign(p, {panningModel: 'HRTF', distanceModel: 'inverse', refDistance: ref, rolloffFactor: roll, maxDistance: 300}); p.connect(A.out); return p; };
@@ -737,6 +738,15 @@ const Snd = {
   whistle(p) { tone(2600, .12, .5, 'sine', p, 2900); setTimeout(() => tone(2900, .1, .6, 'sine', p, 2400), 380); },
   hurt(p) { burst(500, 1, .5, .5, 'lowpass', p); tone(160, .2, .5, 'sawtooth', p, 70); },
   revive() { tone(440, .06, .3); setTimeout(() => tone(660, .06, .4), 140); },
+  call(x, y, z) { // a long wail far off in the pines, from wherever it is
+    if (!A.on) return; const c = A.ctx, t = c.currentTime, p = c.createPanner(); Object.assign(p, {panningModel: 'HRTF', distanceModel: 'inverse', refDistance: 30, rolloffFactor: 1}); setPan(p, x, y, z);
+    const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 1100; lp.connect(p); p.connect(A.out);
+    const f0 = 280 + Math.random() * 120;
+    for (const [f, a] of [[f0, .16], [f0 * 1.49, .07], [f0 * 1.007, .1]]) { const o = c.createOscillator(), g = c.createGain(); o.type = 'sawtooth'; o.frequency.setValueAtTime(f, t); o.frequency.linearRampToValueAtTime(f * 1.12, t + .9); o.frequency.exponentialRampToValueAtTime(f * .42, t + 3.2);
+      g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(a, t + .7); g.gain.exponentialRampToValueAtTime(.0001, t + 3.4); o.connect(g); g.connect(lp); o.start(t); o.stop(t + 3.5); }
+    burst(600, 2, .1, 2.4, 'bandpass', lp, .5); setTimeout(() => { p.disconnect(); lp.disconnect(); }, 4500);
+  },
+  drop() { burst(220, 1.5, .2, .18, 'lowpass'); tone(110, .08, .15, 'square'); },
 };
 function setPan(p, x, y, z) { if (p.positionX) { p.positionX.value = x; p.positionY.value = y; p.positionZ.value = z; } else p.setPosition(x, y, z); }
 
@@ -912,7 +922,7 @@ function applyEv(e) {
   switch (e.k) {
     case 'snd': if (e.s === 'stinger') Snd.stinger(); else if (e.s === 'creak') Snd.creak(); break;
     case 'down': { const p = PL.get(e.id); if (p) { p.down = true; p.hd = -1; }
-      if (e.id === me) { Snd.scream(); $('flash').style.opacity = .7; setTimeout(() => $('flash').style.opacity = 0, 300); P.hd = -1; $('slats').classList.add('hidden'); $('breath').classList.add('hidden'); showMsg('It got you. Crawl toward your group, they can pick you up.', '', 5); }
+      if (e.id === me) { if (A.on) { A.lp.frequency.cancelScheduledValues(A.ctx.currentTime); A.lp.frequency.value = 20000; } Snd.scream(); $('flash').style.opacity = .7; setTimeout(() => $('flash').style.opacity = 0, 300); P.hd = -1; $('slats').classList.add('hidden'); $('breath').classList.add('hidden'); showMsg(PL.size > 1 ? 'It got you. Crawl toward your group, they can pick you up.' : 'It got you.', '', 5); }
       else if (p) { Snd.hurt(at(p.x, p.y + 1, p.z, 6)); showMsg(`${p.name} is down! Hold E on them to pick them up.`, '', 5); } break; }
     case 'rev': { const p = PL.get(e.id); if (p) p.down = false; Snd.revive(); if (e.id === me) showMsg('You are back on your feet.'); else if (p) showMsg(`${p.name} is back up.`); break; }
     case 'dead': { const p = PL.get(e.id); if (p) { p.dead = true; p.down = false; } showMsg(e.id === me ? 'You bled out.' : `${p ? p.name : 'Someone'} bled out.`, '', 5); break; }
@@ -1107,7 +1117,7 @@ addEventListener('keydown', e => {
   if (e.code === 'KeyF' && P.hd < 0 && P.bat > 0) { P.l = P.l ? 0 : 1; Snd.click(); }
   if (e.code === 'KeyC' && !P.down) P.cr = P.cr ? 0 : 1;
   if (e.code === 'KeyG') throwFlare();
-  if (e.code === 'KeyX' && carrierOf(P.id) >= 0) act({a: 'drop'});
+  if (e.code === 'KeyX' && carrierOf(P.id) >= 0) { act({a: 'drop'}); Snd.drop(); showMsg('You set the fuel can down.', '', 2); }
   if (e.code === 'KeyQ' && !P.down && (G.whT || 0) <= 0) { G.whT = 3; act({a: 'wh'}); }
   if (e.code === 'Tab') { G.map = true; $('map').classList.remove('hidden'); drawMap(); }
 });
@@ -1175,7 +1185,14 @@ function stepFires(dt, ex, ez) {
   if (A.on && lit[0]) { setPan(A.fPan, lit[0].x, lit[0].y, lit[0].z); A.fire.g.gain.value = .12; }
 }
 function stepHeli(dt) {
-  if (G.ph < 2) { if (G.heliM) G.heliM.visible = false; heliL.intensity = 0; if (A.on) A.rotor.g.gain.value = 0; return; }
+  if (G.ph < 2) {
+    if (G.heliM) G.heliM.visible = false; heliL.intensity = 0;
+    // last half minute of the countdown: you hear it coming in over the ridge
+    const k = G.ph === 1 && G.on ? clamp(1 - G.timer / 30, 0, 1) : 0;
+    if (k > 0 && !G.heliHeard) { G.heliHeard = true; showMsg('Rotor blades, far off over the ridge. Get to the landing clearing.', '', 5); }
+    if (A.on) { setPan(A.hPan, HELI.x + 40 * (1 - k), 60 + 40 * (1 - k), HELI.z - 240 * (1 - k)); A.rotor.g.gain.value = .6 * k; A.rotorLfoG.gain.value = .3 * k; }
+    return;
+  }
   if (!G.heliM) G.heliM = buildHeli();
   if (!G.heli) G.heli = {y: 70};
   if (!isHost()) G.heli.y = mix(G.heli.y, G.heli.ty ?? G.heli.y, Math.min(1, dt * 5));
@@ -1232,11 +1249,13 @@ function stepFear(dt) {
   $('fearV').style.opacity = clamp((P.fear - .25) * 1.2, 0, .9);
   $('downV').style.opacity = P.down ? .55 + .35 * (1 - P.bleed / D.bleed) : 0;
   if (A.on) {
-    const c = A.ctx, t = c.currentTime, ch = M.state === 'chase';
+    const c = A.ctx, t = c.currentTime, ch = M.state === 'chase' && G.on, live = G.on ? 1 : 0; // after the run ends the creature's loops fade out
+    const hid = G.on && alivePlay() && P.hd >= 0; A.lp.frequency.setTargetAtTime(hid ? (P.hb ? 480 : 1000) : 20000, t, hid ? .12 : .25);
+    G.callT = (G.callT ?? 40) - dt; if (G.callT <= 0) { G.callT = 50 + Math.random() * 50; if (G.on && (M.state === 'roam' || M.state === 'inv') && d > 45 && d < 150) Snd.call(M.x, M.y + 2.5, M.z); else G.callT = 12; }
     A.crick.gain.setTargetAtTime(d < 35 || G.ph ? 0 : .006, t, .8);
     A.drone.gain.setTargetAtTime(ch && d < 60 ? .05 : 0, t, ch ? .3 : 1.5); A.droneF.frequency.setTargetAtTime(ch ? 900 : 300, t, 1);
-    A.mBreath.g.gain.setTargetAtTime(.25 * (ch ? 1.6 : 1) * (.5 + .5 * Math.sin(G.t * (ch ? 9 : 2.5))), t, .05);
-    A.mGrowl.gain.setTargetAtTime(ch ? .5 : M.state === 'search' ? .25 : .08 * clamp(1 - d / 25, 0, 1), t, .2);
+    A.mBreath.g.gain.setTargetAtTime(live * .25 * (ch ? 1.6 : 1) * (.5 + .5 * Math.sin(G.t * (ch ? 9 : 2.5))), t, .05);
+    A.mGrowl.gain.setTargetAtTime(live * (ch ? .5 : M.state === 'search' ? .25 : .08 * clamp(1 - d / 25, 0, 1)), t, .2);
     A.mSaw.frequency.setTargetAtTime(ch ? 62 : 44, t, .3);
     setPan(A.mPan, M.x, M.y + 2, M.z);
     const L = c.listener; cam.getWorldDirection(_fw);
@@ -1246,15 +1265,17 @@ function stepFear(dt) {
     A.water.g.gain.value = .05 * clamp(1 - (riverQ(cp.x, cp.z).d - 3) / 25, 0, 1);
   }
 }
-function hud() {
+function hud(dt) {
+  const hasCan = carrierOf(P.id) >= 0;
+  if (hasCan !== G.hadCan) { if (hasCan && G.hadCan === false && alivePlay()) { Snd.pickup(); showMsg('Got a fuel can. Carry it to an unlit beacon and hold E. You cannot run with it (X drops it).', '', 5); } G.hadCan = hasCan; }
   const b = $('bat'); for (let i = 0; i < 4; i++) b.children[i].className = P.bat > i * .25 + .02 ? '' : 'off'; b.classList.toggle('low', P.bat < .25);
   $('nFlare').textContent = P.flares; $('nCan').textContent = carrierOf(P.id) >= 0 ? 'CAN' : '-'; $('nBea').textContent = BEA.filter(q => q.lit).length + '/4';
   const ot = objText(); if (ot !== objLast) { objLast = ot; $('obj').innerHTML = '<small>Objective</small>' + ot; $('obj').style.opacity = 1; G.objT = 8; }
-  if (G.objT > 0) { G.objT -= 1 / 30; if (G.objT <= 0 && G.ph === 0) $('obj').style.opacity = .4; }
+  if (G.objT > 0) { G.objT -= dt; if (G.objT <= 0 && G.ph === 0) $('obj').style.opacity = .4; }
   G.teamT = (G.teamT || 0) - 1; if ((PL.size > 1 || TEST) && G.teamT <= 0) G.teamT = 10, $('team').innerHTML = [...PL.values()].map(p => `<div class="${p.dead ? 'dead' : p.esc ? 'esc' : p.down ? 'down' : ''}">${p.name}${p.down ? ' · DOWN ' + Math.max(0, p.bleed | 0) + 's' : p.dead ? '' : p.esc ? ' · aboard' : ''}<i style="background:${hexS(CREW_COL[p.c % 6])}"></i></div>`).join('');
   const st = $('state');
   if (P.dead || P.esc) { const s = specTarget(); st.innerHTML = (P.dead ? 'You are dead' : 'You are aboard') + `<small>${s ? 'Watching ' + s.name + ' · click to switch' : ''}</small>`; }
-  else if (P.down) st.innerHTML = `You are down<small>Bleeding out in ${Math.max(0, P.bleed | 0)} s. Crawl to your group or wait for a teammate.</small>`;
+  else if (P.down) st.innerHTML = PL.size > 1 ? `You are down<small>Bleeding out in ${Math.max(0, P.bleed | 0)} s. Crawl to your group or wait for a teammate.</small>` : 'You are down<small>Nobody is coming.</small>';
   else st.innerHTML = '';
 }
 let grainT = 0; const gctx = $('grain').getContext('2d'), gimg = gctx.createImageData(200, 120);
@@ -1274,7 +1295,7 @@ function drawMap() {
   g.beginPath(); g.arc(X(HELI.x), Z(HELI.z), 9 * S, 0, TAU); g.stroke();
   for (const b of BEA) { g.fillStyle = b.lit ? '#d0601a' : '#3a2a1c'; g.beginPath(); g.moveTo(X(b.x), Z(b.z) - 9); g.lineTo(X(b.x) + 7, Z(b.z) + 6); g.lineTo(X(b.x) - 7, Z(b.z) + 6); g.fill(); g.fillStyle = '#3a2a1c'; g.fillText(b.name + (b.lit ? ' (burning)' : ''), X(b.x), Z(b.z) + 20); }
   g.font = 'italic 22px Georgia'; g.fillText('BLACK HOLLOW', W / 2, 30); g.font = '12px Georgia'; g.fillText('Tab: close', W / 2, W - 12);
-  for (const p of PL.values()) { if (!p.ready || p.dead || p.esc) continue; const yaw = p === P ? P.yaw : p.ryaw; g.save(); g.translate(X(p.rx), Z(p.rz)); g.rotate(-yaw + PI); g.fillStyle = hexS(CREW_COL[p.c % 6]); if (p.down) { g.fillRect(-6, -2, 12, 4); g.fillRect(-2, -6, 4, 12); } else { g.beginPath(); g.moveTo(0, -9); g.lineTo(6, 7); g.lineTo(-6, 7); g.closePath(); g.fill(); } g.restore(); g.fillStyle = '#2a1a10'; g.fillText(p.name, X(p.rx), Z(p.rz) + 18); }
+  for (const p of PL.values()) { if (!p.ready || p.dead || p.esc) continue; const yaw = p === P ? P.yaw : p.ryaw; g.save(); g.translate(X(p.rx), Z(p.rz)); g.rotate(yaw + PI); g.fillStyle = hexS(CREW_COL[p.c % 6]); if (p.down) { g.fillRect(-6, -2, 12, 4); g.fillRect(-2, -6, 4, 12); } else { g.beginPath(); g.moveTo(0, -9); g.lineTo(6, 7); g.lineTo(-6, 7); g.closePath(); g.fill(); } g.restore(); g.fillStyle = '#2a1a10'; g.fillText(p.name, X(p.rx), Z(p.rz) + 18); }
 }
 
 // ---------------- game flow
@@ -1292,6 +1313,7 @@ function startGame(seed, crew) {
   scene.traverse(o => { if (o.material) o.material.needsUpdate = true; });
   canvas.style.filter = SET.bright !== 1 ? `brightness(${SET.bright})` : '';
   G.seed = seed; WR = mulberry(seed); CR = mulberry(seed ^ 0x5bd1e995);
+  G.run = (G.run || 0) + 1; G.hadCan = null; G.heliHeard = false; G.callT = 40 + Math.random() * 30;
   Object.assign(G, {on: true, over: false, t: 0, ph: 0, timer: 0, heli: null, heliDown: false, evq: [], holdP: {}, overSent: false, allDownT: 0, noteOpen: false, paused: false, spec: 0, whT: 0, poseT: 0, sendT: 0});
   for (const f of G.flares) scene.remove(f.m); G.flares = [];
   for (const b of BEA) { b.lit = false; b.p = 0; } for (const f of FIRES) f.lit = f.bea == null;
@@ -1311,7 +1333,8 @@ function startGame(seed, crew) {
   it.classList.remove('hidden'); it.style.opacity = 1; setTimeout(() => it.style.opacity = 0, TEST ? 0 : 4000); setTimeout(() => it.classList.add('hidden'), TEST ? 0 : 6000);
 }
 function gameOver(e) {
-  G.over = true; setTimeout(() => {
+  G.over = true; const run = G.run; setTimeout(() => {
+    if (run !== G.run) return; // left to the menu or restarted meanwhile
     try { document.exitPointerLock(); } catch (x) {}
     const iWon = P.esc;
     $('end').className = 'scr' + (iWon ? '' : ' dead'); $('endT').textContent = iWon ? 'Rescued' : e.win ? 'Left behind' : 'Nobody made it';
@@ -1319,7 +1342,7 @@ function gameOver(e) {
     $('endL').innerHTML = e.res.map(r => `<div><span style="color:${hexS(CREW_COL[r[2] % 6])}">■</span> ${r[0]} — ${r[1] === 'esc' ? 'rescued' : r[1] === 'dead' ? 'bled out' : 'left behind'}</div>`).join('');
     $('again').classList.toggle('hidden', Net.role === 'guest');
     $('end').classList.remove('hidden'); $('hud').classList.add('hidden'); G.on = false;
-    if (iWon) { const k = 'bh-best-' + (G.diff || SET.diff), b = +localStorage.getItem(k) || 0; if (!b || e.t < b) try { localStorage.setItem(k, e.t); } catch (x) {} }
+    if (iWon) { const k = 'bh-best-' + (G.diff || SET.diff), b = +localStorage.getItem(k) || 0; if (!b || e.t < b) { try { localStorage.setItem(k, e.t); } catch (x) {} $('endS').textContent += ' · new best'; } }
   }, 2500);
 }
 
@@ -1350,7 +1373,7 @@ function frame(t) {
 }
 function render(dt) {
   if (!G.on && !G.over) { if (!G.drawn) { G.drawn = true; RND.render(scene, cam); } return; }
-  updateRemotes(dt); animCreature(dt, M.state, M.spd); stepHeli(dt); updateCamera(dt); stepFires(dt, cam.position.x, cam.position.z); stepFear(dt); hud();
+  updateRemotes(dt); animCreature(dt, M.state, M.spd); stepHeli(dt); updateCamera(dt); stepFires(dt, cam.position.x, cam.position.z); stepFear(dt); hud(dt);
   if (G.map) drawMap();
   if ((grainT += dt) > .05) { grainT = 0; grain(); }
   RND.render(scene, cam);
@@ -1371,9 +1394,9 @@ Net.on('start', m => { G.diff = m.diff; startGame(m.seed, m.crew); if (m.late) s
 Net.on('crew', m => { if (G.on) syncCrew(m.crew); });
 Net.on('restart', m => { G.diff = m.diff; startGame(m.seed, m.crew); });
 function toMenu(why) {
-  Net.close(); G.on = false; G.over = false; show('menu'); $('hud').classList.add('hidden'); $('fearV').style.opacity = 0; $('downV').style.opacity = 0; $('slats').classList.add('hidden');
+  G.run = (G.run || 0) + 1; Net.close(); G.on = false; G.over = false; show('menu'); $('hud').classList.add('hidden'); $('fearV').style.opacity = 0; $('downV').style.opacity = 0; $('slats').classList.add('hidden');
   if (A.ctx) { A.ctx.resume(); for (const g of [A.drone, A.mGrowl, A.mBreath.g, A.fire.g, A.rotor.g]) g.gain.value = 0; }
-  try { document.exitPointerLock(); } catch (e) {} $('err').textContent = why || ''; refreshRooms();
+  try { document.exitPointerLock(); } catch (e) {} $('err').textContent = why || ''; refreshRooms(); bestLine();
 }
 async function refreshRooms() {
   const L = await Net.rooms(); const el = $('rooms');
@@ -1385,8 +1408,10 @@ function joinRoom(code) {
   aInit(); buildWorld(); Net.join(code, myName(), why => { if (G.on) toMenu(why); else { show('menu'); $('err').textContent = why; } });
   $('code').textContent = code; show('lobby'); $('bGo').classList.add('hidden'); $('lmsg').textContent = 'Connecting…'; $('crew').innerHTML = '';
 }
+function bestLine() { const b = +localStorage.getItem('bh-best-' + SET.diff) || 0; $('best').textContent = b ? `Fastest rescue on ${SET.diff}: ${Math.floor(b / 60)}:${String(Math.floor(b % 60)).padStart(2, '0')}` : ''; }
 function menuInit() {
-  document.querySelectorAll('.seg').forEach(s => { const k = s.dataset.k, upd = () => s.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.v === SET[k])); s.querySelectorAll('button').forEach(b => b.onclick = () => { SET[k] = b.dataset.v; saveSet(); upd(); }); upd(); });
+  document.querySelectorAll('.seg').forEach(s => { const k = s.dataset.k, upd = () => s.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.v === SET[k])); s.querySelectorAll('button').forEach(b => b.onclick = () => { SET[k] = b.dataset.v; saveSet(); upd(); bestLine(); }); upd(); });
+  bestLine();
   $('sens').value = SET.sens; $('sens').oninput = e => { SET.sens = +e.target.value; saveSet(); };
   $('bright').value = SET.bright; $('bright').oninput = e => { SET.bright = +e.target.value; saveSet(); };
   $('name').value = SET.name; $('name').oninput = e => { SET.name = e.target.value; saveSet(); };
