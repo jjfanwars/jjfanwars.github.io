@@ -1,7 +1,7 @@
 'use strict';
 // YeShip extras: save + continue a flight, bigger explosions with burning wreckage, extra sounds (RCS hiss, cabin hum, sonic boom,
 // warning beeps), the Moon mystery (an old lander to find) with its own mission and target marker, burn-time hints.
-// Loaded after mission.js; calls boot() at the end.
+// Loaded after mission.js; polish.js (loaded next) calls boot().
 
 // ---------------- save / continue the current flight (localStorage 'ye-flight')
 const SAVE_K = 'ye-flight';
@@ -115,4 +115,4 @@ boot = function () { _bootX(); mysBuild(); const was = FXPOOL.map(m => m.visible
   const d = flightSaved(), cb = $('cont'); if (d && Date.now() - d.at < 14 * 864e5) { const ago = (Date.now() - d.at) / 6e4; cb.classList.remove('hidden'); cb.textContent = 'Continue flight · ' + d.where + ' · ' + (ago < 60 ? Math.max(1, Math.round(ago)) + ' min ago' : ago < 1440 ? Math.round(ago / 60) + ' h ago' : Math.round(ago / 1440) + ' days ago');
     cb.onclick = () => { $('play').click(); flightLoad(d); }; } };
 Object.assign(window.YE, {flightSave, flightLoad, flightSaved, MYS, FX, boomTwice});
-boot();
+// boot() is called at the end of polish.js
