@@ -113,6 +113,20 @@ header h1 .sep{color:var(--line2)}
 .selbar{position:absolute;z-index:40;display:flex;gap:2px;padding:3px;box-shadow:var(--sh)}.selbar button{border:none;padding:6px 10px;font-size:13px}
 mark.hl{background:color-mix(in srgb,var(--warn) 30%,transparent);color:inherit;border-radius:2px;cursor:pointer;padding:0}mark.hl.nt{text-decoration:underline dotted var(--warn);text-decoration-thickness:2px;text-underline-offset:3px}
 .vseg{margin:4px 0 14px}
+.mmap{display:flex;flex-direction:column;gap:14px}.mu{font-size:12.5px;font-weight:600;color:var(--mut);margin-bottom:6px}
+.mtiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px}
+.mt{flex-direction:column;align-items:flex-start;gap:2px;padding:9px 11px;border:none;border-radius:8px;text-align:left;min-height:78px;transition:transform .12s,box-shadow .12s}
+.mt:hover{transform:translateY(-1px);box-shadow:var(--sh)}.mt b{font-size:12px}.mt span{font-size:12.5px;line-height:1.25;opacity:.9;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.mt i{font-style:normal;font-size:12px;font-weight:600;margin-top:auto;font-variant-numeric:tabular-nums}
+.mleg{display:flex;align-items:center;gap:3px;margin-top:4px}.mleg i{width:16px;height:10px;border-radius:2px;display:inline-block}.mleg span{margin:0 4px}
+.chart{padding:14px 16px}.chart svg{width:100%;height:auto;display:block;overflow:visible}.chart .gl{stroke:var(--line);stroke-width:1}.chart .ax{fill:var(--mut);font-size:11px;font-family:var(--f-ui)}
+.chart .ln{fill:none;stroke:var(--acc);stroke-width:2;stroke-linejoin:round}.chart .pt{fill:var(--panel);stroke:var(--acc);stroke-width:2;cursor:default}.chart .pt:hover{fill:var(--acc)}
+.heat{display:grid;grid-template-columns:repeat(18,1fr);grid-template-rows:repeat(7,1fr);gap:3px;max-width:520px}.heat i{aspect-ratio:1;border-radius:3px;display:block}
+.chgrid{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:14px}
+.tip{position:fixed;z-index:60;background:var(--ink);color:var(--bg);font-size:12.5px;line-height:1.4;padding:7px 10px;border-radius:7px;white-space:pre-line;pointer-events:none;max-width:280px;box-shadow:0 6px 20px -6px rgba(0,0,0,.35)}
+.fsheet>div{padding:12px 16px}.fn{display:flex;gap:10px;align-items:baseline;font-weight:600}.fn a{margin-left:auto}.fx{overflow-x:auto;padding:2px 0}.fx .katex-display{margin:.4em 0;text-align:left}
+.ctab{width:100%;border-collapse:collapse;font-size:14px}.ctab td{padding:8px 14px;border-bottom:1px solid var(--line)}.ctab tr:last-child td{border-bottom:none}
+.cases{grid-template-columns:repeat(auto-fill,minmax(300px,1fr))}.case{padding:14px 16px;display:flex;flex-direction:column;gap:4px}.case b{font:600 16.5px/1.3 var(--f-read)}.case p{margin:6px 0;font-size:14px;line-height:1.55}.case .ghost{align-self:flex-start;margin-top:6px;padding:5px 8px;font-size:13px}
+.rvl>div{cursor:pointer}.rvl>div:hover{background:var(--sunk)}
 .ctx{font-size:12px;color:var(--mut);padding:8px 16px;border-bottom:1px solid var(--line);background:var(--sunk)}
 .srch svg{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--mut)}
 #q{padding-left:32px;background:var(--panel)}
@@ -284,7 +298,7 @@ a.btn{display:inline-flex;padding:7px 12px;border-radius:8px;text-decoration:non
   .wrap{grid-template-columns:1fr}
   #app{grid-template-columns:1fr}
   #side{display:none}
-  #bot{display:grid;grid-template-columns:repeat(6,1fr);position:fixed;left:0;right:0;bottom:0;z-index:12;background:var(--panel);border-top:1px solid var(--line);padding:4px 2px calc(4px + env(safe-area-inset-bottom))}
+  #bot{display:grid;grid-template-columns:repeat(7,1fr);position:fixed;left:0;right:0;bottom:0;z-index:12;background:var(--panel);border-top:1px solid var(--line);padding:4px 2px calc(4px + env(safe-area-inset-bottom))}
   #bot button{border:none;background:none;flex-direction:column;gap:2px;font-size:10.5px;padding:5px 0;color:var(--mut);border-radius:6px}
   #bot button.on{color:var(--acc);font-weight:600}
   #bot svg.i{width:20px;height:20px}
@@ -301,6 +315,8 @@ a.btn{display:inline-flex;padding:7px 12px;border-radius:8px;text-decoration:non
   .sugg{min-width:0;left:-60px;right:-90px}
   #thm{display:none}
   .books{grid-template-columns:1fr}
+  .chgrid{grid-template-columns:1fr}
+  .mtiles{grid-template-columns:repeat(auto-fill,minmax(120px,1fr))}
   .acts{grid-template-columns:1fr}
   .act{flex-direction:row;align-items:baseline;gap:10px}.act .meta{width:72px}.act b{margin-left:auto}
   #tutor .lbl{display:none}
@@ -326,6 +342,7 @@ a.btn{display:inline-flex;padding:7px 12px;border-radius:8px;text-decoration:non
 <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/></symbol>
 <symbol id="i-moon" viewBox="0 0 24 24"><path d="M19.5 14.5A8 8 0 019.5 4.5a8 8 0 1010 10z"/></symbol>
 <symbol id="i-pin" viewBox="0 0 24 24"><path d="M9 4h6l-1 5 3.5 3.5v1.5h-11V12.5L10 9z"/><path d="M12 14v6"/></symbol>
+<symbol id="i-flask" viewBox="0 0 24 24"><path d="M9 3.5h6M10 3.5v6L4.8 18.2A1.5 1.5 0 006.1 20.5h11.8a1.5 1.5 0 001.3-2.3L14 9.5v-6"/><path d="M7.5 14.5h9"/></symbol>
 <symbol id="i-mark" viewBox="0 0 24 24"><path d="M7 4h10v16l-5-3.8L7 20z"/></symbol>
 <symbol id="i-cap" viewBox="0 0 24 24"><path d="M3 9l9-4 9 4-9 4z"/><path d="M7 11v5c0 1.5 2.5 3 5 3s5-1.5 5-3v-5"/></symbol>
 </svg>
@@ -334,7 +351,7 @@ a.btn{display:inline-flex;padding:7px 12px;border-radius:8px;text-decoration:non
   <form id="lf" class="row" style="flex-direction:column;align-items:stretch;gap:12px"><input id="lp" type="password" placeholder="Site password" autocomplete="current-password"><input id="ln" autocomplete="given-name" maxlength="30" placeholder="First name (optional, to sync)"><button class="pri" style="justify-content:center">Continue</button><div id="le" class="meta" style="color:var(--bad)"></div><div id="known"></div></form>
 </div>
 <div id="app" class="hide">
-<nav id="side"><div class="brand" id="home">IB <b>Study</b></div><div class="nv tabs"><button data-tab="home"><svg class="i"><use href="#i-home"/></svg><span>Home</span></button><div class="grp">Study</div><button data-tab="lib"><svg class="i"><use href="#i-book"/></svg><span>Library</span></button><div id="pins"></div><button data-tab="prac"><svg class="i"><use href="#i-pen"/></svg><span>Practice</span></button><button data-tab="terms"><svg class="i"><use href="#i-cards"/></svg><span>Key terms</span></button><div class="grp">Organise</div><button data-tab="plan"><svg class="i"><use href="#i-cal"/></svg><span>Planner</span></button><button data-tab="prog"><svg class="i"><use href="#i-chart"/></svg><span>Progress</span></button></div><button class="me" id="me"></button></nav>
+<nav id="side"><div class="brand" id="home">IB <b>Study</b></div><div class="nv tabs"><button data-tab="home"><svg class="i"><use href="#i-home"/></svg><span>Home</span></button><div class="grp">Study</div><button data-tab="lib"><svg class="i"><use href="#i-book"/></svg><span>Library</span></button><div id="pins"></div><button data-tab="prac"><svg class="i"><use href="#i-pen"/></svg><span>Practice</span></button><button data-tab="terms"><svg class="i"><use href="#i-cards"/></svg><span>Key terms</span></button><button data-tab="ref"><svg class="i"><use href="#i-flask"/></svg><span>Reference</span></button><div class="grp">Organise</div><button data-tab="plan"><svg class="i"><use href="#i-cal"/></svg><span>Planner</span></button><button data-tab="prog"><svg class="i"><use href="#i-chart"/></svg><span>Progress</span></button></div><button class="me" id="me"></button></nav>
 <div class="col">
 <header>
   <button id="menuBtn" class="ghost hide" aria-label="Contents"><svg class="i"><use href="#i-menu"/></svg></button>
@@ -423,6 +440,7 @@ function mergeIn(r) {
     for (const [k, v] of Object.entries(r.terms || {})) if (!S.prog.terms[k] || S.prog.terms[k].t < v.t) S.prog.terms[k] = v;
     if ((r.pt || 0) > (S.prog.pt || 0)) { S.prog.pins = r.pins || []; S.prog.marks = r.marks || []; S.prog.hls = r.hls || []; S.prog.pt = r.pt; }
     const D = S.prog.days = S.prog.days || {}; for (const [d, o] of Object.entries(r.days || {})) { const x = D[d] = D[d] || {}; for (const k of ['m', 'q', 'c', 'p']) x[k] = Math.max(x[k] || 0, o[k] || 0); }
+    for (const k of ['secs', 'rev']) { const L = S.prog[k] = S.prog[k] || {}; for (const [kk, v] of Object.entries(r[k] || {})) if (!L[kk] || (L[kk].t || 0) < (v.t || 0)) L[kk] = v; }
     const PP = S.prog.pp = S.prog.pp || {}; for (const [k, v] of Object.entries(r.pp || {})) { const ts = new Set((PP[k] || []).map(x => x.t)); PP[k] = [...(PP[k] || []), ...v.filter(x => !ts.has(x.t))]; }
     for (const [k, v] of Object.entries(r.lastBy || {})) if (!S.prog.lastBy[k] || S.prog.lastBy[k].t < v.t) S.prog.lastBy[k] = v;
     if (r.last && (!S.prog.last || (r.last.t || 0) > (S.prog.last.t || 0))) S.prog.last = r.last;
@@ -431,7 +449,7 @@ function mergeIn(r) {
 }
 
 // ---------- shell ----------
-const TABN = {home: 'Home', lib: 'Library', prac: 'Practice', terms: 'Key terms', prog: 'Progress', plan: 'Planner', search: 'Search'};
+const TABN = {home: 'Home', lib: 'Library', prac: 'Practice', terms: 'Key terms', ref: 'Reference', prog: 'Progress', plan: 'Planner', search: 'Search'};
 // back/forward: each screen writes a hash; same-screen changes (page flips) replace instead of push
 function setHash(h) { if (location.hash === h) return; const seg = x => x.split('/').slice(1, x.startsWith('#/lib/') ? 3 : 2).join('/'), a = seg(location.hash), b = seg(h); history[a === b ? 'replaceState' : 'pushState'](null, '', h); }
 function title(parts) { $('#ttl').innerHTML = parts.map((x, i) => i < parts.length - 1 ? `<span class="crumb" data-go="${x[1]}">${esc(x[0])}</span><span class="sep">/</span>` : `<span>${esc(Array.isArray(x) ? x[0] : x)}</span>`).join('');
@@ -443,7 +461,7 @@ function shell(t) { // chrome for a screen: nav highlight, contents panel, title
   document.querySelector('.wrap').style.gridTemplateColumns = rd ? '' : '1fr'; title([TABN[t]]);
   document.querySelectorAll('#pins [data-b]').forEach(x => x.classList.toggle('on', rd && x.dataset.b === S.book.id));
 }
-function tab(t) { shell(t); ({home: renderHome, lib: () => S.reading ? openPage(S.book.id, S.n) : renderShelf(), prac: () => renderPrac(), terms: () => renderTerms(), prog: renderProg, plan: () => renderPlan(true)})[t](); }
+function tab(t) { shell(t); ({home: renderHome, lib: () => S.reading ? openPage(S.book.id, S.n) : renderShelf(), prac: () => renderPrac(), terms: () => renderTerms(), ref: () => renderRef(), prog: renderProg, plan: () => renderPlan(true)})[t](); }
 function go(t) { if (t === 'lib') S.reading = false; tab(t); }
 function drawPins() { const el = $('#pins'); if (!el || !S.prog) return;
   el.innerHTML = S.prog.pins.map(bookOf).filter(Boolean).map(B => `<button class="sub" data-b="${B.id}"><span class="dot" style="background:${bookC(B)}"></span>${esc(B.subject || B.title)}</button>`).join('');
@@ -466,7 +484,7 @@ function markToc() {
 async function openPage(b, n, hl) {
   const B = bookOf(b); MATH = !!B.math; n = Math.max(1, Math.min(B.pages, n)); S.n = n; S.hl = hl || '';
   if (S.book !== B) { S.book = B; renderToc(); }
-  const now = Date.now(); S.prog.last = {b, n, t: now}; S.prog.lastBy[b] = {n, t: now}; act('p');
+  const now = Date.now(); S.prog.last = {b, n, t: now}; S.prog.lastBy[b] = {n, t: now}; trackSec(B, n); act('p');
   S.reading = true; if (S.tab !== 'lib' || $('#toc').classList.contains('hide')) shell('lib');
   setHash(`#/lib/${b}/${n}`);
   const sec = secOf(B, n), mk = S.prog.marks.find(m => m.b === b && m.n === n);
@@ -545,7 +563,7 @@ function where() {
       screen: `Question (${KIND[q.kind] || q.kind}${q.marks ? ', ' + q.marks + ' marks' : ''}, textbook p. ${q.bp || '?'}):\n${q.text}${q.ctx ? '\nContext: ' + q.ctx : ''}\n\nStudent's draft:\n${d || '(empty)'}`}; }
   if (S.tab === 'terms' && S.term) return {label: 'flashcard “' + S.term.k + '”', book: B.id, note: `[Location: Key terms flashcards (${B.subject}), card "${S.term.k}"]`, screen: `${S.term.k}: ${S.term.d}`};
   if (S.tab === 'prog' && B) return {label: 'your progress', book: B.id, note: `[Location: Progress page (${B.subject})]`, screen: progSummary(B)};
-  const n = {home: 'Home page', lib: 'Library (book list)', prac: 'Practice question list', terms: 'Key terms list', plan: 'Planner', search: 'search results'}[S.tab];
+  const n = {ref: 'Reference (' + (B && B.math ? 'formula sheet' : 'case studies') + ')', home: 'Home page', lib: 'Library (book list)', prac: 'Practice question list', terms: 'Key terms list', plan: 'Planner', search: 'search results'}[S.tab];
   return n && B ? {label: n, book: B.id, note: `[Location: ${n}${S.tab === 'prac' || S.tab === 'terms' ? ' (' + B.subject + ')' : ''}]`} : null;
 }
 function progSummary(B) {
@@ -607,30 +625,30 @@ function renderPrac(filter) {
   if (F.book !== S.book.id) { F.book = S.book.id; F.topic = ''; F.kind = ''; }
   shell('prac'); S.q = null; setHash('#/prac');
   const B = bookOf(F.book) || S.book, qs = S.qs.filter(q => q.book === B.id && !front(q) && !q.pp), V = F.view || 'qs', mk = mistakes(B.id);
-  const vseg = `<div class="seg vseg">${[['qs', 'Questions'], ['mist', 'Mistakes' + (mk.length ? ' · ' + mk.length : '')], ['papers', 'Past papers']].map(([k, l]) => `<button data-v="${k}" class="${V === k ? 'on' : ''}">${l}</button>`).join('')}</div>`;
+  const vseg = `<div class="seg vseg">${[['qs', 'Questions'], ['rev', 'Section reviews' + (reviewsDue().filter(x => x.B === B).length ? ' · ' + reviewsDue().filter(x => x.B === B).length : '')], ['mist', 'Mistakes' + (mk.length ? ' · ' + mk.length : '')], ['papers', 'Past papers']].map(([k, l]) => `<button data-v="${k}" class="${V === k ? 'on' : ''}">${l}</button>`).join('')}</div>`;
   const vwire = () => document.querySelectorAll('.vseg [data-v]').forEach(x => x.onclick = () => { F.view = x.dataset.v; renderPrac(F); });
   if (V !== 'qs') {
     $('#main').innerHTML = `<div class="prac" style="max-width:1100px"><div class="row"><h2 style="margin:0">Practice</h2>${bookBar(B.id)}</div><div style="margin-top:12px">${vseg}</div>
-      ${V === 'papers' ? '<div id="ppl"><span class="spin"></span></div>' : mk.length ? `<div class="card lst mlog">${mk.map(m => `<div data-id="${m.q.id}"><div class="row"><b class="num" style="color:var(--red)">${m.l.score}/${m.l.max}</b><span class="tag">${KIND[m.q.kind] || m.q.kind}</span><span class="meta">${esc(m.q.topic ? topicName(B, m.q.topic) : '')}</span><span class="sp"></span>${m.ready ? '<span class="tag r">Retry now</span>' : `<span class="meta">retry ${fmtD(ymd(new Date(m.due)), {weekday: 'short'})}</span>`}</div>
+      ${V === 'papers' ? '<div id="ppl"><span class="spin"></span></div>' : V === 'rev' ? reviewList(B) : mk.length ? `<div class="card lst mlog">${mk.map(m => `<div data-id="${m.q.id}"><div class="row"><b class="num" style="color:var(--red)">${m.l.score}/${m.l.max}</b><span class="tag">${KIND[m.q.kind] || m.q.kind}</span><span class="meta">${esc(m.q.topic ? topicName(B, m.q.topic) : '')}</span><span class="sp"></span>${m.ready ? '<span class="tag r">Retry now</span>' : `<span class="meta">retry ${fmtD(ymd(new Date(m.due)), {weekday: 'short'})}</span>`}</div>
         <div style="font-family:var(--f-read);margin:4px 0">${(MATH = !!B.math, mdx(preview(m.q.text), true))}</div>${m.l.fb && m.l.fb.missed && m.l.fb.missed.length ? `<ul class="meta" style="margin:4px 0;padding-left:18px">${m.l.fb.missed.slice(0, 2).map(x => '<li>' + mdx(String(x), true) + '</li>').join('')}</ul>` : ''}</div>`).join('')}</div>`
       : '<div class="card" style="padding:28px;text-align:center"><b>No mistakes to retry</b><div class="meta">Anything you score under 70% on lands here and comes back after 2 days.</div></div>'}</div>`;
-    vwire(); onBookBar(() => renderPrac()); document.querySelectorAll('.mlog [data-id]').forEach(el => el.onclick = () => openQ(el.dataset.id));
+    vwire(); onBookBar(() => renderPrac()); document.querySelectorAll('.mlog [data-id]').forEach(el => el.onclick = () => openQ(el.dataset.id)); document.querySelectorAll('.rvl [data-rk]').forEach(el => el.onclick = () => runReview(el.dataset.rk));
     if (V === 'papers') loadPapers().then(() => { if (!$('#ppl')) return; $('#ppl').innerHTML = renderPapers(B); document.querySelectorAll('[data-pp]').forEach(el => el.onclick = () => openPaper(el.dataset.pp)); });
     return;
   }
   const topics = [...new Set(qs.map(q => q.topic).filter(Boolean))].sort((a, b) => a.localeCompare(b, undefined, {numeric: true}));
-  const list = qs.filter(q => (!F.kind || q.kind === F.kind) && (!F.topic || (q.topic || '').startsWith(F.topic)) &&
+  const list = qs.filter(q => (!F.kind || q.kind === F.kind) && (!F.topic || (q.topic || '').startsWith(F.topic)) && (!F.tp || inTopic(q.topic, F.tp)) &&
     (!F.st || (F.st === 'new' ? !attOf(q.id).length : F.st === 'weak' ? (best(q.id) >= 0 && best(q.id) < .6) : best(q.id) >= .6)));
   $('#main').innerHTML = `<div class="prac" style="max-width:1100px">
     <div class="row" style="justify-content:space-between"><div class="row"><h2 style="margin:0">Practice</h2>${bookBar(B.id)}</div><button class="pri" id="rnd">Random question</button></div>
     <div style="margin-top:12px">${vseg}</div>
-    <div class="filters"><select id="fk"><option value="">All types</option>${[...new Set(qs.map(q => q.kind))].map(k => `<option value="${k}" ${F.kind === k ? 'selected' : ''}>${KIND[k] || k}</option>`).join('')}</select>
+    <div class="filters">${F.tp ? `<button id="ftp" class="tag" style="padding:6px 10px">${esc(F.tp)} ✕</button>` : ''}<select id="fk"><option value="">All types</option>${[...new Set(qs.map(q => q.kind))].map(k => `<option value="${k}" ${F.kind === k ? 'selected' : ''}>${KIND[k] || k}</option>`).join('')}</select>
     <select id="ft"><option value="">All topics</option>${topics.map(t => `<option value="${t}" ${F.topic === t ? 'selected' : ''}>${esc(topicName(B, t))}</option>`).join('')}</select>
     <select id="fs"><option value="">Any status</option><option value="new" ${F.st === 'new' ? 'selected' : ''}>Not tried</option><option value="weak" ${F.st === 'weak' ? 'selected' : ''}>Weak (under 60%)</option><option value="good" ${F.st === 'good' ? 'selected' : ''}>Done well</option></select></div>
     <div class="grid">${list.map(q => { const bs = best(q.id); return `<div class="card qc" data-id="${q.id}"><div>${'<span class="tag">' + (KIND[q.kind] || q.kind) + '</span>'}${q.marks ? '<span class="tag">' + q.marks + (q.marks === 1 ? ' mark' : ' marks') + '</span>' : ''}${bs >= 0 ? `<span class="tag ${bs < .6 ? 'w' : 'g'}">best ${Math.round(bs * 100)}%</span>` : ''}</div><div class="qt">${(MATH = !!B.math, mdx(preview(q.text), true))}</div><div class="meta">${esc(q.topic ? topicName(B, q.topic) : '')}${q.bp ? ' · p. ' + q.bp : ''}</div></div>`; }).join('') || '<p>No questions match.</p>'}</div></div>`;
   $('#fk').onchange = e => { F.kind = e.target.value; renderPrac(F); }; $('#ft').onchange = e => { F.topic = e.target.value; renderPrac(F); }; $('#fs').onchange = e => { F.st = e.target.value; renderPrac(F); };
   document.querySelectorAll('.qc').forEach(c => c.onclick = () => openQ(c.dataset.id)); onBookBar(() => renderPrac());
-  vwire(); $('#rnd').onclick = () => { const pool = list.length ? list : qs; if (pool.length) openQ(pool[Math.random() * pool.length | 0].id); };
+  vwire(); if ($('#ftp')) $('#ftp').onclick = () => { F.tp = ''; renderPrac(F); }; $('#rnd').onclick = () => { const pool = list.length ? list : qs; if (pool.length) openQ(pool[Math.random() * pool.length | 0].id); };
 }
 function openQ(id) {
   const q = S.qs.find(x => x.id === id); if (!q) return renderPrac(); const B = bookOf(q.book), draft = LS.get(LSK('ib-d-' + id), ''), prev = attOf(id); MATH = !!B.math;
@@ -715,12 +733,14 @@ function renderProg() {
   const wr = weekReport(), hls = (S.prog.hls || []).filter(h => h.b === B.id);
   $('#main').innerHTML = `<div class="prac"><div class="row" style="margin-bottom:14px"><h2 style="margin:0">Progress</h2></div>
     <h3 style="margin-top:0">This week</h3>${wr.html}
-    <div class="row" style="margin:28px 0 12px"><h3 style="margin:0">By subject</h3>${bookBar(B.id)}</div>
+    <div class="row" style="margin:28px 0 12px"><h3 style="margin:0">Topic mastery</h3>${bookBar(B.id)}</div>${masteryMap(B)}
+    <div class="chgrid" style="margin-top:24px"><div><h3 style="margin-top:0">Marks over time</h3>${trendChart()}</div><div><h3 style="margin-top:0">Study activity</h3>${heatmap()}</div></div>
+    <h3 style="margin-top:28px">${esc(B.subject)} in numbers</h3>
     <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(180px,1fr))"><div class="card stat"><div class="meta">Questions tried</div><div class="n">${tried.length}<span class="meta"> / ${qs.length}</span></div></div><div class="card stat"><div class="meta">Average mark</div><div class="n">${avg}%</div></div><div class="card stat"><div class="meta">Attempts</div><div class="n">${all.length}</div></div><div class="card stat"><div class="meta">Key terms learned</div><div class="n">${known}<span class="meta"> / ${terms.length}</span></div></div></div>
-    <h3>Topics, weakest first</h3>${rows.length ? `<div class="card" style="padding:6px 14px">${rows.map(r => `<div style="padding:8px 0"><div class="row"><span>${esc(topicName(B, r.t))}</span><span style="flex:1"></span><span class="meta">${Math.round(r.v * 100)}% · ${r.n} q</span><button class="ghost" data-t="${r.t}">Practise</button></div><div class="bar"><i style="width:${Math.round(r.v * 100)}%;background:${r.v < .5 ? 'var(--bad)' : r.v < .7 ? 'var(--warn)' : 'var(--good)'}"></i></div></div>`).join('')}</div>` : '<p class="meta">No attempts yet.</p>'}
+    <h3>Sub-topics, weakest first</h3>${rows.length ? `<div class="card" style="padding:6px 14px">${rows.map(r => `<div style="padding:8px 0"><div class="row"><span>${esc(topicName(B, r.t))}</span><span style="flex:1"></span><span class="meta">${Math.round(r.v * 100)}% · ${r.n} q</span><button class="ghost" data-t="${r.t}">Practise</button></div><div class="bar"><i style="width:${Math.round(r.v * 100)}%;background:${r.v < .5 ? 'var(--bad)' : r.v < .7 ? 'var(--warn)' : 'var(--good)'}"></i></div></div>`).join('')}</div>` : '<p class="meta">No attempts yet.</p>'}
     ${recent.length ? `<h3>Recent</h3><div class="card">${recent.map(({q, a}) => `<div class="h" style="padding:10px 14px;border-bottom:1px solid var(--line);cursor:pointer" data-id="${q.id}"><b>${a.score}/${a.max}</b> <span class="meta">${new Date(a.t).toLocaleDateString()}</span><div>${esc(q.text.slice(0, 140))}</div></div>`).join('')}</div>` : ''}
     ${hls.length ? `<div class="row" style="margin:24px 0 10px"><h3 style="margin:0">Highlights and notes</h3><span class="sp"></span><button id="hlQ"><svg class="i"><use href="#i-spark"/></svg>Quiz me on these</button></div><div class="card lst hlist">${hls.slice().reverse().map(h => `<div data-hn="${h.n}" style="cursor:pointer"><span class="meta">p. ${esc(h.bp || h.n)}</span> <span style="font-family:var(--f-read)">${esc(h.x.slice(0, 200))}</span>${h.note ? `<div class="meta" style="margin-top:3px">${esc(h.note)}</div>` : ''}</div>`).join('')}</div>` : ''}</div>`;
-  $('#wRev').onclick = weeklyReview; if ($('#hlQ')) $('#hlQ').onclick = () => hlQuiz(hls); document.querySelectorAll('[data-hn]').forEach(el => el.onclick = () => openPage(B.id, +el.dataset.hn));
+  $('#wRev').onclick = weeklyReview; document.querySelectorAll('.mt[data-tn]').forEach(x => x.onclick = () => topicSheet(B, x.dataset.tn)); if ($('#hlQ')) $('#hlQ').onclick = () => hlQuiz(hls); document.querySelectorAll('[data-hn]').forEach(el => el.onclick = () => openPage(B.id, +el.dataset.hn));
   document.querySelectorAll('#main [data-t]').forEach(b => b.onclick = () => { S.pf = {book: B.id, kind: '', topic: b.dataset.t, st: ''}; renderPrac(); });
   document.querySelectorAll('#main [data-id]').forEach(b => b.onclick = () => openQ(b.dataset.id)); onBookBar(renderProg);
 }
@@ -857,12 +877,12 @@ function drawHome() {
       <section class="hsec"><h3>Books<a href="#" id="hLib">Library</a></h3><div class="shelf">${shelfOrder().map(B => `<div class="card bk" data-b="${B.id}">${spine(B)}<div style="min-width:0;flex:1"><b>${esc(B.title)}</b><span class="meta">${B.pages} pages · ${allQ.filter(q => q.book === B.id).length} questions</span>${B.file ? `<div><a class="meta" href="${RELAY}/ib/file?b=${B.id}&t=${encodeURIComponent(PASS)}" download onclick="event.stopPropagation()">Download PDF</a></div>` : ''}</div></div>`).join('')}</div></section>
     </div><div>
       <section class="hsec"><h3>Today</h3><div class="card lst agl">${(() => { const mk = mistakes(), rd = mk.filter(m => m.ready), dt = S.prog.days && S.prog.days[t];
-        return `<div id="hMist"><span class="when">Mistakes</span><span>${rd.length ? `<b>${rd.length}</b> ready to retry` : mk.length ? mk.length + ' waiting, none due yet' : 'None logged'}</span></div><div id="hTerms2"><span class="when">Cards</span><span>${termsDue ? `<b>${termsDue}</b> due` : 'All caught up'}</span></div><div style="cursor:default"><span class="when">Studied</span><span>${dt ? dt.m : 0} min · ${dt ? dt.q : 0} questions</span></div>`; })()}<div style="cursor:default;padding:10px 12px"><button class="pri" id="hDay" style="width:100%;justify-content:center"><svg class="i"><use href="#i-spark"/></svg>Plan my day</button></div></div></section>
+        return `<div id="hMist"><span class="when">Mistakes</span><span>${rd.length ? `<b>${rd.length}</b> ready to retry` : mk.length ? mk.length + ' waiting, none due yet' : 'None logged'}</span></div><div id="hRev"><span class="when">Reviews</span><span>${reviewsDue().length ? `<b>${reviewsDue().length}</b> sections to check` : 'None due'}</span></div><div id="hTerms2"><span class="when">Cards</span><span>${termsDue ? `<b>${termsDue}</b> due` : 'All caught up'}</span></div><div style="cursor:default"><span class="when">Studied</span><span>${dt ? dt.m : 0} min · ${dt ? dt.q : 0} questions</span></div>`; })()}<div style="cursor:default;padding:10px 12px"><button class="pri" id="hDay" style="width:100%;justify-content:center"><svg class="i"><use href="#i-spark"/></svg>Plan my day</button></div></div></section>
       <section class="hsec"><h3>Coming up<a href="#" id="hPlan">Planner</a></h3><div class="card lst agl">${over.map(it => `<div data-id="${it.id}"><span class="when" style="color:var(--red)">Overdue</span><span><span class="dot" style="background:${subjColor(it.subject)}"></span>${esc(it.title)}</span></div>`).join('')}${up.slice(0, 8).map(([d, it]) => `<div data-id="${it.id}"><span class="when">${rel(d)}${it.time ? '<br>' + it.time : ''}</span><span><span class="dot" style="background:${subjColor(it.subject)}"></span>${esc(it.title)}${it.kind === 'exam' ? ' <span class="tag r">Exam</span>' : ''}</span></div>`).join('') || (over.length ? '' : '<div class="meta" style="cursor:default">Nothing in the next two weeks</div>')}</div></section>
       ${recent.length ? `<section class="hsec"><h3>Recent marks<a href="#" id="hProg">Progress</a></h3><div class="card lst agl">${recent.map(({q, a}) => `<div data-q="${q.id}"><span class="when num" style="color:${a.score / a.max < .4 ? 'var(--red)' : a.score / a.max < .7 ? 'var(--warn)' : 'var(--good)'};font-weight:600">${a.score}/${a.max}</span><span>${esc(q.text.replace(/\$[^$]*\$/g, '…').slice(0, 80))}${q.text.length > 80 ? '…' : ''}</span></div>`).join('')}</div></section>` : ''}
     </div></div></div>`;
   $('#hLib').onclick = e => { e.preventDefault(); go('lib'); };
-  $('#hDay').onclick = () => USER ? dayPlan() : signInBox(); $('#hMist').onclick = () => { const m = mistakes(); if (m[0]) S.book = bookOf(m[0].q.book); renderToc(); S.pf = {...(S.pf || {}), view: 'mist'}; renderPrac(); }; $('#hTerms2').onclick = () => $('#hTerms').click();
+  $('#hDay').onclick = () => USER ? dayPlan() : signInBox(); $('#hMist').onclick = () => { const m = mistakes(); if (m[0]) S.book = bookOf(m[0].q.book); renderToc(); S.pf = {...(S.pf || {}), view: 'mist'}; renderPrac(); }; $('#hTerms2').onclick = () => $('#hTerms').click(); $('#hRev').onclick = () => { const r = reviewsDue()[0]; if (r) runReview(r.k); else { S.pf = {...(S.pf || {}), view: 'rev'}; renderPrac(); } };
   if ($('#hCont')) $('#hCont').onclick = () => openPage(LB.id, last.n);
   $('#hPrac').onclick = () => { go('prac'); $('#rnd') && $('#rnd').click(); };
   $('#hTerms').onclick = () => { go('terms'); if (termsDue && $('#st')) $('#st').click(); };
@@ -1017,6 +1037,136 @@ function dayPlan() {
   CH.msgs[CH.msgs.length - 1].show = 'Plan my day'; drawChat(true);
 }
 
+// ---------- topics & mastery ----------
+// topics = numbered contents entries at level 2 (e.g. 1.2, Structure 1.2), grouped by their level-1 unit
+const inTopic = (t, num) => !!t && (t === num || t.startsWith(num + '.'));
+function topicsOf(B) {
+  if (B._topics) return B._topics;
+  const toc = B.toc.filter(t => t.num && !/^[ivxlc]+$/i.test(t.bp || '')), out = [];
+  let unit = null;
+  for (let i = 0; i < toc.length; i++) { const t = toc[i];
+    if (t.lvl === 1) unit = t;
+    if (t.lvl === 2 && !out.some(x => x.num === t.num)) { const nx = toc.slice(i + 1).find(x => x.lvl <= 2); out.push({num: t.num, title: t.title, n: t.n, end: nx ? nx.n : B.pages + 1, unit: unit ? unit.num + ' ' + unit.title : ''}); } }
+  return (B._topics = out);
+}
+function mastery(B, T) {
+  const qs = S.qs.filter(q => q.book === B.id && inTopic(q.topic, T.num) && !front(q)), tried = qs.filter(q => attOf(q.id).length);
+  const qv = tried.length ? tried.reduce((s, q) => s + best(q.id), 0) / tried.length : null;
+  const rv = Object.entries(S.prog.rev || {}).filter(([k]) => { const [b, n] = k.split('|'); return b === B.id && +n >= T.n && +n < T.end; }).map(([, r]) => r.last).filter(x => x != null);
+  const rvv = rv.length ? rv.reduce((a, b) => a + b, 0) / rv.length : null;
+  const cs = (B.terms || []).filter(x => x.n >= T.n && x.n < T.end).map(x => S.prog.terms[B.id + ':' + x.k]).filter(Boolean), cv = cs.length ? cs.reduce((s, c) => s + Math.min(c.box, 4) / 4, 0) / cs.length : null;
+  const parts = [[qv, 2 * Math.min(1, tried.length / 3)], [rvv, 1.5], [cv, 1]].filter(([v, w]) => v != null && w > 0);
+  const w = parts.reduce((s, [, w]) => s + w, 0), v = w ? parts.reduce((s, [v, w]) => s + v * w, 0) / w : null;
+  return {v, qv, rvv, cv, tried: tried.length, total: qs.length, rev: rv.length, cards: cs.length};
+}
+const mColor = v => v == null ? 'var(--sunk)' : `color-mix(in srgb,var(--acc) ${Math.round(18 + v * 82)}%,var(--panel))`;
+const mInk = v => v != null && v > .55 ? 'var(--acc-ink)' : 'var(--ink)';
+function masteryMap(B) {
+  const ts = topicsOf(B); if (!ts.length) return '<p class="meta">This book has no numbered topics.</p>';
+  const units = [...new Set(ts.map(t => t.unit))];
+  return `<div class="mmap">${units.map(u => `<div class="mrow"><div class="mu">${esc(u)}</div><div class="mtiles">${ts.filter(t => t.unit === u).map(t => { const m = mastery(B, t);
+    return `<button class="mt" data-tn="${esc(t.num)}" style="background:${mColor(m.v)};color:${mInk(m.v)}" data-tip="${esc(t.num + ' ' + t.title)}\n${m.v == null ? 'Not tested yet' : Math.round(m.v * 100) + '% mastery'}\n${m.tried}/${m.total} questions · ${m.rev} reviews · ${m.cards} cards"><b>${esc(t.num.replace(/^(Structure|Reactivity)\s+/, (x, w) => w[0]))}</b><span>${esc(t.title)}</span><i>${m.v == null ? '–' : Math.round(m.v * 100) + '%'}</i></button>`; }).join('')}</div></div>`).join('')}
+    <div class="mleg meta"><span>Not tested</span><i style="background:var(--sunk)"></i><span style="margin-left:10px">0%</span>${[0, .25, .5, .75, 1].map(v => `<i style="background:${mColor(v)}"></i>`).join('')}<span>100%</span></div></div>`;
+}
+function topicSheet(B, num) {
+  const T = topicsOf(B).find(t => t.num === num), m = mastery(B, T), pc = x => x == null ? '–' : Math.round(x * 100) + '%';
+  const mo = openModal(`<div class="meta">${esc(T.unit)}</div><h3 style="margin:2px 0 12px;font:600 21px/1.25 var(--f-read)">${esc(T.num + ' ' + T.title)}</h3>
+    <div class="wnums" style="margin:0 0 14px"><div><b>${pc(m.v)}</b><span class="meta">mastery</span></div><div><b>${pc(m.qv)}</b><span class="meta">questions (${m.tried}/${m.total})</span></div><div><b>${pc(m.rvv)}</b><span class="meta">section reviews</span></div><div><b>${pc(m.cv)}</b><span class="meta">key terms</span></div></div>
+    <div class="row"><button class="pri" id="tsP">Practise</button><button id="tsR">Read</button><button id="tsT"><svg class="i"><use href="#i-cap"/></svg>Teach me</button><span class="sp"></span><button id="mClose">Close</button></div>`);
+  $('#tsP').onclick = () => { mo.remove(); S.book = B; renderToc(); S.pf = {book: B.id, kind: '', topic: '', st: '', view: 'qs', tp: num}; renderPrac(); };
+  $('#tsR').onclick = () => { mo.remove(); openPage(B.id, T.n); };
+  $('#tsT').onclick = () => { mo.remove(); openPage(B.id, T.n); setTimeout(() => $('#teach') && $('#teach').click(), 60); };
+}
+
+// ---------- charts ----------
+function trendChart() {
+  const pts = Object.values(S.prog.att).flat().filter(a => a.max).sort((a, b) => a.t - b.t).slice(-60);
+  if (pts.length < 2) return '<div class="card" style="padding:22px" ><span class="meta">Your mark trend appears after a few marked answers.</span></div>';
+  const W = 640, Hh = 180, L = 34, R = 10, T = 10, Bm = 22, x = i => L + i / (pts.length - 1) * (W - L - R), y = v => T + (1 - v) * (Hh - T - Bm);
+  const roll = pts.map((_, i) => { const s = pts.slice(Math.max(0, i - 4), i + 1); return s.reduce((a, p) => a + p.score / p.max, 0) / s.length; });
+  const path = roll.map((v, i) => (i ? 'L' : 'M') + x(i).toFixed(1) + ' ' + y(v).toFixed(1)).join(' ');
+  return `<div class="card chart"><svg viewBox="0 0 ${W} ${Hh}" role="img" aria-label="Marks over time">
+    ${[0, .5, 1].map(v => `<line x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}" class="gl"/><text x="${L - 6}" y="${y(v) + 4}" class="ax" text-anchor="end">${v * 100}%</text>`).join('')}
+    <path d="${path}" class="ln"/>${pts.map((p, i) => `<circle cx="${x(i)}" cy="${y(p.score / p.max)}" r="4" class="pt" data-tip="${p.score}/${p.max} · ${new Date(p.t).toLocaleDateString()}\nRolling average ${Math.round(roll[i] * 100)}%"/>`).join('')}
+    <text x="${L}" y="${Hh - 4}" class="ax">${new Date(pts[0].t).toLocaleDateString(undefined, {day: 'numeric', month: 'short'})}</text><text x="${W - R}" y="${Hh - 4}" class="ax" text-anchor="end">${new Date(pts[pts.length - 1].t).toLocaleDateString(undefined, {day: 'numeric', month: 'short'})}</text></svg>
+    <div class="meta" style="padding:0 4px">Dots are single answers; the line is the average of your last 5.</div></div>`;
+}
+function heatmap() {
+  const D = S.prog.days || {}, t = todayS(), start = addD(t, -((pd(t).getDay() + 6) % 7) - 7 * 17), cells = [], lv = m => !m ? 0 : m < 15 ? 1 : m < 40 ? 2 : m < 90 ? 3 : 4;
+  for (let w = 0; w < 18; w++) for (let d = 0; d < 7; d++) { const k = addD(start, w * 7 + d); if (k > t) continue; const o = D[k] || {};
+    cells.push(`<i style="grid-column:${w + 1};grid-row:${d + 1};background:${lv(o.m) ? `color-mix(in srgb,var(--red) ${[0, 25, 50, 75, 100][lv(o.m)]}%,var(--panel))` : 'var(--sunk)'}" data-tip="${fmtD(k)}\n${o.m || 0} min · ${o.q || 0} questions · ${o.c || 0} cards"></i>`); }
+  return `<div class="card chart"><div class="heat">${cells.join('')}</div><div class="mleg meta"><span>Less</span>${[0, 1, 2, 3, 4].map(l => `<i style="background:${l ? `color-mix(in srgb,var(--red) ${[0, 25, 50, 75, 100][l]}%,var(--panel))` : 'var(--sunk)'}"></i>`).join('')}<span>More</span></div></div>`;
+}
+// shared hover tooltip for anything with data-tip
+(() => { const tip = document.createElement('div'); tip.id = 'tip'; tip.className = 'tip hide'; document.body.appendChild(tip);
+  document.addEventListener('pointerover', e => { const el = e.target.closest && e.target.closest('[data-tip]'); if (!el) return tip.classList.add('hide'); tip.textContent = el.dataset.tip; tip.classList.remove('hide');
+    const r = el.getBoundingClientRect(); tip.style.left = Math.min(innerWidth - tip.offsetWidth - 8, Math.max(8, r.left + r.width / 2 - tip.offsetWidth / 2)) + 'px'; tip.style.top = (r.top - tip.offsetHeight - 8 < 0 ? r.bottom + 8 : r.top - tip.offsetHeight - 8) + 'px'; });
+  document.addEventListener('scroll', () => tip.classList.add('hide'), true); })();
+
+// ---------- spaced section reviews ----------
+// reading 2+ pages of a section schedules a 3-question check after 1, 7, 30, then 90 days. prog.secs[b|n] = {p: [pages], t}, prog.rev[b|n] = {due, step, last, t, hist}
+const REV_DAYS = [1, 7, 30, 90];
+function trackSec(B, n) { const sec = secOf(B, n); if (!sec) return; const k = B.id + '|' + sec.n, SS = S.prog.secs = S.prog.secs || {}, R = S.prog.rev = S.prog.rev || {};
+  const o = SS[k] = SS[k] || {p: [], t: 0}; if (!o.p.includes(n)) o.p.push(n); o.t = Date.now();
+  const nx = B.toc.find(t => t.n > sec.n && t.lvl <= 3), len = nx ? nx.n - sec.n : 3;
+  if (!R[k] && o.p.length >= Math.min(2, len)) R[k] = {due: Date.now() + 864e5, step: 0, last: null, t: Date.now(), hist: []}; }
+function reviewsDue() { return Object.entries(S.prog.rev || {}).map(([k, r]) => { const [b, n] = k.split('|'), B = bookOf(b), sec = B && B.toc.find(t => t.n === +n); return B && sec ? {k, B, sec, r} : null; }).filter(x => x && x.r.due && x.r.due <= Date.now()).sort((a, b) => a.r.due - b.r.due); }
+function reviewList(B) {
+  const all = Object.entries(S.prog.rev || {}).filter(([k]) => k.startsWith(B.id + '|')).map(([k, r]) => ({k, r, sec: B.toc.find(t => t.n === +k.split('|')[1])})).filter(x => x.sec).sort((a, b) => (a.r.due || 9e15) - (b.r.due || 9e15));
+  return all.length ? `<div class="card lst rvl">${all.map(x => { const due = x.r.due <= Date.now(); return `<div data-rk="${x.k}"><div class="row"><b>${esc((x.sec.num ? x.sec.num + ' ' : '') + x.sec.title)}</b><span class="sp"></span>${x.r.last != null ? `<span class="meta">last ${Math.round(x.r.last * 100)}%</span>` : ''}${due ? '<span class="tag r">Due</span>' : `<span class="meta">next ${fmtD(ymd(new Date(x.r.due)), {day: 'numeric', month: 'short'})}</span>`}</div></div>`; }).join('')}</div>`
+    : '<div class="card" style="padding:28px;text-align:center"><b>No section reviews yet</b><div class="meta">Read a section and it comes back here as a 3-question check tomorrow, then after a week, a month and three months.</div></div>';
+}
+async function runReview(k) {
+  const [b, n] = k.split('|'), B = bookOf(b), sec = B.toc.find(t => t.n === +n), r = S.prog.rev[k], nx = B.toc.find(t => t.n > sec.n && t.lvl <= 3), end = Math.min(nx ? nx.n : sec.n + 4, sec.n + 12);
+  shell('prac'); title([['Practice', 'prac'], 'Review: ' + sec.title]); MATH = !!B.math;
+  $('#main').innerHTML = `<div class="prac"><div class="card fb"><span class="spin"></span> Writing your check on ${esc(sec.title)}…</div></div>`;
+  let qz; try { qz = await api('quiz', {book: b, title: (sec.num ? sec.num + ' ' : '') + sec.title, pages: Array.from({length: end - sec.n}, (_, i) => sec.n + i), avoid: (r.hist || []).flatMap(h => h.qs || []).join(' | ')}); } catch (e) { $('#main').innerHTML = `<div class="prac"><div class="card fb">Could not make the check: ${esc(e.message)}</div></div>`; return; }
+  const got = []; let shown = false;
+  const draw = () => { $('#main').innerHTML = `<div class="prac"><div class="row" style="margin-bottom:10px"><h2 style="margin:0;font-size:22px">${esc((sec.num ? sec.num + ' ' : '') + sec.title)}</h2><span class="sp"></span><span class="meta">Review ${(r.step || 0) + 1} of ${REV_DAYS.length}</span></div>
+    ${qz.qs.map((q, i) => `<div class="card qbig" style="margin-bottom:12px"><div>${mdx(q.q)}</div><textarea data-i="${i}" rows="3" placeholder="Answer from memory" style="margin-top:10px;font:15px/1.6 var(--f-ui)" ${shown ? 'readonly' : ''}></textarea>
+      ${shown ? `<div class="co worked" style="margin:12px 0 8px"><div class="ct">Model answer</div>${mdx(q.a)}</div><div class="row" style="font-family:var(--f-ui)">${[[1, 'Got it'], [.5, 'Partly'], [0, 'Missed it']].map(([v, l]) => `<button data-g="${i}" data-v="${v}" class="${got[i] === v ? 'pri' : ''}">${l}</button>`).join('')}</div>` : ''}</div>`).join('')}
+    <div class="row">${shown ? `<span class="meta">Mark yourself honestly; it sets when this comes back.</span><span class="sp"></span><button class="pri" id="rvDone" ${got.filter(x => x != null).length < qz.qs.length ? 'disabled' : ''}>Done</button>` : `<span class="sp"></span><button class="pri" id="rvShow">Show answers</button>`}</div></div>`;
+    document.querySelectorAll('#main textarea').forEach(ta => { ta.value = ans[ta.dataset.i] || ''; ta.oninput = () => ans[ta.dataset.i] = ta.value; });
+    if ($('#rvShow')) $('#rvShow').onclick = () => { shown = true; draw(); };
+    document.querySelectorAll('[data-g]').forEach(x => x.onclick = () => { got[+x.dataset.g] = +x.dataset.v; draw(); });
+    if ($('#rvDone')) $('#rvDone').onclick = () => { const sc = got.reduce((a, b) => a + b, 0) / got.length, st = sc >= .67 ? Math.min(REV_DAYS.length, (r.step || 0) + 1) : 0;
+      r.hist = [...(r.hist || []), {t: Date.now(), sc, qs: qz.qs.map(q => q.q.slice(0, 120))}].slice(-6); r.last = sc; r.step = st; r.t = Date.now(); r.due = st >= REV_DAYS.length ? 0 : Date.now() + REV_DAYS[st] * 864e5;
+      act('c', 3); saveProg(); const nxt = reviewsDue()[0];
+      $('#main').innerHTML = `<div class="prac"><div class="card flash"><div class="term">${Math.round(sc * 100)}%</div><p>${r.due ? 'Next check ' + fmtD(ymd(new Date(r.due))) : 'Section done: no more checks needed.'}</p><div class="row" style="justify-content:center">${nxt ? '<button class="pri" id="rvNext">Next review</button>' : ''}<button id="rvBack">Back</button></div></div></div>`;
+      if ($('#rvNext')) $('#rvNext').onclick = () => runReview(nxt.k); $('#rvBack').onclick = () => { S.pf = {...(S.pf || {}), view: 'rev'}; renderPrac(); }; };
+  }; const ans = {}; draw();
+}
+
+// ---------- reference: formula & data sheet, case-study bank ----------
+const REF = {};
+async function getRef(b) { if (!REF[b]) { try { REF[b] = await api('ref', {book: b}); } catch (e) { REF[b] = {}; } if (!REF[b] || Array.isArray(REF[b])) REF[b] = {}; } return REF[b]; }
+async function goBp(b, bp) { try { const r = await api('pagebp', {b, bp}); if (r.n) return openPage(b, r.n); } catch (e) {} const B = bookOf(b); openPage(b, B.start || 1); }
+async function renderRef(F) {
+  shell('ref'); setHash('#/ref'); const B = S.book; MATH = !!B.math; F = F || (S.rf = S.rf && S.rf.b === B.id ? S.rf : {b: B.id, q: '', c: ''});
+  $('#main').innerHTML = `<div class="prac" style="max-width:1100px"><div class="row"><h2 style="margin:0">${B.math ? 'Formula & data sheet' : 'Reference'}</h2>${bookBar(B.id)}</div><div id="rfb" style="margin-top:14px"><span class="spin"></span></div></div>`;
+  onBookBar(() => renderRef()); const R = await getRef(B.id); if (S.tab !== 'ref' || S.book !== B) return;
+  const has = (R.formulas || []).length || (R.cases || []).length;
+  if (!has) { $('#rfb').innerHTML = `<div class="card" style="padding:28px;text-align:center"><b>Nothing here for ${esc(B.subject)} yet</b></div>`; return; }
+  const draw = () => {
+    const q = F.q.toLowerCase(), hit = o => !q || JSON.stringify(o).toLowerCase().includes(q), ts = topicsOf(B), tname = n => { const t = ts.find(x => inTopic(n, x.num) || x.num === n) || B.toc.find(x => x.num === n); return t ? t.num + ' ' + t.title : n; };
+    let h = `<div class="filters"><input id="rfq" placeholder="${(R.cases || []).length ? 'Search cases, actors, places…' : 'Search formulas…'}" value="${esc(F.q)}" style="max-width:340px">`;
+    if ((R.cases || []).length) { const cs = {}; for (const c of R.cases) for (const k of c.concepts || []) cs[k] = (cs[k] || 0) + 1;
+      h += `<select id="rfc" style="width:auto"><option value="">All concepts</option>${Object.entries(cs).sort((a, b) => b[1] - a[1]).map(([k, n]) => `<option value="${esc(k)}" ${F.c === k ? 'selected' : ''}>${esc(k)} (${n})</option>`).join('')}</select>`; }
+    h += '</div>';
+    if ((R.formulas || []).length) { const fs = R.formulas.filter(f => hit(f) && !/^[ivxlc]+$/i.test(f.page || '')), groups = {}; for (const f of fs) (groups[f.topic] = groups[f.topic] || []).push(f);
+      h += Object.entries(groups).map(([tp, l]) => `<h3>${esc(tname(tp))}</h3><div class="card lst fsheet">${l.map(f => `<div><div class="fn">${esc(f.name)}<a href="#" class="meta" data-bp="${esc(f.page)}">p. ${esc(f.page)}</a></div><div class="fx">${(() => { try { return katex.renderToString(f.latex, {displayMode: true, throwOnError: false}); } catch (e) { return esc(f.latex); } })()}</div>${f.where ? `<div class="meta">${mdx(f.where, true)}</div>` : ''}${f.note ? `<div class="meta">${mdx(f.note, true)}</div>` : ''}</div>`).join('')}</div>`).join('') || '<p class="meta">No matches.</p>';
+      const cn = (R.constants || []).filter(hit); if (cn.length) h += `<h3>Constants and data</h3><div class="card"><table class="ctab"><tbody>${cn.map(c => `<tr><td>${esc(c.name)}</td><td>${mdx('$' + c.symbol + '$', true)}</td><td class="num">${mdx('$' + c.value + '$', true)}</td><td><a href="#" class="meta" data-bp="${esc(c.page)}">p. ${esc(c.page)}</a></td></tr>`).join('')}</tbody></table></div>`; }
+    if ((R.cases || []).length) { const cs = R.cases.filter(c => hit(c) && (!F.c || (c.concepts || []).includes(F.c)));
+      h += `<p class="meta">${cs.length} case studies</p><div class="grid cases">${cs.map((c, i) => `<div class="card case"><div class="row" style="gap:6px;align-items:baseline"><b>${esc(c.title)}</b><span class="sp"></span><a href="#" class="meta" data-bp="${esc(c.page)}">p. ${esc(c.page)}</a></div><div class="meta">${esc([c.region, c.years].filter(Boolean).join(' · '))}</div><p>${esc(c.summary)}</p><div>${(c.concepts || []).map(k => `<span class="tag">${esc(k)}</span>`).join('')}</div><button class="ghost" data-use="${R.cases.indexOf(c)}"><svg class="i"><use href="#i-spark"/></svg>Use in an essay</button></div>`).join('')}</div>`; }
+    $('#rfb').innerHTML = h;
+    $('#rfq').oninput = e => { F.q = e.target.value; const p = e.target.selectionStart; draw(); $('#rfq').focus(); $('#rfq').setSelectionRange(p, p); };
+    if ($('#rfc')) $('#rfc').onchange = e => { F.c = e.target.value; draw(); };
+    document.querySelectorAll('#rfb [data-bp]').forEach(a => a.onclick = e => { e.preventDefault(); goBp(B.id, a.dataset.bp); });
+    document.querySelectorAll('[data-use]').forEach(x => x.onclick = () => { const c = R.cases[+x.dataset.use]; openChat({title: 'Using: ' + c.title, book: B.id, pages: [], intro: ''});
+      sendChat(`Help me use this case study in a Paper 2 essay: ${c.title} (${c.years || ''}, ${c.region || ''}): ${c.summary} (textbook p. ${c.page}). Which kinds of questions and concepts does it fit, what's the strongest analytical point it supports, what's a counter-argument it raises, and give me a model paragraph using it.`); });
+  }; draw();
+}
+
 // ---------- library shelf ----------
 const shelfOrder = () => [...S.books].sort((a, b) => { const pa = S.prog.pins.indexOf(a.id), pb = S.prog.pins.indexOf(b.id); return (pa < 0 ? 99 : pa) - (pb < 0 ? 99 : pb) || ((S.prog.lastBy[b.id] || {}).t || 0) - ((S.prog.lastBy[a.id] || {}).t || 0); });
 function openBook(id) { const B = bookOf(id), lb = S.prog.lastBy[id]; openPage(id, lb ? lb.n : (B.start || 1)); }
@@ -1077,6 +1227,7 @@ function route() {
   if (a === 'lib' && b && bookOf(b)) return openPage(b, +c || 1);
   if (a === 'lib') return go('lib');
   if (a === 'q' && b) return openQ(b);
+  if (a === 'ref') return go('ref');
   if (a === 'paper' && b) return loadPapers().then(() => openPaper(b));
   if (a === 'search' && b) { $('#q').value = b; return search(b); }
   if (TABN[a] && a !== 'search') return go(a);

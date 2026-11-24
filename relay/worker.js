@@ -451,6 +451,15 @@ async function ibRoute(req, env, CORS, u) {
     if (!r.ok) return J({err: (j.error && j.error.message) || 'HTTP ' + r.status}, 502);
     return J({text: (j.content || []).filter(c => c.type === 'text').map(c => c.text).join(''), stop: j.stop_reason, usage: j.usage});
   }
+  if (u.pathname === '/ib/gen') { // admin: one structured-output call over text (build-time extraction of formulas, case studies)
+    if (!env.IB_ADMIN || req.headers.get('x-ib-admin') !== env.IB_ADMIN) return J({err: 'no'}, 403);
+    const o = await req.json();
+    const r = await fetch('https://api.anthropic.com/v1/messages', {method: 'POST', headers: {'content-type': 'application/json', 'x-api-key': await ibKey(env, db), 'anthropic-version': '2023-06-01'},
+      body: JSON.stringify({model: o.model || 'claude-haiku-5-5', max_tokens: 16000, output_config: {effort: 'low', format: {type: 'json_schema', schema: o.schema}}, system: [{type: 'text', text: o.sys, cache_control: {type: 'ephemeral'}}], messages: [{role: 'user', content: o.text}]})});
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) return J({err: (j.error && j.error.message) || 'HTTP ' + r.status}, 502);
+    return J({text: (j.content || []).filter(c => c.type === 'text').map(c => c.text).join(''), stop: j.stop_reason, usage: j.usage});
+  }
   if (u.pathname === '/ib/put') { // uploads from the build script: admin key only
     if (!env.IB_ADMIN || req.headers.get('x-ib-admin') !== env.IB_ADMIN) return J({err: 'no'}, 403);
     const r = await ib.fetch('https://i/put' + u.search, {method: 'POST', body: req.body});
@@ -478,9 +487,20 @@ async function ibRoute(req, env, CORS, u) {
     const r = await db('kvget', {k: 'plan:' + uk}); return new Response(r.body, {headers: H});
   }
   if (op === 'agent') return planAgent(b, env, db, J, uk);
+  if (op === 'ref') { const r = await db('kvget', {k: 'ref:' + String(b.book || '').replace(/[^a-z0-9]/g, '')}); return new Response(r.body, {headers: H}); } // formula sheet / case bank for a book
+  if (op === 'quiz') { // spaced section review: 3 short questions + model answers from the section's pages (Haiku, cheap)
+    const KEY = await ibKey(env, db); const cap = +(env.IB_CAP || 300), used = await (await db('spend', {cap})).json(); if (used.over) return J({err: 'daily Claude limit reached'}, 429);
+    const ns = (b.pages || []).map(Number).filter(n => n > 0).slice(0, 12), pg = await (await db('pages', {b: b.book, ns})).json();
+    const r = await fetch('https://api.anthropic.com/v1/messages', {method: 'POST', headers: {'content-type': 'application/json', 'x-api-key': KEY, 'anthropic-version': '2023-06-01'},
+      body: JSON.stringify({model: 'claude-haiku-5-5', max_tokens: 3000, output_config: {effort: 'low', format: {type: 'json_schema', schema: {type: 'object', additionalProperties: false, required: ['qs'], properties: {qs: {type: 'array', items: {type: 'object', additionalProperties: false, required: ['q', 'a'], properties: {q: {type: 'string'}, a: {type: 'string'}}}}}}}},
+        system: 'You write quick retrieval-practice checks for an IB student from their textbook section. Write exactly 3 short questions that test understanding of the most important ideas (not trivia, not page layout): one recall, one explain-why, one apply. Each model answer is 1-3 sentences, the way an examiner would accept it. For maths/science use LaTeX in $...$ and mhchem \\ce{}. Avoid repeating these earlier questions: ' + String(b.avoid || '').slice(0, 1500),
+        messages: [{role: 'user', content: `Section: ${String(b.title || '').slice(0, 200)}\n\n` + pg.pages.map(p => `<page ${p.bp}>\n${p.md}\n</page>`).join('\n')}]})});
+    const j = await r.json().catch(() => ({})); if (!r.ok) return J({err: (j.error && j.error.message) || 'HTTP ' + r.status}, 502);
+    try { return J(JSON.parse(j.content.find(c => c.type === 'text').text)); } catch (e) { return J({err: 'bad quiz'}, 502); }
+  }
   if (op === 'papers') { const r = await db('kvget', {k: 'papers'}); return new Response(r.body, {headers: H}); } // past papers (uploaded by the owner as kv 'papers')
   if (op === 'sync') { const r = await db('sync', {...b, k: 'prog:' + uk}); return new Response(r.body, {status: r.status, headers: H}); }
-  if (['books', 'page', 'pages', 'search', 'qs'].includes(op)) { const r = await db(op, b); return new Response(r.body, {status: r.status, headers: H}); }
+  if (['books', 'page', 'pagebp', 'pages', 'search', 'qs'].includes(op)) { const r = await db(op, b); return new Response(r.body, {status: r.status, headers: H}); }
   if (op !== 'ask') return J({err: 'not found'}, 404);
   const KEY = await ibKey(env, db);
   if (!KEY) return J({err: 'no API key on the relay'}, 503);
