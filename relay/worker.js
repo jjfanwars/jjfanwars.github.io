@@ -440,6 +440,54 @@ async function ibKey(env, db) {
   const lg = await (await env.LEGAL.get(env.LEGAL.idFromName('main')).fetch('https://l/', {method: 'POST', body: '{"op":"get"}'})).json();
   return env.ANTHROPIC_KEY || lg.key;
 }
+// ---------- IB friends: requests, public study summaries, challenges, nudges, activity feed ----------
+// kv fr:<key> = {f: {key: since}, i: {key: t} (incoming requests), o: {key: t} (outgoing)}; both sides change in one DO call (op 'fr').
+// kv pub:<key> = summary the DO computes from the stored prog on every sync (ibPub); chal:<id> + index chals:<key> (cap 50); feed:<key> (cap 50).
+const FR_OPS = ['friendreq', 'friendans', 'frienddel', 'friends', 'nudge', 'chalnew', 'chals', 'chal', 'chalsub'];
+const FR_DO = ['fr', 'frview', 'chalnew', 'chalsub', 'chals', 'chal', 'frwipe'];
+const NUDGES = ['Study with me?', 'Good luck on your exam!', 'High five!', 'Keep your streak going!'];
+// public study summary of one account, computed from its stored prog (never from numbers the client sends about itself)
+function ibPub(p, name) {
+  p = p && typeof p === 'object' ? p : {}; const ob = x => x && typeof x === 'object' ? x : {};
+  const tz = Math.max(-840, Math.min(840, +p.tz || 0)), now = Date.now(), day = (s, n) => new Date(Date.parse(s + 'T00:00:00Z') + n * 864e5).toISOString().slice(0, 10);
+  const today = new Date(now + tz * 6e4).toISOString().slice(0, 10), D = ob(p.days), on = o => !!o && (o.m >= 10 || o.q >= 1 || o.c >= 10); // same rule as the app's activeDay
+  let d = today, sk = 0; if (!on(D[d])) d = day(d, -1); const sd = on(D[d]) ? d : ''; while (on(D[d]) && sk < 3000) { sk++; d = day(d, -1); }
+  const days = {}; for (let i = 0; i < 14; i++) { const k = day(today, -i), o = D[k]; if (o && (o.m || o.q || o.c)) days[k] = [Math.round(+o.m || 0), +o.q | 0, +o.c | 0]; }
+  const at = []; for (const L of Object.values(ob(p.att))) if (Array.isArray(L)) for (const a of L) if (a && +a.max > 0 && isFinite(+a.score)) at.push([+a.t || 0, Math.max(0, Math.min(1, a.score / a.max))]);
+  at.sort((x, y) => x[0] - y[0]); const l = at.slice(-20);
+  let mk = null; for (const L of Object.values(ob(p.pp))) if (Array.isArray(L)) for (const r of L) if (r && +r.max > 0 && (!mk || +r.t > mk.t)) mk = {t: +r.t || 0, g: typeof r.grade === 'number' ? r.grade : r.grade ? String(r.grade).slice(0, 3) : null, pct: Math.round(r.score / r.max * 100), book: String(r.book || '').slice(0, 16), mock: r.mock ? 1 : 0};
+  const subj = Object.entries(ob(p.lastBy)).filter(([, v]) => v && +v.t > now - 7 * 864e5).sort((a, b) => b[1].t - a[1].t).slice(0, 4).map(([k]) => String(k).slice(0, 16));
+  return {name, hide: p.fr && p.fr.hide ? 1 : 0, today, sk, sd, days, avg: l.length ? Math.round(l.reduce((s, x) => s + x[1], 0) / l.length * 100) : null, nq: at.length, mk, subj, t: now};
+}
+async function ibFriends(op, b, uk, db, J, users, ukey) {
+  const call = async (o, x) => { const r = await (await db(o, x)).json(); return J(r, r.err ? r.code || 400 : 200); };
+  if (op === 'friends') return call('frview', {k: uk});
+  if (op === 'chals') return call('chals', {k: uk});
+  const id = String(b.id || '').replace(/[^\w]/g, '').slice(0, 16);
+  if (op === 'chal') return call('chal', {k: uk, id});
+  if (op === 'chalsub') return call('chalsub', {k: uk, id, score: +b.score || 0, secs: Math.max(0, Math.min(36000, Math.round(+b.secs || 0))), ans: (Array.isArray(b.answers) ? b.answers : []).slice(0, 20).map(x => /^[A-E]$/.test(x) ? x : '-').join('')});
+  if (op === 'chalnew') {
+    const to = [...new Set((Array.isArray(b.to) ? b.to : [b.to]).map(ukey).filter(Boolean))].slice(0, 8);
+    const qids = [...new Set((Array.isArray(b.qids) ? b.qids : []).map(String).filter(x => /^[\w:.|-]{1,80}$/.test(x)))].slice(0, 20);
+    if (qids.length < 3) return J({err: 'Pick at least 3 questions'}, 400);
+    return call('chalnew', {k: uk, to, qids, title: String(b.title || '').trim().slice(0, 80) || 'Challenge', book: String(b.book || '').replace(/[^\w-]/g, '').slice(0, 16), secs: Math.max(0, Math.min(3600, Math.round(+b.secs || 0)))});
+  }
+  const all = await users(), nm = String(b.to || b.from || b.who || '').slice(0, 30), other = ukey(nm);
+  if (!other || !all[other]) return J({err: `No one called ${nm || '?'} has an account yet`}, 404);
+  if (other === uk) return J({err: 'That\'s you!'}, 400);
+  if (op === 'friendreq') return call('fr', {a: uk, b: other, act: 'req'});
+  if (op === 'friendans') return call('fr', {a: uk, b: other, act: 'ans', ok: !!b.ok});
+  if (op === 'frienddel') return call('fr', {a: uk, b: other, act: 'del'});
+  if (op === 'nudge') {
+    const n = +b.n | 0; if (!NUDGES[n]) return J({err: 'bad nudge'}, 400);
+    const F = JSON.parse(await (await db('kvget', {k: 'fr:' + uk})).text() || '{}') || {}; if (!(F.f || {})[other]) return J({err: 'You can only nudge friends'}, 400);
+    const inb = JSON.parse(await (await db('kvget', {k: 'inbox:' + other})).text() || '[]') || [];
+    if (Array.isArray(inb) && inb.some(x => x.kind === 'nudge' && x.fk === uk && Date.now() - x.t < 12e4)) return J({err: `You just nudged ${all[other].name}. Give them a minute.`}, 429);
+    await db('push', {k: 'inbox:' + other, cap: 80, v: {id: crypto.randomUUID().slice(0, 12), from: (all[uk] || {}).name || uk, fk: uk, kind: 'nudge', title: NUDGES[n], note: String(b.note || '').trim().slice(0, 200), data: {n}, t: Date.now()}});
+    return J({ok: true, to: all[other].name});
+  }
+  return J({err: 'not found'}, 404);
+}
 async function ibRoute(req, env, CORS, u) {
   const H = {...CORS, 'content-type': 'application/json', 'cache-control': 'no-store'};
   const J = (o, s = 200) => new Response(JSON.stringify(o), {status: s, headers: H});
@@ -517,7 +565,7 @@ async function ibRoute(req, env, CORS, u) {
     const idx = JSON.parse(await (await db('kvget', {k: 'chats:' + k})).text() || '{}') || {};
     for (const o of Object.keys(Array.isArray(idx) ? {} : idx)) { await db('kvset', {k: 'chat:' + [k, o].sort().join('|'), v: '[]'});
       const oi = JSON.parse(await (await db('kvget', {k: 'chats:' + o})).text() || '{}'); if (oi && !Array.isArray(oi)) { delete oi[k]; await db('kvset', {k: 'chats:' + o, v: JSON.stringify(oi)}); } }
-    await ib.fetch('https://i/notedel?all=1&u=' + k, {method: 'POST'});
+    await ib.fetch('https://i/notedel?all=1&u=' + k, {method: 'POST'}); await db('frwipe', {k}); // friends, summary, challenges, feed
     for (const p of ['plan:', 'prog:', 'inbox:', 'chats:']) await db('kvset', {k: p + k, v: p === 'chats:' || p === 'prog:' ? '{}' : '[]'});
     delete all[k]; await db('kvset', {k: 'users', v: JSON.stringify(all)}); return J({ok: true, left: Object.keys(all).length});
   }
@@ -569,6 +617,7 @@ async function ibRoute(req, env, CORS, u) {
   }
   // sharing between accounts by first name: decks, notes/ideas, mind maps, questions, pages land in the friend's inbox
   if (['send', 'inbox', 'inboxdel', 'chatsend', 'chats', 'chat'].includes(op) && !uk) return J({err: 'sign in first'}, 401);
+  if (FR_OPS.includes(op)) return uk ? ibFriends(op, b, uk, db, J, users, ukey) : J({err: 'sign in first'}, 401); // friends, challenges, nudges
   // chat between friends: thread 'chat:a|b' (sorted keys), each person's thread list 'chats:<key>' = {otherKey: {name, t, last, me}}
   if (op === 'chatsend') {
     const all = await users(), to = ukey(b.to), x = String(b.text || '').trim().slice(0, 2000); if (!to || !all[to]) return J({err: `No one called ${String(b.to || '').slice(0, 30)} has an account yet`}, 404);
@@ -616,7 +665,7 @@ async function ibRoute(req, env, CORS, u) {
   if (op === 'figs') { const r = await (await db('kvget', {k: 'figs:' + String(b.book || '').replace(/[^\w-]/g, '')})).text(); return new Response(r && r !== '[]' ? r : '{}', {headers: H}); } // which figure lines have a cropped picture (ib/figs.py)
   if (op === 'papers') { const r = await db('kvget', {k: 'papers'}); return new Response(r.body, {headers: H}); } // past papers (uploaded by the owner as kv 'papers')
   if (op === 'sync') { if (b.data) console.log('ib sync', uk, raw.length + ' bytes' + (raw.length > 1.5e6 ? ' (near the 2 MB cap)' : ''));
-    const r = await db('sync', {...b, k: 'prog:' + uk}); return new Response(r.body, {status: r.status, headers: H}); }
+    const r = await db('sync', {...b, k: 'prog:' + uk, pu: uk}); return new Response(r.body, {status: r.status, headers: H}); }
   if (['books', 'page', 'pagebp', 'pages', 'search', 'qs'].includes(op)) { const r = await db(op, b); return new Response(r.body, {status: r.status, headers: H}); }
   if (op !== 'ask') return J({err: 'not found'}, 404);
   const KEY = await ibKey(env, db);
@@ -670,6 +719,85 @@ export class IB {
       CREATE TABLE IF NOT EXISTS nchunk (u TEXT, id TEXT, i INTEGER, data BLOB, PRIMARY KEY (u, id, i));`);
   }
   kv(k, v) { if (v === undefined) { const r = this.sql.exec('SELECT v FROM kv WHERE k = ?', k).toArray()[0]; return r ? r.v : null; } this.sql.exec('INSERT OR REPLACE INTO kv VALUES (?, ?)', k, v); }
+  // ---- friends (see ibFriends): every op runs synchronously inside the DO, so both people's rows change together ----
+  jget(k, d) { try { const s = this.kv(k); return s == null ? d : JSON.parse(s) ?? d; } catch (e) { return d; } }
+  jset(k, v) { this.kv(k, JSON.stringify(v)); }
+  frGet(k) { const v = this.jget('fr:' + k, {}); return Array.isArray(v) ? {f: {}, i: {}, o: {}} : {f: v.f || {}, i: v.i || {}, o: v.o || {}}; }
+  inPush(k, it) { const L = this.jget('inbox:' + k, []), M = Array.isArray(L) ? L : []; M.push(it); while (M.length > 80) M.shift(); this.jset('inbox:' + k, M); }
+  inDrop(k, f) { const L = this.jget('inbox:' + k, []); if (!Array.isArray(L)) return; const M = L.filter(x => !f(x)); if (M.length !== L.length) this.jset('inbox:' + k, M); }
+  feedPush(keys, e) { const ev = {id: crypto.randomUUID().slice(0, 10), t: Date.now(), ...e}; for (const k of new Set(keys)) { const L = this.jget('feed:' + k, []), M = Array.isArray(L) ? L : []; M.push(ev); this.jset('feed:' + k, M.slice(-50)); } }
+  pubSet(k, p) { try { // summary for friends + feed milestones (streak 3/7/14/30..., a new mock or paper result)
+    const U = this.jget('users', {}), old = this.jget('pub:' + k, null), P = ibPub(p, (U[k] || {}).name || k); this.jset('pub:' + k, P);
+    if (P.hide) return; const ev = [], hit = [3, 7, 14, 30, 50, 100, 200, 365].filter(M => (old && old.sk || 0) < M && P.sk >= M).pop();
+    if (hit) ev.push({k: 'streak', n: hit});
+    if (P.mk && P.mk.t > Date.now() - 2 * 864e5 && (!old || !old.mk || P.mk.t > old.mk.t)) ev.push({k: 'mock', g: P.mk.g, pct: P.mk.pct, book: P.mk.book, mock: P.mk.mock});
+    if (ev.length) { const to = [k, ...Object.keys(this.frGet(k).f)]; for (const e of ev) this.feedPush(to, {...e, w: k, name: P.name}); }
+  } catch (e) {} }
+  chalOut(c, k) { const U = this.jget('users', {}), nm = x => (U[x] || {}).name || x, done = !!c.res[k];
+    return {id: c.id, title: c.title, book: c.book, qids: c.qids, secs: c.secs, t: c.t, by: c.by, byName: nm(c.by), n: c.qids.length, done,
+      ppl: [c.by, ...c.to].map(x => { const r = c.res[x]; return {key: x, name: nm(x), done: !!r, ...(r ? {sc: r.sc, secs: r.secs, t: r.t, ...(done || x === k ? {ans: r.ans} : {})} : {})}; })}; }
+  frOp(o) {
+    const t = Date.now(), U = this.jget('users', {}), nm = x => (U[x] || {}).name || x;
+    if (o.op === 'fr') { // act req | ans (ok) | del, from a's side
+      const A = this.frGet(o.a), B = this.frGet(o.b), was = !!A.f[o.b], dropReq = (k, f) => this.inDrop(k, x => x.kind === 'freq' && x.fk === f); let r;
+      if (o.act === 'req') {
+        if (A.f[o.b]) r = 'friends';
+        else if (A.i[o.b]) { delete A.i[o.b]; delete B.o[o.a]; A.f[o.b] = B.f[o.a] = t; dropReq(o.a, o.b); r = 'accepted'; }
+        else if (A.o[o.b]) r = 'sent';
+        else { if (Object.keys(A.f).length >= 100) return {err: 'You have 100 friends already', code: 400};
+          if (Object.keys(A.o).length >= 30 || Object.keys(B.i).length >= 50) return {err: 'Too many friend requests waiting', code: 429};
+          A.o[o.b] = B.i[o.a] = t; r = 'sent'; this.inPush(o.b, {id: 'f' + crypto.randomUUID().slice(0, 11), from: nm(o.a), fk: o.a, kind: 'freq', title: 'Wants to be study friends', note: '', data: null, t}); }
+      } else if (o.act === 'ans') { if (!A.i[o.b]) return {err: 'No friend request from ' + nm(o.b), code: 404};
+        delete A.i[o.b]; delete B.o[o.a]; dropReq(o.a, o.b); if (o.ok) { A.f[o.b] = B.f[o.a] = t; r = 'accepted'; } else r = 'declined'; }
+      else { for (const [X, y] of [[A, o.b], [B, o.a]]) { delete X.f[y]; delete X.i[y]; delete X.o[y]; } dropReq(o.a, o.b); dropReq(o.b, o.a); r = 'removed'; }
+      this.jset('fr:' + o.a, A); this.jset('fr:' + o.b, B);
+      if (r === 'accepted' && !was) this.feedPush([o.a, o.b], {k: 'friend', w: o.a, name: nm(o.a), w2: o.b, name2: nm(o.b)});
+      return {ok: true, r, name: nm(o.b), key: o.b};
+    }
+    if (o.op === 'frview') { // everything the Friends tab needs in one call
+      const k = o.k, F = this.frGet(k), fk = Object.keys(F.f), seen = {};
+      if (fk.length) for (const r of this.sql.exec(`SELECT u, last FROM who WHERE u IN (${fk.map(() => '?').join(',')})`, ...fk.map(x => 'u:' + x)).toArray()) seen[r.u.slice(2)] = r.last;
+      const me = this.jget('pub:' + k, null), CH = this.jget('chats:' + k, {}), L = (X) => Object.entries(X).map(([x, tt]) => ({key: x, name: nm(x), t: tt})).sort((a, b) => b.t - a.t);
+      const friends = fk.map(x => { const P = this.jget('pub:' + x, null), base = {key: x, name: nm(x), since: F.f[x]};
+        return !P ? {...base, none: 1} : P.hide ? {...base, hide: 1} : {...P, ...base, seen: Math.max(seen[x] || 0, P.t || 0), on: t - (seen[x] || 0) < 18e4 ? 1 : 0}; });
+      const sugg = Object.entries(CH && !Array.isArray(CH) ? CH : {}).filter(([x]) => x !== k && U[x] && !F.f[x] && !F.i[x] && !F.o[x]).sort((a, b) => b[1].t - a[1].t).slice(0, 6).map(([x]) => ({key: x, name: nm(x)}));
+      const fd = this.jget('feed:' + k, []), feed = (Array.isArray(fd) ? fd : []).filter(e => e.t > t - 7 * 864e5 && (e.w === k || e.w2 === k || F.f[e.w])).reverse().slice(0, 40);
+      return {me: me ? {...me, name: nm(k)} : {name: nm(k), none: 1}, friends, in: L(F.i), out: L(F.o), sugg, feed, now: t};
+    }
+    if (o.op === 'chalnew') {
+      const F = this.frGet(o.k), to = o.to.filter(x => x !== o.k); if (!to.length) return {err: 'Pick at least one friend', code: 400};
+      const bad = to.filter(x => !F.f[x]); if (bad.length) return {err: bad.map(nm).join(', ') + (bad.length > 1 ? ' are' : ' is') + ' not on your friends list', code: 400};
+      const id = crypto.randomUUID().replace(/-/g, '').slice(0, 12), c = {id, by: o.k, t, title: o.title, book: o.book, qids: o.qids, secs: o.secs, to, res: {}};
+      this.jset('chal:' + id, c);
+      for (const x of [o.k, ...to]) { const L = this.jget('chals:' + x, []); this.jset('chals:' + x, [...(Array.isArray(L) ? L : []), id].slice(-50)); }
+      for (const x of to) this.inPush(x, {id: 'c' + id, from: nm(o.k), fk: o.k, kind: 'chal', title: o.title, note: '', data: {id, n: o.qids.length, secs: o.secs, book: o.book}, t});
+      return {ok: true, id};
+    }
+    const c = o.id ? this.jget('chal:' + o.id, null) : null, isIn = c && (c.by === o.k || c.to.includes(o.k));
+    if (o.op === 'chal') return isIn ? this.chalOut(c, o.k) : {err: 'That challenge is gone', code: 404};
+    if (o.op === 'chalsub') {
+      if (!isIn) return {err: 'That challenge is gone', code: 404};
+      if (c.res[o.k]) return {ok: true, again: 1, chal: this.chalOut(c, o.k)}; // results count once
+      const n = c.qids.length, sc = Math.max(0, Math.min(n, Math.round(+o.score || 0)));
+      c.res[o.k] = {sc, secs: o.secs, ans: String(o.ans || '').slice(0, n), t}; this.jset('chal:' + c.id, c); this.inDrop(o.k, x => x.id === 'c' + c.id);
+      const P = this.jget('pub:' + o.k, null); if (!P || !P.hide) this.feedPush([o.k, ...Object.keys(this.frGet(o.k).f)], {k: 'chal', w: o.k, name: nm(o.k), title: c.title, sc, n, cid: c.id});
+      return {ok: true, chal: this.chalOut(c, o.k)};
+    }
+    if (o.op === 'chals') { const ids = this.jget('chals:' + o.k, []), out = [];
+      for (const id of (Array.isArray(ids) ? ids : []).slice().reverse()) { const x = this.jget('chal:' + id, null); if (!x) continue;
+        const ppl = [x.by, ...x.to], fin = ppl.filter(p => x.res[p]), lead = fin.slice().sort((a, b) => x.res[b].sc - x.res[a].sc || x.res[a].secs - x.res[b].secs)[0];
+        out.push({id, title: x.title, book: x.book, n: x.qids.length, secs: x.secs, t: x.t, by: x.by, byName: nm(x.by), mine: x.by === o.k ? 1 : 0, done: x.res[o.k] ? 1 : 0, my: x.res[o.k] ? x.res[o.k].sc : null,
+          ppl: ppl.map(nm), fin: fin.length, lead: lead ? nm(lead) : '', leadSc: lead ? x.res[lead].sc : null}); }
+      return {chals: out}; }
+    if (o.op === 'frwipe') { // account deleted: drop it from everyone's lists, its own rows and the challenges it made
+      const k = o.k, F = this.frGet(k);
+      for (const x of new Set([...Object.keys(F.f), ...Object.keys(F.i), ...Object.keys(F.o)])) { const X = this.frGet(x); delete X.f[k]; delete X.i[k]; delete X.o[k]; this.jset('fr:' + x, X); this.inDrop(x, y => y.fk === k && (y.kind === 'freq' || y.kind === 'chal')); }
+      const ids = this.jget('chals:' + k, []); for (const id of Array.isArray(ids) ? ids : []) { const x = this.jget('chal:' + id, null); if (x && x.by === k) this.sql.exec('DELETE FROM kv WHERE k = ?', 'chal:' + id); }
+      for (const p of ['fr:', 'pub:', 'feed:', 'chals:']) this.sql.exec('DELETE FROM kv WHERE k = ?', p + k);
+      return {ok: true};
+    }
+    return {err: 'bad op', code: 400};
+  }
   async fetch(req) {
     const u = new URL(req.url), J = o => Response.json(o);
     if (u.pathname === '/put') { // ?t=page&b=&n=&bp= (body md) | ?t=img&b=&n= (body jpeg) | ?t=kv&k= (body json)
@@ -731,7 +859,7 @@ export class IB {
         });
         return J({hits});
       }
-      case 'sync': { if (o.data) { const s = JSON.stringify(o.data); if (s.length > 2e6) return J({err: 'too big'}); this.kv(o.k || 'prog', s); return J({ok: true}); } return new Response(this.kv(o.k || 'prog') || '{}'); }
+      case 'sync': { if (o.data) { const s = JSON.stringify(o.data); if (s.length > 2e6) return J({err: 'too big'}); this.kv(o.k || 'prog', s); if (o.pu) this.pubSet(o.pu, o.data); return J({ok: true}); } return new Response(this.kv(o.k || 'prog') || '{}'); }
       case 'beat': { const d = new Date().toISOString().slice(0, 10), t = Date.now();
         this.sql.exec('INSERT INTO use (d, u, mins) VALUES (?, ?, 1) ON CONFLICT (d, u) DO UPDATE SET mins = mins + 1', d, o.u);
         this.sql.exec('INSERT INTO who (u, name, first, last, dev) VALUES (?, ?, ?, ?, ?) ON CONFLICT (u) DO UPDATE SET last = excluded.last, dev = excluded.dev, name = COALESCE(NULLIF(excluded.name, \'\'), name)', o.u, o.name || '', t, t, o.dev || '');
@@ -747,6 +875,7 @@ export class IB {
         if (o.who && o.who !== 'build' && o.max > 0) { const c = all('SELECT cost FROM use WHERE d = ? AND u = ?', d, String(o.who))[0]; if (c && c.cost >= o.max) return J({over: true, mine: true, cost: c.cost}); }
         if (n >= o.cap) return J({over: true, n}); this.sql.exec('INSERT OR REPLACE INTO spend VALUES (?, ?)', d, n + 1); return J({n: n + 1}); }
     }
+    if (FR_DO.includes(o.op)) return J(this.frOp(o));
     return Response.json({err: 'bad op', op: o.op}, {status: 400});
   }
 }
