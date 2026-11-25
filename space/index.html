@@ -69,6 +69,19 @@ button.on { border-color:var(--acc); background:rgba(255,207,74,.15); }
 #mapInfo b { color:var(--ink); font-weight:600; } #mapInfo .h { color:var(--acc); font-size:15px; font-weight:600; margin-bottom:2px; } #mapInfo .good { color:#5fd38a; }
 #mTgt { position:fixed; left:0; top:0; z-index:4; pointer-events:none; margin:-9px 0 0 -9px; padding-left:24px; color:#ff7ad9; font-size:13px; font-weight:600; white-space:nowrap; text-shadow:0 1px 3px #000; line-height:18px; }
 #mTgt::before { content:''; position:absolute; left:2px; top:2px; width:12px; height:12px; border:2px solid #ff7ad9; transform:rotate(45deg); }
+#mNd { border-color:#c9b4ff; } #mNd::after { background:#c9b4ff; } #mNd::before { content:''; position:absolute; inset:-6px; border:2px solid rgba(201,180,255,.6); transform:rotate(45deg); border-radius:3px; }
+#fN { font-size:13px; font-weight:600; color:#c9b4ff; } #fN.now { color:#ff7ad9; animation:blink .7s steps(2) infinite; }
+#warpW { position:fixed; left:50%; top:10px; transform:translateX(-50%); z-index:6; display:flex; align-items:center; gap:4px; padding:4px 8px; border-radius:14px; background:rgba(6,12,22,.55); border:1px solid var(--line); font-size:13px; font-variant-numeric:tabular-nums; }
+#warpW button { padding:1px 7px; font-size:12px; border-radius:7px; } #warpW span { min-width:64px; text-align:center; font-weight:600; color:var(--acc); }
+#warpW i { width:7px; height:12px; border-radius:2px; background:rgba(255,255,255,.18); cursor:pointer; } #warpW i.on { background:var(--acc); }
+#navQ { position:absolute; left:14px; bottom:44px; display:flex; flex-wrap:wrap; gap:5px; align-items:center; pointer-events:auto; max-width:min(560px,calc(100% - 28px)); }
+#navQ span { color:var(--dim); font-size:11px; text-transform:uppercase; letter-spacing:.08em; margin:0 2px 0 6px; } #navQ button { padding:4px 9px; font-size:12.5px; background:rgba(6,12,22,.7); }
+#nodeP { position:absolute; right:14px; top:120px; width:270px; padding:10px 12px; border-radius:14px; background:rgba(10,8,24,.78); border:1px solid rgba(201,180,255,.35); pointer-events:auto; font-size:13px; color:var(--dim); backdrop-filter:blur(6px); }
+#nodeP .nh { display:flex; align-items:center; margin-bottom:6px; } #nodeP .nh b { flex:1; color:#c9b4ff; font-size:15px; } #nodeP .nh button { padding:1px 8px; }
+#nodeP .nr { display:flex; align-items:center; gap:6px; margin:3px 0; } #nodeP .nr span { width:76px; } #nodeP .nr b { flex:1; text-align:center; color:var(--ink); font-variant-numeric:tabular-nums; }
+#nodeP .nr button { width:34px; padding:3px 0; font-size:15px; } #nodeP .pro span { color:#c8f25a; } #nodeP .nrm span { color:#d38aff; } #nodeP .rad span { color:#5ad1ff; }
+#nodeP .ns { margin:6px 0; font-size:12px; } #nodeP .ns button { padding:1px 7px; font-size:12px; } #nodeP #nInfo { line-height:1.5; margin:4px 0 8px; } #nodeP #nInfo b { color:var(--ink); }
+#nodeP .nb { display:flex; gap:5px; } #nodeP .nb button { flex:1; padding:5px 4px; font-size:12.5px; } #nodeP #nAuto.on { border-color:#c9b4ff; background:rgba(201,180,255,.18); }
 #act { position:fixed; left:50%; top:58%; transform:translateX(-50%); z-index:5; pointer-events:none; padding:5px 14px; border-radius:14px; background:rgba(0,0,0,.45); color:var(--acc); font-size:15px; font-weight:600; }
 body.fly #hint { bottom:200px; } body.fly #act { top:auto; bottom:180px; }
 #rTag { position:fixed; z-index:4; pointer-events:none; transform:translate(-50%,-100%); padding:3px 10px; border-radius:12px; background:rgba(0,0,0,.45); color:var(--acc); font-size:14px; font-weight:600; white-space:nowrap; }
@@ -135,23 +148,31 @@ button:focus-visible { outline:2px solid var(--acc); outline-offset:2px; }
 <div id="cross" class="hidden"></div>
 <div id="hud" class="hidden"><div class="big" id="hLoc"></div><div class="s" id="hInfo"></div></div>
 <div id="hint" class="hidden"></div>
-<div id="mPro" class="mk hidden"></div><div id="mGd" class="mk hidden"></div><div id="mRet" class="mk hidden"></div><div id="rTag" class="hidden"></div><div id="act" class="hidden"></div>
+<div id="mPro" class="mk hidden"></div><div id="mGd" class="mk hidden"></div><div id="mNd" class="mk hidden"></div><div id="warpW" class="hidden"></div><div id="mRet" class="mk hidden"></div><div id="rTag" class="hidden"></div><div id="act" class="hidden"></div>
 <div id="fl" class="hidden">
   <div class="att" title="Attitude: where the nose points. Middle = straight up, white ring = horizon, outside = down"><canvas id="fAtt"></canvas><div id="fAttT"></div></div>
   <div class="bar" title="Throttle"><i id="fThr"></i></div>
-  <div class="mid"><div id="fStage"></div><div id="fAlt"></div><div id="fSpd"></div><div class="orb"><span>Ap <b id="fAp"></b></span><span>Pe <b id="fPe"></b></span></div><div id="fX"></div><div id="fW"></div><div id="fNext"></div></div>
+  <div class="mid"><div id="fStage"></div><div id="fAlt"></div><div id="fSpd"></div><div class="orb"><span>Ap <b id="fAp"></b></span><span>Pe <b id="fPe"></b></span></div><div id="fX"></div><div id="fW"></div><div id="fN" class="hidden"></div><div id="fNext"></div></div>
   <div class="bar" title="Fuel"><i id="fFuel"></i></div>
-  <div id="fSas"><button data-m="hold"><span>1</span>Hold</button><button data-m="pro"><span>2</span>Prograde</button><button data-m="retro"><span>3</span>Retrograde</button><button data-m="up"><span>4</span>Up</button><button data-m="guide"><span>5</span>Guide</button><button data-m="off"><span>T</span>Off</button></div>
+  <div id="fSas"><button data-m="hold"><span>1</span>Hold</button><button data-m="pro"><span>2</span>Prograde</button><button data-m="retro"><span>3</span>Retrograde</button><button data-m="up"><span>4</span>Up</button><button data-m="guide"><span>5</span>Guide</button><button data-m="node"><span>6</span>Node</button><button data-m="off"><span>T</span>Off</button></div>
 </div>
 
-<div id="mapUI" class="hidden"><div id="mapInfo"></div></div>
+<div id="mapUI" class="hidden"><div id="mapInfo"></div>
+  <div id="navQ" class="hidden"><span>Plan</span><button id="qAp" title="Burn node at the next Ap that makes the orbit round">Circularise at Ap</button><button id="qPe" title="At the next Pe, or the low point of a coming encounter (capture)">Circularise at Pe</button><button id="qTr" title="Burn node that sends you to your target (Tab picks it)">Transfer to target</button><span>Warp</span><button id="qWAp">Ap</button><button id="qWPe">Pe</button><button id="qWS" title="To the next change of pull (sphere of influence)">Next pull</button></div>
+  <div id="nodeP" class="hidden"><div class="nh"><b>Burn node</b><button id="nX">✕</button></div>
+    <div class="nr pro"><span>Prograde</span><button data-a="x" data-s="-1">−</button><b id="nPx">0</b><button data-a="x" data-s="1">+</button></div>
+    <div class="nr nrm"><span>Normal</span><button data-a="y" data-s="-1">−</button><b id="nPn">0</b><button data-a="y" data-s="1">+</button></div>
+    <div class="nr rad"><span>Radial out</span><button data-a="z" data-s="-1">−</button><b id="nPr">0</b><button data-a="z" data-s="1">+</button></div>
+    <div class="nr"><span>Time</span><button data-tt="-1">◀</button><b>move</b><button data-tt="1">▶</button></div>
+    <div class="ns">Step <button data-st="1">1</button><button data-st="10" class="on">10</button><button data-st="100">100</button> m/s · hold or scroll</div>
+    <div id="nInfo"></div><div class="nb"><button id="nAuto">Auto-burn</button><button id="nWarp">Warp to</button><button id="nDel">Delete</button></div></div></div>
 <div id="mis" class="hidden"></div><div id="toast"></div><div id="rep" class="hidden"></div>
 <div id="misL" class="hidden"><div class="tcard"><div class="th"><b>Missions</b> <span>J to open/close · pick one to follow</span><button id="misX">✕</button></div><div class="ml" id="misG"></div></div></div>
 <div id="test" class="hidden"><div class="tcard">
   <div class="th"><b>Test menu</b> <span>` to open/close</span><button id="testX">✕</button></div>
   <div class="tl">Go to</div><div class="tg">
     <button data-t="pad">Pilot seat on the pad</button><button data-t="cabin">Inside the capsule</button><button data-t="orbit">Orbit (80 km)</button><button data-t="reentry">Re-entry</button>
-    <button data-t="chute">Parachute landing</button><button data-t="moonOrbit">Moon orbit</button><button data-t="moonLand">Moon landing</button><button data-t="moonWalk">Walk on the Moon</button><button data-t="mc">Mission control</button>
+    <button data-t="chute">Parachute landing</button><button data-t="moonOrbit">Moon orbit</button><button data-t="moonLand">Moon landing</button><button data-t="moonWalk">Walk on the Moon</button><button data-t="rustOrbit">Rust orbit</button><button data-t="rustWalk">Walk on Rust</button><button data-t="frostOrbit">Frost orbit</button><button data-t="frostWalk">Walk on Frost</button><button data-t="mc">Mission control</button>
     <button data-t="deck">Glass deck</button><button data-t="centre">Space centre</button></div>
   <div class="tl">Time and sky</div><div class="tg">
     <button data-t="sunrise" data-keep="1">Sunrise</button><button data-t="noon" data-keep="1">Noon</button><button data-t="sunset" data-keep="1">Sunset</button><button data-t="night" data-keep="1">Night</button>
@@ -195,12 +216,13 @@ button:focus-visible { outline:2px solid var(--acc); outline-offset:2px; }
   <button id="testPlay" style="width:100%;margin-top:8px">Test mode</button>
 </div></div>
 <script src="../three-r170.js"></script>
-<script src="game.js?v=7"></script>
-<script src="flight.js?v=4"></script>
-<script src="mission.js?v=3"></script>
-<script src="extras.js?v=3"></script>
+<script src="game.js?v=9"></script>
+<script src="flight.js?v=5"></script>
+<script src="mission.js?v=4"></script>
+<script src="extras.js?v=4"></script>
 <script src="build.js?v=1"></script>
 <script src="world.js?v=3"></script>
-<script src="polish.js?v=3"></script>
+<script src="nav.js?v=2"></script>
+<script src="polish.js?v=4"></script>
 </body>
 </html>

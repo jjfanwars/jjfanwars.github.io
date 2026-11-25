@@ -6,39 +6,47 @@
 // Points are inertial. Each point also stores which body's frame it is drawn in: the body we orbit now, then the Moon after an
 // encounter (drawn around a "ghost" Moon where it will be), then Home again after leaving the Moon.
 const PN_MAX = 6000;
-const PRED = {n: 0, p: new Float64Array(PN_MAX * 3), t: new Float64Array(PN_MAX), f: new Uint8Array(PN_MAX), anc: [0, 0], t0: -1, enc: null, exit: null, imp: null, air: null, close: null, moonPe: Infinity, homePe: Infinity, start: 0};
-const _pp = new V3(), _pv = new V3(), _pa = new V3(), _pm = new V3();
-function predict() {
-  const P_ = PRED; P_.n = 0; P_.enc = P_.exit = P_.imp = P_.air = P_.close = null; P_.moonPe = P_.homePe = Infinity; P_.t0 = G.t;
+// f = frame index into BODIES (0 Home, 1.. satellites). moonPe = closest pass over the body we encounter, close = closest approach to the target.
+const mkPred = () => ({n: 0, p: new Float64Array(PN_MAX * 3), t: new Float64Array(PN_MAX), f: new Uint8Array(PN_MAX), anc: BODIES.map(() => 0), t0: -1, enc: null, exit: null, imp: null, air: null, close: null, moonPe: Infinity, homePe: Infinity, start: 0});
+const PRED = mkPred();
+const _pp = new V3(), _pv = new V3(), _pa = new V3(), _pm = new V3(), _rs = new Float64Array(8);
+function domAt(p, t) { for (let k = 0; k < SATS.length; k++) { satPos(SATS[k], t, _pm); if (p.distanceTo(_pm) < SATS[k].soi) return k + 1; } return 0; }
+function predict(P_ = PRED, pos = R.pos, vel = R.vel, t0 = G.t) {
+  P_.n = 0; P_.enc = P_.exit = P_.imp = P_.air = P_.close = null; P_.moonPe = P_.homePe = Infinity; P_.t0 = t0;
   if (R.st !== 'fly') return;
-  _pp.copy(R.pos); _pv.copy(R.vel); let t = G.t, f = domBody(_pp) === MOON ? 1 : 0; P_.start = f; P_.anc[f] = t; P_.anc[1 - f] = t;
+  const tgt = navTarget(), ti = SATS.indexOf(tgt);
+  _pp.copy(pos); _pv.copy(vel); let t = t0, f = domAt(_pp, t); P_.start = f; for (let k = 0; k < P_.anc.length; k++) P_.anc[k] = t;
   let sweep = 0, lx = 0, ly = 0, lz = 0, first = true, wasUp = _pp.length() - PLANET.R > PLANET.atmo;
-  gravAt(_pp, t, _pa); const mPl = PLANET.GM, mMo = MOON.GM;
+  gravAt(_pp, t, _pa); const mPl = PLANET.GM;
   for (let i = 0; i < PN_MAX; i++) {
-    moonPos(t, _pm); const rp = _pp.length(), dmx = _pp.x - _pm.x, dmy = _pp.y - _pm.y, dmz = _pp.z - _pm.z, rm = Math.sqrt(dmx * dmx + dmy * dmy + dmz * dmz);
+    const rp = _pp.length(); let hmin = Math.sqrt(rp * rp * rp / mPl);
+    for (let k = 0; k < SATS.length; k++) { satPos(SATS[k], t, _pm); const r = _pm.distanceTo(_pp); _rs[k] = r; hmin = Math.min(hmin, Math.sqrt(r * r * r / SATS[k].GM)); }
     const j = i * 3; P_.p[j] = _pp.x; P_.p[j + 1] = _pp.y; P_.p[j + 2] = _pp.z; P_.t[i] = t; P_.f[i] = f; P_.n = i + 1;
-    // frame changes at the Moon's sphere of influence
-    if (f === 0 && rm < SOI_M) { f = 1; P_.anc[1] = t; if (!P_.enc) P_.enc = {i, t}; sweep = 0; first = true; }
-    else if (f === 1 && rm > SOI_M * 1.02) { f = 0; P_.anc[0] = t; if (!P_.exit) P_.exit = {i, t}; sweep = 0; first = true; }
-    if (f === 1) P_.moonPe = Math.min(P_.moonPe, rm - MOON.R); else if (P_.start === 1 || P_.exit) P_.homePe = Math.min(P_.homePe, rp - PLANET.R);
-    if (f === 0 && !P_.enc && (!P_.close || rm < P_.close.d)) P_.close = {d: rm, i, t};
+    // frame changes at the satellites' spheres of influence
+    if (f === 0) { for (let k = 0; k < SATS.length; k++) if (_rs[k] < SATS[k].soi) { f = k + 1; P_.anc[f] = t; if (!P_.enc) P_.enc = {i, t, b: SATS[k]}; sweep = 0; first = true; break; } }
+    else if (_rs[f - 1] > SATS[f - 1].soi * 1.02) { const lb = SATS[f - 1]; f = 0; P_.anc[0] = t; if (!P_.exit) P_.exit = {i, t, b: lb}; sweep = 0; first = true; }
+    if (f > 0) P_.moonPe = Math.min(P_.moonPe, _rs[f - 1] - SATS[f - 1].R); else if (P_.start > 0 || P_.exit) P_.homePe = Math.min(P_.homePe, rp - PLANET.R);
+    if (ti >= 0 && f === 0 && !P_.enc && (!P_.close || _rs[ti] < P_.close.d)) P_.close = {d: _rs[ti], i, t, b: tgt};
     if (rp < PLANET.R + PLANET.atmo) { if (wasUp && !P_.air) P_.air = {i, t}; } else wasUp = true;
     if (rp < PLANET.R) { P_.imp = {i, t, b: PLANET}; break; }
-    if (rm < MOON.R + 300) { P_.imp = {i, t, b: MOON}; break; }
+    let hit = null; for (let k = 0; k < SATS.length; k++) if (_rs[k] < SATS[k].R + 300) hit = SATS[k]; if (hit) { P_.imp = {i, t, b: hit}; break; }
     // one full turn around the frame body is enough
-    const cx = f ? _pm.x : 0, cy = f ? _pm.y : 0, cz = f ? _pm.z : 0, rx = _pp.x - cx, ry = _pp.y - cy, rz = _pp.z - cz, rl = Math.sqrt(rx * rx + ry * ry + rz * rz);
+    let cx = 0, cy = 0, cz = 0; if (f) { satPos(SATS[f - 1], t, _pm); cx = _pm.x; cy = _pm.y; cz = _pm.z; } const rx = _pp.x - cx, ry = _pp.y - cy, rz = _pp.z - cz, rl = Math.sqrt(rx * rx + ry * ry + rz * rz);
     if (!first) sweep += Math.acos(clamp((rx * lx + ry * ly + rz * lz) / rl, -1, 1)); first = false; lx = rx / rl; ly = ry / rl; lz = rz / rl;
-    if (sweep > 2 * Math.PI + .02 || t - G.t > 5 * 86400 || rp > 3.5e7) break;
+    if (sweep > 2 * Math.PI + .02 || t - t0 > 9 * 86400 || rp > 8e7) break;
     // leapfrog with a step that follows the local orbital time scale
-    const h = clamp(.012 * Math.min(Math.sqrt(rp * rp * rp / mPl), Math.sqrt(rm * rm * rm / mMo)), .2, 900);
+    const h = clamp(.012 * hmin, .2, 1500);
     _pv.addScaledVector(_pa, h / 2); _pp.addScaledVector(_pv, h); t += h; gravAt(_pp, t, _pa); _pv.addScaledVector(_pa, h / 2);
   }
 }
+// the body you are heading for (map info, closest approach, transfer helper): picked in the map (Tab / click a world), Moon by default
+const NAVT = {b: null}; function navTarget() { return NAVT.b || MOON; }
 // seconds of full-throttle burn on the current stage for a speed change dv
 function burnTime(dv) { const S = STAGES[R.bot]; if (!S.thrust) return Infinity; const ve = S.ispV * G0, m = rocketMass(); return m * ve / S.thrust * (1 - Math.exp(-dv / ve)); }
 // phase angle of the Moon ahead of us (degrees, 0..360 in the direction we orbit) and the one a direct transfer wants
-function moonPhase() { const r = R.pos, v = R.vel, m = moonPos(G.t, new V3()), h = r.clone().cross(v).normalize(), ang = Math.atan2(r.clone().cross(m).dot(h), r.dot(m)) * 180 / Math.PI;
-  const a = (r.length() + MOON.orbit) / 2, tt = Math.PI * Math.sqrt(a * a * a / PLANET.GM); return {now: (ang + 360) % 360, want: 186 - tt / MOON.period * 360}; }
+function satPhase(b, r = R.pos, v = R.vel, t = G.t) { const m = satPos(b, t, new V3()), h = r.clone().cross(v).normalize(), ang = Math.atan2(r.clone().cross(m).dot(h), r.dot(m)) * 180 / Math.PI;
+  const a = (r.length() + b.orbit) / 2, tt = Math.PI * Math.sqrt(a * a * a / PLANET.GM); return {now: (ang + 360) % 360, want: (b === MOON ? 186 : 180) - tt / b.period * 360}; }
+function moonPhase() { return satPhase(MOON); }
 
 // where to burn prograde in Moon orbit so you fall back to Home: the escape path has to leave against the Moon's motion
 function homeWindow() { const mp = moonPos(G.t, new V3()), mv = moonVel(G.t, new V3()), r = R.pos.clone().sub(mp), v = R.vel.clone().sub(mv), h = r.clone().cross(v).normalize(), rl = r.length();
@@ -72,6 +80,7 @@ void main(){
 }`});
   MAPV.pl = new THREE.Mesh(new THREE.SphereGeometry(PLANET.R / 1000, 96, 48), body(1)); s.add(MAPV.pl);
   MAPV.mo = new THREE.Mesh(new THREE.SphereGeometry(MOON.R / 1000, 64, 32), body(0)); s.add(MAPV.mo);
+  MAPV.sm = SATS.map(b => { if (b === MOON) return MAPV.mo; const m = new THREE.Mesh(new THREE.SphereGeometry(b.R / 1000, 64, 32), body(0)); m.material.uniforms.base.value.setRGB(...b.col.map(v => Math.pow(v, 2.2) * 1.1)); s.add(m); return m; });
   MAPV.ghost = new THREE.Mesh(MAPV.mo.geometry, new THREE.MeshBasicMaterial({color: 0x5ad1ff, wireframe: true, transparent: true, opacity: .18, depthWrite: false})); s.add(MAPV.ghost);
   // air halo around Home
   MAPV.halo = new THREE.Mesh(new THREE.SphereGeometry((PLANET.R + PLANET.atmo * 1.6) / 1000, 96, 48), new THREE.ShaderMaterial({transparent: true, depthWrite: false, side: THREE.BackSide, blending: THREE.AdditiveBlending, uniforms: {sun: {value: SUN}},
@@ -84,33 +93,35 @@ void main(){
   gl_FragColor = vec4(vec3(.3, .6, 1.) * a, 1.); }`})); s.add(MAPV.halo);
   MAPV.plTex = null; MAPV.c = document.createElement('canvas'); MAPV.c.style.cssText = 'position:absolute;inset:0;width:100%;height:100%'; $('mapUI').prepend(MAPV.c); MAPV.x = MAPV.c.getContext('2d');
 }
-function mapToggle(on) { MAPV.on = on ?? !MAPV.on; $('mapUI').classList.toggle('hidden', !MAPV.on); if (MAPV.on) { MAPV.fitted = false; MAPV.focus = 0; predict(); showHint('Map · drag to turn · wheel to zoom · Tab: change focus · M: back', 3500); } }
+function mapToggle(on) { MAPV.on = on ?? !MAPV.on; $('mapUI').classList.toggle('hidden', !MAPV.on);
+  if (MAPV.on) { MAPV.fitted = false; MAPV.focus = 0; predict(); if (document.pointerLockElement) document.exitPointerLock(); showHint('Map · drag to turn · wheel zoom · Tab: next world (sets your target) · click your path to add a burn node · M: back', 5000); }
+  else lockPointer(); }
+const MAPF = () => 2 + SATS.length; // focus: 0 your ship, 1 Home, 2.. satellites
+function mapFocusBody() { return MAPV.focus === 1 ? PLANET : MAPV.focus >= 2 ? SATS[MAPV.focus - 2] : null; }
 addEventListener('keydown', e => { if (!G.on || e.repeat) return; const k = e.code;
   // Esc / P: close the top overlay first, else pause or resume (Esc while the mouse is grabbed only frees it; that pauses too)
   if (k === 'Escape' || k === 'KeyP') { if (!$('test').classList.contains('hidden')) testMenu(false); else if (!$('misL').classList.contains('hidden')) misList(false); else if (k === 'Escape' && MAPV.on) mapToggle(false); else if (!(G.paused && performance.now() - G.pauseAt < 400)) setPause(!G.paused); return; } // (the same Esc may also have freed the mouse and paused)
-  if (G.paused) return; if (k === 'KeyM') mapToggle(); if (k === 'Tab' && MAPV.on) { e.preventDefault(); MAPV.focus = (MAPV.focus + 1) % 3; MAPV.fitted = false; } if (k === 'KeyJ') misList(); });
+  if (G.paused) return; if (k === 'KeyM') mapToggle(); if (k === 'Tab' && MAPV.on) { e.preventDefault(); MAPV.focus = (MAPV.focus + (e.shiftKey ? MAPF() - 1 : 1)) % MAPF(); MAPV.fitted = false; const fb = mapFocusBody(); if (fb && fb !== PLANET) { NAVT.b = fb; showHint('Target: ' + fb.name + ' · ' + fb.desc.split(':')[0], 2500); } } if (k === 'KeyJ') misList(); });
 addEventListener('mousemove', e => { if (!MAPV.on) return; if (document.pointerLockElement === canvas) { look.dx -= e.movementX; look.dy -= e.movementY; MAPV.dx += e.movementX; MAPV.dy += e.movementY; } else if (e.buttons) { MAPV.dx += e.movementX; MAPV.dy += e.movementY; } });
-addEventListener('wheel', e => { if (!MAPV.on) return; e.preventDefault(); MAPV.dist = clamp(MAPV.dist * Math.exp(e.deltaY * .0015), 260, 60000); }, {passive: false});
+addEventListener('wheel', e => { if (!MAPV.on || (e.target && e.target.closest && e.target.closest('#nodeP'))) return; e.preventDefault(); MAPV.dist = clamp(MAPV.dist * Math.exp(e.deltaY * .0015), 60, 200000); }, {passive: false});
 const _mc = new V3(), _mq = new V3();
 const toMap = (p, out) => out.copy(p).multiplyScalar(.001);
-function mapFocus(out) { const f = MAPV.focus === 0 ? (R.st === 'fly' || R.on ? 'auto' : 'home') : MAPV.focus === 1 ? 'home' : 'moon';
-  if (f === 'home') return out.set(0, 0, 0); if (f === 'moon') return toMap(MOON.c, out);
-  return domBody(R.pos) === MOON ? toMap(MOON.c, out) : out.set(0, 0, 0); }
-function drawPoint(i, out) { // predicted point i in map coordinates (frame of its segment)
-  const P_ = PRED, j = i * 3; out.set(P_.p[j], P_.p[j + 1], P_.p[j + 2]); if (P_.f[i] === 1) { out.sub(moonPos(P_.t[i], _mq)).add(moonPos(P_.anc[1] === P_.t0 ? G.t : P_.anc[1], _mq)); } return out.multiplyScalar(.001); }
+function mapFocus(out) { const fb = mapFocusBody(); if (fb) return toMap(fb.c, out); if (!(R.st === 'fly' || R.on)) return out.set(0, 0, 0); return toMap(domBody(R.pos).c, out); }
+function drawPoint(i, out, P_ = PRED) { // predicted point i in map coordinates (frame of its segment: satellites drawn where they will be at the encounter)
+  const j = i * 3, f = P_.f[i]; out.set(P_.p[j], P_.p[j + 1], P_.p[j + 2]); if (f > 0) { const b = SATS[f - 1]; out.sub(satPos(b, P_.t[i], _mq)).add(satPos(b, P_.anc[f] === P_.t0 && P_ === PRED ? G.t : P_.anc[f], _mq)); } return out.multiplyScalar(.001); }
 function mapRender(dt) {
   const M = MAPV, cv = M.c, W = innerWidth, H = innerHeight, dpr = Math.min(2, devicePixelRatio);
   if (cv.width !== (W * dpr | 0) || cv.height !== (H * dpr | 0)) { cv.width = W * dpr | 0; cv.height = H * dpr | 0; }
   if ((M.t -= dt) <= 0) { M.t = G.warp >= 100 ? 0 : .2; predict(); }
   // bodies
-  M.pl.quaternion.copy(PLANET.q); toMap(MOON.c, M.mo.position); M.mo.quaternion.copy(MOON.q);
+  M.pl.quaternion.copy(PLANET.q); SATS.forEach((b, k) => { toMap(b.c, M.sm[k].position); M.sm[k].quaternion.copy(b.q); });
   if (!MAPB.c || MAPB.row < 128) mapBuild(); if (MAPB.c) { if (!M.plTex) { M.plTex = new THREE.CanvasTexture(MAPB.c); M.plTex.colorSpace = THREE.SRGBColorSpace; M.pl.material.uniforms.map.value = M.plTex; M.pl.material.uniforms.has.value = 1; } if (MAPB.row < 128) { mapBuild(); mapBuild(); M.plTex.needsUpdate = true; } }
   if (MI.ready && !M.mo.material.uniforms.has.value) { M.mo.material.uniforms.map.value = MI.mesh.material.uniforms.mC.value; M.mo.material.uniforms.has.value = 1; }
-  M.ghost.visible = !!PRED.enc && PRED.start === 0; if (M.ghost.visible) toMap(moonPos(PRED.anc[1], _mq), M.ghost.position);
+  M.ghost.visible = !!PRED.enc && PRED.start === 0; if (M.ghost.visible) { const eb = PRED.enc.b; toMap(satPos(eb, PRED.anc[SATS.indexOf(eb) + 1], _mq), M.ghost.position); M.ghost.scale.setScalar(eb.R / MOON.R); }
   // camera
   const fc = mapFocus(_mc);
-  if (!M.fitted) { M.fitted = true; const b = MAPV.focus === 2 || (MAPV.focus === 0 && domBody(R.pos) === MOON) ? MOON : PLANET; let span = b.R * 3.2;
-    if (R.st === 'fly' && domBody(R.pos) === b) { const o = orbitEl(b); span = Math.max(span, Math.min(o.ap === Infinity ? b.R * 8 : (o.ap + b.R) * 3.3, b === MOON ? SOI_M * 3 : MOON.orbit * 3)); } M.dist = span / 1000; }
+  if (!M.fitted) { M.fitted = true; const b = mapFocusBody() || (R.st === 'fly' || R.on ? domBody(R.pos) : PLANET); let span = b.R * 3.2;
+    if (R.st === 'fly' && domBody(R.pos) === b) { const o = orbitEl(b); span = Math.max(span, Math.min(o.ap === Infinity ? b.R * 8 : (o.ap + b.R) * 3.3, b !== PLANET ? b.soi * 3 : navTarget().orbit * 2.6)); } M.dist = span / 1000; }
   M.yaw -= M.dx * .004; M.pitch = clamp(M.pitch + M.dy * .004, -1.5, 1.5); M.dx = M.dy = 0;
   const cam2 = M.cam; cam2.aspect = W / H; cam2.near = Math.max(.5, M.dist * .002); cam2.far = M.dist * 50 + 1e5; cam2.updateProjectionMatrix();
   cam2.position.set(Math.cos(M.pitch) * Math.sin(M.yaw), Math.sin(M.pitch), Math.cos(M.pitch) * Math.cos(M.yaw)).multiplyScalar(M.dist).add(fc); cam2.lookAt(fc); cam2.updateMatrixWorld();
@@ -120,16 +131,16 @@ function mapRender(dt) {
   const x = M.x; x.setTransform(dpr, 0, 0, dpr, 0, 0); x.clearRect(0, 0, W, H); x.lineJoin = 'round'; x.lineCap = 'round';
   const prj = (p, o = {}) => { _mq.copy(p).project(cam2); o.x = (_mq.x * .5 + .5) * W; o.y = (-_mq.y * .5 + .5) * H; o.ok = _mq.z < 1 && _mq.z > -1; return o; };
   const camP = cam2.position, hid = p => { // behind Home or the Moon (as seen from the map camera)?
-    for (const [c, r] of [[_pz, PLANET.R / 1000], [M.mo.position, MOON.R / 1000]]) { const dx = p.x - camP.x, dy = p.y - camP.y, dz = p.z - camP.z, L = Math.sqrt(dx * dx + dy * dy + dz * dz), ux = dx / L, uy = dy / L, uz = dz / L;
+    for (const [c, r] of [[_pz, PLANET.R / 1000], ...SATS.map((b, k) => [M.sm[k].position, b.R / 1000])]) { const dx = p.x - camP.x, dy = p.y - camP.y, dz = p.z - camP.z, L = Math.sqrt(dx * dx + dy * dy + dz * dz), ux = dx / L, uy = dy / L, uz = dz / L;
       const ox = c.x - camP.x, oy = c.y - camP.y, oz = c.z - camP.z, tc = ox * ux + oy * uy + oz * uz; if (tc < 0 || tc > L) continue; const d2 = ox * ox + oy * oy + oz * oz - tc * tc; if (d2 < r * r && tc - Math.sqrt(r * r - d2) < L - .5) return true; } return false; };
   // the Moon's orbit
-  x.strokeStyle = 'rgba(160,180,210,.22)'; x.lineWidth = 1; x.beginPath(); for (let i = 0; i <= 128; i++) { const q = prj(toMap(moonPos(i / 128 * MOON.period, _pm), _pa)); i ? x.lineTo(q.x, q.y) : x.moveTo(q.x, q.y); } x.stroke();
+  for (const b of SATS) { x.strokeStyle = b === navTarget() ? 'rgba(200,170,255,.5)' : 'rgba(160,180,210,.22)'; x.lineWidth = b === navTarget() ? 1.5 : 1; x.beginPath(); for (let i = 0; i <= 160; i++) { const q = prj(toMap(satPos(b, i / 160 * b.period, _pm), _pa)); i ? x.lineTo(q.x, q.y) : x.moveTo(q.x, q.y); } x.stroke(); }
   // Home's air line + Moon's sphere of influence (dashed rings), and a distance scale bar
   { const rgt = _mr.setFromMatrixColumn(cam2.matrixWorld, 0), pxR = (c3, r) => { const a = prj(c3), ax = a.x, ay = a.y, ok = a.ok, e = prj(_me.copy(c3).addScaledVector(rgt, r)); return ok ? {x: ax, y: ay, r: Math.hypot(e.x - ax, e.y - ay)} : null; };
     const ring = (c, col, txt) => { if (!c || c.r < 8 || c.r > 3 * Math.max(W, H)) return; x.save(); x.setLineDash([5, 6]); x.strokeStyle = col; x.lineWidth = 1.2; x.beginPath(); x.arc(c.x, c.y, c.r, 0, 7); x.stroke(); x.restore();
       if (txt && c.y - c.r > 30) { x.font = '600 11px Fredoka, sans-serif'; x.fillStyle = col; x.textAlign = 'center'; x.fillText(txt, c.x, c.y - c.r - 5); x.textAlign = 'left'; } };
     const pl = pxR(_pz, PLANET.R / 1000), air = pxR(_pz, (PLANET.R + PLANET.atmo) / 1000); if (pl && air && air.r - pl.r > 3) ring(air, 'rgba(120,190,255,.45)', air.r - pl.r > 14 ? 'Edge of the air' : '');
-    ring(pxR(M.mo.position, SOI_M / 1000), 'rgba(90,209,255,.38)', "Moon's pull");
+    SATS.forEach((b, k) => ring(pxR(M.sm[k].position, b.soi / 1000), 'rgba(90,209,255,.38)', (b === MOON ? "Moon" : b.name) + "'s pull"));
     const f1 = pxR(fc, 1); if (f1 && f1.r > 0) { const nice = [10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000, 50000]; let km = nice[0]; for (const n of nice) if (n * f1.r <= 150) km = n; const L = km * f1.r;
       if (L > 20) { const y0 = H - 22; x.strokeStyle = 'rgba(207,227,247,.75)'; x.lineWidth = 2; x.beginPath(); x.moveTo(16, y0 - 5); x.lineTo(16, y0); x.lineTo(16 + L, y0); x.lineTo(16 + L, y0 - 5); x.stroke();
         x.font = '600 12px Fredoka, sans-serif'; x.fillStyle = 'rgba(207,227,247,.9)'; x.fillText(km.toLocaleString('en') + ' km', 16, y0 - 9); } } }
@@ -142,37 +153,38 @@ function mapRender(dt) {
   // labels
   const lab = (p3, txt, col, dot = true) => { const s = prj(p3); if (!s.ok) return; if (dot) { x.fillStyle = col; x.beginPath(); x.arc(s.x, s.y, 4, 0, 7); x.fill(); }
     x.font = '600 12px Fredoka, sans-serif'; const w = x.measureText(txt).width; x.fillStyle = 'rgba(0,0,0,.5)'; x.fillRect(s.x - w / 2 - 6, s.y - 26, w + 12, 17); x.fillStyle = col; x.textAlign = 'center'; x.fillText(txt, s.x, s.y - 13.5); x.textAlign = 'left'; };
-  lab(_pz, PLANET.name, '#9fb6cc', false); lab(M.mo.position, 'Moon', '#9fb6cc', false);
-  if (R.st === 'fly') { const b = domBody(R.pos), o = orbitEl(b), rr = R.pos.clone().sub(b.c), vv = R.vel.clone(); if (b === MOON) vv.sub(moonVel(G.t, new V3()));
+  lab(_pz, PLANET.name, '#9fb6cc', false); SATS.forEach((b, k) => lab(M.sm[k].position, b.name + (b === navTarget() ? ' ◎' : ''), b === navTarget() ? '#c9b4ff' : '#9fb6cc', false));
+  if (R.st === 'fly') { const b = domBody(R.pos), o = orbitEl(b), rr = R.pos.clone().sub(b.c), vv = R.vel.clone(); if (b !== PLANET) vv.sub(satVel(b, G.t, new V3()));
     const hv = rr.clone().cross(vv), ev = vv.clone().cross(hv).multiplyScalar(1 / b.GM).sub(rr.clone().normalize()), ed = ev.lengthSq() > 1e-12 ? ev.normalize() : rr.clone().normalize(), bc = toMap(b.c, new V3());
-    if (o.ap !== Infinity && o.ap + b.R < (b === MOON ? SOI_M : 3e7) && o.e > .002) lab(ed.clone().multiplyScalar(-(o.ap + b.R) * .001).add(bc), 'Ap ' + fmtD(o.ap) + ' · ' + fmtS(o.tAp), '#7fd4ff');
+    if (o.ap !== Infinity && o.ap + b.R < (b !== PLANET ? b.soi : 8e7) && o.e > .002) lab(ed.clone().multiplyScalar(-(o.ap + b.R) * .001).add(bc), 'Ap ' + fmtD(o.ap) + ' · ' + fmtS(o.tAp), '#7fd4ff');
     if (o.pe > -b.R * .95 && o.e > .002) lab(ed.clone().multiplyScalar((o.pe + b.R) * .001).add(bc), 'Pe ' + fmtD(o.pe) + (o.tPe < 1e7 ? ' · ' + fmtS(o.tPe) : ''), o.pe < (b === PLANET ? PLANET.atmo : 0) ? '#ff5a4a' : '#ffb347'); }
-  if (P_.enc && P_.start === 0) lab(drawPoint(P_.enc.i, pt), 'Moon encounter · ' + fmtS(P_.enc.t - G.t), '#5ad1ff');
-  if (P_.close && !P_.enc && P_.start === 0 && P_.close.d < MOON.orbit * .6) { lab(drawPoint(P_.close.i, pt), 'Closest to Moon ' + fmtD(P_.close.d - MOON.R), '#9fb6cc'); lab(toMap(moonPos(P_.close.t, _pm), new V3()), '', '#9fb6cc'); }
+  if (P_.enc && P_.start === 0) lab(drawPoint(P_.enc.i, pt), P_.enc.b.name + ' encounter · ' + fmtS(P_.enc.t - G.t), '#5ad1ff');
+  if (P_.close && !P_.enc && P_.start === 0 && P_.close.d < P_.close.b.orbit * .6) { lab(drawPoint(P_.close.i, pt), 'Closest to ' + P_.close.b.name + ' ' + fmtD(P_.close.d - P_.close.b.R), '#9fb6cc'); lab(toMap(satPos(P_.close.b, P_.close.t, _pm), new V3()), '', '#9fb6cc'); }
   if (P_.air) lab(drawPoint(P_.air.i, pt), 'Enters the air', '#ffcf4a');
-  if (P_.imp) lab(drawPoint(P_.imp.i, pt), P_.imp.b === MOON ? 'Hits the Moon' : 'Hits the ground', '#ff5a4a');
+  if (P_.imp) lab(drawPoint(P_.imp.i, pt), P_.imp.b !== PLANET ? 'Hits ' + (P_.imp.b === MOON ? 'the Moon' : P_.imp.b.name) : 'Hits the ground', '#ff5a4a');
   if (R.st === 'fly' || R.on) { const sp = prj(toMap(R.pos, pt)); if (sp.ok) { x.fillStyle = '#ffcf4a'; x.strokeStyle = '#000'; x.lineWidth = 2; x.beginPath(); x.moveTo(sp.x, sp.y - 8); x.lineTo(sp.x + 6, sp.y + 6); x.lineTo(sp.x - 6, sp.y + 6); x.closePath(); x.stroke(); x.fill(); } }
   mapInfo(dt); $('act').classList.add('hidden');
 }
 const _pz = new V3(), _mr = new V3(), _me = new V3();
 let mapInfoT = 0;
-function mapInfo(dt) { if ((mapInfoT -= dt) > 0) return; mapInfoT = .25; const el = $('mapInfo'), L = [];
-  const focus = ['Following your ship', 'Home', 'Moon'][MAPV.focus];
-  if (R.st !== 'fly') L.push('<div class="h">' + (R.st === 'landed' && R.body === MOON ? 'Landed on the Moon' : R.st === 'pad' ? 'On the pad' : R.st === 'dead' ? 'Crashed' : 'Landed') + '</div>');
-  else { const b = domBody(R.pos), o = orbitEl(b), inO = o.pe > (b === PLANET ? PLANET.atmo : 3000) && o.ap !== Infinity && (b === PLANET || o.ap + b.R < SOI_M);
-    L.push('<div class="h">' + (inO ? 'Orbiting ' + (b === MOON ? 'the Moon' : PLANET.name) : o.ap === Infinity || (b === MOON && o.ap + b.R > SOI_M) ? 'Escaping ' + (b === MOON ? 'the Moon' : PLANET.name) : 'Falling back to ' + (b === MOON ? 'the Moon' : PLANET.name)) + '</div>');
+function mapInfo(dt) { if ((mapInfoT -= dt) > 0) return; mapInfoT = .25; const el = $('mapInfo'), L = [], T = navTarget(), tn = T === MOON ? 'the Moon' : T.name, nm = b => b === MOON ? 'the Moon' : b.name;
+  const fb = mapFocusBody(), focus = fb ? fb.name : 'Following your ship';
+  if (R.st !== 'fly') L.push('<div class="h">' + (R.st === 'landed' && R.body !== PLANET ? 'Landed on ' + nm(R.body) : R.st === 'pad' ? 'On the pad' : R.st === 'dead' ? 'Crashed' : 'Landed') + '</div>');
+  else { const b = domBody(R.pos), o = orbitEl(b), inO = o.pe > (b === PLANET ? PLANET.atmo : 3000) && o.ap !== Infinity && (b === PLANET || o.ap + b.R < b.soi);
+    L.push('<div class="h">' + (inO ? 'Orbiting ' + (b === PLANET ? PLANET.name : nm(b)) : o.ap === Infinity || (b !== PLANET && o.ap + b.R > b.soi) ? 'Escaping ' + (b === PLANET ? PLANET.name : nm(b)) : 'Falling back to ' + (b === PLANET ? PLANET.name : nm(b))) + '</div>');
     L.push('Ap <b>' + (o.ap === Infinity ? 'escape' : fmtD(o.ap)) + '</b> · Pe <b>' + fmtD(o.pe) + '</b>' + (inO ? ' · lap <b>' + fmtS(o.period) + '</b>' : ''));
-    if (b === PLANET) { L.push('Tilt to the equator <b>' + Math.round(o.inc * 180 / Math.PI) + '°</b>');
-      if (inO && !PRED.enc) { const ph = moonPhase(), d = ((ph.now - ph.want) % 360 + 360) % 360, good = d < 8 || d > 352; L.push('Moon is <b>' + Math.round(ph.now) + '°</b> ahead · go at <b>' + Math.round(ph.want) + '°</b>' + (good ? ' <span class="good">burn prograde now!</span>' : ' · in ' + fmtS(d / 360 * o.period / (1 - o.period / MOON.period)))); } }
-    if (b === PLANET && inO && !PRED.enc && o.ap < 1e6) { const r = R.pos.length(), dv = Math.sqrt(PLANET.GM * (2 / r - 2 / (r + MOON.orbit))) - R.vel.length(); if (dv > 0) L.push('Moon burn ≈ <b>' + Math.round(dv) + ' m/s</b> · about <b>' + fmtS(burnTime(dv)) + '</b> at full throttle'); }
-    if (b === MOON && !inO && o.tPe < 1e7 && o.pe > 0) { const rp = o.pe + MOON.R, vp = Math.sqrt(MOON.GM * (2 / rp - 1 / o.a)), dv = vp - Math.sqrt(MOON.GM / rp); L.push('Capture burn ≈ <b>' + Math.round(dv) + ' m/s</b> (' + fmtS(burnTime(dv)) + ') · start it about <b>' + fmtS(burnTime(dv) / 2) + '</b> before Pe'); }
-    if (PRED.enc && PRED.start === 0) L.push('<span class="good">Moon encounter</span> in <b>' + fmtS(PRED.enc.t - G.t) + '</b> · passes <b>' + (PRED.moonPe < 0 ? 'into the surface' : fmtD(PRED.moonPe) + ' up') + '</b>');
-    else if (PRED.close && PRED.start === 0 && PRED.close.d < MOON.orbit * .6) L.push('Misses the Moon by <b>' + fmtD(PRED.close.d - MOON.R) + '</b>');
-    if ((PRED.start === 1 && PRED.exit) || (PRED.enc && PRED.exit)) L.push('Then back to Home: Pe <b>' + (PRED.homePe < 0 ? 'hits the ground' : fmtD(PRED.homePe)) + '</b>' + (PRED.homePe > 10000 && PRED.homePe < 20000 ? ' <span class="good">good re-entry</span>' : PRED.homePe > PLANET.atmo ? ' (misses the air)' : ''));
-    if (PRED.start === 1 && !PRED.exit && !inO && !PRED.imp) L.push('Leaving soon? Keep burning to escape the Moon');
+    if (b === PLANET) { L.push('Tilt to the equator <b>' + Math.round(o.inc * 180 / Math.PI) + '°</b> · target <b style="color:#c9b4ff">' + T.name + '</b> (Tab)');
+      if (inO && !PRED.enc && !NODE) { const ph = satPhase(T), d = ((ph.now - ph.want) % 360 + 360) % 360, good = d < 8 || d > 352, syn = 1 / Math.abs(1 / o.period - 1 / T.period); L.push(T.name + ' is <b>' + Math.round(ph.now) + '°</b> ahead · go at <b>' + Math.round(ph.want) + '°</b>' + (good ? ' <span class="good">burn prograde now!</span>' : ' · in ' + fmtS(d / 360 * syn))); }
+      if (inO && !PRED.enc && o.ap < T.orbit * .5) { const r = R.pos.length(), dv = Math.sqrt(PLANET.GM * (2 / r - 2 / (r + T.orbit))) - R.vel.length(); if (dv > 0) L.push('Burn to ' + tn + ' ≈ <b>' + Math.round(dv) + ' m/s</b> · about <b>' + fmtS(burnTime(dv)) + '</b> at full throttle · or press <b>Transfer</b>'); } }
+    if (b !== PLANET && !inO && o.tPe < 1e7 && o.pe > 0) { const rp = o.pe + b.R, vp = Math.sqrt(b.GM * (2 / rp - 1 / o.a)), dv = vp - Math.sqrt(b.GM / rp); L.push('Capture burn ≈ <b>' + Math.round(dv) + ' m/s</b> (' + fmtS(burnTime(dv)) + ') · start it about <b>' + fmtS(burnTime(dv) / 2) + '</b> before Pe · or press <b>Circularise at Pe</b>'); }
+    if (PRED.enc && PRED.start === 0) L.push('<span class="good">' + PRED.enc.b.name + ' encounter</span> in <b>' + fmtS(PRED.enc.t - G.t) + '</b> · passes <b>' + (PRED.moonPe < 0 ? 'into the surface' : fmtD(PRED.moonPe) + ' up') + '</b>');
+    else if (PRED.close && PRED.start === 0 && PRED.close.d < T.orbit * .6) L.push('Misses ' + tn + ' by <b>' + fmtD(PRED.close.d - T.R) + '</b>');
+    if ((PRED.start > 0 && PRED.exit) || (PRED.enc && PRED.exit)) L.push('Then back to Home: Pe <b>' + (PRED.homePe < 0 ? 'hits the ground' : fmtD(PRED.homePe)) + '</b>' + (PRED.homePe > 10000 && PRED.homePe < 20000 ? ' <span class="good">good re-entry</span>' : PRED.homePe > PLANET.atmo ? ' (misses the air)' : ''));
+    if (PRED.start > 0 && !PRED.exit && !inO && !PRED.imp) L.push('Leaving soon? Keep burning to escape ' + nm(b));
     if (b === MOON && inO && !PRED.exit) { const hw = homeWindow(), now = hw.deg < 4 || hw.deg > 356; L.push('Way home: ' + (now ? '<span class="good">burn prograde now!</span>' : 'burn prograde in <b>' + fmtS(hw.t) + '</b>') + ' · aim for Home Pe 10-20 km (gentler on the crew)'); }
+    else if (b !== PLANET && inO && !PRED.exit) L.push('Way home: burn prograde on the side facing away from ' + nm(b) + "'s motion, then aim for Home Pe 10-20 km");
   }
-  L.push('<span style="font-size:12px">View: ' + focus + ' · Tab change · wheel zoom · M close</span>');
+  L.push('<span style="font-size:12px">View: ' + focus + ' · Tab next world · wheel zoom · click your path: burn node · M close</span>');
   const h = L.join('<br>'); if (el._h !== h) { el._h = h; el.innerHTML = h; } }
 const _renderWorld = render;
 render = function (dt) { if (MAPV.on && G.on) { mapRender(dt || .016); return; } _renderWorld(dt); }; // the map skips the whole world render (cheap while you plan)
@@ -205,6 +217,8 @@ const MISD = [
   {id: 'back', name: 'There and back again', d: 'Land on the Moon, then fly home and land on Home.', steps: [
     ['Land on the Moon', F => F.moonLanded], ['Back in the Pilot seat: Z for full throttle, press 5 (guide). Cut (X) at Ap 20 km, N to warp there, burn prograde (2) into orbit', F => F.leftMoonGround || F.backHome],
     ['Open the map (M). Burn prograde until it says "Then back to Home: good re-entry"', F => F.goHome || F.backHome], ['Near Home: drop the upper stage and arm the parachute', F => (F.leftMoonGround && STAGES[R.bot].cap && R.chute > 0) || F.backHome], ['Land on Home', F => F.backHome]], done: F => F.backHome},
+  {id: 'rust', name: 'Red world', d: 'Fly out to Rust (30,000 km) and land on it.', steps: [['Get into orbit', F => F.orbit || F.rustSOI], ['In the map pick Rust (Tab), then press Transfer to make a burn node', F => F.rustSOI || (NODE && NODE.auto !== undefined)], ['Burn (or Auto-burn) and coast into Rust\'s pull', F => F.rustSOI], ['Land on Rust', F => F.rustLanded]], done: F => F.rustLanded},
+  {id: 'frost', name: 'Ice world', d: 'The far one: reach Frost (52,000 km) and land on the ice.', steps: [['Get into orbit', F => F.orbit || F.frostSOI], ['Plan a transfer to Frost in the map (Tab to pick it, then Transfer)', F => F.frostSOI || (NODE && NAVT.b === FROST)], ['Coast into Frost\'s pull', F => F.frostSOI], ['Land on Frost', F => F.frostLanded]], done: F => F.frostLanded},
   {id: 'high', name: 'High flyer', d: 'Raise your Ap above 3,000 km.', bonus: true, steps: [['Get into orbit', F => F.orbit], ['Burn prograde until Ap is over 3,000 km', F => F.highAp]], done: F => F.highAp},
   {id: 'polar', name: 'Over the poles', d: 'Get into an orbit that goes over the poles (tilt over 70°).', bonus: true, steps: [
     ['With this mission picked, the guide (5) steers north instead of east', F => F.launched], ['Burn into orbit as usual', F => F.orbit], ['Tilt to the equator over 70° (see the map)', F => F.polar]], done: F => F.polar},
@@ -230,14 +244,15 @@ function misPoll(dt) {
       if (o.ap > 3e6) F.highAp = true; if (F.orbit && o.pe < 10000) F.deorbit = true;
       if (F.orbit && (o.ap > 4e6 || PRED.enc)) F.tli = true; if (PRED.enc) F.encounter = true;
       if (F.leftMoonGround && PRED.start === 0 && R.pos.length() > 4e6 && o.pe < 20000) F.goHome = true; }
-    else { F.moonSOI = true; if (o.tPe < 60) F.nearMPe = true; if (o.pe > 3000 && o.ap !== Infinity && o.ap + MOON.R < SOI_M) F.moonOrbit = true; if (alt < 15000) F.moonLow = true; if (radarAlt() < 1500) F.moonVeryLow = true;
+    else if (b === MOON) { F.moonSOI = true; if (o.tPe < 60) F.nearMPe = true; if (o.pe > 3000 && o.ap !== Infinity && o.ap + MOON.R < SOI_M) F.moonOrbit = true; if (alt < 15000) F.moonLow = true; if (radarAlt() < 1500) F.moonVeryLow = true;
       if (F.moonLanded) { F.leftMoonGround = true; if (PRED.exit && PRED.homePe < 20000) F.goHome = true; } } }
   F.lastT = G.t;
-  if (prevSt === 'fly' && R.st === 'landed') { const B = R.body; if (B === MOON) F.moonLanded = true;
+  if (prevSt === 'fly' && R.st === 'landed') { const B = R.body; if (B === MOON) F.moonLanded = true; else if (B === RUST) F.rustLanded = true; else if (B === FROST) F.frostLanded = true;
     else { if (F.space) F.landSpace = true; if (F.orbit) F.landOrbit = true; if (F.moonLanded && F.leftMoonGround) F.backHome = true;
       const d = R.lp.clone().normalize(), h = heightAt(PLANET, d.x, d.y, d.z); if (h < -.5 && F.maxAlt > 5000) F.splash = true;
       if (F.maxAlt > 10000 && R.lp.distanceTo(site.p) < 2000) F.bull = true; } }
   if (!R.on && P.body === MOON && F.moonLanded) F.moonWalk = true;
+  if (b === RUST) F.rustSOI = true; if (b === FROST) F.frostSOI = true;
   prevSt = R.st;
   GUIDE.head = MIS.cur === 'polar' ? 'north' : 'east';
   if (!F.test) for (const m of MISD) if (!MIS.done[m.id] && m.done(F)) misComplete(m); // test-menu jumps don't count
@@ -305,8 +320,8 @@ function heatStep(dt) {
 // Moon dust: the engine blasts the regolith out sideways when close to the surface
 let dustAcc = 0;
 function dustStep(dt) {
-  if (R.st !== 'fly' || R.F <= 0 || domBody(R.pos) !== MOON) { dustAcc = 0; return; } const ra = radarAlt(); if (ra > 40) return;
-  const up = R.pos.clone().sub(MOON.c).normalize(), gp = R.pos.clone().addScaledVector(up, -(ra + R.comY - botY())), vg = groundVel(MOON, gp, G.t, new V3()), k = (1 - ra / 40) * R.thr;
+  const DB = domBody(R.pos); if (R.st !== 'fly' || R.F <= 0 || DB === PLANET) { dustAcc = 0; return; } const ra = radarAlt(); if (ra > 40) return;
+  const up = R.pos.clone().sub(DB.c).normalize(), gp = R.pos.clone().addScaledVector(up, -(ra + R.comY - botY())), vg = groundVel(DB, gp, G.t, new V3()), k = (1 - ra / 40) * R.thr;
   dustAcc += dt * 160 * k * Math.min(1, G.warp); const d = new V3();
   while (dustAcc > 1) { dustAcc--; d.set(Math.random() - .5, Math.random() - .5, Math.random() - .5); d.addScaledVector(up, -d.dot(up)).normalize();
     puff(gp.clone().addScaledVector(d, 1 + Math.random() * 2), vg.clone().addScaledVector(d, 14 + Math.random() * 26).addScaledVector(up, Math.random() * 3), {life: 1.6 + Math.random() * 1.6, s: 1.2, gr: 2.6, heat: 0, drag: 0, tone: .62}); } }

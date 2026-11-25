@@ -45,7 +45,7 @@ function repShow(kind) {
   let head, sub = '', stars = 0;
   if (kind === 'crash') { head = 'Vehicle lost'; sub = REP.why || 'Crashed'; }
   else { const sp = R.landV || 0, wet = b === PLANET && (() => { const d = R.lp.clone().normalize(); return heightAt(PLANET, d.x, d.y, d.z) < -.5; })();
-    head = b === MOON ? 'Landed on the Moon' : wet ? 'Splashdown' : 'Landed'; stars = sp < 3 ? 3 : sp < 7 ? 2 : 1; sub = sp.toFixed(1) + ' m/s · ' + ['', 'hard', 'firm', 'soft'][stars] + ' touchdown';
+    head = b !== PLANET ? 'Landed on ' + (b === MOON ? 'the Moon' : b.name) : wet ? 'Splashdown' : 'Landed'; stars = sp < 3 ? 3 : sp < 7 ? 2 : 1; sub = sp.toFixed(1) + ' m/s · ' + ['', 'hard', 'firm', 'soft'][stars] + ' touchdown';
     if (b === PLANET) { const d = R.lp.distanceTo(site.p); sub += ' · ' + (d < 2000 ? Math.round(d) + ' m' : fmtD(d)) + ' from the pad'; } }
   const row = (k, v) => '<div><span>' + k + '</span><b>' + v + '</b></div>';
   const mis = F.misNow && F.misNow.length ? '<div class="rm">Missions done: <b>' + F.misNow.join(', ') + '</b></div>' : '';
@@ -53,7 +53,7 @@ function repShow(kind) {
     + '<b class="rt' + (kind === 'crash' ? ' bad' : '') + '">' + head + '</b><div class="rs">' + sub + '</div><div class="rg">'
     + row('Flight time', fmtS(t)) + row(F.wentMoon ? 'Farthest out' : 'Highest', fmtD(F.topAlt || 0)) + row('Top speed', Math.round(F.topV || 0).toLocaleString('en') + ' m/s')
     + row('Peak g', (F.topG || 0).toFixed(1) + ' g') + row('Max Q', ((F.topQ || 0) / 1000).toFixed(1) + ' kPa') + row('Fuel left', (R.fuel.slice(R.bot).reduce((a, f) => a + f, 0) / 1000).toFixed(1) + ' t') + '</div>' + mis
-    + '<div class="rf">' + (kind === 'crash' ? 'Back to the space centre...' : b === MOON ? 'F: get up · then F at the hatch to step out' : 'F: get up · Backspace: new rocket') + '</div>';
+    + '<div class="rf">' + (kind === 'crash' ? 'Back to the space centre...' : b !== PLANET ? 'F: get up · then F at the hatch to step out' : 'F: get up · Backspace: new rocket') + '</div>';
   el.classList.remove('hidden'); requestAnimationFrame(() => el.classList.add('on')); clearTimeout(REP.hideT); REP.hideT = setTimeout(repHide, kind === 'crash' ? 7000 : 11000); }
 function repHide() { const el = $('rep'); el.classList.remove('on'); clearTimeout(REP.hideT); REP.hideT = setTimeout(() => el.classList.add('hidden'), 400); }
 function repStep() { repTrack(); const st = R.st; if (REP.prev === 'fly' && st !== 'fly' && G.on) { if (st === 'landed') repShow('land'); else if (st === 'dead') repShow('crash'); }
@@ -64,16 +64,18 @@ const WG = {key: '', t: 0};
 function warpGuard() {
   if (!G.on || !R.on || R.st !== 'fly' || G.wi <= 2) return; const ev = [], P_ = PRED, now = G.t;
   if (P_.air && P_.air.t > now) ev.push([P_.air.t, 'entering the air', 2]);
-  if (P_.imp && P_.imp.t > now) ev.push([P_.imp.t, P_.imp.b === MOON ? 'about to hit the Moon' : 'about to hit the ground', 2]);
-  if (P_.enc && P_.start === 0 && P_.enc.t > now) ev.push([P_.enc.t, "entering the Moon's pull", 4]);
-  if (P_.exit && P_.exit.t > now) ev.push([P_.exit.t, "leaving the Moon's pull", 4]);
+  if (P_.imp && P_.imp.t > now) ev.push([P_.imp.t, P_.imp.b !== PLANET ? 'about to hit ' + (P_.imp.b === MOON ? 'the Moon' : P_.imp.b.name) : 'about to hit the ground', 2]);
+  const nm = b => b === MOON ? 'the Moon' : b.name;
+  if (P_.enc && P_.start === 0 && P_.enc.t > now) ev.push([P_.enc.t, "entering " + nm(P_.enc.b) + "'s pull", 4]);
+  if (P_.exit && P_.exit.t > now) ev.push([P_.exit.t, "leaving " + nm(P_.exit.b) + "'s pull", 4]);
+  if (typeof NODE !== 'undefined' && NODE && NODE.t > now) ev.push([NODE.t - (NODE.burn || 0) / 2 - 20, 'burn node coming up', 0]);
   let wi = G.wi, why = null;
   for (const [t, name, floor] of ev) { const left = t - now; let i = G.wi; while (i > floor && WARPS[i] * .05 * 6 > left) i--; if (i < wi) { wi = i; why = [name, left, t]; } }
   if (wi < G.wi) { G.wi = wi; G.warp = WARPS[wi]; if (WG.key !== why[0] || Math.abs(WG.t - why[2]) > 120) { WG.key = why[0]; WG.t = why[2]; showHint('Time slowed to ×' + G.warp + ': ' + why[0] + ' in ' + fmtS(why[1]), 3000); } } }
 // callouts when the body you orbit changes (the HUD's Ap / Pe jump to the new body)
 let lastDom = null;
 function domCall() { if (R.st !== 'fly' || !R.on) { lastDom = null; return; } const b = domBody(R.pos); if (lastDom && b !== lastDom) {
-    showHint(b === MOON ? "In the Moon's pull: Ap / Pe now measure from the Moon" : "Left the Moon's pull: Ap / Pe now measure from " + PLANET.name, 4000); stepTick(); } lastDom = b; }
+    showHint(b !== PLANET ? "In " + (b === MOON ? "the Moon" : b.name) + "'s pull: Ap / Pe now measure from it" : "Left " + (lastDom === MOON ? "the Moon" : lastDom ? lastDom.name : "") + "'s pull: Ap / Pe now measure from " + PLANET.name, 4000); stepTick(); } lastDom = b; }
 
 // ---------------- hooks
 { const s0 = FLIGHT.step; FLIGHT.step = dt => { s0(dt); warpGuard(); }; }

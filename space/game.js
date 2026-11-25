@@ -29,9 +29,13 @@ function ridged(x, y, z, o, s) { let t = 0, a = .5, f = 1; for (let i = 0; i < o
 // ---------------- solar system (semi-real: small planet, real gravity)
 const SUN = new V3(1, .18, .35).normalize(); // inertial direction to the sun
 const PLANET = {name: 'Home', R: 600000, GM: 9.81 * 600000 * 600000, atmo: 22000, day: 21600, maxL: 15, seed: 11, water: true};
-const MOON = {name: 'Moon', R: 200000, GM: 1.63 * 200000 * 200000, atmo: 0, maxL: 14, seed: 71, water: false, orbit: 12000000};
-MOON.period = 2 * Math.PI * Math.sqrt(MOON.orbit ** 3 / PLANET.GM);
-const BODIES = [PLANET, MOON];
+// satellites of Home on rails (circular, tilted orbits). ph = starting angle, inc = tilt, lan = where the tilt's axis points
+const MOON = {name: 'Moon', R: 200000, GM: 1.63 * 200000 * 200000, atmo: 0, maxL: 14, seed: 71, water: false, orbit: 12000000, ph: 2.2, inc: .09, lan: 0, col: [.42, .42, .42]};
+const RUST = {name: 'Rust', R: 140000, GM: 1.1 * 140000 * 140000, atmo: 0, maxL: 14, seed: 131, water: false, orbit: 30000000, ph: 4.1, inc: .06, lan: 1.3, col: [.62, .34, .2], desc: 'red desert world: canyons, dunes, old craters'};
+const FROST = {name: 'Frost', R: 90000, GM: .6 * 90000 * 90000, atmo: 0, maxL: 13, seed: 171, water: false, orbit: 52000000, ph: .7, inc: .045, lan: 3.6, col: [.86, .9, .95], desc: 'ice world: cracked plains, blue ridges, few craters'};
+const SATS = [MOON, RUST, FROST];
+for (const b of SATS) b.period = 2 * Math.PI * Math.sqrt(b.orbit ** 3 / PLANET.GM);
+const BODIES = [PLANET, ...SATS];
 const SITE = new V3(1, 0, 0); // space centre direction (body-fixed), on the equator
 const SITE_H = 20; // flattened ground height at the space centre
 const G = {t: 0, warp: 1};
@@ -39,9 +43,9 @@ const G = {t: 0, warp: 1};
 const T0 = -PLANET.day * .19;
 function bodyState(b, t) { // centre (inertial) and rotation
   if (b === PLANET) { b.c = b.c || new V3(); b.c.set(0, 0, 0); b.q = b.q || new Q4(); b.q.setFromAxisAngle(new V3(0, 1, 0), 2 * Math.PI * (t + T0) / PLANET.day); return; }
-  const a = 2 * Math.PI * t / MOON.period + 2.2, inc = .09;
-  b.c = b.c || new V3(); b.c.set(Math.cos(a) * MOON.orbit, Math.sin(a) * Math.sin(inc) * MOON.orbit, -Math.sin(a) * Math.cos(inc) * MOON.orbit);
-  b.q = b.q || new Q4(); b.q.setFromAxisAngle(new V3(0, 1, 0), a + Math.PI); // tidally locked
+  const a = 2 * Math.PI * t / b.period + b.ph, inc = b.inc, cl = Math.cos(b.lan), sl = Math.sin(b.lan), px = Math.cos(a) * b.orbit, py = Math.sin(a) * Math.sin(inc) * b.orbit, pz = -Math.sin(a) * Math.cos(inc) * b.orbit;
+  b.c = b.c || new V3(); b.c.set(px * cl + pz * sl, py, -px * sl + pz * cl);
+  b.q = b.q || new Q4(); b.q.setFromAxisAngle(new V3(0, 1, 0), a + Math.PI + b.lan); // tidally locked
 }
 
 // ---------------- heights
@@ -50,7 +54,28 @@ const CRATERS = (() => { const out = []; let s = 7; const r = () => (s = (Math.i
     const rad = big ? 20000 + r() * 30000 : Math.min(19000, 1100 / Math.pow(1 - r() * .985, .62));
     const c = {d: new V3(q * Math.cos(a), z, q * Math.sin(a)), r: rad, young: !big && rad > 4000 && i % 61 === 3, seed: i}; c.cos = Math.cos(Math.min(1.5, 7 * rad / 200000)); out.push(c); }
   return out; })();
+MOON.craters = CRATERS;
+function makeCraters(seed, n, nBig, R, bigMin, bigMax, small, maxR) { const out = []; let s = seed; const r = () => (s = (Math.imul(s, 1664525) + 1013904223) >>> 0) / 4294967296;
+  for (let i = 0; i < n; i++) { const z = r() * 2 - 1, a = r() * 6.283, q = Math.sqrt(1 - z * z), big = i < nBig, rad = big ? bigMin + r() * (bigMax - bigMin) : Math.min(maxR, small / Math.pow(1 - r() * .985, .62));
+    const c = {d: new V3(q * Math.cos(a), z, q * Math.sin(a)), r: rad, young: false, seed: i}; c.cos = Math.cos(Math.min(1.5, 7 * rad / R)); out.push(c); } return out; }
+RUST.craters = makeCraters(1311, 240, 6, RUST.R, 12000, 26000, 900, 11000);
+FROST.craters = makeCraters(1711, 90, 2, FROST.R, 8000, 14000, 700, 6000);
 let CR_NEAR = null; // craters that can touch the chunk being built
+// shared crater shape: bowl, flat floor for big ones, central peak, raised rim (eroded = softer, shallower)
+function craterH(b, x, y, z, erode) { let h = 0; const CL = CR_NEAR || b.craters;
+  for (let i = 0; i < CL.length; i++) { const c = CL[i]; const dd = x * c.d.x + y * c.d.y + z * c.d.z; if (dd < c.cos) continue;
+    const d = Math.acos(Math.min(1, dd)) * b.R / c.r; if (d > 2.2) continue;
+    const depth = c.r * (c.r > 1500 ? .12 : .3) * erode, rim = c.r * .07 * erode;
+    h += d < 1 ? Math.max(-depth, depth * (d * d - 1)) * (1 - d ** 8) + rim * d ** 6 + (c.r > 1500 ? c.r * .06 * erode * Math.exp(-((d / .16) ** 2)) : 0) : rim * Math.exp(-(((d - 1) * 2.6) ** 2)); }
+  return h; }
+// Rust: wind-worn red highlands, deep canyons, old soft craters, dune fields in the lowlands
+function rustH(x, y, z) { let h = fbm(x * 2.2 + 3, y * 2.2, z * 2.2, 6, 201) * 3000 + fbm(x * 28, y * 28, z * 28, 4, 202) * 260 + fbm(x * 260, y * 260, z * 260, 3, 203) * 28;
+  const cn = ridged(x * 3.2 + 1, y * 3.2, z * 3.2, 5, 204); h -= Math.pow(Math.max(0, cn - .45), 1.5) * 5200; // canyon network
+  const low = sstep(200, -900, h); h += low * Math.abs(noise3(x * 1800 + noise3(x * 90, y * 90, z * 90, 206) * 3, y * 1800, z * 1800, 205)) * 9; // dune ripples on low ground
+  return h + craterH(RUST, x, y, z, .55) + microCraters(x * RUST.R / 900, y * RUST.R / 900, z * RUST.R / 900, 900 * .4) + microCraters(x * RUST.R / 60, y * RUST.R / 60, z * RUST.R / 60, 60 * .5) + noise3(x * 9000, y * 9000, z * 9000, 207) * 1.5; }
+// Frost: smooth ice plains split by raised blue ridges (cracks), a few fresh craters
+function frostH(x, y, z) { const cr = ridged(x * 7 + 2, y * 7, z * 7, 4, 301), cr2 = ridged(x * 26, y * 26, z * 26, 3, 302);
+  return fbm(x * 2 + 9, y * 2, z * 2, 5, 303) * 1400 + Math.pow(cr, 6) * 520 + Math.pow(cr2, 8) * 120 + fbm(x * 300, y * 300, z * 300, 3, 304) * 12 + craterH(FROST, x, y, z, 1) + microCraters(x * FROST.R / 400, y * FROST.R / 400, z * FROST.R / 400, 400 * .3) + noise3(x * 8000, y * 8000, z * 8000, 305) * .8; }
 // moon features shared by height and colour
 function mareAt(x, y, z) { return sstep(-.02, .2, fbm(x * 1.15 + 5, y * 1.15, z * 1.15, 5, 101) + fbm(x * 9, y * 9, z * 9, 3, 102) * .06); }
 function microCraters(px, py, pz, amp) { // 2x2x2 nearest cells, one crater per cell (60%)
@@ -79,6 +104,7 @@ function heightAt(b, x, y, z) { // unit direction, body-fixed -> metres above se
       h = lerp(h, SITE_H + sd * sd / (2 * PLANET.R), 1 - sstep(1500, 2300, sd)); } // flat plane (tangent to the planet) under the space centre
     return h;
   }
+  if (b === RUST) return rustH(x, y, z); if (b === FROST) return frostH(x, y, z);
   const mare = mareAt(x, y, z);
   let h = (fbm(x * 3, y * 3, z * 3, 6, 3) * 2400 + fbm(x * 40, y * 40, z * 40, 4, 6) * 220 + fbm(x * 400, y * 400, z * 400, 3, 12) * 25) * (1 - .75 * mare) - 1400 * mare + noise3(x * 9000, y * 9000, z * 9000, 8) * 2.5;
   const CL = CR_NEAR || CRATERS; for (let i = 0; i < CL.length; i++) { const c = CL[i]; const dd = x * c.d.x + y * c.d.y + z * c.d.z; if (dd < c.cos) continue;
@@ -122,6 +148,20 @@ function colorAt(b, x, y, z, h, slope) {
     const snow = Math.max(sstep(3200, 3800, h + n * 600 + (1 - temp) * 1200 - 700), sstep(.8, .87, L + n * .04)) * (1 - sstep(.55, .75, slope));
     r = lerp(r, .95, snow); g = lerp(g, .96, snow); bl = lerp(bl, 1, snow);
     _wt[0] = (1 - sand) * (1 - rock) * (1 - snow); _wt[1] = sand * (1 - rock) * (1 - snow); _wt[2] = rock * (1 - snow); _wt[3] = snow;
+  } else if (b === RUST) { _wt[0] = 0; _wt[1] = .7; _wt[2] = .3; _wt[3] = 0;
+    // rusty dust, darker basalt patches and canyon floors, pale dust on the heights
+    const n = fbm(x * 24, y * 24, z * 24, 3, 210) * .5 + .5, ba = sstep(.1, .3, fbm(x * 1.6 + 4, y * 1.6, z * 1.6, 4, 211)), hi = sstep(500, 2600, h), lo = sstep(-300, -2500, h);
+    r = lerp(.6, .5, n) ; g = lerp(.33, .27, n); bl = lerp(.19, .16, n);
+    r = lerp(r, .34, ba * .7); g = lerp(g, .22, ba * .7); bl = lerp(bl, .17, ba * .7);
+    r = lerp(r, .76, hi * .6); g = lerp(g, .52, hi * .6); bl = lerp(bl, .34, hi * .6);
+    r = lerp(r, .42, lo * .6); g = lerp(g, .24, lo * .6); bl = lerp(bl, .16, lo * .6);
+    r += slope * .05; g += slope * .02;
+  } else if (b === FROST) { _wt[0] = 0; _wt[1] = .4; _wt[2] = .2; _wt[3] = .4;
+    // bright ice, blue-grey along the cracks, faint tan dust in patches
+    const cr = Math.pow(ridged(x * 7 + 2, y * 7, z * 7, 4, 301), 3) * .85, n = fbm(x * 18, y * 18, z * 18, 3, 310) * .5 + .5, rg = sstep(-.2, .3, fbm(x * 1.4 + 2, y * 1.4, z * 1.4, 4, 312)), du = sstep(.15, .35, fbm(x * 2.4 + 6, y * 2.4, z * 2.4, 3, 311));
+    r = lerp(.72, .62, n); g = lerp(.77, .69, n); bl = lerp(.85, .79, n); r = lerp(r, .5, rg * .6); g = lerp(g, .62, rg * .6); bl = lerp(bl, .78, rg * .6); // bluer old ice in broad regions
+    r = lerp(r, .6, du * .6); g = lerp(g, .55, du * .6); bl = lerp(bl, .5, du * .6);
+    const cr2 = Math.pow(ridged(x * 26, y * 26, z * 26, 3, 302), 5) * .6; r = lerp(r, .28, Math.min(1, cr + cr2)); g = lerp(g, .42, Math.min(1, cr + cr2)); bl = lerp(bl, .6, Math.min(1, cr + cr2)); r -= slope * .12; g -= slope * .08;
   } else { _wt[0] = 0; _wt[1] = .55; _wt[2] = .45; _wt[3] = 0;
     // highlands bright, maria dark basalt, bright ray streaks around young craters
     const n = fbm(x * 30, y * 30, z * 30, 3, 90) * .5 + .5, mare = mareAt(x, y, z); let v = lerp(.42, .17, mare) + (n - .5) * .08 + slope * .06, ray = 0;
@@ -441,17 +481,18 @@ const fxaaM = new THREE.ShaderMaterial({vertexShader: VS, depthTest: false, unif
     float lm = lum(m), a = lum(nw), b = lum(ne), c = lum(sw), d = lum(se), lo = min(lm, min(min(a, b), min(c, d))), hi = max(lm, max(max(a, b), max(c, d)));
     vec2 dir = vec2(-((a + b) - (c + d)), (a + c) - (b + d)); float red = max((a + b + c + d) * .03125, 1. / 128.), rc = 1. / (min(abs(dir.x), abs(dir.y)) + red); dir = clamp(dir * rc, -8., 8.) * px;
     vec3 A = .5 * (texture2D(t, vUv + dir * (1. / 3. - .5)).rgb + texture2D(t, vUv + dir * (2. / 3. - .5)).rgb), B = A * .5 + .25 * (texture2D(t, vUv - dir * .5).rgb + texture2D(t, vUv + dir * .5).rgb);
-    float lb = lum(B); gl_FragColor = vec4(lb < lo || lb > hi ? A : B, 1.); }`});
+    float lb = lum(B); vec3 o = lb < lo || lb > hi ? A : B; vec3 avg = (nw + ne + sw + se) * .25; o += (m - avg) * .32 * (1. - smoothstep(.02, .25, hi - lo)); // gentle sharpen (not on hard edges, FXAA owns those)
+    gl_FragColor = vec4(clamp(o, 0., 1.), 1.); }`});
 const POST = {};
 function setupPost() {
-  const pr = Math.min(devicePixelRatio, SET.gfx === 'high' ? 1.5 : SET.gfx === 'med' ? 1 : .75) * (G.rs || 1), w = Math.max(2, innerWidth * pr | 0), h = Math.max(2, innerHeight * pr | 0);
+  const pr = Math.min(devicePixelRatio, SET.gfx === 'high' ? 1.5 : SET.gfx === 'med' ? 1.25 : .75) * (G.rs || 1), w = Math.max(2, innerWidth * pr | 0), h = Math.max(2, innerHeight * pr | 0);
   RND.setPixelRatio(pr); RND.setSize(innerWidth, innerHeight, false); cam.aspect = innerWidth / innerHeight; cam.updateProjectionMatrix();
   for (const k in POST) POST[k].dispose();
   const HF = {type: THREE.HalfFloatType, depthBuffer: false};
   POST.main = new THREE.WebGLRenderTarget(w, h, {type: THREE.HalfFloatType, samples: 0, depthTexture: new THREE.DepthTexture(w, h, THREE.UnsignedIntType)});
   POST.ao = new THREE.WebGLRenderTarget(Math.max(2, w >> 1), Math.max(2, h >> 1), {depthBuffer: false});
   POST.sky = new THREE.WebGLRenderTarget(w, h, HF);
-  POST.cl = new THREE.WebGLRenderTarget(Math.max(2, w >> 1), Math.max(2, h >> 1), HF); POST.cl2 = POST.cl.clone();
+  const cs = SET.gfx === 'high' && !LITE() ? .7 : .5; POST.cl = new THREE.WebGLRenderTarget(Math.max(2, w * cs | 0), Math.max(2, h * cs | 0), HF); POST.cl2 = POST.cl.clone(); // sharper clouds on High
   const bw = Math.max(2, w >> 2), bh = Math.max(2, h >> 2);
   POST.a = new THREE.WebGLRenderTarget(bw, bh, HF); POST.b = POST.a.clone();
   POST.c = new THREE.WebGLRenderTarget(Math.max(2, bw >> 2), Math.max(2, bh >> 2), HF); POST.d = POST.c.clone(); POST.r = POST.a.clone();
@@ -472,7 +513,7 @@ function render(dt) {
   const clOn = HI() && G.O.distanceTo(PLANET.c) - PLANET.R < 2e7 ? 1 : 0; atmoM.uniforms.clOn.value = compM.uniforms.clOn.value = clOn;
   if (clOn) { const c = cloudM.uniforms; c.tDep.value = POST.main.depthTexture; c.invProj.value.copy(cam.projectionMatrixInverse); c.camRot.value.setFromMatrix4(cam.matrixWorld); c.camPos.value.copy(G.O).sub(PLANET.c); c.sunDir.value.copy(SUN);
     c.bInv.value.setFromMatrix4(new THREE.Matrix4().makeRotationFromQuaternion(PLANET.q).invert()); c.clTime.value = G.t; c.frame.value = (c.frame.value + 1) % 64; pass(cloudM, POST.cl);
-    blurM.uniforms.t.value = POST.cl.texture; blurM.uniforms.d.value.set(.7 / POST.cl.width, 0); pass(cloudBlurM(), POST.cl2); blurM.uniforms.t.value = POST.cl2.texture; blurM.uniforms.d.value.set(0, .7 / POST.cl.height); pass(cloudBlurM(), POST.cl);
+    blurM.uniforms.t.value = POST.cl.texture; blurM.uniforms.d.value.set(.45 / POST.cl.width, 0); pass(cloudBlurM(), POST.cl2); blurM.uniforms.t.value = POST.cl2.texture; blurM.uniforms.d.value.set(0, .45 / POST.cl.height); pass(cloudBlurM(), POST.cl);
     atmoM.uniforms.tCl.value = compM.uniforms.tCl.value = POST.cl.texture; }
   const u = atmoM.uniforms; u.tCol.value = POST.main.texture; u.tDep.value = POST.main.depthTexture; u.tAO.value = POST.ao.texture; u.invProj.value.copy(cam.projectionMatrixInverse);
   u.camRot.value.setFromMatrix4(cam.matrixWorld); u.camPos.value.copy(G.O).sub(PLANET.c); u.sunDir.value.copy(SUN);
@@ -536,7 +577,7 @@ function cloudShadow(sh, isTerr) {
 // Moon terrain shadows: each vertex stores the horizon elevation in 8 directions (Node.build); the sun is blocked when it is below the horizon there.
 // No air on the Moon, so these shadows are pitch black (only the shadow map near you and these, which also work from orbit)
 const MOONU = {mSun: {value: new V3(1, 0, 0)}};
-function moonShadow(sh) { sh.uniforms.mSun = MOONU.mSun;
+function moonShadow(sh, u) { sh.uniforms.mSun = u || MOONU.mSun;
   sh.vertexShader = 'attribute vec4 hz0, hz1; attribute vec3 hzU; varying vec4 vHz0, vHz1; varying vec3 vHzU;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n vHz0 = hz0; vHz1 = hz1; vHzU = hzU;');
   sh.fragmentShader = sh.fragmentShader.replace('vec3 gSunT = vec3(1.);', `vec3 gSunT = vec3(1.); uniform vec3 mSun; varying vec4 vHz0, vHz1; varying vec3 vHzU;
     float moonSh(){ vec3 up = normalize(vBd), u = normalize(vHzU - up * dot(vHzU, up)), w = cross(up, u);
@@ -544,11 +585,12 @@ function moonShadow(sh) { sh.uniforms.mSun = MOONU.mSun;
       float f = az / .78539816, t = fract(f); int i0 = int(floor(f)) & 7, i1 = (i0 + 1) & 7;
       float hz[8] = float[8](vHz0.x, vHz0.y, vHz0.z, vHz0.w, vHz1.x, vHz1.y, vHz1.z, vHz1.w); float h = mix(hz[i0], hz[i1], t);
       return smoothstep(h - .012, h + .012, e); }`).replace('gSunT = sunTrans() / max(camT, vec3(.002));', 'gSunT = sunTrans() / max(camT, vec3(.002)); gSunT *= moonSh();'); }
-const moonMat = terrMat.clone(); moonMat.userData.hue = 0; terrMat.userData.hue = .2; moonMat.customProgramCacheKey = () => 'moon';
-terrMat.onBeforeCompile = moonMat.onBeforeCompile = function (sh) {
+let TERR_OBC = null;
+const moonMat = terrMat.clone(); moonMat.userData.hue = 0; terrMat.userData.hue = .2; moonMat.customProgramCacheKey = () => 'moon'; moonMat.userData.mSun = MOONU.mSun;
+terrMat.onBeforeCompile = moonMat.onBeforeCompile = TERR_OBC = function (sh) {
   TMATS.forEach((m, i) => { sh.uniforms['tC' + i] = {value: tex(m, 'c')}; sh.uniforms['tN' + i] = {value: tex(m, 'n')}; sh.uniforms['aC' + i] = {get value() { return tex(m, 'c').userData.avg; }}; });
   sh.uniforms.hiQ = {get value() { return HI() ? 1 : 0; }}; sh.uniforms.tHue = {value: this.userData.hue};
-  cloudShadow(sh, true); if (this === moonMat) { sh.fragmentShader = '#define IS_MOON\n' + sh.fragmentShader; moonShadow(sh); } sh.vertexShader = 'attribute vec2 tuv; attribute vec4 mw; attribute float tax; varying vec2 vTu; varying vec4 vMw; varying vec3 vT, vB;\n' + sh.vertexShader.replace('#include <begin_vertex>', `#include <begin_vertex>
+  cloudShadow(sh, true); if (this !== terrMat) { sh.fragmentShader = '#define IS_MOON\n' + sh.fragmentShader; moonShadow(sh, this.userData.mSun); } sh.vertexShader = 'attribute vec2 tuv; attribute vec4 mw; attribute float tax; varying vec2 vTu; varying vec4 vMw; varying vec3 vT, vB;\n' + sh.vertexShader.replace('#include <begin_vertex>', `#include <begin_vertex>
     vTu = tuv; vMw = mw; vec3 tA = tax < .5 ? vec3(0., 0., 1.) : vec3(1., 0., 0.); vec3 bA = tax > .5 && tax < 1.5 ? vec3(0., 0., 1.) : vec3(0., 1., 0.);
     vT = normalize(normalMatrix * tA); vB = normalize(normalMatrix * bA);`);
   sh.fragmentShader = 'uniform sampler2D tC0, tC1, tC2, tC3, tN0, tN1, tN2, tN3; uniform vec3 aC0, aC1, aC2, aC3; uniform float hiQ, tHue; varying vec2 vTu; varying vec4 vMw; varying vec3 vT, vB;\n' +
@@ -570,6 +612,8 @@ terrMat.onBeforeCompile = moonMat.onBeforeCompile = function (sh) {
         totalEmissiveRadiance += vec3(1., .62, .3) * nt * cty * (.15 + st) * .035; } }
 #endif`);
 };
+MOON.mat = moonMat;
+for (const b of [RUST, FROST]) { const m = terrMat.clone(); m.userData.hue = 0; m.userData.mSun = {value: new V3(1, 0, 0)}; m.customProgramCacheKey = () => 'moon'; m.onBeforeCompile = TERR_OBC; b.mat = m; }
 // tileable wave normal map, made at load
 const waveTex = (() => { const N2 = 256, c = document.createElement('canvas'); c.width = c.height = N2; const x = c.getContext('2d'), im = x.createImageData(N2, N2), H = new Float32Array(N2 * N2);
   for (let j = 0; j < N2; j++) for (let i = 0; i < N2; i++) { let h = 0; for (let k = 0; k < 14; k++) { const a = hsh(k, 1, 2, 9) * 6.283, f = 1 + (k % 7) * 1.0 + (k > 6 ? 5 : 0), kx = Math.round(Math.cos(a) * f), ky = Math.round(Math.sin(a) * f);
@@ -597,9 +641,9 @@ class Node {
   constructor(body, f, l, u, v, s) { this.b = body; this.f = f; this.l = l; this.u = u; this.v = v; this.s = s; this.kids = null; this.mesh = null;
     this.c = cubeDir(f, u + s / 2, v + s / 2, new V3()).multiplyScalar(body.R); this.size = body.R * s * 1.15; }
   build() {
-    if (this.b === MOON) { const ca = this.c.clone().normalize(), half = this.s * .8 + .01; CR_NEAR = CRATERS.filter(c => Math.acos(clamp(ca.dot(c.d), -1, 1)) < half + 2.3 * c.r / MOON.R); }
+    if (this.b.craters) { const ca = this.c.clone().normalize(), half = this.s * .8 + .01, B = this.b; CR_NEAR = B.craters.filter(c => Math.acos(clamp(ca.dot(c.d), -1, 1)) < half + 2.3 * c.r / B.R); }
     const b = this.b, R = b.R, M = NV + 2, H = new Float32Array(M * M), P = new Float32Array(M * M * 3), d = new V3();
-    let hmin = 1e9; const E = b === MOON ? 8 : 1, ME = NV + 2 * E, HE = E > 1 ? new Float32Array(ME * ME) : null;
+    let hmin = 1e9; const E = b !== PLANET ? 8 : 1, ME = NV + 2 * E, HE = E > 1 ? new Float32Array(ME * ME) : null;
     if (HE) for (let j = 0; j < ME; j++) for (let i = 0; i < ME; i++) { cubeDir(this.f, this.u + this.s * (i - E) / N, this.v + this.s * (j - E) / N, d); HE[j * ME + i] = heightAt(b, d.x, d.y, d.z); }
     for (let j = 0; j < M; j++) for (let i = 0; i < M; i++) {
       cubeDir(this.f, this.u + this.s * (i - 1) / N, this.v + this.s * (j - 1) / N, d); const h = HE ? HE[(j - 1 + E) * ME + i - 1 + E] : heightAt(b, d.x, d.y, d.z), k = j * M + i;
@@ -643,7 +687,7 @@ class Node {
     if (hz0) { g.setAttribute('hz0', new THREE.BufferAttribute(hz0, 4)); g.setAttribute('hz1', new THREE.BufferAttribute(hz1, 4)); g.setAttribute('hzU', new THREE.BufferAttribute(hzU, 3)); }
     g.setAttribute('bd', new THREE.BufferAttribute(bdA, 3)); g.setAttribute('tuv', new THREE.BufferAttribute(tuv, 2)); g.setAttribute('mw', new THREE.BufferAttribute(mw, 4)); g.setAttribute('tax', new THREE.BufferAttribute(new Float32Array(nv).fill(ax), 1));
     g.setIndex(terrIndex); g.computeBoundingSphere();
-    const m = new THREE.Mesh(g, b === MOON ? moonMat : terrMat); m.position.copy(this.c); m.receiveShadow = true; m.castShadow = this.l >= b.maxL - 3;
+    const m = new THREE.Mesh(g, b.mat || terrMat); m.position.copy(this.c); m.receiveShadow = true; m.castShadow = this.l >= b.maxL - 3;
     if (b.water && hmin < 4) { // sea at radius R, 17x17 grid
       const W = 17, wp = new Float32Array(W * W * 3), wi = [], wdA = new Float32Array(W * W);
       for (let j = 0; j < W; j++) for (let i = 0; i < W; i++) { cubeDir(this.f, this.u + this.s * i / (W - 1), this.v + this.s * j / (W - 1), d); wdA[j * W + i] = heightAt(b, d.x, d.y, d.z); const o = (j * W + i) * 3; wp[o] = d.x * R - cx; wp[o + 1] = d.y * R - cy; wp[o + 2] = d.z * R - cz; }
@@ -961,7 +1005,7 @@ const keys = {}; let look = {dx: 0, dy: 0};
 addEventListener('keydown', e => { keys[e.code] = true; if (e.code === 'Space' && G.on) e.preventDefault(); });
 addEventListener('keyup', e => { keys[e.code] = false; });
 addEventListener('mousemove', e => { if (document.pointerLockElement === canvas) { look.dx += e.movementX; look.dy += e.movementY; } });
-function lockPointer() { if (!G.on || document.pointerLockElement === canvas || !canvas.requestPointerLock) return; try { const p = canvas.requestPointerLock(); if (p && p.catch) p.catch(() => {}); } catch (e) {} } // can fail right after Esc (browser cooldown): the next click tries again
+function lockPointer() { if (!G.on || (typeof MAPV !== "undefined" && MAPV.on) || document.pointerLockElement === canvas || !canvas.requestPointerLock) return; try { const p = canvas.requestPointerLock(); if (p && p.catch) p.catch(() => {}); } catch (e) {} } // can fail right after Esc (browser cooldown): the next click tries again
 canvas.addEventListener('click', lockPointer);
 addEventListener('blur', () => { for (const k in keys) keys[k] = false; }); // keys released while the tab was in the background no longer stick
 const _up = new V3(), _rt = new V3(), _w = new V3(), _sp = new V3();
@@ -977,7 +1021,7 @@ function stepPlayer(dt) {
   const r = P.pos.length(), g = b.GM / (r * r), vUp = P.vel.dot(up);
   const tang = P.vel.clone().addScaledVector(up, -vUp), k = P.ground ? 1 - Math.exp(-dt * 12) : 1 - Math.exp(-dt * 1.2);
   tang.lerp(_w, k); P.vel.copy(tang).addScaledVector(up, vUp - g * dt);
-  if (P.ground && keys.Space) { P.vel.addScaledVector(up, b === MOON ? 3.2 : 4.6); P.ground = false; }
+  if (P.ground && keys.Space) { P.vel.addScaledVector(up, b !== PLANET ? 3.2 : 4.6); P.ground = false; }
   P.pos.addScaledVector(P.vel, dt);
   // terrain
   P.ground = false; const gr = groundR(b, P.pos), rr = P.pos.length();
@@ -1043,7 +1087,8 @@ function updateLight() {
   scene.backgroundIntensity = lerp(1, .004, sstep(-.16, .08, el) * (1 - sstep(PLANET.atmo * .35, PLANET.atmo, alt))); // stars wash out in a daylight sky
   if (PLANET.cloudMeshes) for (const m of PLANET.cloudMeshes) m.visible = !HI(); // High uses the volumetric clouds
   if (PLANET.clouds) { const u = PLANET.clouds.uniforms; u.sun.value.copy(SUN); u.sunC.value.setRGB(1, 1, 1).multiplyScalar(3.4 * .85 / Math.PI * 1.6); u.sky.value.setRGB(.06, .09, .14).multiplyScalar(.2 + day * 2); u.t.value = G.t; }
-  if (G.waterT) G.waterT.value = G.t % 1000; // every wave scroll repeats after 1000 s, so this wraps seamlessly and keeps float precision after long time warps CLOUDU.sunB.value.copy(SUN).applyQuaternion(PLANET.q.clone().invert()); MOONU.mSun.value.copy(SUN).applyQuaternion(MOON.q.clone().invert()); CLOUDU.cT.value = G.t; CLOUDU.cOn.value = HI() ? 1 : 0; CLOUDU.camT.value.set(t[0], t[1], t[2]); amb.intensity *= .25; compM.uniforms.sunCol.value.set(t[0], t[1], t[2]).multiplyScalar(.9);
+  // wave clock: every scroll repeats after 1000 s, so it wraps seamlessly and keeps float precision after long time warps
+  if (G.waterT) G.waterT.value = G.t % 1000; CLOUDU.sunB.value.copy(SUN).applyQuaternion(PLANET.q.clone().invert()); for (const sb of SATS) sb.mat.userData.mSun.value.copy(SUN).applyQuaternion(sb.q.clone().invert()); CLOUDU.cT.value = G.t; CLOUDU.cOn.value = HI() ? 1 : 0; CLOUDU.camT.value.set(t[0], t[1], t[2]); amb.intensity *= .25; compM.uniforms.sunCol.value.set(t[0], t[1], t[2]).multiplyScalar(.9);
 }
 
 // ---------------- HUD
@@ -1080,7 +1125,7 @@ function frame(ts) {
   if (G.on) { if (R.on) FLIGHT.hud(dt); else { FLIGHT.hideHud(); updateHud(dt); } }
   // adaptive resolution: drop a little when frames are slow, climb back when there is room
   if (G.on && !MAPV.on && (G.rsT = (G.rsT || 0) + dt) > 3) { G.rsT = 0; const rs = G.rs || 1; let n = rs, lite = !!G.lite;
-    if (fps < 42) { if (rs > .65) n = rs - .1; else if (SET.gfx === 'high') lite = true; } else if (fps > 57) { if (lite && rs >= .85) lite = false; else if (rs < 1) n = Math.min(1, rs + .1); }
+    if (fps < 42) { if (SET.gfx === 'high' && !lite) lite = true; else if (rs > .8) n = Math.max(.8, rs - .1); } else if (fps > 57) { if (rs < 1) n = Math.min(1, rs + .1); else if (lite && SET.gfx === 'high') lite = false; } // blur last: drop SSAO / rays first, then at most 20% resolution
     if (n !== rs || lite !== !!G.lite) { G.rs = n; G.lite = lite; setupPost(); } }
   render(rdt);
 }
@@ -1096,21 +1141,23 @@ function rockGeo() { const g = new THREE.IcosahedronGeometry(1, 2), pa = g.attri
   const na = new Float32Array(pa.count * 3); for (let i = 0; i < pa.count; i++) { if (i % 3 === 0) { for (let k = 0; k < 3; k++) tri[k].fromBufferAttribute(pa, i + k); fn.crossVectors(e1.subVectors(tri[1], tri[0]), e2.subVectors(tri[2], tri[0])).normalize(); } const n2 = nm.get(keyOf(i)).clone().normalize().addScaledVector(fn, .7).normalize(); na[i * 3] = n2.x; na[i * 3 + 1] = n2.y; na[i * 3 + 2] = n2.z; }
   g.setAttribute('normal', new THREE.BufferAttribute(na, 3)); return g; }
 function moonRocks() {
-  const cpos = ROCK.a.copy(G.O).sub(MOON.c).applyQuaternion(_qi.copy(MOON.q).invert()), L = cpos.length(), alt = L - MOON.R;
-  if (!ROCK.mesh) { ROCK.mesh = new THREE.InstancedMesh(rockGeo(), new THREE.MeshStandardMaterial({color: 0x3a3836, map: tex('rock', 'c'), normalMap: tex('rock', 'n'), normalScale: new THREE.Vector2(1.4, 1.4), roughness: 1, metalness: 0}), ROCK.n); ROCK.mesh.castShadow = ROCK.mesh.receiveShadow = true; ROCK.mesh.frustumCulled = false; ROCK.mesh.count = 0; MOON.group.add(ROCK.mesh);
-    ROCK.mesh.material.onBeforeCompile = sh => { sh.fragmentShader = sh.fragmentShader.replace('#include <map_fragment>', '#include <map_fragment>\n diffuseColor.rgb = vec3(dot(diffuseColor.rgb, vec3(.3, .55, .15))) * vec3(1., .97, .93);'); }; } // moon rock is grey: drop the texture's moss
+  let B = MOON, best = Infinity; for (const sb of SATS) { const a2 = G.O.distanceTo(sb.c) - sb.R; if (a2 < best) { best = a2; B = sb; } } // the nearest airless world
+  const cpos = ROCK.a.copy(G.O).sub(B.c).applyQuaternion(_qi.copy(B.q).invert()), L = cpos.length(), alt = L - B.R;
+  if (!ROCK.mesh) { ROCK.mesh = new THREE.InstancedMesh(rockGeo(), new THREE.MeshStandardMaterial({color: 0x3a3836, map: tex('rock', 'c'), normalMap: tex('rock', 'n'), normalScale: new THREE.Vector2(1.4, 1.4), roughness: 1, metalness: 0}), ROCK.n); ROCK.mesh.castShadow = ROCK.mesh.receiveShadow = true; ROCK.mesh.frustumCulled = false; ROCK.mesh.count = 0;
+    ROCK.mesh.material.onBeforeCompile = sh => { sh.fragmentShader = sh.fragmentShader.replace('#include <map_fragment>', '#include <map_fragment>\n diffuseColor.rgb = diffuse * dot(sampledDiffuseColor.rgb, vec3(.3, .55, .15)) * 1.6;'); }; } // moon rock is grey: drop the texture's moss
   ROCK.mesh.visible = alt < 2500; if (!ROCK.mesh.visible) return;
+  if (ROCK.body !== B) { ROCK.body = B; B.group.add(ROCK.mesh); ROCK.key = ''; ROCK.mesh.material.color.setHex(B === RUST ? 0x40241a : B === FROST ? 0x6c727a : 0x3a3836); }
   const d = ROCK.d.copy(cpos).divideScalar(L), ax = Math.abs(d.x) >= Math.abs(d.y) && Math.abs(d.x) >= Math.abs(d.z) ? 0 : Math.abs(d.y) >= Math.abs(d.z) ? 1 : 2, comp = [d.x, d.y, d.z], dom = comp[ax], o1 = (ax + 1) % 3, o2 = (ax + 2) % 3;
-  const s0 = comp[o1] / Math.abs(dom), t0 = comp[o2] / Math.abs(dom), cs = 6 / MOON.R, ci = Math.floor(s0 / cs), cj = Math.floor(t0 / cs), key = ax + (dom > 0 ? '+' : '-') + (ci >> 2) + ',' + (cj >> 2);
+  const s0 = comp[o1] / Math.abs(dom), t0 = comp[o2] / Math.abs(dom), cs = 6 / B.R, ci = Math.floor(s0 / cs), cj = Math.floor(t0 / cs), key = B.name + ax + (dom > 0 ? '+' : '-') + (ci >> 2) + ',' + (cj >> 2);
   if (key === ROCK.key) return; ROCK.key = key; // re-scatter when you move ~24 m
-  const anchor = d.clone().multiplyScalar(MOON.R + heightAt(MOON, d.x, d.y, d.z)); ROCK.mesh.position.copy(anchor); // instance positions stay small (float precision)
-  const ca = Math.cos(1200 / MOON.R); CR_NEAR = CRATERS.filter(c => d.dot(c.d) > Math.cos(Math.acos(Math.min(1, ca)) + 2.3 * c.r / MOON.R));
+  const anchor = d.clone().multiplyScalar(B.R + heightAt(B, d.x, d.y, d.z)); ROCK.mesh.position.copy(anchor); // instance positions stay small (float precision)
+  const ca = Math.cos(1200 / B.R); CR_NEAR = B.craters.filter(c => d.dot(c.d) > Math.cos(Math.acos(Math.min(1, ca)) + 2.3 * c.r / B.R));
   let n = 0; const W = 28, v = new V3();
   for (let j = -W; j <= W && n < ROCK.n; j++) for (let i = -W; i <= W && n < ROCK.n; i++) { const gi = (ci >> 2 << 2) + i, gj = (cj >> 2 << 2) + j, hs = hsh(gi, gj, ax * 2 + (dom > 0 ? 1 : 0), 31);
     const big = hs < .025, far = Math.abs(i) > 18 || Math.abs(j) > 18; if (!(hs < .5 || big) || (far && !big)) continue;
     const sv = (gi + hsh(gi, gj, 1, 32)) * cs, tv = (gj + hsh(gi, gj, 2, 33)) * cs; v.set(0, 0, 0); v.setComponent(ax, Math.sign(dom)); v.setComponent(o1, sv); v.setComponent(o2, tv); v.normalize();
     const sz = big ? 1 + hsh(gi, gj, 3, 34) * 2.2 : .07 + Math.pow(hsh(gi, gj, 3, 35), 4) * 1.1;
-    ROCK.p.copy(v).multiplyScalar(MOON.R + heightAt(MOON, v.x, v.y, v.z) - sz * .25).sub(anchor);
+    ROCK.p.copy(v).multiplyScalar(B.R + heightAt(B, v.x, v.y, v.z) - sz * .25).sub(anchor);
     ROCK.q.setFromUnitVectors(_Yr, v).multiply(_qr.setFromAxisAngle(_Yr, hsh(gi, gj, 4, 36) * 6.28)); ROCK.sc.set(sz * (.8 + hsh(gi, gj, 5, 37) * .5), sz, sz * (.8 + hsh(gi, gj, 6, 38) * .5));
     ROCK.mesh.setMatrixAt(n++, ROCK.M4.compose(ROCK.p, ROCK.q, ROCK.sc)); }
   CR_NEAR = null; ROCK.mesh.count = n; ROCK.mesh.instanceMatrix.needsUpdate = true; }
