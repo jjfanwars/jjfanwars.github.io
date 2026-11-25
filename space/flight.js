@@ -744,7 +744,7 @@ const MAPB = {row: 0}; // planet map baked a row at a time (heightAt is slow)
 function mapBuild() { if (!MAPB.c) { MAPB.c = document.createElement('canvas'); MAPB.c.width = 256; MAPB.c.height = 128; MAPB.x = MAPB.c.getContext('2d'); MAPB.x.fillStyle = '#0b2440'; MAPB.x.fillRect(0, 0, 256, 128); MAPB.im = MAPB.x.createImageData(256, 1); }
   for (let n = 0; n < 2 && MAPB.row < 128; n++, MAPB.row++) { const j = MAPB.row, lat = Math.PI / 2 - (j + .5) / 128 * Math.PI, d = MAPB.im.data;
     for (let i = 0; i < 256; i++) { const lon = (i + .5) / 256 * 2 * Math.PI - Math.PI, cx = Math.cos(lat) * Math.cos(lon), cy = Math.sin(lat), cz = -Math.cos(lat) * Math.sin(lon), h = heightAt(PLANET, cx, cy, cz);
-      let c; if (h < 0) { const k = clamp(-h / 2500, 0, 1); c = [14 - 6 * k, 58 - 26 * k, 98 - 36 * k]; } else if (h > 3300) c = [225, 230, 235]; else { const k = clamp(h / 3000, 0, 1); c = [62 + 70 * k, 104 - 10 * k, 54 + 20 * k]; }
+      let c; if (h < 0) { const k = clamp(-h / 2500, 0, 1); c = [14 - 6 * k, 58 - 26 * k, 98 - 36 * k]; } else { const q = colorAt(PLANET, cx, cy, cz, h, 0), sh = 1.1 - clamp(h / 3000, 0, 1) * .15; c = [Math.pow(q.r, 1 / 2.2) * 255 * sh, Math.pow(q.g, 1 / 2.2) * 255 * sh, Math.pow(q.b, 1 / 2.2) * 255 * sh]; } // same biomes as the ground
       d[i * 4] = c[0]; d[i * 4 + 1] = c[1]; d[i * 4 + 2] = c[2]; d[i * 4 + 3] = 255; } MAPB.x.putImageData(MAPB.im, 0, j); } }
 const MC_P = new V3(); // mission control centre (body-fixed), set at boot
 function updateScreens(dt) {
