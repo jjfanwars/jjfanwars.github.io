@@ -282,7 +282,7 @@ function grounds() {
   H.addMerged(L);
   // lamp heads that glow at night
   const lampM = new THREE.MeshStandardMaterial({color: 0x222222, emissive: 0xffd9a0, emissiveIntensity: 0}); WLD.lampM = lampM;
-  const lh = new THREE.InstancedMesh(new THREE.BoxGeometry(.7, .1, .4), lampM, poles.length), M4 = new THREE.Matrix4(); poles.forEach(([x, z], i) => lh.setMatrixAt(i, M4.makeTranslation(x, 7.85, z))); lh.userData.tile = [400, 3000]; g.add(lh);
+  const lh = new THREE.InstancedMesh(new THREE.BoxGeometry(.7, .1, .4), lampM, poles.length), M4 = new THREE.Matrix4(); poles.forEach(([x, z], i) => lh.setMatrixAt(i, M4.makeTranslation(x, 7.85, z))); lh.userData.tile = [800, 3000]; g.add(lh);
   // signs
   H.decal(signTex(1024, 256, (c, w, h) => { c.fillStyle = '#1f6b3a'; c.fillRect(0, 0, w, h); c.strokeStyle = '#fff'; c.lineWidth = 10; c.strokeRect(14, 14, w - 28, h - 28); c.fillStyle = '#fff'; c.font = '600 110px Fredoka, Arial'; c.textAlign = 'center'; c.fillText('YEVILLE', w / 2, 140); c.font = '44px Fredoka, Arial'; c.fillText('pop. 1,204 · Home of YeShip', w / 2, 210); }), -641, 3, 30, 6, 1.5, Math.PI / 2);
   box(-641.2, 0, 30, .3, 2.2, .3, 0x666666, false);
@@ -359,7 +359,7 @@ function flora() {
   const NG = 16000, gm = new THREE.InstancedMesh(tuft, new THREE.MeshStandardMaterial({vertexColors: true, roughness: 1, side: THREE.DoubleSide}), NG); let kg = 0;
   for (let i = 0; i < 60000 && kg < NG; i++) { const a = r() * 6.283, d = 112 + Math.pow(r(), 1.7) * 900, x = Math.cos(a) * d, z = Math.sin(a) * d; if (blocked(x, z, .5)) continue; if (noise3(x / 40, 1, z / 40, 81) < -.15) continue;
     const sc = .8 + r() * 1.1; gm.setMatrixAt(kg, M4.compose(p.set(x, gy(x, z) - .03, z), q.setFromAxisAngle(Y, r() * 6.28), s.set(sc, sc * (.7 + r() * .6), sc))); gm.setColorAt(kg++, col.setRGB(.8 + r() * .4, .85 + r() * .3, .7 + r() * .3)); }
-  gm.count = kg; gm.userData.tile = [200, 700]; bm.userData.tile = [400, 1800]; rm.userData.tile = [400, 2500]; gm.receiveShadow = true; gm.instanceMatrix.needsUpdate = true; gm.computeBoundingSphere(); g.add(gm);
+  gm.count = kg; gm.userData.tile = [450, 700]; bm.userData.tile = [900, 1800]; rm.userData.tile = [900, 2500]; gm.receiveShadow = true; gm.instanceMatrix.needsUpdate = true; gm.computeBoundingSphere(); g.add(gm);
 }
 
 // ---------------- hooks: build with the site, refresh the stand when the design changes, the explosion counter, prompts + F, night lights
@@ -375,7 +375,7 @@ function tileSplit(im, size, range) { const n = im.count, cells = new Map(), m =
   par.remove(im); }
 { const b0 = buildSite; buildSite = function () { b0(); try { let n0 = site.g.children.length; hangarInside(); WLD.gIn = adopt(n0); hangarRocket();
     n0 = site.g.children.length; grounds(); WLD.gOut = adopt(n0); n0 = site.g.children.length; town(); WLD.gTown = adopt(n0); n0 = site.g.children.length; flora(); WLD.gFl = adopt(n0);
-    for (const im of [...WLD.gTown.children, ...WLD.gFl.children, ...WLD.gOut.children]) if (im.isInstancedMesh) { const [sz, rg] = im.userData.tile || [400, im.parent === WLD.gTown ? 9000 : 6000]; tileSplit(im, sz, rg); }
+    for (const im of [...WLD.gTown.children, ...WLD.gFl.children, ...WLD.gOut.children]) if (im.isInstancedMesh) { const [sz, rg] = im.userData.tile || (im.parent === WLD.gTown ? [700, 9000] : [1100, 6000]); tileSplit(im, sz, rg); }
   } catch (e) { console.error('world build', e); } }; }
 // hide what is too far to matter (checked 4x a second): tiles by distance, the hangar inside past 450 m, everything from high up
 const _wcam = new V3(), _wqi = new Q4();
