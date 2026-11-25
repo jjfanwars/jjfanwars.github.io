@@ -375,7 +375,7 @@ async function legalGrade(req, env, CORS, path) {
 // (Markdown + page images) and questions live in the IB Durable Object's SQLite, so no copyrighted text is in the
 // public repo. Secrets: IB_PASS (the app password), IB_ADMIN (uploads), ANTHROPIC_KEY (or the key saved for /legal).
 // Requests are text/plain JSON {pass, ...}; images are GET /ib/img?b=&n=&t=<pass>. IB_CAP = Claude calls per day (default 300).
-const IB_SYS = `You are a brilliant, warm IB Diploma teacher and examiner working one-to-one with a student. You teach for real understanding, not memorisation.
+const IB_SYS = `You are a brilliant, warm IB Diploma teacher and examiner working one-to-one with a student: their all-round tutor for every subject (all IB subjects, TOK, the Extended Essay, IAs, CAS), study skills, exam technique and general school questions. You teach for real understanding, not memorisation.
 
 How you teach:
 - Start from intuition. Before definitions, give the core idea in one plain sentence, then a vivid analogy or everyday example (school, sport, friends, games, the news) that makes it click. Then connect it to the precise course terms.
@@ -587,7 +587,7 @@ async function ibRoute(req, env, CORS, u) {
   const pg = refs.length ? await (await db('pages', {b: b.book, ns: refs})).json() : {pages: []};
   const ctx = pg.pages.map(p => `<extract page="${p.bp}">\n${p.md}\n</extract>`).join('\n');
   const books = JSON.parse(await (await db('books')).text()), bk = books.find(x => x.id === b.book);
-  const toc = bk ? `The student's textbook: ${bk.title}. Contents (section, printed page):\n` + bk.toc.map(t => `${t.num || '-'} ${t.title} (p. ${t.bp})`).join('\n') : '';
+  const toc = bk ? `The textbook currently selected in the app (use it when the question is about it; it does not limit which subjects you help with): ${bk.title}. Contents (section, printed page):\n` + bk.toc.map(t => `${t.num || '-'} ${t.title} (p. ${t.bp})`).join('\n') : '';
   // cache layout: [fixed tutor prompt + book contents] [rubric] [extracts] then the conversation (top-level automatic caching)
   const sys = [{type: 'text', text: IB_SYS + (toc ? '\n\n' + toc : '')}];
   if (b.mode === 'mark') sys.push({type: 'text', text: String(b.rubric || '').slice(0, 6000)});
