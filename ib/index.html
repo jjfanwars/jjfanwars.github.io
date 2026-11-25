@@ -195,6 +195,7 @@ aside .pg{color:var(--mut);font-size:11.5px;font-weight:400;font-variant-numeric
 main{padding:24px 28px 80px;min-width:0}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r)}
 .drills{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px}.drillc{display:flex;flex-direction:column;align-items:flex-start;gap:6px;padding:16px;text-align:left;cursor:pointer;font:inherit;color:inherit}.drillc:hover{border-color:var(--acc)}.drillc .i{width:26px;height:26px;color:var(--acc)}.drillc b{font-size:16px}
+/* feature: numeric answer checking */ .numck{margin-top:12px;padding:12px 14px;font-family:var(--f-ui)}.numh{gap:6px 10px;margin-bottom:4px}.numh .meta{font-size:12.5px}.numr{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:4px 8px;align-items:center;margin-top:8px}.numl{font-weight:600;font-size:14px;min-width:2.2em}.numr input{padding:7px 10px}.numm{grid-column:2/4;font-size:12px;margin-top:-2px}.numm:empty{display:none}.numv{grid-column:1/-1;font-size:14px;line-height:1.45;border-radius:8px}.numv:not(:empty){padding:6px 10px;background:var(--sunk)}.numv.ok{background:var(--good2);color:var(--good)}.numv.mid{background:var(--warn2);color:var(--warn)}.numv.no{background:var(--red2);color:var(--red)}.numv .meta{color:inherit;opacity:.85}.numv .katex{font-size:1em}.numact{margin-top:10px;border-top:1px solid var(--line);padding-top:10px}@media (max-width:520px){.numact .sp{display:none}.numact button{flex:1 1 auto;justify-content:center}}
 .reader{max-width:760px;margin:0 auto}
 .rbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px}
 .rbar .sp,.sp{flex:1}
@@ -929,6 +930,7 @@ function openQ(id) {
     $('#mark').disabled = false;
   };
   $('#mark').onclick = () => mark();
+  numHook(q); // final answer check (feature: numeric answer checking)
 }
 const li = a => (a || []).map(x => '<li>' + mdx(String(x), true) + '</li>').join('');
 function fbHtml(fb, o = {}) {
@@ -1697,6 +1699,7 @@ async function submitPaper(P, st, K, pages, prev) { // prev: {out, map, live} wh
       if (x.kind === 'mcq' && q.ans && a) { const ok = a.toUpperCase() === String(q.ans).toUpperCase(); return {q, x, a, imgs, fb: {...blank(max, ok ? 'Correct.' : 'Answer: ' + q.ans), score: ok ? max : 0}}; }
       imgs = map ? (map[qKey(q.n)] || []).map(i => pages[i - 1]).filter(Boolean).slice(0, 5) : x.kind === 'mcq' ? [] : live[q.n] || await hwImagesFor('pp:' + P.id + ':' + q.n);
       if (!a && !imgs.length) return {q, x, a, imgs, fb: blank(max, map ? "Couldn't find an answer to this question in your photos." : 'Not answered.')};
+      { const nf = numPaperFb(x, a, imgs, max); if (nf) return {q, x, a, imgs, fb: nf}; } // short final-answer questions typed exactly right: marked in the app
       const fb = await markWork({rubric: (RUBRIC[x.kind] || RUBRIC.structured) + (q.ms ? '\n\nOfficial markscheme (follow it):\n' + q.ms : '') + MARK_FMT + (stepped(x) ? STEP_FMT : '')
           + (x.kind === 'mcq' && q.ans ? `\n\nThe correct option is ${q.ans}. Award ${max} only if the letter the student chose is ${q.ans}, otherwise 0.` : '')
           + (map ? `\n\nThe photos are pages of the student's whole script, so they may also show answers to other questions: transcribe and mark ONLY question ${q.n}.` : ''),
@@ -2754,6 +2757,7 @@ async function loadGen() {
   try { const ix = await (await fetch('qbank/index.json', {cache: 'no-cache'})).json();
     const all = (await Promise.all(ix.map(f => fetch('qbank/' + f, {cache: 'no-cache'}).then(r => r.json()).catch(() => [])))).flat();
     for (const q of all) { const B = bookOf(q.book); if (!B || S.qs.some(x => x.id === q.id)) continue; if (/^(?:chem|phys|math)$/.test(q.book)) B.math = true; if (B.toc && B.toc.length) q.topic = genTopic(B, q); S.qs.push(q); }
+    numLoad(); // final-answer data (feature: numeric answer checking)
   } catch (e) {}
 }
 
@@ -3191,6 +3195,238 @@ function renderFriends() { shell('friends'); setHash('#/friends'); $('#main').in
 
 
 // ==== FEATURE: numeric answer checking ====
+// "Final answer check" under a practice question: instant, free feedback on the final number(s); Claude is only needed for the working.
+// Data: qbank/num.json (built by qbank/num.py, every value reviewed by hand) = {id: {parts: [{p, v, u, sf?, dp?, tol?, abs?, r?, alt?, ex?, pt?, m?}], all?}},
+// attached as q.num by numLoad() (started from loadGen). Official maths questions from the relay get a spec only when their markscheme is
+// a single unambiguous value (numFromMs). numCheck(input, part, {math}) -> {k: ok|unit|sf|dp|form|close|p10|sign|wrong|count|parse, msg, note}.
+// Saved checks: S.prog.nck {id: {t, k: parts right, n: parts}} (last write wins, merged in the mergeIn wrapper below). "Count it" on a question
+// that is only a final answer (num.all) worth <= 2 marks saves a normal attempt (fb.num = 1), so mastery and the mistake log stay right.
+let NUMP = null;
+function numLoad() {
+  NUMP = NUMP || fetch('qbank/num.json', {cache: 'no-cache'}).then(r => r.ok ? r.json() : {}).catch(() => ({}));
+  return NUMP.then(m => { for (const q of S.qs || []) { if (m[q.id]) q.num = m[q.id]; else if (!q.num && q.ms && q.src !== 'gen') { const n = numFromMs(q); if (n) q.num = n; } } return m; });
+}
+const numD = (...a) => [0, 0, 0, 0, 0, 0, 0].map((_, i) => a[i] || 0); // dimensions: m kg s A K mol rad
+const NUMB = {m: [1, numD(1)], g: [1e-3, numD(0, 1)], s: [1, numD(0, 0, 1)], A: [1, numD(0, 0, 0, 1)], K: [1, numD(0, 0, 0, 0, 1)], mol: [1, numD(0, 0, 0, 0, 0, 1)], rad: [1, numD(0, 0, 0, 0, 0, 0, 1)],
+  N: [1, numD(1, 1, -2)], J: [1, numD(2, 1, -2)], W: [1, numD(2, 1, -3)], Pa: [1, numD(-1, 1, -2)], Hz: [1, numD(0, 0, -1)], C: [1, numD(0, 0, 1, 1)], V: [1, numD(2, 1, -3, -1)], 'Ω': [1, numD(2, 1, -3, -2)],
+  F: [1, numD(-2, -1, 4, 2)], T: [1, numD(0, 1, -2, -1)], Wb: [1, numD(2, 1, -2, -1)], H: [1, numD(2, 1, -2, -2)], eV: [1.602176634e-19, numD(2, 1, -2)], Wh: [3600, numD(2, 1, -2)],
+  L: [1e-3, numD(3)], l: [1e-3, numD(3)], Bq: [1, numD(0, 0, -1)], Gy: [1, numD(2, 0, -2)], Sv: [1, numD(2, 0, -2)], cal: [4.184, numD(2, 1, -2)], bar: [1e5, numD(-1, 1, -2)]};
+const NUMX = {min: [60, numD(0, 0, 1)], mins: [60, numD(0, 0, 1)], h: [3600, numD(0, 0, 1)], hr: [3600, numD(0, 0, 1)], hrs: [3600, numD(0, 0, 1)], day: [86400, numD(0, 0, 1)], days: [86400, numD(0, 0, 1)],
+  y: [3.15576e7, numD(0, 0, 1)], yr: [3.15576e7, numD(0, 0, 1)], yrs: [3.15576e7, numD(0, 0, 1)], year: [3.15576e7, numD(0, 0, 1)], years: [3.15576e7, numD(0, 0, 1)], atm: [101325, numD(-1, 1, -2)],
+  u: [1.66053907e-27, numD(0, 1)], Da: [1.66053907e-27, numD(0, 1)], M: [1000, numD(-3, 0, 0, 0, 0, 1)], ly: [9.4607e15, numD(1)], pc: [3.0857e16, numD(1)], AU: [1.495978707e11, numD(1)],
+  '°': [Math.PI / 180, numD(0, 0, 0, 0, 0, 0, 1)], deg: [Math.PI / 180, numD(0, 0, 0, 0, 0, 0, 1)], rev: [2 * Math.PI, numD(0, 0, 0, 0, 0, 0, 1)], '%': [0.01, numD()], ppm: [1e-6, numD()], c: [299792458, numD(1, 0, -1)], '°C': [1, numD(0, 0, 0, 0, 1)]};
+const NUMW = {metre: 'm', metres: 'm', meter: 'm', meters: 'm', second: 's', seconds: 's', sec: 's', secs: 's', gram: 'g', grams: 'g', kilogram: 'kg', kilograms: 'kg', newton: 'N', newtons: 'N', joule: 'J', joules: 'J',
+  watt: 'W', watts: 'W', volt: 'V', volts: 'V', amp: 'A', amps: 'A', ampere: 'A', amperes: 'A', ohm: 'Ω', ohms: 'Ω', Ohm: 'Ω', mole: 'mol', moles: 'mol', mols: 'mol', litre: 'L', litres: 'L', liter: 'L', liters: 'L',
+  minute: 'min', minutes: 'min', hour: 'h', hours: 'h', hertz: 'Hz', kelvin: 'K', degree: '°', degrees: '°', radian: 'rad', radians: 'rad', percent: '%', revolution: 'rev', revolutions: 'rev', 'light-year': 'ly', 'light-years': 'ly'};
+const NUMPF = [['da', 10], ['Y', 1e24], ['Z', 1e21], ['E', 1e18], ['P', 1e15], ['T', 1e12], ['G', 1e9], ['M', 1e6], ['k', 1e3], ['h', 100], ['d', .1], ['c', .01], ['m', 1e-3], ['µ', 1e-6], ['μ', 1e-6], ['u', 1e-6], ['n', 1e-9], ['p', 1e-12], ['f', 1e-15]];
+const numSym = s => { const w = NUMW[s] || NUMW[s.toLowerCase()] || s, x = NUMX[w] || NUMB[w]; const out = x ? [x] : [];
+  for (const [p, f] of NUMPF) if (w.length > p.length && w.startsWith(p) && NUMB[w.slice(p.length)]) { const b = NUMB[w.slice(p.length)]; out.push([f * b[0], b[1]]); }
+  return out; };
+const SUP = {'⁰': '0', '¹': '1', '²': '2', '³': '3', '⁴': '4', '⁵': '5', '⁶': '6', '⁷': '7', '⁸': '8', '⁹': '9', '⁻': '-', '⁺': '+'};
+const numSup = s => s.replace(/[⁻⁺]?[⁰¹²³⁴⁵⁶⁷⁸⁹]+/g, m => '^' + [...m].map(c => SUP[c]).join(''));
+function numUnitNorm(u) {
+  return numSup(String(u || '')).replace(/\\(?:text|mathrm)\s*\{([^}]*)\}/g, '$1').replace(/\^\{([^}]*)\}/g, '^$1').replace(/\\Omega/g, 'Ω').replace(/\\mu\s*/g, 'µ').replace(/\^?\s*\\circ\s*/g, '°').replace(/\\%/g, '%').replace(/\\[ ,;!]/g, ' ')
+    .replace(/[{}$]/g, '').replace(/[·⋅*×]/g, ' ').replace(/([A-Za-z])\.([A-Za-z])/g, '$1 $2').replace(/\bper\b/gi, '/').replace(/\b(?:deg(?:rees?)?\s*C|degC|celsius|centigrade)\b/gi, '°C').replace(/°\s+C\b/g, '°C')
+    .replace(/\s+/g, ' ').trim();
+}
+function numUnit(u) { // -> list of interpretations {f, d, off}; [] = could not read it
+  const s = numUnitNorm(u); if (!s) return [{f: 1, d: numD(), none: 1}];
+  if (/^(?:°C|oC)$/.test(s)) return [{f: 1, d: NUMX['°C'][1], off: 273.15}];
+  const parts = s.replace(/\^\s*\(\s*([+-]?\d+)\s*\)/g, '^$1').split('/'); let alts = [{f: 1, d: numD()}];
+  for (let pi = 0; pi < parts.length; pi++) {
+    for (const tok of parts[pi].replace(/[()]/g, ' ').trim().split(' ').filter(Boolean)) {
+      const m = tok.match(/^(.*?[^\d^+\-])(?:\^\(?([+-]?\d+)\)?|([+-]?\d+))?$/) || tok.match(/^(%|°)$/); if (!m) return [];
+      const sym = m[1], e = +(m[2] || m[3] || 1) * (pi ? -1 : 1);
+      let opts = numSym(sym).map(x => [{f: x[0], d: x[1]}]);
+      if (sym.length > 1) for (let i = 1; i < sym.length; i++) { const a = numSym(sym.slice(0, i)), b = numSym(sym.slice(i)); if (a.length && b.length) opts.push([{f: a[0][0], d: a[0][1], e: pi ? -1 : 1}, {f: b[0][0], d: b[0][1]}]); }
+      if (!opts.length) return [];
+      const next = [];
+      for (const A of alts) for (const o of opts) { let f = A.f, d = A.d.slice(); o.forEach((x, i) => { const ee = i < o.length - 1 ? (x.e || 1) : e; f *= Math.pow(x.f, ee); d = d.map((y, j) => y + x.d[j] * ee); }); next.push({f, d}); }
+      alts = next.slice(0, 8);
+    }
+  }
+  return alts;
+}
+const numSameD = (a, b) => a.every((x, i) => Math.abs(x - b[i]) < 1e-9);
+const numAngle = d => d.every((x, i) => i === 6 ? true : !x);
+// the value part: decimals, 3.2e-4 / 3.2×10^-4 / 3.2x10-4, fractions, sqrt / √, pi / π, e, ln, log, powers; stops at the first thing that is not maths (the unit)
+function numExpr(str) {
+  const s = str, toks = []; let i = 0;
+  while (i < s.length) {
+    const c = s[i]; if (c === ' ') { i++; continue; }
+    const n = s.slice(i).match(/^(?:\d+\.?\d*|\.\d+)(?:e[-+]?\d+)?/i); if (n) { toks.push({t: 'n', v: n[0], i}); i += n[0].length; continue; }
+    if ('+-*/^()√'.includes(c)) { toks.push({t: c, i}); i++; continue; }
+    const w = s.slice(i).match(/^[A-Za-zπ]+/); if (w) { toks.push({t: 'w', v: w[0], i}); i += w[0].length; continue; }
+    toks.push({t: '?', i}); break;
+  }
+  const FN = {sqrt: Math.sqrt, ln: Math.log, log: Math.log10, exp: Math.exp}, K = {pi: Math.PI, π: Math.PI, e: Math.E};
+  let p = 0, lit = null, nums = 0;
+  const pk = () => toks[p], isW = (t, f) => t && t.t === 'w' && (f ? FN[t.v] : K[t.v] != null);
+  const startsAtom = t => t && (t.t === 'n' || t.t === '(' || t.t === '√' || isW(t, 0) || isW(t, 1));
+  function atom() {
+    const t = pk(); if (!t) throw 0;
+    if (t.t === 'n') { p++; nums++; lit = t.v; return +t.v; }
+    if (t.t === '(') { p++; const v = expr(); if (!pk() || pk().t !== ')') throw 0; p++; return v; }
+    if (t.t === '√') { p++; nums += 2; return Math.sqrt(power()); }
+    if (isW(t, 1)) { p++; nums += 2; return FN[t.v](power()); }
+    if (isW(t, 0)) { p++; nums += 2; return K[t.v]; }
+    throw 0;
+  }
+  function power() { const b = atom(); if (pk() && pk().t === '^') { p++; return Math.pow(b, unary()); } return b; }
+  function unary() { const t = pk(); if (t && (t.t === '-' || t.t === '+')) { p++; const v = unary(); return t.t === '-' ? -v : v; } return power(); }
+  function term() { let v = unary(); for (;;) { const t = pk(); if (t && (t.t === '*' || t.t === '/') && startsAtom(toks[p + 1]) || t && (t.t === '*' || t.t === '/') && toks[p + 1] && toks[p + 1].t === '-') { p++; const r = unary(); v = t.t === '*' ? v * r : v / r; nums++; } else if (startsAtom(t) && !(t.t === 'n' && toks[p - 1] && toks[p - 1].t === 'n')) { v *= unary(); nums++; } else return v; } }
+  function expr() { let v = term(); for (;;) { const t = pk(); if (t && (t.t === '+' || t.t === '-') && startsAtom(toks[p + 1])) { p++; const r = term(); v = t.t === '+' ? v + r : v - r; nums++; } else return v; } }
+  let v; try { v = expr(); } catch (e) { return null; }
+  if (!p || !isFinite(v)) return null;
+  const rest = p < toks.length ? s.slice(toks[p].i).trim() : '';
+  let sf = null, dp = null;
+  if (nums === 1 && lit) { const m = lit.replace(/e.*$/i, ''), d = m.replace('.', '').replace(/^0+/, ''); dp = /e/i.test(lit) ? null : (m.split('.')[1] || '').length; sf = m.includes('.') ? [Math.max(1, d.length), Math.max(1, d.length)] : [Math.max(1, d.replace(/0+$/, '').length), Math.max(1, d.length)]; }
+  return {v, rest, sf, dp, exact: nums !== 1};
+}
+function numNorm(x) {
+  return numSup(String(x || '')).replace(/[−–—]/g, '-').replace(/÷/g, '/').replace(/·/g, '*').replace(/\\left|\\right|\\displaystyle/g, '').replace(/\\[dt]?frac\s*\{([^{}]*)\}\s*\{([^{}]*)\}/g, '(($1)/($2))')
+    .replace(/\\sqrt\s*\{([^{}]*)\}/g, 'sqrt($1)').replace(/\\sqrt\s*(\d)/g, 'sqrt$1').replace(/\\pi/g, 'pi').replace(/\\times/g, '×').replace(/\\cdot/g, '*').replace(/\\ln/g, 'ln').replace(/\\(?:text|mathrm)\s*\{([^}]*)\}/g, ' $1').replace(/\\[ ,;!]/g, ' ')
+    .replace(/[$€£¥]/g, '').replace(/\{/g, '(').replace(/\}/g, ')').replace(/(\d)\s*[x×X*]\s*10\s*(?:\^\s*\(?\s*([-+]?\d+)\s*\)?|([-+]\d+))/g, '$1e$2$3').replace(/^\s*10\s*\^\s*\(?([-+]?\d+)\)?/, '1e$1').replace(/×/g, '*')
+    .replace(/(\d) (?=\d{3}(?!\d))/g, '$1').replace(/\s+/g, ' ').trim();
+}
+const NUMPRE = /^\s*(?:(?:final\s+)?(?:answer|ans)\s*[:=]?\s*)?(?:[A-Za-zΔθλμσωα][\w'′]*(?:_\(?\w+\)?)?(?:\([^()]*\))?\s*(?:=|≈|~)\s*)?(?:≈|~|approx\.?\s+)?/i;
+function numItems(input, n, pt) { // the student's answers -> [{v, rest(unit), sf, dp, exact}] | null if one does not parse
+  let s = numNorm(input).replace(/\.\s*$/, ''); if (!s) return [];
+  if (pt) s = s.replace(/^\(\s*|\s*\)$/g, '');
+  if (n === 1 && /^-?\d{1,3}(?:,\d{3})+(?:\.\d+)?(?:\s|$|[^\d,])/.test(s.replace(NUMPRE, ''))) s = s.replace(/(\d),(?=\d{3}(?!\d))/g, '$1');
+  if (n === 1 && /^-?\d+,\d{1,2}(?!\d)(?:\s|$|[^\d,])/.test(s.replace(NUMPRE, ''))) s = s.replace(/(\d),(\d)/, '$1.$2'); // decimal comma
+  const bits = s.split(/\s*(?:,|;|\bor\b|\band\b|&)\s*/i).map(x => x.replace(NUMPRE, '').trim()).filter(Boolean);
+  const out = bits.map(b => numExpr(b)); if (out.some(x => !x)) return null;
+  const lastU = [...out].reverse().find(x => x.rest); if (lastU) for (const x of out) if (!x.rest) x.rest = lastU.rest;
+  return out;
+}
+const numRound = (x, s) => x ? +x.toPrecision(Math.min(21, Math.max(1, s))) : 0;
+const numEq = (a, b) => Math.abs(a - b) <= 1e-9 * Math.max(Math.abs(a), Math.abs(b), 1e-300);
+function numVal(it, e, P, o, sc) { // compare one value with one expected value (sc: expected -> the student's unit)
+  const x = it.v, E = e * sc, tol = P.tol != null ? P.tol : o.math ? 1e-4 : .005, ab = (P.abs || 0) * Math.abs(sc) || (E === 0 ? 1e-9 : 0);
+  const R = P.r ? P.r.map(y => y * sc).sort((a, b) => a - b) : null;
+  const within = R ? x >= R[0] - 1e-9 * Math.abs(R[0]) && x <= R[1] + 1e-9 * Math.abs(R[1]) : Math.abs(x - E) <= tol * Math.abs(E) + ab + 1e-12 * Math.abs(E);
+  let rs = 0; if (!within && it.sf && !R) for (let k = it.sf[1]; k >= it.sf[0]; k--) if (numEq(numRound(E, k), x)) { rs = k; break; }
+  if (within || rs) {
+    const s = it.sf ? (rs || it.sf[1]) : 99;
+    if (P.dp != null && it.dp != null && it.dp !== P.dp) return {k: 'dp'};
+    if (P.sf && it.sf && !(it.sf[0] <= P.sf && P.sf <= it.sf[1])) return {k: 'sf'};
+    if (!P.sf && rs && s < (o.math ? 3 : 2)) return {k: 'sf'};
+    if (P.ex && !it.exact && !Number.isInteger(E) && !numEq(x, Math.round(x))) return {k: 'form'};
+    return {k: 'ok'};
+  }
+  if (x && E && Math.sign(x) === Math.sign(E)) { const L = Math.log10(x / E), n = Math.round(L); if (n && Math.abs(L - n) < .02) return {k: 'p10', n}; }
+  const ref = R ? (x < R[0] ? R[0] : R[1]) : E;
+  if (E && Math.abs(x - ref) <= .05 * Math.abs(ref)) return {k: 'close'};
+  if (E && Math.abs(x + E) <= Math.max(tol, .005) * Math.abs(E)) return {k: 'sign'};
+  return {k: 'wrong'};
+}
+const NUMRANK = {ok: 5, unit: 4, sf: 4, dp: 4, form: 4, close: 2, p10: 1, sign: 1, wrong: 0};
+function numOne(it, e, P, o) { // value + unit
+  const uE = (numUnit(P.u)[0]) || null, hasU = !!(P.u && uE && !uE.none), us = o.math && !hasU ? '' : it.rest; // maths answers with no unit: words after the number are ignored
+  if (us) {
+    const uS = numUnit(us);
+    if (uS.length && uE) {
+      const same = uS.find(x => numSameD(x.d, uE.d));
+      if (same) {
+        const sc = (same.off || uE.off) ? 1 : uE.f / same.f, ee = (same.off || uE.off) && !(same.off && uE.off) ? (uE.off ? e + 273.15 : e - 273.15) : e;
+        const r = numVal(it, ee, P, o, sc), raw = () => numVal(it, e, P, o, 1);
+        if (r.k !== 'ok' && same.d.every(y => !y) && Math.abs(sc - 1) > 1e-9) { const r2 = raw(); if (r2.k === 'ok') return r2; } // 21% for 0.21, or 20% when the answer is r = 20
+        if (r.k === 'ok' || !(same.off || uE.off)) { if (r.k !== 'ok' && Math.abs(sc - 1) > 1e-9 && NUMRANK[raw().k] >= 4) return {k: 'unit', why: 'scale'}; return r; }
+        const r2 = numVal(it, e, P, o, 1); return NUMRANK[r2.k] >= NUMRANK[r.k] ? r2 : r; // a temperature difference is the same in K and °C
+      }
+      const r = numVal(it, e, P, o, 1); return NUMRANK[r.k] >= 4 ? {k: 'unit', why: hasU ? 'dims' : 'extra'} : r;
+    }
+    if (!uS.length) { const r = numVal(it, e, P, o, 1); return r.k === 'ok' && hasU ? {k: 'unit', why: 'read', us} : r; }
+  }
+  const r = numVal(it, e, P, o, 1);
+  if (r.k === 'ok' && hasU && !numAngle(uE.d) && P.u !== '%' && !o.math) r.note = 'nounit';
+  return r;
+}
+function numCheck(input, P, o = {}) {
+  const want = Array.isArray(P.v) ? P.v : [P.v], n = want.length, items = numItems(input, n, P.pt);
+  if (!items || !items.length) return {k: 'parse', msg: "Couldn't read that as a number. Try 0.25, 3.2e-4, 3/2 or 2√3, with the unit after it."};
+  let res;
+  if (P.pt || n === 1) res = want.map((e, i) => items[i] ? numOne(items[i], e, P, o) : {k: 'wrong'});
+  else { // several answers in any order: best match first
+    const pairs = []; items.forEach((it, i) => want.forEach((e, j) => { const r = numOne(it, e, P, o); pairs.push([NUMRANK[r.k], i, j, r]); }));
+    pairs.sort((a, b) => b[0] - a[0]); const ui = new Set(), uj = new Set(); res = new Array(n).fill(null);
+    for (const [, i, j, r] of pairs) if (!ui.has(i) && !uj.has(j)) { ui.add(i); uj.add(j); res[j] = r; }
+    res = res.map(r => r || {k: 'wrong'});
+  }
+  const worst = res.reduce((a, b) => NUMRANK[b.k] < NUMRANK[a.k] ? b : a), good = res.filter(r => r.k === 'ok').length, pu = numPretty(P.u);
+  if (items.length !== n && n > 1) return {k: 'count', msg: `This part has ${n} answers${good ? ` and ${good} of yours ${good === 1 ? 'is' : 'are'} right` : ''}. Separate them with commas.`};
+  if (items.length > n) return {k: 'count', msg: 'This part needs just one answer.'};
+  const M = {
+    ok: n > 1 ? 'Correct: all ' + n + ' values.' : 'Correct.',
+    unit: worst.why === 'read' ? `Right number, but I couldn't read the unit "${worst.us}". It should be in ${pu}.` : worst.why === 'extra' ? 'Right number, but this answer has no unit.' : `Right number, wrong unit: it should be in ${pu}.`,
+    sf: P.sf ? `Right value, but give it to ${P.sf} significant figures.` : o.math ? 'Right value, but give it to 3 significant figures (or exactly).' : 'Right value, but too few significant figures: IB expects about 3.',
+    dp: `Right value, but give it to ${P.dp} decimal place${P.dp === 1 ? '' : 's'}.`,
+    form: 'Right value, but the question asks for an exact answer (a fraction, surd, π or ln form).',
+    close: `Close, but not quite (within 5%). Check your rounding: keep full accuracy until the final step${n > 1 ? ', and check each value' : ''}.`,
+    p10: `Not right: ${n > 1 ? 'one value is' : "you're"} out by a factor of ${numPretty('10^' + (worst.n || ''))}. Check unit prefixes and powers of ten.`,
+    sign: 'Not right: check the sign.', wrong: n > 1 ? `Not right yet${good ? ` (${good} of ${n} values right)` : ''}. Check your working.` : 'Not right. Check your working, or mark it with Claude to see where it went wrong.'};
+  const out = {k: worst.k, msg: M[worst.k], good, n};
+  if (worst.k === 'ok' && res.some(r => r.note === 'nounit')) out.note = `Include the unit (${pu}) in the exam.`;
+  return out;
+}
+const numPretty = u => String(u || '').replace(/\^([-+]?\d+)/g, (m, e) => [...e].map(c => ({'-': '⁻', '+': '⁺'}[c] || '⁰¹²³⁴⁵⁶⁷⁸⁹'[+c])).join(''));
+function numFromMs(q) { // official maths questions: only a markscheme that is just the answer (one line, one value or a short list)
+  const B = bookOf(q.book); if (!B || !B.math || q.kind === 'mcq' || !q.ms || q.ms.length > 140 || !q.text) return null;
+  if (/\([a-h]\)|\b(show|prove|sketch|explain|hence|express|expression|in terms of|coordinates?|equation|interval|range|domain|vectors?|matri(x|ces)|inverse|derivative|differentiate|integrate|simplify|expand|factori[sz]e|general|form|graph|draw|describe|justify|interpret)\b/i.test(q.text)) return null;
+  if (!/\b(find|calculate|determine|evaluate|solve|write down|work out|estimate)\b/i.test(q.text)) return null;
+  const s = q.ms.replace(/\*\*|__|\$/g, '').replace(/\(?\b[MAR]\d\)?|\bAG\b|\bFT\b|\[\s*\d+\s*(?:marks?)?\s*\]/gi, ' ').replace(/\s+/g, ' ').trim().replace(/[.;]$/, '');
+  if (!s || /\n|[a-zA-Z]{3,}\s+[a-zA-Z]{3,}\s+[a-zA-Z]{3,}/.test(s) || /[<>≤≥]|\\le|\\ge|\bor\b.*\bor\b/.test(s)) return null;
+  const items = numItems(s, 1, 0); if (!items || !items.length || items.length > 3 || items.some(x => x.rest && !numUnit(x.rest).length)) return null;
+  const u = (items.find(x => x.rest) || {}).rest || '', v = items.map(x => x.v);
+  const it = items[0], tol = items.length > 1 || it.exact || Number.isInteger(it.v) ? 1e-9 : it.sf ? 0.5 * Math.pow(10, Math.floor(Math.log10(Math.abs(it.v))) - it.sf[1] + 1) / Math.abs(it.v) * 1.05 : 1e-4;
+  return {parts: [{p: '', v: v.length > 1 ? v : v[0], u: numUnitNorm(u), tol}], all: 1, rt: 1};
+}
+// ---- the "Final answer check" panel (hooked into openQ) ----
+function numHook(q) {
+  if (!q || q.kind === 'mcq') return;
+  const go = () => { if (S.q !== q || !q.num || !(q.num.parts || []).length || $('#numck') || !$('#ansBox')) return; $('#ansBox').insertAdjacentHTML('afterend', numHtml(q)); numWire(q); };
+  if (q.num) go(); else numLoad().then(go);
+}
+function numHtml(q) {
+  const N = q.num, ck = (S.prog.nck || {})[q.id], saved = LS.get(LSK('ib-nd-' + q.id), {}) || {};
+  return `<div class="card numck" id="numck"><div class="row numh"><b>Final answer check</b><span class="meta">Free and instant: checks your final number${N.parts.length > 1 || Array.isArray(N.parts[0].v) ? 's' : ''} only</span>${ck ? `<span class="sp"></span><span class="tag ${ck.k === ck.n ? 'g' : ''}">${ck.k === ck.n ? 'checked ✓' : 'checked ' + ck.k + '/' + ck.n} · ${new Date(ck.t).toLocaleDateString()}</span>` : ''}</div>
+    ${N.parts.map((P, i) => { const n = Array.isArray(P.v) ? P.v.length : 1; return `<div class="numr"><label class="numl" for="numI${i}">${esc(P.p || 'Answer')}</label><input id="numI${i}" data-ni="${i}" value="${esc(saved[i] || '')}" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="done" placeholder="${n > 1 ? n + ' values, e.g. 2, -3' : P.u ? 'e.g. 2.5 ' + esc(numPretty(P.u)) : 'e.g. 0.25, 3/2 or 2√3'}"><button data-nc="${i}">Check</button><div class="numm meta">${[P.u ? 'in ' + esc(numPretty(P.u)) : '', P.sf ? P.sf + ' s.f.' : '', P.dp != null ? P.dp + ' d.p.' : '', P.ex ? 'exact' : '', n > 1 ? 'any order' : ''].filter(Boolean).join(' · ')}</div><div class="numv" id="numV${i}" aria-live="polite"></div></div>`; }).join('')}
+    <div id="numAct"></div></div>`;
+}
+function numWire(q) {
+  const N = q.num, res = {}, math = q.book === 'math' || /^(?:mtest|mreview|mexam|mex)$/.test(q.kind);
+  const check = i => { const el = $('#numI' + i), v = el.value.trim(), out = $('#numV' + i); if (!v) { out.innerHTML = ''; delete res[i]; return draw(); }
+    const r = res[i] = numCheck(v, N.parts[i], {math}), P = N.parts[i];
+    const cls = r.k === 'ok' ? 'ok' : ['wrong', 'p10', 'sign'].includes(r.k) ? 'no' : r.k === 'parse' ? '' : 'mid';
+    out.className = 'numv ' + cls; out.innerHTML = `<b>${r.k === 'ok' ? '✓' : cls === 'no' ? '✗' : '•'}</b> ${esc(r.msg)}${r.note ? ' <span class="meta">' + esc(r.note) + '</span>' : ''}${r.k === 'ok' && P.alt && P.alt.length && !/[πa-df-zA-DF-Z√\/\\]/.test(v) ? ' <span class="meta">Exact: ' + mdm(P.alt.map(a => '$' + a + '$').join(', '), true) + '</span>' : ''}`;
+    draw(); };
+  const draw = () => { const n = N.parts.length, done = Object.keys(res).length, ok = Object.values(res).filter(r => r.k === 'ok').length, A = $('#numAct'); if (!A) return;
+    if (ok < n) { A.innerHTML = done === n && ok ? `<p class="meta" style="margin:8px 0 0">${ok} of ${n} parts right.</p>` : ''; return; }
+    const full = numFull(q);
+    A.innerHTML = `<div class="row numact"><span class="meta">${n > 1 ? 'All final answers correct.' : 'Final answer correct.'} Want the working marked too?</span><span class="sp"></span><button class="pri" id="numMk">Mark my working with Claude</button><button id="numCt" title="${full ? 'Saves full marks for this question, without Claude' : 'Saves this check (it does not count as a marked attempt)'}">${full ? 'Count it (' + qMax(q) + '/' + qMax(q) + ')' : 'Count it as checked'}</button></div><div class="meta" id="numMsg" aria-live="polite"></div>`;
+    $('#numMk').onclick = () => { const b = S.qBox; if (b && !b.hasImages && (b.text().match(/\S+/g) || []).length < 8) { $('#numMsg').textContent = 'Write or photograph your working in the answer box first, then press Mark.'; b.focus && b.focus(); return; } $('#mark').click(); };
+    $('#numCt').onclick = () => { numCount(q, N.parts.map((P, i) => $('#numI' + i).value.trim()), full); $('#numCt').disabled = true; $('#numMsg').textContent = full ? 'Counted: saved as full marks in your progress.' : 'Saved as checked. Mark the working with Claude when you want it to count towards mastery.'; };
+  };
+  document.querySelectorAll('#numck [data-nc]').forEach(b => b.onclick = () => check(+b.dataset.nc));
+  document.querySelectorAll('#numck [data-ni]').forEach(el => { el.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); check(+el.dataset.ni); } };
+    el.oninput = () => { const d = LS.get(LSK('ib-nd-' + q.id), {}) || {}; d[el.dataset.ni] = el.value; LS.set(LSK('ib-nd-' + q.id), d); }; });
+}
+const numFull = q => !!(q.num && q.num.all && q.kind !== 'mcq' && qMax(q) <= 2);
+function numCount(q, ans, full) {
+  const t = Date.now(), n = q.num.parts.length;
+  if (full) { const max = qMax(q), fb = {score: max, max, verdict: 'Correct final answer, checked in the app (the working was not marked).', good: ['Correct final answer: ' + ans.join('; ')], missed: [], fix: [], plan: '', terms: [], num: 1};
+    (S.prog.att[q.id] = S.prog.att[q.id] || []).push({t, score: max, max, ans: ans.map((a, i) => (q.num.parts[i].p ? q.num.parts[i].p + ' ' : '') + a).join('\n'), fb, num: 1}); act('q'); sessMark('q', q.id, 1); }
+  (S.prog.nck = S.prog.nck || {})[q.id] = {t, k: n, n}; saveProg();
+}
+function numPaperFb(x, a, imgs, max) { // exam mode: a short final-answer-only question typed exactly right is marked here (anything else still goes to Claude)
+  if (imgs.length || !a || !x || !numFull({...x, marks: max}) || x.num.parts.length !== 1) return null;
+  const P = x.num.parts[0], math = x.book === 'math' || /^(?:mtest|mreview|mexam|mex)$/.test(x.kind), lines = a.split('\n').map(l => l.trim()).filter(Boolean), last = lines[lines.length - 1] || '';
+  for (const c of [a, last, last.split(/=|≈/).pop()]) { if (c && numCheck(c, P, {math}).k === 'ok') return {score: max, max, verdict: 'Correct final answer (checked in the app).', good: ['Correct final answer.'], missed: [], fix: [], plan: '', terms: [], num: 1}; }
+  return null;
+}
+{ const f = mergeIn; mergeIn = function (r) { f(r); const L = r && r.nck; if (!L || !S.prog) return; const N = S.prog.nck = S.prog.nck || {}; let ch = 0;
+  for (const [k, v] of Object.entries(L)) if (v && (!N[k] || (N[k].t || 0) < (v.t || 0))) { N[k] = v; ch = 1; } if (ch) LS.set(LSK('ib-prog'), S.prog); }; }
 // ==== END FEATURE: numeric answer checking ====
 
 
