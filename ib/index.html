@@ -427,8 +427,20 @@ a.btn{display:inline-flex;padding:7px 12px;border-radius:8px;text-decoration:non
 .hwtip{margin-left:auto;padding:0 4px;font-size:12px}
 .inkw{--g:26px;--gl:color-mix(in srgb,var(--acc) 15%,transparent);position:relative;border:1px solid var(--line);border-radius:0 0 var(--r) var(--r);background-color:var(--panel);overflow:hidden;touch-action:none;cursor:crosshair;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;outline-offset:-2px}
 .inkw canvas{display:block;touch-action:none;position:absolute;left:0;top:0}
-.inkw.grid{background-image:linear-gradient(var(--gl) 1px,transparent 1px),linear-gradient(90deg,var(--gl) 1px,transparent 1px);background-size:var(--g) var(--g)}
-.inkw.lines{background-image:linear-gradient(transparent calc(var(--g) * 1.25 - 1px),var(--gl) calc(var(--g) * 1.25 - 1px));background-size:100% calc(var(--g) * 1.25)}
+.inkw[data-paper=grid]{background-image:linear-gradient(var(--gl) 1px,transparent 1px),linear-gradient(90deg,var(--gl) 1px,transparent 1px);background-size:var(--g) var(--g)}
+.inkw[data-paper=sgrid]{background-image:linear-gradient(var(--gl) 1px,transparent 1px),linear-gradient(90deg,var(--gl) 1px,transparent 1px);background-size:calc(var(--g) * .55) calc(var(--g) * .55)}
+.inkw[data-paper=graph]{--gb:color-mix(in srgb,var(--acc) 30%,transparent);background-image:linear-gradient(var(--gb) 1px,transparent 1px),linear-gradient(90deg,var(--gb) 1px,transparent 1px),linear-gradient(var(--gl) 1px,transparent 1px),linear-gradient(90deg,var(--gl) 1px,transparent 1px);background-size:calc(var(--g) * 2.5) calc(var(--g) * 2.5),calc(var(--g) * 2.5) calc(var(--g) * 2.5),calc(var(--g) * .5) calc(var(--g) * .5),calc(var(--g) * .5) calc(var(--g) * .5)}
+.inkw[data-paper=lines]{background-image:linear-gradient(transparent calc(var(--g) * 1.25 - 1px),var(--gl) calc(var(--g) * 1.25 - 1px));background-size:100% calc(var(--g) * 1.25)}
+.inkw[data-paper=wide]{background-image:linear-gradient(transparent calc(var(--g) * 1.7 - 1px),var(--gl) calc(var(--g) * 1.7 - 1px));background-size:100% calc(var(--g) * 1.7)}
+.inkw[data-paper=dots]{--gd:color-mix(in srgb,var(--acc) 40%,transparent);background-image:radial-gradient(circle,var(--gd) 1.3px,transparent 1.6px);background-size:var(--g) var(--g);background-position:calc(var(--g) / -2) calc(var(--g) / -2)}
+.inkw[data-paper=cornell]{--gm:color-mix(in srgb,#d0453a 55%,transparent);background-image:linear-gradient(90deg,transparent calc(28% - 1px),var(--gm) calc(28% - 1px),var(--gm) 28%,transparent 28%),linear-gradient(transparent calc(var(--g) * 1.25 - 1px),var(--gl) calc(var(--g) * 1.25 - 1px));background-size:100% 100%,100% calc(var(--g) * 1.25)}
+.inkw[data-paper=cornell]::before{content:'Cues / questions';position:absolute;left:8px;top:4px;font-size:11px;color:var(--mut, #888);pointer-events:none}
+.inkw[data-paper=cornell]::after{content:'Notes';position:absolute;left:calc(28% + 8px);top:4px;font-size:11px;color:var(--mut, #888);pointer-events:none}
+.hwpaper{position:absolute;z-index:30;display:grid;grid-template-columns:repeat(4,76px);gap:8px;padding:10px;margin-top:4px;background:var(--panel);border:1px solid var(--line);border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,.18)}
+.hwpaper button{display:flex;flex-direction:column;align-items:center;gap:4px;padding:4px;border:1px solid transparent;border-radius:8px;background:none;color:inherit;font:inherit;font-size:11.5px;cursor:pointer}
+.hwpaper button.on{border-color:var(--acc);background:var(--acc2)}.hwpaper .inkw{width:64px;height:50px;border-radius:6px;pointer-events:none;--g:9px}
+.hwpaper .inkw[data-paper=cornell]::before,.hwpaper .inkw[data-paper=cornell]::after{content:none}
+@media (max-width:420px){.hwpaper{grid-template-columns:repeat(4,1fr);left:8px!important;right:8px}.hwpaper button{font-size:10.5px}.hwpaper .inkw{width:100%}}
 .inkw.er{cursor:cell}
 .hwink.fs{position:fixed;inset:0;z-index:60;background:var(--bg);overflow:auto;padding:8px 8px calc(8px + env(safe-area-inset-bottom))}
 .hwink.fs .hwbar{top:0}html.hwfs,html.hwfs body{overflow:hidden}
@@ -1120,7 +1132,10 @@ function inkExport(st) {
   }
   return out;
 }
-function inkPad(host, st, o = {}) { // st: {strokes, h}; o: {onChange, compact, big}
+// writing paper: each pad remembers its own (st.bg); new pads use the Settings default
+const PAPERS = [['blank', 'Blank'], ['lines', 'Lined'], ['wide', 'Wide ruled'], ['cornell', 'Cornell'], ['grid', 'Grid'], ['sgrid', 'Small grid'], ['graph', 'Graph'], ['dots', 'Dot grid']];
+const paperOf = st => { const v = (st && st.bg) || SETG().hwBg || 'grid'; return PAPERS.some(x => x[0] === v) ? v : 'grid'; };
+function inkPad(host, st, o = {}) { // st: {strokes, h, bg?}; o: {onChange, compact, big}
   // The page is a tall box (wrap); the canvas is only as tall as the screen and follows the scroll,
   // redrawing just the strokes in view, so long notes stay sharp and memory stays small.
   const sizes = INK_SZ, ic = n => `<svg class="i"><use href="#i-${n}"/></svg>`, coarse = matchMedia('(pointer: coarse)').matches;
@@ -1129,7 +1144,7 @@ function inkPad(host, st, o = {}) { // st: {strokes, h}; o: {onChange, compact, 
     ${INK_C.map(c => `<button data-c="${c}" title="${c === 'ink' ? 'Black' : c[0].toUpperCase() + c.slice(1)}" aria-label="${c === 'ink' ? 'Black' : c} ink"><span class="dot"></span></button>`).join('')}<span class="dv"></span>
     ${sizes.map((z, i) => `<button data-z="${i}" title="${['Fine', 'Medium', 'Thick'][i]} pen" aria-label="${['Fine', 'Medium', 'Thick'][i]} pen"><span class="sz" style="height:${[2, 3.5, 6][i]}px"></span></button>`).join('')}<span class="dv"></span>
     <button data-a="undo" title="Undo (Ctrl+Z)" aria-label="Undo">${ic('undo')}</button><button data-a="redo" title="Redo (Ctrl+Shift+Z)" aria-label="Redo">${ic('redo')}</button><span class="dv"></span>
-    <button data-a="bg" title="Paper: blank, lined or grid" aria-label="Paper style">${ic('grid')}</button><button data-a="more" title="More space" aria-label="More space">${ic('plus')}</button><button data-a="fs" title="Full screen (Esc to leave)" aria-label="Full screen">${ic('full')}</button><button data-a="clear" title="Clear all" aria-label="Clear all">${ic('trash')}</button>
+    <button data-a="bg" title="Paper: lined, grid, dots, Cornell…" aria-label="Paper style" aria-haspopup="true">${ic('grid')}</button><button data-a="more" title="More space" aria-label="More space">${ic('plus')}</button><button data-a="fs" title="Full screen (Esc to leave)" aria-label="Full screen">${ic('full')}</button><button data-a="clear" title="Clear all" aria-label="Clear all">${ic('trash')}</button>
     <span class="meta hwtip"></span></div><div class="inkw" tabindex="0" aria-label="Writing area. Write with a stylus, finger or mouse."><canvas></canvas></div>`;
   const bar = host.querySelector('.hwbar'), wrap = host.querySelector('.inkw'), cv = wrap.querySelector('canvas'), ctx = cv.getContext('2d');
   let sc = 1, dpr = 1, oy = 0, vh = 0, tool = 'pen', col = LS.get('ib-ink-c', 'ink'), sz = LS.get('ib-ink-z', 1), cur = null, pan = null, cols = inkCols(), lastW = 0, lastPenUp = 0, raf = 0, dead = false;
@@ -1142,7 +1157,7 @@ function inkPad(host, st, o = {}) { // st: {strokes, h}; o: {onChange, compact, 
     bar.querySelectorAll('[data-t]').forEach(b => b.classList.toggle('on', b.dataset.t === tool)); bar.querySelectorAll('[data-c]').forEach(b => { b.classList.toggle('on', b.dataset.c === col); b.firstChild.style.background = cols[b.dataset.c]; });
     bar.querySelectorAll('[data-z]').forEach(b => b.classList.toggle('on', +b.dataset.z === sz));
     bar.querySelector('[data-a=undo]').disabled = !undo.length; bar.querySelector('[data-a=redo]').disabled = !redo.length; bar.querySelector('[data-a=clear]').disabled = !st.strokes.length;
-    const bg = SETG().hwBg || 'grid'; wrap.classList.toggle('grid', bg === 'grid'); wrap.classList.toggle('lines', bg === 'lines'); wrap.classList.toggle('er', tool === 'erase');
+    wrap.dataset.paper = paperOf(st); wrap.classList.toggle('er', tool === 'erase');
     bar.querySelector('.hwtip').textContent = penOnly() ? 'Stylus writes · fingers scroll' : coarse ? 'Two fingers to scroll' : '';
   }
   const bbOf = s => { const c = BB.get(s); if (c && c.n === s.p.length) return c.b; const b = inkBox({strokes: [s]}) || [0, 0, 0, 0]; BB.set(s, {n: s.p.length, b}); return b; };
@@ -1220,7 +1235,12 @@ function inkPad(host, st, o = {}) { // st: {strokes, h}; o: {onChange, compact, 
     else if (a === 'redo' && redo.length) { undo.push(st.strokes); st.strokes = redo.pop(); redraw(); changed(); }
     else if (a === 'clear' && st.strokes.length) { if (!confirm('Clear all your writing on this answer?')) return; snap(); st.strokes = []; lastW = 0; fit(); changed(); }
     else if (a === 'more') { st.h += Math.round(360 / sc); fit(); changed(); wrap.scrollIntoView({block: 'end', behavior: 'smooth'}); }
-    else if (a === 'bg') { const b = SETG().hwBg || 'grid'; setSet('hwBg', {grid: 'lines', lines: 'blank', blank: 'grid'}[b] || 'grid'); document.querySelectorAll('.inkw').forEach(w => { const v = SETG().hwBg; w.classList.toggle('grid', v === 'grid'); w.classList.toggle('lines', v === 'lines'); }); }
+    else if (a === 'bg') { const old = host.querySelector('.hwpaper'); if (old) return old.remove(); const b = bar.querySelector('[data-a=bg]'), cur = paperOf(st), m = document.createElement('div'); m.className = 'hwpaper'; m.setAttribute('role', 'menu');
+      m.innerHTML = PAPERS.map(([k, l]) => `<button role="menuitemradio" aria-checked="${k === cur}" data-pp="${k}" class="${k === cur ? 'on' : ''}"><span class="inkw" data-paper="${k}"></span>${l}</button>`).join('');
+      const r = b.getBoundingClientRect(), hr = host.getBoundingClientRect(); m.style.left = Math.max(0, Math.min(r.left - hr.left, hr.width - 360)) + 'px'; m.style.top = (r.bottom - hr.top) + 'px'; host.style.position = host.style.position || 'relative'; host.appendChild(m);
+      const off = e => { if (!m.contains(e.target) && e.target !== b && !b.contains(e.target)) { m.remove(); document.removeEventListener('pointerdown', off, true); } }; document.addEventListener('pointerdown', off, true);
+      m.onclick = e => { const x = e.target.closest('[data-pp]'); if (!x) return; e.stopPropagation(); st.bg = x.dataset.pp; setSet('hwBg', st.bg); m.remove(); document.removeEventListener('pointerdown', off, true); paintBar(); o.onChange && o.onChange(); };
+      m.querySelector('.on').focus(); }
     else if (a === 'fs') { host.classList.toggle('fs'); document.documentElement.classList.toggle('hwfs', isFs()); bar.querySelector('[data-a=fs]').classList.toggle('on', isFs()); fit(); if (isFs()) wrap.focus({preventScroll: true}); }
   };
   bar.onclick = e => { const b = e.target.closest('button'); if (!b) return;
@@ -1307,7 +1327,7 @@ function hwBox(host, o) { // o: {key, text, rows, math, onText(v), onChange(), c
     flush: () => { clearTimeout(tm); if (!loaded) return Promise.resolve(); const k = hwKey(o.key); if ((st.ink.strokes.length || st.photos.length) && !HW_PERSIST) { HW_PERSIST = 1; try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch (e) {} } return st.ink.strokes.length || st.photos.length ? IDB.set(k, {mode: st.mode, ink: st.ink, photos: st.photos, t: Date.now()}) : IDB.del(k); },
   };
   show(st.mode); HWB.add(api_);
-  IDB.get(hwKey(o.key)).then(v => { loaded = true; if (!host.isConnected) return; if (v) { if (v.ink && v.ink.strokes) { st.ink.strokes = [...v.ink.strokes, ...st.ink.strokes]; st.ink.h = Math.max(v.ink.h || 0, st.ink.h || 0); } st.photos.splice(0, st.photos.length, ...[...(v.photos || []), ...st.photos].slice(0, HW_MAXPH)); if (pad && pad.destroy) pad.destroy(); pad = null; host.querySelector('.hwink').innerHTML = ''; const m = o.mode && !v.ink ? o.mode : v.mode || st.mode; show(!o.only || o.only.includes(m) ? m : o.only[0]); } o.onChange && o.onChange('load'); });
+  IDB.get(hwKey(o.key)).then(v => { loaded = true; if (!host.isConnected) return; if (v) { if (v.ink && v.ink.strokes) { if (v.ink.bg && !st.ink.bg) { st.ink.bg = v.ink.bg; host.querySelectorAll('.hwink > .inkw').forEach(w => w.dataset.paper = paperOf(st.ink)); } st.ink.strokes = [...v.ink.strokes, ...st.ink.strokes]; st.ink.h = Math.max(v.ink.h || 0, st.ink.h || 0); } st.photos.splice(0, st.photos.length, ...[...(v.photos || []), ...st.photos].slice(0, HW_MAXPH)); if (pad && pad.destroy) pad.destroy(); pad = null; host.querySelector('.hwink').innerHTML = ''; const m = o.mode && !v.ink ? o.mode : v.mode || st.mode; show(!o.only || o.only.includes(m) ? m : o.only[0]); } o.onChange && o.onChange('load'); });
   return api_;
 }
 // past-attempt images (kept on this device only)
@@ -2926,7 +2946,7 @@ function renderSettings() {
     <h3>Handwriting</h3><div class="card">
       ${row('Answer box opens on', 'Auto: Write for maths and sciences, Type for everything else', seg('hwMode', [['', 'Auto'], ['type', 'Type'], ['ink', 'Write'], ['photo', 'Photo']], c.hwMode))}
       ${row('Stylus and fingers', 'Auto: once you use a stylus (Apple Pencil, S Pen, Surface Pen), fingers scroll instead of drawing, so your palm can rest on the screen', seg('hwPen', [['', 'Auto'], ['pen', 'Stylus only'], ['touch', 'Fingers draw too']], c.hwPen))}
-      ${row('Writing paper', '', seg('hwBg', [['blank', 'Blank'], ['lines', 'Lined'], ['grid', 'Grid']], c.hwBg))}
+      ${row('Writing paper', 'For new pages. Change any page from the paper button in the pen toolbar', `<select data-sel="hwBg">${PAPERS.map(([k, l]) => `<option value="${k}" ${c.hwBg === k ? 'selected' : ''}>${l}</option>`).join('')}</select>`)}
       ${row('Claude organises my notes', 'A little while after you stop writing, Claude titles, tags, files and transcribes new or changed notes', tg('noteAuto'))}
       ${row('Saved handwriting', 'Drafts, photos and notebook pages are kept in this browser', '<button id="hwUse">Check storage</button>')}
     </div>
