@@ -68,7 +68,14 @@ function heightAt(b, x, y, z) { // unit direction, body-fixed -> metres above se
     const m = ridged(x * 7, y * 7, z * 7, 7, 9); h += m * m * 4800 * sstep(-.05, .35, cont);
     h += fbm(x * 60, y * 60, z * 60, 4, 20) * 260 + fbm(x * 500, y * 500, z * 500, 3, 30) * 45 + fbm(x * 4000, y * 4000, z * 4000, 3, 35) * 7 + noise3(x * 30000, y * 30000, z * 30000, 40) * 1.2;
     const sd = siteDist(x, y, z);
-    if (sd < 11000) { const k = 1 - sstep(2200, 11000, sd); h = lerp(h, 30 + Math.max(0, h) * .25 + fbm(x * 90, y * 90, z * 90, 3, 50) * 60, k);
+    if (sd < 26000) { // the space centre's island: plains round the site, sea to the east (launches go out over water), hills, a mountain range to the west
+      const ex = -z * PLANET.R, ny = y * PLANET.R, w = fbm(x * 140, y * 140, z * 140, 4, 51); // ex = metres east, ny = metres north of the site
+      const dI = Math.hypot(ex * (ex > 0 ? 1 : .28), ny * .78) / (3300 * (1 + .45 * w)); // 1 = coastline
+      let hi = 26 * sstep(1.02, .84, dI) - 70 * sstep(1, 1.6, dI) + fbm(x * 2600, y * 2600, z * 2600, 3, 54) * 4;
+      hi += fbm(x * 900, y * 900, z * 900, 4, 52) * 60 * sstep(2000, 4200, sd) * sstep(1.05, .8, dI); // rolling hills inland
+      const mtn = sstep(3200, 8500, -ex + w * 1800) * sstep(1.3, .85, dI);
+      if (mtn > 0) { const r2 = ridged(x * 260, y * 260, z * 260, 6, 53); hi += (r2 * r2 * 3600 + fbm(x * 700, y * 700, z * 700, 3, 55) * 160) * mtn; }
+      h = lerp(hi, h, sstep(15000, 26000, sd));
       h = lerp(h, SITE_H + sd * sd / (2 * PLANET.R), 1 - sstep(1500, 2300, sd)); } // flat plane (tangent to the planet) under the space centre
     return h;
   }
@@ -92,7 +99,10 @@ function colorAt(b, x, y, z, h, slope) {
     let sand = 0;
     if (h < -2) { const dp = sstep(-2, -60, h); r = lerp(.5, .03, dp); g = lerp(.47, .07, dp); bl = lerp(.36, .1, dp); sand = 1; } // sea floor: sand in the shallows, dark further out
     else if (h < 4 + n * 10 && siteDist(x, y, z) > 2300) { r = .82; g = .74; bl = .52; sand = 1; } // beach
-    else { const f = sstep(.25, .75, n); r = lerp(.4, .25, f); g = lerp(.48, .34, f); bl = lerp(.26, .18, f); } // grass / forest
+    else { const f = sstep(.25, .75, n); r = lerp(.4, .25, f); g = lerp(.48, .34, f); bl = lerp(.26, .18, f); // grass / forest
+      const n2 = fbm(x * 9, y * 9, z * 9, 3, 61), dry = sstep(.13, .27, lat + n2 * .22) * sstep(.52, .4, lat + n2 * .2) * sstep(-.12, .12, fbm(x * 2.2, y * 2.2, z * 2.2, 3, 62) + .04); // subtropical deserts
+      if (dry > 0) { const d2 = .5 + .5 * fbm(x * 60, y * 60, z * 60, 3, 63); r = lerp(r, lerp(.74, .58, d2), dry); g = lerp(g, lerp(.6, .43, d2), dry); bl = lerp(bl, lerp(.4, .3, d2), dry); sand = Math.max(sand, dry * .85); }
+      const tun = sstep(.6, .72, lat + n * .06); r = lerp(r, .42, tun * .6); g = lerp(g, .43, tun * .6); bl = lerp(bl, .36, tun * .6); } // tundra toward the poles
     const rock = Math.max(sstep(.35, .6, slope), sstep(2300, 3100, h + n * 500));
     r = lerp(r, .42, rock); g = lerp(g, .39, rock); bl = lerp(bl, .36, rock);
     const snow = Math.max(sstep(3200, 3800, h + n * 600), sstep(.82, .9, lat + n * .05)) * (1 - sstep(.55, .75, slope));
@@ -514,7 +524,14 @@ terrMat.onBeforeCompile = moonMat.onBeforeCompile = function (sh) {
     if (tFd > 0.) { vec3 dt = tdet(tC0, aC0) * tW.x + tdet(tC1, aC1) * tW.y + tdet(tC2, aC2) * tW.z + tdet(tC3, aC3) * tW.w; diffuseColor.rgb *= mix(vec3(1.), dt, tFd * .9); }`)
     .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
     if (hiQ > .5 && tFd > 0.) { vec3 nm = (texture2D(tN0, vTu).xyz * 2. - 1.) * tW.x + (texture2D(tN1, vTu).xyz * 2. - 1.) * tW.y + (texture2D(tN2, vTu).xyz * 2. - 1.) * tW.z + (texture2D(tN3, vTu).xyz * 2. - 1.) * tW.w;
-      vec3 tT = normalize(vT - normal * dot(vT, normal)); vec3 tB = cross(normal, tT); tB *= sign(dot(tB, vB)); normal = normalize(tT * nm.x * tFd + tB * nm.y * tFd + normal * max(nm.z, .25)); }`);
+      vec3 tT = normalize(vT - normal * dot(vT, normal)); vec3 tB = cross(normal, tT); tB *= sign(dot(tB, vB)); normal = normalize(tT * nm.x * tFd + tB * nm.y * tFd + normal * max(nm.z, .25)); }`)
+    .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
+#ifndef IS_MOON
+    { // city lights on the night side: clusters of warm dots on grassland, only seen from high up
+      vec3 cb = normalize(vBd); float nt = smoothstep(.03, -.16, dot(cb, sunB)) * smoothstep(7000., 40000., length(vViewPosition)) * smoothstep(.45, .85, tW.x);
+      if (nt > 0.) { float cty = smoothstep(.56, .78, fbm3(cb * 34. + 3.1, 4)), st = smoothstep(.3, .95, vn(cb * 1400.)) * .7 + smoothstep(.62, .9, fbm3(cb * 160., 2)) * .5;
+        totalEmissiveRadiance += vec3(1., .62, .3) * nt * cty * (.15 + st) * .035; } }
+#endif`);
 };
 // tileable wave normal map, made at load
 const waveTex = (() => { const N2 = 256, c = document.createElement('canvas'); c.width = c.height = N2; const x = c.getContext('2d'), im = x.createImageData(N2, N2), H = new Float32Array(N2 * N2);
@@ -719,29 +736,7 @@ function buildSite() {
   decal(stripes, hx, 25.6, hz + HD / 2 + .62, 36, .8, 0, 24);
   for (const sx of [-1, 1]) { box(hx + sx * (HW / 2 + 5.5), 0, hz + HD / 2 + 1.6, 10, 25.6, .6, 0x5d6f86, false, {t: 'plate', tile: 3}); decal(stripes, hx + sx * (HW / 2 + 5.5), 1.2, hz + HD / 2 + 1.92, 10, .7, 0, 7); }
   box(hx, 0, hz + HD / 2 + 1.6, HW + 24, .25, .5, 0x333333, false); // door track
-  // inside: floor, assembly bay with hazard stripes, gantry crane, work towers, lights
-  box(hx, .02, hz, HW - 2, .05, HD - 2, 0xc8ccd0, false, {t: 'plate', tile: 3, cast: false});
-  box(hx + 6, 0, hz - 6, 14, .9, 14, 0x8d959e, true, {t: 'plate', tile: 2});
-  for (const [x, z, w, d, ry] of [[6, .95, 14, .6, 0], [6, -12.95, 14, .6, 0]]) decal(stripes, hx + x, .9, hz + z, w, .6, ry, 10).rotation.x = -Math.PI / 2;
-  { const L = [], cy = 30; for (const sx of [-1, 1]) { L.push(boxGeo(hx + sx * (HW / 2 - 2), cy, hz, .8, 1, HD - 4, 0x353d48)); for (let z = -HD / 2 + 4; z <= HD / 2 - 4; z += 8) L.push(boxGeo(hx + sx * (HW / 2 - 2), 0, hz + z, .7, cy, .7, 0x606a76)); }
-    L.push(boxGeo(hx, cy + 1, hz - 6, HW - 3, 1.4, 1.6, 0xffcf2a)); L.push(boxGeo(hx + 6, cy - 1.6, hz - 6, 3, 1.6, 2.4, 0x353d48)); L.push(beamGeo(new V3(hx + 6, cy - 1.6, hz - 6), new V3(hx + 6, 14, hz - 6), .06, 0x222222, 4));
-    // two work towers either side of the bay
-    for (const sx of [-1, 1]) { const x0 = hx + 6 + sx * 10, z0 = hz - 6; for (let y = 0; y <= 24; y += 6) L.push(boxGeo(x0, y, z0, 4, .25, 6, 0x9aa4ae));
-      for (const [dx, dz] of [[-2, -3], [2, -3], [-2, 3], [2, 3]]) L.push(beamGeo(new V3(x0 + dx, 0, z0 + dz), new V3(x0 + dx, 24.3, z0 + dz), .12, 0xffcf2a));
-      for (let y = 0; y < 24; y += 6) { L.push(beamGeo(new V3(x0 - 2, y, z0 - 3), new V3(x0 - 2, y + 6, z0 + 3), .06, 0xd9a91e)); L.push(beamGeo(new V3(x0 + 2, y, z0 + 3), new V3(x0 + 2, y + 6, z0 - 3), .06, 0xd9a91e)); } }
-    addMerged(L);
-    for (const sx of [-1, 1]) site.boxes.push({x0: hx + 6 + sx * 10 - 2, x1: hx + 6 + sx * 10 + 2, y0: 0, y1: .3, z0: hz - 9, z1: hz - 3}); }
-  for (let i = 0; i < 4; i++) for (let j = 0; j < 3; j++) box(hx - 15 + i * 10, 32.4, hz - 18 + j * 16, 4, .3, 1.2, 0xffffff, false, {e: 0xfff4e0, cast: false});
-  // shelves of parts along the west wall (parts get stocked in step 3)
-  { const L = []; for (let i = 0; i < 4; i++) { const z = hz - 18 + i * 10, x = hx - HW / 2 + 2.6; for (let y = 0; y <= 6; y += 2) L.push(boxGeo(x, y, z, 3, .15, 7.6, 0x3a6ea5));
-      for (const dz of [-3.7, 3.7]) for (const dx of [-1.4, 1.4]) L.push(boxGeo(x + dx, 0, z + dz, .15, 6.3, .15, 0xff8a2a));
-      for (let k = 0; k < 6; k++) { const y = 2 * (k % 3) + .15, dz = -2.6 + (k * 1.7) % 5.2; L.push(boxGeo(x, y, z + dz, 1.4, .9 + (k % 2) * .5, 1.4, [0xc9a46a, 0xd8d8d8, 0x6d8f5a, 0xb4573e][(i + k) % 4])); }
-      site.boxes.push({x0: x - 1.5, x1: x + 1.5, y0: 0, y1: 6.3, z0: z - 3.8, z1: z + 3.8}); }
-    addMerged(L, new THREE.MeshStandardMaterial({vertexColors: true, roughness: .7, metalness: .1})); }
-  // builder console (step 3 opens the editor here)
-  box(hx + 15, 0, hz + 14, 3, 1.1, 1.6, 0x2a3646, true, {r: .4, mt: .6}); { const sc = decal(signTex(512, 256, (x, w, h) => { x.fillStyle = '#071423'; x.fillRect(0, 0, w, h); x.strokeStyle = '#2a8cff'; x.lineWidth = 3;
-    for (let i = 0; i < 6; i++) x.strokeRect(30 + i * 40, 180 - i * 25, 30, 22 + i * 25); x.fillStyle = '#ffcf4a'; x.font = '600 36px Fredoka, sans-serif'; x.fillText('BUILD', 300, 80); x.font = '22px Fredoka, sans-serif'; x.fillStyle = '#9fd0ff'; x.fillText('ROCKET EDITOR', 300, 115); }), hx + 15, 1.95, hz + 14.3, 2.5, 1.25, 0);
-    sc.material.emissive = new THREE.Color(1, 1, 1); sc.material.emissiveMap = sc.material.map; sc.material.emissiveIntensity = 1.4; sc.rotation.x = -.35; }
+  // the inside of the hangar (lining, lights, rocket on the stand, parts displays) is built by world.js
 
   // ---- MISSION CONTROL (walk in through the south-east door): flight control room downstairs, glass viewing deck upstairs, roof antennas
   { const im = {}, imat = (c, r = .8, mt = 0, t, tile = 4, U = INT_MC, e) => { const k = [c, r, mt, t && t.uuid, tile, U === INT_MC ? 'm' : 'd', e].join('|'); if (im[k]) return im[k];
@@ -887,7 +882,8 @@ function buildSite() {
   let k = 0, rs = 5; const r = () => (rs = (Math.imul(rs, 1664525) + 1013904223) >>> 0) / 4294967296;
   for (let i = 0; i < 6000 && k < 900; i++) { const a = r() * 6.283, d = 420 + r() * 1300, x = Math.cos(a) * d, z = Math.sin(a) * d; if (Math.abs(z - 330) < 70 && x > -640 && x < 1000) continue; if (noise3(x / 120, 0, z / 120, 77) < .05) continue;
     const sz = .7 + r() * .9; q.setFromAxisAngle(_Y, r() * 6.28); p.set(x, groundY(x, z) - .3, z); if (p.y < -6) continue; s.set(sz, sz * (.85 + r() * .4), sz); M4.compose(p, q, s); tr.setMatrixAt(k++, M4); }
-  tr.count = k; tr.instanceMatrix.needsUpdate = true; tr.castShadow = true; tr.receiveShadow = true; g.add(tr);
+  tr.count = k; tr.instanceMatrix.needsUpdate = true; tr.castShadow = true; tr.receiveShadow = true; g.add(tr); site.trees = tr;
+  site.H = {box, cyl, mat, mergeGeos, tint, beamGeo, boxGeo, addMerged, signTex, logo, decal, stripes, groundY, glass}; site.hangar = {HW, HD, HH, T, hx, hz}; // for world.js
 }
 const _sv = new V3(), _sq = new Q4();
 // site coords <-> body-fixed
