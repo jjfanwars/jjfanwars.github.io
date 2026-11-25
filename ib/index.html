@@ -235,6 +235,7 @@ mark{background:#ffe28a;color:#1c2230;border-radius:3px;padding:0 1px}
 .filters select{width:100%;min-width:0}.filters #ft{grid-column:span 2;order:-1}.filters .fcount{grid-column:1/-1}
 .prac{max-width:880px;margin:0 auto}
 .prac h2,.home h2{font:600 26px/1.2 var(--f-read);letter-spacing:-.015em;margin:0}
+.qbig img,.fb img,details.card img{max-width:100%;height:auto;display:block;margin:12px auto;border-radius:6px;background:#fff}
 .qbig{overflow-x:auto;padding:22px 26px;font-family:var(--f-read);font-size:19px;line-height:1.55}
 .meta{color:var(--mut);font-size:13px}
 .fb{padding:20px 24px;margin-top:14px}
@@ -744,6 +745,7 @@ const front = q => /^[ivxlc]+$/i.test(q.bp || '');
 const preview = t => { const cut = t.split(/\n\s*\n|\n\s*\||\n\s*(?:- )?\**[A-D]\.\s/)[0]; if (cut.length <= 240) return cut + (cut.length < t.length ? ' …' : ''); let c = cut.slice(0, 240); if ((c.match(/\$/g) || []).length % 2) c = c.slice(0, c.lastIndexOf('$')); return c.replace(/\s+\S*$/, '') + '…'; };
 const DIFFN = {1: 'Easy', 2: 'Medium', 3: 'Hard'};
 const qTags = q => (q.diff ? `<span class="tag d${q.diff}">${DIFFN[q.diff]}</span>` : '') + (q.paper ? `<span class="tag">Paper ${esc(q.paper)}</span>` : '') + (q.lvl === 'HL' ? '<span class="tag">HL</span>' : '') + (q.src === 'bank' ? '<span class="tag">Bank</span>' : '');
+const optLines = t => String(t || '').replace(/\n[ \t]*(?=[A-E]\. )/g, '\n\n'); // multiple-choice options on their own lines
 const qMax = q => q.marks || (q.kind === 'essay' ? 15 : q.kind === 'mcq' ? 1 : 10);
 const attOf = id => S.prog.att[id] || [];
 const best = id => attOf(id).reduce((m, a) => a.max ? Math.max(m, a.score / a.max) : m, -1);
@@ -788,7 +790,7 @@ function openQ(id) {
   const q = S.qs.find(x => x.id === id); if (!q) return renderPrac(); const B = bookOf(q.book), draft = LS.get(LSK('ib-d-' + id), ''), prev = attOf(id); MATH = !!B.math;
   shell('prac'); S.q = q; S.rc = null; setHash('#/q/' + id); title([['Practice', 'prac'], (KIND[q.kind] || q.kind) + (q.topic ? ' · ' + q.topic : '')]);
   $('#main').innerHTML = `<div class="prac">${sessBar('q', id)}<div class="row" style="margin-bottom:10px"><button id="back"><svg class="i"><use href="#i-l"/></svg>All questions</button><span class="sp" style="flex:1"></span><button id="qSend" title="Send this question to a friend">Send</button>${q.n ? `<button id="src">Open in textbook (p. ${esc(q.bp)})</button>` : ''}</div>
-    <div class="card qbig"><div style="font-family:var(--f-ui);margin-bottom:10px"><span class="tag">${KIND[q.kind] || q.kind}</span>${qTags(q)}${q.marks ? '<span class="tag">' + q.marks + (q.marks === 1 ? ' mark' : ' marks') + '</span>' : ''}${q.calc === 'no' ? '<span class="tag w">No calculator</span>' : q.calc === 'yes' ? '<span class="tag">Calculator</span>' : ''}<span class="meta">${esc(q.set ? q.set + ' · ' : '')}${esc(q.topic ? topicName(B, q.topic) : '')}</span></div>${mdx(q.text)}${q.ctx ? `<div class="meta" style="font-family:var(--f-ui);margin-top:10px">${esc(q.ctx)}</div>` : ''}</div>
+    <div class="card qbig"><div style="font-family:var(--f-ui);margin-bottom:10px"><span class="tag">${KIND[q.kind] || q.kind}</span>${qTags(q)}${q.marks ? '<span class="tag">' + q.marks + (q.marks === 1 ? ' mark' : ' marks') + '</span>' : ''}${q.calc === 'no' ? '<span class="tag w">No calculator</span>' : q.calc === 'yes' ? '<span class="tag">Calculator</span>' : ''}<span class="meta">${esc(q.set ? q.set + ' · ' : '')}${esc(q.topic ? topicName(B, q.topic) : '')}</span></div>${mdx(optLines(q.text))}${q.ctx ? `<div class="meta" style="font-family:var(--f-ui);margin-top:10px">${esc(q.ctx)}</div>` : ''}</div>
     <div style="margin-top:14px"><textarea id="ans" rows="${q.kind === 'essay' ? 18 : 8}" placeholder="Answer">${esc(draft)}</textarea>
     <div class="row" style="margin-top:8px"><span class="meta" id="wc"></span><span class="meta" id="tm"></span><span style="flex:1"></span><button id="hint">Hint</button><button class="pri" id="mark">Mark with Claude</button></div></div>
     <div id="fbx"></div>${q.ms ? `<details class="card" style="padding:12px 16px;margin-top:14px"><summary><b>Official answer</b> <span class="meta">(try it first)</span></summary><div style="margin-top:8px">${mdx(q.ms)}</div></details>` : ''}
@@ -1220,7 +1222,7 @@ function openPaper(id) {
   }
   const lim = P.mins ? P.mins * 60e3 : 0;
   $('#main').innerHTML = `<div class="prac"><div class="ppbar card"><b>${esc(P.title)}</b><span class="sp"></span><span class="num" id="ppT"></span><button id="ppQuit">Abandon</button><button class="pri" id="ppSub">Submit</button></div>
-    ${P.qs.map(q => { const x = ppQ(P, q); return `<div class="card qbig" style="margin-top:14px"><div style="font-family:var(--f-ui);margin-bottom:8px"><b>${esc(q.n)}.</b> ${q.marks ? '<span class="tag">' + q.marks + (q.marks === 1 ? ' mark' : ' marks') + '</span>' : ''}</div>${mdx(q.text)}
+    ${P.qs.map(q => { const x = ppQ(P, q); return `<div class="card qbig" style="margin-top:14px"><div style="font-family:var(--f-ui);margin-bottom:8px"><b>${esc(q.n)}.</b> ${q.marks ? '<span class="tag">' + q.marks + (q.marks === 1 ? ' mark' : ' marks') + '</span>' : ''}</div>${mdx(optLines(q.text))}
       ${x.kind === 'mcq' ? `<div class="row" style="font-family:var(--f-ui);margin-top:10px">${['A', 'B', 'C', 'D'].map(L => `<label class="opt"><input type="radio" name="o${esc(q.n)}" value="${L}" ${st.ans[q.n] === L ? 'checked' : ''} data-n="${esc(q.n)}"> ${L}</label>`).join('')}</div>`
       : `<textarea data-n="${esc(q.n)}" rows="${(q.marks || 4) > 6 ? 12 : 5}" style="margin-top:10px;font:15px/1.6 var(--f-ui)" placeholder="Answer">${esc(st.ans[q.n] || '')}</textarea>`}</div>`; }).join('')}
     <div class="row" style="margin:18px 0"><span class="sp"></span><button class="pri" id="ppSub2">Submit paper</button></div></div>`;

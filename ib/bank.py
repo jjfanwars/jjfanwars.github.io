@@ -2,7 +2,8 @@
 """Tagged question bank: add the owner's question banks to the app, and tag questions with difficulty / paper / level / calculator.
 
   IB_ADMIN=... IB_PASS=... python3 ib/bank.py add BOOK "Set name" FILE... [--upload]
-  IB_ADMIN=... IB_PASS=... python3 ib/bank.py retag BOOK [--upload]       # tag existing questions that have no difficulty yet
+  IB_ADMIN=... IB_PASS=... python3 ib/bank.py retag BOOK [--upload]
+  IB_ADMIN=... IB_PASS=... python3 ib/bank.py calibrate BOOK "Set name" [--upload]   # textbook banks from outside IB: IB-scale difficulty, HL flag, drop off-syllabus       # tag existing questions that have no difficulty yet
 
 FILE can be:
   .json  a list of questions: {text, ms|markscheme|answer, marks, topic, difficulty|diff, paper, level|lvl, calculator|calc, kind, ans (MCQ letter)}
@@ -84,6 +85,34 @@ SPLIT = ("You turn a transcribed IB question bank (questions and their markschem
          "difficulty, paper, level, calculator (else ''). Include every question.")
 QS = S(qs=ARR(S(text=STR, ms=STR, ans=STR, marks=INT, kind=STR, difficulty=STR, paper=STR, level=STR, calculator=STR)))
 
+CALSYS = ("You calibrate questions from a university/AP textbook against the IB Diploma Programme (first assessment 2025 syllabi for Physics and Chemistry, "
+          "2021 Mathematics: Analysis and Approaches). For each question: fit = 'SL' if it is in the SL syllabus, 'HL' if only in the HL (AHL) content, "
+          "'no' if it needs content outside the IB syllabus (e.g. calculus-based physics beyond IB, fluid dynamics, colligative properties, epsilon-delta limits, "
+          "confidence intervals) or is not an exam-style question; diff on the IB exam scale: 1 = easier than typical IB exam questions, 2 = typical IB exam level, "
+          "3 = top-band / harder than most IB exam questions (unfamiliar context, long reasoning); topic = best syllabus section code from the list (exactly as written).")
+CAL = S(items=ARR(S(i=INT, fit=STR, diff=INT, topic=STR)))
+
+def calibrate(book, set_name, up):
+    B, tps = topics(book); allq = rq('qs'); mine = [q for q in allq if q['book'] == book and q.get('set') == set_name]
+    tl = '\n'.join(f"{t['num']} {t['title']}" for t in tps); valid = {t['num'] for t in tps}; drop = set()
+    def run(chunk):
+        txt = f"Subject: {B.get('subject', B['title'])}\nSyllabus sections:\n{tl}\n\nQuestions:\n" + '\n\n'.join(f"[{i}] {q['text'][:900]}" for i, q in chunk)
+        r = gen(CALSYS, txt, CAL) or {'items': []}
+        for it in r['items']:
+            if not 0 <= it['i'] < len(mine): continue
+            q = mine[it['i']]; f = it['fit'].upper()
+            if f == 'NO': drop.add(q['id']); continue
+            q['diff'] = max(1, min(3, it['diff'])); q['cal'] = 1
+            if f == 'HL': q['lvl'] = 'HL'
+            else: q.pop('lvl', None)
+            if it['topic'] in valid: q['topic'] = it['topic']
+        print('calibrated', len(chunk), flush=True)
+    idx = list(enumerate(mine))
+    with ThreadPoolExecutor(6) as ex: list(ex.map(run, [idx[k:k + 20] for k in range(0, len(idx), 20)]))
+    keep = [q for q in allq if q['id'] not in drop]
+    print(set_name, len(mine), 'questions,', len(drop), 'outside the IB syllabus dropped,', sum(1 for q in mine if q.get('lvl') == 'HL'), 'HL only')
+    if up: put_qs(keep)
+
 def read(f):
     if f.endswith('.json'): return json.load(open(f))
     if f.endswith('.csv'): return list(csv.DictReader(open(f, newline='', encoding='utf-8-sig')))
@@ -114,6 +143,7 @@ def main():
                 'paper': q.get('paper', ''), 'lvl': q.get('lvl', ''), 'calc': q.get('calc', ''), 'pages': []}.items() if v not in ('', None)} for i, q in enumerate(qs)]
         json.dump(out, open(f'bank-{book}.json', 'w'), indent=1, ensure_ascii=False); print(len(out), 'questions ->', f'bank-{book}.json')
         merge(book, name, out, up)
+    elif a[0] == 'calibrate': calibrate(a[1], a[2], up)
     elif a[0] == 'retag':
         book = a[1]; B, tps = topics(book); allq = rq('qs')
         mine = [q for q in allq if q['book'] == book and not q.get('pp') and not re.fullmatch(r'[ivxlc]+', q.get('bp') or '', re.I)]

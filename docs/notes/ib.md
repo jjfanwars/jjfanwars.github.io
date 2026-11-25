@@ -67,6 +67,10 @@ Private study app for the owner's IB textbooks (not a game). Live at /ib/ (noind
 
 - **Physics replaced (Nov 2026):** `phys` is now the Oxford Physics Course Companion 2023 (Homer, Piętka, Heathcote; 724 pages, SL + HL), from the owner's two PDFs (pages 1-400 + 400-724, overlap dropped) in `ibsrc/phys2`. 592 pages by Haiku OCR (`phys2/SPEC.txt`, callouts worked/exercise/practice/guiding/link/nos/tok/atl/tool/ahl), 132 blocked pages by tesseract. Topic headings were rebuilt from the printed contents (pdf page = printed + 8; themes A-E plus T Tools and X Extended response; build.py accepts theme letters T/X). 358 pages with real diagrams. Not redone: `ref:phys` formula sheet (page links still point at the old Pearson book) and difficulty tags for the new questions (both need small paid API runs; owner to decide).
 
+## Free question banks (Nov 2026)
+- No legal free IB past papers exist (the IB sells them; free download sites are pirated), so the banks come from OpenStax books (CC BY-NC-SA 4.0, fine for this private non-commercial app, attribution in the set name): College Physics 2e, Chemistry 2e, Calculus Vol 1 (ch 1, 3-5), Introductory Statistics 2e (ch 1-4, 6, 12). `ib/openstax.py REPO COLLECTION.xml name out.json [--chapters]` converts the CNXML end-of-section exercises (MathML -> LaTeX, figures linked to raw.githubusercontent media, answers from `solution`, AP test-prep MCQs with letter answers) with no Claude; `bank.py add` imports (topics tagged by Haiku); `bank.py calibrate BOOK "Set"` re-rates difficulty on the IB exam scale, flags HL-only, and drops off-syllabus questions (dropped 484 physics, 421 chem, 521 calculus, 148 stats). Result: ~5,500 bank questions (phys 2713, chem 1137, math 1633). Clones in `ibsrc/open/`.
+- The app puts MCQ options on their own lines (`optLines`) and sizes question images.
+
 ## Backlog
 - Feature ideas offered (not picked yet): friend challenges + leaderboard, group study rooms, voice tutor (oral practice), installable offline app.
 
