@@ -195,6 +195,13 @@ aside .pg{color:var(--mut);font-size:11.5px;font-weight:400;font-variant-numeric
 main{padding:24px 28px 80px;min-width:0}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r)}
 .drills{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px}.drillc{display:flex;flex-direction:column;align-items:flex-start;gap:6px;padding:16px;text-align:left;cursor:pointer;font:inherit;color:inherit}.drillc:hover{border-color:var(--acc)}.drillc .i{width:26px;height:26px;color:var(--acc)}.drillc b{font-size:16px}
+/* feature: diagram labelling drill */
+.lbw{max-width:880px;margin:0 auto}.lbset{padding:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,250px),1fr));gap:12px 16px;align-items:end;margin:0 0 16px}.lbset label,.lbf{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--mut);min-width:0}.lbset select{width:100%;color:var(--ink)}.lbset .seg,.lbtop .seg{flex-wrap:wrap;max-width:100%}.lbset .seg button{color:var(--ink)}.lbset .seg button.on{color:var(--bg)}.lbset .full{grid-column:1/-1}.lbf .seg{align-self:flex-start}.lbwarn{color:var(--warn)}.lbtop{margin:0 0 8px}.lbwhere{min-width:0;overflow-wrap:anywhere}
+.lbfig{position:relative;container-type:inline-size;background:#fff;border:1px solid var(--line);border-radius:var(--r);margin:0 auto 12px;max-width:720px;overflow:hidden;color:#1c2230}.lbfig>svg,.lbfig>img{display:block;width:100%;height:auto}.lbfig svg.mpl *{stroke-linejoin:round;stroke-linecap:butt}.lbfig>p{margin:0}
+.lbb{position:absolute;display:flex;align-items:center;justify-content:center;padding:0 2px;margin:0;gap:0;border:1.5px dashed #24408e;border-radius:4px;background:#eef2fb;color:#1c2230;font:600 var(--fs,2.4cqw)/1.05 var(--f-ui);white-space:nowrap;min-width:14px;min-height:12px;transition:none}.lbb:hover{border-color:#24408e;background:#e3e8f5}.lbb>span{overflow:hidden;text-overflow:ellipsis;max-width:100%}.lbb>i{position:absolute;left:0;top:0;transform:translate(-45%,-50%);min-width:17px;height:17px;padding:0 3px;border-radius:9px;background:#24408e;color:#fff;font:700 10.5px/17px var(--f-ui);font-style:normal;text-align:center;pointer-events:none;z-index:1}.lbb.v>span{writing-mode:vertical-rl;transform:rotate(180deg)}.lbb.f{border-style:solid;background:#dfe6f7}.lbb.sel,.lbs.sel{box-shadow:0 0 0 3px color-mix(in srgb,var(--acc) 45%,transparent)}.lbb.hov,.lbs.hov{background:#fff3c4;border-style:solid}.lbb.ok{border:1.5px solid #2e6b40;background:#e1eee3}.lbb.no{border:1.5px solid #b8321b;background:#f6e2dc}.lbb.ok>i{background:#2e6b40}.lbb.no>i{background:#b8321b}
+.lbk{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0 0 14px;padding:10px;border:1px dashed var(--line2);border-radius:var(--r)}.lbc{touch-action:none;user-select:none;-webkit-user-select:none;padding:6px 12px;border-radius:99px;font-weight:500;max-width:100%;white-space:normal;text-align:left}.lbc.pk{background:var(--acc);border-color:var(--acc);color:var(--acc-ink)}.lbc.gone{display:none}.lbghost{position:fixed;z-index:60;pointer-events:none;transform:translate(-50%,-130%);box-shadow:var(--sh);background:var(--panel);border-color:var(--acc)}
+.lbl{list-style:none;padding:0;margin:0 0 14px;display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,250px),1fr));gap:8px 14px}.lbr{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;min-width:0}.lbr>i{flex:none;min-width:24px;height:24px;border-radius:12px;background:var(--acc);color:var(--acc-ink);font:700 12px/24px var(--f-ui);font-style:normal;text-align:center}.lbr .lbs{flex:1;min-width:0;justify-content:flex-start;min-height:38px;border-style:dashed;color:var(--mut);text-align:left;white-space:normal;overflow-wrap:anywhere}.lbr .lbs.f{border-style:solid;color:var(--ink);background:var(--acc2)}.lbr .lbs:disabled{cursor:default;opacity:1}.lbr .lbs.f:disabled{color:var(--ink)}.lbr input{flex:1;min-width:0;width:auto}.lbr.ok .lbs,.lbr.ok input{border:1px solid var(--good);background:var(--good2);color:var(--ink)}.lbr.no .lbs,.lbr.no input{border:1px solid var(--bad);background:var(--red2);color:var(--ink)}.lbr.ok>i{background:var(--good)}.lbr.no>i{background:var(--bad)}.lbr .ans{flex-basis:100%;margin-left:32px;font-size:13px;color:var(--mut)}.lbr .ans:empty{display:none}.lbr .ans b{color:var(--good)}
+.lbres{padding:16px 18px;margin:0 0 14px}.lbres .big{font:600 26px var(--f-read)}.lbhist{padding:14px 16px;display:flex;flex-direction:column;gap:8px}.lbhr{display:flex;flex-wrap:wrap;gap:4px 12px;align-items:center}.lbhr>span:first-child{min-width:110px;font-weight:600}.lbbars{display:inline-flex;gap:2px;align-items:flex-end;height:22px}.lbbars b{width:6px;background:var(--acc);border-radius:2px 2px 0 0;opacity:.85}
 .reader{max-width:760px;margin:0 auto}
 .rbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px}
 .rbar .sp,.sp{flex:1}
@@ -612,6 +619,7 @@ function mergeIn(r) {
     for (const [k, v] of Object.entries(r.terms || {})) if (!S.prog.terms[k] || S.prog.terms[k].t < v.t) S.prog.terms[k] = v;
     if ((r.pt || 0) > (S.prog.pt || 0)) { S.prog.pins = r.pins || []; S.prog.marks = r.marks || []; S.prog.hls = r.hls || []; S.prog.pt = r.pt; }
     const D = S.prog.days = S.prog.days || {}; for (const [d, o] of Object.entries(r.days || {})) { const x = D[d] = D[d] || {}; for (const k of ['m', 'q', 'c', 'p']) x[k] = Math.max(x[k] || 0, o[k] || 0); }
+    lblMerge(r); // diagram labelling drill history (S.prog.drills.labels)
     if ((r.calt || 0) > (S.prog.calt || 0)) { S.prog.cals = r.cals || []; S.prog.calt = r.calt; setTimeout(loadExt, 0); }
     for (const f of ['decks', 'maps', 'spaces', 'notes']) { const DK = S.prog[f] = S.prog[f] || {}; for (const [id, d] of Object.entries(r[f] || {})) if (!DK[id] || (DK[id].t || 0) < (d.t || 0)) { if (f === 'notes' && DK[id]) { for (const k of Object.keys(DK[id])) if (!(k in d) && k[0] !== '_') delete DK[id][k]; Object.assign(DK[id], d); } else DK[id] = d; } }
     for (const k of ['secs', 'rev', 'recall']) { const L = S.prog[k] = S.prog[k] || {}; for (const [kk, v] of Object.entries(r[k] || {})) if (!L[kk] || (L[kk].t || 0) < (v.t || 0)) L[kk] = v; }
@@ -3183,6 +3191,298 @@ function renderFriends() { shell('friends'); setHash('#/friends'); $('#main').in
 
 
 // ==== FEATURE: diagram labelling drill ====
+// Label the diagram: a diagram's labels are hidden and the student puts them back (drag or tap chips, or type them in Hard), checked in the app.
+// Sources: question-bank SVGs (qbank/img/*.svg referenced as ![alt](qbank/img/x.svg) in S.qs text; their real <text> labels are hidden and covered)
+// and textbook figure crops (images BOOK~f, n = page*100 + k; labels found once per device with tesseract.js, cached in LS ib-lbl:<book>:<n> = {v, L}).
+// Label boxes are kept in % of the diagram (x, y, w, h) so the covers scale with it; cover text uses cqw units of .lbfig.
+// History: S.prog.drills.labels[book] = {t, n, c, a, best, h: [[t, pct, lvl], ...last 12]}, merged per book by t (lblMerge, called from mergeIn).
+const LBL_CFG = {minLetters: 2, maxLen: 42, maxWords: 6, maxBlanks: 10, ocrConf: 60, ocrAvg: 72, tries: 4, skipTitles: false};
+const LBL_LV = {easy: ['Easy', 'Drag or tap the labels into place.'], tricky: ['Tricky', 'Labels plus a few that belong to other diagrams.'], hard: ['Hard', 'No labels to pick from: type each one.']};
+const LBL_SRC = {svg: 'Question bank', fig: 'Textbook', both: 'Both'};
+const LBL_IMG = /!\[([^\]]*)\]\((qbank\/img\/[^)\s]+\.svg)\)/g;
+const LBL_TESS = 'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js';
+const LBL = {txt: new Map(), cnt: new Map(), bad: new Set(), opt: null, cur: null, tok: null, fails: 0, noOcr: '', url: ''};
+const lblOpt = () => LBL.opt || (LBL.opt = {book: '', tp: '', src: 'both', lv: 'easy', ...(LS.get('ib-lbl-opt', {}) || {})});
+const lblKeep = () => LS.set('ib-lbl-opt', LBL.opt);
+const lblShuf = a => { a = [...a]; for (let i = a.length - 1; i > 0; i--) { const j = Math.random() * (i + 1) | 0; [a[i], a[j]] = [a[j], a[i]]; } return a; };
+// a real label: some letters, short, not a number / value with a unit / caption
+function lblOk(s) {
+  s = String(s || '').replace(/\s+/g, ' ').trim();
+  if (!s || s.length > LBL_CFG.maxLen || s.split(' ').length > LBL_CFG.maxWords) return false;
+  if ((s.match(/\p{L}/gu) || []).length < LBL_CFG.minLetters) return false;
+  if (/^[-−+±~≈]?\d[\d.,]*\s*(?:[a-zµ°%Ω]{1,4}(?:[⁻-]?[¹²³]|\/[a-z]{1,3})?)?$/iu.test(s)) return false;
+  if (/^\(.*\)$/.test(s) || (/[0-9]/.test(s) && !/\p{L}{3}/u.test(s))) return false; // bracketed notes, values like "ε = 9.0 V" or "2.5 × 10⁷ m s⁻¹"
+  return !/^(?:fig(?:ure)?\.?\s*\d|source\b|page\b)/i.test(s);
+}
+// typed answers: ignore case, spaces, punctuation, sub/superscripts (NFKD), Greek names; allow small typos
+const LBL_GR = {alpha: 'α', beta: 'β', gamma: 'γ', delta: 'δ', lambda: 'λ', theta: 'θ', sigma: 'σ', omega: 'ω', mu: 'μ', nu: 'ν', pi: 'π', rho: 'ρ'};
+const lblN = s => String(s || '').normalize('NFKD').toLowerCase().replace(/[−–—]/g, '-').replace(/\b(alpha|beta|gamma|delta|lambda|theta|sigma|omega|mu|nu|pi|rho)\b/g, w => LBL_GR[w]).replace(/(\p{L})-(?=\p{L})/gu, '$1').replace(/[^\p{L}\p{N}+-]+/gu, '');
+function lblLev(a, b) { const m = a.length, n = b.length; if (Math.abs(m - n) > 2) return 9; let p = Array.from({length: n + 1}, (_, j) => j), q = p;
+  for (let i = 1; i <= m; i++) { const c = [i]; for (let j = 1; j <= n; j++) { c[j] = Math.min(p[j] + 1, c[j - 1] + 1, p[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1)); if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) c[j] = Math.min(c[j], q[j - 2] + 1); } q = p; p = c; } return p[n]; } // edit distance, swaps count as one
+function lblMatch(g, s) { g = lblN(g); if (!g) return false;
+  const alts = [s, s.replace(/\([^)]*\)/g, ''), s.split(/:\s/)[0]].map(lblN).filter((x, i) => x && (i === 0 || x.length >= 3));
+  return alts.some(t => g === t || lblLev(g, t) <= (t.length <= 4 ? 0 : t.length <= 9 ? 1 : 2)); }
+
+// ---- sources ----
+function lblSvgs(b) { const out = [], seen = new Set();
+  for (const q of S.qs) { if (q.book !== b) continue;
+    for (const m of String((q.ctx || '') + '\n' + (q.text || '')).matchAll(LBL_IMG)) if (!seen.has(m[2])) { seen.add(m[2]); out.push({kind: 'q', key: 'q.' + m[2].replace(/^.*\/|\.svg$/g, ''), src: m[2], alt: m[1], q, book: b, topic: q.topic}); } }
+  return out; }
+async function lblFigs(b) { const F = await getFigs(b), out = [];
+  for (const [p, ks] of Object.entries(F || {})) for (const k of ks || []) out.push({kind: 'f', key: 'f.' + b + '.' + (+p * 100 + k), book: b, page: +p, k: +k, n: +p * 100 + k});
+  return out; }
+function lblFind(key) { const k = String(key || '');
+  if (k.startsWith('q.')) { const b = (k.match(/^q\.gen_([a-z0-9]+)_/) || [])[1]; for (const B of b ? [bookOf(b)].filter(Boolean) : S.books) { const c = lblSvgs(B.id).find(x => x.key === k); if (c) return c; } return null; }
+  const m = k.match(/^f\.([^.]+)\.(\d+)$/); return m && bookOf(m[1]) ? {kind: 'f', key: k, book: m[1], page: Math.floor(+m[2] / 100), k: +m[2] % 100, n: +m[2]} : null; }
+const lblOcrKey = c => 'ib-lbl:' + c.book + ':' + c.n;
+function lblRead(B) { const P = new Set(); for (const [k, o] of Object.entries(S.prog.secs || {})) if (k.split('|')[0] === B.id) for (const p of o.p || []) P.add(+p);
+  const lb = (S.prog.lastBy || {})[B.id]; if (lb && lb.n) P.add(+lb.n); return P; }
+function lblReadTopics(B) { const P = [...lblRead(B)]; return topicsOf(B).filter(T => P.some(p => p >= T.n && p < T.end)).map(T => T.num); }
+function lblTpOk(B, c, tp, rt) {
+  if (!tp) return true;
+  if (c.kind === 'q') return tp === '~read' ? rt.some(t => inTopic(c.topic, t)) : inTopic(c.topic, tp) || c.topic === tp;
+  if (tp === '~read') return lblRead(B).has(c.page) || topicsOf(B).some(T => rt.includes(T.num) && c.page >= T.n && c.page < T.end);
+  const T = topicsOf(B).find(t => t.num === tp); return !!T && c.page >= T.n && c.page < T.end; }
+async function lblPool(o) { const B = bookOf(o.book); if (!B) return []; const rt = lblReadTopics(B), P = [];
+  if (o.src !== 'fig' || LBL.noOcr) P.push(...lblSvgs(B.id)); // no text reader: question-bank diagrams only
+  if (o.src !== 'svg' && !LBL.noOcr) P.push(...(await lblFigs(B.id)).filter(c => { const x = LS.get(lblOcrKey(c), null); return !x || (x.L || []).length >= 2; }));
+  return P.filter(c => lblTpOk(B, c, o.tp, rt)); }
+// SVG text: fetched once per visit, sanitised, matplotlib's global <style> dropped (its rules are in our CSS, scoped)
+async function lblSvgText(src) { if (!LBL.txt.has(src)) LBL.txt.set(src, fetch(src).then(r => r.ok ? r.text() : '').catch(() => '')); return LBL.txt.get(src); }
+function lblSvgDoc(txt) { if (!txt) return null; const d = new DOMParser().parseFromString(txt, 'image/svg+xml'), s = d.documentElement;
+  if (!s || s.nodeName !== 'svg' || d.querySelector('parsererror')) return null;
+  if (/stroke-linejoin:\s*round/.test([...s.querySelectorAll('style')].map(x => x.textContent).join(''))) s.classList.add('mpl');
+  s.querySelectorAll('script,foreignObject,style').forEach(x => x.remove());
+  for (const el of [s, ...s.querySelectorAll('*')]) for (const a of [...el.attributes]) if (/^on/i.test(a.name) || (/href$/i.test(a.name) && !/^#/.test(a.value))) el.removeAttribute(a.name);
+  return s; }
+// the <text> elements that are real labels; skips axis ticks, matplotlib mathtext (glyphs as out-of-order tspans) and, if set, the largest text as a title
+function lblTexts(svg) { const out = [];
+  svg.querySelectorAll('text').forEach((t, i) => { if (t.closest('[id^="xtick"],[id^="ytick"],defs,clipPath,mask,symbol')) return;
+    const sp = t.querySelectorAll('tspan'); if (sp.length > 1 && new Set([...sp].map(x => x.getAttribute('x'))).size > 1) return;
+    const s = t.textContent.replace(/\s+/g, ' ').trim(); if (lblOk(s)) out.push({i, s}); });
+  if (LBL_CFG.skipTitles && out.length > 2) { const fs = t => parseFloat((t.getAttribute('style') || '').match(/font-size:\s*([\d.]+)/)?.[1] || t.getAttribute('font-size') || 0), all = svg.querySelectorAll('text'), mx = Math.max(...out.map(x => fs(all[x.i]))); const big = out.filter(x => fs(all[x.i]) === mx); if (big.length === 1 && mx > 0) out.splice(out.indexOf(big[0]), 1); }
+  return out; }
+async function lblCount(src) { if (!LBL.cnt.has(src)) { const s = lblSvgDoc(await lblSvgText(src)); LBL.cnt.set(src, s ? lblTexts(s).map(x => x.s) : []); } return LBL.cnt.get(src); }
+const lblUniq = L => new Set(L.map(x => typeof x === 'string' ? x : x.s)).size;
+
+// ---- OCR for textbook figures (tesseract.js, loaded only when a figure is opened) ----
+function lblTess() { if (window.Tesseract) return Promise.resolve(window.Tesseract);
+  return LBL.tl || (LBL.tl = new Promise((ok, no) => { const s = document.createElement('script'); s.src = LBL_TESS; s.async = true;
+    s.onload = () => window.Tesseract ? ok(window.Tesseract) : no(new Error('the text reader did not start')); s.onerror = () => no(new Error('could not download the text reader'));
+    document.head.appendChild(s); setTimeout(() => no(new Error('the text reader took too long to download')), 40000); }).catch(e => { LBL.tl = null; throw e; })); }
+async function lblWorker() { const T = await lblTess();
+  if (!LBL.wk) LBL.wk = T.createWorker('eng', 1, {logger: m => LBL.onp && LBL.onp(m)}).catch(e => { LBL.wk = null; throw e; });
+  return LBL.wk; }
+// words with good confidence, merged along each line until a gap wider than the text height; boxes in % of the image
+async function lblOcr(blob, W, H) { const w = await lblWorker(), {data} = await w.recognize(blob), out = [], r1 = x => Math.round(x * 10) / 10;
+  for (const ln of data.lines || []) { const ws = (ln.words || []).filter(x => x.confidence >= LBL_CFG.ocrConf && x.text.trim()); let g = [];
+    const flush = () => { if (!g.length) return; const s = g.map(x => x.text.trim()).join(' ').replace(/^[^\p{L}\p{N}(]+|[^\p{L}\p{N})+⁺⁻%]+$/gu, ''),
+        x0 = Math.min(...g.map(x => x.bbox.x0)), y0 = Math.min(...g.map(x => x.bbox.y0)), x1 = Math.max(...g.map(x => x.bbox.x1)), y1 = Math.max(...g.map(x => x.bbox.y1)), cf = g.reduce((a, x) => a + x.confidence, 0) / g.length;
+      if (lblOk(s) && cf >= LBL_CFG.ocrAvg && (x1 - x0) < W * .6) out.push({s, x: r1(x0 / W * 100), y: r1(y0 / H * 100), w: r1((x1 - x0) / W * 100), h: r1((y1 - y0) / H * 100), fs: r1((y1 - y0) / W * 100 * .85)}); g = []; };
+    for (const x of ws) { const p = g[g.length - 1]; if (p && x.bbox.x0 - p.bbox.x1 > Math.max(x.bbox.y1 - x.bbox.y0, p.bbox.y1 - p.bbox.y0) * 1.1) flush(); g.push(x); }
+    flush(); }
+  return out.slice(0, 30); }
+
+// ---- history (synced in S.prog) ----
+function lblMerge(r) { const R = r && r.drills && r.drills.labels; if (!R || !S.prog) return; const D = S.prog.drills = S.prog.drills || {}, L = D.labels = D.labels || {};
+  for (const [b, v] of Object.entries(R)) if (v && (!L[b] || (L[b].t || 0) < (v.t || 0))) L[b] = v; }
+function lblRecord(b, c, a, lv) { const D = S.prog.drills = S.prog.drills || {}, L = D.labels = D.labels || {}, t = Date.now(), o = {n: 0, c: 0, a: 0, best: 0, h: [], ...(L[b] || {})}, pct = Math.round(c / Math.max(1, a) * 100);
+  L[b] = {t, n: o.n + 1, c: o.c + c, a: o.a + a, best: Math.max(o.best || 0, pct), h: [...(o.h || []), [t, pct, lv[0]]].slice(-12)}; saveProg(); act('q'); }
+function lblHist() { const L = (S.prog.drills || {}).labels || {}, rows = Object.entries(L).map(([b, v]) => [bookOf(b), v]).filter(x => x[0] && x[1].n).sort((a, b) => b[1].t - a[1].t);
+  if (!rows.length) return '';
+  return `<div class="card lbhist"><b>Your scores</b>${rows.map(([B, v]) => `<div class="lbhr"><span>${esc(B.subject || B.title)}</span><span class="lbbars" aria-hidden="true">${v.h.map(h => `<b style="height:${Math.max(8, h[1])}%" title="${h[1]}%"></b>`).join('')}</span><span class="meta">${v.n} round${v.n === 1 ? '' : 's'} · ${Math.round(v.c / Math.max(1, v.a) * 100)}% overall · best ${v.best}%</span></div>`).join('')}</div>`; }
+
+// ---- setup screen ----
+function lblBooks() { return S.books.filter(B => B.pages || lblSvgs(B.id).length); }
+function lblTopics(B, F) { const out = [], seen = new Set(), sv = lblSvgs(B.id), figs = F || [];
+  for (const T of topicsOf(B)) { const n = sv.filter(c => inTopic(c.topic, T.num) || c.topic === T.num).length + figs.filter(c => c.page >= T.n && c.page < T.end).length; seen.add(T.num); if (n) out.push([T.num, T.num + ' ' + T.title, n]); }
+  const ex = {}; for (const c of sv) if (c.topic && !seen.has(c.topic)) (ex[c.topic] = ex[c.topic] || [c.topic + (c.q.tname ? ' ' + c.q.tname : ''), 0])[1]++;
+  for (const [k, [l, n]] of Object.entries(ex).sort((a, b) => a[0].localeCompare(b[0], undefined, {numeric: true}))) out.push([k, l, n]);
+  return out; }
+function lblHome() {
+  const o = lblOpt(), m = $('#main'), BB = lblBooks();
+  if (!bookOf(o.book)) o.book = ((S.book && BB.includes(S.book) && lblSvgs(S.book.id).length ? S.book : BB.find(B => lblSvgs(B.id).length)) || BB[0] || {}).id || '';
+  const B = bookOf(o.book);
+  const segs = (id, M, v) => `<div class="seg" id="${id}" role="group">${Object.entries(M).map(([k, x]) => `<button type="button" data-v="${k}" class="${k === v ? 'on' : ''}" aria-pressed="${k === v}">${esc(Array.isArray(x) ? x[0] : x)}</button>`).join('')}</div>`;
+  m.innerHTML = `<div class="lbw"><h2 class="h2">Label the diagram</h2><p class="meta" style="margin:-4px 0 16px">The labels are hidden. Put each one back where it belongs, then check. Diagrams come from the IB-style question bank and from your textbooks' figures.</p>
+    <div class="card lbset">
+      <label>Subject<select id="lbB">${BB.map(x => `<option value="${x.id}" ${x.id === o.book ? 'selected' : ''}>${esc(x.subject || x.title)}</option>`).join('')}</select></label>
+      <label>Topic<select id="lbT"></select></label>
+      <div class="lbf"><span class="meta">Diagrams from</span>${segs('lbS', LBL_SRC, o.src)}</div>
+      <div class="lbf"><span class="meta">Level</span>${segs('lbL', LBL_LV, o.lv)}</div>
+      <div class="row full"><span class="meta" id="lbLd">${esc(LBL_LV[o.lv][1])}</span><span class="sp"></span><span class="meta" id="lbN"></span><button class="pri" id="lbGo">Start</button></div>
+    </div><div id="lbMsg"></div>${lblHist()}</div>`;
+  if (!B) { $('#lbGo').disabled = true; $('#lbN').textContent = 'No books yet.'; return; }
+  const fill = F => { const T = lblTopics(B, F), rt = lblReadTopics(B), sel = $('#lbT'); if (!sel) return;
+    if (o.tp && o.tp !== '~read' && !T.some(t => t[0] === o.tp)) o.tp = '';
+    sel.innerHTML = `<option value="">Any topic</option>${rt.length ? `<option value="~read" ${o.tp === '~read' ? 'selected' : ''}>Topics I've read</option>` : ''}${T.map(([v, l, n]) => `<option value="${esc(v)}" ${v === o.tp ? 'selected' : ''}>${esc(l)} (${n})</option>`).join('')}`; };
+  let ct = 0; const count = async () => { const k = ++ct, P = await lblPool(o), qs = P.filter(c => c.kind === 'q'), f = P.length - qs.length;
+    const show = (q, wait) => { const el = $('#lbN'); if (!el || k !== ct) return; el.textContent = [q && q + ' question-bank diagram' + (q === 1 ? '' : 's'), f && f + ' textbook figure' + (f === 1 ? '' : 's')].filter(Boolean).join(' · ') || (wait ? 'Counting diagrams…' : 'No diagrams for this choice'); $('#lbGo').disabled = !wait && !(q || f); };
+    show(0, qs.length); show((await Promise.all(qs.map(c => lblCount(c.src)))).filter(L => lblUniq(L) >= 2).length); }; // only diagrams with 2+ real labels count
+  fill(null); count(); getFigs(B.id).then(() => lblFigs(B.id)).then(F => { if (S.tab === 'drill' && $('#lbT')) { fill(F); count(); } }).catch(() => {});
+  $('#lbB').onchange = e => { o.book = e.target.value; o.tp = ''; lblKeep(); lblHome(); };
+  $('#lbT').onchange = e => { o.tp = e.target.value; lblKeep(); count(); };
+  const wireSeg = (id, k, after) => $('#' + id).querySelectorAll('button').forEach(b => b.onclick = () => { o[k] = b.dataset.v; lblKeep(); $('#' + id).querySelectorAll('button').forEach(x => { x.classList.toggle('on', x === b); x.setAttribute('aria-pressed', x === b); }); after && after(); });
+  wireSeg('lbS', 'src', count); wireSeg('lbL', 'lv', () => { $('#lbLd').textContent = LBL_LV[o.lv][1]; });
+  if (LBL.noOcr) $('#lbMsg').innerHTML = `<p class="meta lbwarn">${esc(LBL.noOcr)}</p>`;
+  $('#lbGo').onclick = () => { LBL.fails = 0; lblNext(); };
+}
+// next diagram: unseen ones first; figures on pages you've read first when no topic is chosen
+async function lblNext(skip) {
+  const o = lblOpt(), B = bookOf(o.book), seen = LS.get('ib-lbl-seen', []), tok = LBL.tok = {}, read = B ? lblRead(B) : new Set();
+  const box = $('#lbF') || $('#lbMsg'); if (box) box.innerHTML = '<p class="meta" style="padding:16px"><span class="spin"></span> Finding a diagram…</p>';
+  const P = lblShuf(await lblPool(o)).map(c => [c, (seen.includes(c.key) ? 2 : 0) + (c.kind === 'f' && !o.tp && !read.has(c.page) ? 1 : 0)]).sort((a, b) => a[1] - b[1]).map(x => x[0]);
+  for (const c of P) { if (LBL.tok !== tok) return; if (c.key === skip || LBL.bad.has(c.key)) continue;
+    if (c.kind === 'q' && lblUniq(await lblCount(c.src)) < 2) { LBL.bad.add(c.key); continue; }
+    return renderDrills('labels', c.key); }
+  if (LBL.tok !== tok) return;
+  const msg = 'No more diagrams with enough labels for this choice. Try another topic or source.';
+  if ($('#lbF')) { $('#lbF').innerHTML = `<p class="meta" style="padding:16px">${esc(msg)}</p>`; $('#lbAct') && ($('#lbAct').innerHTML = '<button id="lbB2">Change the settings</button>') && ($('#lbB2').onclick = () => renderDrills('labels')); }
+  else if ($('#lbMsg')) $('#lbMsg').innerHTML = `<p class="meta lbwarn">${esc(msg)}</p>`;
+}
+function lblSkip(c, why) { LBL.bad.add(c.key); if (++LBL.fails > LBL_CFG.tries) { const f = $('#lbF'); if (f) f.innerHTML = `<p class="meta" style="padding:16px">${esc(why)} Couldn't find a usable diagram after a few tries.</p>`; return; }
+  const f = $('#lbF'); if (f) f.innerHTML = `<p class="meta" style="padding:16px"><span class="spin"></span> ${esc(why)} Trying another…</p>`; setTimeout(() => lblNext(c.key), 600); }
+
+// ---- the drill ----
+async function lblOpen(key) {
+  const o = lblOpt(), c = lblFind(key), m = $('#main'), tok = LBL.tok = {};
+  if (!c) { m.innerHTML = `<div class="lbw"><p>That diagram isn't available.</p><button id="lbBack"><svg class="i"><use href="#i-l"/></svg>Label the diagram</button></div>`; $('#lbBack').onclick = () => renderDrills('labels'); return; }
+  const B = bookOf(c.book); if (o.book !== c.book) { o.book = c.book; o.tp = ''; lblKeep(); }
+  const seen = LS.get('ib-lbl-seen', []).filter(k => k !== key); seen.push(key); LS.set('ib-lbl-seen', seen.slice(-60));
+  const tn = c.kind === 'q' ? (c.topic ? (topicsOf(B).find(t => t.num === c.topic) ? topicName(B, c.topic) : c.topic + (c.q.tname ? ' ' + c.q.tname : '')) : '') : '';
+  m.innerHTML = `<div class="lbw" id="lbW"><div class="row lbtop"><button id="lbBack"><svg class="i"><use href="#i-l"/></svg>Setup</button><span class="meta lbwhere" id="lbWh">${esc(B.subject || B.title)}${tn ? ' · ' + esc(tn) : ''} · ${c.kind === 'q' ? 'question-bank diagram' : 'textbook figure'}</span><span class="sp"></span>
+      <div class="seg" id="lbL2" role="group" aria-label="Level">${Object.entries(LBL_LV).map(([k, x]) => `<button type="button" data-v="${k}" class="${k === o.lv ? 'on' : ''}" aria-pressed="${k === o.lv}">${x[0]}</button>`).join('')}</div></div>
+    <p class="meta" id="lbHelp"></p><div class="lbfig" id="lbF"><p class="meta" style="padding:16px"><span class="spin"></span> Loading the diagram…</p></div>
+    <div id="lbK"></div><ol class="lbl" id="lbList"></ol><div class="row" id="lbAct"></div><div id="lbRes"></div></div>`;
+  $('#lbBack').onclick = () => renderDrills('labels');
+  $('#lbL2').querySelectorAll('button').forEach(b => b.onclick = () => { o.lv = b.dataset.v; lblKeep(); $('#lbL2').querySelectorAll('button').forEach(x => { x.classList.toggle('on', x === b); x.setAttribute('aria-pressed', x === b); }); if (LBL.cur && LBL.cur.c.key === key) lblStart(LBL.cur); });
+  $('#lbW').addEventListener('keydown', e => { if (e.key === 'Escape' && LBL.cur && (LBL.cur.pick != null || LBL.cur.sel != null)) { LBL.cur.pick = LBL.cur.sel = null; lblDraw(); e.stopPropagation(); } });
+  const live = () => LBL.tok === tok && $('#lbF') && S.tab === 'drill';
+  const F = $('#lbF'); let L = [], alt = '', bp = '';
+  if (c.kind === 'q') {
+    const svg = lblSvgDoc(await lblSvgText(c.src)); if (!live()) return;
+    const T = svg ? lblTexts(svg) : []; if (lblUniq(T) < 2) return lblSkip(c, 'That diagram has no labels to hide.');
+    if (!svg.getAttribute('viewBox')) { const w = parseFloat(svg.getAttribute('width')), h = parseFloat(svg.getAttribute('height')); if (w && h) svg.setAttribute('viewBox', `0 0 ${w} ${h}`); }
+    svg.removeAttribute('width'); svg.removeAttribute('height'); svg.setAttribute('role', 'img'); svg.setAttribute('aria-label', 'Diagram with hidden labels');
+    F.innerHTML = ''; const el = F.appendChild(document.importNode(svg, true)), all = el.querySelectorAll('text'), r = el.getBoundingClientRect();
+    const pick = T.length > LBL_CFG.maxBlanks ? lblShuf(T).slice(0, LBL_CFG.maxBlanks) : T;
+    for (const x of pick) { const t = all[x.i]; let bb; try { bb = t.getBBox(); } catch (e) { continue; } const M = t.getScreenCTM(); if (!M || !bb.width || !r.width) continue;
+      const ps = [[bb.x, bb.y], [bb.x + bb.width, bb.y], [bb.x, bb.y + bb.height], [bb.x + bb.width, bb.y + bb.height]].map(([px, py]) => { const p = el.createSVGPoint(); p.x = px; p.y = py; return p.matrixTransform(M); });
+      const x0 = Math.min(...ps.map(p => p.x)), x1 = Math.max(...ps.map(p => p.x)), y0 = Math.min(...ps.map(p => p.y)), y1 = Math.max(...ps.map(p => p.y)), pw = 100 / r.width, ph = 100 / r.height;
+      t.style.visibility = 'hidden'; const v = (y1 - y0) > (x1 - x0) * 1.4;
+      L.push({s: x.s, x: (x0 - r.left) * pw, y: (y0 - r.top) * ph, w: (x1 - x0) * pw, h: (y1 - y0) * ph, fs: (v ? x1 - x0 : y1 - y0) * pw * .8, v}); }
+    // hide the other copies of a hidden word too (labels repeated in the picture would give it away)
+    const hid = new Set(L.map(l => l.s)); for (const x of T) if (hid.has(x.s)) all[x.i].style.visibility = 'hidden';
+    alt = c.alt;
+  } else {
+    const ck = lblOcrKey(c); let cache = LS.get(ck, null), blob;
+    try { const r = await fetch(imgUrl(c.book + '~f', c.n)); if (!r.ok) throw new Error('HTTP ' + r.status); blob = await r.blob(); } catch (e) { if (!live()) return; return lblSkip(c, 'Could not load that figure.'); }
+    if (!live()) return; if (LBL.url) URL.revokeObjectURL(LBL.url); LBL.url = URL.createObjectURL(blob);
+    const img = new Image(); img.alt = 'Textbook figure with hidden labels'; img.src = LBL.url; try { await img.decode(); } catch (e) { return live() && lblSkip(c, 'Could not open that figure.'); }
+    getPage(c.book, c.page).then(p => { let k = -1; String(p.md || '').replace(/^\s*\*\[(Figure[^\n]*?)\]\*\s*$/gm, (x, t) => { if (++k === c.k) alt = t; return x; }); bp = p.bp || ''; if (live() && LBL.cur && LBL.cur.c === c) { LBL.cur.alt = alt; LBL.cur.bp = bp; } if (live() && $('#lbWh')) $('#lbWh').textContent = `${B.subject || B.title} · textbook figure, p. ${bp || c.page}`; }).catch(() => {});
+    if (!cache) {
+      if (LBL.noOcr) return lblSvgFallback(o);
+      F.innerHTML = `<p class="meta" style="padding:16px"><span class="spin"></span> <span id="lbOp">Finding the labels in this figure (only the first time on this device)…</span></p>`;
+      LBL.onp = mm => { const e = $('#lbOp'); if (e && mm && mm.status) e.textContent = (/recogniz/i.test(mm.status) ? 'Reading the labels' : 'Getting the text reader ready') + (mm.progress ? ' ' + Math.round(mm.progress * 100) + '%' : '') + '…'; };
+      try { cache = {v: 1, L: await lblOcr(blob, img.naturalWidth, img.naturalHeight)}; LS.set(ck, cache); }
+      catch (e) { LBL.noOcr = 'Textbook figures need the text reader, which could not load (' + (e.message || e) + '). Showing question-bank diagrams instead.'; if (!live()) return; return lblSvgFallback(o); }
+      if (!live()) return;
+    }
+    if (lblUniq(cache.L || []) < 2) return lblSkip(c, 'No clear labels found in that figure.');
+    L = cache.L.slice(0, LBL_CFG.maxBlanks).map(l => ({...l, fs: l.fs || l.h * .85 * img.naturalHeight / img.naturalWidth}));
+    F.innerHTML = ''; F.appendChild(img);
+  }
+  if (L.length < 2) return lblSkip(c, 'That diagram has no labels to hide.');
+  LBL.fails = 0;
+  // number blanks top to bottom, then left to right (rows of about 3% height)
+  L.sort((a, b) => Math.round(a.y / 3) - Math.round(b.y / 3) || a.x - b.x);
+  const C = LBL.cur = {c, B, L, alt, bp, lv: o.lv};
+  for (let i = 0; i < L.length; i++) { const l = L[i], pad = .6, b = document.createElement('button'); b.type = 'button'; b.className = 'lbb' + (l.v ? ' v' : ''); b.dataset.slot = i; b.tabIndex = -1; b.setAttribute('aria-hidden', 'true');
+    Object.assign(b.style, {left: Math.max(0, l.x - pad) + '%', top: Math.max(0, l.y - pad) + '%', width: (l.w + pad * 2) + '%', height: (l.h + pad * 2) + '%'}); b.style.setProperty('--fs', Math.max(.8, l.fs).toFixed(2) + 'cqw');
+    b.innerHTML = `<i>${i + 1}</i><span></span>`; b.onclick = () => lblSlot(i, true); F.appendChild(b); }
+  if (o.lv === 'tricky') C.extra = await lblDistr(C); if (!live()) return;
+  lblStart(C);
+}
+function lblSvgFallback(o) { const f = $('#lbF'); if (f) f.innerHTML = `<p class="meta" style="padding:16px">${esc(LBL.noOcr)}</p>`; setTimeout(() => lblNext(), 1200); }
+// distractors for Tricky: labels from other diagrams of the same book (question bank + OCR caches on this device)
+async function lblDistr(C) { const have = new Set(C.L.map(l => lblN(l.s))), pool = new Set();
+  for (const x of lblShuf(lblSvgs(C.B.id).filter(x => x.key !== C.c.key)).slice(0, 6)) for (const s of await lblCount(x.src)) pool.add(s);
+  try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k.startsWith('ib-lbl:' + C.B.id + ':')) for (const l of (LS.get(k, {}).L || [])) pool.add(l.s); } } catch (e) {}
+  const out = [], hn = new Set(have); for (const s of lblShuf([...pool])) { const n = lblN(s); if (hn.has(n)) continue; hn.add(n); out.push(s); if (out.length >= Math.min(3, Math.max(2, Math.round(C.L.length / 3)))) break; }
+  return out; }
+function lblStart(C) { const lv = C.lv = lblOpt().lv; C.ans = C.L.map(() => null); C.typed = C.L.map(() => ''); C.res = null; C.pick = C.sel = null; C.focus = null;
+  C.chips = lblShuf([...C.L.map(l => l.s), ...(lv === 'tricky' ? (C.extra || []) : [])]); C.at = C.chips.map(() => null);
+  if (lv === 'tricky' && !C.extra) lblDistr(C).then(x => { if (LBL.cur === C && !C.res && C.ans.every(a => a == null)) { C.extra = x; lblStart(C); } });
+  $('#lbHelp').textContent = lv === 'hard' ? 'Type the missing label for each numbered blank. Small typos, case and punctuation are fine.' : (matchMedia('(pointer:coarse)').matches ? 'Tap a blank, then the label that goes there (or drag a label onto it).' : 'Drag each label onto its numbered blank, or click a blank and then a label.') + (lv === 'tricky' ? ' Some labels belong to other diagrams.' : '');
+  $('#lbF').querySelectorAll('.lbb').forEach(b => b.className = 'lbb' + (C.L[+b.dataset.slot].v ? ' v' : ''));
+  $('#lbRes').innerHTML = ''; $('#lbAct').innerHTML = `<button class="pri" id="lbChk">Check</button><button id="lbClr">Clear</button><span class="sp"></span><button class="ghost" id="lbSkip">Skip</button>`;
+  $('#lbChk').onclick = lblCheck; $('#lbClr').onclick = () => lblStart(C); $('#lbSkip').onclick = () => lblNext(C.c.key);
+  lblList(); lblDraw(); }
+function lblList() { const C = LBL.cur, el = $('#lbList'); if (!el) return;
+  el.innerHTML = C.L.map((l, i) => `<li class="lbr" data-r="${i}"><i aria-hidden="true">${i + 1}</i>${C.lv === 'hard' ? `<input id="lbI${i}" data-i="${i}" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Label ${i + 1}" placeholder="Label ${i + 1}">` : `<button type="button" class="lbs" data-slot="${i}" id="lbS${i}"></button>`}<span class="ans"></span></li>`).join('');
+  if (C.lv === 'hard') el.querySelectorAll('input').forEach(inp => { const i = +inp.dataset.i;
+    inp.oninput = () => { C.typed[i] = inp.value; lblCov(i); };
+    inp.onkeydown = e => { if (e.key !== 'Enter') return; e.preventDefault(); const nx = $('#lbI' + (i + 1)); if (nx && !C.res) nx.focus(); else if (!C.res) lblCheck(); };
+    inp.onfocus = () => { C.sel = i; lblDraw(); }; inp.onblur = () => { if (C.sel === i) { C.sel = null; lblDraw(); } }; });
+  else el.querySelectorAll('.lbs').forEach(b => b.onclick = e => lblSlot(+b.dataset.slot, false, e.detail === 0)); }
+const lblVal = (C, i) => C.lv === 'hard' ? C.typed[i] : C.ans[i] != null ? C.chips[C.ans[i]] : '';
+function lblCov(i) { const C = LBL.cur, b = $(`#lbF .lbb[data-slot="${i}"]`); if (!b) return; const v = lblVal(C, i), r = C.res && C.res[i];
+  b.querySelector('span').textContent = v; b.classList.toggle('f', !!v); b.classList.toggle('sel', C.sel === i); b.classList.toggle('ok', !!(r && r.ok)); b.classList.toggle('no', !!(r && !r.ok));
+  b.title = r ? (r.ok ? '✓ ' + C.L[i].s : '✗ ' + C.L[i].s) : ''; }
+function lblDraw() { const C = LBL.cur; if (!C || !$('#lbList')) return;
+  C.L.forEach((l, i) => { lblCov(i); const row = $(`#lbList [data-r="${i}"]`), r = C.res && C.res[i]; if (!row) return; row.classList.toggle('ok', !!(r && r.ok)); row.classList.toggle('no', !!(r && !r.ok));
+    row.querySelector('.ans').innerHTML = r && !r.ok ? 'Answer: <b>' + esc(l.s) + '</b>' : '';
+    const s = row.querySelector('.lbs'); if (s) { const v = lblVal(C, i); s.textContent = v || (C.sel === i ? 'Now pick a label…' : 'Empty'); s.classList.toggle('f', !!v); s.classList.toggle('sel', C.sel === i); s.disabled = !!C.res;
+      s.setAttribute('aria-label', `Blank ${i + 1}: ${v || 'empty'}${r ? (r.ok ? ', correct' : ', wrong, the answer is ' + l.s) : ''}`); }
+    const inp = row.querySelector('input'); if (inp) inp.readOnly = !!C.res; });
+  const K = $('#lbK');
+  if (C.lv === 'hard' || C.res) K.innerHTML = '';
+  else { K.innerHTML = `<div class="lbk" role="group" aria-label="Labels">${C.chips.map((s, j) => `<button type="button" class="lbc${C.at[j] != null ? ' gone' : ''}${C.pick === j ? ' pk' : ''}" data-c="${j}" aria-pressed="${C.pick === j}">${esc(s)}</button>`).join('')}${C.at.every(a => a != null) ? '<span class="meta">All placed. Check when ready.</span>' : ''}</div>`;
+    K.querySelectorAll('.lbc').forEach(b => { const j = +b.dataset.c; b.onpointerdown = e => lblDrag(e, j); b.onclick = e => { if (Date.now() - (LBL.dragT || 0) < 350) return; lblChip(j, e.detail === 0); }; }); }
+  if (C.focus) { const f = $(C.focus); C.focus = null; if (f) f.focus(); } }
+function lblSlot(i, onFig, kb) { const C = LBL.cur; if (!C || C.res) return;
+  if (C.lv === 'hard') { const inp = $('#lbI' + i); if (inp) inp.focus(); return; }
+  if (C.pick != null) return lblPlace(i, C.pick, kb);
+  if (C.ans[i] != null && C.sel !== i) { C.at[C.ans[i]] = null; C.ans[i] = null; C.sel = i; } else C.sel = C.sel === i ? null : i;
+  if (kb && C.sel != null) { const j = C.chips.findIndex((s, k) => C.at[k] == null); if (j >= 0) C.focus = `#lbK [data-c="${j}"]`; }
+  lblDraw(); }
+function lblChip(j, kb) { const C = LBL.cur; if (!C || C.res) return;
+  if (C.sel != null) return lblPlace(C.sel, j, kb);
+  C.pick = C.pick === j ? null : j; if (kb && C.pick != null) { const i = C.ans.findIndex(a => a == null); if (i >= 0) C.focus = '#lbS' + i; else C.focus = `#lbK [data-c="${j}"]`; } lblDraw(); }
+function lblPlace(i, j, kb) { const C = LBL.cur; if (!C || C.res || C.lv === 'hard') return;
+  if (C.ans[i] != null) C.at[C.ans[i]] = null; if (C.at[j] != null) C.ans[C.at[j]] = null; C.ans[i] = j; C.at[j] = i; C.pick = C.sel = null;
+  if (kb) { const nx = C.ans.findIndex((a, k) => a == null && k > i), n2 = nx >= 0 ? nx : C.ans.findIndex(a => a == null); C.focus = n2 >= 0 ? '#lbS' + n2 : '#lbChk'; }
+  lblDraw(); }
+// pointer drag (mouse, pen and touch): a ghost chip follows the pointer, dropping on a numbered blank (diagram or list) places it
+function lblDrag(e, j) { const C = LBL.cur; if (!C || C.res || (e.pointerType === 'mouse' && e.button !== 0)) return;
+  const ch = e.currentTarget, x0 = e.clientX, y0 = e.clientY, z = +document.body.style.zoom || 1; let g = null, over = null;
+  const at = ev => { const el = document.elementFromPoint(ev.clientX, ev.clientY); return el && el.closest('[data-slot]'); };
+  const mv = ev => { if (!g) { if (Math.hypot(ev.clientX - x0, ev.clientY - y0) < 6) return; g = ch.cloneNode(true); g.className = 'lbc lbghost'; g.removeAttribute('data-c'); document.body.appendChild(g); }
+    g.style.left = ev.clientX / z + 'px'; g.style.top = ev.clientY / z + 'px'; const t = at(ev); if (t !== over) { if (over) over.classList.remove('hov'); over = t; if (over) over.classList.add('hov'); } };
+  const up = ev => { ch.removeEventListener('pointermove', mv); ch.removeEventListener('pointerup', up); ch.removeEventListener('pointercancel', up); if (over) over.classList.remove('hov');
+    if (!g) return; g.remove(); LBL.dragT = Date.now(); if (ev.type === 'pointerup') { const t = at(ev); if (t && LBL.cur === C) lblPlace(+t.dataset.slot, j); } };
+  try { ch.setPointerCapture(e.pointerId); } catch (er) {}
+  ch.addEventListener('pointermove', mv); ch.addEventListener('pointerup', up); ch.addEventListener('pointercancel', up); }
+function lblCheck() { const C = LBL.cur; if (!C || C.res) return;
+  if (C.L.every((l, i) => !lblVal(C, i).trim())) { $('#lbRes').innerHTML = '<p class="meta">Fill in at least one blank first.</p>'; return; }
+  C.res = C.L.map((l, i) => { const g = lblVal(C, i); return {g, ok: C.lv === 'hard' ? lblMatch(g, l.s) : g === l.s}; });
+  const ok = C.res.filter(r => r.ok).length, n = C.L.length, pct = Math.round(ok / n * 100); C.pick = C.sel = null;
+  lblRecord(C.B.id, ok, n, C.lv); lblDraw();
+  const c = C.c, desc = C.alt || (c.kind === 'q' ? c.alt : '');
+  $('#lbAct').innerHTML = '';
+  $('#lbRes').innerHTML = `<div class="card lbres"><div class="row"><span class="big">${ok} / ${n}</span><span class="tag ${pct >= 80 ? 'g' : pct >= 50 ? 'w' : 'r'}">${pct}%</span><span class="meta">${pct === 100 ? 'Every label right.' : pct >= 70 ? 'Nearly there: the red ones show the right label.' : 'Have another go: the red ones show the right label.'}</span></div>
+    ${desc ? `<p class="meta" style="margin:8px 0 0">${esc(desc)}</p>` : ''}
+    <div class="row" style="margin-top:12px"><button class="pri" id="lbNext">Next diagram</button><button id="lbRetry"><svg class="i"><use href="#i-loop"/></svg>Retry</button><button id="lbAsk"><svg class="i"><use href="#i-spark"/></svg>Ask Claude about this diagram</button>${c.kind === 'q' ? '<button class="ghost" id="lbQ">Open the question</button>' : `<button class="ghost" id="lbPg">Read p. ${esc(C.bp || c.page)}</button>`}</div></div>`;
+  $('#lbNext').onclick = () => lblNext(c.key); $('#lbRetry').onclick = () => lblStart(C); $('#lbAsk').onclick = lblAsk;
+  if ($('#lbQ')) $('#lbQ').onclick = () => openQ(c.q.id); if ($('#lbPg')) $('#lbPg').onclick = () => openPage(c.book, c.page);
+  $('#lbNext').focus({preventScroll: true}); $('#lbRes').scrollIntoView({behavior: 'smooth', block: 'nearest'}); }
+function lblAsk() { const C = LBL.cur; if (!C) return; const c = C.c, B = C.B;
+  const lab = C.L.map((l, i) => `${i + 1}. ${l.s}`).join('\n'), wrong = (C.res || []).map((r, i) => r.ok ? '' : `${i + 1}: I put "${r.g || '(blank)'}", the label is "${C.L[i].s}"`).filter(Boolean);
+  const from = c.kind === 'q' ? `It comes from this practice question:\n${String(c.q.text || '').replace(LBL_IMG, '[diagram: $1]').slice(0, 3000)}` : `It is a figure on p. ${C.bp || c.page} of the ${B.subject || B.title} textbook${C.alt ? ' (' + C.alt + ')' : ''}.`;
+  openChat({title: 'Diagram · ' + (B.subject || B.title), book: B.id, pages: c.kind === 'f' ? [c.page] : [], msgs: [],
+    intro: `[I'm doing a label-the-diagram drill. ${c.kind === 'q' && c.alt ? 'Diagram: ' + c.alt + '\n' : ''}Its labels:\n${lab}\n${wrong.length ? 'My mistakes:\n' + wrong.join('\n') + '\n' : ''}${from}]\n\n`});
+  const ci = $('#ci'); if (ci && !ci.value) ci.value = wrong.length ? 'Help me understand the labels I got wrong.' : 'Explain what each labelled part of this diagram shows and how they link up.'; }
+DRILLS.push({id: 'labels', title: 'Label the diagram', desc: 'Put the hidden labels back on diagrams from the question bank and your textbooks.', icon: 'img', open: arg => arg ? lblOpen(arg) : lblHome()});
 // ==== END FEATURE: diagram labelling drill ====
 
 
