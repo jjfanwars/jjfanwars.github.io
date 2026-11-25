@@ -194,6 +194,7 @@ aside .l3{padding-left:30px;font-size:12.5px;color:var(--mut)}
 aside .pg{color:var(--mut);font-size:11.5px;font-weight:400;font-variant-numeric:tabular-nums}
 main{padding:24px 28px 80px;min-width:0}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r)}
+.usebar{display:inline-block;width:90px;height:7px;border-radius:4px;background:var(--line);vertical-align:middle;margin-right:6px;overflow:hidden}.usebar i{display:block;height:100%}
 .drills{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px}.drillc{display:flex;flex-direction:column;align-items:flex-start;gap:6px;padding:16px;text-align:left;cursor:pointer;font:inherit;color:inherit}.drillc:hover{border-color:var(--acc)}.drillc .i{width:26px;height:26px;color:var(--acc)}.drillc b{font-size:16px}
 .reader{max-width:760px;margin:0 auto}
 .rbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px}
@@ -544,6 +545,7 @@ async function api(op, body = {}) {
   const r = await fetch(RELAY + '/ib/' + op, {method: 'POST', body: JSON.stringify({pass: PASS, user: UK(), name: USER ? USER.name : '', uid: UID, ...body})});
   const j = await r.json().catch(() => ({err: 'HTTP ' + r.status}));
   if (r.status === 403 && op !== 'login' && PASS) { LS.set('ib-pass', ''); PASS = ''; location.reload(); }
+  if (j && j.limit === 'user' && j.reset) j.err = `You've used today's Claude allowance ($1 a day per account). It resets at ${new Date(j.reset).toLocaleTimeString([], {hour: 'numeric', minute: '2-digit'})}.`;
   if (j && j.err) throw new Error(j.err);
   return j;
 }
@@ -809,7 +811,7 @@ async function sendChat(text) {
   const me = CH, out = {role: 'assistant', content: ''};
   try { // streamed: text appears as Claude writes it
     const r = await fetch(RELAY + '/ib/ask', {method: 'POST', body: JSON.stringify({mode: 'chat', stream: true, book: me.book, pages: me.pages, find: false, screen: w && w.screen, messages: me.msgs.map(m => ({role: m.role, content: m.content})), pass: PASS, user: UK(), uid: UID})});
-    if (!r.ok || !(r.headers.get('content-type') || '').includes('event-stream')) { const j = await r.json().catch(() => ({})); throw new Error(j.err || 'HTTP ' + r.status); }
+    if (!r.ok || !(r.headers.get('content-type') || '').includes('event-stream')) { const j = await r.json().catch(() => ({})); if (j.limit === 'user' && j.reset) j.err = `You've used today's Claude allowance ($1 a day per account). It resets at ${new Date(j.reset).toLocaleTimeString([], {hour: 'numeric', minute: '2-digit'})}.`; throw new Error(j.err || 'HTTP ' + r.status); }
     me.fixed = true; me.msgs.push(out); const rd = r.body.getReader(), dec = new TextDecoder(); let buf = '', t0 = 0;
     for (;;) { const {done, value} = await rd.read(); if (done) break; buf += dec.decode(value, {stream: true});
       let i; while ((i = buf.indexOf('\n')) >= 0) { const line = buf.slice(0, i).trim(); buf = buf.slice(i + 1); if (!line.startsWith('data:')) continue;
@@ -2848,6 +2850,7 @@ function renderSettings() {
       ${row('Saved handwriting', 'Drafts, photos and notebook pages are kept in this browser', '<button id="hwUse">Check storage</button>')}
     </div>
     <h3>Claude tutor</h3><div class="card">
+      ${row('Claude used today', 'Each account can use up to $1 of Claude a day (marking, chats, feedback). It resets every day.', '<span id="useM" class="meta">…</span>')}
       ${row('Reply length', '', seg('cLen', [['short', 'Short'], ['', 'Normal'], ['long', 'Detailed']], c.cLen))}
       ${row('Explanation level', '', seg('cLvl', [['simple', 'Keep it simple'], ['', 'Standard'], ['hard', 'Stretch me']], c.cLvl))}
       ${row('Teaching style', '', seg('cStyle', [['hints', 'Hints first'], ['', 'Balanced'], ['direct', 'Straight answers']], c.cStyle))}
@@ -2874,6 +2877,8 @@ function renderSettings() {
   vs.onchange = () => setSet('ttsVoice', vs.value);
   $('#ttsT').onclick = () => speak('This is how textbook pages will sound when read aloud.', $('#ttsT'));
   $('#hwUse').onclick = async e => { const b = e.currentTarget; let t = 'Not available in this browser'; try { const q = await navigator.storage.estimate(), mb = x => (x / 1048576).toFixed(x < 1048576 * 10 ? 1 : 0) + ' MB'; t = mb(q.usage || 0) + ' used of ' + mb(q.quota || 0); if (navigator.storage.persist && !(await navigator.storage.persisted())) await navigator.storage.persist(); } catch (er) {} b.textContent = t; };
+  api('myuse').then(u => { const el = $('#useM'); if (!el) return; const p = Math.min(100, Math.round(u.cost / u.max * 100));
+    el.innerHTML = `<span class="usebar"><i style="width:${p}%;background:${p >= 100 ? 'var(--bad, #c0392b)' : p > 75 ? '#d48a1a' : 'var(--acc)'}"></i></span> $${u.cost.toFixed(2)} of $${u.max.toFixed(2)}${p >= 100 ? ' · resets ' + new Date(u.reset).toLocaleTimeString([], {hour: 'numeric', minute: '2-digit'}) : ''}`; }).catch(() => { const el = $('#useM'); if (el) el.textContent = '—'; });
   $('#setRs').onclick = () => { if (!confirm('Reset all settings on this device?')) return; LS.set('ib-set', {}); S.rfs = 18; LS.set('ib-rfs', 18); setTheme('auto'); applySettings(); renderSettings(); };
 }
 

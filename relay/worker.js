@@ -427,6 +427,14 @@ function ibUse(db, who, model, us) {
   if (!us) return; const P = PRICE[model] || PRICE['claude-sonnet-5-5'], tin = us.input_tokens || 0, tout = us.output_tokens || 0, tcr = us.cache_read_input_tokens || 0, tcw = us.cache_creation_input_tokens || 0;
   return db('use', {u: who, tin, tout, tcr, tcw, cost: (tin * P[0] + tout * P[1] + tcr * P[2] + tcw * P[3]) / 1e6});
 }
+// spending limits, checked before every Claude call: IB_CAP replies per day for the whole app, and IB_DAY_USD (default $1) of estimated cost
+// per account (or per guest browser) per UTC day. Cost is recorded after each call, so the last call of the day can go slightly over.
+async function ibGate(env, db, J, who) {
+  const cap = +(env.IB_CAP || 300), max = +(env.IB_DAY_USD || 1), r = await (await db('spend', {cap, who, max})).json(), reset = Math.ceil(Date.now() / 864e5) * 864e5;
+  if (r.mine) return J({err: `You've used today's Claude allowance ($${max.toFixed(2)} a day per account). It resets at ${new Date(reset).toISOString().slice(11, 16)} UTC.`, limit: 'user', reset}, 429);
+  if (r.over) return J({err: `daily limit of ${cap} Claude replies reached, back tomorrow`, limit: 'app'}, 429);
+  return null;
+}
 async function ibKey(env, db) {
   const v = await (await db('kvget', {k: 'apikey'})).text(); if (v && v.startsWith('sk-')) return v;
   const lg = await (await env.LEGAL.get(env.LEGAL.idFromName('main')).fetch('https://l/', {method: 'POST', body: '{"op":"get"}'})).json();
@@ -581,7 +589,7 @@ async function ibRoute(req, env, CORS, u) {
   if (op === 'inbox') { const r = await db('kvget', {k: 'inbox:' + uk}); return new Response(r.body, {headers: H}); }
   if (op === 'inboxdel') { await db('pull', {k: 'inbox:' + uk, ids: (b.ids || []).map(String)}); return J({ok: true}); }
   if (op === 'mapgen') { // mind map of a textbook chapter (Haiku, structured, 4 levels)
-    const KEY = await ibKey(env, db); const cap = +(env.IB_CAP || 300), used = await (await db('spend', {cap})).json(); if (used.over) return J({err: 'daily Claude limit reached'}, 429);
+    const KEY = await ibKey(env, db); { const g = await ibGate(env, db, J, who); if (g) return g; }
     const ns = (b.pages || []).map(Number).filter(n => n > 0).slice(0, 30), pg = await (await db('pages', {b: b.book, ns})).json();
     const N = d => ({type: 'object', additionalProperties: false, required: d ? ['t', 'c'] : ['t'], properties: d ? {t: {type: 'string'}, c: {type: 'array', items: N(d - 1)}} : {t: {type: 'string'}}});
     const r = await fetch('https://api.anthropic.com/v1/messages', {method: 'POST', headers: {'content-type': 'application/json', 'x-api-key': KEY, 'anthropic-version': '2023-06-01'},
@@ -592,9 +600,10 @@ async function ibRoute(req, env, CORS, u) {
     await ibUse(db, who, 'claude-haiku-5-5', j.usage);
     try { return J({tree: JSON.parse(j.content.find(c => c.type === 'text').text)}); } catch (e) { return J({err: 'bad map'}, 502); }
   }
+  if (op === 'myuse') { const r = await (await db('myuse', {who})).json(); return J({cost: r.cost || 0, max: +(env.IB_DAY_USD || 1), reset: Math.ceil(Date.now() / 864e5) * 864e5}); } // today's Claude spend for this account / guest browser
   if (op === 'ref') { const r = await db('kvget', {k: 'ref:' + String(b.book || '').replace(/[^a-z0-9]/g, '')}); return new Response(r.body, {headers: H}); } // formula sheet / case bank for a book
   if (op === 'quiz') { // spaced section review: 3 short questions + model answers from the section's pages (Haiku, cheap)
-    const KEY = await ibKey(env, db); const cap = +(env.IB_CAP || 300), used = await (await db('spend', {cap})).json(); if (used.over) return J({err: 'daily Claude limit reached'}, 429);
+    const KEY = await ibKey(env, db); { const g = await ibGate(env, db, J, who); if (g) return g; }
     const ns = (b.pages || []).map(Number).filter(n => n > 0).slice(0, 12), pg = await (await db('pages', {b: b.book, ns})).json();
     const r = await fetch('https://api.anthropic.com/v1/messages', {method: 'POST', headers: {'content-type': 'application/json', 'x-api-key': KEY, 'anthropic-version': '2023-06-01'},
       body: JSON.stringify({model: 'claude-haiku-5-5', max_tokens: 3000, output_config: {effort: 'low', format: {type: 'json_schema', schema: {type: 'object', additionalProperties: false, required: ['qs'], properties: {qs: {type: 'array', items: {type: 'object', additionalProperties: false, required: ['q', 'a'], properties: {q: {type: 'string'}, a: {type: 'string'}}}}}}}},
@@ -612,8 +621,7 @@ async function ibRoute(req, env, CORS, u) {
   if (op !== 'ask') return J({err: 'not found'}, 404);
   const KEY = await ibKey(env, db);
   if (!KEY) return J({err: 'no API key on the relay'}, 503);
-  const cap = +(env.IB_CAP || 300), used = await (await db('spend', {cap})).json();
-  if (used.over) return J({err: `daily limit of ${cap} Claude replies reached, back tomorrow`}, 429);
+  { const g = await ibGate(env, db, J, who); if (g) return g; }
   // context: the textbook pages the client points at (max 10), pulled from storage so the client can't inject a huge prompt
   const cv = ibContent((b.messages || []).slice(-24), b.mode === 'mark' ? 60000 : 12000), msgs = cv.msgs, hw = cv.n;
   if (cv.err) return J({err: cv.err}, 400);
@@ -734,7 +742,9 @@ export class IB {
       case 'stats': { const from = new Date(Date.now() - (o.days - 1) * 864e5).toISOString().slice(0, 10);
         return J({days: all('SELECT d, COUNT(CASE WHEN mins > 0 THEN 1 END) users, SUM(mins) mins, SUM(calls) calls, SUM(cost) cost, SUM(tin + tcr + tcw) tin, SUM(tout) tout FROM use WHERE d >= ? AND u != \'build\' GROUP BY d ORDER BY d', from),
           people: all('SELECT u.u, w.name, w.first, w.last, w.dev, COUNT(CASE WHEN u.mins > 0 THEN 1 END) days, SUM(u.mins) mins, SUM(u.calls) calls, SUM(u.tin + u.tcr + u.tcw) tin, SUM(u.tout) tout, SUM(u.cost) cost FROM use u LEFT JOIN who w ON w.u = u.u WHERE u.d >= ? GROUP BY u.u ORDER BY mins DESC, cost DESC', from)}); }
+      case 'myuse': { const c = all('SELECT cost FROM use WHERE d = ? AND u = ?', new Date().toISOString().slice(0, 10), String(o.who || ''))[0]; return J({cost: c ? c.cost : 0}); }
       case 'spend': { const d = new Date().toISOString().slice(0, 10), r = all('SELECT n FROM spend WHERE d = ?', d)[0], n = r ? r.n : 0;
+        if (o.who && o.who !== 'build' && o.max > 0) { const c = all('SELECT cost FROM use WHERE d = ? AND u = ?', d, String(o.who))[0]; if (c && c.cost >= o.max) return J({over: true, mine: true, cost: c.cost}); }
         if (n >= o.cap) return J({over: true, n}); this.sql.exec('INSERT OR REPLACE INTO spend VALUES (?, ?)', d, n + 1); return J({n: n + 1}); }
     }
     return Response.json({err: 'bad op', op: o.op}, {status: 400});
@@ -825,8 +835,7 @@ function tutorStream({b, sys, msgs, KEY, db, CORS, refs, who}) {
 }
 async function planAgent(b, env, db, J, uk, who) {
   const KEY = await ibKey(env, db); if (!KEY) return J({err: 'no API key on the relay'}, 503);
-  const cap = +(env.IB_CAP || 300), used = await (await db('spend', {cap})).json();
-  if (used.over) return J({err: 'daily Claude limit reached'}, 429);
+  { const g = await ibGate(env, db, J, who); if (g) return g; }
   let items = JSON.parse(await (await db('kvget', {k: 'plan:' + uk})).text() || '[]'); let changed = 0;
   const today = /^\d{4}-\d\d-\d\d$/.test(b.today) ? b.today : new Date().toISOString().slice(0, 10);
   const sys = `You are ${String(b.name || 'the student').slice(0, 30)}'s personal planner assistant inside their IB study app. You manage their calendar: classes, homework, exams, events and to-dos. Today is ${b.dow || ''} ${today}, local time ${String(b.now || '').slice(0, 5)} (${String(b.tz || '').slice(0, 40)}). Resolve relative dates ("next Friday", "in two weeks", "tomorrow arvo") against today yourself and use exact YYYY-MM-DD dates. When the student tells you about something, add it straight away with sensible defaults (kind, subject guessed from context) and confirm briefly with the date written as e.g. "Fri 5 Dec". Only ask a question when a date is truly ambiguous. When asked what's coming up, give a short, prioritised answer: due soonest first, flag clashes and heavy days, and suggest when to start bigger tasks. Be brief and friendly; no long preambles.`;
