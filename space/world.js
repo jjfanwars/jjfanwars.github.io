@@ -330,15 +330,15 @@ function town() {
 // ---------------- trees (pines + broadleaf), bushes, rocks and grass, kept off roads, runway, pads and the town
 function flora() {
   const H = site.H, g = site.g, gy = H.groundY, r = (() => { let s = 5; return () => (s = (Math.imul(s, 1664525) + 1013904223) >>> 0) / 4294967296; })(), _v = new V3();
-  if (site.trees) { g.remove(site.trees); site.trees.geometry.dispose(); site.trees = null; }
+  if (site.trees) { for (const t of [].concat(site.trees)) { g.remove(t); t.geometry.dispose(); } site.trees = null; }
   const hAt = (x, z) => { _v.set(x, 0, z).applyQuaternion(site.q).add(site.p).normalize(); return heightAt(PLANET, _v.x, _v.y, _v.z); };
   const blocked = (x, z, town = .08) => { const d = Math.hypot(x, z); if (d < 125 || (x > -120 && x < 125 && z > -45 && z < 125)) return true;
     if (Math.abs(z - 330) < 62 && x > -650 && x < 1050) return true; if (x > 160 && x < 390 && z > -150 && z < 110) return true; if (x > -10 && x < 300 && z > 20 && z < 60) return true;
     if (Math.abs(z - 100) < 12 && x > -665 && x < -100) return true; if (Math.abs(x + 650) < 12 && z > -915 && z < 110) return true; for (const zc of [-450, -600, -750]) if (Math.abs(z - zc) < 12 && x > -925 && x < -395) return true;
     if (x > -930 && x < -380 && z > -930 && z < -380) return r() > town; if (Math.hypot(x - 183, z + 210) < 30 || Math.hypot(x + 256, z - 282) < 20) return true; return false; };
   const nonIdx = geo => geo.index ? geo.toNonIndexed() : geo;
-  const pine = H.mergeGeos([H.tint(nonIdx(new THREE.CylinderGeometry(.16, .26, 2.6, 6).translate(0, 1.3, 0)), 0x4a3526), ...[[2.2, 3.8, 2.4, 0x23492a], [1.7, 3.2, 4.3, 0x28552f], [1.15, 2.6, 6.1, 0x2f6237], [.6, 1.8, 7.6, 0x356b3c]].map(([rr, h, y, c]) => H.tint(nonIdx(new THREE.ConeGeometry(rr, h, 8).translate(0, y + h / 2, 0)), c))]);
-  const leaf = H.mergeGeos([H.tint(nonIdx(new THREE.CylinderGeometry(.18, .3, 3, 6).translate(0, 1.5, 0)), 0x4d3a28), ...[[0, 4.4, 0, 2, 0x3c6a2c], [1.2, 3.9, .6, 1.4, 0x467739], [-1.1, 4.1, -.5, 1.5, 0x37602a], [.2, 5.5, -.3, 1.3, 0x4f8240], [-.4, 3.6, 1.1, 1.2, 0x416f33]].map(([x, y, z, rr, c]) => H.tint(new THREE.IcosahedronGeometry(rr, 0).translate(x, y, z), c))]);
+  const pine = H.mergeGeos([H.tint(nonIdx(new THREE.CylinderGeometry(.16, .26, 2.6, 6).translate(0, 1.3, 0)), 0x0d0906), ...[[2.2, 3.8, 2.4, 0x060b04], [1.7, 3.2, 4.3, 0x070d05], [1.15, 2.6, 6.1, 0x081006], [.6, 1.8, 7.6, 0x091206]].map(([rr, h, y, c]) => H.tint(nonIdx(new THREE.ConeGeometry(rr, h, 8).translate(0, y + h / 2, 0)), c))]);
+  const leaf = H.mergeGeos([H.tint(nonIdx(new THREE.CylinderGeometry(.18, .3, 3, 6).translate(0, 1.5, 0)), 0x0c0805), ...[[0, 4.4, 0, 2, 0x0b1105], [1.2, 3.9, .6, 1.4, 0x0d1406], [-1.1, 4.1, -.5, 1.5, 0x0a0f04], [.2, 5.5, -.3, 1.3, 0x0f1707], [-.4, 3.6, 1.1, 1.2, 0x0c1205]].map(([x, y, z, rr, c]) => H.tint(new THREE.IcosahedronGeometry(rr, 0).translate(x, y, z), c))]);
   const vm = new THREE.MeshStandardMaterial({vertexColors: true, roughness: .9}), M4 = new THREE.Matrix4(), q = new Q4(), s = new V3(), p = new V3(), col = new THREE.Color(), Y = new V3(0, 1, 0);
   const NP = 3200, NL = 1800, pines = new THREE.InstancedMesh(pine, vm, NP), leafs = new THREE.InstancedMesh(leaf, vm, NL); let kp = 0, kl = 0;
   for (let i = 0; i < 60000 && (kp < NP || kl < NL); i++) { const a = r() * 6.283, d = 140 + Math.pow(r(), 1.5) * 5200, x = Math.cos(a) * d, z = Math.sin(a) * d;
@@ -347,14 +347,14 @@ function flora() {
     if (isPine && kp < NP) { pines.setMatrixAt(kp, M4); pines.setColorAt(kp++, col); } else if (!isPine && kl < NL) { leafs.setMatrixAt(kl, M4); leafs.setColorAt(kl++, col); } }
   pines.count = kp; leafs.count = kl; for (const m of [pines, leafs]) { m.castShadow = m.receiveShadow = true; m.instanceMatrix.needsUpdate = true; m.computeBoundingSphere(); g.add(m); }
   // bushes + rocks
-  const bush = new THREE.IcosahedronGeometry(1, 1), rock = new THREE.DodecahedronGeometry(1, 0), NB = 2200, NR = 700, bm = new THREE.InstancedMesh(H.tint(bush, 0x3d6b2e), vm, NB), rm = new THREE.InstancedMesh(H.tint(nonIdx(rock), 0x7a776f), new THREE.MeshStandardMaterial({vertexColors: true, roughness: .95, flatShading: true}), NR); let kb = 0, kr = 0;
+  const bush = new THREE.IcosahedronGeometry(1, 1), rock = new THREE.DodecahedronGeometry(1, 0), NB = 2200, NR = 700, bm = new THREE.InstancedMesh(H.tint(bush, 0x0c1306), vm, NB), rm = new THREE.InstancedMesh(H.tint(nonIdx(rock), 0x2c2a27), new THREE.MeshStandardMaterial({vertexColors: true, roughness: .95, flatShading: true}), NR); let kb = 0, kr = 0;
   for (let i = 0; i < 30000 && (kb < NB || kr < NR); i++) { const a = r() * 6.283, d = 115 + Math.pow(r(), 1.3) * 2600, x = Math.cos(a) * d, z = Math.sin(a) * d; if (blocked(x, z, .3)) continue; const h = hAt(x, z); if (h < 1) continue;
     q.setFromAxisAngle(Y, r() * 6.28); const isRock = h < 7 || r() < .22; if (isRock && kr < NR) { const sc = .4 + Math.pow(r(), 2) * 2.6; p.set(x, gy(x, z) - sc * .3, z); s.set(sc * (1 + r() * .6), sc * (.5 + r() * .4), sc); rm.setMatrixAt(kr, M4.compose(p, q.setFromEuler(new THREE.Euler(r(), r() * 6, r())), s)); rm.setColorAt(kr++, col.setRGB(.8 + r() * .35, .8 + r() * .3, .78 + r() * .3)); }
     else if (!isRock && kb < NB) { const sc = .6 + r() * 1.1; p.set(x, gy(x, z) + sc * .25, z); s.set(sc * (1 + r() * .5), sc * (.55 + r() * .3), sc); bm.setMatrixAt(kb, M4.compose(p, q, s)); bm.setColorAt(kb++, col.setRGB(.75 + r() * .4, .8 + r() * .3, .7 + r() * .3)); } }
   bm.count = kb; rm.count = kr; for (const m of [bm, rm]) { m.castShadow = m === rm; m.receiveShadow = true; m.instanceMatrix.needsUpdate = true; m.computeBoundingSphere(); g.add(m); }
   // grass tufts round the site (normals point up so they shade like the ground)
   const tuft = (() => { const P = [], C = []; for (let k = 0; k < 7; k++) { const a = k / 7 * 6.283 + Math.sin(k * 3) * .4, l = .35 + (k % 3) * .18, h = .45 + ((k * 5) % 4) * .14, cx = Math.cos(a), cz = Math.sin(a), px = -cz * .05, pz = cx * .05;
-      P.push(-px, 0, -pz, px, 0, pz, cx * l * .55, h, cz * l * .55); C.push(.18, .26, .1, .18, .26, .1, .5, .6, .28); }
+      P.push(-px, 0, -pz, px, 0, pz, cx * l * .55, h, cz * l * .55); C.push(.05, .08, .02, .05, .08, .02, .13, .18, .05); }
     const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); geo.setAttribute('normal', new THREE.Float32BufferAttribute(new Array(P.length / 3).fill(0).flatMap(() => [0, 1, 0]), 3)); geo.setAttribute('color', new THREE.Float32BufferAttribute(C, 3)); return geo; })();
   const NG = 16000, gm = new THREE.InstancedMesh(tuft, new THREE.MeshStandardMaterial({vertexColors: true, roughness: 1, side: THREE.DoubleSide}), NG); let kg = 0;
   for (let i = 0; i < 60000 && kg < NG; i++) { const a = r() * 6.283, d = 112 + Math.pow(r(), 1.7) * 900, x = Math.cos(a) * d, z = Math.sin(a) * d; if (blocked(x, z, .5)) continue; if (noise3(x / 40, 1, z / 40, 81) < -.15) continue;
