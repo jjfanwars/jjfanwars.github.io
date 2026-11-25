@@ -24,7 +24,7 @@ function bakeByMat(root, mapM) {
   for (const [m, list] of by) { let n = 0; for (const gg of list) n += gg.attributes.position.count; const P = new Float32Array(n * 3), N = new Float32Array(n * 3), U = new Float32Array(n * 2); let o = 0;
     for (const gg of list) { const p = gg.attributes.position, q = gg.attributes.normal, u = gg.attributes.uv; P.set(p.array, o * 3); if (q) N.set(q.array, o * 3); if (u) U.set(u.array, o * 2); o += p.count; gg.dispose(); }
     const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(P, 3)); geo.setAttribute('normal', new THREE.BufferAttribute(N, 3)); geo.setAttribute('uv', new THREE.BufferAttribute(U, 2)); geo.computeBoundingSphere();
-    const me = new THREE.Mesh(geo, m); me.castShadow = me.receiveShadow = true; out.add(me); }
+    const me = new THREE.Mesh(geo, m); me.castShadow = !m.transparent && !m.isMeshBasicMaterial; me.receiveShadow = true; if (m.transparent) me.renderOrder = 4; out.add(me); }
   root.traverse(o => { if (o.isMesh) o.geometry.dispose(); }); return out;
 }
 // the whole rocket (stack + capsule) as meshes, bottom of the stack at y 0
@@ -94,8 +94,8 @@ void main(){
 #include <logdepthbuf_fragment>
   float f = abs(dot(normalize(vN), normalize(vV))); gl_FragColor = vec4(vec3(1., .96, .88) * I * f * f * pow(vY, 2.2), 1.); }`});
     WLD.coneM = cone; const hg = new THREE.CylinderGeometry(.35, .62, .5, 20), cg = new THREE.CylinderGeometry(.5, 6.5, 29, 24, 1, true), dg = new THREE.CircleGeometry(.56, 20);
-    for (const x of [-13.5, -4.5, 4.5, 13.5]) for (const z of [-19, -9.5, 0, 9.5, 19]) { const hh = new THREE.Mesh(hg, housing); hh.position.set(x, 29.9, z); g.add(hh); const d = new THREE.Mesh(dg, lampM); d.rotation.x = Math.PI / 2; d.position.set(x, 29.64, z); g.add(d);
-      const c = new THREE.Mesh(cg, cone); c.position.set(x, 29.6 - 14.5, z); c.renderOrder = 4; g.add(c); }
+    const lg = new THREE.Group(); for (const x of [-13.5, -4.5, 4.5, 13.5]) for (const z of [-19, -9.5, 0, 9.5, 19]) { const hh = new THREE.Mesh(hg, housing); hh.position.set(x, 29.9, z); lg.add(hh); const d = new THREE.Mesh(dg, lampM); d.rotation.x = Math.PI / 2; d.position.set(x, 29.64, z); lg.add(d);
+      const c = new THREE.Mesh(cg, cone); c.position.set(x, 29.6 - 14.5, z); lg.add(c); } g.add(bakeByMat(lg));
     const L2 = []; for (const x of [-13.5, -4.5, 4.5, 13.5]) for (const z of [-19, -9.5, 0, 9.5, 19]) L2.push(H.beamGeo(new V3(x, 30.15, z), new V3(x, 30.9, z), .02, 0x222222, 4)); addM(L2); }
   // ---- overhead crane parked toward the door
   { const L = [], zc = 7; L.push(H.boxGeo(0, 27.9, zc, 42.2, 1.5, 1.2, 0xf2b81e), H.boxGeo(0, 27.9, zc + 1.6, 42.2, 1.5, 1.2, 0xf2b81e)); for (const sx of [-1, 1]) L.push(H.boxGeo(sx * 20.6, 27.6, zc + .8, 1.6, 1.2, 4.6, 0x3b434d));
@@ -116,7 +116,8 @@ void main(){
       site.boxes.push({x0: x0 - 1.7, x1: x0 + 1.7, y0: 0, y1: 26.6, z0: RZ - 2.4, z1: RZ + 2.4}); }
     addM(L); }
   // ---- parts on show: engines + structure down the west wall, tanks down the east wall (F adds the part to your rocket)
-  { const shows = new THREE.Group(), L = [], sgn = [];
+  { const shows = new THREE.Group(), L = [], labs = new THREE.Group(), atl = document.createElement('canvas'); atl.width = 2048; atl.height = 1024; const ax = atl.getContext('2d'), atT = new THREE.CanvasTexture(atl); atT.colorSpace = THREE.SRGBColorSpace; atT.anisotropy = 8; let na = 0;
+    const labM = hm(0xffffff, .5, 0, {t: atT, e: 0xffffff, em: atT, ei: .55});
     const show = (k, x, z, side, extra = {}) => { const p = PARTS[k] || {}, r = extra.r || p.r || 1.25, pw = Math.max(2.4, r * 2 + 1.3), lift = extra.lift || 0;
       L.push(H.boxGeo(x, 0, z, pw, .5, pw, 0x2c3238), H.boxGeo(x, .5, z, pw + .08, .06, pw + .08, 0xe3b425));
       const pg = new THREE.Group(); pg.position.set(x, .56 + lift, z); shows.add(pg);
@@ -125,9 +126,10 @@ void main(){
       site.boxes.push({x0: x - pw / 2, x1: x + pw / 2, y0: 0, y1: .56 + lift + h, z0: z - pw / 2, z1: z + pw / 2});
       // label on a post, facing into the hall
       const lx = x + side * (pw / 2 + .75), nm = extra.name || p.name, line = extra.stat || (typeof partStat === 'function' ? partStat(p) : ''), desc = extra.desc || p.desc || '';
-      const t = signTex(512, 256, (c, w, hh) => { c.fillStyle = '#0d1828'; c.fillRect(0, 0, w, hh); c.fillStyle = '#ffcf4a'; c.fillRect(0, 0, 10, hh); c.font = '600 58px Fredoka, Arial'; c.fillText(nm, 34, 70); c.font = '400 28px Fredoka, Arial'; c.fillStyle = '#cfe0f2'; c.fillText(desc.slice(0, 34), 34, 120); c.fillStyle = '#8fb3d6'; c.fillText(line.slice(0, 36), 34, 162);
-        c.fillStyle = '#ffcf4a'; c.font = '600 28px Fredoka, Arial'; c.fillText('F · ' + (extra.verb || 'add to your rocket'), 34, 222); });
-      const pl = new THREE.Mesh(new THREE.PlaneGeometry(1.6, .8), hm(0xffffff, .5, 0, {t, e: 0xffffff, em: t, ei: .55})); pl.position.set(lx, 1.32, z); pl.rotation.set(0, side * Math.PI / 2, 0, 'YXZ'); pl.rotateX(-.45); g.add(pl);
+      const ox = (na % 4) * 512, oy = (na / 4 | 0) * 256, ua = na++; ax.save(); ax.translate(ox, oy); ax.beginPath(); ax.rect(0, 0, 512, 256); ax.clip(); ((c, w, hh) => { c.fillStyle = '#0d1828'; c.fillRect(0, 0, w, hh); c.fillStyle = '#ffcf4a'; c.fillRect(0, 0, 10, hh); c.font = '600 58px Fredoka, Arial'; c.fillText(nm, 34, 70); c.font = '400 28px Fredoka, Arial'; c.fillStyle = '#cfe0f2'; c.fillText(desc.slice(0, 34), 34, 120); c.fillStyle = '#8fb3d6'; c.fillText(line.slice(0, 36), 34, 162);
+        c.fillStyle = '#ffcf4a'; c.font = '600 28px Fredoka, Arial'; c.fillText('F · ' + (extra.verb || 'add to your rocket'), 34, 222); })(ax, 512, 256); ax.restore();
+      const pg2 = new THREE.PlaneGeometry(1.6, .8), uv = pg2.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setXY(i, (ox + uv.getX(i) * 512) / 2048, 1 - (oy + (1 - uv.getY(i)) * 256) / 1024);
+      const pl = new THREE.Mesh(pg2, labM); pl.position.set(lx, 1.32, z); pl.rotation.set(0, side * Math.PI / 2, 0, 'YXZ'); pl.rotateX(-.45); labs.add(pl);
       L.push(H.boxGeo(lx - side * .12, 0, z, .08, 1.1, .08, 0x2c3238), H.boxGeo(lx - side * .12, 0, z, .5, .04, .5, 0x2c3238));
       WLD.acts.push({x: lx + side * .9, z, r: 1.8, t: () => 'F · ' + (extra.verb ? extra.verb[0].toUpperCase() + extra.verb.slice(1) : 'Add ' + nm + ' to your rocket') + ' (opens the builder)', fn: () => { if (typeof bldOpen !== 'function') return; bldOpen(); if (extra.radial) { const i = BLD.parts.map(q => (PARTS[q.k] || {}).cat).lastIndexOf('tank'); if (i >= 0) bldSelect(i); bldRadial(extra.radial); } else bldAdd(k); }});
     };
@@ -136,7 +138,7 @@ void main(){
     show('fins', W, 11.8, 1, {as: 'tS', h: 1.25, lift: .55, d: {fins: 1}, name: 'Fins', desc: RADIAL.fins.desc, stat: (RADIAL.fins.dry / 1000).toFixed(2) + ' t · on the selected tank', radial: 'fins', verb: 'add fins to a tank'});
     show('legs', W, 17.4, 1, {as: 'tM', h: 2.5, lift: 2.1, d: {legs: 1}, name: 'Landing legs', desc: RADIAL.legs.desc, stat: (RADIAL.legs.dry / 1000).toFixed(2) + ' t · on the selected tank', radial: 'legs', verb: 'add legs to a tank'});
     show('hL', E, -15.2, -1); show('hM', E, -9.6, -1); show('tL', E, -4.6, -1, {i: 1}); show('tM', E, -.8, -1); show('tS', E, 3, -1, {i: 1}); show('sL', E, 6.4, -1); show('sS', E, 9.4, -1, {i: 1});
-    addM(L); g.add(bakeByMat(shows, hgOf)); }
+    addM(L); g.add(bakeByMat(shows, hgOf)); g.add(bakeByMat(labs)); atT.needsUpdate = true; }
   // ---- build console (front east): desk, three screens facing the door side
   { const L = [], cx = 14, cz = 17; L.push(H.boxGeo(cx, 0, cz, 6.4, .95, 1.3, 0x27313d), H.boxGeo(cx, .95, cz, 6.6, .06, 1.5, 0x15191e));
     for (let i = 0; i < 4; i++) L.push(H.boxGeo(cx - 2.4 + i * 1.6, .45, cz + 1.4, .55, .08, .55, 0x31363d), H.boxGeo(cx - 2.4 + i * 1.6, 0, cz + 1.4, .07, .45, .07, 0x8a9099), H.boxGeo(cx - 2.4 + i * 1.6, .5, cz + 1.68, .55, .62, .08, 0x31363d));
@@ -238,8 +240,8 @@ function boardDraw() {
 }
 // your current design standing on the assembly stand (rebuilt when the design changes)
 function hangarRocket() {
-  if (!site.g) return; if (WLD.rk) { site.g.remove(WLD.rk); WLD.rk.traverse(o => { if (o.geometry) o.geometry.dispose(); }); }
-  const m = rocketModel(SHIP.parts), s = Math.min(1, 26.6 / m.h), b = bakeByMat(m.g, hgOf); b.scale.setScalar(s); b.position.set(0, 1.2, WLD.rz); site.g.add(b); WLD.rk = b; boardDraw();
+  if (!site.g) return; if (WLD.rk) { WLD.rk.parent.remove(WLD.rk); WLD.rk.traverse(o => { if (o.geometry) o.geometry.dispose(); }); }
+  const m = rocketModel(SHIP.parts), s = Math.min(1, 26.6 / m.h), b = bakeByMat(m.g, hgOf); b.scale.setScalar(s); b.position.set(0, 1.2, WLD.rz); (WLD.gIn || site.g).add(b); WLD.rk = b; boardDraw();
 }
 
 // ---------------- the grounds
@@ -280,7 +282,7 @@ function grounds() {
   H.addMerged(L);
   // lamp heads that glow at night
   const lampM = new THREE.MeshStandardMaterial({color: 0x222222, emissive: 0xffd9a0, emissiveIntensity: 0}); WLD.lampM = lampM;
-  const lh = new THREE.InstancedMesh(new THREE.BoxGeometry(.7, .1, .4), lampM, poles.length), M4 = new THREE.Matrix4(); poles.forEach(([x, z], i) => lh.setMatrixAt(i, M4.makeTranslation(x, 7.85, z))); g.add(lh);
+  const lh = new THREE.InstancedMesh(new THREE.BoxGeometry(.7, .1, .4), lampM, poles.length), M4 = new THREE.Matrix4(); poles.forEach(([x, z], i) => lh.setMatrixAt(i, M4.makeTranslation(x, 7.85, z))); lh.userData.tile = [400, 3000]; g.add(lh);
   // signs
   H.decal(signTex(1024, 256, (c, w, h) => { c.fillStyle = '#1f6b3a'; c.fillRect(0, 0, w, h); c.strokeStyle = '#fff'; c.lineWidth = 10; c.strokeRect(14, 14, w - 28, h - 28); c.fillStyle = '#fff'; c.font = '600 110px Fredoka, Arial'; c.textAlign = 'center'; c.fillText('YEVILLE', w / 2, 140); c.font = '44px Fredoka, Arial'; c.fillText('pop. 1,204 · Home of YeShip', w / 2, 210); }), -641, 3, 30, 6, 1.5, Math.PI / 2);
   box(-641.2, 0, 30, .3, 2.2, .3, 0x666666, false);
@@ -336,7 +338,7 @@ function flora() {
     if (x > -930 && x < -380 && z > -930 && z < -380) return r() > town; if (Math.hypot(x - 183, z + 210) < 30 || Math.hypot(x + 256, z - 282) < 20) return true; return false; };
   const nonIdx = geo => geo.index ? geo.toNonIndexed() : geo;
   const pine = H.mergeGeos([H.tint(nonIdx(new THREE.CylinderGeometry(.16, .26, 2.6, 6).translate(0, 1.3, 0)), 0x4a3526), ...[[2.2, 3.8, 2.4, 0x23492a], [1.7, 3.2, 4.3, 0x28552f], [1.15, 2.6, 6.1, 0x2f6237], [.6, 1.8, 7.6, 0x356b3c]].map(([rr, h, y, c]) => H.tint(nonIdx(new THREE.ConeGeometry(rr, h, 8).translate(0, y + h / 2, 0)), c))]);
-  const leaf = H.mergeGeos([H.tint(nonIdx(new THREE.CylinderGeometry(.18, .3, 3, 6).translate(0, 1.5, 0)), 0x4d3a28), ...[[0, 4.4, 0, 2, 0x3c6a2c], [1.2, 3.9, .6, 1.4, 0x467739], [-1.1, 4.1, -.5, 1.5, 0x37602a], [.2, 5.5, -.3, 1.3, 0x4f8240], [-.4, 3.6, 1.1, 1.2, 0x416f33]].map(([x, y, z, rr, c]) => H.tint(new THREE.IcosahedronGeometry(rr, 1).translate(x, y, z), c))]);
+  const leaf = H.mergeGeos([H.tint(nonIdx(new THREE.CylinderGeometry(.18, .3, 3, 6).translate(0, 1.5, 0)), 0x4d3a28), ...[[0, 4.4, 0, 2, 0x3c6a2c], [1.2, 3.9, .6, 1.4, 0x467739], [-1.1, 4.1, -.5, 1.5, 0x37602a], [.2, 5.5, -.3, 1.3, 0x4f8240], [-.4, 3.6, 1.1, 1.2, 0x416f33]].map(([x, y, z, rr, c]) => H.tint(new THREE.IcosahedronGeometry(rr, 0).translate(x, y, z), c))]);
   const vm = new THREE.MeshStandardMaterial({vertexColors: true, roughness: .9}), M4 = new THREE.Matrix4(), q = new Q4(), s = new V3(), p = new V3(), col = new THREE.Color(), Y = new V3(0, 1, 0);
   const NP = 3200, NL = 1800, pines = new THREE.InstancedMesh(pine, vm, NP), leafs = new THREE.InstancedMesh(leaf, vm, NL); let kp = 0, kl = 0;
   for (let i = 0; i < 60000 && (kp < NP || kl < NL); i++) { const a = r() * 6.283, d = 140 + Math.pow(r(), 1.5) * 5200, x = Math.cos(a) * d, z = Math.sin(a) * d;
@@ -349,7 +351,7 @@ function flora() {
   for (let i = 0; i < 30000 && (kb < NB || kr < NR); i++) { const a = r() * 6.283, d = 115 + Math.pow(r(), 1.3) * 2600, x = Math.cos(a) * d, z = Math.sin(a) * d; if (blocked(x, z, .3)) continue; const h = hAt(x, z); if (h < 1) continue;
     q.setFromAxisAngle(Y, r() * 6.28); const isRock = h < 7 || r() < .22; if (isRock && kr < NR) { const sc = .4 + Math.pow(r(), 2) * 2.6; p.set(x, gy(x, z) - sc * .3, z); s.set(sc * (1 + r() * .6), sc * (.5 + r() * .4), sc); rm.setMatrixAt(kr, M4.compose(p, q.setFromEuler(new THREE.Euler(r(), r() * 6, r())), s)); rm.setColorAt(kr++, col.setRGB(.8 + r() * .35, .8 + r() * .3, .78 + r() * .3)); }
     else if (!isRock && kb < NB) { const sc = .6 + r() * 1.1; p.set(x, gy(x, z) + sc * .25, z); s.set(sc * (1 + r() * .5), sc * (.55 + r() * .3), sc); bm.setMatrixAt(kb, M4.compose(p, q, s)); bm.setColorAt(kb++, col.setRGB(.75 + r() * .4, .8 + r() * .3, .7 + r() * .3)); } }
-  bm.count = kb; rm.count = kr; for (const m of [bm, rm]) { m.castShadow = m.receiveShadow = true; m.instanceMatrix.needsUpdate = true; m.computeBoundingSphere(); g.add(m); }
+  bm.count = kb; rm.count = kr; for (const m of [bm, rm]) { m.castShadow = m === rm; m.receiveShadow = true; m.instanceMatrix.needsUpdate = true; m.computeBoundingSphere(); g.add(m); }
   // grass tufts round the site (normals point up so they shade like the ground)
   const tuft = (() => { const P = [], C = []; for (let k = 0; k < 7; k++) { const a = k / 7 * 6.283 + Math.sin(k * 3) * .4, l = .35 + (k % 3) * .18, h = .45 + ((k * 5) % 4) * .14, cx = Math.cos(a), cz = Math.sin(a), px = -cz * .05, pz = cx * .05;
       P.push(-px, 0, -pz, px, 0, pz, cx * l * .55, h, cz * l * .55); C.push(.18, .26, .1, .18, .26, .1, .5, .6, .28); }
@@ -357,11 +359,29 @@ function flora() {
   const NG = 16000, gm = new THREE.InstancedMesh(tuft, new THREE.MeshStandardMaterial({vertexColors: true, roughness: 1, side: THREE.DoubleSide}), NG); let kg = 0;
   for (let i = 0; i < 60000 && kg < NG; i++) { const a = r() * 6.283, d = 112 + Math.pow(r(), 1.7) * 900, x = Math.cos(a) * d, z = Math.sin(a) * d; if (blocked(x, z, .5)) continue; if (noise3(x / 40, 1, z / 40, 81) < -.15) continue;
     const sc = .8 + r() * 1.1; gm.setMatrixAt(kg, M4.compose(p.set(x, gy(x, z) - .03, z), q.setFromAxisAngle(Y, r() * 6.28), s.set(sc, sc * (.7 + r() * .6), sc))); gm.setColorAt(kg++, col.setRGB(.8 + r() * .4, .85 + r() * .3, .7 + r() * .3)); }
-  gm.count = kg; gm.receiveShadow = true; gm.instanceMatrix.needsUpdate = true; gm.computeBoundingSphere(); g.add(gm);
+  gm.count = kg; gm.userData.tile = [200, 700]; bm.userData.tile = [400, 1800]; rm.userData.tile = [400, 2500]; gm.receiveShadow = true; gm.instanceMatrix.needsUpdate = true; gm.computeBoundingSphere(); g.add(gm);
 }
 
 // ---------------- hooks: build with the site, refresh the stand when the design changes, the explosion counter, prompts + F, night lights
-{ const b0 = buildSite; buildSite = function () { b0(); try { hangarInside(); hangarRocket(); grounds(); town(); flora(); } catch (e) { console.error('world build', e); } }; }
+// group what a builder just added to site.g (so it can be hidden as one)
+function adopt(n0) { const grp = new THREE.Group(); for (const k of site.g.children.slice(n0)) grp.add(k); site.g.add(grp); return grp; }
+// split an instanced mesh into square tiles: the camera frustum and the shadow camera cull each tile, and far tiles are hidden (worldCull)
+WLD.tiles = [];
+function tileSplit(im, size, range) { const n = im.count, cells = new Map(), m = new THREE.Matrix4(), c = new THREE.Color(), par = im.parent;
+  for (let i = 0; i < n; i++) { im.getMatrixAt(i, m); const k = Math.floor(m.elements[12] / size) + ',' + Math.floor(m.elements[14] / size); let a = cells.get(k); if (!a) cells.set(k, a = []); a.push(i); }
+  for (const idx of cells.values()) { const t = new THREE.InstancedMesh(im.geometry, im.material, idx.length); let sx = 0, sz = 0;
+    idx.forEach((i, j) => { im.getMatrixAt(i, m); t.setMatrixAt(j, m); sx += m.elements[12]; sz += m.elements[14]; if (im.instanceColor) { im.getColorAt(i, c); t.setColorAt(j, c); } });
+    t.castShadow = im.castShadow; t.receiveShadow = im.receiveShadow; t.computeBoundingSphere(); t.userData.cx = sx / idx.length; t.userData.cz = sz / idx.length; t.userData.range = range + size * .75; par.add(t); WLD.tiles.push(t); }
+  par.remove(im); }
+{ const b0 = buildSite; buildSite = function () { b0(); try { let n0 = site.g.children.length; hangarInside(); WLD.gIn = adopt(n0); hangarRocket();
+    n0 = site.g.children.length; grounds(); WLD.gOut = adopt(n0); n0 = site.g.children.length; town(); WLD.gTown = adopt(n0); n0 = site.g.children.length; flora(); WLD.gFl = adopt(n0);
+    for (const im of [...WLD.gTown.children, ...WLD.gFl.children, ...WLD.gOut.children]) if (im.isInstancedMesh) { const [sz, rg] = im.userData.tile || [400, im.parent === WLD.gTown ? 9000 : 6000]; tileSplit(im, sz, rg); }
+  } catch (e) { console.error('world build', e); } }; }
+// hide what is too far to matter (checked 4x a second): tiles by distance, the hangar inside past 450 m, everything from high up
+const _wcam = new V3(), _wqi = new Q4();
+function worldCull() { if (!site.p || !WLD.gIn) return; const c = bodyToSite(_wcam.copy(G.O).sub(PLANET.c).applyQuaternion(_wqi.copy(PLANET.q).invert()), _wcam), hi = c.y > 25000 || Math.hypot(c.x, c.z) > 60000;
+  WLD.gIn.visible = !hi && Math.hypot(c.x, c.z) < 450 && c.y < 2000; WLD.gOut.visible = WLD.gTown.visible = !hi;
+  const yy = Math.max(0, c.y); for (const t of WLD.tiles) { const u = t.userData; t.visible = !hi && Math.hypot(c.x - u.cx, c.z - u.cz, yy) < u.range; } }
 { const a0 = shipApply; shipApply = function (parts, name) { a0(parts, name); hangarRocket(); }; }
 { const e0 = explode; explode = function (...a) { const r = e0.apply(this, a); try { localStorage.setItem('ye-boom', String(Date.now())); } catch (e) {} if (WLD.boomDraw) WLD.boomDraw(); return r; }; }
 // the stand: board the rocket on it (a fresh one rolls out to pad 1)
@@ -377,6 +397,7 @@ const _wsp = new V3(), _wu = new V3();
 addEventListener('keydown', e => { if (e.code !== 'KeyF' || e.repeat || !WLD.near || R.on || G.paused || !G.on) return; const a = WLD.near; WLD.near = null; a.fn(); });
 { const v0 = FLIGHT.visuals; FLIGHT.visuals = function (dt) { v0.call(this, dt);
     if (site.p) { _wu.copy(SITE).applyQuaternion(PLANET.q).transformDirection(cam.matrixWorldInverse); HG_UP.value.copy(_wu); }
+    if ((WLD.c = (WLD.c || 0) - dt) <= 0 || dt === 0) { WLD.c = .25; worldCull(); }
     if ((WLD.t = (WLD.t || 0) - dt) > 0 && dt > 0) return; WLD.t = .5; const el = siteSun(); WLD.night = sstep(.06, -.1, el); WLD.day = sstep(-.12, .2, el);
     if (WLD.lampM) WLD.lampM.emissiveIntensity = WLD.night * 3; if (WLD.winM) for (const m of WLD.winM) m.emissiveIntensity = WLD.night * 1.4;
     if (WLD.clerM) WLD.clerM.color.setRGB(.06 + 1.3 * WLD.day, .07 + 1.4 * WLD.day, .09 + 1.6 * WLD.day); }; }
@@ -396,7 +417,7 @@ mapBuild = function (budget = 2.5) {
     MAPB.x.putImageData(MAPB.im, 0, j); }
   MAPB.row = MAPB.rr >= Hh ? 128 : Math.floor(MAPB.rr / Hh * 128);
   if (MAPB.rr >= Hh) { if (MAPB.tex) MAPB.tex.needsUpdate = true; if (MAPV.plTex) MAPV.plTex.needsUpdate = true; } };
-{ const v1 = FLIGHT.visuals; FLIGHT.visuals = function (dt) { v1.call(this, dt); if (G.on && MAPB.c && MAPB.rr < 256 && !MAPV.on) { mapBuild(1.2); if (MAPB.tex && MAPB.rr % 32 === 0) MAPB.tex.needsUpdate = true; } }; }
+{ const v1 = FLIGHT.visuals; FLIGHT.visuals = function (dt) { v1.call(this, dt); if (G.on && MAPB.c && MAPB.rr < 256 && !MAPV.on && (WLD.mf = (WLD.mf || 0) + 1) % 3 === 0) { mapBuild(1); if (MAPB.tex && MAPB.rr % 32 === 0) MAPB.tex.needsUpdate = true; } }; }
 // map view: mark the space centre on Home
 { const mr = mapRender, _sv = new V3(), _cv = new V3(); mapRender = function (dt) { mr(dt); if (!site.p) return; const x = MAPV.x;
     const w = _sv.copy(site.p).applyQuaternion(PLANET.q).multiplyScalar(.001).add(MAPV.pl.position); if (_cv.copy(MAPV.cam.position).sub(w).dot(_sv.clone().sub(MAPV.pl.position)) < 0) return;
