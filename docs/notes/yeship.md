@@ -124,3 +124,10 @@ Sandbox plus missions (21 Nov 2026: 15 missions, see below). Astronauts are thro
 - **Trees:** two kinds (pines + broadleaf, `InstancedMesh` each, up to 1500 on Medium/High, 700 on Low) in woods with clearings out to ~2.6 km, per-tree size and colour jitter. Colours are LINEAR here (no colour management): the old 0x2f5f2c read as pale mint; foliage is now ~0x070d05 / 0x0b1105.
 - **Small fixes:** lens ghosts much fainter and mostly neutral; LOX spheres and water tower no longer pure white.
 - **Headless testing:** software GL renders ~3 s per frame at Medium and far slower at High; screenshot tours need Medium, 800x450 and ~30 s per view. Chase camera pitch is positive to look down.
+
+## Leaving the planet (25 Nov 2026; owner: "not buggy zooming out when you go up, it doesn't look good leaving Earth")
+- **Clouds from far:** the 4.2 km cloud noise aliased away beyond ~50 km up, so cloud cover vanished as you climbed. `clLod` (GLSL_CLOUD global, 0 near to 1 far: set from ray distance in `cloudM`, from view distance in `cshadow(vd)`) blends the density toward big weather-map shapes with 38 km noise, smooths the weather texels, and skips the fine erosion.
+- **Mountain steps:** beyond 60 km the cloud march no longer stops at scene depth when the hit is inside the cloud layer (coarse terrain facets cut it into horizontal stripes); the sea-level sphere still ends it.
+- **Haze:** `thin()` is now a constant k = .42 at every distance (it used to fade back to full haze by 300 km, so the ocean jumped from navy to pale sky-blue as you climbed). Long limb paths are barely affected, so the limb still blends.
+- **Exposure in space:** with the outside camera above ~11 km and the ship in sunlight, `EMAX` eases down to 1.4 (`G.emS`), so the black sky doesn't blow the ship out to white. In the planet's shadow it opens back up for stars.
+- Test script idea: place the rocket at N km (`R.pos` along SITE), chase camera pitch ~1 (looking down), `YE.prebuild`, screenshot.

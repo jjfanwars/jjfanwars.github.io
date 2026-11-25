@@ -272,7 +272,7 @@ const atmoM = new THREE.ShaderMaterial({vertexShader: VS, depthTest: false, dept
   fragmentShader: GLSL_ATMO + `uniform sampler2D tCol, tDep, tAO, tCl; uniform float clOn; uniform mat4 invProj; uniform mat3 camRot; uniform vec3 camPos, sunDir; uniform float logC, aoOn; uniform int steps; uniform vec2 aoPx; varying vec2 vUv;
   // the air is squeezed into a thin shell (same column as Earth's), which makes haze near the ground ~3x Earth's: thin it on nearby ground
   // (scales the optical depth, keeps the haze colour; the sky and far horizon are untouched so they still blend)
-  void thin(inout vec3 ins, inout vec3 tr, float dist){ float k = mix(.38, 1., smoothstep(20000., 300000., dist)); vec3 t2 = pow(max(tr, vec3(1e-5)), vec3(k));
+  void thin(inout vec3 ins, inout vec3 tr, float dist){ float k = .42; vec3 t2 = pow(max(tr, vec3(1e-5)), vec3(k));
     ins *= (1. - t2) / max(1. - tr, vec3(1e-4)); tr = t2; }
   void main(){
     vec4 v = invProj * vec4(vUv * 2. - 1., -1., 1.); vec3 dv = normalize(v.xyz / v.w); vec3 d = normalize(camRot * dv);
@@ -331,19 +331,23 @@ const weatherM = new THREE.ShaderMaterial({vertexShader: VS, depthTest: false, d
 const GLSL_CLOUD = `
 uniform sampler3D nTex; uniform sampler2D wTex; uniform float clCov, clTime;
 const float CB = ${CL.base}., CT = ${CL.top}.;
+float clLod = 0.; // 0 near, 1 far (set by the caller from the view distance)
 float remap(float v, float a, float b, float c, float d){ return c + (v - a) / (b - a) * (d - c); }
 // pb = body-fixed position in metres
 float clWeather(vec3 pb){ vec3 d = normalize(pb); float lon = atan(-d.z, d.x) + clTime * 2e-5, lat = asin(clamp(d.y, -1., 1.));
-  vec4 w = texture(wTex, vec2(lon / 6.2831853 + .5, lat / 3.1415927 + .5)); float e = texture(nTex, pb / 21000.).r;
+  vec2 wuv = vec2(lon / 6.2831853 + .5, lat / 3.1415927 + .5); vec4 w = texture(wTex, wuv);
+  if (clLod > .05) { vec2 o = vec2(1. / 2048., 1. / 1024.) * (.5 + 1.5 * clLod); w = mix(w, (texture(wTex, wuv + o * vec2(1., .5)) + texture(wTex, wuv - o * vec2(1., .5)) + texture(wTex, wuv + o * vec2(-.5, 1.)) + texture(wTex, wuv - o * vec2(-.5, 1.))) * .25, clLod); } // smooth the map's texels from far (they showed as stripes)
+  float e = texture(nTex, pb / 21000.).r;
   return clamp(w.r + (clCov - .5) * .6 + (e - .62) * .15, 0., 1.); }
 float clDens(vec3 pb, float h, float cov, bool cheap){
   vec3 wind = vec3(clTime * 7., clTime * .3, clTime * 3.); vec4 n = texture(nTex, (pb + wind) / 4200.);
   float wf = n.g * .625 + n.b * .25 + n.a * .125, shape = remap(n.r, wf - 1., 1., 0., 1.);
   float hg = smoothstep(0., .1, h) * smoothstep(1., .3 + .45 * cov, h) * (1. - .35 * h); // flat bases, rounded tops (taller where cover is thick)
   float d = remap(shape * hg, 1. - min(1., cov * 1.5), 1., 0., 1.) * min(1., cov * 1.8); // sheets where the weather map is cloudy, broken cumulus at the edges
+  if (clLod > 0.) { vec4 nf = texture(nTex, (pb + wind) / 38000.), ng = texture(nTex, pb / 9000.); d = mix(d, smoothstep(.3, .78, cov + (nf.r - .5) * .4 + (nf.g - .5) * .2 + (ng.r - .5) * .18 * (1. - clLod)) * hg * .95, clLod); } // from far: the big shapes of the weather map, not sub-pixel noise
   if (d <= 0. || cheap) return max(d, 0.);
   vec4 dn = texture(nTex, (pb + wind * 2.) / 900.); float df = dn.g * .625 + dn.b * .25 + dn.a * .125; df = mix(df, 1. - df, clamp(h * 3., 0., 1.)); // wispy at the base, billowy above
-  return max(remap(d, df * .38, 1., 0., 1.), 0.); }`;
+  return max(mix(remap(d, df * .38, 1., 0., 1.), d, clLod), 0.); }`;
 const cloudM = new THREE.ShaderMaterial({vertexShader: VS, depthTest: false, depthWrite: false,
   uniforms: Object.assign(atmoU(), {tDep: {value: null}, invProj: {value: new THREE.Matrix4()}, camRot: {value: new THREE.Matrix3()}, camPos: {value: new V3()}, sunDir: {value: SUN.clone()}, bInv: {value: new THREE.Matrix3()},
     logC: {value: Math.log2(FAR + 1)}, nTex: {value: CLOUD3D}, wTex: {value: WX.rt.texture}, clCov: CL.cov, clTime: {value: 0}, steps: {value: 64}, frame: {value: 0}}),
@@ -355,7 +359,8 @@ const cloudM = new THREE.ShaderMaterial({vertexShader: VS, depthTest: false, dep
     vec3 o = camPos; float r0 = length(o), rb = R + CB, rt = R + CT; vec2 it = rs(o, d, rt), ib = rs(o, d, rb), gp = rs(o, d, R);
     float t0, t1; bool hitB = ib.x > 0. && ib.x < 1e19;
     if (r0 < rb) { t0 = ib.y; t1 = it.y; } else if (r0 < rt) { t0 = 0.; t1 = hitB ? ib.x : it.y; } else { if (it.x > 1e19 || it.y < 0.) { gl_FragColor = vec4(0., 0., 0., 1.); return; } t0 = it.x; t1 = hitB ? ib.x : it.y; }
-    if (gp.x > 0. && gp.x < 1e19) t1 = min(t1, gp.x); t1 = min(min(t1, dist), t0 + 80000.);
+    if (gp.x > 0. && gp.x < 1e19) t1 = min(t1, gp.x); if (t0 > 60000. && dist < 1e19 && length(o + d * dist) < R + CT + 500.) dist = 1e20; // from far, coarse mountain facets would cut the layer into steps: the sea-level sphere is enough
+    t1 = min(min(t1, dist), t0 + 80000.);
     if (t1 <= t0) { gl_FragColor = vec4(0., 0., 0., 1.); return; }
     // sunlight reaching the cloud layer along this view (air reddening + the planet's shadow), sky light
     vec3 pm = o + d * (t0 + min(t1 - t0, 4000.) * .5), up = normalize(pm); float el = dot(up, sunDir);
@@ -368,7 +373,7 @@ const cloudM = new THREE.ShaderMaterial({vertexShader: VS, depthTest: false, dep
     float ds = (t1 - t0) / float(steps), jit = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(.06711056, .00583715))) + frame * .618);
     float T = 1.; vec3 L = vec3(0.);
     for (int i = 0; i < 96; i++) { if (i >= steps) break; float t = t0 + (float(i) + jit) * ds; vec3 p = o + d * t; float h = (length(p) - rb) / (CT - CB); if (h < 0. || h > 1.) continue;
-      vec3 pb = bInv * p; float cov = clWeather(pb); if (cov < .02) continue;
+      clLod = smoothstep(18000., 110000., t); vec3 pb = bInv * p; float cov = clWeather(pb); if (cov < .02) continue;
       float dd = clDens(pb, h, cov, false); if (dd < .002) continue;
       float sig = dd * .05;
       // light march toward the sun (growing steps), coarse density
@@ -511,14 +516,14 @@ function cloudShadow(sh, isTerr) {
       vec3 p = b * (pR + 5.); float bb = dot(p, sunB), c = dot(p, p) - aRa * aRa, tt = -bb + sqrt(max(bb * bb - c, 0.)), ds = tt / 6., oR = 0., oM = 0., oO = 0.;
       for (int i = 0; i < 6; i++) { float hh = max(0., length(p + sunB * ds * (float(i) + .5)) - pR); oR += exp(-hh / aHR) * ds; oM += exp(-hh / aHM) * ds; oO += max(0., 1. - abs(hh - ${OZ_C}.) / ${OZ_W}.) * ds; }
       return exp(-(aBR * oR + aBM * 1.1 * oM + aBO * oO)) * smoothstep(-.01, .006, mu); }
-    float cshadow(){
+    float cshadow(float vd){
 #ifdef IS_MOON
       return 1.;
 #endif
       if (cOn < .5) return 1.; vec3 b = normalize(vBd); float su = dot(b, sunB); if (su < -.05) return 1.;
-      vec3 pc = b * pR + sunB * ${(CL.base + CL.top) / 2}. / max(su, .12), pc2 = pc + sunB * 900. / max(su, .12); float cv = clWeather(pc);
+      clLod = smoothstep(18000., 110000., vd); vec3 pc = b * pR + sunB * ${(CL.base + CL.top) / 2}. / max(su, .12), pc2 = pc + sunB * 900. / max(su, .12); float cv = clWeather(pc);
       float c = clamp((clDens(pc, .35, cv, true) + clDens(pc2, .65, cv, true)) * 3., 0., 1.); return 1. - c * .8 * smoothstep(-.05, .15, su); }\n` +
-    sh.fragmentShader.replace('#include <color_fragment>', '#include <color_fragment>\n diffuseColor.rgb *= cshadow(); gSunT = sunTrans() / max(camT, vec3(.002));')
+    sh.fragmentShader.replace('#include <color_fragment>', '#include <color_fragment>\n diffuseColor.rgb *= cshadow(length(vViewPosition)); gSunT = sunTrans() / max(camT, vec3(.002));')
       .replace('#include <lights_fragment_begin>', THREE.ShaderChunk.lights_fragment_begin.replace('getDirectionalLightInfo( directionalLight, directLight );', 'getDirectionalLightInfo( directionalLight, directLight ); directLight.color *= gSunT;'));
 }
 const moonMat = terrMat.clone(); moonMat.userData.hue = 0; terrMat.userData.hue = .2; moonMat.customProgramCacheKey = () => 'moon';
@@ -1011,7 +1016,11 @@ function updateLight() {
   amb.groundColor.setRGB(.16 * (.3 + day), .13 * (.3 + day), .1 * (.3 + day));
   // hemisphere "up" must follow the local vertical: three's hemisphere light uses its position as the sky direction
   amb.position.copy(up);
-  EMAX.value = lerp(3.5, 11, sstep(PLANET.atmo * .3, PLANET.atmo, alt)); // dusk on the ground stays dusky; space can open up for stars
+  // dusk on the ground stays dusky; space can open up for stars, except when the camera is looking at the sunlit ship from outside:
+  // a black screen would push exposure up and blow the ship out to white (real cameras expose for the lit spacecraft)
+  let em = lerp(3.5, 11, sstep(PLANET.atmo * .3, PLANET.atmo, alt)); const lit = Math.max(t[0], t[1], t[2]);
+  if (typeof R !== 'undefined' && R.on && (C.view === 'out' || R.st === 'dead') && alt > PLANET.atmo * .5) em = lerp(em, 1.4, sstep(.05, .4, lit) * sstep(PLANET.atmo * .5, PLANET.atmo * 1.5, alt));
+  G.emS = G.emS ? G.emS + (em - G.emS) * (1 - Math.exp(-(G.dt || .016) * 2)) : em; EMAX.value = G.emS;
   updateEnv(G.dt || 0, t); scene.environmentIntensity = alt > PLANET.atmo * 2 ? .15 : 1;
   scene.backgroundIntensity = lerp(1, .004, sstep(-.16, .08, el) * (1 - sstep(PLANET.atmo * .35, PLANET.atmo, alt))); // stars wash out in a daylight sky
   if (PLANET.cloudMeshes) for (const m of PLANET.cloudMeshes) m.visible = !HI(); // High uses the volumetric clouds
