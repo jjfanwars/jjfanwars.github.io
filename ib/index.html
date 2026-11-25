@@ -2545,7 +2545,7 @@ addEventListener('popstate', () => { NAVN = Math.max(0, NAVN - 1); if (S.books.l
 async function boot() {
   $('#login').classList.add('hide'); $('#app').classList.remove('hide');
   $('#main').innerHTML = '<p><span class="spin"></span> Loading…</p>';
-  try { [S.books, S.qs] = await Promise.all([api('books'), api('qs')]); S.qs = S.qs.filter(q => q.src !== 'bank' && !/openstax/i.test(q.set || '')); } // IB material only: the imported OpenStax banks are hidden catch (e) { $('#main').innerHTML = '<p>Could not load: ' + esc(e.message) + '</p>'; return; }
+  try { [S.books, S.qs] = await Promise.all([api('books'), api('qs')]); S.qs = S.qs.filter(q => q.src !== 'bank' && !/openstax/i.test(q.set || '')); /* IB material only: the imported OpenStax banks are hidden */ } catch (e) { $('#main').innerHTML = '<p>Could not load: ' + esc(e.message) + '</p>'; return; }
   drawMe(); drawPins(); pullProg(); loadPapers();
   const last = S.prog.last; S.book = (last && bookOf(last.b)) || S.books.find(x => x.pages) || S.books[0];
   if (!S.book) { $('#main').innerHTML = '<p>No books uploaded yet.</p>'; return; }
