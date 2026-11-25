@@ -394,6 +394,33 @@ const MARK_SCHEMA = {type: 'object', additionalProperties: false, required: ['sc
   score: {type: 'integer'}, max: {type: 'integer'}, band: {type: 'string'}, verdict: {type: 'string'},
   good: {type: 'array', items: {type: 'string'}}, missed: {type: 'array', items: {type: 'string'}}, fix: {type: 'array', items: {type: 'string'}},
   plan: {type: 'string'}, terms: {type: 'array', items: {type: 'string'}}}};
+// marking calls get MARK_SCHEMA (plus the handwriting / step-mark fields when the rubric asks for them); other mode:'mark'
+// calls (notes organise/tidy, flashcards, exam page sorting, recall checks) bring their own JSON format in the prompt, so no schema
+function markSchema(rubric) {
+  if (!/"score": integer/.test(rubric) || !/"good": \[/.test(rubric)) return null;
+  const s = JSON.parse(JSON.stringify(MARK_SCHEMA)), P = s.properties, R = s.required, str = {type: 'string'};
+  if (/answer is HANDWRITTEN/.test(rubric)) { P.read = str; P.illegible = {type: 'array', items: str}; R.push('read', 'illegible'); }
+  if (/"marks": \[\{"code"/.test(rubric)) { P.marks = {type: 'array', items: {type: 'object', additionalProperties: false, required: ['code', 'ok', 'why', 'at'], properties: {code: str, ok: {type: 'boolean'}, why: str, at: str}}}; P.wrong = str; P.slip = str; R.push('marks', 'wrong', 'slip'); }
+  return s;
+}
+// message content: a string, or (marking with handwriting/photos) an array of text + base64 PNG/JPEG image blocks, passed through as is
+function ibContent(msgs, lim) {
+  let n = 0, err = '';
+  const out = msgs.map(m => { const role = m.role === 'assistant' ? 'assistant' : 'user', c = m.content;
+    if (!Array.isArray(c)) return {role, content: String(c || '').slice(0, lim)};
+    const L = [];
+    for (const x of c.slice(0, 100)) {
+      if (x && x.type === 'text') { const t = String(x.text || '').slice(0, lim); if (t.trim()) L.push({type: 'text', text: t}); }
+      else if (x && x.type === 'image' && role === 'user') { const so = x.source || {};
+        if (so.type !== 'base64' || !['image/png', 'image/jpeg'].includes(so.media_type)) err = 'Images must be PNG or JPEG';
+        else if (typeof so.data !== 'string' || !so.data || so.data.length > 7.2e6) err = 'An image is too big (max about 5 MB)';
+        else if (++n > 30) err = 'Too many images (max 30)';
+        else L.push({type: 'image', source: {type: 'base64', media_type: so.media_type, data: so.data}}); }
+    }
+    return {role, content: L.length ? L : ''}; });
+  return {msgs: out, n, err};
+}
+const ibText = c => typeof c === 'string' ? c : (c || []).filter(x => x.type === 'text').map(x => x.text).join('\n');
 // usage tracking: $ per million tokens [input, output, cache read, cache write]
 const PRICE = {'claude-sonnet-5-5': [2, 10, .1, 2.5], 'claude-haiku-5-5': [.1, .5, .01, .125]};
 function ibUse(db, who, model, us) {
@@ -482,6 +509,7 @@ async function ibRoute(req, env, CORS, u) {
     const idx = JSON.parse(await (await db('kvget', {k: 'chats:' + k})).text() || '{}') || {};
     for (const o of Object.keys(Array.isArray(idx) ? {} : idx)) { await db('kvset', {k: 'chat:' + [k, o].sort().join('|'), v: '[]'});
       const oi = JSON.parse(await (await db('kvget', {k: 'chats:' + o})).text() || '{}'); if (oi && !Array.isArray(oi)) { delete oi[k]; await db('kvset', {k: 'chats:' + o, v: JSON.stringify(oi)}); } }
+    await ib.fetch('https://i/notedel?all=1&u=' + k, {method: 'POST'});
     for (const p of ['plan:', 'prog:', 'inbox:', 'chats:']) await db('kvset', {k: p + k, v: p === 'chats:' || p === 'prog:' ? '{}' : '[]'});
     delete all[k]; await db('kvset', {k: 'users', v: JSON.stringify(all)}); return J({ok: true, left: Object.keys(all).length});
   }
@@ -490,7 +518,7 @@ async function ibRoute(req, env, CORS, u) {
     const r = await ib.fetch('https://i/put' + u.search, {method: 'POST', body: req.body});
     return new Response(r.body, {status: r.status, headers: H});
   }
-  let b; try { b = JSON.parse(await req.text()); } catch (e) { return J({err: 'bad request'}, 400); }
+  let b, raw; try { raw = await req.text(); if (raw.length > 31e6) return J({err: 'too big (max about 30 MB)'}, 413); b = JSON.parse(raw); } catch (e) { return J({err: 'bad request'}, 400); }
   const op = u.pathname.slice(4);
   if (b.pass !== PASS && !(OPEN && op !== 'login')) return J({err: 'wrong password'}, 403);
   if (op === 'login') return J({ok: true});
@@ -508,7 +536,15 @@ async function ibRoute(req, env, CORS, u) {
   }
   const uk = ukey(b.user), who = uk ? 'u:' + uk : b.uid ? 'g:' + String(b.uid).replace(/[^\w-]/g, '').slice(0, 16) : 'anon';
   if (op === 'beat') { await db('beat', {u: who, name: uk ? String(b.name || uk).slice(0, 30) : '', dev: String(b.dev || '').slice(0, 40)}); return J({ok: true}); }
-  if (['plan', 'sync', 'agent'].includes(op) && !uk) return J({err: 'sign in first'}, 401);
+  if (['plan', 'sync', 'agent', 'noteput', 'noteget', 'notedel'].includes(op) && !uk) return J({err: 'sign in first'}, 401);
+  // note store: a note's ink strokes + photo data URLs (can be several MB), per account, last write wins on t; chunked in the IB DO's SQLite
+  if (['noteput', 'noteget', 'notedel'].includes(op)) {
+    const id = String(b.id || ''); if (!/^[\w-]{1,48}$/.test(id)) return J({err: 'bad note id'}, 400);
+    const q = '?u=' + uk + '&id=' + id + '&t=' + (+b.t || Date.now());
+    if (op === 'noteput' && b.data == null) return J({err: 'no data'}, 400);
+    const r = await ib.fetch('https://i/' + op + q, {method: 'POST', body: op === 'noteput' ? JSON.stringify(b.data) : ''});
+    return new Response(r.body, {status: r.status, headers: H});
+  }
   if (op === 'plan') { // planner items: {data} replaces the list, else returns it
     if (b.data) { await db('kvset', {k: 'plan:' + uk, v: JSON.stringify(b.data)}); return J({ok: true}); }
     const r = await db('kvget', {k: 'plan:' + uk}); return new Response(r.body, {headers: H});
@@ -570,7 +606,8 @@ async function ibRoute(req, env, CORS, u) {
   }
   if (op === 'figs') { const r = await (await db('kvget', {k: 'figs:' + String(b.book || '').replace(/[^\w-]/g, '')})).text(); return new Response(r && r !== '[]' ? r : '{}', {headers: H}); } // which figure lines have a cropped picture (ib/figs.py)
   if (op === 'papers') { const r = await db('kvget', {k: 'papers'}); return new Response(r.body, {headers: H}); } // past papers (uploaded by the owner as kv 'papers')
-  if (op === 'sync') { const r = await db('sync', {...b, k: 'prog:' + uk}); return new Response(r.body, {status: r.status, headers: H}); }
+  if (op === 'sync') { if (b.data) console.log('ib sync', uk, raw.length + ' bytes' + (raw.length > 1.5e6 ? ' (near the 2 MB cap)' : ''));
+    const r = await db('sync', {...b, k: 'prog:' + uk}); return new Response(r.body, {status: r.status, headers: H}); }
   if (['books', 'page', 'pagebp', 'pages', 'search', 'qs'].includes(op)) { const r = await db(op, b); return new Response(r.body, {status: r.status, headers: H}); }
   if (op !== 'ask') return J({err: 'not found'}, 404);
   const KEY = await ibKey(env, db);
@@ -578,29 +615,34 @@ async function ibRoute(req, env, CORS, u) {
   const cap = +(env.IB_CAP || 300), used = await (await db('spend', {cap})).json();
   if (used.over) return J({err: `daily limit of ${cap} Claude replies reached, back tomorrow`}, 429);
   // context: the textbook pages the client points at (max 10), pulled from storage so the client can't inject a huge prompt
-  const msgs = (b.messages || []).slice(-24).map(m => ({role: m.role === 'assistant' ? 'assistant' : 'user', content: String(m.content || '').slice(0, 12000)}));
+  const cv = ibContent((b.messages || []).slice(-24), b.mode === 'mark' ? 60000 : 12000), msgs = cv.msgs, hw = cv.n;
+  if (cv.err) return J({err: cv.err}, 400);
+  if (+b.hw > 0 && !hw) return J({err: 'the handwriting images did not arrive'}, 400);
   if (!msgs.length || msgs[msgs.length - 1].role !== 'user') return J({err: 'empty question'}, 400);
   // pages: the ones the client names, plus (when find is set, i.e. the first turn of a chat) the best keyword matches for the question.
   // The client sends the returned page list back on later turns, so the system prompt stays identical and the cache keeps hitting.
   let refs = (b.pages || []).map(Number).filter(n => n > 0).slice(0, 10);
-  if (b.find && b.book) refs = [...new Set([...refs, ...(await (await db('find', {b: b.book, q: msgs[msgs.length - 1].content, k: 5})).json()).ns])].slice(0, 10);
+  if (b.find && b.book) refs = [...new Set([...refs, ...(await (await db('find', {b: b.book, q: ibText(msgs[msgs.length - 1].content), k: 5})).json()).ns])].slice(0, 10);
   const pg = refs.length ? await (await db('pages', {b: b.book, ns: refs})).json() : {pages: []};
   const ctx = pg.pages.map(p => `<extract page="${p.bp}">\n${p.md}\n</extract>`).join('\n');
   const books = JSON.parse(await (await db('books')).text()), bk = books.find(x => x.id === b.book);
   const toc = bk ? `The textbook currently selected in the app (use it when the question is about it; it does not limit which subjects you help with): ${bk.title}. Contents (section, printed page):\n` + bk.toc.map(t => `${t.num || '-'} ${t.title} (p. ${t.bp})`).join('\n') : '';
   // cache layout: [fixed tutor prompt + book contents] [rubric] [extracts] then the conversation (top-level automatic caching)
   const sys = [{type: 'text', text: IB_SYS + (toc ? '\n\n' + toc : '')}];
-  if (b.mode === 'mark') sys.push({type: 'text', text: String(b.rubric || '').slice(0, 6000)});
+  const rubric = String(b.rubric || '').slice(0, 20000), schema = b.mode === 'mark' ? markSchema(rubric) : null;
+  if (b.mode === 'mark' && rubric) sys.push({type: 'text', text: rubric});
   if (ctx) sys.push({type: 'text', text: 'Textbook extracts:\n' + ctx});
   sys[sys.length - 1].cache_control = {type: 'ephemeral'};
-  if (b.stream && b.mode !== 'mark') { sys[0].text += "\n\nTools: messages may start with a one-line [Location: ...] note saying where the student is in the app. You are NOT shown the page or their work automatically: call read_page, search_book or read_screen only when the question actually needs it (one or two calls is usually enough), then answer.";
+  if (b.stream && b.mode !== 'mark' && !hw) { sys[0].text += "\n\nTools: messages may start with a one-line [Location: ...] note saying where the student is in the app. You are NOT shown the page or their work automatically: call read_page, search_book or read_screen only when the question actually needs it (one or two calls is usually enough), then answer.";
     return tutorStream({b, sys, msgs, KEY, db, CORS, refs, who}); }
   const r = await fetch('https://api.anthropic.com/v1/messages', {method: 'POST',
     headers: {'content-type': 'application/json', 'x-api-key': KEY, 'anthropic-version': '2023-06-01', 'anthropic-beta': 'server-side-fallback-2026-07-01'},
-    body: JSON.stringify({model: 'claude-sonnet-5-5', max_tokens: 8000, fallbacks: 'default', cache_control: {type: 'ephemeral'}, system: sys, messages: msgs,
-      output_config: b.mode === 'mark' ? {effort: 'medium', format: {type: 'json_schema', schema: MARK_SCHEMA}} : {effort: 'low'}})});
+    // Sonnet reads images; handwriting replies carry a full transcription, so they get more room
+    body: JSON.stringify({model: 'claude-sonnet-5-5', max_tokens: hw ? 16000 : 8000, fallbacks: 'default', cache_control: {type: 'ephemeral'}, system: sys, messages: msgs,
+      output_config: b.mode === 'mark' ? {effort: 'medium', ...(schema ? {format: {type: 'json_schema', schema}} : {})} : {effort: 'low'}})});
   const j = await r.json().catch(() => ({}));
   if (!r.ok) return J({err: (j.error && j.error.message) || 'Anthropic HTTP ' + r.status}, 502);
+  if (hw) console.log('ib ask hw', who, hw + ' images', raw.length + ' bytes', j.stop_reason);
   if (j.stop_reason === 'refusal') return J({err: 'Claude declined to answer that one.'}, 200);
   const us = j.usage || {}; await ibUse(db, who, 'claude-sonnet-5-5', j.usage);
   return J({text: (j.content || []).filter(c => c.type === 'text').map(c => c.text).join(''), left: cap - used.n, pages: refs,
@@ -615,7 +657,9 @@ export class IB {
       CREATE TABLE IF NOT EXISTS spend (d TEXT PRIMARY KEY, n INTEGER);
       CREATE TABLE IF NOT EXISTS fchunk (b TEXT, i INTEGER, data BLOB, PRIMARY KEY (b, i));
       CREATE TABLE IF NOT EXISTS use (d TEXT, u TEXT, mins INTEGER DEFAULT 0, calls INTEGER DEFAULT 0, tin INTEGER DEFAULT 0, tout INTEGER DEFAULT 0, tcr INTEGER DEFAULT 0, tcw INTEGER DEFAULT 0, cost REAL DEFAULT 0, PRIMARY KEY (d, u));
-      CREATE TABLE IF NOT EXISTS who (u TEXT PRIMARY KEY, name TEXT, first INTEGER, last INTEGER, dev TEXT);`);
+      CREATE TABLE IF NOT EXISTS who (u TEXT PRIMARY KEY, name TEXT, first INTEGER, last INTEGER, dev TEXT);
+      CREATE TABLE IF NOT EXISTS note (u TEXT, id TEXT, t INTEGER, n INTEGER, PRIMARY KEY (u, id));
+      CREATE TABLE IF NOT EXISTS nchunk (u TEXT, id TEXT, i INTEGER, data BLOB, PRIMARY KEY (u, id, i));`);
   }
   kv(k, v) { if (v === undefined) { const r = this.sql.exec('SELECT v FROM kv WHERE k = ?', k).toArray()[0]; return r ? r.v : null; } this.sql.exec('INSERT OR REPLACE INTO kv VALUES (?, ?)', k, v); }
   async fetch(req) {
@@ -629,6 +673,20 @@ export class IB {
       else if (t === 'fmeta') this.kv('file:' + b, await req.text());
       else return Response.json({err: 'bad type'}, {status: 400});
       return J({ok: true});
+    }
+    if (/^\/note(put|get|del)$/.test(u.pathname)) { // note store: JSON split into 1.9 MB BLOB chunks (SQLite rows max 2 MB)
+      const U = u.searchParams.get('u'), id = u.searchParams.get('id'), t = +u.searchParams.get('t') || 0, ex = (q, ...a) => this.sql.exec(q, ...a).toArray();
+      if (u.pathname === '/noteget') { const r = ex('SELECT t FROM note WHERE u = ? AND id = ?', U, id)[0]; if (!r) return J({data: null});
+        const parts = ex('SELECT data FROM nchunk WHERE u = ? AND id = ? ORDER BY i', U, id).map(c => new Uint8Array(c.data));
+        return new Response(new Blob(['{"t":' + r.t + ',"data":', ...parts, '}']), {headers: {'content-type': 'application/json'}}); }
+      if (u.pathname === '/notedel') { const all = u.searchParams.get('all') === '1', w = all ? 'u = ?' : 'u = ? AND id = ?', a = all ? [U] : [U, id];
+        ex('DELETE FROM nchunk WHERE ' + w, ...a); ex('DELETE FROM note WHERE ' + w, ...a); return J({ok: 1}); }
+      const buf = new Uint8Array(await req.arrayBuffer()), r = ex('SELECT t FROM note WHERE u = ? AND id = ?', U, id)[0];
+      if (r && r.t > t) return J({ok: 1, kept: 'newer'});
+      ex('DELETE FROM nchunk WHERE u = ? AND id = ?', U, id);
+      for (let i = 0, k = 0; i < buf.length; i += 19e5, k++) ex('INSERT INTO nchunk VALUES (?, ?, ?, ?)', U, id, k, buf.slice(i, i + 19e5).buffer);
+      ex('INSERT OR REPLACE INTO note VALUES (?, ?, ?, ?)', U, id, t, buf.length);
+      return J({ok: 1});
     }
     const o = await req.json(), all = (q, ...a) => this.sql.exec(q, ...a).toArray();
     switch (o.op) {
