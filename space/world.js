@@ -316,7 +316,7 @@ function town() {
   const blocks = [[-605, -555], [-695, -555], [-605, -645], [-695, -645], [-605, -500], [-700, -700]], ab = new THREE.InstancedMesh(body, am, blocks.length);
   blocks.forEach(([x, z], i) => ab.setMatrixAt(i, M4.compose(p.set(x, gy(x, z) - .2, z), q.identity(), s.set(22, 16 + (i * 7) % 4 * 5, 22)))); ab.castShadow = ab.receiveShadow = true; ab.computeBoundingSphere(); g.add(ab);
   // plaza + water tower
-  const L = []; L.push(H.boxGeo(-650, -.9, -600, 54, 1, 54, 0xc9c4b8)); const wx = -760, wz = -690; for (const [dx, dz] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) L.push(H.beamGeo(new V3(wx + dx * 4, 0, wz + dz * 4), new V3(wx + dx * 2.5, 26, wz + dz * 2.5), .3, 0x9aa4ae));
+  const L = []; L.push(H.boxGeo(-650, -.9, -600, 54, 1, 54, 0x7d7870)); const wx = -760, wz = -690; for (const [dx, dz] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) L.push(H.beamGeo(new V3(wx + dx * 4, 0, wz + dz * 4), new V3(wx + dx * 2.5, 26, wz + dz * 2.5), .3, 0x9aa4ae));
   H.addMerged(L); const wt = new THREE.Mesh(new THREE.SphereGeometry(6, 24, 16), new THREE.MeshStandardMaterial({color: 0x6fa8dc, roughness: .5, metalness: .2})); wt.position.set(wx, 31, wz); wt.castShadow = true; g.add(wt);
   H.decal(H.signTex(512, 128, (c, w, h) => { c.fillStyle = '#6fa8dc'; c.fillRect(0, 0, w, h); c.fillStyle = '#fff'; c.font = '700 84px Fredoka, Arial'; c.textAlign = 'center'; c.fillText('YEVILLE', w / 2, 96); }), wx, 31, wz + 6.05, 8, 2);
   // parked cars: the staff car park + along the streets
