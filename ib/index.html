@@ -421,7 +421,7 @@ a.btn{display:inline-flex;padding:7px 12px;border-radius:8px;text-decoration:non
   <form id="lf" class="row" style="flex-direction:column;align-items:stretch;gap:12px"><input id="lp" type="password" placeholder="Site password" autocomplete="current-password"><input id="ln" autocomplete="given-name" maxlength="30" placeholder="First name (optional, to sync)"><button class="pri" style="justify-content:center">Continue</button><div id="le" class="meta" style="color:var(--bad)"></div><div id="known"></div></form>
 </div>
 <div id="app" class="hide">
-<nav id="side"><div class="brand" id="home">IB <b>Study</b></div><div class="nv tabs"><button data-tab="home"><svg class="i"><use href="#i-home"/></svg><span>Home</span></button><div class="grp">Study</div><button data-tab="rev"><svg class="i"><use href="#i-loop"/></svg><span>Review</span></button><button data-tab="lib"><svg class="i"><use href="#i-book"/></svg><span>Library</span></button><div id="pins"></div><button data-tab="prac"><svg class="i"><use href="#i-pen"/></svg><span>Practice</span></button><button data-tab="terms"><svg class="i"><use href="#i-cards"/></svg><span>Flashcards</span></button><button data-tab="ref"><svg class="i"><use href="#i-flask"/></svg><span>Reference</span></button><div class="grp">Organise</div><button data-tab="plan"><svg class="i"><use href="#i-cal"/></svg><span>Planner</span></button><button data-tab="prog"><svg class="i"><use href="#i-chart"/></svg><span>Progress</span></button></div><button class="me" id="me"></button></nav>
+<nav id="side"><div class="brand" id="home">IB <b>Study</b></div><div class="nv tabs"><button data-tab="home"><svg class="i"><use href="#i-home"/></svg><span>Home</span></button><div class="grp">Study</div><button data-tab="rev"><svg class="i"><use href="#i-loop"/></svg><span>Review</span></button><button data-tab="lib"><svg class="i"><use href="#i-book"/></svg><span>Library</span></button><div id="pins"></div><button data-tab="prac"><svg class="i"><use href="#i-pen"/></svg><span>Practice</span></button><button data-tab="terms"><svg class="i"><use href="#i-cards"/></svg><span>Flashcards</span></button><button data-tab="ref"><svg class="i"><use href="#i-flask"/></svg><span>Reference</span></button><div class="grp">Organise</div><button data-tab="mine"><svg class="i"><use href="#i-spark"/></svg><span>My sections</span></button><button data-tab="plan"><svg class="i"><use href="#i-cal"/></svg><span>Planner</span></button><button data-tab="prog"><svg class="i"><use href="#i-chart"/></svg><span>Progress</span></button></div><button class="me" id="me"></button></nav>
 <div class="col">
 <header>
   <button id="menuBtn" class="ghost hide" aria-label="Contents"><svg class="i"><use href="#i-menu"/></svg></button>
@@ -523,7 +523,7 @@ function mergeIn(r) {
     if ((r.pt || 0) > (S.prog.pt || 0)) { S.prog.pins = r.pins || []; S.prog.marks = r.marks || []; S.prog.hls = r.hls || []; S.prog.pt = r.pt; }
     const D = S.prog.days = S.prog.days || {}; for (const [d, o] of Object.entries(r.days || {})) { const x = D[d] = D[d] || {}; for (const k of ['m', 'q', 'c', 'p']) x[k] = Math.max(x[k] || 0, o[k] || 0); }
     if ((r.calt || 0) > (S.prog.calt || 0)) { S.prog.cals = r.cals || []; S.prog.calt = r.calt; setTimeout(loadExt, 0); }
-    for (const f of ['decks', 'maps']) { const DK = S.prog[f] = S.prog[f] || {}; for (const [id, d] of Object.entries(r[f] || {})) if (!DK[id] || (DK[id].t || 0) < (d.t || 0)) DK[id] = d; }
+    for (const f of ['decks', 'maps', 'spaces']) { const DK = S.prog[f] = S.prog[f] || {}; for (const [id, d] of Object.entries(r[f] || {})) if (!DK[id] || (DK[id].t || 0) < (d.t || 0)) DK[id] = d; }
     for (const k of ['secs', 'rev', 'recall']) { const L = S.prog[k] = S.prog[k] || {}; for (const [kk, v] of Object.entries(r[k] || {})) if (!L[kk] || (L[kk].t || 0) < (v.t || 0)) L[kk] = v; }
     const PP = S.prog.pp = S.prog.pp || {}; for (const [k, v] of Object.entries(r.pp || {})) { const ts = new Set((PP[k] || []).map(x => x.t)); PP[k] = [...(PP[k] || []), ...v.filter(x => !ts.has(x.t))]; }
     for (const [k, v] of Object.entries(r.lastBy || {})) if (!S.prog.lastBy[k] || S.prog.lastBy[k].t < v.t) S.prog.lastBy[k] = v;
@@ -533,7 +533,7 @@ function mergeIn(r) {
 }
 
 // ---------- shell ----------
-const TABN = {home: 'Home', lib: 'Library', prac: 'Practice', terms: 'Flashcards', rev: 'Review', ref: 'Reference', prog: 'Progress', plan: 'Planner', search: 'Search'};
+const TABN = {home: 'Home', lib: 'Library', prac: 'Practice', terms: 'Flashcards', rev: 'Review', ref: 'Reference', prog: 'Progress', plan: 'Planner', mine: 'My sections', search: 'Search'};
 // back/forward: each screen writes a hash; same-screen changes (page flips) replace instead of push
 function setHash(h) { if (location.hash === h) return; const seg = x => x.split('/').slice(1, x.startsWith('#/lib/') ? 3 : 2).join('/'), a = seg(location.hash), b = seg(h); history[a === b ? 'replaceState' : 'pushState'](null, '', h); }
 function title(parts) { $('#ttl').innerHTML = parts.map((x, i) => i < parts.length - 1 ? `<span class="crumb" data-go="${x[1]}">${esc(x[0])}</span><span class="sep">/</span>` : `<span>${esc(Array.isArray(x) ? x[0] : x)}</span>`).join('');
@@ -545,7 +545,7 @@ function shell(t) { // chrome for a screen: nav highlight, contents panel, title
   document.querySelector('.wrap').style.gridTemplateColumns = rd ? '' : 'minmax(0,1fr)'; title([TABN[t]]);
   document.querySelectorAll('#pins [data-b]').forEach(x => x.classList.toggle('on', rd && x.dataset.b === S.book.id));
 }
-function tab(t) { shell(t); ({home: renderHome, lib: () => S.reading ? openPage(S.book.id, S.n) : renderShelf(), prac: () => renderPrac(), terms: () => renderTerms(), ref: () => renderRef(), prog: renderProg, rev: renderReview, plan: () => renderPlan(true)})[t](); }
+function tab(t) { shell(t); ({home: renderHome, lib: () => S.reading ? openPage(S.book.id, S.n) : renderShelf(), prac: () => renderPrac(), terms: () => renderTerms(), ref: () => renderRef(), prog: renderProg, rev: renderReview, plan: () => renderPlan(true), mine: () => renderMine()})[t](); }
 function go(t) { if (t === 'lib') S.reading = false; tab(t); }
 function drawPins() { const el = $('#pins'); if (!el || !S.prog) return;
   el.innerHTML = S.prog.pins.map(bookOf).filter(Boolean).map(B => `<button class="sub" data-b="${B.id}"><span class="dot" style="background:${bookC(B)}"></span>${esc(B.subject || B.title)}</button>`).join('');
@@ -2272,7 +2272,7 @@ function meMenu() { if (!USER) return signInBox();
   $('#mIcs').onclick = icsModal; $('#mOut').onclick = () => { LS.set('ib-user', null); location.hash = ''; location.reload(); };
 }
 // phones: the bottom bar holds the main tabs, the rest live in this sheet
-const MORE = [['terms', 'Flashcards', 'cards'], ['ref', 'Reference', 'flask'], ['prog', 'Progress', 'chart']];
+const MORE = [['mine', 'My sections', 'spark'], ['terms', 'Flashcards', 'cards'], ['ref', 'Reference', 'flask'], ['prog', 'Progress', 'chart']];
 function moreSheet() {
   const th = LS.get('ib-theme', 'auto');
   const m = openModal(`<div class="mgo">${MORE.map(([k, l, i]) => `<button data-mt="${k}" class="${S.tab === k ? 'on' : ''}"><svg class="i"><use href="#i-${i}"/></svg>${l}</button>`).join('')}<button id="moIn"><svg class="i"><use href="#i-inbox"/></svg>Messages</button></div>
@@ -2304,6 +2304,82 @@ $('#me').onclick = $('#meH').onclick = meMenu; $('#inbx').onclick = inboxBox; $(
 if (matchMedia('(pointer: coarse)').matches) $('#q').placeholder = 'Search';
 
 // ---------- routing ----------
+
+// ---------- My sections: Claude builds a custom section (oral prep, EE, IA...) saved to the student's account ----------
+const SPACE_SYS = `You build a custom section of an IB study app for one IB Diploma student, from their request (e.g. preparing for an individual oral, planning an Extended Essay, a TOK exhibition, an IA, university applications, a revision plan). Make it genuinely useful and specific to the IB: use the real current IB requirements, assessment criteria, timings and word counts for that component where relevant (say so if they vary by school or subject), and practical, concrete steps rather than generic advice. If the request is vague, make sensible assumptions and state them briefly in the summary.
+Reply with ONLY a JSON object, no prose before or after:
+{"title": "short title (max 6 words)", "summary": "1-2 sentences: what this section is for",
+ "blocks": [ {"type": "text", "title": "...", "md": "markdown: explanations, criteria tables, tips, model structures"},
+             {"type": "check", "title": "...", "items": ["one concrete task per item", "..."]},
+             {"type": "notes", "title": "...", "prompt": "what the student should write here, e.g. their global issue, outline, practice log"} ]}
+Use 4-7 blocks. Include at least one "check" block (a step-by-step plan or checklist) and at least one "notes" block for the student's own work. Keep each text block focused (under ~180 words). When asked to change an existing section, return the whole updated section in the same format, keeping the student's ticked items and notes unless asked otherwise (items you keep must keep exactly the same wording).`;
+const SP_EX = ['Preparing for my English individual oral', 'Planning my Extended Essay', 'TOK exhibition', 'Biology IA', 'Spanish B oral', 'Mock exam revision plan'];
+const spAll = () => Object.values(S.prog.spaces || {}).filter(x => x && !x.del).sort((a, b) => (b.t || 0) - (a.t || 0));
+const spOf = id => { const x = (S.prog.spaces || {})[id]; return x && !x.del ? x : null; };
+function spSave(x) { x.t = Date.now(); (S.prog.spaces = S.prog.spaces || {})[x.id] = x; saveProg(); }
+const spBook = () => (S.book || S.books[0] || {}).id;
+// Claude's JSON -> stored blocks, keeping ticks and notes from the old version where titles/items match
+function spBlocks(j, old) {
+  const ob = (old && old.blocks) || [], done = new Set(ob.flatMap(b => (b.items || []).filter(i => i.done).map(i => i.x.trim().toLowerCase())));
+  return (j.blocks || []).slice(0, 12).map(b => {
+    const o = ob.find(x => x.type === b.type && x.title === b.title) || {}, r = {id: o.id || uid(), type: ['text', 'check', 'notes'].includes(b.type) ? b.type : 'text', title: String(b.title || '').slice(0, 120)};
+    if (r.type === 'text') r.md = String(b.md || '');
+    if (r.type === 'check') r.items = (b.items || []).map(x => String(typeof x === 'string' ? x : x.x || x.text || '')).filter(Boolean).map(x => ({x, done: done.has(x.trim().toLowerCase())}));
+    if (r.type === 'notes') { r.prompt = String(b.prompt || ''); r.body = o.body || ''; }
+    return r;
+  });
+}
+async function spGen(req, old) {
+  const msg = old ? `Here is my current section as JSON:\n${JSON.stringify({title: old.title, summary: old.summary, blocks: old.blocks.map(b => b.type === 'check' ? {type: b.type, title: b.title, items: b.items.map(i => (i.done ? '[done] ' : '') + i.x)} : b.type === 'notes' ? {type: b.type, title: b.title, prompt: b.prompt, my_notes: b.body} : {type: b.type, title: b.title, md: b.md})})}\n\nItems marked [done] are ticked: keep them (without the [done] prefix). Change it like this: ${req}`
+    : `Make me a section for: ${req}`;
+  const r = await api('ask', {mode: 'mark', rubric: SPACE_SYS, book: spBook(), pages: [], messages: [{role: 'user', content: msg}]}); let j; try { j = pj(r.text); } catch (e) { throw new Error('Claude\'s reply was cut off or malformed. Try again, or ask for something shorter.'); }
+  if (!j || !Array.isArray(j.blocks) || !j.blocks.length) throw new Error('Claude did not return a section. Try again.');
+  return j;
+}
+function renderMine() {
+  shell('mine'); setHash('#/mine'); S.sp = null;
+  if (!USER) { $('#main').innerHTML = `<div class="prac"><h2 style="margin-top:0">My sections</h2><div class="card" style="padding:18px"><p style="margin-top:0">Ask Claude to build you a section for anything you're working on, like preparing for an oral, your EE or an IA. Your sections are saved to your account, so sign in first.</p><button class="pri" id="spIn">Sign in</button></div></div>`; $('#spIn').onclick = signInBox; return; }
+  const L = spAll();
+  $('#main').innerHTML = `<div class="prac"><h2 style="margin-top:0">My sections</h2>
+    <div class="card" style="padding:16px 18px;margin-bottom:22px"><div style="font-weight:600;margin-bottom:8px">Ask Claude for a new section</div>
+      <textarea id="spReq" rows="2" maxlength="1500" placeholder="What are you planning or preparing for? e.g. My English Lang & Lit individual oral is in 3 weeks, my texts are…"></textarea>
+      <div class="row" style="margin:8px 0 12px">${SP_EX.map(x => `<button class="ghost" data-ex="${esc(x)}" style="font-size:13px;padding:4px 10px">${esc(x)}</button>`).join('')}</div>
+      <div class="row"><button class="pri" id="spGo"><svg class="i"><use href="#i-spark"/></svg>Make it</button><span class="meta" id="spMsg">Only you can see your sections.</span></div></div>
+    ${L.length ? `<div class="grid">${L.map(x => { const it = x.blocks.flatMap(b => b.items || []), d = it.filter(i => i.done).length; return `<div class="card stat" data-sp="${x.id}" style="cursor:pointer"><div style="font-weight:600;font-size:16px">${esc(x.title)}</div><div class="meta" style="margin:4px 0 10px">${esc(x.summary || '')}</div>${it.length ? `<div class="bar"><i style="width:${Math.round(d / it.length * 100)}%;background:var(--good)"></i></div><div class="meta" style="margin-top:4px">${d} / ${it.length} done</div>` : ''}</div>`; }).join('')}</div>` : '<p class="meta">No sections yet.</p>'}</div>`;
+  document.querySelectorAll('[data-ex]').forEach(b => b.onclick = () => { $('#spReq').value = b.dataset.ex; $('#spReq').focus(); });
+  document.querySelectorAll('[data-sp]').forEach(c => c.onclick = () => openSpace(c.dataset.sp));
+  $('#spGo').onclick = async () => { const req = $('#spReq').value.trim(); if (!req) return $('#spReq').focus();
+    const b = $('#spGo'); b.disabled = true; $('#spMsg').innerHTML = '<span class="spin"></span> Claude is building your section…';
+    try { const j = await spGen(req), x = {id: uid(), title: String(j.title || req).slice(0, 80), summary: String(j.summary || ''), about: req, made: Date.now()}; x.blocks = spBlocks(j); spSave(x); if (S.tab === 'mine') openSpace(x.id); }
+    catch (e) { b.disabled = false; $('#spMsg').style.color = 'var(--bad)'; $('#spMsg').textContent = e.message; } };
+}
+function openSpace(id) {
+  if (!S.prog) return; const x = spOf(id); if (!x) return renderMine();
+  shell('mine'); setHash('#/mine/' + id); S.sp = id; title([['My sections', 'mine'], x.title]);
+  $('#main').innerHTML = `<div class="prac"><div class="row" style="margin-bottom:6px"><h2 style="margin:0">${esc(x.title)}</h2><span class="sp"></span><button id="spAsk"><svg class="i"><use href="#i-spark"/></svg>Ask Claude</button><button class="ghost" id="spDel" title="Delete section"><svg class="i"><use href="#i-x"/></svg></button></div>
+    ${x.summary ? `<p class="meta" style="margin-top:0">${esc(x.summary)}</p>` : ''}
+    ${x.blocks.map(b => `<div class="card" style="padding:14px 18px;margin-top:14px" data-bk="${b.id}"><h3 style="margin:0 0 8px">${esc(b.title)}</h3>${
+      b.type === 'check' ? b.items.map((it, i) => `<label class="row" style="flex-wrap:nowrap;align-items:flex-start;padding:5px 0;cursor:pointer"><input type="checkbox" data-ck="${i}" ${it.done ? 'checked' : ''} style="width:auto;margin-top:4px"><span style="${it.done ? 'text-decoration:line-through;color:var(--mut)' : ''}">${mdx(it.x, true)}</span></label>`).join('')
+      : b.type === 'notes' ? `${b.prompt ? `<div class="meta" style="margin-bottom:8px">${esc(b.prompt)}</div>` : ''}<textarea data-nt rows="5" placeholder="Write here. It saves automatically.">${esc(b.body || '')}</textarea>`
+      : `<div class="spmd">${mdx(b.md || '')}</div>`}</div>`).join('')}
+    <div class="card" style="padding:14px 18px;margin-top:22px"><div style="font-weight:600;margin-bottom:8px">Change this section</div><textarea id="spCh" rows="2" maxlength="1500" placeholder="e.g. My oral is on 12 March, make the checklist a week-by-week plan · add a block on the criteria · my texts are 1984 and a Banksy piece"></textarea>
+      <div class="row" style="margin-top:8px"><button class="pri" id="spChGo">Update with Claude</button><span class="meta" id="spMsg"></span></div></div></div>`;
+  document.querySelectorAll('[data-bk]').forEach(el => { const b = x.blocks.find(y => y.id === el.dataset.bk);
+    el.querySelectorAll('[data-ck]').forEach(c => c.onchange = () => { b.items[+c.dataset.ck].done = c.checked; c.nextElementSibling.style.cssText = c.checked ? 'text-decoration:line-through;color:var(--mut)' : ''; spSave(x); });
+    const t = el.querySelector('[data-nt]'); if (t) { let tm = 0; t.oninput = () => { clearTimeout(tm); tm = setTimeout(() => { b.body = t.value; spSave(x); }, 600); }; t.onblur = () => { if (b.body !== t.value) { b.body = t.value; spSave(x); } }; } });
+  $('#spAsk').onclick = () => spChat(x);
+  $('#spDel').onclick = () => { if (!confirm(`Delete “${x.title}”? This can't be undone.`)) return; S.prog.spaces[x.id] = {id: x.id, del: 1, t: Date.now()}; saveProg(); renderMine(); };
+  $('#spChGo').onclick = async () => { const req = $('#spCh').value.trim(); if (!req) return $('#spCh').focus();
+    document.querySelectorAll('[data-nt]').forEach(t => { const b = x.blocks.find(y => y.id === t.closest('[data-bk]').dataset.bk); b.body = t.value; });
+    const btn = $('#spChGo'); btn.disabled = true; $('#spMsg').innerHTML = '<span class="spin"></span> Updating…';
+    try { const j = await spGen(req, x); const kept = x.blocks.filter(b => b.type === 'notes' && b.body && !j.blocks.some(n => n.type === 'notes' && n.title === b.title));
+      x.title = String(j.title || x.title).slice(0, 80); x.summary = String(j.summary || x.summary); x.blocks = spBlocks(j, x).concat(kept); spSave(x); if (S.sp === x.id) openSpace(x.id); }
+    catch (e) { btn.disabled = false; $('#spMsg').style.color = 'var(--bad)'; $('#spMsg').textContent = e.message; } };
+}
+function spChat(x) {
+  const ctx = `[I'm working in my own section of the study app called "${x.title}" (${x.about || x.summary}). Its current content:\n` + x.blocks.map(b => `## ${b.title}\n` + (b.type === 'check' ? b.items.map(i => (i.done ? '[x] ' : '[ ] ') + i.x).join('\n') : b.type === 'notes' ? 'My notes: ' + (b.body || '(empty)') : b.md)).join('\n\n').slice(0, 12000) + ']\n\n';
+  openChat({title: 'Claude · ' + x.title, book: spBook(), pages: [], intro: ctx});
+}
 function route() {
   const [, a, b, c] = decodeURIComponent(location.hash).split('/');
   if (a === 'lib' && b && bookOf(b)) return openPage(b, +c || 1);
@@ -2311,6 +2387,7 @@ function route() {
   if (a === 'q' && b) return openQ(b);
   if (a === 'recall' && b && bookOf(b)) return renderRecall(b, c ? +c : undefined);
   if (a === 'ref') return go('ref');
+  if (a === 'mine' && b) return openSpace(b);
   if (a === 'paper' && b) return loadPapers().then(() => openPaper(b));
   if (a === 'search' && b) { $('#q').value = b; return search(b); }
   if (TABN[a] && a !== 'search') return go(a);
@@ -2342,7 +2419,7 @@ $('#q').onkeydown = e => {
 };
 $('#dClose').onclick = closeDrawer;
 $('#home').onclick = () => go('home');
-$('#tutor').onclick = () => { if (S.tab === 'plan') return openChat({title: 'Planner assistant', agent: true, msgs: S.planChat || []});
+$('#tutor').onclick = () => { if (S.tab === 'mine' && S.sp && spOf(S.sp)) return spChat(spOf(S.sp)); if (S.tab === 'plan') return openChat({title: 'Planner assistant', agent: true, msgs: S.planChat || []});
   const w = where(), B = w && w.book ? bookOf(w.book) : S.book;
   openChat({title: 'Claude tutor · ' + B.subject, book: B.id, pages: [], intro: ''}); };
 $('#cf').onsubmit = e => { e.preventDefault(); const v = $('#ci').value; $('#ci').value = ''; sendChat(v); };
