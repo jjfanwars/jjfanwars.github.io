@@ -138,7 +138,7 @@ def main():
         B, tps = topics(book); qs = [norm(dict(q)) for f in files for q in read(f) if (q.get('text') or '').strip()]
         tag(B, tps, qs)
         slug = re.sub(r'[^a-z0-9]+', '-', name.lower()).strip('-')[:30]
-        out = [{k: v for k, v in {'id': f'bk:{book}:{slug}:{i}', 'book': book, 'kind': q.get('kind') or ('mcq' if q.get('ans') else 'structured'), 'text': q['text'].strip(),
+        out = [{k: v for k, v in {'id': f'bk:{book}:{slug}:{i}', 'book': book, 'kind': q.get('kind') or ('mcq' if q.get('ans') else 'structured'), 'text': q['text'].strip(), 'ctx': (q.get('ctx') or q.get('context') or q.get('stem') or '').strip(),
                 'marks': q['marks'], 'ms': q['ms'], 'ans': q.get('ans', ''), 'topic': q.get('topic', ''), 'set': name, 'src': 'bank', 'diff': q.get('diff') or 2,
                 'paper': q.get('paper', ''), 'lvl': q.get('lvl', ''), 'calc': q.get('calc', ''), 'pages': []}.items() if v not in ('', None)} for i, q in enumerate(qs)]
         json.dump(out, open(f'bank-{book}.json', 'w'), indent=1, ensure_ascii=False); print(len(out), 'questions ->', f'bank-{book}.json')
