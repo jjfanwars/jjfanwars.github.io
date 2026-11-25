@@ -194,6 +194,7 @@ aside .l3{padding-left:30px;font-size:12.5px;color:var(--mut)}
 aside .pg{color:var(--mut);font-size:11.5px;font-weight:400;font-variant-numeric:tabular-nums}
 main{padding:24px 28px 80px;min-width:0}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r)}
+.drills{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px}.drillc{display:flex;flex-direction:column;align-items:flex-start;gap:6px;padding:16px;text-align:left;cursor:pointer;font:inherit;color:inherit}.drillc:hover{border-color:var(--acc)}.drillc .i{width:26px;height:26px;color:var(--acc)}.drillc b{font-size:16px}
 .reader{max-width:760px;margin:0 auto}
 .rbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px}
 .rbar .sp,.sp{flex:1}
@@ -412,6 +413,54 @@ a.btn{display:inline-flex;padding:7px 12px;border-radius:8px;text-decoration:non
   #tutor .lbl{display:none}
   .hhead h2{font-size:28px}
 }
+/* handwriting: answer box (Type / Write / Photo), ink pad, photo strip, step-by-step marking */
+.hwtop{margin-bottom:8px}.hws{margin-left:auto;text-align:right}
+.hwm button{gap:6px;position:relative}.hwm button.has::after{content:"";width:6px;height:6px;border-radius:50%;background:var(--acc);margin-left:2px}.hwm button.on.has::after{background:currentColor}
+.hwbar{position:sticky;top:var(--hdrh,56px);z-index:3;display:flex;flex-wrap:wrap;gap:2px;align-items:center;padding:5px 6px;background:var(--panel);border:1px solid var(--line);border-bottom:none;border-radius:var(--r) var(--r) 0 0}
+.pp .hwbar{top:calc(var(--hdrh,56px) + 62px)}
+.hwbar button{padding:6px 8px;border-color:transparent;background:none;min-width:34px;min-height:34px;justify-content:center}
+.hwbar button:hover{background:var(--sunk)}.hwbar button.on{background:var(--acc2);border-color:color-mix(in srgb,var(--acc) 50%,transparent);color:var(--acc)}
+.hwbar .dv{width:1px;height:22px;background:var(--line2);margin:0 3px}
+.hwbar .dot{width:16px;height:16px;border-radius:50%;background:var(--c);display:block}
+.hwbar .sz{display:block;width:18px;border-radius:99px;background:currentColor}
+.hwtip{margin-left:auto;padding:0 4px;font-size:12px}
+.inkw{--g:26px;--gl:color-mix(in srgb,var(--acc) 15%,transparent);position:relative;border:1px solid var(--line);border-radius:0 0 var(--r) var(--r);background-color:var(--panel);overflow:hidden;touch-action:none;cursor:crosshair;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;outline-offset:-2px}
+.inkw canvas{display:block;touch-action:none;position:absolute;left:0;top:0}
+.inkw.grid{background-image:linear-gradient(var(--gl) 1px,transparent 1px),linear-gradient(90deg,var(--gl) 1px,transparent 1px);background-size:var(--g) var(--g)}
+.inkw.lines{background-image:linear-gradient(transparent calc(var(--g) * 1.25 - 1px),var(--gl) calc(var(--g) * 1.25 - 1px));background-size:100% calc(var(--g) * 1.25)}
+.inkw.er{cursor:cell}
+.hwink.fs{position:fixed;inset:0;z-index:60;background:var(--bg);overflow:auto;padding:8px 8px calc(8px + env(safe-area-inset-bottom))}
+.hwink.fs .hwbar{top:0}html.hwfs,html.hwfs body{overflow:hidden}
+.phs{display:flex;flex-wrap:wrap;gap:10px;align-items:stretch;border-radius:10px}
+.phs.drag{outline:2px dashed var(--acc);outline-offset:4px}
+.ph{position:relative;width:132px;border:1px solid var(--line2);border-radius:8px;overflow:hidden;background:var(--sunk);display:flex;flex-direction:column}
+.phs .ph img{width:100%;height:150px;object-fit:cover;display:block;margin:0;border-radius:0;cursor:zoom-in;background:#fff}
+.ph .row{gap:0;justify-content:space-between;padding:2px;flex-wrap:nowrap}.ph .row button{padding:5px 7px;border-color:transparent;background:none}
+.phn{position:absolute;top:6px;left:6px;background:var(--ink);color:var(--bg);font:600 11px/1 var(--f-ui);padding:4px 7px;border-radius:99px}
+.phadd{width:132px;min-height:150px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;border:1.5px dashed var(--line2);border-radius:8px;cursor:pointer;color:var(--ink2);font:600 14px var(--f-ui);text-align:center;padding:10px}
+.phadd:hover{border-color:var(--acc);color:var(--acc)}.phadd input{display:none}.phadd .meta{font-weight:400;font-size:12px}
+.phst{margin-top:6px;min-height:1em}
+.mks{display:grid;grid-template-columns:auto 1fr;gap:6px 12px;align-items:baseline;margin:6px 0}
+.mk{font:600 12px/1.6 var(--f-ui);padding:0 8px;border-radius:6px;text-align:center;white-space:nowrap}
+.mk.ok{background:var(--good2);color:var(--good)}.mk.no{background:var(--red2);color:var(--red)}
+.mks .at{display:block;color:var(--mut);font-size:13px;margin-top:2px}
+.wrong{border-left:3px solid var(--red);background:var(--red2);padding:8px 12px;border-radius:0 8px 8px 0;margin:6px 0;overflow-x:auto}.wrong p{margin:0}
+.hwread{margin-top:14px;padding:10px 14px;border:1px solid var(--line);border-radius:8px;background:var(--sunk)}
+.hwread summary{cursor:pointer}.hwrd,.hwans{font-family:var(--f-read);font-size:16px;overflow-x:auto}
+.card .hwimgs,.hwimgs{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.card .hwimgs img,.fb .hwimgs img{height:120px;width:auto;max-width:100%;margin:0;border:1px solid var(--line);cursor:zoom-in}
+.slips{padding:12px 16px;margin-bottom:12px}
+@media (max-width:640px){.ntitle{font-size:22px}.hwbar button{min-width:32px;padding:5px 6px}.hwbar .dv{display:none}.ph,.phadd{width:calc(50% - 5px)}}
+.ntitle{font:600 26px/1.2 var(--f-read);border:none;background:none;padding:4px 0;margin:2px 0 6px}.ntitle:focus{outline:none;border-bottom:1px solid var(--line2)}
+.nmeta{margin-bottom:12px}.nmeta select{width:auto;max-width:260px;padding:6px 8px}
+.ngh{display:flex;align-items:center;gap:8px;margin:26px 0 10px}.ngh .dot{width:10px;height:10px;border-radius:50%}
+.ngrid{grid-template-columns:repeat(auto-fill,minmax(240px,1fr))}
+.nc{cursor:pointer;overflow:hidden;display:flex;flex-direction:column;padding:0}.nc:hover{border-color:var(--line2);box-shadow:var(--sh)}
+.nth{height:110px;background:var(--sunk);overflow:hidden;border-bottom:1px solid var(--line);position:relative}.nth img{width:100%;height:110px;object-fit:cover;display:block;margin:0;border-radius:0}.nth canvas{display:block}
+.ntx{padding:10px 12px;font:14px/1.45 var(--f-read);color:var(--ink2);white-space:pre-wrap;overflow:hidden;height:110px}
+.nb{padding:10px 12px 12px;display:flex;flex-direction:column;gap:3px}.nsum{font-size:13.5px;color:var(--ink2)}
+.nempty{padding:34px 28px;text-align:center;max-width:620px;margin:30px auto}.nempty p{color:var(--ink2)}
+.nclean .page{margin-top:6px}
 </style>
 </head>
 <body>
@@ -438,13 +487,29 @@ a.btn{display:inline-flex;padding:7px 12px;border-radius:8px;text-decoration:non
 <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2.8v2.4M12 18.8v2.4M2.8 12h2.4M18.8 12h2.4M5.5 5.5l1.7 1.7M16.8 16.8l1.7 1.7M5.5 18.5l1.7-1.7M16.8 7.2l1.7-1.7"/></symbol><symbol id="i-speak" viewBox="0 0 24 24"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M15.5 9a4 4 0 010 6M18 6.5a7.5 7.5 0 010 11"/></symbol>
 <symbol id="i-more" viewBox="0 0 24 24"><circle cx="5.5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="18.5" cy="12" r="1.3"/></symbol>
 <symbol id="i-cap" viewBox="0 0 24 24"><path d="M3 9l9-4 9 4-9 4z"/><path d="M7 11v5c0 1.5 2.5 3 5 3s5-1.5 5-3v-5"/></symbol>
+<symbol id="i-eras" viewBox="0 0 24 24"><path d="M9 20h11"/><path d="M5.6 13.4l7.1-7.1a2 2 0 0 1 2.8 0l3.2 3.2a2 2 0 0 1 0 2.8L12 19H8.4l-2.8-2.8a2 2 0 0 1 0-2.8z"/><path d="M9.5 9.5l5 5"/></symbol>
+<symbol id="i-undo" viewBox="0 0 24 24"><path d="M9 14L4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></symbol>
+<symbol id="i-redo" viewBox="0 0 24 24"><path d="M15 14l5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/></symbol>
+<symbol id="i-line" viewBox="0 0 24 24"><path d="M6 18L18 6"/><circle cx="5" cy="19" r="1.6"/><circle cx="19" cy="5" r="1.6"/></symbol>
+<symbol id="i-cam" viewBox="0 0 24 24"><path d="M3.5 8.5h3.2L8.5 6h7l1.8 2.5h3.2V19h-17z"/><circle cx="12" cy="13" r="3.5"/></symbol>
+<symbol id="i-img" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="M20.5 15.5l-5-5-9 9"/></symbol>
+<symbol id="i-rot" viewBox="0 0 24 24"><path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3"/><path d="M19.5 4v4.5H15"/></symbol>
+<symbol id="i-type" viewBox="0 0 24 24"><rect x="2.5" y="6" width="19" height="12" rx="2"/><path d="M6.5 10h.01M10 10h.01M13.5 10h.01M17 10h.01M8 14h8"/></symbol>
+<symbol id="i-grid" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="1.5"/><path d="M4 9.3h16M4 14.6h16M9.3 4v16M14.6 4v16"/></symbol>
+<symbol id="i-note" viewBox="0 0 24 24"><path d="M6 3.5h8.5l4 4v13H6z"/><path d="M14.5 3.5v4h4"/><path d="M9 12.5h6M9 16h4"/></symbol>
+<symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+<symbol id="i-sheet" viewBox="0 0 24 24"><rect x="4.5" y="3.5" width="15" height="17" rx="1.5"/><path d="M8 8h8M8 11.5h8M8 15h5"/></symbol>
+<symbol id="i-ia" viewBox="0 0 24 24"><path d="M9.5 3.5h5M10.5 3.5v5L5.5 18a1.6 1.6 0 001.4 2.5h10.2a1.6 1.6 0 001.4-2.5l-5-9.5v-5"/><path d="M8 14.5h8"/></symbol>
+<symbol id="i-drill" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r=".8"/></symbol>
+<symbol id="i-friends" viewBox="0 0 24 24"><circle cx="9" cy="8.5" r="3"/><path d="M3.5 19c.6-3 2.8-4.8 5.5-4.8s4.9 1.8 5.5 4.8"/><circle cx="16.5" cy="9.5" r="2.4"/><path d="M15.5 14.4c2.4-.2 4.4 1.3 5 4.1"/></symbol>
+<symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M9.5 7V4.5h5V7M6.5 7l.9 12.5h9.2L17.5 7"/></symbol>
 </svg>
 <div id="login" class="card hide">
   <h2>IB <b>Study</b></h2>
   <form id="lf" class="row" style="flex-direction:column;align-items:stretch;gap:12px"><input id="lp" type="password" placeholder="Site password" autocomplete="current-password"><input id="ln" autocomplete="given-name" maxlength="30" placeholder="First name (optional, to sync)"><button class="pri" style="justify-content:center">Continue</button><div id="le" class="meta" style="color:var(--bad)"></div><div id="known"></div></form>
 </div>
 <div id="app" class="hide">
-<nav id="side"><div class="brand" id="home">IB <b>Study</b></div><div class="nv tabs"><button data-tab="home"><svg class="i"><use href="#i-home"/></svg><span>Home</span></button><div class="grp">Study</div><button data-tab="rev"><svg class="i"><use href="#i-loop"/></svg><span>Review</span></button><button data-tab="lib"><svg class="i"><use href="#i-book"/></svg><span>Library</span></button><div id="pins"></div><button data-tab="prac"><svg class="i"><use href="#i-pen"/></svg><span>Practice</span></button><button data-tab="terms"><svg class="i"><use href="#i-cards"/></svg><span>Flashcards</span></button><button data-tab="ref"><svg class="i"><use href="#i-flask"/></svg><span>Reference</span></button><div class="grp">Organise</div><button data-tab="mine"><svg class="i"><use href="#i-spark"/></svg><span>My sections</span></button><button data-tab="plan"><svg class="i"><use href="#i-cal"/></svg><span>Planner</span></button><button data-tab="prog"><svg class="i"><use href="#i-chart"/></svg><span>Progress</span></button><button data-tab="set"><svg class="i"><use href="#i-gear"/></svg><span>Settings</span></button></div><button class="me" id="me"></button></nav>
+<nav id="side"><div class="brand" id="home">IB <b>Study</b></div><div class="nv tabs"><button data-tab="home"><svg class="i"><use href="#i-home"/></svg><span>Home</span></button><div class="grp">Study</div><button data-tab="rev"><svg class="i"><use href="#i-loop"/></svg><span>Review</span></button><button data-tab="lib"><svg class="i"><use href="#i-book"/></svg><span>Library</span></button><div id="pins"></div><button data-tab="prac"><svg class="i"><use href="#i-pen"/></svg><span>Practice</span></button><button data-tab="drill"><svg class="i"><use href="#i-drill"/></svg><span>Drills</span></button><button data-tab="terms"><svg class="i"><use href="#i-cards"/></svg><span>Flashcards</span></button><button data-tab="ref"><svg class="i"><use href="#i-flask"/></svg><span>Reference</span></button><button data-tab="sheet"><svg class="i"><use href="#i-sheet"/></svg><span>Cheat sheets</span></button><div class="grp">Organise</div><button data-tab="notes"><svg class="i"><use href="#i-note"/></svg><span>Notes</span></button><button data-tab="mine"><svg class="i"><use href="#i-spark"/></svg><span>My sections</span></button><button data-tab="ia"><svg class="i"><use href="#i-ia"/></svg><span>IA coach</span></button><button data-tab="plan"><svg class="i"><use href="#i-cal"/></svg><span>Planner</span></button><button data-tab="prog"><svg class="i"><use href="#i-chart"/></svg><span>Progress</span></button><button data-tab="friends"><svg class="i"><use href="#i-friends"/></svg><span>Friends</span></button><button data-tab="set"><svg class="i"><use href="#i-gear"/></svg><span>Settings</span></button></div><button class="me" id="me"></button></nav>
 <div class="col">
 <header>
   <button id="hHome" class="ghost nb" aria-label="Home" title="Home (g h)"><svg class="i"><use href="#i-home"/></svg></button><button id="hBack" class="ghost nb" aria-label="Back" title="Back (Alt+←)"><svg class="i"><use href="#i-l"/></svg></button>
@@ -543,11 +608,12 @@ async function pullProg() { if (!USER) return; try { const r = await api('sync')
 function mergeIn(r) {
   { if (!r || !r.att) return;
     for (const [k, v] of Object.entries(r.att)) if (!S.prog.att[k]) S.prog.att[k] = v; else { const ids = new Set(S.prog.att[k].map(a => a.t)); for (const a of v) if (!ids.has(a.t)) S.prog.att[k].push(a); }
+    for (const k of Object.keys(r.att)) { const L = S.prog.att[k], reps = new Set(L.map(a => a.rep).filter(Boolean)); if (reps.size) S.prog.att[k] = L.filter(a => !reps.has(a.t)); } // re-marked attempts replace the old ones
     for (const [k, v] of Object.entries(r.terms || {})) if (!S.prog.terms[k] || S.prog.terms[k].t < v.t) S.prog.terms[k] = v;
     if ((r.pt || 0) > (S.prog.pt || 0)) { S.prog.pins = r.pins || []; S.prog.marks = r.marks || []; S.prog.hls = r.hls || []; S.prog.pt = r.pt; }
     const D = S.prog.days = S.prog.days || {}; for (const [d, o] of Object.entries(r.days || {})) { const x = D[d] = D[d] || {}; for (const k of ['m', 'q', 'c', 'p']) x[k] = Math.max(x[k] || 0, o[k] || 0); }
     if ((r.calt || 0) > (S.prog.calt || 0)) { S.prog.cals = r.cals || []; S.prog.calt = r.calt; setTimeout(loadExt, 0); }
-    for (const f of ['decks', 'maps', 'spaces']) { const DK = S.prog[f] = S.prog[f] || {}; for (const [id, d] of Object.entries(r[f] || {})) if (!DK[id] || (DK[id].t || 0) < (d.t || 0)) DK[id] = d; }
+    for (const f of ['decks', 'maps', 'spaces', 'notes']) { const DK = S.prog[f] = S.prog[f] || {}; for (const [id, d] of Object.entries(r[f] || {})) if (!DK[id] || (DK[id].t || 0) < (d.t || 0)) { if (f === 'notes' && DK[id]) { for (const k of Object.keys(DK[id])) if (!(k in d) && k[0] !== '_') delete DK[id][k]; Object.assign(DK[id], d); } else DK[id] = d; } }
     for (const k of ['secs', 'rev', 'recall']) { const L = S.prog[k] = S.prog[k] || {}; for (const [kk, v] of Object.entries(r[k] || {})) if (!L[kk] || (L[kk].t || 0) < (v.t || 0)) L[kk] = v; }
     const PP = S.prog.pp = S.prog.pp || {}; for (const [k, v] of Object.entries(r.pp || {})) { const ts = new Set((PP[k] || []).map(x => x.t)); PP[k] = [...(PP[k] || []), ...v.filter(x => !ts.has(x.t))]; }
     for (const [k, v] of Object.entries(r.lastBy || {})) if (!S.prog.lastBy[k] || S.prog.lastBy[k].t < v.t) S.prog.lastBy[k] = v;
@@ -557,7 +623,7 @@ function mergeIn(r) {
 }
 
 // ---------- shell ----------
-const TABN = {home: 'Home', lib: 'Library', prac: 'Practice', terms: 'Flashcards', rev: 'Review', ref: 'Reference', prog: 'Progress', plan: 'Planner', mine: 'My sections', set: 'Settings', search: 'Search'};
+const TABN = {home: 'Home', lib: 'Library', prac: 'Practice', terms: 'Flashcards', rev: 'Review', ref: 'Reference', prog: 'Progress', plan: 'Planner', mine: 'My sections', notes: 'Notes', set: 'Settings', search: 'Search', drill: 'Drills', sheet: 'Cheat sheets', ia: 'IA coach', friends: 'Friends'};
 // back/forward: each screen writes a hash; same-screen changes (page flips) replace instead of push
 let NAVN = 0; // screens pushed this visit, so Back never leaves the site
 function setHash(h) { if (location.hash === h) return; const seg = x => x.split('/').slice(1, x.startsWith('#/lib/') ? 3 : 2).join('/'), a = seg(location.hash), b = seg(h); if (a !== b) NAVN++; history[a === b ? 'replaceState' : 'pushState'](null, '', h); }
@@ -572,7 +638,7 @@ function shell(t) { // chrome for a screen: nav highlight, contents panel, title
   document.querySelector('.wrap').style.gridTemplateColumns = rd ? '' : 'minmax(0,1fr)'; title([TABN[t]]);
   document.querySelectorAll('#pins [data-b]').forEach(x => x.classList.toggle('on', rd && x.dataset.b === S.book.id));
 }
-function tab(t) { shell(t); ({home: renderHome, lib: () => S.reading ? openPage(S.book.id, S.n) : renderShelf(), prac: () => renderPrac(), terms: () => renderTerms(), ref: () => renderRef(), prog: renderProg, rev: renderReview, plan: () => renderPlan(true), mine: () => renderMine(), set: renderSettings})[t](); }
+function tab(t) { shell(t); ({home: renderHome, lib: () => S.reading ? openPage(S.book.id, S.n) : renderShelf(), prac: () => renderPrac(), terms: () => renderTerms(), ref: () => renderRef(), prog: renderProg, rev: renderReview, plan: () => renderPlan(true), mine: () => renderMine(), notes: () => renderNotes(), set: renderSettings, drill: () => renderDrills(), sheet: () => renderSheets(), ia: () => renderIA(), friends: () => renderFriends()})[t](); }
 function go(t) { if (t === 'lib') S.reading = false; tab(t); }
 function drawPins() { const el = $('#pins'); if (!el || !S.prog) return;
   el.innerHTML = S.prog.pins.map(bookOf).filter(Boolean).map(B => `<button class="sub" data-b="${B.id}"><span class="dot" style="background:${bookC(B)}"></span>${esc(B.subject || B.title)}</button>`).join('');
@@ -683,9 +749,10 @@ async function search(q) {
   $('#main').innerHTML = '<div class="reader"><p><span class="spin"></span> Searching…</p></div>';
   const {hits} = await api('search', {q});
   if (S.tab !== 'search') return;
-  $('#main').innerHTML = `<div class="reader"><h2 style="margin-top:0">${hits.length}${hits.length === 60 ? '+' : ''} pages mention “${esc(q)}”</h2><div class="card hits">${hits.map(h => { const B = bookOf(h.b), s = B && secOf(B, h.n);
+  const ql = q.trim().toLowerCase(), nh = notesAll().filter(n => [noteTitle(n), n.summary, n.text, n.read, (n.tags || []).join(' ')].join(' ').toLowerCase().includes(ql)).slice(0, 12);
+  $('#main').innerHTML = `<div class="reader">${nh.length ? `<h2 style="margin-top:0">${nh.length} of your notes</h2><div class="card hits" style="margin-bottom:22px">${nh.map(n => `<div class="h" data-nt="${n.id}"><div class="row"><b>${esc(noteTitle(n))}</b><span class="meta">${esc(bookOf(n.book) ? bookOf(n.book).subject : 'Unsorted')}</span></div>${n.summary ? `<div class="meta">${esc(n.summary)}</div>` : ''}</div>`).join('')}</div>` : ''}<h2 style="margin-top:0">${hits.length}${hits.length === 60 ? '+' : ''} pages mention “${esc(q)}”</h2><div class="card hits">${hits.map(h => { const B = bookOf(h.b), s = B && secOf(B, h.n);
     return `<div class="h" data-b="${h.b}" data-n="${h.n}"><div class="row"><b>p. ${esc(h.bp)}</b><span class="meta">${s ? esc((s.num ? s.num + ' ' : '') + s.title) : ''}</span></div><div class="meta">…${esc(h.s).replace(new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'), m => '<mark>' + m + '</mark>')}…</div></div>`; }).join('') || '<p style="padding:14px">Nothing found.</p>'}</div></div>`;
-  document.querySelectorAll('.hits .h').forEach(h => h.onclick = () => { S.view = 'text'; openPage(h.dataset.b, +h.dataset.n, q); });
+  document.querySelectorAll('.hits .h').forEach(h => h.onclick = () => { if (h.dataset.nt) return openNote(h.dataset.nt); S.view = 'text'; openPage(h.dataset.b, +h.dataset.n, q); });
 }
 
 // ---------- Claude chat drawer ----------
@@ -710,10 +777,11 @@ function where() {
     return {label: `${B.subject} p. ${bp}${sec ? ' · ' + (sec.num ? sec.num + ' ' : '') + sec.title : ''}`, book: B.id, n: S.n, note: `[Location: reading the ${B.subject} textbook, p. ${bp}${sec ? ', section ' + (sec.num ? sec.num + ' ' : '') + sec.title : ''}]`}; }
   if (S.tab === 'prac' && S.q) { const q = S.q, ta = $('#ans'), d = ta ? ta.value.trim() : '';
     return {label: 'the question you have open', book: q.book, note: `[Location: Practice, answering a ${bookOf(q.book).subject} ${KIND[q.kind] || q.kind} question${q.topic ? ' on ' + q.topic : ''}${d ? ', draft started' : ''}]`,
-      screen: `Question (${KIND[q.kind] || q.kind}${q.marks ? ', ' + q.marks + ' marks' : ''}, textbook p. ${q.bp || '?'}):\n${q.text}${q.ctx ? '\nContext: ' + q.ctx : ''}\n\nStudent's draft:\n${d || '(empty)'}`}; }
+      screen: `Question (${KIND[q.kind] || q.kind}${q.marks ? ', ' + q.marks + ' marks' : ''}, textbook p. ${q.bp || '?'}):\n${q.text}${q.ctx ? '\nContext: ' + q.ctx : ''}\n\nStudent's draft:\n${d || '(empty)'}${S.qBox && S.qBox.el.isConnected && S.qBox.hasImages ? '\n(They also have handwritten working on screen, which you cannot see. Ask them to type the step they are stuck on if you need it.)' : ''}`}; }
+  if (S.tab === 'notes' && S.note) { const n = S.note; return {label: 'your note “' + noteTitle(n) + '”', book: n.book || (B && B.id), note: `[Location: Notes, editing their note "${noteTitle(n)}"]`, screen: `Their note "${noteTitle(n)}":\n${[n.text, n.read && '[Handwritten part, as read]\n' + n.read].filter(Boolean).join('\n\n').slice(0, 12000) || '(handwriting not transcribed yet)'}`}; }
   if (S.tab === 'terms' && S.term) return {label: 'flashcard “' + S.term.k + '”', book: B.id, note: `[Location: Key terms flashcards (${B.subject}), card "${S.term.k}"]`, screen: `${S.term.k}: ${S.term.d}`};
   if (S.tab === 'prog' && B) return {label: 'your progress', book: B.id, note: `[Location: Progress page (${B.subject})]`, screen: progSummary(B)};
-  const n = {ref: 'Reference (' + (B && B.math ? 'formula sheet' : 'case studies') + ')', home: 'Home page', lib: 'Library (book list)', prac: S.rc ? 'Free recall (help with understanding only; do not give away the answers while they are recalling)' : 'Practice question list', terms: 'Flashcards', rev: 'Review page', plan: 'Planner', search: 'search results'}[S.tab];
+  const n = {notes: 'Notes (their notebook)', ref: 'Reference (' + (B && B.math ? 'formula sheet' : 'case studies') + ')', home: 'Home page', lib: 'Library (book list)', prac: S.rc ? 'Free recall (help with understanding only; do not give away the answers while they are recalling)' : 'Practice question list', terms: 'Flashcards', rev: 'Review page', plan: 'Planner', search: 'search results'}[S.tab];
   return n && B ? {label: n, book: B.id, note: `[Location: ${n}${S.tab === 'prac' || S.tab === 'terms' ? ' (' + B.subject + ')' : ''}]`} : null;
 }
 function progSummary(B) {
@@ -787,7 +855,7 @@ function renderPrac(filter) {
   const vwire = () => document.querySelectorAll('.vseg [data-v]').forEach(x => x.onclick = () => { F.view = x.dataset.v; renderPrac(F); });
   if (V !== 'qs') {
     $('#main').innerHTML = `<div class="prac" style="max-width:1100px"><div class="row"><h2 style="margin:0">Practice</h2>${bookBar(B.id)}</div><div style="margin-top:12px">${vseg}</div>
-      ${V === 'papers' ? '<div id="ppl"><span class="spin"></span></div>' : V === 'rev' ? reviewList(B) : V === 'recall' ? recallList(B) : mk.length ? `<div class="card lst mlog">${mk.map(m => `<div data-id="${m.q.id}"><div class="row"><b class="num" style="color:var(--red)">${m.l.score}/${m.l.max}</b><span class="tag">${KIND[m.q.kind] || m.q.kind}</span><span class="meta">${esc(m.q.topic ? topicName(B, m.q.topic) : '')}</span><span class="sp"></span>${m.ready ? '<span class="tag r">Retry now</span>' : `<span class="meta">retry ${fmtD(ymd(new Date(m.due)), {weekday: 'short'})}</span>`}</div>
+      ${V === 'papers' ? '<div id="ppl"><span class="spin"></span></div>' : V === 'rev' ? reviewList(B) : V === 'recall' ? recallList(B) : mk.length ? `${slipSummary(mk)}<div class="card lst mlog">${mk.map(m => `<div data-id="${m.q.id}"><div class="row"><b class="num" style="color:var(--red)">${m.l.score}/${m.l.max}</b><span class="tag">${KIND[m.q.kind] || m.q.kind}</span>${m.l.fb && m.l.fb.slip && m.l.fb.slip !== 'none' ? `<span class="tag r">${esc(m.l.fb.slip)}</span>` : ''}${m.l.hw ? '<span class="tag">handwritten</span>' : ''}<span class="meta">${esc(m.q.topic ? topicName(B, m.q.topic) : '')}</span><span class="sp"></span>${m.ready ? '<span class="tag r">Retry now</span>' : `<span class="meta">retry ${fmtD(ymd(new Date(m.due)), {weekday: 'short'})}</span>`}</div>
         <div style="font-family:var(--f-read);margin:4px 0">${(MATH = !!B.math, mdx(preview(m.q.text), true))}</div>${m.l.fb && m.l.fb.missed && m.l.fb.missed.length ? `<ul class="meta" style="margin:4px 0;padding-left:18px">${m.l.fb.missed.slice(0, 2).map(x => '<li>' + mdx(String(x), true) + '</li>').join('')}</ul>` : ''}</div>`).join('')}</div>`
       : '<div class="card" style="padding:28px;text-align:center"><b>No mistakes to retry</b><div class="meta">Anything you score under 70% on lands here and comes back after 2 days.</div></div>'}</div>`;
     vwire(); onBookBar(() => renderPrac()); document.querySelectorAll('.mlog [data-id]').forEach(el => el.onclick = () => openQ(el.dataset.id)); document.querySelectorAll('.rvl [data-rk]').forEach(el => el.onclick = () => runReview(el.dataset.rk)); document.querySelectorAll('[data-rc]').forEach(el => el.onclick = () => renderRecall(B.id, +el.dataset.rc));
@@ -819,45 +887,356 @@ function openQ(id) {
   shell('prac'); S.q = q; S.rc = null; setHash('#/q/' + id); title([['Practice', 'prac'], (KIND[q.kind] || q.kind) + (q.topic ? ' · ' + q.topic : '')]);
   $('#main').innerHTML = `<div class="prac">${sessBar('q', id)}<div class="row" style="margin-bottom:10px"><button id="back"><svg class="i"><use href="#i-l"/></svg>All questions</button><span class="sp" style="flex:1"></span><button id="qSend" title="Send this question to a friend">Send</button>${q.n ? `<button id="src">Open in textbook (p. ${esc(q.bp)})</button>` : ''}</div>
     <div class="card qbig"><div style="font-family:var(--f-ui);margin-bottom:10px"><span class="tag">${KIND[q.kind] || q.kind}</span>${qTags(q)}${q.marks ? '<span class="tag">' + q.marks + (q.marks === 1 ? ' mark' : ' marks') + '</span>' : ''}${q.calc === 'no' ? '<span class="tag w">No calculator</span>' : q.calc === 'yes' ? '<span class="tag">Calculator</span>' : ''}<span class="meta">${esc(q.set ? q.set + ' · ' : '')}${esc(q.topic ? topicName(B, q.topic) : '')}</span></div>${ctxBox(q.ctx)}${mdx(optLines(q.text))}${ctxLine(q.ctx)}</div>
-    <div style="margin-top:14px"><textarea id="ans" rows="${q.kind === 'essay' ? 18 : 8}" placeholder="Answer">${esc(draft)}</textarea>
+    <div style="margin-top:14px"><div id="ansBox"></div>
     <div class="row" style="margin-top:8px"><span class="meta" id="wc"></span><span class="meta" id="tm"></span><span style="flex:1"></span><button id="hint">Hint</button><button class="pri" id="mark">Mark with Claude</button></div></div>
     <div id="fbx"></div>${q.ms ? `<details class="card" style="padding:12px 16px;margin-top:14px"><summary><b>${q.src === 'gen' ? 'Markscheme' : 'Official answer'}</b> <span class="meta">(try it first)</span></summary><div style="margin-top:8px">${mdx(optLines(q.ms))}</div></details>` : ''}
-    ${prev.length ? `<h3 style="margin-top:28px">Past attempts</h3>${prev.slice().reverse().map((a, i) => `<details class="card" style="padding:10px 14px;margin-bottom:8px"><summary><b>${a.score}/${a.max}</b> <span class="meta">${new Date(a.t).toLocaleString()}</span></summary><div class="fb" style="padding:6px 0 0">${fbHtml(a.fb)}<h4>Your answer</h4><div class="meta" style="white-space:pre-wrap">${esc(a.ans)}</div></div></details>`).join('')}` : ''}</div>`;
-  const ta = $('#ans'), t0 = Date.now();
-  const wc = () => { const n = (ta.value.match(/\S+/g) || []).length; $('#wc').textContent = n + ' words'; LS.set(LSK('ib-d-' + id), ta.value); }; ta.oninput = wc; wc();
-  const tick = setInterval(() => { if (!document.body.contains(ta)) return clearInterval(tick); const s = (Date.now() - t0) / 1000 | 0; $('#tm').textContent = '· ' + (s / 60 | 0) + ':' + String(s % 60).padStart(2, '0'); }, 1000);
+    ${prev.length ? `<h3 style="margin-top:28px">Past attempts</h3>${prev.slice().reverse().map((a, i) => `<details class="card" style="padding:10px 14px;margin-bottom:8px"><summary><b>${a.score}/${a.max}</b> <span class="meta">${new Date(a.t).toLocaleString()}</span></summary><div class="fb" style="padding:6px 0 0">${fbHtml(a.fb)}<h4>Your answer</h4>${ansHtml(a)}${hwAttHtml(id, a)}</div></details>`).join('')}` : ''}</div>`;
+  const t0 = Date.now(), hwM = stepped(q);
+  const wc = () => { const n = box.words(); $('#wc').textContent = box.mode === 'type' || n ? n + ' words' : ''; };
+  const box = S.qBox = hwBox($('#ansBox'), {id: 'ans', key: 'q:' + id, text: draft, rows: q.kind === 'essay' ? 18 : 8, math: hwM, onText: v => LS.set(LSK('ib-d-' + id), v), onChange: () => wc(),
+    placeholder: q.kind === 'mcq' ? 'Your answer (the letter, and why if you like)' : 'Answer'}); wc();
+  hwThumbs($('#main'));
+  const tick = setInterval(() => { if (!document.body.contains(box.el)) return clearInterval(tick); const s = (Date.now() - t0) / 1000 | 0; $('#tm').textContent = '· ' + (s / 60 | 0) + ':' + String(s % 60).padStart(2, '0'); }, 1000);
   $('#qSend').onclick = () => shareBox({kind: 'q', title: `${bookOf(q.book).subject} · ${KIND[q.kind] || q.kind}${q.marks ? ' · ' + q.marks + ' marks' : ''}`, data: {id: q.id}});
   $('#back').onclick = () => { if (q.pp) S.pf = {...(S.pf || {}), view: 'papers'}; renderPrac(); }; if ($('#src')) $('#src').onclick = () => openPage(B.id, q.n);
   $('#hint').onclick = () => openChat({title: 'Hint', book: q.book, pages: q.pages, intro: `Question (${KIND[q.kind]}${q.marks ? ', ' + q.marks + ' marks' : ''}): "${q.text}"\nGive me a hint to get started WITHOUT writing the answer for me: what the command term wants, 2-3 angles or concepts to consider, and which examples or textbook pages could help. `, msgs: []}) || sendChat('Give me a hint.');
-  $('#mark').onclick = async () => {
-    const ans = ta.value.trim(); if ((ans.match(/\S+/g) || []).length < 8) { return; }
-    $('#mark').disabled = true; $('#fbx').innerHTML = '<div class="card fb"><span class="spin"></span> Marking…</div>';
-    const user = `Question (${KIND[q.kind] || q.kind}${q.marks ? ', ' + q.marks + ' marks' : ''}): ${q.text}${q.ctx ? '\nContext: ' + q.ctx : ''}\n\nStudent answer:\n"""\n${ans}\n"""`;
+  let lastAtt = null;
+  const mark = async (fixed) => {
+    const ans = box.text().trim(), nw = (ans.match(/\S+/g) || []).length, isMcq = q.kind === 'mcq' && /^\s*\(?[A-Ea-e]\b/.test(ans);
+    if (!box.hasImages && nw < 8 && !isMcq) { $('#fbx').innerHTML = `<div class="card fb meta">Write a bit more first (at least 8 words)${hwM ? ', or show your working in Write or Photo' : ''}.</div>`; return; }
+    $('#mark').disabled = true; $('#fbx').innerHTML = `<div class="card fb"><span class="spin"></span> ${box.hasImages ? 'Reading your handwriting and marking…' : 'Marking…'}</div>`;
+    await box.flush(); const imgs = box.images();
+    const user = `Question (${KIND[q.kind] || q.kind}${q.marks ? ', ' + q.marks + ' marks' : ''}): ${q.text}${q.ctx ? '\nContext: ' + q.ctx : ''}\n\n` + (imgs.length ? (ans ? `Typed part of the student's answer:\n"""\n${ans}\n"""\n\n` : '') + `The student's handwritten working is in the ${imgs.length} attached image${imgs.length > 1 ? 's' : ''}.` : `Student answer:\n"""\n${ans}\n"""`)
+      + (fixed ? `\n\nThe student checked your reading of their handwriting and corrected it. Treat this as exactly what they wrote (use the images only for diagrams and layout):\n"""\n${fixed}\n"""` : '');
     try {
-      const r = await api('ask', {mode: 'mark', rubric: rubricFor(q) + (q.ms ? '\n\nOfficial markscheme (follow it):\n' + q.ms : '') + MARK_FMT, book: q.book, pages: q.pages, messages: [{role: 'user', content: user}]});
-      let fb; try { fb = JSON.parse(r.text.replace(/^```(json)?|```$/g, '').trim()); } catch (e) { fb = {score: 0, max: qMax(q), verdict: '', raw: r.text}; }
+      const fb = await markWork({rubric: rubricFor(q) + (q.ms ? '\n\nOfficial markscheme (follow it):\n' + q.ms : '') + MARK_FMT + (hwM ? STEP_FMT : ''), text: user, imgs, book: q.book, pages: q.pages, fixed});
       fb.max = fb.max || qMax(q);
-      const att = {t: Date.now(), score: +fb.score || 0, max: fb.max, ans, fb, secs: (Date.now() - t0) / 1000 | 0};
-      (S.prog.att[id] = S.prog.att[id] || []).push(att); act('q'); sessMark('q', id, att.max ? att.score / att.max : 0);
-      $('#fbx').innerHTML = `<div class="card fb">${fbHtml(fb)}<div class="row" style="margin-top:14px"><button class="${sessCur('q', id) ? '' : 'pri'}" id="disc">Ask Claude about this feedback</button><button id="again">Try again</button>${sessCur('q', id) ? '<span class="sp"></span><button class="pri" data-sx="next">Next →</button>' : ''}</div></div>`;
-      $('#disc').onclick = () => openChat({title: 'Feedback discussion', book: q.book, pages: q.pages, fixed: true, msgs: [{role: 'user', content: user, show: 'My answer to: ' + q.text}, {role: 'assistant', content: fbMd(fb)}]});
-      $('#again').onclick = () => { ta.focus(); window.scrollTo({top: 0, behavior: 'smooth'}); };
+      const att = {t: Date.now(), score: Math.max(0, +fb.score || 0), max: fb.max, ans: imgs.length ? hwAns(ans, fb) : ans, fb, secs: (Date.now() - t0) / 1000 | 0};
+      if (imgs.length) { att.hw = imgs.length; IDB.set(hwKey('att:' + id + ':' + att.t), imgs); }
+      const L = S.prog.att[id] = S.prog.att[id] || [];
+      const rep = fixed && lastAtt && L[L.length - 1] === lastAtt; if (rep) { L.pop(); IDB.del(hwKey('att:' + id + ':' + lastAtt.t)); att.rep = lastAtt.t; } // a corrected reading replaces the misread attempt
+      L.push(att); lastAtt = att; if (!rep) act('q'); sessMark('q', id, att.max ? att.score / att.max : 0);
+      const chatUser = user + (fb.read && !fixed ? '\n\nHandwritten working, as read by Claude:\n' + fb.read : '');
+      $('#fbx').innerHTML = `<div class="card fb">${fbHtml(fb, {fix: imgs.length > 0})}<div class="row" style="margin-top:14px"><button class="${sessCur('q', id) ? '' : 'pri'}" id="disc">Ask Claude about this feedback</button><button id="again">Try again</button>${sessCur('q', id) ? '<span class="sp"></span><button class="pri" data-sx="next">Next →</button>' : ''}</div></div>`;
+      $('#disc').onclick = () => openChat({title: 'Feedback discussion', book: q.book, pages: q.pages, fixed: true, msgs: [{role: 'user', content: chatUser, show: 'My answer to: ' + q.text}, {role: 'assistant', content: fbMd(fb)}]});
+      $('#again').onclick = () => { window.scrollTo({top: 0, behavior: 'smooth'}); box.focus(); };
+      const fx = $('#fbx [data-fixread]'); if (fx) fx.onclick = () => {
+        const m = openModal(`<h3 style="margin-top:0">Fix Claude's reading</h3><p class="meta">Correct anything Claude misread, then re-mark. Maths can be written like $\\frac{dy}{dx} = 3x^2$ or in plain words.</p><textarea id="frT" rows="12" style="font:14px/1.5 ui-monospace,Menlo,monospace">${esc(fb.read)}</textarea><div class="row" style="margin-top:10px"><span class="sp"></span><button id="mClose">Cancel</button><button class="pri" id="frGo">Re-mark</button></div>`);
+        $('#frGo').onclick = () => { const v = $('#frT').value.trim(); m.remove(); if (v) mark(v); };
+      };
       $('#fbx').scrollIntoView({behavior: 'smooth'});
     } catch (e) { $('#fbx').innerHTML = `<div class="card fb">Marking failed: ${esc(e.message)}</div>`; }
     $('#mark').disabled = false;
   };
+  $('#mark').onclick = () => mark();
 }
 const li = a => (a || []).map(x => '<li>' + mdx(String(x), true) + '</li>').join('');
-function fbHtml(fb) {
+function fbHtml(fb, o = {}) {
   if (!fb) return '';
   if (fb.raw) return mdx(fb.raw);
-  const pc = fb.max ? fb.score / fb.max : 0;
-  return `<div class="row" style="gap:16px"><div class="score" style="color:${pc < .4 ? 'var(--bad)' : pc < .7 ? 'var(--warn)' : 'var(--good)'}">${fb.score}/${fb.max}</div><div>${fb.band ? '<span class="tag">band ' + esc(fb.band) + '</span>' : ''}<div>${esc(fb.verdict)}</div></div></div>
+  const pc = fb.max ? fb.score / fb.max : 0, mks = Array.isArray(fb.marks) ? fb.marks.filter(m => m && (m.code || m.why)) : [], ill = Array.isArray(fb.illegible) ? fb.illegible.filter(Boolean) : [];
+  return `<div class="row" style="gap:16px"><div class="score" style="color:${pc < .4 ? 'var(--bad)' : pc < .7 ? 'var(--warn)' : 'var(--good)'}">${fb.score}/${fb.max}</div><div>${fb.band ? '<span class="tag">band ' + esc(fb.band) + '</span>' : ''}${fb.slip && fb.slip !== 'none' ? '<span class="tag r">' + esc(fb.slip) + '</span>' : ''}<div>${esc(fb.verdict)}</div></div></div>
+    ${mks.length ? '<h4>Marks</h4><div class="mks">' + mks.map(m => `<span class="mk ${m.ok ? 'ok' : 'no'}">${esc(String(m.code || '').slice(0, 12))} ${m.ok ? '✓' : '✗'}</span><div>${mdm(String(m.why || ''), true)}${m.at ? `<span class="at">${mdm(String(m.at), true)}</span>` : ''}</div>`).join('') + '</div>' : ''}
+    ${fb.wrong ? '<h4>Where it went wrong</h4><div class="wrong">' + mdm(String(fb.wrong)) + '</div>' : ''}
     ${fb.good && fb.good.length ? '<h4>What earned marks</h4><ul>' + li(fb.good) + '</ul>' : ''}${fb.missed && fb.missed.length ? '<h4>What you missed</h4><ul>' + li(fb.missed) + '</ul>' : ''}
     ${fb.fix && fb.fix.length ? '<h4>How to lift it</h4><ul>' + li(fb.fix) + '</ul>' : ''}${fb.terms && fb.terms.length ? '<h4>Key terms to use</h4><div>' + fb.terms.map(t => '<span class="tag">' + esc(t) + '</span>').join(' ') + '</div>' : ''}
-    ${fb.plan ? '<details style="margin-top:12px"><summary><b>Model answer outline</b></summary>' + mdx(fb.plan) + '</details>' : ''}`;
+    ${fb.plan ? '<details style="margin-top:12px"><summary><b>Model answer outline</b></summary>' + mdx(fb.plan) + '</details>' : ''}
+    ${fb.read ? `<details class="hwread"${o.open ? ' open' : ''}><summary><b>How Claude read your handwriting</b> <span class="meta">check it got it right</span></summary><div class="hwrd">${mdm(String(fb.read))}</div>${ill.length ? `<p class="meta" style="color:var(--warn)">Couldn't read: ${ill.map(x => esc(String(x))).join('; ')}</p>` : ''}${o.fix ? '<button data-fixread style="margin-top:6px">Fix the reading and re-mark</button>' : ''}</details>` : ''}`;
 }
-const fbMd = fb => fb.raw || `Score ${fb.score}/${fb.max}${fb.band ? ' (band ' + fb.band + ')' : ''}. ${fb.verdict}\n\nEarned marks:\n${(fb.good || []).map(x => '- ' + x).join('\n')}\n\nMissed:\n${(fb.missed || []).map(x => '- ' + x).join('\n')}\n\nTo improve:\n${(fb.fix || []).map(x => '- ' + x).join('\n')}\n\nOutline:\n${fb.plan || ''}`;
+const fbMd = fb => fb.raw || `Score ${fb.score}/${fb.max}${fb.band ? ' (band ' + fb.band + ')' : ''}. ${fb.verdict}\n\nEarned marks:\n${(fb.good || []).map(x => '- ' + x).join('\n')}\n\nMissed:\n${(fb.missed || []).map(x => '- ' + x).join('\n')}\n\nTo improve:\n${(fb.fix || []).map(x => '- ' + x).join('\n')}\n\nOutline:\n${fb.plan || ''}${Array.isArray(fb.marks) && fb.marks.length ? '\n\nMarks:\n' + fb.marks.map(m => `- ${m.code || ''} ${m.ok ? 'awarded' : 'not awarded'}: ${m.why || ''}`).join('\n') : ''}${fb.wrong ? '\n\nFirst wrong line: ' + fb.wrong : ''}${fb.read ? '\n\nHow I read the handwritten working:\n' + fb.read : ''}`;
+
+// ---------- handwritten answers: ink pad (stylus / finger / mouse), photos of written work, marking from images ----------
+// Images never go into synced progress (too big): drafts and attempt images live in this browser's IndexedDB,
+// and each attempt keeps Claude's transcription of the handwriting as its text answer (so sync, history, mistakes and chat keep working).
+const IDB = (() => { let p;
+  const db = () => p = p || new Promise((res, rej) => { const r = indexedDB.open('ib-hw', 1); r.onupgradeneeded = () => r.result.createObjectStore('kv'); r.onsuccess = () => res(r.result); r.onerror = () => { p = null; rej(r.error); }; });
+  const tx = (m, f) => db().then(d => new Promise((res, rej) => { const t = d.transaction('kv', m), q = f(t.objectStore('kv')); t.oncomplete = () => res(q && q.result); t.onerror = t.onabort = () => rej(t.error); }));
+  return {get: k => tx('readonly', s => s.get(k)).catch(() => undefined), set: (k, v) => tx('readwrite', s => s.put(v, k)).catch(() => {}), del: k => tx('readwrite', s => s.delete(k)).catch(() => {}),
+    keys: pre => tx('readonly', s => s.getAllKeys()).then(ks => (ks || []).filter(k => String(k).startsWith(pre))).catch(() => []),
+    delPre: pre => IDB.keys(pre).then(ks => Promise.all(ks.map(k => IDB.del(k))))};
+})();
+const hwKey = k => 'hw:' + (UK() || 'guest') + ':' + k;
+const HW_MAXPH = 8, HW_MAXPAGES = 30, HW_MAXIMG = 30, HW_PX = 1568; // Claude reads images up to ~1568px on the long edge; bigger is just downscaled
+const STEPKINDS = /^(exercise|challenge|structured|mtest|mreview|mexam|mex)$/;
+const stepped = q => q.kind !== 'mcq' && (STEPKINDS.test(q.kind) || !!(bookOf(q.book) || {}).math); // maths & sciences: method marks, ECF
+const SLIPS = ['algebra', 'arithmetic', 'sign', 'units', 'sig figs', 'notation', 'method', 'concept', 'misread question', 'incomplete'];
+const STEP_FMT = `\nAlso add these fields to the JSON: "marks": [{"code": "M1, A1, R1, B1, FT or AG", "ok": true or false, "why": "short reason it was or wasn't earned", "at": "the student's line it refers to, quoted (empty if none)"}] listing every markscheme mark in order, awarded or not; "wrong": "the first line of the student's working that is wrong, quoted exactly (empty if none)"; "slip": the main reason marks were lost, exactly one of "none", ${SLIPS.map(s => '"' + s + '"').join(', ')}.`;
+const HW_FMT = `\n\nThe student's answer is HANDWRITTEN: it is in the attached image(s) (pages written with a stylus or finger on screen, and/or photos of paper), plus any typed text. Read it the way an examiner reads a script: top to bottom, including crossings-out (ignore crossed-out work unless nothing replaces it), arrows, diagrams, graphs and sketches (mark those too). Read maths as LaTeX. Give the benefit of the doubt for ordinary messy handwriting; if a part is genuinely illegible, list it in "illegible" and do not award marks that depend on it. Also add these fields to the JSON: "read": "your transcription of the student's working, line by line, as markdown with LaTeX in $...$ (describe any diagram or sketch in [square brackets])"; "illegible": ["parts you could not read"]. If you cannot see any image at all, set "read" to "".`;
+const HW_NONE = "Claude couldn't see your handwriting, so nothing was saved. The photo may be unreadable, or the app's relay may not support images yet.";
+const ASSIGN_SYS = `You are sorting a student's handwritten exam script. You get the paper's question list and photos of the pages the student wrote on, in order (Page 1, Page 2, ...). Work out which page(s) hold the answer to each question: an answer can run over several pages and a page can hold several answers. Use the question numbers the student wrote, and the content when numbers are missing or unclear. Reply with ONLY a JSON object, no code fence: {"pages": {"<question number exactly as listed>": [page numbers]}, "unreadable": [page numbers you could not read at all]}. Leave out questions you cannot find.`;
+const b64 = u => u.slice(u.indexOf(',') + 1), mtOf = u => u.slice(5, u.indexOf(';'));
+// user message for Claude: text, then each image labelled so it can be referred to
+function askContent(text, imgs, label = 'Image') {
+  if (!imgs || !imgs.length) return text;
+  const out = [{type: 'text', text}];
+  imgs.forEach((u, i) => out.push({type: 'text', text: `${label} ${i + 1} of ${imgs.length}:`}, {type: 'image', source: {type: 'base64', media_type: mtOf(u), data: b64(u)}}));
+  return out;
+}
+// one marking call; with images it insists on a transcription so a relay that drops images can't record a bogus 0
+async function markWork({rubric, text, imgs = [], book, pages = [], fixed}) {
+  if (imgs.length > HW_MAXIMG) throw new Error(`That's ${imgs.length} images; Claude can read up to ${HW_MAXIMG} at once. Remove some photos or clear unused writing.`);
+  const r = await api('ask', {mode: 'mark', rubric: rubric + (imgs.length ? HW_FMT : ''), book, pages, hw: imgs.length, messages: [{role: 'user', content: askContent(text, imgs)}]});
+  let fb; try { fb = pj(r.text); } catch (e) { if (imgs.length) throw new Error('Claude replied in an unexpected format. Try again.'); return {score: 0, max: 0, verdict: '', raw: r.text}; }
+  if (fixed) fb.read = fixed; // the student's corrected reading is what they wrote
+  else if (imgs.length && !String(fb.read || '').trim()) throw new Error(HW_NONE);
+  return fb;
+}
+// what an attempt stores as its answer: typed text plus Claude's reading of the handwriting
+const hwAns = (typed, fb) => [typed, fb && fb.read ? '[Handwritten, as read by Claude]\n' + fb.read : ''].filter(Boolean).join('\n\n');
+
+// ----- images -----
+const loadImg = src => new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => rej(new Error('Could not open that image. Try a JPG or PNG.')); i.src = src; });
+async function hwPhoto(file) { // any image file -> JPEG data URL, long edge <= HW_PX, upright
+  let img; try { img = await createImageBitmap(file, {imageOrientation: 'from-image'}); } catch (e) { const u = URL.createObjectURL(file); try { img = await loadImg(u); } finally { setTimeout(() => URL.revokeObjectURL(u), 5000); } }
+  const w = img.width, h = img.height, k = Math.min(1, HW_PX / Math.max(w, h)), c = document.createElement('canvas'); c.width = Math.max(1, Math.round(w * k)); c.height = Math.max(1, Math.round(h * k));
+  const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height); x.drawImage(img, 0, 0, c.width, c.height); if (img.close) img.close();
+  return c.toDataURL('image/jpeg', .85);
+}
+async function hwRotate(u) { const i = await loadImg(u), c = document.createElement('canvas'); c.width = i.height; c.height = i.width; const x = c.getContext('2d'); x.translate(c.width, 0); x.rotate(Math.PI / 2); x.drawImage(i, 0, 0); return c.toDataURL('image/jpeg', .85); }
+function hwView(list, i) { // full-size viewer
+  const m = openModal(`<div class="row" style="margin-bottom:8px"><b>${list.length > 1 ? `Image ${i + 1} of ${list.length}` : 'Image'}</b><span class="sp"></span>${list.length > 1 ? '<button id="hvP">←</button><button id="hvN">→</button>' : ''}<button id="mClose" class="ghost"><svg class="i"><use href="#i-x"/></svg></button></div><img src="${list[i]}" alt="" style="max-width:100%;max-height:75vh;display:block;margin:0 auto;border-radius:6px;background:#fff">`);
+  m.querySelector('.mbox').style.maxWidth = 'min(1000px,100%)';
+  if (list.length > 1) { $('#hvP').onclick = () => hwView(list, (i + list.length - 1) % list.length); $('#hvN').onclick = () => hwView(list, (i + 1) % list.length); }
+}
+
+// ----- ink: strokes in a 1000-unit-wide space so they rescale with the screen -----
+const INK_W = 1000, INK_SZ = [1.3, 2.1, 3.6], INK_C = ['ink', 'blue', 'red'];
+const INK_EXPORT = {ink: '#16191f', blue: '#1f4fc2', red: '#c0301a'};
+const inkCols = () => { const cs = getComputedStyle(document.documentElement), d = isDark(); return {ink: cs.getPropertyValue('--ink').trim() || (d ? '#ebe7dd' : '#1c2230'), blue: d ? '#8fb0ff' : '#1f4fc2', red: cs.getPropertyValue('--red').trim() || '#b8321b'}; };
+const penOnly = () => { const m = SETG().hwPen; return m === 'pen' || (!m && !!LS.get('ib-pen', 0)); };
+// smooth variable-width strokes: quadratic curves through midpoints; piece j is final once point j exists
+function inkPiece(x, s, j, k) {
+  const p = s.p, W = i => Math.max(.6, s.w * k * (s.pr ? .35 + p[i * 3 + 2] * 1.3 : 1)), mx = (a, b) => (p[a * 3] + p[b * 3]) / 2, my = (a, b) => (p[a * 3 + 1] + p[b * 3 + 1]) / 2;
+  x.beginPath();
+  if (j === 1) { x.moveTo(p[0] * k, p[1] * k); x.lineTo(mx(0, 1) * k, my(0, 1) * k); x.lineWidth = W(0); }
+  else { x.moveTo(mx(j - 2, j - 1) * k, my(j - 2, j - 1) * k); x.quadraticCurveTo(p[(j - 1) * 3] * k, p[(j - 1) * 3 + 1] * k, mx(j - 1, j) * k, my(j - 1, j) * k); x.lineWidth = W(j - 1); }
+  x.stroke();
+}
+function inkTail(x, s, k) { const p = s.p, n = p.length / 3; if (n < 2) return; x.beginPath(); x.moveTo((p[(n - 2) * 3] + p[(n - 1) * 3]) / 2 * k, (p[(n - 2) * 3 + 1] + p[(n - 1) * 3 + 1]) / 2 * k); x.lineTo(p[(n - 1) * 3] * k, p[(n - 1) * 3 + 1] * k); x.lineWidth = Math.max(.6, s.w * k * (s.pr ? .35 + p[(n - 1) * 3 + 2] * 1.3 : 1)); x.stroke(); }
+function inkStroke(x, s, k, cols) {
+  const p = s.p, n = p.length / 3; if (!n) return; x.strokeStyle = x.fillStyle = cols[s.c] || cols.ink; x.lineCap = x.lineJoin = 'round';
+  if (s.l) { x.beginPath(); x.moveTo(p[0] * k, p[1] * k); x.lineTo(p[(n - 1) * 3] * k, p[(n - 1) * 3 + 1] * k); x.lineWidth = Math.max(.6, s.w * k); x.stroke(); return; }
+  if (n === 1) { x.beginPath(); x.arc(p[0] * k, p[1] * k, Math.max(.6, s.w * k * (s.pr ? .35 + p[2] * 1.3 : 1)) / 2, 0, 7); x.fill(); return; }
+  for (let j = 1; j < n; j++) inkPiece(x, s, j, k); inkTail(x, s, k);
+}
+const inkBox = st => { let a = Infinity, b = Infinity, c = -Infinity, d = -Infinity; for (const s of st.strokes) for (let i = 0; i < s.p.length; i += 3) { const r = s.w * 1.6; a = Math.min(a, s.p[i] - r); b = Math.min(b, s.p[i + 1] - r); c = Math.max(c, s.p[i] + r); d = Math.max(d, s.p[i + 1] + r); } return a === Infinity ? null : [a, b, c, d]; };
+// ink -> PNG data URLs on white, cropped to the writing and cut into readable chunks at blank rows
+function inkExport(st) {
+  if (!st || !st.strokes || !st.strokes.length) return []; const bb = inkBox(st); if (!bb) return [];
+  const M = 24, x0 = Math.max(0, bb[0] - M), x1 = Math.min(INK_W, bb[2] + M), y0 = Math.max(0, bb[1] - M), y1 = bb[3] + M, w = Math.max(x1 - x0, 320), CH = Math.max(w * 1.4, 640, (y1 - y0) / 20);
+  const occ = new Float32Array(Math.ceil((y1 - y0) / 4) + 2); // ink coverage per 4-unit row, to cut between lines of writing
+  for (const s of st.strokes) for (let i = 0; i < s.p.length; i += 3) { const j = i + 3 < s.p.length ? i + 3 : i, lo = Math.min(s.p[i + 1], s.p[j + 1]) - s.w * 2, hi = Math.max(s.p[i + 1], s.p[j + 1]) + s.w * 2; for (let r = Math.max(0, (lo - y0) / 4 | 0); r <= Math.min(occ.length - 1, (hi - y0) / 4 | 0); r++) occ[r]++; }
+  const cuts = [y0]; let y = y0;
+  while (y1 - y > CH * 1.15) { let bestR = -1, bestV = Infinity; for (let r = Math.ceil((y + CH * .6 - y0) / 4); r <= Math.floor((y + CH - y0) / 4); r++) if (occ[r] <= bestV) { bestV = occ[r]; bestR = r; } y = bestR < 0 ? y + CH : y0 + bestR * 4; cuts.push(y); }
+  cuts.push(y1);
+  const out = [];
+  for (let i = 0; i < cuts.length - 1; i++) {
+    const cy = cuts[i], ch = cuts[i + 1] - cy; if (ch < 8) continue; const k = Math.min(HW_PX / Math.max(w, ch), 2.2), c = document.createElement('canvas'); c.width = Math.round(w * k); c.height = Math.round(ch * k);
+    const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height); x.translate(-x0 * k, -cy * k);
+    for (const s of st.strokes) inkStroke(x, s, k, INK_EXPORT); out.push(c.toDataURL('image/png'));
+  }
+  return out;
+}
+function inkPad(host, st, o = {}) { // st: {strokes, h}; o: {onChange, compact, big}
+  // The page is a tall box (wrap); the canvas is only as tall as the screen and follows the scroll,
+  // redrawing just the strokes in view, so long notes stay sharp and memory stays small.
+  const sizes = INK_SZ, ic = n => `<svg class="i"><use href="#i-${n}"/></svg>`, coarse = matchMedia('(pointer: coarse)').matches;
+  host.innerHTML = `<div class="hwbar" role="toolbar" aria-label="Writing tools">
+    <button data-t="pen" title="Pen (P)" aria-label="Pen">${ic('pen')}</button><button data-t="line" title="Straight line (L), for axes and diagrams" aria-label="Straight line">${ic('line')}</button><button data-t="erase" title="Eraser (E): rub out whole strokes" aria-label="Eraser">${ic('eras')}</button><span class="dv"></span>
+    ${INK_C.map(c => `<button data-c="${c}" title="${c === 'ink' ? 'Black' : c[0].toUpperCase() + c.slice(1)}" aria-label="${c === 'ink' ? 'Black' : c} ink"><span class="dot"></span></button>`).join('')}<span class="dv"></span>
+    ${sizes.map((z, i) => `<button data-z="${i}" title="${['Fine', 'Medium', 'Thick'][i]} pen" aria-label="${['Fine', 'Medium', 'Thick'][i]} pen"><span class="sz" style="height:${[2, 3.5, 6][i]}px"></span></button>`).join('')}<span class="dv"></span>
+    <button data-a="undo" title="Undo (Ctrl+Z)" aria-label="Undo">${ic('undo')}</button><button data-a="redo" title="Redo (Ctrl+Shift+Z)" aria-label="Redo">${ic('redo')}</button><span class="dv"></span>
+    <button data-a="bg" title="Paper: blank, lined or grid" aria-label="Paper style">${ic('grid')}</button><button data-a="more" title="More space" aria-label="More space">${ic('plus')}</button><button data-a="fs" title="Full screen (Esc to leave)" aria-label="Full screen">${ic('full')}</button><button data-a="clear" title="Clear all" aria-label="Clear all">${ic('trash')}</button>
+    <span class="meta hwtip"></span></div><div class="inkw" tabindex="0" aria-label="Writing area. Write with a stylus, finger or mouse."><canvas></canvas></div>`;
+  const bar = host.querySelector('.hwbar'), wrap = host.querySelector('.inkw'), cv = wrap.querySelector('canvas'), ctx = cv.getContext('2d');
+  let sc = 1, dpr = 1, oy = 0, vh = 0, tool = 'pen', col = LS.get('ib-ink-c', 'ink'), sz = LS.get('ib-ink-z', 1), cur = null, pan = null, cols = inkCols(), lastW = 0, lastPenUp = 0, raf = 0, dead = false;
+  const undo = [], redo = [], T = new Map(), BB = new WeakMap();
+  if (!INK_C.includes(col)) col = 'ink'; if (!sizes[sz]) sz = 1;
+  const changed = () => { o.onChange && o.onChange(); paintBar(); };
+  const snap = () => { undo.push(st.strokes.slice()); if (undo.length > 150) undo.shift(); redo.length = 0; };
+  const isFs = () => host.classList.contains('fs');
+  function paintBar() {
+    bar.querySelectorAll('[data-t]').forEach(b => b.classList.toggle('on', b.dataset.t === tool)); bar.querySelectorAll('[data-c]').forEach(b => { b.classList.toggle('on', b.dataset.c === col); b.firstChild.style.background = cols[b.dataset.c]; });
+    bar.querySelectorAll('[data-z]').forEach(b => b.classList.toggle('on', +b.dataset.z === sz));
+    bar.querySelector('[data-a=undo]').disabled = !undo.length; bar.querySelector('[data-a=redo]').disabled = !redo.length; bar.querySelector('[data-a=clear]').disabled = !st.strokes.length;
+    const bg = SETG().hwBg || 'grid'; wrap.classList.toggle('grid', bg === 'grid'); wrap.classList.toggle('lines', bg === 'lines'); wrap.classList.toggle('er', tool === 'erase');
+    bar.querySelector('.hwtip').textContent = penOnly() ? 'Stylus writes · fingers scroll' : coarse ? 'Two fingers to scroll' : '';
+  }
+  const bbOf = s => { const c = BB.get(s); if (c && c.n === s.p.length) return c.b; const b = inkBox({strokes: [s]}) || [0, 0, 0, 0]; BB.set(s, {n: s.p.length, b}); return b; };
+  function redraw(extra) {
+    if (dead) return; cols = inkCols(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, cv.width, cv.height); ctx.setTransform(dpr, 0, 0, dpr, 0, -oy * dpr);
+    const y0 = oy / sc, y1 = (oy + vh) / sc; for (const s of st.strokes) { const b = bbOf(s); if (b[3] >= y0 && b[1] <= y1) inkStroke(ctx, s, sc, cols); } if (extra) inkStroke(ctx, extra, sc, cols);
+  }
+  function place(force) { // move the screen-sized canvas to the visible part of the page
+    if (dead || !sc) return; const r = wrap.getBoundingClientRect(), hc = st.h * sc, top = isFs() ? host.getBoundingClientRect().top : 0;
+    const ny = Math.max(0, Math.min(hc - vh, Math.round(top - r.top))); if (ny === oy && !force) return; oy = ny; cv.style.top = oy + 'px'; redraw(cur && cur.t === 'line' ? cur.s : null);
+  }
+  const onScroll = () => { if (raf) return; raf = requestAnimationFrame(() => { raf = 0; if (!wrap.isConnected) return destroy(); place(); }); };
+  function fit() {
+    const w = wrap.clientWidth; if (!w || dead) return; sc = w / INK_W;
+    const minCss = o.compact ? 300 : o.big ? Math.max(560, innerHeight - 260) : 460; if (!st.strokes.length && w !== lastW) st.h = Math.max(o.compact ? 0 : st.h || 0, Math.round(minCss / sc)); lastW = w;
+    if (isFs()) st.h = Math.max(st.h, Math.ceil((host.clientHeight - bar.offsetHeight - 24) / sc));
+    const bb = inkBox(st); if (bb && bb[3] + 60 / sc > st.h) st.h = Math.ceil(bb[3] + 200 / sc);
+    const hc = st.h * sc, viewH = isFs() ? host.clientHeight : innerHeight; vh = Math.max(1, Math.min(hc, Math.ceil(viewH) + 2)); dpr = Math.min(window.devicePixelRatio || 1, 3, Math.sqrt(16e6 / Math.max(1, w * vh)));
+    wrap.style.height = hc + 'px'; cv.width = Math.round(w * dpr); cv.height = Math.round(vh * dpr); cv.style.width = w + 'px'; cv.style.height = vh + 'px'; place(true);
+  }
+  const pt = e => { const r = wrap.getBoundingClientRect(); return [Math.round((e.clientX - r.left) / r.width * INK_W * 10) / 10, Math.round((e.clientY - r.top) / r.height * st.h * 10) / 10, Math.round((e.pressure || .5) * 100) / 100]; };
+  const grow = y => { if (y * sc > st.h * sc - 120) { st.h += Math.round(360 / sc); fit(); } };
+  function eraseAt(x, y) {
+    const R = 11 / sc, d2 = (px, py, ax, ay, bx, by) => { const dx = bx - ax, dy = by - ay, L = dx * dx + dy * dy, t = L ? Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / L)) : 0, ex = ax + t * dx - px, ey = ay + t * dy - py; return ex * ex + ey * ey; };
+    const pts = [[x, y]]; if (cur.lx != null) { const n = Math.ceil(Math.hypot(x - cur.lx, y - cur.ly) / (R / 2)); for (let i = 1; i < n; i++) pts.push([cur.lx + (x - cur.lx) * i / n, cur.ly + (y - cur.ly) * i / n]); } cur.lx = x; cur.ly = y; // a fast swipe still rubs out what it crosses
+    const hit = s => { const p = s.p, r2 = (R + s.w / 2) ** 2, b = bbOf(s); return pts.some(([qx, qy]) => { if (qx < b[0] - R || qx > b[2] + R || qy < b[1] - R || qy > b[3] + R) return false; if (p.length === 3) return (p[0] - qx) ** 2 + (p[1] - qy) ** 2 <= r2; for (let i = 0; i + 3 < p.length; i += 3) if (d2(qx, qy, p[i], p[i + 1], p[i + 3], p[i + 4]) <= r2) return true; return false; }); };
+    const keep = st.strokes.filter(s => !hit(s));
+    if (keep.length !== st.strokes.length) { if (!cur.snapped) { snap(); cur.snapped = 1; } st.strokes = keep; redraw(); }
+  }
+  const scroller = () => isFs() ? host : window, avgY = () => { let s = 0; for (const v of T.values()) s += v; return s / (T.size || 1); };
+  const cancelStroke = () => { if (!cur) return; st.strokes = cur.prev; if (cur.t !== 'erase' || cur.snapped) undo.pop(); redo.splice(0, redo.length, ...cur.rd); cur = null; redraw(); paintBar(); };
+  cv.addEventListener('pointerdown', e => {
+    if (e.pointerType === 'pen') {
+      if (!LS.get('ib-pen', 0)) { LS.set('ib-pen', 1); paintBar(); }
+      pan = null; T.clear(); if (cur && cur.touch) cancelStroke(); // the stylus wins over a resting hand or finger
+    } else if (e.pointerType === 'touch') {
+      if (cur && cur.pen) return; // palm while the stylus is writing
+      if (penOnly()) { if (e.width > 40 || Date.now() - lastPenUp < 400) return; T.set(e.pointerId, e.clientY); pan = {y: avgY()}; e.preventDefault(); return; }
+      T.set(e.pointerId, e.clientY);
+      if (T.size >= 2) { if (cur && cur.touch) cancelStroke(); pan = {y: avgY()}; e.preventDefault(); return; } // two fingers scroll
+    }
+    if (cur || pan || (e.pointerType === 'mouse' && e.button !== 0)) return;
+    e.preventDefault(); wrap.focus({preventScroll: true}); try { cv.setPointerCapture(e.pointerId); } catch (er) {}
+    const t = e.button === 5 || (e.buttons & 32) ? 'erase' : tool, p = pt(e);
+    cur = {id: e.pointerId, t, pen: e.pointerType === 'pen', touch: e.pointerType === 'touch', prev: st.strokes.slice(), rd: redo.slice()};
+    if (t === 'erase') return eraseAt(p[0], p[1]);
+    snap(); cur.s = {c: col, w: Math.round(sizes[sz] / sc * 100) / 100, p: p.slice()}; if (cur.pen) cur.s.pr = 1; if (t === 'line') cur.s.l = 1; else st.strokes.push(cur.s);
+    if (t === 'pen') { ctx.fillStyle = cols[col]; ctx.beginPath(); ctx.arc(p[0] * sc, p[1] * sc, Math.max(.6, cur.s.w * sc * (cur.s.pr ? .35 + p[2] * 1.3 : 1)) / 2, 0, 7); ctx.fill(); }
+  });
+  cv.addEventListener('pointermove', e => {
+    if (T.has(e.pointerId)) { T.set(e.pointerId, e.clientY); if (pan) { const y = avgY(); if (!(cur && cur.pen)) scroller().scrollBy(0, pan.y - y); pan.y = y; return; } }
+    if (!cur || e.pointerId !== cur.id) return; e.preventDefault();
+    const evs = e.getCoalescedEvents ? e.getCoalescedEvents() : []; for (const ev of evs.length ? evs : [e]) {
+      const p = pt(ev);
+      if (cur.t === 'erase') { eraseAt(p[0], p[1]); continue; }
+      const s = cur.s, n = s.p.length;
+      if (cur.t === 'line') { s.p = [s.p[0], s.p[1], s.p[2], ...p]; continue; }
+      if (Math.hypot(p[0] - s.p[n - 3], p[1] - s.p[n - 2]) < .7 / sc) continue;
+      s.p.push(...p); ctx.strokeStyle = cols[s.c]; ctx.lineCap = ctx.lineJoin = 'round'; inkPiece(ctx, s, s.p.length / 3 - 1, sc);
+    }
+    if (cur.t === 'line' && !cur.q) cur.q = requestAnimationFrame(() => { if (cur && cur.t === 'line') { cur.q = 0; redraw(cur.s); } });
+  });
+  const end = e => {
+    if (T.has(e.pointerId)) { T.delete(e.pointerId); if (!T.size) pan = null; else if (pan) pan.y = avgY(); }
+    if (!cur || e.pointerId !== cur.id) return; const c = cur; cur = null; if (c.pen) lastPenUp = Date.now();
+    if (c.t === 'line') { if (c.s.p.length === 6 && Math.hypot(c.s.p[3] - c.s.p[0], c.s.p[4] - c.s.p[1]) > 2 / sc) st.strokes.push(c.s); else { undo.pop(); redo.splice(0, redo.length, ...c.rd); } redraw(); }
+    else if (c.t === 'pen') { ctx.strokeStyle = cols[c.s.c]; inkTail(ctx, c.s, sc); }
+    if (c.t === 'erase' && !c.snapped) return;
+    const last = st.strokes[st.strokes.length - 1]; if (last && c.t !== 'erase') grow(bbOf(last)[3]); changed();
+  };
+  cv.addEventListener('pointerup', end); cv.addEventListener('pointercancel', end); cv.addEventListener('lostpointercapture', e => { if (cur && e.pointerId === cur.id) end(e); });
+  cv.addEventListener('contextmenu', e => e.preventDefault());
+  const act = a => {
+    if (a === 'undo' && undo.length) { redo.push(st.strokes); st.strokes = undo.pop(); redraw(); changed(); }
+    else if (a === 'redo' && redo.length) { undo.push(st.strokes); st.strokes = redo.pop(); redraw(); changed(); }
+    else if (a === 'clear' && st.strokes.length) { if (!confirm('Clear all your writing on this answer?')) return; snap(); st.strokes = []; lastW = 0; fit(); changed(); }
+    else if (a === 'more') { st.h += Math.round(360 / sc); fit(); changed(); wrap.scrollIntoView({block: 'end', behavior: 'smooth'}); }
+    else if (a === 'bg') { const b = SETG().hwBg || 'grid'; setSet('hwBg', {grid: 'lines', lines: 'blank', blank: 'grid'}[b] || 'grid'); document.querySelectorAll('.inkw').forEach(w => { const v = SETG().hwBg; w.classList.toggle('grid', v === 'grid'); w.classList.toggle('lines', v === 'lines'); }); }
+    else if (a === 'fs') { host.classList.toggle('fs'); document.documentElement.classList.toggle('hwfs', isFs()); bar.querySelector('[data-a=fs]').classList.toggle('on', isFs()); fit(); if (isFs()) wrap.focus({preventScroll: true}); }
+  };
+  bar.onclick = e => { const b = e.target.closest('button'); if (!b) return;
+    if (b.dataset.t) { tool = b.dataset.t; } else if (b.dataset.c) { col = b.dataset.c; LS.set('ib-ink-c', col); if (tool === 'erase') tool = 'pen'; } else if (b.dataset.z) { sz = +b.dataset.z; LS.set('ib-ink-z', sz); if (tool === 'erase') tool = 'pen'; } else if (b.dataset.a) return act(b.dataset.a);
+    paintBar(); };
+  host.addEventListener('keydown', e => { const k = e.key.toLowerCase(), mod = e.ctrlKey || e.metaKey;
+    if (k === 'escape' && isFs()) { e.preventDefault(); e.stopPropagation(); return act('fs'); }
+    if (!wrap.contains(document.activeElement) && document.activeElement !== wrap) return;
+    if (mod && k === 'z') { e.preventDefault(); act(e.shiftKey ? 'redo' : 'undo'); } else if (mod && k === 'y') { e.preventDefault(); act('redo'); }
+    else if (!mod && ['p', 'l', 'e'].includes(k)) { tool = {p: 'pen', l: 'line', e: 'erase'}[k]; paintBar(); } });
+  const onTheme = () => { if (!wrap.isConnected) return destroy(); redraw(); paintBar(); };
+  const onResize = () => { if (!wrap.isConnected) return destroy(); fit(); };
+  const ro = new ResizeObserver(() => { if (!wrap.isConnected) return destroy(); if (wrap.clientWidth && wrap.clientWidth !== lastW) fit(); }); ro.observe(wrap);
+  function destroy() { if (dead) return; dead = true; ro.disconnect(); document.removeEventListener('ib-theme', onTheme); removeEventListener('scroll', onScroll, true); removeEventListener('resize', onResize); if (raf) cancelAnimationFrame(raf); cv.width = cv.height = 0; if (isFs()) document.documentElement.classList.remove('hwfs'); }
+  document.addEventListener('ib-theme', onTheme); addEventListener('scroll', onScroll, {capture: true, passive: true}); addEventListener('resize', onResize);
+  paintBar(); fit();
+  return {fit, redraw, destroy, get empty() { return !st.strokes.length; }};
+}
+
+// ----- photo strip: take / upload / paste / drop, rotate, reorder, remove -----
+function photoStrip(host, list, o = {}) { // list is mutated in place; o: {onChange, max, label}
+  const max = o.max || HW_MAXPH, coarse = matchMedia('(pointer: coarse)').matches;
+  const draw = () => {
+    host.innerHTML = `<div class="phs">${list.map((u, i) => `<div class="ph"><span class="phn">${i + 1}</span><img src="${u}" alt="${o.label || 'Photo'} ${i + 1}" data-v="${i}"><div class="row"><button data-rot="${i}" title="Rotate" aria-label="Rotate">${'<svg class="i"><use href="#i-rot"/></svg>'}</button>${i ? `<button data-mv="${i}" title="Move earlier" aria-label="Move earlier"><svg class="i"><use href="#i-l"/></svg></button>` : ''}<button data-del="${i}" title="Remove" aria-label="Remove"><svg class="i"><use href="#i-x"/></svg></button></div></div>`).join('')}
+      ${list.length < max ? `${coarse ? `<label class="phadd"><svg class="i"><use href="#i-cam"/></svg>Take photo<input type="file" accept="image/*" capture="environment"></label>` : ''}<label class="phadd"><svg class="i"><use href="#i-img"/></svg>${coarse ? 'Choose images' : 'Add photos'}<span class="meta">${coarse ? '' : 'or drop / paste'}</span><input type="file" accept="image/*" multiple></label>` : ''}</div><div class="meta phst"></div>`;
+    host.querySelectorAll('input[type=file]').forEach(inp => inp.onchange = () => { add([...inp.files]); inp.value = ''; });
+    host.querySelectorAll('[data-v]').forEach(im => im.onclick = () => hwView(list, +im.dataset.v));
+    host.querySelectorAll('[data-del]').forEach(b => b.onclick = () => { list.splice(+b.dataset.del, 1); done(); });
+    host.querySelectorAll('[data-mv]').forEach(b => b.onclick = () => { const i = +b.dataset.mv; [list[i - 1], list[i]] = [list[i], list[i - 1]]; done(); });
+    host.querySelectorAll('[data-rot]').forEach(b => b.onclick = async () => { b.disabled = true; const u = list[+b.dataset.rot]; try { const r = await hwRotate(u), j = list.indexOf(u); if (j >= 0) list[j] = r; } catch (e) {} done(); });
+  };
+  const done = () => { draw(); o.onChange && o.onChange(); };
+  async function add(files) {
+    files = files.filter(f => /^image\//.test(f.type) || /\.(heic|heif|jpe?g|png|webp|gif)$/i.test(f.name || '')); if (!files.length) return;
+    const st = host.querySelector('.phst'); if (st) st.innerHTML = '<span class="spin"></span> Adding…';
+    let err = '';
+    for (const f of files) { if (list.length >= max) { err = `Up to ${max} images here.`; break; } try { list.push(await hwPhoto(f)); } catch (e) { err = e.message; } }
+    done(); if (err) host.querySelector('.phst').textContent = err;
+  }
+  host.ondragover = e => { e.preventDefault(); host.firstElementChild && host.firstElementChild.classList.add('drag'); };
+  host.ondragleave = () => host.firstElementChild && host.firstElementChild.classList.remove('drag');
+  host.ondrop = e => { e.preventDefault(); host.firstElementChild && host.firstElementChild.classList.remove('drag'); add([...(e.dataTransfer.files || [])]); };
+  const mine = () => { HWPASTE = {host, add}; }; host.addEventListener('pointerdown', mine); host.addEventListener('focusin', mine); mine(); draw();
+  return {add, draw};
+}
+{ const h = document.querySelector('header'); if (h && window.ResizeObserver) new ResizeObserver(() => document.documentElement.style.setProperty('--hdrh', h.offsetHeight + 'px')).observe(h); } // sticky ink toolbar sits under the header
+let HWPASTE = null, HW_PERSIST = 0;
+// attempt images older than 4 months are cleared so the browser's storage doesn't fill up
+setTimeout(async () => { const cut = Date.now() - 120 * 864e5; for (const k of await IDB.keys(hwKey('att:'))) { const t = +String(k).slice(String(k).lastIndexOf(':') + 1); if (t && t < cut) IDB.del(k); } }, 30e3); // the photo strip that Ctrl+V pastes into
+document.addEventListener('paste', e => { if (!HWPASTE || !HWPASTE.host.isConnected || !HWPASTE.host.offsetParent || /INPUT|TEXTAREA/.test((document.activeElement || {}).tagName || '')) return;
+  const fs = [...(e.clipboardData ? e.clipboardData.files : [])].filter(f => /^image\//.test(f.type)); if (fs.length) { e.preventDefault(); HWPASTE.add(fs); } });
+
+// ----- the answer box: Type / Write / Photo; everything you put in any tab is sent -----
+const HWB = new Set(); // live boxes, flushed before submitting
+const hwFlushAll = () => Promise.all([...HWB].map(b => b.el.isConnected ? b.flush() : (HWB.delete(b), null)));
+const hwDefMode = math => SETG().hwMode || (math ? 'ink' : 'type');
+async function hwImagesFor(key) { const v = await IDB.get(hwKey(key)); return v ? [...inkExport(v.ink), ...(v.photos || [])] : []; }
+function hwBox(host, o) { // o: {key, text, rows, math, onText(v), onChange(), compact, placeholder}
+  for (const b of HWB) if (!b.el.isConnected) HWB.delete(b);
+  const st = {mode: o.mode || hwDefMode(o.math), ink: {strokes: [], h: 0}, photos: []}; let pad = null, tm = 0, loaded = false;
+  const tabs = [['type', 'Type', 'type'], ['ink', 'Write', 'pen'], ['photo', 'Photo', 'cam']].filter(t => !o.only || o.only.includes(t[0])); if (o.only && !o.only.includes(st.mode)) st.mode = o.only[0];
+  host.innerHTML = `<div class="hw"><div class="row hwtop"><div class="seg hwm" role="tablist">${tabs.map(([k, l, i]) => `<button data-hm="${k}" role="tab"><svg class="i"><use href="#i-${i}"/></svg>${l}</button>`).join('')}</div><span class="meta hws"></span></div>
+    <div class="hwp" data-p="type"><textarea${o.id ? ` id="${o.id}"` : ''} rows="${o.rows || 8}" placeholder="${esc(o.placeholder || 'Answer')}"${o.compact ? ' style="font:15px/1.6 var(--f-ui)"' : ''}>${esc(o.text || '')}</textarea></div>
+    <div class="hwp hwink" data-p="ink"></div><div class="hwp" data-p="photo"><p class="meta" style="margin:0 0 8px">Photograph your written working${o.math ? ' (keep each page flat, well lit, and the whole working in frame)' : ''}. Photos stay on this device.</p><div class="phw"></div></div></div>`;
+  const ta = host.querySelector('textarea'), words = () => (ta.value.match(/\S+/g) || []).length;
+  const status = () => {
+    const n = st.ink.strokes.length, p = st.photos.length, w = words(), has = {type: w, ink: n, photo: p}, used = Object.keys(has).filter(k => has[k]);
+    host.querySelectorAll('[data-hm]').forEach(b => b.classList.toggle('has', !!has[b.dataset.hm]));
+    host.querySelector('.hws').textContent = used.length > 1 || (used.length === 1 && used[0] !== st.mode) ? 'Marking will use: ' + [w && w + ' typed word' + (w === 1 ? '' : 's'), n && 'your writing', p && p + ' photo' + (p === 1 ? '' : 's')].filter(Boolean).join(' + ') : '';
+  };
+  const save = () => { status(); o.onChange && o.onChange(); clearTimeout(tm); tm = setTimeout(api_.flush, 500); };
+  const show = m => {
+    st.mode = m; host.querySelectorAll('[data-hm]').forEach(b => { b.classList.toggle('on', b.dataset.hm === m); b.setAttribute('aria-selected', b.dataset.hm === m); });
+    host.querySelectorAll('.hwp').forEach(p => p.classList.toggle('hide', p.dataset.p !== m));
+    if (m === 'ink') { if (!pad) pad = inkPad(host.querySelector('.hwink'), st.ink, {onChange: save, compact: o.compact, big: o.big}); else pad.fit(); }
+    if (m === 'photo') photoStrip(host.querySelector('.phw'), st.photos, {onChange: save});
+    status();
+  };
+  host.querySelectorAll('[data-hm]').forEach(b => b.onclick = () => { show(b.dataset.hm); if (loaded) { clearTimeout(tm); tm = setTimeout(api_.flush, 500); } });
+  ta.oninput = () => { o.onText && o.onText(ta.value); status(); o.onChange && o.onChange(); };
+  const api_ = {
+    el: host, get mode() { return st.mode; }, text: () => ta.value, words, get hasImages() { return st.ink.strokes.length > 0 || st.photos.length > 0; }, get counts() { return {ink: st.ink.strokes.length, ph: st.photos.length}; },
+    cancel: () => { clearTimeout(tm); loaded = false; }, images: () => [...inkExport(st.ink), ...st.photos], focus: () => (st.mode === 'type' ? ta : host.querySelector('.inkw') || ta).focus(),
+    flush: () => { clearTimeout(tm); if (!loaded) return Promise.resolve(); const k = hwKey(o.key); if ((st.ink.strokes.length || st.photos.length) && !HW_PERSIST) { HW_PERSIST = 1; try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch (e) {} } return st.ink.strokes.length || st.photos.length ? IDB.set(k, {mode: st.mode, ink: st.ink, photos: st.photos, t: Date.now()}) : IDB.del(k); },
+  };
+  show(st.mode); HWB.add(api_);
+  IDB.get(hwKey(o.key)).then(v => { loaded = true; if (!host.isConnected) return; if (v) { if (v.ink && v.ink.strokes) { st.ink.strokes = [...v.ink.strokes, ...st.ink.strokes]; st.ink.h = Math.max(v.ink.h || 0, st.ink.h || 0); } st.photos.splice(0, st.photos.length, ...[...(v.photos || []), ...st.photos].slice(0, HW_MAXPH)); if (pad && pad.destroy) pad.destroy(); pad = null; host.querySelector('.hwink').innerHTML = ''; const m = o.mode && !v.ink ? o.mode : v.mode || st.mode; show(!o.only || o.only.includes(m) ? m : o.only[0]); } o.onChange && o.onChange('load'); });
+  return api_;
+}
+// past-attempt images (kept on this device only)
+function hwThumbs(root) { (root || document).querySelectorAll('.hwimgs[data-ak]').forEach(async el => { const v = await IDB.get(el.dataset.ak); el.removeAttribute('data-ak'); if (!v || !v.length) { el.innerHTML = '<span class="meta">Images are only kept on the device you wrote on.</span>'; return; } el.innerHTML = v.map((u, i) => `<img src="${u}" alt="Your handwritten answer, image ${i + 1}" data-i="${i}">`).join(''); el.querySelectorAll('img').forEach(im => im.onclick = () => hwView(v, +im.dataset.i)); }); }
+const hwAttHtml = (qid, a) => a.hw ? `<div class="hwimgs" data-ak="${esc(hwKey('att:' + qid + ':' + a.t))}"></div>` : '';
+const ansHtml = a => a.hw ? `<div class="hwans">${mdm(a.ans || '')}</div>` : `<div class="meta" style="white-space:pre-wrap">${esc(a.ans)}</div>`;
+// mistake log: which kinds of slip keep costing marks
+function slipSummary(mk) {
+  const c = {}; for (const m of mk) { const s = m.l.fb && m.l.fb.slip; if (s && s !== 'none' && SLIPS.includes(s)) c[s] = (c[s] || 0) + 1; }
+  const top = Object.entries(c).sort((a, b) => b[1] - a[1]); if (!top.length) return '';
+  return `<div class="card slips"><b>What keeps costing you marks</b><div class="row" style="margin-top:6px">${top.map(([s, n]) => `<span class="tag r">${esc(s)} × ${n}</span>`).join('')}</div><div class="meta" style="margin-top:6px">From Claude's marking of your maths and science answers.</div></div>`;
+}
 
 // ---------- key terms (flashcards, Leitner boxes) ----------
 const BOXDAYS = [0, 1, 3, 7, 16, 35];
@@ -1248,41 +1627,103 @@ function openPaper(id) {
   const B = bookOf(P.book), K = LSK('ib-pp-' + id), st = LS.get(K, {ans: {}, start: 0}), res = (S.prog.pp || {})[id] || []; MATH = !!(B && B.math);
   if (!st.start) { // cover page
     $('#main').innerHTML = `<div class="prac"><div class="card qbig" style="text-align:center;padding:40px 28px"><div class="meta" style="font-family:var(--f-ui)">${esc(B ? B.subject : '')} · ${esc(P.session || '')}</div><h2 style="margin:8px 0 6px">${esc(P.title)}</h2><p class="meta" style="font-family:var(--f-ui)">${P.mins ? P.mins + ' minutes · ' : ''}${(P.qs || []).length} questions · ${P.total || P.qs.reduce((s, q) => s + (q.marks || 0), 0)} marks</p>
-      ${P.instr ? `<div style="text-align:left;font-size:16px">${mdx(P.instr)}</div>` : ''}<p class="meta" style="font-family:var(--f-ui)">Exam conditions: timer on, no Claude until you submit.</p><button class="pri" id="ppGo" style="margin-top:6px">Start paper</button></div>
+      ${P.instr ? `<div style="text-align:left;font-size:16px">${mdx(P.instr)}</div>` : ''}<p class="meta" style="font-family:var(--f-ui)">Exam conditions: timer on, no Claude until you submit.</p><div class="row" style="justify-content:center;margin-top:6px"><button class="pri" id="ppGo">Start paper</button><button id="ppGoP" title="Write on real paper, then photograph your pages when you finish"><svg class="i"><use href="#i-cam"/></svg>Sit it on paper</button></div><p class="meta" style="font-family:var(--f-ui);margin-top:10px">On screen you can type, write with a stylus or finger, or add photos for each answer. On paper, you photograph every page at the end and Claude finds each answer.</p></div>
       ${res.length ? `<h3>Past attempts</h3><div class="card lst">${res.slice().reverse().map(r => `<div class="row"><b class="num">${r.score}/${r.max}</b><span class="tag">${r.grade}</span><span class="meta">${new Date(r.t).toLocaleDateString()} · ${Math.round(r.secs / 60)} min</span></div>`).join('')}</div>` : ''}</div>`;
-    $('#ppGo').onclick = () => { st.start = Date.now(); LS.set(K, st); openPaper(id); }; return;
+    $('#ppGo').onclick = () => { st.start = Date.now(); st.paper = 0; LS.set(K, st); openPaper(id); };
+    $('#ppGoP').onclick = () => { st.start = Date.now(); st.paper = 1; LS.set(K, st); openPaper(id); }; return;
   }
+  if (st.paper && st.done) return paperPhotos(P, st, K);
   const lim = P.mins ? P.mins * 60e3 : 0;
-  $('#main').innerHTML = `<div class="prac"><div class="ppbar card"><b>${esc(P.title)}</b><span class="sp"></span><span class="num" id="ppT"></span><button id="ppQuit">Abandon</button><button class="pri" id="ppSub">Submit</button></div>
+  $('#main').innerHTML = `<div class="prac pp"><div class="ppbar card"><b>${esc(P.title)}</b><span class="sp"></span><span class="num" id="ppT"></span><button id="ppQuit">Abandon</button><button class="pri" id="ppSub">Submit</button></div>
     ${P.qs.map((q, i) => { const x = ppQ(P, q), c = q.ctx || x.ctx, pr = P.qs.slice(0, i).find(y => (y.ctx || ppQ(P, y).ctx) === c); return `<div class="card qbig" style="margin-top:14px"><div style="font-family:var(--f-ui);margin-bottom:8px"><b>${esc(q.n)}.</b> ${q.marks ? '<span class="tag">' + q.marks + (q.marks === 1 ? ' mark' : ' marks') + '</span>' : ''}</div>${ctxBox(c, pr && pr.n)}${mdx(optLines(q.text))}${ctxLine(c)}
       ${x.kind === 'mcq' ? `<div class="row" style="font-family:var(--f-ui);margin-top:10px">${['A', 'B', 'C', 'D'].map(L => `<label class="opt"><input type="radio" name="o${esc(q.n)}" value="${L}" ${st.ans[q.n] === L ? 'checked' : ''} data-n="${esc(q.n)}"> ${L}</label>`).join('')}</div>`
-      : `<textarea data-n="${esc(q.n)}" rows="${(q.marks || 4) > 6 ? 12 : 5}" style="margin-top:10px;font:15px/1.6 var(--f-ui)" placeholder="Answer">${esc(st.ans[q.n] || '')}</textarea>`}</div>`; }).join('')}
+      : st.paper ? '<p class="meta" style="font-family:var(--f-ui);margin:10px 0 0">Answer on paper. Write the question number next to your answer.</p>' : `<div class="ppa" data-hq="${esc(q.n)}" style="margin-top:10px;font-family:var(--f-ui);font-size:15px"></div>`}</div>`; }).join('')}
     <div class="row" style="margin:18px 0"><span class="sp"></span><button class="pri" id="ppSub2">Submit paper</button></div></div>`;
   $('#tutor').classList.add('hide');
+  const boxes = S.ppBoxes = {};
+  document.querySelectorAll('#main [data-hq]').forEach(el => { const q = P.qs.find(x => String(x.n) === el.dataset.hq); if (!q) return;
+    boxes[q.n] = hwBox(el, {key: 'pp:' + id + ':' + q.n, text: st.ans[q.n] || '', rows: (q.marks || 4) > 6 ? 12 : 5, math: stepped(ppQ(P, q)), compact: true, onText: v => { st.ans[q.n] = v; LS.set(K, st); }}); });
   document.querySelectorAll('#main [data-n]').forEach(el => el.oninput = el.onchange = () => { if (el.type !== 'radio' || el.checked) st.ans[el.dataset.n] = el.value; LS.set(K, st); });
-  const tick = setInterval(() => { const el = $('#ppT'); if (!el) { clearInterval(tick); $('#tutor').classList.remove('hide'); return; } const s = (Date.now() - st.start) / 1000 | 0, left = lim ? Math.round(lim / 1000) - s : s, a = Math.abs(left);
+  const tick = setInterval(() => { const el = $('#ppT'); if (!el) { clearInterval(tick); if (!$('#ppPh')) $('#tutor').classList.remove('hide'); return; } const s = (Date.now() - st.start) / 1000 | 0, left = lim ? Math.round(lim / 1000) - s : s, a = Math.abs(left);
     el.textContent = (left < 0 ? 'Over by ' : lim ? '' : 'Elapsed ') + (a / 3600 | 0 ? (a / 3600 | 0) + ':' : '') + String((a / 60 | 0) % 60).padStart(2, '0') + ':' + String(a % 60).padStart(2, '0'); el.style.color = lim && left < 300 ? 'var(--red)' : ''; }, 500);
-  $('#ppQuit').onclick = () => { if (!confirm('Abandon this attempt? Your answers are cleared.')) return; LS.set(K, {ans: {}, start: 0}); openPaper(id); };
-  $('#ppSub').onclick = $('#ppSub2').onclick = () => { if (confirm('Submit for marking?')) submitPaper(P, st, K); };
+  $('#ppQuit').onclick = async () => { if (!confirm('Abandon this attempt? Your answers are cleared.')) return; Object.values(boxes).forEach(b => b.cancel()); LS.set(K, {ans: {}, start: 0}); await IDB.delPre(hwKey('pp:' + id + ':')); openPaper(id); };
+  $('#ppSub').onclick = $('#ppSub2').onclick = async () => {
+    const onPaper = st.paper && P.qs.some(q => !(ppQ(P, q).kind === 'mcq' && st.ans[q.n])); // everything was multiple choice ticked on screen: nothing to photograph
+    if (!confirm(onPaper ? 'Stop the clock and photograph your pages?' : 'Submit for marking?')) return; clearInterval(tick); await hwFlushAll();
+    if (onPaper) { st.done = Date.now(); LS.set(K, st); paperPhotos(P, st, K); } else { st.done = Date.now(); submitPaper(P, st, K); } };
 }
-async function submitPaper(P, st, K) {
-  const secs = (Date.now() - st.start) / 1000 | 0, out = []; $('#tutor').classList.remove('hide');
-  $('#main').innerHTML = `<div class="prac"><div class="card fb"><span class="spin"></span> Marking <span id="ppN">0</span> / ${P.qs.length}…</div></div>`;
+// sat on real paper: photograph every page, then Claude finds each answer and marks it
+async function paperPhotos(P, st, K, err) {
+  const key = hwKey('pp:' + P.id + ':pages'), pages = (await IDB.get(key)) || [], mins = Math.round((st.done - st.start) / 60e3);
+  $('#tutor').classList.add('hide'); setHash('#/paper/' + P.id);
+  $('#main').innerHTML = `<div class="prac"><div class="card fb" style="margin-top:0"><h2 style="margin:0 0 4px">Photograph your answers</h2><p class="meta" style="margin:0 0 14px">The clock stopped at ${mins} min. Take a photo of every page you wrote on, in order. Keep each page flat and well lit, with the question numbers visible. Photos stay on this device.</p>
+    ${err ? `<div class="wrong" style="margin-bottom:12px">${esc(err)}</div>` : ''}<div id="ppPh"></div>
+    <details style="margin-top:14px"><summary class="meta">Show the questions</summary>${P.qs.map(q => `<div style="margin-top:8px"><b>${esc(q.n)}.</b> ${mdx(optLines(q.text), true)}</div>`).join('')}</details>
+    <div class="row" style="margin-top:16px"><button id="ppAb">Abandon</button><span class="sp"></span><button class="pri" id="ppMk" ${pages.length ? '' : 'disabled'}>Mark my paper</button></div></div></div>`;
+  photoStrip($('#ppPh'), pages, {max: HW_MAXPAGES, label: 'Page', onChange: () => { IDB.set(key, pages); $('#ppMk').disabled = !pages.length; }});
+  $('#ppAb').onclick = async () => { if (!confirm('Abandon this attempt? Your photos are deleted.')) return; LS.set(K, {ans: {}, start: 0}); await IDB.delPre(hwKey('pp:' + P.id + ':')); $('#tutor').classList.remove('hide'); openPaper(P.id); };
+  $('#ppMk').onclick = () => submitPaper(P, st, K, pages);
+}
+const qKey = n => String(n).trim().replace(/^q(uestion)?\s*/i, '').replace(/[.):\s]+$/, '').toLowerCase();
+function normMap(raw, n) { // Claude's {question: [pages]} -> clean integer page lists, tolerant of "2-3", "2, 3", "Q1." keys
+  const out = {};
+  for (const [k, v] of Object.entries(raw && typeof raw === 'object' ? raw : {})) {
+    const arr = (Array.isArray(v) ? v : [v]).flatMap(x => String(x).split(/[,;]/)).flatMap(x => { const m = String(x).match(/^\s*(\d+)\s*[-–]\s*(\d+)\s*$/); if (m) { const r = []; for (let i = +m[1]; i <= Math.min(+m[2], n); i++) r.push(i); return r; } return [parseInt(x, 10)]; })
+      .filter(i => Number.isInteger(i) && i >= 1 && i <= n);
+    if (arr.length) out[qKey(k)] = [...new Set([...(out[qKey(k)] || []), ...arr])];
+  }
+  return out;
+}
+async function submitPaper(P, st, K, pages, prev) { // prev: {out, map, live} when retrying questions that failed
+  const secs = ((st.done || Date.now()) - st.start) / 1000 | 0; $('#tutor').classList.remove('hide');
+  const live = prev ? prev.live : {}; if (!prev) for (const [n, b] of Object.entries(S.ppBoxes || {})) if (b.el.isConnected && b.hasImages) live[n] = b.images(); // straight from the screen, not just IndexedDB
+  let map = prev ? prev.map : null;
+  if (pages && !map) { // which photographed pages hold which answer
+    const need = P.qs.filter(q => !(ppQ(P, q).kind === 'mcq' && st.ans[q.n]));
+    $('#main').innerHTML = `<div class="prac"><div class="card fb"><span class="spin"></span> Finding your answers on ${pages.length} page${pages.length > 1 ? 's' : ''}…</div></div>`;
+    try {
+      const list = need.map(q => `${q.n}: ${String(q.text).replace(/!\[[^\]]*\]\([^)]*\)/g, '[figure]').replace(/\s+/g, ' ').slice(0, 180)}`).join('\n');
+      const r = await api('ask', {mode: 'mark', rubric: ASSIGN_SYS, book: P.book, pages: [], hw: pages.length, messages: [{role: 'user', content: askContent(`Questions in this paper:\n${list}\n\nThe student's ${pages.length} page(s) follow, in order.`, pages, 'Page')}]});
+      map = normMap((pj(r.text) || {}).pages, pages.length);
+    } catch (e) { return paperPhotos(P, st, K, 'Could not read your pages: ' + e.message); }
+    if (!Object.keys(map).length) return paperPhotos(P, st, K, "Claude couldn't find any answers in these photos. Check they're sharp and the question numbers are visible, then try again.");
+  }
+  const todo = prev ? prev.out.filter(o => o.fail).map(o => o.q) : P.qs, res = [];
+  $('#main').innerHTML = `<div class="prac"><div class="card fb"><span class="spin"></span> Marking <span id="ppN">0</span> / ${todo.length}…</div></div>`;
   let done = 0; const tick = () => { done++; const e = $('#ppN'); if (e) e.textContent = done; };
-  const one = async q => { const x = ppQ(P, q), a = (st.ans[q.n] || '').trim(), max = q.marks || (x.kind === 'mcq' ? 1 : 4);
-    if (!a) { tick(); return {q, x, a, fb: {score: 0, max, verdict: 'Not answered.', good: [], missed: [], fix: [], plan: '', terms: []}}; }
-    if (x.kind === 'mcq' && q.ans) { tick(); const ok = a.toUpperCase() === String(q.ans).toUpperCase(); return {q, x, a, fb: {score: ok ? max : 0, max, verdict: ok ? 'Correct.' : 'Answer: ' + q.ans, good: [], missed: [], fix: [], plan: '', terms: []}}; }
-    try { const r = await api('ask', {mode: 'mark', rubric: (RUBRIC[x.kind] || RUBRIC.structured) + (q.ms ? '\n\nOfficial markscheme (follow it):\n' + q.ms : '') + MARK_FMT, book: P.book, pages: [], messages: [{role: 'user', content: `${(q.ctx || x.ctx) ? 'Setup / context: ' + (q.ctx || x.ctx) + '\n\n' : ''}Question ${q.n} (${max} marks): ${q.text}\n\nStudent answer:\n"""\n${a}\n"""`}]});
-      const fb = JSON.parse(r.text); fb.max = max; fb.score = Math.min(max, +fb.score || 0); tick(); return {q, x, a, fb}; } catch (e) { tick(); return {q, x, a, fb: {score: 0, max, verdict: 'Marking failed: ' + e.message, good: [], missed: [], fix: [], plan: '', terms: []}}; } };
-  const qs = [...P.qs]; const work = async () => { while (qs.length) { const q = qs.shift(); out.push(await one(q)); } }; await Promise.all([work(), work(), work()]);
-  out.sort((a, b) => P.qs.indexOf(a.q) - P.qs.indexOf(b.q));
+  const blank = (max, verdict) => ({score: 0, max, verdict, good: [], missed: [], fix: [], plan: '', terms: []});
+  const one = async q => { const x = ppQ(P, q), a = (st.ans[q.n] || '').trim(), max = q.marks || (x.kind === 'mcq' ? 1 : 4); let imgs = [];
+    try {
+      if (x.kind === 'mcq' && q.ans && a) { const ok = a.toUpperCase() === String(q.ans).toUpperCase(); return {q, x, a, imgs, fb: {...blank(max, ok ? 'Correct.' : 'Answer: ' + q.ans), score: ok ? max : 0}}; }
+      imgs = map ? (map[qKey(q.n)] || []).map(i => pages[i - 1]).filter(Boolean).slice(0, 5) : x.kind === 'mcq' ? [] : live[q.n] || await hwImagesFor('pp:' + P.id + ':' + q.n);
+      if (!a && !imgs.length) return {q, x, a, imgs, fb: blank(max, map ? "Couldn't find an answer to this question in your photos." : 'Not answered.')};
+      const fb = await markWork({rubric: (RUBRIC[x.kind] || RUBRIC.structured) + (q.ms ? '\n\nOfficial markscheme (follow it):\n' + q.ms : '') + MARK_FMT + (stepped(x) ? STEP_FMT : '')
+          + (x.kind === 'mcq' && q.ans ? `\n\nThe correct option is ${q.ans}. Award ${max} only if the letter the student chose is ${q.ans}, otherwise 0.` : '')
+          + (map ? `\n\nThe photos are pages of the student's whole script, so they may also show answers to other questions: transcribe and mark ONLY question ${q.n}.` : ''),
+        text: `${(q.ctx || x.ctx) ? 'Setup / context: ' + (q.ctx || x.ctx) + '\n\n' : ''}Question ${q.n} (${max} marks): ${q.text}` + (a ? `\n\nStudent answer${imgs.length ? ' (typed part)' : ''}:\n"""\n${a}\n"""` : '') + (imgs.length ? `\n\nThe student's handwritten working is in the attached image${imgs.length > 1 ? 's' : ''}.` : ''), imgs, book: P.book});
+      if (fb.raw) throw new Error('Claude replied in an unexpected format');
+      fb.max = max; fb.score = Math.max(0, Math.min(max, +fb.score || 0)); return {q, x, a: imgs.length ? hwAns(a, fb) : a, imgs, fb};
+    } catch (e) { return {q, x, a, imgs, fail: 1, fb: blank(max, 'Marking failed: ' + e.message)}; } };
+  const qs = [...todo]; const work = async () => { while (qs.length) { const q = qs.shift(); res.push(await one(q)); tick(); } }; await Promise.all([work(), work(), work()]);
+  const out = prev ? prev.out.map(o => o.fail ? res.find(r => r.q === o.q) || o : o) : res.sort((a, b) => P.qs.indexOf(a.q) - P.qs.indexOf(b.q));
+  const failed = out.filter(o => o.fail);
+  if (failed.length && !(prev && prev.force)) { // never grade a paper (or wipe the answers) because marking hiccupped
+    $('#main').innerHTML = `<div class="prac"><div class="card fb"><h3 style="margin-top:0">${failed.length} question${failed.length > 1 ? 's' : ''} couldn't be marked</h3><p class="meta">Your answers are kept. ${out.length - failed.length} other question${out.length - failed.length === 1 ? ' is' : 's are'} marked and waiting.</p>
+      <ul>${failed.map(o => `<li><b>Question ${esc(o.q.n)}</b>: ${esc(o.fb.verdict.replace(/^Marking failed: /, ''))}</li>`).join('')}</ul>
+      <div class="row" style="margin-top:12px"><button class="pri" id="ppRetry">Try those again</button><button id="ppForce">Finish anyway (count them as 0)</button><span class="sp"></span><button id="ppLater">Leave it for now</button></div></div></div>`;
+    $('#ppRetry').onclick = () => submitPaper(P, st, K, pages, {out, map, live});
+    $('#ppForce').onclick = () => submitPaper(P, st, K, pages, {out: out.map(o => o.fail ? {...o, fail: 0, skip: 1} : o), map, live, force: 1});
+    $('#ppLater').onclick = () => { LS.set(K, st); S.pf = {...(S.pf || {}), view: 'papers'}; renderPrac(); };
+    return;
+  }
   const score = out.reduce((s, o) => s + o.fb.score, 0), max = out.reduce((s, o) => s + o.fb.max, 0), grade = gradeOf(P, max ? score / max : 0), t = Date.now();
-  for (const o of out) if (o.a) (S.prog.att[o.x.id] = S.prog.att[o.x.id] || []).push({t, score: o.fb.score, max: o.fb.max, ans: o.a, fb: o.fb});
-  (S.prog.pp = S.prog.pp || {})[P.id] = [...(S.prog.pp[P.id] || []), {t, score, max, grade, secs, book: P.book, mock: P.mock ? 1 : 0}]; act('q', out.filter(o => o.a).length); LS.set(K, {ans: {}, start: 0});
+  for (const o of out) if ((o.a || o.imgs.length) && !o.fail && !o.skip) { const at = {t, score: o.fb.score, max: o.fb.max, ans: o.a, fb: o.fb}; if (o.imgs.length) { at.hw = o.imgs.length; IDB.set(hwKey('att:' + o.x.id + ':' + t), o.imgs); } (S.prog.att[o.x.id] = S.prog.att[o.x.id] || []).push(at); }
+  (S.prog.pp = S.prog.pp || {})[P.id] = [...(S.prog.pp[P.id] || []), {t, score, max, grade, secs, book: P.book, mock: P.mock ? 1 : 0, hw: pages ? 'paper' : out.some(o => o.imgs.length) ? 1 : 0}]; act('q', out.filter(o => (o.a || o.imgs.length) && !o.fail && !o.skip).length); LS.set(K, {ans: {}, start: 0}); IDB.delPre(hwKey('pp:' + P.id + ':'));
   $('#main').innerHTML = `<div class="prac"><div class="card fb" style="text-align:center"><div class="meta">${esc(P.title)}</div><div class="score" style="font-size:54px;margin:8px 0">${score}/${max}</div><div style="font:600 20px var(--f-read)">Grade ${grade} <span class="meta">(${Math.round(score / max * 100)}%, ${Math.round(secs / 60)} min${P.bounds ? '' : ', approximate boundaries'})</span></div>
     <div class="row" style="justify-content:center;margin-top:14px"><button class="pri" id="ppRev"><svg class="i"><use href="#i-spark"/></svg>Go through it with Claude</button><button id="ppBack">Back to exam mode</button></div></div>
     ${breakdown(P, out)}<h3>Question by question</h3>
-    ${out.map(o => `<details class="card" style="padding:12px 16px;margin-top:10px"><summary><b class="num">${o.fb.score}/${o.fb.max}</b> &nbsp;Question ${esc(o.q.n)}</summary><div class="fb" style="padding:8px 0 0">${mdx(o.q.text)}<h4>Your answer</h4><div class="meta" style="white-space:pre-wrap">${esc(o.a || '(blank)')}</div>${fbHtml(o.fb)}</div></details>`).join('')}</div>`;
+    ${out.map(o => `<details class="card" style="padding:12px 16px;margin-top:10px"><summary><b class="num">${o.fb.score}/${o.fb.max}</b> &nbsp;Question ${esc(o.q.n)}</summary><div class="fb" style="padding:8px 0 0">${mdx(o.q.text)}<h4>Your answer</h4>${o.imgs.length ? `<div class="hwans">${mdm(o.a || '')}</div><div class="hwimgs" data-ak="${esc(hwKey('att:' + o.x.id + ':' + t))}"></div>` : `<div class="meta" style="white-space:pre-wrap">${esc(o.a || '(blank)')}</div>`}${fbHtml(o.fb)}</div></details>`).join('')}</div>`;
+  hwThumbs($('#main'));
   $('#ppBack').onclick = () => { S.pf = {...(S.pf || {}), view: 'papers'}; renderPrac(); };
   document.querySelectorAll('[data-btp]').forEach(b => b.onclick = () => { S.book = bookOf(P.book); renderToc(); S.pf = {book: P.book, view: 'qs', tp: b.dataset.btp}; renderPrac(S.pf); });
   $('#ppRev').onclick = () => { openChat({title: 'Paper review', book: P.book, pages: [], intro: ''}); CH.lastNote = '-';
@@ -1594,7 +2035,10 @@ async function runReview(k) {
 // prog.decks[id] = {id, name, book, cards: [{id, f, b, book?, tp?}], t, del?}
 const NEW_PER_DAY = 15;
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
-const pj = t => { const s = String(t || '').replace(/```(json)?/g, ''), m = s.match(/\{[\s\S]*\}/); return JSON.parse(m ? m[0] : s); };
+// LaTeX commands that start with a valid JSON escape (\t, \n, \f, \b, \r) would silently turn into tabs/newlines: double those backslashes first
+const LATEX_ESC = /(?<!\\)\\(?=(?:times|theta|tau|tan|tanh|text|textbf|textrm|to|top|triangle|therefore|nabla|neq|ne|nu|neg|not|newline|right|rightarrow|Rightarrow|rho|rangle|rfloor|rceil|frac|dfrac|tfrac|forall|beta|bar|bf|binom|bmod|big|Big|bigg|boxed|bullet|because)(?![a-zA-Z]))/g;
+const fixBs = s => s.replace(/\\(?:(["\\/bfnrt]|u[0-9a-fA-F]{4})|)/g, (m, ok) => ok ? m : '\\\\');
+const pj = t => { let s = String(t || '').replace(/```(json)?/g, ''); const m = s.match(/\{[\s\S]*\}/); s = (m ? m[0] : s).replace(LATEX_ESC, '\\\\'); try { return JSON.parse(s); } catch (e) { return JSON.parse(fixBs(s)); } };
 const pcCol = pc => pc < .4 ? 'var(--bad)' : pc < .7 ? 'var(--warn)' : 'var(--good)';
 const cardDue = s => !!s && Date.now() >= s.t + BOXDAYS[s.box] * 864e5;
 const nextBox = (s, g) => { const b = s ? s.box : 0; return g === 0 ? 0 : g === 1 ? Math.max(1, b) : Math.min(5, b + (g === 3 ? 2 : 1)); };
@@ -2315,7 +2759,7 @@ async function loadGen() {
 
 // ---------- settings (this device) ----------
 const SET_D = {acc: 'blue', zoom: 100, uiFont: '', readFont: '', lh: '', sp: '', rw: '', tint: '', bold: false, hc: false, rm: false, ruler: false,
-  tts: true, ttsRate: 1, ttsVoice: '', cfs: 14.5, enter: true, cLen: '', cLvl: '', cStyle: '', cQs: true, cLang: '', cAbout: ''};
+  tts: true, ttsRate: 1, ttsVoice: '', hwMode: '', hwPen: '', hwBg: 'grid', noteAuto: true, cfs: 14.5, enter: true, cLen: '', cLvl: '', cStyle: '', cQs: true, cLang: '', cAbout: ''};
 const SETG = () => ({...SET_D, ...(LS.get('ib-set', {}) || {})});
 function setSet(k, v) { LS.set('ib-set', {...SETG(), [k]: v}); applySettings(); }
 const ACC = {blue: ['#24408e', '#9db1ff'], green: ['#2e6b40', '#86d39a'], teal: ['#0f6466', '#6fd3cc'], purple: ['#5f3a9a', '#c4a8ff'], pink: ['#a3285f', '#ff9ccb'], red: ['#b8321b', '#ff8a6b'], orange: ['#a0500c', '#f2b066'], slate: ['#3a4252', '#c9cfda']};
@@ -2396,6 +2840,13 @@ function renderSettings() {
       ${row('Speed', '', rng('ttsRate', .6, 1.8, .1, c.ttsRate, v => (+v).toFixed(1) + '×'))}
       ${row('Voice', '', `<select data-voice><option value="">Default English</option></select> <button id="ttsT"><svg class="i"><use href="#i-speak"/></svg>Test</button>`)}
     </div>
+    <h3>Handwriting</h3><div class="card">
+      ${row('Answer box opens on', 'Auto: Write for maths and sciences, Type for everything else', seg('hwMode', [['', 'Auto'], ['type', 'Type'], ['ink', 'Write'], ['photo', 'Photo']], c.hwMode))}
+      ${row('Stylus and fingers', 'Auto: once you use a stylus (Apple Pencil, S Pen, Surface Pen), fingers scroll instead of drawing, so your palm can rest on the screen', seg('hwPen', [['', 'Auto'], ['pen', 'Stylus only'], ['touch', 'Fingers draw too']], c.hwPen))}
+      ${row('Writing paper', '', seg('hwBg', [['blank', 'Blank'], ['lines', 'Lined'], ['grid', 'Grid']], c.hwBg))}
+      ${row('Claude organises my notes', 'A little while after you stop writing, Claude titles, tags, files and transcribes new or changed notes', tg('noteAuto'))}
+      ${row('Saved handwriting', 'Drafts, photos and notebook pages are kept in this browser', '<button id="hwUse">Check storage</button>')}
+    </div>
     <h3>Claude tutor</h3><div class="card">
       ${row('Reply length', '', seg('cLen', [['short', 'Short'], ['', 'Normal'], ['long', 'Detailed']], c.cLen))}
       ${row('Explanation level', '', seg('cLvl', [['simple', 'Keep it simple'], ['', 'Standard'], ['hard', 'Stretch me']], c.cLvl))}
@@ -2422,6 +2873,7 @@ function renderSettings() {
   if (window.speechSynthesis) { fill(); speechSynthesis.onvoiceschanged = () => $('[data-voice]') && fill(); } else vs.disabled = true;
   vs.onchange = () => setSet('ttsVoice', vs.value);
   $('#ttsT').onclick = () => speak('This is how textbook pages will sound when read aloud.', $('#ttsT'));
+  $('#hwUse').onclick = async e => { const b = e.currentTarget; let t = 'Not available in this browser'; try { const q = await navigator.storage.estimate(), mb = x => (x / 1048576).toFixed(x < 1048576 * 10 ? 1 : 0) + ' MB'; t = mb(q.usage || 0) + ' used of ' + mb(q.quota || 0); if (navigator.storage.persist && !(await navigator.storage.persisted())) await navigator.storage.persist(); } catch (er) {} b.textContent = t; };
   $('#setRs').onclick = () => { if (!confirm('Reset all settings on this device?')) return; LS.set('ib-set', {}); S.rfs = 18; LS.set('ib-rfs', 18); setTheme('auto'); applySettings(); renderSettings(); };
 }
 
@@ -2435,7 +2887,7 @@ function meMenu() { if (!USER) return signInBox();
   $('#mIcs').onclick = icsModal; $('#mOut').onclick = () => { LS.set('ib-user', null); location.hash = ''; location.reload(); };
 }
 // phones: the bottom bar holds the main tabs, the rest live in this sheet
-const MORE = [['mine', 'My sections', 'spark'], ['terms', 'Flashcards', 'cards'], ['ref', 'Reference', 'flask'], ['prog', 'Progress', 'chart'], ['set', 'Settings', 'gear']];
+const MORE = [['drill', 'Drills', 'drill'], ['terms', 'Flashcards', 'cards'], ['ref', 'Reference', 'flask'], ['sheet', 'Cheat sheets', 'sheet'], ['notes', 'Notes', 'note'], ['mine', 'My sections', 'spark'], ['ia', 'IA coach', 'ia'], ['prog', 'Progress', 'chart'], ['friends', 'Friends', 'friends'], ['set', 'Settings', 'gear']];
 function moreSheet() {
   const th = LS.get('ib-theme', 'auto');
   const m = openModal(`<div class="mgo">${MORE.map(([k, l, i]) => `<button data-mt="${k}" class="${S.tab === k ? 'on' : ''}"><svg class="i"><use href="#i-${i}"/></svg>${l}</button>`).join('')}<button id="moIn"><svg class="i"><use href="#i-inbox"/></svg>Messages</button></div>
@@ -2448,7 +2900,7 @@ function moreSheet() {
 }
 function setTheme(t) { LS.set('ib-theme', t); applyTheme(); }
 function applyTheme() { const t = LS.get('ib-theme', 'auto'), r = document.documentElement; if (t === 'auto') r.removeAttribute('data-theme'); else r.dataset.theme = t;
-  const dark = t === 'dark' || (t === 'auto' && matchMedia('(prefers-color-scheme: dark)').matches); const u = $('#thm use'); if (u) u.setAttribute('href', dark ? '#i-sun' : '#i-moon'); applySettings(); }
+  const dark = t === 'dark' || (t === 'auto' && matchMedia('(prefers-color-scheme: dark)').matches); const u = $('#thm use'); if (u) u.setAttribute('href', dark ? '#i-sun' : '#i-moon'); applySettings(); document.dispatchEvent(new Event('ib-theme')); }
 applyTheme(); matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyTheme);
 $('#thm').onclick = () => { const r = document.documentElement, dark = r.dataset.theme === 'dark' || (!r.dataset.theme && matchMedia('(prefers-color-scheme: dark)').matches); setTheme(dark ? 'light' : 'dark'); };
 function drawMe() { pollInbox(); if (!USER) { $('#me').innerHTML = '<span class="av" style="background:var(--sunk);color:var(--mut);border:1px solid var(--line2)">?</span><span>Sign in to sync</span>'; $('#meH').innerHTML = '<span class="sib">Sign in</span>'; return; }
@@ -2543,6 +2995,209 @@ function spChat(x) {
   const ctx = `[I'm working in my own section of the study app called "${x.title}" (${x.about || x.summary}). Its current content:\n` + x.blocks.map(b => `## ${b.title}\n` + (b.type === 'check' ? b.items.map(i => (i.done ? '[x] ' : '[ ] ') + i.x).join('\n') : b.type === 'notes' ? 'My notes: ' + (b.body || '(empty)') : b.md)).join('\n\n').slice(0, 12000) + ']\n\n';
   openChat({title: 'Claude · ' + x.title, book: spBook(), pages: [], intro: ctx});
 }
+// ---------- Notes: a notebook you write in with a stylus, type in or photograph; Claude files, transcribes, tidies and quizzes ----------
+// Each note's details (title, subject, topic, tags, summary, typed text, Claude's transcript and tidy copy) live in synced progress (S.prog.notes).
+// Ink and photos live in IndexedDB on this device and are backed up to the account through the relay's note store (noteput / noteget / notedel).
+const NOTE_SYS = `You organise a student's study notes. You get one note: typed text and/or images of handwritten pages (written with a stylus on a tablet, or photos of paper). Read everything carefully, including maths, chemistry, diagrams and arrows.
+Reply with ONLY a JSON object, no code fence: {"title": "short, specific title (max 60 characters)", "book": "the id of the subject below it belongs to, or \\"\\" if none fits", "topic": "the syllabus section number from that subject's list that fits best, or \\"\\"", "tags": ["2-5 short lowercase tags"], "summary": "one or two sentences on what the note covers", "read": "a full, faithful transcription of the handwritten pages as markdown, keeping the student's structure, with LaTeX in $...$ (mhchem \\ce{} for chemistry) and diagrams described in [square brackets]; \\"\\" if there is no handwriting", "terms": ["key terms in the note"], "gaps": ["anything that looks wrong, muddled or missing, kindly and specifically; [] if none"]}`;
+const NOTE_TIDY = `You turn a student's rough study notes into a clean, well-organised revision sheet in markdown: clear headings, short bullet points, bold key terms, LaTeX in $...$ (mhchem \\ce{} for chemistry), a small table where it helps compare things. Keep the student's own content, order and examples: do not pad it with lots of new material. Fix clear mistakes and mark each fix with "(corrected)". Describe any diagram in a short [Diagram: ...] line. End with "### Check yourself" and three short recall questions. Reply with only the markdown.`;
+const NOTE_PRE = 'note:';
+const notesAll = () => Object.values(S.prog.notes || {}).filter(n => n && !n.del).sort((a, b) => (b.e || b.t || 0) - (a.e || a.t || 0));
+const noteOf = id => { const n = (S.prog.notes || {})[id]; return n && !n.del ? n : null; };
+function noteSave(n) { n.t = Date.now(); (S.prog.notes = S.prog.notes || {})[n.id] = n; saveProg(); }
+const noteTitle = n => n.title || (n.text || '').trim().split('\n')[0].slice(0, 60) || 'Untitled note';
+const noteHas = n => !!((n.text || '').trim() || n.ink || n.ph);
+const noteDefMode = () => SETG().hwPen === 'pen' || LS.get('ib-pen', 0) || matchMedia('(pointer: coarse)').matches ? 'ink' : 'type';
+function noteSubjects() {
+  return S.books.map(B => `${B.id}: ${B.subject || B.title}\n` + topicsOf(B).slice(0, 90).map(T => `  ${T.num} ${T.title}`).join('\n')).join('\n');
+}
+// relay note store (for ink and photos); paused for a day if this relay doesn't have one yet
+const nsrvOn = () => !(LS.get('ib-nsrv-until', 0) > Date.now());
+const noteSrvOff = e => { if (/unknown|unsupported|no such op|bad op|\b404\b/i.test(e.message || '')) LS.set('ib-nsrv-until', Date.now() + 864e5); };
+const NPUSH = {};
+// back up a note's ink/photos. Only deletes the account copy when the note is deleted or the student cleared ink that was loaded here.
+function notePush(n, cleared) { if (!USER || !nsrvOn()) return; clearTimeout(NPUSH[n.id]); NPUSH[n.id] = setTimeout(async () => { delete NPUSH[n.id];
+  if (n.del) return api('notedel', {id: n.id}).catch(noteSrvOff);
+  const v = await IDB.get(hwKey(NOTE_PRE + n.id)); if (!v && !cleared) return;
+  try { await api(v ? 'noteput' : 'notedel', v ? {id: n.id, t: n.e || Date.now(), data: v} : {id: n.id}); if (n.del) return; n.up = n.e || Date.now(); noteSave(n); const el = $('#nSaved'); if (el && S.note === n) el.textContent = 'Backed up to your account'; } catch (e) { noteSrvOff(e); } }, 3000); }
+async function notePull(n) { // ink written on another device; false = it exists but couldn't be fetched
+  if (!(n.ink || n.ph) || await IDB.get(hwKey(NOTE_PRE + n.id))) return true;
+  if (!USER || !nsrvOn()) return false;
+  try { const r = await api('noteget', {id: n.id}); if (r && r.data) { await IDB.set(hwKey(NOTE_PRE + n.id), r.data); return true; } } catch (e) { noteSrvOff(e); }
+  return false;
+}
+// Claude: file it (subject, topic, title, tags), transcribe the handwriting, summarise, flag gaps
+async function noteOrganise(n) {
+  const got = await notePull(n), imgs = got ? await hwImagesFor(NOTE_PRE + n.id) : [], txt = (n.text || '').trim(), e0 = n.e || 0, oldRead = (n.ink || n.ph) && !imgs.length ? (n.read || '') : '';
+  if (!txt && !imgs.length && !oldRead) { n.orgFail = Date.now(); noteSave(n); throw new Error((n.ink || n.ph) ? "The handwriting in this note is on another device." : 'The note is empty.'); }
+  const body = [txt, oldRead && '[Handwritten part, as read earlier]\n' + oldRead].filter(Boolean).join('\n\n');
+  const r = await api('ask', {mode: 'mark', rubric: NOTE_SYS + '\n\nThe student\'s subjects (id: subject) and syllabus sections:\n' + noteSubjects(), book: n.book || (S.book && S.book.id), pages: [], hw: imgs.length,
+    messages: [{role: 'user', content: askContent(`${n.bookSet && n.book ? `The student filed this under "${n.book}": keep that subject and pick the topic within it.\n` : ''}${n.titleSet && n.title ? `Their title: "${n.title}" (keep it).\n` : ''}Typed text in the note:\n"""\n${body.slice(0, 20000) || '(none)'}\n"""${imgs.length ? `\n\nHandwritten pages: ${imgs.length} image(s) follow.` : ''}`, imgs, 'Page')}]});
+  const j = pj(r.text);
+  if (imgs.length && !txt && !String(j.read || '').trim()) throw new Error(HW_NONE);
+  if (n.del) return null;
+  if (!n.titleSet && j.title) n.title = String(j.title).slice(0, 80);
+  if (!n.bookSet) n.book = bookOf(String(j.book || '')) ? String(j.book) : '';
+  const B = bookOf(n.book); if (!n.topicSet || !(B && topicsOf(B).some(T => T.num === n.topic))) { n.topicSet = 0; n.topic = B && topicsOf(B).some(T => T.num === String(j.topic || '')) ? String(j.topic) : ''; }
+  n.tags = (Array.isArray(j.tags) ? j.tags : []).map(x => String(x).toLowerCase().slice(0, 30)).filter(Boolean).slice(0, 6);
+  n.summary = String(j.summary || '').slice(0, 400); n.read = imgs.length ? String(j.read || '').slice(0, 30000) : oldRead;
+  n.terms = (Array.isArray(j.terms) ? j.terms : []).map(String).slice(0, 20); n.gaps = (Array.isArray(j.gaps) ? j.gaps : []).map(String).slice(0, 8);
+  n.org = (n.e || 0) === e0 ? Date.now() : e0; delete n.orgFail; noteSave(n); return n; // edited while Claude was reading: stays "changed"
+}
+const noteDirty = n => noteHas(n) && (n.e || 0) > (n.org || 0) && (n.e || 0) > (n.orgFail || 0);
+// background filing: notes you changed on this device get organised once you've paused for a bit; also backs up notes saved while the store was off
+const NOTE_BG = {busy: 0, local: new Set(LS.get('ib-nloc', []))};
+async function noteAuto() {
+  if (NOTE_BG.busy || !S.prog || !S.prog.notes) return;
+  if (USER && nsrvOn()) { const b = notesAll().find(x => (x.ink || x.ph) && (x.up || 0) < (x.e || 0) && NOTE_BG.local.has(x.id) && !NPUSH[x.id] && S.note !== x); if (b) notePush(b); }
+  if (SETG().noteAuto === false) return;
+  const n = notesAll().find(x => noteDirty(x) && Date.now() - x.e > 20e3 && NOTE_BG.local.has(x.id) && S.note !== x); if (!n) return;
+  NOTE_BG.busy = 1; try { await noteOrganise(n); } catch (e) { n.orgFail = Date.now(); noteSave(n); } NOTE_BG.busy = 0;
+  if (S.tab === 'notes' && !S.note && !(document.activeElement && document.activeElement.closest && document.activeElement.closest('#main'))) renderNotes();
+}
+setInterval(() => { if (S.books.length) noteAuto(); }, 15e3);
+const noteLocal = id => { NOTE_BG.local.add(id); LS.set('ib-nloc', [...NOTE_BG.local].slice(-300)); };
+function noteDel(n) { if (!confirm(`Delete “${noteTitle(n)}”? This can't be undone.`)) return false; clearTimeout(NPUSH[n.id]);
+  for (const k of ['text', 'read', 'clean', 'summary', 'title', 'tags', 'terms', 'gaps', 'book', 'topic']) delete n[k]; n.del = 1; n.ink = n.ph = 0; noteSave(n);
+  IDB.del(hwKey(NOTE_PRE + n.id)); if (USER && nsrvOn()) api('notedel', {id: n.id}).catch(noteSrvOff); return true; }
+// notes and handwriting made as a guest move into the account when signing in
+async function hwAdoptGuest(key) {
+  for (const k of await IDB.keys('hw:guest:')) { const v = await IDB.get(k); if (v !== undefined) { const nk = 'hw:' + key + ':' + k.slice(9); if ((await IDB.get(nk)) === undefined) await IDB.set(nk, v); } await IDB.del(k); }
+  for (const id of NOTE_BG.local) { const n = noteOf(id); if (n && (n.ink || n.ph)) notePush(n); }
+}
+async function noteThumb(el, n) {
+  const v = await IDB.get(hwKey(NOTE_PRE + n.id)); if (!v || !el.isConnected) return;
+  if (v.ink && v.ink.strokes && v.ink.strokes.length) { const bb = inkBox(v.ink); if (!bb) return; const W = el.clientWidth || 240, H = 110, d = Math.min(2, window.devicePixelRatio || 1), c = document.createElement('canvas'); c.width = W * d; c.height = H * d; c.style.width = W + 'px'; c.style.height = H + 'px';
+    const x0 = Math.max(0, bb[0] - 10), y0 = Math.max(0, bb[1] - 10), k = Math.min(W / Math.max(200, bb[2] - x0 + 10), 1.2) , x = c.getContext('2d'); x.scale(d, d); x.translate(-x0 * k, -y0 * k); for (const s of v.ink.strokes) inkStroke(x, s, k, inkCols()); el.appendChild(c); }
+  else if (v.photos && v.photos.length) el.innerHTML = `<img src="${v.photos[0]}" alt="">`;
+}
+function renderNotes() {
+  shell('notes'); setHash('#/notes'); S.note = null; S.qBox = null;
+  const F = S.nf = S.nf || {b: '', q: ''}, all = notesAll(), q = F.q.trim().toLowerCase();
+  const list = all.filter(n => (!F.b || (F.b === '-' ? !n.book : n.book === F.b)) && (!q || [noteTitle(n), n.summary, n.text, n.read, (n.tags || []).join(' ')].join(' ').toLowerCase().includes(q)));
+  const groups = new Map(); for (const n of list) { const k = bookOf(n.book) ? n.book : ''; if (!groups.has(k)) groups.set(k, []); groups.get(k).push(n); }
+  const order = [...groups.keys()].sort((a, b) => !a ? 1 : !b ? -1 : (bookOf(a).subject || '').localeCompare(bookOf(b).subject || ''));
+  const dirty = all.filter(noteDirty).length, subs = [...new Set(all.map(n => n.book).filter(b => bookOf(b)))];
+  const card = n => { const B = bookOf(n.book), T = B && n.topic ? topicsOf(B).find(x => x.num === n.topic) : null;
+    return `<div class="card nc" data-nt="${n.id}" tabindex="0"><div class="nth" data-th="${n.id}">${!n.ink && !n.ph ? `<div class="ntx">${esc((n.text || '').slice(0, 220))}</div>` : ''}</div><div class="nb"><b>${esc(noteTitle(n))}</b><div class="meta">${new Date(n.e || n.made).toLocaleDateString(undefined, {day: 'numeric', month: 'short'})}${T ? ' · ' + esc(T.num + ' ' + T.title) : ''}</div>${n.summary ? `<div class="nsum">${esc(n.summary)}</div>` : ''}<div>${(n.tags || []).map(t => `<span class="tag">${esc(t)}</span>`).join('')}${noteDirty(n) ? `<span class="tag w">${n.org ? 'changed' : 'not organised yet'}</span>` : ''}</div></div></div>`; };
+  $('#main').innerHTML = `<div class="prac notes" style="max-width:1100px">
+    <div class="row" style="justify-content:space-between"><h2 style="margin:0">Notes</h2><div class="row">${all.length ? `<button id="nAsk"><svg class="i"><use href="#i-spark"/></svg>Ask about my notes</button><button id="nOrgA" ${dirty ? '' : 'disabled'} title="Claude files, titles, tags and transcribes notes that are new or changed">Organise${dirty ? ' ' + dirty : 'd'}</button>` : ''}<button class="pri" id="nNew"><svg class="i"><use href="#i-plus"/></svg>New note</button></div></div>
+    ${all.length ? `<div class="filters"><input id="nQ" type="search" placeholder="Search your notes" value="${esc(F.q)}" style="max-width:280px"><select id="nB"><option value="">All subjects</option>${subs.map(b => `<option value="${b}" ${F.b === b ? 'selected' : ''}>${esc(bookOf(b).subject || b)}</option>`).join('')}<option value="-" ${F.b === '-' ? 'selected' : ''}>Unsorted</option></select><span class="meta fcount">${list.length} note${list.length === 1 ? '' : 's'}</span><span class="meta" id="nMsg"></span></div>
+      ${order.map(k => { const B = bookOf(k), ns = groups.get(k).sort((a, b) => String(a.topic || '~').localeCompare(String(b.topic || '~'), undefined, {numeric: true}) || (b.e || 0) - (a.e || 0));
+        return `<h3 class="ngh">${B ? `<span class="dot" style="background:${bookC(B)}"></span>${esc(B.subject || B.title)}` : 'Unsorted'} <span class="meta">${ns.length}</span></h3><div class="grid ngrid">${ns.map(card).join('')}</div>`; }).join('') || '<p>No notes match.</p>'}`
+    : `<div class="card nempty"><svg class="i" style="width:34px;height:34px"><use href="#i-note"/></svg><h3>Your notebook</h3><p>Write notes with a stylus or your finger, type them, or snap photos of paper notes. Claude reads your handwriting, files each note under the right subject and topic, gives it a title and tags, and can tidy it into a revision sheet or turn it into flashcards.</p><p class="meta">${USER ? 'Notes are saved on this device and backed up to your account.' : 'Notes are saved in this browser. Sign in to keep them on your account too.'}</p></div>`}</div>`;
+  $('#nNew').onclick = () => { const n = {id: uid(), made: Date.now(), t: Date.now(), e: 0, title: '', book: '', topic: '', text: '', mode: noteDefMode()}; if (F.b && F.b !== '-') { n.book = F.b; n.bookSet = 1; } S.newNote = n; openNote(n.id); };
+  if (!all.length) return;
+  $('#nQ').oninput = e => { F.q = e.target.value; clearTimeout(S.nqT); S.nqT = setTimeout(() => { if (S.tab !== 'notes' || S.note || !$('#nQ')) return; renderNotes(); const i = $('#nQ'); i.focus(); i.setSelectionRange(i.value.length, i.value.length); }, 250); };
+  $('#nB').onchange = e => { F.b = e.target.value; renderNotes(); };
+  document.querySelectorAll('.nc').forEach(c => { c.onclick = () => openNote(c.dataset.nt); c.onkeydown = e => { if (e.key === 'Enter') openNote(c.dataset.nt); }; });
+  document.querySelectorAll('[data-th]').forEach(el => { const n = noteOf(el.dataset.th); if (n && (n.ink || n.ph)) noteThumb(el, n); });
+  $('#nOrgA').onclick = async () => { if (NOTE_BG.busy) return; const b = $('#nOrgA'), todo = notesAll().filter(noteDirty); b.disabled = true; let i = 0, bad = 0; NOTE_BG.busy = 1;
+    for (const n of todo) { $('#nMsg').innerHTML = `<span class="spin"></span> Organising ${++i} of ${todo.length}: ${esc(noteTitle(n))}`; try { if (!(await noteOrganise(n))) bad++; } catch (e) { bad++; n.orgFail = Date.now(); noteSave(n); } } NOTE_BG.busy = 0;
+    if (S.tab === 'notes' && !S.note) { renderNotes(); if (bad) $('#nMsg').textContent = `${bad} note${bad > 1 ? 's' : ''} couldn't be organised (handwriting on another device, or unreadable).`; } };
+  $('#nAsk').onclick = () => { let ctx = '', n0 = 0; for (const n of list) { const B = bookOf(n.book), s = `\n## ${noteTitle(n)}${B ? ' (' + B.subject + (n.topic ? ' ' + n.topic : '') + ')' : ''}\n${[n.text, n.read].filter(Boolean).join('\n\n').slice(0, 4000) || n.summary || ''}\n`; if (ctx.length + s.length > 40000) break; ctx += s; n0++; }
+    openChat({title: 'Ask about my notes', book: F.b && F.b !== '-' ? F.b : (S.book && S.book.id), pages: [], intro: `[These are my own study notes (${n0} of ${list.length}${F.b ? ', filtered' : ''}). Answer from them first, say when something isn't in them, and point out anything in them that's wrong.\n${ctx}]\n\n`, msgs: []}); };
+}
+async function openNote(id) {
+  let n = noteOf(id); if (!n && S.newNote && S.newNote.id === id) n = S.newNote; if (!n) return renderNotes();
+  shell('notes'); setHash('#/notes/' + id); S.note = n; clearTimeout(S.nqT); title([['Notes', 'notes'], noteTitle(n)]);
+  $('#main').innerHTML = '<div class="prac"><span class="spin"></span></div>';
+  const got = await notePull(n); if (S.note !== n) return;
+  const B = () => bookOf(n.book), subs = S.books, tps = () => B() ? topicsOf(B()) : [];
+  $('#main').innerHTML = `<div class="prac note-ed" style="max-width:1000px">
+    <div class="row" style="margin-bottom:10px"><button id="nBack"><svg class="i"><use href="#i-l"/></svg>All notes</button><span class="sp" style="flex:1"></span><span class="meta" id="nSaved">${n.e ? (n.up >= n.e ? 'Backed up to your account' : 'Saved on this device') : ''}</span><button id="nDel" class="ghost" title="Delete note" aria-label="Delete note"><svg class="i"><use href="#i-trash"/></svg></button></div>
+    ${got ? '' : '<div class="wrong row" style="margin-bottom:10px"><span style="flex:1">The handwriting in this note is on another device and couldn\'t be fetched from your account, so writing and photos are locked here to keep it safe. You can still type, and Claude\'s transcript is below.</span><button id="nRetry">Try again</button></div>'}
+    <input id="nT" class="ntitle" placeholder="Untitled (Claude will name it)" value="${esc(n.title || '')}" maxlength="80">
+    <div class="row nmeta"><select id="nB" aria-label="Subject"><option value="">${n.book ? 'Unsorted' : 'Subject: let Claude decide'}</option>${subs.map(b => `<option value="${b.id}" ${n.book === b.id ? 'selected' : ''}>${esc(b.subject || b.title)}</option>`).join('')}</select><select id="nTp" aria-label="Topic"></select><span id="nTags"></span></div>
+    <div id="nBox"></div>
+    <div class="row" style="margin-top:12px"><button class="pri" id="nOrgB"><svg class="i"><use href="#i-spark"/></svg>${n.org ? 'Re-organise' : 'Organise'}</button><button id="nTidy">Tidy into a revision sheet</button><button id="nCards"><svg class="i"><use href="#i-cards"/></svg>Make flashcards</button><button id="nChat">Ask Claude about it</button><span class="meta" id="nMsg"></span></div>
+    <div id="nOut"></div></div>`;
+  const drawTp = () => { $('#nTp').innerHTML = `<option value="">${B() ? 'Topic: any' : 'Topic'}</option>` + tps().map(T => `<option value="${esc(T.num)}" ${n.topic === T.num ? 'selected' : ''}>${esc(T.num + ' ' + T.title)}</option>`).join(''); $('#nTp').disabled = !B(); };
+  const drawTags = () => { $('#nTags').innerHTML = (n.tags || []).map(t => `<span class="tag">${esc(t)}</span>`).join(''); };
+  const drawOut = () => { const gaps = (n.gaps || []).filter(Boolean);
+    $('#nOut').innerHTML = (n.summary || gaps.length ? `<div class="card fb"><b>Summary</b><p style="margin:6px 0 0">${esc(n.summary || '')}</p>${(n.terms || []).length ? `<div style="margin-top:8px">${n.terms.map(t => `<span class="tag">${esc(t)}</span>`).join('')}</div>` : ''}${gaps.length ? `<h4>Worth checking</h4><ul>${li(gaps)}</ul>` : ''}</div>` : '')
+      + (n.clean ? `<div class="card fb nclean"><div class="row"><b>Revision sheet</b><span class="sp"></span><button id="nCopy">Copy</button><button id="nClr" class="ghost" title="Remove the revision sheet">Remove</button></div><div class="page" style="font-size:17px">${mdm(n.clean)}</div></div>` : '')
+      + (n.read ? `<details class="hwread"><summary><b>How Claude read your handwriting</b> <span class="meta">this text is what search, chat and flashcards use</span></summary><div class="hwrd">${mdm(n.read)}</div></details>` : '');
+    if ($('#nCopy')) $('#nCopy').onclick = () => navigator.clipboard && navigator.clipboard.writeText(n.clean).then(() => { $('#nCopy').textContent = 'Copied'; });
+    if ($('#nClr')) $('#nClr').onclick = () => { n.clean = ''; noteSave(n); drawOut(); }; };
+  drawTp(); drawTags(); drawOut();
+  let sT = 0; const saved = (t) => { const el = $('#nSaved'); if (el) el.textContent = t; };
+  const counts = () => { if (!got) return false; const had = n.ink || n.ph, c = box.counts; n.ink = c.ink; n.ph = c.ph; return !!had && !c.ink && !c.ph; }; // false when the ink lives elsewhere: keep its counts
+  const touch = () => { n.e = Date.now(); if (got) n.mode = box.mode; noteLocal(n.id); S.newNote = null; clearTimeout(sT); saved('Saving…'); sT = setTimeout(async () => { const cl = counts(); await box.flush(); noteSave(n); saved(USER && nsrvOn() ? 'Saved on this device' : 'Saved'); if (got) notePush(n, cl); }, 700); };
+  const box = hwBox($('#nBox'), {key: NOTE_PRE + n.id, text: n.text || '', rows: 18, math: !!(B() && B().math), mode: n.mode || noteDefMode(), big: true, only: got ? null : ['type'], placeholder: 'Type your notes… (or switch to Write to use your stylus)',
+    onText: v => { n.text = v; touch(); }, onChange: k => { if (k !== 'load') touch(); }});
+  $('#nBack').onclick = async () => { const pend = !!sT; clearTimeout(sT); sT = 0; await box.flush(); if (n.e && (noteHas(n) || noteOf(n.id))) { const cl = counts(); if (pend || cl) { noteSave(n); if (got) notePush(n, cl); } } renderNotes(); };
+  if ($('#nRetry')) $('#nRetry').onclick = () => openNote(n.id);
+  $('#nDel').onclick = async () => { clearTimeout(sT); sT = 0; if (noteOf(n.id)) { if (noteDel(n)) { box.cancel(); IDB.del(hwKey(NOTE_PRE + n.id)); renderNotes(); } return; } if (!noteOf(n.id)) { if (noteHas(n) && !confirm('Discard this note?')) return; S.newNote = null; await box.flush(); IDB.del(hwKey(NOTE_PRE + n.id)); return renderNotes(); } if (noteDel(n)) renderNotes(); };
+  $('#nT').oninput = e => { n.title = e.target.value.trim(); n.titleSet = n.title ? 1 : 0; title([['Notes', 'notes'], noteTitle(n)]); if (noteHas(n) || n.title) { clearTimeout(n._tt); n._tt = setTimeout(() => { delete n._tt; noteSave(n); }, 500); } };
+  $('#nB').onchange = e => { n.book = e.target.value; n.bookSet = n.book ? 1 : 0; n.topic = ''; n.topicSet = 0; drawTp(); if (noteHas(n)) noteSave(n); };
+  $('#nTp').onchange = e => { n.topic = e.target.value; n.topicSet = n.topic ? 1 : 0; if (n.topic) n.bookSet = 1; if (noteHas(n)) noteSave(n); };
+  const busy = (b, msg) => { ['nOrgB', 'nTidy', 'nCards'].forEach(i => $('#' + i).disabled = !!b); $('#nMsg').innerHTML = b ? '<span class="spin"></span> ' + esc(msg) : esc(msg || ''); };
+  const need = async () => { await box.flush(); counts(); if (!noteHas(n)) { busy(0, 'Write or type something first.'); return false; } if (!n.e) n.e = Date.now(); noteLocal(n.id); noteSave(n); return true; };
+  $('#nOrgB').onclick = async () => { if (!(await need())) return; busy(1, box.hasImages ? 'Reading your handwriting and filing it…' : 'Filing it…');
+    try { await noteOrganise(n); if (S.note !== n) return; $('#nT').value = n.title || ''; title([['Notes', 'notes'], noteTitle(n)]); $('#nB').value = n.book || ''; drawTp(); drawTags(); drawOut(); const Bk = B(); busy(0, Bk ? 'Filed under ' + Bk.subject + (n.topic ? ' · ' + n.topic : '') : 'Organised'); }
+    catch (e) { n.orgFail = Date.now(); noteSave(n); busy(0, 'Could not organise: ' + e.message); } };
+  const fresh = async () => { if (box.hasImages && (!n.read || noteDirty(n))) { busy(1, 'Reading your handwriting first…'); await noteOrganise(n); if (S.note === n) { $('#nT').value = n.title || ''; drawTags(); drawOut(); } } };
+  $('#nTidy').onclick = async () => { if (!(await need())) return; busy(1, 'Writing your revision sheet…');
+    try { await fresh(); busy(1, 'Writing your revision sheet…'); const imgs = [], r = await api('ask', {mode: 'mark', rubric: NOTE_TIDY, book: n.book || (S.book && S.book.id), pages: [], hw: imgs.length, messages: [{role: 'user', content: askContent(`My notes${n.title ? ' on ' + n.title : ''}:\n"""\n${[n.text, n.read && '[Handwritten part]\n' + n.read].filter(Boolean).join('\n\n').slice(0, 30000) || '(handwritten, see the images)'}\n"""`, imgs, 'Page')}]});
+      const md = String(r.text || '').replace(/^```(?:markdown|md)?\s*|\s*```$/g, '').trim(); if (!md) throw new Error('empty reply'); if (S.note !== n) return; n.clean = md.slice(0, 30000); noteSave(n); drawOut(); busy(0, ''); $('.nclean') && $('.nclean').scrollIntoView({behavior: 'smooth'}); }
+    catch (e) { busy(0, 'Could not tidy: ' + e.message); } };
+  $('#nCards').onclick = async () => { if (!(await need())) return; busy(1, 'Writing flashcards from your note…');
+    try { await fresh(); busy(1, 'Writing flashcards from your note…'); const imgs = [], r = await api('ask', {mode: 'mark', rubric: CARD_SYS, book: n.book || (S.book && S.book.id), pages: [], hw: imgs.length, messages: [{role: 'user', content: askContent(`Write 8-15 flashcards covering the most examinable content of these study notes (only what is in them):\n"""\n${[n.text, n.read].filter(Boolean).join('\n\n').slice(0, 30000) || '(handwritten, see the images)'}\n"""`, imgs, 'Page')}]});
+      const cards = ((pj(r.text) || {}).cards || []).filter(c => c && c.f && c.b); if (!cards.length) throw new Error('no cards came back'); const d = addCards('Notes · ' + noteTitle(n).slice(0, 50), n.book || '', cards.map(c => ({...c, ...(n.topic ? {tp: n.topic} : {})})));
+      saveDeck(d); if (S.note !== n) return; $('#nMsg').innerHTML = `Added ${cards.length} cards to “${esc(d.name)}”. <a href="#" id="nGoC">Study them</a>`; ['nOrgB', 'nTidy', 'nCards'].forEach(i => $('#' + i).disabled = false);
+      $('#nGoC').onclick = e => { e.preventDefault(); S.tv = 'decks'; LS.set('ib-tv', 'decks'); go('terms'); }; }
+    catch (e) { busy(0, 'Could not make cards: ' + e.message); } };
+  $('#nChat').onclick = async () => { await box.flush(); const body = [n.text, n.read && '[Handwritten part, as read]\n' + n.read].filter(Boolean).join('\n\n');
+    openChat({title: 'Note · ' + noteTitle(n), book: n.book || (S.book && S.book.id), pages: [], intro: `[My study note "${noteTitle(n)}":\n${body.slice(0, 20000) || '(only handwriting so far; press Organise in the app so you can read it)'}\n]\n\n`, msgs: []}); };
+}
+
+// ---------- drills hub ----------
+// Each drill registers itself: DRILLS.push({id, title, desc, icon, books?: [...ids], open(arg)}). #/drill/<id>[/<arg>] opens one.
+const DRILLS = [];
+function renderDrills(id, arg) {
+  shell('drill'); const D = id && DRILLS.find(d => d.id === id);
+  if (D) { setHash('#/drill/' + D.id + (arg != null ? '/' + arg : '')); title([['Drills', 'drill'], D.title]); return D.open(arg); }
+  setHash('#/drill');
+  $('#main').innerHTML = `<h2 class="h2">Drills</h2><p class="meta" style="margin:-4px 0 16px">Quick practice that's checked in the app, no waiting for marking.</p><div class="drills">${DRILLS.map(d => `<button class="card drillc" data-d="${d.id}"><svg class="i"><use href="#i-${d.icon || 'drill'}"/></svg><b>${esc(d.title)}</b><span class="meta">${esc(d.desc)}</span></button>`).join('') || '<p class="meta">No drills yet.</p>'}</div>`;
+  document.querySelectorAll('[data-d]').forEach(b => b.onclick = () => renderDrills(b.dataset.d));
+}
+
+// ==== FEATURE: cheat sheets (renderSheets) ====
+function renderSheets() { shell('sheet'); setHash('#/sheet'); $('#main').innerHTML = '<h2 class="h2">Cheat sheets</h2><p class="meta">Coming soon.</p>'; }
+// ==== END FEATURE: cheat sheets ====
+
+
+// ==== FEATURE: IA coach (renderIA) ====
+function renderIA() { shell('ia'); setHash('#/ia'); $('#main').innerHTML = '<h2 class="h2">IA coach</h2><p class="meta">Coming soon.</p>'; }
+// ==== END FEATURE: IA coach ====
+
+
+// ==== FEATURE: friends (renderFriends) ====
+function renderFriends() { shell('friends'); setHash('#/friends'); $('#main').innerHTML = '<h2 class="h2">Friends</h2><p class="meta">Coming soon.</p>'; }
+// ==== END FEATURE: friends ====
+
+
+// ==== FEATURE: chemistry drills (equations, stoichiometry) ====
+// ==== END FEATURE: chemistry drills ====
+
+
+// ==== FEATURE: diagram labelling drill ====
+// ==== END FEATURE: diagram labelling drill ====
+
+
+// ==== FEATURE: command-term trainer ====
+// ==== END FEATURE: command-term trainer ====
+
+
+// ==== FEATURE: numeric answer checking ====
+// ==== END FEATURE: numeric answer checking ====
+
+
+// ==== FEATURE: points predictor ====
+// ==== END FEATURE: points predictor ====
+
+
 function route() {
   const [, a, b, c] = decodeURIComponent(location.hash).split('/');
   if (a === 'lib' && b && bookOf(b)) return openPage(b, +c || 1);
@@ -2550,7 +3205,9 @@ function route() {
   if (a === 'q' && b) return openQ(b);
   if (a === 'recall' && b && bookOf(b)) return renderRecall(b, c ? +c : undefined);
   if (a === 'ref') return go('ref');
+  if (a === 'drill' && b) return renderDrills(b, c);
   if (a === 'mine' && b) return openSpace(b);
+  if (a === 'notes' && b) return openNote(b);
   if (a === 'paper' && b) return loadPapers().then(() => openPaper(b));
   if (a === 'search' && b) { $('#q').value = b; return search(b); }
   if (TABN[a] && a !== 'search') return go(a);
@@ -2573,14 +3230,14 @@ $('#menuBtn').onclick = () => $('#toc').classList.toggle('open');
 $('#hHome').onclick = () => { closeDrawer(); go('home'); }; $('#hBack').onclick = () => { if ($('#modal')) return $('#modal').remove(); goBack(); };
 new ResizeObserver(() => document.documentElement.style.setProperty('--hh', document.querySelector('header').offsetHeight + 'px')).observe(document.querySelector('header'));
 // g then a letter jumps to a screen; ? lists the shortcuts
-const GOK = {h: 'home', r: 'rev', l: 'lib', p: 'prac', f: 'terms', e: 'ref', m: 'mine', c: 'plan', g: 'prog', s: 'set'}; let gWait = 0;
+const GOK = {h: 'home', r: 'rev', l: 'lib', p: 'prac', f: 'terms', e: 'ref', m: 'mine', n: 'notes', c: 'plan', g: 'prog', s: 'set', d: 'drill', t: 'sheet', i: 'ia', w: 'friends'}; let gWait = 0;
 function keysHelp() { openModal(`<h3 style="margin:0 0 12px;font:600 20px var(--f-read)">Keyboard shortcuts</h3><div class="keys">
   ${Object.entries(GOK).map(([k, t]) => `<span><span class="kbd">g</span> <span class="kbd">${k}</span></span><span>${TABN[t]}</span>`).join('')}
   <span><span class="kbd">/</span></span><span>Search or jump to anything (sections, terms, screens)</span><span><span class="kbd">Alt</span> <span class="kbd">←</span></span><span>Back</span>
   <span><span class="kbd">←</span> <span class="kbd">→</span></span><span>Previous / next textbook page</span><span><span class="kbd">f</span></span><span>Full-screen reading</span>
   <span><span class="kbd">Esc</span></span><span>Close a panel or popup</span><span><span class="kbd">?</span></span><span>This list</span></div><div class="row" style="margin-top:16px"><span class="sp"></span><button id="mClose">Close</button></div>`); }
 document.addEventListener('keydown', e => {
-  if (/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName) || e.metaKey || e.ctrlKey || e.altKey) return;
+  if (/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName) || document.activeElement.closest('.inkw') || e.metaKey || e.ctrlKey || e.altKey) return;
   if (e.key === '?') { e.preventDefault(); return keysHelp(); }
   if (e.key === 'Escape') { if ($('#modal')) $('#modal').remove(); else if (!$('#drawer').classList.contains('hide')) closeDrawer(); else $('#toc').classList.remove('open'); }
   if (gWait && Date.now() - gWait < 1200 && GOK[e.key]) { gWait = 0; e.preventDefault(); e.stopImmediatePropagation(); closeDrawer(); return go(GOK[e.key]); }
@@ -2623,6 +3280,7 @@ async function signIn(name) {
   const kn = knownNames().filter(x => ukey(x) !== u.key); kn.unshift(u.name); LS.set('ib-known', kn.slice(0, 6));
   const gp = LS.get('ib-prog:guest', null), gl = LS.get('ib-plan:guest', null) || [];
   loadLocal(); if (S.books.length) await pullProg();
+  await hwAdoptGuest(u.key);
   if (gp) { mergeIn({pins: [], marks: [], hls: [], ...gp, pt: 0}); for (const k of ['pins', 'marks', 'hls']) for (const x of gp[k] || []) if (!S.prog[k].some(y => JSON.stringify(y) === JSON.stringify(x))) S.prog[k].push(x); }
   if (gl.length) { let sp = []; try { sp = await api('plan'); } catch (e) {} S.plan = [...(Array.isArray(sp) ? sp : []), ...gl.filter(x => !(sp || []).some(y => y.id === x.id))]; LS.set(LSK('ib-plan'), S.plan); await api('plan', {data: S.plan}).catch(() => {}); }
   else S.planLoaded = 0;
