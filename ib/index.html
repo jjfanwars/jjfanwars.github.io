@@ -507,6 +507,8 @@ body.nbk-dragging,body.nbk-dragging *{cursor:grabbing!important;user-select:none
 .nbk-ph h3{font:600 27px/1.2 var(--f-read);letter-spacing:-.015em;margin:2px 0 10px;text-wrap:balance}.nbk-ph h3 .nm{color:var(--mut)}
 .nbk-acts{gap:6px}.nbk-acts .seg button{padding:6px 10px}.nbk-cbtn{display:none;margin-bottom:8px}
 .nbk-pages{display:flex;flex-direction:column;gap:16px}
+.nbk-month{font:600 13px var(--f-ui);text-transform:uppercase;letter-spacing:.06em;color:var(--mut,#777);margin:6px 2px -6px;display:flex;align-items:center;gap:10px}.nbk-month::after{content:'';flex:1;height:1px;background:var(--line)}.nbk-date{font-weight:600}
+.ndate{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:10px;padding:0 8px;background:var(--panel)}.ndate input{border:0;background:none;padding:7px 0;font:inherit;color:inherit;min-width:0}.ndates{margin:2px 0 8px;font-size:12.5px}
 .nbk-pg{padding:16px 20px 18px 48px;position:relative;background:linear-gradient(90deg,transparent 34px,color-mix(in srgb,var(--red) 32%,transparent) 34px 35px,transparent 35px),var(--panel)}
 .nbk-pg.focus{box-shadow:0 0 0 2px var(--acc)}
 .nbk-pgh{display:flex;gap:8px;align-items:flex-start}
@@ -3105,12 +3107,19 @@ function spChat(x) {
 // Each note's details (title, subject, topic, tags, summary, typed text, Claude's transcript and tidy copy) live in synced progress (S.prog.notes).
 // Ink and photos live in IndexedDB on this device and are backed up to the account through the relay's note store (noteput / noteget / notedel).
 const NOTE_SYS = `You organise a student's study notes. You get one note: typed text and/or images of handwritten pages (written with a stylus on a tablet, or photos of paper). Read everything carefully, including maths, chemistry, diagrams and arrows.
-Reply with ONLY a JSON object, no code fence: {"title": "short, specific title (max 60 characters)", "book": "the id of the subject below it belongs to, or \\"\\" if none fits", "topic": "the syllabus section number from that subject's list that fits best, or \\"\\"", "tags": ["2-5 short lowercase tags"], "summary": "one or two sentences on what the note covers", "read": "a full, faithful transcription of the handwritten pages as markdown, keeping the student's structure, with LaTeX in $...$ (mhchem \\ce{} for chemistry) and diagrams described in [square brackets]; \\"\\" if there is no handwriting", "terms": ["key terms in the note"], "gaps": ["anything that looks wrong, muddled or missing, kindly and specifically; [] if none"]}`;
+Reply with ONLY a JSON object, no code fence: {"title": "short, specific title (max 60 characters)", "book": "the id of the subject below it belongs to, or \\"\\" if none fits", "topic": "the syllabus section number from that subject's list that fits best, or \\"\\"", "tags": ["2-5 short lowercase tags"], "summary": "one or two sentences on what the note covers", "read": "a full, faithful transcription of the handwritten pages as markdown, keeping the student's structure, with LaTeX in $...$ (mhchem \\ce{} for chemistry) and diagrams described in [square brackets]; \\"\\" if there is no handwriting", "terms": ["key terms in the note"], "gaps": ["anything that looks wrong, muddled or missing, kindly and specifically; [] if none"], "date": "the date written on the note itself (e.g. in a page header) as YYYY-MM-DD, or \"\" if none is written"}`;
 const NOTE_TIDY = `You turn a student's rough study notes into a clean, well-organised revision sheet in markdown: clear headings, short bullet points, bold key terms, LaTeX in $...$ (mhchem \\ce{} for chemistry), a small table where it helps compare things. Keep the student's own content, order and examples: do not pad it with lots of new material. Fix clear mistakes and mark each fix with "(corrected)". Describe any diagram in a short [Diagram: ...] line. End with "### Check yourself" and three short recall questions. Reply with only the markdown.`;
 const NOTE_PRE = 'note:';
 const notesAll = () => Object.values(S.prog.notes || {}).filter(n => n && !n.del).sort((a, b) => (b.e || b.t || 0) - (a.e || a.t || 0));
 const noteOf = id => { const n = (S.prog.notes || {})[id]; return n && !n.del ? n : null; };
 function noteSave(n) { n.t = Date.now(); (S.prog.notes = S.prog.notes || {})[n.id] = n; saveProg(); }
+// a note's date: the one the student set, else a date Claude read off the page, else when it was made
+const noteDate = n => n.dt || n.pd || n.made || n.e || n.t || Date.now();
+const dLong = t => new Date(t).toLocaleDateString(undefined, {weekday: 'short', day: 'numeric', month: 'short', year: 'numeric'});
+const dShort = t => { const d = new Date(t); return d.toLocaleDateString(undefined, d.getFullYear() === new Date().getFullYear() ? {day: 'numeric', month: 'short'} : {day: 'numeric', month: 'short', year: 'numeric'}); };
+const dWhen = t => { const d = new Date(t), n = new Date(), y = new Date(n - 864e5), tm = d.toLocaleTimeString([], {hour: 'numeric', minute: '2-digit'});
+  return d.toDateString() === n.toDateString() ? 'today ' + tm : d.toDateString() === y.toDateString() ? 'yesterday ' + tm : dShort(t) + ', ' + tm; };
+const ymdL = t => { const d = new Date(t); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
 const noteTitle = n => n.title || (n.text || '').trim().split('\n')[0].slice(0, 60) || 'Untitled note';
 const noteHas = n => !!((n.text || '').trim() || n.ink || n.ph);
 const noteDefMode = () => SETG().hwPen === 'pen' || LS.get('ib-pen', 0) || matchMedia('(pointer: coarse)').matches ? 'ink' : 'type';
@@ -3147,6 +3156,7 @@ async function noteOrganise(n) {
   const B = bookOf(n.book); if (!n.topicSet || !(B && topicsOf(B).some(T => T.num === n.topic))) { n.topicSet = 0; n.topic = B && topicsOf(B).some(T => T.num === String(j.topic || '')) ? String(j.topic) : ''; }
   n.tags = (Array.isArray(j.tags) ? j.tags : []).map(x => String(x).toLowerCase().slice(0, 30)).filter(Boolean).slice(0, 6);
   n.summary = String(j.summary || '').slice(0, 400); n.read = imgs.length ? String(j.read || '').slice(0, 30000) : oldRead;
+  { const pd = /^\d{4}-\d\d-\d\d$/.test(j.date || '') ? new Date(j.date + 'T12:00:00').getTime() : 0; if (pd && pd < Date.now() + 864e5 && pd > Date.now() - 6 * 365 * 864e5) n.pd = pd; }
   n.terms = (Array.isArray(j.terms) ? j.terms : []).map(String).slice(0, 20); n.gaps = (Array.isArray(j.gaps) ? j.gaps : []).map(String).slice(0, 8);
   n.org = (n.e || 0) === e0 ? Date.now() : e0; delete n.orgFail; noteSave(n); return n; // edited while Claude was reading: stays "changed"
 }
@@ -3186,7 +3196,7 @@ function renderNotes() {
   const order = [...groups.keys()].sort((a, b) => !a ? 1 : !b ? -1 : (bookOf(a).subject || '').localeCompare(bookOf(b).subject || ''));
   const dirty = all.filter(noteDirty).length, subs = [...new Set(all.map(n => n.book).filter(b => bookOf(b)))];
   const card = n => { const C = nbParse(nbChap(n)), T = C.t === 't' || C.t === 's' ? C : null;
-    return `<div class="card nc" data-nt="${n.id}" tabindex="0"><div class="nth" data-th="${n.id}">${!n.ink && !n.ph ? `<div class="ntx">${esc((n.text || '').slice(0, 220))}</div>` : ''}</div><div class="nb"><b>${esc(noteTitle(n))}</b><div class="meta">${new Date(n.e || n.made).toLocaleDateString(undefined, {day: 'numeric', month: 'short'})}${T ? ' · ' + esc(T.name) : ''}</div>${n.summary ? `<div class="nsum">${esc(n.summary)}</div>` : ''}<div>${(n.tags || []).map(t => `<span class="tag">${esc(t)}</span>`).join('')}${noteDirty(n) ? `<span class="tag w">${n.org ? 'changed' : 'not organised yet'}</span>` : ''}</div></div></div>`; };
+    return `<div class="card nc" data-nt="${n.id}" tabindex="0"><div class="nth" data-th="${n.id}">${!n.ink && !n.ph ? `<div class="ntx">${esc((n.text || '').slice(0, 220))}</div>` : ''}</div><div class="nb"><b>${esc(noteTitle(n))}</b><div class="meta">${dShort(noteDate(n))}${T ? ' · ' + esc(T.name) : ''}</div>${n.summary ? `<div class="nsum">${esc(n.summary)}</div>` : ''}<div>${(n.tags || []).map(t => `<span class="tag">${esc(t)}</span>`).join('')}${noteDirty(n) ? `<span class="tag w">${n.org ? 'changed' : 'not organised yet'}</span>` : ''}</div></div></div>`; };
   $('#main').innerHTML = `<div class="prac notes" style="max-width:1100px">
     ${nbHead(true)}
     ${all.length ? `<div class="filters"><input id="nQ" type="search" placeholder="Search your notes" value="${esc(F.q)}" style="max-width:280px"><select id="nB"><option value="">All subjects</option>${subs.map(b => `<option value="${b}" ${F.b === b ? 'selected' : ''}>${esc(bookOf(b).subject || b)}</option>`).join('')}<option value="-" ${F.b === '-' ? 'selected' : ''}>Unsorted</option></select><span class="meta fcount">${list.length} note${list.length === 1 ? '' : 's'}</span><span class="meta" id="nMsg"></span></div>
@@ -3214,7 +3224,7 @@ async function openNote(id) {
     <div class="row" style="margin-bottom:10px"><button id="nBack"><svg class="i"><use href="#i-l"/></svg>${NBK.view === 'grid' ? 'All notes' : 'Notebook'}</button><span class="sp" style="flex:1"></span><span class="meta" id="nSaved">${n.e ? (n.up >= n.e ? 'Backed up to your account' : 'Saved on this device') : ''}</span><button id="nDel" class="ghost" title="Delete note" aria-label="Delete note"><svg class="i"><use href="#i-trash"/></svg></button></div>
     ${got ? '' : '<div class="wrong row" style="margin-bottom:10px"><span style="flex:1">The handwriting in this note is on another device and couldn\'t be fetched from your account, so writing and photos are locked here to keep it safe. You can still type, and Claude\'s transcript is below.</span><button id="nRetry">Try again</button></div>'}
     <input id="nT" class="ntitle" placeholder="Untitled (Claude will name it)" value="${esc(n.title || '')}" maxlength="80">
-    <div class="row nmeta"><select id="nB" aria-label="Subject"><option value="">${n.book ? 'Unsorted' : 'Subject: let Claude decide'}</option>${subs.map(b => `<option value="${b.id}" ${n.book === b.id ? 'selected' : ''}>${esc(b.subject || b.title)}</option>`).join('')}</select><select id="nTp" aria-label="Topic"></select><span id="nTags"></span></div><div class="meta nbk-filed" id="nFiled"></div>
+    <div class="row nmeta"><select id="nB" aria-label="Subject"><option value="">${n.book ? 'Unsorted' : 'Subject: let Claude decide'}</option>${subs.map(b => `<option value="${b.id}" ${n.book === b.id ? 'selected' : ''}>${esc(b.subject || b.title)}</option>`).join('')}</select><select id="nTp" aria-label="Topic"></select><label class="ndate" title="The date of this note (change it for older notes you scan in)"><svg class="i"><use href="#i-cal"/></svg><input type="date" id="nDt" value="${ymdL(noteDate(n))}" max="${ymdL(Date.now())}" aria-label="Note date"></label><span id="nTags"></span></div><div class="meta ndates" id="nDates"></div><div class="meta nbk-filed" id="nFiled"></div>
     <div id="nBox"></div>
     <div class="row" style="margin-top:12px"><button class="pri" id="nOrgB"><svg class="i"><use href="#i-spark"/></svg>${n.org ? 'Re-organise' : 'Organise'}</button><button id="nTidy">Tidy into a revision sheet</button><button id="nCards"><svg class="i"><use href="#i-cards"/></svg>Make flashcards</button><button id="nChat">Ask Claude about it</button><button id="nScanB" ${got ? '' : 'disabled'} title="Scan paper pages into this note"><svg class="i"><use href="#i-cam"/></svg>Scan pages</button><span class="meta" id="nMsg"></span></div>
     <div id="nOut"></div></div>`;
@@ -3241,6 +3251,10 @@ async function openNote(id) {
   if ($('#nRetry')) $('#nRetry').onclick = () => openNote(n.id);
   $('#nDel').onclick = async () => { clearTimeout(sT); sT = 0; if (noteOf(n.id)) { if (noteDel(n)) { box.cancel(); IDB.del(hwKey(NOTE_PRE + n.id)); renderNotes(); } return; } if (!noteOf(n.id)) { if (noteHas(n) && !confirm('Discard this note?')) return; S.newNote = null; await box.flush(); IDB.del(hwKey(NOTE_PRE + n.id)); return renderNotes(); } if (noteDel(n)) renderNotes(); };
   $('#nT').oninput = e => { n.title = e.target.value.trim(); n.titleSet = n.title ? 1 : 0; title([['Notes', 'notes'], noteTitle(n)]); if (noteHas(n) || n.title) { clearTimeout(n._tt); n._tt = setTimeout(() => { delete n._tt; noteSave(n); }, 500); } };
+  const drawDates = () => { const el = $('#nDates'); if (!el) return; const bits = [];
+    if (n.pd && !n.dt) bits.push('Date read from the page');
+    if (n.made) bits.push('Created ' + dWhen(n.made)); if (n.e && n.e - (n.made || 0) > 6e4) bits.push('last edited ' + dWhen(n.e)); el.textContent = bits.join(' · '); };
+  drawDates(); $('#nDt').onchange = e => { const v = e.target.value; n.dt = /^\d{4}-\d\d-\d\d$/.test(v) ? new Date(v + 'T12:00:00').getTime() : 0; if (!n.dt) { delete n.dt; e.target.value = ymdL(noteDate(n)); } drawDates(); if (noteHas(n) || n.title) noteSave(n); };
   $('#nB').onchange = e => { n.book = e.target.value; n.bookSet = n.book ? 1 : 0; n.topic = ''; n.topicSet = 0; delete n.sec; drawTp(); if (noteHas(n)) noteSave(n); };
   $('#nTp').onchange = e => { const v = e.target.value; if (v.startsWith('s:')) { n.sec = v.slice(2); n.bookSet = 1; } else { delete n.sec; n.topic = v; n.topicSet = v ? 1 : 0; if (v) n.bookSet = 1; } drawFiled(); if (noteHas(n)) noteSave(n); };
   $('#nScanB').onclick = () => { if (!got) return; const left = HW_MAXPH - box.counts.ph; if (left < 1) return busy(0, `This note already has ${HW_MAXPH} photos. Start a new note for more pages.`);
@@ -3285,7 +3299,7 @@ function nbParse(k) { const i = (k || '').indexOf('|'), B = i > 0 ? bookOf(k.sli
   return {k: B.id + '|g', B, t: 'g', ttl: 'No chapter yet', name: 'No chapter yet'}; }
 const nbFiledTx = n => { const P = nbParse(nbChap(n)); return P.B ? (P.B.subject || P.B.title) + ' › ' + P.name : ''; };
 const nbMode = k => NBK.ord[k] || 'date';
-const nbSort = (k, ns) => ns.sort(nbMode(k) === 'manual' ? (a, b) => (a.ord ?? 1e9) - (b.ord ?? 1e9) || (a.made || 0) - (b.made || 0) : (a, b) => (a.made || a.t || 0) - (b.made || b.t || 0));
+const nbSort = (k, ns) => ns.sort(nbMode(k) === 'manual' ? (a, b) => (a.ord ?? 1e9) - (b.ord ?? 1e9) || (a.made || 0) - (b.made || 0) : (a, b) => noteDate(a) - noteDate(b));
 // put a note in a chapter (fields only; the caller saves)
 function nbPut(n, k) { const P = nbParse(k);
   if (!P.B) { n.book = ''; n.bookSet = 0; n.topic = ''; n.topicSet = 0; delete n.sec; return; }
@@ -3354,10 +3368,10 @@ function nbRail(idx, P) {
 const nbTop = () => { const p = $('#nbPane'); if (p && p.getBoundingClientRect().top < 0) p.scrollIntoView({block: 'start'}); };
 const nbFocus = () => { const el = S.nbFocus && document.querySelector(`[data-pg="${S.nbFocus}"]`); if (el) el.scrollIntoView({block: 'start', behavior: 'smooth'}); };
 function nbPage(n, j, len, P) {
-  const man = nbMode(P.k) === 'manual', body = (n.text || '').trim(), d = new Date(n.made || n.e || n.t || Date.now());
+  const man = nbMode(P.k) === 'manual', body = (n.text || '').trim(), d = noteDate(n), ed = n.e && ymdL(n.e) !== ymdL(d) ? n.e : 0;
   return `<article class="card nbk-pg${S.nbFocus === n.id ? ' focus' : ''}" data-pg="${n.id}" data-drop="${esc(P.k)}" data-before="${n.id}">
     <div class="nbk-pgh"><span class="nbk-grip" data-drag="${n.id}" title="Drag to another chapter or page"><svg class="i"><use href="#i-more"/></svg></span>
-      <div class="nbk-pgt"><button class="nbk-ttl" data-open="${n.id}">${esc(noteTitle(n))}</button><div class="meta">${d.toLocaleDateString(undefined, {day: 'numeric', month: 'short', year: 'numeric'})}${(n.tags || []).map(t => ` <span class="tag">${esc(t)}</span>`).join('')}${noteDirty(n) ? ` <span class="tag w">${n.org ? 'changed' : 'not sorted yet'}</span>` : ''}</div></div>
+      <div class="nbk-pgt"><button class="nbk-ttl" data-open="${n.id}">${esc(noteTitle(n))}</button><div class="meta"><span class="nbk-date">${dLong(d)}</span> · page ${j + 1}${len > 1 ? ' of ' + len : ''}${ed ? ` · <span title="Last edited">edited ${esc(dWhen(ed))}</span>` : ''}${(n.tags || []).map(t => ` <span class="tag">${esc(t)}</span>`).join('')}${noteDirty(n) ? ` <span class="tag w">${n.org ? 'changed' : 'not sorted yet'}</span>` : ''}</div></div>
       <div class="row nbk-pga">${man && len > 1 ? `<button class="ghost" data-up="${n.id}" ${j ? '' : 'disabled'} aria-label="Move page up" title="Move up">↑</button><button class="ghost" data-dn="${n.id}" ${j < len - 1 ? '' : 'disabled'} aria-label="Move page down" title="Move down">↓</button>` : ''}<button class="ghost" data-mv="${n.id}">Move to…</button><button data-open="${n.id}">Open</button></div></div>
     ${n.summary ? `<p class="nbk-sum">${esc(n.summary)}</p>` : ''}
     ${body ? `<div class="nbk-txt">${mdm(body)}</div>` : ''}
@@ -3379,7 +3393,8 @@ function nbPane(idx, P) {
         ${ns.length > 1 ? `<div class="seg" id="nbOrd" aria-label="Page order">${[['date', 'By date'], ['manual', 'My order']].map(([o, l]) => `<button data-o="${o}" class="${nbMode(P.k) === o ? 'on' : ''}">${l}</button>`).join('')}</div>` : ''}
         ${P.T ? '<button class="ghost" id="nbRead">Read in textbook</button>' : ''}${P.sec ? '<button class="ghost" id="nbRen">Rename</button><button class="ghost" id="nbDelS">Delete section</button>' : ''}
         <span class="sp"></span><span class="meta">${ns.length ? ns.length + ' note' + (ns.length === 1 ? '' : 's') : ''}</span></div></div>
-    <div class="nbk-pages">${ns.length ? ns.map((n, j) => nbPage(n, j, ns.length, P)).join('') : NBK.q.trim() ? '<div class="nbk-empty"><p class="meta">No notes in this chapter match your search.</p></div>' : empty}</div>
+    <div class="nbk-pages">${ns.length ? ns.map((n, j) => { const m = new Date(noteDate(n)).toLocaleDateString(undefined, {month: 'long', year: 'numeric'}), pm = j && new Date(noteDate(ns[j - 1])).toLocaleDateString(undefined, {month: 'long', year: 'numeric'});
+      return (nbMode(P.k) !== 'manual' && ns.length > 2 && m !== pm ? `<div class="nbk-month">${esc(m)}</div>` : '') + nbPage(n, j, ns.length, P); }).join('') : NBK.q.trim() ? '<div class="nbk-empty"><p class="meta">No notes in this chapter match your search.</p></div>' : empty}</div>
     ${pv || nx ? `<div class="row nbk-nav">${pv ? `<button data-ch="${esc(pv)}"><svg class="i"><use href="#i-l"/></svg><span>${esc(lab(pv))}</span></button>` : ''}<span class="sp"></span>${nx ? `<button data-ch="${esc(nx)}"><span>${esc(lab(nx))}</span><svg class="i"><use href="#i-r"/></svg></button>` : ''}</div>` : ''}`;
   $('#nbCt').onclick = () => nbDrawer(1);
   $('#nbNew').onclick = () => nbNew(P.B ? P : null);
