@@ -52,11 +52,11 @@ const CRATERS = (() => { const out = []; let s = 7; const r = () => (s = (Math.i
   return out; })();
 let CR_NEAR = null; // craters that can touch the chunk being built
 // moon features shared by height and colour
-function mareAt(x, y, z) { return sstep(.03, .16, fbm(x * 1.3 + 5, y * 1.3, z * 1.3, 4, 101)); }
+function mareAt(x, y, z) { return sstep(-.02, .2, fbm(x * 1.15 + 5, y * 1.15, z * 1.15, 5, 101) + fbm(x * 9, y * 9, z * 9, 3, 102) * .06); }
 function microCraters(px, py, pz, amp) { // 2x2x2 nearest cells, one crater per cell (60%)
   let h = 0; const ix = Math.floor(px), iy = Math.floor(py), iz = Math.floor(pz), ox = px - ix < .5 ? -1 : 0, oy = py - iy < .5 ? -1 : 0, oz = pz - iz < .5 ? -1 : 0;
   for (let a = 0; a < 2; a++) for (let b = 0; b < 2; b++) for (let c = 0; c < 2; c++) { const cx = ix + ox + a, cy = iy + oy + b, cz = iz + oz + c;
-    if (hsh(cx, cy, cz, 3) > .6) continue; const rr = .18 + hsh(cx, cy, cz, 4) * .3, dx = px - cx - hsh(cx, cy, cz, 5), dy = py - cy - hsh(cx, cy, cz, 6), dz = pz - cz - hsh(cx, cy, cz, 7);
+    if (hsh(cx, cy, cz, 3) > .45) continue; const rr = .07 + Math.pow(hsh(cx, cy, cz, 4), 3) * .42, dx = px - cx - hsh(cx, cy, cz, 5), dy = py - cy - hsh(cx, cy, cz, 6), dz = pz - cz - hsh(cx, cy, cz, 7);
     const d = Math.sqrt(dx * dx + dy * dy + dz * dz) / rr; if (d > 1.8) continue;
     h += (d < 1 ? (d * d - 1) * .35 + .06 * d ** 6 : .06 * Math.exp(-(((d - 1) * 3.5) ** 2))) * rr * amp; }
   return h; }
@@ -533,11 +533,22 @@ function cloudShadow(sh, isTerr) {
     sh.fragmentShader.replace('#include <color_fragment>', '#include <color_fragment>\n diffuseColor.rgb *= cshadow(length(vViewPosition)); gSunT = sunTrans() / max(camT, vec3(.002));')
       .replace('#include <lights_fragment_begin>', THREE.ShaderChunk.lights_fragment_begin.replace('getDirectionalLightInfo( directionalLight, directLight );', 'getDirectionalLightInfo( directionalLight, directLight ); directLight.color *= gSunT;'));
 }
+// Moon terrain shadows: each vertex stores the horizon elevation in 8 directions (Node.build); the sun is blocked when it is below the horizon there.
+// No air on the Moon, so these shadows are pitch black (only the shadow map near you and these, which also work from orbit)
+const MOONU = {mSun: {value: new V3(1, 0, 0)}};
+function moonShadow(sh) { sh.uniforms.mSun = MOONU.mSun;
+  sh.vertexShader = 'attribute vec4 hz0, hz1; attribute vec3 hzU; varying vec4 vHz0, vHz1; varying vec3 vHzU;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n vHz0 = hz0; vHz1 = hz1; vHzU = hzU;');
+  sh.fragmentShader = sh.fragmentShader.replace('vec3 gSunT = vec3(1.);', `vec3 gSunT = vec3(1.); uniform vec3 mSun; varying vec4 vHz0, vHz1; varying vec3 vHzU;
+    float moonSh(){ vec3 up = normalize(vBd), u = normalize(vHzU - up * dot(vHzU, up)), w = cross(up, u);
+      float e = asin(clamp(dot(mSun, up), -1., 1.)), az = atan(dot(mSun, w), dot(mSun, u)); if (az < 0.) az += 6.2831853;
+      float f = az / .78539816, t = fract(f); int i0 = int(floor(f)) & 7, i1 = (i0 + 1) & 7;
+      float hz[8] = float[8](vHz0.x, vHz0.y, vHz0.z, vHz0.w, vHz1.x, vHz1.y, vHz1.z, vHz1.w); float h = mix(hz[i0], hz[i1], t);
+      return smoothstep(h - .012, h + .012, e); }`).replace('gSunT = sunTrans() / max(camT, vec3(.002));', 'gSunT = sunTrans() / max(camT, vec3(.002)); gSunT *= moonSh();'); }
 const moonMat = terrMat.clone(); moonMat.userData.hue = 0; terrMat.userData.hue = .2; moonMat.customProgramCacheKey = () => 'moon';
 terrMat.onBeforeCompile = moonMat.onBeforeCompile = function (sh) {
   TMATS.forEach((m, i) => { sh.uniforms['tC' + i] = {value: tex(m, 'c')}; sh.uniforms['tN' + i] = {value: tex(m, 'n')}; sh.uniforms['aC' + i] = {get value() { return tex(m, 'c').userData.avg; }}; });
   sh.uniforms.hiQ = {get value() { return HI() ? 1 : 0; }}; sh.uniforms.tHue = {value: this.userData.hue};
-  cloudShadow(sh, true); if (this === moonMat) sh.fragmentShader = '#define IS_MOON\n' + sh.fragmentShader; sh.vertexShader = 'attribute vec2 tuv; attribute vec4 mw; attribute float tax; varying vec2 vTu; varying vec4 vMw; varying vec3 vT, vB;\n' + sh.vertexShader.replace('#include <begin_vertex>', `#include <begin_vertex>
+  cloudShadow(sh, true); if (this === moonMat) { sh.fragmentShader = '#define IS_MOON\n' + sh.fragmentShader; moonShadow(sh); } sh.vertexShader = 'attribute vec2 tuv; attribute vec4 mw; attribute float tax; varying vec2 vTu; varying vec4 vMw; varying vec3 vT, vB;\n' + sh.vertexShader.replace('#include <begin_vertex>', `#include <begin_vertex>
     vTu = tuv; vMw = mw; vec3 tA = tax < .5 ? vec3(0., 0., 1.) : vec3(1., 0., 0.); vec3 bA = tax > .5 && tax < 1.5 ? vec3(0., 0., 1.) : vec3(0., 1., 0.);
     vT = normalize(normalMatrix * tA); vB = normalize(normalMatrix * bA);`);
   sh.fragmentShader = 'uniform sampler2D tC0, tC1, tC2, tC3, tN0, tN1, tN2, tN3; uniform vec3 aC0, aC1, aC2, aC3; uniform float hiQ, tHue; varying vec2 vTu; varying vec4 vMw; varying vec3 vT, vB;\n' +
@@ -588,9 +599,10 @@ class Node {
   build() {
     if (this.b === MOON) { const ca = this.c.clone().normalize(), half = this.s * .8 + .01; CR_NEAR = CRATERS.filter(c => Math.acos(clamp(ca.dot(c.d), -1, 1)) < half + 2.3 * c.r / MOON.R); }
     const b = this.b, R = b.R, M = NV + 2, H = new Float32Array(M * M), P = new Float32Array(M * M * 3), d = new V3();
-    let hmin = 1e9;
+    let hmin = 1e9; const E = b === MOON ? 8 : 1, ME = NV + 2 * E, HE = E > 1 ? new Float32Array(ME * ME) : null;
+    if (HE) for (let j = 0; j < ME; j++) for (let i = 0; i < ME; i++) { cubeDir(this.f, this.u + this.s * (i - E) / N, this.v + this.s * (j - E) / N, d); HE[j * ME + i] = heightAt(b, d.x, d.y, d.z); }
     for (let j = 0; j < M; j++) for (let i = 0; i < M; i++) {
-      cubeDir(this.f, this.u + this.s * (i - 1) / N, this.v + this.s * (j - 1) / N, d); const h = heightAt(b, d.x, d.y, d.z), k = j * M + i;
+      cubeDir(this.f, this.u + this.s * (i - 1) / N, this.v + this.s * (j - 1) / N, d); const h = HE ? HE[(j - 1 + E) * ME + i - 1 + E] : heightAt(b, d.x, d.y, d.z), k = j * M + i;
       H[k] = h; const r = R + h; P[k * 3] = d.x * r; P[k * 3 + 1] = d.y * r; P[k * 3 + 2] = d.z * r; if (i > 0 && j > 0 && i <= NV && j <= NV) hmin = Math.min(hmin, h); }
     const nv = NV * NV + 4 * NV, pos = new Float32Array(nv * 3), nrm = new Float32Array(nv * 3), col = new Float32Array(nv * 3), cx = this.c.x, cy = this.c.y, cz = this.c.z;
     const bdA = new Float32Array(nv * 3), tuv = new Float32Array(nv * 2), mw = new Float32Array(nv * 4), ac = this.c, ax = Math.abs(ac.x) >= Math.abs(ac.y) && Math.abs(ac.x) >= Math.abs(ac.z) ? 0 : Math.abs(ac.y) >= Math.abs(ac.z) ? 1 : 2;
@@ -610,12 +622,25 @@ class Node {
       const c = colorAt(b, up.x, up.y, up.z, H[k], slope); col[o] = c.r * ao; col[o + 1] = c.g * ao; col[o + 2] = c.b * ao;
       const o4 = (j * NV + i) * 4; mw[o4] = _wt[0]; mw[o4 + 1] = _wt[1]; mw[o4 + 2] = _wt[2]; mw[o4 + 3] = _wt[3]; setT((j * NV + i) * 2, P[k * 3], P[k * 3 + 1], P[k * 3 + 2]); bdA[o] = up.x; bdA[o + 1] = up.y; bdA[o + 2] = up.z;
     }
+    // Moon: horizon elevation (radians) in 8 directions per vertex, so the shader can cast terrain shadows for any sun direction
+    let hz0 = null, hz1 = null, hzU = null;
+    if (HE) { hz0 = new Float32Array(nv * 4); hz1 = new Float32Array(nv * 4); hzU = new Float32Array(nv * 3);
+      const kc = ((NV >> 1) + 1) * M + (NV >> 1) + 1, pd = (a, c) => Math.hypot(P[a * 3] - P[c * 3], P[a * 3 + 1] - P[c * 3 + 1], P[a * 3 + 2] - P[c * 3 + 2]);
+      const cu = pd(kc, kc + 1), cvv = pd(kc, kc + M), upc = new V3(P[kc * 3], P[kc * 3 + 1], P[kc * 3 + 2]).normalize();
+      const uc = new V3(P[(kc + 1) * 3] - P[kc * 3], P[(kc + 1) * 3 + 1] - P[kc * 3 + 1], P[(kc + 1) * 3 + 2] - P[kc * 3 + 2]), vc = new V3(P[(kc + M) * 3] - P[kc * 3], P[(kc + M) * 3 + 1] - P[kc * 3 + 1], P[(kc + M) * 3 + 2] - P[kc * 3 + 2]);
+      const sg = new V3().crossVectors(upc, uc).dot(vc) > 0 ? 1 : -1, DIRS = [[1, 0], [1, sg], [0, sg], [-1, sg], [-1, 0], [-1, -sg], [0, -sg], [1, -sg]], i2R = 1 / (2 * R);
+      for (let j = 0; j < NV; j++) for (let i = 0; i < NV; i++) { const o = j * NV + i, h0 = HE[(j + E) * ME + i + E], k = (j + 1) * M + i + 1;
+        for (let q = 0; q < 8; q++) { const [di, dj] = DIRS[q], L = Math.hypot(di * cu, dj * cvv); let best = -1e9;
+          for (let st = 1; ; st++) { const ii = i + E + di * st, jj = j + E + dj * st; if (ii < 0 || jj < 0 || ii >= ME || jj >= ME) break; const ds = st * L, sl = (HE[jj * ME + ii] - h0 - ds * ds * i2R) / ds; if (sl > best) best = sl; }
+          (q < 4 ? hz0 : hz1)[o * 4 + (q & 3)] = best > -1e8 ? Math.atan(best) : -.3; }
+        const ux = P[(k + 1) * 3] - P[(k - 1) * 3], uy = P[(k + 1) * 3 + 1] - P[(k - 1) * 3 + 1], uz = P[(k + 1) * 3 + 2] - P[(k - 1) * 3 + 2], ul = Math.hypot(ux, uy, uz) || 1; hzU[o * 3] = ux / ul; hzU[o * 3 + 1] = uy / ul; hzU[o * 3 + 2] = uz / ul; } }
     // skirts
     const drop = Math.max(2, this.size * .02), edges = [s => [s, 0], s => [s, N], s => [0, s], s => [N, s]];
     for (let e = 0; e < 4; e++) for (let s = 0; s < NV; s++) { const [i, j] = edges[e](s), src = (j * NV + i) * 3, o = (NV * NV + e * NV + s) * 3;
       const px = pos[src] + cx, py = pos[src + 1] + cy, pz = pos[src + 2] + cz, L = Math.hypot(px, py, pz), k2 = (L - drop) / L;
-      pos[o] = px * k2 - cx; pos[o + 1] = py * k2 - cy; pos[o + 2] = pz * k2 - cz; for (let q = 0; q < 3; q++) { nrm[o + q] = nrm[src + q]; col[o + q] = col[src + q]; bdA[o + q] = bdA[src + q]; } const s4 = src / 3 * 4, o4 = o / 3 * 4; for (let q = 0; q < 4; q++) mw[o4 + q] = mw[s4 + q]; tuv[o / 3 * 2] = tuv[src / 3 * 2]; tuv[o / 3 * 2 + 1] = tuv[src / 3 * 2 + 1]; }
+      pos[o] = px * k2 - cx; pos[o + 1] = py * k2 - cy; pos[o + 2] = pz * k2 - cz; for (let q = 0; q < 3; q++) { nrm[o + q] = nrm[src + q]; col[o + q] = col[src + q]; bdA[o + q] = bdA[src + q]; if (hzU) hzU[o + q] = hzU[src + q]; } if (hz0) { const s4b = src / 3 * 4, o4b = o / 3 * 4; for (let q = 0; q < 4; q++) { hz0[o4b + q] = hz0[s4b + q]; hz1[o4b + q] = hz1[s4b + q]; } } const s4 = src / 3 * 4, o4 = o / 3 * 4; for (let q = 0; q < 4; q++) mw[o4 + q] = mw[s4 + q]; tuv[o / 3 * 2] = tuv[src / 3 * 2]; tuv[o / 3 * 2 + 1] = tuv[src / 3 * 2 + 1]; }
     const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('normal', new THREE.BufferAttribute(nrm, 3)); g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+    if (hz0) { g.setAttribute('hz0', new THREE.BufferAttribute(hz0, 4)); g.setAttribute('hz1', new THREE.BufferAttribute(hz1, 4)); g.setAttribute('hzU', new THREE.BufferAttribute(hzU, 3)); }
     g.setAttribute('bd', new THREE.BufferAttribute(bdA, 3)); g.setAttribute('tuv', new THREE.BufferAttribute(tuv, 2)); g.setAttribute('mw', new THREE.BufferAttribute(mw, 4)); g.setAttribute('tax', new THREE.BufferAttribute(new Float32Array(nv).fill(ax), 1));
     g.setIndex(terrIndex); g.computeBoundingSphere();
     const m = new THREE.Mesh(g, b === MOON ? moonMat : terrMat); m.position.copy(this.c); m.receiveShadow = true; m.castShadow = this.l >= b.maxL - 3;
@@ -1018,7 +1043,7 @@ function updateLight() {
   scene.backgroundIntensity = lerp(1, .004, sstep(-.16, .08, el) * (1 - sstep(PLANET.atmo * .35, PLANET.atmo, alt))); // stars wash out in a daylight sky
   if (PLANET.cloudMeshes) for (const m of PLANET.cloudMeshes) m.visible = !HI(); // High uses the volumetric clouds
   if (PLANET.clouds) { const u = PLANET.clouds.uniforms; u.sun.value.copy(SUN); u.sunC.value.setRGB(1, 1, 1).multiplyScalar(3.4 * .85 / Math.PI * 1.6); u.sky.value.setRGB(.06, .09, .14).multiplyScalar(.2 + day * 2); u.t.value = G.t; }
-  if (G.waterT) G.waterT.value = G.t % 1000; // every wave scroll repeats after 1000 s, so this wraps seamlessly and keeps float precision after long time warps CLOUDU.sunB.value.copy(SUN).applyQuaternion(PLANET.q.clone().invert()); CLOUDU.cT.value = G.t; CLOUDU.cOn.value = HI() ? 1 : 0; CLOUDU.camT.value.set(t[0], t[1], t[2]); amb.intensity *= .25; compM.uniforms.sunCol.value.set(t[0], t[1], t[2]).multiplyScalar(.9);
+  if (G.waterT) G.waterT.value = G.t % 1000; // every wave scroll repeats after 1000 s, so this wraps seamlessly and keeps float precision after long time warps CLOUDU.sunB.value.copy(SUN).applyQuaternion(PLANET.q.clone().invert()); MOONU.mSun.value.copy(SUN).applyQuaternion(MOON.q.clone().invert()); CLOUDU.cT.value = G.t; CLOUDU.cOn.value = HI() ? 1 : 0; CLOUDU.camT.value.set(t[0], t[1], t[2]); amb.intensity *= .25; compM.uniforms.sunCol.value.set(t[0], t[1], t[2]).multiplyScalar(.9);
 }
 
 // ---------------- HUD
@@ -1050,7 +1075,7 @@ function frame(ts) {
   for (const b of BODIES) { b.group.position.copy(b.c).sub(G.O); b.group.quaternion.copy(b.q); }
   FLIGHT.visuals(dt);
   if (G.skyBake) G.skyBake();
-  updateTerrain(HI() ? 4 : 3);
+  updateTerrain(HI() ? 4 : 3); moonRocks();
   updateLight();
   if (G.on) { if (R.on) FLIGHT.hud(dt); else { FLIGHT.hideHud(); updateHud(dt); } }
   // adaptive resolution: drop a little when frames are slow, climb back when there is room
@@ -1059,6 +1084,37 @@ function frame(ts) {
     if (n !== rs || lite !== !!G.lite) { G.rs = n; G.lite = lite; setupPost(); } }
   render(rdt);
 }
+
+// ---------------- Moon boulders: scattered rocks near the camera (stable: one per cell of a fixed grid on the cube faces, so they don't move as you walk)
+const ROCK = {n: 1100, key: '', mesh: null, M4: new THREE.Matrix4(), q: new Q4(), sc: new V3(), p: new V3(), d: new V3(), a: new V3()};
+function rockGeo() { const g = new THREE.IcosahedronGeometry(1, 2), pa = g.attributes.position, v = new V3(); // lumpy, flattened stone
+  for (let i = 0; i < pa.count; i++) { v.fromBufferAttribute(pa, i); const k = .78 + .3 * noise3(v.x * 1.7 + 3, v.y * 1.7, v.z * 1.7, 91) + .1 * noise3(v.x * 4, v.y * 4, v.z * 4, 92); v.multiplyScalar(k); v.y = v.y * .62 + .12; pa.setXYZ(i, v.x, v.y, v.z); }
+  // smooth normals: the icosahedron is unwelded, so average the face normals of vertices that share a spot
+  const nm = new Map(), tri = [new V3(), new V3(), new V3()], fn = new V3(), e1 = new V3(), e2 = new V3(), keyOf = i => Math.round(pa.getX(i) * 1e4) + ',' + Math.round(pa.getY(i) * 1e4) + ',' + Math.round(pa.getZ(i) * 1e4);
+  for (let i = 0; i < pa.count; i += 3) { for (let k = 0; k < 3; k++) tri[k].fromBufferAttribute(pa, i + k); fn.crossVectors(e1.subVectors(tri[1], tri[0]), e2.subVectors(tri[2], tri[0]));
+    for (let k = 0; k < 3; k++) { const key = keyOf(i + k), a = nm.get(key) || nm.set(key, new V3()).get(key); a.add(fn); } }
+  const na = new Float32Array(pa.count * 3); for (let i = 0; i < pa.count; i++) { if (i % 3 === 0) { for (let k = 0; k < 3; k++) tri[k].fromBufferAttribute(pa, i + k); fn.crossVectors(e1.subVectors(tri[1], tri[0]), e2.subVectors(tri[2], tri[0])).normalize(); } const n2 = nm.get(keyOf(i)).clone().normalize().addScaledVector(fn, .7).normalize(); na[i * 3] = n2.x; na[i * 3 + 1] = n2.y; na[i * 3 + 2] = n2.z; }
+  g.setAttribute('normal', new THREE.BufferAttribute(na, 3)); return g; }
+function moonRocks() {
+  const cpos = ROCK.a.copy(G.O).sub(MOON.c).applyQuaternion(_qi.copy(MOON.q).invert()), L = cpos.length(), alt = L - MOON.R;
+  if (!ROCK.mesh) { ROCK.mesh = new THREE.InstancedMesh(rockGeo(), new THREE.MeshStandardMaterial({color: 0x3a3836, map: tex('rock', 'c'), normalMap: tex('rock', 'n'), normalScale: new THREE.Vector2(1.4, 1.4), roughness: 1, metalness: 0}), ROCK.n); ROCK.mesh.castShadow = ROCK.mesh.receiveShadow = true; ROCK.mesh.frustumCulled = false; ROCK.mesh.count = 0; MOON.group.add(ROCK.mesh);
+    ROCK.mesh.material.onBeforeCompile = sh => { sh.fragmentShader = sh.fragmentShader.replace('#include <map_fragment>', '#include <map_fragment>\n diffuseColor.rgb = vec3(dot(diffuseColor.rgb, vec3(.3, .55, .15))) * vec3(1., .97, .93);'); }; } // moon rock is grey: drop the texture's moss
+  ROCK.mesh.visible = alt < 2500; if (!ROCK.mesh.visible) return;
+  const d = ROCK.d.copy(cpos).divideScalar(L), ax = Math.abs(d.x) >= Math.abs(d.y) && Math.abs(d.x) >= Math.abs(d.z) ? 0 : Math.abs(d.y) >= Math.abs(d.z) ? 1 : 2, comp = [d.x, d.y, d.z], dom = comp[ax], o1 = (ax + 1) % 3, o2 = (ax + 2) % 3;
+  const s0 = comp[o1] / Math.abs(dom), t0 = comp[o2] / Math.abs(dom), cs = 6 / MOON.R, ci = Math.floor(s0 / cs), cj = Math.floor(t0 / cs), key = ax + (dom > 0 ? '+' : '-') + (ci >> 2) + ',' + (cj >> 2);
+  if (key === ROCK.key) return; ROCK.key = key; // re-scatter when you move ~24 m
+  const anchor = d.clone().multiplyScalar(MOON.R + heightAt(MOON, d.x, d.y, d.z)); ROCK.mesh.position.copy(anchor); // instance positions stay small (float precision)
+  const ca = Math.cos(1200 / MOON.R); CR_NEAR = CRATERS.filter(c => d.dot(c.d) > Math.cos(Math.acos(Math.min(1, ca)) + 2.3 * c.r / MOON.R));
+  let n = 0; const W = 28, v = new V3();
+  for (let j = -W; j <= W && n < ROCK.n; j++) for (let i = -W; i <= W && n < ROCK.n; i++) { const gi = (ci >> 2 << 2) + i, gj = (cj >> 2 << 2) + j, hs = hsh(gi, gj, ax * 2 + (dom > 0 ? 1 : 0), 31);
+    const big = hs < .025, far = Math.abs(i) > 18 || Math.abs(j) > 18; if (!(hs < .5 || big) || (far && !big)) continue;
+    const sv = (gi + hsh(gi, gj, 1, 32)) * cs, tv = (gj + hsh(gi, gj, 2, 33)) * cs; v.set(0, 0, 0); v.setComponent(ax, Math.sign(dom)); v.setComponent(o1, sv); v.setComponent(o2, tv); v.normalize();
+    const sz = big ? 1 + hsh(gi, gj, 3, 34) * 2.2 : .07 + Math.pow(hsh(gi, gj, 3, 35), 4) * 1.1;
+    ROCK.p.copy(v).multiplyScalar(MOON.R + heightAt(MOON, v.x, v.y, v.z) - sz * .25).sub(anchor);
+    ROCK.q.setFromUnitVectors(_Yr, v).multiply(_qr.setFromAxisAngle(_Yr, hsh(gi, gj, 4, 36) * 6.28)); ROCK.sc.set(sz * (.8 + hsh(gi, gj, 5, 37) * .5), sz, sz * (.8 + hsh(gi, gj, 6, 38) * .5));
+    ROCK.mesh.setMatrixAt(n++, ROCK.M4.compose(ROCK.p, ROCK.q, ROCK.sc)); }
+  CR_NEAR = null; ROCK.mesh.count = n; ROCK.mesh.instanceMatrix.needsUpdate = true; }
+const _Yr = new V3(0, 1, 0), _qr = new Q4();
 
 // ---------------- boot
 function boot() {
