@@ -204,6 +204,7 @@ main{padding:24px 28px 80px;min-width:0}
 .shedit{padding:12px}.shedit textarea{width:100%;min-height:60vh;font:13.5px/1.5 ui-monospace,Menlo,Consolas,monospace;border:1px solid var(--line);border-radius:8px;padding:10px;background:var(--sunk);resize:vertical;margin-bottom:8px}.shdiff{padding:12px 14px;margin-bottom:14px}.shd{white-space:pre-wrap;word-break:break-word;font:12.5px/1.45 ui-monospace,Menlo,Consolas,monospace;margin:0;max-height:50vh;overflow:auto}.dadd{background:var(--good2);color:var(--good);display:inline-block;width:100%}.drem{background:var(--red2);color:var(--red);display:inline-block;width:100%;text-decoration:line-through}span.meta .dadd,span.meta .drem{width:auto;padding:0 5px;border-radius:4px}
 @media screen and (max-width:700px){.shpaper{padding:16px 14px}.shpaper.c2 .shbody,.shpaper.c3 .shbody{column-count:1}.shask{flex-wrap:wrap}.shask input{flex-basis:100%}.shask button{flex:1;justify-content:center}}.shmeasure .shpaper.c2 .shbody{column-count:2}.shmeasure .shpaper.c3 .shbody{column-count:3}
 @media print{body:has(.shpaper) #side,body:has(.shpaper) header,body:has(.shpaper) #bot,body:has(.shpaper) #drawer,body:has(.shpaper) .shtools,body:has(.shpaper) .shsa,body:has(.shpaper) .shdiff,body:has(.shpaper) #modal,body:has(.shpaper) #tip,body:has(.shpaper) #selbar{display:none!important}html:has(.shpaper),body:has(.shpaper){background:#fff!important}body:has(.shpaper) #app,body:has(.shpaper) .wrap,body:has(.shpaper) .col{display:block!important}body:has(.shpaper) main{padding:0!important}.shpaper{--panel:#fff;--ink:#111;--ink2:#2a2a2a;--mut:#555;--line:#ccc;--line2:#aaa;--sunk:#f1f1f1;--acc:#24408e;background:#fff!important;color:#111;border:none!important;box-shadow:none!important;padding:0!important;max-width:none!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.shpaper.mono .shs{--sc:#555!important}.shpaper.mono .shsb th{background:none}.shs{break-inside:avoid}@page{size:A4;margin:10mm}}
+/* feature: chemistry drills */ .cdw{max-width:860px;margin:0 auto}.cdhd{margin-bottom:12px}.cdst{font-size:13px;color:var(--mut)}.cdst b{color:var(--ink)}.cdctl{margin:0 0 14px}.cdctl select{width:auto;max-width:100%}.cdctl .seg{flex-wrap:wrap}.cdq{padding:16px 18px}.cdtag{font-weight:600;color:var(--acc)}.cdeq{display:flex;flex-wrap:wrap;align-items:center;gap:12px 6px;margin:20px 0 8px;font-size:1.25em}.cdt{display:inline-flex;align-items:center;gap:4px;white-space:nowrap}.cdc{width:2.3em;text-align:center;padding:5px 2px;font-size:.8em;font-weight:600}.cdc.cdgiven{border-color:var(--warn);background:var(--warn2)}.cdo{color:var(--mut);padding:0 2px}.cdword{font:500 1.1em/1.6 var(--f-read);margin:16px 0 12px}.cdwin{font-family:ui-monospace,Menlo,Consolas,monospace}.cdwp{min-height:2.2em;margin-top:6px;font-size:1.05em;color:var(--ink2);overflow-x:auto}.cdbtn{margin-top:16px}.cdfb{margin-top:12px;padding:10px 14px;border-radius:8px;background:var(--sunk);border-left:3px solid var(--line2);overflow-x:auto}.cdfb.ok{background:var(--good2);border-color:var(--good)}.cdfb.bad{background:var(--red2);border-color:var(--red)}.cdfb.sf{background:var(--warn2);border-color:var(--warn)}.cdtal{border-collapse:collapse;margin-top:12px;font-size:14px;min-width:220px}.cdtal th,.cdtal td{padding:4px 14px;border-bottom:1px solid var(--line);text-align:center}.cdtal th{font-weight:600;color:var(--mut);font-size:12.5px}.cdtal th:first-child,.cdtal td:first-child{text-align:left}.cdtal tr.ok td:last-child{color:var(--good);font-weight:700}.cdtal tr.no td{color:var(--red);font-weight:600}.cdqt{margin:10px 0 6px;font-size:16px;line-height:1.65}.cdqt p{margin:.5em 0}.cdparts{display:flex;flex-direction:column;gap:12px;margin-top:14px}.cdpt{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px}.cdpl{min-width:170px;font-weight:600;font-size:14px}.cdin{width:170px}.cdus{width:auto}.cdun{font-weight:600}.cdfp{min-width:40px}.cdmk{flex-basis:100%;font-size:13.5px;color:var(--mut)}.cdmk:empty{display:none}.cdmk span{font-weight:700}.cdmk.ok{color:var(--good)}.cdmk.bad{color:var(--red)}.cdmk.sf{color:var(--warn)}.cdsol{margin-top:14px;padding:12px 16px;border:1px solid var(--line);border-radius:8px;background:var(--sunk)}.cdsol ol{margin:8px 0 0;padding-left:1.3em}.cdsol li{margin:7px 0}.cdsx{overflow-x:auto;overflow-y:hidden}.cdsx p{margin:0}.cdacc{margin-top:14px;padding:10px 16px}.cdacc summary{cursor:pointer}.cdaccg{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px 20px;margin:10px 0 4px}.cdaccg div{display:flex;flex-wrap:wrap;justify-content:space-between;gap:0 8px;font-size:13.5px}.cdaccg i{flex-basis:100%;height:4px;border-radius:2px;background:linear-gradient(90deg,var(--acc) var(--w),var(--line) var(--w));margin-top:3px}.cdfoot{margin-top:12px}@media (max-width:700px){.cdq{padding:12px}.cdpl{min-width:100%}.cdin{flex:1;min-width:0;width:auto}.cdeq{font-size:1.1em;gap:10px 4px}.cdtal{width:100%}}
 .reader{max-width:760px;margin:0 auto}
 .rbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px}
 .rbar .sp,.sp{flex:1}
@@ -722,6 +723,7 @@ function mergeIn(r) {
     for (const k of ['secs', 'rev', 'recall']) { const L = S.prog[k] = S.prog[k] || {}; for (const [kk, v] of Object.entries(r[k] || {})) if (!L[kk] || (L[kk].t || 0) < (v.t || 0)) L[kk] = v; }
     const PP = S.prog.pp = S.prog.pp || {}; for (const [k, v] of Object.entries(r.pp || {})) { const ts = new Set((PP[k] || []).map(x => x.t)); PP[k] = [...(PP[k] || []), ...v.filter(x => !ts.has(x.t))]; }
     for (const [k, v] of Object.entries(r.lastBy || {})) if (!S.prog.lastBy[k] || S.prog.lastBy[k].t < v.t) S.prog.lastBy[k] = v;
+    chemDrillMerge(r); // chemistry drills (S.prog.drills.chem)
     if (r.last && (!S.prog.last || (r.last.t || 0) > (S.prog.last.t || 0))) S.prog.last = r.last;
     LS.set(LSK('ib-prog'), S.prog); drawPins(); if (S.tab === 'home') drawHome(); if (S.tab === 'lib' && !S.reading) renderShelf();
   }
@@ -3925,6 +3927,735 @@ function renderFriends() { shell('friends'); setHash('#/friends'); $('#main').in
 
 
 // ==== FEATURE: chemistry drills (equations, stoichiometry) ====
+// Everything here is generated and checked in the browser (no Claude calls). Results: S.prog.drills.chem = {t, st: {b, s}, best: {b, s}, sk: {skill: {n, ok, sf?, t}}}.
+// Formula strings: Fe2(SO4)3, CuSO4·5H2O (also . or *), [Al(OH)4]^-, SO4^2-, Fe^3+, e^-, optional state (s)/(l)/(g)/(aq).
+const CHEM_SYM = new Set('H He Li Be B C N O F Ne Na Mg Al Si P S Cl Ar K Ca Sc Ti V Cr Mn Fe Co Ni Cu Zn Ga Ge As Se Br Kr Rb Sr Y Zr Nb Mo Tc Ru Rh Pd Ag Cd In Sn Sb Te I Xe Cs Ba La Ce Pr Nd Pm Sm Eu Gd Tb Dy Ho Er Tm Yb Lu Hf Ta W Re Os Ir Pt Au Hg Tl Pb Bi Po At Rn Fr Ra Ac Th Pa U Np Pu Am Cm Bk Cf Es Fm Md No Lr Rf Db Sg Bh Hs Mt Ds Rg Cn Nh Fl Mc Lv Ts Og'.split(' '));
+// relative atomic masses (IB data booklet values, 2 d.p.)
+const CHEM_AR = {H: 1.01, He: 4.00, Li: 6.94, Be: 9.01, B: 10.81, C: 12.01, N: 14.01, O: 16.00, F: 19.00, Ne: 20.18, Na: 22.99, Mg: 24.31, Al: 26.98, Si: 28.09, P: 30.97, S: 32.07, Cl: 35.45, Ar: 39.95, K: 39.10, Ca: 40.08, Ti: 47.87, V: 50.94, Cr: 52.00, Mn: 54.94, Fe: 55.85, Co: 58.93, Ni: 58.69, Cu: 63.55, Zn: 65.38, Br: 79.90, Sr: 87.62, Ag: 107.87, Sn: 118.71, I: 126.90, Ba: 137.33, W: 183.84, Hg: 200.59, Pb: 207.20};
+const CHEM_NA = 6.02e23, CHEM_VM = 22.7, CHEM_R = 8.31, CHEM_C = 4.18;
+
+function chemGroup(s) {
+  if (!s) throw Error('Something is missing in the formula.');
+  const st = [{}], cl = [], OP = '([{', CL = ')]}'; let i = 0;
+  const num = () => { let d = ''; while (/\d/.test(s[i] || '')) d += s[i++]; if (d && +d === 0) throw Error('A subscript of 0 is not allowed.'); return d ? +d : 1; };
+  while (i < s.length) {
+    const c = s[i];
+    if (OP.includes(c)) { st.push({}); cl.push(CL[OP.indexOf(c)]); i++; continue; }
+    if (CL.includes(c)) { if (cl.pop() !== c) throw Error('The brackets don\'t match.'); const g = st.pop(); i++; if (!Object.keys(g).length) throw Error('Empty brackets.'); const k = num(), top = st[st.length - 1]; for (const e in g) top[e] = (top[e] || 0) + g[e] * k; continue; }
+    if (/[A-Z]/.test(c)) { let y = c; i++; if (/[a-z]/.test(s[i] || '')) y += s[i++];
+      if (!CHEM_SYM.has(y)) throw Error(`"${y}" isn't an element symbol${/[A-Z]/.test(y[0]) && y.length > 1 && CHEM_SYM.has(y[0]) ? ' (symbols are one capital letter, then maybe one small letter)' : ''}.`);
+      const k = num(), top = st[st.length - 1]; top[y] = (top[y] || 0) + k; continue; }
+    if (/[a-z]/.test(c)) throw Error(`Element symbols start with a capital letter (check "${c}").`);
+    throw Error(`Unexpected "${c}" in the formula.`);
+  }
+  if (cl.length) throw Error('A bracket is not closed.');
+  return st[0];
+}
+// one species -> {el: {El: n}, q: charge, st: state, e: electron?}
+function chemParse(raw) {
+  let s = String(raw || '').trim().replace(/\s+/g, '').replace(/[−–]/g, '-'), st = '';
+  if (!s) throw Error('Empty formula.');
+  const m = s.match(/\((s|l|g|aq)\)$/i); if (m && s.length > m[0].length) { st = m[1].toLowerCase(); s = s.slice(0, -m[0].length); }
+  let q = 0; const ci = s.lastIndexOf('^');
+  if (ci >= 0) { const c = s.slice(ci + 1).replace(/[{}]/g, ''), a = c.match(/^(\d*)([+-])$/), b = c.match(/^([+-])(\d+)$/);
+    if (!a && !b) throw Error('Write charges like SO4^2- or Fe^3+.');
+    const n = a ? a[1] : b[2], sg = a ? a[2] : b[1]; q = (n ? +n : 1) * (sg === '-' ? -1 : 1); s = s.slice(0, ci);
+  } else if (/[+-]$/.test(s)) { q = s.endsWith('-') ? -1 : 1; s = s.slice(0, -1); }
+  if (s === 'e') { if (q !== -1) throw Error('An electron is e^-.'); return {el: {}, q: -1, st, e: 1}; }
+  const el = {};
+  for (const part of s.split(/[·.*•]/)) { const pm = part.match(/^(\d*)(.*)$/), k = pm[1] ? +pm[1] : 1, g = chemGroup(pm[2]); for (const e in g) el[e] = (el[e] || 0) + g[e] * k; }
+  return {el, q, st};
+}
+const chemKey = p => Object.keys(p.el).sort().map(e => e + p.el[e]).join('') + (p.q ? '^' + p.q : '') + (p.e ? 'e' : '');
+// equation "2H2(g) + O2(g) -> 2H2O(l)" -> {L: [{c, f, p}], R: [...]}; bank strings use " + " and " -> "
+function chemTerm(t) { const m = String(t).trim().match(/^(\d*)\s*(.+)$/); if (!m) throw Error('Empty term.'); if (m[1] && +m[1] === 0) throw Error('A coefficient of 0 is not allowed.'); return {c: m[1] ? +m[1] : 1, f: m[2].trim(), p: chemParse(m[2])}; }
+function chemEq(s) { const [l, r] = s.split(' -> '); return {L: l.split(' + ').map(chemTerm), R: r.split(' + ').map(chemTerm)}; }
+// user-typed equation: arrow ->, →, =; '+' separates terms unless it is part of a ^charge
+function chemUserEq(s) {
+  s = String(s || '').replace(/[−–]/g, '-').replace(/⟶|→|⇌|=>|=/g, '->');
+  const sides = s.split('->'); if (sides.length !== 2) throw Error(sides.length < 2 ? 'Put an arrow (->) between reactants and products.' : 'Use only one arrow.');
+  const split = x => { const out = []; let cur = ''; for (let i = 0; i < x.length; i++) { const c = x[i]; if (c === '+' && !/\^\{?\d*$/.test(cur)) { out.push(cur); cur = ''; } else cur += c; } out.push(cur); return out.map(t => t.trim()); };
+  const L = split(sides[0]), R = split(sides[1]); if ([...L, ...R].some(t => !t)) throw Error('There is an empty term (check the + signs).');
+  return {L: L.map(chemTerm), R: R.map(chemTerm)};
+}
+// per-element counts for given coefficients (arrays for L and R)
+function chemTally(E, cl, cr) {
+  const els = [], q = {l: 0, r: 0}, add = (terms, cs, side) => terms.forEach((t, i) => { const c = cs[i]; for (const e in t.p.el) { let o = els.find(x => x.e === e); if (!o) els.push(o = {e, l: 0, r: 0, sp: 0}); o[side] += c * t.p.el[e]; } q[side] += c * t.p.q; });
+  add(E.L, cl, 'l'); add(E.R, cr, 'r');
+  for (const o of els) o.sp = [...E.L, ...E.R].filter(t => t.p.el[o.e]).length;
+  const ion = [...E.L, ...E.R].some(t => t.p.q);
+  return {els, q, ion, ok: els.every(o => o.l === o.r) && q.l === q.r};
+}
+const chemGcd = (a, b) => b ? chemGcd(b, a % b) : a;
+const chemTex = f => '\\ce{' + String(f).replace(/[·•.]/g, '*') + '}';
+const chemTexTerm = t => (t.c > 1 ? t.c + ' ' : '') + t.f;
+const chemEqTex = E => '\\ce{' + E.L.map(chemTexTerm).join(' + ').replace(/[·•.]/g, '*') + ' -> ' + E.R.map(chemTexTerm).join(' + ').replace(/[·•.]/g, '*') + '}';
+
+// ---------- equation bank: level (1 easy, 2 medium, 3 hard, 4 HL redox) + category, balanced with smallest whole numbers ----------
+const CHEM_CAT = {s: 'Synthesis', d: 'Decomposition', c: 'Combustion', n: 'Neutralisation', k: 'Acid + carbonate', m: 'Metals', p: 'Precipitation', r: 'Redox', h: 'Half-equations', o: 'Organic', i: 'Industrial & other'};
+const CHEM_LV = ['', 'Easy', 'Medium', 'Hard', 'HL redox'];
+const CHEM_BANK = `1s 2H2(g) + O2(g) -> 2H2O(l)
+1s 2Mg(s) + O2(g) -> 2MgO(s)
+1s N2(g) + 3H2(g) -> 2NH3(g)
+1s 2Na(s) + Cl2(g) -> 2NaCl(s)
+2s 4Al(s) + 3O2(g) -> 2Al2O3(s)
+1s 2Ca(s) + O2(g) -> 2CaO(s)
+1s H2(g) + Cl2(g) -> 2HCl(g)
+1s 2SO2(g) + O2(g) -> 2SO3(g)
+2s 4Fe(s) + 3O2(g) -> 2Fe2O3(s)
+2s 2Al(s) + 3Cl2(g) -> 2AlCl3(s)
+1s 4Li(s) + O2(g) -> 2Li2O(s)
+1s CaO(s) + H2O(l) -> Ca(OH)2(s)
+2s 2Fe(s) + 3Cl2(g) -> 2FeCl3(s)
+2s P4(s) + 5O2(g) -> P4O10(s)
+1s 2NO(g) + O2(g) -> 2NO2(g)
+1s 2K(s) + Br2(l) -> 2KBr(s)
+1s 2Cu(s) + O2(g) -> 2CuO(s)
+1s 2C(s) + O2(g) -> 2CO(g)
+1s 3Mg(s) + N2(g) -> Mg3N2(s)
+2s P4(s) + 6Cl2(g) -> 4PCl3(l)
+1d 2H2O2(aq) -> 2H2O(l) + O2(g)
+1d CaCO3(s) -> CaO(s) + CO2(g)
+2d 2KClO3(s) -> 2KCl(s) + 3O2(g)
+2d 2NaHCO3(s) -> Na2CO3(s) + H2O(g) + CO2(g)
+1d 2HgO(s) -> 2Hg(l) + O2(g)
+1d 2H2O(l) -> 2H2(g) + O2(g)
+1d 2NaCl(l) -> 2Na(l) + Cl2(g)
+2d 2Al2O3(l) -> 4Al(l) + 3O2(g)
+1d 2KNO3(s) -> 2KNO2(s) + O2(g)
+3d 2Pb(NO3)2(s) -> 2PbO(s) + 4NO2(g) + O2(g)
+3d 2Cu(NO3)2(s) -> 2CuO(s) + 4NO2(g) + O2(g)
+3d 2Mg(NO3)2(s) -> 2MgO(s) + 4NO2(g) + O2(g)
+1d 2NH3(g) -> N2(g) + 3H2(g)
+2d 2NaN3(s) -> 2Na(s) + 3N2(g)
+2d NH4NO3(s) -> N2O(g) + 2H2O(g)
+2d CuSO4·5H2O(s) -> CuSO4(s) + 5H2O(g)
+3d (NH4)2Cr2O7(s) -> Cr2O3(s) + N2(g) + 4H2O(g)
+2d 2Fe(OH)3(s) -> Fe2O3(s) + 3H2O(g)
+1d N2O4(g) -> 2NO2(g)
+1c CH4(g) + 2O2(g) -> CO2(g) + 2H2O(l)
+1c C3H8(g) + 5O2(g) -> 3CO2(g) + 4H2O(l)
+2c 2C2H6(g) + 7O2(g) -> 4CO2(g) + 6H2O(l)
+2c 2C4H10(g) + 13O2(g) -> 8CO2(g) + 10H2O(l)
+1c C2H4(g) + 3O2(g) -> 2CO2(g) + 2H2O(l)
+2c 2C2H2(g) + 5O2(g) -> 4CO2(g) + 2H2O(l)
+2c C2H5OH(l) + 3O2(g) -> 2CO2(g) + 3H2O(l)
+2c 2CH3OH(l) + 3O2(g) -> 2CO2(g) + 4H2O(l)
+3c 2C8H18(l) + 25O2(g) -> 16CO2(g) + 18H2O(l)
+2c C6H12O6(s) + 6O2(g) -> 6CO2(g) + 6H2O(l)
+3c 2C3H7OH(l) + 9O2(g) -> 6CO2(g) + 8H2O(l)
+3c C4H9OH(l) + 6O2(g) -> 4CO2(g) + 5H2O(l)
+3c 2C6H14(l) + 19O2(g) -> 12CO2(g) + 14H2O(l)
+2c C5H12(l) + 8O2(g) -> 5CO2(g) + 6H2O(l)
+2c C7H16(l) + 11O2(g) -> 7CO2(g) + 8H2O(l)
+2c 2CH4(g) + 3O2(g) -> 2CO(g) + 4H2O(l)
+3c 2C3H8(g) + 7O2(g) -> 6CO(g) + 8H2O(l)
+2c CH4(g) + O2(g) -> C(s) + 2H2O(l)
+3c 2C6H6(l) + 15O2(g) -> 12CO2(g) + 6H2O(l)
+2c CH3COOH(l) + 2O2(g) -> 2CO2(g) + 2H2O(l)
+3c C12H22O11(s) + 12O2(g) -> 12CO2(g) + 11H2O(l)
+2c 2C3H6(g) + 9O2(g) -> 6CO2(g) + 6H2O(l)
+3c 2H2S(g) + 3O2(g) -> 2SO2(g) + 2H2O(l)
+3c 4NH3(g) + 5O2(g) -> 4NO(g) + 6H2O(g)
+3c 4NH3(g) + 3O2(g) -> 2N2(g) + 6H2O(g)
+2c CS2(l) + 3O2(g) -> CO2(g) + 2SO2(g)
+1n HCl(aq) + NaOH(aq) -> NaCl(aq) + H2O(l)
+1n H2SO4(aq) + 2NaOH(aq) -> Na2SO4(aq) + 2H2O(l)
+1n 2HNO3(aq) + Ca(OH)2(aq) -> Ca(NO3)2(aq) + 2H2O(l)
+2n H3PO4(aq) + 3KOH(aq) -> K3PO4(aq) + 3H2O(l)
+1n 2HCl(aq) + CuO(s) -> CuCl2(aq) + H2O(l)
+2n 3H2SO4(aq) + 2Al(OH)3(s) -> Al2(SO4)3(aq) + 6H2O(l)
+1n H2SO4(aq) + 2NH3(aq) -> (NH4)2SO4(aq)
+2n 6HCl(aq) + Fe2O3(s) -> 2FeCl3(aq) + 3H2O(l)
+2n 2CH3COOH(aq) + Ca(OH)2(aq) -> (CH3COO)2Ca(aq) + 2H2O(l)
+1n 2HCl(aq) + Ba(OH)2(aq) -> BaCl2(aq) + 2H2O(l)
+3n 2H3PO4(aq) + 3Ca(OH)2(aq) -> Ca3(PO4)2(s) + 6H2O(l)
+2n 3HNO3(aq) + Al(OH)3(s) -> Al(NO3)3(aq) + 3H2O(l)
+1n H2SO4(aq) + 2KOH(aq) -> K2SO4(aq) + 2H2O(l)
+1n 2HCl(aq) + Mg(OH)2(s) -> MgCl2(aq) + 2H2O(l)
+1k CaCO3(s) + 2HCl(aq) -> CaCl2(aq) + H2O(l) + CO2(g)
+1k Na2CO3(aq) + 2HCl(aq) -> 2NaCl(aq) + H2O(l) + CO2(g)
+2k 2NaHCO3(s) + H2SO4(aq) -> Na2SO4(aq) + 2H2O(l) + 2CO2(g)
+1k MgCO3(s) + 2HNO3(aq) -> Mg(NO3)2(aq) + H2O(l) + CO2(g)
+2k CaCO3(s) + 2CH3COOH(aq) -> (CH3COO)2Ca(aq) + H2O(l) + CO2(g)
+2k Na2CO3(aq) + 2CH3COOH(aq) -> 2CH3COONa(aq) + H2O(l) + CO2(g)
+1k K2CO3(aq) + 2HNO3(aq) -> 2KNO3(aq) + H2O(l) + CO2(g)
+1k CuCO3(s) + 2HCl(aq) -> CuCl2(aq) + H2O(l) + CO2(g)
+1m Mg(s) + 2HCl(aq) -> MgCl2(aq) + H2(g)
+2m 2Al(s) + 6HCl(aq) -> 2AlCl3(aq) + 3H2(g)
+2m 2Al(s) + 3H2SO4(aq) -> Al2(SO4)3(aq) + 3H2(g)
+1m 2Na(s) + 2H2O(l) -> 2NaOH(aq) + H2(g)
+1m Ca(s) + 2H2O(l) -> Ca(OH)2(aq) + H2(g)
+1m 2K(s) + 2H2O(l) -> 2KOH(aq) + H2(g)
+1m Fe(s) + 2HCl(aq) -> FeCl2(aq) + H2(g)
+2m Mg(s) + 2CH3COOH(aq) -> (CH3COO)2Mg(aq) + H2(g)
+1m Zn(s) + 2HCl(aq) -> ZnCl2(aq) + H2(g)
+1m Cl2(aq) + 2KBr(aq) -> 2KCl(aq) + Br2(aq)
+1m Cu(s) + 2AgNO3(aq) -> Cu(NO3)2(aq) + 2Ag(s)
+1m 2Al(s) + Fe2O3(s) -> Al2O3(s) + 2Fe(l)
+2m Fe2O3(s) + 3CO(g) -> 2Fe(l) + 3CO2(g)
+2m 2Fe2O3(s) + 3C(s) -> 4Fe(l) + 3CO2(g)
+2m 2Al(s) + 3CuSO4(aq) -> Al2(SO4)3(aq) + 3Cu(s)
+1m Br2(aq) + 2KI(aq) -> 2KBr(aq) + I2(aq)
+2m 2Mg(s) + CO2(g) -> 2MgO(s) + C(s)
+2m WO3(s) + 3H2(g) -> W(s) + 3H2O(g)
+2m TiCl4(l) + 4Na(s) -> Ti(s) + 4NaCl(s)
+3m 3Fe(s) + 4H2O(g) -> Fe3O4(s) + 4H2(g)
+2m Cr2O3(s) + 2Al(s) -> Al2O3(s) + 2Cr(s)
+2m 2ZnS(s) + 3O2(g) -> 2ZnO(s) + 2SO2(g)
+2m 2PbS(s) + 3O2(g) -> 2PbO(s) + 2SO2(g)
+3m 4FeS2(s) + 11O2(g) -> 2Fe2O3(s) + 8SO2(g)
+1p BaCl2(aq) + Na2SO4(aq) -> BaSO4(s) + 2NaCl(aq)
+1p Pb(NO3)2(aq) + 2KI(aq) -> PbI2(s) + 2KNO3(aq)
+1p CuSO4(aq) + 2NaOH(aq) -> Cu(OH)2(s) + Na2SO4(aq)
+2p FeCl3(aq) + 3NaOH(aq) -> Fe(OH)3(s) + 3NaCl(aq)
+3p 3CaCl2(aq) + 2Na3PO4(aq) -> Ca3(PO4)2(s) + 6NaCl(aq)
+3p Al2(SO4)3(aq) + 3Ba(NO3)2(aq) -> 3BaSO4(s) + 2Al(NO3)3(aq)
+1p Pb^2+(aq) + 2I^-(aq) -> PbI2(s)
+2p Fe^3+(aq) + 3OH^-(aq) -> Fe(OH)3(s)
+2p 3Ca^2+(aq) + 2PO4^3-(aq) -> Ca3(PO4)2(s)
+2p 2AgNO3(aq) + Na2CrO4(aq) -> Ag2CrO4(s) + 2NaNO3(aq)
+2p 2Ag^+(aq) + CO3^2-(aq) -> Ag2CO3(s)
+1p Na2CO3(aq) + CaCl2(aq) -> CaCO3(s) + 2NaCl(aq)
+1p Al^3+(aq) + 3OH^-(aq) -> Al(OH)3(s)
+1p AgNO3(aq) + NaCl(aq) -> AgCl(s) + NaNO3(aq)
+1o C6H12O6(aq) -> 2C2H5OH(aq) + 2CO2(g)
+2o CH4(g) + 4Cl2(g) -> CCl4(l) + 4HCl(g)
+2o C12H26(l) -> C8H18(l) + 2C2H4(g)
+2o C16H34(l) -> C8H18(l) + 4C2H4(g)
+2o 6CO2(g) + 6H2O(l) -> C6H12O6(aq) + 6O2(g)
+1o C2H2(g) + 2H2(g) -> C2H6(g)
+2o 2C2H5OH(l) + 2Na(s) -> 2C2H5ONa + H2(g)
+3o (C17H35COO)3C3H5(s) + 3NaOH(aq) -> 3C17H35COONa(aq) + C3H5(OH)3(aq)
+2o C12H22O11(aq) + H2O(l) -> 2C6H12O6(aq)
+3o C6H5CH3(l) + 3Cl2(g) -> C6H5CCl3(l) + 3HCl(g)
+1o CH3COOH(l) + C2H5OH(l) -> CH3COOC2H5(l) + H2O(l)
+2o C2H5OH(l) -> C2H4(g) + H2O(g)
+4o 3C2H5OH + 2Cr2O7^2- + 16H^+ -> 3CH3COOH + 4Cr^3+ + 11H2O
+4o 3C2H5OH + Cr2O7^2- + 8H^+ -> 3CH3CHO + 2Cr^3+ + 7H2O
+3r 2KMnO4 + 16HCl -> 2KCl + 2MnCl2 + 5Cl2 + 8H2O
+3r Cu(s) + 4HNO3(aq) -> Cu(NO3)2(aq) + 2NO2(g) + 2H2O(l)
+3r 3Cu(s) + 8HNO3(aq) -> 3Cu(NO3)2(aq) + 2NO(g) + 4H2O(l)
+3r MnO2(s) + 4HCl(aq) -> MnCl2(aq) + Cl2(g) + 2H2O(l)
+1r 2FeCl2(aq) + Cl2(g) -> 2FeCl3(aq)
+3r 2FeCl3(aq) + 2KI(aq) -> 2FeCl2(aq) + 2KCl(aq) + I2(aq)
+3r Cl2(g) + 2NaOH(aq) -> NaCl(aq) + NaOCl(aq) + H2O(l)
+3r 3Cl2(g) + 6NaOH(aq) -> 5NaCl(aq) + NaClO3(aq) + 3H2O(l)
+3r 2Na2S2O3(aq) + I2(aq) -> Na2S4O6(aq) + 2NaI(aq)
+3r 2H2S(g) + SO2(g) -> 3S(s) + 2H2O(l)
+3r 2KI(aq) + H2O2(aq) + H2SO4(aq) -> I2(aq) + K2SO4(aq) + 2H2O(l)
+2r 2Fe^3+(aq) + 2I^-(aq) -> 2Fe^2+(aq) + I2(aq)
+2r Cu(s) + 2Ag^+(aq) -> Cu^2+(aq) + 2Ag(s)
+3r 2Al(s) + 3Cu^2+(aq) -> 2Al^3+(aq) + 3Cu(s)
+2r Cl2(aq) + 2Br^-(aq) -> 2Cl^-(aq) + Br2(aq)
+2r Zn(s) + 2H^+(aq) -> Zn^2+(aq) + H2(g)
+3r 2NO2(g) + H2O(l) -> HNO3(aq) + HNO2(aq)
+3r 3NO2(g) + H2O(l) -> 2HNO3(aq) + NO(g)
+3r 2Na2O2(s) + 2H2O(l) -> 4NaOH(aq) + O2(g)
+1i 2NaOH(aq) + CO2(g) -> Na2CO3(aq) + H2O(l)
+2i (NH4)2SO4(s) + 2NaOH(aq) -> Na2SO4(aq) + 2NH3(g) + 2H2O(l)
+2i Ca(OH)2(s) + 2NH4Cl(s) -> CaCl2(s) + 2NH3(g) + 2H2O(l)
+2i CaC2(s) + 2H2O(l) -> Ca(OH)2(aq) + C2H2(g)
+3i Al4C3(s) + 12H2O(l) -> 4Al(OH)3(s) + 3CH4(g)
+3i Mg3N2(s) + 6H2O(l) -> 3Mg(OH)2(s) + 2NH3(g)
+1i CO2(g) + C(s) -> 2CO(g)
+1i CH4(g) + H2O(g) -> CO(g) + 3H2(g)
+1i CO(g) + 2H2(g) -> CH3OH(g)
+2i 2NaCl(aq) + 2H2O(l) -> 2NaOH(aq) + H2(g) + Cl2(g)
+2i SiCl4(l) + 2H2O(l) -> SiO2(s) + 4HCl(aq)
+2i PCl5(s) + 4H2O(l) -> H3PO4(aq) + 5HCl(aq)
+3i Ca3(PO4)2(s) + 3SiO2(s) + 5C(s) -> 3CaSiO3(l) + 5CO(g) + 2P(g)
+2i CaO(s) + SiO2(s) -> CaSiO3(l)
+2i SO3(g) + H2SO4(l) -> H2S2O7(l)
+4h MnO4^-(aq) + 8H^+(aq) + 5e^- -> Mn^2+(aq) + 4H2O(l)
+4h Cr2O7^2-(aq) + 14H^+(aq) + 6e^- -> 2Cr^3+(aq) + 7H2O(l)
+4h H2O2(aq) + 2H^+(aq) + 2e^- -> 2H2O(l)
+4h O2(g) + 4H^+(aq) + 4e^- -> 2H2O(l)
+4h O2(g) + 2H2O(l) + 4e^- -> 4OH^-(aq)
+4h 2H2O(l) + 2e^- -> H2(g) + 2OH^-(aq)
+4h NO3^-(aq) + 4H^+(aq) + 3e^- -> NO(g) + 2H2O(l)
+4h NO3^-(aq) + 2H^+(aq) + e^- -> NO2(g) + H2O(l)
+4h SO4^2-(aq) + 4H^+(aq) + 2e^- -> SO2(g) + 2H2O(l)
+4h 2S2O3^2-(aq) -> S4O6^2-(aq) + 2e^-
+4h 2I^-(aq) -> I2(aq) + 2e^-
+4h Cl2(g) + 2e^- -> 2Cl^-(aq)
+4h MnO4^-(aq) + 2H2O(l) + 3e^- -> MnO2(s) + 4OH^-(aq)
+4h H2O2(aq) -> O2(g) + 2H^+(aq) + 2e^-
+4h C2O4^2-(aq) -> 2CO2(g) + 2e^-
+4h SO3^2-(aq) + H2O(l) -> SO4^2-(aq) + 2H^+(aq) + 2e^-
+4h ClO3^-(aq) + 6H^+(aq) + 6e^- -> Cl^-(aq) + 3H2O(l)
+4h 2IO3^-(aq) + 12H^+(aq) + 10e^- -> I2(aq) + 6H2O(l)
+4h PbO2(s) + 4H^+(aq) + 2e^- -> Pb^2+(aq) + 2H2O(l)
+4h PbO2(s) + SO4^2-(aq) + 4H^+(aq) + 2e^- -> PbSO4(s) + 2H2O(l)
+4h Pb(s) + SO4^2-(aq) -> PbSO4(s) + 2e^-
+4h CH3OH(aq) + H2O(l) -> CO2(g) + 6H^+(aq) + 6e^-
+4h H2(g) + 2OH^-(aq) -> 2H2O(l) + 2e^-
+4h C2H5OH(aq) + H2O(l) -> CH3COOH(aq) + 4H^+(aq) + 4e^-
+4h CrO4^2-(aq) + 4H2O(l) + 3e^- -> Cr(OH)3(s) + 5OH^-(aq)
+4h VO2^+(aq) + 2H^+(aq) + e^- -> VO^2+(aq) + H2O(l)
+4h Zn(s) + 2OH^-(aq) -> ZnO(s) + H2O(l) + 2e^-
+4h 2MnO2(s) + H2O(l) + 2e^- -> Mn2O3(s) + 2OH^-(aq)
+4h NiO(OH)(s) + H2O(l) + e^- -> Ni(OH)2(s) + OH^-(aq)
+4h Cd(s) + 2OH^-(aq) -> Cd(OH)2(s) + 2e^-
+4h Fe^3+(aq) + e^- -> Fe^2+(aq)
+4h Cu^2+(aq) + 2e^- -> Cu(s)
+4r MnO4^-(aq) + 5Fe^2+(aq) + 8H^+(aq) -> Mn^2+(aq) + 5Fe^3+(aq) + 4H2O(l)
+4r Cr2O7^2-(aq) + 6Fe^2+(aq) + 14H^+(aq) -> 2Cr^3+(aq) + 6Fe^3+(aq) + 7H2O(l)
+4r 2MnO4^-(aq) + 5C2O4^2-(aq) + 16H^+(aq) -> 2Mn^2+(aq) + 10CO2(g) + 8H2O(l)
+4r Cr2O7^2-(aq) + 3SO3^2-(aq) + 8H^+(aq) -> 2Cr^3+(aq) + 3SO4^2-(aq) + 4H2O(l)
+4r 2MnO4^-(aq) + 16H^+(aq) + 10Cl^-(aq) -> 2Mn^2+(aq) + 5Cl2(g) + 8H2O(l)
+4r Cr2O7^2-(aq) + 14H^+(aq) + 6I^-(aq) -> 2Cr^3+(aq) + 3I2(aq) + 7H2O(l)
+4r IO3^-(aq) + 5I^-(aq) + 6H^+(aq) -> 3I2(aq) + 3H2O(l)
+4r 2Cu^2+(aq) + 4I^-(aq) -> 2CuI(s) + I2(aq)
+4r 3Cu(s) + 8H^+(aq) + 2NO3^-(aq) -> 3Cu^2+(aq) + 2NO(g) + 4H2O(l)
+4r 2MnO4^-(aq) + 3SO3^2-(aq) + H2O(l) -> 2MnO2(s) + 3SO4^2-(aq) + 2OH^-(aq)
+4r H2O2(aq) + 2Fe^2+(aq) + 2H^+(aq) -> 2Fe^3+(aq) + 2H2O(l)
+4r SO2(g) + 2Fe^3+(aq) + 2H2O(l) -> SO4^2-(aq) + 2Fe^2+(aq) + 4H^+(aq)
+4r Cl2(aq) + SO2(g) + 2H2O(l) -> 2Cl^-(aq) + SO4^2-(aq) + 4H^+(aq)
+4r 2Al(s) + 2OH^-(aq) + 6H2O(l) -> 2[Al(OH)4]^-(aq) + 3H2(g)
+4r 2MnO4^-(aq) + 5SO2(g) + 2H2O(l) -> 2Mn^2+(aq) + 5SO4^2-(aq) + 4H^+(aq)
+4r 2Fe^2+(aq) + Cl2(aq) -> 2Fe^3+(aq) + 2Cl^-(aq)
+4r MnO4^-(aq) + 8H^+(aq) + 5Ag(s) -> Mn^2+(aq) + 5Ag^+(aq) + 4H2O(l)
+4r 2S2O3^2-(aq) + I2(aq) -> S4O6^2-(aq) + 2I^-(aq)
+4r BrO3^-(aq) + 5Br^-(aq) + 6H^+(aq) -> 3Br2(aq) + 3H2O(l)`.split('\n').map((l, id) => ({id, lv: +l[0], cat: l[1], s: l.slice(3)}));
+// names for "write the equation" (word equations); keyed by formula+state, then formula
+const CHEM_NAME = {'H2': 'hydrogen', 'O2': 'oxygen', 'N2': 'nitrogen', 'Cl2': 'chlorine', 'Br2': 'bromine', 'I2': 'iodine', 'H2O': 'water', 'H2O(g)': 'steam', 'CO2': 'carbon dioxide', 'CO': 'carbon monoxide', 'C': 'carbon', 'S': 'sulfur', 'P4': 'phosphorus', 'NH3': 'ammonia',
+  'HCl(aq)': 'hydrochloric acid', 'HCl': 'hydrogen chloride', 'H2SO4': 'sulfuric acid', 'HNO3': 'nitric acid', 'H3PO4': 'phosphoric acid', 'CH3COOH': 'ethanoic acid', 'H2O2': 'hydrogen peroxide', 'SO2': 'sulfur dioxide', 'SO3': 'sulfur trioxide', 'NO': 'nitrogen monoxide', 'NO2': 'nitrogen dioxide', 'N2O': 'dinitrogen monoxide', 'N2O4': 'dinitrogen tetroxide', 'H2S': 'hydrogen sulfide', 'CS2': 'carbon disulfide',
+  'Mg': 'magnesium', 'Na': 'sodium', 'K': 'potassium', 'Ca': 'calcium', 'Al': 'aluminium', 'Fe': 'iron', 'Cu': 'copper', 'Zn': 'zinc', 'Li': 'lithium', 'Ag': 'silver', 'Hg': 'mercury', 'W': 'tungsten', 'Ti': 'titanium', 'Cr': 'chromium', 'Pb': 'lead',
+  'MgO': 'magnesium oxide', 'CaO': 'calcium oxide', 'Li2O': 'lithium oxide', 'CuO': 'copper(II) oxide', 'Al2O3': 'aluminium oxide', 'Fe2O3': 'iron(III) oxide', 'Fe3O4': 'iron(II,III) oxide', 'ZnO': 'zinc oxide', 'PbO': 'lead(II) oxide', 'HgO': 'mercury(II) oxide', 'P4O10': 'phosphorus(V) oxide', 'WO3': 'tungsten(VI) oxide', 'Cr2O3': 'chromium(III) oxide', 'SiO2': 'silicon dioxide',
+  'NaCl': 'sodium chloride', 'KCl': 'potassium chloride', 'KBr': 'potassium bromide', 'KI': 'potassium iodide', 'MgCl2': 'magnesium chloride', 'CaCl2': 'calcium chloride', 'AlCl3': 'aluminium chloride', 'FeCl2': 'iron(II) chloride', 'FeCl3': 'iron(III) chloride', 'CuCl2': 'copper(II) chloride', 'ZnCl2': 'zinc chloride', 'BaCl2': 'barium chloride', 'PCl3': 'phosphorus trichloride', 'TiCl4': 'titanium(IV) chloride', 'NH4Cl': 'ammonium chloride', 'PbI2': 'lead(II) iodide', 'AgCl': 'silver chloride', 'Mg3N2': 'magnesium nitride', 'NaN3': 'sodium azide',
+  'NaOH': 'sodium hydroxide', 'KOH': 'potassium hydroxide', 'Ca(OH)2': 'calcium hydroxide', 'Ba(OH)2': 'barium hydroxide', 'Mg(OH)2': 'magnesium hydroxide', 'Al(OH)3': 'aluminium hydroxide', 'Cu(OH)2': 'copper(II) hydroxide', 'Fe(OH)3': 'iron(III) hydroxide',
+  'Na2SO4': 'sodium sulfate', 'K2SO4': 'potassium sulfate', 'MgSO4': 'magnesium sulfate', 'CuSO4': 'copper(II) sulfate', 'BaSO4': 'barium sulfate', 'Al2(SO4)3': 'aluminium sulfate', '(NH4)2SO4': 'ammonium sulfate', 'CuSO4·5H2O': 'hydrated copper(II) sulfate',
+  'NaNO3': 'sodium nitrate', 'KNO3': 'potassium nitrate', 'KNO2': 'potassium nitrite', 'Ca(NO3)2': 'calcium nitrate', 'Mg(NO3)2': 'magnesium nitrate', 'Cu(NO3)2': 'copper(II) nitrate', 'Pb(NO3)2': 'lead(II) nitrate', 'AgNO3': 'silver nitrate', 'Al(NO3)3': 'aluminium nitrate', 'Ba(NO3)2': 'barium nitrate', 'NH4NO3': 'ammonium nitrate',
+  'CaCO3': 'calcium carbonate', 'Na2CO3': 'sodium carbonate', 'K2CO3': 'potassium carbonate', 'MgCO3': 'magnesium carbonate', 'CuCO3': 'copper(II) carbonate', 'NaHCO3': 'sodium hydrogencarbonate', 'K3PO4': 'potassium phosphate', 'Na3PO4': 'sodium phosphate', 'Ca3(PO4)2': 'calcium phosphate', 'KClO3': 'potassium chlorate', 'Na2CrO4': 'sodium chromate', 'Ag2CrO4': 'silver chromate', 'CaSiO3': 'calcium silicate', 'CaC2': 'calcium carbide', 'ZnS': 'zinc sulfide', 'PbS': 'lead(II) sulfide', 'FeS2': 'iron pyrite (iron disulfide)',
+  'CH4': 'methane', 'C2H6': 'ethane', 'C3H8': 'propane', 'C4H10': 'butane', 'C5H12': 'pentane', 'C6H14': 'hexane', 'C7H16': 'heptane', 'C8H18': 'octane', 'C2H4': 'ethene', 'C3H6': 'propene', 'C2H2': 'ethyne', 'C6H6': 'benzene', 'CH3OH': 'methanol', 'C2H5OH': 'ethanol', 'C3H7OH': 'propan-1-ol', 'C4H9OH': 'butan-1-ol', 'C6H12O6': 'glucose', 'C12H22O11': 'sucrose', 'CH3COOC2H5': 'ethyl ethanoate', 'CH3COONa': 'sodium ethanoate', '(CH3COO)2Ca': 'calcium ethanoate', '(CH3COO)2Mg': 'magnesium ethanoate', 'CCl4': 'tetrachloromethane', 'C12H26': 'dodecane', 'C16H34': 'hexadecane'};
+const chemName = t => CHEM_NAME[t.f + (t.p.st ? '(' + t.p.st + ')' : '')] || CHEM_NAME[t.f.replace(/\((s|l|g|aq)\)$/, '')];
+const chemBare = f => f.replace(/\((s|l|g|aq)\)$/, '');
+function chemBankEq(R) { return R._E || (R._E = chemEq(R.s)); }
+function chemWritable(R) { const E = chemBankEq(R); return [...E.L, ...E.R].every(t => !t.p.q && chemName({f: chemBare(t.f), p: t.p})); }
+
+// ---------- seeded numbers ----------
+function chemRng(seed) { let a = seed >>> 0; const f = () => { a = a + 0x6D2B79F5 >>> 0; let t = a; t = Math.imul(t ^ t >>> 15, t | 1); t ^= t + Math.imul(t ^ t >>> 7, t | 61); return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+  return {f, i: (a, b) => a + Math.floor(f() * (b - a + 1)), p: L => L[Math.floor(f() * L.length)]}; }
+// x to sf significant figures -> {v, s (plain), t (TeX), sf}; plain decimals between 1e-3 and 1e5, else a × 10^b
+function chemFmt(x, sf) {
+  if (!isFinite(x)) return {v: x, s: String(x), t: String(x), sf};
+  if (x === 0) return {v: 0, s: '0', t: '0', sf};
+  const v = +x.toPrecision(sf), ex = Math.floor(Math.log10(Math.abs(v)) + 1e-12), d = sf - 1 - ex;
+  if (ex >= -3 && ex < 5 && d >= 0) { const s = v.toFixed(d); return {v, s, t: s, sf}; }
+  const m = (Math.abs(v) / Math.pow(10, ex)).toFixed(sf - 1), neg = v < 0 ? '-' : ''; return {v, s: `${neg}${m} × 10^${ex}`, t: `${neg}${m} \\times 10^{${ex}}`, sf};
+}
+// computed data value: one more s.f. if the plain form would end in an ambiguous zero (150 -> 150.0)
+const chemQ = (x, sf) => { const o = chemFmt(x, sf); return /^\d+0$/.test(o.s) ? chemFmt(x, sf + 1) : o; };
+const chemVol = x => chemFmt(x, x >= 100 ? 4 : 3);
+// random measured value, log-uniform in [lo, hi], with sf significant figures (no ambiguous trailing zeros)
+function chemVal(R, lo, hi, sf) { for (let k = 0; k < 30; k++) { const x = lo * Math.pow(hi / lo, R.f()), o = chemFmt(x, sf); if (!/^\d+0$/.test(o.s)) return o; } return chemQ(lo * 1.13, sf); }
+// value with a fixed number of decimal places (burette and balance readings)
+function chemDp(R, lo, hi, dp) { const v = +(lo + (hi - lo) * R.f()).toFixed(dp), s = v.toFixed(dp); return {v, s, t: s, sf: chemSfOf(s)[0]}; }
+function chemSfOf(s) { s = String(s).replace(/^[+-]/, ''); if (s.includes('.')) { const n = s.replace('.', '').replace(/^0+/, '').length || 1; return [n, n]; } const d = s.replace(/^0+/, ''); return [d.replace(/0+$/, '').length || 1, d.length || 1]; }
+const chemMr = f => { const p = typeof f === 'string' ? chemParse(f) : f; let m = 0; for (const e in p.el) { if (CHEM_AR[e] == null) throw Error('no Ar for ' + e); m += CHEM_AR[e] * p.el[e]; } return Math.round(m * 100) / 100; };
+const chemMrTex = f => { const p = chemParse(f); return `M(${chemTex(f)}) = ${Object.keys(p.el).map(e => (p.el[e] > 1 ? p.el[e] + '(' + CHEM_AR[e].toFixed(2) + ')' : CHEM_AR[e].toFixed(2))).join(' + ')} = ${chemMr(f).toFixed(2)}\\ \\mathrm{g\\ mol^{-1}}`; };
+const CHEM_UT = {g: '\\mathrm{g}', mol: '\\mathrm{mol}', cm3: '\\mathrm{cm^{3}}', dm3: '\\mathrm{dm^{3}}', m3: '\\mathrm{m^{3}}', M: '\\mathrm{mol\\ dm^{-3}}', gdm3: '\\mathrm{g\\ dm^{-3}}', kPa: '\\mathrm{kPa}', Pa: '\\mathrm{Pa}', C: '^{\\circ}\\mathrm{C}', K: '\\mathrm{K}', kJ: '\\mathrm{kJ}', J: '\\mathrm{J}', kJm: '\\mathrm{kJ\\ mol^{-1}}', gm: '\\mathrm{g\\ mol^{-1}}', pc: '\\%', '': ''};
+const cU = (o, u) => `${o.t !== undefined ? o.t : o}${u === 'C' || u === 'pc' ? '' : '\\ '}${CHEM_UT[u]}`; // value + unit in TeX
+const c4 = x => chemFmt(x, 4).t; // intermediate values: 4 s.f.
+// answer units: dimension d + factor f to the dimension's base unit
+const CHEM_U = {g: {l: 'g', d: 'm', f: 1}, kg: {l: 'kg', d: 'm', f: 1000}, mg: {l: 'mg', d: 'm', f: .001}, mol: {l: 'mol', d: 'n', f: 1}, mmol: {l: 'mmol', d: 'n', f: .001}, dm3: {l: 'dm³', d: 'V', f: 1}, cm3: {l: 'cm³', d: 'V', f: .001}, m3: {l: 'm³', d: 'V', f: 1000},
+  M: {l: 'mol dm⁻³', d: 'c', f: 1}, gdm3: {l: 'g dm⁻³', d: 'cm', f: 1}, kJ: {l: 'kJ', d: 'E', f: 1}, J: {l: 'J', d: 'E', f: .001}, kJm: {l: 'kJ mol⁻¹', d: 'Em', f: 1}, Jm: {l: 'J mol⁻¹', d: 'Em', f: .001}, gm: {l: 'g mol⁻¹', d: 'Mm', f: 1}};
+const CHEM_UO = {m: ['g', 'kg', 'mg', 'mol'], n: ['mol', 'mmol', 'g', 'gm'], V: ['dm3', 'cm3', 'm3', 'M'], c: ['M', 'gdm3', 'mol'], cm: ['gdm3', 'M', 'g'], E: ['kJ', 'J', 'kJm'], Em: ['kJm', 'Jm', 'kJ'], Mm: ['gm', 'g', 'mol']};
+const CHEM_DIMN = {m: 'mass', n: 'amount', V: 'volume', c: 'concentration', cm: 'mass concentration', E: 'energy', Em: 'energy per mole', Mm: 'molar mass'};
+const cNum = (lab, v, u, sf, o = {}) => ({k: 'num', lab, v, u, sf, ...o}); // u: key of CHEM_U, 'pc' (%), '' (no unit)
+
+// ---------- stoichiometry templates: g(R, hard) -> {q, parts, steps, hint} ----------
+const CHEM_CMP = [['H2O', 'water'], ['CO2', 'carbon dioxide'], ['NaCl', 'sodium chloride'], ['CaCO3', 'calcium carbonate'], ['H2SO4', 'sulfuric acid'], ['NaOH', 'sodium hydroxide'], ['C6H12O6', 'glucose'], ['NH3', 'ammonia'], ['MgO', 'magnesium oxide'], ['CuSO4·5H2O', 'hydrated copper(II) sulfate'], ['KMnO4', 'potassium manganate(VII)'], ['C2H5OH', 'ethanol'], ['Fe2O3', 'iron(III) oxide'], ['Al2(SO4)3', 'aluminium sulfate'], ['(NH4)2SO4', 'ammonium sulfate'], ['Ca(OH)2', 'calcium hydroxide'], ['NaHCO3', 'sodium hydrogencarbonate'], ['CH4', 'methane'], ['C3H8', 'propane'], ['KNO3', 'potassium nitrate'], ['Na2CO3', 'sodium carbonate'], ['Mg(NO3)2', 'magnesium nitrate'], ['AgNO3', 'silver nitrate'], ['BaSO4', 'barium sulfate'], ['CH3COOH', 'ethanoic acid'], ['ZnCl2', 'zinc chloride'], ['Pb(NO3)2', 'lead(II) nitrate'], ['C12H22O11', 'sucrose'], ['K2Cr2O7', 'potassium dichromate(VI)'], ['NH4NO3', 'ammonium nitrate']];
+const CHEM_ELN = {H: 'hydrogen', C: 'carbon', N: 'nitrogen', O: 'oxygen', Na: 'sodium', Cl: 'chlorine', Ca: 'calcium', S: 'sulfur', Mg: 'magnesium', Cu: 'copper', K: 'potassium', Mn: 'manganese', Fe: 'iron', Al: 'aluminium', Ag: 'silver', Ba: 'barium', Zn: 'zinc', Pb: 'lead', Cr: 'chromium'}, chemEln = e => CHEM_ELN[e] || e;
+const cName = ([f, nm]) => `${nm} ($${chemTex(f)}$)`;
+const CHEM_STO = [
+  {id: 'mol', t: 'Moles from mass', tp: 'S1.4', g(R, h) {
+    const c = R.p(CHEM_CMP), M = chemMr(c[0]), m = chemVal(R, .5, 150, R.p([3, 3, 4])), n = m.v / M;
+    if (!h) { const sf = Math.min(m.sf, 4); return {q: `Calculate the amount, in mol, of ${cName(c)} in a $${cU(m, 'g')}$ sample.`, parts: [cNum('Amount', n, 'mol', sf)], hint: 'Use $n = \\dfrac{m}{M}$: first add up the relative atomic masses to get $M$.',
+      steps: [`$${chemMrTex(c[0])}$`, `$n = \\dfrac{m}{M} = \\dfrac{${m.t}}{${M.toFixed(2)}} = ${c4(n)}\\ \\mathrm{mol}$`, ans(n, 'mol', sf)]}; }
+    const p = chemParse(c[0]), els = Object.keys(p.el), e = R.p(els), k = p.el[e], N = n * k * CHEM_NA, sf = Math.min(m.sf, 3);
+    return {q: `Calculate the number of ${chemEln(e)} atoms in $${cU(m, 'g')}$ of ${cName(c)}. ($N_A = 6.02 \\times 10^{23}\\ \\mathrm{mol^{-1}}$)`, parts: [cNum('Number of atoms', N, '', sf)], hint: 'Find $n$ of the compound, multiply by how many of that atom are in one formula unit, then by $N_A$.',
+      steps: [`$${chemMrTex(c[0])}$`, `$n(${chemTex(c[0])}) = \\dfrac{${m.t}}{${M.toFixed(2)}} = ${c4(n)}\\ \\mathrm{mol}$`, `Each formula unit has ${k} ${e} atom${k > 1 ? 's' : ''}: $n(\\mathrm{${e}}) = ${k > 1 ? k + ' \\times ' : ''}${c4(n)} = ${c4(n * k)}\\ \\mathrm{mol}$`, `$N = n \\times N_A = ${c4(n * k)} \\times 6.02 \\times 10^{23} = ${c4(N)}$`, ans(N, '', sf)]};
+  }},
+  {id: 'mass', t: 'Mass from moles', tp: 'S1.4', g(R, h) {
+    const c = R.p(CHEM_CMP), M = chemMr(c[0]);
+    if (!h) { const n = chemVal(R, .0100, 3.00, 3), m = n.v * M, sf = n.sf; return {q: `Calculate the mass, in g, of $${cU(n, 'mol')}$ of ${cName(c)}.`, parts: [cNum('Mass', m, 'g', sf)], hint: 'Rearrange $n = \\dfrac{m}{M}$ to $m = nM$.',
+      steps: [`$${chemMrTex(c[0])}$`, `$m = nM = ${n.t} \\times ${M.toFixed(2)} = ${c4(m)}\\ \\mathrm{g}$`, ans(m, 'g', sf)]}; }
+    const N = chemFmt(R.i(11, 99) / 10 * Math.pow(10, R.i(20, 23)), 2 + R.i(0, 1)), n = N.v / CHEM_NA, m = n * M, sf = Math.min(N.sf, 3);
+    return {q: `Calculate the mass, in g, of $${N.t}$ formula units (molecules) of ${cName(c)}. ($N_A = 6.02 \\times 10^{23}\\ \\mathrm{mol^{-1}}$)`, parts: [cNum('Mass', m, 'g', sf)], hint: 'Convert particles to moles with $n = \\dfrac{N}{N_A}$, then use $m = nM$.',
+      steps: [`$n = \\dfrac{N}{N_A} = \\dfrac{${N.t}}{6.02 \\times 10^{23}} = ${c4(n)}\\ \\mathrm{mol}$`, `$${chemMrTex(c[0])}$`, `$m = nM = ${c4(n)} \\times ${M.toFixed(2)} = ${c4(m)}\\ \\mathrm{g}$`, ans(m, 'g', sf)]};
+  }},
+  {id: 'pcomp', t: 'Percentage composition', tp: 'S1.4', g(R, h) {
+    if (h) { const c = R.p([['CuSO4·5H2O', 'hydrated copper(II) sulfate', 5], ['MgSO4·7H2O', 'hydrated magnesium sulfate', 7], ['Na2CO3·10H2O', 'hydrated sodium carbonate', 10], ['CaCl2·2H2O', 'hydrated calcium chloride', 2], ['FeSO4·7H2O', 'hydrated iron(II) sulfate', 7], ['BaCl2·2H2O', 'hydrated barium chloride', 2], ['CoCl2·6H2O', 'hydrated cobalt(II) chloride', 6]]), M = chemMr(c[0]), w = c[2] * chemMr('H2O'), pc = w / M * 100;
+      return {q: `Calculate the percentage by mass of water in ${c[1]}, $${chemTex(c[0])}$.`, parts: [cNum('% water', pc, 'pc', [3, 4])], hint: 'Mass of the water in one mole divided by the molar mass of the whole hydrate, times 100.',
+        steps: [`$${chemMrTex(c[0])}$`, `$M(${c[2]}\\,\\ce{H2O}) = ${c[2]} \\times 18.02 = ${w.toFixed(2)}\\ \\mathrm{g\\ mol^{-1}}$`, `$\\%\\,\\ce{H2O} = \\dfrac{${w.toFixed(2)}}{${M.toFixed(2)}} \\times 100 = ${c4(pc)}\\%$`, ans(pc, 'pc', 3)]}; }
+    const c = R.p(CHEM_CMP), p = chemParse(c[0]), e = R.p(Object.keys(p.el)), M = chemMr(c[0]), me = CHEM_AR[e] * p.el[e], pc = me / M * 100;
+    return {q: `Calculate the percentage by mass of ${chemEln(e)} in ${cName(c)}.`, parts: [cNum('% ' + chemEln(e), pc, 'pc', [3, 4])], hint: '$\\%\\ \\text{by mass} = \\dfrac{\\text{number of atoms} \\times A_r}{M_r} \\times 100$',
+      steps: [`$${chemMrTex(c[0])}$`, `Mass of ${e} in one mole: $${p.el[e] > 1 ? p.el[e] + ' \\times ' : ''}${CHEM_AR[e].toFixed(2)} = ${me.toFixed(2)}\\ \\mathrm{g}$`, `$\\% = \\dfrac{${me.toFixed(2)}}{${M.toFixed(2)}} \\times 100 = ${c4(pc)}\\%$`, ans(pc, 'pc', 3)]};
+  }},
+  {id: 'emp', t: 'Empirical formula from % composition', tp: 'S1.4', g(R, h) {
+    const L = h ? CHEM_EMPM : CHEM_EMP, [mf, ef, nm] = R.p(L), p = chemParse(mf), M = chemMr(mf), els = Object.keys(p.el);
+    const pcs = els.map(e => chemFmt(CHEM_AR[e] * p.el[e] / M * 100, 3)), Mg = chemFmt(M, 3);
+    const ratio = els.map((e, i) => pcs[i].v / CHEM_AR[e]), mn = Math.min(...ratio), ep = chemParse(ef), em = chemMr(ef);
+    const q = `A compound contains ${els.map((e, i) => `$${pcs[i].t}\\%$ ${e}`).join(', ').replace(/, ([^,]*)$/, ' and $1')} by mass.${h ? ` Its molar mass is about $${cU(Mg, 'gm')}$. Find its empirical formula and its molecular formula.` : ' Find its empirical formula.'}`;
+    const parts = [{k: 'formula', lab: 'Empirical formula', f: ef, emp: 1}]; if (h) parts.push({k: 'formula', lab: 'Molecular formula', f: mf});
+    const steps = [`Assume $100\\ \\mathrm{g}$, so the percentages are masses in grams. Divide each by $A_r$: ${els.map((e, i) => `$\\mathrm{${e}}: \\dfrac{${pcs[i].t}}{${CHEM_AR[e].toFixed(2)}} = ${chemFmt(ratio[i], 3).t}$`).join(', ')}`,
+      `Divide by the smallest (${chemFmt(mn, 3).t}): ${els.map((e, i) => `$\\mathrm{${e}}\\ ${chemFmt(ratio[i] / mn, 3).t}$`).join(', ')}${Math.min(...els.map(e => ep.el[e])) > 1 ? `; multiply by ${Math.min(...els.map(e => ep.el[e]))} to get whole numbers: ${els.map(e => `${e} ${ep.el[e]}`).join(', ')}` : ''}`, `Empirical formula: $${chemTex(ef)}$`];
+    if (h) steps.push(`$M(${chemTex(ef)}) = ${em.toFixed(2)}$, and $\\dfrac{${Mg.t}}{${em.toFixed(2)}} \\approx ${Math.round(M / em)}$, so the molecular formula is $${chemTex(mf)}$${nm ? ' (' + nm + ')' : ''}.`);
+    return {q, parts, steps, hint: 'Take 100 g, so each percentage is a mass. Divide each mass by its $A_r$, then divide every answer by the smallest one.'};
+  }},
+  {id: 'comb', t: 'Formula from combustion data', tp: 'S1.4', g(R, h) {
+    const [mf, ef, nm] = R.p(h ? CHEM_COMB : CHEM_COMB.filter(x => !x[3])), p = chemParse(mf), M = chemMr(mf);
+    const m = chemVal(R, .200, 2.50, 3), n = m.v / M, mc = chemQ(n * p.el.C * chemMr('CO2'), 3), mh = chemQ(n * p.el.H / 2 * chemMr('H2O'), 3), hasO = !!p.el.O;
+    const nC = mc.v / chemMr('CO2'), nH = 2 * mh.v / chemMr('H2O'), mC = nC * 12.01, mH = nH * 1.01, mO = m.v - mC - mH, nO = mO / 16;
+    const L = [['C', nC], ['H', nH]].concat(hasO ? [['O', nO]] : []), mn = Math.min(...L.map(x => x[1])), Mg = chemFmt(M, 3), em = chemMr(ef);
+    const parts = [{k: 'formula', lab: 'Empirical formula', f: ef, emp: 1}]; if (h) parts.push({k: 'formula', lab: 'Molecular formula', f: mf});
+    const steps = [`$n(\\ce{CO2}) = \\dfrac{${mc.t}}{44.01} = ${c4(nC)}\\ \\mathrm{mol}$, so $n(\\mathrm{C}) = ${c4(nC)}\\ \\mathrm{mol}$`,
+      `$n(\\ce{H2O}) = \\dfrac{${mh.t}}{18.02} = ${c4(nH / 2)}\\ \\mathrm{mol}$, so $n(\\mathrm{H}) = 2 \\times ${c4(nH / 2)} = ${c4(nH)}\\ \\mathrm{mol}$`];
+    if (hasO) steps.push(`Mass of O by difference: $${m.t} - ${c4(mC)} - ${c4(mH)} = ${c4(mO)}\\ \\mathrm{g}$, so $n(\\mathrm{O}) = \\dfrac{${c4(mO)}}{16.00} = ${c4(nO)}\\ \\mathrm{mol}$`);
+    steps.push(`Divide by the smallest: ${L.map(([e, v]) => `$\\mathrm{${e}}\\ ${chemFmt(v / mn, 3).t}$`).join(', ')} → empirical formula $${chemTex(ef)}$`);
+    if (h) steps.push(`$\\dfrac{${Mg.t}}{${em.toFixed(2)}} \\approx ${Math.round(M / em)}$, so the molecular formula is $${chemTex(mf)}$${nm ? ' (' + nm + ')' : ''}.`);
+    return {q: `A $${cU(m, 'g')}$ sample of a compound containing only ${hasO ? 'carbon, hydrogen and oxygen' : 'carbon and hydrogen'} burns completely in oxygen to give $${cU(mc, 'g')}$ of carbon dioxide and $${cU(mh, 'g')}$ of water.${h ? ` Its molar mass is about $${cU(Mg, 'gm')}$. Find its empirical and molecular formulas.` : ' Find its empirical formula.'}`,
+      parts, steps, hint: `All the C ends up in $\\ce{CO2}$ and all the H in $\\ce{H2O}$ (2 H per molecule).${hasO ? ' Find the mass of O by subtracting the masses of C and H from the sample mass.' : ''}`};
+  }},
+  {id: 'lim', t: 'Limiting reagent and yield', tp: 'R2.1', g(R, h) {
+    const [es, ia, ib, ip] = R.p(CHEM_LIM), E = chemEq(es), A = E.L[ia], B = E.L[ib], P = E.R[ip], MA = chemMr(A.f), MB = chemMr(B.f), MP = chemMr(P.f);
+    let nA, mA, mB, fr; for (let k = 0; k < 40; k++) { fr = .6 + R.f(); if (fr > .87 && fr < 1.15) continue; break; }
+    nA = chemVal(R, .05, 1.2, 3).v; mA = chemQ(nA * MA, 3); mB = chemQ(nA / A.c * B.c * fr * MB, 3);
+    const xA = mA.v / MA, xB = mB.v / MB, rA = xA / A.c, rB = xB / B.c, lim = rA <= rB ? 0 : 1, rl = Math.min(rA, rB), mP = rl * P.c * MP, sf = Math.min(mA.sf, mB.sf);
+    const X = lim ? A : B, Lm = lim ? B : A, nX = (lim ? xA : xB), left = (nX - rl * X.c) * chemMr(X.f);
+    const parts = [{k: 'pick', lab: 'Limiting reagent', opts: [A.f, B.f], v: lim}, cNum(`Mass of ${chemName({f: P.f, p: P.p}) || P.f}`, mP, 'g', sf)];
+    if (h) parts.push(cNum(`Mass of ${chemName({f: X.f, p: X.p}) || X.f} left over`, left, 'g', sf));
+    const steps = [`$${chemEqTex(E)}$`, `$n(${chemTex(A.f)}) = \\dfrac{${mA.t}}{${MA.toFixed(2)}} = ${c4(xA)}\\ \\mathrm{mol}$; $n(${chemTex(B.f)}) = \\dfrac{${mB.t}}{${MB.toFixed(2)}} = ${c4(xB)}\\ \\mathrm{mol}$`,
+      `Divide by the coefficients: $${chemTex(A.f)}: \\dfrac{${c4(xA)}}{${A.c}} = ${c4(rA)}$; $${chemTex(B.f)}: \\dfrac{${c4(xB)}}{${B.c}} = ${c4(rB)}$. The smaller value is the limiting reagent: $${chemTex(Lm.f)}$.`,
+      `$n(${chemTex(P.f)}) = ${c4(rl)} \\times ${P.c} = ${c4(rl * P.c)}\\ \\mathrm{mol}$; $m = ${c4(rl * P.c)} \\times ${MP.toFixed(2)} = ${c4(mP)}\\ \\mathrm{g}$`, ans(mP, 'g', sf)];
+    if (h) steps.push(`$${chemTex(X.f)}$ used: $${c4(rl)} \\times ${X.c} = ${c4(rl * X.c)}\\ \\mathrm{mol}$, left over $${c4(nX)} - ${c4(rl * X.c)} = ${c4(nX - rl * X.c)}\\ \\mathrm{mol}$, mass $= ${c4(left)}\\ \\mathrm{g}$`, ans(left, 'g', sf));
+    return {q: `$${cU(mA, 'g')}$ of $${chemTex(A.f)}$ reacts with $${cU(mB, 'g')}$ of $${chemTex(B.f)}$:\n\n$$${chemEqTex(E)}$$\n\nWhich reactant is limiting, and what is the theoretical mass of $${chemTex(P.f)}$ produced?${h ? ' What mass of the excess reactant is left over?' : ''}`,
+      parts, steps, hint: 'Work out moles of each reactant, then divide each by its coefficient in the equation. The smaller result is the limiting reagent; use it to find the product.'};
+  }},
+  {id: 'yield', t: 'Percentage yield', tp: 'R2.1', g(R, h) {
+    const [es, ia, ip, ctx] = R.p(CHEM_YLD), E = chemEq(es), A = E.L[ia], P = E.R[ip], MA = chemMr(A.f), MP = chemMr(P.f), mA = chemVal(R, 2, 60, 3), th = mA.v / MA / A.c * P.c * MP, y = .55 + .4 * R.f();
+    if (!h) { const act = chemQ(th * y, 3), pc = act.v / th * 100, sf = Math.min(mA.sf, act.sf);
+      return {q: `${ctx.replace('@', `$${cU(mA, 'g')}$`)} The actual mass of $${chemTex(P.f)}$ obtained was $${cU(act, 'g')}$.\n\n$$${chemEqTex(E)}$$\n\nCalculate the percentage yield.`, parts: [cNum('Percentage yield', pc, 'pc', sf)], hint: 'Find the theoretical mass of product from the moles of reactant, then $\\%\\ \\text{yield} = \\dfrac{\\text{actual}}{\\text{theoretical}} \\times 100$.',
+        steps: [`$n(${chemTex(A.f)}) = \\dfrac{${mA.t}}{${MA.toFixed(2)}} = ${c4(mA.v / MA)}\\ \\mathrm{mol}$`, `Mole ratio ${A.c} : ${P.c}, so $n(${chemTex(P.f)}) = ${c4(mA.v / MA / A.c * P.c)}\\ \\mathrm{mol}$; theoretical mass $= ${c4(mA.v / MA / A.c * P.c)} \\times ${MP.toFixed(2)} = ${c4(th)}\\ \\mathrm{g}$`, `$\\%\\ \\text{yield} = \\dfrac{${act.t}}{${c4(th)}} \\times 100 = ${c4(pc)}\\%$`, ans(pc, 'pc', sf)]}; }
+    const Y = chemFmt(Math.round(y * 100) % 10 ? Math.round(y * 100) : Math.round(y * 100) + 3, 2), want = chemVal(R, 5, 50, 3), need = want.v / (Y.v / 100) / MP / P.c * A.c * MA, sf = Math.min(Y.sf, want.sf);
+    return {q: `$${chemEqTex(E)}$\n\nThis reaction has a percentage yield of $${Y.t}\\%$. What mass of $${chemTex(A.f)}$ is needed to make $${cU(want, 'g')}$ of $${chemTex(P.f)}$?`, parts: [cNum(`Mass of ${chemName({f: A.f, p: A.p}) || A.f}`, need, 'g', sf)], hint: 'First find the theoretical mass you must aim for: actual ÷ (yield/100). Then go back through moles to the reactant.',
+      steps: [`Theoretical mass needed: $\\dfrac{${want.t}}{${(Y.v / 100).toFixed(2)}} = ${c4(want.v / (Y.v / 100))}\\ \\mathrm{g}$`, `$n(${chemTex(P.f)}) = \\dfrac{${c4(want.v / (Y.v / 100))}}{${MP.toFixed(2)}} = ${c4(want.v / (Y.v / 100) / MP)}\\ \\mathrm{mol}$`, `Ratio ${P.c} : ${A.c}, so $n(${chemTex(A.f)}) = ${c4(want.v / (Y.v / 100) / MP / P.c * A.c)}\\ \\mathrm{mol}$, $m = ${c4(need)}\\ \\mathrm{g}$`, ans(need, 'g', sf)]};
+  }},
+  {id: 'conc', t: 'Concentration', tp: 'S1.4', g(R, h) {
+    const c = R.p(CHEM_SOL), M = chemMr(c[0]), V = chemVol(R.p([100, 250, 500, 50, 200])), Vd = V.v / 1000;
+    if (!h) { const m = chemVal(R, .5, 30, 3), n = m.v / M, cc = n / Vd, sf = Math.min(m.sf, V.sf);
+      return {q: `$${cU(m, 'g')}$ of ${cName(c)} is dissolved in water and made up to $${cU(V, 'cm3')}$ of solution. Calculate the concentration of the solution in $\\mathrm{mol\\ dm^{-3}}$.`, parts: [cNum('Concentration', cc, 'M', sf)], hint: 'Find $n = \\dfrac{m}{M}$, convert the volume to $\\mathrm{dm^3}$ (÷ 1000), then $c = \\dfrac{n}{V}$.',
+        steps: [`$${chemMrTex(c[0])}$`, `$n = \\dfrac{${m.t}}{${M.toFixed(2)}} = ${c4(n)}\\ \\mathrm{mol}$`, `$V = \\dfrac{${V.t}}{1000} = ${c4(Vd)}\\ \\mathrm{dm^{3}}$`, `$c = \\dfrac{n}{V} = \\dfrac{${c4(n)}}{${c4(Vd)}} = ${c4(cc)}\\ \\mathrm{mol\\ dm^{-3}}$`, ans(cc, 'M', sf)]}; }
+    if (R.f() < .5) { const cc = chemVal(R, .0500, 1.50, 3), n = cc.v * Vd, m = n * M, sf = Math.min(cc.sf, V.sf);
+      return {q: `What mass of ${cName(c)} is needed to make $${cU(V, 'cm3')}$ of a $${cU(cc, 'M')}$ solution?`, parts: [cNum('Mass', m, 'g', sf)], hint: '$n = cV$ (with $V$ in $\\mathrm{dm^3}$), then $m = nM$.',
+        steps: [`$n = cV = ${cc.t} \\times ${c4(Vd)} = ${c4(n)}\\ \\mathrm{mol}$`, `$${chemMrTex(c[0])}$`, `$m = nM = ${c4(n)} \\times ${M.toFixed(2)} = ${c4(m)}\\ \\mathrm{g}$`, ans(m, 'g', sf)]}; }
+    const [f, ion, k, nm] = R.p(CHEM_ION), cc = chemVal(R, .0200, 1.20, 3), ci = cc.v * k, sf = cc.sf;
+    return {q: `What is the concentration of $${chemTex(ion)}$ ions in a $${cU(cc, 'M')}$ solution of ${nm}, $${chemTex(f)}$? Assume it is fully dissociated.`, parts: [cNum('Ion concentration', ci, 'M', sf)], hint: 'Write the dissociation equation and count how many of that ion each formula unit releases.',
+      steps: [`$${chemTex(f + ' -> ' + chemDiss(f))}$`, `Each formula unit gives ${k} $${chemTex(ion)}$, so $[${chemTex(ion)}] = ${k} \\times ${cc.t} = ${c4(ci)}\\ \\mathrm{mol\\ dm^{-3}}$`, ans(ci, 'M', sf)]};
+  }},
+  {id: 'dil', t: 'Dilution', tp: 'S1.4', g(R, h) {
+    const c1 = chemVal(R, .100, 2.00, 3), V1 = chemVol(R.p([10, 20, 25, 50, 5])), V2 = chemVol(R.p([100, 250, 500, 200]));
+    if (!h) { const c2 = c1.v * V1.v / V2.v, sf = Math.min(c1.sf, V1.sf, V2.sf);
+      return {q: `$${cU(V1, 'cm3')}$ of a $${cU(c1, 'M')}$ solution is diluted with water to a total volume of $${cU(V2, 'cm3')}$. Calculate the new concentration.`, parts: [cNum('New concentration', c2, 'M', sf)], hint: 'The amount of solute doesn\'t change: $c_1V_1 = c_2V_2$.',
+        steps: [`$c_1V_1 = c_2V_2$, so $c_2 = \\dfrac{c_1V_1}{V_2} = \\dfrac{${c1.t} \\times ${V1.t}}{${V2.t}} = ${c4(c2)}\\ \\mathrm{mol\\ dm^{-3}}$`, ans(c2, 'M', sf)]}; }
+    const c2 = chemQ(c1.v * R.p([.1, .2, .25, .4, .5]), 3), Vn = c2.v * V2.v / c1.v, sf = Math.min(c1.sf, c2.sf, V2.sf);
+    return {q: `You need $${cU(V2, 'cm3')}$ of $${cU(c2, 'M')}$ hydrochloric acid, made from a $${cU(c1, 'M')}$ stock solution. What volume of stock solution should you measure out?`, parts: [cNum('Volume of stock', Vn, 'cm3', sf)], hint: 'Use $c_1V_1 = c_2V_2$ and solve for $V_1$.',
+      steps: [`$V_1 = \\dfrac{c_2V_2}{c_1} = \\dfrac{${c2.t} \\times ${V2.t}}{${c1.t}} = ${c4(Vn)}\\ \\mathrm{cm^{3}}$`, `(Then add water up to $${cU(V2, 'cm3')}$ in total.)`, ans(Vn, 'cm3', sf)]};
+  }},
+  {id: 'titr', t: 'Titration', tp: 'R2.1', g(R, h) {
+    const [es, ia, ib] = R.p(CHEM_TIT), E = chemEq(es), A = E.L[ia], B = E.L[ib], Vb = chemVol(R.p([25, 20, 10]));
+    let ca, cb, Va; for (let k = 0; k < 60; k++) { ca = chemVal(R, .0500, .500, 3); cb = R.f() * .25 + .03; Va = cb * Vb.v / B.c * A.c / ca.v; if (Va > 12 && Va < 45) break; }
+    let tv, mean; if (h) { const a = +(Va + .03 * (R.f() - .5)).toFixed(2), b = +(Va + .08 * (R.f() - .5)).toFixed(2), r = +(Va + .4 + .6 * R.f()).toFixed(2); tv = [r, a, b]; mean = (a + b) / 2; } else { mean = +Va.toFixed(2); tv = [mean]; }
+    const nA = ca.v * mean / 1000, nB = nA / A.c * B.c, c = nB / (Vb.v / 1000), sf = Math.min(ca.sf, Vb.sf, 4);
+    const nmA = chemName({f: A.f, p: {st: 'aq'}}) || A.f, nmB = chemName({f: B.f, p: {st: 'aq'}}) || B.f;
+    return {q: `$${cU(Vb, 'cm3')}$ of ${nmB} solution was titrated with $${cU(ca, 'M')}$ ${nmA}.${h ? ` The titres were $${tv[0].toFixed(2)}$ (rough), $${tv[1].toFixed(2)}$ and $${tv[2].toFixed(2)}\\ \\mathrm{cm^{3}}$.` : ` The mean titre was $${cU(mean.toFixed(2), 'cm3')}$.`}\n\n$$${chemEqTex(E)}$$\n\nCalculate the concentration of the ${nmB} solution.`, parts: [cNum('Concentration', c, 'M', sf)],
+      hint: `${h ? 'Average only the concordant titres (leave out the rough one). ' : ''}Find moles of the acid from $n = cV$, use the mole ratio, then $c = \\dfrac{n}{V}$.`,
+      steps: [...(h ? [`Mean of the concordant titres: $\\dfrac{${tv[1].toFixed(2)} + ${tv[2].toFixed(2)}}{2} = ${c4(mean)}\\ \\mathrm{cm^{3}}$`] : []), `$n(${chemTex(A.f)}) = cV = ${ca.t} \\times \\dfrac{${c4(mean)}}{1000} = ${c4(nA)}\\ \\mathrm{mol}$`, `Ratio ${A.c} : ${B.c}, so $n(${chemTex(B.f)}) = ${c4(nB)}\\ \\mathrm{mol}$`, `$c = \\dfrac{${c4(nB)}}{${c4(Vb.v / 1000)}} = ${c4(c)}\\ \\mathrm{mol\\ dm^{-3}}$`, ans(c, 'M', sf)]};
+  }},
+  {id: 'back', t: 'Back titration', tp: 'R2.1', hl: 1, g(R) {
+    const [f, nm, r, src] = R.p(CHEM_BACK), M = chemMr(f); let m, c1, V1, c2, V2, pur;
+    for (let k = 0; k < 80; k++) { m = chemVal(R, .300, 2.50, 3); c1 = chemVal(R, .500, 1.50, 3); V1 = chemVol(R.p([50, 25, 100])); c2 = chemVal(R, .100, .500, 3); pur = .7 + .28 * R.f();
+      const nB = pur * m.v / M, n1 = c1.v * V1.v / 1000, nx = n1 - r * nB; V2 = nx / c2.v * 1000; if (n1 > r * nB * 1.15 && V2 > 10 && V2 < 48) break; }
+    V2 = chemFmt(+V2.toFixed(2), chemSfOf(V2.toFixed(2))[0]);
+    const n1 = c1.v * V1.v / 1000, nx = c2.v * V2.v / 1000, nr = n1 - nx, nB = nr / r, mB = nB * M, pc = mB / m.v * 100, sf = Math.min(m.sf, c1.sf, V1.sf, c2.sf, V2.sf);
+    return {q: `A $${cU(m, 'g')}$ sample of ${src} (impure ${nm}, $${chemTex(f)}$) was added to $${cU(V1, 'cm3')}$ of $${cU(c1, 'M')}$ hydrochloric acid, an excess. When the reaction finished, the leftover acid needed $${cU(V2, 'cm3')}$ of $${cU(c2, 'M')}$ sodium hydroxide to neutralise it.\n\nThe ${nm} reacts with the acid in a 1 : ${r} ratio. Calculate the percentage by mass of ${nm} in the sample. (Assume the impurities do not react.)`,
+      parts: [cNum(`% ${nm}`, pc, 'pc', sf)], hint: 'Moles of acid added − moles left over (= moles of NaOH) = moles of acid that reacted with the sample.',
+      steps: [`$n(\\ce{HCl})_{\\text{added}} = ${c1.t} \\times \\dfrac{${V1.t}}{1000} = ${c4(n1)}\\ \\mathrm{mol}$`, `$n(\\ce{HCl})_{\\text{left}} = n(\\ce{NaOH}) = ${c2.t} \\times \\dfrac{${V2.t}}{1000} = ${c4(nx)}\\ \\mathrm{mol}$`, `$n(\\ce{HCl})_{\\text{reacted}} = ${c4(n1)} - ${c4(nx)} = ${c4(nr)}\\ \\mathrm{mol}$`,
+        `$n(${chemTex(f)}) = \\dfrac{${c4(nr)}}{${r}} = ${c4(nB)}\\ \\mathrm{mol}$; $m = ${c4(nB)} \\times ${M.toFixed(2)} = ${c4(mB)}\\ \\mathrm{g}$`, `$\\% = \\dfrac{${c4(mB)}}{${m.t}} \\times 100 = ${c4(pc)}\\%$`, ans(pc, 'pc', sf)]};
+  }},
+  {id: 'gasv', t: 'Gas volumes (molar volume)', tp: 'S1.5', g(R, h) {
+    const vm = 'Molar volume of an ideal gas at STP $= 22.7\\ \\mathrm{dm^{3}\\ mol^{-1}}$.';
+    if (!h) { const [f, nm] = R.p(CHEM_GAS), M = chemMr(f);
+      if (R.f() < .5) { const m = chemVal(R, .5, 40, 3), n = m.v / M, V = n * CHEM_VM, sf = Math.min(m.sf, 3);
+        return {q: `Calculate the volume, at STP, of $${cU(m, 'g')}$ of ${nm} gas, $${chemTex(f)}$. ${vm}`, parts: [cNum('Volume', V, 'dm3', sf)], hint: '$n = \\dfrac{m}{M}$, then $V = n \\times 22.7$.',
+          steps: [`$n = \\dfrac{${m.t}}{${M.toFixed(2)}} = ${c4(n)}\\ \\mathrm{mol}$`, `$V = n V_m = ${c4(n)} \\times 22.7 = ${c4(V)}\\ \\mathrm{dm^{3}}$`, ans(V, 'dm3', sf)]}; }
+      const V = chemVal(R, .200, 30, 3), n = V.v / CHEM_VM, m = n * M, sf = Math.min(V.sf, 3);
+      return {q: `What is the mass of $${cU(V, 'dm3')}$ of ${nm} gas, $${chemTex(f)}$, at STP? ${vm}`, parts: [cNum('Mass', m, 'g', sf)], hint: '$n = \\dfrac{V}{22.7}$, then $m = nM$.',
+        steps: [`$n = \\dfrac{V}{V_m} = \\dfrac{${V.t}}{22.7} = ${c4(n)}\\ \\mathrm{mol}$`, `$m = nM = ${c4(n)} \\times ${M.toFixed(2)} = ${c4(m)}\\ \\mathrm{g}$`, ans(m, 'g', sf)]}; }
+    if (R.f() < .4) { const [es, ig, nm] = R.p(CHEM_AVO), E = chemEq(es), G = E.L[0], X = E.L[ig] || E.R[ig - E.L.length], Vg = chemVal(R, 10, 500, 3), Vx = Vg.v / G.c * X.c, sf = Vg.sf;
+      return {q: `$${chemEqTex(E)}$\n\nWhat volume of $${chemTex(X.f)}$ ${ig < E.L.length ? 'is needed to react with' : 'is produced from'} $${cU(Vg, 'cm3')}$ of ${nm}? All volumes are measured at the same temperature and pressure.`, parts: [cNum(`Volume of ${X.f}`, Vx, 'cm3', sf)], hint: 'Avogadro\'s law: at the same T and p, gas volumes are in the same ratio as the coefficients (moles).',
+        steps: [`Volume ratio = mole ratio = ${G.c} : ${X.c}`, `$V = ${Vg.t} \\times \\dfrac{${X.c}}{${G.c}} = ${c4(Vx)}\\ \\mathrm{cm^{3}}$`, ans(Vx, 'cm3', sf)]}; }
+    const [es, ia, ip, ctx] = R.p(CHEM_GASR), E = chemEq(es), A = E.L[ia], P = E.R[ip], MA = chemMr(A.f), m = chemVal(R, .100, 5.00, 3), nP = m.v / MA / A.c * P.c, V = nP * CHEM_VM * 1000, sf = Math.min(m.sf, 3);
+    return {q: `${ctx.replace('@', `$${cU(m, 'g')}$`)}\n\n$$${chemEqTex(E)}$$\n\nCalculate the volume of $${chemTex(P.f)}$ produced at STP, in $\\mathrm{cm^{3}}$. ${vm}`, parts: [cNum(`Volume of ${P.f}`, V, 'cm3', sf)], hint: 'Moles of the solid → moles of gas by the mole ratio → volume with $22.7\\ \\mathrm{dm^3\\ mol^{-1}}$ (then × 1000 for cm³).',
+      steps: [`$n(${chemTex(A.f)}) = \\dfrac{${m.t}}{${MA.toFixed(2)}} = ${c4(m.v / MA)}\\ \\mathrm{mol}$`, `Ratio ${A.c} : ${P.c}, so $n(${chemTex(P.f)}) = ${c4(nP)}\\ \\mathrm{mol}$`, `$V = ${c4(nP)} \\times 22.7 = ${c4(nP * CHEM_VM)}\\ \\mathrm{dm^{3}} = ${c4(V)}\\ \\mathrm{cm^{3}}$`, ans(V, 'cm3', sf)]};
+  }},
+  {id: 'pv', t: 'Ideal gas equation', tp: 'S1.5', g(R, h) {
+    const [f, nm] = R.p(CHEM_GAS), M = chemMr(f), p = chemVal(R, 95, 210, 3), T = chemFmt(R.i(150, 950) / 10, 3), TK = T.v + 273.15, Rt = 'R = 8.31\\ \\mathrm{J\\ K^{-1}\\ mol^{-1}}';
+    if (!h) { const n = chemVal(R, .0100, 2.00, 3), V = n.v * CHEM_R * TK / (p.v * 1000) * 1000, sf = Math.min(n.sf, p.sf, T.sf, 3);
+      return {q: `Calculate the volume, in $\\mathrm{dm^{3}}$, occupied by $${cU(n, 'mol')}$ of ${nm} at $${cU(T, 'C')}$ and $${cU(p, 'kPa')}$. ($${Rt}$)`, parts: [cNum('Volume', V, 'dm3', sf)], hint: 'Use $pV = nRT$ in SI units: $p$ in Pa, $T$ in K. $V$ comes out in $\\mathrm{m^3}$; × 1000 for $\\mathrm{dm^3}$.',
+        steps: [`$p = ${p.t} \\times 1000 = ${c4(p.v * 1000)}\\ \\mathrm{Pa}$; $T = ${T.t} + 273.15 = ${c4(TK)}\\ \\mathrm{K}$`, `$V = \\dfrac{nRT}{p} = \\dfrac{${n.t} \\times 8.31 \\times ${c4(TK)}}{${c4(p.v * 1000)}} = ${c4(V / 1000)}\\ \\mathrm{m^{3}}$`, `$= ${c4(V)}\\ \\mathrm{dm^{3}}$`, ans(V, 'dm3', sf)]}; }
+    const V = chemVal(R, 100, 900, 3), n0 = p.v * 1000 * V.v * 1e-6 / (CHEM_R * TK), m = chemQ(n0 * M, 3), Mx = m.v * CHEM_R * TK / (p.v * 1000 * V.v * 1e-6), sf = Math.min(V.sf, p.sf, T.sf, m.sf, 3);
+    return {q: `A $${cU(m, 'g')}$ sample of a gas occupies $${cU(V, 'cm3')}$ at $${cU(T, 'C')}$ and $${cU(p, 'kPa')}$. Calculate its molar mass. ($${Rt}$)`, parts: [cNum('Molar mass', Mx, 'gm', sf)], hint: 'Find $n = \\dfrac{pV}{RT}$ (SI units: Pa, m³, K), then $M = \\dfrac{m}{n}$.',
+      steps: [`$p = ${c4(p.v * 1000)}\\ \\mathrm{Pa}$; $V = ${V.t} \\times 10^{-6} = ${c4(V.v * 1e-6)}\\ \\mathrm{m^{3}}$; $T = ${c4(TK)}\\ \\mathrm{K}$`, `$n = \\dfrac{pV}{RT} = \\dfrac{${c4(p.v * 1000)} \\times ${c4(V.v * 1e-6)}}{8.31 \\times ${c4(TK)}} = ${c4(n0)}\\ \\mathrm{mol}$`, `$M = \\dfrac{m}{n} = \\dfrac{${m.t}}{${c4(m.v / Mx)}} = ${c4(Mx)}\\ \\mathrm{g\\ mol^{-1}}$ (it could be ${nm}, $M = ${M.toFixed(2)}$)`, ans(Mx, 'gm', sf)]};
+  }},
+  {id: 'atom', t: 'Atom economy', tp: 'R2.1', g(R) {
+    const [es, ip] = R.p(CHEM_AE), E = chemEq(es), P = E.R[ip], tot = E.L.reduce((s, t) => s + t.c * chemMr(t.f), 0), mp = P.c * chemMr(P.f), ae = mp / tot * 100;
+    return {q: `$${chemEqTex(E)}$\n\nCalculate the atom economy for making $${chemTex(P.f)}$ by this reaction.`, parts: [cNum('Atom economy', ae, 'pc', [3, 4])], hint: '$\\text{atom economy} = \\dfrac{\\text{molar mass of the wanted product (times its coefficient)}}{\\text{total molar mass of all reactants (times coefficients)}} \\times 100$',
+      steps: [`Reactants: ${E.L.map(t => `$${t.c > 1 ? t.c + ' \\times ' : ''}${chemMr(t.f).toFixed(2)}$`).join(' + ')} $= ${tot.toFixed(2)}\\ \\mathrm{g}$`, `Wanted product: $${P.c > 1 ? P.c + ' \\times ' : ''}${chemMr(P.f).toFixed(2)} = ${mp.toFixed(2)}\\ \\mathrm{g}$`, `$\\dfrac{${mp.toFixed(2)}}{${tot.toFixed(2)}} \\times 100 = ${c4(ae)}\\%$`, ans(ae, 'pc', 3)]};
+  }},
+  {id: 'enth', t: 'Enthalpy: q = mcΔT', tp: 'R1.1', g(R, h) {
+    const ct = 'c = 4.18\\ \\mathrm{J\\ g^{-1}\\ K^{-1}}', T1 = chemDp(R, 17, 24, 1), dp1 = v => { const x = +v.toFixed(1); return {v: x, t: x.toFixed(1), s: x.toFixed(1)}; };
+    if (!h) { const m = chemVol(R.p([50, 100, 150, 200, 250, 75]));
+      if (R.f() < .5) { const T2 = dp1(T1.v + 10.5 + 27 * R.f()), dT = +(T2.v - T1.v).toFixed(1), dTs = chemSfOf(dT.toFixed(1))[0], q = m.v * CHEM_C * dT / 1000, sf = Math.min(m.sf, dTs, 3);
+        return {q: `$${cU(m, 'g')}$ of water is heated from $${cU(T1, 'C')}$ to $${cU(T2, 'C')}$. Calculate the heat energy absorbed by the water, in kJ. ($${ct}$)`, parts: [cNum('Heat, q', q, 'kJ', sf)], hint: '$q = mc\\Delta T$ gives joules; divide by 1000 for kJ. A temperature change in °C is the same size in K.',
+          steps: [`$\\Delta T = ${T2.t} - ${T1.t} = ${dT.toFixed(1)}\\ \\mathrm{K}$`, `$q = mc\\Delta T = ${m.t} \\times 4.18 \\times ${dT.toFixed(1)} = ${c4(q * 1000)}\\ \\mathrm{J} = ${c4(q)}\\ \\mathrm{kJ}$`, ans(q, 'kJ', sf)]}; }
+      const [ctx, dH0] = R.p(CHEM_SOLN), up = dH0 < 0, dTt = up ? 6 + 22 * R.f() : 2.5 + 6 * R.f(), n0 = m.v * CHEM_C * dTt / 1000 / Math.abs(dH0), n = chemVal(R, n0 * .97, n0 * 1.03, 3);
+      const T2 = dp1(T1.v + (up ? 1 : -1) * dTt), dT = +Math.abs(T2.v - T1.v).toFixed(1), dTs = chemSfOf(dT.toFixed(1))[0], q = m.v * CHEM_C * dT / 1000, dH = (up ? -1 : 1) * q / n.v, sf = Math.min(m.sf, dTs, n.sf, 3);
+      return {q: `When $${cU(n, 'mol')}$ of ${ctx} ($${cU(m, 'g')}$ of solution in total), the temperature ${up ? 'rose' : 'fell'} from $${cU(T1, 'C')}$ to $${cU(T2, 'C')}$. Calculate the enthalpy change, $\\Delta H$, in $\\mathrm{kJ\\ mol^{-1}}$. Assume the solution has the specific heat capacity of water ($${ct}$).`, parts: [cNum('ΔH', dH, 'kJm', sf, {sign: 1})], hint: `Find $q = mc\\Delta T$ in kJ, then $\\Delta H = \\pm\\dfrac{q}{n}$. The temperature ${up ? 'went up, so heat was released: exothermic, negative' : 'went down, so heat was taken in: endothermic, positive'}.`,
+        steps: [`$\\Delta T = ${dT.toFixed(1)}\\ \\mathrm{K}$; $q = ${m.t} \\times 4.18 \\times ${dT.toFixed(1)} = ${c4(q * 1000)}\\ \\mathrm{J} = ${c4(q)}\\ \\mathrm{kJ}$`, `$\\Delta H = ${up ? '-' : '+'}\\dfrac{q}{n} = ${up ? '-' : '+'}\\dfrac{${c4(q)}}{${n.t}} = ${up ? '' : '+'}${c4(dH)}\\ \\mathrm{kJ\\ mol^{-1}}$ (${up ? 'exothermic' : 'endothermic'})`, ans(dH, 'kJm', sf)]}; }
+    if (R.f() < .5) { const [f, nm, dHc] = R.p(CHEM_FUEL), M = chemMr(f), mw = chemVol(R.p([100, 150, 200, 250])), b1 = chemDp(R, 140, 260, 2), eff = .35 + .35 * R.f(), dTt = 12 + 30 * R.f();
+      const dm = Math.max(.3, +(dTt * mw.v * CHEM_C / (eff * -dHc * 1000) * M).toFixed(2)), bv = +(b1.v - dm).toFixed(2), b2 = {v: bv, t: bv.toFixed(2)}, T2 = dp1(T1.v + dTt);
+      const dT = +(T2.v - T1.v).toFixed(1), dms = chemSfOf(dm.toFixed(2))[0], dTs = chemSfOf(dT.toFixed(1))[0], q = mw.v * CHEM_C * dT / 1000, n = dm / M, dH = -q / n, sf = Math.min(mw.sf, dms, dTs, 3);
+      return {q: `A spirit burner of ${nm}, $${chemTex(f)}$, was used to heat $${cU(mw, 'g')}$ of water. Its mass fell from $${cU(b1, 'g')}$ to $${cU(b2, 'g')}$, and the water warmed from $${cU(T1, 'C')}$ to $${cU(T2, 'C')}$. Calculate the enthalpy of combustion of ${nm} from these results, in $\\mathrm{kJ\\ mol^{-1}}$. ($${ct}$)`, parts: [cNum('ΔHc', dH, 'kJm', sf, {sign: 1})], hint: 'Heat absorbed by the water: $q = mc\\Delta T$ (m is the water, not the fuel). Moles of fuel burned from the mass loss. $\\Delta H_c = -\\dfrac{q}{n}$.',
+        steps: [`Mass of fuel burned $= ${b1.t} - ${b2.t} = ${dm.toFixed(2)}\\ \\mathrm{g}$ (${dms} s.f.); $n = \\dfrac{${dm.toFixed(2)}}{${M.toFixed(2)}} = ${c4(n)}\\ \\mathrm{mol}$`, `$\\Delta T = ${dT.toFixed(1)}\\ \\mathrm{K}$; $q = ${mw.t} \\times 4.18 \\times ${dT.toFixed(1)} = ${c4(q * 1000)}\\ \\mathrm{J} = ${c4(q)}\\ \\mathrm{kJ}$`, `$\\Delta H_c = -\\dfrac{${c4(q)}}{${c4(n)}} = ${c4(dH)}\\ \\mathrm{kJ\\ mol^{-1}}$`, `(Less negative than the data-booklet value of about $${dHc}\\ \\mathrm{kJ\\ mol^{-1}}$: heat is lost to the air and the beaker, and combustion may be incomplete.)`, ans(dH, 'kJm', sf)]}; }
+    const V = chemVol(R.p([25, 50, 100])), cc = chemFmt(R.p([.5, 1, 2, 1.5]), 3), [an, bn] = R.p([['hydrochloric acid', 'sodium hydroxide'], ['nitric acid', 'potassium hydroxide'], ['hydrochloric acid', 'potassium hydroxide']]);
+    const T2 = dp1(T1.v + 57.2 * cc.v / (2 * CHEM_C) * (.9 + .12 * R.f())), dT = +(T2.v - T1.v).toFixed(1), dTs = chemSfOf(dT.toFixed(1))[0];
+    const mt = 2 * V.v, q = mt * CHEM_C * dT / 1000, n = cc.v * V.v / 1000, dH = -q / n, sf = Math.min(V.sf, cc.sf, dTs, 3);
+    return {q: `$${cU(V, 'cm3')}$ of $${cU(cc, 'M')}$ ${an} was mixed with $${cU(V, 'cm3')}$ of $${cU(cc, 'M')}$ ${bn}. The temperature rose from $${cU(T1, 'C')}$ to $${cU(T2, 'C')}$. Calculate the enthalpy change of neutralisation in $\\mathrm{kJ\\ mol^{-1}}$. Assume the solution has a density of $1.00\\ \\mathrm{g\\ cm^{-3}}$ and $${ct}$.`, parts: [cNum('ΔH', dH, 'kJm', sf, {sign: 1})], hint: 'Mass heated = total volume of solution (× 1.00 g cm⁻³). Moles of water formed = moles of acid (not double). $\\Delta H = -\\dfrac{q}{n}$.',
+      steps: [`Mass of solution $= ${V.t} + ${V.t} = ${c4(mt)}\\ \\mathrm{g}$; $\\Delta T = ${dT.toFixed(1)}\\ \\mathrm{K}$`, `$q = ${c4(mt)} \\times 4.18 \\times ${dT.toFixed(1)} = ${c4(q * 1000)}\\ \\mathrm{J} = ${c4(q)}\\ \\mathrm{kJ}$`, `$n(\\ce{H2O}) = n(\\text{acid}) = ${cc.t} \\times \\dfrac{${V.t}}{1000} = ${c4(n)}\\ \\mathrm{mol}$`, `$\\Delta H = -\\dfrac{${c4(q)}}{${c4(n)}} = ${c4(dH)}\\ \\mathrm{kJ\\ mol^{-1}}$`, ans(dH, 'kJm', sf)]};
+  }}
+];
+function ans(x, u, sf) { const o = chemFmt(x, Array.isArray(sf) ? sf[0] : sf); return `**Answer: $${o.t}${u === 'pc' ? '\\%' : u ? '\\ ' + (CHEM_UT[u] || '\\mathrm{' + u + '}') : ''}$** (${Array.isArray(sf) ? sf[0] : sf} s.f.${Array.isArray(sf) ? '' : ', the fewest in the data'})`; }
+// template data
+const CHEM_EMP = [['C6H12O6', 'CH2O', 'glucose'], ['C4H10', 'C2H5', 'butane'], ['C6H6', 'CH', 'benzene'], ['C4H8O2', 'C2H4O', 'ethyl ethanoate'], ['N2O4', 'NO2', 'dinitrogen tetroxide'], ['P4O10', 'P2O5', 'phosphorus(V) oxide'], ['C2H4O2', 'CH2O', 'ethanoic acid'], ['C6H8O6', 'C3H4O3', 'ascorbic acid'], ['C2H6', 'CH3', 'ethane'], ['C8H18', 'C4H9', 'octane'], ['C3H6O', 'C3H6O', 'propanone'], ['B2H6', 'BH3', 'diborane'], ['N2H4', 'NH2', 'hydrazine'], ['H2O2', 'HO', 'hydrogen peroxide'], ['C10H8', 'C5H4', 'naphthalene'], ['C6H12', 'CH2', 'cyclohexane'], ['C2H4Cl2', 'CH2Cl', '1,2-dichloroethane'], ['Fe2O3', 'Fe2O3', ''], ['Fe3O4', 'Fe3O4', ''], ['MgSO4', 'MgSO4', ''], ['Na2S2O3', 'Na2S2O3', ''], ['K2Cr2O7', 'K2Cr2O7', ''], ['Al2O3', 'Al2O3', ''], ['CuCl2', 'CuCl2', ''], ['C3H8O', 'C3H8O', 'propan-1-ol']];
+const CHEM_EMPM = CHEM_EMP.filter(x => x[2]);
+const CHEM_COMB = [['C2H6O', 'C2H6O', 'ethanol'], ['C3H8O', 'C3H8O', 'propan-1-ol'], ['C4H8O2', 'C2H4O', 'butanoic acid'], ['C6H12O6', 'CH2O', 'glucose'], ['C3H6O', 'C3H6O', 'propanone'], ['C6H6', 'CH', 'benzene'], ['C4H10', 'C2H5', 'butane'], ['C5H12', 'C5H12', 'pentane', 1], ['C2H4O2', 'CH2O', 'ethanoic acid'], ['C3H6O2', 'C3H6O2', 'propanoic acid'], ['C8H18', 'C4H9', 'octane', 1], ['C7H8', 'C7H8', 'methylbenzene', 1], ['CH4O', 'CH4O', 'methanol'], ['C2H6', 'CH3', 'ethane'], ['C3H8', 'C3H8', 'propane', 1]];
+const CHEM_LIM = [['2Al + 3Cl2 -> 2AlCl3', 0, 1, 0], ['N2 + 3H2 -> 2NH3', 0, 1, 0], ['2Mg + O2 -> 2MgO', 0, 1, 0], ['Fe2O3 + 3CO -> 2Fe + 3CO2', 0, 1, 0], ['CH4 + 2O2 -> CO2 + 2H2O', 0, 1, 0], ['Zn + CuSO4 -> ZnSO4 + Cu', 0, 1, 1], ['2Na + Cl2 -> 2NaCl', 0, 1, 0], ['SiO2 + 3C -> SiC + 2CO', 0, 1, 0], ['P4 + 6Cl2 -> 4PCl3', 0, 1, 0], ['2H2 + O2 -> 2H2O', 0, 1, 0], ['TiCl4 + 4Na -> Ti + 4NaCl', 0, 1, 0], ['C3H8 + 5O2 -> 3CO2 + 4H2O', 0, 1, 0], ['2Al + Fe2O3 -> Al2O3 + 2Fe', 0, 1, 1], ['CaO + 3C -> CaC2 + CO', 0, 1, 0], ['4Fe + 3O2 -> 2Fe2O3', 0, 1, 0]];
+const CHEM_YLD = [['CaCO3 -> CaO + CO2', 0, 0, 'Heating @ of calcium carbonate decomposes it.'], ['CH3COOH + C2H5OH -> CH3COOC2H5 + H2O', 0, 0, '@ of ethanoic acid was heated with excess ethanol and an acid catalyst.'], ['2Mg + O2 -> 2MgO', 0, 0, '@ of magnesium was burned in excess oxygen.'], ['Fe2O3 + 3CO -> 2Fe + 3CO2', 0, 0, '@ of iron(III) oxide was reduced with excess carbon monoxide.'], ['C6H12O6 -> 2C2H5OH + 2CO2', 0, 0, '@ of glucose was fermented.'], ['N2 + 3H2 -> 2NH3', 0, 0, '@ of nitrogen reacted with excess hydrogen.'], ['CuCO3 -> CuO + CO2', 0, 0, 'Heating @ of copper(II) carbonate decomposes it.'], ['C2H4 + H2O -> C2H5OH', 0, 0, '@ of ethene was reacted with excess steam.'], ['2Al2O3 -> 4Al + 3O2', 0, 0, 'Electrolysis of @ of aluminium oxide.'], ['C2H5OH -> C2H4 + H2O', 0, 0, '@ of ethanol was dehydrated over hot aluminium oxide.']];
+const CHEM_SOL = [['NaCl', 'sodium chloride'], ['NaOH', 'sodium hydroxide'], ['KMnO4', 'potassium manganate(VII)'], ['CuSO4·5H2O', 'hydrated copper(II) sulfate'], ['Na2CO3', 'sodium carbonate'], ['KOH', 'potassium hydroxide'], ['C6H12O6', 'glucose'], ['AgNO3', 'silver nitrate'], ['CaCl2', 'calcium chloride'], ['Na2SO4', 'sodium sulfate'], ['NH4Cl', 'ammonium chloride'], ['K2Cr2O7', 'potassium dichromate(VI)'], ['Na2S2O3·5H2O', 'sodium thiosulfate pentahydrate'], ['KI', 'potassium iodide']];
+const CHEM_ION = [['CaCl2', 'Cl^-', 2, 'calcium chloride'], ['Na2SO4', 'Na^+', 2, 'sodium sulfate'], ['AlCl3', 'Cl^-', 3, 'aluminium chloride'], ['Al2(SO4)3', 'SO4^2-', 3, 'aluminium sulfate'], ['Al2(SO4)3', 'Al^3+', 2, 'aluminium sulfate'], ['K3PO4', 'K^+', 3, 'potassium phosphate'], ['MgCl2', 'Cl^-', 2, 'magnesium chloride'], ['Fe(NO3)3', 'NO3^-', 3, 'iron(III) nitrate'], ['(NH4)2SO4', 'NH4^+', 2, 'ammonium sulfate'], ['Ba(OH)2', 'OH^-', 2, 'barium hydroxide']];
+const CHEM_DISS = {'CaCl2': 'Ca^2+ + 2Cl^-', 'Na2SO4': '2Na^+ + SO4^2-', 'AlCl3': 'Al^3+ + 3Cl^-', 'Al2(SO4)3': '2Al^3+ + 3SO4^2-', 'K3PO4': '3K^+ + PO4^3-', 'MgCl2': 'Mg^2+ + 2Cl^-', 'Fe(NO3)3': 'Fe^3+ + 3NO3^-', '(NH4)2SO4': '2NH4^+ + SO4^2-', 'Ba(OH)2': 'Ba^2+ + 2OH^-'};
+const chemDiss = f => CHEM_DISS[f];
+const CHEM_TIT = [['HCl + NaOH -> NaCl + H2O', 0, 1], ['H2SO4 + 2NaOH -> Na2SO4 + 2H2O', 0, 1], ['2HCl + Na2CO3 -> 2NaCl + H2O + CO2', 0, 1], ['HNO3 + KOH -> KNO3 + H2O', 0, 1], ['H2SO4 + 2KOH -> K2SO4 + 2H2O', 0, 1], ['2HCl + Ca(OH)2 -> CaCl2 + 2H2O', 0, 1], ['H2SO4 + Na2CO3 -> Na2SO4 + H2O + CO2', 0, 1], ['HCl + NH3 -> NH4Cl', 0, 1], ['CH3COOH + NaOH -> CH3COONa + H2O', 0, 1]];
+const CHEM_BACK = [['CaCO3', 'calcium carbonate', 2, 'powdered eggshell'], ['CaCO3', 'calcium carbonate', 2, 'limestone'], ['MgCO3', 'magnesium carbonate', 2, 'a crushed antacid tablet'], ['MgO', 'magnesium oxide', 2, 'an old magnesium oxide powder'], ['Mg(OH)2', 'magnesium hydroxide', 2, 'a crushed indigestion tablet'], ['Na2CO3', 'sodium carbonate', 2, 'washing soda'], ['CaO', 'calcium oxide', 2, 'quicklime']];
+const CHEM_GAS = [['O2', 'oxygen'], ['N2', 'nitrogen'], ['CO2', 'carbon dioxide'], ['H2', 'hydrogen'], ['CH4', 'methane'], ['NH3', 'ammonia'], ['Cl2', 'chlorine'], ['SO2', 'sulfur dioxide'], ['C3H8', 'propane'], ['NO2', 'nitrogen dioxide'], ['C2H6', 'ethane'], ['Ar', 'argon']];
+const CHEM_AVO = [['C3H8 + 5O2 -> 3CO2 + 4H2O', 1, 'propane'], ['CH4 + 2O2 -> CO2 + 2H2O', 1, 'methane'], ['2C2H6 + 7O2 -> 4CO2 + 6H2O', 1, 'ethane'], ['N2 + 3H2 -> 2NH3', 2, 'nitrogen'], ['2CO + O2 -> 2CO2', 1, 'carbon monoxide'], ['C3H8 + 5O2 -> 3CO2 + 4H2O', 2, 'propane'], ['2C4H10 + 13O2 -> 8CO2 + 10H2O', 1, 'butane'], ['C2H4 + 3O2 -> 2CO2 + 2H2O', 2, 'ethene']];
+const CHEM_GASR = [['CaCO3 + 2HCl -> CaCl2 + H2O + CO2', 0, 2, '@ of calcium carbonate reacts with excess hydrochloric acid.'], ['Mg + 2HCl -> MgCl2 + H2', 0, 1, '@ of magnesium ribbon reacts with excess hydrochloric acid.'], ['2Al + 6HCl -> 2AlCl3 + 3H2', 0, 1, '@ of aluminium powder reacts with excess hydrochloric acid.'], ['2KClO3 -> 2KCl + 3O2', 0, 1, '@ of potassium chlorate is heated until it fully decomposes.'], ['2NaN3 -> 2Na + 3N2', 0, 1, 'An airbag contains @ of sodium azide, which decomposes when triggered.'], ['Zn + H2SO4 -> ZnSO4 + H2', 0, 1, '@ of zinc reacts with excess dilute sulfuric acid.'], ['Na2CO3 + 2HCl -> 2NaCl + H2O + CO2', 0, 2, '@ of sodium carbonate reacts with excess hydrochloric acid.']];
+const CHEM_AE = [['C6H12O6 -> 2C2H5OH + 2CO2', 0], ['CaCO3 -> CaO + CO2', 0], ['CH4 + H2O -> CO + 3H2', 1], ['C2H4 + H2O -> C2H5OH', 0], ['C2H6 + Cl2 -> C2H5Cl + HCl', 0], ['Fe2O3 + 3CO -> 2Fe + 3CO2', 0], ['2Al2O3 -> 4Al + 3O2', 0], ['C2H5OH -> C2H4 + H2O', 0], ['CH3COOH + C2H5OH -> CH3COOC2H5 + H2O', 0], ['2NaCl + 2H2O -> 2NaOH + H2 + Cl2', 2], ['C2H5Br + NaOH -> C2H5OH + NaBr', 0], ['N2 + 3H2 -> 2NH3', 0], ['TiCl4 + 4Na -> Ti + 4NaCl', 0], ['CH3OH + CO -> CH3COOH', 0], ['2NaCl + 2H2O -> 2NaOH + H2 + Cl2', 0], ['CuO + H2SO4 -> CuSO4 + H2O', 0]];
+const CHEM_SOLN = [['zinc powder was added to excess copper(II) sulfate solution', -217], ['magnesium ribbon was added to excess hydrochloric acid', -467], ['sodium hydroxide pellets were dissolved in water', -44.5], ['calcium oxide was added to water', -65.2], ['anhydrous copper(II) sulfate was dissolved in water', -66.5], ['ammonium nitrate was dissolved in water', 25.7], ['potassium chloride was dissolved in water', 17.2], ['ammonium chloride was dissolved in water', 14.8]];
+const CHEM_FUEL = [['CH3OH', 'methanol', -726], ['C2H5OH', 'ethanol', -1367], ['C3H7OH', 'propan-1-ol', -2021], ['C4H9OH', 'butan-1-ol', -2676]];
+const CHEM_TOP = {'S1.4': 'S1.4 The mole', 'S1.5': 'S1.5 Ideal gases', 'R1.1': 'R1.1 Enthalpy changes', 'R2.1': 'R2.1 Amount of change'};
+// deterministic question: chemGen('mol', 123, false)
+function chemGen(id, seed, h) { const T = CHEM_STO.find(t => t.id === id); const o = T.g(chemRng(seed), !!h || !!T.hl); o.id = id; o.seed = seed; o.h = !!h; return o; }
+
+// ---------- answer checking ----------
+const CHEM_SUP = '⁰¹²³⁴⁵⁶⁷⁸⁹⁻';
+function chemNum(raw) {
+  const s = String(raw || '').trim().replace(/[−–]/g, '-').replace(/\s+/g, '').replace(/[⁰¹²³⁴⁵⁶⁷⁸⁹⁻]/g, c => '0123456789-'[CHEM_SUP.indexOf(c)]);
+  const t = s.includes('.') ? s : s.replace(',', '.');
+  const m = t.match(/^([+-]?(?:\d+\.?\d*|\.\d+))(?:[eE]([+-]?\d+)|[x×*·]10\^?\(?\{?([+-]?\d+)\}?\)?)?$/); if (!m) return null;
+  const ex = +(m[2] || m[3] || 0), v = +m[1] * Math.pow(10, ex); if (!isFinite(v)) return null;
+  return {v, sf: chemSfOf(m[1]), man: m[1]};
+}
+// one numeric part: {st: ok|sf|bad, msg}
+function chemCheckNum(p, raw, unit) {
+  const r = chemNum(raw); if (!r) return {st: 'bad', msg: String(raw || '').trim() ? 'That isn\'t a number I can read. Try 0.125 or 1.25e-3 or 1.25 × 10^-3.' : 'Type an answer.'};
+  let f = 1;
+  if (CHEM_U[p.u]) { if (!unit) return {st: 'bad', msg: 'Pick a unit.'}; const U = CHEM_U[unit], E = CHEM_U[p.u]; if (!U || U.d !== E.d) return {st: 'bad', msg: `${U ? U.l : unit} isn't a unit of ${CHEM_DIMN[E.d]}.`}; f = U.f / E.f; }
+  const x = p.v / f, rel = v => Math.abs(v - x) / Math.abs(x), sfE = Array.isArray(p.sf) ? p.sf : [p.sf, p.sf];
+  const near = v => rel(v) <= (p.tol || .01) || [r.sf[0], r.sf[1]].some(k => k >= Math.max(2, sfE[0] - 1) && Math.abs(+x.toPrecision(k) - v) <= Math.abs(x) * 1e-9);
+  if (!near(r.v)) {
+    if (p.sign && near(-r.v)) return {st: 'bad', msg: 'Right size, wrong sign. Temperature rise = exothermic = negative ΔH (and a fall means positive).'};
+    const lg = Math.log10(Math.abs(r.v / x)); if (r.v && Math.abs(lg - Math.round(lg)) < .004 && Math.round(lg)) return {st: 'bad', msg: `Out by a factor of ${Math.pow(10, Math.abs(Math.round(lg))).toLocaleString()}: check your unit conversions (cm³ → dm³ is ÷ 1000, J → kJ is ÷ 1000).`};
+    return {st: 'bad', msg: rel(r.v) < .05 ? 'Close, but not quite: check your rounding and the Ar values you used.' : 'Not right. Try again, or use Hint.'};
+  }
+  const ok = r.sf[0] <= sfE[1] && r.sf[1] >= sfE[0];
+  if (ok) return {st: 'ok', msg: f !== 1 ? 'Correct (in a different unit, which is fine).' : 'Correct.'};
+  const gave = r.sf[0] === r.sf[1] ? r.sf[0] : r.sf[0] + '–' + r.sf[1];
+  return {st: 'sf', msg: `Right value, but give it to ${sfE[0] === sfE[1] ? sfE[0] : sfE[0] + ' or ' + sfE[1]} significant figures${Array.isArray(p.sf) ? '' : ' (the least precise data has ' + sfE[0] + ')'}. You gave ${gave}.`};
+}
+function chemCheckFormula(p, raw) {
+  let u; try { u = chemParse(raw); } catch (e) { return {st: 'bad', msg: String(raw || '').trim() ? e.message : 'Type a formula, e.g. CH2O.'}; }
+  const w = chemParse(p.f), ku = Object.keys(u.el).sort().join(), kw = Object.keys(w.el).sort().join();
+  if (ku !== kw) return {st: 'bad', msg: `Check the elements: the formula should contain ${Object.keys(w.el).join(', ')} only.`};
+  if (chemKey(u) === chemKey(w)) return {st: 'ok', msg: 'Correct.'};
+  const r = Object.keys(w.el).map(e => u.el[e] / w.el[e]); if (r.every(x => Math.abs(x - r[0]) < 1e-9)) return {st: 'bad', msg: r[0] > 1 && p.emp ? 'That\'s a multiple of the empirical formula: divide down to the simplest whole-number ratio.' : r[0] > 1 ? 'Too big: that\'s a multiple of the molecular formula.' : 'Too small: compare the molar mass of your formula with the one given.'};
+  return {st: 'bad', msg: 'The ratio isn\'t right yet.'};
+}
+
+// ---------- results (S.prog.drills.chem, merged by t) ----------
+function chemStats() { if (!S.prog) return {sk: {}, st: {}, best: {}}; const D = S.prog.drills = S.prog.drills || {}; const C = D.chem = D.chem || {}; C.sk = C.sk || {}; C.st = C.st || {}; C.best = C.best || {}; return C; }
+function chemRec(skill, ok, sfOk, lane) {
+  if (!S.prog) return; const C = chemStats(), s = C.sk[skill] = C.sk[skill] || {n: 0, ok: 0}, now = Date.now();
+  s.n++; if (ok) s.ok++; if (sfOk != null) s.sf = (s.sf || 0) + (sfOk ? 1 : 0); s.t = now;
+  C.st[lane] = ok ? (C.st[lane] || 0) + 1 : 0; C.best[lane] = Math.max(C.best[lane] || 0, C.st[lane]); C.t = now;
+  saveProg(); if (ok) act('q');
+}
+// called from mergeIn(r): per-skill last-write-wins by t, streaks from the newer record, best = max
+function chemDrillMerge(r) {
+  const o = r && r.drills && r.drills.chem; if (!o || !S.prog) return; const C = chemStats();
+  for (const [k, v] of Object.entries(o.sk || {})) if (!C.sk[k] || (C.sk[k].t || 0) < (v.t || 0)) C.sk[k] = v;
+  if ((o.t || 0) > (C.t || 0)) { C.st = {...(o.st || {})}; C.t = o.t; }
+  for (const [k, v] of Object.entries(o.best || {})) C.best[k] = Math.max(C.best[k] || 0, v || 0);
+}
+
+// ---------- UI ----------
+const CD = {rb: [], rs: []}; // recent picks, current question state
+const cdSet = () => LS.get('ib-chemd', {}), cdPut = o => LS.set('ib-chemd', {...cdSet(), ...o});
+const cdK = t => { try { return katex.renderToString(t, {throwOnError: false}); } catch (e) { return esc(t); } };
+function cdStreak(lane) { const C = chemStats(); return `<span class="cdst" title="Right first time in a row, without hints">Streak <b class="num">${C.st[lane] || 0}</b> · best <b class="num">${C.best[lane] || 0}</b></span>`; }
+function cdAcc(ids) { const C = chemStats(); const L = ids.map(([id, t]) => [t, C.sk[id]]).filter(x => x[1] && x[1].n); if (!L.length) return '';
+  return `<details class="card cdacc"><summary><b>Your accuracy</b> <span class="meta">right first time, saved with your progress</span></summary><div class="cdaccg">${L.map(([t, s]) => `<div><span>${esc(t)}</span><span class="num meta">${s.ok}/${s.n}${s.sf != null ? ` · s.f. ${s.sf}/${s.n}` : ''}</span><i style="--w:${Math.round(s.ok / s.n * 100)}%"></i></div>`).join('')}</div></details>`; }
+function cdPick(recent, ids) { const fresh = ids.filter(x => !recent.includes(x)), L = fresh.length ? fresh : ids; return L[Math.floor(Math.random() * L.length)]; }
+function cdTopicBtn(code) { const B = typeof bookOf === 'function' && bookOf('chem'); if (!B || !B.toc) return ''; try { const T = topicsOf(B).find(t => new RegExp('^(S|Structure\\s*|R|Reactivity\\s*)' + code.slice(1).replace('.', '\\.') + '\\b').test(t.num) && t.num[0] === code[0]); return T ? `<button class="ghost" data-ctp="${esc(T.num)}" title="${esc(T.num + ' ' + T.title)}"><svg class="i"><use href="#i-book"/></svg>${esc(code)} in the book</button>` : ''; } catch (e) { return ''; } }
+function cdWireTopic() { document.querySelectorAll('[data-ctp]').forEach(b => b.onclick = () => topicSheet(bookOf('chem'), b.dataset.ctp)); }
+
+// Balance equations: arg "b<id>" (coefficients) or "w<id>" (write it from words)
+function openBalance(arg) {
+  const set = cdSet(), a0 = String(arg || '')[0], mode = a0 === 'w' || a0 === 'b' ? a0 : (set.mode === 'w' ? 'w' : 'b'), lv = mode === 'w' && set.lv === 4 ? 9 : (set.lv || 1), cat = set.cat || '';
+  const ok = R => mode === 'b' || chemWritable(R), pool0 = CHEM_BANK.filter(R => ok(R) && (lv === 9 || R.lv === lv)), pool1 = pool0.filter(R => !cat || R.cat === cat), pool = pool1.length ? pool1 : pool0.length ? pool0 : CHEM_BANK.filter(ok);
+  const R = CHEM_BANK[parseInt(String(arg || '').slice(1), 10)];
+  if (!R || !ok(R)) return renderDrills('balance', mode + cdPick(CD.rb, pool.map(x => x.id)));
+  CD.rb = [R.id, ...CD.rb.filter(x => x !== R.id)].slice(0, 15);
+  const E = chemBankEq(R), all = [...E.L, ...E.R], cats = [...new Set(CHEM_BANK.filter(ok).map(x => x.cat))];
+  const st = CD.b = {R, E, mode, tries: 0, hints: 0, done: false, rec: false, shown: false};
+  const term = (t, i) => `<span class="cdt"><input class="cdc" data-i="${i}" inputmode="numeric" autocomplete="off" maxlength="3" placeholder="1" aria-label="Coefficient for ${esc(t.f)}"><span class="cdf">${cdK(chemTex(t.f))}</span></span>`;
+  const eqHtml = mode === 'b' ? `<div class="cdeq">${E.L.map((t, i) => term(t, i)).join('<span class="cdo">+</span>')}<span class="cdo">→</span>${E.R.map((t, i) => term(t, i + E.L.length)).join('<span class="cdo">+</span>')}</div>`
+    : `<p class="cdword">${E.L.map(t => esc(chemName({f: chemBare(t.f), p: t.p}))).join(' <span class="cdo">+</span> ')} <span class="cdo">→</span> ${E.R.map(t => esc(chemName({f: chemBare(t.f), p: t.p}))).join(' <span class="cdo">+</span> ')}</p>
+       <input id="cdW" class="cdwin" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="e.g. 2Mg + O2 -> 2MgO" aria-label="Your balanced equation"><div id="cdWp" class="cdwp meta">Type formulas with coefficients. Use -> for the arrow; state symbols are optional.</div>`;
+  $('#main').innerHTML = `<div class="cdw"><div class="row cdhd"><h2 class="h2" style="margin:0">Balance equations</h2><span class="sp"></span>${cdStreak('b')}</div>
+    <div class="row cdctl"><div class="seg" role="group" aria-label="Mode">${[['b', 'Balance'], ['w', 'Write it']].map(([k, l]) => `<button data-cm="${k}" class="${mode === k ? 'on' : ''}">${l}</button>`).join('')}</div>
+      <div class="seg" role="group" aria-label="Level">${(mode === 'w' ? [1, 2, 3, 9] : [1, 2, 3, 4, 9]).map(k => `<button data-cl="${k}" class="${lv === k ? 'on' : ''}">${k === 9 ? 'Mixed' : CHEM_LV[k]}</button>`).join('')}</div>
+      <select id="cdCat" aria-label="Reaction type"><option value="">All reaction types</option>${cats.map(c => `<option value="${c}" ${c === cat ? 'selected' : ''}>${CHEM_CAT[c]}</option>`).join('')}</select></div>
+    <div class="card cdq"><div class="row meta"><span class="cdtag">${esc(CHEM_CAT[R.cat])} · ${esc(CHEM_LV[R.lv])}</span><span class="sp"></span><span>${mode === 'b' ? 'Blank = 1. Smallest whole numbers.' : 'Write the balanced symbol equation.'}</span></div>
+      ${eqHtml}
+      <div class="row cdbtn"><button class="pri" id="cdChk">Check</button><button id="cdHint">Hint</button><button id="cdShow">Show answer</button><span class="sp"></span><button id="cdNext">Next<svg class="i"><use href="#i-r"/></svg></button></div>
+      <div id="cdFb" aria-live="polite"></div><div id="cdTal"></div></div>
+    ${cdAcc([...[1, 2, 3, 4].map(k => ['bal' + k, 'Balance: ' + CHEM_LV[k]]), ['write', 'Write it from words']])}
+    <p class="meta cdfoot">${CHEM_BANK.length} reactions${R.lv === 4 ? ' · in half-equations, balance atoms first, then add e⁻ to balance charge' : ''}. Charges are part of the balance in ionic equations.</p></div>`;
+  document.querySelectorAll('[data-cm]').forEach(b => b.onclick = () => { cdPut({mode: b.dataset.cm}); renderDrills('balance', b.dataset.cm); });
+  document.querySelectorAll('[data-cl]').forEach(b => b.onclick = () => { cdPut({lv: +b.dataset.cl}); renderDrills('balance', mode); });
+  $('#cdCat').onchange = e => { cdPut({cat: e.target.value}); renderDrills('balance', mode); };
+  const ins = [...document.querySelectorAll('.cdc')], skill = mode === 'w' ? 'write' : 'bal' + R.lv;
+  const fb = (cls, html) => { $('#cdFb').innerHTML = html ? `<div class="cdfb ${cls}">${html}</div>` : ''; };
+  const rec = ok => { if (st.rec) return; st.rec = true; chemRec(skill, ok, null, 'b'); };
+  const coefs = () => ins.map(i => { const v = i.value.trim(); return v === '' ? 1 : /^\d+$/.test(v) ? +v : NaN; });
+  const tallyHtml = (E2, cl, cr) => { const T = chemTally(E2, cl, cr); return `<table class="cdtal"><thead><tr><th>Atom</th><th>Left</th><th>Right</th><th></th></tr></thead><tbody>${T.els.map(o => `<tr class="${o.l === o.r ? 'ok' : 'no'}"><td>${esc(o.e)}</td><td class="num">${o.l}</td><td class="num">${o.r}</td><td>${o.l === o.r ? '✓' : '✗'}</td></tr>`).join('')}${T.ion ? `<tr class="${T.q.l === T.q.r ? 'ok' : 'no'}"><td>Charge</td><td class="num">${T.q.l > 0 ? '+' : ''}${T.q.l}</td><td class="num">${T.q.r > 0 ? '+' : ''}${T.q.r}</td><td>${T.q.l === T.q.r ? '✓' : '✗'}</td></tr>` : ''}</tbody></table>`; };
+  const live = () => { if (!st.shown || mode !== 'b') return; const c = coefs(); if (c.some(x => !(x >= 1))) return; $('#cdTal').innerHTML = tallyHtml(E, c.slice(0, E.L.length), c.slice(E.L.length)); };
+  // which element to look at next: rarest first, H and O last, then charge
+  const nextOff = (E2, cl, cr) => { const T = chemTally(E2, cl, cr), L = T.els.slice().sort((a, b) => (/^[HO]$/.test(a.e) - /^[HO]$/.test(b.e)) || a.sp - b.sp); const o = L.find(x => x.l !== x.r); return o ? `Count ${o.e}: ${o.l} on the left, ${o.r} on the right.` : T.q.l !== T.q.r ? `The atoms balance, but the charge doesn't: ${T.q.l} on the left, ${T.q.r} on the right.${all.some(t => t.p.e) ? ' Adjust the electrons.' : ''}` : ''; };
+  const win = () => { st.done = true; rec(!st.tries && !st.hints); fb('ok', `<b>Balanced.</b> ${st.tries || st.hints ? 'Nice work.' : 'Right first time.'} <span class="meta">Enter for the next one.</span>`); $('#cdChk').disabled = true; const s = document.querySelector('.cdst'); if (s) s.outerHTML = cdStreak('b'); $('#cdNext').classList.add('pri'); $('#cdNext').focus(); };
+  const answerTex = () => cdK(chemEqTex(E));
+  const check = () => {
+    if (st.done) return next();
+    if (mode === 'b') {
+      const c = coefs(); if (c.some(x => !(x >= 1))) return fb('bad', 'Coefficients must be whole numbers, 1 or more (no fractions or zeros).');
+      st.shown = true; const cl = c.slice(0, E.L.length), cr = c.slice(E.L.length), T = chemTally(E, cl, cr); $('#cdTal').innerHTML = tallyHtml(E, cl, cr);
+      if (T.ok) { const g = c.reduce(chemGcd); if (g > 1) { st.tries++; return fb('sf', `Balanced, but not the smallest whole numbers: divide every coefficient by ${g}.`); } return win(); }
+      st.tries++; fb('bad', 'Not balanced yet. ' + esc(nextOff(E, cl, cr)));
+      return;
+    }
+    let U; try { U = chemUserEq($('#cdW').value); } catch (e) { return fb('bad', esc(e.message)); }
+    const probs = [], key = t => chemKey({...t.p, st: ''}), map = (want, got, side, other) => { const used = new Set(); const order = want.map(w => { const j = got.findIndex((g, k) => !used.has(k) && key(g) === key(w)); if (j >= 0) used.add(j); return j; });
+      want.forEach((w, i) => { if (order[i] >= 0) return; const nm = chemName({f: chemBare(w.f), p: w.p}); const sim = got.find((g, k) => !used.has(k) && Object.keys(g.p.el).sort().join() === Object.keys(w.p.el).sort().join()); const ot = other.find(g => key(g) === key(w));
+        probs.push(ot ? `${esc(nm)} belongs on the ${side} side.` : sim ? `Check the formula of ${esc(nm)} (you wrote ${cdK(chemTex(sim.f))}).` : `Missing: ${esc(nm)}.`); });
+      got.forEach((g, k) => { if (!used.has(k) && !want.some(w => Object.keys(g.p.el).sort().join() === Object.keys(w.p.el).sort().join())) probs.push(`${cdK(chemTex(g.f))} isn't in this reaction.`); }); return order; };
+    map(E.L, U.L, 'left', U.R); map(E.R, U.R, 'right', U.L);
+    if (probs.length) { st.tries++; return fb('bad', probs.join('<br>')); }
+    st.shown = true; $('#cdTal').innerHTML = tallyHtml(U, U.L.map(t => t.c), U.R.map(t => t.c));
+    const T = chemTally(U, U.L.map(t => t.c), U.R.map(t => t.c));
+    if (T.ok) { const g = [...U.L, ...U.R].map(t => t.c).reduce(chemGcd); if (g > 1) { st.tries++; return fb('sf', `Balanced, but not the smallest whole numbers: divide by ${g}.`); } return win(); }
+    st.tries++; fb('bad', 'Formulas are right. Now balance it: ' + esc(nextOff(U, U.L.map(t => t.c), U.R.map(t => t.c))));
+  };
+  const hint = () => {
+    if (st.done) return; st.hints++;
+    if (mode === 'b') { const c = coefs().map(x => x >= 1 ? x : 1), msg = nextOff(E, c.slice(0, E.L.length), c.slice(E.L.length));
+      if (st.hints === 1 && msg) return fb('', `<b>Hint:</b> ${esc(msg)} Change a coefficient (never a subscript) to fix it.${R.lv === 4 && all.some(t => t.p.e) ? ' Add electrons to the more positive side to balance charge.' : ''}`);
+      // reveal one coefficient that is still wrong (the rarest element's species first)
+      const cc = coefs(), bad = all.map((t, i) => i).filter(i => cc[i] !== all[i].c), j = bad.length ? (bad.find(i => all[i].c !== 1) ?? bad[0]) : -1;
+      if (j < 0) return fb('', '<b>Hint:</b> all your coefficients match: press Check.');
+      ins[j].value = all[j].c; ins[j].classList.add('cdgiven'); live(); return fb('', `<b>Hint:</b> the coefficient of ${cdK(chemTex(all[j].f))} is ${all[j].c}. I've filled it in.`); }
+    if (st.hints === 1) return fb('', `<b>Hint:</b> the formulas are ${cdK('\\ce{' + E.L.map(t => chemBare(t.f)).join(' + ').replace(/[·•.]/g, '*') + ' -> ' + E.R.map(t => chemBare(t.f)).join(' + ').replace(/[·•.]/g, '*') + '}')}. Now balance it.`);
+    let U; try { U = chemUserEq($('#cdW').value); } catch (e) { return fb('', `<b>Hint:</b> ${esc(e.message)}`); }
+    fb('', '<b>Hint:</b> ' + esc(nextOff(U, U.L.map(t => t.c), U.R.map(t => t.c)) || 'Press Check.'));
+  };
+  const show = () => { if (!st.done) rec(false); st.done = true; if (mode === 'b') { ins.forEach((i, k) => { i.value = all[k].c === 1 ? '' : all[k].c; i.disabled = true; }); st.shown = true; $('#cdTal').innerHTML = tallyHtml(E, E.L.map(t => t.c), E.R.map(t => t.c)); } else { $('#cdW').value = E.L.map(t => (t.c > 1 ? t.c : '') + chemBare(t.f)).join(' + ') + ' -> ' + E.R.map(t => (t.c > 1 ? t.c : '') + chemBare(t.f)).join(' + '); wprev(); }
+    fb('', `<b>Answer:</b> ${answerTex()}`); const s = document.querySelector('.cdst'); if (s) s.outerHTML = cdStreak('b'); $('#cdChk').disabled = true; $('#cdNext').classList.add('pri'); $('#cdNext').focus(); };
+  const next = () => { if (!st.rec && st.tries) rec(false); renderDrills('balance', mode + cdPick(CD.rb, pool.map(x => x.id))); };
+  const wprev = () => { const v = $('#cdW').value; if (!v.trim()) { $('#cdWp').textContent = 'Type formulas with coefficients. Use -> for the arrow; state symbols are optional.'; return; } try { const U = chemUserEq(v); $('#cdWp').innerHTML = cdK('\\ce{' + U.L.map(chemTexTerm).join(' + ').replace(/[·•.]/g, '*') + ' -> ' + U.R.map(chemTexTerm).join(' + ').replace(/[·•.]/g, '*') + '}'); } catch (e) { $('#cdWp').textContent = e.message; } };
+  ins.forEach((i, k) => { i.oninput = () => { i.value = i.value.replace(/[^\d]/g, ''); live(); }; i.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); check(); } }; });
+  if ($('#cdW')) { $('#cdW').oninput = wprev; $('#cdW').onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); check(); } }; }
+  $('#cdChk').onclick = check; $('#cdHint').onclick = hint; $('#cdShow').onclick = show; $('#cdNext').onclick = next;
+    if (!matchMedia('(pointer:coarse)').matches) (ins[0] || $('#cdW')).focus();
+}
+
+// Stoichiometry: arg "<skill>.<seed>.<h>"
+function openStoich(arg) {
+  const set = cdSet(), tp = set.tp || '', h = set.h ? 1 : 0, sk = set.sk || '';
+  const pool = CHEM_STO.filter(t => (!tp || t.tp === tp) && (!sk || t.id === sk) && (h || !t.hl));
+  const [aid, aseed, ah] = String(arg || '').split('.'), T = CHEM_STO.find(t => t.id === aid);
+  if (!T || !/^\d+$/.test(aseed || '')) return renderDrills('stoich', `${cdPick(CD.rs, (pool.length ? pool : CHEM_STO.filter(t => !t.hl)).map(t => t.id))}.${Math.random() * 1e9 | 0}.${h}`);
+  CD.rs = [T.id, ...CD.rs.filter(x => x !== T.id)].slice(0, 3);
+  let Q; try { Q = chemGen(T.id, +aseed, ah === '1'); } catch (e) { console.warn('stoich gen', e); return renderDrills('stoich', `${T.id}.${(+aseed + 1) % 1e9}.${ah}`); }
+  const st = CD.s = {Q, tries: 0, hints: 0, done: false, rec: false};
+  const sel = (p, i) => !CHEM_U[p.u] ? (p.u === 'pc' ? '<span class="cdun">%</span>' : '') : `<select class="cdus" data-i="${i}" aria-label="Unit"><option value="">unit</option>${[...new Set([p.u, ...CHEM_UO[CHEM_U[p.u].d]])].sort((a, b) => CHEM_U[a].l.localeCompare(CHEM_U[b].l)).map(u => `<option value="${u}">${CHEM_U[u].l}</option>`).join('')}</select>`;
+  const partHtml = (p, i) => `<div class="cdpt" data-i="${i}"><div class="cdpl">${esc(p.lab)}</div>
+    ${p.k === 'pick' ? `<div class="seg" role="group">${p.opts.map((o, j) => `<button data-pk="${j}">${cdK(chemTex(o))}</button>`).join('')}</div>`
+      : p.k === 'formula' ? `<input class="cdin cdfm" data-i="${i}" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="e.g. CH2O" aria-label="${esc(p.lab)}"><span class="cdfp" data-i="${i}"></span>`
+      : `<input class="cdin" data-i="${i}" inputmode="decimal" autocomplete="off" placeholder="${p.u === '' && p.v > 1e5 ? 'e.g. 1.23e22' : 'answer'}" aria-label="${esc(p.lab)}">${sel(p, i)}`}<span class="cdmk" data-i="${i}"></span></div>`;
+  const tps = Object.keys(CHEM_TOP), sks = CHEM_STO.filter(t => (!tp || t.tp === tp) && (h || !t.hl));
+  $('#main').innerHTML = `<div class="cdw"><div class="row cdhd"><h2 class="h2" style="margin:0">Stoichiometry</h2><span class="sp"></span>${cdStreak('s')}</div>
+    <div class="row cdctl"><select id="cdTp" aria-label="Topic"><option value="">All topics</option>${tps.map(k => `<option value="${k}" ${k === tp ? 'selected' : ''}>${CHEM_TOP[k]}</option>`).join('')}</select>
+      <select id="cdSk" aria-label="Skill"><option value="">Any skill</option>${sks.map(t => `<option value="${t.id}" ${t.id === sk ? 'selected' : ''}>${esc(t.t)}${t.hl ? ' (harder)' : ''}</option>`).join('')}</select>
+      <div class="seg" role="group" aria-label="Level">${[[0, 'Core'], [1, 'Harder']].map(([k, l]) => `<button data-ch="${k}" class="${h === k ? 'on' : ''}">${l}</button>`).join('')}</div></div>
+    <div class="card cdq"><div class="row meta"><span class="cdtag">${esc(T.tp)} · ${esc(T.t)}${Q.h ? ' · harder' : ''}</span><span class="sp"></span>${cdTopicBtn(T.tp)}</div>
+      <div class="cdqt">${mdm(Q.q)}</div><div class="cdparts">${Q.parts.map(partHtml).join('')}</div>
+      <div class="row cdbtn"><button class="pri" id="cdChk">Check</button><button id="cdHint">Hint</button><button id="cdShow">Show working</button><span class="sp"></span><button id="cdNext">Next<svg class="i"><use href="#i-r"/></svg></button></div>
+      <div id="cdFb" aria-live="polite"></div><div id="cdSol"></div></div>
+    ${cdAcc(CHEM_STO.map(t => [t.id, t.t]))}
+    <p class="meta cdfoot">Numbers are made up fresh each time. Relative atomic masses are data-booklet values (2 d.p.). Answers within 1% count; significant figures are checked against the data.</p></div>`;
+  $('#cdTp').onchange = e => { cdPut({tp: e.target.value, sk: ''}); renderDrills('stoich'); };
+  $('#cdSk').onchange = e => { cdPut({sk: e.target.value}); renderDrills('stoich'); };
+  document.querySelectorAll('[data-ch]').forEach(b => b.onclick = () => { cdPut({h: +b.dataset.ch}); renderDrills('stoich', `${T.id}.${aseed}.${b.dataset.ch}`); });
+  cdWireTopic();
+  const picks = {}; document.querySelectorAll('.cdpt').forEach(d => d.querySelectorAll('[data-pk]').forEach(b => b.onclick = () => { if (st.done) return; picks[d.dataset.i] = +b.dataset.pk; d.querySelectorAll('[data-pk]').forEach(x => x.classList.toggle('on', x === b)); }));
+  document.querySelectorAll('.cdfm').forEach(i => i.oninput = () => { const o = document.querySelector(`.cdfp[data-i="${i.dataset.i}"]`); try { o.innerHTML = i.value.trim() ? cdK(chemTex(i.value.trim())) : ''; chemParse(i.value); } catch (e) { o.innerHTML = ''; } });
+  const fb = (cls, html) => { $('#cdFb').innerHTML = html ? `<div class="cdfb ${cls}">${html}</div>` : ''; };
+  const sol = () => { $('#cdSol').innerHTML = `<div class="cdsol"><b>Worked solution</b><ol>${Q.steps.map(s => `<li><div class="cdsx">${mdm(s)}</div></li>`).join('')}</ol></div>`; };
+  const fin = ok => { st.done = true; $('#cdChk').disabled = true; document.querySelectorAll('.cdin,.cdus').forEach(x => x.disabled = true); const s = document.querySelector('.cdst'); if (s) s.outerHTML = cdStreak('s'); $('#cdNext').classList.add('pri'); sol(); $('#cdNext').focus(); };
+  const check = () => {
+    if (st.done) return next();
+    const res = Q.parts.map((p, i) => { const inp = document.querySelector(`.cdin[data-i="${i}"]`), us = document.querySelector(`.cdus[data-i="${i}"]`);
+      if (p.k === 'pick') return picks[i] == null ? {st: 'bad', msg: 'Choose one.'} : picks[i] === p.v ? {st: 'ok', msg: 'Correct.'} : {st: 'bad', msg: 'No: compare moles ÷ coefficient for each reactant.'};
+      if (p.k === 'formula') return chemCheckFormula(p, inp.value);
+      return chemCheckNum(p, inp.value, us ? us.value : ''); });
+    res.forEach((r, i) => { const m = document.querySelector(`.cdmk[data-i="${i}"]`); m.className = 'cdmk ' + r.st; m.innerHTML = `<span>${r.st === 'ok' ? '✓' : r.st === 'sf' ? '≈' : '✗'}</span> ${esc(r.msg)}`; });
+    const vals = res.every(r => r.st !== 'bad'), sfs = res.every(r => r.st === 'ok');
+    if (vals) { const first = !st.tries && !st.hints; if (!st.rec) { st.rec = true; chemRec(Q.id, first, Q.parts.some(p => p.k === 'num') ? sfs : null, 's'); }
+      fb(sfs ? 'ok' : 'sf', sfs ? `<b>Correct${first ? ', first time' : ''}.</b> <span class="meta">Enter for the next one.</span>` : '<b>Right values.</b> Watch the significant figures next time.'); return fin(true); }
+    st.tries++; fb('bad', 'Not yet: see the notes next to each answer.' + (st.tries > 1 ? ' Use Hint or Show working if you\'re stuck.' : ''));
+  };
+  const hint = () => { if (st.done) return; st.hints++; fb('', `<b>Hint:</b> ${mdm(Q.hint, true)}`); };
+  const show = () => { if (!st.rec) { st.rec = true; chemRec(Q.id, false, null, 's'); } fb('', 'Here is the full working.'); fin(false); };
+  const next = () => { if (!st.rec && st.tries) { st.rec = true; chemRec(Q.id, false, null, 's'); } const set2 = cdSet(), L = CHEM_STO.filter(t => (!set2.tp || t.tp === set2.tp) && (!set2.sk || t.id === set2.sk) && (set2.h || !t.hl)); const t = cdPick(CD.rs, L.length ? L.map(x => x.id) : [T.id]); renderDrills('stoich', `${t}.${Math.random() * 1e9 | 0}.${set2.h ? 1 : 0}`); };
+  document.querySelectorAll('.cdin').forEach(i => i.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); check(); } });
+  $('#cdChk').onclick = check; $('#cdHint').onclick = hint; $('#cdShow').onclick = show; $('#cdNext').onclick = next;
+    const f0 = document.querySelector('.cdin'); if (f0 && !matchMedia('(pointer:coarse)').matches) f0.focus();
+}
+DRILLS.push({id: 'balance', title: 'Balance equations', desc: `${CHEM_BANK.length} real reactions, from simple synthesis to HL redox half-equations. Or write them from word equations.`, icon: 'flask', books: ['chem'], open: openBalance});
+DRILLS.push({id: 'stoich', title: 'Stoichiometry', desc: 'Endless mole calculations with fresh numbers: yields, titrations, gases, enthalpy. Checks significant figures too.', icon: 'flask', books: ['chem'], open: openStoich});
 // ==== END FEATURE: chemistry drills ====
 
 
