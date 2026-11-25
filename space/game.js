@@ -908,7 +908,7 @@ const _up = new V3(), _rt = new V3(), _w = new V3(), _sp = new V3();
 function stepPlayer(dt) {
   const b = P.body, up = _up.copy(P.pos).normalize();
   // look
-  const sens = .0022; if (look.dx) P.fwd.applyAxisAngle(up, -look.dx * sens); P.pitch = clamp(P.pitch - look.dy * sens, -1.5, 1.5); look.dx = look.dy = 0;
+  const sens = .0022 * (SET.sens || 1); if (look.dx) P.fwd.applyAxisAngle(up, -look.dx * sens); P.pitch = clamp(P.pitch - look.dy * sens * (SET.invY ? -1 : 1), -1.5, 1.5); look.dx = look.dy = 0;
   P.fwd.addScaledVector(up, -P.fwd.dot(up)).normalize(); const rt = _rt.crossVectors(P.fwd, up).normalize();
   // move
   const sp = keys.ShiftLeft || keys.ShiftRight ? 9 : 4.5; _w.set(0, 0, 0);

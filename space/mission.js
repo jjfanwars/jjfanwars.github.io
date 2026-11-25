@@ -185,7 +185,7 @@ const MISD = [
   {id: 'space', name: 'Touch space', d: 'Fly above the air (22 km).', steps: [
     ['Launch (Space). Press 4 to keep pointing straight up', F => F.launched], ['When the booster runs dry, Space drops it and lights the upper stage', F => F.staged || F.maxAlt > 22000], ['Climb past 22 km: the edge of space', F => F.space]], done: F => F.space},
   {id: 'home', name: 'Safe return', d: 'Go to space and land the capsule in one piece.', steps: [
-    ['Reach space (above 22 km)', F => F.space], ['Press Space until only the capsule is left', F => R.bot === 2 || F.landSpace], ['Press Space once more to arm the parachute', F => R.chute > 0 || F.landSpace], ['Touch down (the chute opens by itself low down)', F => F.landSpace]], done: F => F.landSpace},
+    ['Reach space (above 22 km)', F => F.space], ['Press Space until only the capsule is left', F => STAGES[R.bot].cap || F.landSpace], ['Press Space once more to arm the parachute', F => R.chute > 0 || F.landSpace], ['Touch down (the chute opens by itself low down)', F => F.landSpace]], done: F => F.landSpace},
   {id: 'orbit', name: 'Orbit', d: 'Go fast enough sideways that you never fall back: lift your Pe above 22 km.', steps: [
     ['Launch, then press 5: the autopilot follows the blue guide marker east', F => F.launched], ['Watch Ap. Cut the engine (X) when Ap reaches about 80 km', F => F.ap70 || F.orbit],
     ['Press N to warp up to Ap (you coast there)', F => F.nearAp || F.orbit], ['At Ap: press 2 (prograde), Z for full throttle, burn until Pe is above 22 km', F => F.orbit]], done: F => F.orbit},
@@ -204,7 +204,7 @@ const MISD = [
     ['Land on the Moon', F => F.moonLanded], ['Get up (F), walk to the hatch at the back and press F', F => F.moonWalk]], done: F => F.moonWalk},
   {id: 'back', name: 'There and back again', d: 'Land on the Moon, then fly home and land on Home.', steps: [
     ['Land on the Moon', F => F.moonLanded], ['Back in the Pilot seat: Z for full throttle, press 5 (guide). Cut (X) at Ap 20 km, N to warp there, burn prograde (2) into orbit', F => F.leftMoonGround || F.backHome],
-    ['Open the map (M). Burn prograde until it says "Then back to Home: good re-entry"', F => F.goHome || F.backHome], ['Near Home: drop the upper stage and arm the parachute', F => (F.leftMoonGround && R.bot === 2 && R.chute > 0) || F.backHome], ['Land on Home', F => F.backHome]], done: F => F.backHome},
+    ['Open the map (M). Burn prograde until it says "Then back to Home: good re-entry"', F => F.goHome || F.backHome], ['Near Home: drop the upper stage and arm the parachute', F => (F.leftMoonGround && STAGES[R.bot].cap && R.chute > 0) || F.backHome], ['Land on Home', F => F.backHome]], done: F => F.backHome},
   {id: 'high', name: 'High flyer', d: 'Raise your Ap above 3,000 km.', bonus: true, steps: [['Get into orbit', F => F.orbit], ['Burn prograde until Ap is over 3,000 km', F => F.highAp]], done: F => F.highAp},
   {id: 'polar', name: 'Over the poles', d: 'Get into an orbit that goes over the poles (tilt over 70°).', bonus: true, steps: [
     ['With this mission picked, the guide (5) steers north instead of east', F => F.launched], ['Burn into orbit as usual', F => F.orbit], ['Tilt to the equator over 70° (see the map)', F => F.polar]], done: F => F.polar},
@@ -287,9 +287,9 @@ void main(){
 const _hv = new V3(), _hq = new Q4(), _hy = new V3(0, 1, 0);
 function heatStep(dt) {
   let k = 0; if (R.st === 'fly' && R.p > 0) { groundVel(PLANET, R.pos, G.t, _hv); _hv.subVectors(R.vel, _hv); const vs = _hv.length(), rho = 1.225 * R.p; k = sstep(1.6e8, 1.4e9, Math.sqrt(rho) * vs * vs * vs); if (vs > 1) _hv.multiplyScalar(1 / vs); }
-  HEAT.k = lerp(HEAT.k, k, 1 - Math.exp(-dt * 3)); const on = HEAT.k > .01; HEAT.g.visible = on; if (!on && HEAT.was) cabL.color.set(0xfff0dc); HEAT.was = on; RM.shield.emissive.setRGB(1, .3, .08); RM.shield.emissiveIntensity = HEAT.k * 2.2 * (R.bot === 2 ? 1 : .3);
+  HEAT.k = lerp(HEAT.k, k, 1 - Math.exp(-dt * 3)); const on = HEAT.k > .01; HEAT.g.visible = on; if (!on && HEAT.was) cabL.color.set(0xfff0dc); HEAT.was = on; RM.shield.emissive.setRGB(1, .3, .08); RM.shield.emissiveIntensity = HEAT.k * 2.2 * (STAGES[R.bot].cap ? 1 : .3);
   if (!on) return;
-  const cap = R.bot === 2, rad = cap ? 2.9 : 1.7, top = 26.1 - R.comY, lead = cap ? 21.6 - R.comY : top; // the capsule flies heat shield first; a full stack nose first
+  const cap = !!STAGES[R.bot].cap, rad = cap ? 2.9 : stackR() + .45, top = 26.1 - R.comY, lead = cap ? 21.6 - R.comY : top; // the capsule flies heat shield first; a full stack nose first
   const nz = nose(new V3()), lp = R.pos.clone().addScaledVector(nz, lead).addScaledVector(_hv, cap ? .6 : .4);
   HEAT.g.position.copy(lp).sub(G.O); HEAT.g.quaternion.copy(_hq.setFromUnitVectors(_hy, _hv));
   const K = HEAT.k, tt = G.t % 50, cu = HEAT.core.material.uniforms, ou = HEAT.outer.material.uniforms;
@@ -316,8 +316,8 @@ let vapAcc = 0;
 function vaporStep(dt) {
   const M = R.mach || 0, k = R.st === 'fly' ? sstep(.86, .97, M) * (1 - sstep(1.12, 1.3, M)) * sstep(.2, .45, R.p) : 0; if (k < .02) { vapAcc = 0; return; }
   const nz = nose(new V3()), d = new V3(); vapAcc += dt * 260 * k * Math.min(1, G.warp);
-  while (vapAcc > 1) { vapAcc--; d.set(Math.random() - .5, Math.random() - .5, Math.random() - .5).addScaledVector(nz, -d.dot(nz)).normalize(); const y = (R.bot === 2 ? 22.4 : 12 + Math.random() * 10) - R.comY;
-    puff(R.pos.clone().addScaledVector(nz, y).addScaledVector(d, (R.bot === 2 ? 2.7 : 1.45) + Math.random() * .5), R.vel.clone().addScaledVector(d, 2), {life: .18 + Math.random() * .2, s: 1.6, gr: 3, heat: 0, drag: 3, tone: 1.15}); } }
+  while (vapAcc > 1) { vapAcc--; d.set(Math.random() - .5, Math.random() - .5, Math.random() - .5).addScaledVector(nz, -d.dot(nz)).normalize(); const cap = STAGES[R.bot].cap, y = (cap ? 22.4 : lerp(Math.max(STAGES[R.bot].y0, 2), 21, Math.random())) - R.comY;
+    puff(R.pos.clone().addScaledVector(nz, y).addScaledVector(d, (cap ? 2.7 : stackR() + .2) + Math.random() * .5), R.vel.clone().addScaledVector(d, 2), {life: .18 + Math.random() * .2, s: 1.6, gr: 3, heat: 0, drag: 3, tone: 1.15}); } }
 function fovStep(dt) { let tg = 70; if (R.on && R.st === 'fly' && (C.view === 'out' || R.st === 'dead') && C.seat === 0) tg += 7 * clamp((R.felt.length() - 9) / 25, 0, 1) + 3 * clamp(R.qd / 25000, 0, 1);
   const f = lerp(cam.fov, tg, 1 - Math.exp(-dt * 2)); if (Math.abs(f - cam.fov) > .005) { cam.fov = f; cam.updateProjectionMatrix(); } }
 // compile every shader we may need up front, so re-entry, the map or the far Moon don't stutter the first time they show
