@@ -154,7 +154,7 @@ button:focus-visible { outline:2px solid var(--acc); outline-offset:2px; }
   <div class="bar" title="Throttle"><i id="fThr"></i></div>
   <div class="mid"><div id="fStage"></div><div id="fAlt"></div><div id="fSpd"></div><div class="orb"><span>Ap <b id="fAp"></b></span><span>Pe <b id="fPe"></b></span></div><div id="fX"></div><div id="fW"></div><div id="fN" class="hidden"></div><div id="fNext"></div></div>
   <div class="bar" title="Fuel"><i id="fFuel"></i></div>
-  <div id="fSas"><button data-m="hold"><span>1</span>Hold</button><button data-m="pro"><span>2</span>Prograde</button><button data-m="retro"><span>3</span>Retrograde</button><button data-m="up"><span>4</span>Up</button><button data-m="guide"><span>5</span>Guide</button><button data-m="node"><span>6</span>Node</button><button data-m="off"><span>T</span>Off</button></div>
+  <div id="fSas"><button data-m="hold"><span>1</span>Hold</button><button data-m="pro"><span>2</span>Prograde</button><button data-m="retro"><span>3</span>Retrograde</button><button data-m="up"><span>4</span>Up</button><button data-m="guide"><span>5</span>Guide</button><button data-m="node"><span>6</span>Node</button><button data-m="off"><span>T</span>Off</button><button id="fEng" title="Shut the engine down / light it again"><span>R</span>Engine</button></div>
 </div>
 
 <div id="mapUI" class="hidden"><div id="mapInfo"></div>
@@ -191,7 +191,7 @@ button:focus-visible { outline:2px solid var(--acc); outline-offset:2px; }
   <div class="tl">On foot</div><div class="tk">
     <span><b>W A S D</b> walk · <b>Shift</b> run</span><span><b>Space</b> jump (hop on the Moon)</span><span><b>F</b> get in / sit / get up / hatch</span><span><b>Mouse</b> look (click to grab the mouse)</span></div>
   <div class="tl">Flying (Pilot seat)</div><div class="tk">
-    <span><b>Space</b> launch, next stage, parachute</span><span><b>W S A D</b> pitch / yaw · <b>Q E</b> roll</span><span><b>Shift / C</b> throttle up / down</span><span><b>Z / X</b> full throttle / cut</span>
+    <span><b>Space</b> launch, next stage, parachute</span><span><b>W S A D</b> pitch / yaw · <b>Q E</b> roll</span><span><b>Shift / C</b> throttle up / down</span><span><b>Z / X</b> full throttle / cut</span><span><b>R</b> engine off / relight</span>
     <span><b>1 2 3 4</b> hold / prograde / retro / up</span><span><b>5</b> ascent guide · <b>T</b> autopilot off</span><span><b>G</b> landing legs</span><span><b>V</b> inside / chase / locked view</span><span><b>Mouse</b> look around · <b>Wheel</b> zoom</span><span><b>Caps Lock</b> fine steering</span><span><b>B</b> rocket builder (not flying)</span>
     <span><b>M</b> map · <b>Tab</b> map focus</span><span><b>N</b> warp to Ap / Pe</span><span><b>, .</b> slower / faster time</span><span><b>Backspace</b> new rocket (when landed)</span></div>
 </div></div>
@@ -217,7 +217,7 @@ button:focus-visible { outline:2px solid var(--acc); outline-offset:2px; }
 </div></div>
 <script src="../three-r170.js"></script>
 <script src="game.js?v=9"></script>
-<script src="flight.js?v=5"></script>
+<script src="flight.js?v=6"></script>
 <script src="mission.js?v=4"></script>
 <script src="extras.js?v=4"></script>
 <script src="build.js?v=1"></script>

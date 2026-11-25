@@ -90,11 +90,11 @@ const PARTS = {
   sL: {cat: 'tank', name: 'Mini tank L', r: .65, h: 2.6, fuel: 1500, desc: '1.3 m wide, long'},
   hM: {cat: 'tank', name: 'Heavy tank', r: 1.9, h: 4, fuel: 18000, desc: '3.8 m wide'},
   hL: {cat: 'tank', name: 'Heavy tank L', r: 1.9, h: 8, fuel: 36000, desc: '3.8 m wide, long'},
-  ant: {cat: 'engine', name: 'Ant', r: .65, mount: .35, bl: .7, rT: .14, rE: .42, dry: 150, thrust: 25000, ispS: 240, ispV: 330, hot: 0, desc: 'Tiny vacuum engine for landers'},
-  swift: {cat: 'engine', name: 'Swift', r: 1.25, mount: .45, bl: 1.35, rT: .22, rE: .7, dry: 300, thrust: 80000, ispS: 210, ispV: 345, hot: 0, desc: 'Upper stage engine, best in space'},
-  hopper: {cat: 'engine', name: 'Hopper', r: 1.25, mount: .55, bl: 1.6, rT: .26, rE: .8, dry: 400, thrust: 160000, ispS: 250, ispV: 320, hot: 0, desc: 'Strong and efficient: landers, light rockets'},
-  mule: {cat: 'engine', name: 'Mule', r: 1.25, mount: 1.3, bl: 2.3, rT: .32, rE: .95, dry: 450, thrust: 520000, ispS: 270, ispV: 300, hot: 1, desc: 'Booster engine, made for lift-off'},
-  titan: {cat: 'engine', name: 'Titan', r: 1.9, mount: 1.6, bl: 3, rT: .45, rE: 1.4, dry: 1100, thrust: 1250000, ispS: 275, ispV: 305, hot: 1, desc: 'Huge booster engine, 3.8 m'},
+  ant: {cat: 'engine', name: 'Ant', gim: .14, r: .65, mount: .35, bl: .7, rT: .14, rE: .42, dry: 150, thrust: 25000, ispS: 240, ispV: 330, hot: 0, desc: 'Tiny vacuum engine for landers'},
+  swift: {cat: 'engine', name: 'Swift', gim: .05, r: 1.25, mount: .45, bl: 1.35, rT: .22, rE: .7, dry: 300, thrust: 80000, ispS: 210, ispV: 345, hot: 0, desc: 'Upper stage engine, best in space'},
+  hopper: {cat: 'engine', name: 'Hopper', gim: .1, r: 1.25, mount: .55, bl: 1.6, rT: .26, rE: .8, dry: 400, thrust: 160000, ispS: 250, ispV: 320, hot: 0, desc: 'Strong and efficient: landers, light rockets'},
+  mule: {cat: 'engine', name: 'Mule', gim: .087, r: 1.25, mount: 1.3, bl: 2.3, rT: .32, rE: .95, dry: 450, thrust: 520000, ispS: 270, ispV: 300, hot: 1, desc: 'Booster engine, made for lift-off'},
+  titan: {cat: 'engine', name: 'Titan', gim: .07, r: 1.9, mount: 1.6, bl: 3, rT: .45, rE: 1.4, dry: 1100, thrust: 1250000, ispS: 275, ispV: 305, hot: 1, desc: 'Huge booster engine, 3.8 m'},
   dec: {cat: 'dec', name: 'Decoupler', r: 0, h: .35, dry: 120, desc: 'Splits stages. Under an engine it becomes an interstage'},
 };
 for (const k in PARTS) { const p = PARTS[k]; p.k = k; if (p.cat === 'tank') p.dry = Math.round(p.fuel * .08 / 10) * 10; if (p.cat === 'engine') p.h = p.mount + p.bl; }
@@ -241,20 +241,31 @@ function rocketStep(h, t) {
   if (vs > .01 && R.qd > 0) _a.addScaledVector(_va, -R.qd * cdA / (m * vs));
   R.felt.copy(_a).sub(gravAt(R.pos, t, _t1)).applyQuaternion(_qa.copy(R.q).invert()); // what the crew feels (thrust + drag)
   R.vel.addScaledVector(_a, h); R.pos.addScaledVector(R.vel, h);
-  // rotation: player input, else SAS, plus aerodynamic weathervaning
+  // rotation: real torques. Moment of inertia from the stack's mass and length; control torque from the capsule's reaction wheels plus
+  // engine gimbal (only while the engine burns, more with a long lever); air pushes the nose into the wind when fins put the centre of
+  // pressure behind the centre of mass, and tips it over when they don't. SAS is a controller limited by the same torque.
   const pk = pilot() ? keys : {}, ix = (pk.KeyS ? 1 : 0) - (pk.KeyW ? 1 : 0), iz = (pk.KeyA ? 1 : 0) - (pk.KeyD ? 1 : 0), iy = (pk.KeyQ ? 1 : 0) - (pk.KeyE ? 1 : 0);
-  const auth = clamp(Math.sqrt(16000 / m), .7, 2), mr = .55 * Math.min(auth, 1.35) * (R.fine && (ix || iy || iz) ? .3 : 1), wt = _t1.set(0, 0, 0); let free = false;
-  for (const [k, v] of [['x', ix], ['y', iy], ['z', iz]]) { const c = R.inp[k]; R.inp[k] = v ? clamp(c + Math.sign(v - c) * h * (Math.sign(v) === Math.sign(c) || !c ? (R.fine ? 2 : 3.4) : 8), -1, 1) : c * Math.max(0, 1 - h * 14); }
-  if (ix || iy || iz || R.inp.lengthSq() > 4e-4) { wt.set(R.inp.x * mr, R.inp.y * .8, R.inp.z * mr); R.hold.copy(R.q); }
-  else if (R.sas === 'off' || R.chute === 2) { wt.copy(R.w); free = true; } // the canopy steers once it is open
-  else if (R.sas === 'hold') { _qa.copy(R.q).invert().multiply(R.hold); if (_qa.w < 0) { _qa.x *= -1; _qa.y *= -1; _qa.z *= -1; _qa.w *= -1; } const s = Math.sqrt(1 - Math.min(1, _qa.w * _qa.w)), ang = 2 * Math.acos(Math.min(1, _qa.w));
-    if (s > 1e-6) wt.set(_qa.x / s, _qa.y / s, _qa.z / s).multiplyScalar(Math.min(mr, ang * 2)); }
-  else { const d = sasDir(_t2); if (d) { d.applyQuaternion(_qa.copy(R.q).invert()); const ax = new V3(d.z, 0, -d.x), sl = ax.length(), ang = Math.acos(clamp(d.y, -1, 1));
-      if (sl > 1e-6) ax.multiplyScalar(Math.min(mr, ang * 2) / sl); else if (d.y < 0) ax.set(mr, 0, 0); wt.copy(ax); wt.y = 0; R.hold.copy(R.q); } }
-  const acc = 1.4 * auth * h; for (const k of ['x', 'y', 'z']) R.w[k] += clamp(wt[k] - R.w[k], -acc, acc);
-  if (vs > 5 && R.qd > 50) { // fins keep the rocket pointing along the airflow; a lone capsule flies blunt end first
-    const vl = _t2.copy(_va).multiplyScalar(1 / vs).applyQuaternion(_qa.copy(R.q).invert()); if (S.cap) vl.negate();
-    const k = (R.chA > .1 ? 3 : 1) * (S.cap || R.chA > .1 || stackFins() ? .7 : .4) * Math.min(1, R.qd / 25000) * h; R.w.x += vl.z * k; R.w.z -= vl.x * k; if (!free || R.chA > .1) { R.w.x *= 1 - k; R.w.z *= 1 - k; } }
+  const Lst = 26.1 - S.y0, rS = S.cap ? 2.2 : stackR(), Ip = m * (Lst * Lst / 12 + rS * rS / 4), Ir = m * rS * rS / 2;
+  const gim = S.eng && !S.eng.blocked ? S.eng.p.gim || .06 : 0, arm = S.thrust ? Math.max(.5, R.comY - S.plumeY) : 0, tG = R.F * Math.sin(gim) * arm;
+  const tP = 14000 + tG, tR = 9000 + tG * .08; // N·m: reaction wheels in the capsule + gimbal (a single engine barely rolls)
+  const aP = tP / Ip, aR = tR / Ir; R.authP = aP; // rad/s² available (HUD / tests)
+  for (const [k, v] of [['x', ix], ['y', iy], ['z', iz]]) { const c = R.inp[k]; R.inp[k] = v ? clamp(c + Math.sign(v - c) * h * (Math.sign(v) === Math.sign(c) || !c ? (R.fine ? 2 : 4) : 8), -1, 1) : c * Math.max(0, 1 - h * 14); }
+  const fineK = R.fine ? .3 : 1, al = _t1.set(0, 0, 0); let free = false;
+  const ctl = (e, w, a, wmax) => { const wd = Math.sign(e) * Math.min(wmax, Math.sqrt(2 * a * .6 * Math.abs(e)), Math.abs(e) * 2.5); return clamp((wd - w) / .2, -a, a); }; // time-optimal, then a soft finish
+  if (ix || iy || iz || R.inp.lengthSq() > 4e-4) { al.set(R.inp.x * aP * fineK, R.inp.y * aR * fineK, R.inp.z * aP * fineK); R.hold.copy(R.q);
+    if (R.sas !== 'off') { if (!ix && !iz) { al.x += ctl(0, R.w.x, aP, .6) * .5; al.z += ctl(0, R.w.z, aP, .6) * .5; } if (!iy) al.y += ctl(0, R.w.y, aR, .6) * .5; } } // SAS damps the axes you are not steering
+  else if (R.sas === 'off' || R.chute === 2) free = true; // free: keeps spinning (no air on most of the trip to slow it)
+  else if (R.sas === 'hold') { _qa.copy(R.q).invert().multiply(R.hold); if (_qa.w < 0) { _qa.x *= -1; _qa.y *= -1; _qa.z *= -1; _qa.w *= -1; } const sq = Math.sqrt(1 - Math.min(1, _qa.w * _qa.w)), ang = 2 * Math.acos(Math.min(1, _qa.w));
+    const ex = sq > 1e-6 ? _qa.x / sq * ang : 0, ey = sq > 1e-6 ? _qa.y / sq * ang : 0, ez = sq > 1e-6 ? _qa.z / sq * ang : 0; al.set(ctl(ex, R.w.x, aP, .6), ctl(ey, R.w.y, aR, .6), ctl(ez, R.w.z, aP, .6)); }
+  else { const d = sasDir(_t2); if (d) { d.applyQuaternion(_qa.copy(R.q).invert()); const ax = _n.set(d.z, 0, -d.x), sl = ax.length(), ang = Math.acos(clamp(d.y, -1, 1));
+      if (sl > 1e-6) ax.multiplyScalar(ang / sl); else if (d.y < 0) ax.set(Math.PI, 0, 0); al.set(ctl(ax.x, R.w.x, aP, .6), ctl(0, R.w.y, aR, .6), ctl(ax.z, R.w.z, aP, .6)); R.hold.copy(R.q); }
+    else { al.set(ctl(0, R.w.x, aP, .6), ctl(0, R.w.y, aR, .6), ctl(0, R.w.z, aP, .6)); } }
+  if (vs > 5 && R.qd > 20) { // aerodynamics: restoring (fins) or tipping (no fins) torque toward/away from the airflow, plus damping
+    const vl = _t2.copy(_va).multiplyScalar(1 / vs).applyQuaternion(_qa.copy(R.q).invert()); if (S.cap) vl.negate(); // a lone capsule flies heat shield first
+    const area = S.cap ? 14 : Lst * rS * 2 * .6 + (stackFins() ? 4 * rS : 0), lever = S.cap ? .9 : R.chA > .1 ? 3 : stackFins() ? .14 * Lst + 1.2 : -.035 * Lst; // + = stable
+    const kA = R.qd * area * lever / Ip, wn = Math.sqrt(Math.abs(kA)), dmp = 2 * .3 * wn + R.qd * area * Lst * Lst * 2e-6 / Ip;
+    al.x += vl.z * kA - R.w.x * dmp; al.z += -vl.x * kA - R.w.z * dmp; al.y -= R.w.y * dmp * .2; }
+  R.w.addScaledVector(al, h); R.w.multiplyScalar(1 - Math.min(.5, h * .02)); // a whisper of internal damping (sloshing fuel)
   if (R.chA > .05) { // the canopy hangs the capsule under it: swing the top toward the oncoming air (straight up when slow)
     const d = vs > 2 ? _t2.copy(_va).multiplyScalar(-1 / vs) : _t2.copy(R.pos).sub(PLANET.c).normalize(); d.applyQuaternion(_qa.copy(R.q).invert());
     let ax = _n.set(d.z, 0, -d.x); const ang = Math.acos(clamp(d.y, -1, 1)); if (ax.lengthSq() < 1e-6) ax.set(1, 0, 0); ax.normalize().multiplyScalar(Math.min(1.2, ang * 1.5));
@@ -496,15 +507,21 @@ addEventListener('keydown', e => {
   if (k === 'CapsLock' && pilot()) { R.fine = !R.fine; showHint(R.fine ? 'Fine controls on: gentle steering (Caps Lock)' : 'Fine controls off', 1800); }
   if (k === 'Comma' || k === 'BracketLeft') setWarp(G.wi - 1);
   if (k === 'Period' || k === 'BracketRight') setWarp(G.wi + 1);
-  if (!pilot()) { if (R.on && C.in && /^(Digit[1-5]|Numpad[1-5]|KeyT|KeyZ|KeyX)$/.test(k)) showHint('Sit in the middle (Pilot) seat to fly: walk to it and press F', 2500); return; }
+  if (!pilot()) { if (R.on && C.in && /^(Digit[1-6]|Numpad[1-6]|KeyT|KeyZ|KeyX|KeyR)$/.test(k)) showHint('Sit in the middle (Pilot) seat to fly: walk to it and press F', 2500); return; }
   if (k === 'Space') { e.preventDefault(); stageKey(); }
-  if (k === 'KeyZ') R.thr = 1; if (k === 'KeyX') R.thr = 0;
+  if (k === 'KeyZ') R.thr = 1; if (k === 'KeyX') R.thr = 0; if (k === 'KeyR') engineToggle();
   const modes = {Digit1: 'hold', Digit2: 'pro', Digit3: 'retro', Digit4: 'up', Digit5: 'guide', Digit6: 'node', Numpad6: 'node', Numpad1: 'hold', Numpad2: 'pro', Numpad3: 'retro', Numpad4: 'up', Numpad5: 'guide', KeyT: R.sas === 'off' ? 'hold' : 'off'}; if (modes[k]) setSas(modes[k]);
   if (k === 'KeyG' && STAGES[R.bot].legs) { R.legT = R.legT ? 0 : 1; R.legManual = true; showHint(R.legT ? 'Landing legs out' : 'Landing legs in', 1500); }
   if (k === 'KeyN') warpNext();
   if (k === 'Backspace') { e.preventDefault(); if (R.st !== 'fly') { resetRocket(); showHint('New rocket on the pad', 2500); } }
 });
 addEventListener('pointerdown', sndInit);
+// R: shut the current engine down or light it again (no staging). Throttle (Shift / C / Z / X) only works while it is lit
+function engineToggle() { const S = STAGES[R.bot]; if (R.st === 'dead') return;
+  if (!S.thrust) { showHint('No engine on this stage' + (R.bot < STAGES.length - 1 ? ': Space drops it' : ''), 2000); return; }
+  if (!(R.fuel[R.bot] > 0)) { showHint(S.name + ' is out of fuel: Space for the next stage', 2000); return; }
+  if (R.lit) { R.lit = false; sfx('pop'); showHint(S.eng.p.name + ' shut down · R to relight', 2200); }
+  else if (R.st === 'pad') stage(); else { R.lit = true; R.spool = Math.min(R.spool, .2); sfx('pop'); showHint(S.eng.p.name + ' lit' + (R.thr < .05 ? ' · throttle is at zero: Shift or Z' : ''), 2200); } }
 function setSas(m) { R.sas = m; R.hold.copy(R.q);
   const names = {guide: 'Ascent guide: steers to orbit, stages when a stage runs dry, cuts the engine at 80 km Ap and plans the circularise burn. You launch (Space)', node: 'Pointing at the burn node (purple marker)', hold: 'Holding direction', pro: 'Pointing prograde (where you are going)', retro: 'Pointing retrograde (backwards, to slow down)', up: 'Pointing up', off: 'Autopilot off'};
   if ((m === 'pro' || m === 'retro') && (R.st !== 'fly' || relVel(new V3()).length() < 3)) showHint((m === 'pro' ? 'Prograde' : 'Retrograde') + ' needs you to be moving: it turns once you are flying', 3000); else showHint(names[m], 1800); }
@@ -572,9 +589,9 @@ function flightHud(dt) {
   setTxt('fW', w); const fw = HUDE.fW; if (fw._c !== wc) { fw._c = wc; fw.className = wc; }
   const ff = S.fuel ? R.fuel[R.bot] / S.fuel : 0, fe = HUDE.fFuel || (HUDE.fFuel = $('fFuel')), low = ff > 0 && ff < .15; if (fe._low !== low) { fe._low = low; fe.classList.toggle('low', low); }
   if (R.lit && fly && ff > 0 && ff < .1 && R.lowB !== R.bot) { R.lowB = R.bot; warnTone(660, 2); } // one warning per stage
-  $('fThr').style.height = (R.thr * 100) + '%'; fe.style.height = (ff * 100) + '%'; setTxt('fStage', S.name + (S.legs ? ' · legs ' + (R.legT ? 'out' : 'in') + ' (G)' : ''));
+  $('fThr').style.height = (R.thr * 100) + '%'; fe.style.height = (ff * 100) + '%'; setTxt('fStage', S.name + (S.thrust && R.fuel[R.bot] > 0 && !R.lit && R.st !== 'pad' ? ' · engine off (R)' : '') + (S.legs ? ' · legs ' + (R.legT ? 'out' : 'in') + ' (G)' : ''));
   const nx = R.st === 'pad' && !R.lit ? 'Launch' : !R.lit && S.thrust && R.fuel[R.bot] > 0 ? 'Ignite' : R.bot < STAGES.length - 1 ? 'Drop ' + S.name.toLowerCase() : R.chute === 0 ? 'Parachute' : '';
-  setTxt('fNext', nx ? (nx.startsWith('Drop') && dropFull() ? 'Space ×2 · ' : 'Space · ') + nx : ''); for (const el of sasBtns || (sasBtns = [...document.querySelectorAll('#fSas button')])) el.classList.toggle('on', el.dataset.m === R.sas);
+  setTxt('fNext', nx ? (nx.startsWith('Drop') && dropFull() ? 'Space ×2 · ' : 'Space · ') + nx : ''); for (const el of sasBtns || (sasBtns = [...document.querySelectorAll('#fSas button')])) el.classList.toggle('on', el.dataset.m ? el.dataset.m === R.sas : R.lit);
   markers();
 }
 const _mk = new V3(), _mv3 = new V3(), MKS = [['mPro', 1], ['mRet', -1], ['mGd', 0]];
@@ -584,7 +601,7 @@ function markers() { // prograde / retrograde / ascent-guide markers on screen
   for (const [id, s] of MKS) { const el = HUDE[id] || (HUDE[id] = $(id)); const d = s ? (show ? _mk.copy(v).multiplyScalar(s) : null) : gd; if (!d) { el.classList.add('hidden'); continue; }
     const p = _mk.copy(d).multiplyScalar(1e4).project(cam); const ok = p.z < 1 && Math.abs(p.x) < 1 && Math.abs(p.y) < 1; el.classList.toggle('hidden', !ok);
     if (ok) { el.style.transform = 'translate(' + ((p.x * .5 + .5) * innerWidth).toFixed(1) + 'px,' + ((-p.y * .5 + .5) * innerHeight).toFixed(1) + 'px)'; } } }
-document.querySelectorAll('#fSas button').forEach(el => el.onclick = e => { e.stopPropagation(); setSas(el.dataset.m); });
+document.querySelectorAll('#fSas button').forEach(el => el.onclick = e => { e.stopPropagation(); if (el.dataset.m) setSas(el.dataset.m); else engineToggle(); });
 
 // ---------------- capsule: walk-in crew cabin (outer shell with real window holes, padded lining, seats, consoles, lockers, hatch)
 const CAB = {y0: 21.85, y1: 25.45, rb: 2.5, rt: 1.0, wall: .09, floor: 22.0, ceil: 25.15, hatchA: Math.PI};
