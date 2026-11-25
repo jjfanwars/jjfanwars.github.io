@@ -195,6 +195,8 @@ aside .pg{color:var(--mut);font-size:11.5px;font-weight:400;font-variant-numeric
 main{padding:24px 28px 80px;min-width:0}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r)}
 .drills{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px}.drillc{display:flex;flex-direction:column;align-items:flex-start;gap:6px;padding:16px;text-align:left;cursor:pointer;font:inherit;color:inherit}.drillc:hover{border-color:var(--acc)}.drillc .i{width:26px;height:26px;color:var(--acc)}.drillc b{font-size:16px}
+/* feature: command-term trainer */ .ctw{max-width:920px;margin:0 auto}.ctm{text-decoration:underline dotted;text-decoration-color:color-mix(in srgb,var(--acc) 75%,transparent);text-decoration-thickness:2px;text-underline-offset:4px;cursor:help;border-radius:3px}.ctm:hover{background:var(--acc2)}.ctm:focus-visible{outline:2px solid var(--acc);outline-offset:1px}.ctgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,270px),1fr));gap:10px}.ctc{padding:12px 14px;min-width:0}.ctc h4{margin:0;font-size:17px}.ctc ul{margin:4px 0 6px;padding-left:18px}.ctq{padding:18px 20px;font-family:var(--f-read);font-size:18px;line-height:1.5;overflow-x:auto}.ctq .meta,.ctq button,.ctq summary{font-family:var(--f-ui)}.ctopts{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px;font-family:var(--f-ui);font-size:15px;line-height:1.35}.ctopts button{justify-content:flex-start;align-items:flex-start;text-align:left;padding:10px 12px;min-height:48px}.ctopts .kbd{flex:none}.ctopts button.ok{border-color:var(--good);background:var(--good2);color:var(--good);opacity:1}.ctopts button.no{border-color:var(--red);background:var(--red2);color:var(--red);opacity:1}
+.ctfb{margin-top:12px;padding:10px 12px;border-radius:8px;font-family:var(--f-ui);font-size:14.5px;line-height:1.45;background:var(--sunk)}.ctfb.ok{background:var(--good2)}.ctfb.no{background:var(--red2)}.ctbar{height:4px;background:var(--sunk);border-radius:2px;overflow:hidden;margin:8px 0}.ctbar i{display:block;height:100%;background:var(--acc);transition:width .2s linear}.ctstem{margin-top:8px}.ctstem p{margin:.3em 0}.ctblank{display:inline-block;min-width:4.5em;border-bottom:2px solid var(--acc);color:var(--acc);text-align:center;font:700 .9em var(--f-ui)}.cthl{background:var(--acc2);color:var(--acc);font-weight:700;padding:0 4px;border-radius:4px}.ctlad{display:flex;flex-wrap:wrap;gap:8px}.ctrung{list-style:none;margin:14px 0 0;padding:0;display:grid;gap:6px}.ctrung li{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;padding:8px 12px;border:1px dashed var(--line2);border-radius:8px}.ctrung li>.meta:first-child{width:3.2em}.ctrung li.ok{border:1px solid var(--good);background:var(--good2)}.ctrung li.no{border:1px solid var(--red);background:var(--red2)}.ctchip{padding:4px 10px;border-radius:99px;font-size:13px}.ctseg{max-width:100%;overflow-x:auto}.ctrev{margin:0;padding:0;list-style:none;display:grid;gap:8px}.ctrev li{padding:8px 0;border-bottom:1px solid var(--line);line-height:1.45}.ctrev button{padding:2px 6px;margin-left:-6px}.ctseg button{white-space:nowrap}@media(max-width:640px){.ctkeys{display:none}.ctopts{grid-template-columns:1fr}.ctq{padding:14px;font-size:17px}}
 .reader{max-width:760px;margin:0 auto}
 .rbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px}
 .rbar .sp,.sp{flex:1}
@@ -615,6 +617,7 @@ function mergeIn(r) {
     if ((r.calt || 0) > (S.prog.calt || 0)) { S.prog.cals = r.cals || []; S.prog.calt = r.calt; setTimeout(loadExt, 0); }
     for (const f of ['decks', 'maps', 'spaces', 'notes']) { const DK = S.prog[f] = S.prog[f] || {}; for (const [id, d] of Object.entries(r[f] || {})) if (!DK[id] || (DK[id].t || 0) < (d.t || 0)) { if (f === 'notes' && DK[id]) { for (const k of Object.keys(DK[id])) if (!(k in d) && k[0] !== '_') delete DK[id][k]; Object.assign(DK[id], d); } else DK[id] = d; } }
     for (const k of ['secs', 'rev', 'recall']) { const L = S.prog[k] = S.prog[k] || {}; for (const [kk, v] of Object.entries(r[k] || {})) if (!L[kk] || (L[kk].t || 0) < (v.t || 0)) L[kk] = v; }
+    { const DR = S.prog.drills = S.prog.drills || {}; for (const [g, o] of Object.entries(r.drills || {})) { const L = DR[g] = DR[g] || {}; for (const [kk, v] of Object.entries(o || {})) if (v && (!L[kk] || (L[kk].t || 0) < (v.t || 0))) L[kk] = v; } } // drills: per-item {t}, last write wins
     const PP = S.prog.pp = S.prog.pp || {}; for (const [k, v] of Object.entries(r.pp || {})) { const ts = new Set((PP[k] || []).map(x => x.t)); PP[k] = [...(PP[k] || []), ...v.filter(x => !ts.has(x.t))]; }
     for (const [k, v] of Object.entries(r.lastBy || {})) if (!S.prog.lastBy[k] || S.prog.lastBy[k].t < v.t) S.prog.lastBy[k] = v;
     if (r.last && (!S.prog.last || (r.last.t || 0) > (S.prog.last.t || 0))) S.prog.last = r.last;
@@ -896,6 +899,7 @@ function openQ(id) {
   const box = S.qBox = hwBox($('#ansBox'), {id: 'ans', key: 'q:' + id, text: draft, rows: q.kind === 'essay' ? 18 : 8, math: hwM, onText: v => LS.set(LSK('ib-d-' + id), v), onChange: () => wc(),
     placeholder: q.kind === 'mcq' ? 'Your answer (the letter, and why if you like)' : 'Answer'}); wc();
   hwThumbs($('#main'));
+  ctMark($('#main .qbig'));
   const tick = setInterval(() => { if (!document.body.contains(box.el)) return clearInterval(tick); const s = (Date.now() - t0) / 1000 | 0; $('#tm').textContent = '· ' + (s / 60 | 0) + ':' + String(s % 60).padStart(2, '0'); }, 1000);
   $('#qSend').onclick = () => shareBox({kind: 'q', title: `${bookOf(q.book).subject} · ${KIND[q.kind] || q.kind}${q.marks ? ' · ' + q.marks + ' marks' : ''}`, data: {id: q.id}});
   $('#back').onclick = () => { if (q.pp) S.pf = {...(S.pf || {}), view: 'papers'}; renderPrac(); }; if ($('#src')) $('#src').onclick = () => openPage(B.id, q.n);
@@ -3187,6 +3191,271 @@ function renderFriends() { shell('friends'); setHash('#/friends'); $('#main').in
 
 
 // ==== FEATURE: command-term trainer ====
+// CT = command terms in our own words. d = demand level (CT_LV), s = subjects (c chem, p phys, m maths, g global politics, t TOK), m = meaning,
+// n = what an answer needs, sh = the answer's shape in a few words (Spot it), mk = typical marks, p = pitfall, ex = example question, al = other spellings.
+// Progress: S.prog.drills.ct {term: {ok, n, t}} (merged by t). All modes are local except Write it (one Claude call per click).
+const CT_LV = ['', 'Recall', 'Describe and apply', 'Explain and reason', 'Analyse and argue', 'Judge'];
+const CT = [
+  {t: 'state', d: 1, s: 'cpmgt', m: 'Give a short fact, name or value, with no reasons attached.', n: ['a brief, specific answer (a word, value or phrase)'], sh: 'A brief fact or value, nothing more', mk: '1', p: 'Adding an explanation costs time and can contradict a right answer.', ex: 'State the charge on an electron.'},
+  {t: 'define', d: 1, s: 'cpmgt', m: 'Give the precise meaning of a word or phrase, tight enough that it fits nothing else.', n: ['the exact meaning', 'the qualifying words that make it precise (average, per unit, under standard conditions)'], sh: 'The precise meaning, no examples needed', mk: '1-2', p: 'Giving an example instead of the meaning, or using the word itself to explain it.', ex: 'Define the term isotopes.'},
+  {t: 'list', d: 1, s: 'cpg', m: 'Give a set of brief answers, one after another, with no detail.', n: ['exactly the number of items asked', 'a word or two for each'], sh: 'Separate brief items, as many as asked', mk: '1 per item', p: 'Writing extra items: wrong extras can cancel right ones.', ex: 'List three greenhouse gases.'},
+  {t: 'label', d: 1, s: 'cp', m: 'Add names to the parts of a diagram or graph.', n: ['a name for each part asked for', 'label lines that end exactly on the part'], sh: 'Names on the diagram, pointing at the right parts', mk: '1 per 1-2 labels', p: 'Label lines that stop near the part instead of on it.', ex: 'Label the anode and the cathode on the diagram.'},
+  {t: 'draw', d: 1, s: 'cpm', m: 'Produce an accurate diagram, graph or structure, with a ruler for straight lines.', n: ['an accurate shape, structure or plot', 'labelled axes with units, or labelled parts'], sh: 'An accurate, labelled diagram or graph', mk: '1-3', p: 'Freehand straight lines, axes without units, missing lone pairs in structures.', ex: 'Draw a labelled free-body diagram of the box.'},
+  {t: 'write down', d: 1, s: 'm', m: 'Get the answer with little or no working; it should follow almost straight from what is given.', n: ['the answer', 'working only if it really helps'], sh: 'The answer straight off, almost no working', mk: '1-2', p: 'Spending a long time on it: if it feels hard, you have probably misread the question.', ex: 'Write down the $y$-intercept of the graph.'},
+  {t: 'measure', d: 1, s: 'p', m: 'Read a value straight off a diagram, scale or instrument.', n: ['the reading', 'units and a sensible number of digits'], sh: 'A direct reading with units', mk: '1', p: 'Misreading the scale divisions or leaving out units.', ex: 'Measure the amplitude of the wave on the diagram.'},
+  {t: 'identify', d: 1, s: 'cpmgt', m: 'Pick out an answer from options or from the information given, naming it briefly.', n: ['a clear name or choice', 'exactly as many as asked'], sh: 'Name or pick it out briefly', mk: '1-2', p: 'Writing paragraphs when a name is enough, or naming three when asked for two.', ex: 'Identify two sources of political legitimacy.'},
+  {t: 'recognise', al: ['recognize'], d: 1, s: 'cpm', m: 'Notice and name something from the information or data provided.', n: ['the feature or item spotted'], sh: 'Spot it and name it', mk: '1', p: 'Answering from memory instead of looking at the data given.', ex: 'Recognise the type of reaction shown by the equation.'},
+  {t: 'outline', d: 2, s: 'cpgt', m: 'Give a brief account or summary of the main points, without detailed reasons.', n: ['the main points or steps', 'short and to the point'], sh: 'The main points, briefly', mk: '2-4', p: 'Writing a full explanation, or one-word answers that miss points.', ex: 'Outline one source of political legitimacy.'},
+  {t: 'describe', d: 2, s: 'cpmgt', m: 'Give a detailed account of what something is like or what happens: its features, a pattern or the steps.', n: ['what happens or what it looks like', 'detail: values, trends, the order of steps', 'no reasons needed'], sh: 'A detailed account of what happens (not why)', mk: '2-4', p: 'Saying why instead of what, or going over a graph without quoting any values.', ex: 'Describe how the rate of reaction changes over time.'},
+  {t: 'annotate', d: 2, s: 'cpg', m: 'Add brief notes to a diagram or graph that say something about the parts, not just their names.', n: ['short notes placed on the diagram', 'each note gives a comment or reason'], sh: 'Short explanatory notes on the diagram', mk: '1-3', p: 'Writing names only: that is labelling, not this.', ex: 'Annotate the energy profile to show the activation energy and the enthalpy change.'},
+  {t: 'calculate', d: 2, s: 'cpm', m: 'Work out a number from the data, with the working shown.', n: ['the method or equation used', 'the working', 'a final value with units and sensible significant figures'], sh: 'Working, a final value and units', mk: '1-3', p: 'Only the final number (method marks lost), or no units.', ex: 'Calculate the acceleration of the box.'},
+  {t: 'find', d: 2, s: 'm', m: 'Get to an answer, showing the main steps of your working.', n: ['the key steps', 'the answer, exact or to 3 significant figures'], sh: 'Key steps and the answer (3 s.f. if not exact)', mk: '2-4', p: 'Answer only: if it is wrong there is nothing to give method marks for.', ex: 'Find the number of seats in the last row.'},
+  {t: 'estimate', d: 2, s: 'cpm', m: 'Get an approximate value, using sensible rounding, assumptions or a reading off a graph.', n: ['sensible approximations or assumptions', 'a value of the right size', 'units'], sh: 'A rough value of the right size, with units', mk: '1-2', p: 'Long strings of decimals, which suggest you have not approximated at all.', ex: 'Estimate the gradient of the graph at $t = 2$ s.'},
+  {t: 'apply', d: 2, s: 'cpgt', m: 'Use an idea, theory or method on one particular situation.', n: ['the idea or method named', 'linked clearly to the case in front of you'], sh: 'The idea, used on this specific case', mk: '2-4', p: 'Explaining the theory in general and never connecting it to the case.', ex: 'Apply the concept of soft power to one state of your choice.'},
+  {t: 'distinguish', d: 2, s: 'cpgt', m: 'Make clear how two or more things differ from each other.', n: ['differences only', 'each point says what both items are like'], sh: 'Clear differences, both sides each time', mk: '1-3', p: 'Writing about each thing separately without saying how they differ.', ex: 'Distinguish between a strong acid and a weak acid.'},
+  {t: 'sketch', d: 2, s: 'cpm', m: 'Make a rough diagram or graph that shows the general shape and key features rather than exact values.', n: ['the right general shape', 'key features marked: intercepts, asymptotes, turning points, labelled axes'], sh: 'Rough shape with the key features marked', mk: '2-3', p: 'A neat curve that misses the intercepts or asymptotes.', ex: 'Sketch the graph of $y = \\ln(x - 2)$.'},
+  {t: 'construct', d: 2, s: 'cpmt', m: 'Put together a table, diagram, structure or argument from information.', n: ['a complete, organised result', 'built from the information given'], sh: 'An organised table, diagram or argument', mk: '2-4', p: 'Leaving parts out, or making it hard to read.', ex: 'Construct a table of values for $y = 2x + 1$.'},
+  {t: 'formulate', d: 2, s: 'cpt', m: 'Set out a precise idea, hypothesis or question in clear terms.', n: ['one precise, focused statement', 'testable, if it is a hypothesis'], sh: 'One precise, testable statement', mk: '1-2', p: 'Vague wording that could never be tested or answered.', ex: 'Formulate a hypothesis for this investigation.'},
+  {t: 'classify', d: 2, s: 'cp', m: 'Sort things into groups, or say which category something belongs to.', n: ['the category for each item', 'the basis of the grouping if asked'], sh: 'The category for each item', mk: '1-2', p: 'Inventing your own categories instead of the standard ones.', ex: 'Classify each reaction as exothermic or endothermic.'},
+  {t: 'solve', d: 2, s: 'm', m: 'Find the values that make an equation or inequality true, by algebra or with a calculator.', n: ['every solution in the allowed range', 'the method, or what the calculator did'], sh: 'All the solutions, with method', mk: '2-5', p: 'Losing a solution, or ignoring the domain.', ex: 'Solve $2^x = 7$.'},
+  {t: 'differentiate', d: 2, s: 'm', m: 'Find the derivative of a function.', n: ['the right rules (chain, product, quotient)', 'a simplified derivative'], sh: 'The derivative, using the right rules', mk: '2-3', p: 'Forgetting the inner derivative in the chain rule.', ex: 'Differentiate $f(x) = x^2 e^x$.'},
+  {t: 'integrate', d: 2, s: 'm', m: 'Find the integral of a function.', n: ['a correct antiderivative', '+ C, or the limits put in for a definite integral'], sh: 'Antiderivative plus C, or limits applied', mk: '2-4', p: 'Dropping the + C.', ex: 'Integrate $\\cos 3x$ with respect to $x$.'},
+  {t: 'verify', d: 2, s: 'cpm', m: 'Show by checking, often by substitution, that a given result is true.', n: ['the check carried out', 'a clear closing statement that it works'], sh: 'A check and a closing statement', mk: '1-2', p: 'Doing the check but never saying what it shows.', ex: 'Verify that $x = 2$ is a root of the equation.'},
+  {t: 'demonstrate', d: 2, s: 'gmt', m: 'Make something clear through reasoning, evidence or a worked example.', n: ['reasoning or evidence', 'an example where useful'], sh: 'Reasoning or evidence that makes it clear', mk: '2-4', p: 'Asserting the point without showing it.', ex: 'Demonstrate how the source supports the claim.'},
+  {t: 'explain', d: 3, s: 'cpmgt', m: 'Give the reasons or causes, and how they lead to the result (the mechanism).', n: ['the cause or reason', 'how it leads to the effect, step by step', 'linking words: because, so, which means'], sh: 'Cause, then how it leads to the effect', mk: '2-6', p: 'Saying what happens but not why, or a bare reason with no chain.', ex: 'Explain why the frictional force on the box decreases.'},
+  {t: 'suggest', d: 3, s: 'cpgt', m: 'Put forward a sensible idea or possible reason; more than one answer may be accepted.', n: ['a plausible proposal', 'a brief reason tied to the context'], sh: 'A plausible idea with a brief reason', mk: '1-3', p: 'Writing nothing because you are unsure: any reasonable, well-founded idea can score.', ex: 'Suggest why the line of best fit should pass through the origin.'},
+  {t: 'compare', d: 3, s: 'cpgt', m: 'Point out the ways two or more things are alike, mentioning each of them in every point.', n: ['similarities', 'each point refers to both (or all) items'], sh: 'Similarities, both items in each point', mk: '2-4', p: 'Two separate paragraphs, one per item, with no direct links between them.', ex: 'Compare the methods used in the two experiments.'},
+  {t: 'contrast', d: 3, s: 'cpgt', m: 'Point out the ways two or more things are different, mentioning each of them in every point.', n: ['differences', 'each point refers to both (or all) items'], sh: 'Differences, both items in each point', mk: '2-4', p: 'Describing one item and then the other, leaving the reader to find the differences.', ex: 'Contrast the views of the two sources on humanitarian intervention.'},
+  {t: 'compare and contrast', d: 3, s: 'cpgt', m: 'Set out both the similarities and the differences between two or more things, mentioning each in every point.', n: ['similarities', 'differences', 'each point refers to both items'], sh: 'Similarities and differences, side by side', mk: '4-8', p: 'Only differences, or summarising the sources one after the other.', ex: 'Compare and contrast what two sources suggest about state sovereignty.'},
+  {t: 'deduce', d: 3, s: 'cpm', m: 'Reach a conclusion that follows logically from the information you are given.', n: ['the conclusion', 'the logical step from the given data to it'], sh: 'A conclusion and the logic from the data', mk: '1-3', p: 'Stating a conclusion from memory without using the data given.', ex: 'Deduce which metal is the most reactive from the results.'},
+  {t: 'derive', d: 3, s: 'cpm', m: 'Build an equation or result step by step from basic principles or known equations.', n: ['a starting law or equation', 'each algebraic step', 'the final expression'], sh: 'Steps from principles to the expression', mk: '2-4', p: 'Jumping from the start to the end with steps missing.', ex: 'Derive an expression for the orbital speed of a satellite.'},
+  {t: 'determine', d: 3, s: 'cpm', m: 'Get the one possible answer, usually a value, from the information given.', n: ['the method', 'a single, definite answer'], sh: 'A method leading to one definite answer', mk: '1-3', p: 'Leaving the answer open or giving a range.', ex: 'Determine the empirical formula of the compound.'},
+  {t: 'predict', d: 3, s: 'cpgt', m: 'Say what you expect to happen or what a result will be, without having to prove it.', n: ['the expected outcome', 'a short reason if the marks allow'], sh: 'The expected outcome (and a short reason)', mk: '1-2', p: 'A vague answer like "it changes" without saying how.', ex: 'Predict the effect of increasing the pressure on the position of equilibrium.'},
+  {t: 'show that', d: 3, s: 'cpm', m: 'Reach a result you have been given, with every step visible; the method is what earns the marks.', n: ['each step from the data to the result', 'a final line matching the given value (ideally to one more significant figure)'], sh: 'Every step from the data to the given result', mk: '1-3', p: 'Working backwards from the answer, or skipping steps.', ex: 'Show that the total deposited after $n$ months is $4n^2 + 46n$.'},
+  {t: 'hence', al: ['hence or otherwise'], d: 3, s: 'cpm', m: 'Use the result you have just found to do the next step (with "or otherwise", another method is allowed too).', n: ['clear use of the previous result'], sh: 'Use the previous answer to get this one', mk: '1-4', p: 'Starting again from scratch and missing the intended shortcut.', ex: 'Hence find the coordinates of the minimum point.'},
+  {t: 'prove', d: 3, s: 'm', m: 'Use a chain of logical steps to show that something is always true.', n: ['a clear logical chain', 'a reason for every step', 'a concluding statement'], sh: 'A justified chain ending in a conclusion', mk: '3-7', p: 'Checking a few examples instead of the general case.', ex: 'Prove that the sum of three consecutive integers is divisible by 3.'},
+  {t: 'interpret', d: 3, s: 'cpmgt', m: 'Use what you know to work out what data, a result or a source is saying, and what that means.', n: ['what the data or source shows', 'what that means in this context'], sh: 'What it shows, then what it means here', mk: '2-4', p: 'Repeating the numbers without saying what they mean.', ex: 'Interpret the gradient of the graph in context.'},
+  {t: 'comment', d: 3, s: 'cpmt', m: 'Give a reasoned view on a statement or a result.', n: ['your view on it', 'the reason for that view'], sh: 'A view on it with a reason', mk: '1-2', p: 'Restating the result without any judgement.', ex: 'Comment on the reliability of the data.'},
+  {t: 'design', d: 3, s: 'cpt', m: 'Plan a method, experiment or model that would answer a question.', n: ['the variables: changed, measured and controlled', 'the steps and measurements', 'how to make it reliable and safe'], sh: 'A plan: variables, steps and controls', mk: '3-6', p: 'Missing the controlled variables or how you would measure.', ex: 'Design an experiment to find how temperature affects the rate of a reaction.'},
+  {t: 'analyse', al: ['analyze'], d: 4, s: 'cpgt', m: 'Break something into its parts or factors to show how they fit together and which matter most.', n: ['the separate parts or factors', 'how they connect or interact', 'evidence for each'], sh: 'Break it into parts and show how they connect', mk: '4-8', p: 'Listing parts without showing how they connect.', ex: 'Analyse the reasons why multilateral cooperation has become harder.'},
+  {t: 'examine', d: 4, s: 'gt', m: 'Look closely at an argument or idea, uncovering the assumptions behind it and how it links to other ideas.', n: ['the key assumptions', 'connections and implications', 'examples as evidence'], sh: 'Unpack the assumptions and links, with evidence', mk: '6-15', p: 'Describing the topic without ever questioning it.', ex: 'Examine the claim that sovereignty is no longer absolute.'},
+  {t: 'justify', d: 4, s: 'cpmgt', m: 'Back up an answer or conclusion with valid reasons or evidence.', n: ['the answer or claim', 'reasons or evidence that support it'], sh: 'The claim, backed by reasons or evidence', mk: '1-4', p: 'Repeating the answer instead of giving the reasons for it.', ex: 'Justify your choice of indicator for this titration.'},
+  {t: 'discuss', d: 5, s: 'cpgt', m: 'Weigh up a range of arguments, factors or viewpoints in a balanced way and reach a conclusion backed by evidence.', n: ['arguments on more than one side', 'evidence or examples for each', 'a reasoned conclusion'], sh: 'Several sides with evidence, then a conclusion', mk: '6-15', p: 'A one-sided answer, or a conclusion that does not follow from the body.', ex: 'Discuss whether economic sanctions are an effective tool of foreign policy.'},
+  {t: 'evaluate', d: 5, s: 'cpmgt', m: 'Judge the worth of something by weighing its strengths against its limitations.', n: ['strengths', 'limitations', 'a judgement that weighs them up'], sh: 'Strengths, limitations, then a judgement', mk: '3-15', p: 'A list of pros and cons with no final judgement.', ex: 'Evaluate the use of a burette rather than a measuring cylinder in this titration.'},
+  {t: 'to what extent', d: 5, s: 'cpgt', m: 'Weigh how far a claim holds, considering the case for and against, and give a clear judgement of degree.', n: ['arguments for and against', 'evidence', 'a judgement of degree: largely, partly, barely'], sh: 'For and against, then how far it holds', mk: '10-15', p: 'Answering yes or no without saying how far.', ex: 'To what extent has globalisation weakened state sovereignty?'}];
+const CT_SUB = {c: 'Chemistry', p: 'Physics', m: 'Maths', g: 'Global politics', t: 'TOK'};
+const CTI = Object.fromEntries(CT.map(x => [x.t, x])), CTA = Object.fromEntries(CT.flatMap(x => [[x.t, x.t], ...(x.al || []).map(a => [a, x.t])]));
+const CT_ALT = Object.keys(CTA).sort((a, b) => b.length - a.length).map(k => k.replace(/ /g, '\\s+')).join('|');
+// lowercase mid-sentence matches only for words that are rarely ordinary English in questions ("the state", "a list" stay unmarked)
+const CT_AMB = new Set(['state', 'list', 'label', 'draw', 'find', 'measure', 'comment', 'apply', 'design', 'construct', 'classify', 'identify', 'estimate', 'integrate', 'demonstrate', 'solve', 'recognise', 'contrast', 'compare']);
+const ctCap = t => t[0].toUpperCase() + t.slice(1), ctOf = w => CTI[CTA[String(w).toLowerCase().replace(/\s+/g, ' ')]];
+const ctLetter = id => { const B = bookOf(id), s = ((B && (B.subject + ' ' + B.title)) || '') + ' ' + id; return /chem/i.test(s) ? 'c' : /phys/i.test(s) ? 'p' : /math/i.test(s) ? 'm' : /polit|glopo/i.test(s) ? 'g' : /knowledge|\btok/i.test(s) ? 't' : ''; };
+const ctTip = T => `${ctCap(T.t)} (level ${T.d}: ${CT_LV[T.d].toLowerCase()})\n${T.m}\nNeeds: ${T.n.join('; ')}`;
+const ctMask = (T, s) => s.replace(new RegExp('\\b(' + [T.t, ...(T.al || [])].join('|') + ')\\w*', 'gi'), '…');
+const ctShuf = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.random() * (i + 1) | 0; [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const ctF = () => LS.get('ib-ct-f', ''), ctPool = () => { const f = ctF(); return f ? CT.filter(T => T.s.includes(f)) : CT; };
+function ctP() { if (!S.prog) return {}; const D = S.prog.drills = S.prog.drills || {}; return D.ct = D.ct || {}; }
+function ctRec(t, v) { if (!S.prog) return; const P = ctP(), o = P[t] = P[t] || {ok: 0, n: 0}; o.n++; o.ok = Math.round((o.ok + v) * 2) / 2; o.t = Date.now(); saveProg(); }
+const ctScore = t => { const o = ctP()[t]; return o && o.n ? (o.ok + 1) / (o.n + 2) : .5; };
+const ctMd = (s, q) => { const B = q && bookOf(q.book); if (B && B.math) return mdm(s); const o = MATH; MATH = false; try { return mdx(s); } finally { MATH = o; } };
+
+// dotted underline + tooltip on command terms in a rendered question (skips maths, code, tags); click or Enter opens the term card
+function ctMark(el) {
+  if (!el) return; const skip = n => { for (let p = n.parentElement; p && p !== el; p = p.parentElement) if (p.matches('.katex,code,pre,script,style,svg,button,a,.tag,.meta,.ctm,.ctx,.qctx,mark')) return true; return false; };
+  const w = document.createTreeWalker(el, NodeFilter.SHOW_TEXT), nodes = []; while (w.nextNode()) nodes.push(w.currentNode);
+  let prev = '', blk = null;
+  for (const t of nodes) {
+    const b = t.parentElement && t.parentElement.closest('p,li,td,th,div,h1,h2,h3,h4,blockquote,figure'); if (b !== blk) { blk = b; prev = ''; }
+    if (skip(t)) { prev = (prev + 'x').slice(-60); continue; }
+    const data = t.data, re = new RegExp('(' + CT_ALT + ')(?![A-Za-z-])', 'gi'), out = []; let m, last = 0;
+    while ((m = re.exec(data))) {
+      const i = m.index; if (i > 0 && /[A-Za-z-]/.test(data[i - 1])) continue;
+      const pre = (prev + data.slice(0, i)).slice(-60), T = ctOf(m[1]); if (!T) continue;
+      const start = /(^\s*|[.?!:;]["'”’)*]*\s*|[)\]]\s*|\n\s*)$/.test(pre) && /^[A-Z]/.test(m[1]);
+      const mid = /^[a-z]/.test(m[1]) && (/\b(and|then)\s+$/i.test(pre) || (!CT_AMB.has(T.t) && /,\s*$/.test(pre)) || /\botherwise,\s*$/i.test(pre));
+      if (!start && !mid) continue;
+      out.push(document.createTextNode(data.slice(last, i)));
+      const s = document.createElement('span'); s.className = 'ctm'; s.textContent = m[1]; s.dataset.tip = ctTip(T); s.dataset.ct = T.t; s.tabIndex = 0; s.setAttribute('role', 'button'); out.push(s); last = i + m[1].length;
+    }
+    prev = (prev + data).slice(-60);
+    if (out.length) { out.push(document.createTextNode(data.slice(last))); t.replaceWith(...out); }
+  }
+}
+document.addEventListener('click', e => { const s = e.target.closest && e.target.closest('.ctm'); if (s) ctCard(s.dataset.ct); });
+document.addEventListener('keydown', e => {
+  const s = e.target.closest && e.target.closest('.ctm'); if (s && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); return ctCard(s.dataset.ct); }
+  if (!$('#ctq') || $('#modal') || /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName) || e.ctrlKey || e.metaKey || e.altKey) return;
+  const b = /^[1-4]$/.test(e.key) ? document.querySelectorAll('#ctq .ctopts button')[+e.key - 1] : e.key === 'Enter' && e.target.tagName !== 'BUTTON' ? $('#ctNext') : null;
+  if (b && !b.disabled) { e.preventDefault(); b.click(); }
+});
+function ctCardHtml(T) {
+  const o = ctP()[T.t];
+  return `<div class="row" style="justify-content:space-between"><h4>${esc(ctCap(T.t))}</h4><span>${o && o.n ? `<span class="tag ${o.ok / o.n >= .8 ? 'g' : o.ok / o.n < .5 ? 'r' : 'w'}">${o.ok}/${o.n} right</span>` : ''}<span class="tag">L${T.d}</span></span></div>
+    <div style="margin-top:4px">${esc(T.m)}</div><div class="meta" style="margin-top:8px;font-weight:600;color:var(--ink2)">An answer needs</div><ul>${T.n.map(x => '<li>' + esc(x) + '</li>').join('')}</ul>
+    <div class="meta">Typical marks: ${esc(T.mk)} · ${T.s.split('').map(l => CT_SUB[l]).join(', ')}</div><div class="meta" style="margin-top:6px"><b>Watch out:</b> ${esc(T.p)}</div><div class="meta" style="margin-top:6px"><b>Example:</b> ${mdm(T.ex, true)}</div>`;
+}
+function ctCard(t) {
+  const T = CTI[t]; if (!T) return;
+  const m = openModal(`<div class="ctc" style="padding:0">${ctCardHtml(T)}</div><div class="row" style="margin-top:14px"><button id="ctAll">All command terms</button><span class="sp" style="flex:1"></span><button class="pri" id="mClose">Close</button></div>`);
+  m.querySelector('#ctAll').onclick = () => { m.remove(); renderDrills('cterms', 'learn'); };
+}
+
+// stems from the question bank: question parts that start with a command term
+let CT_ST = null, CT_STN = -1;
+function ctStems() {
+  if (CT_ST && CT_STN === S.qs.length) return CT_ST; CT_ST = []; CT_STN = S.qs.length;
+  const re = new RegExp('^((?:(?:with reference to|using|referring to|based on)[^,.]{0,80},\\s*)?)(' + CT_ALT + ')(?![A-Za-z-])', 'i');
+  for (const q of S.qs) { if (q.kind === 'mcq' || !q.text || front(q)) continue;
+    for (let p of String(q.text).split(/\n\s*\n/)) { p = p.trim().replace(/^(?:\(\w{1,4}\)\s*)+/, ''); if (p.length < 12 || p.length > 360 || /!\[|^\||<img/m.test(p)) continue;
+      const m = p.match(re); if (!m || (!m[1] && !/^[A-Z]/.test(m[2]))) continue; const T = ctOf(m[2]); if (!T) continue;
+      CT_ST.push({q, p, T, at: m[1].length, len: m[2].length, l: ctLetter(q.book)}); } }
+  return CT_ST;
+}
+const ctStemHtml = (st, blank) => { const tok = blank ? 'QQCTBLANKQQ' : 'QQCTHLQQ', src = st.p.slice(0, st.at) + tok + st.p.slice(st.at + st.len);
+  return ctMd(src, st.q).replace(tok, blank ? '<span class="ctblank">?</span>' : `<mark class="cthl">${esc(st.p.substr(st.at, st.len))}</mark>`); };
+
+// round items: {kind, T, q (html), opts: [{h, ok}], after (html shown once answered)}
+function ctOthers(T, n, f, pool) { const P = ctShuf((pool || CT).filter(x => x !== T && f(x))); const out = []; for (const x of P) { if (out.length >= n) break; if (x.sh !== T.sh && !out.some(y => y.sh === x.sh)) out.push(x); } return out; }
+function ctItemMatch(T) {
+  const pool = ctPool().length >= 4 ? ctPool() : CT, oth = ctOthers(T, 3, x => Math.abs(x.d - T.d) <= 2, pool).concat(ctOthers(T, 3, () => true, pool)).filter((x, i, a) => a.indexOf(x) === i).slice(0, 3);
+  if (Math.random() < .5) return {kind: 'Match', T, q: `<div class="meta">Which command term asks you to…</div><div style="margin-top:6px">${esc(ctMask(T, T.m))}</div>`, opts: ctShuf([T, ...oth].map(x => ({h: esc(ctCap(x.t)), ok: x === T})))};
+  return {kind: 'Match', T, q: `<div class="meta">What does this command term ask for?</div><div style="margin-top:6px;font-size:24px;font-weight:700">${esc(ctCap(T.t))}</div>`, opts: ctShuf([T, ...oth].map(x => ({h: esc(ctMask(x, x.m)), ok: x === T})))};
+}
+function ctItemSpot(st) {
+  const T = st.T, src = `<div class="meta" style="margin-top:8px">${esc((bookOf(st.q.book) || {}).subject || st.q.book)}${st.q.topic ? ' · ' + esc(st.q.topic) : ''} · <a href="#/q/${encodeURIComponent(st.q.id)}" data-ctq="${esc(st.q.id)}">open the question</a></div>`;
+  const sub = x => !st.l || x.s.includes(st.l);
+  if (Math.random() < .5) { const oth = ctOthers(T, 3, x => sub(x) && Math.abs(x.d - T.d) >= 2).concat(ctOthers(T, 3, x => sub(x) && x.d !== T.d), ctOthers(T, 3, () => true)).filter((x, i, a) => a.indexOf(x) === i).slice(0, 3);
+    return {kind: 'Spot the term', T, q: `<div class="meta">Which command term was taken out?</div><div class="ctstem">${ctStemHtml(st, 1)}</div>`, opts: ctShuf([T, ...oth].map(x => ({h: esc(ctCap(x.t)), ok: x === T}))), after: `<div class="ctstem">${ctStemHtml(st)}</div>` + src}; }
+  const oth = ctOthers(T, 3, x => x.d !== T.d).slice(0, 3);
+  return {kind: 'What it needs', T, q: `<div class="meta">What does an answer to this need?</div><div class="ctstem">${ctStemHtml(st)}</div>`, opts: ctShuf([T, ...oth].map(x => ({h: esc(x.sh), ok: x === T}))), after: src};
+}
+function ctBuild(mode) {
+  const f = ctF(), st = ctStems().filter(x => !f || x.l === f), by = {}; for (const x of st) (by[x.T.t] = by[x.T.t] || []).push(x);
+  const spot = T => { const L = by[T.t]; return L && L.length ? ctItemSpot(L[Math.random() * L.length | 0]) : ctItemMatch(T); };
+  if (mode === 'match') return ctShuf(ctPool()).slice(0, 10).map(ctItemMatch);
+  if (mode === 'spot') { const ts = Object.keys(by); if (!ts.length) return []; return Array.from({length: 10}, (_, i) => spot(CTI[ts[(Math.random() * ts.length) | 0]])); }
+  const weak = ctShuf(ctPool()).sort((a, b) => ctScore(a.t) - ctScore(b.t) || (ctP()[b.t] ? 1 : 0) - (ctP()[a.t] ? 1 : 0)).slice(0, 10);
+  return ctShuf(weak).map(T => Math.random() < .5 ? spot(T) : ctItemMatch(T));
+}
+
+function ctHead(sub) { return `<div class="row" style="margin-bottom:12px"><button id="ctBack"><svg class="i"><use href="#i-l"/></svg>Command terms</button><span class="sp" style="flex:1"></span><span class="meta">${esc(sub || '')}</span></div>`; }
+function ctWireBack() { const b = $('#ctBack'); if (b) b.onclick = () => renderDrills('cterms'); }
+function ctFilterSeg() { const have = new Set(S.books.map(B => ctLetter(B.id)).filter(Boolean)), L = Object.keys(CT_SUB).filter(l => !have.size || have.has(l)), f = ctF();
+  return `<div class="seg ctseg" role="group" aria-label="Subject">${[['', 'All'], ...L.map(l => [l, CT_SUB[l]])].map(([k, n]) => `<button data-ctf="${k}" class="${f === k ? 'on' : ''}">${esc(n)}</button>`).join('')}</div>`; }
+function ctWireFilter(again) { document.querySelectorAll('[data-ctf]').forEach(b => b.onclick = () => { LS.set('ib-ct-f', b.dataset.ctf); again(); }); }
+
+function ctOpen(arg) {
+  if (arg === 'learn') return ctLearn(); if (arg === 'ladder') return ctLadder(); if (arg === 'write') return ctWrite(); if (['match', 'spot', 'weak'].includes(arg)) return ctRound(arg);
+  const P = ctP(), seen = CT.filter(T => P[T.t] && P[T.t].n), good = seen.filter(T => P[T.t].n >= 3 && P[T.t].ok / P[T.t].n >= .8), weak = seen.slice().sort((a, b) => ctScore(a.t) - ctScore(b.t)).filter(T => ctScore(T.t) < .6).slice(0, 6);
+  const M = [['learn', 'cards', 'Learn', 'Every term: what it asks, what an answer needs, typical marks and traps.'], ['match', 'loop', 'Match', 'Ten quick rounds: term to meaning and back, 15 seconds each.'], ['ladder', 'chart', 'Depth ladder', 'Put five terms in order, from least to most demanding.'],
+    ['spot', 'search', 'Spot it', 'Real question stems: name the missing term, or say what the answer needs.'], ['write', 'pen', 'Write it', 'Answer a short prompt under one term; Claude checks only the shape.'], ['weak', 'spark', 'Practise weak terms', 'A mixed round on the terms you get wrong most.']];
+  $('#main').innerHTML = `<div class="ctw"><h2 class="h2">Command terms</h2><p class="meta" style="margin:-4px 0 12px">Every IB question starts with a verb that sets how deep your answer must go. Learn what each one asks for, then drill it.</p>
+    <div class="row" style="margin-bottom:14px">${ctFilterSeg()}</div>
+    <div class="drills">${M.map(([k, i, n, d]) => `<button class="card drillc" data-ctm="${k}"><svg class="i"><use href="#i-${i}"/></svg><b>${n}</b><span class="meta">${d}</span></button>`).join('')}</div>
+    <div class="card" style="padding:14px 16px;margin-top:16px"><div class="row"><b>Your terms</b><span class="meta">${seen.length} of ${CT.length} practised · ${good.length} solid (3+ tries, 80%+)</span></div>
+    ${weak.length ? `<div class="meta" style="margin-top:8px">Weakest:</div><div class="row" style="margin-top:4px">${weak.map(T => `<button class="ctchip" data-ctc="${esc(T.t)}">${esc(ctCap(T.t))} <span class="meta">${P[T.t].ok}/${P[T.t].n}</span></button>`).join('')}</div>` : '<div class="meta" style="margin-top:6px">Play a round and your weakest terms show up here.</div>'}</div></div>`;
+  document.querySelectorAll('[data-ctm]').forEach(b => b.onclick = () => renderDrills('cterms', b.dataset.ctm));
+  document.querySelectorAll('[data-ctc]').forEach(b => b.onclick = () => ctCard(b.dataset.ctc)); ctWireFilter(() => ctOpen());
+}
+
+function ctLearn() {
+  $('#main').innerHTML = `<div class="ctw">${ctHead('Learn')}<h2 class="h2">Learn the terms</h2><p class="meta" style="margin:-4px 0 12px">Grouped from the least demanding (just recall) to the most (a judgement). The levels are a guide, not an official scale.</p>
+    <div class="row" style="margin-bottom:12px"><input id="ctS" type="search" placeholder="Search terms, meanings, examples" style="max-width:340px" aria-label="Search command terms">${ctFilterSeg()}</div><div id="ctL"></div></div>`;
+  ctWireBack(); ctWireFilter(ctLearn);
+  const draw = () => { const q = $('#ctS').value.trim().toLowerCase(), L = ctPool().filter(T => !q || (T.t + ' ' + T.m + ' ' + T.ex + ' ' + T.n.join(' ') + ' ' + (T.al || []).join(' ')).toLowerCase().includes(q));
+    $('#ctL').innerHTML = [1, 2, 3, 4, 5].map(d => { const G = L.filter(T => T.d === d); return G.length ? `<h3 style="margin:18px 0 8px">${d} · ${CT_LV[d]}</h3><div class="ctgrid">${G.map(T => `<div class="card ctc">${ctCardHtml(T)}</div>`).join('')}</div>` : ''; }).join('') || '<p class="meta">No terms match.</p>'; };
+  $('#ctS').oninput = draw; draw();
+}
+
+function ctRound(mode) {
+  const items = ctBuild(mode), name = {match: 'Match', spot: 'Spot it', weak: 'Weak terms'}[mode], timed = mode === 'match';
+  if (!items.length) { $('#main').innerHTML = `<div class="ctw">${ctHead(name)}<div class="card" style="padding:24px;text-align:center"><b>No question stems for this subject yet</b><div class="meta">Try All subjects, or the Match round.</div></div></div>`; return ctWireBack(); }
+  let i = 0, score = 0, timer = 0; const miss = [];
+  const end = () => {
+    clearInterval(timer); const pct = score / items.length;
+    $('#main').innerHTML = `<div class="ctw">${ctHead(name)}<div class="card" style="padding:22px 24px"><div class="row" style="gap:16px"><div class="score" style="color:${pct < .5 ? 'var(--bad)' : pct < .8 ? 'var(--warn)' : 'var(--good)'}">${score}/${items.length}</div><div>${pct >= .8 ? 'Strong round.' : pct >= .5 ? 'Getting there.' : 'These need another look.'}</div></div>
+      ${miss.length ? `<h4 style="margin:16px 0 6px">To review</h4><ul class="ctrev">${[...new Set(miss)].map(T => `<li><button class="ghost" data-ctc="${esc(T.t)}"><b>${esc(ctCap(T.t))}</b></button> <span>${esc(T.m)}</span> <span class="meta">Needs: ${esc(T.n.join('; '))}.</span></li>`).join('')}</ul>` : ''}
+      <div class="row" style="margin-top:16px"><button class="pri" id="ctAgain">Another round</button>${mode !== 'weak' ? '<button id="ctWeak">Practise weak terms</button>' : ''}</div></div></div>`;
+    ctWireBack(); document.querySelectorAll('[data-ctc]').forEach(b => b.onclick = () => ctCard(b.dataset.ctc)); $('#ctAgain').onclick = () => ctRound(mode); if ($('#ctWeak')) $('#ctWeak').onclick = () => renderDrills('cterms', 'weak');
+  };
+  const show = () => {
+    clearInterval(timer); if (i >= items.length) return end(); const it = items[i];
+    $('#main').innerHTML = `<div class="ctw">${ctHead(name)}<div class="row"><span class="tag">${esc(it.kind)}</span><span class="meta">${i + 1} of ${items.length} · ${score} right</span><span class="sp" style="flex:1"></span><span class="meta ctkeys">Keys 1-4</span></div>
+      ${timed ? '<div class="ctbar" aria-hidden="true"><i id="ctT" style="width:100%"></i></div>' : '<div style="height:10px"></div>'}
+      <div class="card ctq" id="ctq">${it.q}<div class="ctopts">${it.opts.map((o, k) => `<button data-k="${k}"><span class="kbd">${k + 1}</span><span>${o.h}</span></button>`).join('')}</div><div id="ctFb"></div></div></div>`;
+    ctWireBack();
+    const pick = k => { if ($('#ctq').dataset.done) return; $('#ctq').dataset.done = 1; clearInterval(timer);
+      const ok = k >= 0 && it.opts[k].ok; if (ok) score++; else miss.push(it.T); ctRec(it.T.t, ok ? 1 : 0);
+      document.querySelectorAll('#ctq .ctopts button').forEach((b, j) => { b.disabled = true; if (it.opts[j].ok) b.classList.add('ok'); else if (j === k) b.classList.add('no'); });
+      $('#ctFb').innerHTML = `${it.after ? `<div style="margin-top:14px">${it.after}</div>` : ''}<div class="ctfb ${ok ? 'ok' : 'no'}"><b>${k < 0 ? 'Out of time.' : ok ? 'Right.' : 'Not quite.'}</b> <b>${esc(ctCap(it.T.t))}</b>: ${esc(it.T.m)} <span class="meta">Needs: ${esc(it.T.n.join('; '))}.</span></div><div class="row" style="margin-top:12px"><span class="sp" style="flex:1"></span><button class="pri" id="ctNext">${i + 1 < items.length ? 'Next →' : 'See results'}</button></div>`;
+      document.querySelectorAll('[data-ctq]').forEach(a => a.onclick = e => { e.preventDefault(); clearInterval(timer); openQ(a.dataset.ctq); });
+      $('#ctNext').onclick = () => { i++; show(); }; $('#ctNext').focus({preventScroll: true}); };
+    document.querySelectorAll('#ctq .ctopts button').forEach(b => b.onclick = () => pick(+b.dataset.k));
+    if (timed) { const t0 = Date.now(), L = 15000; timer = setInterval(() => { const bar = $('#ctT'); if (!bar) return clearInterval(timer); const r = Math.max(0, 1 - (Date.now() - t0) / L); bar.style.width = r * 100 + '%'; if (r <= 0) pick(-1); }, 200); }
+  };
+  show();
+}
+
+function ctLadder() {
+  const pool = ctPool(), set = [1, 2, 3, 4, 5].map(d => { const L = pool.filter(T => T.d === d), A = L.length ? L : CT.filter(T => T.d === d); return A[Math.random() * A.length | 0]; }), sh = ctShuf(set), ord = [];
+  const draw = done => {
+    $('#main').innerHTML = `<div class="ctw">${ctHead('Depth ladder')}<h2 class="h2">Depth ladder</h2><p class="meta" style="margin:-4px 0 12px">Tap the terms in order, from the least demanding to the most.</p>
+      <div class="card" style="padding:16px 18px"><div class="ctlad" id="ctPick">${sh.map((T, k) => `<button data-k="${k}" ${ord.includes(T) || done ? 'disabled' : ''}>${esc(ctCap(T.t))}</button>`).join('')}</div>
+      <ol class="ctrung">${[0, 1, 2, 3, 4].map(k => { const T = ord[k], ok = done && T === set[k]; return `<li class="${done ? (ok ? 'ok' : 'no') : ''}"><span class="meta">${k === 0 ? 'Least' : k === 4 ? 'Most' : ''}</span><b>${T ? esc(ctCap(T.t)) : '…'}</b>${done ? `<span class="meta">${ok ? '✓ ' : '✗ '}L${T ? T.d + ' ' + CT_LV[T.d].toLowerCase() : ''}${ok ? '' : ' · this rung is <b>' + esc(ctCap(set[k].t)) + '</b> (L' + set[k].d + ')'}</span>` : ''}</li>`; }).join('')}</ol>
+      <div class="row" style="margin-top:12px">${done ? '<span class="meta">' + set.map(T => esc(ctCap(T.t)) + ': ' + esc(T.sh.toLowerCase())).join(' → ') + '</span><span class="sp" style="flex:1"></span><button class="pri" id="ctL2">Next ladder</button>' : '<button id="ctUndo">Undo</button><span class="sp" style="flex:1"></span><button class="pri" id="ctChk" ' + (ord.length < 5 ? 'disabled' : '') + '>Check</button>'}</div></div></div>`;
+    ctWireBack();
+    if (done) { $('#ctL2').onclick = ctLadder; $('#ctL2').focus({preventScroll: true}); return; }
+    document.querySelectorAll('#ctPick [data-k]').forEach(b => b.onclick = () => { ord.push(sh[+b.dataset.k]); draw(); const nx = $('#ctPick button:not([disabled])') || $('#ctChk'); if (nx) nx.focus({preventScroll: true}); });
+    $('#ctUndo').onclick = () => { ord.pop(); draw(); };
+    $('#ctChk').onclick = () => { ord.forEach((T, k) => ctRec(T.t, T === set[k] ? 1 : 0)); draw(1); };
+  };
+  draw();
+}
+
+// Write it: the same idea asked under different terms; Claude only judges whether the answer does what the term asks
+const CT_WP = [
+  {s: 'Chemistry', n: 'Reaction rate and temperature', f: {outline: 'Outline how temperature affects the rate of a reaction.', describe: 'Describe how the rate of a reaction changes as the temperature rises.', explain: 'Explain why increasing the temperature increases the rate of a reaction.', evaluate: 'Evaluate raising the temperature, rather than adding a catalyst, as a way to speed up an industrial reaction.'}},
+  {s: 'Chemistry', n: 'Ionic bonding', f: {state: 'State the type of bonding in sodium chloride.', describe: 'Describe the structure of solid sodium chloride.', explain: 'Explain why sodium chloride has a high melting point.', distinguish: 'Distinguish between ionic and covalent bonding.'}},
+  {s: 'Chemistry', n: 'Acid rain', f: {outline: 'Outline how acid rain forms.', explain: 'Explain how acid rain damages limestone buildings.', suggest: 'Suggest why acid rain can fall far from where the pollution was produced.', evaluate: 'Evaluate two ways of reducing sulfur dioxide emissions from power stations.'}},
+  {s: 'Physics', n: 'A ball thrown upwards', f: {describe: 'Describe the motion of a ball thrown straight up until it returns to the hand.', explain: 'Explain why a ball thrown upwards has zero velocity but a non-zero acceleration at its highest point.', suggest: 'Suggest why the measured time of flight is shorter than the predicted value.', evaluate: 'Evaluate using a hand-held stopwatch to time the flight of the ball.'}},
+  {s: 'Physics', n: 'A swinging pendulum', f: {describe: 'Describe the energy changes during one swing of a pendulum.', explain: 'Explain why a pendulum eventually stops swinging.', predict: 'Predict how the period changes if the string is made four times longer.', justify: 'Justify timing ten swings rather than one when measuring the period.'}},
+  {s: 'Maths', n: 'Quadratics', f: {describe: 'Describe the transformation that maps $y = x^2$ onto $y = (x - 3)^2 + 1$.', explain: 'Explain why the equation $x^2 + 4 = 0$ has no real solutions.', justify: 'Justify whether $f(x) = x^2 - 6x + 10$ is ever negative.', interpret: 'Interpret the vertex of $h(t) = -5(t - 2)^2 + 20$, where $h$ is a ball\'s height in metres after $t$ seconds.'}},
+  {s: 'Global politics', n: 'Sovereignty', f: {outline: 'Outline what is meant by state sovereignty.', explain: 'Explain how globalisation challenges state sovereignty.', discuss: 'Discuss whether globalisation has weakened state sovereignty.', 'to what extent': 'To what extent has globalisation weakened state sovereignty?'}},
+  {s: 'Global politics', n: 'Legitimacy', f: {identify: 'Identify two sources of political legitimacy.', explain: 'Explain why a government might lose legitimacy.', evaluate: 'Evaluate elections as a source of political legitimacy.', 'compare and contrast': 'Compare and contrast legitimacy based on elections and legitimacy based on performance.'}},
+  {s: 'TOK', n: 'Trusting experts', f: {outline: 'Outline one reason we rely on experts for knowledge.', explain: 'Explain how a scientific claim can be revised over time.', discuss: 'Discuss whether personal experience is a reliable source of knowledge.', 'to what extent': 'To what extent should we trust knowledge passed on by experts?'}}];
+const CT_SYS = `You check ONE thing: whether a student's short answer does what an IB command term asks for (its shape and depth). You are not marking the facts in detail. Write in plain, friendly language for a 16-18 year old.
+Reply with JSON only, no other text: {"met": "yes" | "partly" | "no", "missing": [up to 3 short strings: what this answer still needs to meet the command term, empty if met], "model": "1-2 sentences showing the right SHAPE of a good answer to this question (a compact example, not an essay)", "fact": "one short sentence only if there is a serious factual error, else empty"}`;
+function ctWrite() {
+  const st = LS.get('ib-ct-w', {p: 0, t: ''}), P = CT_WP[st.p] || CT_WP[0], terms = Object.keys(P.f), t = P.f[st.t] ? st.t : terms[1] || terms[0], T = CTI[t], key = LSK('ib-ct-wd');
+  const promptHtml = s => mdm(s.replace(new RegExp('^(' + CT_ALT + ')', 'i'), '**$1**'), true);
+  $('#main').innerHTML = `<div class="ctw">${ctHead('Write it')}<h2 class="h2">Write it</h2><p class="meta" style="margin:-4px 0 12px">The same idea asked with different command terms. Write a short answer; Claude checks only whether it does what the term asks.</p>
+    <div class="row" style="margin-bottom:10px"><select id="ctWp" style="max-width:360px" aria-label="Topic">${CT_WP.map((x, k) => `<option value="${k}" ${x === P ? 'selected' : ''}>${esc(x.s + ' · ' + x.n)}</option>`).join('')}</select><div class="seg ctseg" role="group" aria-label="Command term">${terms.map(k => `<button data-wt="${esc(k)}" class="${k === t ? 'on' : ''}">${esc(ctCap(k))}</button>`).join('')}</div></div>
+    <div class="card ctq"><div>${promptHtml(P.f[t])}</div><div class="meta" style="margin-top:8px"><b>${esc(ctCap(t))}</b> needs: ${esc(T.n.join('; '))}.</div>
+    <details style="margin-top:8px"><summary class="meta">Same idea, other terms</summary><ul class="meta" style="margin:6px 0;padding-left:18px">${terms.filter(k => k !== t).map(k => `<li>${promptHtml(P.f[k])} <span class="tag">L${CTI[k].d}</span></li>`).join('')}</ul></details></div>
+    <textarea id="ctWa" rows="7" style="margin-top:12px" placeholder="Your answer (a few sentences is enough)" aria-label="Your answer">${esc(LS.get(key, {})[st.p + '|' + t] || '')}</textarea>
+    <div class="row" style="margin-top:8px"><span class="meta" id="ctWc"></span><span class="sp" style="flex:1"></span><button class="pri" id="ctWgo"><svg class="i"><use href="#i-spark"/></svg>Check the shape</button></div><div id="ctWr"></div></div>`;
+  ctWireBack();
+  const save = (p, tt) => LS.set('ib-ct-w', {p, t: tt}), A = $('#ctWa'), wc = () => { const n = (A.value.match(/\S+/g) || []).length; $('#ctWc').textContent = n + ' words'; };
+  $('#ctWp').onchange = e => { save(+e.target.value, t); ctWrite(); };
+  document.querySelectorAll('[data-wt]').forEach(b => b.onclick = () => { save(st.p, b.dataset.wt); ctWrite(); });
+  A.oninput = () => { const d = LS.get(key, {}); d[st.p + '|' + t] = A.value; LS.set(key, d); wc(); }; wc();
+  $('#ctWgo').onclick = async () => {
+    const ans = A.value.trim(); if ((ans.match(/\S+/g) || []).length < 5) { $('#ctWr').innerHTML = '<div class="card ctfb no" style="margin-top:12px">Write a little more first (at least 5 words).</div>'; return; }
+    $('#ctWgo').disabled = true; $('#ctWr').innerHTML = '<div class="card ctc" style="margin-top:12px"><span class="spin"></span> Checking…</div>';
+    try {
+      const r = await api('ask', {mode: 'mark', rubric: CT_SYS, pages: [], messages: [{role: 'user', content: `Command term: "${T.t}". It asks the student to: ${T.m} An answer needs: ${T.n.join('; ')}.\nSubject: ${P.s}\nQuestion: ${P.f[t]}\n\nStudent answer:\n"""\n${ans.slice(0, 3000)}\n"""`}]});
+      const j = pj(r.text), met = ['yes', 'partly', 'no'].includes(j.met) ? j.met : 'partly', miss = (Array.isArray(j.missing) ? j.missing : []).filter(Boolean).slice(0, 3);
+      ctRec(T.t, met === 'yes' ? 1 : met === 'partly' ? .5 : 0);
+      $('#ctWr').innerHTML = `<div class="card ctc" style="margin-top:12px"><div class="row"><span class="tag ${met === 'yes' ? 'g' : met === 'partly' ? 'w' : 'r'}" style="font-size:13px">${met === 'yes' ? 'Meets' : met === 'partly' ? 'Partly meets' : 'Does not meet'} "${esc(T.t)}"</span></div>
+        ${miss.length ? `<div class="meta" style="margin-top:10px;font-weight:600;color:var(--ink2)">Still needed for this term</div><ul>${miss.map(x => '<li>' + mdm(String(x), true) + '</li>').join('')}</ul>` : ''}
+        ${j.model ? `<div class="meta" style="margin-top:8px;font-weight:600;color:var(--ink2)">The right shape</div><div>${mdm(String(j.model), true)}</div>` : ''}${j.fact ? `<div class="meta" style="margin-top:8px;color:var(--warn)">${mdm(String(j.fact), true)}</div>` : ''}
+        <div class="row" style="margin-top:12px"><button id="ctWn">Try another term</button></div></div>`;
+      $('#ctWn').onclick = () => { const k = terms[(terms.indexOf(t) + 1) % terms.length]; save(st.p, k); ctWrite(); };
+    } catch (e) { $('#ctWr').innerHTML = `<div class="card ctfb no" style="margin-top:12px">Couldn't check it: ${esc(e.message)}</div>`; }
+    if ($('#ctWgo')) $('#ctWgo').disabled = false;
+  };
+}
+DRILLS.push({id: 'cterms', title: 'Command terms', desc: 'What explain, evaluate, discuss and 40+ other terms ask for: learn, match, rank and spot them.', icon: 'cap', open: ctOpen});
 // ==== END FEATURE: command-term trainer ====
 
 
