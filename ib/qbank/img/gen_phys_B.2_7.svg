@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="370" viewBox="0 0 640 370" font-family="Arial, sans-serif" font-size="15">
+<defs><marker id="ah" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#111"/></marker></defs>
+<rect x="0" y="0" width="640" height="370" fill="white"/>
+<text x="40" y="30" text-anchor="start" font-size="15" fill="#111">space</text>
+<rect x="20" y="130" width="600" height="50" fill="#e8e8e8" stroke="#111" stroke-width="1.5"/>
+<text x="30" y="160" font-size="15" fill="#111">atmosphere, temperature T<tspan baseline-shift="sub" font-size="11">a</tspan></text>
+<rect x="20" y="320" width="600" height="34" fill="#c8c8c8" stroke="#111" stroke-width="1.5"/>
+<text x="30" y="343" font-size="15" fill="#111">surface, temperature T<tspan baseline-shift="sub" font-size="11">s</tspan></text>
+<line x1="300" y1="50" x2="300" y2="316" stroke="#111" stroke-width="2.5" marker-end="url(#ah)"/>
+<text x="308" y="70" text-anchor="start" font-size="15" fill="#111">solar: 340 W m⁻²</text>
+<text x="308" y="90" text-anchor="start" font-size="14" fill="#111">(30 % reflected)</text>
+<line x1="420" y1="320" x2="420" y2="186" stroke="#111" stroke-width="2.5" marker-end="url(#ah)"/>
+<text x="428" y="260" font-size="15" fill="#111">σT<tspan baseline-shift="sub" font-size="11">s</tspan><tspan baseline-shift="super" font-size="11">4</tspan></text>
+<line x1="520" y1="130" x2="520" y2="44" stroke="#111" stroke-width="2.5" marker-end="url(#ah)"/>
+<text x="528" y="80" font-size="15" fill="#111">I<tspan baseline-shift="sub" font-size="11">a</tspan></text>
+<line x1="560" y1="180" x2="560" y2="316" stroke="#111" stroke-width="2.5" marker-end="url(#ah)"/>
+<text x="568" y="260" font-size="15" fill="#111">I<tspan baseline-shift="sub" font-size="11">a</tspan></text>
+</svg>

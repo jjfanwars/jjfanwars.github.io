@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="560" height="240" viewBox="0 0 560 240" font-family="Arial, sans-serif" font-size="16">
+<rect x="0" y="0" width="560" height="240" fill="white"/>
+<defs><marker id="ar" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#222"/></marker></defs>
+
+<rect x="30" y="50" width="140" height="140" fill="#e6e6e6" stroke="#222" stroke-width="2"/>
+<text x="100" y="130" text-anchor="middle" font-size="36" font-weight="bold">N</text>
+<rect x="390" y="50" width="140" height="140" fill="#e6e6e6" stroke="#222" stroke-width="2"/>
+<text x="460" y="130" text-anchor="middle" font-size="36" font-weight="bold">S</text>
+<circle cx="280" cy="120" r="18" fill="white" stroke="#222" stroke-width="2"/>
+<line x1="267" y1="107" x2="293" y2="133" stroke="#222" stroke-width="2"/><line x1="293" y1="107" x2="267" y2="133" stroke="#222" stroke-width="2"/>
+<text x="280" y="170" text-anchor="middle" font-size="15">wire (current into page)</text>
+<text x="280" y="30" text-anchor="middle" font-size="15">top of page</text>
+<text x="280" y="225" text-anchor="middle" font-size="15">bottom of page</text>
+</svg>

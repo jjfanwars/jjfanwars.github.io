@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="620" height="380" viewBox="0 0 620 380" font-family="Arial, sans-serif" font-size="16">
+<defs><marker id="ah" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#111"/></marker></defs>
+<rect x="0" y="0" width="620" height="380" fill="white"/>
+<rect x="52" y="205" width="186" height="123" fill="#dbe9f6"/>
+<path d="M50,170 L50,330 L240,330 L240,170" fill="none" stroke="#111" stroke-width="2.5"/>
+<rect x="382" y="205" width="186" height="123" fill="#dbe9f6"/>
+<path d="M380,170 L380,330 L570,330 L570,170" fill="none" stroke="#111" stroke-width="2.5"/>
+<rect x="130" y="110" width="22" height="190" fill="#9a9a9a" stroke="#111" stroke-width="1.5"/>
+<rect x="468" y="110" width="22" height="190" fill="#c98a4b" stroke="#111" stroke-width="1.5"/>
+<path d="M141,110 L141,60 L288,60" fill="none" stroke="#111" stroke-width="2"/>
+<path d="M332,60 L479,60 L479,110" fill="none" stroke="#111" stroke-width="2"/>
+<circle cx="310" cy="60" r="22" fill="white" stroke="#111" stroke-width="2"/>
+<text x="310" y="67" text-anchor="middle" font-size="20" font-weight="bold" fill="#111">V</text>
+<path d="M205,270 L205,150 L415,150 L415,270" fill="none" stroke="#111" stroke-width="18"/>
+<path d="M205,270 L205,150 L415,150 L415,270" fill="none" stroke="#f3eecf" stroke-width="13"/>
+<text x="310" y="135" text-anchor="middle" font-size="16" font-weight="normal" fill="#111">salt bridge: KNO₃(aq)</text>
+<text x="118" y="100" text-anchor="end" font-size="16" font-weight="normal" fill="#111">metal M</text>
+<text x="500" y="100" text-anchor="start" font-size="16" font-weight="normal" fill="#111">copper</text>
+<text x="145" y="355" text-anchor="middle" font-size="16" font-weight="normal" fill="#111">M²⁺(aq), 1.00 mol dm⁻³</text>
+<text x="475" y="355" text-anchor="middle" font-size="16" font-weight="normal" fill="#111">Cu²⁺(aq), 1.00 mol dm⁻³</text>
+</svg>

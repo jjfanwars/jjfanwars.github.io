@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="560" height="305" viewBox="0 0 560 305" font-family="Arial, sans-serif" font-size="15">
+<defs><marker id="ah" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#111"/></marker></defs>
+<rect x="0" y="0" width="560" height="305" fill="white"/>
+<rect x="150" y="50" width="50" height="190" fill="#d9e6ee" stroke="#111" stroke-width="2"/>
+<rect x="200" y="50" width="130" height="190" fill="white" stroke="#111" stroke-width="2"/>
+<rect x="330" y="50" width="50" height="190" fill="#d9e6ee" stroke="#111" stroke-width="2"/>
+<text x="175" y="40" text-anchor="middle" font-size="15" fill="#111">glass</text>
+<text x="265" y="40" text-anchor="middle" font-size="15" fill="#111">still air</text>
+<text x="355" y="40" text-anchor="middle" font-size="15" fill="#111">glass</text>
+<text x="175" y="264" text-anchor="middle" font-size="15" fill="#111">4.0 mm</text>
+<text x="265" y="264" text-anchor="middle" font-size="15" fill="#111">12 mm</text>
+<text x="355" y="264" text-anchor="middle" font-size="15" fill="#111">4.0 mm</text>
+<text x="70" y="130" text-anchor="middle" font-size="15" fill="#111">inside</text>
+<text x="70" y="152" text-anchor="middle" font-size="15" fill="#111">18.0 °C</text>
+<line x1="70" y1="165" x2="146" y2="190" stroke="#111" stroke-width="1.5" marker-end="url(#ah)"/>
+<text x="470" y="130" text-anchor="middle" font-size="15" fill="#111">outside</text>
+<text x="470" y="152" text-anchor="middle" font-size="15" fill="#111">4.0 °C</text>
+<line x1="470" y1="165" x2="384" y2="190" stroke="#111" stroke-width="1.5" marker-end="url(#ah)"/>
+<text x="265" y="292" text-anchor="middle" font-size="14" fill="#111">area of unit = 1.5 m²   (not to scale)</text>
+</svg>

@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="300" viewBox="0 0 640 300" font-family="Arial, sans-serif" font-size="20">
+<defs><marker id="ah" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#111"/></marker></defs>
+<rect x="0" y="0" width="640" height="300" fill="white"/>
+<text x="78" y="107" text-anchor="end" font-size="20" font-weight="normal" fill="#111">H₂C</text>
+<line x1="84" y1="95" x2="124" y2="95" stroke="#111" stroke-width="2"/>
+<line x1="84" y1="105" x2="124" y2="105" stroke="#111" stroke-width="2"/>
+<text x="128" y="107" text-anchor="start" font-size="20" font-weight="normal" fill="#111">CH₂</text>
+<text x="236" y="107" text-anchor="middle" font-size="20" font-weight="normal" fill="#111">H</text>
+<line x1="248" y1="100" x2="284" y2="100" stroke="#111" stroke-width="2"/>
+<text x="302" y="107" text-anchor="middle" font-size="20" font-weight="normal" fill="#111">Br</text>
+<text x="236" y="78" text-anchor="middle" font-size="16" font-weight="normal" fill="#111">δ+</text>
+<text x="302" y="78" text-anchor="middle" font-size="16" font-weight="normal" fill="#111">δ−</text>
+<path d="M104,90 Q165,25 230,86" fill="none" stroke="#111" stroke-width="2" marker-end="url(#ah)"/>
+<path d="M266,104 Q272,150 300,116" fill="none" stroke="#111" stroke-width="2" marker-end="url(#ah)"/>
+<line x1="340" y1="100" x2="388" y2="100" stroke="#111" stroke-width="2" marker-end="url(#ah)"/>
+<text x="400" y="107" text-anchor="start" font-size="20" font-weight="normal" fill="#111">H₃C</text>
+<line x1="442" y1="100" x2="466" y2="100" stroke="#111" stroke-width="2"/>
+<text x="470" y="107" text-anchor="start" font-size="20" font-weight="normal" fill="#111">CH₂</text>
+<text x="512" y="94" text-anchor="start" font-size="18" font-weight="normal" fill="#111">+</text>
+<text x="470" y="192" text-anchor="start" font-size="20" font-weight="normal" fill="#111">Br</text>
+<text x="495" y="180" text-anchor="start" font-size="18" font-weight="normal" fill="#111">−</text>
+<circle cx="462" cy="179" r="2.6" fill="#111"/>
+<circle cx="462" cy="187" r="2.6" fill="#111"/>
+<path d="M458,180 Q430,140 476,114" fill="none" stroke="#111" stroke-width="2" marker-end="url(#ah)"/>
+<line x1="300" y1="255" x2="348" y2="255" stroke="#111" stroke-width="2" marker-end="url(#ah)"/>
+<text x="360" y="262" text-anchor="start" font-size="20" font-weight="normal" fill="#111">H₃C–CH₂Br</text>
+<text x="150" y="262" text-anchor="middle" font-size="17" font-weight="normal" fill="#111">carbocation + Br⁻</text>
+</svg>

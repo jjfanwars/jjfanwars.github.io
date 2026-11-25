@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="370" viewBox="0 0 600 370" font-family="Arial, sans-serif" font-size="16">
+<defs><marker id="ah" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#111"/></marker></defs>
+<rect x="0" y="0" width="600" height="370" fill="white"/>
+<rect x="152" y="190" width="296" height="138" fill="#dbe9f6"/>
+<path d="M150,160 L150,330 L450,330 L450,160" fill="none" stroke="#111" stroke-width="2.5"/>
+<rect x="215" y="115" width="22" height="190" fill="#c98a4b" stroke="#111" stroke-width="1.5"/>
+<rect x="363" y="115" width="22" height="190" fill="#c98a4b" stroke="#111" stroke-width="1.5"/>
+<path d="M226,115 L226,60 L292,60" fill="none" stroke="#111" stroke-width="2"/>
+<line x1="292" y1="40" x2="292" y2="80" stroke="#111" stroke-width="3"/>
+<line x1="304" y1="50" x2="304" y2="70" stroke="#111" stroke-width="6"/>
+<path d="M304,60 L342,60" fill="none" stroke="#111" stroke-width="2"/>
+<circle cx="362" cy="60" r="20" fill="white" stroke="#111" stroke-width="2"/>
+<text x="362" y="67" text-anchor="middle" font-size="20" font-weight="bold" fill="#111">A</text>
+<path d="M382,60 L374,60 L374,115" fill="none" stroke="#111" stroke-width="2"/>
+<text x="284" y="36" text-anchor="middle" font-size="20" font-weight="normal" fill="#111">+</text>
+<text x="314" y="36" text-anchor="middle" font-size="20" font-weight="normal" fill="#111">−</text>
+<text x="298" y="102" text-anchor="middle" font-size="15" font-weight="normal" fill="#111">DC supply</text>
+<text x="205" y="110" text-anchor="end" font-size="16" font-weight="normal" fill="#111">copper anode</text>
+<text x="395" y="110" text-anchor="start" font-size="16" font-weight="normal" fill="#111">copper cathode</text>
+<text x="300" y="285" text-anchor="middle" font-size="16" font-weight="normal" fill="#111">CuSO₄(aq)</text>
+<text x="300" y="355" text-anchor="middle" font-size="15" font-weight="normal" fill="#111">0.50 A constant current; electrodes weighed every 6 min</text>
+</svg>

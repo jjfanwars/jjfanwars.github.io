@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="560" height="380" viewBox="0 0 560 380" font-family="Arial, sans-serif" font-size="15">
+<rect x="0" y="0" width="560" height="380" fill="white"/>
+<line x1="150" y1="40" x2="430" y2="40" stroke="#111" stroke-width="2.5"/>
+<text x="140" y="45" text-anchor="end">n = ∞</text>
+<text x="440" y="45">0</text>
+<line x1="150" y1="95" x2="430" y2="95" stroke="#111" stroke-width="2.5"/>
+<text x="140" y="100" text-anchor="end">n = 4</text>
+<text x="440" y="100">−0.85 eV</text>
+<line x1="150" y1="150" x2="430" y2="150" stroke="#111" stroke-width="2.5"/>
+<text x="140" y="155" text-anchor="end">n = 3</text>
+<text x="440" y="155">−1.51 eV</text>
+<line x1="150" y1="215" x2="430" y2="215" stroke="#111" stroke-width="2.5"/>
+<text x="140" y="220" text-anchor="end">n = 2</text>
+<text x="440" y="220">−3.40 eV</text>
+<line x1="150" y1="330" x2="430" y2="330" stroke="#111" stroke-width="2.5"/>
+<text x="140" y="335" text-anchor="end">n = 1</text>
+<text x="440" y="335">−13.6 eV</text>
+<text x="290" y="365" text-anchor="middle" font-size="14">(not to scale)</text>
+<line x1="60" y1="330" x2="60" y2="50" stroke="#111" stroke-width="1.5"/><polygon points="60,40 55,54 65,54" fill="#111"/>
+<text x="50" y="190" text-anchor="middle" transform="rotate(-90 50 190)">energy</text>
+
+</svg>

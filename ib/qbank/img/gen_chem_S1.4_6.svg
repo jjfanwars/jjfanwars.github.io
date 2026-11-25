@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="350" viewBox="0 0 640 350" font-family="Arial, sans-serif" font-size="15">
+<rect x="0" y="0" width="640" height="350" fill="white"/>
+<g transform="translate(110,0)"><polygon points="200,120 300,120 285,200 215,200" fill="#e8e8e8" stroke="#222" stroke-width="2"/>
+<rect x="192" y="110" width="116" height="8" fill="#d0d0d0" stroke="#222" stroke-width="2"/>
+<rect x="245" y="100" width="10" height="10" fill="#d0d0d0" stroke="#222" stroke-width="1.5"/>
+<ellipse cx="250" cy="190" rx="24" ry="5" fill="#888"/>
+<line x1="150" y1="175" x2="350" y2="175" stroke="#222" stroke-width="3"/>
+<line x1="160" y1="175" x2="120" y2="330" stroke="#222" stroke-width="4"/>
+<line x1="340" y1="175" x2="380" y2="330" stroke="#222" stroke-width="4"/>
+<line x1="250" y1="175" x2="250" y2="185" stroke="#222" stroke-width="2"/>
+<rect x="238" y="250" width="24" height="70" fill="#bbb" stroke="#222" stroke-width="2"/>
+<rect x="210" y="320" width="80" height="12" fill="#999" stroke="#222" stroke-width="2"/>
+<path d="M250 210 C232 228 236 248 250 250 C264 248 268 228 250 210 Z" fill="#fff" stroke="#222" stroke-width="1.5"/>
+<line x1="80" y1="332" x2="420" y2="332" stroke="#222" stroke-width="2"/>
+<line x1="305" y1="112" x2="400" y2="80" stroke="#555" stroke-width="1"/>
+<text x="405" y="85" text-anchor="start">lid</text>
+<line x1="290" y1="150" x2="400" y2="130" stroke="#555" stroke-width="1"/>
+<text x="405" y="135" text-anchor="start">crucible</text>
+<line x1="240" y1="190" x2="90" y2="120" stroke="#555" stroke-width="1"/>
+<text x="85" y="125" text-anchor="end">magnesium ribbon</text>
+<line x1="180" y1="175" x2="90" y2="175" stroke="#555" stroke-width="1"/>
+<text x="85" y="180" text-anchor="end">pipe-clay triangle</text>
+<line x1="365" y1="270" x2="420" y2="250" stroke="#555" stroke-width="1"/>
+<text x="425" y="255" text-anchor="start">tripod</text>
+<line x1="262" y1="290" x2="420" y2="300" stroke="#555" stroke-width="1"/>
+<text x="425" y="305" text-anchor="start">Bunsen burner</text></g>
+</svg>

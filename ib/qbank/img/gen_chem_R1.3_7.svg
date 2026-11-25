@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="380" viewBox="0 0 600 380" font-family="Arial, sans-serif" font-size="16">
+<rect x="0" y="0" width="600" height="380" fill="#ffffff"/>
+<defs><marker id="ah" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#111"/></marker></defs>
+<rect x="150" y="110" width="300" height="200" fill="none" stroke="#111" stroke-width="2"/>
+<rect x="200" y="110" width="28" height="200" fill="#d9d9d9" stroke="#111" stroke-width="2"/>
+<rect x="372" y="110" width="28" height="200" fill="#d9d9d9" stroke="#111" stroke-width="2"/>
+<rect x="228" y="110" width="144" height="200" fill="#f2f2f2" stroke="#111" stroke-width="1.5"/>
+<text x="187" y="335" fill="#111">electrode X</text>
+<text x="352" y="335" fill="#111">electrode Y</text>
+<text x="215" y="362" fill="#111" font-size="15">proton exchange membrane</text>
+<line x1="214" y1="110" x2="214" y2="50" stroke="#111" stroke-width="2"/>
+<line x1="386" y1="110" x2="386" y2="50" stroke="#111" stroke-width="2"/>
+<line x1="214" y1="50" x2="275" y2="50" stroke="#111" stroke-width="2"/>
+<line x1="325" y1="50" x2="386" y2="50" stroke="#111" stroke-width="2"/>
+<circle cx="300" cy="50" r="25" fill="#ffffff" stroke="#111" stroke-width="2"/>
+<text x="281" y="56" fill="#111">load</text>
+<line x1="20" y1="160" x2="148" y2="160" stroke="#111" stroke-width="2" marker-end="url(#ah)"/>
+<text x="20" y="150" fill="#111">H₂(g) in</text>
+<line x1="148" y1="270" x2="20" y2="270" stroke="#111" stroke-width="2" marker-end="url(#ah)"/>
+<text x="20" y="260" fill="#111">unused H₂(g)</text>
+<line x1="580" y1="160" x2="452" y2="160" stroke="#111" stroke-width="2" marker-end="url(#ah)"/>
+<text x="490" y="150" fill="#111">O₂(g) in</text>
+<line x1="452" y1="270" x2="580" y2="270" stroke="#111" stroke-width="2" marker-end="url(#ah)"/>
+<text x="470" y="260" fill="#111">H₂O out</text>
+<line x1="245" y1="210" x2="355" y2="210" stroke="#111" stroke-width="2" marker-end="url(#ah)"/>
+<text x="290" y="200" fill="#111">H⁺</text>
+</svg>

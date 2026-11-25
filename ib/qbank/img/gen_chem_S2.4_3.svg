@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="560" height="220" viewBox="0 0 560 220">
+<rect x="0" y="0" width="560" height="220" fill="white"/>
+<line x1="40" y1="110" x2="78" y2="110" stroke="#222" stroke-width="2"/>
+<line x1="502" y1="110" x2="540" y2="110" stroke="#222" stroke-width="2"/>
+<text x="90" y="116" font-family="Arial, sans-serif" font-size="18" text-anchor="middle">C</text>
+<line x1="102" y1="110" x2="158" y2="110" stroke="#222" stroke-width="2"/>
+<line x1="90" y1="92" x2="90" y2="58" stroke="#222" stroke-width="2"/>
+<text x="90" y="50" font-family="Arial, sans-serif" font-size="18" text-anchor="middle">H</text>
+<line x1="90" y1="122" x2="90" y2="156" stroke="#222" stroke-width="2"/>
+<text x="90" y="180" font-family="Arial, sans-serif" font-size="18" text-anchor="middle">CH<tspan font-size="13" dy="5">3</tspan></text>
+<text x="170" y="116" font-family="Arial, sans-serif" font-size="18" text-anchor="middle">C</text>
+<line x1="182" y1="110" x2="238" y2="110" stroke="#222" stroke-width="2"/>
+<line x1="170" y1="92" x2="170" y2="58" stroke="#222" stroke-width="2"/>
+<text x="170" y="50" font-family="Arial, sans-serif" font-size="18" text-anchor="middle">H</text>
+<line x1="170" y1="122" x2="170" y2="156" stroke="#222" stroke-width="2"/>
+<text x="170" y="180" font-family="Arial, sans-serif" font-size="18" text-anchor="middle">CH<tspan font-size="13" dy="5">3</tspan></text>
+<text x="250" y="116" font-family="Arial, sans-serif" font-size="18" text-anchor="middle">C</text>
+<line x1="262" y1="110" x2="318" y2="110" stroke="#222" stroke-width="2"/>
+<line x1="250" y1="92" x2="250" y2="58" stroke="#222" stroke-width="2"/>
+<text x="250" y="50" font-family="Arial, sans-serif" font-size="18" text-anchor="middle">H</text>
+<line x1="250" y1="122" x2="250" y2="156" stroke="#222" stroke-width="2"/>
+<text x="250" y="180" font-family="Arial, sans-serif" font-size="18" text-anchor="middle">CH<tspan font-size="13" dy="5">3</tspan></text>
+<text x="330" y="116" font-family="Arial, sans-serif" font-size="18" text-anchor="middle">C</text>
+<line x1="342" y1="110" x2="398" y2="110" stroke="#222" stroke-width="2"/>
+<line x1="330" y1="92" x2="330" y2="58" stroke="#222" stroke-width="2"/>
+<text x="330" y="50" font-family="Arial, sans-serif" font-size="18" text-anchor="middle">H</text>
+<line x1="330" y1="122" x2="330" y2="156" stroke="#222" stroke-width="2"/>
+<text x="330" y="180" font-family="Arial, sans-serif" font-size="18" text-anchor="middle">CH<tspan font-size="13" dy="5">3</tspan></text>
+<text x="410" y="116" font-family="Arial, sans-serif" font-size="18" text-anchor="middle">C</text>
+<line x1="422" y1="110" x2="478" y2="110" stroke="#222" stroke-width="2"/>
+<line x1="410" y1="92" x2="410" y2="58" stroke="#222" stroke-width="2"/>
+<text x="410" y="50" font-family="Arial, sans-serif" font-size="18" text-anchor="middle">H</text>
+<line x1="410" y1="122" x2="410" y2="156" stroke="#222" stroke-width="2"/>
+<text x="410" y="180" font-family="Arial, sans-serif" font-size="18" text-anchor="middle">CH<tspan font-size="13" dy="5">3</tspan></text>
+<text x="490" y="116" font-family="Arial, sans-serif" font-size="18" text-anchor="middle">C</text>
+<line x1="490" y1="92" x2="490" y2="58" stroke="#222" stroke-width="2"/>
+<text x="490" y="50" font-family="Arial, sans-serif" font-size="18" text-anchor="middle">H</text>
+<line x1="490" y1="122" x2="490" y2="156" stroke="#222" stroke-width="2"/>
+<text x="490" y="180" font-family="Arial, sans-serif" font-size="18" text-anchor="middle">CH<tspan font-size="13" dy="5">3</tspan></text>
+</svg>

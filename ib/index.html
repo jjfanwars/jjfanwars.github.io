@@ -772,8 +772,8 @@ const MARK_FMT = `\n\nReply with ONLY a JSON object, no code fence: {"score": in
 const front = q => /^[ivxlc]+$/i.test(q.bp || '');
 const preview = t => { const cut = t.split(/\n\s*\n|\n\s*\||\n\s*(?:- )?\**[A-D]\.\s/)[0]; if (cut.length <= 240) return cut + (cut.length < t.length ? ' …' : ''); let c = cut.slice(0, 240); if ((c.match(/\$/g) || []).length % 2) c = c.slice(0, c.lastIndexOf('$')); return c.replace(/\s+\S*$/, '') + '…'; };
 const DIFFN = {1: 'Easy', 2: 'Medium', 3: 'Hard'};
-const qTags = q => (q.diff ? `<span class="tag d${q.diff}">${DIFFN[q.diff]}</span>` : '') + (q.paper ? `<span class="tag">Paper ${esc(q.paper)}</span>` : '') + (q.lvl === 'HL' ? '<span class="tag">HL</span>' : '') + (q.src === 'bank' ? '<span class="tag">Bank</span>' : '');
-const optLines = t => String(t || '').replace(/\n[ \t]*(?=[A-E]\. )/g, '\n\n'); // multiple-choice options on their own lines
+const qTags = q => (q.diff ? `<span class="tag d${q.diff}">${DIFFN[q.diff]}</span>` : '') + (q.paper ? `<span class="tag">Paper ${esc(q.paper)}</span>` : '') + (q.lvl === 'HL' ? '<span class="tag">HL</span>' : '') + (q.src === 'gen' ? '<span class="tag" title="Written for this site in IB exam style">IB-style</span>' : '');
+const optLines = t => String(t || '').replace(/\n[ \t]*(?=(?:[A-E]|I{1,3}|IV|V)\. |\((?:[a-h]|i{1,3}|iv|v|vi)\) |\*\*\((?:[a-h]|i{1,3}|iv|v)\)\*\* )/g, '\n\n'); // multiple-choice options on their own lines
 const qMax = q => q.marks || (q.kind === 'essay' ? 15 : q.kind === 'mcq' ? 1 : 10);
 const attOf = id => S.prog.att[id] || [];
 const best = id => attOf(id).reduce((m, a) => a.max ? Math.max(m, a.score / a.max) : m, -1);
@@ -796,7 +796,7 @@ function renderPrac(filter) {
   }
   const topics = [...new Set(qs.map(q => q.topic).filter(Boolean))].sort((a, b) => a.localeCompare(b, undefined, {numeric: true}));
   const has = k => qs.some(q => q[k]), papers = [...new Set(qs.map(q => q.paper).filter(Boolean))].sort();
-  const list = qs.filter(q => (!F.kind || q.kind === F.kind) && (!F.topic || (q.topic || '').startsWith(F.topic)) && (!F.tp || inTopic(q.topic, F.tp)) && (!F.diff || q.diff === +F.diff) && (!F.paper || q.paper === F.paper) && (!F.lvl || (F.lvl === 'SL' ? q.lvl !== 'HL' : q.lvl === 'HL')) && (!F.src || (F.src === 'bank') === (q.src === 'bank')) &&
+  const list = qs.filter(q => (!F.kind || q.kind === F.kind) && (!F.topic || (q.topic || '').startsWith(F.topic)) && (!F.tp || inTopic(q.topic, F.tp)) && (!F.diff || q.diff === +F.diff) && (!F.paper || q.paper === F.paper) && (!F.lvl || (F.lvl === 'SL' ? q.lvl !== 'HL' : q.lvl === 'HL')) && (!F.src || (F.src === 'book' ? !q.src : q.src === F.src)) &&
     (!F.st || (F.st === 'new' ? !attOf(q.id).length : F.st === 'weak' ? (best(q.id) >= 0 && best(q.id) < .6) : best(q.id) >= .6)));
   $('#main').innerHTML = `<div class="prac" style="max-width:1100px">
     <div class="row" style="justify-content:space-between"><div class="row"><h2 style="margin:0">Practice</h2>${bookBar(B.id)}</div><div class="row"><button id="mix">Mixed set</button><button id="fyP"><svg class="i"><use href="#i-spark"/></svg>For you</button><button class="pri" id="rnd">Random question</button></div></div>
@@ -807,7 +807,7 @@ function renderPrac(filter) {
     ${has('diff') ? `<select id="fd"><option value="">Any difficulty</option>${[1, 2, 3].map(d => `<option value="${d}" ${+F.diff === d ? 'selected' : ''}>${DIFFN[d]}</option>`).join('')}</select>` : ''}
     ${papers.length ? `<select id="fpp"><option value="">Any paper</option>${papers.map(x => `<option value="${x}" ${F.paper === x ? 'selected' : ''}>Paper ${x}</option>`).join('')}</select>` : ''}
     ${has('lvl') ? `<select id="flv"><option value="">SL + HL</option><option value="SL" ${F.lvl === 'SL' ? 'selected' : ''}>SL only</option><option value="HL" ${F.lvl === 'HL' ? 'selected' : ''}>HL only</option></select>` : ''}
-    ${has('src') ? `<select id="fsr"><option value="">All sources</option><option value="bank" ${F.src === 'bank' ? 'selected' : ''}>Question bank</option><option value="book" ${F.src === 'book' ? 'selected' : ''}>Textbook</option></select>` : ''}<span class="meta fcount">${list.length} question${list.length === 1 ? '' : 's'}</span></div>
+    ${has('src') ? `<select id="fsr"><option value="">All sources</option><option value="gen" ${F.src === 'gen' ? 'selected' : ''}>IB-style practice</option><option value="book" ${F.src === 'book' ? 'selected' : ''}>Textbook</option></select>` : ''}<span class="meta fcount">${list.length} question${list.length === 1 ? '' : 's'}</span></div>
     <div class="grid">${list.map(q => { const bs = best(q.id); return `<div class="card qc" data-id="${q.id}"><div>${'<span class="tag">' + (KIND[q.kind] || q.kind) + '</span>'}${qTags(q)}${q.marks ? '<span class="tag">' + q.marks + (q.marks === 1 ? ' mark' : ' marks') + '</span>' : ''}${bs >= 0 ? `<span class="tag ${bs < .6 ? 'w' : 'g'}">best ${Math.round(bs * 100)}%</span>` : ''}</div><div class="qt">${(MATH = !!B.math, mdx(preview(q.text), true))}</div><div class="meta">${esc(q.topic ? topicName(B, q.topic) : '')}${q.bp ? ' · p. ' + q.bp : ''}</div></div>`; }).join('') || '<p>No questions match.</p>'}</div></div>`;
   for (const [i, k] of [['fd', 'diff'], ['fpp', 'paper'], ['flv', 'lvl'], ['fsr', 'src']]) if ($('#' + i)) $('#' + i).onchange = e => { F[k] = e.target.value; renderPrac(F); };
   $('#fk').onchange = e => { F.kind = e.target.value; renderPrac(F); }; $('#ft').onchange = e => { F.topic = e.target.value; renderPrac(F); }; $('#fs').onchange = e => { F.st = e.target.value; renderPrac(F); };
@@ -821,7 +821,7 @@ function openQ(id) {
     <div class="card qbig"><div style="font-family:var(--f-ui);margin-bottom:10px"><span class="tag">${KIND[q.kind] || q.kind}</span>${qTags(q)}${q.marks ? '<span class="tag">' + q.marks + (q.marks === 1 ? ' mark' : ' marks') + '</span>' : ''}${q.calc === 'no' ? '<span class="tag w">No calculator</span>' : q.calc === 'yes' ? '<span class="tag">Calculator</span>' : ''}<span class="meta">${esc(q.set ? q.set + ' · ' : '')}${esc(q.topic ? topicName(B, q.topic) : '')}</span></div>${ctxBox(q.ctx)}${mdx(optLines(q.text))}${ctxLine(q.ctx)}</div>
     <div style="margin-top:14px"><textarea id="ans" rows="${q.kind === 'essay' ? 18 : 8}" placeholder="Answer">${esc(draft)}</textarea>
     <div class="row" style="margin-top:8px"><span class="meta" id="wc"></span><span class="meta" id="tm"></span><span style="flex:1"></span><button id="hint">Hint</button><button class="pri" id="mark">Mark with Claude</button></div></div>
-    <div id="fbx"></div>${q.ms ? `<details class="card" style="padding:12px 16px;margin-top:14px"><summary><b>Official answer</b> <span class="meta">(try it first)</span></summary><div style="margin-top:8px">${mdx(q.ms)}</div></details>` : ''}
+    <div id="fbx"></div>${q.ms ? `<details class="card" style="padding:12px 16px;margin-top:14px"><summary><b>${q.src === 'gen' ? 'Markscheme' : 'Official answer'}</b> <span class="meta">(try it first)</span></summary><div style="margin-top:8px">${mdx(optLines(q.ms))}</div></details>` : ''}
     ${prev.length ? `<h3 style="margin-top:28px">Past attempts</h3>${prev.slice().reverse().map((a, i) => `<details class="card" style="padding:10px 14px;margin-bottom:8px"><summary><b>${a.score}/${a.max}</b> <span class="meta">${new Date(a.t).toLocaleString()}</span></summary><div class="fb" style="padding:6px 0 0">${fbHtml(a.fb)}<h4>Your answer</h4><div class="meta" style="white-space:pre-wrap">${esc(a.ans)}</div></div></details>`).join('')}` : ''}</div>`;
   const ta = $('#ans'), t0 = Date.now();
   const wc = () => { const n = (ta.value.match(/\S+/g) || []).length; $('#wc').textContent = n + ' words'; LS.set(LSK('ib-d-' + id), ta.value); }; ta.oninput = wc; wc();
@@ -1231,7 +1231,7 @@ function mistakes(book) {
 const DEF_BOUNDS = [[7, 70], [6, 58], [5, 47], [4, 36], [3, 25], [2, 14], [1, 0]];
 // a question's shared setup (scenario, data, diagram) is a full box above it; short notes stay a grey line under it
 const bigCtx = c => !!c && (c.length > 90 || /\n|\$|!\[/.test(c));
-const ctxBox = (c, same) => !bigCtx(c) ? '' : same ? `<div class="qctx"><div class="meta">Same setup as question ${esc(same)}</div></div>` : `<div class="qctx"><div class="meta">Setup</div>${mdx(c)}</div>`;
+const ctxBox = (c, same) => !bigCtx(c) ? '' : same ? `<div class="qctx"><div class="meta">Same setup as question ${esc(same)}</div></div>` : `<div class="qctx"><div class="meta">Setup</div>${mdx(optLines(c))}</div>`;
 const ctxLine = c => c && !bigCtx(c) ? `<div class="meta" style="font-family:var(--f-ui);margin-top:10px">${esc(c)}</div>` : '';
 const ppQ = (P, q) => q.qid ? {...(S.qs.find(x => x.id === q.qid) || {}), id: q.qid, kind: q.kind, marks: q.marks} : ({id: 'pp:' + P.id + ':' + q.n, book: P.book, kind: q.kind || (q.opts || q.ans ? 'mcq' : 'structured'), marks: q.marks, text: q.text, ms: q.ms, ans: q.ans, topic: q.topic, ctx: q.ctx, pp: P.id, ppn: q.n, bp: '', pages: []});
 async function loadPapers() { if (S.papers) return S.papers; try { S.papers = await api('papers'); if (!Array.isArray(S.papers)) S.papers = []; } catch (e) { S.papers = []; }
@@ -1296,14 +1296,14 @@ const mkOf = q => q.marks || (q.kind === 'mcq' ? 1 : q.kind === 'essay' ? 15 : 4
 const EXAMOK = q => !front(q) && !q.pp && q.text && !['activity', 'discuss'].includes(q.kind) && mkOf(q) <= 25;
 function mockPool(B, o) {
   return S.qs.filter(q => q.book === B.id && EXAMOK(q) && (!o.diff || q.diff === +o.diff) && (!o.paper || q.paper === o.paper) && (o.lvl !== 'SL' || q.lvl !== 'HL')
-    && (!o.tps || !o.tps.length || o.tps.some(t => inTopic(q.topic, t))) && (!o.bank || q.src === 'bank'));
+    && (!o.tps || !o.tps.length || o.tps.some(t => inTopic(q.topic, t))) && (!o.bank || q.src === 'gen'));
 }
 function weakTopics(B, n) { return topicsOf(B).map(T => ({T, v: (mastery(B, T).v ?? -1)})).filter(x => S.qs.some(q => q.book === B.id && EXAMOK(q) && inTopic(q.topic, x.T.num))).sort((a, b) => a.v - b.v).slice(0, n).map(x => x.T.num); }
 function buildMock(B, o) { // fill ~0.9 marks a minute (IB papers run close to that), favouring questions with markschemes, untried ones and weak topics
   const pool = mockPool(B, o), target = Math.max(4, Math.round(o.mins * .9)), now = Date.now(), mv = {};
   for (const T of topicsOf(B)) mv[T.num] = mastery(B, T).v;
   const tv = q => { const T = topicsOf(B).find(t => inTopic(q.topic, t.num)); return T ? mv[T.num] : null; };
-  const sc = q => Math.random() + (q.ms || q.ans ? 1.2 : 0) + (q.src === 'bank' ? .8 : 0) + (attOf(q.id).length ? 0 : 1) + (1 - (tv(q) ?? .5)) - (attOf(q.id).some(a => now - a.t < 7 * 864e5) ? 2 : 0);
+  const sc = q => Math.random() + (q.ms || q.ans ? 1.2 : 0) + (q.src === 'gen' ? .8 : 0) + (attOf(q.id).length ? 0 : 1) + (1 - (tv(q) ?? .5)) - (attOf(q.id).some(a => now - a.t < 7 * 864e5) ? 2 : 0);
   const picks = [], used = new Set(); let tot = 0;
   for (const q of pool.map(q => [sc(q), q]).sort((a, b) => b[0] - a[0]).map(x => x[1])) {
     if (tot >= target) break; const m = mkOf(q); if (tot + m > target * 1.15 && picks.length) continue;
@@ -2296,6 +2296,23 @@ function renderShelf() {
   document.querySelectorAll('[data-m]').forEach(el => el.onclick = e => { const m = marks[+el.dataset.m]; if (e.target.closest('[data-rm]')) { S.prog.marks.splice(S.prog.marks.indexOf(m), 1); saveProg(true); renderShelf(); return; } openPage(m.b, m.n); });
 }
 
+// ---------- IB-style practice questions written for this site (static files in qbank/) ----------
+// each file is a list of questions tagged with an IB syllabus code + title; they are matched to the book's own contents here
+const tNorm = x => String(x || '').replace(/^Structure\s*/i, 'S').replace(/^Reactivity\s*/i, 'R').replace(/^(?:SL|AHL|Topic)\s*/i, '').replace(/[\s:]/g, '').toUpperCase();
+const tWords = x => new Set(String(x || '').toLowerCase().replace(/[^a-z ]/g, ' ').split(/\s+/).filter(w => w.length > 3 && !/^(?:with|from|that|this|their|and|the|into|about)$/.test(w)));
+function genTopic(B, q) {
+  const T = topicsOf(B), c = tNorm(q.topic), hit = T.find(t => tNorm(t.num) === c); if (hit) return hit.num;
+  const w = tWords(q.tname); let best = null, bs = 0;
+  for (const t of T) { const tw = tWords(t.title); let k = 0; for (const x of w) if (tw.has(x)) k++; const sc = k / Math.max(1, Math.min(w.size, tw.size)); if (k && sc > bs) { bs = sc; best = t; } }
+  return best && bs >= .5 ? best.num : q.topic;
+}
+async function loadGen() {
+  try { const ix = await (await fetch('qbank/index.json', {cache: 'no-cache'})).json();
+    const all = (await Promise.all(ix.map(f => fetch('qbank/' + f, {cache: 'no-cache'}).then(r => r.json()).catch(() => [])))).flat();
+    for (const q of all) { const B = bookOf(q.book); if (!B || S.qs.some(x => x.id === q.id)) continue; if (/^(?:chem|phys|math)$/.test(q.book)) B.math = true; if (B.toc && B.toc.length) q.topic = genTopic(B, q); S.qs.push(q); }
+  } catch (e) {}
+}
+
 // ---------- settings (this device) ----------
 const SET_D = {acc: 'blue', zoom: 100, uiFont: '', readFont: '', lh: '', sp: '', rw: '', tint: '', bold: false, hc: false, rm: false, ruler: false,
   tts: true, ttsRate: 1, ttsVoice: '', cfs: 14.5, enter: true, cLen: '', cLvl: '', cStyle: '', cQs: true, cLang: '', cAbout: ''};
@@ -2545,7 +2562,7 @@ addEventListener('popstate', () => { NAVN = Math.max(0, NAVN - 1); if (S.books.l
 async function boot() {
   $('#login').classList.add('hide'); $('#app').classList.remove('hide');
   $('#main').innerHTML = '<p><span class="spin"></span> Loading…</p>';
-  try { [S.books, S.qs] = await Promise.all([api('books'), api('qs')]); S.qs = S.qs.filter(q => q.src !== 'bank' && !/openstax/i.test(q.set || '')); /* IB material only: the imported OpenStax banks are hidden */ } catch (e) { $('#main').innerHTML = '<p>Could not load: ' + esc(e.message) + '</p>'; return; }
+  try { [S.books, S.qs] = await Promise.all([api('books'), api('qs')]); S.qs = S.qs.filter(q => q.src !== 'bank' && !/openstax/i.test(q.set || '')); /* IB material only: the imported OpenStax banks are hidden */ await loadGen(); } catch (e) { $('#main').innerHTML = '<p>Could not load: ' + esc(e.message) + '</p>'; return; }
   drawMe(); drawPins(); pullProg(); loadPapers();
   const last = S.prog.last; S.book = (last && bookOf(last.b)) || S.books.find(x => x.pages) || S.books[0];
   if (!S.book) { $('#main').innerHTML = '<p>No books uploaded yet.</p>'; return; }

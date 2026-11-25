@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="580" height="405" viewBox="0 0 580 405" font-family="Arial, sans-serif" font-size="15">
+<rect x="0" y="0" width="580" height="405" fill="white"/>
+<ellipse cx="280" cy="330" rx="170" ry="38" fill="none" stroke="#111" stroke-width="1.8" stroke-dasharray="7,5"/>
+<circle cx="280" cy="330" r="13" fill="#bbb" stroke="#111" stroke-width="2"/><text x="266" y="392">Sun</text>
+<circle cx="110" cy="330" r="8" fill="#555" stroke="#111"/><circle cx="450" cy="330" r="8" fill="#555" stroke="#111"/>
+<text x="40" y="392">Earth (January)</text><text x="410" y="392">Earth (July)</text>
+<line x1="110" y1="330" x2="280" y2="110" stroke="#111" stroke-width="1.5"/><line x1="450" y1="330" x2="280" y2="110" stroke="#111" stroke-width="1.5"/>
+<line x1="280" y1="110" x2="280" y2="330" stroke="#111" stroke-width="1.2" stroke-dasharray="4,4"/>
+<polygon points="280,98 284,107 294,107 286,113 289,123 280,117 271,123 274,113 266,107 276,107" fill="#111"/>
+<text x="300" y="105">nearby star</text>
+<path d="M 280 160 A 50 50 0 0 0 310.6 149.6" fill="none" stroke="#111" stroke-width="1.5"/><text x="287" y="180">p</text>
+<text x="345" y="325" font-size="14">1 AU</text>
+<line x1="292" y1="330" x2="442" y2="330" stroke="#111" stroke-width="1.2"/>
+<text x="252" y="230">d</text>
+<circle cx="60" cy="40" r="3" fill="#111"/>
+<circle cx="160" cy="25" r="3" fill="#111"/>
+<circle cx="420" cy="30" r="3" fill="#111"/>
+<circle cx="520" cy="55" r="3" fill="#111"/>
+<circle cx="350" cy="20" r="3" fill="#111"/>
+<text x="400" y="80" font-size="14">distant stars</text>
+
+</svg>

@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="520" height="380" viewBox="0 0 520 380" font-family="Arial, sans-serif" font-size="16">
+<defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#222"/></marker></defs>
+<rect x="0" y="0" width="520" height="380" fill="white"/>
+<line x1="30" y1="330" x2="400" y2="330" stroke="#222" stroke-width="3"/>
+<rect x="320" y="40" width="20" height="290" fill="#d0d0d0" stroke="#222" stroke-width="2"/>
+<line x1="170" y1="330" x2="320.0" y2="70.2" stroke="#222" stroke-width="7" stroke-linecap="round"/>
+<path d="M 225 330 A 55 55 0 0 0 197.5 282.4" fill="none" stroke="#222" stroke-width="1.5"/>
+<text x="232" y="315">60°</text>
+<text x="348" y="120">smooth wall</text>
+<text x="40" y="360">rough floor</text>
+<text x="150" y="200">ladder 5.0 m</text>
+</svg>

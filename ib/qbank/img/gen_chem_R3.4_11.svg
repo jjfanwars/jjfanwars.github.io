@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="260" viewBox="0 0 640 260" font-family="Arial, sans-serif" font-size="16">
+<defs><marker id="ah" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#111"/></marker></defs>
+<rect x="0" y="0" width="640" height="260" fill="white"/>
+<path d="M80.0,104.0 L119.8,127.0 L119.8,173.0 L80.0,196.0 L40.2,173.0 L40.2,127.0 Z" fill="none" stroke="#111" stroke-width="2"/>
+<circle cx="80" cy="150" r="28" fill="none" stroke="#111" stroke-width="2"/>
+<text x="226" y="100" text-anchor="middle" font-size="20" font-weight="normal" fill="#111">⁺NO₂</text>
+<path d="M84,120 Q120,55 196,90" fill="none" stroke="#111" stroke-width="2" marker-end="url(#ah)"/>
+<line x1="240" y1="150" x2="285" y2="150" stroke="#111" stroke-width="2" marker-end="url(#ah)"/>
+<path d="M370.0,104.0 L409.8,127.0 L409.8,173.0 L370.0,196.0 L330.2,173.0 L330.2,127.0 Z" fill="none" stroke="#111" stroke-width="2"/>
+<path d="M350.9,130.9 A27,27 0 1 0 389.1,130.9" fill="none" stroke="#111" stroke-width="2"/>
+<text x="370" y="157" text-anchor="middle" font-size="22" font-weight="normal" fill="#111">+</text>
+<line x1="370.0" y1="104.0" x2="344.0" y2="70.0" stroke="#111" stroke-width="2"/>
+<text x="338.0" y="66.0" text-anchor="middle" font-size="20" font-weight="normal" fill="#111">H</text>
+<line x1="370.0" y1="104.0" x2="396.0" y2="70.0" stroke="#111" stroke-width="2"/>
+<text x="416.0" y="66.0" text-anchor="middle" font-size="20" font-weight="normal" fill="#111">NO₂</text>
+<path d="M353.0,87.0 Q317.0,117.0 364.0,120.0" fill="none" stroke="#111" stroke-width="2" marker-end="url(#ah)"/>
+<line x1="440" y1="150" x2="485" y2="150" stroke="#111" stroke-width="2" marker-end="url(#ah)"/>
+<path d="M555.0,104.0 L594.8,127.0 L594.8,173.0 L555.0,196.0 L515.2,173.0 L515.2,127.0 Z" fill="none" stroke="#111" stroke-width="2"/>
+<circle cx="555" cy="150" r="28" fill="none" stroke="#111" stroke-width="2"/>
+<line x1="555.0" y1="104.0" x2="555.0" y2="74.0" stroke="#111" stroke-width="2"/>
+<text x="555.0" y="66.0" text-anchor="middle" font-size="20" font-weight="normal" fill="#111">NO₂</text>
+<text x="557" y="235" text-anchor="middle" font-size="20" font-weight="normal" fill="#111">+  H⁺</text>
+</svg>

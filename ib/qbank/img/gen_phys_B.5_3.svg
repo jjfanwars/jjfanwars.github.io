@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="500" height="220" viewBox="0 0 500 220" font-family="Arial, sans-serif" font-size="15">
+<defs><marker id="ah" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#111"/></marker></defs>
+<rect x="0" y="0" width="500" height="220" fill="white"/>
+<polyline points="40,120 220,120" fill="none" stroke="#111" stroke-width="2"/>
+<polyline points="220,70 220,170" fill="none" stroke="#111" stroke-width="2"/>
+<polyline points="220,70 380,70" fill="none" stroke="#111" stroke-width="2"/>
+<polyline points="220,170 380,170" fill="none" stroke="#111" stroke-width="2"/>
+<polyline points="380,70 380,170" fill="none" stroke="#111" stroke-width="2"/>
+<polyline points="380,120 460,120" fill="none" stroke="#111" stroke-width="2"/>
+<g><rect x="108.0" y="111" width="44" height="18" fill="white" stroke="#111" stroke-width="2"/></g>
+<g><rect x="278.0" y="61" width="44" height="18" fill="white" stroke="#111" stroke-width="2"/></g>
+<g><rect x="278.0" y="161" width="44" height="18" fill="white" stroke="#111" stroke-width="2"/></g>
+<circle cx="220" cy="120" r="4" fill="#111"/>
+<circle cx="380" cy="120" r="4" fill="#111"/>
+<circle cx="40" cy="120" r="6" fill="white" stroke="#111" stroke-width="2"/>
+<circle cx="460" cy="120" r="6" fill="white" stroke="#111" stroke-width="2"/>
+<text x="40" y="150" text-anchor="middle" font-size="15" fill="#111">X</text>
+<text x="460" y="150" text-anchor="middle" font-size="15" fill="#111">Y</text>
+<text x="130" y="100" text-anchor="middle" font-size="15" fill="#111">R</text>
+<text x="300" y="50" text-anchor="middle" font-size="15" fill="#111">R</text>
+<text x="300" y="200" text-anchor="middle" font-size="15" fill="#111">R</text>
+</svg>

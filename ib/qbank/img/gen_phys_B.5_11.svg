@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="500" height="325" viewBox="0 0 500 325" font-family="Arial, sans-serif" font-size="15">
+<defs><marker id="ah" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#111"/></marker></defs>
+<rect x="0" y="0" width="500" height="325" fill="white"/>
+<polyline points="60,50 240,50 240,90" fill="none" stroke="#111" stroke-width="2"/>
+<polyline points="240,250 240,290 60,290 60,50" fill="none" stroke="#111" stroke-width="2"/>
+<polyline points="240,290 440,290 440,170 330,170 330,290" fill="none" stroke="#111" stroke-width="2"/>
+<g transform="rotate(90 60 170)"><rect x="51" y="148" width="18" height="44" fill="white"/><line x1="55" y1="150" x2="55" y2="190" stroke="#111" stroke-width="2"/><line x1="65" y1="160" x2="65" y2="180" stroke="#111" stroke-width="5"/></g>
+<rect x="231" y="90" width="18" height="160" fill="white" stroke="#111" stroke-width="2"/>
+<line x1="330" y1="170" x2="253" y2="170" stroke="#111" stroke-width="2" marker-end="url(#ah)"/>
+<g transform="rotate(90 330 230)"><rect x="308.0" y="221" width="44" height="18" fill="white" stroke="#111" stroke-width="2"/></g>
+<circle cx="440" cy="230" r="15" fill="white" stroke="#111" stroke-width="2"/><text x="440" y="236" text-anchor="middle" font-size="17" font-weight="bold" fill="#111">V</text>
+<circle cx="330" cy="170" r="4" fill="#111"/>
+<circle cx="330" cy="290" r="4" fill="#111"/>
+<circle cx="240" cy="290" r="4" fill="#111"/>
+<text x="80" y="176" text-anchor="start" font-size="15" fill="#111">12 V</text>
+<text x="222" y="176" text-anchor="end" font-size="15" fill="#111">100 Ω</text>
+<text x="300" y="160" text-anchor="middle" font-size="15" fill="#111">S</text>
+<text x="318" y="236" text-anchor="end" font-size="15" fill="#111">50 Ω</text>
+<text x="345" y="160" text-anchor="start" font-size="15" fill="#111">X</text>
+<text x="345" y="312" text-anchor="start" font-size="15" fill="#111">Y</text>
+</svg>
