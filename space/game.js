@@ -99,10 +99,7 @@ function colorAt(b, x, y, z, h, slope) {
     let sand = 0;
     if (h < -2) { const dp = sstep(-2, -60, h); r = lerp(.5, .03, dp); g = lerp(.47, .07, dp); bl = lerp(.36, .1, dp); sand = 1; } // sea floor: sand in the shallows, dark further out
     else if (h < 4 + n * 10 && siteDist(x, y, z) > 2300) { r = .82; g = .74; bl = .52; sand = 1; } // beach
-    else { const f = sstep(.25, .75, n); r = lerp(.4, .25, f); g = lerp(.48, .34, f); bl = lerp(.26, .18, f); // grass / forest
-      const n2 = fbm(x * 9, y * 9, z * 9, 3, 61), dry = sstep(.13, .27, lat + n2 * .22) * sstep(.52, .4, lat + n2 * .2) * sstep(-.12, .12, fbm(x * 2.2, y * 2.2, z * 2.2, 3, 62) + .04); // subtropical deserts
-      if (dry > 0) { const d2 = .5 + .5 * fbm(x * 60, y * 60, z * 60, 3, 63); r = lerp(r, lerp(.74, .58, d2), dry); g = lerp(g, lerp(.6, .43, d2), dry); bl = lerp(bl, lerp(.4, .3, d2), dry); sand = Math.max(sand, dry * .85); }
-      const tun = sstep(.6, .72, lat + n * .06); r = lerp(r, .42, tun * .6); g = lerp(g, .43, tun * .6); bl = lerp(bl, .36, tun * .6); } // tundra toward the poles
+    else { const f = sstep(.25, .75, n); r = lerp(.4, .25, f); g = lerp(.48, .34, f); bl = lerp(.26, .18, f); } // grass / forest
     const rock = Math.max(sstep(.35, .6, slope), sstep(2300, 3100, h + n * 500));
     r = lerp(r, .42, rock); g = lerp(g, .39, rock); bl = lerp(bl, .36, rock);
     const snow = Math.max(sstep(3200, 3800, h + n * 600), sstep(.82, .9, lat + n * .05)) * (1 - sstep(.55, .75, slope));
