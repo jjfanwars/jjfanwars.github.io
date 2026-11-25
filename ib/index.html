@@ -481,6 +481,7 @@ function mathOut(src) {
   return {src, put: h => h.replace(/\u0000(\d+)\u0000/g, (m, i) => { const [t, d] = M[+i]; try { return katex.renderToString(t, {displayMode: d, throwOnError: false}); } catch (e) { return esc(t); } })};
 }
 const mdx = (src, inline) => { const m = mathOut(src); return m.put(inline ? marked.parseInline(m.src) : marked.parse(m.src)); };
+const rt = x => MATH && /\$[^$]+\$/.test(x) ? mdx(String(x), true) : esc(x); // plain text, but $maths$ renders in maths books (key terms)
 const FIGS = {};
 async function getFigs(b) { if (!FIGS[b]) FIGS[b] = api('figs', {book: b}).catch(() => ({})); return FIGS[b]; }
 function md(src, fig) {
@@ -642,7 +643,7 @@ function suggest(q) {
   for (const [k, n] of Object.entries(TABN)) if (k !== 'search' && has(n)) out.push({k: 'Go to', s: n, f: () => go(k)});
   const pm = v.match(/^p(?:age|\.)?\s*(\d+)$/); if (pm && S.book) { const pg = S.book.pages; out.push({k: 'Page', s: S.book.subject + ' page ' + pm[1], f: () => openPage(S.book.id, Math.min(pg, +pm[1]))}); }
   for (const B of S.books) for (const t of B.toc) if (out.length < 30 && t.lvl <= 3 && (has(t.title) || (t.num && has(t.num)))) out.push({k: B.subject.split(' ')[0], s: (t.num ? t.num + ' ' : '') + t.title, f: () => openPage(B.id, t.n)});
-  for (const B of S.books) for (const t of B.terms || []) if (out.length < 40 && has(t.k)) out.push({k: 'Term', s: t.k + ' — ' + t.d, f: () => openPage(B.id, t.n, t.k)});
+  for (const B of S.books) for (const t of B.terms || []) if (out.length < 40 && has(t.k)) out.push({k: 'Term', s: (t.k + ' — ' + t.d).replace(/\$/g, ''), f: () => openPage(B.id, t.n, t.k)});
   out.splice(14); out.push({k: 'Search', s: `All pages for “${q.trim()}”`, f: () => search(q)});
   SG = {i: -1, list: out};
   box.innerHTML = out.map((o, i) => `<div data-i="${i}"><span class="k">${esc(o.k)}</span><span class="s">${esc(o.s)}</span></div>`).join(''); box.classList.remove('hide');
@@ -833,7 +834,7 @@ const BOXDAYS = [0, 1, 3, 7, 16, 35];
 function renderTerms(mode) {
   shell('terms'); setHash('#/terms'); S.term = null; S.tv = S.tv || LS.get('ib-tv', 'book');
   if (S.tv === 'decks') return renderDecks();
-  const B = S.book, terms = B.terms || [];
+  const B = S.book, terms = B.terms || []; MATH = !!B.math;
   const due = terms.filter(t => { const s = S.prog.terms[B.id + ':' + t.k]; return !s || cardDue(s); });
   const known = terms.filter(t => (S.prog.terms[B.id + ':' + t.k] || {}).box >= 3).length;
   if (mode !== 'study') {
@@ -841,7 +842,7 @@ function renderTerms(mode) {
       <div style="margin:12px 0 4px">${tvSeg()}</div><p class="meta">${terms.length ? terms.length + ' key terms from the textbook · ' + known + ' learned' : 'This book has no key-term list. Make a deck instead: Claude can write cards from any section.'}</p>
       <input id="tf" placeholder="Filter terms…" style="margin:6px 0 12px"><div class="card" id="tl"></div></div>`;
     const draw = f => { $('#tl').innerHTML = terms.filter(t => !f || (t.k + t.d).toLowerCase().includes(f)).map(t => { const s = S.prog.terms[B.id + ':' + t.k];
-      return `<div style="padding:10px 14px;border-bottom:1px solid var(--line)"><div class="row"><b>${esc(t.k)}</b>${s ? `<span class="tag ${s.box >= 3 ? 'g' : 'w'}">box ${s.box}</span>` : ''}<span style="flex:1"></span><a href="#" data-n="${t.n}" class="meta">p. ${esc(t.bp)}</a></div><div style="font-family:var(--f-read)">${esc(t.d)}</div></div>`; }).join('');
+      return `<div style="padding:10px 14px;border-bottom:1px solid var(--line)"><div class="row"><b>${rt(t.k)}</b>${s ? `<span class="tag ${s.box >= 3 ? 'g' : 'w'}">box ${s.box}</span>` : ''}<span style="flex:1"></span><a href="#" data-n="${t.n}" class="meta">p. ${esc(t.bp)}</a></div><div style="font-family:var(--f-read)">${rt(t.d)}</div></div>`; }).join('');
       document.querySelectorAll('#tl a').forEach(a => a.onclick = e => { e.preventDefault(); openPage(B.id, +a.dataset.n, a.closest('div').parentNode.querySelector('b').textContent); }); };
     $('#tf').oninput = e => draw(e.target.value.toLowerCase()); draw(''); $('#st').onclick = () => renderTerms('study'); onBookBar(() => renderTerms()); tvWire(); return;
   }
@@ -1585,9 +1586,9 @@ function addCards(name, book, cards) { // into the deck with this name (made if 
 }
 function cardHtml(c, flipped, head) {
   MATH = !!(bookOf(c.book) || {}).math;
-  const f = c.md ? mdx(c.f) : esc(c.f), s = S.prog.terms[c.key];
+  const f = c.md ? mdx(c.f) : rt(c.f), s = S.prog.terms[c.key];
   return `<div style="max-width:580px;margin:0 auto">${head || ''}</div><div class="card flash"><div class="meta">${esc(c.src || '')}</div><div class="term ${String(c.f).length > 70 ? 'long' : ''}">${f}</div>${flipped
-    ? `<div class="def">${c.md ? mdx(c.b) : esc(c.b)}</div><div class="gr">${GRADES.map((l, g) => `<button data-gr="${g}" class="${g === 2 ? 'pri' : ''}">${l}<span class="meta">${ivl(BOXDAYS[nextBox(s, g)])}</span></button>`).join('')}</div><div class="meta">Keys 1-4</div>`
+    ? `<div class="def">${c.md ? mdx(c.b) : rt(c.b)}</div><div class="gr">${GRADES.map((l, g) => `<button data-gr="${g}" class="${g === 2 ? 'pri' : ''}">${l}<span class="meta">${ivl(BOXDAYS[nextBox(s, g)])}</span></button>`).join('')}</div><div class="meta">Keys 1-4</div>`
     : `<button class="pri" id="flip" style="align-self:center">Reveal</button><div class="meta">Say or think the answer first · space to flip</div>`}</div>`;
 }
 function showCard(c, head, onDone) {
