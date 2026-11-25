@@ -65,6 +65,19 @@ def md(e, media):  # CNXML -> Markdown
     if t == 'sub': return '<sub>' + out + '</sub>'
     return pre + out + post if out.strip() else out
 
+own = lambda q: len(q) > 110 and bool(re.match(r'(?:\*\*[^*]*\*\*\s*)?(?:A|An|Suppose|Consider|You|Two|Three|If|In|The|Let|Assume|Given|When|Use|At|Find the (?:area|volume|length)|Sketch the graph of)\b', q)) and not re.search(r'\b(?:the|this|previous|preceding) (?:lifeguard|pool|previous|above|figure|graph|function|problem|exercise)\b', q[:60], re.I)
+def walk(node, media, st):  # exercises in document order, each with the text/figures since the previous run of exercises (their shared setup)
+    for ch in node:
+        t = loc(ch)
+        if t == 'exercise':
+            st['seen'] = True; p = ch.find(f'{C}problem'); q = md(p, media).strip() if p is not None else ''
+            if st['intro'] and own(q): st['intro'] = ''  # this problem sets up its own scenario, so the run of shared setup has ended
+            yield ch, st['intro'].strip()
+        elif t in ('para', 'figure', 'table', 'list', 'note', 'equation', 'media'):
+            if st['seen']: st['intro'], st['seen'] = '', False
+            st['intro'] += md(ch, media)
+        elif t != 'title': yield from walk(ch, media, st)
+
 def main():
     a = [x for x in sys.argv[1:] if not x.startswith('--')]
     repo, coll, name, outf = a[:4]
@@ -85,7 +98,7 @@ def main():
             for s in doc.iter(f'{C}section'):
                 cls = (s.get('class') or '').split()[0] if s.get('class') else ''
                 if cls not in secs: continue
-                for ex in s.iter(f'{C}exercise'):
+                for ex, intro in walk(s, media, {'intro': '', 'seen': False}):
                     p = ex.find(f'{C}problem'); sol = ex.find(f'{C}solution')
                     if p is None: continue
                     q = re.sub(r'\n{3,}', '\n\n', md(p, media)).strip(); ms = re.sub(r'\n{3,}', '\n\n', md(sol, media)).strip() if sol is not None else ''
@@ -94,7 +107,7 @@ def main():
                     ans = (re.search(r'\(?([a-e])\)?', ms) or [None, ''])[1].upper() if mc and ms else ''
                     if mc: q = re.sub(r'(?m)^([a-e])\. ', lambda m: m.group(1).upper() + '. ', q)
                     out.append({'text': q, 'ms': ms, 'kind': 'mcq' if mc else 'short' if SEC[cls] == 1 and cls != 'exercises' else 'structured', 'ans': ans, 'difficulty': str(SEC[cls]),
-                                'marks': 1 if mc else 0, 'chapter': f'{ci} {title}'})
+                                'marks': 1 if mc else 0, 'chapter': f'{ci} {title}', 'ctx': re.sub(r'\n{3,}', '\n\n', intro)})
         print(ci, title, n, flush=True)
     json.dump(out, open(outf, 'w'), indent=1, ensure_ascii=False); print(len(out), 'questions,', sum(1 for q in out if q['ms']), 'with answers ->', outf)
 
