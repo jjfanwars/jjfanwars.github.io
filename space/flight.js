@@ -460,8 +460,10 @@ function flightCamera(dt) {
   G.O.copy(eye); _m.lookAt(eye, tgt, up); cam.quaternion.setFromRotationMatrix(_m); cam.position.set(0, 0, 0); cam.updateMatrixWorld();
 }
 addEventListener('wheel', e => { if (!G.on || !R.on || MAPV.on || G.paused) return; e.preventDefault(); const c = R.cam; c.td = clamp((c.td || c.dist) * Math.exp(e.deltaY * .0015), 8, 3000); }, {passive: false});
-// drag to look when the mouse isn't grabbed (touchpads, or after Esc)
-addEventListener('mousemove', e => { if (document.pointerLockElement === canvas || !e.buttons || !G.on || G.paused || !R.on || (typeof MAPV !== 'undefined' && MAPV.on) || e.target !== canvas) return; look.dx += e.movementX; look.dy += e.movementY; });
+// drag to look when the mouse isn't grabbed (touchpads, after Esc, or where the browser refuses the grab)
+addEventListener('mousemove', e => { if (document.pointerLockElement === canvas || !e.buttons || !G.on || G.paused || (typeof MAPV !== 'undefined' && MAPV.on) || e.target !== canvas) return; look.dx += e.movementX; look.dy += e.movementY; }); // on foot too
+// some browsers / embedded windows refuse the mouse grab: say so, dragging still looks around
+document.addEventListener('pointerlockerror', () => { if (G.on && !G.paused) showHint('Mouse grab not allowed here: hold a mouse button and drag to look around', 4000); });
 function camDefault() { const c = R.cam, hgt = 26.1 - STAGES[R.bot].y0; c.td = c.dist = clamp(hgt * 1.9, 22, 160); c.ty = c.yaw; c.tp = c.pitch; }
 const VIEWS = ['in', 'chase', 'lock'], VNAMES = {in: 'Inside view', chase: 'Chase view: horizon stays level', lock: 'Locked view: turns with the ship'};
 function cycleView() { const cur = C.view === 'in' ? 'in' : R.cam.mode || 'chase', nx = VIEWS[(VIEWS.indexOf(cur) + 1) % 3];
