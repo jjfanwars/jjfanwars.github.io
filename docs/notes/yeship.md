@@ -226,3 +226,9 @@ Sandbox plus missions (21 Nov 2026: 15 missions, see below). Astronauts are thro
 - **Render scale** (`basePR()` in game.js, pause card "Render scale", `SET.scale`): Auto = screen pixels up to 2x on High, 1.5x on Medium, 1x CSS pixels on Low (was 1.5 / 1.25 / 0.75, so Low drew at three quarters of the screen). Fixed choices 75%, 100%, Native (always the HiDPI pixels, up to 2x).
 - **Adaptive resolution** only in Auto: drops SSAO/rays first, then steps of 10% down to 1x CSS pixels on HiDPI screens (floor `max(1/base, .7)`), or 90% on 1x screens, with a one-time hint when it goes below the screen's own pixels (was: down to 80% silently).
 - **Anti-aliasing** (pause card, `SET.aa` taa | fxaa | off; TAA needs Medium/High): FXAA now skips low-contrast pixels (the standard edge threshold), so texture detail is no longer smoothed; `aa` uniform 0 = no AA, sharpen only. TAA: tighter history clip (1.0 sigma, was 1.15), more of the current frame (11% still, up to 45% in motion, was 8.5% to 32%). After TAA a contrast-adaptive sharpen (CAS style, `sharpM.k` .65, clamped to the 4 neighbours so no halos) replaces the old fixed unsharp mask (k .2).
+
+## Perf + fixes (26 Nov 2026, after the subagent batch)
+- Lag: `basePR` caps back to High 1.5 / Medium 1.25 / Low 1 (2× on High was ~1.8× the pixels), terrain detail octaves `tOct` High 3 / Medium 2 (was 5 / 3), adaptive resolution may drop to 0.8.
+- Ember has its own 4 h day (`EMBER.day`; `bodyState` and `bodySpin` use `b.day` when set). Tidally locked it had ~40 h nights, so you often couldn't see the sun.
+- `#fEng` chip in the flight HUD stage plate (ui.js): Engine on · N% (red) / idle / off / No fuel / No engine.
+- `warpCap` counts an engine as burning only with real thrust or fuel behind it.

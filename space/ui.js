@@ -43,4 +43,11 @@ function stkDraw(dt) {
     s.traverse(o => { if (o.isMesh && o.geometry && o.geometry.type === 'RingGeometry') o.material.color.setHex(0xD8342A); });
     BLD.hl.material.blending = THREE.NormalBlending; BLD.hl.material.color.setHex(0xD8342A); BLD.rnd.toneMappingExposure = 1.0; }; }
 { const m0 = mapToggle; mapToggle = function (on) { m0(on); document.body.classList.toggle('map', MAPV.on); }; }
+// engine state you can't miss: a chip in the stage plate (on / idle / off / no fuel), red while thrust is on
+{ const ph = document.querySelector('#fl .ph'); if (ph) { const c = document.createElement('span'); c.id = 'fEng'; ph.prepend(c); }
+  const st = document.createElement('style'); st.textContent = '#fEng { font-weight:700; font-size:12px; letter-spacing:.04em; padding:2px 7px; margin-right:8px; border:1px solid var(--ink); color:var(--ink); text-transform:uppercase; } #fEng.on { background:var(--red); border-color:var(--red); color:#fff; } #fEng.idle { border-style:dashed; } #fEng.dry { color:var(--redt); border-color:var(--redt); }'; document.head.appendChild(st);
+  const h0 = FLIGHT.hud; FLIGHT.hud = function (dt) { h0(dt); const el = $('fEng'); if (!el || $('fl').classList.contains('hidden')) return; const S = STAGES[R.bot], fuel = burnSet().some(i => STAGES[i].thrust && R.fuel[i] > 0);
+    const k = R.F > 0 ? 'on' : !S.thrust && !burnSet().some(i => STAGES[i].thrust) ? 'none' : !fuel ? 'dry' : R.lit ? 'idle' : 'off';
+    const t = k === 'on' ? 'Engine on · ' + Math.round(R.thr * 100) + '%' : k === 'idle' ? 'Engine idle · throttle 0' : k === 'dry' ? 'No fuel' : k === 'off' ? 'Engine off' : 'No engine';
+    if (el._t !== t) { el._t = t; el.textContent = t; el.className = k; } }; }
 Object.assign(window.YE, {stkDraw});

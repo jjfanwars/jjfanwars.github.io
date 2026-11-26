@@ -17,7 +17,7 @@ function satVel(b, t, out) { if (b === PLANET) return out.set(0, 0, 0); const a 
   return out.set(px * cl + pz * sl, py, -px * sl + pz * cl); }
 function moonPos(t, out) { return satPos(MOON, t, out); }
 function moonVel(t, out) { return satVel(MOON, t, out); }
-function bodySpin(b) { return b === PLANET ? OMEGA.y : 2 * Math.PI / b.period; } // all spin about inertial +y (satellites are tidally locked)
+function bodySpin(b) { return b === PLANET ? OMEGA.y : 2 * Math.PI / (b.day || b.period); } // all spin about inertial +y (satellites are tidally locked)
 // velocity of the ground (or air) at inertial point p of body b
 function groundVel(b, p, t, out) { const w = bodySpin(b); if (b === PLANET) return out.set(w * p.z, 0, -w * p.x);
   satPos(b, t, _mp); satVel(b, t, out); return out.add(new V3(w * (p.z - _mp.z), 0, -w * (p.x - _mp.x))); }

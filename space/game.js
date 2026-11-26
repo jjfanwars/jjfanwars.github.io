@@ -43,7 +43,7 @@ const PLANET = {name: 'Home', R: 600000, GM: 9.81 * 600000 * 600000, atmo: 22000
 const MOON = {name: 'Moon', R: 200000, GM: 1.63 * 200000 * 200000, atmo: 0, maxL: 14, seed: 71, water: false, orbit: 12000000, ph: 2.2, inc: .09, lan: 0, col: [.42, .42, .42]};
 const RUST = {name: 'Rust', R: 140000, GM: 1.1 * 140000 * 140000, atmo: 0, maxL: 14, seed: 131, water: false, orbit: 30000000, ph: 4.1, inc: .06, lan: 1.3, col: [.62, .34, .2], desc: 'red desert world: canyons, dunes, old craters'};
 const FROST = {name: 'Frost', R: 90000, GM: .6 * 90000 * 90000, atmo: 0, maxL: 13, seed: 171, water: false, orbit: 52000000, ph: .7, inc: .045, lan: 3.6, col: [.86, .9, .95], desc: 'ice world: cracked plains, blue ridges, few craters'};
-const EMBER = {name: 'Ember', R: 120000, GM: 1.3 * 120000 * 120000, atmo: 0, maxL: 14, seed: 211, water: false, orbit: 20000000, ph: 5.3, inc: .11, lan: 2.4, col: [.3, .15, .1], lava: .45, desc: 'volcanic moon: black lava plains, glowing rivers, Fire Mountain'};
+const EMBER = {name: 'Ember', R: 120000, GM: 1.3 * 120000 * 120000, atmo: 0, maxL: 14, seed: 211, water: false, orbit: 20000000, ph: 5.3, inc: .11, lan: 2.4, day: 14400, col: [.3, .15, .1], lava: .45, desc: 'volcanic moon: black lava plains, glowing rivers, Fire Mountain'};
 const PEBBLE = {name: 'Pebble', R: 8000, GM: .15 * 8000 * 8000, atmo: 0, maxL: 10, seed: 251, water: false, orbit: 4000000, ph: 1.1, inc: .21, lan: .8, col: [.38, .35, .31], desc: 'tiny lumpy asteroid: you weigh almost nothing'};
 const SATS = [MOON, RUST, FROST, EMBER, PEBBLE];
 for (const b of SATS) b.period = 2 * Math.PI * Math.sqrt(b.orbit ** 3 / PLANET.GM);
@@ -57,7 +57,7 @@ function bodyState(b, t) { // centre (inertial) and rotation
   if (b === PLANET) { b.c = b.c || new V3(); b.c.set(0, 0, 0); b.q = b.q || new Q4(); b.q.setFromAxisAngle(new V3(0, 1, 0), 2 * Math.PI * (t + T0) / PLANET.day); return; }
   const a = 2 * Math.PI * t / b.period + b.ph, inc = b.inc, cl = Math.cos(b.lan), sl = Math.sin(b.lan), px = Math.cos(a) * b.orbit, py = Math.sin(a) * Math.sin(inc) * b.orbit, pz = -Math.sin(a) * Math.cos(inc) * b.orbit;
   b.c = b.c || new V3(); b.c.set(px * cl + pz * sl, py, -px * sl + pz * cl);
-  b.q = b.q || new Q4(); b.q.setFromAxisAngle(new V3(0, 1, 0), a + Math.PI + b.lan); // tidally locked
+  b.q = b.q || new Q4(); b.q.setFromAxisAngle(new V3(0, 1, 0), b.day ? 2 * Math.PI * t / b.day + b.ph + Math.PI + b.lan : a + Math.PI + b.lan); // tidally locked unless it has its own day
 }
 
 // ---------------- heights
@@ -592,7 +592,7 @@ const halton = (i, b) => { let f = 1, r = 0; while (i > 0) { f /= b; r += f * (i
 const POST = {};
 // render scale: Auto = the screen's own pixels up to 2x on High, 1.5x on Medium, 1x (CSS pixels) on Low; or a fixed choice from the pause card
 function basePR() { const d = devicePixelRatio || 1, sc = SET.scale || 'auto'; if (sc === 'native') return Math.min(d, 2); if (sc === '1') return 1; if (sc === '.75') return .75;
-  return Math.max(1, Math.min(d, SET.gfx === 'high' ? 2 : SET.gfx === 'med' ? 1.5 : 1)); }
+  return Math.max(1, Math.min(d, SET.gfx === 'high' ? 1.5 : SET.gfx === 'med' ? 1.25 : 1)); }
 function setupPost() {
   const pr = basePR() * (G.rs || 1), w = Math.max(2, innerWidth * pr | 0), h = Math.max(2, innerHeight * pr | 0);
   RND.setPixelRatio(pr); RND.setSize(innerWidth, innerHeight, false); cam.aspect = innerWidth / innerHeight; cam.updateProjectionMatrix();
@@ -751,7 +751,7 @@ let TERR_OBC = null;
 const moonMat = terrMat.clone(); moonMat.userData.hue = 0; terrMat.userData.hue = .2; terrMat.userData.kind = 0; terrMat.userData.bR = PLANET.R; moonMat.userData.kind = 1; moonMat.userData.bR = MOON.R; moonMat.customProgramCacheKey = () => 'moon'; moonMat.userData.mSun = MOONU.mSun;
 terrMat.onBeforeCompile = moonMat.onBeforeCompile = TERR_OBC = function (sh) {
   TMATS.forEach((m, i) => { sh.uniforms['tC' + i] = {value: tex(m, 'c')}; sh.uniforms['tN' + i] = {value: tex(m, 'n')}; sh.uniforms['aC' + i] = {get value() { return tex(m, 'c').userData.avg; }}; });
-  sh.uniforms.hiQ = {get value() { return HI() ? 1 : 0; }}; sh.uniforms.tHue = {value: this.userData.hue}; sh.uniforms.lavaK = {value: this.userData.lava || 0}; sh.uniforms.tKind = {value: this.userData.kind || 0}; sh.uniforms.tOct = {get value() { return !HI() ? 0 : SET.gfx === 'high' && !LITE() ? 5 : 3; }}; sh.uniforms.tbR = {value: this.userData.bR || PLANET.R};
+  sh.uniforms.hiQ = {get value() { return HI() ? 1 : 0; }}; sh.uniforms.tHue = {value: this.userData.hue}; sh.uniforms.lavaK = {value: this.userData.lava || 0}; sh.uniforms.tKind = {value: this.userData.kind || 0}; sh.uniforms.tOct = {get value() { return !HI() ? 0 : SET.gfx === 'high' && !LITE() ? 3 : 2; }}; sh.uniforms.tbR = {value: this.userData.bR || PLANET.R};
   cloudShadow(sh, true); if (this !== terrMat) { sh.fragmentShader = '#define IS_MOON\n' + sh.fragmentShader; moonShadow(sh, this.userData.mSun); } sh.vertexShader = 'attribute vec2 tuv, hs; attribute vec4 mw; attribute float tax; varying vec2 vTu, vHs; varying vec4 vMw; varying vec3 vT, vB;\n' + sh.vertexShader.replace('#include <begin_vertex>', `#include <begin_vertex>
     vTu = tuv; vHs = hs; vMw = mw; vec3 tA = tax < .5 ? vec3(0., 0., 1.) : vec3(1., 0., 0.); vec3 bA = tax > .5 && tax < 1.5 ? vec3(0., 0., 1.) : vec3(0., 1., 0.);
     vT = normalize(normalMatrix * tA); vB = normalize(normalMatrix * bA);`);
@@ -1295,7 +1295,7 @@ function frame(ts) {
   if (G.on) { if (R.on) FLIGHT.hud(dt); else { FLIGHT.hideHud(); updateHud(dt); } }
   // adaptive resolution: drop a little when frames are slow, climb back when there is room
   if (G.on && !MAPV.on && (G.rsT = (G.rsT || 0) + dt) > 3) { G.rsT = 0; const rs = G.rs || 1; let n = rs, lite = !!G.lite;
-    const bp = basePR(), rsMin = (SET.scale || 'auto') !== 'auto' ? 1 : bp > 1.05 ? Math.max(1 / bp, .7) : .9; // Auto only: HiDPI may fall back towards 1x CSS pixels, never below 90% of them
+    const bp = basePR(), rsMin = (SET.scale || 'auto') !== 'auto' ? 1 : bp > 1.05 ? Math.max(1 / bp, .7) : .8; // Auto only: HiDPI may fall back towards 1x CSS pixels, never below 90% of them
     if (fps < 40) { if (SET.gfx === 'high' && !lite) lite = true; else if (rs > rsMin + .001) { n = Math.max(rsMin, rs - .1); if (bp * n < .999 && !G.rsTold) { G.rsTold = true; showHint('Frames are slow: drawing at ' + Math.round(bp * n * 100) + '% resolution (Esc · Render scale to choose)', 5000); } } }
     else if (fps > 56) { if (rs < 1) n = Math.min(1, rs + .1); else if (lite && SET.gfx === 'high') lite = false; } // blur last: drop SSAO / rays first, then resolution
     if (n !== rs || lite !== !!G.lite) { G.rs = n; G.lite = lite; setupPost(); } }
