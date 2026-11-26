@@ -387,7 +387,7 @@ function rocketStep(h, t) {
   groundVel(PLANET, R.pos, t, _va); _va.subVectors(R.vel, _va); const vs = _va.length(); const rho = 1.225 * p; R.qd = .5 * rho * vs * vs;
   // parachute: opens when armed, below 9 km and slower than 280 m/s
   if (R.chute === 1 && p > .07 && vs < 280) { R.chute = 2; sfx('chute'); showHint('Parachute open: it holds you upright now', 2500); R.sg[R.sg.length - 1].userData.chute.visible = true; }
-  if (R.chute === 2) { const tg = alt > 1000 && radarAlt() > 1000 ? .07 : 1; /* main canopy 1 km above the ground (or sea) */ R.chA += clamp(tg - R.chA, -h, h * (R.chA < .07 ? 1 / 3 : (.08 + R.chA) / 6)); } // the main canopy opens reefed: slow at first, ~6 s to full // drogue high up, full canopy below 1 km
+  if (R.chute === 2) { const tg = alt > 1000 && radarAlt() > 1000 ? .07 : 1; /* main canopy 1 km above the ground (or sea) */ R.chA += clamp(tg - R.chA, -h, h * (R.chA < .07 ? .028 : (.08 + R.chA) / 6)); } // canopies open reefed: drogue over ~2.5 s, main slow at first, ~6 s to full // drogue high up, full canopy below 1 km
   const S2 = stackR(); let cdA = S.cap ? 16 : 4.5 * (S2 / 1.25) ** 2;
   if (vs > 1) { const ca = (nz.x * _va.x + nz.y * _va.y + nz.z * _va.z) / vs, s2 = Math.max(0, 1 - ca * ca), M = vs / 330, len = 26.1 - lowY(R.bot);
     cdA = cdA * (1 + .9 * Math.exp(-(((M - 1.05) / .3) ** 2)) + .3 * sstep(.8, 1.8, M)) + s2 * (S.cap ? 4 : len * S2 * 2 * .7); R.mach = M; R.aoa = s2; } else R.mach = R.aoa = 0;
