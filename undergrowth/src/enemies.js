@@ -8,6 +8,14 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { WORLD, rand, clamp, lerp, smoothstep, canvasTexture, events as sharedEvents } from './util.js';
 
+// Scanned-style soldier mesh (assets/soldier.js, credited in CREDITS.md) rigged to the skeleton
+// below. Without it the soldiers are built from primitives as before.
+const SOLDIER_MODEL = await import('../assets/soldier.js').then((m) => m.default).catch((e) => {
+  console.warn('[enemies] soldier model not loaded, using built soldiers', e?.message || e);
+  return null;
+});
+const ASSET_URL = (f) => new URL('../assets/' + f, import.meta.url).href;
+
 // ---------------------------------------------------------------------------
 // Tuning
 // ---------------------------------------------------------------------------
@@ -32,7 +40,7 @@ const MAX_CORPSES = 14;
 const SPEED = { patrol: 1.45, cautious: 1.25, walk: 1.6, jog: 2.6, run: 4.1 };
 
 // rig proportions
-const UA = 0.31, FA = 0.27, TH = 0.43, SH = 0.43;
+let UA = 0.31, FA = 0.27, TH = 0.43, SH = 0.43;
 
 // ---------------------------------------------------------------------------
 // Scratch (no allocations in the frame loop)
@@ -671,6 +679,35 @@ const GRIP_R = new THREE.Vector3(-0.014, -0.035, -0.07);
 const GRIP_L = new THREE.Vector3(0.028, -0.05, 0.16);
 const SHOULDER_R = new THREE.Vector3(-0.19, 0.15, -0.01); // chest space
 
+// Fit the skeleton to the model's joints. RIG_DY lifts the pelvis and ankle targets by the
+// difference between the model's hip/ankle height and the built soldier's.
+let RIG_DY = 0;
+if (SOLDIER_MODEL) {
+  const J = SOLDIER_MODEL.joints;
+  const set = (i, x, y, z) => { BONE_ABS[i][0] = x; BONE_ABS[i][1] = y; BONE_ABS[i][2] = z; };
+  RIG_DY = J.Hips[1] - 0.98;
+  UA = J.LeftArm[1] - J.LeftForeArm[1];
+  FA = J.LeftForeArm[1] - J.LeftHand[1];
+  TH = J.LeftUpLeg[1] - J.LeftLeg[1];
+  SH = J.LeftLeg[1] - J.LeftFoot[1];
+  set(B.hips, 0, J.Hips[1], 0);
+  set(B.spine, 0, J.Spine[1], J.Spine[2]);
+  set(B.chest, 0, J.Spine1[1], J.Spine1[2]);
+  set(B.neck, 0, J.Neck[1], J.Neck[2]);
+  set(B.head, 0, J.Head[1], J.Head[2]);
+  for (const [k, n] of [['L', 'Left'], ['R', 'Right']]) {
+    const a = J[n + 'Arm'], u = J[n + 'UpLeg'];
+    set(B['uArm' + k], a[0], a[1], a[2]);
+    set(B['fArm' + k], a[0], a[1] - UA, a[2]);
+    set(B['hand' + k], a[0], a[1] - UA - FA, a[2]);
+    set(B['thigh' + k], u[0], u[1], 0);
+    set(B['shin' + k], u[0], u[1] - TH, 0);
+    set(B['foot' + k], u[0], u[1] - TH - SH, 0);
+  }
+  const ch = BONE_ABS[B.chest], sr = BONE_ABS[B.uArmR];
+  SHOULDER_R.set(sr[0] - ch[0], sr[1] - ch[1], sr[2] - ch[2]);
+}
+
 function mkPose(x, y, z, rx, ry, rz) {
   return { p: new THREE.Vector3(x, y, z), q: new THREE.Quaternion().setFromEuler(new THREE.Euler(rx, ry, rz)) };
 }
@@ -926,18 +963,72 @@ function createSoldierKit(ctx) {
     return g;
   };
   const cache = new Map();
+  const model = SOLDIER_MODEL ? buildModelKit(ctx) : null;
   return {
+    model,
+    gunGeometry(variant) {
+      const key = `gun|${variant.loadout}`;
+      let g = cache.get(key);
+      if (!g) { g = onlyBone(this.geometry(variant, 0, true), B.rifle); cache.set(key, g); }
+      return g;
+    },
     material,
     hitGeo: new THREE.BoxGeometry(1, 1, 1),
     hitMat: new THREE.MeshBasicMaterial({ visible: false }),
     sphere: new THREE.Sphere(new THREE.Vector3(0, 0.9, 0), 2.2),
-    geometry(variant, lod) {
+    geometry(variant, lod, built = false) {
+      if (model && !built) return lod === 0 ? model.near : model.far;
       const key = `${lod}|${variant.skin}|${variant.loadout}|${variant.rolled ? 1 : 0}|${lod === 0 && variant.band ? 1 : 0}|${variant.tilt}`;
       let g = cache.get(key);
       if (!g) { g = bakeAO(buildSoldierGeometry({ ...variant, lod })); cache.set(key, g); }
       return g;
     },
   };
+}
+
+function decodeB64(b64, Type) {
+  const bin = atob(b64), u8 = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+  return new Type(u8.buffer);
+}
+
+function modelGeometry(d) {
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(decodeB64(d.pos, Float32Array), 3));
+  g.setAttribute('normal', new THREE.BufferAttribute(decodeB64(d.nrm, Float32Array), 3));
+  g.setAttribute('uv', new THREE.BufferAttribute(decodeB64(d.uv, Float32Array), 2));
+  g.setAttribute('skinIndex', new THREE.Uint8BufferAttribute(decodeB64(d.si, Uint8Array), 4));
+  g.setAttribute('skinWeight', new THREE.BufferAttribute(decodeB64(d.sw, Float32Array), 4));
+  g.setIndex(new THREE.BufferAttribute(decodeB64(d.idx, Uint16Array), 1));
+  g.computeTangents?.();
+  g.boundingSphere = new THREE.Sphere(new THREE.Vector3(0, 0.9, 0), 2.2);
+  return g;
+}
+
+function buildModelKit(ctx) {
+  const tl = new THREE.TextureLoader();
+  const map = tl.load(ASSET_URL('soldier_color.jpg'));
+  map.colorSpace = THREE.SRGBColorSpace; map.flipY = false; map.anisotropy = 4;
+  const normalMap = tl.load(ASSET_URL('soldier_normal.jpg'));
+  normalMap.flipY = false;
+  const material = new THREE.MeshStandardMaterial({ map, normalMap, roughness: 0.86, metalness: 0, envMapIntensity: 0.5 });
+  try { ctx?.world?.bakePatch?.(material, { sky: 0.85 }); } catch (e) { /* world without bake */ }
+  return { material, near: modelGeometry(SOLDIER_MODEL.near), far: modelGeometry(SOLDIER_MODEL.far) };
+}
+
+// Triangles of a built soldier skinned to one bone (the rifle), for drawing with the model.
+function onlyBone(geo, bone) {
+  const si = geo.attributes.skinIndex, idx = geo.index;
+  const n = idx ? idx.count : geo.attributes.position.count;
+  const keep = [];
+  for (let t = 0; t < n; t += 3) {
+    const a = idx ? idx.getX(t) : t, b = idx ? idx.getX(t + 1) : t + 1, c = idx ? idx.getX(t + 2) : t + 2;
+    if (si.getX(a) === bone && si.getX(b) === bone && si.getX(c) === bone) keep.push(a, b, c);
+  }
+  const out = geo.clone();
+  out.setIndex(keep);
+  out.boundingSphere = geo.boundingSphere?.clone() || new THREE.Sphere(new THREE.Vector3(0, 0.9, 0), 2.2);
+  return out;
 }
 
 // ---------------------------------------------------------------------------
@@ -965,9 +1056,12 @@ class Soldier {
     this.bones[0].updateMatrixWorld(true);
     this.skeleton = new THREE.Skeleton(this.bones);
 
-    this.near = new THREE.SkinnedMesh(kit.geometry(variant, 0), kit.material);
-    this.far = new THREE.SkinnedMesh(kit.geometry(variant, 1), kit.material);
-    for (const m of [this.near, this.far]) {
+    const bodyMat = kit.model ? kit.model.material : kit.material;
+    this.near = new THREE.SkinnedMesh(kit.geometry(variant, 0), bodyMat);
+    this.far = new THREE.SkinnedMesh(kit.geometry(variant, 1), bodyMat);
+    this.gun = kit.model ? new THREE.SkinnedMesh(kit.gunGeometry(variant), kit.material) : null;
+    for (const m of [this.near, this.far, this.gun]) {
+      if (!m) continue;
       m.bind(this.skeleton, IDENTITY);
       m.boundingSphere = kit.sphere;
       m.receiveShadow = true;
@@ -1013,6 +1107,7 @@ class Soldier {
     this.near.visible = level === 0;
     this.far.visible = level === 1;
     this.near.castShadow = shadow;
+    if (this.gun) this.gun.castShadow = shadow && level === 0;
   }
 
   muzzleWorld(out) { return out.copy(MUZZLE_LOCAL).applyMatrix4(this.bones[B.rifle].matrixWorld); }
@@ -1041,8 +1136,8 @@ class Soldier {
 
     // pelvis
     const bob = amp * lerp(0.018, 0.04, run) * Math.cos(ph * TAU * 2);
-    let hipsY = 0.97 - run * 0.05 - crouch * lerp(0.42, 0.3, amp) - bob;
-    hipsY = lerp(hipsY, 0.52, sit);
+    let hipsY = 0.97 + RIG_DY - run * 0.05 - crouch * lerp(0.42, 0.3, amp) - bob;
+    hipsY = lerp(hipsY, 0.52 + RIG_DY, sit);
     const lean = lerp(0.05, 0.3, run) * amp + crouch * 0.3 + A.lean;
     const twist = amp * 0.11 * Math.sin(ph * TAU) * (1 - A.aim * 0.7);
     const hips = b[B.hips];
@@ -1071,7 +1166,7 @@ class Soldier {
       const fx = sg * (0.1 + 0.05 * crouch + 0.02 * sit);
       fz = lerp(fz, 0.42, sit);
       fy = lerp(fy, 0.0, sit);
-      this._leg(side, fx, 0.06 + fy, fz, toe);
+      this._leg(side, fx, 0.06 + RIG_DY + fy, fz, toe);
     }
 
     // torso, aim and breathing
@@ -1204,7 +1299,7 @@ class Soldier {
     else root.rotation.set(D.dir * ang, 0, 0);
     root.position.y = (D.type === 'pit' ? 0 : D.type === 'side' ? 0.13 * fall : 0.05 * fall) - D.sink * smoothstep(0, 0.45, t);
     const hips = b[B.hips];
-    hips.position.set(0, lerp(D.hipsY0, D.type === 'side' || D.type === 'pit' ? 0.5 : 0.84, buckle), 0);
+    hips.position.set(0, lerp(D.hipsY0, (D.type === 'side' || D.type === 'pit' ? 0.5 : 0.84) + RIG_DY, buckle), 0);
     hips.rotation.set(0, 0, 0);
     // knees buckle, then the legs settle into a pose that lies on the ground plane
     const L = D.type === 'back' ? DEATH_LEGS.back : D.type === 'forward' ? DEATH_LEGS.forward : DEATH_LEGS.side;
