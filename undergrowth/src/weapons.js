@@ -5,6 +5,7 @@
 // impacts, explosions, fire and smoke). Everything is built from primitives and canvas textures.
 
 import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { WORLD, rand, noise2D, fbm, clamp, lerp, smoothstep, canvasTexture, events as utilEvents } from './util.js';
 
 const TAU = Math.PI * 2;
@@ -747,7 +748,21 @@ function makeArm(mats, side, gripAxis, palmSide, forearm, parentRot = [0, 0, 0],
   const grp = meshGroup(B.geometries(side === 'left'), mats, { name: side + 'Arm' });
   grp.quaternion.copy(q);
   grp.userData.baseQuat = q.clone();
+  grp.userData.hand = { side, fLocal: fLocal.clone(), gripR };
   return grp;
+}
+
+// Sleeve only, for arms that use the scanned hand model (assets/hand.glb). The model's wrist sits
+// at HAND_WRIST in the same hand frame as handParts.
+const HAND_WRIST = new THREE.Vector3(0.0059, -0.0205, 0.1045);
+const HAND_REF_R = 0.017;
+function sleeveParts(B, fore) {
+  const f = _v3.copy(fore).normalize();
+  const sx = HAND_WRIST.x - f.x * 0.004, sy = HAND_WRIST.y - f.y * 0.004, sz = HAND_WRIST.z - f.z * 0.004;
+  B.rod('sleeve', 0.039, 0.05, sx, sy, sz, sx + f.x * 0.34, sy + f.y * 0.34, sz + f.z * 0.34, 16, [2, 2]);
+  B.ring('sleeve', 0.039, 0.0062, sx, sy, sz, f.x, f.y, f.z, 16);
+  B.ring('sleeve', 0.042, 0.005, sx + f.x * 0.12, sy + f.y * 0.12 - 0.002, sz + f.z * 0.12, f.x, f.y + 0.15, f.z, 16);
+  B.ring('sleeve', 0.046, 0.0047, sx + f.x * 0.22, sy + f.y * 0.22, sz + f.z * 0.22, f.x + 0.1, f.y, f.z, 16);
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -1413,6 +1428,9 @@ const DUMMY_INPUT = { keys: new Set(), pressed: new Set(), mouse: { dx: 0, dy: 0
 // createWeapons
 // ---------------------------------------------------------------------------------------------
 
+// Model assets: CC0 hand (assets/hand.glb), CC BY AK pattern rifle (assets/type56.glb). See CREDITS.md.
+const ASSET_BASE = new URL('../assets/', import.meta.url);
+
 export function createWeapons(ctx) {
   const scene = ctx.scene;
   const camera = ctx.camera;
@@ -1548,6 +1566,90 @@ export function createWeapons(ctx) {
   lamp.root.visible = false;
 
   const rigs = { rifle, shovel, satchel, grenade, trap };
+  loadModels();
+
+  function vmMaterial(src, { color = null, env = 0.45, rough = null } = {}) {
+    const m = src.clone();
+    if (color != null) m.color.multiply(new THREE.Color(color));
+    if (rough != null) m.roughness = rough;
+    if (envMap) { m.envMap = envMap; m.envMapIntensity = env; }
+    m.userData.baseEnv = m.envMapIntensity;
+    m.side = THREE.FrontSide;
+    applyViewmodelDepth(m, vmLamp);
+    VM.list.push(m);
+    return m;
+  }
+  function setupMesh(mesh) { mesh.castShadow = false; mesh.receiveShadow = true; mesh.frustumCulled = false; return mesh; }
+  function firstMesh(root, name) {
+    let hit = null;
+    root.traverse((o) => { if (!hit && o.isMesh && (!name || o.name === name || o.parent?.name === name)) hit = o; });
+    return hit;
+  }
+
+  function loadModels() {
+    const loader = new GLTFLoader();
+    const viaUrl = (file) => new Promise((res, rej) => loader.load(new URL(file, ASSET_BASE).href, res, undefined, rej));
+    const viaModule = async (file) => {
+      const mod = await import('../assets/models.js');
+      const bin = Uint8Array.from(atob(mod[file.replace('.glb', '')]), (c) => c.charCodeAt(0));
+      return new Promise((res, rej) => loader.parse(bin.buffer, '', res, rej));
+    };
+    const load = (file) => viaUrl(file).catch(() => viaModule(file));
+    load('hand.glb').then((gltf) => {
+      const src = firstMesh(gltf.scene);
+      if (!src) return;
+      const geo = src.geometry;
+      geo.computeBoundingSphere();
+      const mat = vmMaterial(new THREE.MeshStandardMaterial({ map: src.material.map, color: 0xd2a07c, roughness: 0.62, metalness: 0 }), { env: 0.25 });
+      const arms = [];
+      viewModel.traverse((o) => { if (o.userData?.hand) arms.push(o); });
+      lamp.root.traverse((o) => { if (o.userData?.hand && !arms.includes(o)) arms.push(o); });
+      for (const arm of arms) {
+        const h = arm.userData.hand;
+        for (const c of [...arm.children]) { arm.remove(c); c.traverse?.((m) => { if (m.isMesh) m.geometry?.dispose?.(); }); }
+        const B = new Builder();
+        sleeveParts(B, h.fLocal);
+        const sl = meshGroup(B.geometries(h.side === 'left'), VM, { name: 'sleeve' });
+        for (const m of sl.children) setupMesh(m);
+        arm.add(sl);
+        const k = clamp(h.gripR / HAND_REF_R, 0.92, 1.0);
+        const hand = setupMesh(new THREE.Mesh(geo, mat));
+        hand.name = 'handModel';
+        hand.scale.set(h.side === 'left' ? -k : k, k, k);
+        arm.add(hand);
+      }
+      api.handModel = true;
+    }).catch((e) => console.warn('[weapons] hand model not loaded, keeping built hands', e?.message || e));
+
+    load('type56.glb').then((gltf) => {
+      const body = firstMesh(gltf.scene, 'AK_body'), mag = firstMesh(gltf.scene, 'AK_mag'), bolt = firstMesh(gltf.scene, 'AK_bolt');
+      if (!body) return;
+      const mBody = vmMaterial(body.material, { env: 0.5 });
+      const bodyGrp = rifle.root.getObjectByName('rifleBody');
+      if (bodyGrp) bodyGrp.visible = false;
+      const bm = setupMesh(new THREE.Mesh(body.geometry, mBody)); bm.name = 'rifleModel';
+      rifle.root.add(bm);
+      if (bolt) {
+        for (const c of rifle.bolt.children) c.visible = false;
+        rifle.bolt.add(setupMesh(new THREE.Mesh(bolt.geometry, mBody)));
+      }
+      if (mag) {
+        const g = mag.geometry.clone(); g.translate(-RIFLE_MAG_PIVOT.x, -RIFLE_MAG_PIVOT.y, -RIFLE_MAG_PIVOT.z);
+        const mMag = vmMaterial(body.material, { color: 0x4a4744, env: 0.5, rough: 0.5 });
+        mMag.metalness = Math.max(mMag.metalness, 0.6);
+        for (const c of rifle.mag.children) c.visible = false;
+        rifle.mag.add(setupMesh(new THREE.Mesh(g, mMag)));
+      }
+      // muzzle, ejection port and hands for this rifle's real proportions
+      rifle.flash.position.set(0, BORE, -0.398);
+      rifle.muzzle.position.set(0, BORE, -0.405);
+      rifle.ejector.position.set(0.022, -0.04, 0.05);
+      rifle.rArm.position.set(0, -0.136, 0.205);
+      rifle.lArm.position.set(0, -0.06, -0.118);
+      rifle.lBasePos.copy(rifle.lArm.position);
+      api.rifleModel = true;
+    }).catch((e) => console.warn('[weapons] rifle model not loaded, keeping built rifle', e?.message || e));
+  }
   for (const k of ITEMS) { rigs[k].root.visible = false; sway.add(rigs[k].root); }
   sway.add(lamp.root);
   viewModel.traverse((o) => { if (o.isMesh) { o.castShadow = false; o.receiveShadow = true; } });
