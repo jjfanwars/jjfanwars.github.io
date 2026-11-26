@@ -698,7 +698,7 @@ function setSas(m) { R.sas = m; R.hold.copy(R.q);
   if ((m === 'pro' || m === 'retro') && (R.st !== 'fly' || relVel(new V3()).length() < 3)) showHint((m === 'pro' ? 'Prograde' : 'Retrograde') + ' needs you to be moving: it turns once you are flying', 3000); else showHint(names[m], 1800); }
 // the fastest time warp allowed right now, and why (KSP: only physics warp up to ×4 under thrust, in the air or low down)
 function warpCap() { if (!G.on) return {mx: 0, why: ''}; if (!R.on) return {mx: 6, why: 'on foot'};
-  if (R.st === 'fly') { if (R.F > 0 || (R.lit && (R.thr > 0 || srbBurning()) && actS().thrust > 0)) return {mx: 2, why: 'engine burning'}; if (R.p > 0) return {mx: 2, why: 'in the air'}; if (altAbove() < 12000) return {mx: 2, why: 'under 12 km'}; }
+  if (R.st === 'fly') { if (R.F > 0 || srbBurning() || (R.lit && R.thr > 0 && actS().thrust > 0 && burnSet().some(i => STAGES[i].thrust && R.fuel[i] > 0))) return {mx: 2, why: 'engine burning'}; if (R.p > 0) return {mx: 2, why: 'in the air'}; if (altAbove() < 12000) return {mx: 2, why: 'under 12 km'}; }
   return {mx: WARPS.length - 1, why: ''}; }
 function setWarp(i) { R.warpTo = 0; R.warpLbl = ''; const c = warpCap(), want = clamp(i, 0, WARPS.length - 1); G.wi = Math.min(want, c.mx); G.warp = WARPS[G.wi];
   if (want > c.mx) showHint('×' + WARPS[want].toLocaleString('en') + ' not now: ' + c.why + (c.why === 'engine burning' ? ' (X cuts it)' : c.why === 'on foot' ? '' : '. Up to ×' + WARPS[c.mx] + ' (physics warp)'), 2500); }
