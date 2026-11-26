@@ -76,6 +76,7 @@ Browser war game in one file: `index.html` (Three.js r170, inlined: the ESM buil
 - `hamptons/`: Hamptons Cabinetry homepage mockups, live at hamptons.aiautomationvic.com/1-4 (not a game). Notes: `docs/notes/hamptons.md`.
 - `ib/`: IB Study, private textbook + practice app with Claude marking (not a game). Notes: `docs/notes/ib.md`.
 - `chess/`: jjchess, online 1v1 chess over the relay. Notes: `docs/notes/chess.md`.
+- `undergrowth/`: Undergrowth, jungle tunnel shooter (Củ Chi 1968). Notes: `docs/notes/undergrowth.md`.
 - `firsttap/`: Firsttap, product site for the Hub's refill engine (not a game), live at firsttap.aiautomationvic.com. Notes: `docs/notes/firsttap.md`. Plan: `docs/plans/firsttap.md`.
 
 ## Recently done (Nov 2026)
