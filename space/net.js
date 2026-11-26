@@ -152,7 +152,7 @@ Net.on('em', m => { const p = NET.players.get(m.id); if (p) { p.wave = performan
 Net.on('ship', m => { if (!Array.isArray(m.parts) || !m.parts.every(partOk)) return; shipApply(m.parts, m.name, m.paint); if (Net.role === 'host' && !isAuth()) return; NET.applying = true; if (R.st !== 'fly') resetRocket(); NET.applying = false; });
 Net.on('ves', m => { NET.applying = true; vesUnpack(m.l || []); try { localStorage.setItem('ye-world', JSON.stringify({v: 1, nameI: VES.nameI, list: vesPack()})); } catch (e) {} NET.applying = false; });
 Net.on('nd', m => { const s = m.d ? JSON.stringify(m.d) : ''; NET.lastNd = s; if (!m.d) { if (NODE) nodeKill(); return; } if (R.st !== 'fly') return; nodeMakeQuiet(m.d.t, new V3(...m.d.dv)); nodePanel(); });
-Net.on('warp', (m, from) => { if (Net.role === 'host' && m.to && m.to !== 'H') { Net.send1(m.to, m); return; } if (isAuth()) { setWarp(m.i); } });
+Net.on('warp', (m, from) => { if (Net.role === 'host' && m.to && m.to !== 'H') { Net.send1(m.to, m); return; } if (isAuth()) { if (m.wt) warpToT(m.wt, m.wl || 'a time'); else setWarp(m.i); } });
 Net.on('authReq', (m, from) => { if (Net.role === 'host') grantAuth(from); });
 Net.on('auth', m => { NET.auth = m.id; onAuth(); });
 Net.on('authNo', m => { showHint((m.who || 'Someone') + ' is flying: the Pilot seat is taken', 2500); C.seat = -1; });

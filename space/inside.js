@@ -203,6 +203,8 @@ function siStatus() { const V = SI.V, el = $('siStat'); if (!el.classList.contai
 addEventListener('keydown', e => { if (!SI.on || !G.on || G.paused) return;
   if (SI.tele && e.code === 'Tab') { e.preventDefault(); e.stopImmediatePropagation(); siTeleNext(e.shiftKey ? -1 : 1); }
   if (/^(Digit\d|KeyT|KeyZ|KeyX|KeyR|KeyH|KeyK|KeyV)$/.test(e.code) && !SI.tele) { e.stopImmediatePropagation(); } }, true);
+// exposure: in space the eye opens up for the stars (x11); a lit room needs indoor exposure, or the walls burn out to white
+{ const r0 = render; render = function (dt) { if (SI.on && !SI.tele) EMAX.value = Math.min(EMAX.value, SI.look ? 2.5 : 1.6); r0(dt); }; }
 addEventListener('wheel', e => { if (!SI.on || !SI.tele || G.paused) return; e.preventDefault(); e.stopImmediatePropagation(); SI.tele.fov = clamp(SI.tele.fov * Math.exp(e.deltaY * .0015), .03, 40); }, {passive: false, capture: true});
 // crew sync: m 2 = inside a station (station id, station-frame position, orientation)
 { const mp0 = myPose; myPose = function () { const o = mp0(); if (SI.on && SI.V) { o.m = 2; o.sv = SI.V.id; o.p = SI.pos.toArray().map(v => +v.toFixed(2)); o.q = SI.q.toArray().map(v => +v.toFixed(3)); delete o.b; delete o.f; delete o.yaw; } return o; }; }

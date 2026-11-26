@@ -1,0 +1,9 @@
+Poly Haven (https://polyhaven.com) - licence for the models in space/assets/models/polyhaven/
+and the textures regolith, regolith_pebbles, dirt, gravel, painted_metal in space/assets/tex/.
+
+From https://polyhaven.com/license (checked 26 Nov 2026):
+"Our assets are all licensed as CC0, which is effectively Public Domain even in
+jurisdictions that do not support the Public Domain."
+
+CC0 1.0 Universal: https://creativecommons.org/publicdomain/zero/1.0/
+Per-asset authors are listed in space/THIRD_PARTY.md (credit is not required).

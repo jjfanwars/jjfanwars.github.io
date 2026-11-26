@@ -22,7 +22,10 @@ function bodySpin(b) { return b === PLANET ? OMEGA.y : 2 * Math.PI / b.period; }
 function groundVel(b, p, t, out) { const w = bodySpin(b); if (b === PLANET) return out.set(w * p.z, 0, -w * p.x);
   satPos(b, t, _mp); satVel(b, t, out); return out.add(new V3(w * (p.z - _mp.z), 0, -w * (p.x - _mp.x))); }
 function gravAt(p, t, out) { const r2 = p.lengthSq(); out.copy(p).multiplyScalar(-PLANET.GM / (r2 * Math.sqrt(r2)));
-  for (let i = 0; i < SATS.length; i++) { const b = SATS[i]; satPos(b, t, _mp); const dx = _mp.x - p.x, dy = _mp.y - p.y, dz = _mp.z - p.z, d2 = dx * dx + dy * dy + dz * dz, k = b.GM / (d2 * Math.sqrt(d2)); out.x += dx * k; out.y += dy * k; out.z += dz * k; } return out; }
+  for (let i = 0; i < SATS.length; i++) { const b = SATS[i]; satPos(b, t, _mp); const dx = _mp.x - p.x, dy = _mp.y - p.y, dz = _mp.z - p.z, d2 = dx * dx + dy * dy + dz * dz, k = b.GM / (d2 * Math.sqrt(d2)); out.x += dx * k; out.y += dy * k; out.z += dz * k;
+    // Home sits still at the origin, so outside a moon's sphere of influence take off the pull Home itself feels toward that moon (the "indirect" term):
+    // what's left is the true tide. Without it a moon tugs every Home orbit sideways and Ap / Pe creep by kilometres. Inside the sphere the moon's rails are the frame.
+    if (d2 > b.soi * b.soi) { const m2 = _mp.lengthSq(), km = b.GM / (m2 * Math.sqrt(m2)); out.x -= _mp.x * km; out.y -= _mp.y * km; out.z -= _mp.z * km; } } return out; }
 function domBody(p) { for (let i = 0; i < SATS.length; i++) if (p.distanceTo(SATS[i].c) < SATS[i].soi) return SATS[i]; return PLANET; }
 
 // ---------------- rocket model (local: y = nose, -z = "front" (faces east on the pad), origin at the engine bell exit)
@@ -339,8 +342,8 @@ function stackFins() { for (let i = R.bot; i < STAGES.length; i++) if (STAGES[i]
 // ---------------- staging: launch, drop spent stages, open the parachute
 function stage() {
   if (R.st === 'dead') return;
-  if (!R.lit && actS().thrust) { R.lit = true; if (R.st === 'pad') { sfx('clamp'); showHint('Liftoff!', 2500); } else sfx('pop'); return; }
-  if (R.bot < STAGES.length - 1) { dropStage(); R.lit = actS().thrust > 0; sfx('pop'); return; }
+  if (!R.lit && actS().thrust) { R.lit = true; R.shut = false; if (R.st === 'pad') { sfx('clamp'); showHint('Liftoff!', 2500); } else sfx('pop'); return; }
+  if (R.bot < STAGES.length - 1) { dropStage(); R.lit = actS().thrust > 0; R.shut = false; sfx('pop'); return; }
   if (STAGES[R.bot].chute && R.chute === 0) { R.chute = 1; sfx('pop'); showHint('Parachute armed: it opens low and slow', 3500); }
 }
 // Space from the keyboard: dropping a stage that still has fuel needs a second press, so one stray tap can't throw away the way home
@@ -384,15 +387,17 @@ function rocketStep(h, t) {
   groundVel(PLANET, R.pos, t, _va); _va.subVectors(R.vel, _va); const vs = _va.length(); const rho = 1.225 * p; R.qd = .5 * rho * vs * vs;
   // parachute: opens when armed, below 9 km and slower than 280 m/s
   if (R.chute === 1 && p > .07 && vs < 280) { R.chute = 2; sfx('chute'); showHint('Parachute open: it holds you upright now', 2500); R.sg[R.sg.length - 1].userData.chute.visible = true; }
-  if (R.chute === 2) { const tg = alt > 1000 && radarAlt() > 1000 ? .07 : 1; /* main canopy 1 km above the ground (or sea) */ R.chA += clamp(tg - R.chA, -h, h / 3); } // drogue high up, full canopy below 1 km
+  if (R.chute === 2) { const tg = alt > 1000 && radarAlt() > 1000 ? .07 : 1; /* main canopy 1 km above the ground (or sea) */ R.chA += clamp(tg - R.chA, -h, h * (R.chA < .07 ? 1 / 3 : (.08 + R.chA) / 6)); } // the main canopy opens reefed: slow at first, ~6 s to full // drogue high up, full canopy below 1 km
   const S2 = stackR(); let cdA = S.cap ? 16 : 4.5 * (S2 / 1.25) ** 2;
   if (vs > 1) { const ca = (nz.x * _va.x + nz.y * _va.y + nz.z * _va.z) / vs, s2 = Math.max(0, 1 - ca * ca), M = vs / 330, len = 26.1 - lowY(R.bot);
     cdA = cdA * (1 + .9 * Math.exp(-(((M - 1.05) / .3) ** 2)) + .3 * sstep(.8, 1.8, M)) + s2 * (S.cap ? 4 : len * S2 * 2 * .7); R.mach = M; R.aoa = s2; } else R.mach = R.aoa = 0;
   cdA += R.chA * 1100;
-  gravAt(R.pos, t, _a); _a.addScaledVector(nz, R.F / m); if (NAVACC && R.F > 0) NAVACC.addScaledVector(nz, R.F / m * h); // burn node bookkeeping (nav.js)
-  if (vs > .01 && R.qd > 0) _a.addScaledVector(_va, -R.qd * cdA / (m * vs));
-  R.felt.copy(_a).sub(gravAt(R.pos, t, _t1)).applyQuaternion(_qa.copy(R.q).invert()); // what the crew feels (thrust + drag)
-  R.vel.addScaledVector(_a, h); R.pos.addScaledVector(R.vel, h);
+  _a.copy(nz).multiplyScalar(R.F / m); if (NAVACC && R.F > 0) NAVACC.addScaledVector(nz, R.F / m * h); // burn node bookkeeping (nav.js)
+  if (vs > .01 && R.qd > 0) _a.addScaledVector(_va, -R.qd * cdA / (m * vs)); // _a = thrust + drag (what the crew feels)
+  R.felt.copy(_a).applyQuaternion(_qa.copy(R.q).invert());
+  // leapfrog (kick-drift-kick, same scheme as the map's path prediction): second order, so orbits don't creep under time warp
+  R.vel.addScaledVector(gravAt(R.pos, t - h, _t1).add(_a), h / 2); R.pos.addScaledVector(R.vel, h); R.vel.addScaledVector(gravAt(R.pos, t, _t1).add(_a), h / 2);
+  if (R.rails) { railsTurn(); return; } // fast warp coasting high above everything: no torques, SAS just points (KSP "on rails")
   // rotation: real torques. Moment of inertia from the stack's mass and length; control torque from the capsule's reaction wheels plus
   // engine gimbal (only while the engine burns, more with a long lever); air pushes the nose into the wind when fins put the centre of
   // pressure behind the centre of mass, and tips it over when they don't. SAS is a controller limited by the same torque.
@@ -438,6 +443,11 @@ function rocketStep(h, t) {
     const wet = b === PLANET && heightAt(b, up.x, up.y, up.z) < -.5, how = sp < 3 ? 'soft' : sp < 7 ? 'firm' : 'hard';
     sfx('thud'); showHint((b !== PLANET ? 'Landed on ' + (b === MOON ? 'the Moon' : b.name) : wet ? 'Splashdown' : 'Landed') + ' at ' + sp.toFixed(1) + ' m/s (' + how + ')' + (b !== PLANET ? '! F: get up, then F at the hatch to step outside' : ' · F: get up · Backspace: new rocket'), 6000); return; }
 }
+// on rails (fast warp, coasting): steps are seconds long, far too coarse for the torque controller (it would chatter or blow up).
+// Spin stops; a pointing SAS mode turns the nose straight to its direction; hold keeps the attitude.
+function railsTurn() { R.w.set(0, 0, 0); R.inp.set(0, 0, 0);
+  if (R.sas === 'off' || R.sas === 'hold') return; const d = sasDir(_t2); if (!d) return;
+  R.q.premultiply(_qb.setFromUnitVectors(nose(_n), d)).normalize(); R.hold.copy(R.q); }
 let NAVACC = null; // speed gained from the engine since the burn node was made (nav.js)
 function sasDir(out) { // inertial direction for the SAS modes
   if (R.sas === 'node') return typeof navRem === 'function' && NODE ? out.copy(navRem()).normalize() : null;
@@ -469,17 +479,25 @@ function debrisStep(d, h, t) {
 }
 function flightStep(dt) {
   if (!G.on) return;
+  { const c = warpCap(); if (G.wi > c.mx) { G.wi = c.mx; G.warp = WARPS[c.mx]; } } // capped before the step: no long burn simulated on rails
   const sim = dt * G.warp; if (sim <= 0) return;
-  const t1 = G.t, coast = R.st === 'fly' && R.F === 0 && R.p === 0 && altAbove() > 15000;
-  const n = R.st === 'fly' ? Math.min(4000, Math.ceil(sim / (coast ? .5 : .02))) : Math.max(1, Math.ceil(sim / .05)), h = sim / n;
-  for (let i = 0; i < n; i++) { const t = t1 - sim + h * (i + 1); for (const bb of BODIES) bodyState(bb, t); rocketStep(h, t);
-    if (R.debris.length && i % (coast ? 1 : 4) === 0) for (const d of R.debris) debrisStep(d, coast ? h : h * 4, t); }
+  const t1 = G.t, coast = R.st === 'fly' && R.F === 0 && R.p === 0 && altAbove() > 15000 && !(typeof DK !== 'undefined' && DK.ap);
+  // step size: 20 ms under power / in the air; coasting, a small slice of the local orbit time scale (the leapfrog keeps orbits closed);
+  // parked (pad, landed, docked, engine off) the rocket only follows the ground, so one step per frame however fast time runs
+  let n; if (R.st === 'fly') { if (coast) { const rp = R.pos.length(); let hm = Math.sqrt(rp * rp * rp / PLANET.GM); for (const b of SATS) { const r = b.c.distanceTo(R.pos); hm = Math.min(hm, Math.sqrt(r * r * r / b.GM)); }
+      n = Math.min(4000, Math.ceil(sim / clamp(.008 * hm, .05, 30))); } else n = Math.min(4000, Math.ceil(sim / .02)); }
+  else n = R.F > 0 || R.spool > 0 || R.lit ? Math.min(4000, Math.ceil(sim / .05)) : 1;
+  const h = sim / n; R.rails = coast && h > .1; let dAcc = 0;
+  for (let i = 0; i < n; i++) { const t = t1 - sim + h * (i + 1); for (const bb of BODIES) bodyState(bb, t); rocketStep(h, t); dAcc += h;
+    if (R.debris.length && (coast || i % 4 === 3 || i === n - 1)) { const k = Math.ceil(dAcc / .5), dh = dAcc / k; // debris: same span of time as the rocket, in slices of at most .5 s
+      if (k > 400) { for (const d of R.debris) d.dead = true; } else for (let j = 0; j < k; j++) for (const d of R.debris) if (!d.dead) debrisStep(d, dh, t - dAcc + dh * (j + 1)); dAcc = 0; } else if (!R.debris.length) dAcc = 0; }
+  R.rails = false;
   R.debris = R.debris.filter(d => { if (d.dead || d.t > 1800 || d.pos.distanceTo(R.pos) > 4e5) { scene.remove(d.g); return false; } return true; });
   if (R.st === 'dead' && (R.deadT -= dt) <= 0) { respawn(); }
   // keep warp safe: no fast warp under thrust, in the air, or near the ground
-  if (R.on && R.st === 'fly' && G.wi > 2 && (R.F > 0 || R.p > 0 || altAbove() < 12000)) { G.wi = 2; G.warp = WARPS[2]; if (!R.warpTo) showHint('Time slowed to ×4: ' + (R.F > 0 ? 'engine burning' : R.p > 0 ? 'in the air' : 'close to the ground'), 2500); }
-  if (R.warpTo) { const left = R.warpTo - G.t; if (left <= 0 || R.st !== 'fly' || R.F > 0) { R.warpTo = 0; G.wi = 0; G.warp = 1; if (left <= 0) showHint('Arrived', 1500); }
-    else { let i = WARPS.length - 1; while (i > 0 && WARPS[i] * .05 * 4 > left) i--; if (i > 2 && (R.p > 0 || altAbove() < 12000)) i = 2; G.wi = i; G.warp = WARPS[i]; } }
+  { const c = warpCap(); if (G.wi > c.mx) { G.wi = c.mx; G.warp = WARPS[c.mx]; if (R.warpTo && R.on && R.st === 'fly' && R.F > 0) R.warpTo = 0; showHint('Time slowed to ×' + G.warp.toLocaleString('en') + ': ' + c.why, 2500); } }
+  if (R.warpTo) { const left = R.warpTo - G.t; if (left <= 0 || (R.on && R.st === 'fly' && R.F > 0) || R.st === 'dead') { const lb = R.warpLbl; R.warpTo = 0; R.warpLbl = ''; G.wi = 0; G.warp = 1; if (left <= 0) showHint('Arrived' + (lb ? ': ' + lb : ''), 1800); }
+    else { let i = WARPS.length - 1; while (i > 0 && WARPS[i] * .05 * 4 > left) i--; i = Math.min(i, warpCap().mx); G.wi = i; G.warp = WARPS[i]; } }
 }
 function legsStep(dt) {
   const LS = legStage(); if (!LS) return; const li = STAGES.indexOf(LS), leg = R.sg[li] && R.sg[li].userData.legs; if (!leg) return;
@@ -661,7 +679,7 @@ addEventListener('keydown', e => {
   if (k === 'Period' || k === 'BracketRight') setWarp(G.wi + 1);
   if (!pilot()) { if (R.on && C.in && /^(Digit[1-6]|Numpad[1-6]|KeyT|KeyZ|KeyX|KeyR)$/.test(k)) showHint('Sit in the middle (Pilot) seat to fly: walk to it and press F', 2500); return; }
   if (k === 'Space') { e.preventDefault(); stageKey(); }
-  if (k === 'KeyZ') R.thr = 1; if (k === 'KeyX') R.thr = 0; if (k === 'KeyR') engineToggle();
+  if (k === 'KeyZ') { R.thr = 1; autoLight(); } if (k === 'KeyX') R.thr = 0; if (k === 'KeyR') engineToggle();
   const modes = {Digit1: 'hold', Digit2: 'pro', Digit3: 'retro', Digit4: 'up', Digit5: 'guide', Digit6: 'node', Numpad6: 'node', Numpad1: 'hold', Numpad2: 'pro', Numpad3: 'retro', Numpad4: 'up', Numpad5: 'guide', KeyT: R.sas === 'off' ? 'hold' : 'off'}; if (modes[k]) setSas(modes[k]);
   if (k === 'KeyG' && legStage()) { R.legT = R.legT ? 0 : 1; R.legManual = true; showHint(R.legT ? 'Landing legs out' : 'Landing legs in', 1500); }
   if (k === 'KeyN') warpNext();
@@ -673,17 +691,23 @@ function engineToggle() { const S = STAGES[R.bot]; if (R.st === 'dead') return;
   if (R.lit && srbBurning()) { showHint('Solid boosters burn until they are empty: they can\'t be shut down', 2500); return; }
   if (!S.thrust) { showHint('No engine on this stage' + (R.bot < STAGES.length - 1 ? ': Space drops it' : ''), 2000); return; }
   if (!(R.fuel[R.bot] > 0)) { showHint(S.name + ' is out of fuel: Space for the next stage', 2000); return; }
-  if (R.lit) { R.lit = false; sfx('pop'); showHint((actS().eng || S.eng).p.name + ' shut down · R to relight', 2200); }
-  else if (R.st === 'pad') stage(); else { R.lit = true; R.spool = Math.min(R.spool, .2); sfx('pop'); showHint(S.eng.p.name + ' lit' + (R.thr < .05 ? ' · throttle is at zero: Shift or Z' : ''), 2200); } }
+  if (R.lit) { R.lit = false; R.shut = true; sfx('pop'); showHint((actS().eng || S.eng).p.name + ' shut down · R to relight', 2200); }
+  else if (R.st === 'pad') stage(); else { R.lit = true; R.shut = false; R.spool = Math.min(R.spool, .2); sfx('pop'); showHint(S.eng.p.name + ' lit' + (R.thr < .05 ? ' · throttle is at zero: Shift or Z' : ''), 2200); } }
 function setSas(m) { R.sas = m; R.hold.copy(R.q);
   const names = {guide: 'Ascent guide: steers to orbit, stages when a stage runs dry, cuts the engine at 80 km Ap and plans the circularise burn. You launch (Space)', node: 'Pointing at the burn node (purple marker)', hold: 'Holding direction', pro: 'Pointing prograde (where you are going)', retro: 'Pointing retrograde (backwards, to slow down)', up: 'Pointing up', off: 'Autopilot off'};
   if ((m === 'pro' || m === 'retro') && (R.st !== 'fly' || relVel(new V3()).length() < 3)) showHint((m === 'pro' ? 'Prograde' : 'Retrograde') + ' needs you to be moving: it turns once you are flying', 3000); else showHint(names[m], 1800); }
-function setWarp(i) { R.warpTo = 0; let mx = WARPS.length - 1; if (R.on && R.st === 'fly' && (R.F > 0 || R.p > 0 || altAbove() < 12000)) mx = 2; if (!R.on && G.on) mx = 6;
-  G.wi = clamp(i, 0, mx); G.warp = WARPS[G.wi]; if (i > mx) showHint(R.on ? 'Faster time needs space, engines off' : 'Max time speed', 2000); }
+// the fastest time warp allowed right now, and why (KSP: only physics warp up to ×4 under thrust, in the air or low down)
+function warpCap() { if (!G.on) return {mx: 0, why: ''}; if (!R.on) return {mx: 6, why: 'on foot'};
+  if (R.st === 'fly') { if (R.F > 0 || (R.lit && (R.thr > 0 || srbBurning()) && actS().thrust > 0)) return {mx: 2, why: 'engine burning'}; if (R.p > 0) return {mx: 2, why: 'in the air'}; if (altAbove() < 12000) return {mx: 2, why: 'under 12 km'}; }
+  return {mx: WARPS.length - 1, why: ''}; }
+function setWarp(i) { R.warpTo = 0; R.warpLbl = ''; const c = warpCap(), want = clamp(i, 0, WARPS.length - 1); G.wi = Math.min(want, c.mx); G.warp = WARPS[G.wi];
+  if (want > c.mx) showHint('×' + WARPS[want].toLocaleString('en') + ' not now: ' + c.why + (c.why === 'engine burning' ? ' (X cuts it)' : c.why === 'on foot' ? '' : '. Up to ×' + WARPS[c.mx] + ' (physics warp)'), 2500); }
 function warpNext() { // time warp to the next apoapsis or periapsis, whichever is sooner
   if (!R.on || R.st !== 'fly') return; const o = orbitEl(domBody(R.pos)); const ts = [o.tAp, o.tPe].filter(x => x > 20); if (R.F > 0) { showHint('Cut the engine first (X)', 2000); return; }
   if (!ts.length) { showHint('Nothing to warp to', 1500); return; } const dt = Math.min(...ts); R.warpTo = G.t + dt - 15; showHint('Warping to ' + (dt === o.tAp ? 'apoapsis (Ap)' : 'periapsis (Pe)') + ' · any time key stops', 2500); }
-function stepThrottle(dt) { if (!pilot()) return; if (keys.ShiftLeft || keys.ShiftRight) R.thr = Math.min(1, R.thr + dt * .9); if (keys.KeyC) R.thr = Math.max(0, R.thr - dt * .9); }
+// KSP style: the active stage's engines run whenever the throttle is up; only R (shut down) needs R / Space to relight
+function autoLight() { if (!R.lit && !R.shut && R.st === 'fly' && actS().thrust > 0) { R.lit = true; R.spool = Math.min(R.spool, .2); } }
+function stepThrottle(dt) { if (!pilot()) return; if (keys.ShiftLeft || keys.ShiftRight) { R.thr = Math.min(1, R.thr + dt * .9); autoLight(); } if (keys.KeyC) R.thr = Math.max(0, R.thr - dt * .9); }
 
 // ---------------- sound (WebAudio noise, no files)
 const SND = {};

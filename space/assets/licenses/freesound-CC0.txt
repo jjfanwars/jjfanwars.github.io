@@ -1,0 +1,7 @@
+Freesound (https://freesound.org) - the sounds in space/assets/sfx/ (top level, not sfx/kenney/)
+come from Freesound uploads whose licence on the sound page is
+"Creative Commons 0" (http://creativecommons.org/publicdomain/zero/1.0/), checked one by one on
+26 Nov 2026. Files were made from the site's HQ previews, trimmed, peak-normalised and re-encoded.
+Source page for each file is listed in space/THIRD_PARTY.md.
+
+CC0 1.0 Universal: https://creativecommons.org/publicdomain/zero/1.0/

@@ -284,13 +284,15 @@ body.map #mis ol, body.map #mis .md { display:none; } body.map #nodeP { top:58px
   <h2>Paused</h2><div class="ps">Time is stopped. Esc or P to carry on.</div>
   <div class="pb"><button id="resume">Resume</button><button id="pMis">Missions (J)</button><button id="pBld">Rocket builder (B)</button></div>
   <div class="tl">Graphics</div><div class="seg" data-gfx><button data-v="low">Low</button><button data-v="med">Medium</button><button data-v="high">High</button></div>
+  <div class="tl">Anti-aliasing</div><div class="seg" data-aa><button data-v="taa" title="Smoothest edges (Medium and High)">TAA</button><button data-v="fxaa" title="Light edge smoothing, crisp textures">FXAA</button><button data-v="off" title="Sharpest, jaggy edges">Off</button></div>
+  <div class="tl">Render scale</div><div class="seg" data-scale><button data-v=".75" title="Faster, softer">75%</button><button data-v="1" title="One pixel per screen point">100%</button><button data-v="auto" title="Screen pixels up to 2x on High, 1.5x on Medium; lowers itself if frames are slow">Auto</button><button data-v="native" title="Every pixel of a HiDPI screen (up to 2x), always">Native</button></div>
   <div class="tl">Mouse</div><div class="pm"><span>Sensitivity</span><input id="pSens" type="range" min="0.3" max="2.5" step="0.05"><b id="pSensV"></b><span style="margin-left:14px"><input id="pInv" type="checkbox"> Invert up/down</span></div>
   <div class="tl">On foot</div><div class="tk">
     <span><b>W A S D</b> walk · <b>Shift</b> run</span><span><b>Space</b> jump (hop on the Moon)</span><span><b>F</b> get in / sit / get up / hatch</span><span><b>Mouse</b> look (click to grab the mouse)</span></div>
   <div class="tl">Flying (Pilot seat)</div><div class="tk">
-    <span><b>Space</b> launch, next stage, parachute</span><span><b>W S A D</b> pitch / yaw · <b>Q E</b> roll</span><span><b>Shift / C</b> throttle up / down</span><span><b>Z / X</b> full throttle / cut</span><span><b>R</b> engine off / relight</span>
-    <span><b>1 2 3 4</b> hold / prograde / retro / up</span><span><b>5</b> ascent guide · <b>T</b> autopilot off</span><span><b>G</b> landing legs</span><span><b>K</b> release station module</span><span><b>H</b> dock / undock</span><span><b>Y</b> next station target</span><span><b>7 / 8</b> point at target / kill relative speed</span><span><b>V</b> inside / chase / locked view</span><span><b>Mouse</b> look around · <b>Wheel</b> zoom</span><span><b>Caps Lock</b> fine steering</span><span><b>B</b> rocket builder (not flying)</span>
-    <span><b>M</b> map · <b>Tab</b> map focus</span><span><b>N</b> warp to Ap / Pe</span><span><b>, .</b> slower / faster time</span><span><b>Backspace</b> new rocket (when landed)</span></div>
+    <span><b>Space</b> launch, next stage, parachute</span><span><b>W S A D</b> pitch / yaw · <b>Q E</b> roll</span><span><b>Shift / C</b> throttle up / down (engines run whenever it is up)</span><span><b>Z / X</b> full throttle / cut</span><span><b>R</b> shut the engine down / relight</span>
+    <span><b>1 2 3 4</b> hold / prograde / retro / up</span><span><b>5</b> ascent guide · <b>6</b> point at the burn node · <b>T</b> off</span><span><b>G</b> landing legs</span><span><b>K</b> release station module</span><span><b>H</b> dock / undock</span><span><b>Y</b> next station target</span><span><b>7 / 8</b> point at target / kill relative speed</span><span><b>V</b> inside / chase / locked view</span><span><b>Mouse</b> look around · <b>Wheel</b> zoom</span><span><b>Caps Lock</b> fine steering</span><span><b>B</b> rocket builder (not flying)</span>
+    <span><b>M</b> map · <b>Tab</b> map focus</span><span><b>Map: click your path</b> add a burn node / warp here · drag its handles</span><span><b>N</b> warp to the next burn, Ap or Pe</span><span><b>, .</b> slower / faster time · <b>/</b> back to ×1</span><span><b>Alt</b> free the mouse (click the warp bar: Warp to…)</span><span><b>Backspace</b> new rocket (when landed)</span></div>
 </div></div>
 <div id="bld" class="hidden">
   <div class="btop"><h2>Rocket <span>builder</span></h2><input id="bldName" type="text" maxlength="24" placeholder="Rocket name"><button id="bldSave">Save</button>
@@ -324,6 +326,7 @@ body.map #mis ol, body.map #mis .md { display:none; } body.map #nodeP { top:58px
 <script src="net.js?v=3"></script>
 <script src="inside.js?v=1"></script>
 <script src="flow.js?v=1"></script>
+<script src="models.js?v=1"></script>
 <script src="polish.js?v=5"></script>
 </body>
 </html>
