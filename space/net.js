@@ -199,7 +199,7 @@ async function roomList() { const el = $('netRooms'); el.textContent = 'Looking 
   // crew list on the pause card
   const pc = document.querySelector('#pause .tcard'), cl = document.createElement('div'); cl.id = 'pCrew'; pc.querySelector('.pb').after(cl); }
 function crewList() { const el = $('pCrew'); if (!online()) { el.innerHTML = ''; return; } const rows = [[myId(), Net.name + ' (you)', NET.col, R.on && C.in ? (C.seat >= 0 ? SEATS[C.seat].name : 'In the capsule') : 'On ' + P.body.name]];
-  for (const [id, p] of NET.players) if (id !== myId() && p.po) rows.push([id, p.name, p.c, p.po.m === 1 ? (p.po.s >= 0 ? SEATS[p.po.s].name : 'In the capsule') : 'On ' + (BODIES[p.po.b] || PLANET).name]);
+  for (const [id, p] of NET.players) if (id !== myId() && p.po) rows.push([id, p.name, p.c, p.po.m === 2 ? 'In the station' : p.po.m === 1 ? (p.po.s >= 0 ? SEATS[p.po.s].name : 'In the capsule') : 'On ' + (BODIES[p.po.b] || PLANET).name]);
   el.innerHTML = '<div class="tl">Crew · room ' + Net.code + '</div><div class="crew">' + rows.map(([id, n, c, w]) => '<div><i style="background:#' + CREW_COL[c % CREW_COL.length].toString(16).padStart(6, '0') + '"></i><b>' + n.replace(/</g, '') + '</b><span>' + w + (NET.auth === id ? ' · has the controls' : '') + '</span></div>').join('') + '</div>'; }
 { const sp0 = setPause; setPause = function (on, relock) { sp0(on, relock); if (on) crewList(); }; }
 { const st = document.createElement('style'); st.textContent = `
