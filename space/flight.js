@@ -605,8 +605,10 @@ function flightVisuals(dt) {
   for (let i = 0; i < R.sg.length; i++) { const u = R.sg[i].userData; if (!u.plumes) continue; const st = STAGES[i], live = on > 0 && BS.includes(i) && R.fuel[i] > 0 && (st.srb || R.thr > 0), oi = st.srb ? 1 : R.thr;
     const bm = u.bellM; if (bm) bm.emissiveIntensity = lerp(bm.emissiveIntensity, live ? (st.hot ? 1.6 : 1.1) * (.4 + .6 * vac) : 0, 1 - Math.exp(-dt * (live ? 6 : .6)));
     for (const [core, outer] of u.plumes) { core.visible = outer.visible = live; if (!live) continue; const ex = st.exit, hot = st.hot, cu = core.material.uniforms, ou = outer.material.uniforms;
-      cu.r0.value = ex * .62; cu.sp.value = lerp(.1, 1.4, vac); cu.L.value = (hot ? 9 : 3.5) * (.6 + .4 * oi) * (1 + vac * .6) * (hot === 2 ? 1.3 : 1); cu.I.value = (hot ? 16 : 3.5) * oi * (1 - .35 * vac); cu.shock.value = hot === 1 ? R.p : 0; cu.t.value = G.t % 50;
-      ou.r0.value = ex * .95; ou.sp.value = lerp(.45, 5.5, vac); ou.L.value = (hot ? 22 : 9) * (.5 + .5 * oi) * (1 + vac * 1.3); ou.I.value = (hot ? 3.2 : 1.4) * oi * (1 - .6 * vac); ou.shock.value = 0; ou.t.value = cu.t.value; } }
+      // readable at a glance: never fainter than 45% even at low throttle, and only a little dimmer / wider in vacuum
+      const vis = .45 + .55 * oi;
+      cu.r0.value = ex * .66; cu.sp.value = lerp(.1, 1.1, vac); cu.L.value = (hot ? 10 : 6) * (.6 + .4 * oi) * (1 + vac * .5) * (hot === 2 ? 1.3 : 1); cu.I.value = (hot ? 18 : 11) * vis * (1 - .15 * vac); cu.shock.value = hot === 1 ? R.p : 0; cu.t.value = G.t % 50;
+      ou.r0.value = ex * .95; ou.sp.value = lerp(.45, 3, vac); ou.L.value = (hot ? 22 : 13) * (.5 + .5 * oi) * (1 + vac * .9); ou.I.value = (hot ? 3.6 : 2.6) * vis * (1 - .3 * vac); ou.shock.value = 0; ou.t.value = cu.t.value; } }
   // flame light below the bell (lights the pad, smoke and the rocket at night)
   const fp = _t1.copy(R.pos).sub(G.O).addScaledVector(nz, -(R.comY - S.y0) - 1.5); flameL.position.copy(fp); flameL.intensity = on * (S.hot ? 1400 : 300) * (.9 + .2 * Math.random());
   if (G.flash > 0) { flameL.position.copy(G.flashP).sub(G.O); flameL.intensity = Math.max(flameL.intensity, G.flash * 6e4); G.flash = Math.max(0, G.flash - dt * 1.5); }

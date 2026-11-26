@@ -230,5 +230,6 @@ Sandbox plus missions (21 Nov 2026: 15 missions, see below). Astronauts are thro
 ## Perf + fixes (26 Nov 2026, after the subagent batch)
 - Lag: `basePR` caps back to High 1.5 / Medium 1.25 / Low 1 (2× on High was ~1.8× the pixels), terrain detail octaves `tOct` High 3 / Medium 2 (was 5 / 3), adaptive resolution may drop to 0.8.
 - Ember has its own 4 h day (`EMBER.day`; `bodyState` and `bodySpin` use `b.day` when set). Tidally locked it had ~40 h nights, so you often couldn't see the sun.
+- Plume: brighter and longer, never under 45% even at low throttle, only slightly dimmer/wider in vacuum (it used to fade to ~40% and spread 5x in space).
 - `#fEng` chip in the flight HUD stage plate (ui.js): Engine on · N% (red) / idle / off / No fuel / No engine.
 - `warpCap` counts an engine as burning only with real thrust or fuel behind it.
