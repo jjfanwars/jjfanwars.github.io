@@ -9,7 +9,7 @@ Read `CLAUDE.md` first (shared rules) and the design in `docs/plans/yeship.md`. 
 4. Cabin + crew stations (Pilot, Navigator, Engineer), seat swapping, zero-g.
 5. EVA, moon (craters, secret, fuel), lunar rover.
 6. Multiplayer (5 players, tuned for 2-3; relay like the other games).
-7. Stations, assisted docking, base parts, world save.
+7. Stations, assisted docking, base parts, world save. **Stations, assisted docking and the station save done 26 Nov 2026** (`space/station.js`); base parts and walk-in station rooms not built.
 Sandbox plus missions (21 Nov 2026: 15 missions, see below). Astronauts are thrown out only when the ship explodes.
 
 ## Code map (space/game.js)
@@ -176,3 +176,11 @@ Sandbox plus missions (21 Nov 2026: 15 missions, see below). Astronauts are thro
 - **Meshes:** `stageMeshes(g, S, si, preview, paint, tag)` (core or side), `sideMeshes`, `plumeSet(g, S, noz)` (one plume pair per nozzle; `userData.plumes` = pairs, `userData.plume` = flat list), `bellSet`, `noseGeo`, `pgeo` geometry cache. `tankMat(h, r, style, paint, kind)` + `tankNormal` (normal map: weld seams + stringers, SRB segment joints).
 - **Paint:** `SHIP.paint` / `BLD.paint` = `{base, acc, trim, pat, text, cap}` (`PAINT0` default, patterns in `PAINT_PATS`), saved in `ye-ship`, saved designs (`ye-ships` entries are now `{parts, paint}`; old arrays still load) and flight saves. `RM.cap` colour = capsule paint (`applyCapPaint`).
 - New presets: Sparrow (solids), Atlas Pro, Deep Space (nuclear), Mega Lifter. `partOk` / `cloneParts` validate and copy designs with side stacks.
+
+## Space stations (26 Nov 2026, `space/station.js`, loaded after nav.js; owner: "space stations that you bring to space and assemble")
+- **Cargo:** `PARTS.bay` (cat `cargo`, 3.8 m) carries one module: `d.cargo` = key of `MODULES` (flight.js: hub, hab, lab, solar, depot, green, cupola, tele; `m` mass, `L` length, `w` radius). `S.cargoM` per stage; live mass in `R.cargoM[i]` (`cargoAt`, in `rocketMass`/`comOf`); `R.cargoOut` marks released bays. `bayMeshes` (called from `partMeshes`) = clamshell doors (`bayPose`, open 0..1) around a scaled `modMesh`. Builder: "Cargo bay module" list (`bldCargo`), presets Station Hauler / Depot Hauler (bay at the top of the upper stage so it reaches orbit).
+- **K** (`cargoRelease`): only in orbit (Pe above the air), engine off. Within 300 m of a station (or docked) the module joins it (`vesAttach`: first free port where it fits, glides in via `V.anim`), else `vesNew` starts "Station <name>".
+- **Stations** `VES.list`: `{id, name, b (BODIES index), t0, r, v (relative to the world), q, mods: [{k, p, q, used[]}], visits}`, on rails via `kepler()` (universal variables) in `vesState(V, t)`. Saved in localStorage `ye-world` (`vesSave`/`vesLoad`). Meshes built within 400 km (`vesBuild`, `vesFrame`), blinking beacon. `modPorts(k)`: [pos, dir] per port, index 0 = back.
+- **Docking (H):** within 20 km and under 60 m/s relative: `DK.ap` autopilot (kinematic: to a stand-off point 25 m out on the port axis, then straight in, slerps to `dockGoal`), then `R.st = 'docked'` (`dockStep` holds the ship on the port; `rocketStep` is wrapped). H again undocks at 0.6 m/s. A station with a `depot` fills every tank on docking. Hatch stays locked while docked. Flight saves skip docked/docking states.
+- **Targeting:** Y cycles `VES.tgt` (Shift+Y clears), SAS 7 = point at the target, 8 = against the relative speed (`sasDir` wrapped). `#stInfo` readout (distance, closing speed, key hints) and `#stTag` marker. Map: station orbits + markers, closest approach now / after the node (`closest()` = Kepler both, sample + golden section). **Meet station** button (`meetStation`): far = Hohmann-timed or phasing-orbit (catch up in 1-4 laps) burn, scored on miss distance (anything under 15 km counts as good), wait time and Δv; close (pass under 20 km within ~5 laps) = match-speed node at the closest point. Tested headless: plan, burn, match, H docks.
+- **Missions** (appended to `MISD`): Start a station, Grow your station, Visit the station, Gas station, Space city (6 modules, bonus).

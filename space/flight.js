@@ -122,7 +122,21 @@ const PARTS = {
   coneH: {cat: 'struct', name: 'Nose cone XL', r: 1.9, h: 3.6, dry: 300, nose: true, desc: '3.8 m nose cone'},
   wheel: {cat: 'struct', name: 'Gyro ring', r: 1.25, h: .5, dry: 300, torque: 30000, desc: 'Reaction wheels: turn faster'},
   dock: {cat: 'struct', name: 'Docking port', r: .65, h: .5, dry: 120, desc: 'Docks with stations and other ships'},
+  // station parts: a cargo bay carries one module (d.cargo), K lets it go in orbit (station.js)
+  bay: {cat: 'cargo', name: 'Cargo bay', r: 1.9, h: 7.6, dry: 1600, desc: 'Carries a station module. K releases it in orbit'},
 };
+// station modules (meshes + behaviour in station.js). m = mass in kg, L = length along its axis, w = radius, ports: 0 = the back (where it attaches)
+const MODULES = {
+  hub: {name: 'Core hub', m: 5000, L: 3.4, w: 1.7, desc: 'Six docking ports: the heart of a station'},
+  hab: {name: 'Habitat', m: 9000, L: 6.6, w: 1.75, desc: 'Bunks, galley and windows for the crew'},
+  lab: {name: 'Science lab', m: 8000, L: 6.2, w: 1.75, desc: 'Experiments inside and out'},
+  solar: {name: 'Solar wings', m: 3200, L: 4.4, w: 1.1, desc: 'Two huge solar wings (power for everything)'},
+  depot: {name: 'Fuel depot', m: 7000, L: 6.6, w: 1.8, desc: 'Ships that dock get their tanks filled'},
+  green: {name: 'Greenhouse', m: 5500, L: 6.2, w: 1.75, desc: 'Plants under glass: fresh food in orbit'},
+  cupola: {name: 'Cupola', m: 1900, L: 2.2, w: 1.5, desc: 'Seven windows for the best view in space'},
+  tele: {name: 'Space telescope', m: 4200, L: 6.8, w: 1.4, desc: 'Big mirror pointed at the stars'},
+};
+for (const k in MODULES) MODULES[k].k = k;
 for (const k in PARTS) { const p = PARTS[k]; p.k = k; if (p.cat === 'tank') p.dry = Math.round(p.fuel * (p.ball ? .1 : .08) / 10) * 10; if (p.cat === 'srb') p.dry = Math.round(p.fuel * .16 / 10) * 10; if (p.cat === 'engine') p.h = p.mount + p.bl; }
 const RADIAL = {fins: {name: 'Fins', dry: 150, desc: 'Keep the nose into the wind low down'}, bigfins: {name: 'Big fins', dry: 320, desc: 'Bigger fins for big rockets'},
   legs: {name: 'Landing legs', dry: 160, desc: 'Land on the Moon. G folds them'}, rcs: {name: 'RCS thrusters', dry: 90, desc: 'Little jets: turn faster'}};
@@ -146,7 +160,7 @@ const PAINT0 = {base: '#f1f0ec', acc: '#17191d', trim: '#ff8a1e', pat: 'roll', t
 const PAINT_PATS = [['roll', 'Roll marks'], ['band', 'Bands'], ['stripe', 'Stripe'], ['check', 'Chequers'], ['plain', 'Plain']];
 const SHIP = {name: 'YeShip I', parts: SHIP_PRESETS['YeShip I'].map(p => ({...p})), paint: {...PAINT0}};
 const STAGES = []; // filled by shipLayout(), bottom to top; the capsule is always last
-const partOk = d => d && PARTS[d.k] && (!d.side || (Array.isArray(d.side.parts) && d.side.parts.every(q => PARTS[q.k])));
+const partOk = d => d && PARTS[d.k] && (!d.cargo || MODULES[d.cargo]) && (!d.side || (Array.isArray(d.side.parts) && d.side.parts.every(q => PARTS[q.k])));
 const cloneParts = parts => parts.map(p => { const q = {...p}; if (p.side) q.side = {n: p.side.n, parts: p.side.parts.map(s => ({...s}))}; return q; });
 function stageEngine(S, it) { // a part that makes thrust becomes the stage's engine when it sits at the bottom of its section
   Object.assign(S, {eng: it, thrust: it.p.thrust, ispS: it.p.ispS, ispV: it.p.ispV, exit: it.p.rE, hot: it.p.hot, plumeY: it.y0, srb: it.p.cat === 'srb', nuke: !!it.p.nuke, noz: it.p.noz || [[0, 0]]}); }
@@ -164,7 +178,7 @@ function shipLayout(parts) { // places the parts (rocket coords: capsule base at
     const it = {k: d.k, p, d, i, r: p.r, y0: y - p.h, y1: y, dry: p.dry || 0, fuel: p.fuel || 0}; sec.push(it); y = it.y0; prevR = p.r; L.push(it); });
   const out = [];
   secs.filter(s => s.length).reverse().forEach(sec => { const S = {parts: sec, dry: 0, fuel: 0, y0: Infinity, y1: -Infinity, thrust: 0, legs: false, fins: false, r: 0, torque: 0, warn: []};
-    sec.forEach((it, j) => { S.dry += it.dry; S.fuel += it.fuel || 0; S.y0 = Math.min(S.y0, it.y0); S.y1 = Math.max(S.y1, it.y1); S.r = Math.max(S.r, it.r || it.rB || 0); S.torque += (it.p && it.p.torque) || 0; if (it.d) sumRadial(S, it);
+    sec.forEach((it, j) => { S.dry += it.dry; S.fuel += it.fuel || 0; S.y0 = Math.min(S.y0, it.y0); S.y1 = Math.max(S.y1, it.y1); S.r = Math.max(S.r, it.r || it.rB || 0); S.torque += (it.p && it.p.torque) || 0; if (it.d) sumRadial(S, it); if (it.p && it.p.k === 'bay') S.cargoM = (S.cargoM || 0) + MODULES[it.d.cargo || 'hab'].m;
       if (it.p && it.p.thrust) { const bottom = j === sec.length - 1; it.blocked = !bottom; if (!bottom) S.warn.push(it.p.name + ' is blocked by the part under it (put a decoupler there)'); else stageEngine(S, it); } });
     if (S.fuel && !S.thrust) S.warn.push('Fuel but no engine'); if (S.thrust && !S.fuel) S.warn.push('Engine but no fuel');
     // side boosters hanging on this stage: their own stage, fired with this one and dropped first
@@ -259,6 +273,7 @@ function partMeshes(g, it, si, preview, paint) { // meshes for one placed part (
     else if (p.k === 'wheel') { g.add(cylY(r, r, it.y0, it.y1, RM.grey, 40)); g.add(cylY(r + .03, r + .03, it.y0 + .15, it.y1 - .15, RM.gold, 40)); }
     else if (p.k === 'dock') { g.add(cylY(r, r * .9, it.y0, it.y1 - .12, RM.grey, 32)); g.add(cylY(r * .75, r * .75, it.y1 - .12, it.y1, RM.white, 32));
       for (let k = 0; k < 3; k++) { const a = k * Math.PI * 2 / 3, pe = mesh(pgeo('petal', () => new THREE.BoxGeometry(.18, .32, .06)), RM.gold, Math.cos(a) * r * .62, it.y1 + .1, Math.sin(a) * r * .62); pe.rotation.y = -a + Math.PI / 2; g.add(pe); } } }
+  if (p.cat === 'cargo' && typeof bayMeshes === 'function') bayMeshes(g, it, preview, pt);
   const d = it.d || {};
   if (d.fins || d.bigfins) { const fg = pgeo('fin', finGeo), s = clamp(r / 1.25, .6, 1.4) * (d.bigfins ? 1.7 : 1); for (let k = 0; k < 4; k++) { const f = mesh(fg, RM.black); const a = Math.PI / 4 + k * Math.PI / 2; f.scale.setScalar(s); f.position.set(Math.cos(a) * (r - .03), it.y0 + .1, -Math.sin(a) * (r - .03)); f.rotation.y = a; g.add(f); } }
   if (d.legs) legSet(g, it, g.userData.legs || (g.userData.legs = []));
@@ -295,11 +310,12 @@ const R = {on: false, st: 'pad', body: PLANET, pos: new V3(), vel: new V3(), q: 
 R.g.add(R.inner); scene.add(R.g);
 const flameL = new THREE.PointLight(0xffa04a, 0, 0, 2); scene.add(flameL); // always in the scene (adding lights later recompiles every material)
 const _ry = new Q4().setFromAxisAngle(new V3(0, 1, 0), -Math.PI / 2);
-function rocketMass() { let m = 0; for (let i = R.bot; i < STAGES.length; i++) m += STAGES[i].dry + R.fuel[i]; return m; }
-function comOf() { let m = 0, my = 0; for (let i = R.bot; i < STAGES.length; i++) { const S = STAGES[i], mi = S.dry + R.fuel[i]; m += mi; my += mi * (S.y0 + S.y1) / 2; } return my / m; }
+const cargoAt = i => (R.cargoM && R.cargoM[i]) || 0; // station module still in a cargo bay on stage i
+function rocketMass() { let m = 0; for (let i = R.bot; i < STAGES.length; i++) m += STAGES[i].dry + R.fuel[i] + cargoAt(i); return m; }
+function comOf() { let m = 0, my = 0; for (let i = R.bot; i < STAGES.length; i++) { const S = STAGES[i], mi = S.dry + R.fuel[i] + cargoAt(i); m += mi; my += mi * (S.y0 + S.y1) / 2; } return my / m; }
 function resetRocket() {
   for (const g of R.sg) R.inner.remove(g); R.sg = STAGES.map((_, i) => buildStage(i)); for (const g of R.sg) R.inner.add(g);
-  R.fuel = STAGES.map(s => s.fuel); R.bot = 0; R.lit = false; R.thr = 1; R.chute = 0; R.chA = 0; R.w.set(0, 0, 0); R.sas = 'hold'; R.st = 'pad'; R.body = PLANET; R.deadT = 0; R.legs = R.legT = 0; R.warpTo = 0; R.spool = 0; R.inp.set(0, 0, 0); R.test = false; R.legManual = false; R.lowB = -1; R.askT = 0; R.g.visible = true; R.t0 = 0; HIST.length = 0;
+  R.fuel = STAGES.map(s => s.fuel); R.cargoM = STAGES.map(s => s.cargoM || 0); R.cargoOut = {}; R.bot = 0; R.lit = false; R.thr = 1; R.chute = 0; R.chA = 0; R.w.set(0, 0, 0); R.sas = 'hold'; R.st = 'pad'; R.body = PLANET; R.deadT = 0; R.legs = R.legT = 0; R.warpTo = 0; R.spool = 0; R.inp.set(0, 0, 0); R.test = false; R.legManual = false; R.lowB = -1; R.askT = 0; R.g.visible = true; R.t0 = 0; HIST.length = 0;
   R.comY = comOf(); const pad = site.pads[0]; siteToBody(new V3(pad.x, pad.y + R.comY - lowY(0), pad.z), R.lp); R.lq.copy(site.q).multiply(_ry);
   latch(G.t); R.hold.copy(R.q);
 }
@@ -948,12 +964,12 @@ function cabinCamera() {
 function cabinNear() { // what F would do from here
   if (C.seat >= 0) return {k: 'stand', t: 'F · Get up' + (C.seat === 0 ? ' · V outside view' : '')};
   const p = C.pos; for (let i = 0; i < SEATS.length; i++) { const s = SEATS[i]; if (Math.hypot(p.x - s.pos.x, p.z - s.pos.z) < .85) return {k: 'sit', i, t: 'F · Sit: ' + s.name + (i === 0 ? ' (fly)' : '')}; }
-  const a = Math.atan2(p.x, -p.z); if (Math.hypot(p.x, p.z) > .7 && Math.abs(angD(a, CAB.hatchA)) < .6) return {k: 'hatch', t: R.st === 'fly' ? 'Hatch locked in flight' : 'F · Open hatch'};
+  const a = Math.atan2(p.x, -p.z); if (Math.hypot(p.x, p.z) > .7 && Math.abs(angD(a, CAB.hatchA)) < .6) return {k: 'hatch', t: R.st === 'fly' || R.st === 'docked' ? 'Hatch locked in flight' : 'F · Open hatch'};
   return null; }
 function cabinAct() { const n = cabinNear(); if (!n) return;
   if (n.k === 'stand') { const s = SEATS[C.seat]; C.seat = -1; C.view = 'in'; C.pos.set(Math.sin(s.a) * .4, CAB.floor, -Math.cos(s.a) * .4); C.vel.set(0, 0, 0); return; }
   if (n.k === 'sit') { C.seat = n.i; C.yaw = -SEATS[n.i].a; C.pitch = -.05; C.vel.set(0, 0, 0); if (n.i === 0) showHint('Space: ' + (R.st === 'pad' ? 'launch' : 'stage') + ' · W/S A/D steer · Q/E roll · Shift/C throttle · 1-4 autopilot · V outside view', 8000); return; }
-  if (n.k === 'hatch' && R.st !== 'fly') getOut(); }
+  if (n.k === 'hatch' && R.st !== 'fly' && R.st !== 'docked') getOut(); }
 const pilot = () => R.on && C.in && C.seat === 0;
 
 // ---------------- the Moon from afar: colour + slope maps baked from the real moon terrain (a few rows per frame) on a smooth sphere

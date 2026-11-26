@@ -68,7 +68,7 @@ function bldRender() {
 
 // ---------------- stats: delta-v and thrust-to-weight per stage (bottom stage fires first)
 function shipStats(st) { // side boosters burn together with the core above them: that part of the flight uses both engines (and some core fuel)
-  const out = []; let tot = 0, totS = 0, carry = 0; const mass = i => st.slice(i).reduce((a, S) => a + S.dry + (S.fuel || 0), 0);
+  const out = []; let tot = 0, totS = 0, carry = 0; const mass = i => st.slice(i).reduce((a, S) => a + S.dry + (S.fuel || 0) + (S.cargoM || 0), 0);
   st.forEach((S, i) => { if (S.cap) return; const m0 = mass(i) - carry, low = i === 0 || (i === 1 && st[0].side), C = st[i + 1];
     if (S.side && S.thrust && S.fuel && C && C.thrust && C.fuel) {
       const mdS = S.thrust / (S.ispV * G0), mdC = C.thrust / (C.ispV * G0), t1 = S.fuel / mdS, fc = Math.min(C.fuel, mdC * t1), T = S.thrust + C.thrust, ispV = T / ((mdS + mdC) * G0), ispS = T / (S.thrust / S.ispS + C.thrust / C.ispS), m1 = m0 - S.fuel - fc;
