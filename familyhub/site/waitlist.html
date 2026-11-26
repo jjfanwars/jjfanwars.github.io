@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en-AU"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex">
+<title>Waitlist | Surf Coast Family Hub</title>
+<style>
+:root{--ink:#3A2F28;--mut:#5E5047;--teal:#23605A;--line:rgba(58,47,40,.16);--bg:#FBF6EE;--card:#fff}
+body{margin:0;font:16px/1.5 system-ui,-apple-system,sans-serif;color:var(--ink);background:var(--bg)}
+main{max-width:1000px;margin:0 auto;padding:28px 16px 60px}h1{font-size:1.5rem;margin:0 0 4px}
+p.sub{color:var(--mut);margin:0 0 20px}
+form.k{display:flex;gap:8px;flex-wrap:wrap;max-width:420px}input{font:inherit;padding:10px 12px;border:1.5px solid var(--line);border-radius:10px;flex:1;min-width:0}
+button{font:inherit;font-weight:600;padding:10px 16px;border-radius:10px;border:1.5px solid var(--teal);background:var(--teal);color:#fff;cursor:pointer}
+button.o{background:#fff;color:var(--ink);border-color:var(--line);padding:6px 10px;font-weight:500}
+.bar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:0 0 14px}.bar select{font:inherit;padding:8px;border-radius:10px;border:1.5px solid var(--line)}
+.st{display:inline-block;padding:2px 8px;border-radius:999px;font-size:.85em;background:#E4EEE8}
+.tw{overflow-x:auto;background:var(--card);border:1px solid var(--line);border-radius:14px}
+table{width:100%;border-collapse:collapse;font-size:.95em}th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);white-space:nowrap}th{font-size:.82em;text-transform:uppercase;letter-spacing:.06em;color:var(--mut)}
+tr:last-child td{border-bottom:0}.m{color:#1F6B45;font-weight:600}.err{color:#A3352A}
+</style></head><body><main>
+<h1>Waitlist</h1><p class="sub">People waiting for an earlier time, from the booking page. Staff only.</p>
+<form class="k" id="k"><input id="key" type="password" placeholder="Staff key" autocomplete="current-password" aria-label="Staff key"><button>Open</button></form>
+<p class="err" id="err" hidden></p>
+<div id="out" hidden>
+<div class="bar"><span id="st"></span><label>Practitioner <select id="f"><option value="">Everyone</option></select></label><button class="o" id="csv" type="button">Download CSV</button></div>
+<div class="tw"><table><thead><tr><th>Joined</th><th>Name</th><th>Mobile</th><th>Email</th><th>With</th><th>Days</th><th>Time</th><th>Match</th><th></th></tr></thead><tbody id="tb"></tbody></table></div>
+</div>
+<script>
+var N={adi:'Adi',hannah:'Hannah',melinda:'Melinda',ellie:'Ellie',maddy:'Maddy','michelle-ferris':'Michelle F',laura:'Laura',kate:'Kate'},D=['','Mon','Tue','Wed','Thu','Fri'],L=[],K='';
+var $=function(i){return document.getElementById(i)},esc=function(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})};
+var F=new Intl.DateTimeFormat('en-AU',{day:'numeric',month:'short',timeZone:'Australia/Melbourne'}),FT=new Intl.DateTimeFormat('en-AU',{weekday:'short',day:'numeric',month:'short',hour:'numeric',minute:'2-digit',timeZone:'Australia/Melbourne'});
+function load(){fetch('/api/hx/waitlist',{headers:{'x-admin-key':K}}).then(function(r){if(r.status===401)throw 0;return r.json()}).then(function(j){
+ try{sessionStorage.setItem('wlk',K)}catch(e){}$('k').hidden=true;$('err').hidden=true;$('out').hidden=false;L=j.list;
+ $('st').innerHTML='<span class="st">'+(j.live?'Halaxy connected':'Halaxy not connected yet')+'</span> <span class="st">'+(j.sms?'Texts on':'Texts off')+'</span> '+L.length+' waiting';draw()})
+ .catch(function(){$('err').hidden=false;$('err').textContent='That key didn’t work.';try{sessionStorage.removeItem('wlk')}catch(e){}})}
+function rows(){var f=$('f').value;return L.filter(function(w){return !f||w.pid===f})}
+function draw(){$('tb').innerHTML=rows().map(function(w){return '<tr><td>'+F.format(new Date(w.at))+'</td><td>'+esc(w.first+' '+w.last)+'</td><td><a href="tel:'+esc(w.phone)+'">'+esc(w.phone)+'</a></td><td>'+esc(w.email)+'</td><td>'+esc(N[w.pid]||w.pid)+'</td><td>'+w.days.map(function(d){return D[d]}).join(' ')+'</td><td>'+({am:'Morning',pm:'Afternoon',any:'Any'})[w.ampm]+'</td><td>'+(w.match?'<span class="m">'+FT.format(new Date(w.match))+(w.sent&&w.sent.length?' (texted)':'')+'</span>':'')+'</td><td><button class="o" data-rm="'+esc(w.id)+'">Remove</button></td></tr>'}).join('')||'<tr><td colspan="9">Nobody waiting.</td></tr>'}
+Object.keys(N).forEach(function(k){var o=document.createElement('option');o.value=k;o.textContent=N[k];$('f').appendChild(o)});
+$('f').onchange=draw;
+$('k').onsubmit=function(e){e.preventDefault();K=$('key').value.trim();if(K)load()};
+$('tb').onclick=function(e){var b=e.target.closest('[data-rm]');if(!b)return;if(!confirm('Take this person off the waitlist?'))return;
+ fetch('/api/hx/waitlist?id='+encodeURIComponent(b.dataset.rm),{method:'DELETE',headers:{'x-admin-key':K}}).then(function(){L=L.filter(function(w){return w.id!==b.dataset.rm});draw()})};
+$('csv').onclick=function(){var c=[['Joined','First','Last','Mobile','Email','With','Days','Time','Match']].concat(rows().map(function(w){return [w.at.slice(0,10),w.first,w.last,w.phone,w.email,N[w.pid],w.days.map(function(d){return D[d]}).join(' '),w.ampm,w.match||'']}));
+ var a=document.createElement('a');a.href=URL.createObjectURL(new Blob([c.map(function(r){return r.map(function(x){return '"'+String(x).replace(/"/g,'""')+'"'}).join(',')}).join('\n')],{type:'text/csv'}));a.download='waitlist.csv';a.click()};
+try{K=sessionStorage.getItem('wlk')||''}catch(e){}if(K)load();
+</script>
+</main></body></html>

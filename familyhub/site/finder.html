@@ -1,0 +1,34 @@
+<section class="section finder-sec" id="finder" aria-labelledby="fdH">
+<div class="wrap narrow">
+<div class="section-head w-teal center"><p class="eyebrow">Not sure where to start?</p><h2 id="fdH">Help me choose</h2><p>Answer two quick questions and we’ll suggest who to see.</p></div>
+<div class="card fdr" id="fdr">
+<div class="fdr-q" data-q="who"><h3>Who is it for?</h3><div class="fdr-opts" role="group" aria-label="Who is it for?"></div></div>
+<div class="fdr-q" data-q="need" hidden><h3>What would help most?</h3><div class="fdr-opts" role="group" aria-label="What would help most?"></div></div>
+<div class="fdr-out" aria-live="polite"></div>
+</div>
+</div>
+</section>
+<script>
+(function(){
+var P=/*PEOPLE*/,LIVE=/*LIVE*/;
+var WHO=[
+ ['me','Me','',[['talk','Someone to talk to','Anxiety, low mood, stress, trauma or big changes',['adi','hannah','melinda','ellie','maddy'],1],['counsel','Counselling','Practical support for stress, burnout and life changes',['michelle-ferris','jodie'],1],['eating','Eating disorder treatment','',['adi','hannah']],['art','Art therapy','When words are hard. No art skills needed.',['michelle-joseph'],1],['body','Body care','Massage, acupuncture or osteopathy',['laura','kate','anna']]]],
+ ['preg','Pregnant or trying','',[['talk','Someone to talk to','Fertility, IVF, pregnancy worries, anxiety or low mood',['maddy','ellie','hannah','melinda','adi'],1],['parenthood','Getting ready as a couple','Couple sessions for becoming parents',['adi']],['body','Pregnancy body care','Massage, acupuncture or osteopathy',['laura','kate','anna']]]],
+ ['baby','New parent','',[['talk','Someone to talk to','Birth trauma, low mood, anxiety or adjusting',['hannah','ellie','melinda','adi','maddy'],1],['counsel','Early parenting counselling','Overwhelmed or finding your feet',['jodie','michelle-ferris'],1],['dyadic','Time with my little one','Parent and child art therapy',['michelle-joseph']],['body','Recovery and baby care','Postpartum massage, osteopathy for you or your baby',['laura','anna']]]],
+ ['child','My child or teen','',[['child','Therapy','Art, play and talk therapy for 6 to 19 year olds',['melinda','meaghan'],1],['assess','An assessment','ADHD, autism or learning',['meaghan']],['art','Art therapy','For kids who find it hard to put feelings into words',['michelle-joseph'],1],['ndis','NDIS supports','',['jodie','michelle-joseph']]]],
+ ['couple','Us, as a couple','',[['couples','Couples therapy','Conflict, stress, intimacy or feeling stuck',['michelle-ferris']],['parenthood','Becoming parents','Communication, new roles and staying connected',['adi']]]]];
+var root=document.getElementById('fdr'),qs=root.querySelectorAll('.fdr-q'),out=root.querySelector('.fdr-out'),cur=null;
+function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+function opts(el,list,key){el.innerHTML=list.map(function(o,i){return '<button type="button" class="fdr-opt" aria-pressed="false" data-'+key+'="'+i+'"><b>'+esc(o[1])+'</b>'+(o[2]?'<small>'+esc(o[2])+'</small>':'')+'</button>'}).join('')}
+function press(el,b){[].forEach.call(el.children,function(x){x.setAttribute('aria-pressed',x===b)})}
+opts(qs[0].querySelector('.fdr-opts'),WHO,'w');
+root.addEventListener('click',function(e){var b=e.target.closest('.fdr-opt');if(!b)return;
+ if(b.dataset.w!=null){cur=WHO[+b.dataset.w];press(b.parentNode,b);opts(qs[1].querySelector('.fdr-opts'),cur[3],'n');qs[1].hidden=false;out.innerHTML='';qs[1].querySelector('.fdr-opt').focus();return}
+ var n=cur[3][+b.dataset.n];press(b.parentNode,b);
+ var ppl=n[3].filter(function(id){return P[id]});
+ out.innerHTML='<h3>You could see</h3><ul class="fdr-ppl">'+ppl.map(function(id){var live=LIVE.indexOf(id)>=0;return '<li><img src="img/team/colour/'+id+'.webp" alt="" width="56" height="56" loading="lazy"><span><a href="team/'+id+'"><b>'+esc(P[id][0])+'</b></a><small>'+esc(P[id][1])+'</small></span>'+(live?'<a class="btn btn-primary btn-sm" href="book-online.html#'+id+'">Book</a>':'<a class="btn btn-outline btn-sm" href="team/'+id+'">More</a>')+'</li>'}).join('')+'</ul>'+
+ (n[4]?'<p class="fdr-note">Got a Mental Health Treatment Plan from your GP? You can claim a Medicare rebate. No plan is fine too, you can book privately. <a href="fees.html">See fees</a>.</p>':'')+
+ '<p class="fdr-note">Still not sure? Call us on <a href="tel:0491184788">0491 184 788</a> and we’ll help you choose.</p>';
+ out.querySelector('a').focus({preventScroll:true});out.scrollIntoView({behavior:'smooth',block:'nearest'})});
+})();
+</script>
