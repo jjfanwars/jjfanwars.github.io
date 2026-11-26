@@ -7,6 +7,16 @@ const V3 = THREE.Vector3, Q4 = THREE.Quaternion;
 // sun shadows only cover a square around the camera: fade them out toward its edge so the square never shows
 THREE.ShaderChunk.shadowmap_pars_fragment = THREE.ShaderChunk.shadowmap_pars_fragment.replace('return mix( 1.0, shadow, shadowIntensity );',
   'vec2 shE = abs(shadowCoord.xy - .5); return mix(1.0, mix( 1.0, shadow, shadowIntensity ), 1. - smoothstep(.3, .48, max(shE.x, shE.y)));');
+// two shadow cascades: sunL (near, +-260 m) and sunL2 (far, +-3 km, intensity 0: only its shadow map is used). The near map wins where it reaches, the far one fills in outside
+THREE.ShaderChunk.lights_fragment_begin = THREE.ShaderChunk.lights_fragment_begin.replace('directLight.color *= ( directLight.visible && receiveShadow ) ? getShadow( directionalShadowMap[ i ], directionalLightShadow.shadowMapSize, directionalLightShadow.shadowIntensity, directionalLightShadow.shadowBias, directionalLightShadow.shadowRadius, vDirectionalShadowCoord[ i ] ) : 1.0;', `
+		#if UNROLLED_LOOP_INDEX == 0
+		{ float s0 = getShadow( directionalShadowMap[ i ], directionalLightShadow.shadowMapSize, directionalLightShadow.shadowIntensity, directionalLightShadow.shadowBias, directionalLightShadow.shadowRadius, vDirectionalShadowCoord[ i ] );
+		#if NUM_DIR_LIGHT_SHADOWS > 1
+		vec2 e0 = abs(vDirectionalShadowCoord[ 0 ].xy / vDirectionalShadowCoord[ 0 ].w - .5); float in0 = 1. - smoothstep(.3, .48, max(e0.x, e0.y));
+		if (in0 < 1.) s0 -= (1. - in0) * (1. - getShadow( directionalShadowMap[ 1 ], directionalLightShadows[ 1 ].shadowMapSize, directionalLightShadows[ 1 ].shadowIntensity, directionalLightShadows[ 1 ].shadowBias, directionalLightShadows[ 1 ].shadowRadius, vDirectionalShadowCoord[ 1 ] ));
+		#endif
+		directLight.color *= ( directLight.visible && receiveShadow ) ? s0 : 1.0; }
+		#endif`);
 const SET = Object.assign({gfx: 'high', name: ''}, (() => { try { return JSON.parse(localStorage.getItem('ye-set') || '{}'); } catch (e) { return {}; } })());
 const saveSet = () => { try { localStorage.setItem('ye-set', JSON.stringify(SET)); } catch (e) {} };
 const HI = () => SET.gfx !== 'low'; // Medium and High share the full renderer; Medium (and High when frames drop) trims the costly passes
@@ -190,6 +200,8 @@ const cam = new THREE.PerspectiveCamera(70, innerWidth / innerHeight, .05, FAR);
 scene.add(cam);
 const sunL = new THREE.DirectionalLight(0xffffff, 3); sunL.castShadow = true; scene.add(sunL); scene.add(sunL.target);
 sunL.shadow.mapSize.set(2048, 2048); const sc = sunL.shadow.camera; sc.left = -260; sc.right = 260; sc.top = 260; sc.bottom = -260; sc.near = 1; sc.far = 1200; sunL.shadow.bias = -.0003; sunL.shadow.normalBias = .5;
+const sunL2 = new THREE.DirectionalLight(0xffffff, 0); sunL2.castShadow = false; scene.add(sunL2); scene.add(sunL2.target); // far shadow cascade (High only)
+{ const c = sunL2.shadow.camera; c.left = c.bottom = -3000; c.right = c.top = 3000; c.near = 1; c.far = 9000; sunL2.shadow.bias = -.0006; sunL2.shadow.normalBias = 3; sunL2.shadow.autoUpdate = false; sunL2.shadow.mapSize.set(2048, 2048); }
 const amb = new THREE.HemisphereLight(0x9ec8ff, 0x2a2418, .5); scene.add(amb);
 // interiors: sky light (hemisphere + IBL) can't see walls, so indoor materials scale it down and add a soft lamp fill instead
 const INT_MC = {k: {value: .1}, a: {value: new THREE.Color(.5, .47, .42)}}, INT_DECK = {k: {value: .45}, a: {value: new THREE.Color(.2, .19, .17)}}, INT_CAB = {k: {value: .06}, a: {value: new THREE.Color(.05, .05, .055)}};
@@ -483,6 +495,39 @@ const fxaaM = new THREE.ShaderMaterial({vertexShader: VS, depthTest: false, unif
     vec3 A = .5 * (texture2D(t, vUv + dir * (1. / 3. - .5)).rgb + texture2D(t, vUv + dir * (2. / 3. - .5)).rgb), B = A * .5 + .25 * (texture2D(t, vUv - dir * .5).rgb + texture2D(t, vUv + dir * .5).rgb);
     float lb = lum(B); vec3 o = lb < lo || lb > hi ? A : B; vec3 avg = (nw + ne + sw + se) * .25; o += (m - avg) * .32 * (1. - smoothstep(.02, .25, hi - lo)); // gentle sharpen (not on hard edges, FXAA owns those)
     gl_FragColor = vec4(clamp(o, 0., 1.), 1.); }`});
+// TAA (Medium/High): the projection is jittered by a sub-pixel Halton offset each frame and the history is reprojected from depth.
+// Points near a flying rocket reproject in the rocket's frame, everything else in the frame of the nearest world (terrain turns with it), sky by camera rotation.
+// History is clipped to the YCoCg spread of the current 3x3 neighbourhood (no ghosting) and sampled with Catmull-Rom (no blur creep).
+const taaM = new THREE.ShaderMaterial({vertexShader: VS, depthTest: false, uniforms: {tCur: {value: null}, tHist: {value: null}, tDep: {value: null}, invProj: {value: new THREE.Matrix4()}, camRot: {value: new THREE.Matrix3()},
+    prevVP: {value: new THREE.Matrix4()}, Ab: {value: new THREE.Matrix4()}, Ar: {value: new THREE.Matrix4()}, rC: {value: new V3()}, rR: {value: 0}, px: {value: new THREE.Vector2()}, logC: {value: Math.log2(FAR + 1)}, reset: {value: 1}},
+  fragmentShader: `uniform sampler2D tCur, tHist, tDep; uniform mat4 invProj, prevVP, Ab, Ar; uniform mat3 camRot; uniform vec3 rC; uniform float rR, logC, reset; uniform vec2 px; varying vec2 vUv;
+  vec3 toY(vec3 c){ return vec3(.25 * c.r + .5 * c.g + .25 * c.b, .5 * c.r - .5 * c.b, -.25 * c.r + .5 * c.g - .25 * c.b); }
+  vec3 fromY(vec3 y){ return vec3(y.x + y.y - y.z, y.x + y.z, y.x - y.y - y.z); }
+  vec3 hist(vec2 uv){ vec2 sp = uv / px, tc = floor(sp - .5) + .5, f = sp - tc, f2 = f * f, f3 = f2 * f;
+    vec2 w0 = f2 - .5 * (f3 + f), w1 = 1.5 * f3 - 2.5 * f2 + 1., w3 = .5 * (f3 - f2), w2 = 1. - w0 - w1 - w3, s12 = w1 + w2, t0 = (tc - 1.) * px, t3 = (tc + 2.) * px, t12 = (tc + w2 / s12) * px;
+    vec3 r = texture2D(tHist, vec2(t12.x, t0.y)).rgb * (s12.x * w0.y) + texture2D(tHist, vec2(t0.x, t12.y)).rgb * (w0.x * s12.y) + texture2D(tHist, t12).rgb * (s12.x * s12.y)
+      + texture2D(tHist, vec2(t3.x, t12.y)).rgb * (w3.x * s12.y) + texture2D(tHist, vec2(t12.x, t3.y)).rgb * (s12.x * w3.y);
+    return max(r / (s12.x * w0.y + w0.x * s12.y + s12.x * s12.y + w3.x * s12.y + s12.x * w3.y), 0.); }
+  void main(){
+    vec3 c = texture2D(tCur, vUv).rgb; if (reset > .5) { gl_FragColor = vec4(c, 1.); return; }
+    vec3 m1 = vec3(0.), m2 = vec3(0.);
+    for (int y = -1; y <= 1; y++) for (int x = -1; x <= 1; x++) { vec3 s = toY(texture2D(tCur, vUv + vec2(x, y) * px).rgb); m1 += s; m2 += s * s; }
+    m1 /= 9.; m2 /= 9.; vec3 sd = sqrt(max(m2 - m1 * m1, 0.));
+    float dep = texture2D(tDep, vUv).x; vec4 v = invProj * vec4(vUv * 2. - 1., -1., 1.); vec3 dv = normalize(v.xyz / v.w), wd = camRot * dv; vec4 cp;
+    if (dep >= .99999) cp = prevVP * vec4(wd, 0.);
+    else { vec3 wp = wd * ((exp2(dep * logC) - 1.) / max(1e-4, -dv.z)); vec3 pw = ((rR > 0. && distance(wp, rC) < rR) ? (Ar * vec4(wp, 1.)) : (Ab * vec4(wp, 1.))).xyz; cp = prevVP * vec4(pw, 1.); }
+    vec2 puv = cp.xy / cp.w * .5 + .5;
+    if (cp.w <= 0. || puv.x < 0. || puv.y < 0. || puv.x > 1. || puv.y > 1.) { gl_FragColor = vec4(c, 1.); return; }
+    vec3 h = toY(hist(puv)), ctr = m1, ext = sd * 1.15 + 1e-4, off = h - ctr, ts = abs(off / ext); float mx = max(ts.x, max(ts.y, ts.z)); if (mx > 1.) h = ctr + off / mx;
+    float k = mix(.085, .32, clamp(length((puv - vUv) / px) / 14., 0., 1.));
+    gl_FragColor = vec4(max(fromY(mix(h, toY(c), k)), 0.), 1.); }`});
+// after TAA: a light sharpen (TAA averages sub-pixel samples, which softens a little)
+const sharpM = new THREE.ShaderMaterial({vertexShader: VS, depthTest: false, uniforms: {t: {value: null}, px: {value: new THREE.Vector2()}, k: {value: .2}},
+  fragmentShader: `uniform sampler2D t; uniform vec2 px; uniform float k; varying vec2 vUv;
+  void main(){ vec3 m = texture2D(t, vUv).rgb, n = texture2D(t, vUv + vec2(0., px.y)).rgb, s = texture2D(t, vUv - vec2(0., px.y)).rgb, e = texture2D(t, vUv + vec2(px.x, 0.)).rgb, w = texture2D(t, vUv - vec2(px.x, 0.)).rgb;
+    vec3 lo = min(m, min(min(n, s), min(e, w))), hi = max(m, max(max(n, s), max(e, w))); gl_FragColor = vec4(clamp(m + (4. * m - n - s - e - w) * k, lo * .9, hi * 1.1 + .01), 1.); }`});
+const TAA = {on: () => HI() && SET.taa !== false, i: 0, P: new THREE.Matrix4(), PI: new THREE.Matrix4(), prevVP: new THREE.Matrix4(), prevR: new THREE.Matrix4(), hadR: false, last: 0, gap: 250, reset: true, m: new THREE.Matrix4(), m2: new THREE.Matrix4()};
+const halton = (i, b) => { let f = 1, r = 0; while (i > 0) { f /= b; r += f * (i % b); i = Math.floor(i / b); } return r; };
 const POST = {};
 function setupPost() {
   const pr = Math.min(devicePixelRatio, SET.gfx === 'high' ? 1.5 : SET.gfx === 'med' ? 1.25 : .75) * (G.rs || 1), w = Math.max(2, innerWidth * pr | 0), h = Math.max(2, innerHeight * pr | 0);
@@ -497,16 +542,20 @@ function setupPost() {
   POST.a = new THREE.WebGLRenderTarget(bw, bh, HF); POST.b = POST.a.clone();
   POST.c = new THREE.WebGLRenderTarget(Math.max(2, bw >> 2), Math.max(2, bh >> 2), HF); POST.d = POST.c.clone(); POST.r = POST.a.clone();
   POST.ldr = new THREE.WebGLRenderTarget(w, h, {depthBuffer: false}); fxaaM.uniforms.px.value.set(1 / w, 1 / h);
+  POST.hA = new THREE.WebGLRenderTarget(w, h, HF); POST.hB = POST.hA.clone(); taaM.uniforms.px.value.set(1 / w, 1 / h); sharpM.uniforms.px.value.set(1 / w, 1 / h); TAA.reset = true;
   POST.lum = new THREE.WebGLRenderTarget(16, 8, {type: THREE.FloatType, depthBuffer: false});
   POST.ad0 = new THREE.WebGLRenderTarget(1, 1, {type: THREE.FloatType, depthBuffer: false}); POST.ad1 = POST.ad0.clone();
   atmoM.uniforms.steps.value = HI() ? (LITE() ? 10 : 14) : 8; atmoM.uniforms.aoOn.value = HI() && !LITE() ? 1 : 0; cloudM.uniforms.steps.value = LITE() ? 40 : 64; atmoM.uniforms.aoPx.value.set(1 / POST.ao.width, 1 / POST.ao.height);
   ssaoM.uniforms.res.value.set(POST.ao.width, POST.ao.height);
-  RND.shadowMap.enabled = HI(); sunL.castShadow = HI(); const shs = !HI() ? 1024 : LITE() ? 2048 : 4096; sunL.shadow.mapSize.set(shs, shs); if (sunL.shadow.map) { sunL.shadow.map.dispose(); sunL.shadow.map = null; }
+  RND.shadowMap.enabled = HI(); sunL.castShadow = HI(); sunL2.castShadow = SET.gfx === 'high'; if (sunL2.shadow.map) { sunL2.shadow.map.dispose(); sunL2.shadow.map = null; } const shs = !HI() ? 1024 : LITE() ? 2048 : 4096; sunL.shadow.mapSize.set(shs, shs); if (sunL.shadow.map) { sunL.shadow.map.dispose(); sunL.shadow.map = null; }
 }
 function pass(m, rt) { fsQuad.material = m; RND.setRenderTarget(rt); RND.render(fsScene, fsCam); }
 const _sv4 = new V3();
 function render(dt) {
-  RND.shadowMap.autoUpdate = false; RND.shadowMap.needsUpdate = (G.frameN = (G.frameN || 0) + 1) % 2 === 0 || !!G.shadowEvery; // shadows at half rate (matrices update with the map, so no swimming)
+  RND.shadowMap.autoUpdate = false; RND.shadowMap.needsUpdate = (G.frameN = (G.frameN || 0) + 1) % 2 === 0 || !!G.shadowEvery; sunL2.shadow.needsUpdate = sunL2.castShadow && !LITE() && (G.frameN % 4 === 0 || !!G.shadowEvery); sunL2.shadow.intensity = LITE() ? 0 : 1; if (sunL2.shadow.needsUpdate) RND.shadowMap.needsUpdate = true; // shadows at half rate (matrices update with the map, so no swimming)
+  const taa = TAA.on() && POST.hA; if (taa) { // sub-pixel jitter (restored at the end of render)
+    TAA.P.copy(cam.projectionMatrix); TAA.PI.copy(cam.projectionMatrixInverse); TAA.i = TAA.i % 16 + 1; const e = cam.projectionMatrix.elements;
+    e[8] += (halton(TAA.i, 2) - .5) * 2 / POST.main.width; e[9] += (halton(TAA.i, 3) - .5) * 2 / POST.main.height; cam.projectionMatrixInverse.copy(cam.projectionMatrix).invert(); }
   RND.setRenderTarget(POST.main); RND.render(scene, cam);
   if (HI() && !LITE()) { const s = ssaoM.uniforms; s.tDep.value = POST.main.depthTexture; s.invProj.value.copy(cam.projectionMatrixInverse); s.proj.value.copy(cam.projectionMatrix); pass(ssaoM, POST.ao); }
   if (!WX.done) { WX.done = true; pass(weatherM, WX.rt); }
@@ -535,8 +584,27 @@ function render(dt) {
   downM.uniforms.t.value = POST.a.texture; downM.uniforms.px.value.set(1 / POST.a.width, 1 / POST.a.height); pass(downM, POST.c);
   for (let i = 0; i < 2; i++) { blurM.uniforms.t.value = POST.c.texture; blurM.uniforms.d.value.set(1.5 / POST.c.width, 0); pass(blurM, POST.d); blurM.uniforms.t.value = POST.d.texture; blurM.uniforms.d.value.set(0, 1.5 / POST.c.height); pass(blurM, POST.c); }
   cu.sunOn.value = front ? 1 : 0; cu.aspect.value = cam.aspect; cu.tDep.value = POST.main.depthTexture; cu.time.value = G.t % 100;
-  cu.tR.value = POST.r.texture; cu.t.value = POST.sky.texture; cu.b.value = POST.a.texture; cu.b2.value = POST.c.texture; cu.ad.value = POST.ad0.texture; pass(compM, POST.ldr); fxaaM.uniforms.t.value = POST.ldr.texture; pass(fxaaM, null);
+  cu.tR.value = POST.r.texture; cu.t.value = POST.sky.texture; cu.b.value = POST.a.texture; cu.b2.value = POST.c.texture; cu.ad.value = POST.ad0.texture; pass(compM, POST.ldr);
+  if (taa) taaResolve(); else { fxaaM.uniforms.t.value = POST.ldr.texture; pass(fxaaM, null); }
 }
+function taaResolve() { const u = taaM.uniforms, now = performance.now();
+  // nearest world: its frame carries the terrain and everything built on it
+  let B = PLANET, best = Infinity; for (const b of BODIES) { const a = G.O.distanceTo(b.c) - b.R; if (a < best) { best = a; B = b; } }
+  const reset = TAA.reset || now - TAA.last > TAA.gap || !B._taaM; TAA.reset = false; TAA.last = now;
+  if (!reset) u.Ab.value.multiplyMatrices(B._taaM, TAA.m.copy(B.group.matrixWorld).invert()); else u.Ab.value.identity();
+  const fly = typeof R !== 'undefined' && R.on && R.st === 'fly' && R.g.visible;
+  if (fly && TAA.hadR && !reset) { u.Ar.value.multiplyMatrices(TAA.prevR, TAA.m.copy(R.g.matrixWorld).invert()); u.rC.value.setFromMatrixPosition(R.g.matrixWorld);
+    const S = STAGES, top = S[S.length - 1].y1 - R.comY, bot = R.comY - S[R.bot].y0; u.rR.value = Math.max(top, bot) + 6; } else u.rR.value = 0;
+  // a teleport (test menu, respawn): start over
+  const shift = TAA.m2.copy(u.Ab.value).elements; if (Math.hypot(shift[12], shift[13], shift[14]) > 3000 && !fly) u.Ab.value.identity();
+  u.reset.value = reset ? 1 : 0; u.tCur.value = POST.ldr.texture; u.tHist.value = POST.hA.texture; u.tDep.value = POST.main.depthTexture;
+  u.invProj.value.copy(cam.projectionMatrixInverse); u.camRot.value.setFromMatrix4(cam.matrixWorld); u.prevVP.value.copy(TAA.prevVP);
+  pass(taaM, POST.hB); const t = POST.hA; POST.hA = POST.hB; POST.hB = t;
+  sharpM.uniforms.t.value = POST.hA.texture; pass(sharpM, null);
+  // remember this frame (unjittered) for the next one
+  cam.projectionMatrix.copy(TAA.P); cam.projectionMatrixInverse.copy(TAA.PI); TAA.prevVP.multiplyMatrices(TAA.P, cam.matrixWorldInverse);
+  for (const b of BODIES) (b._taaM || (b._taaM = new THREE.Matrix4())).copy(b.group.matrixWorld);
+  TAA.hadR = fly; if (fly) TAA.prevR.copy(R.g.matrixWorld); }
 
 // ---------------- terrain: cube-sphere quadtree with skirts and baked AO
 const N = 32, NV = N + 1;
@@ -1066,11 +1134,12 @@ const _rel = new V3();
 function updateLight() {
   _rel.copy(G.O).sub(PLANET.c); const t = sunColour(_rel).map(v => Math.max(v, .002)); // never fully black: the moon divides by this to get full sunlight
   sunL.color.setRGB(t[0], t[1], t[2]); sunL.intensity = 3.4;
-  sunL.position.copy(SUN).multiplyScalar(600); sunL.target.position.set(0, 0, 0); sunL.target.updateMatrixWorld();
-  { // snap the shadow camera to whole texels so shadows don't crawl as you move
-    const sc = sunL.shadow.camera, tx = (sc.right - sc.left) / sunL.shadow.mapSize.x; sc.updateMatrixWorld(); const v = new V3(0, 0, 0).applyMatrix4(sc.matrixWorldInverse);
+  for (const [L, d] of [[sunL, 600], [sunL2, 4500]]) { // snap each shadow camera to whole texels so shadows don't crawl as you move
+    L.position.copy(SUN).multiplyScalar(d); L.target.position.set(0, 0, 0); L.target.updateMatrixWorld(); L.updateMatrixWorld();
+    const sc = L.shadow.camera; sc.position.copy(L.position); sc.lookAt(L.target.position); sc.updateMatrixWorld(); const tx = (sc.right - sc.left) / L.shadow.mapSize.x, v = new V3(0, 0, 0).applyMatrix4(sc.matrixWorldInverse);
     const dx = v.x - Math.round(v.x / tx) * tx, dy = v.y - Math.round(v.y / tx) * tx; const right = new V3().setFromMatrixColumn(sc.matrixWorld, 0), upv = new V3().setFromMatrixColumn(sc.matrixWorld, 1);
-    sunL.position.addScaledVector(right, dx).addScaledVector(upv, dy); sunL.target.position.addScaledVector(right, dx).addScaledVector(upv, dy); sunL.target.updateMatrixWorld(); }
+    L.position.addScaledVector(right, dx).addScaledVector(upv, dy); L.target.position.addScaledVector(right, dx).addScaledVector(upv, dy); L.target.updateMatrixWorld(); }
+  sunL2.color.copy(sunL.color);
   // sky light: brighter and bluer when the sun is up over us
   const up = _rel.clone().normalize(), el = up.dot(SUN), alt = Math.max(0, _rel.length() - PLANET.R);
   const day = sstep(-.12, .25, el) * (1 - sstep(PLANET.atmo * .4, PLANET.atmo, alt));
