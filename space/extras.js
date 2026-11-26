@@ -1,5 +1,5 @@
 'use strict';
-// YeShip extras: save + continue a flight, bigger explosions with burning wreckage, extra sounds (RCS hiss, cabin hum, sonic boom,
+// Lucas Space Program extras: save + continue a flight, bigger explosions with burning wreckage, extra sounds (RCS hiss, cabin hum, sonic boom,
 // warning beeps), the Moon mystery (an old lander to find) with its own mission and target marker, burn-time hints.
 // Loaded after mission.js; polish.js (loaded next) calls boot().
 
@@ -82,7 +82,7 @@ function mysBuild() {
   const dish = add(new THREE.SphereGeometry(.7, 20, 8, 0, Math.PI * 2, 0, .9), grey, 1.0, 3.5, .3); dish.rotation.set(.9, 0, -.5); add(new THREE.CylinderGeometry(.04, .04, .8, 6), grey, .8, 3.0, .2);
   add(new THREE.CylinderGeometry(.03, .03, 2.4, 6), grey, -3.4, 1.2, 1.2); const fl = add(new THREE.PlaneGeometry(1.2, .75), new THREE.MeshStandardMaterial({color: 0xe8e2d6, roughness: .9, side: THREE.DoubleSide}), -2.8, 2.0, 1.2); fl.rotation.y = .3;
   const pc = document.createElement('canvas'); pc.width = 256; pc.height = 128; const x = pc.getContext('2d'); x.fillStyle = '#b8b2a4'; x.fillRect(0, 0, 256, 128); x.fillStyle = '#3a3428'; x.font = '600 22px monospace'; x.textAlign = 'center';
-  x.fillText('YESHIP PROBE 1', 128, 44); x.font = '16px monospace'; x.fillText('SET DOWN SAFELY.', 128, 76); x.fillText('NEVER PHONED HOME.', 128, 100); const pt = new THREE.CanvasTexture(pc); pt.colorSpace = THREE.SRGBColorSpace;
+  x.fillText('LSP PROBE 1', 128, 44); x.font = '16px monospace'; x.fillText('SET DOWN SAFELY.', 128, 76); x.fillText('NEVER PHONED HOME.', 128, 100); const pt = new THREE.CanvasTexture(pc); pt.colorSpace = THREE.SRGBColorSpace;
   const pl = add(new THREE.PlaneGeometry(.9, .45), new THREE.MeshStandardMaterial({map: pt, roughness: .5, metalness: .4}), 0, 1.75, 1.47); pl.rotation.y = 0;
   // footprints circling it
   const fp = new THREE.InstancedMesh(new THREE.BoxGeometry(.13, .02, .3), new THREE.MeshStandardMaterial({color: 0x232426, roughness: 1}), 60), M4 = new THREE.Matrix4();
@@ -98,7 +98,7 @@ function mysStep(dt) {
     if (ok) { tgtEl.style.transform = 'translate(' + ((p.x * .5 + .5) * innerWidth).toFixed(1) + 'px,' + ((-p.y * .5 + .5) * innerHeight).toFixed(1) + 'px)'; const t = '? ' + fmtD(dist); if (tgtEl._t !== t) { tgtEl._t = t; tgtEl.textContent = t; } } }
   else tgtEl.classList.add('hidden');
   if (!R.on && P.body === MOON) { const d = P.pos.distanceTo(MYS.pos); if (d < 300 && !MYS.near) { MYS.near = true; showHint('Something metal glints nearby...', 3000); }
-    if (d < 7 && !MYS.read) { MYS.read = true; showHint('The plaque reads: "YeShip Probe 1. Set down safely. Never phoned home."', 7000); } if (d < 9) FLOG.mystery = true; if (d > 400) MYS.near = MYS.read = false; } }
+    if (d < 7 && !MYS.read) { MYS.read = true; showHint('The plaque reads: "Lucas Space Program Probe 1. Set down safely. Never phoned home."', 7000); } if (d < 9) FLOG.mystery = true; if (d > 400) MYS.near = MYS.read = false; } }
 MISD.splice(MISD.findIndex(m => m.id === 'back') + 1, 0, {id: 'mystery', name: 'Moon mystery', d: 'Something old sits on the Moon\'s near side. Land close and walk up to it.', steps: [
   ['Open the map (M): the pink ? on the Moon\'s near side marks it. A ? marker also shows in flight', F => F.moonSOI || F.mysLand || F.mystery], ['Land on the Moon within 2 km of the ?', F => F.mysLand || F.mystery], ['Get out and walk up to it', F => F.mystery]], done: F => F.mystery});
 const _xq = new V3();

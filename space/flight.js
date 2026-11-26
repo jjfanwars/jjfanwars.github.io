@@ -1,5 +1,5 @@
 'use strict';
-// YeShip flight (step 2): starter rocket, flight physics, controls, chase camera, exhaust plume, smoke, sounds, flight HUD.
+// Lucas Space Program flight (step 2): starter rocket, flight physics, controls, chase camera, exhaust plume, smoke, sounds, flight HUD.
 // Loaded after game.js and shares its top-level names (THREE, V3, Q4, G, P, PLANET, MOON, site, scene, cam, keys, look...). Calls boot() at the end.
 const G0 = 9.81, OMEGA = new V3(0, 2 * Math.PI / PLANET.day, 0);
 for (const b of SATS) b.soi = b.orbit * Math.pow(b.GM / PLANET.GM, .4); // spheres of influence (Moon ~2400 km)
@@ -146,7 +146,7 @@ const SIDE_PRESETS = { // side booster stacks offered by the builder (top to bot
   thumper: {name: 'Thumper solids', parts: [{k: 'coneL'}, {k: 'thumper'}]}, kraken: {name: 'Kraken solids', parts: [{k: 'coneH'}, {k: 'kraken'}]},
   liquid: {name: 'Liquid: Tank L ×2 + Mule', parts: [{k: 'coneL'}, {k: 'tL'}, {k: 'tL'}, {k: 'mule'}]}, liquidXL: {name: 'Liquid: Tank XL ×2 + Vector', parts: [{k: 'coneL'}, {k: 'tXL'}, {k: 'tXL'}, {k: 'vector'}]}};
 const SHIP_PRESETS = {
-  'YeShip I': [{k: 'tM'}, {k: 'tM', legs: 1}, {k: 'swift'}, {k: 'dec'}, {k: 'tL'}, {k: 'tL', fins: 1}, {k: 'mule'}],
+  'Lucas I': [{k: 'tM'}, {k: 'tM', legs: 1}, {k: 'swift'}, {k: 'dec'}, {k: 'tL'}, {k: 'tL', fins: 1}, {k: 'mule'}],
   'Hopper': [{k: 'tL', fins: 1}, {k: 'mule'}],
   'Lander': [{k: 'tM'}, {k: 'tM', legs: 1}, {k: 'hopper'}, {k: 'dec'}, {k: 'tL'}, {k: 'tL'}, {k: 'tL', fins: 1}, {k: 'mule'}],
   'Heavy': [{k: 'tL'}, {k: 'tM', legs: 1}, {k: 'swift'}, {k: 'dec'}, {k: 'hL'}, {k: 'hM', fins: 1}, {k: 'titan'}],
@@ -156,9 +156,9 @@ const SHIP_PRESETS = {
   'Mega Lifter': [{k: 'tL'}, {k: 'tL', legs: 1}, {k: 'hopper'}, {k: 'dec'}, {k: 'hL'}, {k: 'swift'}, {k: 'dec'}, {k: 'xL'}, {k: 'xL', bigfins: 1, side: {n: 2, parts: [{k: 'coneH'}, {k: 'kraken', fins: 1}]}}, {k: 'mammoth'}],
 };
 // paint scheme: base colour, dark accent, trim stripe, pattern and the word down the side (saved with the design)
-const PAINT0 = {base: '#f1f0ec', acc: '#17191d', trim: '#ff8a1e', pat: 'roll', text: 'YESHIP', cap: '#dcdfe3'};
+const PAINT0 = {base: '#f1f0ec', acc: '#17191d', trim: '#ff8a1e', pat: 'roll', text: 'LUCAS', cap: '#dcdfe3'};
 const PAINT_PATS = [['roll', 'Roll marks'], ['band', 'Bands'], ['stripe', 'Stripe'], ['check', 'Chequers'], ['plain', 'Plain']];
-const SHIP = {name: 'YeShip I', parts: SHIP_PRESETS['YeShip I'].map(p => ({...p})), paint: {...PAINT0}};
+const SHIP = {name: 'Lucas I', parts: SHIP_PRESETS['Lucas I'].map(p => ({...p})), paint: {...PAINT0}};
 const STAGES = []; // filled by shipLayout(), bottom to top; the capsule is always last
 const partOk = d => d && PARTS[d.k] && (!d.cargo || MODULES[d.cargo]) && (!d.side || (Array.isArray(d.side.parts) && d.side.parts.every(q => PARTS[q.k])));
 const cloneParts = parts => parts.map(p => { const q = {...p}; if (p.side) q.side = {n: p.side.n, parts: p.side.parts.map(s => ({...s}))}; return q; });
@@ -875,7 +875,7 @@ function screenMat(name, k = 1.5) { const s = scr(name); return s.mats[k] || (s.
 function scrBg(s, title, col = '#7fd4ff') { const x = s.x; x.fillStyle = '#050c18'; x.fillRect(0, 0, s.w, s.h); x.strokeStyle = 'rgba(80,140,200,.12)'; x.lineWidth = 1;
   for (let i = 0; i < s.w; i += 32) { x.beginPath(); x.moveTo(i, 0); x.lineTo(i, s.h); x.stroke(); } for (let i = 0; i < s.h; i += 32) { x.beginPath(); x.moveTo(0, i); x.lineTo(s.w, i); x.stroke(); }
   x.fillStyle = '#0d1f38'; x.fillRect(0, 0, s.w, 30); x.fillStyle = col; x.font = '600 18px monospace'; x.textBaseline = 'middle'; x.textAlign = 'left'; x.fillText(title, 10, 15);
-  x.textAlign = 'right'; x.fillStyle = '#ffcf4a'; x.fillText('YESHIP', s.w - 10, 15); x.textAlign = 'left'; }
+  x.textAlign = 'right'; x.fillStyle = '#ffcf4a'; x.fillText('LSP', s.w - 10, 15); x.textAlign = 'left'; }
 const fmtT = s => { s = Math.max(0, s | 0); return String(s / 3600 | 0).padStart(2, '0') + ':' + String((s / 60 | 0) % 60).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0'); };
 function situation(b, alt, o) { return R.st === 'pad' ? 'ON THE PAD' : R.st === 'landed' ? 'LANDED' : R.st === 'dead' ? 'VEHICLE LOST' : o.pe > (b === PLANET ? PLANET.atmo : 2000) ? 'IN ORBIT' : alt < 20000 && b === PLANET ? 'FLYING' : 'SUBORBITAL'; }
 const DRAW = {

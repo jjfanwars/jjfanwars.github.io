@@ -1,5 +1,5 @@
 'use strict';
-// YeShip station interiors (26 Nov 2026; owner: "make sure all the rocketships etc are walkable and some have cool useful features").
+// Lucas Space Program station interiors (26 Nov 2026; owner: "make sure all the rocketships etc are walkable and some have cool useful features").
 // Docked, float up out of the capsule (F under the roof hatch) into the station: every pressurised module is a room you can drift through,
 // joined by the port tunnels. Things to use: bunks (sleep: time skips 8 h or to the next burn), lab bench (experiments: science per world),
 // greenhouse (harvest when grown), depot console (refill the ship), cupola (look out, HUD off), telescope (zoom in on any world), hub console.

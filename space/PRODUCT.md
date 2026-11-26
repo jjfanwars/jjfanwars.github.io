@@ -2,7 +2,7 @@
 
 <!-- impeccable:product-schema 1 -->
 
-Scope: YeShip only (`/space/`). The rest of the repo holds other games with their own notes.
+Scope: Lucas Space Program (formerly YeShip) only (`/space/`). The rest of the repo holds other games with their own notes.
 
 ## Platform
 
@@ -29,7 +29,7 @@ A browser game with KSP-style building and real orbits, but rendered for wonder 
 - Assets must be free to ship publicly (CC0 preferred); record every third-party asset in `space/THIRD_PARTY.md`.
 
 ## Brand Commitments
-- Name: YeShip. Tone from the design plan: chill wonder, calm and pretty, light humour; sound effects only, no music.
+- Name: Lucas Space Program (LSP; renamed from YeShip on 26 Nov 2026). Tone from the design plan: chill wonder, calm and pretty, light humour; sound effects only, no music.
 - Look and parts are our own; no copied characters or style from other rocket games.
 
 ## Evidence on Hand

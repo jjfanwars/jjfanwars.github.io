@@ -1,5 +1,5 @@
 'use strict';
-// YeShip space stations (26 Nov 2026). Station modules ride up in a cargo bay (PARTS.bay, MODULES in flight.js).
+// Lucas Space Program space stations (26 Nov 2026). Station modules ride up in a cargo bay (PARTS.bay, MODULES in flight.js).
 // K in orbit opens the bay and lets the module go: far from any station it starts a new one, within 300 m of a station it flies itself onto a free port.
 // Stations coast on rails (two-body Kepler around their world) and are saved in localStorage 'ye-world'.
 // H docks your ship (assisted: it flies you in) once you are within 20 km and slower than 60 m/s; docking at a fuel depot fills your tanks.

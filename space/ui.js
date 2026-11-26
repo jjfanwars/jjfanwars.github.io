@@ -1,5 +1,5 @@
 'use strict';
-// YeShip UI pieces that need code (26 Nov 2026, "agency manual" look): the stage elevation in the flight HUD.
+// Lucas Space Program UI pieces that need code (26 Nov 2026, "agency manual" look): the stage elevation in the flight HUD.
 // A 1px technical side drawing of what is still attached, drawn from the stage geometry: the firing stage is outlined in red and filled to its fuel level,
 // later stages are hatched, dropped stages are gone. Loaded after places.js, before polish.js (which calls boot()).
 

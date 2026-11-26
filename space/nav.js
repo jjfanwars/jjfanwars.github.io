@@ -1,5 +1,5 @@
 'use strict';
-// YeShip navigation, Kerbal style (25 Nov 2026): burn nodes (maneuver nodes) planned in the map, the orbit after the burn,
+// Lucas Space Program navigation, Kerbal style (25 Nov 2026): burn nodes (maneuver nodes) planned in the map, the orbit after the burn,
 // a burn marker + SAS "node" mode in flight, auto-burn, quick plans (circularise, transfer to the target), and a time warp bar.
 // Loaded after world.js, before polish.js (which calls boot()). Uses PRED/predict/mkPred/drawPoint/MAPV/navTarget from mission.js.
 

@@ -1,5 +1,5 @@
 'use strict';
-// YeShip world pass (25 Nov 2026; owner: "make the map, hangar and home planet 10x better").
+// Lucas Space Program world pass (25 Nov 2026; owner: "make the map, hangar and home planet 10x better").
 // Hangar inside: lit lining, roof trusses, lamps with light shafts, your current rocket on the assembly stand, every part on show (F adds it),
 // status board, build console, mezzanine office, crane, workshop corner. Grounds: roads, parking, rocket garden, tracking station, control tower,
 // fuel farm, the town of Yeville, forests, bushes, rocks and grass. Loaded after build.js, before polish.js (which calls boot()).
@@ -183,7 +183,7 @@ void main(){
     addM(L);
     // banners hanging above the office
     [['#ffcf4a', '#16233a'], ['#16233a', '#ffcf4a'], ['#e8572e', '#ffffff']].forEach(([bg, fg], i) => { const t = signTex(256, 1024, (c, w, h) => { c.fillStyle = bg; c.fillRect(0, 0, w, h); c.fillStyle = fg; c.fillRect(0, h - 40, w, 14);
-        c.save(); c.translate(w / 2, h / 2 - 40); c.rotate(-Math.PI / 2); c.font = '700 150px Archivo, Arial'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(['YESHIP', 'TO THE MOON', 'AND BACK'][i], 0, 0); c.restore();
+        c.save(); c.translate(w / 2, h / 2 - 40); c.rotate(-Math.PI / 2); c.font = '700 150px Archivo, Arial'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(['LUCAS SPACE PROGRAM', 'TO THE MOON', 'AND BACK'][i], 0, 0, 880); c.restore();
         c.beginPath(); c.moveTo(w / 2, 40); c.lineTo(w / 2 + 34, 120); c.lineTo(w / 2 - 34, 120); c.fill(); });
       const b = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 10.4), hm(0xffffff, .9, 0, {t, ds: true})); b.position.set(12.8 + i * 3.4, 20.5, Z0 + .3); g.add(b); }); }
   // ---- workshop corner (front west): benches, tool chests, gas bottles, a forklift, pallets
@@ -284,7 +284,7 @@ function grounds() {
   const lampM = new THREE.MeshStandardMaterial({color: 0x222222, emissive: 0xffd9a0, emissiveIntensity: 0}); WLD.lampM = lampM;
   const lh = new THREE.InstancedMesh(new THREE.BoxGeometry(.7, .1, .4), lampM, poles.length), M4 = new THREE.Matrix4(); poles.forEach(([x, z], i) => lh.setMatrixAt(i, M4.makeTranslation(x, 7.85, z))); lh.userData.tile = [800, 3000]; g.add(lh);
   // signs
-  H.decal(signTex(1024, 256, (c, w, h) => { c.fillStyle = '#1f6b3a'; c.fillRect(0, 0, w, h); c.strokeStyle = '#fff'; c.lineWidth = 10; c.strokeRect(14, 14, w - 28, h - 28); c.fillStyle = '#fff'; c.font = '600 110px Archivo, Arial'; c.textAlign = 'center'; c.fillText('YEVILLE', w / 2, 140); c.font = '44px Archivo, Arial'; c.fillText('pop. 1,204 · Home of YeShip', w / 2, 210); }), -641, 3, 30, 6, 1.5, Math.PI / 2);
+  H.decal(signTex(1024, 256, (c, w, h) => { c.fillStyle = '#1f6b3a'; c.fillRect(0, 0, w, h); c.strokeStyle = '#fff'; c.lineWidth = 10; c.strokeRect(14, 14, w - 28, h - 28); c.fillStyle = '#fff'; c.font = '600 110px Archivo, Arial'; c.textAlign = 'center'; c.fillText('YEVILLE', w / 2, 140); c.font = '44px Archivo, Arial'; c.fillText('pop. 1,204 · Home of the Lucas Space Program', w / 2, 210); }), -641, 3, 30, 6, 1.5, Math.PI / 2);
   box(-641.2, 0, 30, .3, 2.2, .3, 0x666666, false);
 }
 // ---------------- Yeville: houses, apartment blocks, a water tower, parked cars

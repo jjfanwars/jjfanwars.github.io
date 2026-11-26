@@ -1,4 +1,6 @@
-# YeShip (`space/`): notes for Claude
+# Lucas Space Program (`space/`, formerly YeShip): notes for Claude
+
+Renamed from YeShip on 26 Nov 2026 (owner's request). File and localStorage key names (`ye-*`, this notes file) keep the old name so saves carry over; the room list tag is now `[LSP]`.
 
 Read `CLAUDE.md` first (shared rules) and the design in `docs/plans/yeship.md`. Keep this file up to date when you change the game.
 

@@ -1,5 +1,5 @@
 'use strict';
-// YeShip polish (second pass, 24 Nov 2026): attitude dial on the flight HUD, flight report after every landing or crash,
+// Lucas Space Program polish (second pass, 24 Nov 2026): attitude dial on the flight HUD, flight report after every landing or crash,
 // time warp that slows down before big moments (air, the Moon's pull, impact), callouts when the frame body changes.
 // Loaded after extras.js; calls boot() at the end.
 

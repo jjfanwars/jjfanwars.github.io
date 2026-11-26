@@ -1,5 +1,5 @@
 'use strict';
-// YeShip multiplayer (26 Nov 2026). Rooms on the shared jjfanwars relay (relay/worker.js Room: one host + up to 7 guests, all over WebSocket).
+// Lucas Space Program multiplayer (26 Nov 2026). Rooms on the shared jjfanwars relay (relay/worker.js Room: one host + up to 7 guests, all over WebSocket).
 // Authority: whoever sits in the Pilot seat runs the rocket physics and the clock (NET.auth); everyone else mirrors the rocket from its snapshots ('rs', 15 Hz)
 // and walks their own body (poses 'po', 10 Hz). The host arbitrates the pilot seat ('authReq' -> 'auth') and takes over when the pilot leaves.
 // Shared: ship design ('ship'), stations ('ves'), the burn node ('nd': a Navigator can plan burns for the Pilot), chat ('ch'), waves.
@@ -7,7 +7,7 @@
 
 const RELAY_URL = 'wss://jjfanwars-relay.businessautomationvic.workers.dev';
 const Net = {
-  tag: '[YeShip]', role: 'solo', ws: null, peers: new Map(), code: '', relayT: {po: 1, rs: 1, ch: 1, ship: 1, ves: 1, nd: 1, em: 1}, id: '', name: '', handlers: {}, retry: 0,
+  tag: '[LSP]', role: 'solo', ws: null, peers: new Map(), code: '', relayT: {po: 1, rs: 1, ch: 1, ship: 1, ves: 1, nd: 1, em: 1}, id: '', name: '', handlers: {}, retry: 0,
   enc: new TextEncoder(), dec: new TextDecoder(),
   relay() { if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) { const m = /[?&]relay=([^&]+)/.exec(location.search); if (m) return decodeURIComponent(m[1]).replace(/\/$/, ''); } return RELAY_URL; },
   on(t, f) { this.handlers[t] = f; },

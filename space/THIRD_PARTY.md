@@ -1,4 +1,4 @@
-# Third-party assets (YeShip)
+# Third-party assets (Lucas Space Program)
 
 Textures in `space/tex/` are from Poly Haven (https://polyhaven.com), released under CC0 (public domain). Resized and recompressed.
 

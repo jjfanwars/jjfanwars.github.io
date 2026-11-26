@@ -1,5 +1,5 @@
 'use strict';
-// YeShip. Step 1: planet + moon (cube-sphere quadtree terrain), ray-marched atmosphere post pass, day/night, space centre, walking.
+// Lucas Space Program. Step 1: planet + moon (cube-sphere quadtree terrain), ray-marched atmosphere post pass, day/night, space centre, walking.
 // Frames: "inertial" = world, planet centre at 0, sun fixed. Bodies rotate (planet about +Y). Body-fixed coords = inertial rotated back.
 // Rendering uses a floating origin: the camera sits at 0 and everything is placed relative to O (the camera's inertial position).
 const $ = id => document.getElementById(id);

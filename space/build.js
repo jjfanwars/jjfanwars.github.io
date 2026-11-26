@@ -1,5 +1,5 @@
 'use strict';
-// YeShip rocket builder (KSP-style hangar editor, 25 Nov 2026). Parts + layout live in flight.js (PARTS, shipLayout, shipApply, partMeshes).
+// Lucas Space Program rocket builder (KSP-style hangar editor, 25 Nov 2026). Parts + layout live in flight.js (PARTS, shipLayout, shipApply, partMeshes).
 // B (not while flying), the main menu or the pause card opens it. Own small WebGL renderer for the preview; the world is not drawn while it is open.
 // Loaded after extras.js, before polish.js (which calls boot()).
 

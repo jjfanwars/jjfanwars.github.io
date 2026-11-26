@@ -1,5 +1,5 @@
 'use strict';
-// YeShip places to visit (26 Nov 2026): landmarks with a "?" marker and missions. Home: the summit cairn on the western peaks.
+// Lucas Space Program places to visit (26 Nov 2026): landmarks with a "?" marker and missions. Home: the summit cairn on the western peaks.
 // Rust: the old rover "Rusty". Frost: ice geysers. Ember (volcanic moon, game.js): Fire Mountain. Pebble (asteroid, game.js): just land on it.
 // Loaded after station.js, before polish.js (which calls boot()).
 

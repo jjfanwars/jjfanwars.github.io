@@ -1,5 +1,5 @@
 'use strict';
-// YeShip missions, map view (M) with trajectory prediction, re-entry plasma, Moon landing dust.
+// Lucas Space Program missions, map view (M) with trajectory prediction, re-entry plasma, Moon landing dust.
 // Loaded after flight.js and shares its top-level names (R, STAGES, orbitEl, gravAt, moonPos, SOI_M, ...). Calls boot() at the end.
 
 // ---------------- trajectory prediction (engine off from now; full gravity of Home + Moon on rails, no drag)
