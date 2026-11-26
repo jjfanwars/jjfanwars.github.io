@@ -48,11 +48,14 @@ main{display:flex;gap:22px;flex-wrap:wrap;justify-content:center;align-items:fle
 .sq.l.chk{background:radial-gradient(circle,#ff2a1a 0%,rgba(231,0,0,.7) 30%,rgba(169,0,0,0) 72%),var(--lt)}
 .sq.dot::after{content:'';position:absolute;left:50%;top:50%;width:30%;height:30%;margin:-15% 0 0 -15%;border-radius:50%;background:rgba(20,30,20,.24)}
 .sq.cap::after{content:'';position:absolute;inset:0;background:radial-gradient(transparent 0 57%,rgba(20,30,20,.26) 58%)}
+.sq.own{cursor:grab}
 .sq.hov{box-shadow:inset 0 0 0 4px rgba(255,255,255,.65)}
 .co{position:absolute;font-size:clamp(9px,1.6vw,12px);font-weight:700;pointer-events:none}
 .co.r{top:3px;left:4px}.co.f{bottom:2px;right:5px}
-.sq.l .co{color:var(--dk)}.sq .co{color:var(--lt)}
+#coords .l .co{color:var(--dk)}#coords .co{color:var(--lt)}
 #pcs{position:absolute;inset:0;pointer-events:none}
+#coords{position:absolute;inset:0;pointer-events:none;z-index:6;display:grid;grid-template-columns:repeat(8,1fr);grid-template-rows:repeat(8,1fr)}
+#coords div{position:relative}
 .pc{position:absolute;left:0;top:0;width:12.5%;height:12.5%;will-change:transform;transition:transform .2s cubic-bezier(.3,.7,.3,1),opacity .2s;background-size:100%;background-repeat:no-repeat}
 .pc.drag{transition:none;z-index:5;filter:drop-shadow(0 8px 10px rgba(0,0,0,.45));scale:1.12}
 .pc.moving{z-index:4}
@@ -102,7 +105,7 @@ input:focus{border-color:var(--acc)}
 footer{color:#5d626d;font-size:11px;padding:0 16px 16px;text-align:center}
 footer a{color:inherit}
 .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#2f343e;border:1px solid var(--line);padding:10px 16px;border-radius:10px;font-weight:600;z-index:30;animation:rise .2s}
-@media (max-width:700px){header{padding-top:10px}.side{width:min(94vw,620px)}}
+@media (max-width:700px){header{padding-top:10px}body.inlobby .side{order:-1}.side{width:min(94vw,620px)}}
 </style>
 </head>
 <body>
@@ -113,16 +116,15 @@ footer a{color:inherit}
 <main>
   <div class="boardcol">
     <div class="pbar" id="barTop"><div class="ava"><img alt=""></div><div class="pname"></div><div class="caps"></div><div class="turnpip"></div></div>
-    <div class="frame"><div id="board"><div id="sqs"></div><div id="pcs"></div></div></div>
+    <div class="frame"><div id="board"><div id="sqs"></div><div id="pcs"></div><div id="coords"></div></div></div>
     <div class="pbar" id="barBot"><div class="ava"><img alt=""></div><div class="pname"></div><div class="caps"></div><div class="turnpip"></div></div>
   </div>
   <div class="side">
     <div class="card" id="lobby">
-      <h2>Play chess with a friend</h2>
-      <p class="small">Each of you on your own computer. No account needed.</p>
+      <h2 style="margin-bottom:12px">Play a friend</h2>
       <div class="stack">
         <input id="name" maxlength="18" placeholder="Your name">
-        <button class="go" id="bHost">Create game &amp; get invite link</button>
+        <button class="go" id="bHost">Create game</button>
       </div>
       <div class="or">or join with a code</div>
       <div class="row"><input id="code" maxlength="5" placeholder="ABCDE" autocomplete="off"><button id="bJoin" style="flex:none">Join</button></div>
@@ -268,7 +270,8 @@ const View = {
   init() {
     const sq = $('sqs');
     this.cells = [];
-    for (let k = 0; k < 64; k++) { const d = document.createElement('div'); d.className = 'sq'; sq.appendChild(d); this.cells.push(d); }
+    this.cc = [];
+    for (let k = 0; k < 64; k++) { const d = document.createElement('div'); d.className = 'sq'; sq.appendChild(d); this.cells.push(d); const e = document.createElement('div'); $('coords').appendChild(e); this.cc.push(e); }
     const bd = $('board');
     bd.addEventListener('pointerdown', e => this.down(e));
     addEventListener('pointermove', e => this.move(e));
@@ -308,7 +311,7 @@ const View = {
   reflow() { for (const i in this.els) { const el = this.els[i]; el.style.transition = 'none'; this.place(el, +i); el.offsetWidth; el.style.transition = ''; } },
   marks() {
     const s = G.s, last = s.last, sel = this.sel, tg = sel >= 0 ? G.ls.filter(m => m.from === sel) : [];
-    const chk = inCheck(s, s.turn) ? kingSq(s.b, s.turn) : -1;
+    const chk = inCheck(s, s.turn) ? kingSq(s.b, s.turn) : -1, mine = G.canMove();
     for (let k = 0; k < 64; k++) {
       const row = k >> 3, col = k & 7, i = this.flip ? row * 8 + 7 - col : (7 - row) * 8 + col, f = i & 7, r = i >> 3, d = this.cells[k];
       let c = 'sq' + ((f + r) & 1 ? ' l' : '');
@@ -317,9 +320,11 @@ const View = {
       if (i === chk) c += ' chk';
       const t = tg.find(m => m.to === i); if (t) c += s.b[i] || t.epc ? ' cap' : ' dot';
       if (i === this.hov) c += ' hov';
+      if (mine && s.b[i] && s.b[i][0] === s.turn) c += ' own';
       d.className = c;
+      const cd = this.cc[k]; cd.className = (f + r) & 1 ? 'l' : '';
       let h = ''; if (col === 0) h += `<span class="co r">${r + 1}</span>`; if (row === 7) h += `<span class="co f">${'abcdefgh'[f]}</span>`;
-      if (d._h !== h) { d.innerHTML = h; d._h = h; }
+      if (cd._h !== h) { cd.innerHTML = h; cd._h = h; }
     }
     $('board').classList.toggle('over', !!G.res);
   },
@@ -333,7 +338,7 @@ const View = {
     if (p && p[0] === G.s.turn) {
       const was = this.sel === i; this.sel = i;
       const el = this.els[i], r = $('board').getBoundingClientRect();
-      this.drag = {i, el, was, x0: e.clientX, y0: e.clientY, moved: false, w: r.width / 8, r};
+      if (el) this.drag = {i, el, was, x0: e.clientX, y0: e.clientY, moved: false, w: r.width / 8, r};
       e.preventDefault();
     } else this.sel = -1;
     this.marks();
@@ -383,11 +388,11 @@ const G = {
     const prev = this.moves;
     const extend = animateLast && moves.length === prev.length + 1 && prev.every((u, i) => u === moves[i]);
     if (extend) { this.play(moves[moves.length - 1]); if (res) { this.res = res; this.ui(); } return; }
-    if (!force && (this.ls.length || this.res) && moves.length === prev.length && prev.every((u, i) => u === moves[i])) { const had = this.res; this.res = res || null; if (res && !had) this.ended(); this.ui(); return; }
+    if (!force && (this.ls.length || this.res) && moves.length === prev.length && prev.every((u, i) => u === moves[i])) { const had = this.res; this.res = res || null; if (res && !had) this.ended(); if (!res) $('over').classList.add('hidden'); this.ui(); return; }
     this.s = startPos(); this.moves = []; this.sans = []; this.keys = {[posKey(this.s)]: 1}; this.res = null;
     for (const u of moves) if (!this.step(u)) break;
     if (res) this.res = res;
-    this.ls = legal(this.s); View.sel = -1; View.sync(this.s.b, null, true); this.ui();
+    this.ls = legal(this.s); View.sel = -1; View.sync(this.s.b, null, true); if (!this.res) $('over').classList.add('hidden'); this.ui();
   },
   step(u) { // apply a move to the state, no effects
     const ls = legal(this.s), m = ls.find(x => uci(x) === u); if (!m) return null;
@@ -410,7 +415,7 @@ const G = {
     this.ui(); Net.save();
     return true;
   },
-  canMove() { return !this.res && this.mode && (this.mode === 'local' || (this.s.turn === this.my && Net.ready)); },
+  canMove() { return !this.res && !!this.mode && !Net.watch && (this.mode === 'local' || (this.s.turn === this.my && Net.ready && (this.mode === 'guest' || Net.peer))); },
   submit(u, dropped) { if (this.play(u, dropped)) { if (this.mode === 'host') Net.state(); else Net.send({t: 'mv', u, n: this.moves.length - 1}); } },
   end(res) { this.res = res; Net.save(); this.ui(); this.ended(); },
   ended() {
@@ -418,14 +423,14 @@ const G = {
     const r = this.res, me = this.mode === 'local' ? null : this.my;
     let t, s;
     if (!r.win) { t = 'Draw'; s = 'By ' + r.why + '.'; }
-    else if (me) { t = r.win === me ? 'You won!' : 'You lost'; s = (r.win === me ? 'You won' : this.names[r.win] + ' won') + ' by ' + r.why + '.'; }
+    else if (me && !Net.watch) { t = r.win === me ? 'You won!' : 'You lost'; s = (r.win === me ? 'You won' : this.names[r.win] + ' won') + ' by ' + r.why + '.'; }
     else { t = (r.win === 'w' ? 'White' : 'Black') + ' wins'; s = 'By ' + r.why + '.'; }
-    $('ovT').textContent = t; $('ovS').textContent = s; $('over').classList.remove('hidden');
+    $('ovAgain').classList.toggle('hidden', !!Net.watch); $('ovT').textContent = t; $('ovS').textContent = s; $('over').classList.remove('hidden');
   },
   resText() {
     const r = this.res; if (!r) return '';
     if (!r.win) return 'Draw · ' + r.why;
-    if (this.mode !== 'local') return (r.win === this.my ? 'You won' : 'You lost') + ' · ' + r.why;
+    if (this.mode !== 'local' && !Net.watch) return (r.win === this.my ? 'You won' : 'You lost') + ' · ' + r.why;
     return (r.win === 'w' ? 'White' : 'Black') + ' won · ' + r.why;
   },
   ui() {
@@ -442,11 +447,12 @@ const G = {
     const full = {p: 8, n: 2, b: 2, r: 2, q: 1}, mat = c => this.s.b.reduce((a, p) => a + (p && p[0] === c ? VAL[p[1]] : 0), 0), diff = mat('w') - mat('b');
     for (const [id, c] of [['barTop', top], ['barBot', bottom]]) {
       const bar = $(id), o = opp(c); let caps = '';
-      for (const t of 'qrbnp') { const n = Math.max(0, full[t] - (cnt[o][t] || 0)); if (n) { for (let k = 0; k < n; k++) caps += `<img src="${IMG(o + t)}" alt="">`; caps += '<span class="gap"></span>'; } }
+      const promoted = 'qrbn'.split('').reduce((a, t) => a + Math.max(0, (cnt[o][t] || 0) - full[t]), 0);
+      for (const t of 'qrbnp') { const n = Math.max(0, full[t] - (cnt[o][t] || 0) - (t === 'p' ? promoted : 0)); if (n) { for (let k = 0; k < n; k++) caps += `<img src="${IMG(o + t)}" alt="">`; caps += '<span class="gap"></span>'; } }
       const adv = c === 'w' ? diff : -diff; if (adv > 0) caps += `<b>+${adv}</b>`;
       bar.querySelector('.caps').innerHTML = caps;
       bar.querySelector('.ava img').src = IMG(c + 'k');
-      const tag = this.mode === 'local' || !this.mode ? '' : c === this.my ? 'you' : '';
+      const tag = this.mode === 'local' || !this.mode || Net.watch ? '' : c === this.my ? 'you' : '';
       bar.querySelector('.pname').innerHTML = esc(this.names[c]) + (tag ? `<small>${tag}</small>` : '');
       bar.classList.toggle('on', !this.res && !!this.mode && this.s.turn === c);
     }
@@ -455,15 +461,17 @@ const G = {
     let st;
     if (this.res) st = this.resText();
     else if (!this.mode) st = '';
-    else if (this.mode === 'local') st = (this.s.turn === 'w' ? 'White' : 'Black') + ' to move' + (chk ? ' · check' : '');
+    else if (this.mode === 'local' || Net.watch) st = (Net.watch ? 'Watching · ' : '') + (this.s.turn === 'w' ? 'White' : 'Black') + ' to move' + (chk ? ' · check' : '');
+    else if (this.mode === 'host' && !Net.peer && !this.moves.length) st = 'Waiting for opponent';
     else st = (this.s.turn === this.my ? 'Your move' : 'Waiting for ' + this.names[opp(this.my)]) + (chk ? ' · check!' : '');
     $('status').textContent = st;
-    const live = !!this.mode && !this.res;
+    const live = !!this.mode && !this.res && !Net.watch;
     $('bResign').classList.toggle('hidden', !live);
     $('bDraw').classList.toggle('hidden', !live);
     $('bDraw').textContent = this.drawOffer && this.drawOffer !== this.my ? '½ Accept draw' : this.drawOffer === this.my ? '½ Offered' : '½ Draw';
     $('bDraw').disabled = this.drawOffer === this.my;
-    $('bNew').classList.toggle('hidden', !this.res);
+    $('bNew').classList.toggle('hidden', !this.res || Net.watch);
+    document.body.classList.toggle('inlobby', !this.mode);
     document.title = (this.mode && this.mode !== 'local' && !this.res && this.s.turn === this.my ? '● Your move · ' : '') + 'jjchess';
   },
 };
@@ -474,12 +482,12 @@ function toast(t) { const d = document.createElement('div'); d.className = 'toas
 // ================= network: jjfanwars relay rooms (host + 1 guest, host keeps the game) =================
 const enc = new TextEncoder(), dec = new TextDecoder();
 const Net = {
-  ws: null, code: null, ready: false, hc: 'w', tries: 0, dead: false, peer: false,
+  ws: null, code: null, ready: false, hc: 'w', tries: 0, dead: false, peer: false, gid: null, live: new Set(), watch: false,
   myName() { return ($('name').value.trim() || store.get('jc-name') || 'Player').slice(0, 18); },
   host(code) {
     G.mode = 'host'; this.code = code || mkCode();
     const sv = (() => { try { return JSON.parse(store.get('jc-g-' + this.code)); } catch (e) { return null; } })();
-    this.hc = sv ? sv.hc : 'w'; G.my = this.hc;
+    this.hc = sv ? sv.hc : 'w'; G.my = this.hc; this.gid = sv && sv.gid || null;
     G.names = {w: 'Waiting…', b: 'Waiting…'}; G.names[this.hc] = this.myName(); if (sv && sv.on) G.names[opp(this.hc)] = sv.on;
     G.load(sv ? sv.moves : [], sv && sv.res);
     history.replaceState(null, '', '?host=' + this.code);
@@ -498,21 +506,21 @@ const Net = {
     ws.binaryType = 'arraybuffer'; this.ready = false; this.net(role === 'host' ? 'Connecting…' : 'Joining game ' + this.code + '…');
     ws.onopen = () => {
       this.tries = 0;
-      if (role === 'host') { ws.send(JSON.stringify({c: 'meta', name: 'Chess', open: false})); this.ready = this.peer; this.net(this.peer ? 'Connected' : 'Waiting for your friend. Send them the link.', this.peer ? 'ok' : ''); }
+      if (role === 'host') { ws.send(JSON.stringify({c: 'meta', name: 'Chess', open: false})); this.ready = this.peer; this.net(this.peer ? 'Connected' : 'Send your friend the link', this.peer ? 'ok' : ''); }
       clearInterval(this.ping); this.ping = setInterval(() => { try { ws.send('ping'); } catch (e) {} }, 25000);
     };
     ws.onmessage = e => {
       if (typeof e.data === 'string') {
         if (e.data === 'pong') return;
         let m; try { m = JSON.parse(e.data); } catch (er) { return; }
-        if (m.c === 'join') { this.peer = true; this.ready = true; this.net('Friend joined', 'ok'); this.state(); G.ui(); }
-        else if (m.c === 'leave') { this.peer = false; this.ready = false; this.net('Your friend disconnected. Waiting for them…', 'bad'); G.ui(); }
-        else if (m.c === 'host') { this.ready = false; this.net(m.up ? 'Connected. Loading game…' : 'Host disconnected. Waiting for them…', m.up ? '' : 'bad'); if (m.up) this.send({t: 'hi', name: this.myName()}); G.ui(); }
+        if (m.c === 'join') { this.live.add(m.id); this.state(); }
+        else if (m.c === 'leave') { this.live.delete(m.id); if (m.id !== this.gid) return; this.peer = false; this.net('Opponent disconnected', 'bad'); G.ui(); }
+        else if (m.c === 'host') { this.ready = false; this.net(m.up ? 'Connected. Loading game…' : 'Opponent disconnected', m.up ? '' : 'bad'); if (m.up) this.send({t: 'hi', name: this.myName()}); G.ui(); }
         return;
       }
-      const b = new Uint8Array(e.data), body = role === 'host' ? b.subarray(1 + b[0]) : b;
+      const b = new Uint8Array(e.data), body = role === 'host' ? b.subarray(1 + b[0]) : b, from = role === 'host' ? dec.decode(b.subarray(1, 1 + b[0])) : '';
       let m; try { m = JSON.parse(dec.decode(body)); } catch (er) { return; }
-      this.recv(m);
+      this.recv(m, from);
     };
     ws.onclose = e => {
       clearInterval(this.ping); this.ready = false;
@@ -529,27 +537,31 @@ const Net = {
     const body = enc.encode(JSON.stringify(m));
     if (G.mode === 'host') { const out = new Uint8Array(body.length + 1); out.set(body, 1); this.ws.send(out); } else this.ws.send(body);
   },
-  state() { if (G.mode === 'host') this.send({t: 'state', moves: G.moves, hc: this.hc, res: G.res, names: G.names, draw: G.drawOffer}); },
-  recv(m) {
+  state() { if (G.mode === 'host') this.send({t: 'state', moves: G.moves, hc: this.hc, res: G.res, names: G.names, draw: G.drawOffer, gid: this.gid}); },
+  recv(m, from) {
     if (G.mode === 'host') {
+      if (m.t === 'hi' && this.gid !== from && (!this.gid || !this.live.has(this.gid))) { this.gid = from; this.save(); }
+      if (m.t !== 'hi' && from !== this.gid) return; // spectators can only watch
+      if (m.t === 'hi' && from !== this.gid) { this.live.add(from); this.state(); return; }
+      this.live.add(from);
       if (m.t === 'hi') { this.peer = true; this.ready = true; if (m.name) G.names[opp(this.hc)] = String(m.name).slice(0, 18); this.net('Connected', 'ok'); this.save(); this.state(); G.ui(); }
       else if (m.t === 'mv') { if (m.n === G.moves.length && G.s.turn !== this.hc) G.play(m.u); this.state(); }
       else if (m.t === 'resign' && !G.res) { G.end({win: this.hc, why: 'resignation'}); this.state(); }
       else if (m.t === 'draw' && !G.res) { if (G.drawOffer === this.hc) { G.end({win: '', why: 'agreement'}); } else { G.drawOffer = opp(this.hc); toast(G.names[opp(this.hc)] + ' offers a draw'); G.ui(); } this.state(); }
       else if (m.t === 'again' && G.res) this.rematch();
     } else if (m.t === 'state') {
-      this.ready = true; G.my = opp(m.hc); G.names = m.names || G.names;
+      this.ready = true; this.watch = !!m.gid && m.gid !== this.id(); G.my = this.watch ? 'w' : opp(m.hc); G.names = m.names || G.names;
       const off = m.draw || null; if (off && off !== G.my && G.drawOffer !== off) toast(G.names[off] + ' offers a draw');
       G.drawOffer = off;
       G.load(m.moves, m.res, true);
-      this.net('Connected', 'ok');
+      this.net(this.watch ? 'Watching this game' : 'Connected', 'ok');
     }
   },
   rematch() { // host: swap colours, start over
     this.hc = opp(this.hc); G.my = this.hc; const n = G.names; G.names = {w: n.b, b: n.w}; G.drawOffer = null;
     G.load([], null, false, true); $('over').classList.add('hidden'); this.save(); this.state(); toast('New game: you are ' + (this.hc === 'w' ? 'White' : 'Black'));
   },
-  save() { if (G.mode === 'host') store.set('jc-g-' + this.code, JSON.stringify({moves: G.moves, hc: this.hc, res: G.res, on: G.names[opp(this.hc)], t: Date.now()})); },
+  save() { if (G.mode === 'host') store.set('jc-g-' + this.code, JSON.stringify({moves: G.moves, hc: this.hc, res: G.res, on: G.names[opp(this.hc)], gid: this.gid, t: Date.now()})); },
   net(t, cls) {
     const n = $('net'); n.className = 'net ' + (cls || ''); n.querySelector('span').textContent = t;
     $('invite').classList.toggle('hidden', G.mode !== 'host' || this.peer);
