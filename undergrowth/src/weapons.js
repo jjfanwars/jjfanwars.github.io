@@ -1588,7 +1588,13 @@ export function createWeapons(ctx) {
 
   function loadModels() {
     const loader = new GLTFLoader();
-    const load = (file) => new Promise((res, rej) => loader.load(new URL(file, ASSET_BASE).href, res, undefined, rej));
+    const viaUrl = (file) => new Promise((res, rej) => loader.load(new URL(file, ASSET_BASE).href, res, undefined, rej));
+    const viaModule = async (file) => {
+      const mod = await import('../assets/models.js');
+      const bin = Uint8Array.from(atob(mod[file.replace('.glb', '')]), (c) => c.charCodeAt(0));
+      return new Promise((res, rej) => loader.parse(bin.buffer, '', res, rej));
+    };
+    const load = (file) => viaUrl(file).catch(() => viaModule(file));
     load('hand.glb').then((gltf) => {
       const src = firstMesh(gltf.scene);
       if (!src) return;
