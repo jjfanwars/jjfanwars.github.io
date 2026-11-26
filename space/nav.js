@@ -78,7 +78,7 @@ function nodeMapPos(out) { let bi = 0, bd = Infinity; for (let i = 0; i < PRED.n
     for (let i = 0; i < PRED2.n; i++) { drawPoint(i, _np, PRED2); prj(_np, _nq); const f = PRED2.f[i]; if (open && f !== pf) { x.stroke(); open = false; }
       if (!open) { x.beginPath(); x.strokeStyle = f > 0 ? '#ff7ad9' : '#c9b4ff'; x.moveTo(_nq.x, _nq.y); open = true; pf = f; } else if (_nq.ok) x.lineTo(_nq.x, _nq.y); }
     if (open) x.stroke(); x.restore();
-    const lab = (p, txt, col) => { prj(p, _nq); if (!_nq.ok) return; x.font = '600 12px Archivo, sans-serif'; const w = x.measureText(txt).width; x.fillStyle = 'rgba(0,0,0,.55)'; x.fillRect(_nq.x - w / 2 - 6, _nq.y - 28, w + 12, 17); x.fillStyle = col; x.textAlign = 'center'; x.fillText(txt, _nq.x, _nq.y - 15.5); x.textAlign = 'left'; };
+    const lab = (p, txt, col) => { prj(p, _nq); if (!_nq.ok) return; x.font = '600 12px Archivo, sans-serif'; const w = x.measureText(txt).width; x.fillStyle = 'rgba(0,0,0,.25)'; x.fillRect(_nq.x - w / 2 - 13, _nq.y - 27, w + 24, 18); x.fillStyle = '#F3F3F0'; x.fillRect(_nq.x - w / 2 - 14, _nq.y - 29, w + 24, 18); x.fillStyle = col; x.fillRect(_nq.x - w / 2 - 8, _nq.y - 23, 6, 6); x.fillStyle = '#121314'; x.textAlign = 'center'; x.fillText(txt, _nq.x + 4, _nq.y - 15.5); x.textAlign = 'left'; };
     nodeMapPos(_np); prj(_np, _nq); if (_nq.ok) { x.fillStyle = '#c9b4ff'; x.strokeStyle = '#1a1030'; x.lineWidth = 2; x.beginPath(); x.moveTo(_nq.x, _nq.y - 9); x.lineTo(_nq.x + 9, _nq.y); x.lineTo(_nq.x, _nq.y + 9); x.lineTo(_nq.x - 9, _nq.y); x.closePath(); x.stroke(); x.fill(); NAV.nx = _nq.x; NAV.ny = _nq.y; }
     lab(_np, 'Burn ' + Math.round(NODE.bv.length()) + ' m/s · ' + fmtS(NODE.t - G.t), '#c9b4ff');
     if (PRED2.enc && PRED2.start === 0) lab(drawPoint(PRED2.enc.i, _np, PRED2), PRED2.enc.b.name + ' · pass ' + (PRED2.moonPe < 0 ? 'hits' : fmtD(PRED2.moonPe)), '#ff7ad9');
@@ -100,10 +100,10 @@ function nodePanel() { const el = $('nodeP'); el.classList.toggle('hidden', !NOD
 let niT = 0;
 function nodeInfo(force) { if (!NODE || (!force && (niT -= G.dt || .016) > 0)) return; niT = .15;
   $('nPx').textContent = Math.round(NODE.dv.x); $('nPn').textContent = Math.round(NODE.dv.y); $('nPr').textContent = Math.round(NODE.dv.z);
-  const dv = NODE.bv.length(), L = ['Δv <b>' + Math.round(dv) + ' m/s</b> · burn <b>' + fmtS(NODE.burn) + '</b>' + (stageDv() < dv ? ' <span style="color:#ff8a6a">(this stage has ' + Math.round(stageDv()) + ')</span>' : ''), 'In <b>' + fmtS(NODE.t - G.t) + '</b> · start <b>' + fmtS(NODE.t - NODE.burn / 2 - G.t) + '</b> before'];
+  const dv = NODE.bv.length(), L = ['Δv <b>' + Math.round(dv) + ' m/s</b> · burn <b>' + fmtS(NODE.burn) + '</b>' + (stageDv() < dv ? ' <span class="warn">(this stage has ' + Math.round(stageDv()) + ')</span>' : ''), 'Start burning in <b>' + fmtS(Math.max(0, NODE.t - NODE.burn / 2 - G.t)) + '</b>']; { const tm = $('nTm'); if (tm) tm.textContent = 'in ' + fmtS(Math.max(0, NODE.t - G.t)); }
   const P2 = PRED2, b2 = P2.n ? BODIES[P2.f[0]] : PLANET; if (P2.n) { const o2 = orbitEl(b2, _q1.set(P2.p[0], P2.p[1], P2.p[2]), NODE.vel.clone().add(NODE.bv), NODE.t); L.push('After: Ap <b>' + (o2.ap === Infinity ? 'escape' : fmtD(o2.ap)) + '</b> · Pe <b>' + fmtD(o2.pe) + '</b>'); }
-  if (P2.enc) L.push('<span style="color:#ff7ad9">Meets ' + P2.enc.b.name + '</span> · passes <b>' + (P2.moonPe < 0 ? 'into it' : fmtD(P2.moonPe)) + '</b>');
-  $('nInfo').innerHTML = L.join('<br>'); $('nAuto').classList.toggle('on', NODE.auto); $('nAuto').textContent = NODE.auto ? 'Auto-burn on' : 'Auto-burn'; }
+  if (P2.enc) L.push('<b>Meets ' + P2.enc.b.name + '</b> · passes <b>' + (P2.moonPe < 0 ? 'into it' : fmtD(P2.moonPe)) + '</b>');
+  $('nInfo').innerHTML = L.map(l => '<div>' + l + '</div>').join(''); $('nAuto').classList.toggle('on', NODE.auto); $('nAuto').textContent = NODE.auto ? 'Auto-burn on' : 'Auto-burn'; }
 { const P = $('nodeP'), bump = (ax, s) => { if (!NODE || NODE.burning) return; NODE.dv[ax] += s * NAV.step; nodeUpdate(); nodeInfo(true); };
   let rep = null; const stop = () => { clearTimeout(rep); clearInterval(rep); rep = null; };
   P.querySelectorAll('[data-a]').forEach(b => { b.onpointerdown = e => { e.preventDefault(); e.stopPropagation(); bump(b.dataset.a, +b.dataset.s); stop(); rep = setTimeout(() => { rep = setInterval(() => bump(b.dataset.a, +b.dataset.s), 70); }, 350); }; b.onpointerup = b.onpointerleave = stop; });
@@ -144,7 +144,7 @@ function guideAuto() {
 // ---------------- time warp bar (click it, or , . keys) with the reason it is capped
 function warpBar() { const el = $('warpW'); if (!G.on) { el.classList.add('hidden'); return; } el.classList.remove('hidden');
   const dots = el.querySelectorAll('i'); dots.forEach((d, i) => d.classList.toggle('on', i <= G.wi)); setTxt('wwT', '×' + G.warp.toLocaleString('en') + (R.warpTo ? ' →' : '')); }
-{ const el = $('warpW'); el.innerHTML = '<button id="wwD" title="Slower (,)" aria-label="Slower"><span class="ico i-l"></span></button><span id="wwT">×1</span>' + WARPS.map((w, i) => '<i data-i="' + i + '" title="×' + w + '"></i>').join('') + '<button id="wwU" title="Faster (.)" aria-label="Faster"><span class="ico i-r"></span></button><button id="wwN" title="Warp to the next event: burn node, Ap or Pe (N)">N</button>';
+{ const el = $('warpW'); el.innerHTML = '<button id="wwD" title="Slower (,)" aria-label="Slower"><span class="ico i-l"></span></button><span id="wwT">×1</span>' + WARPS.map((w, i) => '<i data-i="' + i + '" title="×' + w + '"></i>').join('') + '<button id="wwU" title="Faster (.)" aria-label="Faster"><span class="ico i-r"></span></button><button id="wwN" title="Warp to the next event: burn node, Ap or Pe (N)"><span class="key">N</span>Next</button>';
   $('wwD').onclick = e => { e.stopPropagation(); setWarp(G.wi - 1); }; $('wwU').onclick = e => { e.stopPropagation(); setWarp(G.wi + 1); }; $('wwN').onclick = e => { e.stopPropagation(); warpNext(); };
   el.querySelectorAll('i').forEach(d => d.onclick = e => { e.stopPropagation(); setWarp(+d.dataset.i); }); }
 { const v0 = FLIGHT.visuals; FLIGHT.visuals = dt => { v0(dt); warpBar(); }; }

@@ -212,6 +212,26 @@ body.fly #hint.st { top:104px; }
 ::-webkit-scrollbar { width:8px; height:8px; } ::-webkit-scrollbar-thumb { background:var(--ink2); } ::-webkit-scrollbar-track { background:transparent; }
 @media (max-width:1100px) { #warpW { left:16px; transform:none; top:76px; } body.map #warpW { top:auto; bottom:124px; } #mis { width:250px; } }
 @media (max-width:1100px) { body.fly #hint { top:120px; } #stInfo { top:120px; } }
+
+/* review fixes: map rows, stacking, markers, red only for real danger */
+:root { --redt:#B3261E; }
+#mapInfo .mg { display:grid; grid-template-columns:1fr 1fr; margin:0 -12px 6px; } #mapInfo .mg div { display:flex; flex-direction:column; padding:4px 12px 5px; border-bottom:1px solid var(--hair); } #mapInfo .mg div:nth-child(odd) { border-right:1px solid var(--hair); }
+#mapInfo .mg span { color:var(--ink2); font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.08em; } #mapInfo .mg b { font-size:15px; }
+#mapInfo .ml { padding:3px 0; } #mapInfo .mk2 { margin-top:6px; padding-top:6px; border-top:1px solid var(--hair); font-size:12px; } #mapInfo .good { color:var(--ok); }
+#nodeP #nInfo div { padding:1px 0; } #nodeP .warn { color:var(--redt); font-weight:600; }
+body.map #mis ol, body.map #mis .md { display:none; } body.map #nodeP { top:58px; }
+#navQ { display:grid; grid-template-columns:repeat(5, auto); } #navQ span { padding:8px 10px 8px 12px; } #navQ > * { border-bottom:1px solid var(--hair); }
+#fSas #fEng.on { background:var(--ink); color:var(--plate); }
+#fW.amber, #mis .md.test, #netMsg, #bld .bad, #bld .bwarn, #bld .amb, #rep .rt.bad { color:var(--redt); }
+#mis li.now { font-size:17px; }
+#mis li.ok.just::before { content:''; background:var(--ok); border-color:var(--ok); }
+#mis li.ok.just::after { content:''; position:absolute; left:15px; top:8px; width:12px; height:12px; background:#fff; -webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2 6.5l2.6 2.6L10 3.4' fill='none' stroke='%23000' stroke-width='2'/%3E%3C/svg%3E") center/contain no-repeat; mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2 6.5l2.6 2.6L10 3.4' fill='none' stroke='%23000' stroke-width='2'/%3E%3C/svg%3E") center/contain no-repeat; }
+#toast b { display:flex; align-items:center; gap:10px; } #toast b .ico { width:22px; height:22px; color:#7fd3a4; }
+#warpW #wwN { display:flex; align-items:center; } #warpW #wwN .key { margin-right:5px; }
+.mk { border:2.5px solid var(--plate); box-shadow:0 0 0 1px rgba(18,19,20,.8), inset 0 0 0 1px rgba(18,19,20,.8); } .mk::after { background:var(--plate); box-shadow:0 0 0 1px rgba(18,19,20,.8); }
+#mRet { border-color:var(--plate); } #mRet::after { background:var(--plate); }
+#mGd { border-color:var(--plate); border-style:dashed; } #mGd::after { background:var(--plate); } #mGd::before { border-color:rgba(243,243,240,.55); }
+#mNd { border-color:var(--red); border-radius:0; } #mNd::after { background:var(--red); box-shadow:none; } #mNd::before { border-color:rgba(216,52,42,.6); }
 </style>
 </head>
 <body>
@@ -240,7 +260,7 @@ body.fly #hint.st { top:104px; }
     <div class="nr pro"><span>Prograde</span><button data-a="x" data-s="-1">−</button><b id="nPx">0</b><button data-a="x" data-s="1">+</button></div>
     <div class="nr nrm"><span>Normal</span><button data-a="y" data-s="-1">−</button><b id="nPn">0</b><button data-a="y" data-s="1">+</button></div>
     <div class="nr rad"><span>Radial out</span><button data-a="z" data-s="-1">−</button><b id="nPr">0</b><button data-a="z" data-s="1">+</button></div>
-    <div class="nr"><span>Time</span><button data-tt="-1" aria-label="Earlier"><span class="ico i-l"></span></button><b>move</b><button data-tt="1" aria-label="Later"><span class="ico i-r"></span></button></div>
+    <div class="nr"><span>Time</span><button data-tt="-1" aria-label="Earlier"><span class="ico i-l"></span></button><b id="nTm">—</b><button data-tt="1" aria-label="Later"><span class="ico i-r"></span></button></div>
     <div class="ns">Step <button data-st="1">1</button><button data-st="10" class="on">10</button><button data-st="100">100</button> m/s · hold or scroll</div>
     <div id="nInfo"></div><div class="nb"><button id="nAuto">Auto-burn</button><button id="nWarp">Warp to</button><button id="nDel">Delete</button></div></div></div>
 <div id="mis" class="hidden"></div><div id="toast"></div><div id="rep" class="hidden"></div>
@@ -293,14 +313,15 @@ body.fly #hint.st { top:104px; }
 <script src="../three-r170.js"></script>
 <script src="game.js?v=12"></script>
 <script src="flight.js?v=8"></script>
-<script src="mission.js?v=7"></script>
+<script src="mission.js?v=8"></script>
 <script src="extras.js?v=6"></script>
 <script src="build.js?v=3"></script>
-<script src="world.js?v=5"></script>
-<script src="nav.js?v=3"></script>
+<script src="world.js?v=6"></script>
+<script src="nav.js?v=4"></script>
 <script src="station.js?v=3"></script>
 <script src="places.js?v=3"></script>
-<script src="ui.js?v=1"></script>
+<script src="ui.js?v=2"></script>
+<script src="net.js?v=1"></script>
 <script src="polish.js?v=5"></script>
 </body>
 </html>

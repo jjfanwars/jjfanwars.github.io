@@ -422,5 +422,4 @@ mapBuild = function (budget = 2.5) {
 { const mr = mapRender, _sv = new V3(), _cv = new V3(); mapRender = function (dt) { mr(dt); if (!site.p) return; const x = MAPV.x;
     const w = _sv.copy(site.p).applyQuaternion(PLANET.q).multiplyScalar(.001).add(MAPV.pl.position); if (_cv.copy(MAPV.cam.position).sub(w).dot(_sv.clone().sub(MAPV.pl.position)) < 0) return;
     const p = w.clone().project(MAPV.cam); if (p.z > 1) return; const sx = (p.x * .5 + .5) * innerWidth, sy = (-p.y * .5 + .5) * innerHeight;
-    x.fillStyle = '#ffcf4a'; x.strokeStyle = '#0b1424'; x.lineWidth = 2; x.beginPath(); x.moveTo(sx, sy - 8); x.lineTo(sx + 4, sy + 3); x.lineTo(sx - 4, sy + 3); x.closePath(); x.stroke(); x.fill();
-    x.font = '600 11px Archivo, sans-serif'; x.textAlign = 'left'; x.fillStyle = 'rgba(255,207,74,.9)'; x.fillText('Space Centre', sx + 7, sy + 3); }; }
+    x.font = '600 12px Archivo, sans-serif'; const tw = x.measureText('Space Centre').width; x.fillStyle = '#F3F3F0'; x.fillRect(sx - 4, sy - 9, tw + 22, 18); x.fillStyle = '#D8342A'; x.fillRect(sx + 2, sy - 3, 6, 6); x.fillStyle = '#121314'; x.textAlign = 'left'; x.fillText('Space Centre', sx + 13, sy + 4); }; }

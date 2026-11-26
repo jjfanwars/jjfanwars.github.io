@@ -152,7 +152,7 @@ function mapRender(dt) {
   if (prev) x.stroke(); x.globalAlpha = 1;
   // labels
   const lab = (p3, txt, col, dot = true) => { const s = prj(p3); if (!s.ok) return; if (dot) { x.fillStyle = col; x.beginPath(); x.arc(s.x, s.y, 4, 0, 7); x.fill(); }
-    x.font = '600 12px Archivo, sans-serif'; const w = x.measureText(txt).width; x.fillStyle = 'rgba(0,0,0,.5)'; x.fillRect(s.x - w / 2 - 6, s.y - 26, w + 12, 17); x.fillStyle = col; x.textAlign = 'center'; x.fillText(txt, s.x, s.y - 13.5); x.textAlign = 'left'; };
+    x.font = '600 12px Archivo, sans-serif'; const w = x.measureText(txt).width; x.fillStyle = 'rgba(0,0,0,.25)'; x.fillRect(s.x - w / 2 - 13, s.y - 25, w + 24, 18); x.fillStyle = '#F3F3F0'; x.fillRect(s.x - w / 2 - 14, s.y - 27, w + 24, 18); x.fillStyle = col; x.fillRect(s.x - w / 2 - 8, s.y - 21, 6, 6); x.fillStyle = '#121314'; x.textAlign = 'center'; x.fillText(txt, s.x + 4, s.y - 13.5); x.textAlign = 'left'; };
   lab(_pz, PLANET.name, '#9fb6cc', false); SATS.forEach((b, k) => lab(M.sm[k].position, b.name + (b === navTarget() ? ' (target)' : ''), b === navTarget() ? '#c9b4ff' : '#9fb6cc', false));
   if (R.st === 'fly') { const b = domBody(R.pos), o = orbitEl(b), rr = R.pos.clone().sub(b.c), vv = R.vel.clone(); if (b !== PLANET) vv.sub(satVel(b, G.t, new V3()));
     const hv = rr.clone().cross(vv), ev = vv.clone().cross(hv).multiplyScalar(1 / b.GM).sub(rr.clone().normalize()), ed = ev.lengthSq() > 1e-12 ? ev.normalize() : rr.clone().normalize(), bc = toMap(b.c, new V3());
@@ -172,8 +172,8 @@ function mapInfo(dt) { if ((mapInfoT -= dt) > 0) return; mapInfoT = .25; const e
   if (R.st !== 'fly') L.push('<div class="h">' + (R.st === 'landed' && R.body !== PLANET ? 'Landed on ' + nm(R.body) : R.st === 'pad' ? 'On the pad' : R.st === 'dead' ? 'Crashed' : 'Landed') + '</div>');
   else { const b = domBody(R.pos), o = orbitEl(b), inO = o.pe > (b === PLANET ? PLANET.atmo : 3000) && o.ap !== Infinity && (b === PLANET || o.ap + b.R < b.soi);
     L.push('<div class="h">' + (inO ? 'Orbiting ' + (b === PLANET ? PLANET.name : nm(b)) : o.ap === Infinity || (b !== PLANET && o.ap + b.R > b.soi) ? 'Escaping ' + (b === PLANET ? PLANET.name : nm(b)) : 'Falling back to ' + (b === PLANET ? PLANET.name : nm(b))) + '</div>');
-    L.push('Ap <b>' + (o.ap === Infinity ? 'escape' : fmtD(o.ap)) + '</b> · Pe <b>' + fmtD(o.pe) + '</b>' + (inO ? ' · lap <b>' + fmtS(o.period) + '</b>' : ''));
-    if (b === PLANET) { L.push('Tilt to the equator <b>' + Math.round(o.inc * 180 / Math.PI) + '°</b> · target <b>' + T.name + '</b> (Tab)');
+    L.push('<div class="mg"><div><span>Apoapsis</span><b>' + (o.ap === Infinity ? 'escape' : fmtD(o.ap)) + '</b></div><div><span>Periapsis</span><b>' + fmtD(o.pe) + '</b></div>' + (inO ? '<div><span>Lap</span><b>' + fmtS(o.period) + '</b></div>' : '') + (b === PLANET ? '<div><span>Tilt</span><b>' + Math.round(o.inc * 180 / Math.PI) + '°</b></div><div><span>Target</span><b>' + T.name + '</b></div>' : '') + '</div>');
+    if (b === PLANET) {
       if (inO && !PRED.enc && !NODE) { const ph = satPhase(T), d = ((ph.now - ph.want) % 360 + 360) % 360, good = d < 8 || d > 352, syn = 1 / Math.abs(1 / o.period - 1 / T.period); L.push(T.name + ' is <b>' + Math.round(ph.now) + '°</b> ahead · go at <b>' + Math.round(ph.want) + '°</b>' + (good ? ' <span class="good">burn prograde now!</span>' : ' · in ' + fmtS(d / 360 * syn))); }
       if (inO && !PRED.enc && o.ap < T.orbit * .5) { const r = R.pos.length(), dv = Math.sqrt(PLANET.GM * (2 / r - 2 / (r + T.orbit))) - R.vel.length(); if (dv > 0) L.push('Burn to ' + tn + ' ≈ <b>' + Math.round(dv) + ' m/s</b> · about <b>' + fmtS(burnTime(dv)) + '</b> at full throttle · or press <b>Transfer</b>'); } }
     if (b !== PLANET && !inO && o.tPe < 1e7 && o.pe > 0) { const rp = o.pe + b.R, vp = Math.sqrt(b.GM * (2 / rp - 1 / o.a)), dv = vp - Math.sqrt(b.GM / rp); L.push('Capture burn ≈ <b>' + Math.round(dv) + ' m/s</b> (' + fmtS(burnTime(dv)) + ') · start it about <b>' + fmtS(burnTime(dv) / 2) + '</b> before Pe · or press <b>Circularise at Pe</b>'); }
@@ -184,8 +184,8 @@ function mapInfo(dt) { if ((mapInfoT -= dt) > 0) return; mapInfoT = .25; const e
     if (b === MOON && inO && !PRED.exit) { const hw = homeWindow(), now = hw.deg < 4 || hw.deg > 356; L.push('Way home: ' + (now ? '<span class="good">burn prograde now!</span>' : 'burn prograde in <b>' + fmtS(hw.t) + '</b>') + ' · aim for Home Pe 10-20 km (gentler on the crew)'); }
     else if (b !== PLANET && inO && !PRED.exit) L.push('Way home: burn prograde on the side facing away from ' + nm(b) + "'s motion, then aim for Home Pe 10-20 km");
   }
-  L.push('<span style="font-size:12px">View: ' + focus + ' · Tab next world · wheel zoom · click your path: burn node · M close</span>');
-  const h = L.join('<br>'); if (el._h !== h) { el._h = h; el.innerHTML = h; } }
+  L.push('<div class="mk2"><span class="key">Tab</span>next world <span class="key">M</span>close · click your path to add a burn</div>');
+  const h = L.map((l, i) => i === 0 || l.startsWith('<div') ? l : '<div class="ml">' + l + '</div>').join(''); if (el._h !== h) { el._h = h; el.innerHTML = h; } }
 const _renderWorld = render;
 render = function (dt) { if (MAPV.on && G.on) { mapRender(dt || .016); return; } _renderWorld(dt); }; // the map skips the whole world render (cheap while you plan)
 
@@ -259,7 +259,7 @@ function misPoll(dt) {
   misCard();
 }
 function misComplete(m) { MIS.done[m.id] = true; const was = MIS.cur === m.id; if (was) { const nx = MISD.find(x => !MIS.done[x.id]); if (nx) MIS.cur = nx.id; } misSave();
-  const t = $('toast'), nx = MISD.find(x => x.id === MIS.cur && !MIS.done[x.id]); t.innerHTML = '<small>Mission complete</small><b>' + m.name + '</b>' + (was && nx ? '<span>Next: ' + nx.name + '</span>' : '');
+  const t = $('toast'), nx = MISD.find(x => x.id === MIS.cur && !MIS.done[x.id]); t.innerHTML = '<b><span class="ico i-ok"></span> ' + m.name + ' complete</b>' + (was && nx ? '<span>Next: ' + nx.name + '</span>' : '');
   t.classList.add('on'); clearTimeout(misComplete.t); misComplete.t = setTimeout(() => t.classList.remove('on'), 5000); chime(); }
 function chime() { const c = SND.c; if (!c) return; const t = c.currentTime; [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => { const o = c.createOscillator(), g = c.createGain(); o.type = 'triangle'; o.frequency.value = f; o.connect(g); g.connect(SND.out);
   g.gain.setValueAtTime(0, t + i * .11); g.gain.linearRampToValueAtTime(.16, t + i * .11 + .02); g.gain.exponentialRampToValueAtTime(.001, t + i * .11 + 1.1); o.start(t + i * .11); o.stop(t + i * .11 + 1.2); }); }

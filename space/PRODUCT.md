@@ -25,7 +25,7 @@ A browser game with KSP-style building and real orbits, but rendered for wonder 
 ## Capabilities and Constraints
 - Plain HTML/CSS/JS, Three.js r170 classic build, no framework, no build step. Hosted on GitHub Pages.
 - 30 rocket parts, side boosters, paint schemes, cargo-bay station modules, assisted docking, 23+ missions, worlds: Home, Moon, Rust, Frost, Ember, Pebble.
-- Multiplayer is planned but not built.
+- Co-op rooms over the relay (space/net.js): one shared rocket flown by whoever has the Pilot seat.
 - Assets must be free to ship publicly (CC0 preferred); record every third-party asset in `space/THIRD_PARTY.md`.
 
 ## Brand Commitments
