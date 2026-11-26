@@ -2,7 +2,7 @@
 #   python3 patch.py <mods dir>
 # - practitioner profile pages /team/<id> (made from team.html), next free time + waitlist links
 # - team page: names link to profiles, next free time line, Meaghan's button goes to contact
-# - home: "Help me choose" finder, shorter phone layout (director letter folds, compact services)
+# - home: shorter phone layout (director letter folds, compact services)
 # - every page: og:image, twitter card, apple-touch-icon, canonical; clinic JSON-LD on home and contact
 # - new files: sitemap.xml, robots.txt, favicon.ico, apple-touch-icon.png, og.jpg (made by assets.py), /waitlist staff page
 import sys, re, os, json, html as H
@@ -128,7 +128,7 @@ PROFILES = [m['pid'] for m in members]
 
 # ---------- home ----------
 idx = rd('m89-index.html')
-if 'id="finder"' not in idx:
+if 'dir-toggle' not in idx:
     # compact services on phones
     idx = idx.replace('<section class="section">\n<div class="wrap">\n<div class="section-head w-blush">\n<p class="eyebrow">How Can We Help You?</p>',
                       '<section class="section svc-home">\n<div class="wrap">\n<div class="section-head w-blush">\n<p class="eyebrow">How Can We Help You?</p>', 1)
@@ -138,11 +138,6 @@ if 'id="finder"' not in idx:
     p1 = idx.find('</p>', a) + 4
     sig = idx.find('<p class="director-sign">', p1)
     idx = idx[:p1] + '\n<div class="dir-more" id="dirMore">' + idx[p1:sig] + '</div>\n<button type="button" class="btn btn-outline btn-sm dir-toggle" aria-expanded="false" aria-controls="dirMore">Read Adi’s full letter</button>\n' + idx[sig:]
-    # finder before services
-    people = {m['pid']: [m['name'], H.unescape(m['title'])] for m in members if m['pid'] not in LEAVE}
-    FINDER = open(os.path.join(HERE, 'finder.html'), encoding='utf-8').read().replace('/*PEOPLE*/', json.dumps(people)).replace('/*LIVE*/', json.dumps(LIVE))
-    k = idx.find('<section class="section svc-home">')
-    idx = idx[:k] + FINDER + '\n' + idx[k:]
     wr('m89-index.html', idx)
 
 # ---------- head extras on every page ----------
