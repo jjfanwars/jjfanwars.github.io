@@ -247,12 +247,12 @@ function misPoll(dt) {
     else if (b === MOON) { F.moonSOI = true; if (o.tPe < 60) F.nearMPe = true; if (o.pe > 3000 && o.ap !== Infinity && o.ap + MOON.R < SOI_M) F.moonOrbit = true; if (alt < 15000) F.moonLow = true; if (radarAlt() < 1500) F.moonVeryLow = true;
       if (F.moonLanded) { F.leftMoonGround = true; if (PRED.exit && PRED.homePe < 20000) F.goHome = true; } } }
   F.lastT = G.t;
-  if (prevSt === 'fly' && R.st === 'landed') { const B = R.body; if (B === MOON) F.moonLanded = true; else if (B === RUST) F.rustLanded = true; else if (B === FROST) F.frostLanded = true;
+  if (prevSt === 'fly' && R.st === 'landed') { const B = R.body; if (B !== PLANET) F[B.name.toLowerCase() + 'Landed'] = true; if (B === MOON) F.moonLanded = true; else if (B === RUST) F.rustLanded = true; else if (B === FROST) F.frostLanded = true;
     else { if (F.space) F.landSpace = true; if (F.orbit) F.landOrbit = true; if (F.moonLanded && F.leftMoonGround) F.backHome = true;
       const d = R.lp.clone().normalize(), h = heightAt(PLANET, d.x, d.y, d.z); if (h < -.5 && F.maxAlt > 5000) F.splash = true;
       if (F.maxAlt > 10000 && R.lp.distanceTo(site.p) < 2000) F.bull = true; } }
   if (!R.on && P.body === MOON && F.moonLanded) F.moonWalk = true;
-  if (b === RUST) F.rustSOI = true; if (b === FROST) F.frostSOI = true;
+  if (b === RUST) F.rustSOI = true; if (b === FROST) F.frostSOI = true; if (b !== PLANET) F[b.name.toLowerCase() + 'SOI'] = true; if (!R.on && P.body !== PLANET && F[P.body.name.toLowerCase() + 'Landed']) F[P.body.name.toLowerCase() + 'Walk'] = true;
   prevSt = R.st;
   GUIDE.head = MIS.cur === 'polar' ? 'north' : 'east';
   if (!F.test) for (const m of MISD) if (!MIS.done[m.id] && m.done(F)) misComplete(m); // test-menu jumps don't count

@@ -43,7 +43,9 @@ const PLANET = {name: 'Home', R: 600000, GM: 9.81 * 600000 * 600000, atmo: 22000
 const MOON = {name: 'Moon', R: 200000, GM: 1.63 * 200000 * 200000, atmo: 0, maxL: 14, seed: 71, water: false, orbit: 12000000, ph: 2.2, inc: .09, lan: 0, col: [.42, .42, .42]};
 const RUST = {name: 'Rust', R: 140000, GM: 1.1 * 140000 * 140000, atmo: 0, maxL: 14, seed: 131, water: false, orbit: 30000000, ph: 4.1, inc: .06, lan: 1.3, col: [.62, .34, .2], desc: 'red desert world: canyons, dunes, old craters'};
 const FROST = {name: 'Frost', R: 90000, GM: .6 * 90000 * 90000, atmo: 0, maxL: 13, seed: 171, water: false, orbit: 52000000, ph: .7, inc: .045, lan: 3.6, col: [.86, .9, .95], desc: 'ice world: cracked plains, blue ridges, few craters'};
-const SATS = [MOON, RUST, FROST];
+const EMBER = {name: 'Ember', R: 120000, GM: 1.3 * 120000 * 120000, atmo: 0, maxL: 14, seed: 211, water: false, orbit: 20000000, ph: 5.3, inc: .11, lan: 2.4, col: [.3, .15, .1], lava: .45, desc: 'volcanic moon: black lava plains, glowing rivers, Fire Mountain'};
+const PEBBLE = {name: 'Pebble', R: 8000, GM: .15 * 8000 * 8000, atmo: 0, maxL: 10, seed: 251, water: false, orbit: 4000000, ph: 1.1, inc: .21, lan: .8, col: [.38, .35, .31], desc: 'tiny lumpy asteroid: you weigh almost nothing'};
+const SATS = [MOON, RUST, FROST, EMBER, PEBBLE];
 for (const b of SATS) b.period = 2 * Math.PI * Math.sqrt(b.orbit ** 3 / PLANET.GM);
 const BODIES = [PLANET, ...SATS];
 const SITE = new V3(1, 0, 0); // space centre direction (body-fixed), on the equator
@@ -70,6 +72,11 @@ function makeCraters(seed, n, nBig, R, bigMin, bigMax, small, maxR) { const out 
     const c = {d: new V3(q * Math.cos(a), z, q * Math.sin(a)), r: rad, young: false, seed: i}; c.cos = Math.cos(Math.min(1.5, 7 * rad / R)); out.push(c); } return out; }
 RUST.craters = makeCraters(1311, 240, 6, RUST.R, 12000, 26000, 900, 11000);
 FROST.craters = makeCraters(1711, 90, 2, FROST.R, 8000, 14000, 700, 6000);
+EMBER.craters = makeCraters(2111, 50, 1, EMBER.R, 9000, 14000, 800, 5000);
+PEBBLE.craters = makeCraters(2511, 46, 3, PEBBLE.R, 1200, 2200, 110, 900);
+// Ember's volcanoes: Fire Mountain (7 km, a lava lake in its caldera) and a scatter of small cones
+EMBER.fm = new V3(.32, .22, .92).normalize();
+EMBER.cones = (() => { const out = []; let s = 77; const r = () => (s = (Math.imul(s, 1664525) + 1013904223) >>> 0) / 4294967296; for (let i = 0; i < 16; i++) { const z = r() * 2 - 1, a = r() * 6.283, q = Math.sqrt(1 - z * z); out.push({d: new V3(q * Math.cos(a), z, q * Math.sin(a)), r: 2500 + r() * 4000, h: 500 + r() * 1500}); } return out; })();
 let CR_NEAR = null; // craters that can touch the chunk being built
 // shared crater shape: bowl, flat floor for big ones, central peak, raised rim (eroded = softer, shallower)
 function craterH(b, x, y, z, erode) { let h = 0; const CL = CR_NEAR || b.craters;
@@ -86,6 +93,19 @@ function rustH(x, y, z) { let h = fbm(x * 2.2 + 3, y * 2.2, z * 2.2, 6, 201) * 3
 // Frost: smooth ice plains split by raised blue ridges (cracks), a few fresh craters
 function frostH(x, y, z) { const cr = ridged(x * 7 + 2, y * 7, z * 7, 4, 301), cr2 = ridged(x * 26, y * 26, z * 26, 3, 302);
   return fbm(x * 2 + 9, y * 2, z * 2, 5, 303) * 1400 + Math.pow(cr, 6) * 520 + Math.pow(cr2, 8) * 120 + fbm(x * 300, y * 300, z * 300, 3, 304) * 12 + craterH(FROST, x, y, z, 1) + microCraters(x * FROST.R / 400, y * FROST.R / 400, z * FROST.R / 400, 400 * .3) + noise3(x * 8000, y * 8000, z * 8000, 305) * .8; }
+// Ember: black lava plains, low ash hills, volcano cones; returns height (m)
+function emberFM(x, y, z) { const f = EMBER.fm; return Math.acos(clamp(x * f.x + y * f.y + z * f.z, -1, 1)) * EMBER.R; } // metres from Fire Mountain's summit
+function emberH(x, y, z) { let h = fbm(x * 2.5 + 1, y * 2.5, z * 2.5, 6, 401) * 1800 + fbm(x * 30, y * 30, z * 30, 4, 402) * 180 + fbm(x * 300, y * 300, z * 300, 3, 403) * 16;
+  const low = sstep(250, -450, h); h = lerp(h, -420 + fbm(x * 80, y * 80, z * 80, 3, 404) * 25, low * .85); // flooded lowlands (lava plains)
+  const dF = emberFM(x, y, z); if (dF < 30000) { const u = dF / 26000; h += 7200 * Math.pow(Math.max(0, 1 - u), 1.8) * (1 + .06 * fbm(x * 60, y * 60, z * 60, 3, 405)); if (dF < 2600) h -= 1500 * (1 - (dF / 2600) ** 2); } // the cone, then the caldera
+  for (const c of EMBER.cones) { const dd = x * c.d.x + y * c.d.y + z * c.d.z; if (dd < .95) continue; const d = Math.acos(Math.min(1, dd)) * EMBER.R / c.r; if (d > 1.2) continue; h += c.h * Math.pow(Math.max(0, 1 - d), 1.6) - (d < .12 ? c.h * .25 * (1 - (d / .12) ** 2) : 0); }
+  return h + craterH(EMBER, x, y, z, .35) + microCraters(x * EMBER.R / 500, y * EMBER.R / 500, z * EMBER.R / 500, 500 * .25) + noise3(x * 9000, y * 9000, z * 9000, 407) * 1.5; }
+function emberLava(x, y, z, h) { // 0..1: glowing lava (rivers on the plains, the lake in Fire Mountain's caldera)
+  const riv = Math.pow(ridged(x * 9 + 4, y * 9, z * 9, 4, 410), 7) * sstep(-250, -400, h), dF = emberFM(x, y, z), lake = dF < 1700 ? sstep(1700, 1300, dF) : 0;
+  return clamp(Math.max(sstep(.18, .3, riv), lake), 0, 1); }
+// Pebble: a lumpy, stretched potato of rock with craters
+function pebbleH(x, y, z) { return fbm(x * .9 + 2, y * .9, z * .9, 3, 501) * 3600 + fbm(x * 3, y * 3, z * 3, 4, 502) * 800 + fbm(x * 30, y * 30, z * 30, 3, 503) * 50 + (x * x - .33) * 2400
+  + craterH(PEBBLE, x, y, z, 1) + microCraters(x * PEBBLE.R / 120, y * PEBBLE.R / 120, z * PEBBLE.R / 120, 120 * .4) + microCraters(x * PEBBLE.R / 14, y * PEBBLE.R / 14, z * PEBBLE.R / 14, 14 * .5) + noise3(x * 4000, y * 4000, z * 4000, 504) * .6; }
 // moon features shared by height and colour
 function mareAt(x, y, z) { return sstep(-.02, .2, fbm(x * 1.15 + 5, y * 1.15, z * 1.15, 5, 101) + fbm(x * 9, y * 9, z * 9, 3, 102) * .06); }
 function microCraters(px, py, pz, amp) { // 2x2x2 nearest cells, one crater per cell (60%)
@@ -114,7 +134,7 @@ function heightAt(b, x, y, z) { // unit direction, body-fixed -> metres above se
       h = lerp(h, SITE_H + sd * sd / (2 * PLANET.R), 1 - sstep(1500, 2300, sd)); } // flat plane (tangent to the planet) under the space centre
     return h;
   }
-  if (b === RUST) return rustH(x, y, z); if (b === FROST) return frostH(x, y, z);
+  if (b === RUST) return rustH(x, y, z); if (b === FROST) return frostH(x, y, z); if (b === EMBER) return emberH(x, y, z); if (b === PEBBLE) return pebbleH(x, y, z);
   const mare = mareAt(x, y, z);
   let h = (fbm(x * 3, y * 3, z * 3, 6, 3) * 2400 + fbm(x * 40, y * 40, z * 40, 4, 6) * 220 + fbm(x * 400, y * 400, z * 400, 3, 12) * 25) * (1 - .75 * mare) - 1400 * mare + noise3(x * 9000, y * 9000, z * 9000, 8) * 2.5;
   const CL = CR_NEAR || CRATERS; for (let i = 0; i < CL.length; i++) { const c = CL[i]; const dd = x * c.d.x + y * c.d.y + z * c.d.z; if (dd < c.cos) continue;
@@ -166,6 +186,13 @@ function colorAt(b, x, y, z, h, slope) {
     r = lerp(r, .76, hi * .6); g = lerp(g, .52, hi * .6); bl = lerp(bl, .34, hi * .6);
     r = lerp(r, .42, lo * .6); g = lerp(g, .24, lo * .6); bl = lerp(bl, .16, lo * .6);
     r += slope * .05; g += slope * .02;
+  } else if (b === EMBER) { // black basalt, grey ash on the heights, rusty sulphur crusts, glowing lava (weight 3 drives the glow)
+    const n = fbm(x * 26, y * 26, z * 26, 3, 420) * .5 + .5, hi = sstep(600, 3500, h), su = sstep(.25, .45, fbm(x * 5 + 2, y * 5, z * 5, 3, 421)) * (1 - hi), lv = emberLava(x, y, z, h);
+    r = lerp(.075, .05, n); g = lerp(.068, .045, n); bl = lerp(.066, .045, n); r = lerp(r, .13, hi * .6); g = lerp(g, .12, hi * .6); bl = lerp(bl, .115, hi * .6);
+    r = lerp(r, .42, su * .35); g = lerp(g, .3, su * .35); bl = lerp(bl, .1, su * .35); r += slope * .04; g += slope * .035; bl += slope * .03;
+    r = lerp(r, .55, lv); g = lerp(g, .12, lv); bl = lerp(bl, .03, lv); _wt[0] = 0; _wt[1] = .3 * (1 - lv); _wt[2] = .7 * (1 - lv); _wt[3] = lv;
+  } else if (b === PEBBLE) { _wt[0] = 0; _wt[1] = .5; _wt[2] = .5; _wt[3] = 0;
+    const n = fbm(x * 12, y * 12, z * 12, 3, 520) * .5 + .5, dk = sstep(.1, .35, fbm(x * 2 + 5, y * 2, z * 2, 3, 521)); r = lerp(.36, .3, n); g = lerp(.33, .28, n); bl = lerp(.3, .26, n); r = lerp(r, .2, dk * .6); g = lerp(g, .18, dk * .6); bl = lerp(bl, .17, dk * .6); r += slope * .05; g += slope * .045; bl += slope * .04;
   } else if (b === FROST) { _wt[0] = 0; _wt[1] = .4; _wt[2] = .2; _wt[3] = .4;
     // bright ice, blue-grey along the cracks, faint tan dust in patches
     const cr = Math.pow(ridged(x * 7 + 2, y * 7, z * 7, 4, 301), 3) * .85, n = fbm(x * 18, y * 18, z * 18, 3, 310) * .5 + .5, rg = sstep(-.2, .3, fbm(x * 1.4 + 2, y * 1.4, z * 1.4, 4, 312)), du = sstep(.15, .35, fbm(x * 2.4 + 6, y * 2.4, z * 2.4, 3, 311));
@@ -657,11 +684,11 @@ let TERR_OBC = null;
 const moonMat = terrMat.clone(); moonMat.userData.hue = 0; terrMat.userData.hue = .2; moonMat.customProgramCacheKey = () => 'moon'; moonMat.userData.mSun = MOONU.mSun;
 terrMat.onBeforeCompile = moonMat.onBeforeCompile = TERR_OBC = function (sh) {
   TMATS.forEach((m, i) => { sh.uniforms['tC' + i] = {value: tex(m, 'c')}; sh.uniforms['tN' + i] = {value: tex(m, 'n')}; sh.uniforms['aC' + i] = {get value() { return tex(m, 'c').userData.avg; }}; });
-  sh.uniforms.hiQ = {get value() { return HI() ? 1 : 0; }}; sh.uniforms.tHue = {value: this.userData.hue};
+  sh.uniforms.hiQ = {get value() { return HI() ? 1 : 0; }}; sh.uniforms.tHue = {value: this.userData.hue}; sh.uniforms.lavaK = {value: this.userData.lava || 0};
   cloudShadow(sh, true); if (this !== terrMat) { sh.fragmentShader = '#define IS_MOON\n' + sh.fragmentShader; moonShadow(sh, this.userData.mSun); } sh.vertexShader = 'attribute vec2 tuv; attribute vec4 mw; attribute float tax; varying vec2 vTu; varying vec4 vMw; varying vec3 vT, vB;\n' + sh.vertexShader.replace('#include <begin_vertex>', `#include <begin_vertex>
     vTu = tuv; vMw = mw; vec3 tA = tax < .5 ? vec3(0., 0., 1.) : vec3(1., 0., 0.); vec3 bA = tax > .5 && tax < 1.5 ? vec3(0., 0., 1.) : vec3(0., 1., 0.);
     vT = normalize(normalMatrix * tA); vB = normalize(normalMatrix * bA);`);
-  sh.fragmentShader = 'uniform sampler2D tC0, tC1, tC2, tC3, tN0, tN1, tN2, tN3; uniform vec3 aC0, aC1, aC2, aC3; uniform float hiQ, tHue; varying vec2 vTu; varying vec4 vMw; varying vec3 vT, vB;\n' +
+  sh.fragmentShader = 'uniform sampler2D tC0, tC1, tC2, tC3, tN0, tN1, tN2, tN3; uniform vec3 aC0, aC1, aC2, aC3; uniform float hiQ, tHue, lavaK; varying vec2 vTu; varying vec4 vMw; varying vec3 vT, vB;\n' +
     `vec3 tdet(sampler2D t, vec3 a){ vec3 c = texture2D(t, vTu).rgb * .65 + texture2D(t, vTu * .125).rgb * .35; float la = dot(a, vec3(.3, .55, .15)); return mix(vec3(dot(c, vec3(.3, .55, .15)) / la), c / a, tHue); }\n` +
     sh.fragmentShader.replace('#include <color_fragment>', `#include <color_fragment>
     float tFd = 1. - smoothstep(150., 1400., length(vViewPosition)); vec4 tW = vMw / max(1e-3, dot(vMw, vec4(1.)));
@@ -673,6 +700,9 @@ terrMat.onBeforeCompile = moonMat.onBeforeCompile = TERR_OBC = function (sh) {
     if (hiQ > .5 && tFd > 0.) { vec3 nm = (texture2D(tN0, vTu).xyz * 2. - 1.) * tW.x + (texture2D(tN1, vTu).xyz * 2. - 1.) * tW.y + (texture2D(tN2, vTu).xyz * 2. - 1.) * tW.z + (texture2D(tN3, vTu).xyz * 2. - 1.) * tW.w;
       vec3 tT = normalize(vT - normal * dot(vT, normal)); vec3 tB = cross(normal, tT); tB *= sign(dot(tB, vB)); normal = normalize(tT * nm.x * tFd + tB * nm.y * tFd + normal * max(nm.z, .25)); }`)
     .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
+#ifdef IS_MOON
+    if (lavaK > 0.) totalEmissiveRadiance += vec3(1., .26, .035) * tW.w * tW.w * lavaK; // glowing lava (Ember)
+#endif
 #ifndef IS_MOON
     { // city lights on the night side: clusters of warm dots on grassland, only seen from high up
       vec3 cb = normalize(vBd); float nt = smoothstep(.03, -.16, dot(cb, sunB)) * smoothstep(7000., 40000., length(vViewPosition)) * smoothstep(.45, .85, tW.x);
@@ -681,7 +711,7 @@ terrMat.onBeforeCompile = moonMat.onBeforeCompile = TERR_OBC = function (sh) {
 #endif`);
 };
 MOON.mat = moonMat;
-for (const b of [RUST, FROST]) { const m = terrMat.clone(); m.userData.hue = 0; m.userData.mSun = {value: new V3(1, 0, 0)}; m.customProgramCacheKey = () => 'moon'; m.onBeforeCompile = TERR_OBC; b.mat = m; }
+for (const b of [RUST, FROST, EMBER, PEBBLE]) { const m = terrMat.clone(); m.userData.hue = 0; m.userData.lava = b.lava || 0; m.userData.mSun = {value: new V3(1, 0, 0)}; m.customProgramCacheKey = () => 'moon'; m.onBeforeCompile = TERR_OBC; b.mat = m; }
 // tileable wave normal map, made at load
 const waveTex = (() => { const N2 = 256, c = document.createElement('canvas'); c.width = c.height = N2; const x = c.getContext('2d'), im = x.createImageData(N2, N2), H = new Float32Array(N2 * N2);
   for (let j = 0; j < N2; j++) for (let i = 0; i < N2; i++) { let h = 0; for (let k = 0; k < 14; k++) { const a = hsh(k, 1, 2, 9) * 6.283, f = 1 + (k % 7) * 1.0 + (k > 6 ? 5 : 0), kx = Math.round(Math.cos(a) * f), ky = Math.round(Math.sin(a) * f);
@@ -1215,7 +1245,7 @@ function moonRocks() {
   if (!ROCK.mesh) { ROCK.mesh = new THREE.InstancedMesh(rockGeo(), new THREE.MeshStandardMaterial({color: 0x3a3836, map: tex('rock', 'c'), normalMap: tex('rock', 'n'), normalScale: new THREE.Vector2(1.4, 1.4), roughness: 1, metalness: 0}), ROCK.n); ROCK.mesh.castShadow = ROCK.mesh.receiveShadow = true; ROCK.mesh.frustumCulled = false; ROCK.mesh.count = 0;
     ROCK.mesh.material.onBeforeCompile = sh => { sh.fragmentShader = sh.fragmentShader.replace('#include <map_fragment>', '#include <map_fragment>\n diffuseColor.rgb = diffuse * dot(sampledDiffuseColor.rgb, vec3(.3, .55, .15)) * 1.6;'); }; } // moon rock is grey: drop the texture's moss
   ROCK.mesh.visible = alt < 2500; if (!ROCK.mesh.visible) return;
-  if (ROCK.body !== B) { ROCK.body = B; B.group.add(ROCK.mesh); ROCK.key = ''; ROCK.mesh.material.color.setHex(B === RUST ? 0x40241a : B === FROST ? 0x6c727a : 0x3a3836); }
+  if (ROCK.body !== B) { ROCK.body = B; B.group.add(ROCK.mesh); ROCK.key = ''; ROCK.mesh.material.color.setHex(B === RUST ? 0x40241a : B === FROST ? 0x6c727a : B === EMBER ? 0x161312 : B === PEBBLE ? 0x47413b : 0x3a3836); }
   const d = ROCK.d.copy(cpos).divideScalar(L), ax = Math.abs(d.x) >= Math.abs(d.y) && Math.abs(d.x) >= Math.abs(d.z) ? 0 : Math.abs(d.y) >= Math.abs(d.z) ? 1 : 2, comp = [d.x, d.y, d.z], dom = comp[ax], o1 = (ax + 1) % 3, o2 = (ax + 2) % 3;
   const s0 = comp[o1] / Math.abs(dom), t0 = comp[o2] / Math.abs(dom), cs = 6 / B.R, ci = Math.floor(s0 / cs), cj = Math.floor(t0 / cs), key = B.name + ax + (dom > 0 ? '+' : '-') + (ci >> 2) + ',' + (cj >> 2);
   if (key === ROCK.key) return; ROCK.key = key; // re-scatter when you move ~24 m
