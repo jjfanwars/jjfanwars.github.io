@@ -42,7 +42,7 @@ function predict(P_ = PRED, pos = R.pos, vel = R.vel, t0 = G.t) {
 // the body you are heading for (map info, closest approach, transfer helper): picked in the map (Tab / click a world), Moon by default
 const NAVT = {b: null}; function navTarget() { return NAVT.b || MOON; }
 // seconds of full-throttle burn on the current stage for a speed change dv
-function burnTime(dv) { const S = STAGES[R.bot]; if (!S.thrust) return Infinity; const ve = S.ispV * G0, m = rocketMass(); return m * ve / S.thrust * (1 - Math.exp(-dv / ve)); }
+function burnTime(dv) { const S = actS(); if (!S.thrust) return Infinity; const ve = S.ispV * G0, m = rocketMass(); return m * ve / S.thrust * (1 - Math.exp(-dv / ve)); }
 // phase angle of the Moon ahead of us (degrees, 0..360 in the direction we orbit) and the one a direct transfer wants
 function satPhase(b, r = R.pos, v = R.vel, t = G.t) { const m = satPos(b, t, new V3()), h = r.clone().cross(v).normalize(), ang = Math.atan2(r.clone().cross(m).dot(h), r.dot(m)) * 180 / Math.PI;
   const a = (r.length() + b.orbit) / 2, tt = Math.PI * Math.sqrt(a * a * a / PLANET.GM); return {now: (ang + 360) % 360, want: (b === MOON ? 186 : 180) - tt / b.period * 360}; }

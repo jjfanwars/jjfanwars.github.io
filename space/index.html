@@ -128,6 +128,14 @@ button:focus-visible { outline:2px solid var(--acc); outline-offset:2px; }
 #bld .ic-dec { background:linear-gradient(90deg,#8a6a2a,#d9a23a,#8a6a2a); height:6px; }
 #bld .ic-fins { width:24px; height:22px; margin:0 1px; background:#17191d; clip-path:polygon(40% 0,60% 0,60% 100%,40% 100%,40% 70%,0 100%,0 60%,40% 30%,60% 30%,100% 60%,100% 100%,60% 70%); background-color:#888; }
 #bld .ic-legs { width:24px; height:22px; margin:0 1px; background:#9aa0a8; clip-path:polygon(35% 0,65% 0,65% 50%,100% 95%,100% 100%,80% 100%,58% 62%,42% 62%,20% 100%,0 100%,0 95%,35% 50%); }
+#bld .ic-srb { background:linear-gradient(90deg,#b9b8b3,#eeede9 45%,#9a9993); clip-path:polygon(0 0,100% 0,100% 82%,78% 100%,22% 100%,0 82%); }
+#bld .ic-struct { background:linear-gradient(90deg,#9aa0a8,#d8dce0 45%,#7c828a); clip-path:polygon(50% 0,100% 100%,0 100%); }
+#bld .ic-bigfins { width:24px; height:22px; margin:0 1px; background:#17191d; clip-path:polygon(40% 0,60% 0,60% 100%,40% 100%,40% 70%,0 100%,0 50%,40% 20%,60% 20%,100% 50%,100% 100%,60% 70%); }
+#bld .ic-rcs { width:22px; height:22px; margin:0 2px; background:radial-gradient(circle,#f3f2ee 35%,#5d636b 36%,#5d636b 55%,transparent 56%); }
+#bld .bseg { display:flex; gap:4px; flex-wrap:wrap; margin:2px 0 6px; } #bld .bseg button { flex:1; padding:5px 6px; font-size:12.5px; min-width:44px; } #bld .bseg button.on { border-color:var(--acc); background:rgba(255,207,74,.14); }
+#bld .bpr { display:flex; align-items:center; gap:4px; margin:3px 0; flex-wrap:wrap; } #bld .bpr span { width:56px; color:var(--dim); font-size:11.5px; }
+#bld .sw { width:18px; height:18px; padding:0; border-radius:50%; border:2px solid rgba(255,255,255,.18); } #bld .sw.on { border-color:var(--acc); box-shadow:0 0 0 2px rgba(255,207,74,.35); }
+#bldText { width:100%; margin-top:4px; }
 #bldView { position:relative; min-width:0; min-height:0; } #bldC { width:100%; height:100%; display:block; cursor:grab; } #bldC:active { cursor:grabbing; }
 #bldSel { position:absolute; left:12px; bottom:10px; right:12px; color:var(--dim); font-size:12.5px; pointer-events:none; text-shadow:0 1px 2px #000; }
 #bldTip { position:absolute; left:12px; top:10px; color:var(--dim); font-size:12px; pointer-events:none; text-shadow:0 1px 2px #000; line-height:1.5; }

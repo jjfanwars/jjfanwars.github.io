@@ -28,8 +28,8 @@ function bakeByMat(root, mapM) {
   root.traverse(o => { if (o.isMesh) o.geometry.dispose(); }); return out;
 }
 // the whole rocket (stack + capsule) as meshes, bottom of the stack at y 0
-function rocketModel(parts) { const st = shipLayout(parts), g = new THREE.Group(), y0 = st[0].y0;
-  st.forEach((S, si) => { if (S.cap) capsuleLook(g); else for (const it of S.parts) partMeshes(g, it, si, true); });
+function rocketModel(parts, paint) { const st = shipLayout(parts), g = new THREE.Group(), y0 = Math.min(...st.filter(S => !S.cap).map(S => S.y0), 21.6);
+  st.forEach((S, si) => { if (S.cap) capsuleLook(g); else stageMeshes(g, S, si, true, paint); });
   g.userData.legs = null; const w = new THREE.Group(); g.position.y = -y0; w.add(g); return {g: w, h: 26.1 - y0, st}; }
 function siteSun() { const s = SITE.clone().applyQuaternion(PLANET.q); return s.dot(SUN); } // sun elevation (sine) at the space centre
 
@@ -262,7 +262,7 @@ function grounds() {
   { const gx = 70, gz = 92; const gt = tex('grass', 'c'), lawn = new THREE.Mesh(new THREE.CircleGeometry(21, 48), new THREE.MeshStandardMaterial({map: gt, roughness: .95})); lawn.rotation.x = -Math.PI / 2; lawn.position.set(gx, .09, gz); lawn.receiveShadow = true;
     const pa = lawn.geometry.attributes.position, uv = lawn.geometry.attributes.uv; for (let i = 0; i < pa.count; i++) uv.setXY(i, pa.getX(i) / 3, pa.getY(i) / 3); g.add(lawn);
     L.push(H.beamGeo(new V3(gx, 0, gz), new V3(gx, .12, gz), 21.4, 0xbdbab2, 48));
-    const show = new THREE.Group(); [['Hopper', -12, 6], ['Lander', 0, -6], ['Heavy', 12, 6]].forEach(([nm, dx, dz]) => { const m = rocketModel(SHIP_PRESETS[nm]); m.g.position.set(gx + dx, 1.6, gz + dz); show.add(m.g);
+    const show = new THREE.Group(); [['Hopper', -12, 6], ['Lander', 0, -6], ['Heavy', 12, 6]].forEach(([nm, dx, dz]) => { const m = rocketModel(SHIP_PRESETS[nm], PAINT0); m.g.position.set(gx + dx, 1.6, gz + dz); show.add(m.g);
       L.push(H.boxGeo(gx + dx, 0, gz + dz, 7, 1.6, 7, 0x8e939a), H.boxGeo(gx + dx, 1.55, gz + dz, 7.3, .1, 7.3, 0xcfd3d8)); site.boxes.push({x0: gx + dx - 3.5, x1: gx + dx + 3.5, y0: 0, y1: 1.6, z0: gz + dz - 3.5, z1: gz + dz + 3.5});
       const t = signTex(512, 160, (c, w, h) => { c.fillStyle = '#16233a'; c.fillRect(0, 0, w, h); c.fillStyle = '#ffcf4a'; c.font = '600 64px Fredoka, Arial'; c.textAlign = 'center'; c.fillText(nm, w / 2, 76); c.fillStyle = '#9fb6cc'; c.font = '28px Fredoka, Arial'; c.fillText(Math.round(m.h) + ' m · ' + (m.st.length - 1) + ' stage' + (m.st.length > 2 ? 's' : ''), w / 2, 126); });
       H.decal(t, gx + dx, .8, gz + dz + 3.53, 2.6, .8); });

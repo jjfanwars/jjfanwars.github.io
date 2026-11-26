@@ -8,14 +8,14 @@ const SAVE_K = 'ye-flight';
 function flightSave() {
   if (!G.on || FLOG.test || !(R.st === 'fly' || R.st === 'landed') || (!R.on && R.body === PLANET)) return;
   const d = {v: 1, at: Date.now(), t: G.t, st: R.st, body: BODIES.indexOf(R.body), bot: R.bot, fuel: R.fuel, lit: R.lit, thr: R.thr, chute: R.chute, chA: R.chA, sas: R.sas, legs: R.legT,
-    t0: R.t0, pos: R.pos.toArray(), vel: R.vel.toArray(), q: R.q.toArray(), w: R.w.toArray(), lp: R.lp.toArray(), lq: R.lq.toArray(), seat: R.on ? C.seat : -1, view: C.view, flog: FLOG, ship: {name: SHIP.name, parts: SHIP.parts},
+    t0: R.t0, pos: R.pos.toArray(), vel: R.vel.toArray(), q: R.q.toArray(), w: R.w.toArray(), lp: R.lp.toArray(), lq: R.lq.toArray(), seat: R.on ? C.seat : -1, view: C.view, flog: FLOG, ship: {name: SHIP.name, parts: SHIP.parts, paint: SHIP.paint},
     where: R.st === 'landed' ? (R.body !== PLANET ? 'Landed on ' + (R.body === MOON ? 'the Moon' : R.body.name) : 'Landed') : domBody(R.pos) !== PLANET ? 'Near ' + (domBody(R.pos) === MOON ? 'the Moon' : domBody(R.pos).name) : orbitEl(PLANET).pe > PLANET.atmo ? 'In orbit' : 'In flight'};
   try { localStorage.setItem(SAVE_K, JSON.stringify(d)); } catch (e) {} }
 function flightSaved() { try { const d = JSON.parse(localStorage.getItem(SAVE_K) || 'null'); return d && d.v === 1 ? d : null; } catch (e) { return null; } }
 function flightClear() { try { localStorage.removeItem(SAVE_K); } catch (e) {} }
 function flightLoad(d) {
   G.t = d.t; for (const b of BODIES) bodyState(b, G.t);
-  if (d.ship && Array.isArray(d.ship.parts) && d.ship.parts.every(p => PARTS[p.k])) shipApply(d.ship.parts, d.ship.name);
+  if (d.ship && Array.isArray(d.ship.parts) && d.ship.parts.every(partOk)) shipApply(d.ship.parts, d.ship.name, d.ship.paint);
   resetRocket(); for (let i = 0; i < d.bot; i++) dropStage(); clearDebris(); PT.n = PT.head = 0;
   Object.assign(R, {fuel: d.fuel, lit: d.lit, thr: d.thr, chute: d.chute, chA: d.chA, legT: d.legs, legs: d.legs, t0: d.t0, body: typeof d.body === 'number' ? BODIES[d.body] || PLANET : d.body === 'm' ? MOON : PLANET, st: d.st, spool: d.lit && d.thr > 0 ? 1 : 0});
   R.pos.fromArray(d.pos); R.vel.fromArray(d.vel); R.q.fromArray(d.q); R.w.fromArray(d.w); R.lp.fromArray(d.lp); R.lq.fromArray(d.lq); if (R.st === 'landed') latch(G.t);
