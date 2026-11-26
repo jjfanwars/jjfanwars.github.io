@@ -908,8 +908,8 @@ function buildSite() {
   // painted signs (canvas textures)
   function signTex(w, h, draw) { const c = document.createElement('canvas'); c.width = w; c.height = h; draw(c.getContext('2d'), w, h); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; return t; }
   function logo(x, w, h, sub) { x.fillStyle = '#16233a'; x.fillRect(0, 0, w, h); x.fillStyle = '#ffcf4a'; x.fillRect(0, h * .84, w, h * .06);
-    x.font = `600 ${h * .5}px Fredoka, Arial Rounded MT Bold, sans-serif`; x.textBaseline = 'middle'; x.textAlign = 'center'; x.fillStyle = '#ffffff'; x.fillText('YE', w / 2 - h * .52, h * .43); x.fillStyle = '#ffcf4a'; x.fillText('SHIP', w / 2 + h * .48, h * .43);
-    if (sub) { x.font = `500 ${h * .1}px Fredoka, sans-serif`; x.fillStyle = '#9fb6cc'; x.fillText(sub, w / 2, h * .73); } }
+    x.font = `600 ${h * .5}px Archivo, Arial Rounded MT Bold, sans-serif`; x.textBaseline = 'middle'; x.textAlign = 'center'; x.fillStyle = '#ffffff'; x.fillText('YE', w / 2 - h * .52, h * .43); x.fillStyle = '#ffcf4a'; x.fillText('SHIP', w / 2 + h * .48, h * .43);
+    if (sub) { x.font = `500 ${h * .1}px Archivo, sans-serif`; x.fillStyle = '#9fb6cc'; x.fillText(sub, w / 2, h * .73); } }
   const stripes = signTex(128, 32, (x, w, h) => { x.fillStyle = '#1a1a1a'; x.fillRect(0, 0, w, h); x.fillStyle = '#ffcf2a'; for (let i = -2; i < 8; i++) { x.beginPath(); x.moveTo(i * 32, h); x.lineTo(i * 32 + 16, h); x.lineTo(i * 32 + 48, 0); x.lineTo(i * 32 + 32, 0); x.fill(); } });
   stripes.wrapS = THREE.RepeatWrapping;
   function decal(t, x, y, z, w, h, ry = 0, rep = 1) { const tt = rep > 1 ? t.clone() : t; if (rep > 1) { tt.repeat.set(rep, 1); tt.needsUpdate = true; }
@@ -987,7 +987,7 @@ function buildSite() {
       for (const s of [-1, 1]) { const nm = SCRS[(ni * 2 + (s > 0 ? 1 : 0) + c) % SCRS.length]; scrn(nm, 1.3, cx + s * .66, by + 1.55, cz - .25, .98, .56); L.push(boxGeo(cx + s * .66, by + .8, cz - .3, .08, .5, .08, 0x30343a)); }
       L.push(boxGeo(cx - .5, by + .8, cz + .2, .55, .025, .2, 0x202328), boxGeo(cx + .5, by + .8, cz + .2, .55, .025, .2, 0x202328), boxGeo(cx + .9, by + .8, cz + .25, .08, .03, .12, 0x202328));
       for (const s of [-1, 1]) { const x = cx + s * .7, z = cz + 1.05; L.push(boxGeo(x, by + .42, z, .55, .09, .52, 0x24282e), boxGeo(x, by + .55, z + .3, .52, .62, .08, 0x24282e), boxGeo(x, by + .1, z, .06, .33, .06, 0x8a9099), boxGeo(x, by + .06, z, .62, .04, .07, 0x8a9099), boxGeo(x, by + .06, z, .07, .04, .62, 0x8a9099)); }
-      const t = signTex(256, 48, (x, w, h) => { x.fillStyle = '#0f1726'; x.fillRect(0, 0, w, h); x.fillStyle = '#ffcf4a'; x.font = '600 26px Fredoka, sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(NAMES[ni % NAMES.length], w / 2, h / 2 + 1); });
+      const t = signTex(256, 48, (x, w, h) => { x.fillStyle = '#0f1726'; x.fillRect(0, 0, w, h); x.fillStyle = '#ffcf4a'; x.font = '600 26px Archivo, sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(NAMES[ni % NAMES.length], w / 2, h / 2 + 1); });
       const pl = new THREE.Mesh(new THREE.PlaneGeometry(1.1, .2), interiorMat(new THREE.MeshStandardMaterial({map: t, roughness: .5, emissive: 0xffffff, emissiveMap: t, emissiveIntensity: .5}))); pl.position.set(cx, by + .5, cz + .456); g.add(pl); ni++; }
     addMerged(L, vcI);
     // the big screens on the front wall
@@ -999,7 +999,7 @@ function buildSite() {
       const bl = new THREE.Mesh(new THREE.CylinderGeometry(.03, .05, .13, 16), km); bl.position.y = .065; rk.add(bl); }
     for (const [x, z] of [[-68.2, 60.2], [-68.2, 70], [-75.6, 80.1]]) { const p = new THREE.Mesh(new THREE.CylinderGeometry(.3, .24, .6, 16), M.pot); p.position.set(x, .3, z); p.castShadow = true; g.add(p); for (let k = 0; k < 7; k++) { const l = new THREE.Mesh(new THREE.ConeGeometry(.16, 1.1, 6), M.plant); l.position.set(x + Math.cos(k) * .1, 1.05, z + Math.sin(k) * .1); l.rotation.set(Math.sin(k * 2) * .4, 0, Math.cos(k * 2) * .4); l.castShadow = true; g.add(l); } }
     ['YS-1', 'ORBIT', 'MOON'].forEach((nm, i) => { const t = signTex(256, 256, (x, w, h) => { x.fillStyle = '#0b1424'; x.fillRect(0, 0, w, h); x.fillStyle = ['#ff8a1e', '#3aa0ff', '#c9c9c9'][i]; x.beginPath(); x.arc(128, 128, 104, 0, 7); x.fill(); x.fillStyle = '#0b1424'; x.beginPath(); x.arc(128, 128, 86, 0, 7); x.fill();
-        x.fillStyle = '#ffffff'; x.beginPath(); x.moveTo(128, 60); x.lineTo(146, 120); x.lineTo(140, 170); x.lineTo(116, 170); x.lineTo(110, 120); x.fill(); x.fillStyle = '#ffcf4a'; x.font = '600 30px Fredoka, sans-serif'; x.textAlign = 'center'; x.fillText(nm, 128, 210); });
+        x.fillStyle = '#ffffff'; x.beginPath(); x.moveTo(128, 60); x.lineTo(146, 120); x.lineTo(140, 170); x.lineTo(116, 170); x.lineTo(110, 120); x.fill(); x.fillStyle = '#ffcf4a'; x.font = '600 30px Archivo, sans-serif'; x.textAlign = 'center'; x.fillText(nm, 128, 210); });
       const p = new THREE.Mesh(new THREE.PlaneGeometry(1.3, 1.3), interiorMat(new THREE.MeshStandardMaterial({map: t, roughness: .4}))); p.position.set(-90 + i * 4, 3.4, Z1 - T - .05); p.rotation.y = Math.PI; g.add(p); });
     // ---- upstairs: the glass viewing deck
     const D = 6.0; box(-80.3, D, 70, 28.6, .03, 24, 0xffffff, false, {m: M.deckFloor, cast: false}); box(-96.3, D, 60, 3.4, .03, 4, 0xffffff, false, {m: M.deckFloor, cast: false}); box(-97.3, D, 72, 1.4, .03, 20, 0xffffff, false, {m: M.deckFloor, cast: false});

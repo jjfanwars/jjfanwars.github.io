@@ -48,7 +48,7 @@ function lmBuild() {
 
 // ---------------- marker, visits, geyser spray
 const lmTag = document.createElement('div'); lmTag.id = 'lmTag'; lmTag.className = 'hidden'; document.body.appendChild(lmTag);
-{ const st = document.createElement('style'); st.textContent = '#lmTag { position:fixed; left:0; top:0; z-index:4; pointer-events:none; padding:2px 9px; border-radius:11px; background:rgba(0,0,0,.5); color:#ff9dd2; font-size:13px; font-weight:600; white-space:nowrap; transform-origin:0 0; }'; document.head.appendChild(st); }
+
 const LM_MIS = {peak: 'peak', rover: 'rover', geyser: 'geyser', fire: 'fire'};
 const lmWorld = (L, out) => out.copy(L.pos).applyQuaternion(L.b.q).add(L.b.c);
 let geyAcc = 0;
@@ -57,7 +57,7 @@ function lmStep(dt) {
   // which landmark to point at: the current mission's, else one on the world you are at (within 300 km)
   let show = null; for (const L of LM) { if (MIS.cur === LM_MIS[L.id] && !MIS.done[MIS.cur]) { show = L; break; } } if (!show) { let bd = 3e5; for (const L of LM) { if (L.b !== myB) continue; const d = lmWorld(L, _l2).distanceTo(me); if (d < bd) { bd = d; show = L; } } }
   if (show && !MAPV.on && !(typeof BLD !== 'undefined' && BLD.on)) { const w = lmWorld(show, _l2), d = w.distanceTo(me), p = w.sub(G.O).project(cam), ok = d > 15 && p.z < 1 && Math.abs(p.x) < 1 && Math.abs(p.y) < 1; lmTag.classList.toggle('hidden', !ok);
-    if (ok) { lmTag.style.transform = 'translate(' + ((p.x * .5 + .5) * innerWidth).toFixed(1) + 'px,' + ((-p.y * .5 + .5) * innerHeight).toFixed(1) + 'px) translate(-50%,-120%)'; const t = '? ' + show.name + ' · ' + fmtD(d); if (lmTag._t !== t) { lmTag._t = t; lmTag.textContent = t; } } }
+    if (ok) { lmTag.style.transform = 'translate(' + ((p.x * .5 + .5) * innerWidth).toFixed(1) + 'px,' + ((-p.y * .5 + .5) * innerHeight).toFixed(1) + 'px) translate(-50%,-120%)'; const t = show.name + ' · ' + fmtD(d); if (lmTag._t !== t) { lmTag._t = t; lmTag.textContent = t; } } }
   else lmTag.classList.add('hidden');
   // visits: on foot within the radius, or landed close (FLOG flags for the missions)
   for (const L of LM) { if (!R.on && P.body === L.b) { const d = P.pos.distanceTo(L.pos); if (d < L.r) { FLOG[L.id] = true; if (!L.read) { L.read = true; showHint(L.hint, 7000); sfx && SND.c && warnTone(880, 1); } } else if (d > L.r * 3) L.read = false; if (d < 1500) FLOG[L.id + 'Near'] = true; }
@@ -71,7 +71,7 @@ function lmStep(dt) {
 }
 // map: the current mission's landmark
 { const mr = mapRender; mapRender = function (dt) { mr(dt); const L = LM.find(l => MIS.cur === LM_MIS[l.id] && !MIS.done[MIS.cur]); if (!L) return; const x = MAPV.x, p = lmWorld(L, _l2).multiplyScalar(.001).project(MAPV.cam); if (p.z > 1) return;
-  const sx = (p.x * .5 + .5) * innerWidth, sy = (-p.y * .5 + .5) * innerHeight; x.font = '700 13px Fredoka, sans-serif'; x.fillStyle = '#ff9dd2'; x.textAlign = 'center'; x.fillText('? ' + L.name, sx, sy - 6); x.textAlign = 'left'; }; }
+  const sx = (p.x * .5 + .5) * innerWidth, sy = (-p.y * .5 + .5) * innerHeight; x.font = '700 13px Archivo, sans-serif'; x.fillStyle = '#ff9dd2'; x.textAlign = 'center'; x.fillText('? ' + L.name, sx, sy - 6); x.textAlign = 'left'; }; }
 
 // ---------------- test menu jumps
 function lmWalk(id, off = 40) { const L = LM.find(l => l.id === id); if (!L) return; onFoot(); const e = new V3(0, 1, 0).cross(L.up).normalize(), d = L.up.clone().addScaledVector(e, off / L.b.R).normalize(); P.body = L.b; P.pos.copy(d).multiplyScalar(L.b.R + heightAt(L.b, d.x, d.y, d.z) + 2); P.vel.set(0, 0, 0);

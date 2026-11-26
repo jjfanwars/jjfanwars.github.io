@@ -40,7 +40,7 @@ const RM = {}; // materials + cached geometry
     x.fillStyle = '#f1f0ec'; x.fillRect(0, 0, 512, h); x.strokeStyle = 'rgba(0,0,0,.07)'; x.lineWidth = 2;
     for (let y = 40; y < h; y += 85) { x.beginPath(); x.moveTo(0, y); x.lineTo(512, y); x.stroke(); } for (let u = 0; u < 512; u += 64) { x.beginPath(); x.moveTo(u, 0); x.lineTo(u, h); x.stroke(); }
     x.fillStyle = '#17191d'; for (const [y0, y1, ph] of bands) for (let q = 0; q < 4; q++) if ((q + ph) % 2) x.fillRect(q * 128, y0 * h, 128, (y1 - y0) * h);
-    if (label) { x.save(); x.translate(384 - 10, h * .5); x.rotate(-Math.PI / 2); x.font = '600 74px Fredoka, sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(label, 0, 0); x.restore(); }
+    if (label) { x.save(); x.translate(384 - 10, h * .5); x.rotate(-Math.PI / 2); x.font = '600 74px Archivo, sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(label, 0, 0); x.restore(); }
     x.fillStyle = '#ff8a1e'; x.fillRect(0, h * .985, 512, h * .015);
     const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; return t; };
   RM.blackDS = RM.black.clone(); RM.blackDS.side = THREE.DoubleSide;
@@ -220,7 +220,7 @@ function tankMat(h, r, style, paint, kind) { paint = paint || SHIP.paint || PAIN
   else if (pat === 'stripe') { x.fillRect(224, 0, 64, ph); x.fillStyle = paint.trim; x.fillRect(206, 0, 12, ph); x.fillRect(294, 0, 12, ph); x.fillStyle = paint.acc; }
   else if (pat === 'check') { const s = 64; for (let yy = 0; yy * s < ph; yy++) for (let q = 0; q < 8; q++) if ((q + yy + style) % 2 && (yy < 2 || yy * s > ph - 2 * s)) x.fillRect(q * s, yy * s, s, s); }
   else if (pat === 'srb') { for (let v = ph * .25; v < ph; v += ph * .25) { x.fillStyle = 'rgba(90,96,104,.9)'; x.fillRect(0, v - 6, 512, 12); } x.fillStyle = paint.acc; for (let q = 0; q < 4; q++) if (q % 2) x.fillRect(q * 128, 0, 128, Math.min(ph * .08, 40)); }
-  const txt = (paint.text || '').slice(0, 12); if (txt && h >= 4.5 && r > 1 && !srb) { x.save(); x.translate(374, ph * .5); x.rotate(-Math.PI / 2); const fs = Math.min(74, 1500 / Math.max(4, txt.length) * Math.min(1, h / 6)); x.font = '600 ' + fs + 'px Fredoka, sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillStyle = paint.acc; x.fillText(txt, 0, 0); x.restore(); }
+  const txt = (paint.text || '').slice(0, 12); if (txt && h >= 4.5 && r > 1 && !srb) { x.save(); x.translate(374, ph * .5); x.rotate(-Math.PI / 2); const fs = Math.min(74, 1500 / Math.max(4, txt.length) * Math.min(1, h / 6)); x.font = '600 ' + fs + 'px Archivo, sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillStyle = paint.acc; x.fillText(txt, 0, 0); x.restore(); }
   x.fillStyle = paint.trim; x.fillRect(0, ph - 6, 512, 6);
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
   return TANKM[key] = new THREE.MeshStandardMaterial({map: t, normalMap: tankNormal(ph, srb), normalScale: new THREE.Vector2(.6, .6), roughness: .36, metalness: .05}); }
@@ -731,10 +731,11 @@ function flightHud(dt) {
   setTxt('hLoc', sit + (b !== PLANET ? ' · ' + b.name : '')); setTxt('hInfo', 'Local time ' + localTime() + (G.warp > 1 ? ' · Time ×' + G.warp : '') + (R.warpTo ? ' (warping)' : ''));
   setTxt('fAlt', fmtD(alt)); setTxt('fSpd', Math.round(v) + ' m/s');
   setTxt('fAp', o.ap === Infinity ? 'escape' : fmtD(o.ap)); setTxt('fPe', o.pe < -b.R * .5 ? '—' : fmtD(o.pe));
-  // extra readouts: vertical speed, time to Ap/Pe, stage delta-v, ground radar + "burn now" for landings
-  const el = orbitEl(b), vs = vertSpeed(), ra = radarAlt(), fly = R.st === 'fly'; let x = (vs >= 0 ? '↑ ' : '↓ ') + Math.abs(Math.round(vs)) + ' m/s';
-  if (fly && el.tAp < 1e6 && (vs > 0 || el.tAp < el.tPe)) x += ' · Ap in ' + fmtS(el.tAp); else if (fly && el.tPe < 1e6 && el.pe > 0) x += ' · Pe in ' + fmtS(el.tPe);
-  const dv = stageDv(); if (dv) x += ' · Δv ' + Math.round(dv); if (fly) x += ' · ' + (R.felt.length() / 9.81).toFixed(1) + ' g'; if (fly && R.p > .01 && R.mach > .3) x += ' · Mach ' + R.mach.toFixed(2); setTxt('fX', x);
+  // extra readouts: vertical speed, time to Ap/Pe, stage delta-v, load
+  const el = orbitEl(b), vs = vertSpeed(), ra = radarAlt(), fly = R.st === 'fly';
+  setTxt('fVs', (vs >= 0 ? '+' : '−') + Math.abs(Math.round(vs)) + ' m/s');
+  if (fly && el.tAp < 1e6 && (vs > 0 || el.tAp < el.tPe)) { setTxt('fTl', 'Ap in'); setTxt('fTt', fmtS(el.tAp)); } else if (fly && el.tPe < 1e6 && el.pe > 0) { setTxt('fTl', 'Pe in'); setTxt('fTt', fmtS(el.tPe)); } else { setTxt('fTl', 'Next'); setTxt('fTt', '—'); }
+  const dv = stageDv(); setTxt('fDv', dv ? Math.round(dv) + ' m/s' : '—'); setTxt('fG', fly ? (R.felt.length() / 9.81).toFixed(1) + ' g' + (R.p > .01 && R.mach > .3 ? ' · M' + R.mach.toFixed(1) : '') : '—');
   let w = '', wc = '';
   if (fly && ra < 15000) { const L = landCalc(), stop = L.stop, vd = L.vd, hs = L.hs;
     w = 'Ground ' + fmtD(Math.max(0, ra)); if (vd > 4 && b !== PLANET || vd > 4 && !S.cap && ra < 4000) { if (stop * 1.25 + 60 > ra) { w += ' · BURN NOW'; wc = 'red'; } else if (stop * 2 + 150 > ra) { w += ' · burn soon'; wc = 'amber'; } }
@@ -742,9 +743,9 @@ function flightHud(dt) {
   setTxt('fW', w); const fw = HUDE.fW; if (fw._c !== wc) { fw._c = wc; fw.className = wc; }
   const ff = S.fuel ? R.fuel[R.bot] / S.fuel : 0, fe = HUDE.fFuel || (HUDE.fFuel = $('fFuel')), low = ff > 0 && ff < .15; if (fe._low !== low) { fe._low = low; fe.classList.toggle('low', low); }
   if (R.lit && fly && ff > 0 && ff < .1 && R.lowB !== R.bot) { R.lowB = R.bot; warnTone(660, 2); } // one warning per stage
-  $('fThr').style.height = (R.thr * 100) + '%'; fe.style.height = (ff * 100) + '%'; setTxt('fStage', S.name + (S.thrust && R.fuel[R.bot] > 0 && !R.lit && R.st !== 'pad' ? ' · engine off (R)' : '') + (S.legs ? ' · legs ' + (R.legT ? 'out' : 'in') + ' (G)' : ''));
+  $('fThr').style.width = (R.thr * 100) + '%'; fe.style.width = (ff * 100) + '%'; setTxt('fStage', S.name); setTxt('fFlags', (S.thrust && R.fuel[R.bot] > 0 && !R.lit && R.st !== 'pad' ? 'Engine off' : '') + (legStage() ? (S.thrust && R.fuel[R.bot] > 0 && !R.lit && R.st !== 'pad' ? ' · ' : '') + 'Legs ' + (R.legT ? 'out' : 'in') : ''));
   const nx = R.st === 'pad' && !R.lit ? 'Launch' : !R.lit && S.thrust && R.fuel[R.bot] > 0 ? 'Ignite' : R.bot < STAGES.length - 1 ? 'Drop ' + S.name.toLowerCase() : R.chute === 0 ? 'Parachute' : '';
-  setTxt('fNext', nx ? (nx.startsWith('Drop') && dropFull() ? 'Space ×2 · ' : 'Space · ') + nx : ''); for (const el of sasBtns || (sasBtns = [...document.querySelectorAll('#fSas button')])) el.classList.toggle('on', el.dataset.m ? el.dataset.m === R.sas : R.lit);
+  { const t = nx ? (nx.startsWith('Drop') && dropFull() ? '2' : '1') + nx : ''; const fn = HUDE.fNext || (HUDE.fNext = $('fNext')); if (fn._t !== t) { fn._t = t; fn.innerHTML = nx ? '<span class="key">Space' + (t[0] === '2' ? ' ×2' : '') + '</span>' + nx : ''; } } for (const el of sasBtns || (sasBtns = [...document.querySelectorAll('#fSas button')])) el.classList.toggle('on', el.dataset.m ? el.dataset.m === R.sas : R.lit);
   markers();
 }
 const _mk = new V3(), _mv3 = new V3(), MKS = [['mPro', 1], ['mRet', -1], ['mGd', 0]];

@@ -50,14 +50,14 @@ function hangarInside() {
       const cx = X(0), cy = Z(-8); c.fillStyle = '#4a5159'; c.beginPath(); c.arc(cx, cy, 7.4 * S, 0, 7); c.fill();
       c.save(); c.beginPath(); c.arc(cx, cy, 8.3 * S, 0, 7); c.arc(cx, cy, 7.4 * S, 0, 7, true); c.clip(); c.fillStyle = '#18191b'; c.fillRect(cx - 9 * S, cy - 9 * S, 18 * S, 18 * S); c.fillStyle = yel;
       for (let i = -30; i < 30; i++) { c.beginPath(); const x = cx + i * 24; c.moveTo(x, cy - 9 * S); c.lineTo(x + 12, cy - 9 * S); c.lineTo(x + 12 + 18 * S, cy + 9 * S); c.lineTo(x + 18 * S, cy + 9 * S); c.fill(); } c.restore();
-      c.font = `700 ${1.25 * S}px Fredoka, Arial, sans-serif`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillStyle = 'rgba(255,207,74,.9)'; c.fillText('ASSEMBLY BAY 1', cx, Z(1.6));
+      c.font = `700 ${1.25 * S}px Archivo, Arial, sans-serif`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillStyle = 'rgba(255,207,74,.9)'; c.fillText('ASSEMBLY BAY 1', cx, Z(1.6));
       // roll-out lane to the door
       c.fillStyle = 'rgba(240,240,235,.75)'; for (let z = 2.5; z < 23; z += 2.4) for (const x of [-4.2, 4.2]) c.fillRect(X(x) - 3, Z(z), 6, 1.4 * S);
       c.fillStyle = 'rgba(240,240,235,.6)'; for (let z = 8; z <= 18; z += 10) { c.beginPath(); c.moveTo(X(0), Z(z + 2.2)); c.lineTo(X(-1.4), Z(z)); c.lineTo(X(-.5), Z(z)); c.lineTo(X(-.5), Z(z - 2)); c.lineTo(X(.5), Z(z - 2)); c.lineTo(X(.5), Z(z)); c.lineTo(X(1.4), Z(z)); c.fill(); }
-      c.font = `700 ${.8 * S}px Fredoka, Arial, sans-serif`; c.fillText('ROLL-OUT', X(0), Z(14.4));
+      c.font = `700 ${.8 * S}px Archivo, Arial, sans-serif`; c.fillText('ROLL-OUT', X(0), Z(14.4));
       // door: keep clear hatching
       c.save(); c.beginPath(); c.rect(X(-18), Z(23.4), 36 * S, 2 * S); c.clip(); c.fillStyle = '#1a1b1d'; c.fillRect(X(-18), Z(23.4), 36 * S, 2 * S); c.fillStyle = yel; for (let x = X(-19); x < X(19); x += 40) { c.beginPath(); c.moveTo(x, Z(25.4)); c.lineTo(x + 20, Z(25.4)); c.lineTo(x + 20 + 2 * S, Z(23.4)); c.lineTo(x + 2 * S, Z(23.4)); c.fill(); } c.restore();
-      const lab = (s, x, z, a, sz = 1) => { c.save(); c.translate(X(x), Z(z)); c.rotate(a); c.font = `700 ${sz * S}px Fredoka, Arial, sans-serif`; c.fillStyle = 'rgba(255,255,255,.5)'; c.fillText(s, 0, 0); c.restore(); };
+      const lab = (s, x, z, a, sz = 1) => { c.save(); c.translate(X(x), Z(z)); c.rotate(a); c.font = `700 ${sz * S}px Archivo, Arial, sans-serif`; c.fillStyle = 'rgba(255,255,255,.5)'; c.fillText(s, 0, 0); c.restore(); };
       lab('ENGINES · PARTS', -14.6, -4, Math.PI / 2); lab('FUEL TANKS', 14.6, -5, -Math.PI / 2); lab('BUILD CONSOLE', 14, 21.8, 0, .7); lab('WORKSHOP', -10, 24.6, 0, .55);
     });
     t.anisotropy = 8; const fl = new THREE.Mesh(new THREE.PlaneGeometry(X1 - X0, Z1 - Z0), hm(0xffffff, .38, .05, {t})); fl.rotation.x = -Math.PI / 2; fl.position.set(0, .08, 0); fl.receiveShadow = true; g.add(fl); }
@@ -100,7 +100,7 @@ void main(){
   // ---- overhead crane parked toward the door
   { const L = [], zc = 7; L.push(H.boxGeo(0, 27.9, zc, 42.2, 1.5, 1.2, 0xf2b81e), H.boxGeo(0, 27.9, zc + 1.6, 42.2, 1.5, 1.2, 0xf2b81e)); for (const sx of [-1, 1]) L.push(H.boxGeo(sx * 20.6, 27.6, zc + .8, 1.6, 1.2, 4.6, 0x3b434d));
     L.push(H.boxGeo(3, 29.4, zc + .8, 3.2, 1.1, 3.4, 0x2f3740), H.beamGeo(new V3(2.6, 29.4, zc + .8), new V3(2.6, 20.2, zc + .8), .025, 0x111111, 4), H.beamGeo(new V3(3.4, 29.4, zc + .8), new V3(3.4, 20.2, zc + .8), .025, 0x111111, 4), H.boxGeo(3, 19.2, zc + .8, 1.3, 1, .6, 0xf2b81e), H.beamGeo(new V3(3, 19.2, zc + .8), new V3(3, 18.3, zc + .8), .12, 0x2b2b2b, 6));
-    addM(L); const sg = H.decal(signTex(256, 64, (c, w, h) => { c.fillStyle = '#f2b81e'; c.fillRect(0, 0, w, h); c.fillStyle = '#111'; c.font = '700 44px Fredoka, Arial'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('SWL 40 T', w / 2, h / 2 + 2); }), 0, 28.65, zc + 2.22, 4, 1);
+    addM(L); const sg = H.decal(signTex(256, 64, (c, w, h) => { c.fillStyle = '#f2b81e'; c.fillRect(0, 0, w, h); c.fillStyle = '#111'; c.font = '700 44px Archivo, Arial'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('SWL 40 T', w / 2, h / 2 + 2); }), 0, 28.65, zc + 2.22, 4, 1);
     sg.material = hm(0xffffff, .6, 0, {t: sg.material.map}); }
   // ---- assembly stand + service towers with swing arms
   const RZ = -8; WLD.rz = RZ;
@@ -126,8 +126,8 @@ void main(){
       site.boxes.push({x0: x - pw / 2, x1: x + pw / 2, y0: 0, y1: .56 + lift + h, z0: z - pw / 2, z1: z + pw / 2});
       // label on a post, facing into the hall
       const lx = x + side * (pw / 2 + .75), nm = extra.name || p.name, line = extra.stat || (typeof partStat === 'function' ? partStat(p) : ''), desc = extra.desc || p.desc || '';
-      const ox = (na % 4) * 512, oy = (na / 4 | 0) * 256, ua = na++; ax.save(); ax.translate(ox, oy); ax.beginPath(); ax.rect(0, 0, 512, 256); ax.clip(); ((c, w, hh) => { c.fillStyle = '#0d1828'; c.fillRect(0, 0, w, hh); c.fillStyle = '#ffcf4a'; c.fillRect(0, 0, 10, hh); c.font = '600 58px Fredoka, Arial'; c.fillText(nm, 34, 70); c.font = '400 28px Fredoka, Arial'; c.fillStyle = '#cfe0f2'; c.fillText(desc.slice(0, 34), 34, 120); c.fillStyle = '#8fb3d6'; c.fillText(line.slice(0, 36), 34, 162);
-        c.fillStyle = '#ffcf4a'; c.font = '600 28px Fredoka, Arial'; c.fillText('F · ' + (extra.verb || 'add to your rocket'), 34, 222); })(ax, 512, 256); ax.restore();
+      const ox = (na % 4) * 512, oy = (na / 4 | 0) * 256, ua = na++; ax.save(); ax.translate(ox, oy); ax.beginPath(); ax.rect(0, 0, 512, 256); ax.clip(); ((c, w, hh) => { c.fillStyle = '#0d1828'; c.fillRect(0, 0, w, hh); c.fillStyle = '#ffcf4a'; c.fillRect(0, 0, 10, hh); c.font = '600 58px Archivo, Arial'; c.fillText(nm, 34, 70); c.font = '400 28px Archivo, Arial'; c.fillStyle = '#cfe0f2'; c.fillText(desc.slice(0, 34), 34, 120); c.fillStyle = '#8fb3d6'; c.fillText(line.slice(0, 36), 34, 162);
+        c.fillStyle = '#ffcf4a'; c.font = '600 28px Archivo, Arial'; c.fillText('F · ' + (extra.verb || 'add to your rocket'), 34, 222); })(ax, 512, 256); ax.restore();
       const pg2 = new THREE.PlaneGeometry(1.6, .8), uv = pg2.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setXY(i, (ox + uv.getX(i) * 512) / 2048, 1 - (oy + (1 - uv.getY(i)) * 256) / 1024);
       const pl = new THREE.Mesh(pg2, labM); pl.position.set(lx, 1.32, z); pl.rotation.set(0, side * Math.PI / 2, 0, 'YXZ'); pl.rotateX(-.45); labs.add(pl);
       L.push(H.boxGeo(lx - side * .12, 0, z, .08, 1.1, .08, 0x2c3238), H.boxGeo(lx - side * .12, 0, z, .5, .04, .5, 0x2c3238));
@@ -144,7 +144,7 @@ void main(){
     for (let i = 0; i < 4; i++) L.push(H.boxGeo(cx - 2.4 + i * 1.6, .45, cz + 1.4, .55, .08, .55, 0x31363d), H.boxGeo(cx - 2.4 + i * 1.6, 0, cz + 1.4, .07, .45, .07, 0x8a9099), H.boxGeo(cx - 2.4 + i * 1.6, .5, cz + 1.68, .55, .62, .08, 0x31363d));
     addM(L); site.boxes.push({x0: cx - 3.3, x1: cx + 3.3, y0: 0, y1: 1.05, z0: cz - .75, z1: cz + .75});
     const scr = signTex(1024, 256, (c, w, h) => { c.fillStyle = '#061322'; c.fillRect(0, 0, w, h); c.strokeStyle = 'rgba(60,140,255,.25)'; c.lineWidth = 1; for (let i = 0; i < w; i += 32) { c.beginPath(); c.moveTo(i, 0); c.lineTo(i, h); c.stroke(); } for (let i = 0; i < h; i += 32) { c.beginPath(); c.moveTo(0, i); c.lineTo(w, i); c.stroke(); }
-      c.fillStyle = '#ffcf4a'; c.font = '600 64px Fredoka, Arial'; c.fillText('ROCKET BUILDER', 360, 110); c.fillStyle = '#9fd0ff'; c.font = '30px Fredoka, Arial'; c.fillText('Walk up and press F  ·  or press B anywhere', 362, 165);
+      c.fillStyle = '#ffcf4a'; c.font = '600 64px Archivo, Arial'; c.fillText('ROCKET BUILDER', 360, 110); c.fillStyle = '#9fd0ff'; c.font = '30px Archivo, Arial'; c.fillText('Walk up and press F  ·  or press B anywhere', 362, 165);
       c.strokeStyle = '#3aa0ff'; c.lineWidth = 4; const bx = 120; c.strokeRect(bx, 40, 70, 40); for (let i = 0; i < 3; i++) c.strokeRect(bx - 10, 85 + i * 42, 90, 38); c.beginPath(); c.moveTo(bx + 10, 212); c.lineTo(bx + 60, 212); c.lineTo(bx + 75, 240); c.lineTo(bx - 5, 240); c.closePath(); c.stroke(); });
     const sm = hm(0x000000, .3, .2, {e: 0xffffff, em: scr, ei: 1.3}), bez = hm(0x0c0e12, .4, .3);
     const s = new THREE.Mesh(new THREE.PlaneGeometry(5.6, 1.4), sm); s.position.set(cx, 1.9, cz - .36); s.rotation.x = -.18; g.add(s);
@@ -170,7 +170,7 @@ void main(){
     for (const [x, z, w, d] of [[(ox0 + mx1) / 2, oz1, mx1 - ox0, .05], [ox0, (mz0 + oz1) / 2, .05, oz1 - mz0]]) { const m = new THREE.Mesh(new THREE.BoxGeometry(w, oh, d), gl); m.position.set(x, D + oh / 2, z); m.renderOrder = 3; g.add(m); site.boxes.push({x0: x - w / 2 - .05, x1: x + w / 2 + .05, y0: D, y1: D + oh, z0: z - d / 2 - .05, z1: z + d / 2 + .05}); }
     const ot = signTex(1024, 384, (c, w, h) => { const gr = c.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, '#e9e2d2'); gr.addColorStop(1, '#bfb6a4'); c.fillStyle = gr; c.fillRect(0, 0, w, h);
       c.fillStyle = '#fbfbf8'; c.fillRect(80, 50, 420, 190); c.strokeStyle = '#555'; c.lineWidth = 6; c.strokeRect(80, 50, 420, 190); c.strokeStyle = '#2a6fd6'; c.lineWidth = 4; c.beginPath(); c.moveTo(140, 220); c.quadraticCurveTo(260, 40, 440, 90); c.stroke();
-      c.fillStyle = '#d33'; c.font = '600 30px Fredoka, Arial'; c.fillText('Δv = Isp·g·ln(m0/m1)', 120, 120); c.fillStyle = '#222'; c.font = '24px Fredoka, Arial'; c.fillText('TLI window: T+?', 120, 160); c.fillText('more boosters??', 300, 205);
+      c.fillStyle = '#d33'; c.font = '600 30px Archivo, Arial'; c.fillText('Δv = Isp·g·ln(m0/m1)', 120, 120); c.fillStyle = '#222'; c.font = '24px Archivo, Arial'; c.fillText('TLI window: T+?', 120, 160); c.fillText('more boosters??', 300, 205);
       for (let i = 0; i < 7; i++) { c.fillStyle = ['#f6e27a', '#9fd3ff', '#ffb3c1'][i % 3]; c.fillRect(560 + (i % 4) * 70, 60 + (i / 4 | 0) * 80, 56, 56); }
       c.fillStyle = '#16233a'; c.fillRect(0, h - 120, w, 120); c.fillStyle = '#2e3a4b'; for (let i = 0; i < 4; i++) { c.fillRect(60 + i * 240, h - 170, 180, 60); c.fillStyle = '#7fc1ff'; c.fillRect(80 + i * 240, h - 210, 90, 55); c.fillStyle = '#2e3a4b'; } });
     const ob = new THREE.Mesh(new THREE.PlaneGeometry(mx1 - ox0 - .2, oh), new THREE.MeshBasicMaterial({map: ot, color: new THREE.Color(1.3, 1.25, 1.15)})); ob.position.set((ox0 + mx1) / 2, D + oh / 2, mz0 + .25); g.add(ob);
@@ -183,7 +183,7 @@ void main(){
     addM(L);
     // banners hanging above the office
     [['#ffcf4a', '#16233a'], ['#16233a', '#ffcf4a'], ['#e8572e', '#ffffff']].forEach(([bg, fg], i) => { const t = signTex(256, 1024, (c, w, h) => { c.fillStyle = bg; c.fillRect(0, 0, w, h); c.fillStyle = fg; c.fillRect(0, h - 40, w, 14);
-        c.save(); c.translate(w / 2, h / 2 - 40); c.rotate(-Math.PI / 2); c.font = '700 150px Fredoka, Arial'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(['YESHIP', 'TO THE MOON', 'AND BACK'][i], 0, 0); c.restore();
+        c.save(); c.translate(w / 2, h / 2 - 40); c.rotate(-Math.PI / 2); c.font = '700 150px Archivo, Arial'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(['YESHIP', 'TO THE MOON', 'AND BACK'][i], 0, 0); c.restore();
         c.beginPath(); c.moveTo(w / 2, 40); c.lineTo(w / 2 + 34, 120); c.lineTo(w / 2 - 34, 120); c.fill(); });
       const b = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 10.4), hm(0xffffff, .9, 0, {t, ds: true})); b.position.set(12.8 + i * 3.4, 20.5, Z0 + .3); g.add(b); }); }
   // ---- workshop corner (front west): benches, tool chests, gas bottles, a forklift, pallets
@@ -201,14 +201,14 @@ void main(){
     addM(L); }
   // ---- wall signs: inside logo over the door, safety signs, the explosion counter, the status board
   { const lg = H.decal(signTex(1024, 256, (x, w, h) => H.logo(x, w, h, 'VEHICLE ASSEMBLY')), 0, 30.4, Z1 - .25, 16, 4, Math.PI); lg.material = hm(0xffffff, .6, 0, {t: lg.material.map});
-    const sign = (txt, sub, col, x, y, z, ry) => { const t = signTex(256, 320, (c, w, h) => { c.fillStyle = '#fff'; c.fillRect(0, 0, w, h); c.fillStyle = col; c.fillRect(0, 0, w, 110); c.fillStyle = '#fff'; c.font = '700 54px Fredoka, Arial'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(txt, w / 2, 58);
-        c.fillStyle = '#111'; c.font = '600 34px Fredoka, Arial'; sub.split('|').forEach((s, i) => c.fillText(s, w / 2, 170 + i * 44)); }); const m = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 1.5), hm(0xffffff, .6, 0, {t})); m.position.set(x, y, z); m.rotation.y = ry; g.add(m); };
+    const sign = (txt, sub, col, x, y, z, ry) => { const t = signTex(256, 320, (c, w, h) => { c.fillStyle = '#fff'; c.fillRect(0, 0, w, h); c.fillStyle = col; c.fillRect(0, 0, w, 110); c.fillStyle = '#fff'; c.font = '700 54px Archivo, Arial'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(txt, w / 2, 58);
+        c.fillStyle = '#111'; c.font = '600 34px Archivo, Arial'; sub.split('|').forEach((s, i) => c.fillText(s, w / 2, 170 + i * 44)); }); const m = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 1.5), hm(0xffffff, .6, 0, {t})); m.position.set(x, y, z); m.rotation.y = ry; g.add(m); };
     sign('NOTICE', 'HARD HATS|PAST THIS|POINT', '#1f5fbf', -17.5, 4.6, Z1 - .27, Math.PI); sign('DANGER', 'FUEL TANKS|NO SMOKING|NO SPARKS', '#c62828', X1 - .27, 4.6, -12.4, -Math.PI / 2); sign('CAUTION', 'OVERHEAD|CRANE', '#e0a800', X0 + .27, 4.6, 4.3, Math.PI / 2);
     // "days since the last explosion" board (resets when a rocket blows up)
     const bc = document.createElement('canvas'); bc.width = 512; bc.height = 288; const bt = new THREE.CanvasTexture(bc); bt.colorSpace = THREE.SRGBColorSpace;
-    WLD.boomDraw = () => { const c = bc.getContext('2d'), w = 512, h = 288; c.fillStyle = '#f4f2ea'; c.fillRect(0, 0, w, h); c.fillStyle = '#16233a'; c.fillRect(0, 0, w, 74); c.fillStyle = '#ffcf4a'; c.font = '700 40px Fredoka, Arial'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('DAYS SINCE THE LAST', w / 2, 40);
+    WLD.boomDraw = () => { const c = bc.getContext('2d'), w = 512, h = 288; c.fillStyle = '#f4f2ea'; c.fillRect(0, 0, w, h); c.fillStyle = '#16233a'; c.fillRect(0, 0, w, 74); c.fillStyle = '#ffcf4a'; c.font = '700 40px Archivo, Arial'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('DAYS SINCE THE LAST', w / 2, 40);
       let t0 = 0; try { t0 = +localStorage.getItem('ye-boom') || 0; } catch (e) {} const d = t0 ? Math.floor((Date.now() - t0) / 864e5) : 0;
-      c.fillStyle = '#111'; c.fillRect(156, 92, 200, 130); c.fillStyle = '#ff5a3a'; c.font = '700 110px Fredoka, Arial'; c.fillText(String(Math.min(d, 999)), w / 2, 160); c.fillStyle = '#16233a'; c.font = '700 40px Fredoka, Arial'; c.fillText('EXPLOSION', w / 2, 256); bt.needsUpdate = true; };
+      c.fillStyle = '#111'; c.fillRect(156, 92, 200, 130); c.fillStyle = '#ff5a3a'; c.font = '700 110px Archivo, Arial'; c.fillText(String(Math.min(d, 999)), w / 2, 160); c.fillStyle = '#16233a'; c.font = '700 40px Archivo, Arial'; c.fillText('EXPLOSION', w / 2, 256); bt.needsUpdate = true; };
     WLD.boomDraw(); const bm = new THREE.Mesh(new THREE.PlaneGeometry(3.2, 1.8), hm(0xffffff, .55, 0, {t: bt})); bm.position.set(X0 + .27, 5.4, 15.6); bm.rotation.y = Math.PI / 2; g.add(bm);
     // status board on the back wall: the rocket on the stand, its stages and what it can reach
     const sc = document.createElement('canvas'); sc.width = 1024; sc.height = 576; const stt = new THREE.CanvasTexture(sc); stt.colorSpace = THREE.SRGBColorSpace; stt.anisotropy = 8; WLD.board = {c: sc, t: stt};
@@ -219,8 +219,8 @@ function boardDraw() {
   const B = WLD.board; if (!B) return; const c = B.c.getContext('2d'), w = 1024, h = 576, st = shipLayout(SHIP.parts), s = typeof shipStats === 'function' ? shipStats(st) : null;
   const gr = c.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, '#0b1730'); gr.addColorStop(1, '#0a1220'); c.fillStyle = gr; c.fillRect(0, 0, w, h);
   c.strokeStyle = 'rgba(80,150,255,.12)'; c.lineWidth = 1; for (let i = 0; i < w; i += 32) { c.beginPath(); c.moveTo(i, 0); c.lineTo(i, h); c.stroke(); } for (let i = 0; i < h; i += 32) { c.beginPath(); c.moveTo(0, i); c.lineTo(w, i); c.stroke(); }
-  c.fillStyle = '#7fa6cc'; c.font = '500 24px Fredoka, Arial'; c.textBaseline = 'alphabetic'; c.textAlign = 'left'; c.fillText('VEHICLE ASSEMBLY · BAY 1 · ON THE STAND', 300, 46);
-  c.fillStyle = '#ffcf4a'; c.font = '600 60px Fredoka, Arial'; c.fillText(SHIP.name.slice(0, 22), 300, 108);
+  c.fillStyle = '#7fa6cc'; c.font = '500 24px Archivo, Arial'; c.textBaseline = 'alphabetic'; c.textAlign = 'left'; c.fillText('VEHICLE ASSEMBLY · BAY 1 · ON THE STAND', 300, 46);
+  c.fillStyle = '#ffcf4a'; c.font = '600 60px Archivo, Arial'; c.fillText(SHIP.name.slice(0, 22), 300, 108);
   // side view of the stack
   const y0 = st[0].y0, hh = 26.1 - y0, maxR = Math.max(2.5, ...st.map(S => S.r || 0)), k = Math.min(500 / hh, 220 / (maxR * 2)), cx = 150, by = 540, Y = y => by - (y - y0) * k;
   for (const S of st) { if (S.cap) { c.fillStyle = '#cfd3d8'; c.beginPath(); c.moveTo(cx - 2.5 * k, Y(21.6)); c.lineTo(cx + 2.5 * k, Y(21.6)); c.lineTo(cx + 1 * k, Y(25.45)); c.lineTo(cx - 1 * k, Y(25.45)); c.fill(); c.fillRect(cx - .78 * k, Y(26.1), 1.56 * k, Y(25.45) - Y(26.1)); continue; }
@@ -231,12 +231,12 @@ function boardDraw() {
       if (it.d && it.d.fins) { c.fillStyle = '#17191d'; for (const sx of [-1, 1]) { c.beginPath(); c.moveTo(cx + sx * it.r * k, Y(it.y0 + 2.9)); c.lineTo(cx + sx * (it.r + 1.3) * k, Y(it.y0 - .5)); c.lineTo(cx + sx * it.r * k, Y(it.y0)); c.fill(); } }
       if (it.d && it.d.legs) { c.strokeStyle = '#8a9099'; c.lineWidth = 3; for (const sx of [-1, 1]) { c.beginPath(); c.moveTo(cx + sx * it.r * k, Y(it.hinge)); c.lineTo(cx + sx * (it.r + .2) * k, Y(it.hinge - 3.2)); c.stroke(); } } } }
   // stages, numbers, what it can reach
-  c.font = '500 26px Fredoka, Arial'; let y = 160; if (s) { for (const r of s.rows.slice().reverse()) { c.fillStyle = '#9fc6ea'; c.fillText(r.S.name, 300, y); c.fillStyle = '#ffffff'; c.textAlign = 'right'; c.fillText(Math.round(r.dv).toLocaleString() + ' m/s', 700, y); c.fillStyle = r.twr >= 1.15 ? '#7ce38b' : r.i === 0 ? '#ff8a6a' : '#cfd8e2'; c.fillText(r.twr ? 'TWR ' + r.twr.toFixed(2) : '—', 900, y); c.textAlign = 'left'; y += 38; }
-    c.strokeStyle = 'rgba(255,255,255,.2)'; c.beginPath(); c.moveTo(300, y - 22); c.lineTo(960, y - 22); c.stroke(); y += 12; c.fillStyle = '#ffcf4a'; c.font = '600 30px Fredoka, Arial'; c.fillText('Δv ' + Math.round(s.tot).toLocaleString() + ' m/s', 300, y);
-    c.fillStyle = '#cfd8e2'; c.font = '500 26px Fredoka, Arial'; c.fillText((s.mass / 1000).toFixed(1) + ' t · ' + s.h.toFixed(1) + ' m tall', 620, y); y += 52;
-    let x = 300; c.font = '500 22px Fredoka, Arial'; for (const [nm, dv] of (typeof DV_NEED !== 'undefined' ? DV_NEED : [])) { const ok = s.tot >= dv, tw = c.measureText(nm).width + 50; if (x + tw > 990) { x = 300; y += 46; }
+  c.font = '500 26px Archivo, Arial'; let y = 160; if (s) { for (const r of s.rows.slice().reverse()) { c.fillStyle = '#9fc6ea'; c.fillText(r.S.name, 300, y); c.fillStyle = '#ffffff'; c.textAlign = 'right'; c.fillText(Math.round(r.dv).toLocaleString() + ' m/s', 700, y); c.fillStyle = r.twr >= 1.15 ? '#7ce38b' : r.i === 0 ? '#ff8a6a' : '#cfd8e2'; c.fillText(r.twr ? 'TWR ' + r.twr.toFixed(2) : '—', 900, y); c.textAlign = 'left'; y += 38; }
+    c.strokeStyle = 'rgba(255,255,255,.2)'; c.beginPath(); c.moveTo(300, y - 22); c.lineTo(960, y - 22); c.stroke(); y += 12; c.fillStyle = '#ffcf4a'; c.font = '600 30px Archivo, Arial'; c.fillText('Δv ' + Math.round(s.tot).toLocaleString() + ' m/s', 300, y);
+    c.fillStyle = '#cfd8e2'; c.font = '500 26px Archivo, Arial'; c.fillText((s.mass / 1000).toFixed(1) + ' t · ' + s.h.toFixed(1) + ' m tall', 620, y); y += 52;
+    let x = 300; c.font = '500 22px Archivo, Arial'; for (const [nm, dv] of (typeof DV_NEED !== 'undefined' ? DV_NEED : [])) { const ok = s.tot >= dv, tw = c.measureText(nm).width + 50; if (x + tw > 990) { x = 300; y += 46; }
       c.fillStyle = ok ? 'rgba(60,190,100,.25)' : 'rgba(255,255,255,.07)'; c.fillRect(x, y - 28, tw, 38); c.fillStyle = ok ? '#7ce38b' : '#8494a8'; c.fillText((ok ? '✓ ' : '· ') + nm, x + 12, y - 2); x += tw + 10; } }
-  c.fillStyle = '#6f87a3'; c.font = '400 22px Fredoka, Arial'; c.fillText('Change it at the build console (F) or with B · F at the stand to fly it', 300, 548); B.t.needsUpdate = true;
+  c.fillStyle = '#6f87a3'; c.font = '400 22px Archivo, Arial'; c.fillText('Change it at the build console (F) or with B · F at the stand to fly it', 300, 548); B.t.needsUpdate = true;
 }
 // your current design standing on the assembly stand (rebuilt when the design changes)
 function hangarRocket() {
@@ -264,7 +264,7 @@ function grounds() {
     L.push(H.beamGeo(new V3(gx, 0, gz), new V3(gx, .12, gz), 21.4, 0xbdbab2, 48));
     const show = new THREE.Group(); [['Hopper', -12, 6], ['Lander', 0, -6], ['Heavy', 12, 6]].forEach(([nm, dx, dz]) => { const m = rocketModel(SHIP_PRESETS[nm], PAINT0); m.g.position.set(gx + dx, 1.6, gz + dz); show.add(m.g);
       L.push(H.boxGeo(gx + dx, 0, gz + dz, 7, 1.6, 7, 0x8e939a), H.boxGeo(gx + dx, 1.55, gz + dz, 7.3, .1, 7.3, 0xcfd3d8)); site.boxes.push({x0: gx + dx - 3.5, x1: gx + dx + 3.5, y0: 0, y1: 1.6, z0: gz + dz - 3.5, z1: gz + dz + 3.5});
-      const t = signTex(512, 160, (c, w, h) => { c.fillStyle = '#16233a'; c.fillRect(0, 0, w, h); c.fillStyle = '#ffcf4a'; c.font = '600 64px Fredoka, Arial'; c.textAlign = 'center'; c.fillText(nm, w / 2, 76); c.fillStyle = '#9fb6cc'; c.font = '28px Fredoka, Arial'; c.fillText(Math.round(m.h) + ' m · ' + (m.st.length - 1) + ' stage' + (m.st.length > 2 ? 's' : ''), w / 2, 126); });
+      const t = signTex(512, 160, (c, w, h) => { c.fillStyle = '#16233a'; c.fillRect(0, 0, w, h); c.fillStyle = '#ffcf4a'; c.font = '600 64px Archivo, Arial'; c.textAlign = 'center'; c.fillText(nm, w / 2, 76); c.fillStyle = '#9fb6cc'; c.font = '28px Archivo, Arial'; c.fillText(Math.round(m.h) + ' m · ' + (m.st.length - 1) + ' stage' + (m.st.length > 2 ? 's' : ''), w / 2, 126); });
       H.decal(t, gx + dx, .8, gz + dz + 3.53, 2.6, .8); });
     g.add(bakeByMat(show)); H.decal(signTex(1024, 256, (x, w, h) => H.logo(x, w, h, 'ROCKET GARDEN')), gx, 1.4, gz + 21.7, 5.6, 1.4); L.push(H.boxGeo(gx, 0, gz + 21.5, 6, .7, .3, 0x2a3442)); }
   // tracking station: radome + dish
@@ -284,7 +284,7 @@ function grounds() {
   const lampM = new THREE.MeshStandardMaterial({color: 0x222222, emissive: 0xffd9a0, emissiveIntensity: 0}); WLD.lampM = lampM;
   const lh = new THREE.InstancedMesh(new THREE.BoxGeometry(.7, .1, .4), lampM, poles.length), M4 = new THREE.Matrix4(); poles.forEach(([x, z], i) => lh.setMatrixAt(i, M4.makeTranslation(x, 7.85, z))); lh.userData.tile = [800, 3000]; g.add(lh);
   // signs
-  H.decal(signTex(1024, 256, (c, w, h) => { c.fillStyle = '#1f6b3a'; c.fillRect(0, 0, w, h); c.strokeStyle = '#fff'; c.lineWidth = 10; c.strokeRect(14, 14, w - 28, h - 28); c.fillStyle = '#fff'; c.font = '600 110px Fredoka, Arial'; c.textAlign = 'center'; c.fillText('YEVILLE', w / 2, 140); c.font = '44px Fredoka, Arial'; c.fillText('pop. 1,204 · Home of YeShip', w / 2, 210); }), -641, 3, 30, 6, 1.5, Math.PI / 2);
+  H.decal(signTex(1024, 256, (c, w, h) => { c.fillStyle = '#1f6b3a'; c.fillRect(0, 0, w, h); c.strokeStyle = '#fff'; c.lineWidth = 10; c.strokeRect(14, 14, w - 28, h - 28); c.fillStyle = '#fff'; c.font = '600 110px Archivo, Arial'; c.textAlign = 'center'; c.fillText('YEVILLE', w / 2, 140); c.font = '44px Archivo, Arial'; c.fillText('pop. 1,204 · Home of YeShip', w / 2, 210); }), -641, 3, 30, 6, 1.5, Math.PI / 2);
   box(-641.2, 0, 30, .3, 2.2, .3, 0x666666, false);
 }
 // ---------------- Yeville: houses, apartment blocks, a water tower, parked cars
@@ -318,7 +318,7 @@ function town() {
   // plaza + water tower
   const L = []; L.push(H.boxGeo(-650, -.9, -600, 54, 1, 54, 0x7d7870)); const wx = -760, wz = -690; for (const [dx, dz] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) L.push(H.beamGeo(new V3(wx + dx * 4, 0, wz + dz * 4), new V3(wx + dx * 2.5, 26, wz + dz * 2.5), .3, 0x9aa4ae));
   H.addMerged(L); const wt = new THREE.Mesh(new THREE.SphereGeometry(6, 24, 16), new THREE.MeshStandardMaterial({color: 0x6fa8dc, roughness: .5, metalness: .2})); wt.position.set(wx, 31, wz); wt.castShadow = true; g.add(wt);
-  H.decal(H.signTex(512, 128, (c, w, h) => { c.fillStyle = '#6fa8dc'; c.fillRect(0, 0, w, h); c.fillStyle = '#fff'; c.font = '700 84px Fredoka, Arial'; c.textAlign = 'center'; c.fillText('YEVILLE', w / 2, 96); }), wx, 31, wz + 6.05, 8, 2);
+  H.decal(H.signTex(512, 128, (c, w, h) => { c.fillStyle = '#6fa8dc'; c.fillRect(0, 0, w, h); c.fillStyle = '#fff'; c.font = '700 84px Archivo, Arial'; c.textAlign = 'center'; c.fillText('YEVILLE', w / 2, 96); }), wx, 31, wz + 6.05, 8, 2);
   // parked cars: the staff car park + along the streets
   const carGeo = (() => { const parts = [H.boxGeo(0, .3, 0, 1.8, .7, 4.3, 0xffffff), H.boxGeo(0, 1, -.2, 1.6, .62, 2.3, 0x1b2129)]; for (const dx of [-.82, .82]) for (const dz of [-1.35, 1.35]) parts.push(H.beamGeo(new V3(dx - .12, .34, dz), new V3(dx + .12, .34, dz), .34, 0x111111, 10)); return H.mergeGeos(parts); })();
   const cars = []; for (let i = 0; i < 12; i++) for (const x of [-72, -50]) if (r() < .7) cars.push([x, -21.8 + i * 4.4, x < -60 ? Math.PI / 2 : -Math.PI / 2]);
@@ -423,4 +423,4 @@ mapBuild = function (budget = 2.5) {
     const w = _sv.copy(site.p).applyQuaternion(PLANET.q).multiplyScalar(.001).add(MAPV.pl.position); if (_cv.copy(MAPV.cam.position).sub(w).dot(_sv.clone().sub(MAPV.pl.position)) < 0) return;
     const p = w.clone().project(MAPV.cam); if (p.z > 1) return; const sx = (p.x * .5 + .5) * innerWidth, sy = (-p.y * .5 + .5) * innerHeight;
     x.fillStyle = '#ffcf4a'; x.strokeStyle = '#0b1424'; x.lineWidth = 2; x.beginPath(); x.moveTo(sx, sy - 8); x.lineTo(sx + 4, sy + 3); x.lineTo(sx - 4, sy + 3); x.closePath(); x.stroke(); x.fill();
-    x.font = '600 11px Fredoka, sans-serif'; x.textAlign = 'left'; x.fillStyle = 'rgba(255,207,74,.9)'; x.fillText('Space Centre', sx + 7, sy + 3); }; }
+    x.font = '600 11px Archivo, sans-serif'; x.textAlign = 'left'; x.fillStyle = 'rgba(255,207,74,.9)'; x.fillText('Space Centre', sx + 7, sy + 3); }; }

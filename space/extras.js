@@ -106,7 +106,7 @@ const _xq = new V3();
 // ---------------- the map: mark the mystery site; mission card hint for the landing target
 { const mr = mapRender; mapRender = function (dt) { mr(dt); if (!MYS.dir || (MIS.done.mystery && MIS.cur !== 'mystery')) return; const x = MAPV.x, p = _xq.copy(MYS.pos).applyQuaternion(MOON.q).multiplyScalar(.001).add(MAPV.mo.position).project(MAPV.cam);
     if (p.z > 1) return; const sx = (p.x * .5 + .5) * innerWidth, sy = (-p.y * .5 + .5) * innerHeight; x.fillStyle = '#ff7ad9'; x.beginPath(); x.moveTo(sx, sy - 7); x.lineTo(sx + 6, sy); x.lineTo(sx, sy + 7); x.lineTo(sx - 6, sy); x.fill();
-    x.font = '600 12px Fredoka, sans-serif'; x.textAlign = 'center'; x.fillText('?', sx, sy - 11); x.textAlign = 'left'; }; }
+    x.font = '600 12px Archivo, sans-serif'; x.textAlign = 'center'; x.fillText('?', sx, sy - 11); x.textAlign = 'left'; }; }
 { const mp = misPoll; misPoll = function (dt) { mp(dt); if (R.st === 'landed' && R.body === MOON && MYS.dir && R.lp.distanceTo(MYS.pos) < 2000) FLOG.mysLand = true; }; }
 
 // ---------------- hooks

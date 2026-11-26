@@ -125,7 +125,7 @@ function vesFrame(dt) {
   for (const V of VES.list) { vesState(V, G.t, _tP, _tV); V.pos = V.pos || new V3(); V.vel = V.vel || new V3(); V.pos.copy(_tP); V.vel.copy(_tV); const d = _tP.distanceTo(cam0); V.dCam = d;
     if (d < 4e5) { if (!V.g) vesBuild(V); V.g.visible = true; V.g.position.copy(_tP).sub(G.O); V.g.quaternion.copy(V.q); if (V.g.userData.beacon) V.g.userData.beacon.visible = (G.t * 1.3 % 1) < .12; }
     else if (V.g) V.g.visible = false;
-    if (V.anim) { const a = V.anim; a.t += dt / Math.max(1, G.warp > 4 ? 1 : 1); const u = sstep(0, 1, Math.min(1, a.t / 4)); if (a.m.g) a.m.g.position.lerpVectors(a.from, a.m.p, u); if (a.t >= 4) { V.anim = null; if (a.m.g) a.m.g.position.copy(a.m.p); sfx('thud'); showHint('Module docked to ' + V.name + ' ✓', 2500); } }
+    if (V.anim) { const a = V.anim; a.t += dt / Math.max(1, G.warp > 4 ? 1 : 1); const u = sstep(0, 1, Math.min(1, a.t / 4)); if (a.m.g) a.m.g.position.lerpVectors(a.from, a.m.p, u); if (a.t >= 4) { V.anim = null; if (a.m.g) a.m.g.position.copy(a.m.p); sfx('thud'); showHint('Module docked to ' + V.name + '', 2500); } }
     const ds = R.pos.distanceTo(_tP); if (ds < nd) { nd = ds; near = V; } }
   VES.near = near; VES.nearD = nd;
   // bay doors + wings unfolding on released modules
@@ -250,18 +250,16 @@ function stationHud(dt) { const tag = $('stTag'), inf = $('stInfo'), V = VES.tgt
   if (!G.on || !V || MAPV.on || (typeof BLD !== 'undefined' && BLD.on)) { tag.classList.add('hidden'); inf.classList.add('hidden'); return; }
   vesState(V, G.t, _tP, _tV); const rel = _t1s.copy(_tP).sub(G.O), d = R.pos.distanceTo(_tP), rv = R.vel.distanceTo(_tV); _t2s.copy(rel).project(cam);
   const vis = _t2s.z < 1 && Math.abs(_t2s.x) < 1.05 && Math.abs(_t2s.y) < 1.05 && rel.length() > 30;
-  tag.classList.toggle('hidden', !vis); if (vis) { tag.style.left = ((_t2s.x * .5 + .5) * innerWidth) + 'px'; tag.style.top = ((-_t2s.y * .5 + .5) * innerHeight) + 'px'; tag.textContent = '◎ ' + V.name + ' · ' + fmtD(rel.length()); }
+  tag.classList.toggle('hidden', !vis); if (vis) { tag.style.left = ((_t2s.x * .5 + .5) * innerWidth) + 'px'; tag.style.top = ((-_t2s.y * .5 + .5) * innerHeight) + 'px'; tag.textContent = V.name + ' · ' + fmtD(rel.length()); }
   if ((stHudT -= dt) > 0) return; stHudT = .2;
   const show = R.on && (R.st === 'fly' || R.st === 'docked') && (d < 2e5 || VES.tgt === V); inf.classList.toggle('hidden', !show); if (!show) return;
   const closing = -R.pos.clone().sub(_tP).dot(_t3s.copy(R.vel).sub(_tV)) / Math.max(1, d), cargo = cargoNext();
-  let s = '<b>◎ ' + V.name + '</b> · ' + fmtD(d) + ' · ' + (Math.abs(closing) < .05 ? 'holding' : closing > 0 ? 'closing ' + closing.toFixed(1) + ' m/s' : 'opening ' + (-closing).toFixed(1) + ' m/s') + ' · rel ' + rv.toFixed(1) + ' m/s';
+  let s = '<b>' + V.name + '</b> · ' + fmtD(d) + ' · ' + (Math.abs(closing) < .05 ? 'holding' : closing > 0 ? 'closing ' + closing.toFixed(1) + ' m/s' : 'opening ' + (-closing).toFixed(1) + ' m/s') + ' · rel ' + rv.toFixed(1) + ' m/s';
   if (R.st === 'docked') s += ' · <span class="k">H</span> undock'; else if (DK.ap) s += ' · <span class="ok">docking…</span> <span class="k">H</span> cancel';
   else if (d < 20000 && rv < 60) s += ' · <span class="k">H</span> auto-dock'; else if (d < 60000) s += ' · <span class="k">8</span> kill rel. speed';
   if (cargo && (R.st === 'fly' || R.st === 'docked')) s += ' · <span class="k">K</span> release ' + MODULES[cargo.b.k].name.toLowerCase();
   if (inf._h !== s) { inf._h = s; inf.innerHTML = s; } }
-{ const st = document.createElement('style'); st.textContent = `#stTag { position:fixed; z-index:4; pointer-events:none; transform:translate(-50%,-140%); padding:2px 9px; border-radius:11px; background:rgba(10,8,24,.55); color:#c9b4ff; font-size:13px; font-weight:600; white-space:nowrap; }
-#stInfo { position:fixed; left:50%; top:52px; transform:translateX(-50%); z-index:5; pointer-events:none; padding:5px 14px; border-radius:12px; background:rgba(10,8,24,.62); border:1px solid rgba(201,180,255,.3); color:var(--dim); font-size:13px; white-space:nowrap; max-width:96vw; overflow:hidden; text-overflow:ellipsis; }
-#stInfo b { color:#c9b4ff; } #stInfo .k { color:var(--acc); font-weight:600; } #stInfo .ok { color:#8fe6ad; }`; document.head.appendChild(st); }
+
 
 // ---------------- map: station orbits, markers and the closest approach
 { const mr0 = mapRender; mapRender = function (dt) { mr0(dt); const M = MAPV, x = M.x, cam2 = M.cam, W = innerWidth, H = innerHeight, q = new V3();
@@ -269,13 +267,13 @@ function stationHud(dt) { const tag = $('stTag'), inf = $('stInfo'), V = VES.tgt
   for (const V of VES.list) { const b = BODIES[V.b], tg = V === VES.tgt, r = V.r.length(), vv2 = V.v.lengthSq(), a = 1 / (2 / r - vv2 / b.GM); if (!(a > 0)) continue; const P = 2 * Math.PI * Math.sqrt(a * a * a / b.GM);
     x.strokeStyle = tg ? 'rgba(201,180,255,.75)' : 'rgba(201,180,255,.28)'; x.lineWidth = tg ? 1.6 : 1; x.beginPath(); for (let i = 0; i <= 120; i++) { const s = prj(vesState(V, G.t + P * i / 120, _t1s)); i ? x.lineTo(s.x, s.y) : x.moveTo(s.x, s.y); } x.stroke();
     const s = prj(vesState(V, G.t, _t1s)); if (!s.ok) continue; x.fillStyle = tg ? '#c9b4ff' : '#9d8fc4'; x.save(); x.translate(s.x, s.y); x.rotate(Math.PI / 4); x.fillRect(-4, -4, 8, 8); x.restore();
-    x.font = '600 12px Fredoka, sans-serif'; x.textAlign = 'center'; x.fillText(V.name + (tg ? ' ◎' : ''), s.x, s.y - 10); x.textAlign = 'left'; }
+    x.font = '600 12px Archivo, sans-serif'; x.textAlign = 'center'; x.fillText(V.name + (tg ? ' (target)' : ''), s.x, s.y - 10); x.textAlign = 'left'; }
   const V = VES.tgt; if (V && R.st === 'fly' && (M.ct = (M.ct || 0) - dt) <= 0) { M.ct = .5; const b = BODIES[V.b]; M.cA = domBody(R.pos) === b ? closest(V, R.pos, R.vel, G.t, orbitPeriod(R.pos, R.vel, b)) : null;
     M.cB = NODE && NODE.pos && NODE.vel && domBody(NODE.pos) === b ? closest(V, NODE.pos, NODE.vel.clone().add(NODE.bv), NODE.t, orbitPeriod(NODE.pos, NODE.vel.clone().add(NODE.bv), b)) : null; }
   if (V && R.st === 'fly') for (const [c, base, col] of [[M.cA, null, '#9fb6cc'], [M.cB, NODE, '#c9b4ff']]) { if (!c || c.d > 2e6) continue; const b = BODIES[V.b];
     const p = base ? kepler(base.pos.clone().sub(b.c), base.vel.clone().add(base.bv), b.GM, c.t - base.t, new V3()).add(b.c) : kepler(R.pos.clone().sub(b.c), R.vel.clone(), b.GM, c.t - G.t, new V3()).add(b.c);
     const s = prj(p), s2 = prj(vesState(V, c.t, _t1s)); if (!s.ok) continue; x.strokeStyle = col; x.setLineDash([3, 4]); x.beginPath(); x.moveTo(s.x, s.y); x.lineTo(s2.x, s2.y); x.stroke(); x.setLineDash([]);
-    x.font = '600 12px Fredoka, sans-serif'; x.fillStyle = col; x.fillText((base ? 'After burn: ' : 'Closest: ') + fmtD(c.d) + ' in ' + fmtS(c.t - G.t), s.x + 8, s.y + 14); } }; }
+    x.font = '600 12px Archivo, sans-serif'; x.fillStyle = col; x.fillText((base ? 'After burn: ' : 'Closest: ') + fmtD(c.d) + ' in ' + fmtS(c.t - G.t), s.x + 8, s.y + 14); } }; }
 
 // ---------------- builder: pick the module a cargo bay carries
 { const cat0 = bldCatalog; bldCatalog = function () { cat0(); const host = $('bldParts'), at = host.querySelector('#bldPaint'); if (!at) return; const hd = document.createElement('div'); hd.className = 'bt'; hd.textContent = 'Cargo bay module'; const box = document.createElement('div'); box.id = 'bldCargo';

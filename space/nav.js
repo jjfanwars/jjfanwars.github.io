@@ -57,7 +57,7 @@ function nodeMakeQuiet(t, dv) { NODE = {t, dv, bv: NV3(), auto: false, burning: 
 function autoStep() {
   if (!NODE || !R.on || R.st !== 'fly') return;
   const rem = navRem(), rl = rem.length(), tStart = NODE.t - NODE.burn / 2;
-  if (NODE.burning || G.t >= tStart - .5) { if (rl < .35 || rem.dot(NODE.bv) < 0) { if (NODE.auto || NODE.burning) R.thr = 0; nodeKill('Burn done ✓'); sfx && SND.c && warnTone(1100, 1); return; } }
+  if (NODE.burning || G.t >= tStart - .5) { if (rl < .35 || rem.dot(NODE.bv) < 0) { if (NODE.auto || NODE.burning) R.thr = 0; nodeKill('Burn done'); sfx && SND.c && warnTone(1100, 1); return; } }
   if (!NODE.auto) { if (R.F > 0 && G.t > tStart - 5) NODE.burning = true; return; }
   if (R.sas !== 'node') { R.sas = 'node'; R.hold.copy(R.q); }
   const ang = Math.acos(clamp(nose(_q1).dot(_q2.copy(rem).normalize()), -1, 1));
@@ -78,7 +78,7 @@ function nodeMapPos(out) { let bi = 0, bd = Infinity; for (let i = 0; i < PRED.n
     for (let i = 0; i < PRED2.n; i++) { drawPoint(i, _np, PRED2); prj(_np, _nq); const f = PRED2.f[i]; if (open && f !== pf) { x.stroke(); open = false; }
       if (!open) { x.beginPath(); x.strokeStyle = f > 0 ? '#ff7ad9' : '#c9b4ff'; x.moveTo(_nq.x, _nq.y); open = true; pf = f; } else if (_nq.ok) x.lineTo(_nq.x, _nq.y); }
     if (open) x.stroke(); x.restore();
-    const lab = (p, txt, col) => { prj(p, _nq); if (!_nq.ok) return; x.font = '600 12px Fredoka, sans-serif'; const w = x.measureText(txt).width; x.fillStyle = 'rgba(0,0,0,.55)'; x.fillRect(_nq.x - w / 2 - 6, _nq.y - 28, w + 12, 17); x.fillStyle = col; x.textAlign = 'center'; x.fillText(txt, _nq.x, _nq.y - 15.5); x.textAlign = 'left'; };
+    const lab = (p, txt, col) => { prj(p, _nq); if (!_nq.ok) return; x.font = '600 12px Archivo, sans-serif'; const w = x.measureText(txt).width; x.fillStyle = 'rgba(0,0,0,.55)'; x.fillRect(_nq.x - w / 2 - 6, _nq.y - 28, w + 12, 17); x.fillStyle = col; x.textAlign = 'center'; x.fillText(txt, _nq.x, _nq.y - 15.5); x.textAlign = 'left'; };
     nodeMapPos(_np); prj(_np, _nq); if (_nq.ok) { x.fillStyle = '#c9b4ff'; x.strokeStyle = '#1a1030'; x.lineWidth = 2; x.beginPath(); x.moveTo(_nq.x, _nq.y - 9); x.lineTo(_nq.x + 9, _nq.y); x.lineTo(_nq.x, _nq.y + 9); x.lineTo(_nq.x - 9, _nq.y); x.closePath(); x.stroke(); x.fill(); NAV.nx = _nq.x; NAV.ny = _nq.y; }
     lab(_np, 'Burn ' + Math.round(NODE.bv.length()) + ' m/s · ' + fmtS(NODE.t - G.t), '#c9b4ff');
     if (PRED2.enc && PRED2.start === 0) lab(drawPoint(PRED2.enc.i, _np, PRED2), PRED2.enc.b.name + ' · pass ' + (PRED2.moonPe < 0 ? 'hits' : fmtD(PRED2.moonPe)), '#ff7ad9');
@@ -144,7 +144,7 @@ function guideAuto() {
 // ---------------- time warp bar (click it, or , . keys) with the reason it is capped
 function warpBar() { const el = $('warpW'); if (!G.on) { el.classList.add('hidden'); return; } el.classList.remove('hidden');
   const dots = el.querySelectorAll('i'); dots.forEach((d, i) => d.classList.toggle('on', i <= G.wi)); setTxt('wwT', '×' + G.warp.toLocaleString('en') + (R.warpTo ? ' →' : '')); }
-{ const el = $('warpW'); el.innerHTML = '<button id="wwD" title="Slower (,)">◀</button><span id="wwT">×1</span>' + WARPS.map((w, i) => '<i data-i="' + i + '" title="×' + w + '"></i>').join('') + '<button id="wwU" title="Faster (.)">▶</button><button id="wwN" title="Warp to the next event: burn node, Ap or Pe (N)">N</button>';
+{ const el = $('warpW'); el.innerHTML = '<button id="wwD" title="Slower (,)" aria-label="Slower"><span class="ico i-l"></span></button><span id="wwT">×1</span>' + WARPS.map((w, i) => '<i data-i="' + i + '" title="×' + w + '"></i>').join('') + '<button id="wwU" title="Faster (.)" aria-label="Faster"><span class="ico i-r"></span></button><button id="wwN" title="Warp to the next event: burn node, Ap or Pe (N)">N</button>';
   $('wwD').onclick = e => { e.stopPropagation(); setWarp(G.wi - 1); }; $('wwU').onclick = e => { e.stopPropagation(); setWarp(G.wi + 1); }; $('wwN').onclick = e => { e.stopPropagation(); warpNext(); };
   el.querySelectorAll('i').forEach(d => d.onclick = e => { e.stopPropagation(); setWarp(+d.dataset.i); }); }
 { const v0 = FLIGHT.visuals; FLIGHT.visuals = dt => { v0(dt); warpBar(); }; }

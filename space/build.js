@@ -123,7 +123,7 @@ function bldPanels() {
   n += '<table class="btab"><tr><th>Stage</th><th>Δv</th><th>TWR Home</th><th>TWR Moon</th><th>Burn</th></tr>';
   for (const r of s.rows.slice().reverse()) n += '<tr><td>' + (r.i + 1) + ' ' + r.S.name + '</td><td>' + (r.dv ? Math.round(r.dv) : '—') + '</td><td class="' + (r.i === 0 && r.twr < 1 ? 'bad' : '') + '">' + (r.twr ? r.twr.toFixed(2) : '—') + '</td><td>' + (r.twrM ? r.twrM.toFixed(1) : '—') + '</td><td>' + (r.burn ? fmtS(r.burn) : '—') + '</td></tr>';
   n += '</table><div class="bneed">' + DV_NEED.map(([t, v]) => '<span class="' + (s.tot >= v ? 'ok' : '') + '">' + t + ' ≈ ' + (v / 1000).toFixed(1) + '</span>').join('') + '</div>';
-  if (warn.length) n += '<div class="bwarn">' + warn.map(w => '<div>⚠ ' + w + '</div>').join('') + '</div>';
+  if (warn.length) n += '<div class="bwarn">' + warn.map(w => '<div><span class="ico i-warn"></span> ' + w + '</div>').join('') + '</div>';
   $('bldNum').innerHTML = n;
   // radial buttons light up when the selected part has them
   $('bldParts').querySelectorAll('[data-rad]').forEach(b => { b.classList.toggle('on', !!(sel && sel[b.dataset.rad])); b.disabled = !sel || PARTS[sel.k].k === 'dec' || (b.dataset.rad === 'legs' && PARTS[sel.k].cat !== 'tank'); });

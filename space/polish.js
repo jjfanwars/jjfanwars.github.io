@@ -10,27 +10,27 @@ function attFrame() { const b = domBody(R.pos), A = ATT; A.up.copy(R.pos).sub(b.
 function attPolar(d) { const A = ATT, el = Math.asin(clamp(d.dot(A.up), -1, 1)), az = Math.atan2(d.dot(A.ea), d.dot(A.no)); return {el, az, r: (Math.PI / 2 - el) / Math.PI}; } // r: 0 zenith, .5 horizon, 1 straight down
 function attDial(dt) {
   const cv = HUDE.fAtt || (HUDE.fAtt = $('fAtt')); if (!cv || (ATT.t -= dt) > 0) return; ATT.t = .1;
-  const S = 88, dpr = Math.min(2, devicePixelRatio || 1); if (cv.width !== S * dpr) { cv.width = cv.height = S * dpr; }
+  const S = 96, dpr = Math.min(2, devicePixelRatio || 1); if (cv.width !== S * dpr) { cv.width = cv.height = S * dpr; }
   const x = cv.getContext('2d'), c = S / 2, Rr = S / 2 - 4; x.setTransform(dpr, 0, 0, dpr, 0, 0); x.clearRect(0, 0, S, S); attFrame();
   // ground (outer half) and sky (inner half)
-  x.fillStyle = 'rgba(120,84,52,.5)'; x.beginPath(); x.arc(c, c, Rr, 0, 7); x.fill();
-  const sky = x.createRadialGradient(c, c, 0, c, c, Rr / 2); sky.addColorStop(0, 'rgba(40,90,170,.55)'); sky.addColorStop(1, 'rgba(90,160,230,.55)'); x.fillStyle = sky; x.beginPath(); x.arc(c, c, Rr / 2, 0, 7); x.fill();
-  x.strokeStyle = 'rgba(255,255,255,.18)'; x.lineWidth = 1; for (const k of [1 / 6, 1 / 3, 2 / 3, 5 / 6]) { x.beginPath(); x.arc(c, c, Rr * k, 0, 7); x.stroke(); }
-  x.strokeStyle = 'rgba(255,255,255,.75)'; x.lineWidth = 1.5; x.beginPath(); x.arc(c, c, Rr / 2, 0, 7); x.stroke(); // horizon
-  x.strokeStyle = 'rgba(255,255,255,.3)'; x.lineWidth = 1; x.beginPath(); x.arc(c, c, Rr, 0, 7); x.stroke();
-  x.font = '600 9px Fredoka, sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillStyle = 'rgba(234,244,255,.8)';
+  x.fillStyle = '#DEDDD7'; x.beginPath(); x.arc(c, c, Rr, 0, 7); x.fill();
+  x.fillStyle = '#FFFFFF'; x.beginPath(); x.arc(c, c, Rr / 2, 0, 7); x.fill();
+  x.strokeStyle = 'rgba(18,19,20,.14)'; x.lineWidth = 1; for (const k of [1 / 6, 1 / 3, 2 / 3, 5 / 6]) { x.beginPath(); x.arc(c, c, Rr * k, 0, 7); x.stroke(); }
+  x.strokeStyle = '#121314'; x.lineWidth = 1.5; x.beginPath(); x.arc(c, c, Rr / 2, 0, 7); x.stroke(); // horizon
+  x.strokeStyle = '#121314'; x.lineWidth = 1; x.beginPath(); x.arc(c, c, Rr, 0, 7); x.stroke();
+  x.font = '600 9px Archivo, sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillStyle = '#5A5E63';
   [['N', 0], ['E', Math.PI / 2], ['S', Math.PI], ['W', -Math.PI / 2]].forEach(([l, a]) => x.fillText(l, c + Math.sin(a) * (Rr * .5 + 7.5), c - Math.cos(a) * (Rr * .5 + 7.5)));
   const at = d => { const p = attPolar(d); return [c + Math.sin(p.az) * p.r * Rr, c - Math.cos(p.az) * p.r * Rr, p]; };
   // markers: prograde (green), retrograde (orange), guide (blue)
   const v = relVel(ATT.v), fly = R.st === 'fly' && v.length() > 3; v.normalize();
-  if (fly) { let [px, py] = at(v); x.strokeStyle = '#c8f25a'; x.lineWidth = 2; x.beginPath(); x.arc(px, py, 4.5, 0, 7); x.stroke();
-    [px, py] = at(ATT.d.copy(v).negate()); x.strokeStyle = '#ffb347'; x.beginPath(); x.moveTo(px - 4, py - 4); x.lineTo(px + 4, py + 4); x.moveTo(px + 4, py - 4); x.lineTo(px - 4, py + 4); x.stroke(); }
-  if (R.sas === 'guide' || guideOn()) { const [gx, gy] = at(guideDir(ATT.d)); x.strokeStyle = '#5ad1ff'; x.lineWidth = 2; x.strokeRect(gx - 4, gy - 4, 8, 8); }
+  if (fly) { let [px, py] = at(v); x.strokeStyle = '#121314'; x.lineWidth = 1.5; x.beginPath(); x.arc(px, py, 4.5, 0, 7); x.stroke(); x.beginPath(); x.moveTo(px, py - 4.5); x.lineTo(px, py - 8); x.moveTo(px - 4.5, py); x.lineTo(px - 8, py); x.moveTo(px + 4.5, py); x.lineTo(px + 8, py); x.stroke();
+    [px, py] = at(ATT.d.copy(v).negate()); x.strokeStyle = '#5A5E63'; x.beginPath(); x.moveTo(px - 4, py - 4); x.lineTo(px + 4, py + 4); x.moveTo(px + 4, py - 4); x.lineTo(px - 4, py + 4); x.stroke(); }
+  if (R.sas === 'guide' || guideOn()) { const [gx, gy] = at(guideDir(ATT.d)); x.strokeStyle = '#121314'; x.lineWidth = 1; x.setLineDash([2, 2]); x.strokeRect(gx - 5, gy - 5, 10, 10); x.setLineDash([]); }
   // the nose: yellow pointer from the middle
-  const [nx, ny, np] = at(nose(ATT.d)); x.strokeStyle = 'rgba(255,207,74,.55)'; x.lineWidth = 1.5; x.beginPath(); x.moveTo(c, c); x.lineTo(nx, ny); x.stroke();
-  x.fillStyle = '#ffcf4a'; x.strokeStyle = '#000'; x.lineWidth = 1.5; x.beginPath(); x.arc(nx, ny, 4, 0, 7); x.fill(); x.stroke();
+  const [nx, ny, np] = at(nose(ATT.d)); x.strokeStyle = 'rgba(216,52,42,.6)'; x.lineWidth = 1.5; x.beginPath(); x.moveTo(c, c); x.lineTo(nx, ny); x.stroke();
+  x.fillStyle = '#D8342A'; x.beginPath(); x.arc(nx, ny, 4, 0, 7); x.fill();
   const pit = Math.round(np.el * 180 / Math.PI), hdg = Math.round(((np.az * 180 / Math.PI) + 360) % 360);
-  setTxt('fAttT', (pit >= 0 ? '▲ ' : '▼ ') + Math.abs(pit) + '° · ' + (Math.abs(pit) > 85 ? '—' : String(hdg).padStart(3, '0') + '°'));
+  setTxt('fAttT', 'Pitch ' + (pit >= 0 ? '+' : '−') + Math.abs(pit) + '° · Hdg ' + (Math.abs(pit) > 85 ? '—' : String(hdg).padStart(3, '0') + '°'));
 }
 
 // ---------------- flight report: a card after every landing or crash (stats, landing grade, missions done on the way)

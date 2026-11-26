@@ -138,12 +138,12 @@ function mapRender(dt) {
   // Home's air line + Moon's sphere of influence (dashed rings), and a distance scale bar
   { const rgt = _mr.setFromMatrixColumn(cam2.matrixWorld, 0), pxR = (c3, r) => { const a = prj(c3), ax = a.x, ay = a.y, ok = a.ok, e = prj(_me.copy(c3).addScaledVector(rgt, r)); return ok ? {x: ax, y: ay, r: Math.hypot(e.x - ax, e.y - ay)} : null; };
     const ring = (c, col, txt) => { if (!c || c.r < 8 || c.r > 3 * Math.max(W, H)) return; x.save(); x.setLineDash([5, 6]); x.strokeStyle = col; x.lineWidth = 1.2; x.beginPath(); x.arc(c.x, c.y, c.r, 0, 7); x.stroke(); x.restore();
-      if (txt && c.y - c.r > 30) { x.font = '600 11px Fredoka, sans-serif'; x.fillStyle = col; x.textAlign = 'center'; x.fillText(txt, c.x, c.y - c.r - 5); x.textAlign = 'left'; } };
+      if (txt && c.y - c.r > 30) { x.font = '600 11px Archivo, sans-serif'; x.fillStyle = col; x.textAlign = 'center'; x.fillText(txt, c.x, c.y - c.r - 5); x.textAlign = 'left'; } };
     const pl = pxR(_pz, PLANET.R / 1000), air = pxR(_pz, (PLANET.R + PLANET.atmo) / 1000); if (pl && air && air.r - pl.r > 3) ring(air, 'rgba(120,190,255,.45)', air.r - pl.r > 14 ? 'Edge of the air' : '');
     SATS.forEach((b, k) => ring(pxR(M.sm[k].position, b.soi / 1000), 'rgba(90,209,255,.38)', (b === MOON ? "Moon" : b.name) + "'s pull"));
     const f1 = pxR(fc, 1); if (f1 && f1.r > 0) { const nice = [10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000, 50000]; let km = nice[0]; for (const n of nice) if (n * f1.r <= 150) km = n; const L = km * f1.r;
       if (L > 20) { const y0 = H - 22; x.strokeStyle = 'rgba(207,227,247,.75)'; x.lineWidth = 2; x.beginPath(); x.moveTo(16, y0 - 5); x.lineTo(16, y0); x.lineTo(16 + L, y0); x.lineTo(16 + L, y0 - 5); x.stroke();
-        x.font = '600 12px Fredoka, sans-serif'; x.fillStyle = 'rgba(207,227,247,.9)'; x.fillText(km.toLocaleString('en') + ' km', 16, y0 - 9); } } }
+        x.font = '600 12px Archivo, sans-serif'; x.fillStyle = 'rgba(207,227,247,.9)'; x.fillText(km.toLocaleString('en') + ' km', 16, y0 - 9); } } }
   // predicted path: colour per segment, dim where hidden behind a body
   const P_ = PRED, cols = ['#c8f25a', '#5ad1ff'], pt = new V3(), q = {}; let prev = null, pf = -1, ph = null;
   for (let i = 0; i < P_.n; i++) { drawPoint(i, pt); prj(pt, q); const h = hid(pt), f = P_.exit && i >= P_.exit.i ? 2 : P_.f[i];
@@ -152,8 +152,8 @@ function mapRender(dt) {
   if (prev) x.stroke(); x.globalAlpha = 1;
   // labels
   const lab = (p3, txt, col, dot = true) => { const s = prj(p3); if (!s.ok) return; if (dot) { x.fillStyle = col; x.beginPath(); x.arc(s.x, s.y, 4, 0, 7); x.fill(); }
-    x.font = '600 12px Fredoka, sans-serif'; const w = x.measureText(txt).width; x.fillStyle = 'rgba(0,0,0,.5)'; x.fillRect(s.x - w / 2 - 6, s.y - 26, w + 12, 17); x.fillStyle = col; x.textAlign = 'center'; x.fillText(txt, s.x, s.y - 13.5); x.textAlign = 'left'; };
-  lab(_pz, PLANET.name, '#9fb6cc', false); SATS.forEach((b, k) => lab(M.sm[k].position, b.name + (b === navTarget() ? ' ◎' : ''), b === navTarget() ? '#c9b4ff' : '#9fb6cc', false));
+    x.font = '600 12px Archivo, sans-serif'; const w = x.measureText(txt).width; x.fillStyle = 'rgba(0,0,0,.5)'; x.fillRect(s.x - w / 2 - 6, s.y - 26, w + 12, 17); x.fillStyle = col; x.textAlign = 'center'; x.fillText(txt, s.x, s.y - 13.5); x.textAlign = 'left'; };
+  lab(_pz, PLANET.name, '#9fb6cc', false); SATS.forEach((b, k) => lab(M.sm[k].position, b.name + (b === navTarget() ? ' (target)' : ''), b === navTarget() ? '#c9b4ff' : '#9fb6cc', false));
   if (R.st === 'fly') { const b = domBody(R.pos), o = orbitEl(b), rr = R.pos.clone().sub(b.c), vv = R.vel.clone(); if (b !== PLANET) vv.sub(satVel(b, G.t, new V3()));
     const hv = rr.clone().cross(vv), ev = vv.clone().cross(hv).multiplyScalar(1 / b.GM).sub(rr.clone().normalize()), ed = ev.lengthSq() > 1e-12 ? ev.normalize() : rr.clone().normalize(), bc = toMap(b.c, new V3());
     if (o.ap !== Infinity && o.ap + b.R < (b !== PLANET ? b.soi : 8e7) && o.e > .002) lab(ed.clone().multiplyScalar(-(o.ap + b.R) * .001).add(bc), 'Ap ' + fmtD(o.ap) + ' · ' + fmtS(o.tAp), '#7fd4ff');
@@ -173,7 +173,7 @@ function mapInfo(dt) { if ((mapInfoT -= dt) > 0) return; mapInfoT = .25; const e
   else { const b = domBody(R.pos), o = orbitEl(b), inO = o.pe > (b === PLANET ? PLANET.atmo : 3000) && o.ap !== Infinity && (b === PLANET || o.ap + b.R < b.soi);
     L.push('<div class="h">' + (inO ? 'Orbiting ' + (b === PLANET ? PLANET.name : nm(b)) : o.ap === Infinity || (b !== PLANET && o.ap + b.R > b.soi) ? 'Escaping ' + (b === PLANET ? PLANET.name : nm(b)) : 'Falling back to ' + (b === PLANET ? PLANET.name : nm(b))) + '</div>');
     L.push('Ap <b>' + (o.ap === Infinity ? 'escape' : fmtD(o.ap)) + '</b> · Pe <b>' + fmtD(o.pe) + '</b>' + (inO ? ' · lap <b>' + fmtS(o.period) + '</b>' : ''));
-    if (b === PLANET) { L.push('Tilt to the equator <b>' + Math.round(o.inc * 180 / Math.PI) + '°</b> · target <b style="color:#c9b4ff">' + T.name + '</b> (Tab)');
+    if (b === PLANET) { L.push('Tilt to the equator <b>' + Math.round(o.inc * 180 / Math.PI) + '°</b> · target <b>' + T.name + '</b> (Tab)');
       if (inO && !PRED.enc && !NODE) { const ph = satPhase(T), d = ((ph.now - ph.want) % 360 + 360) % 360, good = d < 8 || d > 352, syn = 1 / Math.abs(1 / o.period - 1 / T.period); L.push(T.name + ' is <b>' + Math.round(ph.now) + '°</b> ahead · go at <b>' + Math.round(ph.want) + '°</b>' + (good ? ' <span class="good">burn prograde now!</span>' : ' · in ' + fmtS(d / 360 * syn))); }
       if (inO && !PRED.enc && o.ap < T.orbit * .5) { const r = R.pos.length(), dv = Math.sqrt(PLANET.GM * (2 / r - 2 / (r + T.orbit))) - R.vel.length(); if (dv > 0) L.push('Burn to ' + tn + ' ≈ <b>' + Math.round(dv) + ' m/s</b> · about <b>' + fmtS(burnTime(dv)) + '</b> at full throttle · or press <b>Transfer</b>'); } }
     if (b !== PLANET && !inO && o.tPe < 1e7 && o.pe > 0) { const rp = o.pe + b.R, vp = Math.sqrt(b.GM * (2 / rp - 1 / o.a)), dv = vp - Math.sqrt(b.GM / rp); L.push('Capture burn ≈ <b>' + Math.round(dv) + ' m/s</b> (' + fmtS(burnTime(dv)) + ') · start it about <b>' + fmtS(burnTime(dv) / 2) + '</b> before Pe · or press <b>Circularise at Pe</b>'); }
@@ -273,8 +273,8 @@ function misCard() { const el = $('mis'), m = MISD.find(x => x.id === MIS.cur); 
   STEPS.done = dn;
   let now = -1; const items = m.steps.map(([t], i) => { const d = dn[i]; if (!d && now < 0) now = i; return '<li class="' + (d ? 'ok' + (STEPS.just[i] > nowMs ? ' just' : '') : now === i ? 'now' : '') + '">' + (typeof t === 'function' ? t(FLOG) : t) + '</li>'; });
   const n = Object.keys(MIS.done).filter(k => MISD.some(x => x.id === k)).length;
-  const h = '<div class="mt"><b>' + m.name + (MIS.done[m.id] ? ' ✓' : '') + '</b><span>' + n + '/' + MISD.length + ' · J all missions</span></div><div class="md">' + (FLOG.test ? '<i>Test-menu flight: missions do not count.</i> ' : '') + m.d + '</div><ol>' + items.join('') + '</ol>';
-  el.classList.toggle('mini', MIS.mini); if (el._h !== h) { el._h = h; el.innerHTML = h; } }
+  const h = '<div class="mt"><b>' + m.name + '</b><span>' + n + '/' + MISD.length + ' · J</span></div>' + (FLOG.test ? '<div class="md test">Test flight: missions don\'t count</div>' : '') + '<ol>' + items.join('') + '</ol>';
+  el.classList.toggle('mini', MIS.mini); el.classList.toggle('done', !!MIS.done[m.id]); if (el._h !== h) { el._h = h; el.innerHTML = h; } }
 function misList(show) { const L = $('misL'); show = show ?? L.classList.contains('hidden'); L.classList.toggle('hidden', !show); if (!show) { lockPointer(); return; } if (document.pointerLockElement) document.exitPointerLock();
   const g = $('misG'); g.innerHTML = ''; for (const m of MISD) { const b = document.createElement('button'); b.className = (MIS.done[m.id] ? 'done ' : '') + (MIS.cur === m.id ? 'cur ' : '') + (m.bonus ? 'bonus' : ''); b.innerHTML = '<b>' + m.name + '</b><small>' + m.d + '</small>';
     b.onclick = e => { e.stopPropagation(); MIS.cur = m.id; misSave(); misCard(); misList(false); }; g.appendChild(b); }
