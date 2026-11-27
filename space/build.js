@@ -38,7 +38,7 @@ function bldInit() {
     if (d.hit && !BLD.held && d.moved > 7 && !(e.buttons & 2) && !e.shiftKey) { if (d.hit.i >= 0) { bldGrab(d.hit); BLD.press = {moved: 99}; } d.hit = null; }
     if (BLD.held && BLD.press) return;
     if (e.buttons & 2 || e.shiftKey) BLD.tcy = clamp(BLD.tcy + dy * BLD.dist * .002, BLD.lo, BLD.hi); else { BLD.yaw -= dx * .008; BLD.pitch = clamp(BLD.pitch + dy * .006, -.2, 1.35); } });
-  addEventListener('pointermove', e => { if (!BLD.on || !BLD.held) return; if (BLD.press) BLD.press.moved += Math.abs(e.movementX || 0) + Math.abs(e.movementY || 0); bldHover(e); });
+  addEventListener('pointermove', e => { if (!BLD.on || !BLD.held) return; if (BLD.press) BLD.press.moved += Math.abs(e.movementX || 0) + Math.abs(e.movementY || 0); BLD.hov = e; }); // handled once per frame in bldRender
   addEventListener('pointerup', e => { if (!BLD.on) return; const d = BLD.drag, pr = BLD.press; BLD.drag = null; BLD.press = null;
     const b = cv.getBoundingClientRect(), inCv = e.clientX >= b.left && e.clientX <= b.right && e.clientY >= b.top && e.clientY <= b.bottom;
     if (BLD.held) { const pb = $('bldParts').getBoundingClientRect(), inCat = e.clientX >= pb.left && e.clientX <= pb.right && e.clientY >= pb.top && e.clientY <= pb.bottom;
@@ -55,11 +55,11 @@ function capsuleLook(g) { // outside of the capsule only (the real one carries t
   for (const a of [-.25, .25]) { const w = mesh(new THREE.BoxGeometry(.5, .8, .05), RM.win, Math.sin(a) * 2.02, 23.45, -Math.cos(a) * 2.02); w.rotation.y = -a; w.rotation.x = .38; g.add(w); }
 }
 function bldRebuild() {
-  bldInit(); if (BLD.g) { BLD.scene.remove(BLD.g); BLD.g.traverse(o => { if (o.geometry) o.geometry.dispose(); }); }
+  bldInit(); if (BLD.g) { BLD.scene.remove(BLD.g); BLD.g.traverse(o => { if (o.geometry && !o.geometry.keep) o.geometry.dispose(); }); }
   RM.cap.color.set(BLD.paint.cap || PAINT0.cap);
   const st = BLD.st = shipLayout(BLD.parts), g = BLD.g = new THREE.Group(), y0 = Math.min(...st.filter(S => !S.cap).map(S => S.y0), 21.6);
   st.forEach((S, si) => { if (S.cap) { const n0 = g.children.length; capsuleLook(g); for (let k = n0; k < g.children.length; k++) g.children[k].userData.pi = -1; capTops(g, S, si, true, BLD.paint); return; }
-    stageMeshes(g, S, si, true, BLD.paint, (o, it) => o.traverse(x => x.userData.pi = it.k === 'adapt' ? undefined : it.i)); });
+    const gs = stageMeshes(g, S, si, true, BLD.paint); if (S.side) S.gs = gs; });
   for (const h of g.userData.legs || []) h.rotation.z = .5; g.userData.legs = null; const an = BLD.held ? BLD.anchor : y0; g.position.y = -an; BLD.floor.position.y = y0 - an; if (BLD.ringM) BLD.ringM.position.y = y0 - an + .02; g.traverse(o => { if (o.isMesh) o.castShadow = o.receiveShadow = true; }); BLD.scene.add(g);
   if (!BLD.held && BLD.reanchor != null) { BLD.cy += BLD.reanchor - y0; BLD.tcy += BLD.reanchor - y0; BLD.reanchor = null; }
   if (!BLD.held) { BLD.lo = 0; BLD.hi = 27.7 - y0; BLD.tcy = clamp(BLD.tcy, BLD.lo, BLD.hi); } BLD.y0 = an;
@@ -76,7 +76,7 @@ function bldRay(e) { const cv = $('bldC'), b = cv.getBoundingClientRect(); BLD.r
 function bldHit(e, st) { // first part under the cursor: the parts are upright cylinders, so this is exact enough and never flickers
   const ray = bldRay(e), o = ray.origin, d = ray.direction, Y = BLD.y0; let best = null;
   const cyl = (cx, cz, r, y0, y1, out) => { const ox = o.x - cx, oz = o.z - cz, a = d.x * d.x + d.z * d.z, b = 2 * (ox * d.x + oz * d.z), c = ox * ox + oz * oz - r * r, q = b * b - 4 * a * c; if (a < 1e-9 || q < 0) return;
-    const t = (-b - Math.sqrt(q)) / (2 * a), y = o.y + t * d.y + Y; if (t > 0 && y >= y0 && y <= y1 && (!best || t < best.t - 1e-6)) best = Object.assign(out, {t, y}); };
+    const t = (-b - Math.sqrt(q)) / (2 * a), y = o.y + t * d.y + Y; if (t > 0 && y >= y0 && y <= y1 && (!best || t < best.t - 1e-6)) best = Object.assign(out, {t, y, hx: o.x + t * d.x, hz: o.z + t * d.z}); };
   for (const S of st || BLD.st) {
     if (S.cap) { cyl(0, 0, 1.9, 21.6, 26.1, {i: -1, si: -1}); for (const it of S.parts) cyl(0, 0, it.r, it.y0, it.y1, {i: it.i, si: -1, it, top: true}); continue; }
     if (S.side) { for (let k = 0; k < S.side.n; k++) { const a = S.side.ang(k), cx = Math.cos(a) * S.side.off, cz = -Math.sin(a) * S.side.off; for (const it of S.side.items) if (it.k !== 'adapt') cyl(cx, cz, it.r, it.y0, it.y1, {i: S.side.at, si: it.si, it, side: S}); } continue; }
@@ -85,23 +85,22 @@ function bldHit(e, st) { // first part under the cursor: the parts are upright c
 function bldRender() {
   if (!BLD.on) return; requestAnimationFrame(bldRender); const cv = $('bldC'), w = cv.clientWidth, h = cv.clientHeight; if (!w || !h) return;
   if (cv.width !== Math.round(w * BLD.rnd.getPixelRatio()) || cv.height !== Math.round(h * BLD.rnd.getPixelRatio())) { BLD.rnd.setSize(w, h, false); BLD.cam.aspect = w / h; BLD.cam.updateProjectionMatrix(); }
+  if (BLD.hov) { const e = BLD.hov; BLD.hov = null; if (BLD.held) bldHover(e); }
   BLD.dist += (BLD.tdist - BLD.dist) * .15; BLD.cy += (BLD.tcy - BLD.cy) * .15;
   const c = BLD.cam, d = BLD.dist; c.position.set(Math.sin(BLD.yaw) * Math.cos(BLD.pitch) * d, BLD.cy + Math.sin(BLD.pitch) * d, Math.cos(BLD.yaw) * Math.cos(BLD.pitch) * d); if (c.position.y < 1) c.position.y = 1; c.lookAt(0, BLD.cy, 0);
   BLD.hl.material.opacity = .16 + .08 * Math.sin(performance.now() / 250); const ns = d * .009; for (const n of BLD.nodeG.children) n.scale.setScalar(n.userData.on ? ns * 1.8 : ns); BLD.rnd.render(BLD.scene, c);
 }
 
 // ---------------- stats: delta-v and thrust-to-weight per stage (bottom stage fires first)
-function shipStats(st) { // side boosters burn together with the core above them: that part of the flight uses both engines (and some core fuel)
-  const out = []; let tot = 0, totS = 0, carry = 0; const mass = i => st.slice(i).reduce((a, S) => a + S.dry + (S.fuel || 0) + (S.cargoM || 0), 0);
-  st.forEach((S, i) => { if (S.cap) return; const m0 = mass(i) - carry, low = i === 0 || (i === 1 && st[0].side), C = st[i + 1];
-    if (S.side && S.thrust && S.fuel && C && C.thrust && C.fuel) {
-      const mdS = S.thrust / (S.ispV * G0), mdC = C.thrust / (C.ispV * G0), t1 = S.fuel / mdS, fc = Math.min(C.fuel, mdC * t1), T = S.thrust + C.thrust, ispV = T / ((mdS + mdC) * G0), ispS = T / (S.thrust / S.ispS + C.thrust / C.ispS), m1 = m0 - S.fuel - fc;
-      const dv = ispV * G0 * Math.log(m0 / m1), dvS = ispS * G0 * Math.log(m0 / m1); tot += dv; totS += low ? dvS : dv; carry = fc;
-      out.push({S, i, m0, dv, dvS, twr: (S.thrust * S.ispS / S.ispV + C.thrust * C.ispS / C.ispV) / (m0 * G0), twrM: T / (m0 * 1.63), burn: t1}); return; }
-    const f = Math.max(0, (S.fuel || 0) - carry), m1 = m0 - f, ok = S.thrust && f > 0; carry = 0;
-    const dv = ok ? S.ispV * G0 * Math.log(m0 / m1) : 0, dvS = ok ? S.ispS * G0 * Math.log(m0 / m1) : 0; tot += dv; totS += low ? dvS : dv;
-    out.push({S, i, m0, dv, dvS, twr: ok ? S.thrust * S.ispS / S.ispV / (m0 * G0) : 0, twrM: ok ? S.thrust / (m0 * 1.63) : 0, burn: ok ? f / (S.thrust / (S.ispV * G0)) : 0}); });
-  return {rows: out, tot, totS, mass: mass(0), h: 26.1 - Math.min(...st.filter(S => !S.cap).map(S => S.y0), 21.6)};
+function shipStats(st) { // side boosters burn together with the core (and any other sets) above them: that part of the flight uses all those engines and some of their fuel
+  const out = [], rem = st.map(S => S.fuel || 0); let tot = 0, totS = 0; const mass = i => st.slice(i).reduce((a, S, k) => a + S.dry + rem[i + k] + (S.cargoM || 0), 0), md = S => S.thrust / (S.ispV * G0), mass0 = mass(0);
+  st.forEach((S, i) => { if (S.cap) return; const grp = [i]; if (S.side) { let j = i; while (st[j].side && st[j + 1] && !st[j + 1].cap) grp.push(++j); }
+    const low = st.slice(0, i).every(x => x.side), m0 = mass(i), ok = S.thrust && rem[i] > 0, t = ok ? rem[i] / md(S) : 0, act = grp.filter(j => st[j].thrust && rem[j] > 0);
+    if (!ok) { out.push({S, i, m0, dv: 0, dvS: 0, twr: 0, twrM: 0, burn: 0}); return; }
+    let T = 0, mdT = 0, tS = 0, twrT = 0, used = 0; for (const j of act) { const X = st[j], f = Math.min(rem[j], md(X) * t); rem[j] -= f; used += f; T += X.thrust; mdT += md(X); tS += X.thrust / X.ispS; twrT += X.thrust * X.ispS / X.ispV; }
+    const m1 = m0 - used, dv = T / mdT * Math.log(m0 / m1), dvS = T / tS * G0 * Math.log(m0 / m1); tot += dv; totS += low ? dvS : dv;
+    out.push({S, i, m0, dv, dvS, twr: twrT / (m0 * G0), twrM: T / (m0 * 1.63), burn: t}); });
+  return {rows: out, tot, totS, mass: mass0, h: 26.1 - Math.min(...st.filter(S => !S.cap).map(S => S.y0), 21.6)};
 }
 
 // ---------------- panels
@@ -186,9 +185,8 @@ function bldRadial(k) { bldCancel(); const m = BLD.parts[BLD.sel], p = m && BLD.
   if (k === 'fins') delete p.bigfins; if (k === 'bigfins') delete p.fins; p[k] = p[k] ? 0 : 1; bldRebuild(); }
 function bldStageOf(i) { return BLD.st ? BLD.st.find(S => S.parts.some(it => it.i === i)) : null; }
 function bldSide(k) { bldCancel(); const p = BLD.parts[BLD.sel]; if (!p || p.top || PARTS[p.k].k === 'dec') { showHint('Select a tank in the stage they should help lift', 2200); return; } bldPush();
-  const S = bldStageOf(BLD.sel); if (S) for (const it of S.parts) if (it.d && it.d !== p) delete it.d.side; // one set per stage
-  const dy = p.side ? p.side.dy : 0, n = p.side ? p.side.n : BLD.sideN; p.side = sideOf(k); p.side.n = n; if (dy) p.side.dy = dy; BLD.ss = -2; bldRebuild(); }
-function bldSideN(n) { if (!n) return; BLD.sideN = n; const h = BLD.held; if (h) { if (h.kind === 'side') h.side.n = n; const c = BLD.cand; bldApply(c); return; }
+  const o = p.side; p.side = sideOf(k); if (o) { p.side.n = o.n; if (o.dy) p.side.dy = o.dy; if (o.a != null) p.side.a = o.a; } BLD.ss = -2; bldRebuild(); }
+function bldSideN(n) { if (!n) return; BLD.sideN = n; const h = BLD.held; if (h) { if (h.kind === 'side') h.side.n = n; const c = BLD.cand; BLD.cand = null; bldApply(c); return; }
   const p = BLD.parts[BLD.sel]; if (!p || !p.side) { bldPanels(); return; } bldPush(); p.side.n = n; bldRebuild(); }
 function bldSideMove(dir) { const p = BLD.parts[BLD.sel], it = p && p.side && BLD.st.flatMap(S => S.parts).find(q => q.i === BLD.sel && q.k !== 'adapt'); if (!it) return; bldPush();
   p.side.dy = clamp((+p.side.dy || 0) + dir * .5, it.y0 + 1 - it.y1, 21.6 - it.y1); bldRebuild(); }
@@ -228,14 +226,16 @@ function bldSurf(h, hit) { // the cursor is on the side of a part
   if (hit.si >= 0 && h.kind === 'part') return !h.d.side && sideOk(p0) ? {t: 'ins', c: 's', at: hit.i, idx: hit.si + 1} : null;
   if (!boost) return {t: 'ins', c: 'm', idx: hit.i + 1}; if (p.k === 'dec') return null;
   const at = BLD.bst.flatMap(S => S.parts).find(it => it.i === hit.i && it.k !== 'adapt'); if (!at) return null;
-  const top = clamp(Math.round((hit.y + BLD.ghost.userData.len / 2) * 4) / 4, at.y0 + 1, 21.6); return {t: 'side', i: hit.i, dy: +(top - at.y1).toFixed(2)}; }
+  const top = clamp(Math.round((hit.y + BLD.ghost.userData.len / 2) * 4) / 4, at.y0 + 1, 21.6); return {t: 'side', i: hit.i, dy: +(top - at.y1).toFixed(2), a: +(Math.round(Math.atan2(-hit.hz, hit.hx) / (Math.PI / 24)) * Math.PI / 24).toFixed(4)}; }
 function bldApply(cand) { // show the design as it would be with the held part attached there
+  const pc = BLD.cand; if (cand && pc && cand.t === 'side' && pc.t === 'side' && cand.i === pc.i) { // sliding boosters along the same part: move the meshes, no rebuild
+    const S = BLD.st.find(S => S.side && S.side.at === cand.i && S.gs), sd = BLD.parts[cand.i] && BLD.parts[cand.i].side;
+    if (S && sd) { S.gs.forEach((w, k) => { w.rotation.y = cand.a + k * 2 * Math.PI / S.side.n; w.position.y += cand.dy - pc.dy; }); sd.dy = cand.dy; sd.a = cand.a; BLD.cand = cand; for (const x of BLD.hls) x.visible = false; return; } }
   const parts = JSON.parse(BLD.base), h = BLD.held; let sel = -9, ss = -1;
   if (cand && cand.t === 'ins' && cand.c === 'm') { parts.splice(cand.idx, 0, JSON.parse(JSON.stringify(h.d))); sel = cand.idx; }
   else if (cand && cand.t === 'ins') { parts[cand.at].side.parts.splice(cand.idx, 0, stripD(h.d)); delete parts[cand.at].side.pre; sel = cand.at; ss = cand.idx; }
   else if (cand && cand.t === 'top') { parts.unshift({k: h.d.k, top: 1}); sel = 0; }
-  else if (cand && cand.t === 'side') { const S = BLD.bst.find(S => !S.side && !S.cap && S.parts.some(it => it.i === cand.i)); if (S) for (const it of S.parts) if (it.i !== undefined && it.i !== cand.i && parts[it.i] && parts[it.i].side) delete parts[it.i].side; // one set per stage
-    const side = h.kind === 'side' ? JSON.parse(JSON.stringify(h.side)) : {n: BLD.sideN, parts: [stripD(h.d)]}; side.dy = cand.dy; parts[cand.i].side = side; sel = cand.i; ss = -2; }
+  else if (cand && cand.t === 'side') { const side = h.kind === 'side' ? JSON.parse(JSON.stringify(h.side)) : {n: BLD.sideN, parts: [stripD(h.d)]}; side.dy = cand.dy; side.a = cand.a; parts[cand.i].side = side; sel = cand.i; ss = -2; }
   else if (cand && cand.t === 'rad') { const tgt = cand.si >= 0 ? parts[cand.i].side.parts[cand.si] : parts[cand.i]; if (h.k === 'legs') for (const q of parts) q.legs = 0; if (h.k === 'fins') delete tgt.bigfins; if (h.k === 'bigfins') delete tgt.fins; tgt[h.k] = 1; sel = cand.i; ss = cand.si >= 0 ? cand.si : -1; }
   BLD.parts = parts; BLD.sel = sel; BLD.ss = ss; BLD.cand = cand || null; bldRebuild();
   for (const n of BLD.nodes) { const on = !!cand && (cand.t === 'top' ? n.c === 't' : cand.t === 'ins' && n.c === cand.c && n.idx === cand.idx && (n.c === 'm' || n.at === cand.at)); n.m.userData.on = on; n.m.material = on ? BLD.nodeM2 : BLD.nodeM; n.m.visible = on || !cand; }

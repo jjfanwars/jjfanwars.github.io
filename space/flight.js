@@ -187,8 +187,7 @@ function shipLayout(parts) { // places the parts (rocket coords: capsule base at
       if (it.p && it.p.thrust) { const bottom = j === sec.length - 1; it.blocked = !bottom; if (!bottom) S.warn.push(it.p.name + ' is blocked by the part under it (put a decoupler there)'); else stageEngine(S, it); } });
     if (S.fuel && !S.thrust) S.warn.push('Fuel but no engine'); if (S.thrust && !S.fuel) S.warn.push('Engine but no fuel');
     // side boosters hanging on this stage: their own stage, fired with this one and dropped first
-    const at = sec.find(it => it.d && it.d.side && it.d.side.parts && it.d.side.parts.length);
-    if (at) out.push(sideStage(at, S, secs.flat()));
+    for (const at of sec.filter(it => it.d && it.d.side && it.d.side.parts && it.d.side.parts.length).reverse()) out.push(sideStage(at, S, secs.flat())); // lowest set first: it drops first
     out.push(S); });
   const named = out.filter(S => !S.side), n = named.length; named.forEach((S, i) => { S.name = n === 1 ? 'Main stage' : i === 0 ? 'Booster' : i === n - 1 ? 'Upper stage' : 'Stage ' + (i + 1); });
   const ti = parts.findIndex(isTop), tops = ti < 0 ? [] : [{k: parts[ti].k, p: PARTS[parts[ti].k], d: parts[ti], i: ti, r: .75, y0: 26.1, y1: 26.1 + PARTS[parts[ti].k].h, dry: PARTS[parts[ti].k].dry || 0, fuel: 0, top: true}];
@@ -206,8 +205,8 @@ function sideStage(at, core, all) { const sd = at.d.side, n = clamp(sd.n | 0 || 
   let cr = at.r; for (const it of all || core.parts) if ((it.r || it.rB) && it.y1 > S.y0 && it.y0 < S.y1) cr = Math.max(cr, it.r || it.rB || 0);
   S.side.off = cr + rs + .12; S.side.cr = cr; S.r = S.side.off + rs; S.rs = rs;
   S.dry = (S.dry + 80) * n; S.fuel *= n; if (S.thrust) S.thrust *= n; S.legs = false; // legs only on the core
-  S.noz = []; if (S.eng) { const nz = S.eng.p.noz || [[0, 0]]; for (let k = 0; k < n; k++) { const a = k * 2 * Math.PI / n + (n === 4 ? Math.PI / 4 : 0), ca = Math.cos(a), sa = Math.sin(a); for (const [x, z] of nz) S.noz.push([ca * (S.side.off + x) + sa * z, -sa * (S.side.off + x) + ca * z]); } }
-  S.side.ang = k => k * 2 * Math.PI / n + (n === 4 ? Math.PI / 4 : 0);
+  S.noz = []; if (S.eng) { const nz = S.eng.p.noz || [[0, 0]]; const a0 = sd.a != null ? +sd.a || 0 : n === 4 ? Math.PI / 4 : 0; for (let k = 0; k < n; k++) { const a = a0 + k * 2 * Math.PI / n, ca = Math.cos(a), sa = Math.sin(a); for (const [x, z] of nz) S.noz.push([ca * (S.side.off + x) + sa * z, -sa * (S.side.off + x) + ca * z]); } }
+  { const a0 = sd.a != null ? +sd.a || 0 : n === 4 ? Math.PI / 4 : 0; S.side.ang = k => a0 + k * 2 * Math.PI / n; } // sd.a turns the set around the rocket
   if (S.fuel && !S.thrust) S.warn.push('Side boosters have fuel but no engine'); return S; }
 function shipApply(parts, name, paint) { SHIP.parts = cloneParts(parts); if (name) SHIP.name = name; if (paint) SHIP.paint = Object.assign({}, PAINT0, paint); STAGES.length = 0; STAGES.push(...shipLayout(SHIP.parts)); applyCapPaint(); }
 function applyCapPaint() { if (RM.cap) RM.cap.color.set(SHIP.paint.cap || PAINT0.cap); }
@@ -248,7 +247,7 @@ function legSet(g, it, out) { // four legs: fold up along the tank, swing out fo
   for (let k = 0; k < 4; k++) { const a = Math.PI / 4 + k * Math.PI / 2, base = new THREE.Group(); base.position.set(Math.cos(a) * (it.r + .07), it.hinge, -Math.sin(a) * (it.r + .07)); base.rotation.y = a; g.add(base);
     base.add(mesh(new THREE.BoxGeometry(.22, .34, .3), RM.grey, -.04, 0, 0)); const hinge = new THREE.Group(); hinge.rotation.z = Math.PI - .06; base.add(hinge); hinge.add(mesh(strut, RM.grey)); hinge.add(mesh(pad, RM.black, 0, -3.42, 0));
     const br = mesh(knee, RM.gold, 0, -1.3, 0); br.rotation.z = -.5; hinge.add(br); out.push(hinge); } }
-const PGEO = {}; const pgeo = (k, f) => PGEO[k] || (PGEO[k] = f());
+const PGEO = {}; const pgeo = (k, f) => PGEO[k] || (PGEO[k] = Object.assign(f(), {keep: true})); // shared shapes: never disposed
 function bellSet(g, p, y0, bm) { // one bell per nozzle + a turbopump box each
   const noz = p.noz || [[0, 0]], yb = y0 + p.bl, bg = pgeo('bell' + p.k, () => bellGeo(p.rT, p.rE, p.bl));
   for (const [x, z] of noz) { g.add(mesh(bg, bm, x, y0, z)); const th = cylY(p.rT + .08, p.rT + .08, yb, yb + p.mount * .5, RM.grey, 20); th.position.x = x; th.position.z = z; g.add(th);
@@ -330,7 +329,7 @@ function resetRocket() {
 function latch(t) { const b = R.body; R.pos.copy(R.lp).applyQuaternion(b.q).add(b.c); R.q.copy(b.q).multiply(R.lq); groundVel(b, R.pos, t, R.vel); }
 const _n = new V3(), _a = new V3(), _va = new V3(), _t1 = new V3(), _t2 = new V3(), _qa = new Q4(), _qb = new Q4();
 // engines firing now: the bottom stage, plus the core stage it hangs on when the bottom stage is a set of side boosters
-function burnSet() { const S = STAGES[R.bot]; return S && S.side && R.bot + 1 < STAGES.length ? [R.bot, R.bot + 1] : [R.bot]; }
+function burnSet() { const L = [R.bot]; let i = R.bot; while (STAGES[i] && STAGES[i].side && i + 1 < STAGES.length) L.push(++i); return L; } // every side set still on, plus the core they hang on
 function actS() { // the firing group as one engine: summed thrust, thrust-weighted Isp, fuel left (core engine for gimbal and plume)
   let T = 0, tS = 0, tV = 0, f = 0, srb = false, hot = 0, eng = null, plumeY = 0;
   for (const i of burnSet()) { const S = STAGES[i]; if (!S.thrust || !(R.fuel[i] > 0)) continue; T += S.thrust; tS += S.thrust / S.ispS; tV += S.thrust / S.ispV; f += R.fuel[i]; srb = srb || S.srb; hot = Math.max(hot, S.hot ? 1 : 0); if (!eng || !S.side) { eng = S.eng; plumeY = S.plumeY; } }
@@ -382,7 +381,7 @@ function rocketStep(h, t) {
   const BS = burnSet(); let anyF = false, srbOn = false; for (const i of BS) if (STAGES[i].thrust && R.fuel[i] > 0) { anyF = true; if (STAGES[i].srb) srbOn = true; }
   const want = R.lit && anyF && (R.thr > 0 || srbOn) ? 1 : 0; R.spool += clamp(want - R.spool, -h * 4, h * (R.st === 'pad' ? 1.6 : 3)); // engines take a moment to come up to power
   R.F = 0; if (want && R.spool > 0) { for (const i of BS) { const Si = STAGES[i]; if (!Si.thrust || !(R.fuel[i] > 0)) continue; const isp = lerp(Si.ispV, Si.ispS, p), F = Si.thrust * (Si.srb ? 1 : R.thr) * R.spool * isp / Si.ispV;
-      R.F += F; R.fuel[i] = Math.max(0, R.fuel[i] - F / (isp * G0) * h); if (R.fuel[i] === 0 && Si.side && BS.length > 1 && R.fuel[BS[1]] > 0) showHint('Side boosters empty: Space drops them', 3000); }
+      R.F += F; R.fuel[i] = Math.max(0, R.fuel[i] - F / (isp * G0) * h); if (R.fuel[i] === 0 && Si.side && BS.length > 1 && R.fuel[BS[BS.length - 1]] > 0) showHint('Side boosters empty: Space drops them', 3000); }
     if (!BS.some(i => STAGES[i].thrust && R.fuel[i] > 0)) { R.lit = false; showHint('Out of fuel. Space: next stage', 3000); } }
   if (R.st !== 'fly') { // held by the pad clamps, or sitting on the ground
     latch(t); const gl = gravAt(R.pos, t, _a).length(); R.felt.set(0, gl, 0);
