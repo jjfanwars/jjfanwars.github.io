@@ -7,7 +7,8 @@
 
 let LAUNCH = null; // {t, ves, ship} taken when a real flight leaves the pad
 const FLW = {prev: R.st, arm: '', armT: 0};
-const canBoss = () => !online() || Net.role === 'host'; // in a crew only the host rewinds or ends the flight
+const canBoss = () => !online() || Net.role === 'host' || NET.own; // in a crew only the host rewinds or ends the crew flight; a guest's own ship is theirs to end
+const ownShip = () => online() && NET.own; // own ships never rewind the shared clock
 function flowSnap() { LAUNCH = {t: Math.max(0, (R.t0 || G.t) - .5), ves: vesPack(), ship: {parts: cloneParts(SHIP.parts), name: SHIP.name, paint: Object.assign({}, SHIP.paint)}}; }
 function flowStep() { const st = R.st; if (FLW.prev === 'pad' && st === 'fly' && R.on && !R.test) flowSnap(); FLW.prev = st; if (FLW.arm && performance.now() > FLW.armT) { FLW.arm = ''; flowPause(); } }
 function takeControls() { if (online() && Net.role === 'host' && !isAuth()) { NET.auth = 'H'; Net.send({t: 'auth', id: 'H'}); if (typeof onAuth === 'function') onAuth(); } }
@@ -16,10 +17,10 @@ function flowClean() { if (typeof SI !== 'undefined' && SI.on) siLeave(false); i
 function flowClose() { setPause(false, true); repHide(); }
 
 function revertLaunch(toBld) { if (!LAUNCH || !canBoss()) return; const L = LAUNCH; takeControls(); flowClean();
-  G.t = L.t; for (const b of BODIES) bodyState(b, G.t); vesUnpack(L.ves); vesSave(); if (L.ship.parts.every(partOk)) shipApply(L.ship.parts, L.ship.name, L.ship.paint);
+  if (!ownShip()) { G.t = L.t; for (const b of BODIES) bodyState(b, G.t); vesUnpack(L.ves); vesSave(); } if (L.ship.parts.every(partOk)) shipApply(L.ship.parts, L.ship.name, L.ship.paint);
   resetRocket(); newFlight(); flightClear(); if (typeof HIST !== 'undefined') HIST.length = 0;
-  if (toBld) { onFoot(); P.body = PLANET; spawnPlayer(); flowClose(); setPause(false, false); bldOpen(); showHint('Reverted: back in the builder (the clock went back too)', 3500); }
-  else { onFoot(); board(); toPilot(); flowClose(); showHint('Reverted to launch: on the pad in the Pilot seat. Space to launch', 4000); } }
+  if (toBld) { onFoot(); P.body = PLANET; spawnPlayer(); flowClose(); setPause(false, false); bldOpen(); showHint(ownShip() ? 'Back in the builder' : 'Reverted: back in the builder (the clock went back too)', 3500); }
+  else { onFoot(); board(); toPilot(); flowClose(); showHint(ownShip() ? 'A fresh rocket on the pad. Space to launch' : 'Reverted to launch: on the pad in the Pilot seat. Space to launch', 4000); } }
 function recoverOk() { return R.st === 'landed' && R.body === PLANET; }
 function recoverVessel() { if (!recoverOk() || !canBoss()) return; takeControls(); const d = R.lp.distanceTo(site.p), t = G.t - (R.t0 || G.t), wet = (() => { const n = R.lp.clone().normalize(); return heightAt(PLANET, n.x, n.y, n.z) < -.5; })();
   flowClean(); onFoot(); resetRocket(); newFlight(); FLOG.recovered = true; P.body = PLANET; spawnPlayer(); flightClear(); LAUNCH = null; flowClose();
@@ -39,6 +40,7 @@ function flowPause() { const el = $('pFlow'); if (!el) return; const inFlight = 
   const btn = (key, label, sub, fn, cls = '', danger) => b.push({key, label: FLW.arm === key ? 'Click again to confirm' : label, sub: FLW.arm === key ? sub : '', fn: danger ? () => armed(key, label, fn) : fn, cls: cls + (FLW.arm === key ? ' arm' : '')});
   if (!canBoss()) { el.innerHTML = '<div class="tl">Flight</div><div class="fx">Only the host can revert, recover or end the flight.</div><div class="fb"><button id="pfQuit">Leave the crew and quit to the main menu</button></div>'; $('pfQuit').onclick = () => toMenu(); return; }
   if (test) { if (R.st !== 'pad') btn('pad', 'Back to the pad', 'fresh rocket, Pilot seat', backToPad); btn('test', 'Test menu', '', () => { setPause(false, false); testMenu(true); }); }
+  else if (inFlight && LAUNCH && ownShip()) { btn('rev', 'Back to the pad', 'a fresh rocket; the crew clock keeps running', () => revertLaunch(false), '', true); btn('revB', 'Back to the builder', '', () => revertLaunch(true), '', true); }
   else if (inFlight && LAUNCH) { btn('rev', 'Revert to launch', 'Time, stations and ship go back to ' + fmtS(G.t - LAUNCH.t) + ' ago', () => revertLaunch(false), '', true); btn('revB', 'Revert to builder', '', () => revertLaunch(true), '', true); }
   if (recoverOk()) btn('rec', 'Recover vessel', '', recoverVessel, 'go');
   else if (R.st !== 'pad' && R.st !== 'dead' && (R.on || R.st === 'landed')) btn('end', 'End flight', R.st === 'landed' ? 'leave the ship where it is' : 'the ship is lost', endFlight, '', true);
@@ -51,7 +53,7 @@ function flowPause() { const el = $('pFlow'); if (!el) return; const inFlight = 
 
 // ---------------- flight report: the same choices, as buttons
 function flowRep() { const rs0 = repShow; repShow = function (kind) { rs0(kind); const el = $('rep'), f = el.querySelector('.rf'); if (!f || !FLOG.launched) return; const acts = [];
-    if (FLOG.test) acts.push(['Back to the pad', backToPad]); else if (LAUNCH && canBoss()) acts.push(['Revert to launch', () => revertLaunch(false)], ['Builder', () => revertLaunch(true)]);
+    if (FLOG.test) acts.push(['Back to the pad', backToPad]); else if (LAUNCH && canBoss()) acts.push([ownShip() ? 'Back to the pad' : 'Revert to launch', () => revertLaunch(false)], ['Builder', () => revertLaunch(true)]);
     if (kind !== 'crash' && recoverOk() && canBoss()) acts.unshift(['Recover', recoverVessel]);
     f.innerHTML = (kind === 'crash' ? 'Back to the Space Centre in a moment' : R.body !== PLANET ? 'F: get up · F at the hatch to step out' : 'F: get up') + ' · <span class="key">Esc</span> for all choices';
     if (acts.length) { const row = document.createElement('div'); row.className = 'rb'; acts.forEach(([t, fn]) => { const bt = document.createElement('button'); bt.textContent = t; bt.onclick = e => { e.stopPropagation(); fn(); }; row.appendChild(bt); }); el.appendChild(row); }
