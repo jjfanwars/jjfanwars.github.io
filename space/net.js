@@ -198,7 +198,7 @@ function ghostDesign(sh) { return sh.id === 'C' ? NET.crewShip : sh.d; }
 function ghostName(sh) { if (sh.id === 'C') return 'Crew ship'; const p = NET.players.get(sh.id); return ((p && p.name) || 'Astronaut') + "'s ship"; }
 function ghostBuild(sh, d, sn) { ghostFree(sh); const st = sh.st = shipLayout(d.parts), bot = clamp(sn.bot | 0, 0, st.length - 1), g = sh.g = new THREE.Group(), inner = sh.inner = new THREE.Group(), paint = Object.assign({}, PAINT0, d.paint); g.add(inner);
   const capM = sh.capM = RM.cap.clone(); capM.color.set(paint.cap || PAINT0.cap);
-  st.forEach((S, si) => { if (si < bot) return; if (S.cap) { const n0 = inner.children.length; capsuleLook(inner); for (let k = n0; k < inner.children.length; k++) if (inner.children[k].material === RM.cap) inner.children[k].material = capM; } else stageMeshes(inner, S, si, true, paint); });
+  st.forEach((S, si) => { if (si < bot) return; if (S.cap) { const n0 = inner.children.length; capsuleLook(inner); for (let k = n0; k < inner.children.length; k++) if (inner.children[k].material === RM.cap) inner.children[k].material = capM; capTops(inner, S, si, true, paint); } else stageMeshes(inner, S, si, true, paint); });
   sh.legs = inner.userData.legs || null; inner.traverse(o => { if (o.isMesh) o.castShadow = o.receiveShadow = true; });
   const S0 = st[bot], r = S0.side ? S0.side.off + (S0.rs || 1) * .5 : (S0.exit || 1) * 1.15; sh.pl = new THREE.Mesh(GH.cone, GH.pm); sh.pl.position.y = S0.y0 + (S0.cap ? 0 : .3); sh.pl.scale.set(r, S0.hot ? 26 : 14, r); sh.pl.visible = false; sh.pl.renderOrder = 5; sh.pl.castShadow = false; sh.plOk = !!S0.thrust; inner.add(sh.pl);
   sh.botB = bot; scene.add(g); }

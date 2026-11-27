@@ -243,3 +243,11 @@ Sandbox plus missions (21 Nov 2026: 15 missions, see below). Astronauts are thro
 - **Side boosters anywhere:** `side.dy` slides the set up or down from the top of the part it hangs on (`sideStage(at, core, all)`; clearance radius now looks at every part it passes). Booster stacks can be built part by part (any tank or solid on the side of a part starts a set; nodes on the booster extend it); `side.pre` is dropped once a ready-made set is edited. Still one set per stage, fired with that stage.
 - `cloneParts` now keeps `side.pre` and `side.dy`. Catalogue gained the Cargo category (the bay was only in presets before).
 
+## Own ships in multiplayer (27 Nov 2026; playtester: "you can't launch two ships at once")
+- The shared rocket stays the **crew ship** (host's, pilot-seat authority). A **guest** pressing Launch in the builder is asked "Launch my own ship" / "Launch for the crew" (`ownAsk`). Own ship: `NET.own`, stands on pad 2 (`ownPad`, `NET.slot`; more own ships line up 70 m south), the owner simulates it locally. The host cannot have a second ship.
+- `isAuth()` = I simulate my R (true when own); `clockMine()` = I run the clock (crew pilot). Own-ship guests follow the clock gently (`clockFollow`, `NET.clk`) and send warp requests; the pilot's `warpCap` respects every own ship (`wc`/`wy` in snapshots, `WC0` = unwrapped).
+- Messages: `od` (design, resent every 5 s), `os` (snapshot 15 Hz), `ox` (ship gone), `authRel`; poses carry `sh` (ship id) so someone inside another ship is not drawn in my cabin.
+- Other ships are ghosts: `NET.ships` (id -> `{d, s, g, inner, tag...}`; `'C'` = the crew ship seen by an own-ship guest, design in `NET.crewShip`), `ghostBuild/Free/Drop/Target/Live/Name`, `ghostsFrame`; name tag + map marker; simple plume, no chute/debris.
+- Pause card: "Rejoin the crew ship" (`ownEnd`), crew list shows who flies their own ship. flow.js: `canBoss()` true for own ships, `ownShip()` skips the clock rewind (buttons read "Back to the pad" / "Back to the builder").
+- Tested with one real page + a scripted peer through a mock relay (two real pages run out of memory headless). Not tested: two real browsers, ghost visuals, ghost staging/explosion, a third own ship.
+
