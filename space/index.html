@@ -186,6 +186,10 @@ body.map #fl .fdat, body.map #fl .fstk, body.map #fl .att, body.map #hud { displ
 #bld .ic-rcs { width:22px; height:22px; margin:0 2px; border-radius:50%; border:4px solid var(--ink); background:var(--plate); }
 #bldView { position:relative; min-width:0; min-height:0; } #bldC { width:100%; height:100%; display:block; cursor:grab; } #bldC:active { cursor:grabbing; }
 #bldSel { position:absolute; left:16px; bottom:12px; right:16px; color:var(--ink); font-size:12.5px; font-weight:600; pointer-events:none; }
+#bldAct { position:absolute; left:16px; bottom:36px; right:16px; display:flex; flex-wrap:wrap; } #bldAct button { background:var(--plate); padding:6px 12px; font-size:12.5px; margin:-1px 0 0 -1px; } #bldAct button.on { background:var(--ink); color:var(--plate); }
+#bld .bs.bsub { padding-left:32px; } #bld .bhint { margin:0 16px 8px; color:var(--ink2); font-size:11.5px; line-height:1.35; } #bld .bp { user-select:none; -webkit-user-select:none; }
+#bldBin { display:none; position:sticky; top:0; z-index:2; padding:14px 16px; background:var(--red); color:#fff; font-weight:700; font-size:13px; } body.bgrab #bldBin { display:block; }
+body.bheld #bldC { cursor:crosshair; }
 #bldTip { position:absolute; left:16px; top:12px; color:var(--ink2); font-size:12px; pointer-events:none; line-height:1.5; }
 #bldTools { position:absolute; right:16px; top:12px; display:flex; } #bldTools button { background:var(--plate); } #bldTools button + button { border-left:0; }
 #bld .bsg { color:var(--ink); font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.09em; margin:16px 16px 0; padding-bottom:4px; border-bottom:1px solid var(--rule); } #bld .bsg em { font-style:normal; color:var(--ink2); float:right; letter-spacing:0; text-transform:none; font-weight:600; }
@@ -298,8 +302,8 @@ body.map #mis ol, body.map #mis .md { display:none; } body.map #nodeP { top:58px
   <div class="btop"><h2>Rocket <span>builder</span></h2><input id="bldName" type="text" maxlength="24" placeholder="Rocket name"><button id="bldSave">Save</button>
     <select id="bldLoad"></select><button id="bldDel" class="hidden" title="Delete this saved design">Delete</button><button id="bldNew">New</button><span class="sp"></span><button id="bldX">Close (Esc)</button><button id="bldGo">Launch</button></div>
   <div id="bldParts"></div>
-  <div id="bldView"><canvas id="bldC"></canvas><div id="bldTip">Drag: turn · Shift-drag / right-drag: move up and down · Wheel: zoom<br>Click a part to select it · new parts go under the selected one</div>
-    <div id="bldTools"><button id="bldUndo" title="Ctrl+Z">Undo</button><button id="bldRm" title="Delete">Remove part</button></div><div id="bldSel"></div></div>
+  <div id="bldView"><canvas id="bldC"></canvas><div id="bldTip">Pick a part on the left, then click a green dot on the rocket to attach it (Shift-click: place another)<br>Drag a part to move it · drag empty space to turn · Shift-drag: up and down · wheel: zoom<br>Double-click a part on the left to put it under the selected one</div>
+    <div id="bldTools"><button id="bldUndo" title="Ctrl+Z">Undo</button><button id="bldRm" title="Delete">Remove part</button></div><div id="bldAct"></div><div id="bldSel"></div></div>
   <div id="bldSide"><div class="bt">Stack · stage 1 fires first</div><div id="bldStack"></div><div class="bt">Numbers</div><div id="bldNum"></div></div>
 </div>
 <div id="load"><b>Lucas<span>Space Program</span></b><i></i>Making a planet…</div>
@@ -314,11 +318,11 @@ body.map #mis ol, body.map #mis .md { display:none; } body.map #nodeP { top:58px
 </div></div>
 <script src="../three-r170.js"></script>
 <script src="game.js?v=13"></script>
-<script src="flight.js?v=21"></script>
+<script src="flight.js?v=22"></script>
 <script src="mission.js?v=9b"></script>
 <script src="extras.js?v=7b"></script>
-<script src="build.js?v=3b"></script>
-<script src="world.js?v=7b"></script>
+<script src="build.js?v=4"></script>
+<script src="world.js?v=8"></script>
 <script src="nav.js?v=4b"></script>
 <script src="station.js?v=3b"></script>
 <script src="places.js?v=3b"></script>

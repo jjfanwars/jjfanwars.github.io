@@ -29,7 +29,7 @@ function bakeByMat(root, mapM) {
 }
 // the whole rocket (stack + capsule) as meshes, bottom of the stack at y 0
 function rocketModel(parts, paint) { const st = shipLayout(parts), g = new THREE.Group(), y0 = Math.min(...st.filter(S => !S.cap).map(S => S.y0), 21.6);
-  st.forEach((S, si) => { if (S.cap) capsuleLook(g); else stageMeshes(g, S, si, true, paint); });
+  st.forEach((S, si) => { if (S.cap) { capsuleLook(g); capTops(g, S, si, true, paint); } else stageMeshes(g, S, si, true, paint); });
   g.userData.legs = null; const w = new THREE.Group(); g.position.y = -y0; w.add(g); return {g: w, h: 26.1 - y0, st}; }
 function siteSun() { const s = SITE.clone().applyQuaternion(PLANET.q); return s.dot(SUN); } // sun elevation (sine) at the space centre
 

@@ -120,7 +120,7 @@ const PARTS = {
   kraken: {cat: 'srb', name: 'Kraken', r: 1.9, h: 16, bl: 1.9, rT: .45, rE: 1.2, fuel: 76000, thrust: 2700000, ispS: 215, ispV: 240, gim: .03, hot: 2, desc: 'Giant solid booster'},
   // structure
   dec: {cat: 'struct', name: 'Decoupler', r: 0, h: .35, dry: 120, desc: 'Splits stages. Under an engine it becomes an interstage'},
-  cone: {cat: 'struct', name: 'Nose cone', r: .65, h: 1.6, dry: 60, nose: true, desc: 'Pointy top for side boosters'},
+  cone: {cat: 'struct', name: 'Nose cone', r: .65, h: 1.6, dry: 60, nose: true, desc: 'Pointy top for side boosters, or for the capsule (pops off with the parachute)'},
   coneL: {cat: 'struct', name: 'Nose cone L', r: 1.25, h: 2.6, dry: 150, nose: true, desc: '2.5 m nose cone'},
   coneH: {cat: 'struct', name: 'Nose cone XL', r: 1.9, h: 3.6, dry: 300, nose: true, desc: '3.8 m nose cone'},
   wheel: {cat: 'struct', name: 'Gyro ring', r: 1.25, h: .5, dry: 300, torque: 30000, desc: 'Reaction wheels: turn faster'},
@@ -164,20 +164,22 @@ const PAINT_PATS = [['roll', 'Roll marks'], ['band', 'Bands'], ['stripe', 'Strip
 const SHIP = {name: 'Lucas I', parts: SHIP_PRESETS['Lucas I'].map(p => ({...p})), paint: {...PAINT0}};
 const STAGES = []; // filled by shipLayout(), bottom to top; the capsule is always last
 const partOk = d => d && PARTS[d.k] && (!d.cargo || MODULES[d.cargo]) && (!d.side || (Array.isArray(d.side.parts) && d.side.parts.every(q => PARTS[q.k])));
-const cloneParts = parts => parts.map(p => { const q = {...p}; if (p.side) q.side = {n: p.side.n, parts: p.side.parts.map(s => ({...s}))}; return q; });
+const cloneParts = parts => parts.map(p => { const q = {...p}; if (p.side) q.side = {...p.side, parts: p.side.parts.map(s => ({...s}))}; return q; });
 function stageEngine(S, it) { // a part that makes thrust becomes the stage's engine when it sits at the bottom of its section
   Object.assign(S, {eng: it, thrust: it.p.thrust, ispS: it.p.ispS, ispV: it.p.ispV, exit: it.p.rE, hot: it.p.hot, plumeY: it.y0, srb: it.p.cat === 'srb', nuke: !!it.p.nuke, noz: it.p.noz || [[0, 0]]}); }
 function sumRadial(S, it) { const d = it.d || {}; for (const k in RADIAL) if (d[k]) S.dry += RADIAL[k].dry; if (d.fins || d.bigfins) S.fins = true; if (d.bigfins) S.bigfins = true; if (d.rcs) S.rcs = (S.rcs || 0) + 1;
   if (d.legs) { S.legs = true; it.hinge = Math.min(it.y1 - .3, it.y0 + .95); S.legFoot = Math.min(S.legFoot ?? 1e9, it.hinge - 3.42); } }
 function shipLayout(parts) { // places the parts (rocket coords: capsule base at y 21.6, the stack hangs below) and sums up each stage
   const L = [], secs = [[]]; let y = 21.6, prevR = 2.5;
-  const radAt = i => { for (let j = i; j < parts.length; j++) { const p = PARTS[parts[j].k]; if (p && p.r) return p.r; } return prevR; };
-  if (parts.length) { const r0 = radAt(0), h = clamp(1.2 * (2.5 - r0) / 1.25, .4, 1.7); if (Math.abs(r0 - 2.5) > .01) { secs[0].push({k: 'adapt', rT: 2.5, rB: r0, y0: y - h, y1: y, dry: 100}); y -= h; } prevR = r0; }
-  parts.forEach((d, i) => { const p = PARTS[d.k]; if (!p) return; const sec = secs[secs.length - 1];
+  const isTop = d => d && d.top && PARTS[d.k] && PARTS[d.k].nose && PARTS[d.k].r <= .65; // a small nose cone may sit on top of the capsule ({k, top: 1})
+  const radAt = i => { for (let j = i; j < parts.length; j++) { const p = PARTS[parts[j].k]; if (p && p.r && !parts[j].top) return p.r; } return prevR; };
+  const first = parts.findIndex(d => !d.top);
+  if (first >= 0) { const r0 = radAt(first), h = clamp(1.2 * (2.5 - r0) / 1.25, .4, 1.7); if (Math.abs(r0 - 2.5) > .01) { secs[0].push({k: 'adapt', rT: 2.5, rB: r0, y0: y - h, y1: y, dry: 100}); y -= h; } prevR = r0; }
+  parts.forEach((d, i) => { const p = PARTS[d.k]; if (!p || d.top) return; const sec = secs[secs.length - 1];
     if (p.k === 'dec') { const last = sec[sec.length - 1], rB = radAt(i + 1);
       const it = last && last.p && last.p.thrust ? {y1: last.y1, y0: last.y0 - .25, inter: true} : {y1: y, y0: y - p.h};
       const r = Math.max(prevR, it.inter ? rB : 0); secs.push([Object.assign(it, {k: 'dec', p, d, i, r, dry: p.dry})]); y = it.y0; return; }
-    if (Math.abs(p.r - prevR) > .01 && !(p.nose && i === 0)) { sec.push({k: 'adapt', rT: prevR, rB: p.r, y0: y - .5, y1: y, dry: 60}); y -= .5; }
+    if (Math.abs(p.r - prevR) > .01 && !(p.nose && i === first)) { sec.push({k: 'adapt', rT: prevR, rB: p.r, y0: y - .5, y1: y, dry: 60}); y -= .5; }
     const it = {k: d.k, p, d, i, r: p.r, y0: y - p.h, y1: y, dry: p.dry || 0, fuel: p.fuel || 0}; sec.push(it); y = it.y0; prevR = p.r; L.push(it); });
   const out = [];
   secs.filter(s => s.length).reverse().forEach(sec => { const S = {parts: sec, dry: 0, fuel: 0, y0: Infinity, y1: -Infinity, thrust: 0, legs: false, fins: false, r: 0, torque: 0, warn: []};
@@ -186,19 +188,22 @@ function shipLayout(parts) { // places the parts (rocket coords: capsule base at
     if (S.fuel && !S.thrust) S.warn.push('Fuel but no engine'); if (S.thrust && !S.fuel) S.warn.push('Engine but no fuel');
     // side boosters hanging on this stage: their own stage, fired with this one and dropped first
     const at = sec.find(it => it.d && it.d.side && it.d.side.parts && it.d.side.parts.length);
-    if (at) out.push(sideStage(at, S));
+    if (at) out.push(sideStage(at, S, secs.flat()));
     out.push(S); });
   const named = out.filter(S => !S.side), n = named.length; named.forEach((S, i) => { S.name = n === 1 ? 'Main stage' : i === 0 ? 'Booster' : i === n - 1 ? 'Upper stage' : 'Stage ' + (i + 1); });
-  out.push(Object.assign({}, CAPSULE, {parts: [], r: 2.5, warn: []})); return out;
+  const ti = parts.findIndex(isTop), tops = ti < 0 ? [] : [{k: parts[ti].k, p: PARTS[parts[ti].k], d: parts[ti], i: ti, r: .75, y0: 26.1, y1: 26.1 + PARTS[parts[ti].k].h, dry: PARTS[parts[ti].k].dry || 0, fuel: 0, top: true}];
+  out.push(Object.assign({}, CAPSULE, {parts: tops, dry: CAPSULE.dry + tops.reduce((a, it) => a + it.dry, 0), r: 2.5, warn: []})); return out;
 }
-function sideStage(at, core) { const sd = at.d.side, n = clamp(sd.n | 0 || 2, 2, 4), items = []; let y = at.y1, prevR = 0, rs = 0;
+function capTops(g, S, si, preview, paint, tag) { // what sits on top of the capsule (a nose cone): hidden once the parachute is out
+  const L = []; for (const it of S.parts) { const n0 = g.children.length; partMeshes(g, it, si, preview, paint); g.add(cylY(.8, .78, it.y0 - .02, it.y0 + .1, RM.grey, 32)); for (let c = n0; c < g.children.length; c++) { L.push(g.children[c]); if (tag) tag(g.children[c], it); } } g.userData.tops = L; }
+function sideStage(at, core, all) { const sd = at.d.side, n = clamp(sd.n | 0 || 2, 2, 4), items = []; let y = Math.min(21.6, at.y1 + (+sd.dy || 0)), prevR = 0, rs = 0; // dy slides the boosters up or down the rocket
   sd.parts.forEach((d, j) => { const p = PARTS[d.k]; if (!p || p.k === 'dec') return; if (prevR && Math.abs(p.r - prevR) > .01) { items.push({k: 'adapt', rT: prevR, rB: p.r, y0: y - .4, y1: y, dry: 40}); y -= .4; }
     const it = {k: d.k, p, d, i: at.i, si: j, r: p.r, y0: y - p.h, y1: y, dry: p.dry || 0, fuel: p.fuel || 0, side: true}; items.push(it); y = it.y0; prevR = p.r; rs = Math.max(rs, p.r); });
   const S = {side: {n, items, off: 0, at: at.i}, parts: [], dry: 0, fuel: 0, y0: Infinity, y1: -Infinity, thrust: 0, legs: false, fins: false, r: 0, torque: 0, warn: [], name: 'Side boosters'};
   items.forEach((it, j) => { S.dry += it.dry; S.fuel += it.fuel; S.y0 = Math.min(S.y0, it.y0); S.y1 = Math.max(S.y1, it.y1); if (it.d) sumRadial(S, it);
     if (it.p && it.p.thrust) { if (j === items.length - 1) stageEngine(S, it); else { it.blocked = true; S.warn.push('Side boosters: ' + it.p.name + ' is blocked (engines go at the bottom)'); } } });
   // sit just outside the widest core part they reach
-  let cr = at.r; for (const it of core.parts) if ((it.r || it.rB) && it.y1 > S.y0 && it.y0 < S.y1) cr = Math.max(cr, it.r || it.rB || 0);
+  let cr = at.r; for (const it of all || core.parts) if ((it.r || it.rB) && it.y1 > S.y0 && it.y0 < S.y1) cr = Math.max(cr, it.r || it.rB || 0);
   S.side.off = cr + rs + .12; S.side.cr = cr; S.r = S.side.off + rs; S.rs = rs;
   S.dry = (S.dry + 80) * n; S.fuel *= n; if (S.thrust) S.thrust *= n; S.legs = false; // legs only on the core
   S.noz = []; if (S.eng) { const nz = S.eng.p.noz || [[0, 0]]; for (let k = 0; k < n; k++) { const a = k * 2 * Math.PI / n + (n === 4 ? Math.PI / 4 : 0), ca = Math.cos(a), sa = Math.sin(a); for (const [x, z] of nz) S.noz.push([ca * (S.side.off + x) + sa * z, -sa * (S.side.off + x) + ca * z]); } }
@@ -272,7 +277,7 @@ function partMeshes(g, it, si, preview, paint) { // meshes for one placed part (
       g.add(mesh(pgeo('trefoil', () => new THREE.CylinderGeometry(.18, .18, .02, 3)), RM.black, 0, yb + p.mount * .9, .77)); }
     g.add(cylY((p.noz ? Math.max(...p.noz.map(n => Math.hypot(n[0], n[1]))) : 0) + p.rT + .2, r, yb + p.mount * .5, it.y1, RM.grey, 40)); }
   if (p.cat === 'struct' && p.k !== 'dec') {
-    if (p.nose) g.add(mesh(pgeo('nose' + p.k, () => noseGeo(r, p.h)), tankMat(2, r, 1, pt), 0, it.y0, 0));
+    if (p.nose) g.add(mesh(pgeo('nose' + p.k + r, () => noseGeo(r, p.h)), tankMat(2, r, 1, pt), 0, it.y0, 0));
     else if (p.k === 'wheel') { g.add(cylY(r, r, it.y0, it.y1, RM.grey, 40)); g.add(cylY(r + .03, r + .03, it.y0 + .15, it.y1 - .15, RM.gold, 40)); }
     else if (p.k === 'dock') { g.add(cylY(r, r * .9, it.y0, it.y1 - .12, RM.grey, 32)); g.add(cylY(r * .75, r * .75, it.y1 - .12, it.y1, RM.white, 32));
       for (let k = 0; k < 3; k++) { const a = k * Math.PI * 2 / 3, pe = mesh(pgeo('petal', () => new THREE.BoxGeometry(.18, .32, .06)), RM.gold, Math.cos(a) * r * .62, it.y1 + .1, Math.sin(a) * r * .62); pe.rotation.y = -a + Math.PI / 2; g.add(pe); } } }
@@ -288,7 +293,7 @@ function sideMeshes(g, S, si, preview, paint, tag) { // n copies of the side sta
   for (let k = 0; k < sd.n; k++) { const a = sd.ang(k), w = new THREE.Group(); w.rotation.y = a; const b = new THREE.Group(); b.position.x = sd.off; b.userData.bellM = preview ? RM.bellM : g.userData.bellM; w.add(b); g.add(w); groups.push(w);
     for (const it of sd.items) { const n0 = b.children.length; partMeshes(b, it, si, preview, paint); if (tag) for (let c = n0; c < b.children.length; c++) tag(b.children[c], it); }
     b.userData.legs = null;
-    const st = mesh(pgeo('strut', () => new THREE.BoxGeometry(.55, .22, .3)), RM.grey, sd.off - S.rs - .06, S.y1 - 1.1, 0); w.add(st); const st2 = st.clone(); st2.position.y = S.y0 + 1.4 + (S.eng ? S.eng.p.bl || 0 : 0); w.add(st2); }
+    const st = mesh(pgeo('strut', () => new THREE.BoxGeometry(.55, .22, .3)), RM.grey, sd.off - S.rs - .06, S.y1 - 1.1, 0); w.add(st); const st2 = st.clone(); st2.position.y = S.y0 + 1.4 + (S.eng ? S.eng.p.bl || 0 : 0); if (S.y1 - S.y0 > 3.2) w.add(st2); }
   g.userData.sides = groups; return groups; }
 function stageMeshes(g, S, si, preview, paint, tag) { if (S.side) return sideMeshes(g, S, si, preview, paint, tag);
   for (const it of S.parts) { const n0 = g.children.length; partMeshes(g, it, si, preview, paint); if (tag) for (let c = n0; c < g.children.length; c++) tag(g.children[c], it); } }
@@ -300,7 +305,7 @@ function plumeSet(g, S, noz) { // a two-layer plume per nozzle, hung below the b
   return L; }
 function buildStage(i) {
   const g = new THREE.Group(), S = STAGES[i];
-  if (S.cap) buildCapsule(g); else stageMeshes(g, S, i);
+  if (S.cap) { buildCapsule(g); capTops(g, S, i); } else stageMeshes(g, S, i);
   if (S.thrust) { const L = S.side ? g.userData.sides.flatMap(w => plumeSet(w.children[0], S, S.eng.p.noz || [[0, 0]])) : plumeSet(g, S); g.userData.plumes = L; g.userData.plume = L.flat(); }
   return g;
 }
@@ -613,7 +618,7 @@ function flightVisuals(dt) {
   const fp = _t1.copy(R.pos).sub(G.O).addScaledVector(nz, -(R.comY - S.y0) - 1.5); flameL.position.copy(fp); flameL.intensity = on * (S.hot ? 1400 : 300) * (.9 + .2 * Math.random());
   if (G.flash > 0) { flameL.position.copy(G.flashP).sub(G.O); flameL.intensity = Math.max(flameL.intensity, G.flash * 6e4); G.flash = Math.max(0, G.flash - dt * 1.5); }
   // chute
-  const cap = R.sg[R.sg.length - 1]; if (cap && cap.userData.chute) { const ch = cap.userData.chute; ch.visible = R.chute === 2; const s = .05 + .95 * sstep(0, 1, R.chA); ch.scale.set(s, .3 + .7 * s, s); }
+  const cap = R.sg[R.sg.length - 1]; if (cap && cap.userData.chute) { const ch = cap.userData.chute; ch.visible = R.chute === 2; for (const o of cap.userData.tops || []) o.visible = R.chute !== 2; const s = .05 + .95 * sstep(0, 1, R.chA); ch.scale.set(s, .3 + .7 * s, s); }
   // exhaust smoke (only in the air)
   if (on > 0 && R.p > .02 && R.st !== 'dead') { smokeAcc += dt * (20 + 50 * on) * Math.min(1, R.p * 3) * Math.min(1, G.warp); const ext = _t2.copy(R.pos).addScaledVector(nz, -(R.comY - S.y0) - 6);
     const vg = groundVel(PLANET, ext, G.t, new V3()), lowPad = R.pos.length() - PLANET.R - SITE_H - R.comY < 60 && R.pos.distanceTo(_t1.copy(site.p).applyQuaternion(PLANET.q)) < 1500;
