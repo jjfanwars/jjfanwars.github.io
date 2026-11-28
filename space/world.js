@@ -364,6 +364,18 @@ function flora() {
 
 // ---------------- hooks: build with the site, refresh the stand when the design changes, the explosion counter, prompts + F, night lights
 // group what a builder just added to site.g (so it can be hidden as one)
+// merge static meshes that are direct children of `par` (from index n0) into one mesh per material: same picture, far fewer draw calls (main pass and shadow pass)
+function bakeStatic(par, n0 = 0) {
+  const by = new Map(), gone = [], ok = new Set(['position', 'normal', 'uv', 'color']);
+  for (const o of par.children.slice(n0)) { const m = o.material, g = o.geometry;
+    if (!o.isMesh || o.isInstancedMesh || o.isSkinnedMesh || o.children.length || Array.isArray(m) || !o.visible || !o.frustumCulled || m.transparent || o.renderOrder || Object.keys(o.userData).length || !g.attributes.position || !g.attributes.normal || g.morphAttributes.position || Object.keys(g.attributes).some(k => !ok.has(k))) continue;
+    const key = m.uuid + (o.castShadow ? 's' : '') + (o.receiveShadow ? 'r' : '') + (g.attributes.uv ? 'u' : '') + (g.attributes.color ? 'c' + g.attributes.color.itemSize : ''); let e = by.get(key); if (!e) by.set(key, e = {m, o, list: []}); e.list.push(o); }
+  for (const e of by.values()) { if (e.list.length < 2) continue; let n = 0; const gs = e.list.map(o => { o.updateMatrix(); const g = o.geometry.index ? o.geometry.toNonIndexed() : o.geometry.clone(); g.applyMatrix4(o.matrix); n += g.attributes.position.count; return g; });
+    const a0 = gs[0].attributes, P = new Float32Array(n * 3), N = new Float32Array(n * 3), U = a0.uv ? new Float32Array(n * 2) : null, cs = a0.color ? a0.color.itemSize : 0, C = cs ? new Float32Array(n * cs) : null; let at = 0;
+    for (const g of gs) { const A = g.attributes, c = A.position.count; P.set(A.position.array.subarray(0, c * 3), at * 3); N.set(A.normal.array.subarray(0, c * 3), at * 3); if (U) U.set(A.uv.array.subarray(0, c * 2), at * 2); if (C) for (let i = 0; i < c * cs; i++) C[at * cs + i] = A.color.array[i] * (A.color.normalized ? 1 / 255 : 1); at += c; g.dispose(); }
+    const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(P, 3)); geo.setAttribute('normal', new THREE.BufferAttribute(N, 3)); if (U) geo.setAttribute('uv', new THREE.BufferAttribute(U, 2)); if (C) geo.setAttribute('color', new THREE.BufferAttribute(C, cs)); geo.computeBoundingSphere(); geo.computeBoundingBox();
+    const me = new THREE.Mesh(geo, e.m); me.castShadow = e.o.castShadow; me.receiveShadow = e.o.receiveShadow; par.add(me); gone.push(...e.list); }
+  for (const o of gone) { par.remove(o); } return gone.length; }
 function adopt(n0) { const grp = new THREE.Group(); for (const k of site.g.children.slice(n0)) grp.add(k); site.g.add(grp); return grp; }
 // split an instanced mesh into square tiles: the camera frustum and the shadow camera cull each tile, and far tiles are hidden (worldCull)
 WLD.tiles = [];
@@ -373,8 +385,10 @@ function tileSplit(im, size, range) { const n = im.count, cells = new Map(), m =
     idx.forEach((i, j) => { im.getMatrixAt(i, m); t.setMatrixAt(j, m); sx += m.elements[12]; sz += m.elements[14]; if (im.instanceColor) { im.getColorAt(i, c); t.setColorAt(j, c); } });
     t.castShadow = im.castShadow; t.receiveShadow = im.receiveShadow; t.computeBoundingSphere(); t.userData.cx = sx / idx.length; t.userData.cz = sz / idx.length; t.userData.range = range + size * .75; par.add(t); WLD.tiles.push(t); }
   par.remove(im); }
-{ const b0 = buildSite; buildSite = function () { b0(); try { let n0 = site.g.children.length; hangarInside(); WLD.gIn = adopt(n0); hangarRocket();
-    n0 = site.g.children.length; grounds(); WLD.gOut = adopt(n0); n0 = site.g.children.length; town(); WLD.gTown = adopt(n0); n0 = site.g.children.length; flora(); WLD.gFl = adopt(n0);
+{ const b0 = buildSite; buildSite = function () { b0(); try { bakeStatic(site.g); let n0 = site.g.children.length; hangarInside(); WLD.gIn = adopt(n0); bakeStatic(WLD.gIn); hangarRocket();
+    n0 = site.g.children.length; grounds(); WLD.gOut = adopt(n0); bakeStatic(WLD.gOut); n0 = site.g.children.length; town(); WLD.gTown = adopt(n0);
+    if (site.trees) { for (const t of [].concat(site.trees)) { site.g.remove(t); t.geometry.dispose(); } site.trees = null; } // before counting: flora() used to remove these itself, which shifted the index and left its pines and broadleaf trees out of gFl (never tiled, always drawn)
+    n0 = site.g.children.length; flora(); WLD.gFl = adopt(n0);
     for (const im of [...WLD.gTown.children, ...WLD.gFl.children, ...WLD.gOut.children]) if (im.isInstancedMesh) { const [sz, rg] = im.userData.tile || (im.parent === WLD.gTown ? [700, 9000] : [1100, 6000]); tileSplit(im, sz, rg); }
   } catch (e) { console.error('world build', e); } }; }
 // hide what is too far to matter (checked 4x a second): tiles by distance, the hangar inside past 450 m, everything from high up

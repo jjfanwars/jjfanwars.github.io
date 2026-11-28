@@ -900,7 +900,7 @@ function makeClouds(b) {
         gl_FragColor = vec4(col, smoothstep(0., .6, c) * .95); }`});
   // depth only where the cloud is thick (so thin edges don't cut off the sky glow behind them), then colour without depth writes
   const dm = m.clone(); dm.uniforms = m.uniforms; dm.colorWrite = false; dm.transparent = false; dm.defines = {DEPTHONLY: 1}; m.depthWrite = false;
-  const geo = new THREE.SphereGeometry(b.R + CLOUD_H, 384, 192);
+  const geo = new THREE.SphereGeometry(b.R + CLOUD_H, 256, 128);
   const sd = new THREE.Mesh(geo, dm); sd.renderOrder = 1; sd.frustumCulled = false; b.group.add(sd);
   const sp = new THREE.Mesh(geo, m); sp.renderOrder = 2; sp.frustumCulled = false; b.group.add(sp); b.clouds = m; b.cloudMeshes = [sd, sp];
 }

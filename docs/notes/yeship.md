@@ -257,3 +257,10 @@ Sandbox plus missions (21 Nov 2026: 15 missions, see below). Astronauts are thro
 - Trims: sun shadow map 2048 on High (was 4096), 1024 on Medium/lite; High cloud buffer .6 (was .7); Low may drop to 70% resolution.
 - If lag is reported again, measure on a real laptop first (`YE.bench()` in the console per setting) before cutting more.
 
+## Lag pass 4: same picture, less work (28 Nov 2026; owner: "things that don't affect experience but lower lag")
+- Measured with `RND.info` (draw calls + triangles are valid in headless; JS self-time is negligible, the cost is GPU). Medium, on foot at the site: 1316 calls / 2.74M triangles -> 1073 / 2.19M; in flight at 2 km: 1.60M -> 0.67M triangles.
+- **Forest bug:** `flora()` removed the old `site.trees` itself, which shifted the child index used by `adopt`, so its pines and broadleaf trees (5000 instances, ~505k triangles, shadow casters) stayed direct children of `site.g`: never tiled, always drawn, and drawn again into the shadow map. The `buildSite` wrapper now removes the old trees before counting.
+- **`bakeStatic(par, n0)`** (world.js): merges static direct-child meshes per material (keeps vertex colours, uv, shadow flags; skips instanced, transparent, parents, anything with userData or a renderOrder). Run on the base site, `gIn`, `gOut`: 607 -> 207 site meshes. Don't keep references to individual base-site meshes; give a mesh `userData` if it must stay separate.
+- Cloud shell sphere 256x128 (was 384x192, two meshes).
+- Left alone on purpose (would change the look): terrain triangle budget (~830k in view on foot) and terrain in the near shadow map (~300k).
+
