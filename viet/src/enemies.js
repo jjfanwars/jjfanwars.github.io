@@ -2851,6 +2851,37 @@ export function createEnemies(ctx) {
     return sq;
   }
 
+  // Marksmen: one aimed round at a time. The scope glints while they settle on you, so
+  // there is a moment to break the line of sight before the shot.
+  const snipers = [];
+  let glintTex = null;
+  function makeSniper(e) {
+    e.sniper = true; e.glintUntil = -1;
+    if (!glintTex) {
+      const c = document.createElement('canvas'); c.width = c.height = 64;
+      const g = c.getContext('2d'), gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+      gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.18, 'rgba(255,250,225,.85)'); gr.addColorStop(1, 'rgba(255,240,200,0)');
+      g.fillStyle = gr; g.fillRect(0, 0, 64, 64);
+      g.fillStyle = 'rgba(255,255,255,.8)'; g.fillRect(0, 31, 64, 2); g.fillRect(31, 0, 2, 64);
+      glintTex = new THREE.CanvasTexture(c);
+    }
+    e.glint = new THREE.Sprite(new THREE.SpriteMaterial({ map: glintTex, blending: THREE.AdditiveBlending, depthWrite: false, depthTest: false, transparent: true, fog: false }));
+    e.glint.visible = false; e.glint.renderOrder = 50;
+    scene.add(e.glint);
+    snipers.push(e);
+  }
+  function updateSnipers() {
+    for (const e of snipers) {
+      const on = e.alive && T < e.glintUntil;
+      e.glint.visible = on;
+      if (!on) continue;
+      const d = Math.hypot(P.pos.x - e.position.x, P.pos.z - e.position.z);
+      const k = clamp(d * 0.022, 0.25, 3) * (0.8 + 0.3 * Math.sin(T * 30));
+      e.glint.scale.set(k, k, 1);
+      e.glint.position.set(e.position.x + Math.sin(e.yaw) * 0.35, e.position.y + (e.crouching ? 1.1 : 1.55), e.position.z + Math.cos(e.yaw) * 0.35);
+    }
+  }
+
   function setupGarrison() {
     const sq = newSquad('garrison', routes.perimeter);
     garrisonSquad = sq;
@@ -2864,7 +2895,7 @@ export function createEnemies(ctx) {
       collide(_v1, 0.4, heightAt(_v1.x, _v1.z));
       const yaw = yawTo(Math.cos(a), Math.sin(a));
       const e = createEnemy('wall', _v1.x, _v1.z, yaw, sq);
-      if (e) { e.wallAngle = a; e.leashR = 4; }
+      if (e) { e.wallAngle = a; e.leashR = 4; if (i === 2 || i === 6) { e.visionMul = 1.6; makeSniper(e); } }
     }
     // tower sentry + searchlight
     const tw = findTower();
@@ -2875,7 +2906,7 @@ export function createEnemies(ctx) {
       baseYaw = sweepFull ? 0 : yawTo(Math.cos(outward), Math.sin(outward));
       const sx = tw.pos.x - Math.sin(baseYaw) * 0.5, sz = tw.pos.z - Math.cos(baseYaw) * 0.5;
       const e = createEnemy('sentry', sx, sz, baseYaw, sq);
-      if (e) { e.fixedY = tw.pos.y; e.position.y = tw.pos.y; e.static = true; e.visionMul = 1.3; sentry = e; }
+      if (e) { e.fixedY = tw.pos.y; e.position.y = tw.pos.y; e.static = true; e.visionMul = 1.9; sentry = e; makeSniper(e); }
       lampPos = new THREE.Vector3(tw.pos.x + Math.sin(baseYaw) * 0.45, tw.pos.y + 1.35, tw.pos.z + Math.cos(baseYaw) * 0.45);
       searchlight = buildSearchlight(scene, false);
     } else {
@@ -3307,6 +3338,12 @@ export function createEnemies(ctx) {
   }
 
   function hitChance(e, d) {
+    if (e.sniper) {
+      let q = 0.6;
+      if (P.stance === 'prone') q *= 0.5; else if (P.stance === 'crouch') q *= 0.8;
+      if (P.speed > 4.5) q *= 0.3; else if (P.speed > 1) q *= 0.7;
+      return q * (1 - 0.5 * P.cover) * (1 - 0.6 * clamp(e.suppress, 0, 1));
+    }
     const ramp = smoothstep(0.25, 4.5, e.exposure);
     let p = lerp(0.03, 0.2, ramp);
     p *= d < 12 ? 1.3 : lerp(1, 0.3, clamp((d - 12) / 85, 0, 1));
@@ -3334,7 +3371,7 @@ export function createEnemies(ctx) {
     if (hit) {
       _end.copy(P.chest);
       _end.x += rnd(-0.12, 0.12); _end.y += rnd(-0.2, 0.15); _end.z += rnd(-0.12, 0.12);
-      const dmg = Math.round(lerp(18, 11, clamp((d - 10) / 90, 0, 1)));
+      const dmg = shooter.sniper ? 45 : Math.round(lerp(18, 11, clamp((d - 10) / 90, 0, 1)));
       lastPlayerHitT = T;
       hitHeat = Math.min(4, hitHeat + 1);
       const from = _hitFrom[hitFromIdx]; hitFromIdx = (hitFromIdx + 1) % _hitFrom.length;
@@ -3378,6 +3415,10 @@ export function createEnemies(ctx) {
     if (Math.abs(wrapAngle(want - e.yaw)) > 0.55 || e.soldier.anim.aim < 0.8) return;
     if (e.burstLeft > 0) {
       e.shotT -= dt;
+      if (e.sniper) {
+        if (!seeing) { e.burstLeft = 0; releaseToken(e); e.fireCd = rnd(0.8, 1.6); return; }
+        e.glintUntil = T + 0.12;
+      }
       if (e.shotT <= 0) {
         e.aimPoint.copy(tgt);
         if (e.lod < 2 && e.inView) e.soldier.muzzleWorld(_mz);
@@ -3393,7 +3434,7 @@ export function createEnemies(ctx) {
         if (e.burstLeft <= 0) {
           releaseToken(e);
           if (closeShooter === e) closeShooter = null;
-          e.fireCd = rnd(0.45, 1.3) + e.suppress * 0.8;
+          e.fireCd = e.sniper ? rnd(2.8, 4.2) : rnd(0.45, 1.3) + e.suppress * 0.8;
         }
       }
       return;
@@ -3404,6 +3445,7 @@ export function createEnemies(ctx) {
     if (!seeing && !(recent && Math.random() < 0.5)) { e.fireCd = rnd(0.6, 1.6); return; }
     e.burstLeft = 2 + ((Math.random() * 4) | 0);
     e.shotT = 0;
+    if (e.sniper) { if (!seeing) { e.burstLeft = 0; e.fireCd = rnd(0.8, 1.6); return; } e.burstLeft = 1; e.shotT = rnd(1.5, 2.0); }
     if (seeing) acquireToken(e);
   }
 
@@ -4991,6 +5033,7 @@ export function createEnemies(ctx) {
     dt = Math.min(dt, 0.05);
     T += dt; frame++;
     sys.now = T;
+    updateSnipers();
     gridCheckT -= dt;
     if (gridCheckT <= 0) {
       gridCheckT = 2;

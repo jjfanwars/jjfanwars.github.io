@@ -26,16 +26,17 @@ const MODULES = [
   ['weapons', './weapons.js', 'createWeapons', 0.08],
   ['enemies', './enemies.js', 'createEnemies', 0.08],
   ['hud', './hud.js', 'createHud', 0.04],
+  ['raid', './raid.js', 'createRaid', 0.0],
 ];
-const UPDATE_ORDER = ['world', 'tunnels', 'player', 'weapons', 'enemies', 'hud', 'audio'];
+const UPDATE_ORDER = ['world', 'tunnels', 'player', 'weapons', 'enemies', 'raid', 'hud', 'audio'];
 const LOAD_LABELS = {
   audio: 'Sound', world: 'Jungle', tunnels: 'Tunnels', player: 'Guerrilla',
-  weapons: 'Arms', enemies: 'Patrols', hud: 'Interface',
+  weapons: 'Arms', enemies: 'Patrols', raid: 'Targets', hud: 'Interface',
 };
 
 const OBJECTIVES = [
   { id: 'tunnel', text: 'Dig a tunnel close to the firebase' },
-  { id: 'dump', text: 'Destroy the ammo dump' },
+  { id: 'dump', text: 'Destroy the firebase targets' },
   { id: 'return', text: 'Return to the tunnels' },
 ];
 const TUNNEL_REACH = 80;          // a dug cell this close to the firebase centre completes stage 0
@@ -642,6 +643,15 @@ events.on('dumpDestroyed', () => {
   if (mission.dumpDestroyed) return;
   mission.dumpDestroyed = true;
   if (!mission.started || ended) return;
+  if (!ctx.raid && mission.stage < 2) advanceTo(2);
+});
+events.on('raidProgress', (d) => {
+  if (!d) return;
+  OBJECTIVES[1].text = `Destroy the firebase targets  ${d.done}/${d.total}`;
+  if (mission.started && !ended && mission.stage === 1 && mission.shown === 1 && d.done < d.total) emitObjective(1, false);
+});
+events.on('raidComplete', () => {
+  if (!mission.started || ended) return;
   if (mission.stage < 2) advanceTo(2);
 });
 
@@ -713,7 +723,7 @@ function updateMission(dt) {
     mission.undergroundFor = back ? mission.undergroundFor + dt : 0;
     if (mission.undergroundFor >= RETURN_HOLD) {
       advanceTo(3);
-      events.emit('gameOver', { won: true, reason: 'The firebase burns. You are gone into the earth.' });
+      events.emit('gameOver', { won: true, reason: `The firebase burns. ${Math.floor(ctx.time / 60)} min ${Math.floor(ctx.time % 60)} s, ${stats.kills} killed.` });
     }
   }
 }

@@ -10,7 +10,7 @@ const EMPTY_DASH = [];
 
 const ITEMS = ['rifle', 'shovel', 'satchel', 'grenade', 'trap'];
 const ITEM_NAME = { rifle: 'Type 56', shovel: 'Shovel', satchel: 'Satchel charge', grenade: 'Stick grenade', trap: 'Punji pit' };
-const DIG_SIZES = ['small', 'large'];
+const DIG_SIZES = ['small', 'large', 'tunnel'];
 const ALERT_LABEL = ['Quiet', 'Suspicious', 'Combat'];
 const STANCES = ['stand', 'crouch', 'prone'];
 // tunnels.digTarget() refusal reasons -> short status tags (reasons not listed show nothing)
@@ -1646,6 +1646,18 @@ export function createHud(ctx = {}) {
     g.beginPath();
     g.moveTo(tmp[0], tmp[1] - 5); g.lineTo(tmp[0] + 5, tmp[1] + 3.5); g.lineTo(tmp[0] - 5, tmp[1] + 3.5); g.closePath();
     g.fill(); g.stroke();
+    // raid targets still standing
+    const rts = ctx.raid?.targets;
+    if (Array.isArray(rts) && ctx.mission?.marker) {
+      for (let i = 0; i < rts.length; i++) {
+        const t = rts[i];
+        if (t.done) continue;
+        toS(t.x, t.z, tmp);
+        if (edgeClamp(tmp, R, 10)) continue;
+        g.fillStyle = t === ctx.mission.marker ? '#e4c98a' : '#c9714a';
+        g.fillRect(tmp[0] - 2, tmp[1] - 2, 4, 4);
+      }
+    }
     // firebase / dump
     const dumpObj = objTarget === 'dump' && !dumpDestroyed;
     const tx = dumpObj ? WORLD.ammoDump.x : fb.x, tz = dumpObj ? WORLD.ammoDump.z : fb.z;
@@ -2021,7 +2033,8 @@ export function createHud(ctx = {}) {
     const canAct = alive && !p?.transitioning;
     const held = w ? w.current : '';
     let useKind = 0; // 0 none, 1 hatch, 2 plant, 3 refused
-    if (canAct && near) useKind = 1;
+    const digOut = canAct && !near && !!p?.canDigOut;
+    if (canAct && (near || digOut)) useKind = 1;
     else if (canAct && held === 'satchel' && w?.canPlant) useKind = 2;
     if (canAct && held === 'shovel') {
       refuseT -= dt;
@@ -2031,7 +2044,7 @@ export function createHud(ctx = {}) {
     setOp(useBox, useKind ? 1 : 0);
     if (useKind) {
       setClass(useBox, 'ug-no', useKind === 3);
-      if (useKind === 1) { setText(useKey, '[F]'); setText(useLbl, underground ? 'Climb out' : 'Descend'); }
+      if (useKind === 1) { setText(useKey, '[F]'); setText(useLbl, digOut ? 'Dig out' : underground ? 'Climb out' : 'Descend'); }
       else if (useKind === 2) { setText(useKey, '[LMB]'); setText(useLbl, 'Plant'); }
       else setText(useLbl, refuseTag);
     }
@@ -2040,7 +2053,9 @@ export function createHud(ctx = {}) {
     compMarks.hasCamp = !underground && Math.hypot(WORLD.playerStart.x - px, WORLD.playerStart.z - pz) > 30;
     if (compMarks.hasCamp) compMarks.campB = norm360(Math.atan2(WORLD.playerStart.x - px, -(WORLD.playerStart.z - pz)) * DEG);
     let ox = NaN, oz = NaN;
-    if (objectiveTextStr && !objectiveDone) {
+    const mk = ctx.mission?.marker;
+    if (objectiveTextStr && !objectiveDone && mk && Number.isFinite(mk.x)) { ox = mk.x; oz = mk.z; }
+    else if (objectiveTextStr && !objectiveDone) {
       if (objTarget === 'dump') { ox = WORLD.ammoDump.x; oz = WORLD.ammoDump.z; }
       else if (objTarget === 'firebase') { ox = WORLD.firebase.x; oz = WORLD.firebase.z; }
       else if (objTarget === 'hatch' && !underground) {

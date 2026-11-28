@@ -424,13 +424,28 @@ export function createPlayer(ctx) {
   }
 
   // Enter or leave through the nearest hatch. Returns true if a transition started.
+  // Below ground in something dug, with no hatch near: F digs out to the surface.
+  function canDigOut() {
+    if (!self.alive || trans.active) return false;
+    const p = self.position;
+    return self.underground || (carvedAt(p.x, p.z) && p.y < terrainH(p.x, p.z) - 1.0);
+  }
+
   function toggleHatch() {
     if (!self.alive || trans.active) return false;
-    const h = findHatch(HATCH_RANGE);
+    let h = findHatch(HATCH_RANGE);
+    let digOut = false;
+    if (!h && canDigOut()) {
+      // no hatch in reach: break out straight up through a new spider hole
+      const p = self.position, t = ctx.tunnels;
+      try { t?.createHatch?.(p.x, p.z); } catch (e) { /* optional */ }
+      h = findHatch(3) || { x: p.x, z: p.z };
+      digOut = true;
+    }
     if (!h) return false;
-    if (!self.underground && !self.grounded && !self.swimming) return false;
+    if (!digOut && !self.underground && !self.grounded && !self.swimming) return false;
     trans.active = true; trans.phase = 'out'; trans.t = 0;
-    trans.kind = self.underground ? 'exit' : 'enter';
+    trans.kind = digOut || self.underground ? 'exit' : 'enter';
     trans.hatch = h;
     self.transitioning = true;
     ev.emit('hatch', { pos: new THREE.Vector3(h.x, terrainH(h.x, h.z), h.z), entering: trans.kind === 'enter', hatch: h });
@@ -1305,6 +1320,7 @@ export function createPlayer(ctx) {
 
     // context
     self.nearHatch = self.alive && !trans.active ? findHatch(HATCH_RANGE) : null;
+    self.canDigOut = !self.nearHatch && canDigOut();
 
     computeVisibility(hs);
     applyCamera(dt);

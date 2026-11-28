@@ -32,7 +32,7 @@ const QR = 1.0;                       // carve field is stored clamped to [-QR, 
 const QSC = 127 / QR;
 const MAX_CHUNKS = 7000;              // 4 KB of field each at most: ~28 MB cap
 const REACH = 4.6;                    // shovel reach from the eye
-const RADIUS = { small: 0.6, large: 1.0 };
+const RADIUS = { small: 0.6, large: 1.0, tunnel: 1.0 };   // tunnel: one click bores a 2 m section
 const FLAT = 0.8;                     // scoops are this much flatter than wide
 const SMOOTH = 0.16;                  // smooth-union width between strokes
 const DEEP = 1.5;                     // carved this far below the surface counts as tunnel
@@ -1704,7 +1704,7 @@ totalEmissiveRadiance += diffuseColor.rgb * uLampCol * (vAux.w * bakeGain);`)
     dir: new THREE.Vector3(), center: new THREE.Vector3(), radius: RADIUS.large, floorY: NaN,
     under: false, dist: 0, origin: new THREE.Vector3(),
   };
-  let digSize = 'large';
+  let digSize = 'tunnel';
   let aimShown = false;
   const COL_OK = new THREE.Vector4(0.93, 0.84, 0.66, 0.55);
   const COL_BAD = new THREE.Vector4(0.85, 0.16, 0.1, 0.7);
@@ -1748,6 +1748,7 @@ totalEmissiveRadiance += diffuseColor.rgb * uLampCol * (vAux.w * bakeGain);`)
     if (aim.normal.lengthSq() < 1e-8) aim.normal.set(0, 1, 0); else aim.normal.normalize();
     const r = RADIUS[opts.size || digSize] || RADIUS.large;
     aim.radius = r;
+    aim.size = opts.size || digSize;
     aim.center.copy(aim.point).addScaledVector(dir, r * 0.42);
     // level floor when digging ahead (scoop above the feet, aim not steeply down)
     aim.floorY = NaN;
@@ -1807,6 +1808,19 @@ totalEmissiveRadiance += diffuseColor.rgb * uLampCol * (vAux.w * bakeGain);`)
     ev.emit('digStroke', { pos, normal: a.normal.clone(), under, surface, radius: r });
     ev.emit('noise', { pos: pos.clone(), loudness: under ? 0.07 : 0.2, source: 'player', kind: 'dig' });
     refreshHeapsNear(c.x, c.z);
+    // tunnel mode: keep boring along the aim for a full section (level when aimed ahead)
+    if (a.size === 'tunnel' && !opts.sub && a.dir) {
+      let dx = a.dir.x, dy = a.dir.y, dz = a.dir.z;
+      if (Math.abs(dy) < 0.4) dy = 0;
+      const dl = Math.hypot(dx, dy, dz) || 1;
+      dx /= dl; dy /= dl; dz /= dl;
+      for (let k = 1; k <= 3; k++) {
+        const st = { hit: true, size: 'bore', radius: r, floorY: dy === 0 ? a.floorY : NaN, origin: a.origin, normal: a.normal, dir: a.dir,
+          center: new THREE.Vector3(c.x + dx * 0.55 * k, c.y + dy * 0.55 * k, c.z + dz * 0.55 * k) };
+        st.point = st.center;
+        if (!digStroke(st, { playerX: px, playerZ: pz, sub: true }).ok) break;
+      }
+    }
     return { ok: true, carved: n, surface, under };
   }
   function refreshHeapsNear(x, z) {
