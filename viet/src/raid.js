@@ -98,6 +98,60 @@ export function createRaid(ctx) {
   }
   host?.appendChild(box);
 
+  // ---------- kits: picked on the title screen ----------
+  const kitStyle = document.createElement('style');
+  kitStyle.textContent = `
+#ug-kits{position:absolute;left:max(24px,env(safe-area-inset-left));bottom:calc(max(22px,env(safe-area-inset-bottom)) + 40px);z-index:5;
+  display:none;pointer-events:auto;padding:2px;border:1px solid rgba(215,209,188,.18);border-radius:3px;background:rgba(10,12,9,.55);backdrop-filter:blur(4px)}
+body[data-state="menu"] #ug-kits{display:inline-flex}
+#ug-kits button{appearance:none;border:0;margin:0;padding:6px 12px;border-radius:2px;cursor:pointer;background:transparent;color:rgba(215,209,188,.5);
+  font:600 10px/1 system-ui,-apple-system,"Segoe UI",sans-serif;letter-spacing:.18em;text-transform:uppercase;transition:color .15s,background-color .15s}
+#ug-kits button:hover{color:rgba(215,209,188,.85)}
+#ug-kits button[aria-checked="true"]{background:rgba(215,209,188,.13);color:#d7d1bc}
+#ug-scope{position:fixed;inset:0;z-index:9;pointer-events:none;opacity:0;
+  background:radial-gradient(circle at 50% 50%,transparent 0,transparent 33vh,rgba(0,0,0,.55) 33.6vh,#000 35vh)}
+#ug-scope::before,#ug-scope::after{content:"";position:absolute;background:rgba(0,0,0,.85)}
+#ug-scope::before{left:50%;top:calc(50% - 34vh);width:1px;height:68vh}
+#ug-scope::after{top:50%;left:calc(50% - 34vh);height:1px;width:68vh}`;
+  document.head.appendChild(kitStyle);
+  const scopeEl = document.createElement('div');
+  scopeEl.id = 'ug-scope';
+  document.body.appendChild(scopeEl);
+  const kitEl = document.createElement('div');
+  kitEl.id = 'ug-kits';
+  kitEl.setAttribute('role', 'radiogroup');
+  kitEl.setAttribute('aria-label', 'Kit');
+  function pickKit(name) {
+    const w = ctx.weapons;
+    if (!w?.setKit || ctx.mission?.started) return;
+    const got = w.setKit(name);
+    try { localStorage.setItem('ug-kit', got); } catch (e) { /* private mode */ }
+    for (const b of kitEl.children) b.setAttribute('aria-checked', String(b.dataset.kit === got));
+  }
+  for (const name of Object.keys(ctx.weapons?.kits || {})) {
+    const b = document.createElement('button');
+    b.type = 'button'; b.dataset.kit = name; b.setAttribute('role', 'radio');
+    b.textContent = ctx.weapons.kits[name].label;
+    b.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); pickKit(name); });
+    kitEl.appendChild(b);
+  }
+  const menuEl = document.getElementById('menu');
+  const mountKits = () => { if (menuEl && kitEl.parentNode !== menuEl) menuEl.appendChild(kitEl); };
+  mountKits();
+  if (menuEl && typeof MutationObserver === 'function') new MutationObserver(mountKits).observe(menuEl, { childList: true });
+  let savedKit = 'rifleman';
+  try { savedKit = new URLSearchParams(location.search).get('kit') || localStorage.getItem('ug-kit') || 'rifleman'; } catch (e) { /* private mode */ }
+  pickKit(savedKit);
+  function updateScope() {
+    const w = ctx.weapons;
+    if (!w) return;
+    const on = !!w.scope && w.current === 'rifle' && ctx.state === 'playing';
+    const k = on ? clamp((w.ads - 0.7) / 0.25, 0, 1) : 0;
+    scopeEl.style.opacity = k ? String(k) : '0';
+    if (w.viewRoot) w.viewRoot.visible = k < 0.5;
+    w.lookScale = k > 0.5 ? 0.28 : 1;
+  }
+
   // ---------- state ----------
   const api = {
     targets,
@@ -141,9 +195,10 @@ export function createRaid(ctx) {
     const w = ctx.weapons;
     if (!w) return false;
     let got = false;
-    if (w.grenades < FULL.grenades) { w.grenades = FULL.grenades; got = true; }
-    if (w.traps < FULL.traps) { w.traps = FULL.traps; got = true; }
-    if (w.ammo && w.ammo.reserve < FULL.reserve) { w.ammo.reserve = FULL.reserve; got = true; }
+    const F = w.kitFull || FULL;
+    if (w.grenades < F.grenades) { w.grenades = F.grenades; got = true; }
+    if (w.traps < F.traps) { w.traps = F.traps; got = true; }
+    if (w.ammo && w.ammo.reserve < F.reserve) { w.ammo.reserve = F.reserve; got = true; }
     const dump = targets.find((t) => t.id === 'dump');
     if (dump && !dump.done && w.satchels < 1 && !w.satchelPlanted) { w.satchels = 1; got = true; }
     return got;
@@ -159,6 +214,7 @@ export function createRaid(ctx) {
       ev.emit('explosion', { pos: new THREE.Vector3(e.x, e.y, e.z), radius: 12, damage: 200, by: 'player', weapon: 'cookoff' });
     }
     updateFires(dt);
+    updateScope();
 
     // nearest standing target drives the compass marker and the checklist highlight
     const raiding = !!m && m.stage === 1 && m.shown === 1;

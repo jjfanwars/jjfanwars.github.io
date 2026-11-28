@@ -3375,6 +3375,30 @@ export function createWeapons(ctx) {
     else if (item === 'ammo' || item === 'rifle') api.ammo.reserve += n;
   }
   function addAmmo(n = CFG.magSize) { api.ammo.reserve += n; }
+  // Loadouts: each kit overrides rifle handling and what you carry.
+  const BASE_CFG = { ...CFG };
+  const KITS = {
+    rifleman: { label: 'Rifleman', rifleName: 'Type 56' },
+    sniper: { label: 'Sniper', rifleName: 'Mosin-Nagant', scope: true, magSize: 5, startReserve: 45, fireInterval: 1.25, dmgBody: 130, dmgHead: 300,
+      adsFov: 13, spreadHip: 0.05, spreadAds: 0.0003, spreadMoveAds: 0.004, kickPitch: 0.03, reloadTime: 2.6, reloadEmptyTime: 3.0, startGrenades: 2 },
+    sapper: { label: 'Sapper', rifleName: 'Type 56', startReserve: 120, startGrenades: 8, startTraps: 8 },
+    gunner: { label: 'Gunner', rifleName: 'RPD', magSize: 100, startReserve: 200, fireInterval: 60 / 650, dmgBody: 30, spreadHip: 0.034, spreadAds: 0.006,
+      kickPitch: 0.011, reloadTime: 4.2, reloadEmptyTime: 4.6, startGrenades: 2, startTraps: 2 },
+  };
+  function setKit(name) {
+    const k = KITS[name] || KITS.rifleman;
+    Object.assign(CFG, BASE_CFG);
+    for (const key of Object.keys(k)) if (key in BASE_CFG) CFG[key] = k[key];
+    api.kit = KITS[name] ? name : 'rifleman';
+    api.rifleName = k.rifleName; api.scope = !!k.scope; api.magSize = CFG.magSize;
+    api.ammo.mag = CFG.magSize; api.ammo.reserve = CFG.startReserve;
+    api.grenades = CFG.startGrenades; api.traps = CFG.startTraps;
+    api.kitFull = { grenades: CFG.startGrenades, traps: CFG.startTraps, reserve: CFG.startReserve };
+    emit('kit', { kit: api.kit });
+    return api.kit;
+  }
+  api.setKit = setKit; api.kits = KITS; api.kit = 'rifleman'; api.rifleName = 'Type 56'; api.scope = false;
+  api.viewRoot = sway;
   function reset() {
     cancelActions();
     api.ammo.mag = CFG.magSize; api.ammo.reserve = CFG.startReserve;

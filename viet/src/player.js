@@ -1206,7 +1206,7 @@ export function createPlayer(ctx) {
     // look
     if (controlled && input?.mouse && (input.locked || isDebug())) {
       const aimK = isAimingCached ? 0.55 : 1;
-      const sens = LOOK_SENS * aimK * (Number(ctx.settings?.sensitivity) || 1);
+      const sens = LOOK_SENS * aimK * (Number(ctx.settings?.sensitivity) || 1) * (ctx.weapons?.lookScale ?? 1);
       self.yaw -= (input.mouse.dx || 0) * sens;
       self.pitch -= (input.mouse.dy || 0) * sens;
     }

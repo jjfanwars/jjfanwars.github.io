@@ -1892,7 +1892,7 @@ export function createHud(ctx = {}) {
         if (curItem && slots[curItem]) setClass(slots[curItem].el, 'on', false);
         curItem = cur;
         setClass(slots[cur].el, 'on', true);
-        setText(wName, ITEM_NAME[cur]);
+        setText(wName, (cur === 'rifle' && w.rifleName) || ITEM_NAME[cur]);
         lastMag = lastRes = -1;
         lastDigSize = '';
         sizes.style.display = cur === 'shovel' && typeof (ctx.tunnels?.digSize ?? w.digSize) === 'string' ? '' : 'none';
