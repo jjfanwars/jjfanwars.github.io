@@ -2399,8 +2399,21 @@ export function createAudio(ctx = {}) {
     voiceBuf('hatch', rv('hatch'), null, o);
   }
   function onTunnelDug() {
+    if (clock - T.digLast < 0.8) return;      // the stroke already made its sound
     const o = vo(0.5, 1, 1, 'dig', 3, 6, 0.5); o.rate = 0.9 + R() * 0.2; o.under = listenerUnder;
     voiceBuf('dirtFall', rv('dirtFall'), null, o);
+  }
+  // One shovel stroke: blade scrape into the earth, then the scoop of soil thrown aside.
+  function onDigStroke(d) {
+    T.digLast = clock;
+    let pos = null;
+    if (d.pos && finite3(d.pos) && Math.hypot(d.pos.x - L.x, d.pos.z - L.z) > 2.5) { tmpA.x = d.pos.x; tmpA.y = d.pos.y; tmpA.z = d.pos.z; pos = tmpA; }
+    const o = vo(0.62, 2, 1, 'dig', 3, 6, listenerUnder ? 0.45 : 0.12);
+    o.rate = 0.86 + R() * 0.26; o.under = listenerUnder;
+    voiceBuf('dig', rv('dig'), pos, o);
+    const o2 = vo(d.surface ? 0.26 : 0.34, 1, 1, 'dig', 3, 5, listenerUnder ? 0.5 : 0.2);
+    o2.at = 0.16 + R() * 0.06; o2.rate = 1.15 + R() * 0.25; o2.under = listenerUnder;
+    voiceBuf('dirtFall', rv('dirtFall'), pos, o2);
   }
   function onHatchCreated(d) {
     let pos = null;
@@ -2491,7 +2504,7 @@ export function createAudio(ctx = {}) {
   const HANDLERS = {
     shot: wrap(onShot), explosion: wrap(onExplosion), playerHit: wrap(onPlayerHit), enemyKilled: wrap(onEnemyKilled),
     alert: wrap(onAlert, true), enterTunnel: wrap(() => onTunnelSafe(true), true), exitTunnel: wrap(() => onTunnelSafe(false), true),
-    tunnelDug: wrap(onTunnelDug), hatchCreated: wrap(onHatchCreated), digProgress: wrap(onDigProgress),
+    tunnelDug: wrap(onTunnelDug), hatchCreated: wrap(onHatchCreated), digProgress: wrap(onDigProgress), digStroke: wrap(onDigStroke),
     dumpDestroyed: wrap(onDump), gameOver: wrap(onGameOver, true), message: wrap(onMessage),
     satchelPlanted: wrap(onSatchel), chargePlanted: wrap(onSatchel),
     grenadeBounce: wrap(onBounce), grenadeThrown: wrap(onThrow),

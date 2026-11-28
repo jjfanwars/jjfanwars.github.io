@@ -11,16 +11,17 @@ import { WORLD, clamp, lerp, smoothstep, noise2D, events as sharedEvents } from 
 
 const EYE = { stand: 1.65, crouch: 1.0, prone: 0.4 };
 const BODY_H = { stand: 1.8, crouch: 1.2, prone: 0.55 };
-const TUNNEL_EYE_MAX = 1.25;       // eye cap inside regular crawl tunnels
-const CHAMBER_STAND_EYE = 1.45;    // need at least this much eye room to stand underground
+const HEAD_GAP = 0.16;             // eye kept this far under dug earth above
+const UG_ENTER = 0.45;             // eye this far under the surface, with earth above: underground
+const UG_LEAVE = 0.15;
 
 const SPEED = {
-  walk: 3.2, sprint: 5.5, crouch: 1.8, prone: 0.8,
-  crawl: 1.4, tunnelProne: 0.8, chamber: 2.0, swim: 1.3,
+  walk: 4.1, sprint: 6.8, crouch: 2.5, prone: 1.1,
+  crawl: 2.2, tunnelProne: 1.1, chamber: 3.0, swim: 1.8,
 };
 
 const RADIUS = 0.35;
-const TUNNEL_RADIUS = 0.28;
+const DUG_RADIUS = 0.28;           // against dug earth walls
 const STEP_UP = 0.45;              // box tops this far above feet can be stepped onto
 const GRAVITY = 14.0;
 const JUMP_V = 4.6;
@@ -30,8 +31,8 @@ const MAX_GRADE = 1.15;            // terrain grade (rise/run) the player cannot
 const SWIM_DEPTH = 1.35;           // water depth at which the player floats
 const SWIM_FEET_BELOW = 1.42;      // feet below water surface while swimming
 
-const STAMINA = { sprintDrain: 16, swimDrain: 3, jumpCost: 10, regenIdle: 15, regenMove: 9, regenDelay: 0.9, recover: 30 };
-const REGEN = { delay: 9, rate: 1.6 };
+const STAMINA = { sprintDrain: 9, swimDrain: 3, jumpCost: 10, regenIdle: 15, regenMove: 9, regenDelay: 0.9, recover: 30 };
+const REGEN = { delay: 5, rate: 7 };
 
 const FADE_OUT = 0.28;
 const FADE_IN = 0.42;
@@ -104,6 +105,10 @@ export function createPlayer(ctx) {
   let hitPunchP = 0, hitPunchY = 0;
   let lastDrainTime = -10;
   let maxEyeHere = EYE.stand;
+  let headroom = Infinity;          // dug earth above the feet (Infinity: open sky / no digging)
+  let carvedHere = false;           // standing in or next to dug ground
+  let ugTimer = 0;
+  const mantle = { active: false, t: 0, dur: 0.55, fx: 0, fy: 0, fz: 0, tx: 0, ty: 0, tz: 0 };
   let waterSurf = 0;
   let wasWet = false;
   let exposure = 0;                 // muzzle flash exposure, decays
@@ -211,8 +216,19 @@ export function createPlayer(ctx) {
     }
   }
 
-  // Terrain height, or the top of a box the feet can stand on.
+  // Dug ground near (x, z)?
+  function carvedAt(x, z) {
+    const t = ctx.tunnels;
+    return !!(t && typeof t.carvedNear === 'function' && t.carvedNear(x, z));
+  }
+
+  // Terrain height (or the dug floor), or the top of a box the feet can stand on.
   function groundAt(x, z, feetY) {
+    const t = ctx.tunnels;
+    if (t && typeof t.groundAt === 'function' && carvedAt(x, z)) {
+      const g = t.groundAt(x, feetY, z, STEP_UP);
+      if (g !== null && Number.isFinite(g)) return g;
+    }
     let h = terrainH(x, z);
     if (boxBuckets) {
       const bucket = boxBuckets[hCoord(z) * HDIM + hCoord(x)];
@@ -315,6 +331,7 @@ export function createPlayer(ctx) {
 
   function surfaceType(x, z) {
     if (self.underground) return 'tunnel';
+    if (carvedHere && self.position.y < terrainH(x, z) - 0.2) return 'dirt';
     if (self.waterDepth > 0.05) return 'water';
     const custom = ctx.world?.surfaceAt?.(x, z);
     if (typeof custom === 'string') return custom;
@@ -331,17 +348,27 @@ export function createPlayer(ctx) {
   // Tunnels
   // -------------------------------------------------------------------------
 
-  function tunnelFloor(x, z) {
+  function tunnelFloor(x, z, y) {
     const t = ctx.tunnels;
     if (!t || typeof t.floorAt !== 'function') return null;
-    const f = t.floorAt(x, z);
+    const f = t.floorAt(x, z, y);
     return Number.isFinite(f) ? f : null;
   }
 
-  function tunnelClearance(x, z, floor) {
-    const c = ctx.tunnels?.ceilingAt?.(x, z);
-    if (!Number.isFinite(c) || floor == null) return 1.4;
-    return c - floor;
+  // Dug earth above the feet, or Infinity.
+  function headroomAt(x, feetY, z) {
+    const t = ctx.tunnels;
+    if (!t || typeof t.ceilingAbove !== 'function' || !carvedAt(x, z)) return Infinity;
+    const c = t.ceilingAbove(x, feetY + 0.25, z);
+    return Number.isFinite(c) && c < feetY + 40 ? c - feetY : Infinity;
+  }
+
+  // Stance and eye limits for the room above the feet.
+  function fitStance() {
+    if (headroom === Infinity) { maxEyeHere = EYE.stand; return; }
+    maxEyeHere = clamp(headroom - HEAD_GAP, 0.3, EYE.stand);
+    if (self.stance === 'stand' && headroom < BODY_H.stand) self.stance = headroom >= BODY_H.crouch - 0.05 ? 'crouch' : 'prone';
+    else if (self.stance === 'crouch' && headroom < BODY_H.crouch - 0.05) self.stance = 'prone';
   }
 
   function findHatch(maxDist) {
@@ -374,6 +401,11 @@ export function createPlayer(ctx) {
   function placeInTunnelAtHatch(h) {
     const t = ctx.tunnels;
     let x = h.x, z = h.z, y = null;
+    if (Number.isFinite(h.floorY)) {
+      const g = t?.groundAt?.(x, h.floorY + 0.3, z, 0.2);
+      self.position.set(x, Number.isFinite(g) ? g : h.floorY, z);
+      return;
+    }
     if (Number.isFinite(h.cx) && Number.isFinite(h.cz) && t?.cellCenter) {
       const c = t.cellCenter(h.cx, h.cz);
       if (c && Number.isFinite(c.x)) { x = c.x; z = c.z; if (Number.isFinite(c.y)) y = c.y; }
@@ -413,9 +445,11 @@ export function createPlayer(ctx) {
     if (trans.kind === 'enter') {
       placeInTunnelAtHatch(h);
       setUndergroundState(true);
+      ugTimer = 0;
       if (self.stance === 'stand') self.stance = 'crouch';
-      const f = p.y;
-      maxEyeHere = Math.min(TUNNEL_EYE_MAX, clamp(tunnelClearance(p.x, p.z, f) - 0.2, 0.3, EYE.stand));
+      carvedHere = carvedAt(p.x, p.z);
+      headroom = headroomAt(p.x, p.y, p.z);
+      fitStance();
       eyeCur = Math.min(EYE[self.stance], maxEyeHere);
       self.grounded = true;
       ev.emit('enterTunnel', { hatch: h, pos: p.clone() });
@@ -423,6 +457,7 @@ export function createPlayer(ctx) {
       const fx = -Math.sin(self.yaw), fz = -Math.cos(self.yaw);
       p.set(h.x + fx * 0.6, 0, h.z + fz * 0.6);
       setUndergroundState(false);
+      ugTimer = 0;
       p.y = groundAt(p.x, p.z, terrainH(p.x, p.z) + 0.5);
       resolveCollisions(RADIUS, BODY_H.crouch);
       p.y = groundAt(p.x, p.z, p.y + 0.3);
@@ -516,12 +551,13 @@ export function createPlayer(ctx) {
   }
 
   function canStandHere() {
-    return !self.underground || maxEyeHere >= CHAMBER_STAND_EYE;
+    return headroom >= BODY_H.stand;
   }
 
   function setStance(s) {
     if (!EYE[s] || !self.alive) return false;
-    if (s === 'stand' && !canStandHere()) s = 'crouch';
+    if (s === 'stand' && !canStandHere()) s = headroom >= BODY_H.crouch - 0.05 ? 'crouch' : 'prone';
+    if (s === 'crouch' && headroom < BODY_H.crouch - 0.05) s = 'prone';
     if (s === 'prone' && self.waterDepth > 0.35 && !self.underground) s = 'crouch';
     if (self.swimming) s = 'stand';
     if (s === self.stance) return false;
@@ -710,9 +746,51 @@ export function createPlayer(ctx) {
     if (justPressed(KEYS.jump, input)) {
       if (self.stance === 'prone') setStance('crouch');
       else if (self.stance === 'crouch') setStance('stand');
+      else if (carvedHere && tryMantle()) jumpQueued = false;
       else if (!self.underground) jumpQueued = true;
     }
     if (justPressed(KEYS.use, input)) toggleHatch();
+  }
+
+  // Climb out of a dug hole: a ledge of firm ground ahead, up to about chest-and-arms height.
+  function tryMantle() {
+    const t = ctx.tunnels;
+    if (!t || typeof t.groundAt !== 'function' || mantle.active || !self.grounded) return false;
+    const p = self.position;
+    const fx = -Math.sin(self.yaw), fz = -Math.cos(self.yaw);
+    for (const d of [0.5, 0.75, 1.0]) {
+      const x = p.x + fx * d, z = p.z + fz * d;
+      const top = groundAt(x, z, p.y + 1.85);
+      const rise = top - p.y;
+      if (!(rise > STEP_UP && rise < 2.25)) continue;
+      if (headroomAt(x, top, z) < BODY_H.crouch) continue;
+      if (headroomAt(p.x, p.y, p.z) < rise + 0.9) continue;
+      mantle.active = true; mantle.t = 0; mantle.dur = 0.35 + rise * 0.2;
+      mantle.fx = p.x; mantle.fy = p.y; mantle.fz = p.z;
+      mantle.tx = x; mantle.ty = top; mantle.tz = z;
+      if (self.stance === 'prone') self.stance = 'crouch';
+      self.velocity.set(0, 0, 0);
+      emitNoise(0.15, 'climb', 'dirt');
+      ev.emit('mantle', { rise });
+      return true;
+    }
+    return false;
+  }
+  function updateMantle(dt) {
+    const p = self.position;
+    prevPos.copy(p);
+    mantle.t = Math.min(1, mantle.t + dt / mantle.dur);
+    const k = mantle.t;
+    const up = smoothstep(0, 0.65, k), fw = smoothstep(0.35, 1, k);
+    p.set(lerp(mantle.fx, mantle.tx, fw), lerp(mantle.fy, mantle.ty + 0.05, up), lerp(mantle.fz, mantle.tz, fw));
+    if (k >= 1) {
+      mantle.active = false;
+      p.y = groundAt(p.x, p.z, p.y);
+      self.grounded = true;
+    }
+    self.velocity.set(0, 0, 0);
+    carvedHere = carvedAt(p.x, p.z);
+    headroom = carvedHere ? headroomAt(p.x, p.y, p.z) : Infinity;
   }
 
   function moveSurface(dt, ix, iz, wantSprint, aiming, controlled) {
@@ -727,9 +805,14 @@ export function createPlayer(ctx) {
     if (wl > 1) { wx /= wl; wz /= wl; }
     const hasInput = wl > 0.01 && controlled;
 
+    // dug ground: headroom decides the stance
+    carvedHere = carvedAt(p.x, p.z);
+    headroom = carvedHere ? headroomAt(p.x, p.y, p.z) : Infinity;
+    fitStance();
+
     // water at current spot
     const g0 = terrainH(p.x, p.z);
-    self.waterDepth = sampleWater(p.x, p.z, g0);
+    self.waterDepth = carvedHere && p.y < g0 - 0.3 ? 0 : sampleWater(p.x, p.z, g0);
     self.inWater = self.waterDepth > 0.05;
     self.swimming = self.waterDepth > SWIM_DEPTH;
     if (self.swimming && self.stance !== 'stand') self.stance = 'stand';
@@ -738,14 +821,14 @@ export function createPlayer(ctx) {
     // sprint
     if (wantSprint && iz > 0 && hasInput && self.stance === 'crouch') setStance('stand');
     const canSprint = wantSprint && hasInput && iz > 0 && self.stance === 'stand' && !self.exhausted &&
-      self.stamina > 0 && !aiming && !self.swimming && self.waterDepth < 0.6 && self.grounded;
+      self.stamina > 0 && !aiming && !self.swimming && self.waterDepth < 0.6 && self.grounded && headroom > BODY_H.stand + 0.2;
     self.sprinting = canSprint;
 
     let speed;
     if (self.swimming) speed = SPEED.swim;
     else if (self.stance === 'prone') speed = SPEED.prone;
-    else if (self.stance === 'crouch') speed = SPEED.crouch;
-    else speed = canSprint ? SPEED.sprint : SPEED.walk;
+    else if (self.stance === 'crouch') speed = headroom < 1.6 ? SPEED.crawl : SPEED.crouch;
+    else speed = canSprint ? SPEED.sprint : headroom < 2.4 ? SPEED.chamber : SPEED.walk;
 
     if (iz < 0) speed *= 0.72; else if (iz === 0 && ix !== 0) speed *= 0.88;
     if (aiming) speed *= 0.6;
@@ -756,10 +839,10 @@ export function createPlayer(ctx) {
     let tvx = hasInput ? wx * speed : 0;
     let tvz = hasInput ? wz * speed : 0;
 
-    // slope: slow uphill, block cliffs
+    // slope: slow uphill, block cliffs (dug ground: walls do the blocking)
     const e = 0.6;
-    const gx = (terrainH(p.x + e, p.z) - terrainH(p.x - e, p.z)) / (2 * e);
-    const gz = (terrainH(p.x, p.z + e) - terrainH(p.x, p.z - e)) / (2 * e);
+    const gx = carvedHere ? 0 : (terrainH(p.x + e, p.z) - terrainH(p.x - e, p.z)) / (2 * e);
+    const gz = carvedHere ? 0 : (terrainH(p.x, p.z + e) - terrainH(p.x, p.z - e)) / (2 * e);
     const steep = Math.hypot(gx, gz);
     if (hasInput && !self.swimming) {
       const tl = Math.hypot(tvx, tvz) || 1;
@@ -795,11 +878,22 @@ export function createPlayer(ctx) {
     p.z += v.z * dt;
 
     resolveCollisions(RADIUS, BODY_H[self.stance]);
+    const t = ctx.tunnels;
+    if (t && typeof t.collide === 'function' && (carvedHere || carvedAt(p.x, p.z))) {
+      const bx = p.x, bz = p.z;
+      if (t.collide(p, DUG_RADIUS, Math.min(BODY_H[self.stance], headroom - 0.02))) {
+        const dx = p.x - bx, dz = p.z - bz, dl = Math.hypot(dx, dz);
+        if (dl > 1e-5) killVelocityInto(dx / dl, dz / dl);
+      }
+      const lim = WORLD.playable - 0.5;
+      p.x = clamp(p.x, -lim, lim); p.z = clamp(p.z, -lim, lim);
+    }
 
     // vertical
     const hs = Math.hypot(v.x, v.z);
     let ground = groundAt(p.x, p.z, p.y);
-    const depthHere = sampleWater(p.x, p.z, terrainH(p.x, p.z));
+    const tH = terrainH(p.x, p.z);
+    const depthHere = carvedHere && ground < tH - 0.3 ? 0 : sampleWater(p.x, p.z, tH);
     const swimHere = depthHere > SWIM_DEPTH;
 
     if (swimHere) {
@@ -811,7 +905,7 @@ export function createPlayer(ctx) {
       self.grounded = true;
       jumpQueued = false;
     } else if (self.grounded) {
-      if (jumpQueued && self.stamina >= 4 && depthHere < 0.8) {
+      if (jumpQueued && self.stamina >= 4 && depthHere < 0.8 && headroom > BODY_H.stand + 0.5) {
         v.y = JUMP_V * (depthHere > 0.3 ? 0.7 : 1);
         self.grounded = false;
         self.stamina = Math.max(0, self.stamina - STAMINA.jumpCost);
@@ -829,6 +923,10 @@ export function createPlayer(ctx) {
       v.y -= GRAVITY * dt;
       p.y += v.y * dt;
       ground = groundAt(p.x, p.z, p.y - v.y * dt);
+      if (carvedHere && v.y > 0) {
+        const hr = headroomAt(p.x, p.y, p.z);
+        if (hr < BODY_H[self.stance]) v.y = 0;
+      }
       if (p.y <= ground) {
         const impact = -v.y;
         p.y = ground;
@@ -861,80 +959,32 @@ export function createPlayer(ctx) {
     }
   }
 
-  function moveUnderground(dt, ix, iz, aiming, controlled) {
-    const p = self.position, v = self.velocity;
-    prevPos.copy(p);
+  // Underground: the eye is under the surface with dug earth above it (hysteresis + a
+  // short hold so a tunnel mouth does not flicker the lighting).
+  function updateUnderground(dt) {
     const t = ctx.tunnels;
-
-    const yaw = self.yaw;
-    const fx = -Math.sin(yaw), fz = -Math.cos(yaw);
-    const rx = Math.cos(yaw), rz = -Math.sin(yaw);
-    let wx = fx * iz + rx * ix, wz = fz * iz + rz * ix;
-    const wl = Math.hypot(wx, wz);
-    if (wl > 1) { wx /= wl; wz /= wl; }
-    const hasInput = wl > 0.01 && controlled;
-
-    // headroom and forced stance
-    let floor = tunnelFloor(p.x, p.z);
-    if (floor == null) floor = p.y;
-    const clearance = tunnelClearance(p.x, p.z, floor);
-    const chamber = clearance - 0.2 >= CHAMBER_STAND_EYE;
-    maxEyeHere = chamber ? clamp(clearance - 0.2, 0.3, EYE.stand) : clamp(Math.min(TUNNEL_EYE_MAX, clearance - 0.2), 0.3, TUNNEL_EYE_MAX);
-    if (self.stance === 'stand' && !chamber) self.stance = 'crouch';
-
-    // crawl tunnels (~1.2 m) vs walk-crouched tunnels (~1.9 m) vs chambers
-    let speed = self.stance === 'prone' ? SPEED.tunnelProne
-      : self.stance === 'stand' ? SPEED.chamber
-      : clearance >= 1.6 ? SPEED.crouch : SPEED.crawl;
-    if (iz < 0) speed *= 0.75;
-    if (aiming) speed *= 0.7;
-    if (Math.abs(eyeCur - Math.min(EYE[self.stance], maxEyeHere)) > 0.25) speed *= 0.6;
-    self.sprinting = false;
-    self.swimming = false;
-    self.inWater = false;
-    self.waterDepth = 0;
-
-    const tvx = hasInput ? wx * speed : 0, tvz = hasInput ? wz * speed : 0;
-    const a = damp(hasInput ? 10 : 14, dt);
-    v.x += (tvx - v.x) * a;
-    v.z += (tvz - v.z) * a;
-    v.y = 0;
-    jumpQueued = false;
-
-    const nx = p.x + v.x * dt, nz = p.z + v.z * dt;
-    probe.set(nx, floor + 0.05, nz);
-
-    let ok = false;
-    if (t && typeof t.constrain === 'function') {
-      const r = t.constrain(probe, TUNNEL_RADIUS);
-      if (r && r !== probe && Number.isFinite(r.x)) probe.copy(r);
-      const f = tunnelFloor(probe.x, probe.z);
-      if (f != null && Math.abs(f - floor) < 0.9) { p.set(probe.x, f, probe.z); ok = true; }
-    }
-    if (!ok) {
-      // axis-separated fallback against floorAt
-      let f = tunnelFloor(nx, nz);
-      if (f != null && Math.abs(f - floor) < 0.9) { p.set(nx, f, nz); ok = true; }
-      else {
-        f = tunnelFloor(nx, p.z);
-        if (f != null && Math.abs(f - floor) < 0.9) { p.x = nx; p.y = f; v.z = 0; ok = true; }
-        else {
-          f = tunnelFloor(p.x, nz);
-          if (f != null && Math.abs(f - floor) < 0.9) { p.z = nz; p.y = f; v.x = 0; ok = true; }
-        }
+    if (trans.active || !self.alive || !t || typeof t.coveredAt !== 'function') return;
+    const p = self.position;
+    const eyeY = p.y + eyeCur;
+    const surf = typeof t.meshHeight === 'function' ? t.meshHeight(p.x, p.z) : terrainH(p.x, p.z);
+    const depth = surf - eyeY;
+    if (!self.underground) {
+      const want = carvedHere && depth > UG_ENTER && t.coveredAt(p.x, eyeY, p.z);
+      ugTimer = want ? ugTimer + dt : 0;
+      if (ugTimer > 0.12) {
+        ugTimer = 0;
+        setUndergroundState(true);
+        ev.emit('undergroundChange', { underground: true, walk: true, pos: p });
       }
-      if (!ok) {
-        v.x = v.z = 0;
-        if (tunnelFloor(p.x, p.z) == null && !t?.floorAt) p.y = terrainH(p.x, p.z) - WORLD.tunnelDepth;
+    } else {
+      const leave = !carvedHere || depth < UG_LEAVE || !t.coveredAt(p.x, eyeY, p.z);
+      ugTimer = leave ? ugTimer + dt : 0;
+      if (ugTimer > 0.12) {
+        ugTimer = 0;
+        setUndergroundState(false);
+        ev.emit('undergroundChange', { underground: false, walk: true, pos: p });
       }
     }
-    // real velocity after constraint (for bob/footsteps)
-    if (dt > 0) {
-      // walls slide: keep only the component of velocity that actually moved us
-      const ax = (p.x - prevPos.x) / dt, az = (p.z - prevPos.z) / dt;
-      if (ax * ax + az * az < v.x * v.x + v.z * v.z) { v.x = ax; v.z = az; }
-    }
-    self.grounded = true;
   }
 
   // -------------------------------------------------------------------------
@@ -947,7 +997,7 @@ export function createPlayer(ctx) {
     if (self.underground) {
       if (st === 'prone') { amp = 0.018; stride = 0.42; rollA = 0.03; }
       else if (st === 'stand') { amp = 0.032; stride = 0.7; rollA = 0.006; }
-      else if (maxEyeHere >= 1.2) { amp = 0.026; stride = 0.6; rollA = 0.01; }
+      else if (headroom >= 1.6) { amp = 0.026; stride = 0.6; rollA = 0.01; }
       else { amp = 0.03; stride = 0.52; rollA = 0.028; }
     } else if (self.swimming) { amp = 0.05; stride = 1.4; rollA = 0.012; }
     else if (st === 'prone') { amp = 0.02; stride = 0.48; rollA = 0.028; }
@@ -1014,9 +1064,11 @@ export function createPlayer(ctx) {
     }
 
     // keep the eye out of the ground / under the ceiling / above water
-    if (self.underground) {
-      const ce = ctx.tunnels?.ceilingAt?.(p.x, p.z);
-      if (Number.isFinite(ce)) ey = Math.min(ey, ce - 0.08);
+    if (carvedHere) {
+      if (headroom !== Infinity) ey = Math.min(ey, p.y + headroom - 0.08);
+      ey = Math.max(ey, p.y + 0.2);
+    } else if (self.underground) {
+      ey = Math.max(ey, p.y + 0.2);
     } else {
       const g = terrainH(p.x, p.z);
       ey = Math.max(ey, g + 0.15);
@@ -1074,6 +1126,22 @@ export function createPlayer(ctx) {
 
   function spawnUndergroundNear(x, z) {
     const t = ctx.tunnels;
+    if (t && typeof t.spawnPoint === 'function') {
+      const sp = t.spawnPoint(x, z);
+      if (!sp) return false;
+      self.position.copy(sp);
+      self.velocity.set(0, 0, 0);
+      setUndergroundState(true);
+      self.stance = 'crouch';
+      carvedHere = carvedAt(sp.x, sp.z);
+      headroom = headroomAt(sp.x, sp.y, sp.z);
+      fitStance();
+      eyeCur = Math.min(EYE[self.stance], maxEyeHere);
+      visFeetY = self.position.y;
+      prevPos.copy(self.position);
+      ev.emit('enterTunnel', { hatch: null, pos: self.position.clone(), debug: true });
+      return true;
+    }
     if (!t || typeof t.dugCells !== 'function' || typeof t.cellCenter !== 'function') return false;
     let best = Infinity, bx = 0, by = 0, bz = 0, found = false;
     for (const cell of t.dugCells()) {
@@ -1089,8 +1157,8 @@ export function createPlayer(ctx) {
     self.velocity.set(0, 0, 0);
     setUndergroundState(true);
     self.stance = 'crouch';
-    const cl = tunnelClearance(bx, bz, self.position.y);
-    maxEyeHere = Math.min(TUNNEL_EYE_MAX, clamp(cl - 0.2, 0.3, EYE.stand));
+    headroom = headroomAt(bx, self.position.y, bz);
+    fitStance();
     eyeCur = Math.min(EYE.crouch, maxEyeHere);
     visFeetY = self.position.y;
     ev.emit('enterTunnel', { hatch: null, pos: self.position.clone(), debug: true });
@@ -1149,8 +1217,8 @@ export function createPlayer(ctx) {
     updateTransition(dt);
 
     if (self.alive) {
-      if (self.underground) moveUnderground(dt, ix, iz, isAimingCached, controlled && !trans.active);
-      else moveSurface(dt, ix, iz, wantSprint, isAimingCached, controlled && !trans.active);
+      if (mantle.active) updateMantle(dt);
+      else moveSurface(dt, ix, iz, wantSprint && !self.underground, isAimingCached, controlled && !trans.active);
     } else {
       // dead: slump, keep gravity on the surface
       const v = self.velocity;
@@ -1177,11 +1245,10 @@ export function createPlayer(ctx) {
     self.moving = hs > 0.25;
 
     // eye height
-    let targetEye = EYE[self.stance];
-    if (self.underground) targetEye = Math.min(targetEye, maxEyeHere);
-    else maxEyeHere = EYE.stand;
+    let targetEye = Math.min(EYE[self.stance], maxEyeHere);
     const rate = targetEye < eyeCur ? (self.stance === 'prone' ? 6 : 10) : (eyeCur < EYE.crouch - 0.1 ? 4.5 : 8);
-    eyeCur += (targetEye - eyeCur) * damp(self.underground && eyeCur > maxEyeHere ? 20 : rate, dt);
+    eyeCur += (targetEye - eyeCur) * damp(eyeCur > maxEyeHere ? 20 : rate, dt);
+    if (self.alive) updateUnderground(dt);
 
     // smoothed feet height for the camera
     const fy = p.y;

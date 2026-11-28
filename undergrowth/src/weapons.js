@@ -16,10 +16,10 @@ const LABELS = {
 };
 
 const CFG = {
-  magSize: 30, startReserve: 120, startGrenades: 3, startSatchels: 1, startTraps: 3,
+  magSize: 30, startReserve: 210, startGrenades: 4, startSatchels: 1, startTraps: 4,
   fireInterval: 60 / 600, dmgBody: 34, dmgHead: 100, range: 420,
   adsFov: 50, adsTime: 0.17,
-  reloadTime: 2.35, reloadEmptyTime: 2.95,
+  reloadTime: 1.9, reloadEmptyTime: 2.4,
   tracerEvery: 4, tracerSpeed: 520, tracerLen: 7,
   spreadHip: 0.026, spreadAds: 0.0022, spreadMove: 0.035, spreadMoveAds: 0.006, bloomMax: 0.045,
   kickPitch: 0.0135, kickYaw: 0.0055,
@@ -1729,7 +1729,9 @@ export function createWeapons(ctx) {
   let adsT = 0, sprintE = 0;
   const aim = { pending: 0, pendingYaw: 0, recover: 0, pitchSign: 1, lastFire: -10 };
 
-  const dig = { active: false, kind: null, cx: 0, cz: 0, t: 0, phase: 0, requery: 0, stroke: 0, cooldown: 0 };
+  // shovel: one click = one stroke (swing, impact carves a scoop where the cursor was)
+  const dig = { active: false, t: 0, phase: 0, applied: false, cooldown: 0, mode: 0, target: null };
+  const STROKE = { time: 0.3, impact: 0.12 };
   const melee = { active: false, t: 0, hitDone: false, swingOnly: false };
   const plant = { t: 0 };
   const planted = { active: false, atDump: false, pos: new THREE.Vector3(), fuse: 0, lastTick: 0 };
@@ -1772,7 +1774,15 @@ export function createWeapons(ctx) {
   // ---- helpers --------------------------------------------------------------------------------
   const W = () => ctx.world;
   const heightAt = (x, z) => { const w = ctx.world; if (w && typeof w.heightAt === 'function') { const h = w.heightAt(x, z); return Number.isFinite(h) ? h : 0; } return 0; };
-  const heightFn = (x, z) => heightAt(x, z);
+  // ground for particles: the dug floor in dug ground (searched down from the eye)
+  const heightFn = (x, z) => {
+    const t = ctx.tunnels;
+    if (t && typeof t.groundAt === 'function' && t.carvedNear?.(x, z)) {
+      const g = t.groundAt(x, camPos.y, z, 0.2);
+      if (g !== null && Number.isFinite(g)) return g;
+    }
+    return heightAt(x, z);
+  };
   const isWater = (x, z) => { const w = ctx.world; try { return !!(w && typeof w.isWater === 'function' && w.isWater(x, z)); } catch (e) { return false; } };
   const waterLevel = () => { const w = ctx.world; return w && Number.isFinite(w.waterLevel) ? w.waterLevel : -1e9; };
   // Local water surface height (river or a terraced paddy), -Infinity where there is no water.
@@ -1892,11 +1902,20 @@ export function createWeapons(ctx) {
         break;
       }
     }
-    const tt = marchTerrain(origin, dir, R.t);
+    const tun = ctx.tunnels;
+    const dugRay = typeof tun?.raycast === 'function';
+    const tt = dugRay ? tun.raycast(origin, dir, R.t) : marchTerrain(origin, dir, R.t);
     if (tt >= 0 && tt < R.t) {
       R.t = tt; R.kind = 'terrain'; R.object = null; R.surface = null;
       R.point.copy(origin).addScaledVector(dir, tt);
-      normalAt(R.point.x, R.point.z, R.normal);
+      if (dugRay && tun.carvedNear?.(R.point.x, R.point.z)) {
+        const e = 0.06, f = tun.field;
+        R.normal.set(f(R.point.x - e, R.point.y, R.point.z) - f(R.point.x + e, R.point.y, R.point.z),
+          f(R.point.x, R.point.y - e, R.point.z) - f(R.point.x, R.point.y + e, R.point.z),
+          f(R.point.x, R.point.y, R.point.z - e) - f(R.point.x, R.point.y, R.point.z + e));
+        if (R.normal.lengthSq() < 1e-10) R.normal.copy(dir).negate(); else R.normal.normalize();
+        if (ctx.player?.underground || R.point.y < heightAt(R.point.x, R.point.z) - 0.3) R.surface = 'laterite';
+      } else normalAt(R.point.x, R.point.z, R.normal);
     }
     const hb = ctx.enemies?.hitboxes;
     if (Array.isArray(hb) && hb.length) {
@@ -2339,10 +2358,12 @@ export function createWeapons(ctx) {
           }
         }
         // terrain
-        const gh = heightAt(g.pos.x, g.pos.z) + 0.03;
+        const tun = ctx.tunnels;
+        const dugG = tun && typeof tun.groundAt === 'function' && tun.carvedNear?.(g.pos.x, g.pos.z);
+        const gh = (dugG ? tun.groundAt(g.pos.x, g.pos.y, g.pos.z, 0.25) ?? heightAt(g.pos.x, g.pos.z) : heightAt(g.pos.x, g.pos.z)) + 0.03;
         if (g.pos.y < gh) {
           g.pos.y = gh;
-          normalAt(g.pos.x, g.pos.z, tN);
+          if (dugG) tN.set(0, 1, 0); else normalAt(g.pos.x, g.pos.z, tN);
           const vn = g.vel.dot(tN);
           if (vn < 0) {
             g.vel.addScaledVector(tN, -1.32 * vn);
@@ -2429,7 +2450,7 @@ export function createWeapons(ctx) {
       if (!rs.reload.inserted) { rifle.mag.visible = true; rifle.mag.position.copy(RIFLE_MAG_PIVOT); rifle.mag.rotation.set(0, 0, 0); }
       rs.reload = null; api.reloading = false; api.reloadProgress = 0;
     }
-    if (dig.active) { dig.active = false; setProgress(null, 0); }
+    if (dig.active) { dig.active = false; dig.t = 0; }
     melee.active = false;
     if (plant.t > 0) { plant.t = 0; setProgress(null, 0); }
     if (trapA.t > 0) { trapA.t = 0; setProgress(null, 0); }
@@ -2617,29 +2638,6 @@ export function createWeapons(ctx) {
     return best;
   }
 
-  function queryDigTarget() {
-    const tun = ctx.tunnels;
-    if (!tun) return null;
-    const pp = playerPos(tA);
-    if (typeof tun.digTarget === 'function') {
-      let r = null;
-      try { r = tun.digTarget(pp, fwd); } catch (e) { r = null; }
-      if (!r || !r.type) return null;
-      if (r.type !== 'cell' && r.type !== 'hatch' && r.type !== 'chamber') return null;
-      return r;
-    }
-    // fallback when tunnels has no digTarget()
-    const under = !!ctx.player?.underground;
-    const c = typeof tun.cellOf === 'function' ? tun.cellOf(pp.x, pp.z) : { cx: Math.floor(pp.x / WORLD.cell), cz: Math.floor(pp.z / WORLD.cell) };
-    if (under) {
-      if (fwd.y > 0.72 && typeof tun.createHatch === 'function') return { type: 'hatch', cx: c.cx, cz: c.cz };
-      if (typeof tun.dig === 'function') return { type: 'cell', cx: c.cx + Math.round(fwdH.x), cz: c.cz + Math.round(fwdH.z) };
-      return null;
-    }
-    if (fwd.y < -0.55 && typeof tun.createHatch === 'function') return { type: 'hatch', cx: c.cx, cz: c.cz };
-    return null;
-  }
-
   function startMelee(swingOnly) {
     melee.active = true; melee.t = 0; melee.hitDone = false; melee.swingOnly = swingOnly;
     emit('melee', { hit: false });
@@ -2673,83 +2671,82 @@ export function createWeapons(ctx) {
     if (melee.t >= 1) melee.active = false;
   }
 
-  function digCenter(t, out) {
-    const tun = ctx.tunnels;
-    if (typeof tun?.cellCenter === 'function') {
-      try { const c = tun.cellCenter(t.cx, t.cz); if (c && Number.isFinite(c.x)) return out.set(c.x, c.y, c.z); } catch (e) { /* fall through */ }
-    }
-    return out.set((t.cx + 0.5) * WORLD.cell, 0, (t.cz + 0.5) * WORLD.cell);
-  }
-
-  function completeDig() {
-    const tun = ctx.tunnels; if (!tun) return false;
-    const pp = playerPos(tA);
-    let ok = false;
-    try {
-      if (dig.kind === 'cell') ok = !!tun.dig?.(pp, tB.copy(fwdH));
-      else if (dig.kind === 'hatch') { digCenter(dig, tC); ok = !!tun.createHatch?.(tC.x, tC.z); }
-      else if (dig.kind === 'chamber') ok = !!tun.digChamber?.(dig.cx, dig.cz);
-    } catch (e) { console.error('[weapons] dig', e); ok = false; }
-    return ok;
-  }
-
-  function dirtSpray(n) {
-    // clods in front of the blade
-    tA.copy(camPos).addScaledVector(fwd, 0.75).addScaledVector(up, -0.12);
-    const under = !!ctx.player?.underground;
-    const col = under ? COL.laterite : terrainSurface(tA) === 'laterite' ? COL.laterite : COL.mud;
+  // Clods and dust thrown off the blade at the dug spot.
+  const digTint = new THREE.Color();
+  function dirtSpray(at, nrm, n, under) {
+    const deep = under || at.y < heightAt(at.x, at.z) - 0.4;
+    const col = deep ? COL.laterite : terrainSurface(at) === 'laterite' ? COL.laterite : COL.dirt;
+    const nx = nrm ? nrm.x : -fwd.x, ny = nrm ? nrm.y : 0.3, nz = nrm ? nrm.z : -fwd.z;
+    const x = at.x + nx * 0.06, y = at.y + ny * 0.06, z = at.z + nz * 0.06;
     for (let i = 0; i < n; i++) {
-      { const s = spec(alphaFx, tA.x + sgn() * 0.1, tA.y + sgn() * 0.1, tA.z + sgn() * 0.1, -fwd.x * 0.8 + sgn() * 0.7, 0.8 + rnd() * 1.2, -fwd.z * 0.8 + sgn() * 0.7,
-        0.5 + rnd() * 0.3, 0.02 + rnd() * 0.03, 0.02, COL.debris, 1, 6); s.grav = 9.8; s.rv = sgn() * 8; s.fadePow = 0.3; s.fadeIn = 0.01; alphaFx.emit(); }
+      digTint.copy(i & 1 ? COL.debris : col).multiplyScalar(0.75 + rnd() * 0.4);
+      const sp = 1.1 + rnd() * 1.8;
+      const s = spec(alphaFx, x + sgn() * 0.12, y + sgn() * 0.1, z + sgn() * 0.12,
+        nx * sp + sgn() * 0.9 - fwd.x * 0.6, Math.max(ny, 0) * sp + 1.2 + rnd() * 1.6, nz * sp + sgn() * 0.9 - fwd.z * 0.6,
+        0.55 + rnd() * 0.45, 0.025 + rnd() * 0.05, 0.03, digTint, 1, 6);
+      s.grav = 9.8; s.drag = 0.3; s.rv = sgn() * 9; s.flags = F_COLLIDE; s.fadePow = 0.25; s.fadeIn = 0.01; alphaFx.emit();
     }
-    { const s = spec(alphaFx, tA.x, tA.y, tA.z, sgn() * 0.2, 0.2, sgn() * 0.2, 1.2, 0.08, 0.5, col, under ? 0.35 : 0.25, 0); s.drag = 2.5; s.emit = under ? 0.15 : 0; alphaFx.emit(); }
+    // dust that hangs in the air (lamp-lit underground)
+    for (let i = 0; i < 3; i++) {
+      const s = spec(alphaFx, x + sgn() * 0.2, y + rnd() * 0.2, z + sgn() * 0.2, nx * 0.35 + sgn() * 0.25, 0.15 + rnd() * 0.2, nz * 0.35 + sgn() * 0.25,
+        1.6 + rnd() * 1.4, 0.18, 0.9 + rnd() * 0.5, col, deep ? 0.3 : 0.22, 0);
+      s.drag = 2.2; s.emit = deep ? 0.12 : 0; alphaFx.emit();
+    }
+  }
+
+  const digOpts = { feetY: 0, size: 'large' };
+  function aimShovel() {
+    const tun = ctx.tunnels;
+    if (typeof tun?.aimDig !== 'function') return null;
+    digOpts.feetY = ctx.player?.position?.y ?? camPos.y - 1.6;
+    digOpts.size = tun.digSize || 'large';
+    try { return tun.aimDig(camPos, fwd, digOpts); } catch (e) { console.error('[weapons] aimDig', e); return null; }
   }
 
   function updateShovel(dt, input, mouse) {
     const under = !!ctx.player?.underground;
+    const tun = ctx.tunnels;
     updateMelee(dt);
+    dig.cooldown = Math.max(0, dig.cooldown - dt);
+    // RMB / Q: small or large scoop
+    if (input.pressed?.has?.('Mouse2') && tun && Array.isArray(tun.digSizes)) {
+      const list = tun.digSizes, i = list.indexOf(tun.digSize);
+      tun.digSize = list[(i + 1) % list.length];
+      emit('digSize', { size: tun.digSize });
+    }
     if (sw.phase !== 'idle') return;
-    const pressedL = input.pressed?.has?.('Mouse0');
-    if (pressedL && !melee.active) {
-      const target = !under ? findMeleeTarget(CFG.meleeRange) : null;
-      if (target) { if (dig.active) { dig.active = false; setProgress(null, 0); } startMelee(false); return; }
+    if (dig.active) {
+      dig.t += dt;
+      dig.phase = dig.t / STROKE.time;
+      if (!dig.applied && dig.t >= STROKE.impact) {
+        dig.applied = true;
+        let res = null;
+        try { res = tun?.digStroke?.(dig.target, { playerX: ctx.player?.position?.x, playerZ: ctx.player?.position?.z }); } catch (e) { console.error('[weapons] digStroke', e); }
+        const at = dig.target?.point || tA.copy(camPos).addScaledVector(fwd, 1.2);
+        if (res?.ok) { dirtSpray(at, dig.target.normal, 12, under); spr.jolt.kick(-0.7); }
+        else { dirtSpray(at, dig.target?.normal, 3, under); spr.jolt.kick(-0.3); }
+      }
+      if (dig.t >= STROKE.time) { dig.active = false; dig.t = 0; dig.phase = 0; }
+      return;
     }
     if (melee.active) return;
-    dig.cooldown = Math.max(0, dig.cooldown - dt);
-    if (!mouse.left && !dig.active) api.digTarget = null;
-    if (mouse.left && dig.cooldown <= 0) {
-      dig.requery -= dt;
-      if (!dig.active || dig.requery <= 0) {
-        dig.requery = 0.15;
-        const t = queryDigTarget();
-        api.digTarget = t;
-        if (!t) {
-          if (dig.active) { dig.active = false; setProgress(null, 0); }
-          if (pressedL) startMelee(true);
-          return;
-        }
-        if (!dig.active || t.type !== dig.kind || t.cx !== dig.cx || t.cz !== dig.cz) {
-          dig.active = true; dig.kind = t.type; dig.cx = t.cx; dig.cz = t.cz; dig.t = 0; dig.stroke = 0;
-        }
-      }
-      const dur = CFG.digTimes[dig.kind] || 1.5;
-      dig.t += dt / dur;
-      dig.phase += dt / 0.52;
-      if (dig.phase >= dig.stroke + 1) {
-        dig.stroke = Math.floor(dig.phase);
-        dirtSpray(4);
-        emit('noise', { pos: camPos.clone(), loudness: under ? 0.06 : 0.14 });
-      }
-      setProgress(dig.kind, Math.min(dig.t, 1));
-      if (dig.t >= 1) {
-        const ok = completeDig();
-        if (ok) { dirtSpray(10); spr.jolt.kick(-0.6); }
-        dig.active = false; dig.cooldown = ok ? 0.18 : 0.6; dig.requery = 0;
-        setProgress(null, 0);
-      }
-    } else if (dig.active) {
-      dig.active = false; setProgress(null, 0);
-    }
+    const aimR = aimShovel();
+    api.digTarget = aimR && aimR.hit ? aimR : null;
+    const pressedL = input.pressed?.has?.('Mouse0');
+    if (!pressedL || dig.cooldown > 0) return;
+    const target = !under ? findMeleeTarget(CFG.meleeRange) : null;
+    if (target) { startMelee(false); return; }
+    if (!aimR || !aimR.hit) { startMelee(true); return; }
+    if (!aimR.valid) { emit('digRefused', { reason: aimR.reason }); dig.cooldown = 0.25; return; }
+    // snapshot the target: the swing lands where the cursor was when clicked
+    const tg = dig.target || (dig.target = { hit: true, valid: true, reason: '', point: new THREE.Vector3(), normal: new THREE.Vector3(), dir: new THREE.Vector3(), center: new THREE.Vector3(), origin: new THREE.Vector3(), radius: 0, floorY: NaN, under: false, dist: 0 });
+    tg.hit = true; tg.valid = true; tg.reason = '';
+    tg.point.copy(aimR.point); tg.normal.copy(aimR.normal); tg.dir.copy(aimR.dir); tg.center.copy(aimR.center); tg.origin.copy(aimR.origin);
+    tg.radius = aimR.radius; tg.floorY = aimR.floorY; tg.under = aimR.under; tg.dist = aimR.dist;
+    dig.active = true; dig.applied = false; dig.t = 0; dig.phase = 0;
+    dig.mode = fwd.y < -0.45 ? 1 : fwd.y > 0.45 ? 2 : 0;
+    dig.cooldown = STROKE.time;
+    emit('noise', { pos: camPos.clone(), loudness: under ? 0.03 : 0.08 });
   }
 
   // ---- satchel / grenade / trap ------------------------------------------------------------
@@ -2997,6 +2994,9 @@ export function createWeapons(ctx) {
   // Free distance from `o` along unit `d` inside dug tunnel space, up to maxD.
   function tunnelClearance(o, d, maxD) {
     const tun = ctx.tunnels;
+    if (typeof tun?.raycast === 'function') {
+      try { const t = tun.raycast(o, d, maxD); return t >= 0 ? Math.max(0, t - 0.04) : maxD; } catch (e) { return maxD; }
+    }
     if (typeof tun?.isFree === 'function') {
       const floorFn = typeof tun.floorAt === 'function' ? tun.floorAt : null;
       try {
@@ -3147,13 +3147,12 @@ export function createWeapons(ctx) {
     shovel.rArm.visible = !under;
     shovel.rUnderArm.visible = under;
     if (dig.active) {
-      const u = dig.phase % 1;
+      const u = clamp(dig.phase, 0, 1);
       const thrust = bump(u, 0.0, 0.42), lever = bump(u, 0.38, 1.0);
-      const lookUp = clamp(fwd.y, -1, 1);
-      if (!under && dig.kind === 'hatch') {
+      if (dig.mode === 1) {
         // stab downward
         P6[1] -= 0.09 * thrust - 0.04 * lever; P6[2] -= 0.05 * thrust; P6[3] -= 0.45 * thrust - 0.25 * lever;
-      } else if (dig.kind === 'hatch' || lookUp > 0.5) {
+      } else if (dig.mode === 2) {
         P6[1] += 0.1 * thrust; P6[3] += 0.55 * thrust; P6[2] -= 0.05 * thrust;
       } else {
         P6[2] -= 0.13 * thrust; P6[3] -= 0.18 * thrust + 0.22 * lever; P6[1] += 0.03 * lever; P6[5] -= 0.08 * lever;
@@ -3243,14 +3242,21 @@ export function createWeapons(ctx) {
   }
 
   function onUndergroundChange(under) {
+    const cur = (sw.phase === 'down' && sw.target) ? sw.target : api.current;
+    // rifle and shovel work underground too: walking in or out keeps them in hand
+    if ((cur === 'shovel' || cur === 'rifle') && sw.phase === 'idle' && api.current === cur) {
+      if (under) surfaceWeapon = cur;
+      quick = null;
+      return;
+    }
     cancelActions();
     quick = null;
     adsT = 0;
     if (under) {
-      surfaceWeapon = (sw.phase === 'down' && sw.target) ? sw.target : api.current;
-      setCurrent('shovel');
+      surfaceWeapon = cur;
+      setCurrent(cur === 'rifle' ? 'rifle' : 'shovel');
     } else {
-      setCurrent(available(surfaceWeapon) ? surfaceWeapon : 'rifle');
+      setCurrent(cur === 'shovel' || cur === 'rifle' ? cur : available(surfaceWeapon) ? surfaceWeapon : 'rifle');
     }
     sw.phase = 'up'; sw.t = 1; sw.target = null;
   }
@@ -3382,6 +3388,11 @@ export function createWeapons(ctx) {
   }
 
   function onEnemyKilled(e) {
+    // ammo taken off the dead: every player kill tops up the reserve
+    if (!e || (e.by !== 'enemy' && e.byPlayer !== false)) {
+      api.ammo.reserve += 12;
+      try { ctx.hud?.toast?.('+12 rounds', 1400); } catch (err) { /* optional */ }
+    }
     if (frame === bulletKillFrame) return;
     if (time - explosionKillWindow < 0.3) emit('hitMarker', { kill: true, headshot: false, explosive: true });
   }
