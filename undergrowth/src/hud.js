@@ -10,13 +10,12 @@ const EMPTY_DASH = [];
 
 const ITEMS = ['rifle', 'shovel', 'satchel', 'grenade', 'trap'];
 const ITEM_NAME = { rifle: 'Type 56', shovel: 'Shovel', satchel: 'Satchel charge', grenade: 'Stick grenade', trap: 'Punji pit' };
-const DIG_SIZES = ['crawl', 'tunnel', 'chamber'];
+const DIG_SIZES = ['small', 'large'];
 const ALERT_LABEL = ['Quiet', 'Suspicious', 'Combat'];
 const STANCES = ['stand', 'crouch', 'prone'];
 // tunnels.digTarget() refusal reasons -> short status tags (reasons not listed show nothing)
 const DIG_REFUSAL = {
-  water: 'Water above', shallow: 'Too shallow', near: 'Hatch nearby', slope: 'Too steep', steep: 'Too steep',
-  blocked: 'Blocked', edge: 'Blocked', depth: 'Blocked', exists: 'Hatch here',
+  water: 'Water', blocked: 'Blocked', edge: 'Blocked', firebase: 'Firebase', deep: 'Too deep', limit: 'Too much dug',
 };
 
 const ICONS = {
@@ -1439,6 +1438,7 @@ export function createHud(ctx = {}) {
 
   // dug cells cache
   let cellXZ = new Float32Array(512);
+  let cellDeep = new Uint8Array(256);
   let cellN = 0, cellSize = WORLD.cell, cellsDirty = true, cellCheckT = 0, cellMap = null;
   function calibrateCells(t) {
     if (cellMap) return cellMap;
@@ -1475,9 +1475,12 @@ export function createHud(ctx = {}) {
         if (n * 2 + 2 > cellXZ.length) {
           const nb = new Float32Array(cellXZ.length * 2);
           nb.set(cellXZ); cellXZ = nb;
+          const nd = new Uint8Array(cellDeep.length * 2);
+          nd.set(cellDeep); cellDeep = nd;
         }
         cellXZ[n * 2] = m.ox + c.cx * m.sx;
         cellXZ[n * 2 + 1] = m.oz + c.cz * m.sz;
+        cellDeep[n] = c.deep === false ? 0 : 1;
         n++;
       }
     } catch (e) { /* partial */ }
@@ -1541,16 +1544,20 @@ export function createHud(ctx = {}) {
     const showT = underground || big;
     const view2 = (mapRange * 1.5) * (mapRange * 1.5);
     if (cellN > 0) {
-      const hs = cellSize * 0.5 + 0.05;
-      g.beginPath();
-      for (let i = 0; i < cellN; i++) {
-        const x = cellXZ[i * 2], z = cellXZ[i * 2 + 1];
-        const dx = x - px, dz = z - pz;
-        if (dx * dx + dz * dz > view2) continue;
-        g.rect(x - hs, z - hs, hs * 2, hs * 2);
+      const rr = cellSize * 0.72;
+      for (let pass = 0; pass < 2; pass++) {
+        g.beginPath();
+        for (let i = 0; i < cellN; i++) {
+          if (cellDeep[i] !== pass) continue;
+          const x = cellXZ[i * 2], z = cellXZ[i * 2 + 1];
+          const dx = x - px, dz = z - pz;
+          if (dx * dx + dz * dz > view2) continue;
+          g.moveTo(x + rr, z);
+          g.arc(x, z, rr, 0, TAU);
+        }
+        g.fillStyle = pass ? (showT ? 'rgba(196,158,92,.78)' : 'rgba(196,158,92,.3)') : (showT ? 'rgba(150,112,72,.5)' : 'rgba(150,112,72,.22)');
+        g.fill();
       }
-      g.fillStyle = showT ? 'rgba(196,158,92,.78)' : 'rgba(196,158,92,.3)';
-      g.fill();
     }
     // smooth segment/chamber shapes if the tunnel module exposes them
     if (tun) {
@@ -1778,33 +1785,11 @@ export function createHud(ctx = {}) {
   let mapBigOn = false;
 
   // Why the shovel can't dig where the player is looking ('' when it can, or no clear reason).
-  function digRefusal(p, w, underground) {
-    if (w?.digTarget?.type && w?.digProgress > 0) return '';
-    const tun = ctx.tunnels, pos = p?.position;
-    if (!tun || !pos || !Number.isFinite(pos.x)) return '';
-    const f = p.forward;
-    if (f && Number.isFinite(f.x) && Number.isFinite(f.y) && Number.isFinite(f.z)) {
-      digDir.x = f.x; digDir.y = f.y; digDir.z = f.z;
-    } else {
-      const yaw = Number.isFinite(p.yaw) ? p.yaw : 0, pitch = Number.isFinite(p.pitch) ? p.pitch : 0;
-      const cp = Math.cos(pitch);
-      digDir.x = -Math.sin(yaw) * cp; digDir.y = Math.sin(pitch); digDir.z = -Math.cos(yaw) * cp;
-    }
-    let reason = '';
-    try {
-      if (typeof tun.digTarget === 'function') {
-        const r = tun.digTarget(pos, digDir);
-        if (!r || r.type) return '';
-        reason = r.reason || '';
-      } else if (typeof tun.aimDig === 'function') {
-        const r = tun.aimDig(pos, digDir);
-        if (!r || r.valid) return '';
-        reason = r.reason || '';
-      } else return '';
-    } catch (e) { return ''; }
-    if (reason === 'exists' && underground && digDir.y < 0) return 'Chamber dug';
-    if (reason === 'water' && !underground) return 'Water';
-    return DIG_REFUSAL[reason] || '';
+  function digRefusal(p, w) {
+    if (w?.current !== 'shovel') return '';
+    const a = ctx.tunnels?.aim;
+    if (!a || !a.hit || a.valid) return '';
+    return DIG_REFUSAL[a.reason] || '';
   }
 
   function update(dt) {

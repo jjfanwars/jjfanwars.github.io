@@ -34,11 +34,11 @@ const LOAD_LABELS = {
 };
 
 const OBJECTIVES = [
-  { id: 'tunnel', text: 'Extend the tunnel toward the firebase' },
+  { id: 'tunnel', text: 'Dig a tunnel close to the firebase' },
   { id: 'dump', text: 'Destroy the ammo dump' },
   { id: 'return', text: 'Return to the tunnels' },
 ];
-const TUNNEL_REACH = 60;          // a dug cell this close to the firebase centre completes stage 0
+const TUNNEL_REACH = 80;          // a dug cell this close to the firebase centre completes stage 0
 const OBJECTIVE_GAP = 1.7;        // seconds between "done" tick and the next objective line
 const RETURN_HOLD = 1.0;          // seconds underground (after the line shows) before the win
 const WIN_END_DELAY = 2.2;        // gameOver(won) -> end screen
@@ -566,12 +566,13 @@ events.on('tunnelDug', (d) => {
   if (d && Number.isFinite(d.cellX) && Number.isFinite(d.cellZ)) {
     const key = d.cellX + ',' + d.cellZ;
     if (!dugSeen.has(key)) { dugSeen.add(key); stats.cellsDug++; }
-    noteDugPoint((d.cellX + 0.5) * WORLD.cell, (d.cellZ + 0.5) * WORLD.cell);
+    // only tunnel (dug well below the surface) counts toward the objective, not foxholes
+    if (d.deep !== false) noteDugPoint((d.cellX + 0.5) * WORLD.cell, (d.cellZ + 0.5) * WORLD.cell);
   } else {
     stats.cellsDug++;
   }
   const p = d?.pos || d?.point;
-  if (p && Number.isFinite(p.x) && Number.isFinite(p.z)) noteDugPoint(p.x, p.z);
+  if (d?.deep !== false && p && Number.isFinite(p.x) && Number.isFinite(p.z)) noteDugPoint(p.x, p.z);
   tunnelScanDirty = true;
 });
 events.on('hatchCreated', (d) => {
@@ -678,7 +679,7 @@ function scanTunnels() {
     if (cells && typeof cells[Symbol.iterator] === 'function') {
       const C = Number.isFinite(t.cellSize) ? t.cellSize : WORLD.cell;
       for (const c of cells) {
-        if (c && Number.isFinite(c.cx) && Number.isFinite(c.cz)) noteDugPoint((c.cx + 0.5) * C, (c.cz + 0.5) * C);
+        if (c && c.deep !== false && Number.isFinite(c.cx) && Number.isFinite(c.cz)) noteDugPoint((c.cx + 0.5) * C, (c.cz + 0.5) * C);
       }
     }
   } catch (e) {

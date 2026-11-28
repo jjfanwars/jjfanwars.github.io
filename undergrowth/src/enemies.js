@@ -3334,7 +3334,7 @@ export function createEnemies(ctx) {
     if (hit) {
       _end.copy(P.chest);
       _end.x += rnd(-0.12, 0.12); _end.y += rnd(-0.2, 0.15); _end.z += rnd(-0.12, 0.12);
-      const dmg = Math.round(lerp(25, 18, clamp((d - 10) / 90, 0, 1)));
+      const dmg = Math.round(lerp(18, 11, clamp((d - 10) / 90, 0, 1)));
       lastPlayerHitT = T;
       hitHeat = Math.min(4, hitHeat + 1);
       const from = _hitFrom[hitFromIdx]; hitFromIdx = (hitFromIdx + 1) % _hitFrom.length;

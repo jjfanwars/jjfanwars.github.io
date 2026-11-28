@@ -2877,9 +2877,13 @@ const FOL = {
   uSunView: { value: new THREE.Vector3(0, 1, 0) },
   uSunCol: { value: new THREE.Color(1, 0.8, 0.6) },
   uWaterY: { value: WATER_Y },
+  // dig mask (tunnels.js): ground cover whose instance origin is dug out is collapsed
+  uDigMask: { value: new THREE.DataTexture(new Uint8Array(1), 1, 1, THREE.RedFormat) },
 };
+FOL.uDigMask.value.needsUpdate = true;
 
 const FOL_VERT_PARS = /* glsl */`
+uniform sampler2D uDigMask;
 attribute vec3 aFol;
 attribute vec2 aBake;
 uniform float uTime;
@@ -2916,6 +2920,9 @@ const FOL_VERT = /* glsl */`
   vFolFade = 1.0 - smoothstep(uFade.x, uFade.y, camD);
   #ifdef FOL_SHRINK
     transformed *= max(vFolFade, 0.0);
+    #ifdef USE_INSTANCING
+      if (texture2D(uDigMask, (iPos.xz + 256.0) / 512.0).r > 0.45) transformed *= 0.0;
+    #endif
   #endif
   vec4 fwp = vec4(transformed, 1.0);
   #ifdef USE_INSTANCING
@@ -5085,6 +5092,7 @@ export async function createWorld(ctx = {}) {
     coverAt, canopyAt: shadeAt,
     raycastMeshes: [terrainProxy, solidsProxy],
     terrainProxy, solidsProxy, castRay, lineOfSight,
+    terrainMaterial: terrainMat, digMask: FOL.uDigMask,
     sun, hemi, sky, fog, group,
     update, setUnderground, setQuality, setPreset,
     get quality() { return quality; },
