@@ -251,3 +251,9 @@ Sandbox plus missions (21 Nov 2026: 15 missions, see below). Astronauts are thro
 - Pause card: "Rejoin the crew ship" (`ownEnd`), crew list shows who flies their own ship. flow.js: `canBoss()` true for own ships, `ownShip()` skips the clock rewind (buttons read "Back to the pad" / "Back to the builder").
 - Tested with one real page + a scripted peer through a mock relay (two real pages run out of memory headless). Not tested: two real browsers, ghost visuals, ghost staging/explosion, a third own ship.
 - **Builder perf (27 Nov 2026):** hover is handled once per frame (`BLD.hov` in `bldRender`); sliding held boosters along the same part only moves their groups (`S.gs`, fast path at the top of `bldApply`), the full rebuild happens on a new candidate and on placing; shared `pgeo` shapes carry `keep` and are not disposed on rebuild.
+
+## Lag pass 3 (28 Nov 2026; owner: "the game in general is too laggy, the visuals")
+- Not measured (headless software rendering can't time the GPU passes): this pass makes the game adapt instead. New players start on **Medium** (`SET.gfx` default). The adaptive block in `frame` runs every 2 s; when fps < 40 it still drops SSAO/rays, then resolution, and now, if still slow for two checks at the lowest resolution and the player never picked a setting (`SET.pick`, set by `setGfx`), steps High -> Medium -> Low with a hint. It never steps back up by itself.
+- Trims: sun shadow map 2048 on High (was 4096), 1024 on Medium/lite; High cloud buffer .6 (was .7); Low may drop to 70% resolution.
+- If lag is reported again, measure on a real laptop first (`YE.bench()` in the console per setting) before cutting more.
+

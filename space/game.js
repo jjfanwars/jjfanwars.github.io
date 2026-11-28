@@ -17,7 +17,7 @@ THREE.ShaderChunk.lights_fragment_begin = THREE.ShaderChunk.lights_fragment_begi
 		#endif
 		directLight.color *= ( directLight.visible && receiveShadow ) ? s0 : 1.0; }
 		#endif`);
-const SET = Object.assign({gfx: 'high', name: ''}, (() => { try { return JSON.parse(localStorage.getItem('ye-set') || '{}'); } catch (e) { return {}; } })());
+const SET = Object.assign({gfx: 'med', name: ''}, (() => { try { return JSON.parse(localStorage.getItem('ye-set') || '{}'); } catch (e) { return {}; } })());
 const saveSet = () => { try { localStorage.setItem('ye-set', JSON.stringify(SET)); } catch (e) {} };
 const HI = () => SET.gfx !== 'low'; // Medium and High share the full renderer; Medium (and High when frames drop) trims the costly passes
 const LITE = () => SET.gfx === 'med' || !!G.lite;
@@ -601,7 +601,7 @@ function setupPost() {
   POST.main = new THREE.WebGLRenderTarget(w, h, {type: THREE.HalfFloatType, samples: 0, depthTexture: new THREE.DepthTexture(w, h, THREE.UnsignedIntType)});
   POST.ao = new THREE.WebGLRenderTarget(Math.max(2, w >> 1), Math.max(2, h >> 1), {depthBuffer: false});
   POST.sky = new THREE.WebGLRenderTarget(w, h, HF); POST.hz = new THREE.WebGLRenderTarget(w, h, HF);
-  const cs = SET.gfx === 'high' && !LITE() ? .7 : .5; POST.cl = new THREE.WebGLRenderTarget(Math.max(2, w * cs | 0), Math.max(2, h * cs | 0), HF); POST.cl2 = POST.cl.clone(); // sharper clouds on High
+  const cs = SET.gfx === 'high' && !LITE() ? .6 : .5; POST.cl = new THREE.WebGLRenderTarget(Math.max(2, w * cs | 0), Math.max(2, h * cs | 0), HF); POST.cl2 = POST.cl.clone(); // sharper clouds on High
   const bw = Math.max(2, w >> 2), bh = Math.max(2, h >> 2);
   POST.a = new THREE.WebGLRenderTarget(bw, bh, HF); POST.b = POST.a.clone();
   POST.c = new THREE.WebGLRenderTarget(Math.max(2, bw >> 2), Math.max(2, bh >> 2), HF); POST.d = POST.c.clone(); POST.r = POST.a.clone();
@@ -611,7 +611,7 @@ function setupPost() {
   POST.ad0 = new THREE.WebGLRenderTarget(1, 1, {type: THREE.FloatType, depthBuffer: false}); POST.ad1 = POST.ad0.clone();
   atmoM.uniforms.steps.value = HI() ? (LITE() ? 10 : 14) : 8; atmoM.uniforms.aoOn.value = HI() && !LITE() ? 1 : 0; cloudM.uniforms.steps.value = LITE() ? 40 : 64; atmoM.uniforms.aoPx.value.set(1 / POST.ao.width, 1 / POST.ao.height);
   ssaoM.uniforms.res.value.set(POST.ao.width, POST.ao.height);
-  RND.shadowMap.enabled = HI(); sunL.castShadow = HI(); sunL2.castShadow = SET.gfx === 'high'; if (sunL2.shadow.map) { sunL2.shadow.map.dispose(); sunL2.shadow.map = null; } const shs = !HI() ? 1024 : LITE() ? 2048 : 4096; sunL.shadow.mapSize.set(shs, shs); if (sunL.shadow.map) { sunL.shadow.map.dispose(); sunL.shadow.map = null; }
+  RND.shadowMap.enabled = HI(); sunL.castShadow = HI(); sunL2.castShadow = SET.gfx === 'high'; if (sunL2.shadow.map) { sunL2.shadow.map.dispose(); sunL2.shadow.map = null; } const shs = !HI() ? 1024 : LITE() ? 1024 : 2048; sunL.shadow.mapSize.set(shs, shs); if (sunL.shadow.map) { sunL.shadow.map.dispose(); sunL.shadow.map = null; }
 }
 function pass(m, rt) { fsQuad.material = m; RND.setRenderTarget(rt); RND.render(fsScene, fsCam); }
 const _sv4 = new V3();
@@ -1294,9 +1294,12 @@ function frame(ts) {
   updateLight();
   if (G.on) { if (R.on) FLIGHT.hud(dt); else { FLIGHT.hideHud(); updateHud(dt); } }
   // adaptive resolution: drop a little when frames are slow, climb back when there is room
-  if (G.on && !MAPV.on && (G.rsT = (G.rsT || 0) + dt) > 3) { G.rsT = 0; const rs = G.rs || 1; let n = rs, lite = !!G.lite;
-    const bp = basePR(), rsMin = (SET.scale || 'auto') !== 'auto' ? 1 : bp > 1.05 ? Math.max(1 / bp, .7) : .8; // Auto only: HiDPI may fall back towards 1x CSS pixels, never below 90% of them
-    if (fps < 40) { if (SET.gfx === 'high' && !lite) lite = true; else if (rs > rsMin + .001) { n = Math.max(rsMin, rs - .1); if (bp * n < .999 && !G.rsTold) { G.rsTold = true; showHint('Frames are slow: drawing at ' + Math.round(bp * n * 100) + '% resolution (Esc · Render scale to choose)', 5000); } } }
+  if (G.on && !MAPV.on && (G.rsT = (G.rsT || 0) + dt) > 2) { G.rsT = 0; const rs = G.rs || 1; let n = rs, lite = !!G.lite;
+    const bp = basePR(), rsMin = (SET.scale || 'auto') !== 'auto' ? 1 : bp > 1.05 ? Math.max(1 / bp, .7) : SET.gfx === 'low' ? .7 : .8; // Auto only: HiDPI may fall back towards 1x CSS pixels, never below 90% of them
+    if (fps >= 40) G.slowN = 0;
+    if (fps < 40) { if (SET.gfx === 'high' && !lite) lite = true; else if (rs > rsMin + .001) { n = Math.max(rsMin, rs - .1); if (bp * n < .999 && !G.rsTold) { G.rsTold = true; showHint('Frames are slow: drawing at ' + Math.round(bp * n * 100) + '% resolution (Esc · Render scale to choose)', 5000); } }
+      else if (!SET.pick && SET.gfx !== 'low' && (G.slowN = (G.slowN || 0) + 1) >= 2) { // still slow at the lowest resolution: step the graphics setting down (only if the player never chose one)
+        G.slowN = 0; SET.gfx = SET.gfx === 'high' ? 'med' : 'low'; saveSet(); G.lite = false; G.rs = 1; setupPost(); markGfx(); showHint('Frames are slow: graphics set to ' + (SET.gfx === 'med' ? 'Medium' : 'Low') + ' (Esc to change)', 6000); return render(rdt); } }
     else if (fps > 56) { if (rs < 1) n = Math.min(1, rs + .1); else if (lite && SET.gfx === 'high') lite = false; } // blur last: drop SSAO / rays first, then resolution
     if (n !== rs || lite !== !!G.lite) { G.rs = n; G.lite = lite; setupPost(); } }
   render(rdt);
@@ -1353,7 +1356,7 @@ function boot() {
   requestAnimationFrame(frame);
 }
 const markGfx = () => document.querySelectorAll('#gfx button, [data-gfx] button').forEach(b => b.classList.toggle('on', b.dataset.v === SET.gfx)); // main menu + pause menu
-function setGfx(v) { SET.gfx = v; saveSet(); G.lite = false; G.rs = 1; setupPost(); markGfx(); }
+function setGfx(v) { SET.gfx = v; SET.pick = 1; saveSet(); G.lite = false; G.rs = 1; setupPost(); markGfx(); }
 // pause card: anti-aliasing (TAA on Medium/High, FXAA, off) and render scale
 const markPost = () => { document.querySelectorAll('[data-aa] button').forEach(b => b.classList.toggle('on', b.dataset.v === (SET.aa || 'taa'))); document.querySelectorAll('[data-scale] button').forEach(b => b.classList.toggle('on', b.dataset.v === (SET.scale || 'auto'))); };
 document.querySelectorAll('[data-aa] button').forEach(b => b.onclick = e => { e.stopPropagation(); SET.aa = b.dataset.v; saveSet(); fxaaM.uniforms.aa.value = SET.aa === 'off' ? 0 : 1; TAA.reset = true; markPost(); });
